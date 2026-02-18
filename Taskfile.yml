@@ -555,10 +555,12 @@ tasks:
       # Check cluster status
       - "{{ .KUBECTL_BIN }} cluster-info"
 
-      # Import images (parallel loading for speed)
+      # Import images
       - |
         images=$({{.DEPLOY_BAKE_ENV}} docker buildx bake {{.DEPLOY_BAKE_GROUP}} --print | jq -r '.target | with_entries(.value |= .tags[0]) | to_entries[] | .value')
-        echo "$images" | xargs -P 4 -I {} {{ .KIND_BIN }} load docker-image {} --name {{ .KIND_CLUSTER_NAME }}
+        echo "$images" | while read image; do
+          {{ .KIND_BIN }} load docker-image $image --name {{ .KIND_CLUSTER_NAME }}
+        done
 
   deploy:kubernetes:gen-htpasswd-creds:
     desc: Generate htpasswd credentials and files for DIR deployment
