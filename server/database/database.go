@@ -12,7 +12,6 @@ import (
 	"github.com/agntcy/dir/server/database/config"
 	gormdb "github.com/agntcy/dir/server/database/gorm"
 	"github.com/agntcy/dir/server/types"
-	"github.com/glebarez/sqlite"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 	gormlogger "gorm.io/gorm/logger"
@@ -21,21 +20,13 @@ import (
 type DB string
 
 const (
-	SQLite   DB = "sqlite"
 	Postgres DB = "postgres"
 )
 
-func New(opts types.APIOptions) (types.DatabaseAPI, error) {
-	switch db := DB(opts.Config().Database.DBType); db {
-	case SQLite:
-		sqliteDB, err := newSQLite(opts.Config().Database.SQLite)
-		if err != nil {
-			return nil, fmt.Errorf("failed to create SQLite database: %w", err)
-		}
-
-		return sqliteDB, nil
+func New(config config.Config) (types.DatabaseAPI, error) {
+	switch db := DB(config.Type); db {
 	case Postgres:
-		postgresDB, err := NewPostgres(opts.Config().Database.Postgres)
+		postgresDB, err := newPostgres(config.Postgres)
 		if err != nil {
 			return nil, fmt.Errorf("failed to create PostgreSQL database: %w", err)
 		}
@@ -60,30 +51,8 @@ func newCustomLogger() gormlogger.Interface {
 	)
 }
 
-// newSQLite creates a new database connection using SQLite driver.
-func newSQLite(cfg config.SQLiteConfig) (*gormdb.DB, error) {
-	path := cfg.DBPath
-	if path == "" {
-		path = config.DefaultSQLiteDBPath
-	}
-
-	db, err := gorm.Open(sqlite.Open(path), &gorm.Config{
-		Logger: newCustomLogger(),
-	})
-	if err != nil {
-		return nil, fmt.Errorf("failed to connect to SQLite database: %w", err)
-	}
-
-	gdb, err := gormdb.New(db)
-	if err != nil {
-		return nil, fmt.Errorf("failed to initialize SQLite database: %w", err)
-	}
-
-	return gdb, nil
-}
-
-// NewPostgres creates a new database connection using PostgreSQL driver.
-func NewPostgres(cfg config.PostgresConfig) (*gormdb.DB, error) {
+// newPostgres creates a new database connection using PostgreSQL driver.
+func newPostgres(cfg config.PostgresConfig) (*gormdb.DB, error) {
 	host := cfg.Host
 	if host == "" {
 		host = config.DefaultPostgresHost
@@ -99,8 +68,13 @@ func NewPostgres(cfg config.PostgresConfig) (*gormdb.DB, error) {
 		database = config.DefaultPostgresDatabase
 	}
 
-	dsn := fmt.Sprintf("host=%s port=%d user=%s password=%s dbname=%s sslmode=disable",
-		host, port, cfg.Username, cfg.Password, database)
+	sslMode := "disable"
+	if cfg.SSLMode != "" {
+		sslMode = cfg.SSLMode
+	}
+
+	dsn := fmt.Sprintf("host=%s port=%d user=%s password=%s dbname=%s sslmode=%s",
+		host, port, cfg.Username, cfg.Password, database, sslMode)
 
 	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{
 		Logger: newCustomLogger(),

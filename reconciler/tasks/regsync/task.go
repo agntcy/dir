@@ -2,72 +2,46 @@
 // SPDX-License-Identifier: Apache-2.0
 
 // Package regsync implements the reconciliation task for regsync configuration.
-// It monitors the database for pending sync operations and runs the regsync
-// binary to synchronize images from non-Zot registries.
+// It monitors the database for pending sync operations and creates workers
+// to synchronize tags from OCI registries.
+//
+// TODO: this is a quick implementation to get the core functionality working.
+// TODO: it should be further refactored to simplify, separate concerns and improve testability
+//
+//nolint:dupl
 package regsync
 
 import (
-	"bytes"
 	"context"
-	"errors"
 	"fmt"
-	"os"
-	"os/exec"
-	"path/filepath"
 	"sync"
 	"time"
 
 	storev1 "github.com/agntcy/dir/api/store/v1"
 	ociconfig "github.com/agntcy/dir/server/store/oci/config"
-	serversync "github.com/agntcy/dir/server/sync"
 	"github.com/agntcy/dir/server/types"
 	"github.com/agntcy/dir/utils/logging"
-)
-
-const (
-	// configDirPermissions is the permission mode for creating the config directory.
-	configDirPermissions = 0o755
 )
 
 var logger = logging.Logger("reconciler/regsync")
 
 // Task implements the regsync reconciliation task.
-// It checks the database for pending syncs and runs the regsync binary.
+// It monitors for pending syncs and creates workers to process them.
 type Task struct {
+	mu            sync.RWMutex
 	config        Config
 	localRegistry ociconfig.Config
 	db            types.SyncDatabaseAPI
-	regsyncConfig *RegsyncConfig
-
-	mu            sync.Mutex
-	currentSyncID string // ID of sync currently being processed
+	activeWorkers map[string]*Worker // Map of syncID -> Worker
 }
 
 // NewTask creates a new regsync reconciliation task.
 func NewTask(config Config, localRegistry ociconfig.Config, db types.SyncDatabaseAPI) (*Task, error) {
-	// Ensure config directory exists
-	configDir := filepath.Dir(config.GetConfigPath())
-	if err := os.MkdirAll(configDir, configDirPermissions); err != nil {
-		return nil, fmt.Errorf("failed to create config directory: %w", err)
-	}
-
-	// Initialize regsync config with sensible defaults
-	regsyncConfig := NewRegsyncConfig()
-
-	// Add local registry credential
-	localHost := trimScheme(localRegistry.RegistryAddress)
-	regsyncConfig.AddCredential(
-		localHost,
-		localRegistry.Username,
-		localRegistry.Password,
-		localRegistry.Insecure,
-	)
-
 	return &Task{
 		config:        config,
 		localRegistry: localRegistry,
 		db:            db,
-		regsyncConfig: regsyncConfig,
+		activeWorkers: make(map[string]*Worker),
 	}, nil
 }
 
@@ -90,220 +64,207 @@ func (t *Task) IsEnabled() bool {
 func (t *Task) Run(ctx context.Context) error {
 	logger.Debug("Running regsync reconciliation")
 
-	// Check if we're currently processing a sync
-	if t.isProcessing() {
-		logger.Debug("Sync currently in progress, skipping new syncs", "sync_id", t.currentSyncID)
-
-		return nil
+	// Process pending sync creations
+	if err := t.processPendingCreations(ctx); err != nil {
+		logger.Error("Failed to process pending sync creations", "error", err)
 	}
 
-	// Find pending syncs that need regsync
-	pendingSyncs, err := t.db.GetRegsyncSyncsByStatus(storev1.SyncStatus_SYNC_STATUS_PENDING)
-	if err != nil {
-		return fmt.Errorf("failed to get pending syncs: %w", err)
-	}
-
-	// Process the first pending sync that needs regsync
-	for _, syncObj := range pendingSyncs {
-		if err := t.processSyncEntry(ctx, syncObj); err != nil {
-			logger.Error("Failed to process sync", "sync_id", syncObj.GetID(), "error", err)
-
-			continue
-		}
-
-		// Only process one sync at a time
-		break
+	// Process pending sync deletions
+	if err := t.processPendingDeletions(ctx); err != nil {
+		logger.Error("Failed to process pending sync deletions", "error", err)
 	}
 
 	return nil
 }
 
-// processSyncEntry processes a single sync entry by running the regsync binary.
-func (t *Task) processSyncEntry(ctx context.Context, syncObj types.SyncObject) error {
+// processPendingCreations handles syncs in SYNC_STATUS_PENDING state.
+func (t *Task) processPendingCreations(ctx context.Context) error {
+	pendingSyncs, err := t.db.GetSyncsByStatus(storev1.SyncStatus_SYNC_STATUS_PENDING)
+	if err != nil {
+		return fmt.Errorf("failed to get pending syncs: %w", err)
+	}
+
+	if len(pendingSyncs) == 0 {
+		logger.Debug("No pending sync creations to process")
+
+		return nil
+	}
+
+	logger.Info("Processing pending sync creations", "count", len(pendingSyncs))
+
+	// Process all pending syncs concurrently
+	var wg sync.WaitGroup
+
+	for _, syncObj := range pendingSyncs {
+		syncID := syncObj.GetID()
+
+		// Skip if already being processed
+		if t.isWorkerActive(syncID) {
+			logger.Debug("Sync already being processed, skipping", "sync_id", syncID)
+
+			continue
+		}
+
+		// Process each sync in a separate goroutine
+		wg.Add(1)
+
+		go func(sync types.SyncObject) {
+			defer wg.Done()
+
+			if err := t.processSync(ctx, sync); err != nil {
+				logger.Error("Failed to process sync creation", "sync_id", sync.GetID(), "error", err)
+
+				return
+			}
+
+			logger.Info("Sync processed successfully", "sync_id", sync.GetID())
+		}(syncObj)
+	}
+
+	// Wait for all workers to complete
+	wg.Wait()
+
+	logger.Debug("Completed processing pending sync creations", "count", len(pendingSyncs))
+
+	return nil
+}
+
+// processPendingDeletions handles syncs in SYNC_STATUS_DELETE_PENDING state.
+func (t *Task) processPendingDeletions(ctx context.Context) error {
+	pendingDeletes, err := t.db.GetSyncsByStatus(storev1.SyncStatus_SYNC_STATUS_DELETE_PENDING)
+	if err != nil {
+		return fmt.Errorf("failed to get pending deletes: %w", err)
+	}
+
+	if len(pendingDeletes) == 0 {
+		logger.Debug("No pending sync deletions to process")
+
+		return nil
+	}
+
+	logger.Info("Processing pending sync deletions", "count", len(pendingDeletes))
+
+	// Process all pending deletions concurrently
+	var wg sync.WaitGroup
+
+	for _, syncObj := range pendingDeletes {
+		syncID := syncObj.GetID()
+
+		// Skip if already being processed
+		if t.isWorkerActive(syncID) {
+			logger.Debug("Sync deletion already being processed, skipping", "sync_id", syncID)
+
+			continue
+		}
+
+		// Process each deletion in a separate goroutine
+		wg.Add(1)
+
+		go func(sync types.SyncObject) {
+			defer wg.Done()
+
+			if err := t.processSyncDeletion(ctx, sync); err != nil {
+				logger.Error("Failed to process sync deletion", "sync_id", sync.GetID(), "error", err)
+
+				return
+			}
+
+			logger.Info("Sync deletion processed successfully", "sync_id", sync.GetID())
+		}(syncObj)
+	}
+
+	// Wait for all deletions to complete
+	wg.Wait()
+
+	logger.Debug("Completed processing pending sync deletions", "count", len(pendingDeletes))
+
+	return nil
+}
+
+// processSyncDeletion handles the deletion of a single sync object.
+func (t *Task) processSyncDeletion(_ context.Context, syncObj types.SyncObject) error {
 	syncID := syncObj.GetID()
-	remoteDirectoryURL := syncObj.GetRemoteDirectoryURL()
 
-	logger.Info("Processing sync entry", "sync_id", syncID, "remote_directory", remoteDirectoryURL)
+	logger.Info("Processing sync deletion", "sync_id", syncID)
 
-	// Mark as current sync
+	// Update status to DELETE_PENDING before starting worker
+	if err := t.db.UpdateSyncStatus(syncID, storev1.SyncStatus_SYNC_STATUS_DELETE_PENDING); err != nil {
+		return fmt.Errorf("failed to update sync status to DELETE_PENDING: %w", err)
+	}
+
+	// Register as active to prevent duplicate processing
 	t.mu.Lock()
-	t.currentSyncID = syncID
+	t.activeWorkers[syncID] = nil // Use nil worker for delete operations
 	t.mu.Unlock()
 
-	// Update status to IN_PROGRESS
+	defer func() {
+		t.mu.Lock()
+		delete(t.activeWorkers, syncID)
+		t.mu.Unlock()
+	}()
+
+	// Soft delete the sync
+	if err := t.db.UpdateSyncStatus(syncID, storev1.SyncStatus_SYNC_STATUS_DELETED); err != nil {
+		return fmt.Errorf("failed to update sync status to DELETED: %w", err)
+	}
+
+	logger.Info("Sync deleted successfully", "sync_id", syncID)
+
+	return nil
+}
+
+// processSync handles the processing of a single sync object by creating and running a worker.
+func (t *Task) processSync(ctx context.Context, syncObj types.SyncObject) error {
+	syncID := syncObj.GetID()
+
+	logger.Info("Starting worker for sync", "sync_id", syncID, "remote_directory", syncObj.GetRemoteDirectoryURL())
+
+	// Update status to IN_PROGRESS before starting worker
 	if err := t.db.UpdateSyncStatus(syncID, storev1.SyncStatus_SYNC_STATUS_IN_PROGRESS); err != nil {
-		t.clearCurrentSync()
-
-		return fmt.Errorf("failed to update sync status: %w", err)
+		return fmt.Errorf("failed to update sync status to IN_PROGRESS: %w", err)
 	}
 
-	// Negotiate credentials with the remote Directory node
-	credentials, err := serversync.NegotiateCredentials(ctx, remoteDirectoryURL, t.config.Authn)
-	if err != nil {
-		t.markSyncFailed(syncID, "credential negotiation failed")
+	// Create a new worker
+	worker := NewWorker(t.config, t.localRegistry, syncObj)
 
-		return fmt.Errorf("failed to negotiate credentials: %w", err)
-	}
+	// Register the worker
+	t.mu.Lock()
+	t.activeWorkers[syncID] = worker
+	t.mu.Unlock()
 
-	logger.Debug("Credentials negotiated successfully", "sync_id", syncID, "registry", credentials.RegistryAddress, "repository", credentials.RepositoryName)
+	// Run the worker
+	workerErr := worker.Run(ctx)
 
-	// Add credentials for the remote registry
-	t.regsyncConfig.AddCredential(
-		credentials.RegistryAddress,
-		credentials.Credentials.Username,
-		credentials.Credentials.Password,
-		credentials.Credentials.Insecure,
-	)
+	// Remove worker from active list after completion
+	t.mu.Lock()
+	delete(t.activeWorkers, syncID)
+	t.mu.Unlock()
 
-	t.regsyncConfig.ClearSyncs()
-	t.regsyncConfig.AddSync(
-		credentials.FullRepositoryURL(),
-		t.buildTargetURL(),
-		syncObj.GetCIDs(),
-	)
+	// Mark sync as failed if worker returned an error
+	if workerErr != nil {
+		if err := t.db.UpdateSyncStatus(syncID, storev1.SyncStatus_SYNC_STATUS_FAILED); err != nil {
+			logger.Error("Failed to update sync status to FAILED", "sync_id", syncID, "error", err)
+		}
 
-	// Write config file
-	if err := t.regsyncConfig.WriteToFile(t.config.GetConfigPath(), syncID); err != nil {
-		t.markSyncFailed(syncID, "failed to write config")
-
-		return fmt.Errorf("failed to write regsync config: %w", err)
-	}
-
-	logger.Info("Running regsync command", "sync_id", syncID, "source", credentials.FullRepositoryURL(), "target", t.buildTargetURL())
-
-	// Run the regsync binary and wait for completion
-	if err := t.runRegsync(ctx, syncID); err != nil {
-		t.markSyncFailed(syncID, err.Error())
-
-		return fmt.Errorf("regsync command failed: %w", err)
+		return fmt.Errorf("worker failed: %s", workerErr.Error())
 	}
 
 	// Mark sync as completed
 	if err := t.db.UpdateSyncStatus(syncID, storev1.SyncStatus_SYNC_STATUS_COMPLETED); err != nil {
 		logger.Error("Failed to update sync status to COMPLETED", "sync_id", syncID, "error", err)
-	}
 
-	logger.Info("Sync completed successfully", "sync_id", syncID)
-	t.clearCurrentSync()
-
-	return nil
-}
-
-// runRegsync executes the regsync binary with the current configuration.
-func (t *Task) runRegsync(ctx context.Context, syncID string) error {
-	// Create a context with timeout
-	timeout := t.config.GetTimeout()
-
-	execCtx, cancel := context.WithTimeout(ctx, timeout)
-	defer cancel()
-
-	// Build the command: regsync once -c <config_path>
-	binaryPath := t.config.GetBinaryPath()
-	configPath := t.config.GetConfigPath()
-
-	//nolint:gosec // Binary path is from trusted configuration
-	cmd := exec.CommandContext(execCtx, binaryPath, "once", "-c", configPath)
-
-	// Capture stdout and stderr
-	var stdout, stderr bytes.Buffer
-
-	cmd.Stdout = &stdout
-	cmd.Stderr = &stderr
-
-	logger.Debug("Executing regsync command", "sync_id", syncID, "command", cmd.String(), "timeout", timeout)
-
-	// Run the command
-	err := cmd.Run()
-
-	// Log output regardless of success/failure
-	if stdout.Len() > 0 {
-		logger.Debug("regsync stdout", "sync_id", syncID, "output", stdout.String())
-	}
-
-	if stderr.Len() > 0 {
-		logger.Debug("regsync stderr", "sync_id", syncID, "output", stderr.String())
-	}
-
-	if err != nil {
-		// Check if it was a timeout
-		if errors.Is(execCtx.Err(), context.DeadlineExceeded) {
-			return fmt.Errorf("regsync command timed out after %v", timeout)
-		}
-
-		return fmt.Errorf("regsync command failed: %w, stderr: %s", err, stderr.String())
+		return fmt.Errorf("failed to update sync status to COMPLETED: %w", err)
 	}
 
 	return nil
 }
 
-// markSyncFailed marks a sync as failed and clears the current sync.
-func (t *Task) markSyncFailed(syncID, reason string) {
-	logger.Error("Sync failed", "sync_id", syncID, "reason", reason)
+// isWorkerActive checks if a worker is active for the given sync ID.
+func (t *Task) isWorkerActive(syncID string) bool {
+	t.mu.RLock()
+	defer t.mu.RUnlock()
 
-	if err := t.db.UpdateSyncStatus(syncID, storev1.SyncStatus_SYNC_STATUS_FAILED); err != nil {
-		logger.Error("Failed to update sync status to FAILED", "sync_id", syncID, "error", err)
-	}
+	_, exists := t.activeWorkers[syncID]
 
-	t.clearCurrentSync()
-}
-
-// clearCurrentSync clears the current sync ID.
-func (t *Task) clearCurrentSync() {
-	t.mu.Lock()
-	t.currentSyncID = ""
-	t.mu.Unlock()
-}
-
-// isProcessing checks if there's currently a sync being processed.
-func (t *Task) isProcessing() bool {
-	t.mu.Lock()
-	defer t.mu.Unlock()
-
-	if t.currentSyncID == "" {
-		return false
-	}
-
-	// Double-check by querying the database
-	syncObj, err := t.db.GetSyncByID(t.currentSyncID)
-	if err != nil {
-		logger.Debug("Failed to get current sync status, assuming still in progress",
-			"sync_id", t.currentSyncID, "error", err)
-
-		return true
-	}
-
-	status := syncObj.GetStatus()
-	if status == storev1.SyncStatus_SYNC_STATUS_COMPLETED ||
-		status == storev1.SyncStatus_SYNC_STATUS_FAILED ||
-		status == storev1.SyncStatus_SYNC_STATUS_DELETED {
-		// Current sync is done, clear it
-		logger.Debug("Previous sync finished, clearing", "sync_id", t.currentSyncID, "status", status)
-		t.currentSyncID = ""
-
-		return false
-	}
-
-	return true
-}
-
-// buildTargetURL builds the target registry URL for syncs.
-func (t *Task) buildTargetURL() string {
-	localHost := trimScheme(t.localRegistry.RegistryAddress)
-
-	if t.localRegistry.RepositoryName != "" {
-		return fmt.Sprintf("%s/%s", localHost, t.localRegistry.RepositoryName)
-	}
-
-	return localHost
-}
-
-// Initialize writes the initial regsync configuration file.
-func (t *Task) Initialize() error {
-	logger.Info("Initializing regsync configuration", "config_path", t.config.GetConfigPath())
-
-	if err := t.regsyncConfig.WriteToFile(t.config.GetConfigPath(), ""); err != nil {
-		return fmt.Errorf("failed to write initial regsync config: %w", err)
-	}
-
-	return nil
+	return exists
 }

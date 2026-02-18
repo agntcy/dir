@@ -38,7 +38,7 @@ func BuildWildcardCondition(field string, patterns []string) (string, []any) {
 
 // BuildSingleWildcardCondition builds a WHERE condition for a single field with wildcard or exact matching.
 // Returns the condition string and argument for the WHERE clause.
-// Uses SQL LIKE which works with both SQLite and PostgreSQL.
+// Uses SQL LIKE which works across SQL databases.
 //
 // Supported wildcards:
 //   - * matches any sequence of characters (converted to %)
@@ -51,7 +51,7 @@ func BuildSingleWildcardCondition(field, pattern string) (string, string) {
 	likePattern := convertGlobToLike(pattern)
 
 	// Use explicit ESCAPE clause for cross-database compatibility
-	// This ensures backslash escaping works in both SQLite and PostgreSQL
+	// This ensures backslash escaping works in both SQL databases
 	return "LOWER(" + field + ") LIKE ? ESCAPE '\\'", strings.ToLower(likePattern)
 }
 

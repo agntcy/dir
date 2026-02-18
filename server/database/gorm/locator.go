@@ -19,7 +19,7 @@ type Locator struct {
 }
 
 func (locator *Locator) GetAnnotations() map[string]string {
-	// SQLite locators don't store annotations, return empty map
+	// Database locators don't store annotations, return empty map
 	return make(map[string]string)
 }
 
@@ -32,16 +32,16 @@ func (locator *Locator) GetURL() string {
 }
 
 func (locator *Locator) GetSize() uint64 {
-	// SQLite locators don't store size information
+	// Database locators don't store size information
 	return 0
 }
 
 func (locator *Locator) GetDigest() string {
-	// SQLite locators don't store digest information
+	// Database locators don't store digest information
 	return ""
 }
 
-// convertLocators transforms interface types to SQLite structs.
+// convertLocators transforms interface types to Database structs.
 func convertLocators(locators []types.Locator, recordCID string) []Locator {
 	result := make([]Locator, len(locators))
 	for i, locator := range locators {

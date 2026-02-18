@@ -246,7 +246,7 @@ func (s storeCtrl) pushReferrer(ctx context.Context, request *storev1.PushReferr
 	recordCID := request.GetRecordRef().GetCid()
 
 	// Use ReferrerStoreAPI to push the referrer
-	// The store implementation handles type-specific logic (cosign for signatures, Zot for public keys)
+	// The store implementation handles type-specific logic
 	refStore, ok := s.store.(types.ReferrerStoreAPI)
 	if !ok {
 		errMsg := "referrer storage not supported by current store implementation"

@@ -1,7 +1,7 @@
 // Copyright AGNTCY Contributors (https://github.com/agntcy)
 // SPDX-License-Identifier: Apache-2.0
 
-package sync
+package regsync
 
 import (
 	"context"
@@ -10,14 +10,20 @@ import (
 	storev1 "github.com/agntcy/dir/api/store/v1"
 	"github.com/agntcy/dir/client"
 	authnconfig "github.com/agntcy/dir/server/authn/config"
-	syncconfig "github.com/agntcy/dir/server/sync/config"
 )
 
 // CredentialsResult holds the result of credential negotiation with a remote Directory node.
 type CredentialsResult struct {
 	RegistryAddress string
 	RepositoryName  string
-	Credentials     syncconfig.AuthConfig
+	Credentials     AuthConfig
+}
+
+// AuthConfig represents the configuration for authentication.
+type AuthConfig struct {
+	Username string `json:"username,omitempty" mapstructure:"username"`
+	Password string `json:"password,omitempty" mapstructure:"password"`
+	Insecure bool   `json:"insecure,omitempty" mapstructure:"insecure"` // Use plain HTTP instead of HTTPS
 }
 
 // FullRepositoryURL returns the full repository URL (address + path).
@@ -71,7 +77,7 @@ func NegotiateCredentials(ctx context.Context, remoteDirectoryURL string, authnC
 	return &CredentialsResult{
 		RegistryAddress: resp.GetRegistryAddress(),
 		RepositoryName:  resp.GetRepositoryName(),
-		Credentials: syncconfig.AuthConfig{
+		Credentials: AuthConfig{
 			Username: username,
 			Password: password,
 			Insecure: resp.GetInsecure(),

@@ -29,15 +29,6 @@ const (
 
 	// DefaultConfigPath is the default configuration file path.
 	DefaultConfigPath = "/etc/agntcy/reconciler"
-
-	// DefaultPostgresHost is the default PostgreSQL host.
-	DefaultPostgresHost = "localhost"
-
-	// DefaultPostgresPort is the default PostgreSQL port.
-	DefaultPostgresPort = 5432
-
-	// DefaultPostgresDatabase is the default PostgreSQL database name.
-	DefaultPostgresDatabase = "directory"
 )
 
 var logger = logging.Logger("reconciler/config")
@@ -45,7 +36,7 @@ var logger = logging.Logger("reconciler/config")
 // Config holds the reconciler configuration.
 type Config struct {
 	// Database holds PostgreSQL connection configuration.
-	Database dbconfig.PostgresConfig `json:"database" mapstructure:"database"`
+	Database dbconfig.Config `json:"database" mapstructure:"database"`
 
 	// LocalRegistry holds configuration for the local OCI registry.
 	LocalRegistry ociconfig.Config `json:"local_registry" mapstructure:"local_registry"`
@@ -88,25 +79,28 @@ func LoadConfig() (*Config, error) {
 	//
 	// Database configuration
 	//
-	_ = v.BindEnv("database.host")
-	v.SetDefault("database.host", DefaultPostgresHost)
+	_ = v.BindEnv("database.type")
+	v.SetDefault("database.type", dbconfig.DefaultType)
 
-	_ = v.BindEnv("database.port")
-	v.SetDefault("database.port", DefaultPostgresPort)
+	// PostgreSQL configuration
+	_ = v.BindEnv("database.postgres.host")
+	v.SetDefault("database.postgres.host", dbconfig.DefaultPostgresHost)
 
-	_ = v.BindEnv("database.database")
-	v.SetDefault("database.database", DefaultPostgresDatabase)
+	_ = v.BindEnv("database.postgres.port")
+	v.SetDefault("database.postgres.port", dbconfig.DefaultPostgresPort)
 
-	_ = v.BindEnv("database.username")
-	_ = v.BindEnv("database.password")
+	_ = v.BindEnv("database.postgres.database")
+	v.SetDefault("database.postgres.database", dbconfig.DefaultPostgresDatabase)
 
-	_ = v.BindEnv("database.ssl_mode")
-	v.SetDefault("database.ssl_mode", "disable")
+	_ = v.BindEnv("database.postgres.username")
+	_ = v.BindEnv("database.postgres.password")
+
+	_ = v.BindEnv("database.postgres.ssl_mode")
+	v.SetDefault("database.postgres.ssl_mode", dbconfig.DefaultPostgresSSLMode)
 
 	//
 	// Local registry configuration (shared by all tasks)
 	//
-	_ = v.BindEnv("local_registry.type")
 	_ = v.BindEnv("local_registry.registry_address")
 	_ = v.BindEnv("local_registry.repository_name")
 	_ = v.BindEnv("local_registry.auth_config.username")
@@ -122,16 +116,15 @@ func LoadConfig() (*Config, error) {
 	_ = v.BindEnv("regsync.interval")
 	v.SetDefault("regsync.interval", regsync.DefaultInterval)
 
-	_ = v.BindEnv("regsync.config_path")
-	v.SetDefault("regsync.config_path", regsync.DefaultConfigPath)
-
 	_ = v.BindEnv("regsync.binary_path")
 	v.SetDefault("regsync.binary_path", regsync.DefaultBinaryPath)
 
 	_ = v.BindEnv("regsync.timeout")
 	v.SetDefault("regsync.timeout", regsync.DefaultTimeout)
 
-	// Authentication configuration for remote Directory connections
+	//
+	// Authentication configuration for registry credentials provider
+	//
 	_ = v.BindEnv("regsync.authn.enabled")
 	v.SetDefault("regsync.authn.enabled", false)
 

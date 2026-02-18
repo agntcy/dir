@@ -18,28 +18,39 @@ data:
     {{- $_ := set $config.store.oci "repository_name" $repoName }}
     {{- end }}
     {{- end }}
+    {{- /* Dynamically set PostgreSQL host */ -}}
+    {{- if hasKey $config "database" }}
+    {{- if not (hasKey $config.database "postgres") }}
+    {{- $_ := set $config.database "postgres" dict }}
+    {{- end }}
+    {{- $_ := set $config.database.postgres "host" (include "chart.postgres.host" .) }}
+    {{- end }}
     {{- if .Values.metrics }}
     {{- $metricsConfig := dict "enabled" .Values.metrics.enabled "address" (printf ":%d" (.Values.metrics.port | int)) }}
     {{- $_ := set $config "metrics" $metricsConfig }}
     {{- end }}
-    {{- /* Database configuration */ -}}
-    {{- $dbConfig := dict "db_type" .Values.database.type }}
-    {{- if eq .Values.database.type "sqlite" }}
-    {{- $sqliteConfig := dict "db_path" .Values.database.sqlite.dbPath }}
-    {{- $_ := set $dbConfig "sqlite" $sqliteConfig }}
-    {{- else if eq .Values.database.type "postgres" }}
-    {{- $pgConfig := dict }}
-    {{- /* Use helper to derive host from postgresql subchart when enabled */ -}}
-    {{- $_ := set $pgConfig "host" (include "chart.postgres.host" .) }}
-    {{- $_ := set $pgConfig "port" (.Values.database.postgres.port | default 5432 | int) }}
-    {{- /* Use helper to derive database name from postgresql subchart when enabled */ -}}
-    {{- $_ := set $pgConfig "database" (include "chart.postgres.database" .) }}
-    {{- $_ := set $dbConfig "postgres" $pgConfig }}
-    {{- end }}
-    {{- $_ := set $config "database" $dbConfig }}
     {{- $config | toYaml | nindent 4 }}
 
   authz_policies.csv: |
-    {{- if .Values.config.authz.enforcer_policy_csv }}
-    {{- .Values.config.authz.enforcer_policy_csv | nindent 4}}
+    {{- if .Values.authz_policies_csv }}
+    {{- .Values.authz_policies_csv | nindent 4}}
     {{- end }}
+
+  reconciler.config.yml: |
+    {{- $reconcilerConfig := deepCopy .Values.reconciler.config }}
+    {{- /* Dynamically set local registry address and repository name */ -}}
+    {{- if hasKey $reconcilerConfig "local_registry" }}
+    {{- $_ := set $reconcilerConfig.local_registry "registry_address" (include "chart.oci.registryAddress" .) }}
+    {{- $repoName := include "chart.oci.repositoryName" . }}
+    {{- if $repoName }}
+    {{- $_ := set $reconcilerConfig.local_registry "repository_name" $repoName }}
+    {{- end }}
+    {{- end }}
+    {{- /* Dynamically set PostgreSQL host */ -}}
+    {{- if hasKey $reconcilerConfig "database" }}
+    {{- if not (hasKey $reconcilerConfig.database "postgres") }}
+    {{- $_ := set $reconcilerConfig.database "postgres" dict }}
+    {{- end }}
+    {{- $_ := set $reconcilerConfig.database.postgres "host" (include "chart.postgres.host" .) }}
+    {{- end }}
+    {{- $reconcilerConfig | toYaml | nindent 4 }}

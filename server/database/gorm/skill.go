@@ -19,7 +19,7 @@ type Skill struct {
 }
 
 func (skill *Skill) GetAnnotations() map[string]string {
-	// SQLite skills don't store annotations, return empty map
+	// Database skills don't store annotations, return empty map
 	return make(map[string]string)
 }
 
@@ -31,7 +31,7 @@ func (skill *Skill) GetName() string {
 	return skill.Name
 }
 
-// convertSkills transforms interface types to SQLite structs.
+// convertSkills transforms interface types to Database structs.
 func convertSkills(skills []types.Skill, recordCID string) []Skill {
 	result := make([]Skill, len(skills))
 	for i, skill := range skills {

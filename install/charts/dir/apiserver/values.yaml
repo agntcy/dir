@@ -1,10 +1,6 @@
 # Copyright AGNTCY Contributors (https://github.com/agntcy)
 # SPDX-License-Identifier: Apache-2.0
 
-# Default values for helm-chart.
-# This is a YAML-formatted file.
-# Declare variables to be passed into your templates.
-
 nameOverride: ""
 fullnameOverride: ""
 
@@ -22,7 +18,16 @@ image:
   pullPolicy: IfNotPresent
   pullSecrets: []
 
-# Server configuration
+# Authorization policy file content (separate from config)
+# This is written to authz_policies.csv file, not part of the server config struct
+authz_policies_csv: |
+  p,example.org,*
+  p,*,/agntcy.dir.store.v1.StoreService/Pull
+  p,*,/agntcy.dir.store.v1.StoreService/PullReferrer
+  p,*,/agntcy.dir.store.v1.StoreService/Lookup
+  p,*,/agntcy.dir.sync.v1.SyncService/RequestRegistryCredentials
+
+# Server configuration (maps directly to server config.go Config struct)
 config:
   # listen_address: "0.0.0.0:8888"
 
@@ -50,14 +55,6 @@ config:
     # Path to the authorization policy file
     enforcer_policy_file_path: "/etc/agntcy/dir/authz_policies.csv"
 
-    # Content of the authorization policy file
-    enforcer_policy_csv: |
-      p,example.org,*
-      p,*,/agntcy.dir.store.v1.StoreService/Pull
-      p,*,/agntcy.dir.store.v1.StoreService/PullReferrer
-      p,*,/agntcy.dir.store.v1.StoreService/Lookup
-      p,*,/agntcy.dir.sync.v1.SyncService/RequestRegistryCredentials
-
   # Store settings for the storage backend.
   store:
     # Storage provider to use.
@@ -74,13 +71,14 @@ config:
 
       # Registry address to connect to
       registry_address: ""
+
       # All data will be stored under this repo.
       # Objects are pushed as tags, manifests, and blobs.
-      # repository_name: ""
+      repository_name: ""
 
       # Auth credentials to use.
       auth_config:
-        insecure: "true"
+        insecure: true
         # username: ""
         # password: ""
         # access_token: ""
@@ -110,21 +108,10 @@ config:
 
   # Sync configuration
   sync:
-    # How frequently the scheduler checks for pending syncs
-    scheduler_interval: "30s"
-
-    # Maximum number of sync workers running concurrently
-    worker_count: 1
-
-    # Timeout for individual sync operations
-    worker_timeout: "10m"
-
-    # Registry monitor configuration
-    registry_monitor:
-      check_interval: "30s"
-
     # Authentication configuration for sync operations
     auth_config: {}
+      # username: ""
+      # password: ""
 
   # Events configuration
   events:
@@ -217,6 +204,40 @@ config:
     #     rps: 200     # Higher limit for read operations
     #     burst: 400
 
+  # Database configuration (PostgreSQL)
+  # Connection settings for the apiserver database.
+  # Credentials are managed separately via secrets.postgresAuth or externalSecrets.
+  database:
+    # Database type (only postgres is supported)
+    type: "postgres"
+
+    # PostgreSQL connection settings
+    postgres:
+      # PostgreSQL host address
+      # For local (postgresql.enabled=true): use "<release-name>-postgresql"
+      # For external: your PostgreSQL hostname
+      host: ""
+
+      # PostgreSQL port
+      port: 5432
+
+      # Database name
+      database: "dir"
+
+      # SSL mode for PostgreSQL connection
+      # Options: disable, require, verify-ca, verify-full
+      ssl_mode: "disable"
+
+  # OASF API validation configuration
+  oasf_api_validation:
+    # Schema URL for OASF validation
+    # Used by both the apiserver and reconciler for validating agent records
+    schema_url: "https://schema.oasf.outshift.com"
+
+    # Disable OASF validation entirely (default: false)
+    # Set to true to skip schema validation (useful for testing)
+    disable: false
+
 # SPIRE configuration
 spire:
   enabled: false
@@ -285,44 +306,6 @@ pvc:
   create: false
   storageClassName: standard
   size: 1G
-
-# Database configuration
-database:
-  # Database type: "sqlite" or "postgres"
-  # - sqlite: Single-file embedded database
-  # - postgres: External PostgreSQL database
-  type: "postgres"
-
-  # SQLite configuration
-  sqlite:
-    # Path to SQLite database file
-    # Default: /tmp/dir.db (ephemeral - lost on pod restart)
-    # When using PVC: /var/lib/dir/database/dir.db (persistent)
-    dbPath: "/tmp/dir.db"
-  
-  # PostgreSQL configuration
-  # Requires an external PostgreSQL instance (deploy separately or use managed service)
-  postgres:
-    # PostgreSQL host address
-    host: ""
-    
-    # PostgreSQL port (default: 5432)
-    port: 5432
-    
-    # Database name
-    database: "dir"
-  
-  # PVC for SQLite database persistence (optional)
-  # When enabled, database persists across pod restarts
-  # Also allows enabling readOnlyRootFilesystem security hardening
-  # IMPORTANT: When PVC is enabled, set strategy.type to "Recreate" to avoid
-  # SQLite lock conflicts during updates (see strategy configuration above)
-  pvc:
-    enabled: false # Disabled by default (opt-in for backward compatibility)
-    create: true # Create PVC automatically
-    storageClassName: "" # Use cluster default storage class
-    size: 1Gi # Database size (adjust based on expected record count)
-    accessMode: ReadWriteOnce
 
 # Service exposes gRPC server api
 service:
@@ -415,7 +398,7 @@ securityContext: {}
   # capabilities:
   #   drop:
   #   - ALL
-  # readOnlyRootFilesystem: true  # When enabled, /tmp emptyDir is automatically mounted for SQLite temp files
+  # readOnlyRootFilesystem: true
   # runAsNonRoot: true
   # runAsUser: 1000
 
@@ -456,19 +439,19 @@ autoscaling:
   # targetMemoryUtilizationPercentage: 80
 
 # Deployment strategy for pod updates
-# IMPORTANT: When using PVCs (routing or database), use "Recreate" strategy
-# to avoid file lock conflicts with BadgerDB and SQLite.
+# IMPORTANT: When using PVCs for routing, use "Recreate" strategy
+# to avoid file lock conflicts with BadgerDB.
 #
 # Recreate: Terminates old pod before starting new one (default, required with PVCs)
 # - Ensures clean database shutdown and no lock conflicts
 # - Brief downtime during updates (10-15 seconds)
 # - Prevents CrashLoopBackOff due to file locks
 #
-# RollingUpdate: Zero-downtime updates (only for stateless deployments without PVCs)
-# - NOT recommended when PVCs are enabled
-# - Can cause BadgerDB/SQLite lock conflicts
+# RollingUpdate: Zero-downtime updates (only for stateless deployments without routing PVC)
+# - NOT recommended when routing PVC is enabled
+# - Can cause BadgerDB lock conflicts
 #
-# To use RollingUpdate (only if NO PVCs are used):
+# To use RollingUpdate (only if NO routing PVC is used):
 # strategy:
 #   type: RollingUpdate
 #   rollingUpdate:
@@ -529,8 +512,9 @@ secrets:
     username: ""
     password: ""
 
-  # PostgreSQL authentication (only used when database.type: "postgres" AND postgresql.enabled: false)
-  # When postgresql subchart is enabled, credentials are taken from postgresql.auth.* instead.
+  # PostgreSQL authentication
+  # These credentials are used for database connections.
+  # When postgresql subchart is enabled, these values override postgresql.auth.* for the connection secret.
   # Username defaults to "dir", password is randomly generated if empty.
   postgresAuth:
     username: ""
@@ -581,7 +565,7 @@ externalSecrets:
   
   # PostgreSQL authentication (only used when database.type: "postgres")
   postgresAuth:
-    enabled: false  # Enable when using PostgreSQL with Vault-managed credentials
+    enabled: true 
     # Property names in Vault secret (defaults shown)
     usernameProperty: "postgres-username"
     passwordProperty: "postgres-password"
@@ -669,6 +653,10 @@ envoy-authz:
 # When enabled, postgresql.auth.* is the single source of truth for credentials.
 postgresql:
   enabled: true
+  # image:
+  #   registry: docker.io
+  #   repository: bitnami/postgresql
+  #   digest: sha256:c47e54a69b39aa97d4405d68ea02bf2ffe06b646748e2ddf9c761416ead6acd5
   auth:
     username: "dir"
     password: "dirpassword"
@@ -676,29 +664,78 @@ postgresql:
 
 # Reconciler configuration
 # The reconciler handles async operations including:
-# - regsync: sync for non-Zot registries
+# - regsync: syncs records from remote registries
 # - indexer: indexes synced records into the database for search
-# Uses the same PostgreSQL database as the apiserver (database.postgres.*).
-# Requires database.type: "postgres" - shares the same database as the apiserver.
+# Shares the same database as the apiserver.
 reconciler:
-  # Enable the reconciler deployment (default: false)
-  enabled: false
-
   image:
     repository: ghcr.io/agntcy/dir-reconciler
     tag: latest
     pullPolicy: IfNotPresent
 
-  # Regsync task configuration
-  regsync:
-    enabled: true
-    interval: "30s"
-    timeout: "10m"
+  # Reconciler configuration - all settings go here
+  # This entire section is rendered directly to reconciler.config.yml
+  config:
+    # Database configuration (PostgreSQL)
+    # Connection settings for the apiserver database.
+    # Credentials are managed separately via secrets.postgresAuth or externalSecrets.
+    database:
+      # Database type (only postgres is supported)
+      type: "postgres"
 
-  # Indexer task configuration
-  # Indexes synced records into the database for search
-  indexer:
-    enabled: true
-    interval: "1h"
+      # PostgreSQL connection settings
+      postgres:
+        # PostgreSQL host address
+        # For local (postgresql.enabled=true): use "<release-name>-postgresql"
+        # For external: your PostgreSQL hostname
+        host: ""
+
+        # PostgreSQL port
+        port: 5432
+
+        # Database name
+        database: "dir"
+
+        # SSL mode for PostgreSQL connection
+        # Options: disable, require, verify-ca, verify-full
+        ssl_mode: "disable"
+
+    # Local registry configuration (for syncing)
+    local_registry:
+      # Path to a local directory that will be to hold data instead of remote.
+      # If this is set to non-empty value, only local store will be used.
+      # local_dir: ""
+
+      # Cache directory to use for metadata.
+      # cache_dir: ""
+
+      # Registry address to connect to
+      registry_address: ""
+
+      # All data will be stored under this repo.
+      # Objects are pushed as tags, manifests, and blobs.
+      repository_name: ""
+
+      # Auth credentials to use.
+      auth_config:
+        insecure: true
+        # username: ""
+        # password: ""
+        # access_token: ""
+        # refresh_token: ""
+
+    # OASF schema URL for validation
+    schema_url: "https://schema.oasf.outshift.com"
+
+    # Regsync task configuration
+    regsync:
+      enabled: true
+      interval: "1h"
+      timeout: "10m"
+
+    # Indexer task configuration
+    indexer:
+      enabled: true
+      interval: "1h"
 
   resources: {}

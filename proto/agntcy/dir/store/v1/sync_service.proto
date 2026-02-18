@@ -6,7 +6,7 @@ syntax = "proto3";
 package agntcy.dir.store.v1;
 
 // SyncService provides functionality for synchronizing objects between Directory nodes.
-// 
+//
 // This service enables one-way synchronization from a remote Directory node to the local node,
 // allowing distributed Directory instances to share and replicate objects. The service supports
 // both on-demand synchronization and tracking of sync operations through their lifecycle.
@@ -31,7 +31,7 @@ service SyncService {
   // RequestRegistryCredentials requests registry credentials between two Directory nodes.
   //
   // This RPC allows a requesting node to authenticate with this node and obtain
-  // temporary registry credentials for secure Zot-based synchronization.
+  // temporary registry credentials for secure OCI synchronization.
   rpc RequestRegistryCredentials(RequestRegistryCredentialsRequest) returns (RequestRegistryCredentialsResponse);
 }
 
@@ -74,10 +74,10 @@ message ListSyncsRequest {
 message ListSyncsItem {
   // Unique identifier of the synchronization operation.
   string sync_id = 1;
-  
+
   // Current status of the synchronization operation.
   SyncStatus status = 2;
-  
+
   // URL of the remote Directory being synchronized from.
   string remote_directory_url = 3;
 }
@@ -114,11 +114,9 @@ message DeleteSyncRequest {
 }
 
 // DeleteSyncResponse
-message DeleteSyncResponse {
-}
+message DeleteSyncResponse {}
 
-message RequestRegistryCredentialsRequest {
-}
+message RequestRegistryCredentialsRequest {}
 
 message RequestRegistryCredentialsResponse {
   // Success status of the credential negotiation
@@ -154,19 +152,19 @@ message BasicAuthCredentials {
 enum SyncStatus {
   // Default/unset status - should not be used in practice
   SYNC_STATUS_UNSPECIFIED = 0;
-  
+
   // Sync operation has been created but not yet started
   SYNC_STATUS_PENDING = 1;
-  
+
   // Sync operation is actively discovering and transferring objects
   SYNC_STATUS_IN_PROGRESS = 2;
-  
+
   // Sync operation encountered an error and stopped
   SYNC_STATUS_FAILED = 3;
-  
+
   // Sync operation has been marked for deletion but cleanup not yet started
   SYNC_STATUS_DELETE_PENDING = 4;
-  
+
   // Sync operation has been successfully deleted and cleaned up
   SYNC_STATUS_DELETED = 5;
 

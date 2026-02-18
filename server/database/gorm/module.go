@@ -27,11 +27,11 @@ func (module *Module) GetID() uint64 {
 }
 
 func (module *Module) GetData() map[string]any {
-	// SQLite modules don't store data, return empty map
+	// Database modules don't store data, return empty map
 	return make(map[string]any)
 }
 
-// convertModules transforms interface types to SQLite structs.
+// convertModules transforms interface types to Database structs.
 func convertModules(modules []types.Module, recordCID string) []Module {
 	result := make([]Module, len(modules))
 	for i, module := range modules {

@@ -1,7 +1,6 @@
 # Copyright AGNTCY Contributors (https://github.com/agntcy)
 # SPDX-License-Identifier: Apache-2.0
 
-{{- if and .Values.reconciler.enabled (eq .Values.database.type "postgres") }}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -33,36 +32,19 @@ spec:
           image: "{{ .Values.reconciler.image.repository }}:{{ .Values.reconciler.image.tag }}"
           imagePullPolicy: {{ .Values.reconciler.image.pullPolicy }}
           env:
-            # Database configuration (inherits from apiserver's postgres config)
-            - name: RECONCILER_DATABASE_HOST
-              value: {{ include "chart.postgres.host" . | quote }}
-            - name: RECONCILER_DATABASE_PORT
-              value: {{ .Values.database.postgres.port | default 5432 | quote }}
-            - name: RECONCILER_DATABASE_DATABASE
-              value: {{ include "chart.postgres.database" . | quote }}
-            - name: RECONCILER_DATABASE_SSL_MODE
-              value: "disable"
+            # Secrets are injected via environment variables (override config file)
             {{- if include "chart.postgres.credentialsConfigured" . }}
-            - name: RECONCILER_DATABASE_USERNAME
+            - name: RECONCILER_DATABASE_POSTGRES_USERNAME
               valueFrom:
                 secretKeyRef:
                   name: {{ include "chart.fullname" . }}
                   key: postgres-username
-            - name: RECONCILER_DATABASE_PASSWORD
+            - name: RECONCILER_DATABASE_POSTGRES_PASSWORD
               valueFrom:
                 secretKeyRef:
                   name: {{ include "chart.fullname" . }}
                   key: postgres-password
             {{- end }}
-            # Local registry configuration (inherits from apiserver's OCI store config)
-            # When config.store.oci.registry_address is set, it takes precedence
-            # Otherwise, when zot.enabled=true, registry address is auto-detected as internal Zot service
-            - name: RECONCILER_LOCAL_REGISTRY_TYPE
-              value: {{ .Values.config.store.oci.type | quote }}
-            - name: RECONCILER_LOCAL_REGISTRY_REGISTRY_ADDRESS
-              value: {{ include "chart.oci.registryAddress" . | quote }}
-            - name: RECONCILER_LOCAL_REGISTRY_REPOSITORY_NAME
-              value: {{ include "chart.oci.repositoryName" . | quote }}
             {{- if or .Values.secrets.ociAuth.username .Values.secrets.ociAuth.password (and .Values.externalSecrets.enabled .Values.externalSecrets.ociAuth.enabled) }}
             - name: RECONCILER_LOCAL_REGISTRY_AUTH_CONFIG_USERNAME
               valueFrom:
@@ -75,23 +57,10 @@ spec:
                   name: {{ include "chart.fullname" . }}
                   key: oci-password
             {{- end }}
-            - name: RECONCILER_LOCAL_REGISTRY_AUTH_CONFIG_INSECURE
-              value: {{ .Values.config.store.oci.auth_config.insecure | quote }}
-            # Regsync task configuration
-            - name: RECONCILER_REGSYNC_ENABLED
-              value: {{ .Values.reconciler.regsync.enabled | quote }}
-            - name: RECONCILER_REGSYNC_INTERVAL
-              value: {{ .Values.reconciler.regsync.interval | quote }}
-            - name: RECONCILER_REGSYNC_TIMEOUT
-              value: {{ .Values.reconciler.regsync.timeout | quote }}
-            # Indexer task configuration
-            - name: RECONCILER_INDEXER_ENABLED
-              value: {{ .Values.reconciler.indexer.enabled | quote }}
-            - name: RECONCILER_INDEXER_INTERVAL
-              value: {{ .Values.reconciler.indexer.interval | quote }}
-            # OASF validation configuration (inherits from apiserver's config)
-            - name: RECONCILER_SCHEMA_URL
-              value: {{ .Values.config.oasf_api_validation.schema_url | quote }}
+          volumeMounts:
+            - name: reconciler-config
+              mountPath: /etc/agntcy/reconciler/reconciler.config.yml
+              subPath: reconciler.config.yml
           ports:
             - name: health
               containerPort: 8080
@@ -110,6 +79,13 @@ spec:
             periodSeconds: 10
           resources:
             {{- toYaml .Values.reconciler.resources | nindent 12 }}
+      volumes:
+        - name: reconciler-config
+          configMap:
+            name: {{ include "chart.fullname" . }}
+            items:
+              - key: reconciler.config.yml
+                path: reconciler.config.yml
       {{- with .Values.nodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}
@@ -118,4 +94,3 @@ spec:
       tolerations:
         {{- toYaml . | nindent 8 }}
       {{- end }}
-{{- end }}

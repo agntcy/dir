@@ -452,7 +452,7 @@ export declare const SyncService: GenService<{
    * RequestRegistryCredentials requests registry credentials between two Directory nodes.
    *
    * This RPC allows a requesting node to authenticate with this node and obtain
-   * temporary registry credentials for secure Zot-based synchronization.
+   * temporary registry credentials for secure OCI synchronization.
    *
    * @generated from rpc agntcy.dir.store.v1.SyncService.RequestRegistryCredentials
    */

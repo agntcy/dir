@@ -73,12 +73,8 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests for name resolution acr
 		})
 
 		ginkgo.It("should wait for sync to complete", func() {
-			// Poll sync status until it changes to IN_PROGRESS
-			output := cli.Sync().Status(syncID).OnServer(utils.Peer2Addr).ShouldEventuallyContain("IN_PROGRESS", 120*time.Second)
+			output := cli.Sync().Status(syncID).OnServer(utils.Peer2Addr).ShouldEventuallyContain("COMPLETED", 120*time.Second)
 			ginkgo.GinkgoWriter.Printf("Current sync status: %s\n", output)
-
-			// Wait for sync to fully complete
-			time.Sleep(60 * time.Second)
 		})
 
 		ginkgo.It("should resolve by name from peer 2 after sync", func() {

@@ -29,6 +29,7 @@ group "default" {
 group "coverage" {
   targets = [
     "dir-apiserver-coverage",
+    "dir-reconciler", # TODO: reconciler coverage is not supported, but image is required for e2e tests
   ]
 }
 

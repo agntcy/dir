@@ -11,6 +11,7 @@ services:
       - 8888:8888
     depends_on:
       - zot
+      - postgres
     deploy:
       mode: replicated
       replicas: 1
@@ -21,6 +22,21 @@ services:
       interval: 10s
       retries: 60
       start_period: 10s
+
+  reconciler:
+    build:
+      context: ../../
+      dockerfile: reconciler/Dockerfile
+    env_file:
+      - ./reconciler.env
+    depends_on:
+      - zot
+      - postgres
+    deploy:
+      mode: replicated
+      replicas: 1
+      restart_policy:
+        condition: on-failure
 
   zot:
     image: ghcr.io/project-zot/zot:v2.1.14
@@ -36,6 +52,25 @@ services:
       interval: 5s
       retries: 60
       start_period: 15s
+
+  postgres:
+    image: docker.io/bitnami/postgresql@sha256:c47e54a69b39aa97d4405d68ea02bf2ffe06b646748e2ddf9c761416ead6acd5
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: directory
+    ports:
+      - 5432:5432
+    deploy:
+      mode: replicated
+      replicas: 1
+      restart_policy:
+        condition: on-failure
+    healthcheck:
+      test: pg_isready -U dir -d dir || exit 1
+      interval: 10s
+      retries: 60
+      start_period: 10s
 
 networks:
   default:

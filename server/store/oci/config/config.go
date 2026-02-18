@@ -6,9 +6,8 @@ package config
 import (
 	"fmt"
 	"net/url"
+	"path"
 	"strings"
-
-	"github.com/agntcy/dir/server/types/registry"
 )
 
 const (
@@ -18,10 +17,6 @@ const (
 )
 
 type Config struct {
-	// Type specifies the registry type (zot, ghcr, dockerhub).
-	// Defaults to "zot" for backward compatibility.
-	Type registry.RegistryType `json:"type,omitempty" mapstructure:"type"`
-
 	// Path to a local directory that will be to hold data instead of remote.
 	// If this is set to non-empty value, only local store will be used.
 	LocalDir string `json:"local_dir,omitempty" mapstructure:"local_dir"`
@@ -40,27 +35,16 @@ type Config struct {
 	AuthConfig `json:"auth_config" mapstructure:"auth_config"`
 }
 
-// GetType returns the registry type, defaulting to Zot if not specified.
-func (c Config) GetType() registry.RegistryType {
-	if c.Type == "" {
-		return registry.DefaultRegistryType
-	}
-
-	return c.Type
-}
-
 // GetRegistryAddress returns the registry address with scheme and default applied.
 // If RegistryAddress is empty, DefaultRegistryAddress is used. When the address
 // has no scheme, http is used for insecure (e.g. E2E, internal) and https otherwise.
-// The returned string is a full URL valid for Zot sync; an error is returned if
-// the result is not a valid http or https URL.
 func (c Config) GetRegistryAddress() (string, error) {
 	addr := c.RegistryAddress
 	if addr == "" {
 		addr = DefaultRegistryAddress
 	}
 
-	// Add explicit scheme when none is present so Zot sync uses the correct protocol.
+	// Add explicit scheme when none is present
 	if !strings.HasPrefix(addr, "http://") && !strings.HasPrefix(addr, "https://") {
 		if c.Insecure {
 			addr = "http://" + addr
@@ -79,6 +63,17 @@ func (c Config) GetRegistryAddress() (string, error) {
 	}
 
 	return addr, nil
+}
+
+// GetRepositoryURL returns the full repository URL (registry address + repository name).
+func (c Config) GetRepositoryURL() string {
+	address := c.RegistryAddress
+
+	if c.RepositoryName != "" {
+		return path.Join(address, c.RepositoryName)
+	}
+
+	return address
 }
 
 // AuthConfig represents the configuration for authentication.

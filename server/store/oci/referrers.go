@@ -30,7 +30,6 @@ type ReferrersLister interface {
 
 // PushReferrer pushes a generic RecordReferrer as an OCI artifact that references a record as its subject.
 // For signature referrers, it uses cosign to attach the signature.
-// For public key referrers on Zot registries, it also uploads to Zot's cosign extension.
 func (s *store) PushReferrer(ctx context.Context, recordCID string, referrer *corev1.RecordReferrer) error {
 	referrersLogger.Debug("Pushing referrer to OCI store", "recordCID", recordCID, "type", referrer.GetType())
 
