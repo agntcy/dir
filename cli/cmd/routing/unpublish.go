@@ -81,8 +81,8 @@ func runUnpublishCommand(cmd *cobra.Command, cid string) error {
 	// Output in the appropriate format
 	result := map[string]any{
 		"cid":     recordRef.GetCid(),
-		"status":  "unpublished",
-		"message": "Record is no longer discoverable by other peers",
+		"status":  "Successfully submitted unpublication request",
+		"message": "Record will not be discoverable by other peers after the unpublication service processes the request.",
 	}
 
 	return presenter.PrintMessage(cmd, "Unpublish", "Successfully unpublished record", result)
