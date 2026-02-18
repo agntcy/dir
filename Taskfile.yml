@@ -662,9 +662,10 @@ tasks:
           --namespace {{ .HELM_NAMESPACE }} \
           --create-namespace \
           --install \
+          --debug \
           --wait \
           --wait-for-jobs \
-          --timeout "15m"
+          --timeout "25m"
 
   deploy:kubernetes:local:ghcr:
     aliases: [deploy:local:ghcr]
@@ -952,7 +953,7 @@ tasks:
           {{ .HELM_CHART_PATH }} \
           -f {{ .HELM_VALUES_PATH }} \
           --set apiserver.image.tag="{{ .DEPLOY_IMAGE_TAG }}" \
-            {{ if .PUBLICATION_SCHEDULER_INTERVAL }}--set apiserver.config.publication.scheduler_interval="{{ .PUBLICATION_SCHEDULER_INTERVAL }}"{{ end }} \
+          {{ if .PUBLICATION_SCHEDULER_INTERVAL }}--set apiserver.config.publication.scheduler_interval="{{ .PUBLICATION_SCHEDULER_INTERVAL }}"{{ end }} \
           --set apiserver.config.routing.refresh_interval="1s" \
           --set apiserver.secrets.privKey="$(cat /tmp/node.privkey)" \
           --set apiserver.config.routing.key_path="/etc/agntcy/dir/node.privkey" \
@@ -974,8 +975,9 @@ tasks:
           --create-namespace \
           --install \
           --wait \
+          --debug \
           --wait-for-jobs \
-          --timeout "15m"
+          --timeout "25m"
 
   deploy:kubernetes:network:
     aliases: [deploy:network]
@@ -1047,10 +1049,10 @@ tasks:
             PEER: ["peer1", "peer2", "peer3"]
         cmd: |
           echo "Waiting for {{ .ITEM.PEER }} deployments to be ready..."
-          {{ .KUBECTL_BIN }} wait --for=condition=available deployment/agntcy-dir-apiserver -n {{ .ITEM.PEER }} --timeout=10m
-          {{ .KUBECTL_BIN }} wait --for=condition=available deployment/agntcy-dir-reconciler -n {{ .ITEM.PEER }} --timeout=10m
-          {{ .KUBECTL_BIN }} wait --for=condition=ready pod -l app.kubernetes.io/name=zot -n {{ .ITEM.PEER }} --timeout=10m
-          {{ .KUBECTL_BIN }} wait --for=condition=ready pod -l app.kubernetes.io/name=postgresql -n {{ .ITEM.PEER }} --timeout=10m
+          {{ .KUBECTL_BIN }} wait --for=condition=available deployment/agntcy-dir-apiserver -n {{ .ITEM.PEER }} --timeout=25m
+          {{ .KUBECTL_BIN }} wait --for=condition=available deployment/agntcy-dir-reconciler -n {{ .ITEM.PEER }} --timeout=25m
+          {{ .KUBECTL_BIN }} wait --for=condition=ready pod -l app.kubernetes.io/name=zot -n {{ .ITEM.PEER }} --timeout=25m
+          {{ .KUBECTL_BIN }} wait --for=condition=ready pod -l app.kubernetes.io/name=postgresql -n {{ .ITEM.PEER }} --timeout=25m
           echo "{{ .ITEM.PEER }} is ready"
 
   deploy:kubernetes:network:port-forward:
