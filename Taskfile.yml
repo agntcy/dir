@@ -544,7 +544,7 @@ tasks:
     vars:
       KIND_CLUSTER_NAME: '{{ .KIND_CLUSTER_NAME | default "agntcy-cluster" }}'
       KIND_CREATE_OPTS: '{{ .KIND_CREATE_OPTS | default "" }}'
-      E2E_COVERAGE_ENABLED: "false"
+      E2E_COVERAGE_ENABLED: '{{ .E2E_COVERAGE_ENABLED | default "false" }}'
       DEPLOY_BAKE_ENV: '{{ if eq .E2E_COVERAGE_ENABLED "true" }}{{ .COVERAGE_BAKE_ENV }}{{ else }}{{ .BAKE_ENV }}{{ end }}'
       DEPLOY_BAKE_GROUP: '{{ if eq .E2E_COVERAGE_ENABLED "true" }}coverage{{ else }}default{{ end }}'
     cmds:
@@ -618,7 +618,7 @@ tasks:
       HELM_CHART_PATH: "{{ .ROOT_DIR }}/install/charts/dir"
       HELM_VALUES_PATH: "{{ .ROOT_DIR }}/install/charts/dir/values.yaml"
       # Coverage config
-      E2E_COVERAGE_ENABLED: "false"
+      E2E_COVERAGE_ENABLED: '{{ .E2E_COVERAGE_ENABLED | default "false" }}'
       DEPLOY_IMAGE_TAG: '{{ if eq .E2E_COVERAGE_ENABLED "true" }}{{ .COVERAGE_IMAGE_TAG }}{{ else }}{{ .IMAGE_TAG }}{{ end }}'
     cmds:
       # TODO: make logic idempotent so that running functional tests does not change previous contexts
@@ -680,7 +680,7 @@ tasks:
       HELM_CHART_PATH: "{{ .ROOT_DIR }}/install/charts/dir"
       HELM_VALUES_PATH: "{{ .ROOT_DIR }}/install/charts/dir/values.yaml"
       # Coverage config
-      E2E_COVERAGE_ENABLED: "false"
+      E2E_COVERAGE_ENABLED: '{{ .E2E_COVERAGE_ENABLED | default "false" }}'
       DEPLOY_IMAGE_TAG: '{{ if eq .E2E_COVERAGE_ENABLED "true" }}{{ .COVERAGE_IMAGE_TAG }}{{ else }}{{ .IMAGE_TAG }}{{ end }}'
     cmds:
       # Validate required environment variables
@@ -912,7 +912,7 @@ tasks:
       HELM_CHART_PATH: "{{ .ROOT_DIR }}/install/charts/dir"
       HELM_VALUES_PATH: "{{ .ROOT_DIR }}/install/charts/dir/values.yaml"
       # Coverage config
-      E2E_COVERAGE_ENABLED: "false"
+      E2E_COVERAGE_ENABLED: '{{ .E2E_COVERAGE_ENABLED | default "false" }}'
       DEPLOY_IMAGE_TAG: '{{ if eq .E2E_COVERAGE_ENABLED "true" }}{{ .COVERAGE_IMAGE_TAG }}{{ else }}{{ .IMAGE_TAG }}{{ end }}'
     cmds:
       # Generate private key if it doesn't exist
@@ -981,7 +981,7 @@ tasks:
       HELM_CHART_PATH: "{{ .ROOT_DIR }}/install/charts/dir"
       HELM_VALUES_PATH: "{{ .ROOT_DIR }}/install/charts/dir/values.yaml"
       # Coverage config
-      E2E_COVERAGE_ENABLED: "false"
+      E2E_COVERAGE_ENABLED: '{{ .E2E_COVERAGE_ENABLED | default "false" }}'
       DEPLOY_IMAGE_TAG: '{{ if eq .E2E_COVERAGE_ENABLED "true" }}{{ .COVERAGE_IMAGE_TAG }}{{ else }}{{ .IMAGE_TAG }}{{ end }}'
     cmds:
       # Build helm dependencies once (shared across deployments)
@@ -1195,7 +1195,7 @@ tasks:
       RATELIMIT_ENABLED: '{{ .RATELIMIT_ENABLED | default "false" }}'
       RATELIMIT_GLOBAL_RPS: '{{ .RATELIMIT_GLOBAL_RPS | default "100" }}'
       RATELIMIT_GLOBAL_BURST: '{{ .RATELIMIT_GLOBAL_BURST | default "200" }}'
-      E2E_COVERAGE_ENABLED: "false"
+      E2E_COVERAGE_ENABLED: '{{ .E2E_COVERAGE_ENABLED | default "false" }}'
       COVERAGE_DIR: '{{ .COVERAGE_DIR | default (print .ROOT_DIR "/.coverage/e2e") }}'
     env:
       DIRECTORY_E2E_DEPLOYMENT_MODE: "local"
@@ -1239,7 +1239,7 @@ tasks:
       RATELIMIT_ENABLED: '{{ .RATELIMIT_ENABLED | default "true" }}'
       RATELIMIT_GLOBAL_RPS: '{{ .RATELIMIT_GLOBAL_RPS | default "100" }}'
       RATELIMIT_GLOBAL_BURST: '{{ .RATELIMIT_GLOBAL_BURST | default "200" }}'
-      E2E_COVERAGE_ENABLED: "false"
+      E2E_COVERAGE_ENABLED: '{{ .E2E_COVERAGE_ENABLED | default "false" }}'
       COVERAGE_DIR: '{{ .COVERAGE_DIR | default (print .ROOT_DIR "/.coverage/e2e") }}'
     env:
       DIRECTORY_E2E_DEPLOYMENT_MODE: "local"
@@ -1284,7 +1284,7 @@ tasks:
       RATELIMIT_ENABLED: '{{ .RATELIMIT_ENABLED | default "true" }}'
       RATELIMIT_GLOBAL_RPS: '{{ .RATELIMIT_GLOBAL_RPS | default "100" }}'
       RATELIMIT_GLOBAL_BURST: '{{ .RATELIMIT_GLOBAL_BURST | default "200" }}'
-      E2E_COVERAGE_ENABLED: "false"
+      E2E_COVERAGE_ENABLED: '{{ .E2E_COVERAGE_ENABLED | default "false" }}'
       COVERAGE_DIR: '{{ .COVERAGE_DIR | default (print .ROOT_DIR "/.coverage/e2e") }}'
     env:
       DIRECTORY_E2E_DEPLOYMENT_MODE: "local"
@@ -1358,7 +1358,7 @@ tasks:
     aliases: [e2e:network]
     vars:
       PUBLICATION_SCHEDULER_INTERVAL: '{{ .PUBLICATION_SCHEDULER_INTERVAL | default "1s" }}'
-      E2E_COVERAGE_ENABLED: "false"
+      E2E_COVERAGE_ENABLED: '{{ .E2E_COVERAGE_ENABLED | default "false" }}'
       COVERAGE_DIR: '{{ .COVERAGE_DIR | default (print .ROOT_DIR "/.coverage/e2e") }}'
     env:
       DIRECTORY_E2E_DEPLOYMENT_MODE: "network"
@@ -1675,7 +1675,7 @@ tasks:
     desc: Extract coverage data from Kubernetes pods
     internal: true
     vars:
-      E2E_COVERAGE_ENABLED: "false"
+      E2E_COVERAGE_ENABLED: '{{ .E2E_COVERAGE_ENABLED | default "false" }}'
       NAMESPACE: '{{ .NAMESPACE | default "dir-server" }}'
       POD_SELECTOR: '{{ .POD_SELECTOR | default "app.kubernetes.io/name=apiserver" }}'
       COVERAGE_DIR: '{{ .COVERAGE_DIR | default (print .ROOT_DIR "/.coverage/e2e/pods") }}'
