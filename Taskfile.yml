@@ -620,7 +620,6 @@ tasks:
       # Coverage config
       E2E_COVERAGE_ENABLED: '{{ .E2E_COVERAGE_ENABLED | default "false" }}'
       DEPLOY_IMAGE_TAG: '{{ if eq .E2E_COVERAGE_ENABLED "true" }}{{ .COVERAGE_IMAGE_TAG }}{{ else }}{{ .IMAGE_TAG }}{{ end }}'
-      RECONCILER_IMAGE_TAG: '{{ .RECONCILER_IMAGE_TAG | default .IMAGE_TAG }}'
     cmds:
       # TODO: make logic idempotent so that running functional tests does not change previous contexts
 
@@ -658,16 +657,15 @@ tasks:
           {{ if .DIRECTORY_SERVER_RATELIMIT_PER_CLIENT_BURST }}--set apiserver.config.ratelimit.per_client_burst="{{ .DIRECTORY_SERVER_RATELIMIT_PER_CLIENT_BURST }}"{{ end }} \
           {{ if eq .E2E_COVERAGE_ENABLED "true" }}--set-json 'apiserver.extraEnv=[{"name":"GOCOVERDIR","value":"/tmp/coverage"}]' --set apiserver.coverageVolume=true{{ end }} \
           {{ if .DIRECTORY_SERVER_OASF_API_VALIDATION_SCHEMA_URL }}--set apiserver.config.oasf_api_validation.schema_url="{{ .DIRECTORY_SERVER_OASF_API_VALIDATION_SCHEMA_URL }}"{{ end }} \
-          --set apiserver.reconciler.image.tag="{{ .RECONCILER_IMAGE_TAG }}" \
+          --set apiserver.reconciler.image.tag="{{ .DEPLOY_IMAGE_TAG }}" \
           --set apiserver.reconciler.config.regsync.interval="1s" \
           --set apiserver.reconciler.config.indexer.interval="1s" \
           --namespace {{ .HELM_NAMESPACE }} \
           --create-namespace \
           --install \
-          --debug \
           --wait \
           --wait-for-jobs \
-          --timeout "25m"
+          --timeout "15m"
 
   deploy:kubernetes:local:ghcr:
     aliases: [deploy:local:ghcr]
@@ -684,7 +682,6 @@ tasks:
       # Coverage config
       E2E_COVERAGE_ENABLED: '{{ .E2E_COVERAGE_ENABLED | default "false" }}'
       DEPLOY_IMAGE_TAG: '{{ if eq .E2E_COVERAGE_ENABLED "true" }}{{ .COVERAGE_IMAGE_TAG }}{{ else }}{{ .IMAGE_TAG }}{{ end }}'
-      RECONCILER_IMAGE_TAG: '{{ .RECONCILER_IMAGE_TAG | default .IMAGE_TAG }}'
     cmds:
       # Validate required environment variables
       - |
@@ -717,7 +714,6 @@ tasks:
           --set apiserver.config.store.oci.auth_config.password="${DIRECTORY_SERVER_STORE_OCI_AUTH_CONFIG_PASSWORD}" \
           --set apiserver.config.store.oci.auth_config.insecure=false \
           --set apiserver.zot.enabled=false \
-          --set apiserver.reconciler.config.regsync.enabled=true \
           --set apiserver.secrets.ociAuth.username="${DIRECTORY_SERVER_STORE_OCI_AUTH_CONFIG_USERNAME}" \
           --set apiserver.secrets.ociAuth.password="${DIRECTORY_SERVER_STORE_OCI_AUTH_CONFIG_PASSWORD}" \
           --set apiserver.secrets.syncAuth.username="${DIRECTORY_SERVER_SYNC_AUTH_CONFIG_USERNAME}" \
@@ -732,7 +728,7 @@ tasks:
           --set apiserver.postgresql.auth.database=dir \
           --set apiserver.reconciler.config.regsync.interval="1s" \
           --set apiserver.reconciler.config.indexer.interval="1s" \
-          --set apiserver.reconciler.image.tag="{{ .RECONCILER_IMAGE_TAG }}" \
+          --set apiserver.reconciler.image.tag="{{ .DEPLOY_IMAGE_TAG }}" \
           --set apiserver.config.oasf_api_validation.disable=true \
           --namespace {{ .HELM_NAMESPACE }} \
           --create-namespace \
@@ -773,7 +769,6 @@ tasks:
       HELM_CHART_PATH: "{{ .ROOT_DIR }}/install/charts/dir"
       HELM_VALUES_PATH: "{{ .ROOT_DIR }}/install/charts/dir/values.yaml"
       HELM_EXTRA_ARGS: '{{ .HELM_EXTRA_ARGS | default "" }}'
-      RECONCILER_IMAGE_TAG: '{{ .RECONCILER_IMAGE_TAG | default .IMAGE_TAG }}'
     cmds:
       # Generate credentials and htpasswd file (using defaults)
       - task: deploy:kubernetes:gen-htpasswd-creds
@@ -801,7 +796,7 @@ tasks:
           --set apiserver.secrets.syncAuth.username="${HTPASSWD_SYNC_USERNAME}" \
           --set apiserver.secrets.syncAuth.password="${HTPASSWD_SYNC_PASSWORD}" \
           --set apiserver.log_level="DEBUG" \
-          --set apiserver.reconciler.image.tag="{{ .RECONCILER_IMAGE_TAG }}" \
+          --set apiserver.reconciler.image.tag="{{ .IMAGE_TAG }}" \
           --set apiserver.reconciler.config.regsync.interval="1s" \
           --set apiserver.reconciler.config.indexer.interval="1s" \
           {{ .HELM_EXTRA_ARGS }} \
@@ -919,7 +914,6 @@ tasks:
       # Coverage config
       E2E_COVERAGE_ENABLED: '{{ .E2E_COVERAGE_ENABLED | default "false" }}'
       DEPLOY_IMAGE_TAG: '{{ if eq .E2E_COVERAGE_ENABLED "true" }}{{ .COVERAGE_IMAGE_TAG }}{{ else }}{{ .IMAGE_TAG }}{{ end }}'
-      RECONCILER_IMAGE_TAG: '{{ .RECONCILER_IMAGE_TAG | default .IMAGE_TAG }}'
     cmds:
       # Generate private key if it doesn't exist
       - |
@@ -970,16 +964,15 @@ tasks:
           --set apiserver.secrets.syncAuth.password="${HTPASSWD_SYNC_PASSWORD}" \
           {{ if eq .E2E_COVERAGE_ENABLED "true" }}--set-json 'apiserver.extraEnv=[{"name":"GOCOVERDIR","value":"/tmp/coverage"}]' --set apiserver.coverageVolume=true{{ end }} \
           --set apiserver.config.oasf_api_validation.schema_url="https://schema.oasf.outshift.com" \
-          --set apiserver.reconciler.image.tag="{{ .RECONCILER_IMAGE_TAG }}" \
+          --set apiserver.reconciler.image.tag="{{ .DEPLOY_IMAGE_TAG }}" \
           --set apiserver.reconciler.config.regsync.interval="1s" \
           --set apiserver.reconciler.config.indexer.interval="1s" \
           --namespace "bootstrap" \
           --create-namespace \
           --install \
           --wait \
-          --debug \
           --wait-for-jobs \
-          --timeout "25m"
+          --timeout "15m"
 
   deploy:kubernetes:network:
     aliases: [deploy:network]
@@ -990,7 +983,6 @@ tasks:
       # Coverage config
       E2E_COVERAGE_ENABLED: '{{ .E2E_COVERAGE_ENABLED | default "false" }}'
       DEPLOY_IMAGE_TAG: '{{ if eq .E2E_COVERAGE_ENABLED "true" }}{{ .COVERAGE_IMAGE_TAG }}{{ else }}{{ .IMAGE_TAG }}{{ end }}'
-      RECONCILER_IMAGE_TAG: '{{ .RECONCILER_IMAGE_TAG | default .IMAGE_TAG }}'
     cmds:
       # Build helm dependencies once (shared across deployments)
       - "{{ .HELM_BIN }} dependency build {{ .HELM_CHART_PATH }}"
@@ -1000,7 +992,6 @@ tasks:
         vars:
           PUBLICATION_SCHEDULER_INTERVAL: "{{ .PUBLICATION_SCHEDULER_INTERVAL }}"
           E2E_COVERAGE_ENABLED: "{{ .E2E_COVERAGE_ENABLED }}"
-          RECONCILER_IMAGE_TAG: "{{ .RECONCILER_IMAGE_TAG }}"
 
       # Step 1: Deploy all peer servers without waiting (fast)
       - for:
@@ -1034,7 +1025,7 @@ tasks:
             --set apiserver.secrets.syncAuth.password="${HTPASSWD_SYNC_PASSWORD}" \
             {{ if eq .E2E_COVERAGE_ENABLED "true" }}--set-json 'apiserver.extraEnv=[{"name":"GOCOVERDIR","value":"/tmp/coverage"}]' --set apiserver.coverageVolume=true{{ end }} \
             --set apiserver.config.oasf_api_validation.schema_url="https://schema.oasf.outshift.com" \
-            --set apiserver.reconciler.image.tag="{{ .RECONCILER_IMAGE_TAG }}" \
+            --set apiserver.reconciler.image.tag="{{ .DEPLOY_IMAGE_TAG }}" \
             --set apiserver.reconciler.config.regsync.interval="1s" \
             --set apiserver.reconciler.config.indexer.interval="1s" \
             --namespace "{{ .ITEM.PEER }}" \
@@ -1051,10 +1042,10 @@ tasks:
             PEER: ["peer1", "peer2", "peer3"]
         cmd: |
           echo "Waiting for {{ .ITEM.PEER }} deployments to be ready..."
-          {{ .KUBECTL_BIN }} wait --for=condition=available deployment/agntcy-dir-apiserver -n {{ .ITEM.PEER }} --timeout=25m
-          {{ .KUBECTL_BIN }} wait --for=condition=available deployment/agntcy-dir-reconciler -n {{ .ITEM.PEER }} --timeout=25m
-          {{ .KUBECTL_BIN }} wait --for=condition=ready pod -l app.kubernetes.io/name=zot -n {{ .ITEM.PEER }} --timeout=25m
-          {{ .KUBECTL_BIN }} wait --for=condition=ready pod -l app.kubernetes.io/name=postgresql -n {{ .ITEM.PEER }} --timeout=25m
+          {{ .KUBECTL_BIN }} wait --for=condition=available deployment/agntcy-dir-apiserver -n {{ .ITEM.PEER }} --timeout=15m
+          {{ .KUBECTL_BIN }} wait --for=condition=available deployment/agntcy-dir-reconciler -n {{ .ITEM.PEER }} --timeout=15m
+          {{ .KUBECTL_BIN }} wait --for=condition=ready pod -l app.kubernetes.io/name=zot -n {{ .ITEM.PEER }} --timeout=15m
+          {{ .KUBECTL_BIN }} wait --for=condition=ready pod -l app.kubernetes.io/name=postgresql -n {{ .ITEM.PEER }} --timeout=15m
           echo "{{ .ITEM.PEER }} is ready"
 
   deploy:kubernetes:network:port-forward:
