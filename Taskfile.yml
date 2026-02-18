@@ -637,6 +637,18 @@ tasks:
 
         {{ .HELM_BIN }} dependency build {{ .HELM_CHART_PATH }}
 
+        echo "PRINT DIR CHART TEMPLATE"
+        {{ .HELM_BIN }} template dir \
+          {{ .HELM_CHART_PATH }} \
+          -f {{ .HELM_VALUES_PATH }} \
+          --debug
+
+        echo "PRINT APISERVER CHART TEMPLATE"
+        {{ .HELM_BIN }} template apiserver \
+          {{ .HELM_CHART_PATH }}/apiserver \
+          -f "{{ .ROOT_DIR }}/install/charts/dir/apiserver/values.yaml" \
+          --debug
+
         {{ .HELM_BIN }} upgrade dir \
           {{ .HELM_CHART_PATH }} \
           -f {{ .HELM_VALUES_PATH }} \
@@ -663,9 +675,27 @@ tasks:
           --namespace {{ .HELM_NAMESPACE }} \
           --create-namespace \
           --install \
-          --wait \
-          --wait-for-jobs \
-          --timeout "15m"
+          --debug
+
+        NS='{{ .HELM_NAMESPACE }}'
+        timeout_sec=900
+        start=$(date +%s)
+        while true; do
+          {{ .KUBECTL_BIN }} logs deployment/dir-apiserver -n "$NS" --tail=15 2>/dev/null | sed 's/^/[apiserver] /'
+          {{ .KUBECTL_BIN }} logs deployment/dir-reconciler -n "$NS" --tail=15 2>/dev/null | sed 's/^/[reconciler] /'
+          now=$(date +%s)
+          if [ $((now - start)) -ge $timeout_sec ]; then
+            echo "Timeout waiting for deployments (15m)"
+            exit 1
+          fi
+          apiserver=$({{ .KUBECTL_BIN }} get deployment dir-apiserver -n "$NS" -o jsonpath='{.status.conditions[?(@.type=="Available")].status}' 2>/dev/null)
+          reconciler=$({{ .KUBECTL_BIN }} get deployment dir-reconciler -n "$NS" -o jsonpath='{.status.conditions[?(@.type=="Available")].status}' 2>/dev/null)
+          if [ "$apiserver" = "True" ] && [ "$reconciler" = "True" ]; then
+            echo "Deployments ready."
+            exit 0
+          fi
+          sleep 1
+        done
 
   deploy:kubernetes:local:ghcr:
     aliases: [deploy:local:ghcr]
