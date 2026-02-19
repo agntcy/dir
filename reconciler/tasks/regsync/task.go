@@ -64,14 +64,16 @@ func (t *Task) IsEnabled() bool {
 func (t *Task) Run(ctx context.Context) error {
 	logger.Debug("Running regsync reconciliation")
 
+	// Process pending sync deletions
+	// Remove before sync creations to ensure any syncs marked for deletion
+	// are processed first and not accidentally re-created
+	if err := t.processPendingDeletions(ctx); err != nil {
+		logger.Error("Failed to process pending sync deletions", "error", err)
+	}
+
 	// Process pending sync creations
 	if err := t.processPendingCreations(ctx); err != nil {
 		logger.Error("Failed to process pending sync creations", "error", err)
-	}
-
-	// Process pending sync deletions
-	if err := t.processPendingDeletions(ctx); err != nil {
-		logger.Error("Failed to process pending sync deletions", "error", err)
 	}
 
 	return nil

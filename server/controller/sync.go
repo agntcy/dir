@@ -105,11 +105,12 @@ func (c *syncCtlr) DeleteSync(_ context.Context, req *storev1.DeleteSyncRequest)
 		return nil, fmt.Errorf("failed to get sync: %w", err)
 	}
 
-	if syncObj.GetStatus() == storev1.SyncStatus_SYNC_STATUS_DELETED {
-		return nil, status.Errorf(codes.NotFound, "sync has already been deleted")
+	// Only syncs in PENDING state can be marked for deletion
+	if syncObj.GetStatus() != storev1.SyncStatus_SYNC_STATUS_PENDING {
+		return nil, status.Errorf(codes.InvalidArgument, "only syncs in PENDING state can be marked for deletion")
 	}
 
-	// Mark sync for deletion - the scheduler will pick this up
+	// Mark sync for deletion - the reconciler will pick this up
 	if err := c.db.UpdateSyncStatus(req.GetSyncId(), storev1.SyncStatus_SYNC_STATUS_DELETE_PENDING); err != nil {
 		return nil, fmt.Errorf("failed to mark sync for deletion: %w", err)
 	}
