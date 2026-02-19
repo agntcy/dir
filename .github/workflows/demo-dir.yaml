@@ -3,18 +3,19 @@
 
 name: Demo - DIR
 
-#  This workflow demonstrates how to use the Dir CLI with a Kind cluster and Helm chart.
-#  It can be run in either local mode or network mode.
-#  It includes steps for building, pushing, publishing, listing and pulling records.
-
 on:
   workflow_dispatch:
     inputs:
-      network:
+      image_version:
         required: true
-        type: boolean
-        default: false
-        description: "Deploy in network mode"
+        type: string
+        default: v1.0.0-rc.4
+        description: "dirctl version to use"
+      server_addr:
+        required: true
+        type: string
+        default: prod.gateway.ads.outshift.io:443
+        description: "server address to use"
 
 permissions:
   id-token: write
@@ -27,237 +28,49 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
 
-      - name: Setup Go
-        uses: actions/setup-go@44694675825211faa026b3c33043df3e48a5fa00 # v6.0.0
+      - name: Setup dirctl
+        uses: ./.github/actions/setup-dirctl
         with:
-          go-version: "1.25.7"
+          version: ${{ inputs.image_version }}
 
-      - name: Setup Taskfile
-        shell: bash
-        run: sh -c "$(curl --location https://taskfile.dev/install.sh)" -- -d -b ~/.local/bin
-
-      - name: Build Dirctl
-        run: |
-          # Generate API code and compile CLI
-          task cli:compile
-          ls -la bin/
-
-      - name: Build Docker Images
-        run: |
-          # Build Docker images from source using commit SHA as tag
-          COMMIT_SHA=$(git rev-parse --short HEAD)
-          IMAGE_TAG=${COMMIT_SHA} task build
-
-      - name: Create k8s Kind Cluster
-        uses: helm/kind-action@a1b0e391336a6ee6713a0583f8c6240d70863de3 # v.1.12.0
+      - name: Validate record
+        uses: ./.github/actions/validate-record
         with:
-          version: v0.24.0
-          cluster_name: dir-demo
-          install_only: true
-
-      - name: Deploy Dir
-        run: |
-          COMMIT_SHA=$(git rev-parse --short HEAD)
-          if [ ${{ inputs.network }} = "true" ]; then
-            echo "Using network mode"
-            IMAGE_TAG=${COMMIT_SHA} task deploy:network
-            task deploy:network:port-forward
-          else
-            echo "Using local mode"
-            IMAGE_TAG=${COMMIT_SHA} task deploy:local
-            task deploy:local:port-forward
-          fi
-
-      - name: Run push command
-        run: |
-          if [ "${{ inputs.network }}" = "true" ]; then
-            echo "Running dir push command on Peer 1"
-            bin/dirctl push e2e/shared/testdata/record_070.json --server-addr 127.0.0.1:8890 --output raw > digest.txt
-          else
-            echo "Running dir push command"
-            bin/dirctl push e2e/shared/testdata/record_070.json --output raw > digest.txt
-          fi
-          echo "Pushed image digest:"
-          cat digest.txt
-
-      - name: Run publish command
-        run: |
-
-          if [ "${{ inputs.network }}" = "true" ]; then
-            echo "Running dir publish command on Peer 1"
-            bin/dirctl routing publish $(cat digest.txt) --server-addr 127.0.0.1:8890
-            echo "Waiting for publish to complete"
-            sleep 120
-          else
-            echo "Running dir publish command"
-            bin/dirctl routing publish $(cat digest.txt)
-          fi
-
-      - name: Run routing info command
-        continue-on-error: true
-        run: |
-          if [ "${{ inputs.network }}" = "true" ]; then
-            echo "Running dir routing info command on Peer 1"
-            bin/dirctl routing info --server-addr 127.0.0.1:8890
-            echo "Running dir routing info command on Peer 2"
-            bin/dirctl routing info --server-addr 127.0.0.1:8891
-            echo "Running dir routing info command on Peer 3"
-            bin/dirctl routing info --server-addr 127.0.0.1:8892
-          else
-            echo "Running dir routing info command"
-            bin/dirctl routing info
-          fi
-
-      - name: Run routing list by skill command
-        continue-on-error: true
-        run: |
-          if [ "${{ inputs.network }}" = "true" ]; then
-            echo "Running dir routing list by skill command on Peer 1"
-            bin/dirctl routing list --skill "Natural Language Processing" --server-addr 127.0.0.1:8890
-            echo "Running dir routing list by skill command on Peer 2"
-            bin/dirctl routing list --skill "Natural Language Processing" --server-addr 127.0.0.1:8891
-            echo "Running dir routing list by skill command on Peer 3"
-            bin/dirctl routing list --skill "Natural Language Processing" --server-addr 127.0.0.1:8892
-          else
-            echo "Running dir routing list by skill command"
-            bin/dirctl routing list --skill "Natural Language Processing"
-          fi
-
-      - name: Run pull command
-        run: |
-          if [ "${{ inputs.network }}" = "true" ]; then
-            echo "Running dir pull command on Peer 1"
-            bin/dirctl pull $(cat digest.txt) --server-addr 127.0.0.1:8890
-          else
-            echo "Running dir pull command"
-            bin/dirctl pull $(cat digest.txt)
-          fi
-
-      - name: Clean up
-        run: |
-          echo "Cleaning up"
-          if [ "${{ inputs.network }}" = "true" ]; then
-            task deploy:network:port-forward:cleanup
-            task deploy:network:cleanup
-          else
-            task deploy:local:port-forward:cleanup
-            task deploy:local:cleanup
-          fi
-
-  sign-and-verify-with-oidc:
-    # This job demonstrates how to sign and verify a record using OIDC tokens.
-    # It requires the `id-token` permission to generate OIDC tokens.
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
-
-      - name: Setup Go
-        uses: actions/setup-go@44694675825211faa026b3c33043df3e48a5fa00 # v6.0.0
-        with:
-          go-version: "1.25.7"
-
-      - name: Setup Taskfile
-        shell: bash
-        run: sh -c "$(curl --location https://taskfile.dev/install.sh)" -- -d -b ~/.local/bin
-
-      - name: Build Dirctl
-        run: |
-          task cli:compile
-
-      - name: Install Cosign
-        uses: sigstore/cosign-installer@faadad0cce49287aee09b3a48701e75088a2c6ad # v4.0.0
-
-      - name: Build Docker Images
-        run: |
-          COMMIT_SHA=$(git rev-parse --short HEAD)
-          IMAGE_TAG=${COMMIT_SHA} task build
-
-      - name: Deploy Dir
-        run: |
-          echo "Deploying Dir"
-          COMMIT_SHA=$(git rev-parse --short HEAD)
-          IMAGE_TAG=${COMMIT_SHA} task deploy:local
-          task deploy:local:port-forward
+          record_paths: e2e/shared/testdata/record_100.json
 
       - name: Push record
-        run: |
-          echo "Pushing record"
-          bin/dirctl push e2e/shared/testdata/record_070.json --output raw > digest.txt
-
-      - name: Get Github OIDC token
-        id: oidc-token
-        run: |
-          OIDC_TOKEN=$(curl -s -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
-            "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=sigstore" | jq -r '.value')
-          echo "::add-mask::$OIDC_TOKEN"
-          echo "token=$OIDC_TOKEN" >> $GITHUB_OUTPUT
-
-      - name: Sign record
-        run: |
-          echo "Running dir sign command"
-          bin/dirctl sign $(cat digest.txt) \
-            --oidc-token="${{ steps.oidc-token.outputs.token }}" \
-            --oidc-provider-url="https://token.actions.githubusercontent.com" \
-            --oidc-client-id="https://github.com/${{ github.repository }}/.github/workflows/demo-dir.yaml@${{ github.ref }}"
-
-      - name: Run verify command
-        run: |
-          echo "Running dir verify command"
-          bin/dirctl verify $(cat digest.txt)
-
-  sign-and-verify-with-key:
-    # This job demonstrates how to sign and verify a record using Cosign keys.
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
-
-      - name: Setup Go
-        uses: actions/setup-go@44694675825211faa026b3c33043df3e48a5fa00 # v6.0.0
+        id: push
+        uses: ./.github/actions/push-record
         with:
-          go-version: "1.25.7"
+          record_paths: e2e/shared/testdata/record_100.json
+          server_addr: ${{ inputs.server_addr }}
+          github_token: ${{ secrets.DIRECTORY_MCP_BOT_PAT }}
 
-      - name: Setup Taskfile
-        shell: bash
-        run: sh -c "$(curl --location https://taskfile.dev/install.sh)" -- -d -b ~/.local/bin
+      - name: Sign record (OIDC)
+        uses: ./.github/actions/sign-record
+        with:
+          cids: ${{ steps.push.outputs.cids }}
+          oidc_client_id: https://github.com/${{ github.repository }}/.github/workflows/demo-dir.yaml@${{ github.ref }}
+          server_addr: ${{ inputs.server_addr }}
+          github_token: ${{ secrets.DIRECTORY_MCP_BOT_PAT }}
 
-      - name: Build Dirctl
-        run: |
-          task cli:compile
+      - name: Publish record
+        uses: ./.github/actions/publish-record
+        with:
+          cids: ${{ steps.push.outputs.cids }}
+          server_addr: ${{ inputs.server_addr }}
+          github_token: ${{ secrets.DIRECTORY_MCP_BOT_PAT }}
 
-      - name: Install Cosign
-        uses: sigstore/cosign-installer@faadad0cce49287aee09b3a48701e75088a2c6ad # v4.0.0
-
-      - name: Generate Cosign keys
-        run: |
-          echo "Generating Cosign keys"
-          cosign generate-key-pair
-          echo "Cosign keys generated successfully"
-
-      - name: Build Docker Images
-        run: |
-          COMMIT_SHA=$(git rev-parse --short HEAD)
-          IMAGE_TAG=${COMMIT_SHA} task build
-
-      - name: Deploy Dir
-        run: |
-          echo "Deploying Dir"
-          COMMIT_SHA=$(git rev-parse --short HEAD)
-          IMAGE_TAG=${COMMIT_SHA} task deploy:local
-          task deploy:local:port-forward
-
-      - name: Push record
-        run: |
-          echo "Pushing record"
-          bin/dirctl push e2e/shared/testdata/record_070.json --output raw > digest.txt
-
-      - name: Sign record
-        run: |
-          echo "Running dir sign command"
-          bin/dirctl sign $(cat digest.txt) --key cosign.key
+      - name: Search for record
+        env:
+          SERVER_ADDR: ${{ inputs.server_addr }}
+          GITHUB_TOKEN: ${{ secrets.DIRECTORY_MCP_BOT_PAT }}
+        run: dirctl search --name "burger_seller_agent" --server-addr="$SERVER_ADDR" --github-token="$GITHUB_TOKEN"
 
       - name: Verify record
+        env:
+          SERVER_ADDR: ${{ inputs.server_addr }}
+          GITHUB_TOKEN: ${{ secrets.DIRECTORY_MCP_BOT_PAT }}
         run: |
-          echo "Running dir verify command"
-          bin/dirctl verify $(cat digest.txt)
+          CID=$(echo '${{ steps.push.outputs.cids }}' | jq -r '.[]')
+          dirctl verify "$CID" --server-addr="$SERVER_ADDR" --github-token="$GITHUB_TOKEN"

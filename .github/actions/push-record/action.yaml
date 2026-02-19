@@ -4,8 +4,6 @@
 name: Push OASF Record
 description: |
   Push agent records to a Directory node's OCI registry.
-  Optionally publish to the DHT for network discovery.
-  Optionally sign records for authenticity verification.
 author: agntcy
 branding:
   icon: upload-cloud
@@ -19,23 +17,13 @@ inputs:
     required: false
     default: "record.json"
   server_addr:
-    description: Directory server address (host:port)
-    required: true
-  github_token:
-    description: GitHub PAT for authentication with Directory
-    required: true
-  sign:
-    description: Sign records after pushing (requires OIDC or key configuration)
-    required: false
-    default: "false"
-  oidc_client_id:
-    description: Workflow identity for keyless signing in CI (required when sign is true). Example https://github.com/OWNER/REPO/.github/workflows/YOUR_WORKFLOW.yaml@REF
+    description: Optional Directory server address (host:port). Uses dirctl default if omitted.
     required: false
     default: ""
-  publish:
-    description: Publish records to DHT for network discovery after pushing
+  github_token:
+    description: Optional GitHub PAT for Directory authentication
     required: false
-    default: "false"
+    default: ""
 
 outputs:
   success:
@@ -58,9 +46,6 @@ runs:
         RECORD_PATHS: ${{ inputs.record_paths }}
         SERVER_ADDR: ${{ inputs.server_addr }}
         GITHUB_TOKEN: ${{ inputs.github_token }}
-        SIGN_RECORDS: ${{ inputs.sign }}
-        OIDC_CLIENT_ID: ${{ inputs.oidc_client_id }}
-        PUBLISH_RECORDS: ${{ inputs.publish }}
       run: |
         chmod +x "${{ github.action_path }}/push.sh"
         "${{ github.action_path }}/push.sh"

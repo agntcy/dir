@@ -1,0 +1,50 @@
+# Copyright AGNTCY Contributors (https://github.com/agntcy)
+# SPDX-License-Identifier: Apache-2.0
+
+name: Publish OASF Records
+description: |
+  Publish record CIDs to the DHT for network discovery.
+  Use after push-record. Accepts the cids output from push-record (JSON) or newline-separated CIDs.
+author: agntcy
+branding:
+  icon: radio
+  color: green
+
+inputs:
+  cids:
+    description: |
+      JSON object (file -> CID) from push-record output, or newline-separated list of CIDs.
+    required: true
+  server_addr:
+    description: Optional Directory server address (host:port). Uses dirctl default if omitted.
+    required: false
+    default: ""
+  github_token:
+    description: Optional GitHub PAT for Directory authentication
+    required: false
+    default: ""
+
+outputs:
+  success:
+    description: Whether all CIDs were published successfully ("true" or "false")
+    value: ${{ steps.publish.outputs.success }}
+  published:
+    description: Number of CIDs successfully published
+    value: ${{ steps.publish.outputs.published }}
+  failed:
+    description: Number of CIDs that failed to publish
+    value: ${{ steps.publish.outputs.failed }}
+
+runs:
+  using: "composite"
+  steps:
+    - name: Publish records
+      id: publish
+      shell: bash
+      env:
+        CIDS: ${{ inputs.cids }}
+        SERVER_ADDR: ${{ inputs.server_addr }}
+        GITHUB_TOKEN: ${{ inputs.github_token }}
+      run: |
+        chmod +x "${{ github.action_path }}/publish.sh"
+        "${{ github.action_path }}/publish.sh"

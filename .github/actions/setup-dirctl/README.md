@@ -1,8 +1,6 @@
-# Setup DIRCTL in GitHub Action
+# Setup dirctl Action
 
-An action that sets up `dirctl` CLI in GitHub Actions.
-
-The GITHUB_TOKEN has to have "public repo" access.
+Install the dirctl CLI in your GitHub Actions workflow. Downloads the binary from GitHub releases and adds it to PATH.
 
 ## Usage
 
@@ -10,10 +8,15 @@ The GITHUB_TOKEN has to have "public repo" access.
 - name: Setup dirctl
   uses: agntcy/dir/.github/actions/setup-dirctl@main
   with:
-    # Default: latest
-    version: v0.4.0
-    # Default: linux
+    version: v1.0.0-rc.4
     os: linux
-    # Default: amd64
     arch: amd64
 ```
+
+## Inputs
+
+| Input   | Description                             | Default  |
+|---------|-----------------------------------------|----------|
+| `version` | Release tag (e.g. v1.0.0) or "latest" | `latest` |
+| `os`      | Operating system                      | `linux`  |
+| `arch`    | Architecture                          | `amd64`  |
