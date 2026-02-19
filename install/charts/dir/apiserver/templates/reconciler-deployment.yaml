@@ -61,6 +61,13 @@ spec:
             - name: reconciler-config
               mountPath: /etc/agntcy/reconciler/reconciler.config.yml
               subPath: reconciler.config.yml
+            {{- if .Values.spire.enabled }}
+            {{- if .Values.spire.useCSIDriver }}
+            - name: spire-agent-socket
+              mountPath: /run/spire/agent-sockets
+              readOnly: true
+            {{- end }}
+            {{- end }}
           ports:
             - name: health
               containerPort: 8080
@@ -86,6 +93,14 @@ spec:
             items:
               - key: reconciler.config.yml
                 path: reconciler.config.yml
+        {{- if .Values.spire.enabled }}
+        {{- if .Values.spire.useCSIDriver }}
+        - name: spire-agent-socket
+          csi:
+            driver: "csi.spiffe.io"
+            readOnly: true
+        {{- end }}
+        {{- end }}
       {{- with .Values.nodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}
