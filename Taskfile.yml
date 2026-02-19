@@ -536,7 +536,7 @@ tasks:
   ## Deploy
   ##
   deploy:kubernetes:setup-cluster:
-    desc: Create a kind cluster; optionally load Docker images
+    desc: Create a kind cluster and load Docker images
     deps:
       - deps:helm
       - deps:kubectl
@@ -547,7 +547,6 @@ tasks:
       E2E_COVERAGE_ENABLED: "false"
       DEPLOY_BAKE_ENV: '{{ if eq .E2E_COVERAGE_ENABLED "true" }}{{ .COVERAGE_BAKE_ENV }}{{ else }}{{ .BAKE_ENV }}{{ end }}'
       DEPLOY_BAKE_GROUP: '{{ if eq .E2E_COVERAGE_ENABLED "true" }}coverage{{ else }}default{{ end }}'
-      DEPLOY_SETUP_IMPORT_IMAGES: '{{ .DEPLOY_SETUP_IMPORT_IMAGES | default "true" }}'
     cmds:
       # Create ephemeral cluster
       - "{{ .KIND_BIN }} create cluster {{ .KIND_CREATE_OPTS }} --name {{ .KIND_CLUSTER_NAME }}"
@@ -558,12 +557,10 @@ tasks:
 
       # Import images
       - |
-        if [ "{{ .DEPLOY_SETUP_IMPORT_IMAGES }}" = "true" ]; then
-          images=$({{.DEPLOY_BAKE_ENV}} docker buildx bake {{.DEPLOY_BAKE_GROUP}} --print | jq -r '.target | with_entries(.value |= .tags[0]) | to_entries[] | .value')
-          echo "$images" | while read image; do
-            {{ .KIND_BIN }} load docker-image $image --name {{ .KIND_CLUSTER_NAME }}
-          done
-        fi
+        images=$({{.DEPLOY_BAKE_ENV}} docker buildx bake {{.DEPLOY_BAKE_GROUP}} --print | jq -r '.target | with_entries(.value |= .tags[0]) | to_entries[] | .value')
+        echo "$images" | while read image; do
+          {{ .KIND_BIN }} load docker-image $image --name {{ .KIND_CLUSTER_NAME }}
+        done
 
   deploy:kubernetes:gen-htpasswd-creds:
     desc: Generate htpasswd credentials and files for DIR deployment
