@@ -61,12 +61,10 @@ spec:
             - name: reconciler-config
               mountPath: /etc/agntcy/reconciler/reconciler.config.yml
               subPath: reconciler.config.yml
-            {{- if .Values.spire.enabled }}
-            {{- if .Values.spire.useCSIDriver }}
+            {{- if eq .Values.spire.enabled true }}
             - name: spire-agent-socket
               mountPath: /run/spire/agent-sockets
               readOnly: true
-            {{- end }}
             {{- end }}
           ports:
             - name: health
@@ -93,13 +91,21 @@ spec:
             items:
               - key: reconciler.config.yml
                 path: reconciler.config.yml
-        {{- if .Values.spire.enabled }}
-        {{- if .Values.spire.useCSIDriver }}
+        {{- if eq .Values.spire.enabled true }}
         - name: spire-agent-socket
+          {{- if .Values.spire.useCSIDriver }}
+          # SPIFFE CSI driver for proper workload attestation
+          # Ensures synchronous workload registration before pod starts
           csi:
             driver: "csi.spiffe.io"
             readOnly: true
-        {{- end }}
+          {{- else }}
+          # Legacy hostPath mount (for debugging/non-production use only)
+          # May cause authentication issues during pod startup
+          hostPath:
+            path: /run/spire/agent-sockets
+            type: Directory
+          {{- end }}
         {{- end }}
       {{- with .Values.nodeSelector }}
       nodeSelector:
