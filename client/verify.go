@@ -6,6 +6,7 @@ package client
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	corev1 "github.com/agntcy/dir/api/core/v1"
 	signv1 "github.com/agntcy/dir/api/sign/v1"
@@ -32,6 +33,22 @@ func (c *Client) Verify(ctx context.Context, req *signv1.VerifyRequest) (*signv1
 
 	if req.GetRecordRef() == nil || req.GetRecordRef().GetCid() == "" {
 		return nil, fmt.Errorf("record CID is required")
+	}
+
+	_, err := c.Lookup(ctx, req.GetRecordRef())
+	if err != nil {
+		if strings.Contains(err.Error(), "record not found") {
+			errMsg := "record not found"
+
+			// # NOTE: The returned error can be nil as the failure is indicated by the error message as a reason.
+			//nolint:nilerr
+			return &signv1.VerifyResponse{
+				Success:      false,
+				ErrorMessage: &errMsg,
+			}, nil
+		}
+
+		return nil, fmt.Errorf("failed to lookup record: %w", err)
 	}
 
 	// Pull signature referrers
