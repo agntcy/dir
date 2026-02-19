@@ -45,7 +45,7 @@ require (
 	github.com/golang/mock v1.7.0-rc.1 // indirect
 	github.com/smarty/assertions v1.16.0 // indirect
 	github.com/smartystreets/goconvey v1.8.1 // indirect
-	go.opentelemetry.io/otel/sdk v1.40.0 // indirect
+	go.opentelemetry.io/otel/sdk/metric v1.39.0 // indirect
 )
 
 require (
