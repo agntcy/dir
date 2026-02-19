@@ -2,8 +2,8 @@ buf.build/gen/go/agntcy/oasf-sdk/protocolbuffers/go v1.36.11-20260211093309-73ef
 buf.build/gen/go/agntcy/oasf-sdk/protocolbuffers/go v1.36.11-20260211093309-73ef8a5c627c.1/go.mod h1:EEQp9sY+88ieMjKf9W4Uf9t3X6qV1nHY0DcGOxsMlac=
 buf.build/gen/go/agntcy/oasf/protocolbuffers/go v1.36.11-20260211173955-845dfc1ebb08.1 h1:hMxZh8mcZR/qp+/4rLBnuqSqrx4y7hdbSSOsfV/J+Y0=
 buf.build/gen/go/agntcy/oasf/protocolbuffers/go v1.36.11-20260211173955-845dfc1ebb08.1/go.mod h1:y7UzNChPK2OBXQxpwimQg6fSgSFLC1jZXTk9Y7HFfNc=
-github.com/agntcy/oasf-sdk/pkg v1.0.0 h1:DW7QjFlgxFXuSjB1DUSOdgOJUTwNrROucRvuR8+vDQ8=
-github.com/agntcy/oasf-sdk/pkg v1.0.0/go.mod h1:pfewyMhSx+M54QWuZLKEK7hMy5wfszZl9cQMWE9x/2g=
+github.com/agntcy/oasf-sdk/pkg v1.0.1 h1:ia8ePY78pS6n7HDPOAKdEsNHAJcVoOc2LqaYeLwHuUY=
+github.com/agntcy/oasf-sdk/pkg v1.0.1/go.mod h1:pfewyMhSx+M54QWuZLKEK7hMy5wfszZl9cQMWE9x/2g=
 github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc h1:U9qPSI2PIWSS1VwoXQT9A3Wy9MM3WgvqSxFWenqJduM=
 github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/go-logr/logr v1.4.3 h1:CjnDlHq8ikf6E492q6eKboGOC0T8CDaOvkHCIg8idEI=
