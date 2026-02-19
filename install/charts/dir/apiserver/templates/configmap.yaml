@@ -53,4 +53,7 @@ data:
     {{- end }}
     {{- $_ := set $reconcilerConfig.database.postgres "host" (include "chart.postgres.host" .) }}
     {{- end }}
+    {{- if hasKey $reconcilerConfig "regsync" }}
+    {{- $_ := set $reconcilerConfig.regsync "authn" (deepCopy .Values.config.authn) }}
+    {{- end }}
     {{- $reconcilerConfig | toYaml | nindent 4 }}

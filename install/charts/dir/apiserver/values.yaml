@@ -727,7 +727,7 @@ reconciler:
     # OASF schema URL for validation
     schema_url: "https://schema.oasf.outshift.com"
 
-    # Regsync task configuration
+    # Regsync task configuration (authn copied from config.authn by chart)
     regsync:
       enabled: true
       interval: "1h"
