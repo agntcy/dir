@@ -4,7 +4,7 @@ requires-python = ">=3.10"
 
 [[package]]
 name = "agntcy-dir"
-version = "1.0.0rc4"
+version = "1.0.0"
 source = { editable = "." }
 dependencies = [
     { name = "grpcio" },

@@ -17,9 +17,9 @@ replace (
 replace github.com/ThalesIgnite/crypto11 => github.com/ThalesGroup/crypto11 v1.6.0
 
 require (
-	github.com/agntcy/dir/api v1.0.0-rc.4
-	github.com/agntcy/dir/cli v1.0.0-rc.4
-	github.com/agntcy/dir/client v1.0.0-rc.4
+	github.com/agntcy/dir/api v1.0.0
+	github.com/agntcy/dir/cli v1.0.0
+	github.com/agntcy/dir/client v1.0.0
 	github.com/mitchellh/mapstructure v1.5.1-0.20231216201459-8508981c8b6c
 	github.com/onsi/ginkgo/v2 v2.28.1
 	github.com/onsi/gomega v1.39.1
@@ -44,10 +44,10 @@ require (
 	github.com/ProtonMail/go-crypto v1.3.0 // indirect
 	github.com/PuerkitoBio/goquery v1.11.0 // indirect
 	github.com/ThalesIgnite/crypto11 v1.2.5 // indirect
-	github.com/agntcy/dir/auth/authprovider v1.0.0-rc.4 // indirect
-	github.com/agntcy/dir/importer v1.0.0-rc.4 // indirect
-	github.com/agntcy/dir/mcp v1.0.0-rc.4 // indirect
-	github.com/agntcy/dir/utils v1.0.0-rc.4 // indirect
+	github.com/agntcy/dir/auth/authprovider v1.0.0 // indirect
+	github.com/agntcy/dir/importer v1.0.0 // indirect
+	github.com/agntcy/dir/mcp v1.0.0 // indirect
+	github.com/agntcy/dir/utils v1.0.0 // indirect
 	github.com/agntcy/oasf-sdk/pkg v1.0.1 // indirect
 	github.com/alecthomas/chroma/v2 v2.23.1 // indirect
 	github.com/andybalholm/cascadia v1.3.3 // indirect
