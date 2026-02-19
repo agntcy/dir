@@ -1,9 +1,9 @@
 {{- if eq .Values.spire.enabled true }}
-# ClusterSPIFFEID for apiserver workload
+# ClusterSPIFFEID for reconciler workload
 apiVersion: spire.spiffe.io/v1alpha1
 kind: ClusterSPIFFEID
 metadata:
-  name: {{ include "chart.fullname" . }}
+  name: {{ include "chart.reconcilerName" . }}
 spec:
   className: {{ .Values.spire.className | default (printf "%s-spire" .Release.Namespace) }}
   podSelector:
@@ -11,16 +11,12 @@ spec:
     - key: app.kubernetes.io/name
       operator: In
       values:
-      - {{ include "chart.name" . }}
+      - reconciler
   workloadSelectorTemplates:
-    - k8s:pod-image:{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}
+    - k8s:pod-image:{{ .Values.reconciler.image.repository }}:{{ .Values.reconciler.image.tag }}
     - k8s:sa:{{ include "chart.serviceAccountName" . }}
   spiffeIDTemplate: {{ "spiffe://{{ .TrustDomain }}/ns/{{ .PodMeta.Namespace }}/sa/{{ .PodSpec.ServiceAccountName }}" }}
   autoPopulateDNSNames: true
-  {{- if .Values.spire.dnsNameTemplates }}
-  dnsNameTemplates:
-    {{- toYaml .Values.spire.dnsNameTemplates | nindent 4 }}
-  {{- end }}
   {{- if .Values.spire.federation }}
   federatesWith:
   {{ range .Values.spire.federation }}
