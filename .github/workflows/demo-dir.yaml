@@ -10,7 +10,12 @@ on:
         required: true
         type: string
         default: v1.0.0-rc.4
-        description: "Image version to use"
+        description: "dirctl version to use"
+      server_addr:
+        required: true
+        type: string
+        default: prod.gateway.ads.outshift.io:443
+        description: "server address to use"
 
 permissions:
   id-token: write
@@ -23,179 +28,32 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
 
-      - name: Setup Go
-        uses: actions/setup-go@44694675825211faa026b3c33043df3e48a5fa00 # v6.0.0
-        with:
-          go-version: "1.25.7"
-
-      - name: Setup Taskfile
-        shell: bash
-        run: sh -c "$(curl --location https://taskfile.dev/install.sh)" -- -d -b ~/.local/bin
-
       - name: Setup dirctl
         uses: ./.github/actions/setup-dirctl
         with:
           version: ${{ inputs.image_version }}
 
-      - name: Create k8s Kind Cluster
-        uses: helm/kind-action@a1b0e391336a6ee6713a0583f8c6240d70863de3 # v.1.12.0
-        with:
-          version: v0.31.0
-          cluster_name: dir-demo
-          install_only: true
-
-      - name: Deploy Dir (local)
-        run: |
-          echo "Using local mode"
-          DEPLOY_SETUP_IMPORT_IMAGES=false IMAGE_TAG=${{ inputs.image_version }} task deploy:local
-          task deploy:local:port-forward
-
-      - name: Validate records
+      - name: Validate record
         uses: ./.github/actions/validate-record
         with:
-          record_paths: |
-            e2e/shared/testdata/*.json
+          record_paths: e2e/shared/testdata/record_100.json
 
-      - name: Push records
+      - name: Push record
         id: push
         uses: ./.github/actions/push-record
         with:
-          record_paths: |
-            e2e/shared/testdata/*.json
+          record_paths: e2e/shared/testdata/record_100.json
+          server_addr: ${{ inputs.server_addr }}
 
-      - name: Sign records (OIDC)
+      - name: Sign record (OIDC)
         uses: ./.github/actions/sign-record
         with:
           cids: ${{ steps.push.outputs.cids }}
           oidc_client_id: https://github.com/${{ github.repository }}/.github/workflows/demo-dir.yaml@${{ github.ref }}
+          server_addr: ${{ inputs.server_addr }}
 
-      - name: Install Cosign
-        uses: sigstore/cosign-installer@faadad0cce49287aee09b3a48701e75088a2c6ad # v4.0.0
-
-      - name: Generate Cosign keys
-        run: |
-          echo "Generating Cosign key pair (cosign.key, cosign.pub)..."
-          cosign generate-key-pair
-          echo "Cosign key pair generated."
-        env:
-          COSIGN_PASSWORD: ""
-
-      - name: Sign records (Cosign key)
-        run: |
-          echo "Signing all records with Cosign key..."
-          for CID in $(echo '${{ steps.push.outputs.cids }}' | jq -r '.[]'); do
-            echo "Signing $CID..."
-            dirctl sign "$CID" --key cosign.key
-          done
-          echo "Signed all records with Cosign key successfully."
-
-      - name: Publish all records
+      - name: Publish record
         uses: ./.github/actions/publish-record
         with:
           cids: ${{ steps.push.outputs.cids }}
-
-      - name: Pull all records
-        run: |
-          for CID in $(echo '${{ steps.push.outputs.cids }}' | jq -r '.[]'); do
-            echo "Pulling $CID..."
-            dirctl pull "$CID"
-          done
-
-      - name: Clean up
-        run: |
-          echo "Cleaning up"
-          task deploy:local:port-forward:cleanup
-          task deploy:local:cleanup
-
-  demo-network:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
-
-      - name: Setup Go
-        uses: actions/setup-go@44694675825211faa026b3c33043df3e48a5fa00 # v6.0.0
-        with:
-          go-version: "1.25.7"
-
-      - name: Setup Taskfile
-        shell: bash
-        run: sh -c "$(curl --location https://taskfile.dev/install.sh)" -- -d -b ~/.local/bin
-
-      - name: Setup dirctl
-        uses: ./.github/actions/setup-dirctl
-        with:
-          version: ${{ inputs.image_version }}
-
-      - name: Create k8s Kind Cluster
-        uses: helm/kind-action@a1b0e391336a6ee6713a0583f8c6240d70863de3 # v.1.12.0
-        with:
-          version: v0.31.0
-          cluster_name: dir-demo
-          install_only: true
-
-      - name: Deploy Dir (network)
-        run: |
-          echo "Using network mode"
-          DEPLOY_SETUP_IMPORT_IMAGES=false IMAGE_TAG=${{ inputs.image_version }} task deploy:network
-          task deploy:network:port-forward
-
-      - name: Validate records
-        uses: ./.github/actions/validate-record
-        with:
-          record_paths: |
-            e2e/shared/testdata/*.json
-
-      - name: Push record on Peer 1
-        id: push
-        uses: ./.github/actions/push-record
-        with:
-          record_paths: |
-            e2e/shared/testdata/*.json
-          server_addr: 127.0.0.1:8890
-
-      - name: Sign records (OIDC)
-        uses: ./.github/actions/sign-record
-        with:
-          cids: ${{ steps.push.outputs.cids }}
-          oidc_client_id: https://github.com/${{ github.repository }}/.github/workflows/demo-dir.yaml@${{ github.ref }}
-          server_addr: 127.0.0.1:8890
-
-      - name: Install Cosign
-        uses: sigstore/cosign-installer@faadad0cce49287aee09b3a48701e75088a2c6ad # v4.0.0
-
-      - name: Generate Cosign keys
-        run: |
-          echo "Generating Cosign key pair (cosign.key, cosign.pub)..."
-          cosign generate-key-pair
-          echo "Cosign key pair generated."
-        env:
-          COSIGN_PASSWORD: ""
-
-      - name: Sign records (Cosign key)
-        run: |
-          echo "Signing all records with Cosign key (server_addr=127.0.0.1:8890)..."
-          for CID in $(echo '${{ steps.push.outputs.cids }}' | jq -r '.[]'); do
-            echo "Signing $CID..."
-            dirctl sign "$CID" --key cosign.key --server-addr 127.0.0.1:8890
-          done
-          echo "Signed all records with Cosign key successfully."
-
-      - name: Publish all records
-        uses: ./.github/actions/publish-record
-        with:
-          cids: ${{ steps.push.outputs.cids }}
-          server_addr: 127.0.0.1:8890
-
-      - name: Pull all records
-        run: |
-          for CID in $(echo '${{ steps.push.outputs.cids }}' | jq -r '.[]'); do
-            echo "Pulling $CID..."
-            dirctl pull "$CID" --server-addr 127.0.0.1:8890
-          done
-
-      - name: Clean up
-        run: |
-          echo "Cleaning up"
-          task deploy:network:port-forward:cleanup
-          task deploy:network:cleanup
+          server_addr: ${{ inputs.server_addr }}
