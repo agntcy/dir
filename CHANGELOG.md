@@ -5,6 +5,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v1.0.0] - 2026-02-19
+
+### Added
+- **Server**: Enable regsync atomic sync processing (#951)
+
+### Changed
+- **Dependencies**: Bump oasf-sdk v1.0.0 → v1.0.1 (#957)
+- **Packaging**: Fix packages and maintainers (#950)
+- **Packaging**: Update brew formula version (#949)
+- **Server**: Validate sync deletion requests (#956)
+
+### Fixed
+- **Reconciler**: Create reconciler ClusterSPIFFEID (#961)
+- **Reconciler**: Fix reconciler deployment SPIFFE socket path (#959)
+- **Dirctl**: Make publish and unpublish message similar (#952)
+- **CI/CD**: Update module extraction command in post-release workflow (#948)
+
 ## [v1.0.0-rc.4] - 2026-02-13
 
 ### Added
