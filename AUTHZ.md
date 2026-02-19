@@ -78,7 +78,6 @@ p,partner2.com,/agntcy.dir.sync.v1.SyncService/RequestRegistryCredentials
 - `/agntcy.dir.sync.v1.SyncService/CreateSync` - Initiate sync operations
 - `/agntcy.dir.sync.v1.SyncService/ListSyncs` - List sync operations
 - `/agntcy.dir.sync.v1.SyncService/GetSync` - Get sync status
-- `/agntcy.dir.sync.v1.SyncService/DeleteSync` - Cancel sync operations
 - `/agntcy.dir.sync.v1.SyncService/RequestRegistryCredentials` - Request credentials for sync
 
 #### Enabling Authorization

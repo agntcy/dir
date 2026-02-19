@@ -68,14 +68,3 @@ func (c *Client) GetSync(ctx context.Context, syncID string) (*storev1.GetSyncRe
 
 	return meta, nil
 }
-
-func (c *Client) DeleteSync(ctx context.Context, syncID string) error {
-	_, err := c.SyncServiceClient.DeleteSync(ctx, &storev1.DeleteSyncRequest{
-		SyncId: syncID,
-	})
-	if err != nil {
-		return fmt.Errorf("failed to delete sync: %w", err)
-	}
-
-	return nil
-}

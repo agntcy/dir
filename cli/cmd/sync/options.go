@@ -30,5 +30,4 @@ func init() {
 	presenter.AddOutputFlags(createCmd)
 	presenter.AddOutputFlags(listCmd)
 	presenter.AddOutputFlags(statusCmd)
-	presenter.AddOutputFlags(deleteCmd)
 }

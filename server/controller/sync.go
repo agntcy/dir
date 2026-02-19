@@ -96,29 +96,6 @@ func (c *syncCtlr) GetSync(_ context.Context, req *storev1.GetSyncRequest) (*sto
 	}, nil
 }
 
-func (c *syncCtlr) DeleteSync(_ context.Context, req *storev1.DeleteSyncRequest) (*storev1.DeleteSyncResponse, error) {
-	syncLogger.Debug("Called sync controller's DeleteSync method", "req", req)
-
-	// Get the sync to check its current status
-	syncObj, err := c.db.GetSyncByID(req.GetSyncId())
-	if err != nil {
-		return nil, fmt.Errorf("failed to get sync: %w", err)
-	}
-
-	if syncObj.GetStatus() == storev1.SyncStatus_SYNC_STATUS_DELETED {
-		return nil, status.Errorf(codes.NotFound, "sync has already been deleted")
-	}
-
-	// Mark sync for deletion - the scheduler will pick this up
-	if err := c.db.UpdateSyncStatus(req.GetSyncId(), storev1.SyncStatus_SYNC_STATUS_DELETE_PENDING); err != nil {
-		return nil, fmt.Errorf("failed to mark sync for deletion: %w", err)
-	}
-
-	syncLogger.Debug("Sync marked for deletion", "sync_id", req.GetSyncId())
-
-	return &storev1.DeleteSyncResponse{}, nil
-}
-
 // RequestRegistryCredentials handles requests for registry authentication credentials.
 func (c *syncCtlr) RequestRegistryCredentials(_ context.Context, req *storev1.RequestRegistryCredentialsRequest) (*storev1.RequestRegistryCredentialsResponse, error) {
 	syncLogger.Debug("Called sync controller's RequestRegistryCredentials method", "req", req)

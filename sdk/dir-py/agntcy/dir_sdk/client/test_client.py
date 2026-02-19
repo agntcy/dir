@@ -378,9 +378,6 @@ class TestClient(unittest.TestCase):
             assert isinstance(get_response, store_v1.GetSyncResponse)
             assert get_response.sync_id == create_response.sync_id
 
-            delete_request = store_v1.DeleteSyncRequest(sync_id=create_response.sync_id)
-            self.client.delete_sync(delete_request)
-
         except Exception as e:
             assert e is None
 

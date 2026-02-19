@@ -110,7 +110,6 @@ authServer:
     #   - /agntcy.dir.store.v1.SyncService/CreateSync                   # Create sync operation
     #   - /agntcy.dir.store.v1.SyncService/ListSyncs                    # List all syncs
     #   - /agntcy.dir.store.v1.SyncService/GetSync                      # Get sync status
-    #   - /agntcy.dir.store.v1.SyncService/DeleteSync                   # Delete sync
     #   - /agntcy.dir.store.v1.SyncService/RequestRegistryCredentials   # Request credentials
     #
     # RoutingService (DHT Operations):

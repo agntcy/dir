@@ -202,40 +202,6 @@ export declare type GetSyncResponse = Message<"agntcy.dir.store.v1.GetSyncRespon
 export declare const GetSyncResponseSchema: GenMessage<GetSyncResponse>;
 
 /**
- * DeleteSyncRequest specifies which synchronization to delete.
- *
- * @generated from message agntcy.dir.store.v1.DeleteSyncRequest
- */
-export declare type DeleteSyncRequest = Message<"agntcy.dir.store.v1.DeleteSyncRequest"> & {
-  /**
-   * Unique identifier of the synchronization operation to delete.
-   *
-   * @generated from field: string sync_id = 1;
-   */
-  syncId: string;
-};
-
-/**
- * Describes the message agntcy.dir.store.v1.DeleteSyncRequest.
- * Use `create(DeleteSyncRequestSchema)` to create a new message.
- */
-export declare const DeleteSyncRequestSchema: GenMessage<DeleteSyncRequest>;
-
-/**
- * DeleteSyncResponse
- *
- * @generated from message agntcy.dir.store.v1.DeleteSyncResponse
- */
-export declare type DeleteSyncResponse = Message<"agntcy.dir.store.v1.DeleteSyncResponse"> & {
-};
-
-/**
- * Describes the message agntcy.dir.store.v1.DeleteSyncResponse.
- * Use `create(DeleteSyncResponseSchema)` to create a new message.
- */
-export declare const DeleteSyncResponseSchema: GenMessage<DeleteSyncResponse>;
-
-/**
  * @generated from message agntcy.dir.store.v1.RequestRegistryCredentialsRequest
  */
 export declare type RequestRegistryCredentialsRequest = Message<"agntcy.dir.store.v1.RequestRegistryCredentialsRequest"> & {
@@ -367,25 +333,11 @@ export enum SyncStatus {
   FAILED = 3,
 
   /**
-   * Sync operation has been marked for deletion but cleanup not yet started
-   *
-   * @generated from enum value: SYNC_STATUS_DELETE_PENDING = 4;
-   */
-  DELETE_PENDING = 4,
-
-  /**
-   * Sync operation has been successfully deleted and cleaned up
-   *
-   * @generated from enum value: SYNC_STATUS_DELETED = 5;
-   */
-  DELETED = 5,
-
-  /**
    * Sync operation has completed successfully
    *
-   * @generated from enum value: SYNC_STATUS_COMPLETED = 6;
+   * @generated from enum value: SYNC_STATUS_COMPLETED = 4;
    */
-  COMPLETED = 6,
+  COMPLETED = 4,
 }
 
 /**
@@ -437,16 +389,6 @@ export declare const SyncService: GenService<{
     methodKind: "unary";
     input: typeof GetSyncRequestSchema;
     output: typeof GetSyncResponseSchema;
-  },
-  /**
-   * DeleteSync removes a synchronization operation from the system.
-   *
-   * @generated from rpc agntcy.dir.store.v1.SyncService.DeleteSync
-   */
-  deleteSync: {
-    methodKind: "unary";
-    input: typeof DeleteSyncRequestSchema;
-    output: typeof DeleteSyncResponseSchema;
   },
   /**
    * RequestRegistryCredentials requests registry credentials between two Directory nodes.

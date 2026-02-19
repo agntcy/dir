@@ -875,41 +875,6 @@ class Client:
 
         return response
 
-    def delete_sync(
-        self,
-        req: store_v1.DeleteSyncRequest,
-        metadata: Sequence[tuple[str, str]] | None = None,
-    ) -> None:
-        """Delete a synchronization configuration.
-
-        Permanently removes a sync configuration and stops any ongoing
-        synchronization processes. This operation cannot be undone and
-        will halt all data synchronization for the specified configuration.
-
-        Args:
-            req: DeleteSyncRequest containing the sync ID or identifier to delete
-            metadata: Optional gRPC metadata headers as sequence of key-value pairs
-
-        Raises:
-            grpc.RpcError: If the gRPC call fails (includes InvalidArgument, NotFound, etc.)
-            RuntimeError: If the delete operation fails
-
-        Example:
-            >>> req = store_v1.DeleteSyncRequest(sync_id="sync-123")
-            >>> client.delete_sync(req)
-            >>> print(f"Sync deleted")
-
-        """
-        try:
-            self.sync_client.DeleteSync(req, metadata=metadata)
-        except grpc.RpcError as e:
-            logger.exception("gRPC error during delete_sync: %s", e)
-            raise
-        except Exception as e:
-            logger.exception("Unexpected error during delete_sync: %s", e)
-            msg = f"Failed to delete sync: {e}"
-            raise RuntimeError(msg) from e
-
     def listen(
         self,
         req: events_v1.ListenRequest,

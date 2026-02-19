@@ -203,10 +203,6 @@ func (s *SyncCommands) Status(syncID string) *CommandBuilder {
 	return s.cli.Command("sync").WithArgs("status", syncID)
 }
 
-func (s *SyncCommands) Delete(syncID string) *CommandBuilder {
-	return s.cli.Command("sync").WithArgs("delete", syncID)
-}
-
 // CommandBuilder provides a fluent interface for building and executing commands.
 type CommandBuilder struct {
 	command     string

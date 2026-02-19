@@ -955,31 +955,6 @@ export class Client {
   }
 
   /**
-   * Delete a synchronization configuration.
-   *
-   * Permanently removes a sync configuration and stops any ongoing
-   * synchronization processes. This operation cannot be undone and
-   * will halt all data synchronization for the specified configuration.
-   *
-   * @param request - DeleteSyncRequest containing the sync ID or identifier to delete
-   * @returns Promise that resolves to a DeleteSyncResponse when the deletion is complete
-   *
-   * @throws {Error} If the gRPC call fails or the delete operation fails
-   *
-   * @example
-   * ```typescript
-   * const request = new models.store_v1.DeleteSyncRequest({syncId: "sync-123"});
-   * await client.delete_sync(request);
-   * console.log("Sync deleted");
-   * ```
-   */
-  async delete_sync(
-    request: models.store_v1.DeleteSyncRequest,
-  ): Promise<models.store_v1.DeleteSyncResponse> {
-    return await this.syncClient.deleteSync(request);
-  }
-
-  /**
    * Get events from the Event API matching the specified criteria.
    * 
    * Retrieves a list of events that match the filtering and query criteria

@@ -25,7 +25,6 @@ const (
 	SyncService_CreateSync_FullMethodName                 = "/agntcy.dir.store.v1.SyncService/CreateSync"
 	SyncService_ListSyncs_FullMethodName                  = "/agntcy.dir.store.v1.SyncService/ListSyncs"
 	SyncService_GetSync_FullMethodName                    = "/agntcy.dir.store.v1.SyncService/GetSync"
-	SyncService_DeleteSync_FullMethodName                 = "/agntcy.dir.store.v1.SyncService/DeleteSync"
 	SyncService_RequestRegistryCredentials_FullMethodName = "/agntcy.dir.store.v1.SyncService/RequestRegistryCredentials"
 )
 
@@ -50,8 +49,6 @@ type SyncServiceClient interface {
 	ListSyncs(ctx context.Context, in *ListSyncsRequest, opts ...grpc.CallOption) (SyncService_ListSyncsClient, error)
 	// GetSync retrieves detailed status information for a specific synchronization.
 	GetSync(ctx context.Context, in *GetSyncRequest, opts ...grpc.CallOption) (*GetSyncResponse, error)
-	// DeleteSync removes a synchronization operation from the system.
-	DeleteSync(ctx context.Context, in *DeleteSyncRequest, opts ...grpc.CallOption) (*DeleteSyncResponse, error)
 	// RequestRegistryCredentials requests registry credentials between two Directory nodes.
 	//
 	// This RPC allows a requesting node to authenticate with this node and obtain
@@ -120,16 +117,6 @@ func (c *syncServiceClient) GetSync(ctx context.Context, in *GetSyncRequest, opt
 	return out, nil
 }
 
-func (c *syncServiceClient) DeleteSync(ctx context.Context, in *DeleteSyncRequest, opts ...grpc.CallOption) (*DeleteSyncResponse, error) {
-	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(DeleteSyncResponse)
-	err := c.cc.Invoke(ctx, SyncService_DeleteSync_FullMethodName, in, out, cOpts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
 func (c *syncServiceClient) RequestRegistryCredentials(ctx context.Context, in *RequestRegistryCredentialsRequest, opts ...grpc.CallOption) (*RequestRegistryCredentialsResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(RequestRegistryCredentialsResponse)
@@ -161,8 +148,6 @@ type SyncServiceServer interface {
 	ListSyncs(*ListSyncsRequest, SyncService_ListSyncsServer) error
 	// GetSync retrieves detailed status information for a specific synchronization.
 	GetSync(context.Context, *GetSyncRequest) (*GetSyncResponse, error)
-	// DeleteSync removes a synchronization operation from the system.
-	DeleteSync(context.Context, *DeleteSyncRequest) (*DeleteSyncResponse, error)
 	// RequestRegistryCredentials requests registry credentials between two Directory nodes.
 	//
 	// This RPC allows a requesting node to authenticate with this node and obtain
@@ -185,9 +170,6 @@ func (UnimplementedSyncServiceServer) ListSyncs(*ListSyncsRequest, SyncService_L
 }
 func (UnimplementedSyncServiceServer) GetSync(context.Context, *GetSyncRequest) (*GetSyncResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetSync not implemented")
-}
-func (UnimplementedSyncServiceServer) DeleteSync(context.Context, *DeleteSyncRequest) (*DeleteSyncResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method DeleteSync not implemented")
 }
 func (UnimplementedSyncServiceServer) RequestRegistryCredentials(context.Context, *RequestRegistryCredentialsRequest) (*RequestRegistryCredentialsResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method RequestRegistryCredentials not implemented")
@@ -269,24 +251,6 @@ func _SyncService_GetSync_Handler(srv interface{}, ctx context.Context, dec func
 	return interceptor(ctx, in, info, handler)
 }
 
-func _SyncService_DeleteSync_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(DeleteSyncRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(SyncServiceServer).DeleteSync(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: SyncService_DeleteSync_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(SyncServiceServer).DeleteSync(ctx, req.(*DeleteSyncRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
 func _SyncService_RequestRegistryCredentials_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(RequestRegistryCredentialsRequest)
 	if err := dec(in); err != nil {
@@ -319,10 +283,6 @@ var SyncService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetSync",
 			Handler:    _SyncService_GetSync_Handler,
-		},
-		{
-			MethodName: "DeleteSync",
-			Handler:    _SyncService_DeleteSync_Handler,
 		},
 		{
 			MethodName: "RequestRegistryCredentials",

@@ -77,20 +77,6 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests for sync commands", fun
 		})
 	})
 
-	ginkgo.Context("delete command", func() {
-		ginkgo.It("should accept a sync ID argument and delete the sync", func() {
-			// Command may fail due to network/auth issues, but argument parsing should work
-			_, err := cli.Sync().Delete(syncID).OnServer(utils.Peer1Addr).Execute()
-			if err != nil {
-				gomega.Expect(err.Error()).NotTo(gomega.ContainSubstring("required"))
-			}
-		})
-
-		ginkgo.It("should return deleted status", func() {
-			cli.Sync().Status(syncID).OnServer(utils.Peer1Addr).ShouldContain("DELETE")
-		})
-	})
-
 	ginkgo.Context("sync functionality", ginkgo.Ordered, func() {
 		var cid string
 		var cidV5 string
@@ -203,18 +189,6 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests for sync commands", fun
 
 			// Verify the output
 			gomega.Expect(output).To(gomega.ContainSubstring("Record signature is: trusted"))
-		})
-
-		// Delete sync from peer 2
-		ginkgo.It("should delete sync from peer 2", func() {
-			cli.Sync().Delete(syncID).OnServer(utils.Peer2Addr).ShouldSucceed()
-		})
-
-		// Wait for sync to complete
-		ginkgo.It("should wait for delete to complete", func() {
-			// Poll sync status until it changes from DELETE_PENDING to DELETED
-			output := cli.Sync().Status(syncID).OnServer(utils.Peer2Addr).ShouldEventuallyContain("DELETED", 120*time.Second)
-			ginkgo.GinkgoWriter.Printf("Current sync status: %s", output)
 		})
 
 		ginkgo.It("should create sync from peer 1 to peer 3 using routing search piped to sync create", func() {

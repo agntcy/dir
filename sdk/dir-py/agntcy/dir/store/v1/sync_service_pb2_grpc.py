@@ -34,11 +34,6 @@ class SyncServiceStub(object):
                 request_serializer=agntcy_dot_dir_dot_store_dot_v1_dot_sync__service__pb2.GetSyncRequest.SerializeToString,
                 response_deserializer=agntcy_dot_dir_dot_store_dot_v1_dot_sync__service__pb2.GetSyncResponse.FromString,
                 _registered_method=True)
-        self.DeleteSync = channel.unary_unary(
-                '/agntcy.dir.store.v1.SyncService/DeleteSync',
-                request_serializer=agntcy_dot_dir_dot_store_dot_v1_dot_sync__service__pb2.DeleteSyncRequest.SerializeToString,
-                response_deserializer=agntcy_dot_dir_dot_store_dot_v1_dot_sync__service__pb2.DeleteSyncResponse.FromString,
-                _registered_method=True)
         self.RequestRegistryCredentials = channel.unary_unary(
                 '/agntcy.dir.store.v1.SyncService/RequestRegistryCredentials',
                 request_serializer=agntcy_dot_dir_dot_store_dot_v1_dot_sync__service__pb2.RequestRegistryCredentialsRequest.SerializeToString,
@@ -80,13 +75,6 @@ class SyncServiceServicer(object):
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
-    def DeleteSync(self, request, context):
-        """DeleteSync removes a synchronization operation from the system.
-        """
-        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
-        context.set_details('Method not implemented!')
-        raise NotImplementedError('Method not implemented!')
-
     def RequestRegistryCredentials(self, request, context):
         """RequestRegistryCredentials requests registry credentials between two Directory nodes.
 
@@ -114,11 +102,6 @@ def add_SyncServiceServicer_to_server(servicer, server):
                     servicer.GetSync,
                     request_deserializer=agntcy_dot_dir_dot_store_dot_v1_dot_sync__service__pb2.GetSyncRequest.FromString,
                     response_serializer=agntcy_dot_dir_dot_store_dot_v1_dot_sync__service__pb2.GetSyncResponse.SerializeToString,
-            ),
-            'DeleteSync': grpc.unary_unary_rpc_method_handler(
-                    servicer.DeleteSync,
-                    request_deserializer=agntcy_dot_dir_dot_store_dot_v1_dot_sync__service__pb2.DeleteSyncRequest.FromString,
-                    response_serializer=agntcy_dot_dir_dot_store_dot_v1_dot_sync__service__pb2.DeleteSyncResponse.SerializeToString,
             ),
             'RequestRegistryCredentials': grpc.unary_unary_rpc_method_handler(
                     servicer.RequestRegistryCredentials,
@@ -212,33 +195,6 @@ class SyncService(object):
             '/agntcy.dir.store.v1.SyncService/GetSync',
             agntcy_dot_dir_dot_store_dot_v1_dot_sync__service__pb2.GetSyncRequest.SerializeToString,
             agntcy_dot_dir_dot_store_dot_v1_dot_sync__service__pb2.GetSyncResponse.FromString,
-            options,
-            channel_credentials,
-            insecure,
-            call_credentials,
-            compression,
-            wait_for_ready,
-            timeout,
-            metadata,
-            _registered_method=True)
-
-    @staticmethod
-    def DeleteSync(request,
-            target,
-            options=(),
-            channel_credentials=None,
-            call_credentials=None,
-            insecure=False,
-            compression=None,
-            wait_for_ready=None,
-            timeout=None,
-            metadata=None):
-        return grpc.experimental.unary_unary(
-            request,
-            target,
-            '/agntcy.dir.store.v1.SyncService/DeleteSync',
-            agntcy_dot_dir_dot_store_dot_v1_dot_sync__service__pb2.DeleteSyncRequest.SerializeToString,
-            agntcy_dot_dir_dot_store_dot_v1_dot_sync__service__pb2.DeleteSyncResponse.FromString,
             options,
             channel_credentials,
             insecure,

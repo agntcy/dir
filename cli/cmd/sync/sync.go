@@ -113,36 +113,11 @@ Usage examples:
 	},
 }
 
-// Delete sync subcommand.
-var deleteCmd = &cobra.Command{
-	Use:   "delete <sync-id>",
-	Short: "Delete a synchronization operation",
-	Long: `Delete removes a sync operation from the system. For active syncs,
-this will attempt to cancel the operation gracefully.
-
-Usage examples:
-
-1. Delete a sync:
-  dirctl sync delete <sync-id>
-
-2. Output formats:
-  # Delete sync with JSON confirmation
-  dirctl sync delete <sync-id> --output json
-  
-  # Delete sync with raw output for scripting
-  dirctl sync delete <sync-id> --output raw`,
-	Args: cobra.ExactArgs(1),
-	RunE: func(cmd *cobra.Command, args []string) error {
-		return runDeleteSync(cmd, args[0])
-	},
-}
-
 func init() {
 	// Add subcommands
 	Command.AddCommand(createCmd)
 	Command.AddCommand(listCmd)
 	Command.AddCommand(statusCmd)
-	Command.AddCommand(deleteCmd)
 }
 
 func runCreateSync(cmd *cobra.Command, remoteURL string, cids []string) error {
@@ -218,25 +193,6 @@ func runGetSyncStatus(cmd *cobra.Command, syncID string) error {
 	}
 
 	return presenter.PrintMessage(cmd, "sync", "Sync status", sync.GetStatus())
-}
-
-func runDeleteSync(cmd *cobra.Command, syncID string) error {
-	// Validate sync ID
-	if syncID == "" {
-		return errors.New("sync ID is required")
-	}
-
-	client, ok := ctxUtils.GetClientFromContext(cmd.Context())
-	if !ok {
-		return errors.New("failed to get client from context")
-	}
-
-	err := client.DeleteSync(cmd.Context(), syncID)
-	if err != nil {
-		return fmt.Errorf("failed to delete sync: %w", err)
-	}
-
-	return presenter.PrintMessage(cmd, "sync", "Sync deleted with ID", syncID)
 }
 
 func runCreateSyncFromStdin(cmd *cobra.Command) error {

@@ -472,15 +472,6 @@ func TestStatusCmd_Initialization(t *testing.T) {
 	assert.NotNil(t, statusCmd.RunE)
 }
 
-// TestDeleteCmd_Initialization tests delete subcommand initialization.
-func TestDeleteCmd_Initialization(t *testing.T) {
-	assert.NotNil(t, deleteCmd)
-	assert.Equal(t, "delete <sync-id>", deleteCmd.Use)
-	assert.NotEmpty(t, deleteCmd.Short)
-	assert.NotNil(t, deleteCmd.Args)
-	assert.NotNil(t, deleteCmd.RunE)
-}
-
 // TestCreateCmd_ArgsValidation tests argument validation for create command.
 func TestCreateCmd_ArgsValidation(t *testing.T) {
 	tests := []struct {

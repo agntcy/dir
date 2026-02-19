@@ -8,5 +8,4 @@ p,externals_only_other.com,/agntcy.dir.store.v1.StoreService/PullReferrer
 p,externals_only_other2.com,/agntcy.dir.store.v1.SyncService/CreateSync
 p,externals_only_other2.com,/agntcy.dir.store.v1.SyncService/ListSyncs
 p,externals_only_other2.com,/agntcy.dir.store.v1.SyncService/GetSync
-p,externals_only_other2.com,/agntcy.dir.store.v1.SyncService/DeleteSync
 p,externals_only_other2.com,/agntcy.dir.store.v1.SyncService/RequestRegistryCredentials

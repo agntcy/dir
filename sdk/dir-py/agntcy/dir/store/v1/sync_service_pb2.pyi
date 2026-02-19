@@ -12,15 +12,11 @@ class SyncStatus(int, metaclass=_enum_type_wrapper.EnumTypeWrapper):
     SYNC_STATUS_PENDING: _ClassVar[SyncStatus]
     SYNC_STATUS_IN_PROGRESS: _ClassVar[SyncStatus]
     SYNC_STATUS_FAILED: _ClassVar[SyncStatus]
-    SYNC_STATUS_DELETE_PENDING: _ClassVar[SyncStatus]
-    SYNC_STATUS_DELETED: _ClassVar[SyncStatus]
     SYNC_STATUS_COMPLETED: _ClassVar[SyncStatus]
 SYNC_STATUS_UNSPECIFIED: SyncStatus
 SYNC_STATUS_PENDING: SyncStatus
 SYNC_STATUS_IN_PROGRESS: SyncStatus
 SYNC_STATUS_FAILED: SyncStatus
-SYNC_STATUS_DELETE_PENDING: SyncStatus
-SYNC_STATUS_DELETED: SyncStatus
 SYNC_STATUS_COMPLETED: SyncStatus
 
 class CreateSyncRequest(_message.Message):
@@ -74,16 +70,6 @@ class GetSyncResponse(_message.Message):
     created_time: str
     last_update_time: str
     def __init__(self, sync_id: _Optional[str] = ..., status: _Optional[_Union[SyncStatus, str]] = ..., remote_directory_url: _Optional[str] = ..., created_time: _Optional[str] = ..., last_update_time: _Optional[str] = ...) -> None: ...
-
-class DeleteSyncRequest(_message.Message):
-    __slots__ = ("sync_id",)
-    SYNC_ID_FIELD_NUMBER: _ClassVar[int]
-    sync_id: str
-    def __init__(self, sync_id: _Optional[str] = ...) -> None: ...
-
-class DeleteSyncResponse(_message.Message):
-    __slots__ = ()
-    def __init__(self) -> None: ...
 
 class RequestRegistryCredentialsRequest(_message.Message):
     __slots__ = ()

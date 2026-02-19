@@ -69,11 +69,6 @@ func (t *Task) Run(ctx context.Context) error {
 		logger.Error("Failed to process pending sync creations", "error", err)
 	}
 
-	// Process pending sync deletions
-	if err := t.processPendingDeletions(ctx); err != nil {
-		logger.Error("Failed to process pending sync deletions", "error", err)
-	}
-
 	return nil
 }
 
@@ -125,90 +120,6 @@ func (t *Task) processPendingCreations(ctx context.Context) error {
 	wg.Wait()
 
 	logger.Debug("Completed processing pending sync creations", "count", len(pendingSyncs))
-
-	return nil
-}
-
-// processPendingDeletions handles syncs in SYNC_STATUS_DELETE_PENDING state.
-func (t *Task) processPendingDeletions(ctx context.Context) error {
-	pendingDeletes, err := t.db.GetSyncsByStatus(storev1.SyncStatus_SYNC_STATUS_DELETE_PENDING)
-	if err != nil {
-		return fmt.Errorf("failed to get pending deletes: %w", err)
-	}
-
-	if len(pendingDeletes) == 0 {
-		logger.Debug("No pending sync deletions to process")
-
-		return nil
-	}
-
-	logger.Info("Processing pending sync deletions", "count", len(pendingDeletes))
-
-	// Process all pending deletions concurrently
-	var wg sync.WaitGroup
-
-	for _, syncObj := range pendingDeletes {
-		syncID := syncObj.GetID()
-
-		// Skip if already being processed
-		if t.isWorkerActive(syncID) {
-			logger.Debug("Sync deletion already being processed, skipping", "sync_id", syncID)
-
-			continue
-		}
-
-		// Process each deletion in a separate goroutine
-		wg.Add(1)
-
-		go func(sync types.SyncObject) {
-			defer wg.Done()
-
-			if err := t.processSyncDeletion(ctx, sync); err != nil {
-				logger.Error("Failed to process sync deletion", "sync_id", sync.GetID(), "error", err)
-
-				return
-			}
-
-			logger.Info("Sync deletion processed successfully", "sync_id", sync.GetID())
-		}(syncObj)
-	}
-
-	// Wait for all deletions to complete
-	wg.Wait()
-
-	logger.Debug("Completed processing pending sync deletions", "count", len(pendingDeletes))
-
-	return nil
-}
-
-// processSyncDeletion handles the deletion of a single sync object.
-func (t *Task) processSyncDeletion(_ context.Context, syncObj types.SyncObject) error {
-	syncID := syncObj.GetID()
-
-	logger.Info("Processing sync deletion", "sync_id", syncID)
-
-	// Update status to DELETE_PENDING before starting worker
-	if err := t.db.UpdateSyncStatus(syncID, storev1.SyncStatus_SYNC_STATUS_DELETE_PENDING); err != nil {
-		return fmt.Errorf("failed to update sync status to DELETE_PENDING: %w", err)
-	}
-
-	// Register as active to prevent duplicate processing
-	t.mu.Lock()
-	t.activeWorkers[syncID] = nil // Use nil worker for delete operations
-	t.mu.Unlock()
-
-	defer func() {
-		t.mu.Lock()
-		delete(t.activeWorkers, syncID)
-		t.mu.Unlock()
-	}()
-
-	// Soft delete the sync
-	if err := t.db.UpdateSyncStatus(syncID, storev1.SyncStatus_SYNC_STATUS_DELETED); err != nil {
-		return fmt.Errorf("failed to update sync status to DELETED: %w", err)
-	}
-
-	logger.Info("Sync deleted successfully", "sync_id", syncID)
 
 	return nil
 }

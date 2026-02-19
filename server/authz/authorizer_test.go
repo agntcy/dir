@@ -47,7 +47,6 @@ func TestAuthorizer(t *testing.T) {
 		{allowAllAuthz, "allow_all_dir.com", storev1.SyncService_CreateSync_FullMethodName, true},
 		{allowAllAuthz, "allow_all_dir.com", storev1.SyncService_ListSyncs_FullMethodName, true},
 		{allowAllAuthz, "allow_all_dir.com", storev1.SyncService_GetSync_FullMethodName, true},
-		{allowAllAuthz, "allow_all_dir.com", storev1.SyncService_DeleteSync_FullMethodName, true},
 		{allowAllAuthz, "allow_all_dir.com", storev1.SyncService_RequestRegistryCredentials_FullMethodName, true},
 
 		{externalsOnlyAuthz, "externals_only_dir.com", storev1.StoreService_Push_FullMethodName, false},
@@ -59,7 +58,6 @@ func TestAuthorizer(t *testing.T) {
 		{externalsOnlyAuthz, "externals_only_dir.com", storev1.SyncService_CreateSync_FullMethodName, false},
 		{externalsOnlyAuthz, "externals_only_dir.com", storev1.SyncService_ListSyncs_FullMethodName, false},
 		{externalsOnlyAuthz, "externals_only_dir.com", storev1.SyncService_GetSync_FullMethodName, false},
-		{externalsOnlyAuthz, "externals_only_dir.com", storev1.SyncService_DeleteSync_FullMethodName, false},
 		{externalsOnlyAuthz, "externals_only_dir.com", storev1.SyncService_RequestRegistryCredentials_FullMethodName, false},
 		{externalsOnlyAuthz, "externals_only_other.com", storev1.StoreService_Push_FullMethodName, true},
 		{externalsOnlyAuthz, "externals_only_other.com", storev1.StoreService_Pull_FullMethodName, true},
@@ -70,7 +68,6 @@ func TestAuthorizer(t *testing.T) {
 		{externalsOnlyAuthz, "externals_only_other.com", storev1.SyncService_CreateSync_FullMethodName, false},
 		{externalsOnlyAuthz, "externals_only_other.com", storev1.SyncService_ListSyncs_FullMethodName, false},
 		{externalsOnlyAuthz, "externals_only_other.com", storev1.SyncService_GetSync_FullMethodName, false},
-		{externalsOnlyAuthz, "externals_only_other.com", storev1.SyncService_DeleteSync_FullMethodName, false},
 		{externalsOnlyAuthz, "externals_only_other.com", storev1.SyncService_RequestRegistryCredentials_FullMethodName, false},
 		{externalsOnlyAuthz, "externals_only_other2.com", storev1.StoreService_Push_FullMethodName, false},
 		{externalsOnlyAuthz, "externals_only_other2.com", storev1.StoreService_Pull_FullMethodName, false},
@@ -81,7 +78,6 @@ func TestAuthorizer(t *testing.T) {
 		{externalsOnlyAuthz, "externals_only_other2.com", storev1.SyncService_CreateSync_FullMethodName, true},
 		{externalsOnlyAuthz, "externals_only_other2.com", storev1.SyncService_ListSyncs_FullMethodName, true},
 		{externalsOnlyAuthz, "externals_only_other2.com", storev1.SyncService_GetSync_FullMethodName, true},
-		{externalsOnlyAuthz, "externals_only_other2.com", storev1.SyncService_DeleteSync_FullMethodName, true},
 		{externalsOnlyAuthz, "externals_only_other2.com", storev1.SyncService_RequestRegistryCredentials_FullMethodName, true},
 
 		{externalPullOnlyAuthz, "external_pull_only_dir.com", storev1.StoreService_Push_FullMethodName, true},
@@ -93,7 +89,6 @@ func TestAuthorizer(t *testing.T) {
 		{externalPullOnlyAuthz, "external_pull_only_dir.com", storev1.SyncService_CreateSync_FullMethodName, true},
 		{externalPullOnlyAuthz, "external_pull_only_dir.com", storev1.SyncService_ListSyncs_FullMethodName, true},
 		{externalPullOnlyAuthz, "external_pull_only_dir.com", storev1.SyncService_GetSync_FullMethodName, true},
-		{externalPullOnlyAuthz, "external_pull_only_dir.com", storev1.SyncService_DeleteSync_FullMethodName, true},
 		{externalPullOnlyAuthz, "external_pull_only_dir.com", storev1.SyncService_RequestRegistryCredentials_FullMethodName, true},
 		{externalPullOnlyAuthz, "external_pull_only_other.com", storev1.StoreService_Push_FullMethodName, false},
 		{externalPullOnlyAuthz, "external_pull_only_other.com", storev1.StoreService_Pull_FullMethodName, true},
@@ -104,7 +99,6 @@ func TestAuthorizer(t *testing.T) {
 		{externalPullOnlyAuthz, "external_pull_only_other.com", storev1.SyncService_CreateSync_FullMethodName, false},
 		{externalPullOnlyAuthz, "external_pull_only_other.com", storev1.SyncService_ListSyncs_FullMethodName, false},
 		{externalPullOnlyAuthz, "external_pull_only_other.com", storev1.SyncService_GetSync_FullMethodName, false},
-		{externalPullOnlyAuthz, "external_pull_only_other.com", storev1.SyncService_DeleteSync_FullMethodName, false},
 		{externalPullOnlyAuthz, "external_pull_only_other.com", storev1.SyncService_RequestRegistryCredentials_FullMethodName, false},
 	}
 

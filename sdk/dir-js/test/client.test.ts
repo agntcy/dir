@@ -447,7 +447,7 @@ describe('Client', () => {
               request: {
                 case: 'key',
                 value: {
-                  privateKey: Uint8Array.from([]),
+                  privateKey: "",
                   password: Uint8Array.from([]),
                 },
               },
@@ -505,13 +505,6 @@ describe('Client', () => {
       typeof models.store_v1.GetSyncResponseSchema,
     );
     expect(getResponse.syncId).toEqual(syncId);
-
-    // Delete sync
-    await client.delete_sync(
-      create(models.store_v1.DeleteSyncRequestSchema, {
-        syncId: syncId,
-      }),
-    );
   });
 
   test('listen', async () => {
