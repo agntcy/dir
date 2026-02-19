@@ -22,7 +22,7 @@ permissions:
   contents: read
 
 jobs:
-  demo-local:
+  demo:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
@@ -44,6 +44,7 @@ jobs:
         with:
           record_paths: e2e/shared/testdata/record_100.json
           server_addr: ${{ inputs.server_addr }}
+          github_token: ${{ secrets.DIRECTORY_MCP_BOT_PAT }}
 
       - name: Sign record (OIDC)
         uses: ./.github/actions/sign-record
@@ -51,9 +52,11 @@ jobs:
           cids: ${{ steps.push.outputs.cids }}
           oidc_client_id: https://github.com/${{ github.repository }}/.github/workflows/demo-dir.yaml@${{ github.ref }}
           server_addr: ${{ inputs.server_addr }}
+          github_token: ${{ secrets.DIRECTORY_MCP_BOT_PAT }}
 
       - name: Publish record
         uses: ./.github/actions/publish-record
         with:
           cids: ${{ steps.push.outputs.cids }}
           server_addr: ${{ inputs.server_addr }}
+          github_token: ${{ secrets.DIRECTORY_MCP_BOT_PAT }}
