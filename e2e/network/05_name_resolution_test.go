@@ -123,14 +123,7 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests for name resolution acr
 			gomega.Expect(equal).To(gomega.BeTrue())
 		})
 
-		ginkgo.It("should delete sync from peer 2", func() {
-			cli.Sync().Delete(syncID).OnServer(utils.Peer2Addr).ShouldSucceed()
-		})
-
-		ginkgo.It("should wait for delete to complete", func() {
-			output := cli.Sync().Status(syncID).OnServer(utils.Peer2Addr).ShouldEventuallyContain("DELETED", 120*time.Second)
-			ginkgo.GinkgoWriter.Printf("Current sync status: %s\n", output)
-
+		ginkgo.It("should cleanup network publications", func() {
 			// Cleanup
 			ginkgo.DeferCleanup(func() {
 				CleanupNetworkRecords(nameResolutionTestCIDs, "name resolution tests")

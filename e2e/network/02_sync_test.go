@@ -24,6 +24,7 @@ import (
 var _ = ginkgo.Describe("Running dirctl end-to-end tests for sync commands", func() {
 	var cli *utils.CLI
 	var syncID string
+	var deleteSyncID string
 	var privateKeyPath string
 	var tempKeyDir string
 
@@ -207,13 +208,18 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests for sync commands", fun
 
 		// Delete sync from peer 2
 		ginkgo.It("should delete sync from peer 2", func() {
-			cli.Sync().Delete(syncID).OnServer(utils.Peer2Addr).ShouldSucceed()
+			output := cli.Sync().Create(utils.Peer1InternalAddr).OnServer(utils.Peer2Addr).ShouldSucceed()
+
+			gomega.Expect(output).To(gomega.ContainSubstring("Sync created with ID: "))
+			deleteSyncID = strings.TrimPrefix(output, "Sync created with ID: ")
+
+			cli.Sync().Delete(deleteSyncID).OnServer(utils.Peer2Addr).ShouldSucceed()
 		})
 
 		// Wait for sync to complete
 		ginkgo.It("should wait for delete to complete", func() {
 			// Poll sync status until it changes from DELETE_PENDING to DELETED
-			output := cli.Sync().Status(syncID).OnServer(utils.Peer2Addr).ShouldEventuallyContain("DELETED", 120*time.Second)
+			output := cli.Sync().Status(deleteSyncID).OnServer(utils.Peer2Addr).ShouldEventuallyContain("DELETED", 120*time.Second)
 			ginkgo.GinkgoWriter.Printf("Current sync status: %s", output)
 		})
 
