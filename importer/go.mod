@@ -17,7 +17,7 @@ require (
 	github.com/agntcy/dir/api v1.0.0-rc.4
 	github.com/agntcy/dir/client v1.0.0-rc.4
 	github.com/agntcy/dir/utils v1.0.0-rc.4
-	github.com/agntcy/oasf-sdk/pkg v1.0.0
+	github.com/agntcy/oasf-sdk/pkg v1.0.1
 	github.com/mark3labs/mcphost v0.33.4
 	github.com/modelcontextprotocol/registry v1.4.1
 	google.golang.org/protobuf v1.36.11

@@ -37,7 +37,7 @@ require (
 	github.com/ThalesIgnite/crypto11 v1.2.5 // indirect
 	github.com/agntcy/dir/api v1.0.0-rc.4
 	github.com/agntcy/dir/utils v1.0.0-rc.4 // indirect
-	github.com/agntcy/oasf-sdk/pkg v1.0.0 // indirect
+	github.com/agntcy/oasf-sdk/pkg v1.0.1 // indirect
 	github.com/asaskevich/govalidator v0.0.0-20230301143203-a9d515a09cc2 // indirect
 	github.com/blang/semver v3.5.1+incompatible // indirect
 	github.com/cenkalti/backoff/v5 v5.0.3 // indirect

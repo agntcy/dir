@@ -17,7 +17,7 @@ require (
 	buf.build/gen/go/agntcy/oasf/protocolbuffers/go v1.36.11-20260211173955-845dfc1ebb08.1
 	github.com/agntcy/dir/api v1.0.0-rc.4
 	github.com/agntcy/dir/utils v1.0.0-rc.4
-	github.com/agntcy/oasf-sdk/pkg v1.0.0
+	github.com/agntcy/oasf-sdk/pkg v1.0.1
 	github.com/casbin/casbin/v2 v2.135.0
 	github.com/grpc-ecosystem/go-grpc-middleware/v2 v2.3.3
 	github.com/grpc-ecosystem/go-grpc-prometheus v1.2.0
