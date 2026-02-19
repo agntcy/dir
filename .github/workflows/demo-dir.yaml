@@ -50,6 +50,12 @@ jobs:
           DEPLOY_SETUP_IMPORT_IMAGES=false IMAGE_TAG=${{ inputs.image_version }} task deploy:local
           task deploy:local:port-forward
 
+      - name: Validate records
+        uses: ./.github/actions/validate-record
+        with:
+          record_paths: |
+            e2e/shared/testdata/*.json
+
       - name: Push records
         id: push
         uses: ./.github/actions/push-record
@@ -133,6 +139,12 @@ jobs:
           echo "Using network mode"
           DEPLOY_SETUP_IMPORT_IMAGES=false IMAGE_TAG=${{ inputs.image_version }} task deploy:network
           task deploy:network:port-forward
+
+      - name: Validate records
+        uses: ./.github/actions/validate-record
+        with:
+          record_paths: |
+            e2e/shared/testdata/*.json
 
       - name: Push record on Peer 1
         id: push
