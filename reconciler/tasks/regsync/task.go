@@ -64,14 +64,16 @@ func (t *Task) IsEnabled() bool {
 func (t *Task) Run(ctx context.Context) error {
 	logger.Debug("Running regsync reconciliation")
 
+	// Process pending sync deletions
+	// Remove before sync creations to ensure any syncs marked for deletion
+	// are processed first and not accidentally re-created
+	if err := t.processPendingDeletions(ctx); err != nil {
+		logger.Error("Failed to process pending sync deletions", "error", err)
+	}
+
 	// Process pending sync creations
 	if err := t.processPendingCreations(ctx); err != nil {
 		logger.Error("Failed to process pending sync creations", "error", err)
-	}
-
-	// Process pending sync deletions
-	if err := t.processPendingDeletions(ctx); err != nil {
-		logger.Error("Failed to process pending sync deletions", "error", err)
 	}
 
 	return nil
@@ -186,22 +188,6 @@ func (t *Task) processSyncDeletion(_ context.Context, syncObj types.SyncObject) 
 	syncID := syncObj.GetID()
 
 	logger.Info("Processing sync deletion", "sync_id", syncID)
-
-	// Update status to DELETE_PENDING before starting worker
-	if err := t.db.UpdateSyncStatus(syncID, storev1.SyncStatus_SYNC_STATUS_DELETE_PENDING); err != nil {
-		return fmt.Errorf("failed to update sync status to DELETE_PENDING: %w", err)
-	}
-
-	// Register as active to prevent duplicate processing
-	t.mu.Lock()
-	t.activeWorkers[syncID] = nil // Use nil worker for delete operations
-	t.mu.Unlock()
-
-	defer func() {
-		t.mu.Lock()
-		delete(t.activeWorkers, syncID)
-		t.mu.Unlock()
-	}()
 
 	// Soft delete the sync
 	if err := t.db.UpdateSyncStatus(syncID, storev1.SyncStatus_SYNC_STATUS_DELETED); err != nil {
