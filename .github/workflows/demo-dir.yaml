@@ -60,3 +60,17 @@ jobs:
           cids: ${{ steps.push.outputs.cids }}
           server_addr: ${{ inputs.server_addr }}
           github_token: ${{ secrets.DIRECTORY_MCP_BOT_PAT }}
+
+      - name: Search for record
+        env:
+          SERVER_ADDR: ${{ inputs.server_addr }}
+          GITHUB_TOKEN: ${{ secrets.DIRECTORY_MCP_BOT_PAT }}
+        run: dirctl search --name "burger_seller_agent" --server-addr="$SERVER_ADDR" --github-token="$GITHUB_TOKEN"
+
+      - name: Verify record
+        env:
+          SERVER_ADDR: ${{ inputs.server_addr }}
+          GITHUB_TOKEN: ${{ secrets.DIRECTORY_MCP_BOT_PAT }}
+        run: |
+          CID=$(echo '${{ steps.push.outputs.cids }}' | jq -r '.[]')
+          dirctl verify "$CID" --server-addr="$SERVER_ADDR" --github-token="$GITHUB_TOKEN"
