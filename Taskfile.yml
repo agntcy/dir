@@ -2141,18 +2141,36 @@ tasks:
     vars:
       HELM_ALL_CHART_PATHS:
         sh: find . -name Chart.yaml -exec dirname {} \;
-    # SOURCE_DATE_EPOCH makes Go's archive/tar use a fixed mtime so chart tgz hashes
-    # are reproducible across environments (CI vs local, different checkouts).
     env:
-      SOURCE_DATE_EPOCH: "0"
+      SOURCE_DATE_EPOCH: "0" # SOURCE_DATE_EPOCH is kept for any Helm code paths that honour it.
     cmds:
       # Add Helm repo
       - "{{ .HELM_BIN }} repo add project-zot http://zotregistry.dev/helm-charts"
       - "{{ .HELM_BIN }} repo add spiffe https://spiffe.github.io/helm-charts-hardened"
 
+      # Reproducible chart packaging requires two layers of normalization:
+      # 1. File timestamps: git does not preserve mtime, so every checkout gets
+      #    different values. We touch all chart source files to a fixed date before
+      #    packaging so tar entry headers are identical across machines.
+      # 2. Gzip envelope: the MTIME and OS header bytes vary per build; we patch
+      #    them to fixed values after packaging.
+
+      # Normalize chart source file timestamps for reproducible tar entries.
+      # TZ=UTC ensures the same Unix timestamp regardless of local timezone.
+      - for: { var: HELM_ALL_CHART_PATHS }
+        cmd: "find {{ .ITEM }} -exec env TZ=UTC touch -t 200001010000.00 {} +"
+
       # Update dependencies
       - for: { var: HELM_ALL_CHART_PATHS }
         cmd: "cd {{ .ITEM }} && {{ .HELM_BIN }} dependency update"
+
+      # Zero out gzip header MTIME (bytes 4-7) and set OS (byte 9) to 0xff
+      # so tgz hashes are identical regardless of build time or platform.
+      - |
+        find . -path '*/charts/*.tgz' -type f | while read -r tgz; do
+          printf '\x00\x00\x00\x00' | dd of="$tgz" bs=1 seek=4 count=4 conv=notrunc 2>/dev/null
+          printf '\xff' | dd of="$tgz" bs=1 seek=9 count=1 conv=notrunc 2>/dev/null
+        done
 
   ##
   ## GUI
