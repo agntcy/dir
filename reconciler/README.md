@@ -22,3 +22,12 @@ The regsync task handles synchronization from non-Zot registries. It:
 3. Generates a regsync configuration file for the sync operation
 4. Executes the `regsync once` command and waits for completion
 5. Updates the sync status to COMPLETED or FAILED based on the result
+
+### Indexer Task
+
+The indexer task monitors the local OCI registry and indexes records into the search database. It:
+
+1. Creates a snapshot of current registry tags (filtering to valid record CIDs)
+2. Compares with the previous snapshot to detect new tags
+3. For each new tag, pulls the record from the local store and validates it
+4. Adds the record to the search database to enable search and filtering
