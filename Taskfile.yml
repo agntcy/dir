@@ -2141,6 +2141,10 @@ tasks:
     vars:
       HELM_ALL_CHART_PATHS:
         sh: find . -name Chart.yaml -exec dirname {} \;
+    # SOURCE_DATE_EPOCH makes Go's archive/tar use a fixed mtime so chart tgz hashes
+    # are reproducible across environments (CI vs local, different checkouts).
+    env:
+      SOURCE_DATE_EPOCH: "0"
     cmds:
       # Add Helm repo
       - "{{ .HELM_BIN }} repo add project-zot http://zotregistry.dev/helm-charts"
