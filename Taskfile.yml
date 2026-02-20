@@ -35,7 +35,7 @@ vars:
   ## Dependency config
   BIN_DIR: "{{ .ROOT_DIR }}/bin"
   DIRCTL_BIN: "{{ .BIN_DIR}}/dirctl"
-  HELM_VERSION: "4.0.5"
+  HELM_VERSION: "4.1.1"
   HELM_BIN: "{{ .BIN_DIR }}/helm-{{.HELM_VERSION}}"
   KUBECTL_VERSION: "1.35.0"
   KUBECTL_BIN: "{{ .BIN_DIR }}/kubectl-{{.KUBECTL_VERSION}}"
