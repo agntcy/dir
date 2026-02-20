@@ -150,9 +150,18 @@ jobs:
 
       - name: Check auto-generated code
         run: |
+          sha1sum ./install/charts/dir/apiserver/charts/envoy-authz-0.1.0.tgz
           task gen
           if [[ -n "$(git status --porcelain)" ]]; then
             echo "There are uncommitted changes after running 'task gen'. Please commit these changes."
+            sha1sum ./install/charts/dir/apiserver/charts/envoy-authz-0.1.0.tgz
+
+            tar -xzf ./install/charts/dir/apiserver/charts/envoy-authz-0.1.0.tgz
+            cat ./envoy-authz/Chart.yaml
+            sha1sum ./envoy-authz/Chart.yaml
+
+            git status --porcelain
+            git diff
             exit 1
           fi
 
