@@ -128,7 +128,7 @@ func (d *DB) GetRecordsNeedingVerification(ttl time.Duration) ([]types.Record, e
 	expiredBefore := time.Now().Add(-ttl)
 
 	// Query records that:
-	// 1. Are signed (have public key attached)
+	// 1. Are signed (have a signature attached)
 	// 2. Have a verifiable name prefix (http://, https://)
 	// 3. Either don't have a verification OR have an expired verification
 	var records []Record

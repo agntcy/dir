@@ -267,9 +267,9 @@ func (s storeCtrl) pushReferrer(ctx context.Context, request *storev1.PushReferr
 		}
 	}
 
-	// If this is a public key referrer, mark the record as signed
-	// This enables the scheduler to find records that need name verification
-	if request.GetReferrer().GetType() == corev1.PublicKeyReferrerType {
+	// If this is a signature referrer, mark the record as signed
+	// This enables the name task to find records that need name verification
+	if request.GetReferrer().GetType() == corev1.SignatureReferrerType {
 		if err := s.db.SetRecordSigned(recordCID); err != nil {
 			// Log error but don't fail the push - the referrer was already stored
 			storeLogger.Warn("Failed to mark record as signed", "error", err, "cid", recordCID)

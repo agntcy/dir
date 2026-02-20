@@ -23,7 +23,7 @@ type Record struct {
 	SchemaVersion string   `gorm:"column:schema_version"`
 	OASFCreatedAt string   `gorm:"column:oasf_created_at"`
 	Authors       []string `gorm:"column:authors;serializer:json"` // Stored as JSON array
-	Signed        bool     `gorm:"column:signed;default:false"`    // Whether the record has been signed (has public key attached)
+	Signed        bool     `gorm:"column:signed;default:false"`    // Whether the record has a signature attached
 
 	Skills   []Skill   `gorm:"foreignKey:RecordCID;references:RecordCID;constraint:OnDelete:CASCADE"`
 	Locators []Locator `gorm:"foreignKey:RecordCID;references:RecordCID;constraint:OnDelete:CASCADE"`
@@ -431,7 +431,7 @@ func (d *DB) handleFilterOptions(query *gorm.DB, cfg *types.RecordFilters) *gorm
 }
 
 // SetRecordSigned marks a record as signed.
-// This is called when a public key is attached to a record.
+// This is called when a signature is attached to a record.
 func (d *DB) SetRecordSigned(recordCID string) error {
 	result := d.gormDB.Model(&Record{}).
 		Where("record_cid = ?", recordCID).
