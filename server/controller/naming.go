@@ -14,7 +14,6 @@ import (
 	namingv1 "github.com/agntcy/dir/api/naming/v1"
 	gormdb "github.com/agntcy/dir/server/database/gorm"
 	"github.com/agntcy/dir/server/naming"
-	reverificationconfig "github.com/agntcy/dir/server/reverification/config"
 	"github.com/agntcy/dir/server/types"
 	"github.com/agntcy/dir/server/types/adapters"
 	"github.com/agntcy/dir/utils/logging"
@@ -49,7 +48,7 @@ func NewNamingController(store types.StoreAPI, db types.DatabaseAPI, provider *n
 		store:    store,
 		db:       db,
 		provider: provider,
-		ttl:      reverificationconfig.DefaultTTL,
+		ttl:      naming.DefaultTTL,
 	}
 
 	for _, opt := range opts {

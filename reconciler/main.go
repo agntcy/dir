@@ -18,8 +18,11 @@ import (
 	"github.com/agntcy/dir/reconciler/config"
 	"github.com/agntcy/dir/reconciler/service"
 	"github.com/agntcy/dir/reconciler/tasks/indexer"
+	"github.com/agntcy/dir/reconciler/tasks/name"
 	"github.com/agntcy/dir/reconciler/tasks/regsync"
 	"github.com/agntcy/dir/server/database"
+	namingprovider "github.com/agntcy/dir/server/naming"
+	"github.com/agntcy/dir/server/naming/wellknown"
 	"github.com/agntcy/dir/server/store/oci"
 	"github.com/agntcy/dir/utils/logging"
 )
@@ -41,7 +44,7 @@ func main() {
 	}
 }
 
-//nolint:wrapcheck
+//nolint:wrapcheck,cyclop
 func run() error {
 	logger.Info("Starting reconciler service")
 
@@ -101,6 +104,19 @@ func run() error {
 		}
 
 		svc.RegisterTask(indexerTask)
+	}
+
+	if cfg.Name.Enabled {
+		namingProvider := namingprovider.NewProvider(
+			namingprovider.WithWellKnownLookup(wellknown.NewFetcher()),
+		)
+
+		nameTask, err := name.NewTask(cfg.Name, db, store, namingProvider)
+		if err != nil {
+			return err
+		}
+
+		svc.RegisterTask(nameTask)
 	}
 
 	// Create context that listens for signals

@@ -31,3 +31,12 @@ The indexer task monitors the local OCI registry and indexes records into the se
 2. Compares with the previous snapshot to detect new tags
 3. For each new tag, pulls the record from the local store and validates it
 4. Adds the record to the search database to enable search and filtering
+
+### Name Task
+
+The name task re-verifies DNS/name ownership of named records and caches results. It:
+
+1. Queries the database for signed records with verifiable names that need verification (missing or expired)
+2. For each record, retrieves the record name and public keys attached to the record
+3. Verifies name ownership (e.g. via well-known JWKS at the record’s domain)
+4. Stores the verification result (verified or failed) in the database for efficient API filtering

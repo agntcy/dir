@@ -13,8 +13,8 @@ import (
 	authz "github.com/agntcy/dir/server/authz/config"
 	dbconfig "github.com/agntcy/dir/server/database/config"
 	ratelimitconfig "github.com/agntcy/dir/server/middleware/ratelimit/config"
+	"github.com/agntcy/dir/server/naming"
 	publication "github.com/agntcy/dir/server/publication/config"
-	reverification "github.com/agntcy/dir/server/reverification/config"
 	routing "github.com/agntcy/dir/server/routing/config"
 	store "github.com/agntcy/dir/server/store/config"
 	oci "github.com/agntcy/dir/server/store/oci/config"
@@ -126,11 +126,8 @@ func TestConfig(t *testing.T) {
 					Enabled: true,
 					Address: ":9090",
 				},
-				Reverification: reverification.Config{
-					SchedulerInterval: reverification.DefaultSchedulerInterval,
-					WorkerCount:       reverification.DefaultWorkerCount,
-					WorkerTimeout:     reverification.DefaultWorkerTimeout,
-					TTL:               reverification.DefaultTTL,
+				Naming: naming.Config{
+					TTL: naming.DefaultTTL,
 				},
 			},
 		},
@@ -193,11 +190,8 @@ func TestConfig(t *testing.T) {
 					Enabled: DefaultMetricsEnabled,
 					Address: DefaultMetricsAddress,
 				},
-				Reverification: reverification.Config{
-					SchedulerInterval: reverification.DefaultSchedulerInterval,
-					WorkerCount:       reverification.DefaultWorkerCount,
-					WorkerTimeout:     reverification.DefaultWorkerTimeout,
-					TTL:               reverification.DefaultTTL,
+				Naming: naming.Config{
+					TTL: naming.DefaultTTL,
 				},
 			},
 		},

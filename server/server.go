@@ -34,7 +34,6 @@ import (
 	"github.com/agntcy/dir/server/naming"
 	"github.com/agntcy/dir/server/naming/wellknown"
 	"github.com/agntcy/dir/server/publication"
-	"github.com/agntcy/dir/server/reverification"
 	"github.com/agntcy/dir/server/routing"
 	"github.com/agntcy/dir/server/store"
 	"github.com/agntcy/dir/server/types"
@@ -55,18 +54,17 @@ var (
 )
 
 type Server struct {
-	options               types.APIOptions
-	store                 types.StoreAPI
-	routing               types.RoutingAPI
-	database              types.DatabaseAPI
-	eventService          *events.Service
-	authnService          *authn.Service
-	authzService          *authz.Service
-	publicationService    *publication.Service
-	reverificationService *reverification.Service
-	health                *healthcheck.Checker
-	grpcServer            *grpc.Server
-	metricsServer         *metrics.Server
+	options            types.APIOptions
+	store              types.StoreAPI
+	routing            types.RoutingAPI
+	database           types.DatabaseAPI
+	eventService       *events.Service
+	authnService       *authn.Service
+	authzService       *authz.Service
+	publicationService *publication.Service
+	health             *healthcheck.Checker
+	grpcServer         *grpc.Server
+	metricsServer      *metrics.Server
 }
 
 // buildConnectionOptions creates gRPC server options for connection management.
@@ -276,14 +274,6 @@ func New(ctx context.Context, cfg *config.Config) (*Server, error) {
 		naming.WithWellKnownLookup(wellKnownFetcher),
 	)
 
-	// Create reverification service
-	reverificationService := reverification.New(
-		databaseAPI,
-		storeAPI,
-		namingProvider,
-		options.Config().Reverification,
-	)
-
 	// Register APIs
 	eventsv1.RegisterEventServiceServer(grpcServer, controller.NewEventsController(eventService))
 	storev1.RegisterStoreServiceServer(grpcServer, controller.NewStoreController(storeAPI, databaseAPI, options.EventBus()))
@@ -296,7 +286,7 @@ func New(ctx context.Context, cfg *config.Config) (*Server, error) {
 		storeAPI,
 		databaseAPI,
 		namingProvider,
-		controller.WithVerificationTTL(options.Config().Reverification.GetTTL()),
+		controller.WithVerificationTTL(options.Config().Naming.GetTTL()),
 	))
 
 	// Register health service
@@ -313,18 +303,17 @@ func New(ctx context.Context, cfg *config.Config) (*Server, error) {
 	}
 
 	return &Server{
-		options:               options,
-		store:                 storeAPI,
-		routing:               routingAPI,
-		database:              databaseAPI,
-		eventService:          eventService,
-		authnService:          authnService,
-		authzService:          authzService,
-		publicationService:    publicationService,
-		reverificationService: reverificationService,
-		health:                healthChecker,
-		grpcServer:            grpcServer,
-		metricsServer:         metricsServer,
+		options:            options,
+		store:              storeAPI,
+		routing:            routingAPI,
+		database:           databaseAPI,
+		eventService:       eventService,
+		authnService:       authnService,
+		authzService:       authzService,
+		publicationService: publicationService,
+		health:             healthChecker,
+		grpcServer:         grpcServer,
+		metricsServer:      metricsServer,
 	}, nil
 }
 
@@ -396,13 +385,6 @@ func (s Server) Close(ctx context.Context) {
 		}
 	}
 
-	// Stop reverification service if running
-	if s.reverificationService != nil {
-		if err := s.reverificationService.Stop(); err != nil {
-			logger.Error("Failed to stop reverification service", "error", err)
-		}
-	}
-
 	s.grpcServer.GracefulStop()
 }
 
@@ -423,15 +405,6 @@ func (s Server) start(ctx context.Context) error {
 		}
 
 		logger.Info("Publication service started")
-	}
-
-	// Start reverification service
-	if s.reverificationService != nil {
-		if err := s.reverificationService.Start(ctx); err != nil {
-			return fmt.Errorf("failed to start reverification service: %w", err)
-		}
-
-		logger.Info("Reverification service started")
 	}
 
 	// Create a listener on TCP port

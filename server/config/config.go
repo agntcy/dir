@@ -14,8 +14,8 @@ import (
 	dbconfig "github.com/agntcy/dir/server/database/config"
 	events "github.com/agntcy/dir/server/events/config"
 	ratelimitconfig "github.com/agntcy/dir/server/middleware/ratelimit/config"
+	"github.com/agntcy/dir/server/naming"
 	publication "github.com/agntcy/dir/server/publication/config"
-	reverification "github.com/agntcy/dir/server/reverification/config"
 	routing "github.com/agntcy/dir/server/routing/config"
 	store "github.com/agntcy/dir/server/store/config"
 	oci "github.com/agntcy/dir/server/store/oci/config"
@@ -150,8 +150,8 @@ type Config struct {
 	// Metrics configuration
 	Metrics MetricsConfig `json:"metrics" mapstructure:"metrics"`
 
-	// Reverification configuration
-	Reverification reverification.Config `json:"reverification,omitzero" mapstructure:"reverification"`
+	// Naming holds name verification cache config (TTL for naming API; reconciler name task performs re-verification).
+	Naming naming.Config `json:"naming,omitzero" mapstructure:"naming"`
 }
 
 type SyncConfig struct {
@@ -506,19 +506,10 @@ func LoadConfig() (*Config, error) {
 	v.SetDefault("metrics.address", DefaultMetricsAddress)
 
 	//
-	// Reverification configuration
+	// Naming (name verification cache TTL for API responses; re-verification is done by the reconciler name task)
 	//
-	_ = v.BindEnv("reverification.scheduler_interval")
-	v.SetDefault("reverification.scheduler_interval", reverification.DefaultSchedulerInterval)
-
-	_ = v.BindEnv("reverification.worker_count")
-	v.SetDefault("reverification.worker_count", reverification.DefaultWorkerCount)
-
-	_ = v.BindEnv("reverification.worker_timeout")
-	v.SetDefault("reverification.worker_timeout", reverification.DefaultWorkerTimeout)
-
-	_ = v.BindEnv("reverification.ttl")
-	v.SetDefault("reverification.ttl", reverification.DefaultTTL)
+	_ = v.BindEnv("naming.ttl")
+	v.SetDefault("naming.ttl", naming.DefaultTTL)
 
 	//
 	// Connection management configuration
