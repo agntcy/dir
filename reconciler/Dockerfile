@@ -74,3 +74,23 @@ RUN mkdir -p /etc/agntcy/reconciler /etc/regsync && \
 USER 65532:65532
 
 ENTRYPOINT ["./reconciler"]
+
+# Coverage image - includes tar for kubectl cp to work
+FROM alpine:3.21@sha256:21dc6063fd678b478f57c0e13f47560d0ea4eeba26dfc947b2a4f81f686b9f45 AS coverage
+
+RUN apk add --no-cache tar
+
+WORKDIR /
+
+COPY --from=builder /bin/reconciler ./reconciler
+COPY --from=builder /bin/regsync /usr/local/bin/regsync
+
+# Create a non-root user for coverage
+RUN addgroup -g 65532 -S nonroot && adduser -u 65532 -S nonroot -G nonroot
+
+# Create coverage directory with proper permissions
+RUN mkdir -p /tmp/coverage && chown -R 65532:65532 /tmp/coverage
+
+USER 65532:65532
+
+ENTRYPOINT ["./reconciler"]
