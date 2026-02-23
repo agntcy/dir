@@ -51,6 +51,7 @@ Usage examples:
 `,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		var path string
+
 		if len(args) > 1 {
 			return errors.New("only one file path is allowed")
 		} else if len(args) == 1 {

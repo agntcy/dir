@@ -7,6 +7,7 @@ import (
 	"context"
 	"errors"
 	"io"
+	"strconv"
 	"testing"
 
 	grpc_recovery "github.com/grpc-ecosystem/go-grpc-middleware/v2/interceptors/recovery"
@@ -214,7 +215,7 @@ func TestMultiplePanics(t *testing.T) {
 	// Test multiple panics in sequence
 	for i := range 3 {
 		handler := func(ctx context.Context, req any) (any, error) {
-			panic("panic number " + string(rune(i)))
+			panic("panic number " + strconv.Itoa(i))
 		}
 
 		resp, err := interceptor(context.Background(), nil, info, handler)

@@ -76,7 +76,7 @@ func setupIntegrationStore(t *testing.T) types.StoreAPI {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, "http://"+integrationRegistryAddress+"/v2/", nil)
 	require.NoError(t, err, "Failed to create registry health check request")
 
-	resp, err := client.Do(req)
+	resp, err := client.Do(req) //nolint:gosec
 	if err != nil {
 		t.Skip("Zot registry not available at localhost:5555. Start with manual docker command or task server:store:start")
 	}
@@ -103,7 +103,7 @@ func getRegistryTags(ctx context.Context, t *testing.T) []string {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	require.NoError(t, err, "Failed to create tags request")
 
-	resp, err := client.Do(req)
+	resp, err := client.Do(req) //nolint:gosec
 	require.NoError(t, err, "Failed to fetch tags from registry")
 
 	defer resp.Body.Close()
@@ -136,7 +136,7 @@ func getManifest(ctx context.Context, t *testing.T, tag string) map[string]any {
 	require.NoError(t, err, "Failed to create manifest request")
 	req.Header.Set("Accept", "application/vnd.oci.image.manifest.v1+json")
 
-	resp, err := client.Do(req)
+	resp, err := client.Do(req) //nolint:gosec
 	require.NoError(t, err, "Failed to fetch manifest from registry")
 
 	defer resp.Body.Close()

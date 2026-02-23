@@ -35,7 +35,7 @@ const (
 // CachedToken represents a cached authentication token from any provider.
 type CachedToken struct {
 	// AccessToken is the authentication token.
-	AccessToken string `json:"access_token"`
+	AccessToken string `json:"access_token"` //nolint:gosec // G117: intentional field - for cached token
 
 	// TokenType is the token type (usually "bearer").
 	TokenType string `json:"token_type,omitempty"`

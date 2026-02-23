@@ -89,6 +89,7 @@ Usage examples:
 `,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		var recordRef string
+
 		if len(args) > 1 {
 			return errors.New("one argument is allowed")
 		} else if len(args) == 1 {

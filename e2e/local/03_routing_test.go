@@ -16,14 +16,17 @@ import (
 )
 
 var _ = ginkgo.Describe("Running dirctl routing commands in local single node deployment", ginkgo.Ordered, func() {
-	var cli *utils.CLI
-	var cid string
+	var (
+		cli *utils.CLI
+		cid string
+	)
 
 	// Setup temp record file
 	tempDir := os.Getenv("E2E_COMPILE_OUTPUT_DIR")
 	if tempDir == "" {
 		tempDir = os.TempDir()
 	}
+
 	tempPath := filepath.Join(tempDir, "record_v3_local_routing_test.json")
 
 	// Create directory and write record data

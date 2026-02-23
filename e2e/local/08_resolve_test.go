@@ -23,6 +23,7 @@ var _ = ginkgo.Describe("Name resolution - pull by name", func() {
 		}
 
 		utils.ResetCLIState()
+
 		cli = utils.NewCLI()
 	})
 
@@ -38,6 +39,7 @@ var _ = ginkgo.Describe("Name resolution - pull by name", func() {
 
 		ginkgo.BeforeAll(func() {
 			var err error
+
 			tempDir, err = os.MkdirTemp("", "resolve-test")
 			gomega.Expect(err).NotTo(gomega.HaveOccurred())
 
@@ -131,6 +133,7 @@ var _ = ginkgo.Describe("Name resolution - pull by name", func() {
 
 		ginkgo.BeforeAll(func() {
 			var err error
+
 			tempDir, err = os.MkdirTemp("", "version-resolve-test")
 			gomega.Expect(err).NotTo(gomega.HaveOccurred())
 
@@ -138,6 +141,7 @@ var _ = ginkgo.Describe("Name resolution - pull by name", func() {
 			recordV4Path := filepath.Join(tempDir, "record_v4.json")
 			err = os.WriteFile(recordV4Path, testdata.ExpectedRecordV080V4JSON, 0o600)
 			gomega.Expect(err).NotTo(gomega.HaveOccurred())
+
 			cidV4 = cli.Push(recordV4Path).WithArgs("--output", "raw").ShouldSucceed()
 			gomega.Expect(cidV4).NotTo(gomega.BeEmpty())
 
@@ -145,6 +149,7 @@ var _ = ginkgo.Describe("Name resolution - pull by name", func() {
 			recordV5Path := filepath.Join(tempDir, "record_v5.json")
 			err = os.WriteFile(recordV5Path, testdata.ExpectedRecordV080V5JSON, 0o600)
 			gomega.Expect(err).NotTo(gomega.HaveOccurred())
+
 			cidV5 = cli.Push(recordV5Path).WithArgs("--output", "raw").ShouldSucceed()
 			gomega.Expect(cidV5).NotTo(gomega.BeEmpty())
 
@@ -240,6 +245,7 @@ var _ = ginkgo.Describe("Name resolution - pull by name", func() {
 
 		ginkgo.BeforeAll(func() {
 			var err error
+
 			tempDir, err = os.MkdirTemp("", "info-resolve-test")
 			gomega.Expect(err).NotTo(gomega.HaveOccurred())
 

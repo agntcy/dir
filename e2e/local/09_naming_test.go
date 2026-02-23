@@ -68,6 +68,7 @@ var _ = ginkgo.Describe("Running dirctl e2e tests for DNS name verification", fu
 		}
 
 		utils.ResetCLIState()
+
 		cli = utils.NewCLI()
 	})
 

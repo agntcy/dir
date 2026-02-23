@@ -77,6 +77,8 @@ func (c Config) GetRepositoryURL() string {
 }
 
 // AuthConfig represents the configuration for authentication.
+//
+//nolint:gosec // G117: intentional config field for OCI auth
 type AuthConfig struct {
 	Insecure bool `json:"insecure" mapstructure:"insecure"`
 

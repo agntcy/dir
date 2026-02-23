@@ -60,14 +60,17 @@ var _ = ginkgo.Describe("Running client end-to-end tests using a local single no
 		}
 	})
 
-	var c *client.Client
-	var ctx context.Context
+	var (
+		c   *client.Client
+		ctx context.Context
+	)
 
 	ginkgo.BeforeAll(func() {
 		ctx = context.Background()
 
 		// Create a new client
 		var err error
+
 		c, err = client.New(ctx, client.WithEnvConfig())
 		gomega.Expect(err).NotTo(gomega.HaveOccurred())
 	})
@@ -124,12 +127,16 @@ var _ = ginkgo.Describe("Running client end-to-end tests using a local single no
 	for _, v := range testVersions {
 		version := v // Capture loop variable by value to avoid closure issues
 		ginkgo.Context(version.name, ginkgo.Ordered, ginkgo.Serial, func() {
-			var record *corev1.Record
-			var canonicalData []byte
+			var (
+				record        *corev1.Record
+				canonicalData []byte
+			)
+
 			var recordRef *corev1.RecordRef // Shared across the business flow
 
 			// Load the record once per version context (inline initialization)
 			var err error
+
 			record, err = corev1.UnmarshalRecord(version.jsonData)
 			gomega.Expect(err).NotTo(gomega.HaveOccurred())
 
@@ -140,6 +147,7 @@ var _ = ginkgo.Describe("Running client end-to-end tests using a local single no
 			// Step 1: Push
 			ginkgo.It("should push a record to store", func() {
 				var err error
+
 				recordRef, err = c.Push(ctx, record)
 				gomega.Expect(err).NotTo(gomega.HaveOccurred())
 
@@ -195,6 +203,7 @@ var _ = ginkgo.Describe("Running client end-to-end tests using a local single no
 
 				// Validate the response.
 				gomega.Expect(items).To(gomega.HaveLen(1))
+
 				for _, item := range items {
 					gomega.Expect(item).NotTo(gomega.BeNil())
 					gomega.Expect(item.GetRecordRef().GetCid()).To(gomega.Equal(recordRef.GetCid()))
@@ -216,6 +225,7 @@ var _ = ginkgo.Describe("Running client end-to-end tests using a local single no
 
 				// Validate the response.
 				gomega.Expect(items).To(gomega.HaveLen(1))
+
 				for _, item := range items {
 					gomega.Expect(item).NotTo(gomega.BeNil())
 					gomega.Expect(item.GetRecordRef().GetCid()).To(gomega.Equal(recordRef.GetCid()))

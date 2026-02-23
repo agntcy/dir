@@ -64,7 +64,7 @@ type DeviceCodeResponse struct {
 
 // DeviceTokenResponse is the response from GitHub's token endpoint during polling.
 type DeviceTokenResponse struct {
-	AccessToken      string `json:"access_token"`
+	AccessToken      string `json:"access_token"` //nolint:gosec // G117: intentional field for OAuth token
 	TokenType        string `json:"token_type"`
 	Scope            string `json:"scope"`
 	Error            string `json:"error,omitempty"`
@@ -74,7 +74,7 @@ type DeviceTokenResponse struct {
 
 // DeviceFlowResult contains the successful device flow result.
 type DeviceFlowResult struct {
-	AccessToken string
+	AccessToken string //nolint:gosec // G117: intentional field for OAuth token
 	TokenType   string
 	Scope       string
 	ExpiresAt   time.Time // Calculated expiry (GitHub doesn't provide expires_in for device flow)
@@ -147,7 +147,7 @@ func requestDeviceCode(ctx context.Context, config *DeviceFlowConfig) (*DeviceCo
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	req.Header.Set("Accept", "application/json")
 
-	resp, err := defaultHTTPClient.Do(req)
+	resp, err := defaultHTTPClient.Do(req) //nolint:gosec // G704: request URL is from configured base URL (githubDeviceCodeURL); caller must use a trusted endpoint
 	if err != nil {
 		return nil, fmt.Errorf("request failed: %w", err)
 	}
@@ -270,7 +270,7 @@ func checkDeviceToken(ctx context.Context, clientID, deviceCode string) (*Device
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	req.Header.Set("Accept", "application/json")
 
-	resp, err := defaultHTTPClient.Do(req)
+	resp, err := defaultHTTPClient.Do(req) //nolint:gosec // G704: request URL is from configured base URL (githubDeviceTokenURL); caller must use a trusted endpoint
 	if err != nil {
 		return nil, fmt.Errorf("request failed: %w", err)
 	}

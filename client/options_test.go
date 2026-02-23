@@ -539,6 +539,7 @@ func TestSetupAutoDetectAuth(t *testing.T) {
 		assert.NotEmpty(t, opts.authOpts)
 	})
 
+	//nolint:gosec // G101: intentional test token
 	t.Run("should auto-detect token from config", func(t *testing.T) {
 		opts := &options{
 			config: &Config{

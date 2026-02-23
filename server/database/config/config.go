@@ -36,6 +36,7 @@ type PostgresConfig struct {
 	Username string `json:"username,omitempty" mapstructure:"username"`
 
 	// Password is the database password.
+	//nolint:gosec // G117: intentional config field for database auth
 	Password string `json:"password,omitempty" mapstructure:"password"`
 
 	// SSLMode indicates the SSL mode for the connection.

@@ -74,7 +74,9 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests to check signature supp
 		// Setup: Create temporary directory and files for the entire workflow
 		ginkgo.BeforeAll(func() {
 			var err error
+
 			paths = setupSignTestPaths()
+
 			gomega.Expect(err).NotTo(gomega.HaveOccurred())
 
 			// Write test record to temp location
@@ -136,6 +138,7 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests to check signature supp
 			gomega.Expect(err).NotTo(gomega.HaveOccurred())
 
 			var verifyResponse signv1.VerifyResponse
+
 			err = protojson.Unmarshal(verifyData, &verifyResponse)
 			gomega.Expect(err).NotTo(gomega.HaveOccurred())
 

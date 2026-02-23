@@ -37,8 +37,10 @@ Usage examples:
    dirctl pull <cid> --output json | dirctl validate --url https://schema.oasf.outshift.com
 `,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		var jsonData []byte
-		var err error
+		var (
+			jsonData []byte
+			err      error
+		)
 
 		if len(args) > 1 {
 			return errors.New("only one file path is allowed")
@@ -101,16 +103,16 @@ func outputValidationSuccess(cmd *cobra.Command, record *corev1.Record, warnings
 	// Build the complete message with all validation messages
 	var msg strings.Builder
 	if schemaVersion != "" {
-		msg.WriteString(fmt.Sprintf("Record is valid (schema version: %s)", schemaVersion))
+		fmt.Fprintf(&msg, "Record is valid (schema version: %s)", schemaVersion)
 	} else {
 		msg.WriteString("Record is valid")
 	}
 
 	if len(warnings) > 0 {
-		msg.WriteString(fmt.Sprintf(" with %d warning(s):\n", len(warnings)))
+		fmt.Fprintf(&msg, " with %d warning(s):\n", len(warnings))
 
 		for i, warning := range warnings {
-			msg.WriteString(fmt.Sprintf("  %d. %s\n", i+1, warning))
+			fmt.Fprintf(&msg, "  %d. %s\n", i+1, warning)
 		}
 	}
 
@@ -126,13 +128,13 @@ func outputValidationErrors(_ *cobra.Command, record *corev1.Record, validationE
 		// Build the complete error message with all validation messages
 		var errorMsg strings.Builder
 		if schemaVersion != "" {
-			errorMsg.WriteString(fmt.Sprintf("record validation failed (schema version: %s) with %d message(s):\n", schemaVersion, len(validationErrors)))
+			fmt.Fprintf(&errorMsg, "record validation failed (schema version: %s) with %d message(s):\n", schemaVersion, len(validationErrors))
 		} else {
-			errorMsg.WriteString(fmt.Sprintf("record validation failed with %d message(s):\n", len(validationErrors)))
+			fmt.Fprintf(&errorMsg, "record validation failed with %d message(s):\n", len(validationErrors))
 		}
 
 		for i, msg := range validationErrors {
-			errorMsg.WriteString(fmt.Sprintf("  %d. %s\n", i+1, msg))
+			fmt.Fprintf(&errorMsg, "  %d. %s\n", i+1, msg)
 		}
 
 		return errors.New(errorMsg.String())

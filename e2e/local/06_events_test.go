@@ -37,6 +37,7 @@ var _ = ginkgo.Describe("Events CLI Commands", ginkgo.Serial, ginkgo.Label("even
 		}
 
 		utils.ResetCLIState()
+
 		cli = utils.NewCLI()
 	})
 
@@ -104,7 +105,6 @@ var _ = ginkgo.Describe("Events CLI Commands", ginkgo.Serial, ginkgo.Label("even
 		ginkgo.It("should emit events during push operations", func() {
 			// Push operation emits RECORD_PUSHED event
 			// Full streaming reception tested in e2e/client/02_events_test.go
-
 			recordFile := filepath.Join(tempDir, "events_push_test.json")
 			_ = os.WriteFile(recordFile, testdata.ExpectedRecordV070JSON, 0o600)
 
@@ -116,7 +116,6 @@ var _ = ginkgo.Describe("Events CLI Commands", ginkgo.Serial, ginkgo.Label("even
 			// Publish operation emits RECORD_PUBLISHED event
 			// Use V070 to get a different CID
 			// Full streaming reception tested in e2e/client/02_events_test.go
-
 			recordFile := filepath.Join(tempDir, "events_publish_test.json")
 			_ = os.WriteFile(recordFile, testdata.ExpectedRecordV070JSON, 0o600)
 
@@ -129,7 +128,6 @@ var _ = ginkgo.Describe("Events CLI Commands", ginkgo.Serial, ginkgo.Label("even
 			// Delete the record from the first test (different from publish test)
 			// Delete operation emits RECORD_DELETED event
 			// Full streaming reception tested in e2e/client/02_events_test.go
-
 			cli.Delete(pushCID).ShouldSucceed()
 
 			// Verify delete worked

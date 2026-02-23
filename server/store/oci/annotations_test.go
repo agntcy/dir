@@ -11,11 +11,9 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func stringPtr(s string) *string {
-	return &s
-}
-
 func TestExtractManifestAnnotations(t *testing.T) {
+	previousCid := "QmPreviousCID123"
+
 	// NOTE: This test covers annotation extraction for different OASF versions
 	tests := []struct {
 		name     string
@@ -71,7 +69,7 @@ func TestExtractManifestAnnotations(t *testing.T) {
 				Name:              "test-record-v2",
 				Version:           "2.0.0",
 				SchemaVersion:     "0.7.0",
-				PreviousRecordCid: stringPtr("QmPreviousCID123"),
+				PreviousRecordCid: &previousCid,
 			}),
 			contains: map[string]string{
 				ManifestKeyOASFVersion: "0.7.0",

@@ -21,14 +21,17 @@ import (
 // CIDs are now tracked in network_suite_test.go
 
 var _ = ginkgo.Describe("Running dirctl end-to-end tests using a network multi peer deployment", ginkgo.Ordered, func() {
-	var cli *utils.CLI
-	var cid string
+	var (
+		cli *utils.CLI
+		cid string
+	)
 
 	// Setup temp record file
 	tempDir := os.Getenv("E2E_COMPILE_OUTPUT_DIR")
 	if tempDir == "" {
 		tempDir = os.TempDir()
 	}
+
 	tempPath := filepath.Join(tempDir, "record_070_network_test.json")
 
 	// Create directory and write record data

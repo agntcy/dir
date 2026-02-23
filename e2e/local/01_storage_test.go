@@ -123,6 +123,7 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests using a local single no
 				if version.shouldFailPush {
 					ginkgo.Skip("Skipping pull test - push failed validation")
 				}
+
 				cli.Pull(cid).ShouldSucceed()
 			})
 
@@ -148,6 +149,7 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests using a local single no
 				if version.shouldFailPush {
 					ginkgo.Skip("Skipping duplicate push test - push failed validation")
 				}
+
 				cli.Push(tempPath).WithArgs("--output", "raw").ShouldReturn(cid)
 			})
 
@@ -170,6 +172,7 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests using a local single no
 				if version.expectedLocator != "" {
 					search = search.WithLocator(version.expectedLocator)
 				}
+
 				if version.expectedModule != "" {
 					search = search.WithModule(version.expectedModule)
 				}
@@ -200,6 +203,7 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests using a local single no
 				if version.expectedLocator != "" {
 					search = search.WithLocator(version.expectedLocator)
 				}
+
 				if version.expectedModule != "" {
 					search = search.WithModule(version.expectedModule)
 				}
@@ -217,6 +221,7 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests using a local single no
 				if version.shouldFailPush {
 					ginkgo.Skip("Skipping delete test - push failed validation")
 				}
+
 				cli.Delete(cid).ShouldSucceed()
 			})
 

@@ -57,14 +57,17 @@ var _ = ginkgo.Describe("Rate Limiting E2E Tests", ginkgo.Label("ratelimit"), gi
 		}
 	})
 
-	var c *client.Client
-	var ctx context.Context
+	var (
+		c   *client.Client
+		ctx context.Context
+	)
 
 	ginkgo.BeforeAll(func() {
 		ctx = context.Background()
 
 		// Create a new client
 		var err error
+
 		c, err = client.New(ctx, client.WithEnvConfig())
 		gomega.Expect(err).NotTo(gomega.HaveOccurred())
 	})
@@ -79,7 +82,6 @@ var _ = ginkgo.Describe("Rate Limiting E2E Tests", ginkgo.Label("ratelimit"), gi
 		ginkgo.It("should allow requests within rate limit", func() {
 			// Push multiple records within the rate limit
 			// Test expects: Global RPS=100, Burst=200 (default from Taskfile)
-
 			record, err := corev1.UnmarshalRecord(testdata.ExpectedRecordV070JSON)
 			gomega.Expect(err).NotTo(gomega.HaveOccurred())
 
@@ -103,17 +105,20 @@ var _ = ginkgo.Describe("Rate Limiting E2E Tests", ginkgo.Label("ratelimit"), gi
 			// This test attempts to exceed the rate limit by making rapid sequential requests
 			// Test expects: Global RPS=100, Burst=200 (default from Taskfile)
 			// With burst=200, first 200 requests succeed immediately, then rate limiting kicks in
-
 			record, err := corev1.UnmarshalRecord(testdata.ExpectedRecordV070JSON)
 			gomega.Expect(err).NotTo(gomega.HaveOccurred())
 
 			// Make more requests than burst capacity to ensure we hit rate limiting
 			// With burst=200, we need >200 rapid requests to trigger rate limiting
-			var successCount int
-			var rateLimitErrorCount int
+			var (
+				successCount        int
+				rateLimitErrorCount int
+			)
+
 			const totalRequests = 250 // Increased from 200 to exceed burst capacity
 
 			ginkgo.By("Making rapid sequential requests to exceed rate limit")
+
 			for i := range totalRequests {
 				ref, pushErr := c.Push(ctx, record)
 				if pushErr == nil {
@@ -122,6 +127,7 @@ var _ = ginkgo.Describe("Rate Limiting E2E Tests", ginkgo.Label("ratelimit"), gi
 					_ = c.Delete(ctx, ref)
 				} else if isRateLimitError(pushErr) {
 					rateLimitErrorCount++
+
 					ginkgo.GinkgoWriter.Printf("Rate limit error on request %d: %v\n", i+1, pushErr)
 				} else {
 					// Unexpected error
@@ -149,15 +155,16 @@ var _ = ginkgo.Describe("Rate Limiting E2E Tests", ginkgo.Label("ratelimit"), gi
 			// Test burst capacity by making quick successive requests
 			// Test expects: Global RPS=100, Burst=200 (default from Taskfile)
 			// Small bursts (<<200) should always succeed without rate limiting
-
 			record, err := corev1.UnmarshalRecord(testdata.ExpectedRecordV070JSON)
 			gomega.Expect(err).NotTo(gomega.HaveOccurred())
 
 			// Make a burst of requests well within burst capacity (10 << 200)
 			const burstSize = 10
+
 			successCount := 0
 
 			ginkgo.By("Making burst of requests")
+
 			for range burstSize {
 				ref, pushErr := c.Push(ctx, record)
 				if pushErr == nil {
@@ -181,12 +188,12 @@ var _ = ginkgo.Describe("Rate Limiting E2E Tests", ginkgo.Label("ratelimit"), gi
 		ginkgo.It("should apply global rate limiting to all clients", func() {
 			// This test verifies that global rate limits are applied
 			// Note: Without authentication, all clients share the global rate limiter
-
 			record, err := corev1.UnmarshalRecord(testdata.ExpectedRecordV070JSON)
 			gomega.Expect(err).NotTo(gomega.HaveOccurred())
 
 			// Make requests until we hit rate limit
 			const maxAttempts = 150
+
 			var hitRateLimit bool
 
 			for i := range maxAttempts {
@@ -195,6 +202,7 @@ var _ = ginkgo.Describe("Rate Limiting E2E Tests", ginkgo.Label("ratelimit"), gi
 					_ = c.Delete(ctx, ref)
 				} else if isRateLimitError(pushErr) {
 					hitRateLimit = true
+
 					ginkgo.GinkgoWriter.Printf("Hit rate limit on attempt %d\n", i+1)
 
 					break
@@ -214,6 +222,7 @@ var _ = ginkgo.Describe("Rate Limiting E2E Tests", ginkgo.Label("ratelimit"), gi
 			gomega.Expect(err).NotTo(gomega.HaveOccurred())
 
 			ginkgo.By("Making rapid requests to potentially hit rate limit")
+
 			for range 100 {
 				ref, _ := c.Push(ctx, record)
 				if ref != nil {
@@ -227,6 +236,7 @@ var _ = ginkgo.Describe("Rate Limiting E2E Tests", ginkgo.Label("ratelimit"), gi
 
 			// Now requests should succeed again
 			ginkgo.By("Verifying requests succeed after rate limit reset")
+
 			ref, err := c.Push(ctx, record)
 			gomega.Expect(err).NotTo(gomega.HaveOccurred())
 			gomega.Expect(ref).NotTo(gomega.BeNil())
@@ -240,7 +250,6 @@ var _ = ginkgo.Describe("Rate Limiting E2E Tests", ginkgo.Label("ratelimit"), gi
 		ginkgo.It("should apply rate limiting to all gRPC operations", func() {
 			// Test that rate limiting works for different operations
 			// Push, Pull, Delete should all be rate limited
-
 			record, err := corev1.UnmarshalRecord(testdata.ExpectedRecordV070JSON)
 			gomega.Expect(err).NotTo(gomega.HaveOccurred())
 
@@ -250,11 +259,14 @@ var _ = ginkgo.Describe("Rate Limiting E2E Tests", ginkgo.Label("ratelimit"), gi
 
 			// Make rapid Pull requests
 			ginkgo.By("Testing rate limit on Pull operations")
+
 			var pullRateLimitHit bool
+
 			for i := range 100 {
 				_, pullErr := c.Pull(ctx, ref)
 				if isRateLimitError(pullErr) {
 					pullRateLimitHit = true
+
 					ginkgo.GinkgoWriter.Printf("Pull rate limited on attempt %d\n", i+1)
 
 					break
@@ -271,12 +283,12 @@ var _ = ginkgo.Describe("Rate Limiting E2E Tests", ginkgo.Label("ratelimit"), gi
 
 		ginkgo.It("should handle rate limit errors with proper status codes", func() {
 			// Verify that rate limit errors return the correct gRPC status code
-
 			record, err := corev1.UnmarshalRecord(testdata.ExpectedRecordV070JSON)
 			gomega.Expect(err).NotTo(gomega.HaveOccurred())
 
 			// Make many rapid requests to trigger rate limiting
 			var rateLimitErr error
+
 			for range 150 {
 				ref, pushErr := c.Push(ctx, record)
 				if pushErr != nil {
@@ -293,6 +305,7 @@ var _ = ginkgo.Describe("Rate Limiting E2E Tests", ginkgo.Label("ratelimit"), gi
 			// If we got a rate limit error, verify its properties
 			if rateLimitErr != nil {
 				ginkgo.By("Verifying rate limit error properties")
+
 				st, ok := status.FromError(rateLimitErr)
 				gomega.Expect(ok).To(gomega.BeTrue(), "Error should be a gRPC status error")
 				gomega.Expect(st.Code()).To(gomega.Equal(codes.ResourceExhausted),
@@ -309,7 +322,6 @@ var _ = ginkgo.Describe("Rate Limiting E2E Tests", ginkgo.Label("ratelimit"), gi
 		ginkgo.It("should respect per-method rate limits if configured", func() {
 			// This test validates that per-method rate limits work correctly
 			// The actual limits depend on server configuration
-
 			record, err := corev1.UnmarshalRecord(testdata.ExpectedRecordV070JSON)
 			gomega.Expect(err).NotTo(gomega.HaveOccurred())
 
@@ -317,11 +329,14 @@ var _ = ginkgo.Describe("Rate Limiting E2E Tests", ginkgo.Label("ratelimit"), gi
 			// If per-method limits are configured, they might have different limits
 
 			ginkgo.By("Testing Push operation rate limit")
+
 			var pushRateLimitHit bool
+
 			for i := range 100 {
 				ref, pushErr := c.Push(ctx, record)
 				if pushErr != nil && isRateLimitError(pushErr) {
 					pushRateLimitHit = true
+
 					ginkgo.GinkgoWriter.Printf("Push rate limited on attempt %d\n", i+1)
 
 					break
@@ -335,14 +350,17 @@ var _ = ginkgo.Describe("Rate Limiting E2E Tests", ginkgo.Label("ratelimit"), gi
 
 			// Test pull operations
 			ginkgo.By("Testing Pull operation rate limit")
+
 			ref, err := c.Push(ctx, record)
 			gomega.Expect(err).NotTo(gomega.HaveOccurred())
 
 			var pullRateLimitHit bool
+
 			for i := range 100 {
 				_, pullErr := c.Pull(ctx, ref)
 				if pullErr != nil && isRateLimitError(pullErr) {
 					pullRateLimitHit = true
+
 					ginkgo.GinkgoWriter.Printf("Pull rate limited on attempt %d\n", i+1)
 
 					break
@@ -361,12 +379,13 @@ var _ = ginkgo.Describe("Rate Limiting E2E Tests", ginkgo.Label("ratelimit"), gi
 	ginkgo.Context("Concurrent clients", func() {
 		ginkgo.It("should handle rate limiting with concurrent requests", func() {
 			// Test that rate limiting works correctly with concurrent requests from the same client
-
 			record, err := corev1.UnmarshalRecord(testdata.ExpectedRecordV070JSON)
 			gomega.Expect(err).NotTo(gomega.HaveOccurred())
 
-			const numGoroutines = 10
-			const requestsPerGoroutine = 20
+			const (
+				numGoroutines        = 10
+				requestsPerGoroutine = 20
+			)
 
 			type result struct {
 				success     int
@@ -378,11 +397,13 @@ var _ = ginkgo.Describe("Rate Limiting E2E Tests", ginkgo.Label("ratelimit"), gi
 			results := make(chan result, numGoroutines)
 
 			ginkgo.By("Launching concurrent goroutines to test rate limiting")
+
 			for range numGoroutines {
 				go func() {
 					defer ginkgo.GinkgoRecover() // Required for assertions in goroutines
 
 					var r result
+
 					for range requestsPerGoroutine {
 						ref, pushErr := c.Push(context.Background(), record)
 						if pushErr == nil {
@@ -398,13 +419,17 @@ var _ = ginkgo.Describe("Rate Limiting E2E Tests", ginkgo.Label("ratelimit"), gi
 						// Small random delay to vary timing
 						time.Sleep(10 * time.Millisecond)
 					}
+
 					results <- r
 				}()
 			}
 
 			// Collect results
-			var totalSuccess, totalRateLimited, totalOtherErrors int
-			var allErrors []string
+			var (
+				totalSuccess, totalRateLimited, totalOtherErrors int
+				allErrors                                        []string
+			)
+
 			for range numGoroutines {
 				r := <-results
 				totalSuccess += r.success
@@ -419,6 +444,7 @@ var _ = ginkgo.Describe("Rate Limiting E2E Tests", ginkgo.Label("ratelimit"), gi
 			// Log any unexpected errors for debugging
 			if totalOtherErrors > 0 {
 				ginkgo.GinkgoWriter.Printf("Unexpected errors encountered:\n")
+
 				for i, errMsg := range allErrors {
 					ginkgo.GinkgoWriter.Printf("  Error %d: %s\n", i+1, errMsg)
 				}
@@ -451,7 +477,6 @@ var _ = ginkgo.Describe("Rate Limiting E2E Tests", ginkgo.Label("ratelimit"), gi
 	ginkgo.Context("Edge cases", func() {
 		ginkgo.It("should handle rate limiting with context timeout", func() {
 			// Test that rate limiting works correctly when combined with context timeouts
-
 			record, err := corev1.UnmarshalRecord(testdata.ExpectedRecordV070JSON)
 			gomega.Expect(err).NotTo(gomega.HaveOccurred())
 
@@ -485,12 +510,12 @@ var _ = ginkgo.Describe("Rate Limiting E2E Tests", ginkgo.Label("ratelimit"), gi
 
 		ginkgo.It("should maintain rate limit state across multiple operations", func() {
 			// Verify that rate limiter maintains state correctly across different operations
-
 			record, err := corev1.UnmarshalRecord(testdata.ExpectedRecordV070JSON)
 			gomega.Expect(err).NotTo(gomega.HaveOccurred())
 
 			// First batch of requests
 			ginkgo.By("Making first batch of requests")
+
 			for range 50 {
 				ref, _ := c.Push(ctx, record)
 				if ref != nil {
@@ -500,11 +525,14 @@ var _ = ginkgo.Describe("Rate Limiting E2E Tests", ginkgo.Label("ratelimit"), gi
 
 			// Immediate second batch (should continue from previous state)
 			ginkgo.By("Making second batch immediately after")
+
 			var secondBatchRateLimited bool
+
 			for i := range 50 {
 				ref, pushErr := c.Push(ctx, record)
 				if pushErr != nil && isRateLimitError(pushErr) {
 					secondBatchRateLimited = true
+
 					ginkgo.GinkgoWriter.Printf("Second batch rate limited on request %d\n", i+1)
 
 					break
