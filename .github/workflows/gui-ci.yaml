@@ -149,13 +149,13 @@ jobs:
           hdiutil create -volname "AGNTCY Directory" \
             -srcfolder "build/macos/Build/Products/Release/dmg_staging" \
             -ov -format UDZO \
-            "AGNTCY-Directory.dmg"
+            "dir-gui-darwin-arm64.dmg"
 
       - name: Upload DMG
         uses: actions/upload-artifact@v4
         with:
-          name: agntcy-directory-macos
-          path: gui/AGNTCY-Directory.dmg
+          name: dir-gui-darwin-arm64
+          path: gui/dir-gui-darwin-arm64.dmg
 
       - name: Release
         if: startsWith(github.ref, 'refs/tags/gui/')
@@ -163,8 +163,8 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         shell: bash
         run: |
-          gh release create "${{ github.ref_name }}" AGNTCY-Directory.dmg --generate-notes || \
-          gh release upload "${{ github.ref_name }}" AGNTCY-Directory.dmg --clobber
+          gh release create "${{ github.ref_name }}" dir-gui-darwin-arm64.dmg --generate-notes || \
+          gh release upload "${{ github.ref_name }}" dir-gui-darwin-arm64.dmg --clobber
 
   build-windows:
     name: Build Windows
@@ -225,7 +225,7 @@ jobs:
         run: |
           if (Test-Path "build\windows\x64\runner\Release") {
             Get-ChildItem "build\windows\x64\runner\Release"
-            Compress-Archive -Path "build\windows\x64\runner\Release\*" -DestinationPath agntcy-directory-windows.zip
+            Compress-Archive -Path "build\windows\x64\runner\Release\*" -DestinationPath dir-gui-windows-amd64.zip
           } else {
             Write-Error "Build directory build\windows\x64\runner\Release does not exist. Build likely failed."
             exit 1
@@ -234,8 +234,8 @@ jobs:
       - name: Upload Windows Build
         uses: actions/upload-artifact@v4
         with:
-          name: agntcy-directory-windows
-          path: gui/agntcy-directory-windows.zip
+          name: dir-gui-windows-amd64
+          path: gui/dir-gui-windows-amd64.zip
 
       - name: Release
         if: startsWith(github.ref, 'refs/tags/gui/')
@@ -243,5 +243,5 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         shell: bash
         run: |
-          gh release create "${{ github.ref_name }}" agntcy-directory-windows.zip --generate-notes || \
-          gh release upload "${{ github.ref_name }}" agntcy-directory-windows.zip --clobber
+          gh release create "${{ github.ref_name }}" dir-gui-windows-amd64.zip --generate-notes || \
+          gh release upload "${{ github.ref_name }}" dir-gui-windows-amd64.zip --clobber
