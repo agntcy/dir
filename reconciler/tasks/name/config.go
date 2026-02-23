@@ -6,7 +6,7 @@ package name
 import (
 	"time"
 
-	"github.com/agntcy/dir/server/naming"
+	naming "github.com/agntcy/dir/server/naming/config"
 )
 
 const (

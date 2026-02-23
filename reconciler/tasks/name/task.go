@@ -67,7 +67,7 @@ func (t *Task) Run(ctx context.Context) error {
 	}
 
 	if len(records) == 0 {
-		logger.Debug("No records need name verification")
+		logger.Info("No records need name verification")
 
 		return nil
 	}

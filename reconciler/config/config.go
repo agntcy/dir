@@ -13,7 +13,7 @@ import (
 	"github.com/agntcy/dir/reconciler/tasks/name"
 	"github.com/agntcy/dir/reconciler/tasks/regsync"
 	dbconfig "github.com/agntcy/dir/server/database/config"
-	"github.com/agntcy/dir/server/naming"
+	namingconfig "github.com/agntcy/dir/server/naming/config"
 	ociconfig "github.com/agntcy/dir/server/store/oci/config"
 	"github.com/agntcy/dir/utils/logging"
 	"github.com/spf13/viper"
@@ -158,7 +158,7 @@ func LoadConfig() (*Config, error) {
 	v.SetDefault("name.interval", name.DefaultInterval)
 
 	_ = v.BindEnv("name.ttl")
-	v.SetDefault("name.ttl", naming.DefaultTTL)
+	v.SetDefault("name.ttl", namingconfig.DefaultTTL)
 
 	_ = v.BindEnv("name.record_timeout")
 	v.SetDefault("name.record_timeout", name.DefaultRecordTimeout)
