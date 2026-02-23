@@ -24,6 +24,9 @@ type DatabaseAPI interface {
 	// NameVerificationDatabaseAPI handles management of name verifications.
 	NameVerificationDatabaseAPI
 
+	// SignatureVerificationDatabaseAPI handles management of signature verifications.
+	SignatureVerificationDatabaseAPI
+
 	// Close closes the database connection and releases any resources.
 	Close() error
 
@@ -101,4 +104,21 @@ type NameVerificationDatabaseAPI interface {
 	// GetRecordsNeedingVerification retrieves signed records with verifiable names
 	// that either don't have a verification or have an expired verification.
 	GetRecordsNeedingVerification(ttl time.Duration) ([]Record, error)
+}
+
+type SignatureVerificationDatabaseAPI interface {
+	// CreateSignatureVerification creates a new signature verification row (one per signer).
+	CreateSignatureVerification(verification SignatureVerificationObject) error
+
+	// UpdateSignatureVerification updates an existing row by (record_cid, signer fields).
+	UpdateSignatureVerification(verification SignatureVerificationObject) error
+
+	// UpsertSignatureVerification inserts or updates a row keyed by (record_cid, signer fields).
+	UpsertSignatureVerification(verification SignatureVerificationObject) error
+
+	// GetSignatureVerificationsByRecordCID returns all signature verification rows for a record.
+	GetSignatureVerificationsByRecordCID(recordCID string) ([]SignatureVerificationObject, error)
+
+	// GetRecordsNeedingSignatureVerification returns signed records that have no verification or expired verification.
+	GetRecordsNeedingSignatureVerification(ttl time.Duration) ([]Record, error)
 }

@@ -23,7 +23,7 @@ type Record struct {
 	SchemaVersion string   `gorm:"column:schema_version"`
 	OASFCreatedAt string   `gorm:"column:oasf_created_at"`
 	Authors       []string `gorm:"column:authors;serializer:json"` // Stored as JSON array
-	Signed        bool     `gorm:"column:signed;default:false"`    // Whether the record has a signature attached
+	Signed        bool     `gorm:"column:signed;default:false"`    // Whether at least one signature is attached
 
 	Skills   []Skill   `gorm:"foreignKey:RecordCID;references:RecordCID;constraint:OnDelete:CASCADE"`
 	Locators []Locator `gorm:"foreignKey:RecordCID;references:RecordCID;constraint:OnDelete:CASCADE"`
@@ -270,6 +270,11 @@ func (d *DB) GetRecordCIDs(opts ...types.FilterOption) ([]string, error) {
 // RemoveRecord removes a record from the search database by CID.
 // Uses CASCADE DELETE to automatically remove related Skills, Locators, and Modules.
 func (d *DB) RemoveRecord(cid string) error {
+	// Remove signature verifications first
+	if err := d.gormDB.Where("record_cid = ?", cid).Delete(&SignatureVerification{}).Error; err != nil {
+		return fmt.Errorf("failed to remove signature verifications: %w", err)
+	}
+
 	result := d.gormDB.Where("record_cid = ?", cid).Delete(&Record{})
 
 	if result.Error != nil {
