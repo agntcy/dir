@@ -23,7 +23,8 @@ type Record struct {
 	SchemaVersion string   `gorm:"column:schema_version"`
 	OASFCreatedAt string   `gorm:"column:oasf_created_at"`
 	Authors       []string `gorm:"column:authors;serializer:json"` // Stored as JSON array
-	Signed        bool     `gorm:"column:signed;default:false"`    // Whether the record has a signature attached
+	Signed        bool     `gorm:"column:signed;default:false"`    // Whether at least one signature is attached
+	Trusted       bool     `gorm:"column:trusted;default:false"`   // Whether at least one signature verified and trusted
 
 	Skills   []Skill   `gorm:"foreignKey:RecordCID;references:RecordCID;constraint:OnDelete:CASCADE"`
 	Locators []Locator `gorm:"foreignKey:RecordCID;references:RecordCID;constraint:OnDelete:CASCADE"`
@@ -446,6 +447,26 @@ func (d *DB) SetRecordSigned(recordCID string) error {
 	}
 
 	logger.Debug("Marked record as signed", "record_cid", recordCID)
+
+	return nil
+}
+
+// SetRecordTrusted sets the trusted flag for a record.
+// Called when signature verification completes (on sign or reconciler).
+func (d *DB) SetRecordTrusted(recordCID string, trusted bool) error {
+	result := d.gormDB.Model(&Record{}).
+		Where("record_cid = ?", recordCID).
+		Update("trusted", trusted)
+
+	if result.Error != nil {
+		return fmt.Errorf("failed to set record trusted: %w", result.Error)
+	}
+
+	if result.RowsAffected == 0 {
+		return fmt.Errorf("record not found: %s", recordCID)
+	}
+
+	logger.Debug("Set record trusted", "record_cid", recordCID, "trusted", trusted)
 
 	return nil
 }
