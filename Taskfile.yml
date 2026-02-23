@@ -2112,12 +2112,13 @@ tasks:
       HELM_ALL_CHART_PATHS:
         sh: find . -name Chart.yaml -exec dirname {} \;
     env:
-      SOURCE_DATE_EPOCH: "0" # SOURCE_DATE_EPOCH is kept for any Helm code paths that honour it.
+      SOURCE_DATE_EPOCH: "0" # NOTE: Not implemented yet: https://github.com/helm/helm/pull/31845
     cmds:
       # Add Helm repo
       - "{{ .HELM_BIN }} repo add project-zot http://zotregistry.dev/helm-charts"
       - "{{ .HELM_BIN }} repo add spiffe https://spiffe.github.io/helm-charts-hardened"
 
+      # NOTE: Remove the byte null workaround when SOURCE_DATE_EPOCH implemeted
       # Reproducible chart packaging requires two layers of normalization:
       # 1. File timestamps: git does not preserve mtime, so every checkout gets
       #    different values. We touch all chart source files to a fixed date before
