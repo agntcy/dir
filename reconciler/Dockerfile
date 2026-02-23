@@ -67,10 +67,6 @@ WORKDIR /
 COPY --from=builder /bin/reconciler ./reconciler
 COPY --from=builder /bin/regsync /usr/local/bin/regsync
 
-# Create config directories
-RUN mkdir -p /etc/agntcy/reconciler /etc/regsync && \
-    chown -R 65532:65532 /etc/agntcy /etc/regsync
-
 USER 65532:65532
 
 ENTRYPOINT ["./reconciler"]
