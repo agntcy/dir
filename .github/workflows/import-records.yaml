@@ -36,7 +36,7 @@ jobs:
     outputs:
       matrix: ${{ steps.set-matrix.outputs.matrix }}
       # Resolved inputs with proper fallback for non-dispatch triggers (github.event.inputs.* returns strings, avoiding boolean falsy issues)
-      dry_run: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.dry_run || 'true' }}
+      dry_run: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.dry_run || 'false' }}
       rate_limit: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.rate_limit || '2' }}
       server_address: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.server_address || 'prod.gateway.ads.outshift.io:443' }}
       sign: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.sign || 'true' }}
