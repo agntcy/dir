@@ -44,7 +44,7 @@ type SearchDatabaseAPI interface {
 	// RemoveRecord removes a record from the search database by CID.
 	RemoveRecord(cid string) error
 
-	// SetRecordSigned marks a record as signed (called when a public key is attached).
+	// SetRecordSigned marks a record as signed (called when a signature is attached).
 	SetRecordSigned(recordCID string) error
 }
 

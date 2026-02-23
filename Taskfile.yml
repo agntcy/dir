@@ -642,7 +642,7 @@ tasks:
           -f {{ .HELM_VALUES_PATH }} \
           --set apiserver.image.tag="{{ .DEPLOY_IMAGE_TAG }}" \
           {{ if .DIRECTORY_SERVER_PUBLICATION_SCHEDULER_INTERVAL }}--set apiserver.config.publication.scheduler_interval="{{ .DIRECTORY_SERVER_PUBLICATION_SCHEDULER_INTERVAL }}"{{ end }} \
-          {{ if .DIRECTORY_SERVER_REVERIFICATION_SCHEDULER_INTERVAL }}--set apiserver.config.reverification.scheduler_interval="{{ .DIRECTORY_SERVER_REVERIFICATION_SCHEDULER_INTERVAL }}"{{ end }} \
+          {{ if .DIRECTORY_SERVER_NAMING_TTL }}--set apiserver.config.naming.ttl="{{ .DIRECTORY_SERVER_NAMING_TTL }}"{{ end }} \
           --set apiserver.config.routing.refresh_interval="1s" \
           --set apiserver.secrets.ociAuth.username="${HTPASSWD_USERNAME}" \
           --set apiserver.secrets.ociAuth.password="${HTPASSWD_PASSWORD}" \
