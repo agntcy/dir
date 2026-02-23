@@ -247,8 +247,10 @@ func validateRecordAndParseOutput(client *MCPClient, recordJSON string, requestI
 }
 
 var _ = ginkgo.Describe("MCP Server Protocol Tests", func() {
-	var client *MCPClient
-	var mcpDir string
+	var (
+		client *MCPClient
+		mcpDir string
+	)
 
 	ginkgo.BeforeEach(func() {
 		// Get the MCP directory (relative to e2e/mcp)
@@ -257,6 +259,7 @@ var _ = ginkgo.Describe("MCP Server Protocol Tests", func() {
 
 		// Start MCP server using go run
 		var err error
+
 		client, err = NewMCPClient(mcpDir)
 		gomega.Expect(err).NotTo(gomega.HaveOccurred())
 	})
@@ -289,6 +292,7 @@ var _ = ginkgo.Describe("MCP Server Protocol Tests", func() {
 
 			// Parse result
 			var result map[string]any
+
 			err = json.Unmarshal(resp.Result, &result)
 			gomega.Expect(err).NotTo(gomega.HaveOccurred())
 
@@ -379,6 +383,7 @@ var _ = ginkgo.Describe("MCP Server Protocol Tests", func() {
 
 			// Parse result
 			var result map[string]any
+
 			err = json.Unmarshal(resp.Result, &result)
 			gomega.Expect(err).NotTo(gomega.HaveOccurred())
 
@@ -388,6 +393,7 @@ var _ = ginkgo.Describe("MCP Server Protocol Tests", func() {
 
 			// Verify tool names
 			toolNames := make(map[string]bool)
+
 			for _, tool := range tools {
 				t, ok := tool.(map[string]any)
 				gomega.Expect(ok).To(gomega.BeTrue())
@@ -396,6 +402,7 @@ var _ = ginkgo.Describe("MCP Server Protocol Tests", func() {
 				gomega.Expect(ok).To(gomega.BeTrue())
 
 				toolNames[name] = true
+
 				ginkgo.GinkgoWriter.Printf("  - %s: %s\n", t["name"], t["description"])
 			}
 
@@ -559,6 +566,7 @@ var _ = ginkgo.Describe("MCP Server Protocol Tests", func() {
 
 			// Parse result
 			var result map[string]any
+
 			err = json.Unmarshal(resp.Result, &result)
 			gomega.Expect(err).NotTo(gomega.HaveOccurred())
 
@@ -574,6 +582,7 @@ var _ = ginkgo.Describe("MCP Server Protocol Tests", func() {
 			gomega.Expect(ok).To(gomega.BeTrue())
 
 			var toolOutput map[string]any
+
 			err = json.Unmarshal([]byte(textOutput), &toolOutput)
 			gomega.Expect(err).NotTo(gomega.HaveOccurred())
 
@@ -622,6 +631,7 @@ var _ = ginkgo.Describe("MCP Server Protocol Tests", func() {
 
 			// Parse result
 			var result map[string]any
+
 			err = json.Unmarshal(resp.Result, &result)
 			gomega.Expect(err).NotTo(gomega.HaveOccurred())
 
@@ -636,6 +646,7 @@ var _ = ginkgo.Describe("MCP Server Protocol Tests", func() {
 			gomega.Expect(ok).To(gomega.BeTrue())
 
 			var toolOutput map[string]any
+
 			err = json.Unmarshal([]byte(textOutput), &toolOutput)
 			gomega.Expect(err).NotTo(gomega.HaveOccurred())
 

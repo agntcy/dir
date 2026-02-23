@@ -159,8 +159,7 @@ func (f *Fetcher) listServersPage(ctx context.Context, cursor string) ([]mcpapiv
 	req.Header.Set("Accept", "application/json")
 
 	// TODO: Implement retry logic for transient failures
-	// Execute request
-	resp, err := f.httpClient.Do(req)
+	resp, err := f.httpClient.Do(req) //nolint:gosec // G704: URL from configured base (NewFetcher); caller must use trusted registry.
 	if err != nil {
 		return nil, "", fmt.Errorf("failed to fetch servers: %w", err)
 	}

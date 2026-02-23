@@ -15,6 +15,8 @@ import (
 )
 
 // Ptr creates a pointer to the given value.
+//
+//nolint
 func Ptr[T any](v T) *T {
 	return &v
 }

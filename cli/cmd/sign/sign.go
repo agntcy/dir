@@ -64,6 +64,7 @@ Usage examples:
 `,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		var recordCID string
+
 		if len(args) > 1 {
 			return errors.New("only one record CID is allowed")
 		} else if len(args) == 1 {

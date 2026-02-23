@@ -151,6 +151,7 @@ func TestGitHubPerRPCCredentials_GetRequestMetadata(t *testing.T) {
 	})
 }
 
+//nolint:gosec // G117: intentional test token
 func TestGitHubPerRPCCredentials_RequireTransportSecurity(t *testing.T) {
 	t.Run("should return false for insecure transport", func(t *testing.T) {
 		creds := &githubPerRPCCredentials{token: "gho_test"}
@@ -219,6 +220,7 @@ func TestGitHubPerRPCCredentials_Integration(t *testing.T) {
 	})
 }
 
+//nolint:gosec // G117: intentional test token
 func TestGitHubPerRPCCredentials_TokenFormats(t *testing.T) {
 	t.Run("should handle various GitHub token formats", func(t *testing.T) {
 		testCases := []struct {

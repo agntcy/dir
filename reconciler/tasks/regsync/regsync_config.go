@@ -33,6 +33,8 @@ type RegsyncConfig struct {
 }
 
 // Credential represents registry authentication credentials.
+//
+//nolint:gosec // G117: intentional config field for registry auth
 type Credential struct {
 	// Registry is the registry hostname (e.g., "ghcr.io").
 	Registry string `yaml:"registry"`
@@ -208,7 +210,9 @@ func (c *RegsyncConfig) WriteToFile(syncID string) (string, error) {
 
 	path := file.Name()
 
+	//nolint:gosec // G703: path is from os.CreateTemp (system temp dir), not user input
 	if err := os.WriteFile(path, content, configFilePermissions); err != nil {
+		//nolint:gosec // G703: path from CreateTemp; cleanup on write error
 		os.Remove(path) // Clean up on error
 
 		return "", fmt.Errorf("failed to write config file: %w", err)

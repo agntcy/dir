@@ -65,14 +65,17 @@ var _ = ginkgo.Describe("Event Streaming E2E Tests", ginkgo.Ordered, ginkgo.Seri
 		}
 	})
 
-	var c *client.Client
-	var ctx context.Context
+	var (
+		c   *client.Client
+		ctx context.Context
+	)
 
 	ginkgo.BeforeAll(func() {
 		ctx = context.Background()
 
 		// Create a new client
 		var err error
+
 		c, err = client.New(ctx, client.WithEnvConfig())
 		gomega.Expect(err).NotTo(gomega.HaveOccurred())
 	})
@@ -95,6 +98,7 @@ var _ = ginkgo.Describe("Event Streaming E2E Tests", ginkgo.Ordered, ginkgo.Seri
 			})
 			_ = c.Delete(context.Background(), v070Ref)
 		}
+
 		if v080Record != nil {
 			v080Ref := &corev1.RecordRef{Cid: v080Record.GetCid()}
 			_ = c.Unpublish(context.Background(), &routingv1.UnpublishRequest{
@@ -104,6 +108,7 @@ var _ = ginkgo.Describe("Event Streaming E2E Tests", ginkgo.Ordered, ginkgo.Seri
 			})
 			_ = c.Delete(context.Background(), v080Ref)
 		}
+
 		if v100Record != nil {
 			v100Ref := &corev1.RecordRef{Cid: v100Record.GetCid()}
 			_ = c.Unpublish(context.Background(), &routingv1.UnpublishRequest{
@@ -177,6 +182,7 @@ var _ = ginkgo.Describe("Event Streaming E2E Tests", ginkgo.Ordered, ginkgo.Seri
 			// Publish the record in background
 			go func() {
 				defer ginkgo.GinkgoRecover() // Required for assertions in goroutines
+
 				time.Sleep(200 * time.Millisecond)
 
 				publishErr := c.Publish(context.Background(), &routingv1.PublishRequest{
@@ -224,6 +230,7 @@ var _ = ginkgo.Describe("Event Streaming E2E Tests", ginkgo.Ordered, ginkgo.Seri
 			// Delete the record in background
 			go func() {
 				defer ginkgo.GinkgoRecover() // Required for assertions in goroutines
+
 				time.Sleep(200 * time.Millisecond)
 
 				deleteErr := c.Delete(context.Background(), ref)
@@ -254,6 +261,7 @@ var _ = ginkgo.Describe("Event Streaming E2E Tests", ginkgo.Ordered, ginkgo.Seri
 			// Push a matching record
 			go func() {
 				defer ginkgo.GinkgoRecover() // Required for assertions in goroutines
+
 				time.Sleep(200 * time.Millisecond)
 
 				// Use V070 test record which has natural_language_processing skills
@@ -289,11 +297,13 @@ var _ = ginkgo.Describe("Event Streaming E2E Tests", ginkgo.Ordered, ginkgo.Seri
 			// Push another record and pull the filtered one
 			go func() {
 				defer ginkgo.GinkgoRecover() // Required for assertions in goroutines
+
 				time.Sleep(200 * time.Millisecond)
 
 				// Push another record (different CID, should be filtered out)
 				otherRecord, err := corev1.UnmarshalRecord(testdata.ExpectedRecordV070JSON)
 				gomega.Expect(err).NotTo(gomega.HaveOccurred())
+
 				_, _ = c.Push(context.Background(), otherRecord)
 
 				time.Sleep(100 * time.Millisecond)
@@ -321,6 +331,7 @@ var _ = ginkgo.Describe("Event Streaming E2E Tests", ginkgo.Ordered, ginkgo.Seri
 			// Perform multiple operations
 			go func() {
 				defer ginkgo.GinkgoRecover() // Required for assertions in goroutines
+
 				time.Sleep(200 * time.Millisecond)
 
 				// Use valid testdata
@@ -370,6 +381,7 @@ var _ = ginkgo.Describe("Event Streaming E2E Tests", ginkgo.Ordered, ginkgo.Seri
 			// Push a record
 			go func() {
 				defer ginkgo.GinkgoRecover() // Required for assertions in goroutines
+
 				time.Sleep(200 * time.Millisecond)
 
 				// Use valid testdata
@@ -423,11 +435,13 @@ var _ = ginkgo.Describe("Event Streaming E2E Tests", ginkgo.Ordered, ginkgo.Seri
 			// Perform multiple operations
 			go func() {
 				defer ginkgo.GinkgoRecover() // Required for assertions in goroutines
+
 				time.Sleep(200 * time.Millisecond)
 
 				// Push first record
 				record1, err := corev1.UnmarshalRecord(testdata.ExpectedRecordV070JSON)
 				gomega.Expect(err).NotTo(gomega.HaveOccurred())
+
 				ref1, _ := c.Push(context.Background(), record1)
 
 				time.Sleep(200 * time.Millisecond)
@@ -435,6 +449,7 @@ var _ = ginkgo.Describe("Event Streaming E2E Tests", ginkgo.Ordered, ginkgo.Seri
 				// Push second record
 				record2, err := corev1.UnmarshalRecord(testdata.ExpectedRecordV070JSON)
 				gomega.Expect(err).NotTo(gomega.HaveOccurred())
+
 				_, _ = c.Push(context.Background(), record2)
 
 				time.Sleep(200 * time.Millisecond)
@@ -470,6 +485,7 @@ var _ = ginkgo.Describe("Event Streaming E2E Tests", ginkgo.Ordered, ginkgo.Seri
 			// Push a record with multiple skills
 			go func() {
 				defer ginkgo.GinkgoRecover() // Required for assertions in goroutines
+
 				time.Sleep(200 * time.Millisecond)
 
 				// Use valid testdata (V070 has multiple skills)
@@ -496,6 +512,7 @@ var _ = ginkgo.Describe("Event Streaming E2E Tests", ginkgo.Ordered, ginkgo.Seri
 			// Push a record
 			go func() {
 				defer ginkgo.GinkgoRecover() // Required for assertions in goroutines
+
 				time.Sleep(200 * time.Millisecond)
 
 				// Use valid testdata

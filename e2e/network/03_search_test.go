@@ -21,14 +21,17 @@ import (
 // CIDs are now tracked in network_suite_test.go
 
 var _ = ginkgo.Describe("Running dirctl end-to-end tests for remote routing search with OR logic", func() {
-	var cli *utils.CLI
-	var cid string
+	var (
+		cli *utils.CLI
+		cid string
+	)
 
 	// Setup temp record file
 	tempDir := os.Getenv("E2E_COMPILE_OUTPUT_DIR")
 	if tempDir == "" {
 		tempDir = os.TempDir()
 	}
+
 	tempPath := filepath.Join(tempDir, "record_v1alpha1_remote_search_test.json")
 
 	// Create directory and write V1Alpha1 record data

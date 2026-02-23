@@ -68,6 +68,7 @@ func main() {
 		}
 	}()
 
+	//nolint:gosec // G706: Mock server - logs listening address for debugging
 	log.Printf("Mock Directory server listening on %s", addr)
 
 	if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {

@@ -17,14 +17,17 @@ import (
 )
 
 var _ = ginkgo.Describe("Running dirctl end-to-end tests for name resolution across nodes", func() {
-	var cli *utils.CLI
-	var syncID string
+	var (
+		cli    *utils.CLI
+		syncID string
+	)
 
 	// Setup temp files for CLI commands
 	tempDir := os.Getenv("E2E_COMPILE_OUTPUT_DIR")
 	if tempDir == "" {
 		tempDir = os.TempDir()
 	}
+
 	recordPath := filepath.Join(tempDir, "record_070_name_resolution_test.json")
 
 	// Create directory and write record data
@@ -37,13 +40,17 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests for name resolution acr
 		}
 
 		utils.ResetCLIState()
+
 		cli = utils.NewCLI()
 	})
 
 	ginkgo.Context("name resolution after sync", ginkgo.Ordered, func() {
 		var cid string
-		const recordName = "directory.agntcy.org/cisco/marketing-strategy-v4"
-		const recordVersion = "v4.0.0"
+
+		const (
+			recordName    = "directory.agntcy.org/cisco/marketing-strategy-v4"
+			recordVersion = "v4.0.0"
+		)
 
 		ginkgo.It("should push record to peer 1", func() {
 			cid = cli.Push(recordPath).WithArgs("--output", "raw").OnServer(utils.Peer1Addr).ShouldSucceed()

@@ -60,7 +60,7 @@ type OAuthConfig struct {
 
 	// ClientSecret is the GitHub OAuth App client secret.
 	// This can be empty for public clients using PKCE.
-	ClientSecret string
+	ClientSecret string //nolint:gosec // G117: intentional field
 
 	// Scopes are the OAuth scopes to request.
 	// Default: ["user:email", "read:org"]
@@ -86,7 +86,7 @@ type OAuthConfig struct {
 // OAuthTokenResult holds the result of a successful OAuth flow.
 type OAuthTokenResult struct {
 	// AccessToken is the GitHub access token.
-	AccessToken string
+	AccessToken string //nolint:gosec // G117: intentional field
 
 	// TokenType is the token type (usually "bearer").
 	TokenType string

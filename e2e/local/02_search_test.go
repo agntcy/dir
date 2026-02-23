@@ -35,6 +35,7 @@ var _ = ginkgo.Describe("Search functionality for OASF 0.8.0 records", func() {
 		}
 
 		utils.ResetCLIState()
+
 		cli = utils.NewCLI()
 	})
 
@@ -47,6 +48,7 @@ var _ = ginkgo.Describe("Search functionality for OASF 0.8.0 records", func() {
 	ginkgo.Context("search with format=cid (default)", ginkgo.Ordered, func() {
 		ginkgo.BeforeAll(func() {
 			var err error
+
 			tempDir, err = os.MkdirTemp("", "search-test")
 			gomega.Expect(err).NotTo(gomega.HaveOccurred())
 
@@ -253,6 +255,7 @@ var _ = ginkgo.Describe("Search functionality for OASF 0.8.0 records", func() {
 	ginkgo.Context("search with format=record", ginkgo.Ordered, func() {
 		ginkgo.BeforeAll(func() {
 			var err error
+
 			tempDir, err = os.MkdirTemp("", "search-records-test")
 			gomega.Expect(err).NotTo(gomega.HaveOccurred())
 

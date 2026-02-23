@@ -320,6 +320,7 @@ func (o *options) setupSpiffeAuth(_ context.Context) error {
 	}
 
 	// SpiffeTokenData represents the structure of SPIFFE token JSON
+	//nolint:gosec // G117: intentional private key field
 	type SpiffeTokenData struct {
 		X509SVID   []string `json:"x509_svid"`   // DER-encoded certificates in base64
 		PrivateKey string   `json:"private_key"` // DER-encoded private key in base64

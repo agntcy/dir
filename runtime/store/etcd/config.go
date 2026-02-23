@@ -34,6 +34,7 @@ type Config struct {
 	Username string `json:"username,omitempty" mapstructure:"username"`
 
 	// Password for etcd authentication.
+	//nolint:gosec // G117: intentional config field for etcd auth
 	Password string `json:"password,omitempty" mapstructure:"password"`
 
 	// DialTimeout is the timeout for connecting to etcd.

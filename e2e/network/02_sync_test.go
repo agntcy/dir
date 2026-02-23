@@ -22,17 +22,20 @@ import (
 // CIDs are now tracked in network_suite_test.go
 
 var _ = ginkgo.Describe("Running dirctl end-to-end tests for sync commands", func() {
-	var cli *utils.CLI
-	var syncID string
-	var deleteSyncID string
-	var privateKeyPath string
-	var tempKeyDir string
+	var (
+		cli            *utils.CLI
+		syncID         string
+		deleteSyncID   string
+		privateKeyPath string
+		tempKeyDir     string
+	)
 
 	// Setup temp files for CLI commands (CLI needs actual files on disk)
 	tempDir := os.Getenv("E2E_COMPILE_OUTPUT_DIR")
 	if tempDir == "" {
 		tempDir = os.TempDir()
 	}
+
 	recordV4Path := filepath.Join(tempDir, "record_070_sync_v4_test.json")
 	recordV5Path := filepath.Join(tempDir, "record_070_sync_v5_test.json")
 
@@ -93,12 +96,16 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests for sync commands", fun
 	})
 
 	ginkgo.Context("sync functionality", ginkgo.Ordered, func() {
-		var cid string
-		var cidV5 string
+		var (
+			cid   string
+			cidV5 string
+		)
 
 		// Setup cosign key pair for signing tests
+
 		ginkgo.BeforeAll(func() {
 			var err error
+
 			tempKeyDir, err = os.MkdirTemp("", "sync-test-keys")
 			gomega.Expect(err).NotTo(gomega.HaveOccurred())
 
@@ -117,6 +124,7 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests for sync commands", fun
 		// Cleanup cosign keys after all tests
 		ginkgo.AfterAll(func() {
 			os.Unsetenv("COSIGN_PASSWORD")
+
 			if tempKeyDir != "" {
 				err := os.RemoveAll(tempKeyDir)
 				gomega.Expect(err).NotTo(gomega.HaveOccurred())
@@ -225,16 +233,19 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests for sync commands", fun
 
 		ginkgo.It("should create sync from peer 1 to peer 3 using routing search piped to sync create", func() {
 			ginkgo.GinkgoWriter.Printf("Verifying initial state - peer 3 should not have any records\n")
+
 			_ = cli.Pull(cid).OnServer(utils.Peer3Addr).ShouldFail()   // v4 (NLP) should not exist
 			_ = cli.Pull(cidV5).OnServer(utils.Peer3Addr).ShouldFail() // v5 (Audio) should not exist
 
 			ginkgo.GinkgoWriter.Printf("Running routing search for 'audio' skill\n")
+
 			searchOutput := cli.Routing().Search().WithArgs("--skill", "audio").WithArgs("--output", "json").OnServer(utils.Peer3Addr).ShouldSucceed()
 
 			ginkgo.GinkgoWriter.Printf("Routing search output: %s\n", searchOutput)
 			gomega.Expect(searchOutput).To(gomega.ContainSubstring(cidV5))
 
 			ginkgo.GinkgoWriter.Printf("Creating sync by tag with 'audio' search output\n")
+
 			output := cli.Sync().CreateFromStdin(searchOutput).OnServer(utils.Peer3Addr).ShouldSucceed()
 			gomega.Expect(output).To(gomega.ContainSubstring("Sync IDs created:"))
 
@@ -242,6 +253,7 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests for sync commands", fun
 			// Find the quoted UUID in the output
 			start := strings.Index(output, `[`)
 			end := strings.LastIndex(output, `]`)
+
 			gomega.Expect(start).To(gomega.BeNumerically(">", -1), "Expected to find opening quote")
 			gomega.Expect(end).To(gomega.BeNumerically(">", start), "Expected to find closing quote")
 			syncID = output[start+1 : end]

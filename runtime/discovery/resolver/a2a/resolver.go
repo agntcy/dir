@@ -115,6 +115,7 @@ func (r *resolver) probeURL(ctx context.Context, url string) map[string]any {
 		return nil
 	}
 
+	//nolint:gosec // G704: URL from workload discovery (addr/port) and configured paths; discovery source trusted, probe only.
 	resp, err := r.client.Do(req)
 	if err != nil {
 		return nil

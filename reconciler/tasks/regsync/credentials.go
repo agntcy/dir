@@ -20,6 +20,8 @@ type CredentialsResult struct {
 }
 
 // AuthConfig represents the configuration for authentication.
+//
+//nolint:gosec // G117: intentional config field for registry auth
 type AuthConfig struct {
 	Username string `json:"username,omitempty" mapstructure:"username"`
 	Password string `json:"password,omitempty" mapstructure:"password"`

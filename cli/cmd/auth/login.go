@@ -153,6 +153,8 @@ func runLogin(cmd *cobra.Command, _ []string) error {
 }
 
 // TokenMetadata contains token information from OAuth flow.
+//
+//nolint:gosec // G117: intentional field for OAuth token
 type TokenMetadata struct {
 	AccessToken string
 	TokenType   string

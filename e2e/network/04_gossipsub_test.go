@@ -24,14 +24,17 @@ import (
 // CIDs are now tracked in network_suite_test.go
 
 var _ = ginkgo.Describe("Running GossipSub label announcement tests", ginkgo.Ordered, func() {
-	var cli *utils.CLI
-	var cid string
+	var (
+		cli *utils.CLI
+		cid string
+	)
 
 	// Setup temp record file
 	tempDir := os.Getenv("E2E_COMPILE_OUTPUT_DIR")
 	if tempDir == "" {
 		tempDir = os.TempDir()
 	}
+
 	tempPath := filepath.Join(tempDir, "record_v070_gossipsub_test.json")
 
 	// Create directory and write record data
@@ -77,6 +80,7 @@ var _ = ginkgo.Describe("Running GossipSub label announcement tests", ginkgo.Ord
 			// Verify Peer2 received labels via GossipSub
 			ginkgo.GinkgoWriter.Printf("Testing label discovery on Peer2...")
 			utils.ResetCLIState()
+
 			output2 := cli.Routing().Search().
 				WithSkill("natural_language_processing").
 				WithLimit(10).
@@ -89,6 +93,7 @@ var _ = ginkgo.Describe("Running GossipSub label announcement tests", ginkgo.Ord
 			// Verify Peer3 also received labels via GossipSub
 			ginkgo.GinkgoWriter.Printf("Testing label discovery on Peer3...")
 			utils.ResetCLIState()
+
 			output3 := cli.Routing().Search().
 				WithSkill("natural_language_processing").
 				WithLimit(10).
@@ -104,6 +109,7 @@ var _ = ginkgo.Describe("Running GossipSub label announcement tests", ginkgo.Ord
 		ginkgo.It("should verify labels are discoverable from both remote peers", func() {
 			// Additional verification with different skill query
 			utils.ResetCLIState()
+
 			output2 := cli.Routing().Search().
 				WithSkill("natural_language_processing/natural_language_generation/text_completion").
 				OnServer(utils.Peer2Addr).
@@ -113,6 +119,7 @@ var _ = ginkgo.Describe("Running GossipSub label announcement tests", ginkgo.Ord
 			gomega.Expect(output2).To(gomega.ContainSubstring("match_score"))
 
 			utils.ResetCLIState()
+
 			output3 := cli.Routing().Search().
 				WithSkill("natural_language_processing/analytical_reasoning/problem_solving").
 				OnServer(utils.Peer3Addr).
@@ -126,8 +133,10 @@ var _ = ginkgo.Describe("Running GossipSub label announcement tests", ginkgo.Ord
 	})
 
 	ginkgo.Context("GossipSub performance and timing", func() {
-		var perfCID string
-		var perfPath string
+		var (
+			perfCID  string
+			perfPath string
+		)
 
 		ginkgo.BeforeAll(func() {
 			// Setup separate record for performance testing
@@ -150,6 +159,7 @@ var _ = ginkgo.Describe("Running GossipSub label announcement tests", ginkgo.Ord
 			// Poll for label discovery with short intervals
 			// GossipSub should propagate in ~2-5 seconds
 			utils.ResetCLIState()
+
 			output := cli.Routing().Search().
 				WithSkill("natural_language_processing").
 				OnServer(utils.Peer2Addr).
@@ -167,8 +177,10 @@ var _ = ginkgo.Describe("Running GossipSub label announcement tests", ginkgo.Ord
 	})
 
 	ginkgo.Context("GossipSub bulk record propagation", func() {
-		var bulkCIDs []string
-		var bulkPaths []string
+		var (
+			bulkCIDs  []string
+			bulkPaths []string
+		)
 
 		ginkgo.BeforeAll(func() {
 			// Prepare 5 test records for bulk testing
@@ -182,6 +194,7 @@ var _ = ginkgo.Describe("Running GossipSub label announcement tests", ginkgo.Ord
 
 		ginkgo.It("should push 5 records to peer 1", func() {
 			bulkCIDs = make([]string, 5)
+
 			for i, path := range bulkPaths {
 				cid := cli.Push(path).WithArgs("--output", "raw").OnServer(utils.Peer1Addr).ShouldSucceed()
 				bulkCIDs[i] = cid
@@ -201,7 +214,9 @@ var _ = ginkgo.Describe("Running GossipSub label announcement tests", ginkgo.Ord
 			// Verify all 5 records are discoverable from Peer2
 			// Wait at least 10 seconds for GossipSub propagation of all announcements
 			utils.ResetCLIState()
+
 			successCount := 0
+
 			for i, bulkCID := range bulkCIDs {
 				cli.Routing().Search().
 					WithSkill("natural_language_processing").
@@ -210,6 +225,7 @@ var _ = ginkgo.Describe("Running GossipSub label announcement tests", ginkgo.Ord
 					ShouldEventuallyContain(bulkCID, 15*time.Second)
 
 				successCount++
+
 				ginkgo.GinkgoWriter.Printf("✅ Bulk record %d/%d discovered on Peer2", i+1, 5)
 				utils.ResetCLIState()
 			}
@@ -224,7 +240,9 @@ var _ = ginkgo.Describe("Running GossipSub label announcement tests", ginkgo.Ord
 		ginkgo.It("should verify bulk records are also discoverable from peer 3", func() {
 			// Verify propagation to Peer3 as well (proves mesh propagation)
 			utils.ResetCLIState()
+
 			successCount := 0
+
 			for i, bulkCID := range bulkCIDs {
 				cli.Routing().Search().
 					WithSkill("natural_language_processing").
@@ -233,6 +251,7 @@ var _ = ginkgo.Describe("Running GossipSub label announcement tests", ginkgo.Ord
 					ShouldEventuallyContain(bulkCID, 15*time.Second)
 
 				successCount++
+
 				ginkgo.GinkgoWriter.Printf("✅ Bulk record %d/%d discovered on Peer3", i+1, 5)
 				utils.ResetCLIState()
 			}
@@ -264,6 +283,7 @@ var _ = ginkgo.Describe("Running GossipSub label announcement tests", ginkgo.Ord
 
 			// Test search with OR logic across multiple label types
 			utils.ResetCLIState()
+
 			output := cli.Routing().Search().
 				WithSkill("natural_language_processing"). // Should match
 				WithDomain("life_science").               // Should match (record has life_science/biotechnology)
@@ -285,6 +305,7 @@ var _ = ginkgo.Describe("Running GossipSub label announcement tests", ginkgo.Ord
 
 			// First search
 			utils.ResetCLIState()
+
 			output1 := cli.Routing().Search().
 				WithSkill("natural_language_processing").
 				OnServer(utils.Peer2Addr).
@@ -293,6 +314,7 @@ var _ = ginkgo.Describe("Running GossipSub label announcement tests", ginkgo.Ord
 
 			// Second search (should use cached labels, not pull again)
 			utils.ResetCLIState()
+
 			output2 := cli.Routing().Search().
 				WithSkill("natural_language_processing/analytical_reasoning/problem_solving").
 				OnServer(utils.Peer2Addr).
@@ -301,6 +323,7 @@ var _ = ginkgo.Describe("Running GossipSub label announcement tests", ginkgo.Ord
 
 			// Third search with different peer
 			utils.ResetCLIState()
+
 			output3 := cli.Routing().Search().
 				WithSkill("natural_language_processing/natural_language_generation").
 				OnServer(utils.Peer3Addr).
@@ -316,7 +339,6 @@ var _ = ginkgo.Describe("Running GossipSub label announcement tests", ginkgo.Ord
 			// This test compares against the known baseline from 01_deploy_test.go
 			// Baseline: 15 seconds wait for DHT propagation
 			// GossipSub: Should work in ~5 seconds
-
 			baselinePath := filepath.Join(tempDir, "record_v070_gossipsub_baseline_test.json")
 			_ = os.WriteFile(baselinePath, testdata.ExpectedRecordV070JSON, 0o600)
 
@@ -325,6 +347,7 @@ var _ = ginkgo.Describe("Running GossipSub label announcement tests", ginkgo.Ord
 
 			// Publish and start timing
 			cli.Routing().Publish(baselineCID).OnServer(utils.Peer1Addr).ShouldSucceed()
+
 			startTime := time.Now()
 
 			// Poll for discovery with 1-second intervals
@@ -332,6 +355,7 @@ var _ = ginkgo.Describe("Running GossipSub label announcement tests", ginkgo.Ord
 			utils.ResetCLIState()
 
 			found := false
+
 			maxAttempts := 10
 			for attempt := 1; attempt <= maxAttempts; attempt++ {
 				output, err := cli.Routing().Search().
@@ -343,6 +367,7 @@ var _ = ginkgo.Describe("Running GossipSub label announcement tests", ginkgo.Ord
 				if err == nil && strings.Contains(output, baselineCID) {
 					discoveryTime := time.Since(startTime)
 					ginkgo.GinkgoWriter.Printf("✅ Labels discovered in %v (attempt %d/%d)", discoveryTime, attempt, maxAttempts)
+
 					found = true
 
 					// Verify it's faster than DHT baseline
