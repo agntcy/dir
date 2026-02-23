@@ -14,7 +14,7 @@ on:
       server_addr:
         required: true
         type: string
-        default: dev.gateway.ads.outshift.io:443
+        default: prod.gateway.ads.outshift.io:443
         description: "server address to use"
 
 permissions:
