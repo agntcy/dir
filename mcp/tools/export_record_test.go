@@ -16,6 +16,8 @@ func TestExportRecord(t *testing.T) {
 	t.Parallel()
 
 	ctx := context.Background()
+	// Create Tools instance (nil client is fine - ExportRecord doesn't use client)
+	tools := &Tools{Client: nil}
 
 	t.Run("exports record to A2A format", func(t *testing.T) {
 		t.Parallel()
@@ -37,7 +39,7 @@ func TestExportRecord(t *testing.T) {
 			TargetFormat: "a2a",
 		}
 
-		_, output, err := ExportRecord(ctx, nil, input)
+		_, output, err := tools.ExportRecord(ctx, nil, input)
 
 		require.NoError(t, err)
 		// The export may fail if the record doesn't have the required A2A module data,
@@ -55,7 +57,7 @@ func TestExportRecord(t *testing.T) {
 			TargetFormat: "a2a",
 		}
 
-		_, output, err := ExportRecord(ctx, nil, input)
+		_, output, err := tools.ExportRecord(ctx, nil, input)
 
 		require.NoError(t, err)
 		assert.Contains(t, output.ErrorMessage, "record_json is required")
@@ -70,7 +72,7 @@ func TestExportRecord(t *testing.T) {
 			TargetFormat: "",
 		}
 
-		_, output, err := ExportRecord(ctx, nil, input)
+		_, output, err := tools.ExportRecord(ctx, nil, input)
 
 		require.NoError(t, err)
 		assert.Contains(t, output.ErrorMessage, "target_format is required")
@@ -90,7 +92,7 @@ func TestExportRecord(t *testing.T) {
 			TargetFormat: "unsupported-format",
 		}
 
-		_, output, err := ExportRecord(ctx, nil, input)
+		_, output, err := tools.ExportRecord(ctx, nil, input)
 
 		require.NoError(t, err)
 		assert.Contains(t, output.ErrorMessage, "Unsupported target format")
@@ -106,7 +108,7 @@ func TestExportRecord(t *testing.T) {
 			TargetFormat: "a2a",
 		}
 
-		_, output, err := ExportRecord(ctx, nil, input)
+		_, output, err := tools.ExportRecord(ctx, nil, input)
 
 		require.NoError(t, err)
 		assert.Contains(t, output.ErrorMessage, "Failed to parse record JSON")
@@ -126,7 +128,7 @@ func TestExportRecord(t *testing.T) {
 			TargetFormat: "A2A",
 		}
 
-		_, output, err := ExportRecord(ctx, nil, input)
+		_, output, err := tools.ExportRecord(ctx, nil, input)
 
 		require.NoError(t, err)
 		// The test verifies that case-insensitive format is handled.

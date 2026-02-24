@@ -25,7 +25,7 @@ type ListVersionsOutput struct {
 
 // ListVersions retrieves the list of available OASF schema versions.
 // This tool provides a simple way to discover what schema versions are supported.
-func ListVersions(ctx context.Context, _ *mcp.CallToolRequest, _ ListVersionsInput) (
+func (t *Tools) ListVersions(ctx context.Context, _ *mcp.CallToolRequest, _ ListVersionsInput) (
 	*mcp.CallToolResult,
 	ListVersionsOutput,
 	error,
