@@ -660,6 +660,7 @@ tasks:
           --set apiserver.reconciler.image.tag="{{ .DEPLOY_IMAGE_TAG }}" \
           --set apiserver.reconciler.config.regsync.interval="10s" \
           --set apiserver.reconciler.config.indexer.interval="10s" \
+          --set apiserver.reconciler.config.verification.interval="5s" \
           --namespace {{ .HELM_NAMESPACE }} \
           --create-namespace \
           --install \
@@ -1287,7 +1288,6 @@ tasks:
     aliases: [e2e:local]
     vars:
       PUBLICATION_SCHEDULER_INTERVAL: '{{ .PUBLICATION_SCHEDULER_INTERVAL | default "1s" }}'
-      REVERIFICATION_SCHEDULER_INTERVAL: '{{ .REVERIFICATION_SCHEDULER_INTERVAL | default "5s" }}'
       RATELIMIT_ENABLED: '{{ .RATELIMIT_ENABLED | default "true" }}'
       RATELIMIT_GLOBAL_RPS: '{{ .RATELIMIT_GLOBAL_RPS | default "100" }}'
       RATELIMIT_GLOBAL_BURST: '{{ .RATELIMIT_GLOBAL_BURST | default "200" }}'
@@ -1307,7 +1307,6 @@ tasks:
       - task: deploy:kubernetes:local
         vars:
           DIRECTORY_SERVER_PUBLICATION_SCHEDULER_INTERVAL: "{{ .PUBLICATION_SCHEDULER_INTERVAL }}"
-          DIRECTORY_SERVER_REVERIFICATION_SCHEDULER_INTERVAL: "{{ .REVERIFICATION_SCHEDULER_INTERVAL }}"
           DIRECTORY_SERVER_RATELIMIT_ENABLED: "{{ .RATELIMIT_ENABLED }}"
           DIRECTORY_SERVER_RATELIMIT_GLOBAL_RPS: "{{ .RATELIMIT_GLOBAL_RPS }}"
           DIRECTORY_SERVER_RATELIMIT_GLOBAL_BURST: "{{ .RATELIMIT_GLOBAL_BURST }}"
