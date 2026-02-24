@@ -116,6 +116,9 @@ type SignatureVerificationDatabaseAPI interface {
 	// UpdateSignatureVerification updates an existing signature verification row.
 	UpdateSignatureVerification(verification SignatureVerificationObject) error
 
+	// UpsertSignatureVerification creates a row if missing, or updates only status, error_message and updated_at if it exists.
+	UpsertSignatureVerification(verification SignatureVerificationObject) error
+
 	// GetSignatureVerificationsByRecordCID returns all signature verification rows for a record.
 	GetSignatureVerificationsByRecordCID(recordCID string) ([]SignatureVerificationObject, error)
 
