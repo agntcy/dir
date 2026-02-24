@@ -1677,20 +1677,27 @@ tasks:
     vars:
       E2E_COVERAGE_ENABLED: '{{ .E2E_COVERAGE_ENABLED | default "false" }}'
       NAMESPACE: '{{ .NAMESPACE | default "dir-server" }}'
-      POD_SELECTOR: '{{ .POD_SELECTOR | default "app.kubernetes.io/name=apiserver" }}'
+      POD_SELECTORS: '{{ .POD_SELECTORS | default "app.kubernetes.io/name=apiserver app.kubernetes.io/name=reconciler" }}'
       COVERAGE_DIR: '{{ .COVERAGE_DIR | default (print .ROOT_DIR "/.coverage/e2e/pods") }}'
     cmds:
       - |
         if [ "{{.E2E_COVERAGE_ENABLED}}" = "true" ]; then
           echo "[coverage] Triggering graceful shutdown of pod to flush coverage data..."
 
-          # Get pod matching the selector
-          POD_NAME=$({{.KUBECTL_BIN}} get pods -n {{.NAMESPACE}} -l {{.POD_SELECTOR}} -o jsonpath='{.items[*].metadata.name}')
+          for POD_SELECTOR in {{.POD_SELECTORS}}; do
+            POD_NAMES=$({{.KUBECTL_BIN}} get pods -n {{.NAMESPACE}} -l "$POD_SELECTOR" -o jsonpath='{.items[*].metadata.name}')
 
-            if [ -n "$POD_NAME" ]; then
+            if [ -z "$POD_NAMES" ]; then
+              echo "[coverage][warn] No pod found matching selector $POD_SELECTOR"
+              continue
+            fi
+
+            for POD_NAME in $POD_NAMES; do
+              [ -z "$POD_NAME" ] && continue
+
               # Send SIGTERM to PID 1 to trigger coverage flush (like the PoC)
               echo "[coverage] Sending SIGTERM to PID 1 in pod: $POD_NAME"
-              {{.KUBECTL_BIN}} exec -n {{.NAMESPACE}} $POD_NAME -- sh -c 'kill -TERM 1' 2>/dev/null || true
+              {{.KUBECTL_BIN}} exec -n {{.NAMESPACE}} "$POD_NAME" -- sh -c 'kill -TERM 1' 2>/dev/null || true
 
               # Wait for container to restart (coverage files persist in emptyDir volume)
               echo "[coverage] Waiting for container to restart and coverage to be flushed..."
@@ -1699,10 +1706,10 @@ tasks:
               # Extract coverage files (emptyDir persists across container restarts)
               echo "[coverage] Extracting coverage data from pod: $POD_NAME"
               mkdir -p {{.COVERAGE_DIR}}/pod-$POD_NAME
-              {{.KUBECTL_BIN}} cp -n {{.NAMESPACE}} $POD_NAME:/tmp/coverage {{.COVERAGE_DIR}}/pod-$POD_NAME 2>&1 || echo "[coverage][warn] Failed to extract from $POD_NAME"
-          else
-            echo "[coverage][warn] No pod found matching selector {{.POD_SELECTOR}}"
-          fi
+              {{.KUBECTL_BIN}} cp -n {{.NAMESPACE}} "$POD_NAME:/tmp/coverage" {{.COVERAGE_DIR}}/pod-$POD_NAME 2>&1 || echo "[coverage][warn] Failed to extract from $POD_NAME"
+            done
+          done
+
           echo "[coverage] Coverage data extracted to {{.COVERAGE_DIR}}"
         else
           echo "[coverage] E2E_COVERAGE_ENABLED is false, skipping pod coverage extraction"
