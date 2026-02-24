@@ -1709,6 +1709,7 @@ tasks:
               # Wait for container to restart (coverage files persist in emptyDir volume)
               echo "[coverage] Waiting for container to restart and coverage to be flushed..."
               sleep 5
+              {{.KUBECTL_BIN}} wait --for=condition=Ready pod/"$POD_NAME" -n {{.NAMESPACE}} --timeout=120s
 
               # Extract coverage files (emptyDir persists across container restarts)
               echo "[coverage] Extracting coverage data from pod: $POD_NAME"
