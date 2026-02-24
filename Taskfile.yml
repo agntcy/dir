@@ -1099,6 +1099,13 @@ tasks:
           echo "Running tests in {{.ITEM}}"
           go -C {{.ITEM}} test ./... {{.EXTRA_ARGS}}
 
+  test:unit:coverage:list-modules:
+    desc: List all go modules for the CI coverage unit test input
+    cmds:
+      - |
+        set -euo pipefail
+        printf '%s' "{{range $i, $dir := .GO_MOD_DIR_UNIT_TEST | splitList "\n"}}{{if $dir}}{{if $i}},{{end}}.coverage/unit/{{trimPrefix "./" $dir}}.out{{end}}{{end}}"
+
   test:unit:coverage:
     desc: Run all unit tests with coverage and generate summaries + HTML reports
     vars:
