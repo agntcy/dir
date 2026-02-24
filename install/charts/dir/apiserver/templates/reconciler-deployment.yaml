@@ -57,6 +57,9 @@ spec:
                   name: {{ include "chart.fullname" . }}
                   key: oci-password
             {{- end }}
+            {{- with .Values.extraEnv }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
           volumeMounts:
             - name: reconciler-config
               mountPath: /etc/agntcy/reconciler/reconciler.config.yml
@@ -65,6 +68,10 @@ spec:
             - name: spire-agent-socket
               mountPath: /run/spire/agent-sockets
               readOnly: true
+            {{- end }}
+            {{- if .Values.coverageVolume }}
+            - name: coverage-volume
+              mountPath: /tmp/coverage
             {{- end }}
           ports:
             - name: health
@@ -91,6 +98,10 @@ spec:
             items:
               - key: reconciler.config.yml
                 path: reconciler.config.yml
+        {{- if .Values.coverageVolume }}
+        - name: coverage-volume
+          emptyDir: {}
+        {{- end }}
         {{- if eq .Values.spire.enabled true }}
         - name: spire-agent-socket
           {{- if .Values.spire.useCSIDriver }}
