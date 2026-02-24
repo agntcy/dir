@@ -176,11 +176,14 @@ jobs:
     name: Coverage Image
     runs-on: ubuntu-latest
     if: ${{ inputs.build_coverage_images && !inputs.push }}
-    needs:
-      - prepare
     strategy:
+      # Build only the two coverage targets
       matrix:
-        include: ${{ fromJson(needs.prepare.outputs.matrix) }}
+        include:
+          - bake_target: dir-apiserver-coverage
+            image_name: dir-apiserver
+          - bake_target: dir-reconciler-coverage
+            image_name: dir-reconciler
     steps:
       - name: Checkout code
         uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
@@ -205,7 +208,7 @@ jobs:
         uses: docker/metadata-action@c299e40c65443455700f0fdfc63efafe5b349051 # v5.10.0
         with:
           images: |
-            ${{ inputs.image_repo }}/${{ matrix.target }}${{ inputs.image_name_suffix }},enable=true
+            ${{ inputs.image_repo }}/${{ matrix.image_name }}${{ inputs.image_name_suffix }},enable=true
           tags: |
             type=raw,value=${{ inputs.image_tag }}-coverage
 
@@ -220,12 +223,12 @@ jobs:
           files: |
             ./docker-bake.hcl
             cwd://${{ steps.metadata-coverage.outputs.bake-file }}
-          targets: coverage
+          targets: ${{ matrix.bake_target }}
           set: |
             *.platform=linux/amd64
-            *.output=type=docker,dest=/tmp/artifacts/${{ matrix.target }}-coverage.tar
-            *.cache-to=type=gha,mode=max,scope=${{ matrix.target }}-coverage
-            *.cache-from=type=gha,scope=${{ matrix.target }}-coverage
+            *.output=type=docker,dest=/tmp/artifacts/${{ matrix.bake_target }}.tar
+            *.cache-to=type=gha,mode=max,scope=${{ matrix.bake_target }}
+            *.cache-from=type=gha,scope=${{ matrix.bake_target }}
             *.args.BUILD_OPTS=-cover -covermode=atomic
         env:
           IMAGE_REPO: ${{ inputs.image_repo }}
@@ -236,6 +239,6 @@ jobs:
       - name: Upload coverage artifacts
         uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
         with:
-          name: ${{ matrix.target }}-coverage
-          path: /tmp/artifacts/${{ matrix.target }}-coverage.tar
+          name: ${{ matrix.bake_target }}
+          path: /tmp/artifacts/${{ matrix.bake_target }}.tar
           retention-days: 7

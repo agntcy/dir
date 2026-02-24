@@ -29,7 +29,7 @@ group "default" {
 group "coverage" {
   targets = [
     "dir-apiserver-coverage",
-    "dir-reconciler", # TODO: reconciler coverage is not supported, but image is required for e2e tests
+    "dir-reconciler-coverage",
   ]
 }
 
@@ -104,6 +104,17 @@ target "dir-reconciler" {
     REGSYNC_VERSION = "${REGSYNC_VERSION}"
   }
   tags = get_tag(target.docker-metadata-action.tags, "${target.dir-reconciler.name}")
+}
+
+target "dir-reconciler-coverage" {
+  context = "."
+  dockerfile = "./reconciler/Dockerfile"
+  target = "coverage"
+  inherits = [
+    "_common",
+    "docker-metadata-action",
+  ]
+  tags = get_tag(target.docker-metadata-action.tags, "dir-reconciler")
 }
 
 target "dir-runtime-discovery" {

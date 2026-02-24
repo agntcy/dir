@@ -562,10 +562,10 @@ externalSecrets:
     # Property names in Vault secret (defaults shown)
     usernameProperty: "sync-username"
     passwordProperty: "sync-password"
-  
+
   # PostgreSQL authentication (only used when database.type: "postgres")
   postgresAuth:
-    enabled: true 
+    enabled: true
     # Property names in Vault secret (defaults shown)
     usernameProperty: "postgres-username"
     passwordProperty: "postgres-password"
