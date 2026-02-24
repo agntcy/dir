@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/agntcy/dir/server/types"
+	"gorm.io/gorm/clause"
 )
 
 // SignatureVerification stores a signature verification result.
@@ -116,6 +117,35 @@ func (d *DB) UpdateSignatureVerification(verification types.SignatureVerificatio
 	}
 
 	logger.Debug("Updated signature verification", "record_cid", verification.GetRecordCID(), "signature_digest", verification.GetSignatureDigest(), "status", verification.GetStatus())
+
+	return nil
+}
+
+// UpsertSignatureVerification creates a row if missing, or updates only status, error_message and updated_at if it exists.
+func (d *DB) UpsertSignatureVerification(verification types.SignatureVerificationObject) error {
+	now := time.Now()
+	sv := &SignatureVerification{
+		RecordCID:       verification.GetRecordCID(),
+		SignatureDigest: verification.GetSignatureDigest(),
+		Status:          verification.GetStatus(),
+		ErrorMessage:    verification.GetErrorMessage(),
+		SignerType:      verification.GetSignerType(),
+		SignerIssuer:    verification.GetSignerIssuer(),
+		SignerSubject:   verification.GetSignerSubject(),
+		SignerPublicKey: verification.GetSignerPublicKey(),
+		CreatedAt:       now,
+		UpdatedAt:       now,
+	}
+
+	err := d.gormDB.Clauses(clause.OnConflict{
+		Columns:   []clause.Column{{Name: "record_cid"}, {Name: "signature_digest"}},
+		DoUpdates: clause.AssignmentColumns([]string{"status", "error_message", "updated_at"}),
+	}).Create(sv).Error
+	if err != nil {
+		return fmt.Errorf("upsert signature verification: %w", err)
+	}
+
+	logger.Debug("Upserted signature verification", "record_cid", sv.RecordCID, "signature_digest", sv.SignatureDigest, "status", sv.Status)
 
 	return nil
 }

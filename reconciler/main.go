@@ -20,10 +20,12 @@ import (
 	"github.com/agntcy/dir/reconciler/tasks/indexer"
 	"github.com/agntcy/dir/reconciler/tasks/name"
 	"github.com/agntcy/dir/reconciler/tasks/regsync"
+	"github.com/agntcy/dir/reconciler/tasks/signature"
 	"github.com/agntcy/dir/server/database"
 	namingprovider "github.com/agntcy/dir/server/naming"
 	"github.com/agntcy/dir/server/naming/wellknown"
 	"github.com/agntcy/dir/server/store/oci"
+	"github.com/agntcy/dir/server/types"
 	"github.com/agntcy/dir/utils/logging"
 )
 
@@ -117,6 +119,20 @@ func run() error {
 		}
 
 		svc.RegisterTask(nameTask)
+	}
+
+	if cfg.Signature.Enabled {
+		refStore, ok := store.(types.ReferrerStoreAPI)
+		if !ok {
+			logger.Warn("Store does not support referrers, skipping signature task")
+		} else {
+			signatureTask, err := signature.NewTask(cfg.Signature, db, refStore)
+			if err != nil {
+				return err
+			}
+
+			svc.RegisterTask(signatureTask)
+		}
 	}
 
 	// Create context that listens for signals

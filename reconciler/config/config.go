@@ -12,6 +12,7 @@ import (
 	"github.com/agntcy/dir/reconciler/tasks/indexer"
 	"github.com/agntcy/dir/reconciler/tasks/name"
 	"github.com/agntcy/dir/reconciler/tasks/regsync"
+	"github.com/agntcy/dir/reconciler/tasks/signature"
 	dbconfig "github.com/agntcy/dir/server/database/config"
 	namingconfig "github.com/agntcy/dir/server/naming/config"
 	ociconfig "github.com/agntcy/dir/server/store/oci/config"
@@ -54,6 +55,9 @@ type Config struct {
 
 	// Name holds the name (name/DNS verification) task configuration.
 	Name name.Config `json:"name" mapstructure:"name"`
+
+	// Signature holds the signature verification task configuration.
+	Signature signature.Config `json:"signature" mapstructure:"signature"`
 }
 
 // LoadConfig loads the configuration from file and environment variables.
@@ -162,6 +166,21 @@ func LoadConfig() (*Config, error) {
 
 	_ = v.BindEnv("name.record_timeout")
 	v.SetDefault("name.record_timeout", name.DefaultRecordTimeout)
+
+	//
+	// Signature task configuration (signature verification cache)
+	//
+	_ = v.BindEnv("signature.enabled")
+	v.SetDefault("signature.enabled", true)
+
+	_ = v.BindEnv("signature.interval")
+	v.SetDefault("signature.interval", signature.DefaultInterval)
+
+	_ = v.BindEnv("signature.ttl")
+	v.SetDefault("signature.ttl", signature.DefaultTTL)
+
+	_ = v.BindEnv("signature.record_timeout")
+	v.SetDefault("signature.record_timeout", signature.DefaultRecordTimeout)
 
 	//
 	// OASF validation configuration
