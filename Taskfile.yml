@@ -1734,7 +1734,9 @@ tasks:
           pod_dirs=$(find {{.COVERAGE_DIR}}/pods -mindepth 1 -maxdepth 1 -type d 2>/dev/null | tr '\n' ',' | sed 's/,$//')
 
           if [ -n "$pod_dirs" ]; then
-            echo "  Found pod coverage directories"
+            echo "  Found pod coverage directories: $pod_dirs"
+
+            # server.out creation
             mkdir -p {{.COVERAGE_DIR}}/server-binary
             go tool covdata merge -i="$pod_dirs" -o={{.COVERAGE_DIR}}/server-binary
             go tool covdata textfmt -i={{.COVERAGE_DIR}}/server-binary -o={{.COVERAGE_DIR}}/server.out.tmp
