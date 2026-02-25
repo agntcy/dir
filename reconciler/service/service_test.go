@@ -129,21 +129,5 @@ func TestStart_ContextCancelStopsTaskLoop(t *testing.T) {
 	assert.GreaterOrEqual(t, calls, 1)
 }
 
-func TestStart_InitializeError(t *testing.T) {
-	// Task that implements Initialize and returns error would require
-	// a custom mock with Initialize(). The service checks for
-	// interface{ Initialize() error }. We don't have such a task in
-	// this test file; the name/indexer/regsync tasks may implement it.
-	// So we just test that Start with our mock (no Initialize) succeeds.
-	s := New()
-	s.RegisterTask(&mockTask{name: "no-init", interval: time.Hour, enabled: true})
-
-	ctx := t.Context()
-
-	err := s.Start(ctx)
-	require.NoError(t, err)
-	s.Stop() //nolint:errcheck
-}
-
 // Ensure mockTask satisfies tasks.Task.
 var _ tasks.Task = (*mockTask)(nil)

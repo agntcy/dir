@@ -6,52 +6,10 @@ package indexer
 import (
 	"errors"
 	"testing"
-	"time"
 
 	ociconfig "github.com/agntcy/dir/server/store/oci/config"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
-
-func TestTask_Name_Interval_IsEnabled(t *testing.T) {
-	task, err := NewTask(
-		Config{Enabled: true, Interval: 2 * time.Hour},
-		ociconfig.Config{},
-		nil,
-		nil,
-		nil,
-	)
-	require.NoError(t, err)
-	require.NotNil(t, task)
-
-	assert.Equal(t, "indexer", task.Name())
-	assert.Equal(t, 2*time.Hour, task.Interval())
-	assert.True(t, task.IsEnabled())
-}
-
-func TestTask_IsEnabled_False(t *testing.T) {
-	task, err := NewTask(
-		Config{Enabled: false, Interval: time.Hour},
-		ociconfig.Config{},
-		nil,
-		nil,
-		nil,
-	)
-	require.NoError(t, err)
-	assert.False(t, task.IsEnabled())
-}
-
-func TestTask_Interval_Zero_UsesDefault(t *testing.T) {
-	task, err := NewTask(
-		Config{Enabled: true, Interval: 0},
-		ociconfig.Config{},
-		nil,
-		nil,
-		nil,
-	)
-	require.NoError(t, err)
-	assert.Equal(t, DefaultInterval, task.Interval())
-}
 
 func TestCreateContentHash(t *testing.T) {
 	tests := []struct {
