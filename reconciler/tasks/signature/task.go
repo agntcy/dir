@@ -250,6 +250,7 @@ func (t *Task) verifySignature(ctx context.Context, recordCID string, item sigWi
 	} else if info.GetKey() != nil {
 		sv.SignerType = "key"
 		sv.SignerPublicKey = info.GetKey().GetPublicKey()
+		sv.SignerAlgorithm = info.GetKey().GetAlgorithm()
 	}
 
 	return sv

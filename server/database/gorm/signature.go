@@ -21,6 +21,7 @@ type SignatureVerification struct {
 	SignerIssuer    string    `gorm:"column:signer_issuer"`     // OIDC issuer
 	SignerSubject   string    `gorm:"column:signer_subject"`    // OIDC subject
 	SignerPublicKey string    `gorm:"column:signer_public_key"` // PEM or ref for key type
+	SignerAlgorithm string    `gorm:"column:signer_algorithm"`  // e.g. RSA-SHA256, Ed25519
 	CreatedAt       time.Time `gorm:"column:created_at;not null"`
 	UpdatedAt       time.Time `gorm:"column:updated_at;not null"`
 }
@@ -60,6 +61,10 @@ func (s *SignatureVerification) GetSignerPublicKey() string {
 	return s.SignerPublicKey
 }
 
+func (s *SignatureVerification) GetSignerAlgorithm() string {
+	return s.SignerAlgorithm
+}
+
 func (s *SignatureVerification) GetCreatedAt() time.Time {
 	return s.CreatedAt
 }
@@ -81,6 +86,7 @@ func (d *DB) CreateSignatureVerification(verification types.SignatureVerificatio
 		SignerIssuer:    verification.GetSignerIssuer(),
 		SignerSubject:   verification.GetSignerSubject(),
 		SignerPublicKey: verification.GetSignerPublicKey(),
+		SignerAlgorithm: verification.GetSignerAlgorithm(),
 		CreatedAt:       now,
 		UpdatedAt:       now,
 	}
@@ -106,6 +112,7 @@ func (d *DB) UpdateSignatureVerification(verification types.SignatureVerificatio
 			"signer_issuer":     verification.GetSignerIssuer(),
 			"signer_subject":    verification.GetSignerSubject(),
 			"signer_public_key": verification.GetSignerPublicKey(),
+			"signer_algorithm":  verification.GetSignerAlgorithm(),
 			"updated_at":        now,
 		})
 	if result.Error != nil {
@@ -133,13 +140,14 @@ func (d *DB) UpsertSignatureVerification(verification types.SignatureVerificatio
 		SignerIssuer:    verification.GetSignerIssuer(),
 		SignerSubject:   verification.GetSignerSubject(),
 		SignerPublicKey: verification.GetSignerPublicKey(),
+		SignerAlgorithm: verification.GetSignerAlgorithm(),
 		CreatedAt:       now,
 		UpdatedAt:       now,
 	}
 
 	err := d.gormDB.Clauses(clause.OnConflict{
 		Columns:   []clause.Column{{Name: "record_cid"}, {Name: "signature_digest"}},
-		DoUpdates: clause.AssignmentColumns([]string{"status", "error_message", "updated_at"}),
+		DoUpdates: clause.AssignmentColumns([]string{"status", "error_message", "signer_type", "signer_issuer", "signer_subject", "signer_public_key", "signer_algorithm", "updated_at"}),
 	}).Create(sv).Error
 	if err != nil {
 		return fmt.Errorf("upsert signature verification: %w", err)
