@@ -428,6 +428,11 @@ func (d *DB) handleFilterOptions(query *gorm.DB, cfg *types.RecordFilters) *gorm
 		}
 	}
 
+	// Handle trusted filter (signature verification passed; uses denormalized records.trusted).
+	if cfg.Trusted != nil {
+		query = query.Where("records.trusted = ?", *cfg.Trusted)
+	}
+
 	return query
 }
 

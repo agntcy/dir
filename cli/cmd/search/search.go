@@ -46,6 +46,10 @@ Examples:
    dirctl search --verified
    dirctl search --name "cisco.com/*" --verified
 
+6. Search for trusted records only (signature verification passed):
+   dirctl search --trusted
+   dirctl search --name "web*" --trusted
+
 Supported wildcards:
   * - matches zero or more characters
   ? - matches exactly one character
