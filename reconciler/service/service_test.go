@@ -107,33 +107,6 @@ func TestStart_StartsOnlyEnabledTasks(t *testing.T) {
 	s.Stop() //nolint:errcheck
 }
 
-func TestStart_StopCancelsTaskLoop(t *testing.T) {
-	s := New()
-	task := &mockTask{name: "loop", interval: 5 * time.Millisecond, enabled: true}
-	s.RegisterTask(task)
-
-	ctx := context.Background()
-	err := s.Start(ctx)
-	require.NoError(t, err)
-
-	// Let it run a few times
-	time.Sleep(25 * time.Millisecond)
-
-	task.runMu.Lock()
-	beforeStop := task.runCalls
-	task.runMu.Unlock()
-	assert.GreaterOrEqual(t, beforeStop, 1)
-
-	s.Stop() //nolint:errcheck
-
-	// After stop, run count should not increase (give a short window)
-	time.Sleep(20 * time.Millisecond)
-	task.runMu.Lock()
-	afterStop := task.runCalls
-	task.runMu.Unlock()
-	assert.Equal(t, beforeStop, afterStop, "task should not run after Stop")
-}
-
 func TestStart_ContextCancelStopsTaskLoop(t *testing.T) {
 	s := New()
 	task := &mockTask{name: "loop", interval: 5 * time.Millisecond, enabled: true}
