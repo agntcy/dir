@@ -37,7 +37,7 @@ type GetSchemaSkillsOutput struct {
 // GetSchemaSkills retrieves skills from the OASF schema for the specified version.
 // If parent_skill is provided, returns only sub-skills under that parent.
 // Otherwise, returns all top-level skills.
-func GetSchemaSkills(ctx context.Context, _ *mcp.CallToolRequest, input GetSchemaSkillsInput) (
+func (t *Tools) GetSchemaSkills(ctx context.Context, _ *mcp.CallToolRequest, input GetSchemaSkillsInput) (
 	*mcp.CallToolResult,
 	GetSchemaSkillsOutput,
 	error,

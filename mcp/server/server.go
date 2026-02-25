@@ -33,6 +33,13 @@ func Serve(ctx context.Context) error {
 		return fmt.Errorf("failed to initialize OASF validator: %w", err)
 	}
 
+	// Create Directory client tools (shared client for all tool calls)
+	t, err := tools.NewTools(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to create Directory client: %w", err)
+	}
+	defer t.Close()
+
 	// Create MCP server for Directory operations
 	server := mcp.NewServer(&mcp.Implementation{
 		Name:    "dir-mcp-server",
@@ -49,7 +56,7 @@ without having to make requests with specific version numbers.
 
 Use this tool to see what OASF schema versions you can work with.
 		`),
-	}, tools.ListVersions)
+	}, t.ListVersions)
 
 	// Add tool for getting OASF schema content
 	mcp.AddTool(server, &mcp.Tool{
@@ -64,7 +71,7 @@ This tool provides direct access to the full schema definition including:
 
 Use this tool to get the complete schema for reference when creating or validating agent records.
 		`),
-	}, tools.GetSchema)
+	}, t.GetSchema)
 
 	// Add tool for getting OASF schema skills
 	mcp.AddTool(server, &mcp.Tool{
@@ -83,7 +90,7 @@ Each skill includes:
 Use this tool to discover valid skills when creating or enriching agent records.
 Essential for LLM-based enrichment to ensure skills match the schema taxonomy.
 		`),
-	}, tools.GetSchemaSkills)
+	}, t.GetSchemaSkills)
 
 	// Add tool for getting OASF schema domains
 	mcp.AddTool(server, &mcp.Tool{
@@ -102,7 +109,7 @@ Each domain includes:
 Use this tool to discover valid domains when creating or enriching agent records.
 Essential for LLM-based enrichment to ensure domains match the schema taxonomy.
 		`),
-	}, tools.GetSchemaDomains)
+	}, t.GetSchemaDomains)
 
 	// Add tool for validating OASF agent records
 	mcp.AddTool(server, &mcp.Tool{
@@ -118,7 +125,7 @@ This tool performs comprehensive validation including:
 Returns detailed validation errors to help fix issues.
 Use this tool to ensure a record meets all OASF requirements before pushing.
 		`),
-	}, tools.ValidateRecord)
+	}, t.ValidateRecord)
 
 	// Add tool for pushing records to Directory server
 	mcp.AddTool(server, &mcp.Tool{
@@ -134,7 +141,7 @@ Server configuration is set via environment variables (DIRECTORY_CLIENT_SERVER_A
 
 Use this tool after validating your record to store it in the Directory.
 		`),
-	}, tools.PushRecord)
+	}, t.PushRecord)
 
 	// Add tool for searching local records
 	// Use manually defined schema to avoid union types (type: ["array", "null"]) that mcphost can't parse
@@ -158,7 +165,7 @@ Server configuration is set via environment variables (DIRECTORY_CLIENT_SERVER_A
 
 Use this tool for direct, structured searches when you know the exact filters to apply.
 		`),
-	}, tools.SearchLocal)
+	}, t.SearchLocal)
 
 	// Add tool for pulling records from Directory
 	mcp.AddTool(server, &mcp.Tool{
@@ -171,7 +178,7 @@ Server configuration is set via environment variables (DIRECTORY_CLIENT_SERVER_A
 
 Use this tool to retrieve agent records by their CID for inspection or validation.
 		`),
-	}, tools.PullRecord)
+	}, t.PullRecord)
 
 	// Add tool for verifying record signatures
 	mcp.AddTool(server, &mcp.Tool{
@@ -183,7 +190,29 @@ Returns the verification status (trusted/not trusted).
 
 Use this tool to ensure a record has been properly signed and hasn't been tampered with.
 		`),
-	}, tools.VerifyRecord)
+	}, t.VerifyRecord)
+
+	// Add tool for verifying record name ownership
+	mcp.AddTool(server, &mcp.Tool{
+		Name: "agntcy_dir_verify_name",
+		Description: strings.TrimSpace(`
+Verifies that a record's name is owned by the domain it claims.
+This tool checks that the record was signed with a key published in the domain's 
+well-known JWKS file (/.well-known/jwks.json).
+
+You can verify by:
+- CID: Directly verify a specific record by its Content Identifier
+- Name: Verify a record by its human-readable name (e.g., "example.com/my-agent")
+- Name + Version: Verify a specific version (e.g., "example.com/my-agent" + "v1.0.0")
+
+Returns verification status and domain verification details including:
+- The verified domain
+- The verification method used
+- The matched key ID from the domain's JWKS
+
+Use this tool to verify that an agent record was actually published by the domain owner.
+		`),
+	}, t.VerifyName)
 
 	// Add tool for exporting OASF records to other formats
 	mcp.AddTool(server, &mcp.Tool{
@@ -206,7 +235,7 @@ The output structure depends on the target format:
 
 Use this tool when you need to convert OASF records to other format specifications.
 		`),
-	}, tools.ExportRecord)
+	}, t.ExportRecord)
 
 	// Add tool for importing records from other formats to OASF
 	mcp.AddTool(server, &mcp.Tool{
@@ -257,7 +286,7 @@ from the oasf-sdk translator are incomplete and MUST be enriched. Follow these s
 Use this tool when you need to convert records from other format specifications to OASF.
 For a complete guided workflow including enrichment and validation, use the import_record prompt.
 		`),
-	}, tools.ImportRecord)
+	}, t.ImportRecord)
 
 	// Add prompt for creating agent records
 	server.AddPrompt(&mcp.Prompt{

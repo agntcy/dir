@@ -28,7 +28,7 @@ type GetSchemaOutput struct {
 
 // GetSchema retrieves the OASF schema content for the specified version.
 // This tool provides direct access to the complete OASF schema JSON.
-func GetSchema(ctx context.Context, _ *mcp.CallToolRequest, input GetSchemaInput) (
+func (t *Tools) GetSchema(ctx context.Context, _ *mcp.CallToolRequest, input GetSchemaInput) (
 	*mcp.CallToolResult,
 	GetSchemaOutput,
 	error,

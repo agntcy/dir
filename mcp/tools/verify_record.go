@@ -9,7 +9,6 @@ import (
 
 	corev1 "github.com/agntcy/dir/api/core/v1"
 	signv1 "github.com/agntcy/dir/api/sign/v1"
-	"github.com/agntcy/dir/client"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
 
@@ -33,7 +32,7 @@ type VerifyRecordOutput struct {
 }
 
 // VerifyRecord verifies the signature of a record in the Directory by its CID.
-func VerifyRecord(ctx context.Context, _ *mcp.CallToolRequest, input VerifyRecordInput) (
+func (t *Tools) VerifyRecord(ctx context.Context, _ *mcp.CallToolRequest, input VerifyRecordInput) (
 	*mcp.CallToolResult,
 	VerifyRecordOutput,
 	error,
@@ -54,25 +53,8 @@ func VerifyRecord(ctx context.Context, _ *mcp.CallToolRequest, input VerifyRecor
 		}, nil
 	}
 
-	// Load client configuration
-	config, err := client.LoadConfig()
-	if err != nil {
-		return nil, VerifyRecordOutput{
-			Error: fmt.Sprintf("Failed to load client configuration: %v", err),
-		}, nil
-	}
-
-	// Create Directory client
-	c, err := client.New(ctx, client.WithConfig(config))
-	if err != nil {
-		return nil, VerifyRecordOutput{
-			Error: fmt.Sprintf("Failed to create client: %v", err),
-		}, nil
-	}
-	defer c.Close()
-
 	// Verify record
-	resp, err := c.Verify(ctx, &signv1.VerifyRequest{
+	resp, err := t.Client.Verify(ctx, &signv1.VerifyRequest{
 		RecordRef: &corev1.RecordRef{
 			Cid: input.CID,
 		},

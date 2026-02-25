@@ -31,7 +31,7 @@ type ExportRecordOutput struct {
 // Currently supported formats:
 // - "a2a": Agent-to-Agent (A2A) format.
 // - "ghcopilot": GitHub Copilot MCP configuration format.
-func ExportRecord(ctx context.Context, _ *mcp.CallToolRequest, input ExportRecordInput) (
+func (t *Tools) ExportRecord(ctx context.Context, _ *mcp.CallToolRequest, input ExportRecordInput) (
 	*mcp.CallToolResult,
 	ExportRecordOutput,
 	error,

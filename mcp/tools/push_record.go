@@ -8,7 +8,6 @@ import (
 	"fmt"
 
 	corev1 "github.com/agntcy/dir/api/core/v1"
-	"github.com/agntcy/dir/client"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
 
@@ -26,19 +25,11 @@ type PushRecordOutput struct {
 
 // PushRecord implements the agntcy_dir_push_record tool.
 // It pushes an OASF agent record to a Directory server and returns the CID.
-func PushRecord(ctx context.Context, _ *mcp.CallToolRequest, input PushRecordInput) (
+func (t *Tools) PushRecord(ctx context.Context, _ *mcp.CallToolRequest, input PushRecordInput) (
 	*mcp.CallToolResult,
 	PushRecordOutput,
 	error,
 ) {
-	// Load client configuration from environment variables
-	config, err := client.LoadConfig()
-	if err != nil {
-		return nil, PushRecordOutput{
-			ErrorMessage: fmt.Sprintf("Failed to load client configuration: %v", err),
-		}, nil
-	}
-
 	// Parse the record JSON
 	record, err := corev1.UnmarshalRecord([]byte(input.RecordJSON))
 	if err != nil {
@@ -61,17 +52,8 @@ func PushRecord(ctx context.Context, _ *mcp.CallToolRequest, input PushRecordInp
 		}, nil
 	}
 
-	// Create Directory client
-	c, err := client.New(ctx, client.WithConfig(config))
-	if err != nil {
-		return nil, PushRecordOutput{
-			ErrorMessage: fmt.Sprintf("Failed to create Directory client: %v", err),
-		}, nil
-	}
-	defer c.Close()
-
 	// Push the record
-	recordRef, err := c.Push(ctx, record)
+	recordRef, err := t.Client.Push(ctx, record)
 	if err != nil {
 		return nil, PushRecordOutput{
 			ErrorMessage: fmt.Sprintf("Failed to push record to server: %v", err),
@@ -81,6 +63,6 @@ func PushRecord(ctx context.Context, _ *mcp.CallToolRequest, input PushRecordInp
 	// Return success with CID and server address
 	return nil, PushRecordOutput{
 		CID:           recordRef.GetCid(),
-		ServerAddress: config.ServerAddress,
+		ServerAddress: t.ServerAddress,
 	}, nil
 }

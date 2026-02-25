@@ -8,7 +8,6 @@ import (
 	"fmt"
 
 	corev1 "github.com/agntcy/dir/api/core/v1"
-	"github.com/agntcy/dir/client"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 	"google.golang.org/protobuf/encoding/protojson"
 )
@@ -25,7 +24,7 @@ type PullRecordOutput struct {
 }
 
 // PullRecord pulls a record from the Directory by its CID.
-func PullRecord(ctx context.Context, _ *mcp.CallToolRequest, input PullRecordInput) (
+func (t *Tools) PullRecord(ctx context.Context, _ *mcp.CallToolRequest, input PullRecordInput) (
 	*mcp.CallToolResult,
 	PullRecordOutput,
 	error,
@@ -37,25 +36,8 @@ func PullRecord(ctx context.Context, _ *mcp.CallToolRequest, input PullRecordInp
 		}, nil
 	}
 
-	// Load client configuration
-	config, err := client.LoadConfig()
-	if err != nil {
-		return nil, PullRecordOutput{
-			ErrorMessage: fmt.Sprintf("Failed to load client configuration: %v", err),
-		}, nil
-	}
-
-	// Create Directory client
-	c, err := client.New(ctx, client.WithConfig(config))
-	if err != nil {
-		return nil, PullRecordOutput{
-			ErrorMessage: fmt.Sprintf("Failed to create Directory client: %v", err),
-		}, nil
-	}
-	defer c.Close()
-
 	// Pull the record
-	record, err := c.Pull(ctx, &corev1.RecordRef{
+	record, err := t.Client.Pull(ctx, &corev1.RecordRef{
 		Cid: input.CID,
 	})
 	if err != nil {
