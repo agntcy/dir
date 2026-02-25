@@ -58,8 +58,6 @@ Pushes an OASF agent record to a Directory server.
 
 This tool validates and uploads the record to the configured Directory server. It returns the Content Identifier (CID) and the server address where the record was stored.
 
-**Note:** Requires Directory server configuration via environment variables.
-
 ### `agntcy_dir_search_local`
 
 Searches for agent records on the local directory node using structured query filters.
@@ -72,16 +70,24 @@ Searches for agent records on the local directory node using structured query fi
 - `skill_ids` ([]string) - Skill IDs (exact match only)
 - `skill_names` ([]string) - Skill name patterns (supports wildcards)
 - `locators` ([]string) - Locator patterns (supports wildcards)
-- `modules` ([]string) - Module patterns (supports wildcards)
+- `module_names` ([]string) - Module name patterns (supports wildcards)
+- `module_ids` ([]string) - Module IDs (exact match only)
+- `domain_ids` ([]string) - Domain IDs (exact match only)
+- `domain_names` ([]string) - Domain name patterns (supports wildcards)
+- `authors` ([]string) - Author name patterns (supports wildcards)
+- `created_ats` ([]string) - Created_at timestamp patterns (supports wildcards)
+- `schema_versions` ([]string) - Schema version patterns (supports wildcards)
 
 **Output:**
 - `record_cids` ([]string) - Array of matching record CIDs
 - `count` (int) - Number of results returned
 - `has_more` (bool) - Whether more results are available
+- `error_message` (string) - Error message if search failed
 
 **Wildcard Patterns:**
 - `*` - Matches zero or more characters
 - `?` - Matches exactly one character
+- `[abc]` - Matches any character in the brackets
 
 **Examples:**
 ```json
@@ -126,6 +132,43 @@ Pulls an OASF agent record from the local Directory node by its CID (Content Ide
 ```
 
 **Note:** The pulled record is content-addressable and can be validated against its hash. Requires Directory server configuration via environment variables.
+
+### `agntcy_dir_verify_name`
+
+Verifies that a record's name is owned by the domain it claims. This tool checks that the record was signed with a key published in the domain's well-known JWKS file (`/.well-known/jwks.json`).
+
+**Input (at least one required):**
+- `cid` (string) - Content Identifier (CID) of the record to verify
+- `name` (string) - Human-readable name of the record (e.g., `"https://example.com/my-agent"`)
+- `version` (string, optional) - Version to verify (e.g., `"v1.0.0"`). If omitted, verifies the latest version.
+
+**Output:**
+- `verified` (bool) - Whether the name ownership was verified
+- `domain_verification` (object, optional) - Details about the domain verification:
+  - `domain` (string) - The domain that was verified
+  - `method` (string) - Verification method used (e.g., `"wellknown"`)
+  - `matched_key_id` (string) - The key ID that matched from the domain's JWKS
+  - `verified_at` (string) - Timestamp when verification occurred
+- `error_message` (string) - Error message if verification failed
+
+**Use when:** You want to verify that an agent record was actually published by the domain owner. Records must have URL-based names (starting with `http://` or `https://`) for domain verification to work.
+
+### `agntcy_dir_verify_record`
+
+Verifies the digital signature of a record in the Directory by its CID. This tool performs a server-side verification of the record's integrity and authenticity.
+
+**Input:**
+- `cid` (string, **required**) - Content Identifier (CID) of the record to verify
+
+**Output:**
+- `success` (bool) - Whether the signature verification was successful
+- `message` (string) - Status message indicating trust level
+- `signers` (array, optional) - Information about verified signers:
+  - `identity` (string) - Signer identity
+  - `issuer` (string) - Certificate issuer
+- `error` (string) - Error message if verification request failed
+
+**Use when:** You want to ensure a record has been properly signed and hasn't been tampered with.
 
 ### `agntcy_oasf_import_record`
 
@@ -435,6 +478,8 @@ Before starting the MCP server with OAuth token configuration, authenticate usin
 - "Validate this OASF record at path: /path/to/record.json"
 - "Search for Python agents with image processing"
 - "Push this record: [JSON]"
+- "Verify the name ownership for this CID: baearei..."
+- "Verify the signature of this record: baearei..."
 - "Import this A2A card to OASF format: [JSON]"
 - "Export this OASF record to A2A format: [JSON]"
 
