@@ -5,10 +5,15 @@ package pipeline
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
+	"os"
+	"path/filepath"
+	"strings"
 	"testing"
 
 	corev1 "github.com/agntcy/dir/api/core/v1"
+	"google.golang.org/protobuf/types/known/structpb"
 )
 
 // mockFetcher is a mock implementation of Fetcher for testing.
@@ -454,5 +459,106 @@ func TestPipeline_Run_WithDuplicateChecker(t *testing.T) {
 	if result.TotalRecords != expectedTotal {
 		t.Errorf("total records mismatch: %d != %d (skipped) + %d (imported) + %d (failed)",
 			result.TotalRecords, result.SkippedCount, result.ImportedCount, result.FailedCount)
+	}
+}
+
+func TestDryRunPipeline_Run_WritesOutputFile(t *testing.T) {
+	ctx := context.Background()
+	dir := t.TempDir()
+	outputPath := filepath.Join(dir, "dry-run-output.jsonl")
+
+	fetcher := &mockFetcher{
+		items: []any{"item1", "item2"},
+	}
+	transformer := &mockTransformer{}
+	config := Config{
+		TransformerWorkers: 2,
+		DryRunOutput:       outputPath,
+	}
+	p := NewDryRun(fetcher, nil, transformer, config)
+
+	result, err := p.Run(ctx)
+	if err != nil {
+		t.Fatalf("Run() error = %v", err)
+	}
+
+	if result.TotalRecords != 2 {
+		t.Errorf("expected 2 total records, got %d", result.TotalRecords)
+	}
+
+	// Verify output file was created and contains lines (one per record)
+	data, err := os.ReadFile(outputPath)
+	if err != nil {
+		t.Fatalf("failed to read output file: %v", err)
+	}
+	lines := 0
+	for _, b := range data {
+		if b == '\n' {
+			lines++
+		}
+	}
+	if lines != 2 {
+		t.Errorf("output file should have 2 lines (one per record), got %d", lines)
+	}
+}
+
+func TestDryRunPipeline_ConfigDefaults(t *testing.T) {
+	fetcher := &mockFetcher{}
+	transformer := &mockTransformer{}
+	config := Config{}
+	p := NewDryRun(fetcher, nil, transformer, config)
+
+	if p.config.TransformerWorkers != 5 {
+		t.Errorf("expected default TransformerWorkers=5, got %d", p.config.TransformerWorkers)
+	}
+}
+
+func TestWriteRecordsToFile(t *testing.T) {
+	dir := t.TempDir()
+	outputPath := filepath.Join(dir, "records.jsonl")
+
+	record1 := &corev1.Record{
+		Data: &structpb.Struct{
+			Fields: map[string]*structpb.Value{
+				"name":    structpb.NewStringValue("server1"),
+				"version": structpb.NewStringValue("1.0.0"),
+			},
+		},
+	}
+	record2 := &corev1.Record{
+		Data: &structpb.Struct{
+			Fields: map[string]*structpb.Value{
+				"name":    structpb.NewStringValue("server2"),
+				"version": structpb.NewStringValue("2.0.0"),
+			},
+		},
+	}
+
+	ch := make(chan *corev1.Record, 2)
+	ch <- record1
+	ch <- record2
+	close(ch)
+
+	err := writeRecordsToFile(outputPath, ch)
+	if err != nil {
+		t.Fatalf("writeRecordsToFile() error = %v", err)
+	}
+
+	data, err := os.ReadFile(outputPath)
+	if err != nil {
+		t.Fatalf("ReadFile() error = %v", err)
+	}
+
+	var decoded []map[string]any
+	dec := json.NewDecoder(strings.NewReader(string(data)))
+	for dec.More() {
+		var m map[string]any
+		if err := dec.Decode(&m); err != nil {
+			t.Fatalf("Decode() error = %v", err)
+		}
+		decoded = append(decoded, m)
+	}
+	if len(decoded) != 2 {
+		t.Errorf("expected 2 records in file, got %d", len(decoded))
 	}
 }

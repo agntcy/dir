@@ -4,6 +4,8 @@
 package mcp
 
 import (
+	"context"
+	"strings"
 	"testing"
 
 	"github.com/agntcy/dir/client"
@@ -24,11 +26,19 @@ func TestNewImporter(t *testing.T) {
 			},
 			wantErr: false,
 		},
+		{
+			name: "valid config with filters",
+			config: config.Config{
+				RegistryType: config.RegistryTypeMCP,
+				RegistryURL:  "https://registry.example.com",
+				Filters:      map[string]string{"search": "test", "version": "latest"},
+			},
+			wantErr: false,
+		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			// Create a mock client
 			mockClient := &client.Client{}
 
 			importer, err := NewImporter(mockClient, tt.config)
@@ -38,9 +48,35 @@ func TestNewImporter(t *testing.T) {
 				return
 			}
 
-			if importer == nil {
+			if !tt.wantErr && importer == nil {
 				t.Error("NewImporter() returned nil importer")
 			}
 		})
+	}
+}
+
+func TestImporter_Run_FetcherCreationFails(t *testing.T) {
+	ctx := context.Background()
+	mockClient := &client.Client{}
+
+	importer, err := NewImporter(mockClient, config.Config{
+		RegistryType: config.RegistryTypeMCP,
+		RegistryURL:  "https://registry.example.com",
+		Filters:      map[string]string{"unsupported_filter": "value"},
+	})
+	if err != nil {
+		t.Fatalf("NewImporter() error = %v", err)
+	}
+
+	_, err = importer.Run(ctx, config.Config{
+		RegistryType: config.RegistryTypeMCP,
+		RegistryURL:  "https://registry.example.com",
+		Filters:      map[string]string{"unsupported_filter": "value"},
+	})
+	if err == nil {
+		t.Fatal("Run() expected error when fetcher creation fails, got nil")
+	}
+	if !strings.Contains(err.Error(), "failed to create fetcher") {
+		t.Errorf("Run() error = %v, want containing 'failed to create fetcher'", err)
 	}
 }

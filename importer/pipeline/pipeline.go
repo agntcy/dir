@@ -314,8 +314,7 @@ func runTransformStage(ctx context.Context, transformer Transformer, numWorkers 
 	// Start transformer workers
 	for range numWorkers {
 		wg.Add(1)
-
-		wg.Go(func() {
+		go func() {
 			defer wg.Done()
 
 			for {
@@ -356,7 +355,7 @@ func runTransformStage(ctx context.Context, transformer Transformer, numWorkers 
 					}
 				}
 			}
-		})
+		}()
 	}
 
 	// Close output channel when all workers are done

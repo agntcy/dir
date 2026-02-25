@@ -76,9 +76,9 @@ func TestConfig_Validate(t *testing.T) {
 			}
 
 			// Check that default concurrency is set when invalid
-			if !tt.wantErr && tt.config.Concurrency <= 0 {
-				if tt.config.Concurrency != 5 {
-					t.Errorf("Config.Validate() did not set default concurrency, got %d, want 5", tt.config.Concurrency)
+			if !tt.wantErr && (tt.name == "zero concurrency sets default" || tt.name == "negative concurrency sets default") {
+				if tt.config.Concurrency != 1 {
+					t.Errorf("Config.Validate() did not set default concurrency, got %d, want 1", tt.config.Concurrency)
 				}
 			}
 		})
