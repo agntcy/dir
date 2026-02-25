@@ -208,10 +208,8 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests for sync commands", fun
 		})
 
 		ginkgo.It("should verify the record_070_sync_v4.json from peer 2 after sync", func() {
-			output := cli.Verify(cid).OnServer(utils.Peer2Addr).ShouldSucceed()
-
-			// Verify the output
-			gomega.Expect(output).To(gomega.ContainSubstring("Record signature is: trusted"))
+			// Verification should eventually contain "trusted" (reconciler signature task).
+			_ = cli.Verify(cid).OnServer(utils.Peer2Addr).ShouldEventuallyContain("Record signature is: trusted", 90*time.Second)
 		})
 
 		// Delete sync from peer 2
@@ -283,10 +281,8 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests for sync commands", fun
 		})
 
 		ginkgo.It("should verify the record_070_sync_v5.json from peer 3 after sync", func() {
-			output := cli.Verify(cidV5).OnServer(utils.Peer3Addr).ShouldSucceed()
-
-			// Verify the output
-			gomega.Expect(output).To(gomega.ContainSubstring("Record signature is: trusted"))
+			// Verification should eventually contain "trusted" (reconciler signature task).
+			_ = cli.Verify(cidV5).OnServer(utils.Peer3Addr).ShouldEventuallyContain("Record signature is: trusted", 90*time.Second)
 		})
 
 		ginkgo.It("should fail to pull record_070_sync_v4.json from peer 3 after sync", func() {

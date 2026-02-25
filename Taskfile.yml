@@ -969,6 +969,8 @@ tasks:
           --set apiserver.reconciler.image.tag="{{ .DEPLOY_IMAGE_TAG }}" \
           --set apiserver.reconciler.config.regsync.interval="10s" \
           --set apiserver.reconciler.config.indexer.interval="10s" \
+          --set apiserver.reconciler.config.name.interval="5s" \
+          --set apiserver.reconciler.config.signature.interval="5s" \
           --namespace "bootstrap" \
           --create-namespace \
           --install \
@@ -1030,6 +1032,8 @@ tasks:
             --set apiserver.reconciler.image.tag="{{ .DEPLOY_IMAGE_TAG }}" \
             --set apiserver.reconciler.config.regsync.interval="10s" \
             --set apiserver.reconciler.config.indexer.interval="10s" \
+            --set apiserver.reconciler.config.name.interval="5s" \
+            --set apiserver.reconciler.config.signature.interval="5s" \
             --namespace "{{ .ITEM.PEER }}" \
             --create-namespace \
             --install
