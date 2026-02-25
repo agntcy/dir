@@ -730,6 +730,8 @@ tasks:
           --set apiserver.postgresql.auth.database=dir \
           --set apiserver.reconciler.config.regsync.interval="10s" \
           --set apiserver.reconciler.config.indexer.interval="10s" \
+          --set apiserver.reconciler.config.name.interval="5s" \
+          --set apiserver.reconciler.config.signature.interval="5s" \
           --set apiserver.reconciler.image.tag="{{ .DEPLOY_IMAGE_TAG }}" \
           --set apiserver.config.oasf_api_validation.disable=true \
           --namespace {{ .HELM_NAMESPACE }} \
@@ -801,6 +803,8 @@ tasks:
           --set apiserver.reconciler.image.tag="{{ .IMAGE_TAG }}" \
           --set apiserver.reconciler.config.regsync.interval="10s" \
           --set apiserver.reconciler.config.indexer.interval="10s" \
+          --set apiserver.reconciler.config.name.interval="5s" \
+          --set apiserver.reconciler.config.signature.interval="5s" \
           {{ .HELM_EXTRA_ARGS }} \
           --namespace {{ .HELM_NAMESPACE }} \
           --create-namespace \
