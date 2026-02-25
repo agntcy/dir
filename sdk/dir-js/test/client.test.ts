@@ -399,10 +399,12 @@ describe('Client', () => {
         recordRefs.pop(); // NOTE: Drop the unsigned record if no OIDC tested
       }
 
-      // Verify test - check signer information in response
+      // Verification is asynchronous (reconciler caches results). Wait for it to run.
+      await new Promise((r) => setTimeout(r, 8_000));
+
       let verifyIndex = 0;
       for (const ref of recordRefs) {
-        const response = client.verify(
+        const response = await client.verify(
           create(models.sign_v1.VerifyRequestSchema, {
             recordRef: ref,
           }),
@@ -447,7 +449,7 @@ describe('Client', () => {
               request: {
                 case: 'key',
                 value: {
-                  privateKey: Uint8Array.from([]),
+                  privateKey: 'invalid-private-key',
                   password: Uint8Array.from([]),
                 },
               },

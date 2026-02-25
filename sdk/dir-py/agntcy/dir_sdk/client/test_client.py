@@ -303,6 +303,9 @@ class TestClient(unittest.TestCase):
             else:
                 record_refs.pop() # NOTE: Drop the unsigned record if no OIDC tested
 
+            # Verification is asynchronous (reconciler caches results). Wait for it to run.
+            time.sleep(8)
+
             verify_index = 0
             for ref in record_refs:
                 response = self.client.verify(sign_v1.VerifyRequest(record_ref=ref))
