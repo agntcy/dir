@@ -79,4 +79,8 @@ enum RecordQueryType {
   // Query for verified records (name ownership verified via JWKS).
   // Boolean field - use "true" or "false" as value.
   RECORD_QUERY_TYPE_VERIFIED = 13;
+
+  // Query for trusted records (signature verification passed).
+  // Boolean field - use "true" or "false" as value.
+  RECORD_QUERY_TYPE_TRUSTED = 14;
 }

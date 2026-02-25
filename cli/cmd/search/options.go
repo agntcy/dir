@@ -29,6 +29,7 @@ type options struct {
 	SchemaVersions []string
 	ModuleIDs      []string
 	Verified       bool // Filter for verified records only
+	Trusted        bool // Filter for trusted records only (signature verification passed)
 }
 
 // registerFlags adds search flags to the command.
@@ -53,6 +54,7 @@ func registerFlags(cmd *cobra.Command) {
 	flags.StringArrayVar(&opts.SchemaVersions, "schema-version", nil, "Search for records with specific schema version (can be repeated)")
 	flags.StringArrayVar(&opts.ModuleIDs, "module-id", nil, "Search for records with specific module ID (can be repeated)")
 	flags.BoolVar(&opts.Verified, "verified", false, "Filter for records with verified name ownership only")
+	flags.BoolVar(&opts.Trusted, "trusted", false, "Filter for records with trusted signature only")
 
 	// Add examples in flag help
 	flags.Lookup("name").Usage = "Search for records with specific name (e.g., --name 'my-agent' --name 'web-*')"
@@ -178,6 +180,14 @@ func buildQueriesFromFlags() []*searchv1.RecordQuery {
 	if opts.Verified {
 		queries = append(queries, &searchv1.RecordQuery{
 			Type:  searchv1.RecordQueryType_RECORD_QUERY_TYPE_VERIFIED,
+			Value: "true",
+		})
+	}
+
+	// Add trusted filter
+	if opts.Trusted {
+		queries = append(queries, &searchv1.RecordQuery{
+			Type:  searchv1.RecordQueryType_RECORD_QUERY_TYPE_TRUSTED,
 			Value: "true",
 		})
 	}
