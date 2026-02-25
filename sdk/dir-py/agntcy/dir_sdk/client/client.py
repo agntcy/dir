@@ -11,6 +11,7 @@ import builtins
 import logging
 import os
 import json
+import re
 import subprocess
 import tempfile
 from collections.abc import Sequence
@@ -32,6 +33,65 @@ from agntcy.dir_sdk.models import (
 )
 
 logger = logging.getLogger("client")
+
+
+def _resolve_public_key_to_pem(key_ref: str) -> str:
+    """Resolve a key reference to PEM. Supports inline PEM, file path, or HTTP(S) URL."""
+    key_ref = key_ref.strip()
+    if "-----BEGIN" in key_ref:
+        return key_ref
+    if os.path.isfile(key_ref):
+        with open(key_ref, encoding="utf-8") as f:
+            return f.read()
+    if key_ref.startswith(("http://", "https://")):
+        try:
+            from urllib.request import urlopen
+
+            with urlopen(key_ref) as resp:
+                return resp.read().decode("utf-8")
+        except Exception as e:
+            raise RuntimeError(f"failed to fetch key from URL: {e}") from e
+    return key_ref
+
+
+def _public_key_pems_equal(pem1: str, pem2: str) -> bool:
+    """Return True if both PEM strings represent the same public key."""
+    try:
+        key1 = serialization.load_pem_public_key(pem1.encode())
+        key2 = serialization.load_pem_public_key(pem2.encode())
+        der1 = key1.public_bytes(
+            encoding=serialization.Encoding.PEM,
+            format=serialization.PublicFormat.SubjectPublicKeyInfo,
+        )
+        der2 = key2.public_bytes(
+            encoding=serialization.Encoding.PEM,
+            format=serialization.PublicFormat.SubjectPublicKeyInfo,
+        )
+        return der1 == der2
+    except Exception:
+        return False
+
+
+def _oidc_signer_matches(
+    req_issuer: str,
+    req_subject: str,
+    signer_issuer: str,
+    signer_subject: str,
+) -> bool:
+    """Return True if signer issuer/subject match requested values (exact or regex)."""
+    return _oidc_value_matches(req_issuer, signer_issuer) and _oidc_value_matches(
+        req_subject, signer_subject
+    )
+
+
+def _oidc_value_matches(req_value: str, signer_value: str) -> bool:
+    """Match one OIDC value; empty req means any, otherwise exact or regex."""
+    if not req_value:
+        return True
+    try:
+        return bool(re.search(req_value, signer_value))
+    except re.error:
+        return req_value == signer_value
 
 
 class JWTAuthInterceptor(grpc.UnaryUnaryClientInterceptor, grpc.UnaryStreamClientInterceptor,
@@ -1163,11 +1223,13 @@ class Client:
 
         Validates the cryptographic signature of a previously signed record
         by querying the server. The server returns cached verification results
-        produced by the signature reconciler (which uses cosign to verify
-        signatures and stores the outcome).
+        produced by the signature reconciler. When a provider (key or OIDC) is
+        set in the request, signers are filtered client-side so that
+        verification succeeds only if at least one signer matches the provider.
 
         Args:
-            req: VerifyRequest containing the record reference (record_ref).
+            req: VerifyRequest containing the record reference (record_ref)
+                 and optional provider (key or OIDC).
             metadata: Optional gRPC metadata headers.
 
         Returns:
@@ -1189,13 +1251,73 @@ class Client:
             raise RuntimeError(msg)
 
         try:
-            return self.sign_client.Verify(req, metadata=metadata or ())
+            resp = self.sign_client.Verify(req, metadata=metadata or ())
+            return self._filter_verify_response_by_provider(req, resp)
         except grpc.RpcError as e:
             logger.exception("gRPC error during verify: %s", e)
             raise RuntimeError(f"Verify failed: {e}") from e
         except Exception as e:
             logger.exception("Verification failed: %s", e)
             raise RuntimeError(f"Verify failed: {e}") from e
+
+    def _filter_verify_response_by_provider(
+        self,
+        req: sign_v1.VerifyRequest,
+        resp: sign_v1.VerifyResponse,
+    ) -> sign_v1.VerifyResponse:
+        """Filter signers by the requested provider (key or OIDC) using only response data."""
+        if not resp.success or not resp.signers:
+            return resp
+        provider = req.provider
+        if provider is None:
+            return resp
+
+        if provider.HasField("any"):
+            return resp
+
+        if provider.HasField("key") and provider.key.public_key:
+            try:
+                user_pem = _resolve_public_key_to_pem(provider.key.public_key)
+            except Exception as e:
+                return sign_v1.VerifyResponse(
+                    success=False,
+                    error_message=f"failed to load public key: {e}",
+                )
+            matched = [
+                s
+                for s in resp.signers
+                if s.HasField("key")
+                and s.key.public_key
+                and _public_key_pems_equal(user_pem, s.key.public_key)
+            ]
+            if not matched:
+                return sign_v1.VerifyResponse(
+                    success=False,
+                    error_message="no verified signature matched the provided public key",
+                    signers=resp.signers,
+                )
+            return sign_v1.VerifyResponse(success=True, signers=matched)
+
+        if provider.HasField("oidc"):
+            req_issuer = provider.oidc.issuer or ""
+            req_subject = provider.oidc.subject or ""
+            matched = [
+                s
+                for s in resp.signers
+                if s.HasField("oidc")
+                and _oidc_signer_matches(
+                    req_issuer, req_subject, s.oidc.issuer or "", s.oidc.subject or ""
+                )
+            ]
+            if not matched:
+                return sign_v1.VerifyResponse(
+                    success=False,
+                    error_message="no verified signature matched the provided OIDC issuer/subject",
+                    signers=resp.signers,
+                )
+            return sign_v1.VerifyResponse(success=True, signers=matched)
+
+        return resp
 
     def sign(
         self,

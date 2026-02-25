@@ -1,8 +1,9 @@
 // Copyright AGNTCY Contributors (https://github.com/agntcy)
 // SPDX-License-Identifier: Apache-2.0
 
+import { createPublicKey } from 'node:crypto';
+import { readFileSync, existsSync } from 'node:fs';
 import { env } from 'node:process';
-import { readFileSync } from 'node:fs';
 import { spawnSync, SpawnSyncReturns } from 'node:child_process';
 
 import {
@@ -783,10 +784,12 @@ export class Client {
   }
 
   /**
-   * Verify a cryptographic signature on a record (server-side).
+   * Verify a cryptographic signature on a record.
    * The server returns cached results from the signature reconciler.
+   * When a provider (key or OIDC) is set, signers are filtered client-side
+   * so that verification succeeds only if at least one signer matches.
    *
-   * @param request - VerifyRequest with recordRef. Provider is ignored.
+   * @param request - VerifyRequest with recordRef and optional provider.
    * @returns Promise resolving to VerifyResponse.
    */
   async verify(
@@ -795,7 +798,8 @@ export class Client {
     if (!request.recordRef?.cid) {
       throw new Error('VerifyRequest.recordRef with cid is required');
     }
-    return await this.signClient.verify(request);
+    const response = await this.signClient.verify(request);
+    return await filterVerifyResponseByProvider(request, response);
   }
 
   /**
@@ -1146,4 +1150,119 @@ export class Client {
 
     return output;
   }
+}
+
+/** Resolve a key reference to PEM. Supports inline PEM, file path, or HTTP(S) URL. */
+async function resolvePublicKeyToPem(keyRef: string): Promise<string> {
+  const s = keyRef.trim();
+  if (s.includes('-----BEGIN')) return s;
+  if (s.startsWith('http://') || s.startsWith('https://')) {
+    const res = await fetch(s);
+    if (!res.ok) throw new Error(`failed to fetch key from URL: ${res.status}`);
+    return await res.text();
+  }
+  if (existsSync(s)) return readFileSync(s, 'utf8');
+  return s;
+}
+
+/** Return true if both PEM strings represent the same public key. */
+function publicKeyPemsEqual(pem1: string, pem2: string): boolean {
+  try {
+    const k1 = createPublicKey(pem1);
+    const k2 = createPublicKey(pem2);
+    const a = k1.export({ type: 'spki', format: 'pem' });
+    const b = k2.export({ type: 'spki', format: 'pem' });
+    return a === b;
+  } catch {
+    return false;
+  }
+}
+
+/** Match one OIDC value; empty req means any, otherwise exact or regex. */
+function oidcValueMatches(reqValue: string, signerValue: string): boolean {
+  if (!reqValue) return true;
+  try {
+    return new RegExp(reqValue).test(signerValue);
+  } catch {
+    return reqValue === signerValue;
+  }
+}
+
+function oidcSignerMatches(
+  reqIssuer: string,
+  reqSubject: string,
+  signerIssuer: string,
+  signerSubject: string,
+): boolean {
+  return (
+    oidcValueMatches(reqIssuer, signerIssuer) &&
+    oidcValueMatches(reqSubject, signerSubject)
+  );
+}
+
+/** Filter signers by the requested provider (key or OIDC) using only response data. */
+async function filterVerifyResponseByProvider(
+  request: models.sign_v1.VerifyRequest,
+  response: models.sign_v1.VerifyResponse,
+): Promise<models.sign_v1.VerifyResponse> {
+  if (!response.success || !response.signers?.length) return response;
+  const provider = request.provider;
+  if (!provider?.request) return response;
+
+  const req = provider.request;
+
+  if (req.case === 'any') return response;
+
+  if (req.case === 'key' && req.value.publicKey) {
+    let userPem: string;
+    try {
+      userPem = await resolvePublicKeyToPem(req.value.publicKey);
+    } catch (e) {
+      return {
+        ...response,
+        success: false,
+        errorMessage: `failed to load public key: ${e}`,
+      };
+    }
+    const matched = response.signers.filter(
+      (s) =>
+        s.type?.case === 'key' &&
+        s.type.value.publicKey &&
+        publicKeyPemsEqual(userPem, s.type.value.publicKey),
+    );
+    if (matched.length === 0) {
+      return {
+        ...response,
+        success: false,
+        errorMessage: 'no verified signature matched the provided public key',
+      };
+    }
+    return { ...response, success: true, signers: matched };
+  }
+
+  if (req.case === 'oidc') {
+    const reqIssuer = req.value.issuer ?? '';
+    const reqSubject = req.value.subject ?? '';
+    const matched = response.signers.filter(
+      (s) =>
+        s.type?.case === 'oidc' &&
+        oidcSignerMatches(
+          reqIssuer,
+          reqSubject,
+          s.type.value.issuer ?? '',
+          s.type.value.subject ?? '',
+        ),
+    );
+    if (matched.length === 0) {
+      return {
+        ...response,
+        success: false,
+        errorMessage:
+          'no verified signature matched the provided OIDC issuer/subject',
+      };
+    }
+    return { ...response, success: true, signers: matched };
+  }
+
+  return response;
 }
