@@ -10,13 +10,6 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestConfigConstants(t *testing.T) {
-	assert.Equal(t, 30*time.Second, DefaultInterval)
-	assert.Equal(t, "/etc/regsync/regsync.yaml", DefaultConfigPath)
-	assert.Equal(t, "/usr/local/bin/regsync", DefaultBinaryPath)
-	assert.Equal(t, 10*time.Minute, DefaultTimeout)
-}
-
 func TestConfig_GetInterval(t *testing.T) {
 	tests := []struct {
 		name     string

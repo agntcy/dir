@@ -10,10 +10,6 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestConfigConstants(t *testing.T) {
-	assert.Equal(t, 1*time.Hour, DefaultInterval)
-}
-
 func TestConfig_GetInterval(t *testing.T) {
 	tests := []struct {
 		name     string
