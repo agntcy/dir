@@ -40,3 +40,12 @@ The name task re-verifies DNS/name ownership of named records and caches results
 2. For each record, retrieves the record name and public keys attached to the record
 3. Verifies name ownership (e.g. via well-known JWKS at the record’s domain)
 4. Stores the verification result (verified or failed) in the database for efficient API filtering
+
+### Signature Task
+
+The signature task verifies record signatures and caches results. It:
+
+1. Queries the database for signed records with no or expired verification (per TTL)
+2. For each record, collects signatures and public keys from the store
+3. Verifies each signature with cosign (key-based or OIDC)
+4. Upserts verification results to the database and sets the record’s trusted flag

@@ -122,28 +122,26 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests to check signature supp
 		ginkgo.It("should sign a record with a key pair", func() {
 			_ = cli.Sign(cid, paths.privateKey).ShouldSucceed()
 
-			time.Sleep(10 * time.Second)
+			time.Sleep(2 * time.Second)
 		})
 
 		ginkgo.It("should verify a signature with a public key", func() {
-			// Verify using the public key and write output to file
-			_ = cli.Command("verify").
-				WithArgs(cid).
-				WithArgs("--key", paths.publicKey).
-				WithArgs("--output-file", paths.verifyOutput).
-				ShouldSucceed()
-
-			// Read and parse the verify response from the output file
-			verifyData, err := os.ReadFile(paths.verifyOutput)
-			gomega.Expect(err).NotTo(gomega.HaveOccurred())
-
+			// Verification is asynchronous (reconciler caches results). Poll until
+			// the server returns success or timeout.
 			var verifyResponse signv1.VerifyResponse
 
-			err = protojson.Unmarshal(verifyData, &verifyResponse)
-			gomega.Expect(err).NotTo(gomega.HaveOccurred())
-
-			// Verify the response indicates success
-			gomega.Expect(verifyResponse.GetSuccess()).To(gomega.BeTrue())
+			gomega.Eventually(func(g gomega.Gomega) {
+				_ = cli.Command("verify").
+					WithArgs(cid).
+					WithArgs("--key", paths.publicKey).
+					WithArgs("--output-file", paths.verifyOutput).
+					ShouldSucceed()
+				verifyData, err := os.ReadFile(paths.verifyOutput)
+				g.Expect(err).NotTo(gomega.HaveOccurred())
+				err = protojson.Unmarshal(verifyData, &verifyResponse)
+				g.Expect(err).NotTo(gomega.HaveOccurred())
+				g.Expect(verifyResponse.GetSuccess()).To(gomega.BeTrue(), "waiting for reconciler to cache verification result")
+			}, 30*time.Second, 5*time.Second).Should(gomega.Succeed())
 
 			// Verify that signers array is present and not empty
 			gomega.Expect(verifyResponse.GetSigners()).NotTo(gomega.BeEmpty())

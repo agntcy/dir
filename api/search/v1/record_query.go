@@ -22,6 +22,8 @@ func init() {
 		10: "author",
 		11: "schema-version",
 		12: "module-id",
+		13: "verified",
+		14: "trusted",
 	}
 	RecordQueryType_value = map[string]int32{
 		"":               0,
@@ -38,6 +40,8 @@ func init() {
 		"author":         10,
 		"schema-version": 11,
 		"module-id":      12,
+		"verified":       13,
+		"trusted":        14,
 	}
 
 	ValidQueryTypes = []string{
@@ -53,5 +57,7 @@ func init() {
 		"author",
 		"schema-version",
 		"module-id",
+		"verified",
+		"trusted",
 	}
 }

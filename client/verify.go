@@ -6,31 +6,17 @@ package client
 import (
 	"context"
 	"fmt"
+	"regexp"
 	"strings"
 
-	corev1 "github.com/agntcy/dir/api/core/v1"
 	signv1 "github.com/agntcy/dir/api/sign/v1"
-	storev1 "github.com/agntcy/dir/api/store/v1"
 	"github.com/agntcy/dir/client/utils/cosign"
 )
 
-// Verify verifies signatures for a record by fetching referrers and performing
-// client-side verification. This does not require a server-side verification endpoint.
-//
-//nolint:cyclop
+// Verify returns the cached signature verification result for a record by querying the server.
+// All matching against the user's provider (--key or --oidc-issuer) is done client-side using
+// the signers returned by the server; verification succeeds only if at least one signer matches.
 func (c *Client) Verify(ctx context.Context, req *signv1.VerifyRequest) (*signv1.VerifyResponse, error) {
-	// Validate input
-	if req.GetProvider() == nil || req.GetProvider().GetRequest() == nil {
-		// Set default provider to "any" if not specified, which accepts any valid signature.
-		req.Provider = &signv1.VerifyRequestProvider{
-			Request: &signv1.VerifyRequestProvider_Any{
-				Any: &signv1.VerifyWithAny{
-					OidcOptions: signv1.DefaultVerifyOptionsOIDC,
-				},
-			},
-		}
-	}
-
 	if req.GetRecordRef() == nil || req.GetRecordRef().GetCid() == "" {
 		return nil, fmt.Errorf("record CID is required")
 	}
@@ -40,8 +26,6 @@ func (c *Client) Verify(ctx context.Context, req *signv1.VerifyRequest) (*signv1
 		if strings.Contains(err.Error(), "record not found") {
 			errMsg := "record not found"
 
-			// # NOTE: The returned error can be nil as the failure is indicated by the error message as a reason.
-			//nolint:nilerr
 			return &signv1.VerifyResponse{
 				Success:      false,
 				ErrorMessage: &errMsg,
@@ -51,178 +35,95 @@ func (c *Client) Verify(ctx context.Context, req *signv1.VerifyRequest) (*signv1
 		return nil, fmt.Errorf("failed to lookup record: %w", err)
 	}
 
-	// Pull signature referrers
-	signatures, err := c.pullSignatures(ctx, req.GetRecordRef())
+	resp, err := c.SignServiceClient.Verify(ctx, req)
 	if err != nil {
-		return nil, fmt.Errorf("failed to pull signatures: %w", err)
+		return nil, fmt.Errorf("verify: %w", err)
 	}
 
-	if len(signatures) == 0 {
-		errMsg := "no signatures found"
-
-		return &signv1.VerifyResponse{
-			Success:      false,
-			ErrorMessage: &errMsg,
-		}, nil
+	// Match against user's provider using only the data received from the server.
+	if prov := req.GetProvider(); prov != nil {
+		resp = filterVerifyResponseByProvider(ctx, prov, resp)
 	}
 
-	// Pull public key referrers (for any-based verification)
-	// If a specific key is provided in the request, use that instead of pulling from the store.
-	var publicKeys []string
+	return resp, nil
+}
 
-	switch {
-	case req.GetProvider().GetKey() != nil:
-		publicKeys = []string{req.GetProvider().GetKey().GetPublicKey()}
+// filterVerifyResponseByProvider keeps only signers that match the requested provider (key or OIDC).
+//
+//nolint:cyclop
+func filterVerifyResponseByProvider(ctx context.Context, provider *signv1.VerifyRequestProvider, resp *signv1.VerifyResponse) *signv1.VerifyResponse {
+	if !resp.GetSuccess() || len(resp.GetSigners()) == 0 {
+		return resp
+	}
 
-	case req.GetProvider().GetAny() != nil:
-		publicKeys, err = c.pullPublicKeys(ctx, req.GetRecordRef())
+	if provider.GetRequest() == nil {
+		return resp
+	}
+
+	var matched []*signv1.SignerInfo
+
+	switch p := provider.GetRequest().(type) {
+	case *signv1.VerifyRequestProvider_Key:
+		if p.Key == nil || p.Key.GetPublicKey() == "" {
+			return resp
+		}
+
+		userPEM, err := cosign.ResolvePublicKeyToPEM(ctx, p.Key.GetPublicKey())
 		if err != nil {
-			return nil, fmt.Errorf("failed to pull public keys: %w", err)
+			msg := fmt.Sprintf("failed to load public key: %v", err)
+
+			return &signv1.VerifyResponse{Success: false, ErrorMessage: &msg}
 		}
-	}
 
-	// Payload that needs to be verified is the record CID in bytes
-	payload := []byte(req.GetRecordRef().GetCid())
-
-	// Verify each signature
-	var (
-		seenKeys   = make(map[string]bool) // Track unique signers by key/identity
-		signers    []*signv1.SignerInfo
-		signerInfo *signv1.SignerInfo
-		verifyErr  error
-	)
-
-	for _, sig := range signatures {
-		// Check if a specific provider is requested
-		switch provider := req.GetProvider().GetRequest().(type) {
-		case *signv1.VerifyRequestProvider_Oidc:
-			signerInfo, verifyErr = cosign.VerifyWithOIDC(payload, provider.Oidc, sig)
-
-		case *signv1.VerifyRequestProvider_Key:
-			signerInfo, verifyErr = cosign.VerifyWithKeys(ctx, payload, publicKeys, sig)
-
-		case *signv1.VerifyRequestProvider_Any:
-			// VerifyWithAny accepts any valid signature.
-			// If a signature has no bundle, it must be verified with a key.
-			if len(sig.GetContentBundle()) == 0 {
-				signerInfo, verifyErr = cosign.VerifyWithKeys(ctx, payload, publicKeys, sig)
-			} else {
-				signerInfo, verifyErr = cosign.VerifyWithOIDC(payload, &signv1.VerifyWithOIDC{
-					Options: provider.Any.GetOidcOptions().GetDefaultOptions(),
-				}, sig)
+		for _, s := range resp.GetSigners() {
+			if k := s.GetKey(); k != nil && cosign.PublicKeyPEMsEqual(userPEM, k.GetPublicKey()) {
+				matched = append(matched, s)
 			}
-
-		default:
-			return nil, fmt.Errorf("unsupported verification provider type")
 		}
 
-		if verifyErr != nil {
-			logger.Debug("Signature verification failed for this signature", "error", verifyErr)
+		if len(matched) == 0 {
+			errMsg := "no verified signature matched the provided public key"
 
-			continue
+			return &signv1.VerifyResponse{Success: false, ErrorMessage: &errMsg, Signers: resp.GetSigners()}
+		}
+	case *signv1.VerifyRequestProvider_Oidc:
+		if p.Oidc == nil {
+			return resp
 		}
 
-		// Deduplicate signers based on unique key (public key or issuer+subject)
-		signerKey := getSignerKey(signerInfo)
-		if seenKeys[signerKey] {
-			continue // Skip duplicate signer
+		reqIssuer, reqSubject := p.Oidc.GetIssuer(), p.Oidc.GetSubject()
+		for _, s := range resp.GetSigners() {
+			if o := s.GetOidc(); o != nil && oidcSignerMatches(reqIssuer, reqSubject, o.GetIssuer(), o.GetSubject()) {
+				matched = append(matched, s)
+			}
 		}
 
-		seenKeys[signerKey] = true
+		if len(matched) == 0 {
+			errMsg := "no verified signature matched the provided OIDC issuer/subject"
 
-		signers = append(signers, signerInfo)
-	}
-
-	// If no valid signers found, return not trusted
-	if len(signers) == 0 {
-		errMsg := "no valid signatures found matching verification criteria"
-
-		return &signv1.VerifyResponse{
-			Success:      false,
-			ErrorMessage: &errMsg,
-		}, nil
-	}
-
-	return &signv1.VerifyResponse{
-		Success: true,
-		Signers: signers,
-	}, nil
-}
-
-// getSignerKey returns a unique key for a signer to use for deduplication.
-func getSignerKey(signer *signv1.SignerInfo) string {
-	switch s := signer.GetType().(type) {
-	case *signv1.SignerInfo_Key:
-		return "key:" + s.Key.String()
-	case *signv1.SignerInfo_Oidc:
-		return "oidc:" + s.Oidc.String()
+			return &signv1.VerifyResponse{Success: false, ErrorMessage: &errMsg, Signers: resp.GetSigners()}
+		}
 	default:
-		return ""
+		return resp
 	}
+
+	return &signv1.VerifyResponse{Success: true, Signers: matched}
 }
 
-// pullSignatures fetches all signature referrers for a record.
-func (c *Client) pullSignatures(ctx context.Context, recordRef *corev1.RecordRef) ([]*signv1.Signature, error) {
-	referrerType := corev1.SignatureReferrerType
-
-	respCh, err := c.PullReferrer(ctx, &storev1.PullReferrerRequest{
-		RecordRef:    recordRef,
-		ReferrerType: &referrerType,
-	})
-	if err != nil {
-		return nil, fmt.Errorf("failed to create pull referrer stream: %w", err)
-	}
-
-	var signatures []*signv1.Signature
-
-	for resp := range respCh {
-		if resp.GetReferrer() == nil {
-			continue
-		}
-
-		sig := &signv1.Signature{}
-		if err := sig.UnmarshalReferrer(resp.GetReferrer()); err != nil {
-			logger.Debug("Failed to unmarshal signature referrer", "error", err)
-
-			continue
-		}
-
-		signatures = append(signatures, sig)
-	}
-
-	return signatures, nil
+// oidcSignerMatches returns true if signer issuer/subject match the requested values.
+// Requested values support exact match or regex (empty means match any).
+func oidcSignerMatches(reqIssuer, reqSubject, signerIssuer, signerSubject string) bool {
+	return oidcValueMatches(reqIssuer, signerIssuer) && oidcValueMatches(reqSubject, signerSubject)
 }
 
-// pullPublicKeys fetches all public key referrers for a record.
-func (c *Client) pullPublicKeys(ctx context.Context, recordRef *corev1.RecordRef) ([]string, error) {
-	referrerType := corev1.PublicKeyReferrerType
-
-	respCh, err := c.PullReferrer(ctx, &storev1.PullReferrerRequest{
-		RecordRef:    recordRef,
-		ReferrerType: &referrerType,
-	})
-	if err != nil {
-		return nil, fmt.Errorf("failed to create pull referrer stream: %w", err)
+func oidcValueMatches(reqValue, signerValue string) bool {
+	if reqValue == "" {
+		return true
 	}
 
-	var publicKeys []string
-
-	for resp := range respCh {
-		if resp.GetReferrer() == nil {
-			continue
-		}
-
-		pk := &signv1.PublicKey{}
-		if err := pk.UnmarshalReferrer(resp.GetReferrer()); err != nil {
-			logger.Debug("Failed to unmarshal public key referrer", "error", err)
-
-			continue
-		}
-
-		if key := pk.GetKey(); key != "" {
-			publicKeys = append(publicKeys, key)
-		}
+	if re, err := regexp.Compile(reqValue); err == nil {
+		return re.MatchString(signerValue)
 	}
 
-	return publicKeys, nil
+	return reqValue == signerValue
 }

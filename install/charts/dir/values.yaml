@@ -573,3 +573,13 @@ apiserver:
       indexer:
         enabled: true
         interval: "1h"
+
+      # Name task configuration
+      name:
+        enabled: true
+        interval: "1h"
+
+      # Signature task configuration
+      signature:
+        enabled: true
+        interval: "1h"
