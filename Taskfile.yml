@@ -515,10 +515,21 @@ tasks:
   server:start:
     desc: Start local Directory server stack
     dir: ./install/docker
+    vars:
+      DEBUG: '{{ if .CLI_ARGS_LIST | has "--debug" }}true{{ else }}false{{ end }}'
     env:
       DIRECTORY_SERVER_PUBLICATION_SCHEDULER_INTERVAL: 1s
+      # If DEBUG=true, disable compiler optimizations and inlining
+      BUILD_OPTS: '{{ if eq .DEBUG "true" }}-gcflags=all=-N -l{{ end }}'
+      # If DEBUG=true, disable LDFLAGS
+      LDFLAGS: '{{ if eq .DEBUG "true" }}{{ end }}'
     cmds:
-      - docker compose up -d --build
+      - |
+        BUILD_ARGS=()
+        if [ -v BUILD_OPTS ]; then BUILD_ARGS+=(--build-arg "BUILD_OPTS=${BUILD_OPTS}"); fi
+        if [ -v LDFLAGS ]; then BUILD_ARGS+=(--build-arg "LDFLAGS=${LDFLAGS}"); fi
+        docker compose build "${BUILD_ARGS[@]}"
+      - docker compose up -d
 
   server:stop:
     desc: Stop local Directory server stack
