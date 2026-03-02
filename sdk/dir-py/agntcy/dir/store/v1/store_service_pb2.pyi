@@ -7,7 +7,7 @@ from google.protobuf import struct_pb2 as _struct_pb2
 from google.protobuf.internal import containers as _containers
 from google.protobuf import descriptor as _descriptor
 from google.protobuf import message as _message
-from typing import ClassVar as _ClassVar, Mapping as _Mapping, Optional as _Optional, Union as _Union
+from typing import ClassVar as _ClassVar, Iterable as _Iterable, Mapping as _Mapping, Optional as _Optional, Union as _Union
 
 DESCRIPTOR: _descriptor.FileDescriptor
 
@@ -57,3 +57,19 @@ class PullReferrerResponse(_message.Message):
     REFERRER_FIELD_NUMBER: _ClassVar[int]
     referrer: _record_pb2.RecordReferrer
     def __init__(self, referrer: _Optional[_Union[_record_pb2.RecordReferrer, _Mapping]] = ...) -> None: ...
+
+class DeleteReferrerRequest(_message.Message):
+    __slots__ = ("record", "referrer_ref", "referrer_type")
+    RECORD_FIELD_NUMBER: _ClassVar[int]
+    REFERRER_REF_FIELD_NUMBER: _ClassVar[int]
+    REFERRER_TYPE_FIELD_NUMBER: _ClassVar[int]
+    record: _record_pb2.RecordRef
+    referrer_ref: _referrer_pb2.ReferrerRef
+    referrer_type: str
+    def __init__(self, record: _Optional[_Union[_record_pb2.RecordRef, _Mapping]] = ..., referrer_ref: _Optional[_Union[_referrer_pb2.ReferrerRef, _Mapping]] = ..., referrer_type: _Optional[str] = ...) -> None: ...
+
+class DeleteReferrerResponse(_message.Message):
+    __slots__ = ("referrer_refs",)
+    REFERRER_REFS_FIELD_NUMBER: _ClassVar[int]
+    referrer_refs: _containers.RepeatedCompositeFieldContainer[_referrer_pb2.ReferrerRef]
+    def __init__(self, referrer_refs: _Optional[_Iterable[_Union[_referrer_pb2.ReferrerRef, _Mapping]]] = ...) -> None: ...

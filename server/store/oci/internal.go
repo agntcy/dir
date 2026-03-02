@@ -96,9 +96,7 @@ func (s *store) fetchAndParseManifestFromDescriptor(ctx context.Context, manifes
 // Tag cleanup functions removed - OCI registry garbage collection handles dangling tags after manifest deletion
 
 // deleteFromOCIStore handles deletion of records from an OCI store.
-func (s *store) deleteFromOCIStore(ctx context.Context, ref *corev1.RecordRef) error {
-	cid := ref.GetCid()
-
+func (s *store) deleteFromOCIStore(ctx context.Context, cid string) error {
 	store, ok := s.repo.(*oci.Store)
 	if !ok {
 		return status.Errorf(codes.Internal, "expected *oci.Store, got %T", s.repo)
@@ -167,9 +165,7 @@ func (s *store) deleteBlobForLocalStore(ctx context.Context, cid string, store *
 }
 
 // deleteFromRemoteRepository handles deletion of records from a remote repository.
-func (s *store) deleteFromRemoteRepository(ctx context.Context, ref *corev1.RecordRef) error {
-	cid := ref.GetCid()
-
+func (s *store) deleteFromRemoteRepository(ctx context.Context, cid string) error {
 	repo, ok := s.repo.(*remote.Repository)
 	if !ok {
 		return status.Errorf(codes.Internal, "expected *remote.Repository, got %T", s.repo)

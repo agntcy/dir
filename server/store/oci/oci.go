@@ -394,9 +394,9 @@ func (s *store) Delete(ctx context.Context, ref *corev1.RecordRef) error {
 
 	switch s.repo.(type) {
 	case *oci.Store:
-		return s.deleteFromOCIStore(ctx, ref)
+		return s.deleteFromOCIStore(ctx, ref.GetCid())
 	case *remote.Repository:
-		return s.deleteFromRemoteRepository(ctx, ref)
+		return s.deleteFromRemoteRepository(ctx, ref.GetCid())
 	default:
 		return status.Errorf(codes.FailedPrecondition, "unsupported repo type: %T", s.repo)
 	}

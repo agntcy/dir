@@ -8,10 +8,12 @@ import (
 	"crypto/rand"
 	"crypto/rsa"
 	"crypto/x509"
+	"encoding/base64"
 	"encoding/pem"
 	"fmt"
 	"io"
 	"strings"
+	"time"
 
 	corev1 "github.com/agntcy/dir/api/core/v1"
 	signv1 "github.com/agntcy/dir/api/sign/v1"
@@ -42,6 +44,12 @@ func generatePublicKey() string {
 	return string(pubPem)
 }
 
+func generateSignature() string {
+	_uuid := uuid.New()
+
+	return base64.StdEncoding.EncodeToString(_uuid[:])
+}
+
 func generateRecord() *corev1.Record {
 	record, err := corev1.UnmarshalRecord(testdata.ExpectedRecordV100JSON)
 	gomega.Expect(err).NotTo(gomega.HaveOccurred())
@@ -52,12 +60,38 @@ func generateRecord() *corev1.Record {
 	return record
 }
 
-func generateReferrer() *corev1.RecordReferrer {
+func generatePublicKeyReferrer() *corev1.RecordReferrer {
 	publicKey := signv1.PublicKey{Key: generatePublicKey()}
 	referrer, err := publicKey.MarshalReferrer()
 	gomega.Expect(err).NotTo(gomega.HaveOccurred())
 
 	return referrer
+}
+
+func generateSignatureReferrer() *corev1.RecordReferrer {
+	signature := signv1.Signature{
+		SignedAt:  time.Now().UTC().Format(time.RFC3339),
+		Signature: generateSignature(),
+		Algorithm: "unknown",
+	}
+
+	referrer, err := signature.MarshalReferrer()
+	gomega.Expect(err).NotTo(gomega.HaveOccurred())
+
+	return referrer
+}
+
+func newPushReferrerRequest(
+	ref *corev1.RecordRef,
+	referrer *corev1.RecordReferrer,
+) *storev1.PushReferrerRequest {
+	return &storev1.PushReferrerRequest{
+		RecordRef:   ref,
+		Type:        referrer.GetType(),
+		Annotations: referrer.GetAnnotations(),
+		CreatedAt:   referrer.GetCreatedAt(),
+		Data:        referrer.GetData(),
+	}
 }
 
 func pullReferrers(
@@ -91,6 +125,25 @@ func getPushReferrerError(desc string) string {
 		fmt.Sprintf("rpc error: code = InvalidArgument desc = %s", desc)
 }
 
+func getDeleteReferrerError(desc string) string {
+	return "failed to receive delete referrer response: " +
+		fmt.Sprintf("rpc error: code = InvalidArgument desc = %s", desc)
+}
+
+type WithCid interface {
+	GetCid() string
+}
+
+func getCids[T WithCid](objs []T) *[]string {
+	cids := []string{}
+
+	for _, obj := range objs {
+		cids = append(cids, obj.GetCid())
+	}
+
+	return &cids
+}
+
 var _ = ginkgo.Describe("Running e2e tests for referrers", func() {
 	var (
 		c       *client.Client
@@ -120,14 +173,8 @@ var _ = ginkgo.Describe("Running e2e tests for referrers", func() {
 	})
 
 	ginkgo.It("should successfully push basic referrer", func() {
-		referrer := generateReferrer()
-		response, err := c.PushReferrer(ctx, &storev1.PushReferrerRequest{
-			RecordRef:   record1,
-			Type:        referrer.GetType(),
-			Annotations: referrer.GetAnnotations(),
-			CreatedAt:   referrer.GetCreatedAt(),
-			Data:        referrer.GetData(),
-		})
+		referrer := generatePublicKeyReferrer()
+		response, err := c.PushReferrer(ctx, newPushReferrerRequest(record1, referrer))
 
 		gomega.Expect(err).NotTo(gomega.HaveOccurred())
 		gomega.Expect(response.GetSuccess()).To(gomega.BeTrue())
@@ -156,17 +203,11 @@ var _ = ginkgo.Describe("Running e2e tests for referrers", func() {
 	})
 
 	ginkgo.It("should successfully push full referrer", func() {
-		referrer := generateReferrer()
+		referrer := generatePublicKeyReferrer()
 		referrer.CreatedAt = "2026-03-09T14:20:00Z"
 		referrer.RecordRef = record1
 		referrer.Annotations = map[string]string{"foo": "bar"}
-		response, err := c.PushReferrer(ctx, &storev1.PushReferrerRequest{
-			RecordRef:   record1,
-			Type:        referrer.GetType(),
-			Annotations: referrer.GetAnnotations(),
-			CreatedAt:   referrer.GetCreatedAt(),
-			Data:        referrer.GetData(),
-		})
+		response, err := c.PushReferrer(ctx, newPushReferrerRequest(record1, referrer))
 
 		gomega.Expect(err).NotTo(gomega.HaveOccurred())
 		gomega.Expect(response.GetSuccess()).To(gomega.BeTrue())
@@ -204,28 +245,16 @@ var _ = ginkgo.Describe("Running e2e tests for referrers", func() {
 	})
 
 	ginkgo.It("should pass if referrer exists", func() {
-		referrer := generateReferrer()
+		referrer := generatePublicKeyReferrer()
 
-		response1, err := c.PushReferrer(ctx, &storev1.PushReferrerRequest{
-			RecordRef:   record1,
-			Type:        referrer.GetType(),
-			Annotations: referrer.GetAnnotations(),
-			CreatedAt:   referrer.GetCreatedAt(),
-			Data:        referrer.GetData(),
-		})
+		response1, err := c.PushReferrer(ctx, newPushReferrerRequest(record1, referrer))
 
 		gomega.Expect(err).ToNot(gomega.HaveOccurred())
 
 		cid1 := response1.GetReferrerRef().GetCid()
 		gomega.Expect(cid1).ToNot(gomega.BeEmpty())
 
-		response2, err := c.PushReferrer(ctx, &storev1.PushReferrerRequest{
-			RecordRef:   record1,
-			Type:        referrer.GetType(),
-			Annotations: referrer.GetAnnotations(),
-			CreatedAt:   referrer.GetCreatedAt(),
-			Data:        referrer.GetData(),
-		})
+		response2, err := c.PushReferrer(ctx, newPushReferrerRequest(record1, referrer))
 
 		gomega.Expect(err).ToNot(gomega.HaveOccurred())
 
@@ -248,28 +277,16 @@ var _ = ginkgo.Describe("Running e2e tests for referrers", func() {
 	})
 
 	ginkgo.It("should pass if same referrer different records", func() {
-		referrer := generateReferrer()
+		referrer := generatePublicKeyReferrer()
 
-		response1, err := c.PushReferrer(ctx, &storev1.PushReferrerRequest{
-			RecordRef:   record1,
-			Type:        referrer.GetType(),
-			Annotations: referrer.GetAnnotations(),
-			CreatedAt:   referrer.GetCreatedAt(),
-			Data:        referrer.GetData(),
-		})
+		response1, err := c.PushReferrer(ctx, newPushReferrerRequest(record1, referrer))
 
 		gomega.Expect(err).ToNot(gomega.HaveOccurred())
 
 		cid1 := response1.GetReferrerRef().GetCid()
 		gomega.Expect(cid1).ToNot(gomega.BeEmpty())
 
-		response2, err := c.PushReferrer(ctx, &storev1.PushReferrerRequest{
-			RecordRef:   record2,
-			Type:        referrer.GetType(),
-			Annotations: referrer.GetAnnotations(),
-			CreatedAt:   referrer.GetCreatedAt(),
-			Data:        referrer.GetData(),
-		})
+		response2, err := c.PushReferrer(ctx, newPushReferrerRequest(record2, referrer))
 
 		gomega.Expect(err).ToNot(gomega.HaveOccurred())
 
@@ -312,27 +329,15 @@ var _ = ginkgo.Describe("Running e2e tests for referrers", func() {
 		push, err := c.StoreServiceClient.PushReferrer(ctx)
 		gomega.Expect(err).ToNot(gomega.HaveOccurred())
 
-		referrer1 := generateReferrer()
+		referrer1 := generatePublicKeyReferrer()
 		referrer1.Annotations = map[string]string{"test_id": "1"}
-		err = push.Send(&storev1.PushReferrerRequest{
-			RecordRef:   record1,
-			Type:        referrer1.GetType(),
-			Annotations: referrer1.GetAnnotations(),
-			CreatedAt:   referrer1.GetCreatedAt(),
-			Data:        referrer1.GetData(),
-		})
+		err = push.Send(newPushReferrerRequest(record1, referrer1))
 
 		gomega.Expect(err).ToNot(gomega.HaveOccurred())
 
-		referrer2 := generateReferrer()
+		referrer2 := generatePublicKeyReferrer()
 		referrer2.Annotations = map[string]string{"test_id": "2"}
-		err = push.Send(&storev1.PushReferrerRequest{
-			RecordRef:   record2,
-			Type:        referrer2.GetType(),
-			Annotations: referrer2.GetAnnotations(),
-			CreatedAt:   referrer2.GetCreatedAt(),
-			Data:        referrer2.GetData(),
-		})
+		err = push.Send(newPushReferrerRequest(record2, referrer2))
 
 		gomega.Expect(err).ToNot(gomega.HaveOccurred())
 
@@ -490,11 +495,9 @@ var _ = ginkgo.Describe("Running e2e tests for referrers", func() {
 		ginkgo.Entry(
 			"empty",
 			&storev1.PushReferrerRequest{},
-			getPushReferrerError(
-				"validation errors:\n"+
-					" - record_ref: value is required\n"+
-					" - type: value is required",
-			),
+			getPushReferrerError("validation errors:\n"+
+				" - record_ref: value is required\n"+
+				" - type: value is required"),
 		),
 		ginkgo.Entry(
 			"record_ref: nil",
@@ -539,28 +542,16 @@ var _ = ginkgo.Describe("Running e2e tests for referrers", func() {
 	)
 
 	ginkgo.It("should successfully pull referrers", func() {
-		referrer1 := generateReferrer()
-		response1, err := c.PushReferrer(ctx, &storev1.PushReferrerRequest{
-			RecordRef:   record1,
-			Type:        referrer1.GetType(),
-			Annotations: referrer1.GetAnnotations(),
-			CreatedAt:   referrer1.GetCreatedAt(),
-			Data:        referrer1.GetData(),
-		})
+		referrer1 := generatePublicKeyReferrer()
+		response1, err := c.PushReferrer(ctx, newPushReferrerRequest(record1, referrer1))
 
 		gomega.Expect(err).NotTo(gomega.HaveOccurred())
 
 		cid1 := response1.GetReferrerRef().GetCid()
 		gomega.Expect(cid1).NotTo(gomega.BeEmpty())
 
-		referrer2 := generateReferrer()
-		response2, err := c.PushReferrer(ctx, &storev1.PushReferrerRequest{
-			RecordRef:   record1,
-			Type:        referrer2.GetType(),
-			Annotations: referrer2.GetAnnotations(),
-			CreatedAt:   referrer2.GetCreatedAt(),
-			Data:        referrer2.GetData(),
-		})
+		referrer2 := generatePublicKeyReferrer()
+		response2, err := c.PushReferrer(ctx, newPushReferrerRequest(record1, referrer2))
 
 		gomega.Expect(err).NotTo(gomega.HaveOccurred())
 
@@ -592,4 +583,336 @@ var _ = ginkgo.Describe("Running e2e tests for referrers", func() {
 		gomega.Expect(referrers).To(gomega.HaveLen(1))
 		gomega.Expect(referrers[0].GetReferrerRef().GetCid()).To(gomega.Equal(cid2))
 	})
+})
+
+var _ = ginkgo.Describe("DeleteReferrer", func() {
+	var (
+		c   *client.Client
+		ctx context.Context
+		// records
+		record1 *corev1.RecordRef
+		record2 *corev1.RecordRef
+		// referrers
+		referrer1 *corev1.ReferrerRef // record 1, public key
+		referrer2 *corev1.ReferrerRef // record 1, public key
+		referrer3 *corev1.ReferrerRef // record 1, signature
+		referrer4 *corev1.ReferrerRef // record 2, public key
+	)
+
+	ginkgo.BeforeEach(func() {
+		var err error
+
+		ctx = context.Background()
+
+		c, err = client.New(ctx, client.WithEnvConfig())
+		gomega.Expect(err).NotTo(gomega.HaveOccurred())
+
+		record1, err = c.Push(ctx, generateRecord())
+		gomega.Expect(err).NotTo(gomega.HaveOccurred())
+
+		record2, err = c.Push(ctx, generateRecord())
+		gomega.Expect(err).NotTo(gomega.HaveOccurred())
+
+		response1, err := c.PushReferrer(ctx, newPushReferrerRequest(record1, generatePublicKeyReferrer()))
+		gomega.Expect(err).NotTo(gomega.HaveOccurred())
+
+		referrer1 = response1.GetReferrerRef()
+
+		response2, err := c.PushReferrer(ctx, newPushReferrerRequest(record1, generatePublicKeyReferrer()))
+		gomega.Expect(err).NotTo(gomega.HaveOccurred())
+
+		referrer2 = response2.GetReferrerRef()
+
+		response3, err := c.PushReferrer(ctx, newPushReferrerRequest(record1, generateSignatureReferrer()))
+		gomega.Expect(err).NotTo(gomega.HaveOccurred())
+
+		referrer3 = response3.GetReferrerRef()
+
+		response4, err := c.PushReferrer(ctx, newPushReferrerRequest(record2, generatePublicKeyReferrer()))
+		gomega.Expect(err).NotTo(gomega.HaveOccurred())
+
+		referrer4 = response4.GetReferrerRef()
+	})
+
+	ginkgo.It("delete & pull", func() {
+		response1, err := c.DeleteReferrer(ctx, &storev1.DeleteReferrerRequest{
+			Record:       &corev1.RecordRef{Cid: record1.GetCid()},
+			ReferrerRef:  &corev1.ReferrerRef{Cid: referrer2.GetCid()},
+			ReferrerType: new(corev1.PublicKeyReferrerType),
+		})
+
+		gomega.Expect(err).ToNot(gomega.HaveOccurred())
+		gomega.Expect(response1.GetReferrerRefs()).To(gomega.HaveLen(1))
+		gomega.Expect(response1.GetReferrerRefs()[0].GetCid()).To(gomega.Equal(referrer2.GetCid()))
+
+		referrers1, err := pullReferrers(ctx, c, &storev1.PullReferrerRequest{RecordRef: record1})
+		gomega.Expect(err).ToNot(gomega.HaveOccurred())
+		gomega.Expect(referrers1).To(gomega.HaveLen(2))
+		gomega.Expect(referrers1[0].GetReferrerRef().GetCid()).To(gomega.Equal(referrer1.GetCid()))
+		gomega.Expect(referrers1[1].GetReferrerRef().GetCid()).To(gomega.Equal(referrer3.GetCid()))
+
+		referrers2, err := pullReferrers(ctx, c, &storev1.PullReferrerRequest{RecordRef: record2})
+		gomega.Expect(err).ToNot(gomega.HaveOccurred())
+		gomega.Expect(referrers2).To(gomega.HaveLen(1))
+		gomega.Expect(referrers2[0].GetReferrerRef().GetCid()).To(gomega.Equal(referrer4.GetCid()))
+	})
+
+	ginkgo.It("record doesn't exist", func() {
+		_, err := c.DeleteReferrer(ctx, &storev1.DeleteReferrerRequest{
+			Record: &corev1.RecordRef{Cid: "foo"},
+		})
+
+		gomega.Expect(err).To(gomega.HaveOccurred())
+	})
+
+	ginkgo.DescribeTable("delete",
+		func(args func() (*storev1.DeleteReferrerRequest, *[]string)) {
+			request, expectedCIDs := args()
+
+			response, err := c.DeleteReferrer(ctx, request)
+			gomega.Expect(err).ToNot(gomega.HaveOccurred())
+
+			cids := getCids(response.GetReferrerRefs())
+			gomega.Expect(cids).To(gomega.Equal(expectedCIDs))
+		},
+		ginkgo.Entry(
+			"by record CID (record 1)",
+			func() (*storev1.DeleteReferrerRequest, *[]string) {
+				r := &storev1.DeleteReferrerRequest{}
+				r.Record = &corev1.RecordRef{Cid: record1.GetCid()}
+
+				return r, &[]string{referrer1.GetCid(), referrer2.GetCid(), referrer3.GetCid()}
+			},
+		),
+		ginkgo.Entry(
+			"by record CID (record 2)",
+			func() (*storev1.DeleteReferrerRequest, *[]string) {
+				r := &storev1.DeleteReferrerRequest{}
+				r.Record = &corev1.RecordRef{Cid: record2.GetCid()}
+
+				return r, &[]string{referrer4.GetCid()}
+			},
+		),
+		ginkgo.Entry(
+			"by referrer type (record 1, public key)",
+			func() (*storev1.DeleteReferrerRequest, *[]string) {
+				r := &storev1.DeleteReferrerRequest{}
+				r.Record = &corev1.RecordRef{Cid: record1.GetCid()}
+				r.ReferrerType = new(corev1.PublicKeyReferrerType)
+
+				return r, &[]string{referrer1.GetCid(), referrer2.GetCid()}
+			},
+		),
+		ginkgo.Entry(
+			"by referrer type (record 1, signature)",
+			func() (*storev1.DeleteReferrerRequest, *[]string) {
+				r := &storev1.DeleteReferrerRequest{}
+				r.Record = &corev1.RecordRef{Cid: record1.GetCid()}
+				r.ReferrerType = new(corev1.SignatureReferrerType)
+
+				return r, &[]string{referrer3.GetCid()}
+			},
+		),
+		ginkgo.Entry(
+			"by referrer type (record 2, public key)",
+			func() (*storev1.DeleteReferrerRequest, *[]string) {
+				r := &storev1.DeleteReferrerRequest{}
+				r.Record = &corev1.RecordRef{Cid: record2.GetCid()}
+				r.ReferrerType = new(corev1.PublicKeyReferrerType)
+
+				return r, &[]string{referrer4.GetCid()}
+			},
+		),
+		ginkgo.Entry(
+			"by referrer type (record 2, signature)",
+			func() (*storev1.DeleteReferrerRequest, *[]string) {
+				r := &storev1.DeleteReferrerRequest{}
+				r.Record = &corev1.RecordRef{Cid: record2.GetCid()}
+				r.ReferrerType = new(corev1.SignatureReferrerType)
+
+				return r, &[]string{}
+			},
+		),
+		ginkgo.Entry(
+			"by referrer CID (record 1, referrer 1)",
+			func() (*storev1.DeleteReferrerRequest, *[]string) {
+				r := &storev1.DeleteReferrerRequest{}
+				r.Record = &corev1.RecordRef{Cid: record1.GetCid()}
+				r.ReferrerRef = &corev1.ReferrerRef{Cid: referrer1.GetCid()}
+
+				return r, &[]string{referrer1.GetCid()}
+			},
+		),
+		ginkgo.Entry(
+			"by referrer CID (record 1, referrer 2)",
+			func() (*storev1.DeleteReferrerRequest, *[]string) {
+				r := &storev1.DeleteReferrerRequest{}
+				r.Record = &corev1.RecordRef{Cid: record1.GetCid()}
+				r.ReferrerRef = &corev1.ReferrerRef{Cid: referrer2.GetCid()}
+
+				return r, &[]string{referrer2.GetCid()}
+			},
+		),
+		ginkgo.Entry(
+			"by referrer CID (record 1, referrer 3)",
+			func() (*storev1.DeleteReferrerRequest, *[]string) {
+				r := &storev1.DeleteReferrerRequest{}
+				r.Record = &corev1.RecordRef{Cid: record1.GetCid()}
+				r.ReferrerRef = &corev1.ReferrerRef{Cid: referrer3.GetCid()}
+
+				return r, &[]string{referrer3.GetCid()}
+			},
+		),
+		ginkgo.Entry(
+			"by referrer CID (record 1, referrer 4)",
+			func() (*storev1.DeleteReferrerRequest, *[]string) {
+				r := &storev1.DeleteReferrerRequest{}
+				r.Record = &corev1.RecordRef{Cid: record1.GetCid()}
+				r.ReferrerRef = &corev1.ReferrerRef{Cid: referrer4.GetCid()}
+
+				return r, &[]string{}
+			},
+		),
+		ginkgo.Entry(
+			"by referrer CID (record 2, referrer 1)",
+			func() (*storev1.DeleteReferrerRequest, *[]string) {
+				r := &storev1.DeleteReferrerRequest{}
+				r.Record = &corev1.RecordRef{Cid: record2.GetCid()}
+				r.ReferrerRef = &corev1.ReferrerRef{Cid: referrer1.GetCid()}
+
+				return r, &[]string{}
+			},
+		),
+		ginkgo.Entry(
+			"by referrer CID (record 2, referrer 2)",
+			func() (*storev1.DeleteReferrerRequest, *[]string) {
+				r := &storev1.DeleteReferrerRequest{}
+				r.Record = &corev1.RecordRef{Cid: record2.GetCid()}
+				r.ReferrerRef = &corev1.ReferrerRef{Cid: referrer2.GetCid()}
+
+				return r, &[]string{}
+			},
+		),
+		ginkgo.Entry(
+			"by referrer CID (record 2, referrer 3)",
+			func() (*storev1.DeleteReferrerRequest, *[]string) {
+				r := &storev1.DeleteReferrerRequest{}
+				r.Record = &corev1.RecordRef{Cid: record2.GetCid()}
+				r.ReferrerRef = &corev1.ReferrerRef{Cid: referrer3.GetCid()}
+
+				return r, &[]string{}
+			},
+		),
+		ginkgo.Entry(
+			"by referrer CID (record 2, referrer 4)",
+			func() (*storev1.DeleteReferrerRequest, *[]string) {
+				r := &storev1.DeleteReferrerRequest{}
+				r.Record = &corev1.RecordRef{Cid: record2.GetCid()}
+				r.ReferrerRef = &corev1.ReferrerRef{Cid: referrer4.GetCid()}
+
+				return r, &[]string{referrer4.GetCid()}
+			},
+		),
+		ginkgo.Entry(
+			"by referrer CID (record 1, referrer doesn't exist)",
+			func() (*storev1.DeleteReferrerRequest, *[]string) {
+				r := &storev1.DeleteReferrerRequest{}
+				r.Record = &corev1.RecordRef{Cid: record2.GetCid()}
+				r.ReferrerRef = &corev1.ReferrerRef{Cid: "foo"}
+
+				return r, &[]string{}
+			},
+		),
+		ginkgo.Entry(
+			"by referrer type & referrer CID (record 1, public key, referrer 1)",
+			func() (*storev1.DeleteReferrerRequest, *[]string) {
+				r := &storev1.DeleteReferrerRequest{}
+				r.Record = &corev1.RecordRef{Cid: record1.GetCid()}
+				r.ReferrerType = new(corev1.PublicKeyReferrerType)
+				r.ReferrerRef = &corev1.ReferrerRef{Cid: referrer1.GetCid()}
+
+				return r, &[]string{referrer1.GetCid()}
+			},
+		),
+		ginkgo.Entry(
+			"by referrer type & referrer CID (record 1, public key, referrer 2)",
+			func() (*storev1.DeleteReferrerRequest, *[]string) {
+				r := &storev1.DeleteReferrerRequest{}
+				r.Record = &corev1.RecordRef{Cid: record1.GetCid()}
+				r.ReferrerType = new(corev1.PublicKeyReferrerType)
+				r.ReferrerRef = &corev1.ReferrerRef{Cid: referrer2.GetCid()}
+
+				return r, &[]string{referrer2.GetCid()}
+			},
+		),
+		ginkgo.Entry(
+			"by referrer type & referrer CID (record 1, public key, referrer 3)",
+			func() (*storev1.DeleteReferrerRequest, *[]string) {
+				r := &storev1.DeleteReferrerRequest{}
+				r.Record = &corev1.RecordRef{Cid: record1.GetCid()}
+				r.ReferrerType = new(corev1.PublicKeyReferrerType)
+				r.ReferrerRef = &corev1.ReferrerRef{Cid: referrer3.GetCid()}
+
+				return r, &[]string{}
+			},
+		),
+		ginkgo.Entry(
+			"by referrer type & referrer CID (record 1, public key, referrer 4)",
+			func() (*storev1.DeleteReferrerRequest, *[]string) {
+				r := &storev1.DeleteReferrerRequest{}
+				r.Record = &corev1.RecordRef{Cid: record1.GetCid()}
+				r.ReferrerType = new(corev1.PublicKeyReferrerType)
+				r.ReferrerRef = &corev1.ReferrerRef{Cid: referrer4.GetCid()}
+
+				return r, &[]string{}
+			},
+		),
+	)
+
+	ginkgo.DescribeTable("validation error",
+		func(request *storev1.DeleteReferrerRequest, msg string) {
+			_, err := c.DeleteReferrer(ctx, request)
+			expectError(err, codes.InvalidArgument, msg)
+		},
+		ginkgo.Entry(
+			"if request is empty",
+			&storev1.DeleteReferrerRequest{},
+			getDeleteReferrerError("validation error: record: value is required"),
+		),
+		ginkgo.Entry(
+			"if record_ref: empty",
+			&storev1.DeleteReferrerRequest{Record: &corev1.RecordRef{}},
+			getDeleteReferrerError("validation error: record.cid: value is required"),
+		),
+		ginkgo.Entry(
+			"if record_ref.cid: \"\"",
+			&storev1.DeleteReferrerRequest{Record: &corev1.RecordRef{Cid: ""}},
+			getDeleteReferrerError("validation error: record.cid: value is required"),
+		),
+		ginkgo.Entry(
+			"if record_ref.cid: too long",
+			&storev1.DeleteReferrerRequest{Record: &corev1.RecordRef{Cid: strings.Repeat("a", 129)}},
+			getDeleteReferrerError("validation error: record.cid: value must be a valid CID"),
+		),
+		ginkgo.Entry(
+			"if referrer_ref: empty",
+			&storev1.DeleteReferrerRequest{Record: &corev1.RecordRef{Cid: "foo"}, ReferrerRef: &corev1.ReferrerRef{}},
+			getDeleteReferrerError("validation error: referrer_ref.cid: value is required"),
+		),
+		ginkgo.Entry(
+			"if referrer_ref.cid: \"\"",
+			&storev1.DeleteReferrerRequest{Record: &corev1.RecordRef{Cid: "foo"}, ReferrerRef: &corev1.ReferrerRef{Cid: ""}},
+			getDeleteReferrerError("validation error: referrer_ref.cid: value is required"),
+		),
+		ginkgo.Entry(
+			"if referrer_ref.cid: too long",
+			&storev1.DeleteReferrerRequest{Record: &corev1.RecordRef{Cid: "foo"}, ReferrerRef: &corev1.ReferrerRef{Cid: strings.Repeat("a", 129)}},
+			getDeleteReferrerError("validation error: referrer_ref.cid: value must be a valid CID"),
+		),
+		ginkgo.Entry(
+			"if referrer_type: invalid",
+			&storev1.DeleteReferrerRequest{Record: &corev1.RecordRef{Cid: "foo"}, ReferrerType: new("bar")},
+			getDeleteReferrerError("validation error: referrer_type: value must be a valid referrer type"),
+		),
+	)
 })

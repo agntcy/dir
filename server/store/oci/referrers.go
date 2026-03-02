@@ -15,6 +15,8 @@ import (
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/encoding/protojson"
 	"oras.land/oras-go/v2"
+	"oras.land/oras-go/v2/content/oci"
+	"oras.land/oras-go/v2/registry/remote"
 )
 
 var referrersLogger = logging.Logger("store/oci/referrers")
@@ -274,4 +276,55 @@ func (s *store) MediaTypeReferrerMatcher(expectedMediaType string) ReferrerMatch
 		// Check if this manifest contains a layer with the expected media type
 		return len(manifest.Layers) > 0 && manifest.Layers[0].MediaType == expectedMediaType
 	}
+}
+
+func (s *store) DeleteReferrer(
+	ctx context.Context,
+	recordCID string,
+	referrerCID string,
+	referrerType string,
+) ([]string, error) {
+	var err error
+
+	cids := []string{}
+
+	err = s.WalkReferrers(
+		ctx,
+		recordCID,
+		referrerType,
+		func(referrer *corev1.RecordReferrer) error {
+			cid := referrer.GetReferrerRef().GetCid()
+			if referrerCID != "" && referrerCID != cid {
+				return nil
+			}
+
+			cids = append(cids, cid)
+
+			return nil
+		},
+	)
+	if err != nil {
+		return nil, err //nolint:wrapcheck
+	}
+
+	result := []string{}
+
+	for _, cid := range cids {
+		switch s.repo.(type) {
+		case *oci.Store:
+			err = s.deleteFromOCIStore(ctx, cid)
+		case *remote.Repository:
+			err = s.deleteFromRemoteRepository(ctx, cid)
+		default:
+			err = status.Errorf(codes.FailedPrecondition, "unsupported repo type: %T", s.repo)
+		}
+
+		if err != nil {
+			return result, err //nolint:wrapcheck
+		}
+
+		result = append(result, cid)
+	}
+
+	return result, nil
 }
