@@ -5,6 +5,8 @@ services:
     build:
       context: ../../
       dockerfile: server/Dockerfile
+      args:
+        BUILD_OPTS: ${APISERVER_BUILD_OPTS}
     env_file:
       - ./apiserver.env
     ports:

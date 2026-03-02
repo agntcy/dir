@@ -1,8 +1,9 @@
 from agntcy.dir.core.v1 import record_pb2 as _record_pb2
 from google.protobuf import empty_pb2 as _empty_pb2
+from google.protobuf.internal import containers as _containers
 from google.protobuf import descriptor as _descriptor
 from google.protobuf import message as _message
-from typing import ClassVar as _ClassVar, Mapping as _Mapping, Optional as _Optional, Union as _Union
+from typing import ClassVar as _ClassVar, Iterable as _Iterable, Mapping as _Mapping, Optional as _Optional, Union as _Union
 
 DESCRIPTOR: _descriptor.FileDescriptor
 
@@ -35,3 +36,19 @@ class PullReferrerResponse(_message.Message):
     REFERRER_FIELD_NUMBER: _ClassVar[int]
     referrer: _record_pb2.RecordReferrer
     def __init__(self, referrer: _Optional[_Union[_record_pb2.RecordReferrer, _Mapping]] = ...) -> None: ...
+
+class DeleteReferrerRequest(_message.Message):
+    __slots__ = ("record", "referrer_digest", "referrer_type")
+    RECORD_FIELD_NUMBER: _ClassVar[int]
+    REFERRER_DIGEST_FIELD_NUMBER: _ClassVar[int]
+    REFERRER_TYPE_FIELD_NUMBER: _ClassVar[int]
+    record: _record_pb2.RecordRef
+    referrer_digest: str
+    referrer_type: str
+    def __init__(self, record: _Optional[_Union[_record_pb2.RecordRef, _Mapping]] = ..., referrer_digest: _Optional[str] = ..., referrer_type: _Optional[str] = ...) -> None: ...
+
+class DeleteReferrerResponse(_message.Message):
+    __slots__ = ("referrer_digests",)
+    REFERRER_DIGESTS_FIELD_NUMBER: _ClassVar[int]
+    referrer_digests: _containers.RepeatedScalarFieldContainer[str]
+    def __init__(self, referrer_digests: _Optional[_Iterable[str]] = ...) -> None: ...

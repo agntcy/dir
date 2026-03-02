@@ -24,12 +24,13 @@ import (
 const _ = grpc.SupportPackageIsVersion8
 
 const (
-	StoreService_Push_FullMethodName         = "/agntcy.dir.store.v1.StoreService/Push"
-	StoreService_Pull_FullMethodName         = "/agntcy.dir.store.v1.StoreService/Pull"
-	StoreService_Lookup_FullMethodName       = "/agntcy.dir.store.v1.StoreService/Lookup"
-	StoreService_Delete_FullMethodName       = "/agntcy.dir.store.v1.StoreService/Delete"
-	StoreService_PushReferrer_FullMethodName = "/agntcy.dir.store.v1.StoreService/PushReferrer"
-	StoreService_PullReferrer_FullMethodName = "/agntcy.dir.store.v1.StoreService/PullReferrer"
+	StoreService_Push_FullMethodName           = "/agntcy.dir.store.v1.StoreService/Push"
+	StoreService_Pull_FullMethodName           = "/agntcy.dir.store.v1.StoreService/Pull"
+	StoreService_Lookup_FullMethodName         = "/agntcy.dir.store.v1.StoreService/Lookup"
+	StoreService_Delete_FullMethodName         = "/agntcy.dir.store.v1.StoreService/Delete"
+	StoreService_PushReferrer_FullMethodName   = "/agntcy.dir.store.v1.StoreService/PushReferrer"
+	StoreService_PullReferrer_FullMethodName   = "/agntcy.dir.store.v1.StoreService/PullReferrer"
+	StoreService_DeleteReferrer_FullMethodName = "/agntcy.dir.store.v1.StoreService/DeleteReferrer"
 )
 
 // StoreServiceClient is the client API for StoreService service.
@@ -64,6 +65,8 @@ type StoreServiceClient interface {
 	PushReferrer(ctx context.Context, opts ...grpc.CallOption) (StoreService_PushReferrerClient, error)
 	// PullReferrer performs read operation for record referrers.
 	PullReferrer(ctx context.Context, opts ...grpc.CallOption) (StoreService_PullReferrerClient, error)
+	// DeleteReferrer performs delete operation for record referrers.
+	DeleteReferrer(ctx context.Context, opts ...grpc.CallOption) (StoreService_DeleteReferrerClient, error)
 }
 
 type storeServiceClient struct {
@@ -269,6 +272,38 @@ func (x *storeServicePullReferrerClient) Recv() (*PullReferrerResponse, error) {
 	return m, nil
 }
 
+func (c *storeServiceClient) DeleteReferrer(ctx context.Context, opts ...grpc.CallOption) (StoreService_DeleteReferrerClient, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	stream, err := c.cc.NewStream(ctx, &StoreService_ServiceDesc.Streams[6], StoreService_DeleteReferrer_FullMethodName, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	x := &storeServiceDeleteReferrerClient{ClientStream: stream}
+	return x, nil
+}
+
+type StoreService_DeleteReferrerClient interface {
+	Send(*DeleteReferrerRequest) error
+	Recv() (*DeleteReferrerResponse, error)
+	grpc.ClientStream
+}
+
+type storeServiceDeleteReferrerClient struct {
+	grpc.ClientStream
+}
+
+func (x *storeServiceDeleteReferrerClient) Send(m *DeleteReferrerRequest) error {
+	return x.ClientStream.SendMsg(m)
+}
+
+func (x *storeServiceDeleteReferrerClient) Recv() (*DeleteReferrerResponse, error) {
+	m := new(DeleteReferrerResponse)
+	if err := x.ClientStream.RecvMsg(m); err != nil {
+		return nil, err
+	}
+	return m, nil
+}
+
 // StoreServiceServer is the server API for StoreService service.
 // All implementations should embed UnimplementedStoreServiceServer
 // for forward compatibility.
@@ -301,6 +336,8 @@ type StoreServiceServer interface {
 	PushReferrer(StoreService_PushReferrerServer) error
 	// PullReferrer performs read operation for record referrers.
 	PullReferrer(StoreService_PullReferrerServer) error
+	// DeleteReferrer performs delete operation for record referrers.
+	DeleteReferrer(StoreService_DeleteReferrerServer) error
 }
 
 // UnimplementedStoreServiceServer should be embedded to have
@@ -327,6 +364,9 @@ func (UnimplementedStoreServiceServer) PushReferrer(StoreService_PushReferrerSer
 }
 func (UnimplementedStoreServiceServer) PullReferrer(StoreService_PullReferrerServer) error {
 	return status.Errorf(codes.Unimplemented, "method PullReferrer not implemented")
+}
+func (UnimplementedStoreServiceServer) DeleteReferrer(StoreService_DeleteReferrerServer) error {
+	return status.Errorf(codes.Unimplemented, "method DeleteReferrer not implemented")
 }
 func (UnimplementedStoreServiceServer) testEmbeddedByValue() {}
 
@@ -504,6 +544,32 @@ func (x *storeServicePullReferrerServer) Recv() (*PullReferrerRequest, error) {
 	return m, nil
 }
 
+func _StoreService_DeleteReferrer_Handler(srv interface{}, stream grpc.ServerStream) error {
+	return srv.(StoreServiceServer).DeleteReferrer(&storeServiceDeleteReferrerServer{ServerStream: stream})
+}
+
+type StoreService_DeleteReferrerServer interface {
+	Send(*DeleteReferrerResponse) error
+	Recv() (*DeleteReferrerRequest, error)
+	grpc.ServerStream
+}
+
+type storeServiceDeleteReferrerServer struct {
+	grpc.ServerStream
+}
+
+func (x *storeServiceDeleteReferrerServer) Send(m *DeleteReferrerResponse) error {
+	return x.ServerStream.SendMsg(m)
+}
+
+func (x *storeServiceDeleteReferrerServer) Recv() (*DeleteReferrerRequest, error) {
+	m := new(DeleteReferrerRequest)
+	if err := x.ServerStream.RecvMsg(m); err != nil {
+		return nil, err
+	}
+	return m, nil
+}
+
 // StoreService_ServiceDesc is the grpc.ServiceDesc for StoreService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -544,6 +610,12 @@ var StoreService_ServiceDesc = grpc.ServiceDesc{
 		{
 			StreamName:    "PullReferrer",
 			Handler:       _StoreService_PullReferrer_Handler,
+			ServerStreams: true,
+			ClientStreams: true,
+		},
+		{
+			StreamName:    "DeleteReferrer",
+			Handler:       _StoreService_DeleteReferrer_Handler,
 			ServerStreams: true,
 			ClientStreams: true,
 		},
