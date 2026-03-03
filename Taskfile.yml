@@ -521,6 +521,14 @@ tasks:
     cmds:
       - docker compose up -d --build --wait
 
+  server:start:debug:
+    desc: Start local Directory server stack in debug mode
+    dir: ./install/docker
+    env:
+      DIRECTORY_SERVER_PUBLICATION_SCHEDULER_INTERVAL: 1s
+    cmds:
+      - docker compose -f docker-compose.yml -f docker-compose.debug.yml up -d --build --wait
+
   server:stop:
     desc: Stop local Directory server stack
     dir: ./install/docker
