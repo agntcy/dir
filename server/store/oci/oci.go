@@ -445,3 +445,8 @@ func (s *store) IsReady(ctx context.Context) bool {
 
 	return true
 }
+
+func (s *store) DeleteReferrer(ctx context.Context, record string, referrerDigest string) error {
+	logger.Debug("Deleting record referrer from OCI store", "digest", digest)
+
+}

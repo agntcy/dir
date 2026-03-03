@@ -118,6 +118,58 @@ export declare type PullReferrerResponse = Message<"agntcy.dir.store.v1.PullRefe
 export declare const PullReferrerResponseSchema: GenMessage<PullReferrerResponse>;
 
 /**
+ * @generated from message agntcy.dir.store.v1.DeleteReferrerRequest
+ */
+export declare type DeleteReferrerRequest = Message<"agntcy.dir.store.v1.DeleteReferrerRequest"> & {
+  /**
+   * The record the referrers to delete are referring to.
+   *
+   * @generated from field: agntcy.dir.core.v1.RecordRef record = 1;
+   */
+  record?: RecordRef;
+
+  /**
+   * The digest of the referrer to delete.
+   * If set, delete the referrer by digest.
+   *
+   * @generated from field: optional string referrer_digest = 2;
+   */
+  referrerDigest?: string;
+
+  /**
+   * The referrer type of the referrers to delete.
+   * If set, delete the referrers with given type.
+   *
+   * @generated from field: optional string referrer_type = 3;
+   */
+  referrerType?: string;
+};
+
+/**
+ * Describes the message agntcy.dir.store.v1.DeleteReferrerRequest.
+ * Use `create(DeleteReferrerRequestSchema)` to create a new message.
+ */
+export declare const DeleteReferrerRequestSchema: GenMessage<DeleteReferrerRequest>;
+
+/**
+ * @generated from message agntcy.dir.store.v1.DeleteReferrerResponse
+ */
+export declare type DeleteReferrerResponse = Message<"agntcy.dir.store.v1.DeleteReferrerResponse"> & {
+  /**
+   * The digest(s) of the deleted referrers.
+   *
+   * @generated from field: repeated string referrer_digests = 1;
+   */
+  referrerDigests: string[];
+};
+
+/**
+ * Describes the message agntcy.dir.store.v1.DeleteReferrerResponse.
+ * Use `create(DeleteReferrerResponseSchema)` to create a new message.
+ */
+export declare const DeleteReferrerResponseSchema: GenMessage<DeleteReferrerResponse>;
+
+/**
  * Defines an interface for content-addressable storage
  * service for objects.
  *
@@ -196,6 +248,16 @@ export declare const StoreService: GenService<{
     methodKind: "bidi_streaming";
     input: typeof PullReferrerRequestSchema;
     output: typeof PullReferrerResponseSchema;
+  },
+  /**
+   * DeleteReferrer performs delete operation for record referrers.
+   *
+   * @generated from rpc agntcy.dir.store.v1.StoreService.DeleteReferrer
+   */
+  deleteReferrer: {
+    methodKind: "bidi_streaming";
+    input: typeof DeleteReferrerRequestSchema;
+    output: typeof DeleteReferrerResponseSchema;
   },
 }>;
 
