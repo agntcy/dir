@@ -517,9 +517,15 @@ tasks:
     desc: Start local Directory server stack
     dir: ./install/docker
     env:
+      DEBUG: "{{ .DEBUG }}"
       DIRECTORY_SERVER_PUBLICATION_SCHEDULER_INTERVAL: 1s
     cmds:
-      - docker compose up -d --build --wait
+      - |
+        if [ "$DEBUG" -eq "1" ]; then
+          docker compose -f docker-compose.yml -f docker-compose.debug.yml up -d --build --wait
+        else
+          docker compose up -d --build --wait
+        fi
 
   server:stop:
     desc: Stop local Directory server stack
