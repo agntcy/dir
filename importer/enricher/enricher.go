@@ -45,8 +45,15 @@ type Config struct {
 	RequestsPerMinute int // Maximum requests per minute (0 = use default of 10)
 }
 
+// hostRunner is the minimal interface for running prompts.
+type hostRunner interface {
+	Prompt(ctx context.Context, prompt string) (string, error)
+	PromptWithCallbacks(ctx context.Context, prompt string, onToolCall func(name, args string), onToolResult func(name, args, result string, isError bool), onChunk func(chunk string)) (string, error)
+	ClearSession()
+}
+
 type MCPHostClient struct {
-	host                  *sdk.MCPHost
+	host                  hostRunner
 	skillsPromptTemplate  string
 	domainsPromptTemplate string
 	rateLimiter           *rate.Limiter
@@ -84,6 +91,16 @@ func NewMCPHost(ctx context.Context, config Config) (*MCPHostClient, error) {
 		return nil, fmt.Errorf("failed to create MCPHost client: %w", err)
 	}
 
+	return newMCPHostFromRunner(ctx, host, config)
+}
+
+// NewMCPHostWithRunner creates an MCPHostClient with a custom host runner (e.g. for tests).
+// It skips config file and SDK initialization; use for injecting a mock runner.
+func NewMCPHostWithRunner(runner hostRunner, config Config) (*MCPHostClient, error) {
+	return newMCPHostFromRunner(context.Background(), runner, config)
+}
+
+func newMCPHostFromRunner(ctx context.Context, runner hostRunner, config Config) (*MCPHostClient, error) {
 	// Load prompt templates - use custom if provided, otherwise use defaults
 	skillsPrompt, err := loadPromptTemplate(config.SkillsPromptTemplate, defaultSkillsPromptTemplate)
 	if err != nil {
@@ -96,7 +113,9 @@ func NewMCPHost(ctx context.Context, config Config) (*MCPHostClient, error) {
 	}
 
 	if DebugMode {
-		runGetSchemaToolsPrompt(ctx, host)
+		if host, ok := runner.(*sdk.MCPHost); ok {
+			runGetSchemaToolsPrompt(ctx, host)
+		}
 	}
 
 	// Initialize rate limiter with configured value or default
@@ -110,7 +129,7 @@ func NewMCPHost(ctx context.Context, config Config) (*MCPHostClient, error) {
 	rateLimiter := rate.NewLimiter(rateLimit, 1)               // burst of 1 request
 
 	return &MCPHostClient{
-		host:                  host,
+		host:                  runner,
 		skillsPromptTemplate:  skillsPrompt,
 		domainsPromptTemplate: domainsPrompt,
 		rateLimiter:           rateLimiter,
