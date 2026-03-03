@@ -305,12 +305,12 @@ export declare type VerifyRequest = Message<"agntcy.dir.sign.v1.VerifyRequest"> 
   provider?: VerifyRequestProvider;
 
   /**
-   * When true, use the server's cached verification result (from the reconciler).
-   * When false or unset, verification is performed locally.
+   * When true, use cached verification result from server.
+   * When false, verification is performed locally.
    *
-   * @generated from field: bool use_server_verification = 3;
+   * @generated from field: bool from_server = 3;
    */
-  useServerVerification: boolean;
+  fromServer: boolean;
 };
 
 /**

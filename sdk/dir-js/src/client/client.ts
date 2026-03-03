@@ -796,7 +796,7 @@ export class Client {
    * The verification process uses the external dirctl command-line tool
    * to perform the actual cryptographic operations.
    * 
-   * When useServerVerification is true, uses the server's cached result (from the reconciler).
+   * When fromServer is true, uses the server's cached verification result.
    *
    * @param request - VerifyRequest containing the record reference and verification parameters.
    *                  The provider can specify either key-based verification (with a public key)
@@ -817,7 +817,7 @@ export class Client {
   async verify(
     request: models.sign_v1.VerifyRequest,
   ): Promise<models.sign_v1.VerifyResponse> {
-    if (request.useServerVerification) {
+    if (request.fromServer) {
       return await this._verifyViaServer(request);
     }
 

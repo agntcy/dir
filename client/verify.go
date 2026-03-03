@@ -16,12 +16,12 @@ import (
 )
 
 // Verify verifies signatures for a record.
-// When useServerVerification is true, the result is the server's cached verification (from the reconciler);
+// When from_server is true, the result is the server's cached verification;
 // when false, verification is performed locally.
 //
 //nolint:cyclop,gocognit
 func (c *Client) Verify(ctx context.Context, req *signv1.VerifyRequest) (*signv1.VerifyResponse, error) {
-	if req.GetUseServerVerification() {
+	if req.GetFromServer() {
 		if req.GetRecordRef() == nil || req.GetRecordRef().GetCid() == "" {
 			return nil, fmt.Errorf("record CID is required")
 		}

@@ -1251,7 +1251,7 @@ class Client:
             >>> print(f"Signature valid: {response.success}")
 
         """
-        if req.use_server_verification:
+        if req.from_server:
             if req.record_ref is None or not req.record_ref.cid:
                 msg = "VerifyRequest.record_ref with cid is required"
                 raise RuntimeError(msg)

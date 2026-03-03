@@ -145,9 +145,9 @@ message VerifyRequest {
   // Verification provider to use
   VerifyRequestProvider provider = 2;
 
-  // When true, use the server's cached verification result (from the reconciler).
-  // When false or unset, verification is performed locally.
-  bool use_server_verification = 3;
+  // When true, use cached verification result from server.
+  // When false, verification is performed locally.
+  bool from_server = 3;
 }
 
 message VerifyRequestProvider {
