@@ -78,12 +78,14 @@ class SignResponse(_message.Message):
     def __init__(self, signature: _Optional[_Union[_signature_pb2.Signature, _Mapping]] = ...) -> None: ...
 
 class VerifyRequest(_message.Message):
-    __slots__ = ("record_ref", "provider")
+    __slots__ = ("record_ref", "provider", "use_server_verification")
     RECORD_REF_FIELD_NUMBER: _ClassVar[int]
     PROVIDER_FIELD_NUMBER: _ClassVar[int]
+    USE_SERVER_VERIFICATION_FIELD_NUMBER: _ClassVar[int]
     record_ref: _record_pb2.RecordRef
     provider: VerifyRequestProvider
-    def __init__(self, record_ref: _Optional[_Union[_record_pb2.RecordRef, _Mapping]] = ..., provider: _Optional[_Union[VerifyRequestProvider, _Mapping]] = ...) -> None: ...
+    use_server_verification: bool
+    def __init__(self, record_ref: _Optional[_Union[_record_pb2.RecordRef, _Mapping]] = ..., provider: _Optional[_Union[VerifyRequestProvider, _Mapping]] = ..., use_server_verification: bool = ...) -> None: ...
 
 class VerifyRequestProvider(_message.Message):
     __slots__ = ("key", "oidc", "any")

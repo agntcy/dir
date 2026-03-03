@@ -14,7 +14,7 @@ import (
 
 	corev1 "github.com/agntcy/dir/api/core/v1"
 	signv1 "github.com/agntcy/dir/api/sign/v1"
-	"github.com/agntcy/dir/client/utils/cosign"
+	"github.com/agntcy/dir/client"
 	gormdb "github.com/agntcy/dir/server/database/gorm"
 	"github.com/agntcy/dir/server/types"
 	"github.com/agntcy/dir/utils/logging"
@@ -196,7 +196,7 @@ func digestReferrer(ref *corev1.RecordReferrer) string {
 	return hex.EncodeToString(h[:])
 }
 
-// verifySignature runs the same verification logic as client.Verify for provider Any.
+// verifySignature uses the client's verification logic and maps the result to a DB row.
 func (t *Task) verifySignature(ctx context.Context, recordCID string, item sigWithDigest, publicKeys []string) *gormdb.SignatureVerification {
 	now := time.Now()
 	sv := &gormdb.SignatureVerification{
@@ -212,30 +212,7 @@ func (t *Task) verifySignature(ctx context.Context, recordCID string, item sigWi
 		UpdatedAt:       now,
 	}
 
-	var (
-		info *signv1.SignerInfo
-		err  error
-	)
-
-	payload := []byte(recordCID)
-
-	if len(item.sig.GetContentBundle()) == 0 {
-		info, err = cosign.VerifyWithKeys(
-			ctx,
-			payload,
-			publicKeys,
-			item.sig,
-		)
-	} else {
-		info, err = cosign.VerifyWithOIDC(
-			payload,
-			&signv1.VerifyWithOIDC{
-				Options: signv1.DefaultVerifyOptionsOIDC.GetDefaultOptions(),
-			},
-			item.sig,
-		)
-	}
-
+	info, err := client.VerifySignature(ctx, []byte(recordCID), publicKeys, item.sig)
 	if err != nil {
 		sv.ErrorMessage = err.Error()
 

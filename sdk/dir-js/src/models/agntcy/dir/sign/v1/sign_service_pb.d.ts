@@ -303,6 +303,14 @@ export declare type VerifyRequest = Message<"agntcy.dir.sign.v1.VerifyRequest"> 
    * @generated from field: agntcy.dir.sign.v1.VerifyRequestProvider provider = 2;
    */
   provider?: VerifyRequestProvider;
+
+  /**
+   * When true, use the server's cached verification result (from the reconciler).
+   * When false or unset, verification is performed locally.
+   *
+   * @generated from field: bool use_server_verification = 3;
+   */
+  useServerVerification: boolean;
 };
 
 /**

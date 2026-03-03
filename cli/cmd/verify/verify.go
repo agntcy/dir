@@ -22,8 +22,9 @@ var Command = &cobra.Command{
 	Long: `This command verifies the record signature against
 identity-based OIDC or key-based signing process.
 
-Verification is performed client-side by fetching signatures from the
-directory and verifying them locally using Sigstore libraries.
+By default, verification is performed locally (fetch signatures from the
+directory and verify with Sigstore). Use --use-server-verification to
+use the server's cached result from the reconciler instead.
 
 Usage examples:
 
@@ -79,7 +80,11 @@ Usage examples:
 	# Skip multiple verification checks
 	dirctl verify <record-cid> --ignore-tlog --ignore-tsa --ignore-sct
 
-8. Output formats:
+8. Use server-cached verification (reconciler result):
+
+	dirctl verify <record-cid> --use-server-verification
+
+9. Output formats:
 
 	# Get verification result as JSON
 	dirctl verify <record-cid> --output json
@@ -160,10 +165,11 @@ func runCommand(cmd *cobra.Command, recordRef string) error {
 		}
 	}
 
-	// Perform client-side verification
+	// Perform verification
 	response, err := c.Verify(cmd.Context(), &signv1.VerifyRequest{
-		RecordRef: &corev1.RecordRef{Cid: recordRef},
-		Provider:  provider,
+		RecordRef:             &corev1.RecordRef{Cid: recordRef},
+		Provider:              provider,
+		UseServerVerification: opts.UseServerVerification,
 	})
 	if err != nil {
 		return fmt.Errorf("failed to verify record: %w", err)

@@ -24,6 +24,9 @@ type Options struct {
 	IgnoreTsa       bool
 	IgnoreSct       bool
 
+	// Verification type
+	UseServerVerification bool
+
 	// Output file flag
 	OutputFile string
 }
@@ -58,6 +61,8 @@ Supported formats:
 		"Skip timestamp authority (TSA) verification")
 	Command.Flags().BoolVar(&opts.IgnoreSct, "ignore-sct", signv1.DefaultVerifyOptionsOIDC.GetIgnoreSct(),
 		"Skip Signed Certificate Timestamp (SCT) verification")
+	Command.Flags().BoolVar(&opts.UseServerVerification, "use-server-verification", false,
+		"Use the server's cached verification result (from the reconciler). When unset, verification is performed locally.")
 
 	// Output file flag
 	Command.Flags().StringVar(&opts.OutputFile, "output-file", "",
