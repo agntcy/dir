@@ -54,7 +54,7 @@ services:
       start_period: 15s
 
   postgres:
-    image: docker.io/bitnami/postgresql@sha256:1ce1f97f3fd21366731ef29460bc210fc64355cbfc8ded68875892f75f026945
+    image: docker.io/bitnami/postgresql@sha256:e8b68936d05ee665974430bb4765fedcdc5c9ba399e133e120e2deed77f54dbf
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres

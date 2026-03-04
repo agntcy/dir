@@ -72,7 +72,7 @@ jobs:
           - ghcr.io/project-zot/zot:v2.1.14
           - ghcr.io/spiffe/spire-server:1.14.1
           - ghcr.io/spiffe/spire-agent:1.14.1
-          - docker.io/bitnami/postgresql@sha256:1ce1f97f3fd21366731ef29460bc210fc64355cbfc8ded68875892f75f026945
+          - docker.io/bitnami/postgresql@sha256:e8b68936d05ee665974430bb4765fedcdc5c9ba399e133e120e2deed77f54dbf
     steps:
       - name: Set image name
         id: image-name
