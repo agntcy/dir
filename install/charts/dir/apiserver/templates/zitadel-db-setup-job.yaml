@@ -1,0 +1,83 @@
+# Copyright AGNTCY Contributors (https://github.com/agntcy)
+# SPDX-License-Identifier: Apache-2.0
+#
+# Creates the Zitadel database and user in PostgreSQL when Zitadel is enabled.
+# Runs as a Helm hook on install/upgrade. Idempotent - safe to run on existing PostgreSQL.
+# Use this when the init script did not run (e.g. PostgreSQL was already initialized).
+{{- if and .Values.zitadel.enabled .Values.postgresql.enabled }}
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ include "chart.fullname" . }}-zitadel-db-setup
+  labels:
+    {{- include "chart.labels" . | nindent 4 }}
+    app.kubernetes.io/component: zitadel-db-setup
+  annotations:
+    helm.sh/hook: post-install,post-upgrade
+    helm.sh/hook-weight: "5"
+    helm.sh/hook-delete-policy: before-hook-creation,hook-succeeded
+    argocd.argoproj.io/hook: PostSync
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation,HookSucceeded
+    argocd.argoproj.io/sync-wave: "2"
+spec:
+  backoffLimit: 10
+  ttlSecondsAfterFinished: 300
+  template:
+    metadata:
+      labels:
+        {{- include "chart.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: zitadel-db-setup
+    spec:
+      restartPolicy: OnFailure
+      containers:
+        - name: db-setup
+          image: docker.io/bitnami/postgresql:18
+          imagePullPolicy: IfNotPresent
+          command:
+            - /bin/bash
+            - -c
+            - |
+              set -e
+              ZITADEL_USER="{{ .Values.zitadel.dbSetupJob.username | default "zitadel" }}"
+              ZITADEL_PASS="${ZITADEL_DB_PASSWORD}"
+              ZITADEL_PASS_ESC="${ZITADEL_PASS//\'/\'\'}"
+              PG_HOST="{{ include "chart.postgres.host" . }}"
+              PG_USER="{{ .Values.postgresql.auth.username | default "dir" }}"
+              PG_DB="{{ .Values.postgresql.auth.database | default "dir" }}"
+
+              echo "Waiting for PostgreSQL at ${PG_HOST}..."
+              until PGPASSWORD="${PGPASSWORD}" psql -h "${PG_HOST}" -U "${PG_USER}" -d "${PG_DB}" -c '\q' 2>/dev/null; do
+                echo "PostgreSQL not ready, retrying in 2s..."
+                sleep 2
+              done
+
+              echo "Creating Zitadel database and user..."
+              PGPASSWORD="${PGPASSWORD}" psql -v ON_ERROR_STOP=1 -h "${PG_HOST}" -U "${PG_USER}" -d "${PG_DB}" <<EOSQL
+              SELECT 'CREATE DATABASE zitadel' WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = 'zitadel')\gexec
+              DO \$\$
+              BEGIN
+                IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = '${ZITADEL_USER}') THEN
+                  EXECUTE format('CREATE USER %I WITH PASSWORD %L', '${ZITADEL_USER}', '${ZITADEL_PASS_ESC}');
+                END IF;
+                EXECUTE format('GRANT ALL PRIVILEGES ON DATABASE zitadel TO %I', '${ZITADEL_USER}');
+                EXECUTE format('ALTER DATABASE zitadel OWNER TO %I', '${ZITADEL_USER}');
+              END
+              \$\$;
+              EOSQL
+              echo "Zitadel database setup complete."
+          env:
+            - name: PGPASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Release.Name }}-postgresql
+                  key: {{ .Values.postgresql.dbSetupJob.adminPasswordSecretKey | default "postgresql-password" }}
+            - name: ZITADEL_DB_PASSWORD
+              {{- if and .Values.zitadel.dbSetupJob .Values.zitadel.dbSetupJob.passwordFromSecret }}
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.zitadel.dbSetupJob.passwordFromSecret.name }}
+                  key: {{ .Values.zitadel.dbSetupJob.passwordFromSecret.key }}
+              {{- else }}
+              value: {{ .Values.zitadel.dbSetupJob.password | default "zitadelpassword" | quote }}
+              {{- end }}
+{{- end }}

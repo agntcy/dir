@@ -659,8 +659,16 @@ envoy-authz:
 # NOT installed by default. Set enabled: true to deploy.
 # Requires: masterkey secret, DB credentials, admin password (configSecretName or secretConfig).
 # PostgreSQL init script creates zitadel DB when postgresql.enabled and zitadel.enabled.
+# A Helm-hook Job also creates the DB on install/upgrade (works with existing PostgreSQL).
 zitadel:
   enabled: false
+  # Credentials for the Zitadel DB setup Job (creates DB when init script did not run).
+  # Must match postgresql.primary.extraEnvVars ZITADEL_DB_* for consistency.
+  dbSetupJob:
+    username: "zitadel"
+    password: "zitadelpassword"
+    # Optional: use secret for password when using ExternalSecrets (e.g. Vault).
+    # passwordFromSecret: {name: "release-name", key: "zitadel-db-password"}
   # Subchart expects config under zitadel.* (nested)
   zitadel:
     # Masterkey for Zitadel encryption. Create before install:
@@ -736,10 +744,16 @@ zitadel:
 #       postgresql.enabled controls whether to deploy this subchart.
 # When enabled, postgresql.auth.* is the single source of truth for credentials.
 # When zitadel.enabled: true, initdbScripts creates the zitadel database and user.
+# A Helm-hook Job (zitadel-db-setup) also creates it on install/upgrade for existing PostgreSQL.
 # Zitadel DB password: use default (primary.extraEnvVars) or override with secretKeyRef
 # for ExternalSecrets (postgresql.primary.extraEnvVars).
 postgresql:
   enabled: true
+  # Config for the Zitadel DB setup Job (used when zitadel.enabled).
+  dbSetupJob:
+    # Secret key for PostgreSQL admin password in {{ .Release.Name }}-postgresql secret.
+    # Bitnami PostgreSQL uses "postgresql-password"; override if your chart version differs.
+    adminPasswordSecretKey: "postgresql-password"
   # image:
   #   registry: docker.io
   #   repository: bitnami/postgresql
