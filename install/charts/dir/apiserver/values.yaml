@@ -647,7 +647,7 @@ envoy-authz:
 
 # Zitadel IAM subchart configuration (OPTIONAL - dev only initially)
 # NOT installed by default. Set enabled: true to deploy.
-# Requires: masterkey secret, DB credentials (configSecretName or secretConfig).
+# Requires: masterkey secret, DB credentials, admin password (configSecretName or secretConfig).
 # PostgreSQL init script creates zitadel DB when postgresql.enabled and zitadel.enabled.
 zitadel:
   enabled: false
@@ -677,7 +677,7 @@ zitadel:
             SSL:
               Mode: "disable"
 
-    # DB passwords - use secretConfig (inline) or configSecretName (external secret)
+    # DB passwords and admin user - use secretConfig (inline) or configSecretName (external secret)
     secretConfig:
       Database:
         Postgres:
@@ -685,6 +685,11 @@ zitadel:
             Password: "" # Override via values; matches postgresql.primary.extraEnvVars ZITADEL_DB_PASSWORD
           Admin:
             Password: "" # Override; matches postgresql.auth.password (postgres superuser)
+      # Initial Human admin user (IAM_OWNER). Default username: zitadel-admin.
+      FirstInstance:
+        Org:
+          Human:
+            Password: "" # Override via values; from Vault zitadel-admin-password
     # Or use configSecretName to reference ExternalSecrets-synced secret with full config-yaml
 
   # User-facing ingress (dev.zitadel.ads.outshift.io - OIDC, login, JWKS)
