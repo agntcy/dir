@@ -751,8 +751,11 @@ postgresql:
   enabled: true
   # Config for the Zitadel DB setup Job (used when zitadel.enabled).
   dbSetupJob:
-    # Secret key for PostgreSQL admin password in {{ .Release.Name }}-postgresql secret.
-    # Bitnami PostgreSQL uses "postgresql-password"; override if your chart version differs.
+    # Secret name for PostgreSQL admin password. Default: {{ .Release.Name }}-postgresql.
+    # When using auth.existingSecret, set to that secret name (e.g. apiserver secret).
+    # adminPasswordSecret: ""
+    # Secret key for PostgreSQL admin password.
+    # Bitnami default: "postgresql-password"; with existingSecret often "postgres-password".
     adminPasswordSecretKey: "postgresql-password"
   # image:
   #   registry: docker.io

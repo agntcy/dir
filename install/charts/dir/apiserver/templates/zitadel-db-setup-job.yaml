@@ -69,7 +69,7 @@ spec:
             - name: PGPASSWORD
               valueFrom:
                 secretKeyRef:
-                  name: {{ .Release.Name }}-postgresql
+                  name: {{ .Values.postgresql.dbSetupJob.adminPasswordSecret | default (printf "%s-postgresql" .Release.Name) }}
                   key: {{ .Values.postgresql.dbSetupJob.adminPasswordSecretKey | default "postgresql-password" }}
             - name: ZITADEL_DB_PASSWORD
               {{- if and .Values.zitadel.dbSetupJob .Values.zitadel.dbSetupJob.passwordFromSecret }}
