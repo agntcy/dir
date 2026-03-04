@@ -570,6 +570,16 @@ externalSecrets:
     usernameProperty: "postgres-username"
     passwordProperty: "postgres-password"
 
+  # Zitadel IAM credentials (only when zitadel.enabled)
+  # Syncs: masterkey, DB user/password, admin password from Vault
+  zitadel:
+    enabled: false
+    # Property names in Vault secret (defaults shown)
+    masterkeyProperty: "zitadel-masterkey"
+    dbUserProperty: "zitadel-db-user"
+    dbPasswordProperty: "zitadel-db-password"
+    adminPasswordProperty: "zitadel-admin-password"
+
 # OASF server subchart configuration (OPTIONAL)
 # OASF is NOT installed by default. Set enabled: true to deploy an OASF schema server instance.
 oasf:
