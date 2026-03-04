@@ -14,6 +14,7 @@ import (
 	routingv1 "github.com/agntcy/dir/api/routing/v1"
 	storev1 "github.com/agntcy/dir/api/store/v1"
 	"github.com/agntcy/dir/server/types"
+	"github.com/agntcy/dir/utils/verify"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -62,21 +63,6 @@ func TestTask_GetRecordTimeout_Zero_UsesDefault(t *testing.T) {
 	assert.Equal(t, DefaultRecordTimeout, task.config.GetRecordTimeout())
 }
 
-func TestDigestReferrer(t *testing.T) {
-	ref := &corev1.RecordReferrer{Type: "test-type"}
-	digest := digestReferrer(ref)
-	assert.NotEmpty(t, digest)
-	assert.Len(t, digest, 64) // SHA256 hex = 64 chars
-	// Same input must produce same digest
-	assert.Equal(t, digest, digestReferrer(ref))
-}
-
-func TestDigestReferrer_DifferentInputs_DifferentDigests(t *testing.T) {
-	ref1 := &corev1.RecordReferrer{Type: "type-a"}
-	ref2 := &corev1.RecordReferrer{Type: "type-b"}
-	assert.NotEqual(t, digestReferrer(ref1), digestReferrer(ref2))
-}
-
 func TestTask_Run_NoRecords_ReturnsNil(t *testing.T) {
 	db := &fakeSignatureDB{
 		getRecordsNeedingSignatureVerification: func(time.Duration) ([]types.Record, error) {
@@ -106,30 +92,46 @@ func TestTask_Run_DBError_ReturnsError(t *testing.T) {
 	assert.ErrorIs(t, err, wantErr)
 }
 
-func TestTask_Run_WithOneRecord_NoSignatures_DoesNotCallSetRecordTrustedOrUpsert(t *testing.T) {
+func TestTask_Run_WithOneRecord_NoSignatures_CallsSetRecordTrustedFalse_NoUpsert(t *testing.T) {
 	const testCID = "test-record-cid"
 
-	setRecordTrustedCalled := false
+	var (
+		setRecordTrustedCalled bool
+		setRecordTrustedValue  bool
+	)
+
 	upsertCount := 0
 
 	db := &fakeSignatureDB{
 		getRecordsNeedingSignatureVerification: func(time.Duration) ([]types.Record, error) {
 			return []types.Record{&fakeRecord{cid: testCID}}, nil
 		},
-		setRecordTrusted:            func(string, bool) { setRecordTrustedCalled = true },
+		setRecordTrusted: func(_ string, trusted bool) {
+			setRecordTrustedCalled = true
+			setRecordTrustedValue = trusted
+		},
 		upsertSignatureVerification: func(types.SignatureVerificationObject) { upsertCount++ },
 	}
-	store := &fakeReferrerStore{} // no referrers → 0 signatures → early return
-	task, err := NewTask(Config{Enabled: true, RecordTimeout: time.Second}, db, store)
+	// Fetcher returns no signatures → verify.Verify returns Success: false, empty perSig
+	fakeFetcher := &fakeFetcher{
+		pullSignatures: func(_ context.Context, _ *corev1.RecordRef) ([]verify.SigWithDigest, error) {
+			return nil, nil
+		},
+		pullPublicKeys: func(_ context.Context, _ *corev1.RecordRef) ([]string, error) {
+			return nil, nil
+		},
+	}
+	task, err := NewTask(Config{Enabled: true, RecordTimeout: time.Second}, db, fakeFetcher)
 	require.NoError(t, err)
 
 	err = task.Run(context.Background())
 	require.NoError(t, err)
-	assert.False(t, setRecordTrustedCalled, "SetRecordTrusted should not be called when there are no signatures")
+	assert.True(t, setRecordTrustedCalled)
+	assert.False(t, setRecordTrustedValue)
 	assert.Equal(t, 0, upsertCount)
 }
 
-func TestTask_Run_WithOneRecord_CollectSignaturesError_DoesNotCallSetRecordTrusted(t *testing.T) {
+func TestTask_Run_WithOneRecord_VerifyError_DoesNotCallSetRecordTrusted(t *testing.T) {
 	const testCID = "test-record-cid"
 
 	setRecordTrustedCalled := false
@@ -142,13 +144,20 @@ func TestTask_Run_WithOneRecord_CollectSignaturesError_DoesNotCallSetRecordTrust
 			setRecordTrustedCalled = true
 		},
 	}
-	store := &fakeReferrerStore{walkErr: errors.New("store unavailable")}
-	task, err := NewTask(Config{Enabled: true, RecordTimeout: time.Second}, db, store)
+	fakeFetcher := &fakeFetcher{
+		pullSignatures: func(_ context.Context, _ *corev1.RecordRef) ([]verify.SigWithDigest, error) {
+			return nil, errors.New("pull unavailable")
+		},
+		pullPublicKeys: func(_ context.Context, _ *corev1.RecordRef) ([]string, error) {
+			return nil, nil
+		},
+	}
+	task, err := NewTask(Config{Enabled: true, RecordTimeout: time.Second}, db, fakeFetcher)
 	require.NoError(t, err)
 
 	err = task.Run(context.Background())
-	require.NoError(t, err)
-	assert.False(t, setRecordTrustedCalled, "SetRecordTrusted should not be called when collect signatures fails")
+	require.NoError(t, err) // Run logs and continues
+	assert.False(t, setRecordTrustedCalled, "SetRecordTrusted should not be called when verify fails")
 }
 
 // fakeRecord implements types.Record for tests (signature task only uses GetCid).
@@ -160,17 +169,26 @@ func (r *fakeRecord) GetCid() string { return r.cid }
 
 func (r *fakeRecord) GetRecordData() (types.RecordData, error) { return nil, nil }
 
-// fakeReferrerStore implements types.ReferrerStoreAPI for tests.
-type fakeReferrerStore struct {
-	walkErr error // if set, WalkReferrers returns this error
+// fakeFetcher implements verify.Fetcher for tests.
+type fakeFetcher struct {
+	pullSignatures func(context.Context, *corev1.RecordRef) ([]verify.SigWithDigest, error)
+	pullPublicKeys func(context.Context, *corev1.RecordRef) ([]string, error)
 }
 
-func (s *fakeReferrerStore) PushReferrer(context.Context, string, *corev1.RecordReferrer) error {
-	return nil
+func (f *fakeFetcher) PullSignatures(ctx context.Context, recordRef *corev1.RecordRef) ([]verify.SigWithDigest, error) {
+	if f.pullSignatures != nil {
+		return f.pullSignatures(ctx, recordRef)
+	}
+
+	return nil, nil
 }
 
-func (s *fakeReferrerStore) WalkReferrers(ctx context.Context, recordCID string, referrerType string, walkFn func(*corev1.RecordReferrer) error) error {
-	return s.walkErr
+func (f *fakeFetcher) PullPublicKeys(ctx context.Context, recordRef *corev1.RecordRef) ([]string, error) {
+	if f.pullPublicKeys != nil {
+		return f.pullPublicKeys(ctx, recordRef)
+	}
+
+	return nil, nil
 }
 
 // fakeSignatureDB implements types.DatabaseAPI for tests.

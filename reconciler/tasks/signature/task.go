@@ -2,41 +2,38 @@
 // SPDX-License-Identifier: Apache-2.0
 
 // Package signature implements the signature verification reconciler task.
-// It periodically verifies signed records and caches results in the database.
+// It verifies signed records via utils/verify and the store as Fetcher, then caches results in the database.
 package signature
 
 import (
 	"context"
-	"crypto/sha256"
-	"encoding/hex"
 	"fmt"
 	"time"
 
 	corev1 "github.com/agntcy/dir/api/core/v1"
 	signv1 "github.com/agntcy/dir/api/sign/v1"
-	"github.com/agntcy/dir/client"
 	gormdb "github.com/agntcy/dir/server/database/gorm"
 	"github.com/agntcy/dir/server/types"
 	"github.com/agntcy/dir/utils/logging"
-	"google.golang.org/protobuf/proto"
+	"github.com/agntcy/dir/utils/verify"
 )
 
 var logger = logging.Logger("reconciler/signature")
 
 // Task implements the signature verification reconciler task.
 type Task struct {
-	config Config
-	db     types.DatabaseAPI
-	store  types.ReferrerStoreAPI
+	config  Config
+	db      types.DatabaseAPI
+	fetcher verify.Fetcher
 }
 
 // NewTask creates a new signature verification task.
-// store must implement types.ReferrerStoreAPI (e.g. OCI store).
-func NewTask(config Config, db types.DatabaseAPI, store types.ReferrerStoreAPI) (*Task, error) {
+// fetcher supplies signatures and public keys (e.g. storeFetcher from the OCI store).
+func NewTask(config Config, db types.DatabaseAPI, fetcher verify.Fetcher) (*Task, error) {
 	return &Task{
-		config: config,
-		db:     db,
-		store:  store,
+		config:  config,
+		db:      db,
+		fetcher: fetcher,
 	}, nil
 }
 
@@ -55,7 +52,7 @@ func (t *Task) IsEnabled() bool {
 	return t.config.Enabled
 }
 
-// Run fetches records needing signature verification and verifies each.
+// Run fetches records needing signature verification and verifies each via verify.Verify, then updates the DB.
 func (t *Task) Run(ctx context.Context) error {
 	logger.Debug("Running signature verification")
 
@@ -80,7 +77,7 @@ func (t *Task) Run(ctx context.Context) error {
 
 		cid := r.GetCid()
 
-		err := t.verifySignatures(recordCtx, cid)
+		err := t.verifyRecord(recordCtx, cid)
 		if err != nil {
 			logger.Warn("Signature verification failed for record", "cid", cid, "error", err)
 
@@ -95,84 +92,126 @@ func (t *Task) Run(ctx context.Context) error {
 	return nil
 }
 
-// verifyRecordSignatures verifies all signatures for one record and persists results plus record.trusted.
-func (t *Task) verifySignatures(ctx context.Context, recordCID string) error {
-	signatures, err := t.collectSignatures(ctx, recordCID)
+// verifyRecord runs verify.Verify for one record using the task's fetcher and updates signature_verifications and record.trusted.
+func (t *Task) verifyRecord(ctx context.Context, recordCID string) error {
+	if t.fetcher == nil {
+		return fmt.Errorf("verify fetcher not configured")
+	}
+
+	req := &signv1.VerifyRequest{
+		RecordRef: &corev1.RecordRef{Cid: recordCID},
+		Provider: &signv1.VerifyRequestProvider{
+			Request: &signv1.VerifyRequestProvider_Any{
+				Any: &signv1.VerifyWithAny{
+					OidcOptions: signv1.DefaultVerifyOptionsOIDC.GetDefaultOptions(),
+				},
+			},
+		},
+	}
+
+	resp, perSig, err := verify.Verify(ctx, req, t.fetcher)
 	if err != nil {
-		return fmt.Errorf("collect signatures: %w", err)
+		return fmt.Errorf("verify: %w", err)
 	}
 
-	if len(signatures) == 0 {
-		logger.Debug("No signatures to verify", "record_cid", recordCID)
+	now := time.Now()
 
-		return nil
-	}
+	for _, p := range perSig {
+		if p.SignerInfo == nil {
+			return fmt.Errorf("signer info is nil")
+		}
 
-	publicKeys, err := t.collectPublicKeys(ctx, recordCID)
-	if err != nil {
-		return fmt.Errorf("collect public keys: %w", err)
-	}
+		var signerType, issuer, subject, pubKey, algorithm string
 
-	var anyVerified bool
+		switch s := p.SignerInfo.GetType().(type) {
+		case *signv1.SignerInfo_Oidc:
+			if s.Oidc != nil {
+				signerType = "oidc"
+				issuer = s.Oidc.GetIssuer()
+				subject = s.Oidc.GetSubject()
+			}
+		case *signv1.SignerInfo_Key:
+			if s.Key != nil {
+				signerType = "key"
+				pubKey = s.Key.GetPublicKey()
+				algorithm = s.Key.GetAlgorithm()
+			}
+		}
 
-	for _, item := range signatures {
-		sv := t.verifySignature(ctx, recordCID, item, publicKeys)
+		sv := &gormdb.SignatureVerification{
+			RecordCID:       recordCID,
+			SignatureDigest: p.Digest,
+			Status:          p.Status,
+			ErrorMessage:    p.ErrorMessage,
+			SignerType:      signerType,
+			SignerIssuer:    issuer,
+			SignerSubject:   subject,
+			SignerPublicKey: pubKey,
+			SignerAlgorithm: algorithm,
+			CreatedAt:       now,
+			UpdatedAt:       now,
+		}
 		if err := t.db.UpsertSignatureVerification(sv); err != nil {
-			logger.Warn("Failed to upsert signature verification", "record_cid", recordCID, "digest", item.digest, "error", err)
-
-			continue
-		}
-
-		if sv.GetStatus() == gormdb.VerificationStatusVerified {
-			anyVerified = true
+			logger.Warn("Failed to upsert signature verification", "record_cid", recordCID, "digest", p.Digest, "error", err)
 		}
 	}
 
-	if err := t.db.SetRecordTrusted(recordCID, anyVerified); err != nil {
+	if err := t.db.SetRecordTrusted(recordCID, resp.GetSuccess()); err != nil {
 		return fmt.Errorf("set record trusted: %w", err)
 	}
 
-	logger.Debug("Signature verification complete", "record_cid", recordCID, "trusted", anyVerified)
+	logger.Debug("Signature verification complete", "record_cid", recordCID, "trusted", resp.GetSuccess())
 
 	return nil
 }
 
-type sigWithDigest struct {
-	digest string
-	sig    *signv1.Signature
+// storeFetcher implements verify.Fetcher using a ReferrerStoreAPI (e.g. OCI store).
+type storeFetcher struct {
+	store types.ReferrerStoreAPI
 }
 
-func (t *Task) collectSignatures(ctx context.Context, recordCID string) ([]sigWithDigest, error) {
-	var out []sigWithDigest
+// NewStoreFetcher returns a Fetcher that reads signatures and public keys from the store.
+func NewStoreFetcher(store types.ReferrerStoreAPI) verify.Fetcher {
+	return &storeFetcher{store: store}
+}
 
-	err := t.store.WalkReferrers(ctx, recordCID, corev1.SignatureReferrerType, func(ref *corev1.RecordReferrer) error {
+// PullSignatures implements verify.Fetcher.
+func (s *storeFetcher) PullSignatures(ctx context.Context, recordRef *corev1.RecordRef) ([]verify.SigWithDigest, error) {
+	recordCID := recordRef.GetCid()
+
+	var out []verify.SigWithDigest
+
+	err := s.store.WalkReferrers(ctx, recordCID, corev1.SignatureReferrerType, func(ref *corev1.RecordReferrer) error {
 		sig := &signv1.Signature{}
 		if err := sig.UnmarshalReferrer(ref); err != nil {
-			logger.Debug("Failed to unmarshal signature referrer", "error", err)
-
-			return fmt.Errorf("failed to unmarshal signature referrer: %w", err)
+			return fmt.Errorf("unmarshal signature referrer: %w", err)
 		}
 
-		digest := digestReferrer(ref)
-		out = append(out, sigWithDigest{digest: digest, sig: sig})
+		out = append(out, verify.SigWithDigest{
+			Digest: verify.ReferrerDigest(ref),
+			Sig:    sig,
+		})
 
 		return nil
 	})
 	if err != nil {
-		return nil, fmt.Errorf("failed to walk referrers: %w", err)
+		return nil, fmt.Errorf("walk signature referrers: %w", err)
 	}
 
 	return out, nil
 }
 
-func (t *Task) collectPublicKeys(ctx context.Context, recordCID string) ([]string, error) {
+// PullPublicKeys implements verify.Fetcher.
+func (s *storeFetcher) PullPublicKeys(ctx context.Context, recordRef *corev1.RecordRef) ([]string, error) {
+	recordCID := recordRef.GetCid()
+
 	var out []string
 
-	err := t.store.WalkReferrers(ctx, recordCID, corev1.PublicKeyReferrerType, func(ref *corev1.RecordReferrer) error {
+	err := s.store.WalkReferrers(ctx, recordCID, corev1.PublicKeyReferrerType, func(ref *corev1.RecordReferrer) error {
 		pk := &signv1.PublicKey{}
 		if err := pk.UnmarshalReferrer(ref); err != nil {
-			logger.Debug("Failed to unmarshal public key referrer", "error", err)
-
+			// Skip invalid referrer; continue walk.
+			//nolint:nilerr
 			return nil
 		}
 
@@ -183,52 +222,8 @@ func (t *Task) collectPublicKeys(ctx context.Context, recordCID string) ([]strin
 		return nil
 	})
 	if err != nil {
-		return nil, fmt.Errorf("failed to walk referrers: %w", err)
+		return nil, fmt.Errorf("walk public key referrers: %w", err)
 	}
 
 	return out, nil
-}
-
-func digestReferrer(ref *corev1.RecordReferrer) string {
-	data, _ := proto.Marshal(ref)
-	h := sha256.Sum256(data)
-
-	return hex.EncodeToString(h[:])
-}
-
-// verifySignature uses the client's verification logic and maps the result to a DB row.
-func (t *Task) verifySignature(ctx context.Context, recordCID string, item sigWithDigest, publicKeys []string) *gormdb.SignatureVerification {
-	now := time.Now()
-	sv := &gormdb.SignatureVerification{
-		RecordCID:       recordCID,
-		SignatureDigest: item.digest,
-		Status:          gormdb.VerificationStatusFailed,
-		ErrorMessage:    "",
-		SignerType:      "",
-		SignerIssuer:    "",
-		SignerSubject:   "",
-		SignerPublicKey: "",
-		CreatedAt:       now,
-		UpdatedAt:       now,
-	}
-
-	info, err := client.VerifySignature(ctx, []byte(recordCID), publicKeys, item.sig)
-	if err != nil {
-		sv.ErrorMessage = err.Error()
-
-		return sv
-	}
-
-	sv.Status = gormdb.VerificationStatusVerified
-	if info.GetOidc() != nil {
-		sv.SignerType = "oidc"
-		sv.SignerIssuer = info.GetOidc().GetIssuer()
-		sv.SignerSubject = info.GetOidc().GetSubject()
-	} else if info.GetKey() != nil {
-		sv.SignerType = "key"
-		sv.SignerPublicKey = info.GetKey().GetPublicKey()
-		sv.SignerAlgorithm = info.GetKey().GetAlgorithm()
-	}
-
-	return sv
 }

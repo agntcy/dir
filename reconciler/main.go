@@ -126,7 +126,7 @@ func run() error {
 		if !ok {
 			logger.Warn("Store does not support referrers, skipping signature task")
 		} else {
-			signatureTask, err := signature.NewTask(cfg.Signature, db, refStore)
+			signatureTask, err := signature.NewTask(cfg.Signature, db, signature.NewStoreFetcher(refStore))
 			if err != nil {
 				return err
 			}
