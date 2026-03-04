@@ -496,6 +496,12 @@ apiserver:
   #
   # Database connection settings (host, port, database, ssl_mode) must be configured
   # explicitly in config.database.postgres
+  # Zitadel IAM subchart (OPTIONAL - disabled by default)
+  # Set enabled: true to deploy Zitadel alongside the directory server.
+  # Requires: masterkey secret, DB credentials. See apiserver chart values for full config.
+  zitadel:
+    enabled: false
+
   postgresql:
     enabled: true
     # image:

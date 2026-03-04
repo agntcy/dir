@@ -52,3 +52,10 @@ dependencies:
     version: "18.5.1"
     repository: "https://charts.bitnami.com/bitnami"
     condition: postgresql.enabled
+  # Zitadel IAM (OPTIONAL - dev only initially)
+  # Only installed when explicitly enabled via: zitadel.enabled: true
+  # Default: disabled (zitadel.enabled: false in values.yaml)
+  - name: zitadel
+    version: "9.24.0"
+    repository: "https://charts.zitadel.com"
+    condition: zitadel.enabled

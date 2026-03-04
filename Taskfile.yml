@@ -2134,6 +2134,7 @@ tasks:
       # Add Helm repo
       - "{{ .HELM_BIN }} repo add project-zot http://zotregistry.dev/helm-charts"
       - "{{ .HELM_BIN }} repo add spiffe https://spiffe.github.io/helm-charts-hardened"
+      - "{{ .HELM_BIN }} repo add zitadel https://charts.zitadel.com"
 
       # NOTE: Remove the byte null workaround when SOURCE_DATE_EPOCH implemeted
       # Reproducible chart packaging requires two layers of normalization:

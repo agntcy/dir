@@ -645,12 +645,84 @@ envoy-authz:
       nginx.ingress.kubernetes.io/backend-protocol: "GRPC"
       nginx.ingress.kubernetes.io/grpc-backend: "true"
 
+# Zitadel IAM subchart configuration (OPTIONAL - dev only initially)
+# NOT installed by default. Set enabled: true to deploy.
+# Requires: masterkey secret, DB credentials (configSecretName or secretConfig).
+# PostgreSQL init script creates zitadel DB when postgresql.enabled and zitadel.enabled.
+zitadel:
+  enabled: false
+  # Subchart expects config under zitadel.* (nested)
+  zitadel:
+    # Masterkey for Zitadel encryption. Create before install:
+    #   kubectl create secret generic <name> --from-literal=masterkey="$(tr -dc A-Za-z0-9 </dev/urandom | head -c 32)"
+    masterkeySecretName: ""
+    # Or set masterkey directly (dev only - avoid in prod):
+    # masterkey: ""
+
+    # Runtime config (ConfigMap)
+    configmapConfig:
+      ExternalSecure: true
+      ExternalDomain: "" # e.g. dev.zitadel.ads.outshift.io (issuer/JWKS domain)
+      Database:
+        Postgres:
+          Host: "" # e.g. dir-dir-dev-argoapp-postgresql.dir-dev-dir.svc.cluster.local
+          Port: 5432
+          Database: "zitadel"
+          User:
+            Username: "zitadel"
+            SSL:
+              Mode: "disable"
+          Admin:
+            Username: "postgres"
+            SSL:
+              Mode: "disable"
+
+    # DB passwords - use secretConfig (inline) or configSecretName (external secret)
+    secretConfig:
+      Database:
+        Postgres:
+          User:
+            Password: "" # Override via values; matches postgresql.primary.extraEnvVars ZITADEL_DB_PASSWORD
+          Admin:
+            Password: "" # Override; matches postgresql.auth.password (postgres superuser)
+    # Or use configSecretName to reference ExternalSecrets-synced secret with full config-yaml
+
+  # User-facing ingress (dev.zitadel.ads.outshift.io - OIDC, login, JWKS)
+  ingress:
+    enabled: false
+    className: "nginx"
+    annotations:
+      cert-manager.io/cluster-issuer: letsencrypt
+      external-dns.alpha.kubernetes.io/hostname: ""
+    hosts:
+      - host: "" # e.g. dev.zitadel.ads.outshift.io
+        paths:
+          - path: /
+            pathType: Prefix
+    tls: []
+
+  # Admin ingress (dev.zitadel-admin.ads.outshift.io - console, API)
+  # Use extraManifests or separate Ingress for nginx-internal
+  login:
+    ingress:
+      enabled: false
+      className: "nginx-internal"
+      hosts:
+        - host: "" # e.g. dev.zitadel-admin.ads.outshift.io
+          paths:
+            - path: /ui/v2/login
+              pathType: Prefix
+      tls: []
+
 # PostgreSQL subchart configuration
 # Deploys PostgreSQL alongside the apiserver for dev/production use.
 # Set enabled: false when using SQLite or external PostgreSQL.
 # Note: database.type (above) controls which backend the apiserver uses;
 #       postgresql.enabled controls whether to deploy this subchart.
 # When enabled, postgresql.auth.* is the single source of truth for credentials.
+# When zitadel.enabled: true, initdbScripts creates the zitadel database and user.
+# Zitadel DB password: use default (primary.extraEnvVars) or override with secretKeyRef
+# for ExternalSecrets (postgresql.primary.extraEnvVars).
 postgresql:
   enabled: true
   # image:
@@ -661,6 +733,38 @@ postgresql:
     username: "dir"
     password: "dirpassword"
     database: "dir"
+  # Inject ZITADEL_DB_USERNAME and ZITADEL_DB_PASSWORD for init script.
+  # Defaults for local/dev; override with valueFrom.secretKeyRef via values
+  # when using ExternalSecrets.
+  primary:
+    extraEnvVars:
+      - name: ZITADEL_DB_USERNAME
+        value: "zitadel"
+      - name: ZITADEL_DB_PASSWORD
+        value: "zitadelpassword"
+    # Create zitadel database when Zitadel is enabled (shared PostgreSQL instance)
+    # Zitadel requires: database "zitadel", admin user (postgres), app user (ZITADEL_DB_USERNAME)
+    # Username/password from env vars; fallbacks: "zitadel" / "zitadelpassword".
+    initdb:
+      scripts:
+        "02-create-zitadel-db.sh": |
+          #!/bin/bash
+          set -e
+          ZITADEL_USER="${ZITADEL_DB_USERNAME:-zitadel}"
+          ZITADEL_PASS="${ZITADEL_DB_PASSWORD:-zitadelpassword}"
+          ZITADEL_PASS_ESC="${ZITADEL_PASS//\'/\'\'}"
+          psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" <<-EOSQL
+            SELECT 'CREATE DATABASE zitadel' WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = 'zitadel')\gexec
+            DO \$\$
+            BEGIN
+              IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = '${ZITADEL_USER}') THEN
+                EXECUTE format('CREATE USER %I WITH PASSWORD %L', '${ZITADEL_USER}', '${ZITADEL_PASS_ESC}');
+              END IF;
+              EXECUTE format('GRANT ALL PRIVILEGES ON DATABASE zitadel TO %I', '${ZITADEL_USER}');
+              EXECUTE format('ALTER DATABASE zitadel OWNER TO %I', '${ZITADEL_USER}');
+            END
+            \$\$;
+          EOSQL
 
 # Reconciler configuration
 # The reconciler handles async operations including:

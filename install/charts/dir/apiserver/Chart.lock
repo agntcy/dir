@@ -11,5 +11,8 @@ dependencies:
 - name: postgresql
   repository: https://charts.bitnami.com/bitnami
   version: 18.5.1
-digest: sha256:4f047c022f31beafcb222cebb3c0c2969b727fc2c7d3661f2b4adda5d4d43f1c
-generated: "2026-03-02T15:57:20.573529+01:00"
+- name: zitadel
+  repository: https://charts.zitadel.com
+  version: 9.24.0
+digest: sha256:f51767968224a8e57d60f90c0c7b7532eadfb7760ada7c7e95a1dffc62891ba2
+generated: "2026-03-04T11:06:08.492495+01:00"
