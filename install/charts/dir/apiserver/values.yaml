@@ -768,7 +768,10 @@ postgresql:
           ZITADEL_USER="${ZITADEL_DB_USERNAME:-zitadel}"
           ZITADEL_PASS="${ZITADEL_DB_PASSWORD:-zitadelpassword}"
           ZITADEL_PASS_ESC="${ZITADEL_PASS//\'/\'\'}"
-          psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" <<-EOSQL
+          # Bitnami uses POSTGRESQL_*; standard postgres uses POSTGRES_*
+          PG_USER="${POSTGRESQL_USERNAME:-${POSTGRES_USER:-postgres}}"
+          PG_DB="${POSTGRESQL_DATABASE:-${POSTGRES_DB:-postgres}}"
+          psql -v ON_ERROR_STOP=1 --username "$PG_USER" --dbname "$PG_DB" <<-EOSQL
             SELECT 'CREATE DATABASE zitadel' WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = 'zitadel')\gexec
             DO \$\$
             BEGIN
