@@ -100,6 +100,34 @@ func (m *mockPusher) Push(ctx context.Context, inputCh <-chan *corev1.Record) (<
 	return refCh, errCh
 }
 
+// mockScanner is a mock implementation of Scanner for testing. It passes all records through.
+type mockScanner struct{}
+
+func (m *mockScanner) Scan(ctx context.Context, inputCh <-chan *corev1.Record, _ *Result) (<-chan *corev1.Record, <-chan error) {
+	outCh := make(chan *corev1.Record)
+	errCh := make(chan error)
+	go func() {
+		defer close(outCh)
+		defer close(errCh)
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case r, ok := <-inputCh:
+				if !ok {
+					return
+				}
+				select {
+				case outCh <- r:
+				case <-ctx.Done():
+					return
+				}
+			}
+		}
+	}()
+	return outCh, errCh
+}
+
 // mockDuplicateChecker is a mock implementation of DuplicateChecker for testing.
 type mockDuplicateChecker struct {
 	duplicates map[string]bool // items to mark as duplicates
@@ -159,7 +187,7 @@ func TestPipeline_Run_Success(t *testing.T) {
 	config := Config{
 		TransformerWorkers: 2,
 	}
-	p := New(fetcher, nil, transformer, pusher, config)
+	p := New(fetcher, nil, transformer, &mockScanner{}, pusher, config)
 
 	// Run pipeline
 	result, err := p.Run(ctx)
@@ -198,7 +226,7 @@ func TestDryRunPipeline_Run(t *testing.T) {
 	config := Config{
 		TransformerWorkers: 2,
 	}
-	p := NewDryRun(fetcher, nil, transformer, config)
+	p := NewDryRun(fetcher, nil, transformer, &mockScanner{}, config)
 
 	// Run pipeline
 	result, err := p.Run(ctx)
@@ -237,7 +265,7 @@ func TestDryRunPipeline_Run_WithDuplicateChecker(t *testing.T) {
 	config := Config{
 		TransformerWorkers: 2,
 	}
-	p := NewDryRun(fetcher, duplicateChecker, transformer, config)
+	p := NewDryRun(fetcher, duplicateChecker, transformer, &mockScanner{}, config)
 
 	// Run pipeline
 	result, err := p.Run(ctx)
@@ -289,7 +317,7 @@ func TestPipeline_Run_TransformError(t *testing.T) {
 	config := Config{
 		TransformerWorkers: 2,
 	}
-	p := New(fetcher, nil, transformer, pusher, config)
+	p := New(fetcher, nil, transformer, &mockScanner{}, pusher, config)
 
 	// Run pipeline
 	result, err := p.Run(ctx)
@@ -329,7 +357,7 @@ func TestPipeline_Run_PushError(t *testing.T) {
 	config := Config{
 		TransformerWorkers: 2,
 	}
-	p := New(fetcher, nil, transformer, pusher, config)
+	p := New(fetcher, nil, transformer, &mockScanner{}, pusher, config)
 
 	// Run pipeline
 	result, err := p.Run(ctx)
@@ -369,7 +397,7 @@ func TestPipeline_Run_FetchError(t *testing.T) {
 	config := Config{
 		TransformerWorkers: 2,
 	}
-	p := New(fetcher, nil, transformer, pusher, config)
+	p := New(fetcher, nil, transformer, &mockScanner{}, pusher, config)
 
 	// Run pipeline
 	result, err := p.Run(ctx)
@@ -390,7 +418,7 @@ func TestPipeline_ConfigDefaults(t *testing.T) {
 
 	// Create pipeline with zero config values
 	config := Config{}
-	p := New(fetcher, nil, transformer, pusher, config)
+	p := New(fetcher, nil, transformer, &mockScanner{}, pusher, config)
 
 	// Verify defaults are set
 	if p.config.TransformerWorkers != 5 {
@@ -420,7 +448,7 @@ func TestPipeline_Run_WithDuplicateChecker(t *testing.T) {
 	config := Config{
 		TransformerWorkers: 2,
 	}
-	p := New(fetcher, duplicateChecker, transformer, pusher, config)
+	p := New(fetcher, duplicateChecker, transformer, &mockScanner{}, pusher, config)
 
 	// Run pipeline
 	result, err := p.Run(ctx)
@@ -475,7 +503,7 @@ func TestDryRunPipeline_Run_WritesOutputFile(t *testing.T) {
 		TransformerWorkers: 2,
 		DryRunOutput:       outputPath,
 	}
-	p := NewDryRun(fetcher, nil, transformer, config)
+	p := NewDryRun(fetcher, nil, transformer, &mockScanner{}, config)
 
 	result, err := p.Run(ctx)
 	if err != nil {

@@ -152,6 +152,18 @@ func printSummary(cmd *cobra.Command, result *types.ImportResult) {
 		}
 	}
 
+	if len(result.ScannerFindings) > 0 {
+		presenter.Printf(cmd, "\n=== Scanner findings ===\n")
+		for i, msg := range result.ScannerFindings {
+			if i < maxErrors {
+				presenter.Printf(cmd, "  - %s\n", msg)
+			}
+		}
+		if len(result.ScannerFindings) > maxErrors {
+			presenter.Printf(cmd, "  ... and %d more\n", len(result.ScannerFindings)-maxErrors)
+		}
+	}
+
 	if opts.DryRun {
 		presenter.Printf(cmd, "\nNote: This was a dry run. No records were actually imported.\n")
 

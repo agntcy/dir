@@ -10,6 +10,7 @@ import (
 
 	"github.com/agntcy/dir/importer/config"
 	"github.com/agntcy/dir/importer/pipeline"
+	"github.com/agntcy/dir/importer/scanner"
 	"github.com/agntcy/dir/importer/types"
 )
 
@@ -73,8 +74,11 @@ func (i *Importer) Run(ctx context.Context, cfg config.Config) (*types.ImportRes
 			}
 		}
 
-		// Use dry-run pipeline (fetch, filter duplicates, and transform only - no push)
-		p := pipeline.NewDryRun(fetcher, duplicateChecker, transformer, pipelineConfig)
+		// Scanner stage
+		sc := scanner.NewScanner(cfg.Scanner)
+
+		// Use dry-run pipeline (fetch, dedup, transform, scanner, write to file - no push)
+		p := pipeline.NewDryRun(fetcher, duplicateChecker, transformer, sc, pipelineConfig)
 		pipelineResult, err = p.Run(ctx)
 	} else {
 		pusher := pipeline.NewClientPusher(i.client, cfg.Debug, cfg.SignFunc)
@@ -89,8 +93,10 @@ func (i *Importer) Run(ctx context.Context, cfg config.Config) (*types.ImportRes
 			}
 		}
 
-		// Create full pipeline with optional duplicate checker
-		p := pipeline.New(fetcher, duplicateChecker, transformer, pusher, pipelineConfig)
+		sc := scanner.NewScanner(cfg.Scanner)
+
+		// Create full pipeline with optional duplicate checker and scanner stage
+		p := pipeline.New(fetcher, duplicateChecker, transformer, sc, pusher, pipelineConfig)
 		pipelineResult, err = p.Run(ctx)
 	}
 
@@ -100,13 +106,14 @@ func (i *Importer) Run(ctx context.Context, cfg config.Config) (*types.ImportRes
 
 	// Convert pipeline result to import result
 	result := &types.ImportResult{
-		TotalRecords:  pipelineResult.TotalRecords,
-		ImportedCount: pipelineResult.ImportedCount,
-		SkippedCount:  pipelineResult.SkippedCount,
-		FailedCount:   pipelineResult.FailedCount,
-		Errors:        pipelineResult.Errors,
-		OutputFile:    outputFile,
-		ImportedCIDs:  pipelineResult.ImportedCIDs,
+		TotalRecords:    pipelineResult.TotalRecords,
+		ImportedCount:   pipelineResult.ImportedCount,
+		SkippedCount:    pipelineResult.SkippedCount,
+		FailedCount:     pipelineResult.FailedCount,
+		Errors:          pipelineResult.Errors,
+		OutputFile:      outputFile,
+		ImportedCIDs:    pipelineResult.ImportedCIDs,
+		ScannerFindings: pipelineResult.ScannerFindings,
 	}
 
 	return result, nil
