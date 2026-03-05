@@ -4,7 +4,7 @@
 package network
 
 import (
-	"github.com/agntcy/dir/e2e/shared/utils"
+	"github.com/agntcy/dir/tests/e2e/shared/utils"
 	"github.com/onsi/ginkgo/v2"
 )
 

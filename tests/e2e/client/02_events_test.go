@@ -12,8 +12,8 @@ import (
 	routingv1 "github.com/agntcy/dir/api/routing/v1"
 	"github.com/agntcy/dir/client"
 	"github.com/agntcy/dir/client/streaming"
-	"github.com/agntcy/dir/e2e/shared/config"
-	"github.com/agntcy/dir/e2e/shared/testdata"
+	"github.com/agntcy/dir/tests/e2e/shared/config"
+	"github.com/agntcy/dir/tests/e2e/shared/testdata"
 	"github.com/onsi/ginkgo/v2"
 	"github.com/onsi/gomega"
 )

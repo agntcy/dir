@@ -7,7 +7,7 @@ This directory contains comprehensive end-to-end tests for the Directory system,
 **Structure**: 3 separate test suites with 103+ test cases organized by deployment mode and API type
 
 ```
-e2e/
+tests/e2e/
 ├── shared/                          # package shared - Common utilities
 │   ├── config/                      # Deployment mode configuration
 │   ├── utils/                       # CLI helpers, validation utilities
@@ -32,7 +32,7 @@ e2e/
 
 ## 📦 Test Packages
 
-### 🏠 **Local Package** (`e2e/local/`)
+### 🏠 **Local Package** (`tests/e2e/local/`)
 **Deployment**: Local single node  
 **Focus**: CLI commands in local deployment mode  
 **Suite**: `TestLocalE2E(t *testing.T)`
@@ -139,7 +139,7 @@ e2e/
 - Key generation and validation
 - CLI utility testing
 
-### 📚 **Client Package** (`e2e/client/`)
+### 📚 **Client Package** (`tests/e2e/client/`)
 **Deployment**: Local single node  
 **Focus**: Go client library API methods  
 **Suite**: `TestClientE2E(t *testing.T)`
@@ -166,7 +166,7 @@ e2e/
 - OASF version compatibility (0.7.0, 0.8.0, 1.0.0)
 - RecordQuery API testing
 
-### 🌐 **Network Package** (`e2e/network/`)
+### 🌐 **Network Package** (`tests/e2e/network/`)
 **Deployment**: Network with multiple peers  
 **Focus**: CLI commands in network deployment mode with proper test isolation  
 **Suite**: `TestNetworkE2E(t *testing.T)`
@@ -383,6 +383,6 @@ task test:e2e:network       # Test multi-peer scenarios with proper cleanup
 ### **Debugging Test Issues:**
 ```bash
 # Run individual test files (with Ginkgo focus)
-go test -C ./e2e/network . -ginkgo.focus="Deploy"
-go test -C ./e2e/local . -ginkgo.focus="Storage"
+go test -C ./tests/e2e/network . -ginkgo.focus="Deploy"
+go test -C ./tests/e2e/local . -ginkgo.focus="Storage"
 ```

@@ -1,16 +1,16 @@
-module github.com/agntcy/dir/e2e
+module github.com/agntcy/dir/tests/e2e
 
 go 1.26.0
 
-// Replace local modules
+// Replace local modules (paths relative to tests/e2e; repo root is ../..)
 replace (
-	github.com/agntcy/dir/api => ../api
-	github.com/agntcy/dir/auth/authprovider => ../auth/authprovider
-	github.com/agntcy/dir/cli => ../cli
-	github.com/agntcy/dir/client => ../client
-	github.com/agntcy/dir/importer => ../importer
-	github.com/agntcy/dir/mcp => ../mcp
-	github.com/agntcy/dir/utils => ../utils
+	github.com/agntcy/dir/api => ../../api
+	github.com/agntcy/dir/auth/authprovider => ../../auth/authprovider
+	github.com/agntcy/dir/cli => ../../cli
+	github.com/agntcy/dir/client => ../../client
+	github.com/agntcy/dir/importer => ../../importer
+	github.com/agntcy/dir/mcp => ../../mcp
+	github.com/agntcy/dir/utils => ../../utils
 )
 
 // Cosign does not updated the crypto11 owner

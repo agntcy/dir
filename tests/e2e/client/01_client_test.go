@@ -11,9 +11,9 @@ import (
 	corev1 "github.com/agntcy/dir/api/core/v1"
 	routingv1 "github.com/agntcy/dir/api/routing/v1"
 	"github.com/agntcy/dir/client"
-	"github.com/agntcy/dir/e2e/shared/config"
-	"github.com/agntcy/dir/e2e/shared/testdata"
-	"github.com/agntcy/dir/e2e/shared/utils"
+	"github.com/agntcy/dir/tests/e2e/shared/config"
+	"github.com/agntcy/dir/tests/e2e/shared/testdata"
+	"github.com/agntcy/dir/tests/e2e/shared/utils"
 	"github.com/onsi/ginkgo/v2"
 	"github.com/onsi/gomega"
 )

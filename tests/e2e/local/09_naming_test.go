@@ -8,9 +8,9 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/agntcy/dir/e2e/shared/config"
-	"github.com/agntcy/dir/e2e/shared/testdata"
-	"github.com/agntcy/dir/e2e/shared/utils"
+	"github.com/agntcy/dir/tests/e2e/shared/config"
+	"github.com/agntcy/dir/tests/e2e/shared/testdata"
+	"github.com/agntcy/dir/tests/e2e/shared/utils"
 	"github.com/onsi/ginkgo/v2"
 	"github.com/onsi/gomega"
 )
@@ -21,7 +21,7 @@ const (
 
 	// Pre-generated cosign keys directory (relative to workspace root).
 	// These keys match the JWKS served by the dns-validation chart.
-	dnsValidationKeysDir = "e2e/dns-validation"
+	dnsValidationKeysDir = "tests/e2e/dns-validation"
 
 	// verificationWaitTimeout is the maximum time to wait for the server
 	// to create the name verification row after signing.
