@@ -8,11 +8,12 @@ tasks:
     cmd: echo "Run the main Taskfile instead of this one."
 
   test:e2e:
-    desc: Run end-to-end tests for local deployment and network deployment
+    desc: Run end-to-end tests for local deployment, network deployment, and MCP protocol
     aliases: [e2e]
     cmds:
       - task: test:e2e:local
       - task: test:e2e:network
+      - task: test:e2e:mcp
 
   test:e2e:local:cli:
     desc: Run only local CLI tests (with dedicated infrastructure)
@@ -237,6 +238,18 @@ tasks:
         else
           go test -C ./e2e/network . -v -failfast -test.v -test.paniconexit0 -ginkgo.timeout 2h -timeout 2h -ginkgo.v
         fi
+
+  test:e2e:mcp:
+    desc: Run MCP server protocol end-to-end tests (starts local Directory stack for push test)
+    aliases: [e2e:mcp]
+    env:
+      DIRECTORY_CLIENT_SERVER_ADDRESS: localhost:8888
+      OASF_API_VALIDATION_SCHEMA_URL: "{{ .OASF_API_VALIDATION_SCHEMA_URL | default \"https://schema.oasf.outshift.com\" }}"
+    cmds:
+      - defer: { task: server:stop }
+      - task: server:start
+      - bash -c 'echo "Waiting for Directory apiserver on localhost:8888..."; for ((i=0;i<60;i++)); do (nc -z localhost 8888 2>/dev/null || timeout 1 bash -c "echo >/dev/tcp/localhost/8888" 2>/dev/null) && break; sleep 2; done; (nc -z localhost 8888 2>/dev/null || timeout 1 bash -c "echo >/dev/tcp/localhost/8888" 2>/dev/null) || (echo "Apiserver did not become ready on port 8888"; exit 1); sleep 3'Expand commentComment on line R1440Resolved
+      - go test -C ./tests/e2e/mcp . -v -failfast -test.v -test.paniconexit0 -ginkgo.timeout 30m -timeout 30m -ginkgo.v
 
   test:e2e:spire:
     desc: Run end-to-end tests for SPIRE deployment

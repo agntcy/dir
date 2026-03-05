@@ -107,22 +107,26 @@ func (c *MCPClient) SendRequest(req MCPRequest) (*MCPResponse, error) {
 		return nil, fmt.Errorf("failed to write request: %w", err)
 	}
 
-	// Read response
-	if !c.stdout.Scan() {
-		if err := c.stdout.Err(); err != nil {
-			return nil, fmt.Errorf("failed to read response: %w", err)
+	// Read response. Server may send notifications (e.g. "initialized") which have no
+	// "result" or "error"; we must skip those and return only the actual request response.
+	for c.stdout.Scan() {
+		line := c.stdout.Bytes()
+
+		var resp MCPResponse
+		if err := json.Unmarshal(line, &resp); err != nil {
+			continue // skip malformed or non-JSON lines
 		}
 
-		return nil, errors.New("no response received")
+		if resp.Result != nil || resp.Error != nil {
+			return &resp, nil
+		}
 	}
 
-	// Parse response
-	var resp MCPResponse
-	if err := json.Unmarshal(c.stdout.Bytes(), &resp); err != nil {
-		return nil, fmt.Errorf("failed to unmarshal response: %w", err)
+	if err := c.stdout.Err(); err != nil {
+		return nil, fmt.Errorf("failed to read response: %w", err)
 	}
 
-	return &resp, nil
+	return nil, errors.New("no response received")
 }
 
 // Close stops the MCP server and cleans up.
@@ -254,7 +258,7 @@ var _ = ginkgo.Describe("MCP Server Protocol Tests", func() {
 
 	ginkgo.BeforeEach(func() {
 		// Get the MCP directory (relative to e2e/mcp)
-		repoRoot := filepath.Join("..", "..")
+		repoRoot := filepath.Join("..", "..", "..")
 		mcpDir = filepath.Join(repoRoot, "mcp")
 
 		// Start MCP server using go run
@@ -389,7 +393,7 @@ var _ = ginkgo.Describe("MCP Server Protocol Tests", func() {
 
 			tools, ok := result["tools"].([]any)
 			gomega.Expect(ok).To(gomega.BeTrue())
-			gomega.Expect(tools).To(gomega.HaveLen(4))
+			gomega.Expect(tools).To(gomega.HaveLen(12))
 
 			// Verify tool names
 			toolNames := make(map[string]bool)
@@ -521,7 +525,7 @@ var _ = ginkgo.Describe("MCP Server Protocol Tests", func() {
 
 			serverAddress, ok := toolOutput["server_address"].(string)
 			gomega.Expect(ok).To(gomega.BeTrue())
-			gomega.Expect(serverAddress).To(gomega.Equal("0.0.0.0:8888"))
+			gomega.Expect(serverAddress).To(gomega.Equal("localhost:8888"))
 
 			ginkgo.GinkgoWriter.Printf("Record pushed successfully with CID: %s to server: %s\n", cid, serverAddress)
 		})
