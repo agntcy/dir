@@ -23,7 +23,7 @@ includes:
     excludes: [default]
 
   test-env:
-    taskfile: e2e/Taskfile.test-env.yml
+    taskfile: tests/Taskfile.test-env.yml
     flatten: true
     excludes: [default]
 
@@ -33,7 +33,7 @@ includes:
     excludes: [default]
 
   e2e:
-    taskfile: e2e/Taskfile.yml
+    taskfile: tests/Taskfile.yml
     flatten: true
     excludes: [default]
 
