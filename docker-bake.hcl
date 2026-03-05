@@ -139,7 +139,7 @@ target "dir-runtime-server" {
 
 target "sdks-test" {
   context = "."
-  dockerfile = "./e2e/sdk/Dockerfile"
+  dockerfile = "./tests/e2e/sdk/Dockerfile"
   depends_on = ["dir-ctl"] # Ensures dir-ctl is built first
   inherits = [
     "_common",

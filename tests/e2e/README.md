@@ -4,7 +4,7 @@ This directory contains comprehensive end-to-end tests for the Directory system,
 
 ## 🏗️ Test Suite Architecture
 
-**Structure**: 3 separate test suites with 103+ test cases organized by deployment mode and API type
+**Structure**: 4 separate test suites (local, client, network, MCP) with 100+ test cases organized by deployment mode and API type.
 
 ```
 tests/e2e/
@@ -22,12 +22,15 @@ tests/e2e/
 ├── client/                          # package client - Go library tests (local mode)
 │   ├── client_suite_test.go        # TestClientE2E(t *testing.T)
 │   └── 01_client_test.go           # Client library APIs
-└── network/                         # package network - CLI tests (network mode)
-    ├── network_suite_test.go        # TestNetworkE2E(t *testing.T)
-    ├── cleanup.go                   # Inter-test cleanup utilities
-    ├── 01_deploy_test.go            # Multi-peer deployment
-    ├── 02_sync_test.go              # Peer synchronization
-    └── 03_search_test.go            # Remote routing search
+├── network/                         # package network - CLI tests (network mode)
+│   ├── network_suite_test.go        # TestNetworkE2E(t *testing.T)
+│   ├── cleanup.go                   # Inter-test cleanup utilities
+│   ├── 01_deploy_test.go            # Multi-peer deployment
+│   ├── 02_sync_test.go              # Peer synchronization
+│   └── 03_search_test.go            # Remote routing search
+└── mcp/                             # package mcp - MCP server protocol tests (no cluster)
+    ├── mcp_suite_test.go            # TestMCPE2E(t *testing.T)
+    └── 01_protocol_test.go          # JSON-RPC init, tools, schema
 ```
 
 ## 📦 Test Packages
@@ -270,10 +273,19 @@ tests/e2e/
 
 ### **All E2E Tests:**
 ```bash
-# Run all e2e tests (client → local CLI → network CLI)
+# Run all e2e tests (local → network → MCP protocol)
 task test:e2e
 task e2e
 ```
+
+### **MCP Protocol Tests:**
+```bash
+# Run MCP server protocol tests (no cluster required; uses go run in mcp/)
+task test:e2e:mcp
+task e2e:mcp
+```
+
+The MCP server requires `OASF_API_VALIDATION_SCHEMA_URL` to be set (e.g. `https://schema.oasf.outshift.com`). Export it before running, or rely on CI which sets it for the MCP job.
 
 ### **Local Deployment Tests:**
 ```bash
@@ -291,6 +303,13 @@ task test:e2e:local:cli     # Local CLI tests only
 # Run network tests (multi-peer CLI with proper cleanup)
 task test:e2e:network
 task e2e:network
+```
+
+### **Running MCP tests directly with Go:**
+```bash
+# From repo root; ensure OASF_API_VALIDATION_SCHEMA_URL is set
+export OASF_API_VALIDATION_SCHEMA_URL="${OASF_API_VALIDATION_SCHEMA_URL:-https://schema.oasf.outshift.com}"
+go test -C ./tests/e2e/mcp . -v -ginkgo.v
 ```
 
 ## 📋 **Test Execution Flow:**
@@ -314,6 +333,12 @@ task test:e2e:network:
 ├── 🔄  Run 02_sync_test.go → DeferCleanup → Clean all peers  
 ├── 🔍  Run 03_search_test.go → DeferCleanup → Clean all peers
 └── 🧹  Cleanup infrastructure
+```
+
+### **🔌 MCP Protocol Execution:**
+```
+task test:e2e:mcp:
+└── go test ./tests/e2e/mcp (starts MCP server via go run in mcp/; no cluster)
 ```
 
 ## 🎯 **Package Organization Benefits:**

@@ -43,8 +43,8 @@ func setupNamingTestPaths() *namingTestPaths {
 	tempDir, err := os.MkdirTemp("", namingTempDirPrefix)
 	gomega.Expect(err).NotTo(gomega.HaveOccurred())
 
-	// Get workspace root (go up from e2e/local to workspace root)
-	workspaceRoot, err := filepath.Abs(filepath.Join("..", ".."))
+	// Get workspace root (go up from tests/e2e/local to workspace root)
+	workspaceRoot, err := filepath.Abs(filepath.Join("..", "..", ".."))
 	gomega.Expect(err).NotTo(gomega.HaveOccurred())
 
 	// Use pre-generated cosign keys from dns-validation directory
