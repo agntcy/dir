@@ -6,7 +6,7 @@
 # Docker build args
 variable "IMAGE_REPO" { default = "ghcr.io/agntcy" }
 variable "IMAGE_TAG" { default = "v0.1.0-rc" }
-variable "EXTRA_LDFLAGS" { default = "" }
+variable "BUILD_LDFLAGS" { default = "-s -w -extldflags -static" }
 variable "IMAGE_NAME_SUFFIX" { default = "" }
 variable "REGSYNC_VERSION" { default = "v0.11.1" }
 
@@ -42,7 +42,7 @@ target "_common" {
     "linux/amd64",
   ]
   args = {
-    EXTRA_LDFLAGS = "${EXTRA_LDFLAGS}"
+    BUILD_LDFLAGS = "${BUILD_LDFLAGS}"
   }
 }
 
