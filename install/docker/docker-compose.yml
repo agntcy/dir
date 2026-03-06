@@ -47,11 +47,6 @@ services:
       replicas: 1
       restart_policy:
         condition: on-failure
-    healthcheck:
-      test: curl -f http://localhost:5000/v2/ || exit 1
-      interval: 5s
-      retries: 60
-      start_period: 15s
 
   postgres:
     image: docker.io/bitnami/postgresql@sha256:e8b68936d05ee665974430bb4765fedcdc5c9ba399e133e120e2deed77f54dbf
