@@ -37,7 +37,7 @@ type GetSchemaDomainsOutput struct {
 // GetSchemaDomains retrieves domains from the OASF schema for the specified version.
 // If parent_domain is provided, returns only sub-domains under that parent.
 // Otherwise, returns all top-level domains.
-func GetSchemaDomains(ctx context.Context, _ *mcp.CallToolRequest, input GetSchemaDomainsInput) (
+func (t *Tools) GetSchemaDomains(ctx context.Context, _ *mcp.CallToolRequest, input GetSchemaDomainsInput) (
 	*mcp.CallToolResult,
 	GetSchemaDomainsOutput,
 	error,

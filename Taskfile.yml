@@ -35,7 +35,7 @@ vars:
   ## Dependency config
   BIN_DIR: "{{ .ROOT_DIR }}/bin"
   DIRCTL_BIN: "{{ .BIN_DIR}}/dirctl"
-  HELM_VERSION: "4.0.5"
+  HELM_VERSION: "4.1.1"
   HELM_BIN: "{{ .BIN_DIR }}/helm-{{.HELM_VERSION}}"
   KUBECTL_VERSION: "1.35.0"
   KUBECTL_BIN: "{{ .BIN_DIR }}/kubectl-{{.KUBECTL_VERSION}}"
@@ -544,7 +544,7 @@ tasks:
     vars:
       KIND_CLUSTER_NAME: '{{ .KIND_CLUSTER_NAME | default "agntcy-cluster" }}'
       KIND_CREATE_OPTS: '{{ .KIND_CREATE_OPTS | default "" }}'
-      E2E_COVERAGE_ENABLED: "false"
+      E2E_COVERAGE_ENABLED: '{{ .E2E_COVERAGE_ENABLED | default "false" }}'
       DEPLOY_BAKE_ENV: '{{ if eq .E2E_COVERAGE_ENABLED "true" }}{{ .COVERAGE_BAKE_ENV }}{{ else }}{{ .BAKE_ENV }}{{ end }}'
       DEPLOY_BAKE_GROUP: '{{ if eq .E2E_COVERAGE_ENABLED "true" }}coverage{{ else }}default{{ end }}'
     cmds:
@@ -618,7 +618,7 @@ tasks:
       HELM_CHART_PATH: "{{ .ROOT_DIR }}/install/charts/dir"
       HELM_VALUES_PATH: "{{ .ROOT_DIR }}/install/charts/dir/values.yaml"
       # Coverage config
-      E2E_COVERAGE_ENABLED: "false"
+      E2E_COVERAGE_ENABLED: '{{ .E2E_COVERAGE_ENABLED | default "false" }}'
       DEPLOY_IMAGE_TAG: '{{ if eq .E2E_COVERAGE_ENABLED "true" }}{{ .COVERAGE_IMAGE_TAG }}{{ else }}{{ .IMAGE_TAG }}{{ end }}'
     cmds:
       # TODO: make logic idempotent so that running functional tests does not change previous contexts
@@ -680,7 +680,7 @@ tasks:
       HELM_CHART_PATH: "{{ .ROOT_DIR }}/install/charts/dir"
       HELM_VALUES_PATH: "{{ .ROOT_DIR }}/install/charts/dir/values.yaml"
       # Coverage config
-      E2E_COVERAGE_ENABLED: "false"
+      E2E_COVERAGE_ENABLED: '{{ .E2E_COVERAGE_ENABLED | default "false" }}'
       DEPLOY_IMAGE_TAG: '{{ if eq .E2E_COVERAGE_ENABLED "true" }}{{ .COVERAGE_IMAGE_TAG }}{{ else }}{{ .IMAGE_TAG }}{{ end }}'
     cmds:
       # Validate required environment variables
@@ -912,7 +912,7 @@ tasks:
       HELM_CHART_PATH: "{{ .ROOT_DIR }}/install/charts/dir"
       HELM_VALUES_PATH: "{{ .ROOT_DIR }}/install/charts/dir/values.yaml"
       # Coverage config
-      E2E_COVERAGE_ENABLED: "false"
+      E2E_COVERAGE_ENABLED: '{{ .E2E_COVERAGE_ENABLED | default "false" }}'
       DEPLOY_IMAGE_TAG: '{{ if eq .E2E_COVERAGE_ENABLED "true" }}{{ .COVERAGE_IMAGE_TAG }}{{ else }}{{ .IMAGE_TAG }}{{ end }}'
     cmds:
       # Generate private key if it doesn't exist
@@ -981,7 +981,7 @@ tasks:
       HELM_CHART_PATH: "{{ .ROOT_DIR }}/install/charts/dir"
       HELM_VALUES_PATH: "{{ .ROOT_DIR }}/install/charts/dir/values.yaml"
       # Coverage config
-      E2E_COVERAGE_ENABLED: "false"
+      E2E_COVERAGE_ENABLED: '{{ .E2E_COVERAGE_ENABLED | default "false" }}'
       DEPLOY_IMAGE_TAG: '{{ if eq .E2E_COVERAGE_ENABLED "true" }}{{ .COVERAGE_IMAGE_TAG }}{{ else }}{{ .IMAGE_TAG }}{{ end }}'
     cmds:
       # Build helm dependencies once (shared across deployments)
@@ -1099,6 +1099,13 @@ tasks:
           echo "Running tests in {{.ITEM}}"
           go -C {{.ITEM}} test ./... {{.EXTRA_ARGS}}
 
+  test:unit:coverage:list-modules:
+    desc: List all go modules for the CI coverage unit test input
+    cmds:
+      - |
+        set -euo pipefail
+        printf '%s' "{{range $i, $dir := .GO_MOD_DIR_UNIT_TEST | splitList "\n"}}{{if $dir}}{{if $i}},{{end}}.coverage/unit/{{trimPrefix "./" $dir}}.out{{end}}{{end}}"
+
   test:unit:coverage:
     desc: Run all unit tests with coverage and generate summaries + HTML reports
     vars:
@@ -1110,18 +1117,20 @@ tasks:
       - mkdir -p {{.COVERAGE_DIR}}
       - |
         set -euo pipefail
-        # Build list of modules from GO_MOD_DIR_UNIT_TEST
-        modules=""
-        {{range $dir := .GO_MOD_DIR_UNIT_TEST | splitList "\n"}}
-        {{if $dir}}modules="$modules $(basename {{$dir}})"{{end}}
-        {{end}}
-        for m in $modules; do
+        # Build newline-separated list of full module paths (no basename) to support nested modules
+        modules="
+        {{range $dir := .GO_MOD_DIR_UNIT_TEST | splitList "\n"}}{{if $dir}}{{$dir}}
+        {{end}}{{end}}"
+        echo "$modules" | while IFS= read -r m; do
+          [ -z "$m" ] && continue
           if [ -d "$m" ]; then
             echo "[coverage] Testing module: $m"
+            mkdir -p "{{.COVERAGE_DIR}}/$(dirname "$m")"
+            report_json="{{.COVERAGE_DIR}}/test-report-$(echo "$m" | tr '/' '-').json"
             (
               cd "$m"
               # Run tests with coverprofile (text format)
-              if go test -covermode=atomic -coverprofile="{{.COVERAGE_DIR}}/$m.out.tmp" ./... -json 2>&1 | tee "{{.COVERAGE_DIR}}/test-report-$m.json" >/dev/null; then
+              if go test -covermode=atomic -coverprofile="{{.COVERAGE_DIR}}/$m.out.tmp" ./... -json 2>&1 | tee "$report_json" >/dev/null; then
                 echo "[coverage] Completed: $m"
               else
                 status=$?
@@ -1143,15 +1152,14 @@ tasks:
         set -euo pipefail
         echo "[coverage] Generating per-module summaries"
         : > {{.COVERAGE_DIR}}/summary.txt
-        # Build list of modules from GO_MOD_DIR_UNIT_TEST
-        modules=""
-        {{range $dir := .GO_MOD_DIR_UNIT_TEST | splitList "\n"}}
-        {{if $dir}}modules="$modules $(basename {{$dir}})"{{end}}
-        {{end}}
-        for m in $modules; do
+        modules="
+        {{range $dir := .GO_MOD_DIR_UNIT_TEST | splitList "\n"}}{{if $dir}}{{$dir}}
+        {{end}}{{end}}"
+        echo "$modules" | while IFS= read -r m; do
+          [ -z "$m" ] && continue
           if [ -f "{{.COVERAGE_DIR}}/$m.out" ]; then
             if (cd "$m" && go tool cover -func={{.COVERAGE_DIR}}/$m.out > {{.COVERAGE_DIR}}/$m.func.txt 2>/dev/null); then
-              tail -n1 {{.COVERAGE_DIR}}/$m.func.txt | sed "s/^total:/[$m] total:/" >> {{.COVERAGE_DIR}}/summary.txt || true
+              tail -n1 {{.COVERAGE_DIR}}/$m.func.txt | sed "s|^total:|[$m] total:|" >> {{.COVERAGE_DIR}}/summary.txt || true
             else
               echo "[$m] total: (error generating summary)" >> {{.COVERAGE_DIR}}/summary.txt
             fi
@@ -1162,17 +1170,16 @@ tasks:
       - |
         set -euo pipefail
         echo "[coverage] Generating HTML reports"
-        # Build list of modules from GO_MOD_DIR_UNIT_TEST
-        modules=""
-        {{range $dir := .GO_MOD_DIR_UNIT_TEST | splitList "\n"}}
-        {{if $dir}}modules="$modules $(basename {{$dir}})"{{end}}
-        {{end}}
-        for m in $modules; do
+        modules="
+        {{range $dir := .GO_MOD_DIR_UNIT_TEST | splitList "\n"}}{{if $dir}}{{$dir}}
+        {{end}}{{end}}"
+        echo "$modules" | while IFS= read -r m; do
+          [ -z "$m" ] && continue
           if [ -f "{{.COVERAGE_DIR}}/$m.out" ] && [ -d "$m" ]; then
             (cd "$m" && go tool cover -html={{.COVERAGE_DIR}}/$m.out -o {{.COVERAGE_DIR}}/$m.html || true)
           fi
         done
-        echo "[coverage] Generated HTML files:"; ls -1 {{.COVERAGE_DIR}}/*.html 2>/dev/null | sed 's|{{.COVERAGE_DIR}}/|  - |' || echo "  (none)"
+        echo "[coverage] Generated HTML files:"; out=$(find {{.COVERAGE_DIR}} -name '*.html' 2>/dev/null | sed 's|{{.COVERAGE_DIR}}/|  - |'); echo "${out:-  (none)}"
 
   bench:
     desc: Run bench tests on codebase
@@ -1195,7 +1202,7 @@ tasks:
       RATELIMIT_ENABLED: '{{ .RATELIMIT_ENABLED | default "false" }}'
       RATELIMIT_GLOBAL_RPS: '{{ .RATELIMIT_GLOBAL_RPS | default "100" }}'
       RATELIMIT_GLOBAL_BURST: '{{ .RATELIMIT_GLOBAL_BURST | default "200" }}'
-      E2E_COVERAGE_ENABLED: "false"
+      E2E_COVERAGE_ENABLED: '{{ .E2E_COVERAGE_ENABLED | default "false" }}'
       COVERAGE_DIR: '{{ .COVERAGE_DIR | default (print .ROOT_DIR "/.coverage/e2e") }}'
     env:
       DIRECTORY_E2E_DEPLOYMENT_MODE: "local"
@@ -1239,7 +1246,7 @@ tasks:
       RATELIMIT_ENABLED: '{{ .RATELIMIT_ENABLED | default "true" }}'
       RATELIMIT_GLOBAL_RPS: '{{ .RATELIMIT_GLOBAL_RPS | default "100" }}'
       RATELIMIT_GLOBAL_BURST: '{{ .RATELIMIT_GLOBAL_BURST | default "200" }}'
-      E2E_COVERAGE_ENABLED: "false"
+      E2E_COVERAGE_ENABLED: '{{ .E2E_COVERAGE_ENABLED | default "false" }}'
       COVERAGE_DIR: '{{ .COVERAGE_DIR | default (print .ROOT_DIR "/.coverage/e2e") }}'
     env:
       DIRECTORY_E2E_DEPLOYMENT_MODE: "local"
@@ -1284,7 +1291,7 @@ tasks:
       RATELIMIT_ENABLED: '{{ .RATELIMIT_ENABLED | default "true" }}'
       RATELIMIT_GLOBAL_RPS: '{{ .RATELIMIT_GLOBAL_RPS | default "100" }}'
       RATELIMIT_GLOBAL_BURST: '{{ .RATELIMIT_GLOBAL_BURST | default "200" }}'
-      E2E_COVERAGE_ENABLED: "false"
+      E2E_COVERAGE_ENABLED: '{{ .E2E_COVERAGE_ENABLED | default "false" }}'
       COVERAGE_DIR: '{{ .COVERAGE_DIR | default (print .ROOT_DIR "/.coverage/e2e") }}'
     env:
       DIRECTORY_E2E_DEPLOYMENT_MODE: "local"
@@ -1358,7 +1365,7 @@ tasks:
     aliases: [e2e:network]
     vars:
       PUBLICATION_SCHEDULER_INTERVAL: '{{ .PUBLICATION_SCHEDULER_INTERVAL | default "1s" }}'
-      E2E_COVERAGE_ENABLED: "false"
+      E2E_COVERAGE_ENABLED: '{{ .E2E_COVERAGE_ENABLED | default "false" }}'
       COVERAGE_DIR: '{{ .COVERAGE_DIR | default (print .ROOT_DIR "/.coverage/e2e") }}'
     env:
       DIRECTORY_E2E_DEPLOYMENT_MODE: "network"
@@ -1675,34 +1682,42 @@ tasks:
     desc: Extract coverage data from Kubernetes pods
     internal: true
     vars:
-      E2E_COVERAGE_ENABLED: "false"
+      E2E_COVERAGE_ENABLED: '{{ .E2E_COVERAGE_ENABLED | default "false" }}'
       NAMESPACE: '{{ .NAMESPACE | default "dir-server" }}'
-      POD_SELECTOR: '{{ .POD_SELECTOR | default "app.kubernetes.io/name=apiserver" }}'
+      POD_SELECTORS: '{{ .POD_SELECTORS | default "app.kubernetes.io/name=apiserver app.kubernetes.io/name=reconciler" }}'
       COVERAGE_DIR: '{{ .COVERAGE_DIR | default (print .ROOT_DIR "/.coverage/e2e/pods") }}'
     cmds:
       - |
         if [ "{{.E2E_COVERAGE_ENABLED}}" = "true" ]; then
           echo "[coverage] Triggering graceful shutdown of pod to flush coverage data..."
 
-          # Get pod matching the selector
-          POD_NAME=$({{.KUBECTL_BIN}} get pods -n {{.NAMESPACE}} -l {{.POD_SELECTOR}} -o jsonpath='{.items[*].metadata.name}')
+          for POD_SELECTOR in {{.POD_SELECTORS}}; do
+            POD_NAMES=$({{.KUBECTL_BIN}} get pods -n {{.NAMESPACE}} -l "$POD_SELECTOR" -o jsonpath='{.items[*].metadata.name}')
 
-            if [ -n "$POD_NAME" ]; then
+            if [ -z "$POD_NAMES" ]; then
+              echo "[coverage][warn] No pod found matching selector $POD_SELECTOR"
+              continue
+            fi
+
+            for POD_NAME in $POD_NAMES; do
+              [ -z "$POD_NAME" ] && continue
+
               # Send SIGTERM to PID 1 to trigger coverage flush (like the PoC)
               echo "[coverage] Sending SIGTERM to PID 1 in pod: $POD_NAME"
-              {{.KUBECTL_BIN}} exec -n {{.NAMESPACE}} $POD_NAME -- sh -c 'kill -TERM 1' 2>/dev/null || true
+              {{.KUBECTL_BIN}} exec -n {{.NAMESPACE}} "$POD_NAME" -- sh -c 'kill -TERM 1' 2>/dev/null || true
 
               # Wait for container to restart (coverage files persist in emptyDir volume)
               echo "[coverage] Waiting for container to restart and coverage to be flushed..."
               sleep 5
+              {{.KUBECTL_BIN}} wait --for=condition=Ready pod/"$POD_NAME" -n {{.NAMESPACE}} --timeout=120s
 
               # Extract coverage files (emptyDir persists across container restarts)
               echo "[coverage] Extracting coverage data from pod: $POD_NAME"
               mkdir -p {{.COVERAGE_DIR}}/pod-$POD_NAME
-              {{.KUBECTL_BIN}} cp -n {{.NAMESPACE}} $POD_NAME:/tmp/coverage {{.COVERAGE_DIR}}/pod-$POD_NAME 2>&1 || echo "[coverage][warn] Failed to extract from $POD_NAME"
-          else
-            echo "[coverage][warn] No pod found matching selector {{.POD_SELECTOR}}"
-          fi
+              {{.KUBECTL_BIN}} cp -n {{.NAMESPACE}} "$POD_NAME:/tmp/coverage" {{.COVERAGE_DIR}}/pod-$POD_NAME 2>&1 || echo "[coverage][warn] Failed to extract from $POD_NAME"
+            done
+          done
+
           echo "[coverage] Coverage data extracted to {{.COVERAGE_DIR}}"
         else
           echo "[coverage] E2E_COVERAGE_ENABLED is false, skipping pod coverage extraction"
@@ -1720,7 +1735,9 @@ tasks:
           pod_dirs=$(find {{.COVERAGE_DIR}}/pods -mindepth 1 -maxdepth 1 -type d 2>/dev/null | tr '\n' ',' | sed 's/,$//')
 
           if [ -n "$pod_dirs" ]; then
-            echo "  Found pod coverage directories"
+            echo "  Found pod coverage directories: $pod_dirs"
+
+            # server.out creation
             mkdir -p {{.COVERAGE_DIR}}/server-binary
             go tool covdata merge -i="$pod_dirs" -o={{.COVERAGE_DIR}}/server-binary
             go tool covdata textfmt -i={{.COVERAGE_DIR}}/server-binary -o={{.COVERAGE_DIR}}/server.out.tmp
@@ -2111,14 +2128,37 @@ tasks:
     vars:
       HELM_ALL_CHART_PATHS:
         sh: find . -name Chart.yaml -exec dirname {} \;
+    env:
+      SOURCE_DATE_EPOCH: "0" # NOTE: Not implemented yet: https://github.com/helm/helm/pull/31845
     cmds:
       # Add Helm repo
       - "{{ .HELM_BIN }} repo add project-zot http://zotregistry.dev/helm-charts"
       - "{{ .HELM_BIN }} repo add spiffe https://spiffe.github.io/helm-charts-hardened"
 
+      # NOTE: Remove the byte null workaround when SOURCE_DATE_EPOCH implemeted
+      # Reproducible chart packaging requires two layers of normalization:
+      # 1. File timestamps: git does not preserve mtime, so every checkout gets
+      #    different values. We touch all chart source files to a fixed date before
+      #    packaging so tar entry headers are identical across machines.
+      # 2. Gzip envelope: the MTIME and OS header bytes vary per build; we patch
+      #    them to fixed values after packaging.
+
+      # Normalize chart source file timestamps for reproducible tar entries.
+      # TZ=UTC ensures the same Unix timestamp regardless of local timezone.
+      - for: { var: HELM_ALL_CHART_PATHS }
+        cmd: "find {{ .ITEM }} -exec env TZ=UTC touch -t 200001010000.00 {} +"
+
       # Update dependencies
       - for: { var: HELM_ALL_CHART_PATHS }
         cmd: "cd {{ .ITEM }} && {{ .HELM_BIN }} dependency update"
+
+      # Zero out gzip header MTIME (bytes 4-7) and set OS (byte 9) to 0xff
+      # so tgz hashes are identical regardless of build time or platform.
+      - |
+        find . -path '*/charts/*.tgz' -type f | while read -r tgz; do
+          printf '\x00\x00\x00\x00' | dd of="$tgz" bs=1 seek=4 count=4 conv=notrunc 2>/dev/null
+          printf '\xff' | dd of="$tgz" bs=1 seek=9 count=1 conv=notrunc 2>/dev/null
+        done
 
   ##
   ## GUI

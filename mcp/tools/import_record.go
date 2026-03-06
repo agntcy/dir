@@ -30,7 +30,7 @@ type ImportRecordOutput struct {
 // Currently supported formats:
 // - "mcp": Model Context Protocol format.
 // - "a2a": Agent-to-Agent (A2A) format.
-func ImportRecord(ctx context.Context, _ *mcp.CallToolRequest, input ImportRecordInput) (
+func (t *Tools) ImportRecord(ctx context.Context, _ *mcp.CallToolRequest, input ImportRecordInput) (
 	*mcp.CallToolResult,
 	ImportRecordOutput,
 	error,

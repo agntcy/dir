@@ -14,11 +14,14 @@ import (
 func TestGetSchema(t *testing.T) {
 	t.Setenv("OASF_API_VALIDATION_SCHEMA_URL", "https://schema.oasf.outshift.com")
 
+	// Create Tools instance (nil client is fine - GetSchema doesn't use client)
+	tools := &Tools{Client: nil}
+
 	t.Run("should return schema for valid version", func(t *testing.T) {
 		ctx := context.Background()
 		input := GetSchemaInput{Version: "0.7.0"}
 
-		_, output, err := GetSchema(ctx, nil, input)
+		_, output, err := tools.GetSchema(ctx, nil, input)
 
 		require.NoError(t, err)
 		assert.Empty(t, output.ErrorMessage)
@@ -32,7 +35,7 @@ func TestGetSchema(t *testing.T) {
 		ctx := context.Background()
 		input := GetSchemaInput{Version: "99.99.99"}
 
-		_, output, err := GetSchema(ctx, nil, input)
+		_, output, err := tools.GetSchema(ctx, nil, input)
 
 		require.NoError(t, err)
 		assert.NotEmpty(t, output.ErrorMessage)
@@ -44,7 +47,7 @@ func TestGetSchema(t *testing.T) {
 		ctx := context.Background()
 		input := GetSchemaInput{Version: ""}
 
-		_, output, err := GetSchema(ctx, nil, input)
+		_, output, err := tools.GetSchema(ctx, nil, input)
 
 		require.NoError(t, err)
 		assert.NotEmpty(t, output.ErrorMessage)

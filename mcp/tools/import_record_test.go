@@ -16,6 +16,8 @@ func TestImportRecord(t *testing.T) {
 	t.Parallel()
 
 	ctx := context.Background()
+	// Create Tools instance (nil client is fine - ImportRecord doesn't use client)
+	tools := &Tools{Client: nil}
 
 	t.Run("imports A2A format to OASF record", func(t *testing.T) {
 		t.Parallel()
@@ -36,7 +38,7 @@ func TestImportRecord(t *testing.T) {
 			SourceFormat: "a2a",
 		}
 
-		_, output, err := ImportRecord(ctx, nil, input)
+		_, output, err := tools.ImportRecord(ctx, nil, input)
 
 		require.NoError(t, err)
 		// The import may fail if the source data doesn't have the required A2A structure,
@@ -54,7 +56,7 @@ func TestImportRecord(t *testing.T) {
 			SourceFormat: "a2a",
 		}
 
-		_, output, err := ImportRecord(ctx, nil, input)
+		_, output, err := tools.ImportRecord(ctx, nil, input)
 
 		require.NoError(t, err)
 		assert.Contains(t, output.ErrorMessage, "source_data is required")
@@ -69,7 +71,7 @@ func TestImportRecord(t *testing.T) {
 			SourceFormat: "",
 		}
 
-		_, output, err := ImportRecord(ctx, nil, input)
+		_, output, err := tools.ImportRecord(ctx, nil, input)
 
 		require.NoError(t, err)
 		assert.Contains(t, output.ErrorMessage, "source_format is required")
@@ -88,7 +90,7 @@ func TestImportRecord(t *testing.T) {
 			SourceFormat: "unsupported-format",
 		}
 
-		_, output, err := ImportRecord(ctx, nil, input)
+		_, output, err := tools.ImportRecord(ctx, nil, input)
 
 		require.NoError(t, err)
 		assert.Contains(t, output.ErrorMessage, "Unsupported source format")
@@ -104,7 +106,7 @@ func TestImportRecord(t *testing.T) {
 			SourceFormat: "a2a",
 		}
 
-		_, output, err := ImportRecord(ctx, nil, input)
+		_, output, err := tools.ImportRecord(ctx, nil, input)
 
 		require.NoError(t, err)
 		assert.Contains(t, output.ErrorMessage, "Failed to parse source data JSON")
@@ -124,7 +126,7 @@ func TestImportRecord(t *testing.T) {
 			SourceFormat: "A2A",
 		}
 
-		_, output, err := ImportRecord(ctx, nil, input)
+		_, output, err := tools.ImportRecord(ctx, nil, input)
 
 		require.NoError(t, err)
 		// The test verifies that case-insensitive format is handled.

@@ -19,6 +19,9 @@ func TestValidateRecord(t *testing.T) {
 		t.Fatalf("Failed to initialize validator: %v", err)
 	}
 
+	// Create Tools instance (nil client is fine - ValidateRecord doesn't use client)
+	tools := &Tools{Client: nil}
+
 	validRecord := `{
 		"schema_version": "0.7.0",
 		"name": "test-agent",
@@ -43,7 +46,7 @@ func TestValidateRecord(t *testing.T) {
 		ctx := context.Background()
 		input := ValidateRecordInput{RecordJSON: validRecord}
 
-		_, output, err := ValidateRecord(ctx, nil, input)
+		_, output, err := tools.ValidateRecord(ctx, nil, input)
 
 		require.NoError(t, err)
 		assert.Empty(t, output.ErrorMessage)
@@ -57,7 +60,7 @@ func TestValidateRecord(t *testing.T) {
 		ctx := context.Background()
 		input := ValidateRecordInput{RecordJSON: "not valid json"}
 
-		_, output, err := ValidateRecord(ctx, nil, input)
+		_, output, err := tools.ValidateRecord(ctx, nil, input)
 
 		require.NoError(t, err)
 		assert.NotEmpty(t, output.ErrorMessage)
@@ -70,7 +73,7 @@ func TestValidateRecord(t *testing.T) {
 		invalidRecord := `{"schema_version": "0.7.0"}`
 		input := ValidateRecordInput{RecordJSON: invalidRecord}
 
-		_, output, err := ValidateRecord(ctx, nil, input)
+		_, output, err := tools.ValidateRecord(ctx, nil, input)
 
 		require.NoError(t, err)
 		assert.Empty(t, output.ErrorMessage)
@@ -82,7 +85,7 @@ func TestValidateRecord(t *testing.T) {
 		ctx := context.Background()
 		input := ValidateRecordInput{RecordJSON: ""}
 
-		_, output, err := ValidateRecord(ctx, nil, input)
+		_, output, err := tools.ValidateRecord(ctx, nil, input)
 
 		require.NoError(t, err)
 		assert.NotEmpty(t, output.ErrorMessage)

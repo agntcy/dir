@@ -27,9 +27,17 @@ const (
 	DefaultOASFVersion = "0.8.0"
 )
 
+// enricherClient is the subset of enricher used by the transformer.
+type enricherClient interface {
+	EnrichWithSkills(ctx context.Context, record *typesv1alpha1.Record) (*typesv1alpha1.Record, error)
+	EnrichWithDomains(ctx context.Context, record *typesv1alpha1.Record) (*typesv1alpha1.Record, error)
+	EnrichWithSkillsV1(ctx context.Context, record *typesv1.Record) (*typesv1.Record, error)
+	EnrichWithDomainsV1(ctx context.Context, record *typesv1.Record) (*typesv1.Record, error)
+}
+
 // Transformer implements the pipeline.Transformer interface for MCP records.
 type Transformer struct {
-	host *enricher.MCPHostClient
+	host enricherClient
 }
 
 // NewTransformer creates a new MCP transformer.
@@ -51,6 +59,12 @@ func NewTransformer(ctx context.Context, cfg config.Config) (*Transformer, error
 	return &Transformer{
 		host: host,
 	}, nil
+}
+
+// NewTransformerWithHost creates a Transformer with a custom enricher client (e.g. for tests).
+// It skips enricher config and SDK initialization.
+func NewTransformerWithHost(host enricherClient) *Transformer {
+	return &Transformer{host: host}
 }
 
 // Transform converts an MCP server response to OASF format.
@@ -277,6 +291,9 @@ func getSchemaVersion(s *structpb.Struct) (string, error) {
 
 // structToOASFRecord converts a structpb.Struct to typesv1alpha1.Record for enrichment.
 func structToOASFRecord(s *structpb.Struct) (*typesv1alpha1.Record, error) {
+	if s == nil {
+		return nil, errors.New("struct is nil")
+	}
 	// Marshal struct to JSON
 	jsonBytes, err := protojson.Marshal(s)
 	if err != nil {
@@ -294,6 +311,9 @@ func structToOASFRecord(s *structpb.Struct) (*typesv1alpha1.Record, error) {
 
 // structToOASFRecordV1 converts a structpb.Struct to typesv1.Record for enrichment.
 func structToOASFRecordV1(s *structpb.Struct) (*typesv1.Record, error) {
+	if s == nil {
+		return nil, errors.New("struct is nil")
+	}
 	// Marshal struct to JSON
 	jsonBytes, err := protojson.Marshal(s)
 	if err != nil {

@@ -14,6 +14,8 @@ import (
 
 func TestGetSchemaDomains(t *testing.T) {
 	ctx := context.Background()
+	// Create Tools instance (nil client is fine - GetSchemaDomains doesn't use client)
+	tools := &Tools{Client: nil}
 
 	tests := []struct {
 		name          string
@@ -116,7 +118,7 @@ func TestGetSchemaDomains(t *testing.T) {
 			t.Setenv("OASF_API_VALIDATION_SCHEMA_URL", "https://schema.oasf.outshift.com")
 			// Note: t.Setenv cannot be used with t.Parallel(), so we run tests sequentially
 
-			result, output, err := GetSchemaDomains(ctx, nil, tt.input)
+			result, output, err := tools.GetSchemaDomains(ctx, nil, tt.input)
 
 			if tt.expectError {
 				require.Error(t, err)

@@ -9,7 +9,6 @@ import (
 	"fmt"
 
 	searchv1 "github.com/agntcy/dir/api/search/v1"
-	"github.com/agntcy/dir/client"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
 
@@ -47,7 +46,7 @@ const (
 // SearchLocal searches for agent records on the local directory node.
 //
 //nolint:cyclop
-func SearchLocal(ctx context.Context, _ *mcp.CallToolRequest, input SearchLocalInput) (
+func (t *Tools) SearchLocal(ctx context.Context, _ *mcp.CallToolRequest, input SearchLocalInput) (
 	*mcp.CallToolResult,
 	SearchLocalOutput,
 	error,
@@ -84,29 +83,12 @@ func SearchLocal(ctx context.Context, _ *mcp.CallToolRequest, input SearchLocalI
 		}, nil
 	}
 
-	// Load client configuration
-	config, err := client.LoadConfig()
-	if err != nil {
-		return nil, SearchLocalOutput{
-			ErrorMessage: fmt.Sprintf("Failed to load client configuration: %v", err),
-		}, nil
-	}
-
-	// Create Directory client
-	c, err := client.New(ctx, client.WithConfig(config))
-	if err != nil {
-		return nil, SearchLocalOutput{
-			ErrorMessage: fmt.Sprintf("Failed to create Directory client: %v", err),
-		}, nil
-	}
-	defer c.Close()
-
 	// Execute search
 	// Safe conversions: limit is capped at 1000, offset is validated by client
 	limit32 := uint32(limit)   // #nosec G115
 	offset32 := uint32(offset) // #nosec G115
 
-	result, err := c.SearchCIDs(ctx, &searchv1.SearchCIDsRequest{
+	result, err := t.Client.SearchCIDs(ctx, &searchv1.SearchCIDsRequest{
 		Limit:   &limit32,
 		Offset:  &offset32,
 		Queries: queries,

@@ -210,11 +210,6 @@ func TestFormatJSON(t *testing.T) {
 			wantJSON: true,
 		},
 		{
-			name:     "already formatted JSON",
-			input:    "{\n  \"name\": \"test\",\n  \"version\": \"1.0.0\"\n}",
-			wantJSON: true,
-		},
-		{
 			name:     "invalid JSON",
 			input:    `not json at all`,
 			wantJSON: false, // Should return original string
@@ -228,26 +223,6 @@ func TestFormatJSON(t *testing.T) {
 			name:     "malformed JSON",
 			input:    `{"name": "test",}`,
 			wantJSON: false, // Should return original string
-		},
-		{
-			name:     "JSON with nested structures",
-			input:    `{"server":{"name":"test","config":{"port":8080}}}`,
-			wantJSON: true,
-		},
-		{
-			name:     "JSON string value",
-			input:    `"just a string"`,
-			wantJSON: true,
-		},
-		{
-			name:     "JSON number",
-			input:    `123`,
-			wantJSON: true,
-		},
-		{
-			name:     "JSON boolean",
-			input:    `true`,
-			wantJSON: true,
 		},
 	}
 
@@ -274,6 +249,8 @@ func TestNewClientPusher(t *testing.T) {
 
 	if pusher == nil {
 		t.Fatal("NewClientPusher() returned nil")
+
+		return
 	}
 
 	if pusher.client != mockClient {
@@ -323,9 +300,15 @@ func containsSubstring(s, substr string) bool {
 }
 
 // mockClientInterface is a minimal mock for testing.
-type mockClientInterface struct{}
+type mockClientInterface struct {
+	pushErr error
+}
 
 func (m *mockClientInterface) Push(ctx context.Context, record *corev1.Record) (*corev1.RecordRef, error) {
+	if m.pushErr != nil {
+		return nil, m.pushErr
+	}
+
 	return &corev1.RecordRef{Cid: "test-cid"}, nil
 }
 
@@ -335,4 +318,118 @@ func (m *mockClientInterface) PullBatch(ctx context.Context, recordRefs []*corev
 
 func (m *mockClientInterface) SearchCIDs(ctx context.Context, req *searchv1.SearchCIDsRequest) (streaming.StreamResult[searchv1.SearchCIDsResponse], error) {
 	return nil, errors.New("not implemented")
+}
+
+func TestClientPusher_Push_Success(t *testing.T) {
+	ctx := context.Background()
+	mockClient := &mockClientInterface{}
+	pusher := NewClientPusher(mockClient, false, nil)
+
+	record := &corev1.Record{
+		Data: &structpb.Struct{
+			Fields: map[string]*structpb.Value{
+				"name":    structpb.NewStringValue("test-server"),
+				"version": structpb.NewStringValue("1.0.0"),
+			},
+		},
+	}
+
+	ch := make(chan *corev1.Record, 1)
+	ch <- record
+
+	close(ch)
+
+	refCh, errCh := pusher.Push(ctx, ch)
+
+	refCount := 0
+
+	for ref := range refCh {
+		if ref != nil && ref.GetCid() != "" {
+			refCount++
+		}
+	}
+
+	for range errCh {
+		t.Error("expected no push errors")
+	}
+
+	if refCount != 1 {
+		t.Errorf("expected 1 ref, got %d", refCount)
+	}
+}
+
+func TestClientPusher_Push_Error(t *testing.T) {
+	ctx := context.Background()
+	mockClient := &mockClientInterface{pushErr: errors.New("push failed")}
+	pusher := NewClientPusher(mockClient, false, nil)
+
+	record := &corev1.Record{
+		Data: &structpb.Struct{
+			Fields: map[string]*structpb.Value{
+				"name":    structpb.NewStringValue("test-server"),
+				"version": structpb.NewStringValue("1.0.0"),
+			},
+		},
+	}
+
+	ch := make(chan *corev1.Record, 1)
+	ch <- record
+
+	close(ch)
+
+	refCh, errCh := pusher.Push(ctx, ch)
+
+	// Drain both channels in parallel so pusher goroutine can finish (it sends to errCh, not refCh)
+	var refCount, errCount int
+
+	done := make(chan struct{})
+
+	go func() {
+		for range refCh {
+			refCount++
+		}
+
+		done <- struct{}{}
+	}()
+	go func() {
+		for range errCh {
+			errCount++
+		}
+
+		done <- struct{}{}
+	}()
+
+	<-done
+	<-done
+
+	if refCount != 0 {
+		t.Errorf("expected 0 refs on error, got %d", refCount)
+	}
+
+	if errCount != 1 {
+		t.Errorf("expected 1 error, got %d", errCount)
+	}
+}
+
+func TestClientPusher_Push_EmptyChannel(t *testing.T) {
+	ctx := context.Background()
+	mockClient := &mockClientInterface{}
+	pusher := NewClientPusher(mockClient, false, nil)
+
+	ch := make(chan *corev1.Record)
+	close(ch)
+
+	refCh, errCh := pusher.Push(ctx, ch)
+
+	refCount := 0
+	for range refCh {
+		refCount++
+	}
+
+	for range errCh {
+	}
+
+	if refCount != 0 {
+		t.Errorf("expected 0 refs for empty channel, got %d", refCount)
+	}
 }

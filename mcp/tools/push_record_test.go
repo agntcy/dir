@@ -13,6 +13,9 @@ import (
 )
 
 func TestPushRecord(t *testing.T) {
+	// Create Tools instance with nil client (tests only validate input parsing)
+	tools := &Tools{Client: nil}
+
 	tests := []struct {
 		name           string
 		input          PushRecordInput
@@ -51,7 +54,7 @@ func TestPushRecord(t *testing.T) {
 			ctx := context.Background()
 			req := &mcp.CallToolRequest{}
 
-			_, output, err := PushRecord(ctx, req, tt.input)
+			_, output, err := tools.PushRecord(ctx, req, tt.input)
 
 			if tt.wantError {
 				require.NoError(t, err) // PushRecord returns nil error, error in output
@@ -72,6 +75,9 @@ func TestPushRecord(t *testing.T) {
 }
 
 func TestPushRecord_InvalidRecord(t *testing.T) {
+	// Create Tools instance with nil client (tests only validate input parsing)
+	tools := &Tools{Client: nil}
+
 	// Test with a record that will fail validation (missing required fields)
 	invalidRecordJSON := `{
 		"schema_version": "0.7.0",
@@ -81,7 +87,7 @@ func TestPushRecord_InvalidRecord(t *testing.T) {
 	ctx := context.Background()
 	req := &mcp.CallToolRequest{}
 
-	_, output, err := PushRecord(ctx, req, PushRecordInput{
+	_, output, err := tools.PushRecord(ctx, req, PushRecordInput{
 		RecordJSON: invalidRecordJSON,
 	})
 
