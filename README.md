@@ -50,7 +50,7 @@ Check the [Documentation](https://docs.agntcy.org/dir/overview/) for a full walk
 - [api](./api) - API models for tools and packages
 - [cli](./cli) - command line client for interacting with system components
 - [client](./client) - client SDK for development and API workflows
-- [e2e](./e2e) - end-to-end testing framework
+- [e2e](./tests/e2e) - end-to-end testing framework
 - [docs](./docs) - research details and documentation around the project
 - [runtime](./runtime) - discovery service to watch workloads and resolve capabilities
 - [server](./server) - API services to manage storage, routing, and networking operations
