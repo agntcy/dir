@@ -24,7 +24,6 @@ type Record struct {
 	OASFCreatedAt string   `gorm:"column:oasf_created_at"`
 	Authors       []string `gorm:"column:authors;serializer:json"` // Stored as JSON array
 	Signed        bool     `gorm:"column:signed;default:false"`    // Whether at least one signature is attached
-	Trusted       bool     `gorm:"column:trusted;default:false"`   // Whether at least one signature verified and trusted
 
 	Skills   []Skill   `gorm:"foreignKey:RecordCID;references:RecordCID;constraint:OnDelete:CASCADE"`
 	Locators []Locator `gorm:"foreignKey:RecordCID;references:RecordCID;constraint:OnDelete:CASCADE"`
@@ -269,8 +268,12 @@ func (d *DB) GetRecordCIDs(opts ...types.FilterOption) ([]string, error) {
 }
 
 // RemoveRecord removes a record from the search database by CID.
-// Uses CASCADE DELETE to automatically remove related Skills, Locators, and Modules.
+// Deletes signature_verifications for the record first, then uses CASCADE DELETE for Skills, Locators, and Modules.
 func (d *DB) RemoveRecord(cid string) error {
+	if err := d.gormDB.Where("record_cid = ?", cid).Delete(&SignatureVerification{}).Error; err != nil {
+		return fmt.Errorf("failed to remove signature verifications: %w", err)
+	}
+
 	result := d.gormDB.Where("record_cid = ?", cid).Delete(&Record{})
 
 	if result.Error != nil {
@@ -428,9 +431,14 @@ func (d *DB) handleFilterOptions(query *gorm.DB, cfg *types.RecordFilters) *gorm
 		}
 	}
 
-	// Handle trusted filter (signature verification passed; uses denormalized records.trusted).
+	// Handle trusted filter (signature verification passed; derived from signature_verifications).
 	if cfg.Trusted != nil {
-		query = query.Where("records.trusted = ?", *cfg.Trusted)
+		const verifiedStatus = "verified"
+		if *cfg.Trusted {
+			query = query.Where("EXISTS (SELECT 1 FROM signature_verifications sv WHERE sv.record_cid = records.record_cid AND sv.status = ?)", verifiedStatus)
+		} else {
+			query = query.Where("NOT EXISTS (SELECT 1 FROM signature_verifications sv WHERE sv.record_cid = records.record_cid AND sv.status = ?)", verifiedStatus)
+		}
 	}
 
 	return query
@@ -452,26 +460,6 @@ func (d *DB) SetRecordSigned(recordCID string) error {
 	}
 
 	logger.Debug("Marked record as signed", "record_cid", recordCID)
-
-	return nil
-}
-
-// SetRecordTrusted sets the trusted flag for a record.
-// Called when signature verification completes (on sign or reconciler).
-func (d *DB) SetRecordTrusted(recordCID string, trusted bool) error {
-	result := d.gormDB.Model(&Record{}).
-		Where("record_cid = ?", recordCID).
-		Update("trusted", trusted)
-
-	if result.Error != nil {
-		return fmt.Errorf("failed to set record trusted: %w", result.Error)
-	}
-
-	if result.RowsAffected == 0 {
-		return fmt.Errorf("record not found: %s", recordCID)
-	}
-
-	logger.Debug("Set record trusted", "record_cid", recordCID, "trusted", trusted)
 
 	return nil
 }

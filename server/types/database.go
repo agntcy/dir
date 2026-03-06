@@ -49,9 +49,6 @@ type SearchDatabaseAPI interface {
 
 	// SetRecordSigned marks a record as signed (called when a signature is attached).
 	SetRecordSigned(recordCID string) error
-
-	// SetRecordTrusted sets the trusted flag for a record (called when signature verification completes).
-	SetRecordTrusted(recordCID string, trusted bool) error
 }
 
 type SyncDatabaseAPI interface {

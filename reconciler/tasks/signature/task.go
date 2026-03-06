@@ -117,24 +117,22 @@ func (t *Task) verifyRecord(ctx context.Context, recordCID string) error {
 	now := time.Now()
 
 	for _, p := range perSig {
-		if p.SignerInfo == nil {
-			return fmt.Errorf("signer info is nil")
-		}
-
 		var signerType, issuer, subject, pubKey, algorithm string
 
-		switch s := p.SignerInfo.GetType().(type) {
-		case *signv1.SignerInfo_Oidc:
-			if s.Oidc != nil {
-				signerType = "oidc"
-				issuer = s.Oidc.GetIssuer()
-				subject = s.Oidc.GetSubject()
-			}
-		case *signv1.SignerInfo_Key:
-			if s.Key != nil {
-				signerType = "key"
-				pubKey = s.Key.GetPublicKey()
-				algorithm = s.Key.GetAlgorithm()
+		if p.SignerInfo != nil {
+			switch s := p.SignerInfo.GetType().(type) {
+			case *signv1.SignerInfo_Oidc:
+				if s.Oidc != nil {
+					signerType = "oidc"
+					issuer = s.Oidc.GetIssuer()
+					subject = s.Oidc.GetSubject()
+				}
+			case *signv1.SignerInfo_Key:
+				if s.Key != nil {
+					signerType = "key"
+					pubKey = s.Key.GetPublicKey()
+					algorithm = s.Key.GetAlgorithm()
+				}
 			}
 		}
 
@@ -156,11 +154,7 @@ func (t *Task) verifyRecord(ctx context.Context, recordCID string) error {
 		}
 	}
 
-	if err := t.db.SetRecordTrusted(recordCID, resp.GetSuccess()); err != nil {
-		return fmt.Errorf("set record trusted: %w", err)
-	}
-
-	logger.Debug("Signature verification complete", "record_cid", recordCID, "trusted", resp.GetSuccess())
+	logger.Debug("Signature verification complete", "record_cid", recordCID, "success", resp.GetSuccess())
 
 	return nil
 }

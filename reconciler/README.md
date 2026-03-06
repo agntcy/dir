@@ -47,5 +47,5 @@ The signature task verifies record signatures and caches results. It:
 
 1. Queries the database for signed records with no or expired verification (per TTL)
 2. For each record, collects signatures and public keys from the store
-3. Verifies each signature using the client's verification logic (key-based or OIDC)
+3. Verifies each signature using shared verification logic (key-based or OIDC)
 4. Upserts verification results to the database and sets the record’s trusted flag

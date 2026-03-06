@@ -92,13 +92,8 @@ func TestTask_Run_DBError_ReturnsError(t *testing.T) {
 	assert.ErrorIs(t, err, wantErr)
 }
 
-func TestTask_Run_WithOneRecord_NoSignatures_CallsSetRecordTrustedFalse_NoUpsert(t *testing.T) {
+func TestTask_Run_WithOneRecord_NoSignatures_NoUpsert(t *testing.T) {
 	const testCID = "test-record-cid"
-
-	var (
-		setRecordTrustedCalled bool
-		setRecordTrustedValue  bool
-	)
 
 	upsertCount := 0
 
@@ -106,13 +101,9 @@ func TestTask_Run_WithOneRecord_NoSignatures_CallsSetRecordTrustedFalse_NoUpsert
 		getRecordsNeedingSignatureVerification: func(time.Duration) ([]types.Record, error) {
 			return []types.Record{&fakeRecord{cid: testCID}}, nil
 		},
-		setRecordTrusted: func(_ string, trusted bool) {
-			setRecordTrustedCalled = true
-			setRecordTrustedValue = trusted
-		},
 		upsertSignatureVerification: func(types.SignatureVerificationObject) { upsertCount++ },
 	}
-	// Fetcher returns no signatures → verify.Verify returns Success: false, empty perSig
+	// Fetcher returns no signatures → verify.Verify returns Success: false, empty perSig → no upserts
 	fakeFetcher := &fakeFetcher{
 		pullSignatures: func(_ context.Context, _ *corev1.RecordRef) ([]verify.SigWithDigest, error) {
 			return nil, nil
@@ -126,22 +117,15 @@ func TestTask_Run_WithOneRecord_NoSignatures_CallsSetRecordTrustedFalse_NoUpsert
 
 	err = task.Run(context.Background())
 	require.NoError(t, err)
-	assert.True(t, setRecordTrustedCalled)
-	assert.False(t, setRecordTrustedValue)
 	assert.Equal(t, 0, upsertCount)
 }
 
-func TestTask_Run_WithOneRecord_VerifyError_DoesNotCallSetRecordTrusted(t *testing.T) {
+func TestTask_Run_WithOneRecord_VerifyError_Continues(t *testing.T) {
 	const testCID = "test-record-cid"
-
-	setRecordTrustedCalled := false
 
 	db := &fakeSignatureDB{
 		getRecordsNeedingSignatureVerification: func(time.Duration) ([]types.Record, error) {
 			return []types.Record{&fakeRecord{cid: testCID}}, nil
-		},
-		setRecordTrusted: func(string, bool) {
-			setRecordTrustedCalled = true
 		},
 	}
 	fakeFetcher := &fakeFetcher{
@@ -156,8 +140,7 @@ func TestTask_Run_WithOneRecord_VerifyError_DoesNotCallSetRecordTrusted(t *testi
 	require.NoError(t, err)
 
 	err = task.Run(context.Background())
-	require.NoError(t, err) // Run logs and continues
-	assert.False(t, setRecordTrustedCalled, "SetRecordTrusted should not be called when verify fails")
+	require.NoError(t, err) // Run logs and continues on verify error
 }
 
 // fakeRecord implements types.Record for tests (signature task only uses GetCid).
@@ -192,10 +175,9 @@ func (f *fakeFetcher) PullPublicKeys(ctx context.Context, recordRef *corev1.Reco
 }
 
 // fakeSignatureDB implements types.DatabaseAPI for tests.
-// GetRecordsNeedingSignatureVerification is configurable; optional hooks record SetRecordTrusted and UpsertSignatureVerification calls.
+// GetRecordsNeedingSignatureVerification and UpsertSignatureVerification are configurable.
 type fakeSignatureDB struct {
 	getRecordsNeedingSignatureVerification func(time.Duration) ([]types.Record, error)
-	setRecordTrusted                       func(recordCID string, trusted bool)
 	upsertSignatureVerification            func(types.SignatureVerificationObject)
 }
 
@@ -215,15 +197,8 @@ func (f *fakeSignatureDB) GetRecordCIDs(opts ...types.FilterOption) ([]string, e
 func (f *fakeSignatureDB) GetRecords(opts ...types.FilterOption) ([]types.Record, error) {
 	return nil, nil
 }
-func (f *fakeSignatureDB) RemoveRecord(cid string) error          { return nil }
-func (f *fakeSignatureDB) SetRecordSigned(recordCID string) error { return nil }
-func (f *fakeSignatureDB) SetRecordTrusted(recordCID string, trusted bool) error {
-	if f.setRecordTrusted != nil {
-		f.setRecordTrusted(recordCID, trusted)
-	}
-
-	return nil
-}
+func (f *fakeSignatureDB) RemoveRecord(cid string) error                              { return nil }
+func (f *fakeSignatureDB) SetRecordSigned(recordCID string) error                     { return nil }
 func (f *fakeSignatureDB) CreateSync(remoteURL string, cids []string) (string, error) { return "", nil }
 func (f *fakeSignatureDB) GetSyncByID(syncID string) (types.SyncObject, error)        { return nil, nil }
 func (f *fakeSignatureDB) GetSyncs(offset, limit int) ([]types.SyncObject, error)     { return nil, nil }
