@@ -22,14 +22,15 @@ vars:
   REGSYNC_VERSION: "v0.11.1"
 
   ## Image config
+  BUILD_LDFLAGS: "-s -w -extldflags -static {{.VERSION_LDFLAGS}}"
   IMAGE_REPO: '{{ .IMAGE_REPO | default "ghcr.io/agntcy" }}'
   IMAGE_TAG: "{{ .IMAGE_TAG | default .COMMIT_SHA }}"
   IMAGE_BAKE_ENV: "IMAGE_REPO={{.IMAGE_REPO}} IMAGE_TAG={{.IMAGE_TAG}} REGSYNC_VERSION={{.REGSYNC_VERSION}}"
   IMAGE_BAKE_OPTS: '{{ .IMAGE_BAKE_OPTS | default "" }}'
-  BAKE_ENV: '{{ .IMAGE_BAKE_ENV }} EXTRA_LDFLAGS="{{.VERSION_LDFLAGS}}"'
+  BAKE_ENV: '{{ .IMAGE_BAKE_ENV }} BUILD_LDFLAGS="{{.BUILD_LDFLAGS}}"'
   COVERAGE_IMAGE_TAG: "{{ .IMAGE_TAG | default .COMMIT_SHA }}-coverage"
   COVERAGE_IMAGE_BAKE_ENV: "IMAGE_REPO={{.IMAGE_REPO}} IMAGE_TAG={{.COVERAGE_IMAGE_TAG}}"
-  COVERAGE_BAKE_ENV: '{{ .COVERAGE_IMAGE_BAKE_ENV }} EXTRA_LDFLAGS="{{.VERSION_LDFLAGS}}"'
+  COVERAGE_BAKE_ENV: '{{ .COVERAGE_IMAGE_BAKE_ENV }} BUILD_LDFLAGS="{{.BUILD_LDFLAGS}}"'
   COVERAGE_PKGS: '{{ .COVERAGE_PKGS | default "github.com/agntcy/dir/api/...,github.com/agntcy/dir/cli/...,github.com/agntcy/dir/client/...,github.com/agntcy/dir/importer/...,github.com/agntcy/dir/utils/..." }}'
 
   ## Dependency config

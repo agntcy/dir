@@ -23,7 +23,8 @@ RUN --mount=type=cache,target=/go/pkg/mod \
     xx-go mod download -x
 
 ARG BUILD_OPTS
-ARG EXTRA_LDFLAGS
+ARG BUILD_GCFLAGS
+ARG BUILD_LDFLAGS
 
 # TODO(adamtagscherer): Currently we don't need C libraries but in the future we may need to turn this on once we add
 # security libraries, etc.
@@ -32,7 +33,7 @@ ENV CGO_ENABLED=0
 RUN --mount=type=cache,target=/go/pkg/mod \
     --mount=type=cache,target=/root/.cache/go-build \
     --mount=type=bind,source=.,target=/build,ro \
-    xx-go build ${BUILD_OPTS} -ldflags="-s -w -extldflags -static ${EXTRA_LDFLAGS}" \
+    xx-go build ${BUILD_OPTS} -gcflags="${BUILD_GCFLAGS}" -ldflags="${BUILD_LDFLAGS}" \
     -o /bin/dirctl ./cli.go
 
 RUN xx-verify /bin/dirctl
