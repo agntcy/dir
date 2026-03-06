@@ -44,6 +44,7 @@ FROM gcr.io/distroless/static:nonroot@sha256:c0f429e16b13e583da7e5a6ec20dd656d32
 WORKDIR /
 
 COPY --from=builder /bin/apiserver ./apiserver
+COPY --from=ghcr.io/grpc-ecosystem/grpc-health-probe:v0.4.38 /ko-app/grpc-health-probe /bin/grpc-health-probe
 
 USER 65532:65532
 
@@ -57,6 +58,7 @@ RUN apk add --no-cache tar
 WORKDIR /
 
 COPY --from=builder /bin/apiserver ./apiserver
+COPY --from=ghcr.io/grpc-ecosystem/grpc-health-probe:v0.4.38 /ko-app/grpc-health-probe /bin/grpc-health-probe
 
 # Create a non-root user for coverage
 RUN addgroup -g 65532 -S nonroot && adduser -u 65532 -S nonroot -G nonroot
