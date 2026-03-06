@@ -518,7 +518,7 @@ tasks:
     env:
       DIRECTORY_SERVER_PUBLICATION_SCHEDULER_INTERVAL: 1s
     cmds:
-      - docker compose up -d --build
+      - docker compose up -d --build --wait
 
   server:stop:
     desc: Stop local Directory server stack
