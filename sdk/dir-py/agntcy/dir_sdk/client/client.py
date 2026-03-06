@@ -11,6 +11,7 @@ import builtins
 import logging
 import os
 import json
+import re
 import subprocess
 import tempfile
 from collections.abc import Sequence
@@ -32,7 +33,6 @@ from agntcy.dir_sdk.models import (
 )
 
 logger = logging.getLogger("client")
-
 
 class JWTAuthInterceptor(grpc.UnaryUnaryClientInterceptor, grpc.UnaryStreamClientInterceptor,
                           grpc.StreamUnaryClientInterceptor, grpc.StreamStreamClientInterceptor):
@@ -1157,6 +1157,7 @@ class Client:
     def verify(
         self,
         req: sign_v1.VerifyRequest,
+        metadata: Sequence[tuple[str, str]] | None = None,
     ) -> sign_v1.VerifyResponse:
         """Verify a cryptographic signature on a record.
 
@@ -1164,13 +1165,17 @@ class Client:
         to ensure its authenticity and integrity. This operation verifies
         that the record has not been tampered with since signing.
 
+
         The verification process uses the external dirctl command-line tool
         to perform the actual cryptographic operations.
+
+        When useServerVerification is true, uses the server's cached result (from the reconciler).
 
         Args:
             req: VerifyRequest containing the record reference and verification
                  parameters. The provider can specify either key-based verification
                  (with a public key) or OIDC-based verification
+            metadata: Optional gRPC metadata headers as sequence of key-value pairs
 
         Returns:
             VerifyResponse containing the verification result and details
@@ -1186,7 +1191,21 @@ class Client:
             >>> print(f"Signature valid: {response.success}")
 
         """
-        # Create a temp file for output
+        if req.from_server:
+            if req.record_ref is None or not req.record_ref.cid:
+                msg = "VerifyRequest.record_ref with cid is required"
+                raise RuntimeError(msg)
+            try:
+                resp = self.sign_client.Verify(req, metadata=metadata or ())
+                return resp
+            except grpc.RpcError as e:
+                logger.exception("gRPC error during verify: %s", e)
+                raise RuntimeError(f"Verify failed: {e}") from e
+            except Exception as e:
+                logger.exception("Verification failed: %s", e)
+                raise RuntimeError(f"Verify failed: {e}") from e
+
+        # Client-side verification via dirctl (same as main branch)
         fd, output_path = tempfile.mkstemp(suffix=".json", prefix="dirctl-verify-")
         os.close(fd)
 

@@ -23,7 +23,7 @@ type Record struct {
 	SchemaVersion string   `gorm:"column:schema_version"`
 	OASFCreatedAt string   `gorm:"column:oasf_created_at"`
 	Authors       []string `gorm:"column:authors;serializer:json"` // Stored as JSON array
-	Signed        bool     `gorm:"column:signed;default:false"`    // Whether the record has a signature attached
+	Signed        bool     `gorm:"column:signed;default:false"`    // Whether at least one signature is attached
 
 	Skills   []Skill   `gorm:"foreignKey:RecordCID;references:RecordCID;constraint:OnDelete:CASCADE"`
 	Locators []Locator `gorm:"foreignKey:RecordCID;references:RecordCID;constraint:OnDelete:CASCADE"`
@@ -268,8 +268,12 @@ func (d *DB) GetRecordCIDs(opts ...types.FilterOption) ([]string, error) {
 }
 
 // RemoveRecord removes a record from the search database by CID.
-// Uses CASCADE DELETE to automatically remove related Skills, Locators, and Modules.
+// Deletes signature_verifications for the record first, then uses CASCADE DELETE for Skills, Locators, and Modules.
 func (d *DB) RemoveRecord(cid string) error {
+	if err := d.gormDB.Where("record_cid = ?", cid).Delete(&SignatureVerification{}).Error; err != nil {
+		return fmt.Errorf("failed to remove signature verifications: %w", err)
+	}
+
 	result := d.gormDB.Where("record_cid = ?", cid).Delete(&Record{})
 
 	if result.Error != nil {
@@ -424,6 +428,16 @@ func (d *DB) handleFilterOptions(query *gorm.DB, cfg *types.RecordFilters) *gorm
 			// Filter for non-verified records (either no verification or failed)
 			query = query.Joins("LEFT JOIN name_verifications ON name_verifications.record_cid = records.record_cid").
 				Where("name_verifications.status IS NULL OR name_verifications.status != ?", VerificationStatusVerified)
+		}
+	}
+
+	// Handle trusted filter (signature verification passed; derived from signature_verifications).
+	if cfg.Trusted != nil {
+		const verifiedStatus = "verified"
+		if *cfg.Trusted {
+			query = query.Where("EXISTS (SELECT 1 FROM signature_verifications sv WHERE sv.record_cid = records.record_cid AND sv.status = ?)", verifiedStatus)
+		} else {
+			query = query.Where("NOT EXISTS (SELECT 1 FROM signature_verifications sv WHERE sv.record_cid = records.record_cid AND sv.status = ?)", verifiedStatus)
 		}
 	}
 

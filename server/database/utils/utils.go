@@ -96,7 +96,7 @@ func BuildComparisonConditions(column string, values []string) (string, []any) {
 	return strings.Join(allConditions, " OR "), allArgs
 }
 
-func QueryToFilters(queries []*searchv1.RecordQuery) ([]types.FilterOption, error) { //nolint:gocognit,cyclop
+func QueryToFilters(queries []*searchv1.RecordQuery) ([]types.FilterOption, error) { //nolint:gocognit,cyclop,gocyclo
 	var options []types.FilterOption
 
 	for _, query := range queries {
@@ -194,6 +194,10 @@ func QueryToFilters(queries []*searchv1.RecordQuery) ([]types.FilterOption, erro
 		case searchv1.RecordQueryType_RECORD_QUERY_TYPE_VERIFIED:
 			verified := strings.EqualFold(query.GetValue(), "true")
 			options = append(options, types.WithVerified(verified))
+
+		case searchv1.RecordQueryType_RECORD_QUERY_TYPE_TRUSTED:
+			trusted := strings.EqualFold(query.GetValue(), "true")
+			options = append(options, types.WithTrusted(trusted))
 
 		default:
 			logger.Warn("Unknown query type", "type", query.GetType())

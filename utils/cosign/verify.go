@@ -121,20 +121,66 @@ func VerifyWithKeys(ctx context.Context, payload []byte, pubKeys []string, signa
 	return nil, fmt.Errorf("no valid signature found for the provided public keys")
 }
 
+// ResolvePublicKeyToPEM resolves a key reference to PEM-encoded public key content.
+// The keyRef can be PEM content, file path, URL, KMS URI, etc. (same as VerifyWithKey).
+func ResolvePublicKeyToPEM(ctx context.Context, keyRef string) (string, error) {
+	verifier, err := sigs.LoadPublicKeyRaw([]byte(keyRef), crypto.SHA256)
+	if err != nil {
+		verifier, err = sigs.PublicKeyFromKeyRefWithHashAlgo(ctx, keyRef, crypto.SHA256)
+		if err != nil {
+			return "", fmt.Errorf("failed to load public key: %w", err)
+		}
+	}
+
+	pubKey, err := verifier.PublicKey()
+	if err != nil {
+		return "", fmt.Errorf("failed to get public key: %w", err)
+	}
+
+	pubKeyPEM, err := cryptoutils.MarshalPublicKeyToPEM(pubKey)
+	if err != nil {
+		return "", fmt.Errorf("failed to marshal public key to PEM: %w", err)
+	}
+
+	return string(pubKeyPEM), nil
+}
+
+// PublicKeyPEMsEqual returns true if the two PEM strings represent the same public key.
+func PublicKeyPEMsEqual(pem1, pem2 string) bool {
+	if pem1 == pem2 {
+		return true
+	}
+
+	k1, err := cryptoutils.UnmarshalPEMToPublicKey([]byte(pem1))
+	if err != nil {
+		return false
+	}
+
+	k2, err := cryptoutils.UnmarshalPEMToPublicKey([]byte(pem2))
+	if err != nil {
+		return false
+	}
+
+	m1, _ := cryptoutils.MarshalPublicKeyToPEM(k1)
+	m2, _ := cryptoutils.MarshalPublicKeyToPEM(k2)
+
+	return string(m1) == string(m2)
+}
+
 // verifySignatureWithKey verifies a single signature using a public key.
 // The publicKey can be either:
 // - PEM-encoded public key content
 // - A key reference (file path, URL, or KMS URI)
 // Returns the PEM-encoded public key content on success.
 func verifySignatureWithKey(ctx context.Context, publicKey string, sig string, expectedPayload []byte) (string, error) {
-	// Try loading as raw PEM content first
-	verifier, err := sigs.LoadPublicKeyRaw([]byte(publicKey), crypto.SHA256)
+	pubKeyPEM, err := ResolvePublicKeyToPEM(ctx, publicKey)
 	if err != nil {
-		// Try to load as a key reference (file path, URL, or KMS URI)
-		verifier, err = sigs.PublicKeyFromKeyRefWithHashAlgo(ctx, publicKey, crypto.SHA256)
-		if err != nil {
-			return "", fmt.Errorf("failed to load public key: %w", err)
-		}
+		return "", err
+	}
+
+	verifier, err := sigs.LoadPublicKeyRaw([]byte(pubKeyPEM), crypto.SHA256)
+	if err != nil {
+		return "", fmt.Errorf("failed to load public key: %w", err)
 	}
 
 	// Decode base64 signature
@@ -150,18 +196,7 @@ func verifySignatureWithKey(ctx context.Context, publicKey string, sig string, e
 		return "", fmt.Errorf("signature verification failed: %w", err)
 	}
 
-	// Get the public key in PEM format
-	pubKey, err := verifier.PublicKey()
-	if err != nil {
-		return "", fmt.Errorf("failed to get public key: %w", err)
-	}
-
-	pubKeyPEM, err := cryptoutils.MarshalPublicKeyToPEM(pubKey)
-	if err != nil {
-		return "", fmt.Errorf("failed to marshal public key to PEM: %w", err)
-	}
-
-	return string(pubKeyPEM), nil
+	return pubKeyPEM, nil
 }
 
 // getOIDCVerifierOptions builds verifier options for OIDC-based verification.

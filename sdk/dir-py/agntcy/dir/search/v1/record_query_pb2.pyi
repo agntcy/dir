@@ -21,6 +21,7 @@ class RecordQueryType(int, metaclass=_enum_type_wrapper.EnumTypeWrapper):
     RECORD_QUERY_TYPE_SCHEMA_VERSION: _ClassVar[RecordQueryType]
     RECORD_QUERY_TYPE_MODULE_ID: _ClassVar[RecordQueryType]
     RECORD_QUERY_TYPE_VERIFIED: _ClassVar[RecordQueryType]
+    RECORD_QUERY_TYPE_TRUSTED: _ClassVar[RecordQueryType]
 RECORD_QUERY_TYPE_UNSPECIFIED: RecordQueryType
 RECORD_QUERY_TYPE_NAME: RecordQueryType
 RECORD_QUERY_TYPE_VERSION: RecordQueryType
@@ -35,6 +36,7 @@ RECORD_QUERY_TYPE_AUTHOR: RecordQueryType
 RECORD_QUERY_TYPE_SCHEMA_VERSION: RecordQueryType
 RECORD_QUERY_TYPE_MODULE_ID: RecordQueryType
 RECORD_QUERY_TYPE_VERIFIED: RecordQueryType
+RECORD_QUERY_TYPE_TRUSTED: RecordQueryType
 
 class RecordQuery(_message.Message):
     __slots__ = ("type", "value")

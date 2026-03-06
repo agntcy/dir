@@ -223,6 +223,25 @@ func (t *Task) indexRecord(ctx context.Context, tag string) error {
 		return fmt.Errorf("failed to add record to database: %w", err)
 	}
 
+	// If this record has signature referrers in the store (e.g. synced with referrers),
+	// mark it as signed so the signature task will verify it.
+	if refStore, ok := t.store.(types.ReferrerStoreAPI); ok {
+		var hasSignatures bool
+
+		_ = refStore.WalkReferrers(ctx, tag, corev1.SignatureReferrerType, func(*corev1.RecordReferrer) error {
+			hasSignatures = true
+
+			return nil
+		})
+		if hasSignatures {
+			if err := t.db.SetRecordSigned(tag); err != nil {
+				logger.Warn("Failed to mark record as signed", "cid", tag, "error", err)
+			} else {
+				logger.Debug("Record marked as signed (has signature referrers in store)", "cid", tag)
+			}
+		}
+	}
+
 	logger.Info("Successfully indexed record", "cid", tag)
 
 	return nil
