@@ -38,6 +38,18 @@ RUN --mount=type=cache,target=/go/pkg/mod \
 
 RUN xx-verify /bin/apiserver
 
+# Debug image - includes Delve for remote debugging. For local development only
+FROM builder AS debug
+
+WORKDIR /
+
+COPY --from=builder /bin/apiserver ./apiserver
+COPY --from=ghcr.io/grpc-ecosystem/grpc-health-probe:v0.4.38 /ko-app/grpc-health-probe /bin/grpc-health-probe
+
+RUN xx-go install github.com/go-delve/delve/cmd/dlv@v1.26.0
+
+ENTRYPOINT ["/go/bin/dlv", "--listen=0.0.0.0:2345", "--headless=true", "--accept-multiclient=true", "--api-version=2", "exec", "--continue", "./apiserver", "--", "run"]
+
 # Production image - minimal distroless
 FROM gcr.io/distroless/static:nonroot@sha256:c0f429e16b13e583da7e5a6ec20dd656d325d88e6819cafe0adb0828976529dc AS production
 
