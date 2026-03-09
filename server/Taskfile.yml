@@ -10,7 +10,15 @@ tasks:
   server:build:
     desc: Build Directory server image
     cmds:
-      - "{{.BAKE_ENV}} docker buildx bake {{.IMAGE_BAKE_OPTS}} dir-apiserver"
+      # NOTE: Always build the image locally to include changes which are not commited
+      - |
+        # NOTE: CI env var is set by default on GitHub Actions
+        if [ "${CI}" == "true" && docker image inspect {{.IMAGE_REPO}}/dir-apiserver:{{.IMAGE_TAG}} > /dev/null 2>&1 ];
+        then
+          echo "Image {{.IMAGE_REPO}}/dir-apiserver:{{.IMAGE_TAG}} already exists locally. Skipping build."
+        else
+          {{.BAKE_ENV}} docker buildx bake {{.IMAGE_BAKE_OPTS}} dir-apiserver
+        fi
 
   server:start:
     desc: Start local Directory server stack

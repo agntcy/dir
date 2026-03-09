@@ -91,7 +91,24 @@ tasks:
       GOARCH: "{{ .GOARCH | default ARCH }}"
       EXTRA_FLAGS: '{{ .EXTRA_FLAGS | default "" }}'
     cmds:
-      - "{{.BAKE_ENV}} docker buildx bake {{.IMAGE_BAKE_OPTS}} --set *.platform=linux/{{.GOARCH}} {{.EXTRA_FLAGS}}"
+      # NOTE: Always build the images locally to include changes which are not commited
+      - |
+        # NOTE: CI env var is set by default on GitHub Actions
+        if [ "${CI}" != "true" ]; then
+          {{.BAKE_ENV}} docker buildx bake {{.IMAGE_BAKE_OPTS}} --set *.platform=linux/{{.GOARCH}} {{.EXTRA_FLAGS}}
+        else
+          images=$({{.BAKE_ENV}} docker buildx bake default --print | jq -r '.target | with_entries(.value |= .tags[0]) | to_entries[] | .value')
+
+          echo "$images" | while IFS= read -r image; do
+            if ! docker image inspect "$image" > /dev/null 2>&1; then
+              echo "Image missing: $image"
+              {{.BAKE_ENV}} docker buildx bake {{.IMAGE_BAKE_OPTS}} --set *.platform=linux/{{.GOARCH}} {{.EXTRA_FLAGS}}
+              exit 0 # NOTE: Exit as all bake target built, no need for more check
+            fi
+          done
+
+          echo "All images already exist locally. Skipping build."
+        fi
 
   build:coverage:
     desc: Build images for all components with coverage instrumentation
@@ -106,7 +123,25 @@ tasks:
   build:all:
     desc: Build images for all components for multiple platforms
     cmds:
-      - "{{.BAKE_ENV}} docker buildx bake {{.IMAGE_BAKE_OPTS}} --set *.platform=linux/amd64,linux/arm64"
+      # TODO: make a platform variable and use build task to avoid duplication
+      # NOTE: Always build the images locally to include changes which are not commited
+      - |
+        # NOTE: CI env var is set by default on GitHub Actions
+        if [ "${CI}" != "true" ]; then
+          {{.BAKE_ENV}} docker buildx bake {{.IMAGE_BAKE_OPTS}} --set *.platform=linux/amd64,linux/arm64
+        else
+          images=$({{.BAKE_ENV}} docker buildx bake default --print | jq -r '.target | with_entries(.value |= .tags[0]) | to_entries[] | .value')
+
+          echo "$images" | while IFS= read -r image; do
+            if ! docker image inspect "$image" > /dev/null 2>&1; then
+              echo "Image missing: $image"
+              {{.BAKE_ENV}} docker buildx bake {{.IMAGE_BAKE_OPTS}} --set *.platform=linux/amd64,linux/arm64
+              exit 0 # NOTE: Exit as all bake target built, no need for more check
+            fi
+          done
+
+          echo "All images already exist locally. Skipping build."
+        fi
 
   pull:
     desc: Pull images for all components
