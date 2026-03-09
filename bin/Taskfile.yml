@@ -226,7 +226,7 @@ tasks:
       - chmod +x {{.UV_BIN}}
       - rm {{.BIN_DIR}}/uvx
     status:
-      - test -x {{.BIN_DIR}}/uv
+      - test -x {{.UV_BIN}}
 
   deps:cosign:
     desc: Install sigstore cosign
