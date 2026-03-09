@@ -57,7 +57,6 @@ vars:
   COSIGN_BIN: "{{ .BIN_DIR }}/cosign-{{.COSIGN_VERSION}}"
   TRIVY_VERSION: "0.69.3"
   TRIVY_BIN: "{{ .BIN_DIR }}/trivy-{{.TRIVY_VERSION}}"
-  HUB_API_VERSION: "main"
 
   ## Runtime CRD
   CONTROLLER_GEN_VERSION: "v0.17.3"
