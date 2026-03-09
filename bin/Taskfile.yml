@@ -62,7 +62,6 @@ tasks:
 
   deps:bin-dir:
     desc: Create bin directory
-    internal: true
     run: once
     cmd: mkdir -p {{.BIN_DIR}}
     status:
