@@ -55,7 +55,7 @@ jobs:
 
       - name: Load compiled dirctl binary
         run: |
-          mkdir ./bin
+          task deps:bin-dir
           cp tmp/artifacts/dirctl ./bin/dirctl
           chmod +x ./bin/dirctl
 
@@ -115,7 +115,7 @@ jobs:
 
       - name: Load compiled dirctl binary
         run: |
-          mkdir ./bin
+          task deps:bin-dir
           cp tmp/artifacts/dirctl ./bin/dirctl
           chmod +x ./bin/dirctl
 
