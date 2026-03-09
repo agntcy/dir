@@ -1,0 +1,30 @@
+# A set of Compose overrides to run the services in debug mode.
+# It's intended for local development only.
+# Developers may remote debug using Delve by connecting to:
+# - port 2345 for apiserver
+# - port 2346 for reconciler
+services:
+  apiserver:
+    build:
+      target: debug
+      args:
+        BUILD_GCFLAGS: "all=-N -l"
+        BUILD_LDFLAGS: ""
+    ports:
+      - 2345:2345
+    security_opt:
+      - apparmor=unconfined
+    cap_add:
+      - SYS_PTRACE
+  reconciler:
+    build:
+      target: debug
+      args:
+        BUILD_GCFLAGS: "all=-N -l"
+        BUILD_LDFLAGS: ""
+    ports:
+      - 2346:2345
+    security_opt:
+      - apparmor=unconfined
+    cap_add:
+      - SYS_PTRACE

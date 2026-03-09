@@ -54,6 +54,18 @@ RUN --mount=type=cache,target=/go/pkg/mod \
 
 RUN xx-verify /bin/regsync
 
+# Debug image - includes Delve for remote debugging. For local development only
+FROM alpine:3.21@sha256:c3f8e73fdb79deaebaa2037150150191b9dcbfba68b4a46d70103204c53f4709 AS debug
+
+WORKDIR /
+
+COPY --from=builder /bin/reconciler ./reconciler
+COPY --from=builder /bin/regsync /usr/local/bin/regsync
+
+RUN xx-go install github.com/go-delve/delve/cmd/dlv@v1.26.0
+
+ENTRYPOINT ["/go/bin/dlv", "--listen=0.0.0.0:2345", "--headless=true", "--accept-multiclient=true", "--api-version=2", "exec", "--continue", "./reconciler"]
+
 # Runtime stage - using Alpine because regsync may need shell/tools
 # https://github.com/docker-library/repo-info/blob/master/repos/alpine/tag-details.md
 FROM alpine:3.21@sha256:c3f8e73fdb79deaebaa2037150150191b9dcbfba68b4a46d70103204c53f4709
