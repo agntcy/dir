@@ -17,6 +17,34 @@ tasks:
       - task: deps:bufbuild
       - task: deps:uv
       - task: deps:cosign
+      - task: deps:cleanup
+
+  deps:cleanup:
+    desc: Remove binaries in BIN_DIR except those currently used by the Taskfile
+    preconditions:
+      - test -d {{.BIN_DIR}}
+    cmd: |
+      kept="{{.BIN_DIR}}/Taskfile.yml
+      {{.DIRCTL_BIN}}
+      {{.HELM_BIN}}
+      {{.KUBECTL_BIN}}
+      {{.KIND_BIN}}
+      {{.PROTOC_BIN}}
+      {{.BUFBUILD_BIN}}
+      {{.MULTIMOD_BIN}}
+      {{.GOLANGCI_LINT_BIN}}
+      {{.LICENSEI_BIN}}
+      {{.UV_BIN}}
+      {{.COSIGN_BIN}}
+      {{.TRIVY_BIN}}"
+
+      echo "Clean up unused/outdated binaries in {{.BIN_DIR}}"
+
+      for f in {{.BIN_DIR}}/*; do
+        [ -f "$f" ] || continue
+        echo "$kept" | grep -qFx "$f" && continue
+        rm -f "$f" && echo "Removed unused $f"
+      done
 
   deps:controller-gen:
     desc: Ensure controller-gen is installed
