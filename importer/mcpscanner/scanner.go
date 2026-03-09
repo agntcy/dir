@@ -1,7 +1,7 @@
 // Copyright AGNTCY Contributors (https://github.com/agntcy)
 // SPDX-License-Identifier: Apache-2.0
 
-package scanner
+package mcpscanner
 
 import (
 	"context"
@@ -10,20 +10,20 @@ import (
 
 	corev1 "github.com/agntcy/dir/api/core/v1"
 	"github.com/agntcy/dir/importer/pipeline"
-	scannerconfig "github.com/agntcy/dir/importer/scanner/config"
+	mcpscannerconfig "github.com/agntcy/dir/importer/mcpscanner/config"
 	"github.com/agntcy/dir/utils/logging"
 )
 
-var scannerLogger = logging.Logger("importer/scanner")
+var scannerLogger = logging.Logger("importer/mcpscanner")
 
 // Scanner is the pipeline stage that orchestrates one or more Runners per record.
 type Scanner struct {
-	cfg     scannerconfig.Config
+	cfg     mcpscannerconfig.Config
 	runners []Runner
 }
 
 // NewScanner creates a Scanner that runs the given runners for each record.
-func NewScanner(cfg scannerconfig.Config) (*Scanner, error) {
+func NewScanner(cfg mcpscannerconfig.Config) (*Scanner, error) {
 	runners, err := NewRunners(cfg)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create scanner runners: %w", err)

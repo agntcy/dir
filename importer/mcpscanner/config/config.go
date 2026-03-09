@@ -16,7 +16,7 @@ const (
 )
 
 type Config struct {
-	Modes         []string      // Scan modes to run; each creates a Runner (e.g. ["supplychain"])
+	Modes         []string      // Scan modes to run; each creates a Runner (e.g. ["behavioral"])
 	Timeout       time.Duration // Timeout per record scan (clone + run scanner)
 	CLIPath       string        // Path to mcp-scanner binary; empty = "mcp-scanner" from PATH
 	FailOnError   bool          // If true, do not import records that have error-severity findings

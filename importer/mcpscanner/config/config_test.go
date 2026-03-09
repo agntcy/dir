@@ -28,7 +28,7 @@ func TestDefaults(t *testing.T) {
 
 func TestConfig_Validate(t *testing.T) {
 	validConfig := Config{
-		Modes:   []string{"supplychain"},
+		Modes:   []string{"behavioral"},
 		Timeout: time.Minute,
 		CLIPath: "mcp-scanner",
 	}
@@ -70,7 +70,7 @@ func TestConfig_Validate(t *testing.T) {
 		{
 			name: "valid config with custom paths passes",
 			cfg: Config{
-				Modes:   []string{"supplychain"},
+				Modes:   []string{"behavioral"},
 				Timeout: 2 * time.Minute,
 				CLIPath: "/usr/bin/mcp-scanner",
 			},

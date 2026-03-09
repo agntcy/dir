@@ -1,7 +1,7 @@
 // Copyright AGNTCY Contributors (https://github.com/agntcy)
 // SPDX-License-Identifier: Apache-2.0
 
-package scanner
+package mcpscanner
 
 import (
 	"context"
@@ -55,9 +55,9 @@ func (r *ScanResult) HasWarning() bool {
 }
 
 // Runner executes a specific type of security scan for a single record.
-// Each scan mode (supplychain, static, remote, etc.) implements this interface.
+// Each scan mode (behavioral, static, remote, etc.) implements this interface.
 type Runner interface {
-	// Name returns the scan mode name (e.g. "supplychain", "static").
+	// Name returns the scan mode name (e.g. "behavioral", "static").
 	Name() string
 	// Run executes the scan on a single record and returns the result.
 	Run(ctx context.Context, record *corev1.Record) (*ScanResult, error)

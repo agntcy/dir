@@ -1,27 +1,27 @@
 // Copyright AGNTCY Contributors (https://github.com/agntcy)
 // SPDX-License-Identifier: Apache-2.0
 
-package scanner
+package mcpscanner
 
 import (
 	"fmt"
 	"sort"
 	"strings"
 
-	scannerconfig "github.com/agntcy/dir/importer/scanner/config"
+	mcpscannerconfig "github.com/agntcy/dir/importer/mcpscanner/config"
 )
 
 // RunnerFactory creates a Runner from scanner config.
-type RunnerFactory func(cfg scannerconfig.Config) Runner
+type RunnerFactory func(cfg mcpscannerconfig.Config) Runner
 
 // registry maps scan mode names to their factory functions.
 // To add a new scan mode, implement the Runner interface and add one entry here.
 var registry = map[string]RunnerFactory{
-	"supplychain": func(cfg scannerconfig.Config) Runner { return NewSupplychainRunner(cfg) },
+	"behavioral": func(cfg mcpscannerconfig.Config) Runner { return NewBehavioralRunner(cfg) },
 }
 
 // NewRunners creates Runner instances for each mode specified in the config.
-func NewRunners(cfg scannerconfig.Config) ([]Runner, error) {
+func NewRunners(cfg mcpscannerconfig.Config) ([]Runner, error) {
 	var runners []Runner
 
 	for _, mode := range cfg.Modes {

@@ -11,7 +11,7 @@ import (
 	corev1 "github.com/agntcy/dir/api/core/v1"
 	searchv1 "github.com/agntcy/dir/api/search/v1"
 	"github.com/agntcy/dir/client/streaming"
-	scannerconfig "github.com/agntcy/dir/importer/scanner/config"
+	scannerconfig "github.com/agntcy/dir/importer/mcpscanner/config"
 )
 
 // RegistryType represents the type of external registry to import from.

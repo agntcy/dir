@@ -9,8 +9,8 @@ import (
 	"time"
 
 	"github.com/agntcy/dir/importer/config"
+	"github.com/agntcy/dir/importer/mcpscanner"
 	"github.com/agntcy/dir/importer/pipeline"
-	"github.com/agntcy/dir/importer/scanner"
 	"github.com/agntcy/dir/importer/types"
 )
 
@@ -23,21 +23,21 @@ const (
 type Importer struct {
 	client      config.ClientInterface
 	registryURL string
-	sc          *scanner.Scanner
+	mcpsc       *mcpscanner.Scanner
 }
 
 // NewImporter creates a new MCP importer instance.
 // The client parameter is used for pushing records to DIR.
 func NewImporter(client config.ClientInterface, cfg config.Config) (types.Importer, error) {
-	sc, err := scanner.NewScanner(cfg.Scanner)
+	mcpsc, err := mcpscanner.NewScanner(cfg.Scanner)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create scanner: %w", err)
+		return nil, fmt.Errorf("failed to create MCP scanner: %w", err)
 	}
 
 	return &Importer{
 		client:      client,
 		registryURL: cfg.RegistryURL,
-		sc:          sc,
+		mcpsc:       mcpsc,
 	}, nil
 }
 
@@ -82,7 +82,7 @@ func (i *Importer) Run(ctx context.Context, cfg config.Config) (*types.ImportRes
 		}
 
 		// Use dry-run pipeline (fetch, dedup, transform, scanner, write to file - no push)
-		p := pipeline.NewDryRun(fetcher, duplicateChecker, transformer, i.sc, pipelineConfig)
+		p := pipeline.NewDryRun(fetcher, duplicateChecker, transformer, i.mcpsc, pipelineConfig)
 		pipelineResult, err = p.Run(ctx)
 	} else {
 		pusher := pipeline.NewClientPusher(i.client, cfg.Debug, cfg.SignFunc)
@@ -98,7 +98,7 @@ func (i *Importer) Run(ctx context.Context, cfg config.Config) (*types.ImportRes
 		}
 
 		// Create full pipeline with optional duplicate checker and scanner stage
-		p := pipeline.New(fetcher, duplicateChecker, transformer, i.sc, pusher, pipelineConfig)
+		p := pipeline.New(fetcher, duplicateChecker, transformer, i.mcpsc, pusher, pipelineConfig)
 		pipelineResult, err = p.Run(ctx)
 	}
 
