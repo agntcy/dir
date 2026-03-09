@@ -370,6 +370,14 @@ tasks:
   ##
   ## Helm
   ##
+
+  helm:gen:add-repo:
+    desc: Add Helm repos to the local Helm repository
+    run: once
+    cmds:
+      - "{{ .HELM_BIN }} repo add project-zot http://zotregistry.dev/helm-charts"
+      - "{{ .HELM_BIN }} repo add spiffe https://spiffe.github.io/helm-charts-hardened"
+
   helm:gen:
     desc: Update Helm dependencies for chart and subcharts
     internal: true
@@ -381,9 +389,7 @@ tasks:
     env:
       SOURCE_DATE_EPOCH: "0" # NOTE: Not implemented yet: https://github.com/helm/helm/pull/31845
     cmds:
-      # Add Helm repo
-      - "{{ .HELM_BIN }} repo add project-zot http://zotregistry.dev/helm-charts"
-      - "{{ .HELM_BIN }} repo add spiffe https://spiffe.github.io/helm-charts-hardened"
+      - task: helm:gen:add-repo
 
       # NOTE: Remove the byte null workaround when SOURCE_DATE_EPOCH implemeted
       # Reproducible chart packaging requires two layers of normalization:
