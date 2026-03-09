@@ -377,6 +377,7 @@ tasks:
     cmds:
       - "{{ .HELM_BIN }} repo add project-zot http://zotregistry.dev/helm-charts"
       - "{{ .HELM_BIN }} repo add spiffe https://spiffe.github.io/helm-charts-hardened"
+      - "{{ .HELM_BIN }} repo update"
 
   helm:gen:
     desc: Update Helm dependencies for chart and subcharts
@@ -406,7 +407,7 @@ tasks:
 
       # Update dependencies
       - for: { var: HELM_ALL_CHART_PATHS }
-        cmd: "cd {{ .ITEM }} && {{ .HELM_BIN }} dependency update"
+        cmd: "cd {{ .ITEM }} && {{ .HELM_BIN }} dependency update --skip-refresh"
 
       # Zero out gzip header MTIME (bytes 4-7) and set OS (byte 9) to 0xff
       # so tgz hashes are identical regardless of build time or platform.
