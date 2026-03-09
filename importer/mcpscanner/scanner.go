@@ -9,8 +9,8 @@ import (
 	"strings"
 
 	corev1 "github.com/agntcy/dir/api/core/v1"
-	"github.com/agntcy/dir/importer/pipeline"
 	mcpscannerconfig "github.com/agntcy/dir/importer/mcpscanner/config"
+	"github.com/agntcy/dir/importer/pipeline"
 	"github.com/agntcy/dir/utils/logging"
 )
 
