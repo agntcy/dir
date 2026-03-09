@@ -309,7 +309,7 @@ task e2e:network
 ```bash
 # From repo root; ensure OASF_API_VALIDATION_SCHEMA_URL is set
 export OASF_API_VALIDATION_SCHEMA_URL="${OASF_API_VALIDATION_SCHEMA_URL:-https://schema.oasf.outshift.com}"
-go test -C ./tests/e2e/mcp . -v -ginkgo.v
+go test -C ./tests ./e2e/mcp -v -ginkgo.v
 ```
 
 ## 📋 **Test Execution Flow:**
@@ -338,7 +338,7 @@ task test:e2e:network:
 ### **🔌 MCP Protocol Execution:**
 ```
 task test:e2e:mcp:
-└── go test ./tests/e2e/mcp (starts MCP server via go run in mcp/; no cluster)
+└── go test -C ./tests ./e2e/mcp (starts MCP server via go run in mcp/; no cluster)
 ```
 
 ## 🎯 **Package Organization Benefits:**
@@ -408,6 +408,6 @@ task test:e2e:network       # Test multi-peer scenarios with proper cleanup
 ### **Debugging Test Issues:**
 ```bash
 # Run individual test files (with Ginkgo focus)
-go test -C ./tests/e2e/network . -ginkgo.focus="Deploy"
-go test -C ./tests/e2e/local . -ginkgo.focus="Storage"
+go test -C ./tests ./e2e/network -ginkgo.focus="Deploy"
+go test -C ./tests ./e2e/local -ginkgo.focus="Storage"
 ```

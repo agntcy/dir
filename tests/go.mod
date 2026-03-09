@@ -1,16 +1,16 @@
-module github.com/agntcy/dir/tests/e2e
+module github.com/agntcy/dir/tests
 
 go 1.26.1
 
-// Replace local modules (paths relative to tests/e2e; repo root is ../..)
+// Replace local modules (paths relative to tests/; repo root is ..)
 replace (
-	github.com/agntcy/dir/api => ../../api
-	github.com/agntcy/dir/auth/authprovider => ../../auth/authprovider
-	github.com/agntcy/dir/cli => ../../cli
-	github.com/agntcy/dir/client => ../../client
-	github.com/agntcy/dir/importer => ../../importer
-	github.com/agntcy/dir/mcp => ../../mcp
-	github.com/agntcy/dir/utils => ../../utils
+	github.com/agntcy/dir/api => ../api
+	github.com/agntcy/dir/auth/authprovider => ../auth/authprovider
+	github.com/agntcy/dir/cli => ../cli
+	github.com/agntcy/dir/client => ../client
+	github.com/agntcy/dir/importer => ../importer
+	github.com/agntcy/dir/mcp => ../mcp
+	github.com/agntcy/dir/utils => ../utils
 )
 
 // Cosign does not updated the crypto11 owner
@@ -159,7 +159,7 @@ require (
 	github.com/google/go-github/v73 v73.0.0 // indirect
 	github.com/google/go-querystring v1.2.0 // indirect
 	github.com/google/jsonschema-go v0.4.2 // indirect
-	github.com/google/pprof v0.0.0-20260202012954-cb029daf43ef // indirect
+	github.com/google/pprof v0.0.0-20260115054156-294ebfa9ad83 // indirect
 	github.com/google/s2a-go v0.1.9 // indirect
 	github.com/googleapis/enterprise-certificate-proxy v0.3.12 // indirect
 	github.com/googleapis/gax-go/v2 v2.17.0 // indirect
@@ -181,7 +181,7 @@ require (
 	github.com/klauspost/cpuid/v2 v2.3.0 // indirect
 	github.com/letsencrypt/boulder v0.20260202.0 // indirect
 	github.com/libp2p/go-buffer-pool v0.1.0 // indirect
-	github.com/libp2p/go-libp2p v0.47.0 // indirect
+	github.com/libp2p/go-libp2p v0.46.0 // indirect
 	github.com/lucasb-eyer/go-colorful v1.3.0 // indirect
 	github.com/mailru/easyjson v0.9.1 // indirect
 	github.com/mark3labs/mcp-filesystem-server v0.11.1 // indirect
