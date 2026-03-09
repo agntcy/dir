@@ -17,6 +17,10 @@ tasks:
       - task: deps:bufbuild
       - task: deps:uv
       - task: deps:cosign
+      - task: deps:trivy
+      - task: deps:golangci-lint
+      - task: deps:licensei
+      - task: deps:multimod-bin
       - task: deps:cleanup
 
   deps:cleanup:
