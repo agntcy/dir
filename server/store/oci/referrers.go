@@ -252,3 +252,67 @@ func (s *store) MediaTypeReferrerMatcher(expectedMediaType string) ReferrerMatch
 		return len(manifest.Layers) > 0 && manifest.Layers[0].MediaType == expectedMediaType
 	}
 }
+
+func (s *store) DeleteReferrers(ctx context.Context, record *corev1.RecordRef, referrerDigest string, referrerType string) ([]string, error) {
+	//referrersLister, ok := s.repo.(ReferrersLister)
+	//if !ok {
+	//	return []string{}, status.Errorf(codes.Unimplemented, "repository does not support OCI referrers API")
+	//}
+	//
+	//recordCid := record.GetCid()
+	//recordManifestDesc, err := s.repo.Resolve(ctx, recordCid)
+	//if err != nil {
+	//	return []string{}, status.Errorf(codes.NotFound, "failed to resolve record manifest for CID %s: %v", recordCid, err)
+	//}
+	//err = referrersLister.Referrers(
+	//	ctx,
+	//	recordManifestDesc,
+	//	"",
+	//	func(referrers []ocispec.Descriptor) error {
+	//		for _, referrerDesc := range referrers {
+	//			if matcher != nil && !matcher(ctx, referrerDesc) {
+	//				continue
+	//			}
+	//
+	//			// Extract referrer data from manifest
+	//			referrer, err := s.extractReferrerFromManifest(ctx, referrerDesc, recordCID)
+	//			if err != nil {
+	//				referrersLogger.Error("Failed to extract referrer from manifest", "digest", referrerDesc.Digest.String(), "error", err)
+	//
+	//				continue // Skip this referrer but continue with others
+	//			}
+	//
+	//			// Call the walk function
+	//			if err := walkFn(referrer); err != nil {
+	//				walkErr = err
+	//
+	//				return err // Stop walking on error
+	//			}
+	//
+	//			referrersLogger.Debug("Referrer processed successfully", "digest", referrerDesc.Digest.String(), "type", referrer.GetType())
+	//		}
+	//
+	//		return nil
+	//	},
+	//)
+	//
+	//err := s.WalkReferrers(
+	//	ctx,
+	//	record.GetCid(),
+	//	referrerType,
+	//	func(referrer *corev1.RecordReferrer) error {
+	//		if err := stream.Send(response); err != nil {
+	//			return status.Errorf(codes.Internal, "failed to send referrer response: %v", err)
+	//		}
+	//
+	//		storeLogger.Debug("Referrer streamed successfully", "cid", request.GetRecordRef().GetCid(), "type", referrerType)
+	//
+	//		return nil
+	//	},
+	//)
+	//
+	//if err != nil {
+	//	return stream.Send(&storev1.PullReferrerResponse{})
+	//}
+	return []string{}, nil
+}

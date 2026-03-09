@@ -516,8 +516,12 @@ tasks:
   server:start:
     desc: Start local Directory server stack
     dir: ./install/docker
+    vars:
+      DEBUG: '{{ if .CLI_ARGS_LIST | has "--debug" }}true{{ else }}false{{ end }}'
     env:
       DIRECTORY_SERVER_PUBLICATION_SCHEDULER_INTERVAL: 1s
+      # When debugging, disable compiler optimizations and inlining
+      APISERVER_BUILD_OPTS: '{{ if eq .DEBUG "true" }}-gcflags="all=-N -l"{{ end }}'
     cmds:
       - docker compose up -d --build --wait
 
