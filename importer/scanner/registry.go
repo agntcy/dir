@@ -17,7 +17,7 @@ type RunnerFactory func(cfg scannerconfig.Config) Runner
 // registry maps scan mode names to their factory functions.
 // To add a new scan mode, implement the Runner interface and add one entry here.
 var registry = map[string]RunnerFactory{
-	"behavioral": func(cfg scannerconfig.Config) Runner { return NewBehavioralRunner(cfg) },
+	"supplychain": func(cfg scannerconfig.Config) Runner { return NewSupplychainRunner(cfg) },
 }
 
 // NewRunners creates Runner instances for each mode specified in the config.

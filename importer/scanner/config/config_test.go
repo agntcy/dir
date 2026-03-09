@@ -68,9 +68,9 @@ func TestConfig_Validate(t *testing.T) {
 			wantErr: false,
 		},
 		{
-			name: "multiple modes passes",
+			name: "valid config with custom paths passes",
 			cfg: Config{
-				Modes:   []string{"supplychain", "behavioral"},
+				Modes:   []string{"supplychain"},
 				Timeout: 2 * time.Minute,
 				CLIPath: "/usr/bin/mcp-scanner",
 			},

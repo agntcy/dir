@@ -40,7 +40,7 @@ func init() {
 	flags.IntVar(&opts.EnricherRequestsPerMinute, "enrich-rate-limit", enricher.DefaultRequestsPerMinute, "Maximum LLM API requests per minute (to avoid rate limit errors)")
 
 	// Scanner flags
-	flags.StringSliceVar(&opts.Scanner.Modes, "scanner-modes", nil, "Scan modes to run (e.g. supplychain,behavioral)")
+	flags.StringSliceVar(&opts.Scanner.Modes, "scanner-modes", nil, "Scan modes to run (e.g. supplychain)")
 	flags.DurationVar(&opts.Scanner.Timeout, "scanner-timeout", scannerconfig.DefaultTimeout, "Timeout per record scan")
 	flags.StringVar(&opts.Scanner.CLIPath, "scanner-cli-path", scannerconfig.DefaultCLIPath, "Path to mcp-scanner binary (default: mcp-scanner from PATH)")
 	flags.BoolVar(&opts.Scanner.FailOnError, "scanner-fail-on-error", scannerconfig.DefaultFailOnError, "Do not import records that have error-severity scanner findings")
