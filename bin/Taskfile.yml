@@ -71,7 +71,7 @@ tasks:
     cmds:
       - task: cli:compile
     status:
-      - test -f {{.BIN_DIR}}/dirctl
+      - test -f {{.DIRCTL_BIN}}
 
   deps:helm:
     desc: Ensure supported Helm version is installed
@@ -235,7 +235,7 @@ tasks:
       - curl -sfL https://github.com/sigstore/cosign/releases/download/v{{.COSIGN_VERSION}}/cosign-{{OS}}-{{ARCH}} -o {{.BIN_DIR}}/cosign-{{.COSIGN_VERSION}}
       - chmod +x {{.BIN_DIR}}/cosign-{{.COSIGN_VERSION}}
     status:
-      - test -x {{.BIN_DIR}}/cosign-{{.COSIGN_VERSION}}
+      - test -x {{.COSIGN_BIN}}
 
   deps:htpasswd:
     desc: Install htpasswd
