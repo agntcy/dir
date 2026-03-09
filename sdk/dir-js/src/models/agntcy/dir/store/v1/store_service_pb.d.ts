@@ -8,6 +8,7 @@
 import type { GenFile, GenMessage, GenService } from "@bufbuild/protobuf/codegenv2";
 import type { Message } from "@bufbuild/protobuf";
 import type { RecordMetaSchema, RecordRef, RecordReferrer, RecordRefSchema, RecordSchema } from "../../core/v1/record_pb.js";
+import type { ReferrerRef } from "../../core/v1/referrer_pb.js";
 import type { EmptySchema } from "@bufbuild/protobuf/wkt";
 
 /**
@@ -61,6 +62,13 @@ export declare type PushReferrerResponse = Message<"agntcy.dir.store.v1.PushRefe
    * @generated from field: optional string error_message = 2;
    */
   errorMessage?: string;
+
+  /**
+   * The CID of the referrer
+   *
+   * @generated from field: agntcy.dir.core.v1.ReferrerRef referrer_ref = 3;
+   */
+  referrerRef?: ReferrerRef;
 };
 
 /**

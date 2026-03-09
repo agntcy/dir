@@ -101,11 +101,11 @@ func (s *eventsStore) IsReady(ctx context.Context) bool {
 
 // PushReferrer delegates to the source store if it supports referrer operations.
 // This is needed for signature and public key storage.
-func (s *eventsStore) PushReferrer(ctx context.Context, recordCID string, referrer *corev1.RecordReferrer) error {
+func (s *eventsStore) PushReferrer(ctx context.Context, recordCID string, referrer *corev1.RecordReferrer) (*corev1.ReferrerRef, error) {
 	// Check if source supports referrer operations
 	referrerStore, ok := s.source.(types.ReferrerStoreAPI)
 	if !ok {
-		return status.Errorf(codes.Unimplemented, "source store does not support referrer operations")
+		return nil, status.Errorf(codes.Unimplemented, "source store does not support referrer operations")
 	}
 
 	// Delegate to source (no event emitted for referrer operations)

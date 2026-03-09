@@ -10,6 +10,7 @@ import (
 	"crypto/x509"
 	"encoding/pem"
 	"fmt"
+	"io"
 
 	corev1 "github.com/agntcy/dir/api/core/v1"
 	signv1 "github.com/agntcy/dir/api/sign/v1"
@@ -114,15 +115,17 @@ var _ = ginkgo.Describe("Running e2e tests for referrers", func() {
 	})
 
 	ginkgo.It("should successfully push basic referrer", func() {
-		var err error
-
 		referrer := generateReferrer()
-		_, err = c.PushReferrer(ctx, &storev1.PushReferrerRequest{
+		response, err := c.PushReferrer(ctx, &storev1.PushReferrerRequest{
 			RecordRef: record1,
 			Referrer:  referrer,
 		})
 
 		gomega.Expect(err).NotTo(gomega.HaveOccurred())
+		gomega.Expect(response.GetSuccess()).To(gomega.BeTrue())
+		gomega.Expect(response.GetErrorMessage()).To(gomega.BeEmpty())
+		gomega.Expect(response.GetReferrerRef().GetCid()).NotTo(gomega.BeNil())
+		gomega.Expect(response.GetReferrerRef().GetCid()).NotTo(gomega.BeEmpty())
 
 		referrers := pullReferrers(c, ctx, record1, corev1.PublicKeyReferrerType)
 		gomega.Expect(referrers).To(gomega.HaveLen(1))
@@ -134,18 +137,32 @@ var _ = ginkgo.Describe("Running e2e tests for referrers", func() {
 	})
 
 	ginkgo.It("should successfully push full referrer", func() {
-		var err error
-
 		referrer := generateReferrer()
 		referrer.CreatedAt = "2026-03-09T14:20:00Z"
 		referrer.RecordRef = record1
 		referrer.Annotations = map[string]string{"foo": "bar"}
-		_, err = c.PushReferrer(ctx, &storev1.PushReferrerRequest{
+		response, err := c.PushReferrer(ctx, &storev1.PushReferrerRequest{
 			RecordRef: record1,
 			Referrer:  referrer,
 		})
 
 		gomega.Expect(err).NotTo(gomega.HaveOccurred())
+		gomega.Expect(response.GetSuccess()).To(gomega.BeTrue())
+		gomega.Expect(response.GetErrorMessage()).To(gomega.BeEmpty())
+		gomega.Expect(response.GetReferrerRef().GetCid()).NotTo(gomega.BeNil())
+		gomega.Expect(response.GetReferrerRef().GetCid()).NotTo(gomega.BeEmpty())
+
+		// Validate CID
+		cid := response.GetReferrerRef().GetCid()
+		gomega.Expect(cid).NotTo(gomega.BeEmpty())
+
+		referrerBytes, err := referrer.Marshal()
+		gomega.Expect(err).NotTo(gomega.HaveOccurred())
+		referrerDigest, err := corev1.CalculateDigest(referrerBytes)
+		gomega.Expect(err).NotTo(gomega.HaveOccurred())
+		expectedCID, err := corev1.ConvertDigestToCID(referrerDigest)
+		gomega.Expect(err).NotTo(gomega.HaveOccurred())
+		gomega.Expect(cid).To(gomega.Equal(expectedCID))
 
 		referrers := pullReferrers(c, ctx, record1, corev1.PublicKeyReferrerType)
 		gomega.Expect(referrers).To(gomega.HaveLen(1))
@@ -157,8 +174,6 @@ var _ = ginkgo.Describe("Running e2e tests for referrers", func() {
 	})
 
 	ginkgo.It("should fail if record mismatch", func() {
-		var err error
-
 		referrer := generateReferrer()
 		referrer.RecordRef = record2
 		response, err := c.PushReferrer(ctx, &storev1.PushReferrerRequest{
@@ -173,6 +188,7 @@ var _ = ginkgo.Describe("Running e2e tests for referrers", func() {
 			fmt.Sprintf("failed to push referrer for record %s: ", record1.GetCid()) +
 				"rpc error: code = InvalidArgument desc = referrer's record CID must match record CID",
 		))
+		gomega.Expect(response.GetReferrerRef().GetCid()).To(gomega.BeEmpty())
 	})
 
 	ginkgo.It("should fail if empty referrer", func() {
@@ -186,6 +202,7 @@ var _ = ginkgo.Describe("Running e2e tests for referrers", func() {
 		expectError(err, codes.InvalidArgument, msg)
 		gomega.Expect(response.GetSuccess()).To(gomega.BeFalse())
 		gomega.Expect(response.GetErrorMessage()).To(gomega.Equal(""))
+		gomega.Expect(response.GetReferrerRef().GetCid()).To(gomega.BeEmpty())
 	})
 
 	ginkgo.It("should fail if invalid referrer type", func() {
@@ -200,8 +217,166 @@ var _ = ginkgo.Describe("Running e2e tests for referrers", func() {
 		expectError(err, codes.InvalidArgument, msg)
 		gomega.Expect(response.GetSuccess()).To(gomega.BeFalse())
 		gomega.Expect(response.GetErrorMessage()).To(gomega.Equal(""))
+		gomega.Expect(response.GetReferrerRef().GetCid()).To(gomega.BeEmpty())
 
 		referrers := pullReferrers(c, ctx, record1, "foo")
 		gomega.Expect(referrers).To(gomega.BeEmpty())
+	})
+
+	ginkgo.It("should pass if referrer exists", func() {
+		referrer := generateReferrer()
+
+		response1, err := c.PushReferrer(ctx, &storev1.PushReferrerRequest{
+			RecordRef: record1,
+			Referrer:  referrer,
+		})
+
+		gomega.Expect(err).ToNot(gomega.HaveOccurred())
+
+		cid1 := response1.GetReferrerRef().GetCid()
+		gomega.Expect(cid1).ToNot(gomega.BeEmpty())
+
+		response2, err := c.PushReferrer(ctx, &storev1.PushReferrerRequest{
+			RecordRef: record1,
+			Referrer:  referrer,
+		})
+
+		gomega.Expect(err).ToNot(gomega.HaveOccurred())
+
+		cid2 := response2.GetReferrerRef().GetCid()
+		gomega.Expect(cid2).To(gomega.Equal(cid1))
+
+		referrers := pullReferrers(c, ctx, record1, corev1.PublicKeyReferrerType)
+		gomega.Expect(referrers).To(gomega.HaveLen(1))
+	})
+
+	ginkgo.It("should pass if same referrer different records", func() {
+		referrer := generateReferrer()
+
+		response1, err := c.PushReferrer(ctx, &storev1.PushReferrerRequest{
+			RecordRef: record1,
+			Referrer:  referrer,
+		})
+
+		gomega.Expect(err).ToNot(gomega.HaveOccurred())
+
+		cid1 := response1.GetReferrerRef().GetCid()
+		gomega.Expect(cid1).ToNot(gomega.BeEmpty())
+
+		response2, err := c.PushReferrer(ctx, &storev1.PushReferrerRequest{
+			RecordRef: record2,
+			Referrer:  referrer,
+		})
+
+		gomega.Expect(err).ToNot(gomega.HaveOccurred())
+
+		cid2 := response2.GetReferrerRef().GetCid()
+		gomega.Expect(cid2).ToNot(gomega.BeEmpty())
+
+		gomega.Expect(cid1).ToNot(gomega.Equal(cid2))
+
+		referrers1 := pullReferrers(c, ctx, record1, corev1.PublicKeyReferrerType)
+		gomega.Expect(referrers1).To(gomega.HaveLen(1))
+
+		referrers2 := pullReferrers(c, ctx, record2, corev1.PublicKeyReferrerType)
+		gomega.Expect(referrers2).To(gomega.HaveLen(1))
+	})
+
+	ginkgo.It("should successfully push & pull referrer stream", func() {
+		var err error
+
+		// PUSH
+		push, err := c.StoreServiceClient.PushReferrer(ctx)
+		gomega.Expect(err).ToNot(gomega.HaveOccurred())
+
+		referrer1 := generateReferrer()
+		referrer1.Annotations = map[string]string{"test_id": "1"}
+		err = push.Send(&storev1.PushReferrerRequest{
+			RecordRef: record1,
+			Referrer:  referrer1,
+		})
+		gomega.Expect(err).ToNot(gomega.HaveOccurred())
+
+		referrer2 := generateReferrer()
+		referrer2.Annotations = map[string]string{"test_id": "2"}
+		err = push.Send(&storev1.PushReferrerRequest{
+			RecordRef: record2,
+			Referrer:  referrer2,
+		})
+		gomega.Expect(err).ToNot(gomega.HaveOccurred())
+
+		err = push.CloseSend()
+		gomega.Expect(err).ToNot(gomega.HaveOccurred())
+
+		response1, err := push.Recv()
+		gomega.Expect(err).ToNot(gomega.HaveOccurred())
+		gomega.Expect(response1.GetSuccess()).To(gomega.BeTrue())
+		gomega.Expect(response1.GetErrorMessage()).To(gomega.BeEmpty())
+		gomega.Expect(response1.GetReferrerRef().GetCid()).NotTo(gomega.BeNil())
+		gomega.Expect(response1.GetReferrerRef().GetCid()).NotTo(gomega.BeEmpty())
+
+		response2, err := push.Recv()
+		gomega.Expect(err).ToNot(gomega.HaveOccurred())
+		gomega.Expect(response2.GetSuccess()).To(gomega.BeTrue())
+		gomega.Expect(response2.GetErrorMessage()).To(gomega.BeEmpty())
+		gomega.Expect(response2.GetReferrerRef().GetCid()).NotTo(gomega.BeNil())
+		gomega.Expect(response2.GetReferrerRef().GetCid()).NotTo(gomega.BeEmpty())
+
+		response3, err := push.Recv()
+		gomega.Expect(err).To(gomega.BeIdenticalTo(io.EOF))
+		gomega.Expect(response3.GetSuccess()).To(gomega.BeFalse())
+		gomega.Expect(response3.GetErrorMessage()).To(gomega.BeEmpty())
+		gomega.Expect(response3.GetReferrerRef().GetCid()).To(gomega.BeEmpty())
+
+		// PULL
+		pull, err := c.StoreServiceClient.PullReferrer(ctx)
+		gomega.Expect(err).ToNot(gomega.HaveOccurred())
+
+		err = pull.Send(&storev1.PullReferrerRequest{
+			// referrer 1
+			RecordRef:    record1,
+			ReferrerType: new(corev1.PublicKeyReferrerType),
+		})
+		gomega.Expect(err).ToNot(gomega.HaveOccurred())
+
+		err = pull.Send(&storev1.PullReferrerRequest{
+			// referrer 1
+			RecordRef:    record1,
+			ReferrerType: new(corev1.PublicKeyReferrerType),
+		})
+		gomega.Expect(err).ToNot(gomega.HaveOccurred())
+
+		err = pull.Send(&storev1.PullReferrerRequest{
+			// referrer 2
+			RecordRef:    record2,
+			ReferrerType: new(corev1.PublicKeyReferrerType),
+		})
+		gomega.Expect(err).ToNot(gomega.HaveOccurred())
+
+		err = pull.Send(&storev1.PullReferrerRequest{
+			// no results
+			RecordRef:    record1,
+			ReferrerType: new(corev1.SignatureReferrerType),
+		})
+		gomega.Expect(err).ToNot(gomega.HaveOccurred())
+
+		err = pull.CloseSend()
+		gomega.Expect(err).ToNot(gomega.HaveOccurred())
+
+		response4, err := pull.Recv()
+		gomega.Expect(response4.GetReferrer().GetAnnotations()["test_id"]).To(gomega.Equal("1"))
+		gomega.Expect(err).ToNot(gomega.HaveOccurred())
+
+		response5, err := pull.Recv()
+		gomega.Expect(response5.GetReferrer().GetAnnotations()["test_id"]).To(gomega.Equal("1"))
+		gomega.Expect(err).ToNot(gomega.HaveOccurred())
+
+		response6, err := pull.Recv()
+		gomega.Expect(response6.GetReferrer().GetAnnotations()["test_id"]).To(gomega.Equal("2"))
+		gomega.Expect(err).ToNot(gomega.HaveOccurred())
+
+		response7, err := pull.Recv()
+		gomega.Expect(response7.GetReferrer()).To(gomega.BeNil())
+		gomega.Expect(err).To(gomega.BeIdenticalTo(io.EOF))
 	})
 })
