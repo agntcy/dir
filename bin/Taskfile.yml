@@ -10,6 +10,7 @@ tasks:
   deps:
     desc: Install dependencies
     cmds:
+      - task: deps:dirctl
       - task: deps:helm
       - task: deps:kubectl
       - task: deps:kind
@@ -67,7 +68,7 @@ tasks:
     status:
       - test -d {{.BIN_DIR}}
 
-  deps:dirctl-bin:
+  deps:dirctl:
     desc: Compile dirctl binary
     internal: true
     run: once

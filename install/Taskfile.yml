@@ -378,7 +378,7 @@ tasks:
       - task: deploy:kubernetes:setup-cluster
         vars:
           E2E_COVERAGE_ENABLED: "{{ .E2E_COVERAGE_ENABLED }}"
-      - deps:dirctl-bin
+      - deps:dirctl
     vars:
       # Helm args
       HELM_CHART_PATH: "{{ .ROOT_DIR }}/install/charts/dir"
