@@ -30,31 +30,31 @@ type ReferrersLister interface {
 
 // PushReferrer pushes a generic RecordReferrer as an OCI artifact that references a record as its subject.
 // For signature referrers, it uses cosign to attach the signature.
-func (s *store) PushReferrer(ctx context.Context, recordCID string, referrer *corev1.RecordReferrer) error {
+func (s *store) PushReferrer(ctx context.Context, recordCID string, referrer *corev1.RecordReferrer) (string, error) {
 	referrersLogger.Debug("Pushing referrer to OCI store", "recordCID", recordCID, "type", referrer.GetType())
 
 	if referrer == nil {
-		return status.Error(codes.InvalidArgument, "referrer is required") //nolint:wrapcheck
+		return "", status.Error(codes.InvalidArgument, "referrer is required") //nolint:wrapcheck
 	}
 
 	if recordCID == "" {
-		return status.Error(codes.InvalidArgument, "record CID is required") //nolint:wrapcheck
+		return "", status.Error(codes.InvalidArgument, "record CID is required") //nolint:wrapcheck
 	}
 
 	if referrer.GetType() == "" {
-		return status.Error(codes.InvalidArgument, "referrer type is required") //nolint:wrapcheck
+		return "", status.Error(codes.InvalidArgument, "referrer type is required") //nolint:wrapcheck
 	}
 
 	if referrer.GetRecordRef() == nil {
 		referrer.RecordRef = &corev1.RecordRef{Cid: recordCID}
 	} else if referrer.GetRecordRef().GetCid() != recordCID {
-		return status.Error(codes.InvalidArgument, "referrer's record CID must match record CID") //nolint:wrapcheck
+		return "", status.Error(codes.InvalidArgument, "referrer's record CID must match record CID") //nolint:wrapcheck
 	}
 
 	// Check if record exists before pushing referrer
 	_, err := s.Lookup(ctx, &corev1.RecordRef{Cid: recordCID})
 	if err != nil {
-		return status.Errorf(codes.NotFound, "record not found for CID %s: %v", recordCID, err)
+		return "", status.Errorf(codes.NotFound, "record not found for CID %s: %v", recordCID, err)
 	}
 
 	// Route based on referrer type
@@ -74,31 +74,37 @@ func (s *store) PushReferrer(ctx context.Context, recordCID string, referrer *co
 }
 
 // pushReferrer pushes a referrer as a generic OCI artifact.
-func (s *store) pushReferrer(ctx context.Context, recordCID string, referrer *corev1.RecordReferrer) error {
+func (s *store) pushReferrer(ctx context.Context, recordCID string, referrer *corev1.RecordReferrer) (string, error) {
 	// Map API type to internal OCI artifact type
 	ociArtifactType := apiToOCIType(referrer.GetType())
 
 	// Marshal the referrer to JSON
-	referrerBytes, err := protojson.Marshal(referrer)
+	referrerBytes, err := referrer.Marshal()
 	if err != nil {
-		return status.Errorf(codes.Internal, "failed to marshal referrer: %v", err)
+		return "", status.Errorf(codes.Internal, "failed to marshal referrer: %v", err)
 	}
 
 	// Push the referrer blob using internal OCI artifact type
 	blobDesc, err := oras.PushBytes(ctx, s.repo, ociArtifactType, referrerBytes)
 	if err != nil {
-		return fmt.Errorf("failed to push referrer blob: %w", err)
+		return "", fmt.Errorf("failed to push referrer blob: %w", err)
+	}
+
+	referrerCID, err := corev1.ConvertDigestToCID(blobDesc.Digest)
+	if err != nil {
+		return "", status.Errorf(codes.Internal, "failed to convert digest to CID: %v", err)
 	}
 
 	// Resolve the record manifest to get its descriptor for the subject field
 	recordManifestDesc, err := s.repo.Resolve(ctx, recordCID)
 	if err != nil {
-		return fmt.Errorf("failed to resolve record manifest for subject: %w", err)
+		return "", fmt.Errorf("failed to resolve record manifest for subject: %w", err)
 	}
 
 	// Create annotations for the referrer manifest
 	annotations := make(map[string]string)
 	annotations["agntcy.dir.referrer.type"] = referrer.GetType()
+	annotations[ManifestKeyCid] = referrerCID
 
 	if referrer.GetCreatedAt() != "" {
 		annotations["agntcy.dir.referrer.created_at"] = referrer.GetCreatedAt()
@@ -119,12 +125,18 @@ func (s *store) pushReferrer(ctx context.Context, recordCID string, referrer *co
 		},
 	)
 	if err != nil {
-		return fmt.Errorf("failed to pack referrer manifest: %w", err)
+		return "", fmt.Errorf("failed to pack referrer manifest: %w", err)
+	}
+
+	// Create CID tag for content-addressable storage
+	err = s.tagWithRetry(ctx, manifestDesc.Digest.String(), referrerCID)
+	if err != nil {
+		return "", status.Errorf(codes.Internal, "failed to create CID tag: %v", err)
 	}
 
 	referrersLogger.Debug("Referrer pushed successfully", "digest", manifestDesc.Digest.String(), "type", referrer.GetType())
 
-	return nil
+	return referrerCID, nil
 }
 
 // WalkReferrers walks through referrers for a given record CID, calling walkFn for each referrer.

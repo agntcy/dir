@@ -1,0 +1,12 @@
+// Copyright AGNTCY Contributors (https://github.com/agntcy)
+// SPDX-License-Identifier: Apache-2.0
+
+syntax = "proto3";
+
+package agntcy.dir.core.v1;
+
+// Content Identifier (https://github.com/multiformats/cid)
+message CID {
+  // A self-describing, content-addressed identifier
+  string cid = 1;
+}

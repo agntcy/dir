@@ -5,6 +5,7 @@ syntax = "proto3";
 
 package agntcy.dir.store.v1;
 
+import "agntcy/dir/core/v1/cid.proto";
 import "agntcy/dir/core/v1/record.proto";
 import "google/protobuf/empty.proto";
 
@@ -56,9 +57,12 @@ message PushReferrerRequest {
 message PushReferrerResponse {
   // The push process result
   bool success = 1;
-  
+
   // Optional error message if push failed
   optional string error_message = 2;
+
+  // The CID of the referrer
+  core.v1.CID cid = 3;
 }
 
 // PullReferrerRequest represents a record with optional OCI artifacts for pull operations.
