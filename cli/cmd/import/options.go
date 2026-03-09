@@ -7,7 +7,7 @@ import (
 	signcmd "github.com/agntcy/dir/cli/cmd/sign"
 	"github.com/agntcy/dir/importer/config"
 	"github.com/agntcy/dir/importer/enricher"
-	mcpscannerconfig "github.com/agntcy/dir/importer/mcpscanner/config"
+	scannerconfig "github.com/agntcy/dir/importer/scanner/config"
 )
 
 var opts = &options{}
@@ -39,12 +39,12 @@ func init() {
 	// Rate limiting for LLM API calls
 	flags.IntVar(&opts.EnricherRequestsPerMinute, "enrich-rate-limit", enricher.DefaultRequestsPerMinute, "Maximum LLM API requests per minute (to avoid rate limit errors)")
 
-	// MCP Scanner flags
-	flags.StringSliceVar(&opts.Scanner.Modes, "mcp-scanner-modes", nil, "MCP scanner modes to run (e.g. behavioral)")
-	flags.DurationVar(&opts.Scanner.Timeout, "mcp-scanner-timeout", mcpscannerconfig.DefaultTimeout, "Timeout per record scan")
-	flags.StringVar(&opts.Scanner.CLIPath, "mcp-scanner-cli-path", mcpscannerconfig.DefaultCLIPath, "Path to mcp-scanner binary (default: mcp-scanner from PATH)")
-	flags.BoolVar(&opts.Scanner.FailOnError, "mcp-scanner-fail-on-error", mcpscannerconfig.DefaultFailOnError, "Do not import records that have error-severity scanner findings")
-	flags.BoolVar(&opts.Scanner.FailOnWarning, "mcp-scanner-fail-on-warning", mcpscannerconfig.DefaultFailOnWarning, "Do not import records that have warning-severity scanner findings")
+	// Scanner flags
+	flags.BoolVar(&opts.Scanner.Enabled, "scanner-enabled", false, "Run all registered security scanners on each record")
+	flags.DurationVar(&opts.Scanner.Timeout, "scanner-timeout", scannerconfig.DefaultTimeout, "Timeout per record scan")
+	flags.StringVar(&opts.Scanner.CLIPath, "scanner-cli-path", scannerconfig.DefaultCLIPath, "Path to mcp-scanner binary (default: mcp-scanner from PATH)")
+	flags.BoolVar(&opts.Scanner.FailOnError, "scanner-fail-on-error", scannerconfig.DefaultFailOnError, "Do not import records that have error-severity scanner findings")
+	flags.BoolVar(&opts.Scanner.FailOnWarning, "scanner-fail-on-warning", scannerconfig.DefaultFailOnWarning, "Do not import records that have warning-severity scanner findings")
 
 	// Signing flags
 	flags.BoolVar(&opts.Sign, "sign", false, "Sign records after pushing")

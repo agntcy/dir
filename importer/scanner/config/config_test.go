@@ -27,12 +27,6 @@ func TestDefaults(t *testing.T) {
 }
 
 func TestConfig_Validate(t *testing.T) {
-	validConfig := Config{
-		Modes:   []string{"behavioral"},
-		Timeout: time.Minute,
-		CLIPath: "mcp-scanner",
-	}
-
 	tests := []struct {
 		name    string
 		cfg     Config
@@ -40,40 +34,36 @@ func TestConfig_Validate(t *testing.T) {
 		errMsg  string
 	}{
 		{
-			name:    "no modes passes (scanning disabled)",
-			cfg:     Config{Timeout: time.Minute, CLIPath: "mcp-scanner"},
+			name:    "disabled passes without validation",
+			cfg:     Config{Enabled: false},
 			wantErr: false,
 		},
 		{
-			name:    "zero timeout fails when enabled",
-			cfg:     Config{Modes: validConfig.Modes, Timeout: 0, CLIPath: validConfig.CLIPath},
+			name:    "enabled with zero timeout fails",
+			cfg:     Config{Enabled: true, Timeout: 0, CLIPath: "mcp-scanner"},
 			wantErr: true,
 			errMsg:  "timeout must be greater than 0",
 		},
 		{
-			name:    "negative timeout fails when enabled",
-			cfg:     Config{Modes: validConfig.Modes, Timeout: -time.Second, CLIPath: validConfig.CLIPath},
+			name:    "enabled with negative timeout fails",
+			cfg:     Config{Enabled: true, Timeout: -time.Second, CLIPath: "mcp-scanner"},
 			wantErr: true,
 			errMsg:  "timeout must be greater than 0",
 		},
 		{
-			name:    "empty CLIPath fails when enabled",
-			cfg:     Config{Modes: validConfig.Modes, Timeout: validConfig.Timeout, CLIPath: ""},
+			name:    "enabled with empty CLIPath fails",
+			cfg:     Config{Enabled: true, Timeout: time.Minute, CLIPath: ""},
 			wantErr: true,
 			errMsg:  "mcp-scanner binary path is required",
 		},
 		{
-			name:    "valid config passes",
-			cfg:     validConfig,
+			name:    "enabled with valid config passes",
+			cfg:     Config{Enabled: true, Timeout: time.Minute, CLIPath: "mcp-scanner"},
 			wantErr: false,
 		},
 		{
-			name: "valid config with custom paths passes",
-			cfg: Config{
-				Modes:   []string{"behavioral"},
-				Timeout: 2 * time.Minute,
-				CLIPath: "/usr/bin/mcp-scanner",
-			},
+			name:    "enabled with custom CLIPath passes",
+			cfg:     Config{Enabled: true, Timeout: 2 * time.Minute, CLIPath: "/usr/bin/mcp-scanner"},
 			wantErr: false,
 		},
 	}

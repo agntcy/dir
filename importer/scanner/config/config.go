@@ -15,16 +15,18 @@ const (
 	DefaultFailOnWarning = false
 )
 
+// Config contains configuration for the scanner pipeline stage.
 type Config struct {
-	Modes         []string      // Scan modes to run; each creates a Runner (e.g. ["behavioral"])
-	Timeout       time.Duration // Timeout per record scan (clone + run scanner)
+	Enabled       bool          // If true, run all registered scanners
+	Timeout       time.Duration // Timeout per record scan
 	CLIPath       string        // Path to mcp-scanner binary; empty = "mcp-scanner" from PATH
 	FailOnError   bool          // If true, do not import records that have error-severity findings
 	FailOnWarning bool          // If true, do not import records that have warning-severity findings
 }
 
+// Validate checks if the scanner configuration is valid.
 func (c *Config) Validate() error {
-	if len(c.Modes) == 0 {
+	if !c.Enabled {
 		return nil
 	}
 

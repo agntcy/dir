@@ -1,7 +1,7 @@
 // Copyright AGNTCY Contributors (https://github.com/agntcy)
 // SPDX-License-Identifier: Apache-2.0
 
-package mcpscanner
+package scanner
 
 import (
 	"context"
@@ -24,7 +24,7 @@ type Finding struct {
 	Message  string
 }
 
-// ScanResult is the result of running one or more scanners on a single record.
+// ScanResult is the result of running a scanner on a single record.
 type ScanResult struct {
 	Safe          bool
 	Skipped       bool
@@ -54,11 +54,12 @@ func (r *ScanResult) HasWarning() bool {
 	return false
 }
 
-// Runner executes a specific type of security scan for a single record.
-// Each scan mode (behavioral, static, remote, etc.) implements this interface.
-type Runner interface {
-	// Name returns the scan mode name (e.g. "behavioral", "static").
+// Scanner executes a specific type of security scan for a single record.
+// Each scanner implementation (behavioral, static, trivy, etc.) implements this interface.
+// The wiring logic for running scanners and processing results happens in the Orchestrator.
+type Scanner interface {
+	// Name returns the scanner name (e.g. "behavioral", "static").
 	Name() string
-	// Run executes the scan on a single record and returns the result.
-	Run(ctx context.Context, record *corev1.Record) (*ScanResult, error)
+	// Scan runs a scan for a single record and returns the result.
+	Scan(ctx context.Context, record *corev1.Record) (*ScanResult, error)
 }
