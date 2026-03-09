@@ -1,0 +1,41 @@
+# Copyright AGNTCY Contributors (https://github.com/agntcy)
+# SPDX-License-Identifier: Apache-2.0
+
+version: "3"
+
+tasks:
+  default:
+    cmd: echo "Run the main Taskfile instead of this one."
+
+  server:build:
+    desc: Build Directory server image
+    cmds:
+      - "{{.BAKE_ENV}} docker buildx bake {{.IMAGE_BAKE_OPTS}} dir-apiserver"
+
+  server:start:
+    desc: Start local Directory server stack
+    dir: ./install/docker
+    env:
+      DIRECTORY_SERVER_PUBLICATION_SCHEDULER_INTERVAL: 1s
+    cmds:
+      - docker compose up -d --build --wait
+
+  server:start:debug:
+    desc: Start local Directory server stack in debug mode
+    dir: ./install/docker
+    env:
+      DIRECTORY_SERVER_PUBLICATION_SCHEDULER_INTERVAL: 1s
+    cmds:
+      - docker compose -f docker-compose.yml -f docker-compose.debug.yml up -d --build --wait
+
+  server:stop:
+    desc: Stop local Directory server stack
+    dir: ./install/docker
+    cmds:
+      - docker compose down
+
+  server:bench:
+    desc: Benchmark Directory server code
+    dir: ./server
+    cmds:
+      - go -C . test -run=^$ -bench=. ./...
