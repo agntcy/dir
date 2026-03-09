@@ -69,7 +69,7 @@ jobs:
           - ghcr.io/${{ github.repository_owner }}/dir-runtime-discovery:${{ needs.resolve-tag.outputs.version }}
           - ghcr.io/${{ github.repository_owner }}/dir-runtime-server:${{ needs.resolve-tag.outputs.version }}
           - ghcr.io/${{ github.repository_owner }}/envoy-authz:${{ needs.resolve-tag.outputs.version }}
-          - ghcr.io/project-zot/zot:v2.1.14
+          - ghcr.io/project-zot/zot:v2.1.15
           - ghcr.io/spiffe/spire-server:1.14.1
           - ghcr.io/spiffe/spire-agent:1.14.1
           - docker.io/bitnami/postgresql@sha256:e8b68936d05ee665974430bb4765fedcdc5c9ba399e133e120e2deed77f54dbf
