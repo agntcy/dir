@@ -35,7 +35,7 @@ const (
 // CachedToken represents a cached authentication token from any provider.
 type CachedToken struct {
 	// AccessToken is the authentication token.
-	AccessToken string `json:"access_token"` //nolint:gosec // G117: intentional field - for cached token
+	AccessToken string `json:"access_token"` // #nosec G117: intentional field - for cached token
 
 	// TokenType is the token type (usually "bearer").
 	TokenType string `json:"token_type,omitempty"`
@@ -130,7 +130,7 @@ func (c *TokenCache) Save(token *CachedToken) error {
 		token.CreatedAt = time.Now()
 	}
 
-	data, err := json.MarshalIndent(token, "", "  ")
+	data, err := json.MarshalIndent(token, "", "  ") // #nosec G117: intentional field - for cached token
 	if err != nil {
 		return fmt.Errorf("failed to marshal token: %w", err)
 	}
