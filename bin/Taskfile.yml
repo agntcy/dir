@@ -261,8 +261,9 @@ tasks:
       - cmd: echo "Installing trivy v{{.TRIVY_VERSION}}..."
       - cmd: |
           curl -sfL https://github.com/aquasecurity/trivy/releases/download/v{{.TRIVY_VERSION}}/trivy_{{.TRIVY_VERSION}}_{{.TRIVY_OS}}-{{.TRIVY_ARCH}}.tar.gz | \
-          tar -xzf - -C {{.BIN_DIR}} && \
+          tar -xzf - -C {{.BIN_DIR}} trivy && \
           mv {{.BIN_DIR}}/trivy {{.TRIVY_BIN}}
+
     status:
       - test -x {{.TRIVY_BIN}}
 
