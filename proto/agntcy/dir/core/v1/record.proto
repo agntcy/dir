@@ -6,6 +6,7 @@ syntax = "proto3";
 package agntcy.dir.core.v1;
 
 import "google/protobuf/struct.proto";
+import "buf/validate/validate.proto";
 
 // Defines a reference or a globally unique content identifier of a record.
 message RecordRef {
@@ -62,7 +63,14 @@ message Record {
 message RecordReferrer {
     // The type of the referrer.
     // For example, "agntcy.dir.sign.v1.Signature" for signatures.
-    string type = 1;
+    string type = 1 [
+      (buf.validate.field).string = {
+        in: [
+          "agntcy.dir.sign.v1.PublicKey",
+          "agntcy.dir.sign.v1.Signature"
+        ]
+      }
+    ];
 
     // Record reference to which this referrer is associated.
     core.v1.RecordRef record_ref = 2;

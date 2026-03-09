@@ -19,6 +19,8 @@ import (
 	"github.com/google/uuid"
 	"github.com/onsi/ginkgo/v2"
 	"github.com/onsi/gomega"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/structpb"
 )
 
@@ -70,6 +72,17 @@ func pullReferrers(c *client.Client, ctx context.Context, recordRef *corev1.Reco
 	}
 
 	return referrers
+}
+
+func expectError(err error, code codes.Code, msg string) {
+	gomega.Expect(err).To(gomega.HaveOccurred())
+	e, ok := status.FromError(err)
+	gomega.Expect(ok).To(gomega.BeTrue())
+	gomega.Expect(e.Code()).To(gomega.Equal(code))
+	gomega.Expect(e.Message()).To(gomega.Equal(
+		"failed to receive push referrer response: " +
+			fmt.Sprintf("rpc error: code = %s desc = validation error: %s", code.String(), msg),
+	))
 }
 
 var _ = ginkgo.Describe("Running e2e tests for referrers", func() {
@@ -163,33 +176,32 @@ var _ = ginkgo.Describe("Running e2e tests for referrers", func() {
 	})
 
 	ginkgo.It("should fail if empty referrer", func() {
-		var err error
-
 		referrer := &corev1.RecordReferrer{}
-		_, err = c.PushReferrer(ctx, &storev1.PushReferrerRequest{
+		response, err := c.PushReferrer(ctx, &storev1.PushReferrerRequest{
 			RecordRef: record1,
 			Referrer:  referrer,
 		})
 
-		// Should there be an error?
-		gomega.Expect(err).ToNot(gomega.HaveOccurred())
+		msg := "referrer.type: value must be in list [agntcy.dir.sign.v1.PublicKey, agntcy.dir.sign.v1.Signature]"
+		expectError(err, codes.InvalidArgument, msg)
+		gomega.Expect(response.GetSuccess()).To(gomega.BeFalse())
+		gomega.Expect(response.GetErrorMessage()).To(gomega.Equal(""))
 	})
 
-	ginkgo.It("should fail if incorrect type", func() {
-		var err error
-
+	ginkgo.It("should fail if invalid referrer type", func() {
 		referrer := generateReferrer()
 		referrer.Type = "foo"
-		_, err = c.PushReferrer(ctx, &storev1.PushReferrerRequest{
+		response, err := c.PushReferrer(ctx, &storev1.PushReferrerRequest{
 			RecordRef: record1,
 			Referrer:  referrer,
 		})
 
-		// Should there be an error?
-		gomega.Expect(err).ToNot(gomega.HaveOccurred())
+		msg := "referrer.type: value must be in list [agntcy.dir.sign.v1.PublicKey, agntcy.dir.sign.v1.Signature]"
+		expectError(err, codes.InvalidArgument, msg)
+		gomega.Expect(response.GetSuccess()).To(gomega.BeFalse())
+		gomega.Expect(response.GetErrorMessage()).To(gomega.Equal(""))
 
 		referrers := pullReferrers(c, ctx, record1, "foo")
-		gomega.Expect(referrers).To(gomega.HaveLen(1))
-		gomega.Expect(referrers[0].GetType()).To(gomega.Equal("foo"))
+		gomega.Expect(referrers).To(gomega.BeEmpty())
 	})
 })
