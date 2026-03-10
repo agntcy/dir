@@ -85,7 +85,7 @@ tasks:
 
   sdk:test:all:spiffe:
     desc: Test all client SDK pacakges with spiffe
-    dir: ./e2e/sdk
+    dir: ./tests/e2e/sdk
     cmds:
       - "{{.KUBECTL_BIN}} config use-context kind-dir.example"
       - "{{.HELM_BIN}} uninstall sdk-tests --wait --keep-history --ignore-not-found > /dev/null || true"

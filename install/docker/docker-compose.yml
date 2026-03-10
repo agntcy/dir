@@ -10,8 +10,10 @@ services:
     ports:
       - 8888:8888
     depends_on:
-      - zot
-      - postgres
+      zot:
+        condition: service_started
+      postgres:
+        condition: service_healthy
     deploy:
       mode: replicated
       replicas: 1
@@ -21,7 +23,7 @@ services:
       test: grpc-health-probe -addr=127.0.0.1:8888 || exit 1
       interval: 10s
       retries: 60
-      start_period: 10s
+      start_period: 60s
 
   reconciler:
     build:
@@ -62,7 +64,7 @@ services:
       restart_policy:
         condition: on-failure
     healthcheck:
-      test: pg_isready -U dir -d dir || exit 1
+      test: pg_isready -U postgres -d directory || exit 1
       interval: 10s
       retries: 60
       start_period: 10s
