@@ -200,7 +200,6 @@ func TestTokenCache_Load(t *testing.T) {
 			Provider:    "github",
 			User:        "testuser",
 			Email:       "test@example.com",
-			Orgs:        []string{"org1", "org2"},
 			ExpiresAt:   time.Now().Add(time.Hour),
 		}
 
@@ -217,7 +216,35 @@ func TestTokenCache_Load(t *testing.T) {
 		assert.Equal(t, originalToken.Provider, loadedToken.Provider)
 		assert.Equal(t, originalToken.User, loadedToken.User)
 		assert.Equal(t, originalToken.Email, loadedToken.Email)
-		assert.Equal(t, originalToken.Orgs, loadedToken.Orgs)
+	})
+
+	t.Run("should round-trip OIDC token with Issuer and RefreshToken", func(t *testing.T) {
+		tmpDir := t.TempDir()
+		cache := NewTokenCacheWithDir(tmpDir)
+
+		//nolint:gosec // G101: test fixture values, not real credentials
+		originalToken := &CachedToken{
+			AccessToken:  "oidc_access_token",
+			TokenType:    "bearer",
+			Provider:     "oidc",
+			Issuer:       "https://tenant.zitadel.cloud",
+			RefreshToken: "oidc_refresh_token",
+			User:         "user@example.com",
+			UserID:       "sub-123",
+			ExpiresAt:    time.Now().Add(time.Hour),
+		}
+
+		err := cache.Save(originalToken)
+		require.NoError(t, err)
+
+		loadedToken, loadErr := cache.Load()
+		require.NoError(t, loadErr)
+		require.NotNil(t, loadedToken)
+		assert.Equal(t, "oidc", loadedToken.Provider)
+		assert.Equal(t, "https://tenant.zitadel.cloud", loadedToken.Issuer)
+		assert.Equal(t, "oidc_refresh_token", loadedToken.RefreshToken)
+		assert.Equal(t, "user@example.com", loadedToken.User)
+		assert.Equal(t, "sub-123", loadedToken.UserID)
 	})
 
 	t.Run("should return nil when cache doesn't exist", func(t *testing.T) {
@@ -520,7 +547,6 @@ func TestCachedToken_JSONSerialization(t *testing.T) {
 			User:        "testuser",
 			UserID:      "12345",
 			Email:       "test@example.com",
-			Orgs:        []string{"org1", "org2"},
 			CreatedAt:   now,
 		}
 
@@ -540,7 +566,6 @@ func TestCachedToken_JSONSerialization(t *testing.T) {
 		assert.Equal(t, original.User, decoded.User)
 		assert.Equal(t, original.UserID, decoded.UserID)
 		assert.Equal(t, original.Email, decoded.Email)
-		assert.Equal(t, original.Orgs, decoded.Orgs)
 		// Time comparison with truncation for JSON precision
 		assert.True(t, original.ExpiresAt.Truncate(time.Second).Equal(decoded.ExpiresAt.Truncate(time.Second)))
 		assert.True(t, original.CreatedAt.Truncate(time.Second).Equal(decoded.CreatedAt.Truncate(time.Second)))
@@ -562,7 +587,6 @@ func TestCachedToken_JSONSerialization(t *testing.T) {
 		assert.NotContains(t, jsonStr, "user")
 		assert.NotContains(t, jsonStr, "user_id")
 		assert.NotContains(t, jsonStr, "email")
-		assert.NotContains(t, jsonStr, "orgs")
 	})
 
 	t.Run("should handle zero time with omitzero", func(t *testing.T) {

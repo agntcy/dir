@@ -12,10 +12,7 @@ import (
 	"os/signal"
 	"strings"
 	"syscall"
-	"time"
 
-	"github.com/agntcy/dir/auth/authprovider"
-	"github.com/agntcy/dir/auth/authprovider/github"
 	"github.com/agntcy/dir/auth/authzserver"
 	authv3 "github.com/envoyproxy/go-control-plane/envoy/service/auth/v3"
 	"google.golang.org/grpc"
@@ -24,159 +21,62 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-const (
-	// Default cache TTL for authentication tokens.
-	defaultCacheTTL = 5 * time.Minute
-
-	// Default API timeout for external API calls.
-	defaultAPITimeout = 10 * time.Second
-)
-
 func main() {
-	// Setup logging
 	logger := slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
 		Level: getLogLevel(),
 	}))
 	slog.SetDefault(logger)
 
-	// Load configuration
-	config := loadConfig()
+	configPath := getEnv("CONFIG_PATH", "/etc/envoy-authz/config.yaml")
 
-	// Initialize providers
-	providers := initializeProviders(config)
-
-	if len(providers) == 0 {
-		logger.Error("no authentication providers configured")
-		os.Exit(1)
-	}
-
-	logger.Info("initialized authentication providers",
-		"providers", getProviderNames(providers),
-		"default", config.DefaultProvider,
-	)
-
-	// Load RBAC configuration from file
-	rbacConfigPath := getEnv("RBAC_CONFIG_PATH", "/etc/envoy-authz/rbac-config.yaml")
-
-	authzConfig, err := loadRBACConfig(rbacConfigPath, config.DefaultProvider)
+	oidcConfig, err := loadOIDCConfig(configPath)
 	if err != nil {
-		logger.Error("failed to load RBAC configuration", "path", rbacConfigPath, "error", err)
+		logger.Error("failed to load OIDC config", "path", configPath, "error", err)
 		os.Exit(1)
 	}
 
-	logger.Info("loaded RBAC configuration",
-		"roles", len(authzConfig.Roles),
-		"defaultRole", authzConfig.DefaultRole,
-		"denyListSize", len(authzConfig.UserDenyList),
+	logger.Info("loaded OIDC config",
+		"roles", len(oidcConfig.Roles),
+		"publicPaths", len(oidcConfig.PublicPaths),
+		"denyListSize", len(oidcConfig.UserDenyList),
 	)
 
-	// Create authorization server
-	authzServer, err := authzserver.NewAuthorizationServer(providers, authzConfig, logger)
+	authzServer, err := authzserver.NewOIDCAuthorizationServer(oidcConfig, logger)
 	if err != nil {
 		logger.Error("failed to create authorization server", "error", err)
 		os.Exit(1)
 	}
 
-	// Create gRPC server
 	grpcServer := grpc.NewServer()
-
-	// Register ext_authz service
 	authv3.RegisterAuthorizationServer(grpcServer, authzServer)
 
-	// Register health service
 	healthServer := health.NewServer()
 	healthpb.RegisterHealthServer(grpcServer, healthServer)
 	healthServer.SetServingStatus("", healthpb.HealthCheckResponse_SERVING)
 
-	// Start server
-	listenAddr := config.ListenAddress
+	listenAddr := getEnv("LISTEN_ADDRESS", ":9002")
 
-	// Use context for listener (noctx)
-	listenConfig := &net.ListenConfig{}
-
-	listener, err := listenConfig.Listen(context.Background(), "tcp", listenAddr)
+	listener, err := (&net.ListenConfig{}).Listen(context.Background(), "tcp", listenAddr)
 	if err != nil {
 		logger.Error("failed to listen", "address", listenAddr, "error", err)
 		os.Exit(1)
 	}
 
-	logger.Info("starting GitHub authorization server", "address", listenAddr)
+	logger.Info("starting OIDC authorization server", "address", listenAddr)
 
-	// Handle graceful shutdown
 	go func() {
 		sigCh := make(chan os.Signal, 1)
 		signal.Notify(sigCh, os.Interrupt, syscall.SIGTERM)
 		<-sigCh
-
 		logger.Info("shutting down gracefully...")
 		grpcServer.GracefulStop()
 	}()
 
-	// Serve
 	if err := grpcServer.Serve(listener); err != nil {
 		logger.Error("server error", "error", err)
 		os.Exit(1)
 	}
 }
-
-// Config holds service configuration.
-type Config struct {
-	ListenAddress   string
-	DefaultProvider string
-	UserDenyList    string // TODO: Move to RBAC ConfigMap
-	CacheTTL        time.Duration
-
-	// Provider-specific configs
-	GitHub struct {
-		Enabled    bool
-		CacheTTL   time.Duration
-		APITimeout time.Duration
-	}
-
-	// Future: Google, Azure, etc.
-}
-
-// loadConfig loads configuration from environment variables.
-func loadConfig() *Config {
-	config := &Config{
-		ListenAddress:   getEnv("LISTEN_ADDRESS", ":9002"),
-		DefaultProvider: getEnv("DEFAULT_PROVIDER", authprovider.ProviderGithub),
-		UserDenyList:    getEnv("USER_DENY_LIST", ""), // TODO: Move to RBAC ConfigMap
-		CacheTTL:        parseDuration(getEnv("CACHE_TTL", "5m"), defaultCacheTTL),
-	}
-
-	// GitHub provider config
-	config.GitHub.Enabled = getEnv("GITHUB_ENABLED", "true") == "true"
-	config.GitHub.CacheTTL = parseDuration(getEnv("GITHUB_CACHE_TTL", "5m"), defaultCacheTTL)
-	config.GitHub.APITimeout = parseDuration(getEnv("GITHUB_API_TIMEOUT", "10s"), defaultAPITimeout)
-
-	return config
-}
-
-// initializeProviders creates and registers authentication providers.
-func initializeProviders(config *Config) map[string]authprovider.Provider {
-	providers := make(map[string]authprovider.Provider)
-
-	// GitHub provider
-	if config.GitHub.Enabled {
-		githubProvider := github.NewProvider(&github.Config{
-			CacheTTL:   config.GitHub.CacheTTL,
-			APITimeout: config.GitHub.APITimeout,
-		})
-		providers[authprovider.ProviderGithub] = githubProvider
-
-		slog.Info("registered provider", "name", authprovider.ProviderGithub)
-	}
-
-	// Future providers
-	// if config.Google.Enabled {
-	//     providers["google"] = google.NewProvider(&google.Config{...})
-	// }
-
-	return providers
-}
-
-// Helper functions
 
 func getEnv(key, defaultValue string) string {
 	if value := os.Getenv(key); value != "" {
@@ -201,55 +101,20 @@ func getLogLevel() slog.Level {
 	}
 }
 
-func parseDuration(s string, defaultValue time.Duration) time.Duration {
-	if d, err := time.ParseDuration(s); err == nil {
-		return d
-	}
-
-	return defaultValue
-}
-
-func getProviderNames(providers map[string]authprovider.Provider) []string {
-	names := make([]string, 0, len(providers))
-	for name := range providers {
-		names = append(names, name)
-	}
-
-	return names
-}
-
-// loadRBACConfig loads RBAC configuration from a YAML file.
-func loadRBACConfig(path, defaultProvider string) (*authzserver.Config, error) {
-	// Read YAML file
+func loadOIDCConfig(path string) (*authzserver.OIDCConfig, error) {
 	data, err := os.ReadFile(path)
 	if err != nil {
-		return nil, fmt.Errorf("failed to read RBAC config file: %w", err)
+		return nil, fmt.Errorf("failed to read config file: %w", err)
 	}
 
-	// Define a struct to parse the YAML
-	var yamlConfig struct {
-		DefaultRole  string                      `yaml:"defaultRole"`
-		UserDenyList []string                    `yaml:"userDenyList"`
-		Roles        map[string]authzserver.Role `yaml:"roles"`
+	var config authzserver.OIDCConfig
+	if err := yaml.Unmarshal(data, &config); err != nil {
+		return nil, fmt.Errorf("failed to parse config: %w", err)
 	}
 
-	// Parse YAML
-	if err := yaml.Unmarshal(data, &yamlConfig); err != nil {
-		return nil, fmt.Errorf("failed to parse RBAC config: %w", err)
-	}
-
-	// Build authzserver.Config
-	config := &authzserver.Config{
-		DefaultProvider: defaultProvider,
-		Roles:           yamlConfig.Roles,
-		DefaultRole:     yamlConfig.DefaultRole,
-		UserDenyList:    yamlConfig.UserDenyList,
-	}
-
-	// Validate configuration
 	if err := config.Validate(); err != nil {
-		return nil, fmt.Errorf("invalid RBAC config: %w", err)
+		return nil, fmt.Errorf("invalid config: %w", err)
 	}
 
-	return config, nil
+	return &config, nil
 }

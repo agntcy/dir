@@ -9,29 +9,28 @@ cd auth/cmd/envoy-authz
 docker-compose up --build
 
 # In another terminal, run tests
-export GITHUB_TOKEN=gho_your_oauth_token_here
 ./test/test.sh
 ```
 
 ## What Gets Tested
 
 1. ✅ Health check (no auth)
-2. ✅ Request without auth → 401
-3. ✅ Request with invalid token → 401
-4. ✅ Request with valid GitHub OAuth2 token → 200
-5. ✅ User info headers forwarded
+2. ✅ Request without x-jwt-payload → 401
+3. ✅ Request with invalid payload → 401
+4. ✅ Request with valid OIDC payload → 200
+5. ✅ Principal headers forwarded (x-authorized-principal, x-user-id, x-principal-type)
 
 ## Services
 
-- **envoy-authz** (port 9002) - Our ExtAuthz service
+- **envoy-authz** (port 9002) - OIDC ExtAuthz service (reads x-jwt-payload, Casbin RBAC)
 - **envoy** (port 8080) - Envoy gateway with ext_authz filter
 - **mock-directory** (port 8888) - Mock backend (echoes headers)
 
 ## Testing Manually
 
 ```bash
-# Valid request with OAuth2 token
-curl -H "Authorization: Bearer $GITHUB_TOKEN" \
+# Valid request with mock JWT payload (dev/test only)
+curl -H "x-jwt-payload: {\"iss\":\"https://tenant.zitadel.cloud\",\"sub\":\"77776025198584418\"}" \
      http://localhost:8080/api/test | jq .
 
 # Check logs
@@ -43,27 +42,29 @@ docker-compose logs mock-directory
 curl http://localhost:9901/stats | grep ext_authz
 ```
 
-## Getting a GitHub OAuth2 Token
-
-To obtain a GitHub OAuth2 token for testing:
-
-```bash
-# Use dirctl to authenticate and get a token
-dirctl auth login
-dirctl auth status  # Shows your current token
-
-# Or use GitHub CLI
-gh auth token
-```
-
 ## Configuration
 
-Edit `docker-compose.yml` environment variables:
+The test uses `test/config.test.yaml` mounted at `/etc/envoy-authz/config.yaml`. It allows:
+
+- **Public path**: `/healthz` (no auth)
+- **Admin user**: `user:https://tenant.zitadel.cloud:77776025198584418` (all methods)
+
+To test deny list or different roles, edit `test/config.test.yaml` and restart:
 
 ```yaml
-ALLOWED_ORG_CONSTRUCTS: "agntcy,spiffe"  # Restrict to these orgs
-USER_DENY_LIST: "blocked-user"           # Block specific users
+userDenyList:
+  - "user:https://tenant.zitadel.cloud:blocked-sub"
+
+roles:
+  admin:
+    allowedMethods: ["*"]
+    users:
+      - "user:https://tenant.zitadel.cloud:77776025198584418"
 ```
+
+## Production Flow
+
+In production, Envoy's `jwt_authn` filter validates the Bearer JWT and sets `x-jwt-payload` before ext_authz. This test setup passes `x-jwt-payload` directly for simplicity (dev/test only).
 
 ## Cleanup
 

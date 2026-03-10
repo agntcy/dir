@@ -42,7 +42,7 @@ dependencies:
   # Only installed when explicitly enabled via: envoyAuthz.enabled: true
   # Default: disabled (envoyAuthz.enabled: false in values.yaml)
   - name: envoy-authz
-    version: "0.1.0"
+    version: "0.2.0"
     repository: "file://../../envoy-authz"
     condition: envoyAuthz.enabled
   # PostgreSQL database (Bitnami subchart)

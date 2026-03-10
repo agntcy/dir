@@ -57,6 +57,7 @@ spec:
           mountPath: /run/spire/agent-sockets
           readOnly: true
         {{- end }}
+        {{- if .Values.envoy.admin.enabled }}
         livenessProbe:
           httpGet:
             path: /ready
@@ -69,6 +70,7 @@ spec:
             port: admin
           initialDelaySeconds: 5
           periodSeconds: 10
+        {{- end }}
         resources:
           {{- toYaml .Values.envoy.resources | nindent 10 }}
       volumes:

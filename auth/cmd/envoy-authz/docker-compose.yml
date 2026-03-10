@@ -1,29 +1,18 @@
-version: '3.8'
-
 services:
-  # ExtAuthz service (our implementation)
+  # ExtAuthz service (OIDC-based)
   envoy-authz:
     build:
-      context: ../..
+      context: ../../..
       dockerfile: auth/cmd/envoy-authz/Dockerfile
     container_name: envoy-authz
     ports:
       - "9002:9002"  # gRPC ext_authz
+    volumes:
+      - ./test/config.test.yaml:/etc/envoy-authz/config.yaml:ro
     environment:
-      # Server settings
       LISTEN_ADDRESS: ":9002"
       LOG_LEVEL: "debug"
-      DEFAULT_PROVIDER: "github"
-      
-      # Authorization rules
-      ALLOWED_ORG_CONSTRUCTS: "agntcy,spiffe"
-      USER_ALLOW_LIST: ""
-      USER_DENY_LIST: ""
-      
-      # GitHub provider
-      GITHUB_ENABLED: "true"
-      GITHUB_CACHE_TTL: "5m"
-      GITHUB_API_TIMEOUT: "10s"
+      CONFIG_PATH: "/etc/envoy-authz/config.yaml"
     networks:
       - authz-test
 
@@ -43,7 +32,7 @@ services:
     networks:
       - authz-test
 
-  # Mock Directory API server (simple echo server)
+  # Mock Directory API server (echoes headers from ext_authz)
   mock-directory:
     build:
       context: .

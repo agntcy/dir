@@ -576,7 +576,7 @@ oasf:
   enabled: false
 
 # Envoy auth gateway subchart configuration (OPTIONAL)
-# Provides GitHub authentication via Envoy gateway with ext_authz
+# Provides OIDC JWT authentication and Casbin-based authorization via Envoy gateway
 # NOT installed by default. Set enabled: true to deploy.
 # Section 1: Enable/disable the subchart
 envoyAuthz:
@@ -585,55 +585,84 @@ envoyAuthz:
 # Section 2: Configuration values for the envoy-authz subchart
 # NOTE: Only takes effect when envoyAuthz.enabled: true
 envoy-authz:
-  # Envoy gateway configuration
   envoy:
     replicaCount: 2
 
-    # Backend Directory API address (required when enabled)
-    # Set to the full service name of Directory API
     backend:
       address: "" # e.g., dir-dir-dev-argoapp-apiserver.dir-dev-dir.svc.cluster.local
       port: 8888
 
-    # SPIFFE integration for mTLS with Directory
+    oidc:
+      zitadel:
+        enabled: true
+        issuer: "https://tenant.zitadel.cloud"
+        jwksUri: "https://tenant.zitadel.cloud/.well-known/jwks.json"
+        jwksHost: "tenant.zitadel.cloud"
+      github:
+        enabled: true
+        issuer: "https://token.actions.githubusercontent.com"
+        jwksUri: "https://token.actions.githubusercontent.com/.well-known/jwks"
+        jwksHost: "token.actions.githubusercontent.com"
+      jwksTimeout: 5s
+      jwksCacheSeconds: 300
+
     spiffe:
       enabled: true
       # trustDomain: example.org
       # className: dir-spire
 
-  # Authorization server configuration
   authServer:
     replicaCount: 2
 
-    # Image configuration
-    # Override these values to use custom images (e.g., development branches)
     # image:
     #   repository: ghcr.io/agntcy/envoy-authz-dev
-    #   tag: feat-feat-github-auth-ad4a58e
+    #   tag: feat-oidc-auth
     #   pullPolicy: IfNotPresent
 
-    # Authorization rules
-    authorization:
-      # Allowed GitHub organizations
-      # Empty list = allow all authenticated users
-      allowedOrgConstructs: []
-      # Example: ["agntcy", "spiffe"]
-
-      # Explicitly allowed users (format: "github:username")
-      userAllowList: []
-      # Example: ["github:tkircsi"]
-
-      # Explicitly denied users (format: "github:username")
+    # OIDC config - all values are user-specific; provide your own
+    oidc:
+      claims:
+        userID: "sub"
+        emailPath: "email"
+      # Example:
+      # issuers:
+      #   - provider: "https://tenant.zitadel.cloud"
+      #     principalType: "auto"
+      #     machineIdentityClaim: "client_id"
+      #   - provider: "https://token.actions.githubusercontent.com"
+      #     principalType: "github"
+      issuers: []
+      principalType:
+        mode: "auto"
+        machineIdentityClaim: "client_id"
+        machineSubPattern: ""
       userDenyList: []
-      # Example: ["github:malicious-user"]
+      publicPaths:
+        - "/healthz"
+        - "/grpc.reflection"
+      roles:
+        # Example admin: users: ["user:https://tenant.zitadel.cloud:77776025198584418"]
+        admin:
+          allowedMethods: ["*"]
+          users: []
+        viewer:
+          allowedMethods:
+            - "/agntcy.dir.store.v1.StoreService/Pull"
+            - "/agntcy.dir.store.v1.StoreService/Lookup"
+          users: []
+        # Example: clients: ["client:https://tenant.zitadel.cloud:69234237810729234"]
+        ci-writer:
+          allowedMethods:
+            - "/agntcy.dir.store.v1.StoreService/Push"
+            - "/agntcy.dir.store.v1.StoreService/Pull"
+          users: []
+          clients: []
+        # Example GitHub Actions deployer (uncomment when deploy.yml exists):
+        # prod-deployer:
+        #   allowedMethods: ["*"]
+        #   githubWorkflows:
+        #     - "ghwf:repo:agntcy/dir:workflow:deploy.yml:ref:refs/heads/main:env:prod"
 
-    # GitHub provider configuration
-    github:
-      enabled: true
-      cacheTTL: 5m
-      apiTimeout: 10s
-
-  # Ingress configuration (optional - for external access)
   ingress:
     enabled: false
     className: nginx
@@ -641,7 +670,6 @@ envoy-authz:
     annotations:
       cert-manager.io/cluster-issuer: letsencrypt
       external-dns.alpha.kubernetes.io/hostname: ""
-      # gRPC backend configuration (required for dirctl client over HTTPS)
       nginx.ingress.kubernetes.io/backend-protocol: "GRPC"
       nginx.ingress.kubernetes.io/grpc-backend: "true"
 

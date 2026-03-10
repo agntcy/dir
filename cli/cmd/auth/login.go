@@ -4,136 +4,68 @@
 package auth
 
 import (
-	"context"
 	"errors"
 	"fmt"
-	"os"
-	"strings"
 	"time"
 
-	"github.com/agntcy/dir/auth/authprovider/github"
+	"github.com/agntcy/dir/cli/config"
 	"github.com/agntcy/dir/client"
 	"github.com/spf13/cobra"
 )
 
 var (
-	// OAuth configuration flags.
 	callbackPort    int
 	timeout         time.Duration
 	skipBrowserOpen bool
 	forceLogin      bool
-	useWebFlow      bool
 )
-
-// getClientID returns the client ID from config (includes --github-client-id flag value) or env var.
-func getClientID() string {
-	// Try loading from config (includes persistent flag values)
-	if cfg, err := client.LoadConfig(); err == nil && cfg.GitHubClientID != "" {
-		return cfg.GitHubClientID
-	}
-	// Check environment variable
-	if envID := os.Getenv("DIRECTORY_CLIENT_GITHUB_CLIENT_ID"); envID != "" {
-		return envID
-	}
-
-	return ""
-}
-
-// getClientSecret returns the client secret from config (includes --github-client-secret flag value) or env var.
-func getClientSecret() string {
-	// Try loading from config (includes persistent flag values)
-	if cfg, err := client.LoadConfig(); err == nil && cfg.GitHubClientSecret != "" {
-		return cfg.GitHubClientSecret
-	}
-	// Check environment variable
-	if envSecret := os.Getenv("DIRECTORY_CLIENT_GITHUB_CLIENT_SECRET"); envSecret != "" {
-		return envSecret
-	}
-
-	return ""
-}
 
 var loginCmd = &cobra.Command{
 	Use:   "login",
-	Short: "Authenticate with GitHub",
-	Long: `Authenticate with GitHub using OAuth2.
+	Short: "Authenticate with OIDC",
+	Long: `Authenticate with OIDC (OpenID Connect) using Authorization Code + PKCE flow.
 
-By default, uses device authorization flow which works everywhere
-(SSH sessions, servers, headless environments). You'll be shown a 
-code to enter at github.com/login/device.
+Opens a browser to complete authentication at your IdP (e.g. Zitadel).
+Works in headless environments with --no-browser (shows URL to open manually).
 
-Use --web to open a browser on this machine instead (requires OAuth App setup).
-
-OAuth Scopes Requested:
-  • user:email - Access user profile and email
-  • read:org - Read organization membership
-
-Device Flow (default):
-  • Works in any environment (SSH, servers, containers)
-  • No OAuth App configuration needed
-  • Complete authorization on any device (phone, laptop, etc.)
-  • Uses GitHub's public OAuth App
-
-Web Flow (--web):
-  • Opens browser on the same machine
-  • Requires GitHub OAuth App setup:
-    1. Go to https://github.com/settings/developers
-    2. Click "New OAuth App"
-    3. Set callback URL to: http://localhost:8484/callback
-    4. Set DIRECTORY_CLIENT_GITHUB_CLIENT_ID environment variable
-
-Environment Variables:
-  DIRECTORY_CLIENT_GITHUB_CLIENT_ID      GitHub OAuth App client ID (for --web)
-  DIRECTORY_CLIENT_GITHUB_CLIENT_SECRET  GitHub OAuth App client secret (for --web)
+Configuration (flags, env, or config file):
+  --oidc-issuer, DIRECTORY_CLIENT_OIDC_ISSUER      IdP URL (e.g. https://tenant.zitadel.cloud)
+  --oidc-client-id, DIRECTORY_CLIENT_OIDC_CLIENT_ID   Native app client ID from Zitadel
 
 Examples:
-  # Device flow (default, works everywhere)
+  # Interactive login (opens browser)
   dirctl auth login
 
-  # Web flow (opens browser on this machine)
-  dirctl auth login --web
+  # Headless (e.g. SSH) - copy URL to open in browser
+  dirctl auth login --no-browser
 
-  # Web flow with explicit client ID
-  dirctl auth login --web --github-client-id=Ov23li...
-
-  # Force re-login even if already authenticated
+  # Force re-login even if valid token cached
   dirctl auth login --force`,
 	RunE: runLogin,
 }
 
 func init() {
-	flags := loginCmd.Flags()
-	flags.BoolVar(&useWebFlow, "web", false, "Use web browser flow instead of device flow")
-	// Note: --github-client-id and --github-client-secret are registered as persistent flags in cli/cmd/options.go
-	// OAuth scopes are fixed: user:email (for profile) and read:org (for organization membership)
-	flags.IntVar(&callbackPort, "callback-port", client.DefaultCallbackPort, "Port for OAuth callback server (for --web)")
-	flags.DurationVar(&timeout, "timeout", client.DefaultOAuthTimeout, "Timeout for OAuth flow")
-	flags.BoolVar(&skipBrowserOpen, "no-browser", false, "Don't automatically open the browser (for --web)")
-	flags.BoolVar(&forceLogin, "force", false, "Force re-login even if already authenticated")
+	loginCmd.Flags().IntVar(&callbackPort, "callback-port", client.DefaultCallbackPort, "Port for OAuth callback server")
+	loginCmd.Flags().DurationVar(&timeout, "timeout", client.DefaultOAuthTimeout, "Timeout for OAuth flow")
+	loginCmd.Flags().BoolVar(&skipBrowserOpen, "no-browser", false, "Don't open browser; show URL to open manually")
+	loginCmd.Flags().BoolVar(&forceLogin, "force", false, "Force re-login even if valid token cached")
 }
 
 func runLogin(cmd *cobra.Command, _ []string) error {
 	ctx := cmd.Context()
+	cfg := config.Client
 
-	flowType := "Device"
-	if useWebFlow {
-		flowType = "Web"
-	}
-
-	cmd.Println("╔════════════════════════════════════════════════════════════╗")
-	cmd.Printf("║          GitHub OAuth Authentication (%s Flow)        ║\n", flowType)
-	cmd.Println("╚════════════════════════════════════════════════════════════╝")
+	cache := client.NewTokenCache()
 
 	// Check for existing valid token unless force login
-	cache := client.NewTokenCache()
 	if !forceLogin {
 		existingToken, _ := cache.GetValidToken()
 		if existingToken != nil {
 			cmd.Println()
 			cmd.Printf("✓ Already authenticated as: %s\n", existingToken.User)
 
-			if len(existingToken.Orgs) > 0 {
-				cmd.Printf("  Organizations: %s\n", strings.Join(existingToken.Orgs, ", "))
+			if existingToken.Issuer != "" {
+				cmd.Printf("  Issuer: %s\n", existingToken.Issuer)
 			}
 
 			cmd.Println()
@@ -144,83 +76,65 @@ func runLogin(cmd *cobra.Command, _ []string) error {
 		}
 	}
 
-	// Route to appropriate flow
-	if useWebFlow {
-		return runWebFlow(cmd, ctx, cache)
+	// Validate OIDC config
+	if cfg.OIDCIssuer == "" || cfg.OIDCClientID == "" {
+		return errors.New("OIDC issuer and client ID are required for login.\n\n" +
+			"Set via flags: --oidc-issuer, --oidc-client-id\n" +
+			"Or environment: DIRECTORY_CLIENT_OIDC_ISSUER, DIRECTORY_CLIENT_OIDC_CLIENT_ID\n" +
+			"Or config file (~/.config/dirctl/config.yaml): oidc_issuer, oidc_client_id")
 	}
 
-	return runDeviceFlow(cmd, ctx, cache)
-}
+	// Build redirect URI from callback port (must match Zitadel app redirect URIs)
+	redirectURI := fmt.Sprintf("http://localhost:%d/callback", callbackPort)
 
-// TokenMetadata contains token information from OAuth flow.
-//
-//nolint:gosec // G117: intentional field for OAuth token
-type TokenMetadata struct {
-	AccessToken string
-	TokenType   string
-	ExpiresAt   time.Time
-}
-
-// fetchUserInfoAndCache fetches user information, organizations, and caches the token.
-// This is shared logic between web and device flows.
-func fetchUserInfoAndCache(
-	cmd *cobra.Command,
-	ctx context.Context,
-	token TokenMetadata,
-	cache *client.TokenCache,
-) error {
-	// Fetch user info using auth/authprovider
-	cmd.Println("Fetching user information...")
-
-	provider := github.NewProvider(nil)
-
-	identity, err := provider.ValidateToken(ctx, token.AccessToken)
-	if err != nil {
-		return fmt.Errorf("failed to fetch user info: %w", err)
-	}
-
-	cmd.Printf("✓ Authenticated as: %s", identity.Username)
-
-	if name := identity.Attributes["name"]; name != "" {
-		cmd.Printf(" (%s)", name)
-	}
-
+	cmd.Println("╔════════════════════════════════════════════════════════════╗")
+	cmd.Println("║              OIDC Authentication (PKCE)                    ║")
+	cmd.Println("╚════════════════════════════════════════════════════════════╝")
 	cmd.Println()
 
-	// Fetch organizations
-	cmd.Println("Fetching organization memberships...")
-
-	var orgNames []string
-
-	orgConstructs, err := provider.GetOrgConstructs(ctx, token.AccessToken)
-	if err != nil {
-		cmd.Printf("⚠  Could not fetch organizations: %v\n", err)
-
-		orgNames = []string{} // Empty orgs list
-	} else {
-		orgNames = make([]string, len(orgConstructs))
-		for i, oc := range orgConstructs {
-			orgNames[i] = oc.Name
-		}
-
-		if len(orgNames) > 0 {
-			cmd.Printf("✓ Organizations: %s\n", strings.Join(orgNames, ", "))
-		} else {
-			cmd.Println("  No organizations found")
-		}
+	if skipBrowserOpen {
+		cmd.Println("Run with --no-browser: Open the URL below in your browser to complete login.")
+		cmd.Println()
 	}
 
-	// Cache the token
+	result, err := client.OIDC.RunPKCEFlow(ctx, &client.PKCEConfig{
+		Issuer:          cfg.OIDCIssuer,
+		ClientID:        cfg.OIDCClientID,
+		RedirectURI:     redirectURI,
+		CallbackPort:    callbackPort,
+		SkipBrowserOpen: skipBrowserOpen,
+		Timeout:         timeout,
+	})
+	if err != nil {
+		return fmt.Errorf("login failed: %w", err)
+	}
+
+	// Build user display name: prefer Name, then Subject, then Email
+	userDisplay := result.Name
+	if userDisplay == "" {
+		userDisplay = result.Subject
+	}
+
+	if userDisplay == "" {
+		userDisplay = result.Email
+	}
+
+	if userDisplay == "" {
+		userDisplay = "authenticated"
+	}
+
+	// Save to cache
 	cachedToken := &client.CachedToken{
-		AccessToken: token.AccessToken,
-		TokenType:   token.TokenType,
-		Provider:    "github",
-		ExpiresAt:   token.ExpiresAt,
-		User:        identity.Username,
-		UserID:      identity.UserID,
-		Email:       identity.Email,
-		Orgs:        orgNames,
-		CreatedAt:   time.Now(),
+		AccessToken:  result.AccessToken,
+		RefreshToken: result.RefreshToken,
+		TokenType:    result.TokenType,
+		Provider:     "oidc",
+		Issuer:       cfg.OIDCIssuer,
+		ExpiresAt:    result.ExpiresAt,
+		User:         userDisplay,
+		UserID:       result.Subject,
+		Email:        result.Email,
+		CreatedAt:    time.Now(),
 	}
 
 	if err := cache.Save(cachedToken); err != nil {
@@ -231,93 +145,18 @@ func fetchUserInfoAndCache(
 	}
 
 	cmd.Println()
+	cmd.Printf("✓ Authenticated as: %s\n", userDisplay)
+
+	if result.Email != "" {
+		cmd.Printf("  Email: %s\n", result.Email)
+	}
+
+	cmd.Println()
 	cmd.Println("╔════════════════════════════════════════════════════════════╗")
 	cmd.Println("║              Authentication Complete! ✓                    ║")
 	cmd.Println("╚════════════════════════════════════════════════════════════╝")
 	cmd.Println()
-	cmd.Println("You can now use 'dirctl' commands with --auth-mode=github")
+	cmd.Println("You can now use dirctl commands with --auth-mode=oidc or auto-detect.")
 
 	return nil
-}
-
-// runWebFlow handles the web browser OAuth flow.
-func runWebFlow(cmd *cobra.Command, ctx context.Context, cache *client.TokenCache) error {
-	// Get client ID and secret (from flags, env, or config)
-	resolvedClientID := getClientID()
-	resolvedClientSecret := getClientSecret()
-
-	// Validate client ID
-	if resolvedClientID == "" {
-		return errors.New("GitHub OAuth App client ID is required for web flow.\n\n" +
-			"Set via flag: --github-client-id=<your-client-id>\n" +
-			"Or environment: export DIRECTORY_CLIENT_GITHUB_CLIENT_ID=<your-client-id>\n\n" +
-			"To create a GitHub OAuth App:\n" +
-			"  1. Go to https://github.com/settings/developers\n" +
-			"  2. Click 'New OAuth App'\n" +
-			"  3. Set callback URL to: http://localhost:8484/callback\n\n" +
-			"Or use device flow (no OAuth App needed): dirctl auth login")
-	}
-
-	// Use default OAuth scopes (user:email and read:org)
-	scopeList := strings.Split(client.DefaultOAuthScopes, ",")
-	for i := range scopeList {
-		scopeList[i] = strings.TrimSpace(scopeList[i])
-	}
-
-	// Perform interactive login
-	result, err := client.InteractiveLogin(ctx, client.OAuthConfig{
-		ClientID:        resolvedClientID,
-		ClientSecret:    resolvedClientSecret,
-		Scopes:          scopeList,
-		CallbackPort:    callbackPort,
-		Timeout:         timeout,
-		Output:          cmd.OutOrStdout(),
-		SkipBrowserOpen: skipBrowserOpen,
-	})
-	if err != nil {
-		return fmt.Errorf("login failed: %w", err)
-	}
-
-	cmd.Println("✓ Token obtained successfully")
-	cmd.Println()
-
-	// Fetch user info and cache token
-	return fetchUserInfoAndCache(cmd, ctx, TokenMetadata{
-		AccessToken: result.AccessToken,
-		TokenType:   result.TokenType,
-		ExpiresAt:   result.ExpiresAt,
-	}, cache)
-}
-
-// runDeviceFlow handles the device authorization OAuth flow.
-func runDeviceFlow(cmd *cobra.Command, ctx context.Context, cache *client.TokenCache) error {
-	// GitHub's public OAuth App client ID for device flow
-	// This is GitHub's official CLI client ID (publicly documented)
-	const githubCLIClientID = "178c6fc778ccc68e1d6a"
-
-	// Use default OAuth scopes (user:email and read:org)
-	scopeList := strings.Split(client.DefaultOAuthScopes, ",")
-	for i := range scopeList {
-		scopeList[i] = strings.TrimSpace(scopeList[i])
-	}
-
-	// Start device flow
-	result, err := client.StartDeviceFlow(ctx, &client.DeviceFlowConfig{
-		ClientID: githubCLIClientID,
-		Scopes:   scopeList,
-		Output:   cmd.OutOrStdout(),
-	})
-	if err != nil {
-		return fmt.Errorf("device authorization failed: %w", err)
-	}
-
-	cmd.Println("✓ Authorization successful!")
-	cmd.Println()
-
-	// Fetch user info and cache token
-	return fetchUserInfoAndCache(cmd, ctx, TokenMetadata{
-		AccessToken: result.AccessToken,
-		TokenType:   result.TokenType,
-		ExpiresAt:   result.ExpiresAt,
-	}, cache)
 }
