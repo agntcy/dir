@@ -1,6 +1,6 @@
 module github.com/agntcy/dir/e2e
 
-go 1.26.0
+go 1.26.1
 
 // Replace local modules
 replace (
@@ -20,6 +20,7 @@ require (
 	github.com/agntcy/dir/api v1.0.0
 	github.com/agntcy/dir/cli v1.0.0
 	github.com/agntcy/dir/client v1.0.0
+	github.com/google/uuid v1.6.0
 	github.com/mitchellh/mapstructure v1.5.1-0.20231216201459-8508981c8b6c
 	github.com/onsi/ginkgo/v2 v2.28.1
 	github.com/onsi/gomega v1.39.1
@@ -160,7 +161,6 @@ require (
 	github.com/google/jsonschema-go v0.4.2 // indirect
 	github.com/google/pprof v0.0.0-20260202012954-cb029daf43ef // indirect
 	github.com/google/s2a-go v0.1.9 // indirect
-	github.com/google/uuid v1.6.0 // indirect
 	github.com/googleapis/enterprise-certificate-proxy v0.3.12 // indirect
 	github.com/googleapis/gax-go/v2 v2.17.0 // indirect
 	github.com/goph/emperror v0.17.2 // indirect
