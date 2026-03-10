@@ -206,6 +206,7 @@ tasks:
   ##
   ## Test
   ##
+
   test:unit:
     desc: Run unit tests on codebase
     aliases: [test]
@@ -310,6 +311,7 @@ tasks:
   ##
   ## Linters
   ##
+
   lint:go:
     desc: Run Golang linters
     deps:
@@ -357,6 +359,7 @@ tasks:
   ##
   ## License
   ##
+
   license:
     desc: Check licenses
     deps:
@@ -374,8 +377,19 @@ tasks:
         cmd: echo "Running licensei in {{.ITEM}}" && cd {{.ITEM}} && {{ .LICENSEI_BIN }} cache --config {{.ROOT_DIR}}/.licensei.toml
 
   ##
+  ## Dependency management
+  ##
+
+  deps:tidy:
+    desc: Ensure dependencies are up-to-date
+    cmds:
+      - for: { var: GO_MOD_DIR }
+        cmd: go -C {{.ITEM}} mod tidy -go={{.GO_VERSION}}
+
+  ##
   ## Various proof-of-concept tasks
   ##
+
   poc:integration:
     desc: Run integration against VS Code and Continue proof-of-concept.
     dir: ./docs/research/integrations
