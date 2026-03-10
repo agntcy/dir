@@ -4,11 +4,12 @@
 package behavioral
 
 import (
-	"github.com/agntcy/dir/importer/scanner"
 	scannerconfig "github.com/agntcy/dir/importer/scanner/config"
+	"github.com/agntcy/dir/importer/scanner/factory"
+	"github.com/agntcy/dir/importer/scanner/types"
 )
 
 // Register the behavioral scanner with the factory on package init.
 func init() {
-	scanner.Register("behavioral", func(cfg scannerconfig.Config) scanner.Scanner { return New(cfg) })
+	factory.Register("behavioral", func(cfg scannerconfig.Config) types.Scanner { return New(cfg) })
 }

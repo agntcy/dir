@@ -7,8 +7,8 @@ import (
 	"context"
 
 	corev1 "github.com/agntcy/dir/api/core/v1"
-	"github.com/agntcy/dir/importer/scanner"
 	scannerconfig "github.com/agntcy/dir/importer/scanner/config"
+	"github.com/agntcy/dir/importer/scanner/types"
 )
 
 // Scanner scans MCP server source code using mcp-scanner's behavioral mode.
@@ -26,8 +26,8 @@ func New(cfg scannerconfig.Config) *Scanner {
 func (s *Scanner) Name() string { return "behavioral" }
 
 // Scan implements scanner.Scanner. TODO: implement in follow-up PR.
-func (s *Scanner) Scan(_ context.Context, _ *corev1.Record) (*scanner.ScanResult, error) {
-	return &scanner.ScanResult{
+func (s *Scanner) Scan(_ context.Context, _ *corev1.Record) (*types.ScanResult, error) {
+	return &types.ScanResult{
 		Skipped:       true,
 		SkippedReason: "behavioral scanner not yet implemented",
 	}, nil

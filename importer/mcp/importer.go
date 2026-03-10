@@ -11,9 +11,6 @@ import (
 	"github.com/agntcy/dir/importer/config"
 	"github.com/agntcy/dir/importer/pipeline"
 	"github.com/agntcy/dir/importer/scanner"
-	_ "github.com/agntcy/dir/importer/scanner/behavioral" // register behavioral scanner
-	_ "github.com/agntcy/dir/importer/scanner/remote"     // register remote scanner
-	_ "github.com/agntcy/dir/importer/scanner/static"     // register static scanner
 	"github.com/agntcy/dir/importer/types"
 )
 
@@ -26,13 +23,13 @@ const (
 type Importer struct {
 	client      config.ClientInterface
 	registryURL string
-	sc          *scanner.Orchestrator
+	sc          pipeline.Scanner
 }
 
 // NewImporter creates a new MCP importer instance.
 // The client parameter is used for pushing records to DIR.
 func NewImporter(client config.ClientInterface, cfg config.Config) (types.Importer, error) {
-	sc, err := scanner.NewOrchestrator(cfg.Scanner)
+	sc, err := scanner.New(cfg.Scanner)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create scanner: %w", err)
 	}
