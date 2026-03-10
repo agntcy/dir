@@ -10,12 +10,11 @@ import (
 
 	corev1 "github.com/agntcy/dir/api/core/v1"
 	"github.com/agntcy/dir/importer/pipeline"
+	_ "github.com/agntcy/dir/importer/scanner/behavioral" // register behavioral scanner
 	scannerconfig "github.com/agntcy/dir/importer/scanner/config"
 	"github.com/agntcy/dir/importer/scanner/factory"
 	"github.com/agntcy/dir/importer/scanner/types"
 	"github.com/agntcy/dir/utils/logging"
-
-	_ "github.com/agntcy/dir/importer/scanner/behavioral" // register behavioral scanner
 )
 
 var logger = logging.Logger("importer/scanner")
@@ -57,9 +56,6 @@ func (s *Scanner) Scan(ctx context.Context, inputCh <-chan *corev1.Record, resul
 				}
 
 				recordName, _ := pipeline.ExtractNameVersion(record)
-				if recordName == "" {
-					recordName = "unknown@unknown"
-				}
 
 				scanResult, err := s.runAll(ctx, record, recordName)
 				if err != nil {
