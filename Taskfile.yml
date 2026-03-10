@@ -22,8 +22,8 @@ includes:
     flatten: true
     excludes: [default]
 
-  deploy:
-    taskfile: install/Taskfile.yml
+  test-env:
+    taskfile: e2e/Taskfile.test-env.yml
     flatten: true
     excludes: [default]
 
