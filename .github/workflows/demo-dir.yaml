@@ -36,13 +36,13 @@ jobs:
       - name: Validate record
         uses: ./.github/actions/validate-record
         with:
-          record_paths: e2e/shared/testdata/record_100.json
+          record_paths: tests/e2e/shared/testdata/record_100.json
 
       - name: Push record
         id: push
         uses: ./.github/actions/push-record
         with:
-          record_paths: e2e/shared/testdata/record_100.json
+          record_paths: tests/e2e/shared/testdata/record_100.json
           server_addr: ${{ inputs.server_addr }}
           github_token: ${{ secrets.DIR_DEMO_WORKFLOW_PAT }}
 

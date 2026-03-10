@@ -18,20 +18,20 @@ Directory also leverages [CSIT](https://github.com/agntcy/csit) for continuous s
 
 ## Features
 
-ADS enables several key capabilities for the agentic AI ecosystem:
+Directory enables several key capabilities for the agentic AI ecosystem:
 
 - **Capability-Based Discovery**: Agents publish structured metadata describing their
 functional characteristics as described by the [OASF](https://github.com/agntcy/oasf).
 The system organizes this information using hierarchical taxonomies,
 enabling efficient matching of capabilities to requirements.
 - **Verifiable Claims**: While agent capabilities are often subjectively evaluated,
-ADS provides cryptographic mechanisms for data integrity and provenance tracking.
+Directory provides cryptographic mechanisms for data integrity and provenance tracking.
 This allows users to make informed decisions about agent selection.
 - **Semantic Linkage**: Components can be securely linked to create various relationships
 like version histories for evolutionary development, collaborative partnerships where
 complementary skills solve complex problems, and dependency chains for composite agent workflows.
 - **Distributed Architecture**: Built on proven distributed systems principles,
-ADS uses content-addressing for global uniqueness and implements distributed hash tables (DHT)
+Directory uses content-addressing for global uniqueness and implements distributed hash tables (DHT)
 for scalable content discovery and synchronization across decentralized networks.
 - **Tooling and Integration**: Provides a suite of command-line tools, SDKs, and APIs
 to facilitate interaction with the system, enabling developers to manage Directory
@@ -48,13 +48,20 @@ Check the [Documentation](https://docs.agntcy.org/dir/overview/) for a full walk
 
 - [proto](./proto) - gRPC specification for data models and services
 - [api](./api) - API models for tools and packages
+- [auth](./auth) - authentication provider and authorization server
 - [cli](./cli) - command line client for interacting with system components
 - [client](./client) - client SDK for development and API workflows
-- [e2e](./e2e) - end-to-end testing framework
 - [docs](./docs) - research details and documentation around the project
+- [gui](./gui) - graphical user interface (Flutter)
+- [importer](./importer) - import pipeline (scanner, enricher, MCP integration)
+- [install](./install) - deployment assets (Helm charts, Docker Compose)
+- [mcp](./mcp) - Model Context Protocol server and tools
+- [reconciler](./reconciler) - standalone service for periodic reconciliation (regsync, indexer)
 - [runtime](./runtime) - discovery service to watch workloads and resolve capabilities
 - [server](./server) - API services to manage storage, routing, and networking operations
 - [sdk](./sdk) - client SDK implementations in different languages for development
+- [utils](./utils) - shared utilities (logging, SPIFFE)
+- [tests](./tests) - test suites and end-to-end (e2e) testing framework
 
 ## Prerequisites
 
@@ -62,7 +69,7 @@ To build the project and work with the code, you will need the following install
 
 - [Taskfile](https://taskfile.dev/)
 - [Docker](https://www.docker.com/)
-- [Golang](https://go.dev/doc/devel/release#go1.24.0)
+- [Golang](https://go.dev/doc/devel/release#go1.26)
 
 Make sure Docker is installed with Buildx.
 

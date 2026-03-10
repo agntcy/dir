@@ -37,6 +37,9 @@ jobs:
           - task: test:e2e:network
             label: "Network"
             coverage-files: ".coverage/e2e/network.out,.coverage/e2e/server.out"
+          - task: test:e2e:mcp
+            label: "MCP"
+            coverage-files: ".coverage/e2e/server.out"
           - task: test:e2e:spire
             label: "Federation"
             coverage-files: ".coverage/e2e/server.out"
@@ -47,7 +50,7 @@ jobs:
           fetch-depth: 0
 
       - name: Login to ghcr.io
-        uses: docker/login-action@5e57cd118135c172c3672efd75eb46360885c0ef # v3.6.0
+        uses: docker/login-action@b45d80f862d83dbcd57f89517bcf500b2ab88fb2 # v4.0.0
         with:
           registry: ghcr.io
           username: notused
@@ -63,7 +66,7 @@ jobs:
       - name: Setup Go
         uses: actions/setup-go@4dc6199c7b1a012772edbd06daecab0f50c9053c # v6.1.0
         with:
-          go-version: "1.26.0"
+          go-version: "1.26.1"
           cache-dependency-path: "**/*.sum"
           cache: true # NOTE: Default value, just to be explicit
 
@@ -98,7 +101,7 @@ jobs:
 
       - name: Load compiled dirctl binary
         run: |
-          mkdir ./bin
+          task deps:bin-dir
           cp tmp/artifacts/dirctl ./bin/dirctl
           chmod +x ./bin/dirctl
 
@@ -107,7 +110,7 @@ jobs:
           IMAGE_REPO: ${{ inputs.image_repo }}
           IMAGE_TAG: ${{ inputs.image_tag }}
           E2E_COMPILE_OUTPUT_DIR: tmp
-          E2E_COVERAGE_ENABLED: ${{ matrix.task != 'test:e2e:spire' && inputs.enable_coverage && 'true' || 'false' }}
+          E2E_COVERAGE_ENABLED: ${{ matrix.task != 'test:e2e:spire' && matrix.task != 'test:e2e:mcp' && inputs.enable_coverage && 'true' || 'false' }}
         run: |
           # Use a random cluster name to avoid conflicts in concurrent runs.
           # Kind cluster names must be lowercase and can contain only letters and numbers.
@@ -115,12 +118,12 @@ jobs:
           task ${{ matrix.task }}
 
       - name: Process E2E coverage
-        if: ${{ inputs.enable_coverage && matrix.task != 'test:e2e:spire' }}
+        if: ${{ inputs.enable_coverage && matrix.task != 'test:e2e:spire' && matrix.task != 'test:e2e:mcp' }}
         run: |
           task test:e2e:coverage:process
 
       - name: Upload E2E coverage to Codecov
-        if: ${{ inputs.enable_coverage && matrix.task != 'test:e2e:spire' }}
+        if: ${{ inputs.enable_coverage && matrix.task != 'test:e2e:spire' && matrix.task != 'test:e2e:mcp' }}
         uses: codecov/codecov-action@5a1091511ad55cbe89839c7260b706298ca349f7 # v5.5.1
         with:
           files: ${{ matrix.coverage-files }}

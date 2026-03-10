@@ -67,7 +67,7 @@ If you want to deploy with a locally built OASF image (e.g., containing `0.9.0-d
 
 1. **Create the Kind cluster first**:
    ```bash
-   task deploy:kubernetes:setup-cluster
+   task test-env:kubernetes:setup-cluster
    ```
    This creates the cluster and loads the Directory server images.
 

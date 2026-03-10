@@ -1,6 +1,6 @@
 module github.com/agntcy/dir/auth/cmd/envoy-authz
 
-go 1.26.0
+go 1.26.1
 
 // Replace local modules
 replace github.com/agntcy/dir/auth/authzserver => ../../authzserver
