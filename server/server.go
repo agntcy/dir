@@ -281,7 +281,7 @@ func New(ctx context.Context, cfg *config.Config) (*Server, error) {
 	routingv1.RegisterPublicationServiceServer(grpcServer, controller.NewPublicationController(databaseAPI, options))
 	searchv1.RegisterSearchServiceServer(grpcServer, controller.NewSearchController(databaseAPI, storeAPI))
 	storev1.RegisterSyncServiceServer(grpcServer, controller.NewSyncController(databaseAPI, options))
-	signv1.RegisterSignServiceServer(grpcServer, controller.NewSignController())
+	signv1.RegisterSignServiceServer(grpcServer, controller.NewSignController(databaseAPI))
 	namingv1.RegisterNamingServiceServer(grpcServer, controller.NewNamingController(
 		storeAPI,
 		databaseAPI,
