@@ -1,0 +1,27 @@
+# Test config for OIDC ext-authz integration tests.
+# Allows mock user for /api/* paths.
+
+claims:
+  userID: "sub"
+  emailPath: "email"
+
+issuers:
+  "https://tenant.zitadel.cloud":
+    principalType: "auto"
+    machineIdentityClaim: "client_id"
+
+principalType:
+  mode: "auto"
+  machineIdentityClaim: "client_id"
+  machineSubPattern: ""
+
+userDenyList: []
+
+publicPaths:
+  - "/healthz"
+
+roles:
+  admin:
+    allowedMethods: ["*"]
+    users:
+      - "user:https://tenant.zitadel.cloud:77776025198584418"

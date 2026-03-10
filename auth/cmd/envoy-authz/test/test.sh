@@ -1,19 +1,21 @@
 #!/bin/bash
-# Test script for ext_authz integration
+# Test script for OIDC ext_authz integration.
+# Sends x-jwt-payload with mock JWT claims (dev/test only; production uses jwt_authn).
 
 set -e
 
 ENVOY_URL="http://localhost:8080"
-GITHUB_TOKEN="${GITHUB_TOKEN:-}"
 
-echo "🧪 Testing ext_authz Integration"
-echo "================================="
+# Mock JWT payload for testing (user in admin role per config.test.yaml)
+MOCK_PAYLOAD='{"iss":"https://tenant.zitadel.cloud","sub":"77776025198584418"}'
+
+echo "🧪 Testing OIDC ext_authz Integration"
+echo "====================================="
 echo ""
 
 # Colors
 GREEN='\033[0;32m'
 RED='\033[0;31m'
-YELLOW='\033[1;33m'
 NC='\033[0m' # No Color
 
 # Test 1: Health check (no auth)
@@ -22,9 +24,9 @@ echo "----------------------------------------"
 curl -s "$ENVOY_URL/healthz" | jq .
 echo -e "${GREEN}✓ Health check passed${NC}\n"
 
-# Test 2: Request without auth (should fail)
-echo "Test 2: Request without Authorization header"
-echo "---------------------------------------------"
+# Test 2: Request without x-jwt-payload (should fail)
+echo "Test 2: Request without x-jwt-payload"
+echo "--------------------------------------"
 HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" "$ENVOY_URL/api/test")
 if [ "$HTTP_CODE" = "401" ]; then
     echo -e "${GREEN}✓ Correctly rejected (401 Unauthorized)${NC}\n"
@@ -32,78 +34,55 @@ else
     echo -e "${RED}✗ Expected 401, got $HTTP_CODE${NC}\n"
 fi
 
-# Test 3: Request with invalid token (should fail)
-echo "Test 3: Request with invalid GitHub token"
+# Test 3: Request with invalid payload (should fail)
+echo "Test 3: Request with invalid x-jwt-payload"
 echo "------------------------------------------"
 HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" \
-    -H "Authorization: Bearer invalid_token_123" \
+    -H "x-jwt-payload: invalid-json" \
     "$ENVOY_URL/api/test")
 if [ "$HTTP_CODE" = "401" ]; then
-    echo -e "${GREEN}✓ Correctly rejected invalid token (401)${NC}\n"
+    echo -e "${GREEN}✓ Correctly rejected invalid payload (401)${NC}\n"
 else
     echo -e "${RED}✗ Expected 401, got $HTTP_CODE${NC}\n"
 fi
 
-# Test 4: Request with valid GitHub OAuth2 token (should succeed)
-if [ -z "$GITHUB_TOKEN" ]; then
-    echo -e "${YELLOW}⚠ Test 4: Skipped (set GITHUB_TOKEN environment variable to test)${NC}"
-    echo "   Example: export GITHUB_TOKEN=gho_your_oauth_token_here"
-    echo "   Get token: dirctl auth login && dirctl auth status"
+# Test 4: Request with valid payload (should succeed)
+echo "Test 4: Request with valid x-jwt-payload"
+echo "---------------------------------------"
+RESPONSE=$(curl -s -w "\nHTTP_CODE:%{http_code}" \
+    -H "x-jwt-payload: $MOCK_PAYLOAD" \
+    "$ENVOY_URL/api/test")
+
+HTTP_CODE=$(echo "$RESPONSE" | grep "HTTP_CODE:" | cut -d: -f2)
+BODY=$(echo "$RESPONSE" | grep -v "HTTP_CODE:")
+
+if [ "$HTTP_CODE" = "200" ]; then
+    echo -e "${GREEN}✓ Request successful (200 OK)${NC}"
+    echo "Response:"
+    echo "$BODY" | jq .
+    echo ""
+
+    # Check OIDC headers forwarded by ext_authz
+    echo "Checking forwarded principal headers..."
+    PRINCIPAL=$(echo "$BODY" | jq -r '.authenticated.authorized_principal')
+    USER_ID=$(echo "$BODY" | jq -r '.authenticated.user_id')
+    PTYPE=$(echo "$BODY" | jq -r '.authenticated.principal_type')
+
+    if [ "$PRINCIPAL" != "null" ] && [ "$PRINCIPAL" != "" ]; then
+        echo -e "${GREEN}✓ Authorized principal: $PRINCIPAL${NC}"
+    fi
+    if [ "$USER_ID" != "null" ] && [ "$USER_ID" != "" ]; then
+        echo -e "${GREEN}✓ User ID: $USER_ID${NC}"
+    fi
+    if [ "$PTYPE" != "null" ] && [ "$PTYPE" != "" ]; then
+        echo -e "${GREEN}✓ Principal type: $PTYPE${NC}"
+    fi
     echo ""
 else
-    echo "Test 4: Request with valid GitHub OAuth2 token"
-    echo "-----------------------------------------------"
-    RESPONSE=$(curl -s -w "\nHTTP_CODE:%{http_code}" \
-        -H "Authorization: Bearer $GITHUB_TOKEN" \
-        "$ENVOY_URL/api/test")
-    
-    HTTP_CODE=$(echo "$RESPONSE" | grep "HTTP_CODE:" | cut -d: -f2)
-    BODY=$(echo "$RESPONSE" | grep -v "HTTP_CODE:")
-    
-    if [ "$HTTP_CODE" = "200" ]; then
-        echo -e "${GREEN}✓ Request successful (200 OK)${NC}"
-        echo "Response:"
-        echo "$BODY" | jq .
-        echo ""
-        
-        # Check if user info headers were added
-        echo "Checking forwarded user info..."
-        PROVIDER=$(echo "$BODY" | jq -r '.authenticated.provider')
-        USERNAME=$(echo "$BODY" | jq -r '.authenticated.username')
-        ORGS=$(echo "$BODY" | jq -r '.authenticated.org_constructs')
-        
-        if [ "$PROVIDER" != "null" ] && [ "$PROVIDER" != "" ]; then
-            echo -e "${GREEN}✓ Provider: $PROVIDER${NC}"
-        fi
-        if [ "$USERNAME" != "null" ] && [ "$USERNAME" != "" ]; then
-            echo -e "${GREEN}✓ Username: $USERNAME${NC}"
-        fi
-        if [ "$ORGS" != "null" ] && [ "$ORGS" != "" ]; then
-            echo -e "${GREEN}✓ Org Constructs: $ORGS${NC}"
-        fi
-        echo ""
-    else
-        echo -e "${RED}✗ Request failed (HTTP $HTTP_CODE)${NC}"
-        echo "Response:"
-        echo "$BODY" | jq .
-        echo ""
-    fi
-fi
-
-# Test 5: Request with explicit provider header
-if [ -n "$GITHUB_TOKEN" ]; then
-    echo "Test 5: Request with explicit x-auth-provider header"
-    echo "-----------------------------------------------------"
-    HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" \
-        -H "Authorization: Bearer $GITHUB_TOKEN" \
-        -H "x-auth-provider: github" \
-        "$ENVOY_URL/api/test")
-    
-    if [ "$HTTP_CODE" = "200" ]; then
-        echo -e "${GREEN}✓ Request with explicit provider succeeded${NC}\n"
-    else
-        echo -e "${RED}✗ Request failed (HTTP $HTTP_CODE)${NC}\n"
-    fi
+    echo -e "${RED}✗ Request failed (HTTP $HTTP_CODE)${NC}"
+    echo "Response:"
+    echo "$BODY" | jq .
+    echo ""
 fi
 
 echo "🎉 Testing Complete!"

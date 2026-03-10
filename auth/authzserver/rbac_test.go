@@ -5,195 +5,172 @@ package authzserver
 
 import (
 	"log/slog"
+	"strings"
 	"testing"
 )
 
-// TestRoleResolver_Authorize tests various authorization scenarios.
-func TestRoleResolver_Authorize(t *testing.T) {
+//nolint:gocognit // test table with multiple branches; complexity acceptable for tests
+func TestOIDCRoleResolver_Authorize(t *testing.T) {
 	tests := []struct {
 		name        string
-		config      *Config
-		username    string
-		userKey     string
-		userOrgs    []string
-		apiMethod   string
+		config      *OIDCConfig
+		principal   string
+		path        string
 		expectError bool
 		errorMsg    string
 	}{
 		{
 			name: "user with admin role allows all methods",
-			config: &Config{
-				Roles: map[string]Role{
+			config: &OIDCConfig{
+				Claims: ClaimsConfig{UserID: "sub"},
+				Roles: map[string]OIDCRole{
 					"admin": {
 						AllowedMethods: []string{"*"},
-						Users:          []string{"github:alice"},
+						Users:          []string{"user:https://tenant.zitadel.cloud:77776025198584418"},
 					},
 				},
 			},
-			username:    "alice",
-			userKey:     "github:alice",
-			userOrgs:    []string{},
-			apiMethod:   "/store.StoreService/Push",
+			principal:   "user:https://tenant.zitadel.cloud:77776025198584418",
+			path:        "/agntcy.dir.store.v1.StoreService/Push",
 			expectError: false,
 		},
 		{
-			name: "user with reader role allows specific methods",
-			config: &Config{
-				Roles: map[string]Role{
-					"reader": {
-						AllowedMethods: []string{"/store.StoreService/Pull", "/store.StoreService/Lookup"},
-						Users:          []string{"github:bob"},
+			name: "viewer allows Pull and Lookup only",
+			config: &OIDCConfig{
+				Claims: ClaimsConfig{UserID: "sub"},
+				Roles: map[string]OIDCRole{
+					"viewer": {
+						AllowedMethods: []string{
+							"/agntcy.dir.store.v1.StoreService/Pull",
+							"/agntcy.dir.store.v1.StoreService/Lookup",
+						},
+						Users: []string{"user:https://tenant.zitadel.cloud:111"},
 					},
 				},
 			},
-			username:    "bob",
-			userKey:     "github:bob",
-			userOrgs:    []string{},
-			apiMethod:   "/store.StoreService/Pull",
+			principal:   "user:https://tenant.zitadel.cloud:111",
+			path:        "/agntcy.dir.store.v1.StoreService/Pull",
 			expectError: false,
 		},
 		{
-			name: "user with reader role denied for unauthorized method",
-			config: &Config{
-				Roles: map[string]Role{
-					"reader": {
-						AllowedMethods: []string{"/store.StoreService/Pull"},
-						Users:          []string{"github:bob"},
+			name: "viewer denied for Push",
+			config: &OIDCConfig{
+				Claims: ClaimsConfig{UserID: "sub"},
+				Roles: map[string]OIDCRole{
+					"viewer": {
+						AllowedMethods: []string{"/agntcy.dir.store.v1.StoreService/Pull"},
+						Users:          []string{"user:https://tenant.zitadel.cloud:111"},
 					},
 				},
 			},
-			username:    "bob",
-			userKey:     "github:bob",
-			userOrgs:    []string{},
-			apiMethod:   "/store.StoreService/Push",
+			principal:   "user:https://tenant.zitadel.cloud:111",
+			path:        "/agntcy.dir.store.v1.StoreService/Push",
 			expectError: true,
 		},
 		{
-			name: "org with admin role allows all methods",
-			config: &Config{
-				Roles: map[string]Role{
-					"admin": {
-						AllowedMethods: []string{"*"},
-						Orgs:           []string{"agntcy"},
+			name: "client principal with ci-writer role",
+			config: &OIDCConfig{
+				Claims: ClaimsConfig{UserID: "sub"},
+				Roles: map[string]OIDCRole{
+					"ci-writer": {
+						AllowedMethods: []string{
+							"/agntcy.dir.store.v1.StoreService/Push",
+							"/agntcy.dir.store.v1.StoreService/Pull",
+						},
+						Clients: []string{"client:https://tenant.zitadel.cloud:69234237810729234"},
 					},
 				},
 			},
-			username:    "charlie",
-			userKey:     "github:charlie",
-			userOrgs:    []string{"agntcy"},
-			apiMethod:   "/store.StoreService/Push",
+			principal:   "client:https://tenant.zitadel.cloud:69234237810729234",
+			path:        "/agntcy.dir.store.v1.StoreService/Push",
 			expectError: false,
 		},
 		{
-			name: "user in deny list is blocked",
-			config: &Config{
-				Roles: map[string]Role{
-					"admin": {
-						AllowedMethods: []string{"*"},
-						Users:          []string{"github:alice"},
+			name: "GitHub workflow principal with prod-deployer role",
+			config: &OIDCConfig{
+				Claims: ClaimsConfig{UserID: "sub"},
+				Roles: map[string]OIDCRole{
+					"prod-deployer": {
+						AllowedMethods:  []string{"*"},
+						GitHubWorkflows: []string{"ghwf:repo:agntcy/dir:workflow:deploy.yml:ref:refs/heads/main:env:prod"},
 					},
 				},
-				UserDenyList: []string{"github:alice"},
 			},
-			username:    "alice",
-			userKey:     "github:alice",
-			userOrgs:    []string{},
-			apiMethod:   "/store.StoreService/Push",
+			principal:   "ghwf:repo:agntcy/dir:workflow:deploy.yml:ref:refs/heads/main:env:prod",
+			path:        "/agntcy.dir.store.v1.StoreService/Push",
+			expectError: false,
+		},
+		{
+			name: "principal in deny list is blocked",
+			config: &OIDCConfig{
+				Claims:       ClaimsConfig{UserID: "sub"},
+				UserDenyList: []string{"user:https://tenant.zitadel.cloud:77776025198584418"},
+				Roles: map[string]OIDCRole{
+					"admin": {
+						AllowedMethods: []string{"*"},
+						Users:          []string{"user:https://tenant.zitadel.cloud:77776025198584418"},
+					},
+				},
+			},
+			principal:   "user:https://tenant.zitadel.cloud:77776025198584418",
+			path:        "/agntcy.dir.store.v1.StoreService/Push",
 			expectError: true,
 			errorMsg:    "deny list",
 		},
 		{
-			name: "default role allows access",
-			config: &Config{
-				Roles: map[string]Role{
-					"reader": {
-						AllowedMethods: []string{"/store.StoreService/Pull"},
-					},
-				},
-				DefaultRole: "reader",
-			},
-			username:    "eve",
-			userKey:     "github:eve",
-			userOrgs:    []string{},
-			apiMethod:   "/store.StoreService/Pull",
-			expectError: false,
-		},
-		{
-			name: "default role denies unauthorized method",
-			config: &Config{
-				Roles: map[string]Role{
-					"reader": {
-						AllowedMethods: []string{"/store.StoreService/Pull"},
-					},
-				},
-				DefaultRole: "reader",
-			},
-			username:    "eve",
-			userKey:     "github:eve",
-			userOrgs:    []string{},
-			apiMethod:   "/store.StoreService/Push",
-			expectError: true,
-		},
-		{
-			name: "no role and no default role - deny",
-			config: &Config{
-				Roles: map[string]Role{},
-			},
-			username:    "frank",
-			userKey:     "github:frank",
-			userOrgs:    []string{},
-			apiMethod:   "/store.StoreService/Push",
-			expectError: true,
-			errorMsg:    "no assigned role",
-		},
-		{
-			name: "user role takes precedence over org role",
-			config: &Config{
-				Roles: map[string]Role{
+			name: "no role assignment - deny",
+			config: &OIDCConfig{
+				Claims: ClaimsConfig{UserID: "sub"},
+				Roles: map[string]OIDCRole{
 					"admin": {
 						AllowedMethods: []string{"*"},
-						Users:          []string{"github:grace"},
-					},
-					"reader": {
-						AllowedMethods: []string{"/store.StoreService/Pull"},
-						Orgs:           []string{"contributors"},
+						Users:          []string{"user:https://tenant.zitadel.cloud:other"},
 					},
 				},
 			},
-			username:    "grace",
-			userKey:     "github:grace",
-			userOrgs:    []string{"contributors"},
-			apiMethod:   "/store.StoreService/Push",
-			expectError: false, // User role (admin) allows, org role (reader) would deny
+			principal:   "user:https://tenant.zitadel.cloud:unknown",
+			path:        "/agntcy.dir.store.v1.StoreService/Push",
+			expectError: true,
 		},
 		{
 			name: "wildcard method matching",
-			config: &Config{
-				Roles: map[string]Role{
-					"admin": {
-						AllowedMethods: []string{"/store.StoreService/*"},
-						Users:          []string{"github:admin"},
+			config: &OIDCConfig{
+				Claims: ClaimsConfig{UserID: "sub"},
+				Roles: map[string]OIDCRole{
+					"store-admin": {
+						AllowedMethods: []string{"/agntcy.dir.store.v1.StoreService/*"},
+						Users:          []string{"user:https://tenant.zitadel.cloud:admin"},
 					},
 				},
 			},
-			username:    "admin",
-			userKey:     "github:admin",
-			userOrgs:    []string{},
-			apiMethod:   "/store.StoreService/AnyMethod",
+			principal:   "user:https://tenant.zitadel.cloud:admin",
+			path:        "/agntcy.dir.store.v1.StoreService/AnyMethod",
 			expectError: false,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			// Create role resolver
-			resolver, err := NewRoleResolver(tt.config, slog.Default())
+			tt.config.PublicPaths = []string{"/healthz"}
+			if err := tt.config.Validate(); err != nil {
+				t.Fatalf("invalid config: %v", err)
+			}
+
+			resolver, err := NewOIDCRoleResolver(tt.config, slog.Default())
 			if err != nil {
 				t.Fatalf("failed to create resolver: %v", err)
 			}
 
-			// Test authorization
-			err = resolver.Authorize(tt.username, tt.userKey, tt.userOrgs, tt.apiMethod)
+			// Deny list is checked before Authorize
+			if resolver.IsDenied(tt.principal, "") {
+				if !tt.expectError {
+					t.Errorf("principal was denied but expected allow")
+				}
+
+				return
+			}
+
+			err = resolver.Authorize(tt.principal, tt.path)
 
 			if tt.expectError {
 				if err == nil {
@@ -210,133 +187,138 @@ func TestRoleResolver_Authorize(t *testing.T) {
 	}
 }
 
-// TestRoleResolver_LoadPolicies tests policy loading from config.
-func TestRoleResolver_LoadPolicies(t *testing.T) {
-	config := &Config{
-		Roles: map[string]Role{
+func TestOIDCRoleResolver_IsDenied(t *testing.T) {
+	config := &OIDCConfig{
+		Claims:       ClaimsConfig{UserID: "sub"},
+		UserDenyList: []string{"user:https://iss:bad", "oidc:blocked@example.com"},
+		Roles: map[string]OIDCRole{
 			"admin": {
 				AllowedMethods: []string{"*"},
-				Users:          []string{"github:alice", "bob"}, // Test both formats
-				Orgs:           []string{"agntcy"},
-			},
-			"reader": {
-				AllowedMethods: []string{"/store.StoreService/Pull", "/store.StoreService/Lookup"},
-				Users:          []string{"github:charlie"},
-				Orgs:           []string{"contributors"},
+				Users:          []string{"user:https://iss:good"},
 			},
 		},
-		DefaultRole:  "reader",
-		UserDenyList: []string{"github:blocked"},
+		PublicPaths: []string{},
+	}
+	if err := config.Validate(); err != nil {
+		t.Fatalf("invalid config: %v", err)
 	}
 
-	resolver, err := NewRoleResolver(config, slog.Default())
+	resolver, err := NewOIDCRoleResolver(config, slog.Default())
 	if err != nil {
 		t.Fatalf("failed to create resolver: %v", err)
 	}
 
-	// Verify that policies were loaded (implicit test via successful creation)
-	if resolver.enforcer == nil {
-		t.Error("enforcer should not be nil")
+	if !resolver.IsDenied("user:https://iss:bad", "") {
+		t.Error("user:https://iss:bad should be denied")
 	}
 
-	// Test that alice (admin) can access any method
-	err = resolver.Authorize("alice", "github:alice", []string{}, "/store.StoreService/Push")
-	if err != nil {
-		t.Errorf("alice should be authorized for Push: %v", err)
+	if !resolver.IsDenied("other", "blocked@example.com") {
+		t.Error("oidc:blocked@example.com should be denied via email")
 	}
 
-	// Test that bob (admin, without "github:" prefix) can access any method
-	err = resolver.Authorize("bob", "github:bob", []string{}, "/store.StoreService/Push")
-	if err != nil {
-		t.Errorf("bob should be authorized for Push: %v", err)
-	}
-
-	// Test that charlie (reader) can only Pull
-	err = resolver.Authorize("charlie", "github:charlie", []string{}, "/store.StoreService/Pull")
-	if err != nil {
-		t.Errorf("charlie should be authorized for Pull: %v", err)
-	}
-
-	err = resolver.Authorize("charlie", "github:charlie", []string{}, "/store.StoreService/Push")
-	if err == nil {
-		t.Error("charlie should NOT be authorized for Push")
-	}
-
-	// Test org-based access
-	err = resolver.Authorize("dave", "github:dave", []string{"agntcy"}, "/store.StoreService/Push")
-	if err != nil {
-		t.Errorf("dave (agntcy org) should be authorized for Push: %v", err)
+	if resolver.IsDenied("user:https://iss:good", "") {
+		t.Error("user:https://iss:good should not be denied")
 	}
 }
 
-// TestRoleResolver_UserDenyList tests that deny list takes precedence.
-func TestRoleResolver_UserDenyList(t *testing.T) {
-	config := &Config{
-		Roles: map[string]Role{
-			"admin": {
-				AllowedMethods: []string{"*"},
-				Users:          []string{"github:blocked"},
-			},
-		},
-		UserDenyList: []string{"github:blocked"},
-	}
-
-	resolver, err := NewRoleResolver(config, slog.Default())
-	if err != nil {
-		t.Fatalf("failed to create resolver: %v", err)
-	}
-
-	// Even though user is admin, deny list should block
-	err = resolver.Authorize("blocked", "github:blocked", []string{}, "/store.StoreService/Push")
-	if err == nil {
-		t.Error("blocked user should be denied even with admin role")
-	}
-
-	if !contains(err.Error(), "deny list") {
-		t.Errorf("error should mention deny list, got: %v", err)
-	}
-}
-
-// TestConfig_Validate tests configuration validation.
-func TestConfig_Validate(t *testing.T) {
+func TestOIDCConfig_Validate(t *testing.T) {
 	tests := []struct {
 		name        string
-		config      *Config
+		config      *OIDCConfig
 		expectError bool
 		errorMsg    string
 	}{
 		{
 			name: "valid config",
-			config: &Config{
-				Roles: map[string]Role{
+			config: &OIDCConfig{
+				Claims:      ClaimsConfig{UserID: "sub"},
+				PublicPaths: []string{"/healthz"},
+				Roles: map[string]OIDCRole{
 					"admin": {
 						AllowedMethods: []string{"*"},
-						Users:          []string{"github:alice"},
+						Users:          []string{"user:https://iss:123"},
 					},
 				},
-				DefaultRole: "admin",
 			},
 			expectError: false,
 		},
 		{
-			name: "invalid default role",
-			config: &Config{
-				Roles: map[string]Role{
-					"admin": {
-						AllowedMethods: []string{"*"},
-					},
+			name: "missing claims.userID",
+			config: &OIDCConfig{
+				Claims:      ClaimsConfig{UserID: ""},
+				PublicPaths: []string{},
+				Roles: map[string]OIDCRole{
+					"admin": {AllowedMethods: []string{"*"}},
 				},
-				DefaultRole: "nonexistent",
 			},
 			expectError: true,
-			errorMsg:    "not defined",
+			errorMsg:    "userID",
 		},
 		{
-			name: "nil roles map is valid (auto-initialized)",
-			config: &Config{
-				Roles: nil,
+			name: "no roles",
+			config: &OIDCConfig{
+				Claims:      ClaimsConfig{UserID: "sub"},
+				PublicPaths: []string{},
+				Roles:       map[string]OIDCRole{},
 			},
-			expectError: false,
+			expectError: true,
+			errorMsg:    "at least one role",
+		},
+		{
+			name: "role with empty allowedMethods",
+			config: &OIDCConfig{
+				Claims:      ClaimsConfig{UserID: "sub"},
+				PublicPaths: []string{},
+				Roles: map[string]OIDCRole{
+					"empty": {AllowedMethods: []string{}},
+				},
+			},
+			expectError: true,
+			errorMsg:    "allowedMethods",
+		},
+		{
+			name: "invalid principalType.mode",
+			config: &OIDCConfig{
+				Claims:        ClaimsConfig{UserID: "sub"},
+				PublicPaths:   []string{},
+				PrincipalType: PrincipalTypeConfig{Mode: "invalid"},
+				Roles: map[string]OIDCRole{
+					"admin": {AllowedMethods: []string{"*"}},
+				},
+			},
+			expectError: true,
+			errorMsg:    "principalType",
+		},
+		{
+			name: "invalid issuer principalType",
+			config: &OIDCConfig{
+				Claims:      ClaimsConfig{UserID: "sub"},
+				PublicPaths: []string{},
+				Issuers: map[string]IssuerConfig{
+					"https://iss": {PrincipalType: "invalid"},
+				},
+				Roles: map[string]OIDCRole{
+					"admin": {AllowedMethods: []string{"*"}},
+				},
+			},
+			expectError: true,
+			errorMsg:    "issuers",
+		},
+		{
+			name: "invalid machineSubPattern regex",
+			config: &OIDCConfig{
+				Claims:      ClaimsConfig{UserID: "sub"},
+				PublicPaths: []string{},
+				PrincipalType: PrincipalTypeConfig{
+					Mode:              PrincipalTypeAuto,
+					MachineSubPattern: `[invalid`,
+				},
+				Roles: map[string]OIDCRole{
+					"admin": {AllowedMethods: []string{"*"}},
+				},
+			},
+			expectError: true,
+			errorMsg:    "machineSubPattern",
 		},
 	}
 
@@ -359,19 +341,24 @@ func TestConfig_Validate(t *testing.T) {
 	}
 }
 
-// Helper function to check if a string contains a substring.
-func contains(s, substr string) bool {
-	return len(s) >= len(substr) && (s == substr || len(s) > len(substr) &&
-		(s[:len(substr)] == substr || s[len(s)-len(substr):] == substr ||
-			findSubstring(s, substr)))
-}
-
-func findSubstring(s, substr string) bool {
-	for i := 0; i <= len(s)-len(substr); i++ {
-		if s[i:i+len(substr)] == substr {
-			return true
-		}
+func TestOIDCConfig_IsPublicPath(t *testing.T) {
+	config := &OIDCConfig{
+		PublicPaths: []string{"/healthz", "/grpc.reflection"},
 	}
 
-	return false
+	if !config.IsPublicPath("/healthz") {
+		t.Error("/healthz should be public")
+	}
+
+	if !config.IsPublicPath("/grpc.reflection") {
+		t.Error("/grpc.reflection should be public")
+	}
+
+	if config.IsPublicPath("/agntcy.dir.store.v1.StoreService/Push") {
+		t.Error("StoreService path should not be public")
+	}
+}
+
+func contains(s, substr string) bool {
+	return strings.Contains(s, substr)
 }
