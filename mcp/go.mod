@@ -1,6 +1,6 @@
 module github.com/agntcy/dir/mcp
 
-go 1.26.0
+go 1.26.1
 
 // Replace local modules
 replace (

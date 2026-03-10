@@ -1,0 +1,294 @@
+# Copyright AGNTCY Contributors (https://github.com/agntcy)
+# SPDX-License-Identifier: Apache-2.0
+
+version: "3"
+
+tasks:
+  default:
+    cmd: echo "Run the main Taskfile instead of this one."
+
+  deps:
+    desc: Install dependencies
+    cmds:
+      - task: deps:dirctl
+      - task: deps:helm
+      - task: deps:kubectl
+      - task: deps:kind
+      - task: deps:protoc
+      - task: deps:bufbuild
+      - task: deps:uv
+      - task: deps:cosign
+      - task: deps:trivy
+      - task: deps:golangci-lint
+      - task: deps:licensei
+      - task: deps:multimod-bin
+      - task: deps:cleanup
+
+  deps:cleanup:
+    desc: Remove binaries in BIN_DIR except those currently used by the Taskfile
+    preconditions:
+      - test -d {{.BIN_DIR}}
+    cmd: |
+      kept="{{.BIN_DIR}}/Taskfile.yml
+      {{.DIRCTL_BIN}}
+      {{.HELM_BIN}}
+      {{.KUBECTL_BIN}}
+      {{.KIND_BIN}}
+      {{.PROTOC_BIN}}
+      {{.BUFBUILD_BIN}}
+      {{.MULTIMOD_BIN}}
+      {{.GOLANGCI_LINT_BIN}}
+      {{.LICENSEI_BIN}}
+      {{.UV_BIN}}
+      {{.COSIGN_BIN}}
+      {{.TRIVY_BIN}}"
+
+      echo "Clean up unused/outdated binaries in {{.BIN_DIR}}"
+
+      for f in {{.BIN_DIR}}/*; do
+        [ -f "$f" ] || continue
+        echo "$kept" | grep -qFx "$f" && continue
+        rm -f "$f" && echo "Removed unused $f"
+      done
+
+  deps:controller-gen:
+    desc: Ensure controller-gen is installed
+    internal: true
+    preconditions:
+      - which go
+    cmds:
+      - cmd: go install {{.CONTROLLER_GEN_BIN}}
+    status:
+      - which controller-gen
+
+  deps:bin-dir:
+    desc: Create bin directory
+    run: once
+    cmd: mkdir -p {{.BIN_DIR}}
+    status:
+      - test -d {{.BIN_DIR}}
+
+  deps:dirctl:
+    desc: Compile dirctl binary
+    internal: true
+    run: once
+    cmds:
+      - task: cli:compile
+    status:
+      - test -f {{.DIRCTL_BIN}}
+
+  deps:helm:
+    desc: Ensure supported Helm version is installed
+    internal: true
+    deps:
+      - deps:bin-dir
+    preconditions:
+      - which curl
+      - which tar
+    cmds:
+      - cmd: echo "Downloading Helm v{{.HELM_VERSION}}..."
+      - cmd: curl -sSfL 'https://get.helm.sh/helm-v{{.HELM_VERSION}}-{{OS}}-{{ARCH}}.tar.gz' --output - | tar xzvOf - '{{OS}}-{{ARCH}}/helm' > {{.HELM_BIN}}
+      - cmd: chmod +x {{.HELM_BIN}}
+    status:
+      - test -x {{.HELM_BIN}}
+
+  deps:kubectl:
+    desc: Ensure supported kubectl version is installed
+    internal: true
+    deps:
+      - deps:bin-dir
+    preconditions:
+      - which curl
+    cmds:
+      - cmd: echo "Downloading Kubectl v{{.KUBECTL_VERSION}}..."
+      - cmd: curl -L "https://dl.k8s.io/release/v{{.KUBECTL_VERSION}}/bin/{{OS}}/{{ARCH}}/kubectl" -o {{.KUBECTL_BIN}}
+      - cmd: chmod +x {{.KUBECTL_BIN}}
+    status:
+      - test -x {{.KUBECTL_BIN}}
+
+  deps:kind:
+    desc: Ensure supported kind version is installed
+    internal: true
+    deps:
+      - deps:bin-dir
+    preconditions:
+      - which go
+    cmds:
+      - cmd: echo "Downloading Kind v{{.KIND_VERSION}}..."
+      - cmd: GOBIN={{.BIN_DIR}} go install sigs.k8s.io/kind@v{{.KIND_VERSION}}
+      - cmd: mv {{.BIN_DIR}}/kind {{.KIND_BIN}}
+    status:
+      - test -x {{.KIND_BIN}}
+
+  deps:protoc:
+    desc: Ensure supported Protoc version and plugins are installed
+    internal: true
+    deps:
+      - deps:bin-dir
+    preconditions:
+      - which go
+      - which curl
+      - which unzip
+    vars:
+      ARCH_TYPE: '{{ if eq ARCH "arm64" }}aarch_64{{ else if eq ARCH "amd64" }}x86_64{{else if eq ARCH "s390x"}}x390_64{{ else }}{{ARCH}}{{ end }}'
+      OS_VARIANT: '{{ if eq OS "darwin" }}osx-universal_binary{{ else if eq OS "windows" }}win64{{else}}linux-{{.ARCH_TYPE}}{{ end }}'
+    cmds:
+      - cmd: echo "Downloading Protoc v{{.PROTOC_VERSION}}..."
+      - cmd: |
+          curl -sL https://github.com/protocolbuffers/protobuf/releases/download/v{{.PROTOC_VERSION}}/protoc-{{.PROTOC_VERSION}}-{{.OS_VARIANT}}.zip -o {{.BIN_DIR}}/tmp.zip
+          unzip -j {{.BIN_DIR}}/tmp.zip "bin/protoc" -d {{.BIN_DIR}}
+          mv {{.BIN_DIR}}/protoc {{.PROTOC_BIN}}
+          rm {{.BIN_DIR}}/tmp.zip
+      - cmd: chmod +x {{.PROTOC_BIN}}
+      - cmd: echo "Downloading go plugins for protoc..."
+      - cmd: go install google.golang.org/protobuf/cmd/protoc-gen-go@latest
+      - cmd: go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@latest
+      - cmd: go install github.com/NathanBaulch/protoc-gen-cobra@latest
+    status:
+      - test -x {{.PROTOC_BIN}}
+
+  deps:bufbuild:
+    desc: Ensure supported bufbuild version is installed
+    internal: true
+    deps:
+      - deps:bin-dir
+    preconditions:
+      - which curl
+    vars:
+      ARCH_TYPE: '{{ if eq ARCH "amd64" }}x86_64{{ else }}{{ARCH}}{{ end }}'
+    cmds:
+      - cmd: echo "Downloading BufBuild v{{.BUFBUILD_VERSION}}..."
+      - cmd: |
+          curl -L "https://github.com/bufbuild/buf/releases/download/v{{.BUFBUILD_VERSION}}/buf-{{OS}}-{{.ARCH_TYPE}}" -o {{.BUFBUILD_BIN}}
+      - cmd: chmod +x {{.BUFBUILD_BIN}}
+    status:
+      - test -x {{.BUFBUILD_BIN}}
+
+  deps:update:
+    desc: Update dependencies
+    cmds:
+      - for: { var: GO_MOD_DIR }
+        cmd: |
+          echo "Updating dependencies in {{.ITEM}}" && \
+          go -C {{.ITEM}} get -u ./... && \
+          go -C {{.ITEM}} mod tidy -go={{.GO_VERSION}}
+
+  deps:multimod-bin:
+    desc: Build the multimod binary
+    internal: true
+    deps:
+      - deps:bin-dir
+    vars:
+      MULTIMOD_REPO_DIR: "{{ .BIN_DIR }}/opentelemetry-go-build-tools"
+    cmds:
+      - git clone https://github.com/open-telemetry/opentelemetry-go-build-tools --branch multimod/v{{.MULTIMOD_VERSION}} {{.MULTIMOD_REPO_DIR}}
+      - go build -C {{.MULTIMOD_REPO_DIR}}/multimod -o {{.MULTIMOD_BIN}} main.go
+      - rm -rf {{.MULTIMOD_REPO_DIR}}
+    status:
+      - test -x {{.MULTIMOD_BIN}}
+
+  deps:golangci-lint:
+    desc: Install golangci-lint
+    internal: true
+    deps:
+      - deps:bin-dir
+    cmds:
+      - curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/HEAD/install.sh | sh -s v{{.GOLANGCI_LINT_VERSION}}
+      - mv {{.BIN_DIR}}/golangci-lint {{.GOLANGCI_LINT_BIN}}
+      - chmod +x {{.GOLANGCI_LINT_BIN}}
+    status:
+      - test -x {{.GOLANGCI_LINT_BIN}}
+
+  deps:licensei:
+    desc: Install licensei
+    internal: true
+    deps:
+      - deps:bin-dir
+    cmds:
+      - curl -sfL https://raw.githubusercontent.com/goph/licensei/master/install.sh | bash -s v{{.LICENSEI_VERSION}}
+      - mv {{.BIN_DIR}}/licensei {{.LICENSEI_BIN}}
+      - chmod +x {{.LICENSEI_BIN}}
+    status:
+      - test -x {{.LICENSEI_BIN}}
+
+  deps:uv:
+    desc: Install uv
+    internal: true
+    deps:
+      - deps:bin-dir
+    env:
+      UV_INSTALL_DIR: "{{ .BIN_DIR }}"
+    cmds:
+      - curl -sfL https://astral.sh/uv/{{.UV_VERSION}}/install.sh | sh
+      - mv {{.BIN_DIR}}/uv {{.UV_BIN}}
+      - chmod +x {{.UV_BIN}}
+      - rm {{.BIN_DIR}}/uvx
+    status:
+      - test -x {{.UV_BIN}}
+
+  deps:cosign:
+    desc: Install sigstore cosign
+    internal: true
+    cmds:
+      - curl -sfL https://github.com/sigstore/cosign/releases/download/v{{.COSIGN_VERSION}}/cosign-{{OS}}-{{ARCH}} -o {{.BIN_DIR}}/cosign-{{.COSIGN_VERSION}}
+      - chmod +x {{.BIN_DIR}}/cosign-{{.COSIGN_VERSION}}
+    status:
+      - test -x {{.COSIGN_BIN}}
+
+  deps:htpasswd:
+    desc: Install htpasswd
+    internal: true
+    cmds:
+      - npm install -g htpasswd
+
+  deps:trivy:
+    desc: Install trivy
+    internal: true
+    deps:
+      - deps:bin-dir
+    vars:
+      TRIVY_OS:
+        sh: uname -s | sed 's/Darwin/macOS/' | sed 's/Linux/Linux/'
+      TRIVY_ARCH:
+        sh: uname -m | sed 's/x86_64/64bit/' | sed 's/aarch64/ARM64/' | sed 's/arm64/ARM64/'
+    cmds:
+      - cmd: echo "Installing trivy v{{.TRIVY_VERSION}}..."
+      - cmd: |
+          curl -sfL https://github.com/aquasecurity/trivy/releases/download/v{{.TRIVY_VERSION}}/trivy_{{.TRIVY_VERSION}}_{{.TRIVY_OS}}-{{.TRIVY_ARCH}}.tar.gz | \
+          tar -xzf - -C {{.BIN_DIR}} trivy && \
+          mv {{.BIN_DIR}}/trivy {{.TRIVY_BIN}}
+
+    status:
+      - test -x {{.TRIVY_BIN}}
+
+  deps:vuln:
+    desc: Run vulnerability check on all Go modules
+    deps:
+      - deps:trivy
+    cmd: |
+      {{.TRIVY_BIN}} clean --scan-cache
+      {{.TRIVY_BIN}} fs --scanners vuln --severity CRITICAL,HIGH,MEDIUM --ignore-unfixed {{.ROOT_DIR}}
+
+  # TODO: Switch GH actions to use this task instead of trivy action.
+  #
+  # This avoids redundant installations and have more control over scanning parameters.
+  # The TASKFILE should serve as a central source of truth for all dev-related operations.
+  deps:vuln:images:
+    desc: Run vulnerability check on container images
+    deps:
+      - deps:trivy
+    vars:
+      IMAGES:
+        - ghcr.io/agntcy/dir-apiserver:{{.IMAGE_TAG}}
+        - ghcr.io/agntcy/dir-ctl:{{.IMAGE_TAG}}
+        - ghcr.io/agntcy/dir-reconciler:{{.IMAGE_TAG}}
+        - ghcr.io/agntcy/dir-runtime-discovery:{{.IMAGE_TAG}}
+        - ghcr.io/agntcy/dir-runtime-server:{{.IMAGE_TAG}}
+        - ghcr.io/agntcy/envoy-authz:{{.IMAGE_TAG}}
+    cmds:
+      - cmd: |
+          {{.TRIVY_BIN}} clean --scan-cache
+      - for: { var: IMAGES }
+        cmd: |
+          echo "Scanning {{.ITEM}}..."
+          {{.TRIVY_BIN}} image --scanners vuln --severity CRITICAL,HIGH,MEDIUM --ignore-unfixed {{.ITEM}}

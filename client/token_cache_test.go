@@ -525,7 +525,7 @@ func TestCachedToken_JSONSerialization(t *testing.T) {
 		}
 
 		// Marshal to JSON
-		data, err := json.Marshal(original)
+		data, err := json.Marshal(original) // #nosec G117: intentional field - for cached token
 		require.NoError(t, err)
 
 		// Unmarshal back
@@ -552,7 +552,7 @@ func TestCachedToken_JSONSerialization(t *testing.T) {
 			CreatedAt:   time.Now(),
 		}
 
-		data, err := json.Marshal(token)
+		data, err := json.Marshal(token) // #nosec G117: intentional field - for cached token
 		require.NoError(t, err)
 
 		// Should not contain omitted fields
@@ -572,7 +572,7 @@ func TestCachedToken_JSONSerialization(t *testing.T) {
 			// ExpiresAt is zero
 		}
 
-		data, err := json.Marshal(token)
+		data, err := json.Marshal(token) // #nosec G117: intentional field - for cached token
 		require.NoError(t, err)
 
 		// Should not contain expires_at
