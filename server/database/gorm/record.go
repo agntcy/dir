@@ -432,6 +432,16 @@ func (d *DB) handleFilterOptions(query *gorm.DB, cfg *types.RecordFilters) *gorm
 		}
 	}
 
+	// Handle trusted filter (signature verification passed; derived from signature_verifications).
+	if cfg.Trusted != nil {
+		const verifiedStatus = "verified"
+		if *cfg.Trusted {
+			query = query.Where("EXISTS (SELECT 1 FROM signature_verifications sv WHERE sv.record_cid = records.record_cid AND sv.status = ?)", verifiedStatus)
+		} else {
+			query = query.Where("NOT EXISTS (SELECT 1 FROM signature_verifications sv WHERE sv.record_cid = records.record_cid AND sv.status = ?)", verifiedStatus)
+		}
+	}
+
 	return query
 }
 
