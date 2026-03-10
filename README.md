@@ -48,13 +48,20 @@ Check the [Documentation](https://docs.agntcy.org/dir/overview/) for a full walk
 
 - [proto](./proto) - gRPC specification for data models and services
 - [api](./api) - API models for tools and packages
+- [auth](./auth) - authentication provider and authorization server
 - [cli](./cli) - command line client for interacting with system components
 - [client](./client) - client SDK for development and API workflows
-- [e2e](./tests/e2e) - end-to-end testing framework
 - [docs](./docs) - research details and documentation around the project
+- [gui](./gui) - graphical user interface (Flutter)
+- [importer](./importer) - import pipeline (scanner, enricher, MCP integration)
+- [install](./install) - deployment assets (Helm charts, Docker Compose)
+- [mcp](./mcp) - Model Context Protocol server and tools
+- [reconciler](./reconciler) - standalone service for periodic reconciliation (regsync, indexer)
 - [runtime](./runtime) - discovery service to watch workloads and resolve capabilities
 - [server](./server) - API services to manage storage, routing, and networking operations
 - [sdk](./sdk) - client SDK implementations in different languages for development
+- [utils](./utils) - shared utilities (logging, SPIFFE)
+- [tests](./tests) - test suites and end-to-end (e2e) testing framework
 
 ## Prerequisites
 
