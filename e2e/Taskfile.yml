@@ -27,15 +27,15 @@ tasks:
     env:
       DIRECTORY_E2E_DEPLOYMENT_MODE: "local"
     cmds:
-      - defer: { task: deploy:kubernetes:local:cleanup }
-      - defer: { task: deploy:kubernetes:local:port-forward:cleanup }
+      - defer: { task: test-env:kubernetes:local:cleanup }
+      - defer: { task: test-env:kubernetes:local:port-forward:cleanup }
       - defer:
           task: test:e2e:coverage:extract-pods
           vars:
             E2E_COVERAGE_ENABLED: "{{ .E2E_COVERAGE_ENABLED }}"
             NAMESPACE: "dir-server"
             COVERAGE_DIR: "{{ .COVERAGE_DIR }}"
-      - task: deploy:kubernetes:local
+      - task: test-env:kubernetes:local
         vars:
           DIRECTORY_SERVER_PUBLICATION_SCHEDULER_INTERVAL: "{{ .PUBLICATION_SCHEDULER_INTERVAL }}"
           DIRECTORY_SERVER_RATELIMIT_ENABLED: "{{ .RATELIMIT_ENABLED }}"
@@ -43,7 +43,7 @@ tasks:
           DIRECTORY_SERVER_RATELIMIT_GLOBAL_BURST: "{{ .RATELIMIT_GLOBAL_BURST }}"
           DIRECTORY_SERVER_OASF_API_VALIDATION_SCHEMA_URL: "https://schema.oasf.outshift.com"
           E2E_COVERAGE_ENABLED: "{{ .E2E_COVERAGE_ENABLED }}"
-      - task: deploy:kubernetes:local:port-forward
+      - task: test-env:kubernetes:local:port-forward
       - |
         # Run E2E tests with coverage if enabled
         if [ "{{.E2E_COVERAGE_ENABLED}}" = "true" ]; then
@@ -71,15 +71,15 @@ tasks:
     env:
       DIRECTORY_E2E_DEPLOYMENT_MODE: "local"
     cmds:
-      - defer: { task: deploy:kubernetes:local:cleanup }
-      - defer: { task: deploy:kubernetes:local:port-forward:cleanup }
+      - defer: { task: test-env:kubernetes:local:cleanup }
+      - defer: { task: test-env:kubernetes:local:port-forward:cleanup }
       - defer:
           task: test:e2e:coverage:extract-pods
           vars:
             E2E_COVERAGE_ENABLED: "{{ .E2E_COVERAGE_ENABLED }}"
             NAMESPACE: "dir-server"
             COVERAGE_DIR: "{{ .COVERAGE_DIR }}"
-      - task: deploy:kubernetes:local
+      - task: test-env:kubernetes:local
         vars:
           DIRECTORY_SERVER_PUBLICATION_SCHEDULER_INTERVAL: "{{ .PUBLICATION_SCHEDULER_INTERVAL }}"
           DIRECTORY_SERVER_RATELIMIT_ENABLED: "{{ .RATELIMIT_ENABLED }}"
@@ -87,7 +87,7 @@ tasks:
           DIRECTORY_SERVER_RATELIMIT_GLOBAL_BURST: "{{ .RATELIMIT_GLOBAL_BURST }}"
           DIRECTORY_SERVER_OASF_API_VALIDATION_SCHEMA_URL: "https://schema.oasf.outshift.com"
           E2E_COVERAGE_ENABLED: "{{ .E2E_COVERAGE_ENABLED }}"
-      - task: deploy:kubernetes:local:port-forward
+      - task: test-env:kubernetes:local:port-forward
       - |
         # Run E2E tests with coverage if enabled
         if [ "{{.E2E_COVERAGE_ENABLED}}" = "true" ]; then
@@ -116,15 +116,15 @@ tasks:
     env:
       DIRECTORY_E2E_DEPLOYMENT_MODE: "local"
     cmds:
-      - defer: { task: deploy:kubernetes:local:cleanup }
-      - defer: { task: deploy:kubernetes:local:port-forward:cleanup }
+      - defer: { task: test-env:kubernetes:local:cleanup }
+      - defer: { task: test-env:kubernetes:local:port-forward:cleanup }
       - defer:
           task: test:e2e:coverage:extract-pods
           vars:
             E2E_COVERAGE_ENABLED: "{{ .E2E_COVERAGE_ENABLED }}"
             NAMESPACE: "dir-server"
       # Bootstrap infrastructure once for all test suites
-      - task: deploy:kubernetes:local
+      - task: test-env:kubernetes:local
         vars:
           DIRECTORY_SERVER_PUBLICATION_SCHEDULER_INTERVAL: "{{ .PUBLICATION_SCHEDULER_INTERVAL }}"
           DIRECTORY_SERVER_REVERIFICATION_SCHEDULER_INTERVAL: "{{ .REVERIFICATION_SCHEDULER_INTERVAL }}"
@@ -142,7 +142,7 @@ tasks:
           --install \
           --wait \
           --timeout "5m"
-      - task: deploy:kubernetes:local:port-forward
+      - task: test-env:kubernetes:local:port-forward
       # Run client library tests first (faster feedback)
       - |
         if [ "{{.E2E_COVERAGE_ENABLED}}" = "true" ]; then
@@ -194,8 +194,8 @@ tasks:
       - deps:kubectl
       - deps:kind
     cmds:
-      - defer: { task: deploy:kubernetes:network:cleanup }
-      - defer: { task: deploy:kubernetes:network:port-forward:cleanup }
+      - defer: { task: test-env:kubernetes:network:cleanup }
+      - defer: { task: test-env:kubernetes:network:port-forward:cleanup }
       # Extract coverage from all network namespaces
       - defer:
           task: test:e2e:coverage:extract-pods
@@ -219,11 +219,11 @@ tasks:
             NAMESPACE: "peer3"
       # Bootstrap
       # NOTE: Run as a dedicated task instead of dependency, otherwise the port forwarding won't work
-      - task: deploy:kubernetes:network
+      - task: test-env:kubernetes:network
         vars:
           PUBLICATION_SCHEDULER_INTERVAL: "{{ .PUBLICATION_SCHEDULER_INTERVAL }}"
           E2E_COVERAGE_ENABLED: "{{ .E2E_COVERAGE_ENABLED }}"
-      - task: deploy:kubernetes:network:port-forward
+      - task: test-env:kubernetes:network:port-forward
       # Run network tests with proper isolation and cleanup
       - |
         if [ "{{.E2E_COVERAGE_ENABLED}}" = "true" ]; then
@@ -262,7 +262,7 @@ tasks:
       DIR_DNS_NAME_TEMPLATE: '{{ .DIR_DNS_NAME_TEMPLATE | default "127.0.0.1.nip.io" }}'
     cmds:
       # Setup DIR cluster
-      - task: deploy:kubernetes:setup-cluster
+      - task: test-env:kubernetes:setup-cluster
         vars:
           KIND_CLUSTER_NAME: "{{ .DIR_TRUST_DOMAIN }}"
 
@@ -280,13 +280,13 @@ tasks:
         echo "Cloud provider started in background"
 
       # Deploy SPIRE on DIR cluster
-      - task: deploy:kubernetes:spire
+      - task: test-env:kubernetes:spire
         vars:
           TRUST_DOMAIN: "{{ .DIR_TRUST_DOMAIN }}"
           BUNDLE_PATH: /tmp/{{ .DIR_TRUST_DOMAIN }}.spiffe
 
       # Setup DIRCTL cluster
-      - task: deploy:kubernetes:setup-cluster
+      - task: test-env:kubernetes:setup-cluster
         vars:
           KIND_CLUSTER_NAME: "{{ .DIRCTL_TRUST_DOMAIN }}"
 
@@ -297,7 +297,7 @@ tasks:
         echo "Cloud provider started in background"
 
       # Deploy SPIRE on DIRCTL cluster
-      - task: deploy:kubernetes:spire
+      - task: test-env:kubernetes:spire
         vars:
           TRUST_DOMAIN: "{{ .DIRCTL_TRUST_DOMAIN }}"
           BUNDLE_PATH: /tmp/{{ .DIRCTL_TRUST_DOMAIN }}.spiffe
@@ -364,7 +364,7 @@ tasks:
       - task: deploy:kubernetes:context
         vars:
           KIND_CLUSTER_NAME: "{{ .DIR_TRUST_DOMAIN }}"
-      - task: deploy:kubernetes:dir
+      - task: test-env:kubernetes:dir
         vars:
           KIND_CLUSTER_NAME: "{{ .DIR_TRUST_DOMAIN }}"
           HELM_EXTRA_ARGS: "-f /tmp/server-federation.yaml"
@@ -401,7 +401,7 @@ tasks:
       - task: deploy:kubernetes:context
         vars:
           KIND_CLUSTER_NAME: "{{ .DIR_TRUST_DOMAIN }}"
-      - task: deploy:kubernetes:dirctl
+      - task: test-env:kubernetes:dirctl
         vars:
           KIND_CLUSTER_NAME: "{{ .DIR_TRUST_DOMAIN }}"
           HELM_NAMESPACE: "dir-client"
@@ -437,7 +437,7 @@ tasks:
       - task: deploy:kubernetes:context
         vars:
           KIND_CLUSTER_NAME: "{{ .DIRCTL_TRUST_DOMAIN }}"
-      - task: deploy:kubernetes:dirctl
+      - task: test-env:kubernetes:dirctl
         vars:
           KIND_CLUSTER_NAME: "{{ .DIRCTL_TRUST_DOMAIN }}"
           HELM_EXTRA_ARGS: "-f /tmp/client-federation.yaml"

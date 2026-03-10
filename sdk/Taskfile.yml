@@ -60,17 +60,17 @@ tasks:
   sdk:test-env:create:
     desc: Create Kubernetes cluster test environment
     cmds:
-      - task: deploy:kubernetes:local
+      - task: test-env:kubernetes:local
         vars:
           DIRECTORY_SERVER_PUBLICATION_SCHEDULER_INTERVAL: 1s
           DIRECTORY_SERVER_OASF_API_VALIDATION_SCHEMA_URL: "https://schema.oasf.outshift.com"
-      - task: deploy:kubernetes:local:port-forward
+      - task: test-env:kubernetes:local:port-forward
 
   sdk:test-env:delete:
     desc: Delete Kubernetes cluster test environment
     cmds:
-      - task: deploy:kubernetes:local:port-forward:cleanup
-      - task: deploy:kubernetes:local:cleanup
+      - task: test-env:kubernetes:local:port-forward:cleanup
+      - task: test-env:kubernetes:local:cleanup
 
   sdk:test-env:spiffe:load-test-image:
     desc: Load the SDK tests into KinD

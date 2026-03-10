@@ -7,7 +7,7 @@ tasks:
   default:
     cmd: echo "Run the main Taskfile instead of this one."
 
-  deploy:kubernetes:setup-cluster:
+  test-env:kubernetes:setup-cluster:
     desc: Create a kind cluster and load Docker images
     deps:
       - deps:helm
@@ -34,7 +34,7 @@ tasks:
           {{ .KIND_BIN }} load docker-image $image --name {{ .KIND_CLUSTER_NAME }}
         done
 
-  deploy:kubernetes:gen-htpasswd-creds:
+  test-env:kubernetes:gen-htpasswd-creds:
     desc: Generate htpasswd credentials and files for DIR deployment
     vars:
       HTPASSWD_USERNAME: '{{ .HTPASSWD_USERNAME | default "apiserver" }}'
@@ -67,7 +67,7 @@ tasks:
         {{ .HTPASSWD_SYNC_USERNAME }}:${HTPASSWD_SYNC}
         EOF
 
-  deploy:kubernetes:cleanup-htpasswd-creds:
+  test-env:kubernetes:cleanup-htpasswd-creds:
     desc: Cleanup htpasswd credentials and files
     vars:
       CREDS_FILE: '{{ .CREDS_FILE | default "/tmp/dir-htpasswd-creds.env" }}'
@@ -76,11 +76,11 @@ tasks:
       - rm -f {{ .CREDS_FILE }}
       - rm -f {{ .HTPASSWD_FILE }}
 
-  deploy:kubernetes:local:
+  test-env:kubernetes:local:
     aliases: [deploy:local]
     desc: Deploy a local Directory server in Kubernetes
     deps:
-      - deploy:kubernetes:setup-cluster
+      - test-env:kubernetes:setup-cluster
     vars:
       # Kind args
       KIND_CLUSTER_NAME: '{{ .KIND_CLUSTER_NAME | default "agntcy-cluster" }}'
@@ -96,11 +96,11 @@ tasks:
       # TODO: make logic idempotent so that running functional tests does not change previous contexts
 
       # Generate credentials and htpasswd file (using defaults)
-      - task: deploy:kubernetes:gen-htpasswd-creds
+      - task: test-env:kubernetes:gen-htpasswd-creds
 
       # Cleanup credentials on exit (using defaults)
       - defer:
-          task: deploy:kubernetes:cleanup-htpasswd-creds
+          task: test-env:kubernetes:cleanup-htpasswd-creds
 
       # Deploy chart
       - |
@@ -139,11 +139,11 @@ tasks:
           --wait-for-jobs \
           --timeout "15m"
 
-  deploy:kubernetes:local:ghcr:
+  test-env:kubernetes:local:ghcr:
     aliases: [deploy:local:ghcr]
     desc: Deploy a local Directory server in Kubernetes using GHCR as backend (no Zot)
     deps:
-      - deploy:kubernetes:setup-cluster
+      - test-env:kubernetes:setup-cluster
     vars:
       # Kind args
       KIND_CLUSTER_NAME: '{{ .KIND_CLUSTER_NAME | default "agntcy-cluster" }}'
@@ -209,7 +209,7 @@ tasks:
           --wait-for-jobs \
           --timeout "15m"
 
-  deploy:kubernetes:local:ghcr:port-forward:
+  test-env:kubernetes:local:ghcr:port-forward:
     aliases: [deploy:local:ghcr:port-forward]
     desc: Set up port-forwarding for the local GHCR deployment
     vars:
@@ -221,7 +221,7 @@ tasks:
 
       - sleep 10
 
-  deploy:kubernetes:local:ghcr:cleanup:
+  test-env:kubernetes:local:ghcr:cleanup:
     aliases: [deploy:local:ghcr:cleanup]
     desc: Cleanup Kubernetes environment for local GHCR deployment
     cmds:
@@ -234,7 +234,7 @@ tasks:
     cmds:
       - "{{ .KIND_BIN }} export kubeconfig --name {{ .KIND_CLUSTER_NAME }}"
 
-  deploy:kubernetes:dir:
+  test-env:kubernetes:dir:
     desc: Deploy DIR helm chart
     vars:
       HELM_NAMESPACE: '{{ .HELM_NAMESPACE | default "dir-server" }}'
@@ -243,11 +243,11 @@ tasks:
       HELM_EXTRA_ARGS: '{{ .HELM_EXTRA_ARGS | default "" }}'
     cmds:
       # Generate credentials and htpasswd file (using defaults)
-      - task: deploy:kubernetes:gen-htpasswd-creds
+      - task: test-env:kubernetes:gen-htpasswd-creds
 
       # Cleanup credentials on exit (using defaults)
       - defer:
-          task: deploy:kubernetes:cleanup-htpasswd-creds
+          task: test-env:kubernetes:cleanup-htpasswd-creds
 
       # Deploy chart
       - |
@@ -279,7 +279,7 @@ tasks:
           --wait-for-jobs \
           --timeout "15m"
 
-  deploy:kubernetes:dirctl:
+  test-env:kubernetes:dirctl:
     desc: Deploy DIRCTL helm chart
     vars:
       HELM_NAMESPACE: '{{ .HELM_NAMESPACE | default "dir-client" }}'
@@ -300,7 +300,7 @@ tasks:
           --wait-for-jobs \
           --timeout "15m"
 
-  deploy:kubernetes:spire:
+  test-env:kubernetes:spire:
     desc: Deploy SPIRE helm chart
     vars:
       TRUST_DOMAIN: '{{ .TRUST_DOMAIN | default "example.org" }}'
@@ -337,7 +337,7 @@ tasks:
       - |
         {{ .KUBECTL_BIN }} get configmap -n spire spire-bundle -o json | jq '.data."bundle.spiffe"' -r > {{ .BUNDLE_PATH }}
 
-  deploy:kubernetes:local:port-forward:
+  test-env:kubernetes:local:port-forward:
     aliases: [deploy:local:port-forward]
     desc: Set up port-forwarding for the local deployment
     vars:
@@ -353,14 +353,14 @@ tasks:
       # Delay to ensure services are online
       - sleep 10
 
-  deploy:kubernetes:local:port-forward:cleanup:
+  test-env:kubernetes:local:port-forward:cleanup:
     aliases: [deploy:local:port-forward:cleanup]
     desc: Cleanup port-forwarding processes
     cmds:
       # Kill any existing port-forward processes for the dir-apiserver and dir-ingress-controller services
       - kill -9 $(ps aux | grep port-forward | grep -E "(dir-apiserver|dir-ingress-controller)" | awk '{print $2}') || true
 
-  deploy:kubernetes:local:cleanup:
+  test-env:kubernetes:local:cleanup:
     aliases: [deploy:local:cleanup, deploy:kubernetes:cleanup]
     desc: Cleanup Kubernetes environment for local deployment
     deps:
@@ -371,11 +371,11 @@ tasks:
     cmds:
       - "{{ .KIND_BIN }} delete cluster --name {{ .KIND_CLUSTER_NAME }}"
 
-  deploy:kubernetes:network:bootstrap:
+  test-env:kubernetes:network:bootstrap:
     internal: true
     desc: Deploy a bootstrap Directory server in Kubernetes
     deps:
-      - task: deploy:kubernetes:setup-cluster
+      - task: test-env:kubernetes:setup-cluster
         vars:
           E2E_COVERAGE_ENABLED: "{{ .E2E_COVERAGE_ENABLED }}"
       - deps:dirctl
@@ -398,14 +398,14 @@ tasks:
         echo BOOTSTRAP_PEER_ID="${bootstrap_peerid}" > .env
 
       # Generate credentials and htpasswd file
-      - task: deploy:kubernetes:gen-htpasswd-creds
+      - task: test-env:kubernetes:gen-htpasswd-creds
         vars:
           CREDS_FILE: "/tmp/dir-htpasswd-creds-bootstrap.env"
           HTPASSWD_FILE: "/tmp/zot-htpasswd-bootstrap"
 
       # Cleanup credentials on exit
       - defer:
-          task: deploy:kubernetes:cleanup-htpasswd-creds
+          task: test-env:kubernetes:cleanup-htpasswd-creds
           vars:
             CREDS_FILE: "/tmp/dir-htpasswd-creds-bootstrap.env"
             HTPASSWD_FILE: "/tmp/zot-htpasswd-bootstrap"
@@ -446,7 +446,7 @@ tasks:
           --wait-for-jobs \
           --timeout "15m"
 
-  deploy:kubernetes:network:
+  test-env:kubernetes:network:
     aliases: [deploy:network]
     desc: Deploy a network of Directory servers in Kubernetes (1 bootstrap + 3 peers)
     vars:
@@ -460,7 +460,7 @@ tasks:
       - "{{ .HELM_BIN }} dependency build {{ .HELM_CHART_PATH }}"
 
       # Deploy bootstrap with explicit var passing (not as dependency)
-      - task: deploy:kubernetes:network:bootstrap
+      - task: test-env:kubernetes:network:bootstrap
         vars:
           PUBLICATION_SCHEDULER_INTERVAL: "{{ .PUBLICATION_SCHEDULER_INTERVAL }}"
           E2E_COVERAGE_ENABLED: "{{ .E2E_COVERAGE_ENABLED }}"
@@ -473,7 +473,7 @@ tasks:
           export $(cat .env)
 
           # Generate fresh credentials for this peer
-          task deploy:kubernetes:gen-htpasswd-creds \
+          task test-env:kubernetes:gen-htpasswd-creds \
             CREDS_FILE=/tmp/dir-htpasswd-creds-{{ .ITEM.PEER }}.env \
             HTPASSWD_FILE=/tmp/zot-htpasswd-{{ .ITEM.PEER }}
 
@@ -520,7 +520,7 @@ tasks:
           {{ .KUBECTL_BIN }} wait --for=condition=ready pod -l app.kubernetes.io/name=postgresql -n {{ .ITEM.PEER }} --timeout=15m
           echo "{{ .ITEM.PEER }} is ready"
 
-  deploy:kubernetes:network:port-forward:
+  test-env:kubernetes:network:port-forward:
     aliases: [deploy:network:port-forward]
     desc: Set up port-forwarding for the peers
     cmds:
@@ -532,14 +532,14 @@ tasks:
       # Delay to ensure services are online
       - sleep 10
 
-  deploy:kubernetes:network:port-forward:cleanup:
+  test-env:kubernetes:network:port-forward:cleanup:
     aliases: [deploy:network:port-forward:cleanup]
     desc: Cleanup port-forwarding processes
     cmds:
       # Kill any existing port-forward processes for the agntcy-dir-apiserver service
       - kill -9 $(ps aux | grep port-forward | grep agntcy-dir-apiserver | awk '{print $2}') || true
 
-  deploy:kubernetes:network:cleanup:
+  test-env:kubernetes:network:cleanup:
     aliases: [deploy:network:cleanup]
     desc: Cleanup Kubernetes environment for network deployment
     vars:
