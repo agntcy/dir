@@ -90,12 +90,10 @@ func handleRequest(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	// Extract user info from headers (added by ext_authz)
-	authProvider := r.Header.Get("X-Auth-Provider")
-	username := r.Header.Get("X-Username")
+	// OIDC ext-authz sets these headers on allow (canonical principal from Casbin)
+	authorizedPrincipal := r.Header.Get("X-Authorized-Principal")
 	userID := r.Header.Get("X-User-Id")
-	email := r.Header.Get("X-User-Email")
-	orgConstructs := r.Header.Get("X-Org-Constructs")
+	principalType := r.Header.Get("X-Principal-Type")
 
 	// Echo back the request info
 	response := map[string]any{
@@ -103,20 +101,17 @@ func handleRequest(w http.ResponseWriter, r *http.Request) {
 		"path":    r.URL.Path,
 		"method":  r.Method,
 		"authenticated": map[string]string{
-			"provider":       authProvider,
-			"username":       username,
-			"user_id":        userID,
-			"email":          email,
-			"org_constructs": orgConstructs,
+			"authorized_principal": authorizedPrincipal,
+			"user_id":              userID,
+			"principal_type":       principalType,
 		},
-		"note": "This is a mock server for testing ext_authz integration",
+		"note": "This is a mock server for testing OIDC ext_authz integration",
 	}
 
 	// Pretty print for logs
-	if authProvider != "" {
-		//nolint:gosec // G110: Mock server - logs authenticated user info for debugging
-		log.Printf("✅ Authenticated user: %s (provider: %s, orgs: %s)",
-			username, authProvider, orgConstructs)
+	if authorizedPrincipal != "" {
+		//nolint:gosec // G110: Mock server - logs authenticated principal for debugging
+		log.Printf("✅ Authenticated: %s (type: %s)", authorizedPrincipal, principalType)
 	}
 
 	w.Header().Set("Content-Type", "application/json")

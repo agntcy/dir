@@ -1,0 +1,48 @@
+# OIDC ext-authz configuration
+# Roles come only from config; no roles are extracted from JWT claims.
+
+claims:
+  userID: "sub"
+  emailPath: "email"
+
+# Issuer-specific extraction. Allowed principalType: auto | user | client | github
+issuers:
+  "https://tenant.zitadel.cloud":
+    principalType: "auto"
+    machineIdentityClaim: "client_id"
+  "https://token.actions.githubusercontent.com":
+    principalType: "github"
+
+# Fallback when issuer not in issuers. Allowed mode: auto | user | client
+principalType:
+  mode: "auto"
+  machineIdentityClaim: "client_id"
+  machineSubPattern: ""
+
+userDenyList: []
+
+publicPaths:
+  - "/healthz"
+  - "/grpc.reflection"
+
+roles:
+  admin:
+    allowedMethods: ["*"]
+    users:
+      - "user:https://tenant.zitadel.cloud:77776025198584418"
+  viewer:
+    allowedMethods:
+      - "/agntcy.dir.store.v1.StoreService/Pull"
+      - "/agntcy.dir.store.v1.StoreService/Lookup"
+    users: []
+  ci-writer:
+    allowedMethods:
+      - "/agntcy.dir.store.v1.StoreService/Push"
+      - "/agntcy.dir.store.v1.StoreService/Pull"
+    users: []
+    clients:
+      - "client:https://tenant.zitadel.cloud:69234237810729234"
+  prod-deployer:
+    allowedMethods: ["*"]
+    githubWorkflows:
+      - "ghwf:repo:agntcy/dir:workflow:deploy.yml:ref:refs/heads/main:env:prod"
