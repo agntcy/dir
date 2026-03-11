@@ -14,11 +14,6 @@ on:
         required: true
         type: string
         description: "Image tag to use."
-    secrets:
-      CODECOV_TOKEN:
-        description: "Codecov token for uploading coverage reports"
-        required: true
-
 permissions:
   id-token: write
   contents: read
@@ -49,20 +44,11 @@ jobs:
         run: |
           task test:unit:coverage
 
-      - name: List coverage modules
-        id: list-modules
-        run: |
-          MODULES_LIST=$(task test:unit:coverage:list-modules)
-          echo "modules_list=$MODULES_LIST" >> $GITHUB_OUTPUT
-          echo "Coverage modules: $MODULES_LIST"
-
-      - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@671740ac38dd9b0130fbe1cec585b89eea48d3de # v5.5.2
+      - name: Upload coverage artifact
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
         with:
-          files: ${{ steps.list-modules.outputs.modules_list }}
-          flags: unit
-          verbose: true
-          token: ${{ secrets.CODECOV_TOKEN }}
+          name: coverage-unit
+          path: .coverage/unit
 
       - name: Run unit tests
         run: |
@@ -81,5 +67,3 @@ jobs:
       image_repo: ${{ inputs.image_repo }}
       image_tag: ${{ inputs.image_tag }}
       enable_coverage: true
-    secrets:
-      CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
