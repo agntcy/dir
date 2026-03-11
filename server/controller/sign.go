@@ -6,6 +6,7 @@ package controller
 
 import (
 	"context"
+	"strings"
 
 	signv1 "github.com/agntcy/dir/api/sign/v1"
 	"github.com/agntcy/dir/server/types"
@@ -72,7 +73,7 @@ func (s *signCtrl) Verify(ctx context.Context, req *signv1.VerifyRequest) (*sign
 
 	// Apply provider filtering (key or OIDC) so the response matches the request.
 	if prov := req.GetProvider(); prov != nil {
-		resp = filterVerifyResponseByProvider(ctx, prov, resp)
+		resp = filterVerifyResponseByProvider(prov, resp)
 	}
 
 	return resp, nil
@@ -104,7 +105,87 @@ func signerInfoFromVerification(obj types.SignatureVerificationObject) *signv1.S
 }
 
 // filterVerifyResponseByProvider filters the response to keep only signers that match the requested provider (key or OIDC).
-func filterVerifyResponseByProvider(ctx context.Context, provider *signv1.VerifyRequestProvider, resp *signv1.VerifyResponse) *signv1.VerifyResponse {
-	// TODO: Implement provider filtering
-	return resp
+func filterVerifyResponseByProvider(provider *signv1.VerifyRequestProvider, resp *signv1.VerifyResponse) *signv1.VerifyResponse {
+	if resp == nil || len(resp.GetSigners()) == 0 {
+		return resp
+	}
+
+	var filtered []*signv1.SignerInfo
+
+	switch p := provider.GetRequest().(type) {
+	case *signv1.VerifyRequestProvider_Key:
+		filtered = filterSignersByKey(resp.GetSigners(), p.Key)
+	case *signv1.VerifyRequestProvider_Oidc:
+		filtered = filterSignersByOIDC(resp.GetSigners(), p.Oidc)
+	case *signv1.VerifyRequestProvider_Any:
+		filtered = resp.GetSigners()
+	default:
+		return resp
+	}
+
+	out := &signv1.VerifyResponse{
+		Success: resp.GetSuccess(),
+		Signers: filtered,
+	}
+	if len(filtered) == 0 {
+		out.Success = false
+		msg := "no verified signers match the requested provider"
+		out.ErrorMessage = &msg
+	}
+
+	return out
+}
+
+func filterSignersByKey(signers []*signv1.SignerInfo, key *signv1.VerifyWithKey) []*signv1.SignerInfo {
+	if key == nil {
+		return nil
+	}
+
+	wantPub := strings.TrimSpace(key.GetPublicKey())
+
+	var out []*signv1.SignerInfo
+
+	for _, s := range signers {
+		k := s.GetKey()
+		if k == nil {
+			continue
+		}
+
+		if wantPub != "" {
+			if strings.TrimSpace(k.GetPublicKey()) != wantPub {
+				continue
+			}
+		}
+
+		out = append(out, s)
+	}
+
+	return out
+}
+
+func filterSignersByOIDC(signers []*signv1.SignerInfo, oidc *signv1.VerifyWithOIDC) []*signv1.SignerInfo {
+	if oidc == nil {
+		return nil
+	}
+
+	var out []*signv1.SignerInfo
+
+	for _, s := range signers {
+		o := s.GetOidc()
+		if o == nil {
+			continue
+		}
+
+		if oidc.GetIssuer() != "" && o.GetIssuer() != oidc.GetIssuer() {
+			continue
+		}
+
+		if oidc.GetSubject() != "" && o.GetSubject() != oidc.GetSubject() {
+			continue
+		}
+
+		out = append(out, s)
+	}
+
+	return out
 }
