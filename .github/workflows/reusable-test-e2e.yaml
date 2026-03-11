@@ -18,11 +18,7 @@ on:
         required: false
         type: boolean
         default: false
-        description: "Whether to collect and upload E2E coverage to Codecov."
-    secrets:
-      CODECOV_TOKEN:
-        description: "Codecov token for uploading coverage reports"
-        required: false
+        description: "Whether to collect and upload E2E coverage as artifacts."
 
 jobs:
   e2e:
@@ -33,16 +29,12 @@ jobs:
         include:
           - task: test:e2e:local
             label: "Local"
-            coverage-files: ".coverage/e2e/local-cli.out,.coverage/e2e/local-client.out,.coverage/e2e/server.out"
           - task: test:e2e:network
             label: "Network"
-            coverage-files: ".coverage/e2e/network.out,.coverage/e2e/server.out"
           - task: test:e2e:mcp
             label: "MCP"
-            coverage-files: ".coverage/e2e/server.out"
           - task: test:e2e:spire
             label: "Federation"
-            coverage-files: ".coverage/e2e/server.out"
     steps:
       - name: Checkout code
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
@@ -122,12 +114,9 @@ jobs:
         run: |
           task test:e2e:coverage:process
 
-      - name: Upload E2E coverage to Codecov
+      - name: Upload E2E coverage artifact
         if: ${{ inputs.enable_coverage && matrix.task != 'test:e2e:spire' && matrix.task != 'test:e2e:mcp' }}
-        uses: codecov/codecov-action@671740ac38dd9b0130fbe1cec585b89eea48d3de # v5.5.2
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
         with:
-          files: ${{ matrix.coverage-files }}
-          flags: e2e-${{ matrix.label }}
-          fail_ci_if_error: false
-          verbose: true
-          token: ${{ secrets.CODECOV_TOKEN }}
+          name: coverage-e2e-${{ matrix.label }}
+          path: .coverage/e2e
