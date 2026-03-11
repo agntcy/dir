@@ -4,31 +4,31 @@ on:
   workflow_dispatch:
     inputs:
       import_config:
-        description: 'JSON config file path or inline JSON content'
+        description: "JSON config file path or inline JSON content"
         type: string
-        default: '.github/workflows/scripts/import-records.json'
+        default: ".github/workflows/scripts/import-records.json"
       dry_run:
-        description: 'Dry run mode - no records will be imported'
+        description: "Dry run mode - no records will be imported"
         type: boolean
         default: true
       rate_limit:
-        description: 'LLM API requests per minute to avoid rate limiting errors'
+        description: "LLM API requests per minute to avoid rate limiting errors"
         type: number
         default: 2
       sign:
-        description: 'Sign records with OIDC after importing'
+        description: "Sign records with OIDC after importing"
         type: boolean
         default: true
       force:
-        description: 'Force push even if record already exists'
+        description: "Force push even if record already exists"
         type: boolean
         default: false
       server_address:
-        description: 'Directory server address'
+        description: "Directory server address"
         type: string
-        default: 'prod.gateway.ads.outshift.io:443'
+        default: "prod.gateway.ads.outshift.io:443"
   schedule:
-    - cron: '0 0 * * *'
+    - cron: "0 0 * * *"
 
 jobs:
   setup-matrix:
@@ -45,7 +45,7 @@ jobs:
       IMPORT_CONFIG: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.import_config || '.github/workflows/scripts/import-records.json' }}
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
       - name: Set up matrix from config
         id: set-matrix
@@ -76,7 +76,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
-      id-token: write  # Required for OIDC signing with Sigstore
+      id-token: write # Required for OIDC signing with Sigstore
     strategy:
       fail-fast: false
       matrix:
@@ -89,10 +89,10 @@ jobs:
       FORCE: ${{ needs.setup-matrix.outputs.force }}
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
       - name: Setup Go
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@4b73464bb391d4059bd26b0524d20df3927bd417 # v6.3.0
         with:
           go-version: "1.23.6"
 
@@ -134,11 +134,11 @@ jobs:
           AZURE_API_KEY: ${{ secrets.AZURE_OPENAI_API_KEY }}
           AZURE_OPENAI_ENDPOINT: ${{ secrets.AZURE_OPENAI_ENDPOINT }}
           AZURE_OPENAI_BASE_URL: ${{ secrets.AZURE_OPENAI_ENDPOINT }}
-          AZURE_OPENAI_DEPLOYMENT: 'gpt-4o'
-          AZURE_OPENAI_API_VERSION: '2024-10-21'
-          DIRECTORY_CLIENT_AUTH_MODE: 'github'
+          AZURE_OPENAI_DEPLOYMENT: "gpt-4o"
+          AZURE_OPENAI_API_VERSION: "2024-10-21"
+          DIRECTORY_CLIENT_AUTH_MODE: "github"
           DIRECTORY_CLIENT_SERVER_ADDRESS: ${{ env.SERVER_ADDRESS }}
-          DIRECTORY_CLIENT_GITHUB_TOKEN: ${{ secrets.DIRECTORY_MCP_BOT_PAT }} 
+          DIRECTORY_CLIENT_GITHUB_TOKEN: ${{ secrets.DIRECTORY_MCP_BOT_PAT }}
         run: |
           echo "--- Processing Entry $((${{ matrix.entry.index }} + 1)) ---"
 
@@ -163,7 +163,7 @@ jobs:
           if [ -n "${{ matrix.entry.version }}" ]; then
             CMD+=(--filter="version=${{ matrix.entry.version }}")
           fi
-          
+
           if [ -n "${{ matrix.entry.updated_since }}" ]; then
             CMD+=(--filter="updated_since=${{ matrix.entry.updated_since }}")
           fi
@@ -194,12 +194,12 @@ jobs:
       - name: Sign Imported Records
         if: ${{ env.SIGN == 'true' && env.DRY_RUN == 'false' }}
         env:
-          DIRECTORY_CLIENT_AUTH_MODE: 'github'
+          DIRECTORY_CLIENT_AUTH_MODE: "github"
           DIRECTORY_CLIENT_SERVER_ADDRESS: ${{ env.SERVER_ADDRESS }}
           DIRECTORY_CLIENT_GITHUB_TOKEN: ${{ secrets.DIRECTORY_MCP_BOT_PAT }}
         run: |
           CIDS_FILE="${{ steps.import.outputs.cids_file }}"
-          
+
           if [ ! -f "$CIDS_FILE" ]; then
             echo "No CIDs file found - no records were imported"
             exit 0
@@ -238,7 +238,7 @@ jobs:
           echo "=== Signing Summary ==="
           echo "Signed: $SIGNED"
           echo "Failed: $FAILED"
-          
+
           if [ "$FAILED" -gt 0 ]; then
             exit 1
           fi
