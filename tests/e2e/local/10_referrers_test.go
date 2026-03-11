@@ -9,6 +9,7 @@ import (
 	"crypto/rsa"
 	"crypto/x509"
 	"encoding/pem"
+	"fmt"
 
 	corev1 "github.com/agntcy/dir/api/core/v1"
 	signv1 "github.com/agntcy/dir/api/sign/v1"
@@ -103,7 +104,7 @@ var _ = ginkgo.Describe("Running e2e tests for referrers", func() {
 		var err error
 
 		referrer := generateReferrer()
-		err = c.PushReferrer(ctx, &storev1.PushReferrerRequest{
+		_, err = c.PushReferrer(ctx, &storev1.PushReferrerRequest{
 			RecordRef: record1,
 			Referrer:  referrer,
 		})
@@ -112,7 +113,7 @@ var _ = ginkgo.Describe("Running e2e tests for referrers", func() {
 
 		referrers := pullReferrers(c, ctx, record1, corev1.PublicKeyReferrerType)
 		gomega.Expect(referrers).To(gomega.HaveLen(1))
-		gomega.Expect(referrers[0].GetRecordRef()).To(gomega.BeNil())
+		gomega.Expect(referrers[0].GetRecordRef().GetCid()).To(gomega.Equal(record1.GetCid()))
 		gomega.Expect(referrers[0].GetType()).To(gomega.Equal(corev1.PublicKeyReferrerType))
 		gomega.Expect(referrers[0].GetAnnotations()).To(gomega.BeNil())
 		gomega.Expect(referrers[0].GetCreatedAt()).To(gomega.Equal(""))
@@ -126,7 +127,7 @@ var _ = ginkgo.Describe("Running e2e tests for referrers", func() {
 		referrer.CreatedAt = "2026-03-09T14:20:00Z"
 		referrer.RecordRef = record1
 		referrer.Annotations = map[string]string{"foo": "bar"}
-		err = c.PushReferrer(ctx, &storev1.PushReferrerRequest{
+		_, err = c.PushReferrer(ctx, &storev1.PushReferrerRequest{
 			RecordRef: record1,
 			Referrer:  referrer,
 		})
@@ -147,20 +148,25 @@ var _ = ginkgo.Describe("Running e2e tests for referrers", func() {
 
 		referrer := generateReferrer()
 		referrer.RecordRef = record2
-		err = c.PushReferrer(ctx, &storev1.PushReferrerRequest{
+		response, err := c.PushReferrer(ctx, &storev1.PushReferrerRequest{
 			RecordRef: record1,
 			Referrer:  referrer,
 		})
 
-		// Should there be an error?
+		// FIXME: make sure to return an error if there's an error
 		gomega.Expect(err).ToNot(gomega.HaveOccurred())
+		gomega.Expect(response.GetSuccess()).To(gomega.BeFalse())
+		gomega.Expect(response.GetErrorMessage()).To(gomega.Equal(
+			fmt.Sprintf("failed to push referrer for record %s: ", record1.GetCid()) +
+				"rpc error: code = InvalidArgument desc = referrer's record CID must match record CID",
+		))
 	})
 
 	ginkgo.It("should fail if empty referrer", func() {
 		var err error
 
 		referrer := &corev1.RecordReferrer{}
-		err = c.PushReferrer(ctx, &storev1.PushReferrerRequest{
+		_, err = c.PushReferrer(ctx, &storev1.PushReferrerRequest{
 			RecordRef: record1,
 			Referrer:  referrer,
 		})
@@ -174,7 +180,7 @@ var _ = ginkgo.Describe("Running e2e tests for referrers", func() {
 
 		referrer := generateReferrer()
 		referrer.Type = "foo"
-		err = c.PushReferrer(ctx, &storev1.PushReferrerRequest{
+		_, err = c.PushReferrer(ctx, &storev1.PushReferrerRequest{
 			RecordRef: record1,
 			Referrer:  referrer,
 		})

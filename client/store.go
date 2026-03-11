@@ -127,30 +127,30 @@ func (c *Client) PushBatch(ctx context.Context, records []*corev1.Record) ([]*co
 }
 
 // PushReferrer stores a signature using the PushReferrer RPC.
-func (c *Client) PushReferrer(ctx context.Context, req *storev1.PushReferrerRequest) error {
+func (c *Client) PushReferrer(ctx context.Context, req *storev1.PushReferrerRequest) (*storev1.PushReferrerResponse, error) {
 	// Create streaming client
 	stream, err := c.StoreServiceClient.PushReferrer(ctx)
 	if err != nil {
-		return fmt.Errorf("failed to create push referrer stream: %w", err)
+		return nil, fmt.Errorf("failed to create push referrer stream: %w", err)
 	}
 
 	// Send the request
 	if err := stream.Send(req); err != nil {
-		return fmt.Errorf("failed to send push referrer request: %w", err)
+		return nil, fmt.Errorf("failed to send push referrer request: %w", err)
 	}
 
 	// Close send stream
 	if err := stream.CloseSend(); err != nil {
-		return fmt.Errorf("failed to close send stream: %w", err)
+		return nil, fmt.Errorf("failed to close send stream: %w", err)
 	}
 
 	// Receive response
-	_, err = stream.Recv()
+	response, err := stream.Recv()
 	if err != nil {
-		return fmt.Errorf("failed to receive push referrer response: %w", err)
+		return nil, fmt.Errorf("failed to receive push referrer response: %w", err)
 	}
 
-	return nil
+	return response, nil
 }
 
 // PullReferrer retrieves all referrers using the PullReferrer RPC.
