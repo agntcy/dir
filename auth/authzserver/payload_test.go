@@ -27,7 +27,7 @@ func TestExtractPrincipal_User(t *testing.T) {
 		t.Errorf("principal = %q, want user:https://tenant.zitadel.cloud:77776025198584418", principal)
 	}
 
-	if pt != "user" {
+	if pt != PrincipalTypeUser {
 		t.Errorf("principalType = %q, want user", pt)
 	}
 }
@@ -55,7 +55,7 @@ func TestExtractPrincipal_Client(t *testing.T) {
 		t.Errorf("principal = %q, want client:https://tenant.zitadel.cloud:69234237810729234", principal)
 	}
 
-	if pt != "client" {
+	if pt != PrincipalTypeClient {
 		t.Errorf("principalType = %q, want client", pt)
 	}
 }
@@ -153,7 +153,7 @@ func TestExtractPrincipal_Auto_User(t *testing.T) {
 		t.Errorf("principal = %q", principal)
 	}
 
-	if pt != "user" {
+	if pt != PrincipalTypeUser {
 		t.Errorf("principalType = %q", pt)
 	}
 }
@@ -175,7 +175,7 @@ func TestExtractPrincipal_Auto_Client(t *testing.T) {
 		t.Errorf("principal = %q", principal)
 	}
 
-	if pt != "client" {
+	if pt != PrincipalTypeClient {
 		t.Errorf("principalType = %q", pt)
 	}
 }
@@ -187,14 +187,17 @@ func TestExtractPrincipal_Auto_NoSubWithClientID(t *testing.T) {
 	}
 
 	payload := `{"iss":"https://tenant.zitadel.cloud","client_id":"machine-only"}`
+
 	principal, pt, err := ExtractPrincipal(payload, config)
 	if err != nil {
 		t.Fatalf("ExtractPrincipal: %v", err)
 	}
+
 	if principal != "client:https://tenant.zitadel.cloud:machine-only" {
 		t.Errorf("principal = %q", principal)
 	}
-	if pt != "client" {
+
+	if pt != PrincipalTypeClient {
 		t.Errorf("principalType = %q", pt)
 	}
 }
@@ -206,6 +209,7 @@ func TestExtractPrincipal_Auto_NoSubNoClientID(t *testing.T) {
 	}
 
 	payload := `{"iss":"https://tenant.zitadel.cloud"}`
+
 	_, _, err := ExtractPrincipal(payload, config)
 	if err == nil {
 		t.Error("expected error when both sub and client_id are missing")
@@ -223,14 +227,17 @@ func TestExtractPrincipal_Auto_MachineSubPattern(t *testing.T) {
 	}
 
 	payload := `{"iss":"https://tenant.zitadel.cloud","sub":"machine@service","client_id":"svc-123"}`
+
 	principal, pt, err := ExtractPrincipal(payload, config)
 	if err != nil {
 		t.Fatalf("ExtractPrincipal: %v", err)
 	}
+
 	if principal != "client:https://tenant.zitadel.cloud:svc-123" {
 		t.Errorf("principal = %q", principal)
 	}
-	if pt != "client" {
+
+	if pt != PrincipalTypeClient {
 		t.Errorf("principalType = %q", pt)
 	}
 }
@@ -246,6 +253,7 @@ func TestExtractPrincipal_Auto_MachineSubPatternNoClientID(t *testing.T) {
 	}
 
 	payload := `{"iss":"https://tenant.zitadel.cloud","sub":"machine@service"}`
+
 	_, _, err := ExtractPrincipal(payload, config)
 	if err == nil {
 		t.Error("expected error when sub matches machine pattern but client_id is missing")
@@ -263,14 +271,17 @@ func TestExtractPrincipal_Auto_MachineSubPatternNoMatch(t *testing.T) {
 	}
 
 	payload := `{"iss":"https://tenant.zitadel.cloud","sub":"human-user"}`
+
 	principal, pt, err := ExtractPrincipal(payload, config)
 	if err != nil {
 		t.Fatalf("ExtractPrincipal: %v", err)
 	}
+
 	if principal != "user:https://tenant.zitadel.cloud:human-user" {
 		t.Errorf("principal = %q", principal)
 	}
-	if pt != "user" {
+
+	if pt != PrincipalTypeUser {
 		t.Errorf("principalType = %q", pt)
 	}
 }

@@ -12,10 +12,13 @@ import (
 	"google.golang.org/grpc/codes"
 )
 
+const testPayloadAdmin = `{"iss":"https://tenant.zitadel.cloud","sub":"77776025198584418"}`
+
 func makeCheckRequest(path string, headers map[string]string) *authv3.CheckRequest {
 	if headers == nil {
 		headers = make(map[string]string)
 	}
+
 	return &authv3.CheckRequest{
 		Attributes: &authv3.AttributeContext{
 			Request: &authv3.AttributeContext_Request{
@@ -52,6 +55,7 @@ func TestNewOIDCAuthorizationServer(t *testing.T) {
 
 	t.Run("invalid config", func(t *testing.T) {
 		cfg := &OIDCConfig{Claims: ClaimsConfig{UserID: ""}, Roles: map[string]OIDCRole{"x": {AllowedMethods: []string{"*"}}}}
+
 		_, err := NewOIDCAuthorizationServer(cfg, slog.Default())
 		if err == nil {
 			t.Error("expected error for invalid config")
@@ -63,6 +67,7 @@ func TestNewOIDCAuthorizationServer(t *testing.T) {
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
+
 		if srv == nil {
 			t.Error("expected non-nil server")
 		}
@@ -73,86 +78,102 @@ func TestNewOIDCAuthorizationServer(t *testing.T) {
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
+
 		if srv == nil {
 			t.Error("expected non-nil server")
 		}
 	})
 }
 
+//nolint:gocognit,cyclop // Test function with multiple subtests; high complexity is acceptable.
 func TestOIDCAuthorizationServer_Check(t *testing.T) {
 	config := validOIDCConfig()
+
 	srv, err := NewOIDCAuthorizationServer(config, slog.Default())
 	if err != nil {
 		t.Fatalf("failed to create server: %v", err)
 	}
+
 	ctx := context.Background()
 
 	t.Run("public path allows without auth", func(t *testing.T) {
 		req := makeCheckRequest("/healthz", nil)
+
 		resp, err := srv.Check(ctx, req)
 		if err != nil {
 			t.Fatalf("Check: %v", err)
 		}
-		if resp.Status.Code != int32(codes.OK) {
-			t.Errorf("expected OK, got code %d", resp.Status.Code)
+
+		if resp.GetStatus().GetCode() != int32(codes.OK) {
+			t.Errorf("expected OK, got code %d", resp.GetStatus().GetCode())
 		}
 	})
 
 	t.Run("missing x-jwt-payload returns 401", func(t *testing.T) {
 		req := makeCheckRequest("/api/test", nil)
+
 		resp, err := srv.Check(ctx, req)
 		if err != nil {
 			t.Fatalf("Check: %v", err)
 		}
-		if resp.Status.Code != int32(codes.Unauthenticated) {
-			t.Errorf("expected Unauthenticated, got code %d", resp.Status.Code)
+
+		if resp.GetStatus().GetCode() != int32(codes.Unauthenticated) {
+			t.Errorf("expected Unauthenticated, got code %d", resp.GetStatus().GetCode())
 		}
 	})
 
 	t.Run("invalid payload returns 401", func(t *testing.T) {
 		req := makeCheckRequest("/api/test", map[string]string{HeaderJWTPayload: "invalid-json"})
+
 		resp, err := srv.Check(ctx, req)
 		if err != nil {
 			t.Fatalf("Check: %v", err)
 		}
-		if resp.Status.Code != int32(codes.Unauthenticated) {
-			t.Errorf("expected Unauthenticated, got code %d", resp.Status.Code)
+
+		if resp.GetStatus().GetCode() != int32(codes.Unauthenticated) {
+			t.Errorf("expected Unauthenticated, got code %d", resp.GetStatus().GetCode())
 		}
 	})
 
 	t.Run("principal in deny list returns 403", func(t *testing.T) {
 		cfg := validOIDCConfig()
 		cfg.UserDenyList = []string{"user:https://tenant.zitadel.cloud:77776025198584418"}
+
 		srv2, err := NewOIDCAuthorizationServer(cfg, slog.Default())
 		if err != nil {
 			t.Fatalf("failed to create server: %v", err)
 		}
-		payload := `{"iss":"https://tenant.zitadel.cloud","sub":"77776025198584418"}`
-		req := makeCheckRequest("/api/test", map[string]string{HeaderJWTPayload: payload})
+
+		req := makeCheckRequest("/api/test", map[string]string{HeaderJWTPayload: testPayloadAdmin})
+
 		resp, err := srv2.Check(ctx, req)
 		if err != nil {
 			t.Fatalf("Check: %v", err)
 		}
-		if resp.Status.Code != int32(codes.PermissionDenied) {
-			t.Errorf("expected PermissionDenied, got code %d", resp.Status.Code)
+
+		if resp.GetStatus().GetCode() != int32(codes.PermissionDenied) {
+			t.Errorf("expected PermissionDenied, got code %d", resp.GetStatus().GetCode())
 		}
 	})
 
 	t.Run("authorized request returns 200 with headers", func(t *testing.T) {
-		payload := `{"iss":"https://tenant.zitadel.cloud","sub":"77776025198584418"}`
-		req := makeCheckRequest("/api/test", map[string]string{HeaderJWTPayload: payload})
+		req := makeCheckRequest("/api/test", map[string]string{HeaderJWTPayload: testPayloadAdmin})
+
 		resp, err := srv.Check(ctx, req)
 		if err != nil {
 			t.Fatalf("Check: %v", err)
 		}
-		if resp.Status.Code != int32(codes.OK) {
-			t.Errorf("expected OK, got code %d", resp.Status.Code)
+
+		if resp.GetStatus().GetCode() != int32(codes.OK) {
+			t.Errorf("expected OK, got code %d", resp.GetStatus().GetCode())
 		}
+
 		okResp := resp.GetOkResponse()
 		if okResp == nil {
 			t.Fatal("expected OkResponse")
 		}
-		headers := okResp.Headers
+
+		headers := okResp.GetHeaders()
 		if len(headers) < 2 {
 			t.Errorf("expected at least 2 headers, got %d", len(headers))
 		}
@@ -166,18 +187,21 @@ func TestOIDCAuthorizationServer_Check(t *testing.T) {
 				Users:          []string{"user:https://tenant.zitadel.cloud:77776025198584418"},
 			},
 		}
+
 		srv2, err := NewOIDCAuthorizationServer(cfg, slog.Default())
 		if err != nil {
 			t.Fatalf("failed to create server: %v", err)
 		}
-		payload := `{"iss":"https://tenant.zitadel.cloud","sub":"77776025198584418"}`
-		req := makeCheckRequest("/api/forbidden", map[string]string{HeaderJWTPayload: payload})
+
+		req := makeCheckRequest("/api/forbidden", map[string]string{HeaderJWTPayload: testPayloadAdmin})
+
 		resp, err := srv2.Check(ctx, req)
 		if err != nil {
 			t.Fatalf("Check: %v", err)
 		}
-		if resp.Status.Code != int32(codes.PermissionDenied) {
-			t.Errorf("expected PermissionDenied, got code %d", resp.Status.Code)
+
+		if resp.GetStatus().GetCode() != int32(codes.PermissionDenied) {
+			t.Errorf("expected PermissionDenied, got code %d", resp.GetStatus().GetCode())
 		}
 	})
 }
@@ -189,13 +213,14 @@ func TestGetHeader(t *testing.T) {
 	srv, _ := NewOIDCAuthorizationServer(config, slog.Default())
 	ctx := context.Background()
 
-	payload := `{"iss":"https://tenant.zitadel.cloud","sub":"77776025198584418"}`
-	req := makeCheckRequest("/api/test", map[string]string{"X-JWT-Payload": payload})
+	req := makeCheckRequest("/api/test", map[string]string{"X-JWT-Payload": testPayloadAdmin})
+
 	resp, err := srv.Check(ctx, req)
 	if err != nil {
 		t.Fatalf("Check: %v", err)
 	}
-	if resp.Status.Code != int32(codes.OK) {
-		t.Errorf("expected OK with X-JWT-Payload (case-insensitive), got code %d", resp.Status.Code)
+
+	if resp.GetStatus().GetCode() != int32(codes.OK) {
+		t.Errorf("expected OK with X-JWT-Payload (case-insensitive), got code %d", resp.GetStatus().GetCode())
 	}
 }

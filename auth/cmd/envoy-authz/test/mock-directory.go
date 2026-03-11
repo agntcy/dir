@@ -102,8 +102,8 @@ func handleRequest(w http.ResponseWriter, r *http.Request) {
 		"method":  r.Method,
 		"authenticated": map[string]string{
 			"authorized_principal": authorizedPrincipal,
-			"user_id":             userID,
-			"principal_type":      principalType,
+			"user_id":              userID,
+			"principal_type":       principalType,
 		},
 		"note": "This is a mock server for testing OIDC ext_authz integration",
 	}
