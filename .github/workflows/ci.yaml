@@ -184,6 +184,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
+      id-token: write
     strategy:
       fail-fast: false
       matrix:
@@ -218,7 +219,7 @@ jobs:
           files: "**/*.out"
           flags: ${{ matrix.codecov_flag }}
           verbose: true
-          token: ${{ secrets.CODECOV_TOKEN }}
+          use_oidc: true
 
   release:
     name: Release
