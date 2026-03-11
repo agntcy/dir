@@ -68,7 +68,7 @@ func (c *Client) pushReferrersToStore(ctx context.Context, recordRef *corev1.Rec
 	}
 
 	// Push public key to store as a referrer
-	err = c.PushReferrer(ctx, &storev1.PushReferrerRequest{
+	_, err = c.PushReferrer(ctx, &storev1.PushReferrerRequest{
 		RecordRef: recordRef,
 		Referrer:  publicKeyReferrer,
 	})
@@ -83,7 +83,7 @@ func (c *Client) pushReferrersToStore(ctx context.Context, recordRef *corev1.Rec
 	}
 
 	// Push signature to store as a referrer
-	err = c.PushReferrer(ctx, &storev1.PushReferrerRequest{
+	_, err = c.PushReferrer(ctx, &storev1.PushReferrerRequest{
 		RecordRef: recordRef,
 		Referrer:  signatureReferrer,
 	})

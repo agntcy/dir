@@ -45,6 +45,12 @@ func (s *store) PushReferrer(ctx context.Context, recordCID string, referrer *co
 		return status.Error(codes.InvalidArgument, "referrer type is required") //nolint:wrapcheck
 	}
 
+	if referrer.GetRecordRef() == nil {
+		referrer.RecordRef = &corev1.RecordRef{Cid: recordCID}
+	} else if referrer.GetRecordRef().GetCid() != recordCID {
+		return status.Error(codes.InvalidArgument, "referrer's record CID must match record CID") //nolint:wrapcheck
+	}
+
 	// Check if record exists before pushing referrer
 	_, err := s.Lookup(ctx, &corev1.RecordRef{Cid: recordCID})
 	if err != nil {
