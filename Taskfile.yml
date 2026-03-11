@@ -42,6 +42,11 @@ includes:
     flatten: true
     excludes: [default]
 
+  importer:
+    taskfile: importer/Taskfile.yml
+    flatten: true
+    excludes: [default]
+
   helm:
     taskfile: install/Taskfile.yml
     flatten: true

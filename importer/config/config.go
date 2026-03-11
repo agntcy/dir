@@ -6,10 +6,12 @@ package config
 import (
 	"context"
 	"errors"
+	"fmt"
 
 	corev1 "github.com/agntcy/dir/api/core/v1"
 	searchv1 "github.com/agntcy/dir/api/search/v1"
 	"github.com/agntcy/dir/client/streaming"
+	scannerconfig "github.com/agntcy/dir/importer/scanner/config"
 )
 
 // RegistryType represents the type of external registry to import from.
@@ -57,6 +59,8 @@ type Config struct {
 
 	Force bool // If true, push even if record already exists
 	Debug bool // If true, enable verbose debug output
+
+	Scanner scannerconfig.Config // Scanner configuration
 }
 
 // Validate checks if the configuration is valid.
@@ -71,6 +75,10 @@ func (c *Config) Validate() error {
 
 	if c.Concurrency <= 0 {
 		c.Concurrency = 1 // Set default concurrency
+	}
+
+	if err := c.Scanner.Validate(); err != nil {
+		return fmt.Errorf("scanner configuration is invalid: %w", err)
 	}
 
 	return nil

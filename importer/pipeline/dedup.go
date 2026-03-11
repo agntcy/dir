@@ -127,7 +127,7 @@ func (c *MCPDuplicateChecker) buildCache(ctx context.Context) error {
 			c.mu.Lock()
 
 			for _, record := range records {
-				nameVersion, err := extractNameVersion(record)
+				nameVersion, err := ExtractNameVersion(record)
 				if err != nil {
 					continue
 				}
