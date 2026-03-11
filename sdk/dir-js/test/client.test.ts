@@ -437,6 +437,32 @@ describe('Client', () => {
           }
         }
 
+        // Response with from-server (cached) must match local verification
+        const fromServerResponse = await client.verify(
+          create(models.sign_v1.VerifyRequestSchema, {
+            recordRef: ref,
+            fromServer: true,
+          }),
+        );
+        expect(fromServerResponse.success).toBe(response.success);
+        expect(fromServerResponse.signers).toBeDefined();
+        expect(fromServerResponse.signers.length).toBe(response.signers.length);
+        for (let i = 0; i < response.signers.length; i++) {
+          const rSigner = response.signers[i];
+          const sSigner = fromServerResponse.signers[i];
+          expect(rSigner).toBeDefined();
+          expect(sSigner).toBeDefined();
+          expect(sSigner!.type.case).toBe(rSigner!.type.case);
+          if (rSigner!.type.case === 'key' && sSigner!.type.case === 'key') {
+            expect(sSigner!.type.value.publicKey).toBe(rSigner!.type.value.publicKey);
+            expect(sSigner!.type.value.algorithm).toBe(rSigner!.type.value.algorithm);
+          }
+          if (rSigner!.type.case === 'oidc' && sSigner!.type.case === 'oidc') {
+            expect(sSigner!.type.value.issuer).toBe(rSigner!.type.value.issuer);
+            expect(sSigner!.type.value.subject).toBe(rSigner!.type.value.subject);
+          }
+        }
+
         verifyIndex++;
       }
 
