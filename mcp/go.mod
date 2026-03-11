@@ -16,7 +16,7 @@ require (
 	github.com/agntcy/dir/api v1.0.0
 	github.com/agntcy/dir/client v1.0.0
 	github.com/agntcy/oasf-sdk/pkg v1.0.1
-	github.com/modelcontextprotocol/go-sdk v1.3.1
+	github.com/modelcontextprotocol/go-sdk v1.4.0
 	github.com/stretchr/testify v1.11.1
 	google.golang.org/protobuf v1.36.11
 )
