@@ -269,5 +269,10 @@ func (f *fakeSignatureDB) UpsertSignatureVerification(verification types.Signatu
 func (f *fakeSignatureDB) GetSignatureVerificationsByRecordCID(recordCID string) ([]types.SignatureVerificationObject, error) {
 	return nil, nil
 }
+
+func (f *fakeSignatureDB) InvalidateSignatureVerificationsForRecord(recordCID string) error {
+	return nil
+}
+
 func (f *fakeSignatureDB) Close() error                 { return nil }
 func (f *fakeSignatureDB) IsReady(context.Context) bool { return true }

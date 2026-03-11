@@ -121,4 +121,7 @@ type SignatureVerificationDatabaseAPI interface {
 
 	// GetRecordsNeedingSignatureVerification returns signed records that have no verification or expired verification.
 	GetRecordsNeedingSignatureVerification(ttl time.Duration) ([]Record, error)
+
+	// InvalidateSignatureVerificationsForRecord removes all cached verification rows for a record so the reconciler will re-verify it (e.g. when a new signature or public key referrer is pushed).
+	InvalidateSignatureVerificationsForRecord(recordCID string) error
 }

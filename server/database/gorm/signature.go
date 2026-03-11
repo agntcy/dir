@@ -169,6 +169,15 @@ func (d *DB) GetSignatureVerificationsByRecordCID(recordCID string) ([]types.Sig
 	return result, nil
 }
 
+// InvalidateSignatureVerificationsForRecord deletes all signature verification rows for a record so the reconciler will pick it up for re-verification.
+func (d *DB) InvalidateSignatureVerificationsForRecord(recordCID string) error {
+	if err := d.gormDB.Where("record_cid = ?", recordCID).Delete(&SignatureVerification{}).Error; err != nil {
+		return fmt.Errorf("failed to invalidate signature verifications for record %s: %w", recordCID, err)
+	}
+
+	return nil
+}
+
 // GetRecordsNeedingSignatureVerification returns signed records that have no verification or expired verification.
 func (d *DB) GetRecordsNeedingSignatureVerification(ttl time.Duration) ([]types.Record, error) {
 	expiredBefore := time.Now().Add(-ttl)
