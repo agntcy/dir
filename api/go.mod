@@ -3,21 +3,21 @@ module github.com/agntcy/dir/api
 go 1.26.1
 
 require (
-	buf.build/gen/go/agntcy/oasf-sdk/protocolbuffers/go v1.36.11-20260211093309-73ef8a5c627c.1
-	buf.build/gen/go/agntcy/oasf/protocolbuffers/go v1.36.11-20260211173955-845dfc1ebb08.1
+	buf.build/gen/go/agntcy/oasf-sdk/protocolbuffers/go v1.36.11-20260225090442-549b0cc62759.1
+	buf.build/gen/go/agntcy/oasf/protocolbuffers/go v1.36.11-20260311134852-004f24f91cc7.1
 	github.com/agntcy/oasf-sdk/pkg v1.0.1
 	github.com/multiformats/go-multihash v0.2.3
 	github.com/opencontainers/go-digest v1.0.0
 	github.com/stretchr/testify v1.11.1
-	google.golang.org/grpc v1.78.0
+	google.golang.org/grpc v1.79.2
 	google.golang.org/protobuf v1.36.11
 )
 
 require (
 	github.com/kr/pretty v0.3.1 // indirect
 	github.com/rogpeppe/go-internal v1.14.1 // indirect
-	go.opentelemetry.io/otel v1.40.0 // indirect
-	go.opentelemetry.io/otel/sdk/metric v1.40.0 // indirect
+	go.opentelemetry.io/otel v1.42.0 // indirect
+	go.opentelemetry.io/otel/sdk/metric v1.42.0 // indirect
 	gonum.org/v1/gonum v0.17.0 // indirect
 	gopkg.in/check.v1 v1.0.0-20201130134442-10cb98267c6c // indirect
 )
@@ -35,10 +35,10 @@ require (
 	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 // indirect
 	github.com/spaolacci/murmur3 v1.1.0 // indirect
 	golang.org/x/crypto v0.48.0 // indirect
-	golang.org/x/net v0.50.0 // indirect
-	golang.org/x/sys v0.41.0 // indirect
-	golang.org/x/text v0.34.0 // indirect
-	google.golang.org/genproto/googleapis/rpc v0.0.0-20260209200024-4cfbd4190f57 // indirect
+	golang.org/x/net v0.51.0 // indirect
+	golang.org/x/sys v0.42.0 // indirect
+	golang.org/x/text v0.35.0 // indirect
+	google.golang.org/genproto/googleapis/rpc v0.0.0-20260226221140-a57be14db171 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 	lukechampine.com/blake3 v1.4.1 // indirect
 )
