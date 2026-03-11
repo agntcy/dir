@@ -10,39 +10,53 @@ metadata:
   labels:
     {{- include "envoy-authz.authzLabels" . | nindent 4 }}
 data:
-  # Server configuration
+  # Server env (used by deployment)
   LISTEN_ADDRESS: {{ .Values.authServer.config.listenAddress | quote }}
   LOG_LEVEL: {{ .Values.authServer.config.logLevel | quote }}
-  DEFAULT_PROVIDER: {{ .Values.authServer.config.defaultProvider | quote }}
-  
-  # GitHub provider configuration
-  GITHUB_ENABLED: {{ .Values.authServer.github.enabled | quote }}
-  {{- if .Values.authServer.github.enabled }}
-  GITHUB_CACHE_TTL: {{ .Values.authServer.github.cacheTTL | quote }}
-  GITHUB_API_TIMEOUT: {{ .Values.authServer.github.apiTimeout | quote }}
-  {{- end }}
-  
-  # RBAC configuration (YAML format)
-  rbac-config.yaml: |
-    # Default role assigned to users with no explicit role assignment
-    {{- if .Values.authServer.authorization.defaultRole }}
-    defaultRole: {{ .Values.authServer.authorization.defaultRole | quote }}
-    {{- end }}
-    
-    # Users explicitly denied access (highest priority)
+  CONFIG_PATH: "/etc/envoy-authz/config.yaml"
+
+  # OIDC config (single file loaded by ext-authz server)
+  config.yaml: |
+    # OIDC ext-authz configuration. Roles from config only; no roles from JWT claims.
+    claims:
+      userID: {{ .Values.authServer.oidc.claims.userID | quote }}
+      emailPath: {{ .Values.authServer.oidc.claims.emailPath | quote }}
+
+    issuers:
+      {{- range $issuer, $cfg := .Values.authServer.oidc.issuers }}
+      {{ $issuer | quote }}:
+        principalType: {{ $cfg.principalType | quote }}
+        {{- if $cfg.machineIdentityClaim }}
+        machineIdentityClaim: {{ $cfg.machineIdentityClaim | quote }}
+        {{- end }}
+      {{- end }}
+
+    principalType:
+      mode: {{ .Values.authServer.oidc.principalType.mode | quote }}
+      machineIdentityClaim: {{ .Values.authServer.oidc.principalType.machineIdentityClaim | quote }}
+      {{- if .Values.authServer.oidc.principalType.machineSubPattern }}
+      machineSubPattern: {{ .Values.authServer.oidc.principalType.machineSubPattern | quote }}
+      {{- else }}
+      machineSubPattern: ""
+      {{- end }}
+
     userDenyList:
-      {{- if .Values.authServer.authorization.userDenyList }}
-      {{- range .Values.authServer.authorization.userDenyList }}
+      {{- if .Values.authServer.oidc.userDenyList }}
+      {{- range .Values.authServer.oidc.userDenyList }}
       - {{ . | quote }}
       {{- end }}
       {{- else }}
       []
       {{- end }}
-    
-    # Role definitions
+
+    publicPaths:
+      {{- range .Values.authServer.oidc.publicPaths }}
+      - {{ . | quote }}
+      {{- end }}
+
     roles:
-      {{- if .Values.authServer.authorization.roles }}
-      {{- range $roleName, $role := .Values.authServer.authorization.roles }}
+      {{- if .Values.authServer.oidc.roles }}
+      {{- range $roleName, $role := .Values.authServer.oidc.roles }}
       {{ $roleName }}:
         allowedMethods:
           {{- range $role.allowedMethods }}
@@ -56,13 +70,17 @@ data:
         {{- else }}
         users: []
         {{- end }}
-        {{- if $role.orgs }}
-        orgs:
-          {{- range $role.orgs }}
+        {{- if $role.clients }}
+        clients:
+          {{- range $role.clients }}
           - {{ . | quote }}
           {{- end }}
-        {{- else }}
-        orgs: []
+        {{- end }}
+        {{- if $role.githubWorkflows }}
+        githubWorkflows:
+          {{- range $role.githubWorkflows }}
+          - {{ . | quote }}
+          {{- end }}
         {{- end }}
       {{- end }}
       {{- else }}
