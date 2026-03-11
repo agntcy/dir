@@ -85,8 +85,9 @@ func signerInfoFromVerification(obj types.SignatureVerificationObject) *signv1.S
 		return &signv1.SignerInfo{
 			Type: &signv1.SignerInfo_Oidc{
 				Oidc: &signv1.SignerInfoOIDC{
-					Issuer:  obj.GetSignerIssuer(),
-					Subject: obj.GetSignerSubject(),
+					Issuer:            obj.GetSignerIssuer(),
+					Subject:           obj.GetSignerSubject(),
+					CertificateIssuer: obj.GetSignerCertificateIssuer(),
 				},
 			},
 		}

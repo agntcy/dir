@@ -14,17 +14,18 @@ import (
 // SignatureVerification stores one signer verification result (one row per signer).
 // Rows are keyed by (record_cid, signer_key).
 type SignatureVerification struct {
-	RecordCID       string    `gorm:"column:record_cid;primaryKey;not null"`
-	SignerKey       string    `gorm:"column:signer_key;primaryKey;not null"`
-	Status          string    `gorm:"column:status;not null;index"` // "verified" or "failed"
-	ErrorMessage    string    `gorm:"column:error_message"`
-	SignerType      string    `gorm:"column:signer_type"`       // "oidc" or "key"
-	SignerIssuer    string    `gorm:"column:signer_issuer"`     // OIDC issuer
-	SignerSubject   string    `gorm:"column:signer_subject"`    // OIDC subject
-	SignerPublicKey string    `gorm:"column:signer_public_key"` // PEM or ref for key type
-	SignerAlgorithm string    `gorm:"column:signer_algorithm"`  // e.g. RSA-SHA256, Ed25519
-	CreatedAt       time.Time `gorm:"column:created_at;not null"`
-	UpdatedAt       time.Time `gorm:"column:updated_at;not null"`
+	RecordCID               string    `gorm:"column:record_cid;primaryKey;not null"`
+	SignerKey               string    `gorm:"column:signer_key;primaryKey;not null"`
+	Status                  string    `gorm:"column:status;not null;index"` // "verified" or "failed"
+	ErrorMessage            string    `gorm:"column:error_message"`
+	SignerType              string    `gorm:"column:signer_type"`               // "oidc" or "key"
+	SignerIssuer            string    `gorm:"column:signer_issuer"`             // OIDC issuer
+	SignerSubject           string    `gorm:"column:signer_subject"`            // OIDC subject
+	SignerCertificateIssuer string    `gorm:"column:signer_certificate_issuer"` // X.509 certificate issuer (e.g. CN=sigstore-intermediate,O=sigstore.dev)
+	SignerPublicKey         string    `gorm:"column:signer_public_key"`         // PEM or ref for key type
+	SignerAlgorithm         string    `gorm:"column:signer_algorithm"`          // e.g. RSA-SHA256, Ed25519
+	CreatedAt               time.Time `gorm:"column:created_at;not null"`
+	UpdatedAt               time.Time `gorm:"column:updated_at;not null"`
 }
 
 // Ensure SignatureVerification implements types.SignatureVerificationObject.
@@ -58,6 +59,10 @@ func (s *SignatureVerification) GetSignerSubject() string {
 	return s.SignerSubject
 }
 
+func (s *SignatureVerification) GetSignerCertificateIssuer() string {
+	return s.SignerCertificateIssuer
+}
+
 func (s *SignatureVerification) GetSignerPublicKey() string {
 	return s.SignerPublicKey
 }
@@ -79,17 +84,18 @@ func (d *DB) CreateSignatureVerification(verification types.SignatureVerificatio
 	now := time.Now()
 
 	sv := &SignatureVerification{
-		RecordCID:       verification.GetRecordCID(),
-		SignerKey:       verification.GetSignerKey(),
-		Status:          verification.GetStatus(),
-		ErrorMessage:    verification.GetErrorMessage(),
-		SignerType:      verification.GetSignerType(),
-		SignerIssuer:    verification.GetSignerIssuer(),
-		SignerSubject:   verification.GetSignerSubject(),
-		SignerPublicKey: verification.GetSignerPublicKey(),
-		SignerAlgorithm: verification.GetSignerAlgorithm(),
-		CreatedAt:       now,
-		UpdatedAt:       now,
+		RecordCID:               verification.GetRecordCID(),
+		SignerKey:               verification.GetSignerKey(),
+		Status:                  verification.GetStatus(),
+		ErrorMessage:            verification.GetErrorMessage(),
+		SignerType:              verification.GetSignerType(),
+		SignerIssuer:            verification.GetSignerIssuer(),
+		SignerSubject:           verification.GetSignerSubject(),
+		SignerCertificateIssuer: verification.GetSignerCertificateIssuer(),
+		SignerPublicKey:         verification.GetSignerPublicKey(),
+		SignerAlgorithm:         verification.GetSignerAlgorithm(),
+		CreatedAt:               now,
+		UpdatedAt:               now,
 	}
 	if err := d.gormDB.Create(sv).Error; err != nil {
 		return fmt.Errorf("failed to create signature verification: %w", err)
@@ -128,22 +134,23 @@ func (d *DB) UpdateSignatureVerification(verification types.SignatureVerificatio
 func (d *DB) UpsertSignatureVerification(verification types.SignatureVerificationObject) error {
 	now := time.Now()
 	sv := &SignatureVerification{
-		RecordCID:       verification.GetRecordCID(),
-		SignerKey:       verification.GetSignerKey(),
-		Status:          verification.GetStatus(),
-		ErrorMessage:    verification.GetErrorMessage(),
-		SignerType:      verification.GetSignerType(),
-		SignerIssuer:    verification.GetSignerIssuer(),
-		SignerSubject:   verification.GetSignerSubject(),
-		SignerPublicKey: verification.GetSignerPublicKey(),
-		SignerAlgorithm: verification.GetSignerAlgorithm(),
-		CreatedAt:       now,
-		UpdatedAt:       now,
+		RecordCID:               verification.GetRecordCID(),
+		SignerKey:               verification.GetSignerKey(),
+		Status:                  verification.GetStatus(),
+		ErrorMessage:            verification.GetErrorMessage(),
+		SignerType:              verification.GetSignerType(),
+		SignerIssuer:            verification.GetSignerIssuer(),
+		SignerSubject:           verification.GetSignerSubject(),
+		SignerCertificateIssuer: verification.GetSignerCertificateIssuer(),
+		SignerPublicKey:         verification.GetSignerPublicKey(),
+		SignerAlgorithm:         verification.GetSignerAlgorithm(),
+		CreatedAt:               now,
+		UpdatedAt:               now,
 	}
 
 	err := d.gormDB.Clauses(clause.OnConflict{
 		Columns:   []clause.Column{{Name: "record_cid"}, {Name: "signer_key"}},
-		DoUpdates: clause.AssignmentColumns([]string{"status", "error_message", "signer_type", "signer_issuer", "signer_subject", "signer_public_key", "signer_algorithm", "updated_at"}),
+		DoUpdates: clause.AssignmentColumns([]string{"status", "error_message", "signer_type", "signer_issuer", "signer_subject", "signer_certificate_issuer", "signer_public_key", "signer_algorithm", "updated_at"}),
 	}).Create(sv).Error
 	if err != nil {
 		return fmt.Errorf("upsert signature verification: %w", err)

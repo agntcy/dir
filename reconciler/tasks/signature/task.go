@@ -126,7 +126,7 @@ func (t *Task) verifyRecord(ctx context.Context, recordCID string) error {
 
 		returnedSignerKeys[p.SignerKey] = struct{}{}
 
-		var signerType, issuer, subject, pubKey, algorithm string
+		var signerType, issuer, subject, certificateIssuer, pubKey, algorithm string
 
 		if p.SignerInfo != nil {
 			switch s := p.SignerInfo.GetType().(type) {
@@ -135,6 +135,7 @@ func (t *Task) verifyRecord(ctx context.Context, recordCID string) error {
 					signerType = "oidc"
 					issuer = s.Oidc.GetIssuer()
 					subject = s.Oidc.GetSubject()
+					certificateIssuer = s.Oidc.GetCertificateIssuer()
 				}
 			case *signv1.SignerInfo_Key:
 				if s.Key != nil {
@@ -146,16 +147,17 @@ func (t *Task) verifyRecord(ctx context.Context, recordCID string) error {
 		}
 
 		sv := &gormdb.SignatureVerification{
-			RecordCID:       recordCID,
-			SignerKey:       p.SignerKey,
-			Status:          p.Status,
-			SignerType:      signerType,
-			SignerIssuer:    issuer,
-			SignerSubject:   subject,
-			SignerPublicKey: pubKey,
-			SignerAlgorithm: algorithm,
-			CreatedAt:       now,
-			UpdatedAt:       now,
+			RecordCID:               recordCID,
+			SignerKey:               p.SignerKey,
+			Status:                  p.Status,
+			SignerType:              signerType,
+			SignerIssuer:            issuer,
+			SignerSubject:           subject,
+			SignerCertificateIssuer: certificateIssuer,
+			SignerPublicKey:         pubKey,
+			SignerAlgorithm:         algorithm,
+			CreatedAt:               now,
+			UpdatedAt:               now,
 		}
 		if err := t.db.UpsertSignatureVerification(sv); err != nil {
 			logger.Warn("Failed to upsert signature verification", "record_cid", recordCID, "error", err)
