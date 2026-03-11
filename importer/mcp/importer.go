@@ -10,6 +10,7 @@ import (
 
 	"github.com/agntcy/dir/importer/config"
 	"github.com/agntcy/dir/importer/pipeline"
+	"github.com/agntcy/dir/importer/scanner"
 	"github.com/agntcy/dir/importer/types"
 )
 
@@ -22,14 +23,21 @@ const (
 type Importer struct {
 	client      config.ClientInterface
 	registryURL string
+	sc          pipeline.Scanner
 }
 
 // NewImporter creates a new MCP importer instance.
 // The client parameter is used for pushing records to DIR.
 func NewImporter(client config.ClientInterface, cfg config.Config) (types.Importer, error) {
+	sc, err := scanner.New(cfg.Scanner)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create scanner: %w", err)
+	}
+
 	return &Importer{
 		client:      client,
 		registryURL: cfg.RegistryURL,
+		sc:          sc,
 	}, nil
 }
 
@@ -73,8 +81,8 @@ func (i *Importer) Run(ctx context.Context, cfg config.Config) (*types.ImportRes
 			}
 		}
 
-		// Use dry-run pipeline (fetch, filter duplicates, and transform only - no push)
-		p := pipeline.NewDryRun(fetcher, duplicateChecker, transformer, pipelineConfig)
+		// Use dry-run pipeline (fetch, dedup, transform, scanner, write to file - no push)
+		p := pipeline.NewDryRun(fetcher, duplicateChecker, transformer, i.sc, pipelineConfig)
 		pipelineResult, err = p.Run(ctx)
 	} else {
 		pusher := pipeline.NewClientPusher(i.client, cfg.Debug, cfg.SignFunc)
@@ -89,8 +97,8 @@ func (i *Importer) Run(ctx context.Context, cfg config.Config) (*types.ImportRes
 			}
 		}
 
-		// Create full pipeline with optional duplicate checker
-		p := pipeline.New(fetcher, duplicateChecker, transformer, pusher, pipelineConfig)
+		// Create full pipeline with optional duplicate checker and scanner stage
+		p := pipeline.New(fetcher, duplicateChecker, transformer, i.sc, pusher, pipelineConfig)
 		pipelineResult, err = p.Run(ctx)
 	}
 
@@ -100,13 +108,14 @@ func (i *Importer) Run(ctx context.Context, cfg config.Config) (*types.ImportRes
 
 	// Convert pipeline result to import result
 	result := &types.ImportResult{
-		TotalRecords:  pipelineResult.TotalRecords,
-		ImportedCount: pipelineResult.ImportedCount,
-		SkippedCount:  pipelineResult.SkippedCount,
-		FailedCount:   pipelineResult.FailedCount,
-		Errors:        pipelineResult.Errors,
-		OutputFile:    outputFile,
-		ImportedCIDs:  pipelineResult.ImportedCIDs,
+		TotalRecords:    pipelineResult.TotalRecords,
+		ImportedCount:   pipelineResult.ImportedCount,
+		SkippedCount:    pipelineResult.SkippedCount,
+		FailedCount:     pipelineResult.FailedCount,
+		Errors:          pipelineResult.Errors,
+		OutputFile:      outputFile,
+		ImportedCIDs:    pipelineResult.ImportedCIDs,
+		ScannerFindings: pipelineResult.ScannerFindings,
 	}
 
 	return result, nil

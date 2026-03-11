@@ -24,4 +24,7 @@ type ImportResult struct {
 	Errors        []error
 	OutputFile    string   // Path to output file (only set in dry-run mode)
 	ImportedCIDs  []string // CIDs of successfully imported records
+
+	// ScannerFindings contains scanner issue messages (e.g. "record-name: error: ..." or "...: warning: ...") when the scanner stage ran.
+	ScannerFindings []string
 }

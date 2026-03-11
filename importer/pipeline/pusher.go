@@ -124,7 +124,7 @@ func (p *ClientPusher) handlePushError(err error, record *corev1.Record, mcpSour
 // printPushFailure prints detailed debug information about a push failure.
 func (p *ClientPusher) printPushFailure(record *corev1.Record, mcpSourceJSON, errorMsg string) {
 	// Extract name@version for header
-	nameVersion, _ := extractNameVersion(record)
+	nameVersion, _ := ExtractNameVersion(record)
 	if nameVersion == "" {
 		nameVersion = "unknown"
 	}
@@ -160,7 +160,7 @@ func formatJSON(jsonStr string) string {
 }
 
 // extractNameVersion extracts "name@version" from a record.
-func extractNameVersion(record *corev1.Record) (string, error) {
+func ExtractNameVersion(record *corev1.Record) (string, error) {
 	if record == nil || record.GetData() == nil {
 		return "", errors.New("record or record data is nil")
 	}

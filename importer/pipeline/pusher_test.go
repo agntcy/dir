@@ -159,7 +159,7 @@ func TestExtractNameVersion(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result, err := extractNameVersion(tt.record)
+			result, err := ExtractNameVersion(tt.record)
 
 			if tt.wantErr {
 				if err == nil {
