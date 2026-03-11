@@ -7,9 +7,9 @@ dependencies:
   version: v0.5.1
 - name: envoy-authz
   repository: file://../../envoy-authz
-  version: 0.1.0
+  version: 0.2.0
 - name: postgresql
   repository: https://charts.bitnami.com/bitnami
   version: 18.5.1
-digest: sha256:4f047c022f31beafcb222cebb3c0c2969b727fc2c7d3661f2b4adda5d4d43f1c
-generated: "2026-03-02T15:57:20.573529+01:00"
+digest: sha256:525050d970537b47f36466d3d747c6a54c819a95bfc181efcf642d3a2d927b46
+generated: "2026-03-11T17:48:49.52565+01:00"
