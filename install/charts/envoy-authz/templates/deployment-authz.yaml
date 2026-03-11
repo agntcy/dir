@@ -37,31 +37,32 @@ spec:
         - name: grpc
           containerPort: 9002
           protocol: TCP
-        envFrom:
-        - configMapRef:
-            name: {{ include "envoy-authz.fullname" . }}-authz-config
+        env:
+        - name: LISTEN_ADDRESS
+          valueFrom:
+            configMapKeyRef:
+              name: {{ include "envoy-authz.fullname" . }}-authz-config
+              key: LISTEN_ADDRESS
+        - name: LOG_LEVEL
+          valueFrom:
+            configMapKeyRef:
+              name: {{ include "envoy-authz.fullname" . }}-authz-config
+              key: LOG_LEVEL
+        - name: CONFIG_PATH
+          valueFrom:
+            configMapKeyRef:
+              name: {{ include "envoy-authz.fullname" . }}-authz-config
+              key: CONFIG_PATH
         volumeMounts:
-        - name: rbac-config
+        - name: oidc-config
           mountPath: /etc/envoy-authz
           readOnly: true
-        # Health probes disabled for distroless image
-        # TODO: Add grpc_health_probe binary to image or use tcpSocket probe
-        # livenessProbe:
-        #   tcpSocket:
-        #     port: 9002
-        #   initialDelaySeconds: 10
-        #   periodSeconds: 30
-        # readinessProbe:
-        #   tcpSocket:
-        #     port: 9002
-        #   initialDelaySeconds: 5
-        #   periodSeconds: 10
         resources:
           {{- toYaml .Values.authServer.resources | nindent 10 }}
       volumes:
-      - name: rbac-config
+      - name: oidc-config
         configMap:
           name: {{ include "envoy-authz.fullname" . }}-authz-config
           items:
-          - key: rbac-config.yaml
-            path: rbac-config.yaml
+          - key: config.yaml
+            path: config.yaml

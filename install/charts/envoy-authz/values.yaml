@@ -8,17 +8,17 @@ fullnameOverride: ""
 # Envoy Gateway configuration
 envoy:
   replicaCount: 1
-  
+
   image:
     repository: envoyproxy/envoy
     tag: v1.31-latest
     pullPolicy: IfNotPresent
-  
+
   service:
     type: ClusterIP
     port: 8080
     annotations: {}
-  
+
   # Backend configuration (Directory API)
   backend:
     # Address of Directory API server
@@ -27,19 +27,36 @@ envoy:
     port: 8888
     # Connection timeout
     timeout: 30s
-  
+
+  # OIDC/JWT configuration for jwt_authn filter
+  oidc:
+    # Zitadel issuer configuration
+    zitadel:
+      enabled: true
+      issuer: "https://tenant.zitadel.cloud"
+      jwksUri: "https://tenant.zitadel.cloud/.well-known/jwks.json"
+      # Host for JWKS cluster (extracted from issuer; override if needed)
+      jwksHost: "tenant.zitadel.cloud"
+    # GitHub Actions OIDC issuer
+    github:
+      enabled: true
+      issuer: "https://token.actions.githubusercontent.com"
+      jwksUri: "https://token.actions.githubusercontent.com/.well-known/jwks"
+      jwksHost: "token.actions.githubusercontent.com"
+    jwksTimeout: 5s
+    jwksCacheSeconds: 300
+
   # SPIFFE integration for mTLS with Directory
   spiffe:
     enabled: true
     # SPIFFE ID will be: spiffe://{trustDomain}/ns/{namespace}/sa/envoy-gateway
     # Assigned automatically by SPIRE
-    
+    #
     # Trust domain (must match SPIRE deployment)
     trustDomain: example.org
-    
     # SPIRE controller className (must match SPIRE Controller Manager)
     className: dir-spire
-  
+
   resources:
     requests:
       cpu: 100m
@@ -47,132 +64,76 @@ envoy:
     limits:
       cpu: 500m
       memory: 512Mi
-  
+
   # Admin interface (for debugging)
   admin:
     enabled: true
     port: 9901
 
-# Authorization Server configuration
+# Authorization Server configuration (OIDC + Casbin)
 authServer:
   replicaCount: 1
-  
-  # Image configuration
-  # Override these values to use custom images (e.g., development branches)
-  # image:
-  #   repository: ghcr.io/agntcy/envoy-authz-dev
-  #   tag: feat-feat-github-auth-ad4a58e
-  #   pullPolicy: IfNotPresent
+
   image:
     repository: ghcr.io/agntcy/envoy-authz
     tag: v0.1.0
     pullPolicy: IfNotPresent
-  
+
   service:
     type: ClusterIP
     port: 9002
-  
-  # Service configuration
+
   config:
     listenAddress: ":9002"
     logLevel: info
-    defaultProvider: github
-  
-  # RBAC (Role-Based Access Control) Configuration
-  authorization:
-    # Default role assigned to authenticated users with no explicit role assignment
-    # Set to empty string ("") to deny by default
-    # Example: "reader"
-    defaultRole: ""
-    
-    # User deny list (highest priority - blocks access even if user has a role)
-    # Format: "github:username" or "username"
-    # Example: ["github:blocked-user", "banned-account"]
+
+  # OIDC config (rendered to config.yaml, see configmap-authz.yaml)
+  oidc:
+    claims:
+      userID: "sub"
+      emailPath: "email"
+
+    # Issuer-specific extraction. principalType: auto | user | client | github
+    issuers:
+      "https://tenant.zitadel.cloud":
+        principalType: "auto"
+        machineIdentityClaim: "client_id"
+      "https://token.actions.githubusercontent.com":
+        principalType: "github"
+
+    principalType:
+      mode: "auto"
+      machineIdentityClaim: "client_id"
+      machineSubPattern: ""
+
     userDenyList: []
-    
-    # Role definitions
-    # Each role specifies:
-    #   - allowedMethods: List of API methods or "*" for wildcard
-    #   - users: List of GitHub usernames assigned to this role
-    #   - orgs: List of GitHub organizations assigned to this role
-    #
-    # Available API Methods (use full gRPC path format: /package.Service/Method):
-    #
-    # StoreService (Content Storage):
-    #   - /agntcy.dir.store.v1.StoreService/Push              # Write objects
-    #   - /agntcy.dir.store.v1.StoreService/Pull              # Read objects
-    #   - /agntcy.dir.store.v1.StoreService/Lookup            # Get object metadata
-    #   - /agntcy.dir.store.v1.StoreService/Delete            # Delete objects
-    #   - /agntcy.dir.store.v1.StoreService/PushReferrer      # Write referrers
-    #   - /agntcy.dir.store.v1.StoreService/PullReferrer      # Read referrers
-    #
-    # SyncService (Node Synchronization):
-    #   - /agntcy.dir.store.v1.SyncService/CreateSync                   # Create sync operation
-    #   - /agntcy.dir.store.v1.SyncService/ListSyncs                    # List all syncs
-    #   - /agntcy.dir.store.v1.SyncService/GetSync                      # Get sync status
-    #   - /agntcy.dir.store.v1.SyncService/DeleteSync                   # Delete sync
-    #   - /agntcy.dir.store.v1.SyncService/RequestRegistryCredentials   # Request credentials
-    #
-    # RoutingService (DHT Operations):
-    #   - /agntcy.dir.routing.v1.RoutingService/Publish        # Publish to DHT
-    #   - /agntcy.dir.routing.v1.RoutingService/Unpublish      # Remove from DHT
-    #   - /agntcy.dir.routing.v1.RoutingService/Search         # Search DHT
-    #   - /agntcy.dir.routing.v1.RoutingService/List           # List DHT records
-    #
-    # PublicationService (Publication Management):
-    #   - /agntcy.dir.routing.v1.PublicationService/CreatePublication  # Create publication
-    #   - /agntcy.dir.routing.v1.PublicationService/ListPublications   # List publications
-    #   - /agntcy.dir.routing.v1.PublicationService/GetPublication     # Get publication details
-    #
-    # SearchService (Record Search):
-    #   - /agntcy.dir.search.v1.SearchService/SearchCIDs       # Search by CID
-    #   - /agntcy.dir.search.v1.SearchService/SearchRecords    # Search records
-    #
-    # NamingService (Name Resolution):
-    #   - /agntcy.dir.naming.v1.NamingService/GetVerificationInfo  # Get verification info
-    #   - /agntcy.dir.naming.v1.NamingService/Resolve              # Resolve name to CID
-    #
-    # EventService (Event Streaming):
-    #   - /agntcy.dir.events.v1.EventService/Listen            # Listen to events
-    #
+
+    publicPaths:
+      - "/healthz"
+      - "/grpc.reflection"
+
     roles:
-      # Example: Admin role with full access
-      # admin:
-      #   allowedMethods:
-      #     - "*"  # Wildcard = all methods
-      #   users:
-      #     - "github:alice"
-      #     - "bob"  # "github:" prefix is optional
-      #   orgs:
-      #     - "agntcy"
-      
-      # Example: Reader role with limited access
-      # reader:
-      #   allowedMethods:
-      #     - "/agntcy.dir.store.v1.StoreService/Pull"
-      #     - "/agntcy.dir.store.v1.StoreService/Lookup"
-      #     - "/agntcy.dir.store.v1.StoreService/PullReferrer"
-      #   users:
-      #     - "github:charlie"
-      #   orgs:
-      #     - "contributors"
-      
-      # Example: Writer role with push/pull access
-      # writer:
-      #   allowedMethods:
-      #     - "/agntcy.dir.store.v1.StoreService/Push"
-      #     - "/agntcy.dir.store.v1.StoreService/Pull"
-      #     - "/agntcy.dir.store.v1.StoreService/Lookup"
-      #   users: []
-      #   orgs:
-      #     - "developers"
-  
-  # GitHub provider configuration
-  github:
-    enabled: true
-    cacheTTL: 5m
-    apiTimeout: 10s
-  
+      admin:
+        allowedMethods: ["*"]
+        users:
+          - "user:https://tenant.zitadel.cloud:77776025198584418"
+      viewer:
+        allowedMethods:
+          - "/agntcy.dir.store.v1.StoreService/Pull"
+          - "/agntcy.dir.store.v1.StoreService/Lookup"
+        users: []
+      ci-writer:
+        allowedMethods:
+          - "/agntcy.dir.store.v1.StoreService/Push"
+          - "/agntcy.dir.store.v1.StoreService/Pull"
+        users: []
+        clients:
+          - "client:https://tenant.zitadel.cloud:69234237810729234"
+      prod-deployer:
+        allowedMethods: ["*"]
+        githubWorkflows:
+          - "ghwf:repo:agntcy/dir:workflow:deploy.yml:ref:refs/heads/main:env:prod"
+
   resources:
     requests:
       cpu: 50m
@@ -189,7 +150,6 @@ ingress:
   annotations:
     cert-manager.io/cluster-issuer: letsencrypt
     external-dns.alpha.kubernetes.io/hostname: ""
-    # gRPC backend configuration (required for dirctl client over HTTPS)
     nginx.ingress.kubernetes.io/backend-protocol: "GRPC"
     nginx.ingress.kubernetes.io/grpc-backend: "true"
   tls:
