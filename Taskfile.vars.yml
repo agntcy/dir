@@ -15,7 +15,7 @@ vars:
 
   ## External dependency versions
   ZOT_VERSION: "2.1.15"
-  SPIRE_VERSION: "1.14.1"
+  SPIRE_VERSION: "1.14.2"
   REGSYNC_VERSION: "v0.11.1"
 
   ## Image config
