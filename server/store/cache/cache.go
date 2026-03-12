@@ -9,7 +9,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"net/http"
 
 	corev1 "github.com/agntcy/dir/api/core/v1"
 	"github.com/agntcy/dir/server/types"
@@ -123,10 +122,6 @@ func (s *cachedStore) Delete(ctx context.Context, ref *corev1.RecordRef) error {
 // IsReady checks if the store is ready to serve traffic.
 func (s *cachedStore) IsReady(ctx context.Context) bool {
 	return s.source.IsReady(ctx)
-}
-
-func (s *cachedStore) Server() (http.Handler, error) {
-	return s.source.Server()
 }
 
 // cacheRecord stores a record in the cache.

@@ -56,9 +56,9 @@ tasks:
       CLONE_DIR: "/tmp/distribution-spec"
       CLONE_BIN: "{{.CLONE_DIR}}/conformance/conformance.test"
     env:
-      # Must be running already
+      # OCI conformance config
       OCI_REPORT_DIR: /tmp/results
-      OCI_ROOT_URL: "http://localhost:8080"
+      OCI_ROOT_URL: "http://localhost:8333"
       OCI_NAMESPACE: "tests/repo-a"
       OCI_DEBUG: 0
       OCI_TEST_PULL: 1
@@ -70,7 +70,7 @@ tasks:
       OCI_HIDE_SKIPPED_WORKFLOWS: 0
       OCI_DELETE_MANIFEST_BEFORE_BLOBS: 0
     cmds:
-      - defer: { task: server:stop }
+      # - defer: { task: server:stop }
       - |
         # Setup conformance test binary
         if [ ! -f "{{.CLONE_BIN}}" ]; then

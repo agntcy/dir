@@ -9,7 +9,7 @@ services:
       - ./apiserver.env
     ports:
       - 8888:8888 # DIR API server
-      - 8080:8080 # OCI HTTP server
+      - 8333:8333 # OCI Proxy HTTP server
     depends_on:
       zot:
         condition: service_started

@@ -7,7 +7,6 @@ import (
 	"context"
 	"fmt"
 	"net"
-	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
@@ -35,6 +34,7 @@ import (
 	"github.com/agntcy/dir/server/naming"
 	"github.com/agntcy/dir/server/naming/wellknown"
 	"github.com/agntcy/dir/server/publication"
+	"github.com/agntcy/dir/server/registry"
 	"github.com/agntcy/dir/server/routing"
 	"github.com/agntcy/dir/server/store"
 	"github.com/agntcy/dir/server/types"
@@ -66,7 +66,7 @@ type Server struct {
 	health             *healthcheck.Checker
 	grpcServer         *grpc.Server
 	metricsServer      *metrics.Server
-	ociServer          *http.Server
+	ociServer          types.RegistryAPI
 }
 
 // buildConnectionOptions creates gRPC server options for connection management.
@@ -224,21 +224,6 @@ func New(ctx context.Context, cfg *config.Config) (*Server, error) {
 		return nil, fmt.Errorf("failed to create store: %w", err)
 	}
 
-	// Create OCI Distribution API server
-	storeServerAPI, err := storeAPI.Server()
-	if err != nil {
-		return nil, fmt.Errorf("failed to create store server API: %w", err)
-	}
-
-	// Register HTTP handler for OCI Distribution API
-	handler := http.NewServeMux()
-	handler.Handle("/v2/", storeServerAPI)
-	ociServer := &http.Server{
-		Addr:              ":8080",
-		Handler:           handler,
-		ReadHeaderTimeout: 3 * time.Second, //nolint:mnd
-	}
-
 	routingAPI, err := routing.New(ctx, storeAPI, options)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create routing: %w", err)
@@ -247,6 +232,15 @@ func New(ctx context.Context, cfg *config.Config) (*Server, error) {
 	databaseAPI, err := database.New(cfg.Database)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create database API: %w", err)
+	}
+
+	// Create Registry API server (if enabled)
+	var ociServer types.RegistryAPI
+	if cfg.Registry.Enabled {
+		ociServer, err = registry.New(cfg.Registry, cfg.Store)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create OCI registry server: %w", err)
+		}
 	}
 
 	// Create JWT authentication service if enabled
@@ -403,10 +397,13 @@ func (s Server) Close(ctx context.Context) {
 		}
 	}
 
-	// Stop OCI server
-	_ = s.ociServer.Close() //nolint:errcheck
+	// Stop Registry API server if running
+	if s.ociServer != nil {
+		if err := s.ociServer.Stop(); err != nil {
+			logger.Error("Failed to stop OCI registry server", "error", err)
+		}
+	}
 
-	// Stop gRPC server
 	s.grpcServer.GracefulStop()
 }
 
@@ -427,6 +424,11 @@ func (s Server) start(ctx context.Context) error {
 		}
 
 		logger.Info("Publication service started")
+	}
+
+	// Start Registry API server
+	if s.ociServer != nil {
+		s.ociServer.Start()
 	}
 
 	// Create a listener on TCP port
@@ -452,15 +454,6 @@ func (s Server) start(ctx context.Context) error {
 
 		if err := s.grpcServer.Serve(listen); err != nil {
 			logger.Error("Failed to start server", "error", err)
-		}
-	}()
-
-	// Serve HTTP server
-	go func() {
-		logger.Info("HTTP server starting", "address", s.Options().Config().ListenAddress)
-
-		if err := s.ociServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			logger.Error("Failed to start HTTP server", "error", err)
 		}
 	}()
 

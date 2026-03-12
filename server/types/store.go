@@ -5,7 +5,6 @@ package types
 
 import (
 	"context"
-	"net/http"
 
 	corev1 "github.com/agntcy/dir/api/core/v1"
 )
@@ -28,11 +27,17 @@ type StoreAPI interface {
 	// Needed for bootstrapping
 	// List(context.Context, func(*corev1.RecordRef) error) error
 
-	// Server returns an HTTP handler that serves the OCI Distribution API.
-	Server() (http.Handler, error)
-
 	// IsReady checks if the storage backend is ready to serve traffic.
 	IsReady(context.Context) bool
+}
+
+// RegistryAPI handles management of the OCI Distribution API server.
+type RegistryAPI interface {
+	// Server returns an HTTP handler that serves the OCI Distribution API.
+	Start()
+
+	// Stop gracefully shuts down the registry server.
+	Stop() error
 }
 
 // ReferrerStoreAPI handles management of generic record referrers.

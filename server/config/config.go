@@ -16,6 +16,7 @@ import (
 	ratelimitconfig "github.com/agntcy/dir/server/middleware/ratelimit/config"
 	naming "github.com/agntcy/dir/server/naming/config"
 	publication "github.com/agntcy/dir/server/publication/config"
+	registry "github.com/agntcy/dir/server/registry/config"
 	routing "github.com/agntcy/dir/server/routing/config"
 	store "github.com/agntcy/dir/server/store/config"
 	oci "github.com/agntcy/dir/server/store/oci/config"
@@ -152,6 +153,9 @@ type Config struct {
 
 	// Naming holds name verification cache config (TTL for naming API; reconciler name task performs re-verification).
 	Naming naming.Config `json:"naming,omitzero" mapstructure:"naming"`
+
+	// Registry configuration for OCI serving registry.
+	Registry registry.Config `json:"registry" mapstructure:"registry"`
 }
 
 type SyncConfig struct {
@@ -510,6 +514,15 @@ func LoadConfig() (*Config, error) {
 	//
 	_ = v.BindEnv("naming.ttl")
 	v.SetDefault("naming.ttl", naming.DefaultTTL)
+
+	//
+	// Registry configuration
+	//
+	_ = v.BindEnv("registry.enabled")
+	v.SetDefault("registry.enabled", false)
+
+	_ = v.BindEnv("registry.listen_address")
+	v.SetDefault("registry.listen_address", registry.DefaultRegistryListenAddress)
 
 	//
 	// Connection management configuration

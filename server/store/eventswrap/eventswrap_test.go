@@ -5,8 +5,6 @@ package eventswrap
 
 import (
 	"context"
-	"fmt"
-	"net/http"
 	"testing"
 
 	typesv1alpha1 "buf.build/gen/go/agntcy/oasf/protocolbuffers/go/agntcy/oasf/types/v1alpha1"
@@ -47,10 +45,6 @@ func (m *mockStore) Delete(_ context.Context, _ *corev1.RecordRef) error {
 	m.deleteCalled = true
 
 	return nil
-}
-
-func (m *mockStore) Server() (http.Handler, error) {
-	return nil, fmt.Errorf("Server method not implemented in mockStore")
 }
 
 func (m *mockStore) IsReady(_ context.Context) bool {

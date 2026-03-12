@@ -5,8 +5,6 @@ package cache
 
 import (
 	"context"
-	"fmt"
-	"net/http"
 	"testing"
 
 	typesv1alpha1 "buf.build/gen/go/agntcy/oasf/protocolbuffers/go/agntcy/oasf/types/v1alpha1"
@@ -72,10 +70,6 @@ func (m *MockStoreAPI) Delete(ctx context.Context, ref *corev1.RecordRef) error 
 	args := m.Called(ctx, ref)
 
 	return args.Error(0) //nolint:wrapcheck // Mock should return exact error without wrapping
-}
-
-func (m *MockStoreAPI) Server() (http.Handler, error) {
-	return nil, fmt.Errorf("Server method not implemented in MockStoreAPI")
 }
 
 func (m *MockStoreAPI) IsReady(ctx context.Context) bool {

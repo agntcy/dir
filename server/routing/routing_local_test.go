@@ -7,9 +7,7 @@ package routing
 import (
 	"context"
 	"errors"
-	"fmt"
 	"log/slog"
-	"net/http"
 	"os"
 	"strings"
 	"testing"
@@ -56,10 +54,6 @@ func newMockStore() *mockStore {
 	return &mockStore{
 		data: make(map[string]*corev1.Record),
 	}
-}
-
-func (m *mockStore) Server() (http.Handler, error) {
-	return nil, fmt.Errorf("Server method not implemented in mockStore")
 }
 
 func (m *mockStore) Push(_ context.Context, record *corev1.Record) (*corev1.RecordRef, error) {

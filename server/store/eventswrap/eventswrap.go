@@ -8,7 +8,6 @@ package eventswrap
 
 import (
 	"context"
-	"net/http"
 
 	corev1 "github.com/agntcy/dir/api/core/v1"
 	"github.com/agntcy/dir/server/events"
@@ -126,8 +125,4 @@ func (s *eventsStore) WalkReferrers(ctx context.Context, recordCID string, refer
 	// Delegate to source (no event emitted for referrer operations)
 	//nolint:wrapcheck
 	return referrerStore.WalkReferrers(ctx, recordCID, referrerType, walkFn)
-}
-
-func (s *eventsStore) Server() (http.Handler, error) {
-	return s.source.Server() //nolint:wrapcheck
 }

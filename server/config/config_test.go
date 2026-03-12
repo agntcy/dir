@@ -15,6 +15,7 @@ import (
 	ratelimitconfig "github.com/agntcy/dir/server/middleware/ratelimit/config"
 	naming "github.com/agntcy/dir/server/naming/config"
 	publication "github.com/agntcy/dir/server/publication/config"
+	registry "github.com/agntcy/dir/server/registry/config"
 	routing "github.com/agntcy/dir/server/routing/config"
 	store "github.com/agntcy/dir/server/store/config"
 	oci "github.com/agntcy/dir/server/store/oci/config"
@@ -57,6 +58,8 @@ func TestConfig(t *testing.T) {
 				"DIRECTORY_SERVER_PUBLICATION_SCHEDULER_INTERVAL":      "10s",
 				"DIRECTORY_SERVER_PUBLICATION_WORKER_COUNT":            "1",
 				"DIRECTORY_SERVER_PUBLICATION_WORKER_TIMEOUT":          "10s",
+				"DIRECTORY_SERVER_REGISTRY_ENABLED":                    "true",
+				"DIRECTORY_SERVER_REGISTRY_LISTEN_ADDRESS":             ":1234",
 			},
 			ExpectedConfig: &Config{
 				ListenAddress: "example.com:8889",
@@ -129,6 +132,10 @@ func TestConfig(t *testing.T) {
 				Naming: naming.Config{
 					TTL: naming.DefaultTTL,
 				},
+				Registry: registry.Config{
+					Enabled:       true,
+					ListenAddress: ":1234",
+				},
 			},
 		},
 		{
@@ -192,6 +199,10 @@ func TestConfig(t *testing.T) {
 				},
 				Naming: naming.Config{
 					TTL: naming.DefaultTTL,
+				},
+				Registry: registry.Config{
+					Enabled:       false,
+					ListenAddress: registry.DefaultRegistryListenAddress,
 				},
 			},
 		},
