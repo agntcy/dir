@@ -126,8 +126,8 @@ jobs:
         if: ${{ inputs.enable_coverage && matrix.task != 'test:e2e:spire' && matrix.task != 'test:e2e:mcp' }}
         uses: codecov/codecov-action@671740ac38dd9b0130fbe1cec585b89eea48d3de # v5.5.2
         with:
-          files: ${{ matrix.coverage-files }}
+          files: ".coverage/e2e/**/*.out"
+          # files: ${{ matrix.coverage-files }}
           flags: e2e-${{ matrix.label }}
-          fail_ci_if_error: false
           verbose: true
-          token: ${{ secrets.CODECOV_TOKEN }}
+          use_oidc: true
