@@ -165,6 +165,14 @@ export enum RecordQueryType {
    * @generated from enum value: RECORD_QUERY_TYPE_VERIFIED = 13;
    */
   VERIFIED = 13,
+
+  /**
+   * Query for trusted records (signature verification passed).
+   * Boolean field - use "true" or "false" as value.
+   *
+   * @generated from enum value: RECORD_QUERY_TYPE_TRUSTED = 14;
+   */
+  TRUSTED = 14,
 }
 
 /**

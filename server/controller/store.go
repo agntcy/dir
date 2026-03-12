@@ -278,6 +278,16 @@ func (s storeCtrl) pushReferrer(ctx context.Context, request *storev1.PushReferr
 		}
 	}
 
+	// Invalidate cached signature verifications when a signature or public key is added
+	// so the reconciler will re-verify the record and pick up all signers (e.g. key signer after pub key is pushed)
+	if request.GetReferrer().GetType() == corev1.SignatureReferrerType || request.GetReferrer().GetType() == corev1.PublicKeyReferrerType {
+		if err := s.db.InvalidateSignatureVerificationsForRecord(recordCID); err != nil {
+			storeLogger.Warn("Failed to invalidate signature verification cache", "error", err, "cid", recordCID)
+		} else {
+			storeLogger.Debug("Signature verification cache invalidated for record", "cid", recordCID)
+		}
+	}
+
 	storeLogger.Debug("Referrer pushed successfully", "cid", recordCID, "type", request.GetReferrer().GetType())
 
 	return &storev1.PushReferrerResponse{

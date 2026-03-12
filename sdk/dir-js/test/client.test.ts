@@ -399,10 +399,12 @@ describe('Client', () => {
         recordRefs.pop(); // NOTE: Drop the unsigned record if no OIDC tested
       }
 
-      // Verify test - check signer information in response
+      // Verification is asynchronous (reconciler caches results). Wait for it to run.
+      await new Promise((r) => setTimeout(r, 8_000));
+
       let verifyIndex = 0;
       for (const ref of recordRefs) {
-        const response = client.verify(
+        const response = await client.verify(
           create(models.sign_v1.VerifyRequestSchema, {
             recordRef: ref,
           }),
@@ -435,6 +437,32 @@ describe('Client', () => {
           }
         }
 
+        // Response with from-server (cached) must match local verification
+        const fromServerResponse = await client.verify(
+          create(models.sign_v1.VerifyRequestSchema, {
+            recordRef: ref,
+            fromServer: true,
+          }),
+        );
+        expect(fromServerResponse.success).toBe(response.success);
+        expect(fromServerResponse.signers).toBeDefined();
+        expect(fromServerResponse.signers.length).toBe(response.signers.length);
+        for (let i = 0; i < response.signers.length; i++) {
+          const rSigner = response.signers[i];
+          const sSigner = fromServerResponse.signers[i];
+          expect(rSigner).toBeDefined();
+          expect(sSigner).toBeDefined();
+          expect(sSigner!.type.case).toBe(rSigner!.type.case);
+          if (rSigner!.type.case === 'key' && sSigner!.type.case === 'key') {
+            expect(sSigner!.type.value.publicKey).toBe(rSigner!.type.value.publicKey);
+            expect(sSigner!.type.value.algorithm).toBe(rSigner!.type.value.algorithm);
+          }
+          if (rSigner!.type.case === 'oidc' && sSigner!.type.case === 'oidc') {
+            expect(sSigner!.type.value.issuer).toBe(rSigner!.type.value.issuer);
+            expect(sSigner!.type.value.subject).toBe(rSigner!.type.value.subject);
+          }
+        }
+
         verifyIndex++;
       }
 
@@ -447,7 +475,7 @@ describe('Client', () => {
               request: {
                 case: 'key',
                 value: {
-                  privateKey: Uint8Array.from([]),
+                  privateKey: 'invalid-private-key',
                   password: Uint8Array.from([]),
                 },
               },

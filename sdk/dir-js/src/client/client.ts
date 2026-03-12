@@ -1,10 +1,10 @@
 // Copyright AGNTCY Contributors (https://github.com/agntcy)
 // SPDX-License-Identifier: Apache-2.0
 
+import { readFileSync, mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { env } from 'node:process';
-import { readFileSync, mkdtempSync, rmSync } from 'node:fs';
 import { spawnSync, SpawnSyncReturns } from 'node:child_process';
 
 import {
@@ -794,6 +794,8 @@ export class Client {
    *
    * The verification process uses the external dirctl command-line tool
    * to perform the actual cryptographic operations.
+   * 
+   * When fromServer is true, uses the server's cached verification result.
    *
    * @param request - VerifyRequest containing the record reference and verification parameters.
    *                  The provider can specify either key-based verification (with a public key)
@@ -811,9 +813,13 @@ export class Client {
    * console.log(`Signature valid: ${response.success}`);
    * ```
    */
-  verify(
+  async verify(
     request: models.sign_v1.VerifyRequest,
-  ): models.sign_v1.VerifyResponse {
+  ): Promise<models.sign_v1.VerifyResponse> {
+    if (request.fromServer) {
+      return await this._verifyViaServer(request);
+    }
+
     // Create a temp file for output
     const tempDir = mkdtempSync(join(tmpdir(), 'dirctl-verify-'));
     const outputPath = join(tempDir, 'output.json');
@@ -863,6 +869,16 @@ export class Client {
         // Ignore cleanup errors
       }
     }
+  }
+
+  private async _verifyViaServer(
+    request: models.sign_v1.VerifyRequest,
+  ): Promise<models.sign_v1.VerifyResponse> {
+    if (!request.recordRef?.cid) {
+      throw new Error('VerifyRequest.recordRef with cid is required');
+    }
+    const response = await this.signClient.verify(request);
+    return response;
   }
 
   /**

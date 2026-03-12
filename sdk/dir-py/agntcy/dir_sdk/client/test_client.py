@@ -303,6 +303,9 @@ class TestClient(unittest.TestCase):
             else:
                 record_refs.pop() # NOTE: Drop the unsigned record if no OIDC tested
 
+            # Verification is asynchronous (reconciler caches results). Wait for it to run.
+            time.sleep(8)
+
             verify_index = 0
             for ref in record_refs:
                 response = self.client.verify(sign_v1.VerifyRequest(record_ref=ref))
@@ -327,8 +330,26 @@ class TestClient(unittest.TestCase):
                     assert signer.oidc.issuer, "Expected issuer in OIDC signer info"
                     assert signer.oidc.subject, "Expected subject in OIDC signer info"
                 
-                verify_index += 1
+                # Response with from_server (cached) must match local verification
+                from_server_response = self.client.verify(
+                    sign_v1.VerifyRequest(record_ref=ref, from_server=True)
+                )
+                assert from_server_response.success == response.success
+                assert from_server_response.signers is not None
+                assert len(from_server_response.signers) == len(response.signers)
+                for i in range(len(response.signers)):
+                    r_signer = response.signers[i]
+                    s_signer = from_server_response.signers[i]
+                    assert r_signer.WhichOneof("type") == s_signer.WhichOneof("type")
+                    if r_signer.HasField("key") and s_signer.HasField("key"):
+                        assert s_signer.key.public_key == r_signer.key.public_key
+                        assert s_signer.key.algorithm == r_signer.key.algorithm
+                    if r_signer.HasField("oidc") and s_signer.HasField("oidc"):
+                        assert s_signer.oidc.issuer == r_signer.oidc.issuer
+                        assert s_signer.oidc.subject == r_signer.oidc.subject
                 
+                verify_index += 1
+
         except Exception as e:
             assert e is None
         finally:
