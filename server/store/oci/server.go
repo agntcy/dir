@@ -6,6 +6,7 @@ package oci
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"iter"
@@ -52,8 +53,11 @@ func (s *store) Server() (http.Handler, error) {
 		),
 	}
 
-	// Create registry server
-	return ociserver.New(&server{repo: reg}, &ociserver.Options{}), nil
+	// Create server backend
+	backend := &server{repo: reg}
+
+	// Create registry server wrapped with auto cross-mount support
+	return ociserver.New(backend, &ociserver.Options{}), nil
 }
 
 type server struct {
@@ -61,6 +65,10 @@ type server struct {
 
 	repo *remote.Registry
 }
+
+// errStopIteration is a sentinel returned from ORAS pagination callbacks to stop
+// early when the iterator consumer (ociserver) has signalled it wants no more items.
+var errStopIteration = errors.New("stop iteration")
 
 // DeleteBlob implements [ociregistry.Interface].
 func (s *server) DeleteBlob(ctx context.Context, repo string, digest ociregistry.Digest) error {
@@ -313,20 +321,32 @@ func (s *server) PushBlobChunkedResume(ctx context.Context, repo string, id stri
 		return nil, fmt.Errorf("%w: failed to open upload session: %v", ociregistry.ErrBlobUploadInvalid, err)
 	}
 
-	if offset > 0 {
-		// Explicit resume point: discard any data written past this offset
-		// (handles retried chunks) then position at offset.
-		if err := f.Truncate(offset); err != nil {
+	if offset == -1 {
+		// GET info query: seek to end to report current upload progress.
+		if _, err := f.Seek(0, io.SeekEnd); err != nil {
 			f.Close()
-			return nil, fmt.Errorf("%w: failed to truncate to offset %d: %v", ociregistry.ErrRangeInvalid, offset, err)
+			return nil, fmt.Errorf("%w: failed to seek to end: %v", ociregistry.ErrBlobUploadInvalid, err)
 		}
-		if _, err := f.Seek(offset, io.SeekStart); err != nil {
+	} else if offset == 0 && chunkSize == 0 {
+		// Final PUT with no body/range (case 3 in ociserver): seek to end so that
+		// whatever was accumulated by prior PATCH requests is committed as-is.
+		if _, err := f.Seek(0, io.SeekEnd); err != nil {
 			f.Close()
-			return nil, fmt.Errorf("%w: failed to seek to offset %d: %v", ociregistry.ErrRangeInvalid, offset, err)
+			return nil, fmt.Errorf("%w: failed to seek to end: %v", ociregistry.ErrBlobUploadInvalid, err)
 		}
 	} else {
-		// offset == 0 (no Content-Range header, default) or offset == -1 (info query):
-		// always seek to end so accumulated data is never truncated.
+		// PATCH or PUT with content: the Content-Range start must exactly match the
+		// number of bytes already accumulated. Any mismatch (out-of-order or retried
+		// chunk) is rejected with 416 Range Not Satisfiable.
+		info, err := f.Stat()
+		if err != nil {
+			f.Close()
+			return nil, fmt.Errorf("%w: failed to stat upload session: %v", ociregistry.ErrBlobUploadInvalid, err)
+		}
+		if offset != info.Size() {
+			f.Close()
+			return nil, fmt.Errorf("%w: expected offset %d, got %d", ociregistry.ErrRangeInvalid, info.Size(), offset)
+		}
 		if _, err := f.Seek(0, io.SeekEnd); err != nil {
 			f.Close()
 			return nil, fmt.Errorf("%w: failed to seek to end: %v", ociregistry.ErrBlobUploadInvalid, err)
@@ -348,13 +368,20 @@ func (s *server) PushManifest(ctx context.Context, repo string, tag string, cont
 		return ociregistry.Descriptor{}, fmt.Errorf("%w: %v", ociregistry.ErrNameUnknown, err)
 	}
 
-	// Push manifest first
+	// Build the descriptor from the manifest content.
 	desc := v1.Descriptor{
 		MediaType: mediaType,
 		Digest:    digest.Canonical.FromBytes(contents),
 		Size:      int64(len(contents)),
 	}
-	err = r.Manifests().PushReference(ctx, desc, bytes.NewReader(contents), tag)
+	// When tag is empty the caller is pushing by digest only; use Push so that
+	// ORAS sends PUT /v2/<repo>/manifests/<digest> with a well-formed URL.
+	// PushReference with an empty string would produce a malformed URL.
+	if tag == "" {
+		err = r.Manifests().Push(ctx, desc, bytes.NewReader(contents))
+	} else {
+		err = r.Manifests().PushReference(ctx, desc, bytes.NewReader(contents), tag)
+	}
 	if err != nil {
 		logger.ErrorContext(ctx, "failed to push manifest", "repo", repo, "tag", tag, "digest", desc.Digest, "media_type", mediaType, "error", err)
 		return ociregistry.Descriptor{}, fmt.Errorf("%w: %v", ociregistry.ErrManifestInvalid, err)
@@ -381,11 +408,13 @@ func (s *server) Referrers(ctx context.Context, repo string, digest ociregistry.
 			count += len(desc)
 			for _, d := range desc {
 				logger.InfoContext(ctx, "referrer found", "repo", repo, "digest", digest, "referrer_digest", d.Digest, "referrer_media_type", d.MediaType, "referrer_artifact_type", d.ArtifactType)
-				yield(d, nil)
+				if !yield(d, nil) {
+					return errStopIteration
+				}
 			}
 			return nil
 		})
-		if err != nil {
+		if err != nil && !errors.Is(err, errStopIteration) {
 			logger.ErrorContext(ctx, "failed to list referrers", "repo", repo, "digest", digest, "artifact_type", artifactType, "error", err)
 			yield(ociregistry.Descriptor{}, fmt.Errorf("%w: %v", ociregistry.ErrManifestUnknown, err))
 			return
@@ -405,11 +434,13 @@ func (s *server) Repositories(ctx context.Context, startAfter string) iter.Seq2[
 			count += len(name)
 			for _, n := range name {
 				logger.InfoContext(ctx, "repository found", "name", n)
-				yield(n, nil)
+				if !yield(n, nil) {
+					return errStopIteration
+				}
 			}
 			return nil
 		})
-		if err != nil {
+		if err != nil && !errors.Is(err, errStopIteration) {
 			logger.ErrorContext(ctx, "failed to list repositories", "start_after", startAfter, "error", err)
 			yield("", fmt.Errorf("%w: %v", ociregistry.ErrUnsupported, err))
 			return
@@ -482,11 +513,13 @@ func (s *server) Tags(ctx context.Context, repo string, startAfter string) iter.
 			count += len(name)
 			for _, n := range name {
 				logger.InfoContext(ctx, "tag found", "repo", repo, "tag", n)
-				yield(n, nil)
+				if !yield(n, nil) {
+					return errStopIteration
+				}
 			}
 			return nil
 		})
-		if err != nil {
+		if err != nil && !errors.Is(err, errStopIteration) {
 			logger.ErrorContext(ctx, "failed to list tags", "repo", repo, "start_after", startAfter, "error", err)
 			yield("", fmt.Errorf("%w: %v", ociregistry.ErrNameUnknown, err))
 			return
