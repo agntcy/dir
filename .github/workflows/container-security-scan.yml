@@ -72,7 +72,6 @@ jobs:
         env:
           IMAGE_TAG: ${{ needs.resolve-tag.outputs.version }}
           IMAGE_REPO: ghcr.io/${{ github.repository_owner }}
-          PATH: ${{ env.HOME }}/.local/bin:${{ env.PATH }}
         run: |
           matrix=$(task --silent deps:vuln:images:list | jq -R -s -c 'split("\n") | map(select(length > 0)) | {image: .}')
           echo "matrix<<EOF" >> $GITHUB_OUTPUT
