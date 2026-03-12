@@ -5,6 +5,7 @@ package types
 
 import (
 	"context"
+	"net/http"
 
 	corev1 "github.com/agntcy/dir/api/core/v1"
 )
@@ -26,6 +27,9 @@ type StoreAPI interface {
 	// List all available records
 	// Needed for bootstrapping
 	// List(context.Context, func(*corev1.RecordRef) error) error
+
+	// Server returns an HTTP handler that serves the OCI Distribution API.
+	Server() (http.Handler, error)
 
 	// IsReady checks if the storage backend is ready to serve traffic.
 	IsReady(context.Context) bool
