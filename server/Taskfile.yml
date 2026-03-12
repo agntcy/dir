@@ -20,38 +20,6 @@ tasks:
           {{.BAKE_ENV}} docker buildx bake {{.IMAGE_BAKE_OPTS}} dir-apiserver
         fi
 
-  server:oci:conformance:
-    desc: Run OCI conformance tests
-    env:
-      # Must be running already
-      CLONE_DIR: /tmp/distribution-spec
-      OCI_REPORT_DIR: /tmp/results
-      OCI_ROOT_URL: "http://localhost:8080"
-      OCI_NAMESPACE: "myorg/myrepo"
-      OCI_DEBUG: 0
-      OCI_TEST_PULL: 1
-      OCI_TEST_PUSH: 1
-      OCI_AUTOMATIC_CROSSMOUNT: 0 # disable automatic cross-mount
-      OCI_CROSSMOUNT_NAMESPACE: "myorg/other"
-      OCI_TEST_CONTENT_DISCOVERY: 1
-      OCI_TEST_CONTENT_MANAGEMENT: 1
-      OCI_HIDE_SKIPPED_WORKFLOWS: 0
-      OCI_DELETE_MANIFEST_BEFORE_BLOBS: 0
-    cmd: |
-        # Setup and run conformance tests
-        # If file doe not exists, run this step
-        if [ ! -f "$CLONE_DIR/conformance/conformance.test" ]; then
-          git clone https://github.com/opencontainers/distribution-spec $CLONE_DIR
-          cd $CLONE_DIR/conformance
-          go test -c
-        fi
-        
-        # Run test
-        $CLONE_DIR/conformance/conformance.test
-
-        # Display results
-        echo "Report available at: $OCI_REPORT_DIR/report.html"
-
   server:start:
     desc: Start local Directory server stack
     dir: ./install/docker
@@ -79,3 +47,37 @@ tasks:
     dir: ./server
     cmds:
       - go -C . test -run=^$ -bench=. ./...
+
+  server:conformance:
+    desc: Run OCI conformance checks
+    deps:
+      - server:start
+    vars:
+      CLONE_DIR: "/tmp/distribution-spec"
+      CLONE_BIN: "{{.CLONE_DIR}}/conformance/conformance.test"
+    env:
+      # Must be running already
+      OCI_REPORT_DIR: /tmp/results
+      OCI_ROOT_URL: "http://localhost:8080"
+      OCI_NAMESPACE: "tests/repo-a"
+      OCI_DEBUG: 0
+      OCI_TEST_PULL: 1
+      OCI_TEST_PUSH: 1
+      OCI_AUTOMATIC_CROSSMOUNT: 0 # disable automatic cross-mount
+      OCI_CROSSMOUNT_NAMESPACE: "tests/repo-b"
+      OCI_TEST_CONTENT_DISCOVERY: 1
+      OCI_TEST_CONTENT_MANAGEMENT: 1
+      OCI_HIDE_SKIPPED_WORKFLOWS: 0
+      OCI_DELETE_MANIFEST_BEFORE_BLOBS: 0
+    cmds:
+      - defer: { task: server:stop }
+      - |
+        # Setup conformance test binary
+        if [ ! -f "{{.CLONE_BIN}}" ]; then
+          git clone https://github.com/opencontainers/distribution-spec {{.CLONE_DIR}}
+          cd {{.CLONE_DIR}}/conformance
+          go test -c
+        fi
+        
+        # Run test
+        {{.CLONE_BIN}}

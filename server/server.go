@@ -234,8 +234,9 @@ func New(ctx context.Context, cfg *config.Config) (*Server, error) {
 	handler := http.NewServeMux()
 	handler.Handle("/v2/", storeServerAPI)
 	ociServer := &http.Server{
-		Addr:    ":8080",
-		Handler: handler,
+		Addr:              ":8080",
+		Handler:           handler,
+		ReadHeaderTimeout: 3 * time.Second, //nolint:mnd
 	}
 
 	routingAPI, err := routing.New(ctx, storeAPI, options)

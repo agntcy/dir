@@ -129,5 +129,5 @@ func (s *eventsStore) WalkReferrers(ctx context.Context, recordCID string, refer
 }
 
 func (s *eventsStore) Server() (http.Handler, error) {
-	return s.source.Server()
+	return s.source.Server() //nolint:wrapcheck
 }
