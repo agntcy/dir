@@ -15,8 +15,22 @@ vars:
 
   ## External dependency versions
   ZOT_VERSION: "2.1.15"
-  SPIRE_VERSION: "1.14.1"
+  SPIRE_VERSION: "1.14.2"
   REGSYNC_VERSION: "v0.11.1"
+  POSTGRESQL_IMAGE_REF: "docker.io/bitnami/postgresql@sha256:e8b68936d05ee665974430bb4765fedcdc5c9ba399e133e120e2deed77f54dbf"
+
+  ## Container images for vulnerability scanning
+  VULN_SCAN_IMAGES:
+    - "{{.IMAGE_REPO}}/dir-apiserver:{{.IMAGE_TAG}}"
+    - "{{.IMAGE_REPO}}/dir-ctl:{{.IMAGE_TAG}}"
+    - "{{.IMAGE_REPO}}/dir-reconciler:{{.IMAGE_TAG}}"
+    - "{{.IMAGE_REPO}}/dir-runtime-discovery:{{.IMAGE_TAG}}"
+    - "{{.IMAGE_REPO}}/dir-runtime-server:{{.IMAGE_TAG}}"
+    - "{{.IMAGE_REPO}}/envoy-authz:{{.IMAGE_TAG}}"
+    - "ghcr.io/project-zot/zot:v{{.ZOT_VERSION}}"
+    - "ghcr.io/spiffe/spire-server:{{.SPIRE_VERSION}}"
+    - "ghcr.io/spiffe/spire-agent:{{.SPIRE_VERSION}}"
+    - "{{.POSTGRESQL_IMAGE_REF}}"
 
   ## Image config
   BUILD_LDFLAGS: "-s -w -extldflags -static {{.VERSION_LDFLAGS}}"

@@ -53,26 +53,39 @@ jobs:
             echo "version=${TAG_VERSION}" >> $GITHUB_OUTPUT
           fi
 
+  image-list:
+    name: Resolve image list
+    runs-on: ubuntu-latest
+    needs: [resolve-tag]
+    outputs:
+      matrix: ${{ steps.matrix.outputs.matrix }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Setup Taskfile
+        shell: bash
+        run: sh -c "$(curl --location https://taskfile.dev/install.sh)" -- -d -b ~/.local/bin
+
+      - name: Get image list from task
+        id: matrix
+        env:
+          IMAGE_TAG: ${{ needs.resolve-tag.outputs.version }}
+          IMAGE_REPO: ghcr.io/${{ github.repository_owner }}
+          PATH: ${{ env.HOME }}/.local/bin:${{ env.PATH }}
+        run: |
+          matrix=$(task --silent deps:vuln:images:list | jq -R -s -c 'split("\n") | map(select(length > 0)) | {image: .}')
+          echo "matrix<<EOF" >> $GITHUB_OUTPUT
+          echo "$matrix" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
   trivy-scan:
     name: Trivy Scan
     runs-on: ubuntu-latest
-    needs: [resolve-tag]
+    needs: [image-list]
     strategy:
       fail-fast: false
-      matrix:
-        # Single source of truth: add/remove images here
-        # Repo images use resolved tag, external images specify version or digest
-        image:
-          - ghcr.io/${{ github.repository_owner }}/dir-apiserver:${{ needs.resolve-tag.outputs.version }}
-          - ghcr.io/${{ github.repository_owner }}/dir-ctl:${{ needs.resolve-tag.outputs.version }}
-          - ghcr.io/${{ github.repository_owner }}/dir-reconciler:${{ needs.resolve-tag.outputs.version }}
-          - ghcr.io/${{ github.repository_owner }}/dir-runtime-discovery:${{ needs.resolve-tag.outputs.version }}
-          - ghcr.io/${{ github.repository_owner }}/dir-runtime-server:${{ needs.resolve-tag.outputs.version }}
-          - ghcr.io/${{ github.repository_owner }}/envoy-authz:${{ needs.resolve-tag.outputs.version }}
-          - ghcr.io/project-zot/zot:v2.1.15
-          - ghcr.io/spiffe/spire-server:1.14.1
-          - ghcr.io/spiffe/spire-agent:1.14.1
-          - docker.io/bitnami/postgresql@sha256:e8b68936d05ee665974430bb4765fedcdc5c9ba399e133e120e2deed77f54dbf
+      matrix: ${{ fromJson(needs.image-list.outputs.matrix) }}
     steps:
       - name: Set image name
         id: image-name

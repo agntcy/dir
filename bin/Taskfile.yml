@@ -269,26 +269,20 @@ tasks:
       {{.TRIVY_BIN}} clean --scan-cache
       {{.TRIVY_BIN}} fs --scanners vuln --severity CRITICAL,HIGH,MEDIUM --ignore-unfixed {{.ROOT_DIR}}
 
-  # TODO: Switch GH actions to use this task instead of trivy action.
-  #
-  # This avoids redundant installations and have more control over scanning parameters.
-  # The TASKFILE should serve as a central source of truth for all dev-related operations.
   deps:vuln:images:
     desc: Run vulnerability check on container images
     deps:
       - deps:trivy
-    vars:
-      IMAGES:
-        - ghcr.io/agntcy/dir-apiserver:{{.IMAGE_TAG}}
-        - ghcr.io/agntcy/dir-ctl:{{.IMAGE_TAG}}
-        - ghcr.io/agntcy/dir-reconciler:{{.IMAGE_TAG}}
-        - ghcr.io/agntcy/dir-runtime-discovery:{{.IMAGE_TAG}}
-        - ghcr.io/agntcy/dir-runtime-server:{{.IMAGE_TAG}}
-        - ghcr.io/agntcy/envoy-authz:{{.IMAGE_TAG}}
     cmds:
       - cmd: |
           {{.TRIVY_BIN}} clean --scan-cache
-      - for: { var: IMAGES }
+      - for: { var: VULN_SCAN_IMAGES }
         cmd: |
           echo "Scanning {{.ITEM}}..."
           {{.TRIVY_BIN}} image --scanners vuln --severity CRITICAL,HIGH,MEDIUM --ignore-unfixed {{.ITEM}}
+
+  deps:vuln:images:list:
+    desc: Output vulnerability-scan image refs (one per line) for CI matrix
+    cmds:
+      - for: { var: VULN_SCAN_IMAGES }
+        cmd: echo "{{.ITEM}}"
