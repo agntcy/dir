@@ -31,6 +31,15 @@ type StoreAPI interface {
 	IsReady(context.Context) bool
 }
 
+// RegistryAPI handles management of the OCI Distribution API server.
+type RegistryAPI interface {
+	// Server returns an HTTP handler that serves the OCI Distribution API.
+	Start()
+
+	// Stop gracefully shuts down the registry server.
+	Stop() error
+}
+
 // ReferrerStoreAPI handles management of generic record referrers.
 // This implements the OCI Referrers API for attaching artifacts to records.
 //

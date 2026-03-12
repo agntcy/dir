@@ -34,6 +34,7 @@ import (
 	"github.com/agntcy/dir/server/naming"
 	"github.com/agntcy/dir/server/naming/wellknown"
 	"github.com/agntcy/dir/server/publication"
+	"github.com/agntcy/dir/server/registry"
 	"github.com/agntcy/dir/server/routing"
 	"github.com/agntcy/dir/server/store"
 	"github.com/agntcy/dir/server/types"
@@ -65,6 +66,7 @@ type Server struct {
 	health             *healthcheck.Checker
 	grpcServer         *grpc.Server
 	metricsServer      *metrics.Server
+	ociServer          types.RegistryAPI
 }
 
 // buildConnectionOptions creates gRPC server options for connection management.
@@ -232,6 +234,15 @@ func New(ctx context.Context, cfg *config.Config) (*Server, error) {
 		return nil, fmt.Errorf("failed to create database API: %w", err)
 	}
 
+	// Create Registry API server (if enabled)
+	var ociServer types.RegistryAPI
+	if cfg.Registry.Enabled {
+		ociServer, err = registry.New(cfg.Registry, cfg.Store)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create OCI registry server: %w", err)
+		}
+	}
+
 	// Create JWT authentication service if enabled
 	var authnService *authn.Service
 	if cfg.Authn.Enabled {
@@ -314,6 +325,7 @@ func New(ctx context.Context, cfg *config.Config) (*Server, error) {
 		health:             healthChecker,
 		grpcServer:         grpcServer,
 		metricsServer:      metricsServer,
+		ociServer:          ociServer,
 	}, nil
 }
 
@@ -385,6 +397,13 @@ func (s Server) Close(ctx context.Context) {
 		}
 	}
 
+	// Stop Registry API server if running
+	if s.ociServer != nil {
+		if err := s.ociServer.Stop(); err != nil {
+			logger.Error("Failed to stop OCI registry server", "error", err)
+		}
+	}
+
 	s.grpcServer.GracefulStop()
 }
 
@@ -405,6 +424,11 @@ func (s Server) start(ctx context.Context) error {
 		}
 
 		logger.Info("Publication service started")
+	}
+
+	// Start Registry API server
+	if s.ociServer != nil {
+		s.ociServer.Start()
 	}
 
 	// Create a listener on TCP port
