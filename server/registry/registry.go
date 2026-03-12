@@ -80,7 +80,7 @@ func New(cfg config.Config, storeCfg storeconfig.Config) (types.RegistryAPI, err
 func (r *registry) Start() {
 	go func() {
 		if err := r.server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			panic(fmt.Errorf("Failed to start HTTP server: %v", err))
+			panic(fmt.Errorf("failed to start HTTP server: %w", err))
 		}
 	}()
 }

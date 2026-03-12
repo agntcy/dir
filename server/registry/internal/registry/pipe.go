@@ -100,7 +100,8 @@ func OpenWriter(id string, commit func(v1.Descriptor, io.Reader) error) (ociregi
 	// Required for chunked uploads for resume and offset validation.
 	info, err := file.Stat()
 	if err != nil {
-		file.Close()
+		// Close the file if stat fails since we won't be returning a writer.
+		_ = file.Close()
 
 		return nil, fmt.Errorf("failed to stat upload session: %w", err)
 	}
