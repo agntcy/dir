@@ -2,6 +2,8 @@ buf.build/gen/go/agntcy/oasf-sdk/protocolbuffers/go v1.36.11-20260225090442-549b
 buf.build/gen/go/agntcy/oasf-sdk/protocolbuffers/go v1.36.11-20260225090442-549b0cc62759.1/go.mod h1:EEQp9sY+88ieMjKf9W4Uf9t3X6qV1nHY0DcGOxsMlac=
 buf.build/gen/go/agntcy/oasf/protocolbuffers/go v1.36.11-20260311134852-004f24f91cc7.1 h1:VcluVru0JEmr3s1mXxyPxmY58BKgPhp2IYe0/rdYYTU=
 buf.build/gen/go/agntcy/oasf/protocolbuffers/go v1.36.11-20260311134852-004f24f91cc7.1/go.mod h1:y7UzNChPK2OBXQxpwimQg6fSgSFLC1jZXTk9Y7HFfNc=
+buf.build/gen/go/bufbuild/protovalidate/protocolbuffers/go v1.36.11-20260209202127-80ab13bee0bf.1 h1:PMmTMyvHScV9Mn8wc6ASge9uRcHy0jtqPd+fM35LmsQ=
+buf.build/gen/go/bufbuild/protovalidate/protocolbuffers/go v1.36.11-20260209202127-80ab13bee0bf.1/go.mod h1:tvtbpgaVXZX4g6Pn+AnzFycuRK3MOz5HJfEGeEllXYM=
 github.com/agntcy/oasf-sdk/pkg v1.0.1 h1:ia8ePY78pS6n7HDPOAKdEsNHAJcVoOc2LqaYeLwHuUY=
 github.com/agntcy/oasf-sdk/pkg v1.0.1/go.mod h1:pfewyMhSx+M54QWuZLKEK7hMy5wfszZl9cQMWE9x/2g=
 github.com/cespare/xxhash/v2 v2.3.0 h1:UL815xU9SqsFlibzuggzjXhog7bL6oX9BbNZnL2UFvs=

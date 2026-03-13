@@ -7,6 +7,7 @@ name = "agntcy-dir"
 version = "1.0.0"
 source = { editable = "../../dir-py" }
 dependencies = [
+    { name = "bufbuild-protovalidate-protocolbuffers-python" },
     { name = "grpcio" },
     { name = "pyasn1" },
     { name = "spiffe" },
@@ -15,6 +16,7 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [
+    { name = "bufbuild-protovalidate-protocolbuffers-python", specifier = "==34.0.0.1.20260209202127+80ab13bee0bf" },
     { name = "grpcio", specifier = ">=1.74.0" },
     { name = "pyasn1", specifier = ">=0.6.2" },
     { name = "spiffe", specifier = ">=0.2.2" },
@@ -25,6 +27,30 @@ requires-dist = [
 dev = [
     { name = "pytest", specifier = ">=8.4.1" },
     { name = "uuid", specifier = ">=1.30" },
+]
+
+[[package]]
+name = "bufbuild-protovalidate-protocolbuffers-pyi"
+version = "34.0.0.1.20260209202127+80ab13bee0bf"
+source = { registry = "https://buf.build/gen/python" }
+dependencies = [
+    { name = "protobuf" },
+    { name = "types-protobuf" },
+]
+wheels = [
+    { url = "https://buf.build/gen/python/bufbuild-protovalidate-protocolbuffers-pyi/bufbuild_protovalidate_protocolbuffers_pyi-34.0.0.1.20260209202127+80ab13bee0bf-py3-none-any.whl" },
+]
+
+[[package]]
+name = "bufbuild-protovalidate-protocolbuffers-python"
+version = "34.0.0.1.20260209202127+80ab13bee0bf"
+source = { registry = "https://buf.build/gen/python" }
+dependencies = [
+    { name = "bufbuild-protovalidate-protocolbuffers-pyi" },
+    { name = "protobuf" },
+]
+wheels = [
+    { url = "https://buf.build/gen/python/bufbuild-protovalidate-protocolbuffers-python/bufbuild_protovalidate_protocolbuffers_python-34.0.0.1.20260209202127+80ab13bee0bf-py3-none-any.whl" },
 ]
 
 [[package]]
@@ -242,6 +268,15 @@ wheels = [
 ]
 
 [[package]]
+name = "idna"
+version = "3.11"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/6f/6d/0703ccc57f3a7233505399edb88de3cbd678da106337b9fcde432b65ed60/idna-3.11.tar.gz", hash = "sha256:795dafcc9c04ed0c1fb032c2aa73654d8e8c5023a7df64a53f39190ada629902", size = 194582, upload-time = "2025-10-12T14:55:20.501Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/0e/61/66938bbb5fc52dbdf84594873d5b51fb1f7c7794e9c0f5bd885f30bc507b/idna-3.11-py3-none-any.whl", hash = "sha256:771a87f49d9defaf64091e6e6fe9c18d4833f140bd19464795bc32d966ca37ea", size = 71008, upload-time = "2025-10-12T14:55:18.883Z" },
+]
+
+[[package]]
 name = "pem"
 version = "23.1.0"
 source = { registry = "https://pypi.org/simple" }
@@ -252,17 +287,17 @@ wheels = [
 
 [[package]]
 name = "protobuf"
-version = "6.33.5"
+version = "7.34.0"
 source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/ba/25/7c72c307aafc96fa87062aa6291d9f7c94836e43214d43722e86037aac02/protobuf-6.33.5.tar.gz", hash = "sha256:6ddcac2a081f8b7b9642c09406bc6a4290128fce5f471cddd165960bb9119e5c", size = 444465, upload-time = "2026-01-29T21:51:33.494Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/f2/00/04a2ab36b70a52d0356852979e08b44edde0435f2115dc66e25f2100f3ab/protobuf-7.34.0.tar.gz", hash = "sha256:3871a3df67c710aaf7bb8d214cc997342e63ceebd940c8c7fc65c9b3d697591a", size = 454726, upload-time = "2026-02-27T00:30:25.421Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/b1/79/af92d0a8369732b027e6d6084251dd8e782c685c72da161bd4a2e00fbabb/protobuf-6.33.5-cp310-abi3-win32.whl", hash = "sha256:d71b040839446bac0f4d162e758bea99c8251161dae9d0983a3b88dee345153b", size = 425769, upload-time = "2026-01-29T21:51:21.751Z" },
-    { url = "https://files.pythonhosted.org/packages/55/75/bb9bc917d10e9ee13dee8607eb9ab963b7cf8be607c46e7862c748aa2af7/protobuf-6.33.5-cp310-abi3-win_amd64.whl", hash = "sha256:3093804752167bcab3998bec9f1048baae6e29505adaf1afd14a37bddede533c", size = 437118, upload-time = "2026-01-29T21:51:24.022Z" },
-    { url = "https://files.pythonhosted.org/packages/a2/6b/e48dfc1191bc5b52950246275bf4089773e91cb5ba3592621723cdddca62/protobuf-6.33.5-cp39-abi3-macosx_10_9_universal2.whl", hash = "sha256:a5cb85982d95d906df1e2210e58f8e4f1e3cdc088e52c921a041f9c9a0386de5", size = 427766, upload-time = "2026-01-29T21:51:25.413Z" },
-    { url = "https://files.pythonhosted.org/packages/4e/b1/c79468184310de09d75095ed1314b839eb2f72df71097db9d1404a1b2717/protobuf-6.33.5-cp39-abi3-manylinux2014_aarch64.whl", hash = "sha256:9b71e0281f36f179d00cbcb119cb19dec4d14a81393e5ea220f64b286173e190", size = 324638, upload-time = "2026-01-29T21:51:26.423Z" },
-    { url = "https://files.pythonhosted.org/packages/c5/f5/65d838092fd01c44d16037953fd4c2cc851e783de9b8f02b27ec4ffd906f/protobuf-6.33.5-cp39-abi3-manylinux2014_s390x.whl", hash = "sha256:8afa18e1d6d20af15b417e728e9f60f3aa108ee76f23c3b2c07a2c3b546d3afd", size = 339411, upload-time = "2026-01-29T21:51:27.446Z" },
-    { url = "https://files.pythonhosted.org/packages/9b/53/a9443aa3ca9ba8724fdfa02dd1887c1bcd8e89556b715cfbacca6b63dbec/protobuf-6.33.5-cp39-abi3-manylinux2014_x86_64.whl", hash = "sha256:cbf16ba3350fb7b889fca858fb215967792dc125b35c7976ca4818bee3521cf0", size = 323465, upload-time = "2026-01-29T21:51:28.925Z" },
-    { url = "https://files.pythonhosted.org/packages/57/bf/2086963c69bdac3d7cff1cc7ff79b8ce5ea0bec6797a017e1be338a46248/protobuf-6.33.5-py3-none-any.whl", hash = "sha256:69915a973dd0f60f31a08b8318b73eab2bd6a392c79184b3612226b0a3f8ec02", size = 170687, upload-time = "2026-01-29T21:51:32.557Z" },
+    { url = "https://files.pythonhosted.org/packages/13/c4/6322ab5c8f279c4c358bc14eb8aefc0550b97222a39f04eb3c1af7a830fa/protobuf-7.34.0-cp310-abi3-macosx_10_9_universal2.whl", hash = "sha256:8e329966799f2c271d5e05e236459fe1cbfdb8755aaa3b0914fa60947ddea408", size = 429248, upload-time = "2026-02-27T00:30:14.924Z" },
+    { url = "https://files.pythonhosted.org/packages/45/99/b029bbbc61e8937545da5b79aa405ab2d9cf307a728f8c9459ad60d7a481/protobuf-7.34.0-cp310-abi3-manylinux2014_aarch64.whl", hash = "sha256:9d7a5005fb96f3c1e64f397f91500b0eb371b28da81296ae73a6b08a5b76cdd6", size = 325753, upload-time = "2026-02-27T00:30:17.247Z" },
+    { url = "https://files.pythonhosted.org/packages/cc/79/09f02671eb75b251c5550a1c48e7b3d4b0623efd7c95a15a50f6f9fc1e2e/protobuf-7.34.0-cp310-abi3-manylinux2014_s390x.whl", hash = "sha256:4a72a8ec94e7a9f7ef7fe818ed26d073305f347f8b3b5ba31e22f81fd85fca02", size = 340200, upload-time = "2026-02-27T00:30:18.672Z" },
+    { url = "https://files.pythonhosted.org/packages/b5/57/89727baef7578897af5ed166735ceb315819f1c184da8c3441271dbcfde7/protobuf-7.34.0-cp310-abi3-manylinux2014_x86_64.whl", hash = "sha256:964cf977e07f479c0697964e83deda72bcbc75c3badab506fb061b352d991b01", size = 324268, upload-time = "2026-02-27T00:30:20.088Z" },
+    { url = "https://files.pythonhosted.org/packages/1f/3e/38ff2ddee5cc946f575c9d8cc822e34bde205cf61acf8099ad88ef19d7d2/protobuf-7.34.0-cp310-abi3-win32.whl", hash = "sha256:f791ec509707a1d91bd02e07df157e75e4fb9fbdad12a81b7396201ec244e2e3", size = 426628, upload-time = "2026-02-27T00:30:21.555Z" },
+    { url = "https://files.pythonhosted.org/packages/cb/71/7c32eaf34a61a1bae1b62a2ac4ffe09b8d1bb0cf93ad505f42040023db89/protobuf-7.34.0-cp310-abi3-win_amd64.whl", hash = "sha256:9f9079f1dde4e32342ecbd1c118d76367090d4aaa19da78230c38101c5b3dd40", size = 437901, upload-time = "2026-02-27T00:30:22.836Z" },
+    { url = "https://files.pythonhosted.org/packages/a4/e7/14dc9366696dcb53a413449881743426ed289d687bcf3d5aee4726c32ebb/protobuf-7.34.0-py3-none-any.whl", hash = "sha256:e3b914dd77fa33fa06ab2baa97937746ab25695f389869afdf03e81f34e45dc7", size = 170716, upload-time = "2026-02-27T00:30:23.994Z" },
 ]
 
 [[package]]
@@ -324,7 +359,7 @@ wheels = [
 
 [[package]]
 name = "spiffe"
-version = "0.2.3"
+version = "0.2.5"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "cryptography" },
@@ -335,22 +370,32 @@ dependencies = [
     { name = "pyasn1-modules" },
     { name = "pyjwt", extra = ["crypto"] },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/6a/73/97d5a9e5f79e2d61555066f4197e06279e2adfddd3ad67125b9f3776f772/spiffe-0.2.3.tar.gz", hash = "sha256:28f754eba056caa3a5c2b7bd816ac9bf24fad20333b2989ca6977dff51372c41", size = 34912, upload-time = "2026-01-17T19:06:57.048Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/85/4c/4e50c69a759ad976a3024968c009f612217bee6e99cd0377e247ea7670ae/spiffe-0.2.5.tar.gz", hash = "sha256:13dca41df7fa10855b33b7d3c07650248fbc638a72811f020b63ca908673911e", size = 38922, upload-time = "2026-03-07T18:55:55.765Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/15/4d/f867f134a350e8dc9eb83b4f92cb68fdeaed0437450aaffbd1e73fa09658/spiffe-0.2.3-py3-none-any.whl", hash = "sha256:562fcee9e611953fc7622b3d5638e9ce1652015d29216fd6d4a82dac309673d9", size = 56061, upload-time = "2026-01-17T19:06:55.528Z" },
+    { url = "https://files.pythonhosted.org/packages/72/41/e2248fa17f31da43f876e58ce61bb55ff8ad6aa0bd44f5ae7ada48410e43/spiffe-0.2.5-py3-none-any.whl", hash = "sha256:3e5077b2b14fcd36edb89e699e175c4ec8a8ea35716f44f35c7ea97c352ac081", size = 58272, upload-time = "2026-03-07T18:55:56.463Z" },
 ]
 
 [[package]]
 name = "spiffe-tls"
-version = "0.2.2"
+version = "0.3.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
+    { name = "idna" },
     { name = "pyopenssl" },
     { name = "spiffe" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/8a/45/b3c2516ed4bfac484ee9438f234f242c0f970e68d1e05478508d8342290f/spiffe_tls-0.2.2.tar.gz", hash = "sha256:29a7b271e0cb2a9d790bd610d31487799c3e95c36e1c2476066742d9657a12e3", size = 11166, upload-time = "2026-01-17T19:24:35.049Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/f8/26/e4d730ddbc072226d9256d8b87fb9afe85e49aca5e1f5bbb363be338399e/spiffe_tls-0.3.0.tar.gz", hash = "sha256:ae22d6b65066f5f3652e963e57957639667c3b3e26386c63285cd1672206c3b7", size = 21058, upload-time = "2026-02-24T17:19:51.586Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/8b/7f/12995a61e8364d3e1f691a283e4a78c32731ffe69a257682dc530ad427b9/spiffe_tls-0.2.2-py3-none-any.whl", hash = "sha256:e2c66f66e0500cbe2c10b6ad4bdf69be483114f118cba58a1d7ee107cf440010", size = 15562, upload-time = "2026-01-17T19:24:34.285Z" },
+    { url = "https://files.pythonhosted.org/packages/7d/d4/062b1349d4d1cd5a4e8b95a29cd7d0a621c70f1e5b2aedc03e6d57945c82/spiffe_tls-0.3.0-py3-none-any.whl", hash = "sha256:2b066b779852f4948577db45249a8e5a5cfc7709f2010348d807bffca80dfd69", size = 26830, upload-time = "2026-02-24T17:19:52.609Z" },
+]
+
+[[package]]
+name = "types-protobuf"
+version = "6.32.1.20260221"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/5f/e2/9aa4a3b2469508bd7b4e2ae11cbedaf419222a09a1b94daffcd5efca4023/types_protobuf-6.32.1.20260221.tar.gz", hash = "sha256:6d5fb060a616bfb076cbb61b4b3c3969f5fc8bec5810f9a2f7e648ee5cbcbf6e", size = 64408, upload-time = "2026-02-21T03:55:13.916Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/2e/e8/1fd38926f9cf031188fbc5a96694203ea6f24b0e34bd64a225ec6f6291ba/types_protobuf-6.32.1.20260221-py3-none-any.whl", hash = "sha256:da7cdd947975964a93c30bfbcc2c6841ee646b318d3816b033adc2c4eb6448e4", size = 77956, upload-time = "2026-02-21T03:55:12.894Z" },
 ]
 
 [[package]]

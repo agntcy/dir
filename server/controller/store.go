@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"io"
 
+	"buf.build/go/protovalidate"
 	corev1 "github.com/agntcy/dir/api/core/v1"
 	storev1 "github.com/agntcy/dir/api/store/v1"
 	"github.com/agntcy/dir/server/events"
@@ -224,6 +225,10 @@ func (s storeCtrl) PushReferrer(stream storev1.StoreService_PushReferrerServer) 
 
 		if err != nil {
 			return status.Errorf(codes.Internal, "failed to receive push referrer request: %v", err)
+		}
+
+		if err = protovalidate.Validate(request); err != nil {
+			return status.Errorf(codes.InvalidArgument, "%v", err)
 		}
 
 		// Validate the record reference

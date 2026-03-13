@@ -24,6 +24,7 @@ require (
 )
 
 require (
+	buf.build/gen/go/bufbuild/protovalidate/protocolbuffers/go v1.36.11-20260209202127-80ab13bee0bf.1 // indirect
 	charm.land/bubbles/v2 v2.0.0 // indirect
 	charm.land/bubbletea/v2 v2.0.2 // indirect
 	charm.land/catwalk v0.29.0 // indirect
