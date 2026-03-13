@@ -68,6 +68,7 @@ jobs:
       - image
       - chart
       - cli
+    runs-on: ubuntu-latest
     permissions:
       contents: write
     outputs:
