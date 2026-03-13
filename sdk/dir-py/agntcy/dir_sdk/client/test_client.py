@@ -146,27 +146,23 @@ class TestClient(unittest.TestCase):
             request = [
                 store_v1.PushReferrerRequest(
                     record_ref=record_refs[0],
-                    referrer=core_v1.RecordReferrer(
-                        type=sign_v1.Signature.DESCRIPTOR.full_name,
-                        data={
-                            "signature": "dGVzdC1zaWduYXR1cmU=",  # base64 encoded "test-signature"
-                            "annotations": {
-                                "payload": "test-payload-data"
-                            }
+                    type=sign_v1.Signature.DESCRIPTOR.full_name,
+                    data={
+                        "signature": "dGVzdC1zaWduYXR1cmU=",  # base64 encoded "test-signature"
+                        "annotations": {
+                            "payload": "test-payload-data"
                         }
-                    ),
+                    }
                 ),
                 store_v1.PushReferrerRequest(
                     record_ref=record_refs[1],
-                    referrer=core_v1.RecordReferrer(
-                        type=sign_v1.Signature.DESCRIPTOR.full_name,
-                        data={
-                            "signature": "dGVzdC1zaWduYXR1cmU=",  # base64 encoded "test-signature"
-                            "annotations": {
-                                "payload": "test-payload-data"
-                            }
+                    type=sign_v1.Signature.DESCRIPTOR.full_name,
+                    data={
+                        "signature": "dGVzdC1zaWduYXR1cmU=",  # base64 encoded "test-signature"
+                        "annotations": {
+                            "payload": "test-payload-data"
                         }
-                    ),
+                    }
                 ),
             ]
 
@@ -189,27 +185,23 @@ class TestClient(unittest.TestCase):
         request = [
             store_v1.PushReferrerRequest(
                 record_ref=record_refs[0],
-                referrer=core_v1.RecordReferrer(
-                    type=sign_v1.Signature.DESCRIPTOR.full_name,
-                    data={
-                        "signature": "dGVzdC1zaWduYXR1cmU=",  # base64 encoded "test-signature"
-                        "annotations": {
-                            "payload": "test-payload-data"
-                        }
+                type=sign_v1.Signature.DESCRIPTOR.full_name,
+                data={
+                    "signature": "dGVzdC1zaWduYXR1cmU=",  # base64 encoded "test-signature"
+                    "annotations": {
+                        "payload": "test-payload-data"
                     }
-                ),
+                }
             ),
             store_v1.PushReferrerRequest(
                 record_ref=record_refs[1],
-                referrer=core_v1.RecordReferrer(
-                    type=sign_v1.Signature.DESCRIPTOR.full_name,
-                    data={
-                        "signature": "dGVzdC1zaWduYXR1cmU=",  # base64 encoded "test-signature"
-                        "annotations": {
-                            "payload": "test-payload-data"
-                        }
+                type=sign_v1.Signature.DESCRIPTOR.full_name,
+                data={
+                    "signature": "dGVzdC1zaWduYXR1cmU=",  # base64 encoded "test-signature"
+                    "annotations": {
+                        "payload": "test-payload-data"
                     }
-                ),
+                }
             ),
         ]
         response = self.client.push_referrer(req=request)

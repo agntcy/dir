@@ -8,6 +8,8 @@ package agntcy.dir.store.v1;
 import "agntcy/dir/core/v1/record.proto";
 import "agntcy/dir/core/v1/referrer.proto";
 import "google/protobuf/empty.proto";
+import "google/protobuf/struct.proto";
+import "buf/validate/validate.proto";
 
 // Defines an interface for content-addressable storage
 // service for objects.
@@ -47,10 +49,31 @@ service StoreService {
 // PushReferrerRequest represents a record with optional OCI artifacts for push operations.
 message PushReferrerRequest {
   // Record reference
-  core.v1.RecordRef record_ref = 1;
+  core.v1.RecordRef record_ref = 1 [
+    (buf.validate.field).required = true
+  ];
 
-  // RecordReferrer object to be stored for the record
-  core.v1.RecordReferrer referrer = 2;
+  // The type of the referrer.
+  // For example, "agntcy.dir.sign.v1.Signature" for signatures.
+  string type = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string = {
+      in: [
+        "agntcy.dir.sign.v1.PublicKey",
+        "agntcy.dir.sign.v1.Signature"
+      ]
+    }
+  ];
+
+  // Annotations attached to the referrer object.
+  map<string, string> annotations = 3;
+
+  // Creation timestamp of the record in the RFC3339 format.
+  // Specs: https://www.rfc-editor.org/rfc/rfc3339.html
+  string created_at = 4;
+
+  // The actual data of the referrer.
+  google.protobuf.Struct data = 5;
 }
 
 // PushReferrerResponse

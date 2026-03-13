@@ -9,11 +9,14 @@ import (
 	"github.com/agntcy/dir/tests/e2e/shared/config"
 	ginkgo "github.com/onsi/ginkgo/v2"
 	"github.com/onsi/gomega"
+	"github.com/onsi/gomega/format"
 )
 
 var cfg *config.Config
 
 func TestLocalE2E(t *testing.T) {
+	format.TruncatedDiff = false
+
 	gomega.RegisterFailHandler(ginkgo.Fail)
 
 	var err error

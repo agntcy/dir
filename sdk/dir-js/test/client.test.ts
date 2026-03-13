@@ -258,15 +258,13 @@ describe('Client', () => {
       ): models.store_v1.PushReferrerRequest => {
         return create(models.store_v1.PushReferrerRequestSchema, {
           recordRef: recordRef,
-          referrer: create(models.core_v1.RecordReferrerSchema, {
-            type: models.sign_v1.SignatureSchema.typeName,
-            data: {
-              signature: 'dGVzdC1zaWduYXR1cmU=',
-              annotations: {
-                payload: 'test-payload-data',
-              },
+          type: models.sign_v1.SignatureSchema.typeName,
+          data: {
+            signature: 'dGVzdC1zaWduYXR1cmU=',
+            annotations: {
+              payload: 'test-payload-data',
             },
-          }),
+          },
         });
       },
     );
@@ -291,15 +289,13 @@ describe('Client', () => {
       ): models.store_v1.PushReferrerRequest => {
         return create(models.store_v1.PushReferrerRequestSchema, {
           recordRef: recordRef,
-          referrer: create(models.core_v1.RecordReferrerSchema, {
-            type: models.sign_v1.SignatureSchema.typeName,
-            data: {
-              signature: 'dGVzdC1zaWduYXR1cmU=',
-              annotations: {
-                payload: 'test-payload-data',
-              },
+          type: models.sign_v1.SignatureSchema.typeName,
+          data: {
+            signature: 'dGVzdC1zaWduYXR1cmU=',
+            annotations: {
+              payload: 'test-payload-data',
             },
-          }),
+          },
         });
       },
     );
