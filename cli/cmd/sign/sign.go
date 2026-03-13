@@ -163,7 +163,7 @@ func Sign(ctx context.Context, c *client.Client, recordCID string) error {
 
 	// Sign the record using given provider
 	_, err := c.Sign(ctx, &signv1.SignRequest{
-		RecordRef: &corev1.RecordRef{Cid: recordCID},
+		RecordRef: &corev1.CID{Cid: recordCID},
 		Provider:  provider,
 	})
 	if err != nil {

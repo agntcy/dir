@@ -241,7 +241,7 @@ func TestList_ContextCancellation(t *testing.T) {
 	responses := make([]*routingv1.ListResponse, testResponseCountMedium)
 	for i := range testResponseCountMedium {
 		responses[i] = &routingv1.ListResponse{
-			RecordRef: &corev1.RecordRef{
+			RecordRef: &corev1.CID{
 				Cid: testRecordCID,
 			},
 		}
@@ -283,7 +283,7 @@ func TestList_ConsumerStopsReading(t *testing.T) {
 	responses := make([]*routingv1.ListResponse, testResponseCountLarge)
 	for i := range testResponseCountLarge {
 		responses[i] = &routingv1.ListResponse{
-			RecordRef: &corev1.RecordRef{
+			RecordRef: &corev1.CID{
 				Cid: testRecordCID,
 			},
 		}
@@ -324,7 +324,7 @@ func TestList_FullConsumption(t *testing.T) {
 	responses := make([]*routingv1.ListResponse, testResponseCountSmall)
 	for i := range testResponseCountSmall {
 		responses[i] = &routingv1.ListResponse{
-			RecordRef: &corev1.RecordRef{
+			RecordRef: &corev1.CID{
 				Cid: testRecordCID,
 			},
 		}
@@ -361,7 +361,7 @@ func TestSearchRouting_ContextCancellation(t *testing.T) {
 	responses := make([]*routingv1.SearchResponse, testResponseCountMedium)
 	for i := range testResponseCountMedium {
 		responses[i] = &routingv1.SearchResponse{
-			RecordRef: &corev1.RecordRef{
+			RecordRef: &corev1.CID{
 				Cid: testRecordCID,
 			},
 		}
@@ -402,7 +402,7 @@ func TestSearchRouting_ConsumerStopsReading(t *testing.T) {
 	responses := make([]*routingv1.SearchResponse, testResponseCountLarge)
 	for i := range testResponseCountLarge {
 		responses[i] = &routingv1.SearchResponse{
-			RecordRef: &corev1.RecordRef{
+			RecordRef: &corev1.CID{
 				Cid: testRecordCID,
 			},
 		}
@@ -443,7 +443,7 @@ func TestSearchRouting_FullConsumption(t *testing.T) {
 	responses := make([]*routingv1.SearchResponse, testResponseCountSmall)
 	for i := range testResponseCountSmall {
 		responses[i] = &routingv1.SearchResponse{
-			RecordRef: &corev1.RecordRef{
+			RecordRef: &corev1.CID{
 				Cid: testRecordCID,
 			},
 		}
@@ -480,7 +480,7 @@ func TestList_ImmediateCancellation(t *testing.T) {
 	responses := make([]*routingv1.ListResponse, testResponseCountMedium)
 	for i := range testResponseCountMedium {
 		responses[i] = &routingv1.ListResponse{
-			RecordRef: &corev1.RecordRef{
+			RecordRef: &corev1.CID{
 				Cid: testRecordCID,
 			},
 		}
@@ -524,7 +524,7 @@ func TestSearchRouting_ImmediateCancellation(t *testing.T) {
 	responses := make([]*routingv1.SearchResponse, testResponseCountMedium)
 	for i := range testResponseCountMedium {
 		responses[i] = &routingv1.SearchResponse{
-			RecordRef: &corev1.RecordRef{
+			RecordRef: &corev1.CID{
 				Cid: testRecordCID,
 			},
 		}
@@ -567,7 +567,7 @@ func BenchmarkList_NoLeak(b *testing.B) {
 	responses := make([]*routingv1.ListResponse, testResponseCountSmall)
 	for i := range testResponseCountSmall {
 		responses[i] = &routingv1.ListResponse{
-			RecordRef: &corev1.RecordRef{
+			RecordRef: &corev1.CID{
 				Cid: testRecordCID,
 			},
 		}

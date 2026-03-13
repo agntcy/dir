@@ -51,8 +51,8 @@ func NewClientPusher(client config.ClientInterface, debug bool, signFunc config.
 //
 // The sequential approach ensures all records are attempted, even if some fail,
 // at the cost of reduced throughput and increased latency.
-func (p *ClientPusher) Push(ctx context.Context, inputCh <-chan *corev1.Record) (<-chan *corev1.RecordRef, <-chan error) {
-	refCh := make(chan *corev1.RecordRef)
+func (p *ClientPusher) Push(ctx context.Context, inputCh <-chan *corev1.Record) (<-chan *corev1.CID, <-chan error) {
+	refCh := make(chan *corev1.CID)
 	errCh := make(chan error)
 
 	go func() {

@@ -7,7 +7,7 @@
 
 import type { GenFile, GenMessage, GenService } from "@bufbuild/protobuf/codegenv2";
 import type { Message } from "@bufbuild/protobuf";
-import type { RecordMetaSchema, RecordRef, RecordReferrer, RecordRefSchema, RecordSchema } from "../../core/v1/record_pb.js";
+import type { CID, CIDSchema, RecordMetaSchema, RecordReferrer, RecordSchema } from "../../core/v1/record_pb.js";
 import type { EmptySchema } from "@bufbuild/protobuf/wkt";
 
 /**
@@ -24,9 +24,9 @@ export declare type PushReferrerRequest = Message<"agntcy.dir.store.v1.PushRefer
   /**
    * Record reference
    *
-   * @generated from field: agntcy.dir.core.v1.RecordRef record_ref = 1;
+   * @generated from field: agntcy.dir.core.v1.CID record_ref = 1;
    */
-  recordRef?: RecordRef;
+  recordRef?: CID;
 
   /**
    * RecordReferrer object to be stored for the record
@@ -78,9 +78,9 @@ export declare type PullReferrerRequest = Message<"agntcy.dir.store.v1.PullRefer
   /**
    * Record reference
    *
-   * @generated from field: agntcy.dir.core.v1.RecordRef record_ref = 1;
+   * @generated from field: agntcy.dir.core.v1.CID record_ref = 1;
    */
-  recordRef?: RecordRef;
+  recordRef?: CID;
 
   /**
    * Record referrer type to be pulled
@@ -145,7 +145,7 @@ export declare const StoreService: GenService<{
   push: {
     methodKind: "bidi_streaming";
     input: typeof RecordSchema;
-    output: typeof RecordRefSchema;
+    output: typeof CIDSchema;
   },
   /**
    * Pull performs read operation for given records.
@@ -154,7 +154,7 @@ export declare const StoreService: GenService<{
    */
   pull: {
     methodKind: "bidi_streaming";
-    input: typeof RecordRefSchema;
+    input: typeof CIDSchema;
     output: typeof RecordSchema;
   },
   /**
@@ -164,7 +164,7 @@ export declare const StoreService: GenService<{
    */
   lookup: {
     methodKind: "bidi_streaming";
-    input: typeof RecordRefSchema;
+    input: typeof CIDSchema;
     output: typeof RecordMetaSchema;
   },
   /**
@@ -174,7 +174,7 @@ export declare const StoreService: GenService<{
    */
   delete: {
     methodKind: "client_streaming";
-    input: typeof RecordRefSchema;
+    input: typeof CIDSchema;
     output: typeof EmptySchema;
   },
   /**

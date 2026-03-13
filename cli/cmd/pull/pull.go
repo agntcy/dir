@@ -97,7 +97,7 @@ func runCommand(cmd *cobra.Command, input string) error {
 	}
 
 	// Fetch record from store
-	record, err := c.Pull(cmd.Context(), &corev1.RecordRef{
+	record, err := c.Pull(cmd.Context(), &corev1.CID{
 		Cid: recordCID,
 	})
 	if err != nil {
@@ -115,7 +115,7 @@ func runCommand(cmd *cobra.Command, input string) error {
 		publicKeyType := corev1.PublicKeyReferrerType
 
 		resultCh, err := c.PullReferrer(cmd.Context(), &storev1.PullReferrerRequest{
-			RecordRef: &corev1.RecordRef{
+			RecordRef: &corev1.CID{
 				Cid: recordCID,
 			},
 			ReferrerType: &publicKeyType,
@@ -142,7 +142,7 @@ func runCommand(cmd *cobra.Command, input string) error {
 		signatureType := corev1.SignatureReferrerType
 
 		resultCh, err := c.PullReferrer(cmd.Context(), &storev1.PullReferrerRequest{
-			RecordRef: &corev1.RecordRef{
+			RecordRef: &corev1.CID{
 				Cid: recordCID,
 			},
 			ReferrerType: &signatureType,

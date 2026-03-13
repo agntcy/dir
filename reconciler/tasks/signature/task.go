@@ -99,7 +99,7 @@ func (t *Task) verifyRecord(ctx context.Context, recordCID string) error {
 	}
 
 	req := &signv1.VerifyRequest{
-		RecordRef: &corev1.RecordRef{Cid: recordCID},
+		RecordRef: &corev1.CID{Cid: recordCID},
 		Provider: &signv1.VerifyRequestProvider{
 			Request: &signv1.VerifyRequestProvider_Any{
 				Any: &signv1.VerifyWithAny{
@@ -202,7 +202,7 @@ func NewStoreFetcher(store types.ReferrerStoreAPI) verify.Fetcher {
 }
 
 // PullSignatures implements verify.Fetcher.
-func (s *storeFetcher) PullSignatures(ctx context.Context, recordRef *corev1.RecordRef) ([]*signv1.Signature, error) {
+func (s *storeFetcher) PullSignatures(ctx context.Context, recordRef *corev1.CID) ([]*signv1.Signature, error) {
 	recordCID := recordRef.GetCid()
 
 	var out []*signv1.Signature
@@ -225,7 +225,7 @@ func (s *storeFetcher) PullSignatures(ctx context.Context, recordRef *corev1.Rec
 }
 
 // PullPublicKeys implements verify.Fetcher.
-func (s *storeFetcher) PullPublicKeys(ctx context.Context, recordRef *corev1.RecordRef) ([]string, error) {
+func (s *storeFetcher) PullPublicKeys(ctx context.Context, recordRef *corev1.CID) ([]string, error) {
 	recordCID := recordRef.GetCid()
 
 	var out []string

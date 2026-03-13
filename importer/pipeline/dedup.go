@@ -112,9 +112,9 @@ func (c *MCPDuplicateChecker) buildCache(ctx context.Context) error {
 			}
 
 			// Convert CIDs to RecordRefs
-			refs := make([]*corev1.RecordRef, 0, len(cids))
+			refs := make([]*corev1.CID, 0, len(cids))
 			for _, cid := range cids {
-				refs = append(refs, &corev1.RecordRef{Cid: cid})
+				refs = append(refs, &corev1.CID{Cid: cid})
 			}
 
 			// Batch pull records from this batch

@@ -104,7 +104,7 @@ type mockDedupClient struct {
 	pullRecords     []*corev1.Record
 }
 
-func (m *mockDedupClient) Push(ctx context.Context, record *corev1.Record) (*corev1.RecordRef, error) {
+func (m *mockDedupClient) Push(ctx context.Context, record *corev1.Record) (*corev1.CID, error) {
 	return nil, nil //nolint:nilnil // Mock should return nil without error
 }
 
@@ -132,7 +132,7 @@ func (m *mockDedupClient) SearchCIDs(ctx context.Context, req *searchv1.SearchCI
 	return &mockDedupStreamResult{resCh: resCh, errCh: errCh, doneCh: doneCh}, nil
 }
 
-func (m *mockDedupClient) PullBatch(ctx context.Context, recordRefs []*corev1.RecordRef) ([]*corev1.Record, error) {
+func (m *mockDedupClient) PullBatch(ctx context.Context, recordRefs []*corev1.CID) ([]*corev1.Record, error) {
 	return m.pullRecords, nil
 }
 

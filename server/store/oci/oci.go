@@ -187,7 +187,7 @@ func (s *store) tagWithRetry(ctx context.Context, manifestDigest, tag string) er
 // Note that metadata can be stored in a different store and only wrap this store.
 //
 // Ref: https://github.com/oras-project/oras-go/blob/main/docs/Modeling-Artifacts.md
-func (s *store) Push(ctx context.Context, record *corev1.Record) (*corev1.RecordRef, error) {
+func (s *store) Push(ctx context.Context, record *corev1.Record) (*corev1.CID, error) {
 	logger.Debug("Pushing record to OCI store", "record", record)
 
 	// Marshal the record using canonical JSON marshaling first
@@ -225,7 +225,7 @@ func (s *store) Push(ctx context.Context, record *corev1.Record) (*corev1.Record
 	logger.Debug("Calculated CID from ORAS digest", "cid", recordCID, "digest", layerDesc.Digest.String())
 
 	// Create record reference
-	recordRef := &corev1.RecordRef{Cid: recordCID}
+	recordRef := &corev1.CID{Cid: recordCID}
 
 	// Check if record already exists
 	if _, err := s.Lookup(ctx, recordRef); err == nil {
@@ -270,7 +270,7 @@ func (s *store) Push(ctx context.Context, record *corev1.Record) (*corev1.Record
 }
 
 // Lookup checks if the ref exists as a tagged record.
-func (s *store) Lookup(ctx context.Context, ref *corev1.RecordRef) (*corev1.RecordMeta, error) {
+func (s *store) Lookup(ctx context.Context, ref *corev1.CID) (*corev1.RecordMeta, error) {
 	// Input validation using shared helper
 	if err := validateRecordRef(ref); err != nil {
 		return nil, err
@@ -305,7 +305,7 @@ func (s *store) Lookup(ctx context.Context, ref *corev1.RecordRef) (*corev1.Reco
 	return recordMeta, nil
 }
 
-func (s *store) Pull(ctx context.Context, ref *corev1.RecordRef) (*corev1.Record, error) {
+func (s *store) Pull(ctx context.Context, ref *corev1.CID) (*corev1.Record, error) {
 	// Input validation using shared helper
 	if err := validateRecordRef(ref); err != nil {
 		return nil, err
@@ -384,7 +384,7 @@ func (s *store) Pull(ctx context.Context, ref *corev1.RecordRef) (*corev1.Record
 	return record, nil
 }
 
-func (s *store) Delete(ctx context.Context, ref *corev1.RecordRef) error {
+func (s *store) Delete(ctx context.Context, ref *corev1.CID) error {
 	logger.Debug("Deleting record from OCI store", "ref", ref)
 
 	// Input validation using shared helper

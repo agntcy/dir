@@ -39,7 +39,7 @@ The push operation stores agent records with rich metadata and discovery tags us
 
 ```go
 // Push record to OCI registry
-func (s *store) Push(ctx context.Context, record *corev1.Record) (*corev1.RecordRef, error)
+func (s *store) Push(ctx context.Context, record *corev1.Record) (*corev1.CID, error)
 ```
 
 **Workflow (6-step process):**
@@ -56,7 +56,7 @@ Retrieves complete agent records with validation:
 
 ```go
 // Pull record from OCI registry
-func (s *store) Pull(ctx context.Context, ref *corev1.RecordRef) (*corev1.Record, error)
+func (s *store) Pull(ctx context.Context, ref *corev1.CID) (*corev1.Record, error)
 ```
 
 **Workflow:**
@@ -73,7 +73,7 @@ Fast metadata retrieval optimized for performance:
 
 ```go
 // Lookup record metadata
-func (s *store) Lookup(ctx context.Context, ref *corev1.RecordRef) (*corev1.RecordMeta, error)
+func (s *store) Lookup(ctx context.Context, ref *corev1.CID) (*corev1.RecordMeta, error)
 ```
 
 **Workflow:**
@@ -88,7 +88,7 @@ Registry-aware deletion following OCI best practices:
 
 ```go
 // Delete record and cleanup tags
-func (s *store) Delete(ctx context.Context, ref *corev1.RecordRef) error
+func (s *store) Delete(ctx context.Context, ref *corev1.CID) error
 ```
 
 **Registry-Aware Workflow:**
@@ -114,7 +114,7 @@ The implementation uses shared helper functions to eliminate code duplication:
 func (s *store) fetchAndParseManifest(ctx context.Context, cid string) (*ocispec.Manifest, *ocispec.Descriptor, error)
 
 // Shared input validation (used by Lookup, Pull, Delete)  
-func validateRecordRef(ref *corev1.RecordRef) error
+func validateRecordRef(ref *corev1.CID) error
 
 // Local blob deletion (used by Delete for local stores)
 func (s *store) deleteBlobForLocalStore(ctx context.Context, cid string, store *oci.Store) error

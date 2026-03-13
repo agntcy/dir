@@ -43,9 +43,9 @@ class SignRequest(_message.Message):
     __slots__ = ("record_ref", "provider")
     RECORD_REF_FIELD_NUMBER: _ClassVar[int]
     PROVIDER_FIELD_NUMBER: _ClassVar[int]
-    record_ref: _record_pb2.RecordRef
+    record_ref: _record_pb2.CID
     provider: SignRequestProvider
-    def __init__(self, record_ref: _Optional[_Union[_record_pb2.RecordRef, _Mapping]] = ..., provider: _Optional[_Union[SignRequestProvider, _Mapping]] = ...) -> None: ...
+    def __init__(self, record_ref: _Optional[_Union[_record_pb2.CID, _Mapping]] = ..., provider: _Optional[_Union[SignRequestProvider, _Mapping]] = ...) -> None: ...
 
 class SignRequestProvider(_message.Message):
     __slots__ = ("key", "oidc")
@@ -82,10 +82,10 @@ class VerifyRequest(_message.Message):
     RECORD_REF_FIELD_NUMBER: _ClassVar[int]
     PROVIDER_FIELD_NUMBER: _ClassVar[int]
     FROM_SERVER_FIELD_NUMBER: _ClassVar[int]
-    record_ref: _record_pb2.RecordRef
+    record_ref: _record_pb2.CID
     provider: VerifyRequestProvider
     from_server: bool
-    def __init__(self, record_ref: _Optional[_Union[_record_pb2.RecordRef, _Mapping]] = ..., provider: _Optional[_Union[VerifyRequestProvider, _Mapping]] = ..., from_server: bool = ...) -> None: ...
+    def __init__(self, record_ref: _Optional[_Union[_record_pb2.CID, _Mapping]] = ..., provider: _Optional[_Union[VerifyRequestProvider, _Mapping]] = ..., from_server: bool = ...) -> None: ...
 
 class VerifyRequestProvider(_message.Message):
     __slots__ = ("key", "oidc", "any")

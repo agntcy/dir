@@ -144,7 +144,7 @@ func (n *namingCtrl) isVerificationValid(v types.NameVerificationObject) bool {
 
 // getDomainFromRecord extracts the domain from a record's name.
 func (n *namingCtrl) getDomainFromRecord(ctx context.Context, cid string) string {
-	record, err := n.store.Pull(ctx, &corev1.RecordRef{Cid: cid})
+	record, err := n.store.Pull(ctx, &corev1.CID{Cid: cid})
 	if err != nil {
 		return ""
 	}

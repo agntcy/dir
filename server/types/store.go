@@ -12,20 +12,20 @@ import (
 // StoreAPI handles management of content-addressable object storage.
 type StoreAPI interface {
 	// Push record to content store
-	Push(context.Context, *corev1.Record) (*corev1.RecordRef, error)
+	Push(context.Context, *corev1.Record) (*corev1.CID, error)
 
 	// Pull record from content store
-	Pull(context.Context, *corev1.RecordRef) (*corev1.Record, error)
+	Pull(context.Context, *corev1.CID) (*corev1.Record, error)
 
 	// Lookup metadata about the record from reference
-	Lookup(context.Context, *corev1.RecordRef) (*corev1.RecordMeta, error)
+	Lookup(context.Context, *corev1.CID) (*corev1.RecordMeta, error)
 
 	// Delete the record
-	Delete(context.Context, *corev1.RecordRef) error
+	Delete(context.Context, *corev1.CID) error
 
 	// List all available records
 	// Needed for bootstrapping
-	// List(context.Context, func(*corev1.RecordRef) error) error
+	// List(context.Context, func(*corev1.CID) error) error
 
 	// IsReady checks if the storage backend is ready to serve traffic.
 	IsReady(context.Context) bool

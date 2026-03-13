@@ -7,7 +7,7 @@
 
 import type { GenFile, GenMessage, GenService } from "@bufbuild/protobuf/codegenv2";
 import type { Message } from "@bufbuild/protobuf";
-import type { RecordRef } from "../../core/v1/record_pb.js";
+import type { CID } from "../../core/v1/record_pb.js";
 import type { Signature } from "./signature_pb.js";
 
 /**
@@ -155,9 +155,9 @@ export declare type SignRequest = Message<"agntcy.dir.sign.v1.SignRequest"> & {
   /**
    * Record reference to be signed
    *
-   * @generated from field: agntcy.dir.core.v1.RecordRef record_ref = 1;
+   * @generated from field: agntcy.dir.core.v1.CID record_ref = 1;
    */
-  recordRef?: RecordRef;
+  recordRef?: CID;
 
   /**
    * Signing provider to use
@@ -293,9 +293,9 @@ export declare type VerifyRequest = Message<"agntcy.dir.sign.v1.VerifyRequest"> 
   /**
    * Record reference to be verified
    *
-   * @generated from field: agntcy.dir.core.v1.RecordRef record_ref = 1;
+   * @generated from field: agntcy.dir.core.v1.CID record_ref = 1;
    */
-  recordRef?: RecordRef;
+  recordRef?: CID;
 
   /**
    * Verification provider to use

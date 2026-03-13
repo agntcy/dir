@@ -167,7 +167,7 @@ func runCommand(cmd *cobra.Command, recordRef string) error {
 
 	// Perform verification
 	response, err := c.Verify(cmd.Context(), &signv1.VerifyRequest{
-		RecordRef:  &corev1.RecordRef{Cid: recordRef},
+		RecordRef:  &corev1.CID{Cid: recordRef},
 		Provider:   provider,
 		FromServer: opts.FromServer,
 	})

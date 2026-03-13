@@ -294,7 +294,7 @@ func simulateSearch(ctx context.Context, dstore types.Datastore, localPeerID str
 
 			if score >= minMatchScore {
 				results = append(results, &routingv1.SearchResponse{
-					RecordRef:    &corev1.RecordRef{Cid: keyCID},
+					RecordRef:    &corev1.CID{Cid: keyCID},
 					Peer:         &routingv1.Peer{Id: keyPeerID},
 					MatchQueries: queries,
 					MatchScore:   score,

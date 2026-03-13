@@ -60,7 +60,7 @@ func runPublishCommand(cmd *cobra.Command, cid string) error {
 	}
 
 	// Create RecordRef from cid
-	recordRef := &corev1.RecordRef{
+	recordRef := &corev1.CID{
 		Cid: cid,
 	}
 
@@ -74,7 +74,7 @@ func runPublishCommand(cmd *cobra.Command, cid string) error {
 	if err := c.Publish(cmd.Context(), &routingv1.PublishRequest{
 		Request: &routingv1.PublishRequest_RecordRefs{
 			RecordRefs: &routingv1.RecordRefs{
-				Refs: []*corev1.RecordRef{recordRef},
+				Refs: []*corev1.CID{recordRef},
 			},
 		},
 	}); err != nil {

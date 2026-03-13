@@ -34,7 +34,7 @@ func Wrap(source types.StoreAPI, cache types.Datastore) types.StoreAPI {
 }
 
 // Push pushes a record to the source store and caches it.
-func (s *cachedStore) Push(ctx context.Context, record *corev1.Record) (*corev1.RecordRef, error) {
+func (s *cachedStore) Push(ctx context.Context, record *corev1.Record) (*corev1.CID, error) {
 	logger.Debug("Push: forwarding to source store")
 
 	// Push to source store first
@@ -52,7 +52,7 @@ func (s *cachedStore) Push(ctx context.Context, record *corev1.Record) (*corev1.
 }
 
 // Pull pulls a record from cache first, then from source store if not found.
-func (s *cachedStore) Pull(ctx context.Context, ref *corev1.RecordRef) (*corev1.Record, error) {
+func (s *cachedStore) Pull(ctx context.Context, ref *corev1.CID) (*corev1.Record, error) {
 	cid := ref.GetCid()
 	logger.Debug("Pull: checking cache first", "cid", cid)
 
@@ -80,7 +80,7 @@ func (s *cachedStore) Pull(ctx context.Context, ref *corev1.RecordRef) (*corev1.
 }
 
 // Lookup looks up record metadata from cache first, then from source store if not found.
-func (s *cachedStore) Lookup(ctx context.Context, ref *corev1.RecordRef) (*corev1.RecordMeta, error) {
+func (s *cachedStore) Lookup(ctx context.Context, ref *corev1.CID) (*corev1.RecordMeta, error) {
 	cid := ref.GetCid()
 	logger.Debug("Lookup: checking cache first", "cid", cid)
 
@@ -108,7 +108,7 @@ func (s *cachedStore) Lookup(ctx context.Context, ref *corev1.RecordRef) (*corev
 }
 
 // Delete removes a record from both cache and source store.
-func (s *cachedStore) Delete(ctx context.Context, ref *corev1.RecordRef) error {
+func (s *cachedStore) Delete(ctx context.Context, ref *corev1.CID) error {
 	cid := ref.GetCid()
 	logger.Debug("Delete: removing from cache and source store", "cid", cid)
 

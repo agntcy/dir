@@ -14,25 +14,24 @@ import type { JsonObject, Message } from "@bufbuild/protobuf";
 export declare const file_agntcy_dir_core_v1_record: GenFile;
 
 /**
- * Defines a reference or a globally unique content identifier of a record.
+ * Content Identifier (https://github.com/multiformats/cid)
+ * A self-describing, content-addressed identifier
+ * used for identifying records and referrers
  *
- * @generated from message agntcy.dir.core.v1.RecordRef
+ * @generated from message agntcy.dir.core.v1.CID
  */
-export declare type RecordRef = Message<"agntcy.dir.core.v1.RecordRef"> & {
+export declare type CID = Message<"agntcy.dir.core.v1.CID"> & {
   /**
-   * Globally-unique content identifier (CID) of the record.
-   * Specs: https://github.com/multiformats/cid
-   *
    * @generated from field: string cid = 1;
    */
   cid: string;
 };
 
 /**
- * Describes the message agntcy.dir.core.v1.RecordRef.
- * Use `create(RecordRefSchema)` to create a new message.
+ * Describes the message agntcy.dir.core.v1.CID.
+ * Use `create(CIDSchema)` to create a new message.
  */
-export declare const RecordRefSchema: GenMessage<RecordRef>;
+export declare const CIDSchema: GenMessage<CID>;
 
 /**
  * Represents a named reference to a Record with version information.
@@ -156,9 +155,9 @@ export declare type RecordReferrer = Message<"agntcy.dir.core.v1.RecordReferrer"
   /**
    * Record reference to which this referrer is associated.
    *
-   * @generated from field: agntcy.dir.core.v1.RecordRef record_ref = 2;
+   * @generated from field: agntcy.dir.core.v1.CID record_ref = 2;
    */
-  recordRef?: RecordRef;
+  recordRef?: CID;
 
   /**
    * Annotations attached to the referrer object.

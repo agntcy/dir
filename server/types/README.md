@@ -56,7 +56,7 @@ type RecordMeta interface {
 }
 
 // Reference interface for record identification
-type RecordRef interface {
+type CID interface {
     GetCid() string
 }
 ```
@@ -148,16 +148,16 @@ Handles content-addressable storage operations:
 ```go
 type StoreAPI interface {
     // Push record to content store
-    Push(context.Context, *corev1.Record) (*corev1.RecordRef, error)
+    Push(context.Context, *corev1.Record) (*corev1.CID, error)
     
     // Pull record from content store
-    Pull(context.Context, *corev1.RecordRef) (*corev1.Record, error)
+    Pull(context.Context, *corev1.CID) (*corev1.Record, error)
     
     // Lookup metadata about the record from reference
-    Lookup(context.Context, *corev1.RecordRef) (*corev1.RecordMeta, error)
+    Lookup(context.Context, *corev1.CID) (*corev1.RecordMeta, error)
     
     // Delete the record
-    Delete(context.Context, *corev1.RecordRef) error
+    Delete(context.Context, *corev1.CID) error
 }
 ```
 
@@ -245,13 +245,13 @@ Handles peer-to-peer network operations:
 ```go
 type RoutingAPI interface {
     // Publish record to the network
-    Publish(context.Context, *corev1.RecordRef, *corev1.Record) error
+    Publish(context.Context, *corev1.CID, *corev1.Record) error
     
     // Search records from the network
     List(context.Context, *routingv1.ListRequest) (<-chan *routingv1.LegacyListResponse_Item, error)
     
     // Unpublish record from the network
-    Unpublish(context.Context, *corev1.RecordRef, *corev1.Record) error
+    Unpublish(context.Context, *corev1.CID, *corev1.Record) error
 }
 ```
 
@@ -499,10 +499,10 @@ type MockStore struct {
     records map[string]*corev1.Record
 }
 
-func (m *MockStore) Push(ctx context.Context, record *corev1.Record) (*corev1.RecordRef, error) {
+func (m *MockStore) Push(ctx context.Context, record *corev1.Record) (*corev1.CID, error) {
     cid := record.GetCid()
     m.records[cid] = record
-    return &corev1.RecordRef{Cid: cid}, nil
+    return &corev1.CID{Cid: cid}, nil
 }
 
 // Use in tests

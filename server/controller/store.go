@@ -362,7 +362,7 @@ func (s storeCtrl) PullReferrer(stream storev1.StoreService_PullReferrerServer) 
 }
 
 // pushRecordToStore pushes a record to the store and adds it to the search index.
-func (s storeCtrl) pushRecordToStore(ctx context.Context, record *corev1.Record) (*corev1.RecordRef, error) {
+func (s storeCtrl) pushRecordToStore(ctx context.Context, record *corev1.Record) (*corev1.CID, error) {
 	// Push the record to store
 	pushedRef, err := s.store.Push(ctx, record)
 	if err != nil {
@@ -387,7 +387,7 @@ func (s storeCtrl) pushRecordToStore(ctx context.Context, record *corev1.Record)
 }
 
 // validateRecordRef validates a record reference.
-func (s storeCtrl) validateRecordRef(recordRef *corev1.RecordRef) error {
+func (s storeCtrl) validateRecordRef(recordRef *corev1.CID) error {
 	if recordRef.GetCid() == "" {
 		return status.Error(codes.InvalidArgument, "record cid is required")
 	}
@@ -396,7 +396,7 @@ func (s storeCtrl) validateRecordRef(recordRef *corev1.RecordRef) error {
 }
 
 // pullRecordFromStore pulls a record from the store with validation.
-func (s storeCtrl) pullRecordFromStore(ctx context.Context, recordRef *corev1.RecordRef) (*corev1.Record, error) {
+func (s storeCtrl) pullRecordFromStore(ctx context.Context, recordRef *corev1.CID) (*corev1.Record, error) {
 	// Pull record from store
 	record, err := s.store.Pull(ctx, recordRef)
 	if err != nil {

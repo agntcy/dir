@@ -20,13 +20,13 @@ type mockStore struct {
 	deleteCalled bool
 }
 
-func (m *mockStore) Push(_ context.Context, record *corev1.Record) (*corev1.RecordRef, error) {
+func (m *mockStore) Push(_ context.Context, record *corev1.Record) (*corev1.CID, error) {
 	m.pushCalled = true
 
-	return &corev1.RecordRef{Cid: record.GetCid()}, nil
+	return &corev1.CID{Cid: record.GetCid()}, nil
 }
 
-func (m *mockStore) Pull(_ context.Context, _ *corev1.RecordRef) (*corev1.Record, error) {
+func (m *mockStore) Pull(_ context.Context, _ *corev1.CID) (*corev1.Record, error) {
 	m.pullCalled = true
 	// Create a minimal record for testing
 	record := corev1.New(&typesv1alpha1.Record{
@@ -37,11 +37,11 @@ func (m *mockStore) Pull(_ context.Context, _ *corev1.RecordRef) (*corev1.Record
 	return record, nil
 }
 
-func (m *mockStore) Lookup(_ context.Context, ref *corev1.RecordRef) (*corev1.RecordMeta, error) {
+func (m *mockStore) Lookup(_ context.Context, ref *corev1.CID) (*corev1.RecordMeta, error) {
 	return &corev1.RecordMeta{Cid: ref.GetCid()}, nil
 }
 
-func (m *mockStore) Delete(_ context.Context, _ *corev1.RecordRef) error {
+func (m *mockStore) Delete(_ context.Context, _ *corev1.CID) error {
 	m.deleteCalled = true
 
 	return nil
@@ -114,7 +114,7 @@ func TestEventsWrapPull(t *testing.T) {
 	defer realBus.Unsubscribe(subID)
 
 	// Pull record
-	ref := &corev1.RecordRef{Cid: "bafytest123"}
+	ref := &corev1.CID{Cid: "bafytest123"}
 
 	record, err := wrappedStore.Pull(t.Context(), ref)
 	if err != nil {
@@ -158,7 +158,7 @@ func TestEventsWrapDelete(t *testing.T) {
 	defer realBus.Unsubscribe(subID)
 
 	// Delete record
-	ref := &corev1.RecordRef{Cid: "bafytest123"}
+	ref := &corev1.CID{Cid: "bafytest123"}
 
 	err := wrappedStore.Delete(t.Context(), ref)
 	if err != nil {
@@ -196,7 +196,7 @@ func TestEventsWrapLookup(t *testing.T) {
 	wrappedStore := Wrap(mockSrc, safeBus)
 
 	// Lookup record
-	ref := &corev1.RecordRef{Cid: "bafytest123"}
+	ref := &corev1.CID{Cid: "bafytest123"}
 
 	meta, err := wrappedStore.Lookup(t.Context(), ref)
 	if err != nil {

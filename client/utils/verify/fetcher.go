@@ -15,8 +15,8 @@ import (
 
 // Fetcher supplies signatures and public keys for a record.
 type Fetcher interface {
-	PullSignatures(ctx context.Context, recordRef *corev1.RecordRef) ([]*signv1.Signature, error)
-	PullPublicKeys(ctx context.Context, recordRef *corev1.RecordRef) ([]string, error)
+	PullSignatures(ctx context.Context, recordRef *corev1.CID) ([]*signv1.Signature, error)
+	PullPublicKeys(ctx context.Context, recordRef *corev1.CID) ([]string, error)
 }
 
 // PerSignatureResult is the verification result for one signer (for DB cache).
