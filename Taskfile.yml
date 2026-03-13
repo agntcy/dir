@@ -241,6 +241,13 @@ tasks:
       - for: { var: GO_MOD_DIR_UNIT_TEST }
         # NOTE: CI does not need go test stdout, local uses separate command to show the report
         cmd: |
+          {{if ne .OVERRIDEN_COVERAGE_MODULES ""}}
+            if ! echo {{.OVERRIDEN_COVERAGE_MODULES}} | grep -q $(echo "{{.ITEM}}" | sed 's/^\.\///g'); then
+              echo "Skipping module {{.ITEM}}"
+              exit 0; # NOTE: Skip module if not in the list
+            fi
+          {{end}}
+
           path={{.ITEM}}
           coverage_dir_path="${path%/*}"
           mkdir -p {{.COVERAGE_DIR}}/unit/${coverage_dir_path}
@@ -252,16 +259,22 @@ tasks:
     desc: Run all unit tests with coverage
     vars:
       COVERAGE_IGNORED_FILES: '\.pb\.go|mock_|tests|testdata' # NOTE: Need to keep sync with codecov.yml manually
-      COVERAGE_MODULES: "{{ .GO_MOD_DIR_UNIT_TEST }}" # NOTE: Multiple module definition require newline separation
       SHOW_TOTAL_ONLY: '{{ .SHOW_TOTAL_ONLY | default "true" }}'
     cmds:
       - task: test:unit:coverage
 
-      - cmd: rm /tmp/total_report_results.txt || true
+      - cmd: (test -f /tmp/total_report_results.txt && rm /tmp/total_report_results.txt) || true
         if: '{{ eq .SHOW_TOTAL_ONLY "true" }}'
 
       - for: { var: GO_MOD_DIR_UNIT_TEST }
         cmd: |
+          {{if ne .OVERRIDEN_COVERAGE_MODULES ""}}
+            if ! echo {{.OVERRIDEN_COVERAGE_MODULES}} | grep -q $(echo "{{.ITEM}}" | sed 's/^\.\///g'); then
+              echo "Skipping module {{.ITEM}} as it is not in the list of modules to cover"
+              exit 0; # NOTE: Skip module if not in the list
+            fi
+          {{end}}
+
           echo "Filtering out ignored files from coverage for {{.ITEM}}"
           grep -vE "{{.COVERAGE_IGNORED_FILES}}" {{.COVERAGE_DIR}}/unit/{{.ITEM}}.out > {{.COVERAGE_DIR}}/unit/{{.ITEM}}.out.tmp
 
