@@ -225,87 +225,72 @@ tasks:
           echo "Running tests in {{.ITEM}}"
           go -C {{.ITEM}} test ./... {{.EXTRA_ARGS}}
 
-  test:unit:coverage:list-modules:
-    desc: List all go modules for the CI coverage unit test input
-    cmds:
-      - |
-        set -euo pipefail
-        printf '%s' "{{range $i, $dir := .GO_MOD_DIR_UNIT_TEST | splitList "\n"}}{{if $dir}}{{if $i}},{{end}}.coverage/unit/{{trimPrefix "./" $dir}}.out{{end}}{{end}}"
-
   test:unit:coverage:
-    desc: Run all unit tests with coverage and generate summaries + HTML reports
-    vars:
-      COVERAGE_DIR: '{{ .COVERAGE_DIR | default (print .ROOT_DIR "/.coverage/unit") }}'
+    desc: Run all unit tests with coverage
     cmds:
-      - echo "Removing existing coverage directory and reports"
-      - rm -rf {{.COVERAGE_DIR}}/*
-      - echo "Creating new coverage directory"
-      - mkdir -p {{.COVERAGE_DIR}}
-      - |
-        set -euo pipefail
-        # Build newline-separated list of full module paths (no basename) to support nested modules
-        modules="
-        {{range $dir := .GO_MOD_DIR_UNIT_TEST | splitList "\n"}}{{if $dir}}{{$dir}}
-        {{end}}{{end}}"
-        echo "$modules" | while IFS= read -r m; do
-          [ -z "$m" ] && continue
-          if [ -d "$m" ]; then
-            echo "[coverage] Testing module: $m"
-            mkdir -p "{{.COVERAGE_DIR}}/$(dirname "$m")"
-            report_json="{{.COVERAGE_DIR}}/test-report-$(echo "$m" | tr '/' '-').json"
-            (
-              cd "$m"
-              # Run tests with coverprofile (text format)
-              if go test -covermode=atomic -coverprofile="{{.COVERAGE_DIR}}/$m.out.tmp" ./... -json 2>&1 | tee "$report_json" >/dev/null; then
-                echo "[coverage] Completed: $m"
-              else
-                status=$?
-                echo "[coverage][warn] Tests failed in $m (exit $status); continuing"
-              fi
-            )
-            # Filter out generated files (matching codecov.yml ignores)
-            if [ -f "{{.COVERAGE_DIR}}/$m.out.tmp" ]; then
-              grep -v "\.pb\.go" "{{.COVERAGE_DIR}}/$m.out.tmp" | grep -v "mock_.*\.go" > "{{.COVERAGE_DIR}}/$m.out" || echo "mode: atomic" > "{{.COVERAGE_DIR}}/$m.out"
-              rm "{{.COVERAGE_DIR}}/$m.out.tmp"
-            else
-              echo "[coverage] No coverage generated for $m"
-              echo "mode: atomic" > "{{.COVERAGE_DIR}}/$m.out"
-            fi
-          fi
-        done
+      - cmd: |
+          echo "Removing existing reports in {{.COVERAGE_DIR}}/unit"
+          rm -rf {{.COVERAGE_DIR}}/unit/*
+        if: "[ -d {{.COVERAGE_DIR}}/unit ]"
 
-      - |
-        set -euo pipefail
-        echo "[coverage] Generating per-module summaries"
-        : > {{.COVERAGE_DIR}}/summary.txt
-        modules="
-        {{range $dir := .GO_MOD_DIR_UNIT_TEST | splitList "\n"}}{{if $dir}}{{$dir}}
-        {{end}}{{end}}"
-        echo "$modules" | while IFS= read -r m; do
-          [ -z "$m" ] && continue
-          if [ -f "{{.COVERAGE_DIR}}/$m.out" ]; then
-            if (cd "$m" && go tool cover -func={{.COVERAGE_DIR}}/$m.out > {{.COVERAGE_DIR}}/$m.func.txt 2>/dev/null); then
-              tail -n1 {{.COVERAGE_DIR}}/$m.func.txt | sed "s|^total:|[$m] total:|" >> {{.COVERAGE_DIR}}/summary.txt || true
-            else
-              echo "[$m] total: (error generating summary)" >> {{.COVERAGE_DIR}}/summary.txt
-            fi
-          fi
-        done
-        echo "[coverage] Summary:"; cat {{.COVERAGE_DIR}}/summary.txt
+      - cmd: |
+          echo "Creating new coverage directory: {{.COVERAGE_DIR}}/unit"
+          mkdir -p {{.COVERAGE_DIR}}/unit
+        if: "[ ! -d {{.COVERAGE_DIR}}/unit ]"
 
-      - |
-        set -euo pipefail
-        echo "[coverage] Generating HTML reports"
-        modules="
-        {{range $dir := .GO_MOD_DIR_UNIT_TEST | splitList "\n"}}{{if $dir}}{{$dir}}
-        {{end}}{{end}}"
-        echo "$modules" | while IFS= read -r m; do
-          [ -z "$m" ] && continue
-          if [ -f "{{.COVERAGE_DIR}}/$m.out" ] && [ -d "$m" ]; then
-            (cd "$m" && go tool cover -html={{.COVERAGE_DIR}}/$m.out -o {{.COVERAGE_DIR}}/$m.html || true)
-          fi
-        done
-        echo "[coverage] Generated HTML files:"; out=$(find {{.COVERAGE_DIR}} -name '*.html' 2>/dev/null | sed 's|{{.COVERAGE_DIR}}/|  - |'); echo "${out:-  (none)}"
+      - for: { var: GO_MOD_DIR_UNIT_TEST }
+        # NOTE: CI does not need go test stdout, local uses separate command to show the report
+        cmd: |
+          {{if ne .OVERRIDEN_COVERAGE_MODULES ""}}
+            if ! echo {{.OVERRIDEN_COVERAGE_MODULES}} | grep -q $(echo "{{.ITEM}}" | sed 's/^\.\///g'); then
+              echo "Skipping module {{.ITEM}}"
+              exit 0; # NOTE: Skip module if not in the list
+            fi
+          {{end}}
+
+          path={{.ITEM}}
+          coverage_dir_path="${path%/*}"
+          mkdir -p {{.COVERAGE_DIR}}/unit/${coverage_dir_path}
+
+          echo "Running coverage tests in {{.ITEM}}"
+          go test -C {{.ITEM}} -covermode=atomic -coverprofile="{{.COVERAGE_DIR}}/unit/{{.ITEM}}.out" ./... > /dev/null
+
+  test:unit:coverage:local:
+    desc: Run all unit tests with coverage
+    vars:
+      COVERAGE_IGNORED_FILES: '\.pb\.go|mock_|tests|testdata' # NOTE: Need to keep sync with codecov.yml manually
+      SHOW_TOTAL_ONLY: '{{ .SHOW_TOTAL_ONLY | default "true" }}'
+    cmds:
+      - task: test:unit:coverage
+
+      - cmd: (test -f /tmp/total_report_results.txt && rm /tmp/total_report_results.txt) || true
+        if: '{{ eq .SHOW_TOTAL_ONLY "true" }}'
+
+      - for: { var: GO_MOD_DIR_UNIT_TEST }
+        cmd: |
+          {{if ne .OVERRIDEN_COVERAGE_MODULES ""}}
+            if ! echo {{.OVERRIDEN_COVERAGE_MODULES}} | grep -q $(echo "{{.ITEM}}" | sed 's/^\.\///g'); then
+              echo "Skipping module {{.ITEM}} as it is not in the list of modules to cover"
+              exit 0; # NOTE: Skip module if not in the list
+            fi
+          {{end}}
+
+          echo "Filtering out ignored files from coverage for {{.ITEM}}"
+          grep -vE "{{.COVERAGE_IGNORED_FILES}}" {{.COVERAGE_DIR}}/unit/{{.ITEM}}.out > {{.COVERAGE_DIR}}/unit/{{.ITEM}}.out.tmp
+
+          mv {{.COVERAGE_DIR}}/unit/{{.ITEM}}.out.tmp {{.COVERAGE_DIR}}/unit/{{.ITEM}}.out
+
+          echo "Running go tool cover -func={{.COVERAGE_DIR}}/unit/{{.ITEM}}.out"
+          {{if eq .SHOW_TOTAL_ONLY "true"}}
+            go tool -C {{.ITEM}} cover -func={{.COVERAGE_DIR}}/unit/{{.ITEM}}.out | grep total | sed 's@total@{{.ITEM}} - total@g' >> /tmp/total_report_results.txt
+          {{else}}
+            go tool -C {{.ITEM}} cover -func={{.COVERAGE_DIR}}/unit/{{.ITEM}}.out
+          {{end}}
+
+      - cmd: |
+          cat /tmp/total_report_results.txt | column -t | sort
+          rm /tmp/total_report_results.txt
+        if: '{{ eq .SHOW_TOTAL_ONLY "true" }}'
 
   bench:
     desc: Run bench tests on codebase

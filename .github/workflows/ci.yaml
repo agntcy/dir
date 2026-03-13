@@ -177,8 +177,54 @@ jobs:
     with:
       image_repo: ghcr.io/agntcy
       image_tag: ${{ github.sha }}
-    secrets:
-      CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+
+  upload-codecov:
+    name: Upload all coverage artifacts to Codecov
+    needs: [test]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - artifact_name: coverage-unit
+            codecov_flag: unit
+            coverage_path: .coverage/unit
+          - artifact_name: coverage-e2e-Local
+            codecov_flag: e2e-Local
+            coverage_path: .coverage/e2e
+          - artifact_name: coverage-e2e-Network
+            codecov_flag: e2e-Network
+            coverage_path: .coverage/e2e
+          # NOTE: Currently MCP and Federation coverage is excluded within Upload E2E coverage artifact job
+          # - artifact_name: coverage-e2e-MCP
+          #   codecov_flag: e2e-MCP
+          #   coverage_path: .coverage/e2e
+          # - artifact_name: coverage-e2e-Federation
+          #   codecov_flag: e2e-Federation
+          #   coverage_path: .coverage/e2e
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 0
+
+      - name: Download coverage artifact
+        uses: actions/download-artifact@70fc10c6e5e1ce46ad2ea6f2b72d43f7d47b13c3 # v8.0.0
+        with:
+          name: ${{ matrix.artifact_name }}
+          path: ${{ matrix.coverage_path }}
+
+      - name: Upload to Codecov
+        uses: codecov/codecov-action@671740ac38dd9b0130fbe1cec585b89eea48d3de # v5.5.2
+        with:
+          codecov_yml_path: .codecov.yml
+          files: "**/*.out"
+          flags: ${{ matrix.codecov_flag }}
+          verbose: true
+          use_oidc: true
 
   release:
     name: Release
@@ -215,6 +261,7 @@ jobs:
     needs:
       - changes
       - test
+      - upload-codecov
       - release
     runs-on: ubuntu-latest
     steps:
