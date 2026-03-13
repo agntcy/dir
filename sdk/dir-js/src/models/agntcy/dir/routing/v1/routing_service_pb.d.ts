@@ -7,7 +7,7 @@
 
 import type { GenFile, GenMessage, GenService } from "@bufbuild/protobuf/codegenv2";
 import type { Message } from "@bufbuild/protobuf";
-import type { RecordRef } from "../../core/v1/record_pb.js";
+import type { CID } from "../../core/v1/record_pb.js";
 import type { RecordQuery } from "../../search/v1/record_query_pb.js";
 import type { RecordQuery as RecordQuery$1 } from "./record_query_pb.js";
 import type { Peer } from "./peer_pb.js";
@@ -87,9 +87,9 @@ export declare const UnpublishRequestSchema: GenMessage<UnpublishRequest>;
  */
 export declare type RecordRefs = Message<"agntcy.dir.routing.v1.RecordRefs"> & {
   /**
-   * @generated from field: repeated agntcy.dir.core.v1.RecordRef refs = 1;
+   * @generated from field: repeated agntcy.dir.core.v1.CID refs = 1;
    */
-  refs: RecordRef[];
+  refs: CID[];
 };
 
 /**
@@ -159,9 +159,9 @@ export declare type SearchResponse = Message<"agntcy.dir.routing.v1.SearchRespon
   /**
    * The record that matches the search query.
    *
-   * @generated from field: agntcy.dir.core.v1.RecordRef record_ref = 1;
+   * @generated from field: agntcy.dir.core.v1.CID record_ref = 1;
    */
-  recordRef?: RecordRef;
+  recordRef?: CID;
 
   /**
    * The peer that provided the record.
@@ -225,9 +225,9 @@ export declare type ListResponse = Message<"agntcy.dir.routing.v1.ListResponse">
   /**
    * The record that matches the list queries.
    *
-   * @generated from field: agntcy.dir.core.v1.RecordRef record_ref = 1;
+   * @generated from field: agntcy.dir.core.v1.CID record_ref = 1;
    */
-  recordRef?: RecordRef;
+  recordRef?: CID;
 
   /**
    * Labels associated with this record (skills, domains, modules)

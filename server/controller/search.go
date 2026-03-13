@@ -79,7 +79,7 @@ func (c *searchCtlr) SearchRecords(req *searchv1.SearchRecordsRequest, srv searc
 			return fmt.Errorf("client disconnected: %w", err)
 		}
 
-		record, err := c.store.Pull(srv.Context(), &corev1.RecordRef{Cid: cid})
+		record, err := c.store.Pull(srv.Context(), &corev1.CID{Cid: cid})
 		if err != nil {
 			searchLogger.Warn("Failed to pull record from store", "cid", cid, "error", err)
 

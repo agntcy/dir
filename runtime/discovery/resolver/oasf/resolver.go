@@ -93,14 +93,14 @@ func (r *resolver) Resolve(ctx context.Context, workload *runtimev1.Workload) (a
 	recordRef := resolve.GetRecords()[0]
 
 	// Pull the full record data using the provided context
-	record, err := r.client.Pull(ctx, &corev1.RecordRef{Cid: recordRef.GetCid()})
+	record, err := r.client.Pull(ctx, &corev1.CID{Cid: recordRef.GetCid()})
 	if err != nil {
 		return nil, fmt.Errorf("failed to pull OASF record %s: %w", nameVersion, err)
 	}
 
 	// Get the record signature verified status
 	verified, err := r.client.Verify(ctx, &signv1.VerifyRequest{
-		RecordRef: &corev1.RecordRef{Cid: recordRef.GetCid()},
+		RecordRef: &corev1.CID{Cid: recordRef.GetCid()},
 	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to verify OASF record %s: %w", nameVersion, err)

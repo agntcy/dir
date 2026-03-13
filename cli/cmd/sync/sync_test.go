@@ -152,7 +152,7 @@ func TestGroupResultsByAPIAddress_EmptyInput(t *testing.T) {
 func TestGroupResultsByAPIAddress_SingleResult(t *testing.T) {
 	results := []*routingv1.SearchResponse{
 		{
-			RecordRef: &corev1.RecordRef{Cid: "cid1"},
+			RecordRef: &corev1.CID{Cid: "cid1"},
 			Peer: &routingv1.Peer{
 				Id:    "peer1",
 				Addrs: []string{"http://api1.example.com"},
@@ -172,21 +172,21 @@ func TestGroupResultsByAPIAddress_SingleResult(t *testing.T) {
 func TestGroupResultsByAPIAddress_MultipleSamePeer(t *testing.T) {
 	results := []*routingv1.SearchResponse{
 		{
-			RecordRef: &corev1.RecordRef{Cid: "cid1"},
+			RecordRef: &corev1.CID{Cid: "cid1"},
 			Peer: &routingv1.Peer{
 				Id:    "peer1",
 				Addrs: []string{"http://api1.example.com"},
 			},
 		},
 		{
-			RecordRef: &corev1.RecordRef{Cid: "cid2"},
+			RecordRef: &corev1.CID{Cid: "cid2"},
 			Peer: &routingv1.Peer{
 				Id:    "peer1",
 				Addrs: []string{"http://api1.example.com"},
 			},
 		},
 		{
-			RecordRef: &corev1.RecordRef{Cid: "cid3"},
+			RecordRef: &corev1.CID{Cid: "cid3"},
 			Peer: &routingv1.Peer{
 				Id:    "peer1",
 				Addrs: []string{"http://api1.example.com"},
@@ -206,21 +206,21 @@ func TestGroupResultsByAPIAddress_MultipleSamePeer(t *testing.T) {
 func TestGroupResultsByAPIAddress_MultipleDifferentPeers(t *testing.T) {
 	results := []*routingv1.SearchResponse{
 		{
-			RecordRef: &corev1.RecordRef{Cid: "cid1"},
+			RecordRef: &corev1.CID{Cid: "cid1"},
 			Peer: &routingv1.Peer{
 				Id:    "peer1",
 				Addrs: []string{"http://api1.example.com"},
 			},
 		},
 		{
-			RecordRef: &corev1.RecordRef{Cid: "cid2"},
+			RecordRef: &corev1.CID{Cid: "cid2"},
 			Peer: &routingv1.Peer{
 				Id:    "peer2",
 				Addrs: []string{"http://api2.example.com"},
 			},
 		},
 		{
-			RecordRef: &corev1.RecordRef{Cid: "cid3"},
+			RecordRef: &corev1.CID{Cid: "cid3"},
 			Peer: &routingv1.Peer{
 				Id:    "peer1",
 				Addrs: []string{"http://api1.example.com"},
@@ -245,18 +245,18 @@ func TestGroupResultsByAPIAddress_MultipleDifferentPeers(t *testing.T) {
 func TestGroupResultsByAPIAddress_NoPeerInfo(t *testing.T) {
 	results := []*routingv1.SearchResponse{
 		{
-			RecordRef: &corev1.RecordRef{Cid: "cid1"},
+			RecordRef: &corev1.CID{Cid: "cid1"},
 			Peer:      nil, // No peer info
 		},
 		{
-			RecordRef: &corev1.RecordRef{Cid: "cid2"},
+			RecordRef: &corev1.CID{Cid: "cid2"},
 			Peer: &routingv1.Peer{
 				Id:    "peer1",
 				Addrs: []string{}, // No addresses
 			},
 		},
 		{
-			RecordRef: &corev1.RecordRef{Cid: "cid3"},
+			RecordRef: &corev1.CID{Cid: "cid3"},
 			Peer: &routingv1.Peer{
 				Id:    "peer2",
 				Addrs: []string{"http://api1.example.com"},
@@ -276,7 +276,7 @@ func TestGroupResultsByAPIAddress_NoPeerInfo(t *testing.T) {
 func TestGroupResultsByAPIAddress_MultipleAddresses(t *testing.T) {
 	results := []*routingv1.SearchResponse{
 		{
-			RecordRef: &corev1.RecordRef{Cid: "cid1"},
+			RecordRef: &corev1.CID{Cid: "cid1"},
 			Peer: &routingv1.Peer{
 				Id:    "peer1",
 				Addrs: []string{"http://api1.example.com", "http://api2.example.com", "http://api3.example.com"},
@@ -298,14 +298,14 @@ func TestGroupResultsByAPIAddress_MixedScenario(t *testing.T) {
 	results := []*routingv1.SearchResponse{
 		// Peer 1 - multiple CIDs
 		{
-			RecordRef: &corev1.RecordRef{Cid: "cid1"},
+			RecordRef: &corev1.CID{Cid: "cid1"},
 			Peer: &routingv1.Peer{
 				Id:    "peer1",
 				Addrs: []string{"http://peer1.com"},
 			},
 		},
 		{
-			RecordRef: &corev1.RecordRef{Cid: "cid2"},
+			RecordRef: &corev1.CID{Cid: "cid2"},
 			Peer: &routingv1.Peer{
 				Id:    "peer1",
 				Addrs: []string{"http://peer1.com"},
@@ -313,7 +313,7 @@ func TestGroupResultsByAPIAddress_MixedScenario(t *testing.T) {
 		},
 		// Peer 2 - single CID
 		{
-			RecordRef: &corev1.RecordRef{Cid: "cid3"},
+			RecordRef: &corev1.CID{Cid: "cid3"},
 			Peer: &routingv1.Peer{
 				Id:    "peer2",
 				Addrs: []string{"http://peer2.com"},
@@ -321,12 +321,12 @@ func TestGroupResultsByAPIAddress_MixedScenario(t *testing.T) {
 		},
 		// No peer info - should be skipped
 		{
-			RecordRef: &corev1.RecordRef{Cid: "cid4"},
+			RecordRef: &corev1.CID{Cid: "cid4"},
 			Peer:      nil,
 		},
 		// Peer 3 - single CID
 		{
-			RecordRef: &corev1.RecordRef{Cid: "cid5"},
+			RecordRef: &corev1.CID{Cid: "cid5"},
 			Peer: &routingv1.Peer{
 				Id:    "peer3",
 				Addrs: []string{"http://peer3.com"},
@@ -394,7 +394,7 @@ func TestGroupResultsByAPIAddress_LargeDataset(t *testing.T) {
 	for i := range 100 {
 		peerNum := i % 10
 		results[i] = &routingv1.SearchResponse{
-			RecordRef: &corev1.RecordRef{Cid: "cid" + strings.Repeat("a", i)},
+			RecordRef: &corev1.CID{Cid: "cid" + strings.Repeat("a", i)},
 			Peer: &routingv1.Peer{
 				Id:    "peer" + strings.Repeat("a", peerNum),
 				Addrs: []string{"http://peer" + strings.Repeat("a", peerNum) + ".com"},
@@ -571,7 +571,7 @@ func TestGroupResultsByAPIAddress_EdgeCases(t *testing.T) {
 			name: "empty CID",
 			results: []*routingv1.SearchResponse{
 				{
-					RecordRef: &corev1.RecordRef{Cid: ""},
+					RecordRef: &corev1.CID{Cid: ""},
 					Peer: &routingv1.Peer{
 						Addrs: []string{"http://api.example.com"},
 					},

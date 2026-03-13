@@ -28,7 +28,7 @@ func TestHandler(t *testing.T) {
 			{Type: "type1", Urls: []string{"url1"}},
 		},
 	})
-	testRef := &corev1.RecordRef{Cid: testRecord.GetCid()}
+	testRef := &corev1.CID{Cid: testRecord.GetCid()}
 
 	// create demo network
 	firstNode := newTestServer(t, t.Context(), nil)

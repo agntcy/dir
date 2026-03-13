@@ -46,13 +46,13 @@ func (s *store) PushReferrer(ctx context.Context, recordCID string, referrer *co
 	}
 
 	if referrer.GetRecordRef() == nil {
-		referrer.RecordRef = &corev1.RecordRef{Cid: recordCID}
+		referrer.RecordRef = &corev1.CID{Cid: recordCID}
 	} else if referrer.GetRecordRef().GetCid() != recordCID {
 		return status.Error(codes.InvalidArgument, "referrer's record CID must match record CID") //nolint:wrapcheck
 	}
 
 	// Check if record exists before pushing referrer
-	_, err := s.Lookup(ctx, &corev1.RecordRef{Cid: recordCID})
+	_, err := s.Lookup(ctx, &corev1.CID{Cid: recordCID})
 	if err != nil {
 		return status.Errorf(codes.NotFound, "record not found for CID %s: %v", recordCID, err)
 	}

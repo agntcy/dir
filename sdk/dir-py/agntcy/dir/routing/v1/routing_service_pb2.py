@@ -29,7 +29,7 @@ from agntcy.dir.search.v1 import record_query_pb2 as agntcy_dot_dir_dot_search_d
 from google.protobuf import empty_pb2 as google_dot_protobuf_dot_empty__pb2
 
 
-DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n+agntcy/dir/routing/v1/routing_service.proto\x12\x15\x61gntcy.dir.routing.v1\x1a\x1f\x61gntcy/dir/core/v1/record.proto\x1a agntcy/dir/routing/v1/peer.proto\x1a(agntcy/dir/routing/v1/record_query.proto\x1a\'agntcy/dir/search/v1/record_query.proto\x1a\x1bgoogle/protobuf/empty.proto\"\xa3\x01\n\x0ePublishRequest\x12\x44\n\x0brecord_refs\x18\x01 \x01(\x0b\x32!.agntcy.dir.routing.v1.RecordRefsH\x00R\nrecordRefs\x12@\n\x07queries\x18\x02 \x01(\x0b\x32$.agntcy.dir.routing.v1.RecordQueriesH\x00R\x07queriesB\t\n\x07request\"\xa5\x01\n\x10UnpublishRequest\x12\x44\n\x0brecord_refs\x18\x01 \x01(\x0b\x32!.agntcy.dir.routing.v1.RecordRefsH\x00R\nrecordRefs\x12@\n\x07queries\x18\x02 \x01(\x0b\x32$.agntcy.dir.routing.v1.RecordQueriesH\x00R\x07queriesB\t\n\x07request\"?\n\nRecordRefs\x12\x31\n\x04refs\x18\x01 \x03(\x0b\x32\x1d.agntcy.dir.core.v1.RecordRefR\x04refs\"L\n\rRecordQueries\x12;\n\x07queries\x18\x01 \x03(\x0b\x32!.agntcy.dir.search.v1.RecordQueryR\x07queries\"\xb3\x01\n\rSearchRequest\x12<\n\x07queries\x18\x01 \x03(\x0b\x32\".agntcy.dir.routing.v1.RecordQueryR\x07queries\x12+\n\x0fmin_match_score\x18\x02 \x01(\rH\x00R\rminMatchScore\x88\x01\x01\x12\x19\n\x05limit\x18\x03 \x01(\rH\x01R\x05limit\x88\x01\x01\x42\x12\n\x10_min_match_scoreB\x08\n\x06_limit\"\xe9\x01\n\x0eSearchResponse\x12<\n\nrecord_ref\x18\x01 \x01(\x0b\x32\x1d.agntcy.dir.core.v1.RecordRefR\trecordRef\x12/\n\x04peer\x18\x02 \x01(\x0b\x32\x1b.agntcy.dir.routing.v1.PeerR\x04peer\x12G\n\rmatch_queries\x18\x03 \x03(\x0b\x32\".agntcy.dir.routing.v1.RecordQueryR\x0cmatchQueries\x12\x1f\n\x0bmatch_score\x18\x04 \x01(\rR\nmatchScore\"p\n\x0bListRequest\x12<\n\x07queries\x18\x01 \x03(\x0b\x32\".agntcy.dir.routing.v1.RecordQueryR\x07queries\x12\x19\n\x05limit\x18\x02 \x01(\rH\x00R\x05limit\x88\x01\x01\x42\x08\n\x06_limit\"d\n\x0cListResponse\x12<\n\nrecord_ref\x18\x01 \x01(\x0b\x32\x1d.agntcy.dir.core.v1.RecordRefR\trecordRef\x12\x16\n\x06labels\x18\x02 \x03(\tR\x06labels2\xd4\x02\n\x0eRoutingService\x12H\n\x07Publish\x12%.agntcy.dir.routing.v1.PublishRequest\x1a\x16.google.protobuf.Empty\x12L\n\tUnpublish\x12\'.agntcy.dir.routing.v1.UnpublishRequest\x1a\x16.google.protobuf.Empty\x12W\n\x06Search\x12$.agntcy.dir.routing.v1.SearchRequest\x1a%.agntcy.dir.routing.v1.SearchResponse0\x01\x12Q\n\x04List\x12\".agntcy.dir.routing.v1.ListRequest\x1a#.agntcy.dir.routing.v1.ListResponse0\x01\x42\xcd\x01\n\x19\x63om.agntcy.dir.routing.v1B\x13RoutingServiceProtoP\x01Z$github.com/agntcy/dir/api/routing/v1\xa2\x02\x03\x41\x44R\xaa\x02\x15\x41gntcy.Dir.Routing.V1\xca\x02\x15\x41gntcy\\Dir\\Routing\\V1\xe2\x02!Agntcy\\Dir\\Routing\\V1\\GPBMetadata\xea\x02\x18\x41gntcy::Dir::Routing::V1b\x06proto3')
+DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n+agntcy/dir/routing/v1/routing_service.proto\x12\x15\x61gntcy.dir.routing.v1\x1a\x1f\x61gntcy/dir/core/v1/record.proto\x1a agntcy/dir/routing/v1/peer.proto\x1a(agntcy/dir/routing/v1/record_query.proto\x1a\'agntcy/dir/search/v1/record_query.proto\x1a\x1bgoogle/protobuf/empty.proto\"\xa3\x01\n\x0ePublishRequest\x12\x44\n\x0brecord_refs\x18\x01 \x01(\x0b\x32!.agntcy.dir.routing.v1.RecordRefsH\x00R\nrecordRefs\x12@\n\x07queries\x18\x02 \x01(\x0b\x32$.agntcy.dir.routing.v1.RecordQueriesH\x00R\x07queriesB\t\n\x07request\"\xa5\x01\n\x10UnpublishRequest\x12\x44\n\x0brecord_refs\x18\x01 \x01(\x0b\x32!.agntcy.dir.routing.v1.RecordRefsH\x00R\nrecordRefs\x12@\n\x07queries\x18\x02 \x01(\x0b\x32$.agntcy.dir.routing.v1.RecordQueriesH\x00R\x07queriesB\t\n\x07request\"9\n\nRecordRefs\x12+\n\x04refs\x18\x01 \x03(\x0b\x32\x17.agntcy.dir.core.v1.CIDR\x04refs\"L\n\rRecordQueries\x12;\n\x07queries\x18\x01 \x03(\x0b\x32!.agntcy.dir.search.v1.RecordQueryR\x07queries\"\xb3\x01\n\rSearchRequest\x12<\n\x07queries\x18\x01 \x03(\x0b\x32\".agntcy.dir.routing.v1.RecordQueryR\x07queries\x12+\n\x0fmin_match_score\x18\x02 \x01(\rH\x00R\rminMatchScore\x88\x01\x01\x12\x19\n\x05limit\x18\x03 \x01(\rH\x01R\x05limit\x88\x01\x01\x42\x12\n\x10_min_match_scoreB\x08\n\x06_limit\"\xe3\x01\n\x0eSearchResponse\x12\x36\n\nrecord_ref\x18\x01 \x01(\x0b\x32\x17.agntcy.dir.core.v1.CIDR\trecordRef\x12/\n\x04peer\x18\x02 \x01(\x0b\x32\x1b.agntcy.dir.routing.v1.PeerR\x04peer\x12G\n\rmatch_queries\x18\x03 \x03(\x0b\x32\".agntcy.dir.routing.v1.RecordQueryR\x0cmatchQueries\x12\x1f\n\x0bmatch_score\x18\x04 \x01(\rR\nmatchScore\"p\n\x0bListRequest\x12<\n\x07queries\x18\x01 \x03(\x0b\x32\".agntcy.dir.routing.v1.RecordQueryR\x07queries\x12\x19\n\x05limit\x18\x02 \x01(\rH\x00R\x05limit\x88\x01\x01\x42\x08\n\x06_limit\"^\n\x0cListResponse\x12\x36\n\nrecord_ref\x18\x01 \x01(\x0b\x32\x17.agntcy.dir.core.v1.CIDR\trecordRef\x12\x16\n\x06labels\x18\x02 \x03(\tR\x06labels2\xd4\x02\n\x0eRoutingService\x12H\n\x07Publish\x12%.agntcy.dir.routing.v1.PublishRequest\x1a\x16.google.protobuf.Empty\x12L\n\tUnpublish\x12\'.agntcy.dir.routing.v1.UnpublishRequest\x1a\x16.google.protobuf.Empty\x12W\n\x06Search\x12$.agntcy.dir.routing.v1.SearchRequest\x1a%.agntcy.dir.routing.v1.SearchResponse0\x01\x12Q\n\x04List\x12\".agntcy.dir.routing.v1.ListRequest\x1a#.agntcy.dir.routing.v1.ListResponse0\x01\x42\xcd\x01\n\x19\x63om.agntcy.dir.routing.v1B\x13RoutingServiceProtoP\x01Z$github.com/agntcy/dir/api/routing/v1\xa2\x02\x03\x41\x44R\xaa\x02\x15\x41gntcy.Dir.Routing.V1\xca\x02\x15\x41gntcy\\Dir\\Routing\\V1\xe2\x02!Agntcy\\Dir\\Routing\\V1\\GPBMetadata\xea\x02\x18\x41gntcy::Dir::Routing::V1b\x06proto3')
 
 _globals = globals()
 _builder.BuildMessageAndEnumDescriptors(DESCRIPTOR, _globals)
@@ -42,17 +42,17 @@ if not _descriptor._USE_C_DESCRIPTORS:
   _globals['_UNPUBLISHREQUEST']._serialized_start=416
   _globals['_UNPUBLISHREQUEST']._serialized_end=581
   _globals['_RECORDREFS']._serialized_start=583
-  _globals['_RECORDREFS']._serialized_end=646
-  _globals['_RECORDQUERIES']._serialized_start=648
-  _globals['_RECORDQUERIES']._serialized_end=724
-  _globals['_SEARCHREQUEST']._serialized_start=727
-  _globals['_SEARCHREQUEST']._serialized_end=906
-  _globals['_SEARCHRESPONSE']._serialized_start=909
-  _globals['_SEARCHRESPONSE']._serialized_end=1142
-  _globals['_LISTREQUEST']._serialized_start=1144
-  _globals['_LISTREQUEST']._serialized_end=1256
-  _globals['_LISTRESPONSE']._serialized_start=1258
-  _globals['_LISTRESPONSE']._serialized_end=1358
-  _globals['_ROUTINGSERVICE']._serialized_start=1361
-  _globals['_ROUTINGSERVICE']._serialized_end=1701
+  _globals['_RECORDREFS']._serialized_end=640
+  _globals['_RECORDQUERIES']._serialized_start=642
+  _globals['_RECORDQUERIES']._serialized_end=718
+  _globals['_SEARCHREQUEST']._serialized_start=721
+  _globals['_SEARCHREQUEST']._serialized_end=900
+  _globals['_SEARCHRESPONSE']._serialized_start=903
+  _globals['_SEARCHRESPONSE']._serialized_end=1130
+  _globals['_LISTREQUEST']._serialized_start=1132
+  _globals['_LISTREQUEST']._serialized_end=1244
+  _globals['_LISTRESPONSE']._serialized_start=1246
+  _globals['_LISTRESPONSE']._serialized_end=1340
+  _globals['_ROUTINGSERVICE']._serialized_start=1343
+  _globals['_ROUTINGSERVICE']._serialized_end=1683
 # @@protoc_insertion_point(module_scope)

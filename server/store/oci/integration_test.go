@@ -247,7 +247,7 @@ func TestIntegrationOCIStoreWorkflow(t *testing.T) {
 	// Layer descriptors now only contain basic fields: mediaType, digest, size
 
 	t.Run("Lookup Record", func(t *testing.T) {
-		recordRef := &corev1.RecordRef{Cid: record.GetCid()}
+		recordRef := &corev1.CID{Cid: record.GetCid()}
 
 		meta, err := store.Lookup(ctx, recordRef)
 		require.NoError(t, err, "Failed to lookup record")
@@ -265,7 +265,7 @@ func TestIntegrationOCIStoreWorkflow(t *testing.T) {
 	})
 
 	t.Run("Pull Record", func(t *testing.T) {
-		recordRef := &corev1.RecordRef{Cid: record.GetCid()}
+		recordRef := &corev1.CID{Cid: record.GetCid()}
 
 		pulledRecord, err := store.Pull(ctx, recordRef)
 		require.NoError(t, err, "Failed to pull record")

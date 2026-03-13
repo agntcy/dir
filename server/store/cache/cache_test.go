@@ -21,22 +21,22 @@ type MockStoreAPI struct {
 	mock.Mock
 }
 
-func (m *MockStoreAPI) Push(ctx context.Context, record *corev1.Record) (*corev1.RecordRef, error) {
+func (m *MockStoreAPI) Push(ctx context.Context, record *corev1.Record) (*corev1.CID, error) {
 	args := m.Called(ctx, record)
 
 	if args.Get(0) == nil {
 		return nil, args.Error(1) //nolint:wrapcheck // Mock should return exact error without wrapping
 	}
 
-	ref, ok := args.Get(0).(*corev1.RecordRef)
+	ref, ok := args.Get(0).(*corev1.CID)
 	if !ok {
-		panic("MockStoreAPI.Push: expected *corev1.RecordRef, got different type")
+		panic("MockStoreAPI.Push: expected *corev1.CID, got different type")
 	}
 
 	return ref, args.Error(1) //nolint:wrapcheck // Mock should return exact error without wrapping
 }
 
-func (m *MockStoreAPI) Pull(ctx context.Context, ref *corev1.RecordRef) (*corev1.Record, error) {
+func (m *MockStoreAPI) Pull(ctx context.Context, ref *corev1.CID) (*corev1.Record, error) {
 	args := m.Called(ctx, ref)
 
 	if args.Get(0) == nil {
@@ -51,7 +51,7 @@ func (m *MockStoreAPI) Pull(ctx context.Context, ref *corev1.RecordRef) (*corev1
 	return record, args.Error(1) //nolint:wrapcheck // Mock should return exact error without wrapping
 }
 
-func (m *MockStoreAPI) Lookup(ctx context.Context, ref *corev1.RecordRef) (*corev1.RecordMeta, error) {
+func (m *MockStoreAPI) Lookup(ctx context.Context, ref *corev1.CID) (*corev1.RecordMeta, error) {
 	args := m.Called(ctx, ref)
 
 	if args.Get(0) == nil {
@@ -66,7 +66,7 @@ func (m *MockStoreAPI) Lookup(ctx context.Context, ref *corev1.RecordRef) (*core
 	return meta, args.Error(1) //nolint:wrapcheck // Mock should return exact error without wrapping
 }
 
-func (m *MockStoreAPI) Delete(ctx context.Context, ref *corev1.RecordRef) error {
+func (m *MockStoreAPI) Delete(ctx context.Context, ref *corev1.CID) error {
 	args := m.Called(ctx, ref)
 
 	return args.Error(0) //nolint:wrapcheck // Mock should return exact error without wrapping
@@ -92,7 +92,7 @@ func TestCachedStore_Push(t *testing.T) {
 	recordCID := record.GetCid()
 	require.NotEmpty(t, recordCID, "record should have a CID")
 
-	expectedRef := &corev1.RecordRef{Cid: recordCID}
+	expectedRef := &corev1.CID{Cid: recordCID}
 
 	// Create mock store and cache
 	mockStore := &MockStoreAPI{}
@@ -135,7 +135,7 @@ func TestCachedStore_Pull_CacheHit(t *testing.T) {
 	recordCID := record.GetCid()
 	require.NotEmpty(t, recordCID, "record should have a CID")
 
-	ref := &corev1.RecordRef{Cid: recordCID}
+	ref := &corev1.CID{Cid: recordCID}
 
 	// Create mock store and cache
 	mockStore := &MockStoreAPI{}
@@ -172,7 +172,7 @@ func TestCachedStore_Pull_CacheMiss(t *testing.T) {
 	require.NoError(t, err)
 
 	recordCID := record.GetCid()
-	ref := &corev1.RecordRef{Cid: recordCID}
+	ref := &corev1.CID{Cid: recordCID}
 
 	// Create mock store and cache
 	mockStore := &MockStoreAPI{}
@@ -204,7 +204,7 @@ func TestCachedStore_Lookup_CacheHit(t *testing.T) {
 	ctx := t.Context()
 
 	recordCID := "test-cid-123"
-	ref := &corev1.RecordRef{Cid: recordCID}
+	ref := &corev1.CID{Cid: recordCID}
 
 	meta := &corev1.RecordMeta{
 		Cid:           recordCID,
@@ -237,7 +237,7 @@ func TestCachedStore_Lookup_CacheMiss(t *testing.T) {
 	ctx := t.Context()
 
 	recordCID := "test-cid-123"
-	ref := &corev1.RecordRef{Cid: recordCID}
+	ref := &corev1.CID{Cid: recordCID}
 
 	meta := &corev1.RecordMeta{
 		Cid:           recordCID,
@@ -281,7 +281,7 @@ func TestCachedStore_Delete(t *testing.T) {
 	})
 
 	recordCID := record.GetCid()
-	ref := &corev1.RecordRef{Cid: recordCID}
+	ref := &corev1.CID{Cid: recordCID}
 
 	meta := &corev1.RecordMeta{
 		Cid:           recordCID,

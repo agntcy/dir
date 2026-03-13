@@ -56,7 +56,7 @@ func newMockStore() *mockStore {
 	}
 }
 
-func (m *mockStore) Push(_ context.Context, record *corev1.Record) (*corev1.RecordRef, error) {
+func (m *mockStore) Push(_ context.Context, record *corev1.Record) (*corev1.CID, error) {
 	cid := record.GetCid()
 	if cid == "" {
 		return nil, errors.New("record CID is required")
@@ -64,10 +64,10 @@ func (m *mockStore) Push(_ context.Context, record *corev1.Record) (*corev1.Reco
 
 	m.data[cid] = record
 
-	return &corev1.RecordRef{Cid: cid}, nil
+	return &corev1.CID{Cid: cid}, nil
 }
 
-func (m *mockStore) Lookup(_ context.Context, ref *corev1.RecordRef) (*corev1.RecordMeta, error) {
+func (m *mockStore) Lookup(_ context.Context, ref *corev1.CID) (*corev1.RecordMeta, error) {
 	if _, exists := m.data[ref.GetCid()]; exists {
 		return &corev1.RecordMeta{
 			Cid: ref.GetCid(),
@@ -77,7 +77,7 @@ func (m *mockStore) Lookup(_ context.Context, ref *corev1.RecordRef) (*corev1.Re
 	return nil, errors.New("test object not found")
 }
 
-func (m *mockStore) Pull(_ context.Context, ref *corev1.RecordRef) (*corev1.Record, error) {
+func (m *mockStore) Pull(_ context.Context, ref *corev1.CID) (*corev1.Record, error) {
 	if record, exists := m.data[ref.GetCid()]; exists {
 		return record, nil
 	}
@@ -85,7 +85,7 @@ func (m *mockStore) Pull(_ context.Context, ref *corev1.RecordRef) (*corev1.Reco
 	return nil, errors.New("test object not found")
 }
 
-func (m *mockStore) Delete(_ context.Context, ref *corev1.RecordRef) error {
+func (m *mockStore) Delete(_ context.Context, ref *corev1.CID) error {
 	delete(m.data, ref.GetCid())
 
 	return nil
@@ -113,10 +113,10 @@ func TestPublishList_ValidSingleSkillQuery(t *testing.T) {
 			},
 		})
 
-		testRef  = &corev1.RecordRef{Cid: testRecord.GetCid()}
-		testRef2 = &corev1.RecordRef{Cid: testRecord2.GetCid()}
+		testRef  = &corev1.CID{Cid: testRecord.GetCid()}
+		testRef2 = &corev1.CID{Cid: testRecord2.GetCid()}
 
-		validQueriesWithExpectedObjectRef = map[string][]*corev1.RecordRef{
+		validQueriesWithExpectedObjectRef = map[string][]*corev1.CID{
 			// tests exact lookup for skills
 			"/skills/category1/class1": {
 				{Cid: testRef.GetCid()},
@@ -239,7 +239,7 @@ func TestPublishList_ValidMultiSkillQuery(t *testing.T) {
 				{Name: "category2/class2"},
 			},
 		})
-		testRef = &corev1.RecordRef{Cid: testRecord.GetCid()}
+		testRef = &corev1.CID{Cid: testRecord.GetCid()}
 	)
 
 	// create demo network

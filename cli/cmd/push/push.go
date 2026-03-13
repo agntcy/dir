@@ -98,7 +98,7 @@ func runCommand(cmd *cobra.Command, source io.Reader) error {
 		return fmt.Errorf("failed to load OASF: %w", err)
 	}
 
-	var recordRef *corev1.RecordRef
+	var recordRef *corev1.CID
 
 	// Use the client's Push method to send the record
 	recordRef, err = c.Push(cmd.Context(), record)

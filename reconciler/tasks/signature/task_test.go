@@ -106,10 +106,10 @@ func TestTask_Run_WithOneRecord_NoSignatures_NoUpsert(t *testing.T) {
 	}
 	// Fetcher returns no signatures → empty perSig → no upserts
 	fakeFetcher := &fakeFetcher{
-		pullSignatures: func(_ context.Context, _ *corev1.RecordRef) ([]*signv1.Signature, error) {
+		pullSignatures: func(_ context.Context, _ *corev1.CID) ([]*signv1.Signature, error) {
 			return nil, nil
 		},
-		pullPublicKeys: func(_ context.Context, _ *corev1.RecordRef) ([]string, error) {
+		pullPublicKeys: func(_ context.Context, _ *corev1.CID) ([]string, error) {
 			return nil, nil
 		},
 	}
@@ -130,10 +130,10 @@ func TestTask_Run_WithOneRecord_VerifyError_Continues(t *testing.T) {
 		},
 	}
 	fakeFetcher := &fakeFetcher{
-		pullSignatures: func(_ context.Context, _ *corev1.RecordRef) ([]*signv1.Signature, error) {
+		pullSignatures: func(_ context.Context, _ *corev1.CID) ([]*signv1.Signature, error) {
 			return nil, errors.New("pull unavailable")
 		},
-		pullPublicKeys: func(_ context.Context, _ *corev1.RecordRef) ([]string, error) {
+		pullPublicKeys: func(_ context.Context, _ *corev1.CID) ([]string, error) {
 			return nil, nil
 		},
 	}
@@ -158,11 +158,11 @@ var _ verify.Fetcher = (*fakeFetcher)(nil)
 
 // fakeFetcher implements verify.Fetcher for tests.
 type fakeFetcher struct {
-	pullSignatures func(context.Context, *corev1.RecordRef) ([]*signv1.Signature, error)
-	pullPublicKeys func(context.Context, *corev1.RecordRef) ([]string, error)
+	pullSignatures func(context.Context, *corev1.CID) ([]*signv1.Signature, error)
+	pullPublicKeys func(context.Context, *corev1.CID) ([]string, error)
 }
 
-func (f *fakeFetcher) PullSignatures(ctx context.Context, recordRef *corev1.RecordRef) ([]*signv1.Signature, error) {
+func (f *fakeFetcher) PullSignatures(ctx context.Context, recordRef *corev1.CID) ([]*signv1.Signature, error) {
 	if f.pullSignatures != nil {
 		return f.pullSignatures(ctx, recordRef)
 	}
@@ -170,7 +170,7 @@ func (f *fakeFetcher) PullSignatures(ctx context.Context, recordRef *corev1.Reco
 	return nil, nil
 }
 
-func (f *fakeFetcher) PullPublicKeys(ctx context.Context, recordRef *corev1.RecordRef) ([]string, error) {
+func (f *fakeFetcher) PullPublicKeys(ctx context.Context, recordRef *corev1.CID) ([]string, error) {
 	if f.pullPublicKeys != nil {
 		return f.pullPublicKeys(ctx, recordRef)
 	}

@@ -60,7 +60,7 @@ func (c *Client) Sign(ctx context.Context, req *signv1.SignRequest) (*signv1.Sig
 	}, nil
 }
 
-func (c *Client) pushReferrersToStore(ctx context.Context, recordRef *corev1.RecordRef, signature *signv1.Signature, publicKey *signv1.PublicKey) error {
+func (c *Client) pushReferrersToStore(ctx context.Context, recordRef *corev1.CID, signature *signv1.Signature, publicKey *signv1.PublicKey) error {
 	// Create public key referrer
 	publicKeyReferrer, err := publicKey.MarshalReferrer()
 	if err != nil {

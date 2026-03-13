@@ -27,7 +27,7 @@ type handler struct {
 }
 
 type handlerSync struct {
-	Ref  *corev1.RecordRef
+	Ref  *corev1.CID
 	Peer peer.AddrInfo
 }
 
@@ -84,7 +84,7 @@ func (h *handler) handleCIDProviderAnnouncement(_ context.Context, key []byte, p
 	}
 
 	// create CID from multihash
-	ref := &corev1.RecordRef{
+	ref := &corev1.CID{
 		Cid: cid.NewCidV1(1, cast).String(),
 	}
 

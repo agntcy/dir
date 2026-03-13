@@ -10,9 +10,9 @@ class PushReferrerRequest(_message.Message):
     __slots__ = ("record_ref", "referrer")
     RECORD_REF_FIELD_NUMBER: _ClassVar[int]
     REFERRER_FIELD_NUMBER: _ClassVar[int]
-    record_ref: _record_pb2.RecordRef
+    record_ref: _record_pb2.CID
     referrer: _record_pb2.RecordReferrer
-    def __init__(self, record_ref: _Optional[_Union[_record_pb2.RecordRef, _Mapping]] = ..., referrer: _Optional[_Union[_record_pb2.RecordReferrer, _Mapping]] = ...) -> None: ...
+    def __init__(self, record_ref: _Optional[_Union[_record_pb2.CID, _Mapping]] = ..., referrer: _Optional[_Union[_record_pb2.RecordReferrer, _Mapping]] = ...) -> None: ...
 
 class PushReferrerResponse(_message.Message):
     __slots__ = ("success", "error_message")
@@ -26,9 +26,9 @@ class PullReferrerRequest(_message.Message):
     __slots__ = ("record_ref", "referrer_type")
     RECORD_REF_FIELD_NUMBER: _ClassVar[int]
     REFERRER_TYPE_FIELD_NUMBER: _ClassVar[int]
-    record_ref: _record_pb2.RecordRef
+    record_ref: _record_pb2.CID
     referrer_type: str
-    def __init__(self, record_ref: _Optional[_Union[_record_pb2.RecordRef, _Mapping]] = ..., referrer_type: _Optional[str] = ...) -> None: ...
+    def __init__(self, record_ref: _Optional[_Union[_record_pb2.CID, _Mapping]] = ..., referrer_type: _Optional[str] = ...) -> None: ...
 
 class PullReferrerResponse(_message.Message):
     __slots__ = ("referrer",)

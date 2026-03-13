@@ -37,7 +37,7 @@ func (t *Tools) PullRecord(ctx context.Context, _ *mcp.CallToolRequest, input Pu
 	}
 
 	// Pull the record
-	record, err := t.Client.Pull(ctx, &corev1.RecordRef{
+	record, err := t.Client.Pull(ctx, &corev1.CID{
 		Cid: input.CID,
 	})
 	if err != nil {

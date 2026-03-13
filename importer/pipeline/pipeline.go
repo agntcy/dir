@@ -31,7 +31,7 @@ type Transformer interface {
 // Pusher is an interface for pushing records to the destination (DIR).
 type Pusher interface {
 	// Push pushes records to the destination and returns the result channel and error channel.
-	Push(ctx context.Context, inputCh <-chan *corev1.Record) (<-chan *corev1.RecordRef, <-chan error)
+	Push(ctx context.Context, inputCh <-chan *corev1.Record) (<-chan *corev1.CID, <-chan error)
 }
 
 // DuplicateChecker is an interface for checking and filtering duplicate records.

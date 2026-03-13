@@ -23,7 +23,7 @@ var internalLogger = logging.Logger("store/oci/internal")
 
 // validateRecordRef performs common input validation for record reference operations.
 // This eliminates duplication across Lookup, Pull, and Delete methods.
-func validateRecordRef(ref *corev1.RecordRef) error {
+func validateRecordRef(ref *corev1.CID) error {
 	if ref == nil {
 		return status.Error(codes.InvalidArgument, "record reference cannot be nil") //nolint:wrapcheck
 	}
@@ -96,7 +96,7 @@ func (s *store) fetchAndParseManifestFromDescriptor(ctx context.Context, manifes
 // Tag cleanup functions removed - OCI registry garbage collection handles dangling tags after manifest deletion
 
 // deleteFromOCIStore handles deletion of records from an OCI store.
-func (s *store) deleteFromOCIStore(ctx context.Context, ref *corev1.RecordRef) error {
+func (s *store) deleteFromOCIStore(ctx context.Context, ref *corev1.CID) error {
 	cid := ref.GetCid()
 
 	store, ok := s.repo.(*oci.Store)
@@ -167,7 +167,7 @@ func (s *store) deleteBlobForLocalStore(ctx context.Context, cid string, store *
 }
 
 // deleteFromRemoteRepository handles deletion of records from a remote repository.
-func (s *store) deleteFromRemoteRepository(ctx context.Context, ref *corev1.RecordRef) error {
+func (s *store) deleteFromRemoteRepository(ctx context.Context, ref *corev1.CID) error {
 	cid := ref.GetCid()
 
 	repo, ok := s.repo.(*remote.Repository)

@@ -31,9 +31,9 @@ const (
 // ClientInterface defines the interface for the DIR client used by importers.
 // This allows for easier testing and mocking.
 type ClientInterface interface {
-	Push(ctx context.Context, record *corev1.Record) (*corev1.RecordRef, error)
+	Push(ctx context.Context, record *corev1.Record) (*corev1.CID, error)
 	SearchCIDs(ctx context.Context, req *searchv1.SearchCIDsRequest) (streaming.StreamResult[searchv1.SearchCIDsResponse], error)
-	PullBatch(ctx context.Context, recordRefs []*corev1.RecordRef) ([]*corev1.Record, error)
+	PullBatch(ctx context.Context, recordRefs []*corev1.CID) ([]*corev1.Record, error)
 }
 
 // SignFunc is a function type for signing records after push.

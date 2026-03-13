@@ -30,11 +30,11 @@ func (m *mockImporter) Run(ctx context.Context, cfg config.Config) (*types.Impor
 // mockClient is a mock implementation for testing.
 type mockClient struct{}
 
-func (m *mockClient) Push(ctx context.Context, record *corev1.Record) (*corev1.RecordRef, error) {
-	return &corev1.RecordRef{}, nil
+func (m *mockClient) Push(ctx context.Context, record *corev1.Record) (*corev1.CID, error) {
+	return &corev1.CID{}, nil
 }
 
-func (m *mockClient) PullBatch(ctx context.Context, recordRefs []*corev1.RecordRef) ([]*corev1.Record, error) {
+func (m *mockClient) PullBatch(ctx context.Context, recordRefs []*corev1.CID) ([]*corev1.Record, error) {
 	return []*corev1.Record{}, nil
 }
 

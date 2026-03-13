@@ -90,30 +90,30 @@ var _ = ginkgo.Describe("Event Streaming E2E Tests", ginkgo.Ordered, ginkgo.Seri
 
 		// IMPORTANT: Unpublish first to remove routing labels, then delete from store
 		if v070Record != nil {
-			v070Ref := &corev1.RecordRef{Cid: v070Record.GetCid()}
+			v070Ref := &corev1.CID{Cid: v070Record.GetCid()}
 			_ = c.Unpublish(context.Background(), &routingv1.UnpublishRequest{
 				Request: &routingv1.UnpublishRequest_RecordRefs{
-					RecordRefs: &routingv1.RecordRefs{Refs: []*corev1.RecordRef{v070Ref}},
+					RecordRefs: &routingv1.RecordRefs{Refs: []*corev1.CID{v070Ref}},
 				},
 			})
 			_ = c.Delete(context.Background(), v070Ref)
 		}
 
 		if v080Record != nil {
-			v080Ref := &corev1.RecordRef{Cid: v080Record.GetCid()}
+			v080Ref := &corev1.CID{Cid: v080Record.GetCid()}
 			_ = c.Unpublish(context.Background(), &routingv1.UnpublishRequest{
 				Request: &routingv1.UnpublishRequest_RecordRefs{
-					RecordRefs: &routingv1.RecordRefs{Refs: []*corev1.RecordRef{v080Ref}},
+					RecordRefs: &routingv1.RecordRefs{Refs: []*corev1.CID{v080Ref}},
 				},
 			})
 			_ = c.Delete(context.Background(), v080Ref)
 		}
 
 		if v100Record != nil {
-			v100Ref := &corev1.RecordRef{Cid: v100Record.GetCid()}
+			v100Ref := &corev1.CID{Cid: v100Record.GetCid()}
 			_ = c.Unpublish(context.Background(), &routingv1.UnpublishRequest{
 				Request: &routingv1.UnpublishRequest_RecordRefs{
-					RecordRefs: &routingv1.RecordRefs{Refs: []*corev1.RecordRef{v100Ref}},
+					RecordRefs: &routingv1.RecordRefs{Refs: []*corev1.CID{v100Ref}},
 				},
 			})
 			_ = c.Delete(context.Background(), v100Ref)
@@ -188,7 +188,7 @@ var _ = ginkgo.Describe("Event Streaming E2E Tests", ginkgo.Ordered, ginkgo.Seri
 				publishErr := c.Publish(context.Background(), &routingv1.PublishRequest{
 					Request: &routingv1.PublishRequest_RecordRefs{
 						RecordRefs: &routingv1.RecordRefs{
-							Refs: []*corev1.RecordRef{ref},
+							Refs: []*corev1.CID{ref},
 						},
 					},
 				})

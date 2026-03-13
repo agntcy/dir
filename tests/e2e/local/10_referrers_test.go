@@ -58,7 +58,7 @@ func generateReferrer() *corev1.RecordReferrer {
 	return referrer
 }
 
-func pullReferrers(c *client.Client, ctx context.Context, recordRef *corev1.RecordRef, referrerType string) []*corev1.RecordReferrer {
+func pullReferrers(c *client.Client, ctx context.Context, recordRef *corev1.CID, referrerType string) []*corev1.RecordReferrer {
 	ch, err := c.PullReferrer(ctx, &storev1.PullReferrerRequest{
 		RecordRef:    recordRef,
 		ReferrerType: &referrerType,
@@ -89,8 +89,8 @@ var _ = ginkgo.Describe("Running e2e tests for referrers", func() {
 	var (
 		c       *client.Client
 		ctx     context.Context
-		record1 *corev1.RecordRef
-		record2 *corev1.RecordRef
+		record1 *corev1.CID
+		record2 *corev1.CID
 	)
 
 	ginkgo.BeforeEach(func() {
