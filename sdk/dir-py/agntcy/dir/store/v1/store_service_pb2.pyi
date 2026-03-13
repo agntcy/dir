@@ -1,3 +1,4 @@
+from agntcy.dir.core.v1 import cid_pb2 as _cid_pb2
 from agntcy.dir.core.v1 import record_pb2 as _record_pb2
 from google.protobuf import empty_pb2 as _empty_pb2
 from google.protobuf import descriptor as _descriptor
@@ -15,12 +16,14 @@ class PushReferrerRequest(_message.Message):
     def __init__(self, record_ref: _Optional[_Union[_record_pb2.RecordRef, _Mapping]] = ..., referrer: _Optional[_Union[_record_pb2.RecordReferrer, _Mapping]] = ...) -> None: ...
 
 class PushReferrerResponse(_message.Message):
-    __slots__ = ("success", "error_message")
+    __slots__ = ("success", "error_message", "cid")
     SUCCESS_FIELD_NUMBER: _ClassVar[int]
     ERROR_MESSAGE_FIELD_NUMBER: _ClassVar[int]
+    CID_FIELD_NUMBER: _ClassVar[int]
     success: bool
     error_message: str
-    def __init__(self, success: bool = ..., error_message: _Optional[str] = ...) -> None: ...
+    cid: _cid_pb2.CID
+    def __init__(self, success: bool = ..., error_message: _Optional[str] = ..., cid: _Optional[_Union[_cid_pb2.CID, _Mapping]] = ...) -> None: ...
 
 class PullReferrerRequest(_message.Message):
     __slots__ = ("record_ref", "referrer_type")
