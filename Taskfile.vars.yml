@@ -72,6 +72,9 @@ vars:
   TRIVY_VERSION: "0.69.3"
   TRIVY_BIN: "{{ .BIN_DIR }}/trivy-{{.TRIVY_VERSION}}"
 
+  ## Default location for coverage tests reports
+  COVERAGE_DIR: '{{ .COVERAGE_DIR | default (print .ROOT_DIR "/.coverage") }}'
+
   ## Runtime CRD
   CONTROLLER_GEN_VERSION: "v0.17.3"
   CONTROLLER_GEN_BIN: "sigs.k8s.io/controller-tools/cmd/controller-gen@{{ .CONTROLLER_GEN_VERSION }}"
