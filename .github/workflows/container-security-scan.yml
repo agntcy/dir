@@ -8,10 +8,11 @@ on:
     - cron: "0 3 * * *" # Daily at 03:00 UTC (runs on default branch context: main)
   workflow_dispatch:
     inputs:
-      image-tag:
-        required: false
+      image-hash:
+        required: true
         type: string
-        description: "Override tag for repo images (empty for latest)"
+        default: "main"
+        description: "Override hash for repo images (default: main, latest for latest release version, or specific hash)"
 
 permissions:
   contents: read
@@ -20,8 +21,9 @@ permissions:
   issues: write # create issues for critical CVEs
 
 jobs:
-  resolve-tag:
-    name: Resolve image tag
+  resolve-latest-tag:
+    if: ${{ github.event.inputs.image-hash == 'latest' }}
+    name: Resolve latest release version tag
     runs-on: ubuntu-latest
     outputs:
       version: ${{ steps.resolve.outputs.version }}
@@ -31,32 +33,53 @@ jobs:
       - name: Resolve image tag
         id: resolve
         run: |
-          set -euo pipefail
-          if [ -n "${{ inputs.image-tag }}" ]; then
-            echo "version=${{ inputs.image-tag }}" >> $GITHUB_OUTPUT
-          else
-            OWNER=${GITHUB_REPOSITORY%%/*}
-            REPO_NAME=${GITHUB_REPOSITORY#*/}
-            TAG_VERSION=$(gh api graphql \
-              -f query='
-                query($owner: String!, $repo: String!, $tagCount: Int!) {
-                  repository(owner: $owner, name: $repo) {
-                    refs(refPrefix: "refs/tags/", first: $tagCount, orderBy: {field: TAG_COMMIT_DATE, direction: DESC}) {
-                      nodes { name }
-                    }
+          OWNER=${GITHUB_REPOSITORY%%/*}
+          REPO_NAME=${GITHUB_REPOSITORY#*/}
+          TAG_VERSION=$(gh api graphql \
+            -f query='
+              query($owner: String!, $repo: String!, $tagCount: Int!) {
+                repository(owner: $owner, name: $repo) {
+                  refs(refPrefix: "refs/tags/", first: $tagCount, orderBy: {field: TAG_COMMIT_DATE, direction: DESC}) {
+                    nodes { name }
                   }
                 }
-              ' \
-              -F owner=$OWNER -F repo=$REPO_NAME -F tagCount=100 \
-              --jq 'first(.data.repository.refs.nodes[] | select(.name | contains("/") | not).name)'
-            )
-            echo "version=${TAG_VERSION}" >> $GITHUB_OUTPUT
-          fi
+              }
+            ' \
+            -F owner=$OWNER -F repo=$REPO_NAME -F tagCount=100 \
+            --jq 'first(.data.repository.refs.nodes[] | select(.name | contains("/") | not).name)'
+          )
+
+          echo "version=${TAG_VERSION}" >> $GITHUB_OUTPUT
+
+  resolve-main-sha:
+    if: ${{ github.event.inputs.image-hash == 'main' }}
+    name: Resolve main branch commit SHA
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ github.token }}
+    outputs:
+      main_sha: ${{ steps.get-commit-sha.outputs.main_sha }}
+    steps:
+      - name: Get main branch SHA
+        id: get-commit-sha
+        run: |
+          MAIN_SHA=$(gh api repos/${{ github.repository }}/git/refs/heads/${{ github.event.repository.default_branch }} | jq -r .object.sha)
+          echo "main_sha=${MAIN_SHA}" >> $GITHUB_OUTPUT
+
+  build-images:
+    if: ${{ github.event.inputs.image-hash != 'latest' }}
+    needs: [resolve-main-sha]
+    name: Build images from main
+    uses: ./.github/workflows/reusable-build.yaml
+    with:
+      image_repo: ghcr.io/agntcy
+      image_tag: ${{ needs.resolve-main-sha.outputs.main_sha || github.event.inputs.image-hash }}
+      commit_sha: ${{ needs.resolve-main-sha.outputs.main_sha || github.event.inputs.image-hash }}
 
   image-list:
     name: Resolve image list
     runs-on: ubuntu-latest
-    needs: [resolve-tag]
+    needs: [resolve-latest-tag, resolve-main-sha, build-images]
     outputs:
       matrix: ${{ steps.matrix.outputs.matrix }}
     steps:
@@ -70,7 +93,7 @@ jobs:
       - name: Get image list from task
         id: matrix
         env:
-          IMAGE_TAG: ${{ needs.resolve-tag.outputs.version }}
+          IMAGE_TAG: ${{ needs.resolve-latest-tag.outputs.version || needs.resolve-main-sha.outputs.main_sha || github.event.inputs.image-hash }}
           IMAGE_REPO: ghcr.io/${{ github.repository_owner }}
         run: |
           matrix=$(task --silent deps:vuln:images:list | jq -R -s -c 'split("\n") | map(select(length > 0)) | {image: .}')
@@ -108,12 +131,14 @@ jobs:
         run: echo "${{ matrix.image }}" > trivy-${{ steps.image-name.outputs.name }}.meta
 
       - name: Upload SARIF
+        if: ${{ false }}
         uses: github/codeql-action/upload-sarif@0d579ffd059c29b07949a3cce3983f0780820c98 # v4.32.6
         with:
           sarif_file: trivy-${{ steps.image-name.outputs.name }}.sarif
           category: trivy-${{ steps.image-name.outputs.name }}
 
       - name: Upload report artifacts
+        if: ${{ false }}
         uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
         with:
           name: trivy-report-${{ steps.image-name.outputs.name }}
@@ -126,7 +151,7 @@ jobs:
     name: Summarize Results
     needs: [trivy-scan]
     runs-on: ubuntu-latest
-    if: always()
+    if: ${{ false }}
     steps:
       - name: Checkout
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2

@@ -6,6 +6,11 @@ name: Build
 on:
   workflow_call:
     inputs:
+      commit_sha:
+        required: false
+        type: string
+        description: "Commit SHA to use for checkout. Defaults to the current commit SHA."
+        default: ${{ github.sha }}
       image_repo:
         required: true
         type: string
@@ -39,6 +44,7 @@ jobs:
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           fetch-depth: 0
+          ref: ${{ inputs.commit_sha }}
 
       - name: Setup Taskfile
         shell: bash
@@ -78,6 +84,7 @@ jobs:
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           fetch-depth: 0
+          ref: ${{ inputs.commit_sha }}
 
       - name: Generate matrix
         id: generate
@@ -96,6 +103,7 @@ jobs:
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           fetch-depth: 0
+          ref: ${{ inputs.commit_sha }}
 
       - name: Login to ghcr.io
         uses: docker/login-action@b45d80f862d83dbcd57f89517bcf500b2ab88fb2 # v4.0.0
@@ -189,6 +197,7 @@ jobs:
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           fetch-depth: 0
+          ref: ${{ inputs.commit_sha }}
 
       - name: Login to ghcr.io
         uses: docker/login-action@b45d80f862d83dbcd57f89517bcf500b2ab88fb2 # v4.0.0
