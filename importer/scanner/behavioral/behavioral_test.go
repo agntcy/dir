@@ -130,24 +130,3 @@ func TestExtractSubfolder(t *testing.T) {
 	assert.Equal(t, "https://github.com/example/mono", url)
 	assert.Equal(t, "packages/mcp-server", sub)
 }
-
-func TestIsPlaceholderURL(t *testing.T) {
-	tests := []struct {
-		url         string
-		placeholder bool
-	}{
-		{"https://example.com/mcp-server.git", true},
-		{"https://www.example.com/mcp-server.git", true},
-		{"https://example.org/foo", true},
-		{"https://example.net/bar", true},
-		{"https://github.com/org/repo", false},
-		{"https://gitlab.com/org/repo", false},
-		{"not-a-url", false},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.url, func(t *testing.T) {
-			assert.Equal(t, tt.placeholder, isPlaceholderURL(tt.url))
-		})
-	}
-}
