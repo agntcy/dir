@@ -1,0 +1,31 @@
+# Copyright AGNTCY Contributors (https://github.com/agntcy)
+# SPDX-License-Identifier: Apache-2.0
+
+name: Cron Jobs Management
+
+on:
+  schedule:
+    - cron: "0 3 * * *" # Daily at 03:00 UTC (runs on default branch context: main)
+  workflow_dispatch:
+
+jobs:
+  build-nightly:
+    name: Build nightly
+    uses: ./.github/workflows/build-feature.yaml
+    with:
+      image_tag: nightly
+      chart_version: nightly
+      component: "" # NOTE: Match image name within Taskfile.vars.yml
+
+  container-security-scan-nightly:
+    name: Container Security Scan (nightly)
+    needs: [build-nightly]
+    uses: ./.github/workflows/container-security-scan.yml
+    with:
+      image-tag: nightly
+      upload_ref: ${{ github.ref }} # NOTE: As Cron executed on main this will be refs/heads/main
+      upload_sha: ${{ github.sha }} # NOTE: As Cron executed on main this will be the SHA of the latest commit
+
+  container-security-scan-latest-release:
+    name: Container Security Scan (latest release)
+    uses: ./.github/workflows/container-security-scan.yml
