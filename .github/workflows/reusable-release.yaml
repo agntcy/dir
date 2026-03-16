@@ -71,8 +71,6 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
-    outputs:
-      release_id: ${{ steps.create_release.outputs.id }}
     steps:
       - name: Create Release
         id: create_release
