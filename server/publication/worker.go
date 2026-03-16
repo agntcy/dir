@@ -154,7 +154,7 @@ func (w *Worker) getCIDsFromRequest(_ context.Context, request *routingv1.Publis
 // announceToDHT announces a single CID to the DHT.
 func (w *Worker) announceToDHT(ctx context.Context, cid string) error {
 	// Create a RecordRef for the CID
-	recordRef := &corev1.RecordRef{
+	recordRef := &corev1.CID{
 		Cid: cid,
 	}
 

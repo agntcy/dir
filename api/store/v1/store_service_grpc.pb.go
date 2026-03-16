@@ -86,7 +86,7 @@ func (c *storeServiceClient) Push(ctx context.Context, opts ...grpc.CallOption) 
 
 type StoreService_PushClient interface {
 	Send(*v1.Record) error
-	Recv() (*v1.RecordRef, error)
+	Recv() (*v1.CID, error)
 	grpc.ClientStream
 }
 
@@ -98,8 +98,8 @@ func (x *storeServicePushClient) Send(m *v1.Record) error {
 	return x.ClientStream.SendMsg(m)
 }
 
-func (x *storeServicePushClient) Recv() (*v1.RecordRef, error) {
-	m := new(v1.RecordRef)
+func (x *storeServicePushClient) Recv() (*v1.CID, error) {
+	m := new(v1.CID)
 	if err := x.ClientStream.RecvMsg(m); err != nil {
 		return nil, err
 	}
@@ -117,7 +117,7 @@ func (c *storeServiceClient) Pull(ctx context.Context, opts ...grpc.CallOption) 
 }
 
 type StoreService_PullClient interface {
-	Send(*v1.RecordRef) error
+	Send(*v1.CID) error
 	Recv() (*v1.Record, error)
 	grpc.ClientStream
 }
@@ -126,7 +126,7 @@ type storeServicePullClient struct {
 	grpc.ClientStream
 }
 
-func (x *storeServicePullClient) Send(m *v1.RecordRef) error {
+func (x *storeServicePullClient) Send(m *v1.CID) error {
 	return x.ClientStream.SendMsg(m)
 }
 
@@ -149,7 +149,7 @@ func (c *storeServiceClient) Lookup(ctx context.Context, opts ...grpc.CallOption
 }
 
 type StoreService_LookupClient interface {
-	Send(*v1.RecordRef) error
+	Send(*v1.CID) error
 	Recv() (*v1.RecordMeta, error)
 	grpc.ClientStream
 }
@@ -158,7 +158,7 @@ type storeServiceLookupClient struct {
 	grpc.ClientStream
 }
 
-func (x *storeServiceLookupClient) Send(m *v1.RecordRef) error {
+func (x *storeServiceLookupClient) Send(m *v1.CID) error {
 	return x.ClientStream.SendMsg(m)
 }
 
@@ -181,7 +181,7 @@ func (c *storeServiceClient) Delete(ctx context.Context, opts ...grpc.CallOption
 }
 
 type StoreService_DeleteClient interface {
-	Send(*v1.RecordRef) error
+	Send(*v1.CID) error
 	CloseAndRecv() (*emptypb.Empty, error)
 	grpc.ClientStream
 }
@@ -190,7 +190,7 @@ type storeServiceDeleteClient struct {
 	grpc.ClientStream
 }
 
-func (x *storeServiceDeleteClient) Send(m *v1.RecordRef) error {
+func (x *storeServiceDeleteClient) Send(m *v1.CID) error {
 	return x.ClientStream.SendMsg(m)
 }
 
@@ -353,7 +353,7 @@ func _StoreService_Push_Handler(srv interface{}, stream grpc.ServerStream) error
 }
 
 type StoreService_PushServer interface {
-	Send(*v1.RecordRef) error
+	Send(*v1.CID) error
 	Recv() (*v1.Record, error)
 	grpc.ServerStream
 }
@@ -362,7 +362,7 @@ type storeServicePushServer struct {
 	grpc.ServerStream
 }
 
-func (x *storeServicePushServer) Send(m *v1.RecordRef) error {
+func (x *storeServicePushServer) Send(m *v1.CID) error {
 	return x.ServerStream.SendMsg(m)
 }
 
@@ -380,7 +380,7 @@ func _StoreService_Pull_Handler(srv interface{}, stream grpc.ServerStream) error
 
 type StoreService_PullServer interface {
 	Send(*v1.Record) error
-	Recv() (*v1.RecordRef, error)
+	Recv() (*v1.CID, error)
 	grpc.ServerStream
 }
 
@@ -392,8 +392,8 @@ func (x *storeServicePullServer) Send(m *v1.Record) error {
 	return x.ServerStream.SendMsg(m)
 }
 
-func (x *storeServicePullServer) Recv() (*v1.RecordRef, error) {
-	m := new(v1.RecordRef)
+func (x *storeServicePullServer) Recv() (*v1.CID, error) {
+	m := new(v1.CID)
 	if err := x.ServerStream.RecvMsg(m); err != nil {
 		return nil, err
 	}
@@ -406,7 +406,7 @@ func _StoreService_Lookup_Handler(srv interface{}, stream grpc.ServerStream) err
 
 type StoreService_LookupServer interface {
 	Send(*v1.RecordMeta) error
-	Recv() (*v1.RecordRef, error)
+	Recv() (*v1.CID, error)
 	grpc.ServerStream
 }
 
@@ -418,8 +418,8 @@ func (x *storeServiceLookupServer) Send(m *v1.RecordMeta) error {
 	return x.ServerStream.SendMsg(m)
 }
 
-func (x *storeServiceLookupServer) Recv() (*v1.RecordRef, error) {
-	m := new(v1.RecordRef)
+func (x *storeServiceLookupServer) Recv() (*v1.CID, error) {
+	m := new(v1.CID)
 	if err := x.ServerStream.RecvMsg(m); err != nil {
 		return nil, err
 	}
@@ -432,7 +432,7 @@ func _StoreService_Delete_Handler(srv interface{}, stream grpc.ServerStream) err
 
 type StoreService_DeleteServer interface {
 	SendAndClose(*emptypb.Empty) error
-	Recv() (*v1.RecordRef, error)
+	Recv() (*v1.CID, error)
 	grpc.ServerStream
 }
 
@@ -444,8 +444,8 @@ func (x *storeServiceDeleteServer) SendAndClose(m *emptypb.Empty) error {
 	return x.ServerStream.SendMsg(m)
 }
 
-func (x *storeServiceDeleteServer) Recv() (*v1.RecordRef, error) {
-	m := new(v1.RecordRef)
+func (x *storeServiceDeleteServer) Recv() (*v1.CID, error) {
+	m := new(v1.CID)
 	if err := x.ServerStream.RecvMsg(m); err != nil {
 		return nil, err
 	}

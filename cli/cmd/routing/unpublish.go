@@ -57,7 +57,7 @@ func runUnpublishCommand(cmd *cobra.Command, cid string) error {
 	}
 
 	// Create RecordRef from cid
-	recordRef := &corev1.RecordRef{
+	recordRef := &corev1.CID{
 		Cid: cid,
 	}
 
@@ -71,7 +71,7 @@ func runUnpublishCommand(cmd *cobra.Command, cid string) error {
 	if err := c.Unpublish(cmd.Context(), &routingv1.UnpublishRequest{
 		Request: &routingv1.UnpublishRequest_RecordRefs{
 			RecordRefs: &routingv1.RecordRefs{
-				Refs: []*corev1.RecordRef{recordRef},
+				Refs: []*corev1.CID{recordRef},
 			},
 		},
 	}); err != nil {

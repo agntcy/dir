@@ -124,7 +124,7 @@ func (c *routingCtlr) Unpublish(ctx context.Context, req *routingv1.UnpublishReq
 	return &emptypb.Empty{}, nil
 }
 
-func (c *routingCtlr) getRecord(ctx context.Context, ref *corev1.RecordRef) (*corev1.Record, error) {
+func (c *routingCtlr) getRecord(ctx context.Context, ref *corev1.CID) (*corev1.Record, error) {
 	routingLogger.Debug("Called routing controller's getRecord method", "ref", ref)
 
 	if ref == nil || ref.GetCid() == "" {

@@ -8,10 +8,10 @@ package agntcy.dir.core.v1;
 import "google/protobuf/struct.proto";
 import "buf/validate/validate.proto";
 
-// Defines a reference or a globally unique content identifier of a record.
-message RecordRef {
-  // Globally-unique content identifier (CID) of the record.
-  // Specs: https://github.com/multiformats/cid
+// Content Identifier (https://github.com/multiformats/cid)
+// A self-describing, content-addressed identifier
+// used for identifying records and referrers
+message CID {
   string cid = 1;
 }
 
@@ -73,7 +73,7 @@ message RecordReferrer {
     ];
 
     // Record reference to which this referrer is associated.
-    core.v1.RecordRef record_ref = 2;
+    core.v1.CID record_ref = 2;
 
     // Annotations attached to the referrer object.
     map<string, string> annotations = 3;

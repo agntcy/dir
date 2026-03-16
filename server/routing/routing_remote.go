@@ -386,7 +386,7 @@ func (r *routeRemote) searchRemoteRecords(ctx context.Context, queries []*routin
 			peer := r.createPeerInfo(ctx, keyPeerID)
 
 			outCh <- &routingv1.SearchResponse{
-				RecordRef:    &corev1.RecordRef{Cid: keyCID},
+				RecordRef:    &corev1.CID{Cid: keyCID},
 				Peer:         peer,
 				MatchQueries: matchQueries,
 				MatchScore:   score,

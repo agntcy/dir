@@ -33,7 +33,7 @@ func Wrap(source types.StoreAPI, eventBus *events.SafeEventBus) types.StoreAPI {
 }
 
 // Push pushes a record to the source store and emits a RECORD_PUSHED event.
-func (s *eventsStore) Push(ctx context.Context, record *corev1.Record) (*corev1.RecordRef, error) {
+func (s *eventsStore) Push(ctx context.Context, record *corev1.Record) (*corev1.CID, error) {
 	// Push to source store
 	ref, err := s.source.Push(ctx, record)
 	if err != nil {
@@ -54,7 +54,7 @@ func (s *eventsStore) Push(ctx context.Context, record *corev1.Record) (*corev1.
 }
 
 // Pull pulls a record from the source store and emits a RECORD_PULLED event.
-func (s *eventsStore) Pull(ctx context.Context, ref *corev1.RecordRef) (*corev1.Record, error) {
+func (s *eventsStore) Pull(ctx context.Context, ref *corev1.CID) (*corev1.Record, error) {
 	// Pull from source store
 	record, err := s.source.Pull(ctx, ref)
 	if err != nil {
@@ -75,13 +75,13 @@ func (s *eventsStore) Pull(ctx context.Context, ref *corev1.RecordRef) (*corev1.
 }
 
 // Lookup forwards to the source store (no event emitted for metadata lookups).
-func (s *eventsStore) Lookup(ctx context.Context, ref *corev1.RecordRef) (*corev1.RecordMeta, error) {
+func (s *eventsStore) Lookup(ctx context.Context, ref *corev1.CID) (*corev1.RecordMeta, error) {
 	//nolint:wrapcheck // Transparent wrapper - pass through errors unchanged
 	return s.source.Lookup(ctx, ref)
 }
 
 // Delete deletes a record from the source store and emits a RECORD_DELETED event.
-func (s *eventsStore) Delete(ctx context.Context, ref *corev1.RecordRef) error {
+func (s *eventsStore) Delete(ctx context.Context, ref *corev1.CID) error {
 	// Delete from source store
 	err := s.source.Delete(ctx, ref)
 	if err != nil {

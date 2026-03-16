@@ -7,7 +7,7 @@ from typing import ClassVar as _ClassVar, Mapping as _Mapping, Optional as _Opti
 
 DESCRIPTOR: _descriptor.FileDescriptor
 
-class RecordRef(_message.Message):
+class CID(_message.Message):
     __slots__ = ("cid",)
     CID_FIELD_NUMBER: _ClassVar[int]
     cid: str
@@ -63,8 +63,8 @@ class RecordReferrer(_message.Message):
     CREATED_AT_FIELD_NUMBER: _ClassVar[int]
     DATA_FIELD_NUMBER: _ClassVar[int]
     type: str
-    record_ref: RecordRef
+    record_ref: CID
     annotations: _containers.ScalarMap[str, str]
     created_at: str
     data: _struct_pb2.Struct
-    def __init__(self, type: _Optional[str] = ..., record_ref: _Optional[_Union[RecordRef, _Mapping]] = ..., annotations: _Optional[_Mapping[str, str]] = ..., created_at: _Optional[str] = ..., data: _Optional[_Union[_struct_pb2.Struct, _Mapping]] = ...) -> None: ...
+    def __init__(self, type: _Optional[str] = ..., record_ref: _Optional[_Union[CID, _Mapping]] = ..., annotations: _Optional[_Mapping[str, str]] = ..., created_at: _Optional[str] = ..., data: _Optional[_Union[_struct_pb2.Struct, _Mapping]] = ...) -> None: ...

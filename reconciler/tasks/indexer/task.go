@@ -193,7 +193,7 @@ func (t *Task) indexRecord(ctx context.Context, tag string) error {
 	logger.Debug("Indexing record", "tag", tag)
 
 	// Pull record from local store
-	recordRef := &corev1.RecordRef{Cid: tag}
+	recordRef := &corev1.CID{Cid: tag}
 
 	record, err := t.store.Pull(ctx, recordRef)
 	if err != nil {

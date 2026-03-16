@@ -34,21 +34,21 @@ class StoreServiceStub(object):
         self.Push = channel.stream_stream(
                 '/agntcy.dir.store.v1.StoreService/Push',
                 request_serializer=agntcy_dot_dir_dot_core_dot_v1_dot_record__pb2.Record.SerializeToString,
-                response_deserializer=agntcy_dot_dir_dot_core_dot_v1_dot_record__pb2.RecordRef.FromString,
+                response_deserializer=agntcy_dot_dir_dot_core_dot_v1_dot_record__pb2.CID.FromString,
                 _registered_method=True)
         self.Pull = channel.stream_stream(
                 '/agntcy.dir.store.v1.StoreService/Pull',
-                request_serializer=agntcy_dot_dir_dot_core_dot_v1_dot_record__pb2.RecordRef.SerializeToString,
+                request_serializer=agntcy_dot_dir_dot_core_dot_v1_dot_record__pb2.CID.SerializeToString,
                 response_deserializer=agntcy_dot_dir_dot_core_dot_v1_dot_record__pb2.Record.FromString,
                 _registered_method=True)
         self.Lookup = channel.stream_stream(
                 '/agntcy.dir.store.v1.StoreService/Lookup',
-                request_serializer=agntcy_dot_dir_dot_core_dot_v1_dot_record__pb2.RecordRef.SerializeToString,
+                request_serializer=agntcy_dot_dir_dot_core_dot_v1_dot_record__pb2.CID.SerializeToString,
                 response_deserializer=agntcy_dot_dir_dot_core_dot_v1_dot_record__pb2.RecordMeta.FromString,
                 _registered_method=True)
         self.Delete = channel.stream_unary(
                 '/agntcy.dir.store.v1.StoreService/Delete',
-                request_serializer=agntcy_dot_dir_dot_core_dot_v1_dot_record__pb2.RecordRef.SerializeToString,
+                request_serializer=agntcy_dot_dir_dot_core_dot_v1_dot_record__pb2.CID.SerializeToString,
                 response_deserializer=google_dot_protobuf_dot_empty__pb2.Empty.FromString,
                 _registered_method=True)
         self.PushReferrer = channel.stream_stream(
@@ -129,21 +129,21 @@ def add_StoreServiceServicer_to_server(servicer, server):
             'Push': grpc.stream_stream_rpc_method_handler(
                     servicer.Push,
                     request_deserializer=agntcy_dot_dir_dot_core_dot_v1_dot_record__pb2.Record.FromString,
-                    response_serializer=agntcy_dot_dir_dot_core_dot_v1_dot_record__pb2.RecordRef.SerializeToString,
+                    response_serializer=agntcy_dot_dir_dot_core_dot_v1_dot_record__pb2.CID.SerializeToString,
             ),
             'Pull': grpc.stream_stream_rpc_method_handler(
                     servicer.Pull,
-                    request_deserializer=agntcy_dot_dir_dot_core_dot_v1_dot_record__pb2.RecordRef.FromString,
+                    request_deserializer=agntcy_dot_dir_dot_core_dot_v1_dot_record__pb2.CID.FromString,
                     response_serializer=agntcy_dot_dir_dot_core_dot_v1_dot_record__pb2.Record.SerializeToString,
             ),
             'Lookup': grpc.stream_stream_rpc_method_handler(
                     servicer.Lookup,
-                    request_deserializer=agntcy_dot_dir_dot_core_dot_v1_dot_record__pb2.RecordRef.FromString,
+                    request_deserializer=agntcy_dot_dir_dot_core_dot_v1_dot_record__pb2.CID.FromString,
                     response_serializer=agntcy_dot_dir_dot_core_dot_v1_dot_record__pb2.RecordMeta.SerializeToString,
             ),
             'Delete': grpc.stream_unary_rpc_method_handler(
                     servicer.Delete,
-                    request_deserializer=agntcy_dot_dir_dot_core_dot_v1_dot_record__pb2.RecordRef.FromString,
+                    request_deserializer=agntcy_dot_dir_dot_core_dot_v1_dot_record__pb2.CID.FromString,
                     response_serializer=google_dot_protobuf_dot_empty__pb2.Empty.SerializeToString,
             ),
             'PushReferrer': grpc.stream_stream_rpc_method_handler(
@@ -198,7 +198,7 @@ class StoreService(object):
             target,
             '/agntcy.dir.store.v1.StoreService/Push',
             agntcy_dot_dir_dot_core_dot_v1_dot_record__pb2.Record.SerializeToString,
-            agntcy_dot_dir_dot_core_dot_v1_dot_record__pb2.RecordRef.FromString,
+            agntcy_dot_dir_dot_core_dot_v1_dot_record__pb2.CID.FromString,
             options,
             channel_credentials,
             insecure,
@@ -224,7 +224,7 @@ class StoreService(object):
             request_iterator,
             target,
             '/agntcy.dir.store.v1.StoreService/Pull',
-            agntcy_dot_dir_dot_core_dot_v1_dot_record__pb2.RecordRef.SerializeToString,
+            agntcy_dot_dir_dot_core_dot_v1_dot_record__pb2.CID.SerializeToString,
             agntcy_dot_dir_dot_core_dot_v1_dot_record__pb2.Record.FromString,
             options,
             channel_credentials,
@@ -251,7 +251,7 @@ class StoreService(object):
             request_iterator,
             target,
             '/agntcy.dir.store.v1.StoreService/Lookup',
-            agntcy_dot_dir_dot_core_dot_v1_dot_record__pb2.RecordRef.SerializeToString,
+            agntcy_dot_dir_dot_core_dot_v1_dot_record__pb2.CID.SerializeToString,
             agntcy_dot_dir_dot_core_dot_v1_dot_record__pb2.RecordMeta.FromString,
             options,
             channel_credentials,
@@ -278,7 +278,7 @@ class StoreService(object):
             request_iterator,
             target,
             '/agntcy.dir.store.v1.StoreService/Delete',
-            agntcy_dot_dir_dot_core_dot_v1_dot_record__pb2.RecordRef.SerializeToString,
+            agntcy_dot_dir_dot_core_dot_v1_dot_record__pb2.CID.SerializeToString,
             google_dot_protobuf_dot_empty__pb2.Empty.FromString,
             options,
             channel_credentials,

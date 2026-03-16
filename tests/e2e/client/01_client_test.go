@@ -132,7 +132,7 @@ var _ = ginkgo.Describe("Running client end-to-end tests using a local single no
 				canonicalData []byte
 			)
 
-			var recordRef *corev1.RecordRef // Shared across the business flow
+			var recordRef *corev1.CID // Shared across the business flow
 
 			// Load the record once per version context (inline initialization)
 			var err error
@@ -178,7 +178,7 @@ var _ = ginkgo.Describe("Running client end-to-end tests using a local single no
 				err := c.Publish(ctx, &routingv1.PublishRequest{
 					Request: &routingv1.PublishRequest_RecordRefs{
 						RecordRefs: &routingv1.RecordRefs{
-							Refs: []*corev1.RecordRef{recordRef},
+							Refs: []*corev1.CID{recordRef},
 						},
 					},
 				})
@@ -295,7 +295,7 @@ var _ = ginkgo.Describe("Running client end-to-end tests using a local single no
 				err := c.Unpublish(ctx, &routingv1.UnpublishRequest{
 					Request: &routingv1.UnpublishRequest_RecordRefs{
 						RecordRefs: &routingv1.RecordRefs{
-							Refs: []*corev1.RecordRef{recordRef},
+							Refs: []*corev1.CID{recordRef},
 						},
 					},
 				})

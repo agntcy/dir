@@ -55,7 +55,7 @@ func (t *Tools) VerifyRecord(ctx context.Context, _ *mcp.CallToolRequest, input 
 
 	// Verify record
 	resp, err := t.Client.Verify(ctx, &signv1.VerifyRequest{
-		RecordRef: &corev1.RecordRef{
+		RecordRef: &corev1.CID{
 			Cid: input.CID,
 		},
 	})

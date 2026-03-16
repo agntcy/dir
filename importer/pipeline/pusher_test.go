@@ -304,15 +304,15 @@ type mockClientInterface struct {
 	pushErr error
 }
 
-func (m *mockClientInterface) Push(ctx context.Context, record *corev1.Record) (*corev1.RecordRef, error) {
+func (m *mockClientInterface) Push(ctx context.Context, record *corev1.Record) (*corev1.CID, error) {
 	if m.pushErr != nil {
 		return nil, m.pushErr
 	}
 
-	return &corev1.RecordRef{Cid: "test-cid"}, nil
+	return &corev1.CID{Cid: "test-cid"}, nil
 }
 
-func (m *mockClientInterface) PullBatch(ctx context.Context, recordRefs []*corev1.RecordRef) ([]*corev1.Record, error) {
+func (m *mockClientInterface) PullBatch(ctx context.Context, recordRefs []*corev1.CID) ([]*corev1.Record, error) {
 	return []*corev1.Record{}, nil
 }
 

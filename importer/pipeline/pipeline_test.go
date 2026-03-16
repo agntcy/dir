@@ -68,8 +68,8 @@ type mockPusher struct {
 	pushed     []*corev1.Record
 }
 
-func (m *mockPusher) Push(ctx context.Context, inputCh <-chan *corev1.Record) (<-chan *corev1.RecordRef, <-chan error) {
-	refCh := make(chan *corev1.RecordRef)
+func (m *mockPusher) Push(ctx context.Context, inputCh <-chan *corev1.Record) (<-chan *corev1.CID, <-chan error) {
+	refCh := make(chan *corev1.CID)
 	errCh := make(chan error)
 
 	go func() {
@@ -89,7 +89,7 @@ func (m *mockPusher) Push(ctx context.Context, inputCh <-chan *corev1.Record) (<
 			} else {
 				// Send success response with a valid CID
 				select {
-				case refCh <- &corev1.RecordRef{Cid: "bafytest123"}:
+				case refCh <- &corev1.CID{Cid: "bafytest123"}:
 				case <-ctx.Done():
 					return
 				}

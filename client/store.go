@@ -18,7 +18,7 @@ import (
 // Push sends a complete record to the store and returns a record reference.
 // This is a convenience wrapper around PushBatch for single-record operations.
 // The record must be ≤4MB as per the v1 store service specification.
-func (c *Client) Push(ctx context.Context, record *corev1.Record) (*corev1.RecordRef, error) {
+func (c *Client) Push(ctx context.Context, record *corev1.Record) (*corev1.CID, error) {
 	refs, err := c.PushBatch(ctx, []*corev1.Record{record})
 	if err != nil {
 		return nil, err
@@ -34,7 +34,7 @@ func (c *Client) Push(ctx context.Context, record *corev1.Record) (*corev1.Recor
 // PullStream retrieves multiple records efficiently using a single bidirectional stream.
 // This method is ideal for batch operations and takes full advantage of gRPC streaming.
 // The input channel allows you to send record refs as they become available.
-func (c *Client) PullStream(ctx context.Context, refsCh <-chan *corev1.RecordRef) (streaming.StreamResult[corev1.Record], error) {
+func (c *Client) PullStream(ctx context.Context, refsCh <-chan *corev1.CID) (streaming.StreamResult[corev1.Record], error) {
 	stream, err := c.StoreServiceClient.Pull(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create pull stream: %w", err)
@@ -46,8 +46,8 @@ func (c *Client) PullStream(ctx context.Context, refsCh <-chan *corev1.RecordRef
 
 // Pull retrieves a single record from the store using its reference.
 // This is a convenience wrapper around PullBatch for single-record operations.
-func (c *Client) Pull(ctx context.Context, recordRef *corev1.RecordRef) (*corev1.Record, error) {
-	records, err := c.PullBatch(ctx, []*corev1.RecordRef{recordRef})
+func (c *Client) Pull(ctx context.Context, recordRef *corev1.CID) (*corev1.Record, error) {
+	records, err := c.PullBatch(ctx, []*corev1.CID{recordRef})
 	if err != nil {
 		return nil, err
 	}
@@ -62,7 +62,7 @@ func (c *Client) Pull(ctx context.Context, recordRef *corev1.RecordRef) (*corev1
 // PullBatch retrieves multiple records in a single stream for efficiency.
 // This is a convenience method that accepts a slice and returns a slice,
 // built on top of the streaming implementation for consistency.
-func (c *Client) PullBatch(ctx context.Context, recordRefs []*corev1.RecordRef) ([]*corev1.Record, error) {
+func (c *Client) PullBatch(ctx context.Context, recordRefs []*corev1.CID) ([]*corev1.Record, error) {
 	// Use channel to communicate error safely (no race condition)
 	result, err := c.PullStream(ctx, streaming.SliceToChan(ctx, recordRefs))
 	if err != nil {
@@ -89,7 +89,7 @@ func (c *Client) PullBatch(ctx context.Context, recordRefs []*corev1.RecordRef) 
 // PushStream uploads multiple records efficiently using a single bidirectional stream.
 // This method is ideal for batch operations and takes full advantage of gRPC streaming.
 // The input channel allows you to send records as they become available.
-func (c *Client) PushStream(ctx context.Context, recordsCh <-chan *corev1.Record) (streaming.StreamResult[corev1.RecordRef], error) {
+func (c *Client) PushStream(ctx context.Context, recordsCh <-chan *corev1.Record) (streaming.StreamResult[corev1.CID], error) {
 	stream, err := c.StoreServiceClient.Push(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create push stream: %w", err)
@@ -102,7 +102,7 @@ func (c *Client) PushStream(ctx context.Context, recordsCh <-chan *corev1.Record
 // PushBatch sends multiple records in a single stream for efficiency.
 // This is a convenience method that accepts a slice and returns a slice,
 // built on top of the streaming implementation for consistency.
-func (c *Client) PushBatch(ctx context.Context, records []*corev1.Record) ([]*corev1.RecordRef, error) {
+func (c *Client) PushBatch(ctx context.Context, records []*corev1.Record) ([]*corev1.CID, error) {
 	// Use channel to communicate error safely (no race condition)
 	result, err := c.PushStream(ctx, streaming.SliceToChan(ctx, records))
 	if err != nil {
@@ -112,7 +112,7 @@ func (c *Client) PushBatch(ctx context.Context, records []*corev1.Record) ([]*co
 	// Check for results
 	var errs error
 
-	var refs []*corev1.RecordRef
+	var refs []*corev1.CID
 
 	for {
 		select {
@@ -202,8 +202,8 @@ func (c *Client) PullReferrer(ctx context.Context, req *storev1.PullReferrerRequ
 }
 
 // Lookup retrieves metadata for a record using its reference.
-func (c *Client) Lookup(ctx context.Context, recordRef *corev1.RecordRef) (*corev1.RecordMeta, error) {
-	resp, err := c.LookupBatch(ctx, []*corev1.RecordRef{recordRef})
+func (c *Client) Lookup(ctx context.Context, recordRef *corev1.CID) (*corev1.RecordMeta, error) {
+	resp, err := c.LookupBatch(ctx, []*corev1.CID{recordRef})
 	if err != nil {
 		return nil, err
 	}
@@ -216,7 +216,7 @@ func (c *Client) Lookup(ctx context.Context, recordRef *corev1.RecordRef) (*core
 }
 
 // LookupBatch retrieves metadata for multiple records in a single stream for efficiency.
-func (c *Client) LookupBatch(ctx context.Context, recordRefs []*corev1.RecordRef) ([]*corev1.RecordMeta, error) {
+func (c *Client) LookupBatch(ctx context.Context, recordRefs []*corev1.CID) ([]*corev1.RecordMeta, error) {
 	// Use channel to communicate error safely (no race condition)
 	result, err := c.LookupStream(ctx, streaming.SliceToChan(ctx, recordRefs))
 	if err != nil {
@@ -246,7 +246,7 @@ func (c *Client) LookupBatch(ctx context.Context, recordRefs []*corev1.RecordRef
 //
 // Uses sequential streaming pattern (Send → Recv → Send → Recv) which ensures
 // strict ordering of request-response pairs.
-func (c *Client) LookupStream(ctx context.Context, refsCh <-chan *corev1.RecordRef) (streaming.StreamResult[corev1.RecordMeta], error) {
+func (c *Client) LookupStream(ctx context.Context, refsCh <-chan *corev1.CID) (streaming.StreamResult[corev1.RecordMeta], error) {
 	stream, err := c.StoreServiceClient.Lookup(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create lookup stream: %w", err)
@@ -257,12 +257,12 @@ func (c *Client) LookupStream(ctx context.Context, refsCh <-chan *corev1.RecordR
 }
 
 // Delete removes a record from the store using its reference.
-func (c *Client) Delete(ctx context.Context, recordRef *corev1.RecordRef) error {
-	return c.DeleteBatch(ctx, []*corev1.RecordRef{recordRef})
+func (c *Client) Delete(ctx context.Context, recordRef *corev1.CID) error {
+	return c.DeleteBatch(ctx, []*corev1.CID{recordRef})
 }
 
 // DeleteBatch removes multiple records from the store in a single stream for efficiency.
-func (c *Client) DeleteBatch(ctx context.Context, recordRefs []*corev1.RecordRef) error {
+func (c *Client) DeleteBatch(ctx context.Context, recordRefs []*corev1.CID) error {
 	// Use channel to communicate error safely (no race condition)
 	result, err := c.DeleteStream(ctx, streaming.SliceToChan(ctx, recordRefs))
 	if err != nil {
@@ -286,7 +286,7 @@ func (c *Client) DeleteBatch(ctx context.Context, recordRefs []*corev1.RecordRef
 // DeleteStream provides efficient streaming delete operations using channels.
 // Record references are sent as they become available and delete confirmations are returned as they're processed.
 // This method maintains a single gRPC stream for all operations, dramatically improving efficiency.
-func (c *Client) DeleteStream(ctx context.Context, refsCh <-chan *corev1.RecordRef) (streaming.StreamResult[emptypb.Empty], error) {
+func (c *Client) DeleteStream(ctx context.Context, refsCh <-chan *corev1.CID) (streaming.StreamResult[emptypb.Empty], error) {
 	// Create gRPC stream
 	stream, err := c.StoreServiceClient.Delete(ctx)
 	if err != nil {

@@ -57,7 +57,7 @@ func (c *Client) Verify(ctx context.Context, req *signv1.VerifyRequest) (*signv1
 }
 
 // PullSignatures fetches all signature referrers for a record.
-func (c *Client) PullSignatures(ctx context.Context, recordRef *corev1.RecordRef) ([]*signv1.Signature, error) {
+func (c *Client) PullSignatures(ctx context.Context, recordRef *corev1.CID) ([]*signv1.Signature, error) {
 	referrerType := corev1.SignatureReferrerType
 
 	respCh, err := c.PullReferrer(ctx, &storev1.PullReferrerRequest{
@@ -89,7 +89,7 @@ func (c *Client) PullSignatures(ctx context.Context, recordRef *corev1.RecordRef
 }
 
 // PullPublicKeys fetches all public key referrers for a record.
-func (c *Client) PullPublicKeys(ctx context.Context, recordRef *corev1.RecordRef) ([]string, error) {
+func (c *Client) PullPublicKeys(ctx context.Context, recordRef *corev1.CID) ([]string, error) {
 	referrerType := corev1.PublicKeyReferrerType
 
 	respCh, err := c.PullReferrer(ctx, &storev1.PullReferrerRequest{

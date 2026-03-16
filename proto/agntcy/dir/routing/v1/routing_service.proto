@@ -73,7 +73,7 @@ message UnpublishRequest {
 }
 
 message RecordRefs {
-  repeated core.v1.RecordRef refs = 1;
+  repeated core.v1.CID refs = 1;
 }
 
 message RecordQueries {
@@ -101,7 +101,7 @@ message SearchRequest {
 
 message SearchResponse {
   // The record that matches the search query.
-  core.v1.RecordRef record_ref = 1;
+  core.v1.CID record_ref = 1;
 
   // The peer that provided the record.
   Peer peer = 2;
@@ -125,7 +125,7 @@ message ListRequest {
 
 message ListResponse {
   // The record that matches the list queries.
-  core.v1.RecordRef record_ref = 1;
+  core.v1.CID record_ref = 1;
 
   // Labels associated with this record (skills, domains, modules)
   // Derived from the record content for CLI display purposes

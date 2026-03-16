@@ -128,7 +128,7 @@ func TestCollectRoutingStatistics_EmptyChannel(t *testing.T) {
 func TestCollectRoutingStatistics_SingleRecord(t *testing.T) {
 	ch := make(chan *routingv1.ListResponse, 1)
 	ch <- &routingv1.ListResponse{
-		RecordRef: &corev1.RecordRef{Cid: "test-cid"},
+		RecordRef: &corev1.CID{Cid: "test-cid"},
 		Labels:    []string{"/skills/AI", "/locators/docker-image"},
 	}
 
@@ -146,17 +146,17 @@ func TestCollectRoutingStatistics_SingleRecord(t *testing.T) {
 func TestCollectRoutingStatistics_MultipleRecords(t *testing.T) {
 	ch := make(chan *routingv1.ListResponse, 3)
 	ch <- &routingv1.ListResponse{
-		RecordRef: &corev1.RecordRef{Cid: "cid1"},
+		RecordRef: &corev1.CID{Cid: "cid1"},
 		Labels:    []string{"/skills/AI", "/locators/docker-image"},
 	}
 
 	ch <- &routingv1.ListResponse{
-		RecordRef: &corev1.RecordRef{Cid: "cid2"},
+		RecordRef: &corev1.CID{Cid: "cid2"},
 		Labels:    []string{"/skills/AI", "/skills/ML"},
 	}
 
 	ch <- &routingv1.ListResponse{
-		RecordRef: &corev1.RecordRef{Cid: "cid3"},
+		RecordRef: &corev1.CID{Cid: "cid3"},
 		Labels:    []string{"/skills/ML", "/locators/http"},
 	}
 
@@ -174,12 +174,12 @@ func TestCollectRoutingStatistics_MultipleRecords(t *testing.T) {
 func TestCollectRoutingStatistics_WithOtherLabels(t *testing.T) {
 	ch := make(chan *routingv1.ListResponse, 2)
 	ch <- &routingv1.ListResponse{
-		RecordRef: &corev1.RecordRef{Cid: "cid1"},
+		RecordRef: &corev1.CID{Cid: "cid1"},
 		Labels:    []string{"/skills/AI", "/domains/healthcare", "/custom/label"},
 	}
 
 	ch <- &routingv1.ListResponse{
-		RecordRef: &corev1.RecordRef{Cid: "cid2"},
+		RecordRef: &corev1.CID{Cid: "cid2"},
 		Labels:    []string{"/domains/healthcare", "/modules/runtime"},
 	}
 
@@ -201,12 +201,12 @@ func TestCollectRoutingStatistics_WithOtherLabels(t *testing.T) {
 func TestCollectRoutingStatistics_RecordWithNoLabels(t *testing.T) {
 	ch := make(chan *routingv1.ListResponse, 2)
 	ch <- &routingv1.ListResponse{
-		RecordRef: &corev1.RecordRef{Cid: "cid1"},
+		RecordRef: &corev1.CID{Cid: "cid1"},
 		Labels:    []string{},
 	}
 
 	ch <- &routingv1.ListResponse{
-		RecordRef: &corev1.RecordRef{Cid: "cid2"},
+		RecordRef: &corev1.CID{Cid: "cid2"},
 		Labels:    nil,
 	}
 
@@ -523,7 +523,7 @@ func TestCollectRoutingStatistics_LargeDataset(t *testing.T) {
 		}
 
 		ch <- &routingv1.ListResponse{
-			RecordRef: &corev1.RecordRef{Cid: "cid-" + string(rune(i))},
+			RecordRef: &corev1.CID{Cid: "cid-" + string(rune(i))},
 			Labels:    labels,
 		}
 	}

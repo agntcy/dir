@@ -29,8 +29,8 @@ class UnpublishRequest(_message.Message):
 class RecordRefs(_message.Message):
     __slots__ = ("refs",)
     REFS_FIELD_NUMBER: _ClassVar[int]
-    refs: _containers.RepeatedCompositeFieldContainer[_record_pb2.RecordRef]
-    def __init__(self, refs: _Optional[_Iterable[_Union[_record_pb2.RecordRef, _Mapping]]] = ...) -> None: ...
+    refs: _containers.RepeatedCompositeFieldContainer[_record_pb2.CID]
+    def __init__(self, refs: _Optional[_Iterable[_Union[_record_pb2.CID, _Mapping]]] = ...) -> None: ...
 
 class RecordQueries(_message.Message):
     __slots__ = ("queries",)
@@ -54,11 +54,11 @@ class SearchResponse(_message.Message):
     PEER_FIELD_NUMBER: _ClassVar[int]
     MATCH_QUERIES_FIELD_NUMBER: _ClassVar[int]
     MATCH_SCORE_FIELD_NUMBER: _ClassVar[int]
-    record_ref: _record_pb2.RecordRef
+    record_ref: _record_pb2.CID
     peer: _peer_pb2.Peer
     match_queries: _containers.RepeatedCompositeFieldContainer[_record_query_pb2.RecordQuery]
     match_score: int
-    def __init__(self, record_ref: _Optional[_Union[_record_pb2.RecordRef, _Mapping]] = ..., peer: _Optional[_Union[_peer_pb2.Peer, _Mapping]] = ..., match_queries: _Optional[_Iterable[_Union[_record_query_pb2.RecordQuery, _Mapping]]] = ..., match_score: _Optional[int] = ...) -> None: ...
+    def __init__(self, record_ref: _Optional[_Union[_record_pb2.CID, _Mapping]] = ..., peer: _Optional[_Union[_peer_pb2.Peer, _Mapping]] = ..., match_queries: _Optional[_Iterable[_Union[_record_query_pb2.RecordQuery, _Mapping]]] = ..., match_score: _Optional[int] = ...) -> None: ...
 
 class ListRequest(_message.Message):
     __slots__ = ("queries", "limit")
@@ -72,6 +72,6 @@ class ListResponse(_message.Message):
     __slots__ = ("record_ref", "labels")
     RECORD_REF_FIELD_NUMBER: _ClassVar[int]
     LABELS_FIELD_NUMBER: _ClassVar[int]
-    record_ref: _record_pb2.RecordRef
+    record_ref: _record_pb2.CID
     labels: _containers.RepeatedScalarFieldContainer[str]
-    def __init__(self, record_ref: _Optional[_Union[_record_pb2.RecordRef, _Mapping]] = ..., labels: _Optional[_Iterable[str]] = ...) -> None: ...
+    def __init__(self, record_ref: _Optional[_Union[_record_pb2.CID, _Mapping]] = ..., labels: _Optional[_Iterable[str]] = ...) -> None: ...

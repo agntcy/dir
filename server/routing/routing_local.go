@@ -193,7 +193,7 @@ func (r *routeLocal) listLocalRecords(ctx context.Context, queries []*routingv1.
 
 			// Send the response
 			outCh <- &routingv1.ListResponse{
-				RecordRef: &corev1.RecordRef{Cid: cid},
+				RecordRef: &corev1.CID{Cid: cid},
 				Labels:    apiLabels,
 			}
 

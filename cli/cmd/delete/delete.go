@@ -56,7 +56,7 @@ func runCommand(cmd *cobra.Command, cid string) error {
 	}
 
 	// Delete object from store
-	err := c.Delete(cmd.Context(), &corev1.RecordRef{
+	err := c.Delete(cmd.Context(), &corev1.CID{
 		Cid: cid,
 	})
 	if err != nil {

@@ -48,7 +48,7 @@ type LookupResponse struct {
 // NOTE: List-related types removed since List is a local-only operation
 // and should not be part of peer-to-peer RPC communication
 
-func (r *RPCAPI) Lookup(ctx context.Context, in *corev1.RecordRef, out *LookupResponse) error {
+func (r *RPCAPI) Lookup(ctx context.Context, in *corev1.CID, out *LookupResponse) error {
 	logger.Debug("P2p RPC: Executing Lookup request on remote peer", "peer", r.service.host.ID())
 
 	// validate request
@@ -73,7 +73,7 @@ func (r *RPCAPI) Lookup(ctx context.Context, in *corev1.RecordRef, out *LookupRe
 	return nil
 }
 
-func (r *RPCAPI) Pull(ctx context.Context, in *corev1.RecordRef, out *PullResponse) error {
+func (r *RPCAPI) Pull(ctx context.Context, in *corev1.CID, out *PullResponse) error {
 	logger.Debug("P2p RPC: Executing Pull request on remote peer", "peer", r.service.host.ID())
 
 	// validate request
@@ -142,7 +142,7 @@ func New(host host.Host, store types.StoreAPI) (*Service, error) {
 	return service, nil
 }
 
-func (s *Service) Lookup(ctx context.Context, peer peer.ID, req *corev1.RecordRef) (*corev1.RecordRef, error) {
+func (s *Service) Lookup(ctx context.Context, peer peer.ID, req *corev1.CID) (*corev1.CID, error) {
 	logger.Debug("P2p RPC: Executing Lookup request on remote peer", "peer", peer, "req", req)
 
 	var resp LookupResponse
@@ -152,12 +152,12 @@ func (s *Service) Lookup(ctx context.Context, peer peer.ID, req *corev1.RecordRe
 		return nil, status.Errorf(codes.Internal, "failed to call remote peer: %v", err)
 	}
 
-	return &corev1.RecordRef{
+	return &corev1.CID{
 		Cid: resp.Cid,
 	}, nil
 }
 
-func (s *Service) Pull(ctx context.Context, peer peer.ID, req *corev1.RecordRef) (*corev1.Record, error) {
+func (s *Service) Pull(ctx context.Context, peer peer.ID, req *corev1.CID) (*corev1.Record, error) {
 	logger.Debug("P2p RPC: Executing Pull request on remote peer", "peer", peer, "req", req)
 
 	var resp PullResponse

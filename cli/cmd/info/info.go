@@ -81,7 +81,7 @@ func runCommand(cmd *cobra.Command, input string) error {
 	}
 
 	// Fetch info from store
-	info, err := c.Lookup(cmd.Context(), &corev1.RecordRef{
+	info, err := c.Lookup(cmd.Context(), &corev1.CID{
 		Cid: recordCID,
 	})
 	if err != nil {

@@ -169,7 +169,7 @@ func (c *CleanupManager) republishLocalProviders(ctx context.Context) {
 		}
 
 		// Verify the record still exists in storage
-		ref := &corev1.RecordRef{Cid: cidStr}
+		ref := &corev1.CID{Cid: cidStr}
 
 		_, err := c.storeAPI.Lookup(ctx, ref)
 		if err != nil {
