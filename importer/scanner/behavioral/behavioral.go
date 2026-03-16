@@ -7,7 +7,6 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"net/url"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -48,13 +47,6 @@ func (s *Scanner) Scan(ctx context.Context, record *corev1.Record) (*types.ScanR
 		}, nil
 	}
 
-	if isPlaceholderURL(repoURL) {
-		return &types.ScanResult{
-			Skipped:       true,
-			SkippedReason: "placeholder source-code URL",
-		}, nil
-	}
-
 	tmpDir, err := os.MkdirTemp("", "behavioral-scan-*")
 	if err != nil {
 		return nil, fmt.Errorf("create temp dir: %w", err)
@@ -87,19 +79,6 @@ func (s *Scanner) Scan(ctx context.Context, record *corev1.Record) (*types.ScanR
 	}
 
 	return parseOutput(rawOutput)
-}
-
-// isPlaceholderURL returns true for URLs that are not real repositories
-// (e.g. example.com placeholders injected by the transformer).
-func isPlaceholderURL(rawURL string) bool {
-	parsed, err := url.Parse(rawURL)
-	if err != nil {
-		return false
-	}
-
-	host := strings.TrimPrefix(parsed.Hostname(), "www.")
-
-	return host == "example.com" || host == "example.org" || host == "example.net"
 }
 
 // extractSourceInfo extracts the source-code repository URL and optional
