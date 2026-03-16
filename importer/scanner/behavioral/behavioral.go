@@ -220,6 +220,7 @@ func runMCPScanner(ctx context.Context, cliPath, scanDir string) ([]byte, error)
 	cmd := exec.CommandContext(ctx, cliPath, "behavioral", "--raw", scanDir)
 	cmd.Stdout = &stdout
 	cmd.Stderr = &stderr
+	cmd.Env = buildScannerEnv()
 
 	if err := cmd.Run(); err != nil {
 		logger.Warn("mcp-scanner stderr", "output", strings.TrimSpace(stderr.String()))
@@ -228,4 +229,26 @@ func runMCPScanner(ctx context.Context, cliPath, scanDir string) ([]byte, error)
 	}
 
 	return stdout.Bytes(), nil
+}
+
+// buildScannerEnv returns the parent env with MCP_SCANNER_LLM_* vars
+// derived from the AZURE_* equivalents used by the enricher,
+// so CI config doesn't need to duplicate them.
+func buildScannerEnv() []string {
+	env := os.Environ()
+
+	env = appendEnvIfMissing(env, "MCP_SCANNER_LLM_API_KEY", os.Getenv("AZURE_OPENAI_API_KEY"))
+	env = appendEnvIfMissing(env, "MCP_SCANNER_LLM_BASE_URL", os.Getenv("AZURE_OPENAI_BASE_URL"))
+	env = appendEnvIfMissing(env, "MCP_SCANNER_LLM_MODEL", "azure/"+os.Getenv("AZURE_OPENAI_DEPLOYMENT"))
+	env = appendEnvIfMissing(env, "MCP_SCANNER_LLM_API_VERSION", os.Getenv("AZURE_OPENAI_API_VERSION"))
+
+	return env
+}
+
+func appendEnvIfMissing(env []string, key, fallback string) []string {
+	if os.Getenv(key) != "" || fallback == "" {
+		return env
+	}
+
+	return append(env, key+"="+fallback)
 }
