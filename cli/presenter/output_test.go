@@ -510,6 +510,8 @@ func TestAddOutputFlags(t *testing.T) {
 	flag := cmd.Flags().Lookup(outputFlagName)
 	if flag == nil {
 		t.Fatal(flagNotFoundMsg)
+
+		return
 	}
 
 	// Check short flag exists
