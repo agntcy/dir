@@ -12,6 +12,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	typesv1 "buf.build/gen/go/agntcy/oasf/protocolbuffers/go/agntcy/oasf/types/v1"
 	corev1 "github.com/agntcy/dir/api/core/v1"
 	scannerconfig "github.com/agntcy/dir/importer/scanner/config"
 	"github.com/agntcy/dir/importer/scanner/types"
@@ -81,52 +82,33 @@ func (s *Scanner) Scan(ctx context.Context, record *corev1.Record) (*types.ScanR
 	return parseOutput(rawOutput)
 }
 
-// extractSourceInfo extracts the source-code repository URL and optional
-// subfolder from a record's locators and module data.
+// extractSourceInfo decodes the record into its typed OASF representation
+// and extracts the source-code repository URL and optional subfolder.
 func extractSourceInfo(record *corev1.Record) (string, string) {
-	if record == nil || record.GetData() == nil {
+	if record == nil {
 		return "", ""
 	}
 
-	fields := record.GetData().GetFields()
+	decoded, err := record.Decode()
+	if err != nil {
+		logger.Debug("could not decode record, skipping source extraction", "error", err)
 
-	return extractSourceCodeURL(fields), extractSubfolder(fields)
+		return "", ""
+	}
+
+	if !decoded.HasV1() {
+		return "", ""
+	}
+
+	v1 := decoded.GetV1()
+
+	return extractSourceCodeURL(v1.GetLocators()), extractSubfolder(v1.GetModules())
 }
 
-func extractSourceCodeURL(fields map[string]*structpb.Value) string {
-	locatorsVal, ok := fields["locators"]
-	if !ok || locatorsVal == nil {
-		return ""
-	}
-
-	listVal := locatorsVal.GetListValue()
-	if listVal == nil {
-		return ""
-	}
-
-	for _, v := range listVal.GetValues() {
-		s := v.GetStructValue()
-		if s == nil {
-			continue
-		}
-
-		f := s.GetFields()
-
-		typeVal := f["type"]
-		if typeVal == nil {
-			continue
-		}
-
-		if typeVal.GetStringValue() != "source_code" {
-			continue
-		}
-
-		if urlsVal := f["urls"]; urlsVal != nil && urlsVal.GetListValue() != nil {
-			for _, u := range urlsVal.GetListValue().GetValues() {
-				if u.GetStringValue() != "" {
-					return u.GetStringValue()
-				}
-			}
+func extractSourceCodeURL(locators []*typesv1.Locator) string {
+	for _, loc := range locators {
+		if loc.GetType() == "source_code" && len(loc.GetUrls()) > 0 {
+			return loc.GetUrls()[0]
 		}
 	}
 
@@ -134,19 +116,10 @@ func extractSourceCodeURL(fields map[string]*structpb.Value) string {
 }
 
 // extractSubfolder walks modules[*].data.mcp_data.repository.subfolder.
-func extractSubfolder(fields map[string]*structpb.Value) string {
-	modulesVal, ok := fields["modules"]
-	if !ok || modulesVal == nil {
-		return ""
-	}
-
-	listVal := modulesVal.GetListValue()
-	if listVal == nil {
-		return ""
-	}
-
-	for _, modVal := range listVal.GetValues() {
-		sf := getNestedString(modVal, "data", "mcp_data", "repository", "subfolder")
+// Module.Data is still an untyped *structpb.Struct in the OASF schema.
+func extractSubfolder(modules []*typesv1.Module) string {
+	for _, mod := range modules {
+		sf := getNestedString(mod.GetData(), "mcp_data", "repository", "subfolder")
 		if sf != "" {
 			return sf
 		}
@@ -157,24 +130,23 @@ func extractSubfolder(fields map[string]*structpb.Value) string {
 
 // getNestedString traverses nested protobuf Structs by the given keys
 // and returns the final value as a string, or "" if any step is missing.
-func getNestedString(v *structpb.Value, keys ...string) string {
+func getNestedString(s *structpb.Struct, keys ...string) string {
+	if s == nil || len(keys) == 0 {
+		return ""
+	}
+
 	for i, k := range keys {
+		v := s.GetFields()[k]
 		if v == nil {
 			return ""
 		}
 
-		s := v.GetStructValue()
-		if s == nil {
-			return ""
+		if i == len(keys)-1 {
+			return v.GetStringValue()
 		}
 
-		v = s.GetFields()[k]
-
-		if i == len(keys)-1 {
-			if v != nil {
-				return v.GetStringValue()
-			}
-
+		s = v.GetStructValue()
+		if s == nil {
 			return ""
 		}
 	}
