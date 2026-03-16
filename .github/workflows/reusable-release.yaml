@@ -126,3 +126,4 @@ jobs:
           tag_name: ${{ inputs.release_tag }}
           files: bin/dirctl-${{ matrix.os }}-${{ matrix.arch }}
           append_body: true
+          draft: true
