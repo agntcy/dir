@@ -69,17 +69,17 @@ jobs:
       - chart
       - cli
     runs-on: ubuntu-latest
-    outputs:
-      upload_url: ${{ steps.create_release.outputs.upload_url }}
+    permissions:
+      contents: write
     steps:
       - name: Create Release
         id: create_release
-        uses: actions/create-release@0cb9c9b65d5d1901c1f53e5e66eaf4afd303e70e # v1.1.4
+        uses: softprops/action-gh-release@a06a81a03ee405af7f2048a818ed3f03bbf83c7b # v2.5.0
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN  }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           tag_name: ${{ inputs.release_tag }}
-          release_name: Release ${{ inputs.release_tag }}
+          name: Release ${{ inputs.release_tag }}
           draft: true
           prerelease: false
 
@@ -88,6 +88,8 @@ jobs:
     needs:
       - release
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     strategy:
       matrix:
         os: [linux, darwin, windows]
@@ -115,11 +117,11 @@ jobs:
       - name: Upload Release Asset
         if: ${{ !(contains(matrix.os, 'windows') && contains(matrix.arch, 'arm64')) }}
         id: upload-release-asset
-        uses: actions/upload-release-asset@e8f9f06c4b078e705bd2ea027f0926603fc9b4d5 # v1.0.2
+        uses: softprops/action-gh-release@a06a81a03ee405af7f2048a818ed3f03bbf83c7b # v2.5.0
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN  }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          upload_url: ${{ needs.release.outputs.upload_url }}
-          asset_path: bin/dirctl-${{ matrix.os }}-${{ matrix.arch }}
-          asset_name: dirctl-${{ matrix.os }}-${{ matrix.arch }}
-          asset_content_type: application/octet-stream
+          tag_name: ${{ inputs.release_tag }}
+          files: bin/dirctl-${{ matrix.os }}-${{ matrix.arch }}
+          append_body: true
+          draft: true
