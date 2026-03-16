@@ -23,6 +23,10 @@ on:
         description: "Force push even if record already exists"
         type: boolean
         default: false
+      scanner_enabled:
+        description: 'Run security scanner on each record'
+        type: boolean
+        default: true
       server_address:
         description: "Directory server address"
         type: string
@@ -41,6 +45,7 @@ jobs:
       server_address: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.server_address || 'prod.gateway.ads.outshift.io:443' }}
       sign: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.sign || 'true' }}
       force: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.force || 'false' }}
+      scanner_enabled: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.scanner_enabled || 'true' }}
     env:
       IMPORT_CONFIG: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.import_config || '.github/workflows/scripts/import-records.json' }}
     steps:
@@ -87,6 +92,7 @@ jobs:
       SERVER_ADDRESS: ${{ needs.setup-matrix.outputs.server_address }}
       SIGN: ${{ needs.setup-matrix.outputs.sign }}
       FORCE: ${{ needs.setup-matrix.outputs.force }}
+      SCANNER_ENABLED: ${{ needs.setup-matrix.outputs.scanner_enabled }}
     steps:
       - name: Checkout code
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
@@ -105,6 +111,10 @@ jobs:
         run: |
           task cli:compile
           ls -la bin/
+
+      - name: Install mcp-scanner
+        if: ${{ env.SCANNER_ENABLED == 'true' }}
+        run: task importer:deps:mcp-scanner
 
       - name: Create Enricher Config
         run: |
@@ -136,8 +146,6 @@ jobs:
         id: import
         env:
           AZURE_OPENAI_API_KEY: ${{ secrets.AZURE_OPENAI_API_KEY }}
-          AZURE_API_KEY: ${{ secrets.AZURE_OPENAI_API_KEY }}
-          AZURE_OPENAI_ENDPOINT: ${{ secrets.AZURE_OPENAI_ENDPOINT }}
           AZURE_OPENAI_BASE_URL: ${{ secrets.AZURE_OPENAI_ENDPOINT }}
           AZURE_OPENAI_DEPLOYMENT: "gpt-4o"
           AZURE_OPENAI_API_VERSION: "2024-10-21"
@@ -159,6 +167,10 @@ jobs:
 
           if [[ "${{ env.FORCE }}" == "true" ]]; then
              CMD+=("--force")
+          fi
+
+          if [[ "${{ env.SCANNER_ENABLED }}" == "true" ]]; then
+             CMD+=("--scanner-enabled")
           fi
 
           if [ -n "${{ matrix.entry.search }}" ]; then
