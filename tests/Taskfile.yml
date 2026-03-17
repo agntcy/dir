@@ -252,7 +252,7 @@ tasks:
     aliases: [e2e:mcp]
     env:
       DIRECTORY_CLIENT_SERVER_ADDRESS: localhost:8888
-      OASF_API_VALIDATION_SCHEMA_URL: "{{ .OASF_API_VALIDATION_SCHEMA_URL | default \"https://schema.oasf.outshift.com\" }}"
+      OASF_API_VALIDATION_SCHEMA_URL: '{{ .OASF_API_VALIDATION_SCHEMA_URL | default "https://schema.oasf.outshift.com" }}'
     cmds:
       - defer: { task: server:stop }
       - task: server:start
@@ -506,17 +506,19 @@ tasks:
     aliases: [e2e:coverage]
     deps:
       - build:coverage
-    vars:
-      COVERAGE_DIR: '{{ .COVERAGE_DIR | default (print .ROOT_DIR "/.coverage/e2e") }}'
     cmds:
-      - echo "Removing existing coverage directory and reports"
-      - rm -rf {{.COVERAGE_DIR}}/*
-      - echo "Creating new coverage directory"
-      - mkdir -p {{.COVERAGE_DIR}}
+      - cmd: |
+          echo "Removing existing reports in {{.COVERAGE_DIR}}/e2e"
+          rm -rf {{.COVERAGE_DIR}}/e2e/*
+        if: "[ -d {{.COVERAGE_DIR}}/e2e ]"
+
+      - cmd: |
+          echo "Creating new coverage directory: {{.COVERAGE_DIR}}/e2e"
+          mkdir -p {{.COVERAGE_DIR}}/e2e
+        if: "[ ! -d {{.COVERAGE_DIR}}/e2e ]"
+
       - E2E_COVERAGE_ENABLED=true task test:e2e
       - task: test:e2e:coverage:process
-        vars:
-          COVERAGE_DIR: "{{ .COVERAGE_DIR }}"
 
   test:e2e:coverage:extract-pods:
     desc: Extract coverage data from Kubernetes pods
@@ -525,7 +527,6 @@ tasks:
       E2E_COVERAGE_ENABLED: '{{ .E2E_COVERAGE_ENABLED | default "false" }}'
       NAMESPACE: '{{ .NAMESPACE | default "dir-server" }}'
       POD_SELECTORS: '{{ .POD_SELECTORS | default "app.kubernetes.io/name=apiserver app.kubernetes.io/name=reconciler" }}'
-      COVERAGE_DIR: '{{ .COVERAGE_DIR | default (print .ROOT_DIR "/.coverage/e2e/pods") }}'
     cmds:
       - |
         if [ "{{.E2E_COVERAGE_ENABLED}}" = "true" ]; then
@@ -553,38 +554,37 @@ tasks:
 
               # Extract coverage files (emptyDir persists across container restarts)
               echo "[coverage] Extracting coverage data from pod: $POD_NAME"
-              mkdir -p {{.COVERAGE_DIR}}/pod-$POD_NAME
-              {{.KUBECTL_BIN}} cp -n {{.NAMESPACE}} "$POD_NAME:/tmp/coverage" {{.COVERAGE_DIR}}/pod-$POD_NAME 2>&1 || echo "[coverage][warn] Failed to extract from $POD_NAME"
+              mkdir -p {{.COVERAGE_DIR}}/e2e/pods/pod-$POD_NAME
+              {{.KUBECTL_BIN}} cp -n {{.NAMESPACE}} "$POD_NAME:/tmp/coverage" {{.COVERAGE_DIR}}/e2e/pods/pod-$POD_NAME 2>&1 || echo "[coverage][warn] Failed to extract from $POD_NAME"
             done
           done
 
-          echo "[coverage] Coverage data extracted to {{.COVERAGE_DIR}}"
+          echo "[coverage] Coverage data extracted to {{.COVERAGE_DIR}}/e2e/pods"
         else
           echo "[coverage] E2E_COVERAGE_ENABLED is false, skipping pod coverage extraction"
         fi
 
   test:e2e:coverage:process:
     desc: Collect and merge E2E coverage data from pods
-    vars:
-      COVERAGE_DIR: '{{ .COVERAGE_DIR | default (print .ROOT_DIR "/.coverage/e2e") }}'
     cmds:
       - |
         echo "[e2e-coverage] Collecting and merging E2E coverage data from pods"
-        if [ -d "{{.COVERAGE_DIR}}/pods" ]; then
+        if [ -d "{{.COVERAGE_DIR}}/e2e/pods" ]; then
           # Build comma-separated list of pod directories
-          pod_dirs=$(find {{.COVERAGE_DIR}}/pods -mindepth 1 -maxdepth 1 -type d 2>/dev/null | tr '\n' ',' | sed 's/,$//')
+          pod_dirs=$(find {{.COVERAGE_DIR}}/e2e/pods -mindepth 1 -maxdepth 1 -type d 2>/dev/null | tr '\n' ',' | sed 's/,$//')
 
           if [ -n "$pod_dirs" ]; then
             echo "  Found pod coverage directories: $pod_dirs"
 
             # server.out creation
-            mkdir -p {{.COVERAGE_DIR}}/server-binary
-            go tool covdata merge -i="$pod_dirs" -o={{.COVERAGE_DIR}}/server-binary
-            go tool covdata textfmt -i={{.COVERAGE_DIR}}/server-binary -o={{.COVERAGE_DIR}}/server.out.tmp
+            mkdir -p {{.COVERAGE_DIR}}/e2e/server-binary
+            go tool covdata merge -i="$pod_dirs" -o={{.COVERAGE_DIR}}/e2e/server-binary
+            go tool covdata textfmt -i={{.COVERAGE_DIR}}/e2e/server-binary -o={{.COVERAGE_DIR}}/e2e/server.out.tmp
+
             # Filter out generated files (matching codecov.yml ignores)
-            if [ -f {{.COVERAGE_DIR}}/server.out.tmp ]; then
-              grep -v "\.pb\.go" {{.COVERAGE_DIR}}/server.out.tmp | grep -v "mock_.*\.go" > {{.COVERAGE_DIR}}/server.out || echo "mode: atomic" > {{.COVERAGE_DIR}}/server.out
-              rm {{.COVERAGE_DIR}}/server.out.tmp
+            if [ -f {{.COVERAGE_DIR}}/e2e/server.out.tmp ]; then
+              grep -v "\.pb\.go" {{.COVERAGE_DIR}}/e2e/server.out.tmp | grep -v "mock_.*\.go" > {{.COVERAGE_DIR}}/e2e/server.out || echo "mode: atomic" > {{.COVERAGE_DIR}}/e2e/server.out
+              rm {{.COVERAGE_DIR}}/e2e/server.out.tmp
             fi
           else
             echo "No pod coverage found"
