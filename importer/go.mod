@@ -17,7 +17,7 @@ require (
 	github.com/agntcy/dir/api v1.0.0
 	github.com/agntcy/dir/client v1.0.0
 	github.com/agntcy/dir/utils v1.0.0
-	github.com/agntcy/oasf-sdk/pkg v1.0.1
+	github.com/agntcy/oasf-sdk/pkg v1.0.2
 	github.com/mark3labs/mcphost v0.34.0
 	github.com/modelcontextprotocol/registry v1.5.0
 	github.com/stretchr/testify v1.11.1
@@ -33,6 +33,7 @@ require (
 	charm.land/lipgloss/v2 v2.0.2 // indirect
 	github.com/Azure/azure-sdk-for-go/sdk/azcore v1.21.0 // indirect
 	github.com/Azure/azure-sdk-for-go/sdk/internal v1.11.2 // indirect
+	github.com/Masterminds/semver/v3 v3.4.0 // indirect
 	github.com/charmbracelet/anthropic-sdk-go v0.0.0-20260223140439-63879b0b8dab // indirect
 	github.com/charmbracelet/ultraviolet v0.0.0-20260309091805-903bfd0cf188 // indirect
 	github.com/charmbracelet/x/etag v0.2.0 // indirect
