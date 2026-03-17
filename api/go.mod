@@ -6,7 +6,7 @@ require (
 	buf.build/gen/go/agntcy/oasf-sdk/protocolbuffers/go v1.36.11-20260225090442-549b0cc62759.1
 	buf.build/gen/go/agntcy/oasf/protocolbuffers/go v1.36.11-20260311134852-004f24f91cc7.1
 	buf.build/gen/go/bufbuild/protovalidate/protocolbuffers/go v1.36.11-20260209202127-80ab13bee0bf.1
-	github.com/agntcy/oasf-sdk/pkg v1.0.1
+	github.com/agntcy/oasf-sdk/pkg v1.0.2
 	github.com/multiformats/go-multihash v0.2.3
 	github.com/opencontainers/go-digest v1.0.0
 	github.com/stretchr/testify v1.11.1
@@ -15,6 +15,7 @@ require (
 )
 
 require (
+	github.com/Masterminds/semver/v3 v3.4.0 // indirect
 	github.com/kr/pretty v0.3.1 // indirect
 	github.com/rogpeppe/go-internal v1.14.1 // indirect
 	go.opentelemetry.io/otel v1.42.0 // indirect

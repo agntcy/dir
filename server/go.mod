@@ -18,7 +18,7 @@ require (
 	buf.build/go/protovalidate v1.1.3
 	github.com/agntcy/dir/api v1.0.0
 	github.com/agntcy/dir/utils v1.0.0
-	github.com/agntcy/oasf-sdk/pkg v1.0.1
+	github.com/agntcy/oasf-sdk/pkg v1.0.2
 	github.com/casbin/casbin/v2 v2.135.0
 	github.com/grpc-ecosystem/go-grpc-middleware/v2 v2.3.3
 	github.com/grpc-ecosystem/go-grpc-prometheus v1.2.0
@@ -45,6 +45,7 @@ require (
 require (
 	buf.build/gen/go/bufbuild/protovalidate/protocolbuffers/go v1.36.11-20260209202127-80ab13bee0bf.1 // indirect
 	cel.dev/expr v0.25.1 // indirect
+	github.com/Masterminds/semver/v3 v3.4.0 // indirect
 	github.com/antlr4-go/antlr/v4 v4.13.1 // indirect
 	github.com/golang/mock v1.7.0-rc.1 // indirect
 	github.com/google/cel-go v0.27.0 // indirect

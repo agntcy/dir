@@ -54,12 +54,13 @@ require (
 	github.com/Azure/azure-sdk-for-go/sdk/internal v1.11.2 // indirect
 	github.com/Azure/go-ansiterm v0.0.0-20250102033503-faa5f7b0171c // indirect
 	github.com/JohannesKaufmann/html-to-markdown v1.6.0 // indirect
+	github.com/Masterminds/semver/v3 v3.4.0 // indirect
 	github.com/Microsoft/go-winio v0.6.2 // indirect
 	github.com/ProtonMail/go-crypto v1.4.0 // indirect
 	github.com/PuerkitoBio/goquery v1.11.0 // indirect
 	github.com/ThalesIgnite/crypto11 v1.2.5 // indirect
 	github.com/agntcy/dir/utils v1.0.0 // indirect
-	github.com/agntcy/oasf-sdk/pkg v1.0.1 // indirect
+	github.com/agntcy/oasf-sdk/pkg v1.0.2 // indirect
 	github.com/alecthomas/chroma/v2 v2.23.1 // indirect
 	github.com/andybalholm/cascadia v1.3.3 // indirect
 	github.com/asaskevich/govalidator v0.0.0-20230301143203-a9d515a09cc2 // indirect
