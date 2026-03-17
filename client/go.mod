@@ -18,9 +18,17 @@ require (
 	github.com/spf13/viper v1.21.0
 	github.com/spiffe/go-spiffe/v2 v2.6.0
 	github.com/stretchr/testify v1.11.1
-	golang.org/x/oauth2 v0.35.0
 	google.golang.org/grpc v1.78.0
 	google.golang.org/protobuf v1.36.11
+)
+
+require (
+	github.com/gorilla/securecookie v1.1.2 // indirect
+	github.com/muhlemmer/gu v0.3.1 // indirect
+	github.com/zitadel/logging v0.7.0 // indirect
+	github.com/zitadel/oidc/v3 v3.45.5
+	github.com/zitadel/schema v1.3.2 // indirect
+	golang.org/x/oauth2 v0.35.0 // indirect
 )
 
 require (
@@ -79,7 +87,7 @@ require (
 	github.com/google/go-containerregistry v0.20.7 // indirect
 	github.com/google/go-github/v73 v73.0.0 // indirect
 	github.com/google/go-querystring v1.2.0 // indirect
-	github.com/google/uuid v1.6.0 // indirect
+	github.com/google/uuid v1.6.0
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.27.8 // indirect
 	github.com/hashicorp/go-cleanhttp v0.5.2 // indirect
 	github.com/hashicorp/go-retryablehttp v0.7.8 // indirect
@@ -110,7 +118,7 @@ require (
 	github.com/opencontainers/go-digest v1.0.0 // indirect
 	github.com/opencontainers/image-spec v1.1.1 // indirect
 	github.com/pelletier/go-toml/v2 v2.2.4 // indirect
-	github.com/pkg/browser v0.0.0-20240102092130-5ac0b6a4141c // indirect
+	github.com/pkg/browser v0.0.0-20240102092130-5ac0b6a4141c
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 // indirect
 	github.com/sagikazarmark/locafero v0.12.0 // indirect

@@ -14,8 +14,10 @@ import (
 const (
 	DefaultEnvPrefix = "DIRECTORY_CLIENT"
 
-	DefaultServerAddress = "0.0.0.0:8888"
-	DefaultTlsSkipVerify = false
+	DefaultServerAddress    = "0.0.0.0:8888"
+	DefaultTlsSkipVerify   = false
+	DefaultCallbackPort    = 8484
+	DefaultOIDCRedirectURI = "http://localhost:8484/callback"
 )
 
 var DefaultConfig = Config{
@@ -31,16 +33,13 @@ type Config struct {
 	SpiffeSocketPath string `json:"spiffe_socket_path,omitempty" mapstructure:"spiffe_socket_path"`
 	SpiffeToken      string `json:"spiffe_token,omitempty"       mapstructure:"spiffe_token"`
 	AuthMode         string `json:"auth_mode,omitempty"          mapstructure:"auth_mode"`
-	JWTAudience      string `json:"jwt_audience,omitempty"       mapstructure:"jwt_audience"`
+	JWTAudience      string `json:"jwt_audience,omitempty"      mapstructure:"jwt_audience"`
 
-	// OAuth configuration (for browser-based login)
-	GitHubClientID     string `json:"github_client_id,omitempty"     mapstructure:"github_client_id"`
-	GitHubClientSecret string `json:"github_client_secret,omitempty" mapstructure:"github_client_secret"`
-
-	// GitHub token (PAT or OAuth) - can be set via flag/env for CI/CD use
-	// Developers: use 'dirctl auth login' instead
-	// CI/CD: set via DIRECTORY_CLIENT_GITHUB_TOKEN env var or --github-token flag
-	GitHubToken string `json:"github_token,omitempty" mapstructure:"github_token"`
+	// OIDC configuration (for interactive login and CI token)
+	OIDCIssuer      string `json:"oidc_issuer,omitempty"       mapstructure:"oidc_issuer"`
+	OIDCClientID    string `json:"oidc_client_id,omitempty"     mapstructure:"oidc_client_id"`
+	OIDCToken       string `json:"oidc_token,omitempty"         mapstructure:"oidc_token"`
+	OIDCRedirectURI string `json:"oidc_redirect_uri,omitempty"   mapstructure:"oidc_redirect_uri"`
 }
 
 func LoadConfig() (*Config, error) {
@@ -71,6 +70,18 @@ func LoadConfig() (*Config, error) {
 	_ = v.BindEnv("jwt_audience")
 	v.SetDefault("jwt_audience", "")
 
+	_ = v.BindEnv("oidc_issuer")
+	v.SetDefault("oidc_issuer", "")
+
+	_ = v.BindEnv("oidc_client_id")
+	v.SetDefault("oidc_client_id", "")
+
+	_ = v.BindEnv("oidc_token")
+	v.SetDefault("oidc_token", "")
+
+	_ = v.BindEnv("oidc_redirect_uri")
+	v.SetDefault("oidc_redirect_uri", DefaultOIDCRedirectURI)
+
 	_ = v.BindEnv("tls_cert_file")
 	v.SetDefault("tls_cert_file", "")
 
@@ -79,15 +90,6 @@ func LoadConfig() (*Config, error) {
 
 	_ = v.BindEnv("tls_ca_file")
 	v.SetDefault("tls_ca_file", "")
-
-	_ = v.BindEnv("github_client_id")
-	v.SetDefault("github_client_id", "")
-
-	_ = v.BindEnv("github_client_secret")
-	v.SetDefault("github_client_secret", "")
-
-	_ = v.BindEnv("github_token")
-	v.SetDefault("github_token", "")
 
 	// Load configuration into struct
 	decodeHooks := mapstructure.ComposeDecodeHookFunc(
