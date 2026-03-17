@@ -1,6 +1,7 @@
 from agntcy.dir.core.v1 import record_pb2 as _record_pb2
 from agntcy.dir.core.v1 import referrer_pb2 as _referrer_pb2
 from google.protobuf import empty_pb2 as _empty_pb2
+from google.rpc import status_pb2 as _status_pb2
 from google.protobuf import descriptor as _descriptor
 from google.protobuf import message as _message
 from typing import ClassVar as _ClassVar, Mapping as _Mapping, Optional as _Optional, Union as _Union
@@ -16,14 +17,12 @@ class PushReferrerRequest(_message.Message):
     def __init__(self, record_ref: _Optional[_Union[_record_pb2.RecordRef, _Mapping]] = ..., referrer: _Optional[_Union[_record_pb2.RecordReferrer, _Mapping]] = ...) -> None: ...
 
 class PushReferrerResponse(_message.Message):
-    __slots__ = ("success", "error_message", "referrer_ref")
-    SUCCESS_FIELD_NUMBER: _ClassVar[int]
-    ERROR_MESSAGE_FIELD_NUMBER: _ClassVar[int]
+    __slots__ = ("referrer_ref", "error")
     REFERRER_REF_FIELD_NUMBER: _ClassVar[int]
-    success: bool
-    error_message: str
+    ERROR_FIELD_NUMBER: _ClassVar[int]
     referrer_ref: _referrer_pb2.ReferrerRef
-    def __init__(self, success: bool = ..., error_message: _Optional[str] = ..., referrer_ref: _Optional[_Union[_referrer_pb2.ReferrerRef, _Mapping]] = ...) -> None: ...
+    error: _status_pb2.Status
+    def __init__(self, referrer_ref: _Optional[_Union[_referrer_pb2.ReferrerRef, _Mapping]] = ..., error: _Optional[_Union[_status_pb2.Status, _Mapping]] = ...) -> None: ...
 
 class PullReferrerRequest(_message.Message):
     __slots__ = ("record_ref", "referrer_type")
