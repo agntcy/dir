@@ -38,7 +38,7 @@ type StoreAPI interface {
 // Used by: store.Controller, sync.Monitor, signing.Service.
 type ReferrerStoreAPI interface {
 	// PushReferrer pushes a referrer to content store
-	PushReferrer(context.Context, string, *corev1.RecordReferrer) error
+	PushReferrer(context.Context, string, *corev1.RecordReferrer) (*corev1.ReferrerRef, error)
 
 	// WalkReferrers walks referrers individually for a given record CID and optional type filter
 	WalkReferrers(ctx context.Context, recordCID string, referrerType string, walkFn func(*corev1.RecordReferrer) error) error

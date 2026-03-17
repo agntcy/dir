@@ -262,7 +262,7 @@ func (s storeCtrl) pushReferrer(ctx context.Context, request *storev1.PushReferr
 		}
 	}
 
-	err := refStore.PushReferrer(ctx, recordCID, request.GetReferrer())
+	referrerRef, err := refStore.PushReferrer(ctx, recordCID, request.GetReferrer())
 	if err != nil {
 		errMsg := fmt.Sprintf("failed to push referrer for record %s: %v", recordCID, err)
 
@@ -296,7 +296,8 @@ func (s storeCtrl) pushReferrer(ctx context.Context, request *storev1.PushReferr
 	storeLogger.Debug("Referrer pushed successfully", "cid", recordCID, "type", request.GetReferrer().GetType())
 
 	return &storev1.PushReferrerResponse{
-		Success: true,
+		Success:     true,
+		ReferrerRef: referrerRef,
 	}
 }
 
