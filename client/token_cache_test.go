@@ -220,6 +220,34 @@ func TestTokenCache_Load(t *testing.T) {
 		assert.Equal(t, originalToken.Orgs, loadedToken.Orgs)
 	})
 
+	t.Run("should round-trip OIDC token with Issuer and RefreshToken", func(t *testing.T) {
+		tmpDir := t.TempDir()
+		cache := NewTokenCacheWithDir(tmpDir)
+
+		originalToken := &CachedToken{
+			AccessToken:  "oidc_access_token",
+			TokenType:    "bearer",
+			Provider:     "oidc",
+			Issuer:       "https://tenant.zitadel.cloud",
+			RefreshToken: "oidc_refresh_token",
+			User:         "user@example.com",
+			UserID:       "sub-123",
+			ExpiresAt:    time.Now().Add(time.Hour),
+		}
+
+		err := cache.Save(originalToken)
+		require.NoError(t, err)
+
+		loadedToken, loadErr := cache.Load()
+		require.NoError(t, loadErr)
+		require.NotNil(t, loadedToken)
+		assert.Equal(t, "oidc", loadedToken.Provider)
+		assert.Equal(t, "https://tenant.zitadel.cloud", loadedToken.Issuer)
+		assert.Equal(t, "oidc_refresh_token", loadedToken.RefreshToken)
+		assert.Equal(t, "user@example.com", loadedToken.User)
+		assert.Equal(t, "sub-123", loadedToken.UserID)
+	})
+
 	t.Run("should return nil when cache doesn't exist", func(t *testing.T) {
 		tmpDir := t.TempDir()
 		cache := NewTokenCacheWithDir(tmpDir)

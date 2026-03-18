@@ -24,6 +24,7 @@ import (
 	"github.com/agntcy/dir/cli/cmd/validate"
 	"github.com/agntcy/dir/cli/cmd/verify"
 	"github.com/agntcy/dir/cli/cmd/version"
+	"github.com/agntcy/dir/cli/config"
 	ctxUtils "github.com/agntcy/dir/cli/util/context"
 	"github.com/agntcy/dir/client"
 	"github.com/spf13/cobra"
@@ -37,7 +38,7 @@ var RootCmd = &cobra.Command{
 	PersistentPreRunE: func(cmd *cobra.Command, _ []string) error {
 		// Set client via context for all requests
 		// TODO: make client config configurable via CLI args
-		c, err := client.New(cmd.Context(), client.WithConfig(clientConfig))
+		c, err := client.New(cmd.Context(), client.WithConfig(config.Client))
 		if err != nil {
 			return fmt.Errorf("failed to create client: %w", err)
 		}

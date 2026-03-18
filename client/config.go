@@ -6,6 +6,7 @@ package client
 import (
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/mitchellh/mapstructure"
 	"github.com/spf13/viper"
@@ -18,6 +19,7 @@ const (
 	DefaultTlsSkipVerify   = false
 	DefaultCallbackPort    = 8484
 	DefaultOIDCRedirectURI = "http://localhost:8484/callback"
+	DefaultOAuthTimeout    = 5 * time.Minute
 )
 
 var DefaultConfig = Config{
