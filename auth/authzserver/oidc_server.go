@@ -14,10 +14,16 @@ import (
 	typev3 "github.com/envoyproxy/go-control-plane/envoy/type/v3"
 	"google.golang.org/genproto/googleapis/rpc/status"
 	"google.golang.org/grpc/codes"
+	"google.golang.org/protobuf/types/known/wrapperspb"
 )
 
-// Header name for verified JWT payload (set by Envoy jwt_authn).
-const HeaderJWTPayload = "x-jwt-payload"
+// Header names for JWT and principal propagation.
+const (
+	HeaderJWTPayload          = "x-jwt-payload"          // verified JWT payload (set by Envoy jwt_authn)
+	HeaderAuthorizedPrincipal = "x-authorized-principal" // canonical principal forwarded to upstream
+	HeaderUserID              = "x-user-id"              // user ID (same as principal)
+	HeaderPrincipalType       = "x-principal-type"       // principal type (e.g. user, service)
+)
 
 // OIDCAuthorizationServer implements the Envoy ext_authz gRPC API for OIDC.
 // It reads the verified JWT payload from x-jwt-payload, extracts the principal
@@ -115,15 +121,18 @@ func (s *OIDCAuthorizationServer) allowResponse(principal, principalType string)
 	if principal != "" {
 		headers = append(headers,
 			&corev3.HeaderValueOption{
-				Header: &corev3.HeaderValue{Key: "x-authorized-principal", Value: principal},
+				Header: &corev3.HeaderValue{Key: HeaderAuthorizedPrincipal, Value: principal},
+				Append: wrapperspb.Bool(false), // overwrite any client-supplied value
 			},
 			&corev3.HeaderValueOption{
-				Header: &corev3.HeaderValue{Key: "x-user-id", Value: principal},
+				Header: &corev3.HeaderValue{Key: HeaderUserID, Value: principal},
+				Append: wrapperspb.Bool(false), // overwrite any client-supplied value
 			},
 		)
 		if principalType != "" {
 			headers = append(headers, &corev3.HeaderValueOption{
-				Header: &corev3.HeaderValue{Key: "x-principal-type", Value: principalType},
+				Header: &corev3.HeaderValue{Key: HeaderPrincipalType, Value: principalType},
+				Append: wrapperspb.Bool(false), // overwrite any client-supplied value
 			})
 		}
 	}
