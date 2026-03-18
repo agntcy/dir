@@ -19,10 +19,10 @@ import (
 
 // Header names for JWT and principal propagation.
 const (
-	HeaderJWTPayload          = "x-jwt-payload"           // verified JWT payload (set by Envoy jwt_authn)
-	HeaderAuthorizedPrincipal = "x-authorized-principal"  // canonical principal forwarded to upstream
-	HeaderUserID              = "x-user-id"               // user ID (same as principal)
-	HeaderPrincipalType       = "x-principal-type"         // principal type (e.g. user, service)
+	HeaderJWTPayload          = "x-jwt-payload"          // verified JWT payload (set by Envoy jwt_authn)
+	HeaderAuthorizedPrincipal = "x-authorized-principal" // canonical principal forwarded to upstream
+	HeaderUserID              = "x-user-id"              // user ID (same as principal)
+	HeaderPrincipalType       = "x-principal-type"       // principal type (e.g. user, service)
 )
 
 // OIDCAuthorizationServer implements the Envoy ext_authz gRPC API for OIDC.

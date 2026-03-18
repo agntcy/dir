@@ -6,7 +6,7 @@ claims:
   emailPath: "email"
 
 issuers:
-  "https://tenant.zitadel.cloud":
+  - provider: "https://tenant.zitadel.cloud"
     principalType: "auto"
     machineIdentityClaim: "client_id"
 

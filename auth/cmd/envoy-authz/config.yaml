@@ -7,10 +7,10 @@ claims:
 
 # Issuer-specific extraction. Allowed principalType: auto | user | client | github
 issuers:
-  "https://tenant.zitadel.cloud":
+  - provider: "https://tenant.zitadel.cloud"
     principalType: "auto"
     machineIdentityClaim: "client_id"
-  "https://token.actions.githubusercontent.com":
+  - provider: "https://token.actions.githubusercontent.com"
     principalType: "github"
 
 # Fallback when issuer not in issuers. Allowed mode: auto | user | client
