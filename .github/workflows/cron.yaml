@@ -9,20 +9,11 @@ on:
   workflow_dispatch:
 
 jobs:
-  build-nightly:
-    name: Build nightly
-    uses: ./.github/workflows/build-feature.yaml
-    with:
-      image_tag: nightly
-      chart_version: nightly
-      component: "" # NOTE: Match image name within Taskfile.vars.yml
-
-  container-security-scan-nightly:
-    name: Container Security Scan (nightly)
-    needs: [build-nightly]
+  container-security-scan-latest-main:
+    name: Container Security Scan (latest main commit)
     uses: ./.github/workflows/container-security-scan.yml
     with:
-      image-tag: nightly
+      image-tag: latest
       upload_ref: ${{ github.ref }} # NOTE: As Cron executed on main this will be refs/heads/main
       upload_sha: ${{ github.sha }} # NOTE: As Cron executed on main this will be the SHA of the latest commit
 
