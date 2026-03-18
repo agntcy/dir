@@ -23,12 +23,12 @@ const (
 // OIDCConfig holds the OIDC-based authorization configuration.
 // Roles come only from config; no roles are extracted from JWT claims.
 type OIDCConfig struct {
-	Claims        ClaimsConfig            `yaml:"claims"`
-	Issuers       map[string]IssuerConfig `yaml:"issuers"`
-	PrincipalType PrincipalTypeConfig     `yaml:"principalType"`
-	UserDenyList  []string                `yaml:"userDenyList"`
-	PublicPaths   []string                `yaml:"publicPaths"`
-	Roles         map[string]OIDCRole     `yaml:"roles"`
+	Claims        ClaimsConfig        `yaml:"claims"`
+	Issuers       []IssuerConfig      `yaml:"issuers"`
+	PrincipalType PrincipalTypeConfig `yaml:"principalType"`
+	UserDenyList  []string            `yaml:"userDenyList"`
+	PublicPaths   []string            `yaml:"publicPaths"`
+	Roles         map[string]OIDCRole `yaml:"roles"`
 }
 
 // ClaimsConfig defines which JWT claims to read.
@@ -38,10 +38,24 @@ type ClaimsConfig struct {
 }
 
 // IssuerConfig defines issuer-specific principal extraction.
+// Provider is the OIDC issuer URL (e.g. https://tenant.zitadel.cloud).
 // Allowed principalType: "auto" | "user" | "client" | "github".
 type IssuerConfig struct {
+	Provider             string `yaml:"provider"`
 	PrincipalType        string `yaml:"principalType"`
 	MachineIdentityClaim string `yaml:"machineIdentityClaim"` // e.g. "client_id"
+	MachineSubPattern    string `yaml:"machineSubPattern"`    // optional regex for auto mode
+}
+
+// GetIssuerConfig returns the IssuerConfig for the given issuer URL, or nil if not found.
+func (c *OIDCConfig) GetIssuerConfig(issuerURL string) *IssuerConfig {
+	for i := range c.Issuers {
+		if c.Issuers[i].Provider == issuerURL {
+			return &c.Issuers[i]
+		}
+	}
+
+	return nil
 }
 
 // PrincipalTypeConfig is the fallback when issuer is not in Issuers.
@@ -63,29 +77,78 @@ type OIDCRole struct {
 
 // Validate validates the OIDC config and returns an error if invalid.
 func (c *OIDCConfig) Validate() error {
+	if err := c.validateClaims(); err != nil {
+		return err
+	}
+
+	if err := c.validatePrincipalType(); err != nil {
+		return err
+	}
+
+	if err := c.validateIssuers(); err != nil {
+		return err
+	}
+
+	if err := c.validateRoles(); err != nil {
+		return err
+	}
+
+	c.normalizePublicPaths()
+
+	return nil
+}
+
+func (c *OIDCConfig) validateClaims() error {
 	if c.Claims.UserID == "" {
 		return fmt.Errorf("claims.userID is required")
 	}
 
-	// Top-level principalType.mode
-	allowedFallbackModes := map[string]bool{
-		PrincipalTypeAuto: true, PrincipalTypeUser: true, PrincipalTypeClient: true,
-	}
+	return nil
+}
+
+var allowedFallbackModes = map[string]bool{
+	PrincipalTypeAuto: true, PrincipalTypeUser: true, PrincipalTypeClient: true,
+}
+
+var allowedIssuerTypes = map[string]bool{
+	PrincipalTypeAuto: true, PrincipalTypeUser: true, PrincipalTypeClient: true, PrincipalTypeGitHub: true,
+}
+
+func (c *OIDCConfig) validatePrincipalType() error {
 	if c.PrincipalType.Mode != "" && !allowedFallbackModes[c.PrincipalType.Mode] {
 		return fmt.Errorf("principalType.mode must be one of [auto, user, client], got %q", c.PrincipalType.Mode)
 	}
 
-	// Issuer-specific principalType
-	allowedIssuerTypes := map[string]bool{
-		PrincipalTypeAuto: true, PrincipalTypeUser: true, PrincipalTypeClient: true, PrincipalTypeGitHub: true,
-	}
-	for iss, ic := range c.Issuers {
-		if ic.PrincipalType != "" && !allowedIssuerTypes[ic.PrincipalType] {
-			return fmt.Errorf("issuers[%q].principalType must be one of [auto, user, client, github], got %q", iss, ic.PrincipalType)
+	if c.PrincipalType.MachineSubPattern != "" {
+		if _, err := regexp.Compile(c.PrincipalType.MachineSubPattern); err != nil {
+			return fmt.Errorf("principalType.machineSubPattern is not a valid regex: %w", err)
 		}
 	}
 
-	// At least one role
+	return nil
+}
+
+func (c *OIDCConfig) validateIssuers() error {
+	for i, ic := range c.Issuers {
+		if ic.Provider == "" {
+			return fmt.Errorf("issuers[%d].provider is required", i)
+		}
+
+		if ic.PrincipalType != "" && !allowedIssuerTypes[ic.PrincipalType] {
+			return fmt.Errorf("issuers[%q].principalType must be one of [auto, user, client, github], got %q", ic.Provider, ic.PrincipalType)
+		}
+
+		if ic.MachineSubPattern != "" {
+			if _, err := regexp.Compile(ic.MachineSubPattern); err != nil {
+				return fmt.Errorf("issuers[%q].machineSubPattern is not a valid regex: %w", ic.Provider, err)
+			}
+		}
+	}
+
+	return nil
+}
+
+func (c *OIDCConfig) validateRoles() error {
 	if len(c.Roles) == 0 {
 		return fmt.Errorf("at least one role must be defined")
 	}
@@ -96,19 +159,13 @@ func (c *OIDCConfig) Validate() error {
 		}
 	}
 
-	// PublicPaths present (may be empty)
+	return nil
+}
+
+func (c *OIDCConfig) normalizePublicPaths() {
 	if c.PublicPaths == nil {
 		c.PublicPaths = []string{}
 	}
-
-	// Optional: validate machineSubPattern is valid regex if set
-	if c.PrincipalType.MachineSubPattern != "" {
-		if _, err := regexp.Compile(c.PrincipalType.MachineSubPattern); err != nil {
-			return fmt.Errorf("principalType.machineSubPattern is not a valid regex: %w", err)
-		}
-	}
-
-	return nil
 }
 
 // IsPublicPath returns true if the path is in publicPaths (exact match).

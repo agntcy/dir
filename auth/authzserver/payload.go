@@ -34,7 +34,12 @@ func ExtractPrincipal(payloadJSON string, config *OIDCConfig) (principal string,
 	}
 
 	// Issuer-specific extraction
-	if ic, ok := config.Issuers[iss]; ok {
+	if ic := config.GetIssuerConfig(iss); ic != nil {
+		machineSub := ic.MachineSubPattern
+		if machineSub == "" {
+			machineSub = config.PrincipalType.MachineSubPattern
+		}
+
 		switch ic.PrincipalType {
 		case PrincipalTypeGitHub:
 			return extractGitHubPrincipal(payload)
@@ -43,7 +48,7 @@ func ExtractPrincipal(payloadJSON string, config *OIDCConfig) (principal string,
 		case PrincipalTypeClient:
 			return extractClientPrincipal(payload, iss, ic.MachineIdentityClaim)
 		case PrincipalTypeAuto, "":
-			return extractAutoPrincipal(payload, iss, ic.MachineIdentityClaim, config.PrincipalType.MachineSubPattern)
+			return extractAutoPrincipal(payload, iss, ic.MachineIdentityClaim, machineSub)
 		}
 	}
 

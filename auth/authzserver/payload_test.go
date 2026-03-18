@@ -10,8 +10,8 @@ import (
 func TestExtractPrincipal_User(t *testing.T) {
 	config := &OIDCConfig{
 		Claims: ClaimsConfig{UserID: "sub"},
-		Issuers: map[string]IssuerConfig{
-			"https://tenant.zitadel.cloud": {PrincipalType: PrincipalTypeUser},
+		Issuers: []IssuerConfig{
+			{Provider: "https://tenant.zitadel.cloud", PrincipalType: PrincipalTypeUser},
 		},
 		PrincipalType: PrincipalTypeConfig{Mode: PrincipalTypeUser},
 	}
@@ -35,8 +35,9 @@ func TestExtractPrincipal_User(t *testing.T) {
 func TestExtractPrincipal_Client(t *testing.T) {
 	config := &OIDCConfig{
 		Claims: ClaimsConfig{UserID: "sub"},
-		Issuers: map[string]IssuerConfig{
-			"https://tenant.zitadel.cloud": {
+		Issuers: []IssuerConfig{
+			{
+				Provider:             "https://tenant.zitadel.cloud",
 				PrincipalType:        PrincipalTypeClient,
 				MachineIdentityClaim: "client_id",
 			},
@@ -82,8 +83,8 @@ func TestExtractPrincipal_ClientAzpFallback(t *testing.T) {
 func TestExtractPrincipal_GitHub(t *testing.T) {
 	config := &OIDCConfig{
 		Claims: ClaimsConfig{UserID: "sub"},
-		Issuers: map[string]IssuerConfig{
-			GitHubIssuer: {PrincipalType: PrincipalTypeGitHub},
+		Issuers: []IssuerConfig{
+			{Provider: GitHubIssuer, PrincipalType: PrincipalTypeGitHub},
 		},
 	}
 
@@ -113,8 +114,8 @@ func TestExtractPrincipal_GitHub(t *testing.T) {
 func TestExtractPrincipal_GitHub_JobWorkflowRefFallback(t *testing.T) {
 	config := &OIDCConfig{
 		Claims: ClaimsConfig{UserID: "sub"},
-		Issuers: map[string]IssuerConfig{
-			GitHubIssuer: {PrincipalType: PrincipalTypeGitHub},
+		Issuers: []IssuerConfig{
+			{Provider: GitHubIssuer, PrincipalType: PrincipalTypeGitHub},
 		},
 	}
 
@@ -305,10 +306,10 @@ func TestExtractPrincipal_Errors(t *testing.T) {
 			PrincipalType: PrincipalTypeConfig{Mode: PrincipalTypeClient},
 		}},
 		{"GitHub missing repository", `{"iss":"` + GitHubIssuer + `","workflow_ref":"a/b/.github/workflows/x.yml@main"}`, &OIDCConfig{
-			Issuers: map[string]IssuerConfig{GitHubIssuer: {PrincipalType: PrincipalTypeGitHub}},
+			Issuers: []IssuerConfig{{Provider: GitHubIssuer, PrincipalType: PrincipalTypeGitHub}},
 		}},
 		{"GitHub missing workflow_ref", `{"iss":"` + GitHubIssuer + `","repository":"a/b"}`, &OIDCConfig{
-			Issuers: map[string]IssuerConfig{GitHubIssuer: {PrincipalType: PrincipalTypeGitHub}},
+			Issuers: []IssuerConfig{{Provider: GitHubIssuer, PrincipalType: PrincipalTypeGitHub}},
 		}},
 	}
 
