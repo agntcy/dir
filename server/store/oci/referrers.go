@@ -253,6 +253,11 @@ func (s *store) extractReferrerFromManifest(ctx context.Context, manifestDesc oc
 		referrer.Type = ociToAPIType(referrer.GetType())
 	}
 
+	referrerCID, ok := manifest.Annotations[ManifestKeyCid]
+	if ok {
+		referrer.ReferrerRef = &corev1.ReferrerRef{Cid: referrerCID}
+	}
+
 	return referrer, nil
 }
 

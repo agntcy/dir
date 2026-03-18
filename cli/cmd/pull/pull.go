@@ -114,7 +114,7 @@ func runCommand(cmd *cobra.Command, input string) error {
 	if opts.PublicKey {
 		publicKeyType := corev1.PublicKeyReferrerType
 
-		resultCh, err := c.PullReferrer(cmd.Context(), &storev1.PullReferrerRequest{
+		responses, err := c.PullReferrer(cmd.Context(), &storev1.PullReferrerRequest{
 			RecordRef: &corev1.RecordRef{
 				Cid: recordCID,
 			},
@@ -124,7 +124,7 @@ func runCommand(cmd *cobra.Command, input string) error {
 			return fmt.Errorf("failed to pull public key: %w", err)
 		}
 
-		for response := range resultCh {
+		for _, response := range responses {
 			publicKey := &signv1.PublicKey{}
 			if err := publicKey.UnmarshalReferrer(response.GetReferrer()); err != nil {
 				return fmt.Errorf("failed to decode public key from referrer: %w", err)
@@ -141,7 +141,7 @@ func runCommand(cmd *cobra.Command, input string) error {
 	if opts.Signature {
 		signatureType := corev1.SignatureReferrerType
 
-		resultCh, err := c.PullReferrer(cmd.Context(), &storev1.PullReferrerRequest{
+		responses, err := c.PullReferrer(cmd.Context(), &storev1.PullReferrerRequest{
 			RecordRef: &corev1.RecordRef{
 				Cid: recordCID,
 			},
@@ -151,7 +151,7 @@ func runCommand(cmd *cobra.Command, input string) error {
 			return fmt.Errorf("failed to pull signature: %w", err)
 		}
 
-		for response := range resultCh {
+		for _, response := range responses {
 			signature := &signv1.Signature{}
 			if err := signature.UnmarshalReferrer(response.GetReferrer()); err != nil {
 				return fmt.Errorf("failed to decode signature from referrer: %w", err)

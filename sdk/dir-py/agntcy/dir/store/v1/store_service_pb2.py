@@ -25,11 +25,12 @@ _sym_db = _symbol_database.Default()
 from agntcy.dir.core.v1 import record_pb2 as agntcy_dot_dir_dot_core_dot_v1_dot_record__pb2
 from agntcy.dir.core.v1 import referrer_pb2 as agntcy_dot_dir_dot_core_dot_v1_dot_referrer__pb2
 from google.protobuf import empty_pb2 as google_dot_protobuf_dot_empty__pb2
-from google.protobuf import struct_pb2 as google_dot_protobuf_dot_struct__pb2
 from buf.validate import validate_pb2 as buf_dot_validate_dot_validate__pb2
+from agntcy.dir.core.v1 import rules_pb2 as agntcy_dot_dir_dot_core_dot_v1_dot_rules__pb2
+from google.protobuf import struct_pb2 as google_dot_protobuf_dot_struct__pb2
 
 
-DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\'agntcy/dir/store/v1/store_service.proto\x12\x13\x61gntcy.dir.store.v1\x1a\x1f\x61gntcy/dir/core/v1/record.proto\x1a!agntcy/dir/core/v1/referrer.proto\x1a\x1bgoogle/protobuf/empty.proto\x1a\x1cgoogle/protobuf/struct.proto\x1a\x1b\x62uf/validate/validate.proto\"\x9e\x03\n\x13PushReferrerRequest\x12\x44\n\nrecord_ref\x18\x01 \x01(\x0b\x32\x1d.agntcy.dir.core.v1.RecordRefB\x06\xbaH\x03\xc8\x01\x01R\trecordRef\x12X\n\x04type\x18\x02 \x01(\tBD\xbaHAr<R\x1c\x61gntcy.dir.sign.v1.PublicKeyR\x1c\x61gntcy.dir.sign.v1.Signature\xc8\x01\x01R\x04type\x12[\n\x0b\x61nnotations\x18\x03 \x03(\x0b\x32\x39.agntcy.dir.store.v1.PushReferrerRequest.AnnotationsEntryR\x0b\x61nnotations\x12\x1d\n\ncreated_at\x18\x04 \x01(\tR\tcreatedAt\x12+\n\x04\x64\x61ta\x18\x05 \x01(\x0b\x32\x17.google.protobuf.StructR\x04\x64\x61ta\x1a>\n\x10\x41nnotationsEntry\x12\x10\n\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n\x05value\x18\x02 \x01(\tR\x05value:\x02\x38\x01\"\xb0\x01\n\x14PushReferrerResponse\x12\x18\n\x07success\x18\x01 \x01(\x08R\x07success\x12(\n\rerror_message\x18\x02 \x01(\tH\x00R\x0c\x65rrorMessage\x88\x01\x01\x12\x42\n\x0creferrer_ref\x18\x03 \x01(\x0b\x32\x1f.agntcy.dir.core.v1.ReferrerRefR\x0breferrerRefB\x10\n\x0e_error_message\"\x8f\x01\n\x13PullReferrerRequest\x12<\n\nrecord_ref\x18\x01 \x01(\x0b\x32\x1d.agntcy.dir.core.v1.RecordRefR\trecordRef\x12(\n\rreferrer_type\x18\x02 \x01(\tH\x00R\x0creferrerType\x88\x01\x01\x42\x10\n\x0e_referrer_type\"V\n\x14PullReferrerResponse\x12>\n\x08referrer\x18\x01 \x01(\x0b\x32\".agntcy.dir.core.v1.RecordReferrerR\x08referrer2\xfe\x03\n\x0cStoreService\x12\x45\n\x04Push\x12\x1a.agntcy.dir.core.v1.Record\x1a\x1d.agntcy.dir.core.v1.RecordRef(\x01\x30\x01\x12\x45\n\x04Pull\x12\x1d.agntcy.dir.core.v1.RecordRef\x1a\x1a.agntcy.dir.core.v1.Record(\x01\x30\x01\x12K\n\x06Lookup\x12\x1d.agntcy.dir.core.v1.RecordRef\x1a\x1e.agntcy.dir.core.v1.RecordMeta(\x01\x30\x01\x12\x41\n\x06\x44\x65lete\x12\x1d.agntcy.dir.core.v1.RecordRef\x1a\x16.google.protobuf.Empty(\x01\x12g\n\x0cPushReferrer\x12(.agntcy.dir.store.v1.PushReferrerRequest\x1a).agntcy.dir.store.v1.PushReferrerResponse(\x01\x30\x01\x12g\n\x0cPullReferrer\x12(.agntcy.dir.store.v1.PullReferrerRequest\x1a).agntcy.dir.store.v1.PullReferrerResponse(\x01\x30\x01\x42\xbf\x01\n\x17\x63om.agntcy.dir.store.v1B\x11StoreServiceProtoP\x01Z\"github.com/agntcy/dir/api/store/v1\xa2\x02\x03\x41\x44S\xaa\x02\x13\x41gntcy.Dir.Store.V1\xca\x02\x13\x41gntcy\\Dir\\Store\\V1\xe2\x02\x1f\x41gntcy\\Dir\\Store\\V1\\GPBMetadata\xea\x02\x16\x41gntcy::Dir::Store::V1b\x06proto3')
+DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\'agntcy/dir/store/v1/store_service.proto\x12\x13\x61gntcy.dir.store.v1\x1a\x1f\x61gntcy/dir/core/v1/record.proto\x1a!agntcy/dir/core/v1/referrer.proto\x1a\x1bgoogle/protobuf/empty.proto\x1a\x1b\x62uf/validate/validate.proto\x1a\x1e\x61gntcy/dir/core/v1/rules.proto\x1a\x1cgoogle/protobuf/struct.proto\"\xe6\x02\n\x13PushReferrerRequest\x12\x44\n\nrecord_ref\x18\x01 \x01(\x0b\x32\x1d.agntcy.dir.core.v1.RecordRefB\x06\xbaH\x03\xc8\x01\x01R\trecordRef\x12 \n\x04type\x18\x02 \x01(\tB\x0c\xbaH\tr\x04\x80\xb5\x18\x01\xc8\x01\x01R\x04type\x12[\n\x0b\x61nnotations\x18\x03 \x03(\x0b\x32\x39.agntcy.dir.store.v1.PushReferrerRequest.AnnotationsEntryR\x0b\x61nnotations\x12\x1d\n\ncreated_at\x18\x04 \x01(\tR\tcreatedAt\x12+\n\x04\x64\x61ta\x18\x05 \x01(\x0b\x32\x17.google.protobuf.StructR\x04\x64\x61ta\x1a>\n\x10\x41nnotationsEntry\x12\x10\n\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n\x05value\x18\x02 \x01(\tR\x05value:\x02\x38\x01\"\xb0\x01\n\x14PushReferrerResponse\x12\x18\n\x07success\x18\x01 \x01(\x08R\x07success\x12(\n\rerror_message\x18\x02 \x01(\tH\x00R\x0c\x65rrorMessage\x88\x01\x01\x12\x42\n\x0creferrer_ref\x18\x03 \x01(\x0b\x32\x1f.agntcy.dir.core.v1.ReferrerRefR\x0breferrerRefB\x10\n\x0e_error_message\"\xe6\x01\n\x13PullReferrerRequest\x12\x44\n\nrecord_ref\x18\x01 \x01(\x0b\x32\x1d.agntcy.dir.core.v1.RecordRefB\x06\xbaH\x03\xc8\x01\x01R\trecordRef\x12\x33\n\rreferrer_type\x18\x02 \x01(\tB\t\xbaH\x06r\x04\x80\xb5\x18\x01H\x00R\x0creferrerType\x88\x01\x01\x12\x42\n\x0creferrer_ref\x18\x03 \x01(\x0b\x32\x1f.agntcy.dir.core.v1.ReferrerRefR\x0breferrerRefB\x10\n\x0e_referrer_type\"V\n\x14PullReferrerResponse\x12>\n\x08referrer\x18\x01 \x01(\x0b\x32\".agntcy.dir.core.v1.RecordReferrerR\x08referrer2\xfe\x03\n\x0cStoreService\x12\x45\n\x04Push\x12\x1a.agntcy.dir.core.v1.Record\x1a\x1d.agntcy.dir.core.v1.RecordRef(\x01\x30\x01\x12\x45\n\x04Pull\x12\x1d.agntcy.dir.core.v1.RecordRef\x1a\x1a.agntcy.dir.core.v1.Record(\x01\x30\x01\x12K\n\x06Lookup\x12\x1d.agntcy.dir.core.v1.RecordRef\x1a\x1e.agntcy.dir.core.v1.RecordMeta(\x01\x30\x01\x12\x41\n\x06\x44\x65lete\x12\x1d.agntcy.dir.core.v1.RecordRef\x1a\x16.google.protobuf.Empty(\x01\x12g\n\x0cPushReferrer\x12(.agntcy.dir.store.v1.PushReferrerRequest\x1a).agntcy.dir.store.v1.PushReferrerResponse(\x01\x30\x01\x12g\n\x0cPullReferrer\x12(.agntcy.dir.store.v1.PullReferrerRequest\x1a).agntcy.dir.store.v1.PullReferrerResponse(\x01\x30\x01\x42\xbf\x01\n\x17\x63om.agntcy.dir.store.v1B\x11StoreServiceProtoP\x01Z\"github.com/agntcy/dir/api/store/v1\xa2\x02\x03\x41\x44S\xaa\x02\x13\x41gntcy.Dir.Store.V1\xca\x02\x13\x41gntcy\\Dir\\Store\\V1\xe2\x02\x1f\x41gntcy\\Dir\\Store\\V1\\GPBMetadata\xea\x02\x16\x41gntcy::Dir::Store::V1b\x06proto3')
 
 _globals = globals()
 _builder.BuildMessageAndEnumDescriptors(DESCRIPTOR, _globals)
@@ -42,17 +43,21 @@ if not _descriptor._USE_C_DESCRIPTORS:
   _globals['_PUSHREFERRERREQUEST'].fields_by_name['record_ref']._loaded_options = None
   _globals['_PUSHREFERRERREQUEST'].fields_by_name['record_ref']._serialized_options = b'\272H\003\310\001\001'
   _globals['_PUSHREFERRERREQUEST'].fields_by_name['type']._loaded_options = None
-  _globals['_PUSHREFERRERREQUEST'].fields_by_name['type']._serialized_options = b'\272HAr<R\034agntcy.dir.sign.v1.PublicKeyR\034agntcy.dir.sign.v1.Signature\310\001\001'
-  _globals['_PUSHREFERRERREQUEST']._serialized_start=221
-  _globals['_PUSHREFERRERREQUEST']._serialized_end=635
-  _globals['_PUSHREFERRERREQUEST_ANNOTATIONSENTRY']._serialized_start=573
-  _globals['_PUSHREFERRERREQUEST_ANNOTATIONSENTRY']._serialized_end=635
-  _globals['_PUSHREFERRERRESPONSE']._serialized_start=638
-  _globals['_PUSHREFERRERRESPONSE']._serialized_end=814
-  _globals['_PULLREFERRERREQUEST']._serialized_start=817
-  _globals['_PULLREFERRERREQUEST']._serialized_end=960
-  _globals['_PULLREFERRERRESPONSE']._serialized_start=962
-  _globals['_PULLREFERRERRESPONSE']._serialized_end=1048
-  _globals['_STORESERVICE']._serialized_start=1051
-  _globals['_STORESERVICE']._serialized_end=1561
+  _globals['_PUSHREFERRERREQUEST'].fields_by_name['type']._serialized_options = b'\272H\tr\004\200\265\030\001\310\001\001'
+  _globals['_PULLREFERRERREQUEST'].fields_by_name['record_ref']._loaded_options = None
+  _globals['_PULLREFERRERREQUEST'].fields_by_name['record_ref']._serialized_options = b'\272H\003\310\001\001'
+  _globals['_PULLREFERRERREQUEST'].fields_by_name['referrer_type']._loaded_options = None
+  _globals['_PULLREFERRERREQUEST'].fields_by_name['referrer_type']._serialized_options = b'\272H\006r\004\200\265\030\001'
+  _globals['_PUSHREFERRERREQUEST']._serialized_start=253
+  _globals['_PUSHREFERRERREQUEST']._serialized_end=611
+  _globals['_PUSHREFERRERREQUEST_ANNOTATIONSENTRY']._serialized_start=549
+  _globals['_PUSHREFERRERREQUEST_ANNOTATIONSENTRY']._serialized_end=611
+  _globals['_PUSHREFERRERRESPONSE']._serialized_start=614
+  _globals['_PUSHREFERRERRESPONSE']._serialized_end=790
+  _globals['_PULLREFERRERREQUEST']._serialized_start=793
+  _globals['_PULLREFERRERREQUEST']._serialized_end=1023
+  _globals['_PULLREFERRERRESPONSE']._serialized_start=1025
+  _globals['_PULLREFERRERRESPONSE']._serialized_end=1111
+  _globals['_STORESERVICE']._serialized_start=1114
+  _globals['_STORESERVICE']._serialized_end=1624
 # @@protoc_insertion_point(module_scope)

@@ -154,7 +154,7 @@ func (c *Client) PushReferrer(ctx context.Context, req *storev1.PushReferrerRequ
 }
 
 // PullReferrer retrieves all referrers using the PullReferrer RPC.
-func (c *Client) PullReferrer(ctx context.Context, req *storev1.PullReferrerRequest) (<-chan *storev1.PullReferrerResponse, error) {
+func (c *Client) PullReferrer(ctx context.Context, req *storev1.PullReferrerRequest) ([]*storev1.PullReferrerResponse, error) {
 	// Create streaming client
 	stream, err := c.StoreServiceClient.PullReferrer(ctx)
 	if err != nil {
@@ -171,34 +171,24 @@ func (c *Client) PullReferrer(ctx context.Context, req *storev1.PullReferrerRequ
 		return nil, fmt.Errorf("failed to close send stream: %w", err)
 	}
 
-	resultCh := make(chan *storev1.PullReferrerResponse)
+	responses := []*storev1.PullReferrerResponse{}
 
-	go func() {
-		defer close(resultCh)
-
-		for {
-			response, err := stream.Recv()
-			if errors.Is(err, io.EOF) {
-				break
-			}
-
-			if err != nil {
-				logger.Error("failed to receive pull referrer response", "error", err)
-
-				return
-			}
-
-			select {
-			case resultCh <- response:
-			case <-ctx.Done():
-				logger.Error("context cancelled while receiving pull referrer response", "error", ctx.Err())
-
-				return
-			}
+	for {
+		response, err := stream.Recv()
+		if errors.Is(err, io.EOF) {
+			break
 		}
-	}()
 
-	return resultCh, nil
+		if err != nil {
+			logger.Error("failed to receive pull referrer response", "error", err)
+
+			return responses, err //nolint:wrapcheck
+		}
+
+		responses = append(responses, response)
+	}
+
+	return responses, nil
 }
 
 // Lookup retrieves metadata for a record using its reference.

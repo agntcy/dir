@@ -1,5 +1,7 @@
 from google.protobuf import struct_pb2 as _struct_pb2
 from buf.validate import validate_pb2 as _validate_pb2
+from agntcy.dir.core.v1 import rules_pb2 as _rules_pb2
+from agntcy.dir.core.v1 import referrer_pb2 as _referrer_pb2
 from google.protobuf.internal import containers as _containers
 from google.protobuf import descriptor as _descriptor
 from google.protobuf import message as _message
@@ -49,7 +51,7 @@ class Record(_message.Message):
     def __init__(self, data: _Optional[_Union[_struct_pb2.Struct, _Mapping]] = ...) -> None: ...
 
 class RecordReferrer(_message.Message):
-    __slots__ = ("type", "record_ref", "annotations", "created_at", "data")
+    __slots__ = ("type", "record_ref", "annotations", "created_at", "data", "referrer_ref")
     class AnnotationsEntry(_message.Message):
         __slots__ = ("key", "value")
         KEY_FIELD_NUMBER: _ClassVar[int]
@@ -62,9 +64,11 @@ class RecordReferrer(_message.Message):
     ANNOTATIONS_FIELD_NUMBER: _ClassVar[int]
     CREATED_AT_FIELD_NUMBER: _ClassVar[int]
     DATA_FIELD_NUMBER: _ClassVar[int]
+    REFERRER_REF_FIELD_NUMBER: _ClassVar[int]
     type: str
     record_ref: RecordRef
     annotations: _containers.ScalarMap[str, str]
     created_at: str
     data: _struct_pb2.Struct
-    def __init__(self, type: _Optional[str] = ..., record_ref: _Optional[_Union[RecordRef, _Mapping]] = ..., annotations: _Optional[_Mapping[str, str]] = ..., created_at: _Optional[str] = ..., data: _Optional[_Union[_struct_pb2.Struct, _Mapping]] = ...) -> None: ...
+    referrer_ref: _referrer_pb2.ReferrerRef
+    def __init__(self, type: _Optional[str] = ..., record_ref: _Optional[_Union[RecordRef, _Mapping]] = ..., annotations: _Optional[_Mapping[str, str]] = ..., created_at: _Optional[str] = ..., data: _Optional[_Union[_struct_pb2.Struct, _Mapping]] = ..., referrer_ref: _Optional[_Union[_referrer_pb2.ReferrerRef, _Mapping]] = ...) -> None: ...
