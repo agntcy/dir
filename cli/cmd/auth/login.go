@@ -6,11 +6,10 @@ package auth
 import (
 	"errors"
 	"fmt"
-	"strings"
 	"time"
 
-	"github.com/agntcy/dir/client"
 	"github.com/agntcy/dir/cli/config"
+	"github.com/agntcy/dir/client"
 	"github.com/spf13/cobra"
 )
 
@@ -64,15 +63,15 @@ func runLogin(cmd *cobra.Command, _ []string) error {
 		if existingToken != nil {
 			cmd.Println()
 			cmd.Printf("✓ Already authenticated as: %s\n", existingToken.User)
+
 			if existingToken.Issuer != "" {
 				cmd.Printf("  Issuer: %s\n", existingToken.Issuer)
 			}
-			if len(existingToken.Orgs) > 0 {
-				cmd.Printf("  Organizations: %s\n", strings.Join(existingToken.Orgs, ", "))
-			}
+
 			cmd.Println()
 			cmd.Println("Use 'dirctl auth logout' to clear credentials and login again,")
 			cmd.Println("or use 'dirctl auth login --force' to re-authenticate.")
+
 			return nil
 		}
 	}
@@ -115,9 +114,11 @@ func runLogin(cmd *cobra.Command, _ []string) error {
 	if userDisplay == "" {
 		userDisplay = result.Subject
 	}
+
 	if userDisplay == "" {
 		userDisplay = result.Email
 	}
+
 	if userDisplay == "" {
 		userDisplay = "authenticated"
 	}
@@ -145,9 +146,11 @@ func runLogin(cmd *cobra.Command, _ []string) error {
 
 	cmd.Println()
 	cmd.Printf("✓ Authenticated as: %s\n", userDisplay)
+
 	if result.Email != "" {
 		cmd.Printf("  Email: %s\n", result.Email)
 	}
+
 	cmd.Println()
 	cmd.Println("╔════════════════════════════════════════════════════════════╗")
 	cmd.Println("║              Authentication Complete! ✓                    ║")

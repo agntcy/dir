@@ -4,8 +4,8 @@
 package cmd
 
 import (
-	"github.com/agntcy/dir/client"
 	"github.com/agntcy/dir/cli/config"
+	"github.com/agntcy/dir/client"
 )
 
 func init() {

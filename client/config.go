@@ -15,9 +15,11 @@ import (
 const (
 	DefaultEnvPrefix = "DIRECTORY_CLIENT"
 
-	DefaultServerAddress    = "0.0.0.0:8888"
-	DefaultTlsSkipVerify   = false
-	DefaultCallbackPort    = 8484
+	DefaultServerAddress = "0.0.0.0:8888"
+	DefaultTlsSkipVerify = false
+	DefaultCallbackPort  = 8484
+	// DefaultOIDCRedirectURI is the default OAuth callback URL (not a credential).
+	//nolint:gosec // G101: redirect URI is not a secret; it's registered with the IdP
 	DefaultOIDCRedirectURI = "http://localhost:8484/callback"
 	DefaultOAuthTimeout    = 5 * time.Minute
 )
@@ -35,13 +37,13 @@ type Config struct {
 	SpiffeSocketPath string `json:"spiffe_socket_path,omitempty" mapstructure:"spiffe_socket_path"`
 	SpiffeToken      string `json:"spiffe_token,omitempty"       mapstructure:"spiffe_token"`
 	AuthMode         string `json:"auth_mode,omitempty"          mapstructure:"auth_mode"`
-	JWTAudience      string `json:"jwt_audience,omitempty"      mapstructure:"jwt_audience"`
+	JWTAudience      string `json:"jwt_audience,omitempty"       mapstructure:"jwt_audience"`
 
 	// OIDC configuration (for interactive login and CI token)
 	OIDCIssuer      string `json:"oidc_issuer,omitempty"       mapstructure:"oidc_issuer"`
-	OIDCClientID    string `json:"oidc_client_id,omitempty"     mapstructure:"oidc_client_id"`
-	OIDCToken       string `json:"oidc_token,omitempty"         mapstructure:"oidc_token"`
-	OIDCRedirectURI string `json:"oidc_redirect_uri,omitempty"   mapstructure:"oidc_redirect_uri"`
+	OIDCClientID    string `json:"oidc_client_id,omitempty"    mapstructure:"oidc_client_id"`
+	OIDCToken       string `json:"oidc_token,omitempty"        mapstructure:"oidc_token"`
+	OIDCRedirectURI string `json:"oidc_redirect_uri,omitempty" mapstructure:"oidc_redirect_uri"`
 }
 
 func LoadConfig() (*Config, error) {

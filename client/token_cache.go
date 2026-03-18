@@ -61,9 +61,6 @@ type CachedToken struct {
 	// Email is the user's email address.
 	Email string `json:"email,omitempty"`
 
-	// Orgs are the user's organizations/tenants/domains.
-	Orgs []string `json:"orgs,omitempty"`
-
 	// CreatedAt is when the token was cached.
 	CreatedAt time.Time `json:"created_at"`
 }

@@ -9,6 +9,7 @@ import (
 	"crypto/sha256"
 	"encoding/base64"
 	"fmt"
+	"html"
 	"io"
 	"net"
 	"net/http"
@@ -25,15 +26,27 @@ import (
 // DefaultOIDCScopes are the OIDC scopes requested for interactive login.
 const DefaultOIDCScopes = "openid email profile"
 
+// serverShutdownTimeout is how long to wait for the callback server to shut down.
+const serverShutdownTimeout = 2 * time.Second
+
+// pkceVerifierBytes is the number of random bytes for PKCE code verifier (RFC 7636: 43-128 chars; 32 bytes = 43 chars base64url).
+const pkceVerifierBytes = 32
+
+// maxOAuthCallbackBodySize limits the OAuth callback request body to prevent memory exhaustion (OAuth params are small).
+const maxOAuthCallbackBodySize = 32 << 10 // 32KB
+
+// oauthCallbackReadHeaderTimeout limits time to read request headers (mitigates Slowloris).
+const oauthCallbackReadHeaderTimeout = 10 * time.Second
+
 // PKCEConfig holds configuration for the OIDC PKCE flow.
 type PKCEConfig struct {
-	Issuer         string
-	ClientID       string
+	Issuer          string
+	ClientID        string
 	RedirectURI     string
-	Scopes         []string
-	CallbackPort   int
+	Scopes          []string
+	CallbackPort    int
 	SkipBrowserOpen bool
-	Timeout        time.Duration
+	Timeout         time.Duration
 }
 
 // PKCEResult holds the result of a successful PKCE flow.
@@ -47,6 +60,13 @@ type PKCEResult struct {
 	Subject string
 	Email   string
 	Name    string
+}
+
+// oauthCallbackResult is the result of an OAuth callback (code or error).
+type oauthCallbackResult struct {
+	code  string
+	state string
+	err   error
 }
 
 // RunPKCEFlow performs the OIDC Authorization Code flow with PKCE.
@@ -77,58 +97,19 @@ func RunPKCEFlow(ctx context.Context, cfg *PKCEConfig) (*PKCEResult, error) {
 	state := uuid.New().String()
 	authURL := rp.AuthURL(state, rpClient, rp.WithCodeChallenge(challenge))
 
-	// Channel to receive the authorization code from the callback
-	type callbackResult struct {
-		code  string
-		state string
-		err   error
-	}
-	resultCh := make(chan callbackResult, 1)
-
-	// Build redirect URI path from full URL (e.g. http://localhost:8484/callback -> /callback)
-	callbackPath := "/callback"
-	if u, err := url.Parse(cfg.RedirectURI); err == nil && u.Path != "" {
-		callbackPath = u.Path
-	}
+	resultCh := make(chan oauthCallbackResult, 1)
+	callbackPath := parseCallbackPath(cfg.RedirectURI)
 
 	server := &http.Server{
-		Addr: fmt.Sprintf("localhost:%d", cfg.CallbackPort),
-		Handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			if r.URL.Path != callbackPath {
-				http.NotFound(w, r)
-				return
-			}
-
-			// Check for error in callback
-			if errVal := r.FormValue("error"); errVal != "" {
-				desc := r.FormValue("error_description")
-				writeSuccessPage(w, false, "Authentication failed: "+errVal)
-				resultCh <- callbackResult{err: fmt.Errorf("oidc error %s: %s", errVal, desc)}
-				return
-			}
-
-			code := r.FormValue("code")
-			callbackState := r.FormValue("state")
-			if code == "" {
-				writeSuccessPage(w, false, "No authorization code received")
-				resultCh <- callbackResult{err: fmt.Errorf("no authorization code in callback")}
-				return
-			}
-
-			// Validate state
-			if callbackState != state {
-				writeSuccessPage(w, false, "Invalid state parameter")
-				resultCh <- callbackResult{err: fmt.Errorf("state mismatch")}
-				return
-			}
-
-			writeSuccessPage(w, true, "Authentication successful! You can close this window.")
-			resultCh <- callbackResult{code: code, state: callbackState}
-		}),
+		Addr:              fmt.Sprintf("localhost:%d", cfg.CallbackPort),
+		ReadHeaderTimeout: oauthCallbackReadHeaderTimeout,
+		Handler:           handleOAuthCallback(callbackPath, state, resultCh),
 	}
 
 	// Use a listener to detect the actual port (in case 0 was requested)
-	listener, err := net.Listen("tcp", server.Addr)
+	lc := net.ListenConfig{}
+
+	listener, err := lc.Listen(ctx, "tcp", server.Addr)
 	if err != nil {
 		return nil, fmt.Errorf("failed to start callback server: %w", err)
 	}
@@ -141,20 +122,11 @@ func RunPKCEFlow(ctx context.Context, cfg *PKCEConfig) (*PKCEResult, error) {
 
 	// Shutdown server when done
 	defer func() {
-		shutdownCtx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+		shutdownCtx, cancel := context.WithTimeout(ctx, serverShutdownTimeout)
 		defer cancel()
+
 		_ = server.Shutdown(shutdownCtx)
 	}()
-
-	// Use actual redirect URI if port was dynamic (listener.Addr())
-	actualRedirectURI := cfg.RedirectURI
-	if addr, ok := listener.Addr().(*net.TCPAddr); ok && addr.Port != cfg.CallbackPort {
-		actualRedirectURI = fmt.Sprintf("http://localhost:%d%s", addr.Port, callbackPath)
-		// Recreate RP with correct redirect URI - actually the IdP redirects to our config,
-		// so we must use the configured port. Skip this for now.
-	}
-
-	_ = actualRedirectURI // ensure redirect URI matches what we registered
 
 	// Open browser or print URL
 	if !cfg.SkipBrowserOpen {
@@ -167,7 +139,7 @@ func RunPKCEFlow(ctx context.Context, cfg *PKCEConfig) (*PKCEResult, error) {
 	// Wait for callback with timeout
 	timeout := cfg.Timeout
 	if timeout == 0 {
-		timeout = 5 * time.Minute
+		timeout = DefaultOAuthTimeout
 	}
 
 	select {
@@ -176,32 +148,7 @@ func RunPKCEFlow(ctx context.Context, cfg *PKCEConfig) (*PKCEResult, error) {
 			return nil, res.err
 		}
 
-		// Exchange code for tokens
-		tokens, err := rp.CodeExchange[*oidc.IDTokenClaims](ctx, res.code, rpClient, rp.WithCodeVerifier(verifier))
-		if err != nil {
-			return nil, fmt.Errorf("token exchange failed: %w", err)
-		}
-
-		result := &PKCEResult{
-			AccessToken:  tokens.AccessToken,
-			RefreshToken: tokens.RefreshToken,
-			TokenType:    "Bearer",
-			ExpiresAt:    tokens.Expiry,
-		}
-		if tokens.IDToken != "" {
-			result.IDToken = tokens.IDToken
-		}
-		if tokens.IDTokenClaims != nil {
-			claims := tokens.IDTokenClaims
-			result.Subject = claims.GetSubject()
-			result.Email = claims.Email
-			result.Name = claims.PreferredUsername
-			if result.Name == "" {
-				result.Name = claims.Name
-			}
-		}
-
-		return result, nil
+		return exchangeCodeForResult(ctx, res.code, verifier, rpClient)
 
 	case <-ctx.Done():
 		return nil, fmt.Errorf("login timed out or cancelled: %w", ctx.Err())
@@ -210,14 +157,109 @@ func RunPKCEFlow(ctx context.Context, cfg *PKCEConfig) (*PKCEResult, error) {
 	}
 }
 
+// parseCallbackPath extracts the path from a redirect URI (e.g. http://localhost:8484/callback -> /callback).
+func parseCallbackPath(redirectURI string) string {
+	u, err := url.Parse(redirectURI)
+	if err != nil || u.Path == "" {
+		return "/callback"
+	}
+
+	return u.Path
+}
+
+// handleOAuthCallback returns an HTTP handler for the OAuth callback endpoint.
+func handleOAuthCallback(callbackPath, state string, resultCh chan<- oauthCallbackResult) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != callbackPath {
+			http.NotFound(w, r)
+
+			return
+		}
+
+		r.Body = http.MaxBytesReader(w, r.Body, maxOAuthCallbackBodySize)
+
+		if errVal := r.FormValue("error"); errVal != "" {
+			desc := r.FormValue("error_description")
+
+			writeSuccessPage(w, false, "Authentication failed: "+errVal)
+
+			resultCh <- oauthCallbackResult{err: fmt.Errorf("oidc error %s: %s", errVal, desc)}
+
+			return
+		}
+
+		code := r.FormValue("code")
+		callbackState := r.FormValue("state")
+
+		if code == "" {
+			writeSuccessPage(w, false, "No authorization code received")
+
+			resultCh <- oauthCallbackResult{err: fmt.Errorf("no authorization code in callback")}
+
+			return
+		}
+
+		if callbackState != state {
+			writeSuccessPage(w, false, "Invalid state parameter")
+
+			resultCh <- oauthCallbackResult{err: fmt.Errorf("state mismatch")}
+
+			return
+		}
+
+		writeSuccessPage(w, true, "Authentication successful! You can close this window.")
+
+		resultCh <- oauthCallbackResult{code: code, state: callbackState}
+	}
+}
+
+// exchangeCodeForResult exchanges the auth code for tokens and builds a PKCEResult.
+func exchangeCodeForResult(ctx context.Context, code, verifier string, rpClient rp.RelyingParty) (*PKCEResult, error) {
+	tokens, err := rp.CodeExchange[*oidc.IDTokenClaims](ctx, code, rpClient, rp.WithCodeVerifier(verifier))
+	if err != nil {
+		return nil, fmt.Errorf("token exchange failed: %w", err)
+	}
+
+	return tokensToResult(tokens), nil
+}
+
+// tokensToResult maps OIDC tokens to PKCEResult.
+func tokensToResult(tokens *oidc.Tokens[*oidc.IDTokenClaims]) *PKCEResult {
+	result := &PKCEResult{
+		AccessToken:  tokens.AccessToken,
+		RefreshToken: tokens.RefreshToken,
+		TokenType:    "Bearer",
+		ExpiresAt:    tokens.Expiry,
+	}
+	if tokens.IDToken != "" {
+		result.IDToken = tokens.IDToken
+	}
+
+	if tokens.IDTokenClaims != nil {
+		claims := tokens.IDTokenClaims
+		result.Subject = claims.GetSubject()
+		result.Email = claims.Email
+
+		result.Name = claims.PreferredUsername
+		if result.Name == "" {
+			result.Name = claims.Name
+		}
+	}
+
+	return result
+}
+
 // generatePKCE generates a PKCE code verifier and challenge per RFC 7636.
+//
+//nolint:nonamedreturns // named returns used for clarity in short function
 func generatePKCE() (verifier, challenge string, err error) {
 	// code_verifier: 43-128 chars from [A-Z][a-z][0-9]-._~
-	// We use 32 random bytes = 43 chars when base64url encoded
-	bytes := make([]byte, 32)
+	// We use pkceVerifierBytes random bytes = 43 chars when base64url encoded
+	bytes := make([]byte, pkceVerifierBytes)
 	if _, err := io.ReadFull(rand.Reader, bytes); err != nil {
-		return "", "", err
+		return "", "", fmt.Errorf("failed to generate PKCE verifier: %w", err)
 	}
+
 	verifier = base64.RawURLEncoding.EncodeToString(bytes)
 
 	// code_challenge = BASE64URL(SHA256(verifier))
@@ -230,10 +272,12 @@ func generatePKCE() (verifier, challenge string, err error) {
 // writeSuccessPage writes a simple HTML page to the response.
 func writeSuccessPage(w http.ResponseWriter, success bool, message string) {
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+
 	status := "success"
 	if !success {
 		status = "error"
 	}
+
 	_, _ = fmt.Fprintf(w, `<!DOCTYPE html><html><head><title>%s</title></head><body><h1>%s</h1><p>%s</p></body></html>`,
-		status, message, message)
+		html.EscapeString(status), html.EscapeString(message), html.EscapeString(message))
 }

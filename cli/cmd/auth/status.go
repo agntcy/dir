@@ -5,7 +5,6 @@ package auth
 
 import (
 	"fmt"
-	"strings"
 	"time"
 
 	"github.com/agntcy/dir/client"
@@ -18,7 +17,7 @@ var statusCmd = &cobra.Command{
 	Long: `Show the current authentication status.
 
 This command displays information about the cached token,
-including the authenticated user, organizations, and token validity.
+including the authenticated user and token validity.
 
 Examples:
   # Show authentication status
@@ -44,11 +43,6 @@ func runStatus(cmd *cobra.Command, _ []string) error {
 
 	cmd.Println("Status: Authenticated")
 	cmd.Printf("  User: %s\n", token.User)
-
-	if len(token.Orgs) > 0 {
-		cmd.Printf("  Organizations: %s\n", strings.Join(token.Orgs, ", "))
-	}
-
 	cmd.Printf("  Cached at: %s\n", token.CreatedAt.Format(time.RFC3339))
 
 	// Check token validity and display status
