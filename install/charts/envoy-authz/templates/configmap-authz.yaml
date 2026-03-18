@@ -23,12 +23,19 @@ data:
       emailPath: {{ .Values.authServer.oidc.claims.emailPath | quote }}
 
     issuers:
-      {{- range $issuer, $cfg := .Values.authServer.oidc.issuers }}
-      {{ $issuer | quote }}:
-        principalType: {{ $cfg.principalType | quote }}
-        {{- if $cfg.machineIdentityClaim }}
-        machineIdentityClaim: {{ $cfg.machineIdentityClaim | quote }}
+      {{- if .Values.authServer.oidc.issuers }}
+      {{- range .Values.authServer.oidc.issuers }}
+      - provider: {{ .provider | quote }}
+        principalType: {{ .principalType | quote }}
+        {{- if .machineIdentityClaim }}
+        machineIdentityClaim: {{ .machineIdentityClaim | quote }}
         {{- end }}
+        {{- if .machineSubPattern }}
+        machineSubPattern: {{ .machineSubPattern | quote }}
+        {{- end }}
+      {{- end }}
+      {{- else }}
+      []
       {{- end }}
 
     principalType:
@@ -75,12 +82,16 @@ data:
           {{- range $role.clients }}
           - {{ . | quote }}
           {{- end }}
+        {{- else }}
+        clients: []
         {{- end }}
         {{- if $role.githubWorkflows }}
         githubWorkflows:
           {{- range $role.githubWorkflows }}
           - {{ . | quote }}
           {{- end }}
+        {{- else }}
+        githubWorkflows: []
         {{- end }}
       {{- end }}
       {{- else }}

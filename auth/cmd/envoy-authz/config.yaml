@@ -1,17 +1,20 @@
 # OIDC ext-authz configuration
 # Roles come only from config; no roles are extracted from JWT claims.
+# All values are user-specific - provide your own for your infrastructure.
 
 claims:
   userID: "sub"
   emailPath: "email"
 
-# Issuer-specific extraction. Allowed principalType: auto | user | client | github
-issuers:
-  - provider: "https://tenant.zitadel.cloud"
-    principalType: "auto"
-    machineIdentityClaim: "client_id"
-  - provider: "https://token.actions.githubusercontent.com"
-    principalType: "github"
+# Issuer-specific extraction. principalType: auto | user | client | github
+# Example:
+# issuers:
+#   - provider: "https://tenant.zitadel.cloud"
+#     principalType: "auto"
+#     machineIdentityClaim: "client_id"
+#   - provider: "https://token.actions.githubusercontent.com"
+#     principalType: "github"
+issuers: []
 
 # Fallback when issuer not in issuers. Allowed mode: auto | user | client
 principalType:
@@ -26,10 +29,10 @@ publicPaths:
   - "/grpc.reflection"
 
 roles:
+  # Example admin: users: ["user:https://tenant.zitadel.cloud:77776025198584418"]
   admin:
     allowedMethods: ["*"]
-    users:
-      - "user:https://tenant.zitadel.cloud:77776025198584418"
+    users: []
   viewer:
     allowedMethods:
       - "/agntcy.dir.store.v1.StoreService/Pull"
@@ -40,9 +43,10 @@ roles:
       - "/agntcy.dir.store.v1.StoreService/Push"
       - "/agntcy.dir.store.v1.StoreService/Pull"
     users: []
-    clients:
-      - "client:https://tenant.zitadel.cloud:69234237810729234"
-  prod-deployer:
-    allowedMethods: ["*"]
-    githubWorkflows:
-      - "ghwf:repo:agntcy/dir:workflow:deploy.yml:ref:refs/heads/main:env:prod"
+    # Example: clients: ["client:https://tenant.zitadel.cloud:69234237810729234"]
+    clients: []
+  # Example GitHub Actions deployer (uncomment when deploy.yml exists):
+  # prod-deployer:
+  #   allowedMethods: ["*"]
+  #   githubWorkflows:
+  #     - "ghwf:repo:agntcy/dir:workflow:deploy.yml:ref:refs/heads/main:env:prod"
