@@ -15,7 +15,7 @@ vars:
 
   ## External dependency versions
   ZOT_VERSION: "2.1.15"
-  SPIRE_VERSION: "1.14.2"
+  SPIRE_VERSION: "1.14.3"
   REGSYNC_VERSION: "v0.11.1"
   POSTGRESQL_IMAGE_REF: "docker.io/bitnami/postgresql@sha256:e8b68936d05ee665974430bb4765fedcdc5c9ba399e133e120e2deed77f54dbf"
 
