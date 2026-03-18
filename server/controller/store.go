@@ -17,6 +17,7 @@ import (
 	"github.com/agntcy/dir/server/types"
 	"github.com/agntcy/dir/server/types/adapters"
 	"github.com/agntcy/dir/utils/logging"
+	googleapis "google.golang.org/genproto/googleapis/rpc/status"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/emptypb"
@@ -227,10 +228,6 @@ func (s storeCtrl) PushReferrer(stream storev1.StoreService_PushReferrerServer) 
 			return status.Errorf(codes.Internal, "failed to receive push referrer request: %v", err)
 		}
 
-		if err = protovalidate.Validate(request); err != nil {
-			return status.Errorf(codes.InvalidArgument, "%v", err)
-		}
-
 		// Validate the record reference
 		if err := s.validateRecordRef(request.GetRecordRef()); err != nil {
 			return err
@@ -248,6 +245,15 @@ func (s storeCtrl) PushReferrer(stream storev1.StoreService_PushReferrerServer) 
 func (s storeCtrl) pushReferrer(ctx context.Context, request *storev1.PushReferrerRequest) *storev1.PushReferrerResponse {
 	storeLogger.Debug("Pushing referrer", "cid", request.GetRecordRef().GetCid(), "type", request.GetReferrer().GetType())
 
+	if err := protovalidate.Validate(request); err != nil {
+		return &storev1.PushReferrerResponse{
+			Error: &googleapis.Status{
+				Code:    int32(codes.InvalidArgument),
+				Message: err.Error(),
+			},
+		}
+	}
+
 	recordCID := request.GetRecordRef().GetCid()
 
 	// Use ReferrerStoreAPI to push the referrer
@@ -257,8 +263,10 @@ func (s storeCtrl) pushReferrer(ctx context.Context, request *storev1.PushReferr
 		errMsg := "referrer storage not supported by current store implementation"
 
 		return &storev1.PushReferrerResponse{
-			Success:      false,
-			ErrorMessage: &errMsg,
+			Error: &googleapis.Status{
+				Code:    int32(codes.Internal),
+				Message: errMsg,
+			},
 		}
 	}
 
@@ -267,8 +275,10 @@ func (s storeCtrl) pushReferrer(ctx context.Context, request *storev1.PushReferr
 		errMsg := fmt.Sprintf("failed to push referrer for record %s: %v", recordCID, err)
 
 		return &storev1.PushReferrerResponse{
-			Success:      false,
-			ErrorMessage: &errMsg,
+			Error: &googleapis.Status{
+				Code:    int32(status.Code(err)), // #nosec G115
+				Message: errMsg,
+			},
 		}
 	}
 
@@ -296,7 +306,6 @@ func (s storeCtrl) pushReferrer(ctx context.Context, request *storev1.PushReferr
 	storeLogger.Debug("Referrer pushed successfully", "cid", recordCID, "type", request.GetReferrer().GetType())
 
 	return &storev1.PushReferrerResponse{
-		Success:     true,
 		ReferrerRef: referrerRef,
 	}
 }

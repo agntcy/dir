@@ -9,6 +9,7 @@ import type { GenFile, GenMessage, GenService } from "@bufbuild/protobuf/codegen
 import type { Message } from "@bufbuild/protobuf";
 import type { RecordMetaSchema, RecordRef, RecordReferrer, RecordRefSchema, RecordSchema } from "../../core/v1/record_pb.js";
 import type { ReferrerRef } from "../../core/v1/referrer_pb.js";
+import type { Status } from "../../../../google/rpc/status_pb.js";
 import type { EmptySchema } from "@bufbuild/protobuf/wkt";
 
 /**
@@ -50,25 +51,18 @@ export declare const PushReferrerRequestSchema: GenMessage<PushReferrerRequest>;
  */
 export declare type PushReferrerResponse = Message<"agntcy.dir.store.v1.PushReferrerResponse"> & {
   /**
-   * The push process result
-   *
-   * @generated from field: bool success = 1;
-   */
-  success: boolean;
-
-  /**
-   * Optional error message if push failed
-   *
-   * @generated from field: optional string error_message = 2;
-   */
-  errorMessage?: string;
-
-  /**
    * The CID of the referrer
    *
    * @generated from field: agntcy.dir.core.v1.ReferrerRef referrer_ref = 3;
    */
   referrerRef?: ReferrerRef;
+
+  /**
+   * If the server failed to push the referrer, return an error
+   *
+   * @generated from field: google.rpc.Status error = 4;
+   */
+  error?: Status;
 };
 
 /**

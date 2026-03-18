@@ -21,7 +21,6 @@ import (
 	"github.com/onsi/ginkgo/v2"
 	"github.com/onsi/gomega"
 	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/structpb"
 )
 
@@ -75,17 +74,6 @@ func pullReferrers(c *client.Client, ctx context.Context, recordRef *corev1.Reco
 	return referrers
 }
 
-func expectError(err error, code codes.Code, msg string) {
-	gomega.Expect(err).To(gomega.HaveOccurred())
-	e, ok := status.FromError(err)
-	gomega.Expect(ok).To(gomega.BeTrue())
-	gomega.Expect(e.Code()).To(gomega.Equal(code))
-	gomega.Expect(e.Message()).To(gomega.Equal(
-		"failed to receive push referrer response: " +
-			fmt.Sprintf("rpc error: code = %s desc = validation error: %s", code.String(), msg),
-	))
-}
-
 var _ = ginkgo.Describe("Running e2e tests for referrers", func() {
 	var (
 		c       *client.Client
@@ -122,8 +110,7 @@ var _ = ginkgo.Describe("Running e2e tests for referrers", func() {
 		})
 
 		gomega.Expect(err).NotTo(gomega.HaveOccurred())
-		gomega.Expect(response.GetSuccess()).To(gomega.BeTrue())
-		gomega.Expect(response.GetErrorMessage()).To(gomega.BeEmpty())
+		gomega.Expect(response.GetError().GetMessage()).To(gomega.BeEmpty())
 		gomega.Expect(response.GetReferrerRef().GetCid()).NotTo(gomega.BeNil())
 		gomega.Expect(response.GetReferrerRef().GetCid()).NotTo(gomega.BeEmpty())
 
@@ -147,8 +134,7 @@ var _ = ginkgo.Describe("Running e2e tests for referrers", func() {
 		})
 
 		gomega.Expect(err).NotTo(gomega.HaveOccurred())
-		gomega.Expect(response.GetSuccess()).To(gomega.BeTrue())
-		gomega.Expect(response.GetErrorMessage()).To(gomega.BeEmpty())
+		gomega.Expect(response.GetError().GetMessage()).To(gomega.BeEmpty())
 		gomega.Expect(response.GetReferrerRef().GetCid()).NotTo(gomega.BeNil())
 		gomega.Expect(response.GetReferrerRef().GetCid()).NotTo(gomega.BeEmpty())
 
@@ -181,14 +167,13 @@ var _ = ginkgo.Describe("Running e2e tests for referrers", func() {
 			Referrer:  referrer,
 		})
 
-		// FIXME: make sure to return an error if there's an error
 		gomega.Expect(err).ToNot(gomega.HaveOccurred())
-		gomega.Expect(response.GetSuccess()).To(gomega.BeFalse())
-		gomega.Expect(response.GetErrorMessage()).To(gomega.Equal(
+		gomega.Expect(response.GetReferrerRef().GetCid()).To(gomega.BeEmpty())
+		gomega.Expect(response.GetError().GetCode()).To(gomega.Equal(int32(codes.InvalidArgument)))
+		gomega.Expect(response.GetError().GetMessage()).To(gomega.Equal(
 			fmt.Sprintf("failed to push referrer for record %s: ", record1.GetCid()) +
 				"rpc error: code = InvalidArgument desc = referrer's record CID must match record CID",
 		))
-		gomega.Expect(response.GetReferrerRef().GetCid()).To(gomega.BeEmpty())
 	})
 
 	ginkgo.It("should fail if empty referrer", func() {
@@ -198,10 +183,11 @@ var _ = ginkgo.Describe("Running e2e tests for referrers", func() {
 			Referrer:  referrer,
 		})
 
-		msg := "referrer.type: value must be in list [agntcy.dir.sign.v1.PublicKey, agntcy.dir.sign.v1.Signature]"
-		expectError(err, codes.InvalidArgument, msg)
-		gomega.Expect(response.GetSuccess()).To(gomega.BeFalse())
-		gomega.Expect(response.GetErrorMessage()).To(gomega.Equal(""))
+		msg := "validation error: referrer.type: value must be in list [agntcy.dir.sign.v1.PublicKey, agntcy.dir.sign.v1.Signature]"
+
+		gomega.Expect(err).ToNot(gomega.HaveOccurred())
+		gomega.Expect(response.GetError().GetCode()).To(gomega.Equal(int32(codes.InvalidArgument)))
+		gomega.Expect(response.GetError().GetMessage()).To(gomega.Equal(msg))
 		gomega.Expect(response.GetReferrerRef().GetCid()).To(gomega.BeEmpty())
 	})
 
@@ -213,10 +199,11 @@ var _ = ginkgo.Describe("Running e2e tests for referrers", func() {
 			Referrer:  referrer,
 		})
 
-		msg := "referrer.type: value must be in list [agntcy.dir.sign.v1.PublicKey, agntcy.dir.sign.v1.Signature]"
-		expectError(err, codes.InvalidArgument, msg)
-		gomega.Expect(response.GetSuccess()).To(gomega.BeFalse())
-		gomega.Expect(response.GetErrorMessage()).To(gomega.Equal(""))
+		msg := "validation error: referrer.type: value must be in list [agntcy.dir.sign.v1.PublicKey, agntcy.dir.sign.v1.Signature]"
+
+		gomega.Expect(err).ToNot(gomega.HaveOccurred())
+		gomega.Expect(response.GetError().GetCode()).To(gomega.Equal(int32(codes.InvalidArgument)))
+		gomega.Expect(response.GetError().GetMessage()).To(gomega.Equal(msg))
 		gomega.Expect(response.GetReferrerRef().GetCid()).To(gomega.BeEmpty())
 
 		referrers := pullReferrers(c, ctx, record1, "foo")
@@ -310,22 +297,19 @@ var _ = ginkgo.Describe("Running e2e tests for referrers", func() {
 
 		response1, err := push.Recv()
 		gomega.Expect(err).ToNot(gomega.HaveOccurred())
-		gomega.Expect(response1.GetSuccess()).To(gomega.BeTrue())
-		gomega.Expect(response1.GetErrorMessage()).To(gomega.BeEmpty())
+		gomega.Expect(response1.GetError().GetMessage()).To(gomega.BeEmpty())
 		gomega.Expect(response1.GetReferrerRef().GetCid()).NotTo(gomega.BeNil())
 		gomega.Expect(response1.GetReferrerRef().GetCid()).NotTo(gomega.BeEmpty())
 
 		response2, err := push.Recv()
 		gomega.Expect(err).ToNot(gomega.HaveOccurred())
-		gomega.Expect(response2.GetSuccess()).To(gomega.BeTrue())
-		gomega.Expect(response2.GetErrorMessage()).To(gomega.BeEmpty())
+		gomega.Expect(response2.GetError().GetMessage()).To(gomega.BeEmpty())
 		gomega.Expect(response2.GetReferrerRef().GetCid()).NotTo(gomega.BeNil())
 		gomega.Expect(response2.GetReferrerRef().GetCid()).NotTo(gomega.BeEmpty())
 
 		response3, err := push.Recv()
 		gomega.Expect(err).To(gomega.BeIdenticalTo(io.EOF))
-		gomega.Expect(response3.GetSuccess()).To(gomega.BeFalse())
-		gomega.Expect(response3.GetErrorMessage()).To(gomega.BeEmpty())
+		gomega.Expect(response3.GetError().GetMessage()).To(gomega.BeEmpty())
 		gomega.Expect(response3.GetReferrerRef().GetCid()).To(gomega.BeEmpty())
 
 		// PULL

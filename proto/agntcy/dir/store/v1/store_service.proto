@@ -8,6 +8,7 @@ package agntcy.dir.store.v1;
 import "agntcy/dir/core/v1/record.proto";
 import "agntcy/dir/core/v1/referrer.proto";
 import "google/protobuf/empty.proto";
+import "google/rpc/status.proto";
 
 // Defines an interface for content-addressable storage
 // service for objects.
@@ -55,14 +56,15 @@ message PushReferrerRequest {
 
 // PushReferrerResponse
 message PushReferrerResponse {
-  // The push process result
-  bool success = 1;
-
-  // Optional error message if push failed
-  optional string error_message = 2;
+  //  success, error_message was removed in favor of error
+  reserved 1, 2;
+  reserved "success", "error_message";
 
   // The CID of the referrer
   core.v1.ReferrerRef referrer_ref = 3;
+
+  // If the server failed to push the referrer, return an error
+  google.rpc.Status error = 4;
 }
 
 // PullReferrerRequest represents a record with optional OCI artifacts for pull operations.
