@@ -5,6 +5,64 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v1.1.0] - 2026-03-19
+
+### Added
+- **Dir**: Referrer CIDs (#1027)
+- **Dir**: Validation for referrer record CIDs (#1035)
+- **Dir**: Protovalidate (#1030)
+- **Reconciler**: Signature verification task (#985)
+- **Importer**: Behavioral scanner (#1043)
+- **Importer**: Allowed tools in MCP server configuration (#1051)
+- **Importer**: Security scanner boilerplate (#1014)
+- **Tests**: Production-like E2E test suite and Taskfile updates (#1050)
+- **Tests**: E2E tests for the referrer API (#1003)
+- **Dir**: Delve debugger (#1020)
+- **MCP**: Name verification MCP tool (#982)
+
+### Changed
+- **Dir**: Refactor PushReferrer (#1065)
+- **Dir**: Update SPIRE image (#1069)
+- **Dependencies**: Bump oasf-sdk to v1.0.3 across Go modules (#1079, #1062)
+- **SDK**: Update Python SDK pyasn1 package (#1066)
+- **Dir**: Update Go modules (#1077)
+- **CI**: Update actions (#1070)
+- **CI**: Collect coverage and upload at once (#1038)
+- **CI**: Migrate deprecated release actions to softprops/action-gh-release (#1052)
+- **Dir**: Bump SPIRE to 1.14.2 and unify container scan image list (#1044)
+- **Dir**: Fix vulnerable MCP SDK Go package (#1040)
+- **CI**: Update reusable actions version (#1037)
+- **Dir**: Documentation and repo cleanup (#1032)
+- **Dir**: Split up Taskfile tasks (#1025)
+- **Dir**: Update Zot image version (#1022)
+- **Docker**: Refactor Dockerfile build arguments (#1015)
+- **Workflows**: Change default dry_run to 'false' in import-records.yaml (#977)
+- **Reconciler**: Migrate reverification to reconciler name task (#976)
+- **Dir**: Add dir-demo-bot (#972)
+- **Toolchain**: Bump Go to 1.26.0 and golangci-lint to 2.10.1 (#975)
+- **CI**: Bump days to mark items stale (#970)
+- **Packaging**: Update brew formula version (#965)
+- **CI**: Update DMG and ZIP file names in GUI CI workflow (#978)
+- **Dir**: Update PostgreSQL (#995, #1000)
+- **SDK**: Update packages and example package-lock.json (#997, #996, #1028)
+- **Dependencies**: Bump modelcontextprotocol/go-sdk 1.3.0 → 1.3.1 in /mcp (#992)
+- **SDK**: Bump rollup 4.55.1 → 4.59.0 in dir-js (#990)
+- **Docs**: Update README for Directory CLI and installation (#987)
+- **Docs**: Add verify name MCP tool (#983)
+- **Tests**: Move E2E to tests and add MCP tests to CI (#1016)
+- **Importer**: Extend unit tests (#998)
+
+### Fixed
+- **Importer**: Go version (#1049)
+- **CI**: List image task path (#1045)
+- **Reconciler**: Debug image (#1024)
+- **Install/Docker**: Compose health checks (#1017)
+- **Dir**: PostgreSQL version in Docker Compose (#1000)
+- **Dir**: Coverage test run (#953)
+
+### Security
+- **Dir**: Fix vulnerable MCP SDK Go package (#1040)
+
 ## [v1.0.0] - 2026-02-19
 
 ### Added
