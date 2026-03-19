@@ -26,7 +26,7 @@ from google.protobuf import struct_pb2 as google_dot_protobuf_dot_struct__pb2
 from buf.validate import validate_pb2 as buf_dot_validate_dot_validate__pb2
 
 
-DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x1f\x61gntcy/dir/core/v1/record.proto\x12\x12\x61gntcy.dir.core.v1\x1a\x1cgoogle/protobuf/struct.proto\x1a\x1b\x62uf/validate/validate.proto\"\x1d\n\tRecordRef\x12\x10\n\x03\x63id\x18\x01 \x01(\tR\x03\x63id\"P\n\x0eNamedRecordRef\x12\x12\n\x04name\x18\x01 \x01(\tR\x04name\x12\x18\n\x07version\x18\x02 \x01(\tR\x07version\x12\x10\n\x03\x63id\x18\x03 \x01(\tR\x03\x63id\"\xf7\x01\n\nRecordMeta\x12\x10\n\x03\x63id\x18\x01 \x01(\tR\x03\x63id\x12Q\n\x0b\x61nnotations\x18\x02 \x03(\x0b\x32/.agntcy.dir.core.v1.RecordMeta.AnnotationsEntryR\x0b\x61nnotations\x12%\n\x0eschema_version\x18\x03 \x01(\tR\rschemaVersion\x12\x1d\n\ncreated_at\x18\x04 \x01(\tR\tcreatedAt\x1a>\n\x10\x41nnotationsEntry\x12\x10\n\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n\x05value\x18\x02 \x01(\tR\x05value:\x02\x38\x01\"5\n\x06Record\x12+\n\x04\x64\x61ta\x18\x01 \x01(\x0b\x32\x17.google.protobuf.StructR\x04\x64\x61ta\"\x88\x03\n\x0eRecordReferrer\x12U\n\x04type\x18\x01 \x01(\tBA\xbaH>r<R\x1c\x61gntcy.dir.sign.v1.PublicKeyR\x1c\x61gntcy.dir.sign.v1.SignatureR\x04type\x12<\n\nrecord_ref\x18\x02 \x01(\x0b\x32\x1d.agntcy.dir.core.v1.RecordRefR\trecordRef\x12U\n\x0b\x61nnotations\x18\x03 \x03(\x0b\x32\x33.agntcy.dir.core.v1.RecordReferrer.AnnotationsEntryR\x0b\x61nnotations\x12\x1d\n\ncreated_at\x18\x04 \x01(\tR\tcreatedAt\x12+\n\x04\x64\x61ta\x18\x05 \x01(\x0b\x32\x17.google.protobuf.StructR\x04\x64\x61ta\x1a>\n\x10\x41nnotationsEntry\x12\x10\n\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n\x05value\x18\x02 \x01(\tR\x05value:\x02\x38\x01\x42\xb3\x01\n\x16\x63om.agntcy.dir.core.v1B\x0bRecordProtoP\x01Z!github.com/agntcy/dir/api/core/v1\xa2\x02\x03\x41\x44\x43\xaa\x02\x12\x41gntcy.Dir.Core.V1\xca\x02\x12\x41gntcy\\Dir\\Core\\V1\xe2\x02\x1e\x41gntcy\\Dir\\Core\\V1\\GPBMetadata\xea\x02\x15\x41gntcy::Dir::Core::V1b\x06proto3')
+DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x1f\x61gntcy/dir/core/v1/record.proto\x12\x12\x61gntcy.dir.core.v1\x1a\x1cgoogle/protobuf/struct.proto\x1a\x1b\x62uf/validate/validate.proto\",\n\tRecordRef\x12\x1f\n\x03\x63id\x18\x01 \x01(\tB\r\xbaH\nr\x05\x10\x01\x18\x80\x01\xc8\x01\x01R\x03\x63id\"P\n\x0eNamedRecordRef\x12\x12\n\x04name\x18\x01 \x01(\tR\x04name\x12\x18\n\x07version\x18\x02 \x01(\tR\x07version\x12\x10\n\x03\x63id\x18\x03 \x01(\tR\x03\x63id\"\xf7\x01\n\nRecordMeta\x12\x10\n\x03\x63id\x18\x01 \x01(\tR\x03\x63id\x12Q\n\x0b\x61nnotations\x18\x02 \x03(\x0b\x32/.agntcy.dir.core.v1.RecordMeta.AnnotationsEntryR\x0b\x61nnotations\x12%\n\x0eschema_version\x18\x03 \x01(\tR\rschemaVersion\x12\x1d\n\ncreated_at\x18\x04 \x01(\tR\tcreatedAt\x1a>\n\x10\x41nnotationsEntry\x12\x10\n\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n\x05value\x18\x02 \x01(\tR\x05value:\x02\x38\x01\"5\n\x06Record\x12+\n\x04\x64\x61ta\x18\x01 \x01(\x0b\x32\x17.google.protobuf.StructR\x04\x64\x61ta\"\x88\x03\n\x0eRecordReferrer\x12U\n\x04type\x18\x01 \x01(\tBA\xbaH>r<R\x1c\x61gntcy.dir.sign.v1.PublicKeyR\x1c\x61gntcy.dir.sign.v1.SignatureR\x04type\x12<\n\nrecord_ref\x18\x02 \x01(\x0b\x32\x1d.agntcy.dir.core.v1.RecordRefR\trecordRef\x12U\n\x0b\x61nnotations\x18\x03 \x03(\x0b\x32\x33.agntcy.dir.core.v1.RecordReferrer.AnnotationsEntryR\x0b\x61nnotations\x12\x1d\n\ncreated_at\x18\x04 \x01(\tR\tcreatedAt\x12+\n\x04\x64\x61ta\x18\x05 \x01(\x0b\x32\x17.google.protobuf.StructR\x04\x64\x61ta\x1a>\n\x10\x41nnotationsEntry\x12\x10\n\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n\x05value\x18\x02 \x01(\tR\x05value:\x02\x38\x01\x42\xb3\x01\n\x16\x63om.agntcy.dir.core.v1B\x0bRecordProtoP\x01Z!github.com/agntcy/dir/api/core/v1\xa2\x02\x03\x41\x44\x43\xaa\x02\x12\x41gntcy.Dir.Core.V1\xca\x02\x12\x41gntcy\\Dir\\Core\\V1\xe2\x02\x1e\x41gntcy\\Dir\\Core\\V1\\GPBMetadata\xea\x02\x15\x41gntcy::Dir::Core::V1b\x06proto3')
 
 _globals = globals()
 _builder.BuildMessageAndEnumDescriptors(DESCRIPTOR, _globals)
@@ -34,6 +34,8 @@ _builder.BuildTopDescriptorsAndMessages(DESCRIPTOR, 'agntcy.dir.core.v1.record_p
 if not _descriptor._USE_C_DESCRIPTORS:
   _globals['DESCRIPTOR']._loaded_options = None
   _globals['DESCRIPTOR']._serialized_options = b'\n\026com.agntcy.dir.core.v1B\013RecordProtoP\001Z!github.com/agntcy/dir/api/core/v1\242\002\003ADC\252\002\022Agntcy.Dir.Core.V1\312\002\022Agntcy\\Dir\\Core\\V1\342\002\036Agntcy\\Dir\\Core\\V1\\GPBMetadata\352\002\025Agntcy::Dir::Core::V1'
+  _globals['_RECORDREF'].fields_by_name['cid']._loaded_options = None
+  _globals['_RECORDREF'].fields_by_name['cid']._serialized_options = b'\272H\nr\005\020\001\030\200\001\310\001\001'
   _globals['_RECORDMETA_ANNOTATIONSENTRY']._loaded_options = None
   _globals['_RECORDMETA_ANNOTATIONSENTRY']._serialized_options = b'8\001'
   _globals['_RECORDREFERRER_ANNOTATIONSENTRY']._loaded_options = None
@@ -41,17 +43,17 @@ if not _descriptor._USE_C_DESCRIPTORS:
   _globals['_RECORDREFERRER'].fields_by_name['type']._loaded_options = None
   _globals['_RECORDREFERRER'].fields_by_name['type']._serialized_options = b'\272H>r<R\034agntcy.dir.sign.v1.PublicKeyR\034agntcy.dir.sign.v1.Signature'
   _globals['_RECORDREF']._serialized_start=114
-  _globals['_RECORDREF']._serialized_end=143
-  _globals['_NAMEDRECORDREF']._serialized_start=145
-  _globals['_NAMEDRECORDREF']._serialized_end=225
-  _globals['_RECORDMETA']._serialized_start=228
-  _globals['_RECORDMETA']._serialized_end=475
-  _globals['_RECORDMETA_ANNOTATIONSENTRY']._serialized_start=413
-  _globals['_RECORDMETA_ANNOTATIONSENTRY']._serialized_end=475
-  _globals['_RECORD']._serialized_start=477
-  _globals['_RECORD']._serialized_end=530
-  _globals['_RECORDREFERRER']._serialized_start=533
-  _globals['_RECORDREFERRER']._serialized_end=925
-  _globals['_RECORDREFERRER_ANNOTATIONSENTRY']._serialized_start=413
-  _globals['_RECORDREFERRER_ANNOTATIONSENTRY']._serialized_end=475
+  _globals['_RECORDREF']._serialized_end=158
+  _globals['_NAMEDRECORDREF']._serialized_start=160
+  _globals['_NAMEDRECORDREF']._serialized_end=240
+  _globals['_RECORDMETA']._serialized_start=243
+  _globals['_RECORDMETA']._serialized_end=490
+  _globals['_RECORDMETA_ANNOTATIONSENTRY']._serialized_start=428
+  _globals['_RECORDMETA_ANNOTATIONSENTRY']._serialized_end=490
+  _globals['_RECORD']._serialized_start=492
+  _globals['_RECORD']._serialized_end=545
+  _globals['_RECORDREFERRER']._serialized_start=548
+  _globals['_RECORDREFERRER']._serialized_end=940
+  _globals['_RECORDREFERRER_ANNOTATIONSENTRY']._serialized_start=428
+  _globals['_RECORDREFERRER_ANNOTATIONSENTRY']._serialized_end=490
 # @@protoc_insertion_point(module_scope)

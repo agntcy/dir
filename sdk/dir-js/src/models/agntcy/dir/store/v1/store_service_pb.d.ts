@@ -6,7 +6,7 @@
 /* eslint-disable */
 
 import type { GenFile, GenMessage, GenService } from "@bufbuild/protobuf/codegenv2";
-import type { Message } from "@bufbuild/protobuf";
+import type { JsonObject, Message } from "@bufbuild/protobuf";
 import type { RecordMetaSchema, RecordRef, RecordReferrer, RecordRefSchema, RecordSchema } from "../../core/v1/record_pb.js";
 import type { ReferrerRef } from "../../core/v1/referrer_pb.js";
 import type { EmptySchema } from "@bufbuild/protobuf/wkt";
@@ -30,11 +30,34 @@ export declare type PushReferrerRequest = Message<"agntcy.dir.store.v1.PushRefer
   recordRef?: RecordRef;
 
   /**
-   * RecordReferrer object to be stored for the record
+   * The type of the referrer.
+   * For example, "agntcy.dir.sign.v1.Signature" for signatures.
    *
-   * @generated from field: agntcy.dir.core.v1.RecordReferrer referrer = 2;
+   * @generated from field: string type = 2;
    */
-  referrer?: RecordReferrer;
+  type: string;
+
+  /**
+   * Annotations attached to the referrer object.
+   *
+   * @generated from field: map<string, string> annotations = 3;
+   */
+  annotations: { [key: string]: string };
+
+  /**
+   * Creation timestamp of the record in the RFC3339 format.
+   * Specs: https://www.rfc-editor.org/rfc/rfc3339.html
+   *
+   * @generated from field: string created_at = 4;
+   */
+  createdAt: string;
+
+  /**
+   * The actual data of the referrer.
+   *
+   * @generated from field: google.protobuf.Struct data = 5;
+   */
+  data?: JsonObject;
 };
 
 /**

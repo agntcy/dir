@@ -246,7 +246,7 @@ func (s storeCtrl) PushReferrer(stream storev1.StoreService_PushReferrerServer) 
 }
 
 func (s storeCtrl) pushReferrer(ctx context.Context, request *storev1.PushReferrerRequest) *storev1.PushReferrerResponse {
-	storeLogger.Debug("Pushing referrer", "cid", request.GetRecordRef().GetCid(), "type", request.GetReferrer().GetType())
+	storeLogger.Debug("Pushing referrer", "cid", request.GetRecordRef().GetCid(), "type", request.GetType())
 
 	recordCID := request.GetRecordRef().GetCid()
 
@@ -262,7 +262,15 @@ func (s storeCtrl) pushReferrer(ctx context.Context, request *storev1.PushReferr
 		}
 	}
 
-	referrerRef, err := refStore.PushReferrer(ctx, recordCID, request.GetReferrer())
+	referrer := corev1.RecordReferrer{
+		Type:        request.GetType(),
+		RecordRef:   request.GetRecordRef(),
+		Annotations: request.GetAnnotations(),
+		CreatedAt:   request.GetCreatedAt(),
+		Data:        request.GetData(),
+	}
+
+	referrerRef, err := refStore.PushReferrer(ctx, recordCID, &referrer)
 	if err != nil {
 		errMsg := fmt.Sprintf("failed to push referrer for record %s: %v", recordCID, err)
 
@@ -274,7 +282,7 @@ func (s storeCtrl) pushReferrer(ctx context.Context, request *storev1.PushReferr
 
 	// If this is a signature referrer, mark the record as signed
 	// This enables the name task to find records that need name verification
-	if request.GetReferrer().GetType() == corev1.SignatureReferrerType {
+	if request.GetType() == corev1.SignatureReferrerType {
 		if err := s.db.SetRecordSigned(recordCID); err != nil {
 			// Log error but don't fail the push - the referrer was already stored
 			storeLogger.Warn("Failed to mark record as signed", "error", err, "cid", recordCID)
@@ -285,7 +293,7 @@ func (s storeCtrl) pushReferrer(ctx context.Context, request *storev1.PushReferr
 
 	// Invalidate cached signature verifications when a signature or public key is added
 	// so the reconciler will re-verify the record and pick up all signers (e.g. key signer after pub key is pushed)
-	if request.GetReferrer().GetType() == corev1.SignatureReferrerType || request.GetReferrer().GetType() == corev1.PublicKeyReferrerType {
+	if request.GetType() == corev1.SignatureReferrerType || request.GetType() == corev1.PublicKeyReferrerType {
 		if err := s.db.InvalidateSignatureVerificationsForRecord(recordCID); err != nil {
 			storeLogger.Warn("Failed to invalidate signature verification cache", "error", err, "cid", recordCID)
 		} else {
@@ -293,7 +301,7 @@ func (s storeCtrl) pushReferrer(ctx context.Context, request *storev1.PushReferr
 		}
 	}
 
-	storeLogger.Debug("Referrer pushed successfully", "cid", recordCID, "type", request.GetReferrer().GetType())
+	storeLogger.Debug("Referrer pushed successfully", "cid", recordCID, "type", request.GetType())
 
 	return &storev1.PushReferrerResponse{
 		Success:     true,

@@ -12,7 +12,11 @@ import "buf/validate/validate.proto";
 message RecordRef {
   // Globally-unique content identifier (CID) of the record.
   // Specs: https://github.com/multiformats/cid
-  string cid = 1;
+  string cid = 1 [
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.max_len = 128,
+    (buf.validate.field).required = true
+  ];
 }
 
 // Represents a named reference to a Record with version information.

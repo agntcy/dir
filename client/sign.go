@@ -69,8 +69,11 @@ func (c *Client) pushReferrersToStore(ctx context.Context, recordRef *corev1.Rec
 
 	// Push public key to store as a referrer
 	_, err = c.PushReferrer(ctx, &storev1.PushReferrerRequest{
-		RecordRef: recordRef,
-		Referrer:  publicKeyReferrer,
+		RecordRef:   recordRef,
+		Type:        publicKeyReferrer.GetType(),
+		Annotations: publicKeyReferrer.GetAnnotations(),
+		CreatedAt:   publicKeyReferrer.GetCreatedAt(),
+		Data:        publicKeyReferrer.GetData(),
 	})
 	if err != nil {
 		return fmt.Errorf("failed to store public key: %w", err)
@@ -84,8 +87,11 @@ func (c *Client) pushReferrersToStore(ctx context.Context, recordRef *corev1.Rec
 
 	// Push signature to store as a referrer
 	_, err = c.PushReferrer(ctx, &storev1.PushReferrerRequest{
-		RecordRef: recordRef,
-		Referrer:  signatureReferrer,
+		RecordRef:   recordRef,
+		Type:        signatureReferrer.GetType(),
+		Annotations: signatureReferrer.GetAnnotations(),
+		CreatedAt:   signatureReferrer.GetCreatedAt(),
+		Data:        signatureReferrer.GetData(),
 	})
 	if err != nil {
 		return fmt.Errorf("failed to store signature: %w", err)
