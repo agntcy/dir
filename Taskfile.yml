@@ -190,7 +190,7 @@ tasks:
       # Add release changes
       - |
         git add .
-        git commit -S -m "release(dir): prepare release {{.RELEASE_VERSION}}"
+        git commit -S --signoff -m "release(dir): prepare release {{.RELEASE_VERSION}}"
       # Verify Go release
       - |
         {{ .MULTIMOD_BIN }} verify
