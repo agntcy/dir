@@ -34,7 +34,8 @@ envoy:
     zitadel:
       enabled: true
       issuer: "https://tenant.zitadel.cloud"
-      jwksUri: "https://tenant.zitadel.cloud/.well-known/jwks.json"
+      # Zitadel JWKS is at /oauth/v2/keys (not /.well-known/jwks.json)
+      jwksUri: "https://tenant.zitadel.cloud/oauth/v2/keys"
       # Host for JWKS cluster (extracted from issuer; override if needed)
       jwksHost: "tenant.zitadel.cloud"
     # GitHub Actions OIDC issuer
