@@ -97,7 +97,7 @@ func runLogin(cmd *cobra.Command, _ []string) error {
 		cmd.Println()
 	}
 
-	result, err := client.RunPKCEFlow(ctx, &client.PKCEConfig{
+	result, err := client.OIDC.RunPKCEFlow(ctx, &client.PKCEConfig{
 		Issuer:          cfg.OIDCIssuer,
 		ClientID:        cfg.OIDCClientID,
 		RedirectURI:     redirectURI,

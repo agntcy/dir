@@ -62,6 +62,12 @@ type PKCEResult struct {
 	Name    string
 }
 
+// OIDC provides OIDC authentication flows.
+var OIDC = &OIDCProvider{}
+
+// OIDCProvider groups OIDC-related methods.
+type OIDCProvider struct{}
+
 // oauthCallbackResult is the result of an OAuth callback (code or error).
 type oauthCallbackResult struct {
 	code  string
@@ -72,7 +78,7 @@ type oauthCallbackResult struct {
 // RunPKCEFlow performs the OIDC Authorization Code flow with PKCE.
 // It starts a local HTTP server to receive the callback, opens the browser (or prints the URL),
 // and exchanges the authorization code for tokens.
-func RunPKCEFlow(ctx context.Context, cfg *PKCEConfig) (*PKCEResult, error) {
+func (*OIDCProvider) RunPKCEFlow(ctx context.Context, cfg *PKCEConfig) (*PKCEResult, error) {
 	if cfg.Issuer == "" || cfg.ClientID == "" {
 		return nil, fmt.Errorf("oidc issuer and client ID are required")
 	}
