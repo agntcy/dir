@@ -6,10 +6,10 @@ readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [
     "bufbuild-protovalidate-protocolbuffers-python==34.0.0.1.20260209202127+80ab13bee0bf",
-    "grpcio>=1.74.0",
-    "pyasn1>=0.6.2",
-    "spiffe>=0.2.2",
-    "spiffe-tls>=0.2.1",
+    "grpcio>=1.78.0",
+    "pyasn1>=0.6.3",
+    "spiffe>=0.2.6",
+    "spiffe-tls>=0.3.1",
 ]
 
 [dependency-groups]
