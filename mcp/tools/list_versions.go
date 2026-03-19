@@ -47,7 +47,7 @@ func (t *Tools) ListVersions(ctx context.Context, _ *mcp.CallToolRequest, _ List
 	}
 
 	// Get default schema version from the OASF SDK
-	defaultVersion, err := schemaInstance.GetDefaultVersion(ctx)
+	defaultVersion, err := schemaInstance.GetDefaultSchemaVersion(ctx)
 	if err != nil {
 		return nil, ListVersionsOutput{
 			ErrorMessage: fmt.Sprintf("Failed to get default schema version: %v", err),

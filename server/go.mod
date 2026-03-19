@@ -18,7 +18,7 @@ require (
 	buf.build/go/protovalidate v1.1.3
 	github.com/agntcy/dir/api v1.0.0
 	github.com/agntcy/dir/utils v1.0.0
-	github.com/agntcy/oasf-sdk/pkg v1.0.2
+	github.com/agntcy/oasf-sdk/pkg v1.0.3
 	github.com/casbin/casbin/v2 v2.135.0
 	github.com/grpc-ecosystem/go-grpc-middleware/v2 v2.3.3
 	github.com/grpc-ecosystem/go-grpc-prometheus v1.2.0

@@ -17,7 +17,7 @@ require (
 	github.com/agntcy/dir/api v1.0.0
 	github.com/agntcy/dir/client v1.0.0
 	github.com/agntcy/dir/utils v1.0.0
-	github.com/agntcy/oasf-sdk/pkg v1.0.2
+	github.com/agntcy/oasf-sdk/pkg v1.0.3
 	github.com/mark3labs/mcphost v0.34.0
 	github.com/modelcontextprotocol/registry v1.5.0
 	github.com/stretchr/testify v1.11.1

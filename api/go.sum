@@ -6,8 +6,8 @@ buf.build/gen/go/bufbuild/protovalidate/protocolbuffers/go v1.36.11-202602092021
 buf.build/gen/go/bufbuild/protovalidate/protocolbuffers/go v1.36.11-20260209202127-80ab13bee0bf.1/go.mod h1:tvtbpgaVXZX4g6Pn+AnzFycuRK3MOz5HJfEGeEllXYM=
 github.com/Masterminds/semver/v3 v3.4.0 h1:Zog+i5UMtVoCU8oKka5P7i9q9HgrJeGzI9SA1Xbatp0=
 github.com/Masterminds/semver/v3 v3.4.0/go.mod h1:4V+yj/TJE1HU9XfppCwVMZq3I84lprf4nC11bSS5beM=
-github.com/agntcy/oasf-sdk/pkg v1.0.2 h1:RlrIT9LpITqmJdbgLjUcsgVMr56o5sa/MusuFg92VVA=
-github.com/agntcy/oasf-sdk/pkg v1.0.2/go.mod h1:vgkPMrC0M6cO2Fzfwm4cGCPq4rVFKv5woEcw1rVyW9o=
+github.com/agntcy/oasf-sdk/pkg v1.0.3 h1:DwL0bp8VsGW0XeAowKRlxKzWeI96xykP4+1uq/u/QPk=
+github.com/agntcy/oasf-sdk/pkg v1.0.3/go.mod h1:vgkPMrC0M6cO2Fzfwm4cGCPq4rVFKv5woEcw1rVyW9o=
 github.com/cespare/xxhash/v2 v2.3.0 h1:UL815xU9SqsFlibzuggzjXhog7bL6oX9BbNZnL2UFvs=
 github.com/cespare/xxhash/v2 v2.3.0/go.mod h1:VGX0DQ3Q6kWi7AoAeZDth3/j3BFtOZR5XLFGgcrjCOs=
 github.com/creack/pty v1.1.9/go.mod h1:oKZEueFk5CKHvIhNR5MUki03XCEU+Q6VDXinZuGJ33E=
