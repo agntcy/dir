@@ -4,11 +4,57 @@
 package authzserver
 
 import (
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"regexp"
 	"strings"
 )
+
+// jwtCompactFormParts is the number of segments in a compact JWT: header.payload.signature.
+const jwtCompactFormParts = 3
+
+// parsePayloadJSON converts x-jwt-payload (Envoy ext_authz) to raw JSON bytes.
+//
+// Envoy jwt_authn's forward_payload_header sends the JWT payload segment as base64url
+// (often starting with "eyJ"), not decoded JSON. Tests and manual curls may send raw JSON.
+// A full JWT (header.payload.sig) is also accepted by decoding the middle segment.
+func parsePayloadJSON(headerValue string) ([]byte, error) {
+	s := strings.TrimSpace(headerValue)
+	if s == "" {
+		return nil, fmt.Errorf("empty JWT payload")
+	}
+
+	// Raw JSON object/array (tests, dev mocks, proxies that inject claims JSON)
+	if strings.HasPrefix(s, "{") || strings.HasPrefix(s, "[") {
+		return []byte(s), nil
+	}
+
+	parts := strings.Split(s, ".")
+	if len(parts) == jwtCompactFormParts {
+		return decodeJWTBase64URLSegment(parts[1])
+	}
+
+	return decodeJWTBase64URLSegment(s)
+}
+
+func decodeJWTBase64URLSegment(seg string) ([]byte, error) {
+	if seg == "" {
+		return nil, fmt.Errorf("empty JWT segment")
+	}
+
+	// JWT uses unpadded base64url (Envoy forward_payload_header)
+	if b, err := base64.RawURLEncoding.DecodeString(seg); err == nil {
+		return b, nil
+	}
+
+	// Padded base64url (pad_forward_payload_header / some gateways)
+	if b, err := base64.URLEncoding.DecodeString(seg); err == nil {
+		return b, nil
+	}
+
+	return nil, fmt.Errorf("decode JWT payload segment: invalid base64")
+}
 
 // ExtractPrincipal extracts the canonical principal from the JWT payload JSON.
 // Uses issuer-specific logic: GitHub -> ghwf:..., else -> user:{iss}:{sub} or client:{iss}:{client_id}.
@@ -19,12 +65,13 @@ func ExtractPrincipal(payloadJSON string, config *OIDCConfig) (principal string,
 		return "", "", fmt.Errorf("config is required")
 	}
 
-	if payloadJSON == "" {
-		return "", "", fmt.Errorf("empty JWT payload")
+	raw, err := parsePayloadJSON(payloadJSON)
+	if err != nil {
+		return "", "", err
 	}
 
 	var payload map[string]any
-	if err := json.Unmarshal([]byte(payloadJSON), &payload); err != nil {
+	if err := json.Unmarshal(raw, &payload); err != nil {
 		return "", "", fmt.Errorf("invalid JWT payload JSON: %w", err)
 	}
 
@@ -194,8 +241,13 @@ func GetEmail(payloadJSON, emailPath string) string {
 		return ""
 	}
 
+	raw, err := parsePayloadJSON(payloadJSON)
+	if err != nil {
+		return ""
+	}
+
 	var payload map[string]any
-	if err := json.Unmarshal([]byte(payloadJSON), &payload); err != nil {
+	if err := json.Unmarshal(raw, &payload); err != nil {
 		return ""
 	}
 

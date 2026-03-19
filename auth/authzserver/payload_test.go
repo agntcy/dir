@@ -4,8 +4,59 @@
 package authzserver
 
 import (
+	"encoding/base64"
 	"testing"
 )
+
+func TestExtractPrincipal_EnvoyForwardPayloadHeader_Base64URL(t *testing.T) {
+	// Mirrors Envoy jwt_authn forward_payload_header: base64url-encoded payload segment (not raw JSON).
+	config := &OIDCConfig{
+		Claims: ClaimsConfig{UserID: "sub"},
+		Issuers: []IssuerConfig{
+			{Provider: "https://tenant.zitadel.cloud", PrincipalType: PrincipalTypeUser},
+		},
+		PrincipalType: PrincipalTypeConfig{Mode: PrincipalTypeUser},
+	}
+
+	jsonPayload := `{"iss":"https://tenant.zitadel.cloud","sub":"77776025198584418"}`
+	forwarded := base64.RawURLEncoding.EncodeToString([]byte(jsonPayload))
+
+	principal, pt, err := ExtractPrincipal(forwarded, config)
+	if err != nil {
+		t.Fatalf("ExtractPrincipal: %v", err)
+	}
+
+	if principal != "user:https://tenant.zitadel.cloud:77776025198584418" {
+		t.Errorf("principal = %q, want user:https://tenant.zitadel.cloud:77776025198584418", principal)
+	}
+
+	if pt != PrincipalTypeUser {
+		t.Errorf("principalType = %q, want user", pt)
+	}
+}
+
+func TestExtractPrincipal_FullJWTString(t *testing.T) {
+	config := &OIDCConfig{
+		Claims: ClaimsConfig{UserID: "sub"},
+		Issuers: []IssuerConfig{
+			{Provider: "https://tenant.zitadel.cloud", PrincipalType: PrincipalTypeUser},
+		},
+		PrincipalType: PrincipalTypeConfig{Mode: PrincipalTypeUser},
+	}
+
+	jsonPayload := `{"iss":"https://tenant.zitadel.cloud","sub":"sub-xyz"}`
+	seg := base64.RawURLEncoding.EncodeToString([]byte(jsonPayload))
+	full := "xx." + seg + ".yy"
+
+	principal, _, err := ExtractPrincipal(full, config)
+	if err != nil {
+		t.Fatalf("ExtractPrincipal: %v", err)
+	}
+
+	if principal != "user:https://tenant.zitadel.cloud:sub-xyz" {
+		t.Errorf("principal = %q", principal)
+	}
+}
 
 func TestExtractPrincipal_User(t *testing.T) {
 	config := &OIDCConfig{

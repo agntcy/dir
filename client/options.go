@@ -78,6 +78,8 @@ func withAuth(ctx context.Context) Option {
 			return o.setupSpiffeAuth(ctx)
 		case "tls":
 			return o.setupTlsAuth(ctx)
+		case "oidc":
+			return o.setupOIDCAuth(ctx)
 		case "insecure", "none", "":
 			// Insecure/none/empty auth mode - try auto-detection first, fallback to insecure
 			return o.setupAutoDetectAuth(ctx)
