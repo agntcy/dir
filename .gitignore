@@ -8,8 +8,7 @@
 .envrc
 
 # Builds
-bin/*
-!bin/Taskfile.yml
+bin/
 
 # Python
 __pycache__/

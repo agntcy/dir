@@ -28,7 +28,7 @@ includes:
     excludes: [default]
 
   deps:
-    taskfile: bin/Taskfile.yml
+    taskfile: Taskfile.deps.yml
     flatten: true
     excludes: [default]
 
