@@ -8,7 +8,7 @@
 .envrc
 
 # Builds
-bin/
+.bin/
 
 # Python
 __pycache__/

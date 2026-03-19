@@ -58,7 +58,7 @@ jobs:
       - name: Build CLI
         run: |
           task cli:compile
-          mv ./bin/dirctl /tmp/artifacts/dirctl
+          mv ./.bin/dirctl /tmp/artifacts/dirctl
 
       - name: Upload CLI artifact
         if: ${{ !inputs.push }}

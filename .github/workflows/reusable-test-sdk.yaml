@@ -56,8 +56,8 @@ jobs:
       - name: Load compiled dirctl binary
         run: |
           task deps:bin-dir
-          cp tmp/artifacts/dirctl ./bin/dirctl
-          chmod +x ./bin/dirctl
+          cp tmp/artifacts/dirctl ./.bin/dirctl
+          chmod +x ./.bin/dirctl
 
       - name: Add dependencies for SDKs testing
         env:
@@ -116,8 +116,8 @@ jobs:
       - name: Load compiled dirctl binary
         run: |
           task deps:bin-dir
-          cp tmp/artifacts/dirctl ./bin/dirctl
-          chmod +x ./bin/dirctl
+          cp tmp/artifacts/dirctl ./.bin/dirctl
+          chmod +x ./.bin/dirctl
 
       - name: Cache npm dependencies
         uses: actions/cache@668228422ae6a00e4ad889ee87cd7109ec5666a7 # v5.0.4
