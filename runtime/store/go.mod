@@ -9,8 +9,8 @@ replace (
 )
 
 require (
-	github.com/agntcy/dir/runtime/api v1.0.0
-	github.com/agntcy/dir/runtime/utils v1.0.0
+	github.com/agntcy/dir/runtime/api v1.1.0
+	github.com/agntcy/dir/runtime/utils v1.1.0
 	go.etcd.io/etcd/client/v3 v3.6.8
 	k8s.io/apimachinery v0.35.3
 	k8s.io/client-go v0.35.3
