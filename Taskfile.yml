@@ -28,7 +28,8 @@ includes:
     excludes: [default]
 
   deps:
-    taskfile: bin/Taskfile.yml
+    taskfile: Taskfile.deps.yml
+    dir: "{{.BIN_DIR}}"
     flatten: true
     excludes: [default]
 
@@ -195,6 +196,8 @@ tasks:
       - |
         {{ .MULTIMOD_BIN }} verify
         {{ .MULTIMOD_BIN }} prerelease --all-module-sets --skip-go-mod-tidy=true --commit-to-different-branch=false
+      - |
+        git commit --amend -S --signoff -m "release(dir): prepare release {{.RELEASE_VERSION}}"
       # Push prepared release
       - task: release:push
 
