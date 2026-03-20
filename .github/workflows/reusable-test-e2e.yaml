@@ -94,8 +94,8 @@ jobs:
       - name: Load compiled dirctl binary
         run: |
           task deps:bin-dir
-          cp tmp/artifacts/dirctl ./bin/dirctl
-          chmod +x ./bin/dirctl
+          cp tmp/artifacts/dirctl ./.bin/dirctl
+          chmod +x ./.bin/dirctl
 
       - name: Run end-to-end tests
         env:

@@ -50,9 +50,9 @@ jobs:
 
       - name: Build MCP Server
         run: |
-          mkdir -p ../bin
+          mkdir -p ../.bin
           cd ../mcp
-          go build -o ../bin/mcp-server main.go
+          go build -o ../.bin/mcp-server main.go
 
       - name: Install dependencies
         run: flutter pub get

@@ -28,7 +28,8 @@ includes:
     excludes: [default]
 
   deps:
-    taskfile: bin/Taskfile.yml
+    taskfile: Taskfile.deps.yml
+    dir: "{{.BIN_DIR}}"
     flatten: true
     excludes: [default]
 
