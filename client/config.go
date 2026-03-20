@@ -44,6 +44,13 @@ type Config struct {
 	OIDCClientID    string `json:"oidc_client_id,omitempty"    mapstructure:"oidc_client_id"`
 	OIDCToken       string `json:"oidc_token,omitempty"        mapstructure:"oidc_token"`
 	OIDCRedirectURI string `json:"oidc_redirect_uri,omitempty" mapstructure:"oidc_redirect_uri"`
+
+	// OIDC machine/service-user configuration (client credentials flow).
+	OIDCMachineClientID         string   `json:"oidc_machine_client_id,omitempty"          mapstructure:"oidc_machine_client_id"`
+	OIDCMachineClientSecret     string   `json:"oidc_machine_client_secret,omitempty"      mapstructure:"oidc_machine_client_secret"`
+	OIDCMachineClientSecretFile string   `json:"oidc_machine_client_secret_file,omitempty" mapstructure:"oidc_machine_client_secret_file"`
+	OIDCMachineScopes           []string `json:"oidc_machine_scopes,omitempty"             mapstructure:"oidc_machine_scopes"`
+	OIDCMachineTokenEndpoint    string   `json:"oidc_machine_token_endpoint,omitempty"     mapstructure:"oidc_machine_token_endpoint"`
 }
 
 func LoadConfig() (*Config, error) {
@@ -85,6 +92,21 @@ func LoadConfig() (*Config, error) {
 
 	_ = v.BindEnv("oidc_redirect_uri")
 	v.SetDefault("oidc_redirect_uri", DefaultOIDCRedirectURI)
+
+	_ = v.BindEnv("oidc_machine_client_id")
+	v.SetDefault("oidc_machine_client_id", "")
+
+	_ = v.BindEnv("oidc_machine_client_secret")
+	v.SetDefault("oidc_machine_client_secret", "")
+
+	_ = v.BindEnv("oidc_machine_client_secret_file")
+	v.SetDefault("oidc_machine_client_secret_file", "")
+
+	_ = v.BindEnv("oidc_machine_scopes")
+	v.SetDefault("oidc_machine_scopes", []string{})
+
+	_ = v.BindEnv("oidc_machine_token_endpoint")
+	v.SetDefault("oidc_machine_token_endpoint", "")
 
 	_ = v.BindEnv("tls_cert_file")
 	v.SetDefault("tls_cert_file", "")

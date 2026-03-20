@@ -20,6 +20,9 @@ Examples:
   # Login with OAuth (opens browser)
   dirctl auth login
 
+  # Machine/service-user login (non-interactive)
+  dirctl auth machine
+
   # Check authentication status
   dirctl auth status
 
@@ -35,6 +38,7 @@ Examples:
 func init() {
 	Command.AddCommand(
 		loginCmd,
+		machineCmd,
 		logoutCmd,
 		statusCmd,
 	)

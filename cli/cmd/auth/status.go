@@ -5,6 +5,7 @@ package auth
 
 import (
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/agntcy/dir/client"
@@ -36,13 +37,28 @@ func runStatus(cmd *cobra.Command, _ []string) error {
 	if token == nil {
 		cmd.Println("Status: Not authenticated")
 		cmd.Println()
-		cmd.Println("Run 'dirctl auth login' to authenticate.")
+		cmd.Println("Run 'dirctl auth login' (human) or 'dirctl auth machine' (service user) to authenticate.")
 
 		return nil
 	}
 
 	cmd.Println("Status: Authenticated")
-	cmd.Printf("  User: %s\n", token.User)
+	cmd.Printf("  Provider: %s\n", displayOrUnknown(token.Provider))
+	cmd.Printf("  Subject: %s\n", displayOrUnknown(token.User))
+
+	if token.UserID != "" && token.UserID != token.User {
+		cmd.Printf("  User ID: %s\n", token.UserID)
+	}
+
+	if token.Email != "" {
+		cmd.Printf("  Email: %s\n", token.Email)
+	}
+
+	if token.Issuer != "" {
+		cmd.Printf("  Issuer: %s\n", token.Issuer)
+	}
+
+	cmd.Printf("  Principal type: %s\n", detectPrincipalType(token))
 	cmd.Printf("  Cached at: %s\n", token.CreatedAt.Format(time.RFC3339))
 
 	// Check token validity and display status
@@ -74,5 +90,32 @@ func displayValidToken(cmd *cobra.Command, token *client.CachedToken) {
 func displayExpiredToken(cmd *cobra.Command) {
 	cmd.Println("  Token: Expired ✗")
 	cmd.Println()
-	cmd.Println("Run 'dirctl auth login' to re-authenticate.")
+	cmd.Println("Run 'dirctl auth login' (human) or 'dirctl auth machine' (service user) to re-authenticate.")
+}
+
+func detectPrincipalType(token *client.CachedToken) string {
+	if strings.TrimSpace(token.User) == "" && strings.TrimSpace(token.UserID) == "" {
+		return "unknown"
+	}
+
+	if strings.TrimSpace(token.Email) != "" {
+		return "human"
+	}
+
+	user := strings.TrimSpace(token.User)
+
+	userID := strings.TrimSpace(token.UserID)
+	if strings.HasPrefix(user, "ghwf:") || strings.HasPrefix(userID, "ghwf:") {
+		return "github-workflow"
+	}
+
+	return "service-or-workload"
+}
+
+func displayOrUnknown(v string) string {
+	if strings.TrimSpace(v) == "" {
+		return "unknown"
+	}
+
+	return v
 }

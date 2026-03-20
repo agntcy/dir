@@ -14,6 +14,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"strings"
 
 	"github.com/agntcy/dir/utils/logging"
 	"github.com/agntcy/dir/utils/spiffe"
@@ -92,8 +93,7 @@ func withAuth(ctx context.Context) Option {
 
 // setupAutoDetectAuth attempts to auto-detect available credentials and falls back to insecure if none found.
 // This is used when auth mode is empty, "insecure", or "none".
-// OIDC token detection will be added when OIDC auth is implemented.
-func (o *options) setupAutoDetectAuth(_ context.Context) error {
+func (o *options) setupAutoDetectAuth(ctx context.Context) error {
 	// For explicit "insecure" or "none" mode, skip auto-detection
 	if o.config.AuthMode == "insecure" || o.config.AuthMode == "none" {
 		authLogger.Debug("Using insecure connection (explicit mode)", "auth_mode", o.config.AuthMode)
@@ -102,12 +102,46 @@ func (o *options) setupAutoDetectAuth(_ context.Context) error {
 		return nil
 	}
 
-	// Empty auth mode - no OIDC token yet; use insecure (for local development only)
-	authLogger.Debug("No cached credentials found, using insecure connection")
+	shouldTryOIDC, err := o.shouldAutoDetectOIDC()
+	if err != nil {
+		return err
+	}
+
+	if shouldTryOIDC {
+		authLogger.Debug("Auto-detected OIDC authentication signals; using OIDC auth")
+
+		if err := o.setupOIDCAuth(ctx); err != nil {
+			return fmt.Errorf("failed to setup auto-detected OIDC auth: %w", err)
+		}
+
+		return nil
+	}
+
+	// No secure auth signals found; use insecure connection (local development only)
+	authLogger.Debug("No auto-detected credentials found, using insecure connection")
 
 	o.authOpts = append(o.authOpts, grpc.WithTransportCredentials(insecure.NewCredentials()))
 
 	return nil
+}
+
+func (o *options) shouldAutoDetectOIDC() (bool, error) {
+	if strings.TrimSpace(o.config.OIDCToken) != "" {
+		return true, nil
+	}
+
+	if o.hasMachineOIDCConfig() {
+		return true, nil
+	}
+
+	cache := NewTokenCache()
+
+	tok, err := cache.GetValidToken()
+	if err != nil {
+		return false, fmt.Errorf("failed to read OIDC token cache: %w", err)
+	}
+
+	return tok != nil && strings.TrimSpace(tok.AccessToken) != "", nil
 }
 
 func (o *options) setupJWTAuth(ctx context.Context) error {

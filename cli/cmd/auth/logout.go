@@ -12,11 +12,11 @@ import (
 
 var logoutCmd = &cobra.Command{
 	Use:   "logout",
-	Short: "Clear cached GitHub authentication",
-	Long: `Clear cached GitHub authentication credentials.
+	Short: "Clear cached authentication token",
+	Long: `Clear cached authentication credentials.
 
 This command removes the locally cached OAuth token, effectively logging
-you out of the Directory server when using GitHub authentication.
+you out of the Directory server for all token-based auth flows.
 
 Examples:
   # Logout (clear cached token)
@@ -30,14 +30,14 @@ func runLogout(cmd *cobra.Command, _ []string) error {
 	// Load existing token to show who we're logging out
 	token, _ := cache.Load()
 	if token != nil && token.User != "" {
-		cmd.Printf("Logging out user: %s\n", token.User)
+		cmd.Printf("Logging out subject: %s\n", token.User)
 	}
 
 	if err := cache.Clear(); err != nil {
 		return fmt.Errorf("failed to clear cached token: %w", err)
 	}
 
-	cmd.Println("✓ Logged out successfully")
+	cmd.Println("Logged out successfully.")
 	cmd.Printf("  Removed: %s\n", cache.GetCachePath())
 
 	return nil

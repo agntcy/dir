@@ -487,4 +487,23 @@ func TestSetupAutoDetectAuth(t *testing.T) {
 		// Should only have transport credentials (insecure), no per-RPC credentials
 		assert.Len(t, opts.authOpts, 1)
 	})
+
+	t.Run("should auto-detect OIDC from explicit token", func(t *testing.T) {
+		t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+
+		opts := &options{
+			config: &Config{
+				ServerAddress: "gateway.example.com:443",
+				AuthMode:      "",
+				OIDCToken:     "explicit-oidc-token",
+			},
+		}
+
+		ctx := context.Background()
+		err := opts.setupAutoDetectAuth(ctx)
+
+		require.NoError(t, err)
+		// OIDC adds both transport creds and per-RPC bearer creds
+		assert.Len(t, opts.authOpts, 2)
+	})
 }
