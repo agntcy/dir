@@ -120,3 +120,4 @@ jobs:
           name: coverage-e2e-${{ matrix.label }}
           path: ./**/* # NOTE: Image artifacts are store in separate directory than coverage
           include-hidden-files: true
+          retention-days: 1
