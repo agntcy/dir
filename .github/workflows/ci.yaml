@@ -191,17 +191,17 @@ jobs:
             artifact_path: .coverage/unit
           - artifact_name: coverage-e2e-Local
             codecov_flag: e2e-Local
-            artifact_path: .
+            artifact_path: .coverage
           - artifact_name: coverage-e2e-Network
             codecov_flag: e2e-Network
-            artifact_path: .
+            artifact_path: .coverage
           # NOTE: Currently MCP and Federation coverage is excluded within Upload E2E coverage artifact job
           # - artifact_name: coverage-e2e-MCP
           #   codecov_flag: e2e-MCP
-          #   coverage_path: .coverage/e2e
+          #   coverage_path: .coverage
           # - artifact_name: coverage-e2e-Federation
           #   codecov_flag: e2e-Federation
-          #   coverage_path: .coverage/e2e
+          #   coverage_path: .coverage
     steps:
       - name: Checkout code
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
