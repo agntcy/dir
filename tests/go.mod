@@ -86,7 +86,7 @@ require (
 	github.com/agntcy/dir-runtime/store v1.3.0 // indirect
 	github.com/agntcy/dir-runtime/utils v1.3.0 // indirect
 	github.com/agntcy/dir/reconciler v1.3.0 // indirect
-	github.com/agntcy/dir/server v1.3.0 // indirect
+	github.com/agntcy/dir/server v1.3.0
 	github.com/agntcy/dir/utils v1.3.0 // indirect
 	github.com/agntcy/oasf-sdk/pkg v1.0.5 // indirect
 	github.com/alecthomas/chroma v0.10.0 // indirect
@@ -143,6 +143,7 @@ require (
 	github.com/blang/semver/v4 v4.0.0 // indirect
 	github.com/bmatcuk/doublestar/v4 v4.10.0 // indirect
 	github.com/briandowns/spinner v1.23.2 // indirect
+	github.com/brianvoe/gofakeit/v7 v7.14.1
 	github.com/carabiner-dev/attestation v0.2.1 // indirect
 	github.com/casbin/casbin/v2 v2.135.0 // indirect
 	github.com/casbin/govaluate v1.10.0 // indirect
@@ -437,7 +438,7 @@ require (
 	github.com/open-policy-agent/opa v1.16.1 // indirect
 	github.com/opencontainers/distribution-spec/specs-go v0.0.0-20260422183030-ed885fa76559 // indirect
 	github.com/opencontainers/go-digest v1.0.0 // indirect
-	github.com/opencontainers/image-spec v1.1.1 // indirect
+	github.com/opencontainers/image-spec v1.1.1
 	github.com/opencontainers/runtime-spec v1.3.0 // indirect
 	github.com/openvex/discovery v0.1.1-0.20240802171711-7c54efc57553 // indirect
 	github.com/openvex/go-vex v0.2.8 // indirect
@@ -624,7 +625,7 @@ require (
 	gopkg.in/warnings.v0 v0.1.2 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 	gorm.io/driver/postgres v1.6.0 // indirect
-	gorm.io/gorm v1.31.1 // indirect
+	gorm.io/gorm v1.31.1
 	helm.sh/helm/v3 v3.20.2 // indirect
 	k8s.io/api v0.36.0 // indirect
 	k8s.io/apiextensions-apiserver v0.36.0 // indirect
@@ -643,7 +644,7 @@ require (
 	modernc.org/memory v1.11.0 // indirect
 	modernc.org/sqlite v1.50.0 // indirect
 	mvdan.cc/sh/v3 v3.13.1 // indirect
-	oras.land/oras-go/v2 v2.6.0 // indirect
+	oras.land/oras-go/v2 v2.6.0
 	sigs.k8s.io/controller-runtime v0.24.0 // indirect
 	sigs.k8s.io/json v0.0.0-20250730193827-2d320260d730 // indirect
 	sigs.k8s.io/kustomize/api v0.21.1 // indirect

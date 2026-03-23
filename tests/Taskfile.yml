@@ -34,6 +34,10 @@ includes:
     taskfile: "./e2e/network/testenv/local/Taskfile.testenv.yml"
     internal: true
 
+  e2e:internal:testenv:integration-server:default:
+    taskfile: "./integration/server/testenv/Taskfile.testenv.yml"
+    internal: true
+
 vars:
   #
   # Reusable test matrix defining test cases and their associated test environments.
@@ -47,13 +51,13 @@ vars:
   #       <env_name>: <testenv configuration>
   #
   # Extending matrix:
-  #   - When adding a new test case, simply add a new entry under TEST_MATRIX 
-  #     with the appropriate testenv configurations. 
+  #   - When adding a new test case, simply add a new entry under TEST_MATRIX
+  #     with the appropriate testenv configurations.
   #   - When adding a new test environment for an existing test case,
   #     add a new entry under the "envs" section for that test case.
-  #   - If your test environment requires specific setup/teardown logic, 
+  #   - If your test environment requires specific setup/teardown logic,
   #     import the corresponding Taskfile with the necessary "up" and "down" tasks.
-  # 
+  #
   # Notes:
   #   - Each test case can have multiple environments, and the test execution logic will
   #     run the appropriate setup and tests based on user input.
@@ -82,6 +86,11 @@ vars:
         envs:
           kind: "{{.ROOT_DIR}}/tests/e2e/network/testenv/kind/test-config.yaml"
           local: "{{.ROOT_DIR}}/tests/e2e/network/testenv/local/test-config.yaml"
+
+      integration-server:
+        go_test_suite: "{{.ROOT_DIR}}/tests/integration/server"
+        envs:
+          default: "{{.ROOT_DIR}}/tests/integration/server/testenv/test-config.yaml"
 
   # Set GOCOVERDIR for supported testenv coverage collection.
   # This relies on the convention that testenv tasks will pass
@@ -214,7 +223,7 @@ tasks:
           -i={{.GOCOVERDIR}} \
           -pkg={{.COVERAGE_PKGS}} \
           -o={{.MERGE_GOCOVERDIR}} || exit 0
-      
+
       # Generate combined coverage report
       - |
         go tool covdata textfmt \
