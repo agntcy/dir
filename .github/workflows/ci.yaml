@@ -178,6 +178,16 @@ jobs:
       image_repo: ghcr.io/agntcy
       image_tag: ${{ github.sha }}
 
+  # TODO Only run on main and release branches
+  e2e-production:
+    name: E2E Production
+    needs:
+      - lint
+      - license
+      - verify
+    uses: ./.github/workflows/reusable-test-e2e-production.yaml
+    secrets: inherit
+
   upload-codecov:
     name: Upload all coverage artifacts to Codecov
     needs: [test]
@@ -261,6 +271,7 @@ jobs:
     needs:
       - changes
       - test
+      - e2e-production
       - upload-codecov
       - release
     runs-on: ubuntu-latest

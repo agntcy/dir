@@ -1,0 +1,39 @@
+# Copyright AGNTCY Contributors (https://github.com/agntcy)
+# SPDX-License-Identifier: Apache-2.0
+
+name: Test E2E Production
+
+on:
+  workflow_call:
+
+jobs:
+  e2e-production:
+    name: E2E Production (GHCR)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 0
+
+      - name: Setup Taskfile
+        shell: bash
+        run: sh -c "$(curl --location https://taskfile.dev/install.sh)" -- -d -b ~/.local/bin
+
+      - name: Setup Cosign
+        uses: sigstore/cosign-installer@ba7bc0a3fef59531c69a25acd34668d6d3fe6f22 # v4.1.0
+
+      - name: Setup Go
+        uses: actions/setup-go@4b73464bb391d4059bd26b0524d20df3927bd417 # v6.3.0
+        with:
+          go-version: "1.26.1"
+          cache-dependency-path: "**/*.sum"
+          cache: true
+
+      - name: Run production E2E tests
+        env:
+          DIRECTORY_CLIENT_AUTH_MODE: github
+          DIRECTORY_CLIENT_GITHUB_TOKEN: ${{ secrets.DIR_DEMO_WORKFLOW_PAT }}
+          DIRECTORY_E2E_GHCR_SERVER_ADDRESS: ${{ secrets.DIR_E2E_GHCR_SERVER_ADDRESS }}
+        run: |
+          task test:e2e-production
