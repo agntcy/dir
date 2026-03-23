@@ -47,7 +47,7 @@ jobs:
           working-directory: "sdk"
 
       - name: Run Renovate
-        run: task deps:renovate
+        run: task deps:renovate:sync
         env:
           ## Discovery
           # Renovate finds and creates PRs for all repos accessible by auth token.

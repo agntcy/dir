@@ -286,3 +286,28 @@ tasks:
     cmds:
       - for: { var: VULN_SCAN_IMAGES }
         cmd: echo "{{.ITEM}}"
+
+  deps:renovate:
+    desc: Install Renovate
+    internal: true
+    cmd: npm install -g renovate
+
+  deps:renovate:sync:
+    desc: Sync dependencies with Renovate
+    summary: |
+      For extra CLI flags pass RENOVATE_OPTS (e.g. task deps:renovate:sync RENOVATE_OPTS='--dry-run').
+      Default platform is local so local runs do not touch remote project data.
+      Github Action CI sets RENOVATE_PLATFORM to github.
+    deps:
+      - deps:renovate
+    dir: "{{.ROOT_DIR}}"
+    vars:
+      RENOVATE_OPTS_DEFAULT: >-
+        --persist-repo-data 'true'
+        --allowed-post-upgrade-commands '[".*"]'
+        --post-upgrade-tasks '{"commands": ["task deps:tidy"], "executionMode": "branch"}'
+      RENOVATE_OPTS: "{{ .RENOVATE_OPTS | default .RENOVATE_OPTS_DEFAULT }}"
+      RENOVATE_PLATFORM_EFFECTIVE:
+        sh: printf '%s' "${RENOVATE_PLATFORM:-local}"
+    cmds:
+      - renovate {{.RENOVATE_OPTS}} --platform "{{.RENOVATE_PLATFORM_EFFECTIVE}}"
