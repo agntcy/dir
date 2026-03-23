@@ -18,7 +18,18 @@ tasks:
   test:e2e-production:
     desc: Run E2E tests in production-like environments (multi-node, external OCI)
     dir: "{{ .ROOT_DIR }}/tests"
+    deps:
+      - deps:dirctl
     cmds:
+      - |
+        if [ -n "${DIRECTORY_CLIENT_GITHUB_TOKEN:-}" ]; then
+          echo "DIRECTORY_CLIENT_GITHUB_TOKEN is set, skipping interactive login."
+        elif {{ .DIRCTL_BIN }} auth status 2>&1 | grep -q "Token: Valid"; then
+          echo "Already authenticated (cached token valid)."
+        else
+          echo "Not authenticated, starting login..."
+          {{ .DIRCTL_BIN }} auth login
+        fi
       - go test -C ./e2e-production . -v -ginkgo.v
 
   test:e2e:local:cli:
