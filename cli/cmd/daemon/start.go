@@ -62,7 +62,7 @@ func runStart(cmd *cobra.Command, _ []string) error {
 	reconcilerCfg := buildReconcilerConfig()
 
 	// Start the gRPC server.
-	srv, err := server.New(ctx, serverCfg)
+	srv, err := server.New(ctx, serverCfg, nil)
 	if err != nil {
 		return fmt.Errorf("failed to create server: %w", err)
 	}

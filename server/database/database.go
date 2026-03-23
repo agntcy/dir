@@ -100,6 +100,20 @@ func newSQLite(cfg config.SQLiteConfig) (*gormdb.DB, error) {
 
 // newPostgres creates a new database connection using PostgreSQL driver.
 func newPostgres(cfg config.PostgresConfig) (*gormdb.DB, error) {
+	db, err := NewPostgresGormDb(cfg)
+	if err != nil {
+		return nil, fmt.Errorf("failed to connect to PostgreSQL database: %w", err)
+	}
+
+	gdb, err := gormdb.New(db)
+	if err != nil {
+		return nil, fmt.Errorf("failed to initialize PostgreSQL database: %w", err)
+	}
+
+	return gdb, nil
+}
+
+func NewPostgresGormDb(cfg config.PostgresConfig) (*gorm.DB, error) {
 	host := cfg.Host
 	if host == "" {
 		host = config.DefaultPostgresHost
@@ -123,17 +137,7 @@ func newPostgres(cfg config.PostgresConfig) (*gormdb.DB, error) {
 	dsn := fmt.Sprintf("host=%s port=%d user=%s password=%s dbname=%s sslmode=%s",
 		host, port, cfg.Username, cfg.Password, database, sslMode)
 
-	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{
+	return gorm.Open(postgres.Open(dsn), &gorm.Config{ //nolint:wrapcheck
 		Logger: newCustomLogger(),
 	})
-	if err != nil {
-		return nil, fmt.Errorf("failed to connect to PostgreSQL database: %w", err)
-	}
-
-	gdb, err := gormdb.New(db)
-	if err != nil {
-		return nil, fmt.Errorf("failed to initialize PostgreSQL database: %w", err)
-	}
-
-	return gdb, nil
 }

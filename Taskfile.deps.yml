@@ -330,3 +330,12 @@ tasks:
       - python3 {{.PRE_COMMIT_PYZ}} install
     status:
       - test -f {{.PRE_COMMIT_PYZ}}
+
+  deps:ginkgo:
+    desc: Install ginkgo
+    run: once
+    cmds:
+      - GOBIN="{{ .BIN_DIR }}" go install github.com/onsi/ginkgo/v2/ginkgo@v{{ .GINKGO_VERSION }}
+      - mv "{{ .BIN_DIR }}/ginkgo" "{{ .GINKGO_BIN }}"
+    status:
+      - test -f "{{ .GINKGO_BIN }}"

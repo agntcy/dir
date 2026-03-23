@@ -607,3 +607,26 @@ tasks:
         else
           echo "No pods directory found"
         fi
+
+  test:integration:server:
+    desc: Run integration tests for the API server
+    dir: "{{ .ROOT_DIR }}/tests/integration-server"
+    deps:
+      - task: deps:ginkgo
+    vars:
+      COVERAGE_ENABLED: '{{ .COVERAGE_ENABLED | default "false" }}'
+    cmds:
+      - defer: docker compose down -v
+      - docker compose up -d --build --wait
+      - |
+        if [ "{{ .COVERAGE_ENABLED }}" = "true" ]; then
+          mkdir -p "{{ .COVERAGE_DIR }}/integration"
+          {{ .GINKGO_BIN }} --randomize-all \
+                 -p \
+                 -covermode="atomic" \
+                 -coverpkg="github.com/agntcy/dir/api/...,github.com/agntcy/dir/server/..." \
+                 --output-dir="{{ .COVERAGE_DIR }}/integration" \
+                 -coverprofile="server.out"
+        else
+          {{ .GINKGO_BIN }} --randomize-all -p
+        fi

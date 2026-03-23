@@ -114,7 +114,7 @@ func buildConnectionOptions(cfg config.ConnectionConfig) []grpc.ServerOption {
 func Run(ctx context.Context, cfg *config.Config) error {
 	errCh := make(chan error)
 
-	server, err := New(ctx, cfg)
+	server, err := New(ctx, cfg, nil)
 	if err != nil {
 		return fmt.Errorf("failed to create server: %w", err)
 	}
@@ -153,7 +153,7 @@ func configureOASFValidation(cfg *config.Config) error {
 }
 
 //nolint:cyclop // This function has been at the limit; refactoring is out of scope.
-func New(ctx context.Context, cfg *config.Config) (*Server, error) {
+func New(ctx context.Context, cfg *config.Config, databaseAPI types.DatabaseAPI) (*Server, error) {
 	logger.Debug("Creating server with config", "config", cfg, "version", version.String())
 
 	if err := configureOASFValidation(cfg); err != nil {
@@ -227,9 +227,11 @@ func New(ctx context.Context, cfg *config.Config) (*Server, error) {
 		return nil, fmt.Errorf("failed to create routing: %w", err)
 	}
 
-	databaseAPI, err := database.New(cfg.Database)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create database API: %w", err)
+	if databaseAPI == nil {
+		databaseAPI, err = database.New(cfg.Database)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create database API: %w", err)
+		}
 	}
 
 	// Create JWT authentication service if enabled
@@ -316,6 +318,8 @@ func New(ctx context.Context, cfg *config.Config) (*Server, error) {
 		metricsServer:      metricsServer,
 	}, nil
 }
+
+func (s Server) GrpcServer() *grpc.Server { return s.grpcServer }
 
 func (s Server) Options() types.APIOptions { return s.options }
 

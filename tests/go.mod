@@ -21,15 +21,21 @@ require (
 	github.com/agntcy/dir/api v1.1.0
 	github.com/agntcy/dir/cli v1.1.0
 	github.com/agntcy/dir/client v1.1.0
+	github.com/agntcy/dir/server v1.1.0
+	github.com/brianvoe/gofakeit/v7 v7.14.1
 	github.com/google/uuid v1.6.0
+	github.com/joho/godotenv v1.5.1
 	github.com/mitchellh/mapstructure v1.5.1-0.20231216201459-8508981c8b6c
 	github.com/onsi/ginkgo/v2 v2.28.1
 	github.com/onsi/gomega v1.39.1
+	github.com/opencontainers/image-spec v1.1.1
 	github.com/spf13/cobra v1.10.2
 	github.com/spf13/pflag v1.0.10
 	github.com/spf13/viper v1.21.0
 	google.golang.org/grpc v1.79.3
 	google.golang.org/protobuf v1.36.11
+	gorm.io/gorm v1.31.1
+	oras.land/oras-go/v2 v2.6.0
 )
 
 require (
@@ -61,7 +67,6 @@ require (
 	github.com/agntcy/dir/importer v1.1.0 // indirect
 	github.com/agntcy/dir/mcp v1.1.0 // indirect
 	github.com/agntcy/dir/reconciler v1.1.0 // indirect
-	github.com/agntcy/dir/server v1.1.0 // indirect
 	github.com/agntcy/dir/utils v1.1.0 // indirect
 	github.com/agntcy/oasf-sdk/pkg v1.0.3 // indirect
 	github.com/alecthomas/chroma/v2 v2.23.1 // indirect
@@ -286,7 +291,6 @@ require (
 	github.com/oklog/ulid/v2 v2.1.1 // indirect
 	github.com/openai/openai-go/v3 v3.29.0 // indirect
 	github.com/opencontainers/go-digest v1.0.0 // indirect
-	github.com/opencontainers/image-spec v1.1.1 // indirect
 	github.com/pbnjay/memory v0.0.0-20210728143218-7b4eea64cf58 // indirect
 	github.com/pelletier/go-toml/v2 v2.2.4 // indirect
 	github.com/pion/datachannel v1.6.0 // indirect
@@ -397,7 +401,6 @@ require (
 	gopkg.in/inf.v0 v0.9.1 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 	gorm.io/driver/postgres v1.6.0 // indirect
-	gorm.io/gorm v1.31.1 // indirect
 	k8s.io/api v0.35.3 // indirect
 	k8s.io/apimachinery v0.35.3 // indirect
 	k8s.io/client-go v0.35.3 // indirect
@@ -409,7 +412,6 @@ require (
 	modernc.org/mathutil v1.5.0 // indirect
 	modernc.org/memory v1.5.0 // indirect
 	modernc.org/sqlite v1.23.1 // indirect
-	oras.land/oras-go/v2 v2.6.0 // indirect
 	sigs.k8s.io/json v0.0.0-20250730193827-2d320260d730 // indirect
 	sigs.k8s.io/randfill v1.0.0 // indirect
 	sigs.k8s.io/structured-merge-diff/v6 v6.3.2 // indirect

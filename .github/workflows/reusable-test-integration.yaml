@@ -1,0 +1,62 @@
+# Copyright AGNTCY Contributors (https://github.com/agntcy)
+# SPDX-License-Identifier: Apache-2.0
+
+name: Test Integration
+
+on:
+  workflow_call:
+    inputs:
+      enable_coverage:
+        required: false
+        type: boolean
+        default: false
+        description: "Whether to collect and upload coverage as artifacts."
+
+jobs:
+  integration:
+    name: Test ${{ matrix.label }}
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - task: test:integration:server
+            label: "Server"
+            coverage_path: ".coverage/integration/server.out"
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 0
+
+      - name: Login to ghcr.io
+        uses: docker/login-action@b45d80f862d83dbcd57f89517bcf500b2ab88fb2 # v4.0.0
+        with:
+          registry: ghcr.io
+          username: notused
+          password: ${{ secrets.GITHUB_TOKEN  }}
+
+      - name: Install Task
+        uses: go-task/setup-task@3be4020d41929789a01026e0e427a4321ce0ad44 #v2.0.0
+
+      - name: Setup Cosign
+        uses: sigstore/cosign-installer@ba7bc0a3fef59531c69a25acd34668d6d3fe6f22 # v4.1.0
+
+      - name: Setup Go
+        uses: actions/setup-go@4b73464bb391d4059bd26b0524d20df3927bd417 # v6.3.0
+        with:
+          go-version: "1.26.1"
+          cache-dependency-path: "**/*.sum"
+          cache: true
+
+      - name: Run tests
+        run: |
+          COVERAGE_ENABLED="${{ inputs.enable_coverage }}" task ${{ matrix.task }}
+
+      - name: Upload coverage artifact
+        if: ${{ inputs.enable_coverage }}
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+        with:
+          name: coverage-integration-${{ matrix.label }}
+          path: ${{ matrix.coverage_path }}
+          include-hidden-files: true
+          retention-days: 1
