@@ -59,7 +59,7 @@ jobs:
 
           RESPONSE="$(curl -sSf \
             -H "Authorization: bearer ${ACTIONS_ID_TOKEN_REQUEST_TOKEN}" \
-            "${ACTIONS_ID_TOKEN_REQUEST_URL}")"
+            "${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=dir-dev")"
 
           TOKEN="$(echo "${RESPONSE}" | jq -r '.value')"
           if [ -z "${TOKEN}" ] || [ "${TOKEN}" = "null" ]; then

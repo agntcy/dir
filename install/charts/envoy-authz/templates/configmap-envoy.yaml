@@ -134,6 +134,12 @@ data:
                               from_headers:
                                 - name: Authorization
                                   value_prefix: 'Bearer '
+                              {{- if .Values.envoy.oidc.github.audiences }}
+                              audiences:
+                                {{- range .Values.envoy.oidc.github.audiences }}
+                                - {{ . | quote }}
+                                {{- end }}
+                              {{- end }}
                               forward: true
                               forward_payload_header: 'x-jwt-payload'
                               claim_to_headers:

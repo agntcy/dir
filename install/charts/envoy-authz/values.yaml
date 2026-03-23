@@ -44,6 +44,9 @@ envoy:
       issuer: "https://token.actions.githubusercontent.com"
       jwksUri: "https://token.actions.githubusercontent.com/.well-known/jwks"
       jwksHost: "token.actions.githubusercontent.com"
+      # Optional JWT audience enforcement for GitHub OIDC tokens.
+      # When set, workflow token request must use one of these audience values.
+      audiences: []
     jwksTimeout: 5s
     jwksCacheSeconds: 300
 
