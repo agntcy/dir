@@ -75,7 +75,13 @@ jobs:
           DIRECTORY_CLIENT_OIDC_TOKEN: ${{ steps.oidc.outputs.token }}
         run: |
           set -euo pipefail
-          ./.bin/dirctl search --version "${{ inputs.version_query }}" \
-            --server-addr "${{ inputs.server_addr }}" \
+          SERVER_ADDR="${{ github.event.inputs.server_addr }}"
+          VERSION_QUERY="${{ github.event.inputs.version_query }}"
+
+          SERVER_ADDR="${SERVER_ADDR:-dev.gateway.ads.outshift.io:443}"
+          VERSION_QUERY="${VERSION_QUERY:-v1.*}"
+
+          ./.bin/dirctl search --version "${VERSION_QUERY}" \
+            --server-addr "${SERVER_ADDR}" \
             --auth-mode=oidc \
             --output json
