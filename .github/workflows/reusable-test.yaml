@@ -67,3 +67,10 @@ jobs:
       image_repo: ${{ inputs.image_repo }}
       image_tag: ${{ inputs.image_tag }}
       enable_coverage: true
+
+  e2e-production:
+    # Only run on main and release branches
+    if: github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v')
+    name: E2E Production
+    uses: ./.github/workflows/reusable-test-e2e-production.yaml
+    secrets: inherit
