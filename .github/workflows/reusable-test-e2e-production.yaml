@@ -33,7 +33,16 @@ jobs:
       - name: Run production E2E tests
         env:
           DIRECTORY_CLIENT_AUTH_MODE: github
-          DIRECTORY_CLIENT_GITHUB_TOKEN: ${{ secrets.DIR_DEMO_WORKFLOW_PAT }}
+          DIRECTORY_CLIENT_GITHUB_TOKEN: ${{ secrets.DIR_DEMO_BOT_PAT }}
           DIRECTORY_E2E_GHCR_SERVER_ADDRESS: ${{ secrets.DIR_E2E_GHCR_SERVER_ADDRESS }}
         run: |
           task test:e2e-production
+
+      - name: Clean up GHCR packages
+        uses: actions/delete-package-versions@e5bc658cc4c965c472efe991f8beea3981499c55 # v5.0.0
+        with:
+          owner: agntcy-dir-demo-bot
+          package-name: dir-test
+          package-type: container
+          min-versions-to-keep: 1 # GHCR does not allow deleting all versions of a package
+          token: ${{ secrets.DIR_DEMO_BOT_PAT }}
