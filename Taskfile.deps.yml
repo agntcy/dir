@@ -22,6 +22,7 @@ tasks:
       - task: deps:golangci-lint
       - task: deps:licensei
       - task: deps:multimod-bin
+      - task: deps:renovate
       - task: deps:cleanup
 
   deps:cleanup:
@@ -257,7 +258,6 @@ tasks:
           curl -sfL https://github.com/aquasecurity/trivy/releases/download/v{{.TRIVY_VERSION}}/trivy_{{.TRIVY_VERSION}}_{{.TRIVY_OS}}-{{.TRIVY_ARCH}}.tar.gz | \
           tar -xzf - -C {{.BIN_DIR}} trivy && \
           mv {{.BIN_DIR}}/trivy {{.TRIVY_BIN}}
-
     status:
       - test -x {{.TRIVY_BIN}}
 
@@ -291,6 +291,8 @@ tasks:
     desc: Install Renovate
     internal: true
     cmd: npm install -g renovate
+    status:
+      - test -x renovate
 
   deps:renovate:sync:
     desc: Sync dependencies with Renovate
@@ -305,7 +307,7 @@ tasks:
       RENOVATE_OPTS_DEFAULT: >-
         --persist-repo-data 'true'
         --allowed-post-upgrade-commands '[".*"]'
-        --post-upgrade-tasks '{"commands": ["task deps:tidy"], "executionMode": "branch"}'
+        --post-upgrade-tasks '{"commands": ["task deps:tidy", "task sdk:tidy"], "executionMode": "branch"}'
       RENOVATE_OPTS: "{{ .RENOVATE_OPTS | default .RENOVATE_OPTS_DEFAULT }}"
       RENOVATE_PLATFORM_EFFECTIVE:
         sh: printf '%s' "${RENOVATE_PLATFORM:-local}"
