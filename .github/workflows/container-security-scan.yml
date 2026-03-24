@@ -3,9 +3,12 @@
 name: Container Security Scan
 
 on:
-  # Nightly scan on main branch only; manual dispatch allowed.
-  schedule:
-    - cron: "0 3 * * *" # Daily at 03:00 UTC (runs on default branch context: main)
+  workflow_call:
+    inputs:
+      image-tag:
+        required: false
+        type: string
+        description: "Override tag for repo images (empty for latest)"
   workflow_dispatch:
     inputs:
       image-tag:
