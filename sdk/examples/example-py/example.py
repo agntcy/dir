@@ -3,7 +3,7 @@
 
 from google.protobuf.json_format import MessageToJson
 
-from agntcy.dir_sdk.client import Client
+from agntcy.dir_sdk.client import Config, Client
 from agntcy.dir_sdk.models import core_v1, search_v1, routing_v1
 
 
@@ -65,7 +65,13 @@ def generate_record(name):
 
 def main() -> None:
     # Initialize the client
-    client = Client()
+    config = Config.load_from_env()
+    config.auth_mode = "oauth_pkce"
+    config.oidc_issuer = "http://localhost:8080"
+    config.oidc_client_id = "361611802607419395"
+
+    client = Client(config)
+    client.authenticate_oauth_pkce()
 
     records = [generate_record(x) for x in ["example-record", "example-record2"]]
 
