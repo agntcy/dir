@@ -3,7 +3,7 @@
 # xx is a helper for cross-compilation
 FROM --platform=$BUILDPLATFORM tonistiigi/xx:1.9.0@sha256:c64defb9ed5a91eacb37f96ccc3d4cd72521c4bd18d5442905b95e2226b0e707 AS xx
 
-FROM --platform=$BUILDPLATFORM golang:1.26.1-bookworm@sha256:c7a82e9e2df2fea5d8cb62a16aa6f796d2b2ed81ccad4ddd2bc9f0d22936c3f2 AS builder
+FROM --platform=$BUILDPLATFORM golang:1.26.1-bookworm@sha256:8e8aa801e8417ef0b5c42b504dd34db3db911bb73dba933bd8bde75ed815fdbb AS builder
 
 COPY --link --from=xx / /
 
@@ -44,19 +44,19 @@ FROM builder AS debug
 WORKDIR /
 
 COPY --from=builder /bin/apiserver ./apiserver
-COPY --from=ghcr.io/grpc-ecosystem/grpc-health-probe:v0.4.38 /ko-app/grpc-health-probe /bin/grpc-health-probe
+COPY --from=ghcr.io/grpc-ecosystem/grpc-health-probe:v0.4.47 /ko-app/grpc-health-probe /bin/grpc-health-probe
 
 RUN xx-go install github.com/go-delve/delve/cmd/dlv@v1.26.1
 
 ENTRYPOINT ["/go/bin/dlv", "--listen=0.0.0.0:2345", "--headless=true", "--accept-multiclient=true", "--api-version=2", "exec", "--continue", "./apiserver", "--", "run"]
 
 # Production image - minimal distroless
-FROM gcr.io/distroless/static:nonroot@sha256:c0f429e16b13e583da7e5a6ec20dd656d325d88e6819cafe0adb0828976529dc AS production
+FROM gcr.io/distroless/static:nonroot@sha256:e3f945647ffb95b5839c07038d64f9811adf17308b9121d8a2b87b6a22a80a39 AS production
 
 WORKDIR /
 
 COPY --from=builder /bin/apiserver ./apiserver
-COPY --from=ghcr.io/grpc-ecosystem/grpc-health-probe:v0.4.38 /ko-app/grpc-health-probe /bin/grpc-health-probe
+COPY --from=ghcr.io/grpc-ecosystem/grpc-health-probe:v0.4.47 /ko-app/grpc-health-probe /bin/grpc-health-probe
 
 USER 65532:65532
 
@@ -70,7 +70,7 @@ RUN apk add --no-cache tar
 WORKDIR /
 
 COPY --from=builder /bin/apiserver ./apiserver
-COPY --from=ghcr.io/grpc-ecosystem/grpc-health-probe:v0.4.38 /ko-app/grpc-health-probe /bin/grpc-health-probe
+COPY --from=ghcr.io/grpc-ecosystem/grpc-health-probe:v0.4.47 /ko-app/grpc-health-probe /bin/grpc-health-probe
 
 # Create a non-root user for coverage
 RUN addgroup -g 65532 -S nonroot && adduser -u 65532 -S nonroot -G nonroot
