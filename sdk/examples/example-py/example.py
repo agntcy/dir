@@ -70,9 +70,14 @@ def main() -> None:
     config.oidc_issuer = "https://dev.idp.ads.outshift.io"
     config.server_address = "dev.gateway.ads.outshift.io:443"
     config.oidc_client_id = "363738767955070782"
+    config.oidc_machine_client_id = "mcp-bot"
+    config.oidc_machine_client_secret = "BFfMGd0fo3JKL8R3fvcSEneNe84NvifBeQrEVFA0H5zBiKRDFCZoyGCIUoUs4TtB"
+    config.oidc_machine_scopes = ["openid", "profile", "email"]
+    config.oidc_machine_token_endpoint = "https://dev.idp.ads.outshift.io/oauth/v2/token"
 
     client = Client(config)
-    client.authenticate_oauth_pkce()
+    # client.authenticate_oauth_pkce()
+    client.run_client_credentials_flow()
 
     records = [generate_record(x) for x in ["example-record", "example-record2"]]
 
