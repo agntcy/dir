@@ -223,15 +223,6 @@ jobs:
           verbose: true
           use_oidc: true
 
-  push-latest-images:
-    name: Push latest images based on the last main commit
-    if: ${{ ! startsWith(github.ref, 'refs/tags/') }}
-    uses: ./.github/workflows/reusable-build.yaml
-    with:
-      image_repo: ghcr.io/agntcy
-      image_tag: latest
-      push: true
-
   release:
     name: Release
     if: ${{ startsWith(github.ref, 'refs/tags/') }}

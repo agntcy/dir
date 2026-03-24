@@ -9,14 +9,18 @@ on:
   workflow_dispatch:
 
 jobs:
-  container-security-scan-latest-main:
-    name: Container Security Scan (latest main commit)
-    uses: ./.github/workflows/container-security-scan.yml
+  build-images:
+    name: Build Images
+    uses: ./.github/workflows/reusable-build.yaml
     with:
-      image-tag: latest
-      upload_ref: ${{ github.ref }} # NOTE: As Cron executed on main this will be refs/heads/main
-      upload_sha: ${{ github.sha }} # NOTE: As Cron executed on main this will be the SHA of the latest commit
+      image_repo: ghcr.io/agntcy
+      image_tag: nightly
+      push: true
 
-  container-security-scan-latest-release:
-    name: Container Security Scan (latest release)
+  security:
+    name: Container Security Scan
     uses: ./.github/workflows/container-security-scan.yml
+    needs:
+      - build-images
+    with:
+      image-tag: nightly

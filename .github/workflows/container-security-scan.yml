@@ -9,28 +9,12 @@ on:
         required: false
         type: string
         description: "Override tag for repo images (empty for latest)"
-      upload_ref:
-        required: false
-        type: string
-        description: "Reference where SARIF should be uploaded (empty for latest)"
-      upload_sha:
-        required: false
-        type: string
-        description: "SHA of the commit where SARIF should be uploaded (empty for latest)"
   workflow_dispatch:
     inputs:
       image-tag:
         required: false
         type: string
         description: "Override tag for repo images (empty for latest)"
-      upload_ref:
-        required: false
-        type: string
-        description: "Reference where SARIF should be uploaded (empty for latest)"
-      upload_sha:
-        required: false
-        type: string
-        description: "SHA of the commit where SARIF should be uploaded (empty for latest)"
 
 permissions:
   contents: read
@@ -44,8 +28,6 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       version: ${{ steps.resolve.outputs.version }}
-      upload_ref: ${{ steps.resolve.outputs.upload_ref }}
-      upload_sha: ${{ steps.resolve.outputs.upload_sha }}
     env:
       GH_TOKEN: ${{ github.token }}
     steps:
@@ -72,18 +54,6 @@ jobs:
               --jq 'first(.data.repository.refs.nodes[] | select(.name | contains("/") | not).name)'
             )
             echo "version=${TAG_VERSION}" >> $GITHUB_OUTPUT
-
-            if [ -n "${{ inputs.upload_ref }}" ]; then
-              echo "upload_ref=${{ inputs.upload_ref }}" >> $GITHUB_OUTPUT
-            else
-              echo "upload_ref=refs/tags/${TAG_VERSION}" >> $GITHUB_OUTPUT
-            fi
-
-            if [ -n "${{ inputs.upload_sha }}" ]; then
-              echo "upload_sha=${{ inputs.upload_sha }}" >> $GITHUB_OUTPUT
-            else
-              echo "upload_sha=$(gh api "repos/${OWNER}/${REPO_NAME}/commits/${TAG_VERSION}" --jq '.sha')" >> $GITHUB_OUTPUT
-            fi
           fi
 
   image-list:
@@ -113,7 +83,7 @@ jobs:
   trivy-scan:
     name: Trivy Scan
     runs-on: ubuntu-latest
-    needs: [image-list, resolve-tag]
+    needs: [image-list]
     strategy:
       fail-fast: false
       matrix: ${{ fromJson(needs.image-list.outputs.matrix) }}
@@ -144,8 +114,6 @@ jobs:
         with:
           sarif_file: trivy-${{ steps.image-name.outputs.name }}.sarif
           category: trivy-${{ steps.image-name.outputs.name }}
-          ref: ${{ needs.resolve-tag.outputs.upload_ref }}
-          sha: ${{ needs.resolve-tag.outputs.upload_sha }}
 
       - name: Upload report artifacts
         uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
