@@ -13,12 +13,15 @@ var Command = &cobra.Command{
 	Short: "Manage authentication",
 	Long: `Manage authentication for dirctl.
 
-This command group provides OAuth2-based authentication for the Directory server
-using external providers (currently GitHub).
+This command group provides OIDC-based authentication for the Directory server
+using external IdPs (e.g. Zitadel).
 
 Examples:
   # Login with OAuth (opens browser)
   dirctl auth login
+
+  # Machine/service-user login (non-interactive)
+  dirctl auth machine
 
   # Check authentication status
   dirctl auth status
@@ -35,6 +38,7 @@ Examples:
 func init() {
 	Command.AddCommand(
 		loginCmd,
+		machineCmd,
 		logoutCmd,
 		statusCmd,
 	)

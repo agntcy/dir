@@ -40,23 +40,26 @@ type CachedToken struct {
 	// TokenType is the token type (usually "bearer").
 	TokenType string `json:"token_type,omitempty"`
 
-	// Provider is the authentication provider (github, google, azure, etc.)
+	// Provider is the authentication provider (oidc, github, google, azure, etc.)
 	Provider string `json:"provider,omitempty"`
+
+	// Issuer is the OIDC issuer URL (for Provider=oidc). Enables multi-issuer support.
+	Issuer string `json:"issuer,omitempty"`
+
+	// RefreshToken is the refresh token, if the IdP returned one (for token refresh).
+	RefreshToken string `json:"refresh_token,omitempty"` // #nosec G101: intentional field - for cached token
 
 	// ExpiresAt is when the token expires.
 	ExpiresAt time.Time `json:"expires_at,omitzero"`
 
-	// User is the authenticated username.
+	// User is the authenticated username (e.g. preferred_username or name for OIDC).
 	User string `json:"user,omitempty"`
 
-	// UserID is the provider-specific user ID.
+	// UserID is the provider-specific user ID (e.g. sub for OIDC).
 	UserID string `json:"user_id,omitempty"`
 
 	// Email is the user's email address.
 	Email string `json:"email,omitempty"`
-
-	// Orgs are the user's organizations/tenants/domains.
-	Orgs []string `json:"orgs,omitempty"`
 
 	// CreatedAt is when the token was cached.
 	CreatedAt time.Time `json:"created_at"`

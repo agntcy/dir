@@ -1,5 +1,6 @@
-# Envoy configuration for testing ext_authz integration
-# Based on SPIRE tutorials: https://github.com/spiffe/spire-tutorials/tree/main/k8s/envoy-jwt
+# Envoy configuration for testing OIDC ext_authz integration.
+# Implements: Header Mutation, Multiple Issuers (jwt_authn), Strip Authorization.
+# See implementation plan §4: https://github.com/agntcy/dir-tmp/dev-zitadel/oidc-ext-authz-casbin-implementation-plan
 
 node:
   id: "test-envoy"
@@ -18,7 +19,7 @@ static_resources:
         socket_address:
           address: 0.0.0.0
           port_value: 8080
-      
+
       filter_chains:
         - filters:
             - name: envoy.filters.network.http_connection_manager
@@ -27,12 +28,12 @@ static_resources:
                 stat_prefix: ingress_http
                 codec_type: AUTO
                 http2_protocol_options: {}
-                
+
                 access_log:
                   - name: envoy.access_loggers.stdout
                     typed_config:
                       "@type": type.googleapis.com/envoy.extensions.access_loggers.stream.v3.StdoutAccessLog
-                
+
                 route_config:
                   name: local_route
                   virtual_hosts:
@@ -50,16 +51,102 @@ static_resources:
                             envoy.filters.http.ext_authz:
                               "@type": type.googleapis.com/envoy.extensions.filters.http.ext_authz.v3.ExtAuthzPerRoute
                               disabled: true
-                        
-                        # All other requests - require authentication
+
+                        # JWT route - Bearer token validated by jwt_authn, header_mutation strips x-jwt-payload
+                        - match:
+                            prefix: "/api/jwt"
+                          route:
+                            cluster: mock_directory
+                            timeout: 30s
+                          request_headers_to_remove:
+                            - "authorization"
+                          typed_per_filter_config:
+                            envoy.filters.http.header_mutation:
+                              "@type": type.googleapis.com/envoy.extensions.filters.http.header_mutation.v3.HeaderMutationPerRoute
+                              mutations:
+                                request_mutations:
+                                  - remove: "x-jwt-payload"
+
+                        # Dev/test route - x-jwt-payload passthrough (no JWT validation)
+                        - match:
+                            prefix: "/api/test"
+                          route:
+                            cluster: mock_directory
+                            timeout: 30s
+                          request_headers_to_remove:
+                            - "authorization"
+
+                        # All other requests - require auth
                         - match:
                             prefix: "/"
                           route:
                             cluster: mock_directory
                             timeout: 30s
-                
+                          request_headers_to_remove:
+                            - "authorization"
+
                 http_filters:
-                  # External authorization filter
+                  # 1. Header Mutation - strips client-supplied x-jwt-payload on /api/jwt (defense-in-depth)
+                  #    Global config has no mutations; per-route adds strip only for JWT route
+                  - name: envoy.filters.http.header_mutation
+                    typed_config:
+                      "@type": type.googleapis.com/envoy.extensions.filters.http.header_mutation.v3.HeaderMutation
+
+                  # 2. JWT Authentication - multiple issuers (Zitadel, GitHub OIDC)
+                  - name: envoy.filters.http.jwt_authn
+                    typed_config:
+                      "@type": type.googleapis.com/envoy.extensions.filters.http.jwt_authn.v3.JwtAuthentication
+                      providers:
+                        zitadel:
+                          issuer: "https://tenant.zitadel.cloud"
+                          local_jwks:
+                            # Test key - use real JWKS in production (remote_jwks from IdP)
+                            inline_string: '{"keys":[{"kty":"RSA","n":"0vx7agoebGcQSuuPiLJXZptN9nndrQmbXEps2aiAFbWhM78LhWx4cbbfAAtVT86zwu1RK7aPFFxuhDR1L6tSoc_BJECPebWKRXjBZCiFV4n3oknjhMstn64tZ_2W-5JsGY4Hc5n9yBXArwl93lqt7_RN5w6Cf0h4QyQ5v-65YGjQR0_FDW2QvzqY368QQMicAtaSqzs8KJZgnYb9c7d0zgdAZHzu6qMQvRL5hajrn1n91CbOpbISD08qNLyrdkt-bFTWhAI4vMQFh6WeZu0fM4lFd2NcRwr3XPksINHaQ-G_xBniIqbw0Ls1jF44-csFCur-kEgU8awapJzKnqDKgw","e":"AQAB","alg":"RS256","kid":"2011-04-29"}]}'
+                          from_headers:
+                            - name: Authorization
+                              value_prefix: "Bearer "
+                          forward: true
+                          forward_payload_header: "x-jwt-payload"
+                          claim_to_headers:
+                            - header_name: x-user-id
+                              claim_name: sub
+                            - header_name: x-user-issuer
+                              claim_name: iss
+                        github:
+                          issuer: "https://token.actions.githubusercontent.com"
+                          remote_jwks:
+                            http_uri:
+                              uri: "https://token.actions.githubusercontent.com/.well-known/jwks"
+                              cluster: jwks_github
+                              timeout: 5s
+                            cache_duration:
+                              seconds: 300
+                          from_headers:
+                            - name: Authorization
+                              value_prefix: "Bearer "
+                          forward: true
+                          forward_payload_header: "x-jwt-payload"
+                          claim_to_headers:
+                            - header_name: x-user-id
+                              claim_name: sub
+                            - header_name: x-user-issuer
+                              claim_name: iss
+                      rules:
+                        - match:
+                            prefix: "/api/jwt"
+                          requires:
+                            requires_any:
+                              requirements:
+                                - provider_name: zitadel
+                                - provider_name: github
+                        # /api/test: no JWT required - x-jwt-payload passthrough for dev testing
+                        - match:
+                            prefix: "/api/test"
+                        # Catch-all: no JWT required (ext_authz will deny if no payload)
+                        - match:
+                            prefix: "/"
+
+                  # 3. External authorization - OIDC ext_authz (Casbin RBAC)
                   - name: envoy.filters.http.ext_authz
                     typed_config:
                       "@type": type.googleapis.com/envoy.extensions.filters.http.ext_authz.v3.ExtAuthz
@@ -69,14 +156,16 @@ static_resources:
                           cluster_name: ext_authz
                         timeout: 5s
                       failure_mode_allow: false
-                  
+                      # Note: allowed_upstream_headers is HTTP-only (authorization_response).
+                      # For gRPC ext_authz, response headers are forwarded to upstream by default.
+
                   # Router filter (must be last)
                   - name: envoy.filters.http.router
                     typed_config:
                       "@type": type.googleapis.com/envoy.extensions.filters.http.router.v3.Router
-  
+
   clusters:
-    # ExtAuthz service (our service)
+    # ExtAuthz service (OIDC + Casbin)
     - name: ext_authz
       type: STRICT_DNS
       connect_timeout: 1s
@@ -94,7 +183,26 @@ static_resources:
                     socket_address:
                       address: envoy-authz
                       port_value: 9002
-    
+
+    # JWKS for GitHub OIDC
+    - name: jwks_github
+      type: STRICT_DNS
+      connect_timeout: 5s
+      load_assignment:
+        cluster_name: jwks_github
+        endpoints:
+          - lb_endpoints:
+              - endpoint:
+                  address:
+                    socket_address:
+                      address: token.actions.githubusercontent.com
+                      port_value: 443
+      transport_socket:
+        name: envoy.transport_sockets.tls
+        typed_config:
+          "@type": type.googleapis.com/envoy.extensions.transport_sockets.tls.v3.UpstreamTlsContext
+          sni: token.actions.githubusercontent.com
+
     # Mock Directory backend
     - name: mock_directory
       type: STRICT_DNS

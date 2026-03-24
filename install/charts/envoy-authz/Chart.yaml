@@ -3,17 +3,18 @@
 
 apiVersion: v2
 name: envoy-authz
-description: Envoy gateway with external authorization for GitHub authentication
+description: Envoy gateway with OIDC JWT authentication and Casbin-based external authorization
 type: application
-version: 0.1.0
-appVersion: "0.1.0"
+version: 0.2.0
+appVersion: "0.2.0"
 
 keywords:
   - envoy
   - authentication
   - authorization
-  - github
-  - oauth
+  - oidc
+  - jwt
+  - casbin
 
 maintainers:
   - name: AGNTCY Contributors

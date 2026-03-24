@@ -12,9 +12,9 @@ metadata:
 data:
   envoy.yaml: |
     node:
-      id: "{{ include "envoy-authz.fullname" . }}-envoy"
+      id: {{ include "envoy-authz.fullname" . }}-envoy
       cluster: "{{ .Release.Namespace }}"
-    
+
     {{- if .Values.envoy.admin.enabled }}
     admin:
       address:
@@ -22,7 +22,7 @@ data:
           address: 0.0.0.0
           port_value: {{ .Values.envoy.admin.port }}
     {{- end }}
-    
+
     static_resources:
       listeners:
         - name: main_listener
@@ -59,14 +59,113 @@ data:
                                 envoy.filters.http.ext_authz:
                                   "@type": type.googleapis.com/envoy.extensions.filters.http.ext_authz.v3.ExtAuthzPerRoute
                                   disabled: true
-                            # All other requests - require auth
+                            # Dir gRPC - require JWT, strip Authorization before backend
+                            - match:
+                                prefix: "/agntcy.dir"
+                              route:
+                                cluster: directory_backend
+                                timeout: {{ .Values.envoy.backend.timeout }}
+                              request_headers_to_remove:
+                                - "authorization"
+                              typed_per_filter_config:
+                                envoy.filters.http.header_mutation:
+                                  "@type": type.googleapis.com/envoy.extensions.filters.http.header_mutation.v3.HeaderMutationPerRoute
+                                  mutations:
+                                    request_mutations:
+                                      - remove: "x-jwt-payload"
+                            # gRPC reflection - no JWT required (public path)
+                            - match:
+                                prefix: "/grpc.reflection"
+                              route:
+                                cluster: directory_backend
+                                timeout: {{ .Values.envoy.backend.timeout }}
+                              request_headers_to_remove:
+                                - "authorization"
+                            # Catch-all
                             - match:
                                 prefix: "/"
                               route:
                                 cluster: directory_backend
                                 timeout: {{ .Values.envoy.backend.timeout }}
+                              request_headers_to_remove:
+                                - "authorization"
                     http_filters:
-                      # External authorization filter
+                      # 1. Header Mutation - strip client-supplied x-jwt-payload (defense-in-depth)
+                      - name: envoy.filters.http.header_mutation
+                        typed_config:
+                          "@type": type.googleapis.com/envoy.extensions.filters.http.header_mutation.v3.HeaderMutation
+                      {{- if or .Values.envoy.oidc.zitadel.enabled .Values.envoy.oidc.github.enabled }}
+                      # 2. JWT Authentication - multiple issuers
+                      - name: envoy.filters.http.jwt_authn
+                        typed_config:
+                          "@type": type.googleapis.com/envoy.extensions.filters.http.jwt_authn.v3.JwtAuthentication
+                          providers:
+                            {{- if .Values.envoy.oidc.zitadel.enabled }}
+                            zitadel:
+                              issuer: {{ .Values.envoy.oidc.zitadel.issuer | quote }}
+                              remote_jwks:
+                                http_uri:
+                                  uri: {{ .Values.envoy.oidc.zitadel.jwksUri | quote }}
+                                  cluster: jwks_zitadel
+                                  timeout: {{ .Values.envoy.oidc.jwksTimeout }}
+                                cache_duration:
+                                  seconds: {{ .Values.envoy.oidc.jwksCacheSeconds }}
+                              from_headers:
+                                - name: Authorization
+                                  value_prefix: 'Bearer '
+                              forward: true
+                              forward_payload_header: 'x-jwt-payload'
+                              claim_to_headers:
+                                - header_name: x-user-id
+                                  claim_name: sub
+                                - header_name: x-user-issuer
+                                  claim_name: iss
+                            {{- end }}
+                            {{- if .Values.envoy.oidc.github.enabled }}
+                            github:
+                              issuer: {{ .Values.envoy.oidc.github.issuer | quote }}
+                              remote_jwks:
+                                http_uri:
+                                  uri: {{ .Values.envoy.oidc.github.jwksUri | quote }}
+                                  cluster: jwks_github
+                                  timeout: {{ .Values.envoy.oidc.jwksTimeout }}
+                                cache_duration:
+                                  seconds: {{ .Values.envoy.oidc.jwksCacheSeconds }}
+                              from_headers:
+                                - name: Authorization
+                                  value_prefix: 'Bearer '
+                              {{- if .Values.envoy.oidc.github.audiences }}
+                              audiences:
+                                {{- range .Values.envoy.oidc.github.audiences }}
+                                - {{ . | quote }}
+                                {{- end }}
+                              {{- end }}
+                              forward: true
+                              forward_payload_header: 'x-jwt-payload'
+                              claim_to_headers:
+                                - header_name: x-user-id
+                                  claim_name: sub
+                                - header_name: x-user-issuer
+                                  claim_name: iss
+                            {{- end }}
+                          rules:
+                            - match:
+                                prefix: "/agntcy.dir"
+                              requires:
+                                requires_any:
+                                  requirements:
+                                    {{- if .Values.envoy.oidc.zitadel.enabled }}
+                                    - provider_name: zitadel
+                                    {{- end }}
+                                    {{- if .Values.envoy.oidc.github.enabled }}
+                                    - provider_name: github
+                                    {{- end }}
+                            - match:
+                                prefix: "/grpc.reflection"
+                            - match:
+                                prefix: "/"
+                      {{- end }}
+                      # 3. External authorization - OIDC ext_authz (Casbin RBAC)
                       - name: envoy.filters.http.ext_authz
                         typed_config:
                           "@type": type.googleapis.com/envoy.extensions.filters.http.ext_authz.v3.ExtAuthz
@@ -80,7 +179,7 @@ data:
                       - name: envoy.filters.http.router
                         typed_config:
                           "@type": type.googleapis.com/envoy.extensions.filters.http.router.v3.Router
-      
+
       clusters:
         # ExtAuthz service
         - name: ext_authz
@@ -100,7 +199,7 @@ data:
                         socket_address:
                           address: {{ include "envoy-authz.fullname" . }}-authz
                           port_value: {{ .Values.authServer.service.port }}
-        
+
         # Directory backend
         - name: directory_backend
           type: STRICT_DNS
@@ -120,21 +219,64 @@ data:
                           address: {{ .Values.envoy.backend.address }}
                           port_value: {{ .Values.envoy.backend.port }}
           {{- if .Values.envoy.spiffe.enabled }}
-          # SPIFFE mTLS configuration
           transport_socket:
             name: envoy.transport_sockets.tls
             typed_config:
               "@type": type.googleapis.com/envoy.extensions.transport_sockets.tls.v3.UpstreamTlsContext
               common_tls_context:
                 tls_certificate_sds_secret_configs:
-                - name: "spiffe://{{ .Values.envoy.spiffe.trustDomain | default "example.org" }}/ns/{{ .Release.Namespace }}/sa/{{ include "envoy-authz.envoyServiceAccountName" . }}"
+                - name: {{ printf "spiffe://%s/ns/%s/sa/%s" (default "example.org" .Values.envoy.spiffe.trustDomain) .Release.Namespace (include "envoy-authz.envoyServiceAccountName" .) | quote }}
                   sds_config:
                     api_config_source:
                       api_type: GRPC
                       grpc_services:
                       - envoy_grpc:
                           cluster_name: spiffe_agent
-        
+          {{- end }}
+
+        {{- if .Values.envoy.oidc.zitadel.enabled }}
+        # JWKS for Zitadel
+        - name: jwks_zitadel
+          type: STRICT_DNS
+          connect_timeout: {{ .Values.envoy.oidc.jwksTimeout }}
+          load_assignment:
+            cluster_name: jwks_zitadel
+            endpoints:
+              - lb_endpoints:
+                  - endpoint:
+                      address:
+                        socket_address:
+                          address: {{ .Values.envoy.oidc.zitadel.jwksHost }}
+                          port_value: 443
+          transport_socket:
+            name: envoy.transport_sockets.tls
+            typed_config:
+              "@type": type.googleapis.com/envoy.extensions.transport_sockets.tls.v3.UpstreamTlsContext
+              sni: {{ .Values.envoy.oidc.zitadel.jwksHost }}
+        {{- end }}
+
+        {{- if .Values.envoy.oidc.github.enabled }}
+        # JWKS for GitHub OIDC
+        - name: jwks_github
+          type: STRICT_DNS
+          connect_timeout: {{ .Values.envoy.oidc.jwksTimeout }}
+          load_assignment:
+            cluster_name: jwks_github
+            endpoints:
+              - lb_endpoints:
+                  - endpoint:
+                      address:
+                        socket_address:
+                          address: {{ .Values.envoy.oidc.github.jwksHost }}
+                          port_value: 443
+          transport_socket:
+            name: envoy.transport_sockets.tls
+            typed_config:
+              "@type": type.googleapis.com/envoy.extensions.transport_sockets.tls.v3.UpstreamTlsContext
+              sni: {{ .Values.envoy.oidc.github.jwksHost }}
+        {{- end }}
+
+        {{- if .Values.envoy.spiffe.enabled }}
         # SPIRE agent cluster (for SDS)
         - name: spiffe_agent
           type: STATIC
@@ -148,4 +290,5 @@ data:
                       address:
                         pipe:
                           path: /run/spire/agent-sockets/api.sock
-          {{- end }}
+        {{- end }}
+
