@@ -5,7 +5,7 @@ go 1.26.1
 require (
 	github.com/casbin/casbin/v2 v2.135.0
 	github.com/envoyproxy/go-control-plane/envoy v1.37.0
-	google.golang.org/genproto/googleapis/rpc v0.0.0-20260316180232-0b37fe3546d5
+	google.golang.org/genproto/googleapis/rpc v0.0.0-20260319201613-d00831a3d3e7
 	google.golang.org/grpc v1.79.3
 	google.golang.org/protobuf v1.36.11
 )
