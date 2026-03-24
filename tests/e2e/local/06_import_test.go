@@ -37,9 +37,12 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests for the import command"
 			// Verify command failed
 			gomega.Expect(err).To(gomega.HaveOccurred())
 
-			// Verify error message indicates enrichment is mandatory
-			// The error message is in the wrapped error, not the output (stderr vs stdout)
-			gomega.Expect(err.Error()).To(gomega.ContainSubstring("enrichment is mandatory"))
+			// Enricher init fails when mcphost config is missing/invalid; errors are wrapped by CLI and importer.
+			gomega.Expect(err.Error()).To(gomega.Or(
+				gomega.ContainSubstring("failed to create enricher"),
+				gomega.ContainSubstring("failed to create MCPHost client"),
+				gomega.ContainSubstring("enrichment is mandatory"),
+			))
 		})
 	})
 })
