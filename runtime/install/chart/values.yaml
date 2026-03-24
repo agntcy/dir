@@ -222,7 +222,7 @@ etcd:
 
   image:
     repository: quay.io/coreos/etcd
-    tag: v3.5.12
+    tag: v3.6.9
     pullPolicy: IfNotPresent
 
   imagePullSecrets: []
