@@ -38,7 +38,7 @@ RUN xx-verify /bin/discovery
 
 # Production image - minimal distroless
 # Note: Using root image because discovery needs access to Docker socket
-FROM gcr.io/distroless/static:latest@sha256:ce46866b3a5170db3b49364900fb3168dc0833dfb46c26da5c77f22abb01d8c3 AS production
+FROM gcr.io/distroless/static:latest@sha256:47b2d72ff90843eb8a768b5c2f89b40741843b639d065b9b937b07cd59b479c6 AS production
 
 WORKDIR /
 
