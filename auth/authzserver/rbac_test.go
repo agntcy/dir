@@ -101,6 +101,44 @@ func TestOIDCRoleResolver_Authorize(t *testing.T) {
 			expectError: false,
 		},
 		{
+			name: "GitHub workflow wildcard principal matches any branch",
+			config: &OIDCConfig{
+				Claims: ClaimsConfig{UserID: "sub"},
+				Roles: map[string]OIDCRole{
+					"ci-oidc-test": {
+						AllowedMethods: []string{
+							"/agntcy.dir.search.v1.SearchService/SearchCIDs",
+						},
+						GitHubWorkflows: []string{
+							"ghwf:repo:agntcy/dir:workflow:oidc-test.yml:ref:refs/heads/*",
+						},
+					},
+				},
+			},
+			principal:   "ghwf:repo:agntcy/dir:workflow:oidc-test.yml:ref:refs/heads/feat/oidc-auth",
+			path:        "/agntcy.dir.search.v1.SearchService/SearchCIDs",
+			expectError: false,
+		},
+		{
+			name: "GitHub workflow wildcard does not match other workflow file",
+			config: &OIDCConfig{
+				Claims: ClaimsConfig{UserID: "sub"},
+				Roles: map[string]OIDCRole{
+					"ci-oidc-test": {
+						AllowedMethods: []string{
+							"/agntcy.dir.search.v1.SearchService/SearchCIDs",
+						},
+						GitHubWorkflows: []string{
+							"ghwf:repo:agntcy/dir:workflow:oidc-test.yml:ref:refs/heads/*",
+						},
+					},
+				},
+			},
+			principal:   "ghwf:repo:agntcy/dir:workflow:another.yml:ref:refs/heads/feat/oidc-auth",
+			path:        "/agntcy.dir.search.v1.SearchService/SearchCIDs",
+			expectError: true,
+		},
+		{
 			name: "principal in deny list is blocked",
 			config: &OIDCConfig{
 				Claims:       ClaimsConfig{UserID: "sub"},

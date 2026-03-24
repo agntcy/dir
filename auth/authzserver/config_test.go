@@ -181,6 +181,69 @@ func TestOIDCConfig_Validate(t *testing.T) {
 			},
 			expectError: false,
 		},
+		{
+			name: "valid githubWorkflow wildcard in refs heads branch suffix",
+			config: &OIDCConfig{
+				Claims: ClaimsConfig{UserID: "sub"},
+				Roles: map[string]OIDCRole{
+					"ci-oidc-test": {
+						AllowedMethods: []string{"/agntcy.dir.search.v1.SearchService/SearchCIDs"},
+						GitHubWorkflows: []string{
+							"ghwf:repo:agntcy/dir:workflow:oidc-test.yml:ref:refs/heads/feat/*",
+						},
+					},
+				},
+			},
+			expectError: false,
+		},
+		{
+			name: "invalid githubWorkflow wildcard with multiple stars",
+			config: &OIDCConfig{
+				Claims: ClaimsConfig{UserID: "sub"},
+				Roles: map[string]OIDCRole{
+					"ci-oidc-test": {
+						AllowedMethods: []string{"/agntcy.dir.search.v1.SearchService/SearchCIDs"},
+						GitHubWorkflows: []string{
+							"ghwf:repo:agntcy/dir:workflow:oidc-test.yml:ref:refs/heads/*/*",
+						},
+					},
+				},
+			},
+			expectError: true,
+			errorMsg:    "invalid githubWorkflows wildcard",
+		},
+		{
+			name: "invalid githubWorkflow wildcard not at end",
+			config: &OIDCConfig{
+				Claims: ClaimsConfig{UserID: "sub"},
+				Roles: map[string]OIDCRole{
+					"ci-oidc-test": {
+						AllowedMethods: []string{"/agntcy.dir.search.v1.SearchService/SearchCIDs"},
+						GitHubWorkflows: []string{
+							"ghwf:repo:agntcy/dir:workflow:oidc-test.yml:ref:refs/heads/*:env:dev",
+						},
+					},
+				},
+			},
+			expectError: true,
+			errorMsg:    "invalid githubWorkflows wildcard",
+		},
+		{
+			name: "invalid githubWorkflow wildcard outside refs heads",
+			config: &OIDCConfig{
+				Claims: ClaimsConfig{UserID: "sub"},
+				Roles: map[string]OIDCRole{
+					"ci-oidc-test": {
+						AllowedMethods: []string{"/agntcy.dir.search.v1.SearchService/SearchCIDs"},
+						GitHubWorkflows: []string{
+							"ghwf:repo:agntcy/dir:workflow:oidc-test.yml:ref:refs/tags/*",
+						},
+					},
+				},
+			},
+			expectError: true,
+			errorMsg:    "invalid githubWorkflows wildcard",
+		},
 	}
 
 	for _, tt := range tests {
