@@ -284,9 +284,6 @@ def run_loopback_pkce_login(
             self.end_headers()
             self.wfile.write(body)
 
-        def log_message(self, fmt: str, *args: object) -> None:
-            logger.debug("callback: " + fmt, *args)
-
     server: HTTPServer | None = None
     try:
         server = HTTPServer(("127.0.0.1", port), _Handler)

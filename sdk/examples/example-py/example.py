@@ -67,8 +67,9 @@ def main() -> None:
     # Initialize the client
     config = Config.load_from_env()
     config.auth_mode = "oauth_pkce"
-    config.oidc_issuer = "http://localhost:8080"
-    config.oidc_client_id = "361611802607419395"
+    config.oidc_issuer = "https://dev.idp.ads.outshift.io"
+    config.server_address = "dev.gateway.ads.outshift.io:443"
+    config.oidc_client_id = "363738767955070782"
 
     client = Client(config)
     client.authenticate_oauth_pkce()
@@ -76,44 +77,44 @@ def main() -> None:
     records = [generate_record(x) for x in ["example-record", "example-record2"]]
 
     # Push objects to the store
-    refs = client.push(records)
+    # refs = client.push(records)
 
-    for ref in refs:
-        print("Pushed object ref:", ref.cid)
+    # for ref in refs:
+    #     print("Pushed object ref:", ref.cid)
 
-    # Pull objects from the store
-    pulled_records = client.pull(refs)
+    # # Pull objects from the store
+    # pulled_records = client.pull(refs)
 
-    for pulled_record in pulled_records:
-        print("Pulled object data:", MessageToJson(pulled_record))
+    # for pulled_record in pulled_records:
+    #     print("Pulled object data:", MessageToJson(pulled_record))
 
-    # Lookup the object
-    metadatas = client.lookup(refs)
+    # # Lookup the object
+    # metadatas = client.lookup(refs)
 
-    for metadata in metadatas:
-        print("Lookup object metadata:", MessageToJson(metadata))
+    # for metadata in metadatas:
+    #     print("Lookup object metadata:", MessageToJson(metadata))
 
-    # Publish the object
-    record_refs = routing_v1.RecordRefs(refs=[refs[0]])
-    publish_request = routing_v1.PublishRequest(record_refs=record_refs)
-    client.publish(publish_request)
-    print("Object published.")
+    # # Publish the object
+    # record_refs = routing_v1.RecordRefs(refs=[refs[0]])
+    # publish_request = routing_v1.PublishRequest(record_refs=record_refs)
+    # client.publish(publish_request)
+    # print("Object published.")
 
-    # List objects in the store
-    query = routing_v1.RecordQuery(
-        type=routing_v1.RECORD_QUERY_TYPE_SKILL,
-        value="/skills/Natural Language Processing/Text Completion",
-    )
+    # # List objects in the store
+    # query = routing_v1.RecordQuery(
+    #     type=routing_v1.RECORD_QUERY_TYPE_SKILL,
+    #     value="/skills/Natural Language Processing/Text Completion",
+    # )
 
-    list_request = routing_v1.ListRequest(queries=[query])
-    objects = list(client.list(list_request))
+    # list_request = routing_v1.ListRequest(queries=[query])
+    # objects = list(client.list(list_request))
 
-    for o in objects:
-        print("Listed object:", MessageToJson(o))
+    # for o in objects:
+    #     print("Listed object:", MessageToJson(o))
 
     # Search objects
     search_query = search_v1.RecordQuery(
-        type=search_v1.RECORD_QUERY_TYPE_SKILL_ID, value="1",
+        type=search_v1.RECORD_QUERY_TYPE_VERSION, value="v1.*",
     )
 
     search_request = search_v1.SearchCIDsRequest(queries=[search_query], limit=3)
@@ -121,15 +122,15 @@ def main() -> None:
 
     print("Searched objects:",objects)
 
-    # Unpublish the object
-    record_refs = routing_v1.RecordRefs(refs=[refs[0]])
-    unpublish_request = routing_v1.UnpublishRequest(record_refs=record_refs)
-    client.unpublish(unpublish_request)
-    print("Object unpublished.")
+    # # Unpublish the object
+    # record_refs = routing_v1.RecordRefs(refs=[refs[0]])
+    # unpublish_request = routing_v1.UnpublishRequest(record_refs=record_refs)
+    # client.unpublish(unpublish_request)
+    # print("Object unpublished.")
 
-    # Delete the object
-    client.delete(refs)
-    print("Objects are deleted.")
+    # # Delete the object
+    # client.delete(refs)
+    # print("Objects are deleted.")
 
 
 if __name__ == "__main__":
