@@ -15,7 +15,7 @@ replace (
 	// Cosign does not updated the crypto11 owner
 	github.com/ThalesIgnite/crypto11 => github.com/ThalesGroup/crypto11 v1.6.0
 	// go-libp2p v0.47.0 incompatible with quic-go/webtransport in libp2p
-	github.com/libp2p/go-libp2p => github.com/libp2p/go-libp2p v0.46.0
+	github.com/libp2p/go-libp2p => github.com/libp2p/go-libp2p v0.48.0
 )
 
 require (
@@ -24,7 +24,7 @@ require (
 	github.com/agntcy/dir/importer v1.1.0
 	github.com/agntcy/dir/mcp v1.1.0
 	github.com/ipfs/go-cid v0.6.0
-	github.com/libp2p/go-libp2p v0.46.0
+	github.com/libp2p/go-libp2p v0.48.0
 	github.com/sigstore/cosign/v3 v3.0.5
 	github.com/sigstore/sigstore v1.10.4
 	github.com/spf13/cobra v1.10.2
