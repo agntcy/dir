@@ -18,6 +18,16 @@
       "description": [
         "Custom dependency manager for updating tools defined in Taskfile."
       ]
+    },
+    {
+      "customType": "regex",
+      "managerFilePatterns": ["/(^|/)Taskfile[^/]*\.yml$/"],
+      "matchStrings": [
+        "# renovate: datasource=(?<datasource>.*?) depName=(?<depName>.*?)\\s+\\w+_DIGEST:\\s+\"?(?<currentDigest>sha256:[a-f0-9]+)\"?"
+      ],
+      "description": [
+        "Custom dependency manager for updating image digest refs defined in Taskfile."
+      ]
     }
   ],
   "dependencyDashboardAutoclose": true,
@@ -150,6 +160,37 @@
         "Add ci label to PRs which are related to Github Actions.",
         "Group CI dependency updates in single PR."
       ]
+    },
+    {
+      "groupName": "zot",
+      "groupSlug": "zot",
+      "matchPackageNames": [
+        "github.com/project-zot/zot",
+        "ghcr.io/project-zot/zot"
+      ],
+      "description": ["Group zot version bumps into a single PR."]
+    },
+    {
+      "groupName": "postgresql",
+      "groupSlug": "postgresql",
+      "matchPackageNames": ["docker.io/bitnami/postgresql"],
+      "description": ["Group PostgreSQL version bumps into a single PR."]
+    },
+    {
+      "groupName": "spire",
+      "groupSlug": "spire",
+      "matchPackageNames": [
+        "github.com/spiffe/spire",
+        "ghcr.io/spiffe/spire-server",
+        "ghcr.io/spiffe/spire-agent"
+      ],
+      "description": ["Group SPIRE version bumps into a single PR."]
+    },
+    {
+      "groupName": "regsync",
+      "groupSlug": "regsync",
+      "matchPackageNames": ["github.com/regclient/regclient"],
+      "description": ["Group regsync version bumps into a single PR."]
     }
   ],
   "postUpdateOptions": [
