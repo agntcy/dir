@@ -13,28 +13,6 @@ name: Build Feature Branch
 # 4. Use the generated tags in agntcy-deployment for testing
 
 on:
-  workflow_call:
-    inputs:
-      component:
-        required: false
-        type: string
-        description: "Component suffix for images/charts (e.g., 'dev' creates dir-apiserver-dev, dir-dev/helm-charts). Default: 'dev'"
-        default: "dev"
-      image_tag:
-        required: false
-        type: string
-        description: "Image tag (leave empty for auto: feat-<branch>-<short-sha>)"
-        default: ""
-      chart_version:
-        required: false
-        type: string
-        description: "Chart version (leave empty for auto: 0.0.0-test-<short-sha>)"
-        default: ""
-      push_images:
-        required: false
-        type: boolean
-        default: true
-        description: "Push images to registry (if false, only builds charts)"
   workflow_dispatch:
     inputs:
       component:
