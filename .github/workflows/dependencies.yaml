@@ -64,3 +64,5 @@ jobs:
           RENOVATE_PR_BODY_TEMPLATE: "{{{header}}}{{{table}}}{{{warnings}}}{{{notes}}}{{{changelogs}}}"
           RENOVATE_DEPENDENCY_DASHBOARD_HEADER: ""
           RENOVATE_DEPENDENCY_DASHBOARD_O_S_V_VULNERABILITY_SUMMARY: "all"
+          ## Workflow configs
+          BUF_TOKEN: "${{ secrets.BUF_TOKEN }}"
