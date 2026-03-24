@@ -378,19 +378,10 @@ class Client:
             raise RuntimeError(msg)
 
         credentials = grpc.ssl_channel_credentials()
-        call_creds = grpc.access_token_call_credentials(self._oauth_holder.get_access_token)
-
-        composite_credentials = grpc.composite_channel_credentials(credentials, call_creds)
-
-        # options=(
-        # ('grpc.ssl_target_name_override', self._server_name_from_addr(self.config.server_address)),  # SNI / cert name
-        # ('grpc.default_authority', self._server_name_from_addr(self.config.server_address)),         # :authority / Host
-        # ),
 
         channel = grpc.secure_channel(
             target=self.config.server_address,
-            credentials=composite_credentials,
-            # options=options
+            credentials=credentials,
         )
         
         bearer = BearerAuthInterceptor(self._oauth_holder.get_access_token)
