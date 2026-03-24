@@ -63,7 +63,7 @@ USER 65532:65532
 ENTRYPOINT ["./apiserver", "run"]
 
 # Coverage image - includes tar for kubectl cp to work
-FROM alpine:3.21@sha256:21dc6063fd678b478f57c0e13f47560d0ea4eeba26dfc947b2a4f81f686b9f45 AS coverage
+FROM alpine:3.21@sha256:c3f8e73fdb79deaebaa2037150150191b9dcbfba68b4a46d70103204c53f4709 AS coverage
 
 RUN apk add --no-cache tar
 
