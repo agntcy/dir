@@ -8,6 +8,11 @@ on:
     - cron: "0 3 * * *" # Daily at 03:00 UTC
   workflow_dispatch:
 
+permissions:
+  actions: read
+  issues: write
+  security-events: write
+
 jobs:
   build-images:
     name: Build Images
