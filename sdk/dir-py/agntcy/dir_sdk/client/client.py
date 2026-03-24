@@ -377,21 +377,22 @@ class Client:
             msg = "OAuth token holder not initialized"
             raise RuntimeError(msg)
 
-        if self.config.tls_ca_file:
-            try:
-                with open(self.config.tls_ca_file, "rb") as f:
-                    root_ca = f.read()
-            except OSError as e:
-                msg = f"Failed to read TLS CA file: {e}"
-                raise RuntimeError(msg) from e
-            credentials = grpc.ssl_channel_credentials(root_certificates=root_ca)
-        else:
-            credentials = grpc.ssl_channel_credentials()
+        credentials = grpc.ssl_channel_credentials()
+        call_creds = grpc.access_token_call_credentials(self._oauth_holder.get_access_token)
+
+        composite_credentials = grpc.composite_channel_credentials(credentials, call_creds)
+
+        # options=(
+        # ('grpc.ssl_target_name_override', self._server_name_from_addr(self.config.server_address)),  # SNI / cert name
+        # ('grpc.default_authority', self._server_name_from_addr(self.config.server_address)),         # :authority / Host
+        # ),
 
         channel = grpc.secure_channel(
             target=self.config.server_address,
-            credentials=credentials,
+            credentials=composite_credentials,
+            # options=options
         )
+        
         bearer = BearerAuthInterceptor(self._oauth_holder.get_access_token)
         return grpc.intercept_channel(channel, bearer)
 
@@ -425,9 +426,17 @@ class Client:
             verify=not self.config.tls_skip_verify,
             timeout=min(30.0, self.config.oidc_auth_timeout),
         )
+
         self._oauth_holder.set_token_endpoint(str(meta["token_endpoint"]))
         payload = run_loopback_pkce_login(self.config, metadata=meta)
         self._oauth_holder.update_from_token_response(payload)
+
+        print("Authenticated with OAuth PKCE")
+        print("Access token:", self._oauth_holder.get_access_token())
+
+    def _server_name_from_addr(self, addr: str) -> str:
+        # "host:port" -> "host"
+        return addr.rsplit(":", 1)[0]
 
     def publish(
         self,
