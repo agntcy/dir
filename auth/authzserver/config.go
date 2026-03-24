@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"regexp"
 	"slices"
+	"strings"
 )
 
 // GitHub OIDC issuer URL.
@@ -69,9 +70,11 @@ type PrincipalTypeConfig struct {
 // OIDCRole defines permissions and principal assignments.
 // Principals use user:{iss}:{sub}, client:{iss}:{client_id}, or ghwf:...
 type OIDCRole struct {
-	AllowedMethods  []string `yaml:"allowedMethods"`
-	Users           []string `yaml:"users"`
-	Clients         []string `yaml:"clients"`
+	AllowedMethods []string `yaml:"allowedMethods"`
+	Users          []string `yaml:"users"`
+	Clients        []string `yaml:"clients"`
+	// GitHubWorkflows supports exact principals and optional '*' wildcard
+	// for ghwf principals only (e.g. ...:ref:refs/heads/*).
 	GitHubWorkflows []string `yaml:"githubWorkflows"`
 }
 
@@ -157,9 +160,55 @@ func (c *OIDCConfig) validateRoles() error {
 		if len(role.AllowedMethods) == 0 {
 			return fmt.Errorf("role %q has no allowedMethods", roleName)
 		}
+
+		for _, workflowPrincipal := range role.GitHubWorkflows {
+			if strings.Contains(workflowPrincipal, "*") && !isSupportedGitHubWorkflowWildcard(workflowPrincipal) {
+				return fmt.Errorf(
+					"role %q has invalid githubWorkflows wildcard %q: only one '*' is supported, it must be at the end, and only in ghwf ...:ref:refs/heads/<branch>*",
+					roleName,
+					workflowPrincipal,
+				)
+			}
+		}
 	}
 
 	return nil
+}
+
+// isSupportedGitHubWorkflowWildcard enforces a constrained wildcard format:
+// - principal must start with ghwf:repo:
+// - exactly one '*' is allowed
+// - '*' must be the final character
+// - wildcard must be inside :ref:refs/heads/<branch>* segment.
+func isSupportedGitHubWorkflowWildcard(principal string) bool {
+	const branchRefPrefix = ":ref:refs/heads/"
+
+	if !strings.HasPrefix(principal, "ghwf:repo:") {
+		return false
+	}
+
+	if strings.Count(principal, "*") != 1 {
+		return false
+	}
+
+	if !strings.HasSuffix(principal, "*") {
+		return false
+	}
+
+	refIdx := strings.Index(principal, branchRefPrefix)
+	if refIdx < 0 {
+		return false
+	}
+
+	starPos := len(principal) - 1
+	minBranchStart := refIdx + len(branchRefPrefix)
+
+	// The wildcard must be in the branch segment.
+	if starPos < minBranchStart {
+		return false
+	}
+
+	return true
 }
 
 func (c *OIDCConfig) normalizePublicPaths() {
