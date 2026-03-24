@@ -18,7 +18,7 @@ services:
 
   # Envoy proxy with ext_authz filter
   envoy:
-    image: envoyproxy/envoy:v1.31-latest
+    image: envoyproxy/envoy:v1.37-latest
     container_name: envoy-gateway
     ports:
       - "8080:8080"  # HTTP/gRPC gateway
