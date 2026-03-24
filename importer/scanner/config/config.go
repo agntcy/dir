@@ -8,11 +8,13 @@ import (
 	"time"
 )
 
+// Default values for scanner configuration.
 const (
-	DefaultTimeout       = 5 * time.Minute
-	DefaultCLIPath       = "mcp-scanner"
-	DefaultFailOnError   = false
-	DefaultFailOnWarning = false
+	DefaultScannerEnabled = false           // Default to not run any scanners
+	DefaultTimeout        = 5 * time.Minute // Default timeout per record scan
+	DefaultCLIPath        = "mcp-scanner"   // Default path to mcp-scanner binary
+	DefaultFailOnError    = false           // Default to not fail on error
+	DefaultFailOnWarning  = false           // Default to not fail on warning
 )
 
 // Config contains configuration for the scanner pipeline stage.

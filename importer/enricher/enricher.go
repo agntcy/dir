@@ -7,6 +7,7 @@ import (
 	"context"
 	_ "embed"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"strings"
@@ -14,35 +15,29 @@ import (
 
 	typesv1 "buf.build/gen/go/agntcy/oasf/protocolbuffers/go/agntcy/oasf/types/v1"
 	typesv1alpha1 "buf.build/gen/go/agntcy/oasf/protocolbuffers/go/agntcy/oasf/types/v1alpha1"
+	corev1 "github.com/agntcy/dir/api/core/v1"
+	enricherconfig "github.com/agntcy/dir/importer/enricher/config"
+	"github.com/agntcy/dir/importer/types"
 	"github.com/agntcy/dir/utils/logging"
 	"github.com/mark3labs/mcphost/sdk"
 	"golang.org/x/time/rate"
+	"google.golang.org/protobuf/encoding/protojson"
+	"google.golang.org/protobuf/types/known/structpb"
 )
 
 var logger = logging.Logger("importer/enricher")
 
-//go:embed enricher.skills.prompt.md
-var defaultSkillsPromptTemplate string
-
-//go:embed enricher.domains.prompt.md
-var defaultDomainsPromptTemplate string
-
 const (
 	DebugMode                  = false
-	DefaultConfigFile          = "importer/enricher/mcphost.json"
 	DefaultConfidenceThreshold = 0.5
-
-	// DefaultRequestsPerMinute is the default rate limit for LLM API calls.
-	DefaultRequestsPerMinute = 10
 )
 
-type Config struct {
-	ConfigFile            string // Path to mcphost configuration file (e.g., mcphost.json)
-	SkillsPromptTemplate  string // Optional: path to custom skills prompt template file or inline prompt (empty = use default)
-	DomainsPromptTemplate string // Optional: path to custom domains prompt template file or inline prompt (empty = use default)
-
-	// Rate limiting to avoid hitting LLM provider rate limits
-	RequestsPerMinute int // Maximum requests per minute (0 = use default of 10)
+// enricherClient is the subset of enricher used by the transformer.
+type enricherClient interface {
+	EnrichWithSkills(ctx context.Context, record *typesv1alpha1.Record) (*typesv1alpha1.Record, error)
+	EnrichWithDomains(ctx context.Context, record *typesv1alpha1.Record) (*typesv1alpha1.Record, error)
+	EnrichWithSkillsV1(ctx context.Context, record *typesv1.Record) (*typesv1.Record, error)
+	EnrichWithDomainsV1(ctx context.Context, record *typesv1.Record) (*typesv1.Record, error)
 }
 
 // hostRunner is the minimal interface for running prompts.
@@ -74,7 +69,22 @@ type EnrichmentResponse struct {
 	Domains []EnrichedField `json:"domains,omitempty"`
 }
 
-func NewMCPHost(ctx context.Context, config Config) (*MCPHostClient, error) {
+type Enricher struct {
+	host enricherClient
+}
+
+func New(ctx context.Context, config enricherconfig.Config) (*Enricher, error) {
+	host, err := NewMCPHost(ctx, config)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create MCPHost client: %w", err)
+	}
+
+	return &Enricher{
+		host: host,
+	}, nil
+}
+
+func NewMCPHost(ctx context.Context, config enricherconfig.Config) (*MCPHostClient, error) {
 	// Apply environment variables from config file to current process
 	// Note: mcphost doesn't pass env vars from mcphost.json to spawned processes,
 	// so we set them in the current process environment where they'll be inherited by child processes.
@@ -96,44 +106,67 @@ func NewMCPHost(ctx context.Context, config Config) (*MCPHostClient, error) {
 
 // NewMCPHostWithRunner creates an MCPHostClient with a custom host runner (e.g. for tests).
 // It skips config file and SDK initialization; use for injecting a mock runner.
-func NewMCPHostWithRunner(runner hostRunner, config Config) (*MCPHostClient, error) {
+func NewMCPHostWithRunner(runner hostRunner, config enricherconfig.Config) (*MCPHostClient, error) {
 	return newMCPHostFromRunner(context.Background(), runner, config)
 }
 
-func newMCPHostFromRunner(ctx context.Context, runner hostRunner, config Config) (*MCPHostClient, error) {
-	// Load prompt templates - use custom if provided, otherwise use defaults
-	skillsPrompt, err := loadPromptTemplate(config.SkillsPromptTemplate, defaultSkillsPromptTemplate)
-	if err != nil {
-		return nil, fmt.Errorf("failed to load skills prompt template: %w", err)
-	}
-
-	domainsPrompt, err := loadPromptTemplate(config.DomainsPromptTemplate, defaultDomainsPromptTemplate)
-	if err != nil {
-		return nil, fmt.Errorf("failed to load domains prompt template: %w", err)
-	}
-
+func newMCPHostFromRunner(ctx context.Context, runner hostRunner, config enricherconfig.Config) (*MCPHostClient, error) {
 	if DebugMode {
 		if host, ok := runner.(*sdk.MCPHost); ok {
 			runGetSchemaToolsPrompt(ctx, host)
 		}
 	}
 
-	// Initialize rate limiter with configured value or default
-	requestsPerMinute := config.RequestsPerMinute
-	if requestsPerMinute <= 0 {
-		requestsPerMinute = DefaultRequestsPerMinute
-	}
-
 	// Convert requests per minute to rate.Limit (requests per second)
-	rateLimit := rate.Limit(float64(requestsPerMinute) / 60.0) //nolint:mnd
-	rateLimiter := rate.NewLimiter(rateLimit, 1)               // burst of 1 request
+	rateLimit := rate.Limit(float64(config.RequestsPerMinute) / 60.0) //nolint:mnd
+	rateLimiter := rate.NewLimiter(rateLimit, 1)                      // burst of 1 request
 
 	return &MCPHostClient{
 		host:                  runner,
-		skillsPromptTemplate:  skillsPrompt,
-		domainsPromptTemplate: domainsPrompt,
+		skillsPromptTemplate:  config.SkillsPromptTemplate,
+		domainsPromptTemplate: config.DomainsPromptTemplate,
 		rateLimiter:           rateLimiter,
 	}, nil
+}
+
+func (e *Enricher) Enrich(ctx context.Context, inputCh <-chan *corev1.Record, result *types.Result) (<-chan *corev1.Record, <-chan error) {
+	outputCh := make(chan *corev1.Record)
+	errCh := make(chan error)
+
+	go func() {
+		defer close(outputCh)
+		defer close(errCh)
+
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case record, ok := <-inputCh:
+				if !ok {
+					return
+				}
+
+				err := e.enrichRecord(ctx, record.GetData())
+				if err != nil {
+					result.Mu.Lock()
+					result.FailedCount++
+					result.Mu.Unlock()
+
+					errCh <- fmt.Errorf("failed to enrich record: %w", err)
+
+					return
+				}
+
+				select {
+				case outputCh <- record:
+				case <-ctx.Done():
+					return
+				}
+			}
+		}
+	}()
+
+	return outputCh, errCh
 }
 
 // applyEnvVarsFromConfig reads environment variables from mcphost.json and sets them
@@ -183,36 +216,6 @@ func applyEnvVarsFromConfig(configFile string) error {
 	}
 
 	return nil
-}
-
-// loadPromptTemplate loads the prompt template from config or uses the provided default.
-// If promptTemplateConfig is empty, uses the provided default template.
-// If promptTemplateConfig looks like a file path (contains "/" or ends with ".md"), loads from file.
-// Otherwise, treats it as an inline prompt template string.
-func loadPromptTemplate(promptTemplateConfig, defaultTemplate string) (string, error) {
-	// Use default embedded template if no custom template specified
-	if promptTemplateConfig == "" {
-		logger.Debug("Using default embedded prompt template")
-
-		return defaultTemplate, nil
-	}
-
-	// Check if it looks like a file path
-	if strings.Contains(promptTemplateConfig, "/") || strings.HasSuffix(promptTemplateConfig, ".md") {
-		logger.Debug("Loading prompt template from file", "path", promptTemplateConfig)
-
-		data, err := os.ReadFile(promptTemplateConfig)
-		if err != nil {
-			return "", fmt.Errorf("failed to read prompt template file %s: %w", promptTemplateConfig, err)
-		}
-
-		return string(data), nil
-	}
-
-	// Treat as inline prompt template
-	logger.Debug("Using inline prompt template from config")
-
-	return promptTemplateConfig, nil
 }
 
 // fieldType represents the type of field being enriched (skills or domains).
@@ -500,4 +503,243 @@ func (c *MCPHostClient) parseResponse(response string, fType fieldType) ([]Enric
 	}
 
 	return nil, fmt.Errorf("failed to parse response: %w", err)
+}
+
+// enrichRecord handles the enrichment of a record with skills and domains.
+func (e *Enricher) enrichRecord(ctx context.Context, recordStruct *structpb.Struct) error {
+	// Detect schema version and convert structpb.Struct to appropriate OASF record type
+	schemaVersion, err := getSchemaVersion(recordStruct)
+	if err != nil {
+		return fmt.Errorf("failed to get schema version: %w", err)
+	}
+
+	// Enrich based on schema version
+	enrichedSkills, enrichedDomains, err := e.enrichRecordByVersion(ctx, recordStruct, schemaVersion)
+	if err != nil {
+		return err
+	}
+
+	// Update both skills and domains fields, preserve everything else from the original record
+	if err := updateSkillsInStruct(recordStruct, enrichedSkills); err != nil {
+		return fmt.Errorf("failed to update skills in record: %w", err)
+	}
+
+	if err := updateDomainsInStruct(recordStruct, enrichedDomains); err != nil {
+		return fmt.Errorf("failed to update domains in record: %w", err)
+	}
+
+	return nil
+}
+
+// enrichRecordByVersion enriches a record based on its schema version.
+func (e *Enricher) enrichRecordByVersion(ctx context.Context, recordStruct *structpb.Struct, schemaVersion string) ([]enrichedItem, []enrichedItem, error) {
+	switch schemaVersion {
+	case "1.0.0", "1.0.0-rc.1":
+		return e.enrichV1Record(ctx, recordStruct)
+	default:
+		return e.enrichV1Alpha1Record(ctx, recordStruct)
+	}
+}
+
+// enrichV1Record enriches a v1 (1.0.0) record.
+//
+//nolint:dupl // Similar structure to enrichV1Alpha1Record but uses different types
+func (e *Enricher) enrichV1Record(ctx context.Context, recordStruct *structpb.Struct) ([]enrichedItem, []enrichedItem, error) {
+	oasfRecord, err := structToOASFRecordV1(recordStruct)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to convert struct to OASF v1 record for enrichment: %w", err)
+	}
+
+	// Clear default skills and domains before enrichment - let the LLM select appropriate ones
+	oasfRecord.Skills = nil
+	oasfRecord.Domains = nil
+
+	// Context with timeout for enrichment operations
+	ctxWithTimeout, cancel := context.WithTimeout(ctx, 5*time.Minute) //nolint:mnd
+	defer cancel()
+
+	// Enrich with skills
+	enrichedRecord, err := e.host.EnrichWithSkillsV1(ctxWithTimeout, oasfRecord)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to enrich record with skills: %w", err)
+	}
+
+	// Enrich with domains (using the already skill-enriched record)
+	enrichedRecord, err = e.host.EnrichWithDomainsV1(ctxWithTimeout, enrichedRecord)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to enrich record with domains: %w", err)
+	}
+
+	// Extract skills and domains
+	enrichedSkills := make([]enrichedItem, 0, len(enrichedRecord.GetSkills()))
+	for _, skill := range enrichedRecord.GetSkills() {
+		enrichedSkills = append(enrichedSkills, skill)
+	}
+
+	enrichedDomains := make([]enrichedItem, 0, len(enrichedRecord.GetDomains()))
+	for _, domain := range enrichedRecord.GetDomains() {
+		enrichedDomains = append(enrichedDomains, domain)
+	}
+
+	return enrichedSkills, enrichedDomains, nil
+}
+
+// enrichV1Alpha1Record enriches a v1alpha1 (0.7.0, 0.8.0) record.
+//
+//nolint:dupl // Similar structure to enrichV1Record but uses different types
+func (e *Enricher) enrichV1Alpha1Record(ctx context.Context, recordStruct *structpb.Struct) ([]enrichedItem, []enrichedItem, error) {
+	oasfRecord, err := structToOASFRecord(recordStruct)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to convert struct to OASF record for enrichment: %w", err)
+	}
+
+	// Clear default skills and domains before enrichment - let the LLM select appropriate ones
+	oasfRecord.Skills = nil
+	oasfRecord.Domains = nil
+
+	// Context with timeout for enrichment operations
+	ctxWithTimeout, cancel := context.WithTimeout(ctx, 5*time.Minute) //nolint:mnd
+	defer cancel()
+
+	// Enrich with skills
+	enrichedRecord, err := e.host.EnrichWithSkills(ctxWithTimeout, oasfRecord)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to enrich record with skills: %w", err)
+	}
+
+	// Enrich with domains (using the already skill-enriched record)
+	enrichedRecord, err = e.host.EnrichWithDomains(ctxWithTimeout, enrichedRecord)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to enrich record with domains: %w", err)
+	}
+
+	// Extract skills and domains
+	enrichedSkills := make([]enrichedItem, 0, len(enrichedRecord.GetSkills()))
+	for _, skill := range enrichedRecord.GetSkills() {
+		enrichedSkills = append(enrichedSkills, skill)
+	}
+
+	enrichedDomains := make([]enrichedItem, 0, len(enrichedRecord.GetDomains()))
+	for _, domain := range enrichedRecord.GetDomains() {
+		enrichedDomains = append(enrichedDomains, domain)
+	}
+
+	return enrichedSkills, enrichedDomains, nil
+}
+
+// getSchemaVersion extracts the schema_version from a structpb.Struct.
+func getSchemaVersion(s *structpb.Struct) (string, error) {
+	if s == nil {
+		return "", errors.New("struct is nil")
+	}
+
+	fields := s.GetFields()
+	if fields == nil {
+		return "", errors.New("struct has no fields")
+	}
+
+	schemaVersionField, ok := fields["schema_version"]
+	if !ok {
+		return "", errors.New("schema_version field not found")
+	}
+
+	return schemaVersionField.GetStringValue(), nil
+}
+
+// structToOASFRecord converts a structpb.Struct to typesv1alpha1.Record for enrichment.
+func structToOASFRecord(s *structpb.Struct) (*typesv1alpha1.Record, error) {
+	if s == nil {
+		return nil, errors.New("struct is nil")
+	}
+	// Marshal struct to JSON
+	jsonBytes, err := protojson.Marshal(s)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal struct to JSON: %w", err)
+	}
+
+	// Unmarshal JSON into typesv1alpha1.Record (discard unknown fields e.g. __mcp_debug_source on Data)
+	var record typesv1alpha1.Record
+
+	opts := protojson.UnmarshalOptions{DiscardUnknown: true}
+	if err := opts.Unmarshal(jsonBytes, &record); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal JSON to OASF record: %w", err)
+	}
+
+	return &record, nil
+}
+
+// structToOASFRecordV1 converts a structpb.Struct to typesv1.Record for enrichment.
+func structToOASFRecordV1(s *structpb.Struct) (*typesv1.Record, error) {
+	if s == nil {
+		return nil, errors.New("struct is nil")
+	}
+	// Marshal struct to JSON
+	jsonBytes, err := protojson.Marshal(s)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal struct to JSON: %w", err)
+	}
+
+	// Unmarshal JSON into typesv1.Record (discard unknown fields e.g. __mcp_debug_source on Data)
+	var record typesv1.Record
+
+	opts := protojson.UnmarshalOptions{DiscardUnknown: true}
+	if err := opts.Unmarshal(jsonBytes, &record); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal JSON to OASF v1 record: %w", err)
+	}
+
+	return &record, nil
+}
+
+// enrichedItem represents any enriched field (skill or domain) with name and id.
+type enrichedItem interface {
+	GetName() string
+	GetId() uint32
+}
+
+// updateFieldsInStruct is a generic helper that updates a field in a structpb.Struct with enriched items.
+// This preserves all other fields including schema_version, name, version, etc.
+func updateFieldsInStruct[T enrichedItem](recordStruct *structpb.Struct, fieldName string, enrichedItems []T) error {
+	if recordStruct.Fields == nil {
+		return errors.New("record struct has no fields")
+	}
+
+	// Convert enriched items to structpb.ListValue
+	itemsList := &structpb.ListValue{
+		Values: make([]*structpb.Value, 0, len(enrichedItems)),
+	}
+
+	for _, item := range enrichedItems {
+		itemStruct := &structpb.Struct{
+			Fields: make(map[string]*structpb.Value),
+		}
+
+		// Add name field (required)
+		if item.GetName() != "" {
+			itemStruct.Fields["name"] = structpb.NewStringValue(item.GetName())
+		}
+
+		// Add id field if present
+		if item.GetId() != 0 {
+			itemStruct.Fields["id"] = structpb.NewNumberValue(float64(item.GetId()))
+		}
+
+		itemsList.Values = append(itemsList.Values, structpb.NewStructValue(itemStruct))
+	}
+
+	// Update the field in the record
+	recordStruct.Fields[fieldName] = structpb.NewListValue(itemsList)
+
+	return nil
+}
+
+// updateSkillsInStruct updates the skills field in a structpb.Struct with enriched skills.
+// This preserves all other fields including schema_version, name, version, etc.
+func updateSkillsInStruct(recordStruct *structpb.Struct, enrichedSkills []enrichedItem) error {
+	return updateFieldsInStruct(recordStruct, "skills", enrichedSkills)
+}
+
+// updateDomainsInStruct updates the domains field in a structpb.Struct with enriched domains.
+// This preserves all other fields including schema_version, name, version, etc.
+func updateDomainsInStruct(recordStruct *structpb.Struct, enrichedDomains []enrichedItem) error {
+	return updateFieldsInStruct(recordStruct, "domains", enrichedDomains)
 }

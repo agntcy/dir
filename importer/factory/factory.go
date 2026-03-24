@@ -4,15 +4,21 @@
 package factory
 
 import (
+	"context"
 	"fmt"
 	"sync"
 
+	"github.com/agntcy/dir/importer"
 	"github.com/agntcy/dir/importer/config"
 	"github.com/agntcy/dir/importer/types"
 )
 
+func init() {
+	Register(config.RegistryTypeMCP, importer.New)
+}
+
 // ImporterFunc is a function that creates an Importer instance.
-type ImporterFunc func(client config.ClientInterface, cfg config.Config) (types.Importer, error)
+type ImporterFunc func(ctx context.Context, client config.ClientInterface, cfg config.Config) (types.Importer, error)
 
 var (
 	importers = make(map[config.RegistryType]ImporterFunc)
@@ -33,7 +39,7 @@ func Register(registryType config.RegistryType, fn ImporterFunc) {
 }
 
 // Create creates a new Importer instance for the given client and configuration.
-func Create(client config.ClientInterface, cfg config.Config) (types.Importer, error) {
+func Create(ctx context.Context, client config.ClientInterface, cfg config.Config) (types.Importer, error) {
 	mu.RLock()
 
 	constructor, exists := importers[cfg.RegistryType]
@@ -44,36 +50,5 @@ func Create(client config.ClientInterface, cfg config.Config) (types.Importer, e
 		return nil, fmt.Errorf("unsupported registry type: %s", cfg.RegistryType)
 	}
 
-	return constructor(client, cfg)
-}
-
-// RegisteredTypes returns a list of all registered registry types.
-func RegisteredTypes() []config.RegistryType {
-	mu.RLock()
-	defer mu.RUnlock()
-
-	types := make([]config.RegistryType, 0, len(importers))
-	for t := range importers {
-		types = append(types, t)
-	}
-
-	return types
-}
-
-// IsRegistered checks if a registry type is registered.
-func IsRegistered(registryType config.RegistryType) bool {
-	mu.RLock()
-	defer mu.RUnlock()
-
-	_, exists := importers[registryType]
-
-	return exists
-}
-
-// Reset clears all registered importers. This is primarily useful for testing.
-func Reset() {
-	mu.Lock()
-	defer mu.Unlock()
-
-	importers = make(map[config.RegistryType]ImporterFunc)
+	return constructor(ctx, client, cfg)
 }

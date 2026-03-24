@@ -6,7 +6,6 @@ package factory
 import (
 	"fmt"
 	"sort"
-	"strings"
 	"sync"
 
 	scannerconfig "github.com/agntcy/dir/importer/scanner/config"
@@ -47,14 +46,6 @@ func NewScanners(cfg scannerconfig.Config) ([]types.Scanner, error) {
 	}
 
 	return scanners, nil
-}
-
-// AvailableScanners returns a sorted, comma-separated list of registered scanner names.
-func AvailableScanners() string {
-	mu.RLock()
-	defer mu.RUnlock()
-
-	return strings.Join(sortedRegistryNames(), ", ")
 }
 
 func sortedRegistryNames() []string {
