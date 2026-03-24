@@ -10,7 +10,7 @@
   "customManagers": [
     {
       "customType": "regex",
-      "fileMatch": ["(^|/)Taskfile[^/]*\\.ya?ml$"],
+      "managerFilePatterns": ["/(^|/)Taskfile[^/]*\.yml$/"],
       "matchStrings": [
         "# renovate: datasource=(?<datasource>.*?) depName=(?<depName>.*?)( versioning=(?<versioning>.*?))?( registryUrl=(?<registryUrl>.*?))?\\s+\\w+_VERSION:\\s+\"?(?<currentValue>[^\"\\s]+)\"?"
       ],
