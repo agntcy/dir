@@ -1,9 +1,9 @@
 al.essio.dev/pkg/shellescape v1.6.0 h1:NxFcEqzFSEVCGN2yq7Huv/9hyCEGVa/TncnOOBBeXHA=
 al.essio.dev/pkg/shellescape v1.6.0/go.mod h1:6sIqp7X2P6mThCQ7twERpZTuigpr6KbZWtls1U8I890=
-buf.build/gen/go/agntcy/oasf-sdk/protocolbuffers/go v1.36.11-20260317075528-21920861826f.1 h1:+qk6wQnKzRze5ii5MsyDrqK+y5ZNttY1qBWrse7yTm0=
-buf.build/gen/go/agntcy/oasf-sdk/protocolbuffers/go v1.36.11-20260317075528-21920861826f.1/go.mod h1:EEQp9sY+88ieMjKf9W4Uf9t3X6qV1nHY0DcGOxsMlac=
-buf.build/gen/go/agntcy/oasf/protocolbuffers/go v1.36.11-20260317085956-0f123aef9e7c.1 h1:eMvpNiZTp6FrAQ+39M3i8x/vg9XtQNdJkTlzDdNYGY8=
-buf.build/gen/go/agntcy/oasf/protocolbuffers/go v1.36.11-20260317085956-0f123aef9e7c.1/go.mod h1:y7UzNChPK2OBXQxpwimQg6fSgSFLC1jZXTk9Y7HFfNc=
+buf.build/gen/go/agntcy/oasf-sdk/protocolbuffers/go v1.36.11-20260319105655-fded9a37a008.1 h1:Q2kLbmTG1hbFgA1UQ7etzYUQ6ZvhPJBXTt6eMYqsYEo=
+buf.build/gen/go/agntcy/oasf-sdk/protocolbuffers/go v1.36.11-20260319105655-fded9a37a008.1/go.mod h1:EEQp9sY+88ieMjKf9W4Uf9t3X6qV1nHY0DcGOxsMlac=
+buf.build/gen/go/agntcy/oasf/protocolbuffers/go v1.36.11-20260320142641-0b8d3409a754.1 h1:Z74w/NeMxK/7Io8jDrlB6zBv8K8fDRJwil2+U4YvlXM=
+buf.build/gen/go/agntcy/oasf/protocolbuffers/go v1.36.11-20260320142641-0b8d3409a754.1/go.mod h1:y7UzNChPK2OBXQxpwimQg6fSgSFLC1jZXTk9Y7HFfNc=
 buf.build/gen/go/bufbuild/protovalidate/protocolbuffers/go v1.36.11-20260209202127-80ab13bee0bf.1 h1:PMmTMyvHScV9Mn8wc6ASge9uRcHy0jtqPd+fM35LmsQ=
 buf.build/gen/go/bufbuild/protovalidate/protocolbuffers/go v1.36.11-20260209202127-80ab13bee0bf.1/go.mod h1:tvtbpgaVXZX4g6Pn+AnzFycuRK3MOz5HJfEGeEllXYM=
 charm.land/bubbles/v2 v2.0.0 h1:tE3eK/pHjmtrDiRdoC9uGNLgpopOd8fjhEe31B/ai5s=

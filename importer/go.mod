@@ -13,7 +13,7 @@ replace (
 replace github.com/ThalesIgnite/crypto11 => github.com/ThalesGroup/crypto11 v1.6.0
 
 require (
-	buf.build/gen/go/agntcy/oasf/protocolbuffers/go v1.36.11-20260317085956-0f123aef9e7c.1
+	buf.build/gen/go/agntcy/oasf/protocolbuffers/go v1.36.11-20260320142641-0b8d3409a754.1
 	github.com/agntcy/dir/api v1.1.0
 	github.com/agntcy/dir/client v1.1.0
 	github.com/agntcy/dir/utils v1.1.0
@@ -59,7 +59,7 @@ require (
 )
 
 require (
-	buf.build/gen/go/agntcy/oasf-sdk/protocolbuffers/go v1.36.11-20260317075528-21920861826f.1 // indirect
+	buf.build/gen/go/agntcy/oasf-sdk/protocolbuffers/go v1.36.11-20260319105655-fded9a37a008.1 // indirect
 	cloud.google.com/go v0.123.0 // indirect
 	cloud.google.com/go/auth v0.18.2 // indirect
 	cloud.google.com/go/auth/oauth2adapt v0.2.8 // indirect
