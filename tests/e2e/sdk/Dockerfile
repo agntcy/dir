@@ -25,7 +25,7 @@ RUN uv sync --all-packages
 RUN apk add --update --no-cache nodejs npm
 
 WORKDIR /tmp/dir-js
-RUN npm install
+RUN npm ci
 
 WORKDIR /tmp
 

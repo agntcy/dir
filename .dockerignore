@@ -13,6 +13,5 @@ tmp/
 .DS_Store
 
 **/node_modules
-**/package-lock.json
 **/.venv
 **/uv.lock
