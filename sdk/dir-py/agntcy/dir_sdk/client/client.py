@@ -11,7 +11,6 @@ import builtins
 import logging
 import os
 import json
-import re
 import subprocess
 import tempfile
 from collections.abc import Sequence
@@ -107,6 +106,8 @@ class JWTAuthInterceptor(grpc.UnaryUnaryClientInterceptor, grpc.UnaryStreamClien
         """Intercept stream-stream RPC calls."""
         new_details = self._add_jwt_metadata(client_call_details)
         return continuation(new_details, request_iterator)
+
+oauth = OAuth()
 
 
 class Client:
