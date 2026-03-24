@@ -37,7 +37,7 @@ RUN --mount=type=cache,target=/go/pkg/mod \
 RUN xx-verify /bin/envoy-authz
 
 # Production image - minimal distroless
-FROM gcr.io/distroless/static:nonroot@sha256:c0f429e16b13e583da7e5a6ec20dd656d325d88e6819cafe0adb0828976529dc AS production
+FROM gcr.io/distroless/static:nonroot@sha256:e3f945647ffb95b5839c07038d64f9811adf17308b9121d8a2b87b6a22a80a39 AS production
 
 WORKDIR /
 
