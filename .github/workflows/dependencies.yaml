@@ -50,10 +50,7 @@ jobs:
         run: task deps:renovate:sync
         env:
           ## Discovery
-          # Renovate finds and creates PRs for all repos accessible by auth token.
-          # Since we auth only against this repo, no other repos can be accessed.
-          RENOVATE_AUTODISCOVER: "true"
-          RENOVATE_FORK_PROCESSING: "enabled"
+          RENOVATE_AUTODISCOVER: "false"
           ## Project sync
           RENOVATE_PLATFORM: "github"
           RENOVATE_PLATFORM_COMMIT: "true"
