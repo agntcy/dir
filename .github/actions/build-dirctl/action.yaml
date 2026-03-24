@@ -1,0 +1,47 @@
+# Copyright AGNTCY Contributors (https://github.com/agntcy)
+# SPDX-License-Identifier: Apache-2.0
+
+name: Build dirctl
+description: |
+  Build the dirctl CLI from the checked-out branch source using Taskfile.
+author: agntcy
+branding:
+  icon: settings
+  color: yellow
+
+inputs:
+  go_version:
+    description: Go version to use for building dirctl
+    required: false
+    default: "1.26.1"
+
+outputs:
+  dirctl_path:
+    description: Absolute path to the built dirctl binary
+    value: ${{ steps.build.outputs.dirctl_path }}
+
+runs:
+  using: "composite"
+  steps:
+    - name: Setup Go
+      uses: actions/setup-go@4b73464bb391d4059bd26b0524d20df3927bd417 # v6.3.0
+      with:
+        go-version: ${{ inputs.go_version }}
+        cache-dependency-path: "**/*.sum"
+
+    - name: Install Task
+      uses: go-task/setup-task@3be4020d41929789a01026e0e427a4321ce0ad44 #v2.0.0
+
+    - name: Build dirctl
+      id: build
+      shell: bash
+      run: |
+        task cli:compile
+        DIRCTL_PATH="${GITHUB_WORKSPACE}/.bin/dirctl"
+
+        if [ ! -x "${DIRCTL_PATH}" ]; then
+          echo "::error::Expected executable dirctl at ${DIRCTL_PATH}"
+          exit 1
+        fi
+
+        echo "dirctl_path=${DIRCTL_PATH}" >> "${GITHUB_OUTPUT}"

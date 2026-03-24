@@ -38,41 +38,22 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
-      - name: Setup Go
-        uses: actions/setup-go@4b73464bb391d4059bd26b0524d20df3927bd417 # v6.3.0
+      - name: Build dirctl from branch source
+        id: build-dirctl
+        uses: ./.github/actions/build-dirctl
         with:
-          go-version: "1.26.1"
-          cache-dependency-path: "**/*.sum"
-
-      - name: Setup Taskfile
-        shell: bash
-        run: sh -c "$(curl --location https://taskfile.dev/install.sh)" -- -d -b ~/.local/bin
-
-      - name: Build dirctl
-        run: task cli:compile
+          go_version: "1.26.1"
 
       - name: Fetch GitHub OIDC token
         id: oidc
-        shell: bash
-        run: |
-          set -euo pipefail
-
-          RESPONSE="$(curl -sSf \
-            -H "Authorization: bearer ${ACTIONS_ID_TOKEN_REQUEST_TOKEN}" \
-            "${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=dir-dev")"
-
-          TOKEN="$(echo "${RESPONSE}" | jq -r '.value')"
-          if [ -z "${TOKEN}" ] || [ "${TOKEN}" = "null" ]; then
-            echo "Failed to obtain GitHub OIDC token"
-            echo "Raw response: ${RESPONSE}"
-            exit 1
-          fi
-
-          echo "token=${TOKEN}" >> "$GITHUB_OUTPUT"
+        uses: ./.github/actions/fetch-oidc-token
+        with:
+          audience: dir-dev
 
       - name: Run dirctl search with GitHub OIDC token
         env:
           DIRECTORY_CLIENT_OIDC_TOKEN: ${{ steps.oidc.outputs.token }}
+          DIRCTL_PATH: ${{ steps.build-dirctl.outputs.dirctl_path }}
         run: |
           set -euo pipefail
           SERVER_ADDR="${{ github.event.inputs.server_addr }}"
@@ -81,7 +62,7 @@ jobs:
           SERVER_ADDR="${SERVER_ADDR:-dev.gateway.ads.outshift.io:443}"
           VERSION_QUERY="${VERSION_QUERY:-v1.*}"
 
-          ./.bin/dirctl search --version "${VERSION_QUERY}" \
+          "${DIRCTL_PATH}" search --version "${VERSION_QUERY}" \
             --server-addr "${SERVER_ADDR}" \
             --auth-mode=oidc \
             --output json
