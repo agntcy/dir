@@ -19,7 +19,7 @@ require (
 	github.com/agntcy/dir/api v1.1.0
 	github.com/agntcy/dir/utils v1.1.0
 	github.com/agntcy/oasf-sdk/pkg v1.0.3
-	github.com/casbin/casbin/v2 v2.135.0
+	github.com/casbin/casbin/v3 v3.10.0
 	github.com/grpc-ecosystem/go-grpc-middleware/v2 v2.3.3
 	github.com/grpc-ecosystem/go-grpc-prometheus v1.2.0
 	github.com/ipfs/go-datastore v0.9.1
