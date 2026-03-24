@@ -2,7 +2,32 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import os
-from time import time
+
+
+def _parse_bool_env(value: str | None, default: bool) -> bool:
+    if value is None or value == "":
+        return default
+    return value.strip().lower() in ("1", "true", "yes", "on")
+
+
+def _parse_float_env(value: str | None, default: float) -> float:
+    if value is None or value == "":
+        return default
+    return float(value)
+
+
+def _parse_int_env(value: str | None, default: int) -> int:
+    if value is None or value == "":
+        return default
+    return int(value)
+
+
+def _parse_comma_scopes(value: str | list[str] | None, default: list[str]) -> list[str]:
+    if value is None or value == "":
+        return list(default)
+    if isinstance(value, list):
+        return list(value)
+    return [s.strip() for s in value.split(",") if s.strip()]
 
 def _parse_bool_env(value: str | None, default: bool) -> bool:
     if value is None or value == "":
@@ -32,6 +57,7 @@ class Config:
     DEFAULT_TLS_CA_FILE = ""
     DEFAULT_TLS_CERT_FILE = ""
     DEFAULT_TLS_KEY_FILE = ""
+    DEFAULT_TLS_SKIP_VERIFY = False
 
     DEFAULT_OIDC_ISSUER: str = ""
     DEFAULT_OIDC_ACCESS_TOKEN: str = ""
@@ -39,7 +65,8 @@ class Config:
     DEFAULT_OIDC_CLIENT_SECRET: str = ""
     DEFAULT_OIDC_REDIRECT_URI: str = "http://localhost:8484/callback"
     DEFAULT_OIDC_CALLBACK_PORT: int = 8484
-    DEFAULT_OIDC_AUTH_TIMEOUT: time.Duration = 5 * time.minute
+    DEFAULT_OIDC_AUTH_TIMEOUT: float = 300.0
+    DEFAULT_OIDC_SCOPES: list[str] = ["openid", "profile", "email"]
     DEFAULT_OIDC_MACHINE_CLIENT_ID: str = ""
     DEFAULT_OIDC_MACHINE_CLIENT_SECRET: str = ""
     DEFAULT_OIDC_MACHINE_CLIENT_SECRET_FILE: str = ""
@@ -56,27 +83,30 @@ class Config:
         tls_ca_file: str = DEFAULT_TLS_CA_FILE,
         tls_cert_file: str = DEFAULT_TLS_CERT_FILE,
         tls_key_file: str = DEFAULT_TLS_KEY_FILE,
+        tls_skip_verify: bool = DEFAULT_TLS_SKIP_VERIFY,
         oidc_issuer: str = DEFAULT_OIDC_ISSUER,
         oidc_access_token: str = DEFAULT_OIDC_ACCESS_TOKEN,
         oidc_client_id: str = DEFAULT_OIDC_CLIENT_ID,
         oidc_client_secret: str = DEFAULT_OIDC_CLIENT_SECRET,
         oidc_redirect_uri: str = DEFAULT_OIDC_REDIRECT_URI,
         oidc_callback_port: int = DEFAULT_OIDC_CALLBACK_PORT,
-        oidc_auth_timeout: time.Duration = DEFAULT_OIDC_AUTH_TIMEOUT,
+        oidc_auth_timeout: float = DEFAULT_OIDC_AUTH_TIMEOUT,
+        oidc_scopes: list[str] | None = None,
         oidc_machine_client_id: str = DEFAULT_OIDC_MACHINE_CLIENT_ID,
         oidc_machine_client_secret: str = DEFAULT_OIDC_MACHINE_CLIENT_SECRET,
         oidc_machine_client_secret_file: str = DEFAULT_OIDC_MACHINE_CLIENT_SECRET_FILE,
-        oidc_machine_scopes: list[str] = DEFAULT_OIDC_MACHINE_SCOPES,
+        oidc_machine_scopes: list[str] | None = None,
         oidc_machine_token_endpoint: str = DEFAULT_OIDC_MACHINE_TOKEN_ENDPOINT,
     ) -> None:
         self.server_address = server_address
         self.dirctl_path = dirctl_path
         self.spiffe_socket_path = spiffe_socket_path
-        self.auth_mode = auth_mode  # '' for insecure, 'x509', 'jwt' or 'tls'
+        self.auth_mode = auth_mode  # '', insecure, x509, jwt, tls, oauth_pkce
         self.jwt_audience = jwt_audience
         self.tls_ca_file = tls_ca_file
         self.tls_cert_file = tls_cert_file
         self.tls_key_file = tls_key_file
+        self.tls_skip_verify = tls_skip_verify
         self.oidc_issuer = oidc_issuer
         self.oidc_access_token = oidc_access_token
         self.oidc_client_id = oidc_client_id
@@ -84,22 +114,29 @@ class Config:
         self.oidc_redirect_uri = oidc_redirect_uri
         self.oidc_callback_port = oidc_callback_port
         self.oidc_auth_timeout = oidc_auth_timeout
+        self.oidc_scopes = (
+            list(oidc_scopes)
+            if oidc_scopes is not None
+            else list(Config.DEFAULT_OIDC_SCOPES)
+        )
         self.oidc_machine_client_id = oidc_machine_client_id
         self.oidc_machine_client_secret = oidc_machine_client_secret
         self.oidc_machine_client_secret_file = oidc_machine_client_secret_file
-        self.oidc_machine_scopes = oidc_machine_scopes
+        self.oidc_machine_scopes = (
+            list(oidc_machine_scopes)
+            if oidc_machine_scopes is not None
+            else list(Config.DEFAULT_OIDC_MACHINE_SCOPES)
+        )
         self.oidc_machine_token_endpoint = oidc_machine_token_endpoint
 
     @staticmethod
     def load_from_env(env_prefix: str = "DIRECTORY_CLIENT_") -> "Config":
         """Load configuration from environment variables."""
-        # Get dirctl path from environment variable without prefix
         dirctl_path = os.environ.get(
             "DIRCTL_PATH",
             Config.DEFAULT_DIRCTL_PATH,
         )
 
-        # Use prefixed environment variables for other settings
         server_address = os.environ.get(
             f"{env_prefix}SERVER_ADDRESS",
             Config.DEFAULT_SERVER_ADDRESS,
@@ -128,6 +165,10 @@ class Config:
             f"{env_prefix}TLS_KEY_FILE",
             Config.DEFAULT_TLS_KEY_FILE,
         )
+        tls_skip_verify = _parse_bool_env(
+            os.environ.get(f"{env_prefix}TLS_SKIP_VERIFY"),
+            Config.DEFAULT_TLS_SKIP_VERIFY,
+        )
         oidc_issuer = os.environ.get(
             f"{env_prefix}OIDC_ISSUER",
             Config.DEFAULT_OIDC_ISSUER,
@@ -148,13 +189,17 @@ class Config:
             f"{env_prefix}OIDC_REDIRECT_URI",
             Config.DEFAULT_OIDC_REDIRECT_URI,
         )
-        oidc_callback_port = os.environ.get(
-            f"{env_prefix}OIDC_CALLBACK_PORT",
+        oidc_callback_port = _parse_int_env(
+            os.environ.get(f"{env_prefix}OIDC_CALLBACK_PORT"),
             Config.DEFAULT_OIDC_CALLBACK_PORT,
         )
         oidc_auth_timeout = _parse_int_env(
             os.environ.get(f"{env_prefix}OIDC_AUTH_TIMEOUT"),
             Config.DEFAULT_OIDC_AUTH_TIMEOUT,
+        )
+        oidc_scopes = _parse_comma_scopes(
+            os.environ.get(f"{env_prefix}OIDC_SCOPES"),
+            Config.DEFAULT_OIDC_SCOPES,
         )
         oidc_machine_client_id = os.environ.get(
             f"{env_prefix}OIDC_MACHINE_CLIENT_ID",
@@ -168,8 +213,8 @@ class Config:
             f"{env_prefix}OIDC_MACHINE_CLIENT_SECRET_FILE",
             Config.DEFAULT_OIDC_MACHINE_CLIENT_SECRET_FILE,
         )
-        oidc_machine_scopes = os.environ.get(
-            f"{env_prefix}OIDC_MACHINE_SCOPES",
+        oidc_machine_scopes = _parse_comma_scopes(
+            os.environ.get(f"{env_prefix}OIDC_MACHINE_SCOPES"),
             Config.DEFAULT_OIDC_MACHINE_SCOPES,
         )
         oidc_machine_token_endpoint = os.environ.get(
@@ -186,6 +231,7 @@ class Config:
             tls_ca_file=tls_ca_file,
             tls_cert_file=tls_cert_file,
             tls_key_file=tls_key_file,
+            tls_skip_verify=tls_skip_verify,
             oidc_issuer=oidc_issuer,
             oidc_access_token=oidc_access_token,
             oidc_client_id=oidc_client_id,
@@ -193,6 +239,7 @@ class Config:
             oidc_redirect_uri=oidc_redirect_uri,
             oidc_callback_port=oidc_callback_port,
             oidc_auth_timeout=oidc_auth_timeout,
+            oidc_scopes=oidc_scopes,
             oidc_machine_client_id=oidc_machine_client_id,
             oidc_machine_client_secret=oidc_machine_client_secret,
             oidc_machine_client_secret_file=oidc_machine_client_secret_file,

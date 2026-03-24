@@ -5,7 +5,10 @@ description = "Directory SDK"
 readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [
+    "authlib>=1.6.9",
+    "httpx>=0.28.1",
     "bufbuild-protovalidate-protocolbuffers-python==34.0.0.1.20260209202127+80ab13bee0bf",
+    "fastapi>=0.135.2",
     "grpcio>=1.78.0",
     "pyasn1>=0.6.3",
     "spiffe>=0.2.6",
