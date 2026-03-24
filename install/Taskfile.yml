@@ -19,7 +19,6 @@ tasks:
 
   helm:gen:
     desc: Update Helm dependencies for chart and subcharts
-    internal: true
     deps:
       - deps:helm
     env:
