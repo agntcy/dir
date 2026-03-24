@@ -13,7 +13,7 @@ import os
 import json
 import subprocess
 import tempfile
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 
 import grpc
 from google.protobuf import json_format
@@ -21,6 +21,11 @@ from cryptography.hazmat.primitives import serialization
 from spiffe import WorkloadApiClient, X509Source
 
 from agntcy.dir_sdk.client.config import Config
+from agntcy.dir_sdk.client.oauth_pkce import (
+    OAuthTokenHolder,
+    fetch_openid_configuration,
+    run_loopback_pkce_login,
+)
 from agntcy.dir_sdk.models import (
     core_v1,
     events_v1,
@@ -107,7 +112,49 @@ class JWTAuthInterceptor(grpc.UnaryUnaryClientInterceptor, grpc.UnaryStreamClien
         new_details = self._add_jwt_metadata(client_call_details)
         return continuation(new_details, request_iterator)
 
-oauth = OAuth()
+
+class BearerAuthInterceptor(
+    grpc.UnaryUnaryClientInterceptor,
+    grpc.UnaryStreamClientInterceptor,
+    grpc.StreamUnaryClientInterceptor,
+    grpc.StreamStreamClientInterceptor,
+):
+    """gRPC interceptor that adds a static OAuth Bearer access token to requests."""
+
+    def __init__(self, token_supplier: Callable[[], str]) -> None:
+        self._token_supplier = token_supplier
+
+    def _add_bearer_metadata(self, client_call_details):
+        token = self._token_supplier()
+        metadata = []
+        if client_call_details.metadata is not None:
+            metadata = list(client_call_details.metadata)
+        metadata.append(("authorization", f"Bearer {token}"))
+
+        return grpc._interceptor._ClientCallDetails(
+            method=client_call_details.method,
+            timeout=client_call_details.timeout,
+            metadata=metadata,
+            credentials=client_call_details.credentials,
+            wait_for_ready=client_call_details.wait_for_ready,
+            compression=client_call_details.compression,
+        )
+
+    def intercept_unary_unary(self, continuation, client_call_details, request):
+        new_details = self._add_bearer_metadata(client_call_details)
+        return continuation(new_details, request)
+
+    def intercept_unary_stream(self, continuation, client_call_details, request):
+        new_details = self._add_bearer_metadata(client_call_details)
+        return continuation(new_details, request)
+
+    def intercept_stream_unary(self, continuation, client_call_details, request_iterator):
+        new_details = self._add_bearer_metadata(client_call_details)
+        return continuation(new_details, request_iterator)
+
+    def intercept_stream_stream(self, continuation, client_call_details, request_iterator):
+        new_details = self._add_bearer_metadata(client_call_details)
+        return continuation(new_details, request_iterator)
 
 
 class Client:
@@ -123,7 +170,10 @@ class Client:
 
     """
 
-    def __init__(self, config: Config | None = None) -> None:
+    def __init__(
+        self,
+        config: Config | None = None,
+    ) -> None:
         """Initialize the client with the given configuration.
 
         Args:
@@ -139,6 +189,32 @@ class Client:
         if config is None:
             config = Config.load_from_env()
         self.config = config
+        self._oauth_holder: OAuthTokenHolder | None = None
+
+        if config.auth_mode == "oauth_pkce":
+            token_ep = ""
+            if config.oidc_issuer:
+                try:
+                    meta = fetch_openid_configuration(
+                        config.oidc_issuer,
+                        verify=not config.tls_skip_verify,
+                        timeout=min(30.0, config.oidc_auth_timeout),
+                    )
+                    token_ep = str(meta["token_endpoint"])
+                except Exception:
+                    logger.exception(
+                        "OAuth PKCE: OIDC discovery failed; "
+                        "token refresh disabled until authenticate_oauth_pkce()",
+                    )
+            
+            self._oauth_holder = OAuthTokenHolder(
+                token_ep,
+                config.oidc_client_id,
+                config.oidc_client_secret,
+                verify_http=not config.tls_skip_verify,
+            )
+
+            self._oauth_holder.set_tokens(self.config.oidc_access_token)
 
         # Create gRPC channel
         channel = self.__create_grpc_channel()
@@ -163,6 +239,8 @@ class Client:
             return self.__create_x509_channel()
         elif self.config.auth_mode == "tls":
             return self.__create_tls_channel()
+        elif self.config.auth_mode == "oauth_pkce":
+            return self.__create_oauth_pkce_channel()
         else:
             msg = f"Unsupported auth mode: {self.config.auth_mode}"
             raise ValueError(msg)
@@ -293,6 +371,63 @@ class Client:
         )
 
         return channel
+
+    def __create_oauth_pkce_channel(self) -> grpc.Channel:
+        if self._oauth_holder is None:
+            msg = "OAuth token holder not initialized"
+            raise RuntimeError(msg)
+
+        if self.config.tls_ca_file:
+            try:
+                with open(self.config.tls_ca_file, "rb") as f:
+                    root_ca = f.read()
+            except OSError as e:
+                msg = f"Failed to read TLS CA file: {e}"
+                raise RuntimeError(msg) from e
+            credentials = grpc.ssl_channel_credentials(root_certificates=root_ca)
+        else:
+            credentials = grpc.ssl_channel_credentials()
+
+        channel = grpc.secure_channel(
+            target=self.config.server_address,
+            credentials=credentials,
+        )
+        bearer = BearerAuthInterceptor(self._oauth_holder.get_access_token)
+        return grpc.intercept_channel(channel, bearer)
+
+    def authenticate_oauth_pkce(self) -> None:
+        """Run browser-based OAuth 2.0 Authorization Code + PKCE login (loopback callback).
+
+        Requires ``auth_mode=\"oauth_pkce\"``, ``oidc_issuer``, and ``oidc_client_id``.
+        After success, gRPC calls use the returned access token until expiry (refresh
+        when a refresh_token is issued and ``oidc_issuer`` discovery succeeded).
+
+        Raises:
+            ValueError: If auth mode or required OIDC settings are missing.
+            OAuthPkceError: If the authorization or token exchange fails.
+
+        """
+        if self.config.auth_mode != "oauth_pkce":
+            msg = "authenticate_oauth_pkce() requires auth_mode='oauth_pkce'"
+            raise ValueError(msg)
+        if not self.config.oidc_issuer:
+            msg = "oidc_issuer is required for authenticate_oauth_pkce()"
+            raise ValueError(msg)
+        if not self.config.oidc_client_id:
+            msg = "oidc_client_id is required for authenticate_oauth_pkce()"
+            raise ValueError(msg)
+        if self._oauth_holder is None:
+            msg = "OAuth token holder not initialized"
+            raise RuntimeError(msg)
+
+        meta = fetch_openid_configuration(
+            self.config.oidc_issuer,
+            verify=not self.config.tls_skip_verify,
+            timeout=min(30.0, self.config.oidc_auth_timeout),
+        )
+        self._oauth_holder.set_token_endpoint(str(meta["token_endpoint"]))
+        payload = run_loopback_pkce_login(self.config, metadata=meta)
+        self._oauth_holder.update_from_token_response(payload)
 
     def publish(
         self,
