@@ -168,12 +168,37 @@ tasks:
       - task: api:gen
       - "{{.UV_BIN}} sync --all-packages"
 
+  sdk:deps:python:example:
+    desc: Install deps for Python SDK example package
+    internal: true
+    dir: ./sdk/examples/example-py
+    deps:
+      - task: deps:bufbuild
+      - task: deps:uv
+    cmds:
+      - "{{.UV_BIN}} sync --all-packages"
+
   sdk:deps:javascript:
     desc: Install deps for javascript SDK package
     dir: ./sdk/dir-js
     cmds:
-      - npm install
       - task: api:gen
+      - npm install
+
+  sdk:deps:javascript:example:
+    desc: Install deps for javascript SDK example package
+    internal: true
+    dir: ./sdk/examples/example-js
+    cmds:
+      - npm install
+
+  sdk:tidy:
+    desc: Install deps for SDK packages
+    cmds:
+      - task: sdk:deps:javascript
+      - task: sdk:deps:javascript:example
+      - task: sdk:deps:python
+      - task: sdk:deps:python:example
 
   sdk:release:all:
     desc: Release all client SDK package

@@ -1,0 +1,62 @@
+name: Dependencies
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "0 4 * * 1"
+
+jobs:
+  renovate:
+    name: Renovate Sync
+    runs-on: ubuntu-latest
+    steps:
+      - name: Authenticate with GitHub App Bot
+        id: app-token
+        uses: actions/create-github-app-token@f8d387b68d61c58ab83c6c016672934102569859 # v3.0.0
+        with:
+          app-id: ${{ secrets.PROJECT_APP_ID }}
+          private-key: ${{ secrets.PROJECT_APP_KEY }}
+
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          token: ${{ steps.app-token.outputs.token }}
+          ref: ${{ github.head_ref }}
+          # Make sure the value of GITHUB_TOKEN will not be persisted in repo's config
+          persist-credentials: false
+
+      - name: Install Task
+        uses: go-task/setup-task@3be4020d41929789a01026e0e427a4321ce0ad44 #v2.0.0
+
+      - name: Set up Go
+        uses: actions/setup-go@4b73464bb391d4059bd26b0524d20df3927bd417 # v6.3.0
+        with:
+          cache: true
+          cache-dependency-path: "**/*.sum"
+          go-version: "1.26.1"
+
+      - name: Setup Node
+        uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
+        with:
+          node-version: "24.x"
+
+      - name: Setup Python (uv)
+        uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78 # v7.6.0
+        with:
+          version: "0.10.11"
+          working-directory: "sdk"
+
+      - name: Run Renovate
+        run: task deps:renovate:sync
+        env:
+          ## Discovery
+          RENOVATE_AUTODISCOVER: "false"
+          ## Project sync
+          RENOVATE_PLATFORM: "github"
+          RENOVATE_PLATFORM_COMMIT: "true"
+          RENOVATE_TOKEN: ${{ steps.app-token.outputs.token }}
+          GITHUB_COM_TOKEN: ${{ steps.app-token.outputs.token }}
+          # Remove unused fields from PR description
+          RENOVATE_PR_BODY_TEMPLATE: "{{{header}}}{{{table}}}{{{warnings}}}{{{notes}}}{{{changelogs}}}"
+          RENOVATE_DEPENDENCY_DASHBOARD_HEADER: ""
+          RENOVATE_DEPENDENCY_DASHBOARD_O_S_V_VULNERABILITY_SUMMARY: "all"

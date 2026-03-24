@@ -22,6 +22,7 @@ tasks:
       - task: deps:golangci-lint
       - task: deps:licensei
       - task: deps:multimod-bin
+      - task: deps:renovate
       - task: deps:cleanup
 
   deps:cleanup:
@@ -257,7 +258,6 @@ tasks:
           curl -sfL https://github.com/aquasecurity/trivy/releases/download/v{{.TRIVY_VERSION}}/trivy_{{.TRIVY_VERSION}}_{{.TRIVY_OS}}-{{.TRIVY_ARCH}}.tar.gz | \
           tar -xzf - -C {{.BIN_DIR}} trivy && \
           mv {{.BIN_DIR}}/trivy {{.TRIVY_BIN}}
-
     status:
       - test -x {{.TRIVY_BIN}}
 
@@ -286,3 +286,31 @@ tasks:
     cmds:
       - for: { var: VULN_SCAN_IMAGES }
         cmd: echo "{{.ITEM}}"
+
+  deps:renovate:
+    desc: Install Renovate
+    internal: true
+    cmd: npm install -g renovate
+    status:
+      - npm list -g renovate
+
+  deps:renovate:sync:
+    desc: Sync dependencies with Renovate
+    summary: |
+      For extra CLI flags pass RENOVATE_OPTS (e.g. task deps:renovate:sync RENOVATE_OPTS='--dry-run').
+      Default platform is local so local runs do not touch remote project data.
+      Github Action CI sets RENOVATE_PLATFORM to github.
+      This step is only analytical without GITHUB TOKEN and will not update PRs or project data.
+    deps:
+      - deps:renovate
+    dir: "{{.ROOT_DIR}}"
+    vars:
+      RENOVATE_OPTS_DEFAULT: >-
+        --persist-repo-data 'true'
+        --allowed-post-upgrade-commands '[".*"]'
+        --post-upgrade-tasks '{"commands": ["task deps:tidy", "task sdk:tidy"], "executionMode": "branch"}'
+      RENOVATE_OPTS: "{{ .RENOVATE_OPTS | default .RENOVATE_OPTS_DEFAULT }}"
+      RENOVATE_PLATFORM_EFFECTIVE:
+        sh: printf '%s' "${RENOVATE_PLATFORM:-local}"
+    cmds:
+      - renovate {{.RENOVATE_OPTS}} --platform "{{.RENOVATE_PLATFORM_EFFECTIVE}}"
