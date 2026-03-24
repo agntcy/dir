@@ -2,6 +2,25 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import os
+from time import time
+
+def _parse_bool_env(value: str | None, default: bool) -> bool:
+    if value is None or value == "":
+        return default
+    return value.strip().lower() in ("1", "true", "yes", "on")
+
+def _parse_int_env(value: str | None, default: int) -> int:
+    if value is None or value == "":
+        return default
+    return int(value)
+
+
+def _parse_comma_scopes(value: str | list[str] | None, default: list[str]) -> list[str]:
+    if value is None or value == "":
+        return list(default)
+    if isinstance(value, list):
+        return list(value)
+    return [s.strip() for s in value.split(",") if s.strip()]
 
 
 class Config:
@@ -14,6 +33,19 @@ class Config:
     DEFAULT_TLS_CERT_FILE = ""
     DEFAULT_TLS_KEY_FILE = ""
 
+    DEFAULT_OIDC_ISSUER: str = ""
+    DEFAULT_OIDC_ACCESS_TOKEN: str = ""
+    DEFAULT_OIDC_CLIENT_ID: str = ""
+    DEFAULT_OIDC_CLIENT_SECRET: str = ""
+    DEFAULT_OIDC_REDIRECT_URI: str = "http://localhost:8484/callback"
+    DEFAULT_OIDC_CALLBACK_PORT: int = 8484
+    DEFAULT_OIDC_AUTH_TIMEOUT: time.Duration = 5 * time.minute
+    DEFAULT_OIDC_MACHINE_CLIENT_ID: str = ""
+    DEFAULT_OIDC_MACHINE_CLIENT_SECRET: str = ""
+    DEFAULT_OIDC_MACHINE_CLIENT_SECRET_FILE: str = ""
+    DEFAULT_OIDC_MACHINE_SCOPES: list[str] = []
+    DEFAULT_OIDC_MACHINE_TOKEN_ENDPOINT: str = ""
+
     def __init__(
         self,
         server_address: str = DEFAULT_SERVER_ADDRESS,
@@ -24,6 +56,18 @@ class Config:
         tls_ca_file: str = DEFAULT_TLS_CA_FILE,
         tls_cert_file: str = DEFAULT_TLS_CERT_FILE,
         tls_key_file: str = DEFAULT_TLS_KEY_FILE,
+        oidc_issuer: str = DEFAULT_OIDC_ISSUER,
+        oidc_access_token: str = DEFAULT_OIDC_ACCESS_TOKEN,
+        oidc_client_id: str = DEFAULT_OIDC_CLIENT_ID,
+        oidc_client_secret: str = DEFAULT_OIDC_CLIENT_SECRET,
+        oidc_redirect_uri: str = DEFAULT_OIDC_REDIRECT_URI,
+        oidc_callback_port: int = DEFAULT_OIDC_CALLBACK_PORT,
+        oidc_auth_timeout: time.Duration = DEFAULT_OIDC_AUTH_TIMEOUT,
+        oidc_machine_client_id: str = DEFAULT_OIDC_MACHINE_CLIENT_ID,
+        oidc_machine_client_secret: str = DEFAULT_OIDC_MACHINE_CLIENT_SECRET,
+        oidc_machine_client_secret_file: str = DEFAULT_OIDC_MACHINE_CLIENT_SECRET_FILE,
+        oidc_machine_scopes: list[str] = DEFAULT_OIDC_MACHINE_SCOPES,
+        oidc_machine_token_endpoint: str = DEFAULT_OIDC_MACHINE_TOKEN_ENDPOINT,
     ) -> None:
         self.server_address = server_address
         self.dirctl_path = dirctl_path
@@ -33,6 +77,18 @@ class Config:
         self.tls_ca_file = tls_ca_file
         self.tls_cert_file = tls_cert_file
         self.tls_key_file = tls_key_file
+        self.oidc_issuer = oidc_issuer
+        self.oidc_access_token = oidc_access_token
+        self.oidc_client_id = oidc_client_id
+        self.oidc_client_secret = oidc_client_secret
+        self.oidc_redirect_uri = oidc_redirect_uri
+        self.oidc_callback_port = oidc_callback_port
+        self.oidc_auth_timeout = oidc_auth_timeout
+        self.oidc_machine_client_id = oidc_machine_client_id
+        self.oidc_machine_client_secret = oidc_machine_client_secret
+        self.oidc_machine_client_secret_file = oidc_machine_client_secret_file
+        self.oidc_machine_scopes = oidc_machine_scopes
+        self.oidc_machine_token_endpoint = oidc_machine_token_endpoint
 
     @staticmethod
     def load_from_env(env_prefix: str = "DIRECTORY_CLIENT_") -> "Config":
@@ -72,6 +128,54 @@ class Config:
             f"{env_prefix}TLS_KEY_FILE",
             Config.DEFAULT_TLS_KEY_FILE,
         )
+        oidc_issuer = os.environ.get(
+            f"{env_prefix}OIDC_ISSUER",
+            Config.DEFAULT_OIDC_ISSUER,
+        )
+        oidc_access_token = os.environ.get(
+            f"{env_prefix}OIDC_ACCESS_TOKEN",
+            Config.DEFAULT_OIDC_ACCESS_TOKEN,
+        )
+        oidc_client_id = os.environ.get(
+            f"{env_prefix}OIDC_CLIENT_ID",
+            Config.DEFAULT_OIDC_CLIENT_ID,
+        )
+        oidc_client_secret = os.environ.get(
+            f"{env_prefix}OIDC_CLIENT_SECRET",
+            Config.DEFAULT_OIDC_CLIENT_SECRET,
+        )
+        oidc_redirect_uri = os.environ.get(
+            f"{env_prefix}OIDC_REDIRECT_URI",
+            Config.DEFAULT_OIDC_REDIRECT_URI,
+        )
+        oidc_callback_port = os.environ.get(
+            f"{env_prefix}OIDC_CALLBACK_PORT",
+            Config.DEFAULT_OIDC_CALLBACK_PORT,
+        )
+        oidc_auth_timeout = _parse_int_env(
+            os.environ.get(f"{env_prefix}OIDC_AUTH_TIMEOUT"),
+            Config.DEFAULT_OIDC_AUTH_TIMEOUT,
+        )
+        oidc_machine_client_id = os.environ.get(
+            f"{env_prefix}OIDC_MACHINE_CLIENT_ID",
+            Config.DEFAULT_OIDC_MACHINE_CLIENT_ID,
+        )
+        oidc_machine_client_secret = os.environ.get(
+            f"{env_prefix}OIDC_MACHINE_CLIENT_SECRET",
+            Config.DEFAULT_OIDC_MACHINE_CLIENT_SECRET,
+        )
+        oidc_machine_client_secret_file = os.environ.get(
+            f"{env_prefix}OIDC_MACHINE_CLIENT_SECRET_FILE",
+            Config.DEFAULT_OIDC_MACHINE_CLIENT_SECRET_FILE,
+        )
+        oidc_machine_scopes = os.environ.get(
+            f"{env_prefix}OIDC_MACHINE_SCOPES",
+            Config.DEFAULT_OIDC_MACHINE_SCOPES,
+        )
+        oidc_machine_token_endpoint = os.environ.get(
+            f"{env_prefix}OIDC_MACHINE_TOKEN_ENDPOINT",
+            Config.DEFAULT_OIDC_MACHINE_TOKEN_ENDPOINT,
+        )
 
         return Config(
             server_address=server_address,
@@ -82,4 +186,16 @@ class Config:
             tls_ca_file=tls_ca_file,
             tls_cert_file=tls_cert_file,
             tls_key_file=tls_key_file,
+            oidc_issuer=oidc_issuer,
+            oidc_access_token=oidc_access_token,
+            oidc_client_id=oidc_client_id,
+            oidc_client_secret=oidc_client_secret,
+            oidc_redirect_uri=oidc_redirect_uri,
+            oidc_callback_port=oidc_callback_port,
+            oidc_auth_timeout=oidc_auth_timeout,
+            oidc_machine_client_id=oidc_machine_client_id,
+            oidc_machine_client_secret=oidc_machine_client_secret,
+            oidc_machine_client_secret_file=oidc_machine_client_secret_file,
+            oidc_machine_scopes=oidc_machine_scopes,
+            oidc_machine_token_endpoint=oidc_machine_token_endpoint,
         )
