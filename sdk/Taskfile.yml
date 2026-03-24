@@ -74,8 +74,6 @@ tasks:
 
   sdk:test-env:spiffe:load-test-image:
     desc: Load the SDK tests into KinD
-    deps:
-      - task: api:gen
     vars:
       GOARCH: "{{ .GOARCH | default ARCH }}"
     cmds:
@@ -162,10 +160,8 @@ tasks:
     desc: Install deps for python SDK package
     dir: ./sdk/dir-py
     deps:
-      - task: deps:bufbuild
       - task: deps:uv
     cmds:
-      - task: api:gen
       - "{{.UV_BIN}} sync --all-packages"
 
   sdk:deps:python:example:
@@ -173,7 +169,6 @@ tasks:
     internal: true
     dir: ./sdk/examples/example-py
     deps:
-      - task: deps:bufbuild
       - task: deps:uv
     cmds:
       - "{{.UV_BIN}} sync --all-packages"
@@ -182,7 +177,6 @@ tasks:
     desc: Install deps for javascript SDK package
     dir: ./sdk/dir-js
     cmds:
-      - task: api:gen
       - npm install
 
   sdk:deps:javascript:example:
