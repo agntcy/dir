@@ -10,9 +10,9 @@
   "customManagers": [
     {
       "customType": "regex",
-      "fileMatch": ["^Taskfile$"],
+      "fileMatch": ["(^|/)Taskfile[^/]*\\.ya?ml$"],
       "matchStrings": [
-        "# renovate: datasource=(?<datasource>.*?) depName=(?<depName>.*?)( versioning=(?<versioning>.*?))?( registryUrl=(?<registryUrl>.*?))?\\s.*?_VERSION\\s?:?=\\s?(?<currentValue>.*)\\s"
+        "# renovate: datasource=(?<datasource>.*?) depName=(?<depName>.*?)( versioning=(?<versioning>.*?))?( registryUrl=(?<registryUrl>.*?))?\\s+\\w+_VERSION:\\s+\"?(?<currentValue>[^\"\\s]+)\"?"
       ],
       "versioningTemplate": "{{#if versioning}}{{{versioning}}}{{else}}semver{{/if}}",
       "description": [
@@ -63,30 +63,6 @@
       "description": ["Add go label to PRs which bumps go dependencies."]
     },
     {
-      "groupName": "Docker",
-      "groupSlug": "docker",
-      "matchDatasources": ["go"],
-      "description": ["Group Docker dependency updates in single PR."],
-      "matchPackageNames": [
-        "github.com/docker{/,}**",
-        "github.com/compose-spec{/,}**"
-      ]
-    },
-    {
-      "groupName": "gorm.io",
-      "groupSlug": "gorm",
-      "matchDatasources": ["go"],
-      "description": ["Group gorm.io dependency updates in single PR."],
-      "matchPackageNames": ["gorm.io/gorm{/,}**", "gorm.io/driver{/,}**"]
-    },
-    {
-      "groupName": "Kubernetes",
-      "groupSlug": "kubernetes",
-      "matchDatasources": ["go"],
-      "description": ["Group Kubernetes dependency updates in single PR."],
-      "matchPackageNames": ["k8s.io{/,}**", "sigs.k8s.io{/,}**"]
-    },
-    {
       "groupName": "Go patches",
       "groupSlug": "go-patches",
       "matchDatasources": ["go"],
@@ -114,11 +90,45 @@
       ]
     },
     {
+      "groupName": "Docker",
+      "groupSlug": "docker",
+      "matchDatasources": ["go"],
+      "description": ["Group Docker dependency updates in single PR."],
+      "matchPackageNames": [
+        "github.com/docker{/,}**",
+        "github.com/compose-spec{/,}**"
+      ]
+    },
+    {
+      "groupName": "Kubernetes",
+      "groupSlug": "kubernetes",
+      "matchDatasources": ["go"],
+      "description": ["Group Kubernetes dependency updates in single PR."],
+      "matchPackageNames": ["k8s.io{/,}**", "sigs.k8s.io{/,}**"]
+    },
+    {
       "matchCategories": ["kubernetes"],
       "addLabels": ["kubernetes"],
       "description": [
         "Add kubernetes label to PRs which bumps kubernetes dependencies."
       ]
+    },
+    {
+      "matchFileNames": ["tests/**"],
+      "addLabels": ["test"],
+      "description": [
+        "Add test label to PRs which are related to testing framework."
+      ]
+    },
+    {
+      "matchDatasources": ["docker"],
+      "allowedVersions": "/^latest$/",
+      "pinDigests": false,
+      "description": [
+        "Always use latest version for AGNTCY container images.",
+        "Do not pin by digest."
+      ],
+      "matchPackageNames": ["ghcr.io/agntcy/**"]
     },
     {
       "groupName": "Taskfile",
@@ -140,23 +150,6 @@
         "Add ci label to PRs which are related to Github Actions.",
         "Group CI dependency updates in single PR."
       ]
-    },
-    {
-      "matchFileNames": ["tests/**"],
-      "addLabels": ["test"],
-      "description": [
-        "Add test label to PRs which are related to testing framework."
-      ]
-    },
-    {
-      "matchDatasources": ["docker"],
-      "allowedVersions": "/^latest$/",
-      "pinDigests": false,
-      "description": [
-        "Always use latest version for AGNTCY container images.",
-        "Do not pin by digest."
-      ],
-      "matchPackageNames": ["ghcr.io/agntcy/**"]
     }
   ],
   "postUpdateOptions": [

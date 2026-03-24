@@ -292,7 +292,7 @@ tasks:
     internal: true
     cmd: npm install -g renovate
     status:
-      - test -x renovate
+      - npm list -g renovate
 
   deps:renovate:sync:
     desc: Sync dependencies with Renovate
@@ -300,6 +300,7 @@ tasks:
       For extra CLI flags pass RENOVATE_OPTS (e.g. task deps:renovate:sync RENOVATE_OPTS='--dry-run').
       Default platform is local so local runs do not touch remote project data.
       Github Action CI sets RENOVATE_PLATFORM to github.
+      This step is only analytical without GITHUB TOKEN and will not update PRs or project data.
     deps:
       - deps:renovate
     dir: "{{.ROOT_DIR}}"
