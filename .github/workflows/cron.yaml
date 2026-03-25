@@ -17,15 +17,15 @@ permissions:
 
 jobs:
   build-images:
-    name: Build Images
+    name: Build Images from main branch
     uses: ./.github/workflows/reusable-build.yaml
     with:
       image_repo: ghcr.io/agntcy
       image_tag: main
       push: true
 
-  nightly-scan:
-    name: Container Security Scan (main)
+  main-branch-scan:
+    name: Container Security Scan (main branch)
     uses: ./.github/workflows/container-security-scan.yml
     needs:
       - build-images
@@ -34,7 +34,7 @@ jobs:
       upload_ref: ${{ github.ref }} # NOTE: As Cron executed on main this will be refs/heads/main
       upload_sha: ${{ github.sha }} # NOTE: As Cron executed on main this will be the SHA of the latest commit
 
-  latest-scan:
+  latest-release-scan:
     name: Container Security Scan (latest release)
     uses: ./.github/workflows/container-security-scan.yml
     needs:
