@@ -10,23 +10,34 @@
   "customManagers": [
     {
       "customType": "regex",
-      "managerFilePatterns": ["/(^|/)Taskfile[^/]*\.yml$/"],
+      "managerFilePatterns": ["/(^|/)Taskfile[^/]*\\.yml$/"],
       "matchStrings": [
-        "# renovate: datasource=(?<datasource>.*?) depName=(?<depName>.*?)( versioning=(?<versioning>.*?))?( registryUrl=(?<registryUrl>.*?))?\\s+\\w+_VERSION:\\s+\"?(?<currentValue>[^\"\\s]+)\"?"
+        "(?m)^\\s*#\\s*renovate:\\s*datasource=(?<datasource>\\S+)\\s+depName=(?<depName>\\S+)(?:\\s+versioning=(?<versioning>\\S+))?(?:\\s+registryUrl=(?<registryUrl>\\S+))?\\s*\\r?\\n\\s*(?<varName>[A-Z0-9_]+)_VERSION:\\s+\"?(?<currentValue>[^\"@\\s]+)\"?\\s*$"
       ],
-      "versioningTemplate": "{{#if versioning}}{{{versioning}}}{{else}}semver{{/if}}",
       "description": [
-        "Custom dependency manager for updating tools defined in Taskfile."
+        "Custom dependency manager for updating tool version defined in Taskfile."
       ]
     },
     {
       "customType": "regex",
-      "managerFilePatterns": ["/(^|/)Taskfile[^/]*\.yml$/"],
+      "managerFilePatterns": ["/(^|/)Taskfile[^/]*\\.yml$/"],
       "matchStrings": [
-        "# renovate: datasource=(?<datasource>.*?) depName=(?<depName>.*?)\\s+\\w+_DIGEST:\\s+\"?(?<currentDigest>sha256:[a-f0-9]+)\"?"
+        "(?m)^\\s*#\\s*renovate:\\s*datasource=(?<datasource>\\S+)\\s+depName=(?<depName>\\S+)\\s*\\r?\\n\\s*(?<varName>[A-Z0-9_]+)_VERSION:\\s+\"?(?<currentValue>[^@\"\\s]+)@(?<currentDigest>sha256:[a-f0-9]+)\"?\\s*$"
       ],
       "description": [
-        "Custom dependency manager for updating image digest refs defined in Taskfile."
+        "Custom dependency manager for updating image tag@digest defined in Taskfile."
+      ]
+    },
+    {
+      "customType": "regex",
+      "managerFilePatterns": ["/(^|/)values\\.ya?ml$/"],
+      "matchStrings": [
+        "(?ms)^\\s*#\\s*renovate:\\s*datasource=(?<datasource>\\S+)\\s+depName=(?<depName>\\S+)(?:\\s+versioning=(?<versioning>\\S+))?(?:\\s+registryUrl=(?<registryUrl>\\S+))?\\s*\\r?\\n(?:^\\s+.*\\r?\\n)*?^(?:\\s*tag:\\s*\"?(?<currentValue>[^\"\\s#]+)\"?\\s*\\r?\\n(?:^\\s+.*\\r?\\n)*?)?^\\s*digest:\\s*\"?(?<currentDigest>sha256:[a-f0-9]+)\"?\\s*$"
+      ],
+      "versioningTemplate": "docker",
+      "currentValueTemplate": "{{#if currentValue}}{{currentValue}}{{else}}latest{{/if}}",
+      "description": [
+        "Custom dependency manager for updating image digests in Helm values using inline renovate comments."
       ]
     }
   ],
@@ -67,6 +78,11 @@
   ],
   "osvVulnerabilityAlerts": true,
   "packageRules": [
+    {
+      "matchUpdateTypes": ["major"],
+      "enabled": false,
+      "description": ["Ignore major dependency updates."]
+    },
     {
       "matchCategories": ["golang"],
       "addLabels": ["go"],
@@ -141,11 +157,19 @@
       "matchPackageNames": ["ghcr.io/agntcy/**"]
     },
     {
+      "matchManagers": ["helm-values"],
+      "matchPackageNames": ["docker.io/bitnami/postgresql"],
+      "enabled": false,
+      "description": [
+        "Disable helm-values updates for PostgreSQL to avoid tag rewrites.",
+        "PostgreSQL Helm digest is managed by custom regex manager."
+      ]
+    },
+    {
       "groupName": "Taskfile",
       "groupSlug": "taskfile",
       "matchFileNames": ["Taskfile.*"],
       "addLabels": ["build"],
-      "extractVersion": "^v(?<version>.*)$",
       "description": [
         "Add build label to PRs which are related to build tools defined in Taskfile.",
         "Group Taskfile dependency updates in single PR."
@@ -174,6 +198,7 @@
       "groupName": "postgresql",
       "groupSlug": "postgresql",
       "matchPackageNames": ["docker.io/bitnami/postgresql"],
+      "pinDigests": true,
       "description": ["Group PostgreSQL version bumps into a single PR."]
     },
     {
@@ -191,6 +216,15 @@
       "groupSlug": "regsync",
       "matchPackageNames": ["github.com/regclient/regclient"],
       "description": ["Group regsync version bumps into a single PR."]
+    },
+    {
+      "matchJsonata": [
+        "$exists(vulnerabilityFixVersion) or isVulnerabilityAlert = true"
+      ],
+      "enabled": true,
+      "description": [
+        "Always allow vulnerability/security fixes, even when other rules disable majors or specific dependencies."
+      ]
     }
   ],
   "postUpdateOptions": [

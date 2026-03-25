@@ -6,7 +6,7 @@ services:
   # A2A Agent Example - Exposes A2A agent card
   # ============================================================
   service-a2a:
-    image: ghcr.io/ramizpolic/a2a-helloworld:latest
+    image: ghcr.io/ramizpolic/a2a-helloworld
     labels:
       - "org.agntcy/discover=true"
       - "org.agntcy/agent-type=a2a"
