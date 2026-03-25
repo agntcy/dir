@@ -21,19 +21,19 @@ jobs:
     uses: ./.github/workflows/reusable-build.yaml
     with:
       image_repo: ghcr.io/agntcy
-      image_tag: nightly
+      image_tag: main
       push: true
 
   nightly-scan:
-    name: Container Security Scan (nightly)
+    name: Container Security Scan (main)
     uses: ./.github/workflows/container-security-scan.yml
     needs:
       - build-images
     with:
-      image-tag: nightly
+      image-tag: main
 
   latest-scan:
-    name: Container Security Scan (latest)
+    name: Container Security Scan (latest release)
     uses: ./.github/workflows/container-security-scan.yml
     needs:
       - build-images
