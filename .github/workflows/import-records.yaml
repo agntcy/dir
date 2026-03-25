@@ -97,19 +97,15 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
-      - name: Setup Go
-        uses: actions/setup-go@4b73464bb391d4059bd26b0524d20df3927bd417 # v6.3.0
+      - name: Build dirctl from branch source
+        id: build-dirctl
+        uses: ./.github/actions/build-dirctl
         with:
-          go-version: "1.26.1"
+          go_version: "1.26.1"
 
-      - name: Install Task
-        uses: go-task/setup-task@3be4020d41929789a01026e0e427a4321ce0ad44 #v2.0.0
-
-      # TODO: Remove when release 1.0.0 is out
-      - name: Build dirctl
-        run: |
-          task cli:compile
-          ls -la .bin/
+      - name: Fetch Directory OIDC token (import)
+        id: oidc-dir-import
+        uses: ./.github/actions/fetch-oidc-token
 
       - name: Install mcp-scanner
         if: ${{ env.SCANNER_ENABLED == 'true' }}
@@ -148,14 +144,15 @@ jobs:
           AZURE_OPENAI_BASE_URL: ${{ secrets.AZURE_OPENAI_ENDPOINT }}
           AZURE_OPENAI_DEPLOYMENT: "gpt-4o"
           AZURE_OPENAI_API_VERSION: "2024-10-21"
-          DIRECTORY_CLIENT_AUTH_MODE: "github"
+          DIRECTORY_CLIENT_AUTH_MODE: "oidc"
           DIRECTORY_CLIENT_SERVER_ADDRESS: ${{ env.SERVER_ADDRESS }}
-          DIRECTORY_CLIENT_GITHUB_TOKEN: ${{ secrets.DIRECTORY_MCP_BOT_PAT }}
+          DIRECTORY_CLIENT_OIDC_TOKEN: ${{ steps.oidc-dir-import.outputs.token }}
+          DIRCTL_PATH: ${{ steps.build-dirctl.outputs.dirctl_path }}
         run: |
           echo "--- Processing Entry $((${{ matrix.entry.index }} + 1)) ---"
 
           CIDS_FILE="imported-cids-${{ matrix.entry.index }}.txt"
-          CMD=(.bin/dirctl import --type=mcp --url=https://registry.modelcontextprotocol.io/v0.1 --enrich-config=mcphost_ci.json --enrich-rate-limit="${{ env.RATE_LIMIT }}")
+          CMD=("${DIRCTL_PATH}" import --type=mcp --url=https://registry.modelcontextprotocol.io/v0.1 --enrich-config=mcphost_ci.json --enrich-rate-limit="${{ env.RATE_LIMIT }}")
 
           if [[ "${{ env.DRY_RUN }}" == "true" ]]; then
              CMD+=("--dry-run")
@@ -207,12 +204,26 @@ jobs:
 
       # Sign records with fresh OIDC tokens after import completes
       # This avoids token expiration issues during long-running imports
+      - name: Fetch Directory OIDC token (sign)
+        if: ${{ env.SIGN == 'true' && env.DRY_RUN == 'false' }}
+        id: oidc-dir-sign
+        uses: ./.github/actions/fetch-oidc-token
+
+      - name: Fetch Sigstore OIDC token
+        if: ${{ env.SIGN == 'true' && env.DRY_RUN == 'false' }}
+        id: oidc-sigstore
+        uses: ./.github/actions/fetch-oidc-token
+        with:
+          audience: sigstore
+
       - name: Sign Imported Records
         if: ${{ env.SIGN == 'true' && env.DRY_RUN == 'false' }}
         env:
-          DIRECTORY_CLIENT_AUTH_MODE: "github"
+          DIRECTORY_CLIENT_AUTH_MODE: "oidc"
           DIRECTORY_CLIENT_SERVER_ADDRESS: ${{ env.SERVER_ADDRESS }}
-          DIRECTORY_CLIENT_GITHUB_TOKEN: ${{ secrets.DIRECTORY_MCP_BOT_PAT }}
+          DIRECTORY_CLIENT_OIDC_TOKEN: ${{ steps.oidc-dir-sign.outputs.token }}
+          SIGSTORE_OIDC_TOKEN: ${{ steps.oidc-sigstore.outputs.token }}
+          DIRCTL_PATH: ${{ steps.build-dirctl.outputs.dirctl_path }}
         run: |
           CIDS_FILE="${{ steps.import.outputs.cids_file }}"
 
@@ -235,13 +246,9 @@ jobs:
             [ -z "$CID" ] && continue
             
             echo "Signing CID: $CID"
-            
-            # Get fresh OIDC token for each signing operation to avoid expiration
-            OIDC_TOKEN=$(curl -s -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
-              "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=sigstore" | jq -r '.value')
-            
-            if .bin/dirctl sign "$CID" \
-              --oidc-token="$OIDC_TOKEN" \
+
+            if "${DIRCTL_PATH}" sign "$CID" \
+              --oidc-token="${SIGSTORE_OIDC_TOKEN}" \
               --oidc-provider-url="https://token.actions.githubusercontent.com" \
               --oidc-client-id="https://github.com/${{ github.repository }}/.github/workflows/import-records.yaml@${{ github.ref }}"; then
               SIGNED=$((SIGNED + 1))
