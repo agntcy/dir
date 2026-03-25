@@ -18,10 +18,10 @@ vars:
   ZOT_VERSION: "2.1.15"
   # renovate: datasource=go depName=github.com/spiffe/spire versioning=semver
   SPIRE_VERSION: "1.14.4"
-  # renovate: datasource=go depName=github.com/regclient/regclient
+  # renovate: datasource=go depName=github.com/regclient/regclient versioning=semver
   REGSYNC_VERSION: "v0.11.2"
   # renovate: datasource=docker depName=docker.io/bitnami/postgresql
-  POSTGRESQL_DIGEST: "sha256:e8b68936d05ee665974430bb4765fedcdc5c9ba399e133e120e2deed77f54dbf"
+  POSTGRESQL_VERSION: "latest@sha256:621359194c6a0f0fd502c1996f40f539c3e5f2da43401b6d52ee5614722b7cba"
 
   ## Container images for vulnerability scanning
   VULN_SCAN_IMAGES:
@@ -34,7 +34,7 @@ vars:
     - "ghcr.io/project-zot/zot:v{{.ZOT_VERSION}}"
     - "ghcr.io/spiffe/spire-server:{{.SPIRE_VERSION}}"
     - "ghcr.io/spiffe/spire-agent:{{.SPIRE_VERSION}}"
-    - "docker.io/bitnami/postgresql@{{.POSTGRESQL_DIGEST}}"
+    - "docker.io/bitnami/postgresql:{{.POSTGRESQL_VERSION}}"
 
   ## Image config
   BUILD_LDFLAGS: "-s -w -extldflags -static {{.VERSION_LDFLAGS}}"
@@ -49,6 +49,7 @@ vars:
   COVERAGE_PKGS: '{{ .COVERAGE_PKGS | default "github.com/agntcy/dir/api/...,github.com/agntcy/dir/cli/...,github.com/agntcy/dir/client/...,github.com/agntcy/dir/importer/...,github.com/agntcy/dir/utils/..." }}'
 
   ## Dependency config
+  RENOVATE_VERSION: "43.89.5"
   BIN_DIR: "{{ .ROOT_DIR }}/.bin"
   DIRCTL_BIN: "{{ .BIN_DIR}}/dirctl"
   HELM_VERSION: "4.1.3"

@@ -290,7 +290,7 @@ tasks:
   deps:renovate:
     desc: Install Renovate
     internal: true
-    cmd: npm install -g renovate
+    cmd: npm install -g renovate@{{.RENOVATE_VERSION}}
     status:
       - npm list -g renovate
 

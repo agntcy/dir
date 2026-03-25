@@ -29,7 +29,7 @@ services:
   # Discovery - Watches runtime and resolves metadata (writes to etcd)
   # ============================================================
   discovery:
-    image: ghcr.io/agntcy/dir-runtime-discovery:latest
+    image: ghcr.io/agntcy/dir-runtime-discovery
     container_name: runtime-discovery
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
@@ -58,7 +58,7 @@ services:
   # Server - gRPC API for querying discovered services (reads from etcd)
   # ============================================================
   server:
-    image: ghcr.io/agntcy/dir-runtime-server:latest
+    image: ghcr.io/agntcy/dir-runtime-server
     container_name: runtime-server
     environment:
       # Storage (etcd)
