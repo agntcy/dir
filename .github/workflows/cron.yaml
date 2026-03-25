@@ -29,13 +29,3 @@ jobs:
     uses: ./.github/workflows/container-security-scan.yml
     needs:
       - build-images
-    with:
-      image-tag: main
-      upload_ref: ${{ github.ref }} # NOTE: As Cron executed on main this will be refs/heads/main
-      upload_sha: ${{ github.sha }} # NOTE: As Cron executed on main this will be the SHA of the latest commit
-
-  latest-release-scan:
-    name: Container Security Scan (latest release)
-    uses: ./.github/workflows/container-security-scan.yml
-    needs:
-      - build-images
