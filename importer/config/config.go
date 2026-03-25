@@ -11,6 +11,7 @@ import (
 	corev1 "github.com/agntcy/dir/api/core/v1"
 	searchv1 "github.com/agntcy/dir/api/search/v1"
 	"github.com/agntcy/dir/client/streaming"
+	enricherconfig "github.com/agntcy/dir/importer/enricher/config"
 	scannerconfig "github.com/agntcy/dir/importer/scanner/config"
 )
 
@@ -20,12 +21,6 @@ type RegistryType string
 const (
 	// RegistryTypeMCP represents the Model Context Protocol registry.
 	RegistryTypeMCP RegistryType = "mcp"
-
-	// FUTURE: RegistryTypeNANDA represents the NANDA registry.
-	// RegistryTypeNANDA RegistryType = "nanda".
-
-	// FUTURE:RegistryTypeA2A represents the Agent-to-Agent protocol registry.
-	// RegistryTypeA2A RegistryType = "a2a".
 )
 
 // ClientInterface defines the interface for the DIR client used by importers.
@@ -45,22 +40,14 @@ type Config struct {
 	RegistryURL  string            // Base URL of the registry
 	Filters      map[string]string // Registry-specific filters
 	Limit        int               // Number of records to import (default: 0 for all)
-	Concurrency  int               // Number of concurrent workers (default: 1)
 	DryRun       bool              // If true, preview without actually importing
 	SignFunc     SignFunc          // Function to sign records (if set, signing is enabled)
-
-	// Enrichment is mandatory - these fields are always used
-	EnricherConfigFile            string // Path to MCPHost configuration file (e.g., mcphost.json)
-	EnricherSkillsPromptTemplate  string // Optional: path to custom skills prompt template or inline prompt (empty = use default)
-	EnricherDomainsPromptTemplate string // Optional: path to custom domains prompt template or inline prompt (empty = use default)
-
-	// Rate limiting for LLM API calls to avoid provider rate limit errors
-	EnricherRequestsPerMinute int // Maximum LLM requests per minute (0 = use default of 10)
 
 	Force bool // If true, push even if record already exists
 	Debug bool // If true, enable verbose debug output
 
-	Scanner scannerconfig.Config // Scanner configuration
+	Enricher enricherconfig.Config // Configuration for the enricher pipeline stage
+	Scanner  scannerconfig.Config  // Configuration for the scanner pipeline stage
 }
 
 // Validate checks if the configuration is valid.
@@ -73,8 +60,8 @@ func (c *Config) Validate() error {
 		return errors.New("registry URL is required")
 	}
 
-	if c.Concurrency <= 0 {
-		c.Concurrency = 1 // Set default concurrency
+	if err := c.Enricher.Validate(); err != nil {
+		return fmt.Errorf("enricher configuration is invalid: %w", err)
 	}
 
 	if err := c.Scanner.Validate(); err != nil {

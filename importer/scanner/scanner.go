@@ -9,11 +9,12 @@ import (
 	"strings"
 
 	corev1 "github.com/agntcy/dir/api/core/v1"
-	"github.com/agntcy/dir/importer/pipeline"
 	_ "github.com/agntcy/dir/importer/scanner/behavioral" // register behavioral scanner
 	scannerconfig "github.com/agntcy/dir/importer/scanner/config"
 	"github.com/agntcy/dir/importer/scanner/factory"
-	"github.com/agntcy/dir/importer/scanner/types"
+	scannertypes "github.com/agntcy/dir/importer/scanner/types"
+	"github.com/agntcy/dir/importer/shared"
+	"github.com/agntcy/dir/importer/types"
 	"github.com/agntcy/dir/utils/logging"
 )
 
@@ -23,7 +24,7 @@ var logger = logging.Logger("importer/scanner")
 // It implements pipeline.Scanner by delegating to individual Scanner implementations.
 type Scanner struct {
 	cfg      scannerconfig.Config
-	scanners []types.Scanner
+	scanners []scannertypes.Scanner
 }
 
 // New creates an Scanner that runs the configured scanners for each record.
@@ -38,7 +39,7 @@ func New(cfg scannerconfig.Config) (*Scanner, error) {
 
 // Scan implements pipeline.Scanner. For each record it runs all configured scanners,
 // merges their results, and applies fail-on-error/warning drop logic.
-func (s *Scanner) Scan(ctx context.Context, inputCh <-chan *corev1.Record, result *pipeline.Result) (<-chan *corev1.Record, <-chan error) {
+func (s *Scanner) Scan(ctx context.Context, inputCh <-chan *corev1.Record, result *types.Result) (<-chan *corev1.Record, <-chan error) {
 	outputCh := make(chan *corev1.Record)
 	errCh := make(chan error)
 
@@ -55,7 +56,7 @@ func (s *Scanner) Scan(ctx context.Context, inputCh <-chan *corev1.Record, resul
 					return
 				}
 
-				recordName, _ := pipeline.ExtractNameVersion(record)
+				recordName, _ := shared.ExtractNameVersion(record)
 
 				scanResult, err := s.runAll(ctx, record, recordName)
 				if err != nil {
@@ -87,8 +88,8 @@ func (s *Scanner) Scan(ctx context.Context, inputCh <-chan *corev1.Record, resul
 // runAll executes every configured scanner for a single record and merges results.
 // If a scanner returns an error, it is logged and that scanner's result is skipped.
 // Returns an error only if ALL scanners fail.
-func (s *Scanner) runAll(ctx context.Context, record *corev1.Record, recordName string) (*types.ScanResult, error) {
-	var results []*types.ScanResult
+func (s *Scanner) runAll(ctx context.Context, record *corev1.Record, recordName string) (*scannertypes.ScanResult, error) {
+	var results []*scannertypes.ScanResult
 
 	var lastErr error
 
@@ -114,16 +115,16 @@ func (s *Scanner) runAll(ctx context.Context, record *corev1.Record, recordName 
 // mergeScanResults combines results from multiple scanners into a single ScanResult.
 // The merged result is Safe only if all non-skipped scanners reported safe.
 // It is Skipped only if ALL scanners skipped.
-func mergeScanResults(results []*types.ScanResult) *types.ScanResult {
+func mergeScanResults(results []*scannertypes.ScanResult) *scannertypes.ScanResult {
 	if len(results) == 0 {
-		return &types.ScanResult{Skipped: true, SkippedReason: "no scanners"}
+		return &scannertypes.ScanResult{Skipped: true, SkippedReason: "no scanners"}
 	}
 
 	if len(results) == 1 {
 		return results[0]
 	}
 
-	merged := &types.ScanResult{Safe: true, Skipped: true}
+	merged := &scannertypes.ScanResult{Safe: true, Skipped: true}
 
 	var skipReasons []string
 
@@ -162,8 +163,8 @@ func (s *Scanner) handleResult(
 	ctx context.Context,
 	record *corev1.Record,
 	recordName string,
-	scanResult *types.ScanResult,
-	result *pipeline.Result,
+	scanResult *scannertypes.ScanResult,
+	result *types.Result,
 	outputCh chan<- *corev1.Record,
 	_ chan<- error,
 ) {
@@ -208,3 +209,11 @@ func (s *Scanner) handleResult(
 		}
 	}
 }
+
+// closedScannerErrCh is closed with no values; ranging over it exits immediately when the scanner stage is skipped.
+var ClosedScannerErrCh = func() <-chan error {
+	ch := make(chan error)
+	close(ch)
+
+	return ch
+}()

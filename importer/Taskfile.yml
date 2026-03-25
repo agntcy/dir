@@ -3,11 +3,6 @@
 
 version: "3"
 
-vars:
-  # TODO: Switch to upstream cisco-ai-defense/mcp-scanner once the JSON fix is merged
-  MCP_SCANNER_REPO: "adamtagscherer/mcp-scanner"
-  MCP_SCANNER_BRANCH: "fix/handle-markdown-json-in-classifier"
-
 tasks:
   default:
     cmd: echo "Run the main Taskfile instead of this one."
@@ -17,10 +12,6 @@ tasks:
     deps:
       - task: deps:uv
     cmds:
-      - cmd: echo "Installing mcp-scanner from {{.MCP_SCANNER_REPO}}@{{.MCP_SCANNER_BRANCH}}..."
+      - cmd: echo "Installing mcp-scanner"
       - cmd: >-
-          {{.UV_BIN}} tool install
-          --force
-          "cisco-ai-mcp-scanner @ git+https://github.com/{{.MCP_SCANNER_REPO}}.git@{{.MCP_SCANNER_BRANCH}}"
-          --with yara-python
-          --python-preference only-managed
+          {{.UV_BIN}} tool install --python 3.13 cisco-ai-mcp-scanner

@@ -6,7 +6,7 @@ package importcmd
 import (
 	signcmd "github.com/agntcy/dir/cli/cmd/sign"
 	"github.com/agntcy/dir/importer/config"
-	"github.com/agntcy/dir/importer/enricher"
+	enricherconfig "github.com/agntcy/dir/importer/enricher/config"
 	scannerconfig "github.com/agntcy/dir/importer/scanner/config"
 )
 
@@ -31,16 +31,14 @@ func init() {
 	flags.BoolVar(&opts.Force, "force", false, "Force push even if record already exists")
 	flags.BoolVar(&opts.Debug, "debug", false, "Enable debug output for deduplication and validation failures")
 
-	// Enrichment is mandatory - these flags configure the enrichment process
-	flags.StringVar(&opts.EnricherConfigFile, "enrich-config", enricher.DefaultConfigFile, "Path to MCPHost configuration file (mcphost.json)")
-	flags.StringVar(&opts.EnricherSkillsPromptTemplate, "enrich-skills-prompt", "", "Optional: path to custom skills prompt template file or inline prompt (empty = use default)")
-	flags.StringVar(&opts.EnricherDomainsPromptTemplate, "enrich-domains-prompt", "", "Optional: path to custom domains prompt template file or inline prompt (empty = use default)")
-
-	// Rate limiting for LLM API calls
-	flags.IntVar(&opts.EnricherRequestsPerMinute, "enrich-rate-limit", enricher.DefaultRequestsPerMinute, "Maximum LLM API requests per minute (to avoid rate limit errors)")
+	// Enrichment flags
+	flags.StringVar(&opts.Enricher.ConfigFile, "enrich-config", enricherconfig.DefaultConfigFile, "Path to MCPHost configuration file (mcphost.json)")
+	flags.StringVar(&opts.Enricher.SkillsPromptTemplate, "enrich-skills-prompt", "", "Path to custom skills prompt template file")
+	flags.StringVar(&opts.Enricher.DomainsPromptTemplate, "enrich-domains-prompt", "", "Path to custom domains prompt template file")
+	flags.IntVar(&opts.Enricher.RequestsPerMinute, "enrich-rate-limit", enricherconfig.DefaultRequestsPerMinute, "Maximum LLM API requests per minute (to avoid rate limit errors)")
 
 	// Scanner flags
-	flags.BoolVar(&opts.Scanner.Enabled, "scanner-enabled", false, "Run all registered security scanners on each record")
+	flags.BoolVar(&opts.Scanner.Enabled, "scanner-enabled", scannerconfig.DefaultScannerEnabled, "Run all registered security scanners on each record")
 	flags.DurationVar(&opts.Scanner.Timeout, "scanner-timeout", scannerconfig.DefaultTimeout, "Timeout per record scan")
 	flags.StringVar(&opts.Scanner.CLIPath, "scanner-cli-path", scannerconfig.DefaultCLIPath, "Path to mcp-scanner binary (default: mcp-scanner from PATH)")
 	flags.BoolVar(&opts.Scanner.FailOnError, "scanner-fail-on-error", scannerconfig.DefaultFailOnError, "Do not import records that have error-severity scanner findings")

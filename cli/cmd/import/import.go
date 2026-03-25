@@ -14,11 +14,12 @@ import (
 	"github.com/agntcy/dir/cli/presenter"
 	ctxUtils "github.com/agntcy/dir/cli/util/context"
 	"github.com/agntcy/dir/importer/config"
-	_ "github.com/agntcy/dir/importer/mcp" // Import MCP importer to trigger its init() function for auto-registration.
+	"github.com/agntcy/dir/importer/factory"
 	"github.com/agntcy/dir/importer/types"
-	"github.com/agntcy/dir/importer/types/factory"
 	"github.com/spf13/cobra"
 )
+
+const cidOutputFilePerm = 0o600
 
 var Command = &cobra.Command{
 	Use:   "import",
@@ -32,7 +33,7 @@ The import command fetches records from the specified registry and pushes
 them to DIR.
 
 Examples:
-  # Import from MCP registry
+  # Import from MCP registry with default enrichment configuration
   dirctl import --type=mcp --url=https://registry.modelcontextprotocol.io
 
   # Import with filters
@@ -41,9 +42,6 @@ Examples:
 
   # Preview without importing
   dirctl import --type=mcp --url=https://registry.modelcontextprotocol.io --dry-run
-
-  # Import with default enrichment configuration
-  dirctl import --type=mcp --url=https://registry.modelcontextprotocol.io
 
   # Use custom MCPHost configuration and prompt templates
   dirctl import --type=mcp --url=https://registry.modelcontextprotocol.io \
@@ -84,7 +82,7 @@ func runImport(cmd *cobra.Command) error {
 	}
 
 	// Create importer instance from pre-initialized factory
-	importer, err := factory.Create(c, opts.Config)
+	importer, err := factory.Create(cmd.Context(), c, opts.Config)
 	if err != nil {
 		return fmt.Errorf("failed to create importer: %w", err)
 	}
@@ -102,17 +100,21 @@ func runImport(cmd *cobra.Command) error {
 
 	presenter.Printf(cmd, "\n")
 
-	result, err := importer.Run(cmd.Context(), opts.Config)
-	if err != nil {
-		return fmt.Errorf("import failed: %w", err)
+	var result *types.ImportResult
+
+	if opts.DryRun {
+		result = importer.DryRun(cmd.Context())
+	} else {
+		result = importer.Run(cmd.Context())
 	}
 
-	// Print summary
 	printSummary(cmd, result)
 
 	// Write CIDs to output file if specified
 	if opts.OutputCIDFile != "" && len(result.ImportedCIDs) > 0 {
-		if err := writeCIDsToFile(opts.OutputCIDFile, result.ImportedCIDs); err != nil {
+		content := strings.Join(result.ImportedCIDs, "\n") + "\n"
+
+		if err := os.WriteFile(opts.OutputCIDFile, []byte(content), cidOutputFilePerm); err != nil {
 			return fmt.Errorf("failed to write CIDs to file: %w", err)
 		}
 
@@ -120,13 +122,6 @@ func runImport(cmd *cobra.Command) error {
 	}
 
 	return nil
-}
-
-// writeCIDsToFile writes a list of CIDs to a file, one per line.
-func writeCIDsToFile(path string, cids []string) error {
-	content := strings.Join(cids, "\n") + "\n"
-
-	return os.WriteFile(path, []byte(content), 0o600) //nolint:mnd,wrapcheck
 }
 
 func printSummary(cmd *cobra.Command, result *types.ImportResult) {

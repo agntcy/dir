@@ -1,7 +1,7 @@
 // Copyright AGNTCY Contributors (https://github.com/agntcy)
 // SPDX-License-Identifier: Apache-2.0
 
-package mcp
+package fetcher
 
 import (
 	"context"
@@ -37,7 +37,7 @@ var supportedFilters = []string{
 }
 
 // Fetcher implements the pipeline.Fetcher interface for MCP registry.
-type Fetcher struct {
+type mcpFetcher struct {
 	url        *url.URL
 	httpClient *http.Client
 	filters    map[string]string
@@ -45,7 +45,7 @@ type Fetcher struct {
 }
 
 // NewFetcher creates a new MCP fetcher.
-func NewFetcher(baseURL string, filters map[string]string, limit int) (*Fetcher, error) {
+func NewFetcher(baseURL string, filters map[string]string, limit int) (*mcpFetcher, error) {
 	// Parse and validate base URL
 	u, err := url.Parse(baseURL + "/servers")
 	if err != nil {
@@ -59,7 +59,7 @@ func NewFetcher(baseURL string, filters map[string]string, limit int) (*Fetcher,
 		}
 	}
 
-	return &Fetcher{
+	return &mcpFetcher{
 		url: u,
 		httpClient: &http.Client{
 			Timeout: 30 * time.Second, //nolint:mnd
@@ -70,9 +70,9 @@ func NewFetcher(baseURL string, filters map[string]string, limit int) (*Fetcher,
 }
 
 // Fetch retrieves servers from the MCP registry and sends them to the output channel.
-func (f *Fetcher) Fetch(ctx context.Context) (<-chan any, <-chan error) {
+func (f *mcpFetcher) Fetch(ctx context.Context) (<-chan mcpapiv0.ServerResponse, <-chan error) {
 	// Use buffered channel to allow fetcher to work ahead of transformers
-	outputCh := make(chan any, 50) //nolint:mnd
+	outputCh := make(chan mcpapiv0.ServerResponse, 50) //nolint:mnd
 	errCh := make(chan error, 1)
 
 	go func() {
@@ -130,7 +130,7 @@ func (f *Fetcher) Fetch(ctx context.Context) (<-chan any, <-chan error) {
 }
 
 // listServersPage fetches a single page of servers from the MCP registry.
-func (f *Fetcher) listServersPage(ctx context.Context, cursor string) ([]mcpapiv0.ServerResponse, string, error) {
+func (f *mcpFetcher) listServersPage(ctx context.Context, cursor string) ([]mcpapiv0.ServerResponse, string, error) {
 	// Add filters as query parameters
 	query := f.url.Query()
 
@@ -179,12 +179,4 @@ func (f *Fetcher) listServersPage(ctx context.Context, cursor string) ([]mcpapiv
 	}
 
 	return registryResp.Servers, registryResp.Metadata.NextCursor, nil
-}
-
-// ServerResponseFromInterface converts an interface{} back to ServerResponse.
-// This is a helper for the transformer stage.
-func ServerResponseFromInterface(i any) (mcpapiv0.ServerResponse, bool) {
-	resp, ok := i.(mcpapiv0.ServerResponse)
-
-	return resp, ok
 }

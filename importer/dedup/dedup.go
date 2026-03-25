@@ -1,7 +1,7 @@
 // Copyright AGNTCY Contributors (https://github.com/agntcy)
 // SPDX-License-Identifier: Apache-2.0
 
-package pipeline
+package dedup
 
 import (
 	"context"
@@ -12,6 +12,8 @@ import (
 	corev1 "github.com/agntcy/dir/api/core/v1"
 	searchv1 "github.com/agntcy/dir/api/search/v1"
 	"github.com/agntcy/dir/importer/config"
+	"github.com/agntcy/dir/importer/shared"
+	"github.com/agntcy/dir/importer/types"
 	"github.com/agntcy/dir/utils/logging"
 	mcpapiv0 "github.com/modelcontextprotocol/registry/pkg/api/v0"
 )
@@ -127,7 +129,7 @@ func (c *MCPDuplicateChecker) buildCache(ctx context.Context) error {
 			c.mu.Lock()
 
 			for _, record := range records {
-				nameVersion, err := ExtractNameVersion(record)
+				nameVersion, err := shared.ExtractNameVersion(record)
 				if err != nil {
 					continue
 				}
@@ -171,8 +173,8 @@ func (c *MCPDuplicateChecker) buildCache(ctx context.Context) error {
 // It filters out duplicate records from the input channel and returns a channel
 // with only non-duplicate records. It tracks only the skipped (duplicate) count.
 // The transform stage will track the total records that are actually processed.
-func (c *MCPDuplicateChecker) FilterDuplicates(ctx context.Context, inputCh <-chan any, result *Result) <-chan any {
-	outputCh := make(chan any)
+func (c *MCPDuplicateChecker) FilterDuplicates(ctx context.Context, inputCh <-chan mcpapiv0.ServerResponse, result *types.Result) <-chan mcpapiv0.ServerResponse {
+	outputCh := make(chan mcpapiv0.ServerResponse)
 
 	go func() {
 		defer close(outputCh)
@@ -188,10 +190,10 @@ func (c *MCPDuplicateChecker) FilterDuplicates(ctx context.Context, inputCh <-ch
 
 				// Check if duplicate
 				if c.isDuplicate(source) {
-					result.mu.Lock()
+					result.Mu.Lock()
 					result.TotalRecords++
 					result.SkippedCount++
-					result.mu.Unlock()
+					result.Mu.Unlock()
 
 					continue
 				}

@@ -1,77 +1,56 @@
 // Copyright AGNTCY Contributors (https://github.com/agntcy)
 // SPDX-License-Identifier: Apache-2.0
 
-//nolint:nilnil
 package config
 
 import (
+	"os"
+	"path/filepath"
 	"testing"
+
+	enricherconfig "github.com/agntcy/dir/importer/enricher/config"
+	scannerconfig "github.com/agntcy/dir/importer/scanner/config"
 )
 
-func TestConfig_Validate(t *testing.T) {
-	tests := []struct {
-		name    string
-		config  Config
-		wantErr bool
-		errMsg  string
-	}{
-		{
-			name: "valid config",
-			config: Config{
-				RegistryType: RegistryTypeMCP,
-				RegistryURL:  "https://registry.example.com",
-				Concurrency:  10,
-			},
-			wantErr: false,
-		},
-		{
-			name: "missing registry type",
-			config: Config{
-				RegistryURL: "https://registry.example.com",
-				Concurrency: 10,
-			},
-			wantErr: true,
-			errMsg:  "registry type is required",
-		},
-		{
-			name: "missing registry URL",
-			config: Config{
-				RegistryType: RegistryTypeMCP,
-				Concurrency:  10,
-			},
-			wantErr: true,
-			errMsg:  "registry URL is required",
-		},
-		{
-			name: "zero concurrency sets default",
-			config: Config{
-				RegistryType: RegistryTypeMCP,
-				RegistryURL:  "https://registry.example.com",
-				Concurrency:  0,
-			},
-			wantErr: false,
-		},
+func TestConfig_Validate_MissingRegistryType(t *testing.T) {
+	t.Parallel()
+
+	c := Config{RegistryURL: "https://x.com"}
+	if err := c.Validate(); err == nil {
+		t.Fatal("expected error for empty RegistryType")
+	}
+}
+
+func TestConfig_Validate_MissingURL(t *testing.T) {
+	t.Parallel()
+
+	c := Config{RegistryType: RegistryTypeMCP}
+	if err := c.Validate(); err == nil {
+		t.Fatal("expected error for empty RegistryURL")
+	}
+}
+
+func TestConfig_Validate_OK(t *testing.T) {
+	t.Parallel()
+
+	dir := t.TempDir()
+
+	cfgPath := filepath.Join(dir, "mcphost.json")
+	if err := os.WriteFile(cfgPath, []byte(`{}`), 0o600); err != nil {
+		t.Fatal(err)
 	}
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			err := tt.config.Validate()
-			if (err != nil) != tt.wantErr {
-				t.Errorf("Config.Validate() error = %v, wantErr %v", err, tt.wantErr)
+	c := Config{
+		RegistryType: RegistryTypeMCP,
+		RegistryURL:  "https://registry.example.com",
+		Enricher: enricherconfig.Config{
+			ConfigFile:        cfgPath,
+			RequestsPerMinute: 1,
+		},
+		Scanner: scannerconfig.Config{Enabled: false},
+	}
 
-				return
-			}
-
-			if tt.wantErr && err.Error() != tt.errMsg {
-				t.Errorf("Config.Validate() error message = %v, want %v", err.Error(), tt.errMsg)
-			}
-
-			// Check that default concurrency is set when invalid
-			if !tt.wantErr && tt.name == "zero concurrency sets default" {
-				if tt.config.Concurrency != 1 {
-					t.Errorf("Config.Validate() did not set default concurrency, got %d, want 1", tt.config.Concurrency)
-				}
-			}
-		})
+	if err := c.Validate(); err != nil {
+		t.Fatalf("Validate: %v", err)
 	}
 }
