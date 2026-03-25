@@ -34,10 +34,9 @@
       "customType": "regex",
       "managerFilePatterns": ["/(^|/)values\\.ya?ml$/"],
       "matchStrings": [
-        "(?ms)^\\s*#\\s*renovate:\\s*datasource=(?<datasource>\\S+)\\s+depName=(?<depName>\\S+)(?:\\s+versioning=(?<versioning>\\S+))?(?:\\s+registryUrl=(?<registryUrl>\\S+))?\\s*\\r?\\n(?:^\\s+.*\\r?\\n)*?^(?:\\s*tag:\\s*\"?(?<currentValue>[^\"\\s#]+)\"?\\s*\\r?\\n(?:^\\s+.*\\r?\\n)*?)?^\\s*digest:\\s*\"?(?<currentDigest>sha256:[a-f0-9]+)\"?\\s*$"
+        "(?ms)^\\s*#\\s*renovate:\\s*datasource=(?<datasource>\\S+)\\s+depName=(?<depName>\\S+)(?:\\s+versioning=(?<versioning>\\S+))?(?:\\s+registryUrl=(?<registryUrl>\\S+))?\\s*\\r?\\n(?:^\\s+.*\\r?\\n)*?^\\s*tag:\\s*\"?(?<currentValue>[^\"\\s#]+)\"?\\s*\\r?\\n(?:^\\s+.*\\r?\\n)*?^\\s*digest:\\s*\"?(?<currentDigest>sha256:[a-f0-9]+)\"?\\s*$"
       ],
       "versioningTemplate": "docker",
-      "currentValueTemplate": "{{#if currentValue}}{{currentValue}}{{else}}latest{{/if}}",
       "description": [
         "Custom dependency manager for updating image digests in Helm values using inline renovate comments."
       ]
