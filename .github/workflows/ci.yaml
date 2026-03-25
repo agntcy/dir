@@ -166,6 +166,14 @@ jobs:
       image_tag: ${{ github.sha }}
       build_coverage_images: true
 
+  build-main-branch-images: # NOTE: This is duplicate now, after CI refactor this will be removed as is.
+    name: Build Images from main branch
+    uses: ./.github/workflows/reusable-build.yaml
+    with:
+      image_repo: ghcr.io/agntcy
+      image_tag: main
+      push: true
+
   test:
     name: Test
     needs:

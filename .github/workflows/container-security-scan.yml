@@ -3,8 +3,9 @@
 name: Container Security Scan
 
 on:
-  workflow_call:
   workflow_dispatch:
+  schedule:
+    - cron: "0 3 * * *" # Daily at 03:00 UTC
 
 permissions:
   contents: read
