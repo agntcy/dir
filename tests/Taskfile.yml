@@ -179,11 +179,15 @@ tasks:
         fi
       # Wait 3 seconds for rate limit reset
       - sleep 3
-      # Run rate limiting tests LAST
+      # Run rate limiting tests LAST (separate output file to avoid overwriting non-ratelimit client coverage)
       - |
         if [ "{{.E2E_COVERAGE_ENABLED}}" = "true" ]; then
           mkdir -p {{.COVERAGE_DIR}}
-          go test -C ./e2e/client -coverpkg={{ .COVERAGE_PKGS }} -coverprofile={{.COVERAGE_DIR}}/local-client.out . -v -failfast -test.v -test.paniconexit0 -ginkgo.timeout 2h -timeout 2h -ginkgo.v -ginkgo.label-filter="ratelimit"
+          go test -C ./e2e/client -covermode=atomic -coverpkg={{ .COVERAGE_PKGS }} -coverprofile={{.COVERAGE_DIR}}/local-client-ratelimit.out.tmp . -v -failfast -test.v -test.paniconexit0 -ginkgo.timeout 2h -timeout 2h -ginkgo.v -ginkgo.label-filter="ratelimit"
+          if [ -f {{.COVERAGE_DIR}}/local-client-ratelimit.out.tmp ]; then
+            grep -v "\.pb\.go" {{.COVERAGE_DIR}}/local-client-ratelimit.out.tmp | grep -v "mock_.*\.go" > {{.COVERAGE_DIR}}/local-client-ratelimit.out || echo "mode: atomic" > {{.COVERAGE_DIR}}/local-client-ratelimit.out
+            rm {{.COVERAGE_DIR}}/local-client-ratelimit.out.tmp
+          fi
         else
           go test -C ./e2e/client . -v -failfast -test.v -test.paniconexit0 -ginkgo.timeout 2h -timeout 2h -ginkgo.v -ginkgo.label-filter="ratelimit"
         fi
