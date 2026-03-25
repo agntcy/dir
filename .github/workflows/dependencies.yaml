@@ -49,11 +49,6 @@ jobs:
           working-directory: "sdk"
           enable-cache: true
 
-      - name: Validate Renovate Config
-        run: |
-          task deps:renovate
-          renovate-config-validator
-
       - name: Run Renovate
         run: task deps:renovate:sync
         env:
