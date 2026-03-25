@@ -105,10 +105,11 @@ jobs:
       - name: Install Task
         uses: go-task/setup-task@3be4020d41929789a01026e0e427a4321ce0ad44 #v2.0.0
 
-      - name: Setup dirctl
-        uses: agntcy/dir/.github/actions/setup-dirctl@v1.1.0
-        with:
-          version: v1.1.0
+      # TODO: Remove when release 1.0.0 is out
+      - name: Build dirctl
+        run: |
+          task cli:compile
+          ls -la .bin/
 
       - name: Install mcp-scanner
         if: ${{ env.SCANNER_ENABLED == 'true' }}
@@ -120,7 +121,7 @@ jobs:
           {
             "mcpServers": {
               "dir-mcp-server": {
-                "command": "dirctl",
+                "command": ".bin/dirctl",
                 "args": [
                   "mcp",
                   "serve"
@@ -154,7 +155,7 @@ jobs:
           echo "--- Processing Entry $((${{ matrix.entry.index }} + 1)) ---"
 
           CIDS_FILE="imported-cids-${{ matrix.entry.index }}.txt"
-          CMD=(dirctl import --type=mcp --url=https://registry.modelcontextprotocol.io/v0.1 --enrich-config=mcphost_ci.json --enrich-rate-limit="${{ env.RATE_LIMIT }}")
+          CMD=(.bin/dirctl import --type=mcp --url=https://registry.modelcontextprotocol.io/v0.1 --enrich-config=mcphost_ci.json --enrich-rate-limit="${{ env.RATE_LIMIT }}")
 
           if [[ "${{ env.DRY_RUN }}" == "true" ]]; then
              CMD+=("--dry-run")
@@ -239,7 +240,7 @@ jobs:
             OIDC_TOKEN=$(curl -s -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
               "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=sigstore" | jq -r '.value')
             
-            if dirctl sign "$CID" \
+            if .bin/dirctl sign "$CID" \
               --oidc-token="$OIDC_TOKEN" \
               --oidc-provider-url="https://token.actions.githubusercontent.com" \
               --oidc-client-id="https://github.com/${{ github.repository }}/.github/workflows/import-records.yaml@${{ github.ref }}"; then
