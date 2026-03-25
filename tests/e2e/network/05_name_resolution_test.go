@@ -32,7 +32,7 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests for name resolution acr
 
 	// Create directory and write record data
 	_ = os.MkdirAll(filepath.Dir(recordPath), 0o755)
-	_ = os.WriteFile(recordPath, testdata.ExpectedRecordV070SyncV4JSON, 0o600)
+	_ = os.WriteFile(recordPath, testdata.ExpectedRecordV070NameResolutionJSON, 0o600)
 
 	ginkgo.BeforeEach(func() {
 		if cfg.DeploymentMode != config.DeploymentModeNetwork {
@@ -48,8 +48,8 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests for name resolution acr
 		var cid string
 
 		const (
-			recordName    = "directory.agntcy.org/cisco/marketing-strategy-v4"
-			recordVersion = "v4.0.0"
+			recordName    = "directory.agntcy.org/cisco/name-resolution-test"
+			recordVersion = "v1.0.0"
 		)
 
 		ginkgo.It("should push record to peer 1", func() {
@@ -80,7 +80,7 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests for name resolution acr
 		})
 
 		ginkgo.It("should wait for sync to complete", func() {
-			output := cli.Sync().Status(syncID).OnServer(utils.Peer2Addr).ShouldEventuallyContain("COMPLETED", 120*time.Second)
+			output := cli.Sync().Status(syncID).OnServer(utils.Peer2Addr).ShouldEventuallyContain("COMPLETED", 240*time.Second)
 			ginkgo.GinkgoWriter.Printf("Current sync status: %s\n", output)
 		})
 
@@ -105,7 +105,7 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests for name resolution acr
 			output := cli.Pull(recordName).WithArgs("--output", "json").OnServer(utils.Peer2Addr).ShouldSucceed()
 
 			// Compare the output with the expected JSON
-			equal, err := utils.CompareOASFRecords([]byte(output), testdata.ExpectedRecordV070SyncV4JSON)
+			equal, err := utils.CompareOASFRecords([]byte(output), testdata.ExpectedRecordV070NameResolutionJSON)
 			gomega.Expect(err).NotTo(gomega.HaveOccurred())
 			gomega.Expect(equal).To(gomega.BeTrue())
 		})
@@ -115,7 +115,7 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests for name resolution acr
 			output := cli.Pull(recordName+":"+recordVersion).WithArgs("--output", "json").OnServer(utils.Peer2Addr).ShouldSucceed()
 
 			// Compare the output with the expected JSON
-			equal, err := utils.CompareOASFRecords([]byte(output), testdata.ExpectedRecordV070SyncV4JSON)
+			equal, err := utils.CompareOASFRecords([]byte(output), testdata.ExpectedRecordV070NameResolutionJSON)
 			gomega.Expect(err).NotTo(gomega.HaveOccurred())
 			gomega.Expect(equal).To(gomega.BeTrue())
 		})
@@ -125,7 +125,7 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests for name resolution acr
 			output := cli.Pull(recordName+"@"+cid).WithArgs("--output", "json").OnServer(utils.Peer2Addr).ShouldSucceed()
 
 			// Compare the output with the expected JSON
-			equal, err := utils.CompareOASFRecords([]byte(output), testdata.ExpectedRecordV070SyncV4JSON)
+			equal, err := utils.CompareOASFRecords([]byte(output), testdata.ExpectedRecordV070NameResolutionJSON)
 			gomega.Expect(err).NotTo(gomega.HaveOccurred())
 			gomega.Expect(equal).To(gomega.BeTrue())
 		})

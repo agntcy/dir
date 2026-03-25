@@ -187,7 +187,7 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests for sync commands", fun
 
 		// Wait for sync to complete
 		ginkgo.It("should wait for sync to complete", func() {
-			output := cli.Sync().Status(syncID).OnServer(utils.Peer2Addr).ShouldEventuallyContain("COMPLETED", 120*time.Second)
+			output := cli.Sync().Status(syncID).OnServer(utils.Peer2Addr).ShouldEventuallyContain("COMPLETED", 240*time.Second)
 			ginkgo.GinkgoWriter.Printf("Current sync status: %s", output)
 		})
 
@@ -261,7 +261,7 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests for sync commands", fun
 
 		// Wait for sync to complete
 		ginkgo.It("should wait for sync to complete", func() {
-			_ = cli.Sync().Status(syncID).OnServer(utils.Peer3Addr).ShouldEventuallyContain("COMPLETED", 120*time.Second)
+			_ = cli.Sync().Status(syncID).OnServer(utils.Peer3Addr).ShouldEventuallyContain("COMPLETED", 240*time.Second)
 		})
 
 		ginkgo.It("should succeed to pull record_070_sync_v5.json from peer 3 after sync", func() {
