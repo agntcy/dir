@@ -28,14 +28,22 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
-      - name: Setup dirctl
-        uses: ./.github/actions/setup-dirctl
+      - name: Build dirctl from branch source
+        id: build-dirctl
+        uses: ./.github/actions/build-dirctl
         with:
-          version: ${{ inputs.image_version }}
+          go_version: "1.26.1"
+
+      # - name: Setup dirctl
+      #   uses: ./.github/actions/setup-dirctl
+      #   with:
+      #     version: ${{ inputs.image_version }}
 
       - name: Fetch Directory OIDC token
         id: oidc-dir
         uses: ./.github/actions/fetch-oidc-token
+        with:
+          audience: dir
 
       - name: Export OIDC environment
         run: |

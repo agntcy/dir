@@ -106,6 +106,8 @@ jobs:
       - name: Fetch Directory OIDC token (import)
         id: oidc-dir-import
         uses: ./.github/actions/fetch-oidc-token
+        with:
+          audience: dir
 
       - name: Install mcp-scanner
         if: ${{ env.SCANNER_ENABLED == 'true' }}
