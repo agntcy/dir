@@ -12,10 +12,21 @@ tasks:
     run: once
     cmds:
       - "{{ .HELM_BIN }} repo add project-zot http://zotregistry.dev/helm-charts"
+      - "{{ .HELM_BIN }} repo add bitnami https://charts.bitnami.com/bitnami"
       - "{{ .HELM_BIN }} repo add spiffe https://spiffe.github.io/helm-charts-hardened"
     status:
       - "{{ .HELM_BIN }} repo list | grep -q 'project-zot.*http://zotregistry.dev/helm-charts'"
+      - "{{ .HELM_BIN }} repo list | grep -q 'bitnami.*https://charts.bitnami.com/bitnami'"
       - "{{ .HELM_BIN }} repo list | grep -q 'spiffe.*https://spiffe.github.io/helm-charts-hardened'"
+
+  helm:dep:build:
+    desc: Build Helm dependencies for all charts and subcharts
+    deps:
+      - deps:helm
+    cmds:
+      - task: helm:gen:add-repo
+      - "{{ .HELM_BIN }} dependency build {{ .ROOT_DIR }}/install/charts/dir/apiserver"
+      - "{{ .HELM_BIN }} dependency build {{ .ROOT_DIR }}/install/charts/dir"
 
   helm:gen:
     desc: Update Helm dependencies for chart and subcharts
@@ -25,7 +36,7 @@ tasks:
       SOURCE_DATE_EPOCH: "0" # NOTE: Not implemented yet: https://github.com/helm/helm/pull/31845
     vars:
       HELM_ALL_CHART_PATHS:
-        sh: find . -name Chart.yaml -exec dirname {} \;
+        sh: find . -name Chart.yaml -exec dirname {} \; | sort -r
     cmds:
       - task: helm:gen:add-repo
 
