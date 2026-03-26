@@ -29,6 +29,7 @@ jobs:
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
       - name: Setup dirctl
+        id: setup-dirctl
         uses: ./.github/actions/setup-dirctl
         with:
           version: ${{ inputs.image_version }}
@@ -37,6 +38,7 @@ jobs:
         uses: ./.github/actions/validate-record
         with:
           record_paths: tests/e2e/shared/testdata/record_100.json
+          dirctl_path: ${{ steps.build-dirctl.outputs.dirctl_path }}
 
       - name: Push record
         id: push
@@ -45,6 +47,7 @@ jobs:
           record_paths: tests/e2e/shared/testdata/record_100.json
           server_addr: ${{ inputs.server_addr }}
           github_token: ${{ secrets.DIR_DEMO_WORKFLOW_PAT }}
+          dirctl_path: ${{ steps.setup-dirctl.outputs.dirctl_path }}
 
       - name: Sign record (OIDC)
         uses: ./.github/actions/sign-record
@@ -53,6 +56,7 @@ jobs:
           oidc_client_id: https://github.com/${{ github.repository }}/.github/workflows/demo-dir.yaml@${{ github.ref }}
           server_addr: ${{ inputs.server_addr }}
           github_token: ${{ secrets.DIR_DEMO_WORKFLOW_PAT }}
+          dirctl_path: ${{ steps.setup-dirctl.outputs.dirctl_path }}
 
       - name: Publish record
         uses: ./.github/actions/publish-record
@@ -60,6 +64,7 @@ jobs:
           cids: ${{ steps.push.outputs.cids }}
           server_addr: ${{ inputs.server_addr }}
           github_token: ${{ secrets.DIR_DEMO_WORKFLOW_PAT }}
+          dirctl_path: ${{ steps.setup-dirctl.outputs.dirctl_path }}
 
       - name: Search for record
         env:

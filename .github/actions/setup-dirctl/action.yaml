@@ -24,10 +24,16 @@ inputs:
     required: false
     default: "amd64"
 
+outputs:
+  dirctl_path:
+    description: Absolute path to the installed dirctl binary
+    value: ${{ steps.setup.outputs.dirctl_path }}
+
 runs:
   using: "composite"
   steps:
     - name: Setup dirctl
+      id: setup
       shell: bash
       env:
         VERSION: ${{ inputs.version }}

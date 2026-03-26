@@ -26,6 +26,10 @@ inputs:
   oidc_client_id:
     description: Workflow identity for keyless signing. Example https://github.com/OWNER/REPO/.github/workflows/YOUR_WORKFLOW.yaml@REF
     required: true
+  dirctl_path:
+    description: Optional absolute path to the dirctl binary. Defaults to PATH lookup.
+    required: false
+    default: ""
 
 outputs:
   success:
@@ -49,6 +53,7 @@ runs:
         SERVER_ADDR: ${{ inputs.server_addr }}
         GITHUB_TOKEN: ${{ inputs.github_token }}
         OIDC_CLIENT_ID: ${{ inputs.oidc_client_id }}
+        DIRCTL_PATH: ${{ inputs.dirctl_path }}
       run: |
         chmod +x "${{ github.action_path }}/sign.sh"
         "${{ github.action_path }}/sign.sh"

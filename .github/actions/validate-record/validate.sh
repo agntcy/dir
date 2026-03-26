@@ -8,6 +8,20 @@ set -euo pipefail
 : "${SCHEMA_URL:?SCHEMA_URL is required}"
 FAIL_ON_WARNING="${FAIL_ON_WARNING:-false}"
 
+if [ -n "${DIRCTL_PATH:-}" ]; then
+  DIRCTL_BIN="${DIRCTL_PATH}"
+elif command -v dirctl >/dev/null 2>&1; then
+  DIRCTL_BIN="$(command -v dirctl)"
+else
+  echo "::error::dirctl not found. Set DIRCTL_PATH or add dirctl to PATH." >&2
+  exit 1
+fi
+
+if [ ! -x "${DIRCTL_BIN}" ]; then
+  echo "::error::dirctl is not executable at ${DIRCTL_BIN}" >&2
+  exit 1
+fi
+
 # Initialize result tracking
 VALIDATED_FILES="[]"
 FAILED_FILES="[]"
@@ -72,7 +86,7 @@ for FILE in "${ALL_FILES[@]}"; do
   
   # Run validation and capture output
   set +e
-  OUTPUT=$(dirctl validate "$FILE" --url="$SCHEMA_URL" 2>&1)
+  OUTPUT=$("${DIRCTL_BIN}" validate "$FILE" --url="$SCHEMA_URL" 2>&1)
   EXIT_CODE=$?
   set -e
   

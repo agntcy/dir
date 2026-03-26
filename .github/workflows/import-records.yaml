@@ -103,6 +103,7 @@ jobs:
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
       - name: Setup dirctl
+        id: setup-dirctl
         uses: ./.github/actions/setup-dirctl
         with:
           version: ${{ inputs.image_version }}
@@ -122,7 +123,7 @@ jobs:
           {
             "mcpServers": {
               "dir-mcp-server": {
-                "command": "dirctl",
+                "command": "${{ steps.setup-dirctl.outputs.dirctl_path }}",
                 "args": [
                   "mcp",
                   "serve"

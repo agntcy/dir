@@ -44,4 +44,5 @@ runs:
           exit 1
         fi
 
+        echo "${GITHUB_WORKSPACE}/.bin" >> "${GITHUB_PATH}"
         echo "dirctl_path=${DIRCTL_PATH}" >> "${GITHUB_OUTPUT}"

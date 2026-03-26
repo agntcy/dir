@@ -23,6 +23,10 @@ inputs:
     description: Optional GitHub PAT for Directory authentication
     required: false
     default: ""
+  dirctl_path:
+    description: Optional absolute path to the dirctl binary. Defaults to PATH lookup.
+    required: false
+    default: ""
 
 outputs:
   success:
@@ -45,6 +49,7 @@ runs:
         CIDS: ${{ inputs.cids }}
         SERVER_ADDR: ${{ inputs.server_addr }}
         GITHUB_TOKEN: ${{ inputs.github_token }}
+        DIRCTL_PATH: ${{ inputs.dirctl_path }}
       run: |
         chmod +x "${{ github.action_path }}/publish.sh"
         "${{ github.action_path }}/publish.sh"

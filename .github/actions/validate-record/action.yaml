@@ -25,6 +25,10 @@ inputs:
     description: Whether to fail the action on validation warnings (not just errors)
     required: false
     default: "false"
+  dirctl_path:
+    description: Optional absolute path to the dirctl binary. Defaults to PATH lookup.
+    required: false
+    default: ""
 
 outputs:
   valid:
@@ -47,6 +51,7 @@ runs:
         RECORD_PATHS: ${{ inputs.record_paths }}
         SCHEMA_URL: ${{ inputs.schema_url }}
         FAIL_ON_WARNING: ${{ inputs.fail_on_warning }}
+        DIRCTL_PATH: ${{ inputs.dirctl_path }}
       run: |
         chmod +x "${{ github.action_path }}/validate.sh"
         "${{ github.action_path }}/validate.sh"
