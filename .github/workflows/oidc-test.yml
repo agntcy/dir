@@ -48,7 +48,7 @@ jobs:
         id: oidc
         uses: ./.github/actions/fetch-oidc-token
         with:
-          audience: dir-dev
+          audience: dir
 
       - name: Run dirctl search with GitHub OIDC token
         env:
