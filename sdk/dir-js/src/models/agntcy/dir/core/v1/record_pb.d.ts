@@ -7,6 +7,7 @@
 
 import type { GenFile, GenMessage } from "@bufbuild/protobuf/codegenv2";
 import type { JsonObject, Message } from "@bufbuild/protobuf";
+import type { ReferrerRef } from "./referrer_pb.js";
 
 /**
  * Describes the file agntcy/dir/core/v1/record.proto.
@@ -181,6 +182,13 @@ export declare type RecordReferrer = Message<"agntcy.dir.core.v1.RecordReferrer"
    * @generated from field: google.protobuf.Struct data = 5;
    */
   data?: JsonObject;
+
+  /**
+   * The CID of the referrer.
+   *
+   * @generated from field: agntcy.dir.core.v1.ReferrerRef referrer_ref = 6;
+   */
+  referrerRef?: ReferrerRef;
 };
 
 /**

@@ -60,7 +60,7 @@ func (c *Client) Verify(ctx context.Context, req *signv1.VerifyRequest) (*signv1
 func (c *Client) PullSignatures(ctx context.Context, recordRef *corev1.RecordRef) ([]*signv1.Signature, error) {
 	referrerType := corev1.SignatureReferrerType
 
-	respCh, err := c.PullReferrer(ctx, &storev1.PullReferrerRequest{
+	responses, err := c.PullReferrer(ctx, &storev1.PullReferrerRequest{
 		RecordRef:    recordRef,
 		ReferrerType: &referrerType,
 	})
@@ -70,7 +70,7 @@ func (c *Client) PullSignatures(ctx context.Context, recordRef *corev1.RecordRef
 
 	var signatures []*signv1.Signature
 
-	for resp := range respCh {
+	for _, resp := range responses {
 		if resp.GetReferrer() == nil {
 			continue
 		}
@@ -92,7 +92,7 @@ func (c *Client) PullSignatures(ctx context.Context, recordRef *corev1.RecordRef
 func (c *Client) PullPublicKeys(ctx context.Context, recordRef *corev1.RecordRef) ([]string, error) {
 	referrerType := corev1.PublicKeyReferrerType
 
-	respCh, err := c.PullReferrer(ctx, &storev1.PullReferrerRequest{
+	responses, err := c.PullReferrer(ctx, &storev1.PullReferrerRequest{
 		RecordRef:    recordRef,
 		ReferrerType: &referrerType,
 	})
@@ -102,7 +102,7 @@ func (c *Client) PullPublicKeys(ctx context.Context, recordRef *corev1.RecordRef
 
 	var publicKeys []string
 
-	for resp := range respCh {
+	for _, resp := range responses {
 		if resp.GetReferrer() == nil {
 			continue
 		}

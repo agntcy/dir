@@ -1,8 +1,9 @@
 from agntcy.dir.core.v1 import record_pb2 as _record_pb2
 from agntcy.dir.core.v1 import referrer_pb2 as _referrer_pb2
 from google.protobuf import empty_pb2 as _empty_pb2
-from google.protobuf import struct_pb2 as _struct_pb2
 from buf.validate import validate_pb2 as _validate_pb2
+from agntcy.dir.core.v1 import rules_pb2 as _rules_pb2
+from google.protobuf import struct_pb2 as _struct_pb2
 from google.protobuf.internal import containers as _containers
 from google.protobuf import descriptor as _descriptor
 from google.protobuf import message as _message
@@ -42,12 +43,14 @@ class PushReferrerResponse(_message.Message):
     def __init__(self, success: bool = ..., error_message: _Optional[str] = ..., referrer_ref: _Optional[_Union[_referrer_pb2.ReferrerRef, _Mapping]] = ...) -> None: ...
 
 class PullReferrerRequest(_message.Message):
-    __slots__ = ("record_ref", "referrer_type")
+    __slots__ = ("record_ref", "referrer_type", "referrer_ref")
     RECORD_REF_FIELD_NUMBER: _ClassVar[int]
     REFERRER_TYPE_FIELD_NUMBER: _ClassVar[int]
+    REFERRER_REF_FIELD_NUMBER: _ClassVar[int]
     record_ref: _record_pb2.RecordRef
     referrer_type: str
-    def __init__(self, record_ref: _Optional[_Union[_record_pb2.RecordRef, _Mapping]] = ..., referrer_type: _Optional[str] = ...) -> None: ...
+    referrer_ref: _referrer_pb2.ReferrerRef
+    def __init__(self, record_ref: _Optional[_Union[_record_pb2.RecordRef, _Mapping]] = ..., referrer_type: _Optional[str] = ..., referrer_ref: _Optional[_Union[_referrer_pb2.ReferrerRef, _Mapping]] = ...) -> None: ...
 
 class PullReferrerResponse(_message.Message):
     __slots__ = ("referrer",)

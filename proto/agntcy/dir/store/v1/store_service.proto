@@ -8,8 +8,9 @@ package agntcy.dir.store.v1;
 import "agntcy/dir/core/v1/record.proto";
 import "agntcy/dir/core/v1/referrer.proto";
 import "google/protobuf/empty.proto";
-import "google/protobuf/struct.proto";
 import "buf/validate/validate.proto";
+import "agntcy/dir/core/v1/rules.proto";
+import "google/protobuf/struct.proto";
 
 // Defines an interface for content-addressable storage
 // service for objects.
@@ -57,12 +58,7 @@ message PushReferrerRequest {
   // For example, "agntcy.dir.sign.v1.Signature" for signatures.
   string type = 2 [
     (buf.validate.field).required = true,
-    (buf.validate.field).string = {
-      in: [
-        "agntcy.dir.sign.v1.PublicKey",
-        "agntcy.dir.sign.v1.Signature"
-      ]
-    }
+    (buf.validate.field).string.(core.v1.is_referrer_type) = true
   ];
 
   // Annotations attached to the referrer object.
@@ -91,11 +87,18 @@ message PushReferrerResponse {
 // PullReferrerRequest represents a record with optional OCI artifacts for pull operations.
 message PullReferrerRequest {
   // Record reference
-  core.v1.RecordRef record_ref = 1;
+  core.v1.RecordRef record_ref = 1 [
+    (buf.validate.field).required = true
+  ];
 
   // Record referrer type to be pulled
   // If not provided, all referrers will be pulled
-  optional string referrer_type = 2;
+  optional string referrer_type = 2 [
+    (buf.validate.field).string.(core.v1.is_referrer_type) = true
+  ];
+
+  // If set, return the given referrer.
+  core.v1.ReferrerRef referrer_ref = 3;
 }
 
 // PullReferrerResponse is returned after successfully fetching a record referrer.

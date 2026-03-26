@@ -120,6 +120,13 @@ export declare type PullReferrerRequest = Message<"agntcy.dir.store.v1.PullRefer
    * @generated from field: optional string referrer_type = 2;
    */
   referrerType?: string;
+
+  /**
+   * If set, return the given referrer.
+   *
+   * @generated from field: agntcy.dir.core.v1.ReferrerRef referrer_ref = 3;
+   */
+  referrerRef?: ReferrerRef;
 };
 
 /**

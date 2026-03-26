@@ -1,0 +1,18 @@
+syntax = "proto2";
+
+package agntcy.dir.core.v1;
+
+import "buf/validate/validate.proto";
+
+extend buf.validate.StringRules {
+  optional bool is_referrer_type = 50000 [(buf.validate.predefined).cel = {
+    id: "string.is_referrer_type"
+    message: "value must be a valid referrer type"
+    expression: "this in ['agntcy.dir.sign.v1.PublicKey', 'agntcy.dir.sign.v1.Signature']"
+  }];
+  optional bool is_cid = 50001 [(buf.validate.predefined).cel = {
+    id: "string.is_cid"
+    message: "value must be a valid CID"
+    expression: "1 <= this.size() && this.size() <= 128"
+  }];
+}

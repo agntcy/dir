@@ -6,12 +6,14 @@
 /* eslint-disable */
 
 import { fileDesc, messageDesc } from "@bufbuild/protobuf/codegenv2";
+import { file_buf_validate_validate } from "../../../../buf/validate/validate_pb.js";
+import { file_agntcy_dir_core_v1_rules } from "./rules_pb.js";
 
 /**
  * Describes the file agntcy/dir/core/v1/referrer.proto.
  */
 export const file_agntcy_dir_core_v1_referrer = /*@__PURE__*/
-  fileDesc("CiFhZ250Y3kvZGlyL2NvcmUvdjEvcmVmZXJyZXIucHJvdG8SEmFnbnRjeS5kaXIuY29yZS52MSIaCgtSZWZlcnJlclJlZhILCgNjaWQYASABKAlCtQEKFmNvbS5hZ250Y3kuZGlyLmNvcmUudjFCDVJlZmVycmVyUHJvdG9QAVohZ2l0aHViLmNvbS9hZ250Y3kvZGlyL2FwaS9jb3JlL3YxogIDQURDqgISQWdudGN5LkRpci5Db3JlLlYxygISQWdudGN5XERpclxDb3JlXFYx4gIeQWdudGN5XERpclxDb3JlXFYxXEdQQk1ldGFkYXRh6gIVQWdudGN5OjpEaXI6OkNvcmU6OlYxYgZwcm90bzM");
+  fileDesc("CiFhZ250Y3kvZGlyL2NvcmUvdjEvcmVmZXJyZXIucHJvdG8SEmFnbnRjeS5kaXIuY29yZS52MSIoCgtSZWZlcnJlclJlZhIZCgNjaWQYASABKAlCDLpICcgBAXIEiLUYAUK1AQoWY29tLmFnbnRjeS5kaXIuY29yZS52MUINUmVmZXJyZXJQcm90b1ABWiFnaXRodWIuY29tL2FnbnRjeS9kaXIvYXBpL2NvcmUvdjGiAgNBREOqAhJBZ250Y3kuRGlyLkNvcmUuVjHKAhJBZ250Y3lcRGlyXENvcmVcVjHiAh5BZ250Y3lcRGlyXENvcmVcVjFcR1BCTWV0YWRhdGHqAhVBZ250Y3k6OkRpcjo6Q29yZTo6VjFiBnByb3RvMw", [file_buf_validate_validate, file_agntcy_dir_core_v1_rules]);
 
 /**
  * Describes the message agntcy.dir.core.v1.ReferrerRef.

@@ -326,16 +326,13 @@ func (s storeCtrl) PullReferrer(stream storev1.StoreService_PullReferrerServer) 
 			return status.Errorf(codes.Internal, "failed to receive pull referrer request: %v", err)
 		}
 
-		// Validate the record reference
-		if err := s.validateRecordRef(request.GetRecordRef()); err != nil {
-			return err
+		if err = protovalidate.Validate(request); err != nil {
+			return status.Errorf(codes.InvalidArgument, "%v", err)
 		}
 
-		// Determine referrer type (empty string means all types)
-		referrerType := ""
-		if request.ReferrerType != nil {
-			referrerType = request.GetReferrerType()
-		}
+		recordCID := request.GetRecordRef().GetCid()
+		referrerType := request.GetReferrerType()
+		referrerCID := request.GetReferrerRef().GetCid()
 
 		// Try to use referrer storage if the store supports it
 		refStore, ok := s.store.(types.ReferrerStoreAPI)
@@ -347,6 +344,10 @@ func (s storeCtrl) PullReferrer(stream storev1.StoreService_PullReferrerServer) 
 
 		// Use WalkReferrers with a callback that streams each referrer
 		walkFn := func(referrer *corev1.RecordReferrer) error {
+			if referrerCID != "" && referrerCID != referrer.GetReferrerRef().GetCid() {
+				return nil
+			}
+
 			response := &storev1.PullReferrerResponse{
 				Referrer: referrer,
 			}
@@ -355,15 +356,15 @@ func (s storeCtrl) PullReferrer(stream storev1.StoreService_PullReferrerServer) 
 				return status.Errorf(codes.Internal, "failed to send referrer response: %v", err)
 			}
 
-			storeLogger.Debug("Referrer streamed successfully", "cid", request.GetRecordRef().GetCid(), "type", referrerType)
+			storeLogger.Debug("Referrer streamed successfully", "cid", recordCID, "type", referrerType)
 
 			return nil
 		}
 
 		// Walk referrers of the specified type
-		err = refStore.WalkReferrers(stream.Context(), request.GetRecordRef().GetCid(), referrerType, walkFn)
+		err = refStore.WalkReferrers(stream.Context(), recordCID, referrerType, walkFn)
 		if err != nil {
-			storeLogger.Error("Failed to walk referrers by type for record", "error", err, "cid", request.GetRecordRef().GetCid(), "type", referrerType)
+			storeLogger.Error("Failed to walk referrers by type for record", "error", err, "cid", recordCID, "type", referrerType)
 
 			return stream.Send(&storev1.PullReferrerResponse{})
 		}

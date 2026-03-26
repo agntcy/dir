@@ -7,14 +7,15 @@ package agntcy.dir.core.v1;
 
 import "google/protobuf/struct.proto";
 import "buf/validate/validate.proto";
+import "agntcy/dir/core/v1/rules.proto";
+import "agntcy/dir/core/v1/referrer.proto";
 
 // Defines a reference or a globally unique content identifier of a record.
 message RecordRef {
   // Globally-unique content identifier (CID) of the record.
   // Specs: https://github.com/multiformats/cid
   string cid = 1 [
-    (buf.validate.field).string.min_len = 1,
-    (buf.validate.field).string.max_len = 128,
+    (buf.validate.field).string.(core.v1.is_cid) = true,
     (buf.validate.field).required = true
   ];
 }
@@ -68,12 +69,7 @@ message RecordReferrer {
     // The type of the referrer.
     // For example, "agntcy.dir.sign.v1.Signature" for signatures.
     string type = 1 [
-      (buf.validate.field).string = {
-        in: [
-          "agntcy.dir.sign.v1.PublicKey",
-          "agntcy.dir.sign.v1.Signature"
-        ]
-      }
+      (buf.validate.field).string.(core.v1.is_referrer_type) = true
     ];
 
     // Record reference to which this referrer is associated.
@@ -88,4 +84,7 @@ message RecordReferrer {
 
     // The actual data of the referrer.
     google.protobuf.Struct data = 5;
+
+    // The CID of the referrer.
+    core.v1.ReferrerRef referrer_ref = 6;
 }
