@@ -7,18 +7,6 @@ tasks:
   default:
     cmd: echo "Run the main Taskfile instead of this one."
 
-  helm:dep:build:
-    desc: Build Helm dependencies for the DIR chart and its subcharts
-    internal: true
-    deps:
-      - deps:helm
-    vars:
-      HELM_CHART_PATH: "{{ .ROOT_DIR }}/install/charts/dir"
-    cmds:
-      - task: helm:gen:add-repo
-      - "{{ .HELM_BIN }} dependency build {{ .HELM_CHART_PATH }}/apiserver"
-      - "{{ .HELM_BIN }} dependency build {{ .HELM_CHART_PATH }}"
-
   test-env:kubernetes:setup-cluster:
     desc: Create a kind cluster and load Docker images
     deps:

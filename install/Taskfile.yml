@@ -19,6 +19,15 @@ tasks:
       - "{{ .HELM_BIN }} repo list | grep -q 'bitnami.*https://charts.bitnami.com/bitnami'"
       - "{{ .HELM_BIN }} repo list | grep -q 'spiffe.*https://spiffe.github.io/helm-charts-hardened'"
 
+  helm:dep:build:
+    desc: Build Helm dependencies for all charts and subcharts
+    deps:
+      - deps:helm
+    cmds:
+      - task: helm:gen:add-repo
+      - "{{ .HELM_BIN }} dependency build {{ .ROOT_DIR }}/install/charts/dir/apiserver"
+      - "{{ .HELM_BIN }} dependency build {{ .ROOT_DIR }}/install/charts/dir"
+
   helm:gen:
     desc: Update Helm dependencies for chart and subcharts
     deps:
