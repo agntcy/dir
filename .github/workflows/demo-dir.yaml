@@ -33,6 +33,15 @@ jobs:
         with:
           version: ${{ inputs.image_version }}
 
+      - name: Fetch Directory OIDC token
+        id: oidc-dir
+        uses: ./.github/actions/fetch-oidc-token
+
+      - name: Export OIDC environment
+        run: |
+          echo "DIRECTORY_CLIENT_AUTH_MODE=oidc" >> "$GITHUB_ENV"
+          echo "DIRECTORY_CLIENT_OIDC_TOKEN=${{ steps.oidc-dir.outputs.token }}" >> "$GITHUB_ENV"
+
       - name: Validate record
         uses: ./.github/actions/validate-record
         with:
@@ -44,7 +53,6 @@ jobs:
         with:
           record_paths: tests/e2e/shared/testdata/record_100.json
           server_addr: ${{ inputs.server_addr }}
-          github_token: ${{ secrets.DIR_DEMO_WORKFLOW_PAT }}
 
       - name: Sign record (OIDC)
         uses: ./.github/actions/sign-record
@@ -52,25 +60,21 @@ jobs:
           cids: ${{ steps.push.outputs.cids }}
           oidc_client_id: https://github.com/${{ github.repository }}/.github/workflows/demo-dir.yaml@${{ github.ref }}
           server_addr: ${{ inputs.server_addr }}
-          github_token: ${{ secrets.DIR_DEMO_WORKFLOW_PAT }}
 
       - name: Publish record
         uses: ./.github/actions/publish-record
         with:
           cids: ${{ steps.push.outputs.cids }}
           server_addr: ${{ inputs.server_addr }}
-          github_token: ${{ secrets.DIR_DEMO_WORKFLOW_PAT }}
 
       - name: Search for record
         env:
           SERVER_ADDR: ${{ inputs.server_addr }}
-          GITHUB_TOKEN: ${{ secrets.DIR_DEMO_WORKFLOW_PAT }}
-        run: dirctl search --name "burger_seller_agent" --server-addr="$SERVER_ADDR" --github-token="$GITHUB_TOKEN"
+        run: dirctl search --name "burger_seller_agent" --server-addr="$SERVER_ADDR"
 
       - name: Verify record
         env:
           SERVER_ADDR: ${{ inputs.server_addr }}
-          GITHUB_TOKEN: ${{ secrets.DIR_DEMO_WORKFLOW_PAT }}
         run: |
           CID=$(echo '${{ steps.push.outputs.cids }}' | jq -r '.[]')
-          dirctl verify "$CID" --server-addr="$SERVER_ADDR" --github-token="$GITHUB_TOKEN"
+          dirctl verify "$CID" --server-addr="$SERVER_ADDR"
