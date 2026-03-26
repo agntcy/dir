@@ -7,6 +7,18 @@ tasks:
   default:
     cmd: echo "Run the main Taskfile instead of this one."
 
+  helm:dep:build:
+    desc: Build Helm dependencies for the DIR chart and its subcharts
+    internal: true
+    deps:
+      - deps:helm
+    vars:
+      HELM_CHART_PATH: "{{ .ROOT_DIR }}/install/charts/dir"
+    cmds:
+      - task: helm:gen:add-repo
+      - "{{ .HELM_BIN }} dependency build {{ .HELM_CHART_PATH }}/apiserver"
+      - "{{ .HELM_BIN }} dependency build {{ .HELM_CHART_PATH }}"
+
   test-env:kubernetes:setup-cluster:
     desc: Create a kind cluster and load Docker images
     deps:
@@ -102,13 +114,13 @@ tasks:
       - defer:
           task: test-env:kubernetes:cleanup-htpasswd-creds
 
+      # Build helm dependencies
+      - task: helm:dep:build
+
       # Deploy chart
       - |
         # Load credentials
         source /tmp/dir-htpasswd-creds.env
-
-        {{ .HELM_BIN }} dependency build {{ .HELM_CHART_PATH }}/apiserver
-        {{ .HELM_BIN }} dependency build {{ .HELM_CHART_PATH }}
 
         {{ .HELM_BIN }} upgrade dir \
           {{ .HELM_CHART_PATH }} \
@@ -174,11 +186,11 @@ tasks:
         echo "Using GHCR repository: ${DIRECTORY_SERVER_STORE_OCI_REPOSITORY_NAME}"
         echo "Using GHCR username: ${DIRECTORY_SERVER_STORE_OCI_AUTH_CONFIG_USERNAME}"
 
+      # Build helm dependencies
+      - task: helm:dep:build
+
       # Deploy chart with GHCR backend (no Zot)
       - |
-        {{ .HELM_BIN }} dependency build {{ .HELM_CHART_PATH }}/apiserver
-        {{ .HELM_BIN }} dependency build {{ .HELM_CHART_PATH }}
-
         {{ .HELM_BIN }} upgrade dir \
           {{ .HELM_CHART_PATH }} \
           -f {{ .HELM_VALUES_PATH }} \
@@ -256,13 +268,13 @@ tasks:
       - defer:
           task: test-env:kubernetes:cleanup-htpasswd-creds
 
+      # Build helm dependencies
+      - task: helm:dep:build
+
       # Deploy chart
       - |
         # Load credentials
         source /tmp/dir-htpasswd-creds.env
-
-        {{ .HELM_BIN }} dependency build {{ .HELM_CHART_PATH }}/apiserver
-        {{ .HELM_BIN }} dependency build {{ .HELM_CHART_PATH }}
 
         {{ .HELM_BIN }} upgrade --install dir \
           {{ .HELM_CHART_PATH }} \
@@ -425,13 +437,13 @@ tasks:
             CREDS_FILE: "/tmp/dir-htpasswd-creds-bootstrap.env"
             HTPASSWD_FILE: "/tmp/zot-htpasswd-bootstrap"
 
+      # Build helm dependencies
+      - task: helm:dep:build
+
       # Deploy the bootstrap server using Helm
       - |
         # Load credentials
         source /tmp/dir-htpasswd-creds-bootstrap.env
-
-        {{ .HELM_BIN }} dependency build {{ .HELM_CHART_PATH }}/apiserver
-        {{ .HELM_BIN }} dependency build {{ .HELM_CHART_PATH }}
 
         {{ .HELM_BIN }} upgrade agntcy-dir \
           {{ .HELM_CHART_PATH }} \
@@ -475,8 +487,7 @@ tasks:
       DEPLOY_IMAGE_TAG: '{{ if eq .E2E_COVERAGE_ENABLED "true" }}{{ .COVERAGE_IMAGE_TAG }}{{ else }}{{ .IMAGE_TAG }}{{ end }}'
     cmds:
       # Build helm dependencies once (shared across deployments)
-      - "{{ .HELM_BIN }} dependency build {{ .HELM_CHART_PATH }}/apiserver"
-      - "{{ .HELM_BIN }} dependency build {{ .HELM_CHART_PATH }}"
+      - task: helm:dep:build
 
       # Deploy bootstrap with explicit var passing (not as dependency)
       - task: test-env:kubernetes:network:bootstrap
