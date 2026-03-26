@@ -107,6 +107,7 @@ tasks:
         # Load credentials
         source /tmp/dir-htpasswd-creds.env
 
+        {{ .HELM_BIN }} dependency build {{ .HELM_CHART_PATH }}/apiserver
         {{ .HELM_BIN }} dependency build {{ .HELM_CHART_PATH }}
 
         {{ .HELM_BIN }} upgrade dir \
@@ -175,6 +176,7 @@ tasks:
 
       # Deploy chart with GHCR backend (no Zot)
       - |
+        {{ .HELM_BIN }} dependency build {{ .HELM_CHART_PATH }}/apiserver
         {{ .HELM_BIN }} dependency build {{ .HELM_CHART_PATH }}
 
         {{ .HELM_BIN }} upgrade dir \
@@ -259,6 +261,7 @@ tasks:
         # Load credentials
         source /tmp/dir-htpasswd-creds.env
 
+        {{ .HELM_BIN }} dependency build {{ .HELM_CHART_PATH }}/apiserver
         {{ .HELM_BIN }} dependency build {{ .HELM_CHART_PATH }}
 
         {{ .HELM_BIN }} upgrade --install dir \
@@ -427,6 +430,7 @@ tasks:
         # Load credentials
         source /tmp/dir-htpasswd-creds-bootstrap.env
 
+        {{ .HELM_BIN }} dependency build {{ .HELM_CHART_PATH }}/apiserver
         {{ .HELM_BIN }} dependency build {{ .HELM_CHART_PATH }}
 
         {{ .HELM_BIN }} upgrade agntcy-dir \
@@ -471,6 +475,7 @@ tasks:
       DEPLOY_IMAGE_TAG: '{{ if eq .E2E_COVERAGE_ENABLED "true" }}{{ .COVERAGE_IMAGE_TAG }}{{ else }}{{ .IMAGE_TAG }}{{ end }}'
     cmds:
       # Build helm dependencies once (shared across deployments)
+      - "{{ .HELM_BIN }} dependency build {{ .HELM_CHART_PATH }}/apiserver"
       - "{{ .HELM_BIN }} dependency build {{ .HELM_CHART_PATH }}"
 
       # Deploy bootstrap with explicit var passing (not as dependency)
