@@ -1,0 +1,20 @@
+kind: Cluster
+apiVersion: kind.x-k8s.io/v1alpha4
+nodes:
+  - role: control-plane
+    extraPortMappings:
+      - containerPort: 30000 # DIR API Server (local test)
+        hostPort: 30000
+        listenAddress: "127.0.0.1"
+      - containerPort: 30090 # DIR API Server metrics (local test)
+        hostPort: 30090
+        listenAddress: "127.0.0.1"
+      - containerPort: 30001 # DIR API Server (network test 1)
+        hostPort: 30001
+        listenAddress: "127.0.0.1"
+      - containerPort: 30002 # DIR API Server (network test 2)
+        hostPort: 30002
+        listenAddress: "127.0.0.1"
+      - containerPort: 30003 # DIR API Server (network test 3)
+        hostPort: 30003
+        listenAddress: "127.0.0.1"

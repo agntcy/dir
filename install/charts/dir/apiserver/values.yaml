@@ -311,6 +311,8 @@ pvc:
 service:
   type: ClusterIP
   port: 8888
+  # NodePort for gRPC server API
+  # nodePort: 30000
 
 # Prometheus metrics configuration
 # This section configures BOTH the application metrics server AND Kubernetes service
@@ -324,6 +326,9 @@ metrics:
   # Used for both the application listen address and Kubernetes service port
   # Default: 9090
   port: 9090
+
+  # NodePort for Prometheus metrics endpoint
+  # nodePort: 30090
 
   # ServiceMonitor for Prometheus Operator (optional)
   # Creates a ServiceMonitor resource for automatic Prometheus discovery

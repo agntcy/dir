@@ -14,11 +14,17 @@ spec:
       targetPort: grpc
       protocol: TCP
       name: grpc
+      {{- if (eq .Values.service.type "NodePort") }}
+      nodePort: {{ .Values.service.nodePort | default 30000 }}
+      {{- end }}
     {{- if .Values.metrics.enabled }}
     - port: {{ .Values.metrics.port }}
       targetPort: metrics
       protocol: TCP
       name: metrics
+      {{- if (eq .Values.service.type "NodePort") }}
+      nodePort: {{ .Values.metrics.nodePort | default 30090 }}
+      {{- end }}
     {{- end }}
   selector:
     {{- include "chart.selectorLabels" . | nindent 4 }}

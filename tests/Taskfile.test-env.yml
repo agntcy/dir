@@ -21,7 +21,7 @@ tasks:
       DEPLOY_BAKE_GROUP: '{{ if eq .E2E_COVERAGE_ENABLED "true" }}coverage{{ else }}default{{ end }}'
     cmds:
       # Create ephemeral cluster
-      - "{{ .KIND_BIN }} create cluster {{ .KIND_CREATE_OPTS }} --name {{ .KIND_CLUSTER_NAME }}"
+      - "{{ .KIND_BIN }} create cluster {{ .KIND_CREATE_OPTS }} --name {{ .KIND_CLUSTER_NAME }} --config {{ .KIND_CLUSTER_CONFIG }}"
       - "{{ .KIND_BIN }} export kubeconfig --name {{ .KIND_CLUSTER_NAME }}"
 
       # Check cluster status
@@ -135,6 +135,9 @@ tasks:
           --set apiserver.reconciler.config.indexer.interval="10s" \
           --set apiserver.reconciler.config.name.interval="5s" \
           --set apiserver.reconciler.config.signature.interval="5s" \
+          --set apiserver.service.type="NodePort" \
+          --set apiserver.service.nodePort="30000" \
+          --set apiserver.metrics.nodePort="30090" \
           --namespace {{ .HELM_NAMESPACE }} \
           --create-namespace \
           --install \
@@ -487,6 +490,7 @@ tasks:
       - for:
           matrix:
             PEER: ["peer1", "peer2", "peer3"]
+            PEER_PORT: ["30001", "30002", "30003"]
         cmd: |
           export $(cat .env)
 
@@ -520,6 +524,8 @@ tasks:
             --set apiserver.reconciler.config.indexer.interval="10s" \
             --set apiserver.reconciler.config.name.interval="5s" \
             --set apiserver.reconciler.config.signature.interval="5s" \
+            --set apiserver.service.type="NodePort" \
+            --set apiserver.service.nodePort="{{ .ITEM.PEER_PORT }}" \
             --namespace "{{ .ITEM.PEER }}" \
             --create-namespace \
             --install

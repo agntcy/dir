@@ -126,7 +126,6 @@ tasks:
       DIRECTORY_E2E_DEPLOYMENT_MODE: "local"
     cmds:
       - defer: { task: test-env:kubernetes:local:cleanup }
-      - defer: { task: test-env:kubernetes:local:port-forward:cleanup }
       - defer:
           task: test:e2e:coverage:extract-pods
           vars:
@@ -150,7 +149,6 @@ tasks:
           --install \
           --wait \
           --timeout "5m"
-      - task: test-env:kubernetes:local:port-forward
       # Run client library tests first (faster feedback)
       - |
         if [ "{{.E2E_COVERAGE_ENABLED}}" = "true" ]; then

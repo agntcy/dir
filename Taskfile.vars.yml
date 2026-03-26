@@ -61,6 +61,7 @@ vars:
   KUBECTL_BIN: "{{ .BIN_DIR }}/kubectl-{{.KUBECTL_VERSION}}"
   KIND_VERSION: "0.31.0"
   KIND_BIN: "{{ .BIN_DIR }}/kind-{{.KIND_VERSION}}"
+  KIND_CLUSTER_CONFIG: "{{ .ROOT_DIR }}/tests/kind-config.yaml"
   PROTOC_VERSION: "34.0"
   PROTOC_BIN: "{{ .BIN_DIR }}/protoc-{{.PROTOC_VERSION}}"
   BUFBUILD_VERSION: "1.66.1"
