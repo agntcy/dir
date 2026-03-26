@@ -27,7 +27,8 @@ FAILED_FILES="[]"
 ALL_SUCCESS=true
 
 echo "=== Push OASF Records ==="
-echo "Server address: ${SERVER_ADDR:-(${DIRCTL_BIN} default)}"
+echo "dirctl: ${DIRCTL_BIN}"
+echo "Server address: ${SERVER_ADDR:-"(dirctl default)"}"
 echo ""
 
 # Collect all files from all path patterns

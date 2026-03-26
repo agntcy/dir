@@ -38,7 +38,7 @@ jobs:
         uses: ./.github/actions/validate-record
         with:
           record_paths: tests/e2e/shared/testdata/record_100.json
-          dirctl_path: ${{ steps.build-dirctl.outputs.dirctl_path }}
+          dirctl_path: ${{ steps.setup-dirctl.outputs.dirctl_path }}
 
       - name: Push record
         id: push
@@ -70,12 +70,15 @@ jobs:
         env:
           SERVER_ADDR: ${{ inputs.server_addr }}
           GITHUB_TOKEN: ${{ secrets.DIR_DEMO_WORKFLOW_PAT }}
-        run: dirctl search --name "burger_seller_agent" --server-addr="$SERVER_ADDR" --github-token="$GITHUB_TOKEN"
+          DIRCTL_PATH: ${{ steps.setup-dirctl.outputs.dirctl_path }}
+        run: |
+          "${DIRCTL_PATH}" search --name "burger_seller_agent" --server-addr="$SERVER_ADDR" --github-token="$GITHUB_TOKEN"
 
       - name: Verify record
         env:
           SERVER_ADDR: ${{ inputs.server_addr }}
           GITHUB_TOKEN: ${{ secrets.DIR_DEMO_WORKFLOW_PAT }}
+          DIRCTL_PATH: ${{ steps.setup-dirctl.outputs.dirctl_path }}
         run: |
           CID=$(echo '${{ steps.push.outputs.cids }}' | jq -r '.[]')
-          dirctl verify "$CID" --server-addr="$SERVER_ADDR" --github-token="$GITHUB_TOKEN"
+          "${DIRCTL_PATH}" verify "$CID" --server-addr="$SERVER_ADDR" --github-token="$GITHUB_TOKEN"
