@@ -220,10 +220,11 @@ tasks:
       HELM_NAMESPACE: '{{ .HELM_NAMESPACE | default "dir-server-ghcr" }}'
     cmds:
       - |
-        {{ .KUBECTL_BIN }} port-forward service/dir-apiserver 8888:8888 -n {{ .HELM_NAMESPACE }} &
-        {{ .KUBECTL_BIN }} port-forward service/dir-apiserver 9090:9090 -n {{ .HELM_NAMESPACE }} &
-
-      - sleep 10
+        (while true; do {{ .KUBECTL_BIN }} port-forward service/dir-apiserver 8888:8888 -n {{ .HELM_NAMESPACE }}; sleep 2; done) &
+        (while true; do {{ .KUBECTL_BIN }} port-forward service/dir-apiserver 9090:9090 -n {{ .HELM_NAMESPACE }}; sleep 2; done) &
+      - task: port-forward:wait
+        vars:
+          PORTS: "8888 9090"
 
   test-env:kubernetes:local:ghcr:cleanup:
     aliases: [deploy:local:ghcr:cleanup]
@@ -347,17 +348,22 @@ tasks:
     aliases: [deploy:local:port-forward]
     desc: Set up port-forwarding for the local deployment
     vars:
-      # Helm args
       HELM_NAMESPACE: '{{ .HELM_NAMESPACE | default "dir-server" }}'
     cmds:
-      # Port-forward dependency services
+      # Required services
       - |
-        {{ .KUBECTL_BIN }} port-forward service/dir-apiserver 8888:8888 -n {{ .HELM_NAMESPACE }} &
-        {{ .KUBECTL_BIN }} port-forward service/dir-apiserver 9090:9090 -n {{ .HELM_NAMESPACE }} &
-        {{ .KUBECTL_BIN }} port-forward service/dir-ingress-controller 8080:80 -n {{ .HELM_NAMESPACE }} &
-
-      # Delay to ensure services are online
-      - sleep 10
+        (while true; do {{ .KUBECTL_BIN }} port-forward service/dir-apiserver 8888:8888 -n {{ .HELM_NAMESPACE }}; sleep 2; done) &
+        (while true; do {{ .KUBECTL_BIN }} port-forward service/dir-apiserver 9090:9090 -n {{ .HELM_NAMESPACE }}; sleep 2; done) &
+      # Ingress controller is optional
+      - |
+        if {{ .KUBECTL_BIN }} get service dir-ingress-controller -n {{ .HELM_NAMESPACE }} >/dev/null 2>&1; then
+          (while true; do {{ .KUBECTL_BIN }} port-forward service/dir-ingress-controller 8080:80 -n {{ .HELM_NAMESPACE }}; sleep 2; done) &
+        else
+          echo "Ingress controller not deployed, skipping port 8080"
+        fi
+      - task: port-forward:wait
+        vars:
+          PORTS: "8888 9090"
 
   test-env:kubernetes:local:port-forward:cleanup:
     aliases: [deploy:local:port-forward:cleanup]
@@ -534,13 +540,13 @@ tasks:
     aliases: [deploy:network:port-forward]
     desc: Set up port-forwarding for the peers
     cmds:
-      # Port-forward dependency services
-      - "{{ .KUBECTL_BIN }} port-forward svc/agntcy-dir-apiserver -n peer1 8890:8888 &"
-      - "{{ .KUBECTL_BIN }} port-forward svc/agntcy-dir-apiserver -n peer2 8891:8888 &"
-      - "{{ .KUBECTL_BIN }} port-forward svc/agntcy-dir-apiserver -n peer3 8892:8888 &"
-
-      # Delay to ensure services are online
-      - sleep 10
+      - |
+        (while true; do {{ .KUBECTL_BIN }} port-forward svc/agntcy-dir-apiserver -n peer1 8890:8888; sleep 2; done) &
+        (while true; do {{ .KUBECTL_BIN }} port-forward svc/agntcy-dir-apiserver -n peer2 8891:8888; sleep 2; done) &
+        (while true; do {{ .KUBECTL_BIN }} port-forward svc/agntcy-dir-apiserver -n peer3 8892:8888; sleep 2; done) &
+      - task: port-forward:wait
+        vars:
+          PORTS: "8890 8891 8892"
 
   test-env:kubernetes:network:port-forward:cleanup:
     aliases: [deploy:network:port-forward:cleanup]
@@ -564,3 +570,21 @@ tasks:
           {{ .HELM_BIN }} delete --namespace {{ .ITEM.PEER }} agntcy-dir
 
       - "{{ .KIND_BIN }} delete cluster --name {{ .KIND_CLUSTER_NAME }}"
+
+  port-forward:wait:
+    desc: Wait for ports to accept TCP connections
+    internal: true
+    cmds:
+      - |
+        for port in {{ .PORTS }}; do
+          retries=30
+          while ! nc -z 127.0.0.1 "$port" 2>/dev/null; do
+            retries=$((retries-1))
+            if [ $retries -eq 0 ]; then
+              echo "ERROR: Port $port not ready after 30 seconds"
+              exit 1
+            fi
+            sleep 1
+          done
+          echo "Port $port is ready"
+        done
