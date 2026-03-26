@@ -54,6 +54,7 @@ jobs:
         uses: ./.github/actions/validate-record
         with:
           record_paths: tests/e2e/shared/testdata/record_100.json
+          dirctl_path: ${{ steps.build-dirctl.outputs.dirctl_path }}
 
       - name: Push record
         id: push
@@ -61,6 +62,7 @@ jobs:
         with:
           record_paths: tests/e2e/shared/testdata/record_100.json
           server_addr: ${{ inputs.server_addr }}
+          dirctl_path: ${{ steps.build-dirctl.outputs.dirctl_path }}
 
       - name: Sign record (OIDC)
         uses: ./.github/actions/sign-record
@@ -68,12 +70,14 @@ jobs:
           cids: ${{ steps.push.outputs.cids }}
           oidc_client_id: https://github.com/${{ github.repository }}/.github/workflows/demo-dir.yaml@${{ github.ref }}
           server_addr: ${{ inputs.server_addr }}
+          dirctl_path: ${{ steps.build-dirctl.outputs.dirctl_path }}
 
       - name: Publish record
         uses: ./.github/actions/publish-record
         with:
           cids: ${{ steps.push.outputs.cids }}
           server_addr: ${{ inputs.server_addr }}
+          dirctl_path: ${{ steps.build-dirctl.outputs.dirctl_path }}
 
       - name: Search for record
         env:

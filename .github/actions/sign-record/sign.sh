@@ -9,12 +9,26 @@ set -euo pipefail
 SERVER_ADDR="${SERVER_ADDR:-}"
 GITHUB_TOKEN="${GITHUB_TOKEN:-}"
 
+if [ -n "${DIRCTL_PATH:-}" ]; then
+  DIRCTL_BIN="${DIRCTL_PATH}"
+elif command -v dirctl >/dev/null 2>&1; then
+  DIRCTL_BIN="$(command -v dirctl)"
+else
+  echo "::error::dirctl not found. Set DIRCTL_PATH or add dirctl to PATH." >&2
+  exit 1
+fi
+
+if [ ! -x "${DIRCTL_BIN}" ]; then
+  echo "::error::dirctl is not executable at ${DIRCTL_BIN}" >&2
+  exit 1
+fi
+
 SIGNED=0
 FAILED=0
 ALL_SUCCESS=true
 
 echo "=== Sign Records (OIDC) ==="
-echo "Server address: ${SERVER_ADDR:-(dirctl default)}"
+echo "Server address: ${SERVER_ADDR:-(${DIRCTL_BIN} default)}"
 echo ""
 
 if [ -z "${OIDC_CLIENT_ID:-}" ] || [ -z "${ACTIONS_ID_TOKEN_REQUEST_TOKEN:-}" ] || [ -z "${ACTIONS_ID_TOKEN_REQUEST_URL:-}" ]; then
@@ -58,10 +72,10 @@ for CID in "${CID_ARRAY[@]}"; do
   echo "Signing: $CID"
   echo "----------------------------------------"
   set +e
-  SIGN_CMD="dirctl sign $CID --oidc-token=$OIDC_TOKEN --oidc-provider-url=https://token.actions.githubusercontent.com --oidc-client-id=$OIDC_CLIENT_ID"
-  [ -n "$SERVER_ADDR" ] && SIGN_CMD="$SIGN_CMD --server-addr=$SERVER_ADDR"
-  [ -n "$GITHUB_TOKEN" ] && SIGN_CMD="$SIGN_CMD --github-token=$GITHUB_TOKEN"
-  OUTPUT=$(eval "$SIGN_CMD" 2>&1)
+  SIGN_CMD=("${DIRCTL_BIN}" sign "$CID" "--oidc-token=$OIDC_TOKEN" --oidc-provider-url=https://token.actions.githubusercontent.com "--oidc-client-id=$OIDC_CLIENT_ID")
+  [ -n "$SERVER_ADDR" ] && SIGN_CMD+=(--server-addr "$SERVER_ADDR")
+  [ -n "$GITHUB_TOKEN" ] && SIGN_CMD+=(--github-token "$GITHUB_TOKEN")
+  OUTPUT=$("${SIGN_CMD[@]}" 2>&1)
   EXIT=$?
   set -e
   if [ $EXIT -eq 0 ]; then

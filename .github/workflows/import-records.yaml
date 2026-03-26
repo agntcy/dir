@@ -119,7 +119,7 @@ jobs:
           {
             "mcpServers": {
               "dir-mcp-server": {
-                "command": ".bin/dirctl",
+                "command": "${{ steps.build-dirctl.outputs.dirctl_path }}",
                 "args": [
                   "mcp",
                   "serve"
