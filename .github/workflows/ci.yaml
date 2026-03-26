@@ -154,6 +154,10 @@ jobs:
             exit 1
           fi
 
+  # This build builds local artifacts to the workflow run so that
+  # we can load and test functionalities locally.
+  # It does not push a tag as it includes test-specific instrumentation
+  # and is not intended for use outside of testing.
   build:
     name: Build
     needs:
@@ -166,12 +170,21 @@ jobs:
       image_tag: ${{ github.sha }}
       build_coverage_images: true
 
-  build-main-branch-images: # NOTE: This is duplicate now, after CI refactor this will be removed as is.
-    name: Build Images from main branch
+  # This build pushes a "latest" tag to the repo so that we can later do
+  # security posture analysis and post-check tests in other workflows.
+  # It does not include any test-specific instrumentation.
+  # Only run for push to main, nothing else (tags/releases/PRs)
+  push:
+    name: Push
+    if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+    needs:
+      - lint
+      - license
+      - verify
     uses: ./.github/workflows/reusable-build.yaml
     with:
       image_repo: ghcr.io/agntcy
-      image_tag: main
+      image_tag: latest
       push: true
 
   test:
