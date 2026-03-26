@@ -27,7 +27,8 @@ FAILED=0
 ALL_SUCCESS=true
 
 echo "=== Publish Records to DHT ==="
-echo "Server address: ${SERVER_ADDR:-(${DIRCTL_BIN} default)}"
+echo "dirctl: ${DIRCTL_BIN}"
+echo "Server address: ${SERVER_ADDR:-"(dirctl default)"}"
 echo ""
 
 # Normalize to one CID per line (accept JSON object from push-record output)

@@ -28,7 +28,8 @@ FAILED=0
 ALL_SUCCESS=true
 
 echo "=== Sign Records (OIDC) ==="
-echo "Server address: ${SERVER_ADDR:-(${DIRCTL_BIN} default)}"
+echo "dirctl: ${DIRCTL_BIN}"
+echo "Server address: ${SERVER_ADDR:-"(dirctl default)"}"
 echo ""
 
 if [ -z "${OIDC_CLIENT_ID:-}" ] || [ -z "${ACTIONS_ID_TOKEN_REQUEST_TOKEN:-}" ] || [ -z "${ACTIONS_ID_TOKEN_REQUEST_URL:-}" ]; then

@@ -82,11 +82,14 @@ jobs:
       - name: Search for record
         env:
           SERVER_ADDR: ${{ inputs.server_addr }}
-        run: dirctl search --name "burger_seller_agent" --server-addr="$SERVER_ADDR"
+          DIRCTL_PATH: ${{ steps.build-dirctl.outputs.dirctl_path }}
+        run: |
+          "${DIRCTL_PATH}" search --name "burger_seller_agent" --server-addr="$SERVER_ADDR"
 
       - name: Verify record
         env:
           SERVER_ADDR: ${{ inputs.server_addr }}
+          DIRCTL_PATH: ${{ steps.build-dirctl.outputs.dirctl_path }}
         run: |
           CID=$(echo '${{ steps.push.outputs.cids }}' | jq -r '.[]')
-          dirctl verify "$CID" --server-addr="$SERVER_ADDR"
+          "${DIRCTL_PATH}" verify "$CID" --server-addr="$SERVER_ADDR"
