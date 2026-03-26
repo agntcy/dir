@@ -126,3 +126,15 @@ func (s *eventsStore) WalkReferrers(ctx context.Context, recordCID string, refer
 	//nolint:wrapcheck
 	return referrerStore.WalkReferrers(ctx, recordCID, referrerType, walkFn)
 }
+
+func (s *eventsStore) DeleteReferrer(ctx context.Context, recordCID string, referrerCID string, referrerType string) ([]string, error) {
+	// Check if source supports referrer operations
+	referrerStore, ok := s.source.(types.ReferrerStoreAPI)
+	if !ok {
+		return nil, status.Errorf(codes.Unimplemented, "source store does not support referrer operations")
+	}
+
+	// Delegate to source (no event emitted for referrer operations)
+	//nolint:wrapcheck
+	return referrerStore.DeleteReferrer(ctx, recordCID, referrerCID, referrerType)
+}

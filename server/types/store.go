@@ -42,6 +42,8 @@ type ReferrerStoreAPI interface {
 
 	// WalkReferrers walks referrers individually for a given record CID and optional type filter
 	WalkReferrers(ctx context.Context, recordCID string, referrerType string, walkFn func(*corev1.RecordReferrer) error) error
+
+	DeleteReferrer(ctx context.Context, recordCID string, referrerCID string, referrerType string) ([]string, error)
 }
 
 // FullStore is the complete store interface with all optional capabilities.

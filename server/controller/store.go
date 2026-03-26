@@ -439,3 +439,49 @@ func extractRecordInfo(record *corev1.Record) (string, string) {
 
 	return name, version
 }
+
+func (s storeCtrl) DeleteReferrer(stream storev1.StoreService_DeleteReferrerServer) error {
+	storeLogger.Debug("Called store controller's DeleteReferrer method")
+
+	refStore, ok := s.store.(types.ReferrerStoreAPI)
+	if !ok {
+		return status.Errorf(codes.Internal, "referrer storage not supported by current store implementation")
+	}
+
+	for {
+		request, err := stream.Recv()
+		if errors.Is(err, io.EOF) {
+			storeLogger.Debug("DeleteReferrer stream completed")
+
+			return nil
+		}
+
+		if err != nil {
+			return status.Errorf(codes.Internal, "failed to receive delete referrer request: %v", err)
+		}
+
+		if err = protovalidate.Validate(request); err != nil {
+			return status.Errorf(codes.InvalidArgument, "%v", err)
+		}
+
+		recordCID := request.GetRecord().GetCid()
+		referrerCID := request.GetReferrerRef().GetCid()
+		referrerType := request.GetReferrerType()
+
+		cids, err := refStore.DeleteReferrer(stream.Context(), recordCID, referrerCID, referrerType)
+		if err != nil {
+			return err
+		}
+
+		result := []*corev1.ReferrerRef{}
+
+		for _, cid := range cids {
+			result = append(result, &corev1.ReferrerRef{Cid: cid})
+		}
+
+		response := storev1.DeleteReferrerResponse{ReferrerRefs: result}
+		if err := stream.Send(&response); err != nil {
+			return status.Errorf(codes.Internal, "failed to send record reference: %v", err)
+		}
+	}
+}

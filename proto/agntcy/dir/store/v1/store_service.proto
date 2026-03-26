@@ -45,6 +45,9 @@ service StoreService {
 
   // PullReferrer performs read operation for record referrers.
   rpc PullReferrer(stream PullReferrerRequest) returns (stream PullReferrerResponse);
+
+  // DeleteReferrer performs delete operation for record referrers.
+  rpc DeleteReferrer(stream DeleteReferrerRequest) returns (stream DeleteReferrerResponse);
 }
 
 // PushReferrerRequest represents a record with optional OCI artifacts for push operations.
@@ -98,11 +101,33 @@ message PullReferrerRequest {
   ];
 
   // If set, return the given referrer.
-  core.v1.ReferrerRef referrer_ref = 3;
+  optional core.v1.ReferrerRef referrer_ref = 3;
 }
 
 // PullReferrerResponse is returned after successfully fetching a record referrer.
 message PullReferrerResponse {
   // RecordReferrer object associated with the record
   core.v1.RecordReferrer referrer = 1;
+}
+
+message DeleteReferrerRequest {
+  // The record the referrer(s) are referring to.
+  core.v1.RecordRef record = 1 [
+    (buf.validate.field).required = true
+  ];
+
+  // The CID of the referrer to delete.
+  // If set, delete the referrer by CID.
+  optional core.v1.ReferrerRef referrer_ref = 2;
+
+  // The referrer type of the referrers to delete.
+  // If set, delete the referrers with given type.
+  optional string referrer_type = 3 [
+    (buf.validate.field).string.(core.v1.is_referrer_type) = true
+  ];
+}
+
+message DeleteReferrerResponse {
+  // The CID(s) of the deleted referrers.
+  repeated core.v1.ReferrerRef referrer_refs = 1;
 }

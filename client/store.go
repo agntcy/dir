@@ -286,3 +286,28 @@ func (c *Client) DeleteStream(ctx context.Context, refsCh <-chan *corev1.RecordR
 	//nolint:wrapcheck
 	return streaming.ProcessClientStream(ctx, stream, refsCh)
 }
+
+func (c *Client) DeleteReferrer(
+	ctx context.Context,
+	req *storev1.DeleteReferrerRequest,
+) (*storev1.DeleteReferrerResponse, error) {
+	stream, err := c.StoreServiceClient.DeleteReferrer(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create delete referrer stream: %w", err)
+	}
+
+	if err := stream.Send(req); err != nil {
+		return nil, fmt.Errorf("failed to send delete referrer request: %w", err)
+	}
+
+	if err := stream.CloseSend(); err != nil {
+		return nil, fmt.Errorf("failed to close send stream: %w", err)
+	}
+
+	response, err := stream.Recv()
+	if err != nil {
+		return nil, fmt.Errorf("failed to receive delete referrer response: %w", err)
+	}
+
+	return response, nil
+}

@@ -124,7 +124,7 @@ export declare type PullReferrerRequest = Message<"agntcy.dir.store.v1.PullRefer
   /**
    * If set, return the given referrer.
    *
-   * @generated from field: agntcy.dir.core.v1.ReferrerRef referrer_ref = 3;
+   * @generated from field: optional agntcy.dir.core.v1.ReferrerRef referrer_ref = 3;
    */
   referrerRef?: ReferrerRef;
 };
@@ -154,6 +154,58 @@ export declare type PullReferrerResponse = Message<"agntcy.dir.store.v1.PullRefe
  * Use `create(PullReferrerResponseSchema)` to create a new message.
  */
 export declare const PullReferrerResponseSchema: GenMessage<PullReferrerResponse>;
+
+/**
+ * @generated from message agntcy.dir.store.v1.DeleteReferrerRequest
+ */
+export declare type DeleteReferrerRequest = Message<"agntcy.dir.store.v1.DeleteReferrerRequest"> & {
+  /**
+   * The record the referrer(s) are referring to.
+   *
+   * @generated from field: agntcy.dir.core.v1.RecordRef record = 1;
+   */
+  record?: RecordRef;
+
+  /**
+   * The CID of the referrer to delete.
+   * If set, delete the referrer by CID.
+   *
+   * @generated from field: optional agntcy.dir.core.v1.ReferrerRef referrer_ref = 2;
+   */
+  referrerRef?: ReferrerRef;
+
+  /**
+   * The referrer type of the referrers to delete.
+   * If set, delete the referrers with given type.
+   *
+   * @generated from field: optional string referrer_type = 3;
+   */
+  referrerType?: string;
+};
+
+/**
+ * Describes the message agntcy.dir.store.v1.DeleteReferrerRequest.
+ * Use `create(DeleteReferrerRequestSchema)` to create a new message.
+ */
+export declare const DeleteReferrerRequestSchema: GenMessage<DeleteReferrerRequest>;
+
+/**
+ * @generated from message agntcy.dir.store.v1.DeleteReferrerResponse
+ */
+export declare type DeleteReferrerResponse = Message<"agntcy.dir.store.v1.DeleteReferrerResponse"> & {
+  /**
+   * The CID(s) of the deleted referrers.
+   *
+   * @generated from field: repeated agntcy.dir.core.v1.ReferrerRef referrer_refs = 1;
+   */
+  referrerRefs: ReferrerRef[];
+};
+
+/**
+ * Describes the message agntcy.dir.store.v1.DeleteReferrerResponse.
+ * Use `create(DeleteReferrerResponseSchema)` to create a new message.
+ */
+export declare const DeleteReferrerResponseSchema: GenMessage<DeleteReferrerResponse>;
 
 /**
  * Defines an interface for content-addressable storage
@@ -234,6 +286,16 @@ export declare const StoreService: GenService<{
     methodKind: "bidi_streaming";
     input: typeof PullReferrerRequestSchema;
     output: typeof PullReferrerResponseSchema;
+  },
+  /**
+   * DeleteReferrer performs delete operation for record referrers.
+   *
+   * @generated from rpc agntcy.dir.store.v1.StoreService.DeleteReferrer
+   */
+  deleteReferrer: {
+    methodKind: "bidi_streaming";
+    input: typeof DeleteReferrerRequestSchema;
+    output: typeof DeleteReferrerResponseSchema;
   },
 }>;
 
