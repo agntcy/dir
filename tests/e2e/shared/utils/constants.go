@@ -6,9 +6,9 @@ package utils
 // Network test constants for peer addresses.
 const (
 	// Local peer addresses used in network deployment tests.
-	Peer1Addr = "0.0.0.0:8890"
-	Peer2Addr = "0.0.0.0:8891"
-	Peer3Addr = "0.0.0.0:8892"
+	Peer1Addr = "localhost:8890"
+	Peer2Addr = "localhost:8891"
+	Peer3Addr = "localhost:8892"
 
 	// Internal Kubernetes service address for peer1.
 	Peer1InternalAddr = "agntcy-dir-apiserver.peer1.svc.cluster.local:8888"

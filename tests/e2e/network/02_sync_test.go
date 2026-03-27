@@ -187,7 +187,7 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests for sync commands", fun
 
 		// Wait for sync to complete
 		ginkgo.It("should wait for sync to complete", func() {
-			output := cli.Sync().Status(syncID).OnServer(utils.Peer2Addr).ShouldEventuallyContain("COMPLETED", 240*time.Second)
+			output := cli.Sync().Status(syncID).OnServer(utils.Peer2Addr).ShouldEventuallyContain("COMPLETED", 120*time.Second)
 			ginkgo.GinkgoWriter.Printf("Current sync status: %s", output)
 		})
 
@@ -202,7 +202,7 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests for sync commands", fun
 
 		ginkgo.It("should succeed to search for record_070_sync_v4.json from peer 2 after sync", func() {
 			// Search should eventually return the cid in peer 2 (retry until monitor indexes the record)
-			output := cli.Search().WithName("directory.agntcy.org/cisco/marketing-strategy-v4").OnServer(utils.Peer2Addr).ShouldEventuallyContain(cid, 240*time.Second)
+			output := cli.Search().WithName("directory.agntcy.org/cisco/marketing-strategy-v4").OnServer(utils.Peer2Addr).ShouldEventuallyContain(cid, 120*time.Second)
 
 			ginkgo.GinkgoWriter.Printf("Search found cid: %s", output)
 		})
@@ -261,7 +261,7 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests for sync commands", fun
 
 		// Wait for sync to complete
 		ginkgo.It("should wait for sync to complete", func() {
-			_ = cli.Sync().Status(syncID).OnServer(utils.Peer3Addr).ShouldEventuallyContain("COMPLETED", 240*time.Second)
+			_ = cli.Sync().Status(syncID).OnServer(utils.Peer3Addr).ShouldEventuallyContain("COMPLETED", 120*time.Second)
 		})
 
 		ginkgo.It("should succeed to pull record_070_sync_v5.json from peer 3 after sync", func() {
@@ -275,7 +275,7 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests for sync commands", fun
 
 		ginkgo.It("should succeed to search for record_070_sync_v5.json from peer 3 after sync", func() {
 			// Search should eventually return the cid in peer 2 (retry until monitor indexes the record)
-			output := cli.Search().WithName("directory.agntcy.org/cisco/marketing-strategy-v5").OnServer(utils.Peer3Addr).ShouldEventuallyContain(cidV5, 240*time.Second)
+			output := cli.Search().WithName("directory.agntcy.org/cisco/marketing-strategy-v5").OnServer(utils.Peer3Addr).ShouldEventuallyContain(cidV5, 120*time.Second)
 
 			ginkgo.GinkgoWriter.Printf("Search found cid: %s", output)
 		})

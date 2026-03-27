@@ -318,7 +318,6 @@ go test -C ./tests ./e2e/mcp -v -ginkgo.v
 ```
 task test:e2e:local:
 ├── 🏗️  Setup local Kubernetes (single node)
-├── 🔗  Setup port-forwarding
 ├── 📚  Run client library tests (Go APIs)
 ├── ⚙️   Run local CLI tests (dirctl commands)
 └── 🧹  Cleanup infrastructure
@@ -328,7 +327,6 @@ task test:e2e:local:
 ```
 task test:e2e:network:
 ├── 🏗️  Setup network Kubernetes (multi-peer)
-├── 🔗  Setup port-forwarding
 ├── 🚀  Run 01_deploy_test.go → DeferCleanup → Clean all peers
 ├── 🔄  Run 02_sync_test.go → DeferCleanup → Clean all peers  
 ├── 🔍  Run 03_search_test.go → DeferCleanup → Clean all peers

@@ -1,0 +1,33 @@
+# Copyright AGNTCY Contributors (https://github.com/agntcy)
+# SPDX-License-Identifier: Apache-2.0
+
+kind: Cluster
+apiVersion: kind.x-k8s.io/v1alpha4
+nodes:
+  - role: control-plane
+    extraPortMappings:
+      # Local single-node deployment.
+      # Container port here is the NodePort of the exposed service.
+      - containerPort: 30088
+        hostPort: 8888
+        listenAddress: "127.0.0.1"
+        protocol: TCP
+      - containerPort: 30090
+        hostPort: 9090
+        listenAddress: "127.0.0.1"
+        protocol: TCP
+
+      # Network multi-peer deployment.
+      # Container port here is the NodePort of the exposed service.
+      - containerPort: 30190
+        hostPort: 8890
+        listenAddress: "127.0.0.1"
+        protocol: TCP
+      - containerPort: 30191
+        hostPort: 8891
+        listenAddress: "127.0.0.1"
+        protocol: TCP
+      - containerPort: 30192
+        hostPort: 8892
+        listenAddress: "127.0.0.1"
+        protocol: TCP
