@@ -20,7 +20,7 @@ import (
 	"github.com/agntcy/dir/server/types"
 	"github.com/agntcy/dir/server/types/adapters"
 	"github.com/agntcy/dir/utils/logging"
-	"oras.land/oras-go/v2/registry/remote"
+	"oras.land/oras-go/v2/registry"
 )
 
 var logger = logging.Logger("reconciler/indexer")
@@ -32,7 +32,7 @@ type Task struct {
 	db        types.SearchDatabaseAPI
 	store     types.StoreAPI
 	ociConfig ociconfig.Config
-	repo      *remote.Repository
+	repo      registry.TagLister
 
 	mu           sync.Mutex
 	lastSnapshot *registrySnapshot
@@ -52,7 +52,7 @@ var emptySnapshot = &registrySnapshot{
 }
 
 // NewTask creates a new indexer reconciliation task.
-func NewTask(config Config, localRegistry ociconfig.Config, store types.StoreAPI, repo *remote.Repository, db types.SearchDatabaseAPI) (*Task, error) {
+func NewTask(config Config, localRegistry ociconfig.Config, store types.StoreAPI, repo registry.TagLister, db types.SearchDatabaseAPI) (*Task, error) {
 	return &Task{
 		config:       config,
 		db:           db,

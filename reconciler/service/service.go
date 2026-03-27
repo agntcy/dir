@@ -20,7 +20,7 @@ import (
 	"github.com/agntcy/dir/server/naming/wellknown"
 	"github.com/agntcy/dir/server/types"
 	"github.com/agntcy/dir/utils/logging"
-	"oras.land/oras-go/v2/registry/remote"
+	"oras.land/oras-go/v2/registry"
 )
 
 var logger = logging.Logger("reconciler/service")
@@ -37,7 +37,7 @@ type Service struct {
 // New creates a reconciler service with tasks registered according to cfg.
 // The caller supplies the database and store so that an embedding process (e.g.
 // the daemon) can share them with the apiserver.
-func New(cfg *config.Config, db types.DatabaseAPI, store types.StoreAPI, repo *remote.Repository) (*Service, error) {
+func New(cfg *config.Config, db types.DatabaseAPI, store types.StoreAPI, repo registry.TagLister) (*Service, error) {
 	svc := &Service{
 		tasks:  []tasks.Task{},
 		stopCh: make(chan struct{}),
@@ -50,7 +50,7 @@ func New(cfg *config.Config, db types.DatabaseAPI, store types.StoreAPI, repo *r
 	return svc, nil
 }
 
-func (s *Service) registerTasks(cfg *config.Config, db types.DatabaseAPI, store types.StoreAPI, repo *remote.Repository) error {
+func (s *Service) registerTasks(cfg *config.Config, db types.DatabaseAPI, store types.StoreAPI, repo registry.TagLister) error {
 	if cfg.Regsync.Enabled {
 		t, err := regsync.NewTask(cfg.Regsync, cfg.LocalRegistry, db)
 		if err != nil {

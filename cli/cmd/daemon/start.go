@@ -28,6 +28,7 @@ import (
 	storeconfig "github.com/agntcy/dir/server/store/config"
 	ociconfig "github.com/agntcy/dir/server/store/oci/config"
 	"github.com/spf13/cobra"
+	ocistore "oras.land/oras-go/v2/content/oci"
 )
 
 var startCmd = &cobra.Command{
@@ -68,8 +69,16 @@ func runStart(cmd *cobra.Command, _ []string) error {
 
 	presenter.Println(cmd, "Server started", "address", serverCfg.ListenAddress)
 
+	// Create a local OCI tag lister for the indexer to discover records.
+	storePath := filepath.Join(dataDir, "store")
+
+	localRepo, err := ocistore.New(storePath)
+	if err != nil {
+		return fmt.Errorf("failed to open local OCI store for indexer: %w", err)
+	}
+
 	// Start the reconciler using the server's DB and store.
-	svc, err := reconciler.New(reconcilerCfg, srv.Database(), srv.Store(), nil)
+	svc, err := reconciler.New(reconcilerCfg, srv.Database(), srv.Store(), localRepo)
 	if err != nil {
 		return fmt.Errorf("failed to create reconciler: %w", err)
 	}
@@ -153,10 +162,7 @@ func buildServerConfig() *serverconfig.Config {
 func buildReconcilerConfig() *reconcilerconfig.Config {
 	return &reconcilerconfig.Config{
 		Regsync: regsync.Config{
-			Enabled:    true,
-			Interval:   regsync.DefaultInterval,
-			BinaryPath: regsync.DefaultBinaryPath,
-			Timeout:    regsync.DefaultTimeout,
+			Enabled: false,
 		},
 		Indexer: indexer.Config{
 			Enabled:  true,
