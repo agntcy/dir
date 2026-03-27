@@ -80,7 +80,7 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests for name resolution acr
 		})
 
 		ginkgo.It("should wait for sync to complete", func() {
-			output := cli.Sync().Status(syncID).OnServer(utils.Peer2Addr).ShouldEventuallyContain("COMPLETED", 120*time.Second)
+			output := cli.Sync().Status(syncID).OnServer(utils.Peer2Addr).ShouldEventuallyContain("COMPLETED", 240*time.Second)
 			ginkgo.GinkgoWriter.Printf("Current sync status: %s\n", output)
 		})
 

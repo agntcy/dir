@@ -483,10 +483,13 @@ tasks:
         map:
           peer1:
             apiNodePort: "30090"
+            metricsNodePort: "31090"
           peer2:
             apiNodePort: "30091"
+            metricsNodePort: "31091"
           peer3:
             apiNodePort: "30092"
+            metricsNodePort: "31092"
     cmds:
       # Build helm dependencies once (shared across deployments)
       - task: helm:dep:build
@@ -518,6 +521,7 @@ tasks:
             --set apiserver.image.tag="{{ .DEPLOY_IMAGE_TAG }}" \
             --set apiserver.service.type="NodePort" \
             --set apiserver.service.nodePort="{{ .ITEM.apiNodePort }}" \
+            --set apiserver.service.metricsNodePort="{{ .ITEM.metricsNodePort }}" \
             {{ if .PUBLICATION_SCHEDULER_INTERVAL }}--set apiserver.config.publication.scheduler_interval="{{ .PUBLICATION_SCHEDULER_INTERVAL }}"{{ end }} \
             --set apiserver.config.routing.refresh_interval="1s" \
             --set apiserver.config.store.oci.registry_address="agntcy-dir-zot.{{ .KEY }}.svc.cluster.local:5000" \
