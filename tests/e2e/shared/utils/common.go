@@ -7,6 +7,7 @@ import (
 	"context"
 	"fmt"
 	"reflect"
+	"time"
 
 	corev1 "github.com/agntcy/dir/api/core/v1"
 	routingv1 "github.com/agntcy/dir/api/routing/v1"
@@ -147,7 +148,7 @@ func resetNestedCommandFlags(cmd *cobra.Command) {
 
 // IsServerReady checks whether the given gRPC server reports SERVING
 // on the gRPC health check endpoint.
-func IsGrpcServerReady(ctx context.Context, addr string) error {
+func IsGrpcServerReady(addr string) error {
 	// Create client
 	client, err := grpc.NewClient(addr,
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
@@ -156,6 +157,10 @@ func IsGrpcServerReady(ctx context.Context, addr string) error {
 		return fmt.Errorf("failed to connect to %s: %w", addr, err)
 	}
 	defer client.Close()
+
+	// Create request context
+	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
+	defer cancel()
 
 	// Check health
 	healthClient := grpc_health_v1.NewHealthClient(client)
