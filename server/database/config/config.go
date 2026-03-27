@@ -7,6 +7,9 @@ const (
 	// DefaultType is the default database type if not specified in the config.
 	DefaultType = "postgres"
 
+	// SQLite defaults.
+	DefaultSQLitePath = "/tmp/dir.db"
+
 	// PostgreSQL defaults.
 	DefaultPostgresHost     = "localhost"
 	DefaultPostgresPort     = 5432
@@ -15,11 +18,19 @@ const (
 )
 
 type Config struct {
-	// Type is the type of the database (postgres).
+	// Type is the type of the database (sqlite or postgres).
 	Type string `json:"type,omitempty" mapstructure:"type"`
+
+	// SQLite database configuration.
+	SQLite SQLiteConfig `json:"sqlite" mapstructure:"sqlite"`
 
 	// PostgreSQL database configuration.
 	Postgres PostgresConfig `json:"postgres" mapstructure:"postgres"`
+}
+
+type SQLiteConfig struct {
+	// Path is the filesystem path to the SQLite database file.
+	Path string `json:"path,omitempty" mapstructure:"path"`
 }
 
 type PostgresConfig struct {
