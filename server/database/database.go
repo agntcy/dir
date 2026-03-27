@@ -67,6 +67,8 @@ func newSQLite(cfg config.SQLiteConfig) (*gormdb.DB, error) {
 		path = config.DefaultSQLitePath
 	}
 
+	path = config.EnsureFilePath(path)
+
 	db, err := gorm.Open(sqlite.Open(path), &gorm.Config{
 		Logger: newCustomLogger(),
 	})
