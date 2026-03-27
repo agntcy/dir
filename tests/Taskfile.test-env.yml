@@ -16,18 +16,40 @@ tasks:
     vars:
       KIND_CLUSTER_NAME: '{{ .KIND_CLUSTER_NAME | default "agntcy-cluster" }}'
       KIND_CREATE_OPTS: '{{ .KIND_CREATE_OPTS | default "" }}'
+      KIND_CLUSTER_CONFIG_PATH:
+        sh: mktemp
+      # Port mapping is defined in the format of "hostPort1:containerPort1,hostPort2:containerPort2".
+      # Container port should match the NodePort of the service defined in the Helm chart.
+      KIND_EXTRA_PORT_MAPPING: '{{ .KIND_EXTRA_PORT_MAPPING | default "" }}'
       E2E_COVERAGE_ENABLED: '{{ .E2E_COVERAGE_ENABLED | default "false" }}'
       DEPLOY_BAKE_ENV: '{{ if eq .E2E_COVERAGE_ENABLED "true" }}{{ .COVERAGE_BAKE_ENV }}{{ else }}{{ .BAKE_ENV }}{{ end }}'
       DEPLOY_BAKE_GROUP: '{{ if eq .E2E_COVERAGE_ENABLED "true" }}coverage{{ else }}default{{ end }}'
     cmds:
-      # Create ephemeral cluster
-      - "{{ .KIND_BIN }} create cluster {{ .KIND_CREATE_OPTS }} --name {{ .KIND_CLUSTER_NAME }}"
-      - "{{ .KIND_BIN }} export kubeconfig --name {{ .KIND_CLUSTER_NAME }}"
+      # Create cluster config
+      - |
+        cat <<EOF > {{.KIND_CLUSTER_CONFIG_PATH}}
+        kind: Cluster
+        apiVersion: kind.x-k8s.io/v1alpha4
+        nodes:
+          - role: control-plane
+        {{ if .KIND_EXTRA_PORT_MAPPING }}
+            extraPortMappings:
+        {{ range .KIND_EXTRA_PORT_MAPPING | splitList "," }}
+            - hostPort: {{ index (splitList ":" .) 0 }}
+              containerPort: {{ index (splitList ":" .) 1 }}
+              listenAddress: "127.0.0.1"
+              protocol: TCP
+        {{ end }}
+        {{ end }}
+        EOF
 
-      # Check cluster status
-      - "{{ .KUBECTL_BIN }} cluster-info"
+      # Create cluster
+      - |
+        {{ .KIND_BIN }} create cluster {{ .KIND_CREATE_OPTS }} --name {{ .KIND_CLUSTER_NAME }} --config {{ .KIND_CLUSTER_CONFIG_PATH }}
+        {{ .KIND_BIN }} export kubeconfig --name {{ .KIND_CLUSTER_NAME }}
+        {{ .KUBECTL_BIN }} cluster-info
 
-      # Import images
+      # Load images
       - |
         images=$({{.DEPLOY_BAKE_ENV}} docker buildx bake {{.DEPLOY_BAKE_GROUP}} --print | jq -r '.target | with_entries(.value |= .tags[0]) | to_entries[] | .value')
         echo "$images" | while read image; do
@@ -80,7 +102,9 @@ tasks:
     aliases: [deploy:local]
     desc: Deploy a local Directory server in Kubernetes
     deps:
-      - test-env:kubernetes:setup-cluster
+      - task: test-env:kubernetes:setup-cluster
+        vars:
+          KIND_EXTRA_PORT_MAPPING: "{{.API_HOSTPORT}}:{{.API_NODEPORT}},{{.METRICS_HOSTPORT}}:{{.METRICS_NODEPORT}}"
     vars:
       # Kind args
       KIND_CLUSTER_NAME: '{{ .KIND_CLUSTER_NAME | default "agntcy-cluster" }}'
@@ -92,6 +116,11 @@ tasks:
       # Coverage config
       E2E_COVERAGE_ENABLED: '{{ .E2E_COVERAGE_ENABLED | default "false" }}'
       DEPLOY_IMAGE_TAG: '{{ if eq .E2E_COVERAGE_ENABLED "true" }}{{ .COVERAGE_IMAGE_TAG }}{{ else }}{{ .IMAGE_TAG }}{{ end }}'
+      # API config
+      API_HOSTPORT: '{{ .API_HOSTPORT | default "8888" }}'
+      API_NODEPORT: '{{ .API_NODEPORT | default "30088" }}'
+      METRICS_HOSTPORT: '{{ .METRICS_HOSTPORT | default "9090" }}'
+      METRICS_NODEPORT: '{{ .METRICS_NODEPORT | default "30090" }}'
     cmds:
       # TODO: make logic idempotent so that running functional tests does not change previous contexts
 
@@ -114,6 +143,9 @@ tasks:
           {{ .HELM_CHART_PATH }} \
           -f {{ .HELM_VALUES_PATH }} \
           --set apiserver.image.tag="{{ .DEPLOY_IMAGE_TAG }}" \
+          --set apiserver.service.type="NodePort" \
+          --set apiserver.service.nodePort="{{.API_NODEPORT}}" \
+          --set apiserver.service.metricsNodePort="{{.METRICS_NODEPORT}}" \
           {{ if .DIRECTORY_SERVER_PUBLICATION_SCHEDULER_INTERVAL }}--set apiserver.config.publication.scheduler_interval="{{ .DIRECTORY_SERVER_PUBLICATION_SCHEDULER_INTERVAL }}"{{ end }} \
           {{ if .DIRECTORY_SERVER_NAMING_TTL }}--set apiserver.config.naming.ttl="{{ .DIRECTORY_SERVER_NAMING_TTL }}"{{ end }} \
           --set apiserver.config.routing.refresh_interval="1s" \
@@ -146,7 +178,9 @@ tasks:
     aliases: [deploy:local:ghcr]
     desc: Deploy a local Directory server in Kubernetes using GHCR as backend (no Zot)
     deps:
-      - test-env:kubernetes:setup-cluster
+      - task: test-env:kubernetes:setup-cluster
+        vars:
+          KIND_EXTRA_PORT_MAPPING: "{{.API_HOSTPORT}}:{{.API_NODEPORT}},{{.METRICS_HOSTPORT}}:{{.METRICS_NODEPORT}}"
     vars:
       # Kind args
       KIND_CLUSTER_NAME: '{{ .KIND_CLUSTER_NAME | default "agntcy-cluster" }}'
@@ -157,6 +191,11 @@ tasks:
       # Coverage config
       E2E_COVERAGE_ENABLED: '{{ .E2E_COVERAGE_ENABLED | default "false" }}'
       DEPLOY_IMAGE_TAG: '{{ if eq .E2E_COVERAGE_ENABLED "true" }}{{ .COVERAGE_IMAGE_TAG }}{{ else }}{{ .IMAGE_TAG }}{{ end }}'
+      # API config
+      API_HOSTPORT: '{{ .API_HOSTPORT | default "8888" }}'
+      API_NODEPORT: '{{ .API_NODEPORT | default "30088" }}'
+      METRICS_HOSTPORT: '{{ .METRICS_HOSTPORT | default "9090" }}'
+      METRICS_NODEPORT: '{{ .METRICS_NODEPORT | default "30090" }}'
     cmds:
       # Validate required environment variables
       - |
@@ -183,6 +222,9 @@ tasks:
           {{ .HELM_CHART_PATH }} \
           -f {{ .HELM_VALUES_PATH }} \
           --set apiserver.image.tag="{{ .DEPLOY_IMAGE_TAG }}" \
+          --set apiserver.service.type="NodePort" \
+          --set apiserver.service.nodePort="{{.API_NODEPORT}}" \
+          --set apiserver.service.metricsNodePort="{{.METRICS_NODEPORT}}" \
           --set apiserver.config.store.oci.type=ghcr \
           --set apiserver.config.store.oci.registry_address="${DIRECTORY_SERVER_STORE_OCI_REGISTRY_ADDRESS}" \
           --set apiserver.config.store.oci.repository_name="${DIRECTORY_SERVER_STORE_OCI_REPOSITORY_NAME}" \
@@ -214,19 +256,6 @@ tasks:
           --wait \
           --wait-for-jobs \
           --timeout "15m"
-
-  test-env:kubernetes:local:ghcr:port-forward:
-    aliases: [deploy:local:ghcr:port-forward]
-    desc: Set up port-forwarding for the local GHCR deployment
-    vars:
-      HELM_NAMESPACE: '{{ .HELM_NAMESPACE | default "dir-server-ghcr" }}'
-    cmds:
-      - |
-        (while true; do {{ .KUBECTL_BIN }} port-forward service/dir-apiserver 8888:8888 -n {{ .HELM_NAMESPACE }}; sleep 2; done) &
-        (while true; do {{ .KUBECTL_BIN }} port-forward service/dir-apiserver 9090:9090 -n {{ .HELM_NAMESPACE }}; sleep 2; done) &
-      - task: port-forward:wait
-        vars:
-          PORTS: "8888 9090"
 
   test-env:kubernetes:local:ghcr:cleanup:
     aliases: [deploy:local:ghcr:cleanup]
@@ -347,34 +376,6 @@ tasks:
       - |
         {{ .KUBECTL_BIN }} get configmap -n spire spire-bundle -o json | jq '.data."bundle.spiffe"' -r > {{ .BUNDLE_PATH }}
 
-  test-env:kubernetes:local:port-forward:
-    aliases: [deploy:local:port-forward]
-    desc: Set up port-forwarding for the local deployment
-    vars:
-      HELM_NAMESPACE: '{{ .HELM_NAMESPACE | default "dir-server" }}'
-    cmds:
-      # Required services
-      - |
-        (while true; do {{ .KUBECTL_BIN }} port-forward service/dir-apiserver 8888:8888 -n {{ .HELM_NAMESPACE }}; sleep 2; done) &
-        (while true; do {{ .KUBECTL_BIN }} port-forward service/dir-apiserver 9090:9090 -n {{ .HELM_NAMESPACE }}; sleep 2; done) &
-      # Ingress controller is optional
-      - |
-        if {{ .KUBECTL_BIN }} get service dir-ingress-controller -n {{ .HELM_NAMESPACE }} >/dev/null 2>&1; then
-          (while true; do {{ .KUBECTL_BIN }} port-forward service/dir-ingress-controller 8080:80 -n {{ .HELM_NAMESPACE }}; sleep 2; done) &
-        else
-          echo "Ingress controller not deployed, skipping port 8080"
-        fi
-      - task: port-forward:wait
-        vars:
-          PORTS: "8888 9090"
-
-  test-env:kubernetes:local:port-forward:cleanup:
-    aliases: [deploy:local:port-forward:cleanup]
-    desc: Cleanup port-forwarding processes
-    cmds:
-      # Kill any existing port-forward processes for the dir-apiserver and dir-ingress-controller services
-      - kill -9 $(ps aux | grep port-forward | grep -E "(dir-apiserver|dir-ingress-controller)" | awk '{print $2}') || true
-
   test-env:kubernetes:local:cleanup:
     aliases: [deploy:local:cleanup, deploy:kubernetes:cleanup]
     desc: Cleanup Kubernetes environment for local deployment
@@ -393,6 +394,7 @@ tasks:
       - task: test-env:kubernetes:setup-cluster
         vars:
           E2E_COVERAGE_ENABLED: "{{ .E2E_COVERAGE_ENABLED }}"
+          KIND_EXTRA_PORT_MAPPING: "{{ .KIND_EXTRA_PORT_MAPPING }}"
       - deps:dirctl
     vars:
       # Helm args
@@ -401,6 +403,8 @@ tasks:
       # Coverage config
       E2E_COVERAGE_ENABLED: '{{ .E2E_COVERAGE_ENABLED | default "false" }}'
       DEPLOY_IMAGE_TAG: '{{ if eq .E2E_COVERAGE_ENABLED "true" }}{{ .COVERAGE_IMAGE_TAG }}{{ else }}{{ .IMAGE_TAG }}{{ end }}'
+      # API config
+      KIND_EXTRA_PORT_MAPPING: '{{ .KIND_EXTRA_PORT_MAPPING | default "" }}'
     cmds:
       # Generate private key if it doesn't exist
       - |
@@ -473,6 +477,19 @@ tasks:
       # Coverage config
       E2E_COVERAGE_ENABLED: '{{ .E2E_COVERAGE_ENABLED | default "false" }}'
       DEPLOY_IMAGE_TAG: '{{ if eq .E2E_COVERAGE_ENABLED "true" }}{{ .COVERAGE_IMAGE_TAG }}{{ else }}{{ .IMAGE_TAG }}{{ end }}'
+      # Peers config
+      KIND_EXTRA_PORT_MAPPING: '8890:30090,8891:30091,8892:30092'
+      PEERS_MAP:
+        map:
+          peer1:
+            apiNodePort: "30090"
+            metricsNodePort: "31090"
+          peer2:
+            apiNodePort: "30091"
+            metricsNodePort: "31091"
+          peer3:
+            apiNodePort: "30092"
+            metricsNodePort: "31092"
     cmds:
       # Build helm dependencies once (shared across deployments)
       - task: helm:dep:build
@@ -482,35 +499,38 @@ tasks:
         vars:
           PUBLICATION_SCHEDULER_INTERVAL: "{{ .PUBLICATION_SCHEDULER_INTERVAL }}"
           E2E_COVERAGE_ENABLED: "{{ .E2E_COVERAGE_ENABLED }}"
+          KIND_EXTRA_PORT_MAPPING: "{{ .KIND_EXTRA_PORT_MAPPING }}"
 
       # Step 1: Deploy all peer servers without waiting (fast)
       - for:
-          matrix:
-            PEER: ["peer1", "peer2", "peer3"]
+          var: PEERS_MAP
         cmd: |
           export $(cat .env)
 
           # Generate fresh credentials for this peer
           task test-env:kubernetes:gen-htpasswd-creds \
-            CREDS_FILE=/tmp/dir-htpasswd-creds-{{ .ITEM.PEER }}.env \
-            HTPASSWD_FILE=/tmp/zot-htpasswd-{{ .ITEM.PEER }}
+            CREDS_FILE=/tmp/dir-htpasswd-creds-{{ .KEY }}.env \
+            HTPASSWD_FILE=/tmp/zot-htpasswd-{{ .KEY }}
 
           # Load credentials
-          source /tmp/dir-htpasswd-creds-{{ .ITEM.PEER }}.env
+          source /tmp/dir-htpasswd-creds-{{ .KEY }}.env
 
           {{ .HELM_BIN }} upgrade agntcy-dir \
             {{ .HELM_CHART_PATH }} \
             -f {{ .HELM_VALUES_PATH }} \
             --set apiserver.image.tag="{{ .DEPLOY_IMAGE_TAG }}" \
+            --set apiserver.service.type="NodePort" \
+            --set apiserver.service.nodePort="{{ .ITEM.apiNodePort }}" \
+            --set apiserver.service.metricsNodePort="{{ .ITEM.metricsNodePort }}" \
             {{ if .PUBLICATION_SCHEDULER_INTERVAL }}--set apiserver.config.publication.scheduler_interval="{{ .PUBLICATION_SCHEDULER_INTERVAL }}"{{ end }} \
             --set apiserver.config.routing.refresh_interval="1s" \
-            --set apiserver.config.store.oci.registry_address="agntcy-dir-zot.{{ .ITEM.PEER }}.svc.cluster.local:5000" \
+            --set apiserver.config.store.oci.registry_address="agntcy-dir-zot.{{ .KEY }}.svc.cluster.local:5000" \
             --set apiserver.config.routing.bootstrap_peers[0]="/dns4/agntcy-dir-apiserver-routing.bootstrap.svc.cluster.local/tcp/8999/p2p/${BOOTSTRAP_PEER_ID}" \
-            --set apiserver.config.routing.directory_api_address="agntcy-dir-apiserver.{{ .ITEM.PEER }}.svc.cluster.local:8888" \
+            --set apiserver.config.routing.directory_api_address="agntcy-dir-apiserver.{{ .KEY }}.svc.cluster.local:8888" \
             --set apiserver.secrets.ociAuth.username="${HTPASSWD_USERNAME}" \
             --set apiserver.secrets.ociAuth.password="${HTPASSWD_PASSWORD}" \
             --set apiserver.zot.authHeader="${HTPASSWD_AUTH_HEADER}" \
-            --set-file apiserver.zot.secretFiles.htpasswd="/tmp/zot-htpasswd-{{ .ITEM.PEER }}" \
+            --set-file apiserver.zot.secretFiles.htpasswd="/tmp/zot-htpasswd-{{ .KEY }}" \
             --set apiserver.secrets.syncAuth.username="${HTPASSWD_SYNC_USERNAME}" \
             --set apiserver.secrets.syncAuth.password="${HTPASSWD_SYNC_PASSWORD}" \
             {{ if eq .E2E_COVERAGE_ENABLED "true" }}--set-json 'apiserver.extraEnv=[{"name":"GOCOVERDIR","value":"/tmp/coverage"}]' --set apiserver.coverageVolume=true{{ end }} \
@@ -520,44 +540,24 @@ tasks:
             --set apiserver.reconciler.config.indexer.interval="10s" \
             --set apiserver.reconciler.config.name.interval="5s" \
             --set apiserver.reconciler.config.signature.interval="5s" \
-            --namespace "{{ .ITEM.PEER }}" \
+            --namespace "{{ .KEY }}" \
             --create-namespace \
             --install
 
           # Cleanup temp files
-          rm -f /tmp/zot-htpasswd-{{ .ITEM.PEER }}
-          rm -f /tmp/dir-htpasswd-creds-{{ .ITEM.PEER }}.env
+          rm -f /tmp/zot-htpasswd-{{ .KEY }}
+          rm -f /tmp/dir-htpasswd-creds-{{ .KEY }}.env
 
       # Step 2: Wait for all peer deployments to be ready
       - for:
-          matrix:
-            PEER: ["peer1", "peer2", "peer3"]
+          var: PEERS_MAP
         cmd: |
-          echo "Waiting for {{ .ITEM.PEER }} deployments to be ready..."
-          {{ .KUBECTL_BIN }} wait --for=condition=available deployment/agntcy-dir-apiserver -n {{ .ITEM.PEER }} --timeout=15m
-          {{ .KUBECTL_BIN }} wait --for=condition=available deployment/agntcy-dir-reconciler -n {{ .ITEM.PEER }} --timeout=15m
-          {{ .KUBECTL_BIN }} wait --for=condition=ready pod -l app.kubernetes.io/name=zot -n {{ .ITEM.PEER }} --timeout=15m
-          {{ .KUBECTL_BIN }} wait --for=condition=ready pod -l app.kubernetes.io/name=postgresql -n {{ .ITEM.PEER }} --timeout=15m
-          echo "{{ .ITEM.PEER }} is ready"
-
-  test-env:kubernetes:network:port-forward:
-    aliases: [deploy:network:port-forward]
-    desc: Set up port-forwarding for the peers
-    cmds:
-      - |
-        (while true; do {{ .KUBECTL_BIN }} port-forward svc/agntcy-dir-apiserver -n peer1 8890:8888; sleep 2; done) &
-        (while true; do {{ .KUBECTL_BIN }} port-forward svc/agntcy-dir-apiserver -n peer2 8891:8888; sleep 2; done) &
-        (while true; do {{ .KUBECTL_BIN }} port-forward svc/agntcy-dir-apiserver -n peer3 8892:8888; sleep 2; done) &
-      - task: port-forward:wait
-        vars:
-          PORTS: "8890 8891 8892"
-
-  test-env:kubernetes:network:port-forward:cleanup:
-    aliases: [deploy:network:port-forward:cleanup]
-    desc: Cleanup port-forwarding processes
-    cmds:
-      # Kill any existing port-forward processes for the agntcy-dir-apiserver service
-      - kill -9 $(ps aux | grep port-forward | grep agntcy-dir-apiserver | awk '{print $2}') || true
+          echo "Waiting for {{ .KEY }} deployments to be ready..."
+          {{ .KUBECTL_BIN }} wait --for=condition=available deployment/agntcy-dir-apiserver -n {{ .KEY }} --timeout=15m
+          {{ .KUBECTL_BIN }} wait --for=condition=available deployment/agntcy-dir-reconciler -n {{ .KEY }} --timeout=15m
+          {{ .KUBECTL_BIN }} wait --for=condition=ready pod -l app.kubernetes.io/name=zot -n {{ .KEY }} --timeout=15m
+          {{ .KUBECTL_BIN }} wait --for=condition=ready pod -l app.kubernetes.io/name=postgresql -n {{ .KEY }} --timeout=15m
+          echo "{{ .KEY }} is ready"
 
   test-env:kubernetes:network:cleanup:
     aliases: [deploy:network:cleanup]
@@ -566,29 +566,4 @@ tasks:
       # Kind args
       KIND_CLUSTER_NAME: '{{ .KIND_CLUSTER_NAME | default "agntcy-cluster" }}'
     cmds:
-      # Delete helm releases
-      - for:
-          matrix:
-            PEER: ["bootstrap", "peer1", "peer2", "peer3"]
-        cmd: |
-          {{ .HELM_BIN }} delete --namespace {{ .ITEM.PEER }} agntcy-dir
-
       - "{{ .KIND_BIN }} delete cluster --name {{ .KIND_CLUSTER_NAME }}"
-
-  port-forward:wait:
-    desc: Wait for ports to accept TCP connections
-    internal: true
-    cmds:
-      - |
-        for port in {{ .PORTS }}; do
-          retries=30
-          while ! nc -z 127.0.0.1 "$port" 2>/dev/null; do
-            retries=$((retries-1))
-            if [ $retries -eq 0 ]; then
-              echo "ERROR: Port $port not ready after 30 seconds"
-              exit 1
-            fi
-            sleep 1
-          done
-          echo "Port $port is ready"
-        done

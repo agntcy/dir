@@ -315,10 +315,8 @@ var _ = ginkgo.Describe("Prometheus Metrics", ginkgo.Serial, ginkgo.Label("metri
 	})
 
 	ginkgo.Context("integration with kubectl (optional - if ServiceMonitor enabled)", func() {
-		ginkgo.It("should be able to port-forward to metrics port", func() {
+		ginkgo.It("should expose metrics port", func() {
 			// This test verifies the Kubernetes service exposes the metrics port
-			// Note: We don't actually port-forward here (it's already done by Taskfile)
-			// We just verify the metrics are accessible via the existing port-forward
 			resp, err := http.Get(metricsURL)
 			gomega.Expect(err).NotTo(gomega.HaveOccurred())
 
@@ -326,7 +324,7 @@ var _ = ginkgo.Describe("Prometheus Metrics", ginkgo.Serial, ginkgo.Label("metri
 
 			gomega.Expect(resp.StatusCode).To(gomega.Equal(http.StatusOK))
 
-			ginkgo.GinkgoWriter.Println("Metrics port is accessible via port-forward ✓")
+			ginkgo.GinkgoWriter.Println("Metrics port is accessible ✓")
 		})
 	})
 

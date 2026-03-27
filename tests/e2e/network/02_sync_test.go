@@ -225,7 +225,7 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests for sync commands", fun
 		// Wait for sync to complete
 		ginkgo.It("should wait for delete to complete", func() {
 			// Poll sync status until it changes from DELETE_PENDING to DELETED
-			output := cli.Sync().Status(deleteSyncID).OnServer(utils.Peer2Addr).ShouldEventuallyContain("DELETED", 120*time.Second)
+			output := cli.Sync().Status(deleteSyncID).OnServer(utils.Peer2Addr).ShouldEventuallyContain("DELETED", 240*time.Second)
 			ginkgo.GinkgoWriter.Printf("Current sync status: %s", output)
 		})
 

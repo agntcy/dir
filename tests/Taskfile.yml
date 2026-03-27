@@ -36,7 +36,6 @@ tasks:
       DIRECTORY_E2E_DEPLOYMENT_MODE: "local"
     cmds:
       - defer: { task: test-env:kubernetes:local:cleanup }
-      - defer: { task: test-env:kubernetes:local:port-forward:cleanup }
       - defer:
           task: test:e2e:coverage:extract-pods
           vars:
@@ -51,7 +50,6 @@ tasks:
           DIRECTORY_SERVER_RATELIMIT_GLOBAL_BURST: "{{ .RATELIMIT_GLOBAL_BURST }}"
           DIRECTORY_SERVER_OASF_API_VALIDATION_SCHEMA_URL: "https://schema.oasf.outshift.com"
           E2E_COVERAGE_ENABLED: "{{ .E2E_COVERAGE_ENABLED }}"
-      - task: test-env:kubernetes:local:port-forward
       - |
         # Run E2E tests with coverage if enabled
         if [ "{{.E2E_COVERAGE_ENABLED}}" = "true" ]; then
@@ -81,7 +79,6 @@ tasks:
       DIRECTORY_E2E_DEPLOYMENT_MODE: "local"
     cmds:
       - defer: { task: test-env:kubernetes:local:cleanup }
-      - defer: { task: test-env:kubernetes:local:port-forward:cleanup }
       - defer:
           task: test:e2e:coverage:extract-pods
           vars:
@@ -96,7 +93,6 @@ tasks:
           DIRECTORY_SERVER_RATELIMIT_GLOBAL_BURST: "{{ .RATELIMIT_GLOBAL_BURST }}"
           DIRECTORY_SERVER_OASF_API_VALIDATION_SCHEMA_URL: "https://schema.oasf.outshift.com"
           E2E_COVERAGE_ENABLED: "{{ .E2E_COVERAGE_ENABLED }}"
-      - task: test-env:kubernetes:local:port-forward
       - |
         # Run E2E tests with coverage if enabled
         if [ "{{.E2E_COVERAGE_ENABLED}}" = "true" ]; then
@@ -126,7 +122,6 @@ tasks:
       DIRECTORY_E2E_DEPLOYMENT_MODE: "local"
     cmds:
       - defer: { task: test-env:kubernetes:local:cleanup }
-      - defer: { task: test-env:kubernetes:local:port-forward:cleanup }
       - defer:
           task: test:e2e:coverage:extract-pods
           vars:
@@ -150,7 +145,6 @@ tasks:
           --install \
           --wait \
           --timeout "5m"
-      - task: test-env:kubernetes:local:port-forward
       # Run client library tests first (faster feedback)
       - |
         if [ "{{.E2E_COVERAGE_ENABLED}}" = "true" ]; then
@@ -208,7 +202,6 @@ tasks:
       - deps:kind
     cmds:
       - defer: { task: test-env:kubernetes:network:cleanup }
-      - defer: { task: test-env:kubernetes:network:port-forward:cleanup }
       # Extract coverage from all network namespaces
       - defer:
           task: test:e2e:coverage:extract-pods
@@ -231,12 +224,11 @@ tasks:
             E2E_COVERAGE_ENABLED: "{{ .E2E_COVERAGE_ENABLED }}"
             NAMESPACE: "peer3"
       # Bootstrap
-      # NOTE: Run as a dedicated task instead of dependency, otherwise the port forwarding won't work
+      # NOTE: Run as a dedicated task instead of dependency so deployment sequencing is explicit
       - task: test-env:kubernetes:network
         vars:
           PUBLICATION_SCHEDULER_INTERVAL: "{{ .PUBLICATION_SCHEDULER_INTERVAL }}"
           E2E_COVERAGE_ENABLED: "{{ .E2E_COVERAGE_ENABLED }}"
-      - task: test-env:kubernetes:network:port-forward
       # Run network tests with proper isolation and cleanup
       - |
         if [ "{{.E2E_COVERAGE_ENABLED}}" = "true" ]; then
@@ -289,6 +281,7 @@ tasks:
       - task: test-env:kubernetes:setup-cluster
         vars:
           KIND_CLUSTER_NAME: "{{ .DIR_TRUST_DOMAIN }}"
+          KIND_EXTRA_PORT_MAPPING: "8888:30088"
 
       # Start cloud provider for LoadBalancer support
       - |

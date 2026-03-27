@@ -4,12 +4,11 @@
 package mcp
 
 import (
-	"fmt"
-	"net"
 	"os"
 	"testing"
 	"time"
 
+	"github.com/agntcy/dir/tests/e2e/shared/utils"
 	ginkgo "github.com/onsi/ginkgo/v2"
 	"github.com/onsi/gomega"
 )
@@ -32,23 +31,10 @@ var _ = ginkgo.BeforeSuite(func() {
 	}
 
 	ginkgo.GinkgoWriter.Printf("Waiting for Directory apiserver at %s...\n", addr)
-	gomega.Expect(waitForServerReady(addr)).To(gomega.Succeed())
+	gomega.Eventually(utils.IsGrpcServerReady).
+		WithArguments(addr).
+		WithPolling(readyPollInterval).
+		WithTimeout(readyTimeout).
+		Should(gomega.Succeed())
 	ginkgo.GinkgoWriter.Printf("Directory apiserver is ready at %s\n", addr)
 })
-
-// waitForServerReady polls the given address until a TCP connection succeeds or timeout.
-func waitForServerReady(addr string) error {
-	deadline := time.Now().Add(readyTimeout)
-	for time.Now().Before(deadline) {
-		conn, err := net.DialTimeout("tcp", addr, 2*time.Second) //nolint:gosec,noctx
-		if err == nil {
-			conn.Close()
-
-			return nil
-		}
-
-		time.Sleep(readyPollInterval)
-	}
-
-	return fmt.Errorf("apiserver did not become ready at %s within %v", addr, readyTimeout)
-}
