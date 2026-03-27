@@ -4,7 +4,7 @@ This directory contains comprehensive end-to-end tests for the Directory system,
 
 ## 🏗️ Test Suite Architecture
 
-**Structure**: 4 separate test suites (local, client, network, MCP) with 100+ test cases organized by deployment mode and API type.
+**Structure**: 5 separate test suites (local, client, network, MCP, daemon) with 100+ test cases organized by deployment mode and API type.
 
 ```
 tests/e2e/
@@ -28,6 +28,9 @@ tests/e2e/
 │   ├── 01_deploy_test.go            # Multi-peer deployment
 │   ├── 02_sync_test.go              # Peer synchronization
 │   └── 03_search_test.go            # Remote routing search
+├── daemon/                          # package daemon - Daemon process tests (no cluster)
+│   ├── daemon_suite_test.go        # TestDaemonE2E(t *testing.T)
+│   └── 01_daemon_test.go           # Push, pull, sign, verify via Go client
 └── mcp/                             # package mcp - MCP server protocol tests (no cluster)
     ├── mcp_suite_test.go            # TestMCPE2E(t *testing.T)
     └── 01_protocol_test.go          # JSON-RPC init, tools, schema
@@ -269,6 +272,23 @@ tests/e2e/
 - **Dual operations**: Both unpublish (routing) and delete (storage)
 - **Graceful handling**: Continues cleanup even if individual operations fail
 
+### 🖥️ **Daemon Package** (`tests/e2e/daemon/`)
+**Deployment**: Local daemon process (`dirctl daemon start`)
+**Focus**: Go client library against the standalone daemon (no cluster required)
+**Suite**: `TestDaemonE2E(t *testing.T)`
+
+#### **`01_daemon_test.go`** - Core Operations via Go Client
+**Test Cases:**
+- `should push a record to the store` - Push with CID validation
+- `should pull the pushed record back` - Pull and canonical data comparison
+- `should sign the record with a key pair` - Cosign key-based signing (skipped if `cosign` not found)
+- `should verify the signature with the public key` - Local signature verification
+
+**Key Features:**
+- Connects via `client.WithEnvConfig()` (`DIRECTORY_CLIENT_SERVER_ADDRESS`, default `localhost:8888`)
+- Taskfile task compiles CLI, starts/stops daemon with isolated `--data-dir`
+- Cosign availability auto-detection; signature tests skipped gracefully when absent
+
 ## 🚀 **Test Execution Commands:**
 
 ### **All E2E Tests:**
@@ -276,6 +296,13 @@ tests/e2e/
 # Run all e2e tests (local → network → MCP protocol)
 task test:e2e
 task e2e
+```
+
+### **Daemon Tests:**
+```bash
+# Run daemon tests (compiles CLI, starts daemon, runs push/pull/sign/verify, stops daemon)
+task test:e2e:daemon
+task e2e:daemon
 ```
 
 ### **MCP Protocol Tests:**
@@ -331,6 +358,17 @@ task test:e2e:network:
 ├── 🔄  Run 02_sync_test.go → DeferCleanup → Clean all peers  
 ├── 🔍  Run 03_search_test.go → DeferCleanup → Clean all peers
 └── 🧹  Cleanup infrastructure
+```
+
+### **🖥️ Daemon Execution:**
+```
+task test:e2e:daemon:
+├── 🔨  Compile CLI (cli:compile)
+├── 🚀  Start daemon (dirctl daemon start --data-dir <tmpdir>)
+├── ⏳  Wait for readiness (poll dirctl daemon status)
+├── ✅  Run daemon e2e tests (push, pull, sign, verify)
+├── 🛑  Stop daemon (dirctl daemon stop)
+└── 🧹  Remove temp data directory
 ```
 
 ### **🔌 MCP Protocol Execution:**
@@ -395,6 +433,12 @@ task test:e2e:client        # Test Go library changes
 
 # Full local testing
 task test:e2e:local         # Test both client and CLI
+```
+
+### **Working on Daemon Features:**
+```bash
+# Quick smoke test (no cluster; compiles CLI, starts/stops daemon automatically)
+task test:e2e:daemon
 ```
 
 ### **Working on Network Features:**

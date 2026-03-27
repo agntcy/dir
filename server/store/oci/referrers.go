@@ -221,7 +221,7 @@ func (s *store) WalkReferrers(ctx context.Context, recordCID string, referrerTyp
 }
 
 // walkReferrersViaPredecessors walks referrers using the graph Predecessors API.
-func (s *store) walkReferrersViaPredecessors(ctx context.Context,subjectDesc ocispec.Descriptor,recordCID string,matcher ReferrerMatcher,walkFn func(*corev1.RecordReferrer) error,) error {
+func (s *store) walkReferrersViaPredecessors(ctx context.Context, subjectDesc ocispec.Descriptor, recordCID string, matcher ReferrerMatcher, walkFn func(*corev1.RecordReferrer) error) error {
 	predecessors, err := s.repo.Predecessors(ctx, subjectDesc)
 	if err != nil {
 		return status.Errorf(codes.Internal, "failed to get predecessors for manifest %s: %v", subjectDesc.Digest.String(), err)

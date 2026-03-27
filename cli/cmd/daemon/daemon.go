@@ -10,7 +10,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var	dataDir string
+var dataDir string
 
 // DefaultDataDir is the base directory for all daemon state.
 func DefaultDataDir() string {
