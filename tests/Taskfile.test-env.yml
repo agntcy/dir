@@ -104,9 +104,7 @@ tasks:
     deps:
       - task: test-env:kubernetes:setup-cluster
         vars:
-          KIND_CLUSTER_NAME: "{{ .KIND_CLUSTER_NAME }}"
           KIND_EXTRA_PORT_MAPPING: "{{.API_HOSTPORT}}:{{.API_NODEPORT}},{{.METRICS_HOSTPORT}}:{{.METRICS_NODEPORT}}"
-          E2E_COVERAGE_ENABLED: "{{ .E2E_COVERAGE_ENABLED }}"
     vars:
       # Kind args
       KIND_CLUSTER_NAME: '{{ .KIND_CLUSTER_NAME | default "agntcy-cluster" }}'
@@ -180,7 +178,9 @@ tasks:
     aliases: [deploy:local:ghcr]
     desc: Deploy a local Directory server in Kubernetes using GHCR as backend (no Zot)
     deps:
-      - test-env:kubernetes:setup-cluster
+      - task: test-env:kubernetes:setup-cluster
+        vars:
+          KIND_EXTRA_PORT_MAPPING: "{{.API_HOSTPORT}}:{{.API_NODEPORT}},{{.METRICS_HOSTPORT}}:{{.METRICS_NODEPORT}}"
     vars:
       # Kind args
       KIND_CLUSTER_NAME: '{{ .KIND_CLUSTER_NAME | default "agntcy-cluster" }}'
@@ -191,6 +191,11 @@ tasks:
       # Coverage config
       E2E_COVERAGE_ENABLED: '{{ .E2E_COVERAGE_ENABLED | default "false" }}'
       DEPLOY_IMAGE_TAG: '{{ if eq .E2E_COVERAGE_ENABLED "true" }}{{ .COVERAGE_IMAGE_TAG }}{{ else }}{{ .IMAGE_TAG }}{{ end }}'
+      # API config
+      API_HOSTPORT: '{{ .API_HOSTPORT | default "8888" }}'
+      API_NODEPORT: '{{ .API_NODEPORT | default "30088" }}'
+      METRICS_HOSTPORT: '{{ .METRICS_HOSTPORT | default "9090" }}'
+      METRICS_NODEPORT: '{{ .METRICS_NODEPORT | default "30090" }}'
     cmds:
       # Validate required environment variables
       - |
@@ -218,6 +223,8 @@ tasks:
           -f {{ .HELM_VALUES_PATH }} \
           --set apiserver.image.tag="{{ .DEPLOY_IMAGE_TAG }}" \
           --set apiserver.service.type="NodePort" \
+          --set apiserver.service.nodePort="{{.API_NODEPORT}}" \
+          --set apiserver.service.metricsNodePort="{{.METRICS_NODEPORT}}" \
           --set apiserver.config.store.oci.type=ghcr \
           --set apiserver.config.store.oci.registry_address="${DIRECTORY_SERVER_STORE_OCI_REGISTRY_ADDRESS}" \
           --set apiserver.config.store.oci.repository_name="${DIRECTORY_SERVER_STORE_OCI_REPOSITORY_NAME}" \
