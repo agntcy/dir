@@ -281,7 +281,7 @@ tasks:
       - task: test-env:kubernetes:setup-cluster
         vars:
           KIND_CLUSTER_NAME: "{{ .DIR_TRUST_DOMAIN }}"
-          KIND_CLUSTER_CONFIG: ""
+          KIND_EXTRA_PORT_MAPPING: "8888:30088"
 
       # Start cloud provider for LoadBalancer support
       - |
@@ -332,7 +332,6 @@ tasks:
       - task: deploy:kubernetes:context
         vars:
           KIND_CLUSTER_NAME: "{{ .DIRCTL_TRUST_DOMAIN }}"
-          KIND_CLUSTER_CONFIG: ""
       - |
         echo "Getting DIRCTL cluster service addresses..."
         DIRCTL_BUNDLE_IP=$(kubectl get service -n spire spire-server -o jsonpath='{.status.loadBalancer.ingress[0].ip}' 2>/dev/null || echo "127.0.0.1")

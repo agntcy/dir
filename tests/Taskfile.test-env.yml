@@ -3,21 +3,6 @@
 
 version: "3"
 
-vars:
-  PORTS:
-    map:
-      # Local single-node deployment
-      LOCAL_API_NODEPORT: "30088"
-      LOCAL_METRICS_NODEPORT: "30090"
-
-      # Network multi-peer deployment
-      NETWORK_PEER1_API_NODEPORT: "30190"
-      NETWORK_PEER2_API_NODEPORT: "30191"
-      NETWORK_PEER3_API_NODEPORT: "30192"
-      NETWORK_PEER1_API_HOSTPORT: "8890"
-      NETWORK_PEER2_API_HOSTPORT: "8891"
-      NETWORK_PEER3_API_HOSTPORT: "8892"
-
 tasks:
   default:
     cmd: echo "Run the main Taskfile instead of this one."
@@ -31,19 +16,40 @@ tasks:
     vars:
       KIND_CLUSTER_NAME: '{{ .KIND_CLUSTER_NAME | default "agntcy-cluster" }}'
       KIND_CREATE_OPTS: '{{ .KIND_CREATE_OPTS | default "" }}'
-      KIND_CLUSTER_CONFIG: '{{ .KIND_CLUSTER_CONFIG | default (print .ROOT_DIR "/tests/e2e.kind-config.yaml") }}'
+      KIND_CLUSTER_CONFIG_PATH:
+        sh: mktemp
+      # Port mapping is defined in the format of "hostPort1:containerPort1,hostPort2:containerPort2".
+      # Container port should match the NodePort of the service defined in the Helm chart.
+      KIND_EXTRA_PORT_MAPPING: '{{ .KIND_EXTRA_PORT_MAPPING | default "" }}'
       E2E_COVERAGE_ENABLED: '{{ .E2E_COVERAGE_ENABLED | default "false" }}'
       DEPLOY_BAKE_ENV: '{{ if eq .E2E_COVERAGE_ENABLED "true" }}{{ .COVERAGE_BAKE_ENV }}{{ else }}{{ .BAKE_ENV }}{{ end }}'
       DEPLOY_BAKE_GROUP: '{{ if eq .E2E_COVERAGE_ENABLED "true" }}coverage{{ else }}default{{ end }}'
     cmds:
-      # Create ephemeral cluster
-      - "{{ .KIND_BIN }} create cluster {{ .KIND_CREATE_OPTS }} --name {{ .KIND_CLUSTER_NAME }} {{ if .KIND_CLUSTER_CONFIG }}--config {{ .KIND_CLUSTER_CONFIG }}{{ end }}"
-      - "{{ .KIND_BIN }} export kubeconfig --name {{ .KIND_CLUSTER_NAME }}"
+      # Create cluster config
+      - |
+        cat <<EOF > {{.KIND_CLUSTER_CONFIG_PATH}}
+        kind: Cluster
+        apiVersion: kind.x-k8s.io/v1alpha4
+        nodes:
+          - role: control-plane
+        {{ if .KIND_EXTRA_PORT_MAPPING }}
+            extraPortMappings:
+        {{ range .KIND_EXTRA_PORT_MAPPING | splitList "," }}
+            - hostPort: {{ index (splitList ":" .) 0 }}
+              containerPort: {{ index (splitList ":" .) 1 }}
+              listenAddress: "127.0.0.1"
+              protocol: TCP
+        {{ end }}
+        {{ end }}
+        EOF
 
-      # Check cluster status
-      - "{{ .KUBECTL_BIN }} cluster-info"
+      # Create cluster
+      - |
+        {{ .KIND_BIN }} create cluster {{ .KIND_CREATE_OPTS }} --name {{ .KIND_CLUSTER_NAME }} --config {{ .KIND_CLUSTER_CONFIG_PATH }}
+        {{ .KIND_BIN }} export kubeconfig --name {{ .KIND_CLUSTER_NAME }}
+        {{ .KUBECTL_BIN }} cluster-info
 
-      # Import images
+      # Load images
       - |
         images=$({{.DEPLOY_BAKE_ENV}} docker buildx bake {{.DEPLOY_BAKE_GROUP}} --print | jq -r '.target | with_entries(.value |= .tags[0]) | to_entries[] | .value')
         echo "$images" | while read image; do
@@ -96,7 +102,11 @@ tasks:
     aliases: [deploy:local]
     desc: Deploy a local Directory server in Kubernetes
     deps:
-      - test-env:kubernetes:setup-cluster
+      - task: test-env:kubernetes:setup-cluster
+        vars:
+          KIND_CLUSTER_NAME: "{{ .KIND_CLUSTER_NAME }}"
+          KIND_EXTRA_PORT_MAPPING: "{{.API_HOSTPORT}}:{{.API_NODEPORT}},{{.METRICS_HOSTPORT}}:{{.METRICS_NODEPORT}}"
+          E2E_COVERAGE_ENABLED: "{{ .E2E_COVERAGE_ENABLED }}"
     vars:
       # Kind args
       KIND_CLUSTER_NAME: '{{ .KIND_CLUSTER_NAME | default "agntcy-cluster" }}'
@@ -108,6 +118,11 @@ tasks:
       # Coverage config
       E2E_COVERAGE_ENABLED: '{{ .E2E_COVERAGE_ENABLED | default "false" }}'
       DEPLOY_IMAGE_TAG: '{{ if eq .E2E_COVERAGE_ENABLED "true" }}{{ .COVERAGE_IMAGE_TAG }}{{ else }}{{ .IMAGE_TAG }}{{ end }}'
+      # API config
+      API_HOSTPORT: '{{ .API_HOSTPORT | default "8888" }}'
+      API_NODEPORT: '{{ .API_NODEPORT | default "30088" }}'
+      METRICS_HOSTPORT: '{{ .METRICS_HOSTPORT | default "9090" }}'
+      METRICS_NODEPORT: '{{ .METRICS_NODEPORT | default "30090" }}'
     cmds:
       # TODO: make logic idempotent so that running functional tests does not change previous contexts
 
@@ -131,8 +146,8 @@ tasks:
           -f {{ .HELM_VALUES_PATH }} \
           --set apiserver.image.tag="{{ .DEPLOY_IMAGE_TAG }}" \
           --set apiserver.service.type="NodePort" \
-            --set apiserver.service.nodePort="{{ .PORTS.LOCAL_API_NODEPORT }}" \
-            --set apiserver.service.metricsNodePort="{{ .PORTS.LOCAL_METRICS_NODEPORT }}" \
+          --set apiserver.service.nodePort="{{.API_NODEPORT}}" \
+          --set apiserver.service.metricsNodePort="{{.METRICS_NODEPORT}}" \
           {{ if .DIRECTORY_SERVER_PUBLICATION_SCHEDULER_INTERVAL }}--set apiserver.config.publication.scheduler_interval="{{ .DIRECTORY_SERVER_PUBLICATION_SCHEDULER_INTERVAL }}"{{ end }} \
           {{ if .DIRECTORY_SERVER_NAMING_TTL }}--set apiserver.config.naming.ttl="{{ .DIRECTORY_SERVER_NAMING_TTL }}"{{ end }} \
           --set apiserver.config.routing.refresh_interval="1s" \
@@ -203,8 +218,6 @@ tasks:
           -f {{ .HELM_VALUES_PATH }} \
           --set apiserver.image.tag="{{ .DEPLOY_IMAGE_TAG }}" \
           --set apiserver.service.type="NodePort" \
-            --set apiserver.service.nodePort="{{ .PORTS.LOCAL_API_NODEPORT }}" \
-            --set apiserver.service.metricsNodePort="{{ .PORTS.LOCAL_METRICS_NODEPORT }}" \
           --set apiserver.config.store.oci.type=ghcr \
           --set apiserver.config.store.oci.registry_address="${DIRECTORY_SERVER_STORE_OCI_REGISTRY_ADDRESS}" \
           --set apiserver.config.store.oci.repository_name="${DIRECTORY_SERVER_STORE_OCI_REPOSITORY_NAME}" \
@@ -374,6 +387,7 @@ tasks:
       - task: test-env:kubernetes:setup-cluster
         vars:
           E2E_COVERAGE_ENABLED: "{{ .E2E_COVERAGE_ENABLED }}"
+          KIND_EXTRA_PORT_MAPPING: "{{ .KIND_EXTRA_PORT_MAPPING }}"
       - deps:dirctl
     vars:
       # Helm args
@@ -382,6 +396,8 @@ tasks:
       # Coverage config
       E2E_COVERAGE_ENABLED: '{{ .E2E_COVERAGE_ENABLED | default "false" }}'
       DEPLOY_IMAGE_TAG: '{{ if eq .E2E_COVERAGE_ENABLED "true" }}{{ .COVERAGE_IMAGE_TAG }}{{ else }}{{ .IMAGE_TAG }}{{ end }}'
+      # API config
+      KIND_EXTRA_PORT_MAPPING: '{{ .KIND_EXTRA_PORT_MAPPING | default "" }}'
     cmds:
       # Generate private key if it doesn't exist
       - |
@@ -451,17 +467,19 @@ tasks:
     vars:
       HELM_CHART_PATH: "{{ .ROOT_DIR }}/install/charts/dir"
       HELM_VALUES_PATH: "{{ .ROOT_DIR }}/install/charts/dir/values.yaml"
-      PEERS_MAP:
-        map:
-          peer1:
-            nodePort: '{{ .PORTS.NETWORK_PEER1_API_NODEPORT }}'
-          peer2:
-            nodePort: '{{ .PORTS.NETWORK_PEER2_API_NODEPORT }}'
-          peer3:
-            nodePort: '{{ .PORTS.NETWORK_PEER3_API_NODEPORT }}'
       # Coverage config
       E2E_COVERAGE_ENABLED: '{{ .E2E_COVERAGE_ENABLED | default "false" }}'
       DEPLOY_IMAGE_TAG: '{{ if eq .E2E_COVERAGE_ENABLED "true" }}{{ .COVERAGE_IMAGE_TAG }}{{ else }}{{ .IMAGE_TAG }}{{ end }}'
+      # Peers config
+      KIND_EXTRA_PORT_MAPPING: '8890:30090,8891:30091,8892:30092'
+      PEERS_MAP:
+        map:
+          peer1:
+            apiNodePort: "30090"
+          peer2:
+            apiNodePort: "30091"
+          peer3:
+            apiNodePort: "30092"
     cmds:
       # Build helm dependencies once (shared across deployments)
       - task: helm:dep:build
@@ -471,6 +489,7 @@ tasks:
         vars:
           PUBLICATION_SCHEDULER_INTERVAL: "{{ .PUBLICATION_SCHEDULER_INTERVAL }}"
           E2E_COVERAGE_ENABLED: "{{ .E2E_COVERAGE_ENABLED }}"
+          KIND_EXTRA_PORT_MAPPING: "{{ .KIND_EXTRA_PORT_MAPPING }}"
 
       # Step 1: Deploy all peer servers without waiting (fast)
       - for:
@@ -491,7 +510,7 @@ tasks:
             -f {{ .HELM_VALUES_PATH }} \
             --set apiserver.image.tag="{{ .DEPLOY_IMAGE_TAG }}" \
             --set apiserver.service.type="NodePort" \
-            --set apiserver.service.nodePort="{{ .ITEM.nodePort }}" \
+            --set apiserver.service.nodePort="{{ .ITEM.apiNodePort }}" \
             {{ if .PUBLICATION_SCHEDULER_INTERVAL }}--set apiserver.config.publication.scheduler_interval="{{ .PUBLICATION_SCHEDULER_INTERVAL }}"{{ end }} \
             --set apiserver.config.routing.refresh_interval="1s" \
             --set apiserver.config.store.oci.registry_address="agntcy-dir-zot.{{ .KEY }}.svc.cluster.local:5000" \
@@ -536,12 +555,4 @@ tasks:
       # Kind args
       KIND_CLUSTER_NAME: '{{ .KIND_CLUSTER_NAME | default "agntcy-cluster" }}'
     cmds:
-      # Delete helm releases
-      - for:
-          matrix:
-            PEER: ["bootstrap", "peer1", "peer2", "peer3"]
-        cmd: |
-          {{ .HELM_BIN }} delete --namespace {{ .ITEM.PEER }} agntcy-dir
-
       - "{{ .KIND_BIN }} delete cluster --name {{ .KIND_CLUSTER_NAME }}"
-
