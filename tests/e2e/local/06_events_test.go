@@ -38,7 +38,7 @@ var _ = ginkgo.Describe("Events CLI Commands", ginkgo.Serial, ginkgo.Label("even
 
 		utils.ResetCLIState()
 
-		cli = utils.NewCLI()
+		cli = utils.NewCLI().WithDefaultServerAddress("127.0.0.1:30000")
 	})
 
 	tempDir := os.Getenv("E2E_COMPILE_OUTPUT_DIR")

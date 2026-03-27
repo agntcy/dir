@@ -69,7 +69,7 @@ var _ = ginkgo.Describe("Running dirctl e2e tests for DNS name verification", fu
 
 		utils.ResetCLIState()
 
-		cli = utils.NewCLI()
+		cli = utils.NewCLI().WithDefaultServerAddress("127.0.0.1:30000")
 	})
 
 	ginkgo.Context("naming verification workflow", ginkgo.Ordered, func() {

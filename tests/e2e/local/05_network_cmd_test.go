@@ -28,7 +28,7 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests for network commands", 
 		}
 
 		// Initialize CLI helper
-		cli = utils.NewCLI()
+		cli = utils.NewCLI().WithDefaultServerAddress("127.0.0.1:30000")
 
 		// Setup test directory and generate network key
 		tempDir, cleanup = utils.SetupNetworkTestDir()

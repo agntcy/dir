@@ -40,7 +40,7 @@ var _ = ginkgo.Describe("Running dirctl routing commands in local single node de
 
 		utils.ResetCLIState()
 		// Initialize CLI helper
-		cli = utils.NewCLI()
+		cli = utils.NewCLI().WithDefaultServerAddress("127.0.0.1:30000")
 	})
 
 	ginkgo.Context("routing publish command", func() {

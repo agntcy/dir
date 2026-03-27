@@ -68,7 +68,11 @@ var _ = ginkgo.Describe("Rate Limiting E2E Tests", ginkgo.Label("ratelimit"), gi
 		// Create a new client
 		var err error
 
-		c, err = client.New(ctx, client.WithEnvConfig())
+		config, err := client.LoadConfig()
+		gomega.Expect(err).NotTo(gomega.HaveOccurred())
+		config.ServerAddress = "127.0.0.1:30000"
+
+		c, err = client.New(ctx, client.WithConfig(config))
 		gomega.Expect(err).NotTo(gomega.HaveOccurred())
 	})
 

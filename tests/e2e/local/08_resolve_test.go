@@ -24,7 +24,7 @@ var _ = ginkgo.Describe("Name resolution - pull by name", func() {
 
 		utils.ResetCLIState()
 
-		cli = utils.NewCLI()
+		cli = utils.NewCLI().WithDefaultServerAddress("127.0.0.1:30000")
 	})
 
 	// Test pulling by name using existing test records

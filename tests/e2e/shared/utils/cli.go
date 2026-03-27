@@ -24,18 +24,27 @@ const (
 )
 
 // CLI provides a fluent interface for executing CLI commands in tests.
-type CLI struct{}
+type CLI struct {
+	DefaultServerAddr string
+}
 
 // NewCLI creates a new CLI test helper.
 func NewCLI() *CLI {
 	return &CLI{}
 }
 
+func (c *CLI) WithDefaultServerAddress(addr string) *CLI {
+	c.DefaultServerAddr = addr
+
+	return c
+}
+
 // Command creates a new command builder.
 func (c *CLI) Command(name string) *CommandBuilder {
 	return &CommandBuilder{
-		command: name,
-		timeout: DefaultCommandTimeout,
+		command:    name,
+		timeout:    DefaultCommandTimeout,
+		serverAddr: c.DefaultServerAddr,
 	}
 }
 

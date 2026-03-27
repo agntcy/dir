@@ -157,7 +157,11 @@ var _ = ginkgo.Describe("Running e2e tests for referrers", func() {
 
 		ctx = context.Background()
 
-		c, err = client.New(ctx, client.WithEnvConfig())
+		config, err := client.LoadConfig()
+		gomega.Expect(err).NotTo(gomega.HaveOccurred())
+		config.ServerAddress = "127.0.0.1:30000"
+
+		c, err = client.New(ctx, client.WithConfig(config))
 		gomega.Expect(err).NotTo(gomega.HaveOccurred())
 
 		record1, err = c.Push(ctx, generateRecord())

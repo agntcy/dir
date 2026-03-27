@@ -25,7 +25,7 @@ import (
 // already contain non-zero values from previous test operations.
 
 var _ = ginkgo.Describe("Prometheus Metrics", ginkgo.Serial, ginkgo.Label("metrics"), func() {
-	const metricsURL = "http://localhost:9090/metrics"
+	const metricsURL = "http://localhost:30090/metrics"
 
 	ginkgo.BeforeEach(func() {
 		if cfg.DeploymentMode != config.DeploymentModeLocal {
@@ -34,7 +34,7 @@ var _ = ginkgo.Describe("Prometheus Metrics", ginkgo.Serial, ginkgo.Label("metri
 	})
 
 	ginkgo.Context("metrics endpoint availability", func() {
-		ginkgo.It("should expose /metrics endpoint on port 9090", func() {
+		ginkgo.It("should expose /metrics endpoint on port 30090", func() {
 			resp, err := http.Get(metricsURL)
 			gomega.Expect(err).NotTo(gomega.HaveOccurred())
 

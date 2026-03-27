@@ -36,7 +36,7 @@ var _ = ginkgo.Describe("Search functionality for OASF 0.8.0 records", func() {
 
 		utils.ResetCLIState()
 
-		cli = utils.NewCLI()
+		cli = utils.NewCLI().WithDefaultServerAddress("127.0.0.1:30000")
 	})
 
 	var (
