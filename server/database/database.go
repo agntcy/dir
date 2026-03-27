@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/agntcy/dir/server/database/config"
@@ -60,6 +61,12 @@ func newCustomLogger() gormlogger.Interface {
 	)
 }
 
+// isMemoryDSN returns true for SQLite in-memory connection strings
+// (e.g. ":memory:", "file::memory:", "file::memory:?cache=shared").
+func isMemoryDSN(path string) bool {
+	return path == ":memory:" || strings.HasPrefix(path, "file::memory:")
+}
+
 // newSQLite creates a new database connection using the pure-Go SQLite driver.
 func newSQLite(cfg config.SQLiteConfig) (*gormdb.DB, error) {
 	path := cfg.Path
@@ -67,7 +74,9 @@ func newSQLite(cfg config.SQLiteConfig) (*gormdb.DB, error) {
 		path = config.DefaultSQLitePath
 	}
 
-	path = config.EnsureFilePath(path)
+	if !isMemoryDSN(path) {
+		path = config.EnsureFilePath(path)
+	}
 
 	db, err := gorm.Open(sqlite.Open(path), &gorm.Config{
 		Logger: newCustomLogger(),
