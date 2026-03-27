@@ -7,11 +7,13 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/agntcy/dir/server/database/config"
 	gormdb "github.com/agntcy/dir/server/database/gorm"
 	"github.com/agntcy/dir/server/types"
+	"github.com/glebarez/sqlite"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 	gormlogger "gorm.io/gorm/logger"
@@ -20,13 +22,21 @@ import (
 type DB string
 
 const (
+	SQLite   DB = "sqlite"
 	Postgres DB = "postgres"
 )
 
-func New(config config.Config) (types.DatabaseAPI, error) {
-	switch db := DB(config.Type); db {
+func New(cfg config.Config) (types.DatabaseAPI, error) {
+	switch db := DB(cfg.Type); db {
+	case SQLite:
+		sqliteDB, err := newSQLite(cfg.SQLite)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create SQLite database: %w", err)
+		}
+
+		return sqliteDB, nil
 	case Postgres:
-		postgresDB, err := newPostgres(config.Postgres)
+		postgresDB, err := newPostgres(cfg.Postgres)
 		if err != nil {
 			return nil, fmt.Errorf("failed to create PostgreSQL database: %w", err)
 		}
@@ -49,6 +59,43 @@ func newCustomLogger() gormlogger.Interface {
 			Colorful:                  true,
 		},
 	)
+}
+
+// isMemoryDSN returns true for SQLite in-memory connection strings
+// (e.g. ":memory:", "file::memory:", "file::memory:?cache=shared").
+func isMemoryDSN(path string) bool {
+	return path == ":memory:" || strings.HasPrefix(path, "file::memory:")
+}
+
+// newSQLite creates a new database connection using the pure-Go SQLite driver.
+func newSQLite(cfg config.SQLiteConfig) (*gormdb.DB, error) {
+	path := cfg.Path
+	if path == "" {
+		path = config.DefaultSQLitePath
+	}
+
+	if !isMemoryDSN(path) {
+		path = config.EnsureFilePath(path)
+	}
+
+	db, err := gorm.Open(sqlite.Open(path), &gorm.Config{
+		Logger: newCustomLogger(),
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to connect to SQLite database: %w", err)
+	}
+
+	// SQLite does not enforce foreign keys by default; enable for CASCADE support.
+	if err := db.Exec("PRAGMA foreign_keys = ON").Error; err != nil {
+		return nil, fmt.Errorf("failed to enable SQLite foreign keys: %w", err)
+	}
+
+	gdb, err := gormdb.New(db)
+	if err != nil {
+		return nil, fmt.Errorf("failed to initialize SQLite database: %w", err)
+	}
+
+	return gdb, nil
 }
 
 // newPostgres creates a new database connection using PostgreSQL driver.
