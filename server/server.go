@@ -120,7 +120,7 @@ func Run(ctx context.Context, cfg *config.Config) error {
 	}
 
 	// Start server
-	if err := server.start(ctx); err != nil {
+	if err := server.Start(ctx); err != nil {
 		return fmt.Errorf("failed to start server: %w", err)
 	}
 	defer server.Close(ctx)
@@ -388,7 +388,10 @@ func (s Server) Close(ctx context.Context) {
 	s.grpcServer.GracefulStop()
 }
 
-func (s Server) start(ctx context.Context) error {
+// Start launches the gRPC server, metrics, publication service, and health checks.
+// It returns immediately after starting background goroutines.
+// Use Close to shut down.
+func (s Server) Start(ctx context.Context) error {
 	// Start metrics server
 	if s.metricsServer != nil {
 		if err := s.metricsServer.Start(); err != nil {

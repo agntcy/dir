@@ -17,15 +17,8 @@ import (
 	corev1 "github.com/agntcy/dir/api/core/v1"
 	"github.com/agntcy/dir/reconciler/config"
 	"github.com/agntcy/dir/reconciler/service"
-	"github.com/agntcy/dir/reconciler/tasks/indexer"
-	"github.com/agntcy/dir/reconciler/tasks/name"
-	"github.com/agntcy/dir/reconciler/tasks/regsync"
-	"github.com/agntcy/dir/reconciler/tasks/signature"
 	"github.com/agntcy/dir/server/database"
-	namingprovider "github.com/agntcy/dir/server/naming"
-	"github.com/agntcy/dir/server/naming/wellknown"
 	"github.com/agntcy/dir/server/store/oci"
-	"github.com/agntcy/dir/server/types"
 	"github.com/agntcy/dir/utils/logging"
 )
 
@@ -86,53 +79,10 @@ func run() error {
 		return err
 	}
 
-	// Create service
-	svc := service.New()
-
-	// Register tasks
-	if cfg.Regsync.Enabled {
-		regsyncTask, err := regsync.NewTask(cfg.Regsync, cfg.LocalRegistry, db)
-		if err != nil {
-			return err
-		}
-
-		svc.RegisterTask(regsyncTask)
-	}
-
-	if cfg.Indexer.Enabled {
-		indexerTask, err := indexer.NewTask(cfg.Indexer, cfg.LocalRegistry, store, repo, db)
-		if err != nil {
-			return err
-		}
-
-		svc.RegisterTask(indexerTask)
-	}
-
-	if cfg.Name.Enabled {
-		namingProvider := namingprovider.NewProvider(
-			namingprovider.WithWellKnownLookup(wellknown.NewFetcher()),
-		)
-
-		nameTask, err := name.NewTask(cfg.Name, db, store, namingProvider)
-		if err != nil {
-			return err
-		}
-
-		svc.RegisterTask(nameTask)
-	}
-
-	if cfg.Signature.Enabled {
-		refStore, ok := store.(types.ReferrerStoreAPI)
-		if !ok {
-			logger.Warn("Store does not support referrers, skipping signature task")
-		} else {
-			signatureTask, err := signature.NewTask(cfg.Signature, db, signature.NewStoreFetcher(refStore))
-			if err != nil {
-				return err
-			}
-
-			svc.RegisterTask(signatureTask)
-		}
+	// Create service with all tasks registered
+	svc, err := service.New(cfg, db, store, repo)
+	if err != nil {
+		return err
 	}
 
 	// Create context that listens for signals

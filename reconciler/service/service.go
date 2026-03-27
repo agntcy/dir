@@ -10,8 +10,17 @@ import (
 	"sync"
 	"time"
 
+	"github.com/agntcy/dir/reconciler/config"
 	"github.com/agntcy/dir/reconciler/tasks"
+	"github.com/agntcy/dir/reconciler/tasks/indexer"
+	"github.com/agntcy/dir/reconciler/tasks/name"
+	"github.com/agntcy/dir/reconciler/tasks/regsync"
+	"github.com/agntcy/dir/reconciler/tasks/signature"
+	namingprovider "github.com/agntcy/dir/server/naming"
+	"github.com/agntcy/dir/server/naming/wellknown"
+	"github.com/agntcy/dir/server/types"
 	"github.com/agntcy/dir/utils/logging"
+	"oras.land/oras-go/v2/registry/remote"
 )
 
 var logger = logging.Logger("reconciler/service")
@@ -25,16 +34,72 @@ type Service struct {
 	wg     sync.WaitGroup
 }
 
-// New creates a new reconciler service.
-func New() *Service {
-	return &Service{
+// New creates a reconciler service with tasks registered according to cfg.
+// The caller supplies the database and store so that an embedding process (e.g.
+// the daemon) can share them with the apiserver.
+func New(cfg *config.Config, db types.DatabaseAPI, store types.StoreAPI, repo *remote.Repository) (*Service, error) {
+	svc := &Service{
 		tasks:  []tasks.Task{},
 		stopCh: make(chan struct{}),
 	}
+
+	if err := svc.registerTasks(cfg, db, store, repo); err != nil {
+		return nil, err
+	}
+
+	return svc, nil
 }
 
-// RegisterTask adds a task to be managed by the service.
-func (s *Service) RegisterTask(task tasks.Task) {
+func (s *Service) registerTasks(cfg *config.Config, db types.DatabaseAPI, store types.StoreAPI, repo *remote.Repository) error {
+	if cfg.Regsync.Enabled {
+		t, err := regsync.NewTask(cfg.Regsync, cfg.LocalRegistry, db)
+		if err != nil {
+			return fmt.Errorf("failed to create regsync task: %w", err)
+		}
+
+		s.addTask(t)
+	}
+
+	if cfg.Indexer.Enabled {
+		t, err := indexer.NewTask(cfg.Indexer, cfg.LocalRegistry, store, repo, db)
+		if err != nil {
+			return fmt.Errorf("failed to create indexer task: %w", err)
+		}
+
+		s.addTask(t)
+	}
+
+	if cfg.Name.Enabled {
+		np := namingprovider.NewProvider(
+			namingprovider.WithWellKnownLookup(wellknown.NewFetcher()),
+		)
+
+		t, err := name.NewTask(cfg.Name, db, store, np)
+		if err != nil {
+			return fmt.Errorf("failed to create name task: %w", err)
+		}
+
+		s.addTask(t)
+	}
+
+	if cfg.Signature.Enabled {
+		refStore, ok := store.(types.ReferrerStoreAPI)
+		if !ok {
+			logger.Warn("Store does not support referrers, skipping signature task")
+		} else {
+			t, err := signature.NewTask(cfg.Signature, db, signature.NewStoreFetcher(refStore))
+			if err != nil {
+				return fmt.Errorf("failed to create signature task: %w", err)
+			}
+
+			s.addTask(t)
+		}
+	}
+
+	return nil
+}
+
+func (s *Service) addTask(task tasks.Task) {
 	s.tasks = append(s.tasks, task)
 	logger.Info("Registered task", "name", task.Name(), "interval", task.Interval(), "enabled", task.IsEnabled())
 }
