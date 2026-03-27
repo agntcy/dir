@@ -74,6 +74,11 @@ func newSQLite(cfg config.SQLiteConfig) (*gormdb.DB, error) {
 		return nil, fmt.Errorf("failed to connect to SQLite database: %w", err)
 	}
 
+	// SQLite does not enforce foreign keys by default; enable for CASCADE support.
+	if err := db.Exec("PRAGMA foreign_keys = ON").Error; err != nil {
+		return nil, fmt.Errorf("failed to enable SQLite foreign keys: %w", err)
+	}
+
 	gdb, err := gormdb.New(db)
 	if err != nil {
 		return nil, fmt.Errorf("failed to initialize SQLite database: %w", err)
