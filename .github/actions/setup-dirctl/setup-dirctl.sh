@@ -8,7 +8,8 @@ VERSION="${VERSION:-latest}"
 OS="${OS:-linux}"
 ARCH="${ARCH:-amd64}"
 REPO="agntcy/dir"
-INSTALL_DIR="${INSTALL_DIR:-$PWD/bin}"
+WORKSPACE_DIR="${GITHUB_WORKSPACE:-$PWD}"
+INSTALL_DIR="${INSTALL_DIR:-$WORKSPACE_DIR/.bin}"
 
 # Resolve latest to actual dirctl release
 if [ "$VERSION" = "latest" ]; then
@@ -44,6 +45,10 @@ mv "$TMP" "$INSTALL_DIR/dirctl"
 
 if [ -n "${GITHUB_PATH:-}" ]; then
   echo "$INSTALL_DIR" >> "$GITHUB_PATH"
+fi
+
+if [ -n "${GITHUB_OUTPUT:-}" ]; then
+  echo "dirctl_path=$INSTALL_DIR/dirctl" >> "$GITHUB_OUTPUT"
 fi
 
 echo "Installed dirctl to $INSTALL_DIR"

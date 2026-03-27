@@ -8,12 +8,27 @@ set -euo pipefail
 SERVER_ADDR="${SERVER_ADDR:-}"
 GITHUB_TOKEN="${GITHUB_TOKEN:-}"
 
+if [ -n "${DIRCTL_PATH:-}" ]; then
+  DIRCTL_BIN="${DIRCTL_PATH}"
+elif command -v dirctl >/dev/null 2>&1; then
+  DIRCTL_BIN="$(command -v dirctl)"
+else
+  echo "::error::dirctl not found. Set DIRCTL_PATH or add dirctl to PATH." >&2
+  exit 1
+fi
+
+if [ ! -x "${DIRCTL_BIN}" ]; then
+  echo "::error::dirctl is not executable at ${DIRCTL_BIN}" >&2
+  exit 1
+fi
+
 PUBLISHED=0
 FAILED=0
 ALL_SUCCESS=true
 
 echo "=== Publish Records to DHT ==="
-echo "Server address: ${SERVER_ADDR:-(dirctl default)}"
+echo "dirctl: ${DIRCTL_BIN}"
+echo "Server address: ${SERVER_ADDR:-"(dirctl default)"}"
 echo ""
 
 # Normalize to one CID per line (accept JSON object from push-record output)
@@ -44,10 +59,10 @@ for CID in "${CID_ARRAY[@]}"; do
   echo "Publishing: $CID"
   echo "----------------------------------------"
   set +e
-  PUBLISH_CMD="dirctl routing publish \"$CID\""
-  [ -n "$SERVER_ADDR" ] && PUBLISH_CMD="$PUBLISH_CMD --server-addr=\"$SERVER_ADDR\""
-  [ -n "$GITHUB_TOKEN" ] && PUBLISH_CMD="$PUBLISH_CMD --github-token=\"$GITHUB_TOKEN\""
-  OUTPUT=$(eval "$PUBLISH_CMD" 2>&1)
+  PUBLISH_CMD=("${DIRCTL_BIN}" routing publish "$CID")
+  [ -n "$SERVER_ADDR" ] && PUBLISH_CMD+=(--server-addr "$SERVER_ADDR")
+  [ -n "$GITHUB_TOKEN" ] && PUBLISH_CMD+=(--github-token "$GITHUB_TOKEN")
+  OUTPUT=$("${PUBLISH_CMD[@]}" 2>&1)
   EXIT=$?
   set -e
   if [ $EXIT -eq 0 ]; then

@@ -8,12 +8,27 @@ set -euo pipefail
 SERVER_ADDR="${SERVER_ADDR:-}"
 GITHUB_TOKEN="${GITHUB_TOKEN:-}"
 
+if [ -n "${DIRCTL_PATH:-}" ]; then
+  DIRCTL_BIN="${DIRCTL_PATH}"
+elif command -v dirctl >/dev/null 2>&1; then
+  DIRCTL_BIN="$(command -v dirctl)"
+else
+  echo "::error::dirctl not found. Set DIRCTL_PATH or add dirctl to PATH." >&2
+  exit 1
+fi
+
+if [ ! -x "${DIRCTL_BIN}" ]; then
+  echo "::error::dirctl is not executable at ${DIRCTL_BIN}" >&2
+  exit 1
+fi
+
 CIDS="{}"
 FAILED_FILES="[]"
 ALL_SUCCESS=true
 
 echo "=== Push OASF Records ==="
-echo "Server address: ${SERVER_ADDR:-(dirctl default)}"
+echo "dirctl: ${DIRCTL_BIN}"
+echo "Server address: ${SERVER_ADDR:-"(dirctl default)"}"
 echo ""
 
 # Collect all files from all path patterns
@@ -59,10 +74,10 @@ for FILE in "${ALL_FILES[@]}"; do
   echo "----------------------------------------"
 
   set +e
-  PUSH_CMD="dirctl push \"$FILE\" --output raw"
-  [ -n "$SERVER_ADDR" ] && PUSH_CMD="$PUSH_CMD --server-addr=\"$SERVER_ADDR\""
-  [ -n "$GITHUB_TOKEN" ] && PUSH_CMD="$PUSH_CMD --github-token=\"$GITHUB_TOKEN\""
-  CID=$(eval "$PUSH_CMD" 2>&1)
+  PUSH_CMD=("${DIRCTL_BIN}" push "$FILE" --output raw)
+  [ -n "$SERVER_ADDR" ] && PUSH_CMD+=(--server-addr "$SERVER_ADDR")
+  [ -n "$GITHUB_TOKEN" ] && PUSH_CMD+=(--github-token "$GITHUB_TOKEN")
+  CID=$("${PUSH_CMD[@]}" 2>&1)
   EXIT_CODE=$?
   set -e
 
