@@ -100,6 +100,9 @@ func TestConfig(t *testing.T) {
 				},
 				Database: dbconfig.Config{
 					Type: "postgres",
+					SQLite: dbconfig.SQLiteConfig{
+						Path: dbconfig.DefaultSQLitePath,
+					},
 					Postgres: dbconfig.PostgresConfig{
 						Host:     "localhost",
 						Port:     5432,
@@ -167,6 +170,9 @@ func TestConfig(t *testing.T) {
 				},
 				Database: dbconfig.Config{
 					Type: dbconfig.DefaultType,
+					SQLite: dbconfig.SQLiteConfig{
+						Path: dbconfig.DefaultSQLitePath,
+					},
 					Postgres: dbconfig.PostgresConfig{
 						Host:     dbconfig.DefaultPostgresHost,
 						Port:     dbconfig.DefaultPostgresPort,
