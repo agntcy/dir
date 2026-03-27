@@ -10,12 +10,6 @@ def _parse_bool_env(value: str | None, default: bool) -> bool:
     return value.strip().lower() in ("1", "true", "yes", "on")
 
 
-def _parse_float_env(value: str | None, default: float) -> float:
-    if value is None or value == "":
-        return default
-    return float(value)
-
-
 def _parse_int_env(value: str | None, default: int) -> int:
     if value is None or value == "":
         return default

@@ -218,6 +218,8 @@ class Client:
             self._oauth_holder.set_tokens(self.config.oidc_access_token)
             if not self.config.oidc_access_token and self._has_machine_oidc_config():
                 self.run_client_credentials_flow()
+            else:
+                self.authenticate_oauth_pkce()
 
         # Create gRPC channel
         channel = self.__create_grpc_channel()
