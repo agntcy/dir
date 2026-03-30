@@ -223,7 +223,7 @@ tasks:
     vars:
       EXTRA_ARGS: '{{ .EXTRA_ARGS | default "" }}'
     cmds:
-      - for: { var: GO_MOD_DIR_UNIT_TEST }
+      - for: { var: GO_MODULES_UNIT_TEST }
         cmd: |
           echo "Running tests in {{.ITEM}}"
           go -C {{.ITEM}} test ./... {{.EXTRA_ARGS}}
@@ -241,7 +241,7 @@ tasks:
           mkdir -p {{.COVERAGE_DIR}}/unit
         if: "[ ! -d {{.COVERAGE_DIR}}/unit ]"
 
-      - for: { var: GO_MOD_DIR_UNIT_TEST }
+      - for: { var: GO_MODULES_UNIT_TEST }
         # NOTE: CI does not need go test stdout, local uses separate command to show the report
         cmd: |
           {{if ne .OVERRIDEN_COVERAGE_MODULES ""}}
@@ -269,7 +269,7 @@ tasks:
       - cmd: (test -f /tmp/total_report_results.txt && rm /tmp/total_report_results.txt) || true
         if: '{{ eq .SHOW_TOTAL_ONLY "true" }}'
 
-      - for: { var: GO_MOD_DIR_UNIT_TEST }
+      - for: { var: GO_MODULES_UNIT_TEST }
         cmd: |
           {{if ne .OVERRIDEN_COVERAGE_MODULES ""}}
             if ! echo {{.OVERRIDEN_COVERAGE_MODULES}} | grep -q $(echo "{{.ITEM}}" | sed 's/^\.\///g'); then
@@ -305,19 +305,97 @@ tasks:
   ## Linters
   ##
 
+  pre-commit:golangci-lint:
+    desc: Run golangci-lint pre-commit hook
+    vars:
+      # Override global GO_MODULES to include only changed
+      # modules based on files passed by pre-commit
+      GO_MODULES:
+        sh: |
+          # A space-separated list of file names, passed by pre-commit
+          # e.g. "server/controller/store.go tests/e2e/local/10_referrers_test.go"
+          go_files="{{.CLI_ARGS}}"
+          go_modules='{{.GO_MODULES | splitLines | join " " }}'
+
+          get_go_module() {
+            local go_file="$1"
+
+            result=""
+            length=0
+
+            for go_module in $go_modules; do
+              if [[ "./$go_file" == "$go_module"* ]]; then
+                if (( length < ${#go_module} )); then
+                  result="$go_module"
+                  length=${#go_module}
+                fi
+              fi
+            done
+
+            echo "$result"
+          }
+
+          result=()
+
+          for go_file in $go_files; do
+            # The file's module, e.g. "server", "tests"
+            go_module=$(get_go_module "$go_file")
+            [ -n "$go_module" ] && result+=("$go_module")
+          done
+
+          # sort -u to remove duplicates
+          result=($(printf "%s\n" "${result[@]}" | sort -u))
+
+          echo "${result[@]}"
+    cmds:
+      - task: lint:go
+        vars:
+          GO_MODULES: "{{ .GO_MODULES }}"
+          FIX: "true"
+          REV: "HEAD"
+
   lint:go:
     desc: Run Golang linters
+    vars:
+      GO_MODULES: "{{ .GO_MODULES }}"
+      FIX: '{{ .FIX | default "" }}'
+      REV: '{{ .REV | default "" }}'
     deps:
       - task: deps:golangci-lint
-    vars:
-      FIX: '{{ .FIX | default "false" }}'
-      FIX_FLAG: '{{if eq .FIX "true"}}--fix{{end}}'
     cmds:
-      - for: { var: GO_MOD_DIR }
-        cmd: |
-          echo "Running golangci-lint in {{.ITEM}}"
-          cd {{.ITEM}}
-          {{.GOLANGCI_LINT_BIN}} run --config {{.ROOT_DIR}}/.golangci.yml {{.FIX_FLAG}}
+      - task: lint:go:modules
+        vars:
+          GO_MODULES: "{{ .GO_MODULES }}"
+          FIX: "{{ .FIX }}"
+          REV: "{{ .REV }}"
+
+  lint:go:modules:
+    desc: Run golangci-lint for all modules in parallel using Taskfile deps
+    internal: true
+    deps:
+      - for: { var: GO_MODULES }
+        task: lint:go:module
+        vars:
+          GO_MODULE: "{{.ITEM}}"
+          FIX: "{{.FIX}}"
+          REV: "{{.REV}}"
+    cmd: echo "Done!"
+
+  lint:go:module:
+    desc: Run golangci-lint for given module
+    internal: true
+    vars:
+      GO_MODULE: '{{ .GO_MODULE | default "." }}'
+      FIX: '{{ .FIX | default "" }}'
+      REV: '{{ .REV | default "" }}'
+    dir: "{{ .GO_MODULE }}"
+    cmd: |
+      echo "Running golangci-lint in {{ .GO_MODULE }}"
+      {{.GOLANGCI_LINT_BIN}} run \
+                             --config {{.ROOT_DIR}}/.golangci.yml \
+                             {{if eq .FIX "true"}}--fix{{end}} \
+                             --new-from-rev="{{.REV}}" \
+                             --allow-parallel-runners
 
   lint:buf:
     desc: Run Buf linters
@@ -358,7 +436,7 @@ tasks:
     deps:
       - task: deps:licensei
     cmds:
-      - for: { var: GO_MOD_DIR }
+      - for: { var: GO_MODULES }
         cmd: echo "Running licensei in {{.ITEM}}" && cd {{.ITEM}} && {{ .LICENSEI_BIN }} check --config {{.ROOT_DIR}}/.licensei.toml
 
   license:cache:
@@ -366,7 +444,7 @@ tasks:
     deps:
       - task: deps:licensei
     cmds:
-      - for: { var: GO_MOD_DIR }
+      - for: { var: GO_MODULES }
         cmd: echo "Running licensei in {{.ITEM}}" && cd {{.ITEM}} && {{ .LICENSEI_BIN }} cache --config {{.ROOT_DIR}}/.licensei.toml
 
   ##
@@ -376,7 +454,7 @@ tasks:
   deps:tidy:
     desc: Ensure dependencies are up-to-date
     cmds:
-      - for: { var: GO_MOD_DIR }
+      - for: { var: GO_MODULES }
         cmd: go -C {{.ITEM}} mod tidy -go={{.GO_VERSION}}
 
   ##
