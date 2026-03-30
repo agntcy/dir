@@ -23,6 +23,7 @@ tasks:
       - task: deps:licensei
       - task: deps:multimod-bin
       - task: deps:renovate
+      - task: deps:pre-commit
       - task: deps:cleanup
 
   deps:cleanup:
@@ -42,6 +43,7 @@ tasks:
       {{.LICENSEI_BIN}}
       {{.UV_BIN}}
       {{.COSIGN_BIN}}
+      {{.PRE_COMMIT_PYZ}}
       {{.TRIVY_BIN}}"
 
       echo "Clean up unused/outdated binaries in {{.BIN_DIR}}"
@@ -314,3 +316,12 @@ tasks:
         sh: printf '%s' "${RENOVATE_PLATFORM:-local}"
     cmds:
       - renovate {{.RENOVATE_OPTS}} --platform "{{.RENOVATE_PLATFORM_EFFECTIVE}}"
+
+  deps:pre-commit:
+    desc: Install pre-commit
+    run: once
+    cmds:
+      - curl -sL "https://github.com/pre-commit/pre-commit/releases/download/v{{.PRE_COMMIT_VERSION}}/pre-commit-{{.PRE_COMMIT_VERSION}}.pyz" -o {{.PRE_COMMIT_PYZ}}
+      - python3 {{.PRE_COMMIT_PYZ}} install
+    status:
+      - test -d {{.PRE_COMMIT_PYZ}}

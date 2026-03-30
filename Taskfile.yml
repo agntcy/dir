@@ -305,19 +305,100 @@ tasks:
   ## Linters
   ##
 
+  pre-commit:golangci-lint:
+    desc: Run golangci-lint pre-commit hook
+    vars:
+      GO_MODULES:
+        sh: |
+          # A space-separated list of file names, passed by pre-commit
+          # e.g. "server/controller/store.go tests/e2e/local/10_referrers_test.go"
+          go_files="{{.CLI_ARGS}}"
+          go_modules='{{.GO_MOD_DIR | splitLines | join " " }}'
+
+          get_go_module() {
+            local go_file="$1"
+
+            result=""
+            length=0
+
+            for go_module in $go_modules; do
+              if [[ "./$go_file" == "$go_module"* ]]; then
+                if (( length < ${#go_module} )); then
+                  result="$go_module"
+                  length=${#go_module}
+                fi
+              fi
+            done
+
+            echo "$result"
+          }
+
+          result=()
+
+          for go_file in $go_files; do
+            # The file's module, e.g. "server", "tests"
+            go_module=$(get_go_module "$go_file")
+            [ -n "$go_module" ] && result+=("$go_module")
+          done
+
+          # sort -u to remove duplicates
+          result=($(printf "%s\n" "${result[@]}" | sort -u))
+
+          echo "${result[@]}"
+    cmds:
+      - echo 'Linting Go modules {{ .GO_MODULES }}'
+      - task: lint:go
+        vars:
+          GO_MOD_DIR: "{{ .GO_MODULES }}"
+          FIX: "true"
+          NEW_FROM_REV: "HEAD"
+
   lint:go:
     desc: Run Golang linters
-    deps:
-      - task: deps:golangci-lint
     vars:
       FIX: '{{ .FIX | default "false" }}'
       FIX_FLAG: '{{if eq .FIX "true"}}--fix{{end}}'
-    cmds:
+      NEW_FROM_REV: '{{ .NEW_FROM_REV | default "" }}'
+      GO_MOD_DIR: "{{ .GO_MOD_DIR }}"
+    deps:
+      - task: deps:golangci-lint
+    cmd:
+      task: lint:go:modules
+      vars:
+        FIX_FLAG: '{{ .FIX_FLAG }}'
+        NEW_FROM_REV: '{{ .NEW_FROM_REV }}'
+        GO_MOD_DIR: "{{ .GO_MOD_DIR }}"
+
+  lint:go:modules:
+    desc: Run golangci-lint for given modules
+    internal: true
+    vars:
+      FIX_FLAG: '{{ .FIX_FLAG }}'
+      NEW_FROM_REV: '{{ .NEW_FROM_REV }}'
+      GO_MOD_DIR: "{{ .GO_MOD_DIR }}"
+    deps:
       - for: { var: GO_MOD_DIR }
-        cmd: |
-          echo "Running golangci-lint in {{.ITEM}}"
-          cd {{.ITEM}}
-          {{.GOLANGCI_LINT_BIN}} run --config {{.ROOT_DIR}}/.golangci.yml {{.FIX_FLAG}}
+        task: lint:go:module
+        vars:
+          GO_MODULE: "{{ .ITEM }}"
+          FIX_FLAG: "{{ .FIX_FLAG }}"
+          NEW_FROM_REV: "{{ .NEW_FROM_REV }}"
+
+  lint:go:module:
+    desc: Run golangci-lint for given module
+    internal: true
+    vars:
+      GO_MODULE: '{{ .GO_MODULE }}'
+      FIX_FLAG: '{{ .FIX_FLAG }}'
+      NEW_FROM_REV: '{{ .NEW_FROM_REV }}'
+    dir: "{{ .GO_MODULE }}"
+    cmd: |
+      echo "Running golangci-lint in {{ .GO_MODULE }}"
+      {{.GOLANGCI_LINT_BIN}} run \
+                             --config {{.ROOT_DIR}}/.golangci.yml \
+                             {{.FIX_FLAG}} \
+                             --new-from-rev="{{.NEW_FROM_REV}}" \
+                             --allow-parallel-runners
 
   lint:buf:
     desc: Run Buf linters
