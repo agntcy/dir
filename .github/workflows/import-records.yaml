@@ -3,6 +3,11 @@ name: Import MCP Records
 on:
   workflow_dispatch:
     inputs:
+      image_version:
+        required: true
+        type: string
+        default: v1.1.0
+        description: "dirctl version to use"
       import_config:
         description: "JSON config file path or inline JSON content"
         type: string
@@ -97,17 +102,10 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
-      - name: Build dirctl from branch source
-        id: build-dirctl
-        uses: ./.github/actions/build-dirctl
+      - name: Setup dirctl
+        uses: ./.github/actions/setup-dirctl
         with:
-          go_version: "1.26.1"
-
-      - name: Fetch Directory OIDC token (import)
-        id: oidc-dir-import
-        uses: ./.github/actions/fetch-oidc-token
-        with:
-          audience: dir
+          version: ${{ inputs.image_version }}
 
       - name: Install mcp-scanner
         if: ${{ env.SCANNER_ENABLED == 'true' }}
@@ -119,7 +117,7 @@ jobs:
           {
             "mcpServers": {
               "dir-mcp-server": {
-                "command": ".bin/dirctl",
+                "command": "dirctl",
                 "args": [
                   "mcp",
                   "serve"
@@ -146,10 +144,10 @@ jobs:
           AZURE_OPENAI_BASE_URL: ${{ secrets.AZURE_OPENAI_ENDPOINT }}
           AZURE_OPENAI_DEPLOYMENT: "gpt-4o"
           AZURE_OPENAI_API_VERSION: "2024-10-21"
-          DIRECTORY_CLIENT_AUTH_MODE: "oidc"
+          DIRECTORY_CLIENT_AUTH_MODE: "github"
           DIRECTORY_CLIENT_SERVER_ADDRESS: ${{ env.SERVER_ADDRESS }}
-          DIRECTORY_CLIENT_OIDC_TOKEN: ${{ steps.oidc-dir-import.outputs.token }}
-          DIRCTL_PATH: ${{ steps.build-dirctl.outputs.dirctl_path }}
+          DIRECTORY_CLIENT_GITHUB_TOKEN: ${{ secrets.DIRECTORY_MCP_BOT_PAT }}
+          DIRCTL_PATH: dirctl
         run: |
           echo "--- Processing Entry $((${{ matrix.entry.index }} + 1)) ---"
 
@@ -204,13 +202,6 @@ jobs:
           # Output CIDs file path for signing step
           echo "cids_file=$CIDS_FILE" >> $GITHUB_OUTPUT
 
-      # Sign records with fresh OIDC tokens after import completes
-      # This avoids token expiration issues during long-running imports
-      - name: Fetch Directory OIDC token (sign)
-        if: ${{ env.SIGN == 'true' && env.DRY_RUN == 'false' }}
-        id: oidc-dir-sign
-        uses: ./.github/actions/fetch-oidc-token
-
       - name: Fetch Sigstore OIDC token
         if: ${{ env.SIGN == 'true' && env.DRY_RUN == 'false' }}
         id: oidc-sigstore
@@ -218,14 +209,16 @@ jobs:
         with:
           audience: sigstore
 
+      # Sign records with fresh OIDC tokens after import completes
+      # This avoids token expiration issues during long-running imports
       - name: Sign Imported Records
         if: ${{ env.SIGN == 'true' && env.DRY_RUN == 'false' }}
         env:
-          DIRECTORY_CLIENT_AUTH_MODE: "oidc"
+          DIRECTORY_CLIENT_AUTH_MODE: "github"
           DIRECTORY_CLIENT_SERVER_ADDRESS: ${{ env.SERVER_ADDRESS }}
-          DIRECTORY_CLIENT_OIDC_TOKEN: ${{ steps.oidc-dir-sign.outputs.token }}
+          DIRECTORY_CLIENT_GITHUB_TOKEN: ${{ secrets.DIRECTORY_MCP_BOT_PAT }}
           SIGSTORE_OIDC_TOKEN: ${{ steps.oidc-sigstore.outputs.token }}
-          DIRCTL_PATH: ${{ steps.build-dirctl.outputs.dirctl_path }}
+          DIRCTL_PATH: dirctl
         run: |
           CIDS_FILE="${{ steps.import.outputs.cids_file }}"
 
