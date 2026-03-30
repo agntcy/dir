@@ -8,11 +8,8 @@ import (
 	"fmt"
 	"os"
 	"os/signal"
-	"path/filepath"
-	"strconv"
 	"syscall"
 
-	"github.com/agntcy/dir/cli/presenter"
 	reconcilerconfig "github.com/agntcy/dir/reconciler/config"
 	reconciler "github.com/agntcy/dir/reconciler/service"
 	"github.com/agntcy/dir/reconciler/tasks/indexer"
@@ -27,9 +24,12 @@ import (
 	routingconfig "github.com/agntcy/dir/server/routing/config"
 	storeconfig "github.com/agntcy/dir/server/store/config"
 	ociconfig "github.com/agntcy/dir/server/store/oci/config"
+	"github.com/agntcy/dir/utils/logging"
 	"github.com/spf13/cobra"
 	ocistore "oras.land/oras-go/v2/content/oci"
 )
+
+var logger = logging.Logger("daemon")
 
 var startCmd = &cobra.Command{
 	Use:   "start",
@@ -42,12 +42,17 @@ The daemon blocks until SIGINT or SIGTERM is received.`,
 }
 
 func runStart(cmd *cobra.Command, _ []string) error {
-	if err := checkNotRunning(); err != nil {
+	running, pid, err := readPID()
+	if err != nil {
 		return err
 	}
 
-	if err := os.MkdirAll(dataDir, 0o700); err != nil { //nolint:mnd
-		return fmt.Errorf("failed to create data directory %s: %w", dataDir, err)
+	if running {
+		return fmt.Errorf("daemon already running (pid %d)", pid)
+	}
+
+	if err := os.MkdirAll(opts.DataDir, 0o700); err != nil { //nolint:mnd
+		return fmt.Errorf("failed to create data directory %s: %w", opts.DataDir, err)
 	}
 
 	ctx, cancel := context.WithCancel(cmd.Context())
@@ -67,17 +72,13 @@ func runStart(cmd *cobra.Command, _ []string) error {
 	}
 	defer srv.Close(ctx)
 
-	presenter.Println(cmd, "Server started", "address", serverCfg.ListenAddress)
+	logger.Info("Server started", "address", serverCfg.ListenAddress)
 
-	// Create a local OCI tag lister for the indexer to discover records.
-	storePath := filepath.Join(dataDir, "store")
-
-	localRepo, err := ocistore.New(storePath)
+	localRepo, err := ocistore.New(opts.StoreDir())
 	if err != nil {
 		return fmt.Errorf("failed to open local OCI store for indexer: %w", err)
 	}
 
-	// Start the reconciler using the server's DB and store.
 	svc, err := reconciler.New(reconcilerCfg, srv.Database(), srv.Store(), localRepo)
 	if err != nil {
 		return fmt.Errorf("failed to create reconciler: %w", err)
@@ -89,30 +90,28 @@ func runStart(cmd *cobra.Command, _ []string) error {
 
 	defer func() {
 		if err := svc.Stop(); err != nil {
-			presenter.Error(cmd, "Failed to stop reconciler", "error", err)
+			logger.Error("Failed to stop reconciler", "error", err)
 		}
 	}()
 
-	presenter.Println(cmd, "Reconciler started")
+	logger.Info("Reconciler started")
 
-	// Write PID file.
 	if err := writePIDFile(); err != nil {
 		return fmt.Errorf("failed to write PID file: %w", err)
 	}
 
-	defer removePIDFile(cmd)
+	defer removePIDFile()
 
-	presenter.Println(cmd, "Daemon ready", "data_dir", dataDir, "pid", os.Getpid())
+	logger.Info("Daemon ready", "data_dir", opts.DataDir, "pid", os.Getpid())
 
-	// Block until signal.
 	sigCh := make(chan os.Signal, 1)
 	signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
 
 	select {
 	case sig := <-sigCh:
-		presenter.Println(cmd, "Received signal, shutting down", "signal", sig)
+		logger.Info("Received signal, shutting down", "signal", sig)
 	case <-ctx.Done():
-		presenter.Println(cmd, "Context cancelled, shutting down")
+		logger.Info("Context cancelled, shutting down")
 	}
 
 	return nil
@@ -128,7 +127,7 @@ func buildServerConfig() *serverconfig.Config {
 		Store: storeconfig.Config{
 			Provider: storeconfig.DefaultProvider,
 			OCI: ociconfig.Config{
-				LocalDir: filepath.Join(dataDir, "store"),
+				LocalDir: opts.StoreDir(),
 			},
 			Verification: storeconfig.VerificationConfig{
 				Enabled: storeconfig.DefaultVerificationEnabled,
@@ -137,7 +136,7 @@ func buildServerConfig() *serverconfig.Config {
 		Routing: routingconfig.Config{
 			ListenAddress:  "/ip4/0.0.0.0/tcp/0",
 			BootstrapPeers: []string{},
-			DatastoreDir:   filepath.Join(dataDir, "routing"),
+			DatastoreDir:   opts.RoutingDir(),
 			GossipSub: routingconfig.GossipSubConfig{
 				Enabled: routingconfig.DefaultGossipSubEnabled,
 			},
@@ -145,7 +144,7 @@ func buildServerConfig() *serverconfig.Config {
 		Database: dbconfig.Config{
 			Type: "sqlite",
 			SQLite: dbconfig.SQLiteConfig{
-				Path: filepath.Join(dataDir, "dir.db"),
+				Path: opts.DBFile(),
 			},
 		},
 		Publication: publication.Config{
@@ -181,50 +180,4 @@ func buildReconcilerConfig() *reconcilerconfig.Config {
 			RecordTimeout: name.DefaultRecordTimeout,
 		},
 	}
-}
-
-func checkNotRunning() error {
-	pid, err := readPID()
-	if err != nil {
-		return nil //nolint:nilerr // no PID file means no daemon running
-	}
-
-	proc, err := os.FindProcess(pid)
-	if err != nil {
-		return nil //nolint:nilerr // process lookup failure means no daemon running
-	}
-
-	if err := proc.Signal(syscall.Signal(0)); err != nil {
-		return nil //nolint:nilerr // signal failure means process is not alive
-	}
-
-	return fmt.Errorf("daemon already running (pid %d)", pid)
-}
-
-func writePIDFile() error {
-	if err := os.WriteFile(pidFilePath(), []byte(strconv.Itoa(os.Getpid())), 0o600); err != nil { //nolint:mnd
-		return fmt.Errorf("failed to write PID file: %w", err)
-	}
-
-	return nil
-}
-
-func removePIDFile(cmd *cobra.Command) {
-	if err := os.Remove(pidFilePath()); err != nil && !os.IsNotExist(err) {
-		presenter.Error(cmd, "Failed to remove PID file", "error", err)
-	}
-}
-
-func readPID() (int, error) {
-	data, err := os.ReadFile(pidFilePath())
-	if err != nil {
-		return 0, fmt.Errorf("failed to read PID file: %w", err)
-	}
-
-	pid, err := strconv.Atoi(string(data))
-	if err != nil {
-		return 0, fmt.Errorf("invalid PID file: %w", err)
-	}
-
-	return pid, nil
 }

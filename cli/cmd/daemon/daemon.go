@@ -4,16 +4,26 @@
 package daemon
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
+	"strconv"
+	"syscall"
 
 	"github.com/spf13/cobra"
 )
 
-var dataDir string
+// Options holds all daemon path configuration.
+type Options struct {
+	DataDir string
+}
 
-// DefaultDataDir is the base directory for all daemon state.
-func DefaultDataDir() string {
+func (o *Options) DBFile() string     { return filepath.Join(o.DataDir, "dir.db") }
+func (o *Options) StoreDir() string   { return filepath.Join(o.DataDir, "store") }
+func (o *Options) RoutingDir() string { return filepath.Join(o.DataDir, "routing") }
+func (o *Options) PIDFile() string    { return filepath.Join(o.DataDir, "daemon.pid") }
+
+func defaultDataDir() string {
 	home, err := os.UserHomeDir()
 	if err != nil {
 		return filepath.Join(os.TempDir(), ".agntcy", "dir")
@@ -22,7 +32,43 @@ func DefaultDataDir() string {
 	return filepath.Join(home, ".agntcy", "dir")
 }
 
-func pidFilePath() string { return filepath.Join(dataDir, "daemon.pid") }
+var opts = &Options{}
+
+// readPID reads the PID file and probes the process.
+func readPID() (bool, int, error) {
+	data, readErr := os.ReadFile(opts.PIDFile())
+	if readErr != nil {
+		return false, 0, nil //nolint:nilerr // no PID file means no daemon
+	}
+
+	pid, err := strconv.Atoi(string(data))
+	if err != nil {
+		return false, 0, fmt.Errorf("invalid PID file: %w", err)
+	}
+
+	proc, findErr := os.FindProcess(pid)
+	if findErr != nil {
+		return false, pid, nil //nolint:nilerr // process lookup failure means not running
+	}
+
+	if sigErr := proc.Signal(syscall.Signal(0)); sigErr != nil {
+		return false, pid, nil //nolint:nilerr // signal failure means process is not alive
+	}
+
+	return true, pid, nil
+}
+
+func writePIDFile() error {
+	if err := os.WriteFile(opts.PIDFile(), []byte(strconv.Itoa(os.Getpid())), 0o600); err != nil { //nolint:mnd
+		return fmt.Errorf("failed to write PID file: %w", err)
+	}
+
+	return nil
+}
+
+func removePIDFile() {
+	_ = os.Remove(opts.PIDFile())
+}
 
 // Command is the parent command for daemon subcommands.
 var Command = &cobra.Command{
@@ -49,7 +95,7 @@ Examples:
 }
 
 func init() {
-	Command.PersistentFlags().StringVar(&dataDir, "data-dir", DefaultDataDir(), "Data directory for daemon state")
+	Command.PersistentFlags().StringVar(&opts.DataDir, "data-dir", defaultDataDir(), "Data directory for daemon state")
 
 	Command.AddCommand(
 		startCmd,

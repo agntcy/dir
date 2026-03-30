@@ -9,7 +9,6 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/agntcy/dir/cli/presenter"
 	"github.com/spf13/cobra"
 )
 
@@ -21,10 +20,21 @@ var stopCmd = &cobra.Command{
 	RunE:  runStop,
 }
 
-func runStop(cmd *cobra.Command, _ []string) error {
-	pid, err := readPID()
+func runStop(_ *cobra.Command, _ []string) error {
+	running, pid, err := readPID()
 	if err != nil {
-		return fmt.Errorf("no daemon running (could not read PID file): %w", err)
+		return fmt.Errorf("could not read PID file: %w", err)
+	}
+
+	if !running {
+		if pid > 0 {
+			removePIDFile()
+			logger.Info("Daemon is not running (stale PID file removed)", "pid", pid)
+		} else {
+			logger.Info("Daemon is not running")
+		}
+
+		return nil
 	}
 
 	proc, err := os.FindProcess(pid)
@@ -32,32 +42,24 @@ func runStop(cmd *cobra.Command, _ []string) error {
 		return fmt.Errorf("failed to find process %d: %w", pid, err)
 	}
 
-	// Check if the process is alive before sending signal.
-	if err := proc.Signal(syscall.Signal(0)); err != nil {
-		removePIDFile(cmd)
-
-		return fmt.Errorf("daemon not running (stale PID file for pid %d)", pid)
-	}
-
 	if err := proc.Signal(syscall.SIGTERM); err != nil {
 		return fmt.Errorf("failed to send SIGTERM to pid %d: %w", pid, err)
 	}
 
-	presenter.Printf(cmd, "Sent SIGTERM to daemon (pid %d)\n", pid)
+	logger.Info("Sent SIGTERM to daemon", "pid", pid)
 
-	// Poll until the process exits or timeout.
 	deadline := time.Now().Add(shutdownTimeout)
 	for time.Now().Before(deadline) {
-		if err := proc.Signal(syscall.Signal(0)); err != nil {
-			presenter.Println(cmd, "Daemon stopped")
+		if sigErr := proc.Signal(syscall.Signal(0)); sigErr != nil {
+			logger.Info("Daemon stopped")
 
-			return nil //nolint:nilerr // signal failure confirms the process exited
+			return nil //nolint:nilerr
 		}
 
 		time.Sleep(250 * time.Millisecond) //nolint:mnd
 	}
 
-	presenter.Println(cmd, "Daemon did not stop within timeout; it may still be shutting down")
+	logger.Warn("Daemon did not stop within timeout; it may still be shutting down")
 
 	return nil
 }

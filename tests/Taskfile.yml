@@ -258,15 +258,7 @@ tasks:
       - defer: |
           {{ .DIRCTL_BIN }} daemon stop --data-dir {{ .DAEMON_DATA_DIR }} 2>/dev/null || true
           rm -rf {{ .DAEMON_DATA_DIR }}
-      - |
-        {{ .DIRCTL_BIN }} daemon start --data-dir {{ .DAEMON_DATA_DIR }} &
-        # Wait for the daemon to be ready (PID file written)
-        for i in $(seq 1 30); do
-          if {{ .DIRCTL_BIN }} daemon status --data-dir {{ .DAEMON_DATA_DIR }} 2>&1 | grep -q "running"; then
-            break
-          fi
-          sleep 1
-        done
+      - "{{ .DIRCTL_BIN }} daemon start --data-dir {{ .DAEMON_DATA_DIR }} &"
       - go test -C ./tests/e2e/daemon . -v -failfast -test.v -test.paniconexit0 -ginkgo.timeout 5m -timeout 5m -ginkgo.v
 
   test:e2e:mcp:

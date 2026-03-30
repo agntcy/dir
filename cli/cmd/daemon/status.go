@@ -4,10 +4,6 @@
 package daemon
 
 import (
-	"os"
-	"syscall"
-
-	"github.com/agntcy/dir/cli/presenter"
 	"github.com/spf13/cobra"
 )
 
@@ -17,28 +13,20 @@ var statusCmd = &cobra.Command{
 	RunE:  runStatus,
 }
 
-func runStatus(cmd *cobra.Command, _ []string) error {
-	pid, err := readPID()
+func runStatus(_ *cobra.Command, _ []string) error {
+	running, pid, err := readPID()
 	if err != nil {
-		presenter.Println(cmd, "Daemon is not running")
-
-		return nil //nolint:nilerr // missing PID file means no daemon
+		return err
 	}
 
-	proc, err := os.FindProcess(pid)
-	if err != nil {
-		presenter.Println(cmd, "Daemon is not running (stale PID file)")
-
-		return nil //nolint:nilerr // process lookup failure means no daemon
+	switch {
+	case running:
+		logger.Info("Daemon is running", "pid", pid)
+	case pid > 0:
+		logger.Info("Daemon is not running (stale PID file)", "pid", pid)
+	default:
+		logger.Info("Daemon is not running")
 	}
-
-	if err := proc.Signal(syscall.Signal(0)); err != nil {
-		presenter.Printf(cmd, "Daemon is not running (stale PID file for pid %d)\n", pid)
-
-		return nil //nolint:nilerr // signal failure means process is not alive
-	}
-
-	presenter.Printf(cmd, "Daemon is running (pid %d)\n", pid)
 
 	return nil
 }
