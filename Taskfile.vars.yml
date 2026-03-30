@@ -91,7 +91,7 @@ vars:
   CONTROLLER_GEN_BIN: "sigs.k8s.io/controller-tools/cmd/controller-gen@{{ .CONTROLLER_GEN_VERSION }}"
 
   ## Go module discovery
-  GO_MOD_DIR:
+  GO_MODULES:
     sh: find . -name go.mod -not -path "./tmp*" -exec dirname {} \;
-  GO_MOD_DIR_UNIT_TEST:
+  GO_MODULES_UNIT_TEST:
     sh: find . -name go.mod -not -path "./tests*" -not -path "./tmp*" -exec dirname {} \;

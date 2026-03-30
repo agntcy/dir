@@ -170,7 +170,7 @@ tasks:
   deps:update:
     desc: Update dependencies
     cmds:
-      - for: { var: GO_MOD_DIR }
+      - for: { var: GO_MODULES }
         cmd: |
           echo "Updating dependencies in {{.ITEM}}" && \
           go -C {{.ITEM}} get -u ./... && \
