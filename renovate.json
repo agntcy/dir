@@ -57,8 +57,13 @@
     "helm-values",
     "gomod",
     "helmv3",
+    "pyenv",
     "pip_setup",
-    "npm"
+    "pip_requirements",
+    "pep621",
+    "npm",
+    "nvm",
+    "nodenv"
   ],
   "labels": ["dependencies"],
   "ignoreDeps": [
@@ -81,6 +86,9 @@
     "github.com/agntcy/dir/runtime/server"
   ],
   "osvVulnerabilityAlerts": true,
+  "lockFileMaintenance": {
+    "enabled": true
+  },
   "packageRules": [
     {
       "matchUpdateTypes": ["major"],
