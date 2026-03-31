@@ -47,6 +47,7 @@
   "dependencyDashboardLabels": ["dependencies"],
   "dependencyDashboardOSVVulnerabilitySummary": "all",
   "enabled": true,
+  "schedule": ["before 6am on Monday"],
   "enabledManagers": [
     "custom.regex",
     "docker-compose",
@@ -243,6 +244,7 @@
   "timezone": "Etc/UTC",
   "vulnerabilityAlerts": {
     "enabled": true,
-    "labels": ["security"]
+    "labels": ["security"],
+    "schedule": ["at any time"]
   }
 }
