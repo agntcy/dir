@@ -320,6 +320,11 @@ tasks:
   deps:pre-commit:
     desc: Install pre-commit
     run: once
+    vars:
+      GIT_HOOKS_PATH:
+        sh: git config core.hooksPath || echo ""
+    # pre-commit doesn't work if core.hooksPath is set
+    if: '{{ eq .GIT_HOOKS_PATH "" }}'
     cmds:
       - curl -sL "https://github.com/pre-commit/pre-commit/releases/download/v{{.PRE_COMMIT_VERSION}}/pre-commit-{{.PRE_COMMIT_VERSION}}.pyz" -o {{.PRE_COMMIT_PYZ}}
       - python3 {{.PRE_COMMIT_PYZ}} install
