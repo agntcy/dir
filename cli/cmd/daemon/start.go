@@ -12,9 +12,11 @@ import (
 
 	reconciler "github.com/agntcy/dir/reconciler/service"
 	"github.com/agntcy/dir/server"
+	ocilib "github.com/agntcy/dir/server/store/oci"
 	"github.com/agntcy/dir/utils/logging"
 	"github.com/spf13/cobra"
 	ocistore "oras.land/oras-go/v2/content/oci"
+	"oras.land/oras-go/v2/registry"
 )
 
 var logger = logging.Logger("daemon")
@@ -24,9 +26,8 @@ var startCmd = &cobra.Command{
 	Short: "Start the local directory daemon",
 	Long: `Start the gRPC apiserver and reconciler in a single process.
 
-Configuration is read from a YAML file (default: <data-dir>/daemon.config.yaml).
-If the file does not exist, a default config is written automatically.
-Use --config to specify a custom path.
+Without --config, built-in defaults (embedded daemon.config.yaml) are used.
+When --config is provided, the file is read as the complete configuration.
 
 The daemon blocks until SIGINT or SIGTERM is received.`,
 	RunE: runStart,
@@ -66,12 +67,12 @@ func runStart(cmd *cobra.Command, _ []string) error {
 
 	logger.Info("Server started", "address", cfg.Server.ListenAddress)
 
-	localRepo, err := ocistore.New(cfg.Server.Store.OCI.LocalDir)
+	tagLister, err := newTagLister(cfg)
 	if err != nil {
-		return fmt.Errorf("failed to open local OCI store for indexer: %w", err)
+		return fmt.Errorf("failed to create OCI tag lister for indexer: %w", err)
 	}
 
-	svc, err := reconciler.New(&cfg.Reconciler, srv.Database(), srv.Store(), localRepo)
+	svc, err := reconciler.New(&cfg.Reconciler, srv.Database(), srv.Store(), tagLister)
 	if err != nil {
 		return fmt.Errorf("failed to create reconciler: %w", err)
 	}
@@ -107,4 +108,25 @@ func runStart(cmd *cobra.Command, _ []string) error {
 	}
 
 	return nil
+}
+
+// newTagLister returns a registry.TagLister for the reconciler's indexer.
+// When a local OCI directory is configured, a local oci.Store is opened.
+// Otherwise a remote ORAS repository is created from the OCI config.
+func newTagLister(cfg *DaemonConfig) (registry.TagLister, error) {
+	if dir := cfg.Server.Store.OCI.LocalDir; dir != "" {
+		repo, err := ocistore.New(dir)
+		if err != nil {
+			return nil, fmt.Errorf("failed to open local OCI store: %w", err)
+		}
+
+		return repo, nil
+	}
+
+	repo, err := ocilib.NewORASRepository(cfg.Server.Store.OCI)
+	if err != nil {
+		return nil, fmt.Errorf("failed to connect to remote OCI registry: %w", err)
+	}
+
+	return repo, nil
 }
