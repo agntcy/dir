@@ -324,4 +324,4 @@ tasks:
       - curl -sL "https://github.com/pre-commit/pre-commit/releases/download/v{{.PRE_COMMIT_VERSION}}/pre-commit-{{.PRE_COMMIT_VERSION}}.pyz" -o {{.PRE_COMMIT_PYZ}}
       - python3 {{.PRE_COMMIT_PYZ}} install
     status:
-      - test -d {{.PRE_COMMIT_PYZ}}
+      - test -f {{.PRE_COMMIT_PYZ}}
