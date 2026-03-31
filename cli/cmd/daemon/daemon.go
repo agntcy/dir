@@ -87,12 +87,12 @@ var Command = &cobra.Command{
 	Long: `Run a self-contained local directory server that bundles the gRPC apiserver
 and reconciler into a single process.
 
-All data and configuration are stored under ~/.agntcy/dir/ by default.
-The daemon reads its config from daemon.config.yaml in the data directory;
-if the file does not exist it is created with sensible defaults.
+All data is stored under ~/.agntcy/dir/ by default.
+Without --config, built-in defaults are used. When --config is provided the
+file is read as the complete configuration (no merging with defaults).
 
 Examples:
-  # Start the daemon (foreground)
+  # Start the daemon with built-in defaults
   dirctl daemon start
 
   # Start with a custom config

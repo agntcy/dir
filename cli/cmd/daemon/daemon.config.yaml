@@ -1,5 +1,4 @@
-# Daemon configuration for dirctl.
-# Auto-generated with default values. Edit to customize.
+# Reference daemon configuration for dirctl.
 #
 # To use PostgreSQL instead of SQLite, change database.type to "postgres"
 # and configure the postgres section.
@@ -8,10 +7,8 @@
 # directory (default: ~/.agntcy/dir/, override with --data-dir).
 # Use absolute paths to pin a location regardless of --data-dir.
 #
-# All fields can be overridden via environment variables using the prefix
-# DIRECTORY_DAEMON_ followed by the uppercased, underscore-delimited path.
-# Examples:
-#   DIRECTORY_DAEMON_SERVER_LISTEN_ADDRESS
+# Credentials can be set via environment variables with the prefix
+# DIRECTORY_DAEMON_ followed by the uppercased, underscore-delimited path:
 #   DIRECTORY_DAEMON_SERVER_DATABASE_POSTGRES_USERNAME
 #   DIRECTORY_DAEMON_SERVER_DATABASE_POSTGRES_PASSWORD
 #   DIRECTORY_DAEMON_SERVER_STORE_OCI_AUTH_CONFIG_USERNAME

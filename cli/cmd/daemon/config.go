@@ -5,9 +5,7 @@ package daemon
 
 import (
 	_ "embed"
-	"errors"
 	"fmt"
-	"os"
 	"path/filepath"
 	"strings"
 
@@ -31,32 +29,13 @@ type DaemonConfig struct {
 	Reconciler reconcilerconfig.Config `json:"reconciler" mapstructure:"reconciler"`
 }
 
-// defaultConfigYAML is the single source of truth for daemon default configuration,
-// embedded from daemon.config.yaml. Path fields use relative values (e.g. "store",
-// "dir.db") which are resolved against opts.DataDir after loading.
-//
 //go:embed daemon.config.yaml
 var defaultConfigYAML string
 
-// loadConfig loads the daemon configuration. If a config file exists at the
-// path derived from opts, it is merged on top of the embedded defaults.
-// Otherwise the embedded defaults are used as-is.
+// loadConfig loads the daemon configuration. When the user provides a config
+// file via --config, that file is read as-is (no defaults merged). Otherwise
+// the embedded daemon.config.yaml is used as the complete default configuration.
 func loadConfig() (*DaemonConfig, error) {
-	cfgPath := opts.ConfigFilePath()
-
-	cfg, err := readConfig(cfgPath)
-	if err != nil {
-		return nil, fmt.Errorf("failed to load config: %w", err)
-	}
-
-	return cfg, nil
-}
-
-// readConfig parses the daemon configuration. The embedded defaultConfigYAML is
-// loaded as the base. If a user config file exists at path it is merged on top,
-// so omitted fields retain sensible defaults. Relative paths are resolved
-// against opts.DataDir after unmarshaling.
-func readConfig(path string) (*DaemonConfig, error) {
 	v := viper.NewWithOptions(
 		viper.KeyDelimiter("."),
 		viper.EnvKeyReplacer(strings.NewReplacer(".", "_", "-", "_")),
@@ -67,20 +46,18 @@ func readConfig(path string) (*DaemonConfig, error) {
 	v.AllowEmptyEnv(true)
 	v.AutomaticEnv()
 
-	if err := v.ReadConfig(strings.NewReader(defaultConfigYAML)); err != nil {
-		return nil, fmt.Errorf("failed to load default config: %w", err)
-	}
-
 	bindCredentialEnvVars(v)
 
-	v.SetConfigFile(path)
+	if opts.ConfigFile != "" {
+		v.SetConfigFile(opts.ConfigFile)
 
-	if err := v.MergeInConfig(); err != nil {
-		if !errors.Is(err, os.ErrNotExist) {
+		if err := v.ReadInConfig(); err != nil {
 			return nil, fmt.Errorf("failed to read config file: %w", err)
 		}
-
-		logger.Info("No config file found, using defaults", "path", path)
+	} else {
+		if err := v.ReadConfig(strings.NewReader(defaultConfigYAML)); err != nil {
+			return nil, fmt.Errorf("failed to load embedded default config: %w", err)
+		}
 	}
 
 	decodeHooks := mapstructure.ComposeDecodeHookFunc(
@@ -100,10 +77,9 @@ func readConfig(path string) (*DaemonConfig, error) {
 	return cfg, nil
 }
 
-// bindCredentialEnvVars registers credential keys that have no defaults in the
-// YAML file. Without explicit BindEnv calls, AutomaticEnv cannot discover keys
-// that viper has never seen. The single-argument form uses the env prefix to
-// derive the env var name (e.g. DIRECTORY_DAEMON_SERVER_DATABASE_POSTGRES_USERNAME).
+// bindCredentialEnvVars registers credential keys so that AutomaticEnv can
+// resolve them. Without explicit BindEnv calls, viper cannot discover keys
+// that never appear in a config file.
 func bindCredentialEnvVars(v *viper.Viper) {
 	_ = v.BindEnv("server.database.postgres.username")
 	_ = v.BindEnv("server.database.postgres.password")
@@ -117,11 +93,12 @@ func bindCredentialEnvVars(v *viper.Viper) {
 	_ = v.BindEnv("server.sync.auth_config.password")
 }
 
-// resolveRelativePaths resolves path fields against opts.DataDir when they are
-// relative. Absolute paths set by the user in the config file are left as-is.
+// resolveRelativePaths resolves non-empty path fields against opts.DataDir
+// when they are relative. Empty paths are left for the service to default.
+// Absolute paths set by the user are left as-is.
 func resolveRelativePaths(cfg *DaemonConfig) {
 	resolve := func(p string) string {
-		if filepath.IsAbs(p) {
+		if p == "" || filepath.IsAbs(p) {
 			return p
 		}
 
