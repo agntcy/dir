@@ -13,11 +13,14 @@ import (
 	"github.com/agntcy/dir/server/database/config"
 	gormdb "github.com/agntcy/dir/server/database/gorm"
 	"github.com/agntcy/dir/server/types"
+	"github.com/agntcy/dir/utils/logging"
 	"github.com/glebarez/sqlite"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 	gormlogger "gorm.io/gorm/logger"
 )
+
+var logger = logging.Logger("database")
 
 type DB string
 
@@ -29,6 +32,8 @@ const (
 func New(cfg config.Config) (types.DatabaseAPI, error) {
 	switch db := DB(cfg.Type); db {
 	case SQLite:
+		logger.Info("Initializing SQLite database", "path", cfg.SQLite.Path)
+
 		sqliteDB, err := newSQLite(cfg.SQLite)
 		if err != nil {
 			return nil, fmt.Errorf("failed to create SQLite database: %w", err)
@@ -36,6 +41,8 @@ func New(cfg config.Config) (types.DatabaseAPI, error) {
 
 		return sqliteDB, nil
 	case Postgres:
+		logger.Info("Initializing PostgreSQL database", "host", cfg.Postgres.Host, "port", cfg.Postgres.Port, "database", cfg.Postgres.Database)
+
 		postgresDB, err := newPostgres(cfg.Postgres)
 		if err != nil {
 			return nil, fmt.Errorf("failed to create PostgreSQL database: %w", err)

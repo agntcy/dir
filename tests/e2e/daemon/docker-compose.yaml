@@ -1,0 +1,27 @@
+name: daemon-external
+
+services:
+  zot:
+    image: ghcr.io/project-zot/zot:v2.1.15
+    ports:
+      - "5555:5000"
+    deploy:
+      restart_policy:
+        condition: on-failure
+
+  postgres:
+    image: docker.io/bitnami/postgresql:latest@sha256:621359194c6a0f0fd502c1996f40f539c3e5f2da43401b6d52ee5614722b7cba
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: directory
+    ports:
+      - "5432:5432"
+    deploy:
+      restart_policy:
+        condition: on-failure
+    healthcheck:
+      test: pg_isready -U postgres -d directory || exit 1
+      interval: 5s
+      retries: 30
+      start_period: 5s

@@ -5,7 +5,9 @@ package daemon
 
 import (
 	_ "embed"
+	"errors"
 	"fmt"
+	"os"
 	"path/filepath"
 	"strings"
 
@@ -69,10 +71,12 @@ func readConfig(path string) (*DaemonConfig, error) {
 		return nil, fmt.Errorf("failed to load default config: %w", err)
 	}
 
+	bindCredentialEnvVars(v)
+
 	v.SetConfigFile(path)
 
 	if err := v.MergeInConfig(); err != nil {
-		if _, ok := err.(viper.ConfigFileNotFoundError); !ok {
+		if !errors.Is(err, os.ErrNotExist) {
 			return nil, fmt.Errorf("failed to read config file: %w", err)
 		}
 
@@ -94,6 +98,23 @@ func readConfig(path string) (*DaemonConfig, error) {
 	resolveRelativePaths(cfg)
 
 	return cfg, nil
+}
+
+// bindCredentialEnvVars registers credential keys that have no defaults in the
+// YAML file. Without explicit BindEnv calls, AutomaticEnv cannot discover keys
+// that viper has never seen. The single-argument form uses the env prefix to
+// derive the env var name (e.g. DIRECTORY_DAEMON_SERVER_DATABASE_POSTGRES_USERNAME).
+func bindCredentialEnvVars(v *viper.Viper) {
+	_ = v.BindEnv("server.database.postgres.username")
+	_ = v.BindEnv("server.database.postgres.password")
+
+	_ = v.BindEnv("server.store.oci.auth_config.username")
+	_ = v.BindEnv("server.store.oci.auth_config.password")
+	_ = v.BindEnv("server.store.oci.auth_config.access_token")
+	_ = v.BindEnv("server.store.oci.auth_config.refresh_token")
+
+	_ = v.BindEnv("server.sync.auth_config.username")
+	_ = v.BindEnv("server.sync.auth_config.password")
 }
 
 // resolveRelativePaths resolves path fields against opts.DataDir when they are

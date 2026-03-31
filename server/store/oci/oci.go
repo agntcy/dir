@@ -48,12 +48,9 @@ var (
 )
 
 func New(cfg ociconfig.Config) (types.StoreAPI, error) {
-	logger.Debug("Creating OCI store with config", "config", cfg)
-
-	// if local dir used, return client for that local path.
-	// allows mounting of data via volumes
-	// allows S3 usage for backup store
 	if repoPath := cfg.LocalDir; repoPath != "" {
+		logger.Info("Initializing local OCI store", "path", repoPath)
+
 		repo, err := oci.New(repoPath)
 		if err != nil {
 			return nil, fmt.Errorf("failed to create local repo: %w", err)
@@ -65,7 +62,9 @@ func New(cfg ociconfig.Config) (types.StoreAPI, error) {
 		}, nil
 	}
 
-	// Create repo for remote registry
+	addr, _ := cfg.GetRegistryAddress()
+	logger.Info("Initializing remote OCI store", "registry", addr, "repository", cfg.RepositoryName)
+
 	repo, err := NewORASRepository(cfg)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create remote repo: %w", err)
