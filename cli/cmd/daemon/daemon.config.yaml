@@ -1,0 +1,60 @@
+# Daemon configuration for dirctl.
+# Auto-generated with default values. Edit to customize.
+#
+# To use PostgreSQL instead of SQLite, change database.type to "postgres"
+# and configure the postgres section.
+#
+# Relative paths (e.g. "store", "dir.db") are resolved against the data
+# directory (default: ~/.agntcy/dir/, override with --data-dir).
+# Use absolute paths to pin a location regardless of --data-dir.
+
+server:
+  listen_address: "localhost:8888"
+  oasf_api_validation:
+    schema_url: "https://schema.oasf.outshift.com"
+  store:
+    provider: "oci"
+    oci:
+      local_dir: "store"
+      # To use a remote OCI registry instead of local_dir, set:
+      #   registry_address: "ghcr.io"
+      #   repository_name: "org/agents"
+    verification:
+      enabled: true
+  routing:
+    listen_address: "/ip4/0.0.0.0/tcp/0"
+    datastore_dir: "routing"
+    gossipsub:
+      enabled: true
+  database:
+    type: "sqlite"
+    sqlite:
+      path: "dir.db"
+    postgres:
+      host: "localhost"
+      port: 5432
+      database: "dir"
+      ssl_mode: "disable"
+  publication:
+    scheduler_interval: 1h
+    worker_count: 1
+    worker_timeout: 30m
+  naming:
+    ttl: 168h
+
+reconciler:
+  regsync:
+    enabled: false
+  indexer:
+    enabled: true
+    interval: 1h
+  signature:
+    enabled: true
+    interval: 1m
+    ttl: 168h
+    record_timeout: 30s
+  name:
+    enabled: true
+    interval: 1h
+    ttl: 168h
+    record_timeout: 30s

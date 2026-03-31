@@ -10,20 +10,8 @@ import (
 	"os/signal"
 	"syscall"
 
-	reconcilerconfig "github.com/agntcy/dir/reconciler/config"
 	reconciler "github.com/agntcy/dir/reconciler/service"
-	"github.com/agntcy/dir/reconciler/tasks/indexer"
-	"github.com/agntcy/dir/reconciler/tasks/name"
-	"github.com/agntcy/dir/reconciler/tasks/regsync"
-	"github.com/agntcy/dir/reconciler/tasks/signature"
 	"github.com/agntcy/dir/server"
-	serverconfig "github.com/agntcy/dir/server/config"
-	dbconfig "github.com/agntcy/dir/server/database/config"
-	namingconfig "github.com/agntcy/dir/server/naming/config"
-	publication "github.com/agntcy/dir/server/publication/config"
-	routingconfig "github.com/agntcy/dir/server/routing/config"
-	storeconfig "github.com/agntcy/dir/server/store/config"
-	ociconfig "github.com/agntcy/dir/server/store/oci/config"
 	"github.com/agntcy/dir/utils/logging"
 	"github.com/spf13/cobra"
 	ocistore "oras.land/oras-go/v2/content/oci"
@@ -34,8 +22,11 @@ var logger = logging.Logger("daemon")
 var startCmd = &cobra.Command{
 	Use:   "start",
 	Short: "Start the local directory daemon",
-	Long: `Start the gRPC apiserver and reconciler in a single process with local-mode
-defaults (embedded SQLite, filesystem OCI store, all reconciler tasks in-process).
+	Long: `Start the gRPC apiserver and reconciler in a single process.
+
+Configuration is read from a YAML file (default: <data-dir>/daemon.config.yaml).
+If the file does not exist, a default config is written automatically.
+Use --config to specify a custom path.
 
 The daemon blocks until SIGINT or SIGTERM is received.`,
 	RunE: runStart,
@@ -55,14 +46,15 @@ func runStart(cmd *cobra.Command, _ []string) error {
 		return fmt.Errorf("failed to create data directory %s: %w", opts.DataDir, err)
 	}
 
+	cfg, err := loadConfig()
+	if err != nil {
+		return fmt.Errorf("failed to load config: %w", err)
+	}
+
 	ctx, cancel := context.WithCancel(cmd.Context())
 	defer cancel()
 
-	serverCfg := buildServerConfig()
-	reconcilerCfg := buildReconcilerConfig()
-
-	// Start the gRPC server.
-	srv, err := server.New(ctx, serverCfg)
+	srv, err := server.New(ctx, &cfg.Server)
 	if err != nil {
 		return fmt.Errorf("failed to create server: %w", err)
 	}
@@ -72,14 +64,14 @@ func runStart(cmd *cobra.Command, _ []string) error {
 	}
 	defer srv.Close(ctx)
 
-	logger.Info("Server started", "address", serverCfg.ListenAddress)
+	logger.Info("Server started", "address", cfg.Server.ListenAddress)
 
-	localRepo, err := ocistore.New(opts.StoreDir())
+	localRepo, err := ocistore.New(cfg.Server.Store.OCI.LocalDir)
 	if err != nil {
 		return fmt.Errorf("failed to open local OCI store for indexer: %w", err)
 	}
 
-	svc, err := reconciler.New(reconcilerCfg, srv.Database(), srv.Store(), localRepo)
+	svc, err := reconciler.New(&cfg.Reconciler, srv.Database(), srv.Store(), localRepo)
 	if err != nil {
 		return fmt.Errorf("failed to create reconciler: %w", err)
 	}
@@ -102,7 +94,7 @@ func runStart(cmd *cobra.Command, _ []string) error {
 
 	defer removePIDFile()
 
-	logger.Info("Daemon ready", "data_dir", opts.DataDir, "pid", os.Getpid())
+	logger.Info("Daemon ready", "data_dir", opts.DataDir, "config", opts.ConfigFilePath(), "pid", os.Getpid())
 
 	sigCh := make(chan os.Signal, 1)
 	signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
@@ -115,69 +107,4 @@ func runStart(cmd *cobra.Command, _ []string) error {
 	}
 
 	return nil
-}
-
-func buildServerConfig() *serverconfig.Config {
-	return &serverconfig.Config{
-		ListenAddress: "localhost:8888",
-		Connection:    serverconfig.DefaultConnectionConfig(),
-		OASFAPIValidation: serverconfig.OASFAPIValidationConfig{
-			SchemaURL: "https://schema.oasf.outshift.com",
-		},
-		Store: storeconfig.Config{
-			Provider: storeconfig.DefaultProvider,
-			OCI: ociconfig.Config{
-				LocalDir: opts.StoreDir(),
-			},
-			Verification: storeconfig.VerificationConfig{
-				Enabled: storeconfig.DefaultVerificationEnabled,
-			},
-		},
-		Routing: routingconfig.Config{
-			ListenAddress:  "/ip4/0.0.0.0/tcp/0",
-			BootstrapPeers: []string{},
-			DatastoreDir:   opts.RoutingDir(),
-			GossipSub: routingconfig.GossipSubConfig{
-				Enabled: routingconfig.DefaultGossipSubEnabled,
-			},
-		},
-		Database: dbconfig.Config{
-			Type: "sqlite",
-			SQLite: dbconfig.SQLiteConfig{
-				Path: opts.DBFile(),
-			},
-		},
-		Publication: publication.Config{
-			SchedulerInterval: publication.DefaultPublicationSchedulerInterval,
-			WorkerCount:       publication.DefaultPublicationWorkerCount,
-			WorkerTimeout:     publication.DefaultPublicationWorkerTimeout,
-		},
-		Naming: namingconfig.Config{
-			TTL: namingconfig.DefaultTTL,
-		},
-	}
-}
-
-func buildReconcilerConfig() *reconcilerconfig.Config {
-	return &reconcilerconfig.Config{
-		Regsync: regsync.Config{
-			Enabled: false,
-		},
-		Indexer: indexer.Config{
-			Enabled:  true,
-			Interval: indexer.DefaultInterval,
-		},
-		Signature: signature.Config{
-			Enabled:       true,
-			Interval:      signature.DefaultInterval,
-			TTL:           signature.DefaultTTL,
-			RecordTimeout: signature.DefaultRecordTimeout,
-		},
-		Name: name.Config{
-			Enabled:       true,
-			Interval:      name.DefaultInterval,
-			TTL:           namingconfig.DefaultTTL,
-			RecordTimeout: name.DefaultRecordTimeout,
-		},
-	}
 }

@@ -15,13 +15,23 @@ import (
 
 // Options holds all daemon path configuration.
 type Options struct {
-	DataDir string
+	DataDir    string
+	ConfigFile string
 }
 
 func (o *Options) DBFile() string     { return filepath.Join(o.DataDir, "dir.db") }
 func (o *Options) StoreDir() string   { return filepath.Join(o.DataDir, "store") }
 func (o *Options) RoutingDir() string { return filepath.Join(o.DataDir, "routing") }
 func (o *Options) PIDFile() string    { return filepath.Join(o.DataDir, "daemon.pid") }
+
+// ConfigFilePath returns the config file path.
+func (o *Options) ConfigFilePath() string {
+	if o.ConfigFile != "" {
+		return o.ConfigFile
+	}
+
+	return filepath.Join(o.DataDir, DefaultConfigFile)
+}
 
 func defaultDataDir() string {
 	home, err := os.UserHomeDir()
@@ -75,13 +85,18 @@ var Command = &cobra.Command{
 	Use:   "daemon",
 	Short: "Run a local directory server",
 	Long: `Run a self-contained local directory server that bundles the gRPC apiserver
-and reconciler into a single process with embedded SQLite and filesystem OCI store.
+and reconciler into a single process.
 
-All data is stored under ~/.agntcy/dir/ by default.
+All data and configuration are stored under ~/.agntcy/dir/ by default.
+The daemon reads its config from daemon.config.yaml in the data directory;
+if the file does not exist it is created with sensible defaults.
 
 Examples:
   # Start the daemon (foreground)
   dirctl daemon start
+
+  # Start with a custom config
+  dirctl daemon start --config /path/to/config.yaml
 
   # Stop a running daemon
   dirctl daemon stop
@@ -96,6 +111,7 @@ Examples:
 
 func init() {
 	Command.PersistentFlags().StringVar(&opts.DataDir, "data-dir", defaultDataDir(), "Data directory for daemon state")
+	Command.PersistentFlags().StringVar(&opts.ConfigFile, "config", "", "Path to daemon config file (default: <data-dir>/"+DefaultConfigFile+")")
 
 	Command.AddCommand(
 		startCmd,
