@@ -18,10 +18,7 @@ const (
 	DefaultServerAddress = "0.0.0.0:8888"
 	DefaultTlsSkipVerify = false
 	DefaultCallbackPort  = 8484
-	// DefaultOIDCRedirectURI is the default OAuth callback URL (not a credential).
-	//nolint:gosec // G101: redirect URI is not a secret; it's registered with the IdP
-	DefaultOIDCRedirectURI = "http://localhost:8484/callback"
-	DefaultOAuthTimeout    = 5 * time.Minute
+	DefaultOAuthTimeout  = 5 * time.Minute
 )
 
 var DefaultConfig = Config{
@@ -39,18 +36,12 @@ type Config struct {
 	AuthMode         string `json:"auth_mode,omitempty"          mapstructure:"auth_mode"`
 	JWTAudience      string `json:"jwt_audience,omitempty"       mapstructure:"jwt_audience"`
 
-	// OIDC configuration (for interactive login and CI token)
-	OIDCIssuer      string `json:"oidc_issuer,omitempty"       mapstructure:"oidc_issuer"`
-	OIDCClientID    string `json:"oidc_client_id,omitempty"    mapstructure:"oidc_client_id"`
-	OIDCToken       string `json:"oidc_token,omitempty"        mapstructure:"oidc_token"`
-	OIDCRedirectURI string `json:"oidc_redirect_uri,omitempty" mapstructure:"oidc_redirect_uri"`
+	// OIDC configuration (for interactive login)
+	OIDCIssuer   string `json:"oidc_issuer,omitempty"    mapstructure:"oidc_issuer"`
+	OIDCClientID string `json:"oidc_client_id,omitempty" mapstructure:"oidc_client_id"`
 
-	// OIDC machine/service-user configuration (client credentials flow).
-	OIDCMachineClientID         string   `json:"oidc_machine_client_id,omitempty"          mapstructure:"oidc_machine_client_id"`
-	OIDCMachineClientSecret     string   `json:"oidc_machine_client_secret,omitempty"      mapstructure:"oidc_machine_client_secret"`
-	OIDCMachineClientSecretFile string   `json:"oidc_machine_client_secret_file,omitempty" mapstructure:"oidc_machine_client_secret_file"`
-	OIDCMachineScopes           []string `json:"oidc_machine_scopes,omitempty"             mapstructure:"oidc_machine_scopes"`
-	OIDCMachineTokenEndpoint    string   `json:"oidc_machine_token_endpoint,omitempty"     mapstructure:"oidc_machine_token_endpoint"`
+	// Pre-issued Bearer token for CI/scripts (skips interactive login)
+	AuthToken string `json:"auth_token,omitempty" mapstructure:"auth_token"`
 }
 
 func LoadConfig() (*Config, error) {
@@ -87,26 +78,8 @@ func LoadConfig() (*Config, error) {
 	_ = v.BindEnv("oidc_client_id")
 	v.SetDefault("oidc_client_id", "")
 
-	_ = v.BindEnv("oidc_token")
-	v.SetDefault("oidc_token", "")
-
-	_ = v.BindEnv("oidc_redirect_uri")
-	v.SetDefault("oidc_redirect_uri", DefaultOIDCRedirectURI)
-
-	_ = v.BindEnv("oidc_machine_client_id")
-	v.SetDefault("oidc_machine_client_id", "")
-
-	_ = v.BindEnv("oidc_machine_client_secret")
-	v.SetDefault("oidc_machine_client_secret", "")
-
-	_ = v.BindEnv("oidc_machine_client_secret_file")
-	v.SetDefault("oidc_machine_client_secret_file", "")
-
-	_ = v.BindEnv("oidc_machine_scopes")
-	v.SetDefault("oidc_machine_scopes", []string{})
-
-	_ = v.BindEnv("oidc_machine_token_endpoint")
-	v.SetDefault("oidc_machine_token_endpoint", "")
+	_ = v.BindEnv("auth_token")
+	v.SetDefault("auth_token", "")
 
 	_ = v.BindEnv("tls_cert_file")
 	v.SetDefault("tls_cert_file", "")

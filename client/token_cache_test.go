@@ -227,7 +227,7 @@ func TestTokenCache_Load(t *testing.T) {
 			AccessToken:  "oidc_access_token",
 			TokenType:    "bearer",
 			Provider:     "oidc",
-			Issuer:       "https://tenant.zitadel.cloud",
+			Issuer:       "https://dex.example.com",
 			RefreshToken: "oidc_refresh_token",
 			User:         "user@example.com",
 			UserID:       "sub-123",
@@ -241,7 +241,7 @@ func TestTokenCache_Load(t *testing.T) {
 		require.NoError(t, loadErr)
 		require.NotNil(t, loadedToken)
 		assert.Equal(t, "oidc", loadedToken.Provider)
-		assert.Equal(t, "https://tenant.zitadel.cloud", loadedToken.Issuer)
+		assert.Equal(t, "https://dex.example.com", loadedToken.Issuer)
 		assert.Equal(t, "oidc_refresh_token", loadedToken.RefreshToken)
 		assert.Equal(t, "user@example.com", loadedToken.User)
 		assert.Equal(t, "sub-123", loadedToken.UserID)

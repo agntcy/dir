@@ -18,19 +18,20 @@ var (
 	timeout         time.Duration
 	skipBrowserOpen bool
 	forceLogin      bool
+	useDeviceFlow   bool
 )
 
 var loginCmd = &cobra.Command{
 	Use:   "login",
 	Short: "Authenticate with OIDC",
-	Long: `Authenticate with OIDC (OpenID Connect) using Authorization Code + PKCE flow.
+	Long: `Authenticate with OIDC (OpenID Connect).
 
-Opens a browser to complete authentication at your IdP (e.g. Zitadel).
-Works in headless environments with --no-browser (shows URL to open manually).
+Default: Authorization Code + PKCE flow (opens browser).
+Device flow: --device flag (no browser needed; authorize on any device).
 
 Configuration (flags, env, or config file):
-  --oidc-issuer, DIRECTORY_CLIENT_OIDC_ISSUER      IdP URL (e.g. https://tenant.zitadel.cloud)
-  --oidc-client-id, DIRECTORY_CLIENT_OIDC_CLIENT_ID   Native app client ID from Zitadel
+  --oidc-issuer, DIRECTORY_CLIENT_OIDC_ISSUER        OIDC issuer URL (e.g. https://dex.example.com)
+  --oidc-client-id, DIRECTORY_CLIENT_OIDC_CLIENT_ID  OIDC client ID
 
 Examples:
   # Interactive login (opens browser)
@@ -38,6 +39,9 @@ Examples:
 
   # Headless (e.g. SSH) - copy URL to open in browser
   dirctl auth login --no-browser
+
+  # Device flow (no browser needed on this machine)
+  dirctl auth login --device
 
   # Force re-login even if valid token cached
   dirctl auth login --force`,
@@ -49,10 +53,10 @@ func init() {
 	loginCmd.Flags().DurationVar(&timeout, "timeout", client.DefaultOAuthTimeout, "Timeout for OAuth flow")
 	loginCmd.Flags().BoolVar(&skipBrowserOpen, "no-browser", false, "Don't open browser; show URL to open manually")
 	loginCmd.Flags().BoolVar(&forceLogin, "force", false, "Force re-login even if valid token cached")
+	loginCmd.Flags().BoolVar(&useDeviceFlow, "device", false, "Use OAuth 2.0 Device Authorization Grant (no browser needed)")
 }
 
 func runLogin(cmd *cobra.Command, _ []string) error {
-	ctx := cmd.Context()
 	cfg := config.Client
 
 	cache := client.NewTokenCache()
@@ -84,7 +88,15 @@ func runLogin(cmd *cobra.Command, _ []string) error {
 			"Or config file (~/.config/dirctl/config.yaml): oidc_issuer, oidc_client_id")
 	}
 
-	// Build redirect URI from callback port (must match Zitadel app redirect URIs)
+	if useDeviceFlow {
+		return runDeviceLogin(cmd, cfg, cache)
+	}
+
+	return runPKCELogin(cmd, cfg, cache)
+}
+
+func runPKCELogin(cmd *cobra.Command, cfg *client.Config, cache *client.TokenCache) error {
+	ctx := cmd.Context()
 	redirectURI := fmt.Sprintf("http://localhost:%d/callback", callbackPort)
 
 	cmd.Println("╔════════════════════════════════════════════════════════════╗")
@@ -104,12 +116,36 @@ func runLogin(cmd *cobra.Command, _ []string) error {
 		CallbackPort:    callbackPort,
 		SkipBrowserOpen: skipBrowserOpen,
 		Timeout:         timeout,
+		Output:          cmd.OutOrStdout(),
 	})
 	if err != nil {
 		return fmt.Errorf("login failed: %w", err)
 	}
 
-	// Build user display name: prefer Name, then Subject, then Email
+	return saveAndDisplayResult(cmd, cfg, cache, result)
+}
+
+func runDeviceLogin(cmd *cobra.Command, cfg *client.Config, cache *client.TokenCache) error {
+	ctx := cmd.Context()
+
+	cmd.Println("╔════════════════════════════════════════════════════════════╗")
+	cmd.Println("║          OIDC Authentication (Device Flow)                ║")
+	cmd.Println("╚════════════════════════════════════════════════════════════╝")
+
+	result, err := client.OIDC.RunDeviceFlow(ctx, &client.DeviceFlowConfig{
+		Issuer:   cfg.OIDCIssuer,
+		ClientID: cfg.OIDCClientID,
+		Timeout:  timeout,
+		Output:   cmd.OutOrStdout(),
+	})
+	if err != nil {
+		return fmt.Errorf("device login failed: %w", err)
+	}
+
+	return saveAndDisplayResult(cmd, cfg, cache, result)
+}
+
+func saveAndDisplayResult(cmd *cobra.Command, cfg *client.Config, cache *client.TokenCache, result *client.AuthResult) error {
 	userDisplay := result.Name
 	if userDisplay == "" {
 		userDisplay = result.Subject
@@ -123,7 +159,6 @@ func runLogin(cmd *cobra.Command, _ []string) error {
 		userDisplay = "authenticated"
 	}
 
-	// Save to cache
 	cachedToken := &client.CachedToken{
 		AccessToken:  result.AccessToken,
 		RefreshToken: result.RefreshToken,
@@ -138,14 +173,14 @@ func runLogin(cmd *cobra.Command, _ []string) error {
 	}
 
 	if err := cache.Save(cachedToken); err != nil {
-		cmd.Printf("⚠ Could not cache token: %v\n", err)
+		cmd.Printf("Warning: Could not cache token: %v\n", err)
 	} else {
-		cmd.Println("✓ Token cached for future use")
+		cmd.Println("Token cached for future use")
 		cmd.Printf("  Cache location: %s\n", cache.GetCachePath())
 	}
 
 	cmd.Println()
-	cmd.Printf("✓ Authenticated as: %s\n", userDisplay)
+	cmd.Printf("Authenticated as: %s\n", userDisplay)
 
 	if result.Email != "" {
 		cmd.Printf("  Email: %s\n", result.Email)
@@ -153,7 +188,7 @@ func runLogin(cmd *cobra.Command, _ []string) error {
 
 	cmd.Println()
 	cmd.Println("╔════════════════════════════════════════════════════════════╗")
-	cmd.Println("║              Authentication Complete! ✓                    ║")
+	cmd.Println("║              Authentication Complete!                      ║")
 	cmd.Println("╚════════════════════════════════════════════════════════════╝")
 	cmd.Println()
 	cmd.Println("You can now use dirctl commands with --auth-mode=oidc or auto-detect.")

@@ -25,15 +25,9 @@ func init() {
 	flags.StringVar(&config.Client.TlsCAFile, "tls-ca-file", config.Client.TlsCAFile, "Path to TLS CA file (for TLS authentication mode)")
 	flags.StringVar(&config.Client.TlsCertFile, "tls-cert-file", config.Client.TlsCertFile, "Path to TLS certificate file (for TLS authentication mode)")
 	flags.StringVar(&config.Client.TlsKeyFile, "tls-key-file", config.Client.TlsKeyFile, "Path to TLS key file (for TLS authentication mode)")
-	flags.StringVar(&config.Client.OIDCIssuer, "oidc-issuer", config.Client.OIDCIssuer, "OIDC issuer URL (e.g. https://tenant.zitadel.cloud) for interactive login")
-	flags.StringVar(&config.Client.OIDCClientID, "oidc-client-id", config.Client.OIDCClientID, "OIDC client ID from Zitadel (for interactive login)")
-	flags.StringVar(&config.Client.OIDCToken, "oidc-token", config.Client.OIDCToken, "OIDC Bearer token (pre-issued JWT). Useful for CI and non-interactive workflows; no login needed")
-	flags.StringVar(&config.Client.OIDCRedirectURI, "oidc-redirect-uri", config.Client.OIDCRedirectURI, "OIDC redirect URI override (default: http://localhost:8484/callback)")
-	flags.StringVar(&config.Client.OIDCMachineClientID, "oidc-machine-client-id", config.Client.OIDCMachineClientID, "OIDC machine/service-user client ID for client credentials flow")
-	flags.StringVar(&config.Client.OIDCMachineClientSecret, "oidc-machine-client-secret", config.Client.OIDCMachineClientSecret, "OIDC machine/service-user client secret for client credentials flow")
-	flags.StringVar(&config.Client.OIDCMachineClientSecretFile, "oidc-machine-client-secret-file", config.Client.OIDCMachineClientSecretFile, "Path to file containing OIDC machine/service-user client secret")
-	flags.StringSliceVar(&config.Client.OIDCMachineScopes, "oidc-machine-scope", config.Client.OIDCMachineScopes, "OIDC scope(s) for machine/service-user token request (repeatable)")
-	flags.StringVar(&config.Client.OIDCMachineTokenEndpoint, "oidc-machine-token-endpoint", config.Client.OIDCMachineTokenEndpoint, "OIDC token endpoint override for machine/service-user client credentials flow")
+	flags.StringVar(&config.Client.OIDCIssuer, "oidc-issuer", config.Client.OIDCIssuer, "OIDC issuer URL (e.g. https://dex.example.com) for interactive login")
+	flags.StringVar(&config.Client.OIDCClientID, "oidc-client-id", config.Client.OIDCClientID, "OIDC client ID for interactive login (PKCE)")
+	flags.StringVar(&config.Client.AuthToken, "auth-token", config.Client.AuthToken, "Pre-issued Bearer token (JWT). Useful for CI and non-interactive workflows; no login needed")
 
 	// mark required flags
 	RootCmd.MarkFlagRequired("server-addr") //nolint:errcheck

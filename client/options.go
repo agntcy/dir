@@ -126,11 +126,7 @@ func (o *options) setupAutoDetectAuth(ctx context.Context) error {
 }
 
 func (o *options) shouldAutoDetectOIDC() (bool, error) {
-	if strings.TrimSpace(o.config.OIDCToken) != "" {
-		return true, nil
-	}
-
-	if o.hasMachineOIDCConfig() {
+	if strings.TrimSpace(o.config.AuthToken) != "" {
 		return true, nil
 	}
 

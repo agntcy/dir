@@ -17,7 +17,6 @@ import (
 	"net"
 	"net/http"
 	"net/url"
-	"os"
 	"strings"
 	"time"
 
@@ -30,17 +29,27 @@ import (
 // DefaultOIDCScopes are the OIDC scopes requested for interactive login.
 const DefaultOIDCScopes = "openid email profile"
 
-// serverShutdownTimeout is how long to wait for the callback server to shut down.
-const serverShutdownTimeout = 2 * time.Second
+const (
+	serverShutdownTimeout          = 2 * time.Second
+	pkceVerifierBytes              = 32
+	maxOAuthCallbackBodySize       = 32 << 10 // 32KB
+	oauthCallbackReadHeaderTimeout = 10 * time.Second
+	defaultDevicePollInterval      = 5 * time.Second
+	httpPollTimeout                = 10 * time.Second
+	jwtSegments                    = 3
+)
 
-// pkceVerifierBytes is the number of random bytes for PKCE code verifier (RFC 7636: 43-128 chars; 32 bytes = 43 chars base64url).
-const pkceVerifierBytes = 32
-
-// maxOAuthCallbackBodySize limits the OAuth callback request body to prevent memory exhaustion (OAuth params are small).
-const maxOAuthCallbackBodySize = 32 << 10 // 32KB
-
-// oauthCallbackReadHeaderTimeout limits time to read request headers (mitigates Slowloris).
-const oauthCallbackReadHeaderTimeout = 10 * time.Second
+// AuthResult is the unified result from any OIDC authentication flow (PKCE or device).
+type AuthResult struct {
+	AccessToken  string
+	RefreshToken string
+	TokenType    string
+	ExpiresAt    time.Time
+	IDToken      string
+	Subject      string
+	Email        string
+	Name         string
+}
 
 // PKCEConfig holds configuration for the OIDC PKCE flow.
 type PKCEConfig struct {
@@ -51,41 +60,33 @@ type PKCEConfig struct {
 	CallbackPort    int
 	SkipBrowserOpen bool
 	Timeout         time.Duration
+	Output          io.Writer
 }
 
-// PKCEResult holds the result of a successful PKCE flow.
-type PKCEResult struct {
-	AccessToken  string
-	RefreshToken string
-	TokenType    string
-	ExpiresAt    time.Time
-	IDToken      string
-	// UserInfo from ID token claims (sub, email, name)
-	Subject string
-	Email   string
-	Name    string
+// DeviceFlowConfig holds configuration for the OAuth 2.0 Device Authorization Grant (RFC 8628).
+type DeviceFlowConfig struct {
+	Issuer       string
+	ClientID     string
+	Scopes       []string
+	PollInterval time.Duration
+	Timeout      time.Duration
+	Output       io.Writer
 }
 
-// ClientCredentialsConfig holds configuration for OAuth2 client credentials flow.
-type ClientCredentialsConfig struct {
-	Issuer           string
-	TokenEndpoint    string
-	ClientID         string
-	ClientSecret     string
-	ClientSecretFile string
-	Scopes           []string
-	Timeout          time.Duration
+type deviceCodeResponse struct {
+	DeviceCode      string `json:"device_code"`
+	UserCode        string `json:"user_code"`
+	VerificationURI string `json:"verification_uri"`
+	ExpiresIn       int64  `json:"expires_in"`
+	Interval        int64  `json:"interval"`
 }
 
-// ClientCredentialsResult holds the result of a successful client credentials token exchange.
-type ClientCredentialsResult struct {
-	AccessToken string
-	TokenType   string
-	ExpiresIn   int64
-	ExpiresAt   time.Time
-	Scope       string
-	Subject     string
-	Issuer      string
+type deviceTokenResponse struct {
+	AccessToken  string `json:"access_token"`
+	TokenType    string `json:"token_type"`
+	ExpiresIn    int64  `json:"expires_in"`
+	RefreshToken string `json:"refresh_token"`
+	IDToken      string `json:"id_token"`
 }
 
 type oauthErrorResponse struct {
@@ -93,22 +94,12 @@ type oauthErrorResponse struct {
 	ErrorDescription string `json:"error_description"`
 }
 
-type clientCredentialsTokenResponse struct {
-	AccessToken string `json:"access_token"`
-	TokenType   string `json:"token_type"`
-	ExpiresIn   int64  `json:"expires_in"`
-	Scope       string `json:"scope"`
-}
-
 // OIDC provides OIDC authentication flows.
 var OIDC = &OIDCProvider{}
-
-const jwtCompactPartsCount = 3
 
 // OIDCProvider groups OIDC-related methods.
 type OIDCProvider struct{}
 
-// oauthCallbackResult is the result of an OAuth callback (code or error).
 type oauthCallbackResult struct {
 	code  string
 	state string
@@ -116,25 +107,18 @@ type oauthCallbackResult struct {
 }
 
 // RunPKCEFlow performs the OIDC Authorization Code flow with PKCE.
-// It starts a local HTTP server to receive the callback, opens the browser (or prints the URL),
-// and exchanges the authorization code for tokens.
-func (*OIDCProvider) RunPKCEFlow(ctx context.Context, cfg *PKCEConfig) (*PKCEResult, error) {
+func (*OIDCProvider) RunPKCEFlow(ctx context.Context, cfg *PKCEConfig) (*AuthResult, error) {
 	if cfg.Issuer == "" || cfg.ClientID == "" {
 		return nil, fmt.Errorf("oidc issuer and client ID are required")
 	}
 
-	scopes := cfg.Scopes
-	if len(scopes) == 0 {
-		scopes = strings.Split(DefaultOIDCScopes, " ")
-	}
+	scopes := resolveScopes(cfg.Scopes)
 
-	// Create relying party (no client secret for native/public app)
 	rpClient, err := rp.NewRelyingPartyOIDC(ctx, cfg.Issuer, cfg.ClientID, "", cfg.RedirectURI, scopes)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create OIDC relying party: %w", err)
 	}
 
-	// Generate PKCE verifier and challenge (RFC 7636)
 	verifier, challenge, err := generatePKCE()
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate PKCE: %w", err)
@@ -152,7 +136,6 @@ func (*OIDCProvider) RunPKCEFlow(ctx context.Context, cfg *PKCEConfig) (*PKCERes
 		Handler:           handleOAuthCallback(callbackPath, state, resultCh),
 	}
 
-	// Use a listener to detect the actual port (in case 0 was requested)
 	lc := net.ListenConfig{}
 
 	listener, err := lc.Listen(ctx, "tcp", server.Addr)
@@ -161,12 +144,10 @@ func (*OIDCProvider) RunPKCEFlow(ctx context.Context, cfg *PKCEConfig) (*PKCERes
 	}
 	defer listener.Close()
 
-	// Start server in goroutine
 	go func() {
 		_ = server.Serve(listener)
 	}()
 
-	// Shutdown server when done
 	defer func() {
 		shutdownCtx, cancel := context.WithTimeout(ctx, serverShutdownTimeout)
 		defer cancel()
@@ -174,15 +155,15 @@ func (*OIDCProvider) RunPKCEFlow(ctx context.Context, cfg *PKCEConfig) (*PKCERes
 		_ = server.Shutdown(shutdownCtx)
 	}()
 
-	// Open browser or print URL
+	w := writerOrDiscard(cfg.Output)
+	fmt.Fprintf(w, "Open this URL to authenticate:\n\n  %s\n\n", authURL)
+
 	if !cfg.SkipBrowserOpen {
 		if err := browser.OpenURL(authURL); err != nil {
-			// Non-fatal: user can open manually
 			_ = err
 		}
 	}
 
-	// Wait for callback with timeout
 	timeout := resolveOAuthTimeout(cfg.Timeout)
 
 	select {
@@ -192,7 +173,6 @@ func (*OIDCProvider) RunPKCEFlow(ctx context.Context, cfg *PKCEConfig) (*PKCERes
 		}
 
 		return exchangeCodeForResult(ctx, res.code, verifier, rpClient)
-
 	case <-ctx.Done():
 		return nil, fmt.Errorf("login timed out or cancelled: %w", ctx.Err())
 	case <-time.After(timeout):
@@ -200,7 +180,123 @@ func (*OIDCProvider) RunPKCEFlow(ctx context.Context, cfg *PKCEConfig) (*PKCERes
 	}
 }
 
-// parseCallbackPath extracts the path from a redirect URI (e.g. http://localhost:8484/callback -> /callback).
+// RunDeviceFlow performs the OAuth 2.0 Device Authorization Grant (RFC 8628).
+func (*OIDCProvider) RunDeviceFlow(ctx context.Context, cfg *DeviceFlowConfig) (*AuthResult, error) {
+	if cfg.Issuer == "" || cfg.ClientID == "" {
+		return nil, fmt.Errorf("oidc issuer and client ID are required for device flow")
+	}
+
+	scopes := resolveScopes(cfg.Scopes)
+
+	issuer := strings.TrimRight(strings.TrimSpace(cfg.Issuer), "/")
+	deviceCodeURL := issuer + "/device/code"
+	tokenURL := issuer + "/token"
+
+	deviceResp, err := requestDeviceCode(ctx, deviceCodeURL, cfg.ClientID, scopes, cfg.Timeout)
+	if err != nil {
+		return nil, err
+	}
+
+	pollInterval := cfg.PollInterval
+	if pollInterval == 0 {
+		if deviceResp.Interval > 0 {
+			pollInterval = time.Duration(deviceResp.Interval) * time.Second
+		} else {
+			pollInterval = defaultDevicePollInterval
+		}
+	}
+
+	timeout := resolveOAuthTimeout(cfg.Timeout)
+
+	w := writerOrDiscard(cfg.Output)
+	fmt.Fprintf(w, "\nEnter this code at %s:\n\n  %s\n\nWaiting for authorization...\n", deviceResp.VerificationURI, deviceResp.UserCode)
+
+	tokenResp, err := pollForDeviceToken(ctx, tokenURL, cfg.ClientID, deviceResp.DeviceCode, pollInterval, timeout)
+	if err != nil {
+		return nil, err
+	}
+
+	result := &AuthResult{
+		AccessToken:  tokenResp.AccessToken,
+		RefreshToken: tokenResp.RefreshToken,
+		TokenType:    tokenResp.TokenType,
+		IDToken:      tokenResp.IDToken,
+	}
+	if tokenResp.ExpiresIn > 0 {
+		result.ExpiresAt = time.Now().Add(time.Duration(tokenResp.ExpiresIn) * time.Second)
+	}
+
+	if result.TokenType == "" {
+		result.TokenType = "Bearer"
+	}
+
+	if tokenResp.IDToken != "" {
+		result.Subject, result.Email, result.Name = parseIDTokenClaims(tokenResp.IDToken)
+	}
+
+	return result, nil
+}
+
+// --- Shared helpers ---
+
+func resolveScopes(scopes []string) []string {
+	if len(scopes) == 0 {
+		return strings.Split(DefaultOIDCScopes, " ")
+	}
+
+	return scopes
+}
+
+func writerOrDiscard(w io.Writer) io.Writer {
+	if w == nil {
+		return io.Discard
+	}
+
+	return w
+}
+
+func resolveOAuthTimeout(timeout time.Duration) time.Duration {
+	if timeout > 0 {
+		return timeout
+	}
+
+	return DefaultOAuthTimeout
+}
+
+// parseIDTokenClaims extracts sub, email, and name from a JWT ID token payload.
+//
+//nolint:nonamedreturns // named returns clarify the three string values
+func parseIDTokenClaims(idToken string) (sub, email, name string) {
+	parts := strings.Split(idToken, ".")
+	if len(parts) != jwtSegments {
+		return "", "", ""
+	}
+
+	payloadBytes, err := base64.RawURLEncoding.DecodeString(parts[1])
+	if err != nil {
+		return "", "", ""
+	}
+
+	var claims struct {
+		Sub               string `json:"sub"`
+		Email             string `json:"email"`
+		Name              string `json:"name"`
+		PreferredUsername string `json:"preferred_username"`
+	}
+	if err := json.Unmarshal(payloadBytes, &claims); err != nil {
+		return "", "", ""
+	}
+
+	displayName := claims.PreferredUsername
+	if displayName == "" {
+		displayName = claims.Name
+	}
+
+	return claims.Sub, claims.Email, displayName
+}
+
+// --- PKCE helpers ---
+
 func parseCallbackPath(redirectURI string) string {
 	u, err := url.Parse(redirectURI)
 	if err != nil || u.Path == "" {
@@ -210,7 +306,6 @@ func parseCallbackPath(redirectURI string) string {
 	return u.Path
 }
 
-// handleOAuthCallback returns an HTTP handler for the OAuth callback endpoint.
 func handleOAuthCallback(callbackPath, state string, resultCh chan<- oauthCallbackResult) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path != callbackPath {
@@ -256,8 +351,7 @@ func handleOAuthCallback(callbackPath, state string, resultCh chan<- oauthCallba
 	}
 }
 
-// exchangeCodeForResult exchanges the auth code for tokens and builds a PKCEResult.
-func exchangeCodeForResult(ctx context.Context, code, verifier string, rpClient rp.RelyingParty) (*PKCEResult, error) {
+func exchangeCodeForResult(ctx context.Context, code, verifier string, rpClient rp.RelyingParty) (*AuthResult, error) {
 	tokens, err := rp.CodeExchange[*oidc.IDTokenClaims](ctx, code, rpClient, rp.WithCodeVerifier(verifier))
 	if err != nil {
 		return nil, fmt.Errorf("token exchange failed: %w", err)
@@ -266,9 +360,8 @@ func exchangeCodeForResult(ctx context.Context, code, verifier string, rpClient 
 	return tokensToResult(tokens), nil
 }
 
-// tokensToResult maps OIDC tokens to PKCEResult.
-func tokensToResult(tokens *oidc.Tokens[*oidc.IDTokenClaims]) *PKCEResult {
-	result := &PKCEResult{
+func tokensToResult(tokens *oidc.Tokens[*oidc.IDTokenClaims]) *AuthResult {
+	result := &AuthResult{
 		AccessToken:  tokens.AccessToken,
 		RefreshToken: tokens.RefreshToken,
 		TokenType:    "Bearer",
@@ -292,27 +385,21 @@ func tokensToResult(tokens *oidc.Tokens[*oidc.IDTokenClaims]) *PKCEResult {
 	return result
 }
 
-// generatePKCE generates a PKCE code verifier and challenge per RFC 7636.
-//
 //nolint:nonamedreturns // named returns used for clarity in short function
 func generatePKCE() (verifier, challenge string, err error) {
-	// code_verifier: 43-128 chars from [A-Z][a-z][0-9]-._~
-	// We use pkceVerifierBytes random bytes = 43 chars when base64url encoded
-	bytes := make([]byte, pkceVerifierBytes)
-	if _, err := io.ReadFull(rand.Reader, bytes); err != nil {
+	b := make([]byte, pkceVerifierBytes)
+	if _, err := io.ReadFull(rand.Reader, b); err != nil {
 		return "", "", fmt.Errorf("failed to generate PKCE verifier: %w", err)
 	}
 
-	verifier = base64.RawURLEncoding.EncodeToString(bytes)
+	verifier = base64.RawURLEncoding.EncodeToString(b)
 
-	// code_challenge = BASE64URL(SHA256(verifier))
 	hash := sha256.Sum256([]byte(verifier))
 	challenge = base64.RawURLEncoding.EncodeToString(hash[:])
 
 	return verifier, challenge, nil
 }
 
-// writeSuccessPage writes a simple HTML page to the response.
 func writeSuccessPage(w http.ResponseWriter, success bool, message string) {
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 
@@ -325,220 +412,115 @@ func writeSuccessPage(w http.ResponseWriter, success bool, message string) {
 		html.EscapeString(status), html.EscapeString(message), html.EscapeString(message))
 }
 
-// RunClientCredentialsFlow performs OAuth2 client credentials exchange against the issuer token endpoint.
-func (*OIDCProvider) RunClientCredentialsFlow(ctx context.Context, cfg *ClientCredentialsConfig) (*ClientCredentialsResult, error) {
-	if err := validateClientCredentialsConfig(cfg); err != nil {
-		return nil, err
-	}
+// --- Device flow helpers ---
 
-	clientSecret, err := resolveClientCredentialsSecret(cfg)
-	if err != nil {
-		return nil, err
-	}
-
-	tokenEndpoint, err := resolveClientCredentialsTokenEndpoint(ctx, cfg)
-	if err != nil {
-		return nil, err
-	}
-
-	form := buildClientCredentialsForm(cfg.ClientID, clientSecret, cfg.Scopes)
-
-	tokenResp, err := requestClientCredentialsToken(ctx, tokenEndpoint, form, cfg.Timeout)
-	if err != nil {
-		return nil, err
-	}
-
-	if tokenResp.AccessToken == "" {
-		return nil, errors.New("token response missing access_token")
-	}
-
-	return toClientCredentialsResult(tokenResp), nil
-}
-
-func discoverTokenEndpoint(ctx context.Context, issuer string, timeout time.Duration) (string, error) {
-	issuer = strings.TrimRight(strings.TrimSpace(issuer), "/")
-	if issuer == "" {
-		return "", errors.New("oidc issuer is required")
-	}
-
-	discoveryURL := issuer + "/.well-known/openid-configuration"
-
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, discoveryURL, nil)
-	if err != nil {
-		return "", fmt.Errorf("failed to create OIDC discovery request: %w", err)
-	}
-
-	resp, err := (&http.Client{Timeout: resolveOAuthTimeout(timeout)}).Do(req)
-	if err != nil {
-		return "", fmt.Errorf("failed to fetch OIDC discovery document: %w", err)
-	}
-	defer resp.Body.Close()
-
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return "", fmt.Errorf("failed to read OIDC discovery response: %w", err)
-	}
-
-	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		return "", fmt.Errorf("oidc discovery failed: http %d", resp.StatusCode)
-	}
-
-	var discovery struct {
-		TokenEndpoint string `json:"token_endpoint"`
-	}
-	if err := json.Unmarshal(body, &discovery); err != nil {
-		return "", fmt.Errorf("failed to parse OIDC discovery document: %w", err)
-	}
-
-	if strings.TrimSpace(discovery.TokenEndpoint) == "" {
-		return "", errors.New("oidc discovery missing token_endpoint")
-	}
-
-	return discovery.TokenEndpoint, nil
-}
-
-func validateClientCredentialsConfig(cfg *ClientCredentialsConfig) error {
-	if cfg == nil {
-		return errors.New("client credentials config is required")
-	}
-
-	if cfg.Issuer == "" {
-		return errors.New("oidc issuer is required")
-	}
-
-	if cfg.ClientID == "" {
-		return errors.New("oidc machine client ID is required")
-	}
-
-	return nil
-}
-
-func resolveClientCredentialsSecret(cfg *ClientCredentialsConfig) (string, error) {
-	clientSecret := strings.TrimSpace(cfg.ClientSecret)
-	if clientSecret == "" && strings.TrimSpace(cfg.ClientSecretFile) != "" {
-		rawSecret, err := os.ReadFile(cfg.ClientSecretFile)
-		if err != nil {
-			return "", fmt.Errorf("failed to read oidc machine client secret file: %w", err)
-		}
-
-		clientSecret = strings.TrimSpace(string(rawSecret))
-	}
-
-	if clientSecret == "" {
-		return "", errors.New("oidc machine client secret is required")
-	}
-
-	return clientSecret, nil
-}
-
-func resolveClientCredentialsTokenEndpoint(ctx context.Context, cfg *ClientCredentialsConfig) (string, error) {
-	if tokenEndpoint := strings.TrimSpace(cfg.TokenEndpoint); tokenEndpoint != "" {
-		return tokenEndpoint, nil
-	}
-
-	return discoverTokenEndpoint(ctx, cfg.Issuer, cfg.Timeout)
-}
-
-func buildClientCredentialsForm(clientID, clientSecret string, scopes []string) url.Values {
+func requestDeviceCode(ctx context.Context, deviceCodeURL, clientID string, scopes []string, timeout time.Duration) (*deviceCodeResponse, error) {
 	form := url.Values{}
-	form.Set("grant_type", "client_credentials")
 	form.Set("client_id", clientID)
-	form.Set("client_secret", clientSecret)
+	form.Set("scope", strings.Join(scopes, " "))
 
-	if len(scopes) > 0 {
-		form.Set("scope", strings.Join(scopes, " "))
-	}
-
-	return form
-}
-
-func requestClientCredentialsToken(ctx context.Context, tokenEndpoint string, form url.Values, timeout time.Duration) (*clientCredentialsTokenResponse, error) {
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, tokenEndpoint, bytes.NewBufferString(form.Encode()))
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, deviceCodeURL, bytes.NewBufferString(form.Encode()))
 	if err != nil {
-		return nil, fmt.Errorf("failed to create token request: %w", err)
+		return nil, fmt.Errorf("failed to create device code request: %w", err)
 	}
 
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 
-	httpClient := &http.Client{Timeout: resolveOAuthTimeout(timeout)}
-
-	resp, err := httpClient.Do(req)
+	resp, err := (&http.Client{Timeout: resolveOAuthTimeout(timeout)}).Do(req)
 	if err != nil {
-		return nil, fmt.Errorf("failed to request client credentials token: %w", err)
+		return nil, fmt.Errorf("failed to request device code: %w", err)
 	}
 	defer resp.Body.Close()
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return nil, fmt.Errorf("failed to read token response: %w", err)
+		return nil, fmt.Errorf("failed to read device code response: %w", err)
 	}
 
-	if resp.StatusCode < http.StatusOK || resp.StatusCode >= http.StatusMultipleChoices {
-		var oauthErr oauthErrorResponse
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("device code request failed (HTTP %d): %s", resp.StatusCode, string(body))
+	}
 
-		_ = json.Unmarshal(body, &oauthErr)
-		if oauthErr.Error != "" {
-			return nil, fmt.Errorf("token exchange failed: %s (%s)", oauthErr.Error, oauthErr.ErrorDescription)
+	var deviceResp deviceCodeResponse
+	if err := json.Unmarshal(body, &deviceResp); err != nil {
+		return nil, fmt.Errorf("failed to parse device code response: %w", err)
+	}
+
+	return &deviceResp, nil
+}
+
+func pollForDeviceToken(ctx context.Context, tokenURL, clientID, deviceCode string, pollInterval, timeout time.Duration) (*deviceTokenResponse, error) {
+	deadline := time.After(timeout)
+
+	for {
+		select {
+		case <-ctx.Done():
+			return nil, fmt.Errorf("device flow cancelled: %w", ctx.Err())
+		case <-deadline:
+			return nil, fmt.Errorf("device flow timed out after %v", timeout)
+		case <-time.After(pollInterval):
+			tokenResp, done, err := tryDeviceTokenExchange(ctx, tokenURL, clientID, deviceCode)
+			if err != nil {
+				return nil, err
+			}
+
+			if done {
+				return tokenResp, nil
+			}
+		}
+	}
+}
+
+func tryDeviceTokenExchange(ctx context.Context, tokenURL, clientID, deviceCode string) (*deviceTokenResponse, bool, error) {
+	form := url.Values{}
+	form.Set("grant_type", "urn:ietf:params:oauth:grant-type:device_code")
+	form.Set("device_code", deviceCode)
+	form.Set("client_id", clientID)
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, tokenURL, bytes.NewBufferString(form.Encode()))
+	if err != nil {
+		return nil, false, fmt.Errorf("failed to create token poll request: %w", err)
+	}
+
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+
+	resp, err := (&http.Client{Timeout: httpPollTimeout}).Do(req)
+	if err != nil {
+		return nil, false, nil //nolint:nilerr // transient HTTP error; keep polling
+	}
+
+	body, err := io.ReadAll(resp.Body)
+	resp.Body.Close()
+
+	if err != nil {
+		return nil, false, nil //nolint:nilerr // transient read error; keep polling
+	}
+
+	if resp.StatusCode == http.StatusOK {
+		var tokenResp deviceTokenResponse
+		if err := json.Unmarshal(body, &tokenResp); err != nil {
+			return nil, false, fmt.Errorf("failed to parse device token response: %w", err)
 		}
 
-		return nil, fmt.Errorf("token exchange failed: http %d", resp.StatusCode)
+		return &tokenResp, true, nil
 	}
 
-	var tokenResp clientCredentialsTokenResponse
-	if err := json.Unmarshal(body, &tokenResp); err != nil {
-		return nil, fmt.Errorf("failed to parse token response: %w", err)
+	var oauthErr oauthErrorResponse
+
+	_ = json.Unmarshal(body, &oauthErr)
+
+	switch oauthErr.Error {
+	case "authorization_pending", "slow_down":
+		return nil, false, nil // keep polling
+	case "expired_token":
+		return nil, false, errors.New("device code expired; please try again")
+	case "access_denied":
+		return nil, false, errors.New("authorization denied by user")
+	default:
+		if oauthErr.Error != "" {
+			return nil, false, fmt.Errorf("device flow error: %s (%s)", oauthErr.Error, oauthErr.ErrorDescription)
+		}
+
+		return nil, false, fmt.Errorf("device flow token request failed (HTTP %d)", resp.StatusCode)
 	}
-
-	return &tokenResp, nil
-}
-
-func toClientCredentialsResult(tokenResp *clientCredentialsTokenResponse) *ClientCredentialsResult {
-	tokenType := tokenResp.TokenType
-	if tokenType == "" {
-		tokenType = "Bearer"
-	}
-
-	result := &ClientCredentialsResult{
-		AccessToken: tokenResp.AccessToken,
-		TokenType:   tokenType,
-		ExpiresIn:   tokenResp.ExpiresIn,
-		Scope:       tokenResp.Scope,
-	}
-	if tokenResp.ExpiresIn > 0 {
-		result.ExpiresAt = time.Now().Add(time.Duration(tokenResp.ExpiresIn) * time.Second)
-	}
-
-	result.Subject, result.Issuer = extractJWTSubjectAndIssuer(tokenResp.AccessToken)
-
-	return result
-}
-
-func resolveOAuthTimeout(timeout time.Duration) time.Duration {
-	if timeout > 0 {
-		return timeout
-	}
-
-	return DefaultOAuthTimeout
-}
-
-func extractJWTSubjectAndIssuer(token string) (string, string) {
-	parts := strings.Split(token, ".")
-	if len(parts) != jwtCompactPartsCount {
-		return "", ""
-	}
-
-	payloadBytes, err := base64.RawURLEncoding.DecodeString(parts[1])
-	if err != nil {
-		return "", ""
-	}
-
-	var claims struct {
-		Sub string `json:"sub"`
-		Iss string `json:"iss"`
-	}
-	if err := json.Unmarshal(payloadBytes, &claims); err != nil {
-		return "", ""
-	}
-
-	return claims.Sub, claims.Iss
 }

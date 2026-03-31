@@ -13,23 +13,20 @@ var Command = &cobra.Command{
 	Short: "Manage authentication",
 	Long: `Manage authentication for dirctl.
 
-This command group provides OIDC-based authentication for the Directory server
-using external IdPs (e.g. Zitadel).
+This command group provides OIDC-based authentication for the Directory server.
 
 Examples:
   # Login with OAuth (opens browser)
   dirctl auth login
 
-  # Machine/service-user login (non-interactive)
-  dirctl auth machine
+  # Login with device flow (no browser needed)
+  dirctl auth login --device
 
   # Check authentication status
   dirctl auth status
 
   # Logout (clear cached token)
   dirctl auth logout`,
-	// Override root's PersistentPreRunE - auth commands don't need a client
-	// since they manage authentication themselves
 	PersistentPreRunE: func(_ *cobra.Command, _ []string) error {
 		return nil
 	},
@@ -38,7 +35,6 @@ Examples:
 func init() {
 	Command.AddCommand(
 		loginCmd,
-		machineCmd,
 		logoutCmd,
 		statusCmd,
 	)

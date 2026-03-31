@@ -495,7 +495,7 @@ func TestSetupAutoDetectAuth(t *testing.T) {
 			config: &Config{
 				ServerAddress: "gateway.example.com:443",
 				AuthMode:      "",
-				OIDCToken:     "explicit-oidc-token",
+				AuthToken:     "explicit-oidc-token",
 			},
 		}
 
