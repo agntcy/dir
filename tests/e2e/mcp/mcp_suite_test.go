@@ -31,10 +31,6 @@ var _ = ginkgo.BeforeSuite(func() {
 	}
 
 	ginkgo.GinkgoWriter.Printf("Waiting for Directory apiserver at %s...\n", addr)
-	gomega.Eventually(utils.IsGrpcServerReady).
-		WithArguments(addr).
-		WithPolling(readyPollInterval).
-		WithTimeout(readyTimeout).
-		Should(gomega.Succeed())
+	gomega.Eventually(utils.IsGrpcServerReady).WithArguments(addr).WithPolling(readyPollInterval).WithTimeout(readyTimeout).Should(gomega.Succeed())
 	ginkgo.GinkgoWriter.Printf("Directory apiserver is ready at %s\n", addr)
 })

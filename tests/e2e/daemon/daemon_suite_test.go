@@ -4,12 +4,11 @@
 package daemon
 
 import (
-	"fmt"
-	"net"
 	"os"
 	"testing"
 	"time"
 
+	"github.com/agntcy/dir/tests/e2e/shared/utils"
 	ginkgo "github.com/onsi/ginkgo/v2"
 	"github.com/onsi/gomega"
 )
@@ -31,23 +30,7 @@ var _ = ginkgo.BeforeSuite(func() {
 		addr = defaultServerAddress
 	}
 
-	ginkgo.GinkgoWriter.Printf("Waiting for daemon at %s...\n", addr)
-	gomega.Expect(waitForServerReady(addr)).To(gomega.Succeed())
-	ginkgo.GinkgoWriter.Printf("Daemon is ready at %s\n", addr)
+	ginkgo.GinkgoWriter.Printf("Waiting for Directory daemon at %s...\n", addr)
+	gomega.Eventually(utils.IsGrpcServerReady).WithArguments(addr).WithPolling(readyPollInterval).WithTimeout(readyTimeout).Should(gomega.Succeed())
+	ginkgo.GinkgoWriter.Printf("Directory daemon is ready at %s\n", addr)
 })
-
-func waitForServerReady(addr string) error {
-	deadline := time.Now().Add(readyTimeout)
-	for time.Now().Before(deadline) {
-		conn, err := net.DialTimeout("tcp", addr, 2*time.Second) //nolint:gosec,noctx,mnd
-		if err == nil {
-			conn.Close()
-
-			return nil
-		}
-
-		time.Sleep(readyPollInterval)
-	}
-
-	return fmt.Errorf("daemon did not become ready at %s within %v", addr, readyTimeout)
-}
