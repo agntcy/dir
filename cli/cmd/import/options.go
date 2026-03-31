@@ -15,21 +15,22 @@ var opts = &options{}
 type options struct {
 	config.Config
 	RegistryType  string
-	Sign          bool   // Sign records after pushing (flag binding)
-	OutputCIDFile string // File to write imported CIDs to (for deferred signing)
+	Sign          bool
+	OutputCIDFile string
+	FilePath      string
 }
 
 func init() {
 	flags := Command.Flags()
 
+	// File flags
+	flags.StringVar(&opts.FilePath, "file-path", "", "Path to JSON file with MCP server definition(s) (required when --type=file)")
+
 	// Registry flags
-	flags.StringVar(&opts.RegistryType, "type", "", "Registry type (mcp, a2a)")
-	flags.StringVar(&opts.RegistryURL, "url", "", "Registry base URL")
+	flags.StringVar(&opts.RegistryType, "type", "", "Registry type: mcp, a2a, or file (local JSON)")
+	flags.StringVar(&opts.RegistryURL, "url", "", "Registry base URL (required for mcp and a2a)")
 	flags.StringToStringVar(&opts.Filters, "filter", nil, "Filters (key=value)")
 	flags.IntVar(&opts.Limit, "limit", 0, "Maximum number of records to import (0 = no limit)")
-	flags.BoolVar(&opts.DryRun, "dry-run", false, "Preview without importing")
-	flags.BoolVar(&opts.Force, "force", false, "Force push even if record already exists")
-	flags.BoolVar(&opts.Debug, "debug", false, "Enable debug output for deduplication and validation failures")
 
 	// Enrichment flags
 	flags.StringVar(&opts.Enricher.ConfigFile, "enrich-config", enricherconfig.DefaultConfigFile, "Path to MCPHost configuration file (mcphost.json)")
@@ -49,7 +50,10 @@ func init() {
 	flags.StringVar(&opts.OutputCIDFile, "output-cids", "", "File to write imported CIDs (one per line, for deferred signing)")
 	signcmd.AddSigningFlags(flags)
 
-	// Mark required flags
+	// Common flags
+	flags.BoolVar(&opts.DryRun, "dry-run", false, "Preview without importing")
+	flags.BoolVar(&opts.Force, "force", false, "Force push even if record already exists")
+	flags.BoolVar(&opts.Debug, "debug", false, "Enable debug output for deduplication and validation failures")
+
 	Command.MarkFlagRequired("type") //nolint:errcheck
-	Command.MarkFlagRequired("url")  //nolint:errcheck
 }

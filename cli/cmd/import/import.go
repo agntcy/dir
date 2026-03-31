@@ -19,40 +19,41 @@ import (
 	"github.com/spf13/cobra"
 )
 
-const cidOutputFilePerm = 0o600
-
 var Command = &cobra.Command{
 	Use:   "import",
-	Short: "Import records from external registries",
-	Long: `Import records from external registries into DIR.
+	Short: "Import MCP records into DIR from a registry or a JSON file",
+	Long: `Import MCP server records into DIR. Records are transformed, enriched, optionally
+scanned, then pushed. The same pipeline runs for every source.
 
-Supported registries:
-  - mcp: Model Context Protocol registry v0.1
+Sources:
+  --type=mcp --url       HTTP MCP registry (e.g. v0.1 list API)
+  --type=file --file-path   Local JSON: one bare server object or a JSON array of servers
 
-The import command fetches records from the specified registry and pushes
-them to DIR.
+Examples (registry):
+  dirctl import --type=mcp --url=https://registry.modelcontextprotocol.io/v0.1
+  dirctl import --type=mcp --url=https://registry.modelcontextprotocol.io/v0.1 --filter=search=analytics --limit=50
+  dirctl import --type=mcp --url=https://registry.modelcontextprotocol.io/v0.1 --force --debug
 
-Examples:
-  # Import from MCP registry with default enrichment configuration
-  dirctl import --type=mcp --url=https://registry.modelcontextprotocol.io
+Examples (file):
+  dirctl import --type=file --file-path=./servers.json
+  dirctl import --type=file --file-path=./server.json --force --debug
 
-  # Import with filters
-  # Available filters: https://registry.modelcontextprotocol.io/docs#/operations/list-servers-v0.1#Query-Parameters
-  dirctl import --type=mcp --url=https://registry.modelcontextprotocol.io --filter=updated_since=2025-08-07T13:15:04.280Z
+Preview and output:
+  dirctl import --type=mcp --url=https://registry.modelcontextprotocol.io/v0.1 --dry-run
+  dirctl import --type=mcp --url=https://registry.modelcontextprotocol.io/v0.1 --output-cids=./imported.cids
 
-  # Preview without importing
-  dirctl import --type=mcp --url=https://registry.modelcontextprotocol.io --dry-run
+Enrichment (MCPHost / LLM):
+  dirctl import --type=file --file-path=./server.json --enrich-config=./mcphost.json
+  dirctl import --type=mcp --url=https://registry.modelcontextprotocol.io/v0.1 --enrich-skills-prompt=./skills.md --enrich-domains-prompt=./domains.md --enrich-rate-limit=5
 
-  # Use custom MCPHost configuration and prompt templates
-  dirctl import --type=mcp --url=https://registry.modelcontextprotocol.io \
-    --enrich-skills-prompt=/path/to/custom-skills-prompt.md \
-    --enrich-domains-prompt=/path/to/custom-domains-prompt.md
+Scanner (mcp-scanner):
+  dirctl import --type=mcp --url=https://registry.modelcontextprotocol.io/v0.1 --scanner-enabled --scanner-timeout=5m --scanner-cli-path=/usr/local/bin/mcp-scanner
+  dirctl import --type=mcp --url=https://registry.modelcontextprotocol.io/v0.1 --scanner-enabled --scanner-fail-on-error --scanner-fail-on-warning
 
-  # Import and sign records with OIDC (opens browser for authentication)
-  dirctl import --type=mcp --url=https://registry.modelcontextprotocol.io --sign
-
-  # Import and sign records with a private key
-  dirctl import --type=mcp --url=https://registry.modelcontextprotocol.io --sign --key=/path/to/cosign.key
+Signing (after push; same flags as dirctl sign):
+  dirctl import --type=mcp --url=https://registry.modelcontextprotocol.io/v0.1 --sign --key=./cosign.key
+  dirctl import --type=file --file-path=./server.json --sign --key=env://COSIGN_PRIVATE_KEY --fulcio-url=https://fulcio.sigstore.dev --rekor-url=https://rekor.sigstore.dev --timestamp-url=https://timestamp.sigstore.dev
+  dirctl import --type=mcp --url=https://registry.modelcontextprotocol.io/v0.1 --sign --key=./cosign.key --skip-tlog --oidc-token="$OIDC_TOKEN"
 `,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		return runImport(cmd)
@@ -60,35 +61,37 @@ Examples:
 }
 
 func runImport(cmd *cobra.Command) error {
-	// Get the client from the context
 	c, ok := ctxUtils.GetClientFromContext(cmd.Context())
 	if !ok {
 		return errors.New("failed to get client from context")
 	}
 
-	// Set the registry type from the string flag
 	opts.Config.RegistryType = config.RegistryType(opts.RegistryType)
+	opts.Config.FilePath = opts.FilePath
 
-	// Set up signing function if enabled
 	if opts.Sign {
 		opts.SignFunc = func(ctx context.Context, cid string) error {
 			return signcmd.Sign(ctx, c, cid)
 		}
 	}
 
-	// Validate configuration
 	if err := opts.Validate(); err != nil {
 		return fmt.Errorf("invalid configuration: %w", err)
 	}
 
-	// Create importer instance from pre-initialized factory
 	importer, err := factory.Create(cmd.Context(), c, opts.Config)
 	if err != nil {
 		return fmt.Errorf("failed to create importer: %w", err)
 	}
 
-	// Run import with progress reporting
-	presenter.Printf(cmd, "Starting import from %s registry at %s...\n", opts.Config.RegistryType, opts.RegistryURL)
+	switch opts.Config.RegistryType {
+	case config.RegistryTypeMCP:
+		presenter.Printf(cmd, "Starting import from %s registry at %s...\n", opts.Config.RegistryType, opts.RegistryURL)
+	case config.RegistryTypeFile:
+		presenter.Printf(cmd, "Importing MCP server(s) from file: %s\n", opts.Config.FilePath)
+	default:
+		presenter.Printf(cmd, "Starting import from %s registry at %s...\n", opts.Config.RegistryType, opts.RegistryURL)
+	}
 
 	if opts.DryRun {
 		presenter.Printf(cmd, "Mode: DRY RUN (preview only)\n")
@@ -110,11 +113,10 @@ func runImport(cmd *cobra.Command) error {
 
 	printSummary(cmd, result)
 
-	// Write CIDs to output file if specified
 	if opts.OutputCIDFile != "" && len(result.ImportedCIDs) > 0 {
 		content := strings.Join(result.ImportedCIDs, "\n") + "\n"
 
-		if err := os.WriteFile(opts.OutputCIDFile, []byte(content), cidOutputFilePerm); err != nil {
+		if err := os.WriteFile(opts.OutputCIDFile, []byte(content), 0o600); err != nil { //nolint:mnd
 			return fmt.Errorf("failed to write CIDs to file: %w", err)
 		}
 
@@ -137,7 +139,7 @@ func printSummary(cmd *cobra.Command, result *types.ImportResult) {
 		presenter.Printf(cmd, "\n=== Errors ===\n")
 
 		for i, err := range result.Errors {
-			if i < maxErrors { // Show only first 10 errors
+			if i < maxErrors {
 				presenter.Printf(cmd, "  - %v\n", err)
 			}
 		}
