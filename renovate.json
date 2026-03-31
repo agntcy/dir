@@ -47,6 +47,8 @@
   "dependencyDashboardLabels": ["dependencies"],
   "dependencyDashboardOSVVulnerabilitySummary": "all",
   "enabled": true,
+  "minimumReleaseAge": "3 days",
+  "schedule": ["before 6am on Monday"],
   "enabledManagers": [
     "custom.regex",
     "docker-compose",
@@ -55,8 +57,13 @@
     "helm-values",
     "gomod",
     "helmv3",
+    "pyenv",
     "pip_setup",
-    "npm"
+    "pip_requirements",
+    "pep621",
+    "npm",
+    "nvm",
+    "nodenv"
   ],
   "labels": ["dependencies"],
   "ignoreDeps": [
@@ -79,6 +86,9 @@
     "github.com/agntcy/dir/runtime/server"
   ],
   "osvVulnerabilityAlerts": true,
+  "lockFileMaintenance": {
+    "enabled": true
+  },
   "packageRules": [
     {
       "matchUpdateTypes": ["major"],
@@ -243,6 +253,8 @@
   "timezone": "Etc/UTC",
   "vulnerabilityAlerts": {
     "enabled": true,
-    "labels": ["security"]
+    "labels": ["security"],
+    "minimumReleaseAge": null,
+    "schedule": ["at any time"]
   }
 }
