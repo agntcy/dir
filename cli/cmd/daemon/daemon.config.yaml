@@ -7,6 +7,15 @@
 # Relative paths (e.g. "store", "dir.db") are resolved against the data
 # directory (default: ~/.agntcy/dir/, override with --data-dir).
 # Use absolute paths to pin a location regardless of --data-dir.
+#
+# All fields can be overridden via environment variables using the prefix
+# DIRECTORY_DAEMON_ followed by the uppercased, underscore-delimited path.
+# Examples:
+#   DIRECTORY_DAEMON_SERVER_LISTEN_ADDRESS
+#   DIRECTORY_DAEMON_SERVER_DATABASE_POSTGRES_USERNAME
+#   DIRECTORY_DAEMON_SERVER_DATABASE_POSTGRES_PASSWORD
+#   DIRECTORY_DAEMON_SERVER_STORE_OCI_AUTH_CONFIG_USERNAME
+#   DIRECTORY_DAEMON_SERVER_STORE_OCI_AUTH_CONFIG_PASSWORD
 
 server:
   listen_address: "localhost:8888"

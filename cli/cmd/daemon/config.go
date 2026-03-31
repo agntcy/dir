@@ -18,6 +18,9 @@ import (
 const (
 	// DefaultConfigFile is the default daemon config filename, stored under DataDir.
 	DefaultConfigFile = "daemon.config.yaml"
+
+	// DefaultEnvPrefix is the environment variable prefix for daemon configuration.
+	DefaultEnvPrefix = "DIRECTORY_DAEMON"
 )
 
 // DaemonConfig is the top-level daemon configuration combining server and reconciler settings.
@@ -58,6 +61,9 @@ func readConfig(path string) (*DaemonConfig, error) {
 	)
 
 	v.SetConfigType("yaml")
+	v.SetEnvPrefix(DefaultEnvPrefix)
+	v.AllowEmptyEnv(true)
+	v.AutomaticEnv()
 
 	if err := v.ReadConfig(strings.NewReader(defaultConfigYAML)); err != nil {
 		return nil, fmt.Errorf("failed to load default config: %w", err)
