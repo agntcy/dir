@@ -9,9 +9,8 @@ claims:
 # Issuer-specific extraction. principalType: auto | user | client | github
 # Example:
 # issuers:
-#   - provider: "https://tenant.zitadel.cloud"
-#     principalType: "auto"
-#     machineIdentityClaim: "client_id"
+#   - provider: "https://dex.example.com"
+#     principalType: "user"
 #   - provider: "https://token.actions.githubusercontent.com"
 #     principalType: "github"
 issuers: []
@@ -29,7 +28,7 @@ publicPaths:
   - "/grpc.reflection"
 
 roles:
-  # Example admin: users: ["user:https://tenant.zitadel.cloud:77776025198584418"]
+  # Example admin: users: ["user:https://dex.example.com:admin@example.com"]
   admin:
     allowedMethods: ["*"]
     users: []
@@ -43,7 +42,7 @@ roles:
       - "/agntcy.dir.store.v1.StoreService/Push"
       - "/agntcy.dir.store.v1.StoreService/Pull"
     users: []
-    # Example: clients: ["client:https://tenant.zitadel.cloud:69234237810729234"]
+    # Example: clients: ["client:https://dex.example.com:service-client-id"]
     clients: []
   # Example GitHub Actions deployer (uncomment when deploy.yml exists):
   # prod-deployer:

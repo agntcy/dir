@@ -9,16 +9,17 @@ import (
 )
 
 func TestExtractPrincipal_EnvoyForwardPayloadHeader_Base64URL(t *testing.T) {
-	// Mirrors Envoy jwt_authn forward_payload_header: base64url-encoded payload segment (not raw JSON).
+	// Mirrors Envoy jwt_authn forward_payload_header: base64url-encoded payload segment.
+	// Uses UserID: "sub" to test backward compatibility with sub-based extraction.
 	config := &OIDCConfig{
 		Claims: ClaimsConfig{UserID: "sub"},
 		Issuers: []IssuerConfig{
-			{Provider: "https://tenant.zitadel.cloud", PrincipalType: PrincipalTypeUser},
+			{Provider: "https://dex.example.com", PrincipalType: PrincipalTypeUser},
 		},
 		PrincipalType: PrincipalTypeConfig{Mode: PrincipalTypeUser},
 	}
 
-	jsonPayload := `{"iss":"https://tenant.zitadel.cloud","sub":"77776025198584418"}`
+	jsonPayload := `{"iss":"https://dex.example.com","sub":"77776025198584418"}`
 	forwarded := base64.RawURLEncoding.EncodeToString([]byte(jsonPayload))
 
 	principal, pt, err := ExtractPrincipal(forwarded, config)
@@ -26,8 +27,8 @@ func TestExtractPrincipal_EnvoyForwardPayloadHeader_Base64URL(t *testing.T) {
 		t.Fatalf("ExtractPrincipal: %v", err)
 	}
 
-	if principal != "user:https://tenant.zitadel.cloud:77776025198584418" {
-		t.Errorf("principal = %q, want user:https://tenant.zitadel.cloud:77776025198584418", principal)
+	if principal != "user:https://dex.example.com:77776025198584418" {
+		t.Errorf("principal = %q, want user:https://dex.example.com:77776025198584418", principal)
 	}
 
 	if pt != PrincipalTypeUser {
@@ -39,12 +40,12 @@ func TestExtractPrincipal_FullJWTString(t *testing.T) {
 	config := &OIDCConfig{
 		Claims: ClaimsConfig{UserID: "sub"},
 		Issuers: []IssuerConfig{
-			{Provider: "https://tenant.zitadel.cloud", PrincipalType: PrincipalTypeUser},
+			{Provider: "https://dex.example.com", PrincipalType: PrincipalTypeUser},
 		},
 		PrincipalType: PrincipalTypeConfig{Mode: PrincipalTypeUser},
 	}
 
-	jsonPayload := `{"iss":"https://tenant.zitadel.cloud","sub":"sub-xyz"}`
+	jsonPayload := `{"iss":"https://dex.example.com","sub":"sub-xyz"}`
 	seg := base64.RawURLEncoding.EncodeToString([]byte(jsonPayload))
 	full := "xx." + seg + ".yy"
 
@@ -53,33 +54,97 @@ func TestExtractPrincipal_FullJWTString(t *testing.T) {
 		t.Fatalf("ExtractPrincipal: %v", err)
 	}
 
-	if principal != "user:https://tenant.zitadel.cloud:sub-xyz" {
+	if principal != "user:https://dex.example.com:sub-xyz" {
 		t.Errorf("principal = %q", principal)
 	}
 }
 
-func TestExtractPrincipal_User(t *testing.T) {
+func TestExtractPrincipal_User_SubClaim(t *testing.T) {
+	// Tests backward compatibility: UserID: "sub" extracts principal from sub claim.
 	config := &OIDCConfig{
 		Claims: ClaimsConfig{UserID: "sub"},
 		Issuers: []IssuerConfig{
-			{Provider: "https://tenant.zitadel.cloud", PrincipalType: PrincipalTypeUser},
+			{Provider: "https://dex.example.com", PrincipalType: PrincipalTypeUser},
 		},
 		PrincipalType: PrincipalTypeConfig{Mode: PrincipalTypeUser},
 	}
 
-	payload := `{"iss":"https://tenant.zitadel.cloud","sub":"77776025198584418"}`
+	payload := `{"iss":"https://dex.example.com","sub":"77776025198584418"}`
 
 	principal, pt, err := ExtractPrincipal(payload, config)
 	if err != nil {
 		t.Fatalf("ExtractPrincipal: %v", err)
 	}
 
-	if principal != "user:https://tenant.zitadel.cloud:77776025198584418" {
-		t.Errorf("principal = %q, want user:https://tenant.zitadel.cloud:77776025198584418", principal)
+	if principal != "user:https://dex.example.com:77776025198584418" {
+		t.Errorf("principal = %q, want user:https://dex.example.com:77776025198584418", principal)
 	}
 
 	if pt != PrincipalTypeUser {
 		t.Errorf("principalType = %q, want user", pt)
+	}
+}
+
+func TestExtractPrincipal_User_EmailClaim(t *testing.T) {
+	config := &OIDCConfig{
+		Claims: ClaimsConfig{UserID: "email"},
+		Issuers: []IssuerConfig{
+			{Provider: "https://dex.example.com", PrincipalType: PrincipalTypeUser},
+		},
+		PrincipalType: PrincipalTypeConfig{Mode: PrincipalTypeUser},
+	}
+
+	payload := `{"iss":"https://dex.example.com","sub":"CgcyMzQyNzQ5EgZnaXRodWI","email":"user@example.com"}`
+
+	principal, pt, err := ExtractPrincipal(payload, config)
+	if err != nil {
+		t.Fatalf("ExtractPrincipal: %v", err)
+	}
+
+	if principal != "user:https://dex.example.com:user@example.com" { //nolint:gosec // not credentials
+		t.Errorf("principal = %q, want user:https://dex.example.com:user@example.com", principal)
+	}
+
+	if pt != PrincipalTypeUser {
+		t.Errorf("principalType = %q, want user", pt)
+	}
+}
+
+func TestExtractPrincipal_User_EmailClaim_Missing(t *testing.T) {
+	config := &OIDCConfig{
+		Claims: ClaimsConfig{UserID: "email"},
+		Issuers: []IssuerConfig{
+			{Provider: "https://dex.example.com", PrincipalType: PrincipalTypeUser},
+		},
+		PrincipalType: PrincipalTypeConfig{Mode: PrincipalTypeUser},
+	}
+
+	payload := `{"iss":"https://dex.example.com","sub":"CgcyMzQyNzQ5EgZnaXRodWI"}`
+
+	_, _, err := ExtractPrincipal(payload, config)
+	if err == nil {
+		t.Error("expected error when email claim is missing but userID is configured as email")
+	}
+}
+
+func TestExtractPrincipal_User_EmptyUserIDDefaultsToSub(t *testing.T) {
+	config := &OIDCConfig{
+		Claims: ClaimsConfig{UserID: ""},
+		Issuers: []IssuerConfig{
+			{Provider: "https://dex.example.com", PrincipalType: PrincipalTypeUser},
+		},
+		PrincipalType: PrincipalTypeConfig{Mode: PrincipalTypeUser},
+	}
+
+	payload := `{"iss":"https://dex.example.com","sub":"fallback-sub-123"}`
+
+	principal, _, err := ExtractPrincipal(payload, config)
+	if err != nil {
+		t.Fatalf("ExtractPrincipal: %v", err)
+	}
+
+	if principal != "user:https://dex.example.com:fallback-sub-123" {
+		t.Errorf("principal = %q, want user:https://dex.example.com:fallback-sub-123", principal)
 	}
 }
 
@@ -88,7 +153,7 @@ func TestExtractPrincipal_Client(t *testing.T) {
 		Claims: ClaimsConfig{UserID: "sub"},
 		Issuers: []IssuerConfig{
 			{
-				Provider:             "https://tenant.zitadel.cloud",
+				Provider:             "https://dex.example.com",
 				PrincipalType:        PrincipalTypeClient,
 				MachineIdentityClaim: "client_id",
 			},
@@ -96,15 +161,15 @@ func TestExtractPrincipal_Client(t *testing.T) {
 		PrincipalType: PrincipalTypeConfig{Mode: PrincipalTypeClient, MachineIdentityClaim: "client_id"},
 	}
 
-	payload := `{"iss":"https://tenant.zitadel.cloud","client_id":"69234237810729234"}`
+	payload := `{"iss":"https://dex.example.com","client_id":"69234237810729234"}`
 
 	principal, pt, err := ExtractPrincipal(payload, config)
 	if err != nil {
 		t.Fatalf("ExtractPrincipal: %v", err)
 	}
 
-	if principal != "client:https://tenant.zitadel.cloud:69234237810729234" {
-		t.Errorf("principal = %q, want client:https://tenant.zitadel.cloud:69234237810729234", principal)
+	if principal != "client:https://dex.example.com:69234237810729234" {
+		t.Errorf("principal = %q, want client:https://dex.example.com:69234237810729234", principal)
 	}
 
 	if pt != PrincipalTypeClient {
@@ -119,14 +184,14 @@ func TestExtractPrincipal_ClientAzpFallback(t *testing.T) {
 	}
 
 	// No client_id, has azp
-	payload := `{"iss":"https://tenant.zitadel.cloud","azp":"fallback-client-id"}`
+	payload := `{"iss":"https://dex.example.com","azp":"fallback-client-id"}`
 
 	principal, _, err := ExtractPrincipal(payload, config)
 	if err != nil {
 		t.Fatalf("ExtractPrincipal: %v", err)
 	}
 
-	if principal != "client:https://tenant.zitadel.cloud:fallback-client-id" {
+	if principal != "client:https://dex.example.com:fallback-client-id" {
 		t.Errorf("principal = %q, want client:...:fallback-client-id", principal)
 	}
 }
@@ -194,14 +259,14 @@ func TestExtractPrincipal_Auto_User(t *testing.T) {
 		PrincipalType: PrincipalTypeConfig{Mode: PrincipalTypeAuto},
 	}
 
-	payload := `{"iss":"https://tenant.zitadel.cloud","sub":"user-123"}`
+	payload := `{"iss":"https://dex.example.com","sub":"user-123"}`
 
 	principal, pt, err := ExtractPrincipal(payload, config)
 	if err != nil {
 		t.Fatalf("ExtractPrincipal: %v", err)
 	}
 
-	if principal != "user:https://tenant.zitadel.cloud:user-123" {
+	if principal != "user:https://dex.example.com:user-123" {
 		t.Errorf("principal = %q", principal)
 	}
 
@@ -216,14 +281,14 @@ func TestExtractPrincipal_Auto_Client(t *testing.T) {
 		PrincipalType: PrincipalTypeConfig{Mode: PrincipalTypeAuto, MachineIdentityClaim: "client_id"},
 	}
 
-	payload := `{"iss":"https://tenant.zitadel.cloud","sub":"machine-123","client_id":"machine-123"}`
+	payload := `{"iss":"https://dex.example.com","sub":"machine-123","client_id":"machine-123"}`
 
 	principal, pt, err := ExtractPrincipal(payload, config)
 	if err != nil {
 		t.Fatalf("ExtractPrincipal: %v", err)
 	}
 
-	if principal != "client:https://tenant.zitadel.cloud:machine-123" {
+	if principal != "client:https://dex.example.com:machine-123" {
 		t.Errorf("principal = %q", principal)
 	}
 
@@ -238,14 +303,14 @@ func TestExtractPrincipal_Auto_NoSubWithClientID(t *testing.T) {
 		PrincipalType: PrincipalTypeConfig{Mode: PrincipalTypeAuto, MachineIdentityClaim: "client_id"},
 	}
 
-	payload := `{"iss":"https://tenant.zitadel.cloud","client_id":"machine-only"}`
+	payload := `{"iss":"https://dex.example.com","client_id":"machine-only"}`
 
 	principal, pt, err := ExtractPrincipal(payload, config)
 	if err != nil {
 		t.Fatalf("ExtractPrincipal: %v", err)
 	}
 
-	if principal != "client:https://tenant.zitadel.cloud:machine-only" {
+	if principal != "client:https://dex.example.com:machine-only" {
 		t.Errorf("principal = %q", principal)
 	}
 
@@ -260,7 +325,7 @@ func TestExtractPrincipal_Auto_NoSubNoClientID(t *testing.T) {
 		PrincipalType: PrincipalTypeConfig{Mode: PrincipalTypeAuto, MachineIdentityClaim: "client_id"},
 	}
 
-	payload := `{"iss":"https://tenant.zitadel.cloud"}`
+	payload := `{"iss":"https://dex.example.com"}`
 
 	_, _, err := ExtractPrincipal(payload, config)
 	if err == nil {
@@ -278,14 +343,14 @@ func TestExtractPrincipal_Auto_MachineSubPattern(t *testing.T) {
 		},
 	}
 
-	payload := `{"iss":"https://tenant.zitadel.cloud","sub":"machine@service","client_id":"svc-123"}`
+	payload := `{"iss":"https://dex.example.com","sub":"machine@service","client_id":"svc-123"}`
 
 	principal, pt, err := ExtractPrincipal(payload, config)
 	if err != nil {
 		t.Fatalf("ExtractPrincipal: %v", err)
 	}
 
-	if principal != "client:https://tenant.zitadel.cloud:svc-123" {
+	if principal != "client:https://dex.example.com:svc-123" {
 		t.Errorf("principal = %q", principal)
 	}
 
@@ -304,7 +369,7 @@ func TestExtractPrincipal_Auto_MachineSubPatternNoClientID(t *testing.T) {
 		},
 	}
 
-	payload := `{"iss":"https://tenant.zitadel.cloud","sub":"machine@service"}`
+	payload := `{"iss":"https://dex.example.com","sub":"machine@service"}`
 
 	_, _, err := ExtractPrincipal(payload, config)
 	if err == nil {
@@ -322,14 +387,14 @@ func TestExtractPrincipal_Auto_MachineSubPatternNoMatch(t *testing.T) {
 		},
 	}
 
-	payload := `{"iss":"https://tenant.zitadel.cloud","sub":"human-user"}`
+	payload := `{"iss":"https://dex.example.com","sub":"human-user"}`
 
 	principal, pt, err := ExtractPrincipal(payload, config)
 	if err != nil {
 		t.Fatalf("ExtractPrincipal: %v", err)
 	}
 
-	if principal != "user:https://tenant.zitadel.cloud:human-user" {
+	if principal != "user:https://dex.example.com:human-user" {
 		t.Errorf("principal = %q", principal)
 	}
 

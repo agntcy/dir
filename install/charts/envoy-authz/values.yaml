@@ -30,14 +30,14 @@ envoy:
 
   # OIDC/JWT configuration for jwt_authn filter
   oidc:
-    # Zitadel issuer configuration
-    zitadel:
+    # Dex issuer configuration
+    dex:
       enabled: true
-      issuer: "https://tenant.zitadel.cloud"
-      # Zitadel JWKS is at /oauth/v2/keys (not /.well-known/jwks.json)
-      jwksUri: "https://tenant.zitadel.cloud/oauth/v2/keys"
+      issuer: "https://dex.example.com"
+      # Dex JWKS endpoint is /keys
+      jwksUri: "https://dex.example.com/keys"
       # Host for JWKS cluster (extracted from issuer; override if needed)
-      jwksHost: "tenant.zitadel.cloud"
+      jwksHost: "dex.example.com"
     # GitHub Actions OIDC issuer
     github:
       enabled: true
@@ -101,9 +101,8 @@ authServer:
     # Issuer-specific extraction. principalType: auto | user | client | github
     # Example:
     # issuers:
-    #   - provider: "https://tenant.zitadel.cloud"
-    #     principalType: "auto"
-    #     machineIdentityClaim: "client_id"
+    #   - provider: "https://dex.example.com"
+    #     principalType: "user"
     #   - provider: "https://token.actions.githubusercontent.com"
     #     principalType: "github"
     issuers: []
@@ -120,7 +119,7 @@ authServer:
       - "/grpc.reflection"
 
     roles:
-      # Example admin: users: ["user:https://tenant.zitadel.cloud:77776025198584418"]
+      # Example admin: users: ["user:https://dex.example.com:admin@example.com"]
       admin:
         allowedMethods: ["*"]
         users: []
@@ -129,7 +128,7 @@ authServer:
           - "/agntcy.dir.store.v1.StoreService/Pull"
           - "/agntcy.dir.store.v1.StoreService/Lookup"
         users: []
-      # Example: clients: ["client:https://tenant.zitadel.cloud:69234237810729234"]
+      # Example: clients: ["client:https://dex.example.com:service-client-id"]
       ci-writer:
         allowedMethods:
           - "/agntcy.dir.store.v1.StoreService/Push"

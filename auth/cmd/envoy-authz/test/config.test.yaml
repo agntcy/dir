@@ -2,17 +2,16 @@
 # Allows mock user for /api/* paths.
 
 claims:
-  userID: "sub"
+  userID: "email"
   emailPath: "email"
 
 issuers:
-  - provider: "https://tenant.zitadel.cloud"
-    principalType: "auto"
-    machineIdentityClaim: "client_id"
+  - provider: "https://dex.example.com"
+    principalType: "user"
 
 principalType:
-  mode: "auto"
-  machineIdentityClaim: "client_id"
+  mode: "user"
+  machineIdentityClaim: ""
   machineSubPattern: ""
 
 userDenyList: []
@@ -24,4 +23,4 @@ roles:
   admin:
     allowedMethods: ["*"]
     users:
-      - "user:https://tenant.zitadel.cloud:77776025198584418"
+      - "user:https://dex.example.com:admin@example.com"

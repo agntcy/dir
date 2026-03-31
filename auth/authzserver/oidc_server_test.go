@@ -12,7 +12,7 @@ import (
 	"google.golang.org/grpc/codes"
 )
 
-const testPayloadAdmin = `{"iss":"https://tenant.zitadel.cloud","sub":"77776025198584418"}`
+const testPayloadAdmin = `{"iss":"https://dex.example.com","sub":"CgcyMzQyNzQ5EgZnaXRodWI","email":"admin@example.com"}`
 
 func makeCheckRequest(path string, headers map[string]string) *authv3.CheckRequest {
 	if headers == nil {
@@ -34,12 +34,12 @@ func makeCheckRequest(path string, headers map[string]string) *authv3.CheckReque
 
 func validOIDCConfig() *OIDCConfig {
 	return &OIDCConfig{
-		Claims:      ClaimsConfig{UserID: "sub", EmailPath: "email"},
+		Claims:      ClaimsConfig{UserID: "email", EmailPath: "email"},
 		PublicPaths: []string{"/healthz"},
 		Roles: map[string]OIDCRole{
 			"admin": {
 				AllowedMethods: []string{"*"},
-				Users:          []string{"user:https://tenant.zitadel.cloud:77776025198584418"},
+				Users:          []string{"user:https://dex.example.com:admin@example.com"},
 			},
 		},
 	}
@@ -137,7 +137,7 @@ func TestOIDCAuthorizationServer_Check(t *testing.T) {
 
 	t.Run("principal in deny list returns 403", func(t *testing.T) {
 		cfg := validOIDCConfig()
-		cfg.UserDenyList = []string{"user:https://tenant.zitadel.cloud:77776025198584418"}
+		cfg.UserDenyList = []string{"user:https://dex.example.com:admin@example.com"}
 
 		srv2, err := NewOIDCAuthorizationServer(cfg, slog.Default())
 		if err != nil {
@@ -184,7 +184,7 @@ func TestOIDCAuthorizationServer_Check(t *testing.T) {
 		cfg.Roles = map[string]OIDCRole{
 			"viewer": {
 				AllowedMethods: []string{"/other/path"},
-				Users:          []string{"user:https://tenant.zitadel.cloud:77776025198584418"},
+				Users:          []string{"user:https://dex.example.com:admin@example.com"},
 			},
 		}
 

@@ -7,7 +7,7 @@ set -e
 ENVOY_URL="http://localhost:8080"
 
 # Mock JWT payload for testing (user in admin role per config.test.yaml)
-MOCK_PAYLOAD='{"iss":"https://tenant.zitadel.cloud","sub":"77776025198584418"}'
+MOCK_PAYLOAD='{"iss":"https://dex.example.com","email":"admin@example.com"}'
 
 echo "🧪 Testing OIDC ext_authz Integration"
 echo "====================================="

@@ -94,19 +94,19 @@ data:
                       - name: envoy.filters.http.header_mutation
                         typed_config:
                           "@type": type.googleapis.com/envoy.extensions.filters.http.header_mutation.v3.HeaderMutation
-                      {{- if or .Values.envoy.oidc.zitadel.enabled .Values.envoy.oidc.github.enabled }}
+                      {{- if or .Values.envoy.oidc.dex.enabled .Values.envoy.oidc.github.enabled }}
                       # 2. JWT Authentication - multiple issuers
                       - name: envoy.filters.http.jwt_authn
                         typed_config:
                           "@type": type.googleapis.com/envoy.extensions.filters.http.jwt_authn.v3.JwtAuthentication
                           providers:
-                            {{- if .Values.envoy.oidc.zitadel.enabled }}
-                            zitadel:
-                              issuer: {{ .Values.envoy.oidc.zitadel.issuer | quote }}
+                            {{- if .Values.envoy.oidc.dex.enabled }}
+                            dex:
+                              issuer: {{ .Values.envoy.oidc.dex.issuer | quote }}
                               remote_jwks:
                                 http_uri:
-                                  uri: {{ .Values.envoy.oidc.zitadel.jwksUri | quote }}
-                                  cluster: jwks_zitadel
+                                  uri: {{ .Values.envoy.oidc.dex.jwksUri | quote }}
+                                  cluster: jwks_dex
                                   timeout: {{ .Values.envoy.oidc.jwksTimeout }}
                                 cache_duration:
                                   seconds: {{ .Values.envoy.oidc.jwksCacheSeconds }}
@@ -154,8 +154,8 @@ data:
                               requires:
                                 requires_any:
                                   requirements:
-                                    {{- if .Values.envoy.oidc.zitadel.enabled }}
-                                    - provider_name: zitadel
+                                    {{- if .Values.envoy.oidc.dex.enabled }}
+                                    - provider_name: dex
                                     {{- end }}
                                     {{- if .Values.envoy.oidc.github.enabled }}
                                     - provider_name: github
@@ -234,25 +234,25 @@ data:
                           cluster_name: spiffe_agent
           {{- end }}
 
-        {{- if .Values.envoy.oidc.zitadel.enabled }}
-        # JWKS for Zitadel
-        - name: jwks_zitadel
+        {{- if .Values.envoy.oidc.dex.enabled }}
+        # JWKS for Dex
+        - name: jwks_dex
           type: STRICT_DNS
           connect_timeout: {{ .Values.envoy.oidc.jwksTimeout }}
           load_assignment:
-            cluster_name: jwks_zitadel
+            cluster_name: jwks_dex
             endpoints:
               - lb_endpoints:
                   - endpoint:
                       address:
                         socket_address:
-                          address: {{ .Values.envoy.oidc.zitadel.jwksHost }}
+                          address: {{ .Values.envoy.oidc.dex.jwksHost }}
                           port_value: 443
           transport_socket:
             name: envoy.transport_sockets.tls
             typed_config:
               "@type": type.googleapis.com/envoy.extensions.transport_sockets.tls.v3.UpstreamTlsContext
-              sni: {{ .Values.envoy.oidc.zitadel.jwksHost }}
+              sni: {{ .Values.envoy.oidc.dex.jwksHost }}
         {{- end }}
 
         {{- if .Values.envoy.oidc.github.enabled }}
