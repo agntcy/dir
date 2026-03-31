@@ -597,11 +597,11 @@ envoy-authz:
       port: 8888
 
     oidc:
-      zitadel:
+      dex:
         enabled: true
-        issuer: "https://tenant.zitadel.cloud"
-        jwksUri: "https://tenant.zitadel.cloud/.well-known/jwks.json"
-        jwksHost: "tenant.zitadel.cloud"
+        issuer: "https://dex.example.com"
+        jwksUri: "https://dex.example.com/keys"
+        jwksHost: "dex.example.com"
       github:
         enabled: true
         issuer: "https://token.actions.githubusercontent.com"
@@ -633,9 +633,8 @@ envoy-authz:
         emailPath: "email"
       # Example:
       # issuers:
-      #   - provider: "https://tenant.zitadel.cloud"
-      #     principalType: "auto"
-      #     machineIdentityClaim: "client_id"
+      #   - provider: "https://dex.example.com"
+      #     principalType: "user"
       #   - provider: "https://token.actions.githubusercontent.com"
       #     principalType: "github"
       issuers: []
@@ -648,7 +647,7 @@ envoy-authz:
         - "/healthz"
         - "/grpc.reflection"
       roles:
-        # Example admin: users: ["user:https://tenant.zitadel.cloud:77776025198584418"]
+        # Example admin: users: ["user:https://dex.example.com:admin@example.com"]
         admin:
           allowedMethods: ["*"]
           users: []
@@ -657,7 +656,7 @@ envoy-authz:
             - "/agntcy.dir.store.v1.StoreService/Pull"
             - "/agntcy.dir.store.v1.StoreService/Lookup"
           users: []
-        # Example: clients: ["client:https://tenant.zitadel.cloud:69234237810729234"]
+        # Example: clients: ["client:https://dex.example.com:service-client-id"]
         ci-writer:
           allowedMethods:
             - "/agntcy.dir.store.v1.StoreService/Push"

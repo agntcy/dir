@@ -39,7 +39,7 @@ type ClaimsConfig struct {
 }
 
 // IssuerConfig defines issuer-specific principal extraction.
-// Provider is the OIDC issuer URL (e.g. https://tenant.zitadel.cloud).
+// Provider is the OIDC issuer URL (e.g. https://dex.example.com).
 // Allowed principalType: "auto" | "user" | "client" | "github".
 type IssuerConfig struct {
 	Provider             string `yaml:"provider"`

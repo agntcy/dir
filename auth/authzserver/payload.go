@@ -57,7 +57,8 @@ func decodeJWTBase64URLSegment(seg string) ([]byte, error) {
 }
 
 // ExtractPrincipal extracts the canonical principal from the JWT payload JSON.
-// Uses issuer-specific logic: GitHub -> ghwf:..., else -> user:{iss}:{sub} or client:{iss}:{client_id}.
+// Uses issuer-specific logic: GitHub -> ghwf:..., else -> user:{iss}:{id} or client:{iss}:{client_id}.
+// The user identifier claim is configurable via config.Claims.UserID (e.g., "sub" or "email").
 //
 //nolint:nonamedreturns // named returns clarify principal, principalType, err for callers
 func ExtractPrincipal(payloadJSON string, config *OIDCConfig) (principal string, principalType string, err error) {
@@ -80,6 +81,8 @@ func ExtractPrincipal(payloadJSON string, config *OIDCConfig) (principal string,
 		return "", "", fmt.Errorf("missing iss claim")
 	}
 
+	userIDClaim := config.Claims.UserID
+
 	// Issuer-specific extraction
 	if ic := config.GetIssuerConfig(iss); ic != nil {
 		machineSub := ic.MachineSubPattern
@@ -91,11 +94,11 @@ func ExtractPrincipal(payloadJSON string, config *OIDCConfig) (principal string,
 		case PrincipalTypeGitHub:
 			return extractGitHubPrincipal(payload)
 		case PrincipalTypeUser:
-			return extractUserPrincipal(payload, iss)
+			return extractUserPrincipal(payload, iss, userIDClaim)
 		case PrincipalTypeClient:
 			return extractClientPrincipal(payload, iss, ic.MachineIdentityClaim)
 		case PrincipalTypeAuto, "":
-			return extractAutoPrincipal(payload, iss, ic.MachineIdentityClaim, machineSub)
+			return extractAutoPrincipal(payload, iss, ic.MachineIdentityClaim, machineSub, userIDClaim)
 		}
 	}
 
@@ -103,23 +106,27 @@ func ExtractPrincipal(payloadJSON string, config *OIDCConfig) (principal string,
 	pt := config.PrincipalType
 	switch pt.Mode {
 	case PrincipalTypeUser:
-		return extractUserPrincipal(payload, iss)
+		return extractUserPrincipal(payload, iss, userIDClaim)
 	case PrincipalTypeClient:
 		return extractClientPrincipal(payload, iss, pt.MachineIdentityClaim)
 	case PrincipalTypeAuto, "":
-		return extractAutoPrincipal(payload, iss, pt.MachineIdentityClaim, pt.MachineSubPattern)
+		return extractAutoPrincipal(payload, iss, pt.MachineIdentityClaim, pt.MachineSubPattern, userIDClaim)
 	}
 
 	return "", "", fmt.Errorf("unknown principal type mode: %s", pt.Mode)
 }
 
-func extractUserPrincipal(payload map[string]any, iss string) (string, string, error) {
-	sub := getString(payload, "sub")
-	if sub == "" {
-		return "", "", fmt.Errorf("missing sub claim for user principal")
+func extractUserPrincipal(payload map[string]any, iss, userIDClaim string) (string, string, error) {
+	if userIDClaim == "" {
+		userIDClaim = "sub"
 	}
 
-	return fmt.Sprintf("user:%s:%s", iss, sub), PrincipalTypeUser, nil
+	id := getString(payload, userIDClaim)
+	if id == "" {
+		return "", "", fmt.Errorf("missing %s claim for user principal", userIDClaim)
+	}
+
+	return fmt.Sprintf("user:%s:%s", iss, id), PrincipalTypeUser, nil
 }
 
 func extractClientPrincipal(payload map[string]any, iss, machineClaim string) (string, string, error) {
@@ -131,7 +138,7 @@ func extractClientPrincipal(payload map[string]any, iss, machineClaim string) (s
 	return fmt.Sprintf("client:%s:%s", iss, clientID), PrincipalTypeClient, nil
 }
 
-func extractAutoPrincipal(payload map[string]any, iss, machineClaim, machineSubPattern string) (string, string, error) {
+func extractAutoPrincipal(payload map[string]any, iss, machineClaim, machineSubPattern, userIDClaim string) (string, string, error) {
 	sub := getString(payload, "sub")
 	clientID := getMachineIdentity(payload, machineClaim)
 
@@ -161,8 +168,8 @@ func extractAutoPrincipal(payload map[string]any, iss, machineClaim, machineSubP
 		return fmt.Sprintf("client:%s:%s", iss, clientID), PrincipalTypeClient, nil
 	}
 
-	// Default: user
-	return fmt.Sprintf("user:%s:%s", iss, sub), PrincipalTypeUser, nil
+	// Default: user (uses configurable claim)
+	return extractUserPrincipal(payload, iss, userIDClaim)
 }
 
 func extractGitHubPrincipal(payload map[string]any) (string, string, error) {

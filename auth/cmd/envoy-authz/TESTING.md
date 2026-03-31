@@ -30,7 +30,7 @@ docker-compose up --build
 
 ```bash
 # Valid request with mock JWT payload (dev/test only)
-curl -H "x-jwt-payload: {\"iss\":\"https://tenant.zitadel.cloud\",\"sub\":\"77776025198584418\"}" \
+curl -H "x-jwt-payload: {\"iss\":\"https://dex.example.com\",\"email\":\"admin@example.com\"}" \
      http://localhost:8080/api/test | jq .
 
 # Check logs
@@ -47,19 +47,19 @@ curl http://localhost:9901/stats | grep ext_authz
 The test uses `test/config.test.yaml` mounted at `/etc/envoy-authz/config.yaml`. It allows:
 
 - **Public path**: `/healthz` (no auth)
-- **Admin user**: `user:https://tenant.zitadel.cloud:77776025198584418` (all methods)
+- **Admin user**: `user:https://dex.example.com:admin@example.com` (all methods)
 
 To test deny list or different roles, edit `test/config.test.yaml` and restart:
 
 ```yaml
 userDenyList:
-  - "user:https://tenant.zitadel.cloud:blocked-sub"
+  - "user:https://dex.example.com:blocked@example.com"
 
 roles:
   admin:
     allowedMethods: ["*"]
     users:
-      - "user:https://tenant.zitadel.cloud:77776025198584418"
+      - "user:https://dex.example.com:admin@example.com"
 ```
 
 ## Production Flow
