@@ -52,7 +52,7 @@ jobs:
 
       - name: Run dirctl search with GitHub OIDC token
         env:
-          DIRECTORY_CLIENT_OIDC_TOKEN: ${{ steps.oidc.outputs.token }}
+          DIRECTORY_CLIENT_AUTH_TOKEN: ${{ steps.oidc.outputs.token }}
           DIRCTL_PATH: ${{ steps.build-dirctl.outputs.dirctl_path }}
         run: |
           set -euo pipefail

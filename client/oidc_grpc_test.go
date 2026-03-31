@@ -5,11 +5,6 @@ package client
 
 import (
 	"context"
-	"encoding/base64"
-	"encoding/json"
-	"net/http"
-	"net/http/httptest"
-	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -24,14 +19,14 @@ func Test_serverNameFromAddr(t *testing.T) {
 	assert.Equal(t, "badaddr", serverNameFromAddr("badaddr"))
 }
 
-func TestWithAuth_OIDC_WithOIDCToken(t *testing.T) {
+func TestWithAuth_OIDC_WithAuthToken(t *testing.T) {
 	t.Parallel()
 
 	opts := &options{
 		config: &Config{
 			ServerAddress: "gateway.example.com:443",
 			AuthMode:      "oidc",
-			OIDCToken:     "test-access-token",
+			AuthToken:     "test-access-token",
 		},
 	}
 
@@ -53,67 +48,7 @@ func TestOIDCBearerCredentials_GetRequestMetadata(t *testing.T) {
 	assert.True(t, c.RequireTransportSecurity())
 }
 
-func TestSetupOIDCAuth_WithMachineCredentials_MintsAndCachesToken(t *testing.T) {
-	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
-
-	mux := http.NewServeMux()
-
-	srv := httptest.NewServer(mux)
-	defer srv.Close()
-
-	mux.HandleFunc("/.well-known/openid-configuration", func(w http.ResponseWriter, _ *http.Request) {
-		_ = json.NewEncoder(w).Encode(map[string]string{
-			"token_endpoint": srv.URL + "/oauth/v2/token",
-		})
-	})
-
-	mux.HandleFunc("/oauth/v2/token", func(w http.ResponseWriter, r *http.Request) {
-		r.Body = http.MaxBytesReader(w, r.Body, testMaxFormBodyBytes)
-		if err := r.ParseForm(); err != nil {
-			t.Errorf("parse form: %v", err)
-			http.Error(w, "bad form", http.StatusBadRequest)
-
-			return
-		}
-
-		assert.Equal(t, "client_credentials", r.Form.Get("grant_type"))
-		assert.Equal(t, "machine-client", r.Form.Get("client_id"))
-		assert.Equal(t, "machine-secret", r.Form.Get("client_secret"))
-		assert.Equal(t, "openid profile", r.Form.Get("scope"))
-
-		_ = json.NewEncoder(w).Encode(map[string]any{
-			"access_token": makeTestJWT("machine-sub", srv.URL),
-			"token_type":   "Bearer",
-			"expires_in":   3600,
-		})
-	})
-
-	opts := &options{
-		config: &Config{
-			ServerAddress:            "gateway.example.com:443",
-			AuthMode:                 "oidc",
-			OIDCIssuer:               srv.URL,
-			OIDCMachineClientID:      "machine-client",
-			OIDCMachineClientSecret:  "machine-secret",
-			OIDCMachineScopes:        []string{"openid", "profile"},
-			OIDCMachineTokenEndpoint: "",
-		},
-	}
-
-	err := opts.setupOIDCAuth(context.Background())
-	require.NoError(t, err)
-	assert.NotEmpty(t, opts.authOpts)
-
-	cache := NewTokenCache()
-	tok, err := cache.GetValidToken()
-	require.NoError(t, err)
-	require.NotNil(t, tok)
-	assert.Equal(t, "oidc", tok.Provider)
-	assert.Equal(t, "machine-client", tok.User)
-	assert.Equal(t, "machine-sub", tok.UserID)
-}
-
-func TestSetupOIDCAuth_NoTokenAndNoMachineConfig(t *testing.T) {
+func TestSetupOIDCAuth_NoTokenReturnsError(t *testing.T) {
 	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
 
 	opts := &options{
@@ -125,12 +60,5 @@ func TestSetupOIDCAuth_NoTokenAndNoMachineConfig(t *testing.T) {
 
 	err := opts.setupOIDCAuth(context.Background())
 	require.Error(t, err)
-	assert.Contains(t, err.Error(), "dirctl auth machine")
-}
-
-func makeTestJWT(sub, iss string) string {
-	header := base64.RawURLEncoding.EncodeToString([]byte(`{"alg":"none","typ":"JWT"}`))
-	payload := base64.RawURLEncoding.EncodeToString([]byte(`{"sub":"` + sub + `","iss":"` + iss + `"}`))
-
-	return strings.Join([]string{header, payload, "sig"}, ".")
+	assert.Contains(t, err.Error(), "dirctl auth login")
 }

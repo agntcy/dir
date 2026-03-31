@@ -61,7 +61,7 @@ The SDK can be configured via environment variables or direct instantiation.
 
 ### Authentication
 
-The SDK supports three authentication modes:
+The SDK supports multiple authentication modes:
 
 #### 1. Insecure (No Authentication)
 
@@ -159,6 +159,42 @@ if err != nil {
     // handle error
 }
 defer c.Close() // Always close to cleanup resources
+```
+
+#### 4. OIDC (OpenID Connect)
+
+For human users and CI/scripts authenticating via an OIDC provider (e.g. Dex).
+
+**Environment Variables:**
+```bash
+export DIRECTORY_CLIENT_SERVER_ADDRESS="gateway.example.com:443"
+export DIRECTORY_CLIENT_AUTH_MODE="oidc"
+export DIRECTORY_CLIENT_AUTH_TOKEN="eyJhbG..."  # pre-issued JWT (optional; skips interactive login)
+```
+
+**Interactive login (via CLI):**
+```bash
+dirctl auth login --oidc-issuer=https://dex.example.com --oidc-client-id=dirctl
+```
+
+**Code Example:**
+```go
+import (
+    "context"
+    "github.com/agntcy/dir/client"
+)
+
+ctx := context.Background()
+config := &client.Config{
+    ServerAddress: "gateway.example.com:443",
+    AuthMode:      "oidc",
+    AuthToken:     "eyJhbG...",  // or leave empty to use cached token from dirctl auth login
+}
+c, err := client.New(ctx, client.WithConfig(config))
+if err != nil {
+    // handle error
+}
+defer c.Close()
 ```
 
 ## Getting Started
