@@ -170,10 +170,11 @@ func (s *store) WalkReferrers(ctx context.Context, recordCID string, referrerTyp
 		matcher = s.MediaTypeReferrerMatcher(ociArtifactType)
 	}
 
-	// Use the OCI referrers API to walk through referrers efficiently
+	// Try the OCI Referrers API first (available on remote registries)
 	referrersLister, ok := s.repo.(ReferrersLister)
 	if !ok {
-		return status.Errorf(codes.Unimplemented, "repository does not support OCI referrers API")
+		// Fall back to graph Predecessors for local OCI stores
+		return s.walkReferrersViaPredecessors(ctx, recordManifestDesc, recordCID, matcher, walkFn)
 	}
 
 	var walkErr error
@@ -215,6 +216,41 @@ func (s *store) WalkReferrers(ctx context.Context, recordCID string, referrerTyp
 	}
 
 	referrersLogger.Debug("Successfully walked referrers", "recordCID", recordCID, "type", referrerType)
+
+	return nil
+}
+
+// walkReferrersViaPredecessors walks referrers using the graph Predecessors API.
+func (s *store) walkReferrersViaPredecessors(ctx context.Context, subjectDesc ocispec.Descriptor, recordCID string, matcher ReferrerMatcher, walkFn func(*corev1.RecordReferrer) error) error {
+	predecessors, err := s.repo.Predecessors(ctx, subjectDesc)
+	if err != nil {
+		return status.Errorf(codes.Internal, "failed to get predecessors for manifest %s: %v", subjectDesc.Digest.String(), err)
+	}
+
+	for _, predDesc := range predecessors {
+		if predDesc.MediaType != ocispec.MediaTypeImageManifest {
+			continue
+		}
+
+		if matcher != nil && !matcher(ctx, predDesc) {
+			continue
+		}
+
+		referrer, err := s.extractReferrerFromManifest(ctx, predDesc, recordCID)
+		if err != nil {
+			referrersLogger.Error("Failed to extract referrer from manifest", "digest", predDesc.Digest.String(), "error", err)
+
+			continue
+		}
+
+		if err := walkFn(referrer); err != nil {
+			return err
+		}
+
+		referrersLogger.Debug("Referrer processed successfully", "digest", predDesc.Digest.String(), "type", referrer.GetType())
+	}
+
+	referrersLogger.Debug("Successfully walked referrers via predecessors", "recordCID", recordCID)
 
 	return nil
 }

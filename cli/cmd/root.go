@@ -8,6 +8,7 @@ import (
 	"fmt"
 
 	"github.com/agntcy/dir/cli/cmd/auth"
+	"github.com/agntcy/dir/cli/cmd/daemon"
 	"github.com/agntcy/dir/cli/cmd/delete"
 	"github.com/agntcy/dir/cli/cmd/events"
 	importcmd "github.com/agntcy/dir/cli/cmd/import"
@@ -88,6 +89,8 @@ func init() {
 		events.Command, // Contains: listen
 		// mcp commands
 		mcp.Command, // Contains: serve
+		// daemon commands
+		daemon.Command, // Contains: start, stop, status
 	)
 }
 

@@ -14,6 +14,7 @@ tasks:
       - task: test:e2e:local
       - task: test:e2e:network
       - task: test:e2e:mcp
+      - task: test:e2e:daemon
 
   test:e2e-production:
     desc: Run E2E tests in production-like environments (multi-node, external OCI)
@@ -242,6 +243,23 @@ tasks:
         else
           go test -C ./e2e/network . -v -failfast -test.v -test.paniconexit0 -ginkgo.timeout 2h -timeout 2h -ginkgo.v
         fi
+
+  test:e2e:daemon:
+    desc: Run daemon e2e tests (compiles CLI, starts daemon, runs push/pull/sign/verify)
+    aliases: [e2e:daemon]
+    vars:
+      DAEMON_DATA_DIR:
+        sh: mktemp -d
+    env:
+      DIRECTORY_CLIENT_SERVER_ADDRESS: localhost:8888
+    deps:
+      - cli:compile
+    cmds:
+      - defer: |
+          {{ .DIRCTL_BIN }} daemon stop --data-dir {{ .DAEMON_DATA_DIR }} 2>/dev/null || true
+          rm -rf {{ .DAEMON_DATA_DIR }}
+      - "{{ .DIRCTL_BIN }} daemon start --data-dir {{ .DAEMON_DATA_DIR }} &"
+      - go test -C ./tests/e2e/daemon . -v -failfast -test.v -test.paniconexit0 -ginkgo.timeout 5m -timeout 5m -ginkgo.v
 
   test:e2e:mcp:
     desc: Run MCP server protocol end-to-end tests (starts local Directory stack for push test)

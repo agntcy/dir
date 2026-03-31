@@ -29,12 +29,19 @@ jobs:
         include:
           - task: test:e2e:local
             label: "Local"
+            coverage: true
           - task: test:e2e:network
             label: "Network"
+            coverage: true
           - task: test:e2e:mcp
             label: "MCP"
+            coverage: false
+          - task: test:e2e:daemon
+            label: "Daemon"
+            coverage: false
           - task: test:e2e:spire
             label: "Federation"
+            coverage: false
     steps:
       - name: Checkout code
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
@@ -101,7 +108,7 @@ jobs:
           IMAGE_REPO: ${{ inputs.image_repo }}
           IMAGE_TAG: ${{ inputs.image_tag }}
           E2E_COMPILE_OUTPUT_DIR: tmp
-          E2E_COVERAGE_ENABLED: ${{ matrix.task != 'test:e2e:spire' && matrix.task != 'test:e2e:mcp' && inputs.enable_coverage && 'true' || 'false' }}
+          E2E_COVERAGE_ENABLED: ${{ matrix.coverage && inputs.enable_coverage && 'true' || 'false' }}
         run: |
           # Use a random cluster name to avoid conflicts in concurrent runs.
           # Kind cluster names must be lowercase and can contain only letters and numbers.
@@ -109,12 +116,12 @@ jobs:
           task ${{ matrix.task }}
 
       - name: Process E2E coverage
-        if: ${{ inputs.enable_coverage && matrix.task != 'test:e2e:spire' && matrix.task != 'test:e2e:mcp' }}
+        if: ${{ matrix.coverage && inputs.enable_coverage }}
         run: |
           task test:e2e:coverage:process
 
       - name: Upload E2E coverage artifact
-        if: ${{ inputs.enable_coverage && matrix.task != 'test:e2e:spire' && matrix.task != 'test:e2e:mcp' }}
+        if: ${{ matrix.coverage && inputs.enable_coverage }}
         uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
         with:
           name: coverage-e2e-${{ matrix.label }}

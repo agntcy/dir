@@ -1,7 +1,7 @@
 // Copyright AGNTCY Contributors (https://github.com/agntcy)
 // SPDX-License-Identifier: Apache-2.0
 
-package mcp
+package daemon
 
 import (
 	"os"
@@ -15,13 +15,13 @@ import (
 
 const (
 	defaultServerAddress = "localhost:8888"
-	readyPollInterval    = 2 * time.Second
-	readyTimeout         = 2 * time.Minute
+	readyPollInterval    = 1 * time.Second
+	readyTimeout         = 30 * time.Second
 )
 
-func TestMCPE2E(t *testing.T) {
+func TestDaemonE2E(t *testing.T) {
 	gomega.RegisterFailHandler(ginkgo.Fail)
-	ginkgo.RunSpecs(t, "MCP E2E Test Suite")
+	ginkgo.RunSpecs(t, "Daemon E2E Test Suite")
 }
 
 var _ = ginkgo.BeforeSuite(func() {
@@ -30,7 +30,7 @@ var _ = ginkgo.BeforeSuite(func() {
 		addr = defaultServerAddress
 	}
 
-	ginkgo.GinkgoWriter.Printf("Waiting for Directory apiserver at %s...\n", addr)
+	ginkgo.GinkgoWriter.Printf("Waiting for Directory daemon at %s...\n", addr)
 	gomega.Eventually(utils.IsGrpcServerReady).WithArguments(addr).WithPolling(readyPollInterval).WithTimeout(readyTimeout).Should(gomega.Succeed())
-	ginkgo.GinkgoWriter.Printf("Directory apiserver is ready at %s\n", addr)
+	ginkgo.GinkgoWriter.Printf("Directory daemon is ready at %s\n", addr)
 })

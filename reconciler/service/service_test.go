@@ -27,7 +27,7 @@ type mockTask struct {
 func (m *mockTask) Name() string            { return m.name }
 func (m *mockTask) Interval() time.Duration { return m.interval }
 func (m *mockTask) IsEnabled() bool         { return m.enabled }
-func (m *mockTask) Run(ctx context.Context) error {
+func (m *mockTask) Run(_ context.Context) error {
 	m.runMu.Lock()
 	m.runCalls++
 	m.runMu.Unlock()
@@ -35,30 +35,37 @@ func (m *mockTask) Run(ctx context.Context) error {
 	return m.runErr
 }
 
-func TestNew(t *testing.T) {
-	s := New()
+func newTestService() *Service {
+	return &Service{
+		tasks:  []tasks.Task{},
+		stopCh: make(chan struct{}),
+	}
+}
+
+func TestNewService(t *testing.T) {
+	s := newTestService()
 	require.NotNil(t, s)
 	assert.NotNil(t, s.stopCh)
 	assert.Empty(t, s.tasks)
 }
 
-func TestRegisterTask(t *testing.T) {
-	s := New()
+func TestAddTask(t *testing.T) {
+	s := newTestService()
 	task := &mockTask{name: "test", interval: time.Second, enabled: true}
 
-	s.RegisterTask(task)
+	s.addTask(task)
 
 	require.Len(t, s.tasks, 1)
 	assert.Same(t, task, s.tasks[0])
 }
 
-func TestRegisterTask_Multiple(t *testing.T) {
-	s := New()
+func TestAddTask_Multiple(t *testing.T) {
+	s := newTestService()
 	t1 := &mockTask{name: "task1", interval: time.Second, enabled: true}
 	t2 := &mockTask{name: "task2", interval: 2 * time.Second, enabled: false}
 
-	s.RegisterTask(t1)
-	s.RegisterTask(t2)
+	s.addTask(t1)
+	s.addTask(t2)
 
 	require.Len(t, s.tasks, 2)
 	assert.Same(t, t1, s.tasks[0])
@@ -67,24 +74,24 @@ func TestRegisterTask_Multiple(t *testing.T) {
 
 func TestIsReady(t *testing.T) {
 	t.Run("no tasks", func(t *testing.T) {
-		s := New()
+		s := newTestService()
 		assert.False(t, s.IsReady(context.Background()))
 	})
 
 	t.Run("with tasks", func(t *testing.T) {
-		s := New()
-		s.RegisterTask(&mockTask{name: "t", interval: time.Second, enabled: true})
+		s := newTestService()
+		s.addTask(&mockTask{name: "t", interval: time.Second, enabled: true})
 		assert.True(t, s.IsReady(context.Background()))
 	})
 }
 
 func TestStart_StartsOnlyEnabledTasks(t *testing.T) {
-	s := New()
+	s := newTestService()
 	enabled := &mockTask{name: "enabled", interval: 10 * time.Millisecond, enabled: true}
 	disabled := &mockTask{name: "disabled", interval: time.Second, enabled: false}
 
-	s.RegisterTask(disabled)
-	s.RegisterTask(enabled)
+	s.addTask(disabled)
+	s.addTask(enabled)
 
 	ctx := t.Context()
 
@@ -108,9 +115,9 @@ func TestStart_StartsOnlyEnabledTasks(t *testing.T) {
 }
 
 func TestStart_ContextCancelStopsTaskLoop(t *testing.T) {
-	s := New()
+	s := newTestService()
 	task := &mockTask{name: "loop", interval: 5 * time.Millisecond, enabled: true}
-	s.RegisterTask(task)
+	s.addTask(task)
 
 	ctx, cancel := context.WithCancel(context.Background())
 	err := s.Start(ctx)
