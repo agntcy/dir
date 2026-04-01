@@ -81,6 +81,8 @@ vars:
   TRIVY_BIN: "{{ .BIN_DIR }}/trivy-{{.TRIVY_VERSION}}"
   PRE_COMMIT_VERSION: "4.5.1"
   PRE_COMMIT_PYZ: "{{ .BIN_DIR }}/pre-commit-{{.PRE_COMMIT_VERSION}}.pyz"
+  GINKGO_VERSION: "2.28.1"
+  GINKGO_BIN: "{{ .BIN_DIR }}/ginkgo-{{ .GINKGO_VERSION }}"
 
   ## Coverage related values
   COVERAGE_DIR: '{{ .COVERAGE_DIR | default (print .ROOT_DIR "/.coverage") }}'

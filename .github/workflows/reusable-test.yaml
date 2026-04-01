@@ -54,6 +54,13 @@ jobs:
       - name: Run unit tests
         run: |
           task test:unit
+
+  integration:
+    name: Integration
+    uses: ./.github/workflows/reusable-test-integration.yaml
+    with:
+      enable_coverage: true
+
   sdk:
     name: SDK
     uses: ./.github/workflows/reusable-test-sdk.yaml

@@ -1,0 +1,32 @@
+name: dir-integration-tests-for-server
+services:
+  zot:
+    image: ghcr.io/project-zot/zot:v2.1.15
+    ports:
+      - 5556:5000
+    deploy:
+      mode: replicated
+      replicas: 1
+      restart_policy:
+        condition: on-failure
+  postgres:
+    image: docker.io/bitnami/postgresql@sha256:e8b68936d05ee665974430bb4765fedcdc5c9ba399e133e120e2deed77f54dbf
+    environment:
+      POSTGRES_USER: ditfs_user
+      POSTGRES_PASSWORD: ditfs_pass
+      POSTGRES_DB: ditfs_db
+    ports:
+      - 5433:5432
+    deploy:
+      mode: replicated
+      replicas: 1
+      restart_policy:
+        condition: on-failure
+    healthcheck:
+      test: pg_isready -U ditfs_user -d ditfs_pass || exit 1
+      interval: 10s
+      retries: 60
+      start_period: 10s
+networks:
+  default:
+    name: dir-integration-tests-for-server-network
