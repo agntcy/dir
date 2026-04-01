@@ -331,6 +331,9 @@ func TestEventBusMetrics(t *testing.T) {
 		<-eventCh // Consume
 	}
 
+	// Wait for all async goroutines to finish updating metrics
+	bus.WaitForAsyncPublish()
+
 	// Check metrics
 	metrics = bus.GetMetrics()
 	if published := metrics.PublishedTotal; published != 5 {

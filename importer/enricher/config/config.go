@@ -36,6 +36,10 @@ func (c *Config) Validate() error {
 		return errors.New("config file is required")
 	}
 
+	if _, err := os.Stat(c.ConfigFile); err != nil {
+		return fmt.Errorf("config file not found: %w", err)
+	}
+
 	if c.SkillsPromptTemplate != "" {
 		if _, err := os.Stat(c.SkillsPromptTemplate); err != nil {
 			return fmt.Errorf("skills prompt template file not found: %w", err)
