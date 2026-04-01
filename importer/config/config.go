@@ -21,6 +21,8 @@ type RegistryType string
 const (
 	// RegistryTypeMCP represents the Model Context Protocol registry.
 	RegistryTypeMCP RegistryType = "mcp"
+	// RegistryTypeFile imports MCP server definitions from a local JSON file.
+	RegistryTypeFile RegistryType = "file"
 )
 
 // ClientInterface defines the interface for the DIR client used by importers.
@@ -37,7 +39,8 @@ type SignFunc func(ctx context.Context, cid string) error
 // Config contains configuration for an import operation.
 type Config struct {
 	RegistryType RegistryType      // Registry type identifier
-	RegistryURL  string            // Base URL of the registry
+	RegistryURL  string            // Base URL of the registry (MCP registry)
+	FilePath     string            // Path to JSON file (when RegistryType is file)
 	Filters      map[string]string // Registry-specific filters
 	Limit        int               // Number of records to import (default: 0 for all)
 	DryRun       bool              // If true, preview without actually importing
@@ -56,8 +59,17 @@ func (c *Config) Validate() error {
 		return errors.New("registry type is required")
 	}
 
-	if c.RegistryURL == "" {
-		return errors.New("registry URL is required")
+	switch c.RegistryType {
+	case RegistryTypeMCP:
+		if c.RegistryURL == "" {
+			return errors.New("registry URL is required when registry type is mcp")
+		}
+	case RegistryTypeFile:
+		if c.FilePath == "" {
+			return errors.New("file path is required when registry type is file")
+		}
+	default:
+		return fmt.Errorf("unsupported registry type: %s", c.RegistryType)
 	}
 
 	if err := c.Enricher.Validate(); err != nil {

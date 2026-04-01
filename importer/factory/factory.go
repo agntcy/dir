@@ -15,6 +15,7 @@ import (
 
 func init() {
 	Register(config.RegistryTypeMCP, importer.New)
+	Register(config.RegistryTypeFile, importer.New)
 }
 
 // ImporterFunc is a function that creates an Importer instance.

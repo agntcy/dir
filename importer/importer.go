@@ -35,9 +35,22 @@ type Importer struct {
 	pusher      types.Pusher
 }
 
-// New creates a new MCP importer instance.
+// New creates a new MCP importer instance (registry HTTP or local JSON file).
 func New(ctx context.Context, client config.ClientInterface, cfg config.Config) (types.Importer, error) {
-	fetcher, err := fetcher.NewFetcher(cfg.RegistryURL, cfg.Filters, cfg.Limit)
+	var (
+		fetch types.Fetcher
+		err   error
+	)
+
+	switch cfg.RegistryType {
+	case config.RegistryTypeMCP:
+		fetch, err = fetcher.NewFetcher(cfg.RegistryURL, cfg.Filters, cfg.Limit)
+	case config.RegistryTypeFile:
+		fetch, err = fetcher.NewFileFetcher(cfg.FilePath)
+	default:
+		return nil, fmt.Errorf("unsupported registry type: %s", cfg.RegistryType)
+	}
+
 	if err != nil {
 		return nil, fmt.Errorf("failed to create fetcher: %w", err)
 	}
@@ -60,7 +73,7 @@ func New(ctx context.Context, client config.ClientInterface, cfg config.Config) 
 	return &Importer{
 		cfg:         cfg,
 		client:      client,
-		fetcher:     fetcher,
+		fetcher:     fetch,
 		dedup:       d,
 		transformer: transformer.NewTransformer(),
 		enricher:    e,
