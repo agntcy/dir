@@ -107,6 +107,11 @@ jobs:
         with:
           version: ${{ inputs.image_version }}
 
+      - name: Install Task
+        uses: go-task/setup-task@v1
+        with:
+          version: 3.49.1
+
       - name: Install mcp-scanner
         if: ${{ env.SCANNER_ENABLED == 'true' }}
         run: task importer:deps:mcp-scanner
