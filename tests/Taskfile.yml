@@ -245,8 +245,15 @@ tasks:
         fi
 
   test:e2e:daemon:
-    desc: Run daemon e2e tests (compiles CLI, starts daemon, runs push/pull/sign/verify)
+    desc: Run all daemon e2e tests (default + external backends)
     aliases: [e2e:daemon]
+    cmds:
+      - task: test:e2e:daemon:default
+      - task: test:e2e:daemon:external
+
+  test:e2e:daemon:default:
+    desc: Run daemon e2e tests with default config (SQLite + local OCI store)
+    aliases: [e2e:daemon:default]
     vars:
       DAEMON_DATA_DIR:
         sh: mktemp -d
@@ -259,6 +266,29 @@ tasks:
           {{ .DIRCTL_BIN }} daemon stop --data-dir {{ .DAEMON_DATA_DIR }} 2>/dev/null || true
           rm -rf {{ .DAEMON_DATA_DIR }}
       - "{{ .DIRCTL_BIN }} daemon start --data-dir {{ .DAEMON_DATA_DIR }} &"
+      - go test -C ./tests/e2e/daemon . -v -failfast -test.v -test.paniconexit0 -ginkgo.timeout 5m -timeout 5m -ginkgo.v
+
+  test:e2e:daemon:external:
+    desc: Run daemon e2e tests with external PostgreSQL and Zot registry
+    aliases: [e2e:daemon:external]
+    vars:
+      DAEMON_DATA_DIR:
+        sh: mktemp -d
+      COMPOSE_DIR: "{{ .ROOT_DIR }}/tests/e2e/daemon"
+      CONFIG_FILE: "{{ .ROOT_DIR }}/tests/e2e/daemon/daemon.config.external.yaml"
+    env:
+      DIRECTORY_CLIENT_SERVER_ADDRESS: localhost:8888
+      DIRECTORY_DAEMON_SERVER_DATABASE_POSTGRES_USERNAME: postgres
+      DIRECTORY_DAEMON_SERVER_DATABASE_POSTGRES_PASSWORD: postgres
+    deps:
+      - cli:compile
+    cmds:
+      - defer: |
+          {{ .DIRCTL_BIN }} daemon stop --data-dir {{ .DAEMON_DATA_DIR }} 2>/dev/null || true
+          docker compose -f {{ .COMPOSE_DIR }}/docker-compose.yaml down -v 2>/dev/null || true
+          rm -rf {{ .DAEMON_DATA_DIR }}
+      - docker compose -f {{ .COMPOSE_DIR }}/docker-compose.yaml up -d --wait
+      - "{{ .DIRCTL_BIN }} daemon start --data-dir {{ .DAEMON_DATA_DIR }} --config {{ .CONFIG_FILE }} &"
       - go test -C ./tests/e2e/daemon . -v -failfast -test.v -test.paniconexit0 -ginkgo.timeout 5m -timeout 5m -ginkgo.v
 
   test:e2e:mcp:

@@ -10,23 +10,13 @@ import (
 	"os/signal"
 	"syscall"
 
-	reconcilerconfig "github.com/agntcy/dir/reconciler/config"
 	reconciler "github.com/agntcy/dir/reconciler/service"
-	"github.com/agntcy/dir/reconciler/tasks/indexer"
-	"github.com/agntcy/dir/reconciler/tasks/name"
-	"github.com/agntcy/dir/reconciler/tasks/regsync"
-	"github.com/agntcy/dir/reconciler/tasks/signature"
 	"github.com/agntcy/dir/server"
-	serverconfig "github.com/agntcy/dir/server/config"
-	dbconfig "github.com/agntcy/dir/server/database/config"
-	namingconfig "github.com/agntcy/dir/server/naming/config"
-	publication "github.com/agntcy/dir/server/publication/config"
-	routingconfig "github.com/agntcy/dir/server/routing/config"
-	storeconfig "github.com/agntcy/dir/server/store/config"
-	ociconfig "github.com/agntcy/dir/server/store/oci/config"
+	ocilib "github.com/agntcy/dir/server/store/oci"
 	"github.com/agntcy/dir/utils/logging"
 	"github.com/spf13/cobra"
 	ocistore "oras.land/oras-go/v2/content/oci"
+	"oras.land/oras-go/v2/registry"
 )
 
 var logger = logging.Logger("daemon")
@@ -34,8 +24,10 @@ var logger = logging.Logger("daemon")
 var startCmd = &cobra.Command{
 	Use:   "start",
 	Short: "Start the local directory daemon",
-	Long: `Start the gRPC apiserver and reconciler in a single process with local-mode
-defaults (embedded SQLite, filesystem OCI store, all reconciler tasks in-process).
+	Long: `Start the gRPC apiserver and reconciler in a single process.
+
+Without --config, built-in defaults (embedded daemon.config.yaml) are used.
+When --config is provided, the file is read as the complete configuration.
 
 The daemon blocks until SIGINT or SIGTERM is received.`,
 	RunE: runStart,
@@ -55,14 +47,15 @@ func runStart(cmd *cobra.Command, _ []string) error {
 		return fmt.Errorf("failed to create data directory %s: %w", opts.DataDir, err)
 	}
 
+	cfg, err := loadConfig()
+	if err != nil {
+		return fmt.Errorf("failed to load config: %w", err)
+	}
+
 	ctx, cancel := context.WithCancel(cmd.Context())
 	defer cancel()
 
-	serverCfg := buildServerConfig()
-	reconcilerCfg := buildReconcilerConfig()
-
-	// Start the gRPC server.
-	srv, err := server.New(ctx, serverCfg)
+	srv, err := server.New(ctx, &cfg.Server)
 	if err != nil {
 		return fmt.Errorf("failed to create server: %w", err)
 	}
@@ -72,14 +65,14 @@ func runStart(cmd *cobra.Command, _ []string) error {
 	}
 	defer srv.Close(ctx)
 
-	logger.Info("Server started", "address", serverCfg.ListenAddress)
+	logger.Info("Server started", "address", cfg.Server.ListenAddress)
 
-	localRepo, err := ocistore.New(opts.StoreDir())
+	tagLister, err := newTagLister(cfg)
 	if err != nil {
-		return fmt.Errorf("failed to open local OCI store for indexer: %w", err)
+		return fmt.Errorf("failed to create OCI tag lister for indexer: %w", err)
 	}
 
-	svc, err := reconciler.New(reconcilerCfg, srv.Database(), srv.Store(), localRepo)
+	svc, err := reconciler.New(&cfg.Reconciler, srv.Database(), srv.Store(), tagLister)
 	if err != nil {
 		return fmt.Errorf("failed to create reconciler: %w", err)
 	}
@@ -102,7 +95,7 @@ func runStart(cmd *cobra.Command, _ []string) error {
 
 	defer removePIDFile()
 
-	logger.Info("Daemon ready", "data_dir", opts.DataDir, "pid", os.Getpid())
+	logger.Info("Daemon ready", "data_dir", opts.DataDir, "config", opts.ConfigFilePath(), "pid", os.Getpid())
 
 	sigCh := make(chan os.Signal, 1)
 	signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
@@ -117,67 +110,23 @@ func runStart(cmd *cobra.Command, _ []string) error {
 	return nil
 }
 
-func buildServerConfig() *serverconfig.Config {
-	return &serverconfig.Config{
-		ListenAddress: "localhost:8888",
-		Connection:    serverconfig.DefaultConnectionConfig(),
-		OASFAPIValidation: serverconfig.OASFAPIValidationConfig{
-			SchemaURL: "https://schema.oasf.outshift.com",
-		},
-		Store: storeconfig.Config{
-			Provider: storeconfig.DefaultProvider,
-			OCI: ociconfig.Config{
-				LocalDir: opts.StoreDir(),
-			},
-			Verification: storeconfig.VerificationConfig{
-				Enabled: storeconfig.DefaultVerificationEnabled,
-			},
-		},
-		Routing: routingconfig.Config{
-			ListenAddress:  "/ip4/0.0.0.0/tcp/0",
-			BootstrapPeers: []string{},
-			DatastoreDir:   opts.RoutingDir(),
-			GossipSub: routingconfig.GossipSubConfig{
-				Enabled: routingconfig.DefaultGossipSubEnabled,
-			},
-		},
-		Database: dbconfig.Config{
-			Type: "sqlite",
-			SQLite: dbconfig.SQLiteConfig{
-				Path: opts.DBFile(),
-			},
-		},
-		Publication: publication.Config{
-			SchedulerInterval: publication.DefaultPublicationSchedulerInterval,
-			WorkerCount:       publication.DefaultPublicationWorkerCount,
-			WorkerTimeout:     publication.DefaultPublicationWorkerTimeout,
-		},
-		Naming: namingconfig.Config{
-			TTL: namingconfig.DefaultTTL,
-		},
-	}
-}
+// newTagLister returns a registry.TagLister for the reconciler's indexer.
+// When a local OCI directory is configured, a local oci.Store is opened.
+// Otherwise a remote ORAS repository is created from the OCI config.
+func newTagLister(cfg *DaemonConfig) (registry.TagLister, error) {
+	if dir := cfg.Server.Store.OCI.LocalDir; dir != "" {
+		repo, err := ocistore.New(dir)
+		if err != nil {
+			return nil, fmt.Errorf("failed to open local OCI store: %w", err)
+		}
 
-func buildReconcilerConfig() *reconcilerconfig.Config {
-	return &reconcilerconfig.Config{
-		Regsync: regsync.Config{
-			Enabled: false,
-		},
-		Indexer: indexer.Config{
-			Enabled:  true,
-			Interval: indexer.DefaultInterval,
-		},
-		Signature: signature.Config{
-			Enabled:       true,
-			Interval:      signature.DefaultInterval,
-			TTL:           signature.DefaultTTL,
-			RecordTimeout: signature.DefaultRecordTimeout,
-		},
-		Name: name.Config{
-			Enabled:       true,
-			Interval:      name.DefaultInterval,
-			TTL:           namingconfig.DefaultTTL,
-			RecordTimeout: name.DefaultRecordTimeout,
-		},
+		return repo, nil
 	}
+
+	repo, err := ocilib.NewORASRepository(cfg.Server.Store.OCI)
+	if err != nil {
+		return nil, fmt.Errorf("failed to connect to remote OCI registry: %w", err)
+	}
+
+	return repo, nil
 }
