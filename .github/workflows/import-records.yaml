@@ -50,7 +50,7 @@ jobs:
       server_address: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.server_address || 'prod.gateway.ads.outshift.io:443' }}
       sign: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.sign || 'true' }}
       force: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.force || 'false' }}
-      scanner_enabled: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.scanner_enabled || 'true' }}
+      scanner_enabled: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.scanner_enabled || 'false' }}
     env:
       IMPORT_CONFIG: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.import_config || '.github/workflows/scripts/import-records.json' }}
     steps:
