@@ -38,10 +38,12 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests for the import command"
 			gomega.Expect(err).To(gomega.HaveOccurred())
 
 			// Enricher init fails when mcphost config is missing/invalid; errors are wrapped by CLI and importer.
+			// Validation catches nonexistent config files before any network/gRPC calls.
 			gomega.Expect(err.Error()).To(gomega.Or(
+				gomega.ContainSubstring("config file not found"),
+				gomega.ContainSubstring("enricher configuration is invalid"),
 				gomega.ContainSubstring("failed to create enricher"),
 				gomega.ContainSubstring("failed to create MCPHost client"),
-				gomega.ContainSubstring("enrichment is mandatory"),
 			))
 		})
 	})
