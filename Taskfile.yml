@@ -372,14 +372,13 @@ tasks:
   lint:go:modules:
     desc: Run golangci-lint for all modules in parallel using Taskfile deps
     internal: true
-    deps:
-      - for: { var: GO_MODULES }
-        task: lint:go:module
-        vars:
-          GO_MODULE: "{{.ITEM}}"
-          FIX: "{{.FIX}}"
-          REV: "{{.REV}}"
-    cmd: echo "Done!"
+    cmd:
+      for: { var: GO_MODULES }
+      task: lint:go:module
+      vars:
+        GO_MODULE: "{{.ITEM}}"
+        FIX: "{{.FIX}}"
+        REV: "{{.REV}}"
 
   lint:go:module:
     desc: Run golangci-lint for given module
@@ -394,8 +393,7 @@ tasks:
       {{.GOLANGCI_LINT_BIN}} run \
                              --config {{.ROOT_DIR}}/.golangci.yml \
                              {{if eq .FIX "true"}}--fix{{end}} \
-                             --new-from-rev="{{.REV}}" \
-                             --allow-parallel-runners
+                             --new-from-rev="{{.REV}}"
 
   lint:buf:
     desc: Run Buf linters
