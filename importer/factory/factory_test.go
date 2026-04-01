@@ -15,7 +15,7 @@ func TestCreate_UnsupportedRegistry(t *testing.T) {
 
 	ctx := context.Background()
 
-	_, err := Create(ctx, nil, config.Config{RegistryType: "unknown-registry"})
+	_, err := Create(ctx, nil, config.Config{Type: "unknown"})
 	if err == nil {
 		t.Fatal("expected error for unsupported registry type")
 	}

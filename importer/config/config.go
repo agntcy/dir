@@ -15,14 +15,14 @@ import (
 	scannerconfig "github.com/agntcy/dir/importer/scanner/config"
 )
 
-// RegistryType represents the type of external registry to import from.
-type RegistryType string
+// ImportType identifies what to import and which fetch path to use (registry URL, local file, etc.).
+type ImportType string
 
 const (
-	// RegistryTypeMCP represents the Model Context Protocol registry.
-	RegistryTypeMCP RegistryType = "mcp"
-	// RegistryTypeFile imports MCP server definitions from a local JSON file.
-	RegistryTypeFile RegistryType = "file"
+	// ImportTypeMCPRegistry imports MCP server listings from an HTTP MCP registry (e.g. v0.1 list API).
+	ImportTypeMCPRegistry ImportType = "mcp-registry"
+	// ImportTypeMCP imports MCP server definition(s) from a local JSON file (one object or an array).
+	ImportTypeMCP ImportType = "mcp"
 )
 
 // ClientInterface defines the interface for the DIR client used by importers.
@@ -38,13 +38,13 @@ type SignFunc func(ctx context.Context, cid string) error
 
 // Config contains configuration for an import operation.
 type Config struct {
-	RegistryType RegistryType      // Registry type identifier
-	RegistryURL  string            // Base URL of the registry (MCP registry)
-	FilePath     string            // Path to JSON file (when RegistryType is file)
-	Filters      map[string]string // Registry-specific filters
-	Limit        int               // Number of records to import (default: 0 for all)
-	DryRun       bool              // If true, preview without actually importing
-	SignFunc     SignFunc          // Function to sign records (if set, signing is enabled)
+	Type        ImportType        // Import kind (--type); see ImportType* constants
+	RegistryURL string            // Base URL of the registry (when Type is registry-based)
+	FilePath    string            // Path to JSON file (when Type is file-based)
+	Filters     map[string]string // Registry-specific filters
+	Limit       int               // Number of records to import (default: 0 for all)
+	DryRun      bool              // If true, preview without actually importing
+	SignFunc    SignFunc          // Function to sign records (if set, signing is enabled)
 
 	Force bool // If true, push even if record already exists
 	Debug bool // If true, enable verbose debug output
@@ -55,21 +55,21 @@ type Config struct {
 
 // Validate checks if the configuration is valid.
 func (c *Config) Validate() error {
-	if c.RegistryType == "" {
-		return errors.New("registry type is required")
+	if c.Type == "" {
+		return errors.New("import type is required")
 	}
 
-	switch c.RegistryType {
-	case RegistryTypeMCP:
+	switch c.Type {
+	case ImportTypeMCPRegistry:
 		if c.RegistryURL == "" {
-			return errors.New("registry URL is required when registry type is mcp")
+			return errors.New("registry URL is required when import type is mcp-registry")
 		}
-	case RegistryTypeFile:
+	case ImportTypeMCP:
 		if c.FilePath == "" {
-			return errors.New("file path is required when registry type is file")
+			return errors.New("file path is required when import type is mcp")
 		}
 	default:
-		return fmt.Errorf("unsupported registry type: %s", c.RegistryType)
+		return fmt.Errorf("unsupported import type: %s", c.Type)
 	}
 
 	if err := c.Enricher.Validate(); err != nil {

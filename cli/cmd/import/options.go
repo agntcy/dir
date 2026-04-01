@@ -14,21 +14,20 @@ var opts = &options{}
 
 type options struct {
 	config.Config
-	RegistryType  string
+	TypeFlag      string
 	Sign          bool
 	OutputCIDFile string
-	FilePath      string
 }
 
 func init() {
 	flags := Command.Flags()
 
 	// File flags
-	flags.StringVar(&opts.FilePath, "file-path", "", "Path to JSON file with MCP server definition(s) (required when --type=file)")
+	flags.StringVar(&opts.FilePath, "file-path", "", "Path to JSON file with MCP server definition(s) (required when --type=mcp)")
 
-	// Registry flags
-	flags.StringVar(&opts.RegistryType, "type", "", "Registry type: mcp, a2a, or file (local JSON)")
-	flags.StringVar(&opts.RegistryURL, "url", "", "Registry base URL (required for mcp and a2a)")
+	// Import source
+	flags.StringVar(&opts.TypeFlag, "type", "", "Import kind: mcp (local MCP server JSON) or mcp-registry (HTTP MCP registry)")
+	flags.StringVar(&opts.RegistryURL, "url", "", "Registry base URL (required when --type=mcp-registry)")
 	flags.StringToStringVar(&opts.Filters, "filter", nil, "Filters (key=value)")
 	flags.IntVar(&opts.Limit, "limit", 0, "Maximum number of records to import (0 = no limit)")
 

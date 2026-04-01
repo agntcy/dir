@@ -21,39 +21,39 @@ import (
 
 var Command = &cobra.Command{
 	Use:   "import",
-	Short: "Import MCP records into DIR from a registry or a JSON file",
+	Short: "Import MCP records into DIR from an MCP registry or a local MCP server JSON file",
 	Long: `Import MCP server records into DIR. Records are transformed, enriched, optionally
 scanned, then pushed. The same pipeline runs for every source.
 
-Sources:
-  --type=mcp --url       HTTP MCP registry (e.g. v0.1 list API)
-  --type=file --file-path   Local JSON: one bare server object or a JSON array of servers
+Import kinds (--type):
+  mcp            Local JSON: one MCP server object or a JSON array (--file-path)
+  mcp-registry   HTTP MCP registry, e.g. v0.1 list API (--url)
 
-Examples (registry):
-  dirctl import --type=mcp --url=https://registry.modelcontextprotocol.io/v0.1
-  dirctl import --type=mcp --url=https://registry.modelcontextprotocol.io/v0.1 --filter=search=analytics --limit=50
-  dirctl import --type=mcp --url=https://registry.modelcontextprotocol.io/v0.1 --force --debug
+Examples (MCP registry):
+  dirctl import --type=mcp-registry --url=https://registry.modelcontextprotocol.io/v0.1
+  dirctl import --type=mcp-registry --url=https://registry.modelcontextprotocol.io/v0.1 --filter=search=analytics --limit=50
+  dirctl import --type=mcp-registry --url=https://registry.modelcontextprotocol.io/v0.1 --force --debug
 
-Examples (file):
-  dirctl import --type=file --file-path=./servers.json
-  dirctl import --type=file --file-path=./server.json --force --debug
+Examples (local MCP JSON file):
+  dirctl import --type=mcp --file-path=./servers.json
+  dirctl import --type=mcp --file-path=./server.json --force --debug
 
 Preview and output:
-  dirctl import --type=mcp --url=https://registry.modelcontextprotocol.io/v0.1 --dry-run
-  dirctl import --type=mcp --url=https://registry.modelcontextprotocol.io/v0.1 --output-cids=./imported.cids
+  dirctl import --type=mcp-registry --url=https://registry.modelcontextprotocol.io/v0.1 --dry-run
+  dirctl import --type=mcp-registry --url=https://registry.modelcontextprotocol.io/v0.1 --output-cids=./imported.cids
 
 Enrichment (MCPHost / LLM):
-  dirctl import --type=file --file-path=./server.json --enrich-config=./mcphost.json
-  dirctl import --type=mcp --url=https://registry.modelcontextprotocol.io/v0.1 --enrich-skills-prompt=./skills.md --enrich-domains-prompt=./domains.md --enrich-rate-limit=5
+  dirctl import --type=mcp --file-path=./server.json --enrich-config=./mcphost.json
+  dirctl import --type=mcp-registry --url=https://registry.modelcontextprotocol.io/v0.1 --enrich-skills-prompt=./skills.md --enrich-domains-prompt=./domains.md --enrich-rate-limit=5
 
 Scanner (mcp-scanner):
-  dirctl import --type=mcp --url=https://registry.modelcontextprotocol.io/v0.1 --scanner-enabled --scanner-timeout=5m --scanner-cli-path=/usr/local/bin/mcp-scanner
-  dirctl import --type=mcp --url=https://registry.modelcontextprotocol.io/v0.1 --scanner-enabled --scanner-fail-on-error --scanner-fail-on-warning
+  dirctl import --type=mcp-registry --url=https://registry.modelcontextprotocol.io/v0.1 --scanner-enabled --scanner-timeout=5m --scanner-cli-path=/usr/local/bin/mcp-scanner
+  dirctl import --type=mcp-registry --url=https://registry.modelcontextprotocol.io/v0.1 --scanner-enabled --scanner-fail-on-error --scanner-fail-on-warning
 
 Signing (after push; same flags as dirctl sign):
-  dirctl import --type=mcp --url=https://registry.modelcontextprotocol.io/v0.1 --sign --key=./cosign.key
-  dirctl import --type=file --file-path=./server.json --sign --key=env://COSIGN_PRIVATE_KEY --fulcio-url=https://fulcio.sigstore.dev --rekor-url=https://rekor.sigstore.dev --timestamp-url=https://timestamp.sigstore.dev
-  dirctl import --type=mcp --url=https://registry.modelcontextprotocol.io/v0.1 --sign --key=./cosign.key --skip-tlog --oidc-token="$OIDC_TOKEN"
+  dirctl import --type=mcp-registry --url=https://registry.modelcontextprotocol.io/v0.1 --sign --key=./cosign.key
+  dirctl import --type=mcp --file-path=./server.json --sign --key=env://COSIGN_PRIVATE_KEY --fulcio-url=https://fulcio.sigstore.dev --rekor-url=https://rekor.sigstore.dev --timestamp-url=https://timestamp.sigstore.dev
+  dirctl import --type=mcp-registry --url=https://registry.modelcontextprotocol.io/v0.1 --sign --key=./cosign.key --skip-tlog --oidc-token="$OIDC_TOKEN"
 `,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		return runImport(cmd)
@@ -66,8 +66,7 @@ func runImport(cmd *cobra.Command) error {
 		return errors.New("failed to get client from context")
 	}
 
-	opts.Config.RegistryType = config.RegistryType(opts.RegistryType)
-	opts.Config.FilePath = opts.FilePath
+	opts.Type = config.ImportType(opts.TypeFlag)
 
 	if opts.Sign {
 		opts.SignFunc = func(ctx context.Context, cid string) error {
@@ -84,13 +83,13 @@ func runImport(cmd *cobra.Command) error {
 		return fmt.Errorf("failed to create importer: %w", err)
 	}
 
-	switch opts.Config.RegistryType {
-	case config.RegistryTypeMCP:
-		presenter.Printf(cmd, "Starting import from %s registry at %s...\n", opts.Config.RegistryType, opts.RegistryURL)
-	case config.RegistryTypeFile:
-		presenter.Printf(cmd, "Importing MCP server(s) from file: %s\n", opts.Config.FilePath)
+	switch opts.Type {
+	case config.ImportTypeMCPRegistry:
+		presenter.Printf(cmd, "Starting import from MCP registry at %s...\n", opts.RegistryURL)
+	case config.ImportTypeMCP:
+		presenter.Printf(cmd, "Importing MCP server JSON from file: %s\n", opts.FilePath)
 	default:
-		presenter.Printf(cmd, "Starting import from %s registry at %s...\n", opts.Config.RegistryType, opts.RegistryURL)
+		presenter.Printf(cmd, "Starting import (type=%s)...\n", opts.Type)
 	}
 
 	if opts.DryRun {

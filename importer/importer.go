@@ -42,13 +42,13 @@ func New(ctx context.Context, client config.ClientInterface, cfg config.Config) 
 		err   error
 	)
 
-	switch cfg.RegistryType {
-	case config.RegistryTypeMCP:
+	switch cfg.Type {
+	case config.ImportTypeMCPRegistry:
 		fetch, err = fetcher.NewFetcher(cfg.RegistryURL, cfg.Filters, cfg.Limit)
-	case config.RegistryTypeFile:
+	case config.ImportTypeMCP:
 		fetch, err = fetcher.NewFileFetcher(cfg.FilePath)
 	default:
-		return nil, fmt.Errorf("unsupported registry type: %s", cfg.RegistryType)
+		return nil, fmt.Errorf("unsupported import type: %s", cfg.Type)
 	}
 
 	if err != nil {
