@@ -28,7 +28,7 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests for the import command"
 			// Test that import fails with a clear error when enrichment is required but cannot be initialized
 			// This happens when mcphost.json is missing or invalid (no LLM configured)
 			output, err := cli.Command("import").
-				WithArgs("--type=mcp", "--url=https://registry.modelcontextprotocol.io/v0.1", "--limit", "1", "--enrich-config=/nonexistent/path.json").
+				WithArgs("--type=mcp-registry", "--url=https://registry.modelcontextprotocol.io/v0.1", "--limit", "1", "--enrich-config=/nonexistent/path.json").
 				Execute()
 
 			ginkgo.GinkgoWriter.Printf("Import error output: %s\n", output)

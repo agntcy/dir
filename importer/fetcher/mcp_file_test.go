@@ -8,9 +8,11 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+
+	"github.com/agntcy/dir/importer/types"
 )
 
-func TestFileFetcher_Fetch_bareServerJSON(t *testing.T) {
+func TestMCPFileFetcher_Fetch_bareServerJSON(t *testing.T) {
 	t.Parallel()
 
 	dir := t.TempDir()
@@ -27,7 +29,7 @@ func TestFileFetcher_Fetch_bareServerJSON(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	f, err := NewFileFetcher(path)
+	f, err := NewMCPFileFetcher(path)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -36,7 +38,15 @@ func TestFileFetcher_Fetch_bareServerJSON(t *testing.T) {
 
 	var got int
 
-	for range outCh {
+	for item := range outCh {
+		if item.Kind != types.SourceKindMCP {
+			t.Fatalf("Kind = %v, want MCP", item.Kind)
+		}
+
+		if item.MCP.Server.Name == "" {
+			t.Fatal("expected non-empty MCP server name")
+		}
+
 		got++
 	}
 

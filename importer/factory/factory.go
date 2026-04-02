@@ -14,41 +14,42 @@ import (
 )
 
 func init() {
-	Register(config.RegistryTypeMCP, importer.New)
-	Register(config.RegistryTypeFile, importer.New)
+	Register(config.ImportTypeMCPRegistry, importer.New)
+	Register(config.ImportTypeMCP, importer.New)
+	Register(config.ImportTypeA2A, importer.New)
 }
 
 // ImporterFunc is a function that creates an Importer instance.
 type ImporterFunc func(ctx context.Context, client config.ClientInterface, cfg config.Config) (types.Importer, error)
 
 var (
-	importers = make(map[config.RegistryType]ImporterFunc)
+	importers = make(map[config.ImportType]ImporterFunc)
 	mu        sync.RWMutex
 )
 
-// Register registers a function that creates an Importer instance for a given registry type.
-// It panics if the same registry type is registered twice to prevent duplications at compile-time.
-func Register(registryType config.RegistryType, fn ImporterFunc) {
+// Register registers a function that creates an Importer instance for a given import type.
+// It panics if the same import type is registered twice to prevent duplications at compile-time.
+func Register(importType config.ImportType, fn ImporterFunc) {
 	mu.Lock()
 	defer mu.Unlock()
 
-	if _, exists := importers[registryType]; exists {
-		panic(fmt.Sprintf("importer already registered for registry type: %s", registryType))
+	if _, exists := importers[importType]; exists {
+		panic(fmt.Sprintf("importer already registered for import type: %s", importType))
 	}
 
-	importers[registryType] = fn
+	importers[importType] = fn
 }
 
 // Create creates a new Importer instance for the given client and configuration.
 func Create(ctx context.Context, client config.ClientInterface, cfg config.Config) (types.Importer, error) {
 	mu.RLock()
 
-	constructor, exists := importers[cfg.RegistryType]
+	constructor, exists := importers[cfg.Type]
 
 	mu.RUnlock()
 
 	if !exists {
-		return nil, fmt.Errorf("unsupported registry type: %s", cfg.RegistryType)
+		return nil, fmt.Errorf("unsupported import type: %s", cfg.Type)
 	}
 
 	return constructor(ctx, client, cfg)

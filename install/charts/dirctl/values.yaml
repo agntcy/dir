@@ -58,7 +58,7 @@ cronjobs:
     schedule: '0 */6 * * *'  # Every 6 hours
     args:
       - 'import'
-      - '--type=mcp'
+      - '--type=mcp-registry'
       - '--url=https://registry.modelcontextprotocol.io/v0.1'
     env:
       # Import-specific environment variables can be added here

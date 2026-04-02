@@ -10,27 +10,28 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"github.com/agntcy/dir/importer/types"
 	mcpapiv0 "github.com/modelcontextprotocol/registry/pkg/api/v0"
 )
 
-func TestNewFetcher_InvalidFilter(t *testing.T) {
+func TestNewMCPRegistryFetcher_InvalidFilter(t *testing.T) {
 	t.Parallel()
 
-	_, err := NewFetcher("https://registry.example.com", map[string]string{"bad": "v"}, 0)
+	_, err := NewMCPRegistryFetcher("https://registry.example.com", map[string]string{"bad": "v"}, 0)
 	if err == nil {
 		t.Fatal("expected error for unsupported filter key")
 	}
 }
 
-func TestNewFetcher_ValidFilters(t *testing.T) {
+func TestNewMCPRegistryFetcher_ValidFilters(t *testing.T) {
 	t.Parallel()
 
-	f, err := NewFetcher("https://registry.example.com", map[string]string{
+	f, err := NewMCPRegistryFetcher("https://registry.example.com", map[string]string{
 		"search": "foo",
 		"limit":  "10",
 	}, 0)
 	if err != nil {
-		t.Fatalf("NewFetcher: %v", err)
+		t.Fatalf("NewMCPRegistryFetcher: %v", err)
 	}
 
 	if f.url.Host != "registry.example.com" {
@@ -62,9 +63,9 @@ func TestFetch_SinglePage(t *testing.T) {
 	}))
 	t.Cleanup(srv.Close)
 
-	f, err := NewFetcher(srv.URL, nil, 0)
+	f, err := NewMCPRegistryFetcher(srv.URL, nil, 0)
 	if err != nil {
-		t.Fatalf("NewFetcher: %v", err)
+		t.Fatalf("NewMCPRegistryFetcher: %v", err)
 	}
 
 	f.httpClient = srv.Client()
@@ -104,9 +105,9 @@ func TestFetch_RespectsLimit(t *testing.T) {
 	}))
 	t.Cleanup(srv.Close)
 
-	f, err := NewFetcher(srv.URL, nil, 2)
+	f, err := NewMCPRegistryFetcher(srv.URL, nil, 2)
 	if err != nil {
-		t.Fatalf("NewFetcher: %v", err)
+		t.Fatalf("NewMCPRegistryFetcher: %v", err)
 	}
 
 	f.httpClient = srv.Client()
@@ -163,9 +164,9 @@ func TestFetch_Pagination(t *testing.T) {
 	}))
 	t.Cleanup(srv.Close)
 
-	f, err := NewFetcher(srv.URL, nil, 0)
+	f, err := NewMCPRegistryFetcher(srv.URL, nil, 0)
 	if err != nil {
-		t.Fatalf("NewFetcher: %v", err)
+		t.Fatalf("NewMCPRegistryFetcher: %v", err)
 	}
 
 	f.httpClient = srv.Client()
@@ -176,7 +177,11 @@ func TestFetch_Pagination(t *testing.T) {
 	var names []string
 
 	for s := range outCh {
-		names = append(names, s.Server.Name)
+		if s.Kind != types.SourceKindMCP {
+			t.Fatalf("Kind = %v, want MCP", s.Kind)
+		}
+
+		names = append(names, s.MCP.Server.Name)
 	}
 
 	for e := range errCh {
@@ -202,9 +207,9 @@ func TestFetch_HTTPError(t *testing.T) {
 	}))
 	t.Cleanup(srv.Close)
 
-	f, err := NewFetcher(srv.URL, nil, 0)
+	f, err := NewMCPRegistryFetcher(srv.URL, nil, 0)
 	if err != nil {
-		t.Fatalf("NewFetcher: %v", err)
+		t.Fatalf("NewMCPRegistryFetcher: %v", err)
 	}
 
 	f.httpClient = srv.Client()

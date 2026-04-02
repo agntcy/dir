@@ -16,11 +16,10 @@ import (
 	"google.golang.org/protobuf/types/known/structpb"
 )
 
-// Transformer implements the pipeline.Transformer interface for MCP records.
+// Transformer implements the pipeline.Transformer interface for MCP and A2A sources.
 type Transformer struct{}
 
-// NewTransformer creates a new MCP transformer.
-// Enrichment is mandatory - the transformer will always initialize an enricher client.
+// NewTransformer creates a transformer for MCP and A2A pipeline items.
 func NewTransformer() *Transformer {
 	return &Transformer{}
 }
@@ -30,7 +29,7 @@ func NewTransformer() *Transformer {
 // It always tracks the total records it processes (non-duplicates after filtering).
 //
 //nolint:gocognit // Complexity is acceptable for concurrent pipeline stage
-func (t *Transformer) Transform(ctx context.Context, inputCh <-chan mcpapiv0.ServerResponse, result *types.Result) (<-chan *corev1.Record, <-chan error) {
+func (t *Transformer) Transform(ctx context.Context, inputCh <-chan types.SourceItem, result *types.Result) (<-chan *corev1.Record, <-chan error) {
 	outputCh := make(chan *corev1.Record)
 	errCh := make(chan error)
 
@@ -53,7 +52,7 @@ func (t *Transformer) Transform(ctx context.Context, inputCh <-chan mcpapiv0.Ser
 				result.Mu.Unlock()
 
 				// Transform the record
-				record, err := t.TransformRecord(ctx, source)
+				record, err := t.TransformRecord(source)
 				if err != nil {
 					result.Mu.Lock()
 					result.FailedCount++
@@ -81,29 +80,66 @@ func (t *Transformer) Transform(ctx context.Context, inputCh <-chan mcpapiv0.Ser
 	return outputCh, errCh
 }
 
-// Transform converts an MCP server response to OASF format.
-func (t *Transformer) TransformRecord(ctx context.Context, source mcpapiv0.ServerResponse) (*corev1.Record, error) {
-	record, err := t.convertToOASF(ctx, source)
-	if err != nil {
-		return nil, fmt.Errorf("failed to convert server %s:%s to OASF: %w", source.Server.Name, source.Server.Version, err)
-	}
-
-	// Attach MCP source for debugging push failures
-	// Store in a way that won't interfere with the record
-	if record.GetData() != nil && record.Data.Fields != nil {
-		if mcpBytes, err := json.Marshal(source.Server); err == nil {
-			// Store as a JSON string for later retrieval
-			record.Data.Fields["__mcp_debug_source"] = structpb.NewStringValue(string(mcpBytes))
+// TransformRecord converts a pipeline source item (MCP or A2A) to OASF format.
+func (t *Transformer) TransformRecord(item types.SourceItem) (*corev1.Record, error) {
+	switch item.Kind {
+	case types.SourceKindA2A:
+		if item.A2A == nil {
+			return nil, fmt.Errorf("A2A source item missing AgentCard struct")
 		}
-	}
 
-	return record, nil
+		record, err := convertA2AToOASF(item.A2A)
+		if err != nil {
+			nv := item.NameVersion()
+			if nv == "" {
+				nv = "(unknown)"
+			}
+
+			return nil, fmt.Errorf("failed to convert A2A card %s to OASF: %w", nv, err)
+		}
+
+		if record.GetData() != nil && record.Data.Fields != nil {
+			if dbg, err := json.Marshal(item.A2A.AsMap()); err == nil {
+				record.Data.Fields["__a2a_debug_source"] = structpb.NewStringValue(string(dbg))
+			}
+		}
+
+		return record, nil
+
+	case types.SourceKindMCP:
+		record, err := convertMCPToOASF(item.MCP)
+		if err != nil {
+			return nil, fmt.Errorf("failed to convert server %s:%s to OASF: %w",
+				item.MCP.Server.Name, item.MCP.Server.Version, err)
+		}
+
+		// Attach MCP source for debugging push failures
+		if record.GetData() != nil && record.Data.Fields != nil {
+			if mcpBytes, err := json.Marshal(item.MCP.Server); err == nil {
+				record.Data.Fields["__mcp_debug_source"] = structpb.NewStringValue(string(mcpBytes))
+			}
+		}
+
+		return record, nil
+
+	default:
+		return nil, fmt.Errorf("unknown source kind: %v", item.Kind)
+	}
 }
 
-// convertToOASF converts an MCP server response to OASF format.
-//
-//nolint:unparam
-func (t *Transformer) convertToOASF(ctx context.Context, response mcpapiv0.ServerResponse) (*corev1.Record, error) {
+func convertA2AToOASF(card *structpb.Struct) (*corev1.Record, error) {
+	recordStruct, err := translator.A2AToRecord(card, translator.WithVersion("1.0.0"))
+	if err != nil {
+		return nil, fmt.Errorf("A2AToRecord: %w", err)
+	}
+
+	return &corev1.Record{
+		Data: recordStruct,
+	}, nil
+}
+
+// convertMCPToOASF converts an MCP server response to OASF format.
+func convertMCPToOASF(response mcpapiv0.ServerResponse) (*corev1.Record, error) {
 	server := response.Server
 
 	// Convert the MCP ServerJSON to a structpb.Struct

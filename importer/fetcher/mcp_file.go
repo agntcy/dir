@@ -12,29 +12,30 @@ import (
 	"os"
 	"strings"
 
+	"github.com/agntcy/dir/importer/types"
 	mcpapiv0 "github.com/modelcontextprotocol/registry/pkg/api/v0"
 )
 
-// fileFetcher reads MCP registry-style server definitions from a local JSON file.
-type fileFetcher struct {
+// mcpFileFetcher reads MCP registry-style server definitions from a local JSON file.
+type mcpFileFetcher struct {
 	path string
 }
 
-// NewFileFetcher creates a fetcher that reads one or more MCP servers from a file.
+// NewMCPFileFetcher creates a fetcher that reads one or more MCP servers from a file.
 // Supported formats:
 //   - A JSON array of ServerResponse
 //   - A single bare ServerJSON object (wrapped as ServerResponse)
-func NewFileFetcher(path string) (*fileFetcher, error) {
+func NewMCPFileFetcher(path string) (*mcpFileFetcher, error) {
 	if strings.TrimSpace(path) == "" {
 		return nil, errors.New("file path is empty")
 	}
 
-	return &fileFetcher{path: path}, nil
+	return &mcpFileFetcher{path: path}, nil
 }
 
 // Fetch reads the file and sends each decoded server to the output channel.
-func (f *fileFetcher) Fetch(ctx context.Context) (<-chan mcpapiv0.ServerResponse, <-chan error) {
-	outputCh := make(chan mcpapiv0.ServerResponse, 8) //nolint:mnd
+func (f *mcpFileFetcher) Fetch(ctx context.Context) (<-chan types.SourceItem, <-chan error) {
+	outputCh := make(chan types.SourceItem, 8) //nolint:mnd
 	errCh := make(chan error, 1)
 
 	go func() {
@@ -76,7 +77,7 @@ func (f *fileFetcher) Fetch(ctx context.Context) (<-chan mcpapiv0.ServerResponse
 			select {
 			case <-ctx.Done():
 				return
-			case outputCh <- srv:
+			case outputCh <- types.MCPSourceItem(srv):
 			}
 		}
 	}()

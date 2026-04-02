@@ -23,12 +23,12 @@ import (
 // --- Mocks ---
 
 type mockFetcher struct {
-	items []mcpapiv0.ServerResponse
+	items []types.SourceItem
 	err   error
 }
 
-func (m *mockFetcher) Fetch(ctx context.Context) (<-chan mcpapiv0.ServerResponse, <-chan error) {
-	dataCh := make(chan mcpapiv0.ServerResponse)
+func (m *mockFetcher) Fetch(ctx context.Context) (<-chan types.SourceItem, <-chan error) {
+	dataCh := make(chan types.SourceItem)
 	errCh := make(chan error, 1)
 
 	go func() {
@@ -53,15 +53,24 @@ func (m *mockFetcher) Fetch(ctx context.Context) (<-chan mcpapiv0.ServerResponse
 	return dataCh, errCh
 }
 
+func mcpSourceItems(servers ...mcpapiv0.ServerResponse) []types.SourceItem {
+	out := make([]types.SourceItem, len(servers))
+	for i, s := range servers {
+		out[i] = types.MCPSourceItem(s)
+	}
+
+	return out
+}
+
 // passThroughDedup forwards all items (mirrors “no duplicates” dedup).
 type passThroughDedup struct{}
 
 func (passThroughDedup) FilterDuplicates(
 	ctx context.Context,
-	inputCh <-chan mcpapiv0.ServerResponse,
+	inputCh <-chan types.SourceItem,
 	_ *types.Result,
-) <-chan mcpapiv0.ServerResponse {
-	out := make(chan mcpapiv0.ServerResponse)
+) <-chan types.SourceItem {
+	out := make(chan types.SourceItem)
 
 	go func() {
 		defer close(out)
@@ -92,9 +101,9 @@ type denyDedup struct{}
 
 func (denyDedup) FilterDuplicates(
 	context.Context,
-	<-chan mcpapiv0.ServerResponse,
+	<-chan types.SourceItem,
 	*types.Result,
-) <-chan mcpapiv0.ServerResponse {
+) <-chan types.SourceItem {
 	panic("FilterDuplicates must not be called when cfg.Force skips dedup")
 }
 
@@ -105,10 +114,10 @@ type mockDedupByName struct {
 
 func (m *mockDedupByName) FilterDuplicates(
 	ctx context.Context,
-	inputCh <-chan mcpapiv0.ServerResponse,
+	inputCh <-chan types.SourceItem,
 	result *types.Result,
-) <-chan mcpapiv0.ServerResponse {
-	out := make(chan mcpapiv0.ServerResponse)
+) <-chan types.SourceItem {
+	out := make(chan types.SourceItem)
 
 	go func() {
 		defer close(out)
@@ -122,7 +131,12 @@ func (m *mockDedupByName) FilterDuplicates(
 					return
 				}
 
-				if _, dup := m.duplicates[s.Server.Name]; dup {
+				var name string
+				if s.Kind == types.SourceKindMCP {
+					name = s.MCP.Server.Name
+				}
+
+				if _, dup := m.duplicates[name]; dup {
 					result.Mu.Lock()
 					result.TotalRecords++
 					result.SkippedCount++
@@ -149,7 +163,7 @@ type mockTransformer struct {
 
 func (m *mockTransformer) Transform(
 	ctx context.Context,
-	inputCh <-chan mcpapiv0.ServerResponse,
+	inputCh <-chan types.SourceItem,
 	result *types.Result,
 ) (<-chan *corev1.Record, <-chan error) {
 	out := make(chan *corev1.Record)
@@ -186,10 +200,15 @@ func (m *mockTransformer) Transform(
 					continue
 				}
 
+				var name string
+				if source.Kind == types.SourceKindMCP {
+					name = source.MCP.Server.Name
+				}
+
 				rec := &corev1.Record{
 					Data: &structpb.Struct{
 						Fields: map[string]*structpb.Value{
-							"name": structpb.NewStringValue(source.Server.Name),
+							"name": structpb.NewStringValue(name),
 						},
 					},
 				}
@@ -359,11 +378,11 @@ func TestImporter_Run_Success(t *testing.T) {
 	ctx := context.Background()
 	cfg := baseConfig()
 
-	fetcher := &mockFetcher{items: []mcpapiv0.ServerResponse{
+	fetcher := &mockFetcher{items: mcpSourceItems(
 		testServer("a"),
 		testServer("b"),
 		testServer("c"),
-	}}
+	)}
 
 	pusher := &mockPusher{}
 
@@ -408,7 +427,7 @@ func TestImporter_Run_TransformError(t *testing.T) {
 	ctx := context.Background()
 	cfg := baseConfig()
 
-	fetcher := &mockFetcher{items: []mcpapiv0.ServerResponse{testServer("a")}}
+	fetcher := &mockFetcher{items: mcpSourceItems(testServer("a"))}
 	pusher := &mockPusher{}
 
 	imp := testImporter(cfg, fetcher, passThroughDedup{}, &mockTransformer{shouldFail: true}, nil, pusher)
@@ -434,10 +453,10 @@ func TestImporter_Run_PushError(t *testing.T) {
 	ctx := context.Background()
 	cfg := baseConfig()
 
-	fetcher := &mockFetcher{items: []mcpapiv0.ServerResponse{
+	fetcher := &mockFetcher{items: mcpSourceItems(
 		testServer("a"),
 		testServer("b"),
-	}}
+	)}
 
 	pusher := &mockPusher{shouldFail: true}
 
@@ -464,13 +483,13 @@ func TestImporter_Run_WithDuplicateChecker(t *testing.T) {
 	ctx := context.Background()
 	cfg := baseConfig()
 
-	fetcher := &mockFetcher{items: []mcpapiv0.ServerResponse{
+	fetcher := &mockFetcher{items: mcpSourceItems(
 		testServer("item1"),
 		testServer("item2"),
 		testServer("item3"),
 		testServer("item4"),
 		testServer("item5"),
-	}}
+	)}
 
 	dedup := &mockDedupByName{
 		duplicates: map[string]struct{}{"item2": {}, "item4": {}},
@@ -511,7 +530,7 @@ func TestImporter_Run_Force_BypassesDedup(t *testing.T) {
 	cfg := baseConfig()
 	cfg.Force = true
 
-	fetcher := &mockFetcher{items: []mcpapiv0.ServerResponse{testServer("x")}}
+	fetcher := &mockFetcher{items: mcpSourceItems(testServer("x"))}
 	pusher := &mockPusher{}
 
 	// If Run incorrectly called FilterDuplicates, denyDedup would panic.
@@ -531,7 +550,7 @@ func TestImporter_Run_ScannerDisabled_Completes(t *testing.T) {
 	cfg := baseConfig()
 	cfg.Scanner.Enabled = false
 
-	fetcher := &mockFetcher{items: []mcpapiv0.ServerResponse{testServer("a")}}
+	fetcher := &mockFetcher{items: mcpSourceItems(testServer("a"))}
 	pusher := &mockPusher{}
 
 	imp := testImporter(cfg, fetcher, passThroughDedup{}, &mockTransformer{}, nil, pusher)
@@ -550,7 +569,7 @@ func TestImporter_Run_ScannerEnabled(t *testing.T) {
 	cfg := baseConfig()
 	cfg.Scanner.Enabled = true
 
-	fetcher := &mockFetcher{items: []mcpapiv0.ServerResponse{testServer("a")}}
+	fetcher := &mockFetcher{items: mcpSourceItems(testServer("a"))}
 	pusher := &mockPusher{}
 
 	imp := testImporter(cfg, fetcher, passThroughDedup{}, &mockTransformer{}, &mockScanner{}, pusher)
@@ -569,7 +588,7 @@ func TestImporter_Run_ScannerErrorRecorded(t *testing.T) {
 	cfg := baseConfig()
 	cfg.Scanner.Enabled = true
 
-	fetcher := &mockFetcher{items: []mcpapiv0.ServerResponse{testServer("a")}}
+	fetcher := &mockFetcher{items: mcpSourceItems(testServer("a"))}
 	pusher := &mockPusher{}
 
 	imp := testImporter(cfg, fetcher, passThroughDedup{}, &mockTransformer{}, &mockScanner{err: errors.New("scan setup failed")}, pusher)
@@ -600,10 +619,10 @@ func TestImporter_DryRun_WritesOutputFile(t *testing.T) {
 
 	cfg := baseConfig()
 
-	fetcher := &mockFetcher{items: []mcpapiv0.ServerResponse{
+	fetcher := &mockFetcher{items: mcpSourceItems(
 		testServer("a"),
 		testServer("b"),
-	}}
+	)}
 
 	imp := testImporter(cfg, fetcher, passThroughDedup{}, &mockTransformer{}, nil, &mockPusher{})
 
