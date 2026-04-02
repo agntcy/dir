@@ -5,12 +5,22 @@
     brew tap agntcy/dir https://github.com/agntcy/dir/
 ```
 
-## How to install a formula
+## How to install the latest dirctl formula
 ```bash
     brew install dirctl
 ```
 
-## How to remove an installed formula
+## How to install the a specific version of dirctl formula
+```bash
+    brew install dirctl@1.0.0
+```
+
+## How to switch between installed dirctl formula versions
+```bash
+    brew link dirctl@1.0.0
+```
+
+## How to remove an installed dirctl formula
 ```bash
     brew remove dirctl
 ```

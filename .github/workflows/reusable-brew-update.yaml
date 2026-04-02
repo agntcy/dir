@@ -12,6 +12,17 @@ on:
 
   workflow_call:
   workflow_dispatch:
+    inputs:
+      latest_tag_override:
+        description: "Latest tag override for testing"
+        required: false
+        type: string
+        default: ""
+      dry-run:
+        description: "Dry run mode (not creating a PR)"
+        required: false
+        type: boolean
+        default: false
 
 permissions:
   contents: write
@@ -33,15 +44,25 @@ jobs:
       - name: Download latest binary releases
         id: release-infos
         run: |
-          LATEST_VERSION=$(gh release list --limit 1 --json tagName --jq '.[] | .tagName')
+          if [ -n "${{ inputs.latest_tag_override }}" ]; then
+            LATEST_VERSION="${{ inputs.latest_tag_override }}"
+          else
+            LATEST_VERSION=$(gh release view --json tagName --jq '.tagName')
+          fi
+
           echo "LATEST_VERSION=$LATEST_VERSION" >> $GITHUB_OUTPUT
 
-          gh release download $LATEST_VERSION
-
-          echo "DIRCTL_HASH_DARWIN_ARM=$(sha256sum ./dirctl-darwin-arm64 | cut -d ' ' -f 1)" >> $GITHUB_OUTPUT
-          echo "DIRCTL_HASH_DARWIN_AMD=$(sha256sum ./dirctl-darwin-amd64 | cut -d ' ' -f 1)" >> $GITHUB_OUTPUT
-          echo "DIRCTL_HASH_LINUX_ARM=$(sha256sum ./dirctl-linux-arm64 | cut -d ' ' -f 1)" >> $GITHUB_OUTPUT
-          echo "DIRCTL_HASH_LINUX_AMD=$(sha256sum ./dirctl-linux-amd64 | cut -d ' ' -f 1)" >> $GITHUB_OUTPUT
+          while IFS=$'\t' read -r name hash; do
+            case "$name" in
+              dirctl-darwin-arm64)  echo "DIRCTL_HASH_DARWIN_ARM=$hash" >> $GITHUB_OUTPUT ;;
+              dirctl-darwin-amd64)  echo "DIRCTL_HASH_DARWIN_AMD=$hash" >> $GITHUB_OUTPUT ;;
+              dirctl-linux-arm64)   echo "DIRCTL_HASH_LINUX_ARM=$hash" >> $GITHUB_OUTPUT ;;
+              dirctl-linux-amd64)   echo "DIRCTL_HASH_LINUX_AMD=$hash" >> $GITHUB_OUTPUT ;;
+            esac
+          done < <(
+            gh release view $LATEST_VERSION --repo agntcy/dir --json assets \
+              --jq '.assets[] | select(.name | startswith("dirctl-")) | "\(.name)\t\(.digest | sub("^sha256:"; ""))"'
+          )
 
       - name: Update Brew formula
         id: brew-formula
@@ -65,6 +86,29 @@ jobs:
           sed -i "/url \".*\/dirctl-linux-arm64\"/ {N;s/sha256 \".*\"/sha256 \"${{ steps.release-infos.outputs.DIRCTL_HASH_LINUX_ARM }}\"/}" ./HomebrewFormula/dirctl.rb
           sed -i "/url \".*\/dirctl-linux-amd64\"/ {N;s/sha256 \".*\"/sha256 \"${{ steps.release-infos.outputs.DIRCTL_HASH_LINUX_AMD }}\"/}" ./HomebrewFormula/dirctl.rb
 
+          # NOTE: Make versioned copy of latest formula
+
+          LATEST_VERSION="${{ steps.release-infos.outputs.LATEST_VERSION }}"
+          VERSION_NUMBER="${LATEST_VERSION#v}"
+          MAJOR_VERSION="${VERSION_NUMBER%%.*}"
+          MINOR_VERSION="${VERSION_NUMBER#*.}"; MINOR_VERSION="${MINOR_VERSION%%.*}"
+
+          VERSION_DIR="./HomebrewFormula/dirctl/v${MAJOR_VERSION}/v${MAJOR_VERSION}.${MINOR_VERSION}"
+
+          mkdir -p $VERSION_DIR || true
+          cp ./HomebrewFormula/dirctl.rb $VERSION_DIR/dirctl@${VERSION_NUMBER}.rb
+
+          # NOTE: Fixing the class name in the versioned formula file
+          AT_SUFFIX=$(ruby -e '
+            abort "missing version" if ARGV[0].empty?
+            core, pre = ARGV[0].split("-", 2)
+            s = core.gsub(".", "")
+            s << pre.split(".").map(&:capitalize).join if pre
+            print s
+          ' "$VERSION_NUMBER")
+
+          sed -i "1s/^class Dirctl </class DirctlAT${AT_SUFFIX} </" "$VERSION_DIR/dirctl@${VERSION_NUMBER}.rb"
+
           DIFF_FOUND=0
 
           if ! git diff --exit-code; then
@@ -74,7 +118,8 @@ jobs:
           echo "DIFF_FOUND=$DIFF_FOUND" >> $GITHUB_OUTPUT
 
           if [ $DIFF_FOUND -eq 1 ]; then
-            git commit ./HomebrewFormula/dirctl.rb -m "chore: update brew formula version" --signoff
+            git add ./HomebrewFormula/dirctl.rb $VERSION_DIR/dirctl@${VERSION_NUMBER}.rb
+            git commit --all -m "chore: update brew formula version" --signoff
 
             git push --set-upstream origin chore/brew-formula-update
           fi
@@ -100,6 +145,6 @@ jobs:
           dirctl --help
 
       - name: Create PR
-        if: ${{ steps.brew-formula.outputs.DIFF_FOUND == 1 && steps.test-brew-formula.outcome == 'success' }}
+        if: ${{ steps.brew-formula.outputs.DIFF_FOUND == 1 && steps.test-brew-formula.outcome == 'success' && inputs.dry-run == false }}
         run: |
           gh pr create --title "chore(dirctl): update brew formula to ${{ steps.release-infos.outputs.LATEST_VERSION }}" --body "This PR is created by brew-formula-update workflow."
