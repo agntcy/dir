@@ -11,28 +11,6 @@ import (
 	mcpapiv0 "github.com/modelcontextprotocol/registry/pkg/api/v0"
 )
 
-func TestExtractNameVersionFromSource(t *testing.T) {
-	t.Parallel()
-
-	srv := mcpapiv0.ServerResponse{Server: mcpapiv0.ServerJSON{Name: "n", Version: "v"}}
-	if got := extractNameVersionFromSource(srv); got != "n@v" {
-		t.Errorf("value = %q, want n@v", got)
-	}
-
-	ptr := &mcpapiv0.ServerResponse{Server: mcpapiv0.ServerJSON{Name: "a", Version: "b"}}
-	if got := extractNameVersionFromSource(ptr); got != "a@b" {
-		t.Errorf("ptr = %q, want a@b", got)
-	}
-
-	if got := extractNameVersionFromSource(mcpapiv0.ServerResponse{}); got != "" {
-		t.Errorf("empty = %q, want \"\"", got)
-	}
-
-	if got := extractNameVersionFromSource("not-a-response"); got != "" {
-		t.Errorf("wrong type = %q, want \"\"", got)
-	}
-}
-
 func TestFilterDuplicates_SkipsKnownDuplicate(t *testing.T) {
 	t.Parallel()
 
@@ -43,10 +21,10 @@ func TestFilterDuplicates_SkipsKnownDuplicate(t *testing.T) {
 		existingRecords: map[string]string{"dup@1.0.0": "bafycid"},
 	}
 
-	in := make(chan mcpapiv0.ServerResponse, 2)
-	in <- mcpapiv0.ServerResponse{Server: mcpapiv0.ServerJSON{Name: "dup", Version: "1.0.0"}}
+	in := make(chan types.SourceItem, 2)
+	in <- types.MCPSourceItem(mcpapiv0.ServerResponse{Server: mcpapiv0.ServerJSON{Name: "dup", Version: "1.0.0"}})
 
-	in <- mcpapiv0.ServerResponse{Server: mcpapiv0.ServerJSON{Name: "new", Version: "2.0.0"}}
+	in <- types.MCPSourceItem(mcpapiv0.ServerResponse{Server: mcpapiv0.ServerJSON{Name: "new", Version: "2.0.0"}})
 
 	close(in)
 
@@ -80,8 +58,8 @@ func TestFilterDuplicates_PassThroughWhenUnknown(t *testing.T) {
 
 	c := &MCPDuplicateChecker{existingRecords: map[string]string{}}
 
-	in := make(chan mcpapiv0.ServerResponse, 1)
-	in <- mcpapiv0.ServerResponse{Server: mcpapiv0.ServerJSON{Name: "only", Version: "1"}}
+	in := make(chan types.SourceItem, 1)
+	in <- types.MCPSourceItem(mcpapiv0.ServerResponse{Server: mcpapiv0.ServerJSON{Name: "only", Version: "1"}})
 
 	close(in)
 

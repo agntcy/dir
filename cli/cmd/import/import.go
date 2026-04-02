@@ -21,13 +21,14 @@ import (
 
 var Command = &cobra.Command{
 	Use:   "import",
-	Short: "Import MCP records into DIR from an MCP registry or a local MCP server JSON file",
-	Long: `Import MCP server records into DIR. Records are transformed, enriched, optionally
+	Short: "Import MCP or A2A records into DIR from a registry or local JSON file",
+	Long: `Import MCP server or A2A AgentCard records into DIR. Records are transformed, enriched, optionally
 scanned, then pushed. The same pipeline runs for every source.
 
 Import kinds (--type):
   mcp            Local JSON: one MCP server object or a JSON array (--file-path)
   mcp-registry   HTTP MCP registry, e.g. v0.1 list API (--url)
+  a2a            Local JSON: one A2A AgentCard or an array of cards (--file-path)
 
 Examples (MCP registry):
   dirctl import --type=mcp-registry --url=https://registry.modelcontextprotocol.io/v0.1
@@ -37,6 +38,10 @@ Examples (MCP registry):
 Examples (local MCP JSON file):
   dirctl import --type=mcp --file-path=./servers.json
   dirctl import --type=mcp --file-path=./server.json --force --debug
+
+Examples (local A2A AgentCard JSON):
+  dirctl import --type=a2a --file-path=./agent.json
+  dirctl import --type=a2a --file-path=./agents.json --dry-run
 
 Preview and output:
   dirctl import --type=mcp-registry --url=https://registry.modelcontextprotocol.io/v0.1 --dry-run
@@ -82,25 +87,6 @@ func runImport(cmd *cobra.Command) error {
 	if err != nil {
 		return fmt.Errorf("failed to create importer: %w", err)
 	}
-
-	switch opts.Type {
-	case config.ImportTypeMCPRegistry:
-		presenter.Printf(cmd, "Starting import from MCP registry at %s...\n", opts.RegistryURL)
-	case config.ImportTypeMCP:
-		presenter.Printf(cmd, "Importing MCP server JSON from file: %s\n", opts.FilePath)
-	default:
-		presenter.Printf(cmd, "Starting import (type=%s)...\n", opts.Type)
-	}
-
-	if opts.DryRun {
-		presenter.Printf(cmd, "Mode: DRY RUN (preview only)\n")
-	}
-
-	if opts.Sign {
-		presenter.Printf(cmd, "Signing: ENABLED\n")
-	}
-
-	presenter.Printf(cmd, "\n")
 
 	var result *types.ImportResult
 

@@ -79,6 +79,31 @@ func TestConfig_Validate_FileOK(t *testing.T) {
 	}
 }
 
+func TestConfig_Validate_A2AFileOK(t *testing.T) {
+	t.Parallel()
+
+	dir := t.TempDir()
+
+	cfgPath := filepath.Join(dir, "mcphost.json")
+	if err := os.WriteFile(cfgPath, []byte(`{}`), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	c := Config{
+		Type:     ImportTypeA2A,
+		FilePath: filepath.Join(dir, "agent.json"),
+		Enricher: enricherconfig.Config{
+			ConfigFile:        cfgPath,
+			RequestsPerMinute: 1,
+		},
+		Scanner: scannerconfig.Config{Enabled: false},
+	}
+
+	if err := c.Validate(); err != nil {
+		t.Fatalf("Validate: %v", err)
+	}
+}
+
 func TestConfig_Validate_OK(t *testing.T) {
 	t.Parallel()
 

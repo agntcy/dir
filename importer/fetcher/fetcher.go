@@ -14,6 +14,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/agntcy/dir/importer/types"
 	mcpapiv0 "github.com/modelcontextprotocol/registry/pkg/api/v0"
 )
 
@@ -36,16 +37,16 @@ var supportedFilters = []string{
 	"cursor",
 }
 
-// Fetcher implements the pipeline.Fetcher interface for MCP registry.
-type mcpFetcher struct {
+// mcpRegistryFetcher implements types.Fetcher for the HTTP MCP registry (list-servers API).
+type mcpRegistryFetcher struct {
 	url        *url.URL
 	httpClient *http.Client
 	filters    map[string]string
 	limit      int
 }
 
-// NewFetcher creates a new MCP fetcher.
-func NewFetcher(baseURL string, filters map[string]string, limit int) (*mcpFetcher, error) {
+// NewMCPRegistryFetcher creates a fetcher for the MCP HTTP registry.
+func NewMCPRegistryFetcher(baseURL string, filters map[string]string, limit int) (*mcpRegistryFetcher, error) {
 	// Parse and validate base URL
 	u, err := url.Parse(baseURL + "/servers")
 	if err != nil {
@@ -59,7 +60,7 @@ func NewFetcher(baseURL string, filters map[string]string, limit int) (*mcpFetch
 		}
 	}
 
-	return &mcpFetcher{
+	return &mcpRegistryFetcher{
 		url: u,
 		httpClient: &http.Client{
 			Timeout: 30 * time.Second, //nolint:mnd
@@ -70,9 +71,9 @@ func NewFetcher(baseURL string, filters map[string]string, limit int) (*mcpFetch
 }
 
 // Fetch retrieves servers from the MCP registry and sends them to the output channel.
-func (f *mcpFetcher) Fetch(ctx context.Context) (<-chan mcpapiv0.ServerResponse, <-chan error) {
+func (f *mcpRegistryFetcher) Fetch(ctx context.Context) (<-chan types.SourceItem, <-chan error) {
 	// Use buffered channel to allow fetcher to work ahead of transformers
-	outputCh := make(chan mcpapiv0.ServerResponse, 50) //nolint:mnd
+	outputCh := make(chan types.SourceItem, 50) //nolint:mnd
 	errCh := make(chan error, 1)
 
 	go func() {
@@ -112,7 +113,7 @@ func (f *mcpFetcher) Fetch(ctx context.Context) (<-chan mcpapiv0.ServerResponse,
 					errCh <- ctx.Err()
 
 					return
-				case outputCh <- server:
+				case outputCh <- types.MCPSourceItem(server):
 					count++
 				}
 			}
@@ -130,7 +131,7 @@ func (f *mcpFetcher) Fetch(ctx context.Context) (<-chan mcpapiv0.ServerResponse,
 }
 
 // listServersPage fetches a single page of servers from the MCP registry.
-func (f *mcpFetcher) listServersPage(ctx context.Context, cursor string) ([]mcpapiv0.ServerResponse, string, error) {
+func (f *mcpRegistryFetcher) listServersPage(ctx context.Context, cursor string) ([]mcpapiv0.ServerResponse, string, error) {
 	// Add filters as query parameters
 	query := f.url.Query()
 
@@ -159,7 +160,7 @@ func (f *mcpFetcher) listServersPage(ctx context.Context, cursor string) ([]mcpa
 	req.Header.Set("Accept", "application/json")
 
 	// TODO: Implement retry logic for transient failures
-	resp, err := f.httpClient.Do(req) //nolint:gosec // G704: URL from configured base (NewFetcher); caller must use trusted registry.
+	resp, err := f.httpClient.Do(req) //nolint:gosec // G704: URL from configured base (NewMCPRegistryFetcher); caller must use trusted registry.
 	if err != nil {
 		return nil, "", fmt.Errorf("failed to fetch servers: %w", err)
 	}

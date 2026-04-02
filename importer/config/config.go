@@ -23,6 +23,8 @@ const (
 	ImportTypeMCPRegistry ImportType = "mcp-registry"
 	// ImportTypeMCP imports MCP server definition(s) from a local JSON file (one object or an array).
 	ImportTypeMCP ImportType = "mcp"
+	// ImportTypeA2A imports A2A AgentCard JSON from a local file (one object or an array).
+	ImportTypeA2A ImportType = "a2a"
 )
 
 // ClientInterface defines the interface for the DIR client used by importers.
@@ -64,9 +66,9 @@ func (c *Config) Validate() error {
 		if c.RegistryURL == "" {
 			return errors.New("registry URL is required when import type is mcp-registry")
 		}
-	case ImportTypeMCP:
+	case ImportTypeMCP, ImportTypeA2A:
 		if c.FilePath == "" {
-			return errors.New("file path is required when import type is mcp")
+			return errors.New("file path is required when import type is mcp or a2a")
 		}
 	default:
 		return fmt.Errorf("unsupported import type: %s", c.Type)

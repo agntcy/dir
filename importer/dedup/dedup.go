@@ -15,7 +15,6 @@ import (
 	"github.com/agntcy/dir/importer/shared"
 	"github.com/agntcy/dir/importer/types"
 	"github.com/agntcy/dir/utils/logging"
-	mcpapiv0 "github.com/modelcontextprotocol/registry/pkg/api/v0"
 )
 
 var dedupLogger = logging.Logger("importer/pipeline/dedup")
@@ -61,8 +60,8 @@ func (c *MCPDuplicateChecker) buildCache(ctx context.Context) error {
 		maxRecords = 50000 // Safety limit to prevent unbounded memory growth
 	)
 
-	// Search for both integration/mcp (new) and runtime/mcp (old) modules
-	modules := []string{"integration/mcp", "runtime/mcp"}
+	// Search for integration/mcp, runtime/mcp, and integration/a2a (A2A imports use top-level name@version like MCP)
+	modules := []string{"integration/mcp", "runtime/mcp", "integration/a2a"}
 
 	totalProcessed := 0
 
@@ -173,8 +172,8 @@ func (c *MCPDuplicateChecker) buildCache(ctx context.Context) error {
 // It filters out duplicate records from the input channel and returns a channel
 // with only non-duplicate records. It tracks only the skipped (duplicate) count.
 // The transform stage will track the total records that are actually processed.
-func (c *MCPDuplicateChecker) FilterDuplicates(ctx context.Context, inputCh <-chan mcpapiv0.ServerResponse, result *types.Result) <-chan mcpapiv0.ServerResponse {
-	outputCh := make(chan mcpapiv0.ServerResponse)
+func (c *MCPDuplicateChecker) FilterDuplicates(ctx context.Context, inputCh <-chan types.SourceItem, result *types.Result) <-chan types.SourceItem {
+	outputCh := make(chan types.SourceItem)
 
 	go func() {
 		defer close(outputCh)
@@ -211,10 +210,9 @@ func (c *MCPDuplicateChecker) FilterDuplicates(ctx context.Context, inputCh <-ch
 	return outputCh
 }
 
-// isDuplicate checks if a source record (MCP ServerResponse) is a duplicate.
-func (c *MCPDuplicateChecker) isDuplicate(source any) bool {
-	// Try to extract name@version from the MCP source
-	nameVersion := extractNameVersionFromSource(source)
+// isDuplicate checks if a source item is a duplicate of an existing directory record.
+func (c *MCPDuplicateChecker) isDuplicate(source types.SourceItem) bool {
+	nameVersion := source.NameVersion()
 	if nameVersion == "" {
 		// Can't determine - not a duplicate (will be processed)
 		return false
@@ -231,22 +229,4 @@ func (c *MCPDuplicateChecker) isDuplicate(source any) bool {
 	}
 
 	return exists
-}
-
-// extractNameVersionFromSource extracts "name@version" from a raw MCP source.
-// This avoids the need to transform the record just to check for duplicates.
-func extractNameVersionFromSource(source any) string {
-	// Try to convert to MCP ServerResponse
-	switch s := source.(type) {
-	case mcpapiv0.ServerResponse:
-		if s.Server.Name != "" && s.Server.Version != "" {
-			return fmt.Sprintf("%s@%s", s.Server.Name, s.Server.Version)
-		}
-	case *mcpapiv0.ServerResponse:
-		if s != nil && s.Server.Name != "" && s.Server.Version != "" {
-			return fmt.Sprintf("%s@%s", s.Server.Name, s.Server.Version)
-		}
-	}
-
-	return ""
 }

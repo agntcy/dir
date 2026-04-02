@@ -62,20 +62,12 @@ func (p *ClientPusher) Push(ctx context.Context, inputCh <-chan *corev1.Record) 
 		// Push records one-by-one to ensure all records are processed
 		// even if some fail validation
 		for record := range inputCh {
-			// Extract and remove debug source before pushing
-			var mcpSourceJSON string
-
-			if record.GetData() != nil && record.Data.Fields != nil {
-				if debugField, ok := record.GetData().GetFields()["__mcp_debug_source"]; ok {
-					mcpSourceJSON = debugField.GetStringValue()
-					// Remove debug field before validation
-					delete(record.GetData().GetFields(), "__mcp_debug_source")
-				}
-			}
+			// Extract and remove non-schema debug fields before push (DIR validates record data strictly).
+			debugSourceJSON := extractAndStripImportDebugFields(record)
 
 			ref, err := p.client.Push(ctx, record)
 			if err != nil {
-				p.handlePushError(err, record, mcpSourceJSON, errCh, ctx)
+				p.handlePushError(err, record, debugSourceJSON, errCh, ctx)
 
 				continue
 			}
@@ -105,13 +97,48 @@ func (p *ClientPusher) Push(ctx context.Context, inputCh <-chan *corev1.Record) 
 	return refCh, errCh
 }
 
+// extractAndStripImportDebugFields removes importer-only fields that are not part of the OASF
+// record schema. Returns combined text for stderr debug on push failure.
+func extractAndStripImportDebugFields(record *corev1.Record) string {
+	data := record.GetData()
+	if data == nil || data.GetFields() == nil {
+		return ""
+	}
+
+	fields := data.GetFields()
+
+	var parts []string
+
+	if v, ok := fields["__mcp_debug_source"]; ok {
+		parts = append(parts, "MCP server JSON:\n"+v.GetStringValue())
+
+		delete(fields, "__mcp_debug_source")
+	}
+
+	if v, ok := fields["__a2a_debug_source"]; ok {
+		parts = append(parts, "A2A AgentCard JSON:\n"+v.GetStringValue())
+
+		delete(fields, "__a2a_debug_source")
+	}
+
+	if len(parts) == 0 {
+		return ""
+	}
+
+	if len(parts) == 1 {
+		return parts[0]
+	}
+
+	return parts[0] + "\n\n" + parts[1]
+}
+
 // handlePushError handles push errors and sends them to the error channel.
-func (p *ClientPusher) handlePushError(err error, record *corev1.Record, mcpSourceJSON string, errCh chan<- error, ctx context.Context) {
+func (p *ClientPusher) handlePushError(err error, record *corev1.Record, debugSourceJSON string, errCh chan<- error, ctx context.Context) {
 	logger.Debug("Failed to push record", "error", err, "record", record)
 
 	// Print detailed debug output if debug flag is set
-	if p.debug && mcpSourceJSON != "" {
-		p.printPushFailure(record, mcpSourceJSON, err.Error())
+	if p.debug && debugSourceJSON != "" {
+		p.printPushFailure(record, debugSourceJSON, err.Error())
 	}
 
 	// Send error but continue processing remaining records
@@ -122,7 +149,7 @@ func (p *ClientPusher) handlePushError(err error, record *corev1.Record, mcpSour
 }
 
 // printPushFailure prints detailed debug information about a push failure.
-func (p *ClientPusher) printPushFailure(record *corev1.Record, mcpSourceJSON, errorMsg string) {
+func (p *ClientPusher) printPushFailure(record *corev1.Record, debugSourceJSON, errorMsg string) {
 	// Extract name@version for header
 	nameVersion, _ := ExtractNameVersion(record)
 	if nameVersion == "" {
@@ -133,7 +160,7 @@ func (p *ClientPusher) printPushFailure(record *corev1.Record, mcpSourceJSON, er
 	fmt.Fprintf(os.Stderr, "PUSH FAILED for: %s\n", nameVersion)
 	fmt.Fprintf(os.Stderr, "Error: %s\n", errorMsg)
 	fmt.Fprintf(os.Stderr, "========================================\n")
-	fmt.Fprintf(os.Stderr, "Original MCP Source:\n%s\n", formatJSON(mcpSourceJSON))
+	fmt.Fprintf(os.Stderr, "Original import source (stripped before push):\n%s\n", formatJSON(debugSourceJSON))
 	fmt.Fprintf(os.Stderr, "----------------------------------------\n")
 
 	// Print the generated OASF record

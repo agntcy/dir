@@ -20,7 +20,6 @@ import (
 	"github.com/agntcy/dir/importer/scanner"
 	"github.com/agntcy/dir/importer/transformer"
 	"github.com/agntcy/dir/importer/types"
-	mcpapiv0 "github.com/modelcontextprotocol/registry/pkg/api/v0"
 )
 
 // Importer implements the Importer interface for MCP registry using a pipeline architecture.
@@ -44,9 +43,11 @@ func New(ctx context.Context, client config.ClientInterface, cfg config.Config) 
 
 	switch cfg.Type {
 	case config.ImportTypeMCPRegistry:
-		fetch, err = fetcher.NewFetcher(cfg.RegistryURL, cfg.Filters, cfg.Limit)
+		fetch, err = fetcher.NewMCPRegistryFetcher(cfg.RegistryURL, cfg.Filters, cfg.Limit)
 	case config.ImportTypeMCP:
-		fetch, err = fetcher.NewFileFetcher(cfg.FilePath)
+		fetch, err = fetcher.NewMCPFileFetcher(cfg.FilePath)
+	case config.ImportTypeA2A:
+		fetch, err = fetcher.NewA2AFileFetcher(cfg.FilePath)
 	default:
 		return nil, fmt.Errorf("unsupported import type: %s", cfg.Type)
 	}
@@ -90,7 +91,7 @@ func (i *Importer) Run(ctx context.Context) *types.ImportResult {
 	fetchedCh, fetchErrCh := i.fetcher.Fetch(ctx)
 
 	// Stage 2: Filter duplicates (optional - only if duplicate checker is available)
-	var filteredCh <-chan mcpapiv0.ServerResponse
+	var filteredCh <-chan types.SourceItem
 	if !i.cfg.Force {
 		filteredCh = i.dedup.FilterDuplicates(ctx, fetchedCh, result)
 	} else {
@@ -225,7 +226,7 @@ func (i *Importer) DryRun(ctx context.Context) *types.ImportResult {
 	fetchedCh, fetchErrCh := i.fetcher.Fetch(ctx)
 
 	// Stage 2: Filter duplicates (optional - provides accurate preview)
-	var filteredCh <-chan mcpapiv0.ServerResponse
+	var filteredCh <-chan types.SourceItem
 	if !i.cfg.Force {
 		filteredCh = i.dedup.FilterDuplicates(ctx, fetchedCh, result)
 	} else {

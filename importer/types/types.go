@@ -8,7 +8,6 @@ import (
 	"sync"
 
 	corev1 "github.com/agntcy/dir/api/core/v1"
-	mcpapiv0 "github.com/modelcontextprotocol/registry/pkg/api/v0"
 )
 
 // Importer defines the interface for importing records from external registries.
@@ -34,14 +33,14 @@ type ImportResult struct {
 type Fetcher interface {
 	// Fetch retrieves records from the external source and sends them to the output channel.
 	// It should close the output channel when done and send any errors to the error channel.
-	Fetch(ctx context.Context) (<-chan mcpapiv0.ServerResponse, <-chan error)
+	Fetch(ctx context.Context) (<-chan SourceItem, <-chan error)
 }
 
 // Transformer is an interface for transforming records from one format to another.
 // For example, converting MCP servers to OASF format.
 type Transformer interface {
 	// Transform converts a source record to a target format.
-	Transform(ctx context.Context, inputCh <-chan mcpapiv0.ServerResponse, result *Result) (<-chan *corev1.Record, <-chan error)
+	Transform(ctx context.Context, inputCh <-chan SourceItem, result *Result) (<-chan *corev1.Record, <-chan error)
 }
 
 // Enricher is an interface for enriching records with additional data.
@@ -62,7 +61,7 @@ type DuplicateChecker interface {
 	// FilterDuplicates filters out duplicate records from the input channel.
 	// It tracks total and skipped counts in the provided result.
 	// Returns a channel with only non-duplicate records.
-	FilterDuplicates(ctx context.Context, inputCh <-chan mcpapiv0.ServerResponse, result *Result) <-chan mcpapiv0.ServerResponse
+	FilterDuplicates(ctx context.Context, inputCh <-chan SourceItem, result *Result) <-chan SourceItem
 }
 
 // Scanner is a pipeline stage that runs security scans between transform and push.
