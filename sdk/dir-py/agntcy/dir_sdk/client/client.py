@@ -14,9 +14,9 @@ import json
 import subprocess
 import tempfile
 from collections.abc import Callable, Sequence
+from datetime import UTC, datetime, timedelta
 
 import grpc
-import httpx
 from google.protobuf import json_format
 from cryptography.hazmat.primitives import serialization
 from spiffe import WorkloadApiClient, X509Source
@@ -27,6 +27,7 @@ from agntcy.dir_sdk.client.oauth_pkce import (
     fetch_openid_configuration,
     run_loopback_pkce_login,
 )
+from agntcy.dir_sdk.client.token_cache import CachedToken, TokenCache
 from agntcy.dir_sdk.models import (
     core_v1,
     events_v1,
@@ -192,34 +193,14 @@ class Client:
         self.config = config
         self._oauth_holder: OAuthTokenHolder | None = None
 
-        if config.auth_mode == "oauth_pkce":
-            token_ep = ""
-            if config.oidc_issuer:
-                try:
-                    meta = fetch_openid_configuration(
-                        config.oidc_issuer,
-                        verify=not config.tls_skip_verify,
-                        timeout=min(30.0, config.oidc_auth_timeout),
-                    )
-                    token_ep = str(meta["token_endpoint"])
-                except Exception:
-                    logger.exception(
-                        "OAuth PKCE: OIDC discovery failed; "
-                        "token refresh disabled until authenticate_oauth_pkce()",
-                    )
-            
-            self._oauth_holder = OAuthTokenHolder(
-                token_ep,
-                config.oidc_client_id,
-                config.oidc_client_secret,
-                verify_http=not config.tls_skip_verify,
-            )
-
-            self._oauth_holder.set_tokens(self.config.oidc_access_token)
-            if not self.config.oidc_access_token and self._has_machine_oidc_config():
-                self.run_client_credentials_flow()
+        if config.auth_mode == "oidc":
+            self._oauth_holder = OAuthTokenHolder()
+            if self.config.auth_token:
+                self._oauth_holder.set_tokens(self.config.auth_token)
             else:
-                self.authenticate_oauth_pkce()
+                cached_token = TokenCache().get_valid_token()
+                if cached_token is not None:
+                    self._oauth_holder.set_tokens(cached_token.access_token)
 
         # Create gRPC channel
         channel = self.__create_grpc_channel()
@@ -244,7 +225,7 @@ class Client:
             return self.__create_x509_channel()
         elif self.config.auth_mode == "tls":
             return self.__create_tls_channel()
-        elif self.config.auth_mode == "oauth_pkce":
+        elif self.config.auth_mode == "oidc":
             return self.__create_oauth_pkce_channel()
         else:
             msg = f"Unsupported auth mode: {self.config.auth_mode}"
@@ -288,6 +269,7 @@ class Client:
         channel = grpc.secure_channel(
             target=self.config.server_address,
             credentials=credentials,
+            options=self._grpc_channel_options(),
         )
 
         return channel
@@ -334,6 +316,7 @@ class Client:
         channel = grpc.secure_channel(
             target=self.config.server_address,
             credentials=credentials,
+            options=self._grpc_channel_options(),
         )
         channel = grpc.intercept_channel(channel, jwt_interceptor)
 
@@ -373,6 +356,7 @@ class Client:
         channel = grpc.secure_channel(
             target=self.config.server_address,
             credentials=credentials,
+            options=self._grpc_channel_options(),
         )
 
         return channel
@@ -382,11 +366,21 @@ class Client:
             msg = "OAuth token holder not initialized"
             raise RuntimeError(msg)
 
-        credentials = grpc.ssl_channel_credentials()
+        root_ca = None
+        if self.config.tls_ca_file:
+            try:
+                with open(self.config.tls_ca_file, "rb") as f:
+                    root_ca = f.read()
+            except OSError as e:
+                msg = f"Failed to read TLS CA file: {e}"
+                raise RuntimeError(msg) from e
+
+        credentials = grpc.ssl_channel_credentials(root_certificates=root_ca)
 
         channel = grpc.secure_channel(
             target=self.config.server_address,
             credentials=credentials,
+            options=self._grpc_channel_options(),
         )
 
         bearer = BearerAuthInterceptor(self._oauth_holder.get_access_token)
@@ -395,17 +389,16 @@ class Client:
     def authenticate_oauth_pkce(self) -> None:
         """Run browser-based OAuth 2.0 Authorization Code + PKCE login (loopback callback).
 
-        Requires ``auth_mode=\"oauth_pkce\"``, ``oidc_issuer``, and ``oidc_client_id``.
-        After success, gRPC calls use the returned access token until expiry (refresh
-        when a refresh_token is issued and ``oidc_issuer`` discovery succeeded).
+        Requires ``auth_mode=\"oidc\"``, ``oidc_issuer``, and ``oidc_client_id``.
+        After success, gRPC calls use the returned access token for bearer auth.
 
         Raises:
             ValueError: If auth mode or required OIDC settings are missing.
             OAuthPkceError: If the authorization or token exchange fails.
 
         """
-        if self.config.auth_mode != "oauth_pkce":
-            msg = "authenticate_oauth_pkce() requires auth_mode='oauth_pkce'"
+        if self.config.auth_mode != "oidc":
+            msg = "authenticate_oauth_pkce() requires auth_mode='oidc'"
             raise ValueError(msg)
         if not self.config.oidc_issuer:
             msg = "oidc_issuer is required for authenticate_oauth_pkce()"
@@ -423,119 +416,41 @@ class Client:
             timeout=min(30.0, self.config.oidc_auth_timeout),
         )
 
-        self._oauth_holder.set_token_endpoint(str(meta["token_endpoint"]))
         payload = run_loopback_pkce_login(self.config, metadata=meta)
         self._oauth_holder.update_from_token_response(payload)
+        TokenCache().save(self._cached_token_from_response(payload))
 
         print("Authenticated with OAuth PKCE")
         # Do not print raw OAuth credentials to stdout/logs.
         print("Access token acquired.")
 
-    def _has_machine_oidc_config(self) -> bool:
-        return (
-            bool(self.config.oidc_issuer.strip())
-            and bool(self.config.oidc_machine_client_id.strip())
-            and bool(
-                self.config.oidc_machine_client_secret.strip()
-                or self.config.oidc_machine_client_secret_file.strip()
-            )
+    def _cached_token_from_response(self, payload: dict[str, object]) -> CachedToken:
+        expires_at = None
+        expires_in = payload.get("expires_in")
+        if expires_in is not None:
+            expires_at = datetime.now(UTC) + timedelta(seconds=int(expires_in))
+
+        refresh_token = payload.get("refresh_token")
+        token_type = payload.get("token_type")
+
+        return CachedToken(
+            access_token=str(payload["access_token"]),
+            token_type=str(token_type) if isinstance(token_type, str) else "",
+            provider="oidc",
+            issuer=self.config.oidc_issuer,
+            refresh_token=str(refresh_token) if isinstance(refresh_token, str) else "",
+            expires_at=expires_at,
+            created_at=datetime.now(UTC),
         )
 
-    def _resolve_machine_client_secret(self) -> str:
-        secret = self.config.oidc_machine_client_secret.strip()
-        if not secret and self.config.oidc_machine_client_secret_file.strip():
-            try:
-                with open(self.config.oidc_machine_client_secret_file, encoding="utf-8") as f:
-                    secret = f.read().strip()
-            except OSError as e:
-                msg = f"Failed to read oidc_machine_client_secret_file: {e}"
-                raise RuntimeError(msg) from e
-        if not secret:
-            msg = "oidc_machine_client_secret is required for client credentials flow"
-            raise ValueError(msg)
-        return secret
-
-    def _resolve_machine_token_endpoint(self) -> str:
-        token_endpoint = self.config.oidc_machine_token_endpoint.strip()
-        if token_endpoint:
-            return token_endpoint
-        meta = fetch_openid_configuration(
-            self.config.oidc_issuer,
-            verify=not self.config.tls_skip_verify,
-            timeout=min(30.0, self.config.oidc_auth_timeout),
-        )
-        return str(meta["token_endpoint"])
-
-    def run_client_credentials_flow(self) -> None:
-        """Acquire OIDC access token via OAuth2 client_credentials grant.
-
-        Requires:
-        - ``auth_mode="oauth_pkce"``
-        - ``oidc_issuer``
-        - ``oidc_machine_client_id``
-        - ``oidc_machine_client_secret`` or ``oidc_machine_client_secret_file``
-
-        Optional:
-        - ``oidc_machine_token_endpoint`` to skip OIDC discovery.
-        - ``oidc_machine_scopes`` to request specific scopes.
-        """
-        if self.config.auth_mode != "oauth_pkce":
-            msg = "run_client_credentials_flow() requires auth_mode='oauth_pkce'"
-            raise ValueError(msg)
-        if not self.config.oidc_issuer:
-            msg = "oidc_issuer is required for client credentials flow"
-            raise ValueError(msg)
-        if not self.config.oidc_machine_client_id:
-            msg = "oidc_machine_client_id is required for client credentials flow"
-            raise ValueError(msg)
-        if self._oauth_holder is None:
-            msg = "OAuth token holder not initialized"
-            raise RuntimeError(msg)
-
-        client_secret = self._resolve_machine_client_secret()
-        token_endpoint = self._resolve_machine_token_endpoint()
-
-        body: dict[str, str] = {
-            "grant_type": "client_credentials",
-            "client_id": self.config.oidc_machine_client_id,
-            "client_secret": client_secret,
-        }
-        if self.config.oidc_machine_scopes:
-            body["scope"] = " ".join(self.config.oidc_machine_scopes)
-
-        with httpx.Client(
-            verify=not self.config.tls_skip_verify,
-            timeout=min(30.0, self.config.oidc_auth_timeout),
-        ) as http_client:
-            response = http_client.post(
-                token_endpoint,
-                data=body,
-                headers={"Content-Type": "application/x-www-form-urlencoded"},
-            )
-
-        try:
-            payload = response.json()
-        except ValueError:
-            payload = {}
-
-        if response.status_code < 200 or response.status_code >= 300:
-            error_code = payload.get("error")
-            error_desc = payload.get("error_description")
-            if error_code:
-                msg = f"Token exchange failed: {error_code} ({error_desc or 'no description'})"
-                raise RuntimeError(msg)
-            msg = f"Token exchange failed: HTTP {response.status_code}"
-            raise RuntimeError(msg)
-
-        access_token = payload.get("access_token")
-        if not isinstance(access_token, str) or not access_token:
-            msg = "Token response missing access_token"
-            raise RuntimeError(msg)
-
-        self._oauth_holder.set_token_endpoint(token_endpoint)
-        self._oauth_holder.update_from_token_response(payload)
-        print("Authenticated with OIDC client credentials")
-        print("Access token acquired.")
+    def _grpc_channel_options(self) -> list[tuple[str, str]]:
+        server_name = self.config.tls_server_name.strip()
+        if not server_name:
+            return []
+        return [
+            ("grpc.ssl_target_name_override", server_name),
+            ("grpc.default_authority", server_name),
+        ]
 
     def _server_name_from_addr(self, addr: str) -> str:
         # "host:port" -> "host"

@@ -8,7 +8,6 @@ from __future__ import annotations
 import logging
 import secrets
 import threading
-import time
 import webbrowser
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from typing import Any
@@ -23,7 +22,7 @@ logger = logging.getLogger(__name__)
 
 
 class OAuthPkceError(RuntimeError):
-    """Raised when PKCE loopback login or token refresh fails."""
+    """Raised when PKCE loopback login or token exchange fails."""
 
 
 def normalize_issuer(issuer: str) -> str:
@@ -75,91 +74,32 @@ def _form_post(
 
 
 class OAuthTokenHolder:
-    """Holds access/refresh tokens and refreshes access tokens when near expiry."""
+    """Holds the active OAuth access token for gRPC bearer auth."""
 
-    def __init__(
-        self,
-        token_endpoint: str,
-        client_id: str,
-        client_secret: str,
-        *,
-        verify_http: bool = True,
-        http_timeout: float = 30.0,
-    ) -> None:
-        self._token_endpoint = token_endpoint
-        self._client_id = client_id
-        self._client_secret = client_secret
-        self._verify_http = verify_http
-        self._http_timeout = http_timeout
+    def __init__(self) -> None:
         self._lock = threading.RLock()
         self._access_token: str | None = None
-        self._refresh_token: str | None = None
-        self._expires_at: float | None = None
 
-    def set_token_endpoint(self, token_endpoint: str) -> None:
-        with self._lock:
-            self._token_endpoint = token_endpoint
-
-    def set_tokens(
-        self,
-        access_token: str,
-        *,
-        refresh_token: str | None = None,
-        expires_in: int | None = None,
-    ) -> None:
+    def set_tokens(self, access_token: str) -> None:
         with self._lock:
             self._access_token = access_token
-            self._refresh_token = refresh_token
-            if expires_in is not None:
-                self._expires_at = time.monotonic() + float(expires_in)
-            else:
-                self._expires_at = None
 
     def update_from_token_response(self, payload: dict[str, Any]) -> None:
         access = payload.get("access_token")
         if not access or not isinstance(access, str):
             msg = "Token response missing access_token"
             raise OAuthPkceError(msg)
-        refresh = payload.get("refresh_token")
-        refresh_s = refresh if isinstance(refresh, str) else None
-        expires_in = payload.get("expires_in")
-        exp_i = int(expires_in) if expires_in is not None else None
-        self.set_tokens(access, refresh_token=refresh_s, expires_in=exp_i)
+        self.set_tokens(access)
 
     def get_access_token(self) -> str:
         with self._lock:
             if self._access_token is None:
                 msg = (
-                    "No OAuth access token: set DIRECTORY_CLIENT_OAUTH_ACCESS_TOKEN "
+                    "No OAuth access token: set DIRECTORY_CLIENT_AUTH_TOKEN "
                     "or call Client.authenticate_oauth_pkce()"
                 )
                 raise RuntimeError(msg)
-            if self._should_refresh_locked():
-                self._refresh_locked()
             return self._access_token  # type: ignore[return-value]
-
-    def _should_refresh_locked(self) -> bool:
-        if self._refresh_token is None or self._expires_at is None:
-            return False
-        return time.monotonic() >= self._expires_at - 60.0
-
-    def _refresh_locked(self) -> None:
-        if not self._refresh_token:
-            return
-        body: dict[str, str] = {
-            "grant_type": "refresh_token",
-            "refresh_token": self._refresh_token,
-            "client_id": self._client_id,
-        }
-        if self._client_secret:
-            body["client_secret"] = self._client_secret
-        payload = _form_post(
-            self._token_endpoint,
-            body,
-            verify=self._verify_http,
-            timeout=self._http_timeout,
-        )
-        self.update_from_token_response(payload)
 
 
 def exchange_authorization_code(
