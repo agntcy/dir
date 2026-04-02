@@ -12,6 +12,17 @@ on:
 
   workflow_call:
   workflow_dispatch:
+    inputs:
+      latest_tag_override:
+        description: "Latest tag override for testing"
+        required: false
+        type: string
+        default: ""
+      dry-run:
+        description: "Dry run mode (not creating a PR)"
+        required: false
+        type: boolean
+        default: false
 
 permissions:
   contents: write
@@ -33,7 +44,12 @@ jobs:
       - name: Download latest binary releases
         id: release-infos
         run: |
-          LATEST_VERSION=$(gh release view --json tagName --jq '.tagName')
+          if [ -n "${{ inputs.latest_tag_override }}" ]; then
+            LATEST_VERSION="${{ inputs.latest_tag_override }}"
+          else
+            LATEST_VERSION=$(gh release view --json tagName --jq '.tagName')
+          fi
+
           echo "LATEST_VERSION=$LATEST_VERSION" >> $GITHUB_OUTPUT
 
           while IFS=$'\t' read -r name hash; do
@@ -129,6 +145,6 @@ jobs:
           dirctl --help
 
       - name: Create PR
-        if: ${{ steps.brew-formula.outputs.DIFF_FOUND == 1 && steps.test-brew-formula.outcome == 'success' }}
+        if: ${{ steps.brew-formula.outputs.DIFF_FOUND == 1 && steps.test-brew-formula.outcome == 'success' && inputs.dry-run == false }}
         run: |
           gh pr create --title "chore(dirctl): update brew formula to ${{ steps.release-infos.outputs.LATEST_VERSION }}" --body "This PR is created by brew-formula-update workflow."
