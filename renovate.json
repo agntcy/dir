@@ -202,14 +202,18 @@
       "groupSlug": "zot",
       "matchPackageNames": [
         "github.com/project-zot/zot",
-        "ghcr.io/project-zot/zot"
+        "ghcr.io/project-zot/zot",
+        "zot"
       ],
       "description": ["Group zot version bumps into a single PR."]
     },
     {
       "groupName": "postgresql",
       "groupSlug": "postgresql",
-      "matchPackageNames": ["docker.io/bitnami/postgresql"],
+      "matchPackageNames": [
+        "docker.io/bitnami/postgresql",
+        "postgresql"
+      ],
       "pinDigests": true,
       "description": ["Group PostgreSQL version bumps into a single PR."]
     },
@@ -218,6 +222,7 @@
       "groupSlug": "spire",
       "matchPackageNames": [
         "github.com/spiffe/spire",
+        "github.com/spiffe/go-spiffe{/,}**",
         "ghcr.io/spiffe/spire-server",
         "ghcr.io/spiffe/spire-agent"
       ],
