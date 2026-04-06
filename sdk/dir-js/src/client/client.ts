@@ -17,6 +17,43 @@ import { createGrpcTransport } from '@connectrpc/connect-node';
 import { createClient as createClientSpiffe, X509SVID } from 'spiffe';
 import { fromJsonString } from '@bufbuild/protobuf';
 import * as models from '../models';
+import {
+  authenticateOauthPkceFlow,
+  bootstrapOAuthTokenHolder,
+  OAuthTokenHolder,
+  runClientCredentialsFlow,
+} from './oauth-pkce';
+import type { OauthPkceConfig } from './oauth-pkce';
+
+export { OAuthPkceError } from './oauth-pkce';
+export type { OauthPkceConfig } from './oauth-pkce';
+
+function parseBoolEnv(value: string | undefined, defaultVal: boolean): boolean {
+  if (value === undefined || value === '') {
+    return defaultVal;
+  }
+  return ['1', 'true', 'yes', 'on'].includes(value.trim().toLowerCase());
+}
+
+function parseIntEnv(value: string | undefined, defaultVal: number): number {
+  if (value === undefined || value === '') {
+    return defaultVal;
+  }
+  return parseInt(value, 10);
+}
+
+function parseCommaScopes(
+  value: string | undefined,
+  defaultList: string[],
+): string[] {
+  if (value === undefined || value === '') {
+    return [...defaultList];
+  }
+  return value.split(',').map((s) => s.trim()).filter(Boolean);
+}
+
+/** OAuth token state for {@link Client.create} with `oauth_pkce` (not part of the public ctor). */
+const oauthTokenHolderByClient = new WeakMap<Client, OAuthTokenHolder>();
 
 /**
  * Configuration class for the AGNTCY Directory client.
@@ -33,15 +70,44 @@ export class Config {
   static DEFAULT_TLS_CA_FILE = '';
   static DEFAULT_TLS_CERT_FILE = '';
   static DEFAULT_TLS_KEY_FILE = '';
+  static DEFAULT_TLS_SKIP_VERIFY = false;
+
+  static DEFAULT_OIDC_ISSUER = '';
+  static DEFAULT_OIDC_ACCESS_TOKEN = '';
+  static DEFAULT_OIDC_CLIENT_ID = '';
+  static DEFAULT_OIDC_CLIENT_SECRET = '';
+  static DEFAULT_OIDC_REDIRECT_URI = 'http://localhost:8484/callback';
+  static DEFAULT_OIDC_CALLBACK_PORT = 8484;
+  static DEFAULT_OIDC_AUTH_TIMEOUT = 300;
+  static DEFAULT_OIDC_SCOPES = ['openid', 'profile', 'email'];
+  static DEFAULT_OIDC_MACHINE_CLIENT_ID = '';
+  static DEFAULT_OIDC_MACHINE_CLIENT_SECRET = '';
+  static DEFAULT_OIDC_MACHINE_CLIENT_SECRET_FILE = '';
+  static DEFAULT_OIDC_MACHINE_SCOPES: string[] = [];
+  static DEFAULT_OIDC_MACHINE_TOKEN_ENDPOINT = '';
 
   serverAddress: string;
   dirctlPath: string;
   spiffeEndpointSocket: string;
-  authMode: '' | 'x509' | 'jwt' | 'tls';
+  authMode: '' | 'x509' | 'jwt' | 'tls' | 'oauth_pkce';
   jwtAudience: string;
   tlsCaFile: string;
   tlsCertFile: string
   tlsKeyFile: string;
+  tlsSkipVerify: boolean;
+  oidcIssuer: string;
+  oidcAccessToken: string;
+  oidcClientId: string;
+  oidcClientSecret: string;
+  oidcRedirectUri: string;
+  oidcCallbackPort: number;
+  oidcAuthTimeout: number;
+  oidcScopes: string[];
+  oidcMachineClientId: string;
+  oidcMachineClientSecret: string;
+  oidcMachineClientSecretFile: string;
+  oidcMachineScopes: string[];
+  oidcMachineTokenEndpoint: string;
 
   /**
    * Creates a new Config instance.
@@ -49,18 +115,38 @@ export class Config {
    * @param serverAddress - The server address to connect to. Defaults to '127.0.0.1:8888'
    * @param dirctlPath - Path to the dirctl executable. Defaults to 'dirctl'
    * @param spiffeEndpointSocket - Path to the spire server socket. Defaults to empty string.
-   * @param authMode - Authentication mode: '' for insecure, 'x509', 'jwt' or 'tls'. Defaults to ''
+   * @param authMode - Authentication mode: '' for insecure, 'x509', 'jwt', 'tls', or 'oauth_pkce'. Defaults to ''
    * @param jwtAudience - JWT audience for JWT authentication. Required when authMode is 'jwt'
+   * @param oidc - Optional OIDC and TLS verification overrides for ZITADEL / OIDC (see env vars).
    */
   constructor(
     serverAddress = Config.DEFAULT_SERVER_ADDRESS,
     dirctlPath = Config.DEFAULT_DIRCTL_PATH,
     spiffeEndpointSocket = Config.DEFAULT_SPIFFE_ENDPOINT_SOCKET,
-    authMode: '' | 'x509' | 'jwt' | 'tls' = Config.DEFAULT_AUTH_MODE as '' | 'x509' | 'jwt' | 'tls',
+    authMode: '' | 'x509' | 'jwt' | 'tls' | 'oauth_pkce' = Config.DEFAULT_AUTH_MODE as
+      | ''
+      | 'x509'
+      | 'jwt'
+      | 'tls'
+      | 'oauth_pkce',
     jwtAudience = Config.DEFAULT_JWT_AUDIENCE,
     tlsCaFile = Config.DEFAULT_TLS_CA_FILE,
     tlsCertFile = Config.DEFAULT_TLS_CERT_FILE,
-    tlsKeyFile = Config.DEFAULT_TLS_KEY_FILE
+    tlsKeyFile = Config.DEFAULT_TLS_KEY_FILE,
+    tlsSkipVerify = Config.DEFAULT_TLS_SKIP_VERIFY,
+    oidcIssuer = Config.DEFAULT_OIDC_ISSUER,
+    oidcAccessToken = Config.DEFAULT_OIDC_ACCESS_TOKEN,
+    oidcClientId = Config.DEFAULT_OIDC_CLIENT_ID,
+    oidcClientSecret = Config.DEFAULT_OIDC_CLIENT_SECRET,
+    oidcRedirectUri = Config.DEFAULT_OIDC_REDIRECT_URI,
+    oidcCallbackPort = Config.DEFAULT_OIDC_CALLBACK_PORT,
+    oidcAuthTimeout = Config.DEFAULT_OIDC_AUTH_TIMEOUT,
+    oidcScopes = Config.DEFAULT_OIDC_SCOPES,
+    oidcMachineClientId = Config.DEFAULT_OIDC_MACHINE_CLIENT_ID,
+    oidcMachineClientSecret = Config.DEFAULT_OIDC_MACHINE_CLIENT_SECRET,
+    oidcMachineClientSecretFile = Config.DEFAULT_OIDC_MACHINE_CLIENT_SECRET_FILE,
+    oidcMachineScopes = Config.DEFAULT_OIDC_MACHINE_SCOPES,
+    oidcMachineTokenEndpoint = Config.DEFAULT_OIDC_MACHINE_TOKEN_ENDPOINT,
   ) {
     // add protocol prefix if not set
     // use unsafe http unless spire/auth is used
@@ -68,8 +154,13 @@ export class Config {
       !serverAddress.startsWith('http://') &&
       !serverAddress.startsWith('https://')
     ) {
-      // use https protocol when X.509, JWT, or TLS auth is used
-      if (authMode === 'x509' || authMode === 'jwt' || authMode === 'tls') {
+      // use https protocol when X.509, JWT, TLS, or OAuth PKCE auth is used
+      if (
+        authMode === 'x509' ||
+        authMode === 'jwt' ||
+        authMode === 'tls' ||
+        authMode === 'oauth_pkce'
+      ) {
         serverAddress = `https://${serverAddress}`;
       } else {
         serverAddress = `http://${serverAddress}`;
@@ -84,6 +175,40 @@ export class Config {
     this.tlsCaFile = tlsCaFile;
     this.tlsCertFile = tlsCertFile;
     this.tlsKeyFile = tlsKeyFile;
+    this.tlsSkipVerify = tlsSkipVerify;
+    this.oidcIssuer = oidcIssuer;
+    this.oidcAccessToken = oidcAccessToken;
+    this.oidcClientId = oidcClientId;
+    this.oidcClientSecret = oidcClientSecret;
+    this.oidcRedirectUri = oidcRedirectUri;
+    this.oidcCallbackPort = oidcCallbackPort;
+    this.oidcAuthTimeout = oidcAuthTimeout;
+    this.oidcScopes = oidcScopes;
+    this.oidcMachineClientId = oidcMachineClientId;
+    this.oidcMachineClientSecret = oidcMachineClientSecret;
+    this.oidcMachineClientSecretFile = oidcMachineClientSecretFile;
+    this.oidcMachineScopes = oidcMachineScopes;
+    this.oidcMachineTokenEndpoint = oidcMachineTokenEndpoint;
+  }
+
+  /** Shape expected by OIDC helpers (e.g. DeX). */
+  toOauthPkceConfig(): OauthPkceConfig {
+    return {
+      oidcIssuer: this.oidcIssuer,
+      oidcClientId: this.oidcClientId,
+      oidcClientSecret: this.oidcClientSecret,
+      oidcRedirectUri: this.oidcRedirectUri,
+      oidcCallbackPort: this.oidcCallbackPort,
+      oidcAuthTimeout: this.oidcAuthTimeout,
+      oidcScopes: this.oidcScopes,
+      tlsSkipVerify: this.tlsSkipVerify,
+      oidcAccessToken: this.oidcAccessToken,
+      oidcMachineClientId: this.oidcMachineClientId,
+      oidcMachineClientSecret: this.oidcMachineClientSecret,
+      oidcMachineClientSecretFile: this.oidcMachineClientSecretFile,
+      oidcMachineScopes: this.oidcMachineScopes,
+      oidcMachineTokenEndpoint: this.oidcMachineTokenEndpoint,
+    };
   }
 
   /**
@@ -109,13 +234,83 @@ export class Config {
     const serverAddress =
       env[`${prefix}SERVER_ADDRESS`] || Config.DEFAULT_SERVER_ADDRESS;
     const spiffeEndpointSocketPath = env[`${prefix}SPIFFE_SOCKET_PATH`] || Config.DEFAULT_SPIFFE_ENDPOINT_SOCKET;
-    const authMode = (env[`${prefix}AUTH_MODE`] || Config.DEFAULT_AUTH_MODE) as '' | 'x509' | 'jwt' | 'tls';
+    const authMode = (env[`${prefix}AUTH_MODE`] || Config.DEFAULT_AUTH_MODE) as
+      | ''
+      | 'x509'
+      | 'jwt'
+      | 'tls'
+      | 'oauth_pkce';
     const jwtAudience = env[`${prefix}JWT_AUDIENCE`] || Config.DEFAULT_JWT_AUDIENCE;
     const tlsCaFile = env[`${prefix}TLS_CA_FILE`] || Config.DEFAULT_TLS_CA_FILE;
     const tlsCertFile = env[`${prefix}TLS_CERT_FILE`] || Config.DEFAULT_TLS_CERT_FILE;
     const tlsKeyFile = env[`${prefix}TLS_KEY_FILE`] || Config.DEFAULT_TLS_KEY_FILE;
+    const tlsSkipVerify = parseBoolEnv(
+      env[`${prefix}TLS_SKIP_VERIFY`],
+      Config.DEFAULT_TLS_SKIP_VERIFY,
+    );
+    const oidcIssuer =
+      env[`${prefix}OIDC_ISSUER`] || Config.DEFAULT_OIDC_ISSUER;
+    const oidcAccessToken =
+      env[`${prefix}OIDC_ACCESS_TOKEN`] || Config.DEFAULT_OIDC_ACCESS_TOKEN;
+    const oidcClientId =
+      env[`${prefix}OIDC_CLIENT_ID`] || Config.DEFAULT_OIDC_CLIENT_ID;
+    const oidcClientSecret =
+      env[`${prefix}OIDC_CLIENT_SECRET`] || Config.DEFAULT_OIDC_CLIENT_SECRET;
+    const oidcRedirectUri =
+      env[`${prefix}OIDC_REDIRECT_URI`] || Config.DEFAULT_OIDC_REDIRECT_URI;
+    const oidcCallbackPort = parseIntEnv(
+      env[`${prefix}OIDC_CALLBACK_PORT`],
+      Config.DEFAULT_OIDC_CALLBACK_PORT,
+    );
+    const oidcAuthTimeout = parseIntEnv(
+      env[`${prefix}OIDC_AUTH_TIMEOUT`],
+      Config.DEFAULT_OIDC_AUTH_TIMEOUT,
+    );
+    const oidcScopes = parseCommaScopes(
+      env[`${prefix}OIDC_SCOPES`],
+      Config.DEFAULT_OIDC_SCOPES,
+    );
+    const oidcMachineClientId =
+      env[`${prefix}OIDC_MACHINE_CLIENT_ID`] ??
+      Config.DEFAULT_OIDC_MACHINE_CLIENT_ID;
+    const oidcMachineClientSecret =
+      env[`${prefix}OIDC_MACHINE_CLIENT_SECRET`] ??
+      Config.DEFAULT_OIDC_MACHINE_CLIENT_SECRET;
+    const oidcMachineClientSecretFile =
+      env[`${prefix}OIDC_MACHINE_CLIENT_SECRET_FILE`] ??
+      Config.DEFAULT_OIDC_MACHINE_CLIENT_SECRET_FILE;
+    const oidcMachineScopes = parseCommaScopes(
+      env[`${prefix}OIDC_MACHINE_SCOPES`],
+      Config.DEFAULT_OIDC_MACHINE_SCOPES,
+    );
+    const oidcMachineTokenEndpoint =
+      env[`${prefix}OIDC_MACHINE_TOKEN_ENDPOINT`] ??
+      Config.DEFAULT_OIDC_MACHINE_TOKEN_ENDPOINT;
 
-    return new Config(serverAddress, dirctlPath, spiffeEndpointSocketPath, authMode, jwtAudience, tlsCaFile, tlsCertFile, tlsKeyFile);
+    return new Config(
+      serverAddress,
+      dirctlPath,
+      spiffeEndpointSocketPath,
+      authMode,
+      jwtAudience,
+      tlsCaFile,
+      tlsCertFile,
+      tlsKeyFile,
+      tlsSkipVerify,
+      oidcIssuer,
+      oidcAccessToken,
+      oidcClientId,
+      oidcClientSecret,
+      oidcRedirectUri,
+      oidcCallbackPort,
+      oidcAuthTimeout,
+      oidcScopes,
+      oidcMachineClientId,
+      oidcMachineClientSecret,
+      oidcMachineClientSecretFile,
+      oidcMachineScopes,
+      oidcMachineTokenEndpoint,
+    );
   }
 }
 
@@ -241,9 +436,52 @@ export class Client {
       case 'tls':
         return await this.createTLSTransport(config);
 
+      case 'oauth_pkce':
+        return await this.createOAuthPkceTransport(config);
+
       default:
         throw new Error(`Unsupported auth mode: ${config.authMode}`);
     }
+  }
+
+  /**
+   * Run browser-based Authorization Code + PKCE (e.g. ZITADEL). Updates tokens for subsequent RPCs.
+   */
+  async authenticateOauthPkce(): Promise<void> {
+    if (this.config.authMode !== 'oauth_pkce') {
+      throw new Error("authenticateOauthPkce() requires authMode 'oauth_pkce'");
+    }
+    const holder = oauthTokenHolderByClient.get(this);
+    if (!holder) {
+      throw new Error(
+        'OAuth token holder missing; use Client.create() for oauth_pkce',
+      );
+    }
+    await authenticateOauthPkceFlow(
+      this.config.toOauthPkceConfig(),
+      holder,
+    );
+  }
+
+  /**
+   * Acquire an access token via OAuth2 client_credentials (machine user).
+   */
+  async runClientCredentialsFlow(): Promise<void> {
+    if (this.config.authMode !== 'oauth_pkce') {
+      throw new Error(
+        "runClientCredentialsFlow() requires authMode 'oauth_pkce'",
+      );
+    }
+    const holder = oauthTokenHolderByClient.get(this);
+    if (!holder) {
+      throw new Error(
+        'OAuth token holder missing; use Client.create() for oauth_pkce',
+      );
+    }
+    await runClientCredentialsFlow(
+      this.config.toOauthPkceConfig(),
+      holder,
+    );
   }
 
   private static async createX509Transport(config: Config): Promise<Transport> {
@@ -284,6 +522,22 @@ export class Client {
     });
 
     return transport;
+  }
+
+  private static async createOAuthPkceTransport(
+    config: Config,
+  ): Promise<Transport> {
+    const bearerInterceptor: Interceptor = (next) => async (req) => {
+      const holder = await bootstrapOAuthTokenHolder(config.toOauthPkceConfig());
+      const token = await holder.getAccessToken();
+      req.header.set('authorization', `Bearer ${token}`);
+      return await next(req);
+    };
+
+    return createGrpcTransport({
+      baseUrl: config.serverAddress,
+      interceptors: [bearerInterceptor],
+    });
   }
 
   private static async createJWTTransport(config: Config): Promise<Transport> {
