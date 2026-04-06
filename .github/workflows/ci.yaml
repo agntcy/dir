@@ -196,6 +196,14 @@ jobs:
       image_repo: ghcr.io/agntcy
       image_tag: ${{ github.sha }}
 
+  cross-platform:
+    name: Cross-Platform Test
+    needs:
+      - lint
+      - license
+      - verify
+    uses: ./.github/workflows/reusable-test-e2e-cross-platform.yaml
+
   upload-codecov:
     name: Upload all coverage artifacts to Codecov
     needs: [test]
@@ -276,6 +284,7 @@ jobs:
       - test
       - upload-codecov
       - release
+      - cross-platform
     runs-on: ubuntu-latest
     steps:
       - name: Echo Success
