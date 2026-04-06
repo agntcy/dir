@@ -202,7 +202,8 @@
       "groupSlug": "zot",
       "matchPackageNames": [
         "github.com/project-zot/zot",
-        "ghcr.io/project-zot/zot"
+        "ghcr.io/project-zot/zot",
+        "zot"
       ],
       "description": ["Group zot version bumps into a single PR."]
     },
@@ -221,6 +222,7 @@
       "groupSlug": "spire",
       "matchPackageNames": [
         "github.com/spiffe/spire",
+        "github.com/spiffe/go-spiffe{/,}**",
         "ghcr.io/spiffe/spire-server",
         "ghcr.io/spiffe/spire-agent"
       ],
