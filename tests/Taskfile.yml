@@ -16,12 +16,6 @@ tasks:
       - task: test:e2e:mcp
       - task: test:e2e:daemon
 
-  test:e2e-production:
-    desc: Run E2E tests in production-like environments (multi-node, external OCI)
-    dir: "{{ .ROOT_DIR }}/tests"
-    cmds:
-      - go test -C ./e2e-production . -v -ginkgo.v
-
   test:e2e:local:cli:
     desc: Run only local CLI tests (with dedicated infrastructure)
     aliases: [e2e:local:cli]
