@@ -146,7 +146,21 @@ All release binaries are distributed via [GitHub Releases](https://github.com/ag
 
 ## Deployment
 
-Directory API services can be deployed either using the `Taskfile` or directly via the released Helm chart.
+### Using dirctl daemon
+
+The fastest way to run a local Directory instance is the built-in daemon. It bundles the gRPC apiserver and reconciler into a single process with embedded SQLite and a local OCI store.
+
+```bash
+dirctl daemon start
+```
+
+All state is stored under `~/.agntcy/dir/` by default. The daemon listens on `localhost:8888` and can be managed with `dirctl daemon stop` and `dirctl daemon status`.
+
+A custom configuration file can be used to connect to external databases (e.g. PostgreSQL) or remote OCI registries instead of the built-in SQLite and local store:
+
+```bash
+dirctl daemon start --config /path/to/daemon.config.yaml
+```
 
 ### Using Taskfile
 
