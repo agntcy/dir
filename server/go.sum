@@ -1,7 +1,7 @@
-buf.build/gen/go/agntcy/oasf-sdk/protocolbuffers/go v1.36.11-20260319105655-fded9a37a008.1 h1:Q2kLbmTG1hbFgA1UQ7etzYUQ6ZvhPJBXTt6eMYqsYEo=
-buf.build/gen/go/agntcy/oasf-sdk/protocolbuffers/go v1.36.11-20260319105655-fded9a37a008.1/go.mod h1:EEQp9sY+88ieMjKf9W4Uf9t3X6qV1nHY0DcGOxsMlac=
-buf.build/gen/go/agntcy/oasf/protocolbuffers/go v1.36.11-20260326102033-1d0c3906af74.1 h1:rXSI/co20WgDHm9KRxlJoryku+P9c4AdMvANVW7n4wc=
-buf.build/gen/go/agntcy/oasf/protocolbuffers/go v1.36.11-20260326102033-1d0c3906af74.1/go.mod h1:y7UzNChPK2OBXQxpwimQg6fSgSFLC1jZXTk9Y7HFfNc=
+buf.build/gen/go/agntcy/oasf-sdk/protocolbuffers/go v1.36.11-20260402143721-5fd9f22378bc.1 h1:Wv/Kt7TdTjCzIxv1rAXaNTWNgAZEUpwcayqaPCPr2qM=
+buf.build/gen/go/agntcy/oasf-sdk/protocolbuffers/go v1.36.11-20260402143721-5fd9f22378bc.1/go.mod h1:EEQp9sY+88ieMjKf9W4Uf9t3X6qV1nHY0DcGOxsMlac=
+buf.build/gen/go/agntcy/oasf/protocolbuffers/go v1.36.11-20260401141242-7940e8587109.1 h1:wngpJON4mo/L4p0X+az9g/0Kf4Vujp3TTVCP7u6TTXI=
+buf.build/gen/go/agntcy/oasf/protocolbuffers/go v1.36.11-20260401141242-7940e8587109.1/go.mod h1:y7UzNChPK2OBXQxpwimQg6fSgSFLC1jZXTk9Y7HFfNc=
 buf.build/gen/go/bufbuild/protovalidate/protocolbuffers/go v1.36.11-20260209202127-80ab13bee0bf.1 h1:PMmTMyvHScV9Mn8wc6ASge9uRcHy0jtqPd+fM35LmsQ=
 buf.build/gen/go/bufbuild/protovalidate/protocolbuffers/go v1.36.11-20260209202127-80ab13bee0bf.1/go.mod h1:tvtbpgaVXZX4g6Pn+AnzFycuRK3MOz5HJfEGeEllXYM=
 buf.build/go/protovalidate v1.1.3 h1:m2GVEgQWd7rk+vIoAZ+f0ygGjvQTuqPQapBBdcpWVPE=
@@ -60,8 +60,8 @@ github.com/Masterminds/semver/v3 v3.4.0/go.mod h1:4V+yj/TJE1HU9XfppCwVMZq3I84lpr
 github.com/Microsoft/go-winio v0.6.2 h1:F2VQgta7ecxGYO8k3ZZz3RS8fVIXVxONVUPlNERoyfY=
 github.com/Microsoft/go-winio v0.6.2/go.mod h1:yd8OoFMLzJbo9gZq8j5qaps8bJ9aShtEA8Ipt1oGCvU=
 github.com/OneOfOne/xxhash v1.2.2/go.mod h1:HSdplMjZKSmBqAxg5vPj2TmRDmfkzw+cTzAElWljhcU=
-github.com/agntcy/oasf-sdk/pkg v1.0.3 h1:DwL0bp8VsGW0XeAowKRlxKzWeI96xykP4+1uq/u/QPk=
-github.com/agntcy/oasf-sdk/pkg v1.0.3/go.mod h1:vgkPMrC0M6cO2Fzfwm4cGCPq4rVFKv5woEcw1rVyW9o=
+github.com/agntcy/oasf-sdk/pkg v1.0.4 h1:TRgcs/2xGKztCtKW2u2XVw6IS73aZoY7gfgzsnJRm+4=
+github.com/agntcy/oasf-sdk/pkg v1.0.4/go.mod h1:2MPWgpucMREsFp5uzjBIenA20hk6ZO39bDVHALZxaxk=
 github.com/antihax/optional v1.0.0/go.mod h1:uupD/76wgC+ih3iEmQUL+0Ugr19nfwCT1kdvxnR2qWY=
 github.com/antlr4-go/antlr/v4 v4.13.1 h1:SqQKkuVZ+zWkMMNkjy5FZe5mr5WURWnlpmOuzYWrPrQ=
 github.com/antlr4-go/antlr/v4 v4.13.1/go.mod h1:GKmUxMtwp6ZgGwZSva4eWPC5mS6vUAmOABFgjdkM7Nw=

@@ -14,11 +14,11 @@ replace (
 replace github.com/ThalesIgnite/crypto11 => github.com/ThalesGroup/crypto11 v1.6.0
 
 require (
-	buf.build/gen/go/agntcy/oasf/protocolbuffers/go v1.36.11-20260326102033-1d0c3906af74.1
+	buf.build/gen/go/agntcy/oasf/protocolbuffers/go v1.36.11-20260401141242-7940e8587109.1
 	buf.build/go/protovalidate v1.1.3
 	github.com/agntcy/dir/api v1.1.0
 	github.com/agntcy/dir/utils v1.1.0
-	github.com/agntcy/oasf-sdk/pkg v1.0.3
+	github.com/agntcy/oasf-sdk/pkg v1.0.4
 	github.com/casbin/casbin/v2 v2.135.0
 	github.com/glebarez/sqlite v1.11.0
 	github.com/grpc-ecosystem/go-grpc-middleware/v2 v2.3.3
@@ -63,7 +63,7 @@ require (
 )
 
 require (
-	buf.build/gen/go/agntcy/oasf-sdk/protocolbuffers/go v1.36.11-20260319105655-fded9a37a008.1 // indirect
+	buf.build/gen/go/agntcy/oasf-sdk/protocolbuffers/go v1.36.11-20260402143721-5fd9f22378bc.1 // indirect
 	github.com/AndreasBriese/bbloom v0.0.0-20190825152654-46b345b51c96 // indirect
 	github.com/Microsoft/go-winio v0.6.2 // indirect
 	github.com/benbjohnson/clock v1.3.5 // indirect
