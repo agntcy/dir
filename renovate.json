@@ -209,7 +209,10 @@
     {
       "groupName": "postgresql",
       "groupSlug": "postgresql",
-      "matchPackageNames": ["docker.io/bitnami/postgresql"],
+      "matchPackageNames": [
+        "docker.io/bitnami/postgresql",
+        "postgresql"
+      ],
       "pinDigests": true,
       "description": ["Group PostgreSQL version bumps into a single PR."]
     },
