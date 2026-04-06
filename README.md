@@ -146,6 +146,8 @@ All release binaries are distributed via [GitHub Releases](https://github.com/ag
 
 ## Deployment
 
+See the [Getting Started](https://docs.agntcy.org/dir/getting-started/) documentation for the full platform support matrix, prerequisites, and configuration details.
+
 ### Using dirctl daemon
 
 The fastest way to run a local Directory instance is the built-in daemon. It bundles the gRPC apiserver and reconciler into a single process with embedded SQLite and a local OCI store.
