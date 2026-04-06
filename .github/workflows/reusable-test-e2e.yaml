@@ -36,8 +36,8 @@ jobs:
           - task: test:e2e:mcp
             label: "MCP"
             coverage: false
-          - task: test:e2e:daemon
-            label: "Daemon"
+          - task: test:e2e:daemon:external
+            label: "Daemon External"
             coverage: false
           - task: test:e2e:spire
             label: "Federation"
