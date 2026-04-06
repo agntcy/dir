@@ -8,7 +8,7 @@ replace github.com/agntcy/dir/auth/authzserver => ../../authzserver
 require (
 	github.com/agntcy/dir/auth/authzserver v1.1.0
 	github.com/envoyproxy/go-control-plane/envoy v1.37.0
-	google.golang.org/grpc v1.79.3
+	google.golang.org/grpc v1.80.0
 	gopkg.in/yaml.v3 v3.0.1
 )
 
