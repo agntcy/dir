@@ -503,7 +503,7 @@ apiserver:
       repository: bitnami/postgresql
       # renovate: datasource=docker depName=docker.io/bitnami/postgresql versioning=docker
       tag: latest
-      digest: "sha256:621359194c6a0f0fd502c1996f40f539c3e5f2da43401b6d52ee5614722b7cba"
+      digest: "sha256:c30c796dcf96a67a405b905bf6aaf8d6c957d5c2fe729db6e67e2760e21fd9f8"
     auth:
       username: "dir"
       password: "password"  # Default password for development
