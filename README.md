@@ -146,32 +146,45 @@ All release binaries are distributed via [GitHub Releases](https://github.com/ag
 
 ## Deployment
 
-Directory API services can be deployed either using the `Taskfile` or directly via the released Helm chart.
+See the [Getting Started](https://docs.agntcy.org/dir/getting-started/) documentation for the full platform support matrix, prerequisites, and configuration details.
 
-### Using Taskfile
+### Using dirctl daemon
 
-This will start the necessary components such as storage and API services.
+The fastest way to run a local Directory instance is the built-in daemon. It bundles the gRPC apiserver and reconciler into a single process with embedded SQLite and a local OCI store.
+
+```bash
+dirctl daemon start
+```
+
+All state is stored under `~/.agntcy/dir/` by default. The daemon listens on `localhost:8888` and can be managed with `dirctl daemon stop` and `dirctl daemon status`.
+
+A custom configuration file can be used to connect to external databases (e.g. PostgreSQL) or remote OCI registries instead of the built-in SQLite and local store:
+```bash
+dirctl daemon start --config /path/to/daemon.config.yaml
+```
+
+### Using Docker Compose
+
+This will deploy Directory services (apiserver, reconciler, Zot registry, PostgreSQL) as separate containers using Docker Compose:
+
+```bash
+cd install/docker
+docker compose up -d
+```
+
+Contributors working on the Directory codebase can also use the Taskfile wrapper:
 
 ```bash
 task server:start
 ```
 
-### Using Helm chart
+### Using Helm Chart
 
 This will deploy Directory services into an existing Kubernetes cluster.
 
 ```bash
 helm pull oci://ghcr.io/agntcy/dir/helm-charts/dir --version v1.1.0
 helm upgrade --install dir oci://ghcr.io/agntcy/dir/helm-charts/dir --version v1.1.0
-```
-
-### Using Docker Compose
-
-This will deploy Directory services using Docker Compose:
-
-```bash
-cd install/docker
-docker compose up -d
 ```
 
 ## Copyright Notice
