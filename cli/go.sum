@@ -1,9 +1,9 @@
 al.essio.dev/pkg/shellescape v1.6.0 h1:NxFcEqzFSEVCGN2yq7Huv/9hyCEGVa/TncnOOBBeXHA=
 al.essio.dev/pkg/shellescape v1.6.0/go.mod h1:6sIqp7X2P6mThCQ7twERpZTuigpr6KbZWtls1U8I890=
-buf.build/gen/go/agntcy/oasf-sdk/protocolbuffers/go v1.36.11-20260319105655-fded9a37a008.1 h1:Q2kLbmTG1hbFgA1UQ7etzYUQ6ZvhPJBXTt6eMYqsYEo=
-buf.build/gen/go/agntcy/oasf-sdk/protocolbuffers/go v1.36.11-20260319105655-fded9a37a008.1/go.mod h1:EEQp9sY+88ieMjKf9W4Uf9t3X6qV1nHY0DcGOxsMlac=
-buf.build/gen/go/agntcy/oasf/protocolbuffers/go v1.36.11-20260326102033-1d0c3906af74.1 h1:rXSI/co20WgDHm9KRxlJoryku+P9c4AdMvANVW7n4wc=
-buf.build/gen/go/agntcy/oasf/protocolbuffers/go v1.36.11-20260326102033-1d0c3906af74.1/go.mod h1:y7UzNChPK2OBXQxpwimQg6fSgSFLC1jZXTk9Y7HFfNc=
+buf.build/gen/go/agntcy/oasf-sdk/protocolbuffers/go v1.36.11-20260402143721-5fd9f22378bc.1 h1:Wv/Kt7TdTjCzIxv1rAXaNTWNgAZEUpwcayqaPCPr2qM=
+buf.build/gen/go/agntcy/oasf-sdk/protocolbuffers/go v1.36.11-20260402143721-5fd9f22378bc.1/go.mod h1:EEQp9sY+88ieMjKf9W4Uf9t3X6qV1nHY0DcGOxsMlac=
+buf.build/gen/go/agntcy/oasf/protocolbuffers/go v1.36.11-20260401141242-7940e8587109.1 h1:wngpJON4mo/L4p0X+az9g/0Kf4Vujp3TTVCP7u6TTXI=
+buf.build/gen/go/agntcy/oasf/protocolbuffers/go v1.36.11-20260401141242-7940e8587109.1/go.mod h1:y7UzNChPK2OBXQxpwimQg6fSgSFLC1jZXTk9Y7HFfNc=
 buf.build/gen/go/bufbuild/protovalidate/protocolbuffers/go v1.36.11-20260209202127-80ab13bee0bf.1 h1:PMmTMyvHScV9Mn8wc6ASge9uRcHy0jtqPd+fM35LmsQ=
 buf.build/gen/go/bufbuild/protovalidate/protocolbuffers/go v1.36.11-20260209202127-80ab13bee0bf.1/go.mod h1:tvtbpgaVXZX4g6Pn+AnzFycuRK3MOz5HJfEGeEllXYM=
 buf.build/go/protovalidate v1.1.3 h1:m2GVEgQWd7rk+vIoAZ+f0ygGjvQTuqPQapBBdcpWVPE=
@@ -114,8 +114,8 @@ github.com/PuerkitoBio/goquery v1.12.0 h1:pAcL4g3WRXekcB9AU/y1mbKez2dbY2AajVhtkO
 github.com/PuerkitoBio/goquery v1.12.0/go.mod h1:802ej+gV2y7bbIhOIoPY5sT183ZW0YFofScC4q/hIpQ=
 github.com/ThalesGroup/crypto11 v1.6.0 h1:Og9EMn44fBS4GNnGnH1aqHnF2wL6F7IU/RhpJajWX/4=
 github.com/ThalesGroup/crypto11 v1.6.0/go.mod h1:H6LRjN5R5SHxTrLqGNteisLDI0/IC6+SGx1pHtbwizE=
-github.com/agntcy/oasf-sdk/pkg v1.0.3 h1:DwL0bp8VsGW0XeAowKRlxKzWeI96xykP4+1uq/u/QPk=
-github.com/agntcy/oasf-sdk/pkg v1.0.3/go.mod h1:vgkPMrC0M6cO2Fzfwm4cGCPq4rVFKv5woEcw1rVyW9o=
+github.com/agntcy/oasf-sdk/pkg v1.0.4 h1:TRgcs/2xGKztCtKW2u2XVw6IS73aZoY7gfgzsnJRm+4=
+github.com/agntcy/oasf-sdk/pkg v1.0.4/go.mod h1:2MPWgpucMREsFp5uzjBIenA20hk6ZO39bDVHALZxaxk=
 github.com/alecthomas/assert/v2 v2.11.0 h1:2Q9r3ki8+JYXvGsDyBXwH3LcJ+WK5D0gc5E8vS6K3D0=
 github.com/alecthomas/assert/v2 v2.11.0/go.mod h1:Bze95FyfUr7x34QZrjL+XP+0qgp/zg8yS+TtBj1WA3k=
 github.com/alecthomas/chroma/v2 v2.23.1 h1:nv2AVZdTyClGbVQkIzlDm/rnhk1E9bU9nXwmZ/Vk/iY=
