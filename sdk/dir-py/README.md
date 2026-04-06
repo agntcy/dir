@@ -100,13 +100,92 @@ jwt_config = Config(
 jwt_client = Client(jwt_config)
 ```
 
+### OAuth 2.0 for Directory Bearer Auth
+
+The Python SDK currently supports these OIDC/OAuth flows for Directory bearer auth:
+
+- Interactive login via Authorization Code + PKCE with a loopback callback
+- Pre-issued access token via `DIRECTORY_CLIENT_AUTH_TOKEN`
+
+Interactive PKCE sessions are cached in the same location as the Go client:
+`$XDG_CONFIG_HOME/dirctl/auth-token.json` or `~/.config/dirctl/auth-token.json`.
+Explicit pre-issued tokens are used directly and are not cached.
+
+Use this mode when your deployment expects a **Bearer access token** on gRPC (for example via a gateway that validates OIDC tokens). Register your IdP application with a **redirect URI** that matches `oidc_redirect_uri` exactly (for example `http://localhost:8484/callback`). The SDK starts a short-lived HTTP server on loopback to receive the authorization redirect.
+
+Some IdPs use **public clients** with PKCE; Authlib may still expect a `client_secret` value in configuration. In that case, use a **random placeholder** from environment variables, not a real secret in source code.
+
+**Important:** The default in-repo Envoy authz stack validates **GitHub** tokens. OIDC access tokens from your IdP provider only work if your environment’s gateway or auth service is configured to accept them.
+
+```bash
+export DIRECTORY_CLIENT_AUTH_MODE="oidc"
+export DIRECTORY_CLIENT_SERVER_ADDRESS="directory.example.com:443"
+export DIRECTORY_CLIENT_OIDC_ISSUER="https://your-idp-provider.example.com"
+export DIRECTORY_CLIENT_OIDC_CLIENT_ID="your-app-client-id"
+# Optional placeholder for public clients:
+export DIRECTORY_CLIENT_OIDC_CLIENT_SECRET="random-non-secret-string"
+export DIRECTORY_CLIENT_OIDC_REDIRECT_URI="http://localhost:8484/callback"
+# Optional: comma-separated scopes
+export DIRECTORY_CLIENT_OIDC_SCOPES="openid,profile,email"
+# Optional: override gRPC TLS server name / authority
+export DIRECTORY_CLIENT_TLS_SERVER_NAME="directory.example.com"
+# Optional: non-interactive use (CI) after obtaining a token elsewhere
+export DIRECTORY_CLIENT_AUTH_TOKEN="your-access-token"
+# Optional: skip TLS certificate verification for IdP HTTPS only (development; avoid in production)
+export DIRECTORY_CLIENT_TLS_SKIP_VERIFY="false"
+```
+
+```python
+from agntcy.dir_sdk.client import Client, Config, OAuthPkceError
+
+config = Config(
+    server_address="directory.example.com:443",
+    auth_mode="oidc",
+    oidc_issuer="https://your-idp-provider.example.com",
+    oidc_client_id="your-app-client-id",
+    oidc_client_secret="random-placeholder-if-required",
+    oidc_redirect_uri="http://localhost:8484/callback",
+    oidc_callback_port=8484,
+    oidc_auth_timeout=300.0,
+)
+client = Client(config)
+# Client construction does not start browser login automatically.
+# Opens the system browser and completes PKCE on loopback:
+try:
+    client.authenticate_oauth_pkce()
+except OAuthPkceError as e:
+    print(f"Login failed: {e}")
+```
+
+gRPC transport to the Directory still uses **TLS with system trust anchors** (or `tls_ca_file` if set). `TLS_SKIP_VERIFY` applies to **HTTPS calls to the OIDC issuer** (discovery and token endpoint), not to relaxing gRPC TLS to the Directory.
+
+If you need to force the TLS server name / authority used by gRPC, set
+`DIRECTORY_CLIENT_TLS_SERVER_NAME`.
+
+For non-interactive callers that already have an access token, skip PKCE entirely:
+
+```python
+from agntcy.dir_sdk.client import Client, Config
+
+config = Config(
+    server_address="directory.example.com:443",
+    auth_mode="oidc",
+    auth_token="your-access-token",
+)
+client = Client(config)
+```
+
+If no explicit `auth_token` is provided, the SDK will also try to reuse a valid
+cached interactive token from the shared `dirctl` cache path before you need to
+run `client.authenticate_oauth_pkce()`.
+
 ## Error Handling
 
 The SDK primarily raises `grpc.RpcError` exceptions for gRPC communication issues and `RuntimeError` for configuration problems:
 
 ```python
 import grpc
-from agntcy.dir_sdk.client import Client
+from agntcy.dir_sdk.client import Client, OAuthPkceError
 
 try:
     client = Client()
@@ -122,6 +201,9 @@ except grpc.RpcError as e:
 except RuntimeError as e:
     # Handle configuration or subprocess errors
     print(f"Runtime error: {e}")
+except OAuthPkceError as e:
+    # Browser / loopback OAuth PKCE flow failed
+    print(f"OAuth error: {e}")
 ```
 
 Common gRPC status codes:

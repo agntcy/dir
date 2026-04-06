@@ -11,10 +11,10 @@ import builtins
 import logging
 import os
 import json
-import re
 import subprocess
 import tempfile
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
+from datetime import UTC, datetime, timedelta
 
 import grpc
 from google.protobuf import json_format
@@ -22,6 +22,12 @@ from cryptography.hazmat.primitives import serialization
 from spiffe import WorkloadApiClient, X509Source
 
 from agntcy.dir_sdk.client.config import Config
+from agntcy.dir_sdk.client.oauth_pkce import (
+    OAuthTokenHolder,
+    fetch_openid_configuration,
+    run_loopback_pkce_login,
+)
+from agntcy.dir_sdk.client.token_cache import CachedToken, TokenCache
 from agntcy.dir_sdk.models import (
     core_v1,
     events_v1,
@@ -109,6 +115,50 @@ class JWTAuthInterceptor(grpc.UnaryUnaryClientInterceptor, grpc.UnaryStreamClien
         return continuation(new_details, request_iterator)
 
 
+class BearerAuthInterceptor(
+    grpc.UnaryUnaryClientInterceptor,
+    grpc.UnaryStreamClientInterceptor,
+    grpc.StreamUnaryClientInterceptor,
+    grpc.StreamStreamClientInterceptor,
+):
+    """gRPC interceptor that adds a static OAuth Bearer access token to requests."""
+
+    def __init__(self, token_supplier: Callable[[], str]) -> None:
+        self._token_supplier = token_supplier
+
+    def _add_bearer_metadata(self, client_call_details):
+        token = self._token_supplier()
+        metadata = []
+        if client_call_details.metadata is not None:
+            metadata = list(client_call_details.metadata)
+        metadata.append(("authorization", f"Bearer {token}"))
+
+        return grpc._interceptor._ClientCallDetails(
+            method=client_call_details.method,
+            timeout=client_call_details.timeout,
+            metadata=metadata,
+            credentials=client_call_details.credentials,
+            wait_for_ready=client_call_details.wait_for_ready,
+            compression=client_call_details.compression,
+        )
+
+    def intercept_unary_unary(self, continuation, client_call_details, request):
+        new_details = self._add_bearer_metadata(client_call_details)
+        return continuation(new_details, request)
+
+    def intercept_unary_stream(self, continuation, client_call_details, request):
+        new_details = self._add_bearer_metadata(client_call_details)
+        return continuation(new_details, request)
+
+    def intercept_stream_unary(self, continuation, client_call_details, request_iterator):
+        new_details = self._add_bearer_metadata(client_call_details)
+        return continuation(new_details, request_iterator)
+
+    def intercept_stream_stream(self, continuation, client_call_details, request_iterator):
+        new_details = self._add_bearer_metadata(client_call_details)
+        return continuation(new_details, request_iterator)
+
+
 class Client:
     """High-level client for interacting with AGNTCY Directory services.
 
@@ -122,7 +172,10 @@ class Client:
 
     """
 
-    def __init__(self, config: Config | None = None) -> None:
+    def __init__(
+        self,
+        config: Config | None = None,
+    ) -> None:
         """Initialize the client with the given configuration.
 
         Args:
@@ -138,6 +191,16 @@ class Client:
         if config is None:
             config = Config.load_from_env()
         self.config = config
+        self._oauth_holder: OAuthTokenHolder | None = None
+
+        if config.auth_mode == "oidc":
+            self._oauth_holder = OAuthTokenHolder()
+            if self.config.auth_token:
+                self._oauth_holder.set_tokens(self.config.auth_token)
+            else:
+                cached_token = TokenCache().get_valid_token()
+                if cached_token is not None:
+                    self._oauth_holder.set_tokens(cached_token.access_token)
 
         # Create gRPC channel
         channel = self.__create_grpc_channel()
@@ -162,6 +225,8 @@ class Client:
             return self.__create_x509_channel()
         elif self.config.auth_mode == "tls":
             return self.__create_tls_channel()
+        elif self.config.auth_mode == "oidc":
+            return self.__create_oauth_pkce_channel()
         else:
             msg = f"Unsupported auth mode: {self.config.auth_mode}"
             raise ValueError(msg)
@@ -204,6 +269,7 @@ class Client:
         channel = grpc.secure_channel(
             target=self.config.server_address,
             credentials=credentials,
+            options=self._grpc_channel_options(),
         )
 
         return channel
@@ -250,6 +316,7 @@ class Client:
         channel = grpc.secure_channel(
             target=self.config.server_address,
             credentials=credentials,
+            options=self._grpc_channel_options(),
         )
         channel = grpc.intercept_channel(channel, jwt_interceptor)
 
@@ -289,9 +356,105 @@ class Client:
         channel = grpc.secure_channel(
             target=self.config.server_address,
             credentials=credentials,
+            options=self._grpc_channel_options(),
         )
 
         return channel
+
+    def __create_oauth_pkce_channel(self) -> grpc.Channel:
+        if self._oauth_holder is None:
+            msg = "OAuth token holder not initialized"
+            raise RuntimeError(msg)
+
+        root_ca = None
+        if self.config.tls_ca_file:
+            try:
+                with open(self.config.tls_ca_file, "rb") as f:
+                    root_ca = f.read()
+            except OSError as e:
+                msg = f"Failed to read TLS CA file: {e}"
+                raise RuntimeError(msg) from e
+
+        credentials = grpc.ssl_channel_credentials(root_certificates=root_ca)
+
+        channel = grpc.secure_channel(
+            target=self.config.server_address,
+            credentials=credentials,
+            options=self._grpc_channel_options(),
+        )
+
+        bearer = BearerAuthInterceptor(self._oauth_holder.get_access_token)
+        return grpc.intercept_channel(channel, bearer)
+
+    def authenticate_oauth_pkce(self) -> None:
+        """Run browser-based OAuth 2.0 Authorization Code + PKCE login (loopback callback).
+
+        Requires ``auth_mode=\"oidc\"``, ``oidc_issuer``, and ``oidc_client_id``.
+        After success, gRPC calls use the returned access token for bearer auth.
+
+        Raises:
+            ValueError: If auth mode or required OIDC settings are missing.
+            OAuthPkceError: If the authorization or token exchange fails.
+
+        """
+        if self.config.auth_mode != "oidc":
+            msg = "authenticate_oauth_pkce() requires auth_mode='oidc'"
+            raise ValueError(msg)
+        if not self.config.oidc_issuer:
+            msg = "oidc_issuer is required for authenticate_oauth_pkce()"
+            raise ValueError(msg)
+        if not self.config.oidc_client_id:
+            msg = "oidc_client_id is required for authenticate_oauth_pkce()"
+            raise ValueError(msg)
+        if self._oauth_holder is None:
+            msg = "OAuth token holder not initialized"
+            raise RuntimeError(msg)
+
+        meta = fetch_openid_configuration(
+            self.config.oidc_issuer,
+            verify=not self.config.tls_skip_verify,
+            timeout=min(30.0, self.config.oidc_auth_timeout),
+        )
+
+        payload = run_loopback_pkce_login(self.config, metadata=meta)
+        self._oauth_holder.update_from_token_response(payload)
+        TokenCache().save(self._cached_token_from_response(payload))
+
+        print("Authenticated with OAuth PKCE")
+        # Do not print raw OAuth credentials to stdout/logs.
+        print("Access token acquired.")
+
+    def _cached_token_from_response(self, payload: dict[str, object]) -> CachedToken:
+        expires_at = None
+        expires_in = payload.get("expires_in")
+        if expires_in is not None:
+            expires_at = datetime.now(UTC) + timedelta(seconds=int(expires_in))
+
+        refresh_token = payload.get("refresh_token")
+        token_type = payload.get("token_type")
+
+        return CachedToken(
+            access_token=str(payload["access_token"]),
+            token_type=str(token_type) if isinstance(token_type, str) else "",
+            provider="oidc",
+            issuer=self.config.oidc_issuer,
+            refresh_token=str(refresh_token) if isinstance(refresh_token, str) else "",
+            expires_at=expires_at,
+            created_at=datetime.now(UTC),
+        )
+
+    def _grpc_channel_options(self) -> list[tuple[str, str]]:
+        server_name = self.config.tls_server_name.strip()
+        if not server_name:
+            return []
+        return [
+            ("grpc.ssl_target_name_override", server_name),
+            ("grpc.default_authority", server_name),
+        ]
+
+    def _server_name_from_addr(self, addr: str) -> str:
+        # "host:port" -> "host"
+        return addr.rsplit(":", 1)[0]
 
     def publish(
         self,

@@ -64,7 +64,6 @@ def generate_record(name):
 
 
 def main() -> None:
-    # Initialize the client
     client = Client()
 
     records = [generate_record(x) for x in ["example-record", "example-record2"]]
@@ -107,7 +106,7 @@ def main() -> None:
 
     # Search objects
     search_query = search_v1.RecordQuery(
-        type=search_v1.RECORD_QUERY_TYPE_SKILL_ID, value="1",
+        type=search_v1.RECORD_QUERY_TYPE_VERSION, value="v1.*",
     )
 
     search_request = search_v1.SearchCIDsRequest(queries=[search_query], limit=3)
