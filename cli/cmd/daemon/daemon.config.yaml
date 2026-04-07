@@ -32,6 +32,7 @@ server:
       enabled: true
   routing:
     listen_address: "/ip4/0.0.0.0/tcp/8999"
+    key_path: "node.key"
     datastore_dir: "routing"
     # bootstrap_peers:
     #   - "/dns4/remote-dir.example.com/tcp/8999/p2p/<peer-id>"

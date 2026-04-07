@@ -5,11 +5,13 @@ package daemon
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"os/signal"
 	"syscall"
 
+	networkinit "github.com/agntcy/dir/cli/cmd/network/init"
 	reconciler "github.com/agntcy/dir/reconciler/service"
 	"github.com/agntcy/dir/server"
 	ocilib "github.com/agntcy/dir/server/store/oci"
@@ -33,6 +35,7 @@ The daemon blocks until SIGINT or SIGTERM is received.`,
 	RunE: runStart,
 }
 
+//nolint:cyclop
 func runStart(cmd *cobra.Command, _ []string) error {
 	running, pid, err := readPID()
 	if err != nil {
@@ -50,6 +53,12 @@ func runStart(cmd *cobra.Command, _ []string) error {
 	cfg, err := loadConfig()
 	if err != nil {
 		return fmt.Errorf("failed to load config: %w", err)
+	}
+
+	if cfg.Server.Routing.KeyPath != "" {
+		if err := ensureKeyFile(cfg.Server.Routing.KeyPath); err != nil {
+			return fmt.Errorf("failed to ensure peer identity key: %w", err)
+		}
 	}
 
 	ctx, cancel := context.WithCancel(cmd.Context())
@@ -106,6 +115,29 @@ func runStart(cmd *cobra.Command, _ []string) error {
 	case <-ctx.Done():
 		logger.Info("Context cancelled, shutting down")
 	}
+
+	return nil
+}
+
+// ensureKeyFile generates a persistent Ed25519 identity key if one does not
+// already exist at path. Uses the same PKCS#8 PEM format as `dirctl network init`.
+func ensureKeyFile(path string) error {
+	if _, err := os.Stat(path); err == nil {
+		return nil
+	} else if !errors.Is(err, os.ErrNotExist) {
+		return fmt.Errorf("failed to stat key file: %w", err)
+	}
+
+	_, pemData, err := networkinit.GenerateED25519OpenSSLKey()
+	if err != nil {
+		return fmt.Errorf("failed to generate Ed25519 key: %w", err)
+	}
+
+	if err := os.WriteFile(path, pemData, 0o600); err != nil { //nolint:mnd
+		return fmt.Errorf("failed to write key file: %w", err)
+	}
+
+	logger.Info("Generated persistent peer identity key", "path", path)
 
 	return nil
 }
