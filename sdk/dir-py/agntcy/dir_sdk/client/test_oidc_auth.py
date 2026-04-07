@@ -7,8 +7,9 @@ import json
 import os
 import tempfile
 import unittest
+import unittest.mock
+
 from datetime import UTC, datetime, timedelta
-from unittest import mock
 
 from agntcy.dir_sdk.client import Client, Config
 from agntcy.dir_sdk.client.oauth_pkce import OAuthTokenHolder
@@ -17,7 +18,7 @@ from agntcy.dir_sdk.client.token_cache import TOKEN_CACHE_FILE, TokenCache
 
 class OIDCAuthConfigTests(unittest.TestCase):
     def test_load_from_env_uses_auth_token(self) -> None:
-        with mock.patch.dict(
+        with unittest.mock.patch.dict(
             "os.environ",
             {
                 "DIRECTORY_CLIENT_AUTH_TOKEN": "primary-token",
@@ -30,7 +31,7 @@ class OIDCAuthConfigTests(unittest.TestCase):
         self.assertEqual(config.oidc_access_token, "primary-token")
 
     def test_load_from_env_ignores_legacy_token_names(self) -> None:
-        with mock.patch.dict(
+        with unittest.mock.patch.dict(
             "os.environ",
             {
                 "DIRECTORY_CLIENT_OIDC_ACCESS_TOKEN": "legacy-token",
@@ -51,7 +52,7 @@ class OIDCAuthConfigTests(unittest.TestCase):
 
     def test_token_cache_uses_dirctl_path(self) -> None:
         with tempfile.TemporaryDirectory() as tmp_dir:
-            with mock.patch.dict("os.environ", {"XDG_CONFIG_HOME": tmp_dir}, clear=True):
+            with unittest.mock.patch.dict("os.environ", {"XDG_CONFIG_HOME": tmp_dir}, clear=True):
                 cache = TokenCache()
 
         self.assertEqual(
@@ -69,13 +70,13 @@ class OIDCAuthClientTests(unittest.TestCase):
         )
 
         with (
-            mock.patch(
+            unittest.mock.patch(
                 "agntcy.dir_sdk.client.client.fetch_openid_configuration",
             ) as fetch_mock,
-            mock.patch(
+            unittest.mock.patch(
                 "agntcy.dir_sdk.client.client.run_loopback_pkce_login",
             ) as login_mock,
-            mock.patch(
+            unittest.mock.patch(
                 "agntcy.dir_sdk.client.client.TokenCache.get_valid_token",
                 return_value=None,
             ),
@@ -93,13 +94,13 @@ class OIDCAuthClientTests(unittest.TestCase):
         )
 
         with (
-            mock.patch(
+            unittest.mock.patch(
                 "agntcy.dir_sdk.client.client.fetch_openid_configuration",
             ) as fetch_mock,
-            mock.patch(
+            unittest.mock.patch(
                 "agntcy.dir_sdk.client.client.run_loopback_pkce_login",
             ) as login_mock,
-            mock.patch(
+            unittest.mock.patch(
                 "agntcy.dir_sdk.client.client.TokenCache.get_valid_token",
                 return_value=None,
             ),
@@ -136,11 +137,11 @@ class OIDCAuthClientTests(unittest.TestCase):
                 json.dump(payload, f)
 
             with (
-                mock.patch.dict("os.environ", {"XDG_CONFIG_HOME": tmp_dir}, clear=True),
-                mock.patch(
+                unittest.mock.patch.dict("os.environ", {"XDG_CONFIG_HOME": tmp_dir}, clear=True),
+                unittest.mock.patch(
                     "agntcy.dir_sdk.client.client.fetch_openid_configuration",
                 ) as fetch_mock,
-                mock.patch(
+                unittest.mock.patch(
                     "agntcy.dir_sdk.client.client.run_loopback_pkce_login",
                 ) as login_mock,
             ):
@@ -158,18 +159,18 @@ class OIDCAuthClientTests(unittest.TestCase):
             oidc_client_id="client-id",
         )
         with tempfile.TemporaryDirectory() as tmp_dir:
-            with mock.patch.dict("os.environ", {"XDG_CONFIG_HOME": tmp_dir}, clear=True):
+            with unittest.mock.patch.dict("os.environ", {"XDG_CONFIG_HOME": tmp_dir}, clear=True):
                 client = Client(config)
 
                 with (
-                    mock.patch(
+                    unittest.mock.patch(
                         "agntcy.dir_sdk.client.client.fetch_openid_configuration",
                         return_value={
                             "authorization_endpoint": "https://issuer.example.com/auth",
                             "token_endpoint": "https://issuer.example.com/token",
                         },
                     ) as fetch_mock,
-                    mock.patch(
+                    unittest.mock.patch(
                         "agntcy.dir_sdk.client.client.run_loopback_pkce_login",
                         return_value={
                             "access_token": "fresh-token",
@@ -193,17 +194,17 @@ class OIDCAuthClientTests(unittest.TestCase):
         )
 
         with tempfile.TemporaryDirectory() as tmp_dir:
-            with mock.patch.dict("os.environ", {"XDG_CONFIG_HOME": tmp_dir}, clear=True):
+            with unittest.mock.patch.dict("os.environ", {"XDG_CONFIG_HOME": tmp_dir}, clear=True):
                 client = Client(config)
                 with (
-                    mock.patch(
+                    unittest.mock.patch(
                         "agntcy.dir_sdk.client.client.fetch_openid_configuration",
                         return_value={
                             "authorization_endpoint": "https://issuer.example.com/auth",
                             "token_endpoint": "https://issuer.example.com/token",
                         },
                     ),
-                    mock.patch(
+                    unittest.mock.patch(
                         "agntcy.dir_sdk.client.client.run_loopback_pkce_login",
                         return_value={
                             "access_token": "fresh-token",
@@ -242,15 +243,15 @@ class OIDCAuthClientTests(unittest.TestCase):
             client.config.tls_ca_file = ca_file.name
 
             with (
-                mock.patch(
+                unittest.mock.patch(
                     "agntcy.dir_sdk.client.client.grpc.ssl_channel_credentials",
                     return_value="creds",
                 ) as creds_mock,
-                mock.patch(
+                unittest.mock.patch(
                     "agntcy.dir_sdk.client.client.grpc.secure_channel",
                     return_value="channel",
                 ) as secure_mock,
-                mock.patch(
+                unittest.mock.patch(
                     "agntcy.dir_sdk.client.client.grpc.intercept_channel",
                     return_value="intercepted-channel",
                 ) as intercept_mock,
@@ -277,15 +278,15 @@ class OIDCAuthClientTests(unittest.TestCase):
         client._oauth_holder.set_tokens("token")
 
         with (
-            mock.patch(
+            unittest.mock.patch(
                 "agntcy.dir_sdk.client.client.grpc.ssl_channel_credentials",
                 return_value="creds",
             ) as creds_mock,
-            mock.patch(
+            unittest.mock.patch(
                 "agntcy.dir_sdk.client.client.grpc.secure_channel",
                 return_value="channel",
             ) as secure_mock,
-            mock.patch(
+            unittest.mock.patch(
                 "agntcy.dir_sdk.client.client.grpc.intercept_channel",
                 return_value="intercepted-channel",
             ) as intercept_mock,
