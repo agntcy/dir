@@ -13,6 +13,7 @@ import (
 
 	"github.com/agntcy/dir/runtime/server"
 	"github.com/agntcy/dir/runtime/server/config"
+	"github.com/agntcy/dir/runtime/store"
 	"github.com/agntcy/dir/runtime/utils"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
@@ -39,24 +40,25 @@ func main() {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
-	runtimeServer, err := server.New(server.WithConfig(cfg), server.WithLogger(logger))
+	// Create store
+	store, err := store.New(cfg.Store)
+	if err != nil {
+		logger.Error("Failed to create store", "error", err)
+		return
+	}
+	defer store.Close()
+
+	// Create gRPC server
+	grpcServer := grpc.NewServer()
+
+	// Register runtime server
+	err = server.Register(grpcServer, store)
 	if err != nil {
 		logger.Error("failed to initialize runtime server internals", "error", err)
 		return
 	}
 
-	defer func() {
-		if err := runtimeServer.Close(); err != nil {
-			logger.Error("failed to close runtime server internals", "error", err)
-		}
-	}()
-
-	grpcServer := grpc.NewServer()
-	if err := runtimeServer.Register(grpcServer); err != nil {
-		logger.Error("failed to register runtime services", "error", err)
-		return
-	}
-
+	// Register reflection service on gRPC server
 	reflection.Register(grpcServer)
 
 	//nolint:noctx
@@ -68,6 +70,7 @@ func main() {
 
 	serverErrCh := make(chan error, 1)
 
+	// Start discovery service in a separate goroutine
 	go func() {
 		logger.Info("gRPC server listening", "address", cfg.Addr())
 
@@ -76,6 +79,7 @@ func main() {
 		}
 	}()
 
+	// Wait for shutdown signal or server error
 	select {
 	case <-ctx.Done():
 		logger.Info("received shutdown signal")

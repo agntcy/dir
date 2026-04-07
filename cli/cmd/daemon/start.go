@@ -13,6 +13,10 @@ import (
 
 	networkinit "github.com/agntcy/dir/cli/cmd/network/init"
 	reconciler "github.com/agntcy/dir/reconciler/service"
+	"github.com/agntcy/dir/runtime/discovery"
+	discoveryConfig "github.com/agntcy/dir/runtime/discovery/config"
+	runtimeserver "github.com/agntcy/dir/runtime/server"
+	runtimestore "github.com/agntcy/dir/runtime/store"
 	"github.com/agntcy/dir/server"
 	ocilib "github.com/agntcy/dir/server/store/oci"
 	"github.com/agntcy/dir/utils/logging"
@@ -64,11 +68,50 @@ func runStart(cmd *cobra.Command, _ []string) error {
 	ctx, cancel := context.WithCancel(cmd.Context())
 	defer cancel()
 
+	// Create API server
 	srv, err := server.New(ctx, &cfg.Server)
 	if err != nil {
 		return fmt.Errorf("failed to create server: %w", err)
 	}
 
+	// Create ephemeral runtime store
+	discoveryErrCh := make(chan error, 1)
+
+	if cfg.Runtime.Enabled {
+		logger.Info("Runtime discovery enabled, starting services")
+
+		runtimeStore, err := runtimestore.New(cfg.Runtime.Store)
+		if err != nil {
+			return fmt.Errorf("failed to create runtime store: %w", err)
+		}
+		defer runtimeStore.Close()
+
+		// Start discovery service in a separate goroutine
+		go func() {
+			logger.Info("Starting runtime discovery service for environment", "adapter", cfg.Runtime.Adapter.Type)
+
+			err := discovery.Run(ctx,
+				discovery.WithConfig(&discoveryConfig.Config{
+					Workers:  discoveryConfig.DefaultWorkers,
+					Runtime:  cfg.Runtime.Adapter,
+					Resolver: cfg.Runtime.Resolver,
+				}),
+				discovery.WithStore(runtimeStore),
+				discovery.WithLogger(logger.With("runtime", "discovery")),
+			)
+			if err != nil {
+				discoveryErrCh <- fmt.Errorf("runtime discovery service failed: %w", err)
+			}
+		}()
+
+		// Register runtime API with server
+		err = runtimeserver.Register(srv.GRPCServer(), runtimeStore)
+		if err != nil {
+			return fmt.Errorf("failed to create runtime server: %w", err)
+		}
+	}
+
+	// Start API server
 	if err := srv.Start(ctx); err != nil {
 		return fmt.Errorf("failed to start server: %w", err)
 	}
@@ -112,6 +155,8 @@ func runStart(cmd *cobra.Command, _ []string) error {
 	select {
 	case sig := <-sigCh:
 		logger.Info("Received signal, shutting down", "signal", sig)
+	case err := <-discoveryErrCh:
+		logger.Error("Runtime discovery service error", "error", err)
 	case <-ctx.Done():
 		logger.Info("Context cancelled, shutting down")
 	}

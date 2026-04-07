@@ -7,6 +7,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 	"sync"
 	"time"
 
@@ -61,14 +62,14 @@ func WithStore(store storetypes.Store) Option {
 	}
 }
 
-// WithLogger sets the logger used by discovery.
-func WithLogger(logger *utils.Logger) Option {
+// WithLogger sets the logger used by server.
+func WithLogger(logger *slog.Logger) Option {
 	return func(o *options) error {
 		if logger == nil {
 			return fmt.Errorf("logger cannot be nil")
 		}
 
-		o.logger = logger
+		o.logger = &utils.Logger{Logger: logger}
 
 		return nil
 	}

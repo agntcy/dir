@@ -70,6 +70,7 @@ func (r *resolver) Resolve(ctx context.Context, workload *runtimev1.Workload) (a
 		for _, port := range workload.GetPorts() {
 			for _, path := range r.paths {
 				urls = append(urls, fmt.Sprintf("http://%s:%s%s", addr, port, path))
+				urls = append(urls, fmt.Sprintf("https://%s:%s%s", addr, port, path))
 			}
 		}
 	}

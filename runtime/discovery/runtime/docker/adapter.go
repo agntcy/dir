@@ -6,6 +6,7 @@ package docker
 import (
 	"context"
 	"fmt"
+	"slices"
 	"strconv"
 	"strings"
 
@@ -25,19 +26,25 @@ var logger = utils.NewLogger("runtime", "docker")
 // adapter implements the RuntimeAdapter interface for Docker.
 type adapter struct {
 	client     *client.Client
+	hostMode   bool
 	labelKey   string
 	labelValue string
 }
 
 // NewAdapter creates a new Docker adapter.
 func NewAdapter(cfg Config) (types.RuntimeAdapter, error) {
-	cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
+	cli, err := client.NewClientWithOpts(
+		client.FromEnv,
+		client.WithAPIVersionNegotiation(),
+		client.WithHost(cfg.Host),
+	)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create Docker client: %w", err)
 	}
 
 	return &adapter{
 		client:     cli,
+		hostMode:   cfg.HostMode,
 		labelKey:   cfg.LabelKey,
 		labelValue: cfg.LabelValue,
 	}, nil
@@ -169,21 +176,39 @@ func (d *adapter) containerToWorkload(c container.Summary) *runtimev1.Workload {
 
 	// Extract networks
 	var (
-		addresses       []string
-		isolationGroups []string
+		addresses       = make(map[string]bool)
+		isolationGroups = make(map[string]bool)
+		ports           = make(map[string]bool)
 	)
 
+	// If in host mode, use local IP as address
+	if d.hostMode {
+		addresses["0.0.0.0"] = true
+	}
+
+	// Extract networks and isolation groups
 	if c.NetworkSettings != nil {
 		for netName := range c.NetworkSettings.Networks {
-			addresses = append(addresses, name+"."+netName)
-			isolationGroups = append(isolationGroups, netName)
+			isolationGroups[netName] = true
+
+			// If not host mode, use container name and network name as address
+			if !d.hostMode {
+				addresses[name+"."+netName] = true
+			}
 		}
 	}
 
 	// Extract ports
-	var ports []string
 	for _, p := range c.Ports {
-		ports = append(ports, strconv.Itoa(int(p.PrivatePort)))
+		if d.hostMode {
+			if p.PublicPort > 0 {
+				ports[strconv.Itoa(int(p.PublicPort))] = true
+			}
+		} else {
+			if p.PrivatePort > 0 {
+				ports[strconv.Itoa(int(p.PrivatePort))] = true
+			}
+		}
 	}
 
 	return &runtimev1.Workload{
@@ -192,9 +217,9 @@ func (d *adapter) containerToWorkload(c container.Summary) *runtimev1.Workload {
 		Hostname:        name,
 		Runtime:         runtimev1.RuntimeType_RUNTIME_TYPE_DOCKER.GetName(),
 		Type:            runtimev1.WorkloadType_WORKLOAD_TYPE_CONTAINER.GetName(),
-		Addresses:       addresses,
-		IsolationGroups: isolationGroups,
-		Ports:           ports,
+		Addresses:       keysToSlice(addresses),
+		IsolationGroups: keysToSlice(isolationGroups),
+		Ports:           keysToSlice(ports),
 		Labels:          c.Labels,
 		Annotations:     make(map[string]string),
 	}
@@ -207,19 +232,36 @@ func (d *adapter) inspectToWorkload(inspect container.InspectResponse) *runtimev
 
 	// Extract networks
 	var (
-		addresses       []string
-		isolationGroups []string
-		ports           []string
+		addresses       = make(map[string]bool)
+		isolationGroups = make(map[string]bool)
+		ports           = make(map[string]bool)
 	)
+
+	// If in host mode, use local IP as address
+	if d.hostMode {
+		addresses["0.0.0.0"] = true
+	}
 
 	if inspect.NetworkSettings != nil {
 		for netName := range inspect.NetworkSettings.Networks {
-			addresses = append(addresses, name+"."+netName)
-			isolationGroups = append(isolationGroups, netName)
+			isolationGroups[netName] = true
+
+			// If not host mode, use container name and network name as address
+			if !d.hostMode {
+				addresses[name+"."+netName] = true
+			}
 		}
 
-		for port := range inspect.NetworkSettings.Ports {
-			ports = append(ports, port.Port())
+		for privatePort, publicBindings := range inspect.NetworkSettings.Ports {
+			// In host mode, use the public port as the workload port
+			if d.hostMode {
+				for _, binding := range publicBindings {
+					ports[binding.HostPort] = true
+				}
+			} else {
+				// In non-host mode, we use the private port as the workload port
+				ports[privatePort.Port()] = true
+			}
 		}
 	}
 
@@ -241,10 +283,22 @@ func (d *adapter) inspectToWorkload(inspect container.InspectResponse) *runtimev
 		Hostname:        hostname,
 		Runtime:         runtimev1.RuntimeType_RUNTIME_TYPE_DOCKER.GetName(),
 		Type:            runtimev1.WorkloadType_WORKLOAD_TYPE_CONTAINER.GetName(),
-		Addresses:       addresses,
-		IsolationGroups: isolationGroups,
-		Ports:           ports,
+		Addresses:       keysToSlice(addresses),
+		IsolationGroups: keysToSlice(isolationGroups),
+		Ports:           keysToSlice(ports),
 		Labels:          labels,
 		Annotations:     make(map[string]string),
 	}
+}
+
+func keysToSlice(mp map[string]bool) []string {
+	slice := make([]string, 0, len(mp))
+
+	for k := range mp {
+		slice = append(slice, k)
+	}
+
+	slices.Sort(slice)
+
+	return slice
 }

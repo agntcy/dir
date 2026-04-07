@@ -10,6 +10,14 @@ import (
 	"strings"
 
 	reconcilerconfig "github.com/agntcy/dir/reconciler/config"
+	resolvera2a "github.com/agntcy/dir/runtime/discovery/resolver/a2a"
+	resolver "github.com/agntcy/dir/runtime/discovery/resolver/config"
+	resolveroasf "github.com/agntcy/dir/runtime/discovery/resolver/oasf"
+	runtime "github.com/agntcy/dir/runtime/discovery/runtime/config"
+	adapterdocker "github.com/agntcy/dir/runtime/discovery/runtime/docker"
+	adapterk8s "github.com/agntcy/dir/runtime/discovery/runtime/k8s"
+	runtimestore "github.com/agntcy/dir/runtime/store/config"
+	runtimestoresql "github.com/agntcy/dir/runtime/store/sql"
 	serverconfig "github.com/agntcy/dir/server/config"
 	"github.com/mitchellh/mapstructure"
 	"github.com/spf13/viper"
@@ -23,10 +31,56 @@ const (
 	DefaultEnvPrefix = "DIRECTORY_DAEMON"
 )
 
-// DaemonConfig is the top-level daemon configuration combining server and reconciler settings.
+// DaemonConfig is the top-level daemon configuration combining component settings.
 type DaemonConfig struct {
 	Server     serverconfig.Config     `json:"server"     mapstructure:"server"`
 	Reconciler reconcilerconfig.Config `json:"reconciler" mapstructure:"reconciler"`
+	Runtime    RuntimeConfig           `json:"runtime"    mapstructure:"runtime"`
+}
+
+// RuntimeConfig holds configuration for the runtime adapter and resolver used by
+// the discovery and runtime server services.
+type RuntimeConfig struct {
+	Enabled  bool                `json:"enabled"  mapstructure:"enabled"`
+	Adapter  runtime.Config      `json:"adapter"  mapstructure:"adapter"`
+	Resolver resolver.Config     `json:"resolver" mapstructure:"resolver"`
+	Store    runtimestore.Config `json:"store"    mapstructure:"store"`
+}
+
+func registerRuntimeDefaults(v *viper.Viper) {
+	v.SetDefault("runtime.enabled", false)
+
+	// Store configuration
+	v.SetDefault("runtime.store.type", runtimestoresql.StoreTypeSqlite)
+
+	// Adapter configuration
+	v.SetDefault("runtime.adapter.type", adapterdocker.RuntimeType)
+
+	// Docker adapter
+	// Docker host mode is required for the adapter to access the Docker socket when the daemon runs in a process.
+	// Users can disable host mode if they run the daemon as a container want to use a different Docker host configuration.
+	v.SetDefault("runtime.adapter.docker.host", adapterdocker.DefaultHost)
+	v.SetDefault("runtime.adapter.docker.host_mode", true)
+	v.SetDefault("runtime.adapter.docker.label_key", adapterdocker.DefaultLabelKey)
+	v.SetDefault("runtime.adapter.docker.label_value", adapterdocker.DefaultLabelValue)
+
+	// K8s adapter
+	v.SetDefault("runtime.adapter.kubernetes.kubeconfig", "")
+	v.SetDefault("runtime.adapter.kubernetes.namespace", adapterk8s.DefaultNamespace)
+	v.SetDefault("runtime.adapter.kubernetes.label_key", adapterk8s.DefaultLabelKey)
+	v.SetDefault("runtime.adapter.kubernetes.label_value", adapterk8s.DefaultLabelValue)
+
+	// A2A resolver
+	v.SetDefault("runtime.resolver.a2a.enabled", true)
+	v.SetDefault("runtime.resolver.a2a.timeout", resolvera2a.DefaultTimeout)
+	v.SetDefault("runtime.resolver.a2a.paths", resolvera2a.DefaultDiscoveryPaths)
+	v.SetDefault("runtime.resolver.a2a.label_key", resolvera2a.DefaultLabelKey)
+	v.SetDefault("runtime.resolver.a2a.label_value", resolvera2a.DefaultLabelValue)
+
+	// OASF resolver
+	v.SetDefault("runtime.resolver.oasf.enabled", true)
+	v.SetDefault("runtime.resolver.oasf.timeout", resolveroasf.DefaultTimeout)
+	v.SetDefault("runtime.resolver.oasf.label_key", resolveroasf.DefaultLabelKey)
 }
 
 //go:embed daemon.config.yaml
@@ -47,6 +101,7 @@ func loadConfig() (*DaemonConfig, error) {
 	v.AutomaticEnv()
 
 	bindCredentialEnvVars(v)
+	registerRuntimeDefaults(v)
 
 	if opts.ConfigFile != "" {
 		v.SetConfigFile(opts.ConfigFile)

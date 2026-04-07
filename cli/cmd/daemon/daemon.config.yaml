@@ -70,3 +70,29 @@ reconciler:
     interval: 1h
     ttl: 168h
     record_timeout: 30s
+
+runtime:
+  enabled: true
+
+  adapter:
+    type: "docker"
+    docker:
+      host: "unix:///var/run/docker.sock"
+    kubernetes:
+      kubeconfig: "~/.kube/config"
+
+  resolver:
+    a2a:
+      enabled: true
+    oasf:
+      enabled: true
+      ## Optional custom configuration for the DIR client used by the OASf resolver.
+      ## If not set, the resolver will use the default configuration which sources
+      ## from environment variables.
+      # client:
+      #   server_address: "https://custom-dir-api.com"
+      #   auth_mode: "oidc"
+      #   auth_token: "<token>"
+
+  store:
+    type: "sqlite"

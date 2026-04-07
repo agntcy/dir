@@ -22,10 +22,6 @@ func NewDatabase(store storetypes.StoreReader) (*Database, error) {
 	}, nil
 }
 
-func (d *Database) Close() error {
-	return nil
-}
-
 func (d *Database) Count(ctx context.Context) int {
 	ids, err := d.store.ListWorkloadIDs(ctx)
 	if err != nil {

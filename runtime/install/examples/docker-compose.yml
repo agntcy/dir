@@ -10,7 +10,10 @@ services:
     labels:
       - "org.agntcy/discover=true"
       - "org.agntcy/agent-type=a2a"
-      - "org.agntcy/agent-record=dns-validation-http/example/research-assistant-v4:v4.0.0"
+      - "org.agntcy/agent-record=baeareic5mpem6ufjc5q7fciqvreeyyjlg4hbjov3tqb2xvp5ezgpwiyd2y"
+      # - "org.agntcy/agent-record=dns-validation-http/example/research-assistant-v4:v4.0.0"
+    ports:
+      - 9999
     networks:
       - team-a
 

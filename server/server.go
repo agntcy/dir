@@ -317,6 +317,8 @@ func New(ctx context.Context, cfg *config.Config) (*Server, error) {
 	}, nil
 }
 
+func (s Server) GRPCServer() *grpc.Server { return s.grpcServer }
+
 func (s Server) Options() types.APIOptions { return s.options }
 
 func (s Server) Store() types.StoreAPI { return s.store }

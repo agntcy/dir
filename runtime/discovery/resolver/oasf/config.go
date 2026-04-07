@@ -3,7 +3,11 @@
 
 package oasf
 
-import "time"
+import (
+	"time"
+
+	"github.com/agntcy/dir/client"
+)
 
 const (
 	// DefaultTimeout is the default OASF resolver timeout.
@@ -23,4 +27,7 @@ type Config struct {
 
 	// LabelKey is the label key to use for OASF discovery.
 	LabelKey string `json:"label_key,omitempty" mapstructure:"label_key"`
+
+	// Runtime configuration for the OASF Client.
+	Client *client.Config `json:"client,omitempty" mapstructure:"client"`
 }

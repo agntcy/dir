@@ -12,12 +12,18 @@ const (
 
 	// DefaultLabelValue is the default Docker label value to filter containers.
 	DefaultLabelValue = "true"
+
+	// DefaultHostMode indicates whether to use host networking mode for discovered containers by default.
+	DefaultHostMode = false
 )
 
 // Config holds Docker runtime configuration.
 type Config struct {
 	// Host is the Docker daemon socket path.
 	Host string `json:"host,omitempty" mapstructure:"host"`
+
+	// HostMode indicates whether to use host networking mode for discovered containers.
+	HostMode bool `json:"host_mode,omitempty" mapstructure:"host_mode"`
 
 	// LabelKey is the Docker label key to filter containers.
 	LabelKey string `json:"label_key,omitempty" mapstructure:"label_key"`

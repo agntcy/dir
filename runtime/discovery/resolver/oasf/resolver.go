@@ -35,7 +35,12 @@ func NewResolver(ctx context.Context, cfg Config) (types.WorkloadResolver, error
 	defer cancel()
 
 	// Create Dir client
-	dirClient, err := client.New(initCtx, client.WithEnvConfig())
+	clientCfg := client.WithEnvConfig()
+	if cfg.Client != nil {
+		clientCfg = client.WithConfig(cfg.Client)
+	}
+
+	dirClient, err := client.New(initCtx, clientCfg)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create Dir client: %w", err)
 	}
@@ -74,46 +79,55 @@ func (r *resolver) CanResolve(workload *runtimev1.Workload) bool {
 // Resolve fetches OASF record for the workload.
 func (r *resolver) Resolve(ctx context.Context, workload *runtimev1.Workload) (any, error) {
 	// Get the name of the OASF record from the workload labels
-	name, version := r.getRecordNameVersion(workload)
-	nameVersion := name + ":" + version
-
-	logger.Info("started resolving", "workload", workload.GetId(), "record", nameVersion)
-
-	// Fetch the OASF record using the provided context
-	resolve, err := r.client.Resolve(ctx, name, version)
+	name, version, cid, err := r.extractRecordIDs(workload)
 	if err != nil {
-		return nil, fmt.Errorf("failed to fetch OASF record %s: %w", nameVersion, err)
+		return nil, fmt.Errorf("failed to get OASF record name and version: %w", err)
 	}
 
-	// Get the first info
-	if len(resolve.GetRecords()) == 0 {
-		return nil, fmt.Errorf("no OASF info found for record %s", nameVersion)
-	}
+	logger.Info("resolving OASF record", "workload", workload.GetId(), "name", name, "version", version, "cid", cid)
 
-	recordRef := resolve.GetRecords()[0]
+	// Extract the record CID based on extracted identifiers
+	// TODO: this should be done by the Resolve method as part of the resolution process,
+	// TODO: but for now we need to do it here to support both name:version and cid-based resolution.
+	recordCID := cid
+	if recordCID == "" {
+		// Fetch the OASF record using the provided context
+		resolve, err := r.client.Resolve(ctx, name, version)
+		if err != nil {
+			return nil, fmt.Errorf("failed to fetch OASF record (%s:%s): %w", name, version, err)
+		}
+
+		// Get the first info
+		if len(resolve.GetRecords()) == 0 {
+			return nil, fmt.Errorf("no OASF info found for record (%s:%s)", name, version)
+		}
+
+		// Use the first record's CID as the record CID to pull
+		recordCID = resolve.GetRecords()[0].GetCid()
+	}
 
 	// Pull the full record data using the provided context
-	record, err := r.client.Pull(ctx, &corev1.RecordRef{Cid: recordRef.GetCid()})
+	record, err := r.client.Pull(ctx, &corev1.RecordRef{Cid: recordCID})
 	if err != nil {
-		return nil, fmt.Errorf("failed to pull OASF record %s: %w", nameVersion, err)
+		return nil, fmt.Errorf("failed to pull OASF record %s: %w", recordCID, err)
 	}
 
 	// Get the record signature verified status
 	verified, err := r.client.Verify(ctx, &signv1.VerifyRequest{
-		RecordRef: &corev1.RecordRef{Cid: recordRef.GetCid()},
+		RecordRef: &corev1.RecordRef{Cid: recordCID},
 	})
 	if err != nil {
-		return nil, fmt.Errorf("failed to verify OASF record %s: %w", nameVersion, err)
+		return nil, fmt.Errorf("failed to verify OASF record %s: %w", recordCID, err)
 	}
 
-	logger.Info("resolved successfully", "workload", workload.GetId(), "record", nameVersion)
+	logger.Info("resolved successfully", "workload", workload.GetId(), "record", recordCID)
 
 	// Return the record data along with its validity
 	return map[string]any{
-		"cid":      recordRef.GetCid(),
-		"name":     nameVersion,
-		"verified": verified,
-		"record":   record.GetData().AsMap(),
+		"cid":               recordCID,
+		"record":            record.GetData().AsMap(),
+		"verified":          verified.GetSuccess(),
+		"verification_data": verified,
 	}, nil
 }
 
@@ -135,8 +149,13 @@ func (r *resolver) Apply(ctx context.Context, workload *runtimev1.Workload, resu
 	return nil
 }
 
+// extractRecordIDs extracts the OASF record (name, version, cid) from the workload labels or annotations.
+// Returns "name", "version", "", if both name and version are present as "name:version
+// Returns "", "", "cid", if only cid is present
+// Returns an error if neither is present or if the format is invalid.
+//
 //nolint:mnd
-func (r *resolver) getRecordNameVersion(workload *runtimev1.Workload) (string, string) {
+func (r *resolver) extractRecordIDs(workload *runtimev1.Workload) (string, string, string, error) {
 	// Get the record FQDN from the workload labels or annotations
 	var recordFQDN string
 	if val, hasLabel := workload.GetLabels()[r.labelKey]; hasLabel {
@@ -144,19 +163,21 @@ func (r *resolver) getRecordNameVersion(workload *runtimev1.Workload) (string, s
 	} else if val, hasAnnotation := workload.GetAnnotations()[r.labelKey]; hasAnnotation {
 		recordFQDN = val
 	} else {
-		return "", ""
+		return "", "", "", fmt.Errorf("workload %s does not have label or annotation %s", workload.GetId(), r.labelKey)
 	}
 
 	// Split the record FQDN into name and version
-	// Expected formats: name, name:version
 	nameParts := strings.SplitN(recordFQDN, ":", 2)
+
+	// If both name and version are present, return them combined as "name:version"
 	if len(nameParts) == 2 {
-		return nameParts[0], nameParts[1]
+		return nameParts[0], nameParts[1], "", nil
 	}
 
+	// If only one part is present, treat it as CID
 	if len(nameParts) == 1 {
-		return nameParts[0], ""
+		return "", "", nameParts[0], nil
 	}
 
-	return "", ""
+	return "", "", "", fmt.Errorf("invalid record FQDN format: %s", recordFQDN)
 }

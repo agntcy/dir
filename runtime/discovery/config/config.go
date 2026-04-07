@@ -18,7 +18,6 @@ import (
 	store "github.com/agntcy/dir/runtime/store/config"
 	"github.com/agntcy/dir/runtime/store/crd"
 	"github.com/agntcy/dir/runtime/store/etcd"
-	"github.com/agntcy/dir/runtime/store/sql"
 	"github.com/mitchellh/mapstructure"
 	"github.com/spf13/viper"
 )
@@ -111,11 +110,6 @@ func LoadConfig() (*Config, error) {
 	v.SetDefault("store.crd.resync_period", crd.DefaultResyncPeriod)
 
 	//
-	// SQLite store
-	//
-	v.SetDefault("store.sqlite.path", sql.DefaultSqlitePath)
-
-	//
 	// Runtime configuration
 	//
 	v.SetDefault("runtime.type", DefaultRuntimeType)
@@ -124,6 +118,7 @@ func LoadConfig() (*Config, error) {
 	// Docker configuration
 	//
 	v.SetDefault("runtime.docker.host", docker.DefaultHost)
+	v.SetDefault("runtime.docker.host_mode", docker.DefaultHostMode)
 	v.SetDefault("runtime.docker.label_key", docker.DefaultLabelKey)
 	v.SetDefault("runtime.docker.label_value", docker.DefaultLabelValue)
 

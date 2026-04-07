@@ -11,6 +11,7 @@ import (
 	"syscall"
 
 	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
 )
 
 // Options holds all daemon path configuration.
@@ -113,6 +114,13 @@ func init() {
 	Command.PersistentFlags().StringVar(&opts.DataDir, "data-dir", defaultDataDir(), "Data directory for daemon state")
 	Command.PersistentFlags().StringVar(&opts.ConfigFile, "config", "", "Path to daemon config file (default: <data-dir>/"+DefaultConfigFile+")")
 
+	// Hide all root command flags since they are not relevant to the daemon command
+	Command.SetHelpFunc(func(cmd *cobra.Command, strings []string) {
+		cmd.Root().Flags().VisitAll(func(f *pflag.Flag) { f.Hidden = true })
+		cmd.Print(cmd.UsageString())
+	})
+
+	// Register subcommands
 	Command.AddCommand(
 		startCmd,
 		stopCmd,

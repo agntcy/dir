@@ -36,9 +36,10 @@ func main() {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
+	// Run the discovery service
 	if err := discovery.Run(ctx,
 		discovery.WithConfig(cfg),
-		discovery.WithLogger(logger),
+		discovery.WithLogger(logger.Logger),
 	); err != nil {
 		logger.Error("discovery service failed", "error", err)
 	}
