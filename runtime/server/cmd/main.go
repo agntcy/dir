@@ -5,21 +5,20 @@
 package main
 
 import (
+	"context"
 	"net"
 	"os"
 	"os/signal"
 	"syscall"
 
-	runtimev1 "github.com/agntcy/dir/runtime/api/runtime/v1"
+	"github.com/agntcy/dir/runtime/server"
 	"github.com/agntcy/dir/runtime/server/config"
-	"github.com/agntcy/dir/runtime/server/database"
-	grpcserver "github.com/agntcy/dir/runtime/server/grpc"
 	"github.com/agntcy/dir/runtime/utils"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
 )
 
-var logger = utils.NewLogger("process", "server")
+var logger = utils.NewLogger("runtime", "server")
 
 func main() {
 	// Load configuration
@@ -37,54 +36,51 @@ func main() {
 	)
 	logger.Info("============================================================")
 
-	// Initialize database
-	db, err := database.NewDatabase(cfg.Store)
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
+
+	runtimeServer, err := server.New(server.WithConfig(cfg), server.WithLogger(logger))
 	if err != nil {
-		logger.Error("Failed to initialize database", "error", err)
+		logger.Error("failed to initialize runtime server internals", "error", err)
 		return
 	}
-	defer db.Close()
 
-	// Create gRPC server
+	defer func() {
+		if err := runtimeServer.Close(); err != nil {
+			logger.Error("failed to close runtime server internals", "error", err)
+		}
+	}()
+
 	grpcServer := grpc.NewServer()
-	discoveryServer := grpcserver.NewDiscovery(db)
-	runtimev1.RegisterDiscoveryServiceServer(grpcServer, discoveryServer)
+	if err := runtimeServer.Register(grpcServer); err != nil {
+		logger.Error("failed to register runtime services", "error", err)
+		return
+	}
 
-	// Enable reflection for debugging tools like grpcurl
 	reflection.Register(grpcServer)
 
-	// Start listener
 	//nolint:noctx
 	listener, err := net.Listen("tcp", cfg.Addr())
 	if err != nil {
-		logger.Error("Failed to listen", "address", cfg.Addr(), "error", err)
+		logger.Error("failed to listen", "address", cfg.Addr(), "error", err)
 		return
 	}
 
-	// Start server in goroutine
 	serverErrCh := make(chan error, 1)
 
 	go func() {
 		logger.Info("gRPC server listening", "address", cfg.Addr())
 
 		if err := grpcServer.Serve(listener); err != nil {
-			logger.Error("Server error", "error", err)
-
 			serverErrCh <- err
 		}
 	}()
 
-	// Wait for shutdown signal or server error
-	sigCh := make(chan os.Signal, 1)
-	signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
-
 	select {
-	case <-sigCh:
-		logger.Info("Received shutdown signal")
+	case <-ctx.Done():
+		logger.Info("received shutdown signal")
+		grpcServer.GracefulStop()
 	case err := <-serverErrCh:
-		logger.Error("Server failed, shutting down", "error", err)
+		logger.Error("server failed", "error", err)
 	}
-
-	logger.Info("Shutting down server...")
-	grpcServer.GracefulStop()
 }

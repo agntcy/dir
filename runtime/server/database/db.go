@@ -9,8 +9,6 @@ import (
 	"regexp"
 
 	v1 "github.com/agntcy/dir/runtime/api/runtime/v1"
-	"github.com/agntcy/dir/runtime/store"
-	storeconfig "github.com/agntcy/dir/runtime/store/config"
 	storetypes "github.com/agntcy/dir/runtime/store/types"
 )
 
@@ -18,22 +16,13 @@ type Database struct {
 	store storetypes.StoreReader
 }
 
-func NewDatabase(cfg storeconfig.Config) (*Database, error) {
-	store, err := store.New(cfg)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create store: %w", err)
-	}
-
+func NewDatabase(store storetypes.StoreReader) (*Database, error) {
 	return &Database{
 		store: store,
 	}, nil
 }
 
 func (d *Database) Close() error {
-	if err := d.store.Close(); err != nil {
-		return fmt.Errorf("failed to close database store: %w", err)
-	}
-
 	return nil
 }
 
