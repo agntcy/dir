@@ -13,6 +13,7 @@ import (
 	store "github.com/agntcy/dir/runtime/store/config"
 	"github.com/agntcy/dir/runtime/store/crd"
 	"github.com/agntcy/dir/runtime/store/etcd"
+	"github.com/agntcy/dir/runtime/store/sql"
 	"github.com/mitchellh/mapstructure"
 	"github.com/spf13/viper"
 )
@@ -101,6 +102,11 @@ func LoadConfig() (*Config, error) {
 	v.SetDefault("store.crd.namespace", crd.DefaultNamespace)
 	v.SetDefault("store.crd.kubeconfig", "")
 	v.SetDefault("store.crd.resync_period", crd.DefaultResyncPeriod)
+
+	//
+	// SQLite store
+	//
+	v.SetDefault("store.sqlite.path", sql.DefaultSqlitePath)
 
 	// Load configuration into struct
 	decodeHooks := mapstructure.ComposeDecodeHookFunc(

@@ -6,12 +6,13 @@ package config
 import (
 	"github.com/agntcy/dir/runtime/store/crd"
 	"github.com/agntcy/dir/runtime/store/etcd"
+	"github.com/agntcy/dir/runtime/store/sql"
 	"github.com/agntcy/dir/runtime/store/types"
 )
 
 // Config holds storage configuration.
 type Config struct {
-	// Type is the storage backend type ("etcd" or "crd").
+	// Type is the storage backend type ("etcd", "crd", "sqlite").
 	Type types.StoreType `json:"type" mapstructure:"type"`
 
 	// Etcd configuration.
@@ -19,4 +20,7 @@ type Config struct {
 
 	// CRD configuration.
 	CRD crd.Config `json:"crd" mapstructure:"crd"`
+
+	// SQLite configuration.
+	SQLite sql.SqliteConfig `json:"sqlite" mapstructure:"sqlite"`
 }

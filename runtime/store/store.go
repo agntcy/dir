@@ -9,6 +9,7 @@ import (
 	"github.com/agntcy/dir/runtime/store/config"
 	"github.com/agntcy/dir/runtime/store/crd"
 	"github.com/agntcy/dir/runtime/store/etcd"
+	"github.com/agntcy/dir/runtime/store/sql"
 	"github.com/agntcy/dir/runtime/store/types"
 )
 
@@ -21,6 +22,18 @@ func New(cfg config.Config) (types.Store, error) {
 		return etcd.New(cfg.Etcd)
 	case crd.StoreType:
 		return crd.New(cfg.CRD)
+	case sql.StoreTypeSqlite:
+		db, err := sql.NewSqlite(cfg.SQLite)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create sqlite connection: %w", err)
+		}
+
+		store, err := sql.New(db)
+		if err != nil {
+			return nil, fmt.Errorf("failed to initialize sqlite store: %w", err)
+		}
+
+		return store, nil
 	default:
 		return nil, fmt.Errorf("unknown storage type: %s", cfg.Type)
 	}
