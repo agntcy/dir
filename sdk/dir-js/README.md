@@ -105,6 +105,43 @@ const jwtTransport = await Client.createGRPCTransport(jwtConfig);
 const jwtClient = new Client(jwtConfig, jwtTransport);
 ```
 
+### OAuth 2.0 for Directory bearer auth
+
+The SDK supports OIDC/OAuth for Directory bearer authentication on gRPC:
+
+- Interactive login via Authorization Code + PKCE with a loopback callback (`authenticateOAuthPkce()`)
+- Pre-issued access token via `DIRECTORY_CLIENT_AUTH_TOKEN`
+
+Interactive PKCE sessions are cached alongside other Directory tooling at `$XDG_CONFIG_HOME/dirctl/auth-token.json` or `~/.config/dirctl/auth-token.json`. Pre-issued tokens from configuration are used directly and are not written to the cache by the constructor.
+
+Use this mode when your deployment expects a **Bearer access token** on gRPC (for example via a gateway that validates OIDC tokens). Register your IdP application with a **redirect URI** that matches `DIRECTORY_CLIENT_OIDC_REDIRECT_URI` exactly (for example `http://localhost:8484/callback`). The SDK starts a short-lived HTTP server on loopback to receive the authorization redirect.
+
+Some IdPs use **public clients** with PKCE; your IdP may still expect a `client_secret` field in configuration. In that case, use a **random placeholder** from environment variables, not a real secret in source code.
+
+**Important:** The default in-repo Envoy authorization stack validates **GitHub** tokens. OIDC access tokens from your IdP only work if your environment’s gateway or auth service is configured to accept them.
+
+```bash
+export DIRECTORY_CLIENT_AUTH_MODE="oidc"
+export DIRECTORY_CLIENT_SERVER_ADDRESS="directory.example.com:443"
+export DIRECTORY_CLIENT_OIDC_ISSUER="https://your-idp-provider.example.com"
+export DIRECTORY_CLIENT_OIDC_CLIENT_ID="your-app-client-id"
+# Optional placeholder for public clients:
+export DIRECTORY_CLIENT_OIDC_CLIENT_SECRET="random-non-secret-string"
+export DIRECTORY_CLIENT_OIDC_REDIRECT_URI="http://localhost:8484/callback"
+# Optional: comma-separated scopes
+# export DIRECTORY_CLIENT_OIDC_SCOPES="openid,profile,email"
+```
+
+```js
+import { Client } from 'agntcy-dir';
+
+// After exporting the variables above (or building a Config with authMode: 'oidc'):
+const client = new Client();
+await client.authenticateOAuthPkce();
+```
+
+For custom transports, call `Client.createGRPCTransport(oidcConfig, { oidcTokenHolder })` with an `OAuthTokenHolder` (exported from this package). The usual path is `new Client(oidcConfig)`, which wires the holder and transport automatically.
+
 ## Getting Started
 
 ### Prerequisites

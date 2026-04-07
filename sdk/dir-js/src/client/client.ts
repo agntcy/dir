@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { readFileSync, mkdtempSync, rmSync } from 'node:fs';
+import type * as http2 from 'node:http2';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { env } from 'node:process';
@@ -18,6 +19,49 @@ import { createClient as createClientSpiffe, X509SVID } from 'spiffe';
 import { fromJsonString } from '@bufbuild/protobuf';
 import * as models from '../models';
 
+import {
+  fetchOpenidConfiguration,
+  OAuthTokenHolder,
+  runLoopbackPkceLogin,
+} from './oauthPkce.js';
+import { CachedToken, TokenCache } from './tokenCache.js';
+
+export { CachedToken, TokenCache, TOKEN_CACHE_FILE } from './tokenCache.js';
+export { OAuthPkceError, OAuthTokenHolder } from './oauthPkce.js';
+
+export type AuthMode = '' | 'x509' | 'jwt' | 'tls' | 'oidc';
+
+function parseBoolEnv(value: string | undefined, defaultVal: boolean): boolean {
+  if (value === undefined || value === '') {
+    return defaultVal;
+  }
+  return ['1', 'true', 'yes', 'on'].includes(value.trim().toLowerCase());
+}
+
+function parseIntEnv(value: string | undefined, defaultVal: number): number {
+  if (value === undefined || value === '') {
+    return defaultVal;
+  }
+  return Number.parseInt(value, 10);
+}
+
+function parseFloatEnv(value: string | undefined, defaultVal: number): number {
+  if (value === undefined || value === '') {
+    return defaultVal;
+  }
+  return Number.parseFloat(value);
+}
+
+function parseCommaScopes(value: string | undefined, defaultList: string[]): string[] {
+  if (value === undefined || value === '') {
+    return [...defaultList];
+  }
+  return value
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean);
+}
+
 /**
  * Configuration class for the AGNTCY Directory client.
  *
@@ -29,19 +73,41 @@ export class Config {
   static DEFAULT_DIRCTL_PATH = 'dirctl';
   static DEFAULT_SPIFFE_ENDPOINT_SOCKET = '';
   static DEFAULT_AUTH_MODE = '';
+  static DEFAULT_AUTH_TOKEN = '';
   static DEFAULT_JWT_AUDIENCE = '';
   static DEFAULT_TLS_CA_FILE = '';
   static DEFAULT_TLS_CERT_FILE = '';
   static DEFAULT_TLS_KEY_FILE = '';
+  static DEFAULT_TLS_SERVER_NAME = '';
+  static DEFAULT_TLS_SKIP_VERIFY = false;
+  static DEFAULT_OIDC_ISSUER = '';
+  static DEFAULT_OIDC_CLIENT_ID = '';
+  static DEFAULT_OIDC_CLIENT_SECRET = '';
+  static DEFAULT_OIDC_REDIRECT_URI = 'http://localhost:8484/callback';
+  static DEFAULT_OIDC_CALLBACK_PORT = 8484;
+  static DEFAULT_OIDC_AUTH_TIMEOUT = 300;
+  static DEFAULT_OIDC_SCOPES = ['openid', 'profile', 'email'];
 
   serverAddress: string;
   dirctlPath: string;
   spiffeEndpointSocket: string;
-  authMode: '' | 'x509' | 'jwt' | 'tls';
+  authMode: AuthMode;
+  authToken: string;
+  /** Backward-compatible alias for `authToken`. */
+  oidcAccessToken: string;
   jwtAudience: string;
   tlsCaFile: string;
-  tlsCertFile: string
+  tlsCertFile: string;
   tlsKeyFile: string;
+  tlsServerName: string;
+  tlsSkipVerify: boolean;
+  oidcIssuer: string;
+  oidcClientId: string;
+  oidcClientSecret: string;
+  oidcRedirectUri: string;
+  oidcCallbackPort: number;
+  oidcAuthTimeout: number;
+  oidcScopes: string[];
 
   /**
    * Creates a new Config instance.
@@ -49,27 +115,45 @@ export class Config {
    * @param serverAddress - The server address to connect to. Defaults to '127.0.0.1:8888'
    * @param dirctlPath - Path to the dirctl executable. Defaults to 'dirctl'
    * @param spiffeEndpointSocket - Path to the spire server socket. Defaults to empty string.
-   * @param authMode - Authentication mode: '' for insecure, 'x509', 'jwt' or 'tls'. Defaults to ''
+   * @param authMode - Authentication mode: '' for insecure, 'x509', 'jwt', 'tls', or 'oidc'. Defaults to ''
    * @param jwtAudience - JWT audience for JWT authentication. Required when authMode is 'jwt'
    */
   constructor(
     serverAddress = Config.DEFAULT_SERVER_ADDRESS,
     dirctlPath = Config.DEFAULT_DIRCTL_PATH,
     spiffeEndpointSocket = Config.DEFAULT_SPIFFE_ENDPOINT_SOCKET,
-    authMode: '' | 'x509' | 'jwt' | 'tls' = Config.DEFAULT_AUTH_MODE as '' | 'x509' | 'jwt' | 'tls',
+    authMode: AuthMode = Config.DEFAULT_AUTH_MODE as AuthMode,
     jwtAudience = Config.DEFAULT_JWT_AUDIENCE,
     tlsCaFile = Config.DEFAULT_TLS_CA_FILE,
     tlsCertFile = Config.DEFAULT_TLS_CERT_FILE,
-    tlsKeyFile = Config.DEFAULT_TLS_KEY_FILE
+    tlsKeyFile = Config.DEFAULT_TLS_KEY_FILE,
+    authToken = Config.DEFAULT_AUTH_TOKEN,
+    tlsServerName = Config.DEFAULT_TLS_SERVER_NAME,
+    tlsSkipVerify = Config.DEFAULT_TLS_SKIP_VERIFY,
+    oidcIssuer = Config.DEFAULT_OIDC_ISSUER,
+    oidcClientId = Config.DEFAULT_OIDC_CLIENT_ID,
+    oidcClientSecret = Config.DEFAULT_OIDC_CLIENT_SECRET,
+    oidcRedirectUri = Config.DEFAULT_OIDC_REDIRECT_URI,
+    oidcCallbackPort = Config.DEFAULT_OIDC_CALLBACK_PORT,
+    oidcAuthTimeout = Config.DEFAULT_OIDC_AUTH_TIMEOUT,
+    oidcScopes: string[] | undefined = undefined,
+    oidcAccessToken: string | undefined = undefined,
   ) {
+    const resolvedAuthToken = authToken || oidcAccessToken || '';
+
     // add protocol prefix if not set
     // use unsafe http unless spire/auth is used
     if (
       !serverAddress.startsWith('http://') &&
       !serverAddress.startsWith('https://')
     ) {
-      // use https protocol when X.509, JWT, or TLS auth is used
-      if (authMode === 'x509' || authMode === 'jwt' || authMode === 'tls') {
+      // use https protocol when X.509, JWT, TLS, or OIDC auth is used
+      if (
+        authMode === 'x509' ||
+        authMode === 'jwt' ||
+        authMode === 'tls' ||
+        authMode === 'oidc'
+      ) {
         serverAddress = `https://${serverAddress}`;
       } else {
         serverAddress = `http://${serverAddress}`;
@@ -80,10 +164,22 @@ export class Config {
     this.dirctlPath = dirctlPath;
     this.spiffeEndpointSocket = spiffeEndpointSocket;
     this.authMode = authMode;
+    this.authToken = resolvedAuthToken;
+    this.oidcAccessToken = resolvedAuthToken;
     this.jwtAudience = jwtAudience;
     this.tlsCaFile = tlsCaFile;
     this.tlsCertFile = tlsCertFile;
     this.tlsKeyFile = tlsKeyFile;
+    this.tlsServerName = tlsServerName;
+    this.tlsSkipVerify = tlsSkipVerify;
+    this.oidcIssuer = oidcIssuer;
+    this.oidcClientId = oidcClientId;
+    this.oidcClientSecret = oidcClientSecret;
+    this.oidcRedirectUri = oidcRedirectUri;
+    this.oidcCallbackPort = oidcCallbackPort;
+    this.oidcAuthTimeout = oidcAuthTimeout;
+    this.oidcScopes =
+      oidcScopes !== undefined ? [...oidcScopes] : [...Config.DEFAULT_OIDC_SCOPES];
   }
 
   /**
@@ -108,14 +204,60 @@ export class Config {
     // Load other config values with env prefix
     const serverAddress =
       env[`${prefix}SERVER_ADDRESS`] || Config.DEFAULT_SERVER_ADDRESS;
-    const spiffeEndpointSocketPath = env[`${prefix}SPIFFE_SOCKET_PATH`] || Config.DEFAULT_SPIFFE_ENDPOINT_SOCKET;
-    const authMode = (env[`${prefix}AUTH_MODE`] || Config.DEFAULT_AUTH_MODE) as '' | 'x509' | 'jwt' | 'tls';
+    const spiffeEndpointSocketPath =
+      env[`${prefix}SPIFFE_SOCKET_PATH`] || Config.DEFAULT_SPIFFE_ENDPOINT_SOCKET;
+    const authMode = (env[`${prefix}AUTH_MODE`] || Config.DEFAULT_AUTH_MODE) as AuthMode;
+    const authToken = env[`${prefix}AUTH_TOKEN`] || Config.DEFAULT_AUTH_TOKEN;
     const jwtAudience = env[`${prefix}JWT_AUDIENCE`] || Config.DEFAULT_JWT_AUDIENCE;
     const tlsCaFile = env[`${prefix}TLS_CA_FILE`] || Config.DEFAULT_TLS_CA_FILE;
     const tlsCertFile = env[`${prefix}TLS_CERT_FILE`] || Config.DEFAULT_TLS_CERT_FILE;
     const tlsKeyFile = env[`${prefix}TLS_KEY_FILE`] || Config.DEFAULT_TLS_KEY_FILE;
+    const tlsServerName =
+      env[`${prefix}TLS_SERVER_NAME`] || Config.DEFAULT_TLS_SERVER_NAME;
+    const tlsSkipVerify = parseBoolEnv(
+      env[`${prefix}TLS_SKIP_VERIFY`],
+      Config.DEFAULT_TLS_SKIP_VERIFY,
+    );
+    const oidcIssuer = env[`${prefix}OIDC_ISSUER`] || Config.DEFAULT_OIDC_ISSUER;
+    const oidcClientId =
+      env[`${prefix}OIDC_CLIENT_ID`] || Config.DEFAULT_OIDC_CLIENT_ID;
+    const oidcClientSecret =
+      env[`${prefix}OIDC_CLIENT_SECRET`] || Config.DEFAULT_OIDC_CLIENT_SECRET;
+    const oidcRedirectUri =
+      env[`${prefix}OIDC_REDIRECT_URI`] || Config.DEFAULT_OIDC_REDIRECT_URI;
+    const oidcCallbackPort = parseIntEnv(
+      env[`${prefix}OIDC_CALLBACK_PORT`],
+      Config.DEFAULT_OIDC_CALLBACK_PORT,
+    );
+    const oidcAuthTimeout = parseFloatEnv(
+      env[`${prefix}OIDC_AUTH_TIMEOUT`],
+      Config.DEFAULT_OIDC_AUTH_TIMEOUT,
+    );
+    const oidcScopes = parseCommaScopes(
+      env[`${prefix}OIDC_SCOPES`],
+      Config.DEFAULT_OIDC_SCOPES,
+    );
 
-    return new Config(serverAddress, dirctlPath, spiffeEndpointSocketPath, authMode, jwtAudience, tlsCaFile, tlsCertFile, tlsKeyFile);
+    return new Config(
+      serverAddress,
+      dirctlPath,
+      spiffeEndpointSocketPath,
+      authMode,
+      jwtAudience,
+      tlsCaFile,
+      tlsCertFile,
+      tlsKeyFile,
+      authToken,
+      tlsServerName,
+      tlsSkipVerify,
+      oidcIssuer,
+      oidcClientId,
+      oidcClientSecret,
+      oidcRedirectUri,
+      oidcCallbackPort,
+      oidcAuthTimeout,
+      oidcScopes,
+    );
   }
 }
 
@@ -150,6 +292,8 @@ export class Client {
   eventClient: GrpcClient<typeof models.events_v1.EventService>;
   namingClient: GrpcClient<typeof models.naming_v1.NamingService>;
 
+  private oauthHolder: OAuthTokenHolder | null = null;
+
   /**
    * Initialize the client with the given configuration.
    *
@@ -181,11 +325,30 @@ export class Client {
     }
     this.config = config;
 
-    // if no transport provided, use insecure transport
+    if (config.authMode === 'oidc') {
+      this.oauthHolder = new OAuthTokenHolder();
+      if (config.authToken) {
+        this.oauthHolder.setTokens(config.authToken);
+      } else {
+        const cachedToken = new TokenCache().getValidToken();
+        if (cachedToken !== undefined) {
+          this.oauthHolder.setTokens(cachedToken.accessToken);
+        }
+      }
+    }
+
+    // if no transport provided, use insecure transport (or OIDC transport)
     if (!grpcTransport) {
-      grpcTransport = createGrpcTransport({
-        baseUrl: config.serverAddress,
-      });
+      if (config.authMode === 'oidc') {
+        if (this.oauthHolder === null) {
+          throw new Error('OAuth token holder not initialized');
+        }
+        grpcTransport = Client.createOidcTransport(config, this.oauthHolder);
+      } else {
+        grpcTransport = createGrpcTransport({
+          baseUrl: config.serverAddress,
+        });
+      }
     }
 
     // Set clients for all services
@@ -224,7 +387,46 @@ export class Client {
     return pem;
   }
 
-  static async createGRPCTransport(config: Config): Promise<Transport> {
+  private static secureNodeOptions(
+    config: Config,
+    base: http2.SecureClientSessionOptions,
+  ): http2.SecureClientSessionOptions {
+    const out: http2.SecureClientSessionOptions = { ...base };
+    const sn = config.tlsServerName.trim();
+    if (sn !== '') {
+      out.servername = sn;
+    }
+    return out;
+  }
+
+  private static createOidcTransport(config: Config, holder: OAuthTokenHolder): Transport {
+    let ca: string | undefined;
+    if (config.tlsCaFile !== '') {
+      try {
+        ca = readFileSync(config.tlsCaFile).toString();
+      } catch (e) {
+        throw new Error(`Failed to read TLS CA file: ${(e as Error).message}`);
+      }
+    }
+    const nodeBase: http2.SecureClientSessionOptions = {};
+    if (ca !== undefined) {
+      nodeBase.ca = ca;
+    }
+    const bearerInterceptor: Interceptor = (next) => async (req) => {
+      req.header.set('authorization', `Bearer ${holder.getAccessToken()}`);
+      return await next(req);
+    };
+    return createGrpcTransport({
+      baseUrl: config.serverAddress,
+      interceptors: [bearerInterceptor],
+      nodeOptions: Client.secureNodeOptions(config, nodeBase),
+    });
+  }
+
+  static async createGRPCTransport(
+    config: Config,
+    oidcOptions?: { oidcTokenHolder: OAuthTokenHolder },
+  ): Promise<Transport> {
     // Handle different authentication modes
     switch (config.authMode) {
       case '':
@@ -240,6 +442,16 @@ export class Client {
 
       case 'tls':
         return await this.createTLSTransport(config);
+
+      case 'oidc': {
+        const holder = oidcOptions?.oidcTokenHolder;
+        if (holder === undefined) {
+          throw new Error(
+            'createGRPCTransport: authMode oidc requires options.oidcTokenHolder',
+          );
+        }
+        return Client.createOidcTransport(config, holder);
+      }
 
       default:
         throw new Error(`Unsupported auth mode: ${config.authMode}`);
@@ -276,11 +488,11 @@ export class Client {
     // Create transport settings for gRPC client
     const transport = createGrpcTransport({
       baseUrl: config.serverAddress,
-      nodeOptions: {
+      nodeOptions: Client.secureNodeOptions(config, {
         ca: this.convertToPEM(svid.bundle, "TRUSTED CERTIFICATE"),
         cert: this.convertToPEM(svid.x509Svid, "CERTIFICATE"),
         key: this.convertToPEM(svid.x509SvidKey, "PRIVATE KEY"),
-      },
+      }),
     });
 
     return transport;
@@ -347,9 +559,9 @@ export class Client {
     const transport = createGrpcTransport({
       baseUrl: config.serverAddress,
       interceptors: [jwtInterceptor],
-      nodeOptions: {
+      nodeOptions: Client.secureNodeOptions(config, {
         ca: this.convertToPEM(bundle, "CERTIFICATE"),
-      },
+      }),
     });
 
     return transport;
@@ -381,15 +593,77 @@ export class Client {
 
     const transport = createGrpcTransport({
       baseUrl: config.serverAddress,
-      nodeOptions: {
+      nodeOptions: Client.secureNodeOptions(config, {
         ca: root_ca,
         cert: cert_chain,
         key: private_key,
-      },
+      }),
     });
 
     return transport;
   }
+
+  private cachedTokenFromResponse(payload: Record<string, unknown>): CachedToken {
+    const expiresIn = payload.expires_in;
+    let expiresAt: Date | undefined;
+    if (typeof expiresIn === 'number' && Number.isFinite(expiresIn)) {
+      expiresAt = new Date(Date.now() + expiresIn * 1000);
+    } else if (typeof expiresIn === 'string' && expiresIn !== '') {
+      const n = Number(expiresIn);
+      if (Number.isFinite(n)) {
+        expiresAt = new Date(Date.now() + n * 1000);
+      }
+    }
+    const refreshToken = payload.refresh_token;
+    const tokenType = payload.token_type;
+    return new CachedToken(
+      String(payload.access_token),
+      typeof tokenType === 'string' ? tokenType : '',
+      'oidc',
+      this.config.oidcIssuer,
+      typeof refreshToken === 'string' ? refreshToken : '',
+      expiresAt,
+      '',
+      '',
+      '',
+      new Date(),
+    );
+  }
+
+  /**
+   * Run browser-based OAuth 2.0 Authorization Code + PKCE login (loopback callback).
+   *
+   * Requires `authMode: 'oidc'`, `oidcIssuer`, and `oidcClientId`.
+   */
+  async authenticateOAuthPkce(): Promise<void> {
+    if (this.config.authMode !== 'oidc') {
+      throw new Error("authenticateOAuthPkce() requires authMode='oidc'");
+    }
+    if (this.config.oidcIssuer === '') {
+      throw new Error('oidc_issuer is required for authenticateOAuthPkce()');
+    }
+    if (this.config.oidcClientId === '') {
+      throw new Error('oidc_client_id is required for authenticateOAuthPkce()');
+    }
+    if (this.oauthHolder === null) {
+      throw new Error('OAuth token holder not initialized');
+    }
+    const verify = !this.config.tlsSkipVerify;
+    const timeoutMs = Math.min(30_000, this.config.oidcAuthTimeout * 1000);
+    const meta = await fetchOpenidConfiguration(this.config.oidcIssuer, {
+      verify,
+      timeoutMs,
+    });
+    const payload = await runLoopbackPkceLogin(this.config, meta, {
+      verify,
+      timeoutMs: this.config.oidcAuthTimeout * 1000,
+    });
+    this.oauthHolder.updateFromTokenResponse(payload);
+    new TokenCache().save(this.cachedTokenFromResponse(payload));
+    console.log('Authenticated with OAuth PKCE');
+    console.log('Access token acquired.');
+  }
+
   /**
    * Request generator helper function for streaming requests.
    */
