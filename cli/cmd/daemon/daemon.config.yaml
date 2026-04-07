@@ -28,7 +28,7 @@ server:
     verification:
       enabled: true
   routing:
-    listen_address: "/ip4/0.0.0.0/tcp/0"
+    listen_address: "/ip4/0.0.0.0/tcp/8999"
     datastore_dir: "routing"
     gossipsub:
       enabled: true
