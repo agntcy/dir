@@ -164,6 +164,6 @@ require (
 	google.golang.org/genai v1.53.0 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20260406210006-6f92a3bedf2d // indirect
 	google.golang.org/grpc v1.80.0 // indirect
-	gopkg.in/yaml.v3 v3.0.1 // indirect
+	gopkg.in/yaml.v3 v3.0.1
 	lukechampine.com/blake3 v1.4.1 // indirect
 )

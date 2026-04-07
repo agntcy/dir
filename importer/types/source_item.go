@@ -19,14 +19,17 @@ const (
 	SourceKindMCP SourceKind = iota
 	// SourceKindA2A is an A2A AgentCard as [structpb.Struct] (JSON object).
 	SourceKindA2A
+	// SourceKindAgentSkill is a parsed Agent Skill as [structpb.Struct] (see importer/skill package contract).
+	SourceKindAgentSkill
 )
 
 // SourceItem is one record from fetch through dedup before OASF transformation.
 // SourceItem.Kind selects which field is valid.
 type SourceItem struct {
-	Kind SourceKind
-	MCP  mcpapiv0.ServerResponse
-	A2A  *structpb.Struct
+	Kind  SourceKind
+	MCP   mcpapiv0.ServerResponse
+	A2A   *structpb.Struct
+	Skill *structpb.Struct
 }
 
 // MCPSourceItem wraps an MCP server response for the pipeline.
@@ -37,6 +40,11 @@ func MCPSourceItem(s mcpapiv0.ServerResponse) SourceItem {
 // A2ASourceItem wraps an AgentCard as structpb.Struct for the pipeline.
 func A2ASourceItem(card *structpb.Struct) SourceItem {
 	return SourceItem{Kind: SourceKindA2A, A2A: card}
+}
+
+// AgentSkillSourceItem wraps a parsed Agent Skill payload for the pipeline.
+func AgentSkillSourceItem(skill *structpb.Struct) SourceItem {
+	return SourceItem{Kind: SourceKindAgentSkill, Skill: skill}
 }
 
 // NameVersion returns "name@version" for deduplication, or "" if it cannot be derived.
@@ -52,6 +60,22 @@ func (s SourceItem) NameVersion() string {
 		}
 
 		name, version := a2aNameVersionFields(s.A2A)
+		if name == "" {
+			return ""
+		}
+
+		if version == "" {
+			version = "v1.0.0"
+		}
+
+		return fmt.Sprintf("%s@%s", name, version)
+
+	case SourceKindAgentSkill:
+		if s.Skill == nil {
+			return ""
+		}
+
+		name, version := agentSkillNameVersionFields(s.Skill)
 		if name == "" {
 			return ""
 		}
@@ -80,6 +104,30 @@ func a2aNameVersionFields(card *structpb.Struct) (string, string) {
 
 	if v, ok := fields["version"]; ok {
 		version = strings.TrimSpace(v.GetStringValue())
+	}
+
+	return name, version
+}
+
+func agentSkillNameVersionFields(skill *structpb.Struct) (string, string) {
+	if skill == nil {
+		return "", ""
+	}
+
+	fields := skill.GetFields()
+
+	var name, version string
+
+	if v, ok := fields["name"]; ok {
+		name = strings.TrimSpace(v.GetStringValue())
+	}
+
+	if metaVal, ok := fields["metadata"]; ok {
+		if meta := metaVal.GetStructValue(); meta != nil {
+			if v, ok := meta.GetFields()["version"]; ok {
+				version = strings.TrimSpace(v.GetStringValue())
+			}
+		}
 	}
 
 	return name, version
