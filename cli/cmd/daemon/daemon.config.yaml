@@ -7,8 +7,11 @@
 # directory (default: ~/.agntcy/dir/, override with --data-dir).
 # Use absolute paths to pin a location regardless of --data-dir.
 #
-# Credentials can be set via environment variables with the prefix
+# Override any setting via environment variables with the prefix
 # DIRECTORY_DAEMON_ followed by the uppercased, underscore-delimited path:
+#   DIRECTORY_DAEMON_SERVER_LISTEN_ADDRESS
+#   DIRECTORY_DAEMON_SERVER_ROUTING_LISTEN_ADDRESS
+#   DIRECTORY_DAEMON_SERVER_ROUTING_BOOTSTRAP_PEERS  (comma-separated)
 #   DIRECTORY_DAEMON_SERVER_DATABASE_POSTGRES_USERNAME
 #   DIRECTORY_DAEMON_SERVER_DATABASE_POSTGRES_PASSWORD
 #   DIRECTORY_DAEMON_SERVER_STORE_OCI_AUTH_CONFIG_USERNAME
@@ -30,6 +33,8 @@ server:
   routing:
     listen_address: "/ip4/0.0.0.0/tcp/8999"
     datastore_dir: "routing"
+    # bootstrap_peers:
+    #   - "/dns4/remote-dir.example.com/tcp/8999/p2p/<peer-id>"
     gossipsub:
       enabled: true
   database:

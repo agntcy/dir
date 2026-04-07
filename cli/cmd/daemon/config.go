@@ -84,6 +84,8 @@ func bindCredentialEnvVars(v *viper.Viper) {
 	_ = v.BindEnv("server.database.postgres.username")
 	_ = v.BindEnv("server.database.postgres.password")
 
+	_ = v.BindEnv("server.routing.bootstrap_peers")
+
 	_ = v.BindEnv("server.store.oci.auth_config.username")
 	_ = v.BindEnv("server.store.oci.auth_config.password")
 	_ = v.BindEnv("server.store.oci.auth_config.access_token")
