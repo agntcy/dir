@@ -31,7 +31,7 @@ function formatTimestamp(value: Date | undefined): string | undefined {
   if (value === undefined) {
     return undefined;
   }
-  return value.toISOString().replace(/\.\d{3}Z$/, 'Z');
+  return value.toISOString();
 }
 
 export interface CachedTokenJson {
