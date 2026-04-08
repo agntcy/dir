@@ -7,6 +7,7 @@ package tools
 import (
 	"context"
 	"fmt"
+	"slices"
 
 	"github.com/agntcy/oasf-sdk/pkg/schema"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
@@ -62,8 +63,8 @@ func (t *Tools) GetSchemaDomains(ctx context.Context, _ *mcp.CallToolRequest, in
 		}, nil
 	}
 
-	// Get domains using the schema package with explicit schema version option.
-	domainsJSON, err := schemaInstance.GetSchemaDomains(ctx, schema.WithSchemaVersion(input.Version))
+	// Get domains taxonomy using the schema package with explicit schema version option.
+	domainTaxonomy, err := schemaInstance.GetSchemaDomains(ctx, schema.WithSchemaVersion(input.Version))
 	if err != nil {
 		//nolint:nilerr // MCP tools communicate errors through output, not error return
 		return nil, GetSchemaDomainsOutput{
@@ -73,17 +74,7 @@ func (t *Tools) GetSchemaDomains(ctx context.Context, _ *mcp.CallToolRequest, in
 		}, nil
 	}
 
-	allDomains, err := parseSchemaData(domainsJSON, parseItemFromSchema)
-	if err != nil {
-		//nolint:nilerr // MCP tools communicate errors through output, not error return
-		return nil, GetSchemaDomainsOutput{
-			Version:           input.Version,
-			ErrorMessage:      err.Error(),
-			AvailableVersions: availableVersions,
-		}, nil
-	}
-
-	resultDomains, err := filterDomains(allDomains, input.ParentDomain)
+	resultDomains, err := filterDomains(domainTaxonomy, input.ParentDomain)
 	if err != nil {
 		//nolint:nilerr // MCP tools communicate errors through output, not error return
 		return nil, GetSchemaDomainsOutput{
@@ -102,22 +93,42 @@ func (t *Tools) GetSchemaDomains(ctx context.Context, _ *mcp.CallToolRequest, in
 	}, nil
 }
 
-// filterDomains filters domains based on parent parameter.
-func filterDomains(allDomains []schemaClass, parent string) ([]schemaClass, error) {
-	if parent != "" {
-		return filterChildItems(allDomains, parent)
+// filterDomains filters domain taxonomy based on parent parameter.
+func filterDomains(domainTaxonomy schema.Taxonomy, parent string) (schema.Taxonomy, error) {
+	if parent == "" {
+		return domainTaxonomy, nil
 	}
 
-	return extractTopLevelCategories(allDomains), nil
+	parentDomain, found := findTaxonomyItemByName(domainTaxonomy, parent)
+	if !found || len(parentDomain.Classes) == 0 {
+		return nil, fmt.Errorf("parent '%s' not found or has no children", parent)
+	}
+
+	return schema.Taxonomy(parentDomain.Classes), nil
 }
 
-// convertToDomainItems converts generic schema items to DomainItem type.
-func convertToDomainItems(items []schemaClass) []DomainItem {
-	domains := make([]DomainItem, len(items))
+// convertToDomainItems converts taxonomy map items to DomainItem type.
+func convertToDomainItems(taxonomy schema.Taxonomy) []DomainItem {
+	domains := make([]DomainItem, 0, len(taxonomy))
 
-	for i, item := range items {
-		domains[i] = DomainItem(item)
+	for _, item := range taxonomy {
+		domains = append(domains, DomainItem{
+			Name:    item.Name,
+			Caption: item.Caption,
+			ID:      item.ID,
+		})
 	}
+
+	slices.SortFunc(domains, func(a, b DomainItem) int {
+		if a.Name < b.Name {
+			return -1
+		}
+		if a.Name > b.Name {
+			return 1
+		}
+
+		return 0
+	})
 
 	return domains
 }

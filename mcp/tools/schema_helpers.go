@@ -5,7 +5,6 @@ package tools
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"os"
 	"slices"
@@ -47,13 +46,6 @@ func getSchemaInstance() (*schema.Schema, error) {
 	return schemaInstance, nil
 }
 
-// schemaClass represents a generic schema class (domain or skill).
-type schemaClass struct {
-	Name    string
-	Caption string
-	ID      int
-}
-
 // validateVersion checks if the provided version is valid and returns available versions.
 func validateVersion(ctx context.Context, version string) ([]string, error) {
 	// Get schema instance to fetch available versions
@@ -82,144 +74,20 @@ func validateVersion(ctx context.Context, version string) ([]string, error) {
 	return availableVersions, nil
 }
 
-// parseSchemaData parses schema data into a list of schema items.
-// It supports both legacy JSON payloads ([]byte) and the newer taxonomy map type.
-func parseSchemaData(data any, parseFunc func(map[string]any) schemaClass) ([]schemaClass, error) {
-	switch v := data.(type) {
-	case []byte:
-		var schemaData map[string]any
-		if err := json.Unmarshal(v, &schemaData); err != nil {
-			return nil, fmt.Errorf("failed to parse schema data: %w", err)
+// findTaxonomyItemByName returns the taxonomy node matching a parent name.
+// It supports matching either the map key or the item's name field.
+func findTaxonomyItemByName(taxonomy schema.Taxonomy, parent string) (schema.TaxonomyItem, bool) {
+	for key, item := range taxonomy {
+		if key == parent || item.Name == parent {
+			return item, true
 		}
-
-		var items []schemaClass
-
-		for _, itemDef := range schemaData {
-			defMap, ok := itemDef.(map[string]any)
-			if !ok {
-				continue
-			}
-
-			item := parseFunc(defMap)
-			if item.Name != "" {
-				items = append(items, item)
-			}
-		}
-
-		return items, nil
-	case schema.Taxonomy:
-		return flattenTaxonomy(v), nil
-	default:
-		return nil, fmt.Errorf("unsupported schema data type: %T", data)
-	}
-}
-
-// flattenTaxonomy converts nested taxonomy maps into a flat list of schema items.
-func flattenTaxonomy(taxonomy schema.Taxonomy) []schemaClass {
-	items := make([]schemaClass, 0, len(taxonomy))
-	for _, item := range taxonomy {
-		if item.Name == "" {
-			continue
-		}
-
-		items = append(items, schemaClass{
-			Name:    item.Name,
-			Caption: item.Caption,
-			ID:      item.ID,
-		})
 
 		if len(item.Classes) > 0 {
-			items = append(items, flattenTaxonomy(schema.Taxonomy(item.Classes))...)
+			if found, ok := findTaxonomyItemByName(schema.Taxonomy(item.Classes), parent); ok {
+				return found, true
+			}
 		}
 	}
 
-	return items
-}
-
-// filterChildItems returns child items that are direct descendants of the parent.
-func filterChildItems(allItems []schemaClass, parent string) ([]schemaClass, error) {
-	prefix := parent + "/"
-
-	var children []schemaClass
-
-	for _, item := range allItems {
-		if !strings.HasPrefix(item.Name, prefix) {
-			continue
-		}
-
-		remainder := strings.TrimPrefix(item.Name, prefix)
-		if !strings.Contains(remainder, "/") {
-			children = append(children, item)
-		}
-	}
-
-	if len(children) == 0 {
-		return nil, fmt.Errorf("parent '%s' not found or has no children", parent)
-	}
-
-	return children, nil
-}
-
-// extractTopLevelCategories extracts unique top-level parent categories from items.
-func extractTopLevelCategories(allItems []schemaClass) []schemaClass {
-	parentCategories := make(map[string]schemaClass)
-	topLevel := make([]schemaClass, 0, len(allItems))
-
-	for _, item := range allItems {
-		idx := strings.Index(item.Name, "/")
-		parentCategory := item.Name
-		if idx > 0 {
-			parentCategory = item.Name[:idx]
-		}
-
-		if parentCategory == "" {
-			continue
-		}
-
-		if _, exists := parentCategories[parentCategory]; exists {
-			continue
-		}
-
-		value := schemaClass{Name: parentCategory}
-		if idx < 0 {
-			value = item
-		}
-
-		parentCategories[parentCategory] = value
-		topLevel = append(topLevel, value)
-	}
-
-	return topLevel
-}
-
-// parseItemFromSchema extracts schema item information from the schema definition.
-func parseItemFromSchema(defMap map[string]any) schemaClass {
-	item := schemaClass{}
-
-	// Extract title for caption
-	if title, ok := defMap["title"].(string); ok {
-		item.Caption = title
-	}
-
-	// Extract properties
-	props, ok := defMap["properties"].(map[string]any)
-	if !ok {
-		return item
-	}
-
-	// Extract name
-	if nameField, ok := props["name"].(map[string]any); ok {
-		if constVal, ok := nameField["const"].(string); ok {
-			item.Name = constVal
-		}
-	}
-
-	// Extract ID
-	if idField, ok := props["id"].(map[string]any); ok {
-		if constVal, ok := idField["const"].(float64); ok {
-			item.ID = int(constVal)
-		}
-	}
-
-	return item
+	return schema.TaxonomyItem{}, false
 }

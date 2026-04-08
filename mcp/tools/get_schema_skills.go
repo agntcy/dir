@@ -7,6 +7,7 @@ package tools
 import (
 	"context"
 	"fmt"
+	"slices"
 
 	"github.com/agntcy/oasf-sdk/pkg/schema"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
@@ -62,8 +63,8 @@ func (t *Tools) GetSchemaSkills(ctx context.Context, _ *mcp.CallToolRequest, inp
 		}, nil
 	}
 
-	// Get skills using the schema package with explicit schema version option.
-	skillsJSON, err := schemaInstance.GetSchemaSkills(ctx, schema.WithSchemaVersion(input.Version))
+	// Get skills taxonomy using the schema package with explicit schema version option.
+	skillTaxonomy, err := schemaInstance.GetSchemaSkills(ctx, schema.WithSchemaVersion(input.Version))
 	if err != nil {
 		//nolint:nilerr // MCP tools communicate errors through output, not error return
 		return nil, GetSchemaSkillsOutput{
@@ -73,17 +74,7 @@ func (t *Tools) GetSchemaSkills(ctx context.Context, _ *mcp.CallToolRequest, inp
 		}, nil
 	}
 
-	allSkills, err := parseSchemaData(skillsJSON, parseItemFromSchema)
-	if err != nil {
-		//nolint:nilerr // MCP tools communicate errors through output, not error return
-		return nil, GetSchemaSkillsOutput{
-			Version:           input.Version,
-			ErrorMessage:      err.Error(),
-			AvailableVersions: availableVersions,
-		}, nil
-	}
-
-	resultSkills, err := filterSkills(allSkills, input.ParentSkill)
+	resultSkills, err := filterSkills(skillTaxonomy, input.ParentSkill)
 	if err != nil {
 		//nolint:nilerr // MCP tools communicate errors through output, not error return
 		return nil, GetSchemaSkillsOutput{
@@ -102,22 +93,42 @@ func (t *Tools) GetSchemaSkills(ctx context.Context, _ *mcp.CallToolRequest, inp
 	}, nil
 }
 
-// filterSkills filters skills based on parent parameter.
-func filterSkills(allSkills []schemaClass, parent string) ([]schemaClass, error) {
-	if parent != "" {
-		return filterChildItems(allSkills, parent)
+// filterSkills filters skill taxonomy based on parent parameter.
+func filterSkills(skillTaxonomy schema.Taxonomy, parent string) (schema.Taxonomy, error) {
+	if parent == "" {
+		return skillTaxonomy, nil
 	}
 
-	return extractTopLevelCategories(allSkills), nil
+	parentSkill, found := findTaxonomyItemByName(skillTaxonomy, parent)
+	if !found || len(parentSkill.Classes) == 0 {
+		return nil, fmt.Errorf("parent '%s' not found or has no children", parent)
+	}
+
+	return schema.Taxonomy(parentSkill.Classes), nil
 }
 
-// convertToSkillItems converts generic schema items to SkillItem type.
-func convertToSkillItems(items []schemaClass) []SkillItem {
-	skills := make([]SkillItem, len(items))
+// convertToSkillItems converts taxonomy map items to SkillItem type.
+func convertToSkillItems(taxonomy schema.Taxonomy) []SkillItem {
+	skills := make([]SkillItem, 0, len(taxonomy))
 
-	for i, item := range items {
-		skills[i] = SkillItem(item)
+	for _, item := range taxonomy {
+		skills = append(skills, SkillItem{
+			Name:    item.Name,
+			Caption: item.Caption,
+			ID:      item.ID,
+		})
 	}
+
+	slices.SortFunc(skills, func(a, b SkillItem) int {
+		if a.Name < b.Name {
+			return -1
+		}
+		if a.Name > b.Name {
+			return 1
+		}
+
+		return 0
+	})
 
 	return skills
 }
