@@ -35,7 +35,7 @@ func getSchemaInstance() (*schema.Schema, error) {
 	if schemaInstance == nil || schemaURL != currentSchemaURL {
 		var err error
 
-		schemaInstance, err = schema.New(currentSchemaURL)
+		schemaInstance, err = schema.New(currentSchemaURL, schema.WithCache(true))
 		if err != nil {
 			return nil, fmt.Errorf("failed to create schema instance: %w", err)
 		}
