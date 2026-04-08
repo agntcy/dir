@@ -30,11 +30,9 @@ services:
   service-a2a:
     image: ghcr.io/ramizpolic/a2a-helloworld
     labels:
-      - "org.agntcy/discover=true"
-      - "org.agntcy/agent-type=a2a"
+      - "test.org.agntcy/discover=true"
+      - "test.org.agntcy/agent-type=a2a"
       # Reference to the sample record for runtime discovery
-      - "org.agntcy/agent-record=baeareiabbog2umgduqhlcb64fzt6adn34kblzvru3fdzkl75hjhwt6h3da"
+      - "test.org.agntcy/agent-record=baeareiabbog2umgduqhlcb64fzt6adn34kblzvru3fdzkl75hjhwt6h3da"
     ports:
       - 9999
-    networks:
-      - team-a

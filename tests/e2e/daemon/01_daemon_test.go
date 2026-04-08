@@ -5,6 +5,7 @@ package daemon
 
 import (
 	"context"
+	"encoding/json"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -141,7 +142,7 @@ var _ = ginkgo.Describe("Daemon e2e", ginkgo.Ordered, ginkgo.Serial, func() {
 		gomega.Expect(recordRef).NotTo(gomega.BeNil())
 		gomega.Expect(recordRef.GetCid()).To(gomega.Equal(sampleRuntimeRecordCID))
 
-		// Use eventually to allow some time for the runtime to discover the workload and push the OASF data to the store.
+		// Use eventually to allow some time for the runtime to discover the workload and its service details.
 		// The test will poll the ListWorkloads API until it finds the expected workload with the correct OASF data, or until it times out.
 		gomega.Eventually(func(g gomega.Gomega) {
 			// Discover runtimes workloads
@@ -154,14 +155,20 @@ var _ = ginkgo.Describe("Daemon e2e", ginkgo.Ordered, ginkgo.Serial, func() {
 			workload := discoverResp[0]
 			g.Expect(workload.GetType()).To(gomega.Equal("container"))
 			g.Expect(workload.GetRuntime()).To(gomega.Equal("docker"))
-			g.Expect(workload.GetLabels()).To(gomega.HaveKeyWithValue("org.agntcy/agent-record", sampleRuntimeRecordCID))
+			g.Expect(workload.GetLabels()).To(gomega.HaveKeyWithValue("test.org.agntcy/agent-type", "a2a"))
+			g.Expect(workload.GetLabels()).To(gomega.HaveKeyWithValue("test.org.agntcy/agent-record", sampleRuntimeRecordCID))
 			g.Expect(workload.GetServices()).To(gomega.Not(gomega.BeNil()))
 
-			// Validate that discovered OASF data matches what was pushed
-			oasfData := workload.GetServices().GetOasf().AsMap()
-			g.Expect(oasfData).NotTo(gomega.BeNil())
-			g.Expect(oasfData).To(gomega.HaveKeyWithValue("cid", sampleRuntimeRecordCID))
-			g.Expect(oasfData).To(gomega.HaveKeyWithValue("record", gomega.MatchJSON(sampleRuntimeRecord)))
+			// Validate OASF service discovery data
+			oasfService := workload.GetServices().GetOasf().AsMap()
+			g.Expect(oasfService).NotTo(gomega.BeNil())
+			g.Expect(oasfService).To(gomega.HaveKeyWithValue("cid", sampleRuntimeRecordCID))
+			g.Expect(oasfService).To(gomega.HaveKey("record"))
+
+			// Validate discovered OASF record matches the original record
+			oasfRecord, err := json.Marshal(oasfService["record"])
+			g.Expect(err).NotTo(gomega.HaveOccurred())
+			g.Expect(oasfRecord).To(gomega.MatchJSON(sampleRuntimeRecord))
 		}).
 			WithPolling(10 * time.Second).
 			WithTimeout(2 * time.Minute).
