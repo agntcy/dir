@@ -12,15 +12,15 @@ import (
 	runtimev1 "github.com/agntcy/dir/runtime/api/runtime/v1"
 )
 
-func (c *Client) GetWorkload(ctx context.Context, workloadID string) error {
-	_, err := c.DiscoveryServiceClient.GetWorkload(ctx, &runtimev1.GetWorkloadRequest{
+func (c *Client) GetWorkload(ctx context.Context, workloadID string) (*runtimev1.Workload, error) {
+	workload, err := c.DiscoveryServiceClient.GetWorkload(ctx, &runtimev1.GetWorkloadRequest{
 		Id: workloadID,
 	})
 	if err != nil {
-		return fmt.Errorf("failed to get workload %s: %w", workloadID, err)
+		return nil, fmt.Errorf("failed to get workload %s: %w", workloadID, err)
 	}
 
-	return nil
+	return workload, nil
 }
 
 func (c *Client) ListWorkloadsStream(ctx context.Context, labels map[string]string) (streaming.StreamResult[runtimev1.Workload], error) {
