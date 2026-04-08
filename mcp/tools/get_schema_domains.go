@@ -62,8 +62,8 @@ func (t *Tools) GetSchemaDomains(ctx context.Context, _ *mcp.CallToolRequest, in
 		}, nil
 	}
 
-	// Get domains using the schema package with WithVersion option
-	domainsJSON, err := schemaInstance.GetSchemaDomains(ctx, schema.WithVersion(input.Version))
+	// Get domains using the schema package with explicit schema version option.
+	domainsJSON, err := schemaInstance.GetSchemaDomains(ctx, schema.WithSchemaVersion(input.Version))
 	if err != nil {
 		//nolint:nilerr // MCP tools communicate errors through output, not error return
 		return nil, GetSchemaDomainsOutput{

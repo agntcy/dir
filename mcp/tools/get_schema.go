@@ -80,8 +80,8 @@ func (t *Tools) GetSchema(ctx context.Context, _ *mcp.CallToolRequest, input Get
 		}, nil
 	}
 
-	// Get schema content using the OASF SDK with WithVersion option
-	schemaContent, err := schemaInstance.GetRecordSchemaContent(ctx, schema.WithVersion(input.Version))
+	// Get schema content using the OASF SDK with explicit schema version option.
+	schemaContent, err := schemaInstance.GetRecordJSONSchema(ctx, schema.WithSchemaVersion(input.Version))
 	if err != nil {
 		return nil, GetSchemaOutput{
 			Version:           input.Version,

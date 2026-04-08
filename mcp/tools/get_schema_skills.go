@@ -62,8 +62,8 @@ func (t *Tools) GetSchemaSkills(ctx context.Context, _ *mcp.CallToolRequest, inp
 		}, nil
 	}
 
-	// Get skills using the schema package with WithVersion option
-	skillsJSON, err := schemaInstance.GetSchemaSkills(ctx, schema.WithVersion(input.Version))
+	// Get skills using the schema package with explicit schema version option.
+	skillsJSON, err := schemaInstance.GetSchemaSkills(ctx, schema.WithSchemaVersion(input.Version))
 	if err != nil {
 		//nolint:nilerr // MCP tools communicate errors through output, not error return
 		return nil, GetSchemaSkillsOutput{
