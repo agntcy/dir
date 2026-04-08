@@ -165,11 +165,11 @@ func saveAndDisplayResult(cmd *cobra.Command, cfg *client.Config, cache *client.
 		TokenType:    result.TokenType,
 		Provider:     "oidc",
 		Issuer:       cfg.OIDCIssuer,
-		ExpiresAt:    result.ExpiresAt,
+		ExpiresAt:    result.ExpiresAt.UTC().Truncate(time.Millisecond),
 		User:         userDisplay,
 		UserID:       result.Subject,
 		Email:        result.Email,
-		CreatedAt:    time.Now(),
+		CreatedAt:    time.Now().UTC().Truncate(time.Millisecond),
 	}
 
 	if err := cache.Save(cachedToken); err != nil {

@@ -130,7 +130,7 @@ func (c *TokenCache) Save(token *CachedToken) error {
 
 	// Set creation time if not set
 	if token.CreatedAt.IsZero() {
-		token.CreatedAt = time.Now()
+		token.CreatedAt = time.Now().UTC()
 	}
 
 	data, err := json.MarshalIndent(token, "", "  ") // #nosec G117: intentional field - for cached token
@@ -170,11 +170,11 @@ func (c *TokenCache) IsValid(token *CachedToken) bool {
 	if token.ExpiresAt.IsZero() {
 		defaultExpiry := token.CreatedAt.Add(DefaultTokenValidityDuration)
 
-		return time.Now().Before(defaultExpiry)
+		return time.Now().UTC().Truncate(time.Millisecond).Before(defaultExpiry)
 	}
 
 	// Check if token has expired (with buffer)
-	return time.Now().Add(TokenExpiryBuffer).Before(token.ExpiresAt)
+	return time.Now().UTC().Truncate(time.Millisecond).Add(TokenExpiryBuffer).Before(token.ExpiresAt)
 }
 
 // GetValidToken returns a valid cached token or nil if none exists.
