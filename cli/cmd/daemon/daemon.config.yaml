@@ -86,7 +86,7 @@ runtime:
       enabled: true
     oasf:
       enabled: true
-      ## Optional custom configuration for the DIR client used by the OASf resolver.
+      ## Optional custom configuration for the DIR client used by the OASF resolver.
       ## If not set, the resolver will use the default configuration which sources
       ## from environment variables.
       # client:

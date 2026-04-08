@@ -58,7 +58,7 @@ func registerRuntimeDefaults(v *viper.Viper) {
 
 	// Docker adapter
 	// Docker host mode is required for the adapter to access the Docker socket when the daemon runs in a process.
-	// Users can disable host mode if they run the daemon as a container want to use a different Docker host configuration.
+	// Users should disable host mode if they run the daemon as a container and ensure socket/networking access is properly configured.
 	v.SetDefault("runtime.adapter.docker.host", adapterdocker.DefaultHost)
 	v.SetDefault("runtime.adapter.docker.host_mode", true)
 	v.SetDefault("runtime.adapter.docker.label_key", adapterdocker.DefaultLabelKey)

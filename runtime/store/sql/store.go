@@ -7,6 +7,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"slices"
 	"time"
 
 	runtimev1 "github.com/agntcy/dir/runtime/api/runtime/v1"
@@ -178,11 +179,15 @@ func (s *store) ListWorkloads(ctx context.Context) ([]*runtimev1.Workload, error
 
 // WatchWorkloads watches for workload changes.
 func (s *store) WatchWorkloads(ctx context.Context, handler func(workload *runtimev1.Workload, deleted bool)) error {
+	// Take an initial snapshot of the workloads in the store to compare against for changes.
+	// We will use this to detect created, updated, and deleted workloads.
 	prev, err := s.snapshot(ctx)
 	if err != nil {
 		return err
 	}
 
+	// Poll the store at regular intervals to detect changes.
+	// We cannot rely on database triggers or notifications since they are not supported by SQL.
 	ticker := time.NewTicker(defaultWatchPollInterval)
 	defer ticker.Stop()
 
@@ -192,6 +197,7 @@ func (s *store) WatchWorkloads(ctx context.Context, handler func(workload *runti
 			//nolint:wrapcheck
 			return ctx.Err()
 		case <-ticker.C:
+			// Take a snapshot of the current workloads in the store. We will compare this with the previous snapshot to detect changes.
 			current, snapErr := s.snapshot(ctx)
 			if snapErr != nil {
 				logger.Error("watch snapshot failed", "error", snapErr)
@@ -199,12 +205,16 @@ func (s *store) WatchWorkloads(ctx context.Context, handler func(workload *runti
 				continue
 			}
 
-			for id, currentPayload := range current {
-				prevPayload, existed := prev[id]
-				if existed && prevPayload == currentPayload {
+			// If the workload exists in the current snapshot but is missing in the previous snapshot, it has been created.
+			// If the workload exists in both snapshots but has different payloads, it has been updated.
+			for id, currentWorkload := range current {
+				prevWorkload, existed := prev[id]
+				if existed && slices.Equal(prevWorkload.Payload, currentWorkload.Payload) {
 					continue
 				}
 
+				// Fetch the workload from the store to pass to the handler. We cannot rely on the payload in the snapshot since it
+				// may be outdated by the time we process it, and the handler may want to see the most up-to-date version of the workload.
 				workload, getErr := s.GetWorkload(ctx, id)
 				if getErr != nil {
 					logger.Error("failed to fetch workload during watch", "workload", id, "error", getErr)
@@ -212,33 +222,49 @@ func (s *store) WatchWorkloads(ctx context.Context, handler func(workload *runti
 					continue
 				}
 
+				// Mark the workload as patched/fetched in the handler.
 				handler(workload, false)
 			}
 
-			for id := range prev {
+			// If the workload existed in the previous snapshot but is missing in the current snapshot, it has been deleted.
+			// We check for this after processing all current workloads to ensure we don't miss any updates that occur between snapshots.
+			for id, prevWorkload := range prev {
+				// Skip if the workload still exists
 				if _, ok := current[id]; ok {
 					continue
 				}
 
-				handler(&runtimev1.Workload{Id: id}, true)
+				// Parse the workload from the previous snapshot to pass to the handler.
+				// It cannot be fetched from the store since it has been deleted, but the handler may still want to know its details.
+				workload, err := prevWorkload.ToRuntimeWorkload()
+				if err != nil {
+					logger.Error("failed to unmarshal deleted workload during watch", "workload", id, "error", err)
+
+					continue
+				}
+
+				// Mark the workload as deleted in the handler.
+				handler(workload, true)
 			}
 
+			// Update the previous snapshot to the current one for the next iteration.
 			prev = current
 		}
 	}
 }
 
-func (s *store) snapshot(ctx context.Context) (map[string]string, error) {
-	var records []workloadRecord
+// snapshot takes a snapshot of the current workloads in the store and returns a map of workload ID to payload.
+func (s *store) snapshot(ctx context.Context) (map[string]*workloadRecord, error) {
+	var records []*workloadRecord
 
 	err := s.db.WithContext(ctx).Find(&records).Error
 	if err != nil {
 		return nil, fmt.Errorf("failed to create watch snapshot: %w", err)
 	}
 
-	snapshot := make(map[string]string, len(records))
+	snapshot := make(map[string]*workloadRecord, len(records))
 	for _, record := range records {
-		snapshot[record.ID] = string(record.Payload)
+		snapshot[record.ID] = record
 	}
 
 	return snapshot, nil
