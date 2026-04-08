@@ -114,10 +114,6 @@ github.com/PuerkitoBio/goquery v1.12.0 h1:pAcL4g3WRXekcB9AU/y1mbKez2dbY2AajVhtkO
 github.com/PuerkitoBio/goquery v1.12.0/go.mod h1:802ej+gV2y7bbIhOIoPY5sT183ZW0YFofScC4q/hIpQ=
 github.com/ThalesGroup/crypto11 v1.6.0 h1:Og9EMn44fBS4GNnGnH1aqHnF2wL6F7IU/RhpJajWX/4=
 github.com/ThalesGroup/crypto11 v1.6.0/go.mod h1:H6LRjN5R5SHxTrLqGNteisLDI0/IC6+SGx1pHtbwizE=
-github.com/agntcy/dir/runtime/api v1.1.0 h1:OZh9SgIs4ERc+DF/6EGat3WCSPw96uFCKD2UuBurHtI=
-github.com/agntcy/dir/runtime/api v1.1.0/go.mod h1:9f8Xt6wQr8rp4IosL4gc/2bMACUajFCS++WeXR6Snps=
-github.com/agntcy/dir/runtime/utils v1.1.0 h1:5F+pRc2JU6wrL1GYsuETzTJxsJtUIrNXhmtfTHGXSPA=
-github.com/agntcy/dir/runtime/utils v1.1.0/go.mod h1:LntRF6iCJSUe0Ju15yYl9AQoPh7q49ZI+KCi/CrDuKg=
 github.com/agntcy/oasf-sdk/pkg v1.0.4 h1:TRgcs/2xGKztCtKW2u2XVw6IS73aZoY7gfgzsnJRm+4=
 github.com/agntcy/oasf-sdk/pkg v1.0.4/go.mod h1:2MPWgpucMREsFp5uzjBIenA20hk6ZO39bDVHALZxaxk=
 github.com/alecthomas/assert/v2 v2.11.0 h1:2Q9r3ki8+JYXvGsDyBXwH3LcJ+WK5D0gc5E8vS6K3D0=

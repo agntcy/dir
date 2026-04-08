@@ -49,3 +49,22 @@ reconciler:
     interval: 1h
     ttl: 168h
     record_timeout: 30s
+
+runtime:
+  enabled: true
+
+  adapter:
+    type: "docker"
+    docker:
+      host: "unix:///var/run/docker.sock"
+
+  resolver:
+    a2a:
+      enabled: true
+    oasf:
+      enabled: true
+
+  store:
+    # Use SQLite for runtime store to avoid conflicts with the PostgreSQL database used by the server.
+    # This is an ephemeral store that only holds runtime state and does not need to be shared with the server.
+    type: "sqlite"

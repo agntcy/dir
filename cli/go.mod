@@ -9,9 +9,11 @@ replace (
 	github.com/agntcy/dir/importer => ../importer
 	github.com/agntcy/dir/mcp => ../mcp
 	github.com/agntcy/dir/reconciler => ../reconciler
+	github.com/agntcy/dir/runtime/api => ../runtime/api
 	github.com/agntcy/dir/runtime/discovery => ../runtime/discovery
 	github.com/agntcy/dir/runtime/server => ../runtime/server
 	github.com/agntcy/dir/runtime/store => ../runtime/store
+	github.com/agntcy/dir/runtime/utils => ../runtime/utils
 	github.com/agntcy/dir/server => ../server
 	github.com/agntcy/dir/utils => ../utils
 )
@@ -30,7 +32,7 @@ require (
 	github.com/agntcy/dir/mcp v1.1.0
 	github.com/agntcy/dir/reconciler v1.1.0
 	github.com/agntcy/dir/runtime/discovery v1.1.0
-	github.com/agntcy/dir/runtime/server v0.0.0-00010101000000-000000000000
+	github.com/agntcy/dir/runtime/server v1.1.0
 	github.com/agntcy/dir/runtime/store v1.1.0
 	github.com/agntcy/dir/server v1.1.0
 	github.com/agntcy/dir/utils v1.1.0

@@ -14,6 +14,7 @@ import (
 	searchv1 "github.com/agntcy/dir/api/search/v1"
 	signv1 "github.com/agntcy/dir/api/sign/v1"
 	storev1 "github.com/agntcy/dir/api/store/v1"
+	runtimev1 "github.com/agntcy/dir/runtime/api/runtime/v1"
 	"github.com/spiffe/go-spiffe/v2/workloadapi"
 	"google.golang.org/grpc"
 )
@@ -26,6 +27,7 @@ type Client struct {
 	signv1.SignServiceClient
 	eventsv1.EventServiceClient
 	namingv1.NamingServiceClient
+	runtimev1.DiscoveryServiceClient
 
 	config     *Config
 	authClient *workloadapi.Client
