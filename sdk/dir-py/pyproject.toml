@@ -16,7 +16,7 @@ dependencies = [
 ]
 
 [dependency-groups]
-dev = ["pytest>=8.4.1", "uuid>=1.30"]
+dev = ["pytest>=9.0.0", "uuid>=1.30"]
 
 [[tool.uv.index]]
 url = "https://buf.build/gen/python"
