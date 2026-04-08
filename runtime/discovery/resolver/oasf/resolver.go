@@ -169,12 +169,12 @@ func (r *resolver) extractRecordIDs(workload *runtimev1.Workload) (string, strin
 	// Split the record FQDN into name and version
 	nameParts := strings.SplitN(recordFQDN, ":", 2)
 
-	// If both name and version are present, return them combined as "name:version"
+	// If both name and version are present, return as ("name", "version", "")
 	if len(nameParts) == 2 {
 		return nameParts[0], nameParts[1], "", nil
 	}
 
-	// If only one part is present, treat it as CID
+	// If only one part is present, return as ("", "", "cid")
 	if len(nameParts) == 1 {
 		return "", "", nameParts[0], nil
 	}

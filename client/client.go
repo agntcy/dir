@@ -58,19 +58,20 @@ func New(ctx context.Context, opts ...Option) (*Client, error) {
 	}
 
 	return &Client{
-		StoreServiceClient:   storev1.NewStoreServiceClient(conn),
-		RoutingServiceClient: routingv1.NewRoutingServiceClient(conn),
-		SearchServiceClient:  searchv1.NewSearchServiceClient(conn),
-		SyncServiceClient:    storev1.NewSyncServiceClient(conn),
-		SignServiceClient:    signv1.NewSignServiceClient(conn),
-		EventServiceClient:   eventsv1.NewEventServiceClient(conn),
-		NamingServiceClient:  namingv1.NewNamingServiceClient(conn),
-		config:               options.config,
-		authClient:           options.authClient,
-		conn:                 conn,
-		bundleSrc:            options.bundleSrc,
-		x509Src:              options.x509Src,
-		jwtSource:            options.jwtSource,
+		StoreServiceClient:     storev1.NewStoreServiceClient(conn),
+		RoutingServiceClient:   routingv1.NewRoutingServiceClient(conn),
+		SearchServiceClient:    searchv1.NewSearchServiceClient(conn),
+		SyncServiceClient:      storev1.NewSyncServiceClient(conn),
+		SignServiceClient:      signv1.NewSignServiceClient(conn),
+		EventServiceClient:     eventsv1.NewEventServiceClient(conn),
+		NamingServiceClient:    namingv1.NewNamingServiceClient(conn),
+		DiscoveryServiceClient: runtimev1.NewDiscoveryServiceClient(conn),
+		config:                 options.config,
+		authClient:             options.authClient,
+		conn:                   conn,
+		bundleSrc:              options.bundleSrc,
+		x509Src:                options.x509Src,
+		jwtSource:              options.jwtSource,
 	}, nil
 }
 

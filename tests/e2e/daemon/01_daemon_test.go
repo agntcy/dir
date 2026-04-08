@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"time"
 
 	corev1 "github.com/agntcy/dir/api/core/v1"
 	signv1 "github.com/agntcy/dir/api/sign/v1"
@@ -19,7 +20,7 @@ import (
 )
 
 var (
-	// Sample record for runtim discovery
+	// Sample record for runtim discovery.
 	sampleRuntimeRecord    = testdata.ExpectedRecordV100JSON
 	sampleRuntimeRecordCID = "baeareiabbog2umgduqhlcb64fzt6adn34kblzvru3fdzkl75hjhwt6h3da"
 )
@@ -140,7 +141,30 @@ var _ = ginkgo.Describe("Daemon e2e", ginkgo.Ordered, ginkgo.Serial, func() {
 		gomega.Expect(recordRef).NotTo(gomega.BeNil())
 		gomega.Expect(recordRef.GetCid()).To(gomega.Equal(sampleRuntimeRecordCID))
 
-		// Discover runtimes and verify the pushed record is discoverable and matches the original
+		// Use eventually to allow some time for the runtime to discover the workload and push the OASF data to the store.
+		// The test will poll the ListWorkloads API until it finds the expected workload with the correct OASF data, or until it times out.
+		gomega.Eventually(func(g gomega.Gomega) {
+			// Discover runtimes workloads
+			discoverResp, err := c.ListWorkloads(ctx, nil)
+			g.Expect(err).NotTo(gomega.HaveOccurred())
+			g.Expect(discoverResp).NotTo(gomega.BeNil())
+			g.Expect(discoverResp).To(gomega.HaveLen(1))
 
+			// Validate workload
+			workload := discoverResp[0]
+			g.Expect(workload.GetType()).To(gomega.Equal("container"))
+			g.Expect(workload.GetRuntime()).To(gomega.Equal("docker"))
+			g.Expect(workload.GetLabels()).To(gomega.HaveKeyWithValue("org.agntcy/agent-record", sampleRuntimeRecordCID))
+			g.Expect(workload.GetServices()).To(gomega.Not(gomega.BeNil()))
+
+			// Validate that discovered OASF data matches what was pushed
+			oasfData := workload.GetServices().GetOasf().AsMap()
+			g.Expect(oasfData).NotTo(gomega.BeNil())
+			g.Expect(oasfData).To(gomega.HaveKeyWithValue("cid", sampleRuntimeRecordCID))
+			g.Expect(oasfData).To(gomega.HaveKeyWithValue("record", gomega.MatchJSON(sampleRuntimeRecord)))
+		}).
+			WithPolling(10 * time.Second).
+			WithTimeout(2 * time.Minute).
+			Should(gomega.Succeed())
 	})
 })
