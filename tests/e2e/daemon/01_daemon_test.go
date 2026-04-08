@@ -73,6 +73,20 @@ var _ = ginkgo.Describe("Daemon e2e", ginkgo.Ordered, ginkgo.Serial, func() {
 		utils.ValidateCIDAgainstData(recordRef.GetCid(), canonicalData)
 	})
 
+	ginkgo.It("should pull the pushed record back", func() {
+		gomega.Expect(recordRef).NotTo(gomega.BeNil(), "push must succeed first")
+
+		pulled, err := c.Pull(ctx, recordRef)
+		gomega.Expect(err).NotTo(gomega.HaveOccurred())
+
+		pulledCanonical, err := pulled.Marshal()
+		gomega.Expect(err).NotTo(gomega.HaveOccurred())
+
+		equal, err := utils.CompareOASFRecords(canonicalData, pulledCanonical)
+		gomega.Expect(err).NotTo(gomega.HaveOccurred())
+		gomega.Expect(equal).To(gomega.BeTrue(), "pushed and pulled records should be identical")
+	})
+
 	ginkgo.Context("signature workflow", ginkgo.Ordered, func() {
 		var (
 			cosignDir  string
