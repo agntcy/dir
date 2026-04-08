@@ -19,20 +19,22 @@ CACHE_FILE_PERMS = 0o600
 
 
 def _utcnow() -> datetime:
-    return datetime.now(UTC)
-
+    now = datetime.now(UTC)
+    return now.replace(microsecond=(now.microsecond // 1000) * 1000) # Truncate to milliseconds (3 decimal places) to match other languages
 
 def _parse_timestamp(value: str | None) -> datetime | None:
     if not value:
         return None
     normalized = value.replace("Z", "+00:00")
-    return datetime.fromisoformat(normalized).astimezone(UTC)
+    
+    dt = datetime.fromisoformat(normalized).astimezone(UTC)
+    return dt.replace(microsecond=(dt.microsecond // 1000) * 1000) # Truncate to milliseconds (3 decimal places) to match other languages
 
 
 def _format_timestamp(value: datetime | None) -> str | None:
     if value is None:
         return None
-    return value.astimezone(UTC).isoformat().replace("+00:00", "Z")
+    return value.astimezone(UTC).isoformat(timespec="milliseconds").replace("+00:00", "Z")
 
 
 @dataclass
