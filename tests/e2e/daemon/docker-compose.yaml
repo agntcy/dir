@@ -28,11 +28,13 @@ services:
 
   # Service used for runtime discovery
   service-a2a:
-    image: ghcr.io/ramizpolic/a2a-helloworld
+    image: nginx:latest@sha256:7f0adca1fc6c29c8dc49a2e90037a10ba20dc266baaed0988e9fb4d0d8b85ba0
     labels:
       - "test.org.agntcy/discover=true"
       - "test.org.agntcy/agent-type=a2a"
       # Reference to the sample record for runtime discovery
       - "test.org.agntcy/agent-record=baeareiabbog2umgduqhlcb64fzt6adn34kblzvru3fdzkl75hjhwt6h3da"
+    volumes:
+      - ./workload.a2a-card.json:/usr/share/nginx/html/.well-known/agent-card.json
     ports:
-      - 9999
+      - 80

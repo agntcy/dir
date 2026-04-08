@@ -1,0 +1,23 @@
+{
+  "capabilities": {
+    "streaming": true
+  },
+  "defaultInputModes": ["text"],
+  "defaultOutputModes": ["text"],
+  "description": "Just a hello world agent",
+  "name": "Hello World Agent",
+  "preferredTransport": "JSONRPC",
+  "protocolVersion": "0.3.0",
+  "skills": [
+    {
+      "description": "just returns hello world",
+      "examples": ["hi", "hello world"],
+      "id": "hello_world",
+      "name": "Returns hello world",
+      "tags": ["hello world"]
+    }
+  ],
+  "supportsAuthenticatedExtendedCard": true,
+  "url": "http://localhost:80/",
+  "version": "1.0.0"
+}
