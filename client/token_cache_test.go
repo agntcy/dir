@@ -453,7 +453,7 @@ func TestTokenCache_IsValid(t *testing.T) {
 		// Token expires exactly at buffer time (5 minutes from now)
 		token := &CachedToken{
 			AccessToken: "test_token",
-			ExpiresAt:   time.Now().Add(TokenExpiryBuffer),
+			ExpiresAt:   time.Now().UTC().Truncate(time.Millisecond).Add(TokenExpiryBuffer),
 		}
 
 		valid := cache.IsValid(token)
