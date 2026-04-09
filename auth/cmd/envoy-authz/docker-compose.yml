@@ -6,7 +6,7 @@ services:
       dockerfile: auth/cmd/envoy-authz/Dockerfile
     container_name: envoy-authz
     ports:
-      - "9002:9002"  # gRPC ext_authz
+      - "9002:9002" # gRPC ext_authz
     volumes:
       - ./test/config.test.yaml:/etc/envoy-authz/config.yaml:ro
     environment:
@@ -18,14 +18,21 @@ services:
 
   # Envoy proxy with ext_authz filter
   envoy:
-    image: envoyproxy/envoy:v1.37-latest
+    image: envoyproxy/envoy:distroless-v1.37-latest
     container_name: envoy-gateway
     ports:
-      - "8080:8080"  # HTTP/gRPC gateway
-      - "9901:9901"  # Admin interface
+      - "8080:8080" # HTTP/gRPC gateway
+      - "9901:9901" # Admin interface
     volumes:
       - ./test/envoy.yaml:/etc/envoy/envoy.yaml:ro
-    command: ["/usr/local/bin/envoy", "-c", "/etc/envoy/envoy.yaml", "--service-cluster", "test-cluster"]
+    command:
+      [
+        "/usr/local/bin/envoy",
+        "-c",
+        "/etc/envoy/envoy.yaml",
+        "--service-cluster",
+        "test-cluster",
+      ]
     depends_on:
       - envoy-authz
       - mock-directory

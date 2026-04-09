@@ -23,7 +23,7 @@ vars:
   # renovate: datasource=docker depName=docker.io/bitnami/postgresql
   POSTGRESQL_VERSION: "latest@sha256:228ef23ed3b9eb678ae557f3dcaf80fe1d217fb9e0a4fcb75279b2b2b858c3ff"
   # renovate: datasource=docker depName=docker.io/envoyproxy/envoy
-  ENVOY_VERSION: "v1.37-latest"
+  ENVOY_VERSION: "distroless-v1.37-latest"
 
   ## Container images for vulnerability scanning
   VULN_SCAN_IMAGES:

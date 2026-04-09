@@ -11,7 +11,7 @@ envoy:
 
   image:
     repository: envoyproxy/envoy
-    tag: v1.37-latest
+    tag: distroless-v1.37-latest
     pullPolicy: IfNotPresent
 
   service:
