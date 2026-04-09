@@ -1,6 +1,6 @@
 module github.com/agntcy/dir/runtime/discovery
 
-go 1.26.1
+go 1.26.2
 
 // Replace local modules
 replace (

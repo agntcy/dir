@@ -42,7 +42,7 @@ jobs:
         id: build-dirctl
         uses: ./.github/actions/build-dirctl
         with:
-          go_version: "1.26.1"
+          go_version: "1.26.2"
 
       - name: Fetch GitHub OIDC token
         id: oidc
