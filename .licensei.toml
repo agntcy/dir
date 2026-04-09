@@ -39,4 +39,5 @@ ignored = [
   "github.com/modelcontextprotocol/registry", # Apache License 2.0 https://github.com/modelcontextprotocol/registry/blob/main/LICENSE
   "github.com/modelcontextprotocol/go-sdk", # Apache License 2.0 https://github.com/modelcontextprotocol/go-sdk/blob/main/LICENSE
   "github.com/muhlemmer/gu", # Unlicense (public domain) https://github.com/muhlemmer/gu/blob/master/LICENSE - transitive dep of zitadel/oidc
+  "github.com/alecthomas/chroma/v2" # OFL-1.1 https://github.com/alecthomas/chroma?tab=License-1-ov-file#readme
 ]
