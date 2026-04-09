@@ -44,7 +44,7 @@ FROM builder AS debug
 WORKDIR /
 
 COPY --from=builder /bin/apiserver ./apiserver
-COPY --from=ghcr.io/grpc-ecosystem/grpc-health-probe:v0.4.47 /ko-app/grpc-health-probe /bin/grpc-health-probe
+COPY --from=ghcr.io/grpc-ecosystem/grpc-health-probe:v0.4.48 /ko-app/grpc-health-probe /bin/grpc-health-probe
 
 RUN xx-go install github.com/go-delve/delve/cmd/dlv@v1.26.1
 
@@ -56,7 +56,7 @@ FROM gcr.io/distroless/static:nonroot@sha256:e3f945647ffb95b5839c07038d64f9811ad
 WORKDIR /
 
 COPY --from=builder /bin/apiserver ./apiserver
-COPY --from=ghcr.io/grpc-ecosystem/grpc-health-probe:v0.4.47 /ko-app/grpc-health-probe /bin/grpc-health-probe
+COPY --from=ghcr.io/grpc-ecosystem/grpc-health-probe:v0.4.48 /ko-app/grpc-health-probe /bin/grpc-health-probe
 
 USER 65532:65532
 
@@ -70,7 +70,7 @@ RUN apk add --no-cache tar
 WORKDIR /
 
 COPY --from=builder /bin/apiserver ./apiserver
-COPY --from=ghcr.io/grpc-ecosystem/grpc-health-probe:v0.4.47 /ko-app/grpc-health-probe /bin/grpc-health-probe
+COPY --from=ghcr.io/grpc-ecosystem/grpc-health-probe:v0.4.48 /ko-app/grpc-health-probe /bin/grpc-health-probe
 
 # Create a non-root user for coverage
 RUN addgroup -g 65532 -S nonroot && adduser -u 65532 -S nonroot -G nonroot
