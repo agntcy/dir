@@ -195,7 +195,7 @@ jobs:
     uses: ./.github/workflows/reusable-release-helm.yaml
     with:
       image_repo: ghcr.io/agntcy
-      release_tag: latest
+      release_tag: 0.0.0-latest
 
   test:
     name: Test
