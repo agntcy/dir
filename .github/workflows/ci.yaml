@@ -187,6 +187,16 @@ jobs:
       image_tag: latest
       push: true
 
+  helm-push-latest:
+    name: Helm push (latest)
+    if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+    needs:
+      - push
+    uses: ./.github/workflows/reusable-release-helm.yaml
+    with:
+      image_repo: ghcr.io/agntcy
+      release_tag: latest
+
   test:
     name: Test
     needs:
