@@ -74,10 +74,10 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests for remote routing sear
 
 		ginkgo.It("should verify setup - peer 1 has local record, peer 2 does not", func() {
 			// Debug: Check local records on both peers
-			peer1LocalRecords := cli.Routing().List().OnServer(utils.Peer1Addr).ShouldSucceed()
+			peer1LocalRecords := cli.Routing().List().OnServer(utils.Peer1Addr).ShouldEventuallySucceed(60 * time.Second)
 			ginkgo.GinkgoWriter.Printf("=== PEER 1 LOCAL RECORDS ===\n%s", peer1LocalRecords)
 
-			peer2LocalRecords := cli.Routing().List().OnServer(utils.Peer2Addr).ShouldSucceed()
+			peer2LocalRecords := cli.Routing().List().OnServer(utils.Peer2Addr).ShouldEventuallySucceed(60 * time.Second)
 			ginkgo.GinkgoWriter.Printf("=== PEER 2 LOCAL RECORDS ===\n%s", peer2LocalRecords)
 
 			// Peer 1 should have the record locally

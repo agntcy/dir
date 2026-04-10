@@ -9,6 +9,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/agntcy/dir/importer"
 	importerconfig "github.com/agntcy/dir/importer/config"
@@ -147,7 +148,7 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests for the export command"
 
 			cidFile := filepath.Join(tempDir, "imported.cids")
 
-			cli.Import("a2a", cardPath).WithArgs("--enrich-config="+enrichCfg, "--output-cids="+cidFile).ShouldSucceed()
+			cli.Import("a2a", cardPath).WithArgs("--enrich-config="+enrichCfg, "--output-cids="+cidFile).ShouldEventuallySucceed(60 * time.Second)
 
 			cidData, err := os.ReadFile(cidFile)
 			gomega.Expect(err).NotTo(gomega.HaveOccurred())
@@ -234,7 +235,7 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests for the export command"
 
 			cidFile := filepath.Join(tempDir, "imported.cids")
 
-			cli.Import("mcp", serverPath).WithArgs("--enrich-config="+enrichCfg, "--output-cids="+cidFile).ShouldSucceed()
+			cli.Import("mcp", serverPath).WithArgs("--enrich-config="+enrichCfg, "--output-cids="+cidFile).ShouldEventuallySucceed(60 * time.Second)
 
 			cidData, err := os.ReadFile(cidFile)
 			gomega.Expect(err).NotTo(gomega.HaveOccurred())

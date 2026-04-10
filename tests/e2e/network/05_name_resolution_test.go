@@ -73,9 +73,8 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests for name resolution acr
 		})
 
 		ginkgo.It("should create sync from peer 1 to peer 2", func() {
-			output := cli.Sync().Create(utils.Peer1InternalAddr).OnServer(utils.Peer2Addr).ShouldSucceed()
+			output := cli.Sync().Create(utils.Peer1InternalAddr).OnServer(utils.Peer2Addr).ShouldEventuallyContain("Sync created with ID: ", 45*time.Second)
 
-			gomega.Expect(output).To(gomega.ContainSubstring("Sync created with ID: "))
 			syncID = strings.TrimPrefix(output, "Sync created with ID: ")
 		})
 

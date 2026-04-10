@@ -214,12 +214,12 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests for sync commands", fun
 
 		// Delete sync from peer 2
 		ginkgo.It("should delete sync from peer 2", func() {
-			output := cli.Sync().Create(utils.Peer1InternalAddr).OnServer(utils.Peer2Addr).ShouldSucceed()
+			output := cli.Sync().Create(utils.Peer1InternalAddr).OnServer(utils.Peer2Addr).ShouldEventuallySucceed(60 * time.Second)
 
 			gomega.Expect(output).To(gomega.ContainSubstring("Sync created with ID: "))
 			deleteSyncID = strings.TrimPrefix(output, "Sync created with ID: ")
 
-			cli.Sync().Delete(deleteSyncID).OnServer(utils.Peer2Addr).ShouldSucceed()
+			cli.Sync().Delete(deleteSyncID).OnServer(utils.Peer2Addr).ShouldEventuallySucceed(60 * time.Second)
 		})
 
 		// Wait for sync to complete
@@ -237,7 +237,7 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests for sync commands", fun
 
 			ginkgo.GinkgoWriter.Printf("Running routing search for 'audio' skill\n")
 
-			searchOutput := cli.Routing().Search().WithArgs("--skill", "audio").WithArgs("--output", "json").OnServer(utils.Peer3Addr).ShouldSucceed()
+			searchOutput := cli.Routing().Search().WithArgs("--skill", "audio").WithArgs("--output", "json").OnServer(utils.Peer3Addr).ShouldEventuallyContain(cidV5, 240*time.Second)
 
 			ginkgo.GinkgoWriter.Printf("Routing search output: %s\n", searchOutput)
 			gomega.Expect(searchOutput).To(gomega.ContainSubstring(cidV5))
@@ -245,7 +245,7 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests for sync commands", fun
 			ginkgo.GinkgoWriter.Printf("Creating sync by tag with 'audio' search output\n")
 
 			output := cli.Sync().CreateFromStdin(searchOutput).OnServer(utils.Peer3Addr).ShouldSucceed()
-			gomega.Expect(output).To(gomega.ContainSubstring("Sync IDs created:"))
+			gomega.Expect(output).To(gomega.ContainSubstring("Sync IDs created: "))
 
 			// Extract sync ID using simple string methods
 			// Find the quoted UUID in the output

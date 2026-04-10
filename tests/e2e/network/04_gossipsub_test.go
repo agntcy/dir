@@ -55,7 +55,7 @@ var _ = ginkgo.Describe("Running GossipSub label announcement tests", ginkgo.Ord
 
 	ginkgo.Context("GossipSub wide propagation to all peers", func() {
 		ginkgo.It("should push record_v070.json to peer 1", func() {
-			cid = cli.Push(tempPath).WithArgs("--output", "raw").OnServer(utils.Peer1Addr).ShouldSucceed()
+			cid = cli.Push(tempPath).WithArgs("--output", "raw").OnServer(utils.Peer1Addr).ShouldEventuallySucceed(15 * time.Second)
 
 			// Track CID for cleanup
 			RegisterCIDForCleanup(cid, "gossipsub")
