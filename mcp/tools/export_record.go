@@ -18,7 +18,7 @@ import (
 // ExportRecordInput defines the input parameters for exporting a record.
 type ExportRecordInput struct {
 	RecordJSON   string `json:"record_json"   jsonschema:"JSON string of the OASF agent record to export (required)"`
-	TargetFormat string `json:"target_format" jsonschema:"Target format to export to (e.g., 'mcp') (required)"`
+	TargetFormat string `json:"target_format" jsonschema:"Target format to export to (a2a, ghcopilot, agentskills) (required)"`
 }
 
 // ExportRecordOutput defines the output of exporting a record.
@@ -31,6 +31,7 @@ type ExportRecordOutput struct {
 // Currently supported formats:
 // - "a2a": Agent-to-Agent (A2A) format.
 // - "ghcopilot": GitHub Copilot MCP configuration format.
+// - "agentskills"/"agent-skill": Agent Skills SKILL.md markdown format.
 func (t *Tools) ExportRecord(ctx context.Context, _ *mcp.CallToolRequest, input ExportRecordInput) (
 	*mcp.CallToolResult,
 	ExportRecordOutput,
@@ -94,9 +95,19 @@ func (t *Tools) ExportRecord(ctx context.Context, _ *mcp.CallToolRequest, input 
 			}, nil
 		}
 
+	case "agentskills", "agent-skill":
+		skillMarkdown, err := translator.RecordToSkillMarkdown(&recordStruct)
+		if err != nil {
+			return nil, ExportRecordOutput{
+				ErrorMessage: fmt.Sprintf("Failed to export to Agent Skills format: %v", err),
+			}, nil
+		}
+
+		exportedJSON = []byte(skillMarkdown)
+
 	default:
 		return nil, ExportRecordOutput{
-			ErrorMessage: fmt.Sprintf("Unsupported target format: %s. Supported formats: a2a, ghcopilot", input.TargetFormat),
+			ErrorMessage: fmt.Sprintf("Unsupported target format: %s. Supported formats: a2a, ghcopilot, agentskills", input.TargetFormat),
 		}, nil
 	}
 

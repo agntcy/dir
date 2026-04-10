@@ -224,6 +224,7 @@ This tool takes an OASF record in JSON format and converts it to the specified t
 Currently supported target formats:
 - "a2a": Agent-to-Agent (A2A) format
 - "ghcopilot": GitHub Copilot MCP configuration format
+- "agentskills": Agent Skills SKILL.md markdown format
 
 **Input Format**:
 Provide the OASF record as a standard JSON object (no wrapper needed).
@@ -232,6 +233,7 @@ Provide the OASF record as a standard JSON object (no wrapper needed).
 The output structure depends on the target format:
 - For "a2a": Returns the A2A card directly as a JSON object
 - For "ghcopilot": Returns the GitHub Copilot MCP configuration as a JSON object
+- For "agentskills": Returns a SKILL.md markdown document as plain text
 
 Use this tool when you need to convert OASF records to other format specifications.
 		`),
@@ -247,11 +249,10 @@ This tool takes data in a source format and converts it to OASF record format.
 Currently supported source formats:
 - "mcp": Model Context Protocol format
 - "a2a": Agent-to-Agent (A2A) format
+- "agentskills": Agent Skills SKILL.md markdown format
 
 **CRITICAL - Input Format Requirements**:
-The source_data MUST be wrapped in a format-specific object:
-
-For "mcp" format, wrap the MCP server data in a "server" object:
+For "mcp" format, provide source_data as:
 {
   "server": {
     "name": "example-server",
@@ -260,7 +261,8 @@ For "mcp" format, wrap the MCP server data in a "server" object:
   }
 }
 
-For "a2a" format, wrap the A2A card data in an "a2aCard" object:
+For "a2a" format, provide source_data as either:
+1) wrapped object:
 {
   "a2aCard": {
     "name": "example-agent",
@@ -268,6 +270,12 @@ For "a2a" format, wrap the A2A card data in an "a2aCard" object:
     "description": "...",
     ... (rest of A2A card data)
   }
+}
+2) or direct A2A card object.
+
+For "agentskills" format, provide source_data as a JSON object with a "skillMarkdown" field:
+{
+  "skillMarkdown": "---\nname: my-skill\ndescription: ...\n---\n\nBody..."
 }
 
 **Important - Enrichment Required**: The domains and skills in the resulting OASF record

@@ -8,8 +8,11 @@ import (
 	"context"
 	"testing"
 
+	"github.com/agntcy/oasf-sdk/pkg/translator"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/protobuf/encoding/protojson"
+	"google.golang.org/protobuf/types/known/structpb"
 )
 
 func TestExportRecord(t *testing.T) {
@@ -47,6 +50,39 @@ func TestExportRecord(t *testing.T) {
 		if output.ErrorMessage != "" {
 			assert.Contains(t, output.ErrorMessage, "Failed to export to A2A format")
 		}
+	})
+
+	t.Run("exports record to Agent Skills markdown format", func(t *testing.T) {
+		t.Parallel()
+
+		skillMarkdown := `---
+name: code-review
+description: Review code for bugs and style.
+---
+
+Use this skill when users ask for code review.
+`
+
+		skillInput, err := structpb.NewStruct(map[string]any{
+			"skillMarkdown": skillMarkdown,
+		})
+		require.NoError(t, err)
+
+		recordStruct, err := translator.SkillMarkdownToRecord(skillInput)
+		require.NoError(t, err)
+
+		recordJSON, err := protojson.Marshal(recordStruct)
+		require.NoError(t, err)
+
+		input := ExportRecordInput{
+			RecordJSON:   string(recordJSON),
+			TargetFormat: "agentskills",
+		}
+
+		_, output, err := tools.ExportRecord(ctx, nil, input)
+		require.NoError(t, err)
+		assert.Empty(t, output.ErrorMessage)
+		assert.Contains(t, output.ExportedData, "name: code-review")
 	})
 
 	t.Run("fails when record_json is empty", func(t *testing.T) {
@@ -135,6 +171,26 @@ func TestExportRecord(t *testing.T) {
 		// Actual translation may fail if record lacks required data.
 		if output.ErrorMessage != "" {
 			assert.Contains(t, output.ErrorMessage, "Failed to export to A2A format")
+		}
+	})
+
+	t.Run("supports agent-skill alias target format", func(t *testing.T) {
+		t.Parallel()
+
+		recordJSON := `{
+			"schema_version": "1.0.0",
+			"name": "test-agent"
+		}`
+
+		input := ExportRecordInput{
+			RecordJSON:   recordJSON,
+			TargetFormat: "agent-skill",
+		}
+
+		_, output, err := tools.ExportRecord(ctx, nil, input)
+		require.NoError(t, err)
+		if output.ErrorMessage != "" {
+			assert.Contains(t, output.ErrorMessage, "Failed to export to Agent Skills format")
 		}
 	})
 }

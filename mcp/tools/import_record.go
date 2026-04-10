@@ -16,8 +16,8 @@ import (
 
 // ImportRecordInput defines the input parameters for importing a record.
 type ImportRecordInput struct {
-	SourceData   string `json:"source_data"   jsonschema:"JSON string of the source data to import (required)"`
-	SourceFormat string `json:"source_format" jsonschema:"Source format to import from (e.g., 'mcp') (required)"`
+	SourceData   string `json:"source_data"   jsonschema:"Source data to import as JSON string (mcp wrapper {server:{...}}, a2a card object/wrapper, or agentskills wrapper {skillMarkdown:\"...\"}) (required)"`
+	SourceFormat string `json:"source_format" jsonschema:"Source format to import from (mcp, a2a, agentskills) (required)"`
 }
 
 // ImportRecordOutput defines the output of importing a record.
@@ -30,6 +30,7 @@ type ImportRecordOutput struct {
 // Currently supported formats:
 // - "mcp": Model Context Protocol format.
 // - "a2a": Agent-to-Agent (A2A) format.
+// - "agentskills"/"agent-skill": Agent Skills SKILL.md markdown format.
 func (t *Tools) ImportRecord(ctx context.Context, _ *mcp.CallToolRequest, input ImportRecordInput) (
 	*mcp.CallToolResult,
 	ImportRecordOutput,
@@ -48,14 +49,6 @@ func (t *Tools) ImportRecord(ctx context.Context, _ *mcp.CallToolRequest, input 
 		}, nil
 	}
 
-	// Parse the source data into a structpb.Struct
-	var sourceStruct structpb.Struct
-	if err := protojson.Unmarshal([]byte(input.SourceData), &sourceStruct); err != nil {
-		return nil, ImportRecordOutput{
-			ErrorMessage: fmt.Sprintf("Failed to parse source data JSON: %v", err),
-		}, nil
-	}
-
 	// Normalize the source format to lowercase for comparison
 	sourceFormat := strings.ToLower(strings.TrimSpace(input.SourceFormat))
 
@@ -66,7 +59,26 @@ func (t *Tools) ImportRecord(ctx context.Context, _ *mcp.CallToolRequest, input 
 
 	switch sourceFormat {
 	case "mcp":
-		recordStruct, err = translator.MCPToRecord(&sourceStruct)
+		// Parse the source data into a structpb.Struct
+		var sourceStruct structpb.Struct
+		if err := protojson.Unmarshal([]byte(input.SourceData), &sourceStruct); err != nil {
+			return nil, ImportRecordOutput{
+				ErrorMessage: fmt.Sprintf("Failed to parse source data JSON: %v", err),
+			}, nil
+		}
+
+		// MCP translator expects wrapped input: {"server": {...}}.
+		// For convenience, auto-wrap a raw server object when "server" is missing.
+		mcpInput := &sourceStruct
+		if _, ok := sourceStruct.GetFields()["server"]; !ok {
+			mcpInput = &structpb.Struct{
+				Fields: map[string]*structpb.Value{
+					"server": structpb.NewStructValue(&sourceStruct),
+				},
+			}
+		}
+
+		recordStruct, err = translator.MCPToRecord(mcpInput)
 		if err != nil {
 			return nil, ImportRecordOutput{
 				ErrorMessage: fmt.Sprintf("Failed to import from MCP format: %v", err),
@@ -74,6 +86,14 @@ func (t *Tools) ImportRecord(ctx context.Context, _ *mcp.CallToolRequest, input 
 		}
 
 	case "a2a":
+		// Parse the source data into a structpb.Struct
+		var sourceStruct structpb.Struct
+		if err := protojson.Unmarshal([]byte(input.SourceData), &sourceStruct); err != nil {
+			return nil, ImportRecordOutput{
+				ErrorMessage: fmt.Sprintf("Failed to parse source data JSON: %v", err),
+			}, nil
+		}
+
 		recordStruct, err = translator.A2AToRecord(&sourceStruct)
 		if err != nil {
 			return nil, ImportRecordOutput{
@@ -81,9 +101,24 @@ func (t *Tools) ImportRecord(ctx context.Context, _ *mcp.CallToolRequest, input 
 			}, nil
 		}
 
+	case "agentskills", "agent-skill":
+		var sourceStruct structpb.Struct
+		if err := protojson.Unmarshal([]byte(input.SourceData), &sourceStruct); err != nil {
+			return nil, ImportRecordOutput{
+				ErrorMessage: fmt.Sprintf("Failed to parse source data JSON: %v", err),
+			}, nil
+		}
+
+		recordStruct, err = translator.SkillMarkdownToRecord(&sourceStruct)
+		if err != nil {
+			return nil, ImportRecordOutput{
+				ErrorMessage: fmt.Sprintf("Failed to import from Agent Skills format: %v", err),
+			}, nil
+		}
+
 	default:
 		return nil, ImportRecordOutput{
-			ErrorMessage: fmt.Sprintf("Unsupported source format: %s. Supported formats: mcp, a2a", input.SourceFormat),
+			ErrorMessage: fmt.Sprintf("Unsupported source format: %s. Supported formats: mcp, a2a, agentskills", input.SourceFormat),
 		}, nil
 	}
 

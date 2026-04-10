@@ -6,6 +6,7 @@ package tools
 
 import (
 	"context"
+	"encoding/json"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -46,6 +47,28 @@ func TestImportRecord(t *testing.T) {
 		if output.ErrorMessage != "" {
 			assert.Contains(t, output.ErrorMessage, "Failed to import from A2A format")
 		}
+	})
+
+	t.Run("imports Agent Skills markdown to OASF record", func(t *testing.T) {
+		t.Parallel()
+
+		sourceData := `{
+			"skillMarkdown": "---\nname: code-review\ndescription: Review code for bugs and style.\nmetadata:\n  version: \"1.0.0\"\n---\n\nUse this skill when users ask for code review.\n"
+		}`
+
+		input := ImportRecordInput{
+			SourceData:   sourceData,
+			SourceFormat: "agentskills",
+		}
+
+		_, output, err := tools.ImportRecord(ctx, nil, input)
+
+		require.NoError(t, err)
+		assert.Empty(t, output.ErrorMessage)
+
+		var record map[string]any
+		require.NoError(t, json.Unmarshal([]byte(output.RecordJSON), &record))
+		assert.Equal(t, "code-review", record["name"])
 	})
 
 	t.Run("fails when source_data is empty", func(t *testing.T) {
@@ -133,6 +156,25 @@ func TestImportRecord(t *testing.T) {
 		// Actual translation may fail if source data lacks required structure.
 		if output.ErrorMessage != "" {
 			assert.Contains(t, output.ErrorMessage, "Failed to import from A2A format")
+		}
+	})
+
+	t.Run("supports agent-skill alias format", func(t *testing.T) {
+		t.Parallel()
+
+		sourceData := `{
+			"skillMarkdown": "---\nname: data-cleanup\ndescription: Clean and normalize tabular data.\n---\n"
+		}`
+
+		input := ImportRecordInput{
+			SourceData:   sourceData,
+			SourceFormat: "agent-skill",
+		}
+
+		_, output, err := tools.ImportRecord(ctx, nil, input)
+		require.NoError(t, err)
+		if output.ErrorMessage != "" {
+			assert.Contains(t, output.ErrorMessage, "Failed to import from Agent Skills format")
 		}
 	})
 }
