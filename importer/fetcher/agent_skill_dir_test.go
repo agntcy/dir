@@ -45,6 +45,10 @@ func TestAgentSkillDirFetcher_Fetch(t *testing.T) {
 			t.Fatal("unexpected skill payload")
 		}
 
+		if item.Skill.GetFields()["skillMarkdown"].GetStringValue() == "" {
+			t.Fatal("expected wrapped skillMarkdown payload")
+		}
+
 		n++
 	}
 

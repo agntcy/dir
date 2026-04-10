@@ -9,18 +9,10 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"regexp"
 	"strings"
-	"unicode/utf8"
 
 	"google.golang.org/protobuf/types/known/structpb"
 	"gopkg.in/yaml.v3"
-)
-
-const (
-	maxSkillNameLen        = 64
-	maxSkillDescriptionLen = 1024
-	maxCompatibilityLen    = 500
 )
 
 // skillFrontmatter captures YAML frontmatter from SKILL.md (Agent Skills spec).
@@ -33,14 +25,11 @@ type skillFrontmatter struct {
 	Metadata      map[string]any `yaml:"metadata"`
 }
 
-var skillNamePattern = regexp.MustCompile(`^[a-z0-9]+(-[a-z0-9]+)*$`)
-
 // ParseSkillDirectory reads skillDir/SKILL.md, validates frontmatter and directory name, and returns
-// a structpb payload for OASF translation. Contract (for oasf-sdk AgentSkillToRecord):
-//   - name, description, body (required strings)
-//   - license, compatibility, skill_root (optional strings)
-//   - allowed_tools: list of strings (from frontmatter allowed-tools)
-//   - metadata: struct of string values (YAML metadata map; may include version)
+// a structpb payload for OASF translation. Contract (for oasf-sdk SkillMarkdownToRecord):
+//   - skillMarkdown: full SKILL.md content (required string)
+//
+// Additional normalized fields are included for importer metadata/dedup convenience.
 func ParseSkillDirectory(skillDir string) (*structpb.Struct, error) {
 	absDir, err := filepath.Abs(skillDir)
 	if err != nil {
@@ -83,13 +72,9 @@ func ParseSkillDirectory(skillDir string) (*structpb.Struct, error) {
 	fm.Compatibility = strings.TrimSpace(fm.Compatibility)
 	fm.AllowedTools = strings.TrimSpace(fm.AllowedTools)
 
-	if err := validateSkillFrontmatter(&fm, filepath.Base(absDir)); err != nil {
-		return nil, err
-	}
-
 	body = strings.TrimSpace(body)
 
-	fields, err := skillPayloadFields(&fm, absDir, body)
+	fields, err := skillPayloadFields(&fm, absDir, body, string(raw))
 	if err != nil {
 		return nil, err
 	}
@@ -102,12 +87,13 @@ func ParseSkillDirectory(skillDir string) (*structpb.Struct, error) {
 	return st, nil
 }
 
-func skillPayloadFields(fm *skillFrontmatter, absDir, body string) (map[string]any, error) {
+func skillPayloadFields(fm *skillFrontmatter, absDir, body, skillMarkdown string) (map[string]any, error) {
 	fields := map[string]any{
-		"name":        fm.Name,
-		"description": fm.Description,
-		"body":        body,
-		"skill_root":  absDir,
+		"skillMarkdown": skillMarkdown,
+		"name":          fm.Name,
+		"description":   fm.Description,
+		"body":          body,
+		"skill_root":    absDir,
 	}
 
 	if fm.License != "" {
@@ -178,43 +164,4 @@ func splitSkillFrontmatter(raw string) (string, string, error) {
 	bodyLines := lines[end+1:]
 
 	return strings.Join(fmLines, "\n"), strings.Join(bodyLines, "\n"), nil
-}
-
-func validateSkillFrontmatter(fm *skillFrontmatter, dirBase string) error {
-	if fm.Name == "" {
-		return errors.New("SKILL.md frontmatter: name is required")
-	}
-
-	if fm.Description == "" {
-		return errors.New("SKILL.md frontmatter: description is required")
-	}
-
-	n := utf8.RuneCountInString(fm.Name)
-	if n < 1 || n > maxSkillNameLen {
-		return fmt.Errorf("SKILL.md name must be 1–%d characters", maxSkillNameLen)
-	}
-
-	if !skillNamePattern.MatchString(fm.Name) {
-		return errors.New("SKILL.md name must be lowercase alphanumeric with single hyphens (no leading/trailing hyphen, no --)")
-	}
-
-	if strings.Contains(fm.Name, "--") {
-		return errors.New("SKILL.md name must not contain consecutive hyphens")
-	}
-
-	if d := utf8.RuneCountInString(fm.Description); d < 1 || d > maxSkillDescriptionLen {
-		return fmt.Errorf("SKILL.md description must be 1–%d characters", maxSkillDescriptionLen)
-	}
-
-	if fm.Name != dirBase {
-		return fmt.Errorf("SKILL.md name %q must match directory name %q", fm.Name, dirBase)
-	}
-
-	if fm.Compatibility != "" {
-		if c := utf8.RuneCountInString(fm.Compatibility); c > maxCompatibilityLen {
-			return fmt.Errorf("SKILL.md compatibility exceeds %d characters", maxCompatibilityLen)
-		}
-	}
-
-	return nil
 }

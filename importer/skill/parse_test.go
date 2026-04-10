@@ -56,6 +56,10 @@ func TestParseSkillDirectory_success(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	if st.GetFields()["skillMarkdown"].GetStringValue() == "" {
+		t.Fatal("skillMarkdown should be populated")
+	}
+
 	if st.GetFields()["name"].GetStringValue() != "pdf-processing" {
 		t.Fatal("name mismatch")
 	}
@@ -70,7 +74,7 @@ func TestParseSkillDirectory_success(t *testing.T) {
 	}
 }
 
-func TestParseSkillDirectory_nameDirMismatch(t *testing.T) {
+func TestParseSkillDirectory_nameDirMismatchAllowedAtImporterLayer(t *testing.T) {
 	t.Parallel()
 
 	dir := t.TempDir()
@@ -80,14 +84,18 @@ func TestParseSkillDirectory_nameDirMismatch(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	content := "---\nname: right-name\ndescription: Some description that is long enough for the validator to accept it without issues.\n---\n"
+	content := "---\nname: right-name\ndescription: Some description.\n---\n"
 	if err := os.WriteFile(filepath.Join(skillDir, "SKILL.md"), []byte(content), 0o600); err != nil {
 		t.Fatal(err)
 	}
 
-	_, err := ParseSkillDirectory(skillDir)
-	if err == nil {
-		t.Fatal("expected error for name/dir mismatch")
+	st, err := ParseSkillDirectory(skillDir)
+	if err != nil {
+		t.Fatalf("expected importer parsing to succeed: %v", err)
+	}
+
+	if got := st.GetFields()["name"].GetStringValue(); got != "right-name" {
+		t.Fatalf("name = %q, want %q", got, "right-name")
 	}
 }
 

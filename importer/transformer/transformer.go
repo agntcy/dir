@@ -8,7 +8,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
-	"time"
 
 	corev1 "github.com/agntcy/dir/api/core/v1"
 	"github.com/agntcy/dir/importer/types"
@@ -149,24 +148,11 @@ func (t *Transformer) TransformRecord(item types.SourceItem) (*corev1.Record, er
 	}
 }
 
-// convertAgentSkillToOASF returns a placeholder record so the import pipeline can run end-to-end until
-// oasf-sdk provides translator.AgentSkillToRecord.
+// convertAgentSkillToOASF converts a parsed Agent Skill payload to an OASF record.
 func convertAgentSkillToOASF(skill *structpb.Struct) (*corev1.Record, error) {
-	_ = skill
-
-	data, err := structpb.NewStruct(map[string]any{
-		"name":           "placeholder-agent-skill",
-		"version":        "v0.0.0",
-		"description":    "Placeholder OASF record until translator.AgentSkillToRecord exists in oasf-sdk",
-		"schema_version": translator.DefaultSchemaVersion,
-		"authors":        []any{"dir-importer (placeholder)"},
-		"created_at":     time.Now().UTC().Format(time.RFC3339),
-		"skills":         []any{},
-		"domains":        []any{},
-		"modules":        []any{},
-	})
+	data, err := translator.SkillMarkdownToRecord(skill, translator.WithVersion("1.0.0"))
 	if err != nil {
-		return nil, fmt.Errorf("placeholder agent skill record: %w", err)
+		return nil, fmt.Errorf("SkillMarkdownToRecord: %w", err)
 	}
 
 	return &corev1.Record{Data: data}, nil
