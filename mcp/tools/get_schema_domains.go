@@ -123,6 +123,7 @@ func convertToDomainItems(taxonomy schema.Taxonomy) []DomainItem {
 		if a.Name < b.Name {
 			return -1
 		}
+
 		if a.Name > b.Name {
 			return 1
 		}

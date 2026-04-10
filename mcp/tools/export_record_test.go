@@ -189,6 +189,7 @@ Use this skill when users ask for code review.
 
 		_, output, err := tools.ExportRecord(ctx, nil, input)
 		require.NoError(t, err)
+
 		if output.ErrorMessage != "" {
 			assert.Contains(t, output.ErrorMessage, "Failed to export to Agent Skills format")
 		}

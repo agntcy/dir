@@ -141,4 +141,3 @@ func TestGetSchemaSkills(t *testing.T) {
 		})
 	}
 }
-

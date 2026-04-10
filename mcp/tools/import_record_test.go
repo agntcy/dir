@@ -173,6 +173,7 @@ func TestImportRecord(t *testing.T) {
 
 		_, output, err := tools.ImportRecord(ctx, nil, input)
 		require.NoError(t, err)
+
 		if output.ErrorMessage != "" {
 			assert.Contains(t, output.ErrorMessage, "Failed to import from Agent Skills format")
 		}

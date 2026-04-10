@@ -123,6 +123,7 @@ func convertToSkillItems(taxonomy schema.Taxonomy) []SkillItem {
 		if a.Name < b.Name {
 			return -1
 		}
+
 		if a.Name > b.Name {
 			return 1
 		}

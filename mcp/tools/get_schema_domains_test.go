@@ -139,4 +139,3 @@ func TestGetSchemaDomains(t *testing.T) {
 		})
 	}
 }
-
