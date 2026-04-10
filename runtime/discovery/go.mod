@@ -20,8 +20,9 @@ require (
 	github.com/agntcy/dir/runtime/api v1.1.0
 	github.com/agntcy/dir/runtime/store v1.1.0
 	github.com/agntcy/dir/runtime/utils v1.1.0
-	github.com/docker/docker v28.5.2+incompatible
 	github.com/mitchellh/mapstructure v1.5.1-0.20231216201459-8508981c8b6c
+	github.com/moby/moby/api v1.54.1
+	github.com/moby/moby/client v0.4.0
 	github.com/spf13/viper v1.21.0
 	github.com/stretchr/testify v1.11.1
 	k8s.io/api v0.35.3
@@ -32,10 +33,6 @@ require (
 require (
 	buf.build/gen/go/bufbuild/protovalidate/protocolbuffers/go v1.36.11-20260209202127-80ab13bee0bf.1 // indirect
 	github.com/Masterminds/semver/v3 v3.4.0 // indirect
-	github.com/containerd/log v0.1.0 // indirect
-	github.com/moby/sys/atomicwriter v0.1.0 // indirect
-	github.com/morikuni/aec v1.1.0 // indirect
-	go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp v1.43.0 // indirect
 )
 
 require (

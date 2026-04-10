@@ -13,10 +13,9 @@ import (
 	runtimev1 "github.com/agntcy/dir/runtime/api/runtime/v1"
 	"github.com/agntcy/dir/runtime/discovery/types"
 	"github.com/agntcy/dir/runtime/utils"
-	"github.com/docker/docker/api/types/container"
-	"github.com/docker/docker/api/types/events"
-	"github.com/docker/docker/api/types/filters"
-	"github.com/docker/docker/client"
+	"github.com/moby/moby/api/types/container"
+	"github.com/moby/moby/api/types/events"
+	"github.com/moby/moby/client"
 )
 
 const RuntimeType types.RuntimeType = "docker"
@@ -57,7 +56,7 @@ func (d *adapter) Type() types.RuntimeType {
 
 // Connect verifies the Docker connection.
 func (d *adapter) Connect(ctx context.Context) error {
-	_, err := d.client.Ping(ctx)
+	_, err := d.client.Ping(ctx, client.PingOptions{})
 	if err != nil {
 		return fmt.Errorf("failed to ping Docker daemon: %w", err)
 	}
@@ -78,12 +77,10 @@ func (d *adapter) Close() error {
 
 // ListWorkloads returns all running containers with the discover label.
 func (d *adapter) ListWorkloads(ctx context.Context) ([]*runtimev1.Workload, error) {
-	// List containers with the discover label
-	containers, err := d.client.ContainerList(ctx, container.ListOptions{
-		Filters: filters.NewArgs(
-			filters.Arg("label", fmt.Sprintf("%s=%s", d.labelKey, d.labelValue)),
-			filters.Arg("status", "running"),
-		),
+	result, err := d.client.ContainerList(ctx, client.ContainerListOptions{
+		Filters: make(client.Filters).
+			Add("label", fmt.Sprintf("%s=%s", d.labelKey, d.labelValue)).
+			Add("status", "running"),
 	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to list containers: %w", err)
@@ -91,7 +88,7 @@ func (d *adapter) ListWorkloads(ctx context.Context) ([]*runtimev1.Workload, err
 
 	var workloads []*runtimev1.Workload
 
-	for _, c := range containers {
+	for _, c := range result.Items {
 		workload := d.containerToWorkload(c)
 		if workload != nil {
 			workloads = append(workloads, workload)
@@ -105,21 +102,19 @@ func (d *adapter) ListWorkloads(ctx context.Context) ([]*runtimev1.Workload, err
 //
 //nolint:wrapcheck
 func (d *adapter) WatchEvents(ctx context.Context, eventChan chan<- *types.RuntimeEvent) error {
-	// Subscribe to Docker events with filters
-	msgChan, errChan := d.client.Events(ctx, events.ListOptions{
-		Filters: filters.NewArgs(
-			filters.Arg("type", "container"),
-			filters.Arg("label", fmt.Sprintf("%s=%s", d.labelKey, d.labelValue)),
-		),
+	result := d.client.Events(ctx, client.EventsListOptions{
+		Filters: make(client.Filters).
+			Add("type", "container").
+			Add("label", fmt.Sprintf("%s=%s", d.labelKey, d.labelValue)),
 	})
 
 	for {
 		select {
 		case <-ctx.Done():
 			return ctx.Err()
-		case err := <-errChan:
+		case err := <-result.Err:
 			return fmt.Errorf("error watching Docker events: %w", err)
-		case msg := <-msgChan:
+		case msg := <-result.Messages:
 			d.handleEvent(ctx, msg, eventChan)
 		}
 	}
@@ -158,12 +153,12 @@ func (d *adapter) handleEvent(ctx context.Context, msg events.Message, eventChan
 
 // getContainerWorkload retrieves a container and converts it to a workload.
 func (d *adapter) getContainerWorkload(ctx context.Context, containerID string) (*runtimev1.Workload, error) {
-	inspect, err := d.client.ContainerInspect(ctx, containerID)
+	result, err := d.client.ContainerInspect(ctx, containerID, client.ContainerInspectOptions{})
 	if err != nil {
 		return nil, fmt.Errorf("failed to inspect container: %w", err)
 	}
 
-	return d.inspectToWorkload(inspect), nil
+	return d.inspectToWorkload(result.Container), nil
 }
 
 // containerToWorkload converts a Docker container summary to a workload.
