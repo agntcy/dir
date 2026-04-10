@@ -32,9 +32,8 @@ type adapter struct {
 
 // NewAdapter creates a new Docker adapter.
 func NewAdapter(cfg Config) (types.RuntimeAdapter, error) {
-	cli, err := client.NewClientWithOpts(
+	cli, err := client.New(
 		client.FromEnv,
-		client.WithAPIVersionNegotiation(),
 		client.WithHost(cfg.Host),
 	)
 	if err != nil {
