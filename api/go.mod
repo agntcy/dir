@@ -4,9 +4,9 @@ go 1.26.2
 
 require (
 	buf.build/gen/go/agntcy/oasf-sdk/protocolbuffers/go v1.36.11-20260407085813-57fa97a389f6.1
-	buf.build/gen/go/agntcy/oasf/protocolbuffers/go v1.36.11-20260409114130-ab24d6ce35fc.1
+	buf.build/gen/go/agntcy/oasf/protocolbuffers/go v1.36.11-20260409142051-fd433ebe75bb.1
 	buf.build/gen/go/bufbuild/protovalidate/protocolbuffers/go v1.36.11-20260209202127-80ab13bee0bf.1
-	github.com/agntcy/oasf-sdk/pkg v1.0.4
+	github.com/agntcy/oasf-sdk/pkg v1.0.5
 	github.com/multiformats/go-multihash v0.2.3
 	github.com/opencontainers/go-digest v1.0.0
 	github.com/stretchr/testify v1.11.1

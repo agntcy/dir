@@ -39,7 +39,7 @@ require (
 
 require (
 	buf.build/gen/go/agntcy/oasf-sdk/protocolbuffers/go v1.36.11-20260407085813-57fa97a389f6.1 // indirect
-	buf.build/gen/go/agntcy/oasf/protocolbuffers/go v1.36.11-20260409114130-ab24d6ce35fc.1 // indirect
+	buf.build/gen/go/agntcy/oasf/protocolbuffers/go v1.36.11-20260409142051-fd433ebe75bb.1 // indirect
 	buf.build/gen/go/bufbuild/protovalidate/protocolbuffers/go v1.36.11-20260209202127-80ab13bee0bf.1 // indirect
 	buf.build/go/protovalidate v1.1.3 // indirect
 	cel.dev/expr v0.25.1 // indirect
@@ -73,7 +73,7 @@ require (
 	github.com/agntcy/dir/runtime/utils v1.1.0 // indirect
 	github.com/agntcy/dir/server v1.1.0 // indirect
 	github.com/agntcy/dir/utils v1.1.0 // indirect
-	github.com/agntcy/oasf-sdk/pkg v1.0.4 // indirect
+	github.com/agntcy/oasf-sdk/pkg v1.0.5 // indirect
 	github.com/alecthomas/chroma/v2 v2.23.1 // indirect
 	github.com/andybalholm/cascadia v1.3.3 // indirect
 	github.com/antlr4-go/antlr/v4 v4.13.1 // indirect
