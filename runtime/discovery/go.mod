@@ -58,7 +58,7 @@ require (
 
 require (
 	buf.build/gen/go/agntcy/oasf-sdk/protocolbuffers/go v1.36.11-20260407085813-57fa97a389f6.1 // indirect
-	buf.build/gen/go/agntcy/oasf/protocolbuffers/go v1.36.11-20260409142051-fd433ebe75bb.1 // indirect
+	buf.build/gen/go/agntcy/oasf/protocolbuffers/go v1.36.11-20260409152816-7df6b0d2f5f0.1 // indirect
 	github.com/Azure/go-ansiterm v0.0.0-20250102033503-faa5f7b0171c // indirect
 	github.com/Microsoft/go-winio v0.6.2 // indirect
 	github.com/ThalesIgnite/crypto11 v1.2.5 // indirect
@@ -130,7 +130,7 @@ require (
 	github.com/in-toto/attestation v1.2.0 // indirect
 	github.com/in-toto/in-toto-golang v0.10.0 // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
-	github.com/ipfs/go-cid v0.6.0 // indirect
+	github.com/ipfs/go-cid v0.6.1 // indirect
 	github.com/jedisct1/go-minisign v0.0.0-20241212093149-d2f9f49435c7 // indirect
 	github.com/json-iterator/go v1.1.12 // indirect
 	github.com/klauspost/compress v1.18.5 // indirect
@@ -199,7 +199,7 @@ require (
 	go.uber.org/zap v1.27.1 // indirect
 	go.yaml.in/yaml/v2 v2.4.4 // indirect
 	go.yaml.in/yaml/v3 v3.0.4 // indirect
-	golang.org/x/crypto v0.49.0 // indirect
+	golang.org/x/crypto v0.50.0 // indirect
 	golang.org/x/mod v0.35.0 // indirect
 	golang.org/x/net v0.52.0 // indirect
 	golang.org/x/oauth2 v0.36.0 // indirect

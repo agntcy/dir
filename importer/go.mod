@@ -14,7 +14,7 @@ replace (
 replace github.com/ThalesIgnite/crypto11 => github.com/ThalesGroup/crypto11 v1.6.0
 
 require (
-	buf.build/gen/go/agntcy/oasf/protocolbuffers/go v1.36.11-20260409142051-fd433ebe75bb.1
+	buf.build/gen/go/agntcy/oasf/protocolbuffers/go v1.36.11-20260409152816-7df6b0d2f5f0.1
 	github.com/agntcy/dir/api v1.1.0
 	github.com/agntcy/dir/client v1.1.0
 	github.com/agntcy/dir/utils v1.1.0
@@ -107,7 +107,7 @@ require (
 	github.com/gorilla/css v1.0.1 // indirect
 	github.com/gorilla/websocket v1.5.4-0.20250319132907-e064f32e3674 // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
-	github.com/ipfs/go-cid v0.6.0 // indirect
+	github.com/ipfs/go-cid v0.6.1 // indirect
 	github.com/klauspost/cpuid/v2 v2.3.0 // indirect
 	github.com/lucasb-eyer/go-colorful v1.4.0 // indirect
 	github.com/mark3labs/mcp-filesystem-server v0.11.1 // indirect
@@ -152,7 +152,7 @@ require (
 	go.opentelemetry.io/otel/metric v1.43.0 // indirect
 	go.opentelemetry.io/otel/trace v1.43.0 // indirect
 	go.yaml.in/yaml/v3 v3.0.4 // indirect
-	golang.org/x/crypto v0.49.0 // indirect
+	golang.org/x/crypto v0.50.0 // indirect
 	golang.org/x/net v0.52.0 // indirect
 	golang.org/x/oauth2 v0.36.0 // indirect
 	golang.org/x/sync v0.20.0 // indirect

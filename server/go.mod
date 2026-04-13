@@ -15,7 +15,7 @@ replace (
 replace github.com/ThalesIgnite/crypto11 => github.com/ThalesGroup/crypto11 v1.6.0
 
 require (
-	buf.build/gen/go/agntcy/oasf/protocolbuffers/go v1.36.11-20260409142051-fd433ebe75bb.1
+	buf.build/gen/go/agntcy/oasf/protocolbuffers/go v1.36.11-20260409152816-7df6b0d2f5f0.1
 	buf.build/go/protovalidate v1.1.3
 	github.com/agntcy/dir/api v1.1.0
 	github.com/agntcy/dir/utils v1.1.0
@@ -98,7 +98,7 @@ require (
 	github.com/huin/goupnp v1.3.0 // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
 	github.com/ipfs/boxo v0.37.0 // indirect
-	github.com/ipfs/go-cid v0.6.0
+	github.com/ipfs/go-cid v0.6.1
 	github.com/ipfs/go-ds-badger v0.3.4
 	github.com/ipfs/go-log/v2 v2.9.1 // indirect
 	github.com/ipld/go-ipld-prime v0.22.0 // indirect
@@ -198,7 +198,7 @@ require (
 	go.uber.org/zap v1.27.1 // indirect
 	go.yaml.in/yaml/v2 v2.4.4 // indirect
 	go.yaml.in/yaml/v3 v3.0.4 // indirect
-	golang.org/x/crypto v0.49.0
+	golang.org/x/crypto v0.50.0
 	golang.org/x/exp v0.0.0-20260312153236-7ab1446f8b90 // indirect
 	golang.org/x/mod v0.35.0 // indirect
 	golang.org/x/net v0.52.0 // indirect

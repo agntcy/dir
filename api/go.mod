@@ -4,7 +4,7 @@ go 1.26.2
 
 require (
 	buf.build/gen/go/agntcy/oasf-sdk/protocolbuffers/go v1.36.11-20260407085813-57fa97a389f6.1
-	buf.build/gen/go/agntcy/oasf/protocolbuffers/go v1.36.11-20260409142051-fd433ebe75bb.1
+	buf.build/gen/go/agntcy/oasf/protocolbuffers/go v1.36.11-20260409152816-7df6b0d2f5f0.1
 	buf.build/gen/go/bufbuild/protovalidate/protocolbuffers/go v1.36.11-20260209202127-80ab13bee0bf.1
 	github.com/agntcy/oasf-sdk/pkg v1.0.5
 	github.com/multiformats/go-multihash v0.2.3
@@ -25,7 +25,7 @@ require (
 
 require (
 	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc // indirect
-	github.com/ipfs/go-cid v0.6.0
+	github.com/ipfs/go-cid v0.6.1
 	github.com/klauspost/cpuid/v2 v2.3.0 // indirect
 	github.com/minio/sha256-simd v1.0.1 // indirect
 	github.com/mr-tron/base58 v1.3.0 // indirect
@@ -35,7 +35,7 @@ require (
 	github.com/multiformats/go-varint v0.1.0 // indirect
 	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 // indirect
 	github.com/spaolacci/murmur3 v1.1.0 // indirect
-	golang.org/x/crypto v0.49.0 // indirect
+	golang.org/x/crypto v0.50.0 // indirect
 	golang.org/x/net v0.52.0 // indirect
 	golang.org/x/sys v0.43.0 // indirect
 	golang.org/x/text v0.36.0 // indirect

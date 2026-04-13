@@ -36,7 +36,7 @@ require (
 	github.com/agntcy/dir/runtime/store v1.1.0
 	github.com/agntcy/dir/server v1.1.0
 	github.com/agntcy/dir/utils v1.1.0
-	github.com/ipfs/go-cid v0.6.0
+	github.com/ipfs/go-cid v0.6.1
 	github.com/libp2p/go-libp2p v0.48.0
 	github.com/mitchellh/mapstructure v1.5.1-0.20231216201459-8508981c8b6c
 	github.com/sigstore/cosign/v3 v3.0.6
@@ -45,7 +45,7 @@ require (
 	github.com/spf13/pflag v1.0.10
 	github.com/spf13/viper v1.21.0
 	github.com/stretchr/testify v1.11.1
-	golang.org/x/crypto v0.49.0
+	golang.org/x/crypto v0.50.0
 	golang.org/x/mod v0.35.0
 	google.golang.org/protobuf v1.36.11
 	oras.land/oras-go/v2 v2.6.0
@@ -53,7 +53,7 @@ require (
 
 require (
 	buf.build/gen/go/agntcy/oasf-sdk/protocolbuffers/go v1.36.11-20260407085813-57fa97a389f6.1 // indirect
-	buf.build/gen/go/agntcy/oasf/protocolbuffers/go v1.36.11-20260409142051-fd433ebe75bb.1 // indirect
+	buf.build/gen/go/agntcy/oasf/protocolbuffers/go v1.36.11-20260409152816-7df6b0d2f5f0.1 // indirect
 	buf.build/gen/go/bufbuild/protovalidate/protocolbuffers/go v1.36.11-20260209202127-80ab13bee0bf.1 // indirect
 	buf.build/go/protovalidate v1.1.3 // indirect
 	cel.dev/expr v0.25.1 // indirect
