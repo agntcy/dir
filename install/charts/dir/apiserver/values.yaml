@@ -347,7 +347,8 @@ routingService:
 
   # Cloud provider for automatic annotation configuration
   # Options: "aws", "gcp", "azure", or leave empty for manual configuration
-  # When set, provider-specific annotations are automatically applied
+  # When set, provider-specific annotations are rendered on the routing Service
+  # manifest.
   cloudProvider: ""
 
   # AWS-specific configuration (only used when cloudProvider: "aws")
@@ -382,6 +383,8 @@ routingService:
 
   # Optional: Additional custom annotations (merged with provider annotations)
   # Custom annotations take precedence over provider-generated ones
+  # Example:
+  #   external-dns.alpha.kubernetes.io/hostname: "prod.routing.example.com"
   annotations: {}
 
 serviceAccount:

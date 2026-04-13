@@ -8,6 +8,11 @@ metadata:
   name: {{ include "chart.fullname" . }}-routing
   labels:
     {{- include "chart.labels" . | nindent 4 }}
+  {{- $routingServiceAnnotations := include "chart.routingService.annotations" . }}
+  {{- if $routingServiceAnnotations }}
+  annotations:
+{{ $routingServiceAnnotations | nindent 4 }}
+  {{- end }}
 spec:
   {{- if and .Values.routingService .Values.routingService.type }}
   type: {{ .Values.routingService.type }}
