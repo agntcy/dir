@@ -45,7 +45,7 @@ require (
 	github.com/spf13/pflag v1.0.10
 	github.com/spf13/viper v1.21.0
 	github.com/stretchr/testify v1.11.1
-	golang.org/x/crypto v0.49.0
+	golang.org/x/crypto v0.50.0
 	golang.org/x/mod v0.35.0
 	google.golang.org/protobuf v1.36.11
 	oras.land/oras-go/v2 v2.6.0
