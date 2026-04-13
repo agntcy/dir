@@ -60,6 +60,7 @@ jobs:
           name: cli-artifacts
           path: .bin
           if-no-files-found: error
+          include-hidden-files: true
 
   server:
     name: Server
@@ -90,6 +91,7 @@ jobs:
           name: server-artifacts
           path: .bin
           if-no-files-found: error
+          include-hidden-files: true
 
   release:
     name: Release
