@@ -4,7 +4,7 @@ requires-python = ">=3.10"
 
 [[package]]
 name = "agntcy-dir"
-version = "1.1.0"
+version = "1.2.0"
 source = { editable = "." }
 dependencies = [
     { name = "authlib" },
@@ -94,7 +94,7 @@ dependencies = [
     { name = "types-protobuf" },
 ]
 wheels = [
-    { url = "https://buf.build/gen/python/bufbuild-protovalidate-protocolbuffers-pyi/bufbuild_protovalidate_protocolbuffers_pyi-34.1.0.1.20260209202127+80ab13bee0bf-py3-none-any.whl" },
+    { url = "https://buf.build/gen/python/bufbuild-protovalidate-protocolbuffers-pyi/bufbuild_protovalidate_protocolbuffers_pyi-34.1.0.1.20260209202127+80ab13bee0bf-py3-none-any.whl", upload-time = "2026-03-21T01:13:12Z" },
 ]
 
 [[package]]
@@ -106,7 +106,7 @@ dependencies = [
     { name = "protobuf" },
 ]
 wheels = [
-    { url = "https://buf.build/gen/python/bufbuild-protovalidate-protocolbuffers-python/bufbuild_protovalidate_protocolbuffers_python-34.0.0.1.20260209202127+80ab13bee0bf-py3-none-any.whl" },
+    { url = "https://buf.build/gen/python/bufbuild-protovalidate-protocolbuffers-python/bufbuild_protovalidate_protocolbuffers_python-34.0.0.1.20260209202127+80ab13bee0bf-py3-none-any.whl", upload-time = "2026-02-28T01:21:17Z" },
 ]
 
 [[package]]
