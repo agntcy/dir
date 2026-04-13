@@ -80,7 +80,7 @@ jobs:
 
       - name: Generate matrix
         id: generate
-        uses: docker/bake-action/subaction/matrix@82490499d2e5613fcead7e128237ef0b0ea210f7 # v7.0.0
+        uses: docker/bake-action/subaction/matrix@a66e1c87e2eca0503c343edf1d208c716d54b8a8 # v7.1.0
 
   image:
     name: Image
@@ -125,7 +125,7 @@ jobs:
 
       - name: Build and push
         if: ${{ inputs.push }}
-        uses: docker/bake-action@82490499d2e5613fcead7e128237ef0b0ea210f7 # v7.0.0
+        uses: docker/bake-action@a66e1c87e2eca0503c343edf1d208c716d54b8a8 # v7.1.0
         with:
           push: true
           provenance: false
@@ -145,7 +145,7 @@ jobs:
 
       - name: Build and load
         if: ${{ !inputs.push }}
-        uses: docker/bake-action@82490499d2e5613fcead7e128237ef0b0ea210f7 # v7.0.0
+        uses: docker/bake-action@a66e1c87e2eca0503c343edf1d208c716d54b8a8 # v7.1.0
         with:
           provenance: false
           files: |
@@ -216,7 +216,7 @@ jobs:
           mkdir /tmp/artifacts
 
       - name: Build coverage image
-        uses: docker/bake-action@82490499d2e5613fcead7e128237ef0b0ea210f7 # v7.0.0
+        uses: docker/bake-action@a66e1c87e2eca0503c343edf1d208c716d54b8a8 # v7.1.0
         with:
           provenance: false
           files: |
