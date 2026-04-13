@@ -61,7 +61,7 @@ func (c *MCPDuplicateChecker) buildCache(ctx context.Context) error {
 	)
 
 	// Search for integration/mcp, runtime/mcp, and integration/a2a (A2A imports use top-level name@version like MCP)
-	modules := []string{"integration/mcp", "runtime/mcp", "integration/a2a"}
+	modules := []string{"integration/mcp", "runtime/mcp", "integration/a2a", "core/language_model/agentskills"}
 
 	totalProcessed := 0
 

@@ -16,10 +16,10 @@ import (
 	"google.golang.org/protobuf/types/known/structpb"
 )
 
-// Transformer implements the pipeline.Transformer interface for MCP and A2A sources.
+// Transformer implements the pipeline.Transformer interface for MCP, A2A, and Agent Skill sources.
 type Transformer struct{}
 
-// NewTransformer creates a transformer for MCP and A2A pipeline items.
+// NewTransformer creates a transformer for MCP, A2A, and Agent Skill pipeline items.
 func NewTransformer() *Transformer {
 	return &Transformer{}
 }
@@ -80,7 +80,9 @@ func (t *Transformer) Transform(ctx context.Context, inputCh <-chan types.Source
 	return outputCh, errCh
 }
 
-// TransformRecord converts a pipeline source item (MCP or A2A) to OASF format.
+// TransformRecord converts a pipeline source item (MCP, A2A, or Agent Skill) to OASF format.
+//
+//nolint:gocognit,cyclop // switch per source kind; complexity acceptable
 func (t *Transformer) TransformRecord(item types.SourceItem) (*corev1.Record, error) {
 	switch item.Kind {
 	case types.SourceKindA2A:
@@ -106,6 +108,25 @@ func (t *Transformer) TransformRecord(item types.SourceItem) (*corev1.Record, er
 
 		return record, nil
 
+	case types.SourceKindAgentSkill:
+		if item.Skill == nil {
+			return nil, fmt.Errorf("agent skill source item missing skill struct")
+		}
+
+		record, err := convertAgentSkillToOASF(item.Skill)
+		if err != nil {
+			nv := item.NameVersion()
+			if nv == "" {
+				nv = "(unknown)"
+			}
+
+			return nil, fmt.Errorf("failed to convert agent skill %s to OASF: %w", nv, err)
+		}
+
+		// Do not attach __agentskill_debug_source: server-side OASF validation rejects unknown record fields.
+
+		return record, nil
+
 	case types.SourceKindMCP:
 		record, err := convertMCPToOASF(item.MCP)
 		if err != nil {
@@ -125,6 +146,16 @@ func (t *Transformer) TransformRecord(item types.SourceItem) (*corev1.Record, er
 	default:
 		return nil, fmt.Errorf("unknown source kind: %v", item.Kind)
 	}
+}
+
+// convertAgentSkillToOASF converts a parsed Agent Skill payload to an OASF record.
+func convertAgentSkillToOASF(skill *structpb.Struct) (*corev1.Record, error) {
+	data, err := translator.SkillMarkdownToRecord(skill, translator.WithVersion("1.0.0"))
+	if err != nil {
+		return nil, fmt.Errorf("SkillMarkdownToRecord: %w", err)
+	}
+
+	return &corev1.Record{Data: data}, nil
 }
 
 func convertA2AToOASF(card *structpb.Struct) (*corev1.Record, error) {

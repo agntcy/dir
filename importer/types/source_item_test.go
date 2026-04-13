@@ -50,3 +50,31 @@ func TestSourceItem_NameVersion_A2A(t *testing.T) {
 		t.Error("nil struct should give empty NameVersion")
 	}
 }
+
+func TestSourceItem_NameVersion_AgentSkill(t *testing.T) {
+	t.Parallel()
+
+	st, err := structpb.NewStruct(map[string]any{
+		"name": "my-skill",
+		"metadata": map[string]any{
+			"version": "3.0.0",
+		},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	s := AgentSkillSourceItem(st)
+	if got := s.NameVersion(); got != "my-skill@3.0.0" {
+		t.Errorf("NameVersion = %q, want my-skill@3.0.0", got)
+	}
+
+	st2, err := structpb.NewStruct(map[string]any{"name": "only"})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if got := AgentSkillSourceItem(st2).NameVersion(); got != "only@v1.0.0" {
+		t.Errorf("default version: got %q", got)
+	}
+}

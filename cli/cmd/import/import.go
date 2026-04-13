@@ -21,14 +21,15 @@ import (
 
 var Command = &cobra.Command{
 	Use:   "import",
-	Short: "Import MCP or A2A records into DIR from a registry or local JSON file",
-	Long: `Import MCP server or A2A AgentCard records into DIR. Records are transformed, enriched, optionally
+	Short: "Import MCP, A2A, or Agent Skill records into DIR from a registry, JSON file, or skill directory",
+	Long: `Import MCP server, A2A AgentCard, or Agent Skill records into DIR. Records are transformed, enriched, optionally
 scanned, then pushed. The same pipeline runs for every source.
 
 Import kinds (--type):
   mcp            Local JSON: one MCP server object or a JSON array (--file-path)
   mcp-registry   HTTP MCP registry, e.g. v0.1 list API (--url)
   a2a            Local JSON: one A2A AgentCard or an array of cards (--file-path)
+  agent-skill    Local directory: one Agent Skills folder containing SKILL.md (--file-path); see https://agentskills.io/specification
 
 Examples (MCP registry):
   dirctl import --type=mcp-registry --url=https://registry.modelcontextprotocol.io/v0.1
@@ -42,6 +43,10 @@ Examples (local MCP JSON file):
 Examples (local A2A AgentCard JSON):
   dirctl import --type=a2a --file-path=./agent.json
   dirctl import --type=a2a --file-path=./agents.json --dry-run
+
+Examples (Agent Skill directory):
+  dirctl import --type=agent-skill --file-path=./my-skill
+  dirctl import --type=agent-skill --file-path=./my-skill --dry-run
 
 Preview and output:
   dirctl import --type=mcp-registry --url=https://registry.modelcontextprotocol.io/v0.1 --dry-run
