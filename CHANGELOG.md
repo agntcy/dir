@@ -5,6 +5,55 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v1.2.0] - 2026-04-13
+
+### Added
+- **Dir**: Multiprovider OIDC-based external authorization module (#1034)
+- **Dir**: DeleteReferrer API support (#993)
+- **CLI**: `dirctl daemon` command (#1200)
+- **CLI/Daemon**: Daemon configuration file support (#1218)
+- **CLI/Daemon**: Peer-ready routing defaults (#1268)
+- **SDK**: OIDC auth support for Python SDK (#1201)
+- **SDK**: OIDC auth support for JavaScript/TypeScript SDK (#1219)
+- **Dir**: SQLite support and configuration for server database (#1195)
+- **Runtime**: Runtime discovery component integration in daemon (#1277)
+- **Runtime**: Runtime client methods and daemon tests (#1283)
+- **Importer**: File fetcher support (#1217)
+- **Importer**: Agent skill import from file (#1276)
+- **Release**: Publish `dir-apiserver` binaries for multiple platforms (#1179)
+- **Authz**: Constrained wildcard matching for GitHub workflow principals (#1167)
+
+### Changed
+- **Importer**: Revamp importer module (#1092)
+- **Dir**: Refactor PullReferrer implementation (#1067)
+- **OIDC**: Replace Zitadel with Dex as OIDC provider (#1216)
+- **CLI/Client**: Simplify OIDC client and add device flow support (#1220)
+- **Dir/CI**: Reusable `build-dirctl` and GitHub OIDC token actions (#1168)
+- **Dir/CI**: Follow new OIDC pattern in import-records workflow (#1177)
+- **Workflows**: Pin demo and import workflows to `dirctl` version (#1207)
+- **Tests**: Remove e2e-production suite and update README (#1241)
+- **Deps**: OASF SDK 1.0.5 support (#1298)
+- **Dir/Helm**: Add latest Helm releases and render routing service annotations (#1290, #1309)
+- **Dependencies**: Update JavaScript, Go patches, GitHub Actions, uv, and Helm/Zot/PostgreSQL packages (#1306, #1305, #1303, #1302, #1304, #1301)
+
+### Fixed
+- **Importer**: Import workflow command paths and flags handling (#1090, #1226, #1230)
+- **Importer**: Revert import command type in workflow (#1238)
+- **Tests**: Flaky e2e network tests due to shared data and sync timeout (#1182)
+- **CI**: Switch to native Kind networking for e2e tests (#1199)
+- **CI**: Include `package-lock.json` in Docker builds for SDK e2e tests (#1142)
+- **CI/Cron**: Security scanning artifact names, permissions, and schedule fixes (#1152, #1183)
+- **Renovate**: Resolve buf dependencies and adjust deps handling (#1109, #1147)
+- **Dir**: Skip pre-commit install when hooksPath is set (#1215)
+- **Dir**: Test file check fix and remove parallel lint runs (#1214, #1227)
+- **Dirctl**: Use UTC millisecond timestamps for cached tokens (#1284)
+- **Dir/Helm**: Helm version fix (#1294)
+
+### Security
+- **Dependencies**: Replace Docker with Moby in dependency set (#1299)
+- **Dir**: Package upgrades to address security alerts (#1291)
+- **Dependencies**: Security bumps for `golang.org/x/crypto`, OpenTelemetry SDK/exporters, AWS eventstream, and `go-jose` (#1307, #1289, #1288, #1279, #1246)
+
 ## [v1.1.0] - 2026-03-19
 
 ### Added
