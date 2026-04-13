@@ -9,8 +9,8 @@ replace (
 )
 
 require (
-	github.com/agntcy/dir/runtime/api v1.1.0
-	github.com/agntcy/dir/runtime/utils v1.1.0
+	github.com/agntcy/dir/runtime/api v1.2.0
+	github.com/agntcy/dir/runtime/utils v1.2.0
 	github.com/glebarez/sqlite v1.11.0
 	go.etcd.io/etcd/client/v3 v3.6.10
 	google.golang.org/protobuf v1.36.11

@@ -15,9 +15,9 @@ replace github.com/ThalesIgnite/crypto11 => github.com/ThalesGroup/crypto11 v1.6
 
 require (
 	buf.build/gen/go/agntcy/oasf/protocolbuffers/go v1.36.11-20260409152816-7df6b0d2f5f0.1
-	github.com/agntcy/dir/api v1.1.0
-	github.com/agntcy/dir/client v1.1.0
-	github.com/agntcy/dir/utils v1.1.0
+	github.com/agntcy/dir/api v1.2.0
+	github.com/agntcy/dir/client v1.2.0
+	github.com/agntcy/dir/utils v1.2.0
 	github.com/agntcy/oasf-sdk/pkg v1.0.5
 	github.com/mark3labs/mcphost v0.34.0
 	github.com/modelcontextprotocol/registry v1.5.0

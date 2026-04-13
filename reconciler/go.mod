@@ -15,10 +15,10 @@ replace (
 replace github.com/ThalesIgnite/crypto11 => github.com/ThalesGroup/crypto11 v1.6.0
 
 require (
-	github.com/agntcy/dir/api v1.1.0
-	github.com/agntcy/dir/client v1.1.0
-	github.com/agntcy/dir/server v1.1.0
-	github.com/agntcy/dir/utils v1.1.0
+	github.com/agntcy/dir/api v1.2.0
+	github.com/agntcy/dir/client v1.2.0
+	github.com/agntcy/dir/server v1.2.0
+	github.com/agntcy/dir/utils v1.2.0
 	github.com/sigstore/sigstore v1.10.5
 	github.com/spf13/viper v1.21.0
 	github.com/stretchr/testify v1.11.1
@@ -35,7 +35,7 @@ require (
 	github.com/Masterminds/semver/v3 v3.4.0 // indirect
 	github.com/Microsoft/go-winio v0.6.2 // indirect
 	github.com/ThalesIgnite/crypto11 v1.2.5 // indirect
-	github.com/agntcy/dir/runtime/api v1.1.0 // indirect
+	github.com/agntcy/dir/runtime/api v1.2.0 // indirect
 	github.com/agntcy/oasf-sdk/pkg v1.0.5 // indirect
 	github.com/asaskevich/govalidator v0.0.0-20230301143203-a9d515a09cc2 // indirect
 	github.com/blang/semver v3.5.1+incompatible // indirect

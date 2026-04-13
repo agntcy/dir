@@ -26,16 +26,16 @@ replace (
 )
 
 require (
-	github.com/agntcy/dir/api v1.1.0
-	github.com/agntcy/dir/client v1.1.0
-	github.com/agntcy/dir/importer v1.1.0
-	github.com/agntcy/dir/mcp v1.1.0
-	github.com/agntcy/dir/reconciler v1.1.0
-	github.com/agntcy/dir/runtime/discovery v1.1.0
-	github.com/agntcy/dir/runtime/server v1.1.0
-	github.com/agntcy/dir/runtime/store v1.1.0
-	github.com/agntcy/dir/server v1.1.0
-	github.com/agntcy/dir/utils v1.1.0
+	github.com/agntcy/dir/api v1.2.0
+	github.com/agntcy/dir/client v1.2.0
+	github.com/agntcy/dir/importer v1.2.0
+	github.com/agntcy/dir/mcp v1.2.0
+	github.com/agntcy/dir/reconciler v1.2.0
+	github.com/agntcy/dir/runtime/discovery v1.2.0
+	github.com/agntcy/dir/runtime/server v1.2.0
+	github.com/agntcy/dir/runtime/store v1.2.0
+	github.com/agntcy/dir/server v1.2.0
+	github.com/agntcy/dir/utils v1.2.0
 	github.com/ipfs/go-cid v0.6.1
 	github.com/libp2p/go-libp2p v0.48.0
 	github.com/mitchellh/mapstructure v1.5.1-0.20231216201459-8508981c8b6c
@@ -77,8 +77,8 @@ require (
 	github.com/Microsoft/go-winio v0.6.2 // indirect
 	github.com/PuerkitoBio/goquery v1.12.0 // indirect
 	github.com/ThalesIgnite/crypto11 v1.2.5 // indirect
-	github.com/agntcy/dir/runtime/api v1.1.0 // indirect
-	github.com/agntcy/dir/runtime/utils v1.1.0 // indirect
+	github.com/agntcy/dir/runtime/api v1.2.0 // indirect
+	github.com/agntcy/dir/runtime/utils v1.2.0 // indirect
 	github.com/agntcy/oasf-sdk/pkg v1.0.5 // indirect
 	github.com/alecthomas/chroma/v2 v2.23.1 // indirect
 	github.com/andybalholm/cascadia v1.3.3 // indirect
