@@ -95,3 +95,6 @@ vars:
     sh: '{{if eq OS "windows"}}git ls-files go.mod */go.mod | while IFS= read -r f; do dirname "./$f"; done | grep -v "^\./tmp"{{else}}find . -name go.mod -not -path "./tmp*" -exec dirname {} \;{{end}}'
   GO_MODULES_UNIT_TEST:
     sh: '{{if eq OS "windows"}}git ls-files go.mod */go.mod | while IFS= read -r f; do dirname "./$f"; done | grep -v "^\./tmp" | grep -v "^\./tests"{{else}}find . -name go.mod -not -path "./tests*" -not -path "./tmp*" -exec dirname {} \;{{end}}'
+
+  ## Kubernetes test environment related values
+  CREATE_IMAGE_PULL_SECRET: '{{ .CREATE_IMAGE_PULL_SECRET | default "true" }}'

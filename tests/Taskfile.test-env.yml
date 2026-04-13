@@ -56,6 +56,19 @@ tasks:
           {{ .KIND_BIN }} load docker-image $image --name {{ .KIND_CLUSTER_NAME }}
         done
 
+  test-env:kubernetes:create-image-pull-secret:
+    desc: Create an image pull secret for the cluster to avoid docker API ratelimit
+    vars:
+      IMAGE_PULL_SECRET_NAMESPACE: '{{ .IMAGE_PULL_SECRET_NAMESPACE | default "default" }}'
+    cmds:
+      - |
+        {{ .KUBECTL_BIN }} create namespace {{ .IMAGE_PULL_SECRET_NAMESPACE }} || true
+      - |
+        {{ .KUBECTL_BIN }} create secret generic regcred-dockerconfig \
+          --namespace {{ .IMAGE_PULL_SECRET_NAMESPACE }} \
+          --from-file=.dockerconfigjson="${HOME}/.docker/config.json" \
+          --type=kubernetes.io/dockerconfigjson
+
   test-env:kubernetes:gen-htpasswd-creds:
     desc: Generate htpasswd credentials and files for DIR deployment
     vars:
@@ -122,6 +135,11 @@ tasks:
       METRICS_HOSTPORT: '{{ .METRICS_HOSTPORT | default "9090" }}'
       METRICS_NODEPORT: '{{ .METRICS_NODEPORT | default "30090" }}'
     cmds:
+      - task: test-env:kubernetes:create-image-pull-secret
+        if: '{{ eq .CREATE_IMAGE_PULL_SECRET "true" }}'
+        vars:
+          IMAGE_PULL_SECRET_NAMESPACE: "{{ .HELM_NAMESPACE }}"
+
       # TODO: make logic idempotent so that running functional tests does not change previous contexts
 
       # Generate credentials and htpasswd file (using defaults)
@@ -167,6 +185,7 @@ tasks:
           --set apiserver.reconciler.config.indexer.interval="10s" \
           --set apiserver.reconciler.config.name.interval="5s" \
           --set apiserver.reconciler.config.signature.interval="5s" \
+          {{ if eq .CREATE_IMAGE_PULL_SECRET "true" }}--set apiserver.postgresql.global.imagePullSecrets[0].name="regcred-dockerconfig"{{ end }} \
           --namespace {{ .HELM_NAMESPACE }} \
           --create-namespace \
           --install \
@@ -197,6 +216,11 @@ tasks:
       METRICS_HOSTPORT: '{{ .METRICS_HOSTPORT | default "9090" }}'
       METRICS_NODEPORT: '{{ .METRICS_NODEPORT | default "30090" }}'
     cmds:
+      - task: test-env:kubernetes:create-image-pull-secret
+        if: '{{ eq .CREATE_IMAGE_PULL_SECRET "true" }}'
+        vars:
+          IMAGE_PULL_SECRET_NAMESPACE: "{{ .HELM_NAMESPACE }}"
+
       # Validate required environment variables
       - |
         if [ -z "${DIRECTORY_SERVER_STORE_OCI_AUTH_CONFIG_USERNAME:-}" ] || [ -z "${DIRECTORY_SERVER_STORE_OCI_AUTH_CONFIG_PASSWORD:-}" ] || [ -z "${DIRECTORY_SERVER_STORE_OCI_REPOSITORY_NAME:-}" ]; then
@@ -250,6 +274,7 @@ tasks:
           --set apiserver.reconciler.config.signature.interval="5s" \
           --set apiserver.reconciler.image.tag="{{ .DEPLOY_IMAGE_TAG }}" \
           --set apiserver.config.oasf_api_validation.disable=true \
+          {{ if eq .CREATE_IMAGE_PULL_SECRET "true" }}--set apiserver.postgresql.global.imagePullSecrets[0].name="regcred-dockerconfig"{{ end }} \
           --namespace {{ .HELM_NAMESPACE }} \
           --create-namespace \
           --install \
@@ -278,6 +303,11 @@ tasks:
       HELM_VALUES_PATH: "{{ .ROOT_DIR }}/install/charts/dir/values.yaml"
       HELM_EXTRA_ARGS: '{{ .HELM_EXTRA_ARGS | default "" }}'
     cmds:
+      - task: test-env:kubernetes:create-image-pull-secret
+        if: '{{ eq .CREATE_IMAGE_PULL_SECRET "true" }}'
+        vars:
+          IMAGE_PULL_SECRET_NAMESPACE: "{{ .HELM_NAMESPACE }}"
+
       # Generate credentials and htpasswd file (using defaults)
       - task: test-env:kubernetes:gen-htpasswd-creds
 
@@ -310,6 +340,7 @@ tasks:
           --set apiserver.reconciler.config.indexer.interval="10s" \
           --set apiserver.reconciler.config.name.interval="5s" \
           --set apiserver.reconciler.config.signature.interval="5s" \
+          {{ if eq .CREATE_IMAGE_PULL_SECRET "true" }}--set apiserver.postgresql.global.imagePullSecrets[0].name="regcred-dockerconfig"{{ end }} \
           {{ .HELM_EXTRA_ARGS }} \
           --namespace {{ .HELM_NAMESPACE }} \
           --create-namespace \
@@ -405,7 +436,13 @@ tasks:
       DEPLOY_IMAGE_TAG: '{{ if eq .E2E_COVERAGE_ENABLED "true" }}{{ .COVERAGE_IMAGE_TAG }}{{ else }}{{ .IMAGE_TAG }}{{ end }}'
       # API config
       KIND_EXTRA_PORT_MAPPING: '{{ .KIND_EXTRA_PORT_MAPPING | default "" }}'
+      HELM_NAMESPACE: '{{ .HELM_NAMESPACE | default "bootstrap" }}'
     cmds:
+      - task: test-env:kubernetes:create-image-pull-secret
+        if: '{{ eq .CREATE_IMAGE_PULL_SECRET "true" }}'
+        vars:
+          IMAGE_PULL_SECRET_NAMESPACE: "{{ .HELM_NAMESPACE }}"
+
       # Generate private key if it doesn't exist
       - |
         test -f /tmp/node.privkey || {{ .BIN_DIR }}/dirctl network init --output /tmp/node.privkey
@@ -461,7 +498,8 @@ tasks:
           --set apiserver.reconciler.config.indexer.interval="10s" \
           --set apiserver.reconciler.config.name.interval="5s" \
           --set apiserver.reconciler.config.signature.interval="5s" \
-          --namespace "bootstrap" \
+          {{ if eq .CREATE_IMAGE_PULL_SECRET "true" }}--set apiserver.postgresql.global.imagePullSecrets[0].name="regcred-dockerconfig"{{ end }} \
+          --namespace {{ .HELM_NAMESPACE }} \
           --create-namespace \
           --install \
           --wait \
@@ -478,7 +516,7 @@ tasks:
       E2E_COVERAGE_ENABLED: '{{ .E2E_COVERAGE_ENABLED | default "false" }}'
       DEPLOY_IMAGE_TAG: '{{ if eq .E2E_COVERAGE_ENABLED "true" }}{{ .COVERAGE_IMAGE_TAG }}{{ else }}{{ .IMAGE_TAG }}{{ end }}'
       # Peers config
-      KIND_EXTRA_PORT_MAPPING: '8890:30090,8891:30091,8892:30092'
+      KIND_EXTRA_PORT_MAPPING: "8890:30090,8891:30091,8892:30092"
       PEERS_MAP:
         map:
           peer1:
@@ -500,6 +538,13 @@ tasks:
           PUBLICATION_SCHEDULER_INTERVAL: "{{ .PUBLICATION_SCHEDULER_INTERVAL }}"
           E2E_COVERAGE_ENABLED: "{{ .E2E_COVERAGE_ENABLED }}"
           KIND_EXTRA_PORT_MAPPING: "{{ .KIND_EXTRA_PORT_MAPPING }}"
+
+      # Step 0: Create image pull secret for each peer if enabled
+      - for: { var: PEERS_MAP }
+        task: test-env:kubernetes:create-image-pull-secret
+        if: '{{ eq .CREATE_IMAGE_PULL_SECRET "true" }}'
+        vars:
+          IMAGE_PULL_SECRET_NAMESPACE: "{{ .KEY }}"
 
       # Step 1: Deploy all peer servers without waiting (fast)
       - for:
@@ -540,6 +585,7 @@ tasks:
             --set apiserver.reconciler.config.indexer.interval="10s" \
             --set apiserver.reconciler.config.name.interval="5s" \
             --set apiserver.reconciler.config.signature.interval="5s" \
+            {{ if eq .CREATE_IMAGE_PULL_SECRET "true" }}--set apiserver.postgresql.global.imagePullSecrets[0].name="regcred-dockerconfig"{{ end }} \
             --namespace "{{ .KEY }}" \
             --create-namespace \
             --install
