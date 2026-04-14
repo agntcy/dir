@@ -16,7 +16,8 @@ RUN --mount=type=cache,id=${TARGETPLATFORM}-apt,target=/var/cache/apt,sharing=lo
     apt-get update \
     && xx-apt-get install -y --no-install-recommends \
     gcc \
-    libc6-dev
+    libc6-dev \
+    ca-certificates
 
 WORKDIR /build/reconciler
 
@@ -70,12 +71,13 @@ ENTRYPOINT ["/go/bin/dlv", "--listen=0.0.0.0:2345", "--headless=true", "--accept
 # https://github.com/docker-library/repo-info/blob/master/repos/alpine/tag-details.md
 FROM busybox:stable-musl@sha256:3c6ae8008e2c2eedd141725c30b20d9c36b026eb796688f88205845ef17aa213
 
-# RUN apk add --no-cache ca-certificates tzdata
-
 # Create non-root user matching distroless nonroot
 RUN addgroup -g 55532 -S nonroot && adduser -u 55532 -S nonroot -G nonroot
 
 WORKDIR /
+
+COPY --from=builder /etc/ssl/certs /etc/ssl/certs
+COPY --from=builder /usr/share/ca-certificates /usr/share/ca-certificates
 
 COPY --from=builder /bin/reconciler ./reconciler
 COPY --from=builder /bin/regsync /usr/local/bin/regsync
@@ -88,6 +90,9 @@ ENTRYPOINT ["./reconciler"]
 FROM busybox:stable-musl@sha256:3c6ae8008e2c2eedd141725c30b20d9c36b026eb796688f88205845ef17aa213 AS coverage
 
 WORKDIR /
+
+COPY --from=builder /etc/ssl/certs /etc/ssl/certs
+COPY --from=builder /usr/share/ca-certificates /usr/share/ca-certificates
 
 COPY --from=builder /bin/reconciler ./reconciler
 COPY --from=builder /bin/regsync /usr/local/bin/regsync
