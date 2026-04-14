@@ -1,4 +1,4 @@
-# syntax=docker/dockerfile:1@sha256:2780b5c3bab67f1f76c781860de469442999ed1a0d7992a5efdf2cffc0e3d769
+# syntax=docker/dockerfile:1@sha256:4a43a54dd1fedceb30ba47e76cfcf2b47304f4161c0caeac2db1c61804ea3c91
 
 # Regsync version
 ARG REGSYNC_VERSION=v0.11.1
@@ -68,26 +68,24 @@ ENTRYPOINT ["/go/bin/dlv", "--listen=0.0.0.0:2345", "--headless=true", "--accept
 
 # Runtime stage - using Alpine because regsync may need shell/tools
 # https://github.com/docker-library/repo-info/blob/master/repos/alpine/tag-details.md
-FROM alpine:3.23@sha256:25109184c71bdad752c8312a8623239686a9a2071e8825f20acb8f2198c3f659
+FROM busybox:stable-musl@sha256:3c6ae8008e2c2eedd141725c30b20d9c36b026eb796688f88205845ef17aa213
 
-RUN apk add --no-cache ca-certificates tzdata
+# RUN apk add --no-cache ca-certificates tzdata
 
 # Create non-root user matching distroless nonroot
-RUN addgroup -g 65532 -S nonroot && adduser -u 65532 -S nonroot -G nonroot
+RUN addgroup -g 55532 -S nonroot && adduser -u 55532 -S nonroot -G nonroot
 
 WORKDIR /
 
 COPY --from=builder /bin/reconciler ./reconciler
 COPY --from=builder /bin/regsync /usr/local/bin/regsync
 
-USER 65532:65532
+USER 55532:55532
 
 ENTRYPOINT ["./reconciler"]
 
 # Coverage image - includes tar for kubectl cp to work
-FROM alpine:3.23@sha256:25109184c71bdad752c8312a8623239686a9a2071e8825f20acb8f2198c3f659 AS coverage
-
-RUN apk add --no-cache tar
+FROM busybox:stable-musl@sha256:3c6ae8008e2c2eedd141725c30b20d9c36b026eb796688f88205845ef17aa213 AS coverage
 
 WORKDIR /
 
@@ -95,11 +93,11 @@ COPY --from=builder /bin/reconciler ./reconciler
 COPY --from=builder /bin/regsync /usr/local/bin/regsync
 
 # Create a non-root user for coverage
-RUN addgroup -g 65532 -S nonroot && adduser -u 65532 -S nonroot -G nonroot
+RUN addgroup -g 55532 -S nonroot && adduser -u 55532 -S nonroot -G nonroot
 
 # Create coverage directory with proper permissions
-RUN mkdir -p /tmp/coverage && chown -R 65532:65532 /tmp/coverage
+RUN mkdir -p /tmp/coverage && chown -R 55532:55532 /tmp/coverage
 
-USER 65532:65532
+USER 55532:55532
 
 ENTRYPOINT ["./reconciler"]
