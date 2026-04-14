@@ -67,8 +67,8 @@ RUN xx-go install github.com/go-delve/delve/cmd/dlv@v1.26.2
 
 ENTRYPOINT ["/go/bin/dlv", "--listen=0.0.0.0:2345", "--headless=true", "--accept-multiclient=true", "--api-version=2", "exec", "--continue", "./reconciler"]
 
-# Runtime stage - using Alpine because regsync may need shell/tools
-# https://github.com/docker-library/repo-info/blob/master/repos/alpine/tag-details.md
+# Runtime stage - using Busybox because regsync may need shell/tools
+# and alpine has more vulnerabilities than busybox.
 FROM busybox:stable-musl@sha256:3c6ae8008e2c2eedd141725c30b20d9c36b026eb796688f88205845ef17aa213
 
 # Create non-root user matching distroless nonroot
