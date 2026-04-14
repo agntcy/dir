@@ -11,6 +11,7 @@ import (
 	"github.com/agntcy/dir/cli/cmd/daemon"
 	"github.com/agntcy/dir/cli/cmd/delete"
 	"github.com/agntcy/dir/cli/cmd/events"
+	"github.com/agntcy/dir/cli/cmd/export"
 	importcmd "github.com/agntcy/dir/cli/cmd/import"
 	"github.com/agntcy/dir/cli/cmd/info"
 	"github.com/agntcy/dir/cli/cmd/mcp"
@@ -74,8 +75,9 @@ func init() {
 		pull.Command,
 		push.Command,
 		delete.Command,
-		// import commands
+		// import/export commands
 		importcmd.Command,
+		export.Command,
 		// routing commands (all under routing subcommand)
 		routing.Command, // Contains: publish, unpublish, list, search
 		network.Command,
