@@ -100,6 +100,10 @@ func (c *CLI) SearchRecords() *SearchBuilder {
 	}
 }
 
+func (c *CLI) Export(cidOrName string) *CommandBuilder {
+	return c.Command("export").WithArgs(cidOrName)
+}
+
 func (c *CLI) Sign(recordCID, keyPath string) *CommandBuilder {
 	return c.Command("sign").WithArgs(recordCID, "--key", keyPath)
 }
