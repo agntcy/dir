@@ -14,7 +14,7 @@ type options struct {
 
 func init() {
 	flags := Command.Flags()
-	flags.StringVar(&opts.Format, "format", "oasf", "Export format: oasf, agent-skill")
+	flags.StringVar(&opts.Format, "format", "oasf", "Export format: oasf, agent-skill, a2a")
 	flags.StringVar(&opts.OutputFile, "output-file", "", "File path to write the exported data (default: stdout)")
 
 	presenter.AddOutputFlags(Command)

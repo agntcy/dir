@@ -28,6 +28,7 @@ The --format flag selects the output format:
 
   oasf         Raw OASF record JSON (default)
   agent-skill  SKILL.md artifact for agentic CLI consumption (Cursor, Claude Code, etc.)
+  a2a          A2A AgentCard JSON for Agent-to-Agent protocol interop
 
 Usage examples:
 
@@ -39,6 +40,9 @@ Usage examples:
 
   # Export as SKILL.md
   dirctl export my-agent:1.0 --format=agent-skill --output-file=./SKILL.md
+
+  # Export as A2A AgentCard
+  dirctl export my-agent:1.0 --format=a2a --output-file=./agent-card.json
 `,
 	Args: cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {

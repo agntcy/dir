@@ -29,6 +29,13 @@ var ExpectedRecordV100JSON []byte
 //go:embed record_070_name_resolution.json
 var ExpectedRecordV070NameResolutionJSON []byte
 
+// A2AAgentCard is a sample A2A AgentCard JSON following the Agent-to-Agent protocol
+// (https://a2a-protocol.org/latest/specification/#441-agentcard).
+// Structure inspired by https://github.com/a2aproject/a2a-samples (Apache-2.0); content is original.
+//
+//go:embed a2a-agent-card.json
+var A2AAgentCard []byte
+
 // SkillMarkdown is a sample SKILL.md following the Agent Skills format
 // (https://agentskills.io/specification). The on-disk directory at
 // code-review/SKILL.md can be used directly with `dirctl import --type=agent-skill`.

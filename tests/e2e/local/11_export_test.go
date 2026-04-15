@@ -108,6 +108,82 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests for the export command"
 		})
 	})
 
+	ginkgo.Context("Export with a2a format", ginkgo.Ordered, ginkgo.Serial, func() {
+		var cid string
+
+		tempDir, err := os.MkdirTemp("", "export-a2a-e2e-*")
+		gomega.Expect(err).NotTo(gomega.HaveOccurred())
+
+		ginkgo.AfterAll(func() {
+			os.RemoveAll(tempDir)
+		})
+
+		ginkgo.It("should import an A2A agent card to set up test data", func() {
+			cardPath := filepath.Join(tempDir, "agent-card.json")
+			gomega.Expect(os.WriteFile(cardPath, testdata.A2AAgentCard, 0o600)).To(gomega.Succeed())
+
+			cidFile := filepath.Join(tempDir, "imported.cids")
+
+			cli.Import("a2a", cardPath).WithArgs("--output-cids=" + cidFile).ShouldSucceed()
+
+			cidData, err := os.ReadFile(cidFile)
+			gomega.Expect(err).NotTo(gomega.HaveOccurred())
+
+			cid = strings.TrimSpace(string(cidData))
+			gomega.Expect(cid).NotTo(gomega.BeEmpty(), "imported CID should not be empty")
+		})
+
+		ginkgo.It("should export the record as A2A AgentCard to stdout", func() {
+			output := cli.Export(cid).WithArgs("--format", "a2a").ShouldSucceed()
+			gomega.Expect(output).NotTo(gomega.BeEmpty())
+
+			var parsed map[string]any
+
+			err := json.Unmarshal([]byte(output), &parsed)
+			gomega.Expect(err).NotTo(gomega.HaveOccurred(), "stdout output should be valid JSON")
+			gomega.Expect(parsed).To(gomega.HaveKey("name"))
+			gomega.Expect(parsed["name"]).To(gomega.Equal("Code Review Agent"))
+		})
+
+		ginkgo.It("should export the record as A2A AgentCard to a file", func() {
+			outPath := filepath.Join(tempDir, "agent-card.json")
+
+			cli.Export(cid).WithArgs("--format", "a2a", "--output-file", outPath).ShouldSucceed()
+
+			data, err := os.ReadFile(outPath)
+			gomega.Expect(err).NotTo(gomega.HaveOccurred())
+
+			var parsed map[string]any
+
+			err = json.Unmarshal(data, &parsed)
+			gomega.Expect(err).NotTo(gomega.HaveOccurred(), "file content should be valid JSON")
+			gomega.Expect(parsed["name"]).To(gomega.Equal("Code Review Agent"))
+		})
+
+		ginkgo.It("should auto-append .json extension when omitted", func() {
+			outPath := filepath.Join(tempDir, "a2a_no_ext")
+			expectedPath := outPath + ".json"
+
+			cli.Export(cid).WithArgs("--format", "a2a", "--output-file", outPath).ShouldSucceed()
+
+			_, err := os.Stat(expectedPath)
+			gomega.Expect(err).NotTo(gomega.HaveOccurred(),
+				"file with auto-appended .json extension should exist")
+
+			data, err := os.ReadFile(expectedPath)
+			gomega.Expect(err).NotTo(gomega.HaveOccurred())
+
+			var parsed map[string]any
+
+			err = json.Unmarshal(data, &parsed)
+			gomega.Expect(err).NotTo(gomega.HaveOccurred(), "file content should be valid JSON")
+		})
+
+		ginkgo.It("should clean up the test record", func() {
+			cli.Delete(cid).ShouldSucceed()
+		})
+	})
+
 	ginkgo.Context("Export with skill format", ginkgo.Ordered, ginkgo.Serial, func() {
 		var cid string
 

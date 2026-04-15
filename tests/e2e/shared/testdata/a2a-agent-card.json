@@ -1,0 +1,34 @@
+{
+  "name": "Code Review Agent",
+  "description": "Performs structured code reviews for pull requests",
+  "url": "http://localhost:10200/",
+  "version": "1.0.0",
+  "capabilities": {
+    "streaming": true,
+    "pushNotifications": true,
+    "stateTransitionHistory": false
+  },
+  "defaultInputModes": [
+    "text",
+    "text/plain"
+  ],
+  "defaultOutputModes": [
+    "text",
+    "text/plain"
+  ],
+  "skills": [
+    {
+      "id": "code-review",
+      "name": "Code Review",
+      "description": "Reviews code changes for bugs, style issues, and security concerns",
+      "tags": [
+        "code-review",
+        "security",
+        "best-practices"
+      ],
+      "examples": [
+        "Review this pull request for potential bugs and style issues"
+      ]
+    }
+  ]
+}
