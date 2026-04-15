@@ -100,6 +100,10 @@ func (c *CLI) SearchRecords() *SearchBuilder {
 	}
 }
 
+func (c *CLI) Import(importType, filePath string) *CommandBuilder {
+	return c.Command("import").WithArgs("--type="+importType, "--file-path="+filePath)
+}
+
 func (c *CLI) Export(cidOrName string) *CommandBuilder {
 	return c.Command("export").WithArgs(cidOrName)
 }

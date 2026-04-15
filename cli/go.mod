@@ -26,6 +26,7 @@ replace (
 )
 
 require (
+	buf.build/gen/go/agntcy/oasf/protocolbuffers/go v1.36.11-20260409152816-7df6b0d2f5f0.1
 	github.com/agntcy/dir/api v1.2.0
 	github.com/agntcy/dir/client v1.2.0
 	github.com/agntcy/dir/importer v1.2.0
@@ -36,6 +37,7 @@ require (
 	github.com/agntcy/dir/runtime/store v1.2.0
 	github.com/agntcy/dir/server v1.2.0
 	github.com/agntcy/dir/utils v1.2.0
+	github.com/agntcy/oasf-sdk/pkg v1.0.5
 	github.com/ipfs/go-cid v0.6.1
 	github.com/libp2p/go-libp2p v0.48.0
 	github.com/mitchellh/mapstructure v1.5.1-0.20231216201459-8508981c8b6c
@@ -53,7 +55,6 @@ require (
 
 require (
 	buf.build/gen/go/agntcy/oasf-sdk/protocolbuffers/go v1.36.11-20260410125842-f07a363db96f.1 // indirect
-	buf.build/gen/go/agntcy/oasf/protocolbuffers/go v1.36.11-20260409152816-7df6b0d2f5f0.1 // indirect
 	buf.build/gen/go/bufbuild/protovalidate/protocolbuffers/go v1.36.11-20260209202127-80ab13bee0bf.1 // indirect
 	buf.build/go/protovalidate v1.1.3 // indirect
 	cel.dev/expr v0.25.1 // indirect
@@ -79,7 +80,6 @@ require (
 	github.com/ThalesIgnite/crypto11 v1.6.0 // indirect
 	github.com/agntcy/dir/runtime/api v1.2.0 // indirect
 	github.com/agntcy/dir/runtime/utils v1.2.0 // indirect
-	github.com/agntcy/oasf-sdk/pkg v1.0.5 // indirect
 	github.com/alecthomas/chroma/v2 v2.23.1 // indirect
 	github.com/andybalholm/cascadia v1.3.3 // indirect
 	github.com/antlr4-go/antlr/v4 v4.13.1 // indirect

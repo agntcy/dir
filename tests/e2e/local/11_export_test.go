@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/agntcy/dir/tests/e2e/shared/config"
 	"github.com/agntcy/dir/tests/e2e/shared/testdata"
@@ -100,6 +101,69 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests for the export command"
 
 		ginkgo.It("should fail for a non-existent CID", func() {
 			_ = cli.Export("non-existent-CID").ShouldFail()
+		})
+
+		ginkgo.It("should clean up the test record", func() {
+			cli.Delete(cid).ShouldSucceed()
+		})
+	})
+
+	ginkgo.Context("Export with skill format", ginkgo.Ordered, ginkgo.Serial, func() {
+		var cid string
+
+		tempDir, err := os.MkdirTemp("", "export-skill-e2e-*")
+		gomega.Expect(err).NotTo(gomega.HaveOccurred())
+
+		ginkgo.AfterAll(func() {
+			os.RemoveAll(tempDir)
+		})
+
+		ginkgo.It("should import a SKILL.md to set up test data", func() {
+			skillDir := filepath.Join(tempDir, "code-review")
+			gomega.Expect(os.MkdirAll(skillDir, 0o755)).To(gomega.Succeed())
+			gomega.Expect(os.WriteFile(filepath.Join(skillDir, "SKILL.md"), testdata.SkillMarkdown, 0o600)).To(gomega.Succeed())
+
+			cidFile := filepath.Join(tempDir, "imported.cids")
+
+			cli.Import("agent-skill", skillDir).WithArgs("--output-cids=" + cidFile).ShouldSucceed()
+
+			cidData, err := os.ReadFile(cidFile)
+			gomega.Expect(err).NotTo(gomega.HaveOccurred())
+
+			cid = strings.TrimSpace(string(cidData))
+			gomega.Expect(cid).NotTo(gomega.BeEmpty(), "imported CID should not be empty")
+		})
+
+		ginkgo.It("should export the record as SKILL.md to stdout", func() {
+			output := cli.Export(cid).WithArgs("--format", "agent-skill").ShouldSucceed()
+			gomega.Expect(output).NotTo(gomega.BeEmpty())
+			gomega.Expect(output).To(gomega.ContainSubstring("name: code-review"))
+			gomega.Expect(output).To(gomega.ContainSubstring("Perform structured code reviews"))
+		})
+
+		ginkgo.It("should export the record as SKILL.md to a file", func() {
+			outPath := filepath.Join(tempDir, "SKILL.md")
+
+			cli.Export(cid).WithArgs("--format", "agent-skill", "--output-file", outPath).ShouldSucceed()
+
+			data, err := os.ReadFile(outPath)
+			gomega.Expect(err).NotTo(gomega.HaveOccurred())
+			gomega.Expect(string(data)).To(gomega.ContainSubstring("name: code-review"))
+		})
+
+		ginkgo.It("should auto-append .md extension when omitted", func() {
+			outPath := filepath.Join(tempDir, "skill_no_ext")
+			expectedPath := outPath + ".md"
+
+			cli.Export(cid).WithArgs("--format", "agent-skill", "--output-file", outPath).ShouldSucceed()
+
+			_, err := os.Stat(expectedPath)
+			gomega.Expect(err).NotTo(gomega.HaveOccurred(),
+				"file with auto-appended .md extension should exist")
+
+			data, err := os.ReadFile(expectedPath)
+			gomega.Expect(err).NotTo(gomega.HaveOccurred())
+			gomega.Expect(string(data)).To(gomega.ContainSubstring("name: code-review"))
 		})
 
 		ginkgo.It("should clean up the test record", func() {

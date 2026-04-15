@@ -24,8 +24,10 @@ var Command = &cobra.Command{
 	Long: `Export pulls a record from the Directory, transforms it to the requested format,
 and writes the result to a file or stdout.
 
-The --format flag selects the output format. The built-in "oasf" format outputs the raw OASF
-record JSON.
+The --format flag selects the output format:
+
+  oasf         Raw OASF record JSON (default)
+  agent-skill  SKILL.md artifact for agentic CLI consumption (Cursor, Claude Code, etc.)
 
 Usage examples:
 
@@ -34,6 +36,9 @@ Usage examples:
 
   # Export to a file
   dirctl export my-agent:1.0 --output-file=./record.json
+
+  # Export as SKILL.md
+  dirctl export my-agent:1.0 --format=agent-skill --output-file=./SKILL.md
 `,
 	Args: cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {

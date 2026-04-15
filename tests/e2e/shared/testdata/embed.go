@@ -28,3 +28,11 @@ var ExpectedRecordV100JSON []byte
 
 //go:embed record_070_name_resolution.json
 var ExpectedRecordV070NameResolutionJSON []byte
+
+// SkillMarkdown is a sample SKILL.md following the Agent Skills format
+// (https://agentskills.io/specification). The on-disk directory at
+// code-review/SKILL.md can be used directly with `dirctl import --type=agent-skill`.
+// Structure inspired by https://github.com/anthropics/skills (Apache-2.0); content is original.
+//
+//go:embed code-review/SKILL.md
+var SkillMarkdown []byte
