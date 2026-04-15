@@ -310,7 +310,7 @@ tasks:
       RENOVATE_OPTS_DEFAULT: >-
         --persist-repo-data 'true'
         --allowed-post-upgrade-commands '[".*"]'
-        --post-upgrade-tasks '{"commands": ["task helm:gen", "task deps:tidy", "task sdk:tidy"], "executionMode": "branch"}'
+        --post-upgrade-tasks '{"commands": ["task helm:gen", "task deps:tidy"], "executionMode": "branch"}'
       RENOVATE_OPTS: "{{ .RENOVATE_OPTS | default .RENOVATE_OPTS_DEFAULT }}"
       RENOVATE_PLATFORM_EFFECTIVE:
         sh: printf '%s' "${RENOVATE_PLATFORM:-local}"

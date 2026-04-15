@@ -41,10 +41,6 @@ jobs:
           #   build-mode: none
           - language: go
             build-mode: autobuild
-          - language: javascript-typescript
-            build-mode: none
-          - language: python
-            build-mode: none
         # CodeQL supports the following values keywords for 'language': 'actions', 'c-cpp', 'csharp', 'go', 'java-kotlin', 'javascript-typescript', 'python', 'ruby', 'rust', 'swift'
         # Use `c-cpp` to analyze code written in C, C++ or both
         # Use 'java-kotlin' to analyze code written in Java, Kotlin or both
@@ -88,59 +84,6 @@ jobs:
           curl -sSL "https://github.com/bufbuild/buf/releases/latest/download/buf-$(uname -s)-$(uname -m)" -o /tmp/buf
           sudo mv /tmp/buf /usr/local/bin/buf
           sudo chmod +x /usr/local/bin/buf
-
-      - name: Setup Node.js
-        if: matrix.language == 'javascript-typescript'
-        uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
-        with:
-          node-version: "24.x"
-          cache: "npm"
-          cache-dependency-path: "**/package*.json"
-
-      - name: Set up Python
-        if: matrix.language == 'python'
-        uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
-        with:
-          python-version: "3.14"
-          cache: "pip"
-
-      - name: Install JavaScript/TypeScript dependencies
-        if: matrix.language == 'javascript-typescript'
-        shell: bash
-        run: |
-          echo "📦 Installing JavaScript/TypeScript dependencies..."
-          # Install dependencies for JavaScript SDK
-          if [ -f "sdk/dir-js/package.json" ]; then
-            cd sdk/dir-js
-            npm ci || npm install
-            cd ../..
-          fi
-          # Install dependencies for examples
-          if [ -f "sdk/examples/example-js/package.json" ]; then
-            cd sdk/examples/example-js
-            npm ci || npm install
-            cd ../../..
-          fi
-          echo "✅ JavaScript/TypeScript dependencies installed"
-
-      - name: Install Python dependencies
-        if: matrix.language == 'python'
-        shell: bash
-        run: |
-          echo "📦 Installing Python dependencies..."
-          # Install dependencies for Python SDK
-          if [ -f "sdk/dir-py/pyproject.toml" ]; then
-            cd sdk/dir-py
-            pip install -e . || echo "Failed to install Python SDK"
-            cd ../..
-          fi
-          # Install dependencies for examples
-          if [ -f "sdk/examples/example-py/requirements.txt" ]; then
-            cd sdk/examples/example-py
-            pip install -r requirements.txt || echo "Failed to install example requirements"
-            cd ../../..
-          fi
-          echo "✅ Python dependencies installed"
 
       - name: Prepare Go environment for autobuild
         if: matrix.language == 'go'

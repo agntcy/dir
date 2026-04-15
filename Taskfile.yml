@@ -63,11 +63,6 @@ includes:
     flatten: true
     excludes: [default]
 
-  sdk:
-    taskfile: sdk/Taskfile.yml
-    flatten: true
-    excludes: [default]
-
   server:
     taskfile: server/Taskfile.yml
     flatten: true
@@ -175,8 +170,6 @@ tasks:
     desc: Prepare release
     deps:
       - task: deps:multimod-bin
-      - task: sdk:deps:python
-      - task: sdk:deps:javascript
     vars:
       RELEASE_VERSION: "{{ .RELEASE_VERSION }}"
     cmds:
@@ -185,9 +178,6 @@ tasks:
       # Update versions.yaml with the new version
       - 'awk ''{gsub(/version: .*/,"version: {{.RELEASE_VERSION}}")}1'' versions.yaml > versions.yaml.tmp'
       - "mv versions.yaml.tmp versions.yaml"
-      # Update SDK packages with the new version
-      - "cd sdk/dir-py && {{ .UV_BIN }} version {{.RELEASE_VERSION}} && cd -"
-      - "cd sdk/dir-js && npm version {{.RELEASE_VERSION}} --allow-same-version --no-git-tag-version && cd -"
       # Add release changes
       - |
         git add .

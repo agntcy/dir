@@ -54,12 +54,6 @@ jobs:
       - name: Run unit tests
         run: |
           task test:unit
-  sdk:
-    name: SDK
-    uses: ./.github/workflows/reusable-test-sdk.yaml
-    with:
-      image_repo: ${{ inputs.image_repo }}
-      image_tag: ${{ inputs.image_tag }}
 
   e2e:
     name: E2E

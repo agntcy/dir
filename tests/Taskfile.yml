@@ -303,10 +303,6 @@ tasks:
       # Run SPIRE deployment
       - defer: { task: test:spire:cleanup }
       - task: test:spire
-      # Run SDK tests
-      - task: sdk:deps:javascript
-      - task: sdk:test-env:spiffe:load-test-image
-      - task: sdk:test:all:spiffe
 
   # TODO: move spire out from here
   # TODO: change to Ingress services instead of LoadBalancer

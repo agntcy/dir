@@ -59,7 +59,6 @@ Check the [Documentation](https://docs.agntcy.org/dir/overview/) for a full walk
 - [reconciler](./reconciler) - standalone service for periodic reconciliation (regsync, indexer)
 - [runtime](./runtime) - discovery service to watch workloads and resolve capabilities
 - [server](./server) - API services to manage storage, routing, and networking operations
-- [sdk](./sdk) - client SDK implementations in different languages for development
 - [utils](./utils) - shared utilities (logging, SPIFFE)
 - [tests](./tests) - test suites and end-to-end (e2e) testing framework
 
@@ -138,11 +137,20 @@ All release binaries are distributed via [GitHub Releases](https://github.com/ag
 
 ### SDKs
 
-- **Golang** - [pkg.go.dev/github.com/agntcy/dir/client](https://pkg.go.dev/github.com/agntcy/dir/client) - [github.com/agntcy/dir/client](https://github.com/agntcy/dir/tree/main/client)
+#### Golang
 
-- **Python** - [pypi.org/agntcy-dir](https://pypi.org/project/agntcy-dir/) - [github.com/agntcy/dir/sdk/dir-py](https://github.com/agntcy/dir/tree/main/sdk/dir-py)
+- [Go package](https://pkg.go.dev/github.com/agntcy/dir/client)
+- [Source code](https://github.com/agntcy/dir/tree/main/client)
 
-- **JavaScript** - [npmjs.com/agntcy-dir](https://www.npmjs.com/package/agntcy-dir) - [github.com/agntcy/dir/sdk/dir-js](https://github.com/agntcy/dir/tree/main/sdk/dir-js)
+#### Python
+
+- [PyPi package](https://pypi.org/project/agntcy-dir/)
+- [Source code](https://github.com/agntcy/dir-sdk-python)
+
+#### JavaScript
+
+- [NPM package](https://www.npmjs.com/package/agntcy-dir)
+- [Source code](https://github.com/agntcy/dir-sdk-javascript)
 
 ## Deployment
 
