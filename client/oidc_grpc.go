@@ -45,6 +45,8 @@ func (o *options) resolveOIDCAccessToken(_ context.Context) (string, error) {
 
 	cache := NewTokenCache()
 
+	// Fast path: use only a currently valid token.
+	// Note: GetValidToken() returns (nil, nil) for both "missing" and "expired" tokens.
 	tok, err := cache.GetValidToken()
 	if err != nil {
 		return "", fmt.Errorf("failed to read OIDC token cache: %w", err)
@@ -52,6 +54,16 @@ func (o *options) resolveOIDCAccessToken(_ context.Context) (string, error) {
 
 	if tok != nil && strings.TrimSpace(tok.AccessToken) != "" {
 		return tok.AccessToken, nil
+	}
+
+	// Disambiguate "missing" vs "expired" so we can return a clearer auth error.
+	cachedToken, err := cache.Load()
+	if err != nil {
+		return "", fmt.Errorf("failed to read OIDC token cache: %w", err)
+	}
+
+	if cachedToken != nil && strings.TrimSpace(cachedToken.AccessToken) != "" && !cache.IsValid(cachedToken) {
+		return "", errors.New("cached OIDC token has expired; run 'dirctl auth login' to refresh authentication")
 	}
 
 	return "", errors.New("no OIDC access token: run 'dirctl auth login', or set DIRECTORY_CLIENT_AUTH_TOKEN")

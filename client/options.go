@@ -130,9 +130,13 @@ func (o *options) shouldAutoDetectOIDC() (bool, error) {
 		return true, nil
 	}
 
+	if strings.TrimSpace(o.config.OIDCIssuer) != "" || strings.TrimSpace(o.config.OIDCClientID) != "" {
+		return true, nil
+	}
+
 	cache := NewTokenCache()
 
-	tok, err := cache.GetValidToken()
+	tok, err := cache.Load()
 	if err != nil {
 		return false, fmt.Errorf("failed to read OIDC token cache: %w", err)
 	}

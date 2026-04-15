@@ -6,6 +6,7 @@ package client
 import (
 	"context"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -60,5 +61,29 @@ func TestSetupOIDCAuth_NoTokenReturnsError(t *testing.T) {
 
 	err := opts.setupOIDCAuth(context.Background())
 	require.Error(t, err)
+	assert.Contains(t, err.Error(), "dirctl auth login")
+}
+
+func TestSetupOIDCAuth_ExpiredCachedTokenReturnsAuthError(t *testing.T) {
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+
+	cache := NewTokenCache()
+	err := cache.Save(&CachedToken{
+		AccessToken: "expired-token",
+		ExpiresAt:   time.Now().Add(-time.Hour),
+		CreatedAt:   time.Now().Add(-time.Hour),
+	})
+	require.NoError(t, err)
+
+	opts := &options{
+		config: &Config{
+			ServerAddress: "gateway.example.com:443",
+			AuthMode:      "oidc",
+		},
+	}
+
+	err = opts.setupOIDCAuth(context.Background())
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "cached OIDC token has expired")
 	assert.Contains(t, err.Error(), "dirctl auth login")
 }

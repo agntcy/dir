@@ -290,6 +290,8 @@ func TestClientClose_AggregatesErrors(t *testing.T) {
 
 // TestNew_WithInsecureConfig tests creating a client with insecure configuration.
 func TestNew_WithInsecureConfig(t *testing.T) {
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+
 	ctx, cancel := context.WithTimeout(context.Background(), testContextTimeout)
 	defer cancel()
 
@@ -381,6 +383,8 @@ func TestNew_WithMissingConfig(t *testing.T) {
 
 // TestNew_AcceptsContext tests that New() accepts a context parameter.
 func TestNew_AcceptsContext(t *testing.T) {
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+
 	// Create context with timeout
 	ctx, cancel := context.WithTimeout(context.Background(), testContextTimeout)
 	defer cancel()
@@ -479,6 +483,8 @@ func TestNew_WithTimeoutContext(t *testing.T) {
 
 // TestNew_ContextUsedInAuth tests that the context is actually passed to auth setup.
 func TestNew_ContextUsedInAuth(t *testing.T) {
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+
 	// This test verifies that the context parameter is actually used
 	// by checking that withAuth() receives the correct context
 
@@ -543,6 +549,8 @@ func TestNew_ContextUsedInAuth(t *testing.T) {
 
 // TestNew_MultipleClientsWithDifferentContexts tests creating multiple clients with different contexts.
 func TestNew_MultipleClientsWithDifferentContexts(t *testing.T) {
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+
 	// Start a real TCP listener
 	lc := net.ListenConfig{}
 
@@ -617,6 +625,8 @@ func TestNew_MultipleClientsWithDifferentContexts(t *testing.T) {
 
 // TestNew_BackgroundContext tests that New() works with background context.
 func TestNew_BackgroundContext(t *testing.T) {
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+
 	// Start a real TCP listener
 	lc := net.ListenConfig{}
 

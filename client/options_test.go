@@ -7,6 +7,7 @@ import (
 	"context"
 	"os"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -127,6 +128,8 @@ func TestWithAuth_ConfigValidation(t *testing.T) {
 	})
 
 	t.Run("should use insecure credentials when no SPIFFE socket", func(t *testing.T) {
+		t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+
 		opts := &options{
 			config: &Config{
 				ServerAddress:    testServerAddr,
@@ -145,6 +148,8 @@ func TestWithAuth_ConfigValidation(t *testing.T) {
 	})
 
 	t.Run("should use insecure credentials when no auth mode", func(t *testing.T) {
+		t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+
 		opts := &options{
 			config: &Config{
 				ServerAddress:    testServerAddr,
@@ -222,6 +227,8 @@ func TestOptions_DefaultValues(t *testing.T) {
 
 func TestOptions_ContextUsage(t *testing.T) {
 	t.Run("should accept cancelled context", func(t *testing.T) {
+		t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+
 		// Create already-cancelled context
 		ctx, cancel := context.WithCancel(context.Background())
 		cancel() // Cancel immediately
@@ -406,6 +413,8 @@ func TestWithAuth_AllAuthModes(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+
 			socketPath := ""
 			if tc.authMode != "" {
 				socketPath = "/tmp/test-socket-" + tc.name + ".sock"
@@ -505,5 +514,49 @@ func TestSetupAutoDetectAuth(t *testing.T) {
 		require.NoError(t, err)
 		// OIDC adds both transport creds and per-RPC bearer creds
 		assert.Len(t, opts.authOpts, 2)
+	})
+
+	t.Run("should not fallback to insecure when cached OIDC token is expired", func(t *testing.T) {
+		t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+
+		cache := NewTokenCache()
+		err := cache.Save(&CachedToken{
+			AccessToken: "expired-token",
+			ExpiresAt:   time.Now().Add(-time.Hour),
+			CreatedAt:   time.Now().Add(-time.Hour),
+		})
+		require.NoError(t, err)
+
+		opts := &options{
+			config: &Config{
+				ServerAddress: "gateway.example.com:443",
+				AuthMode:      "",
+			},
+		}
+
+		ctx := context.Background()
+		err = opts.setupAutoDetectAuth(ctx)
+
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "cached OIDC token has expired")
+	})
+
+	t.Run("should auto-detect OIDC when issuer/client config is present", func(t *testing.T) {
+		t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+
+		opts := &options{
+			config: &Config{
+				ServerAddress: "gateway.example.com:443",
+				AuthMode:      "",
+				OIDCIssuer:    "https://issuer.example.com",
+			},
+		}
+
+		ctx := context.Background()
+		err := opts.setupAutoDetectAuth(ctx)
+
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "no OIDC access token")
+		assert.Contains(t, err.Error(), "dirctl auth login")
 	})
 }
