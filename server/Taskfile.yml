@@ -7,28 +7,6 @@ tasks:
   default:
     cmd: echo "Run the main Taskfile instead of this one."
 
-  server:compile:
-    desc: Compile Directory server binaries
-    dir: ./server
-    vars:
-      GOOS: "{{ .GOOS | default OS }}"
-      GOARCH: "{{ .GOARCH | default ARCH }}"
-      BINARY_NAME: '{{ .BINARY_NAME | default "dir-apiserver" }}'
-      OUT_BINARY: '{{ .ROOT_DIR }}/.bin/{{ .BINARY_NAME }}'
-      LDFLAGS: "-s -w -extldflags -static {{ .VERSION_LDFLAGS }}"
-    cmds:
-      - CGO_ENABLED=0 GOOS={{.GOOS}} GOARCH={{.GOARCH}} go build -ldflags="{{ .LDFLAGS }}" -o "{{.OUT_BINARY}}" ./cmd/main.go
-
-  server:compile:all:
-    desc: Compile Directory server binaries for multiple platforms
-    cmds:
-      - for:
-          matrix:
-            OS: ["linux", "darwin"]
-            ARCH: ["amd64", "arm64"]
-        cmd: |
-          GOOS={{.ITEM.OS}} GOARCH={{.ITEM.ARCH}} BINARY_NAME=dir-apiserver-{{.ITEM.OS}}-{{.ITEM.ARCH}} task server:compile
-
   server:build:
     desc: Build Directory server image
     cmds:
