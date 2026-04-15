@@ -16,7 +16,7 @@ var Command = &cobra.Command{
 This command group provides OIDC-based authentication for the Directory server.
 
 Examples:
-  # Login with OAuth (opens browser)
+  # Login with OIDC (opens browser)
   dirctl auth login
 
   # Login with device flow (no browser needed)

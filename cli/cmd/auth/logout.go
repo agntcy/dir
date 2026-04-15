@@ -15,7 +15,7 @@ var logoutCmd = &cobra.Command{
 	Short: "Clear cached authentication token",
 	Long: `Clear cached authentication credentials.
 
-This command removes the locally cached OAuth token, effectively logging
+This command removes the locally cached OIDC token, effectively logging
 you out of the Directory server for all token-based auth flows.
 
 Examples:

@@ -37,7 +37,7 @@ func runStatus(cmd *cobra.Command, _ []string) error {
 	if token == nil {
 		cmd.Println("Status: Not authenticated")
 		cmd.Println()
-		cmd.Println("Run 'dirctl auth login' (human) or 'dirctl auth machine' (service user) to authenticate.")
+		cmd.Println("Run 'dirctl auth login' to authenticate.")
 
 		return nil
 	}
@@ -90,7 +90,7 @@ func displayValidToken(cmd *cobra.Command, token *client.CachedToken) {
 func displayExpiredToken(cmd *cobra.Command) {
 	cmd.Println("  Token: Expired ✗")
 	cmd.Println()
-	cmd.Println("Run 'dirctl auth login' (human) or 'dirctl auth machine' (service user) to re-authenticate.")
+	cmd.Println("Run 'dirctl auth login' to re-authenticate.")
 }
 
 func detectPrincipalType(token *client.CachedToken) string {

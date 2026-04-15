@@ -23,7 +23,7 @@ func TestRunStatus_NotAuthenticated(t *testing.T) {
 	got := out.String()
 	require.Contains(t, got, "Status: Not authenticated")
 	require.Contains(t, got, "dirctl auth login")
-	require.Contains(t, got, "dirctl auth machine")
+	require.NotContains(t, got, "dirctl auth machine")
 }
 
 func TestRunStatus_WithMachineToken(t *testing.T) {
