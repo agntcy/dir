@@ -20,8 +20,8 @@ inputs:
     description: Optional Directory server address (host:port). Uses dirctl default if omitted.
     required: false
     default: ""
-  github_token:
-    description: Optional GitHub PAT for Directory authentication
+  auth_token:
+    description: Optional OIDC bearer token for Directory authentication
     required: false
     default: ""
   dirctl_path:
@@ -49,7 +49,7 @@ runs:
       env:
         RECORD_PATHS: ${{ inputs.record_paths }}
         SERVER_ADDR: ${{ inputs.server_addr }}
-        GITHUB_TOKEN: ${{ inputs.github_token }}
+        AUTH_TOKEN: ${{ inputs.auth_token }}
         DIRCTL_PATH: ${{ inputs.dirctl_path }}
       run: |
         chmod +x "${{ github.action_path }}/push.sh"

@@ -6,7 +6,7 @@ set -euo pipefail
 
 : "${CIDS:?CIDS is required}"
 SERVER_ADDR="${SERVER_ADDR:-}"
-GITHUB_TOKEN="${GITHUB_TOKEN:-}"
+AUTH_TOKEN="${AUTH_TOKEN:-}"
 
 if [ -n "${DIRCTL_PATH:-}" ]; then
   DIRCTL_BIN="${DIRCTL_PATH}"
@@ -61,7 +61,7 @@ for CID in "${CID_ARRAY[@]}"; do
   set +e
   PUBLISH_CMD=("${DIRCTL_BIN}" routing publish "$CID")
   [ -n "$SERVER_ADDR" ] && PUBLISH_CMD+=(--server-addr "$SERVER_ADDR")
-  [ -n "$GITHUB_TOKEN" ] && PUBLISH_CMD+=(--github-token "$GITHUB_TOKEN")
+  [ -n "$AUTH_TOKEN" ] && PUBLISH_CMD+=(--auth-mode=oidc "--auth-token=$AUTH_TOKEN")
   OUTPUT=$("${PUBLISH_CMD[@]}" 2>&1)
   EXIT=$?
   set -e

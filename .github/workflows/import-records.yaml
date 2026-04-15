@@ -6,7 +6,7 @@ on:
       image_version:
         required: true
         type: string
-        default: v1.1.0
+        default: v1.2.0
         description: "dirctl version to use"
       import_config:
         description: "JSON config file path or inline JSON content"
@@ -143,6 +143,12 @@ jobs:
           }
           EOF
 
+      - name: Fetch Directory OIDC token
+        id: oidc-dir-import
+        uses: ./.github/actions/fetch-oidc-token
+        with:
+          audience: dir
+
       - name: Import MCP Records
         id: import
         env:
@@ -150,15 +156,13 @@ jobs:
           AZURE_OPENAI_BASE_URL: ${{ secrets.AZURE_OPENAI_ENDPOINT }}
           AZURE_OPENAI_DEPLOYMENT: "gpt-4o"
           AZURE_OPENAI_API_VERSION: "2024-10-21"
-          DIRECTORY_CLIENT_AUTH_MODE: "github"
-          DIRECTORY_CLIENT_SERVER_ADDRESS: ${{ env.SERVER_ADDRESS }}
-          DIRECTORY_CLIENT_GITHUB_TOKEN: ${{ secrets.DIRECTORY_MCP_BOT_PAT }}
           DIRCTL_PATH: dirctl
+          DIR_AUTH_TOKEN: ${{ steps.oidc-dir-import.outputs.token }}
         run: |
           echo "--- Processing Entry $((${{ matrix.entry.index }} + 1)) ---"
 
           CIDS_FILE="imported-cids-${{ matrix.entry.index }}.txt"
-          CMD=("${DIRCTL_PATH}" import --type=mcp --url=https://registry.modelcontextprotocol.io/v0.1 --enrich-config=mcphost_ci.json --enrich-rate-limit="${{ env.RATE_LIMIT }}")
+          CMD=("${DIRCTL_PATH}" import --type=mcp --url=https://registry.modelcontextprotocol.io/v0.1 --server-addr="${{ env.SERVER_ADDRESS }}" --auth-mode=oidc "--auth-token=${DIR_AUTH_TOKEN}" --enrich-config=mcphost_ci.json --enrich-rate-limit="${{ env.RATE_LIMIT }}")
 
           if [[ "${{ env.DRY_RUN }}" == "true" ]]; then
              CMD+=("--dry-run")
@@ -215,16 +219,21 @@ jobs:
         with:
           audience: sigstore
 
+      - name: Fetch Directory OIDC token for signing
+        if: ${{ env.SIGN == 'true' && env.DRY_RUN == 'false' }}
+        id: oidc-dir-sign
+        uses: ./.github/actions/fetch-oidc-token
+        with:
+          audience: dir
+
       # Sign records with fresh OIDC tokens after import completes
       # This avoids token expiration issues during long-running imports
       - name: Sign Imported Records
         if: ${{ env.SIGN == 'true' && env.DRY_RUN == 'false' }}
         env:
-          DIRECTORY_CLIENT_AUTH_MODE: "github"
-          DIRECTORY_CLIENT_SERVER_ADDRESS: ${{ env.SERVER_ADDRESS }}
-          DIRECTORY_CLIENT_GITHUB_TOKEN: ${{ secrets.DIRECTORY_MCP_BOT_PAT }}
           SIGSTORE_OIDC_TOKEN: ${{ steps.oidc-sigstore.outputs.token }}
           DIRCTL_PATH: dirctl
+          DIR_AUTH_TOKEN: ${{ steps.oidc-dir-sign.outputs.token }}
         run: |
           CIDS_FILE="${{ steps.import.outputs.cids_file }}"
 
@@ -249,6 +258,9 @@ jobs:
             echo "Signing CID: $CID"
 
             if "${DIRCTL_PATH}" sign "$CID" \
+              --server-addr="${{ env.SERVER_ADDRESS }}" \
+              --auth-mode=oidc \
+              --auth-token="${DIR_AUTH_TOKEN}" \
               --oidc-token="${SIGSTORE_OIDC_TOKEN}" \
               --oidc-provider-url="https://token.actions.githubusercontent.com" \
               --oidc-client-id="https://github.com/${{ github.repository }}/.github/workflows/import-records.yaml@${{ github.ref }}"; then

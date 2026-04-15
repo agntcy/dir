@@ -6,7 +6,7 @@ set -euo pipefail
 
 : "${RECORD_PATHS:?RECORD_PATHS is required}"
 SERVER_ADDR="${SERVER_ADDR:-}"
-GITHUB_TOKEN="${GITHUB_TOKEN:-}"
+AUTH_TOKEN="${AUTH_TOKEN:-}"
 
 if [ -n "${DIRCTL_PATH:-}" ]; then
   DIRCTL_BIN="${DIRCTL_PATH}"
@@ -76,7 +76,7 @@ for FILE in "${ALL_FILES[@]}"; do
   set +e
   PUSH_CMD=("${DIRCTL_BIN}" push "$FILE" --output raw)
   [ -n "$SERVER_ADDR" ] && PUSH_CMD+=(--server-addr "$SERVER_ADDR")
-  [ -n "$GITHUB_TOKEN" ] && PUSH_CMD+=(--github-token "$GITHUB_TOKEN")
+  [ -n "$AUTH_TOKEN" ] && PUSH_CMD+=(--auth-mode=oidc "--auth-token=$AUTH_TOKEN")
   CID=$("${PUSH_CMD[@]}" 2>&1)
   EXIT_CODE=$?
   set -e

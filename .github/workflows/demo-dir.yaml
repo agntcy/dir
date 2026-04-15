@@ -9,7 +9,7 @@ on:
       image_version:
         required: true
         type: string
-        default: v1.1.0
+        default: v1.2.0
         description: "dirctl version to use"
       server_addr:
         required: true
@@ -40,13 +40,19 @@ jobs:
           record_paths: tests/e2e/shared/testdata/record_100.json
           dirctl_path: ${{ steps.setup-dirctl.outputs.dirctl_path }}
 
+      - name: Fetch GitHub OIDC token
+        id: oidc
+        uses: ./.github/actions/fetch-oidc-token
+        with:
+          audience: dir
+
       - name: Push record
         id: push
         uses: ./.github/actions/push-record
         with:
           record_paths: tests/e2e/shared/testdata/record_100.json
           server_addr: ${{ inputs.server_addr }}
-          github_token: ${{ secrets.DIR_DEMO_WORKFLOW_PAT }}
+          auth_token: ${{ steps.oidc.outputs.token }}
           dirctl_path: ${{ steps.setup-dirctl.outputs.dirctl_path }}
 
       - name: Sign record (OIDC)
@@ -55,7 +61,7 @@ jobs:
           cids: ${{ steps.push.outputs.cids }}
           oidc_client_id: https://github.com/${{ github.repository }}/.github/workflows/demo-dir.yaml@${{ github.ref }}
           server_addr: ${{ inputs.server_addr }}
-          github_token: ${{ secrets.DIR_DEMO_WORKFLOW_PAT }}
+          auth_token: ${{ steps.oidc.outputs.token }}
           dirctl_path: ${{ steps.setup-dirctl.outputs.dirctl_path }}
 
       - name: Publish record
@@ -63,22 +69,22 @@ jobs:
         with:
           cids: ${{ steps.push.outputs.cids }}
           server_addr: ${{ inputs.server_addr }}
-          github_token: ${{ secrets.DIR_DEMO_WORKFLOW_PAT }}
+          auth_token: ${{ steps.oidc.outputs.token }}
           dirctl_path: ${{ steps.setup-dirctl.outputs.dirctl_path }}
 
       - name: Search for record
         env:
           SERVER_ADDR: ${{ inputs.server_addr }}
-          GITHUB_TOKEN: ${{ secrets.DIR_DEMO_WORKFLOW_PAT }}
+          AUTH_TOKEN: ${{ steps.oidc.outputs.token }}
           DIRCTL_PATH: ${{ steps.setup-dirctl.outputs.dirctl_path }}
         run: |
-          "${DIRCTL_PATH}" search --name "burger_seller_agent" --server-addr="$SERVER_ADDR" --github-token="$GITHUB_TOKEN"
+          "${DIRCTL_PATH}" search --name "burger_seller_agent" --server-addr="$SERVER_ADDR" --auth-mode=oidc "--auth-token=$AUTH_TOKEN"
 
       - name: Verify record
         env:
           SERVER_ADDR: ${{ inputs.server_addr }}
-          GITHUB_TOKEN: ${{ secrets.DIR_DEMO_WORKFLOW_PAT }}
+          AUTH_TOKEN: ${{ steps.oidc.outputs.token }}
           DIRCTL_PATH: ${{ steps.setup-dirctl.outputs.dirctl_path }}
         run: |
           CID=$(echo '${{ steps.push.outputs.cids }}' | jq -r '.[]')
-          "${DIRCTL_PATH}" verify "$CID" --server-addr="$SERVER_ADDR" --github-token="$GITHUB_TOKEN"
+          "${DIRCTL_PATH}" verify "$CID" --server-addr="$SERVER_ADDR" --auth-mode=oidc "--auth-token=$AUTH_TOKEN"

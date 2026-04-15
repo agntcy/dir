@@ -7,7 +7,7 @@ set -euo pipefail
 : "${CIDS:?CIDS is required}"
 : "${OIDC_CLIENT_ID:?OIDC_CLIENT_ID is required}"
 SERVER_ADDR="${SERVER_ADDR:-}"
-GITHUB_TOKEN="${GITHUB_TOKEN:-}"
+AUTH_TOKEN="${AUTH_TOKEN:-}"
 
 if [ -n "${DIRCTL_PATH:-}" ]; then
   DIRCTL_BIN="${DIRCTL_PATH}"
@@ -75,7 +75,7 @@ for CID in "${CID_ARRAY[@]}"; do
   set +e
   SIGN_CMD=("${DIRCTL_BIN}" sign "$CID" "--oidc-token=$OIDC_TOKEN" --oidc-provider-url=https://token.actions.githubusercontent.com "--oidc-client-id=$OIDC_CLIENT_ID")
   [ -n "$SERVER_ADDR" ] && SIGN_CMD+=(--server-addr "$SERVER_ADDR")
-  [ -n "$GITHUB_TOKEN" ] && SIGN_CMD+=(--github-token "$GITHUB_TOKEN")
+  [ -n "$AUTH_TOKEN" ] && SIGN_CMD+=(--auth-mode=oidc "--auth-token=$AUTH_TOKEN")
   OUTPUT=$("${SIGN_CMD[@]}" 2>&1)
   EXIT=$?
   set -e
