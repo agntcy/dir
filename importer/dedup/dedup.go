@@ -19,20 +19,35 @@ import (
 
 var dedupLogger = logging.Logger("importer/pipeline/dedup")
 
-// MCPDuplicateChecker checks for duplicate MCP records by comparing name@version
-// against existing records in the directory.
-type MCPDuplicateChecker struct {
+// modulesByImportType maps each import type to the module names that should be
+// queried when building the deduplication cache. MCP registry and MCP file both
+// include the legacy runtime/mcp name so that records imported under the old
+// module name are also detected as duplicates.
+var modulesByImportType = map[config.ImportType][]string{
+	config.ImportTypeMCPRegistry: {"integration/mcp", "runtime/mcp"},
+	config.ImportTypeMCP:         {"integration/mcp", "runtime/mcp"},
+	config.ImportTypeA2A:         {"integration/a2a", "runtime/a2a"},
+	config.ImportTypeAgentSkill:  {"core/language_model/agentskills"},
+}
+
+// DuplicateChecker checks for duplicate records by comparing name@version
+// against existing records in the directory. It queries only the modules that
+// are relevant for the configured import type.
+type DuplicateChecker struct {
 	client          config.ClientInterface
+	importType      config.ImportType
 	debug           bool
 	existingRecords map[string]string // map[name@version]cid
 	mu              sync.RWMutex
 }
 
-// NewMCPDuplicateChecker creates a new duplicate checker for MCP records.
-// It queries the directory for all existing MCP records and builds an in-memory cache.
-func NewMCPDuplicateChecker(ctx context.Context, client config.ClientInterface, debug bool) (*MCPDuplicateChecker, error) {
-	checker := &MCPDuplicateChecker{
+// NewDuplicateChecker creates a new duplicate checker for the given import type.
+// It queries the directory for all existing records of the relevant module(s)
+// and builds an in-memory cache.
+func NewDuplicateChecker(ctx context.Context, client config.ClientInterface, importType config.ImportType, debug bool) (*DuplicateChecker, error) {
+	checker := &DuplicateChecker{
 		client:          client,
+		importType:      importType,
 		debug:           debug,
 		existingRecords: make(map[string]string),
 	}
@@ -42,26 +57,32 @@ func NewMCPDuplicateChecker(ctx context.Context, client config.ClientInterface, 
 	}
 
 	if debug {
-		fmt.Fprintf(os.Stderr, "[DEDUP] Cache built with %d existing MCP records\n", len(checker.existingRecords))
+		fmt.Fprintf(os.Stderr, "[DEDUP] Cache built with %d existing %s records\n", len(checker.existingRecords), importType)
 		os.Stderr.Sync()
 	}
 
 	return checker, nil
 }
 
-// buildCache queries the directory for all records with integration/mcp or runtime/mcp modules
-// and builds an in-memory cache of name@version combinations using pagination.
-// This ensures we don't reimport records that exist under the old runtime/mcp module name.
+// buildCache queries the directory for records belonging to the modules that
+// correspond to the configured import type. It uses pagination and builds an
+// in-memory cache of name@version combinations.
 //
 //nolint:gocognit,cyclop // Complexity is acceptable for building cache from multiple modules
-func (c *MCPDuplicateChecker) buildCache(ctx context.Context) error {
+func (c *DuplicateChecker) buildCache(ctx context.Context) error {
 	const (
-		batchSize  = 100   // Process 1000 records at a time
+		batchSize  = 100   // Process 100 records at a time
 		maxRecords = 50000 // Safety limit to prevent unbounded memory growth
 	)
 
-	// Search for integration/mcp, runtime/mcp, and integration/a2a (A2A imports use top-level name@version like MCP)
-	modules := []string{"integration/mcp", "runtime/mcp", "integration/a2a", "core/language_model/agentskills"}
+	modules, ok := modulesByImportType[c.importType]
+	if !ok {
+		// Unknown import type: fall back to querying all known modules so that
+		// deduplication is still best-effort rather than silently disabled.
+		for _, m := range modulesByImportType {
+			modules = append(modules, m...)
+		}
+	}
 
 	totalProcessed := 0
 
@@ -172,7 +193,7 @@ func (c *MCPDuplicateChecker) buildCache(ctx context.Context) error {
 // It filters out duplicate records from the input channel and returns a channel
 // with only non-duplicate records. It tracks only the skipped (duplicate) count.
 // The transform stage will track the total records that are actually processed.
-func (c *MCPDuplicateChecker) FilterDuplicates(ctx context.Context, inputCh <-chan types.SourceItem, result *types.Result) <-chan types.SourceItem {
+func (c *DuplicateChecker) FilterDuplicates(ctx context.Context, inputCh <-chan types.SourceItem, result *types.Result) <-chan types.SourceItem {
 	outputCh := make(chan types.SourceItem)
 
 	go func() {
@@ -211,7 +232,7 @@ func (c *MCPDuplicateChecker) FilterDuplicates(ctx context.Context, inputCh <-ch
 }
 
 // isDuplicate checks if a source item is a duplicate of an existing directory record.
-func (c *MCPDuplicateChecker) isDuplicate(source types.SourceItem) bool {
+func (c *DuplicateChecker) isDuplicate(source types.SourceItem) bool {
 	nameVersion := source.NameVersion()
 	if nameVersion == "" {
 		// Can't determine - not a duplicate (will be processed)

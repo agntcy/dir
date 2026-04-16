@@ -58,7 +58,7 @@ func New(ctx context.Context, client config.ClientInterface, cfg config.Config) 
 		return nil, fmt.Errorf("failed to create fetcher: %w", err)
 	}
 
-	d, err := dedup.NewMCPDuplicateChecker(ctx, client, cfg.Debug)
+	d, err := dedup.NewDuplicateChecker(ctx, client, cfg.Type, cfg.Debug)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create duplicate checker: %w", err)
 	}
