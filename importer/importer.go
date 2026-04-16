@@ -63,9 +63,15 @@ func New(ctx context.Context, client config.ClientInterface, cfg config.Config) 
 		return nil, fmt.Errorf("failed to create duplicate checker: %w", err)
 	}
 
-	e, err := enricher.New(ctx, cfg.Enricher)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create enricher: %w", err)
+	var e types.Enricher
+
+	if cfg.EnricherOverride != nil {
+		e = cfg.EnricherOverride
+	} else {
+		e, err = enricher.New(ctx, cfg.Enricher)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create enricher: %w", err)
+		}
 	}
 
 	sc, err := scanner.New(cfg.Scanner)

@@ -26,6 +26,7 @@ require (
 	github.com/agntcy/dir/api v1.2.0
 	github.com/agntcy/dir/cli v1.2.0
 	github.com/agntcy/dir/client v1.2.0
+	github.com/agntcy/dir/importer v1.2.0
 	github.com/google/uuid v1.6.0
 	github.com/mitchellh/mapstructure v1.5.1-0.20231216201459-8508981c8b6c
 	github.com/onsi/ginkgo/v2 v2.28.1
@@ -63,7 +64,6 @@ require (
 	github.com/Microsoft/go-winio v0.6.2 // indirect
 	github.com/PuerkitoBio/goquery v1.12.0 // indirect
 	github.com/ThalesIgnite/crypto11 v1.6.0 // indirect
-	github.com/agntcy/dir/importer v1.2.0 // indirect
 	github.com/agntcy/dir/mcp v1.2.0 // indirect
 	github.com/agntcy/dir/reconciler v1.2.0 // indirect
 	github.com/agntcy/dir/runtime/api v1.2.0 // indirect

@@ -1,6 +1,9 @@
 ---
 name: code-review
 description: Toolkit for performing structured code reviews. Covers identifying bugs, security issues, performance problems, and style violations. Use when asked to review code changes, pull requests, or individual files.
+metadata:
+  author: AGNTCY Contributors
+  version: 1.0.0
 ---
 
 # Code Review
