@@ -39,5 +39,5 @@ func (f *a2aFormatter) Format(record *corev1.Record) ([]byte, error) {
 }
 
 func (f *a2aFormatter) FileExtension() string {
-	return ".json"
+	return ExtJSON
 }

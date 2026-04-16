@@ -36,5 +36,5 @@ func (f *oasfFormatter) Format(record *corev1.Record) ([]byte, error) {
 }
 
 func (f *oasfFormatter) FileExtension() string {
-	return ".json"
+	return ExtJSON
 }

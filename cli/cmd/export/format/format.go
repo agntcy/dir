@@ -19,6 +19,8 @@ type Formatter interface {
 	FileExtension() string
 }
 
+const ExtJSON = ".json"
+
 var (
 	registryMu sync.RWMutex
 	formatters = map[string]Formatter{}

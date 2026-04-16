@@ -210,6 +210,95 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests for the export command"
 		})
 	})
 
+	ginkgo.Context("Export with mcp-ghcopilot format", ginkgo.Ordered, ginkgo.Serial, func() {
+		var cid string
+
+		tempDir, err := os.MkdirTemp("", "export-mcp-ghcopilot-e2e-*")
+		gomega.Expect(err).NotTo(gomega.HaveOccurred())
+
+		ginkgo.BeforeAll(func() {
+			factory.Replace(importerconfig.ImportTypeMCP, importerWithStaticEnricher)
+		})
+
+		ginkgo.AfterAll(func() {
+			os.RemoveAll(tempDir)
+			factory.Replace(importerconfig.ImportTypeMCP, importer.New)
+		})
+
+		ginkgo.It("should import an MCP server descriptor to set up test data", func() {
+			serverPath := filepath.Join(tempDir, "mcp-server.json")
+			gomega.Expect(os.WriteFile(serverPath, testdata.MCPServer, 0o600)).To(gomega.Succeed())
+
+			enrichCfg := filepath.Join(tempDir, "mcphost.json")
+			gomega.Expect(os.WriteFile(enrichCfg, []byte(`{}`), 0o600)).To(gomega.Succeed())
+
+			cidFile := filepath.Join(tempDir, "imported.cids")
+
+			cli.Import("mcp", serverPath).WithArgs("--enrich-config="+enrichCfg, "--output-cids="+cidFile).ShouldSucceed()
+
+			cidData, err := os.ReadFile(cidFile)
+			gomega.Expect(err).NotTo(gomega.HaveOccurred())
+
+			cid = strings.TrimSpace(string(cidData))
+			gomega.Expect(cid).NotTo(gomega.BeEmpty(), "imported CID should not be empty")
+		})
+
+		ginkgo.It("should export the record as GitHub Copilot MCP config to stdout", func() {
+			output := cli.Export(cid).WithArgs("--format", "mcp-ghcopilot").ShouldSucceed()
+			gomega.Expect(output).NotTo(gomega.BeEmpty())
+
+			var exported map[string]any
+
+			err := json.Unmarshal([]byte(output), &exported)
+			gomega.Expect(err).NotTo(gomega.HaveOccurred(), "stdout output should be valid JSON")
+
+			gomega.Expect(exported).To(gomega.HaveKey("servers"), "output should have a 'servers' key")
+			gomega.Expect(exported).To(gomega.HaveKey("inputs"), "output should have an 'inputs' key")
+
+			servers, ok := exported["servers"].(map[string]any)
+			gomega.Expect(ok).To(gomega.BeTrue())
+			gomega.Expect(servers).NotTo(gomega.BeEmpty(), "servers map should contain at least one entry")
+		})
+
+		ginkgo.It("should export the record as GitHub Copilot MCP config to a file", func() {
+			outPath := filepath.Join(tempDir, "ghcopilot.json")
+
+			cli.Export(cid).WithArgs("--format", "mcp-ghcopilot", "--output-file", outPath).ShouldSucceed()
+
+			data, err := os.ReadFile(outPath)
+			gomega.Expect(err).NotTo(gomega.HaveOccurred())
+
+			var parsed map[string]any
+
+			err = json.Unmarshal(data, &parsed)
+			gomega.Expect(err).NotTo(gomega.HaveOccurred(), "file content should be valid JSON")
+			gomega.Expect(parsed).To(gomega.HaveKey("servers"))
+		})
+
+		ginkgo.It("should auto-append .json extension when omitted", func() {
+			outPath := filepath.Join(tempDir, "ghcopilot_no_ext")
+			expectedPath := outPath + ".json"
+
+			cli.Export(cid).WithArgs("--format", "mcp-ghcopilot", "--output-file", outPath).ShouldSucceed()
+
+			_, err := os.Stat(expectedPath)
+			gomega.Expect(err).NotTo(gomega.HaveOccurred(),
+				"file with auto-appended .json extension should exist")
+
+			data, err := os.ReadFile(expectedPath)
+			gomega.Expect(err).NotTo(gomega.HaveOccurred())
+
+			var parsed map[string]any
+
+			err = json.Unmarshal(data, &parsed)
+			gomega.Expect(err).NotTo(gomega.HaveOccurred(), "file content should be valid JSON")
+		})
+
+		ginkgo.It("should clean up the test record", func() {
+			cli.Delete(cid).ShouldSucceed()
+		})
+	})
+
 	ginkgo.Context("Export with skill format", ginkgo.Ordered, ginkgo.Serial, func() {
 		var cid string
 

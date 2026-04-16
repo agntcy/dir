@@ -1,0 +1,23 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "io.example/code-review-server",
+  "description": "MCP server that performs automated code reviews",
+  "version": "1.0.0",
+  "repository": {
+    "url": "https://github.com/example/code-review-server",
+    "source": "github"
+  },
+  "packages": [
+    {
+      "registryType": "npm",
+      "identifier": "@example/code-review-server",
+      "version": "1.0.0",
+      "environmentVariables": [
+        {
+          "name": "REVIEW_API_KEY",
+          "description": "API key for the code review service"
+        }
+      ]
+    }
+  ]
+}

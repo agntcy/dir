@@ -36,6 +36,13 @@ var ExpectedRecordV070NameResolutionJSON []byte
 //go:embed a2a-agent-card.json
 var A2AAgentCard []byte
 
+// MCPServer is a sample MCP server descriptor JSON following the MCP registry server.json format.
+// Structure inspired by https://github.com/modelcontextprotocol/registry/blob/main/docs/modelcontextprotocol-io/quickstart.mdx
+// (Apache-2.0); content is original.
+//
+//go:embed mcp-server.json
+var MCPServer []byte
+
 // SkillMarkdown is a sample SKILL.md following the Agent Skills format
 // (https://agentskills.io/specification). The on-disk directory at
 // code-review/SKILL.md can be used directly with `dirctl import --type=agent-skill`.
