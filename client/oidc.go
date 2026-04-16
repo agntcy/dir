@@ -27,12 +27,13 @@ import (
 )
 
 // DefaultOIDCScopes are the OIDC scopes requested for interactive login.
-const DefaultOIDCScopes = "openid email profile"
+const DefaultOIDCScopes = "openid email profile offline_access"
 
 const (
 	serverShutdownTimeout          = 2 * time.Second
 	pkceVerifierBytes              = 32
 	maxOAuthCallbackBodySize       = 32 << 10 // 32KB
+	maxOAuthResponseBodySize       = 1 << 20  // 1MB
 	oauthCallbackReadHeaderTimeout = 10 * time.Second
 	defaultDevicePollInterval      = 5 * time.Second
 	httpPollTimeout                = 10 * time.Second
@@ -71,6 +72,14 @@ type DeviceFlowConfig struct {
 	PollInterval time.Duration
 	Timeout      time.Duration
 	Output       io.Writer
+}
+
+// RefreshTokenConfig holds configuration for the OAuth 2.0 refresh token grant.
+type RefreshTokenConfig struct {
+	Issuer       string
+	ClientID     string
+	RefreshToken string
+	Timeout      time.Duration
 }
 
 type deviceCodeResponse struct {
@@ -237,6 +246,82 @@ func (*OIDCProvider) RunDeviceFlow(ctx context.Context, cfg *DeviceFlowConfig) (
 	return result, nil
 }
 
+// RefreshAccessToken exchanges a cached refresh token for fresh access credentials.
+func (*OIDCProvider) RefreshAccessToken(ctx context.Context, cfg *RefreshTokenConfig) (*AuthResult, error) {
+	if strings.TrimSpace(cfg.Issuer) == "" || strings.TrimSpace(cfg.RefreshToken) == "" {
+		return nil, fmt.Errorf("oidc issuer and refresh token are required for token refresh")
+	}
+
+	issuer := strings.TrimRight(strings.TrimSpace(cfg.Issuer), "/")
+	tokenURL := issuer + "/token"
+
+	form := url.Values{}
+	form.Set("grant_type", "refresh_token")
+	form.Set("refresh_token", cfg.RefreshToken)
+
+	if strings.TrimSpace(cfg.ClientID) != "" {
+		form.Set("client_id", cfg.ClientID)
+	}
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, tokenURL, bytes.NewBufferString(form.Encode()))
+	if err != nil {
+		return nil, fmt.Errorf("failed to create refresh request: %w", err)
+	}
+
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+
+	resp, err := (&http.Client{Timeout: resolveOAuthTimeout(cfg.Timeout)}).Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("failed to refresh token: %w", err)
+	}
+	defer resp.Body.Close()
+
+	body, err := readOAuthResponseBody(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read refresh token response: %w", err)
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		var oauthErr oauthErrorResponse
+
+		_ = json.Unmarshal(body, &oauthErr)
+		if oauthErr.Error != "" {
+			return nil, fmt.Errorf("refresh token exchange failed: %s (%s)", oauthErr.Error, oauthErr.ErrorDescription)
+		}
+
+		return nil, fmt.Errorf("refresh token request failed (HTTP %d)", resp.StatusCode)
+	}
+
+	var tokenResp deviceTokenResponse
+	if err := json.Unmarshal(body, &tokenResp); err != nil {
+		return nil, fmt.Errorf("failed to parse refresh token response: %w", err)
+	}
+
+	if strings.TrimSpace(tokenResp.AccessToken) == "" {
+		return nil, fmt.Errorf("refresh token response did not include an access token")
+	}
+
+	result := &AuthResult{
+		AccessToken:  tokenResp.AccessToken,
+		RefreshToken: tokenResp.RefreshToken,
+		TokenType:    tokenResp.TokenType,
+		IDToken:      tokenResp.IDToken,
+	}
+	if tokenResp.ExpiresIn > 0 {
+		result.ExpiresAt = time.Now().Add(time.Duration(tokenResp.ExpiresIn) * time.Second)
+	}
+
+	if result.TokenType == "" {
+		result.TokenType = "Bearer"
+	}
+
+	if tokenResp.IDToken != "" {
+		result.Subject, result.Email, result.Name = parseIDTokenClaims(tokenResp.IDToken)
+	}
+
+	return result, nil
+}
+
 // --- Shared helpers ---
 
 func resolveScopes(scopes []string) []string {
@@ -253,6 +338,21 @@ func writerOrDiscard(w io.Writer) io.Writer {
 	}
 
 	return w
+}
+
+func readOAuthResponseBody(body io.Reader) ([]byte, error) {
+	limited := io.LimitReader(body, maxOAuthResponseBodySize+1)
+
+	data, err := io.ReadAll(limited)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read oauth response body: %w", err)
+	}
+
+	if len(data) > maxOAuthResponseBodySize {
+		return nil, fmt.Errorf("oauth response body exceeds %d bytes limit", maxOAuthResponseBodySize)
+	}
+
+	return data, nil
 }
 
 func resolveOAuthTimeout(timeout time.Duration) time.Duration {
@@ -432,7 +532,7 @@ func requestDeviceCode(ctx context.Context, deviceCodeURL, clientID string, scop
 	}
 	defer resp.Body.Close()
 
-	body, err := io.ReadAll(resp.Body)
+	body, err := readOAuthResponseBody(resp.Body)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read device code response: %w", err)
 	}
@@ -489,7 +589,7 @@ func tryDeviceTokenExchange(ctx context.Context, tokenURL, clientID, deviceCode 
 		return nil, false, nil //nolint:nilerr // transient HTTP error; keep polling
 	}
 
-	body, err := io.ReadAll(resp.Body)
+	body, err := readOAuthResponseBody(resp.Body)
 	resp.Body.Close()
 
 	if err != nil {

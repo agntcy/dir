@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"net"
 	"strings"
+	"time"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
@@ -38,7 +39,7 @@ func (o *options) setupOIDCAuth(ctx context.Context) error {
 	return nil
 }
 
-func (o *options) resolveOIDCAccessToken(_ context.Context) (string, error) {
+func (o *options) resolveOIDCAccessToken(ctx context.Context) (string, error) {
 	if accessToken := strings.TrimSpace(o.config.AuthToken); accessToken != "" {
 		return accessToken, nil
 	}
@@ -62,11 +63,86 @@ func (o *options) resolveOIDCAccessToken(_ context.Context) (string, error) {
 		return "", fmt.Errorf("failed to read OIDC token cache: %w", err)
 	}
 
-	if cachedToken != nil && strings.TrimSpace(cachedToken.AccessToken) != "" && !cache.IsValid(cachedToken) {
-		return "", errors.New("cached OIDC token has expired; run 'dirctl auth login' to refresh authentication")
+	if isExpiredCachedOIDCToken(cache, cachedToken) {
+		return o.refreshExpiredCachedOIDCToken(ctx, cache, cachedToken)
 	}
 
 	return "", errors.New("no OIDC access token: run 'dirctl auth login', or set DIRECTORY_CLIENT_AUTH_TOKEN")
+}
+
+func isExpiredCachedOIDCToken(cache *TokenCache, cachedToken *CachedToken) bool {
+	if cachedToken == nil {
+		return false
+	}
+
+	if strings.TrimSpace(cachedToken.AccessToken) == "" {
+		return false
+	}
+
+	return !cache.IsValid(cachedToken)
+}
+
+func (o *options) refreshExpiredCachedOIDCToken(ctx context.Context, cache *TokenCache, cachedToken *CachedToken) (string, error) {
+	if strings.TrimSpace(cachedToken.RefreshToken) == "" {
+		return "", errors.New("cached OIDC token has expired and no refresh token is available; run 'dirctl auth login' to refresh authentication")
+	}
+
+	refreshResult, err := OIDC.RefreshAccessToken(ctx, &RefreshTokenConfig{
+		Issuer:       cachedToken.Issuer,
+		ClientID:     o.config.OIDCClientID,
+		RefreshToken: cachedToken.RefreshToken,
+	})
+	if err != nil {
+		return "", fmt.Errorf("cached OIDC token has expired and refresh failed; run 'dirctl auth login' to refresh authentication: %w", err)
+	}
+
+	updatedToken := newRefreshedCachedToken(cachedToken, refreshResult)
+	if err := cache.SaveAtomic(updatedToken); err != nil {
+		return "", fmt.Errorf("cached OIDC token was refreshed but failed to persist cache; run 'dirctl auth login' to refresh authentication: %w", err)
+	}
+
+	return updatedToken.AccessToken, nil
+}
+
+func newRefreshedCachedToken(cachedToken *CachedToken, refreshResult *AuthResult) *CachedToken {
+	updatedToken := &CachedToken{
+		AccessToken:  refreshResult.AccessToken,
+		RefreshToken: cachedToken.RefreshToken,
+		TokenType:    refreshResult.TokenType,
+		Provider:     cachedToken.Provider,
+		Issuer:       cachedToken.Issuer,
+		ExpiresAt:    refreshResult.ExpiresAt.UTC().Truncate(time.Millisecond),
+		User:         cachedToken.User,
+		UserID:       cachedToken.UserID,
+		Email:        cachedToken.Email,
+		CreatedAt:    time.Now().UTC().Truncate(time.Millisecond),
+	}
+
+	if strings.TrimSpace(refreshResult.RefreshToken) != "" {
+		updatedToken.RefreshToken = refreshResult.RefreshToken
+	}
+
+	if strings.TrimSpace(updatedToken.Provider) == "" {
+		updatedToken.Provider = "oidc"
+	}
+
+	if strings.TrimSpace(refreshResult.IDToken) == "" {
+		return updatedToken
+	}
+
+	if refreshResult.Name != "" {
+		updatedToken.User = refreshResult.Name
+	}
+
+	if refreshResult.Subject != "" {
+		updatedToken.UserID = refreshResult.Subject
+	}
+
+	if refreshResult.Email != "" {
+		updatedToken.Email = refreshResult.Email
+	}
+
+	return updatedToken
 }
 
 // serverNameFromAddr returns the hostname for TLS SNI from a gRPC dial target (host:port).

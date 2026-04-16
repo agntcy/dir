@@ -123,6 +123,15 @@ func (c *TokenCache) Load() (*CachedToken, error) {
 
 // Save saves a token to the cache.
 func (c *TokenCache) Save(token *CachedToken) error {
+	return c.save(token, false)
+}
+
+// SaveAtomic saves a token using atomic replacement to prevent partial cache writes.
+func (c *TokenCache) SaveAtomic(token *CachedToken) error {
+	return c.save(token, true)
+}
+
+func (c *TokenCache) save(token *CachedToken, atomic bool) error {
 	// Ensure directory exists with secure permissions
 	if err := os.MkdirAll(c.CacheDir, cacheDirPerms); err != nil {
 		return fmt.Errorf("failed to create cache directory: %w", err)
@@ -139,9 +148,41 @@ func (c *TokenCache) Save(token *CachedToken) error {
 	}
 
 	path := c.GetCachePath()
-	// Write with secure permissions (owner read/write only)
-	if err := os.WriteFile(path, data, cacheFilePerms); err != nil {
-		return fmt.Errorf("failed to write token cache: %w", err)
+	if !atomic {
+		// Write with secure permissions (owner read/write only)
+		if err := os.WriteFile(path, data, cacheFilePerms); err != nil {
+			return fmt.Errorf("failed to write token cache: %w", err)
+		}
+
+		return nil
+	}
+
+	tmpFile, err := os.CreateTemp(c.CacheDir, TokenCacheFile+".tmp.*")
+	if err != nil {
+		return fmt.Errorf("failed to create temp token cache file: %w", err)
+	}
+
+	tmpPath := tmpFile.Name()
+	defer os.Remove(tmpPath)
+
+	if err := tmpFile.Chmod(cacheFilePerms); err != nil {
+		_ = tmpFile.Close()
+
+		return fmt.Errorf("failed to set temp token cache permissions: %w", err)
+	}
+
+	if _, err := tmpFile.Write(data); err != nil {
+		_ = tmpFile.Close()
+
+		return fmt.Errorf("failed to write temp token cache: %w", err)
+	}
+
+	if err := tmpFile.Close(); err != nil {
+		return fmt.Errorf("failed to close temp token cache file: %w", err)
+	}
+
+	if err := os.Rename(tmpPath, path); err != nil {
+		return fmt.Errorf("failed to atomically replace token cache: %w", err)
 	}
 
 	return nil

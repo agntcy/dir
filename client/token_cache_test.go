@@ -188,6 +188,40 @@ func TestTokenCache_Save(t *testing.T) {
 	})
 }
 
+func TestTokenCache_SaveAtomic(t *testing.T) {
+	t.Run("should save token atomically", func(t *testing.T) {
+		tmpDir := t.TempDir()
+		cache := NewTokenCacheWithDir(tmpDir)
+
+		token := &CachedToken{
+			AccessToken: "atomic_token_123",
+			User:        "testuser",
+		}
+
+		err := cache.SaveAtomic(token)
+		require.NoError(t, err)
+
+		loadedToken, loadErr := cache.Load()
+		require.NoError(t, loadErr)
+		require.NotNil(t, loadedToken)
+		assert.Equal(t, "atomic_token_123", loadedToken.AccessToken)
+		assert.Equal(t, "testuser", loadedToken.User)
+	})
+
+	t.Run("should keep secure permissions with atomic save", func(t *testing.T) {
+		tmpDir := t.TempDir()
+		cache := NewTokenCacheWithDir(tmpDir)
+
+		token := &CachedToken{AccessToken: "atomic_token"}
+		err := cache.SaveAtomic(token)
+		require.NoError(t, err)
+
+		info, statErr := os.Stat(cache.GetCachePath())
+		require.NoError(t, statErr)
+		assert.Equal(t, os.FileMode(0o600), info.Mode().Perm())
+	})
+}
+
 func TestTokenCache_Load(t *testing.T) {
 	t.Run("should load token from cache", func(t *testing.T) {
 		tmpDir := t.TempDir()
