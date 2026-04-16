@@ -26,7 +26,7 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests for the import command"
 	ginkgo.Context("MCP registry import functionality", func() {
 		ginkgo.It("should fail gracefully when enrichment cannot be initialized", func() {
 			// Test that import fails with a clear error when enrichment is required but cannot be initialized
-			// This happens when mcphost.json is missing or invalid (no LLM configured)
+			// This happens when enricher config is missing or invalid
 			output, err := cli.Command("import").
 				WithArgs("--type=mcp-registry", "--url=https://registry.modelcontextprotocol.io/v0.1", "--limit", "1", "--enrich-config=/nonexistent/path.json").
 				Execute()
@@ -37,13 +37,13 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests for the import command"
 			// Verify command failed
 			gomega.Expect(err).To(gomega.HaveOccurred())
 
-			// Enricher init fails when mcphost config is missing/invalid; errors are wrapped by CLI and importer.
+			// Enricher init fails when enricher config is missing/invalid; errors are wrapped by CLI and importer.
 			// Validation catches nonexistent config files before any network/gRPC calls.
 			gomega.Expect(err.Error()).To(gomega.Or(
 				gomega.ContainSubstring("config file not found"),
 				gomega.ContainSubstring("enricher configuration is invalid"),
 				gomega.ContainSubstring("failed to create enricher"),
-				gomega.ContainSubstring("failed to create MCPHost client"),
+				gomega.ContainSubstring("enricher tool host"),
 			))
 		})
 	})

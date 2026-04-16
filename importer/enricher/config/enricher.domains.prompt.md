@@ -1,7 +1,7 @@
 CRITICAL: You MUST call tools FIRST before responding!
 
 STEP 1 - CALL THIS TOOL NOW:
-Tool: dir-mcp-server__agntcy_oasf_get_schema_domains
+Tool: agntcy_oasf_get_schema_domains
 Args: {"version": "1.0.0"}
 
 Wait for response. The response will show top-level domains like:
@@ -10,7 +10,7 @@ Wait for response. The response will show top-level domains like:
 STEP 2 - Pick ONE domain "name" from Step 1 (e.g. "artificial_intelligence")
 
 STEP 3 - CALL THIS TOOL NOW:
-Tool: dir-mcp-server__agntcy_oasf_get_schema_domains  
+Tool: agntcy_oasf_get_schema_domains
 Args: {"version": "1.0.0", "parent_domain": "YOUR_CHOICE_FROM_STEP_2"}
 
 Wait for response. The response will show sub-domains with "name" and "id" fields like:

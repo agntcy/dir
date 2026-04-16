@@ -23,7 +23,7 @@ func TestConfig_Validate_InvalidRequestsPerMinute(t *testing.T) {
 
 	dir := t.TempDir()
 
-	cfgPath := filepath.Join(dir, "mcphost.json")
+	cfgPath := filepath.Join(dir, "enricher.json")
 	if err := os.WriteFile(cfgPath, []byte(`{}`), 0o600); err != nil {
 		t.Fatal(err)
 	}
@@ -43,7 +43,7 @@ func TestConfig_Validate_EmbedsDefaultPrompts(t *testing.T) {
 
 	dir := t.TempDir()
 
-	cfgPath := filepath.Join(dir, "mcphost.json")
+	cfgPath := filepath.Join(dir, "enricher.json")
 	if err := os.WriteFile(cfgPath, []byte(`{}`), 0o600); err != nil {
 		t.Fatal(err)
 	}

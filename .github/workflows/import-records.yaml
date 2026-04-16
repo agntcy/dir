@@ -119,7 +119,7 @@ jobs:
 
       - name: Create Enricher Config
         run: |
-          cat <<'EOF' > mcphost_ci.json
+          cat <<'EOF' > enricher_ci.json
           {
             "mcpServers": {
               "dir-mcp-server": {
@@ -130,12 +130,7 @@ jobs:
                 ],
                 "env": {
                   "OASF_API_VALIDATION_SCHEMA_URL": "https://schema.oasf.outshift.com"
-                },
-                "allowedTools": [
-                  "agntcy_oasf_get_schema",
-                  "agntcy_oasf_get_schema_skills",
-                  "agntcy_oasf_get_schema_domains"
-                ]
+                }
               }
             },
             "model": "azure:gpt-4o",

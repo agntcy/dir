@@ -297,7 +297,11 @@ tasks:
 
   pre-commit:golangci-lint:
     desc: Run golangci-lint pre-commit hook
+    deps:
+      - task: deps:golangci-lint
     vars:
+      FIX: "true"
+      REV: "HEAD"
       # Override global GO_MODULES to include only changed
       # modules based on files passed by pre-commit
       GO_MODULES:
@@ -338,11 +342,15 @@ tasks:
 
           echo "${result[@]}"
     cmds:
-      - task: lint:go
-        vars:
-          GO_MODULES: "{{ .GO_MODULES }}"
-          FIX: "true"
-          REV: "HEAD"
+      # One shell loop so only one golangci-lint runs at a time (global lock).
+      - |
+        set -euo pipefail
+        modules="{{ .GO_MODULES }}"
+        [ -z "$modules" ] && exit 0
+        for m in $modules; do
+          echo "Running golangci-lint in $m"
+          (cd "$m" && {{ .GOLANGCI_LINT_BIN }} run --config {{ .ROOT_DIR }}/.golangci.yml{{if eq .FIX "true"}} --fix{{end}} --new-from-rev="{{ .REV }}")
+        done
 
   lint:go:
     desc: Run Golang linters
@@ -360,30 +368,17 @@ tasks:
           REV: "{{ .REV }}"
 
   lint:go:modules:
-    desc: Run golangci-lint for all modules in parallel using Taskfile deps
+    desc: Run golangci-lint for each module sequentially (single process; global lock)
     internal: true
-    cmd:
-      for: { var: GO_MODULES }
-      task: lint:go:module
-      vars:
-        GO_MODULE: "{{.ITEM}}"
-        FIX: "{{.FIX}}"
-        REV: "{{.REV}}"
-
-  lint:go:module:
-    desc: Run golangci-lint for given module
-    internal: true
-    vars:
-      GO_MODULE: '{{ .GO_MODULE | default "." }}'
-      FIX: '{{ .FIX | default "" }}'
-      REV: '{{ .REV | default "" }}'
-    dir: "{{ .GO_MODULE }}"
-    cmd: |
-      echo "Running golangci-lint in {{ .GO_MODULE }}"
-      {{.GOLANGCI_LINT_BIN}} run \
-                             --config {{.ROOT_DIR}}/.golangci.yml \
-                             {{if eq .FIX "true"}}--fix{{end}} \
-                             --new-from-rev="{{.REV}}"
+    cmds:
+      - |
+        set -euo pipefail
+        modules="{{ .GO_MODULES }}"
+        [ -z "$modules" ] && exit 0
+        for m in $modules; do
+          echo "Running golangci-lint in $m"
+          (cd "$m" && {{ .GOLANGCI_LINT_BIN }} run --config {{ .ROOT_DIR }}/.golangci.yml{{if eq .FIX "true"}} --fix{{end}} --new-from-rev="{{ .REV }}")
+        done
 
   lint:buf:
     desc: Run Buf linters

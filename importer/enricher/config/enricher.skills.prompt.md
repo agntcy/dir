@@ -1,7 +1,7 @@
 CRITICAL: You MUST call tools FIRST before responding!
 
 STEP 1 - CALL THIS TOOL NOW:
-Tool: dir-mcp-server__agntcy_oasf_get_schema_skills
+Tool: agntcy_oasf_get_schema_skills
 Args: {"version": "1.0.0"}
 
 Wait for response. The response will show top-level skills like:
@@ -10,7 +10,7 @@ Wait for response. The response will show top-level skills like:
 STEP 2 - Pick ONE skill "name" from Step 1 (e.g. "retrieval_augmented_generation")
 
 STEP 3 - CALL THIS TOOL NOW:
-Tool: dir-mcp-server__agntcy_oasf_get_schema_skills  
+Tool: agntcy_oasf_get_schema_skills
 Args: {"version": "1.0.0", "parent_skill": "YOUR_CHOICE_FROM_STEP_2"}
 
 Wait for response. The response will show sub-skills with "name" and "id" fields like:

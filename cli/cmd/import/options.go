@@ -32,7 +32,7 @@ func init() {
 	flags.IntVar(&opts.Limit, "limit", 0, "Maximum number of records to import (0 = no limit)")
 
 	// Enrichment flags
-	flags.StringVar(&opts.Enricher.ConfigFile, "enrich-config", enricherconfig.DefaultConfigFile, "Path to MCPHost configuration file (mcphost.json)")
+	flags.StringVar(&opts.Enricher.ConfigFile, "enrich-config", enricherconfig.DefaultConfigFile, "Path to enricher configuration (JSON: model, mcpServers, max-steps)")
 	flags.StringVar(&opts.Enricher.SkillsPromptTemplate, "enrich-skills-prompt", "", "Path to custom skills prompt template file")
 	flags.StringVar(&opts.Enricher.DomainsPromptTemplate, "enrich-domains-prompt", "", "Path to custom domains prompt template file")
 	flags.IntVar(&opts.Enricher.RequestsPerMinute, "enrich-rate-limit", enricherconfig.DefaultRequestsPerMinute, "Maximum LLM API requests per minute (to avoid rate limit errors)")

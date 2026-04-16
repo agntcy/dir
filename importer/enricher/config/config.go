@@ -12,8 +12,8 @@ import (
 
 // Default values for enricher configuration.
 const (
-	DefaultConfigFile        = "importer/enricher/mcphost.json" // Default path to MCPHost configuration file
-	DefaultRequestsPerMinute = 2                                // Default maximum LLM API requests per minute (to avoid rate limit errors)
+	DefaultConfigFile        = "importer/enricher/enricher.json"
+	DefaultRequestsPerMinute = 2 // Default maximum LLM API requests per minute (to avoid rate limit errors)
 )
 
 //go:embed enricher.skills.prompt.md
@@ -24,7 +24,7 @@ var DefaultDomainsPromptTemplate string
 
 // Config contains configuration for the enricher pipeline stage.
 type Config struct {
-	ConfigFile            string // Path to MCPHost configuration file
+	ConfigFile            string // Path to enricher JSON (model, mcpServers, max-steps)
 	SkillsPromptTemplate  string // Path to custom skills prompt template file
 	DomainsPromptTemplate string // Path to custom domains prompt template file
 	RequestsPerMinute     int    // Maximum LLM API requests per minute (to avoid rate limit errors)

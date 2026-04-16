@@ -35,7 +35,7 @@ func TestConfig_Validate_FileMissingPath(t *testing.T) {
 
 	dir := t.TempDir()
 
-	cfgPath := filepath.Join(dir, "mcphost.json")
+	cfgPath := filepath.Join(dir, "enricher.json")
 	if err := os.WriteFile(cfgPath, []byte(`{}`), 0o600); err != nil {
 		t.Fatal(err)
 	}
@@ -59,7 +59,7 @@ func TestConfig_Validate_FileOK(t *testing.T) {
 
 	dir := t.TempDir()
 
-	cfgPath := filepath.Join(dir, "mcphost.json")
+	cfgPath := filepath.Join(dir, "enricher.json")
 	if err := os.WriteFile(cfgPath, []byte(`{}`), 0o600); err != nil {
 		t.Fatal(err)
 	}
@@ -84,7 +84,7 @@ func TestConfig_Validate_A2AFileOK(t *testing.T) {
 
 	dir := t.TempDir()
 
-	cfgPath := filepath.Join(dir, "mcphost.json")
+	cfgPath := filepath.Join(dir, "enricher.json")
 	if err := os.WriteFile(cfgPath, []byte(`{}`), 0o600); err != nil {
 		t.Fatal(err)
 	}
@@ -109,7 +109,7 @@ func TestConfig_Validate_AgentSkillFileOK(t *testing.T) {
 
 	dir := t.TempDir()
 
-	cfgPath := filepath.Join(dir, "mcphost.json")
+	cfgPath := filepath.Join(dir, "enricher.json")
 	if err := os.WriteFile(cfgPath, []byte(`{}`), 0o600); err != nil {
 		t.Fatal(err)
 	}
@@ -134,7 +134,7 @@ func TestConfig_Validate_OK(t *testing.T) {
 
 	dir := t.TempDir()
 
-	cfgPath := filepath.Join(dir, "mcphost.json")
+	cfgPath := filepath.Join(dir, "enricher.json")
 	if err := os.WriteFile(cfgPath, []byte(`{}`), 0o600); err != nil {
 		t.Fatal(err)
 	}

@@ -8,12 +8,7 @@
       ],
       "env": {
         "OASF_API_VALIDATION_SCHEMA_URL": "https://schema.oasf.outshift.com"
-      },
-      "allowedTools": [
-        "agntcy_oasf_get_schema",
-        "agntcy_oasf_get_schema_skills",
-        "agntcy_oasf_get_schema_domains"
-      ]
+      }
     }
   },
   "model": "azure:gpt-4o",

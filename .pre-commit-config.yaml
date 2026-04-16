@@ -10,3 +10,5 @@ repos:
         language: system
         pass_filenames: true
         types: [go]
+        # Avoid running alongside other hooks; golangci-lint uses a global lock.
+        require_serial: true

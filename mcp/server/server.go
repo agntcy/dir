@@ -144,10 +144,8 @@ Use this tool after validating your record to store it in the Directory.
 	}, t.PushRecord)
 
 	// Add tool for searching local records
-	// Use manually defined schema to avoid union types (type: ["array", "null"]) that mcphost can't parse
 	mcp.AddTool(server, &mcp.Tool{
-		Name:        "agntcy_dir_search_local",
-		InputSchema: tools.SearchLocalInputSchema(),
+		Name: "agntcy_dir_search_local",
 		Description: strings.TrimSpace(`
 Searches for agent records on the local directory node using structured query filters.
 This tool supports flexible wildcard patterns for matching records based on:
