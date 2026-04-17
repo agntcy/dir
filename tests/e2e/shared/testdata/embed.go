@@ -50,3 +50,9 @@ var MCPServer []byte
 //
 //go:embed code-review/SKILL.md
 var SkillMarkdown []byte
+
+// SkillRecordJSON is an OASF record containing a core/language_model/agentskills
+// module, generated from code-review/SKILL.md via the oasf-sdk translator.
+//
+//go:embed skill_record.json
+var SkillRecordJSON []byte

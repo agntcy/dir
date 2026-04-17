@@ -1,0 +1,35 @@
+{
+  "authors": [
+    "AGNTCY Contributors"
+  ],
+  "created_at": "2026-04-17T11:09:15Z",
+  "description": "Toolkit for performing structured code reviews. Covers identifying bugs, security issues, performance problems, and style violations. Use when asked to review code changes, pull requests, or individual files.",
+  "domains": [],
+  "modules": [
+    {
+      "data": {
+        "skill_file": "SKILL.md",
+        "skill_manifest": {
+          "description": "Toolkit for performing structured code reviews. Covers identifying bugs, security issues, performance problems, and style violations. Use when asked to review code changes, pull requests, or individual files.",
+          "frontmatter_metadata": {
+            "author": "AGNTCY Contributors",
+            "version": "1.0.0"
+          },
+          "name": "code-review",
+          "version": "1.0.0"
+        }
+      },
+      "id": 10302,
+      "name": "core/language_model/agentskills"
+    }
+  ],
+  "name": "code-review",
+  "schema_version": "1.0.0",
+  "skills": [
+    {
+      "name": "natural_language_processing/natural_language_understanding/contextual_comprehension",
+      "id": 10101
+    }
+  ],
+  "version": "1.0.0"
+}

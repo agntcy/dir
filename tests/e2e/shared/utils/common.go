@@ -22,7 +22,7 @@ import (
 
 // Ptr creates a pointer to the given value.
 //
-//nolint
+// nolint
 func Ptr[T any](v T) *T {
 	return &v
 }
@@ -84,58 +84,29 @@ func ResetCobraFlags() {
 	}
 }
 
-// resetCommandFlags resets flags for a specific command.
+// resetFlag resets a single flag to its zero/default value.
 //
 //nolint:errcheck
+func resetFlag(flag *pflag.Flag) {
+	if flag.Value == nil {
+		return
+	}
+
+	if sv, ok := flag.Value.(pflag.SliceValue); ok {
+		sv.Replace([]string{})
+
+		flag.DefValue = "[]"
+	} else {
+		flag.Value.Set(flag.DefValue)
+	}
+
+	flag.Changed = false
+}
+
+// resetCommandFlags resets flags for a specific command.
 func resetCommandFlags(cmd *cobra.Command) {
-	if cmd.Flags() != nil {
-		// Reset local flags
-		cmd.Flags().VisitAll(func(flag *pflag.Flag) {
-			if flag.Value != nil {
-				// Reset to default value based on flag type
-				switch flag.Value.Type() {
-				case "string":
-					flag.Value.Set(flag.DefValue)
-				case "bool":
-					flag.Value.Set(flag.DefValue)
-				case "int", "int32", "int64":
-					flag.Value.Set(flag.DefValue)
-				case "uint", "uint32", "uint64":
-					flag.Value.Set(flag.DefValue)
-				case "float32", "float64":
-					flag.Value.Set(flag.DefValue)
-				case "stringArray", "stringSlice":
-					// For string arrays/slices, completely clear them
-					// Setting to empty string should clear the underlying slice
-					flag.Value.Set("")
-					// Also reset the default value to ensure clean state
-					flag.DefValue = ""
-				default:
-					// For custom types, try to set to default value
-					flag.Value.Set(flag.DefValue)
-				}
-				// Mark as not changed
-				flag.Changed = false
-			}
-		})
-	}
-
-	if cmd.PersistentFlags() != nil {
-		// Reset persistent flags
-		cmd.PersistentFlags().VisitAll(func(flag *pflag.Flag) {
-			if flag.Value != nil {
-				// Handle string arrays specially for persistent flags too
-				if flag.Value.Type() == "stringArray" || flag.Value.Type() == "stringSlice" {
-					flag.Value.Set("")
-					flag.DefValue = ""
-				} else {
-					flag.Value.Set(flag.DefValue)
-				}
-
-				flag.Changed = false
-			}
-		})
-	}
+	cmd.Flags().VisitAll(resetFlag)
+	cmd.PersistentFlags().VisitAll(resetFlag)
 }
 
 // resetNestedCommandFlags recursively resets flags for nested commands.

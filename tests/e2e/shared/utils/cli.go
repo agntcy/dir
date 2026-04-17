@@ -108,6 +108,10 @@ func (c *CLI) Export(cidOrName string) *CommandBuilder {
 	return c.Command("export").WithArgs(cidOrName)
 }
 
+func (c *CLI) ExportBatch(outputDir, format string) *CommandBuilder {
+	return c.Command("export").WithArgs("--output-dir", outputDir, "--format", format)
+}
+
 func (c *CLI) Sign(recordCID, keyPath string) *CommandBuilder {
 	return c.Command("sign").WithArgs(recordCID, "--key", keyPath)
 }

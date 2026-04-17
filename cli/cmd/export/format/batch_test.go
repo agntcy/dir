@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"strings"
 	"testing"
 
 	corev1 "github.com/agntcy/dir/api/core/v1"
@@ -293,9 +292,9 @@ func TestLatestByName(t *testing.T) {
 	})
 
 	t.Run("preserves insertion order", func(t *testing.T) {
-		r1 := newA2ATestRecord(t)      // name="test-a2a-agent"
-		r2 := newTestRecord()           // name="test-agent"
-		r3 := newA2ATestRecord(t)       // duplicate — should merge with r1
+		r1 := newA2ATestRecord(t) // name="test-a2a-agent"
+		r2 := newTestRecord()     // name="test-agent"
+		r3 := newA2ATestRecord(t) // duplicate — should merge with r1
 
 		result := format.LatestByName([]*corev1.Record{r1, r2, r3})
 		require.Len(t, result, 2)
@@ -320,7 +319,7 @@ func TestLatestByName(t *testing.T) {
 		require.Len(t, result, 1)
 
 		ver := result[0].GetData().GetFields()["version"].GetStringValue()
-		assert.False(t, strings.Contains(ver, "alpha"), "release should beat alpha")
+		assert.NotContains(t, ver, "alpha", "release should beat alpha")
 	})
 
 	t.Run("returns nil for empty input", func(t *testing.T) {

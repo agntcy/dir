@@ -72,6 +72,7 @@ func LatestByName(records []*corev1.Record) []*corev1.Record {
 	}
 
 	best := map[string]*entry{}
+
 	var order []string
 
 	for _, r := range records {
