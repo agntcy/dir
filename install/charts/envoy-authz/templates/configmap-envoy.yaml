@@ -59,6 +59,20 @@ data:
                                 envoy.filters.http.ext_authz:
                                   "@type": type.googleapis.com/envoy.extensions.filters.http.ext_authz.v3.ExtAuthzPerRoute
                                   disabled: true
+                            # Event stream - long-lived server streaming RPC
+                            - match:
+                                path: "/agntcy.dir.events.v1.EventService/Listen"
+                              route:
+                                cluster: directory_backend
+                                timeout: {{ .Values.envoy.backend.listenRouteTimeout }}
+                              request_headers_to_remove:
+                                - "authorization"
+                              typed_per_filter_config:
+                                envoy.filters.http.header_mutation:
+                                  "@type": type.googleapis.com/envoy.extensions.filters.http.header_mutation.v3.HeaderMutationPerRoute
+                                  mutations:
+                                    request_mutations:
+                                      - remove: "x-jwt-payload"
                             # Dir gRPC - require JWT, strip Authorization before backend
                             - match:
                                 prefix: "/agntcy.dir"

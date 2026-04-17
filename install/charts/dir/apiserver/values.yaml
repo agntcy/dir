@@ -598,6 +598,15 @@ envoy-authz:
     backend:
       address: "" # e.g., dir-dir-dev-argoapp-apiserver.dir-dev-dir.svc.cluster.local
       port: 8888
+      # Default Envoy route timeout for Directory gRPC methods.
+      # This is an overall Envoy -> apiserver request/stream timeout, unlike the
+      # ingress read/send timeouts below which are mostly idle-gap timeouts.
+      timeout: 30s
+      # Dedicated timeout for the long-lived EventService/Listen stream route.
+      # Set to 0s to disable the Envoy route timeout for that RPC only.
+      # The effective stream lifetime is still capped by any tighter ingress or
+      # downstream timeout because the first layer to time out breaks the stream.
+      listenRouteTimeout: 0s
 
     oidc:
       dex:
@@ -681,6 +690,13 @@ envoy-authz:
       external-dns.alpha.kubernetes.io/hostname: ""
       nginx.ingress.kubernetes.io/backend-protocol: "GRPC"
       nginx.ingress.kubernetes.io/grpc-backend: "true"
+      # Recommended for long-lived gRPC streams such as EventService/Listen.
+      # These are ingress-layer read/send idle timeouts, not overall request caps.
+      # They complement envoy.backend.timeout / listenRouteTimeout on the
+      # Envoy -> apiserver hop; the most restrictive layer still wins.
+      # nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"
+      # nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"
+      # nginx.ingress.kubernetes.io/proxy-stream-timeout: "3600"
 
 # PostgreSQL subchart configuration
 # Deploys PostgreSQL alongside the apiserver for dev/production use.

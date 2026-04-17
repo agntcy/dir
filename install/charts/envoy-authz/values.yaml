@@ -25,8 +25,15 @@ envoy:
     # Example: dir-dir-dev-argoapp-apiserver.dir-dev-dir.svc.cluster.local
     address: ""
     port: 8888
-    # Connection timeout
+    # Default Envoy route timeout for Directory gRPC methods.
+    # This acts as an overall request/stream cap on the Envoy -> apiserver hop.
+    # For long-lived server streams, the smallest timeout across ingress and Envoy
+    # still wins because the first layer to time out breaks the full request path.
     timeout: 30s
+    # Dedicated route timeout for the EventService/Listen server stream.
+    # Use 0s to disable the Envoy route timeout for this long-lived stream only,
+    # while preserving backend.timeout for ordinary unary RPCs.
+    listenRouteTimeout: 0s
 
   # OIDC/JWT configuration for jwt_authn filter
   oidc:
