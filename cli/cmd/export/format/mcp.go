@@ -47,8 +47,14 @@ func (f *mcpGHCopilotFormatter) FileExtension() string {
 
 // FormatBatch merges all records into a single GitHub Copilot MCP config file.
 // Servers from each record are added to one shared "servers" map; inputs are
-// deduplicated by ID.
-func (f *mcpGHCopilotFormatter) FormatBatch(records []*corev1.Record, outputDir string) (int, error) {
+// deduplicated by ID. When allVersions is false, only the latest version per
+// name is merged.
+func (f *mcpGHCopilotFormatter) FormatBatch(records []*corev1.Record, outputDir string, allVersions bool) (int, error) {
+	toMerge := records
+	if !allVersions {
+		toMerge = LatestByName(records)
+	}
+
 	merged := &translator.GHCopilotMCPConfig{
 		Servers: make(map[string]translator.MCPServer),
 		Inputs:  []translator.MCPInput{},
@@ -57,7 +63,7 @@ func (f *mcpGHCopilotFormatter) FormatBatch(records []*corev1.Record, outputDir 
 	seenInputs := map[string]bool{}
 	exported := 0
 
-	for _, record := range records {
+	for _, record := range toMerge {
 		data := record.GetData()
 		if data == nil {
 			continue

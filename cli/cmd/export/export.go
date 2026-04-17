@@ -139,9 +139,9 @@ func runBatchExport(cmd *cobra.Command) error {
 	var exported int
 
 	if bf, ok := formatter.(format.BatchFormatter); ok {
-		exported, err = bf.FormatBatch(records, opts.OutputDir)
+		exported, err = bf.FormatBatch(records, opts.OutputDir, opts.AllVersions)
 	} else {
-		exported, err = format.DefaultBatchExport(formatter, records, opts.OutputDir)
+		exported, err = format.DefaultBatchExport(formatter, records, opts.OutputDir, opts.AllVersions)
 	}
 
 	if err != nil {

@@ -39,21 +39,26 @@ func (f *skillFormatter) FileExtension() string {
 }
 
 // FormatBatch creates a subdirectory per skill: <outputDir>/<name>/SKILL.md.
-func (f *skillFormatter) FormatBatch(records []*corev1.Record, outputDir string) (int, error) {
-	exported := 0
+// When allVersions is false, only the latest version per name is exported.
+// When allVersions is true the version is included in the directory name.
+func (f *skillFormatter) FormatBatch(records []*corev1.Record, outputDir string, allVersions bool) (int, error) {
+	toExport := records
+	if !allVersions {
+		toExport = LatestByName(records)
+	}
 
-	for i, record := range records {
-		name := RecordName(record)
-		if name == "" {
-			name = fmt.Sprintf("skill_%d", i)
-		}
+	exported := 0
+	seen := make(map[string]int)
+
+	for i, record := range toExport {
+		base := batchFileName(record, i, seen, allVersions)
 
 		output, err := f.Format(record)
 		if err != nil {
-			return exported, fmt.Errorf("failed to format skill %q: %w", name, err)
+			return exported, fmt.Errorf("failed to format skill %q: %w", base, err)
 		}
 
-		skillDir := filepath.Join(outputDir, SanitizeName(name))
+		skillDir := filepath.Join(outputDir, base)
 		if err := os.MkdirAll(skillDir, 0o755); err != nil { //nolint:mnd
 			return exported, fmt.Errorf("failed to create directory %s: %w", skillDir, err)
 		}
