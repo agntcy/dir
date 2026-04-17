@@ -68,8 +68,6 @@ require (
 	github.com/ThalesIgnite/crypto11 v1.6.0 // indirect
 	github.com/agntcy/dir/runtime/api v1.2.0 // indirect
 	github.com/agntcy/dir/runtime/utils v1.2.0 // indirect
-	github.com/alecthomas/chroma/v2 v2.23.1 // indirect
-	github.com/andybalholm/cascadia v1.3.3 // indirect
 	github.com/antlr4-go/antlr/v4 v4.13.1 // indirect
 	github.com/asaskevich/govalidator v0.0.0-20230301143203-a9d515a09cc2 // indirect
 	github.com/aws/aws-sdk-go-v2 v1.41.5 // indirect
