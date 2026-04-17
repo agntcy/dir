@@ -56,14 +56,7 @@
     "github-actions",
     "helm-values",
     "gomod",
-    "helmv3",
-    "pyenv",
-    "pip_setup",
-    "pip_requirements",
-    "pep621",
-    "npm",
-    "nvm",
-    "nodenv"
+    "helmv3"
   ],
   "labels": ["dependencies"],
   "ignoreDeps": [
@@ -106,26 +99,6 @@
       "matchDatasources": ["go"],
       "matchUpdateTypes": ["patch"],
       "description": ["Group Go dependency patch updates in single PR."]
-    },
-    {
-      "groupName": "Python",
-      "groupSlug": "python",
-      "matchCategories": ["python"],
-      "addLabels": ["python"],
-      "description": [
-        "Add python label to PRs which bumps python dependencies.",
-        "Group Python dependency updates in single PR."
-      ]
-    },
-    {
-      "groupName": "JavaScript",
-      "groupSlug": "javascript",
-      "matchCategories": ["js"],
-      "addLabels": ["js"],
-      "description": [
-        "Add JavaScript label to PRs which bumps JS dependencies.",
-        "Group JavaScript dependency updates in single PR."
-      ]
     },
     {
       "groupName": "Docker",
