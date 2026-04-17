@@ -162,7 +162,7 @@ jobs:
           echo "--- Processing Entry $((${{ matrix.entry.index }} + 1)) ---"
 
           CIDS_FILE="imported-cids-${{ matrix.entry.index }}.txt"
-          CMD=("${DIRCTL_PATH}" import --type=mcp --url=https://registry.modelcontextprotocol.io/v0.1 --server-addr="${{ env.SERVER_ADDRESS }}" --auth-mode=oidc "--auth-token=${DIR_AUTH_TOKEN}" --enrich-config=mcphost_ci.json --enrich-rate-limit="${{ env.RATE_LIMIT }}")
+          CMD=("${DIRCTL_PATH}" import --type=mcp-registry --url=https://registry.modelcontextprotocol.io/v0.1 --server-addr="${{ env.SERVER_ADDRESS }}" --auth-mode=oidc "--auth-token=${DIR_AUTH_TOKEN}" --enrich-config=mcphost_ci.json --enrich-rate-limit="${{ env.RATE_LIMIT }}")
 
           if [[ "${{ env.DRY_RUN }}" == "true" ]]; then
              CMD+=("--dry-run")
