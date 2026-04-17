@@ -58,9 +58,13 @@ func New(ctx context.Context, client config.ClientInterface, cfg config.Config) 
 		return nil, fmt.Errorf("failed to create fetcher: %w", err)
 	}
 
-	d, err := dedup.NewDuplicateChecker(ctx, client, cfg.Type, cfg.Debug)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create duplicate checker: %w", err)
+	var d types.DuplicateChecker
+
+	if !cfg.Force {
+		d, err = dedup.NewDuplicateChecker(ctx, client, cfg.Type, cfg.Debug)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create duplicate checker: %w", err)
+		}
 	}
 
 	var e types.Enricher

@@ -148,7 +148,7 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests for the export command"
 
 			cidFile := filepath.Join(tempDir, "imported.cids")
 
-			cli.Import("a2a", cardPath).WithArgs("--enrich-config="+enrichCfg, "--output-cids="+cidFile).ShouldEventuallySucceed(60 * time.Second)
+			cli.Import("a2a", cardPath).WithArgs("--force", "--enrich-config="+enrichCfg, "--output-cids="+cidFile).ShouldEventuallySucceed(60 * time.Second)
 
 			cidData, err := os.ReadFile(cidFile)
 			gomega.Expect(err).NotTo(gomega.HaveOccurred())
@@ -235,7 +235,7 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests for the export command"
 
 			cidFile := filepath.Join(tempDir, "imported.cids")
 
-			cli.Import("mcp", serverPath).WithArgs("--enrich-config="+enrichCfg, "--output-cids="+cidFile).ShouldEventuallySucceed(60 * time.Second)
+			cli.Import("mcp", serverPath).WithArgs("--force", "--enrich-config="+enrichCfg, "--output-cids="+cidFile).ShouldEventuallySucceed(60 * time.Second)
 
 			cidData, err := os.ReadFile(cidFile)
 			gomega.Expect(err).NotTo(gomega.HaveOccurred())
@@ -425,7 +425,7 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests for the export command"
 
 			cidFile := filepath.Join(tempDir, "imported.cids")
 
-			cli.Import("agent-skill", skillDir).WithArgs("--enrich-config="+enrichCfg, "--output-cids="+cidFile).ShouldSucceed()
+			cli.Import("agent-skill", skillDir).WithArgs("--force", "--enrich-config="+enrichCfg, "--output-cids="+cidFile).ShouldSucceed()
 
 			cidData, err := os.ReadFile(cidFile)
 			gomega.Expect(err).NotTo(gomega.HaveOccurred())
