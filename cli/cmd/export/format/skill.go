@@ -5,6 +5,8 @@ package format
 
 import (
 	"fmt"
+	"os"
+	"path/filepath"
 
 	corev1 "github.com/agntcy/dir/api/core/v1"
 	"github.com/agntcy/oasf-sdk/pkg/translator"
@@ -34,4 +36,35 @@ func (f *skillFormatter) Format(record *corev1.Record) ([]byte, error) {
 
 func (f *skillFormatter) FileExtension() string {
 	return ".md"
+}
+
+// FormatBatch creates a subdirectory per skill: <outputDir>/<name>/SKILL.md.
+func (f *skillFormatter) FormatBatch(records []*corev1.Record, outputDir string) (int, error) {
+	exported := 0
+
+	for i, record := range records {
+		name := RecordName(record)
+		if name == "" {
+			name = fmt.Sprintf("skill_%d", i)
+		}
+
+		output, err := f.Format(record)
+		if err != nil {
+			return exported, fmt.Errorf("failed to format skill %q: %w", name, err)
+		}
+
+		skillDir := filepath.Join(outputDir, SanitizeName(name))
+		if err := os.MkdirAll(skillDir, 0o755); err != nil { //nolint:mnd
+			return exported, fmt.Errorf("failed to create directory %s: %w", skillDir, err)
+		}
+
+		outPath := filepath.Join(skillDir, "SKILL.md")
+		if err := os.WriteFile(outPath, output, 0o600); err != nil { //nolint:mnd
+			return exported, fmt.Errorf("failed to write %s: %w", outPath, err)
+		}
+
+		exported++
+	}
+
+	return exported, nil
 }

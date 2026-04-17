@@ -6,6 +6,9 @@ package format
 import (
 	"encoding/json"
 	"fmt"
+	"maps"
+	"os"
+	"path/filepath"
 
 	corev1 "github.com/agntcy/dir/api/core/v1"
 	"github.com/agntcy/oasf-sdk/pkg/translator"
@@ -40,4 +43,54 @@ func (f *mcpGHCopilotFormatter) Format(record *corev1.Record) ([]byte, error) {
 
 func (f *mcpGHCopilotFormatter) FileExtension() string {
 	return ExtJSON
+}
+
+// FormatBatch merges all records into a single GitHub Copilot MCP config file.
+// Servers from each record are added to one shared "servers" map; inputs are
+// deduplicated by ID.
+func (f *mcpGHCopilotFormatter) FormatBatch(records []*corev1.Record, outputDir string) (int, error) {
+	merged := &translator.GHCopilotMCPConfig{
+		Servers: make(map[string]translator.MCPServer),
+		Inputs:  []translator.MCPInput{},
+	}
+
+	seenInputs := map[string]bool{}
+	exported := 0
+
+	for _, record := range records {
+		data := record.GetData()
+		if data == nil {
+			continue
+		}
+
+		cfg, err := translator.RecordToGHCopilot(data)
+		if err != nil {
+			continue
+		}
+
+		maps.Copy(merged.Servers, cfg.Servers)
+
+		for _, input := range cfg.Inputs {
+			if !seenInputs[input.ID] {
+				seenInputs[input.ID] = true
+				merged.Inputs = append(merged.Inputs, input)
+			}
+		}
+
+		exported++
+	}
+
+	raw, err := json.MarshalIndent(merged, "", "  ")
+	if err != nil {
+		return 0, fmt.Errorf("failed to marshal merged GitHub Copilot MCP config: %w", err)
+	}
+
+	raw = append(raw, '\n')
+
+	outPath := filepath.Join(outputDir, "mcp.json")
+	if err := os.WriteFile(outPath, raw, 0o600); err != nil { //nolint:mnd
+		return 0, fmt.Errorf("failed to write %s: %w", outPath, err)
+	}
+
+	return exported, nil
 }
