@@ -69,7 +69,7 @@ ENTRYPOINT ["/go/bin/dlv", "--listen=0.0.0.0:2345", "--headless=true", "--accept
 
 # Runtime stage - using Busybox because regsync may need shell/tools
 # and alpine has more vulnerabilities than busybox.
-FROM busybox:stable-musl@sha256:3c6ae8008e2c2eedd141725c30b20d9c36b026eb796688f88205845ef17aa213
+FROM busybox:1.37.0-musl@sha256:19b646668802469d968a05342a601e78da4322a414a7c09b1c9ee25165042138
 
 # Create non-root user matching distroless nonroot
 RUN addgroup -g 55532 -S nonroot && adduser -u 55532 -S nonroot -G nonroot
@@ -87,7 +87,7 @@ USER 55532:55532
 ENTRYPOINT ["./reconciler"]
 
 # Coverage image - includes tar for kubectl cp to work
-FROM busybox:stable-musl@sha256:3c6ae8008e2c2eedd141725c30b20d9c36b026eb796688f88205845ef17aa213 AS coverage
+FROM busybox:1.37.0-musl@sha256:19b646668802469d968a05342a601e78da4322a414a7c09b1c9ee25165042138 AS coverage
 
 WORKDIR /
 
