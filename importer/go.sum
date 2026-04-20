@@ -230,8 +230,8 @@ github.com/minio/sha256-simd v1.0.1 h1:6kaan5IFmwTNynnKKpDHe6FWHohJOHhCPchzK49dz
 github.com/minio/sha256-simd v1.0.1/go.mod h1:Pz6AKMiUdngCLpeTL/RJY1M9rUuPMYujV5xJjtbRSN8=
 github.com/mitchellh/mapstructure v1.5.1-0.20231216201459-8508981c8b6c h1:cqn374mizHuIWj+OSJCajGr/phAmuMug9qIX3l9CflE=
 github.com/mitchellh/mapstructure v1.5.1-0.20231216201459-8508981c8b6c/go.mod h1:bFUtVrKA4DC2yAKiSyO/QUcy7e+RRV2QTWOzhPopBRo=
-github.com/modelcontextprotocol/registry v1.5.0 h1:V2SnpNc9Yq5F8udOHJdxCZB+Uv+TRMWTzpyEgzJjnxY=
-github.com/modelcontextprotocol/registry v1.5.0/go.mod h1:0zsxw7/nbvDaur8FDius7NQMg6C8vRIz5S+atl04pK0=
+github.com/modelcontextprotocol/registry v1.6.0 h1:KBUecboLdaf7T564TMY77PwjE0qPXk7peIWtk25oXzo=
+github.com/modelcontextprotocol/registry v1.6.0/go.mod h1:NMhz9I+4Kd8g5GUDaNdXaVgxB6BP/DHaLGwSDP5WaQw=
 github.com/mr-tron/base58 v1.3.0 h1:K6Y13R2h+dku0wOqKtecgRnBUBPrZzLZy5aIj8lCcJI=
 github.com/mr-tron/base58 v1.3.0/go.mod h1:2BuubE67DCSWwVfx37JWNG8emOC0sHEU4/HpcYgCLX8=
 github.com/muesli/cancelreader v0.2.2 h1:3I4Kt4BQjOR54NavqnDogx/MIoWBFa0StPA8ELUXHmA=

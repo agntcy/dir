@@ -20,7 +20,7 @@ require (
 	github.com/agntcy/dir/utils v1.2.0
 	github.com/agntcy/oasf-sdk/pkg v1.0.5
 	github.com/mark3labs/mcphost v0.34.0
-	github.com/modelcontextprotocol/registry v1.5.0
+	github.com/modelcontextprotocol/registry v1.6.0
 	google.golang.org/protobuf v1.36.11
 )
 
