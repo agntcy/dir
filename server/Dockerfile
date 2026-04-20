@@ -13,7 +13,8 @@ RUN --mount=type=cache,id=${TARGETPLATFORM}-apt,target=/var/cache/apt,sharing=lo
     apt-get update \
     && xx-apt-get install -y --no-install-recommends \
     gcc \
-    libc6-dev
+    libc6-dev \
+    ca-certificates
 
 WORKDIR /build/server
 
@@ -63,21 +64,22 @@ USER 65532:65532
 ENTRYPOINT ["./apiserver", "run"]
 
 # Coverage image - includes tar for kubectl cp to work
-FROM alpine:3.23@sha256:25109184c71bdad752c8312a8623239686a9a2071e8825f20acb8f2198c3f659 AS coverage
-
-RUN apk add --no-cache tar
+FROM busybox:stable-musl@sha256:3c6ae8008e2c2eedd141725c30b20d9c36b026eb796688f88205845ef17aa213 AS coverage
 
 WORKDIR /
+
+COPY --from=builder /etc/ssl/certs /etc/ssl/certs
+COPY --from=builder /usr/share/ca-certificates /usr/share/ca-certificates
 
 COPY --from=builder /bin/apiserver ./apiserver
 COPY --from=ghcr.io/grpc-ecosystem/grpc-health-probe:v0.4.48 /ko-app/grpc-health-probe /bin/grpc-health-probe
 
 # Create a non-root user for coverage
-RUN addgroup -g 65532 -S nonroot && adduser -u 65532 -S nonroot -G nonroot
+RUN addgroup -g 55532 -S nonroot && adduser -u 55532 -S nonroot -G nonroot
 
 # Create coverage directory with proper permissions
-RUN mkdir -p /tmp/coverage && chown -R 65532:65532 /tmp/coverage
+RUN mkdir -p /tmp/coverage && chown -R 55532:55532 /tmp/coverage
 
-USER 65532:65532
+USER 55532:55532
 
 ENTRYPOINT ["./apiserver", "run"]
