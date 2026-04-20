@@ -15,7 +15,7 @@ vars:
 
   ## External dependency versions
   # renovate: datasource=go depName=github.com/project-zot/zot versioning=semver
-  ZOT_VERSION: "2.1.15"
+  ZOT_VERSION: "2.1.16"
   # renovate: datasource=go depName=github.com/spiffe/spire versioning=semver
   SPIRE_VERSION: "1.14.5"
   # renovate: datasource=go depName=github.com/regclient/regclient versioning=semver
