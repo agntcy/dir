@@ -19,7 +19,7 @@ vars:
   # renovate: datasource=go depName=github.com/spiffe/spire versioning=semver
   SPIRE_VERSION: "1.14.5"
   # renovate: datasource=go depName=github.com/regclient/regclient versioning=semver
-  REGSYNC_VERSION: "v0.11.2"
+  REGSYNC_VERSION: "v0.11.3"
   # renovate: datasource=docker depName=docker.io/bitnami/postgresql
   POSTGRESQL_VERSION: "latest@sha256:155a5ff04d5059d8076a85dca404d8a3bc2d765db0fea1afd25ae68e9ac38903"
   # renovate: datasource=docker depName=docker.io/envoyproxy/envoy
