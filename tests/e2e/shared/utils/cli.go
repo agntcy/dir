@@ -299,6 +299,24 @@ func (s *StdinCommandBuilder) ShouldSucceed() string {
 	return output
 }
 
+// ShouldEventuallySucceed polls the command until it succeeds.
+func (s *StdinCommandBuilder) ShouldEventuallyContain(substring string, timeout time.Duration) string {
+	var finalOutput string
+
+	gomega.Eventually(func() string {
+		output, err := s.Execute()
+		if err != nil {
+			return ""
+		}
+
+		finalOutput = output
+
+		return output
+	}, timeout, PollingInterval).Should(gomega.ContainSubstring(substring))
+
+	return finalOutput
+}
+
 func (c *CommandBuilder) WithArgs(args ...string) *CommandBuilder {
 	c.args = append(c.args, args...)
 

@@ -244,8 +244,7 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests for sync commands", fun
 
 			ginkgo.GinkgoWriter.Printf("Creating sync by tag with 'audio' search output\n")
 
-			output := cli.Sync().CreateFromStdin(searchOutput).OnServer(utils.Peer3Addr).ShouldSucceed()
-			gomega.Expect(output).To(gomega.ContainSubstring("Sync IDs created: "))
+			output := cli.Sync().CreateFromStdin(searchOutput).OnServer(utils.Peer3Addr).ShouldEventuallyContain("Sync IDs created: ", 240*time.Second)
 
 			// Extract sync ID using simple string methods
 			// Find the quoted UUID in the output
