@@ -41,21 +41,7 @@ func NewWorker(config Config, localRegistry ociconfig.Config, syncObj types.Sync
 // Returns a WorkerResult indicating success or failure.
 // The caller (task) is responsible for updating the database based on the result.
 func (w *Worker) Run(ctx context.Context) error {
-	remoteDirectoryURL := w.syncObj.GetRemoteDirectoryURL()
-
-	logger.Info("Executing sync", "sync_id", w.syncID, "remote_directory", remoteDirectoryURL)
-
-	// Negotiate credentials with the remote Directory node
-	credentials, err := NegotiateCredentials(ctx, remoteDirectoryURL, w.config.Authn)
-	if err != nil {
-		return fmt.Errorf("failed to negotiate credentials: %w", err)
-	}
-
-	logger.Debug("Credentials negotiated successfully",
-		"sync_id", w.syncID,
-		"registry", credentials.RegistryAddress,
-		"repository", credentials.RepositoryName,
-	)
+	logger.Info("Executing sync", "sync_id", w.syncID)
 
 	// Create isolated regsync config for this worker
 	regsyncConfig := NewRegsyncConfig()
@@ -68,13 +54,39 @@ func (w *Worker) Run(ctx context.Context) error {
 		w.localRegistry.Insecure,
 	)
 
-	// Add credentials for the remote registry
-	regsyncConfig.AddCredential(
-		credentials.RegistryAddress,
-		credentials.Credentials.Username,
-		credentials.Credentials.Password,
-		credentials.Credentials.Insecure,
-	)
+	var credentials *CredentialsResult
+
+	if w.syncObj.GetRemoteRegistryURL() != "" {
+		logger.Info("Using explicit registry URL (skipping credential negotiation)",
+			"sync_id", w.syncID,
+			"registry", w.syncObj.GetRemoteRegistryURL(),
+			"repository", w.syncObj.GetRepositoryName(),
+		)
+
+		credentials = &CredentialsResult{
+			RegistryAddress: w.syncObj.GetRemoteRegistryURL(),
+			RepositoryName:  w.syncObj.GetRepositoryName(),
+		}
+	} else {
+		remoteDirectoryURL := w.syncObj.GetRemoteDirectoryURL()
+
+		logger.Info("Negotiating credentials", "sync_id", w.syncID, "remote_directory", remoteDirectoryURL)
+
+		var err error
+
+		credentials, err = NegotiateCredentials(ctx, remoteDirectoryURL, w.config.Authn)
+		if err != nil {
+			return fmt.Errorf("failed to negotiate credentials: %w", err)
+		}
+
+		// Add credentials for the remote registry
+		regsyncConfig.AddCredential(
+			credentials.RegistryAddress,
+			credentials.Credentials.Username,
+			credentials.Credentials.Password,
+			credentials.Credentials.Insecure,
+		)
+	}
 
 	// Configure the sync entry
 	regsyncConfig.AddSync(

@@ -444,7 +444,7 @@ func TestCommand_Initialization(t *testing.T) {
 // TestCreateCmd_Initialization tests create subcommand initialization.
 func TestCreateCmd_Initialization(t *testing.T) {
 	assert.NotNil(t, createCmd)
-	assert.Equal(t, "create <remote-directory-url>", createCmd.Use)
+	assert.Equal(t, "create [remote-directory-url]", createCmd.Use)
 	assert.NotEmpty(t, createCmd.Short)
 	assert.NotEmpty(t, createCmd.Long)
 	assert.NotNil(t, createCmd.Args)
@@ -514,8 +514,14 @@ func TestCreateCmd_ArgsValidation(t *testing.T) {
 			expectError: true,
 		},
 		{
-			name:        "args with stdin flag",
+			name:        "one arg with stdin flag",
 			args:        []string{"http://example.com"},
+			stdin:       true,
+			expectError: false,
+		},
+		{
+			name:        "multiple args with stdin flag",
+			args:        []string{"http://example.com", "extra"},
 			stdin:       true,
 			expectError: true,
 		},
