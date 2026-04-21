@@ -582,16 +582,16 @@ externalSecrets:
 oasf:
   enabled: false
 
-# Envoy auth gateway subchart configuration (OPTIONAL)
+# OIDC Gateway subchart configuration (OPTIONAL)
 # Provides OIDC JWT authentication and Casbin-based authorization via Envoy gateway
 # NOT installed by default. Set enabled: true to deploy.
 # Section 1: Enable/disable the subchart
 envoyAuthz:
   enabled: false
 
-# Section 2: Configuration values for the envoy-authz subchart
+# Section 2: Configuration values for the oidc-gateway subchart
 # NOTE: Only takes effect when envoyAuthz.enabled: true
-envoy-authz:
+oidc-gateway:
   envoy:
     replicaCount: 2
 
@@ -602,6 +602,9 @@ envoy-authz:
       # This is an overall Envoy -> apiserver request/stream timeout, unlike the
       # ingress read/send timeouts below which are mostly idle-gap timeouts.
       timeout: 30s
+      # Dedicated long-lived streaming RPC route emitted by the oidc-gateway chart.
+      # This preserves the old envoy-authz behavior for EventService/Listen.
+      streamingPath: "/agntcy.dir.events.v1.EventService/Listen"
       # Dedicated timeout for the long-lived EventService/Listen stream route.
       # Set to 0s to disable the Envoy route timeout for that RPC only.
       # The effective stream lifetime is still capped by any tighter ingress or
@@ -609,18 +612,22 @@ envoy-authz:
       listenRouteTimeout: 0s
 
     oidc:
-      dex:
-        enabled: true
-        issuer: "https://dex.example.com"
-        jwksUri: "https://dex.example.com/keys"
-        jwksHost: "dex.example.com"
+      # Generic OIDC issuers list — add one entry per identity provider.
+      # Example:
+      # issuers:
+      #   - name: dex
+      #     enabled: true
+      #     issuer: "https://dex.example.com"
+      #     jwksUri: "https://dex.example.com/keys"
+      #     jwksHost: "dex.example.com"
+      issuers: []
+      # GitHub Actions OIDC — special-cased principal extraction
       github:
-        enabled: true
+        enabled: false
         issuer: "https://token.actions.githubusercontent.com"
         jwksUri: "https://token.actions.githubusercontent.com/.well-known/jwks"
         jwksHost: "token.actions.githubusercontent.com"
         # Optional audience enforcement for GitHub OIDC tokens.
-        # If set, workflow token request must use one of these values.
         audiences: []
       jwksTimeout: 5s
       jwksCacheSeconds: 300
@@ -628,14 +635,14 @@ envoy-authz:
     spiffe:
       enabled: true
       # trustDomain: example.org
-      # className: dir-spire
+      # className: spire
 
   authServer:
     replicaCount: 2
 
     # image:
-    #   repository: ghcr.io/agntcy/envoy-authz-dev
-    #   tag: feat-oidc-auth
+    #   repository: ghcr.io/agntcy/oidc-gateway
+    #   tag: v0.1.0
     #   pullPolicy: IfNotPresent
 
     # OIDC config - all values are user-specific; provide your own
@@ -645,7 +652,7 @@ envoy-authz:
         emailPath: "email"
       # Example:
       # issuers:
-      #   - provider: "https://dex.example.com"
+      #   - provider: "https://your-idp.example.com"
       #     principalType: "user"
       #   - provider: "https://token.actions.githubusercontent.com"
       #     principalType: "github"
@@ -659,7 +666,7 @@ envoy-authz:
         - "/healthz"
         - "/grpc.reflection"
       roles:
-        # Example admin: users: ["user:https://dex.example.com:admin@example.com"]
+        # Example admin: users: ["user:https://your-idp.example.com:admin@example.com"]
         admin:
           allowedMethods: ["*"]
           users: []
@@ -668,14 +675,14 @@ envoy-authz:
             - "/agntcy.dir.store.v1.StoreService/Pull"
             - "/agntcy.dir.store.v1.StoreService/Lookup"
           users: []
-        # Example: clients: ["client:https://dex.example.com:service-client-id"]
+        # Example: clients: ["client:https://your-idp.example.com:service-client-id"]
         ci-writer:
           allowedMethods:
             - "/agntcy.dir.store.v1.StoreService/Push"
             - "/agntcy.dir.store.v1.StoreService/Pull"
           users: []
           clients: []
-        # Example GitHub Actions deployer (uncomment when deploy.yml exists):
+        # Example GitHub Actions deployer:
         # prod-deployer:
         #   allowedMethods: ["*"]
         #   githubWorkflows:
@@ -692,8 +699,6 @@ envoy-authz:
       nginx.ingress.kubernetes.io/grpc-backend: "true"
       # Recommended for long-lived gRPC streams such as EventService/Listen.
       # These are ingress-layer read/send idle timeouts, not overall request caps.
-      # They complement envoy.backend.timeout / listenRouteTimeout on the
-      # Envoy -> apiserver hop; the most restrictive layer still wins.
       # nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"
       # nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"
       # nginx.ingress.kubernetes.io/proxy-stream-timeout: "3600"

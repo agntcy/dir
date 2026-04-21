@@ -5,11 +5,11 @@ dependencies:
 - name: oasf
   repository: oci://ghcr.io/agntcy/oasf/helm-charts
   version: v0.5.1
-- name: envoy-authz
-  repository: file://../../envoy-authz
-  version: 0.2.0
+- name: oidc-gateway
+  repository: oci://ghcr.io/agntcy/oidc-gateway/helm-charts
+  version: v0.1.0
 - name: postgresql
   repository: https://charts.bitnami.com/bitnami
   version: 18.5.23
-digest: sha256:a246eaa52fb971923c12e0b2bed9aacdb5b7f4f10ad0e85d127d2a311111b748
-generated: "2026-04-20T18:24:36.337531727Z"
+digest: sha256:25aee34012902ec53f1d6e9fb53de6b962ec71b2be53d29ca9fc582c2de6ac74
+generated: "2026-04-21T13:32:18.096684+02:00"
