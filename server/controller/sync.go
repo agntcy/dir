@@ -38,13 +38,26 @@ func NewSyncController(db types.DatabaseAPI, opts types.APIOptions) storev1.Sync
 func (c *syncCtlr) CreateSync(ctx context.Context, req *storev1.CreateSyncRequest) (*storev1.CreateSyncResponse, error) {
 	syncLogger.Debug("Called sync controller's CreateSync method")
 
-	// Validate the remote directory URL
-	if err := validateRemoteDirectoryURL(req.GetRemoteDirectoryUrl()); err != nil {
-		return nil, status.Errorf(codes.InvalidArgument, "invalid remote directory URL: %v", err)
+	remoteURL := req.GetRemoteDirectoryUrl()
+	registryURL := req.GetRemoteRegistryUrl()
+
+	if remoteURL == "" && registryURL == "" {
+		return nil, status.Errorf(codes.InvalidArgument, "at least one of remote_directory_url or remote_registry_url must be provided")
 	}
 
-	// Add sync to database
-	id, err := c.db.CreateSync(req.GetRemoteDirectoryUrl(), req.GetCids())
+	if remoteURL != "" {
+		if err := validateURL(remoteURL); err != nil {
+			return nil, status.Errorf(codes.InvalidArgument, "invalid remote directory URL: %v", err)
+		}
+	}
+
+	if registryURL != "" {
+		if err := validateURL(registryURL); err != nil {
+			return nil, status.Errorf(codes.InvalidArgument, "invalid remote registry URL: %v", err)
+		}
+	}
+
+	id, err := c.db.CreateSync(remoteURL, req.GetCids(), registryURL, req.GetRepositoryName())
 	if err != nil {
 		return nil, fmt.Errorf("failed to create sync: %w", err)
 	}
@@ -71,6 +84,8 @@ func (c *syncCtlr) ListSyncs(req *storev1.ListSyncsRequest, srv storev1.SyncServ
 			SyncId:             sync.GetID(),
 			RemoteDirectoryUrl: sync.GetRemoteDirectoryURL(),
 			Status:             sync.GetStatus(),
+			RemoteRegistryUrl:  sync.GetRemoteRegistryURL(),
+			RepositoryName:     sync.GetRepositoryName(),
 		}); err != nil {
 			return fmt.Errorf("failed to send sync object: %w", err)
 		}
@@ -93,6 +108,8 @@ func (c *syncCtlr) GetSync(_ context.Context, req *storev1.GetSyncRequest) (*sto
 		SyncId:             syncObj.GetID(),
 		RemoteDirectoryUrl: syncObj.GetRemoteDirectoryURL(),
 		Status:             syncObj.GetStatus(),
+		RemoteRegistryUrl:  syncObj.GetRemoteRegistryURL(),
+		RepositoryName:     syncObj.GetRepositoryName(),
 	}, nil
 }
 
@@ -153,10 +170,10 @@ func (c *syncCtlr) RequestRegistryCredentials(_ context.Context, req *storev1.Re
 	}, nil
 }
 
-// validateRemoteDirectoryURL validates the format of a remote directory URL.
-func validateRemoteDirectoryURL(rawURL string) error {
+// validateURL validates that a URL has a valid scheme and hostname.
+func validateURL(rawURL string) error {
 	if rawURL == "" {
-		return errors.New("remote directory URL is required")
+		return errors.New("URL is required")
 	}
 
 	// If the URL doesn't have a scheme, treat it as a raw host:port

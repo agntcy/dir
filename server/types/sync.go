@@ -10,4 +10,6 @@ type SyncObject interface {
 	GetRemoteDirectoryURL() string
 	GetCIDs() []string
 	GetStatus() storev1.SyncStatus
+	GetRemoteRegistryURL() string
+	GetRepositoryName() string
 }
