@@ -14,6 +14,7 @@ import (
 	storev1 "github.com/agntcy/dir/api/store/v1"
 	"github.com/agntcy/dir/cli/presenter"
 	ctxUtils "github.com/agntcy/dir/cli/util/context"
+	"github.com/agntcy/dir/client"
 	"github.com/spf13/cobra"
 )
 
@@ -26,10 +27,18 @@ It provides subcommands to create, list, monitor, and delete sync operations.`,
 
 // Create sync subcommand.
 var createCmd = &cobra.Command{
-	Use:   "create <remote-directory-url>",
+	Use:   "create [remote-directory-url]",
 	Short: "Create a new synchronization operation",
 	Long: `Create initiates a new synchronization operation from a remote Directory node.
 The operation is asynchronous and returns a sync ID for tracking progress.
+
+Two modes are supported:
+
+1. Standard sync (credential negotiation via gRPC):
+  dirctl sync create https://directory.example.com
+
+2. Direct registry sync (anonymous pull from public OCI registry):
+  dirctl sync create --registry https://registry.example.com --cids cid1,cid2
 
 When --stdin flag is used, the command parses JSON routing search output from stdin
 and creates sync operations for each provider found in the search results.
@@ -37,16 +46,19 @@ and creates sync operations for each provider found in the search results.
 Usage examples:
 
 1. Create sync with remote peer:
-  dir sync create https://directory.example.com
+  dirctl sync create https://directory.example.com
 
 2. Create sync with specific CIDs:
-  dir sync create http://localhost:8080 --cids cid1,cid2,cid3
+  dirctl sync create http://localhost:8080 --cids cid1,cid2,cid3
 
-3. Create sync from routing search output:
+3. Create sync from a public OCI registry:
+  dirctl sync create --registry https://registry.example.com --repository dir --cids cid1,cid2
+
+4. Create sync from routing search output:
   dirctl routing search --skill "AI" --output json | dirctl sync create --stdin`,
 	Args: func(cmd *cobra.Command, args []string) error {
-		if opts.Stdin {
-			return cobra.MaximumNArgs(0)(cmd, args)
+		if opts.Stdin || opts.Registry != "" {
+			return cobra.MaximumNArgs(1)(cmd, args)
 		}
 
 		return cobra.ExactArgs(1)(cmd, args)
@@ -56,7 +68,16 @@ Usage examples:
 			return runCreateSyncFromStdin(cmd)
 		}
 
-		return runCreateSync(cmd, args[0], opts.CIDs)
+		var remoteURL string
+		if len(args) > 0 {
+			remoteURL = args[0]
+		}
+
+		if remoteURL == "" && opts.Registry == "" {
+			return errors.New("either a remote directory URL or --registry must be provided")
+		}
+
+		return runCreateSync(cmd, remoteURL, opts.CIDs)
 	},
 }
 
@@ -146,22 +167,24 @@ func init() {
 }
 
 func runCreateSync(cmd *cobra.Command, remoteURL string, cids []string) error {
-	// Validate remote URL
-	if remoteURL == "" {
-		return errors.New("remote URL is required")
-	}
-
-	client, ok := ctxUtils.GetClientFromContext(cmd.Context())
+	dirClient, ok := ctxUtils.GetClientFromContext(cmd.Context())
 	if !ok {
 		return errors.New("failed to get client from context")
 	}
 
-	syncID, err := client.CreateSync(cmd.Context(), remoteURL, cids)
+	var syncOpts *client.CreateSyncOptions
+	if opts.Registry != "" {
+		syncOpts = &client.CreateSyncOptions{
+			RemoteRegistryURL: opts.Registry,
+			RepositoryName:    opts.RepositoryName,
+		}
+	}
+
+	syncID, err := dirClient.CreateSync(cmd.Context(), remoteURL, cids, syncOpts)
 	if err != nil {
 		return fmt.Errorf("failed to create sync: %w", err)
 	}
 
-	// Output in the appropriate format
 	return presenter.PrintMessage(cmd, "sync", "Sync created with ID", syncID)
 }
 
@@ -252,11 +275,46 @@ func runCreateSyncFromStdin(cmd *cobra.Command) error {
 		return nil
 	}
 
+	if opts.Registry != "" {
+		return createRegistrySyncFromResults(cmd, results)
+	}
+
 	// Group results by API address (one sync per peer)
 	peerResults := groupResultsByAPIAddress(results)
 
 	// Create sync operations for each peer
 	return createSyncOperations(cmd, peerResults)
+}
+
+func createRegistrySyncFromResults(cmd *cobra.Command, results []*routingv1.SearchResponse) error {
+	dirClient, ok := ctxUtils.GetClientFromContext(cmd.Context())
+	if !ok {
+		return errors.New("failed to get client from context")
+	}
+
+	var cids []string
+
+	for _, result := range results {
+		if cid := result.GetRecordRef().GetCid(); cid != "" {
+			cids = append(cids, cid)
+		}
+	}
+
+	if len(cids) == 0 {
+		presenter.PrintSmartf(cmd, "No CIDs found in search results\n")
+
+		return nil
+	}
+
+	syncID, err := dirClient.CreateSync(cmd.Context(), "", cids, &client.CreateSyncOptions{
+		RemoteRegistryURL: opts.Registry,
+		RepositoryName:    opts.RepositoryName,
+	})
+	if err != nil {
+		return fmt.Errorf("failed to create sync: %w", err)
+	}
+
+	return presenter.PrintMessage(cmd, "sync", "Sync created with ID", syncID)
 }
 
 func parseSearchOutput(input io.Reader) ([]*routingv1.SearchResponse, error) {
@@ -333,7 +391,7 @@ func createSyncOperations(cmd *cobra.Command, peerResults map[string]PeerSyncInf
 		}
 
 		// Create sync operation
-		syncID, err := client.CreateSync(cmd.Context(), syncInfo.APIAddress, syncInfo.CIDs)
+		syncID, err := client.CreateSync(cmd.Context(), syncInfo.APIAddress, syncInfo.CIDs, nil)
 		if err != nil {
 			presenter.PrintSmartf(cmd, "ERROR: Failed to create sync for peer %s: %v\n", apiAddress, err)
 

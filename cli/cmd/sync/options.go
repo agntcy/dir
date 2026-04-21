@@ -8,10 +8,12 @@ import "github.com/agntcy/dir/cli/presenter"
 var opts = &options{}
 
 type options struct {
-	Limit  uint32
-	Offset uint32
-	CIDs   []string
-	Stdin  bool
+	Limit          uint32
+	Offset         uint32
+	CIDs           []string
+	Stdin          bool
+	Registry       string
+	RepositoryName string
 }
 
 //nolint:mnd
@@ -25,6 +27,8 @@ func init() {
 	createFlags := createCmd.Flags()
 	createFlags.StringSliceVar(&opts.CIDs, "cids", []string{}, "List of CIDs to synchronize from the remote Directory. If empty, all objects will be synchronized.")
 	createFlags.BoolVar(&opts.Stdin, "stdin", false, "Parse routing search output from stdin to create sync operations for each provider")
+	createFlags.StringVar(&opts.Registry, "registry", "", "Remote OCI registry URL for direct pull without credential negotiation (e.g., https://ghcr.io)")
+	createFlags.StringVar(&opts.RepositoryName, "repository", "", "Repository name within the registry (default: dir)")
 
 	// Add output format flags to all sync subcommands
 	presenter.AddOutputFlags(createCmd)

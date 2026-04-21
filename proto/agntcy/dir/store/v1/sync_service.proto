@@ -37,12 +37,16 @@ service SyncService {
 
 // CreateSyncRequest defines the parameters for creating a new synchronization operation.
 //
-// Currently supports basic synchronization of all objects from a remote Directory.
-// Future versions may include additional options for filtering and scheduling capabilities.
+// Supports two modes:
+// 1. Standard sync: provide remote_directory_url to negotiate registry credentials via gRPC.
+// 2. Direct registry sync: provide remote_registry_url (and optionally repository_name) to pull
+//    directly from a public OCI registry without credential negotiation.
+//
+// At least one of remote_directory_url or remote_registry_url must be provided.
 message CreateSyncRequest {
-  // URL of the remote Registry to synchronize from.
+  // URL of the remote Directory to synchronize from.
   //
-  // This should be a complete URL including protocol and port if non-standard.
+  // Used for credential negotiation via gRPC. Optional when remote_registry_url is provided.
   // Examples:
   // - "https://directory.example.com"
   // - "http://localhost:8080"
@@ -52,6 +56,18 @@ message CreateSyncRequest {
   // List of CIDs to synchronize from the remote Directory.
   // If empty, all objects will be synchronized.
   repeated string cids = 2;
+
+  // URL of the remote OCI registry to pull from directly, bypassing credential negotiation.
+  // When set, the sync worker pulls from this registry without calling RequestRegistryCredentials.
+  // Examples:
+  // - "https://registry.example.com"
+  // - "https://ghcr.io"
+  // - "http://localhost:5000"
+  string remote_registry_url = 3;
+
+  // Repository name within the registry. Used with remote_registry_url.
+  // Defaults to "dir" if not specified.
+  string repository_name = 4;
 }
 
 // CreateSyncResponse contains the result of creating a new synchronization operation.
@@ -80,6 +96,12 @@ message ListSyncsItem {
 
   // URL of the remote Directory being synchronized from.
   string remote_directory_url = 3;
+
+  // URL of the remote OCI registry for direct registry sync (empty for standard sync).
+  string remote_registry_url = 4;
+
+  // Repository name within the registry.
+  string repository_name = 5;
 }
 
 // GetSyncRequest specifies which synchronization status to retrieve.
@@ -105,6 +127,12 @@ message GetSyncResponse {
 
   // Timestamp of the most recent status update for this synchronization in the RFC3339 format.
   string last_update_time = 5;
+
+  // URL of the remote OCI registry for direct registry sync (empty for standard sync).
+  string remote_registry_url = 6;
+
+  // Repository name within the registry.
+  string repository_name = 7;
 }
 
 // DeleteSyncRequest specifies which synchronization to delete.

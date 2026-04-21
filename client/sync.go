@@ -12,11 +12,24 @@ import (
 	storev1 "github.com/agntcy/dir/api/store/v1"
 )
 
-func (c *Client) CreateSync(ctx context.Context, remoteURL string, cids []string) (string, error) {
-	meta, err := c.SyncServiceClient.CreateSync(ctx, &storev1.CreateSyncRequest{
+// CreateSyncOptions holds optional parameters for creating a sync.
+type CreateSyncOptions struct {
+	RemoteRegistryURL string
+	RepositoryName    string
+}
+
+func (c *Client) CreateSync(ctx context.Context, remoteURL string, cids []string, opts *CreateSyncOptions) (string, error) {
+	req := &storev1.CreateSyncRequest{
 		RemoteDirectoryUrl: remoteURL,
 		Cids:               cids,
-	})
+	}
+
+	if opts != nil {
+		req.RemoteRegistryUrl = opts.RemoteRegistryURL
+		req.RepositoryName = opts.RepositoryName
+	}
+
+	meta, err := c.SyncServiceClient.CreateSync(ctx, req)
 	if err != nil {
 		return "", fmt.Errorf("failed to create sync: %w", err)
 	}
