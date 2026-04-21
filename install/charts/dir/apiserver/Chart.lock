@@ -7,9 +7,9 @@ dependencies:
   version: v0.5.1
 - name: oidc-gateway
   repository: oci://ghcr.io/agntcy/oidc-gateway/helm-charts
-  version: v0.1.0
+  version: v0.1.1
 - name: postgresql
   repository: https://charts.bitnami.com/bitnami
   version: 18.5.23
-digest: sha256:25aee34012902ec53f1d6e9fb53de6b962ec71b2be53d29ca9fc582c2de6ac74
-generated: "2026-04-21T13:32:18.096684+02:00"
+digest: sha256:64053b692f663fb41341cefb8b2cc4b2f66d00f1c62037dd3df72a9c8973b1c6
+generated: "2026-04-21T16:31:10.134623+02:00"

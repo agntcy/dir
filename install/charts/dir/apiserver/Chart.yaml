@@ -42,7 +42,7 @@ dependencies:
   # Only installed when explicitly enabled via: envoyAuthz.enabled: true
   # Default: disabled (envoyAuthz.enabled: false in values.yaml)
   - name: oidc-gateway
-    version: "v0.1.0"
+    version: "v0.1.1"
     repository: "oci://ghcr.io/agntcy/oidc-gateway/helm-charts"
     condition: envoyAuthz.enabled
   # PostgreSQL database (Bitnami subchart)
