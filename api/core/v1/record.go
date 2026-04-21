@@ -44,6 +44,32 @@ func InitializeValidator(schemaURL string) error {
 	return nil
 }
 
+// GetName extracts the top-level "name" field from the record's data.
+func (r *Record) GetName() string {
+	if r == nil || r.GetData() == nil {
+		return ""
+	}
+
+	if v, ok := r.GetData().GetFields()["name"]; ok {
+		return v.GetStringValue()
+	}
+
+	return ""
+}
+
+// GetVersion extracts the top-level "version" field from the record's data.
+func (r *Record) GetVersion() string {
+	if r == nil || r.GetData() == nil {
+		return ""
+	}
+
+	if v, ok := r.GetData().GetFields()["version"]; ok {
+		return v.GetStringValue()
+	}
+
+	return ""
+}
+
 // GetCid calculates and returns the CID for this record.
 // The CID is calculated from the record's content using CIDv1, codec 1, SHA2-256.
 // Uses canonical JSON marshaling to ensure consistent, cross-language compatible results.

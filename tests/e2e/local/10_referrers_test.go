@@ -54,8 +54,7 @@ func generateRecord() *corev1.Record {
 	record, err := corev1.UnmarshalRecord(testdata.ExpectedRecordV100JSON)
 	gomega.Expect(err).NotTo(gomega.HaveOccurred())
 
-	name := record.GetData().GetFields()["name"].GetStringValue()
-	record.Data.Fields["name"] = structpb.NewStringValue(name + "_" + uuid.NewString()[:8])
+	record.Data.Fields["name"] = structpb.NewStringValue(record.GetName() + "_" + uuid.NewString()[:8])
 
 	return record
 }

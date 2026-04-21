@@ -423,3 +423,92 @@ func TestRecord_Decode(t *testing.T) {
 		})
 	}
 }
+
+func TestRecord_GetName(t *testing.T) {
+	tests := []struct {
+		name   string
+		record *corev1.Record
+		want   string
+	}{
+		{
+			name: "returns name from valid record",
+			record: corev1.New(&oasfv1alpha1.Record{
+				Name:          "my-agent",
+				SchemaVersion: "0.7.0",
+			}),
+			want: "my-agent",
+		},
+		{
+			name:   "returns empty for nil record",
+			record: nil,
+			want:   "",
+		},
+		{
+			name:   "returns empty for empty record",
+			record: &corev1.Record{},
+			want:   "",
+		},
+		{
+			name: "returns empty when name field is absent",
+			record: &corev1.Record{
+				Data: &structpb.Struct{
+					Fields: map[string]*structpb.Value{
+						"description": structpb.NewStringValue("no name here"),
+					},
+				},
+			},
+			want: "",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equal(t, tt.want, tt.record.GetName())
+		})
+	}
+}
+
+func TestRecord_GetVersion(t *testing.T) {
+	tests := []struct {
+		name   string
+		record *corev1.Record
+		want   string
+	}{
+		{
+			name: "returns version from valid record",
+			record: corev1.New(&oasfv1alpha1.Record{
+				Name:          "my-agent",
+				SchemaVersion: "0.7.0",
+				Version:       "2.1.0",
+			}),
+			want: "2.1.0",
+		},
+		{
+			name:   "returns empty for nil record",
+			record: nil,
+			want:   "",
+		},
+		{
+			name:   "returns empty for empty record",
+			record: &corev1.Record{},
+			want:   "",
+		},
+		{
+			name: "returns empty when version field is absent",
+			record: &corev1.Record{
+				Data: &structpb.Struct{
+					Fields: map[string]*structpb.Value{
+						"name": structpb.NewStringValue("no-version"),
+					},
+				},
+			},
+			want: "",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equal(t, tt.want, tt.record.GetVersion())
+		})
+	}
+}

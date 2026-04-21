@@ -267,11 +267,8 @@ func TestLatestByName(t *testing.T) {
 		result := format.LatestByName([]*corev1.Record{v1, v2})
 		require.Len(t, result, 1)
 
-		name := format.RecordName(result[0])
-		assert.Equal(t, "test-a2a-agent", name)
-
-		ver := result[0].GetData().GetFields()["version"].GetStringValue()
-		assert.Equal(t, "2.0.0", ver)
+		assert.Equal(t, "test-a2a-agent", result[0].GetName())
+		assert.Equal(t, "2.0.0", result[0].GetVersion())
 	})
 
 	t.Run("handles v-prefix in version", func(t *testing.T) {
@@ -280,7 +277,7 @@ func TestLatestByName(t *testing.T) {
 
 		result := format.LatestByName([]*corev1.Record{v1, v2})
 		require.Len(t, result, 1)
-		assert.Equal(t, "v2.0.0", result[0].GetData().GetFields()["version"].GetStringValue())
+		assert.Equal(t, "v2.0.0", result[0].GetVersion())
 	})
 
 	t.Run("keeps records with different names", func(t *testing.T) {
@@ -298,8 +295,8 @@ func TestLatestByName(t *testing.T) {
 
 		result := format.LatestByName([]*corev1.Record{r1, r2, r3})
 		require.Len(t, result, 2)
-		assert.Equal(t, "test-a2a-agent", format.RecordName(result[0]))
-		assert.Equal(t, "test-agent", format.RecordName(result[1]))
+		assert.Equal(t, "test-a2a-agent", result[0].GetName())
+		assert.Equal(t, "test-agent", result[1].GetName())
 	})
 
 	t.Run("prefers later if versions are equal", func(t *testing.T) {
@@ -318,8 +315,7 @@ func TestLatestByName(t *testing.T) {
 		result := format.LatestByName([]*corev1.Record{alpha, release})
 		require.Len(t, result, 1)
 
-		ver := result[0].GetData().GetFields()["version"].GetStringValue()
-		assert.NotContains(t, ver, "alpha", "release should beat alpha")
+		assert.NotContains(t, result[0].GetVersion(), "alpha", "release should beat alpha")
 	})
 
 	t.Run("returns nil for empty input", func(t *testing.T) {
@@ -328,11 +324,11 @@ func TestLatestByName(t *testing.T) {
 	})
 }
 
-func TestRecordName(t *testing.T) {
+func TestRecordGetName(t *testing.T) {
 	record := newA2ATestRecord(t)
-	assert.Equal(t, "test-a2a-agent", format.RecordName(record))
+	assert.Equal(t, "test-a2a-agent", record.GetName())
 
-	assert.Empty(t, format.RecordName(&corev1.Record{}))
+	assert.Empty(t, (&corev1.Record{}).GetName())
 }
 
 func TestSanitizeName(t *testing.T) {

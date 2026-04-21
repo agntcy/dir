@@ -13,34 +13,6 @@ import (
 	"golang.org/x/mod/semver"
 )
 
-// RecordName extracts the name field from a record's data.
-func RecordName(record *corev1.Record) string {
-	data := record.GetData()
-	if data == nil {
-		return ""
-	}
-
-	if nameVal, ok := data.GetFields()["name"]; ok {
-		return nameVal.GetStringValue()
-	}
-
-	return ""
-}
-
-// recordVersion extracts the version field from a record's data.
-func recordVersion(record *corev1.Record) string {
-	data := record.GetData()
-	if data == nil {
-		return ""
-	}
-
-	if v, ok := data.GetFields()["version"]; ok {
-		return v.GetStringValue()
-	}
-
-	return ""
-}
-
 // SanitizeName replaces characters unsafe for filenames with hyphens.
 func SanitizeName(name string) string {
 	r := strings.NewReplacer("/", "-", "\\", "-", ":", "-", " ", "-")
@@ -76,8 +48,8 @@ func LatestByName(records []*corev1.Record) []*corev1.Record {
 	var order []string
 
 	for _, r := range records {
-		name := RecordName(r)
-		ver := canonicalVersion(recordVersion(r))
+		name := r.GetName()
+		ver := canonicalVersion(r.GetVersion())
 
 		existing, seen := best[name]
 		if !seen {
@@ -111,7 +83,7 @@ func LatestByName(records []*corev1.Record) []*corev1.Record {
 // When allVersions is false only the name is used (the caller is expected
 // to have already deduplicated to the latest version per name).
 func batchFileName(record *corev1.Record, index int, seen map[string]int, allVersions bool) string {
-	name := RecordName(record)
+	name := record.GetName()
 	if name == "" {
 		return fmt.Sprintf("record_%d", index)
 	}
@@ -119,7 +91,7 @@ func batchFileName(record *corev1.Record, index int, seen map[string]int, allVer
 	base := SanitizeName(name)
 
 	if allVersions {
-		if version := recordVersion(record); version != "" {
+		if version := record.GetVersion(); version != "" {
 			base += "-" + SanitizeName(version)
 		}
 
