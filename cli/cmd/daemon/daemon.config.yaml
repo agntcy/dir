@@ -27,6 +27,11 @@ server:
       # To use a remote OCI registry instead of local_dir, set:
       #   registry_address: "ghcr.io"
       #   repository_name: "org/agents"
+      create_local_registry: true
+      registry_address: "127.0.0.1:5555"
+      repository_name: "dir"
+      auth_config:
+        insecure: true
     verification:
       enabled: true
   routing:

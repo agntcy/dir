@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 
 	networkinit "github.com/agntcy/dir/cli/cmd/network/init"
@@ -61,6 +62,13 @@ func runStart(cmd *cobra.Command, _ []string) error {
 	if cfg.Server.Routing.KeyPath != "" {
 		if err := ensureKeyFile(cfg.Server.Routing.KeyPath); err != nil {
 			return fmt.Errorf("failed to ensure peer identity key: %w", err)
+		}
+	}
+
+	if cfg.Server.Store.OCI.CreateLocalRegistry {
+		registryAddress := strings.Split(cfg.Server.Store.OCI.RegistryAddress, ":")
+		if err := createLocalZotRegistry(cmd.Context(), registryAddress[0], registryAddress[1]); err != nil {
+			return fmt.Errorf("failed to create local zot registry: %w", err)
 		}
 	}
 

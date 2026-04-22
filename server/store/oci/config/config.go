@@ -17,6 +17,9 @@ const (
 )
 
 type Config struct {
+	// Create a local registry if true
+	CreateLocalRegistry bool `json:"create_local_registry,omitempty" mapstructure:"create_local_registry"`
+
 	// Path to a local directory that will be used to cache metadata.
 	// If empty, caching will not be used.
 	CacheDir string `json:"cache_dir,omitempty" mapstructure:"cache_dir"`
