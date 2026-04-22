@@ -10,12 +10,12 @@ import (
 	"os"
 	"strings"
 
+	"github.com/agntcy/dir-importer/config"
+	"github.com/agntcy/dir-importer/factory"
+	"github.com/agntcy/dir-importer/types"
 	signcmd "github.com/agntcy/dir/cli/cmd/sign"
 	"github.com/agntcy/dir/cli/presenter"
 	ctxUtils "github.com/agntcy/dir/cli/util/context"
-	"github.com/agntcy/dir/importer/config"
-	"github.com/agntcy/dir/importer/factory"
-	"github.com/agntcy/dir/importer/types"
 	"github.com/spf13/cobra"
 )
 

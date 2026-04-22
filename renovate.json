@@ -64,7 +64,6 @@
     "github.com/agntcy/dir/client",
     "github.com/agntcy/dir/cli",
     "github.com/agntcy/dir/tests",
-    "github.com/agntcy/dir/importer",
     "github.com/agntcy/dir/mcp",
     "github.com/agntcy/dir/server",
     "github.com/agntcy/dir/utils",

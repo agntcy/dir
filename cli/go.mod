@@ -6,7 +6,6 @@ go 1.26.2
 replace (
 	github.com/agntcy/dir/api => ../api
 	github.com/agntcy/dir/client => ../client
-	github.com/agntcy/dir/importer => ../importer
 	github.com/agntcy/dir/mcp => ../mcp
 	github.com/agntcy/dir/reconciler => ../reconciler
 	github.com/agntcy/dir/runtime/api => ../runtime/api
@@ -27,9 +26,9 @@ replace (
 
 require (
 	buf.build/gen/go/agntcy/oasf/protocolbuffers/go v1.36.11-20260416152818-3df7657b1c83.1
+	github.com/agntcy/dir-importer v1.0.0
 	github.com/agntcy/dir/api v1.2.0
 	github.com/agntcy/dir/client v1.2.0
-	github.com/agntcy/dir/importer v1.2.0
 	github.com/agntcy/dir/mcp v1.2.0
 	github.com/agntcy/dir/reconciler v1.2.0
 	github.com/agntcy/dir/runtime/discovery v1.2.0
@@ -147,6 +146,7 @@ require (
 	github.com/google/go-querystring v1.2.0 // indirect
 	github.com/google/gopacket v1.1.19 // indirect
 	github.com/google/jsonschema-go v0.4.2 // indirect
+	github.com/google/pprof v0.0.0-20260402051712-545e8a4df936 // indirect
 	github.com/google/uuid v1.6.0 // indirect
 	github.com/gorilla/securecookie v1.1.2 // indirect
 	github.com/gorilla/websocket v1.5.4-0.20250319132907-e064f32e3674 // indirect
@@ -234,6 +234,7 @@ require (
 	github.com/ncruces/go-strftime v1.0.0 // indirect
 	github.com/nozzle/throttler v0.0.0-20180817012639-2ea982251481 // indirect
 	github.com/oklog/ulid/v2 v2.1.1 // indirect
+	github.com/onsi/gomega v1.39.1 // indirect
 	github.com/opencontainers/go-digest v1.0.0 // indirect
 	github.com/opencontainers/image-spec v1.1.1 // indirect
 	github.com/pbnjay/memory v0.0.0-20210728143218-7b4eea64cf58 // indirect

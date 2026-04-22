@@ -53,7 +53,6 @@ Check the [Documentation](https://docs.agntcy.org/dir/overview/) for a full walk
 - [client](./client) - client SDK for development and API workflows
 - [docs](./docs) - research details and documentation around the project
 - [gui](./gui) - graphical user interface (Flutter)
-- [importer](./importer) - import pipeline (scanner, enricher, MCP integration)
 - [install](./install) - deployment assets (Helm charts, Docker Compose)
 - [mcp](./mcp) - Model Context Protocol server and tools
 - [reconciler](./reconciler) - standalone service for periodic reconciliation (regsync, indexer)

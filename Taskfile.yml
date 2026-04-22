@@ -38,11 +38,6 @@ includes:
     flatten: true
     excludes: [default]
 
-  importer:
-    taskfile: importer/Taskfile.yml
-    flatten: true
-    excludes: [default]
-
   helm:
     taskfile: install/Taskfile.yml
     flatten: true
@@ -70,6 +65,15 @@ tasks:
   default:
     cmds:
       - task -l
+
+  importer:deps:mcp-scanner:
+    desc: Install mcp-scanner CLI via uv (used by import-records workflow)
+    deps:
+      - task: deps:uv
+    cmds:
+      - cmd: echo "Installing mcp-scanner"
+      - cmd: >-
+          {{.UV_BIN}} tool install --python 3.13 cisco-ai-mcp-scanner
 
   gen:
     desc: Generate code for all components

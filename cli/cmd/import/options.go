@@ -4,10 +4,10 @@
 package importcmd
 
 import (
+	"github.com/agntcy/dir-importer/config"
+	enricherconfig "github.com/agntcy/dir-importer/enricher/config"
+	scannerconfig "github.com/agntcy/dir-importer/scanner/config"
 	signcmd "github.com/agntcy/dir/cli/cmd/sign"
-	"github.com/agntcy/dir/importer/config"
-	enricherconfig "github.com/agntcy/dir/importer/enricher/config"
-	scannerconfig "github.com/agntcy/dir/importer/scanner/config"
 )
 
 var opts = &options{}
