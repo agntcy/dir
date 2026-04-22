@@ -5,11 +5,8 @@ dependencies:
 - name: oasf
   repository: oci://ghcr.io/agntcy/oasf/helm-charts
   version: v0.5.1
-- name: oidc-gateway
-  repository: oci://ghcr.io/agntcy/oidc-gateway/helm-charts
-  version: v0.1.1
 - name: postgresql
   repository: https://charts.bitnami.com/bitnami
   version: 18.5.23
-digest: sha256:64053b692f663fb41341cefb8b2cc4b2f66d00f1c62037dd3df72a9c8973b1c6
-generated: "2026-04-21T16:31:10.134623+02:00"
+digest: sha256:51b1358e4869c36201a99e457c5547347abf8372d321db82a306ecb866e016a7
+generated: "2026-04-22T11:23:53.222864+02:00"

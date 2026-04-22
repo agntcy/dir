@@ -38,13 +38,6 @@ dependencies:
     version: v0.5.1
     repository: oci://ghcr.io/agntcy/oasf/helm-charts
     condition: oasf.enabled
-  # OIDC Gateway with JWT authentication and Casbin-based authorization (OPTIONAL)
-  # Only installed when explicitly enabled via: envoyAuthz.enabled: true
-  # Default: disabled (envoyAuthz.enabled: false in values.yaml)
-  - name: oidc-gateway
-    version: "v0.1.1"
-    repository: "oci://ghcr.io/agntcy/oidc-gateway/helm-charts"
-    condition: envoyAuthz.enabled
   # PostgreSQL database (Bitnami subchart)
   # Disable when using SQLite or external PostgreSQL via: postgresql.enabled: false
   # Default: enabled (postgresql.enabled: true in values.yaml)
