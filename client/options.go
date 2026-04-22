@@ -134,7 +134,14 @@ func (o *options) shouldAutoDetectOIDC() (bool, error) {
 		return true, nil
 	}
 
-	cache := NewTokenCache()
+	cache, err := ResolveTokenCacheForIssuer(o.config.OIDCIssuer)
+	if err != nil {
+		if errors.Is(err, ErrNoCachedIssuer) {
+			return false, nil
+		}
+
+		return false, err
+	}
 
 	tok, err := cache.Load()
 	if err != nil {

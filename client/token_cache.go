@@ -4,10 +4,16 @@
 package client
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"net/url"
 	"os"
 	"path/filepath"
+	"sort"
+	"strings"
 	"time"
 )
 
@@ -21,6 +27,9 @@ const (
 	//nolint:gosec // G101: This is a filename, not a credential
 	TokenCacheFile = "auth-token.json"
 
+	// TokenCacheSubdir is where issuer-scoped token cache files are stored.
+	TokenCacheSubdir = "tokens"
+
 	// DefaultTokenValidityDuration is how long a token is considered valid if no expiry is set.
 	DefaultTokenValidityDuration = 8 * time.Hour
 
@@ -30,6 +39,14 @@ const (
 	// File and directory permissions for secure token storage.
 	cacheDirPerms  = 0o700 // Owner read/write/execute only
 	cacheFilePerms = 0o600 // Owner read/write only
+)
+
+var (
+	// ErrTokenCacheNotFound indicates that a specific token cache file does not exist.
+	ErrTokenCacheNotFound = errors.New("token cache not found")
+
+	// ErrNoCachedIssuer indicates that no issuer-scoped token cache could be selected.
+	ErrNoCachedIssuer = errors.New("no cached OIDC issuer found")
 )
 
 // CachedToken represents a cached authentication token from any provider.
@@ -72,30 +89,53 @@ type TokenCacheEntry = CachedToken
 type TokenCache struct {
 	// CacheDir is the directory where tokens are stored.
 	CacheDir string
+
+	// CacheFile is the cache filename inside CacheDir.
+	CacheFile string
+
+	// Issuer is the issuer this cache is scoped to, if any.
+	Issuer string
 }
 
 // NewTokenCache creates a new token cache with the default directory.
 // Respects XDG_CONFIG_HOME environment variable for config directory location.
 func NewTokenCache() *TokenCache {
-	configHome := os.Getenv("XDG_CONFIG_HOME")
-	if configHome == "" {
-		home, _ := os.UserHomeDir()
-		configHome = filepath.Join(home, ".config")
-	}
-
 	return &TokenCache{
-		CacheDir: filepath.Join(configHome, "dirctl"),
+		CacheDir:  defaultTokenCacheRoot(),
+		CacheFile: TokenCacheFile,
 	}
 }
 
 // NewTokenCacheWithDir creates a new token cache with a custom directory.
 func NewTokenCacheWithDir(dir string) *TokenCache {
-	return &TokenCache{CacheDir: dir}
+	return &TokenCache{
+		CacheDir:  dir,
+		CacheFile: TokenCacheFile,
+	}
+}
+
+// NewTokenCacheWithDirAndIssuer creates a token cache for a specific issuer using a custom root directory.
+func NewTokenCacheWithDirAndIssuer(dir, issuer string) (*TokenCache, error) {
+	normalizedIssuer, err := normalizeIssuer(issuer)
+	if err != nil {
+		return nil, err
+	}
+
+	return &TokenCache{
+		CacheDir:  filepath.Join(dir, TokenCacheSubdir),
+		CacheFile: issuerCacheFileName(normalizedIssuer),
+		Issuer:    normalizedIssuer,
+	}, nil
+}
+
+// NewTokenCacheForIssuer creates a token cache scoped to a specific issuer.
+func NewTokenCacheForIssuer(issuer string) (*TokenCache, error) {
+	return NewTokenCacheWithDirAndIssuer(defaultTokenCacheRoot(), issuer)
 }
 
 // GetCachePath returns the full path to the token cache file.
 func (c *TokenCache) GetCachePath() string {
-	return filepath.Join(c.CacheDir, TokenCacheFile)
+	return filepath.Join(c.CacheDir, c.cacheFileName())
 }
 
 // Load loads the cached token from disk.
@@ -116,6 +156,17 @@ func (c *TokenCache) Load() (*CachedToken, error) {
 	var token CachedToken
 	if err := json.Unmarshal(data, &token); err != nil {
 		return nil, fmt.Errorf("failed to parse token cache: %w", err)
+	}
+
+	if c.Issuer != "" {
+		normalizedIssuer, err := normalizeIssuer(token.Issuer)
+		if err != nil {
+			return nil, fmt.Errorf("failed to validate cached token issuer: %w", err)
+		}
+
+		if normalizedIssuer != c.Issuer {
+			return nil, fmt.Errorf("cached token issuer mismatch: expected %s, got %s", c.Issuer, token.Issuer)
+		}
 	}
 
 	return &token, nil
@@ -157,7 +208,7 @@ func (c *TokenCache) save(token *CachedToken, atomic bool) error {
 		return nil
 	}
 
-	tmpFile, err := os.CreateTemp(c.CacheDir, TokenCacheFile+".tmp.*")
+	tmpFile, err := os.CreateTemp(c.CacheDir, c.cacheFileName()+".tmp.*")
 	if err != nil {
 		return fmt.Errorf("failed to create temp token cache file: %w", err)
 	}
@@ -231,4 +282,174 @@ func (c *TokenCache) GetValidToken() (*CachedToken, error) {
 	}
 
 	return token, nil
+}
+
+// AmbiguousTokenCacheError indicates multiple issuer-scoped caches exist and the caller must select one.
+type AmbiguousTokenCacheError struct {
+	Issuers []string
+}
+
+func (e *AmbiguousTokenCacheError) Error() string {
+	return fmt.Sprintf(
+		"multiple cached OIDC issuers found; select one explicitly: %s",
+		strings.Join(e.Issuers, ", "),
+	)
+}
+
+// CachedIssuer describes one issuer-scoped cache file.
+type CachedIssuer struct {
+	Issuer string
+	Path   string
+}
+
+// ResolveTokenCacheForIssuer resolves the appropriate token cache.
+// If issuer is provided, the corresponding issuer-scoped cache is returned.
+// If issuer is empty, the only available issuer cache is returned when exactly one exists.
+// Returns ErrNoCachedIssuer when no issuer is provided and no caches exist.
+func ResolveTokenCacheForIssuer(issuer string) (*TokenCache, error) {
+	if strings.TrimSpace(issuer) != "" {
+		return NewTokenCacheForIssuer(issuer)
+	}
+
+	cachedIssuers, err := ListCachedIssuers()
+	if err != nil {
+		return nil, err
+	}
+
+	switch len(cachedIssuers) {
+	case 0:
+		return nil, ErrNoCachedIssuer
+	case 1:
+		return NewTokenCacheForIssuer(cachedIssuers[0].Issuer)
+	default:
+		issuers := make([]string, 0, len(cachedIssuers))
+		for _, cachedIssuer := range cachedIssuers {
+			issuers = append(issuers, cachedIssuer.Issuer)
+		}
+
+		return nil, &AmbiguousTokenCacheError{Issuers: issuers}
+	}
+}
+
+// ListCachedIssuers returns all issuer-scoped token caches on disk.
+func ListCachedIssuers() ([]CachedIssuer, error) {
+	tokensDir := filepath.Join(defaultTokenCacheRoot(), TokenCacheSubdir)
+
+	entries, err := os.ReadDir(tokensDir)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil, nil
+		}
+
+		return nil, fmt.Errorf("failed to list token caches: %w", err)
+	}
+
+	cachedIssuers := make([]CachedIssuer, 0, len(entries))
+	for _, entry := range entries {
+		if entry.IsDir() || filepath.Ext(entry.Name()) != ".json" {
+			continue
+		}
+
+		path := filepath.Join(tokensDir, entry.Name())
+
+		token, err := loadCachedTokenFromPath(path)
+		if err != nil {
+			if errors.Is(err, ErrTokenCacheNotFound) {
+				continue
+			}
+
+			return nil, err
+		}
+
+		if token == nil || strings.TrimSpace(token.Issuer) == "" {
+			continue
+		}
+
+		normalizedIssuer, err := normalizeIssuer(token.Issuer)
+		if err != nil {
+			return nil, fmt.Errorf("failed to normalize cached token issuer from %s: %w", path, err)
+		}
+
+		cachedIssuers = append(cachedIssuers, CachedIssuer{
+			Issuer: normalizedIssuer,
+			Path:   path,
+		})
+	}
+
+	sort.Slice(cachedIssuers, func(i, j int) bool {
+		return cachedIssuers[i].Issuer < cachedIssuers[j].Issuer
+	})
+
+	return cachedIssuers, nil
+}
+
+func defaultTokenCacheRoot() string {
+	configHome := os.Getenv("XDG_CONFIG_HOME")
+	if configHome == "" {
+		home, _ := os.UserHomeDir()
+		configHome = filepath.Join(home, ".config")
+	}
+
+	return filepath.Join(configHome, "dirctl")
+}
+
+func (c *TokenCache) cacheFileName() string {
+	if c.CacheFile != "" {
+		return c.CacheFile
+	}
+
+	return TokenCacheFile
+}
+
+func issuerCacheFileName(normalizedIssuer string) string {
+	sum := sha256.Sum256([]byte(normalizedIssuer))
+
+	return hex.EncodeToString(sum[:]) + ".json"
+}
+
+func normalizeIssuer(issuer string) (string, error) {
+	trimmedIssuer := strings.TrimSpace(issuer)
+	if trimmedIssuer == "" {
+		return "", errors.New("issuer is required")
+	}
+
+	parsed, err := url.Parse(trimmedIssuer)
+	if err != nil {
+		return "", fmt.Errorf("invalid issuer URL: %w", err)
+	}
+
+	if parsed.Scheme == "" || parsed.Host == "" {
+		return "", fmt.Errorf("invalid issuer URL: %s", issuer)
+	}
+
+	parsed.Scheme = strings.ToLower(parsed.Scheme)
+	parsed.Host = strings.ToLower(parsed.Host)
+	parsed.RawQuery = ""
+	parsed.Fragment = ""
+
+	if parsed.Path == "/" {
+		parsed.Path = ""
+	} else {
+		parsed.Path = strings.TrimRight(parsed.Path, "/")
+	}
+
+	return parsed.String(), nil
+}
+
+func loadCachedTokenFromPath(path string) (*CachedToken, error) {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil, ErrTokenCacheNotFound
+		}
+
+		return nil, fmt.Errorf("failed to read token cache %s: %w", path, err)
+	}
+
+	var token CachedToken
+	if err := json.Unmarshal(data, &token); err != nil {
+		return nil, fmt.Errorf("failed to parse token cache %s: %w", path, err)
+	}
+
+	return &token, nil
 }

@@ -44,7 +44,14 @@ func (o *options) resolveOIDCAccessToken(ctx context.Context) (string, error) {
 		return accessToken, nil
 	}
 
-	cache := NewTokenCache()
+	cache, err := ResolveTokenCacheForIssuer(o.config.OIDCIssuer)
+	if err != nil {
+		if errors.Is(err, ErrNoCachedIssuer) {
+			return "", errors.New("no OIDC access token: run 'dirctl auth login', or set DIRECTORY_CLIENT_AUTH_TOKEN")
+		}
+
+		return "", err
+	}
 
 	// Fast path: use only a currently valid token.
 	// Note: GetValidToken() returns (nil, nil) for both "missing" and "expired" tokens.

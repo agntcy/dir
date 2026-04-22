@@ -51,6 +51,26 @@ func TestNewTokenCacheWithDir(t *testing.T) {
 	})
 }
 
+func TestNewTokenCacheForIssuer(t *testing.T) {
+	t.Run("should create issuer-scoped cache under tokens directory", func(t *testing.T) {
+		t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+
+		cache, err := NewTokenCacheForIssuer("https://Issuer.EXAMPLE.com/")
+		require.NoError(t, err)
+
+		require.NotNil(t, cache)
+		assert.Equal(t, "https://issuer.example.com", cache.Issuer)
+		assert.Contains(t, cache.CacheDir, filepath.Join("dirctl", TokenCacheSubdir))
+		assert.Equal(t, issuerCacheFileName("https://issuer.example.com"), filepath.Base(cache.GetCachePath()))
+	})
+
+	t.Run("should reject invalid issuer", func(t *testing.T) {
+		cache, err := NewTokenCacheForIssuer("not a url")
+		require.Error(t, err)
+		assert.Nil(t, cache)
+	})
+}
+
 func TestTokenCache_GetCachePath(t *testing.T) {
 	t.Run("should return full path to cache file", func(t *testing.T) {
 		customDir := "/tmp/test-cache"
@@ -68,6 +88,64 @@ func TestTokenCache_GetCachePath(t *testing.T) {
 		path := cache.GetCachePath()
 
 		assert.Contains(t, path, TokenCacheFile)
+	})
+}
+
+func TestResolveTokenCacheForIssuer(t *testing.T) {
+	t.Run("should return nil when no issuer and no caches exist", func(t *testing.T) {
+		t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+
+		cache, err := ResolveTokenCacheForIssuer("")
+		require.ErrorIs(t, err, ErrNoCachedIssuer)
+		assert.Nil(t, cache)
+	})
+
+	t.Run("should resolve the only cached issuer when issuer is omitted", func(t *testing.T) {
+		t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+
+		cache, err := NewTokenCacheForIssuer("https://issuer.example.com")
+		require.NoError(t, err)
+		require.NoError(t, cache.Save(&CachedToken{
+			AccessToken: "token",
+			Issuer:      "https://issuer.example.com",
+			Provider:    "oidc",
+			CreatedAt:   time.Now(),
+		}))
+
+		resolvedCache, err := ResolveTokenCacheForIssuer("")
+		require.NoError(t, err)
+		require.NotNil(t, resolvedCache)
+		assert.Equal(t, cache.GetCachePath(), resolvedCache.GetCachePath())
+	})
+
+	t.Run("should return ambiguity error when multiple issuer caches exist", func(t *testing.T) {
+		t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+
+		cacheA, err := NewTokenCacheForIssuer("https://issuer-a.example.com")
+		require.NoError(t, err)
+		require.NoError(t, cacheA.Save(&CachedToken{
+			AccessToken: "token-a",
+			Issuer:      "https://issuer-a.example.com",
+			Provider:    "oidc",
+			CreatedAt:   time.Now(),
+		}))
+
+		cacheB, err := NewTokenCacheForIssuer("https://issuer-b.example.com")
+		require.NoError(t, err)
+		require.NoError(t, cacheB.Save(&CachedToken{
+			AccessToken: "token-b",
+			Issuer:      "https://issuer-b.example.com",
+			Provider:    "oidc",
+			CreatedAt:   time.Now(),
+		}))
+
+		resolvedCache, err := ResolveTokenCacheForIssuer("")
+		require.Error(t, err)
+		assert.Nil(t, resolvedCache)
+
+		var ambiguityErr *AmbiguousTokenCacheError
+		require.ErrorAs(t, err, &ambiguityErr)
+		assert.Equal(t, []string{"https://issuer-a.example.com", "https://issuer-b.example.com"}, ambiguityErr.Issuers)
 	})
 }
 

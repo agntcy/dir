@@ -4,10 +4,12 @@
 package auth
 
 import (
+	"errors"
 	"fmt"
 	"strings"
 	"time"
 
+	"github.com/agntcy/dir/cli/config"
 	"github.com/agntcy/dir/client"
 	"github.com/spf13/cobra"
 )
@@ -27,7 +29,23 @@ Examples:
 }
 
 func runStatus(cmd *cobra.Command, _ []string) error {
-	cache := client.NewTokenCache()
+	cache, err := client.ResolveTokenCacheForIssuer(config.Client.OIDCIssuer)
+	if err != nil {
+		var ambiguousErr *client.AmbiguousTokenCacheError
+		if errors.As(err, &ambiguousErr) {
+			return fmt.Errorf("%w; use --oidc-issuer or DIRECTORY_CLIENT_OIDC_ISSUER", err)
+		}
+
+		if errors.Is(err, client.ErrNoCachedIssuer) {
+			cmd.Println("Status: Not authenticated")
+			cmd.Println()
+			cmd.Println("Run 'dirctl auth login' to authenticate.")
+
+			return nil
+		}
+
+		return fmt.Errorf("failed to resolve token cache: %w", err)
+	}
 
 	token, err := cache.Load()
 	if err != nil {

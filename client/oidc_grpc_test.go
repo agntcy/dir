@@ -69,9 +69,13 @@ func TestSetupOIDCAuth_NoTokenReturnsError(t *testing.T) {
 func TestSetupOIDCAuth_ExpiredCachedTokenReturnsAuthError(t *testing.T) {
 	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
 
-	cache := NewTokenCache()
-	err := cache.Save(&CachedToken{
+	cache, err := NewTokenCacheForIssuer("https://issuer.example.com")
+	require.NoError(t, err)
+
+	err = cache.Save(&CachedToken{
 		AccessToken: "expired-token",
+		Issuer:      "https://issuer.example.com",
+		Provider:    "oidc",
 		ExpiresAt:   time.Now().Add(-time.Hour),
 		CreatedAt:   time.Now().Add(-time.Hour),
 	})
@@ -112,9 +116,10 @@ func TestSetupOIDCAuth_ExpiredCachedTokenRefreshSuccess(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	cache := NewTokenCache()
+	cache, err := NewTokenCacheForIssuer(srv.URL)
+	require.NoError(t, err)
 	//nolint:gosec // G101: test fixture token values, not real credentials
-	err := cache.Save(&CachedToken{
+	err = cache.Save(&CachedToken{
 		AccessToken:  "expired-token",
 		RefreshToken: "cached-refresh-token",
 		Issuer:       srv.URL,
@@ -153,9 +158,10 @@ func TestSetupOIDCAuth_ExpiredCachedTokenRefreshRejected(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	cache := NewTokenCache()
+	cache, err := NewTokenCacheForIssuer(srv.URL)
+	require.NoError(t, err)
 	//nolint:gosec // G101: test fixture token values, not real credentials
-	err := cache.Save(&CachedToken{
+	err = cache.Save(&CachedToken{
 		AccessToken:  "expired-token",
 		RefreshToken: "cached-refresh-token",
 		Issuer:       srv.URL,
@@ -183,8 +189,10 @@ func TestSetupOIDCAuth_ExpiredCachedTokenRefreshRejected(t *testing.T) {
 func TestSetupOIDCAuth_ExpiredCachedTokenMissingRefreshToken(t *testing.T) {
 	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
 
-	cache := NewTokenCache()
-	err := cache.Save(&CachedToken{
+	cache, err := NewTokenCacheForIssuer("https://issuer.example.com")
+	require.NoError(t, err)
+
+	err = cache.Save(&CachedToken{
 		AccessToken: "expired-token",
 		Issuer:      "https://issuer.example.com",
 		Provider:    "oidc",
@@ -215,9 +223,10 @@ func TestSetupOIDCAuth_RefreshPreservesCachedRefreshTokenWhenMissingInResponse(t
 	}))
 	defer srv.Close()
 
-	cache := NewTokenCache()
+	cache, err := NewTokenCacheForIssuer(srv.URL)
+	require.NoError(t, err)
 	//nolint:gosec // G101: test fixture token values, not real credentials
-	err := cache.Save(&CachedToken{
+	err = cache.Save(&CachedToken{
 		AccessToken:  "expired-token",
 		RefreshToken: "cached-refresh-token",
 		Issuer:       srv.URL,
@@ -243,4 +252,41 @@ func TestSetupOIDCAuth_RefreshPreservesCachedRefreshTokenWhenMissingInResponse(t
 	require.NotNil(t, updatedToken)
 	assert.Equal(t, "new-access-token", updatedToken.AccessToken)
 	assert.Equal(t, "cached-refresh-token", updatedToken.RefreshToken)
+}
+
+func TestSetupOIDCAuth_RequiresIssuerSelectionWhenMultipleCachesExist(t *testing.T) {
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+
+	cacheA, err := NewTokenCacheForIssuer("https://issuer-a.example.com")
+	require.NoError(t, err)
+	require.NoError(t, cacheA.Save(&CachedToken{
+		AccessToken: "token-a",
+		Issuer:      "https://issuer-a.example.com",
+		Provider:    "oidc",
+		ExpiresAt:   time.Now().Add(time.Hour),
+		CreatedAt:   time.Now(),
+	}))
+
+	cacheB, err := NewTokenCacheForIssuer("https://issuer-b.example.com")
+	require.NoError(t, err)
+	require.NoError(t, cacheB.Save(&CachedToken{
+		AccessToken: "token-b",
+		Issuer:      "https://issuer-b.example.com",
+		Provider:    "oidc",
+		ExpiresAt:   time.Now().Add(time.Hour),
+		CreatedAt:   time.Now(),
+	}))
+
+	opts := &options{
+		config: &Config{
+			ServerAddress: "gateway.example.com:443",
+			AuthMode:      "oidc",
+		},
+	}
+
+	err = opts.setupOIDCAuth(context.Background())
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "select one explicitly")
+	assert.Contains(t, err.Error(), "https://issuer-a.example.com")
+	assert.Contains(t, err.Error(), "https://issuer-b.example.com")
 }

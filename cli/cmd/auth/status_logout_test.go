@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	clcfg "github.com/agntcy/dir/cli/config"
 	"github.com/agntcy/dir/client"
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/require"
@@ -15,6 +16,8 @@ import (
 
 func TestRunStatus_NotAuthenticated(t *testing.T) {
 	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+
+	clcfg.Client = &client.DefaultConfig
 
 	cmd, out := newTestCommand()
 	err := runStatus(cmd, nil)
@@ -29,8 +32,12 @@ func TestRunStatus_NotAuthenticated(t *testing.T) {
 func TestRunStatus_WithMachineToken(t *testing.T) {
 	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
 
-	cache := client.NewTokenCache()
-	err := cache.Save(&client.CachedToken{
+	clcfg.Client = &client.DefaultConfig
+
+	cache, err := client.NewTokenCacheForIssuer("https://issuer.example")
+	require.NoError(t, err)
+
+	err = cache.Save(&client.CachedToken{
 		AccessToken: "test-token",
 		TokenType:   "Bearer",
 		Provider:    "oidc",
@@ -58,10 +65,15 @@ func TestRunStatus_WithMachineToken(t *testing.T) {
 func TestRunLogout_ClearsCache(t *testing.T) {
 	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
 
-	cache := client.NewTokenCache()
-	err := cache.Save(&client.CachedToken{
+	clcfg.Client = &client.DefaultConfig
+
+	cache, err := client.NewTokenCacheForIssuer("https://issuer.example")
+	require.NoError(t, err)
+
+	err = cache.Save(&client.CachedToken{
 		AccessToken: "test-token",
 		Provider:    "oidc",
+		Issuer:      "https://issuer.example",
 		User:        "machine-client",
 		CreatedAt:   time.Now(),
 	})
@@ -78,6 +90,39 @@ func TestRunLogout_ClearsCache(t *testing.T) {
 	tok, err := cache.Load()
 	require.NoError(t, err)
 	require.Nil(t, tok)
+}
+
+func TestRunStatus_RequiresIssuerWhenMultipleCachesExist(t *testing.T) {
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+
+	clcfg.Client = &client.DefaultConfig
+
+	cacheA, err := client.NewTokenCacheForIssuer("https://issuer-a.example")
+	require.NoError(t, err)
+	require.NoError(t, cacheA.Save(&client.CachedToken{
+		AccessToken: "token-a",
+		Provider:    "oidc",
+		Issuer:      "https://issuer-a.example",
+		User:        "user-a",
+		CreatedAt:   time.Now(),
+	}))
+
+	cacheB, err := client.NewTokenCacheForIssuer("https://issuer-b.example")
+	require.NoError(t, err)
+	require.NoError(t, cacheB.Save(&client.CachedToken{
+		AccessToken: "token-b",
+		Provider:    "oidc",
+		Issuer:      "https://issuer-b.example",
+		User:        "user-b",
+		CreatedAt:   time.Now(),
+	}))
+
+	cmd, _ := newTestCommand()
+	err = runStatus(cmd, nil)
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "--oidc-issuer")
+	require.Contains(t, err.Error(), "https://issuer-a.example")
+	require.Contains(t, err.Error(), "https://issuer-b.example")
 }
 
 func newTestCommand() (*cobra.Command, *bytes.Buffer) {

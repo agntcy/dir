@@ -29,7 +29,7 @@ var loginCmd = &cobra.Command{
 Default: Authorization Code + PKCE flow (opens browser).
 Device flow: --device flag (no browser needed; authorize on any device).
 
-Configuration (flags, env, or config file):
+Configuration (flags or environment):
   --oidc-issuer, DIRECTORY_CLIENT_OIDC_ISSUER        OIDC issuer URL (e.g. https://dex.example.com)
   --oidc-client-id, DIRECTORY_CLIENT_OIDC_CLIENT_ID  OIDC client ID
 
@@ -59,11 +59,25 @@ func init() {
 func runLogin(cmd *cobra.Command, _ []string) error {
 	cfg := config.Client
 
-	cache := client.NewTokenCache()
+	// Validate OIDC config
+	if cfg.OIDCIssuer == "" || cfg.OIDCClientID == "" {
+		return errors.New("OIDC issuer and client ID are required for login.\n\n" +
+			"Set via flags: --oidc-issuer, --oidc-client-id\n" +
+			"Or environment: DIRECTORY_CLIENT_OIDC_ISSUER, DIRECTORY_CLIENT_OIDC_CLIENT_ID")
+	}
 
-	// Check for existing valid token unless force login
+	cache, err := client.NewTokenCacheForIssuer(cfg.OIDCIssuer)
+	if err != nil {
+		return fmt.Errorf("failed to resolve OIDC token cache: %w", err)
+	}
+
+	// Check for existing valid token unless force login.
 	if !forceLogin {
-		existingToken, _ := cache.GetValidToken()
+		existingToken, err := cache.GetValidToken()
+		if err != nil {
+			return fmt.Errorf("failed to read token cache: %w", err)
+		}
+
 		if existingToken != nil {
 			cmd.Println()
 			cmd.Printf("✓ Already authenticated as: %s\n", existingToken.User)
@@ -78,14 +92,6 @@ func runLogin(cmd *cobra.Command, _ []string) error {
 
 			return nil
 		}
-	}
-
-	// Validate OIDC config
-	if cfg.OIDCIssuer == "" || cfg.OIDCClientID == "" {
-		return errors.New("OIDC issuer and client ID are required for login.\n\n" +
-			"Set via flags: --oidc-issuer, --oidc-client-id\n" +
-			"Or environment: DIRECTORY_CLIENT_OIDC_ISSUER, DIRECTORY_CLIENT_OIDC_CLIENT_ID\n" +
-			"Or config file (~/.config/dirctl/config.yaml): oidc_issuer, oidc_client_id")
 	}
 
 	if useDeviceFlow {

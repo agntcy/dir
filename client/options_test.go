@@ -519,9 +519,13 @@ func TestSetupAutoDetectAuth(t *testing.T) {
 	t.Run("should not fallback to insecure when cached OIDC token is expired", func(t *testing.T) {
 		t.Setenv("XDG_CONFIG_HOME", t.TempDir())
 
-		cache := NewTokenCache()
-		err := cache.Save(&CachedToken{
+		cache, err := NewTokenCacheForIssuer("https://issuer.example.com")
+		require.NoError(t, err)
+
+		err = cache.Save(&CachedToken{
 			AccessToken: "expired-token",
+			Issuer:      "https://issuer.example.com",
+			Provider:    "oidc",
 			ExpiresAt:   time.Now().Add(-time.Hour),
 			CreatedAt:   time.Now().Add(-time.Hour),
 		})
@@ -539,6 +543,72 @@ func TestSetupAutoDetectAuth(t *testing.T) {
 
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "cached OIDC token has expired")
+	})
+
+	t.Run("should auto-detect OIDC from a single cached issuer", func(t *testing.T) {
+		t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+
+		cache, err := NewTokenCacheForIssuer("https://issuer.example.com")
+		require.NoError(t, err)
+
+		err = cache.Save(&CachedToken{
+			AccessToken: "valid-token",
+			Issuer:      "https://issuer.example.com",
+			Provider:    "oidc",
+			ExpiresAt:   time.Now().Add(time.Hour),
+			CreatedAt:   time.Now(),
+		})
+		require.NoError(t, err)
+
+		opts := &options{
+			config: &Config{
+				ServerAddress: "gateway.example.com:443",
+				AuthMode:      "",
+			},
+		}
+
+		ctx := context.Background()
+		err = opts.setupAutoDetectAuth(ctx)
+
+		require.NoError(t, err)
+		assert.Len(t, opts.authOpts, 2)
+	})
+
+	t.Run("should require explicit issuer when multiple cached issuers exist", func(t *testing.T) {
+		t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+
+		cacheA, err := NewTokenCacheForIssuer("https://issuer-a.example.com")
+		require.NoError(t, err)
+		require.NoError(t, cacheA.Save(&CachedToken{
+			AccessToken: "token-a",
+			Issuer:      "https://issuer-a.example.com",
+			Provider:    "oidc",
+			ExpiresAt:   time.Now().Add(time.Hour),
+			CreatedAt:   time.Now(),
+		}))
+
+		cacheB, err := NewTokenCacheForIssuer("https://issuer-b.example.com")
+		require.NoError(t, err)
+		require.NoError(t, cacheB.Save(&CachedToken{
+			AccessToken: "token-b",
+			Issuer:      "https://issuer-b.example.com",
+			Provider:    "oidc",
+			ExpiresAt:   time.Now().Add(time.Hour),
+			CreatedAt:   time.Now(),
+		}))
+
+		opts := &options{
+			config: &Config{
+				ServerAddress: "gateway.example.com:443",
+				AuthMode:      "",
+			},
+		}
+
+		ctx := context.Background()
+		err = opts.setupAutoDetectAuth(ctx)
+
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "select one explicitly")
 	})
 
 	t.Run("should auto-detect OIDC when issuer/client config is present", func(t *testing.T) {
