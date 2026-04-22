@@ -117,9 +117,10 @@ jobs:
         if: ${{ env.SCANNER_ENABLED == 'true' }}
         run: task importer:deps:mcp-scanner
 
+      # Shape matches dirctl v1.2.0 importer/enricher/mcphost.json (mcpServers + allowedTools + model + max-steps).
       - name: Create Enricher Config
         run: |
-          cat <<'EOF' > enricher_ci.json
+          cat <<'EOF' > mcphost_ci.json
           {
             "mcpServers": {
               "dir-mcp-server": {
@@ -130,7 +131,12 @@ jobs:
                 ],
                 "env": {
                   "OASF_API_VALIDATION_SCHEMA_URL": "https://schema.oasf.outshift.com"
-                }
+                },
+                "allowedTools": [
+                  "agntcy_oasf_get_schema",
+                  "agntcy_oasf_get_schema_skills",
+                  "agntcy_oasf_get_schema_domains"
+                ]
               }
             },
             "model": "azure:gpt-4o",
@@ -157,7 +163,7 @@ jobs:
           echo "--- Processing Entry $((${{ matrix.entry.index }} + 1)) ---"
 
           CIDS_FILE="imported-cids-${{ matrix.entry.index }}.txt"
-          CMD=("${DIRCTL_PATH}" import --type=mcp-registry --url=https://registry.modelcontextprotocol.io/v0.1 --server-addr="${{ env.SERVER_ADDRESS }}" --auth-mode=oidc "--auth-token=${DIR_AUTH_TOKEN}" --enrich-config=enricher_ci.json --enrich-rate-limit="${{ env.RATE_LIMIT }}")
+          CMD=("${DIRCTL_PATH}" import --type=mcp-registry --url=https://registry.modelcontextprotocol.io/v0.1 --server-addr="${{ env.SERVER_ADDRESS }}" --auth-mode=oidc "--auth-token=${DIR_AUTH_TOKEN}" --enrich-config=mcphost_ci.json --enrich-rate-limit="${{ env.RATE_LIMIT }}")
 
           if [[ "${{ env.DRY_RUN }}" == "true" ]]; then
              CMD+=("--dry-run")
