@@ -38,21 +38,17 @@ type Config struct {
 // If RegistryAddress is empty, DefaultRegistryAddress is used. When the address
 // has no scheme, http is used for insecure (e.g. E2E, internal) and https otherwise.
 func (c Config) GetRegistryAddress() (string, error) {
-	addr := c.RegistryAddress
-	if addr == "" {
-		addr = DefaultRegistryAddress
-	}
-
+	address := c.RegistryAddress
 	// Add explicit scheme when none is present
-	if !strings.HasPrefix(addr, "http://") && !strings.HasPrefix(addr, "https://") {
+	if !strings.HasPrefix(address, "http://") && !strings.HasPrefix(address, "https://") {
 		if c.Insecure {
-			addr = "http://" + addr
+			address = "http://" + address
 		} else {
-			addr = "https://" + addr
+			address = "https://" + address
 		}
 	}
 
-	parsed, err := url.Parse(addr)
+	parsed, err := url.Parse(address)
 	if err != nil {
 		return "", fmt.Errorf("invalid registry address: %w", err)
 	}
@@ -61,18 +57,16 @@ func (c Config) GetRegistryAddress() (string, error) {
 		return "", fmt.Errorf("registry address must use http or https scheme")
 	}
 
-	return addr, nil
+	return address, nil
 }
 
 // GetRepositoryURL returns the full repository URL (registry address + repository name).
 func (c Config) GetRepositoryURL() string {
-	address := c.RegistryAddress
-
 	if c.RepositoryName != "" {
-		return path.Join(address, c.RepositoryName)
+		return path.Join(c.RegistryAddress, c.RepositoryName)
 	}
 
-	return address
+	return c.RegistryAddress
 }
 
 // AuthConfig represents the configuration for authentication.
