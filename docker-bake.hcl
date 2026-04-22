@@ -22,7 +22,6 @@ group "default" {
     "dir-reconciler",
     "dir-runtime-discovery",
     "dir-runtime-server",
-    "envoy-authz",
   ]
 }
 
@@ -81,16 +80,6 @@ target "dir-ctl" {
     "docker-metadata-action",
   ]
   tags = get_tag(target.docker-metadata-action.tags, "${target.dir-ctl.name}")
-}
-
-target "envoy-authz" {
-  context = "."
-  dockerfile = "./auth/cmd/envoy-authz/Dockerfile"
-  inherits = [
-    "_common",
-    "docker-metadata-action",
-  ]
-  tags = get_tag(target.docker-metadata-action.tags, "${target.envoy-authz.name}")
 }
 
 target "dir-reconciler" {

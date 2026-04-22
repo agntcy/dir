@@ -14,8 +14,6 @@ module-sets:
       - github.com/agntcy/dir/server
       - github.com/agntcy/dir/utils
       - github.com/agntcy/dir/reconciler
-      - github.com/agntcy/dir/auth/authzserver
-      - github.com/agntcy/dir/auth/cmd/envoy-authz
       - github.com/agntcy/dir/runtime/discovery
       - github.com/agntcy/dir/runtime/api
       - github.com/agntcy/dir/runtime/store

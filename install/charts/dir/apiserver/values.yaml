@@ -602,8 +602,8 @@ oidc-gateway:
       # This is an overall Envoy -> apiserver request/stream timeout, unlike the
       # ingress read/send timeouts below which are mostly idle-gap timeouts.
       timeout: 30s
-      # Dedicated long-lived streaming RPC route emitted by the oidc-gateway chart.
-      # This preserves the old envoy-authz behavior for EventService/Listen.
+      # Dedicated long-lived streaming RPC route emitted by the oidc-gateway chart
+      # for EventService/Listen.
       streamingPath: "/agntcy.dir.events.v1.EventService/Listen"
       # Dedicated timeout for the long-lived EventService/Listen stream route.
       # Set to 0s to disable the Envoy route timeout for that RPC only.

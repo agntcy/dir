@@ -32,7 +32,6 @@ vars:
     - "{{.IMAGE_REPO}}/dir-reconciler:{{.IMAGE_TAG}}"
     - "{{.IMAGE_REPO}}/dir-runtime-discovery:{{.IMAGE_TAG}}"
     - "{{.IMAGE_REPO}}/dir-runtime-server:{{.IMAGE_TAG}}"
-    - "{{.IMAGE_REPO}}/envoy-authz:{{.IMAGE_TAG}}"
     - "ghcr.io/project-zot/zot:v{{.ZOT_VERSION}}"
     - "ghcr.io/spiffe/spire-server:{{.SPIRE_VERSION}}"
     - "ghcr.io/spiffe/spire-agent:{{.SPIRE_VERSION}}"
