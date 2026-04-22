@@ -36,10 +36,14 @@ vars:
   IMAGE_BAKE_ENV: "IMAGE_REPO={{.IMAGE_REPO}} IMAGE_TAG={{.IMAGE_TAG}}"
   IMAGE_BAKE_OPTS: '{{ .IMAGE_BAKE_OPTS | default "" }}'
   BAKE_ENV: '{{ .IMAGE_BAKE_ENV }} BUILD_LDFLAGS="{{.BUILD_LDFLAGS}}"'
+  COVERAGE: '{{ .COVERAGE | default "false" }}'
   COVERAGE_IMAGE_TAG: "{{ .IMAGE_TAG | default .COMMIT_SHA }}-coverage"
   COVERAGE_IMAGE_BAKE_ENV: "IMAGE_REPO={{.IMAGE_REPO}} IMAGE_TAG={{.COVERAGE_IMAGE_TAG}}"
   COVERAGE_BAKE_ENV: '{{ .COVERAGE_IMAGE_BAKE_ENV }} BUILD_LDFLAGS="{{.BUILD_LDFLAGS}}"'
   COVERAGE_PKGS: '{{ .COVERAGE_PKGS | default "github.com/agntcy/dir/api/...,github.com/agntcy/dir/cli/...,github.com/agntcy/dir/client/...,github.com/agntcy/dir/server/...,github.com/agntcy/dir/reconciler/...,github.com/agntcy/dir/utils/..." }}'
+  IMAGES_LOCAL:
+    sh: |
+      {{.BAKE_ENV}} docker buildx bake default --print | jq -r '.target | with_entries(.value |= .tags[0]) | to_entries[] | .value'
 
   ## Dependency config
   BIN_DIR: "{{ .ROOT_DIR }}/.bin"

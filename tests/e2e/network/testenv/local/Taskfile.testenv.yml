@@ -1,0 +1,45 @@
+# Copyright AGNTCY Contributors (https://github.com/agntcy)
+# SPDX-License-Identifier: Apache-2.0
+
+version: "3"
+
+includes:
+  setup-dir-node:
+    taskfile: "../../../../../tests/modules/Taskfile.setup-dir-node.yml"
+    internal: true
+
+vars:
+  NETWORK_LOCAL_E2E_DIRCTL_BASE_DATA_PATH: "/tmp/e2e-network-local-testenv"
+  NETWORK_LOCAL_E2E_DIRCTL_BASE_LOGFILE_PATH:  "{{.ROOT_DIR}}/tests/e2e/network/testenv/local/logs"
+  NETWORK_LOCAL_E2E_DIRCTL_NODES:
+    map:
+      bootstrap: "{{.ROOT_DIR}}/tests/e2e/network/testenv/local/daemon-bootstrap-config.yaml"
+      peer1: "{{.ROOT_DIR}}/tests/e2e/network/testenv/local/daemon-peer1-config.yaml"
+      peer2: "{{.ROOT_DIR}}/tests/e2e/network/testenv/local/daemon-peer2-config.yaml"
+      peer3: "{{.ROOT_DIR}}/tests/e2e/network/testenv/local/daemon-peer3-config.yaml"
+
+tasks:
+  up:
+    cmds:
+      # Create directories for logs and data
+      - |
+        mkdir -p {{.NETWORK_LOCAL_E2E_DIRCTL_BASE_DATA_PATH}}
+        mkdir -p {{.NETWORK_LOCAL_E2E_DIRCTL_BASE_LOGFILE_PATH}}
+      
+      # Deploy nodes
+      - for: { var: NETWORK_LOCAL_E2E_DIRCTL_NODES }
+        task: setup-dir-node:up
+        vars:
+          DIRCTL_CONFIG_PATH: "{{.ITEM}}"
+          DIRCTL_DATA_PATH: "{{.NETWORK_LOCAL_E2E_DIRCTL_BASE_DATA_PATH}}/{{.KEY}}"
+          DIRCTL_LOGFILE_PATH: "{{.NETWORK_LOCAL_E2E_DIRCTL_BASE_LOGFILE_PATH}}/{{.KEY}}.log"
+
+  down:
+    cmds:
+      # Destroy nodes
+      - for: { var: NETWORK_LOCAL_E2E_DIRCTL_NODES }
+        task: setup-dir-node:up
+        vars:
+          DIRCTL_CONFIG_PATH: "{{.ITEM}}"
+          DIRCTL_DATA_PATH: "{{.NETWORK_LOCAL_E2E_DIRCTL_BASE_DATA_PATH}}/{{.KEY}}"
+          DIRCTL_LOGFILE_PATH: "{{.NETWORK_LOCAL_E2E_DIRCTL_BASE_LOGFILE_PATH}}/{{.KEY}}.log"

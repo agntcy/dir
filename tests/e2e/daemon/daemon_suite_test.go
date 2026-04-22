@@ -4,33 +4,49 @@
 package daemon
 
 import (
-	"os"
+	"context"
 	"testing"
-	"time"
 
+	"github.com/agntcy/dir/client"
+	daemonconfig "github.com/agntcy/dir/tests/e2e/daemon/config"
+	"github.com/agntcy/dir/tests/e2e/shared/config"
 	"github.com/agntcy/dir/tests/e2e/shared/utils"
 	ginkgo "github.com/onsi/ginkgo/v2"
 	"github.com/onsi/gomega"
 )
 
-const (
-	defaultServerAddress = "localhost:8888"
-	readyPollInterval    = 1 * time.Second
-	readyTimeout         = 30 * time.Second
-)
+var testEnv *env
+
+type env struct {
+	Config daemonconfig.Config
+	Client *client.Client
+}
 
 func TestDaemonE2E(t *testing.T) {
 	gomega.RegisterFailHandler(ginkgo.Fail)
+
+	// Load configuration
+	cfg, err := config.LoadConfig()
+	gomega.Expect(err).NotTo(gomega.HaveOccurred())
+
+	// Create client
+	client, err := client.New(t.Context(), client.WithConfig(&cfg.Daemon.ClientOptions))
+	gomega.Expect(err).NotTo(gomega.HaveOccurred())
+
+	// Set test environment
+	testEnv = &env{
+		Config: cfg.Daemon,
+		Client: client,
+	}
+
 	ginkgo.RunSpecs(t, "Daemon E2E Test Suite")
 }
 
-var _ = ginkgo.BeforeSuite(func() {
-	addr := os.Getenv("DIRECTORY_CLIENT_SERVER_ADDRESS")
-	if addr == "" {
-		addr = defaultServerAddress
-	}
+var _ = ginkgo.BeforeSuite(func(ctx context.Context) {
+	utils.WaitForGrpcServerReady(ctx, testEnv.Config.ClientOptions.ServerAddress)
+})
 
-	ginkgo.GinkgoWriter.Printf("Waiting for Directory daemon at %s...\n", addr)
-	gomega.Eventually(utils.IsGrpcServerReady).WithArguments(addr).WithPolling(readyPollInterval).WithTimeout(readyTimeout).Should(gomega.Succeed())
-	ginkgo.GinkgoWriter.Printf("Directory daemon is ready at %s\n", addr)
+var _ = ginkgo.AfterSuite(func() {
+	err := testEnv.Client.Close()
+	gomega.Expect(err).NotTo(gomega.HaveOccurred())
 })

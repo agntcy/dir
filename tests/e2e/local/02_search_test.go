@@ -8,7 +8,6 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/agntcy/dir/tests/e2e/shared/config"
 	"github.com/agntcy/dir/tests/e2e/shared/testdata"
 	"github.com/agntcy/dir/tests/e2e/shared/utils"
 	"github.com/onsi/ginkgo/v2"
@@ -27,16 +26,8 @@ import (
 //   - modules: [10201: "core/llm/model"]
 
 var _ = ginkgo.Describe("Search functionality for OASF 0.8.0 records", func() {
-	var cli *utils.CLI
-
 	ginkgo.BeforeEach(func() {
-		if cfg.DeploymentMode != config.DeploymentModeLocal {
-			ginkgo.Skip("Skipping test, not in local mode")
-		}
-
 		utils.ResetCLIState()
-
-		cli = utils.NewCLI()
 	})
 
 	var (
@@ -56,7 +47,7 @@ var _ = ginkgo.Describe("Search functionality for OASF 0.8.0 records", func() {
 			err = os.WriteFile(recordPath, testdata.ExpectedRecordV080V4JSON, 0o600)
 			gomega.Expect(err).NotTo(gomega.HaveOccurred())
 
-			recordCID = cli.Push(recordPath).WithArgs("--output", "raw").ShouldSucceed()
+			recordCID = testEnv.CLI.Push(recordPath).WithArgs("--output", "raw").ShouldSucceed()
 			gomega.Expect(recordCID).NotTo(gomega.BeEmpty())
 		})
 
@@ -69,35 +60,35 @@ var _ = ginkgo.Describe("Search functionality for OASF 0.8.0 records", func() {
 		// Core exact match searches
 		ginkgo.Context("exact match searches", func() {
 			ginkgo.It("finds record by name", func() {
-				output := cli.Search().
+				output := testEnv.CLI.Search().
 					WithName("http://dns-validation-http/example/research-assistant-v4").
 					ShouldSucceed()
 				gomega.Expect(output).To(gomega.ContainSubstring(recordCID))
 			})
 
 			ginkgo.It("finds record by version", func() {
-				output := cli.Search().
+				output := testEnv.CLI.Search().
 					WithVersion("v4.0.0").
 					ShouldSucceed()
 				gomega.Expect(output).To(gomega.ContainSubstring(recordCID))
 			})
 
 			ginkgo.It("finds record by skill ID", func() {
-				output := cli.Search().
+				output := testEnv.CLI.Search().
 					WithSkillID("10201").
 					ShouldSucceed()
 				gomega.Expect(output).To(gomega.ContainSubstring(recordCID))
 			})
 
 			ginkgo.It("finds record by author", func() {
-				output := cli.Search().
+				output := testEnv.CLI.Search().
 					WithAuthor("AGNTCY Contributors").
 					ShouldSucceed()
 				gomega.Expect(output).To(gomega.ContainSubstring(recordCID))
 			})
 
 			ginkgo.It("finds record by schema version", func() {
-				output := cli.Search().
+				output := testEnv.CLI.Search().
 					WithSchemaVersion("0.8.0").
 					ShouldSucceed()
 				gomega.Expect(output).To(gomega.ContainSubstring(recordCID))
@@ -107,21 +98,21 @@ var _ = ginkgo.Describe("Search functionality for OASF 0.8.0 records", func() {
 		// Wildcard pattern searches
 		ginkgo.Context("wildcard searches", func() {
 			ginkgo.It("finds record with asterisk wildcard", func() {
-				output := cli.Search().
+				output := testEnv.CLI.Search().
 					WithName("*research-assistant*").
 					ShouldSucceed()
 				gomega.Expect(output).To(gomega.ContainSubstring(recordCID))
 			})
 
 			ginkgo.It("finds record with question mark wildcard", func() {
-				output := cli.Search().
+				output := testEnv.CLI.Search().
 					WithVersion("v?.0.0").
 					ShouldSucceed()
 				gomega.Expect(output).To(gomega.ContainSubstring(recordCID))
 			})
 
 			ginkgo.It("finds record with mixed wildcards", func() {
-				output := cli.Search().
+				output := testEnv.CLI.Search().
 					WithName("*example/research-assistant-v?").
 					ShouldSucceed()
 				gomega.Expect(output).To(gomega.ContainSubstring(recordCID))
@@ -131,7 +122,7 @@ var _ = ginkgo.Describe("Search functionality for OASF 0.8.0 records", func() {
 		// Filter logic
 		ginkgo.Context("filter logic", func() {
 			ginkgo.It("applies AND logic between different fields", func() {
-				output := cli.Search().
+				output := testEnv.CLI.Search().
 					WithName("*research-assistant*").
 					WithVersion("v4.*").
 					WithSkillID("10201").
@@ -140,7 +131,7 @@ var _ = ginkgo.Describe("Search functionality for OASF 0.8.0 records", func() {
 			})
 
 			ginkgo.It("returns no results when AND filters conflict", func() {
-				output := cli.Search().
+				output := testEnv.CLI.Search().
 					WithName("*research-assistant*").
 					WithVersion("v1.*"). // Record has v4.0.0
 					ShouldSucceed()
@@ -148,7 +139,7 @@ var _ = ginkgo.Describe("Search functionality for OASF 0.8.0 records", func() {
 			})
 
 			ginkgo.It("applies OR logic for multiple values of same field", func() {
-				output := cli.Search().
+				output := testEnv.CLI.Search().
 					WithVersion("v1.0.0").
 					WithVersion("v4.0.0"). // This matches
 					ShouldSucceed()
@@ -159,7 +150,7 @@ var _ = ginkgo.Describe("Search functionality for OASF 0.8.0 records", func() {
 		// Negative tests
 		ginkgo.Context("negative tests", func() {
 			ginkgo.It("returns no results for non-matching query", func() {
-				output := cli.Search().
+				output := testEnv.CLI.Search().
 					WithName("nonexistent-agent").
 					ShouldSucceed()
 				gomega.Expect(output).NotTo(gomega.ContainSubstring(recordCID))
@@ -169,7 +160,7 @@ var _ = ginkgo.Describe("Search functionality for OASF 0.8.0 records", func() {
 		// Pagination
 		ginkgo.Context("pagination", func() {
 			ginkgo.It("respects limit and offset parameters", func() {
-				output := cli.Search().
+				output := testEnv.CLI.Search().
 					WithName("*research-assistant*").
 					WithOffset(0).
 					WithLimit(10).
@@ -180,70 +171,70 @@ var _ = ginkgo.Describe("Search functionality for OASF 0.8.0 records", func() {
 
 		ginkgo.Context("comparison operators", func() {
 			ginkgo.It("finds record with version >= v3.0.0", func() {
-				output := cli.Search().
+				output := testEnv.CLI.Search().
 					WithVersion(">=v3.0.0").
 					ShouldSucceed()
 				gomega.Expect(output).To(gomega.ContainSubstring(recordCID))
 			})
 
 			ginkgo.It("finds record with version <= v5.0.0", func() {
-				output := cli.Search().
+				output := testEnv.CLI.Search().
 					WithVersion("<=v5.0.0").
 					ShouldSucceed()
 				gomega.Expect(output).To(gomega.ContainSubstring(recordCID))
 			})
 
 			ginkgo.It("finds record with version > v3.0.0", func() {
-				output := cli.Search().
+				output := testEnv.CLI.Search().
 					WithVersion(">v3.0.0").
 					ShouldSucceed()
 				gomega.Expect(output).To(gomega.ContainSubstring(recordCID))
 			})
 
 			ginkgo.It("does not find record with version < v4.0.0", func() {
-				output := cli.Search().
+				output := testEnv.CLI.Search().
 					WithVersion("<v4.0.0").
 					ShouldSucceed()
 				gomega.Expect(output).NotTo(gomega.ContainSubstring(recordCID))
 			})
 
 			ginkgo.It("finds record with version =v4.0.0", func() {
-				output := cli.Search().
+				output := testEnv.CLI.Search().
 					WithVersion("=v4.0.0").
 					ShouldSucceed()
 				gomega.Expect(output).To(gomega.ContainSubstring(recordCID))
 			})
 
 			ginkgo.It("finds record with schema-version >= 0.7.0", func() {
-				output := cli.Search().
+				output := testEnv.CLI.Search().
 					WithSchemaVersion(">=0.7.0").
 					ShouldSucceed()
 				gomega.Expect(output).To(gomega.ContainSubstring(recordCID))
 			})
 
 			ginkgo.It("does not find record with schema-version > 0.8.0", func() {
-				output := cli.Search().
+				output := testEnv.CLI.Search().
 					WithSchemaVersion(">0.8.0").
 					ShouldSucceed()
 				gomega.Expect(output).NotTo(gomega.ContainSubstring(recordCID))
 			})
 
 			ginkgo.It("finds record with created-at >= 2025-01-01", func() {
-				output := cli.Search().
+				output := testEnv.CLI.Search().
 					WithCreatedAt(">=2025-01-01").
 					ShouldSucceed()
 				gomega.Expect(output).To(gomega.ContainSubstring(recordCID))
 			})
 
 			ginkgo.It("does not find record with created-at < 2025-01-01", func() {
-				output := cli.Search().
+				output := testEnv.CLI.Search().
 					WithCreatedAt("<2025-01-01").
 					ShouldSucceed()
 				gomega.Expect(output).NotTo(gomega.ContainSubstring(recordCID))
 			})
 
 			ginkgo.It("finds record within version range", func() {
-				output := cli.Search().
+				output := testEnv.CLI.Search().
 					WithVersion(">=v3.0.0").
 					WithVersion("<=v5.0.0").
 					ShouldSucceed()
@@ -263,7 +254,7 @@ var _ = ginkgo.Describe("Search functionality for OASF 0.8.0 records", func() {
 			err = os.WriteFile(recordPath, testdata.ExpectedRecordV080V4JSON, 0o600)
 			gomega.Expect(err).NotTo(gomega.HaveOccurred())
 
-			recordCID = cli.Push(recordPath).WithArgs("--output", "raw").ShouldSucceed()
+			recordCID = testEnv.CLI.Push(recordPath).WithArgs("--output", "raw").ShouldSucceed()
 			gomega.Expect(recordCID).NotTo(gomega.BeEmpty())
 		})
 
@@ -274,7 +265,7 @@ var _ = ginkgo.Describe("Search functionality for OASF 0.8.0 records", func() {
 		})
 
 		ginkgo.It("returns full record data with JSON output", func() {
-			output := cli.SearchRecords().
+			output := testEnv.CLI.SearchRecords().
 				WithName("http://dns-validation-http/example/research-assistant-v4").
 				WithArgs("--output", "json").
 				ShouldSucceed()
@@ -287,7 +278,7 @@ var _ = ginkgo.Describe("Search functionality for OASF 0.8.0 records", func() {
 		})
 
 		ginkgo.It("returns record with skills data", func() {
-			output := cli.SearchRecords().
+			output := testEnv.CLI.SearchRecords().
 				WithSkillID("10201").
 				WithArgs("--output", "json").
 				ShouldSucceed()
@@ -297,7 +288,7 @@ var _ = ginkgo.Describe("Search functionality for OASF 0.8.0 records", func() {
 		})
 
 		ginkgo.It("returns record with domain data", func() {
-			output := cli.SearchRecords().
+			output := testEnv.CLI.SearchRecords().
 				WithDomain("life_science/*").
 				WithArgs("--output", "json").
 				ShouldSucceed()
@@ -308,7 +299,7 @@ var _ = ginkgo.Describe("Search functionality for OASF 0.8.0 records", func() {
 		})
 
 		ginkgo.It("returns record with locator data", func() {
-			output := cli.SearchRecords().
+			output := testEnv.CLI.SearchRecords().
 				WithLocator("*research-assistant").
 				WithArgs("--output", "json").
 				ShouldSucceed()
@@ -318,7 +309,7 @@ var _ = ginkgo.Describe("Search functionality for OASF 0.8.0 records", func() {
 		})
 
 		ginkgo.It("returns record with module data", func() {
-			output := cli.SearchRecords().
+			output := testEnv.CLI.SearchRecords().
 				WithModule("core/*").
 				WithArgs("--output", "json").
 				ShouldSucceed()
@@ -328,7 +319,7 @@ var _ = ginkgo.Describe("Search functionality for OASF 0.8.0 records", func() {
 		})
 
 		ginkgo.It("supports wildcards like cids command", func() {
-			output := cli.SearchRecords().
+			output := testEnv.CLI.SearchRecords().
 				WithName("*research-assistant-v?").
 				WithArgs("--output", "json").
 				ShouldSucceed()
@@ -337,7 +328,7 @@ var _ = ginkgo.Describe("Search functionality for OASF 0.8.0 records", func() {
 		})
 
 		ginkgo.It("returns no results for non-matching query", func() {
-			output := cli.SearchRecords().
+			output := testEnv.CLI.SearchRecords().
 				WithName("nonexistent-agent").
 				WithArgs("--output", "json").
 				ShouldSucceed()

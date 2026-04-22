@@ -4,53 +4,67 @@
 package network
 
 import (
+	"context"
 	"testing"
-	"time"
 
+	networkconfig "github.com/agntcy/dir/tests/e2e/network/config"
 	"github.com/agntcy/dir/tests/e2e/shared/config"
 	"github.com/agntcy/dir/tests/e2e/shared/utils"
 	ginkgo "github.com/onsi/ginkgo/v2"
 	"github.com/onsi/gomega"
 )
 
-const (
-	readyPollInterval = 2 * time.Second
-	readyTimeout      = 2 * time.Minute
-)
+var testEnv *env
 
-var cfg *config.Config
+type env struct {
+	Config networkconfig.Config
+	Peer1  *utils.CLI
+	Peer2  *utils.CLI
+	Peer3  *utils.CLI
+}
 
-// CID tracking variables are now in cleanup.go
+func (e *env) PeerAddresses() []string {
+	return []string{e.Config.Peer1ServerAddress, e.Config.Peer2ServerAddress, e.Config.Peer3ServerAddress}
+}
+
+func (e *env) PeerCLIs() []*utils.CLI {
+	return []*utils.CLI{e.Peer1, e.Peer2, e.Peer3}
+}
 
 func TestNetworkE2E(t *testing.T) {
 	gomega.RegisterFailHandler(ginkgo.Fail)
 
-	var err error
-
-	cfg, err = config.LoadConfig()
+	// Load configuration
+	cfg, err := config.LoadConfig()
 	gomega.Expect(err).NotTo(gomega.HaveOccurred())
 
-	if cfg.DeploymentMode != config.DeploymentModeNetwork {
-		t.Skip("Skipping network tests - not in network mode")
+	// Set test environment
+	testEnv = &env{
+		Config: cfg.Network,
+		Peer1: utils.NewCLI(
+			utils.WithPath(cfg.Network.CliPath),
+			utils.WithArgs(cfg.Network.Peer1CliExtraArgs...),
+		),
+		Peer2: utils.NewCLI(
+			utils.WithPath(cfg.Network.CliPath),
+			utils.WithArgs(cfg.Network.Peer2CliExtraArgs...),
+		),
+		Peer3: utils.NewCLI(
+			utils.WithPath(cfg.Network.CliPath),
+			utils.WithArgs(cfg.Network.Peer3CliExtraArgs...),
+		),
 	}
 
 	ginkgo.RunSpecs(t, "Network E2E Test Suite")
 }
 
-var _ = ginkgo.BeforeSuite(func() {
-	for _, addr := range utils.PeerAddrs {
-		ginkgo.GinkgoWriter.Printf("Waiting for Directory apiserver at %s...\n", addr)
-		gomega.Eventually(utils.IsGrpcServerReady).
-			WithArguments(addr).
-			WithPolling(readyPollInterval).
-			WithTimeout(readyTimeout).
-			Should(gomega.Succeed())
-		ginkgo.GinkgoWriter.Printf("Directory apiserver is ready at %s\n", addr)
+var _ = ginkgo.BeforeSuite(func(ctx context.Context) {
+	for _, addr := range testEnv.PeerAddresses() {
+		utils.WaitForGrpcServerReady(ctx, addr)
 	}
 })
 
-// Final safety cleanup - runs after all network tests complete.
 var _ = ginkgo.AfterSuite(func() {
-	ginkgo.GinkgoWriter.Printf("Final network test suite cleanup (safety net)")
-	CleanupAllNetworkTests()
+	ginkgo.GinkgoWriter.Printf("Final network test suite cleanup")
+	CleanupAllNetworkTests(testEnv.PeerCLIs())
 })

@@ -1,0 +1,37 @@
+apiserver:
+  service:
+    type: "NodePort"
+    nodePort: "30001"
+    metricsNodePort: "30002"
+
+  secrets:
+    # This is an example (dummy) private key for the bootstrap peer.
+    # It matches the Peer ID "12D3KooWPShmqZQ1a69AT2bEi1zxTh7c8a7dD5rN4HDAFYJ5HCe9" used in other peers for discovery.
+    privKey: "-----BEGIN PRIVATE KEY-----\nMC4CAQAwBQYDK2VwBCIEIDQG0XhBvyvQcUnAejztOVKeXJQVueibpFjMBZoFhGUD\n-----END PRIVATE KEY-----"
+
+  config:
+    publication:
+      scheduler_interval: "1s"
+    routing:
+      # This peer acts as a DHT bootstrap peer for the other peers in the test,
+      # so it doesn't have any bootstrap peers configured.
+      refresh_interval: "1s"
+      key_path: "/etc/agntcy/dir/node.privkey"
+      listen_address: "/ip4/0.0.0.0/tcp/8999"
+    ratelimit:
+      enabled: "true"
+      global_rps: "100"
+      global_burst: "200"
+      per_client_rps: "100"
+      per_client_burst: "200"
+
+  reconciler:
+    config:
+      regsync:
+        interval: "10s"
+      indexer:
+        interval: "10s"
+      name:
+        interval: "5s"
+      signature:
+        interval: "5s"

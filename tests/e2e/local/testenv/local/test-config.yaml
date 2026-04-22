@@ -1,0 +1,7 @@
+local:
+  server_address: "localhost:19888"
+  metrics_address: "http://localhost:19889/metrics"
+  # cli_path: "/path/to/cli"
+  cli_extra_args:
+  - "--server-addr=localhost:19888"
+  - "--auth-mode=insecure"

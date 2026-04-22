@@ -5,10 +5,8 @@ package local
 
 import (
 	"os"
-	"path/filepath"
 	"time"
 
-	"github.com/agntcy/dir/tests/e2e/shared/config"
 	"github.com/agntcy/dir/tests/e2e/shared/testdata"
 	"github.com/agntcy/dir/tests/e2e/shared/utils"
 	"github.com/onsi/ginkgo/v2"
@@ -16,43 +14,35 @@ import (
 )
 
 var _ = ginkgo.Describe("Running dirctl routing commands in local single node deployment", ginkgo.Ordered, func() {
-	var (
-		cli *utils.CLI
-		cid string
-	)
-
-	// Setup temp record file
-	tempDir := os.Getenv("E2E_COMPILE_OUTPUT_DIR")
-	if tempDir == "" {
-		tempDir = os.TempDir()
-	}
-
-	tempPath := filepath.Join(tempDir, "record_v3_local_routing_test.json")
-
-	// Create directory and write record data
-	_ = os.MkdirAll(filepath.Dir(tempPath), 0o755)
-	_ = os.WriteFile(tempPath, testdata.ExpectedRecordV070JSON, 0o600)
-
 	ginkgo.BeforeEach(func() {
-		if cfg.DeploymentMode != config.DeploymentModeLocal {
-			ginkgo.Skip("Skipping test, not in local mode")
-		}
-
 		utils.ResetCLIState()
-		// Initialize CLI helper
-		cli = utils.NewCLI()
 	})
+
+	// Setup record file
+	var (
+		recordFile string
+		cid        string
+	)
+	{
+		tempPath, err := os.CreateTemp("", "record-*.json")
+		gomega.Expect(err).NotTo(gomega.HaveOccurred())
+
+		recordFile = tempPath.Name()
+
+		err = os.WriteFile(recordFile, testdata.ExpectedRecordV070JSON, 0o600)
+		gomega.Expect(err).NotTo(gomega.HaveOccurred())
+	}
 
 	ginkgo.Context("routing publish command", func() {
 		ginkgo.It("should push a record first (prerequisite for publish)", func() {
-			cid = cli.Push(tempPath).WithArgs("--output", "raw").ShouldSucceed()
+			cid = testEnv.CLI.Push(recordFile).WithArgs("--output", "raw").ShouldSucceed()
 
 			// Validate that the returned CID correctly represents the pushed data
-			utils.LoadAndValidateCID(cid, tempPath)
+			utils.LoadAndValidateCID(cid, recordFile)
 		})
 
 		ginkgo.It("should publish a record to local routing", func() {
-			output := cli.Routing().Publish(cid).ShouldSucceed()
+			output := testEnv.CLI.Routing().Publish(cid).ShouldSucceed()
 
 			// Should confirm successful publishing
 			gomega.Expect(output).To(gomega.ContainSubstring("Successfully submitted publication request"))
@@ -63,13 +53,13 @@ var _ = ginkgo.Describe("Running dirctl routing commands in local single node de
 		})
 
 		ginkgo.It("should fail to publish non-existent record", func() {
-			_ = cli.Routing().Publish("non-existent-cid").ShouldFail()
+			_ = testEnv.CLI.Routing().Publish("non-existent-cid").ShouldFail()
 		})
 	})
 
 	ginkgo.Context("routing list command", func() {
 		ginkgo.It("should list all local records without filters", func() {
-			output := cli.Routing().List().ShouldSucceed()
+			output := testEnv.CLI.Routing().List().ShouldSucceed()
 
 			// Should show the published record
 			gomega.Expect(output).To(gomega.ContainSubstring("Local records"))
@@ -77,7 +67,7 @@ var _ = ginkgo.Describe("Running dirctl routing commands in local single node de
 		})
 
 		ginkgo.It("should list record by CID", func() {
-			output := cli.Routing().List().WithCid(cid).ShouldSucceed()
+			output := testEnv.CLI.Routing().List().WithCid(cid).ShouldSucceed()
 
 			// Should find the specific record
 			gomega.Expect(output).To(gomega.ContainSubstring("Local records"))
@@ -85,7 +75,7 @@ var _ = ginkgo.Describe("Running dirctl routing commands in local single node de
 		})
 
 		ginkgo.It("should list records by skill filter", func() {
-			output := cli.Routing().List().WithSkill("natural_language_processing/natural_language_generation/text_completion").ShouldSucceed()
+			output := testEnv.CLI.Routing().List().WithSkill("natural_language_processing/natural_language_generation/text_completion").ShouldSucceed()
 
 			// Should find records with NLP skills
 			gomega.Expect(output).To(gomega.ContainSubstring("Local records"))
@@ -94,7 +84,7 @@ var _ = ginkgo.Describe("Running dirctl routing commands in local single node de
 		})
 
 		ginkgo.It("should list records by specific skill", func() {
-			output := cli.Routing().List().WithSkill("natural_language_processing/natural_language_generation/text_completion").ShouldSucceed()
+			output := testEnv.CLI.Routing().List().WithSkill("natural_language_processing/natural_language_generation/text_completion").ShouldSucceed()
 
 			// Should find records with specific skill
 			gomega.Expect(output).To(gomega.ContainSubstring("Local records"))
@@ -102,7 +92,7 @@ var _ = ginkgo.Describe("Running dirctl routing commands in local single node de
 		})
 
 		ginkgo.It("should list records by locator filter", func() {
-			output := cli.Routing().List().WithLocator("docker_image").ShouldSucceed()
+			output := testEnv.CLI.Routing().List().WithLocator("docker_image").ShouldSucceed()
 
 			// Should find records with docker-image locator
 			gomega.Expect(output).To(gomega.ContainSubstring("Local records"))
@@ -110,7 +100,7 @@ var _ = ginkgo.Describe("Running dirctl routing commands in local single node de
 		})
 
 		ginkgo.It("should list records with multiple filters (AND logic)", func() {
-			output := cli.Routing().List().
+			output := testEnv.CLI.Routing().List().
 				WithSkill("natural_language_processing/natural_language_generation/text_completion").
 				WithLocator("docker_image").
 				ShouldSucceed()
@@ -121,7 +111,7 @@ var _ = ginkgo.Describe("Running dirctl routing commands in local single node de
 		})
 
 		ginkgo.It("should return empty results for non-matching skill", func() {
-			output := cli.Routing().List().WithSkill("NonExistentSkill").ShouldSucceed()
+			output := testEnv.CLI.Routing().List().WithSkill("NonExistentSkill").ShouldSucceed()
 
 			// Should not find any records
 			gomega.Expect(output).NotTo(gomega.ContainSubstring(cid))
@@ -129,14 +119,14 @@ var _ = ginkgo.Describe("Running dirctl routing commands in local single node de
 		})
 
 		ginkgo.It("should return empty results for non-existent CID", func() {
-			output := cli.Routing().List().WithCid("non-existent-cid").ShouldSucceed()
+			output := testEnv.CLI.Routing().List().WithCid("non-existent-cid").ShouldSucceed()
 
 			// Should show helpful message about using search for network discovery
 			gomega.Expect(output).To(gomega.ContainSubstring("No local records found"))
 		})
 
 		ginkgo.It("should respect limit parameter", func() {
-			output := cli.Routing().List().WithLimit(1).ShouldSucceed()
+			output := testEnv.CLI.Routing().List().WithLimit(1).ShouldSucceed()
 
 			// Should limit results (though we only have one record anyway)
 			gomega.Expect(output).To(gomega.ContainSubstring("Local records"))
@@ -145,7 +135,7 @@ var _ = ginkgo.Describe("Running dirctl routing commands in local single node de
 
 	ginkgo.Context("routing search command", func() {
 		ginkgo.It("should search for local records (but return empty in local mode)", func() {
-			output := cli.Routing().Search().WithSkill("Natural Language Processing").ShouldSucceed()
+			output := testEnv.CLI.Routing().Search().WithSkill("Natural Language Processing").ShouldSucceed()
 
 			// In local single-node mode, search should find no remote records
 			// since there are no other peers
@@ -153,7 +143,7 @@ var _ = ginkgo.Describe("Running dirctl routing commands in local single node de
 		})
 
 		ginkgo.It("should handle search with multiple criteria", func() {
-			output := cli.Routing().Search().
+			output := testEnv.CLI.Routing().Search().
 				WithSkill("Natural Language Processing").
 				WithLocator("docker-image").
 				WithLimit(10).
@@ -167,7 +157,7 @@ var _ = ginkgo.Describe("Running dirctl routing commands in local single node de
 		ginkgo.It("should handle OR logic search with partial query matching", func() {
 			// Test OR logic: 3 queries but only require 2 matches (minScore=2)
 			// This demonstrates the new OR behavior where records matching ≥2 queries are returned
-			output := cli.Routing().Search().
+			output := testEnv.CLI.Routing().Search().
 				WithSkill("Natural Language Processing/Text Completion"). // Query 1 - might match
 				WithSkill("Natural Language Processing/Problem Solving"). // Query 2 - might match
 				WithSkill("NonexistentSkill").                            // Query 3 - won't match
@@ -187,7 +177,7 @@ var _ = ginkgo.Describe("Running dirctl routing commands in local single node de
 
 	ginkgo.Context("routing info command", func() {
 		ginkgo.It("should show routing statistics for local records", func() {
-			output := cli.Routing().Info().ShouldSucceed()
+			output := testEnv.CLI.Routing().Info().ShouldSucceed()
 
 			// Should show local routing summary
 			gomega.Expect(output).To(gomega.ContainSubstring("Local Routing Summary"))
@@ -197,7 +187,7 @@ var _ = ginkgo.Describe("Running dirctl routing commands in local single node de
 		})
 
 		ginkgo.It("should show helpful tips in routing info", func() {
-			output := cli.Routing().Info().ShouldSucceed()
+			output := testEnv.CLI.Routing().Info().ShouldSucceed()
 
 			// Should provide helpful usage tips
 			gomega.Expect(output).To(gomega.ContainSubstring("Tips"))
@@ -208,7 +198,7 @@ var _ = ginkgo.Describe("Running dirctl routing commands in local single node de
 
 	ginkgo.Context("routing unpublish command", func() {
 		ginkgo.It("should unpublish a previously published record", func() {
-			output := cli.Routing().Unpublish(cid).ShouldSucceed()
+			output := testEnv.CLI.Routing().Unpublish(cid).ShouldSucceed()
 
 			// Should confirm successful unpublishing
 			gomega.Expect(output).To(gomega.ContainSubstring("Successfully unpublished"))
@@ -216,12 +206,12 @@ var _ = ginkgo.Describe("Running dirctl routing commands in local single node de
 		})
 
 		ginkgo.It("should fail to unpublish non-existent record", func() {
-			_ = cli.Routing().Unpublish("non-existent-cid").ShouldFail()
+			_ = testEnv.CLI.Routing().Unpublish("non-existent-cid").ShouldFail()
 		})
 
 		ginkgo.It("should not find unpublished record in local list", func() {
 			// After unpublishing, the record should not appear in local routing
-			output := cli.Routing().List().WithCid(cid).ShouldSucceed()
+			output := testEnv.CLI.Routing().List().WithCid(cid).ShouldSucceed()
 
 			// Should not find the unpublished record
 			gomega.Expect(output).To(gomega.ContainSubstring("No local records found"))
@@ -230,7 +220,7 @@ var _ = ginkgo.Describe("Running dirctl routing commands in local single node de
 
 	ginkgo.Context("routing command integration", func() {
 		ginkgo.It("should show empty routing info after unpublish", func() {
-			output := cli.Routing().Info().ShouldSucceed()
+			output := testEnv.CLI.Routing().Info().ShouldSucceed()
 
 			// Should show no records after unpublishing
 			gomega.Expect(output).To(gomega.ContainSubstring("Local Routing Summary"))
@@ -238,7 +228,7 @@ var _ = ginkgo.Describe("Running dirctl routing commands in local single node de
 		})
 
 		ginkgo.It("should validate routing command help", func() {
-			output := cli.Routing().WithArgs("--help").ShouldSucceed()
+			output := testEnv.CLI.Routing().WithArgs("--help").ShouldSucceed()
 
 			// Should show all routing subcommands
 			gomega.Expect(output).To(gomega.ContainSubstring("publish"))

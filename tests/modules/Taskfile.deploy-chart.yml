@@ -1,0 +1,47 @@
+# Copyright AGNTCY Contributors (https://github.com/agntcy)
+# SPDX-License-Identifier: Apache-2.0
+
+version: "3"
+
+tasks:
+  up:
+    desc: Install a Helm chart
+    internal: true
+    vars:
+      HELM_BIN: '{{ .HELM_BIN | default "helm" }}'
+      RELEASE_NAME: '{{ .RELEASE_NAME | default "" }}'
+      NAMESPACE: '{{ .NAMESPACE | default "default" }}'
+      CHART_PATH: '{{ .CHART_PATH | default "" }}'
+      CHART_REPOSITORY: '{{ .CHART_REPOSITORY | default "" }}'
+      CHART_VALUES_PATH: '{{ .CHART_VALUES_PATH | default "" }}'
+      CHART_EXTRA_VALUES: '{{ .CHART_EXTRA_VALUES | default "" }}'
+      CHART_WAIT: '{{ .CHART_WAIT | default "true" }}'
+      CHART_TIMEOUT: '{{ .CHART_TIMEOUT | default "10m" }}'
+      KUBE_CONTEXT: '{{ .KUBE_CONTEXT | default "" }}'
+    cmd: |
+        {{ if .KUBE_CONTEXT }}KUBECONTEXT={{ .KUBE_CONTEXT }}{{ end }} \
+        {{ .HELM_BIN }} upgrade {{ .RELEASE_NAME }} \
+          {{ .CHART_PATH }} \
+          {{ if .CHART_REPOSITORY }}--repo {{ .CHART_REPOSITORY }}{{ end }} \
+          {{ if .CHART_VERSION }}--version {{ .CHART_VERSION }}{{ end }} \
+          {{ if .CHART_VALUES_PATH }}-f {{ .CHART_VALUES_PATH }}{{ end }} \
+          {{range .CHART_EXTRA_VALUES | splitLines }} \
+          {{if .}}{{ . }}{{ end }} \
+          {{end}} \
+          --namespace {{ .NAMESPACE }} \
+          --create-namespace \
+          --install \
+          {{ if eq .CHART_WAIT "true" }}--wait --wait-for-jobs{{ end }} \
+          --timeout {{ .CHART_TIMEOUT }}
+
+  down:
+    desc: Uninstall a Helm release
+    internal: true
+    vars:
+      HELM_BIN: '{{ .HELM_BIN | default "helm" }}'
+      RELEASE_NAME: '{{ .RELEASE_NAME | default "" }}'
+      NAMESPACE: '{{ .NAMESPACE | default "default" }}'
+      KUBE_CONTEXT: '{{ .KUBE_CONTEXT | default "" }}'
+    cmd: |
+      {{ if .KUBE_CONTEXT }}KUBECONTEXT={{ .KUBE_CONTEXT }}{{ end }} \
+      {{ .HELM_BIN }} uninstall {{ .RELEASE_NAME }} --namespace {{ .NAMESPACE }} --ignore-not-found

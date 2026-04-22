@@ -1,0 +1,71 @@
+# Copyright AGNTCY Contributors (https://github.com/agntcy)
+# SPDX-License-Identifier: Apache-2.0
+
+version: "3"
+
+includes:
+  deploy-chart: 
+    taskfile: Taskfile.deploy-chart.yml
+  deploy-kind: 
+    taskfile: Taskfile.deploy-kind.yml
+
+tasks:
+  up:
+    desc: Create a local k8s testenv
+    vars:
+      # Inputs
+      KIND_BIN: '{{ .KIND_BIN | default "kind" }}'
+      HELM_BIN: '{{ .HELM_BIN | default "helm" }}'
+      KUBECTL_BIN: '{{ .KUBECTL_BIN | default "kubectl" }}'
+      KIND_CLUSTER_NAME: '{{ .KIND_CLUSTER_NAME | default "e2e-test" }}'
+      KIND_CONFIG_PATH: '{{ .KIND_CONFIG_PATH | default "" }}'
+      KIND_EXTRA_IMAGES: '{{ .KIND_EXTRA_IMAGES | default "" }}'
+      CHART_DEPLOYMENTS: '{{ .CHART_DEPLOYMENTS | default "[]" }}'
+      SETUP_TIMEOUT: '{{ .SETUP_TIMEOUT | default "600s" }}'
+
+      # Task-specific variables
+      KUBE_CONTEXT: 'kind-{{ .KIND_CLUSTER_NAME }}'
+      CHART_DEPLOYMENTS_LIST:
+        ref: 'fromJson .CHART_DEPLOYMENTS'
+    cmds:
+      - task: deploy-kind:up
+        vars:
+          KIND_BIN: '{{ .KIND_BIN }}'
+          KIND_CLUSTER_NAME: '{{ .KIND_CLUSTER_NAME }}'
+          KIND_CONFIG_PATH: '{{ .KIND_CONFIG_PATH }}'
+          KIND_EXTRA_IMAGES: '{{ .KIND_EXTRA_IMAGES }}'
+
+      - for: { var: CHART_DEPLOYMENTS_LIST }
+        task: deploy-chart:up
+        vars:
+          HELM_BIN: '{{ .HELM_BIN }}'
+          RELEASE_NAME: '{{ .ITEM.release_name }}'
+          NAMESPACE: '{{ .ITEM.namespace }}'
+          CHART_PATH: '{{ .ITEM.chart_path }}'
+          CHART_REPOSITORY: '{{ .ITEM.chart_repository | default "" }}'
+          CHART_VALUES_PATH: '{{ .ITEM.chart_values_path | default "" }}'
+          CHART_EXTRA_VALUES: '{{ .ITEM.chart_extra_values | join "\n" }}'
+          # Defer waiting until all charts are installed (matches the OpenTofu
+          # module which sets wait=false on the helm_release and then runs a
+          # kubectl wait afterwards).
+          CHART_WAIT: "false"
+          KUBE_CONTEXT: '{{ .KUBE_CONTEXT }}'
+
+      - for: { var: CHART_DEPLOYMENTS_LIST }
+        cmd: |
+          sleep 10
+          {{ .KUBECTL_BIN }} wait --for=condition=ready --timeout={{.SETUP_TIMEOUT}} \
+            pods -n {{ .ITEM.namespace }} \
+            -l app.kubernetes.io/instance={{ .ITEM.release_name }} \
+            --context {{ .KUBE_CONTEXT }}
+
+  down:
+    desc: Tear down the a local k8s testenv
+    vars:
+      KIND_BIN: '{{ .KIND_BIN | default "kind" }}'
+      KIND_CLUSTER_NAME: '{{ .KIND_CLUSTER_NAME | default "e2e-test" }}'
+    cmds:
+      - task: deploy-kind:down
+        vars:
+          KIND_BIN: '{{ .KIND_BIN }}'
+          KIND_CLUSTER_NAME: '{{ .KIND_CLUSTER_NAME }}'

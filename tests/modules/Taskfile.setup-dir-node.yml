@@ -1,0 +1,40 @@
+# Copyright AGNTCY Contributors (https://github.com/agntcy)
+# SPDX-License-Identifier: Apache-2.0
+
+version: "3"
+
+tasks:
+  up:
+    desc: Start a local Directory daemon node
+    vars:
+      DIRCTL_BIN: '{{ .DIRCTL_BIN | default "dirctl" }}'
+      DIRCTL_DATA_PATH: '{{ .DIRCTL_DATA_PATH }}'
+      DIRCTL_CONFIG_PATH: '{{ .DIRCTL_CONFIG_PATH }}'
+      DIRCTL_LOGFILE_PATH: '{{ .DIRCTL_LOGFILE_PATH | default "" }}'
+    cmds:
+      - platforms: [linux, darwin]
+        cmd: |
+          # Ensure the data directory exists
+          mkdir -p {{ .DIRCTL_DATA_PATH }}
+
+          # Start the Directory daemon in the background
+          {{ .DIRCTL_BIN }} daemon start \
+          --config {{ .DIRCTL_CONFIG_PATH }} \
+          --data-dir {{ .DIRCTL_DATA_PATH }} \
+          {{ if .DIRCTL_LOGFILE_PATH }}>{{.DIRCTL_LOGFILE_PATH}}{{else}}>/dev/null{{end}} 2>&1 &
+
+          # Give some time for the daemon to start
+          sleep 10
+
+  down:
+    desc: Stop a local Directory daemon node
+    vars:
+      DIRCTL_BIN: '{{ .DIRCTL_BIN | default "dirctl" }}'
+      DIRCTL_DATA_PATH: '{{ .DIRCTL_DATA_PATH }}'
+      DIRCTL_CONFIG_PATH: '{{ .DIRCTL_CONFIG_PATH }}'
+    cmds:
+      - platforms: [linux, darwin]
+        cmd: |
+          {{ .DIRCTL_BIN }} daemon stop \
+          --config {{ .DIRCTL_CONFIG_PATH }} \
+          --data-dir {{ .DIRCTL_DATA_PATH }}

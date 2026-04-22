@@ -13,11 +13,17 @@ import (
 	routingv1 "github.com/agntcy/dir/api/routing/v1"
 	clicmd "github.com/agntcy/dir/cli/cmd"
 	searchcmd "github.com/agntcy/dir/cli/cmd/search"
+	"github.com/onsi/ginkgo/v2"
+	"github.com/onsi/gomega"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/health/grpc_health_v1"
+)
+
+const (
+	TimeoutInterval = 2 * time.Minute
 )
 
 // Ptr creates a pointer to the given value.
@@ -117,9 +123,9 @@ func resetNestedCommandFlags(cmd *cobra.Command) {
 	}
 }
 
-// IsServerReady checks whether the given gRPC server reports SERVING
+// isGrpcServerReady checks whether the given gRPC server reports SERVING
 // on the gRPC health check endpoint.
-func IsGrpcServerReady(addr string) error {
+func isGrpcServerReady(ctx context.Context, addr string) error {
 	// Create client
 	client, err := grpc.NewClient(addr,
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
@@ -128,10 +134,6 @@ func IsGrpcServerReady(addr string) error {
 		return fmt.Errorf("failed to connect to %s: %w", addr, err)
 	}
 	defer client.Close()
-
-	// Create request context
-	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
-	defer cancel()
 
 	// Check health
 	healthClient := grpc_health_v1.NewHealthClient(client)
@@ -146,6 +148,18 @@ func IsGrpcServerReady(addr string) error {
 	}
 
 	return nil
+}
+
+// WaitForGrpcServerReady waits until the gRPC server at the given address reports SERVING on the health check endpoint.
+func WaitForGrpcServerReady(ctx context.Context, addr string) {
+	ginkgo.GinkgoWriter.Printf("Waiting for gRPC server at %s...\n", addr)
+	gomega.Eventually(isGrpcServerReady).
+		WithArguments(addr).
+		WithPolling(PollingInterval).
+		WithTimeout(TimeoutInterval).
+		WithContext(ctx).
+		Should(gomega.Succeed())
+	ginkgo.GinkgoWriter.Printf("gRPC server at %s is ready\n", addr)
 }
 
 // ResetCLIState provides a comprehensive reset of CLI state.
