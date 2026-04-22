@@ -21,7 +21,6 @@ import (
 	ocilib "github.com/agntcy/dir/server/store/oci"
 	"github.com/agntcy/dir/utils/logging"
 	"github.com/spf13/cobra"
-	ocistore "oras.land/oras-go/v2/content/oci"
 	"oras.land/oras-go/v2/registry"
 )
 
@@ -191,15 +190,6 @@ func ensureKeyFile(path string) error {
 // When a local OCI directory is configured, a local oci.Store is opened.
 // Otherwise a remote ORAS repository is created from the OCI config.
 func newTagLister(cfg *DaemonConfig) (registry.TagLister, error) {
-	if dir := cfg.Server.Store.OCI.LocalDir; dir != "" {
-		repo, err := ocistore.New(dir)
-		if err != nil {
-			return nil, fmt.Errorf("failed to open local OCI store: %w", err)
-		}
-
-		return repo, nil
-	}
-
 	repo, err := ocilib.NewORASRepository(cfg.Server.Store.OCI)
 	if err != nil {
 		return nil, fmt.Errorf("failed to connect to remote OCI registry: %w", err)

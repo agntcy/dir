@@ -162,7 +162,6 @@ func resolveRelativePaths(cfg *DaemonConfig) {
 		return filepath.Join(opts.DataDir, p)
 	}
 
-	cfg.Server.Store.OCI.LocalDir = resolve(cfg.Server.Store.OCI.LocalDir)
 	cfg.Server.Routing.KeyPath = resolve(cfg.Server.Routing.KeyPath)
 	cfg.Server.Routing.DatastoreDir = resolve(cfg.Server.Routing.DatastoreDir)
 	cfg.Server.Database.SQLite.Path = resolve(cfg.Server.Database.SQLite.Path)

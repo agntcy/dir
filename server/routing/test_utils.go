@@ -32,9 +32,7 @@ func newTestServer(t *testing.T, ctx context.Context, bootPeers []string) *route
 		&config.Config{
 			Store: storeconfig.Config{
 				Provider: string(store.OCI),
-				OCI: ociconfig.Config{
-					LocalDir: t.TempDir(),
-				},
+				OCI:      ociconfig.Config{},
 			},
 			Routing: routingconfig.Config{
 				ListenAddress:   "/ip4/0.0.0.0/tcp/0",

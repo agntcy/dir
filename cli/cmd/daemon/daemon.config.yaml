@@ -24,7 +24,6 @@ server:
   store:
     provider: "oci"
     oci:
-      local_dir: "store"
       # To use a remote OCI registry instead of local_dir, set:
       #   registry_address: "ghcr.io"
       #   repository_name: "org/agents"

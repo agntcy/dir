@@ -17,10 +17,6 @@ const (
 )
 
 type Config struct {
-	// Path to a local directory that will be to hold data instead of remote.
-	// If this is set to non-empty value, only local store will be used.
-	LocalDir string `json:"local_dir,omitempty" mapstructure:"local_dir"`
-
 	// Path to a local directory that will be used to cache metadata.
 	// If empty, caching will not be used.
 	CacheDir string `json:"cache_dir,omitempty" mapstructure:"cache_dir"`

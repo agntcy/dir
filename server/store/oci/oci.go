@@ -48,20 +48,6 @@ var (
 )
 
 func New(cfg ociconfig.Config) (types.StoreAPI, error) {
-	if repoPath := cfg.LocalDir; repoPath != "" {
-		logger.Info("Initializing local OCI store", "path", repoPath)
-
-		repo, err := oci.New(repoPath)
-		if err != nil {
-			return nil, fmt.Errorf("failed to create local repo: %w", err)
-		}
-
-		return &store{
-			repo:   repo,
-			config: cfg,
-		}, nil
-	}
-
 	addr, _ := cfg.GetRegistryAddress()
 	logger.Info("Initializing remote OCI store", "registry", addr, "repository", cfg.RepositoryName)
 
@@ -404,13 +390,6 @@ func (s *store) Delete(ctx context.Context, ref *corev1.RecordRef) error {
 // IsReady checks if the storage backend is ready to serve traffic.
 // For local stores, always returns true.
 func (s *store) IsReady(ctx context.Context) bool {
-	// Local directory stores are always ready
-	if s.config.LocalDir != "" {
-		logger.Debug("Store ready: using local directory", "path", s.config.LocalDir)
-
-		return true
-	}
-
 	// For remote registries, check connectivity
 	remoteRepo, ok := s.repo.(*remote.Repository)
 	if !ok {
