@@ -117,7 +117,6 @@ jobs:
         if: ${{ env.SCANNER_ENABLED == 'true' }}
         run: task importer:deps:mcp-scanner
 
-      # Shape matches dirctl v1.2.0 importer/enricher/mcphost.json (mcpServers + allowedTools + model + max-steps).
       - name: Create Enricher Config
         run: |
           cat <<'EOF' > mcphost_ci.json
