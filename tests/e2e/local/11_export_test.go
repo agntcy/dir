@@ -123,6 +123,105 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests for the export command"
 		})
 	})
 
+	ginkgo.Context("Batch export with --output-dir", ginkgo.Ordered, ginkgo.Serial, func() {
+		// recordCID covers both A2A and MCP (record_100.json has both modules).
+		var recordCID, skillCID string
+
+		tempDir, err := os.MkdirTemp("", "export-batch-e2e-*")
+		gomega.Expect(err).NotTo(gomega.HaveOccurred())
+
+		ginkgo.AfterAll(func() {
+			os.RemoveAll(tempDir)
+		})
+
+		ginkgo.It("should push test records for batch export", func() {
+			// Push OASF record that contains both integration/a2a and integration/mcp modules.
+			recordPath := filepath.Join(tempDir, "record.json")
+			gomega.Expect(os.WriteFile(recordPath, testdata.ExpectedRecordV100JSON, 0o600)).To(gomega.Succeed())
+
+			recordCID = cli.Push(recordPath).WithArgs("--output", "raw").ShouldSucceed()
+			gomega.Expect(recordCID).NotTo(gomega.BeEmpty())
+
+			// Push a pre-built OASF skill record (avoids the importer pipeline).
+			skillPath := filepath.Join(tempDir, "skill-record.json")
+			gomega.Expect(os.WriteFile(skillPath, testdata.SkillRecordJSON, 0o600)).To(gomega.Succeed())
+
+			skillCID = cli.Push(skillPath).WithArgs("--output", "raw").ShouldSucceed()
+			gomega.Expect(skillCID).NotTo(gomega.BeEmpty())
+		})
+
+		ginkgo.It("should batch export A2A records to a directory", func() {
+			outDir := filepath.Join(tempDir, "batch-a2a")
+
+			cli.ExportBatch(outDir, "a2a").WithArgs(
+				"--module", "integration/a2a",
+			).ShouldSucceed()
+
+			entries, err := os.ReadDir(outDir)
+			gomega.Expect(err).NotTo(gomega.HaveOccurred())
+			gomega.Expect(entries).NotTo(gomega.BeEmpty(), "output directory should contain exported files")
+		})
+
+		ginkgo.It("should batch export skills to subdirectories", func() {
+			outDir := filepath.Join(tempDir, "batch-skills")
+
+			cli.ExportBatch(outDir, "agent-skill").WithArgs(
+				"--module", "core/language_model/agentskills",
+			).ShouldSucceed()
+
+			entries, err := os.ReadDir(outDir)
+			gomega.Expect(err).NotTo(gomega.HaveOccurred())
+			gomega.Expect(entries).NotTo(gomega.BeEmpty(), "output directory should contain skill directories")
+
+			// Each entry should be a directory containing SKILL.md
+			for _, entry := range entries {
+				gomega.Expect(entry.IsDir()).To(gomega.BeTrue(), "each exported skill should be a directory")
+
+				skillPath := filepath.Join(outDir, entry.Name(), "SKILL.md")
+				_, err := os.Stat(skillPath)
+				gomega.Expect(err).NotTo(gomega.HaveOccurred(), "skill directory should contain SKILL.md")
+			}
+		})
+
+		ginkgo.It("should batch export MCP servers into a merged config", func() {
+			outDir := filepath.Join(tempDir, "batch-mcp")
+
+			cli.ExportBatch(outDir, "mcp-ghcopilot").WithArgs(
+				"--module", "integration/mcp",
+			).ShouldSucceed()
+
+			mcpPath := filepath.Join(outDir, "mcp.json")
+			data, err := os.ReadFile(mcpPath)
+			gomega.Expect(err).NotTo(gomega.HaveOccurred())
+
+			var parsed map[string]any
+
+			err = json.Unmarshal(data, &parsed)
+			gomega.Expect(err).NotTo(gomega.HaveOccurred(), "mcp.json should be valid JSON")
+			gomega.Expect(parsed).To(gomega.HaveKey("servers"))
+			gomega.Expect(parsed).To(gomega.HaveKey("inputs"))
+		})
+
+		ginkgo.It("should fail when --output-dir and positional arg are both provided", func() {
+			outDir := filepath.Join(tempDir, "fail-both")
+
+			err := cli.Export("some-cid").WithArgs("--output-dir", outDir, "--name", "test").ShouldFail()
+			gomega.Expect(err.Error()).To(gomega.ContainSubstring("mutually exclusive"))
+		})
+
+		ginkgo.It("should fail when --output-dir is used without search filters", func() {
+			outDir := filepath.Join(tempDir, "fail-no-filter")
+
+			err := cli.ExportBatch(outDir, "a2a").ShouldFail()
+			gomega.Expect(err.Error()).To(gomega.ContainSubstring("at least one search filter"))
+		})
+
+		ginkgo.It("should clean up test records", func() {
+			cli.Delete(recordCID).ShouldSucceed()
+			cli.Delete(skillCID).ShouldSucceed()
+		})
+	})
+
 	ginkgo.Context("Export with a2a format", ginkgo.Ordered, ginkgo.Serial, func() {
 		var cid string
 
@@ -297,105 +396,6 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests for the export command"
 
 		ginkgo.It("should clean up the test record", func() {
 			cli.Delete(cid).ShouldSucceed()
-		})
-	})
-
-	ginkgo.Context("Batch export with --output-dir", ginkgo.Ordered, ginkgo.Serial, func() {
-		// recordCID covers both A2A and MCP (record_100.json has both modules).
-		var recordCID, skillCID string
-
-		tempDir, err := os.MkdirTemp("", "export-batch-e2e-*")
-		gomega.Expect(err).NotTo(gomega.HaveOccurred())
-
-		ginkgo.AfterAll(func() {
-			os.RemoveAll(tempDir)
-		})
-
-		ginkgo.It("should push test records for batch export", func() {
-			// Push OASF record that contains both integration/a2a and integration/mcp modules.
-			recordPath := filepath.Join(tempDir, "record.json")
-			gomega.Expect(os.WriteFile(recordPath, testdata.ExpectedRecordV100JSON, 0o600)).To(gomega.Succeed())
-
-			recordCID = cli.Push(recordPath).WithArgs("--output", "raw").ShouldSucceed()
-			gomega.Expect(recordCID).NotTo(gomega.BeEmpty())
-
-			// Push a pre-built OASF skill record (avoids the importer pipeline).
-			skillPath := filepath.Join(tempDir, "skill-record.json")
-			gomega.Expect(os.WriteFile(skillPath, testdata.SkillRecordJSON, 0o600)).To(gomega.Succeed())
-
-			skillCID = cli.Push(skillPath).WithArgs("--output", "raw").ShouldSucceed()
-			gomega.Expect(skillCID).NotTo(gomega.BeEmpty())
-		})
-
-		ginkgo.It("should batch export A2A records to a directory", func() {
-			outDir := filepath.Join(tempDir, "batch-a2a")
-
-			cli.ExportBatch(outDir, "a2a").WithArgs(
-				"--module", "integration/a2a",
-			).ShouldSucceed()
-
-			entries, err := os.ReadDir(outDir)
-			gomega.Expect(err).NotTo(gomega.HaveOccurred())
-			gomega.Expect(entries).NotTo(gomega.BeEmpty(), "output directory should contain exported files")
-		})
-
-		ginkgo.It("should batch export skills to subdirectories", func() {
-			outDir := filepath.Join(tempDir, "batch-skills")
-
-			cli.ExportBatch(outDir, "agent-skill").WithArgs(
-				"--module", "core/language_model/agentskills",
-			).ShouldSucceed()
-
-			entries, err := os.ReadDir(outDir)
-			gomega.Expect(err).NotTo(gomega.HaveOccurred())
-			gomega.Expect(entries).NotTo(gomega.BeEmpty(), "output directory should contain skill directories")
-
-			// Each entry should be a directory containing SKILL.md
-			for _, entry := range entries {
-				gomega.Expect(entry.IsDir()).To(gomega.BeTrue(), "each exported skill should be a directory")
-
-				skillPath := filepath.Join(outDir, entry.Name(), "SKILL.md")
-				_, err := os.Stat(skillPath)
-				gomega.Expect(err).NotTo(gomega.HaveOccurred(), "skill directory should contain SKILL.md")
-			}
-		})
-
-		ginkgo.It("should batch export MCP servers into a merged config", func() {
-			outDir := filepath.Join(tempDir, "batch-mcp")
-
-			cli.ExportBatch(outDir, "mcp-ghcopilot").WithArgs(
-				"--module", "integration/mcp",
-			).ShouldSucceed()
-
-			mcpPath := filepath.Join(outDir, "mcp.json")
-			data, err := os.ReadFile(mcpPath)
-			gomega.Expect(err).NotTo(gomega.HaveOccurred())
-
-			var parsed map[string]any
-
-			err = json.Unmarshal(data, &parsed)
-			gomega.Expect(err).NotTo(gomega.HaveOccurred(), "mcp.json should be valid JSON")
-			gomega.Expect(parsed).To(gomega.HaveKey("servers"))
-			gomega.Expect(parsed).To(gomega.HaveKey("inputs"))
-		})
-
-		ginkgo.It("should fail when --output-dir and positional arg are both provided", func() {
-			outDir := filepath.Join(tempDir, "fail-both")
-
-			err := cli.Export("some-cid").WithArgs("--output-dir", outDir, "--name", "test").ShouldFail()
-			gomega.Expect(err.Error()).To(gomega.ContainSubstring("mutually exclusive"))
-		})
-
-		ginkgo.It("should fail when --output-dir is used without search filters", func() {
-			outDir := filepath.Join(tempDir, "fail-no-filter")
-
-			err := cli.ExportBatch(outDir, "a2a").ShouldFail()
-			gomega.Expect(err.Error()).To(gomega.ContainSubstring("at least one search filter"))
-		})
-
-		ginkgo.It("should clean up test records", func() {
-			cli.Delete(recordCID).ShouldSucceed()
-			cli.Delete(skillCID).ShouldSucceed()
 		})
 	})
 
