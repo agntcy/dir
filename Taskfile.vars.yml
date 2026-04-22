@@ -21,7 +21,7 @@ vars:
   # renovate: datasource=go depName=github.com/regclient/regclient versioning=semver
   REGSYNC_VERSION: "v0.11.3"
   # renovate: datasource=docker depName=docker.io/bitnami/postgresql
-  POSTGRESQL_VERSION: "latest@sha256:9b62e6057d781853916a712ad2591a607de4529160e07c2eaf58d75ef6c45b9d"
+  POSTGRESQL_VERSION: "latest@sha256:112a9c10f136a2884f44ade1a6a6908066d2baf1688d902623366c4731d04feb"
   # renovate: datasource=docker depName=docker.io/envoyproxy/envoy
   ENVOY_VERSION: "distroless-v1.37-latest"
 
