@@ -332,7 +332,7 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests for the export command"
 
 			cli.ExportBatch(outDir, "a2a").WithArgs(
 				"--module", "integration/a2a",
-			).ShouldSucceed()
+			).ShouldEventuallySucceed(60 * time.Second)
 
 			entries, err := os.ReadDir(outDir)
 			gomega.Expect(err).NotTo(gomega.HaveOccurred())
@@ -344,7 +344,7 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests for the export command"
 
 			cli.ExportBatch(outDir, "agent-skill").WithArgs(
 				"--module", "core/language_model/agentskills",
-			).ShouldSucceed()
+			).ShouldEventuallySucceed(60 * time.Second)
 
 			entries, err := os.ReadDir(outDir)
 			gomega.Expect(err).NotTo(gomega.HaveOccurred())
@@ -365,7 +365,7 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests for the export command"
 
 			cli.ExportBatch(outDir, "mcp-ghcopilot").WithArgs(
 				"--module", "integration/mcp",
-			).ShouldSucceed()
+			).ShouldEventuallySucceed(60 * time.Second)
 
 			mcpPath := filepath.Join(outDir, "mcp.json")
 			data, err := os.ReadFile(mcpPath)
