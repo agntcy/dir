@@ -100,15 +100,7 @@ func validateDaemonProcess(pid int) error {
 	}
 
 	args := strings.Split(strings.TrimRight(string(cmdline), "\x00"), "\x00")
-	isDaemonCommand := false
-	for _, arg := range args[1:] {
-		if arg == "daemon" {
-			isDaemonCommand = true
-			break
-		}
-	}
-
-	if !isDaemonCommand {
+	if len(args) < 2 || args[1] != "daemon" {
 		return fmt.Errorf("pid %d is not a daemon process", pid)
 	}
 
