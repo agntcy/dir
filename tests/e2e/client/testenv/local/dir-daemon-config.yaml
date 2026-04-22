@@ -1,0 +1,50 @@
+server:
+  listen_address: "localhost:8889"
+  metrics:
+    enabled: false
+  oasf_api_validation:
+    schema_url: "https://schema.oasf.outshift.com"
+  store:
+    provider: "oci"
+    oci:
+      local_dir: "store"
+      registry_address: "localhost:8890"
+      repository_name: "dir"
+      auth_config:
+        insecure: true
+    verification:
+      enabled: true
+  routing:
+    listen_address: "/ip4/127.0.0.1/tcp/0"
+    refresh_interval: "1s"
+  database:
+    type: "sqlite"
+  publication:
+    scheduler_interval: 1s
+    worker_count: 1
+    worker_timeout: 30m
+  naming:
+    ttl: 168h
+
+reconciler:
+  local_registry:
+    registry_address: "localhost:8890"
+    repository_name: "dir"
+    auth_config:
+      insecure: true
+  regsync:
+    enabled: true
+    interval: 10s
+  indexer:
+    enabled: true
+    interval: 10s
+  signature:
+    enabled: true
+    interval: 10s
+    ttl: 168h
+    record_timeout: 30s
+  name:
+    enabled: true
+    interval: 10s
+    ttl: 168h
+    record_timeout: 30s

@@ -1,0 +1,28 @@
+apiserver:
+  service:
+    type: "NodePort"
+    nodePort: "30088"
+    metricsNodePort: "30090"
+
+  config:
+    publication:
+      scheduler_interval: "1s"
+    routing:
+      refresh_interval: "1s"
+    ratelimit:
+      enabled: "true"
+      global_rps: "100"
+      global_burst: "200"
+      per_client_rps: "100"
+      per_client_burst: "200"
+
+  reconciler:
+    config:
+      regsync:
+        interval: "10s"
+      indexer:
+        interval: "10s"
+      name:
+        interval: "5s"
+      signature:
+        interval: "5s"

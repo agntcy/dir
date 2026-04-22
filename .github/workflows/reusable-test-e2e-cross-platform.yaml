@@ -42,21 +42,6 @@ jobs:
           cache-dependency-path: "**/*.sum"
           cache: true
 
-      - name: Compile CLI
-        run: task cli:compile
-
-      - name: Run daemon smoke tests (default backend)
-        env:
-          DIRECTORY_CLIENT_SERVER_ADDRESS: localhost:8888
+      - name: Run daemon smoke tests
         run: |
-          if [[ "$RUNNER_OS" == "Windows" ]]; then
-            DIRCTL_BIN=".bin/dirctl.exe"
-          else
-            DIRCTL_BIN=".bin/dirctl"
-          fi
-
-          DATA_DIR=$(mktemp -d)
-
-          "$DIRCTL_BIN" daemon start --data-dir "$DATA_DIR" &
-
-          go test -C ./tests/e2e/daemon . -v -failfast -test.v -test.paniconexit0 -ginkgo.timeout 5m -timeout 5m -ginkgo.v
+          task e2e:test:daemon:default

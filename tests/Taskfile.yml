@@ -3,6 +3,50 @@
 
 version: "3"
 
+vars:
+  # Test matrix spec. Items are added with following schema:
+  # - test: <test case name>
+  #   package: <go test package path>
+  #   testenvs:
+  #     - env: <test environment name>
+  #       path: <relative path to testenv>
+  #       extra_tofu_args: <optional extra args to pass to tofu testenv>
+  TEST_MATRIX:
+    - test: client
+      package: "{{ .ROOT_DIR }}/tests/e2e/client"
+      testenvs:
+        - env: local
+          path: testenv/local
+        - env: kind
+          path: testenv/kind
+          extra_tofu_args: |
+            -var="image_tag={{ .IMAGE_TAG }}"
+    - test: daemon
+      package: "{{ .ROOT_DIR }}/tests/e2e/daemon"
+      testenvs:
+        - env: default
+          path: testenv/default
+        - env: external
+          path: testenv/external
+    - test: local
+      package: "{{ .ROOT_DIR }}/tests/e2e/local"
+      testenvs:
+        - env: local
+          path: testenv/local
+        - env: kind
+          path: testenv/kind
+          extra_tofu_args: |
+            -var="image_tag={{ .IMAGE_TAG }}"
+    - test: network
+      package: "{{ .ROOT_DIR }}/tests/e2e/network"
+      testenvs:
+        - env: local
+          path: testenv/local
+        - env: kind
+          path: testenv/kind
+          extra_tofu_args: |
+            -var="image_tag={{ .IMAGE_TAG }}"
+
 tasks:
   default:
     cmd: echo "Run the main Taskfile instead of this one."
@@ -621,3 +665,125 @@ tasks:
         else
           echo "No pods directory found"
         fi
+
+  ## Using update test-env setup from here
+  e2e:test:*:*:
+    desc: Run E2E test suite for a given test environment
+    silent: true
+    vars:
+      # User input
+      TEST_CASE: '{{index .MATCH 0}}'
+      TEST_ENV: '{{index .MATCH 1}}'
+
+      # Find selected test case from matrix
+      SELECTED_CASE_JSON:
+        sh: |
+          echo '{{ toJson .TEST_MATRIX }}' | jq -e ".[] | select(.test == \"{{ .TEST_CASE }}\")" || (echo "Test case not found: {{ .TEST_CASE }}" >&2 && exit 1)
+      SELECTED_CASE:
+        ref: 'fromJson .SELECTED_CASE_JSON'
+
+      # Find selected test environment from case
+      SELECTED_TESTENV_JSON:
+        sh: |
+          echo '{{ toJson .SELECTED_CASE.testenvs }}' | jq -e ".[] | select(.env == \"{{ .TEST_ENV }}\")" || (echo "Test environment not found: {{ .TEST_ENV }}" >&2 && exit 1)
+      SELECTED_TESTENV:
+        ref: 'fromJson .SELECTED_TESTENV_JSON'
+
+      # Task vars
+      TOFU_ROOT: '{{ .SELECTED_CASE.package }}/{{ .SELECTED_TESTENV.path }}'
+      GO_TEST_SELECTOR: 'test-config.yaml'
+      GO_TEST_CONFIG: '{{ .SELECTED_CASE.package }}/{{ .SELECTED_TESTENV.path }}/{{ .GO_TEST_SELECTOR }}'
+      GO_TEST_PACKAGE: '{{ .SELECTED_CASE.package }}'
+      GOCOVERDIR: '{{ .COVERAGE_DIR }}/e2e-{{ .TEST_CASE }}-{{ .TEST_ENV }}'
+    deps:
+      - task: cli:compile
+        vars:
+          COVERAGE: "true"
+          TRY_SKIP_COMPILE: "true"
+    cmds:
+      # Print info
+      - |
+        echo -e "Test case: {{ toJson .SELECTED_CASE }}"
+        echo -e "Test environment: {{ toJson .SELECTED_TESTENV }}"
+
+        # Create clean coverage directory for this testenv
+        rm -rf {{ .GOCOVERDIR }}
+        mkdir -p {{ .GOCOVERDIR }}
+
+      # Create testenv
+      - defer:
+          task: test-env:tofu:destroy
+          vars:
+            TOFU_ROOT: '{{ .TOFU_ROOT }}'
+      - task: test-env:tofu:apply
+        vars:
+          TOFU_ROOT: '{{ .TOFU_ROOT }}'
+          TOFU_EXTRA_ARGS: |
+            {{ .SELECTED_TESTENV.extra_tofu_args }}
+            -var=dirctl_path="GOCOVERDIR={{ .GOCOVERDIR }} {{ .DIRCTL_BIN }}"
+
+      # Run test suite
+      - |
+          go test \
+            -C {{ .GO_TEST_PACKAGE }} . \
+            -v -failfast -test.v -test.paniconexit0 \
+            -timeout 2h -ginkgo.timeout 2h -ginkgo.v \
+            --config {{ .GO_TEST_CONFIG }} \
+
+  e2e:test:*:
+    desc: Run E2E test suite across all test environments
+    silent: true
+    vars:
+      # User input
+      TEST_CASE: '{{index .MATCH 0}}'
+
+      # Find selected test case from matrix
+      SELECTED_CASE_JSON:
+        sh: |
+          echo '{{ toJson .TEST_MATRIX }}' | jq -r -e ".[] | select(.test == \"{{ .TEST_CASE }}\") | ." || (echo "Test case not found: {{ .TEST_CASE }}" >&2 && exit 1)
+      SELECTED_CASE:
+        ref: 'fromJson .SELECTED_CASE_JSON'
+      SELECTED_TESTENVS:
+        ref: '.SELECTED_CASE.testenvs'
+    deps:
+      # Run in parallel across test environments assuming
+      # testenv setup is isolated per environment
+      - for: { var: SELECTED_TESTENVS }
+        task: 'e2e:test:{{ .TEST_CASE }}:{{ .ITEM.env }}'
+
+  e2e:test:
+    desc: Run all E2E test suites
+    silent: true
+    cmds:
+      # Run serial across test cases
+      - for: { var: TEST_MATRIX }
+        task: 'e2e:test:{{ .ITEM.test }}'
+
+  e2e:list:
+    desc: List available E2E test suites
+    silent: true
+    cmds:
+      - for: { var: TEST_MATRIX }
+        cmd: |
+          echo "+ CMD: e2e:test:{{.ITEM.test}}"
+          {{ $item := .ITEM }}
+          {{ range .ITEM.testenvs }}
+            echo -e "  - CMD:  e2e:test:{{$item.test}}:{{.env}}"
+            echo -e "    PATH: {{ $item.package }}/{{ .path }}"
+          {{ end }}
+
+  e2e:coverage:
+    desc: Collect and display E2E coverage data
+    vars:
+      GOCOV_FILES:
+        sh: find {{ .COVERAGE_DIR }} -type d 2>/dev/null || true
+    cmds:
+      - |
+        # Merge all coverage data from testenv runs and convert to single report
+        mkdir -p /tmp/coverage-merged
+        go tool covdata merge -i={{ .GOCOV_FILES | splitLines | join "," }} -o=/tmp/coverage-merged
+        go tool covdata textfmt -i=/tmp/coverage-merged -o={{ .COVERAGE_DIR }}/coverage.out.tmp
+
+        # Filter out generated files (matching codecov.yml ignores)
+        grep -v "\.pb\.go" {{.COVERAGE_DIR}}/coverage.out.tmp | grep -v "mock_.*\.go" > {{.COVERAGE_DIR}}/coverage.out
+        rm {{.COVERAGE_DIR}}/coverage.out.tmp

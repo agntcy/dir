@@ -36,10 +36,14 @@ vars:
   IMAGE_BAKE_ENV: "IMAGE_REPO={{.IMAGE_REPO}} IMAGE_TAG={{.IMAGE_TAG}}"
   IMAGE_BAKE_OPTS: '{{ .IMAGE_BAKE_OPTS | default "" }}'
   BAKE_ENV: '{{ .IMAGE_BAKE_ENV }} BUILD_LDFLAGS="{{.BUILD_LDFLAGS}}"'
+  COVERAGE: '{{ .COVERAGE | default "false" }}'
   COVERAGE_IMAGE_TAG: "{{ .IMAGE_TAG | default .COMMIT_SHA }}-coverage"
   COVERAGE_IMAGE_BAKE_ENV: "IMAGE_REPO={{.IMAGE_REPO}} IMAGE_TAG={{.COVERAGE_IMAGE_TAG}}"
   COVERAGE_BAKE_ENV: '{{ .COVERAGE_IMAGE_BAKE_ENV }} BUILD_LDFLAGS="{{.BUILD_LDFLAGS}}"'
   COVERAGE_PKGS: '{{ .COVERAGE_PKGS | default "github.com/agntcy/dir/api/...,github.com/agntcy/dir/cli/...,github.com/agntcy/dir/client/...,github.com/agntcy/dir/server/...,github.com/agntcy/dir/reconciler/...,github.com/agntcy/dir/utils/..." }}'
+  IMAGES_LOCAL:
+    sh: |
+      {{.BAKE_ENV}} docker buildx bake default --print | jq -r '.target | with_entries(.value |= .tags[0]) | to_entries[] | .value'
 
   ## Dependency config
   RENOVATE_VERSION: "43.89.5"
@@ -68,6 +72,8 @@ vars:
   COSIGN_BIN: "{{ .BIN_DIR }}/cosign-{{.COSIGN_VERSION}}"
   TRIVY_VERSION: "0.69.3"
   TRIVY_BIN: "{{ .BIN_DIR }}/trivy-{{.TRIVY_VERSION}}"
+  TOFU_VERSION: "1.11.6"
+  TOFU_BIN: "{{ .BIN_DIR }}/tofu-{{.TOFU_VERSION}}"
   PRE_COMMIT_VERSION: "4.5.1"
   PRE_COMMIT_PYZ: "{{ .BIN_DIR }}/pre-commit-{{.PRE_COMMIT_VERSION}}.pyz"
 

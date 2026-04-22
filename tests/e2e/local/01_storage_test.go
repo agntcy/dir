@@ -6,10 +6,8 @@ package local
 import (
 	_ "embed"
 	"os"
-	"path/filepath"
 	"time"
 
-	"github.com/agntcy/dir/tests/e2e/shared/config"
 	"github.com/agntcy/dir/tests/e2e/shared/testdata"
 	"github.com/agntcy/dir/tests/e2e/shared/utils"
 	"github.com/onsi/ginkgo/v2"
@@ -17,23 +15,9 @@ import (
 )
 
 var _ = ginkgo.Describe("Running dirctl end-to-end tests using a local single node deployment", func() {
-	var cli *utils.CLI
-
 	ginkgo.BeforeEach(func() {
-		if cfg.DeploymentMode != config.DeploymentModeLocal {
-			ginkgo.Skip("Skipping test, not in local mode")
-		}
-
 		utils.ResetCLIState()
-		// Initialize CLI helper
-		cli = utils.NewCLI()
 	})
-
-	// Setup temp directory for all tests
-	tempDir := os.Getenv("E2E_COMPILE_OUTPUT_DIR")
-	if tempDir == "" {
-		tempDir = os.TempDir()
-	}
 
 	// Test cases for each OASF version
 	testVersions := []struct {
@@ -96,26 +80,28 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests using a local single no
 		ginkgo.Context(version.name, ginkgo.Ordered, ginkgo.Serial, func() {
 			var cid string
 
-			// Setup file path and create file
-			tempPath := filepath.Join(tempDir, version.fileName)
+			// Setup record file
+			tempPath, err := os.CreateTemp("", "record-*.json")
+			gomega.Expect(err).NotTo(gomega.HaveOccurred())
 
-			// Create directory and write record data once per version
-			_ = os.MkdirAll(filepath.Dir(tempPath), 0o755)
-			_ = os.WriteFile(tempPath, version.jsonData, 0o600)
+			recordFile := tempPath.Name()
+
+			err = os.WriteFile(recordFile, version.jsonData, 0o600)
+			gomega.Expect(err).NotTo(gomega.HaveOccurred())
 
 			// Step 1: Push
 			ginkgo.It("should successfully push an record", func() {
 				if version.shouldFailPush {
 					// For validation failure tests, expect push to fail
-					_ = cli.Push(tempPath).WithArgs("--output", "raw").ShouldFail()
+					_ = testEnv.CLI.Push(recordFile).WithArgs("--output", "raw").ShouldFail()
 
 					return
 				}
 
-				cid = cli.Push(tempPath).WithArgs("--output", "raw").ShouldSucceed()
+				cid = testEnv.CLI.Push(recordFile).WithArgs("--output", "raw").ShouldSucceed()
 
 				// Validate that the returned CID correctly represents the pushed data
-				utils.LoadAndValidateCID(cid, tempPath)
+				utils.LoadAndValidateCID(cid, recordFile)
 			})
 
 			// Step 2: Pull (depends on push)
@@ -124,7 +110,7 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests using a local single no
 					ginkgo.Skip("Skipping pull test - push failed validation")
 				}
 
-				cli.Pull(cid).ShouldSucceed()
+				testEnv.CLI.Pull(cid).ShouldSucceed()
 			})
 
 			// Step 3: Verify push/pull consistency (depends on pull)
@@ -133,7 +119,7 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests using a local single no
 					ginkgo.Skip("Skipping consistency test - push failed validation")
 				}
 				// Pull the record and get the output JSON
-				pulledJSON := cli.Pull(cid).WithArgs("--output", "json").ShouldSucceed()
+				pulledJSON := testEnv.CLI.Pull(cid).WithArgs("--output", "json").ShouldSucceed()
 
 				// Compare original embedded JSON with pulled JSON using version-aware comparison
 				equal, err := utils.CompareOASFRecords(version.jsonData, []byte(pulledJSON))
@@ -150,7 +136,7 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests using a local single no
 					ginkgo.Skip("Skipping duplicate push test - push failed validation")
 				}
 
-				cli.Push(tempPath).WithArgs("--output", "raw").ShouldReturn(cid)
+				testEnv.CLI.Push(recordFile).WithArgs("--output", "raw").ShouldReturn(cid)
 			})
 
 			// Step 5: Search by first skill (depends on push)
@@ -160,7 +146,7 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests using a local single no
 				}
 				// This test will FAIL if skills are lost during JSON marshal/unmarshal
 				// or during the push/pull process, helping identify the root cause
-				search := cli.Search().
+				search := testEnv.CLI.Search().
 					WithLimit(10).
 					WithOffset(0).
 					WithArgs("--output", "raw").
@@ -191,7 +177,7 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests using a local single no
 					ginkgo.Skip("Skipping second skill test - only one skill in test data")
 				}
 
-				search := cli.Search().
+				search := testEnv.CLI.Search().
 					WithLimit(10).
 					WithOffset(0).
 					WithArgs("--output", "raw").
@@ -213,7 +199,7 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests using a local single no
 
 			// Step 7: Test non-existent pull (independent test)
 			ginkgo.It("should pull a non-existent record and return an error", func() {
-				_ = cli.Pull("non-existent-CID").ShouldFail()
+				_ = testEnv.CLI.Pull("non-existent-CID").ShouldFail()
 			})
 
 			// Step 8: Delete (depends on previous steps)
@@ -222,7 +208,7 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests using a local single no
 					ginkgo.Skip("Skipping delete test - push failed validation")
 				}
 
-				cli.Delete(cid).ShouldSucceed()
+				testEnv.CLI.Delete(cid).ShouldSucceed()
 			})
 
 			// Step 9: Verify deletion (depends on delete)
@@ -233,7 +219,7 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests using a local single no
 				// Add a small delay to ensure delete operation is fully processed
 				time.Sleep(100 * time.Millisecond)
 
-				_ = cli.Pull(cid).ShouldFail()
+				_ = testEnv.CLI.Pull(cid).ShouldFail()
 			})
 		})
 	}

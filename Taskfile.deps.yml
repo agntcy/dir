@@ -29,6 +29,7 @@ tasks:
       - task: deps:renovate
       - task: deps:pre-commit
       - task: deps:cleanup
+      - task: deps:tofu
 
   deps:bin-dir:
     desc: Create bin directory
@@ -245,6 +246,27 @@ tasks:
           mv {{.BIN_DIR}}/trivy {{.TRIVY_BIN}}
     status:
       - test -x {{.TRIVY_BIN}}
+
+  deps:tofu:
+    desc: Install tofu
+    internal: true
+    deps:
+      - deps:bin-dir
+    cmds:
+      - cmd: echo "Installing tofu v{{.TOFU_VERSION}}..."
+      - platforms: [linux, darwin]
+        cmd: |
+          curl -sfL https://github.com/opentofu/opentofu/releases/download/v{{.TOFU_VERSION}}/tofu_{{.TOFU_VERSION}}_{{OS}}_{{ARCH}}.tar.gz | \
+          tar -xzf - -C {{.BIN_DIR}} tofu && \
+          mv {{.BIN_DIR}}/tofu {{.TOFU_BIN}}
+      - platforms: [windows]
+        cmd: |
+          curl -sfL https://github.com/opentofu/opentofu/releases/download/v{{.TOFU_VERSION}}/tofu_{{.TOFU_VERSION}}_{{OS}}_{{ARCH}}.zip -o {{.BIN_DIR}}/tofu.zip && \
+          unzip -j {{.BIN_DIR}}/tofu.zip -d {{.BIN_DIR}} && \
+          rm -rf {{.BIN_DIR}}/tofu.zip && \
+          mv {{.BIN_DIR}}/tofu.exe {{.TOFU_BIN}}
+    status:
+      - test -x {{.TOFU_BIN}}
 
   deps:htpasswd:
     desc: Install htpasswd

@@ -613,3 +613,152 @@ tasks:
       KIND_CLUSTER_NAME: '{{ .KIND_CLUSTER_NAME | default "agntcy-cluster" }}'
     cmds:
       - "{{ .KIND_BIN }} delete cluster --name {{ .KIND_CLUSTER_NAME }}"
+
+  test-env:kubernetes:cluster:create:
+    desc: Deploy a local Kubernetes cluster
+    deps:
+      - deps:kind
+    vars:
+      ## Kind args
+      KIND_CLUSTER_NAME: '{{ .KIND_CLUSTER_NAME | default "agntcy-cluster" }}'
+      KIND_CLUSTER_CONFIG_PATH: '{{ .KIND_CLUSTER_CONFIG_PATH | default "" }}'
+      # If local images should be loaded into the cluster, specify as a Taskfile multiline array.
+      KIND_LOCAL_IMAGES: '{{ .KIND_LOCAL_IMAGES | default "" }}'
+    cmds:
+      # Create cluster
+      - |
+        {{ .KIND_BIN }} create cluster \
+          {{ if .KIND_CLUSTER_CONFIG_PATH }}--config {{ .KIND_CLUSTER_CONFIG_PATH }}{{ end }} \
+          --name {{ .KIND_CLUSTER_NAME }}
+
+      # Load custom images if specified
+      - for: { var: KIND_LOCAL_IMAGES }
+        cmd: |
+          {{ .KIND_BIN }} load docker-image {{ .ITEM }} --name {{ .KIND_CLUSTER_NAME }}
+
+  test-env:kubernetes:cluster:destroy:
+    desc: Destroy a local Kubernetes cluster
+    deps:
+      - deps:kind
+    vars:
+      ## Kind args
+      KIND_CLUSTER_NAME: '{{ .KIND_CLUSTER_NAME | default "agntcy-cluster" }}'
+    cmd: |
+      {{ .KIND_BIN }} delete cluster --name {{ .KIND_CLUSTER_NAME }}
+
+  test-env:kubernetes:chart:deploy:local:
+    desc: Deploy a local chart to a Kubernetes cluster
+    deps:
+      - deps:helm
+      - deps:kubectl
+    vars:
+      ## K8s args
+      K8S_NAMESPACE: '{{ .K8S_NAMESPACE | default "default" }}'
+      K8S_CONTEXT: '{{ .K8S_CONTEXT | default "" }}'
+      K8S_WAIT: '{{ .K8S_WAIT | default "true" }}'
+
+      ## Helm args
+      HELM_CHART_NAME: '{{ .HELM_CHART_NAME | default "" }}'
+      HELM_CHART_VALUES_PATH: '{{ .HELM_CHART_VALUES_PATH | default "" }}'
+      # If helm values override is needed, specify as a Taskfile multiline array.
+      HELM_CHART_VALUES_OVERRIDE: '{{ .HELM_CHART_VALUES_OVERRIDE | default "" }}'
+
+      ## Local chart args
+      HELM_CHART_LOCAL_PATH: '{{ .HELM_CHART_LOCAL_PATH | default "" }}'
+    preconditions:
+      - sh: '[ "{{ .K8S_NAMESPACE }}" != "" ]'
+        msg: "K8S_NAMESPACE is required for chart deployment"
+      - sh: '[ "{{ .HELM_CHART_NAME }}" != "" ]'
+        msg: "HELM_CHART_NAME is required for chart deployment"
+      - sh: '[ "{{ .HELM_CHART_LOCAL_PATH }}" != "" ]'
+        msg: "HELM_CHART_LOCAL_PATH is required for chart deployment"
+    cmd: |
+      HELM_KUBECONTEXT="{{ .K8S_CONTEXT }}" \
+      {{ .HELM_BIN }} upgrade {{.HELM_CHART_NAME}} \
+        {{ .HELM_CHART_LOCAL_PATH }} \
+        {{range .HELM_CHART_VALUES_OVERRIDE | splitLines }} \
+        {{ if . }}--set {{.}}{{ end }} \
+        {{end}} \
+        {{ if .HELM_CHART_VALUES_PATH }}-f {{ .HELM_CHART_VALUES_PATH }}{{ end }} \
+        --namespace {{ .K8S_NAMESPACE }} \
+        --create-namespace \
+        --install \
+        {{ if eq .K8S_WAIT "true" }}--wait --wait-for-jobs{{ end }} \
+        --timeout "15m"
+
+  test-env:kubernetes:chart:deploy:remote:
+    desc: Deploy a remote chart to a Kubernetes cluster
+    deps:
+      - deps:helm
+      - deps:kubectl
+    vars:
+      ## K8s args
+      K8S_NAMESPACE: '{{ .K8S_NAMESPACE | default "default" }}'
+      K8S_CONTEXT: '{{ .K8S_CONTEXT | default "" }}'
+      K8S_WAIT: '{{ .K8S_WAIT | default "true" }}'
+
+      ## Helm args
+      HELM_CHART_NAME: '{{ .HELM_CHART_NAME | default "" }}'
+      HELM_CHART_VALUES_PATH: '{{ .HELM_CHART_VALUES_PATH | default "" }}'
+      # If helm values override is needed, specify as a Taskfile multiline array.
+      HELM_CHART_VALUES_OVERRIDE: '{{ .HELM_CHART_VALUES_OVERRIDE | default "" }}'
+
+      ## Remote chart args
+      HELM_CHART_REPO_URL: '{{ .HELM_CHART_REPO_URL | default "" }}'
+      HELM_CHART_REPO_NAME: '{{ .HELM_CHART_REPO_NAME | default "" }}'
+      HELM_CHART_REMOTE_URL: '{{ .HELM_CHART_REMOTE_URL | default "" }}'
+      HELM_CHART_REMOTE_VERSION: '{{ .HELM_CHART_REMOTE_VERSION | default "" }}'
+    preconditions:
+      - sh: '[ "{{ .K8S_NAMESPACE }}" != "" ]'
+        msg: "K8S_NAMESPACE is required for chart deployment"
+      - sh: '[ "{{ .HELM_CHART_NAME }}" != "" ]'
+        msg: "HELM_CHART_NAME is required for chart deployment"
+      - sh: '[ "{{ .HELM_CHART_REMOTE_URL }}" != "" ]'
+        msg: "HELM_CHART_REMOTE_URL is required for chart deployment"
+    cmds:
+      # Add the remote repo
+      - if: '{{ and (ne .HELM_CHART_REPO_URL "") (ne .HELM_CHART_REPO_NAME "") }}'
+        cmd: |
+          {{ .HELM_BIN }} repo add {{ .HELM_CHART_REPO_NAME }} {{ .HELM_CHART_REPO_URL }}
+          {{ .HELM_BIN }} repo update
+
+      # Deploy a remote chart
+      - cmd: |
+          HELM_KUBECONTEXT="{{ .K8S_CONTEXT }}" \
+          {{ .HELM_BIN }} upgrade {{.HELM_CHART_NAME}} \
+            {{ .HELM_CHART_REMOTE_URL }} \
+            {{ if .HELM_CHART_REMOTE_VERSION }}--version {{ .HELM_CHART_REMOTE_VERSION }}{{ end }} \
+            {{range .HELM_CHART_VALUES_OVERRIDE | splitLines }} \
+            {{ if . }}--set {{.}}{{ end }} \
+            {{end}} \
+            {{ if .HELM_CHART_VALUES_PATH }}-f {{ .HELM_CHART_VALUES_PATH }}{{ end }} \
+            --namespace {{ .K8S_NAMESPACE }} \
+            --create-namespace \
+            --install \
+            {{ if eq .K8S_WAIT "true" }}--wait --wait-for-jobs{{ end }} \
+            --timeout "15m"
+
+  test-env:tofu:apply:
+    desc: Apply OpenTofu configuration
+    vars:
+      TOFU_ROOT: '{{ .TOFU_ROOT | default "" }}'
+      TOFU_EXTRA_ARGS: '{{ .TOFU_EXTRA_ARGS | default "" }}'
+    deps:
+      - deps:tofu
+    cmd: |
+      cd {{ .TOFU_ROOT }}
+      {{.TOFU_BIN}} init
+      {{.TOFU_BIN}} apply -auto-approve \
+        {{ range .TOFU_EXTRA_ARGS | splitLines }} \
+        {{ if . }}{{.}}{{ end }} \
+        {{end}}
+
+  test-env:tofu:destroy:
+    desc: Destroy OpenTofu configuration
+    vars:
+      TOFU_ROOT: '{{ .TOFU_ROOT | default "" }}'
+    deps:
+      - deps:tofu
+    cmd: |
+      cd {{ .TOFU_ROOT }}
+      {{.TOFU_BIN}} destroy -auto-approve

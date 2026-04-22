@@ -11,11 +11,6 @@ import (
 	"github.com/onsi/gomega"
 )
 
-const (
-	// PrivateKeyFileMode is the file permission for private key files (read/write for owner only).
-	PrivateKeyFileMode = 0o0600
-)
-
 // GenerateNetworkKeyPair generates an ED25519 key pair for network tests.
 // Returns the path to the private key file.
 func GenerateNetworkKeyPair(tempDir string) string {
@@ -25,7 +20,7 @@ func GenerateNetworkKeyPair(tempDir string) string {
 
 	// Write the private key to a temporary file
 	keyPath := filepath.Join(tempDir, "test_key")
-	err = os.WriteFile(keyPath, privateKey, PrivateKeyFileMode)
+	err = os.WriteFile(keyPath, privateKey, 0o0600) //nolint:mnd
 	gomega.Expect(err).NotTo(gomega.HaveOccurred())
 
 	return keyPath
@@ -33,7 +28,7 @@ func GenerateNetworkKeyPair(tempDir string) string {
 
 // SetupNetworkTestDir creates a temporary directory for network tests.
 func SetupNetworkTestDir() (string, func()) {
-	tempDir, err := os.MkdirTemp("", NetworkTestDirPrefix)
+	tempDir, err := os.MkdirTemp("", "network-test-*")
 	gomega.Expect(err).NotTo(gomega.HaveOccurred())
 
 	cleanup := func() {

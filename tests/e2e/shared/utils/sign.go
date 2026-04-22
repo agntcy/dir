@@ -12,19 +12,14 @@ import (
 	"github.com/onsi/ginkgo/v2"
 )
 
-// Test constants for signature operations.
-const (
-	TestPassword = "testpassword"
-)
-
 // GenerateCosignKeyPair generates a cosign key pair in the specified directory.
 // Helper function for signature testing.
-func GenerateCosignKeyPair(dir string) {
+func GenerateCosignKeyPair(dir, password string) {
 	// Prepare cosign generate-key-pair command
 	cmd := exec.CommandContext(context.Background(), "cosign", "generate-key-pair")
 	cmd.Dir = dir
 
-	cmd.Env = append(os.Environ(), "COSIGN_PASSWORD="+TestPassword)
+	cmd.Env = append(os.Environ(), "COSIGN_PASSWORD="+password)
 
 	// Execute command
 	output, err := cmd.CombinedOutput()

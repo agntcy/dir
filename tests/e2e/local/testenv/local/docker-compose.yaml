@@ -1,0 +1,9 @@
+name: testenv-e2e-local
+
+services:
+  dns-validation:
+    image: nginx:latest@sha256:7f0adca1fc6c29c8dc49a2e90037a10ba20dc266baaed0988e9fb4d0d8b85ba0
+    volumes:
+      - ./jwks.dns-validation.json:/usr/share/nginx/html/.well-known/jwks.json
+    ports:
+      - 80
