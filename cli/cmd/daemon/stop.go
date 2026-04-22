@@ -94,5 +94,23 @@ func validateDaemonProcess(pid int) error {
 		return fmt.Errorf("pid %d does not match daemon executable", pid)
 	}
 
+	cmdline, err := os.ReadFile(fmt.Sprintf("/proc/%d/cmdline", pid))
+	if err != nil {
+		return fmt.Errorf("failed to verify daemon command for pid %d: %w", pid, err)
+	}
+
+	args := strings.Split(strings.TrimRight(string(cmdline), "\x00"), "\x00")
+	isDaemonCommand := false
+	for _, arg := range args[1:] {
+		if arg == "daemon" {
+			isDaemonCommand = true
+			break
+		}
+	}
+
+	if !isDaemonCommand {
+		return fmt.Errorf("pid %d is not a daemon process", pid)
+	}
+
 	return nil
 }
