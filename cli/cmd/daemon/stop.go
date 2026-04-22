@@ -6,6 +6,8 @@ package daemon
 import (
 	"fmt"
 	"os"
+	"path/filepath"
+	"strings"
 	"syscall"
 	"time"
 
@@ -42,6 +44,10 @@ func runStop(_ *cobra.Command, _ []string) error {
 		return fmt.Errorf("failed to find process %d: %w", pid, err)
 	}
 
+	if err := validateDaemonProcess(pid); err != nil {
+		return err
+	}
+
 	if err := proc.Signal(syscall.SIGTERM); err != nil {
 		return fmt.Errorf("failed to send SIGTERM to pid %d: %w", pid, err)
 	}
@@ -60,6 +66,33 @@ func runStop(_ *cobra.Command, _ []string) error {
 	}
 
 	logger.Warn("Daemon did not stop within timeout; it may still be shutting down")
+
+	return nil
+}
+
+func validateDaemonProcess(pid int) error {
+	selfExe, err := os.Executable()
+	if err != nil {
+		return fmt.Errorf("failed to resolve current executable: %w", err)
+	}
+
+	if resolvedSelfExe, resolveErr := filepath.EvalSymlinks(selfExe); resolveErr == nil {
+		selfExe = resolvedSelfExe
+	}
+
+	targetExe, err := os.Readlink(fmt.Sprintf("/proc/%d/exe", pid))
+	if err != nil {
+		return fmt.Errorf("failed to verify process identity for pid %d: %w", pid, err)
+	}
+
+	targetExe = strings.TrimSuffix(targetExe, " (deleted)")
+	if resolvedTargetExe, resolveErr := filepath.EvalSymlinks(targetExe); resolveErr == nil {
+		targetExe = resolvedTargetExe
+	}
+
+	if selfExe != targetExe {
+		return fmt.Errorf("pid %d does not match daemon executable", pid)
+	}
 
 	return nil
 }
