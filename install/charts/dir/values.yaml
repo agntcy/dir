@@ -156,10 +156,10 @@ apiserver:
 
       # Nodes to use for bootstrapping of the DHT.
       # We read initial routing tables here and get introduced
-      # to the network.
-      # bootstrap_peers:
-      #   - /ip4/1.1.1.1/tcp/1
-      #   - /ip4/1.1.1.1/tcp/2
+      # to the network. Set to [] to make this server act as a bootstrap node.
+      # Default points to the Agntcy Directory testbed bootstrap node.
+      bootstrap_peers:
+        - /dns4/prod.routing.ads.outshift.io/tcp/5555/p2p/12D3KooWLf9p3cedc86xGQBaqak6rAFmQk1HxKAK1yh7umHE3amu
 
       # GossipSub configuration for efficient label announcements
       # When enabled, labels are propagated via GossipSub mesh to ALL subscribed peers
