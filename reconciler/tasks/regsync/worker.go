@@ -67,6 +67,14 @@ func (w *Worker) Run(ctx context.Context) error {
 			RegistryAddress: w.syncObj.GetRemoteRegistryURL(),
 			RepositoryName:  w.syncObj.GetRepositoryName(),
 		}
+
+		// Register the remote registry with regsync so it knows the TLS mode.
+		regsyncConfig.AddCredential(
+			credentials.RegistryAddress,
+			"",
+			"",
+			w.localRegistry.Insecure,
+		)
 	} else {
 		remoteDirectoryURL := w.syncObj.GetRemoteDirectoryURL()
 
