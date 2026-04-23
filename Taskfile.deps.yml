@@ -229,6 +229,15 @@ tasks:
     status:
       - test -x {{.UV_BIN}}
 
+  importer:deps:mcp-scanner:
+    desc: Install mcp-scanner CLI via uv (used by import-records workflow)
+    deps:
+      - task: deps:uv
+    cmds:
+      - cmd: echo "Installing mcp-scanner"
+      - cmd: >-
+          {{.UV_BIN}} tool install --python 3.13 cisco-ai-mcp-scanner
+
   deps:cosign:
     desc: Install sigstore cosign
     internal: true
