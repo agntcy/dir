@@ -5,16 +5,18 @@ package daemon
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strconv"
 	"syscall"
 
+	"github.com/agntcy/dir/utils/logging"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
+
+	zotapi "zotregistry.dev/zot/v2/pkg/api"
+	zotconfig "zotregistry.dev/zot/v2/pkg/api/config"
 )
 
 // Options holds all daemon path configuration.
@@ -49,61 +51,26 @@ func defaultDataDir() string {
 
 var opts = &Options{}
 
-func writeZotConfig(address string, port string) error {
-	zotConfigJson := map[string]interface{}{
-		"distSpecVersion": "1.0.1",
-		"storage": map[string]interface{}{
-			"rootDirectory": filepath.Join(opts.ZotDir(), "storage"),
-		},
-		"http": map[string]interface{}{
-			"address": address,
-			"port":    port,
-		},
-	}
+func createLocalZotRegistry(_ context.Context, address string, port string) error {
+	logger := logging.Logger("zot")
 
-	zotConfig, err := json.Marshal(zotConfigJson)
-	if err != nil {
-		return fmt.Errorf("failed to marshal zot config: %w", err)
-	}
+	conf := zotconfig.New()
+	conf.Storage.RootDirectory = filepath.Join(opts.ZotDir(), "storage")
 
-	if err := os.WriteFile(filepath.Join(opts.ZotDir(), "zot-config.json"), zotConfig, 0o600); err != nil {
-		return fmt.Errorf("failed to write zot config: %w", err)
-	}
+	conf.HTTP.Address = address
+	conf.HTTP.Port = port
 
-	return nil
-}
+	ctlr := zotapi.NewController(conf)
 
-func createLocalZotRegistry(ctx context.Context, address string, port string) error {
-	if err := os.MkdirAll(opts.ZotDir(), 0o700); err != nil {
-		return fmt.Errorf("failed to create data zot directory %s: %w", opts.ZotDir(), err)
-	}
-
-	if err := writeZotConfig(address, port); err != nil {
-		return fmt.Errorf("failed to write zot config: %w", err)
-	}
-
-	if _, err := os.Stat(filepath.Join(opts.ZotDir(), "zot")); err != nil {
-		return fmt.Errorf("zot binary not found: %w", err)
-	}
-
-	cmd := exec.CommandContext(ctx, filepath.Join(opts.ZotDir(), "zot"), "serve", filepath.Join(opts.ZotDir(), "zot-config.json"))
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-
-	if err := cmd.Start(); err != nil {
-		return fmt.Errorf("failed to execute zot: %w", err)
-	}
-
-	if cmd.ProcessState != nil {
-		if cmd.ProcessState.ExitCode() != 0 {
-			err := cmd.Wait()
-			if err != nil {
-				return fmt.Errorf("failed to wait for zot to exit: %w", err)
-			}
-
-			return fmt.Errorf("zot exited with non-zero exit code: %d", cmd.ProcessState.ExitCode())
+	go func() {
+		if err := ctlr.Init(); err != nil {
+			logger.Error("failed to init controller", "error", err)
 		}
-	}
+
+		if err := ctlr.Run(); err != nil {
+			logger.Error("failed to run zot controller", "error", err)
+		}
+	}()
 
 	return nil
 }
