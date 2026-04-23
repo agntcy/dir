@@ -112,11 +112,18 @@ func validateDaemonProcess(pid int) error {
 		return fmt.Errorf("pid %d is not a daemon process", pid)
 	}
 
-	if daemonIdx+1 < len(args) {
-		next := args[daemonIdx+1]
-		if next != "run" && !strings.HasPrefix(next, "-") {
-			return fmt.Errorf("pid %d is not a daemon runtime process", pid)
+	runIdx := -1
+	for i := daemonIdx + 1; i < len(args); i++ {
+		if strings.HasPrefix(args[i], "-") {
+			continue
 		}
+
+		runIdx = i
+		break
+	}
+
+	if runIdx == -1 || args[runIdx] != "run" {
+		return fmt.Errorf("pid %d is not a daemon runtime process", pid)
 	}
 
 	return nil
