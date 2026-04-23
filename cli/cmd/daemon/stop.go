@@ -101,29 +101,25 @@ func validateDaemonProcess(pid int) error {
 	}
 
 	args := strings.Split(strings.TrimRight(string(cmdline), "\x00"), "\x00")
-	daemonIdx := -1
-	for i, arg := range args {
-		if arg == "daemon" {
-			daemonIdx = i
-			break
-		}
+	if len(args) < 2 {
+		return fmt.Errorf("pid %d has an invalid command line", pid)
 	}
 
-	if daemonIdx == -1 {
-		return fmt.Errorf("pid %d is not a daemon process", pid)
-	}
+	commands := make([]string, 0, len(args))
+	for i := 1; i < len(args); i++ {
+		arg := args[i]
+		if strings.HasPrefix(arg, "-") {
+			if !strings.Contains(arg, "=") && i+1 < len(args) && !strings.HasPrefix(args[i+1], "-") {
+				i++
+			}
 
-	runIdx := -1
-	for i := daemonIdx + 1; i < len(args); i++ {
-		if strings.HasPrefix(args[i], "-") {
 			continue
 		}
 
-		runIdx = i
-		break
+		commands = append(commands, arg)
 	}
 
-	if runIdx == -1 || args[runIdx] != "run" {
+	if len(commands) < 2 || commands[0] != "daemon" || commands[1] != "run" {
 		return fmt.Errorf("pid %d is not a daemon runtime process", pid)
 	}
 
