@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"syscall"
 	"time"
@@ -124,6 +125,40 @@ func validateDaemonProcess(pid int) error {
 
 	if runIdx == -1 || args[runIdx] != "run" {
 		return fmt.Errorf("pid %d is not a daemon runtime process", pid)
+	}
+
+	status, err := os.ReadFile(fmt.Sprintf("/proc/%d/status", pid))
+	if err != nil {
+		return fmt.Errorf("failed to verify daemon ownership for pid %d: %w", pid, err)
+	}
+
+	var procUID int
+	foundUID := false
+	for _, line := range strings.Split(string(status), "\n") {
+		if !strings.HasPrefix(line, "Uid:") {
+			continue
+		}
+
+		fields := strings.Fields(line)
+		if len(fields) < 2 {
+			return fmt.Errorf("failed to parse daemon ownership for pid %d", pid)
+		}
+
+		procUID, err = strconv.Atoi(fields[1])
+		if err != nil {
+			return fmt.Errorf("failed to parse daemon uid for pid %d: %w", pid, err)
+		}
+
+		foundUID = true
+		break
+	}
+
+	if !foundUID {
+		return fmt.Errorf("failed to read daemon uid for pid %d", pid)
+	}
+
+	if procUID != os.Geteuid() {
+		return fmt.Errorf("pid %d is owned by uid %d (current uid %d)", pid, procUID, os.Geteuid())
 	}
 
 	return nil
