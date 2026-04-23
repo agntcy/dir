@@ -6,17 +6,16 @@ package daemon
 import (
 	"context"
 	"fmt"
+	"net"
+	"net/http"
 	"os"
 	"path/filepath"
 	"strconv"
 	"syscall"
 
-	"github.com/agntcy/dir/utils/logging"
+	"github.com/google/go-containerregistry/pkg/registry"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
-
-	zotapi "zotregistry.dev/zot/v2/pkg/api"
-	zotconfig "zotregistry.dev/zot/v2/pkg/api/config"
 )
 
 // Options holds all daemon path configuration.
@@ -52,26 +51,13 @@ func defaultDataDir() string {
 var opts = &Options{}
 
 func createLocalZotRegistry(_ context.Context, address string, port string) error {
-	logger := logging.Logger("zot")
-
-	conf := zotconfig.New()
-	conf.Storage.RootDirectory = filepath.Join(opts.ZotDir(), "storage")
-
-	conf.HTTP.Address = address
-	conf.HTTP.Port = port
-
-	ctlr := zotapi.NewController(conf)
+	opts := []registry.Option{registry.WithReferrersSupport(true)}
+	r := registry.New(opts...)
 
 	go func() {
-		if err := ctlr.Init(); err != nil {
-			logger.Error("failed to init controller", "error", err)
-		}
-
-		if err := ctlr.Run(); err != nil {
-			logger.Error("failed to run zot controller", "error", err)
-		}
+		netlistener, _ := net.Listen("tcp", address+":"+port)
+		_ = http.Serve(netlistener, r)
 	}()
-
 	return nil
 }
 
