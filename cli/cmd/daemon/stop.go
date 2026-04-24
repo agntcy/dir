@@ -154,6 +154,29 @@ func validateDaemonProcess(pid int) error {
 		return fmt.Errorf("pid %d is missing daemon pid-file marker", pid)
 	}
 
+	resolvedDaemonPIDFile, err := filepath.Abs(daemonPIDFile)
+	if err != nil {
+		return fmt.Errorf("failed to resolve daemon pid-file %q: %w", daemonPIDFile, err)
+	}
+
+	if resolved, resolveErr := filepath.EvalSymlinks(resolvedDaemonPIDFile); resolveErr == nil {
+		resolvedDaemonPIDFile = resolved
+	}
+
+	expectedPIDFile := pidFile
+	resolvedExpectedPIDFile, err := filepath.Abs(expectedPIDFile)
+	if err != nil {
+		return fmt.Errorf("failed to resolve expected pid-file %q: %w", expectedPIDFile, err)
+	}
+
+	if resolved, resolveErr := filepath.EvalSymlinks(resolvedExpectedPIDFile); resolveErr == nil {
+		resolvedExpectedPIDFile = resolved
+	}
+
+	if resolvedDaemonPIDFile != resolvedExpectedPIDFile {
+		return fmt.Errorf("pid %d pid-file mismatch: got %q, expected %q", pid, resolvedDaemonPIDFile, resolvedExpectedPIDFile)
+	}
+
 	status, err := os.ReadFile(fmt.Sprintf("/proc/%d/status", pid))
 	if err != nil {
 		return fmt.Errorf("failed to verify daemon ownership for pid %d: %w", pid, err)
