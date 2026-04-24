@@ -17,32 +17,18 @@ tasks:
     # In translation, this is interpreted as a regular multi-line shell script.
     cmds:
       - "{{.BUFBUILD_BIN}} dep update"
-      - for:
-          matrix:
-            TEMPLATE: ["buf.gen.runtime.yaml", "buf.gen.yaml"]
-        cmd: |
-          {{.BUFBUILD_BIN}} generate --template {{.ITEM.TEMPLATE}}
-      - task: runtime:gen
+      - "{{.BUFBUILD_BIN}} generate --template buf.gen.yaml"
 
   api:clean:
     desc: Clean generated API stubs
     deps:
-      # Standard API
       - api:clean:go
       - api:clean:python
       - api:clean:javascript
-      # Runtime API
-      - api:clean:runtime:go
 
   api:clean:go:
     desc: Clean generated golang API stubs
     dir: ./api
-    cmds:
-      - find . \( -name "*.pb.go" \) -type f -delete
-
-  api:clean:runtime:go:
-    desc: Clean runtime generated golang API stubs
-    dir: ./runtime
     cmds:
       - find . \( -name "*.pb.go" \) -type f -delete
 

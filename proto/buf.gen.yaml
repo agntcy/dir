@@ -30,11 +30,8 @@ managed:
       file_option: go_package
       value: github.com/agntcy/dir/api/naming/v1
 
-# Input configuration - exclude runtime from main generation
 inputs:
   - directory: .
-    exclude_paths:
-      - agntcy/dir/runtime
 
 plugins:
   # Stubs for Golang
