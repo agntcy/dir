@@ -101,26 +101,36 @@ func validateDaemonProcess(pid int) error {
 	}
 
 	args := strings.Split(strings.TrimRight(string(cmdline), "\x00"), "\x00")
-	if len(args) < 2 {
+	if len(args) < 3 {
 		return fmt.Errorf("pid %d has an invalid command line", pid)
 	}
 
-	commands := make([]string, 0, len(args))
-	for i := 1; i < len(args); i++ {
-		arg := args[i]
-		if strings.HasPrefix(arg, "-") {
-			if !strings.Contains(arg, "=") && i+1 < len(args) && !strings.HasPrefix(args[i+1], "-") {
-				i++
-			}
-
+	idx := 1
+	for idx < len(args) && strings.HasPrefix(args[idx], "-") {
+		if !strings.Contains(args[idx], "=") && idx+1 < len(args) && !strings.HasPrefix(args[idx+1], "-") {
+			idx += 2
 			continue
 		}
 
-		commands = append(commands, arg)
+		idx++
 	}
 
-	if len(commands) < 2 || commands[0] != "daemon" || commands[1] != "run" {
+	if idx+1 >= len(args) || args[idx] != "daemon" || args[idx+1] != "run" {
 		return fmt.Errorf("pid %d is not a daemon runtime process", pid)
+	}
+
+	idx += 2
+	for idx < len(args) {
+		if !strings.HasPrefix(args[idx], "-") {
+			return fmt.Errorf("pid %d is not a daemon runtime process", pid)
+		}
+
+		if !strings.Contains(args[idx], "=") && idx+1 < len(args) && !strings.HasPrefix(args[idx+1], "-") {
+			idx += 2
+			continue
+		}
+
+		idx++
 	}
 
 	status, err := os.ReadFile(fmt.Sprintf("/proc/%d/status", pid))
