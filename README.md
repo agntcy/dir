@@ -6,7 +6,7 @@
 [![License](https://img.shields.io/github/license/agntcy/dir)](./LICENSE.md)
 
 [Buf Registry](https://buf.build/agntcy/dir) | 
-[MCP Server](./mcp) | 
+[MCP Server](https://github.com/agntcy/dir-mcp) | 
 [Go SDK](https://pkg.go.dev/github.com/agntcy/dir/client) | 
 [Python SDK](https://pypi.org/project/agntcy-dir/) | 
 [JavaScript SDK](https://www.npmjs.com/package/agntcy-dir) | 
@@ -54,7 +54,6 @@ Check the [Documentation](https://docs.agntcy.org/dir/overview/) for a full walk
 - [docs](./docs) - research details and documentation around the project
 - [gui](./gui) - graphical user interface (Flutter)
 - [install](./install) - deployment assets (Helm charts, Docker Compose)
-- [mcp](./mcp) - Model Context Protocol server and tools
 - [reconciler](./reconciler) - standalone service for periodic reconciliation (regsync, indexer)
 - [runtime](./runtime) - discovery service to watch workloads and resolve capabilities
 - [server](./server) - API services to manage storage, routing, and networking operations

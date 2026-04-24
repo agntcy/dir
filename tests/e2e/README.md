@@ -4,7 +4,7 @@ This directory contains comprehensive end-to-end tests for the Directory system,
 
 ## 🏗️ Test Suite Architecture
 
-**Structure**: 5 separate test suites (local, client, network, MCP, daemon) with 100+ test cases organized by deployment mode and API type.
+**Structure**: 4 separate test suites (local, client, network, daemon) with 100+ test cases organized by deployment mode and API type.
 
 ```
 tests/e2e/
@@ -28,12 +28,9 @@ tests/e2e/
 │   ├── 01_deploy_test.go            # Multi-peer deployment
 │   ├── 02_sync_test.go              # Peer synchronization
 │   └── 03_search_test.go            # Remote routing search
-├── daemon/                          # package daemon - Daemon process tests (no cluster)
-│   ├── daemon_suite_test.go        # TestDaemonE2E(t *testing.T)
-│   └── 01_daemon_test.go           # Push, pull, sign, verify via Go client
-└── mcp/                             # package mcp - MCP server protocol tests (no cluster)
-    ├── mcp_suite_test.go            # TestMCPE2E(t *testing.T)
-    └── 01_protocol_test.go          # JSON-RPC init, tools, schema
+└── daemon/                          # package daemon - Daemon process tests (no cluster)
+    ├── daemon_suite_test.go        # TestDaemonE2E(t *testing.T)
+    └── 01_daemon_test.go           # Push, pull, sign, verify via Go client
 ```
 
 ## 📦 Test Packages
@@ -293,7 +290,7 @@ tests/e2e/
 
 ### **All E2E Tests:**
 ```bash
-# Run all e2e tests (local → network → MCP protocol)
+# Run all e2e tests (local → network → daemon)
 task test:e2e
 task e2e
 ```
@@ -304,15 +301,6 @@ task e2e
 task test:e2e:daemon
 task e2e:daemon
 ```
-
-### **MCP Protocol Tests:**
-```bash
-# Run MCP server protocol tests (no cluster required; uses go run in mcp/)
-task test:e2e:mcp
-task e2e:mcp
-```
-
-The MCP server requires `OASF_API_VALIDATION_SCHEMA_URL` to be set (e.g. `https://schema.oasf.outshift.com`). Export it before running, or rely on CI which sets it for the MCP job.
 
 ### **Local Deployment Tests:**
 ```bash
@@ -330,13 +318,6 @@ task test:e2e:local:cli     # Local CLI tests only
 # Run network tests (multi-peer CLI with proper cleanup)
 task test:e2e:network
 task e2e:network
-```
-
-### **Running MCP tests directly with Go:**
-```bash
-# From repo root; ensure OASF_API_VALIDATION_SCHEMA_URL is set
-export OASF_API_VALIDATION_SCHEMA_URL="${OASF_API_VALIDATION_SCHEMA_URL:-https://schema.oasf.outshift.com}"
-go test -C ./tests ./e2e/mcp -v -ginkgo.v
 ```
 
 ## 📋 **Test Execution Flow:**
@@ -369,12 +350,6 @@ task test:e2e:daemon:
 ├── ✅  Run daemon e2e tests (push, pull, sign, verify)
 ├── 🛑  Stop daemon (dirctl daemon stop)
 └── 🧹  Remove temp data directory
-```
-
-### **🔌 MCP Protocol Execution:**
-```
-task test:e2e:mcp:
-└── go test -C ./tests ./e2e/mcp (starts MCP server via go run in mcp/; no cluster)
 ```
 
 ## 🎯 **Package Organization Benefits:**

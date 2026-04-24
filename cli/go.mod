@@ -6,7 +6,6 @@ go 1.26.2
 replace (
 	github.com/agntcy/dir/api => ../api
 	github.com/agntcy/dir/client => ../client
-	github.com/agntcy/dir/mcp => ../mcp
 	github.com/agntcy/dir/reconciler => ../reconciler
 	github.com/agntcy/dir/runtime/api => ../runtime/api
 	github.com/agntcy/dir/runtime/discovery => ../runtime/discovery
@@ -27,9 +26,9 @@ replace (
 require (
 	buf.build/gen/go/agntcy/oasf/protocolbuffers/go v1.36.11-20260416152818-3df7657b1c83.1
 	github.com/agntcy/dir-importer v1.0.0
+	github.com/agntcy/dir-mcp v1.0.0
 	github.com/agntcy/dir/api v1.2.0
 	github.com/agntcy/dir/client v1.2.0
-	github.com/agntcy/dir/mcp v1.2.0
 	github.com/agntcy/dir/reconciler v1.2.0
 	github.com/agntcy/dir/runtime/discovery v1.2.0
 	github.com/agntcy/dir/runtime/server v1.2.0

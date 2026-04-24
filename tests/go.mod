@@ -7,7 +7,6 @@ replace (
 	github.com/agntcy/dir/api => ../api
 	github.com/agntcy/dir/cli => ../cli
 	github.com/agntcy/dir/client => ../client
-	github.com/agntcy/dir/mcp => ../mcp
 	github.com/agntcy/dir/reconciler => ../reconciler
 	github.com/agntcy/dir/runtime/api => ../runtime/api
 	github.com/agntcy/dir/runtime/discovery => ../runtime/discovery
@@ -50,7 +49,7 @@ require (
 	github.com/Masterminds/semver/v3 v3.4.0 // indirect
 	github.com/Microsoft/go-winio v0.6.2 // indirect
 	github.com/ThalesIgnite/crypto11 v1.6.0 // indirect
-	github.com/agntcy/dir/mcp v1.2.0 // indirect
+	github.com/agntcy/dir-mcp v1.0.0 // indirect
 	github.com/agntcy/dir/reconciler v1.2.0 // indirect
 	github.com/agntcy/dir/runtime/api v1.2.0 // indirect
 	github.com/agntcy/dir/runtime/discovery v1.2.0 // indirect

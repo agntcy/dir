@@ -4,7 +4,7 @@
 package mcp
 
 import (
-	"github.com/agntcy/dir/mcp/server"
+	"github.com/agntcy/dir-mcp/server"
 	"github.com/spf13/cobra"
 )
 

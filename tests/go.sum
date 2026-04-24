@@ -99,6 +99,8 @@ github.com/ThalesGroup/crypto11 v1.6.0 h1:Og9EMn44fBS4GNnGnH1aqHnF2wL6F7IU/RhpJa
 github.com/ThalesGroup/crypto11 v1.6.0/go.mod h1:H6LRjN5R5SHxTrLqGNteisLDI0/IC6+SGx1pHtbwizE=
 github.com/agntcy/dir-importer v1.0.0 h1:I/iMzaKF9l6L1bjVPxUwz4M99TExP5dvt085IQpyUGg=
 github.com/agntcy/dir-importer v1.0.0/go.mod h1:23tzVwvHFXayPQZQI7UlKaInsCkXELuSogLNMVAMfoQ=
+github.com/agntcy/dir-mcp v1.0.0 h1:p2pi8kYZRyGuHpSooYS78w4aLTriYf+qrGEZ29H4Msc=
+github.com/agntcy/dir-mcp v1.0.0/go.mod h1:4hc8mbLU6GaNSqEf0b4JCkB29TKHwMdvFzR+LTUQ4KE=
 github.com/agntcy/oasf-sdk/pkg v1.0.5 h1:Sv8K9tqdfl4gfl30spFh9MYkqnzXcTByCsb2uZsNWE4=
 github.com/agntcy/oasf-sdk/pkg v1.0.5/go.mod h1:6dii5LpZlAPNhko78tvD2LOhJ2qwOXDy95aSjrsJbgg=
 github.com/antihax/optional v1.0.0/go.mod h1:uupD/76wgC+ih3iEmQUL+0Ugr19nfwCT1kdvxnR2qWY=

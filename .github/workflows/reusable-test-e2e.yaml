@@ -33,9 +33,6 @@ jobs:
           - task: test:e2e:network
             label: "Network"
             coverage: true
-          - task: test:e2e:mcp
-            label: "MCP"
-            coverage: false
           - task: test:e2e:daemon:external
             label: "Daemon External"
             coverage: false

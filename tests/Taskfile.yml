@@ -8,12 +8,11 @@ tasks:
     cmd: echo "Run the main Taskfile instead of this one."
 
   test:e2e:
-    desc: Run end-to-end tests for local deployment, network deployment, and MCP protocol
+    desc: Run end-to-end tests for local deployment, network deployment, and daemon
     aliases: [e2e]
     cmds:
       - task: test:e2e:local
       - task: test:e2e:network
-      - task: test:e2e:mcp
       - task: test:e2e:daemon
 
   test:e2e:local:cli:
@@ -285,17 +284,6 @@ tasks:
       - docker compose -f {{ .COMPOSE_DIR }}/docker-compose.yaml up -d --wait
       - "{{ .DIRCTL_BIN }} daemon start --data-dir {{ .DAEMON_DATA_DIR }} --config {{ .CONFIG_FILE }} &"
       - go test -C ./tests/e2e/daemon . -v -failfast -test.v -test.paniconexit0 -ginkgo.timeout 5m -timeout 5m -ginkgo.v
-
-  test:e2e:mcp:
-    desc: Run MCP server protocol end-to-end tests (starts local Directory stack for push test)
-    aliases: [e2e:mcp]
-    env:
-      DIRECTORY_CLIENT_SERVER_ADDRESS: localhost:8888
-      OASF_API_VALIDATION_SCHEMA_URL: '{{ .OASF_API_VALIDATION_SCHEMA_URL | default "https://schema.oasf.outshift.com" }}'
-    cmds:
-      - defer: { task: server:stop }
-      - task: server:start
-      - go test -C ./tests/e2e/mcp . -v -failfast -test.v -test.paniconexit0 -ginkgo.timeout 30m -timeout 30m -ginkgo.v
 
   test:e2e:spire:
     desc: Run end-to-end tests for SPIRE deployment
