@@ -216,6 +216,15 @@ func validateDaemonProcess(pid int) error {
 		return fmt.Errorf("failed to verify daemon pid-file for pid %d: %w", pid, err)
 	}
 
+	procInfo, err := os.Stat(fmt.Sprintf("/proc/%d", pid))
+	if err != nil {
+		return fmt.Errorf("failed to verify daemon start marker for pid %d: %w", pid, err)
+	}
+
+	if pidFileInfo.ModTime().Before(procInfo.ModTime()) {
+		return fmt.Errorf("daemon pid-file %q predates process start for pid %d", daemonPIDFile, pid)
+	}
+
 	stat, ok := pidFileInfo.Sys().(*syscall.Stat_t)
 	if !ok {
 		return fmt.Errorf("failed to read daemon pid-file ownership for pid %d", pid)
