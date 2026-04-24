@@ -120,9 +120,26 @@ func validateDaemonProcess(pid int) error {
 	}
 
 	idx += 2
+	var daemonPIDFile string
 	for idx < len(args) {
 		if !strings.HasPrefix(args[idx], "-") {
 			return fmt.Errorf("pid %d is not a daemon runtime process", pid)
+		}
+
+		if strings.HasPrefix(args[idx], "--pid-file=") {
+			daemonPIDFile = strings.TrimPrefix(args[idx], "--pid-file=")
+			idx++
+			continue
+		}
+
+		if args[idx] == "--pid-file" {
+			if idx+1 >= len(args) || strings.HasPrefix(args[idx+1], "-") {
+				return fmt.Errorf("pid %d has an invalid --pid-file argument", pid)
+			}
+
+			daemonPIDFile = args[idx+1]
+			idx += 2
+			continue
 		}
 
 		if !strings.Contains(args[idx], "=") && idx+1 < len(args) && !strings.HasPrefix(args[idx+1], "-") {
@@ -131,6 +148,10 @@ func validateDaemonProcess(pid int) error {
 		}
 
 		idx++
+	}
+
+	if daemonPIDFile == "" {
+		return fmt.Errorf("pid %d is missing daemon pid-file marker", pid)
 	}
 
 	status, err := os.ReadFile(fmt.Sprintf("/proc/%d/status", pid))
@@ -165,6 +186,34 @@ func validateDaemonProcess(pid int) error {
 
 	if procUID != os.Geteuid() {
 		return fmt.Errorf("pid %d is owned by uid %d (current uid %d)", pid, procUID, os.Geteuid())
+	}
+
+	pidFileInfo, err := os.Stat(daemonPIDFile)
+	if err != nil {
+		return fmt.Errorf("failed to verify daemon pid-file for pid %d: %w", pid, err)
+	}
+
+	stat, ok := pidFileInfo.Sys().(*syscall.Stat_t)
+	if !ok {
+		return fmt.Errorf("failed to read daemon pid-file ownership for pid %d", pid)
+	}
+
+	if int(stat.Uid) != procUID {
+		return fmt.Errorf("daemon pid-file %q is owned by uid %d (daemon uid %d)", daemonPIDFile, stat.Uid, procUID)
+	}
+
+	pidData, err := os.ReadFile(daemonPIDFile)
+	if err != nil {
+		return fmt.Errorf("failed to read daemon pid-file %q: %w", daemonPIDFile, err)
+	}
+
+	pidFromFile, err := strconv.Atoi(strings.TrimSpace(string(pidData)))
+	if err != nil {
+		return fmt.Errorf("failed to parse daemon pid-file %q: %w", daemonPIDFile, err)
+	}
+
+	if pidFromFile != pid {
+		return fmt.Errorf("daemon pid-file %q points to pid %d (expected %d)", daemonPIDFile, pidFromFile, pid)
 	}
 
 	return nil
