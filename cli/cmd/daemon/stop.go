@@ -150,8 +150,9 @@ func validateDaemonProcess(pid int) error {
 		idx++
 	}
 
+	expectedPIDFile := pidFile
 	if daemonPIDFile == "" {
-		return fmt.Errorf("pid %d is missing daemon pid-file marker", pid)
+		daemonPIDFile = expectedPIDFile
 	}
 
 	resolvedDaemonPIDFile, err := filepath.Abs(daemonPIDFile)
@@ -163,7 +164,6 @@ func validateDaemonProcess(pid int) error {
 		resolvedDaemonPIDFile = resolved
 	}
 
-	expectedPIDFile := pidFile
 	resolvedExpectedPIDFile, err := filepath.Abs(expectedPIDFile)
 	if err != nil {
 		return fmt.Errorf("failed to resolve expected pid-file %q: %w", expectedPIDFile, err)
