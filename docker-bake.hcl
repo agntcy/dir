@@ -20,8 +20,6 @@ group "default" {
     "dir-apiserver",
     "dir-ctl",
     "dir-reconciler",
-    "dir-runtime-discovery",
-    "dir-runtime-server",
   ]
 }
 
@@ -104,26 +102,6 @@ target "dir-reconciler-coverage" {
     "docker-metadata-action",
   ]
   tags = get_tag(target.docker-metadata-action.tags, "dir-reconciler")
-}
-
-target "dir-runtime-discovery" {
-  context = "."
-  dockerfile = "./runtime/discovery/Dockerfile"
-  inherits = [
-    "_common",
-    "docker-metadata-action",
-  ]
-  tags = get_tag(target.docker-metadata-action.tags, "${target.dir-runtime-discovery.name}")
-}
-
-target "dir-runtime-server" {
-  context = "."
-  dockerfile = "./runtime/server/Dockerfile"
-  inherits = [
-    "_common",
-    "docker-metadata-action",
-  ]
-  tags = get_tag(target.docker-metadata-action.tags, "${target.dir-runtime-server.name}")
 }
 
 target "sdks-test" {
