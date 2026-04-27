@@ -21,23 +21,12 @@ tasks:
 
   api:clean:
     desc: Clean generated API stubs
-    deps:
-      - api:clean:go
-      - api:clean:python
-      - api:clean:javascript
-
-  api:clean:go:
-    desc: Clean generated golang API stubs
     dir: ./api
     cmds:
       - find . \( -name "*.pb.go" \) -type f -delete
 
-  api:clean:python:
-    desc: Clean generated Python API stubs
-    dir: ./sdk/dir-py/agntcy
-    cmd: rm -drf ./dir
-
-  api:clean:javascript:
-    desc: Clean generated JS/TS API stubs
-    dir: ./sdk/dir-js/
-    cmd: rm -drf ./api
+  api:clean:runtime:go:
+    desc: Clean runtime generated golang API stubs
+    dir: ./runtime
+    cmds:
+      - find . \( -name "*.pb.go" \) -type f -delete
