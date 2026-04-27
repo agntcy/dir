@@ -21,7 +21,6 @@ node_modules
 install/charts/dir/charts/
 install/charts/dir/apiserver/charts/
 install/charts/dirctl/charts/
-install/charts/envoy-authz/charts/
 
 # MacOS
 .DS_Store
