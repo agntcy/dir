@@ -9,7 +9,7 @@ tasks:
 
   test:e2e:
     desc: Run end-to-end tests for local deployment, network deployment, and daemon
-    aliases: [e2e]
+    aliases: [ e2e ]
     cmds:
       - task: test:e2e:local
       - task: test:e2e:network
@@ -17,15 +17,15 @@ tasks:
 
   test:e2e:local:cli:
     desc: Run only local CLI tests (with dedicated infrastructure)
-    aliases: [e2e:local:cli]
+    aliases: [ e2e:local:cli ]
     dir: "{{ .ROOT_DIR }}/tests"
     vars:
-      PUBLICATION_SCHEDULER_INTERVAL: '{{ .PUBLICATION_SCHEDULER_INTERVAL | default "1s" }}'
-      RATELIMIT_ENABLED: '{{ .RATELIMIT_ENABLED | default "false" }}'
-      RATELIMIT_GLOBAL_RPS: '{{ .RATELIMIT_GLOBAL_RPS | default "100" }}'
-      RATELIMIT_GLOBAL_BURST: '{{ .RATELIMIT_GLOBAL_BURST | default "200" }}'
-      E2E_COVERAGE_ENABLED: '{{ .E2E_COVERAGE_ENABLED | default "false" }}'
-      COVERAGE_DIR: '{{ .COVERAGE_DIR | default (print .ROOT_DIR "/.coverage/e2e") }}'
+      PUBLICATION_SCHEDULER_INTERVAL: "{{ .PUBLICATION_SCHEDULER_INTERVAL | default \"1s\" }}"
+      RATELIMIT_ENABLED: "{{ .RATELIMIT_ENABLED | default \"false\" }}"
+      RATELIMIT_GLOBAL_RPS: "{{ .RATELIMIT_GLOBAL_RPS | default \"100\" }}"
+      RATELIMIT_GLOBAL_BURST: "{{ .RATELIMIT_GLOBAL_BURST | default \"200\" }}"
+      E2E_COVERAGE_ENABLED: "{{ .E2E_COVERAGE_ENABLED | default \"false\" }}"
+      COVERAGE_DIR: "{{ .COVERAGE_DIR | default (print .ROOT_DIR \"/.coverage/e2e\") }}"
     env:
       DIRECTORY_E2E_DEPLOYMENT_MODE: "local"
     cmds:
@@ -60,15 +60,15 @@ tasks:
 
   test:e2e:client:
     desc: Run only client library tests (with dedicated infrastructure)
-    aliases: [e2e:client]
+    aliases: [ e2e:client ]
     dir: "{{ .ROOT_DIR }}/tests"
     vars:
-      PUBLICATION_SCHEDULER_INTERVAL: '{{ .PUBLICATION_SCHEDULER_INTERVAL | default "1s" }}'
-      RATELIMIT_ENABLED: '{{ .RATELIMIT_ENABLED | default "true" }}'
-      RATELIMIT_GLOBAL_RPS: '{{ .RATELIMIT_GLOBAL_RPS | default "100" }}'
-      RATELIMIT_GLOBAL_BURST: '{{ .RATELIMIT_GLOBAL_BURST | default "200" }}'
-      E2E_COVERAGE_ENABLED: '{{ .E2E_COVERAGE_ENABLED | default "false" }}'
-      COVERAGE_DIR: '{{ .COVERAGE_DIR | default (print .ROOT_DIR "/.coverage/e2e") }}'
+      PUBLICATION_SCHEDULER_INTERVAL: "{{ .PUBLICATION_SCHEDULER_INTERVAL | default \"1s\" }}"
+      RATELIMIT_ENABLED: "{{ .RATELIMIT_ENABLED | default \"true\" }}"
+      RATELIMIT_GLOBAL_RPS: "{{ .RATELIMIT_GLOBAL_RPS | default \"100\" }}"
+      RATELIMIT_GLOBAL_BURST: "{{ .RATELIMIT_GLOBAL_BURST | default \"200\" }}"
+      E2E_COVERAGE_ENABLED: "{{ .E2E_COVERAGE_ENABLED | default \"false\" }}"
+      COVERAGE_DIR: "{{ .COVERAGE_DIR | default (print .ROOT_DIR \"/.coverage/e2e\") }}"
     env:
       DIRECTORY_E2E_DEPLOYMENT_MODE: "local"
     cmds:
@@ -102,16 +102,17 @@ tasks:
         fi
 
   test:e2e:local:
-    desc: Run end-to-end tests for local deployment (Client + CLI + Rate limiting tests)
-    aliases: [e2e:local]
+    desc: Run end-to-end tests for local deployment (Client + CLI + Rate limiting
+      tests)
+    aliases: [ e2e:local ]
     dir: "{{ .ROOT_DIR }}/tests"
     vars:
-      PUBLICATION_SCHEDULER_INTERVAL: '{{ .PUBLICATION_SCHEDULER_INTERVAL | default "1s" }}'
-      RATELIMIT_ENABLED: '{{ .RATELIMIT_ENABLED | default "true" }}'
-      RATELIMIT_GLOBAL_RPS: '{{ .RATELIMIT_GLOBAL_RPS | default "100" }}'
-      RATELIMIT_GLOBAL_BURST: '{{ .RATELIMIT_GLOBAL_BURST | default "200" }}'
-      E2E_COVERAGE_ENABLED: '{{ .E2E_COVERAGE_ENABLED | default "false" }}'
-      COVERAGE_DIR: '{{ .COVERAGE_DIR | default (print .ROOT_DIR "/.coverage/e2e") }}'
+      PUBLICATION_SCHEDULER_INTERVAL: "{{ .PUBLICATION_SCHEDULER_INTERVAL | default \"1s\" }}"
+      RATELIMIT_ENABLED: "{{ .RATELIMIT_ENABLED | default \"true\" }}"
+      RATELIMIT_GLOBAL_RPS: "{{ .RATELIMIT_GLOBAL_RPS | default \"100\" }}"
+      RATELIMIT_GLOBAL_BURST: "{{ .RATELIMIT_GLOBAL_BURST | default \"200\" }}"
+      E2E_COVERAGE_ENABLED: "{{ .E2E_COVERAGE_ENABLED | default \"false\" }}"
+      COVERAGE_DIR: "{{ .COVERAGE_DIR | default (print .ROOT_DIR \"/.coverage/e2e\") }}"
     env:
       DIRECTORY_E2E_DEPLOYMENT_MODE: "local"
     cmds:
@@ -182,12 +183,12 @@ tasks:
 
   test:e2e:network:
     desc: Run end-to-end tests for network deployment (Multi-peer CLI tests)
-    aliases: [e2e:network]
+    aliases: [ e2e:network ]
     dir: "{{ .ROOT_DIR }}/tests"
     vars:
-      PUBLICATION_SCHEDULER_INTERVAL: '{{ .PUBLICATION_SCHEDULER_INTERVAL | default "1s" }}'
-      E2E_COVERAGE_ENABLED: '{{ .E2E_COVERAGE_ENABLED | default "false" }}'
-      COVERAGE_DIR: '{{ .COVERAGE_DIR | default (print .ROOT_DIR "/.coverage/e2e") }}'
+      PUBLICATION_SCHEDULER_INTERVAL: "{{ .PUBLICATION_SCHEDULER_INTERVAL | default \"1s\" }}"
+      E2E_COVERAGE_ENABLED: "{{ .E2E_COVERAGE_ENABLED | default \"false\" }}"
+      COVERAGE_DIR: "{{ .COVERAGE_DIR | default (print .ROOT_DIR \"/.coverage/e2e\") }}"
     env:
       DIRECTORY_E2E_DEPLOYMENT_MODE: "network"
     deps:
@@ -239,14 +240,14 @@ tasks:
 
   test:e2e:daemon:
     desc: Run all daemon e2e tests (default + external backends)
-    aliases: [e2e:daemon]
+    aliases: [ e2e:daemon ]
     cmds:
       - task: test:e2e:daemon:default
       - task: test:e2e:daemon:external
 
   test:e2e:daemon:default:
     desc: Run daemon e2e tests with default config (SQLite + local OCI store)
-    aliases: [e2e:daemon:default]
+    aliases: [ e2e:daemon:default ]
     vars:
       DAEMON_DATA_DIR:
         sh: mktemp -d
@@ -259,11 +260,12 @@ tasks:
           {{ .DIRCTL_BIN }} daemon stop --data-dir {{ .DAEMON_DATA_DIR }} 2>/dev/null || true
           rm -rf {{ .DAEMON_DATA_DIR }}
       - "{{ .DIRCTL_BIN }} daemon start --data-dir {{ .DAEMON_DATA_DIR }} &"
-      - go test -C ./tests/e2e/daemon . -v -failfast -test.v -test.paniconexit0 -ginkgo.timeout 5m -timeout 5m -ginkgo.v
+      - go test -C ./tests/e2e/daemon . -v -failfast -test.v -test.paniconexit0
+        -ginkgo.timeout 5m -timeout 5m -ginkgo.v
 
   test:e2e:daemon:external:
     desc: Run daemon e2e tests with external PostgreSQL and Zot registry
-    aliases: [e2e:daemon:external]
+    aliases: [ e2e:daemon:external ]
     vars:
       DAEMON_DATA_DIR:
         sh: mktemp -d
@@ -282,8 +284,10 @@ tasks:
           docker compose -f {{ .COMPOSE_DIR }}/docker-compose.yaml down -v 2>/dev/null || true
           rm -rf {{ .DAEMON_DATA_DIR }}
       - docker compose -f {{ .COMPOSE_DIR }}/docker-compose.yaml up -d --wait
-      - "{{ .DIRCTL_BIN }} daemon start --data-dir {{ .DAEMON_DATA_DIR }} --config {{ .CONFIG_FILE }} &"
-      - go test -C ./tests/e2e/daemon . -v -failfast -test.v -test.paniconexit0 -ginkgo.timeout 5m -timeout 5m -ginkgo.v
+      - "{{ .DIRCTL_BIN }} daemon start --data-dir {{ .DAEMON_DATA_DIR }}
+        --config {{ .CONFIG_FILE }} &"
+      - go test -C ./tests/e2e/daemon . -v -failfast -test.v -test.paniconexit0
+        -ginkgo.timeout 5m -timeout 5m -ginkgo.v
 
   test:e2e:spire:
     desc: Run end-to-end tests for SPIRE deployment
@@ -299,10 +303,10 @@ tasks:
     deps:
       - task: helm:gen
     vars:
-      AUTH_MODE: '{{ .AUTH_MODE | default "x509" }}' # or "jwt"
-      DIR_TRUST_DOMAIN: '{{ .DIR_TRUST_DOMAIN | default "dir.example" }}'
-      DIRCTL_TRUST_DOMAIN: '{{ .DIRCTL_TRUST_DOMAIN | default "dirctl.example" }}'
-      DIR_DNS_NAME_TEMPLATE: '{{ .DIR_DNS_NAME_TEMPLATE | default "127.0.0.1.nip.io" }}'
+      AUTH_MODE: "{{ .AUTH_MODE | default \"x509\" }}" # or "jwt"
+      DIR_TRUST_DOMAIN: "{{ .DIR_TRUST_DOMAIN | default \"dir.example\" }}"
+      DIRCTL_TRUST_DOMAIN: "{{ .DIRCTL_TRUST_DOMAIN | default \"dirctl.example\" }}"
+      DIR_DNS_NAME_TEMPLATE: "{{ .DIR_DNS_NAME_TEMPLATE | default \"127.0.0.1.nip.io\" }}"
     cmds:
       # Setup DIR cluster
       - task: test-env:kubernetes:setup-cluster
@@ -512,8 +516,8 @@ tasks:
   test:spire:cleanup:
     desc: Cleanup SPIRE federation test clusters
     vars:
-      DIR_TRUST_DOMAIN: '{{ .DIR_TRUST_DOMAIN | default "dir.example" }}'
-      DIRCTL_TRUST_DOMAIN: '{{ .DIRCTL_TRUST_DOMAIN | default "dirctl.example" }}'
+      DIR_TRUST_DOMAIN: "{{ .DIR_TRUST_DOMAIN | default \"dir.example\" }}"
+      DIRCTL_TRUST_DOMAIN: "{{ .DIRCTL_TRUST_DOMAIN | default \"dirctl.example\" }}"
     cmds:
       - echo "Cleaning up DIR cluster ({{ .DIR_TRUST_DOMAIN }})..."
       - task: deploy:kubernetes:cleanup
@@ -527,7 +531,7 @@ tasks:
 
   test:e2e:coverage:
     desc: Run end-to-end tests with coverage
-    aliases: [e2e:coverage]
+    aliases: [ e2e:coverage ]
     deps:
       - build:coverage
     cmds:
@@ -548,9 +552,10 @@ tasks:
     desc: Extract coverage data from Kubernetes pods
     internal: true
     vars:
-      E2E_COVERAGE_ENABLED: '{{ .E2E_COVERAGE_ENABLED | default "false" }}'
-      NAMESPACE: '{{ .NAMESPACE | default "dir-server" }}'
-      POD_SELECTORS: '{{ .POD_SELECTORS | default "app.kubernetes.io/name=apiserver app.kubernetes.io/name=reconciler" }}'
+      E2E_COVERAGE_ENABLED: "{{ .E2E_COVERAGE_ENABLED | default \"false\" }}"
+      NAMESPACE: "{{ .NAMESPACE | default \"dir-server\" }}"
+      POD_SELECTORS: "{{ .POD_SELECTORS | default \"app.kubernetes.io/name=apiserver
+        app.kubernetes.io/name=reconciler\" }}"
     cmds:
       - |
         if [ "{{.E2E_COVERAGE_ENABLED}}" = "true" ]; then
