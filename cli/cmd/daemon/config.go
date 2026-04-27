@@ -9,7 +9,6 @@ import (
 	"path/filepath"
 	"strings"
 
-	reconcilerconfig "github.com/agntcy/dir/reconciler/config"
 	resolvera2a "github.com/agntcy/dir-runtime/discovery/resolver/a2a"
 	resolver "github.com/agntcy/dir-runtime/discovery/resolver/config"
 	resolveroasf "github.com/agntcy/dir-runtime/discovery/resolver/oasf"
@@ -18,6 +17,7 @@ import (
 	adapterk8s "github.com/agntcy/dir-runtime/discovery/runtime/k8s"
 	runtimestore "github.com/agntcy/dir-runtime/store/config"
 	runtimestoresql "github.com/agntcy/dir-runtime/store/sql"
+	reconcilerconfig "github.com/agntcy/dir/reconciler/config"
 	serverconfig "github.com/agntcy/dir/server/config"
 	"github.com/mitchellh/mapstructure"
 	"github.com/spf13/viper"

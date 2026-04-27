@@ -8,8 +8,8 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/agntcy/dir/client/streaming"
 	runtimev1 "github.com/agntcy/dir-runtime/api/runtime/v1"
+	"github.com/agntcy/dir/client/streaming"
 )
 
 func (c *Client) GetWorkload(ctx context.Context, workloadID string) (*runtimev1.Workload, error) {
