@@ -54,16 +54,6 @@ tasks:
         rm -f "$f" && echo "Removed unused $f"
       done
 
-  deps:controller-gen:
-    desc: Ensure controller-gen is installed
-    internal: true
-    preconditions:
-      - which go
-    cmds:
-      - cmd: go install {{.CONTROLLER_GEN_BIN}}
-    status:
-      - which controller-gen
-
   deps:bin-dir:
     desc: Create bin directory
     run: once
