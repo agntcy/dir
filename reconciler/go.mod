@@ -6,7 +6,6 @@ go 1.26.2
 replace (
 	github.com/agntcy/dir/api => ../api
 	github.com/agntcy/dir/client => ../client
-	github.com/agntcy/dir/runtime/api => ../runtime/api
 	github.com/agntcy/dir/server => ../server
 	github.com/agntcy/dir/utils => ../utils
 )
@@ -35,7 +34,7 @@ require (
 	github.com/Masterminds/semver/v3 v3.4.0 // indirect
 	github.com/Microsoft/go-winio v0.6.2 // indirect
 	github.com/ThalesIgnite/crypto11 v1.6.0 // indirect
-	github.com/agntcy/dir/runtime/api v1.2.0 // indirect
+	github.com/agntcy/dir-runtime/api v1.2.1 // indirect
 	github.com/agntcy/oasf-sdk/pkg v1.0.5 // indirect
 	github.com/asaskevich/govalidator v0.0.0-20230301143203-a9d515a09cc2 // indirect
 	github.com/blang/semver v3.5.1+incompatible // indirect

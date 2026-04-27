@@ -7,11 +7,6 @@ replace (
 	github.com/agntcy/dir/api => ../api
 	github.com/agntcy/dir/client => ../client
 	github.com/agntcy/dir/reconciler => ../reconciler
-	github.com/agntcy/dir/runtime/api => ../runtime/api
-	github.com/agntcy/dir/runtime/discovery => ../runtime/discovery
-	github.com/agntcy/dir/runtime/server => ../runtime/server
-	github.com/agntcy/dir/runtime/store => ../runtime/store
-	github.com/agntcy/dir/runtime/utils => ../runtime/utils
 	github.com/agntcy/dir/server => ../server
 	github.com/agntcy/dir/utils => ../utils
 )
@@ -27,12 +22,12 @@ require (
 	buf.build/gen/go/agntcy/oasf/protocolbuffers/go v1.36.11-20260416152818-3df7657b1c83.1
 	github.com/agntcy/dir-importer v1.0.0
 	github.com/agntcy/dir-mcp v1.0.0
+	github.com/agntcy/dir-runtime/discovery v1.2.1
+	github.com/agntcy/dir-runtime/server v1.2.1
+	github.com/agntcy/dir-runtime/store v1.2.1
 	github.com/agntcy/dir/api v1.2.0
 	github.com/agntcy/dir/client v1.2.0
 	github.com/agntcy/dir/reconciler v1.2.0
-	github.com/agntcy/dir/runtime/discovery v1.2.0
-	github.com/agntcy/dir/runtime/server v1.2.0
-	github.com/agntcy/dir/runtime/store v1.2.0
 	github.com/agntcy/dir/server v1.2.0
 	github.com/agntcy/dir/utils v1.2.0
 	github.com/agntcy/oasf-sdk/pkg v1.0.5
@@ -64,8 +59,8 @@ require (
 	github.com/Masterminds/semver/v3 v3.4.0 // indirect
 	github.com/Microsoft/go-winio v0.6.2 // indirect
 	github.com/ThalesIgnite/crypto11 v1.6.0 // indirect
-	github.com/agntcy/dir/runtime/api v1.2.0 // indirect
-	github.com/agntcy/dir/runtime/utils v1.2.0 // indirect
+	github.com/agntcy/dir-runtime/api v1.2.1 // indirect
+	github.com/agntcy/dir-runtime/utils v1.2.1 // indirect
 	github.com/antlr4-go/antlr/v4 v4.13.1 // indirect
 	github.com/asaskevich/govalidator v0.0.0-20230301143203-a9d515a09cc2 // indirect
 	github.com/aws/aws-sdk-go-v2/config v1.32.14 // indirect

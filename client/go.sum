@@ -45,6 +45,8 @@ github.com/Microsoft/go-winio v0.6.2 h1:F2VQgta7ecxGYO8k3ZZz3RS8fVIXVxONVUPlNERo
 github.com/Microsoft/go-winio v0.6.2/go.mod h1:yd8OoFMLzJbo9gZq8j5qaps8bJ9aShtEA8Ipt1oGCvU=
 github.com/ThalesGroup/crypto11 v1.6.0 h1:Og9EMn44fBS4GNnGnH1aqHnF2wL6F7IU/RhpJajWX/4=
 github.com/ThalesGroup/crypto11 v1.6.0/go.mod h1:H6LRjN5R5SHxTrLqGNteisLDI0/IC6+SGx1pHtbwizE=
+github.com/agntcy/dir-runtime/api v1.2.1 h1:Eocls1DI1jS5nDwdT8s1OMvmzCHCAmBoVhxZKT154Gk=
+github.com/agntcy/dir-runtime/api v1.2.1/go.mod h1:A+DcsnMcwbq3AGrAJwwWd06acSFvEWPU+bPNB79Upco=
 github.com/agntcy/oasf-sdk/pkg v1.0.5 h1:Sv8K9tqdfl4gfl30spFh9MYkqnzXcTByCsb2uZsNWE4=
 github.com/agntcy/oasf-sdk/pkg v1.0.5/go.mod h1:6dii5LpZlAPNhko78tvD2LOhJ2qwOXDy95aSjrsJbgg=
 github.com/asaskevich/govalidator v0.0.0-20230301143203-a9d515a09cc2 h1:DklsrG3dyBCFEj5IhUbnKptjxatkF07cF2ak3yi77so=

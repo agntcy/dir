@@ -6,7 +6,6 @@ go 1.26.2
 replace (
 	github.com/agntcy/dir/api => ../api
 	github.com/agntcy/dir/client => ../client
-	github.com/agntcy/dir/runtime/api => ../runtime/api
 	github.com/agntcy/dir/utils => ../utils
 )
 

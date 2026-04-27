@@ -8,11 +8,6 @@ replace (
 	github.com/agntcy/dir/cli => ../cli
 	github.com/agntcy/dir/client => ../client
 	github.com/agntcy/dir/reconciler => ../reconciler
-	github.com/agntcy/dir/runtime/api => ../runtime/api
-	github.com/agntcy/dir/runtime/discovery => ../runtime/discovery
-	github.com/agntcy/dir/runtime/server => ../runtime/server
-	github.com/agntcy/dir/runtime/store => ../runtime/store
-	github.com/agntcy/dir/runtime/utils => ../runtime/utils
 	github.com/agntcy/dir/server => ../server
 	github.com/agntcy/dir/utils => ../utils
 )
@@ -50,12 +45,13 @@ require (
 	github.com/Microsoft/go-winio v0.6.2 // indirect
 	github.com/ThalesIgnite/crypto11 v1.6.0 // indirect
 	github.com/agntcy/dir-mcp v1.0.0 // indirect
+	github.com/agntcy/dir-runtime/api v1.2.1 // indirect
+	github.com/agntcy/dir-runtime/discovery v1.2.1 // indirect
+	github.com/agntcy/dir-runtime/server v1.2.1 // indirect
+	github.com/agntcy/dir-runtime/store v1.2.1 // indirect
+	github.com/agntcy/dir-runtime/utils v1.2.1 // indirect
+	github.com/agntcy/dir/mcp v1.2.0 // indirect
 	github.com/agntcy/dir/reconciler v1.2.0 // indirect
-	github.com/agntcy/dir/runtime/api v1.2.0 // indirect
-	github.com/agntcy/dir/runtime/discovery v1.2.0 // indirect
-	github.com/agntcy/dir/runtime/server v1.2.0 // indirect
-	github.com/agntcy/dir/runtime/store v1.2.0 // indirect
-	github.com/agntcy/dir/runtime/utils v1.2.0 // indirect
 	github.com/agntcy/dir/server v1.2.0 // indirect
 	github.com/agntcy/dir/utils v1.2.0 // indirect
 	github.com/agntcy/oasf-sdk/pkg v1.0.5 // indirect

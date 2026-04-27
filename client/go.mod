@@ -5,7 +5,6 @@ go 1.26.2
 // Replace local modules
 replace (
 	github.com/agntcy/dir/api => ../api
-	github.com/agntcy/dir/runtime/api => ../runtime/api
 	github.com/agntcy/dir/utils => ../utils
 )
 
@@ -13,8 +12,8 @@ replace (
 replace github.com/ThalesIgnite/crypto11 => github.com/ThalesGroup/crypto11 v1.6.0
 
 require (
+	github.com/agntcy/dir-runtime/api v1.2.1
 	github.com/agntcy/dir/api v1.2.0
-	github.com/agntcy/dir/runtime/api v1.2.0
 	github.com/agntcy/dir/utils v1.2.0
 	github.com/mitchellh/mapstructure v1.5.1-0.20231216201459-8508981c8b6c
 	github.com/sigstore/cosign/v3 v3.0.6

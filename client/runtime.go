@@ -9,7 +9,7 @@ import (
 	"fmt"
 
 	"github.com/agntcy/dir/client/streaming"
-	runtimev1 "github.com/agntcy/dir/runtime/api/runtime/v1"
+	runtimev1 "github.com/agntcy/dir-runtime/api/runtime/v1"
 )
 
 func (c *Client) GetWorkload(ctx context.Context, workloadID string) (*runtimev1.Workload, error) {
