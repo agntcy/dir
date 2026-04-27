@@ -42,6 +42,6 @@ dependencies:
   # Disable when using SQLite or external PostgreSQL via: postgresql.enabled: false
   # Default: enabled (postgresql.enabled: true in values.yaml)
   - name: postgresql
-    version: "18.5.24"
+    version: "18.6.1"
     repository: "https://charts.bitnami.com/bitnami"
     condition: postgresql.enabled
