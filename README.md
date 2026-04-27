@@ -48,11 +48,9 @@ Check the [Documentation](https://docs.agntcy.org/dir/overview/) for a full walk
 
 - [proto](./proto) - gRPC specification for data models and services
 - [api](./api) - API models for tools and packages
-- [auth](./auth) - authentication provider and authorization server
 - [cli](./cli) - command line client for interacting with system components
 - [client](./client) - client SDK for development and API workflows
 - [docs](./docs) - research details and documentation around the project
-- [gui](./gui) - graphical user interface (Flutter)
 - [install](./install) - deployment assets (Helm charts, Docker Compose)
 - [reconciler](./reconciler) - standalone service for periodic reconciliation (regsync, indexer)
 - [server](./server) - API services to manage storage, routing, and networking operations
