@@ -50,7 +50,6 @@ require (
 	github.com/agntcy/dir-runtime/server v1.2.1 // indirect
 	github.com/agntcy/dir-runtime/store v1.2.1 // indirect
 	github.com/agntcy/dir-runtime/utils v1.2.1 // indirect
-	github.com/agntcy/dir/mcp v1.2.0 // indirect
 	github.com/agntcy/dir/reconciler v1.2.0 // indirect
 	github.com/agntcy/dir/server v1.2.0 // indirect
 	github.com/agntcy/dir/utils v1.2.0 // indirect

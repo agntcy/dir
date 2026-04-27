@@ -66,15 +66,7 @@
     "github.com/agntcy/dir/tests",
     "github.com/agntcy/dir/server",
     "github.com/agntcy/dir/utils",
-    "github.com/agntcy/dir/reconciler",
-    "github.com/agntcy/dir/auth/authprovider",
-    "github.com/agntcy/dir/auth/authzserver",
-    "github.com/agntcy/dir/auth/cmd/envoy-authz",
-    "github.com/agntcy/dir/runtime/discovery",
-    "github.com/agntcy/dir/runtime/api",
-    "github.com/agntcy/dir/runtime/store",
-    "github.com/agntcy/dir/runtime/utils",
-    "github.com/agntcy/dir/runtime/server"
+    "github.com/agntcy/dir/reconciler"
   ],
   "osvVulnerabilityAlerts": true,
   "lockFileMaintenance": {

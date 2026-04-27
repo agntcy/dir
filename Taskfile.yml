@@ -43,11 +43,6 @@ includes:
     flatten: true
     excludes: [default]
 
-  runtime:
-    taskfile: runtime/Taskfile.yml
-    flatten: true
-    excludes: [default]
-
   server:
     taskfile: server/Taskfile.yml
     flatten: true

@@ -55,7 +55,6 @@ Check the [Documentation](https://docs.agntcy.org/dir/overview/) for a full walk
 - [gui](./gui) - graphical user interface (Flutter)
 - [install](./install) - deployment assets (Helm charts, Docker Compose)
 - [reconciler](./reconciler) - standalone service for periodic reconciliation (regsync, indexer)
-- [runtime](./runtime) - discovery service to watch workloads and resolve capabilities
 - [server](./server) - API services to manage storage, routing, and networking operations
 - [utils](./utils) - shared utilities (logging, SPIFFE)
 - [tests](./tests) - test suites and end-to-end (e2e) testing framework

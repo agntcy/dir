@@ -101,6 +101,16 @@ github.com/agntcy/dir-importer v1.0.0 h1:I/iMzaKF9l6L1bjVPxUwz4M99TExP5dvt085IQp
 github.com/agntcy/dir-importer v1.0.0/go.mod h1:23tzVwvHFXayPQZQI7UlKaInsCkXELuSogLNMVAMfoQ=
 github.com/agntcy/dir-mcp v1.0.0 h1:p2pi8kYZRyGuHpSooYS78w4aLTriYf+qrGEZ29H4Msc=
 github.com/agntcy/dir-mcp v1.0.0/go.mod h1:4hc8mbLU6GaNSqEf0b4JCkB29TKHwMdvFzR+LTUQ4KE=
+github.com/agntcy/dir-runtime/api v1.2.1 h1:Eocls1DI1jS5nDwdT8s1OMvmzCHCAmBoVhxZKT154Gk=
+github.com/agntcy/dir-runtime/api v1.2.1/go.mod h1:A+DcsnMcwbq3AGrAJwwWd06acSFvEWPU+bPNB79Upco=
+github.com/agntcy/dir-runtime/discovery v1.2.1 h1:kbydoMM68HwTQpoHcd4GHk5rcojjI6heQx3gY3N5CHA=
+github.com/agntcy/dir-runtime/discovery v1.2.1/go.mod h1:KZiYdV2j+XmWgfIIpSiHDuEvuK45bvpUUR+Y2rwJ9k4=
+github.com/agntcy/dir-runtime/server v1.2.1 h1:JSXcd+LBMeEoUfVeBAXMexBuKB0k0VnK6sjdx65Ylsc=
+github.com/agntcy/dir-runtime/server v1.2.1/go.mod h1:IZviJ350uRYIx+6KnexpbeZD+bVhzdRPuAAXY4FS00Q=
+github.com/agntcy/dir-runtime/store v1.2.1 h1:mRS9wokrduvUNha+kz5k3KGTTwh4FsJS6C6sfju2Fm4=
+github.com/agntcy/dir-runtime/store v1.2.1/go.mod h1:1P11aT/xmQ8HkaWwKzIGcaAzVFGJRp9i6XtW/MOgmOE=
+github.com/agntcy/dir-runtime/utils v1.2.1 h1:+grwERPpkAZftIzHIX+GUxMu7zaFNnST4P39mpU2J3Y=
+github.com/agntcy/dir-runtime/utils v1.2.1/go.mod h1:ugJUOWpR+kOxVv22snmYSMMNqTh1c6leZ9CJcEZRMpo=
 github.com/agntcy/oasf-sdk/pkg v1.0.5 h1:Sv8K9tqdfl4gfl30spFh9MYkqnzXcTByCsb2uZsNWE4=
 github.com/agntcy/oasf-sdk/pkg v1.0.5/go.mod h1:6dii5LpZlAPNhko78tvD2LOhJ2qwOXDy95aSjrsJbgg=
 github.com/antihax/optional v1.0.0/go.mod h1:uupD/76wgC+ih3iEmQUL+0Ugr19nfwCT1kdvxnR2qWY=
