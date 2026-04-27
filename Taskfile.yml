@@ -265,11 +265,6 @@ tasks:
           rm /tmp/total_report_results.txt
         if: '{{ eq .SHOW_TOTAL_ONLY "true" }}'
 
-  bench:
-    desc: Run bench tests on codebase
-    cmds: # run in sequence
-      - task: server:bench
-      - echo "Done"
 
   ##
   ## Linters
