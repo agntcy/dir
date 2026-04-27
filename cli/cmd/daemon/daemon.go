@@ -4,7 +4,11 @@
 package daemon
 
 import (
+	"context"
+	"errors"
 	"fmt"
+	"net"
+	"net/http"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -12,6 +16,8 @@ import (
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
+	zotapi "zotregistry.dev/zot/v2/pkg/api"
+	zotconfig "zotregistry.dev/zot/v2/pkg/api/config"
 )
 
 // Options holds all daemon path configuration.
@@ -21,7 +27,6 @@ type Options struct {
 }
 
 func (o *Options) DBFile() string     { return filepath.Join(o.DataDir, "dir.db") }
-func (o *Options) StoreDir() string   { return filepath.Join(o.DataDir, "store") }
 func (o *Options) RoutingDir() string { return filepath.Join(o.DataDir, "routing") }
 func (o *Options) PIDFile() string    { return filepath.Join(o.DataDir, "daemon.pid") }
 
@@ -79,6 +84,83 @@ func writePIDFile() error {
 
 func removePIDFile() {
 	_ = os.Remove(opts.PIDFile())
+}
+
+func runEmbeddedZot(parentCtx context.Context, address string, rootDirectory string) context.Context {
+	ctx, cancel := context.WithCancel(parentCtx)
+
+	host, port, err := net.SplitHostPort(address)
+	if err != nil {
+		logger.Error("failed to split host and port", "error", err)
+
+		cancel()
+
+		return ctx
+	}
+
+	conf := zotconfig.New()
+	conf.Storage.RootDirectory = rootDirectory
+
+	conf.HTTP.Address = host
+	conf.HTTP.Port = port
+	conf.Log.Level = "error"
+
+	ctrl := zotapi.NewController(conf)
+
+	go func(ctx context.Context) {
+		shutdown := func() {
+			defer cancel()
+
+			logger.Info("shutting down zot controller")
+			ctrl.Shutdown()
+		}
+
+		go func() {
+			<-ctx.Done()
+			shutdown()
+		}()
+
+		defer func() {
+			shutdown()
+		}()
+
+		if err := ctrl.Init(); err != nil {
+			logger.Error("failed to init zot controller", "error", err)
+
+			return
+		}
+
+		if err := ctrl.Run(); err != nil {
+			if !errors.Is(err, context.Canceled) {
+				logger.Error("failed to run zot controller", "error", err)
+			}
+
+			return
+		}
+	}(ctx)
+
+	return ctx
+}
+
+func isZotReady(address string) (bool, error) {
+	resp, err := http.Get(fmt.Sprintf("http://%s/v2/", address)) //nolint:noctx
+	if err != nil {
+		logger.Debug("zot readiness check failed with error", "error", err)
+
+		return false, fmt.Errorf("failed to check zot readiness: %w", err)
+	}
+
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		logger.Debug("zot readiness check failed with status code", "status_code", resp.StatusCode)
+
+		return false, fmt.Errorf("zot was not ready, /v2/ returned status code: %d", resp.StatusCode)
+	}
+
+	logger.Debug("zot readiness check passed")
+
+	return true, nil
 }
 
 // Command is the parent command for daemon subcommands.

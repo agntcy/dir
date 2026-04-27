@@ -19,6 +19,7 @@ import (
 	runtimestoresql "github.com/agntcy/dir-runtime/store/sql"
 	reconcilerconfig "github.com/agntcy/dir/reconciler/config"
 	serverconfig "github.com/agntcy/dir/server/config"
+	storeconfig "github.com/agntcy/dir/server/store/oci/config"
 	"github.com/mitchellh/mapstructure"
 	"github.com/spf13/viper"
 )
@@ -45,6 +46,11 @@ type RuntimeConfig struct {
 	Adapter  runtime.Config      `json:"adapter"  mapstructure:"adapter"`
 	Resolver resolver.Config     `json:"resolver" mapstructure:"resolver"`
 	Store    runtimestore.Config `json:"store"    mapstructure:"store"`
+}
+
+func registerServerDefaults(v *viper.Viper) {
+	v.SetDefault("server.store.oci.registry_address", storeconfig.DefaultRegistryAddress)
+	v.SetDefault("server.store.oci.repository_name", storeconfig.DefaultRepositoryName)
 }
 
 func registerRuntimeDefaults(v *viper.Viper) {
@@ -102,6 +108,7 @@ func loadConfig() (*DaemonConfig, error) {
 
 	bindCredentialEnvVars(v)
 	registerRuntimeDefaults(v)
+	registerServerDefaults(v)
 
 	if opts.ConfigFile != "" {
 		v.SetConfigFile(opts.ConfigFile)

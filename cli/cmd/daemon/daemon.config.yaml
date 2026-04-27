@@ -24,8 +24,10 @@ server:
   store:
     provider: "oci"
     oci:
-      local_dir: "store"
-      # To use a remote OCI registry instead of local_dir, set:
+      local_dir: "store" # relative to data-dir or can be absolute path like "/tmp/agntcy/dir/oci/"
+      registry_address: "localhost:5000"
+      repository_name: "dir"
+      # To use a remote OCI registry, unset local_dir:
       #   registry_address: "ghcr.io"
       #   repository_name: "org/agents"
     verification:

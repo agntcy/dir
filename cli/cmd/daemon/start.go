@@ -68,6 +68,15 @@ func runStart(cmd *cobra.Command, _ []string) error {
 	ctx, cancel := context.WithCancel(cmd.Context())
 	defer cancel()
 
+	zotCtx := context.Background()
+
+	if cfg.Server.Store.OCI.LocalDir != "" {
+		zotCtx = runEmbeddedZot(ctx, cfg.Server.Store.OCI.RegistryAddress, cfg.Server.Store.OCI.LocalDir)
+
+		cfg.Server.Store.OCI.Insecure = true
+		cfg.Server.Store.OCI.LocalDir = ""
+	}
+
 	// Create API server
 	srv, err := server.New(ctx, &cfg.Server)
 	if err != nil {
@@ -157,6 +166,8 @@ func runStart(cmd *cobra.Command, _ []string) error {
 		logger.Info("Received signal, shutting down", "signal", sig)
 	case err := <-discoveryErrCh:
 		logger.Error("Runtime discovery service error", "error", err)
+	case <-zotCtx.Done():
+		logger.Info("zot context cancelled, shutting down")
 	case <-ctx.Done():
 		logger.Info("Context cancelled, shutting down")
 	}
