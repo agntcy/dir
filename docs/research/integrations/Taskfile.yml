@@ -1,0 +1,35 @@
+# Copyright AGNTCY Contributors (https://github.com/agntcy)
+# SPDX-License-Identifier: Apache-2.0
+
+version: "3"
+
+tasks:
+  default:
+    cmd: echo "Run the main Taskfile instead of this one."
+
+  integration:
+    desc: Run integration against VS Code and Continue proof-of-concept.
+    prompt:
+      - |
+        Are you sure you want to run integration proof-of-concept?
+        This will overwrite your local workspace VSCode and Continue configuration.
+    vars:
+      RECORD_FILE: '{{ .RECORD_FILE | default "demo.record.json" }}'
+    cmd: |
+      python3 -m venv venv
+      . ./venv/bin/activate
+      python3 -m pip install pyyaml
+
+      python3 ./importer.py \
+        -record={{.RECORD_FILE}} \
+        -vscode_path={{.ROOT_DIR}}/.vscode \
+        -continue_path={{.ROOT_DIR}}/.continue/assistants
+
+      cat .env.example
+
+  mcp-to-oasf:
+    desc: Import MCP-to-OASF Exporter Agent into the current workspace.
+    cmds:
+      - task: integration
+        vars:
+          RECORD_FILE: "mcp-to-oasf-agent/extractor.record.json"
