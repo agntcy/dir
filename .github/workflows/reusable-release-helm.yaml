@@ -42,8 +42,6 @@ jobs:
             source_path: install/charts/dir
           - chart: dirctl
             source_path: install/charts/dirctl
-          - chart: runtime
-            source_path: runtime/install/chart
     permissions:
       packages: write
     steps:
