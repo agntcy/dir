@@ -10,6 +10,7 @@ import (
 	"sync"
 	"time"
 
+	corev1 "github.com/agntcy/dir/api/core/v1"
 	"github.com/agntcy/dir/reconciler/config"
 	"github.com/agntcy/dir/reconciler/tasks"
 	"github.com/agntcy/dir/reconciler/tasks/indexer"
@@ -35,22 +36,22 @@ type Service struct {
 }
 
 // New creates a reconciler service with tasks registered according to cfg.
-// The caller supplies the database and store so that an embedding process (e.g.
-// the daemon) can share them with the apiserver.
-func New(cfg *config.Config, db types.DatabaseAPI, store types.StoreAPI, repo registry.TagLister) (*Service, error) {
+// The caller supplies the database, store, and OASF validator so that an embedding
+// process (e.g. the daemon) can share them with the apiserver.
+func New(cfg *config.Config, db types.DatabaseAPI, store types.StoreAPI, repo registry.TagLister, oasfValidator corev1.Validator) (*Service, error) {
 	svc := &Service{
 		tasks:  []tasks.Task{},
 		stopCh: make(chan struct{}),
 	}
 
-	if err := svc.registerTasks(cfg, db, store, repo); err != nil {
+	if err := svc.registerTasks(cfg, db, store, repo, oasfValidator); err != nil {
 		return nil, err
 	}
 
 	return svc, nil
 }
 
-func (s *Service) registerTasks(cfg *config.Config, db types.DatabaseAPI, store types.StoreAPI, repo registry.TagLister) error {
+func (s *Service) registerTasks(cfg *config.Config, db types.DatabaseAPI, store types.StoreAPI, repo registry.TagLister, oasfValidator corev1.Validator) error {
 	if cfg.Regsync.Enabled {
 		t, err := regsync.NewTask(cfg.Regsync, cfg.LocalRegistry, db)
 		if err != nil {
@@ -61,7 +62,7 @@ func (s *Service) registerTasks(cfg *config.Config, db types.DatabaseAPI, store 
 	}
 
 	if cfg.Indexer.Enabled {
-		t, err := indexer.NewTask(cfg.Indexer, cfg.LocalRegistry, store, repo, db)
+		t, err := indexer.NewTask(cfg.Indexer, cfg.LocalRegistry, store, repo, db, oasfValidator)
 		if err != nil {
 			return fmt.Errorf("failed to create indexer task: %w", err)
 		}

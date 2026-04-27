@@ -20,6 +20,7 @@ import (
 	"github.com/agntcy/dir/server/database"
 	"github.com/agntcy/dir/server/store/oci"
 	"github.com/agntcy/dir/utils/logging"
+	"github.com/agntcy/oasf-sdk/pkg/validator"
 )
 
 const (
@@ -49,15 +50,21 @@ func run() error {
 		return err
 	}
 
-	// Initialize OASF validator for record validation
+	// Construct the OASF validator that the indexer task will inject into
+	// (*corev1.Record).Validate.
+	var oasfValidator corev1.Validator
+
 	if cfg.SchemaURL != "" {
-		if err := corev1.InitializeValidator(cfg.SchemaURL); err != nil {
+		v, err := validator.New(cfg.SchemaURL)
+		if err != nil {
 			return fmt.Errorf("failed to initialize OASF validator: %w", err)
 		}
 
+		oasfValidator = v
+
 		logger.Info("OASF validator initialized", "schema_url", cfg.SchemaURL)
 	} else {
-		logger.Warn("OASF schema URL not configured, record validation will be skipped")
+		logger.Warn("OASF schema URL not configured, record validation will fail for indexed records")
 	}
 
 	// Create database connection
@@ -80,7 +87,7 @@ func run() error {
 	}
 
 	// Create service with all tasks registered
-	svc, err := service.New(cfg, db, store, repo)
+	svc, err := service.New(cfg, db, store, repo, oasfValidator)
 	if err != nil {
 		return err
 	}

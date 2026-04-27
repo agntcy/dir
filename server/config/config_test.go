@@ -8,7 +8,6 @@ import (
 	"testing"
 	"time"
 
-	corev1 "github.com/agntcy/dir/api/core/v1"
 	authn "github.com/agntcy/dir/server/authn/config"
 	authz "github.com/agntcy/dir/server/authz/config"
 	dbconfig "github.com/agntcy/dir/server/database/config"
@@ -218,12 +217,6 @@ func TestConfig(t *testing.T) {
 
 // TestConfig_SchemaURL tests that OASF schema URL configuration is correctly parsed.
 func TestConfig_SchemaURL(t *testing.T) {
-	// Configure validation for unit tests: use a valid schema URL
-	// This ensures tests don't depend on external services or require schema URL configuration
-	if err := corev1.InitializeValidator("https://schema.oasf.outshift.com"); err != nil {
-		t.Fatalf("Failed to initialize validator: %v", err)
-	}
-
 	tests := []struct {
 		name              string
 		envVars           map[string]string

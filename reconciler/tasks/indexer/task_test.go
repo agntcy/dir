@@ -37,7 +37,7 @@ func TestCreateContentHash_OrderMatters(t *testing.T) {
 }
 
 func TestDetectNewTags(t *testing.T) {
-	task, _ := NewTask(Config{}, ociconfig.Config{}, nil, nil, nil)
+	task, _ := NewTask(Config{}, ociconfig.Config{}, nil, nil, nil, nil)
 
 	tests := []struct {
 		name        string

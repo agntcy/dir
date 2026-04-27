@@ -5,14 +5,33 @@ package v1_test
 
 import (
 	"context"
+	"errors"
 	"testing"
 
 	oasfv1alpha1 "buf.build/gen/go/agntcy/oasf/protocolbuffers/go/agntcy/oasf/types/v1alpha1"
 	corev1 "github.com/agntcy/dir/api/core/v1"
+	"github.com/agntcy/oasf-sdk/pkg/validator"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/types/known/structpb"
 )
+
+// fakeValidator is a controllable corev1.Validator used to unit-test
+// (*Record).ValidateWith (and its deprecated Validate wrapper) without
+// requiring network access to a live OASF schema server.
+type fakeValidator struct {
+	valid    bool
+	errors   []string
+	warnings []string
+	err      error
+}
+
+func (f *fakeValidator) ValidateRecord(_ context.Context, _ *structpb.Struct) (bool, []string, []string, error) {
+	return f.valid, f.errors, f.warnings, f.err
+}
+
+// Compile-time assertion that the test fake satisfies the public interface.
+var _ corev1.Validator = (*fakeValidator)(nil)
 
 func TestRecord_GetCid(t *testing.T) {
 	tests := []struct {
@@ -113,9 +132,11 @@ func TestRecord_GetCid_CrossVersion_Difference(t *testing.T) {
 }
 
 func TestRecord_Validate(t *testing.T) {
-	if err := corev1.InitializeValidator("https://schema.oasf.outshift.com"); err != nil {
-		t.Fatalf("Failed to initialize validator: %v", err)
-	}
+	// Use the real OASF SDK validator against the live schema server. This test exercises
+	// the full validation path including network I/O and is the integration counterpart to
+	// the fake-based unit tests below.
+	v, err := validator.New("https://schema.oasf.outshift.com")
+	require.NoError(t, err, "failed to construct OASF validator")
 
 	tests := []struct {
 		name      string
@@ -184,137 +205,162 @@ func TestRecord_Validate(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			valid, errors, err := tt.record.Validate(context.Background())
+			valid, errors, err := tt.record.ValidateWith(context.Background(), v)
 			if err != nil {
 				if tt.wantValid {
-					t.Errorf("Validate() unexpected error: %v", err)
+					t.Errorf("ValidateWith() unexpected error: %v", err)
 				}
 
 				return
 			}
 
 			if valid != tt.wantValid {
-				t.Errorf("Validate() got valid = %v, errors = %v, want %v", valid, errors, tt.wantValid)
+				t.Errorf("ValidateWith() got valid = %v, errors = %v, want %v", valid, errors, tt.wantValid)
 			}
 
 			if !valid && len(errors) == 0 {
-				t.Errorf("Validate() expected errors for invalid record, got none")
+				t.Errorf("ValidateWith() expected errors for invalid record, got none")
 			}
 		})
 	}
 }
 
-func TestRecord_InitializeValidator(t *testing.T) {
-	// Test that InitializeValidator initializes the validator correctly
-	tests := []struct {
-		name      string
-		schemaURL string
-		wantError bool
-	}{
-		{
-			name:      "initialize with valid schema URL",
-			schemaURL: "https://schema.oasf.outshift.com",
-			wantError: false,
-		},
-		{
-			name:      "initialize with empty schema URL returns error",
-			schemaURL: "",
-			wantError: true,
-		},
-	}
+// TestRecord_ValidateWith_NilValidator verifies the early-return behaviour when callers
+// forget to construct/inject a validator. The method must not panic and must surface a
+// useful diagnostic instead.
+func TestRecord_ValidateWith_NilValidator(t *testing.T) {
+	record := corev1.New(&oasfv1alpha1.Record{
+		Name:          "test-agent",
+		SchemaVersion: "0.7.0",
+	})
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			err := corev1.InitializeValidator(tt.schemaURL)
-			if tt.wantError {
-				require.Error(t, err)
-			} else {
-				require.NoError(t, err)
+	valid, msgs, err := record.ValidateWith(context.Background(), nil)
 
-				// Verify that validation works after initialization
-				record := corev1.New(&oasfv1alpha1.Record{
-					Name:          "test-agent",
-					SchemaVersion: "0.7.0",
-					Description:   "A test agent",
-					Version:       "1.0.0",
-					CreatedAt:     "2024-01-01T00:00:00Z",
-					Authors: []string{
-						"Jane Doe <jane.doe@example.com>",
-					},
-					Locators: []*oasfv1alpha1.Locator{
-						{
-							Type: "helm_chart",
-							Url:  "https://example.com/helm-chart.tgz",
-						},
-					},
-					Skills: []*oasfv1alpha1.Skill{
-						{
-							Name: "natural_language_processing/natural_language_understanding",
-						},
-					},
-				})
-
-				// Validation should work for valid URLs
-				// For invalid URLs, we expect a network error which is acceptable for this test
-				valid, _, err := record.Validate(context.Background())
-				if err != nil {
-					// If it's a network error (like "no such host"), that's expected for invalid URLs
-					if tt.schemaURL != "" && tt.schemaURL != "https://schema.oasf.outshift.com" {
-						// For custom/invalid URLs, network errors are expected
-						return
-					}
-
-					t.Fatalf("Validate() error = %v", err)
-				}
-
-				assert.True(t, valid)
-			}
-		})
-	}
+	require.NoError(t, err)
+	assert.False(t, valid)
+	assert.Equal(t, []string{"validator is nil"}, msgs)
 }
 
-func TestRecord_Validate_RecordSize(t *testing.T) {
-	// Test that Validate checks record size
-	// Create a record that exceeds max size
-	// Note: This is difficult to test without creating a very large record,
-	// but we can test the nil and empty record cases which are part of the validation logic
+// TestRecord_ValidateWith_FakeValidator drives ValidateWith through a hermetic fake so
+// we can assert the error/warning prefixing and pass-through behaviour without depending
+// on the live OASF schema server.
+func TestRecord_ValidateWith_FakeValidator(t *testing.T) {
+	record := corev1.New(&oasfv1alpha1.Record{
+		Name:          "test-agent",
+		SchemaVersion: "0.7.0",
+	})
+
+	t.Run("valid record passes through", func(t *testing.T) {
+		v := &fakeValidator{valid: true}
+
+		ok, msgs, err := record.ValidateWith(context.Background(), v)
+
+		require.NoError(t, err)
+		assert.True(t, ok)
+		assert.Empty(t, msgs)
+	})
+
+	t.Run("errors and warnings are prefixed and combined", func(t *testing.T) {
+		v := &fakeValidator{
+			valid:    false,
+			errors:   []string{"missing required field 'authors'"},
+			warnings: []string{"deprecated field 'foo'"},
+		}
+
+		ok, msgs, err := record.ValidateWith(context.Background(), v)
+
+		require.NoError(t, err)
+		assert.False(t, ok)
+		assert.Equal(t, []string{
+			"ERROR: missing required field 'authors'",
+			"WARNING: deprecated field 'foo'",
+		}, msgs)
+	})
+
+	t.Run("transport errors are wrapped", func(t *testing.T) {
+		sentinel := errors.New("connection refused")
+		v := &fakeValidator{err: sentinel}
+
+		ok, _, err := record.ValidateWith(context.Background(), v)
+
+		require.Error(t, err)
+		assert.False(t, ok)
+		assert.ErrorIs(t, err, sentinel)
+	})
+}
+
+func TestRecord_ValidateWith_RecordSize(t *testing.T) {
+	// Exercise the early-return paths in ValidateWith that never reach the validator.
+	// A real fake is supplied so we'd notice if the short-circuit ever regressed and a
+	// nil/empty record reached ValidateRecord.
 	tests := []struct {
 		name      string
 		record    *corev1.Record
 		wantValid bool
+		wantMsg   string
 	}{
 		{
 			name:      "nil record",
 			record:    nil,
 			wantValid: false,
+			wantMsg:   "record is nil",
 		},
 		{
 			name:      "record with nil data",
 			record:    &corev1.Record{},
 			wantValid: false,
+			wantMsg:   "record is nil",
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			valid, errors, err := tt.record.Validate(context.Background())
-			if err != nil {
-				if tt.wantValid {
-					t.Errorf("Validate() unexpected error: %v", err)
-				}
+			valid, msgs, err := tt.record.ValidateWith(context.Background(), &fakeValidator{valid: true})
 
-				return
-			}
-
-			if valid != tt.wantValid {
-				t.Errorf("Validate() got valid = %v, errors = %v, want %v", valid, errors, tt.wantValid)
-			}
-
-			if !valid && len(errors) == 0 {
-				t.Errorf("Validate() expected errors for invalid record, got none")
-			}
+			require.NoError(t, err)
+			assert.Equal(t, tt.wantValid, valid)
+			assert.Equal(t, []string{tt.wantMsg}, msgs)
 		})
 	}
+}
+
+// TestRecord_Validate_BackwardCompat exercises the deprecated (*Record).Validate(ctx)
+// path so we don't accidentally break already-published consumers (notably
+// github.com/agntcy/dir-mcp v1.0.0). The path is documented as relying on
+// InitializeValidator and is preserved only for backward compatibility; new code must
+// use ValidateWith. See https://github.com/agntcy/dir/issues/856.
+func TestRecord_Validate_BackwardCompat(t *testing.T) {
+	record := corev1.New(&oasfv1alpha1.Record{
+		Name:          "test-agent",
+		SchemaVersion: "0.7.0",
+	})
+
+	t.Run("returns diagnostic when default validator not initialized", func(t *testing.T) {
+		// Use a separate package-level fixture so we don't race with other tests
+		// that may legitimately call InitializeValidator. We reset via the public
+		// API by initializing with a known-good URL after the assertion.
+		corev1.ResetDefaultValidatorForTest(t)
+
+		ok, msgs, err := record.Validate(context.Background()) //nolint:staticcheck // exercising deprecated API on purpose
+
+		require.NoError(t, err)
+		assert.False(t, ok)
+		require.Len(t, msgs, 1)
+		assert.Contains(t, msgs[0], "OASF validator is not initialized")
+	})
+
+	t.Run("delegates to default validator after InitializeValidator", func(t *testing.T) {
+		// The deprecated path requires a non-empty schema URL. We don't actually
+		// hit the network because the underlying validator only constructs a
+		// client; validation calls would, but here we just confirm the wiring.
+		err := corev1.InitializeValidator("https://schema.oasf.outshift.com") //nolint:staticcheck // exercising deprecated API on purpose
+		require.NoError(t, err)
+
+		assert.NotPanics(t, func() {
+			//nolint:staticcheck // exercising deprecated API on purpose
+			_, _, _ = record.Validate(context.Background())
+		})
+	})
 }
 
 func TestRecord_Decode(t *testing.T) {

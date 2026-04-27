@@ -14,6 +14,7 @@ import (
 	"github.com/agntcy/oasf-sdk/pkg/decoder"
 	"github.com/agntcy/oasf-sdk/pkg/validator"
 	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/types/known/structpb"
 )
 
 const (
@@ -24,24 +25,68 @@ const (
 	DefaultValidationTimeout = 30 * time.Second
 )
 
+// Validator is the minimal contract Record.ValidateWith depends on.
+//
+// Its shape mirrors github.com/agntcy/oasf-sdk/pkg/validator.Validator so the
+// concrete OASF-SDK validator satisfies this interface without an adapter,
+// while keeping api/core/v1 free of any process-wide singletons or runtime
+// initialization order.
+//
+// Callers (server, reconciler, CLI, MCP) construct a concrete validator at
+// process startup and pass it explicitly to (*Record).ValidateWith.
+type Validator interface {
+	// ValidateRecord validates the given record data against the configured schema.
+	// It returns whether the record is valid, a slice of error messages, a slice of
+	// warning messages, and any transport/server error encountered while validating.
+	ValidateRecord(ctx context.Context, data *structpb.Struct) (valid bool, errors []string, warnings []string, err error)
+}
+
+// defaultValidator is the package-level fallback used by the deprecated
+// (*Record).Validate(ctx) method. It is set by InitializeValidator and is
+// intentionally retained only to preserve backward compatibility with
+// already-published consumers (notably github.com/agntcy/dir-mcp v1.0.0).
+//
+// Deprecated: prefer constructing a Validator at the composition root and
+// calling (*Record).ValidateWith. defaultValidator and the related globals
+// will be removed in a future major version of this module (see issue
+// https://github.com/agntcy/dir/issues/856).
 var (
-	defaultValidator *validator.Validator
-	configMu         sync.RWMutex
+	defaultValidator Validator
+	defaultValidMu   sync.RWMutex
 )
 
-// InitializeValidator initializes the OASF validator with the given schema URL.
+// InitializeValidator configures the package-level default OASF validator
+// used by the deprecated (*Record).Validate(ctx) method.
+//
+// Deprecated: this function exists solely for backward compatibility with
+// already-published consumers (notably github.com/agntcy/dir-mcp v1.0.0).
+// New code MUST NOT depend on it. Construct a *validator.Validator (or any
+// type that implements Validator) at process startup and pass it to
+// (*Record).ValidateWith. See https://github.com/agntcy/dir/issues/856.
 func InitializeValidator(schemaURL string) error {
-	configMu.Lock()
-	defer configMu.Unlock()
-
-	var err error
-
-	defaultValidator, err = validator.New(schemaURL)
-	if err != nil {
-		return fmt.Errorf("failed to initialize OASF-SDK validator: %w", err)
+	if schemaURL == "" {
+		return errors.New("schemaURL is required for OASF validation")
 	}
 
+	v, err := validator.New(schemaURL)
+	if err != nil {
+		return fmt.Errorf("failed to initialize OASF validator: %w", err)
+	}
+
+	defaultValidMu.Lock()
+	defaultValidator = v
+	defaultValidMu.Unlock()
+
 	return nil
+}
+
+// getDefaultValidator returns the validator configured via InitializeValidator,
+// or nil if it has not been configured.
+func getDefaultValidator() Validator {
+	defaultValidMu.RLock()
+	defer defaultValidMu.RUnlock()
+
+	return defaultValidator
 }
 
 // GetName extracts the top-level "name" field from the record's data.
@@ -162,27 +207,42 @@ func (r *Record) Decode() (DecodedRecord, error) {
 	}, nil
 }
 
-// Validate validates the Record's data using the OASF SDK.
-// The validator must be initialized with InitializeValidator before calling this method.
+// Validate validates the Record using the package-level default validator
+// configured via InitializeValidator.
+//
+// Deprecated: this method depends on global state and exists solely to
+// preserve backward compatibility with already-published consumers
+// (notably github.com/agntcy/dir-mcp v1.0.0). New code MUST use
+// (*Record).ValidateWith and pass an explicit Validator constructed at the
+// composition root. This method will be removed in a future major version
+// of this module. See https://github.com/agntcy/dir/issues/856.
 func (r *Record) Validate(ctx context.Context) (bool, []string, error) {
+	v := getDefaultValidator()
+	if v == nil {
+		return false, []string{"OASF validator is not initialized; call corev1.InitializeValidator or use Record.ValidateWith"}, nil
+	}
+
+	return r.ValidateWith(ctx, v)
+}
+
+// ValidateWith validates the Record's data using the supplied Validator.
+//
+// This is the preferred entry point for record validation: callers
+// construct a concrete validator at the composition root and inject it
+// here, avoiding any reliance on package-level globals or initialization
+// order. See https://github.com/agntcy/dir/issues/856.
+func (r *Record) ValidateWith(ctx context.Context, v Validator) (bool, []string, error) {
 	if r == nil || r.GetData() == nil {
 		return false, []string{"record is nil"}, nil
+	}
+
+	if v == nil {
+		return false, []string{"validator is nil"}, nil
 	}
 
 	recordSize := proto.Size(r)
 	if recordSize > maxRecordSize {
 		return false, []string{fmt.Sprintf("record size %d bytes exceeds maximum allowed size of %d bytes (4MB)", recordSize, maxRecordSize)}, nil
-	}
-
-	// Read validator atomically to avoid race conditions
-	configMu.RLock()
-
-	validator := defaultValidator
-
-	configMu.RUnlock()
-
-	if validator == nil {
-		return false, []string{"validator not initialized, call InitializeValidator first"}, nil
 	}
 
 	// Create a context with timeout for API validation HTTP calls.
@@ -191,14 +251,14 @@ func (r *Record) Validate(ctx context.Context) (bool, []string, error) {
 	validationCtx, cancel := context.WithTimeout(ctx, DefaultValidationTimeout)
 	defer cancel()
 
-	valid, errors, warnings, err := validator.ValidateRecord(validationCtx, r.GetData())
+	valid, errs, warnings, err := v.ValidateRecord(validationCtx, r.GetData())
 	if err != nil {
 		return false, nil, fmt.Errorf("failed to validate record: %w", err)
 	}
 
 	// Prefix errors and warnings before combining them
-	prefixedErrors := make([]string, len(errors))
-	for i, e := range errors {
+	prefixedErrors := make([]string, len(errs))
+	for i, e := range errs {
 		prefixedErrors[i] = "ERROR: " + e
 	}
 

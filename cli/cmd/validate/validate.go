@@ -14,6 +14,7 @@ import (
 
 	corev1 "github.com/agntcy/dir/api/core/v1"
 	"github.com/agntcy/dir/cli/presenter"
+	"github.com/agntcy/oasf-sdk/pkg/validator"
 	"github.com/spf13/cobra"
 )
 
@@ -71,20 +72,21 @@ func runCommand(cmd *cobra.Command, jsonData []byte) error {
 		return fmt.Errorf("failed to parse record JSON: %w", err)
 	}
 
-	// Initialize validator with schema URL
-	// Note: opts.SchemaURL is populated by cobra during flag parsing in Execute()
+	// opts.SchemaURL is populated by cobra during flag parsing in Execute().
 	if opts.SchemaURL == "" {
 		return fmt.Errorf("schema URL is required, use --url flag to provide it")
 	}
 
-	if err := corev1.InitializeValidator(opts.SchemaURL); err != nil {
+	// Construct a validator scoped to this command invocation.
+	v, err := validator.New(opts.SchemaURL)
+	if err != nil {
 		return fmt.Errorf("failed to initialize validator: %w", err)
 	}
 
 	// Validate the record
 	ctx := cmd.Context()
 
-	valid, validationErrors, err := record.Validate(ctx)
+	valid, validationErrors, err := record.ValidateWith(ctx, v)
 	if err != nil {
 		return fmt.Errorf("validation error: %w", err)
 	}

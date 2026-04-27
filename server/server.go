@@ -38,6 +38,7 @@ import (
 	"github.com/agntcy/dir/server/store"
 	"github.com/agntcy/dir/server/types"
 	"github.com/agntcy/dir/utils/logging"
+	"github.com/agntcy/oasf-sdk/pkg/validator"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/keepalive"
 	"google.golang.org/grpc/reflection"
@@ -58,6 +59,7 @@ type Server struct {
 	store              types.StoreAPI
 	routing            types.RoutingAPI
 	database           types.DatabaseAPI
+	oasfValidator      corev1.Validator
 	eventService       *events.Service
 	authnService       *authn.Service
 	authzService       *authz.Service
@@ -139,24 +141,25 @@ func Run(ctx context.Context, cfg *config.Config) error {
 	}
 }
 
-func configureOASFValidation(cfg *config.Config) error {
-	// Initialize OASF validator with schema URL from configuration
-	// Schema URL is required for OASF API validation
-	if err := corev1.InitializeValidator(cfg.OASFAPIValidation.SchemaURL); err != nil {
-		return fmt.Errorf("failed to initialize OASF validator: %w", err)
+// newOASFValidator constructs the OASF record validator from the server configuration.
+func newOASFValidator(cfg *config.Config) (corev1.Validator, error) {
+	v, err := validator.New(cfg.OASFAPIValidation.SchemaURL)
+	if err != nil {
+		return nil, fmt.Errorf("failed to initialize OASF validator: %w", err)
 	}
 
 	logger.Info("OASF validator configured",
 		"schema_url", cfg.OASFAPIValidation.SchemaURL)
 
-	return nil
+	return v, nil
 }
 
 //nolint:cyclop // This function has been at the limit; refactoring is out of scope.
 func New(ctx context.Context, cfg *config.Config) (*Server, error) {
 	logger.Debug("Creating server with config", "config", cfg, "version", version.String())
 
-	if err := configureOASFValidation(cfg); err != nil {
+	oasfValidator, err := newOASFValidator(cfg)
+	if err != nil {
 		return nil, err
 	}
 
@@ -276,7 +279,7 @@ func New(ctx context.Context, cfg *config.Config) (*Server, error) {
 
 	// Register APIs
 	eventsv1.RegisterEventServiceServer(grpcServer, controller.NewEventsController(eventService))
-	storev1.RegisterStoreServiceServer(grpcServer, controller.NewStoreController(storeAPI, databaseAPI, options.EventBus()))
+	storev1.RegisterStoreServiceServer(grpcServer, controller.NewStoreController(storeAPI, databaseAPI, options.EventBus(), oasfValidator))
 	routingv1.RegisterRoutingServiceServer(grpcServer, controller.NewRoutingController(routingAPI, storeAPI, publicationService))
 	routingv1.RegisterPublicationServiceServer(grpcServer, controller.NewPublicationController(databaseAPI, options))
 	searchv1.RegisterSearchServiceServer(grpcServer, controller.NewSearchController(databaseAPI, storeAPI))
@@ -307,6 +310,7 @@ func New(ctx context.Context, cfg *config.Config) (*Server, error) {
 		store:              storeAPI,
 		routing:            routingAPI,
 		database:           databaseAPI,
+		oasfValidator:      oasfValidator,
 		eventService:       eventService,
 		authnService:       authnService,
 		authzService:       authzService,
@@ -318,6 +322,11 @@ func New(ctx context.Context, cfg *config.Config) (*Server, error) {
 }
 
 func (s Server) GRPCServer() *grpc.Server { return s.grpcServer }
+
+// OASFValidator returns the OASF record validator constructed during server setup.
+// It is exposed so embedding processes (e.g. the daemon) can share a single validator
+// instance with co-located components like the reconciler.
+func (s Server) OASFValidator() corev1.Validator { return s.oasfValidator }
 
 func (s Server) Options() types.APIOptions { return s.options }
 

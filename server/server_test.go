@@ -7,7 +7,6 @@ import (
 	"testing"
 	"time"
 
-	corev1 "github.com/agntcy/dir/api/core/v1"
 	"github.com/agntcy/dir/server/config"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -223,12 +222,6 @@ func TestKeepaliveServerParameters_StructCreation(t *testing.T) {
 // TestServerInitialization_SchemaURL verifies that the server correctly
 // configures the OASF schema URL during initialization.
 func TestServerInitialization_SchemaURL(t *testing.T) {
-	// Configure validation for unit tests: use a valid schema URL
-	// This ensures tests don't depend on external services or require schema URL configuration
-	if err := corev1.InitializeValidator("https://schema.oasf.outshift.com"); err != nil {
-		t.Fatalf("Failed to initialize validator: %v", err)
-	}
-
 	tests := []struct {
 		name      string
 		schemaURL string
@@ -266,12 +259,6 @@ func TestServerInitialization_SchemaURL(t *testing.T) {
 // TestServerInitialization_OASFValidation verifies that the server correctly
 // configures OASF validation settings during initialization.
 func TestServerInitialization_OASFValidation(t *testing.T) {
-	// Configure validation for unit tests: use a valid schema URL
-	// This ensures tests don't depend on external services or require schema URL configuration
-	if err := corev1.InitializeValidator("https://schema.oasf.outshift.com"); err != nil {
-		t.Fatalf("Failed to initialize validator: %v", err)
-	}
-
 	tests := []struct {
 		name                 string
 		schemaURL            string
@@ -344,15 +331,13 @@ func TestServerInitialization_EmptySchemaURL(t *testing.T) {
 				Connection: config.DefaultConnectionConfig(),
 			}
 
-			// Verify that InitializeValidator fails with empty schema URL
-			err := corev1.InitializeValidator(cfg.OASFAPIValidation.SchemaURL)
-			require.Error(t, err, "InitializeValidator should fail with empty schema URL")
-			assert.Contains(t, err.Error(), "schema URL", "Error should mention schema URL")
-
-			// Verify that configureOASFValidation would fail
-			err = configureOASFValidation(cfg)
-			require.Error(t, err, "configureOASFValidation should fail with empty schema URL")
-			assert.Contains(t, err.Error(), "failed to initialize OASF validator", "Error should mention validator initialization")
+			// newOASFValidator must reject an empty schema URL so that misconfigured
+			// servers fail fast at startup instead of silently accepting records.
+			v, err := newOASFValidator(cfg)
+			require.Error(t, err, "newOASFValidator should fail with empty schema URL")
+			assert.Nil(t, v, "validator should be nil on error")
+			assert.Contains(t, err.Error(), "failed to initialize OASF validator",
+				"Error should mention validator initialization")
 		})
 	}
 }

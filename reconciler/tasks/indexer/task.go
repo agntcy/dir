@@ -33,6 +33,7 @@ type Task struct {
 	store     types.StoreAPI
 	ociConfig ociconfig.Config
 	repo      registry.TagLister
+	validator corev1.Validator
 
 	mu           sync.Mutex
 	lastSnapshot *registrySnapshot
@@ -52,13 +53,14 @@ var emptySnapshot = &registrySnapshot{
 }
 
 // NewTask creates a new indexer reconciliation task.
-func NewTask(config Config, localRegistry ociconfig.Config, store types.StoreAPI, repo registry.TagLister, db types.SearchDatabaseAPI) (*Task, error) {
+func NewTask(config Config, localRegistry ociconfig.Config, store types.StoreAPI, repo registry.TagLister, db types.SearchDatabaseAPI, validator corev1.Validator) (*Task, error) {
 	return &Task{
 		config:       config,
 		db:           db,
 		store:        store,
 		ociConfig:    localRegistry,
 		repo:         repo,
+		validator:    validator,
 		lastSnapshot: emptySnapshot,
 	}, nil
 }
@@ -201,7 +203,7 @@ func (t *Task) indexRecord(ctx context.Context, tag string) error {
 	}
 
 	// Validate record
-	isValid, validationErrors, err := record.Validate(ctx)
+	isValid, validationErrors, err := record.ValidateWith(ctx, t.validator)
 	if err != nil {
 		return fmt.Errorf("failed to validate record: %w", err)
 	}

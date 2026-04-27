@@ -26,17 +26,19 @@ var storeLogger = logging.Logger("controller/store")
 
 type storeCtrl struct {
 	storev1.UnimplementedStoreServiceServer
-	store    types.StoreAPI
-	db       types.DatabaseAPI
-	eventBus *events.SafeEventBus
+	store     types.StoreAPI
+	db        types.DatabaseAPI
+	eventBus  *events.SafeEventBus
+	validator corev1.Validator
 }
 
-func NewStoreController(store types.StoreAPI, db types.DatabaseAPI, eventBus *events.SafeEventBus) storev1.StoreServiceServer {
+func NewStoreController(store types.StoreAPI, db types.DatabaseAPI, eventBus *events.SafeEventBus, validator corev1.Validator) storev1.StoreServiceServer {
 	return &storeCtrl{
 		UnimplementedStoreServiceServer: storev1.UnimplementedStoreServiceServer{},
 		store:                           store,
 		db:                              db,
 		eventBus:                        eventBus,
+		validator:                       validator,
 	}
 }
 
@@ -58,7 +60,7 @@ func (s storeCtrl) Push(stream storev1.StoreService_PushServer) error {
 			return status.Errorf(codes.Internal, "failed to receive record: %v", err)
 		}
 
-		isValid, validationErrors, err := record.Validate(ctx)
+		isValid, validationErrors, err := record.ValidateWith(ctx, s.validator)
 		if err != nil {
 			return status.Errorf(codes.Internal, "failed to validate record: %v", err)
 		}
