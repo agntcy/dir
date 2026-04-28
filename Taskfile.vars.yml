@@ -17,7 +17,7 @@ vars:
   # renovate: datasource=go depName=github.com/project-zot/zot versioning=semver
   ZOT_VERSION: "2.1.16"
   # renovate: datasource=go depName=github.com/spiffe/spire versioning=semver
-  SPIRE_VERSION: "1.14.5"
+  SPIRE_VERSION: "1.14.6"
   # renovate: datasource=go depName=github.com/regclient/regclient versioning=semver
   REGSYNC_VERSION: "v0.11.3"
   # renovate: datasource=docker depName=docker.io/bitnami/postgresql
