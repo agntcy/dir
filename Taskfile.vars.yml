@@ -66,7 +66,6 @@ vars:
   LICENSEI_BIN: "{{ .BIN_DIR }}/licensei-{{.LICENSEI_VERSION}}"
   UV_VERSION: "0.10.11"
   UV_BIN: "{{ .BIN_DIR }}/uv-{{.UV_VERSION}}"
-  UV_PUBLISH_TOKEN: '{{ .UV_PUBLISH_TOKEN | default "" }}'
   COSIGN_VERSION: "3.0.5"
   COSIGN_BIN: "{{ .BIN_DIR }}/cosign-{{.COSIGN_VERSION}}"
   TRIVY_VERSION: "0.69.3"
