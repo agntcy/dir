@@ -13,11 +13,9 @@ tasks:
     cmds:
       - "{{ .HELM_BIN }} repo add project-zot http://zotregistry.dev/helm-charts"
       - "{{ .HELM_BIN }} repo add bitnami https://charts.bitnami.com/bitnami"
-      - "{{ .HELM_BIN }} repo add spiffe https://spiffe.github.io/helm-charts-hardened"
     status:
       - "{{ .HELM_BIN }} repo list | grep -q 'project-zot.*http://zotregistry.dev/helm-charts'"
       - "{{ .HELM_BIN }} repo list | grep -q 'bitnami.*https://charts.bitnami.com/bitnami'"
-      - "{{ .HELM_BIN }} repo list | grep -q 'spiffe.*https://spiffe.github.io/helm-charts-hardened'"
 
   helm:dep:build:
     desc: Build Helm dependencies for all charts and subcharts
