@@ -8,7 +8,6 @@ variable "IMAGE_REPO" { default = "ghcr.io/agntcy" }
 variable "IMAGE_TAG" { default = "v0.1.0-rc" }
 variable "BUILD_LDFLAGS" { default = "-s -w -extldflags -static" }
 variable "IMAGE_NAME_SUFFIX" { default = "" }
-variable "REGSYNC_VERSION" { default = "v0.11.1" }
 
 function "get_tag" {
   params = [tags, name]
@@ -87,9 +86,7 @@ target "dir-reconciler" {
     "_common",
     "docker-metadata-action",
   ]
-  args = {
-    REGSYNC_VERSION = "${REGSYNC_VERSION}"
-  }
+  args = {}
   tags = get_tag(target.docker-metadata-action.tags, "${target.dir-reconciler.name}")
 }
 

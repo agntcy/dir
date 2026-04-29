@@ -87,7 +87,7 @@ func (t *Task) processPendingCreations(ctx context.Context) error {
 	}
 
 	if len(pendingSyncs) == 0 {
-		logger.Debug("No pending sync creations to process")
+		logger.Info("No pending sync creations to process")
 
 		return nil
 	}

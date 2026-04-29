@@ -44,23 +44,6 @@ func TestConfig_GetConfigPath(t *testing.T) {
 	}
 }
 
-func TestConfig_GetBinaryPath(t *testing.T) {
-	tests := []struct {
-		name       string
-		binaryPath string
-		want       string
-	}{
-		{"empty uses default", "", DefaultBinaryPath},
-		{"custom path", "/usr/bin/regsync", "/usr/bin/regsync"},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			c := &Config{BinaryPath: tt.binaryPath}
-			assert.Equal(t, tt.want, c.GetBinaryPath())
-		})
-	}
-}
-
 func TestConfig_GetTimeout(t *testing.T) {
 	tests := []struct {
 		name    string

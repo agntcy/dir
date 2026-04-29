@@ -18,8 +18,6 @@ vars:
   ZOT_VERSION: "2.1.16"
   # renovate: datasource=go depName=github.com/spiffe/spire versioning=semver
   SPIRE_VERSION: "1.14.6"
-  # renovate: datasource=go depName=github.com/regclient/regclient versioning=semver
-  REGSYNC_VERSION: "v0.11.3"
   # renovate: datasource=docker depName=docker.io/bitnami/postgresql
   POSTGRESQL_VERSION: "latest@sha256:d0fd908dfe8697467f930c1894fcdbbbbd093e3dcf104204a00121ffef017749"
 
@@ -35,7 +33,7 @@ vars:
   BUILD_LDFLAGS: "-s -w -extldflags -static {{.VERSION_LDFLAGS}}"
   IMAGE_REPO: '{{ .IMAGE_REPO | default "ghcr.io/agntcy" }}'
   IMAGE_TAG: "{{ .IMAGE_TAG | default .COMMIT_SHA }}"
-  IMAGE_BAKE_ENV: "IMAGE_REPO={{.IMAGE_REPO}} IMAGE_TAG={{.IMAGE_TAG}} REGSYNC_VERSION={{.REGSYNC_VERSION}}"
+  IMAGE_BAKE_ENV: "IMAGE_REPO={{.IMAGE_REPO}} IMAGE_TAG={{.IMAGE_TAG}}"
   IMAGE_BAKE_OPTS: '{{ .IMAGE_BAKE_OPTS | default "" }}'
   BAKE_ENV: '{{ .IMAGE_BAKE_ENV }} BUILD_LDFLAGS="{{.BUILD_LDFLAGS}}"'
   COVERAGE_IMAGE_TAG: "{{ .IMAGE_TAG | default .COMMIT_SHA }}-coverage"

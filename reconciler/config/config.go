@@ -129,9 +129,6 @@ func LoadConfig() (*Config, error) {
 	_ = v.BindEnv("regsync.interval")
 	v.SetDefault("regsync.interval", regsync.DefaultInterval)
 
-	_ = v.BindEnv("regsync.binary_path")
-	v.SetDefault("regsync.binary_path", regsync.DefaultBinaryPath)
-
 	_ = v.BindEnv("regsync.timeout")
 	v.SetDefault("regsync.timeout", regsync.DefaultTimeout)
 

@@ -1,8 +1,5 @@
 # syntax=docker/dockerfile:1@sha256:2780b5c3bab67f1f76c781860de469442999ed1a0d7992a5efdf2cffc0e3d769
 
-# Regsync version
-ARG REGSYNC_VERSION=v0.11.1
-
 # xx is a helper for cross-compilation
 FROM --platform=$BUILDPLATFORM tonistiigi/xx:1.9.0@sha256:c64defb9ed5a91eacb37f96ccc3d4cd72521c4bd18d5442905b95e2226b0e707 AS xx
 
@@ -40,28 +37,12 @@ RUN --mount=type=cache,target=/go/pkg/mod \
 
 RUN xx-verify /bin/reconciler
 
-# Build regsync from source using the same Go version.
-# This ensures we have a statically linked binary compatible with distroless
-# and avoids security issues with different Go versions in prebuilt binaries.
-ARG REGSYNC_VERSION
-
-RUN git clone --depth 1 --branch ${REGSYNC_VERSION} \
-    https://github.com/regclient/regclient.git /tmp/regclient
-
-RUN --mount=type=cache,target=/go/pkg/mod \
-    --mount=type=cache,target=/root/.cache/go-build \
-    --mount=type=bind,source=.,target=/build,ro \
-    xx-go -C /tmp/regclient build -o /bin/regsync ./cmd/regsync
-
-RUN xx-verify /bin/regsync
-
 # Debug image - includes Delve for remote debugging. For local development only
 FROM builder AS debug
 
 WORKDIR /
 
 COPY --from=builder /bin/reconciler ./reconciler
-COPY --from=builder /bin/regsync /usr/local/bin/regsync
 
 RUN xx-go install github.com/go-delve/delve/cmd/dlv@v1.26.2
 
@@ -80,7 +61,6 @@ COPY --from=builder /etc/ssl/certs /etc/ssl/certs
 COPY --from=builder /usr/share/ca-certificates /usr/share/ca-certificates
 
 COPY --from=builder /bin/reconciler ./reconciler
-COPY --from=builder /bin/regsync /usr/local/bin/regsync
 
 USER 55532:55532
 
@@ -95,7 +75,6 @@ COPY --from=builder /etc/ssl/certs /etc/ssl/certs
 COPY --from=builder /usr/share/ca-certificates /usr/share/ca-certificates
 
 COPY --from=builder /bin/reconciler ./reconciler
-COPY --from=builder /bin/regsync /usr/local/bin/regsync
 
 # Create a non-root user for coverage
 RUN addgroup -g 55532 -S nonroot && adduser -u 55532 -S nonroot -G nonroot

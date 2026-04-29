@@ -16,9 +16,6 @@ const (
 	// DefaultConfigPath is the default path for the regsync configuration file.
 	DefaultConfigPath = "/etc/regsync/regsync.yaml"
 
-	// DefaultBinaryPath is the default path to the regsync binary.
-	DefaultBinaryPath = "/usr/local/bin/regsync"
-
 	// DefaultTimeout is the default timeout for regsync command execution.
 	DefaultTimeout = 10 * time.Minute
 )
@@ -33,9 +30,6 @@ type Config struct {
 
 	// ConfigPath is the path to the regsync configuration file.
 	ConfigPath string `json:"config_path,omitempty" mapstructure:"config_path"`
-
-	// BinaryPath is the path to the regsync binary.
-	BinaryPath string `json:"binary_path,omitempty" mapstructure:"binary_path"`
 
 	// Timeout is the maximum duration for a single regsync command execution.
 	Timeout time.Duration `json:"timeout,omitempty" mapstructure:"timeout"`
@@ -60,15 +54,6 @@ func (c *Config) GetConfigPath() string {
 	}
 
 	return c.ConfigPath
-}
-
-// GetBinaryPath returns the binary path with default fallback.
-func (c *Config) GetBinaryPath() string {
-	if c.BinaryPath == "" {
-		return DefaultBinaryPath
-	}
-
-	return c.BinaryPath
 }
 
 // GetTimeout returns the timeout with default fallback.

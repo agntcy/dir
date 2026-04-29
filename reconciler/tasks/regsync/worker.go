@@ -4,15 +4,15 @@
 package regsync
 
 import (
-	"bytes"
 	"context"
 	"errors"
 	"fmt"
 	"os"
-	"os/exec"
+	"strings"
 
 	ociconfig "github.com/agntcy/dir/server/store/oci/config"
 	"github.com/agntcy/dir/server/types"
+	regsync "github.com/csirmazbendeguz/regclient/cmd/regsync/root"
 )
 
 // Worker processes a single sync request atomically.
@@ -118,7 +118,7 @@ func (w *Worker) Run(ctx context.Context) error {
 		"config_path", configPath,
 	)
 
-	// Run the regsync binary
+	// Run the regsync command
 	if err := w.runRegsync(ctx, configPath); err != nil {
 		return fmt.Errorf("regsync command failed: %w", err)
 	}
@@ -126,7 +126,7 @@ func (w *Worker) Run(ctx context.Context) error {
 	return nil
 }
 
-// runRegsync executes the regsync binary with the worker's configuration.
+// runRegsync executes the regsync command with the worker's configuration.
 func (w *Worker) runRegsync(ctx context.Context, configPath string) error {
 	// Create a context with timeout
 	timeout := w.config.GetTimeout()
@@ -134,43 +134,25 @@ func (w *Worker) runRegsync(ctx context.Context, configPath string) error {
 	execCtx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
 
-	// Build the command: regsync once -c <config_path>
-	binaryPath := w.config.GetBinaryPath()
-
 	//nolint:gosec // Binary path is from trusted configuration
-	cmd := exec.CommandContext(execCtx, binaryPath, "once", "-c", configPath)
+	args := []string{"once", "-c", configPath}
+	cmd, _ := regsync.NewRootCmd()
+	cmd.SetArgs(args)
 
-	// Capture stdout and stderr
-	var stdout, stderr bytes.Buffer
-
-	cmd.Stdout = &stdout
-	cmd.Stderr = &stderr
-
-	logger.Debug("Executing regsync command",
+	logger.Info("Executing regsync command",
 		"sync_id", w.syncID,
-		"command", cmd.String(),
+		"args", strings.Join(args, " "),
 		"timeout", timeout,
 	)
 
-	// Run the command
-	err := cmd.Run()
-
-	// Log output regardless of success/failure
-	if stdout.Len() > 0 {
-		logger.Debug("regsync stdout", "sync_id", w.syncID, "output", stdout.String())
-	}
-
-	if stderr.Len() > 0 {
-		logger.Debug("regsync stderr", "sync_id", w.syncID, "output", stderr.String())
-	}
-
+	err := cmd.ExecuteContext(execCtx)
 	if err != nil {
 		// Check if it was a timeout
 		if errors.Is(execCtx.Err(), context.DeadlineExceeded) {
 			return fmt.Errorf("regsync command timed out after %v", timeout)
 		}
 
-		return fmt.Errorf("regsync command failed: %w, stderr: %s", err, stderr.String())
+		return fmt.Errorf("regsync command failed: %w", err)
 	}
 
 	return nil
