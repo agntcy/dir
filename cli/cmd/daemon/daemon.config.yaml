@@ -50,7 +50,7 @@ server:
       database: "dir"
       ssl_mode: "disable"
   publication:
-    scheduler_interval: 1h
+    scheduler_interval: 5m
     worker_count: 1
     worker_timeout: 30m
   naming:
@@ -58,10 +58,11 @@ server:
 
 reconciler:
   regsync:
-    enabled: false
+    enabled: true
+    interval: 1m
   indexer:
     enabled: true
-    interval: 1h
+    interval: 1m
   signature:
     enabled: true
     interval: 1m
@@ -69,9 +70,18 @@ reconciler:
     record_timeout: 30s
   name:
     enabled: true
-    interval: 1h
+    interval: 1m
     ttl: 168h
     record_timeout: 30s
+  local_registry:
+    registry_address: "localhost:5000"
+    repository_name: "dir"
+    auth_config:
+      insecure: true
+  database:
+    type: "sqlite"
+    sqlite:
+      path: "dir.db"
 
 runtime:
   enabled: false
