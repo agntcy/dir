@@ -73,7 +73,6 @@ func runStart(cmd *cobra.Command, _ []string) error {
 	if cfg.Server.Store.OCI.LocalDir != "" {
 		zotCtx = runEmbeddedZot(ctx, cfg.Server.Store.OCI.RegistryAddress, cfg.Server.Store.OCI.LocalDir)
 
-		cfg.Server.Store.OCI.Insecure = true
 		cfg.Server.Store.OCI.LocalDir = ""
 	}
 
