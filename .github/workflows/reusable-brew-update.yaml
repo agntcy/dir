@@ -78,13 +78,13 @@ jobs:
           git checkout -B chore/brew-formula-update origin/main
 
           # Replace version
-          sed -i "s/version \"v*.*.*\"/version \""${{ steps.release-infos.outputs.LATEST_VERSION }}"\"/" HomebrewFormula/dirctl.rb
+          sed -i "s/version \"v*.*.*\"/version \""${{ steps.release-infos.outputs.LATEST_VERSION }}"\"/" HomebrewFormula/dirctl/dirctl.rb
 
           # Replace hashes
-          sed -i "/url \".*\/dirctl-darwin-arm64\"/ {N;s/sha256 \".*\"/sha256 \"${{ steps.release-infos.outputs.DIRCTL_HASH_DARWIN_ARM }}\"/}" ./HomebrewFormula/dirctl.rb
-          sed -i "/url \".*\/dirctl-darwin-amd64\"/ {N;s/sha256 \".*\"/sha256 \"${{ steps.release-infos.outputs.DIRCTL_HASH_DARWIN_AMD }}\"/}" ./HomebrewFormula/dirctl.rb
-          sed -i "/url \".*\/dirctl-linux-arm64\"/ {N;s/sha256 \".*\"/sha256 \"${{ steps.release-infos.outputs.DIRCTL_HASH_LINUX_ARM }}\"/}" ./HomebrewFormula/dirctl.rb
-          sed -i "/url \".*\/dirctl-linux-amd64\"/ {N;s/sha256 \".*\"/sha256 \"${{ steps.release-infos.outputs.DIRCTL_HASH_LINUX_AMD }}\"/}" ./HomebrewFormula/dirctl.rb
+          sed -i "/url \".*\/dirctl-darwin-arm64\"/ {N;s/sha256 \".*\"/sha256 \"${{ steps.release-infos.outputs.DIRCTL_HASH_DARWIN_ARM }}\"/}" ./HomebrewFormula/dirctl/dirctl.rb
+          sed -i "/url \".*\/dirctl-darwin-amd64\"/ {N;s/sha256 \".*\"/sha256 \"${{ steps.release-infos.outputs.DIRCTL_HASH_DARWIN_AMD }}\"/}" ./HomebrewFormula/dirctl/dirctl.rb
+          sed -i "/url \".*\/dirctl-linux-arm64\"/ {N;s/sha256 \".*\"/sha256 \"${{ steps.release-infos.outputs.DIRCTL_HASH_LINUX_ARM }}\"/}" ./HomebrewFormula/dirctl/dirctl.rb
+          sed -i "/url \".*\/dirctl-linux-amd64\"/ {N;s/sha256 \".*\"/sha256 \"${{ steps.release-infos.outputs.DIRCTL_HASH_LINUX_AMD }}\"/}" ./HomebrewFormula/dirctl/dirctl.rb
 
           # NOTE: Make versioned copy of latest formula
 
@@ -96,7 +96,7 @@ jobs:
           VERSION_DIR="./HomebrewFormula/dirctl/v${MAJOR_VERSION}/v${MAJOR_VERSION}.${MINOR_VERSION}"
 
           mkdir -p $VERSION_DIR || true
-          cp ./HomebrewFormula/dirctl.rb $VERSION_DIR/dirctl@${VERSION_NUMBER}.rb
+          cp ./HomebrewFormula/dirctl/dirctl.rb $VERSION_DIR/dirctl@${VERSION_NUMBER}.rb
 
           # NOTE: Fixing the class name in the versioned formula file
           AT_SUFFIX=$(ruby -e '
@@ -118,7 +118,7 @@ jobs:
           echo "DIFF_FOUND=$DIFF_FOUND" >> $GITHUB_OUTPUT
 
           if [ $DIFF_FOUND -eq 1 ]; then
-            git add ./HomebrewFormula/dirctl.rb $VERSION_DIR/dirctl@${VERSION_NUMBER}.rb
+            git add ./HomebrewFormula/dirctl/dirctl.rb $VERSION_DIR/dirctl@${VERSION_NUMBER}.rb
             git commit --all -m "chore: update brew formula version" --signoff
 
             git push --set-upstream origin chore/brew-formula-update
@@ -138,7 +138,7 @@ jobs:
           brew tap-new --no-git agntcy/dir-test
 
           FORMULA_DIR="$(brew --repository)/Library/Taps/agntcy/homebrew-dir-test/Formula/"
-          cp ./HomebrewFormula/dirctl.rb "$FORMULA_DIR"
+          cp ./HomebrewFormula/dirctl/dirctl.rb "$FORMULA_DIR"
 
           brew install agntcy/dir-test/dirctl --verbose
 
