@@ -720,7 +720,7 @@ tasks:
           TOFU_ROOT: '{{ .TOFU_ROOT }}'
           TOFU_EXTRA_ARGS: |
             {{ .SELECTED_TESTENV.extra_tofu_args }}
-            -var=dirctl_path="GOCOVERDIR={{ .GOCOVERDIR }} {{ .DIRCTL_BIN }}"
+            {{ if ne OS "windows" }}-var=dirctl_path="GOCOVERDIR={{ .GOCOVERDIR }} {{ .DIRCTL_BIN }}"{{end}}
 
       # Run test suite
       - |
