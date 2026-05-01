@@ -207,9 +207,7 @@ jobs:
   cross-platform:
     name: Cross-Platform Test
     needs:
-      - lint
-      - license
-      - verify
+      - build
     uses: ./.github/workflows/reusable-test-e2e-cross-platform.yaml
 
   upload-codecov:
@@ -219,21 +217,6 @@ jobs:
     permissions:
       contents: read
       id-token: write
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - artifact_name: coverage-unit
-            codecov_flag: unit
-          - artifact_name: coverage-e2e-Local
-            codecov_flag: e2e-Local
-          - artifact_name: coverage-e2e-Network
-            codecov_flag: e2e-Network
-          # NOTE: Currently MCP and Federation coverage is excluded within Upload E2E coverage artifact job
-          # - artifact_name: coverage-e2e-MCP
-          #   codecov_flag: e2e-MCP
-          # - artifact_name: coverage-e2e-Federation
-          #   codecov_flag: e2e-Federation
     steps:
       - name: Checkout code
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
@@ -251,7 +234,6 @@ jobs:
         with:
           codecov_yml_path: codecov.yml
           files: "**/*.out"
-          flags: ${{ matrix.codecov_flag }}
           verbose: true
           use_oidc: true
 
