@@ -4,21 +4,6 @@
 name: Test E2E
 
 on:
-  workflow_dispatch:
-    inputs:
-      image_repo:
-        required: true
-        type: string
-        description: "Image repo to use."
-      image_tag:
-        required: true
-        type: string
-        description: "Image tag to use."
-      enable_coverage:
-        required: false
-        type: boolean
-        default: false
-        description: "Whether to collect and upload E2E coverage as artifacts."
   workflow_call:
     inputs:
       image_repo:
