@@ -4,6 +4,7 @@
 name: Test E2E Cross-Platform
 
 on:
+  workflow_dispatch:
   workflow_call:
 
 jobs:
