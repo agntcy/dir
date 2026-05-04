@@ -8,10 +8,10 @@ import (
 	"fmt"
 	"io"
 
-	runtimev1 "github.com/agntcy/dir-runtime/api/runtime/v1"
 	eventsv1 "github.com/agntcy/dir/api/events/v1"
 	namingv1 "github.com/agntcy/dir/api/naming/v1"
 	routingv1 "github.com/agntcy/dir/api/routing/v1"
+	runtimev1 "github.com/agntcy/dir/api/runtime/v1"
 	searchv1 "github.com/agntcy/dir/api/search/v1"
 	signv1 "github.com/agntcy/dir/api/sign/v1"
 	storev1 "github.com/agntcy/dir/api/store/v1"
