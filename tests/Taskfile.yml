@@ -3,6 +3,12 @@
 
 version: "3"
 
+env:
+  # TODO(paralta): drop once dir-runtime is republished against
+  # github.com/agntcy/dir/api/runtime so the dirctl/test binaries no longer
+  # link both old and new proto descriptors.
+  GOLANG_PROTOBUF_REGISTRATION_CONFLICT: warn
+
 tasks:
   default:
     cmd: echo "Run the main Taskfile instead of this one."
