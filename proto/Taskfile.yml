@@ -18,6 +18,16 @@ tasks:
     cmds:
       - "{{.BUFBUILD_BIN}} dep update"
       - "{{.BUFBUILD_BIN}} generate --template buf.gen.yaml"
+      - task: runtime:gen
+
+  runtime:gen:
+    desc: Generate DeepCopy/DeepCopyObject methods and CRDs for the runtime API
+    dir: ./api
+    deps:
+      - deps:controller-gen
+    cmds:
+      - go run {{ .CONTROLLER_GEN_BIN }} object paths=./runtime/crd/v1/...
+      - go run {{ .CONTROLLER_GEN_BIN }} crd:ignoreUnexportedFields=true object:headerFile="./runtime/crd/v1/boilerplate.go.txt" paths="./runtime/crd/v1/..." output:crd:artifacts:config="./runtime/crd/manifests"
 
   api:clean:
     desc: Clean generated API stubs
@@ -25,8 +35,3 @@ tasks:
     cmds:
       - find . \( -name "*.pb.go" \) -type f -delete
 
-  api:clean:runtime:go:
-    desc: Clean runtime generated golang API stubs
-    dir: ./runtime
-    cmds:
-      - find . \( -name "*.pb.go" \) -type f -delete

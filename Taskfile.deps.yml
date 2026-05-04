@@ -37,6 +37,16 @@ tasks:
     status:
       - test -d {{.BIN_DIR}}
 
+  deps:controller-gen:
+    desc: Ensure controller-gen is installed
+    internal: true
+    preconditions:
+      - which go
+    cmds:
+      - cmd: go install {{.CONTROLLER_GEN_BIN}}
+    status:
+      - which controller-gen
+
   deps:cleanup:
     desc: Remove binaries in BIN_DIR except those currently used by the Taskfile
     preconditions:

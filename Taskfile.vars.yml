@@ -74,6 +74,11 @@ vars:
   ## Coverage related values
   COVERAGE_DIR: '{{ .COVERAGE_DIR | default (print .ROOT_DIR "/.coverage") }}'
   OVERRIDEN_COVERAGE_MODULES: "" # NOTE: Modules with space separation for specify which modules to cover
+
+  ## Runtime CRD
+  CONTROLLER_GEN_VERSION: "v0.17.3"
+  CONTROLLER_GEN_BIN: "sigs.k8s.io/controller-tools/cmd/controller-gen@{{ .CONTROLLER_GEN_VERSION }}"
+
   ## Go module discovery
   GO_MODULES:
     sh: '{{if eq OS "windows"}}git ls-files go.mod */go.mod | while IFS= read -r f; do dirname "./$f"; done | grep -v "^\./tmp"{{else}}find . -name go.mod -not -path "./tmp*" -exec dirname {} \;{{end}}'

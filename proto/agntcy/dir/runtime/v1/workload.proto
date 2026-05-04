@@ -1,0 +1,80 @@
+// Copyright AGNTCY Contributors (https://github.com/agntcy)
+// SPDX-License-Identifier: Apache-2.0
+
+syntax = "proto3";
+
+package agntcy.dir.runtime.v1;
+
+import "google/protobuf/struct.proto";
+
+// Information about a discovered workload in a runtime.
+message Workload {
+  // ID is the unique identifier for the workload.
+  string id = 1;
+
+  // Name is the human-readable name of the workload.
+  string name = 2;
+
+  // Hostname is the hostname of the workload.
+  string hostname = 3;
+
+  // Runtime is the type of the runtime (e.g., docker, containerd).
+  string runtime = 4;
+
+  // Type is the type of workload (e.g., process, container, pod).
+  string type = 5;
+
+  // Labels are key-value pairs for filtering.
+  map<string, string> labels = 6;
+
+  // Annotations are additional metadata.
+  map<string, string> annotations = 7;
+
+  // Addresses are the network addresses of the workload.
+  repeated string addresses = 8;
+
+  // Ports are the exposed ports.
+  // Specified as strings to accommodate various formats (e.g., "80/tcp", "443").
+  repeated string ports = 9;
+
+  // IsolationGroups are the network/namespace isolation groups.
+  repeated string isolation_groups = 10;
+
+  // Services holds service/protocol-specific metadata.
+  // These values can be used by discovery resolvers
+  // to enrich the discovery information about the workload.
+  WorkloadServices services = 11;
+}
+
+// WorkloadServices holds service-specific metadata
+// that a given workload may have.
+// For example, a workload may have A2A server running inside it,
+// that can be discovered and exposed via discovery.
+message WorkloadServices {
+  // A2A holds metadata about the A2A service running inside the workload.
+  // +optional
+  // +kubebuilder:validation:Schemaless
+  // +kubebuilder:pruning:PreserveUnknownFields
+  optional google.protobuf.Struct a2a = 1;
+
+  // OASF holds metadata about the OASF record that a workload references.
+  // +optional
+  // +kubebuilder:validation:Schemaless
+  // +kubebuilder:pruning:PreserveUnknownFields
+  optional google.protobuf.Struct oasf = 2;
+}
+
+// RuntimeType represents the type of runtime.
+enum RuntimeType {
+  RUNTIME_TYPE_UNSPECIFIED = 0; // Unknown runtime type
+  RUNTIME_TYPE_DOCKER = 1; // Docker runtime
+  RUNTIME_TYPE_KUBERNETES = 2; // Kubernetes runtime
+}
+
+// WorkloadType represents the type of workload.
+enum WorkloadType {
+  WORKLOAD_TYPE_UNSPECIFIED = 0; // Unknown workload type
+  WORKLOAD_TYPE_PROCESS = 1; // Process workload
+  WORKLOAD_TYPE_CONTAINER = 2; // Container workload
+  WORKLOAD_TYPE_POD = 3; // Pod workload
+}
