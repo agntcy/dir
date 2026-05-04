@@ -152,6 +152,7 @@ tasks:
 
   release:create:
     desc: Prepare release
+    internal: true
     deps:
       - task: deps:multimod-bin
     vars:
@@ -174,6 +175,100 @@ tasks:
         git commit --amend -S --signoff -m "release(dir): prepare release {{.RELEASE_VERSION}}"
       # Push prepared release
       - task: release:push
+
+  release:create:api:
+    desc: Prepare api module set release without root artifacts
+    deps:
+      - task: deps:multimod-bin
+    vars:
+      RELEASE_VERSION: "{{ .RELEASE_VERSION }}"
+      RELEASE_BRANCH: "release/api/{{.RELEASE_VERSION}}"
+    cmds:
+      # Switch to new branch
+      - 'if [ "$(git rev-parse --abbrev-ref HEAD)" != "{{.RELEASE_BRANCH}}" ]; then git checkout -b {{.RELEASE_BRANCH}}; fi'
+      # Update only the api module set in versions.yaml with the new version
+      - |
+        awk -v module_set="api" -v version="{{.RELEASE_VERSION}}" '
+          /^  [A-Za-z0-9_-]+:/ { in_module_set = ($1 == module_set ":") }
+          in_module_set && /^[[:space:]]+version:/ {
+            sub(/version: .*/, "version: " version)
+            updated = 1
+          }
+          { print }
+          END {
+            if (!updated) {
+              printf("module set %s not found in versions.yaml\n", module_set) > "/dev/stderr"
+              exit 1
+            }
+          }
+        ' versions.yaml > versions.yaml.tmp
+      - "mv versions.yaml.tmp versions.yaml"
+      # Add release changes
+      - |
+        git add .
+        git commit -S --signoff -m "release(dir): prepare api release {{.RELEASE_VERSION}}"
+      # Verify Go release for the api module set only
+      - |
+        {{ .MULTIMOD_BIN }} verify
+        {{ .MULTIMOD_BIN }} prerelease --module-set-names api --skip-go-mod-tidy=true --commit-to-different-branch=false
+      - |
+        git commit --amend -S --signoff -m "release(dir): prepare api release {{.RELEASE_VERSION}}"
+      # Push prepared release
+      - task: release:push:branch
+        vars:
+          RELEASE_BRANCH: "{{.RELEASE_BRANCH}}"
+
+  release:create:server:
+    desc: Prepare server module set release for root artifacts
+    deps:
+      - task: deps:multimod-bin
+    vars:
+      RELEASE_VERSION: "{{ .RELEASE_VERSION }}"
+      RELEASE_BRANCH: "release/server/{{.RELEASE_VERSION}}"
+    cmds:
+      # Switch to new branch
+      - 'if [ "$(git rev-parse --abbrev-ref HEAD)" != "{{.RELEASE_BRANCH}}" ]; then git checkout -b {{.RELEASE_BRANCH}}; fi'
+      # Update only the server module set in versions.yaml with the new version
+      - |
+        awk -v module_set="server" -v version="{{.RELEASE_VERSION}}" '
+          /^  [A-Za-z0-9_-]+:/ { in_module_set = ($1 == module_set ":") }
+          in_module_set && /^[[:space:]]+version:/ {
+            sub(/version: .*/, "version: " version)
+            updated = 1
+          }
+          { print }
+          END {
+            if (!updated) {
+              printf("module set %s not found in versions.yaml\n", module_set) > "/dev/stderr"
+              exit 1
+            }
+          }
+        ' versions.yaml > versions.yaml.tmp
+      - "mv versions.yaml.tmp versions.yaml"
+      # Add release changes
+      - |
+        git add .
+        git commit -S --signoff -m "release(dir): prepare server release {{.RELEASE_VERSION}}"
+      # Verify Go release for the server module set only
+      - |
+        {{ .MULTIMOD_BIN }} verify
+        {{ .MULTIMOD_BIN }} prerelease --module-set-names server --skip-go-mod-tidy=true --commit-to-different-branch=false
+      - |
+        git commit --amend -S --signoff -m "release(dir): prepare server release {{.RELEASE_VERSION}}"
+      # Push prepared release
+      - task: release:push:branch
+        vars:
+          RELEASE_BRANCH: "{{.RELEASE_BRANCH}}"
+
+  release:push:branch:
+    internal: true
+    vars:
+      RELEASE_BRANCH: "{{ .RELEASE_BRANCH }}"
+    prompt:
+      - "Are you sure you want to push the release branch {{.RELEASE_BRANCH}} to remote repository?"
+    cmds:
+      - |
+        git push --set-upstream origin {{.RELEASE_BRANCH}} || true
 
   release:push:
     internal: true
