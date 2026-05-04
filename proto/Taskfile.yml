@@ -21,13 +21,13 @@ tasks:
       - task: runtime:gen
 
   runtime:gen:
-    desc: Generate DeepCopy/DeepCopyObject methods and CRDs for the runtime API
+    desc: Generate DeepCopy/DeepCopyObject methods for the runtime CRD types
     dir: ./api
     deps:
       - deps:controller-gen
     cmds:
-      - go run {{ .CONTROLLER_GEN_BIN }} object paths=./runtime/crd/v1/...
-      - go run {{ .CONTROLLER_GEN_BIN }} crd:ignoreUnexportedFields=true object:headerFile="./runtime/crd/v1/boilerplate.go.txt" paths="./runtime/crd/v1/..." output:crd:artifacts:config="./runtime/crd/manifests"
+      # NOTE: CRD YAML manifests are generated in the dir-runtime repo (alongside its Helm chart).
+      - go run {{ .CONTROLLER_GEN_BIN }} object:headerFile="./runtime/crd/v1/boilerplate.go.txt" paths="./runtime/crd/v1/..."
 
   api:clean:
     desc: Clean generated API stubs
