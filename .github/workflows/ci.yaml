@@ -92,9 +92,10 @@ jobs:
           key: lint-cache-${{ runner.os }}-${{ hashFiles('**/*.sum') }}
           restore-keys: |
             lint-cache-${{ runner.os }}-
-      # - name: Run linters
-      #   run: |
-      #     task lint
+
+      - name: Run linters
+        run: |
+          task lint
 
   license:
     name: License
@@ -118,17 +119,18 @@ jobs:
           key: license-cache-${{ runner.os }}-${{ hashFiles('**/go.sum') }}
           restore-keys: |
             license-cache-${{ runner.os }}-
-      # - name: License cache
-      #   env:
-      #     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      #   run: |
-      #     task license:cache
 
-      # - name: License
-      #   env:
-      #     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      #   run: |
-      #     task license
+      - name: License cache
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          task license:cache
+
+      - name: License
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          task license
 
   verify:
     name: Verify
@@ -226,20 +228,22 @@ jobs:
       - name: Download coverage artifact
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
-          name: ${{ matrix.artifact_name }}
           path: .coverage
+          pattern: "coverage-*"
+          merge-multiple: true
 
       - name: Upload to Codecov
         uses: codecov/codecov-action@57e3a136b779b570ffcdbf80b3bdc90e7fab3de2 # v6.0.0
         with:
           codecov_yml_path: codecov.yml
-          files: "**/*.out"
+          files: ".coverage/**/*.out"
           verbose: true
           use_oidc: true
 
   release:
     name: Release
-    if: ${{ startsWith(github.ref, 'refs/tags/v') && !contains(github.ref_name, '/') }}
+    if: ${{ startsWith(github.ref, 'refs/tags/v') && !contains(github.ref_name, '/')
+      }}
     needs:
       - test
     uses: ./.github/workflows/reusable-release.yaml

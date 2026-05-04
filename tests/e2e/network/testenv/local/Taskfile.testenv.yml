@@ -6,7 +6,7 @@ version: "3"
 includes:
   setup-dir-node:
     taskfile: "../../../../../tests/modules/Taskfile.setup-dir-node.yml"
-    internal: true
+    internal: true # Import tasks without exposing
 
 vars:
   NETWORK_LOCAL_E2E_DIRCTL_BASE_DATA_PATH: "/tmp/e2e-network-local-testenv"

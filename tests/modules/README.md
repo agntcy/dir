@@ -15,6 +15,7 @@ includes:
 
 - Must be self-contained and reusable in different contexts. No dependencies/includes to modules outside of this directory
 - Should not have hardcoded values that limit its reusability. Instead, use variables that can be overridden when importing the module.
+- Should not use public vars/envs as they can cause conflicts when imported into other Taskfiles. Use vars/envs only in tasks.
 - Should provide clear documentation on how to use the module, including any required variables and expected behavior.
 
 ## Available modules

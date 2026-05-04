@@ -1,6 +1,23 @@
 # Copyright AGNTCY Contributors (https://github.com/agntcy)
 # SPDX-License-Identifier: Apache-2.0
 
+#
+# deploy-chart - A reusable Taskfile for deploying Helm charts in Kubernetes environments.
+# Defines reusable internal "up" and "down" tasks to manage the lifecycle of a Helm release.
+# 
+# vars:
+#   HELM_BIN: Path to the Helm binary (default: "helm")
+#   RELEASE_NAME: Name of the Helm release to install
+#   NAMESPACE: Kubernetes namespace to deploy the release into (default: "default")
+#   CHART_PATH: Path to the Helm chart to deploy
+#   CHART_REPOSITORY: (Optional) Helm repository URL if the chart is not local
+#   CHART_VALUES_PATH: (Optional) Path to a YAML file containing Helm values
+#   CHART_EXTRA_VALUES: (Optional) Additional Helm values as a string (e.g. "--set key=value")
+#   CHART_WAIT: Whether to wait for the release to be ready (default: "true")
+#   CHART_TIMEOUT: Timeout for Helm operations (default: "10m")
+#   KUBE_CONTEXT: (Optional) Kubernetes context to use for deployment
+#
+
 version: "3"
 
 tasks:

@@ -32,10 +32,18 @@ server:
 
 reconciler:
   regsync:
-    enabled: false
+    enabled: true
+    interval: 10s
   indexer:
-    enabled: false
+    enabled: true
+    interval: 10s
   signature:
-    enabled: false
+    enabled: true
+    interval: 10s
+    ttl: 168h
+    record_timeout: 30s
   name:
-    enabled: false
+    enabled: true
+    interval: 10s
+    ttl: 168h
+    record_timeout: 30s

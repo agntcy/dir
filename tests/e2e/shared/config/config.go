@@ -17,32 +17,16 @@ import (
 	"github.com/spf13/viper"
 )
 
-// Holds the path to the configuration file (if provided via command-line flag).
-var configPath string
-
-func init() {
-	flag.StringVar(&configPath, "config", "", "Absolute path to test configuration file (optional)")
+type Config struct {
+	Client  client.Config  `json:"client,omitzero"  mapstructure:"client"`
+	Local   local.Config   `json:"local,omitzero"   mapstructure:"local"`
+	Network network.Config `json:"network,omitzero" mapstructure:"network"`
+	Daemon  daemon.Config  `json:"daemon,omitzero"  mapstructure:"daemon"`
 }
 
-type DeploymentMode string
-
-const (
-	DeploymentModeLocal   DeploymentMode = "local"
-	DeploymentModeNetwork DeploymentMode = "network"
-)
-
-const (
-	DefaultEnvPrefix = "DIRECTORY_E2E"
-
-	DefaultDeploymentMode = DeploymentModeLocal
-)
-
-type Config struct {
-	DeploymentMode DeploymentMode `json:"deployment_mode,omitempty" mapstructure:"deployment_mode"`
-	Client         client.Config  `json:"client,omitzero"           mapstructure:"client"`
-	Local          local.Config   `json:"local,omitzero"            mapstructure:"local"`
-	Network        network.Config `json:"network,omitzero"          mapstructure:"network"`
-	Daemon         daemon.Config  `json:"daemon,omitzero"           mapstructure:"daemon"`
+func init() {
+	// Require users to specify a config file path via a command-line flag
+	flag.String("test-config", "", "Absolute path to test configuration file (optional)")
 }
 
 func LoadConfig() (*Config, error) {
@@ -51,28 +35,23 @@ func LoadConfig() (*Config, error) {
 		viper.EnvKeyReplacer(strings.NewReplacer(".", "_", "-", "_")),
 	)
 
-	if configPath != "" {
-		v.SetConfigFile(configPath)
+	configPathFlag := flag.Lookup("test-config")
+	if configPathFlag == nil {
+		return nil, fmt.Errorf("failed to lookup -test-config flag")
 	}
 
-	v.SetEnvPrefix(DefaultEnvPrefix)
+	v.SetConfigFile(configPathFlag.Value.String())
 	v.AllowEmptyEnv(true)
 	v.AutomaticEnv()
 
 	// Read the config data (from env/file)
 	if err := v.ReadInConfig(); err != nil {
+		// Config file was explicitly provided but could not be read
 		var configFileNotFoundError viper.ConfigFileNotFoundError
 		if errors.As(err, &configFileNotFoundError) {
-			// Config file was explicitly provided but could not be read
 			return nil, fmt.Errorf("failed to read configuration file: %w", err)
 		}
 	}
-
-	//
-	// E2E test configuration
-	//
-	_ = v.BindEnv("deployment_mode")
-	v.SetDefault("deployment_mode", DefaultDeploymentMode)
 
 	// Load configuration into struct
 	decodeHooks := mapstructure.ComposeDecodeHookFunc(

@@ -6,7 +6,7 @@ version: "3"
 includes:
   setup-testenv-k8s:
     taskfile: "../../../../../tests/modules/Taskfile.setup-testenv-k8s.yml"
-    flatten: true
+    flatten: true # Expose included tasks (up/down)
     vars:
       KIND_CLUSTER_NAME: "e2e-network-kind-testenv"
       KIND_CONFIG_PATH: "{{.ROOT_DIR}}/tests/e2e/network/testenv/kind/kind-cluster.yaml"

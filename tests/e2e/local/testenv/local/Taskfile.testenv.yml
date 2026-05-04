@@ -6,7 +6,7 @@ version: "3"
 includes:
   setup-dir-node:
     taskfile: "../../../../../tests/modules/Taskfile.setup-dir-node.yml"
-    internal: true
+    internal: true # Import tasks without exposing
     vars:
       DIRCTL_DATA_PATH: "/tmp/e2e-local-local-testenv"
       DIRCTL_CONFIG_PATH: "{{.ROOT_DIR}}/tests/e2e/local/testenv/local/dir-daemon-config.yaml"

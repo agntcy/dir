@@ -1,6 +1,18 @@
 # Copyright AGNTCY Contributors (https://github.com/agntcy)
 # SPDX-License-Identifier: Apache-2.0
 
+#
+# deploy-kind - A reusable Taskfile for deploying Kind clusters.
+# Defines reusable internal "up" and "down" tasks to manage the lifecycle of a Kind cluster.
+# 
+# vars:
+#   KIND_BIN: Path to the Kind binary (default: "kind")
+#   KIND_CLUSTER_NAME: Name of the Kind cluster to create (default: "test-cluster")
+#   KIND_CONFIG_PATH: (Optional) Path to a Kind configuration file for cluster setup
+#   KIND_EXTRA_IMAGES: (Optional) Additional Docker images to load into the cluster, specified
+#                      as a newline-separated string (e.g. "image1:tag\nimage2:tag")
+#
+
 version: "3"
 
 tasks:

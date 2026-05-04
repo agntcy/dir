@@ -14,11 +14,6 @@ on:
         required: true
         type: string
         description: "Image tag to use."
-      enable_coverage:
-        required: false
-        type: boolean
-        default: false
-        description: "Whether to collect and upload E2E coverage as artifacts."
 
 jobs:
   e2e:
@@ -29,16 +24,12 @@ jobs:
         include:
           - task: e2e:test:client:local
             label: "Client"
-            coverage: false
           - task: e2e:test:local:local
             label: "Local"
-            coverage: false
           - task: e2e:test:network:local
             label: "Network"
-            coverage: false
           - task: e2e:test:daemon:external
             label: "Daemon External"
-            coverage: false
     steps:
       - name: Checkout code
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
@@ -63,20 +54,12 @@ jobs:
         with:
           go-version: "1.26.2"
           cache-dependency-path: "**/*.sum"
-          cache: true # NOTE: Default value, just to be explicit
+          cache: true
 
-      - name: Download artifacts
+      - name: Download build artifacts
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
           path: tmp/artifacts
-          merge-multiple: true
-
-      - name: Download coverage image artifacts
-        if: ${{ inputs.enable_coverage }}
-        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
-        with:
-          path: tmp/coverage-artifacts
-          pattern: "*-coverage"
           merge-multiple: true
 
       - name: Load images to local Docker registry
@@ -86,15 +69,7 @@ jobs:
           done
           docker images
 
-      - name: Load coverage images to local Docker registry
-        if: ${{ inputs.enable_coverage }}
-        run: |
-          for image_archive in tmp/coverage-artifacts/*.tar; do
-            docker load --input "$image_archive"
-          done
-          docker images
-
-      - name: Load compiled dirctl (debug) binary
+      - name: Load dirctl debug binary
         run: |
           task deps:bin-dir
           cp tmp/artifacts/dirctl-debug ./.bin/dirctl
@@ -104,10 +79,13 @@ jobs:
         env:
           IMAGE_REPO: ${{ inputs.image_repo }}
           IMAGE_TAG: ${{ inputs.image_tag }}
+          COVERAGE: "true"
         run: |
           task ${{ matrix.task }}
 
-      - name: Process E2E coverage
+      - name: Merge coverage files
+        env:
+          COVERAGE_FILENAME: "testenvs-${{ matrix.label }}.out"
         run: |
           task e2e:coverage
 

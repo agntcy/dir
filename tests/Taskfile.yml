@@ -4,6 +4,8 @@
 version: "3"
 
 includes:
+  # Import Taskfiles for each test environment. Each Taskfile defines
+  # "up" and "down" tasks to manage the lifecycle of its environment.
   client:testenv:kind:
     taskfile: "./e2e/client/testenv/kind/Taskfile.testenv.yml"
   client:testenv:local:
@@ -14,15 +16,15 @@ includes:
   daemon:testenv:external:
     taskfile: "./e2e/daemon/testenv/external/Taskfile.testenv.yml"
 
-  local:testenv:local:
-    taskfile: "./e2e/local/testenv/local/Taskfile.testenv.yml"
   local:testenv:kind:
     taskfile: "./e2e/local/testenv/kind/Taskfile.testenv.yml"
+  local:testenv:local:
+    taskfile: "./e2e/local/testenv/local/Taskfile.testenv.yml"
 
-  network:testenv:local:
-    taskfile: "./e2e/network/testenv/local/Taskfile.testenv.yml"
   network:testenv:kind:
     taskfile: "./e2e/network/testenv/kind/Taskfile.testenv.yml"
+  network:testenv:local:
+    taskfile: "./e2e/network/testenv/local/Taskfile.testenv.yml"
 
 vars:
   #
@@ -49,8 +51,7 @@ vars:
   # Notes:
   #   - Each test case can have multiple environments, and the test execution logic will
   #     run the appropriate setup and tests based on user input.
-  #   - Each testenv_task should define "up" and "down" tasks to manage the test environment
-  #     lifecycle.
+  #   - Each testenv_task should define "up" and "down" tasks to manage its environment.
   TEST_MATRIX:
     map:
       client:
@@ -93,6 +94,11 @@ vars:
             testenv_task: "network:testenv:local"
             go_test_config: "{{.ROOT_DIR}}/tests/e2e/network/testenv/local/test-config.yaml"
 
+  # Set GOCOVERDIR for supported testenv coverage collection.
+  # This relies on the convention that testenv tasks will pass
+  # this variable to the test process environment.
+  GOCOVERDIR: "{{.COVERAGE_DIR}}/e2e/.gocover"
+
 tasks:
   e2e:test:*:*:
     desc: Run E2E test suite for a test environment
@@ -122,11 +128,14 @@ tasks:
 
       # Run test suite
       - |
-          go test \
-            -C {{ .SELECTED_CASE.go_test_package }} . \
-            --config {{ .SELECTED_ENV.go_test_config }} \
-            -v -failfast -test.v -test.paniconexit0 \
-            -timeout 2h -ginkgo.timeout 2h -ginkgo.v
+        mkdir -p {{ .COVERAGE_DIR }}/e2e
+        go test -C {{ .SELECTED_CASE.go_test_package }} . \
+          -covermode=atomic \
+          -coverpkg={{.COVERAGE_PKGS}} \
+          -coverprofile={{.COVERAGE_DIR}}/e2e/{{.TEST_CASE}}-{{.TEST_ENV}}.out \
+          -v -failfast -test.v -test.paniconexit0 \
+          -timeout 2h -ginkgo.timeout 2h -ginkgo.v \
+          -test-config {{ .SELECTED_ENV.go_test_config }}
 
   e2e:test:*:
     desc: Run E2E test suite across all test environments
@@ -158,25 +167,44 @@ tasks:
     cmds:
       - for: { var: TEST_MATRIX }
         cmd: |
-          echo "+ CMD: e2e:test:{{.KEY}}"
+          echo "Test: {{.KEY}}"
           {{ range $key, $item := .ITEM.envs }}
-            echo -e "  - CMD:  e2e:test:{{$.KEY}}:{{$key}}"
-            echo -e "    PATH: {{ $item.go_test_config }}"
+            echo -e "  Env: {{$key}}, Path: {{ $item.go_test_config }}"
           {{ end }}
 
-  e2e:coverage:
-    desc: Collect and display E2E coverage data
-    vars:
-      GOCOV_FILES:
-        sh: find {{ .COVERAGE_DIR }} -type d 2>/dev/null || true
-    cmds:
-      - echo "works"
-      # - |
-      #   # Merge all coverage data from testenv runs and convert to single report
-      #   mkdir -p /tmp/coverage-merged
-      #   go tool covdata merge -i={{ .GOCOV_FILES | splitLines | join "," }} -o=/tmp/coverage-merged
-      #   go tool covdata textfmt -i=/tmp/coverage-merged -o={{ .COVERAGE_DIR }}/coverage.out.tmp
+      - |
+        echo -e "\nTo run a specific test suite, use: task e2e:test:<test_case>:<test_env>"
+        echo -e "Example: task e2e:test:client:kind"
 
-      #   # Filter out generated files (matching codecov.yml ignores)
-      #   grep -v "\.pb\.go" {{.COVERAGE_DIR}}/coverage.out.tmp | grep -v "mock_.*\.go" > {{.COVERAGE_DIR}}/coverage.out
-      #   rm {{.COVERAGE_DIR}}/coverage.out.tmp
+  # NOTE: this cannot be run under e2e:test task due to a transient
+  # issue of either closing/stopping daemon or flushing coverage data,
+  # both of which require the parent process (taskfile) to exit to
+  # complete and dump coverage files.
+  e2e:coverage:
+    desc: Generate combined coverage report for all E2E tests
+    vars:
+      # User input
+      COVERAGE_FILENAME: '{{ .COVERAGE_FILENAME | default "combined.out" }}'
+
+      # Task settings
+      MERGE_GOCOVERDIR: '{{ .COVERAGE_DIR }}/e2e/.gocover-merged'
+      TESTENV_COVERAGE_FILE: '{{ .COVERAGE_DIR }}/e2e/{{ .COVERAGE_FILENAME | replace " " "-" | lower }}'
+    cmds:
+      # Prepare fresh MERGE_GOCOVERDIR
+      - |
+        rm -rf {{.MERGE_GOCOVERDIR}}
+        mkdir -p {{.MERGE_GOCOVERDIR}}
+
+      # Merge coverage profiles
+      - |
+        go tool covdata merge \
+          -i={{.GOCOVERDIR}} \
+          -pkg={{.COVERAGE_PKGS}} \
+          -o={{.MERGE_GOCOVERDIR}} || exit 0
+      
+      # Generate combined coverage report
+      - |
+        go tool covdata textfmt \
+          -i={{.MERGE_GOCOVERDIR}} \
+          -pkg={{.COVERAGE_PKGS}} \
+          -o={{.TESTENV_COVERAGE_FILE}}

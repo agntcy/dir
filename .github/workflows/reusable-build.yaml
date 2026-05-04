@@ -77,7 +77,7 @@ jobs:
         if: ${{ !inputs.push }}
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: dirctl-debug
+          name: dirctl-bin-debug
           path: /tmp/artifacts/dirctl-debug
           retention-days: 7
 
