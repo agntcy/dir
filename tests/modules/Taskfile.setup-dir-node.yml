@@ -12,8 +12,7 @@ tasks:
       DIRCTL_CONFIG_PATH: '{{ .DIRCTL_CONFIG_PATH }}'
       DIRCTL_LOGFILE_PATH: '{{ .DIRCTL_LOGFILE_PATH | default "" }}'
     cmds:
-      - platforms: [linux, darwin]
-        cmd: |
+      - |
           # Ensure the data directory exists
           mkdir -p {{ .DIRCTL_DATA_PATH }}
 
