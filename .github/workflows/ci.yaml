@@ -259,7 +259,7 @@ jobs:
 
   release:
     name: Release
-    if: ${{ startsWith(github.ref, 'refs/tags/') }}
+    if: ${{ startsWith(github.ref, 'refs/tags/v') && !contains(github.ref_name, '/') }}
     needs:
       - test
     uses: ./.github/workflows/reusable-release.yaml

@@ -20,11 +20,10 @@ jobs:
       - name: Checkout
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
-      - name: Get modules
+      - name: Get server modules
         id: modules
         run: |
-          # shellcheck disable=SC2016
-          echo "modules=$(find . -name go.mod -type f -exec awk '/^module / {print $2}' {} \; | jq -c -R '[.,inputs] | map(sub("^github.com\/agntcy\/dir\/";""))')" >> "$GITHUB_OUTPUT"
+          echo 'modules=["cli","tests","server","reconciler"]' >> "$GITHUB_OUTPUT"
 
   create-module-tags:
     needs: prepare
