@@ -91,6 +91,22 @@
       "description": ["Group Go dependency patch updates in single PR."]
     },
     {
+      "groupName": "AGNTCY split repository dependencies",
+      "groupSlug": "agntcy-split-repos",
+      "matchDatasources": ["go"],
+      "matchPackageNames": [
+        "github.com/agntcy/dir-runtime{/,}**",
+        "github.com/agntcy/dir-importer",
+        "github.com/agntcy/dir-mcp"
+      ],
+      "addLabels": ["agntcy", "release"],
+      "automerge": false,
+      "description": [
+        "Group dependencies migrated out of the dir repository.",
+        "These repos are released independently and should be reviewed as part of the Directory release train."
+      ]
+    },
+    {
       "groupName": "Docker",
       "groupSlug": "docker",
       "matchDatasources": ["go"],
