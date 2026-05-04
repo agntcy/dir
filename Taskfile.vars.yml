@@ -42,7 +42,6 @@ vars:
   COVERAGE_PKGS: '{{ .COVERAGE_PKGS | default "github.com/agntcy/dir/api/...,github.com/agntcy/dir/cli/...,github.com/agntcy/dir/client/...,github.com/agntcy/dir/server/...,github.com/agntcy/dir/reconciler/...,github.com/agntcy/dir/utils/..." }}'
 
   ## Dependency config
-  RENOVATE_VERSION: "43.89.5"
   BIN_DIR: "{{ .ROOT_DIR }}/.bin"
   DIRCTL_BIN: "{{ .BIN_DIR}}/dirctl"
   HELM_VERSION: "4.1.3"
