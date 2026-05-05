@@ -6,24 +6,24 @@ version: "3"
 includes:
   # Import Taskfiles for each test environment. Each Taskfile defines
   # "up" and "down" tasks to manage the lifecycle of its environment.
-  client:testenv:kind:
+  e2e:testenv:client:kind:
     taskfile: "./e2e/client/testenv/kind/Taskfile.testenv.yml"
-  client:testenv:local:
+  e2e:testenv:client:local:
     taskfile: "./e2e/client/testenv/local/Taskfile.testenv.yml"
 
-  daemon:testenv:default:
+  e2e:testenv:daemon:default:
     taskfile: "./e2e/daemon/testenv/default/Taskfile.testenv.yml"
-  daemon:testenv:external:
+  e2e:testenv:daemon:external:
     taskfile: "./e2e/daemon/testenv/external/Taskfile.testenv.yml"
 
-  local:testenv:kind:
+  e2e:testenv:local:kind:
     taskfile: "./e2e/local/testenv/kind/Taskfile.testenv.yml"
-  local:testenv:local:
+  e2e:testenv:local:local:
     taskfile: "./e2e/local/testenv/local/Taskfile.testenv.yml"
 
-  network:testenv:kind:
+  e2e:testenv:network:kind:
     taskfile: "./e2e/network/testenv/kind/Taskfile.testenv.yml"
-  network:testenv:local:
+  e2e:testenv:network:local:
     taskfile: "./e2e/network/testenv/local/Taskfile.testenv.yml"
 
 vars:
@@ -58,40 +58,40 @@ vars:
         go_test_package: "{{.ROOT_DIR}}/tests/e2e/client"
         envs:
           kind: 
-            testenv_task: "client:testenv:kind"
+            testenv_task: "e2e:testenv:client:kind"
             go_test_config: "{{.ROOT_DIR}}/tests/e2e/client/testenv/kind/test-config.yaml"
           local:
-            testenv_task: "client:testenv:local"
+            testenv_task: "e2e:testenv:client:local"
             go_test_config: "{{.ROOT_DIR}}/tests/e2e/client/testenv/local/test-config.yaml"
 
       daemon:
         go_test_package: "{{.ROOT_DIR}}/tests/e2e/daemon"
         envs:
           default: 
-            testenv_task: "daemon:testenv:default"
+            testenv_task: "e2e:testenv:daemon:default"
             go_test_config: "{{.ROOT_DIR}}/tests/e2e/daemon/testenv/default/test-config.yaml"
           external:
-            testenv_task: "daemon:testenv:external"
+            testenv_task: "e2e:testenv:daemon:external"
             go_test_config: "{{.ROOT_DIR}}/tests/e2e/daemon/testenv/external/test-config.yaml"
 
       local:
         go_test_package: "{{.ROOT_DIR}}/tests/e2e/local"
         envs:
           kind: 
-            testenv_task: "local:testenv:kind"
+            testenv_task: "e2e:testenv:local:kind"
             go_test_config: "{{.ROOT_DIR}}/tests/e2e/local/testenv/kind/test-config.yaml"
           local:
-            testenv_task: "local:testenv:local"
+            testenv_task: "e2e:testenv:local:local"
             go_test_config: "{{.ROOT_DIR}}/tests/e2e/local/testenv/local/test-config.yaml"
 
       network:
         go_test_package: "{{.ROOT_DIR}}/tests/e2e/network"
         envs:
           kind: 
-            testenv_task: "network:testenv:kind"
+            testenv_task: "e2e:testenv:network:kind"
             go_test_config: "{{.ROOT_DIR}}/tests/e2e/network/testenv/kind/test-config.yaml"
           local:
-            testenv_task: "network:testenv:local"
+            testenv_task: "e2e:testenv:network:local"
             go_test_config: "{{.ROOT_DIR}}/tests/e2e/network/testenv/local/test-config.yaml"
 
   # Set GOCOVERDIR for supported testenv coverage collection.
@@ -101,12 +101,13 @@ vars:
 
 tasks:
   e2e:test:*:*:
-    desc: Run E2E test suite for a test environment
+    desc: Run E2E test suite for a test environment (use SKIP_TESTENV=true to skip setup/teardown)
     silent: true
     vars:
       # User input
       TEST_CASE: '{{index .MATCH 0}}'
       TEST_ENV: '{{index .MATCH 1}}'
+      SKIP_TESTENV: '{{.SKIP_TESTENV | default "false"}}'
 
       # Task vars
       SELECTED_CASE: { ref: 'get .TEST_MATRIX .TEST_CASE' }
@@ -122,9 +123,14 @@ tasks:
         echo -e "Test case: {{ toJson .SELECTED_CASE }}"
         echo -e "Test testenv: {{ toJson .SELECTED_ENV }}"
 
-      # Create testenv
-      - defer: { task: '{{ .SELECTED_ENV.testenv_task }}:down' }
-      - task: '{{ .SELECTED_ENV.testenv_task }}:up'
+      # Create testenv (if needed)
+      - defer:
+          task: e2e:testenv:down
+          vars:
+            TEST_ENV: '{{ .SELECTED_ENV.testenv_task }}'
+            SKIP_TESTENV: '{{.SKIP_TESTENV}}'
+      - if: '{{ not .SKIP_TESTENV }}'
+        task: '{{ .SELECTED_ENV.testenv_task }}:up'
 
       # Run test suite
       - |
@@ -175,6 +181,18 @@ tasks:
       - |
         echo -e "\nTo run a specific test suite, use: task e2e:test:<test_case>:<test_env>"
         echo -e "Example: task e2e:test:client:kind"
+
+  #
+  # Helper methods
+  #
+  e2e:testenv:down:
+    internal: true
+    vars:
+      TEST_ENV: '{{.TEST_ENV}}'
+      SKIP_TESTENV: '{{.SKIP_TESTENV}}'
+    if: '{{ not .SKIP_TESTENV }}'
+    cmd:
+      task: '{{ .TEST_ENV }}:down'
 
   # NOTE: this cannot be run under e2e:test task due to a transient
   # issue of either closing/stopping daemon or flushing coverage data,
