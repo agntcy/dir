@@ -178,59 +178,51 @@ tasks:
 
   release:create:api:
     desc: Prepare api module set release without root artifacts
-    deps:
-      - task: deps:multimod-bin
     vars:
       RELEASE_VERSION: "{{ .RELEASE_VERSION }}"
-      RELEASE_BRANCH: "release/api/{{.RELEASE_VERSION}}"
     cmds:
-      # Switch to new branch
-      - 'if [ "$(git rev-parse --abbrev-ref HEAD)" != "{{.RELEASE_BRANCH}}" ]; then git checkout -b {{.RELEASE_BRANCH}}; fi'
-      # Update only the api module set in versions.yaml with the new version
-      - task: release:update-module-set-version
+      - task: release:create:module-set
         vars:
           RELEASE_MODULE_SET: api
           RELEASE_VERSION: "{{.RELEASE_VERSION}}"
-      # Add release changes
-      - |
-        git add .
-        git commit -S --signoff -m "release(dir): prepare api release {{.RELEASE_VERSION}}"
-      # Verify Go release for the api module set only
-      - |
-        {{ .MULTIMOD_BIN }} verify
-        {{ .MULTIMOD_BIN }} prerelease --module-set-names api --skip-go-mod-tidy=true --commit-to-different-branch=false
-      - |
-        git commit --amend -S --signoff -m "release(dir): prepare api release {{.RELEASE_VERSION}}"
-      # Push prepared release
-      - task: release:push:branch
-        vars:
-          RELEASE_BRANCH: "{{.RELEASE_BRANCH}}"
+          RELEASE_BRANCH: "release/api/{{.RELEASE_VERSION}}"
+          RELEASE_COMMIT_SCOPE: api
 
   release:create:server:
     desc: Prepare server module set release for root artifacts
-    deps:
-      - task: deps:multimod-bin
     vars:
       RELEASE_VERSION: "{{ .RELEASE_VERSION }}"
-      RELEASE_BRANCH: "release/server/{{.RELEASE_VERSION}}"
     cmds:
-      # Switch to new branch
-      - 'if [ "$(git rev-parse --abbrev-ref HEAD)" != "{{.RELEASE_BRANCH}}" ]; then git checkout -b {{.RELEASE_BRANCH}}; fi'
-      # Update only the server module set in versions.yaml with the new version
-      - task: release:update-module-set-version
+      - task: release:create:module-set
         vars:
           RELEASE_MODULE_SET: server
           RELEASE_VERSION: "{{.RELEASE_VERSION}}"
+          RELEASE_BRANCH: "release/server/{{.RELEASE_VERSION}}"
+          RELEASE_COMMIT_SCOPE: server
+
+  release:create:module-set:
+    internal: true
+    vars:
+      RELEASE_MODULE_SET: "{{ .RELEASE_MODULE_SET }}"
+      RELEASE_VERSION: "{{ .RELEASE_VERSION }}"
+      RELEASE_BRANCH: "{{ .RELEASE_BRANCH }}"
+      RELEASE_COMMIT_SCOPE: "{{ .RELEASE_COMMIT_SCOPE }}"
+    cmds:
+      # Switch to new branch
+      - 'if [ "$(git rev-parse --abbrev-ref HEAD)" != "{{.RELEASE_BRANCH}}" ]; then git checkout -b {{.RELEASE_BRANCH}}; fi'
+      # Update only the selected module set in versions.yaml with the new version
+      - task: release:update-module-set-version
+        vars:
+          RELEASE_MODULE_SET: "{{.RELEASE_MODULE_SET}}"
+          RELEASE_VERSION: "{{.RELEASE_VERSION}}"
+      # Update existing local module dependencies in the selected module set
+      - task: release:update-module-set-go-mods
+        vars:
+          RELEASE_MODULE_SET: "{{.RELEASE_MODULE_SET}}"
       # Add release changes
       - |
         git add .
-        git commit -S --signoff -m "release(dir): prepare server release {{.RELEASE_VERSION}}"
-      # Verify Go release for the server module set only
-      - |
-        {{ .MULTIMOD_BIN }} verify
-        {{ .MULTIMOD_BIN }} prerelease --module-set-names server --skip-go-mod-tidy=true --commit-to-different-branch=false
-      - |
-        git commit --amend -S --signoff -m "release(dir): prepare server release {{.RELEASE_VERSION}}"
+        git commit -S --signoff -m "release(dir): prepare {{.RELEASE_COMMIT_SCOPE}} release {{.RELEASE_VERSION}}"
       # Push prepared release
       - task: release:push:branch
         vars:
@@ -261,6 +253,41 @@ tasks:
         RELEASE_MODULE_SET="{{.RELEASE_MODULE_SET}}" \
         RELEASE_VERSION="{{.RELEASE_VERSION}}" \
           {{.YQ_BIN}} -i '.["module-sets"][strenv(RELEASE_MODULE_SET)].version = strenv(RELEASE_VERSION)' versions.yaml
+
+  release:update-module-set-go-mods:
+    internal: true
+    deps:
+      - deps:yq
+    vars:
+      RELEASE_MODULE_SET: "{{ .RELEASE_MODULE_SET }}"
+    cmds:
+      - |
+        RELEASE_MODULE_SET="{{.RELEASE_MODULE_SET}}" \
+          {{.YQ_BIN}} -e '.["module-sets"] | has(strenv(RELEASE_MODULE_SET))' versions.yaml > /dev/null
+
+        module_dirs=$(
+          RELEASE_MODULE_SET="{{.RELEASE_MODULE_SET}}" \
+            {{.YQ_BIN}} -r '.["module-sets"][strenv(RELEASE_MODULE_SET)].modules[] | sub("^github.com/agntcy/dir/"; "")' versions.yaml
+        )
+
+        local_modules=$(
+          {{.YQ_BIN}} -r '.["module-sets"] | to_entries[] | .value.version as $version | .value.modules[] | . + " " + $version' versions.yaml
+        )
+
+        echo "$module_dirs" | while IFS= read -r module_dir; do
+          [ -n "$module_dir" ] || continue
+          [ -f "$module_dir/go.mod" ] || continue
+
+          echo "Updating local module dependencies in $module_dir/go.mod"
+
+          echo "$local_modules" | while read -r module version; do
+            if awk -v module="$module" '$1 == module || ($1 == "require" && $2 == module) { found = 1 } END { exit !found }' "$module_dir/go.mod"; then
+              go -C "$module_dir" mod edit -require="${module}@${version}"
+            fi
+          done
+
+          go -C "$module_dir" mod tidy -go={{.GO_VERSION}}
+        done
 
   release:push:
     internal: true
