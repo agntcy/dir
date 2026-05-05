@@ -188,7 +188,7 @@ require (
 	github.com/didip/tollbooth/v7 v7.0.2 // indirect
 	github.com/digitorus/pkcs7 v0.0.0-20250730155240-ffadbf3f398c // indirect
 	github.com/digitorus/timestamp v0.0.0-20250524132541-c45532741eea // indirect
-	github.com/distribution/distribution/v3 v3.1.0 // indirect
+	github.com/distribution/distribution/v3 v3.1.1 // indirect
 	github.com/distribution/reference v0.6.0 // indirect
 	github.com/dlclark/regexp2 v1.11.2 // indirect
 	github.com/docker/cli v29.4.1+incompatible // indirect
