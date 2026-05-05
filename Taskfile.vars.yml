@@ -57,6 +57,9 @@ vars:
   GO_VERSION: "1.26.2"
   MULTIMOD_VERSION: "0.29.0"
   MULTIMOD_BIN: "{{ .BIN_DIR }}/multimod-{{.MULTIMOD_VERSION}}"
+  # renovate: datasource=go depName=github.com/mikefarah/yq/v4 versioning=semver
+  YQ_VERSION: "4.53.2"
+  YQ_BIN: "{{ .BIN_DIR }}/yq-{{.YQ_VERSION}}"
   GOLANGCI_LINT_VERSION: "2.11.3"
   GOLANGCI_LINT_BIN: "{{ .BIN_DIR }}/golangci-lint-{{.GOLANGCI_LINT_VERSION}}"
   LICENSEI_VERSION: "0.9.0"

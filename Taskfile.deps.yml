@@ -26,6 +26,7 @@ tasks:
       - task: deps:golangci-lint
       - task: deps:licensei
       - task: deps:multimod-bin
+      - task: deps:yq
       - task: deps:pre-commit
       - task: deps:cleanup
 
@@ -59,6 +60,7 @@ tasks:
       {{.PROTOC_BIN}}
       {{.BUFBUILD_BIN}}
       {{.MULTIMOD_BIN}}
+      {{.YQ_BIN}}
       {{.GOLANGCI_LINT_BIN}}
       {{.LICENSEI_BIN}}
       {{.UV_BIN}}
@@ -211,6 +213,20 @@ tasks:
       - rm -rf {{.MULTIMOD_REPO_DIR}}
     status:
       - test -x {{.MULTIMOD_BIN}}
+
+  deps:yq:
+    desc: Install yq
+    internal: true
+    deps:
+      - deps:bin-dir
+    preconditions:
+      - which go
+    cmds:
+      - GOBIN={{.BIN_DIR}} go install github.com/mikefarah/yq/v4@v{{.YQ_VERSION}}
+      - mv {{.BIN_DIR}}/yq {{.YQ_BIN}}
+      - chmod +x {{.YQ_BIN}}
+    status:
+      - test -x {{.YQ_BIN}}
 
   deps:uv:
     desc: Install uv

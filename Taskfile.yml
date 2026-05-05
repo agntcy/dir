@@ -187,22 +187,10 @@ tasks:
       # Switch to new branch
       - 'if [ "$(git rev-parse --abbrev-ref HEAD)" != "{{.RELEASE_BRANCH}}" ]; then git checkout -b {{.RELEASE_BRANCH}}; fi'
       # Update only the api module set in versions.yaml with the new version
-      - |
-        awk -v module_set="api" -v version="{{.RELEASE_VERSION}}" '
-          /^  [A-Za-z0-9_-]+:/ { in_module_set = ($1 == module_set ":") }
-          in_module_set && /^[[:space:]]+version:/ {
-            sub(/version: .*/, "version: " version)
-            updated = 1
-          }
-          { print }
-          END {
-            if (!updated) {
-              printf("module set %s not found in versions.yaml\n", module_set) > "/dev/stderr"
-              exit 1
-            }
-          }
-        ' versions.yaml > versions.yaml.tmp
-      - "mv versions.yaml.tmp versions.yaml"
+      - task: release:update-module-set-version
+        vars:
+          RELEASE_MODULE_SET: api
+          RELEASE_VERSION: "{{.RELEASE_VERSION}}"
       # Add release changes
       - |
         git add .
@@ -229,22 +217,10 @@ tasks:
       # Switch to new branch
       - 'if [ "$(git rev-parse --abbrev-ref HEAD)" != "{{.RELEASE_BRANCH}}" ]; then git checkout -b {{.RELEASE_BRANCH}}; fi'
       # Update only the server module set in versions.yaml with the new version
-      - |
-        awk -v module_set="server" -v version="{{.RELEASE_VERSION}}" '
-          /^  [A-Za-z0-9_-]+:/ { in_module_set = ($1 == module_set ":") }
-          in_module_set && /^[[:space:]]+version:/ {
-            sub(/version: .*/, "version: " version)
-            updated = 1
-          }
-          { print }
-          END {
-            if (!updated) {
-              printf("module set %s not found in versions.yaml\n", module_set) > "/dev/stderr"
-              exit 1
-            }
-          }
-        ' versions.yaml > versions.yaml.tmp
-      - "mv versions.yaml.tmp versions.yaml"
+      - task: release:update-module-set-version
+        vars:
+          RELEASE_MODULE_SET: server
+          RELEASE_VERSION: "{{.RELEASE_VERSION}}"
       # Add release changes
       - |
         git add .
@@ -269,6 +245,22 @@ tasks:
     cmds:
       - |
         git push --set-upstream origin {{.RELEASE_BRANCH}} || true
+
+  release:update-module-set-version:
+    internal: true
+    deps:
+      - deps:yq
+    vars:
+      RELEASE_MODULE_SET: "{{ .RELEASE_MODULE_SET }}"
+      RELEASE_VERSION: "{{ .RELEASE_VERSION }}"
+    cmds:
+      - |
+        RELEASE_MODULE_SET="{{.RELEASE_MODULE_SET}}" \
+          {{.YQ_BIN}} -e '.["module-sets"] | has(strenv(RELEASE_MODULE_SET))' versions.yaml > /dev/null
+      - |
+        RELEASE_MODULE_SET="{{.RELEASE_MODULE_SET}}" \
+        RELEASE_VERSION="{{.RELEASE_VERSION}}" \
+          {{.YQ_BIN}} -i '.["module-sets"][strenv(RELEASE_MODULE_SET)].version = strenv(RELEASE_VERSION)' versions.yaml
 
   release:push:
     internal: true
