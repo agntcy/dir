@@ -154,7 +154,7 @@ require (
 	github.com/dchest/siphash v1.2.3 // indirect
 	github.com/dgryski/go-rendezvous v0.0.0-20200823014737-9f7001d12a5f // indirect
 	github.com/didip/tollbooth/v7 v7.0.2 // indirect
-	github.com/distribution/distribution/v3 v3.1.0 // indirect
+	github.com/distribution/distribution/v3 v3.1.1 // indirect
 	github.com/dlclark/regexp2 v1.11.2 // indirect
 	github.com/docker/docker v28.5.2+incompatible // indirect
 	github.com/docker/go-metrics v0.0.1 // indirect
