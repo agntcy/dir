@@ -38,7 +38,7 @@ tasks:
     cmds:
       # Destroy nodes
       - for: { var: NETWORK_LOCAL_E2E_DIRCTL_NODES }
-        task: setup-dir-node:up
+        task: setup-dir-node:down
         vars:
           DIRCTL_CONFIG_PATH: "{{.ITEM}}"
           DIRCTL_DATA_PATH: "{{.NETWORK_LOCAL_E2E_DIRCTL_BASE_DATA_PATH}}/{{.KEY}}"
