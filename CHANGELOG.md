@@ -5,6 +5,40 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v1.3.0] - 2026-05-05
+
+### Added
+- **CLI**: Export command with A2A, Agent Skill, MCP GitHub Copilot, and batch export formats (#1319, #1327, #1330, #1338)
+- **Client/CLI**: Auto-refresh and per-issuer caching for OIDC credentials (#1328, #1400)
+- **Dirctl/Daemon**: Embedded Zot and regsync support in daemon mode (#1422, #1429)
+- **Reconciler**: Sync from public OCI registries without credential negotiation (#1375)
+- **Importer**: Dedup checker support for all supported types (#1331)
+- **Dir/Helm**: Dedicated Envoy timeout handling for EventService/Listen and testbed bootstrap defaults (#1334, #1387)
+- **API**: Runtime `DiscoveryService` and Workload API (#1444)
+
+### Changed
+- **Release**: Split API and server release flows and tag only server modules with root artifacts (#1447, #1446)
+- **Dir**: Migrate SDKs, GUI, importer, MCP package, and runtime module out of this repository (#1323, #1403, #1401, #1406, #1416)
+- **Dir**: Remove stale documentation, tasks, references, and unused variables (#1417, #1427)
+- **API**: Inject validator instances and deprecate global validator initialization (#1421)
+- **Reconciler**: Use forked process execution for regsync (#1428)
+- **Dir/Helm**: Decouple OIDC gateway and replace local Envoy authz dependency with the OIDC gateway OCI chart (#1373, #1378, #1384)
+- **Server**: Use BusyBox for coverage and reconciler images (#1367, #1315)
+- **Workflows**: Remove server build steps from reusable release workflow and SDK-specific Renovate sync steps (#1322, #1329)
+- **Dependencies**: Update Go patches, Kubernetes, Helm releases, PostgreSQL, Zot, GitHub Actions, and other module dependencies (#1344, #1345, #1346, #1370, #1391, #1392, #1393, #1412, #1413, #1414, #1415, #1439, #1440, #1441, #1460)
+
+### Fixed
+- **CI**: Update to v1.2.0, unify `dirctl` paths, enable hidden paths, fix brew path, and remove multimod verify (#1192, #1314, #1434, #1450)
+- **CLI**: Expired OIDC token error message and stale auth command help text (#1325, #1324)
+- **Dirctl**: Add insecure setting to daemon default configuration (#1432)
+- **E2E**: Flaky tests and export batch test placement (#1311, #1395)
+- **Workflow**: Update import command to use MCP registry type (#1335)
+- **Importer**: Configuration file handling (#1380)
+- **Dir**: Renovate errors and linter issues (#1337, #1459)
+
+### Security
+- **Dependencies**: Security updates for `go-git`, `azure/go-ntlmssp`, and `distribution/distribution` (#1431, #1430, #1454)
+
 ## [v1.2.0] - 2026-04-13
 
 ### Added
