@@ -29,9 +29,9 @@ tasks:
     vars:
       COMPOSE_PATH: "{{.ROOT_DIR}}/tests/e2e/daemon/testenv/external/docker-compose.yaml"
     cmds:
-      # Stop the Docker Compose services
-      - |
-        docker compose -f {{.COMPOSE_PATH}} down
-
       # Stop the directory node
       - task: setup-dir-node:down
+
+      # Stop Docker Compose services
+      - |
+        docker compose -f {{.COMPOSE_PATH}} down

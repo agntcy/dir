@@ -55,7 +55,12 @@ tasks:
       DIRCTL_DATA_PATH: '{{ .DIRCTL_DATA_PATH }}'
       DIRCTL_CONFIG_PATH: '{{ .DIRCTL_CONFIG_PATH }}'
     cmds:
+      # Stop daemon
       - |
           {{ .DIRCTL_BIN }} daemon stop \
           --config {{ .DIRCTL_CONFIG_PATH }} \
           --data-dir {{ .DIRCTL_DATA_PATH }}
+
+      # Cleanup data directory
+      - |
+          rm -rf {{ .DIRCTL_DATA_PATH }}

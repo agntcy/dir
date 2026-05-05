@@ -1,5 +1,5 @@
 server:
-  listen_address: "localhost:18331"
+  listen_address: "localhost:18330"
   metrics:
     enabled: false
   oasf_api_validation:
@@ -8,7 +8,7 @@ server:
     provider: "oci"
     oci:
       local_dir: "store"
-      registry_address: "localhost:13002"
+      registry_address: "localhost:13001"
       repository_name: "dir"
       auth_config:
         insecure: true
@@ -18,8 +18,8 @@ server:
     listen_address: "/ip4/127.0.0.1/tcp/0"
     refresh_interval: "1s"
     bootstrap_peers:
-    - "/ip4/127.0.0.1/tcp/18300/p2p/12D3KooWPShmqZQ1a69AT2bEi1zxTh7c8a7dD5rN4HDAFYJ5HCe9"
-    directory_api_address: "localhost:18331"
+    - "/ip4/127.0.0.1/tcp/18300/p2p/${BOOTSTRAP_PEER_ID}"
+    directory_api_address: "localhost:18330"
   database:
     type: "sqlite"
     sqlite:
@@ -33,7 +33,7 @@ server:
 
 reconciler:
   local_registry:
-    registry_address: "localhost:13002"
+    registry_address: "localhost:13001"
     repository_name: "dir"
     auth_config:
       insecure: true

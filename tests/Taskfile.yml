@@ -129,7 +129,7 @@ tasks:
           vars:
             TEST_ENV: '{{ .SELECTED_ENV.testenv_task }}'
             SKIP_TESTENV: '{{.SKIP_TESTENV}}'
-      - if: '{{ not .SKIP_TESTENV }}'
+      - if: '{{ eq .SKIP_TESTENV "false" }}'
         task: '{{ .SELECTED_ENV.testenv_task }}:up'
 
       # Run test suite
@@ -190,7 +190,7 @@ tasks:
     vars:
       TEST_ENV: '{{.TEST_ENV}}'
       SKIP_TESTENV: '{{.SKIP_TESTENV}}'
-    if: '{{ not .SKIP_TESTENV }}'
+    if: '{{ eq .SKIP_TESTENV "false" }}'
     cmd:
       task: '{{ .TEST_ENV }}:down'
 
