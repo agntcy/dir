@@ -9,7 +9,7 @@ module-sets:
       - github.com/agntcy/dir/client
       - github.com/agntcy/dir/utils
   server:
-    version: v1.2.0
+    version: v1.3.0
     modules:
       - github.com/agntcy/dir/cli
       - github.com/agntcy/dir/tests
