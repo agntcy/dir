@@ -8,11 +8,9 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"sync"
 	"time"
 
 	"github.com/agntcy/oasf-sdk/pkg/decoder"
-	"github.com/agntcy/oasf-sdk/pkg/validator"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/structpb"
 )
@@ -39,54 +37,6 @@ type Validator interface {
 	// It returns whether the record is valid, a slice of error messages, a slice of
 	// warning messages, and any transport/server error encountered while validating.
 	ValidateRecord(ctx context.Context, data *structpb.Struct) (valid bool, errors []string, warnings []string, err error)
-}
-
-// defaultValidator is the package-level fallback used by the deprecated
-// (*Record).Validate(ctx) method. It is set by InitializeValidator and is
-// intentionally retained only to preserve backward compatibility with
-// already-published consumers (notably github.com/agntcy/dir-mcp v1.0.0).
-//
-// Deprecated: prefer constructing a Validator at the composition root and
-// calling (*Record).ValidateWith. defaultValidator and the related globals
-// will be removed in a future major version of this module (see issue
-// https://github.com/agntcy/dir/issues/856).
-var (
-	defaultValidator Validator
-	defaultValidMu   sync.RWMutex
-)
-
-// InitializeValidator configures the package-level default OASF validator
-// used by the deprecated (*Record).Validate(ctx) method.
-//
-// Deprecated: this function exists solely for backward compatibility with
-// already-published consumers (notably github.com/agntcy/dir-mcp v1.0.0).
-// New code MUST NOT depend on it. Construct a *validator.Validator (or any
-// type that implements Validator) at process startup and pass it to
-// (*Record).ValidateWith. See https://github.com/agntcy/dir/issues/856.
-func InitializeValidator(schemaURL string) error {
-	if schemaURL == "" {
-		return errors.New("schemaURL is required for OASF validation")
-	}
-
-	v, err := validator.New(schemaURL)
-	if err != nil {
-		return fmt.Errorf("failed to initialize OASF validator: %w", err)
-	}
-
-	defaultValidMu.Lock()
-	defaultValidator = v
-	defaultValidMu.Unlock()
-
-	return nil
-}
-
-// getDefaultValidator returns the validator configured via InitializeValidator,
-// or nil if it has not been configured.
-func getDefaultValidator() Validator {
-	defaultValidMu.RLock()
-	defer defaultValidMu.RUnlock()
-
-	return defaultValidator
 }
 
 // GetName extracts the top-level "name" field from the record's data.
@@ -207,30 +157,11 @@ func (r *Record) Decode() (DecodedRecord, error) {
 	}, nil
 }
 
-// Validate validates the Record using the package-level default validator
-// configured via InitializeValidator.
-//
-// Deprecated: this method depends on global state and exists solely to
-// preserve backward compatibility with already-published consumers
-// (notably github.com/agntcy/dir-mcp v1.0.0). New code MUST use
-// (*Record).ValidateWith and pass an explicit Validator constructed at the
-// composition root. This method will be removed in a future major version
-// of this module. See https://github.com/agntcy/dir/issues/856.
-func (r *Record) Validate(ctx context.Context) (bool, []string, error) {
-	v := getDefaultValidator()
-	if v == nil {
-		return false, []string{"OASF validator is not initialized; call corev1.InitializeValidator or use Record.ValidateWith"}, nil
-	}
-
-	return r.ValidateWith(ctx, v)
-}
-
 // ValidateWith validates the Record's data using the supplied Validator.
 //
-// This is the preferred entry point for record validation: callers
-// construct a concrete validator at the composition root and inject it
-// here, avoiding any reliance on package-level globals or initialization
-// order. See https://github.com/agntcy/dir/issues/856.
+// Callers construct a concrete validator at the composition root and pass
+// it here, avoiding any reliance on package-level globals or initialization
+// order.
 func (r *Record) ValidateWith(ctx context.Context, v Validator) (bool, []string, error) {
 	if r == nil || r.GetData() == nil {
 		return false, []string{"record is nil"}, nil

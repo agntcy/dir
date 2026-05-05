@@ -17,8 +17,8 @@ import (
 )
 
 // fakeValidator is a controllable corev1.Validator used to unit-test
-// (*Record).ValidateWith (and its deprecated Validate wrapper) without
-// requiring network access to a live OASF schema server.
+// (*Record).ValidateWith without requiring network access to a live OASF
+// schema server.
 type fakeValidator struct {
 	valid    bool
 	errors   []string
@@ -322,45 +322,6 @@ func TestRecord_ValidateWith_RecordSize(t *testing.T) {
 			assert.Equal(t, []string{tt.wantMsg}, msgs)
 		})
 	}
-}
-
-// TestRecord_Validate_BackwardCompat exercises the deprecated (*Record).Validate(ctx)
-// path so we don't accidentally break already-published consumers (notably
-// github.com/agntcy/dir-mcp v1.0.0). The path is documented as relying on
-// InitializeValidator and is preserved only for backward compatibility; new code must
-// use ValidateWith. See https://github.com/agntcy/dir/issues/856.
-func TestRecord_Validate_BackwardCompat(t *testing.T) {
-	record := corev1.New(&oasfv1alpha1.Record{
-		Name:          "test-agent",
-		SchemaVersion: "0.7.0",
-	})
-
-	t.Run("returns diagnostic when default validator not initialized", func(t *testing.T) {
-		// Use a separate package-level fixture so we don't race with other tests
-		// that may legitimately call InitializeValidator. We reset via the public
-		// API by initializing with a known-good URL after the assertion.
-		corev1.ResetDefaultValidatorForTest(t)
-
-		ok, msgs, err := record.Validate(context.Background()) //nolint:staticcheck // exercising deprecated API on purpose
-
-		require.NoError(t, err)
-		assert.False(t, ok)
-		require.Len(t, msgs, 1)
-		assert.Contains(t, msgs[0], "OASF validator is not initialized")
-	})
-
-	t.Run("delegates to default validator after InitializeValidator", func(t *testing.T) {
-		// The deprecated path requires a non-empty schema URL. We don't actually
-		// hit the network because the underlying validator only constructs a
-		// client; validation calls would, but here we just confirm the wiring.
-		err := corev1.InitializeValidator("https://schema.oasf.outshift.com") //nolint:staticcheck // exercising deprecated API on purpose
-		require.NoError(t, err)
-
-		assert.NotPanics(t, func() {
-			//nolint:staticcheck // exercising deprecated API on purpose
-			_, _, _ = record.Validate(context.Background())
-		})
-	})
 }
 
 func TestRecord_Decode(t *testing.T) {
