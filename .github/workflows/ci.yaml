@@ -168,7 +168,6 @@ jobs:
     with:
       image_repo: ghcr.io/agntcy
       image_tag: ${{ github.sha }}
-      build_coverage_images: true
 
   # This build pushes a "latest" tag to the repo so that we can later do
   # security posture analysis and post-check tests in other workflows.
@@ -209,33 +208,16 @@ jobs:
   cross-platform:
     name: Cross-Platform Test
     needs:
-      - lint
-      - license
-      - verify
+      - build
     uses: ./.github/workflows/reusable-test-e2e-cross-platform.yaml
 
-  upload-codecov:
-    name: Upload all coverage artifacts to Codecov
-    needs: [test]
+  coverage:
+    name: Coverage
+    needs: [ test ]
     runs-on: ubuntu-latest
     permissions:
       contents: read
       id-token: write
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - artifact_name: coverage-unit
-            codecov_flag: unit
-          - artifact_name: coverage-e2e-Local
-            codecov_flag: e2e-Local
-          - artifact_name: coverage-e2e-Network
-            codecov_flag: e2e-Network
-          # NOTE: Currently MCP and Federation coverage is excluded within Upload E2E coverage artifact job
-          # - artifact_name: coverage-e2e-MCP
-          #   codecov_flag: e2e-MCP
-          # - artifact_name: coverage-e2e-Federation
-          #   codecov_flag: e2e-Federation
     steps:
       - name: Checkout code
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
@@ -245,15 +227,15 @@ jobs:
       - name: Download coverage artifact
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
-          name: ${{ matrix.artifact_name }}
           path: .coverage
+          pattern: "coverage-*"
+          merge-multiple: true
 
       - name: Upload to Codecov
         uses: codecov/codecov-action@57e3a136b779b570ffcdbf80b3bdc90e7fab3de2 # v6.0.0
         with:
           codecov_yml_path: codecov.yml
-          files: "**/*.out"
-          flags: ${{ matrix.codecov_flag }}
+          files: ".coverage/**/*.out"
           verbose: true
           use_oidc: true
 
@@ -292,7 +274,7 @@ jobs:
     needs:
       - changes
       - test
-      - upload-codecov
+      - coverage
       - release
       - cross-platform
     runs-on: ubuntu-latest

@@ -1,0 +1,11 @@
+network:
+  peer1_server_address: "localhost:9901"
+  peer1_internal_server_address: "dir-apiserver.peer1.svc.cluster.local:8888"
+  peer1_cli_extra_args:
+    - "--server-addr=localhost:9901"
+  peer2_server_address: "localhost:9902"
+  peer2_cli_extra_args:
+    - "--server-addr=localhost:9902"
+  peer3_server_address: "localhost:9903"
+  peer3_cli_extra_args:
+    - "--server-addr=localhost:9903"

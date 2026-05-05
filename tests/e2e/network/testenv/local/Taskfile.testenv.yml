@@ -1,0 +1,57 @@
+# Copyright AGNTCY Contributors (https://github.com/agntcy)
+# SPDX-License-Identifier: Apache-2.0
+
+# yaml-language-server: $schema=https://taskfile.dev/schema.json
+version: "3"
+
+includes:
+  setup-dir-node:
+    taskfile: "../../../../../tests/modules/Taskfile.setup-dir-node.yml"
+    internal: true # Import tasks without exposing
+
+vars:
+  NETWORK_LOCAL_E2E_DIRCTL_BASE_DATA_PATH: "/tmp/e2e-network-local-testenv"
+  NETWORK_LOCAL_E2E_DIRCTL_BASE_LOGFILE_PATH:  "{{.ROOT_DIR}}/tests/e2e/network/testenv/local/logs"
+  NETWORK_LOCAL_E2E_DIRCTL_NODES:
+    map:
+      bootstrap: "{{.ROOT_DIR}}/tests/e2e/network/testenv/local/daemon-bootstrap-config.tpl.yaml"
+      peer1: "{{.ROOT_DIR}}/tests/e2e/network/testenv/local/daemon-peer1-config.tpl.yaml"
+      peer2: "{{.ROOT_DIR}}/tests/e2e/network/testenv/local/daemon-peer2-config.tpl.yaml"
+      peer3: "{{.ROOT_DIR}}/tests/e2e/network/testenv/local/daemon-peer3-config.tpl.yaml"
+
+tasks:
+  up:
+    vars:
+      BOOTSTRAP_KEY_PATH: "/tmp/e2e-network-local-bootstrap.key"
+      BOOTSTRAP_PEER_ID:
+        sh: '{{.DIRCTL_BIN}} network init --output "{{.BOOTSTRAP_KEY_PATH}}"'
+    cmds:
+      # Prepare directories for logs and data
+      - |
+        mkdir -p {{.NETWORK_LOCAL_E2E_DIRCTL_BASE_DATA_PATH}}
+        mkdir -p {{.NETWORK_LOCAL_E2E_DIRCTL_BASE_LOGFILE_PATH}}
+
+      # Create config files from templates   
+      - for: { var: NETWORK_LOCAL_E2E_DIRCTL_NODES }
+        cmd: |
+          BOOTSTRAP_KEY_PATH="{{.BOOTSTRAP_KEY_PATH}}" \
+          BOOTSTRAP_PEER_ID="{{.BOOTSTRAP_PEER_ID}}" \
+          envsubst < {{.ITEM}} > {{.NETWORK_LOCAL_E2E_DIRCTL_BASE_DATA_PATH}}/{{.KEY}}.config.yaml
+
+      # Deploy nodes
+      - for: { var: NETWORK_LOCAL_E2E_DIRCTL_NODES }
+        task: setup-dir-node:up
+        vars:
+          DIRCTL_CONFIG_PATH: "{{.NETWORK_LOCAL_E2E_DIRCTL_BASE_DATA_PATH}}/{{.KEY}}.config.yaml"
+          DIRCTL_DATA_PATH: "{{.NETWORK_LOCAL_E2E_DIRCTL_BASE_DATA_PATH}}/{{.KEY}}"
+          DIRCTL_LOGFILE_PATH: "{{.NETWORK_LOCAL_E2E_DIRCTL_BASE_LOGFILE_PATH}}/{{.KEY}}.log"
+
+  down:
+    cmds:
+      # Destroy nodes
+      - for: { var: NETWORK_LOCAL_E2E_DIRCTL_NODES }
+        task: setup-dir-node:down
+        vars:
+          DIRCTL_CONFIG_PATH: "{{.NETWORK_LOCAL_E2E_DIRCTL_BASE_DATA_PATH}}/{{.KEY}}.config.yaml"
+          DIRCTL_DATA_PATH: "{{.NETWORK_LOCAL_E2E_DIRCTL_BASE_DATA_PATH}}/{{.KEY}}"
+          DIRCTL_LOGFILE_PATH: "{{.NETWORK_LOCAL_E2E_DIRCTL_BASE_LOGFILE_PATH}}/{{.KEY}}.log"

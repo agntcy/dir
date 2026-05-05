@@ -18,14 +18,12 @@ var (
 )
 
 // This ensures clean state between different test files (Describe blocks).
-func CleanupNetworkRecords(cids []string, testName string) {
+func CleanupNetworkRecords(cids []string, testName string, peers []*utils.CLI) {
 	if len(cids) == 0 {
 		ginkgo.GinkgoWriter.Printf("No CIDs to clean up for %s", testName)
 
 		return
 	}
-
-	cleanupCLI := utils.NewCLI()
 
 	ginkgo.GinkgoWriter.Printf("Cleaning up %d test records from %s", len(cids), testName)
 
@@ -35,20 +33,14 @@ func CleanupNetworkRecords(cids []string, testName string) {
 		}
 
 		// Clean up from each peer to ensure complete isolation
-		for _, peerAddr := range utils.PeerAddrs {
-			ginkgo.GinkgoWriter.Printf("  Cleaning CID %s from peer %s", cid, peerAddr)
+		for peerID, peer := range peers {
+			ginkgo.GinkgoWriter.Printf("  Cleaning CID %s from peer %d", cid, peerID+1)
 
 			// Try to unpublish from routing (may fail if not published, which is okay)
-			_, err := cleanupCLI.Routing().Unpublish(cid).OnServer(peerAddr).Execute()
-			if err != nil {
-				ginkgo.GinkgoWriter.Printf("    Unpublish warning: %v (may not have been published)", err)
-			}
+			_, _ = peer.Routing().Unpublish(cid).SuppressStderr().Execute()
 
 			// Try to delete from storage (may fail if not stored, which is okay)
-			_, err = cleanupCLI.Delete(cid).OnServer(peerAddr).Execute()
-			if err != nil {
-				ginkgo.GinkgoWriter.Printf("    Delete warning: %v (may not have been stored)", err)
-			}
+			_, _ = peer.Delete(cid).SuppressStderr().Execute()
 		}
 	}
 
@@ -74,7 +66,7 @@ func RegisterCIDForCleanup(cid, testFile string) {
 }
 
 // CleanupAllNetworkTests removes all CIDs from all test files (used by AfterSuite).
-func CleanupAllNetworkTests() {
+func CleanupAllNetworkTests(peers []*utils.CLI) {
 	allCIDs := []string{}
 	allCIDs = append(allCIDs, deployTestCIDs...)
 	allCIDs = append(allCIDs, syncTestCIDs...)
@@ -82,5 +74,5 @@ func CleanupAllNetworkTests() {
 	allCIDs = append(allCIDs, gossipsubTestCIDs...)
 	allCIDs = append(allCIDs, nameResolutionTestCIDs...)
 
-	CleanupNetworkRecords(allCIDs, "all network tests")
+	CleanupNetworkRecords(allCIDs, "all network tests", peers)
 }

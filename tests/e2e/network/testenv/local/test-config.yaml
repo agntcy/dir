@@ -1,0 +1,11 @@
+network:
+  peer1_server_address: "localhost:18330"
+  peer1_internal_server_address: "localhost:18330"
+  peer1_cli_extra_args:
+    - "--server-addr=localhost:18330"
+  peer2_server_address: "localhost:18331"
+  peer2_cli_extra_args:
+    - "--server-addr=localhost:18331"
+  peer3_server_address: "localhost:18332"
+  peer3_cli_extra_args:
+    - "--server-addr=localhost:18332"

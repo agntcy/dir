@@ -1,0 +1,37 @@
+# Copyright AGNTCY Contributors (https://github.com/agntcy)
+# SPDX-License-Identifier: Apache-2.0
+
+version: "3"
+
+includes:
+  setup-dir-node:
+    taskfile: "../../../../../tests/modules/Taskfile.setup-dir-node.yml"
+    internal: true # Import tasks without exposing
+    vars:
+      DIRCTL_DATA_PATH: "/tmp/e2e-daemon-external-testenv"
+      DIRCTL_CONFIG_PATH: "{{.ROOT_DIR}}/tests/e2e/daemon/testenv/external/dir-daemon-config.yaml"
+      DIRCTL_LOGFILE_PATH:  "{{.ROOT_DIR}}/tests/e2e/daemon/testenv/external/logs.daemon.log"
+
+tasks:
+  up:
+    vars:
+      COMPOSE_PATH: "{{.ROOT_DIR}}/tests/e2e/daemon/testenv/external/docker-compose.yaml"
+    cmds:
+      # Start the Docker Compose services
+      - |
+        docker compose -f {{.COMPOSE_PATH}} up --wait -d
+        sleep 10
+      
+      # Start the directory node
+      - task: setup-dir-node:up
+
+  down:
+    vars:
+      COMPOSE_PATH: "{{.ROOT_DIR}}/tests/e2e/daemon/testenv/external/docker-compose.yaml"
+    cmds:
+      # Stop the directory node
+      - task: setup-dir-node:down
+
+      # Stop Docker Compose services
+      - |
+        docker compose -f {{.COMPOSE_PATH}} down

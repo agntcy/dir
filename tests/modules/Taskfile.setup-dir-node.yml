@@ -1,0 +1,66 @@
+# Copyright AGNTCY Contributors (https://github.com/agntcy)
+# SPDX-License-Identifier: Apache-2.0
+
+version: "3"
+
+#
+# setup-dir-node - A reusable Taskfile for setting up a local Directory daemon node.
+# Defines reusable public "up" and "down" tasks to manage the lifecycle of a local
+# Directory daemon node.
+#
+# vars:
+#   DIRCTL_BIN: Path to the dirctl binary (default: "dirctl")
+#   DIRCTL_DATA_PATH: Path to the data directory for the Directory daemon (required)
+#   DIRCTL_CONFIG_PATH: Path to the configuration file for the Directory daemon (required)
+#   DIRCTL_LOGFILE_PATH: (Optional) Path to a log file for the Directory daemon output (default: logs to stdout)
+#   GOCOVERDIR: (Optional) If set, this environment variable will be passed to the daemon process
+#               to enable Go test coverage collection.
+#
+
+tasks:
+  up:
+    desc: Start a local Directory daemon node
+    vars:
+      DIRCTL_BIN: '{{ .DIRCTL_BIN | default "dirctl" }}'
+      DIRCTL_DATA_PATH: '{{ .DIRCTL_DATA_PATH }}'
+      DIRCTL_CONFIG_PATH: '{{ .DIRCTL_CONFIG_PATH }}'
+      DIRCTL_LOGFILE_PATH: '{{ .DIRCTL_LOGFILE_PATH | default "" }}'
+
+      # If GOCOVERDIR is set, ensure it's passed to the daemon process to
+      # enable coverage collection.
+      GOCOVERDIR: '{{ .GOCOVERDIR | default "" }}'
+    env:
+      GOCOVERDIR: '{{ .GOCOVERDIR }}'
+    cmds:
+      - |
+          # Ensure the coverage directory exists
+          {{ if .GOCOVERDIR }}mkdir -p {{ .GOCOVERDIR }}{{end}}
+
+          # Ensure the data directory exists
+          mkdir -p {{ .DIRCTL_DATA_PATH }}
+
+          # Start the Directory daemon in the background
+          {{ .DIRCTL_BIN }} daemon start \
+          --config {{ .DIRCTL_CONFIG_PATH }} \
+          --data-dir {{ .DIRCTL_DATA_PATH }} \
+          {{ if .DIRCTL_LOGFILE_PATH }}>{{.DIRCTL_LOGFILE_PATH}}{{else}}>/dev/null{{end}} 2>&1 &
+
+          # Give some time for the daemon to start
+          sleep 5
+
+  down:
+    desc: Stop a local Directory daemon node
+    vars:
+      DIRCTL_BIN: '{{ .DIRCTL_BIN | default "dirctl" }}'
+      DIRCTL_DATA_PATH: '{{ .DIRCTL_DATA_PATH }}'
+      DIRCTL_CONFIG_PATH: '{{ .DIRCTL_CONFIG_PATH }}'
+    cmds:
+      # Stop daemon
+      - |
+          {{ .DIRCTL_BIN }} daemon stop \
+          --config {{ .DIRCTL_CONFIG_PATH }} \
+          --data-dir {{ .DIRCTL_DATA_PATH }}
+
+      # Cleanup data directory
+      - |
+          rm -rf {{ .DIRCTL_DATA_PATH }}

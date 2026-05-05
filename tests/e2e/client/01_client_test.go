@@ -10,77 +10,13 @@ import (
 
 	corev1 "github.com/agntcy/dir/api/core/v1"
 	routingv1 "github.com/agntcy/dir/api/routing/v1"
-	"github.com/agntcy/dir/client"
-	"github.com/agntcy/dir/tests/e2e/shared/config"
 	"github.com/agntcy/dir/tests/e2e/shared/testdata"
 	"github.com/agntcy/dir/tests/e2e/shared/utils"
 	"github.com/onsi/ginkgo/v2"
 	"github.com/onsi/gomega"
 )
 
-// convertLabelsToRecordQueries converts legacy label format to RecordQuery format for e2e tests.
-func convertLabelsToClientRecordQueries(labels []string) []*routingv1.RecordQuery {
-	var queries []*routingv1.RecordQuery
-
-	for _, label := range labels {
-		switch {
-		case strings.HasPrefix(label, "/skills/"):
-			skillName := strings.TrimPrefix(label, "/skills/")
-			queries = append(queries, &routingv1.RecordQuery{
-				Type:  routingv1.RecordQueryType_RECORD_QUERY_TYPE_SKILL,
-				Value: skillName,
-			})
-		case strings.HasPrefix(label, "/domains/"):
-			domainName := strings.TrimPrefix(label, "/domains/")
-			_ = domainName
-			// Note: domains might need to be mapped to locator or handled differently
-			// For now, skip domains as they're not in the current RecordQueryType
-		case strings.HasPrefix(label, "/modules/"):
-			moduleName := strings.TrimPrefix(label, "/modules/")
-			queries = append(queries, &routingv1.RecordQuery{
-				Type:  routingv1.RecordQueryType_RECORD_QUERY_TYPE_MODULE,
-				Value: moduleName,
-			})
-		case strings.HasPrefix(label, "/locators/"):
-			locatorType := strings.TrimPrefix(label, "/locators/")
-			queries = append(queries, &routingv1.RecordQuery{
-				Type:  routingv1.RecordQueryType_RECORD_QUERY_TYPE_LOCATOR,
-				Value: locatorType,
-			})
-		}
-	}
-
-	return queries
-}
-
-var _ = ginkgo.Describe("Running client end-to-end tests using a local single node deployment", ginkgo.Ordered, ginkgo.Serial, func() {
-	ginkgo.BeforeEach(func() {
-		if cfg.DeploymentMode != config.DeploymentModeLocal {
-			ginkgo.Skip("Skipping test, not in local mode")
-		}
-	})
-
-	var (
-		c   *client.Client
-		ctx context.Context
-	)
-
-	ginkgo.BeforeAll(func() {
-		ctx = context.Background()
-
-		// Create a new client
-		var err error
-
-		c, err = client.New(ctx, client.WithEnvConfig())
-		gomega.Expect(err).NotTo(gomega.HaveOccurred())
-	})
-
-	ginkgo.AfterAll(func() {
-		if c != nil {
-			c.Close()
-		}
-	})
-
+var _ = ginkgo.Describe("Client core operations E2E Tests", ginkgo.Ordered, ginkgo.Serial, func() {
 	// Test cases for each OASF version (matches testdata files)
 	testVersions := []struct {
 		name                string
@@ -145,10 +81,10 @@ var _ = ginkgo.Describe("Running client end-to-end tests using a local single no
 			gomega.Expect(err).NotTo(gomega.HaveOccurred())
 
 			// Step 1: Push
-			ginkgo.It("should push a record to store", func() {
+			ginkgo.It("should push a record to store", func(ctx context.Context) {
 				var err error
 
-				recordRef, err = c.Push(ctx, record)
+				recordRef, err = testEnv.Client.Push(ctx, record)
 				gomega.Expect(err).NotTo(gomega.HaveOccurred())
 
 				// Validate that the returned CID correctly represents the pushed data using canonical marshaling
@@ -158,9 +94,9 @@ var _ = ginkgo.Describe("Running client end-to-end tests using a local single no
 			})
 
 			// Step 2: Pull (depends on push)
-			ginkgo.It("should pull a record from store", func() {
+			ginkgo.It("should pull a record from store", func(ctx context.Context) {
 				// Pull the record object (using recordRef from push)
-				pulledRecord, err := c.Pull(ctx, recordRef)
+				pulledRecord, err := testEnv.Client.Pull(ctx, recordRef)
 				gomega.Expect(err).NotTo(gomega.HaveOccurred())
 
 				// Get canonical data from pulled record for comparison
@@ -174,8 +110,8 @@ var _ = ginkgo.Describe("Running client end-to-end tests using a local single no
 			})
 
 			// Step 3: Publish (depends on push)
-			ginkgo.It("should publish a record", func() {
-				err := c.Publish(ctx, &routingv1.PublishRequest{
+			ginkgo.It("should publish a record", func(ctx context.Context) {
+				err := testEnv.Client.Publish(ctx, &routingv1.PublishRequest{
 					Request: &routingv1.PublishRequest_RecordRefs{
 						RecordRefs: &routingv1.RecordRefs{
 							Refs: []*corev1.RecordRef{recordRef},
@@ -189,11 +125,11 @@ var _ = ginkgo.Describe("Running client end-to-end tests using a local single no
 			})
 
 			// Step 4: List by one label (depends on publish)
-			ginkgo.It("should list published record by one label", func() {
+			ginkgo.It("should list published record by one label", func(ctx context.Context) {
 				// Convert skill label to RecordQuery
 				queries := convertLabelsToClientRecordQueries([]string{version.expectedSkillLabels[0]})
 
-				itemsChan, err := c.List(ctx, &routingv1.ListRequest{
+				itemsChan, err := testEnv.Client.List(ctx, &routingv1.ListRequest{
 					Queries: queries,
 				})
 				gomega.Expect(err).NotTo(gomega.HaveOccurred())
@@ -211,11 +147,11 @@ var _ = ginkgo.Describe("Running client end-to-end tests using a local single no
 			})
 
 			// Step 5: List by multiple labels (depends on publish)
-			ginkgo.It("should list published record by multiple labels", func() {
+			ginkgo.It("should list published record by multiple labels", func(ctx context.Context) {
 				// Convert all skill labels to RecordQueries
 				queries := convertLabelsToClientRecordQueries(version.expectedSkillLabels)
 
-				itemsChan, err := c.List(ctx, &routingv1.ListRequest{
+				itemsChan, err := testEnv.Client.List(ctx, &routingv1.ListRequest{
 					Queries: queries,
 				})
 				gomega.Expect(err).NotTo(gomega.HaveOccurred())
@@ -233,7 +169,7 @@ var _ = ginkgo.Describe("Running client end-to-end tests using a local single no
 			})
 
 			// Step 6: List by module and domain labels (depends on publish)
-			ginkgo.It("should list published record by module and domain labels", func() {
+			ginkgo.It("should list published record by module and domain labels", func(ctx context.Context) {
 				// ✅ Domain and module queries are now supported in RecordQuery API!
 				// Test domain query
 				if version.expectedDomainLabel != "" {
@@ -241,7 +177,7 @@ var _ = ginkgo.Describe("Running client end-to-end tests using a local single no
 						Type:  routingv1.RecordQueryType_RECORD_QUERY_TYPE_DOMAIN,
 						Value: "life_science/biotechnology", // From record_070.json domains
 					}
-					domainItemsChan, err := c.List(ctx, &routingv1.ListRequest{
+					domainItemsChan, err := testEnv.Client.List(ctx, &routingv1.ListRequest{
 						Queries: []*routingv1.RecordQuery{domainQuery},
 						Limit:   utils.Ptr[uint32](10),
 					})
@@ -255,7 +191,7 @@ var _ = ginkgo.Describe("Running client end-to-end tests using a local single no
 				// Test module query using the expected module label from test data
 				moduleQueries := convertLabelsToClientRecordQueries([]string{version.expectedModuleLabel})
 				if len(moduleQueries) > 0 {
-					moduleItemsChan, err := c.List(ctx, &routingv1.ListRequest{
+					moduleItemsChan, err := testEnv.Client.List(ctx, &routingv1.ListRequest{
 						Queries: moduleQueries,
 						Limit:   utils.Ptr[uint32](10),
 					})
@@ -270,11 +206,11 @@ var _ = ginkgo.Describe("Running client end-to-end tests using a local single no
 			})
 
 			// Step 7: Search routing for remote records (depends on publish)
-			ginkgo.It("should search routing for remote records", func() {
+			ginkgo.It("should search routing for remote records", func(ctx context.Context) {
 				// Convert skill labels to RecordQuery format
 				queries := convertLabelsToClientRecordQueries([]string{version.expectedSkillLabels[0]})
 
-				searchChan, err := c.SearchRouting(ctx, &routingv1.SearchRequest{
+				searchChan, err := testEnv.Client.SearchRouting(ctx, &routingv1.SearchRequest{
 					Queries:       queries,
 					Limit:         utils.Ptr[uint32](10),
 					MinMatchScore: utils.Ptr[uint32](1),
@@ -291,8 +227,8 @@ var _ = ginkgo.Describe("Running client end-to-end tests using a local single no
 			})
 
 			// Step 8: Unpublish (depends on publish)
-			ginkgo.It("should unpublish a record", func() {
-				err := c.Unpublish(ctx, &routingv1.UnpublishRequest{
+			ginkgo.It("should unpublish a record", func(ctx context.Context) {
+				err := testEnv.Client.Unpublish(ctx, &routingv1.UnpublishRequest{
 					Request: &routingv1.UnpublishRequest_RecordRefs{
 						RecordRefs: &routingv1.RecordRefs{
 							Refs: []*corev1.RecordRef{recordRef},
@@ -303,11 +239,11 @@ var _ = ginkgo.Describe("Running client end-to-end tests using a local single no
 			})
 
 			// Step 8: Verify unpublished record is not found (depends on unpublish)
-			ginkgo.It("should not find unpublished record", func() {
+			ginkgo.It("should not find unpublished record", func(ctx context.Context) {
 				// Convert skill label to RecordQuery
 				queries := convertLabelsToClientRecordQueries([]string{version.expectedSkillLabels[0]})
 
-				itemsChan, err := c.List(ctx, &routingv1.ListRequest{
+				itemsChan, err := testEnv.Client.List(ctx, &routingv1.ListRequest{
 					Queries: queries,
 				})
 				gomega.Expect(err).NotTo(gomega.HaveOccurred())
@@ -320,20 +256,55 @@ var _ = ginkgo.Describe("Running client end-to-end tests using a local single no
 			})
 
 			// Step 9: Delete (depends on previous steps)
-			ginkgo.It("should delete a record from store", func() {
-				err := c.Delete(ctx, recordRef)
+			ginkgo.It("should delete a record from store", func(ctx context.Context) {
+				err := testEnv.Client.Delete(ctx, recordRef)
 				gomega.Expect(err).NotTo(gomega.HaveOccurred())
 			})
 
 			// Step 10: Verify deleted record is not found (depends on delete)
-			ginkgo.It("should not find deleted record in store", func() {
+			ginkgo.It("should not find deleted record in store", func(ctx context.Context) {
 				// Add a small delay to ensure delete operation is fully processed
 				time.Sleep(100 * time.Millisecond)
 
-				pulledRecord, err := c.Pull(ctx, recordRef)
+				pulledRecord, err := testEnv.Client.Pull(ctx, recordRef)
 				gomega.Expect(err).To(gomega.HaveOccurred())
 				gomega.Expect(pulledRecord).To(gomega.BeNil())
 			})
 		})
 	}
 })
+
+// convertLabelsToRecordQueries converts legacy label format to RecordQuery format for e2e tests.
+func convertLabelsToClientRecordQueries(labels []string) []*routingv1.RecordQuery {
+	var queries []*routingv1.RecordQuery
+
+	for _, label := range labels {
+		switch {
+		case strings.HasPrefix(label, "/skills/"):
+			skillName := strings.TrimPrefix(label, "/skills/")
+			queries = append(queries, &routingv1.RecordQuery{
+				Type:  routingv1.RecordQueryType_RECORD_QUERY_TYPE_SKILL,
+				Value: skillName,
+			})
+		case strings.HasPrefix(label, "/domains/"):
+			domainName := strings.TrimPrefix(label, "/domains/")
+			_ = domainName
+			// Note: domains might need to be mapped to locator or handled differently
+			// For now, skip domains as they're not in the current RecordQueryType
+		case strings.HasPrefix(label, "/modules/"):
+			moduleName := strings.TrimPrefix(label, "/modules/")
+			queries = append(queries, &routingv1.RecordQuery{
+				Type:  routingv1.RecordQueryType_RECORD_QUERY_TYPE_MODULE,
+				Value: moduleName,
+			})
+		case strings.HasPrefix(label, "/locators/"):
+			locatorType := strings.TrimPrefix(label, "/locators/")
+			queries = append(queries, &routingv1.RecordQuery{
+				Type:  routingv1.RecordQueryType_RECORD_QUERY_TYPE_LOCATOR,
+				Value: locatorType,
+			})
+		}
+	}
+
+	return queries
+}

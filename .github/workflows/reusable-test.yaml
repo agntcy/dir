@@ -61,4 +61,3 @@ jobs:
     with:
       image_repo: ${{ inputs.image_repo }}
       image_tag: ${{ inputs.image_tag }}
-      enable_coverage: true

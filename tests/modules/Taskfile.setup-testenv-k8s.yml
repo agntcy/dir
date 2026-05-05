@@ -1,0 +1,98 @@
+# Copyright AGNTCY Contributors (https://github.com/agntcy)
+# SPDX-License-Identifier: Apache-2.0
+
+version: "3"
+
+#
+# setup-testenv-k8s - A reusable Taskfile for setting up a Kubernetes test environment.
+# Defines reusable public "up" and "down" tasks to manage the lifecycle of a Kubernetes
+# test environment, including provisioning a Kind cluster and deploying Helm charts.
+#
+# vars:
+#   KIND_BIN: Path to the Kind binary (default: "kind")
+#   HELM_BIN: Path to the Helm binary (default: "helm")
+#   KUBECTL_BIN: Path to the kubectl binary (default: "kubectl")
+#   KIND_CLUSTER_NAME: Name of the Kind cluster to create (default: "e2e-test")
+#   KIND_CONFIG_PATH: (Optional) Path to a Kind configuration file for cluster setup
+#   KIND_EXTRA_IMAGES: (Optional) Additional Docker images to load into the cluster, specified
+#                      as a newline-separated string (e.g. "image1:tag\nimage2:tag")
+#   CHART_DEPLOYMENTS: JSON string defining a list of Helm chart deployments to perform after cluster creation. Each deployment should include:
+#     - release_name: Name of the Helm release
+#     - namespace: Kubernetes namespace to deploy the release into
+#     - chart_path: Path to the Helm chart to deploy
+#     - chart_repository: (Optional) Helm repository URL if the chart is not local
+#     - chart_values_path: (Optional) Path to a YAML file containing Helm values
+#     - chart_extra_values: (Optional) Additional Helm values as a list of strings (e.g. ["--set key=value", "--set key2=value2"])
+#   SETUP_TIMEOUT: Timeout for waiting for Kubernetes resources to be ready during setup (default: "600s")
+#
+
+includes:
+  deploy-chart:
+    taskfile: Taskfile.deploy-chart.yml
+  deploy-kind:
+    taskfile: Taskfile.deploy-kind.yml
+
+tasks:
+  up:
+    desc: Create a local k8s testenv
+    vars:
+      # Inputs
+      KIND_BIN: '{{ .KIND_BIN | default "kind" }}'
+      HELM_BIN: '{{ .HELM_BIN | default "helm" }}'
+      KUBECTL_BIN: '{{ .KUBECTL_BIN | default "kubectl" }}'
+      KIND_CLUSTER_NAME: '{{ .KIND_CLUSTER_NAME | default "e2e-test" }}'
+      KIND_CONFIG_PATH: '{{ .KIND_CONFIG_PATH | default "" }}'
+      KIND_EXTRA_IMAGES: '{{ .KIND_EXTRA_IMAGES | default "" }}'
+      CHART_DEPLOYMENTS: '{{ .CHART_DEPLOYMENTS | default "[]" }}'
+      SETUP_TIMEOUT: '{{ .SETUP_TIMEOUT | default "600s" }}'
+
+      # Task-specific variables
+      KUBE_CONTEXT: 'kind-{{ .KIND_CLUSTER_NAME }}'
+      CHART_DEPLOYMENTS_LIST:
+        ref: 'fromJson .CHART_DEPLOYMENTS'
+    cmds:
+      - task: deploy-kind:up
+        vars:
+          KIND_BIN: '{{ .KIND_BIN }}'
+          KIND_CLUSTER_NAME: '{{ .KIND_CLUSTER_NAME }}'
+          KIND_CONFIG_PATH: '{{ .KIND_CONFIG_PATH }}'
+          KIND_EXTRA_IMAGES: '{{ .KIND_EXTRA_IMAGES }}'
+
+      - for: { var: CHART_DEPLOYMENTS_LIST }
+        task: deploy-chart:up
+        vars:
+          HELM_BIN: '{{ .HELM_BIN }}'
+          RELEASE_NAME: '{{ .ITEM.release_name }}'
+          NAMESPACE: '{{ .ITEM.namespace }}'
+          CHART_PATH: '{{ .ITEM.chart_path }}'
+          CHART_REPOSITORY: '{{ .ITEM.chart_repository | default "" }}'
+          CHART_VALUES_PATH: '{{ .ITEM.chart_values_path | default "" }}'
+          CHART_EXTRA_VALUES: '{{ .ITEM.chart_extra_values | join "\n" }}'
+          # Defer waiting until all charts are installed (matches the OpenTofu
+          # module which sets wait=false on the helm_release and then runs a
+          # kubectl wait afterwards).
+          CHART_WAIT: "false"
+          KUBE_CONTEXT: '{{ .KUBE_CONTEXT }}'
+
+      - for: { var: CHART_DEPLOYMENTS_LIST }
+        cmd: |
+          # Give some time for the K8s API to reflect
+          # the new resources before waiting for them to be ready
+          sleep 10
+
+          # Wait for the deployed Helm release's pods to be ready
+          {{ .KUBECTL_BIN }} wait --for=condition=ready --timeout={{.SETUP_TIMEOUT}} \
+            pods -n {{ .ITEM.namespace }} \
+            -l app.kubernetes.io/instance={{ .ITEM.release_name }} \
+            --context {{ .KUBE_CONTEXT }}
+
+  down:
+    desc: Tear down the a local k8s testenv
+    vars:
+      KIND_BIN: '{{ .KIND_BIN | default "kind" }}'
+      KIND_CLUSTER_NAME: '{{ .KIND_CLUSTER_NAME | default "e2e-test" }}'
+    cmds:
+      - task: deploy-kind:down
+        vars:
+          KIND_BIN: '{{ .KIND_BIN }}'
+          KIND_CLUSTER_NAME: '{{ .KIND_CLUSTER_NAME }}'

@@ -13,7 +13,6 @@ import (
 
 	corev1 "github.com/agntcy/dir/api/core/v1"
 	signv1 "github.com/agntcy/dir/api/sign/v1"
-	"github.com/agntcy/dir/client"
 	"github.com/agntcy/dir/tests/e2e/shared/testdata"
 	"github.com/agntcy/dir/tests/e2e/shared/utils"
 	ginkgo "github.com/onsi/ginkgo/v2"
@@ -22,12 +21,9 @@ import (
 
 var (
 	// Sample record for runtim discovery.
-	runRutimeTests         = os.Getenv("DAEMON_E2E_RUN_RUNTIME_TESTS") == "true"
 	sampleRuntimeRecord    = testdata.ExpectedRecordV100JSON
 	sampleRuntimeRecordCID = "baeareiabbog2umgduqhlcb64fzt6adn34kblzvru3fdzkl75hjhwt6h3da"
 )
-
-const cosignTestPassword = "testpassword"
 
 func cosignAvailable() bool {
 	_, err := exec.LookPath("cosign")
@@ -37,36 +33,18 @@ func cosignAvailable() bool {
 
 var _ = ginkgo.Describe("Daemon e2e", ginkgo.Ordered, ginkgo.Serial, func() {
 	var (
-		c   *client.Client
-		ctx context.Context
-
 		recordRef     *corev1.RecordRef
 		canonicalData []byte
 	)
 
-	ginkgo.BeforeAll(func() {
-		ctx = context.Background()
-
-		var err error
-
-		c, err = client.New(ctx, client.WithEnvConfig())
-		gomega.Expect(err).NotTo(gomega.HaveOccurred())
-	})
-
-	ginkgo.AfterAll(func() {
-		if c != nil {
-			_ = c.Close()
-		}
-	})
-
-	ginkgo.It("should push a record to the store", func() {
+	ginkgo.It("should push a record to the store", func(ctx context.Context) {
 		record, err := corev1.UnmarshalRecord(testdata.ExpectedRecordV070JSON)
 		gomega.Expect(err).NotTo(gomega.HaveOccurred())
 
 		canonicalData, err = record.Marshal()
 		gomega.Expect(err).NotTo(gomega.HaveOccurred())
 
-		recordRef, err = c.Push(ctx, record)
+		recordRef, err = testEnv.Client.Push(ctx, record)
 		gomega.Expect(err).NotTo(gomega.HaveOccurred())
 		gomega.Expect(recordRef).NotTo(gomega.BeNil())
 		gomega.Expect(recordRef.GetCid()).NotTo(gomega.BeEmpty())
@@ -74,10 +52,10 @@ var _ = ginkgo.Describe("Daemon e2e", ginkgo.Ordered, ginkgo.Serial, func() {
 		utils.ValidateCIDAgainstData(recordRef.GetCid(), canonicalData)
 	})
 
-	ginkgo.It("should pull the pushed record back", func() {
+	ginkgo.It("should pull the pushed record back", func(ctx context.Context) {
 		gomega.Expect(recordRef).NotTo(gomega.BeNil(), "push must succeed first")
 
-		pulled, err := c.Pull(ctx, recordRef)
+		pulled, err := testEnv.Client.Pull(ctx, recordRef)
 		gomega.Expect(err).NotTo(gomega.HaveOccurred())
 
 		pulledCanonical, err := pulled.Marshal()
@@ -90,9 +68,10 @@ var _ = ginkgo.Describe("Daemon e2e", ginkgo.Ordered, ginkgo.Serial, func() {
 
 	ginkgo.Context("signature workflow", ginkgo.Ordered, func() {
 		var (
-			cosignDir  string
-			keyPath    string
-			pubKeyPath string
+			cosignDir      string
+			cosignPassword = "testpassword"
+			keyPath        string
+			pubKeyPath     string
 		)
 
 		ginkgo.BeforeAll(func() {
@@ -106,11 +85,11 @@ var _ = ginkgo.Describe("Daemon e2e", ginkgo.Ordered, ginkgo.Serial, func() {
 			keyPath = filepath.Join(cosignDir, "cosign.key")
 			pubKeyPath = filepath.Join(cosignDir, "cosign.pub")
 
-			utils.GenerateCosignKeyPair(cosignDir)
+			utils.GenerateCosignKeyPair(cosignDir, cosignPassword)
 			gomega.Expect(keyPath).To(gomega.BeAnExistingFile())
 			gomega.Expect(pubKeyPath).To(gomega.BeAnExistingFile())
 
-			err := os.Setenv("COSIGN_PASSWORD", cosignTestPassword)
+			err := os.Setenv("COSIGN_PASSWORD", cosignPassword)
 			gomega.Expect(err).NotTo(gomega.HaveOccurred())
 		})
 
@@ -118,14 +97,14 @@ var _ = ginkgo.Describe("Daemon e2e", ginkgo.Ordered, ginkgo.Serial, func() {
 			os.Unsetenv("COSIGN_PASSWORD")
 		})
 
-		ginkgo.It("should sign the record with a key pair", func() {
-			resp, err := c.Sign(ctx, &signv1.SignRequest{
+		ginkgo.It("should sign the record with a key pair", func(ctx context.Context) {
+			resp, err := testEnv.Client.Sign(ctx, &signv1.SignRequest{
 				RecordRef: recordRef,
 				Provider: &signv1.SignRequestProvider{
 					Request: &signv1.SignRequestProvider_Key{
 						Key: &signv1.SignWithKey{
 							PrivateKey: keyPath,
-							Password:   []byte(cosignTestPassword),
+							Password:   []byte(cosignPassword),
 						},
 					},
 				},
@@ -136,8 +115,8 @@ var _ = ginkgo.Describe("Daemon e2e", ginkgo.Ordered, ginkgo.Serial, func() {
 			gomega.Expect(resp.GetSignature().GetSignature()).NotTo(gomega.BeEmpty())
 		})
 
-		ginkgo.It("should verify the signature with the public key", func() {
-			resp, err := c.Verify(ctx, &signv1.VerifyRequest{
+		ginkgo.It("should verify the signature with the public key", func(ctx context.Context) {
+			resp, err := testEnv.Client.Verify(ctx, &signv1.VerifyRequest{
 				RecordRef: recordRef,
 			})
 			gomega.Expect(err).NotTo(gomega.HaveOccurred())
@@ -149,17 +128,17 @@ var _ = ginkgo.Describe("Daemon e2e", ginkgo.Ordered, ginkgo.Serial, func() {
 
 	ginkgo.Context("runtime workflow", func() {
 		ginkgo.BeforeAll(func() {
-			if !runRutimeTests {
+			if !testEnv.Config.RunRuntimeDiscoveryTests {
 				ginkgo.Skip("skipping runtime tests")
 			}
 		})
 
-		ginkgo.It("runtime should discover docker workloads", func() {
+		ginkgo.It("runtime should discover docker workloads", func(ctx context.Context) {
 			// Push sample record to ensure there's something to discover and pull back for verification
 			record, err := corev1.UnmarshalRecord(sampleRuntimeRecord)
 			gomega.Expect(err).NotTo(gomega.HaveOccurred())
 
-			recordRef, err := c.Push(ctx, record)
+			recordRef, err := testEnv.Client.Push(ctx, record)
 			gomega.Expect(err).NotTo(gomega.HaveOccurred())
 			gomega.Expect(recordRef).NotTo(gomega.BeNil())
 			gomega.Expect(recordRef.GetCid()).To(gomega.Equal(sampleRuntimeRecordCID))
@@ -168,7 +147,7 @@ var _ = ginkgo.Describe("Daemon e2e", ginkgo.Ordered, ginkgo.Serial, func() {
 			// The test will poll the ListWorkloads API until it finds the expected workload with the correct OASF data, or until it times out.
 			gomega.Eventually(func(g gomega.Gomega) {
 				// Discover runtimes workloads
-				discoverResp, err := c.ListWorkloads(ctx, nil)
+				discoverResp, err := testEnv.Client.ListWorkloads(ctx, nil)
 				g.Expect(err).NotTo(gomega.HaveOccurred())
 				g.Expect(discoverResp).NotTo(gomega.BeNil())
 				g.Expect(discoverResp).To(gomega.HaveLen(1))

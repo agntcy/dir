@@ -1,0 +1,5 @@
+daemon:
+  run_runtime_discovery_tests: false
+  client_options:
+    server_address: "localhost:18234"
+    auth_mode: "insecure"

@@ -15,7 +15,9 @@ tasks:
       GOARCH: "{{ .GOARCH | default ARCH }}"
       BINARY_NAME: '{{ .BINARY_NAME | default "dirctl" }}'
       OUT_BINARY: '{{if .OUT_BINARY}}{{.OUT_BINARY}}{{else}}{{ if eq OS "windows" }}{{ .ROOT_DIR }}\\.bin\\{{ .BINARY_NAME }}.exe{{ else }}{{ .ROOT_DIR }}/.bin/{{ .BINARY_NAME }}{{ end }}{{ end }}'
-      LDFLAGS: "-s -w -extldflags -static {{ .VERSION_LDFLAGS }}"
+      COVERAGE: '{{ .COVERAGE | default "false" }}'
+      COVERAGE_FLAGS: '-cover -covermode=atomic -coverpkg={{.COVERAGE_PKGS}}'
+      LDFLAGS: '-s -w -extldflags -static {{ .VERSION_LDFLAGS }}'
       TRY_SKIP_COMPILE: '{{ .TRY_SKIP_COMPILE | default "false" }}'
     cmds:
       - |
@@ -28,7 +30,10 @@ tasks:
           fi
         fi
 
-        CGO_ENABLED=0 GOOS={{.GOOS}} GOARCH={{.GOARCH}} go build -ldflags="{{ .LDFLAGS }}" -o "{{.OUT_BINARY}}" cli.go
+        CGO_ENABLED=0 GOOS={{.GOOS}} GOARCH={{.GOARCH}} go build \
+          {{if eq .COVERAGE "true"}}{{.COVERAGE_FLAGS}} \
+          {{else}}-ldflags="{{ .LDFLAGS }}"{{end}} \
+           -o "{{.OUT_BINARY}}" .
 
   cli:compile:all:
     desc: Compile CLI client binaries for multiple platforms

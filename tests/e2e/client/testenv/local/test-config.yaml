@@ -1,0 +1,5 @@
+client:
+  run_rate_limit_tests: true
+  client_options:
+    server_address: "localhost:8889"
+    auth_mode: "insecure"

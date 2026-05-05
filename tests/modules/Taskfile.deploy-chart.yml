@@ -1,0 +1,64 @@
+# Copyright AGNTCY Contributors (https://github.com/agntcy)
+# SPDX-License-Identifier: Apache-2.0
+
+#
+# deploy-chart - A reusable Taskfile for deploying Helm charts in Kubernetes environments.
+# Defines reusable internal "up" and "down" tasks to manage the lifecycle of a Helm release.
+# 
+# vars:
+#   HELM_BIN: Path to the Helm binary (default: "helm")
+#   RELEASE_NAME: Name of the Helm release to install
+#   NAMESPACE: Kubernetes namespace to deploy the release into (default: "default")
+#   CHART_PATH: Path to the Helm chart to deploy
+#   CHART_REPOSITORY: (Optional) Helm repository URL if the chart is not local
+#   CHART_VALUES_PATH: (Optional) Path to a YAML file containing Helm values
+#   CHART_EXTRA_VALUES: (Optional) Additional Helm values as a string (e.g. "--set key=value")
+#   CHART_WAIT: Whether to wait for the release to be ready (default: "true")
+#   CHART_TIMEOUT: Timeout for Helm operations (default: "10m")
+#   KUBE_CONTEXT: (Optional) Kubernetes context to use for deployment
+#
+
+version: "3"
+
+tasks:
+  up:
+    desc: Install a Helm chart
+    internal: true
+    vars:
+      HELM_BIN: '{{ .HELM_BIN | default "helm" }}'
+      RELEASE_NAME: '{{ .RELEASE_NAME | default "" }}'
+      NAMESPACE: '{{ .NAMESPACE | default "default" }}'
+      CHART_PATH: '{{ .CHART_PATH | default "" }}'
+      CHART_REPOSITORY: '{{ .CHART_REPOSITORY | default "" }}'
+      CHART_VALUES_PATH: '{{ .CHART_VALUES_PATH | default "" }}'
+      CHART_EXTRA_VALUES: '{{ .CHART_EXTRA_VALUES | default "" }}'
+      CHART_WAIT: '{{ .CHART_WAIT | default "true" }}'
+      CHART_TIMEOUT: '{{ .CHART_TIMEOUT | default "10m" }}'
+      KUBE_CONTEXT: '{{ .KUBE_CONTEXT | default "" }}'
+    cmd: |
+        {{ if .KUBE_CONTEXT }}KUBECONTEXT={{ .KUBE_CONTEXT }}{{ end }} \
+        {{ .HELM_BIN }} upgrade {{ .RELEASE_NAME }} \
+          {{ .CHART_PATH }} \
+          {{ if .CHART_REPOSITORY }}--repo {{ .CHART_REPOSITORY }}{{ end }} \
+          {{ if .CHART_VERSION }}--version {{ .CHART_VERSION }}{{ end }} \
+          {{ if .CHART_VALUES_PATH }}-f {{ .CHART_VALUES_PATH }}{{ end }} \
+          {{range .CHART_EXTRA_VALUES | splitLines }} \
+          {{if .}}{{ . }}{{ end }} \
+          {{end}} \
+          --namespace {{ .NAMESPACE }} \
+          --create-namespace \
+          --install \
+          {{ if eq .CHART_WAIT "true" }}--wait --wait-for-jobs{{ end }} \
+          --timeout {{ .CHART_TIMEOUT }}
+
+  down:
+    desc: Uninstall a Helm release
+    internal: true
+    vars:
+      HELM_BIN: '{{ .HELM_BIN | default "helm" }}'
+      RELEASE_NAME: '{{ .RELEASE_NAME | default "" }}'
+      NAMESPACE: '{{ .NAMESPACE | default "default" }}'
+      KUBE_CONTEXT: '{{ .KUBE_CONTEXT | default "" }}'
+    cmd: |
+      {{ if .KUBE_CONTEXT }}KUBECONTEXT={{ .KUBE_CONTEXT }}{{ end }} \
+      {{ .HELM_BIN }} uninstall {{ .RELEASE_NAME }} --namespace {{ .NAMESPACE }} --ignore-not-found

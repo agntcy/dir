@@ -63,3 +63,6 @@ gui/windows/
 gui/macos/
 
 gui/.env
+
+# Test environment logs
+tests/**/*.log

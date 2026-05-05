@@ -9,7 +9,6 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/agntcy/dir/tests/e2e/shared/config"
 	"github.com/onsi/ginkgo/v2"
 	"github.com/onsi/gomega"
 )
@@ -25,17 +24,11 @@ import (
 // already contain non-zero values from previous test operations.
 
 var _ = ginkgo.Describe("Prometheus Metrics", ginkgo.Serial, ginkgo.Label("metrics"), func() {
-	const metricsURL = "http://localhost:9090/metrics"
-
-	ginkgo.BeforeEach(func() {
-		if cfg.DeploymentMode != config.DeploymentModeLocal {
-			ginkgo.Skip("Skipping test, not in local mode")
-		}
-	})
+	metricsURL := testEnv.Config.MetricsAddress
 
 	ginkgo.Context("metrics endpoint availability", func() {
 		ginkgo.It("should expose /metrics endpoint on port 9090", func() {
-			resp, err := http.Get(metricsURL)
+			resp, err := http.Get(metricsURL) //nolint:gosec
 			gomega.Expect(err).NotTo(gomega.HaveOccurred())
 
 			defer resp.Body.Close()
@@ -45,7 +38,7 @@ var _ = ginkgo.Describe("Prometheus Metrics", ginkgo.Serial, ginkgo.Label("metri
 		})
 
 		ginkgo.It("should return Prometheus-formatted metrics", func() {
-			resp, err := http.Get(metricsURL)
+			resp, err := http.Get(metricsURL) //nolint:gosec
 			gomega.Expect(err).NotTo(gomega.HaveOccurred())
 
 			defer resp.Body.Close()
@@ -70,7 +63,7 @@ var _ = ginkgo.Describe("Prometheus Metrics", ginkgo.Serial, ginkgo.Label("metri
 
 		ginkgo.BeforeEach(func() {
 			// Fetch metrics once for all tests in this context
-			resp, err := http.Get(metricsURL)
+			resp, err := http.Get(metricsURL) //nolint:gosec
 			gomega.Expect(err).NotTo(gomega.HaveOccurred())
 
 			defer resp.Body.Close()
@@ -135,7 +128,7 @@ var _ = ginkgo.Describe("Prometheus Metrics", ginkgo.Serial, ginkgo.Label("metri
 
 	ginkgo.Context("metrics from previous tests", func() {
 		ginkgo.It("should have non-zero request counts from previous tests", func() {
-			resp, err := http.Get(metricsURL)
+			resp, err := http.Get(metricsURL) //nolint:gosec
 			gomega.Expect(err).NotTo(gomega.HaveOccurred())
 
 			defer resp.Body.Close()
@@ -178,7 +171,7 @@ var _ = ginkgo.Describe("Prometheus Metrics", ginkgo.Serial, ginkgo.Label("metri
 		})
 
 		ginkgo.It("should have successful (OK) status codes from previous tests", func() {
-			resp, err := http.Get(metricsURL)
+			resp, err := http.Get(metricsURL) //nolint:gosec
 			gomega.Expect(err).NotTo(gomega.HaveOccurred())
 
 			defer resp.Body.Close()
@@ -217,7 +210,7 @@ var _ = ginkgo.Describe("Prometheus Metrics", ginkgo.Serial, ginkgo.Label("metri
 		var metricsContent string
 
 		ginkgo.BeforeEach(func() {
-			resp, err := http.Get(metricsURL)
+			resp, err := http.Get(metricsURL) //nolint:gosec
 			gomega.Expect(err).NotTo(gomega.HaveOccurred())
 
 			defer resp.Body.Close()
@@ -257,7 +250,7 @@ var _ = ginkgo.Describe("Prometheus Metrics", ginkgo.Serial, ginkgo.Label("metri
 
 	ginkgo.Context("metrics validation", func() {
 		ginkgo.It("should report metrics for all registered services", func() {
-			resp, err := http.Get(metricsURL)
+			resp, err := http.Get(metricsURL) //nolint:gosec
 			gomega.Expect(err).NotTo(gomega.HaveOccurred())
 
 			defer resp.Body.Close()
@@ -288,7 +281,7 @@ var _ = ginkgo.Describe("Prometheus Metrics", ginkgo.Serial, ginkgo.Label("metri
 		})
 
 		ginkgo.It("should count method invocations from previous tests", func() {
-			resp, err := http.Get(metricsURL)
+			resp, err := http.Get(metricsURL) //nolint:gosec
 			gomega.Expect(err).NotTo(gomega.HaveOccurred())
 
 			defer resp.Body.Close()
@@ -317,7 +310,7 @@ var _ = ginkgo.Describe("Prometheus Metrics", ginkgo.Serial, ginkgo.Label("metri
 	ginkgo.Context("integration with kubectl (optional - if ServiceMonitor enabled)", func() {
 		ginkgo.It("should expose metrics port", func() {
 			// This test verifies the Kubernetes service exposes the metrics port
-			resp, err := http.Get(metricsURL)
+			resp, err := http.Get(metricsURL) //nolint:gosec
 			gomega.Expect(err).NotTo(gomega.HaveOccurred())
 
 			defer resp.Body.Close()
@@ -330,7 +323,7 @@ var _ = ginkgo.Describe("Prometheus Metrics", ginkgo.Serial, ginkgo.Label("metri
 
 	ginkgo.Context("metrics useful for monitoring", func() {
 		ginkgo.It("should provide data for request rate queries", func() {
-			resp, err := http.Get(metricsURL)
+			resp, err := http.Get(metricsURL) //nolint:gosec
 			gomega.Expect(err).NotTo(gomega.HaveOccurred())
 
 			defer resp.Body.Close()
@@ -348,7 +341,7 @@ var _ = ginkgo.Describe("Prometheus Metrics", ginkgo.Serial, ginkgo.Label("metri
 		})
 
 		ginkgo.It("should provide data for error rate queries", func() {
-			resp, err := http.Get(metricsURL)
+			resp, err := http.Get(metricsURL) //nolint:gosec
 			gomega.Expect(err).NotTo(gomega.HaveOccurred())
 
 			defer resp.Body.Close()
@@ -369,7 +362,7 @@ var _ = ginkgo.Describe("Prometheus Metrics", ginkgo.Serial, ginkgo.Label("metri
 		})
 
 		ginkgo.It("should support latency percentile queries (histogram buckets)", func() {
-			resp, err := http.Get(metricsURL)
+			resp, err := http.Get(metricsURL) //nolint:gosec
 			gomega.Expect(err).NotTo(gomega.HaveOccurred())
 
 			defer resp.Body.Close()
@@ -399,7 +392,7 @@ var _ = ginkgo.Describe("Prometheus Metrics", ginkgo.Serial, ginkgo.Label("metri
 
 	ginkgo.Context("metrics data sanity checks", func() {
 		ginkgo.It("should parse as valid Prometheus metrics format", func() {
-			resp, err := http.Get(metricsURL)
+			resp, err := http.Get(metricsURL) //nolint:gosec
 			gomega.Expect(err).NotTo(gomega.HaveOccurred())
 
 			defer resp.Body.Close()
@@ -442,7 +435,7 @@ var _ = ginkgo.Describe("Prometheus Metrics", ginkgo.Serial, ginkgo.Label("metri
 		})
 
 		ginkgo.It("should not have negative metric values", func() {
-			resp, err := http.Get(metricsURL)
+			resp, err := http.Get(metricsURL) //nolint:gosec
 			gomega.Expect(err).NotTo(gomega.HaveOccurred())
 
 			defer resp.Body.Close()

@@ -10,7 +10,6 @@ import (
 	"time"
 
 	signv1 "github.com/agntcy/dir/api/sign/v1"
-	"github.com/agntcy/dir/tests/e2e/shared/config"
 	"github.com/agntcy/dir/tests/e2e/shared/testdata"
 	"github.com/agntcy/dir/tests/e2e/shared/utils"
 	"github.com/onsi/ginkgo/v2"
@@ -18,50 +17,9 @@ import (
 	"google.golang.org/protobuf/encoding/protojson"
 )
 
-// Using the shared record data from embed.go
-
-// Test constants.
-const (
-	signTempDirPrefix = "sign-test"
-)
-
-// Test file paths helper.
-type signTestPaths struct {
-	tempDir         string
-	record          string
-	privateKey      string
-	publicKey       string
-	signature       string
-	signatureOutput string
-	verifyOutput    string
-}
-
-func setupSignTestPaths() *signTestPaths {
-	tempDir, err := os.MkdirTemp("", signTempDirPrefix)
-	gomega.Expect(err).NotTo(gomega.HaveOccurred())
-
-	return &signTestPaths{
-		tempDir:         tempDir,
-		record:          filepath.Join(tempDir, "record.json"),
-		signature:       filepath.Join(tempDir, "signature.json"),
-		signatureOutput: filepath.Join(tempDir, "signature-output.json"),
-		verifyOutput:    filepath.Join(tempDir, "verify-output.json"),
-		privateKey:      filepath.Join(tempDir, "cosign.key"),
-		publicKey:       filepath.Join(tempDir, "cosign.pub"),
-	}
-}
-
 var _ = ginkgo.Describe("Running dirctl end-to-end tests to check signature support", func() {
-	var cli *utils.CLI
-
 	ginkgo.BeforeEach(func() {
-		if cfg.DeploymentMode != config.DeploymentModeLocal {
-			ginkgo.Skip("Skipping test, not in local mode")
-		}
-
 		utils.ResetCLIState()
-		// Initialize CLI helper
-		cli = utils.NewCLI()
 	})
 
 	// Test params
@@ -84,14 +42,15 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests to check signature supp
 			gomega.Expect(err).NotTo(gomega.HaveOccurred())
 
 			// Generate cosign key pair for all tests
-			utils.GenerateCosignKeyPair(paths.tempDir)
+			cosignPassword := "testpassword"
+			utils.GenerateCosignKeyPair(paths.tempDir, cosignPassword)
 
 			// Verify key files were created
 			gomega.Expect(paths.privateKey).To(gomega.BeAnExistingFile())
 			gomega.Expect(paths.publicKey).To(gomega.BeAnExistingFile())
 
 			// Set cosign password for all tests
-			err = os.Setenv("COSIGN_PASSWORD", utils.TestPassword)
+			err = os.Setenv("COSIGN_PASSWORD", cosignPassword)
 			gomega.Expect(err).NotTo(gomega.HaveOccurred())
 		})
 
@@ -113,21 +72,21 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests to check signature supp
 		})
 
 		ginkgo.It("should push a record to the store", func() {
-			cid = cli.Push(paths.record).WithArgs("--output", "raw").ShouldSucceed()
+			cid = testEnv.CLI.Push(paths.record).WithArgs("--output", "raw").ShouldSucceed()
 
 			// Validate that the returned CID correctly represents the pushed data
 			utils.LoadAndValidateCID(cid, paths.record)
 		})
 
 		ginkgo.It("should sign a record with a key pair", func() {
-			_ = cli.Sign(cid, paths.privateKey).ShouldSucceed()
+			_ = testEnv.CLI.Sign(cid, paths.privateKey).ShouldSucceed()
 
 			time.Sleep(10 * time.Second)
 		})
 
 		ginkgo.It("should verify a signature with a public key", func() {
 			// Verify using the public key and write output to file
-			_ = cli.Command("verify").
+			_ = testEnv.CLI.Command("verify").
 				WithArgs(cid).
 				WithArgs("--key", paths.publicKey).
 				WithArgs("--output-file", paths.verifyOutput).
@@ -158,22 +117,48 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests to check signature supp
 
 		ginkgo.It("should verify any valid signature on the record", func() {
 			// Verify without specifying a key (any valid signature)
-			cli.Command("verify").
+			testEnv.CLI.Command("verify").
 				WithArgs(cid).
 				ShouldContain("Record signature is: trusted")
 		})
 
 		ginkgo.It("should pull a signature from the store", func() {
-			cli.Command("pull").
+			testEnv.CLI.Command("pull").
 				WithArgs(cid, "--signature").
 				WithArgs("--output", "json").
 				ShouldContain("\"signature\":")
 		})
 
 		ginkgo.It("should pull a public key from the store", func() {
-			cli.Command("pull").
+			testEnv.CLI.Command("pull").
 				WithArgs(cid, "--public-key").
 				ShouldContain("-----BEGIN PUBLIC KEY-----")
 		})
 	})
 })
+
+// Test file paths helper.
+type signTestPaths struct {
+	tempDir         string
+	record          string
+	privateKey      string
+	publicKey       string
+	signature       string
+	signatureOutput string
+	verifyOutput    string
+}
+
+func setupSignTestPaths() *signTestPaths {
+	tempDir, err := os.MkdirTemp("", "sign-test-*")
+	gomega.Expect(err).NotTo(gomega.HaveOccurred())
+
+	return &signTestPaths{
+		tempDir:         tempDir,
+		record:          filepath.Join(tempDir, "record.json"),
+		signature:       filepath.Join(tempDir, "signature.json"),
+		signatureOutput: filepath.Join(tempDir, "signature-output.json"),
+		verifyOutput:    filepath.Join(tempDir, "verify-output.json"),
+		privateKey:      filepath.Join(tempDir, "cosign.key"),
+		publicKey:       filepath.Join(tempDir, "cosign.pub"),
+	}
+}

@@ -4,50 +4,50 @@
 package client
 
 import (
-	"os"
+	"context"
 	"testing"
-	"time"
 
+	"github.com/agntcy/dir/client"
+	clientconfig "github.com/agntcy/dir/tests/e2e/client/config"
 	"github.com/agntcy/dir/tests/e2e/shared/config"
 	"github.com/agntcy/dir/tests/e2e/shared/utils"
 	ginkgo "github.com/onsi/ginkgo/v2"
 	"github.com/onsi/gomega"
 )
 
-const (
-	defaultServerAddress = "localhost:8888"
-	readyPollInterval    = 2 * time.Second
-	readyTimeout         = 2 * time.Minute
-)
+var testEnv *env
 
-var cfg *config.Config
+type env struct {
+	Config clientconfig.Config
+	Client *client.Client
+}
 
 func TestClientE2E(t *testing.T) {
 	gomega.RegisterFailHandler(ginkgo.Fail)
 
-	var err error
-
-	cfg, err = config.LoadConfig()
+	// Load configuration
+	cfg, err := config.LoadConfig()
 	gomega.Expect(err).NotTo(gomega.HaveOccurred())
 
-	if cfg.DeploymentMode != config.DeploymentModeLocal {
-		t.Skip("Skipping client tests - not in local mode")
+	// Create client
+	client, err := client.New(t.Context(), client.WithConfig(&cfg.Client.ClientOptions))
+	gomega.Expect(err).NotTo(gomega.HaveOccurred())
+
+	// Set test environment
+	testEnv = &env{
+		Config: cfg.Client,
+		Client: client,
 	}
 
+	// Run test suite
 	ginkgo.RunSpecs(t, "Client Library E2E Test Suite")
 }
 
-var _ = ginkgo.BeforeSuite(func() {
-	addr := os.Getenv("DIRECTORY_CLIENT_SERVER_ADDRESS")
-	if addr == "" {
-		addr = defaultServerAddress
-	}
+var _ = ginkgo.BeforeSuite(func(ctx context.Context) {
+	utils.WaitForGrpcServerReady(ctx, testEnv.Config.ClientOptions.ServerAddress)
+})
 
-	ginkgo.GinkgoWriter.Printf("Waiting for Directory apiserver at %s...\n", addr)
-	gomega.Eventually(utils.IsGrpcServerReady).
-		WithArguments(addr).
-		WithPolling(readyPollInterval).
-		WithTimeout(readyTimeout).
-		Should(gomega.Succeed())
-	ginkgo.GinkgoWriter.Printf("Directory apiserver is ready at %s\n", addr)
+var _ = ginkgo.AfterSuite(func() {
+	err := testEnv.Client.Close()
+	gomega.Expect(err).NotTo(gomega.HaveOccurred())
 })

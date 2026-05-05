@@ -5,6 +5,7 @@ version: "3"
 
 env:
   GOWORK: off
+
   # TODO(paralta): drop once dir-runtime is republished against
   # github.com/agntcy/dir/api/runtime so the dirctl/test binaries no longer
   # link both old and new proto descriptors.
@@ -23,11 +24,6 @@ includes:
 
   cli:
     taskfile: cli/Taskfile.yml
-    flatten: true
-    excludes: [default]
-
-  test-env:
-    taskfile: tests/Taskfile.test-env.yml
     flatten: true
     excludes: [default]
 

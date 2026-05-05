@@ -1,0 +1,13 @@
+# Copyright AGNTCY Contributors (https://github.com/agntcy)
+# SPDX-License-Identifier: Apache-2.0
+
+version: "3"
+
+includes:
+  setup-dir-node:
+    taskfile: "../../../../../tests/modules/Taskfile.setup-dir-node.yml"
+    flatten: true # Expose included tasks (up/down)
+    vars:
+      DIRCTL_DATA_PATH: "/tmp/e2e-client-local-testenv"
+      DIRCTL_CONFIG_PATH: "{{.ROOT_DIR}}/tests/e2e/client/testenv/local/dir-daemon-config.yaml"
+      DIRCTL_LOGFILE_PATH:  "{{.ROOT_DIR}}/tests/e2e/client/testenv/local/logs.daemon.log"

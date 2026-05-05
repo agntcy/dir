@@ -8,7 +8,6 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/agntcy/dir/tests/e2e/shared/config"
 	"github.com/agntcy/dir/tests/e2e/shared/testdata"
 	"github.com/agntcy/dir/tests/e2e/shared/utils"
 	"github.com/onsi/ginkgo/v2"
@@ -19,9 +18,9 @@ import (
 const (
 	namingTempDirPrefix = "naming-test"
 
-	// Pre-generated cosign keys directory (relative to workspace root).
+	// Pre-generated cosign keys directory (under testdata/dns-validation).
 	// These keys match the JWKS served by the dns-validation chart.
-	dnsValidationKeysDir = "tests/e2e/dns-validation"
+	dnsValidationKeysDir = "./testdata/dns-validation"
 
 	// verificationWaitTimeout is the maximum time to wait for the server
 	// to create the name verification row after signing.
@@ -43,33 +42,17 @@ func setupNamingTestPaths() *namingTestPaths {
 	tempDir, err := os.MkdirTemp("", namingTempDirPrefix)
 	gomega.Expect(err).NotTo(gomega.HaveOccurred())
 
-	// Get workspace root (go up from tests/e2e/local to workspace root)
-	workspaceRoot, err := filepath.Abs(filepath.Join("..", "..", ".."))
-	gomega.Expect(err).NotTo(gomega.HaveOccurred())
-
-	// Use pre-generated cosign keys from dns-validation directory
-	// These keys match the JWKS served by the dns-validation chart
-	keysDir := filepath.Join(workspaceRoot, dnsValidationKeysDir)
-
 	return &namingTestPaths{
 		tempDir:    tempDir,
 		record:     filepath.Join(tempDir, "record.json"),
-		privateKey: filepath.Join(keysDir, "cosign.key"),
-		publicKey:  filepath.Join(keysDir, "cosign.pub"),
+		privateKey: filepath.Join(dnsValidationKeysDir, "cosign.key"),
+		publicKey:  filepath.Join(dnsValidationKeysDir, "cosign.pub"),
 	}
 }
 
 var _ = ginkgo.Describe("Running dirctl e2e tests for DNS name verification", func() {
-	var cli *utils.CLI
-
 	ginkgo.BeforeEach(func() {
-		if cfg.DeploymentMode != config.DeploymentModeLocal {
-			ginkgo.Skip("Skipping test, not in local mode")
-		}
-
 		utils.ResetCLIState()
-
-		cli = utils.NewCLI()
 	})
 
 	ginkgo.Context("naming verification workflow", ginkgo.Ordered, func() {
@@ -105,7 +88,7 @@ var _ = ginkgo.Describe("Running dirctl e2e tests for DNS name verification", fu
 
 			// Clean up pushed record
 			if cid != "" {
-				_, _ = cli.Delete(cid).Execute()
+				_, _ = testEnv.CLI.Delete(cid).Execute()
 			}
 
 			// Clean up temp directory
@@ -115,7 +98,7 @@ var _ = ginkgo.Describe("Running dirctl e2e tests for DNS name verification", fu
 		})
 
 		ginkgo.It("should push a record with DNS-prefixed name", func() {
-			cid = cli.Push(paths.record).WithArgs("--output", "raw").ShouldSucceed()
+			cid = testEnv.CLI.Push(paths.record).WithArgs("--output", "raw").ShouldSucceed()
 			gomega.Expect(cid).NotTo(gomega.BeEmpty())
 
 			// Verify the record was pushed successfully
@@ -123,7 +106,7 @@ var _ = ginkgo.Describe("Running dirctl e2e tests for DNS name verification", fu
 		})
 
 		ginkgo.It("should sign the record with cosign key", func() {
-			_ = cli.Sign(cid, paths.privateKey).ShouldSucceed()
+			_ = testEnv.CLI.Sign(cid, paths.privateKey).ShouldSucceed()
 
 			// Allow time for signature processing
 			time.Sleep(5 * time.Second)
@@ -131,7 +114,7 @@ var _ = ginkgo.Describe("Running dirctl e2e tests for DNS name verification", fu
 
 		ginkgo.It("should verify signature is trusted", func() {
 			// First verify the basic signature verification works
-			cli.Command("verify").
+			testEnv.CLI.Command("verify").
 				WithArgs(cid).
 				ShouldContain("Record signature is: trusted")
 		})
@@ -139,7 +122,7 @@ var _ = ginkgo.Describe("Running dirctl e2e tests for DNS name verification", fu
 		ginkgo.It("should check naming verification status by CID", func() {
 			// Poll until verification is created or timeout
 			gomega.Eventually(func() string {
-				output, err := cli.Naming().Verify(cid).
+				output, err := testEnv.CLI.Naming().Verify(cid).
 					WithArgs("--output", "json").
 					Execute()
 				if err != nil {
@@ -154,7 +137,7 @@ var _ = ginkgo.Describe("Running dirctl e2e tests for DNS name verification", fu
 		})
 
 		ginkgo.It("should check naming verification status by name", func() {
-			output := cli.Naming().Verify("http://dns-validation-http/example/research-assistant-v4").
+			output := testEnv.CLI.Naming().Verify("http://dns-validation-http/example/research-assistant-v4").
 				WithArgs("--output", "json").
 				ShouldSucceed()
 
@@ -165,7 +148,7 @@ var _ = ginkgo.Describe("Running dirctl e2e tests for DNS name verification", fu
 		})
 
 		ginkgo.It("should check naming verification status by name with version", func() {
-			output := cli.Naming().Verify("http://dns-validation-http/example/research-assistant-v4:v5.0.0").
+			output := testEnv.CLI.Naming().Verify("http://dns-validation-http/example/research-assistant-v4:v5.0.0").
 				WithArgs("--output", "json").
 				ShouldSucceed()
 

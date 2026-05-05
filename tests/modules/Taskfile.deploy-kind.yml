@@ -1,0 +1,43 @@
+# Copyright AGNTCY Contributors (https://github.com/agntcy)
+# SPDX-License-Identifier: Apache-2.0
+
+#
+# deploy-kind - A reusable Taskfile for deploying Kind clusters.
+# Defines reusable internal "up" and "down" tasks to manage the lifecycle of a Kind cluster.
+# 
+# vars:
+#   KIND_BIN: Path to the Kind binary (default: "kind")
+#   KIND_CLUSTER_NAME: Name of the Kind cluster to create (default: "test-cluster")
+#   KIND_CONFIG_PATH: (Optional) Path to a Kind configuration file for cluster setup
+#   KIND_EXTRA_IMAGES: (Optional) Additional Docker images to load into the cluster, specified
+#                      as a newline-separated string (e.g. "image1:tag\nimage2:tag")
+#
+
+version: "3"
+
+tasks:
+  up:
+    desc: Setup a Kind cluster
+    internal: true
+    vars:
+      KIND_BIN: '{{ .KIND_BIN | default "kind" }}'
+      KIND_CLUSTER_NAME: '{{ .KIND_CLUSTER_NAME | default "test-cluster" }}'
+      KIND_CONFIG_PATH: '{{ .KIND_CONFIG_PATH | default "" }}'
+      KIND_EXTRA_IMAGES: '{{ .KIND_EXTRA_IMAGES | default "" }}'
+    cmds:
+      - |
+        {{ .KIND_BIN }} create cluster --name {{ .KIND_CLUSTER_NAME }} \
+          {{ if .KIND_CONFIG_PATH }}--config {{ .KIND_CONFIG_PATH }}{{ end }}
+      - |
+        {{ range .KIND_EXTRA_IMAGES | splitLines }}
+        {{ if . }}{{ $.KIND_BIN }} load docker-image {{ . }} --name {{ $.KIND_CLUSTER_NAME }}{{ end }}
+        {{ end }}
+
+  down:
+    desc: Destroy a Kind cluster
+    internal: true
+    vars:
+      KIND_BIN: '{{ .KIND_BIN | default "kind" }}'
+      KIND_CLUSTER_NAME: '{{ .KIND_CLUSTER_NAME | default "test-cluster" }}'
+    cmd: |
+      {{ .KIND_BIN }} delete cluster --name {{ .KIND_CLUSTER_NAME }}

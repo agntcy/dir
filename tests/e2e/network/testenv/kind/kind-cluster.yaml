@@ -1,0 +1,14 @@
+kind: Cluster
+apiVersion: kind.x-k8s.io/v1alpha4
+nodes:
+  - role: control-plane
+    extraPortMappings:
+    # DIR Peer1 API server
+    - hostPort: 9901
+      containerPort: 30090
+    # DIR Peer2 API server
+    - hostPort: 9902
+      containerPort: 30091
+    # DIR Peer3 API server
+    - hostPort: 9903
+      containerPort: 30092

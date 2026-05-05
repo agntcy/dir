@@ -3,627 +3,221 @@
 
 version: "3"
 
-env:
-  # TODO(paralta): drop once dir-runtime is republished against
-  # github.com/agntcy/dir/api/runtime so the dirctl/test binaries no longer
-  # link both old and new proto descriptors.
-  GOLANG_PROTOBUF_REGISTRATION_CONFLICT: warn
+includes:
+  # Import Taskfiles for each test environment. Each Taskfile defines
+  # "up" and "down" tasks to manage the lifecycle of its environment.
+  e2e:internal:testenv:client:kind:
+    taskfile: "./e2e/client/testenv/kind/Taskfile.testenv.yml"
+    internal: true
+  e2e:internal:testenv:client:local:
+    taskfile: "./e2e/client/testenv/local/Taskfile.testenv.yml"
+    internal: true
+
+  e2e:internal:testenv:daemon:default:
+    taskfile: "./e2e/daemon/testenv/default/Taskfile.testenv.yml"
+    internal: true
+  e2e:internal:testenv:daemon:external:
+    taskfile: "./e2e/daemon/testenv/external/Taskfile.testenv.yml"
+    internal: true
+
+  e2e:internal:testenv:local:kind:
+    taskfile: "./e2e/local/testenv/kind/Taskfile.testenv.yml"
+    internal: true
+  e2e:internal:testenv:local:local:
+    taskfile: "./e2e/local/testenv/local/Taskfile.testenv.yml"
+    internal: true
+
+  e2e:internal:testenv:network:kind:
+    taskfile: "./e2e/network/testenv/kind/Taskfile.testenv.yml"
+    internal: true
+  e2e:internal:testenv:network:local:
+    taskfile: "./e2e/network/testenv/local/Taskfile.testenv.yml"
+    internal: true
+
+vars:
+  #
+  # Reusable test matrix defining test cases and their associated test environments.
+  # This allows us to easily add new test cases or environments without changing the
+  # core test execution logic.
+  #
+  # TEST_MATRIX:
+  #   <test_case>:
+  #     go_test_suite: <path to Go test package>
+  #     envs:
+  #       <env_name>: <testenv configuration>
+  #
+  # Extending matrix:
+  #   - When adding a new test case, simply add a new entry under TEST_MATRIX 
+  #     with the appropriate testenv configurations. 
+  #   - When adding a new test environment for an existing test case,
+  #     add a new entry under the "envs" section for that test case.
+  #   - If your test environment requires specific setup/teardown logic, 
+  #     import the corresponding Taskfile with the necessary "up" and "down" tasks.
+  # 
+  # Notes:
+  #   - Each test case can have multiple environments, and the test execution logic will
+  #     run the appropriate setup and tests based on user input.
+  TEST_MATRIX:
+    map:
+      client:
+        go_test_suite: "{{.ROOT_DIR}}/tests/e2e/client"
+        envs:
+          kind: "{{.ROOT_DIR}}/tests/e2e/client/testenv/kind/test-config.yaml"
+          local: "{{.ROOT_DIR}}/tests/e2e/client/testenv/local/test-config.yaml"
+
+      daemon:
+        go_test_suite: "{{.ROOT_DIR}}/tests/e2e/daemon"
+        envs:
+          default: "{{.ROOT_DIR}}/tests/e2e/daemon/testenv/default/test-config.yaml"
+          external: "{{.ROOT_DIR}}/tests/e2e/daemon/testenv/external/test-config.yaml"
+
+      local:
+        go_test_suite: "{{.ROOT_DIR}}/tests/e2e/local"
+        envs:
+          kind: "{{.ROOT_DIR}}/tests/e2e/local/testenv/kind/test-config.yaml"
+          local: "{{.ROOT_DIR}}/tests/e2e/local/testenv/local/test-config.yaml"
+
+      network:
+        go_test_suite: "{{.ROOT_DIR}}/tests/e2e/network"
+        envs:
+          kind: "{{.ROOT_DIR}}/tests/e2e/network/testenv/kind/test-config.yaml"
+          local: "{{.ROOT_DIR}}/tests/e2e/network/testenv/local/test-config.yaml"
+
+  # Set GOCOVERDIR for supported testenv coverage collection.
+  # This relies on the convention that testenv tasks will pass
+  # this variable to the test process environment.
+  GOCOVERDIR: "{{.COVERAGE_DIR}}/e2e/.gocover"
 
 tasks:
-  default:
-    cmd: echo "Run the main Taskfile instead of this one."
-
-  test:e2e:
-    desc: Run end-to-end tests for local deployment, network deployment, and daemon
-    aliases: [ e2e ]
-    cmds:
-      - task: test:e2e:local
-      - task: test:e2e:network
-      - task: test:e2e:daemon
-
-  test:e2e:local:cli:
-    desc: Run only local CLI tests (with dedicated infrastructure)
-    aliases: [ e2e:local:cli ]
-    dir: "{{ .ROOT_DIR }}/tests"
+  e2e:testenv:*:*:up:
+    desc: Create testenv for a test case
+    silent: true
     vars:
-      PUBLICATION_SCHEDULER_INTERVAL: "{{ .PUBLICATION_SCHEDULER_INTERVAL | default \"1s\" }}"
-      RATELIMIT_ENABLED: "{{ .RATELIMIT_ENABLED | default \"false\" }}"
-      RATELIMIT_GLOBAL_RPS: "{{ .RATELIMIT_GLOBAL_RPS | default \"100\" }}"
-      RATELIMIT_GLOBAL_BURST: "{{ .RATELIMIT_GLOBAL_BURST | default \"200\" }}"
-      E2E_COVERAGE_ENABLED: "{{ .E2E_COVERAGE_ENABLED | default \"false\" }}"
-      COVERAGE_DIR: "{{ .COVERAGE_DIR | default (print .ROOT_DIR \"/.coverage/e2e\") }}"
-    env:
-      DIRECTORY_E2E_DEPLOYMENT_MODE: "local"
+      TEST_CASE: '{{index .MATCH 0}}'
+      TEST_ENV: '{{index .MATCH 1}}'
+      SKIP_TESTENV: '{{.SKIP_TESTENV | default "false"}}'
+    if: '{{ eq .SKIP_TESTENV "false" }}'
     cmds:
-      - defer: { task: test-env:kubernetes:local:cleanup }
-      - defer:
-          task: test:e2e:coverage:extract-pods
-          vars:
-            E2E_COVERAGE_ENABLED: "{{ .E2E_COVERAGE_ENABLED }}"
-            NAMESPACE: "dir-server"
-            COVERAGE_DIR: "{{ .COVERAGE_DIR }}"
-      - task: test-env:kubernetes:local
-        vars:
-          DIRECTORY_SERVER_PUBLICATION_SCHEDULER_INTERVAL: "{{ .PUBLICATION_SCHEDULER_INTERVAL }}"
-          DIRECTORY_SERVER_RATELIMIT_ENABLED: "{{ .RATELIMIT_ENABLED }}"
-          DIRECTORY_SERVER_RATELIMIT_GLOBAL_RPS: "{{ .RATELIMIT_GLOBAL_RPS }}"
-          DIRECTORY_SERVER_RATELIMIT_GLOBAL_BURST: "{{ .RATELIMIT_GLOBAL_BURST }}"
-          DIRECTORY_SERVER_OASF_API_VALIDATION_SCHEMA_URL: "https://schema.oasf.outshift.com"
-          E2E_COVERAGE_ENABLED: "{{ .E2E_COVERAGE_ENABLED }}"
-      - |
-        # Run E2E tests with coverage if enabled
-        if [ "{{.E2E_COVERAGE_ENABLED}}" = "true" ]; then
-          mkdir -p {{.COVERAGE_DIR}}
-          go test -C ./e2e/local -covermode=atomic -coverpkg={{ .COVERAGE_PKGS }} -coverprofile={{.COVERAGE_DIR}}/local-cli.out.tmp . -v -failfast -test.v -test.paniconexit0 -ginkgo.timeout 2h -timeout 2h -ginkgo.v
-          # Filter out generated files (matching codecov.yml ignores)
-          if [ -f {{.COVERAGE_DIR}}/local-cli.out.tmp ]; then
-            grep -v "\.pb\.go" {{.COVERAGE_DIR}}/local-cli.out.tmp | grep -v "mock_.*\.go" > {{.COVERAGE_DIR}}/local-cli.out || echo "mode: atomic" > {{.COVERAGE_DIR}}/local-cli.out
-            rm {{.COVERAGE_DIR}}/local-cli.out.tmp
-          fi
-        else
-          go test -C ./e2e/local . -v -failfast -test.v -test.paniconexit0 -ginkgo.timeout 2h -timeout 2h -ginkgo.v
-        fi
+      - task: 'e2e:internal:testenv:{{.TEST_CASE}}:{{.TEST_ENV}}:up'
 
-  test:e2e:client:
-    desc: Run only client library tests (with dedicated infrastructure)
-    aliases: [ e2e:client ]
-    dir: "{{ .ROOT_DIR }}/tests"
+  e2e:testenv:*:*:down:
+    desc: Destroy testenv for a test case
+    silent: true
     vars:
-      PUBLICATION_SCHEDULER_INTERVAL: "{{ .PUBLICATION_SCHEDULER_INTERVAL | default \"1s\" }}"
-      RATELIMIT_ENABLED: "{{ .RATELIMIT_ENABLED | default \"true\" }}"
-      RATELIMIT_GLOBAL_RPS: "{{ .RATELIMIT_GLOBAL_RPS | default \"100\" }}"
-      RATELIMIT_GLOBAL_BURST: "{{ .RATELIMIT_GLOBAL_BURST | default \"200\" }}"
-      E2E_COVERAGE_ENABLED: "{{ .E2E_COVERAGE_ENABLED | default \"false\" }}"
-      COVERAGE_DIR: "{{ .COVERAGE_DIR | default (print .ROOT_DIR \"/.coverage/e2e\") }}"
-    env:
-      DIRECTORY_E2E_DEPLOYMENT_MODE: "local"
+      TEST_CASE: '{{index .MATCH 0}}'
+      TEST_ENV: '{{index .MATCH 1}}'
+      SKIP_TESTENV: '{{.SKIP_TESTENV | default "false"}}'
+    if: '{{ eq .SKIP_TESTENV "false" }}'
     cmds:
-      - defer: { task: test-env:kubernetes:local:cleanup }
-      - defer:
-          task: test:e2e:coverage:extract-pods
-          vars:
-            E2E_COVERAGE_ENABLED: "{{ .E2E_COVERAGE_ENABLED }}"
-            NAMESPACE: "dir-server"
-            COVERAGE_DIR: "{{ .COVERAGE_DIR }}"
-      - task: test-env:kubernetes:local
-        vars:
-          DIRECTORY_SERVER_PUBLICATION_SCHEDULER_INTERVAL: "{{ .PUBLICATION_SCHEDULER_INTERVAL }}"
-          DIRECTORY_SERVER_RATELIMIT_ENABLED: "{{ .RATELIMIT_ENABLED }}"
-          DIRECTORY_SERVER_RATELIMIT_GLOBAL_RPS: "{{ .RATELIMIT_GLOBAL_RPS }}"
-          DIRECTORY_SERVER_RATELIMIT_GLOBAL_BURST: "{{ .RATELIMIT_GLOBAL_BURST }}"
-          DIRECTORY_SERVER_OASF_API_VALIDATION_SCHEMA_URL: "https://schema.oasf.outshift.com"
-          E2E_COVERAGE_ENABLED: "{{ .E2E_COVERAGE_ENABLED }}"
-      - |
-        # Run E2E tests with coverage if enabled
-        if [ "{{.E2E_COVERAGE_ENABLED}}" = "true" ]; then
-          mkdir -p {{.COVERAGE_DIR}}
-          go test -C ./e2e/client -covermode=atomic -coverpkg={{ .COVERAGE_PKGS }} -coverprofile={{.COVERAGE_DIR}}/local-client.out.tmp . -v -failfast -test.v -test.paniconexit0 -ginkgo.timeout 2h -timeout 2h -ginkgo.v
-          # Filter out generated files (matching codecov.yml ignores)
-          if [ -f {{.COVERAGE_DIR}}/local-client.out.tmp ]; then
-            grep -v "\.pb\.go" {{.COVERAGE_DIR}}/local-client.out.tmp | grep -v "mock_.*\.go" > {{.COVERAGE_DIR}}/local-client.out || echo "mode: atomic" > {{.COVERAGE_DIR}}/local-client.out
-            rm {{.COVERAGE_DIR}}/local-client.out.tmp
-          fi
-        else
-          go test -C ./e2e/client . -v -failfast -test.v -test.paniconexit0 -ginkgo.timeout 2h -timeout 2h -ginkgo.v
-        fi
+      - task: 'e2e:internal:testenv:{{.TEST_CASE}}:{{.TEST_ENV}}:down'
 
-  test:e2e:local:
-    desc: Run end-to-end tests for local deployment (Client + CLI + Rate limiting
-      tests)
-    aliases: [ e2e:local ]
-    dir: "{{ .ROOT_DIR }}/tests"
+  e2e:test:*:*:
+    desc: Run E2E test suite for a test environment (use SKIP_TESTENV=true to skip setup/teardown)
+    silent: true
     vars:
-      PUBLICATION_SCHEDULER_INTERVAL: "{{ .PUBLICATION_SCHEDULER_INTERVAL | default \"1s\" }}"
-      RATELIMIT_ENABLED: "{{ .RATELIMIT_ENABLED | default \"true\" }}"
-      RATELIMIT_GLOBAL_RPS: "{{ .RATELIMIT_GLOBAL_RPS | default \"100\" }}"
-      RATELIMIT_GLOBAL_BURST: "{{ .RATELIMIT_GLOBAL_BURST | default \"200\" }}"
-      E2E_COVERAGE_ENABLED: "{{ .E2E_COVERAGE_ENABLED | default \"false\" }}"
-      COVERAGE_DIR: "{{ .COVERAGE_DIR | default (print .ROOT_DIR \"/.coverage/e2e\") }}"
-    env:
-      DIRECTORY_E2E_DEPLOYMENT_MODE: "local"
-    cmds:
-      - defer: { task: test-env:kubernetes:local:cleanup }
-      - defer:
-          task: test:e2e:coverage:extract-pods
-          vars:
-            E2E_COVERAGE_ENABLED: "{{ .E2E_COVERAGE_ENABLED }}"
-            NAMESPACE: "dir-server"
-      # Bootstrap infrastructure once for all test suites
-      - task: test-env:kubernetes:local
-        vars:
-          DIRECTORY_SERVER_PUBLICATION_SCHEDULER_INTERVAL: "{{ .PUBLICATION_SCHEDULER_INTERVAL }}"
-          DIRECTORY_SERVER_RATELIMIT_ENABLED: "{{ .RATELIMIT_ENABLED }}"
-          DIRECTORY_SERVER_RATELIMIT_GLOBAL_RPS: "{{ .RATELIMIT_GLOBAL_RPS }}"
-          DIRECTORY_SERVER_RATELIMIT_GLOBAL_BURST: "{{ .RATELIMIT_GLOBAL_BURST }}"
-          DIRECTORY_SERVER_OASF_API_VALIDATION_SCHEMA_URL: "https://schema.oasf.outshift.com"
-          E2E_COVERAGE_ENABLED: "{{ .E2E_COVERAGE_ENABLED }}"
-      # Deploy dns-validation chart for name verification tests
-      # This serves JWKS at /.well-known/jwks.json for DNS name validation
-      - |
-        {{ .HELM_BIN }} upgrade dns-validation \
-          {{ .ROOT_DIR }}/tests/e2e/dns-validation/chart \
-          --namespace dir-server \
-          --install \
-          --wait \
-          --timeout "5m"
-      # Run client library tests first (faster feedback)
-      - |
-        if [ "{{.E2E_COVERAGE_ENABLED}}" = "true" ]; then
-          mkdir -p {{.COVERAGE_DIR}}
-          go test -C ./e2e/client -covermode=atomic -coverpkg={{ .COVERAGE_PKGS }} -coverprofile={{.COVERAGE_DIR}}/local-client.out.tmp . -v -failfast -test.v -test.paniconexit0 -ginkgo.timeout 2h -timeout 2h -ginkgo.v -ginkgo.label-filter="!ratelimit"
-          # Filter out generated files (matching codecov.yml ignores)
-          if [ -f {{.COVERAGE_DIR}}/local-client.out.tmp ]; then
-            grep -v "\.pb\.go" {{.COVERAGE_DIR}}/local-client.out.tmp | grep -v "mock_.*\.go" > {{.COVERAGE_DIR}}/local-client.out || echo "mode: atomic" > {{.COVERAGE_DIR}}/local-client.out
-            rm {{.COVERAGE_DIR}}/local-client.out.tmp
-          fi
-        else
-          go test -C ./e2e/client . -v -failfast -test.v -test.paniconexit0 -ginkgo.timeout 2h -timeout 2h -ginkgo.v -ginkgo.label-filter="!ratelimit"
-        fi
-      # Run local CLI tests second (same infrastructure)
-      - |
-        if [ "{{.E2E_COVERAGE_ENABLED}}" = "true" ]; then
-          mkdir -p {{.COVERAGE_DIR}}
-          go test -C ./e2e/local -covermode=atomic -coverpkg={{ .COVERAGE_PKGS }} -coverprofile={{.COVERAGE_DIR}}/local-cli.out.tmp . -v -failfast -test.v -test.paniconexit0 -ginkgo.timeout 2h -timeout 2h -ginkgo.v
-          # Filter out generated files (matching codecov.yml ignores)
-          if [ -f {{.COVERAGE_DIR}}/local-cli.out.tmp ]; then
-            grep -v "\.pb\.go" {{.COVERAGE_DIR}}/local-cli.out.tmp | grep -v "mock_.*\.go" > {{.COVERAGE_DIR}}/local-cli.out || echo "mode: atomic" > {{.COVERAGE_DIR}}/local-cli.out
-            rm {{.COVERAGE_DIR}}/local-cli.out.tmp
-          fi
-        else
-          go test -C ./e2e/local . -v -failfast -test.v -test.paniconexit0 -ginkgo.timeout 2h -timeout 2h -ginkgo.v
-        fi
-      # Wait 3 seconds for rate limit reset
-      - sleep 3
-      # Run rate limiting tests LAST (separate output file to avoid overwriting non-ratelimit client coverage)
-      - |
-        if [ "{{.E2E_COVERAGE_ENABLED}}" = "true" ]; then
-          mkdir -p {{.COVERAGE_DIR}}
-          go test -C ./e2e/client -covermode=atomic -coverpkg={{ .COVERAGE_PKGS }} -coverprofile={{.COVERAGE_DIR}}/local-client-ratelimit.out.tmp . -v -failfast -test.v -test.paniconexit0 -ginkgo.timeout 2h -timeout 2h -ginkgo.v -ginkgo.label-filter="ratelimit"
-          if [ -f {{.COVERAGE_DIR}}/local-client-ratelimit.out.tmp ]; then
-            grep -v "\.pb\.go" {{.COVERAGE_DIR}}/local-client-ratelimit.out.tmp | grep -v "mock_.*\.go" > {{.COVERAGE_DIR}}/local-client-ratelimit.out || echo "mode: atomic" > {{.COVERAGE_DIR}}/local-client-ratelimit.out
-            rm {{.COVERAGE_DIR}}/local-client-ratelimit.out.tmp
-          fi
-        else
-          go test -C ./e2e/client . -v -failfast -test.v -test.paniconexit0 -ginkgo.timeout 2h -timeout 2h -ginkgo.v -ginkgo.label-filter="ratelimit"
-        fi
+      # User input
+      TEST_CASE: '{{index .MATCH 0}}'
+      TEST_ENV: '{{index .MATCH 1}}'
+      SKIP_TESTENV: '{{.SKIP_TESTENV | default "false"}}'
 
-  test:e2e:network:
-    desc: Run end-to-end tests for network deployment (Multi-peer CLI tests)
-    aliases: [ e2e:network ]
-    dir: "{{ .ROOT_DIR }}/tests"
-    vars:
-      PUBLICATION_SCHEDULER_INTERVAL: "{{ .PUBLICATION_SCHEDULER_INTERVAL | default \"1s\" }}"
-      E2E_COVERAGE_ENABLED: "{{ .E2E_COVERAGE_ENABLED | default \"false\" }}"
-      COVERAGE_DIR: "{{ .COVERAGE_DIR | default (print .ROOT_DIR \"/.coverage/e2e\") }}"
-    env:
-      DIRECTORY_E2E_DEPLOYMENT_MODE: "network"
+      # Task vars
+      SELECTED_CASE: { ref: 'get .TEST_MATRIX .TEST_CASE' }
+      SELECTED_ENV: { ref: 'get .SELECTED_CASE.envs .TEST_ENV' }
+      SELECTED_TESTENV_TASK: 'e2e:testenv:{{.TEST_CASE}}:{{.TEST_ENV}}'
     deps:
-      - deps:helm
-      - deps:kubectl
-      - deps:kind
-    cmds:
-      - defer: { task: test-env:kubernetes:network:cleanup }
-      # Extract coverage from all network namespaces
-      - defer:
-          task: test:e2e:coverage:extract-pods
-          vars:
-            E2E_COVERAGE_ENABLED: "{{ .E2E_COVERAGE_ENABLED }}"
-            NAMESPACE: "bootstrap"
-      - defer:
-          task: test:e2e:coverage:extract-pods
-          vars:
-            E2E_COVERAGE_ENABLED: "{{ .E2E_COVERAGE_ENABLED }}"
-            NAMESPACE: "peer1"
-      - defer:
-          task: test:e2e:coverage:extract-pods
-          vars:
-            E2E_COVERAGE_ENABLED: "{{ .E2E_COVERAGE_ENABLED }}"
-            NAMESPACE: "peer2"
-      - defer:
-          task: test:e2e:coverage:extract-pods
-          vars:
-            E2E_COVERAGE_ENABLED: "{{ .E2E_COVERAGE_ENABLED }}"
-            NAMESPACE: "peer3"
-      # Bootstrap
-      # NOTE: Run as a dedicated task instead of dependency so deployment sequencing is explicit
-      - task: test-env:kubernetes:network
+      - task: cli:compile
         vars:
-          PUBLICATION_SCHEDULER_INTERVAL: "{{ .PUBLICATION_SCHEDULER_INTERVAL }}"
-          E2E_COVERAGE_ENABLED: "{{ .E2E_COVERAGE_ENABLED }}"
-      # Run network tests with proper isolation and cleanup
-      - |
-        if [ "{{.E2E_COVERAGE_ENABLED}}" = "true" ]; then
-          mkdir -p {{.COVERAGE_DIR}}
-          go test -C ./e2e/network -covermode=atomic -coverpkg={{ .COVERAGE_PKGS }} -coverprofile={{.COVERAGE_DIR}}/network.out.tmp . -v -failfast -test.v -test.paniconexit0 -ginkgo.timeout 2h -timeout 2h -ginkgo.v
-          # Filter out generated files (matching codecov.yml ignores)
-          if [ -f {{.COVERAGE_DIR}}/network.out.tmp ]; then
-            grep -v "\.pb\.go" {{.COVERAGE_DIR}}/network.out.tmp | grep -v "mock_.*\.go" > {{.COVERAGE_DIR}}/network.out || echo "mode: atomic" > {{.COVERAGE_DIR}}/network.out
-            rm {{.COVERAGE_DIR}}/network.out.tmp
-          fi
-        else
-          go test -C ./e2e/network . -v -failfast -test.v -test.paniconexit0 -ginkgo.timeout 2h -timeout 2h -ginkgo.v
-        fi
-
-  test:e2e:daemon:
-    desc: Run all daemon e2e tests (default + external backends)
-    aliases: [ e2e:daemon ]
+          COVERAGE: "true"
+          TRY_SKIP_COMPILE: "true"
     cmds:
-      - task: test:e2e:daemon:default
-      - task: test:e2e:daemon:external
+      # Print info
+      - |
+        echo -e "Test case: {{ toJson .SELECTED_CASE }}"
+        echo -e "Test testenv: {{ toJson .SELECTED_ENV }}"
 
-  test:e2e:daemon:default:
-    desc: Run daemon e2e tests with default config (SQLite + local OCI store)
-    aliases: [ e2e:daemon:default ]
+      # Create testenv
+      - defer: { task: '{{.SELECTED_TESTENV_TASK}}:down' }
+      - task: '{{.SELECTED_TESTENV_TASK}}:up'
+
+      # Run test suite
+      - |
+        mkdir -p {{ .COVERAGE_DIR }}/e2e
+        go test -C {{ .SELECTED_CASE.go_test_suite }} . \
+          -covermode=atomic \
+          -coverpkg={{.COVERAGE_PKGS}} \
+          -coverprofile={{.COVERAGE_DIR}}/e2e/{{.TEST_CASE}}-{{.TEST_ENV}}.out \
+          -v -failfast -test.v -test.paniconexit0 \
+          -timeout 2h -ginkgo.timeout 2h -ginkgo.v \
+          -test-config {{ .SELECTED_ENV }}
+
+  e2e:test:*:
+    desc: Run E2E test suite across all test environments
+    silent: true
     vars:
-      DAEMON_DATA_DIR:
-        sh: mktemp -d
-    env:
-      DIRECTORY_CLIENT_SERVER_ADDRESS: localhost:8888
+      # User input
+      TEST_CASE: '{{index .MATCH 0}}'
+
+      # Find selected test case from matrix
+      SELECTED_CASE: { ref: 'get .TEST_MATRIX .TEST_CASE' }
+      SELECTED_TESTENVS: { ref: '.SELECTED_CASE.envs' }
     deps:
-      - cli:compile
-    cmds:
-      - defer: |
-          {{ .DIRCTL_BIN }} daemon stop --data-dir {{ .DAEMON_DATA_DIR }} 2>/dev/null || true
-          rm -rf {{ .DAEMON_DATA_DIR }}
-      - "{{ .DIRCTL_BIN }} daemon start --data-dir {{ .DAEMON_DATA_DIR }} &"
-      - go test -C ./tests/e2e/daemon . -v -failfast -test.v -test.paniconexit0
-        -ginkgo.timeout 5m -timeout 5m -ginkgo.v
+      # Run in parallel across test environments assuming
+      # testenv setup is isolated per environment
+      - for: { var: SELECTED_TESTENVS }
+        task: 'e2e:test:{{ .TEST_CASE }}:{{ .KEY }}'
 
-  test:e2e:daemon:external:
-    desc: Run daemon e2e tests with external PostgreSQL and Zot registry
-    aliases: [ e2e:daemon:external ]
+  e2e:test:
+    desc: Run all E2E test suites
+    silent: true
+    cmds:
+      # Run serial across test cases
+      - for: { var: TEST_MATRIX }
+        task: 'e2e:test:{{ .KEY }}'
+
+  e2e:list:
+    desc: List available E2E test suites
+    silent: true
+    cmds:
+      - for: { var: TEST_MATRIX }
+        cmd: |
+          echo "e2e:test:{{.KEY}}"
+          {{ range $key, $item := .ITEM.envs }}
+            echo -e "  Testenv: {{$key}}, Config: {{ $item }}"
+          {{ end }}
+
+      - |
+        echo -e "\nTo run a specific test suite, use: task e2e:test:<test_case>:<test_env>"
+        echo -e "Example: task e2e:test:client:kind"
+
+  # NOTE: this cannot be run under e2e:test task due to a transient
+  # issue of either closing/stopping daemon or flushing coverage data,
+  # both of which require the parent process (taskfile) to exit to
+  # complete and dump coverage files.
+  e2e:coverage:
+    desc: Generate combined coverage report for all E2E tests
     vars:
-      DAEMON_DATA_DIR:
-        sh: mktemp -d
-      COMPOSE_DIR: "{{ .ROOT_DIR }}/tests/e2e/daemon"
-      CONFIG_FILE: "{{ .ROOT_DIR }}/tests/e2e/daemon/daemon.config.external.yaml"
-    env:
-      DIRECTORY_CLIENT_SERVER_ADDRESS: localhost:8888
-      DIRECTORY_DAEMON_SERVER_DATABASE_POSTGRES_USERNAME: postgres
-      DIRECTORY_DAEMON_SERVER_DATABASE_POSTGRES_PASSWORD: postgres
-      DAEMON_E2E_RUN_RUNTIME_TESTS: "true"
-    deps:
-      - cli:compile
+      # User input
+      COVERAGE_FILENAME: '{{ .COVERAGE_FILENAME | default "combined.out" }}'
+
+      # Task settings
+      MERGE_GOCOVERDIR: '{{ .COVERAGE_DIR }}/e2e/.gocover-merged'
+      TESTENV_COVERAGE_FILE: '{{ .COVERAGE_DIR }}/e2e/{{ .COVERAGE_FILENAME | replace " " "-" | lower }}'
     cmds:
-      - defer: |
-          {{ .DIRCTL_BIN }} daemon stop --data-dir {{ .DAEMON_DATA_DIR }} 2>/dev/null || true
-          docker compose -f {{ .COMPOSE_DIR }}/docker-compose.yaml down -v 2>/dev/null || true
-          rm -rf {{ .DAEMON_DATA_DIR }}
-      - docker compose -f {{ .COMPOSE_DIR }}/docker-compose.yaml up -d --wait
-      - "{{ .DIRCTL_BIN }} daemon start --data-dir {{ .DAEMON_DATA_DIR }}
-        --config {{ .CONFIG_FILE }} &"
-      - go test -C ./tests/e2e/daemon . -v -failfast -test.v -test.paniconexit0
-        -ginkgo.timeout 5m -timeout 5m -ginkgo.v
-
-  test:e2e:spire:
-    desc: Run end-to-end tests for SPIRE deployment
-    cmds:
-      # Run SPIRE deployment
-      - defer: { task: test:spire:cleanup }
-      - task: test:spire
-
-  # TODO: move spire out from here
-  # TODO: change to Ingress services instead of LoadBalancer
-  test:spire:
-    desc: Test SPIRE federation setup between DIR and DIRCTL clusters
-    deps:
-      - task: helm:gen
-    vars:
-      AUTH_MODE: "{{ .AUTH_MODE | default \"x509\" }}" # or "jwt"
-      DIR_TRUST_DOMAIN: "{{ .DIR_TRUST_DOMAIN | default \"dir.example\" }}"
-      DIRCTL_TRUST_DOMAIN: "{{ .DIRCTL_TRUST_DOMAIN | default \"dirctl.example\" }}"
-      DIR_DNS_NAME_TEMPLATE: "{{ .DIR_DNS_NAME_TEMPLATE | default \"127.0.0.1.nip.io\" }}"
-    cmds:
-      # Setup DIR cluster
-      - task: test-env:kubernetes:setup-cluster
-        vars:
-          KIND_CLUSTER_NAME: "{{ .DIR_TRUST_DOMAIN }}"
-          KIND_EXTRA_PORT_MAPPING: "8888:30088"
-
-      # Start cloud provider for LoadBalancer support
+      # Prepare fresh MERGE_GOCOVERDIR
       - |
-        echo "Starting Kind cloud provider for LoadBalancer support..."
-        if [[ {{OS}} == "darwin" ]]; then
-          sudo go run sigs.k8s.io/cloud-provider-kind@latest > /dev/null 2>&1 &
-        elif [[ {{OS}} == "linux" ]]; then
-          go run sigs.k8s.io/cloud-provider-kind@latest > /dev/null 2>&1 &
-        else
-          echo "Unknown OS"
-          exit 1
-        fi
-        echo "Cloud provider started in background"
+        rm -rf {{.MERGE_GOCOVERDIR}}
+        mkdir -p {{.MERGE_GOCOVERDIR}}
 
-      # Deploy SPIRE on DIR cluster
-      - task: test-env:kubernetes:spire
-        vars:
-          TRUST_DOMAIN: "{{ .DIR_TRUST_DOMAIN }}"
-          BUNDLE_PATH: /tmp/{{ .DIR_TRUST_DOMAIN }}.spiffe
-
-      # Setup DIRCTL cluster
-      - task: test-env:kubernetes:setup-cluster
-        vars:
-          KIND_CLUSTER_NAME: "{{ .DIRCTL_TRUST_DOMAIN }}"
-
-      # Start cloud provider for LoadBalancer support
+      # Merge coverage profiles
       - |
-        echo "Starting Kind cloud provider for LoadBalancer support..."
-        go run sigs.k8s.io/cloud-provider-kind@latest > /dev/null 2>&1 &
-        echo "Cloud provider started in background"
-
-      # Deploy SPIRE on DIRCTL cluster
-      - task: test-env:kubernetes:spire
-        vars:
-          TRUST_DOMAIN: "{{ .DIRCTL_TRUST_DOMAIN }}"
-          BUNDLE_PATH: /tmp/{{ .DIRCTL_TRUST_DOMAIN }}.spiffe
-
-      # Get DIR cluster service addresses
-      - task: deploy:kubernetes:context
-        vars:
-          KIND_CLUSTER_NAME: "{{ .DIR_TRUST_DOMAIN }}"
+        go tool covdata merge \
+          -i={{.GOCOVERDIR}} \
+          -pkg={{.COVERAGE_PKGS}} \
+          -o={{.MERGE_GOCOVERDIR}} || exit 0
+      
+      # Generate combined coverage report
       - |
-        echo "Getting DIR cluster service addresses..."
-        DIR_BUNDLE_IP=$(kubectl get service -n spire spire-server -o jsonpath='{.status.loadBalancer.ingress[0].ip}' 2>/dev/null || echo "127.0.0.1")
-        echo "DIR_BUNDLE_ADDRESS=${DIR_BUNDLE_IP}:8443" >> /tmp/spire-addresses.env
-
-      # Get DIRCTL cluster service addresses
-      - task: deploy:kubernetes:context
-        vars:
-          KIND_CLUSTER_NAME: "{{ .DIRCTL_TRUST_DOMAIN }}"
-      - |
-        echo "Getting DIRCTL cluster service addresses..."
-        DIRCTL_BUNDLE_IP=$(kubectl get service -n spire spire-server -o jsonpath='{.status.loadBalancer.ingress[0].ip}' 2>/dev/null || echo "127.0.0.1")
-        echo "DIRCTL_BUNDLE_ADDRESS=${DIRCTL_BUNDLE_IP}:8443" >> /tmp/spire-addresses.env
-
-      # Create DIR server federation config
-      - |
-        source /tmp/spire-addresses.env
-        echo "Creating DIR server federation config..."
-        cat > /tmp/server-federation.yaml << EOF
-        apiserver:
-          service:
-            type: LoadBalancer
-          authz_policies_csv: |
-            p,{{ .DIR_TRUST_DOMAIN }},*
-            p,*,/agntcy.dir.store.v1.StoreService/Pull
-            p,*,/agntcy.dir.store.v1.StoreService/PullReferrer
-            p,*,/agntcy.dir.store.v1.StoreService/Lookup
-            p,*,/agntcy.dir.sync.v1.SyncService/RequestRegistryCredentials
-          config:
-            authn:
-              enabled: true
-              mode: "{{ .AUTH_MODE }}"
-              audiences:
-                - "spiffe://{{ .DIR_TRUST_DOMAIN }}/spire/server"
-            authz:
-              enabled: true
-            oasf_api_validation:
-              schema_url: "https://schema.oasf.outshift.com"
-          spire:
-            enabled: true
-            trustDomain: {{ .DIR_TRUST_DOMAIN }}
-            className: dir-spire
-            dnsNameTemplates:
-              - "{{ .DIR_DNS_NAME_TEMPLATE }}"
-            federation:
-              - trustDomain: {{ .DIRCTL_TRUST_DOMAIN }}
-                bundleEndpointURL: https://${DIRCTL_BUNDLE_ADDRESS}
-                bundleEndpointProfile:
-                  type: https_spiffe
-                  endpointSPIFFEID: spiffe://{{ .DIRCTL_TRUST_DOMAIN }}/spire/server
-                trustDomainBundle: |-
-                  $(cat /tmp/{{ .DIRCTL_TRUST_DOMAIN }}.spiffe)
-        EOF
-
-      # Deploy DIR server with federation
-      - task: deploy:kubernetes:context
-        vars:
-          KIND_CLUSTER_NAME: "{{ .DIR_TRUST_DOMAIN }}"
-      - task: test-env:kubernetes:dir
-        vars:
-          KIND_CLUSTER_NAME: "{{ .DIR_TRUST_DOMAIN }}"
-          HELM_EXTRA_ARGS: "-f /tmp/server-federation.yaml"
-          DIRECTORY_SERVER_PUBLICATION_SCHEDULER_INTERVAL: 1s
-
-      # Get DIR API server address
-      - task: deploy:kubernetes:context
-        vars:
-          KIND_CLUSTER_NAME: "{{ .DIR_TRUST_DOMAIN }}"
-      - |
-        echo "Getting DIR API server address..."
-        DIR_API_IP=$(kubectl get service -n dir-server dir-apiserver -o jsonpath='{.status.loadBalancer.ingress[0].ip}' 2>/dev/null || echo "127.0.0.1")
-        echo "DIR_SERVER_ADDRESS=${DIR_API_IP}:8888" >> /tmp/spire-addresses.env
-
-      # Create DIRCTL client federation config (for dirctl in dir.example)
-      - |
-        source /tmp/spire-addresses.env
-        echo "Creating DIRCTL client federation config for dir.example..."
-        cat > /tmp/client-federation-dir-example.yaml << EOF
-        env:
-          - name: DIRECTORY_CLIENT_SERVER_ADDRESS
-            value: ${DIR_SERVER_ADDRESS}
-          - name: DIRECTORY_CLIENT_AUTH_MODE
-            value: "{{ .AUTH_MODE }}"
-          - name: DIRECTORY_CLIENT_JWT_AUDIENCE
-            value: "spiffe://{{ .DIR_TRUST_DOMAIN }}/spire/server"
-        spire:
-          enabled: true
-          trustDomain: {{ .DIR_TRUST_DOMAIN }}
-          className: dir-spire
-        EOF
-
-      # Deploy DIRCTL client in dir.example trust domain (same cluster as dir)
-      - task: deploy:kubernetes:context
-        vars:
-          KIND_CLUSTER_NAME: "{{ .DIR_TRUST_DOMAIN }}"
-      - task: test-env:kubernetes:dirctl
-        vars:
-          KIND_CLUSTER_NAME: "{{ .DIR_TRUST_DOMAIN }}"
-          HELM_NAMESPACE: "dir-client"
-          HELM_EXTRA_ARGS: "-f /tmp/client-federation-dir-example.yaml"
-
-      # Create DIRCTL client federation config (for dirctl.example cluster)
-      - |
-        source /tmp/spire-addresses.env
-        echo "Creating DIRCTL client federation config..."
-        cat > /tmp/client-federation.yaml << EOF
-        env:
-          - name: DIRECTORY_CLIENT_SERVER_ADDRESS
-            value: ${DIR_SERVER_ADDRESS}
-          - name: DIRECTORY_CLIENT_AUTH_MODE
-            value: "{{ .AUTH_MODE }}"
-          - name: DIRECTORY_CLIENT_JWT_AUDIENCE
-            value: "spiffe://{{ .DIR_TRUST_DOMAIN }}/spire/server"
-        spire:
-          enabled: true
-          trustDomain: {{ .DIRCTL_TRUST_DOMAIN }}
-          className: dir-spire
-          federation:
-            - trustDomain: {{ .DIR_TRUST_DOMAIN }}
-              bundleEndpointURL: https://${DIR_BUNDLE_ADDRESS}
-              bundleEndpointProfile:
-                type: https_spiffe
-                endpointSPIFFEID: spiffe://{{ .DIR_TRUST_DOMAIN }}/spire/server
-              trustDomainBundle: |-
-                $(cat /tmp/{{ .DIR_TRUST_DOMAIN }}.spiffe)
-        EOF
-
-      # Deploy DIRCTL client with federation (in dirctl.example cluster)
-      - task: deploy:kubernetes:context
-        vars:
-          KIND_CLUSTER_NAME: "{{ .DIRCTL_TRUST_DOMAIN }}"
-      - task: test-env:kubernetes:dirctl
-        vars:
-          KIND_CLUSTER_NAME: "{{ .DIRCTL_TRUST_DOMAIN }}"
-          HELM_EXTRA_ARGS: "-f /tmp/client-federation.yaml"
-
-      # Display completion status
-      - |
-        source /tmp/spire-addresses.env
-        echo "=============================================="
-        echo "SPIRE federation test deployment complete!"
-        echo "=============================================="
-        echo "DIR Server: ${DIR_SERVER_ADDRESS}"
-        echo "DIR Bundle: ${DIR_BUNDLE_ADDRESS}"
-        echo "DIRCTL Bundle: ${DIRCTL_BUNDLE_ADDRESS}"
-        echo ""
-        echo "Trust domains setup:"
-        echo "  DIR: {{ .DIR_TRUST_DOMAIN }}"
-        echo "  DIRCTL Internal: {{ .DIR_TRUST_DOMAIN }}"
-        echo "  DIRCTL External: {{ .DIRCTL_TRUST_DOMAIN }}"
-        echo ""
-        echo "To verify deployment:"
-        echo "  kubectl --context kind-{{ .DIR_TRUST_DOMAIN }} get pods -n dir-server"
-        echo "  kubectl --context kind-{{ .DIR_TRUST_DOMAIN }} logs -n dir-client -l app.kubernetes.io/name=dirctl"
-        echo "  kubectl --context kind-{{ .DIRCTL_TRUST_DOMAIN }} logs -n dir-client -l app.kubernetes.io/name=dirctl"
-        echo ""
-        echo "To cleanup:"
-        echo "  task test:spire:cleanup"
-
-  test:spire:cleanup:
-    desc: Cleanup SPIRE federation test clusters
-    vars:
-      DIR_TRUST_DOMAIN: "{{ .DIR_TRUST_DOMAIN | default \"dir.example\" }}"
-      DIRCTL_TRUST_DOMAIN: "{{ .DIRCTL_TRUST_DOMAIN | default \"dirctl.example\" }}"
-    cmds:
-      - echo "Cleaning up DIR cluster ({{ .DIR_TRUST_DOMAIN }})..."
-      - task: deploy:kubernetes:cleanup
-        vars:
-          KIND_CLUSTER_NAME: "{{ .DIR_TRUST_DOMAIN }}"
-      - echo "Cleaning up DIRCTL cluster ({{ .DIRCTL_TRUST_DOMAIN }})..."
-      - task: deploy:kubernetes:cleanup
-        vars:
-          KIND_CLUSTER_NAME: "{{ .DIRCTL_TRUST_DOMAIN }}"
-      - echo "Cleanup complete!"
-
-  test:e2e:coverage:
-    desc: Run end-to-end tests with coverage
-    aliases: [ e2e:coverage ]
-    deps:
-      - build:coverage
-    cmds:
-      - cmd: |
-          echo "Removing existing reports in {{.COVERAGE_DIR}}/e2e"
-          rm -rf {{.COVERAGE_DIR}}/e2e/*
-        if: "[ -d {{.COVERAGE_DIR}}/e2e ]"
-
-      - cmd: |
-          echo "Creating new coverage directory: {{.COVERAGE_DIR}}/e2e"
-          mkdir -p {{.COVERAGE_DIR}}/e2e
-        if: "[ ! -d {{.COVERAGE_DIR}}/e2e ]"
-
-      - E2E_COVERAGE_ENABLED=true task test:e2e
-      - task: test:e2e:coverage:process
-
-  test:e2e:coverage:extract-pods:
-    desc: Extract coverage data from Kubernetes pods
-    internal: true
-    vars:
-      E2E_COVERAGE_ENABLED: "{{ .E2E_COVERAGE_ENABLED | default \"false\" }}"
-      NAMESPACE: "{{ .NAMESPACE | default \"dir-server\" }}"
-      POD_SELECTORS: "{{ .POD_SELECTORS | default \"app.kubernetes.io/name=apiserver
-        app.kubernetes.io/name=reconciler\" }}"
-    cmds:
-      - |
-        if [ "{{.E2E_COVERAGE_ENABLED}}" = "true" ]; then
-          echo "[coverage] Triggering graceful shutdown of pod to flush coverage data..."
-
-          for POD_SELECTOR in {{.POD_SELECTORS}}; do
-            POD_NAMES=$({{.KUBECTL_BIN}} get pods -n {{.NAMESPACE}} -l "$POD_SELECTOR" -o jsonpath='{.items[*].metadata.name}')
-
-            if [ -z "$POD_NAMES" ]; then
-              echo "[coverage][warn] No pod found matching selector $POD_SELECTOR"
-              continue
-            fi
-
-            for POD_NAME in $POD_NAMES; do
-              [ -z "$POD_NAME" ] && continue
-
-              # Send SIGTERM to PID 1 to trigger coverage flush (like the PoC)
-              echo "[coverage] Sending SIGTERM to PID 1 in pod: $POD_NAME"
-              {{.KUBECTL_BIN}} exec -n {{.NAMESPACE}} "$POD_NAME" -- sh -c 'kill -TERM 1' 2>/dev/null || true
-
-              # Wait for container to restart (coverage files persist in emptyDir volume)
-              echo "[coverage] Waiting for container to restart and coverage to be flushed..."
-              sleep 5
-              {{.KUBECTL_BIN}} wait --for=condition=Ready pod/"$POD_NAME" -n {{.NAMESPACE}} --timeout=120s
-
-              # Extract coverage files (emptyDir persists across container restarts)
-              echo "[coverage] Extracting coverage data from pod: $POD_NAME"
-              mkdir -p {{.COVERAGE_DIR}}/e2e/pods/pod-$POD_NAME
-              {{.KUBECTL_BIN}} cp -n {{.NAMESPACE}} "$POD_NAME:/tmp/coverage" {{.COVERAGE_DIR}}/e2e/pods/pod-$POD_NAME 2>&1 || echo "[coverage][warn] Failed to extract from $POD_NAME"
-            done
-          done
-
-          echo "[coverage] Coverage data extracted to {{.COVERAGE_DIR}}/e2e/pods"
-        else
-          echo "[coverage] E2E_COVERAGE_ENABLED is false, skipping pod coverage extraction"
-        fi
-
-  test:e2e:coverage:process:
-    desc: Collect and merge E2E coverage data from pods
-    cmds:
-      - |
-        echo "[e2e-coverage] Collecting and merging E2E coverage data from pods"
-        if [ -d "{{.COVERAGE_DIR}}/e2e/pods" ]; then
-          # Build comma-separated list of pod directories
-          pod_dirs=$(find {{.COVERAGE_DIR}}/e2e/pods -mindepth 1 -maxdepth 1 -type d 2>/dev/null | tr '\n' ',' | sed 's/,$//')
-
-          if [ -n "$pod_dirs" ]; then
-            echo "  Found pod coverage directories: $pod_dirs"
-
-            # server.out creation
-            mkdir -p {{.COVERAGE_DIR}}/e2e/server-binary
-            go tool covdata merge -i="$pod_dirs" -o={{.COVERAGE_DIR}}/e2e/server-binary
-            go tool covdata textfmt -i={{.COVERAGE_DIR}}/e2e/server-binary -o={{.COVERAGE_DIR}}/e2e/server.out.tmp
-
-            # Filter out generated files (matching codecov.yml ignores)
-            if [ -f {{.COVERAGE_DIR}}/e2e/server.out.tmp ]; then
-              grep -v "\.pb\.go" {{.COVERAGE_DIR}}/e2e/server.out.tmp | grep -v "mock_.*\.go" > {{.COVERAGE_DIR}}/e2e/server.out || echo "mode: atomic" > {{.COVERAGE_DIR}}/e2e/server.out
-              rm {{.COVERAGE_DIR}}/e2e/server.out.tmp
-            fi
-          else
-            echo "No pod coverage found"
-          fi
-        else
-          echo "No pods directory found"
-        fi
+        go tool covdata textfmt \
+          -i={{.MERGE_GOCOVERDIR}} \
+          -pkg={{.COVERAGE_PKGS}} \
+          -o={{.TESTENV_COVERAGE_FILE}}

@@ -1,0 +1,28 @@
+# Copyright AGNTCY Contributors (https://github.com/agntcy)
+# SPDX-License-Identifier: Apache-2.0
+
+version: "3"
+
+includes:
+  setup-testenv-k8s:
+    taskfile: "../../../../../tests/modules/Taskfile.setup-testenv-k8s.yml"
+    flatten: true # Expose included tasks (up/down)
+    vars:
+      KIND_CLUSTER_NAME: "e2e-client-kind-testenv"
+      KIND_CONFIG_PATH: "{{.ROOT_DIR}}/tests/e2e/client/testenv/kind/kind-cluster.yaml"
+      KIND_EXTRA_IMAGES: |
+        ghcr.io/agntcy/dir-reconciler:{{.IMAGE_TAG}}
+        ghcr.io/agntcy/dir-apiserver:{{.IMAGE_TAG}}
+      CHART_DEPLOYMENTS: |
+        [
+          {
+            "release_name": "dir",
+            "namespace": "dir",
+            "chart_path": "{{.ROOT_DIR}}/install/charts/dir",
+            "chart_values_path": "{{.ROOT_DIR}}/tests/e2e/client/testenv/kind/dir-chart-values.yaml",
+            "chart_extra_values": [
+              "--set apiserver.image.tag={{.IMAGE_TAG}}",
+              "--set apiserver.reconciler.image.tag={{.IMAGE_TAG}}"
+            ]
+          }
+        ]

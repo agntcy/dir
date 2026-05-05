@@ -14,11 +14,6 @@ on:
         required: true
         type: string
         description: "Image tag to use."
-      enable_coverage:
-        required: false
-        type: boolean
-        default: false
-        description: "Whether to collect and upload E2E coverage as artifacts."
 
 jobs:
   e2e:
@@ -27,18 +22,14 @@ jobs:
     strategy:
       matrix:
         include:
-          - task: test:e2e:local
+          - task: e2e:test:client:local
+            label: "Client"
+          - task: e2e:test:local:local
             label: "Local"
-            coverage: true
-          - task: test:e2e:network
+          - task: e2e:test:network:local
             label: "Network"
-            coverage: true
-          - task: test:e2e:daemon:external
+          - task: e2e:test:daemon:external
             label: "Daemon External"
-            coverage: false
-          - task: test:e2e:spire
-            label: "Federation"
-            coverage: false
     steps:
       - name: Checkout code
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
@@ -63,20 +54,12 @@ jobs:
         with:
           go-version: "1.26.2"
           cache-dependency-path: "**/*.sum"
-          cache: true # NOTE: Default value, just to be explicit
+          cache: true
 
-      - name: Download artifacts
+      - name: Download build artifacts
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
           path: tmp/artifacts
-          merge-multiple: true
-
-      - name: Download coverage image artifacts
-        if: ${{ inputs.enable_coverage }}
-        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
-        with:
-          path: tmp/coverage-artifacts
-          pattern: "*-coverage"
           merge-multiple: true
 
       - name: Load images to local Docker registry
@@ -86,39 +69,27 @@ jobs:
           done
           docker images
 
-      - name: Load coverage images to local Docker registry
-        if: ${{ inputs.enable_coverage }}
-        run: |
-          for image_archive in tmp/coverage-artifacts/*.tar; do
-            docker load --input "$image_archive"
-          done
-          docker images
-
-      - name: Load compiled dirctl binary
+      - name: Load dirctl debug binary
         run: |
           task deps:bin-dir
-          cp tmp/artifacts/dirctl ./.bin/dirctl
+          cp tmp/artifacts/dirctl-debug ./.bin/dirctl
           chmod +x ./.bin/dirctl
 
       - name: Run end-to-end tests
         env:
           IMAGE_REPO: ${{ inputs.image_repo }}
           IMAGE_TAG: ${{ inputs.image_tag }}
-          E2E_COMPILE_OUTPUT_DIR: tmp
-          E2E_COVERAGE_ENABLED: ${{ matrix.coverage && inputs.enable_coverage && 'true' || 'false' }}
+          COVERAGE: "true"
         run: |
-          # Use a random cluster name to avoid conflicts in concurrent runs.
-          # Kind cluster names must be lowercase and can contain only letters and numbers.
-          export KIND_CLUSTER_NAME=test-$(openssl rand -base64 12 | tr -dc 'a-z0-9')
           task ${{ matrix.task }}
 
-      - name: Process E2E coverage
-        if: ${{ matrix.coverage && inputs.enable_coverage }}
+      - name: Merge coverage files
+        env:
+          COVERAGE_FILENAME: "testenvs-${{ matrix.label }}.out"
         run: |
-          task test:e2e:coverage:process
+          task e2e:coverage
 
       - name: Upload E2E coverage artifact
-        if: ${{ matrix.coverage && inputs.enable_coverage }}
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: coverage-e2e-${{ matrix.label }}

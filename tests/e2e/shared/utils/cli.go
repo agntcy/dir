@@ -5,6 +5,7 @@ package utils
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"strconv"
 	"strings"
@@ -24,16 +25,40 @@ const (
 )
 
 // CLI provides a fluent interface for executing CLI commands in tests.
-type CLI struct{}
+type CLI struct {
+	path string
+	args []string
+}
+
+type CLIOption func(*CLI)
+
+func WithArgs(args ...string) CLIOption {
+	return func(c *CLI) {
+		c.args = args
+	}
+}
+
+func WithPath(path string) CLIOption {
+	return func(c *CLI) {
+		c.path = path
+	}
+}
 
 // NewCLI creates a new CLI test helper.
-func NewCLI() *CLI {
-	return &CLI{}
+func NewCLI(opts ...CLIOption) *CLI {
+	cli := &CLI{}
+	for _, opt := range opts {
+		opt(cli)
+	}
+
+	return cli
 }
 
 // Command creates a new command builder.
 func (c *CLI) Command(name string) *CommandBuilder {
 	return &CommandBuilder{
+		path:    c.path, // use path from CLI config if provided
+		args:    c.args, // include any global args from CLI config
 		command: name,
 		timeout: DefaultCommandTimeout,
 	}
@@ -221,9 +246,9 @@ func (s *SyncCommands) Delete(syncID string) *CommandBuilder {
 
 // CommandBuilder provides a fluent interface for building and executing commands.
 type CommandBuilder struct {
+	path        string
 	command     string
 	args        []string
-	serverAddr  string
 	expectErr   bool
 	timeout     time.Duration
 	outputFile  string
@@ -236,13 +261,6 @@ type StdinCommandBuilder struct {
 	stdinInput string
 }
 
-// OnServer sets the server address for StdinCommandBuilder.
-func (s *StdinCommandBuilder) OnServer(addr string) *StdinCommandBuilder {
-	s.CommandBuilder.OnServer(addr)
-
-	return s
-}
-
 // WithTimeout sets the timeout for StdinCommandBuilder.
 func (s *StdinCommandBuilder) WithTimeout(timeout time.Duration) *StdinCommandBuilder {
 	s.CommandBuilder.WithTimeout(timeout)
@@ -253,10 +271,6 @@ func (s *StdinCommandBuilder) WithTimeout(timeout time.Duration) *StdinCommandBu
 // Execute runs the command with stdin input and returns output and error.
 func (s *StdinCommandBuilder) Execute() (string, error) {
 	args := append([]string{s.command}, s.args...)
-
-	if s.serverAddr != "" {
-		args = append(args, "--server-addr", s.serverAddr)
-	}
 
 	if s.outputFile != "" {
 		args = append(args, "--output", s.outputFile)
@@ -327,12 +341,6 @@ func (c *CommandBuilder) WithArgs(args ...string) *CommandBuilder {
 	return c
 }
 
-func (c *CommandBuilder) OnServer(addr string) *CommandBuilder {
-	c.serverAddr = addr
-
-	return c
-}
-
 func (c *CommandBuilder) WithTimeout(timeout time.Duration) *CommandBuilder {
 	c.timeout = timeout
 
@@ -358,12 +366,8 @@ func (c *CommandBuilder) SuppressStderr() *CommandBuilder {
 }
 
 // Execute runs the command and returns output and error.
-func (c *CommandBuilder) Execute() (string, error) {
+func (c *CommandBuilder) ExecuteCtx(ctx context.Context) (string, error) {
 	args := append([]string{c.command}, c.args...)
-
-	if c.serverAddr != "" {
-		args = append(args, "--server-addr", c.serverAddr)
-	}
 
 	if c.outputFile != "" {
 		args = append(args, "--output", c.outputFile)
@@ -382,7 +386,7 @@ func (c *CommandBuilder) Execute() (string, error) {
 
 	cmd.SetArgs(args)
 
-	err := cmd.Execute()
+	err := cmd.ExecuteContext(ctx)
 	output := strings.TrimSpace(outputBuffer.String())
 
 	if err != nil {
@@ -390,6 +394,11 @@ func (c *CommandBuilder) Execute() (string, error) {
 	}
 
 	return output, nil
+}
+
+// Execute runs the command and returns output and error.
+func (c *CommandBuilder) Execute() (string, error) {
+	return c.ExecuteCtx(context.Background())
 }
 
 // ShouldSucceed executes the command and expects success.
@@ -570,70 +579,69 @@ func (s *SearchBuilder) WithArgs(args ...string) *SearchBuilder {
 }
 
 func (s *SearchBuilder) Execute() (string, error) {
-	// Reset args and add format flag
-	s.args = []string{"--format", s.format}
+	searchArgs := []string{"--format", s.format}
 
 	// Build search arguments using direct field flags
 	for _, name := range s.names {
-		s.args = append(s.args, "--name", name)
+		searchArgs = append(searchArgs, "--name", name)
 	}
 
 	for _, version := range s.versions {
-		s.args = append(s.args, "--version", version)
+		searchArgs = append(searchArgs, "--version", version)
 	}
 
 	for _, skillID := range s.skillIDs {
-		s.args = append(s.args, "--skill-id", skillID)
+		searchArgs = append(searchArgs, "--skill-id", skillID)
 	}
 
 	for _, skillName := range s.skillNames {
-		s.args = append(s.args, "--skill", skillName)
+		searchArgs = append(searchArgs, "--skill", skillName)
 	}
 
 	for _, locator := range s.locators {
-		s.args = append(s.args, "--locator", locator)
+		searchArgs = append(searchArgs, "--locator", locator)
 	}
 
 	for _, module := range s.modules {
-		s.args = append(s.args, "--module", module)
+		searchArgs = append(searchArgs, "--module", module)
 	}
 
 	for _, domainID := range s.domainIDs {
-		s.args = append(s.args, "--domain-id", domainID)
+		searchArgs = append(searchArgs, "--domain-id", domainID)
 	}
 
 	for _, domain := range s.domains {
-		s.args = append(s.args, "--domain", domain)
+		searchArgs = append(searchArgs, "--domain", domain)
 	}
 
 	for _, createdAt := range s.createdAts {
-		s.args = append(s.args, "--created-at", createdAt)
+		searchArgs = append(searchArgs, "--created-at", createdAt)
 	}
 
 	for _, author := range s.authors {
-		s.args = append(s.args, "--author", author)
+		searchArgs = append(searchArgs, "--author", author)
 	}
 
 	for _, schemaVersion := range s.schemaVersions {
-		s.args = append(s.args, "--schema-version", schemaVersion)
+		searchArgs = append(searchArgs, "--schema-version", schemaVersion)
 	}
 
 	for _, moduleID := range s.moduleIDs {
-		s.args = append(s.args, "--module-id", moduleID)
+		searchArgs = append(searchArgs, "--module-id", moduleID)
 	}
 
 	if s.limit > 0 {
-		s.args = append(s.args, "--limit", strconv.Itoa(s.limit))
+		searchArgs = append(searchArgs, "--limit", strconv.Itoa(s.limit))
 	}
 
 	if s.offset > 0 {
-		s.args = append(s.args, "--offset", strconv.Itoa(s.offset))
+		searchArgs = append(searchArgs, "--offset", strconv.Itoa(s.offset))
 	}
 
 	// Append any additional args (like --output) at the end
-	s.args = append(s.args, s.outputFormatArgs...)
+	searchArgs = append(searchArgs, s.outputFormatArgs...)
 
-	return s.CommandBuilder.Execute()
+	return s.CommandBuilder.WithArgs(searchArgs...).Execute()
 }
 
 func (s *SearchBuilder) ShouldSucceed() string {
@@ -670,12 +678,6 @@ func (s *SearchBuilder) ShouldEventuallyContain(substring string, timeout time.D
 	}, timeout, PollingInterval).Should(gomega.ContainSubstring(substring))
 
 	return finalOutput
-}
-
-func (s *SearchBuilder) OnServer(addr string) *SearchBuilder {
-	s.serverAddr = addr
-
-	return s
 }
 
 // RoutingListBuilder extends CommandBuilder with routing list-specific methods.
