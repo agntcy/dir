@@ -24,11 +24,6 @@ on:
         type: boolean
         default: false
         description: "Whether to push the image to the registry."
-      build_coverage_images:
-        required: false
-        type: boolean
-        default: false
-        description: "Whether to also build coverage-instrumented images for E2E tests."
 
 jobs:
   cli:
@@ -188,7 +183,7 @@ jobs:
   coverage-image:
     name: Coverage Image
     runs-on: ubuntu-latest
-    if: ${{ inputs.build_coverage_images && !inputs.push }}
+    if: ${{ !inputs.push }}
     strategy:
       # Build only the two coverage targets
       matrix:
