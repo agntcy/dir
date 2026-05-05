@@ -2,7 +2,12 @@ codecov:
   require_ci_to_pass: false
 
 comment:
+  layout: "header,diff,files"
+  hide_project_coverage: false
   require_changes: false
+  require_base: false
+  require_head: true
+  behavior: default
 
 coverage:
   precision: 1
