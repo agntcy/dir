@@ -197,7 +197,6 @@ tasks:
         git commit -S --signoff -m "release(dir): prepare api release {{.RELEASE_VERSION}}"
       # Verify Go release for the api module set only
       - |
-        {{ .MULTIMOD_BIN }} verify
         {{ .MULTIMOD_BIN }} prerelease --module-set-names api --skip-go-mod-tidy=true --commit-to-different-branch=false
       - |
         git commit --amend -S --signoff -m "release(dir): prepare api release {{.RELEASE_VERSION}}"
@@ -227,7 +226,6 @@ tasks:
         git commit -S --signoff -m "release(dir): prepare server release {{.RELEASE_VERSION}}"
       # Verify Go release for the server module set only
       - |
-        {{ .MULTIMOD_BIN }} verify
         {{ .MULTIMOD_BIN }} prerelease --module-set-names server --skip-go-mod-tidy=true --commit-to-different-branch=false
       - |
         git commit --amend -S --signoff -m "release(dir): prepare server release {{.RELEASE_VERSION}}"
