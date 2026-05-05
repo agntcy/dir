@@ -211,8 +211,8 @@ jobs:
       - build
     uses: ./.github/workflows/reusable-test-e2e-cross-platform.yaml
 
-  upload-codecov:
-    name: Upload all coverage artifacts to Codecov
+  coverage:
+    name: Coverage
     needs: [ test ]
     runs-on: ubuntu-latest
     permissions:
@@ -274,7 +274,7 @@ jobs:
     needs:
       - changes
       - test
-      - upload-codecov
+      - coverage
       - release
       - cross-platform
     runs-on: ubuntu-latest
