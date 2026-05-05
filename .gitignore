@@ -9,6 +9,9 @@
 
 # Builds
 .bin/
+.build/
+# MkDocs default output dir (prefer task docs:build → .build/site)
+site/
 
 # Python
 __pycache__/
@@ -33,6 +36,9 @@ e2e/tmp/*
 
 # Licensei
 .licensei.cache
+
+# Lychee link checker (local; do not commit stale failure cache)
+.lycheecache
 
 tmp/
 
