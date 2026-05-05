@@ -34,11 +34,9 @@ vars:
   #
   # TEST_MATRIX:
   #   <test_case>:
-  #     go_test_package: <path to Go test package>
+  #     go_test_suite: <path to Go test package>
   #     envs:
-  #       <env_name>:
-  #         testenv_task: <Taskfile task to set up this testenv>
-  #         go_test_config: <path to Go test config for this env>
+  #       <env_name>: <testenv configuration>
   #
   # Extending matrix:
   #   - When adding a new test case, simply add a new entry under TEST_MATRIX 
@@ -51,48 +49,31 @@ vars:
   # Notes:
   #   - Each test case can have multiple environments, and the test execution logic will
   #     run the appropriate setup and tests based on user input.
-  #   - Each testenv_task should define "up" and "down" tasks to manage its environment.
   TEST_MATRIX:
     map:
       client:
-        go_test_package: "{{.ROOT_DIR}}/tests/e2e/client"
+        go_test_suite: "{{.ROOT_DIR}}/tests/e2e/client"
         envs:
-          kind: 
-            testenv_task: "e2e:testenv:client:kind"
-            go_test_config: "{{.ROOT_DIR}}/tests/e2e/client/testenv/kind/test-config.yaml"
-          local:
-            testenv_task: "e2e:testenv:client:local"
-            go_test_config: "{{.ROOT_DIR}}/tests/e2e/client/testenv/local/test-config.yaml"
+          kind: "{{.ROOT_DIR}}/tests/e2e/client/testenv/kind/test-config.yaml"
+          local: "{{.ROOT_DIR}}/tests/e2e/client/testenv/local/test-config.yaml"
 
       daemon:
-        go_test_package: "{{.ROOT_DIR}}/tests/e2e/daemon"
+        go_test_suite: "{{.ROOT_DIR}}/tests/e2e/daemon"
         envs:
-          default: 
-            testenv_task: "e2e:testenv:daemon:default"
-            go_test_config: "{{.ROOT_DIR}}/tests/e2e/daemon/testenv/default/test-config.yaml"
-          external:
-            testenv_task: "e2e:testenv:daemon:external"
-            go_test_config: "{{.ROOT_DIR}}/tests/e2e/daemon/testenv/external/test-config.yaml"
+          default: "{{.ROOT_DIR}}/tests/e2e/daemon/testenv/default/test-config.yaml"
+          external: "{{.ROOT_DIR}}/tests/e2e/daemon/testenv/external/test-config.yaml"
 
       local:
-        go_test_package: "{{.ROOT_DIR}}/tests/e2e/local"
+        go_test_suite: "{{.ROOT_DIR}}/tests/e2e/local"
         envs:
-          kind: 
-            testenv_task: "e2e:testenv:local:kind"
-            go_test_config: "{{.ROOT_DIR}}/tests/e2e/local/testenv/kind/test-config.yaml"
-          local:
-            testenv_task: "e2e:testenv:local:local"
-            go_test_config: "{{.ROOT_DIR}}/tests/e2e/local/testenv/local/test-config.yaml"
+          kind: "{{.ROOT_DIR}}/tests/e2e/local/testenv/kind/test-config.yaml"
+          local: "{{.ROOT_DIR}}/tests/e2e/local/testenv/local/test-config.yaml"
 
       network:
-        go_test_package: "{{.ROOT_DIR}}/tests/e2e/network"
+        go_test_suite: "{{.ROOT_DIR}}/tests/e2e/network"
         envs:
-          kind: 
-            testenv_task: "e2e:testenv:network:kind"
-            go_test_config: "{{.ROOT_DIR}}/tests/e2e/network/testenv/kind/test-config.yaml"
-          local:
-            testenv_task: "e2e:testenv:network:local"
-            go_test_config: "{{.ROOT_DIR}}/tests/e2e/network/testenv/local/test-config.yaml"
+          kind: "{{.ROOT_DIR}}/tests/e2e/network/testenv/kind/test-config.yaml"
+          local: "{{.ROOT_DIR}}/tests/e2e/network/testenv/local/test-config.yaml"
 
   # Set GOCOVERDIR for supported testenv coverage collection.
   # This relies on the convention that testenv tasks will pass
@@ -112,6 +93,7 @@ tasks:
       # Task vars
       SELECTED_CASE: { ref: 'get .TEST_MATRIX .TEST_CASE' }
       SELECTED_ENV: { ref: 'get .SELECTED_CASE.envs .TEST_ENV' }
+      SELECTED_TESTENV_TASK: 'e2e:testenv:{{.TEST_CASE}}:{{.TEST_ENV}}'
     deps:
       - task: cli:compile
         vars:
@@ -127,21 +109,21 @@ tasks:
       - defer:
           task: e2e:testenv:down
           vars:
-            TEST_ENV: '{{ .SELECTED_ENV.testenv_task }}'
+            TESTENV_TASK: '{{.SELECTED_TESTENV_TASK}}'
             SKIP_TESTENV: '{{.SKIP_TESTENV}}'
       - if: '{{ eq .SKIP_TESTENV "false" }}'
-        task: '{{ .SELECTED_ENV.testenv_task }}:up'
+        task: '{{.SELECTED_TESTENV_TASK}}:up'
 
       # Run test suite
       - |
         mkdir -p {{ .COVERAGE_DIR }}/e2e
-        go test -C {{ .SELECTED_CASE.go_test_package }} . \
+        go test -C {{ .SELECTED_CASE.go_test_suite }} . \
           -covermode=atomic \
           -coverpkg={{.COVERAGE_PKGS}} \
           -coverprofile={{.COVERAGE_DIR}}/e2e/{{.TEST_CASE}}-{{.TEST_ENV}}.out \
           -v -failfast -test.v -test.paniconexit0 \
           -timeout 2h -ginkgo.timeout 2h -ginkgo.v \
-          -test-config {{ .SELECTED_ENV.go_test_config }}
+          -test-config {{ .SELECTED_ENV }}
 
   e2e:test:*:
     desc: Run E2E test suite across all test environments
@@ -173,9 +155,9 @@ tasks:
     cmds:
       - for: { var: TEST_MATRIX }
         cmd: |
-          echo "Test: {{.KEY}}"
+          echo "e2e:test:{{.KEY}}"
           {{ range $key, $item := .ITEM.envs }}
-            echo -e "  Env: {{$key}}, Path: {{ $item.go_test_config }}"
+            echo -e "  Testenv: {{$key}}, Config: {{ $item }}"
           {{ end }}
 
       - |
@@ -188,11 +170,11 @@ tasks:
   e2e:testenv:down:
     internal: true
     vars:
-      TEST_ENV: '{{.TEST_ENV}}'
+      TESTENV_TASK: '{{.TESTENV_TASK}}'
       SKIP_TESTENV: '{{.SKIP_TESTENV}}'
     if: '{{ eq .SKIP_TESTENV "false" }}'
     cmd:
-      task: '{{ .TEST_ENV }}:down'
+      task: '{{ .TESTENV_TASK }}:down'
 
   # NOTE: this cannot be run under e2e:test task due to a transient
   # issue of either closing/stopping daemon or flushing coverage data,
