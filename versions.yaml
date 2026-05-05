@@ -3,12 +3,11 @@
 
 module-sets:
   api:
-    version: v1.2.0
+    version: v1.3.0
     modules:
       - github.com/agntcy/dir/api
       - github.com/agntcy/dir/client
       - github.com/agntcy/dir/utils
-
   server:
     version: v1.2.0
     modules:
@@ -16,4 +15,3 @@ module-sets:
       - github.com/agntcy/dir/tests
       - github.com/agntcy/dir/server
       - github.com/agntcy/dir/reconciler
-
