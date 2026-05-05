@@ -21,7 +21,6 @@ require (
 	github.com/agntcy/dir/cli v1.2.0
 	github.com/agntcy/dir/client v1.3.0
 	github.com/google/uuid v1.6.0
-	github.com/mitchellh/mapstructure v1.5.1-0.20231216201459-8508981c8b6c
 	github.com/onsi/ginkgo/v2 v2.28.3
 	github.com/onsi/gomega v1.40.0
 	github.com/spf13/cobra v1.10.2
