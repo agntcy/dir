@@ -87,6 +87,8 @@ func TestParseName(t *testing.T) {
 
 			if got == nil {
 				t.Fatalf("ParseName(%q) = nil, want %+v", tt.input, tt.want)
+
+				return
 			}
 
 			if got.Protocol != tt.want.Protocol {

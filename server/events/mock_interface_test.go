@@ -67,6 +67,8 @@ func TestMockEventBusGetEventByResourceID(t *testing.T) {
 	event := mock.GetEventByResourceID("bafytest456")
 	if event == nil {
 		t.Fatal("Expected to find event with resource_id bafytest456")
+
+		return
 	}
 
 	if event.ResourceID != "bafytest456" {

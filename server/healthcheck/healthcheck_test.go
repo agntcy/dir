@@ -19,6 +19,8 @@ func TestNew(t *testing.T) {
 	checker := New()
 	if checker == nil {
 		t.Fatal("Expected non-nil checker")
+
+		return
 	}
 
 	if checker.readinessChecks == nil {
