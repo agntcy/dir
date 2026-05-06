@@ -26,6 +26,7 @@ tasks:
       - task: deps:golangci-lint
       - task: deps:licensei
       - task: deps:multimod-bin
+      - task: deps:renovate
       - task: deps:yq
       - task: deps:pre-commit
       - task: deps:cleanup
@@ -277,6 +278,13 @@ tasks:
     cmds:
       - npm install -g htpasswd
 
+  deps:renovate:
+    desc: Install Renovate
+    internal: true
+    cmd: npm install -g renovate@{{.RENOVATE_VERSION}}
+    status:
+      - npm list -g renovate
+
   deps:pre-commit:
     desc: Install pre-commit
     run: once
@@ -309,6 +317,27 @@ tasks:
           echo "Updating dependencies in {{.ITEM}}" && \
           go -C {{.ITEM}} get -u ./... && \
           go -C {{.ITEM}} mod tidy -go={{.GO_VERSION}}
+
+  deps:renovate:sync:
+    desc: Sync dependencies with Renovate
+    summary: |
+      For extra CLI flags pass RENOVATE_OPTS (e.g. task deps:renovate:sync RENOVATE_OPTS='--dry-run').
+      Default platform is local so local runs do not touch remote project data.
+      Github Action CI sets RENOVATE_PLATFORM to github.
+      This step is only analytical without GITHUB TOKEN and will not update PRs or project data.
+    deps:
+      - deps:renovate
+    dir: "{{.ROOT_DIR}}"
+    vars:
+      RENOVATE_OPTS_DEFAULT: >-
+        --persist-repo-data 'true'
+        --allowed-post-upgrade-commands '[".*"]'
+        --post-upgrade-tasks '{"commands": ["task helm:gen", "task deps:tidy"], "executionMode": "branch"}'
+      RENOVATE_OPTS: "{{ .RENOVATE_OPTS | default .RENOVATE_OPTS_DEFAULT }}"
+      RENOVATE_PLATFORM_EFFECTIVE:
+        sh: printf '%s' "${RENOVATE_PLATFORM:-local}"
+    cmds:
+      - renovate {{.RENOVATE_OPTS}} --platform "{{.RENOVATE_PLATFORM_EFFECTIVE}}"
 
   ##
   ## Security scanning
