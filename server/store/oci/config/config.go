@@ -12,7 +12,7 @@ import (
 
 const (
 	DefaultAuthConfigInsecure = true
-	DefaultRegistryAddress    = "127.0.0.1:5000"
+	DefaultRegistryAddress    = "127.0.0.1:5555"
 	DefaultRepositoryName     = "dir"
 )
 

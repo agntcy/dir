@@ -119,7 +119,7 @@ type CreateSyncRequest struct {
 	// Examples:
 	// - "https://registry.example.com"
 	// - "https://ghcr.io"
-	// - "http://localhost:5000"
+	// - "http://localhost:5555"
 	RemoteRegistryUrl string `protobuf:"bytes,3,opt,name=remote_registry_url,json=remoteRegistryUrl,proto3" json:"remote_registry_url,omitempty"`
 	// Repository name within the registry. Used with remote_registry_url.
 	// Defaults to "dir" if not specified.

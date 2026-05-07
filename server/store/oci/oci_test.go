@@ -22,7 +22,7 @@ var (
 	// test config.
 	testConfig = ociconfig.Config{
 		LocalDir:        os.TempDir(),                         // used for local test/bench
-		RegistryAddress: "localhost:5000",                     // used for remote test/bench
+		RegistryAddress: ociconfig.DefaultRegistryAddress,     // used for remote test/bench
 		RepositoryName:  "test-store",                         // used for remote test/bench
 		AuthConfig:      ociconfig.AuthConfig{Insecure: true}, // used for remote test/bench
 	}

@@ -62,7 +62,7 @@ message CreateSyncRequest {
   // Examples:
   // - "https://registry.example.com"
   // - "https://ghcr.io"
-  // - "http://localhost:5000"
+  // - "http://localhost:5555"
   string remote_registry_url = 3;
 
   // Repository name within the registry. Used with remote_registry_url.
