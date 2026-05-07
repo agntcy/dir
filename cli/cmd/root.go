@@ -38,6 +38,10 @@ var RootCmd = &cobra.Command{
 	Long:         ``,
 	SilenceUsage: true,
 	PersistentPreRunE: func(cmd *cobra.Command, _ []string) error {
+		if shouldSkipClientSetup(cmd) {
+			return nil
+		}
+
 		// Set client via context for all requests
 		// TODO: make client config configurable via CLI args
 		c, err := client.New(cmd.Context(), client.WithConfig(config.Client))
@@ -58,8 +62,19 @@ var RootCmd = &cobra.Command{
 	},
 }
 
+func skipClientSetup(_ *cobra.Command, _ []string) error {
+	return nil
+}
+
+func shouldSkipClientSetup(cmd *cobra.Command) bool {
+	return cmd.Name() == "help" || cmd.Name() == "completion"
+}
+
 func init() {
 	network.Command.Hidden = true
+	network.Command.PersistentPreRunE = skipClientSetup
+	validate.Command.PersistentPreRunE = skipClientSetup
+	version.Command.PersistentPreRunE = skipClientSetup
 
 	RootCmd.AddCommand(
 		// auth commands
