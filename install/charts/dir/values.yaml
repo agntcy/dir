@@ -133,11 +133,14 @@ apiserver:
         # Cache directory to use for metadata.
         # cache_dir: ""
 
-        # Registry address to connect to
+        # Registry address to connect to.
+        # Leave empty when zot.enabled=true (the default) to auto-resolve to the
+        # bundled Zot subchart. Set explicitly to use an external OCI registry
+        # (ECR, GCR, GHCR, Harbor, etc.).
         registry_address: ""
-        
-        # All data will be stored under this repo.
-        # Objects are pushed as tags, manifests, and blobs.
+
+        # OCI repository where records are stored as tags, manifests, and blobs.
+        # Defaults to "dir" when zot.enabled=true and this field is empty.
         repository_name: ""
 
         # Auth credentials to use.
@@ -230,20 +233,22 @@ apiserver:
 
     # Database configuration (PostgreSQL)
     # These values configure the database connection for apiserver and reconciler.
-    # Users must specify ALL values explicitly - there is no auto-detection.
-    # 
-    # For local development (postgresql.enabled=true):
-    #   Set host to the service name that will be created, e.g., "my-release-postgresql"
     #
-    # For external PostgreSQL (postgresql.enabled=false):
-    #   Set host to your external PostgreSQL host
+    # When postgresql.enabled=true (the default), the chart helpers auto-resolve
+    # the host to the bundled subchart's in-cluster Service:
+    #   "<release-name>-postgresql.<namespace>.svc.cluster.local"
+    # An explicit host below always takes precedence over auto-resolution.
+    #
+    # For external PostgreSQL, set postgresql.enabled=false and specify host
+    # explicitly below.
     database:
       # Database type (only postgres is supported)
       type: "postgres"
       postgres:
-        # PostgreSQL host address (required)
-        # For local: use "<release-name>-postgresql" 
-        # For external: your PostgreSQL hostname
+        # PostgreSQL host address.
+        # Leave empty to auto-resolve to the bundled postgresql subchart when
+        # postgresql.enabled=true (the default). Set explicitly for external
+        # PostgreSQL.
         host: ""
 
         # PostgreSQL port
