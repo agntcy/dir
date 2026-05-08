@@ -154,9 +154,26 @@ func newOASFValidator(cfg *config.Config) (corev1.Validator, error) {
 	return v, nil
 }
 
+type ServerOptions struct {
+	database types.DatabaseAPI
+}
+
+type ServerOption func(*ServerOptions)
+
+func WithDatabase(database types.DatabaseAPI) ServerOption {
+	return func(opts *ServerOptions) {
+		opts.database = database
+	}
+}
+
 //nolint:cyclop // This function has been at the limit; refactoring is out of scope.
-func New(ctx context.Context, cfg *config.Config) (*Server, error) {
+func New(ctx context.Context, cfg *config.Config, opts ...ServerOption) (*Server, error) {
 	logger.Debug("Creating server with config", "config", cfg, "version", version.String())
+
+	var o ServerOptions
+	for _, opt := range opts {
+		opt(&o)
+	}
 
 	oasfValidator, err := newOASFValidator(cfg)
 	if err != nil {
@@ -230,9 +247,12 @@ func New(ctx context.Context, cfg *config.Config) (*Server, error) {
 		return nil, fmt.Errorf("failed to create routing: %w", err)
 	}
 
-	databaseAPI, err := database.New(cfg.Database)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create database API: %w", err)
+	databaseAPI := o.database
+	if databaseAPI == nil {
+		databaseAPI, err = database.New(cfg.Database)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create database API: %w", err)
+		}
 	}
 
 	// Create JWT authentication service if enabled

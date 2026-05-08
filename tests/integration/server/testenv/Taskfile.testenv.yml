@@ -1,0 +1,19 @@
+# Copyright AGNTCY Contributors (https://github.com/agntcy)
+# SPDX-License-Identifier: Apache-2.0
+
+version: "3"
+
+tasks:
+  up:
+    vars:
+      COMPOSE_PATH: "{{.ROOT_DIR}}/tests/integration/server/testenv/docker-compose.yml"
+    cmds:
+      - |
+        docker compose -f {{.COMPOSE_PATH}} up --wait -d
+
+  down:
+    vars:
+      COMPOSE_PATH: "{{.ROOT_DIR}}/tests/integration/server/testenv/docker-compose.yml"
+    cmds:
+      - |
+        docker compose -f {{.COMPOSE_PATH}} down

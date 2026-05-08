@@ -1,0 +1,64 @@
+listen_address: "0.0.0.0:8888"
+oasf_api_validation:
+  schema_url: localhost:8092
+logging:
+  verbose: false
+authn:
+  enabled: false
+  mode: x509
+  socket_path:
+  audiences:
+authz:
+  enabled: false
+  enforcer_policy_file_path: /etc/agntcy/dir/authz_policies.csv
+store:
+  provider: oci
+  oci:
+    local_dir:
+    cache_dir:
+    registry_address: localhost:5556
+    repository_name: dir
+    auth_config:
+      insecure: true
+      username:
+      password:
+      access_token:
+      refresh_token:
+routing:
+  listen_address: /ip4/0.0.0.0/tcp/8999
+  directory_api_address:
+  bootstrap_peers:
+  key_path:
+  datastore_dir:
+  gossipsub:
+    enabled: true
+database:
+  type: postgres
+  postgres:
+    host: localhost
+    port: 5433
+    database: ditfs_db
+    username: ditfs_user
+    password: ditfs_pass
+    ssl_mode: disable
+sync:
+  auth_config:
+    username:
+    password:
+publication:
+  scheduler_interval: 1h
+  worker_count: 1
+  worker_timeout: 30m
+events:
+  subscriber_buffer_size: 100
+  log_slow_consumers: true
+  log_published_events: false
+metrics:
+  enabled: true
+  address: :9090
+ratelimit:
+  enabled: false
+  global_rps: 0
+  global_burst: 0
+  per_client_rps: 100
+  per_client_burst: 200

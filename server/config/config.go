@@ -288,17 +288,37 @@ func (c ConnectionConfig) WithDefaults() ConnectionConfig {
 	return c
 }
 
-//nolint:maintidx
-func LoadConfig() (*Config, error) {
+type ConfigOptions struct {
+	file string
+}
+
+type ConfigOption func(*ConfigOptions)
+
+func WithFile(file string) ConfigOption {
+	return func(opts *ConfigOptions) {
+		opts.file = file
+	}
+}
+
+func LoadConfig(opts ...ConfigOption) (*Config, error) {
+	var options ConfigOptions
+	for _, opt := range opts {
+		opt(&options)
+	}
+
 	v := viper.NewWithOptions(
 		viper.KeyDelimiter("."),
 		viper.EnvKeyReplacer(strings.NewReplacer(".", "_", "-", "_")),
 	)
 
-	v.SetConfigName(DefaultConfigName)
+	if options.file != "" {
+		v.SetConfigFile(options.file)
+	} else {
+		v.SetConfigName(DefaultConfigName)
+	}
+
 	v.SetConfigType(DefaultConfigType)
 	v.AddConfigPath(DefaultConfigPath)
-
 	v.SetEnvPrefix(DefaultEnvPrefix)
 	v.AllowEmptyEnv(true)
 	v.AutomaticEnv()
