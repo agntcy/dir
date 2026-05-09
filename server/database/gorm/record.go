@@ -30,6 +30,14 @@ type Record struct {
 	Modules     []Module     `gorm:"foreignKey:RecordCID;references:RecordCID;constraint:OnDelete:CASCADE"`
 	Domains     []Domain     `gorm:"foreignKey:RecordCID;references:RecordCID;constraint:OnDelete:CASCADE"`
 	Annotations []Annotation `gorm:"foreignKey:RecordCID;references:RecordCID;constraint:OnDelete:CASCADE"`
+	Owners      []Owner      `gorm:"foreignKey:RecordCID;references:RecordCID;constraint:OnDelete:CASCADE"`
+}
+
+// Owner stores an ownership claim for a record.
+type Owner struct {
+	RecordCID string `gorm:"column:record_cid;not null;index"`
+	OwnerID   string `gorm:"column:owner_id;not null;index"`
+	ClaimedAt string `gorm:"column:claimed_at"`
 }
 
 // Implement central Record interface.
@@ -301,7 +309,7 @@ func (d *DB) RemoveRecord(cid string) error {
 
 // handleFilterOptions applies the provided filters to the query.
 //
-//nolint:gocognit,cyclop,nestif,gocyclo
+//nolint:gocognit,cyclop,nestif,gocyclo,maintidx
 func (d *DB) handleFilterOptions(query *gorm.DB, cfg *types.RecordFilters) *gorm.DB {
 	// Apply record-level filters with wildcard support.
 	if len(cfg.Names) > 0 {
@@ -467,7 +475,47 @@ func (d *DB) handleFilterOptions(query *gorm.DB, cfg *types.RecordFilters) *gorm
 		}
 	}
 
+	// Handle owner filters with wildcard support.
+	if len(cfg.Owners) > 0 {
+		query = query.Joins("JOIN owners ON owners.record_cid = records.record_cid")
+
+		condition, args := utils.BuildWildcardCondition("owners.owner_id", cfg.Owners)
+		if condition != "" {
+			query = query.Where(condition, args...)
+		}
+	}
+
 	return query
+}
+
+// AddOwner adds or idempotently updates an ownership claim for a record.
+func (d *DB) AddOwner(recordCID, ownerID, claimedAt string) error {
+	owner := &Owner{RecordCID: recordCID, OwnerID: ownerID, ClaimedAt: claimedAt}
+
+	result := d.gormDB.
+		Where(Owner{RecordCID: recordCID, OwnerID: ownerID}).
+		Assign(Owner{ClaimedAt: claimedAt}).
+		FirstOrCreate(owner)
+
+	if result.Error != nil {
+		return fmt.Errorf("failed to add owner for record %s: %w", recordCID, result.Error)
+	}
+
+	logger.Debug("Added owner for record", "record_cid", recordCID, "owner_id", ownerID)
+
+	return nil
+}
+
+// RemoveOwners removes all ownership claims for a record.
+func (d *DB) RemoveOwners(recordCID string) error {
+	result := d.gormDB.Where("record_cid = ?", recordCID).Delete(&Owner{})
+	if result.Error != nil {
+		return fmt.Errorf("failed to remove owners for record %s: %w", recordCID, result.Error)
+	}
+
+	logger.Debug("Removed owners for record", "record_cid", recordCID, "rows_affected", result.RowsAffected)
+
+	return nil
 }
 
 // SetRecordSigned marks a record as signed.

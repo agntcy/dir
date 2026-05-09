@@ -1,0 +1,20 @@
+// Copyright AGNTCY Contributors (https://github.com/agntcy)
+// SPDX-License-Identifier: Apache-2.0
+
+syntax = "proto3";
+
+package agntcy.dir.ownership.v1;
+
+// Claim represents an ownership claim for a record.
+// It is stored as a RecordReferrer with type "agntcy.dir.ownership.v1.Claim".
+//
+// Ownership is established by the agent identity (SPIFFE ID) that pushes
+// this referrer. The server enforces that owner_id matches the caller's
+// authenticated SPIFFE ID.
+message Claim {
+  // The SPIFFE ID (or similar identity) of the record owner.
+  string owner_id = 1;
+
+  // The timestamp when the ownership claim was created (RFC3339 format).
+  string claimed_at = 2;
+}

@@ -16,6 +16,9 @@ const (
 	// SignatureArtifactType defines the internal OCI media type for signature layers.
 	SignatureArtifactType = "application/vnd.agntcy.dir.sign.signature.v1+json"
 
+	// OwnershipClaimArtifactMediaType defines the internal OCI media type for ownership claim blobs.
+	OwnershipClaimArtifactMediaType = "application/vnd.agntcy.dir.ownership.claim.v1+json"
+
 	// DefaultReferrerArtifactMediaType defines the default internal OCI media type for referrer blobs.
 	DefaultReferrerArtifactMediaType = "application/vnd.agntcy.dir.referrer.v1+json"
 )
@@ -27,6 +30,8 @@ func apiToOCIType(apiType string) string {
 		return SignatureArtifactType
 	case corev1.PublicKeyReferrerType:
 		return PublicKeyArtifactMediaType
+	case corev1.OwnershipClaimReferrerType:
+		return OwnershipClaimArtifactMediaType
 	default:
 		return DefaultReferrerArtifactMediaType
 	}
@@ -39,6 +44,8 @@ func ociToAPIType(ociType string) string {
 		return corev1.SignatureReferrerType
 	case PublicKeyArtifactMediaType:
 		return corev1.PublicKeyReferrerType
+	case OwnershipClaimArtifactMediaType:
+		return corev1.OwnershipClaimReferrerType
 	default:
 		return ociType // Return the original OCI type if not found
 	}

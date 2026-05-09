@@ -11,6 +11,7 @@ import (
 
 	"github.com/agntcy/dir/reconciler/tasks/indexer"
 	"github.com/agntcy/dir/reconciler/tasks/name"
+	"github.com/agntcy/dir/reconciler/tasks/ownership"
 	"github.com/agntcy/dir/reconciler/tasks/regsync"
 	"github.com/agntcy/dir/reconciler/tasks/signature"
 	dbconfig "github.com/agntcy/dir/server/database/config"
@@ -58,6 +59,9 @@ type Config struct {
 
 	// Signature holds the signature verification task configuration.
 	Signature signature.Config `json:"signature" mapstructure:"signature"`
+
+	// Ownership holds the ownership reconciler task configuration.
+	Ownership ownership.Config `json:"ownership" mapstructure:"ownership"`
 }
 
 // LoadConfig loads the configuration from file and environment variables.
@@ -182,6 +186,15 @@ func LoadConfig() (*Config, error) {
 
 	_ = v.BindEnv("signature.record_timeout")
 	v.SetDefault("signature.record_timeout", signature.DefaultRecordTimeout)
+
+	//
+	// Ownership task configuration
+	//
+	_ = v.BindEnv("ownership.enabled")
+	v.SetDefault("ownership.enabled", true)
+
+	_ = v.BindEnv("ownership.interval")
+	v.SetDefault("ownership.interval", ownership.DefaultInterval)
 
 	//
 	// OASF validation configuration
