@@ -87,4 +87,8 @@ enum RecordQueryType {
   // Query for annotation key:value pairs.
   // Supports wildcard patterns in both key and value: "manager:alice", "team:*", "env:prod"
   RECORD_QUERY_TYPE_ANNOTATION = 15;
+
+  // Query for a record owner (SPIFFE ID or similar identity).
+  // Supports wildcard patterns: "spiffe://example.org/*", "*//trust-domain/*"
+  RECORD_QUERY_TYPE_OWNER = 17;
 }

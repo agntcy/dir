@@ -12,7 +12,9 @@ import (
 
 	"buf.build/go/protovalidate"
 	corev1 "github.com/agntcy/dir/api/core/v1"
+	ownershipv1 "github.com/agntcy/dir/api/ownership/v1"
 	storev1 "github.com/agntcy/dir/api/store/v1"
+	"github.com/agntcy/dir/server/authn"
 	"github.com/agntcy/dir/server/events"
 	"github.com/agntcy/dir/server/types"
 	"github.com/agntcy/dir/server/types/adapters"
@@ -252,6 +254,28 @@ func (s storeCtrl) pushReferrer(ctx context.Context, request *storev1.PushReferr
 
 	recordCID := request.GetRecordRef().GetCid()
 
+	// Enforce ownership: the caller's authenticated identity must match the owner_id in the claim.
+	var ownershipClaim *ownershipv1.Claim
+
+	if request.GetType() == corev1.OwnershipClaimReferrerType {
+		claim := &ownershipv1.Claim{}
+		if err := claim.UnmarshalReferrer(&corev1.RecordReferrer{Data: request.GetData()}); err != nil {
+			errMsg := fmt.Sprintf("failed to decode ownership claim: %v", err)
+
+			return &storev1.PushReferrerResponse{Success: false, ErrorMessage: &errMsg}
+		}
+
+		if spiffeID, ok := authn.SpiffeIDFromContext(ctx); ok {
+			if spiffeID.String() != claim.GetOwnerId() {
+				errMsg := "ownership claim owner_id does not match authenticated caller identity"
+
+				return &storev1.PushReferrerResponse{Success: false, ErrorMessage: &errMsg}
+			}
+		}
+
+		ownershipClaim = claim
+	}
+
 	// Use ReferrerStoreAPI to push the referrer
 	// The store implementation handles type-specific logic
 	refStore, ok := s.store.(types.ReferrerStoreAPI)
@@ -300,6 +324,15 @@ func (s storeCtrl) pushReferrer(ctx context.Context, request *storev1.PushReferr
 			storeLogger.Warn("Failed to invalidate signature verification cache", "error", err, "cid", recordCID)
 		} else {
 			storeLogger.Debug("Signature verification cache invalidated for record", "cid", recordCID)
+		}
+	}
+
+	// Index the ownership claim in the search database.
+	if ownershipClaim != nil {
+		if err := s.db.AddOwner(recordCID, ownershipClaim.GetOwnerId(), ownershipClaim.GetClaimedAt()); err != nil {
+			storeLogger.Warn("Failed to index ownership claim", "error", err, "cid", recordCID)
+		} else {
+			storeLogger.Debug("Ownership claim indexed", "cid", recordCID, "owner_id", ownershipClaim.GetOwnerId())
 		}
 	}
 
