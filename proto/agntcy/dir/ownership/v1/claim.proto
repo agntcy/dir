@@ -1,0 +1,25 @@
+// Copyright AGNTCY Contributors (https://github.com/agntcy)
+// SPDX-License-Identifier: Apache-2.0
+
+syntax = "proto3";
+
+package agntcy.dir.ownership.v1;
+
+option go_package = "github.com/agntcy/dir/api/ownership/v1";
+
+// OwnershipClaim is the payload of an ownership claim referrer.
+// It asserts that the entity identified by owner_id has operational
+// ownership of the record this referrer is attached to.
+//
+// The server enforces at push time that the authenticated caller's
+// identity matches owner_id. This prevents a caller from naming
+// a third party as owner without their consent.
+message OwnershipClaim {
+  // owner_id is the identity of the owner. Email address format is
+  // strongly recommended (e.g. "alice@acme.com"). Must exactly match
+  // the authenticated caller's identity at the time of the claim.
+  string owner_id = 1;
+
+  // claimed_at is the RFC3339 timestamp when the claim was made.
+  string claimed_at = 2;
+}

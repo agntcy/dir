@@ -92,4 +92,9 @@ enum RecordQueryType {
   // Requires an OrgResolver to be configured on the server.
   // Value is a manager alias (e.g., "alice@example.com").
   RECORD_QUERY_TYPE_MANAGER = 16;
+
+  // Query for records by owner identity.
+  // Matches records whose ownership claim referrer contains the given owner_id.
+  // Supports wildcard patterns: "*@acme.com", "alice@*"
+  RECORD_QUERY_TYPE_OWNER = 17;
 }
