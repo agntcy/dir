@@ -5,3 +5,4 @@ local:
   cli_extra_args:
   - "--server-addr=localhost:19888"
   - "--auth-mode=insecure"
+  name_verification_host: "localhost:19891"

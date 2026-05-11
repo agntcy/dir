@@ -15,4 +15,8 @@ type Config struct {
 
 	// CliExtraArgs are extra arguments to pass to the CLI.
 	CliExtraArgs []string `json:"cli_extra_args,omitempty" mapstructure:"cli_extra_args"`
+
+	// NameVerificationHost is the host:port the dir-daemon uses to fetch the JWKS
+	// well-known file from the dns-validation infrastructure in this environment.
+	NameVerificationHost string `json:"name_verification_host,omitempty" mapstructure:"name_verification_host"`
 }
