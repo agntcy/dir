@@ -9,7 +9,7 @@ on:
       image_version:
         required: true
         type: string
-        default: v1.2.0
+        default: v1.3.0
         description: "dirctl version to use"
       server_addr:
         required: true
