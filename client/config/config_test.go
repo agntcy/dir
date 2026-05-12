@@ -330,6 +330,40 @@ contexts:
 		assert.Equal(t, "flag.gateway.example.com:443", cfg.ServerAddress)
 		assert.Equal(t, "insecure", cfg.AuthMode)
 	})
+
+	t.Run("resolves tls and spiffe fields", func(t *testing.T) {
+		resetClientEnv(t)
+		path := writeConfig(t, `
+contexts:
+  secure:
+    server_address: secure.gateway.example.com:443
+    auth_mode: jwt
+    jwt_audience: directory
+    spiffe_socket_path: /tmp/spire-agent.sock
+    spiffe_token: spiffe-jwt
+    tls_skip_verify: true
+    tls_ca_file: /tmp/ca.pem
+    tls_cert_file: /tmp/client.pem
+    tls_key_file: /tmp/client-key.pem
+`)
+
+		cfg, resolved, err := Resolve(ResolveOptions{
+			Path:    path,
+			Context: "secure",
+		})
+
+		require.NoError(t, err)
+		assert.Equal(t, "secure", resolved.Name)
+		assert.Equal(t, "secure.gateway.example.com:443", cfg.ServerAddress)
+		assert.Equal(t, "jwt", cfg.AuthMode)
+		assert.Equal(t, "directory", cfg.JWTAudience)
+		assert.Equal(t, "/tmp/spire-agent.sock", cfg.SpiffeSocketPath)
+		assert.Equal(t, "spiffe-jwt", cfg.SpiffeToken)
+		assert.True(t, cfg.TlsSkipVerify)
+		assert.Equal(t, "/tmp/ca.pem", cfg.TlsCAFile)
+		assert.Equal(t, "/tmp/client.pem", cfg.TlsCertFile)
+		assert.Equal(t, "/tmp/client-key.pem", cfg.TlsKeyFile)
+	})
 }
 
 func TestResolveErrors(t *testing.T) {

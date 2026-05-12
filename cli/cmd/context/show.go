@@ -90,7 +90,20 @@ func printResolvedConfig(cmd *cobra.Command, resolved *clientconfig.ResolvedCont
 	cmd.Printf("path: %s\n", resolved.Path)
 	cmd.Println("config:")
 
-	values := map[string]string{
+	values := resolvedConfigValues(cfg)
+	keys := sortedValueKeys(values)
+
+	for _, key := range keys {
+		if values[key] == "" {
+			continue
+		}
+
+		cmd.Printf("  %s: %s\n", key, values[key])
+	}
+}
+
+func resolvedConfigValues(cfg *client.Config) map[string]string {
+	return map[string]string{
 		"auth_mode":          cfg.AuthMode,
 		"auth_token":         redact(cfg.AuthToken),
 		"jwt_audience":       cfg.JWTAudience,
@@ -104,7 +117,9 @@ func printResolvedConfig(cmd *cobra.Command, resolved *clientconfig.ResolvedCont
 		"tls_key_file":       cfg.TlsKeyFile,
 		"tls_skip_verify":    fmt.Sprintf("%t", cfg.TlsSkipVerify),
 	}
+}
 
+func sortedValueKeys(values map[string]string) []string {
 	keys := make([]string, 0, len(values))
 	for key := range values {
 		keys = append(keys, key)
@@ -112,13 +127,7 @@ func printResolvedConfig(cmd *cobra.Command, resolved *clientconfig.ResolvedCont
 
 	sort.Strings(keys)
 
-	for _, key := range keys {
-		if values[key] == "" {
-			continue
-		}
-
-		cmd.Printf("  %s: %s\n", key, values[key])
-	}
+	return keys
 }
 
 func redact(value string) string {

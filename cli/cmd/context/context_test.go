@@ -175,7 +175,7 @@ contexts:
     spiffe_token: secret-spiffe-token
 `)
 
-	output, err := executeContextRun(t, runShow)
+	output, err := executeShowCommand(t)
 
 	require.NoError(t, err)
 	require.Contains(t, output, "name: dev\n")
@@ -232,6 +232,20 @@ func executeCurrentCommand(t *testing.T, args ...string) (string, error) {
 	require.NoError(t, cmd.ParseFlags(args))
 
 	err := runCurrent(cmd, nil)
+
+	return output.String(), err
+}
+
+func executeShowCommand(t *testing.T, args ...string) (string, error) {
+	t.Helper()
+
+	var output bytes.Buffer
+
+	cmd := &cobra.Command{}
+	cmd.SetOut(&output)
+	cmd.SetErr(&output)
+
+	err := runShow(cmd, args)
 
 	return output.String(), err
 }

@@ -71,6 +71,10 @@ type ResolveOptions struct {
 	// applied, including zero values. If empty, non-zero override values are
 	// applied.
 	OverrideFields []string
+
+	// SkipValidation skips required-field validation for callers that only need
+	// a subset of client config, such as auth token cache commands.
+	SkipValidation bool
 }
 
 // ResolvedContext describes which context was selected during resolution.
@@ -175,8 +179,10 @@ func Resolve(opts ResolveOptions) (*dirclient.Config, *ResolvedContext, error) {
 		return nil, nil, err
 	}
 
-	if err := validateClientConfig(cfg); err != nil {
-		return nil, nil, err
+	if !opts.SkipValidation {
+		if err := validateClientConfig(cfg); err != nil {
+			return nil, nil, err
+		}
 	}
 
 	return cfg, &ResolvedContext{
