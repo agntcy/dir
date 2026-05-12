@@ -33,7 +33,7 @@ and explicitly changed root flags are included in the effective output.
 Arguments:
 
 [name] is optional. When omitted, the active context is selected from --context,
-DIRCTL_CONTEXT, DIRECTORY_CLIENT_CONTEXT, or current_context.
+DIRECTORY_CLIENT_CONTEXT, or current_context.
 
 Examples:
 

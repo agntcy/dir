@@ -165,13 +165,13 @@ contexts:
     server_address: prod.gateway.example.com:443
 `)
 
-	t.Setenv(DirctlContextEnv, "prod")
+	t.Setenv(ClientContextEnv, "prod")
 
-	current, err := CurrentContext(path, "")
+	current, err := CurrentContext(path)
 
 	require.NoError(t, err)
-	assert.Equal(t, "prod", current.Name)
-	assert.Equal(t, "env", current.Source)
+	assert.Equal(t, "dev", current.Name)
+	assert.Equal(t, "current_context", current.Source)
 }
 
 func TestValidateContexts(t *testing.T) {
@@ -268,7 +268,7 @@ contexts:
 
 	t.Run("context environment selects context", func(t *testing.T) {
 		resetClientEnv(t)
-		t.Setenv(DirctlContextEnv, "dev")
+		t.Setenv(ClientContextEnv, "dev")
 
 		path := writeConfig(t, `
 current_context: prod
@@ -443,7 +443,6 @@ func resetClientEnv(t *testing.T) {
 	t.Helper()
 
 	keys := []string{
-		DirctlContextEnv,
 		ClientContextEnv,
 		"DIRECTORY_CLIENT_SERVER_ADDRESS",
 		"DIRECTORY_CLIENT_TLS_SKIP_VERIFY",

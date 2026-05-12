@@ -21,9 +21,6 @@ const (
 	// DefaultEnvPrefix is the default environment variable prefix for client config.
 	DefaultEnvPrefix = dirclient.DefaultEnvPrefix
 
-	// DirctlContextEnv is the dirctl-specific context selection environment variable.
-	DirctlContextEnv = "DIRCTL_CONTEXT"
-
 	// ClientContextEnv is the DIRECTORY_CLIENT-prefixed context selection environment variable.
 	ClientContextEnv = "DIRECTORY_CLIENT_CONTEXT"
 
@@ -219,8 +216,8 @@ func ListContexts(path string) ([]ContextSummary, error) {
 	return summaries, nil
 }
 
-// CurrentContext returns the selected context name without resolving client settings.
-func CurrentContext(path string, contextOverride string) (*ResolvedContext, error) {
+// CurrentContext returns the persisted current_context without resolving client settings.
+func CurrentContext(path string) (*ResolvedContext, error) {
 	resolvedPath, explicitPath, err := resolvePath(path)
 	if err != nil {
 		return nil, err
@@ -231,21 +228,20 @@ func CurrentContext(path string, contextOverride string) (*ResolvedContext, erro
 		return nil, err
 	}
 
-	contextName, source := selectedContextName(ResolveOptions{Context: contextOverride}, file)
-	if contextName == "" {
+	if file.CurrentContext == "" {
 		return &ResolvedContext{
-			Source: source,
+			Source: "none",
 			Path:   resolvedPath,
 		}, nil
 	}
 
-	if _, ok := file.Contexts[contextName]; !ok {
-		return nil, fmt.Errorf("unknown client context %q in %s", contextName, resolvedPath)
+	if _, ok := file.Contexts[file.CurrentContext]; !ok {
+		return nil, fmt.Errorf("unknown client context %q in %s", file.CurrentContext, resolvedPath)
 	}
 
 	return &ResolvedContext{
-		Name:   contextName,
-		Source: source,
+		Name:   file.CurrentContext,
+		Source: "current_context",
 		Path:   resolvedPath,
 	}, nil
 }
@@ -381,10 +377,6 @@ func loadOptionalFile(path string, explicitPath bool) (*File, error) {
 func selectedContextName(opts ResolveOptions, file *File) (string, string) {
 	if opts.Context != "" {
 		return opts.Context, "option"
-	}
-
-	if value, ok := os.LookupEnv(DirctlContextEnv); ok {
-		return value, "env"
 	}
 
 	if value, ok := os.LookupEnv(ClientContextEnv); ok {

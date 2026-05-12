@@ -24,7 +24,7 @@ definitions before use.
 Available operations:
 
 - list: Show all configured contexts and mark the persisted active context
-- current: Print the context selected by --context, DIRCTL_CONTEXT, or config
+- current: Print the persisted current_context from config
 - set: Persist a configured context as the active context
 - show: Display the effective context with sensitive values redacted
 - validate: Validate one context or all configured contexts

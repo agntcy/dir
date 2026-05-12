@@ -154,7 +154,7 @@ func TestResolveClientConfigUsesContextEnvOverride(t *testing.T) {
 	resetClientEnv(t)
 	configHome := t.TempDir()
 	t.Setenv("XDG_CONFIG_HOME", configHome)
-	t.Setenv("DIRCTL_CONTEXT", "dev")
+	t.Setenv("DIRECTORY_CLIENT_CONTEXT", "dev")
 	writeDirctlConfig(t, configHome, `
 current_context: prod
 contexts:
@@ -278,7 +278,6 @@ func resetClientEnv(t *testing.T) {
 	t.Helper()
 
 	keys := []string{
-		"DIRCTL_CONTEXT",
 		"DIRECTORY_CLIENT_CONTEXT",
 		"DIRECTORY_CLIENT_SERVER_ADDRESS",
 		"DIRECTORY_CLIENT_TLS_SKIP_VERIFY",

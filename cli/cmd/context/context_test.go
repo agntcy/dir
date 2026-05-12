@@ -5,6 +5,7 @@ package context
 
 import (
 	"bytes"
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"strings"
@@ -41,6 +42,28 @@ func TestContextCurrent(t *testing.T) {
 	resetContextTestEnv(t)
 	configHome := t.TempDir()
 	t.Setenv("XDG_CONFIG_HOME", configHome)
+	t.Setenv("DIRECTORY_CLIENT_CONTEXT", "prod")
+	writeContextTestConfig(t, configHome, `
+current_context: dev
+contexts:
+  dev:
+    server_address: dev.gateway.example.com:443
+    auth_mode: insecure
+  prod:
+    server_address: prod.gateway.example.com:443
+    auth_mode: insecure
+`)
+
+	output, err := executeCurrentCommand(t)
+
+	require.NoError(t, err)
+	require.Equal(t, "dev\n", output)
+}
+
+func TestContextCurrentQuiet(t *testing.T) {
+	resetContextTestEnv(t)
+	configHome := t.TempDir()
+	t.Setenv("XDG_CONFIG_HOME", configHome)
 	writeContextTestConfig(t, configHome, `
 current_context: dev
 contexts:
@@ -49,10 +72,68 @@ contexts:
     auth_mode: insecure
 `)
 
-	output, err := executeContextRun(t, runCurrent)
+	output, err := executeCurrentCommand(t, "--quiet")
 
 	require.NoError(t, err)
-	require.Equal(t, "dev\n", output)
+	require.Equal(t, "dev", output)
+}
+
+func TestContextCurrentQuietWithNoContext(t *testing.T) {
+	resetContextTestEnv(t)
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+
+	output, err := executeCurrentCommand(t, "--quiet")
+
+	require.NoError(t, err)
+	require.Empty(t, output)
+}
+
+func TestContextCurrentJSON(t *testing.T) {
+	resetContextTestEnv(t)
+	configHome := t.TempDir()
+	t.Setenv("XDG_CONFIG_HOME", configHome)
+	writeContextTestConfig(t, configHome, `
+current_context: dev
+contexts:
+  dev:
+    server_address: dev.gateway.example.com:443
+    auth_mode: insecure
+`)
+
+	output, err := executeCurrentCommand(t, "--json")
+
+	require.NoError(t, err)
+
+	var decoded currentContextOutput
+	require.NoError(t, json.Unmarshal([]byte(output), &decoded))
+	require.Equal(t, "dev", decoded.Name)
+	require.Equal(t, "current_context", decoded.Source)
+	require.NotEmpty(t, decoded.Path)
+}
+
+func TestContextCurrentJSONWithNoContext(t *testing.T) {
+	resetContextTestEnv(t)
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+
+	output, err := executeCurrentCommand(t, "--json")
+
+	require.NoError(t, err)
+
+	var decoded currentContextOutput
+	require.NoError(t, json.Unmarshal([]byte(output), &decoded))
+	require.Empty(t, decoded.Name)
+	require.Equal(t, "none", decoded.Source)
+	require.NotEmpty(t, decoded.Path)
+}
+
+func TestContextCurrentRejectsQuietAndJSON(t *testing.T) {
+	resetContextTestEnv(t)
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+
+	output, err := executeCurrentCommand(t, "--quiet", "--json")
+
+	require.ErrorContains(t, err, "use only one of --quiet or --json")
+	require.Empty(t, output)
 }
 
 func TestContextSet(t *testing.T) {
@@ -139,12 +220,27 @@ func executeContextRun(t *testing.T, run func(*cobra.Command, []string) error, a
 	return output.String(), err
 }
 
+func executeCurrentCommand(t *testing.T, args ...string) (string, error) {
+	t.Helper()
+
+	var output bytes.Buffer
+
+	cmd := &cobra.Command{}
+	cmd.SetOut(&output)
+	cmd.SetErr(&output)
+	addCurrentFlags(cmd)
+	require.NoError(t, cmd.ParseFlags(args))
+
+	err := runCurrent(cmd, nil)
+
+	return output.String(), err
+}
+
 func resetContextTestEnv(t *testing.T) {
 	t.Helper()
 
 	config.Context = ""
 	keys := []string{
-		"DIRCTL_CONTEXT",
 		"DIRECTORY_CLIENT_CONTEXT",
 		"DIRECTORY_CLIENT_SERVER_ADDRESS",
 		"DIRECTORY_CLIENT_TLS_SKIP_VERIFY",
