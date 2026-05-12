@@ -133,6 +133,67 @@ contexts:
 	})
 }
 
+func TestSetCurrentContext(t *testing.T) {
+	path := writeConfig(t, `
+current_context: dev
+contexts:
+  dev:
+    server_address: dev.gateway.example.com:443
+  prod:
+    server_address: prod.gateway.example.com:443
+`)
+
+	resolved, err := SetCurrentContext(path, "prod")
+
+	require.NoError(t, err)
+	assert.Equal(t, "prod", resolved.Name)
+	assert.Equal(t, "current_context", resolved.Source)
+
+	file, err := LoadFile(path)
+	require.NoError(t, err)
+	assert.Equal(t, "prod", file.CurrentContext)
+}
+
+func TestCurrentContext(t *testing.T) {
+	resetClientEnv(t)
+	path := writeConfig(t, `
+current_context: dev
+contexts:
+  dev:
+    server_address: dev.gateway.example.com:443
+  prod:
+    server_address: prod.gateway.example.com:443
+`)
+
+	t.Setenv(DirctlContextEnv, "prod")
+
+	current, err := CurrentContext(path, "")
+
+	require.NoError(t, err)
+	assert.Equal(t, "prod", current.Name)
+	assert.Equal(t, "env", current.Source)
+}
+
+func TestValidateContexts(t *testing.T) {
+	path := writeConfig(t, `
+contexts:
+  valid:
+    server_address: dev.gateway.example.com:443
+    auth_mode: insecure
+  invalid:
+    auth_mode: insecure
+`)
+
+	results, err := ValidateContexts(path, "")
+
+	require.NoError(t, err)
+	require.Len(t, results, 2)
+	assert.Equal(t, "invalid", results[0].Name)
+	require.ErrorContains(t, results[0].Error, "server_address is required")
+	assert.Equal(t, "valid", results[1].Name)
+	assert.NoError(t, results[1].Error)
+}
+
 func TestResolve(t *testing.T) {
 	t.Run("resolves explicit context", func(t *testing.T) {
 		resetClientEnv(t)

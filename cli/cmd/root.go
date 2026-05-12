@@ -8,6 +8,7 @@ import (
 	"fmt"
 
 	"github.com/agntcy/dir/cli/cmd/auth"
+	contextcmd "github.com/agntcy/dir/cli/cmd/context"
 	"github.com/agntcy/dir/cli/cmd/daemon"
 	"github.com/agntcy/dir/cli/cmd/delete"
 	"github.com/agntcy/dir/cli/cmd/events"
@@ -75,7 +76,7 @@ func shouldSkipClientSetup(cmd *cobra.Command) bool {
 }
 
 func resolveClientConfig(cmd *cobra.Command) (*client.Config, error) {
-	fields := changedClientConfigFields(cmd)
+	fields := cliconfig.ChangedClientConfigFields(cmd)
 
 	var overrides *client.Config
 	if len(fields) > 0 {
@@ -98,36 +99,6 @@ func resolveClientConfig(cmd *cobra.Command) (*client.Config, error) {
 	return cliconfig.Client, nil
 }
 
-func changedClientConfigFields(cmd *cobra.Command) []string {
-	//nolint:gosec // G101: These are configuration field names, not credential values.
-	flagToField := map[string]string{
-		"server-addr":        "server_address",
-		"auth-mode":          "auth_mode",
-		"spiffe-socket-path": "spiffe_socket_path",
-		"spiffe-token":       "spiffe_token",
-		"jwt-audience":       "jwt_audience",
-		"tls-skip-verify":    "tls_skip_verify",
-		"tls-ca-file":        "tls_ca_file",
-		"tls-cert-file":      "tls_cert_file",
-		"tls-key-file":       "tls_key_file",
-		"oidc-issuer":        "oidc_issuer",
-		"oidc-client-id":     "oidc_client_id",
-		"auth-token":         "auth_token",
-	}
-
-	fields := make([]string, 0, len(flagToField))
-
-	flags := cmd.Root().PersistentFlags()
-	for flagName, fieldName := range flagToField {
-		flag := flags.Lookup(flagName)
-		if flag != nil && flag.Changed {
-			fields = append(fields, fieldName)
-		}
-	}
-
-	return fields
-}
-
 func init() {
 	network.Command.Hidden = true
 	network.Command.PersistentPreRunE = skipClientSetup
@@ -137,6 +108,7 @@ func init() {
 	RootCmd.AddCommand(
 		// auth commands
 		auth.Command, // Contains: login, logout, status
+		contextcmd.Command,
 		// local commands
 		version.Command,
 		// initialize.Command, // REMOVED: Initialize functionality

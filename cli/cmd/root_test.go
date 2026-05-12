@@ -85,6 +85,27 @@ func TestAPICommandsStillRequireOIDCToken(t *testing.T) {
 	require.Contains(t, err.Error(), missingOIDCTokenError)
 }
 
+func TestContextCommandsDoNotRequireClientConfig(t *testing.T) {
+	resetClientEnv(t)
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	resetClientConfig()
+
+	var (
+		stdout bytes.Buffer
+		stderr bytes.Buffer
+	)
+
+	RootCmd.SetArgs([]string{"context", "list"})
+	RootCmd.SetContext(context.Background())
+	RootCmd.SetOut(&stdout)
+	RootCmd.SetErr(&stderr)
+
+	err := RootCmd.Execute()
+
+	require.NoError(t, err)
+	require.Contains(t, stdout.String(), "No contexts configured.")
+}
+
 func TestResolveClientConfigUsesCurrentContext(t *testing.T) {
 	resetClientEnv(t)
 	configHome := t.TempDir()
@@ -274,6 +295,7 @@ func resetClientEnv(t *testing.T) {
 	}
 
 	original := make(map[string]string, len(keys))
+
 	present := make(map[string]bool, len(keys))
 	for _, key := range keys {
 		value, ok := os.LookupEnv(key)

@@ -29,6 +29,8 @@ const (
 
 	configDirName  = "dirctl"
 	configFileName = "config.yaml"
+	configDirPerm  = 0o700
+	configFilePerm = 0o600
 )
 
 // File is the top-level reusable client context configuration file.
@@ -85,6 +87,12 @@ type ResolvedContext struct {
 type ContextSummary struct {
 	Name    string
 	Current bool
+}
+
+// ContextValidation describes the validation result for a configured context.
+type ContextValidation struct {
+	Name  string
+	Error error
 }
 
 // LoadFile loads a reusable client context config file from path.
@@ -209,6 +217,139 @@ func ListContexts(path string) ([]ContextSummary, error) {
 	}
 
 	return summaries, nil
+}
+
+// CurrentContext returns the selected context name without resolving client settings.
+func CurrentContext(path string, contextOverride string) (*ResolvedContext, error) {
+	resolvedPath, explicitPath, err := resolvePath(path)
+	if err != nil {
+		return nil, err
+	}
+
+	file, err := loadOptionalFile(resolvedPath, explicitPath)
+	if err != nil {
+		return nil, err
+	}
+
+	contextName, source := selectedContextName(ResolveOptions{Context: contextOverride}, file)
+	if contextName == "" {
+		return &ResolvedContext{
+			Source: source,
+			Path:   resolvedPath,
+		}, nil
+	}
+
+	if _, ok := file.Contexts[contextName]; !ok {
+		return nil, fmt.Errorf("unknown client context %q in %s", contextName, resolvedPath)
+	}
+
+	return &ResolvedContext{
+		Name:   contextName,
+		Source: source,
+		Path:   resolvedPath,
+	}, nil
+}
+
+// SetCurrentContext persists name as the active context.
+func SetCurrentContext(path string, name string) (*ResolvedContext, error) {
+	resolvedPath, explicitPath, err := resolvePath(path)
+	if err != nil {
+		return nil, err
+	}
+
+	file, err := loadOptionalFile(resolvedPath, explicitPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if _, ok := file.Contexts[name]; !ok {
+		return nil, fmt.Errorf("unknown client context %q in %s", name, resolvedPath)
+	}
+
+	file.CurrentContext = name
+	if err := SaveFile(resolvedPath, file); err != nil {
+		return nil, err
+	}
+
+	return &ResolvedContext{
+		Name:   name,
+		Source: "current_context",
+		Path:   resolvedPath,
+	}, nil
+}
+
+// SaveFile writes a reusable client context config file.
+func SaveFile(path string, file *File) error {
+	if path == "" {
+		defaultPath, err := DefaultPath()
+		if err != nil {
+			return err
+		}
+
+		path = defaultPath
+	}
+
+	if file.Contexts == nil {
+		file.Contexts = map[string]Context{}
+	}
+
+	if err := validateContextNames(file); err != nil {
+		return fmt.Errorf("invalid client config file %s: %w", path, err)
+	}
+
+	data, err := yaml.Marshal(file)
+	if err != nil {
+		return fmt.Errorf("failed to encode client config file %s: %w", path, err)
+	}
+
+	if err := os.MkdirAll(filepath.Dir(path), configDirPerm); err != nil {
+		return fmt.Errorf("failed to create client config directory %s: %w", filepath.Dir(path), err)
+	}
+
+	if err := os.WriteFile(path, data, configFilePerm); err != nil {
+		return fmt.Errorf("failed to write client config file %s: %w", path, err)
+	}
+
+	return nil
+}
+
+// ValidateContexts validates stored context definitions without applying environment overrides.
+func ValidateContexts(path string, name string) ([]ContextValidation, error) {
+	resolvedPath, explicitPath, err := resolvePath(path)
+	if err != nil {
+		return nil, err
+	}
+
+	file, err := loadOptionalFile(resolvedPath, explicitPath)
+	if err != nil {
+		return nil, err
+	}
+
+	names := make([]string, 0, len(file.Contexts))
+	if name != "" {
+		if _, ok := file.Contexts[name]; !ok {
+			return nil, fmt.Errorf("unknown client context %q in %s", name, resolvedPath)
+		}
+
+		names = append(names, name)
+	} else {
+		for contextName := range file.Contexts {
+			names = append(names, contextName)
+		}
+
+		sort.Strings(names)
+	}
+
+	results := make([]ContextValidation, 0, len(names))
+	for _, contextName := range names {
+		cfg := file.Contexts[contextName].toClientConfig()
+		results = append(results, ContextValidation{
+			Name:  contextName,
+			Error: validateClientConfig(&cfg),
+		})
+	}
+
+	return results, nil
 }
 
 func resolvePath(path string) (string, bool, error) {
