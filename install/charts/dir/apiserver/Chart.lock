@@ -1,12 +1,12 @@
 dependencies:
 - name: zot
   repository: http://zotregistry.dev/helm-charts
-  version: 0.1.112
+  version: 0.1.113
 - name: oasf
   repository: oci://ghcr.io/agntcy/oasf/helm-charts
   version: v0.5.1
 - name: postgresql
   repository: https://charts.bitnami.com/bitnami
   version: 18.6.4
-digest: sha256:0206ea2dc4245237b7959aad2539753cf720d2defa772123d8aaa30da5010283
-generated: "2026-05-11T18:43:27.230219752Z"
+digest: sha256:ec978453eded065bb96b82dbe508478d535c2907cde3d15e5069eec20b4b7fca
+generated: "2026-05-12T10:13:14.697427+02:00"
