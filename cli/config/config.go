@@ -10,3 +10,6 @@ import (
 // Client holds the merged CLI config (from config file, env, and flags).
 // It is populated by cmd/options.go init and updated when flags are parsed.
 var Client *client.Config = &client.DefaultConfig
+
+// Context is the per-command context override.
+var Context string

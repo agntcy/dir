@@ -26,9 +26,10 @@ import (
 	"github.com/agntcy/dir/cli/cmd/validate"
 	"github.com/agntcy/dir/cli/cmd/verify"
 	"github.com/agntcy/dir/cli/cmd/version"
-	"github.com/agntcy/dir/cli/config"
+	cliconfig "github.com/agntcy/dir/cli/config"
 	ctxUtils "github.com/agntcy/dir/cli/util/context"
 	"github.com/agntcy/dir/client"
+	clientconfig "github.com/agntcy/dir/client/config"
 	"github.com/spf13/cobra"
 )
 
@@ -42,9 +43,12 @@ var RootCmd = &cobra.Command{
 			return nil
 		}
 
-		// Set client via context for all requests
-		// TODO: make client config configurable via CLI args
-		c, err := client.New(cmd.Context(), client.WithConfig(config.Client))
+		cfg, err := resolveClientConfig(cmd)
+		if err != nil {
+			return err
+		}
+
+		c, err := client.New(cmd.Context(), client.WithConfig(cfg))
 		if err != nil {
 			return fmt.Errorf("failed to create client: %w", err)
 		}
@@ -68,6 +72,60 @@ func skipClientSetup(_ *cobra.Command, _ []string) error {
 
 func shouldSkipClientSetup(cmd *cobra.Command) bool {
 	return cmd.Name() == "help" || cmd.Name() == "completion"
+}
+
+func resolveClientConfig(cmd *cobra.Command) (*client.Config, error) {
+	fields := changedClientConfigFields(cmd)
+
+	var overrides *client.Config
+	if len(fields) > 0 {
+		overrides = cliconfig.Client
+	}
+
+	cfg, _, err := clientconfig.Resolve(clientconfig.ResolveOptions{
+		Context:        cliconfig.Context,
+		Overrides:      overrides,
+		OverrideFields: fields,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to resolve client config: %w", err)
+	}
+
+	// Keep the existing pointer so Cobra flag bindings remain valid across
+	// repeated command executions in tests.
+	*cliconfig.Client = *cfg
+
+	return cliconfig.Client, nil
+}
+
+func changedClientConfigFields(cmd *cobra.Command) []string {
+	//nolint:gosec // G101: These are configuration field names, not credential values.
+	flagToField := map[string]string{
+		"server-addr":        "server_address",
+		"auth-mode":          "auth_mode",
+		"spiffe-socket-path": "spiffe_socket_path",
+		"spiffe-token":       "spiffe_token",
+		"jwt-audience":       "jwt_audience",
+		"tls-skip-verify":    "tls_skip_verify",
+		"tls-ca-file":        "tls_ca_file",
+		"tls-cert-file":      "tls_cert_file",
+		"tls-key-file":       "tls_key_file",
+		"oidc-issuer":        "oidc_issuer",
+		"oidc-client-id":     "oidc_client_id",
+		"auth-token":         "auth_token",
+	}
+
+	fields := make([]string, 0, len(flagToField))
+
+	flags := cmd.Root().PersistentFlags()
+	for flagName, fieldName := range flagToField {
+		flag := flags.Lookup(flagName)
+		if flag != nil && flag.Changed {
+			fields = append(fields, fieldName)
+		}
+	}
+
+	return fields
 }
 
 func init() {
