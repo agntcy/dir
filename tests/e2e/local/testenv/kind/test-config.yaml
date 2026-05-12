@@ -5,3 +5,4 @@ local:
   cli_extra_args:
   - "--server-addr=localhost:18888"
   - "--auth-mode=insecure"
+  name_verification_host: "dns-validation-http"

@@ -100,18 +100,3 @@ target "dir-reconciler-coverage" {
   ]
   tags = get_tag(target.docker-metadata-action.tags, "dir-reconciler")
 }
-
-target "sdks-test" {
-  context = "."
-  dockerfile = "./tests/e2e/sdk/Dockerfile"
-  depends_on = ["dir-ctl"] # Ensures dir-ctl is built first
-  inherits = [
-    "_common",
-    "docker-metadata-action",
-  ]
-  args = {
-    IMAGE_REPO = "${IMAGE_REPO}"
-    IMAGE_TAG = "${IMAGE_TAG}"
-  }
-  tags = get_tag(target.docker-metadata-action.tags, "${target.sdks-test.name}")
-}

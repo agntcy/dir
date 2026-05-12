@@ -39,10 +39,6 @@ jobs:
             dir/api
             dir/server
             dir/client
-            sdk
-            sdk/go
-            sdk/js
-            sdk/py
             cli
             cli/dir
             helm

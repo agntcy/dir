@@ -6,4 +6,4 @@ services:
     volumes:
       - ./jwks.dns-validation.json:/usr/share/nginx/html/.well-known/jwks.json
     ports:
-      - 80
+      - "127.0.0.1:19891:80"

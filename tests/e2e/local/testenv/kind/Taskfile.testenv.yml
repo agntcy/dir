@@ -16,7 +16,7 @@ includes:
       CHART_DEPLOYMENTS: |
         [
           {
-            "release_name": "dns-validator",
+            "release_name": "dns-validation",
             "namespace": "dir",
             "chart_path": "{{.ROOT_DIR}}/tests/e2e/local/testenv/kind/dns-validation/chart"
           },

@@ -74,16 +74,6 @@
 - name: 'area/dir/client'
   color: '0052cc'
 
-# SDK:
-- name: 'area/sdk'
-  color: '0052cc'
-- name: 'area/sdk/go'
-  color: '0052cc'
-- name: 'area/sdk/js'
-  color: '0052cc'
-- name: 'area/sdk/py'
-  color: '0052cc'
-
 # CLI:
 - name: 'area/cli'
   color: '0052cc'
