@@ -4,6 +4,10 @@
 package auth
 
 import (
+	"fmt"
+
+	"github.com/agntcy/dir/cli/config"
+	clientconfig "github.com/agntcy/dir/client/config"
 	"github.com/spf13/cobra"
 )
 
@@ -27,9 +31,30 @@ Examples:
 
   # Logout (clear cached token)
   dirctl auth logout`,
-	PersistentPreRunE: func(_ *cobra.Command, _ []string) error {
-		return nil
-	},
+	PersistentPreRunE: resolveAuthConfig,
+}
+
+func resolveAuthConfig(cmd *cobra.Command, _ []string) error {
+	fields := config.ChangedClientConfigFields(cmd)
+
+	overrides := config.Client
+	if len(fields) == 0 {
+		overrides = nil
+	}
+
+	cfg, _, err := clientconfig.Resolve(clientconfig.ResolveOptions{
+		Context:        config.Context,
+		Overrides:      overrides,
+		OverrideFields: fields,
+		SkipValidation: true,
+	})
+	if err != nil {
+		return fmt.Errorf("failed to resolve auth config: %w", err)
+	}
+
+	*config.Client = *cfg
+
+	return nil
 }
 
 func init() {
