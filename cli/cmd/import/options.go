@@ -50,7 +50,8 @@ func init() {
 	signcmd.AddSigningFlags(flags)
 
 	// Common flags
-	flags.BoolVar(&opts.DryRun, "dry-run", false, "Preview without importing")
+	flags.BoolVar(&opts.DryRun, "dry-run", false, "Preview without importing; transformed records are written to --output-dir (one JSON file per record) so they can be re-imported later via `dirctl import`")
+	flags.StringVar(&opts.OutputDir, "output-dir", "", "Directory to write per-record JSON files when --dry-run is set (defaults to ./import-dry-run-<timestamp> in the current working directory)")
 	flags.BoolVar(&opts.Force, "force", false, "Force push even if record already exists")
 	flags.BoolVar(&opts.Debug, "debug", false, "Enable debug output for deduplication and validation failures")
 

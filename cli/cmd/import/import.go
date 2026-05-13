@@ -50,6 +50,7 @@ Examples (Agent Skill directory):
 
 Preview and output:
   dirctl import --type=mcp-registry --url=https://registry.modelcontextprotocol.io/v0.1 --dry-run
+  dirctl import --type=mcp-registry --url=https://registry.modelcontextprotocol.io/v0.1 --dry-run --output-dir=./out
   dirctl import --type=mcp-registry --url=https://registry.modelcontextprotocol.io/v0.1 --output-cids=./imported.cids
 
 Enrichment (MCPHost / LLM):
@@ -156,8 +157,9 @@ func printSummary(cmd *cobra.Command, result *types.ImportResult) {
 	if opts.DryRun {
 		presenter.Printf(cmd, "\nNote: This was a dry run. No records were actually imported.\n")
 
-		if result.OutputFile != "" {
-			presenter.Printf(cmd, "Records saved to: %s\n", result.OutputFile)
+		if result.OutputDir != "" {
+			presenter.Printf(cmd, "Records saved to directory: %s\n", result.OutputDir)
+			presenter.Printf(cmd, "Each record is written as <cid>.record.json and can be re-imported via dirctl push.\n")
 		}
 	}
 }

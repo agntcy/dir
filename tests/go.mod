@@ -16,7 +16,7 @@ replace (
 replace github.com/ThalesIgnite/crypto11 => github.com/ThalesGroup/crypto11 v1.6.0
 
 require (
-	github.com/agntcy/dir-importer v1.3.0
+	github.com/agntcy/dir-importer v1.3.1-0.20260512151057-7f132333b9d0
 	github.com/agntcy/dir/api v1.3.0
 	github.com/agntcy/dir/cli v1.3.0
 	github.com/agntcy/dir/client v1.3.0
@@ -366,7 +366,7 @@ require (
 	github.com/libp2p/zeroconf/v2 v2.2.0 // indirect
 	github.com/liggitt/tabwriter v0.0.0-20181228230101-89fcab3d43de // indirect
 	github.com/lunixbochs/struc v0.0.0-20241101090106-8d528fa2c543 // indirect
-	github.com/mark3labs/mcp-go v0.52.0 // indirect
+	github.com/mark3labs/mcp-go v0.53.0 // indirect
 	github.com/marten-seemann/tcp v0.0.0-20210406111302-dfbc87cc63fd // indirect
 	github.com/masahiro331/go-disk v0.0.0-20260423015231-f7a470ebd472 // indirect
 	github.com/masahiro331/go-ebs-file v0.0.0-20260422020928-9d24e29aac27 // indirect
