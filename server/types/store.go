@@ -7,10 +7,14 @@ import (
 	"context"
 
 	corev1 "github.com/agntcy/dir/api/core/v1"
+	"oras.land/oras-go/v2/registry/remote"
 )
 
 // StoreAPI handles management of content-addressable object storage.
 type StoreAPI interface {
+	// Get original underlying target
+	Target() *remote.Repository
+
 	// Push record to content store
 	Push(context.Context, *corev1.Record) (*corev1.RecordRef, error)
 

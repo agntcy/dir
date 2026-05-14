@@ -11,6 +11,7 @@ import (
 	corev1 "github.com/agntcy/dir/api/core/v1"
 	eventsv1 "github.com/agntcy/dir/api/events/v1"
 	"github.com/agntcy/dir/server/events"
+	"oras.land/oras-go/v2/registry/remote"
 )
 
 // mockStore is a minimal store implementation for testing.
@@ -18,6 +19,10 @@ type mockStore struct {
 	pushCalled   bool
 	pullCalled   bool
 	deleteCalled bool
+}
+
+func (m *mockStore) Target() *remote.Repository {
+	return nil
 }
 
 func (m *mockStore) Push(_ context.Context, record *corev1.Record) (*corev1.RecordRef, error) {
