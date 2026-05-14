@@ -7,13 +7,14 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"io"
 
 	storev2 "github.com/agntcy/dir/api/store/v2"
 	"github.com/agntcy/dir/server/store/packaging"
 	"github.com/opencontainers/go-digest"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/emptypb"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 	"oras.land/oras-go/v2"
@@ -27,6 +28,8 @@ type objstoreCtrl struct {
 	target *remote.Repository
 }
 
+// TODO: fix status codes returned by the controller methods
+// to be more specific and accurate instead of always returning codes.Internal.
 func NewObjStore(target *remote.Repository) storev2.ObjectStoreServer {
 	return &objstoreCtrl{
 		target: target,
@@ -40,13 +43,13 @@ func (o *objstoreCtrl) Put(ctx context.Context, obj *storev2.Object) (*storev2.O
 		// Package object as manifest
 		manifest, err := packer.Pack(ctx, o.target, obj)
 		if err != nil {
-			return nil, fmt.Errorf("failed to pack object: %w", err)
+			return nil, status.Errorf(codes.Internal, "failed to pack object: %v", err)
 		}
 
 		// Get manifest bytes
 		manifestBytes, err := json.Marshal(manifest)
 		if err != nil {
-			return nil, fmt.Errorf("failed to marshal manifest: %w", err)
+			return nil, status.Errorf(codes.Internal, "failed to marshal manifest: %v", err)
 		}
 
 		// Patch the object with manifest data
@@ -60,7 +63,7 @@ func (o *objstoreCtrl) Put(ctx context.Context, obj *storev2.Object) (*storev2.O
 	// Push object to target repo
 	desc, err := oras.PushBytes(ctx, o.target, obj.GetMediaType(), obj.GetData())
 	if err != nil {
-		return nil, fmt.Errorf("failed to push object: %w", err)
+		return nil, status.Errorf(codes.Internal, "failed to push object: %v", err)
 	}
 
 	// Return object descriptor
@@ -77,7 +80,7 @@ func (o *objstoreCtrl) Get(ctx context.Context, ref *storev2.ObjectRef) (*storev
 	// If it's not a manifest, fallback to blob fetch
 	manifest, _, err := o.getManifest(ctx, ref)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get manifest: %w", err)
+		return nil, status.Errorf(codes.Internal, "failed to get manifest: %v", err)
 	}
 
 	if manifest == nil {
@@ -94,7 +97,7 @@ func (o *objstoreCtrl) Get(ctx context.Context, ref *storev2.ObjectRef) (*storev
 	// Unpack manifest into object
 	obj, err := packer.Unpack(ctx, o.target, manifest)
 	if err != nil {
-		return nil, fmt.Errorf("failed to unpack object: %w", err)
+		return nil, status.Errorf(codes.Internal, "failed to unpack object: %v", err)
 	}
 
 	return obj, nil
@@ -109,7 +112,7 @@ func (o *objstoreCtrl) GetRaw(ctx context.Context, ref *storev2.ObjectRef) (*sto
 	}
 
 	if err != nil {
-		return nil, fmt.Errorf("failed to fetch object: %w", err)
+		return nil, status.Errorf(codes.Internal, "failed to fetch object: %v", err)
 	}
 
 	defer reader.Close()
@@ -117,7 +120,7 @@ func (o *objstoreCtrl) GetRaw(ctx context.Context, ref *storev2.ObjectRef) (*sto
 	// Read data
 	data, err := io.ReadAll(reader)
 	if err != nil {
-		return nil, fmt.Errorf("failed to read blob data: %w", err)
+		return nil, status.Errorf(codes.Internal, "failed to read object data: %v", err)
 	}
 
 	// Some OCI registries use "text/plain" for blobs, use "application/octet-stream"
@@ -129,7 +132,7 @@ func (o *objstoreCtrl) GetRaw(ctx context.Context, ref *storev2.ObjectRef) (*sto
 	// Return object
 	return &storev2.Object{
 		MediaType: mediaType,
-		Size:      uint64(desc.Size),
+		Size:      uint64(desc.Size), //nolint:gosec
 		Data:      data,
 	}, nil
 }
@@ -142,7 +145,7 @@ func (o *objstoreCtrl) Has(ctx context.Context, ref *storev2.ObjectRef) (*wrappe
 	}
 
 	if err != nil {
-		return nil, fmt.Errorf("failed to resolve reference: %w", err)
+		return nil, status.Errorf(codes.Internal, "failed to resolve reference: %v", err)
 	}
 
 	return wrapperspb.Bool(true), nil
@@ -152,12 +155,12 @@ func (o *objstoreCtrl) Lookup(ctx context.Context, ref *storev2.ObjectRef) (*sto
 	// Fetch manifest from target registry
 	manifest, desc, err := o.getManifest(ctx, ref)
 	if err != nil {
-		return nil, fmt.Errorf("failed to lookup object: %w", err)
+		return nil, status.Errorf(codes.Internal, "failed to lookup object: %v", err)
 	}
 
 	// If it's not a manifest, return blob descriptor
 	if manifest == nil {
-		return storev2.NewDescriptor(desc), nil
+		return toObjectDescriptor(desc), nil
 	}
 
 	// Return metadata for manifest
@@ -165,7 +168,7 @@ func (o *objstoreCtrl) Lookup(ctx context.Context, ref *storev2.ObjectRef) (*sto
 		Digest:       desc.Digest.String(),
 		MediaType:    manifest.MediaType,
 		ArtifactType: manifest.ArtifactType,
-		Size:         uint64(desc.Size),
+		Size:         uint64(desc.Size), //nolint:gosec
 		Urls:         manifest.Config.URLs,
 		Annotations:  manifest.Annotations,
 	}, nil
@@ -182,7 +185,7 @@ func (o *objstoreCtrl) Delete(ctx context.Context, ref *storev2.ObjectRef) (*emp
 	}
 
 	if err != nil {
-		return nil, fmt.Errorf("failed to delete object: %w", err)
+		return nil, status.Errorf(codes.Internal, "failed to delete object: %v", err)
 	}
 
 	return &emptypb.Empty{}, nil
@@ -192,7 +195,7 @@ func (o *objstoreCtrl) ListReferrers(ctx context.Context, req *storev2.ListRefer
 	// Get descriptor for the object
 	desc, err := o.resolveRef(ctx, req.GetSubject())
 	if err != nil {
-		return nil, fmt.Errorf("failed to resolve reference: %w", err)
+		return nil, status.Errorf(codes.Internal, "failed to resolve reference: %v", err)
 	}
 
 	// If it's not a manifest, we can't lookup referrers since referrers are only supported for manifests in OCI spec
@@ -202,17 +205,18 @@ func (o *objstoreCtrl) ListReferrers(ctx context.Context, req *storev2.ListRefer
 
 	// Get referrers from target registry
 	var refs []*storev2.ObjectDescriptor
+
 	if err = o.target.Referrers(ctx, desc,
 		req.GetFilterMediaType(),
 		func(descs []ocispec.Descriptor) error {
 			for _, desc := range descs {
-				refs = append(refs, storev2.NewDescriptor(desc))
+				refs = append(refs, toObjectDescriptor(desc))
 			}
 
 			return nil
 		},
 	); err != nil {
-		return nil, fmt.Errorf("failed to get referrers: %w", err)
+		return nil, status.Errorf(codes.Internal, "failed to get referrers: %v", err)
 	}
 
 	return &storev2.ListReferrersResponse{
@@ -220,7 +224,7 @@ func (o *objstoreCtrl) ListReferrers(ctx context.Context, req *storev2.ListRefer
 	}, nil
 }
 
-//nolint:errcheck
+//nolint:wrapcheck
 func (o *objstoreCtrl) getManifest(ctx context.Context, ref *storev2.ObjectRef) (*ocispec.Manifest, ocispec.Descriptor, error) {
 	// Fetch manifest from target registry
 	// Fallback to blob lookup if manifest fetch fails, since the reference may be a blob
@@ -255,7 +259,7 @@ func (o *objstoreCtrl) getManifest(ctx context.Context, ref *storev2.ObjectRef) 
 	return &manifest, desc, nil
 }
 
-//nolint:errcheck
+//nolint:wrapcheck
 func (o *objstoreCtrl) resolveRef(ctx context.Context, ref *storev2.ObjectRef) (ocispec.Descriptor, error) {
 	// Resolve manifest from target registry
 	// Fallback to blob lookup if manifest fetch fails, since the reference may be a blob
@@ -269,4 +273,15 @@ func (o *objstoreCtrl) resolveRef(ctx context.Context, ref *storev2.ObjectRef) (
 	}
 
 	return desc, nil
+}
+
+func toObjectDescriptor(desc ocispec.Descriptor) *storev2.ObjectDescriptor {
+	return &storev2.ObjectDescriptor{
+		Digest:       desc.Digest.String(),
+		MediaType:    desc.MediaType,
+		ArtifactType: desc.ArtifactType,
+		Size:         uint64(desc.Size), //nolint:gosec
+		Urls:         desc.URLs,
+		Annotations:  desc.Annotations,
+	}
 }

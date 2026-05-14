@@ -2,13 +2,14 @@
 // SPDX-License-Identifier: Apache-2.0
 
 // This file defines the complete schema for Record <-> Manifest packaging.
-// It serves as the single source of truth for consturction, validation,
+// It serves as the single source of truth for construction, validation,
 // and parsing of Record objects.
 
 package packaging
 
 import (
 	"context"
+	"fmt"
 	"io"
 
 	corev1 "github.com/agntcy/dir/api/core/v1"
@@ -17,8 +18,6 @@ import (
 	"github.com/agntcy/dir/server/types/adapters"
 	"github.com/opencontainers/image-spec/specs-go"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
-	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
 	"oras.land/oras-go/v2"
 	"oras.land/oras-go/v2/registry/remote"
 )
@@ -29,7 +28,7 @@ const (
 	// dealing with Record objects.
 	RecordMediaType = "application/vnd.agntcy.dir.v1+json"
 
-	// Annotations for record manifests
+	// Annotations for record manifests.
 	recordAnnotationPrefix        = "org.agntcy.dir.record"
 	recordNameAnnotation          = recordAnnotationPrefix + "/name"
 	recordVersionAnnotation       = recordAnnotationPrefix + "/version"
@@ -49,22 +48,23 @@ func (r *record) Pack(ctx context.Context, repo *remote.Repository, obj *storev2
 	// Convert object to a record
 	record, err := corev1.UnmarshalRecord(obj.GetData())
 	if err != nil {
-		return nil, status.Errorf(codes.InvalidArgument, "failed to unmarshal object data into record: %v", err)
+		return nil, fmt.Errorf("failed to unmarshal object data into record: %w", err)
 	}
 
 	// Get record data via adapter
 	recordData, err := adapters.NewRecordAdapter(record).GetRecordData()
 	if err != nil {
-		return nil, status.Errorf(codes.Internal, "failed to read record data: %v", err)
+		return nil, fmt.Errorf("failed to read record data: %w", err)
 	}
 
 	// If there is previous record CID, fetch its descriptor to add as subject
 	// The subject can only be a manifest, faily otherwise
 	var subject *ocispec.Descriptor
+
 	if prevCID := recordData.GetPreviousRecordCid(); prevCID != "" {
 		prevDesc, err := repo.Manifests().Resolve(ctx, prevCID)
 		if err != nil {
-			return nil, status.Errorf(codes.Internal, "failed to resolve previous record CID: %v", err)
+			return nil, fmt.Errorf("failed to resolve previous record CID: %w", err)
 		}
 
 		// Set subject
@@ -75,13 +75,13 @@ func (r *record) Pack(ctx context.Context, repo *remote.Repository, obj *storev2
 	// This ensures consistent bytes for both CID calculation and storage
 	recordBytes, err := record.Marshal()
 	if err != nil {
-		return nil, status.Errorf(codes.Internal, "failed to marshal record: %v", err)
+		return nil, fmt.Errorf("failed to marshal record: %w", err)
 	}
 
 	// Push the record bytes as a blob
 	recordDesc, err := oras.PushBytes(ctx, repo, "application/json", recordBytes)
 	if err != nil {
-		return nil, status.Errorf(codes.Internal, "failed to push record bytes: %v", err)
+		return nil, fmt.Errorf("failed to push record bytes: %w", err)
 	}
 
 	return &ocispec.Manifest{
@@ -101,19 +101,19 @@ func (r *record) Unpack(ctx context.Context, repo *remote.Repository, manifest *
 	// Pull the config blob which contains the record bytes
 	reader, err := repo.Fetch(ctx, manifest.Config)
 	if err != nil {
-		return nil, status.Errorf(codes.Internal, "failed to fetch config content: %v", err)
+		return nil, fmt.Errorf("failed to fetch config content: %w", err)
 	}
 	defer reader.Close()
 
 	recordBytes, err := io.ReadAll(reader)
 	if err != nil {
-		return nil, status.Errorf(codes.Internal, "failed to read config content: %v", err)
+		return nil, fmt.Errorf("failed to read config content: %w", err)
 	}
 
 	// Validate record
 	_, err = corev1.UnmarshalRecord(recordBytes)
 	if err != nil {
-		return nil, status.Errorf(codes.Internal, "failed to unmarshal config bytes into record: %v", err)
+		return nil, fmt.Errorf("failed to unmarshal config bytes into record: %w", err)
 	}
 
 	return &storev2.Object{
