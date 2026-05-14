@@ -190,8 +190,8 @@ github.com/agext/levenshtein v1.2.3 h1:YB2fHEn0UJagG8T1rrWknE3ZQzWM06O8AMAatNn7l
 github.com/agext/levenshtein v1.2.3/go.mod h1:JEDfjyjHDjOF/1e4FlBE/PkbqA9OfWu2ki2W0IB5558=
 github.com/agnivade/levenshtein v1.2.1 h1:EHBY3UOn1gwdy/VbFwgo4cxecRznFk7fKWN1KOX7eoM=
 github.com/agnivade/levenshtein v1.2.1/go.mod h1:QVVI16kDrtSuwcpd0p1+xMC6Z/VfhtCyDIjcwga4/DU=
-github.com/agntcy/dir-importer v1.3.0 h1:biojlL4BQI6xoaem3/uZuWZ8E+ud/r2O3KyErUM0oQU=
-github.com/agntcy/dir-importer v1.3.0/go.mod h1:AUIqEJONjwI+W3fI3q7UGuHTu9TR9TRgJcQwlJcV+Ig=
+github.com/agntcy/dir-importer v1.3.1-0.20260513134649-3276412ac13b h1:BmhkPF1nUFhRrR8wz5txVQ1EyOKdwYP5dVaPqLug0Rg=
+github.com/agntcy/dir-importer v1.3.1-0.20260513134649-3276412ac13b/go.mod h1:EYqzt4Cqz+1iid4/aTWUNbzqVLvRStyy2VCEqe8l6FM=
 github.com/agntcy/dir-mcp v1.3.0 h1:xG7qkcsile69u0I7x3VrSvyVKT0NuBlgDK29WrHo5dg=
 github.com/agntcy/dir-mcp v1.3.0/go.mod h1:4GqrwnqlzBvzkrnd0DV3N0iq7rRANtOlQ2aMIzrLQHo=
 github.com/agntcy/dir-runtime/discovery v1.3.0 h1:sQuSA/QyxeHES9ayVVVhX1NuTGwNuRmioXk2mZgXFmc=
@@ -1183,8 +1183,8 @@ github.com/magiconair/properties v1.8.10 h1:s31yESBquKXCV9a/ScB3ESkOjUYYv+X0rg8S
 github.com/magiconair/properties v1.8.10/go.mod h1:Dhd985XPs7jluiymwWYZ0G4Z61jb3vdS329zhj2hYo0=
 github.com/marcopolo/simnet v0.0.4 h1:50Kx4hS9kFGSRIbrt9xUS3NJX33EyPqHVmpXvaKLqrY=
 github.com/marcopolo/simnet v0.0.4/go.mod h1:tfQF1u2DmaB6WHODMtQaLtClEf3a296CKQLq5gAsIS0=
-github.com/mark3labs/mcp-go v0.52.0 h1:uRSzupNSUyPGDpF4owY5X4zEpACPwBnlM3FAFuXN6gQ=
-github.com/mark3labs/mcp-go v0.52.0/go.mod h1:Zg9cB2HdwdMMVgY0xtTzq3KvYIOJQDsaut+jWjwDaQY=
+github.com/mark3labs/mcp-go v0.53.0 h1:nzjUi/L448XxwrfmVjiZ03vWgYOWVBrJK0wkZH7fVWo=
+github.com/mark3labs/mcp-go v0.53.0/go.mod h1:Zg9cB2HdwdMMVgY0xtTzq3KvYIOJQDsaut+jWjwDaQY=
 github.com/marten-seemann/tcp v0.0.0-20210406111302-dfbc87cc63fd h1:br0buuQ854V8u83wA0rVZ8ttrq5CpaPZdvrK0LP2lOk=
 github.com/marten-seemann/tcp v0.0.0-20210406111302-dfbc87cc63fd/go.mod h1:QuCEs1Nt24+FYQEqAAncTDPJIuGs+LxK1MCiFL25pMU=
 github.com/maruel/natural v1.1.1 h1:Hja7XhhmvEFhcByqDoHz9QZbkWey+COd9xWfCfn1ioo=

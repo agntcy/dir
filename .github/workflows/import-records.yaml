@@ -162,10 +162,14 @@ jobs:
           echo "--- Processing Entry $((${{ matrix.entry.index }} + 1)) ---"
 
           CIDS_FILE="imported-cids-${{ matrix.entry.index }}.txt"
+          # TODO: Uncomment when the importer supports saving per-record JSON files.
+          # DRY_RUN_DIR="dry-run-output-${{ matrix.entry.index }}"
           CMD=("${DIRCTL_PATH}" import --type=mcp-registry --url=https://registry.modelcontextprotocol.io/v0.1 --server-addr="${{ env.SERVER_ADDRESS }}" --auth-mode=oidc "--auth-token=${DIR_AUTH_TOKEN}" --enrich-config=mcphost_ci.json --enrich-rate-limit="${{ env.RATE_LIMIT }}")
 
           if [[ "${{ env.DRY_RUN }}" == "true" ]]; then
              CMD+=("--dry-run")
+             # TODO: Replace with the following block when the importer supports saving per-record JSON files.
+             # CMD+=("--dry-run" "--output-dir=$DRY_RUN_DIR")
           else
              # Output CIDs for deferred signing (only in non-dry-run mode)
              CMD+=("--output-cids=$CIDS_FILE")
@@ -208,6 +212,20 @@ jobs:
             echo "--- JSONL Output ($JSONL_FILE) ---"
             cat "$JSONL_FILE"
           fi
+
+          # TODO: Replace print above with the following block when the importer supports saving per-record JSON files.
+          # # Print per-record JSON files (dry-run mode). The importer writes one
+          # # <cid>.record.json per record into $DRY_RUN_DIR.
+          # if [[ "${{ env.DRY_RUN }}" == "true" ]] && [ -d "$DRY_RUN_DIR" ]; then
+          #   shopt -s nullglob
+          #   RECORD_FILES=("$DRY_RUN_DIR"/*.record.json)
+          #   echo "--- Dry-run records ($DRY_RUN_DIR): ${#RECORD_FILES[@]} file(s) ---"
+          #   for f in "${RECORD_FILES[@]}"; do
+          #     echo "=== $(basename "$f") ==="
+          #     cat "$f"
+          #     echo
+          #   done
+          # fi
 
           # Output CIDs file path for signing step
           echo "cids_file=$CIDS_FILE" >> $GITHUB_OUTPUT
