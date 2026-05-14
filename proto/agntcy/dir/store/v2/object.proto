@@ -1,0 +1,50 @@
+// Copyright AGNTCY Contributors (https://github.com/agntcy)
+// SPDX-License-Identifier: Apache-2.0
+
+syntax = "proto3";
+
+package agntcy.dir.store.v2;
+
+message ObjectRef {
+  // The content identifier (CID) of the object.
+  //
+  // Supported formats:
+  // - "bafybeigdyrzt5t6j3g5h6z7x4y2w3v1u0a9b8c7d6e5f4g3h2i1j0k" - CIDv1 in Base32
+  // - "cid:bafybeigdyrzt5t6j3g5h6z7x4y2w3v1u0a9b8c7d6e5f4g3h2i1j0k" - CIDv1 with "cid:" prefix
+  // - "sha256:3a7bd3e2360a8c1b2c9d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8g9h0i1j2k3l" - SHA256 digest with "sha256:" prefix
+  string cid = 1;
+}
+
+message Object {
+  // The media type of the object, e.g., "application/vnd.oci.image.manifest.v1+json".
+  // If not set, "application/octet-stream" is used as the default media type.
+  string media_type = 1;
+  // The size of the object in bytes.
+  uint64 size = 2;
+  // The actual data of the object.
+  bytes data = 3;
+}
+
+// ObjectDescriptor describes the metadata of an object stored in the ObjectStore.
+// It includes the content digest, media type, size, and other relevant information about the object.
+//
+// Spec: https://specs.opencontainers.org/image-spec/descriptor/
+message ObjectDescriptor {
+  // The digest of the object.
+  string digest = 1;
+  // The media type of the object, e.g., "application/vnd.oci.image.manifest.v1+json".
+  string media_type = 2;
+  // The artifact type of the object, e.g., "application/vnd.cncf.notary.signature".
+  string artifact_type = 3;
+  // The size of the object in bytes.
+  uint64 size = 4;
+  // URLs or other references to the actual data, if available.
+  repeated string urls = 5;
+  // Metadata attached to the object, if available.
+  // Defined by the object type.
+  map<string, string> annotations = 6;
+}
+
+message ObjectDescriptors {
+  repeated ObjectDescriptor descriptors = 1;
+}

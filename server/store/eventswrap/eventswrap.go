@@ -15,6 +15,7 @@ import (
 	"github.com/agntcy/dir/server/types/adapters"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+	"oras.land/oras-go/v2/registry/remote"
 )
 
 // eventsStore wraps a StoreAPI with event emission.
@@ -30,6 +31,10 @@ func Wrap(source types.StoreAPI, eventBus *events.SafeEventBus) types.StoreAPI {
 		source:   source,
 		eventBus: eventBus,
 	}
+}
+
+func (s *eventsStore) Target() *remote.Repository {
+	return s.source.Target()
 }
 
 // Push pushes a record to the source store and emits a RECORD_PUSHED event.
