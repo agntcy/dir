@@ -40,9 +40,21 @@ service ObjectStore {
   rpc Delete(ObjectRef) returns (google.protobuf.Empty);
 
   // Linkage details, returns objects that reference this object.
-  rpc ListReferrers(ObjectRef) returns (ObjectDescriptors);
+  rpc ListReferrers(ListReferrersRequest) returns (ListReferrersResponse);
 
   // Indexing details, returns metadata of the object without retrieving
   // the actual data.
   rpc Lookup(ObjectRef) returns (ObjectDescriptor);
+}
+
+message ListReferrersRequest {
+  // The subject reference for which to list referrers.
+  ObjectRef subject = 1;
+  
+  // If set, only return referrers with the given media type.
+  optional string filter_media_type = 2;
+}
+
+message ListReferrersResponse {
+  repeated ObjectDescriptor referrers = 1;
 }

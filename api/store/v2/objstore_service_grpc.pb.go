@@ -37,9 +37,10 @@ const (
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 //
-// ObjectStore provides APIs for storing and retrieving objects in a content-addressable store.
-// It is a thin wrapper around the OCI Distribution Spec that performs content validation and
-// normalization for supported media types.
+// ObjectStore provides APIs for managing objects in a content-addressable store.
+//
+// It is a thin wrapper around the OCI Distribution Spec that performs content
+// validation and normalization for certain media types.
 //
 // Supported media types:
 // - application/octet-stream
@@ -62,7 +63,7 @@ type ObjectStoreClient interface {
 	// Deletes the object from the store. Returns an error if the object does not exist.
 	Delete(ctx context.Context, in *ObjectRef, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	// Linkage details, returns objects that reference this object.
-	ListReferrers(ctx context.Context, in *ObjectRef, opts ...grpc.CallOption) (*ObjectDescriptors, error)
+	ListReferrers(ctx context.Context, in *ListReferrersRequest, opts ...grpc.CallOption) (*ListReferrersResponse, error)
 	// Indexing details, returns metadata of the object without retrieving
 	// the actual data.
 	Lookup(ctx context.Context, in *ObjectRef, opts ...grpc.CallOption) (*ObjectDescriptor, error)
@@ -126,9 +127,9 @@ func (c *objectStoreClient) Delete(ctx context.Context, in *ObjectRef, opts ...g
 	return out, nil
 }
 
-func (c *objectStoreClient) ListReferrers(ctx context.Context, in *ObjectRef, opts ...grpc.CallOption) (*ObjectDescriptors, error) {
+func (c *objectStoreClient) ListReferrers(ctx context.Context, in *ListReferrersRequest, opts ...grpc.CallOption) (*ListReferrersResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(ObjectDescriptors)
+	out := new(ListReferrersResponse)
 	err := c.cc.Invoke(ctx, ObjectStore_ListReferrers_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
@@ -150,9 +151,10 @@ func (c *objectStoreClient) Lookup(ctx context.Context, in *ObjectRef, opts ...g
 // All implementations should embed UnimplementedObjectStoreServer
 // for forward compatibility.
 //
-// ObjectStore provides APIs for storing and retrieving objects in a content-addressable store.
-// It is a thin wrapper around the OCI Distribution Spec that performs content validation and
-// normalization for supported media types.
+// ObjectStore provides APIs for managing objects in a content-addressable store.
+//
+// It is a thin wrapper around the OCI Distribution Spec that performs content
+// validation and normalization for certain media types.
 //
 // Supported media types:
 // - application/octet-stream
@@ -175,7 +177,7 @@ type ObjectStoreServer interface {
 	// Deletes the object from the store. Returns an error if the object does not exist.
 	Delete(context.Context, *ObjectRef) (*emptypb.Empty, error)
 	// Linkage details, returns objects that reference this object.
-	ListReferrers(context.Context, *ObjectRef) (*ObjectDescriptors, error)
+	ListReferrers(context.Context, *ListReferrersRequest) (*ListReferrersResponse, error)
 	// Indexing details, returns metadata of the object without retrieving
 	// the actual data.
 	Lookup(context.Context, *ObjectRef) (*ObjectDescriptor, error)
@@ -203,7 +205,7 @@ func (UnimplementedObjectStoreServer) Has(context.Context, *ObjectRef) (*wrapper
 func (UnimplementedObjectStoreServer) Delete(context.Context, *ObjectRef) (*emptypb.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Delete not implemented")
 }
-func (UnimplementedObjectStoreServer) ListReferrers(context.Context, *ObjectRef) (*ObjectDescriptors, error) {
+func (UnimplementedObjectStoreServer) ListReferrers(context.Context, *ListReferrersRequest) (*ListReferrersResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ListReferrers not implemented")
 }
 func (UnimplementedObjectStoreServer) Lookup(context.Context, *ObjectRef) (*ObjectDescriptor, error) {
@@ -320,7 +322,7 @@ func _ObjectStore_Delete_Handler(srv interface{}, ctx context.Context, dec func(
 }
 
 func _ObjectStore_ListReferrers_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(ObjectRef)
+	in := new(ListReferrersRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -332,7 +334,7 @@ func _ObjectStore_ListReferrers_Handler(srv interface{}, ctx context.Context, de
 		FullMethod: ObjectStore_ListReferrers_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ObjectStoreServer).ListReferrers(ctx, req.(*ObjectRef))
+		return srv.(ObjectStoreServer).ListReferrers(ctx, req.(*ListReferrersRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }

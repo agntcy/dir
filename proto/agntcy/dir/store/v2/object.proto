@@ -44,7 +44,3 @@ message ObjectDescriptor {
   // Defined by the object type.
   map<string, string> annotations = 6;
 }
-
-message ObjectDescriptors {
-  repeated ObjectDescriptor descriptors = 1;
-}
