@@ -11,7 +11,7 @@ import (
 	"io"
 
 	storev2 "github.com/agntcy/dir/api/store/v2"
-	"github.com/agntcy/dir/server/controller/packaging"
+	"github.com/agntcy/dir/server/store/packaging"
 	"github.com/opencontainers/go-digest"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"google.golang.org/protobuf/types/known/emptypb"
@@ -33,7 +33,6 @@ func NewObjStore(target *remote.Repository) storev2.ObjectStoreServer {
 	}
 }
 
-// Put implements [v2.ObjectStoreServer].
 func (o *objstoreCtrl) Put(ctx context.Context, obj *storev2.Object) (*storev2.ObjectDescriptor, error) {
 	// Patch object for managed media types (e.g. records) using registered packers
 	packer, registered := packaging.GetPacker(obj.GetMediaType())
@@ -67,13 +66,12 @@ func (o *objstoreCtrl) Put(ctx context.Context, obj *storev2.Object) (*storev2.O
 	// Return object descriptor
 	//
 	// TODO(ramizpolic): we can extract the data here directly instead of doing a redundant
-	// network lookup, but this is simpler for now. Change to avoid redundant call.
+	// network lookup, but this is simpler for now. Change to avoid network call.
 	return o.Lookup(ctx, &storev2.ObjectRef{
 		Cid: desc.Digest.String(),
 	})
 }
 
-// Get implements [v2.ObjectStoreServer].
 func (o *objstoreCtrl) Get(ctx context.Context, ref *storev2.ObjectRef) (*storev2.Object, error) {
 	// Pull data from target registry
 	// If it's not a manifest, fallback to blob fetch
@@ -102,19 +100,18 @@ func (o *objstoreCtrl) Get(ctx context.Context, ref *storev2.ObjectRef) (*storev
 	return obj, nil
 }
 
-// GetRaw implements [v2.ObjectStoreServer].
 func (o *objstoreCtrl) GetRaw(ctx context.Context, ref *storev2.ObjectRef) (*storev2.Object, error) {
-	// Get descriptor for the object
-	desc, err := o.resolveRef(ctx, ref)
-	if err != nil {
-		return nil, fmt.Errorf("failed to resolve reference: %w", err)
+	// Fetch reader from target registry
+	// Fallback to blob lookup if manifest fetch fails, since the reference may be a blob
+	desc, reader, err := o.target.Manifests().FetchReference(ctx, ref.GetCid())
+	if errors.Is(err, oraserrs.ErrNotFound) {
+		desc, reader, err = o.target.Blobs().FetchReference(ctx, ref.GetCid())
 	}
 
-	// Pull data from target registry
-	reader, err := o.target.Blobs().Fetch(ctx, desc)
 	if err != nil {
-		return nil, fmt.Errorf("failed to fetch blob: %w", err)
+		return nil, fmt.Errorf("failed to fetch object: %w", err)
 	}
+
 	defer reader.Close()
 
 	// Read data
@@ -123,15 +120,20 @@ func (o *objstoreCtrl) GetRaw(ctx context.Context, ref *storev2.ObjectRef) (*sto
 		return nil, fmt.Errorf("failed to read blob data: %w", err)
 	}
 
+	// Some OCI registries use "text/plain" for blobs, use "application/octet-stream"
+	mediaType := desc.MediaType
+	if mediaType == "text/plain" {
+		mediaType = "application/octet-stream"
+	}
+
 	// Return object
 	return &storev2.Object{
-		MediaType: desc.MediaType,
+		MediaType: mediaType,
 		Size:      uint64(desc.Size),
 		Data:      data,
 	}, nil
 }
 
-// Has implements [v2.ObjectStoreServer].
 func (o *objstoreCtrl) Has(ctx context.Context, ref *storev2.ObjectRef) (*wrapperspb.BoolValue, error) {
 	// Get descriptor for the object
 	_, err := o.resolveRef(ctx, ref)
@@ -146,7 +148,6 @@ func (o *objstoreCtrl) Has(ctx context.Context, ref *storev2.ObjectRef) (*wrappe
 	return wrapperspb.Bool(true), nil
 }
 
-// Lookup implements [v2.ObjectStoreServer].
 func (o *objstoreCtrl) Lookup(ctx context.Context, ref *storev2.ObjectRef) (*storev2.ObjectDescriptor, error) {
 	// Fetch manifest from target registry
 	manifest, desc, err := o.getManifest(ctx, ref)
@@ -170,7 +171,6 @@ func (o *objstoreCtrl) Lookup(ctx context.Context, ref *storev2.ObjectRef) (*sto
 	}, nil
 }
 
-// Delete implements [v2.ObjectStoreServer].
 func (o *objstoreCtrl) Delete(ctx context.Context, ref *storev2.ObjectRef) (*emptypb.Empty, error) {
 	// Try deleting manifest first
 	// If manifest not found, try deleting blob
@@ -188,7 +188,6 @@ func (o *objstoreCtrl) Delete(ctx context.Context, ref *storev2.ObjectRef) (*emp
 	return &emptypb.Empty{}, nil
 }
 
-// ListReferrers implements [v2.ObjectStoreServer].
 func (o *objstoreCtrl) ListReferrers(ctx context.Context, req *storev2.ListReferrersRequest) (*storev2.ListReferrersResponse, error) {
 	// Get descriptor for the object
 	desc, err := o.resolveRef(ctx, req.GetSubject())
