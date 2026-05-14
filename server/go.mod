@@ -21,6 +21,7 @@ require (
 	github.com/agntcy/oasf-sdk/pkg v1.0.5
 	github.com/casbin/casbin/v2 v2.135.0
 	github.com/glebarez/sqlite v1.11.0
+	github.com/google/go-containerregistry v0.21.5
 	github.com/grpc-ecosystem/go-grpc-middleware/v2 v2.3.3
 	github.com/grpc-ecosystem/go-grpc-prometheus v1.2.0
 	github.com/ipfs/go-datastore v0.9.1
@@ -110,7 +111,6 @@ require (
 	github.com/jbenet/go-temp-err-catcher v0.1.0 // indirect
 	github.com/jinzhu/inflection v1.0.0 // indirect
 	github.com/jinzhu/now v1.1.5 // indirect
-	github.com/klauspost/compress v1.18.4 // indirect
 	github.com/klauspost/cpuid/v2 v2.3.0 // indirect
 	github.com/koron/go-ssdp v0.1.0 // indirect
 	github.com/lestrrat-go/blackmagic v1.0.4 // indirect
