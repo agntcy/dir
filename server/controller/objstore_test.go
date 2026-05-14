@@ -64,9 +64,9 @@ func TestObjStoreBlob(t *testing.T) {
 	assert.Equal(t, uint64(len(blobContent)), meta.GetSize())
 
 	// ListReferrers is not supported for blobs
-	referrers, err := store.ListReferrers(ctx, &storev2.ObjectRef{Cid: blobDigest})
+	referrers, err := store.ListReferrers(ctx, &storev2.ListReferrersRequest{Subject: &storev2.ObjectRef{Cid: blobDigest}})
 	assert.NoError(t, err)
-	assert.Empty(t, referrers.GetDescriptors())
+	assert.Empty(t, referrers.Referrers)
 
 	// Delete the blob
 	_, err = store.Delete(ctx, &storev2.ObjectRef{Cid: blobDigest})
@@ -167,9 +167,9 @@ func TestObjStoreManifest(t *testing.T) {
 	assert.Equal(t, "true", meta.GetAnnotations()["org.test.manifest"])
 
 	// No referrers yet
-	refs, err := store.ListReferrers(ctx, &storev2.ObjectRef{Cid: manifestDigest})
+	refs, err := store.ListReferrers(ctx, &storev2.ListReferrersRequest{Subject: &storev2.ObjectRef{Cid: manifestDigest}})
 	require.NoError(t, err)
-	assert.Empty(t, refs.GetDescriptors())
+	assert.Empty(t, refs.GetReferrers())
 
 	// Build a referrer manifest with Subject pointing to the manifest above
 	referrerManifest := ocispec.Manifest{
@@ -201,20 +201,20 @@ func TestObjStoreManifest(t *testing.T) {
 	assert.NotEmpty(t, referrerDesc.GetDigest())
 
 	// ListReferrers should now include the new referrer
-	refs, err = store.ListReferrers(ctx, &storev2.ObjectRef{Cid: manifestDigest})
+	refs, err = store.ListReferrers(ctx, &storev2.ListReferrersRequest{Subject: &storev2.ObjectRef{Cid: manifestDigest}})
 	require.NoError(t, err)
-	require.Len(t, refs.GetDescriptors(), 1)
-	assert.Equal(t, referrerDesc.GetDigest(), refs.GetDescriptors()[0].GetDigest())
-	assert.Equal(t, "application/vnd.test.referrer", refs.GetDescriptors()[0].GetArtifactType())
+	require.Len(t, refs.GetReferrers(), 1)
+	assert.Equal(t, referrerDesc.GetDigest(), refs.GetReferrers()[0].GetDigest())
+	assert.Equal(t, "application/vnd.test.referrer", refs.GetReferrers()[0].GetArtifactType())
 
 	// Delete referrer manifest
 	_, err = store.Delete(ctx, &storev2.ObjectRef{Cid: referrerDesc.GetDigest()})
 	require.NoError(t, err)
 
 	// ListReferrers should now be empty again
-	refs, err = store.ListReferrers(ctx, &storev2.ObjectRef{Cid: manifestDigest})
+	refs, err = store.ListReferrers(ctx, &storev2.ListReferrersRequest{Subject: &storev2.ObjectRef{Cid: manifestDigest}})
 	require.NoError(t, err)
-	assert.Empty(t, refs.GetDescriptors())
+	assert.Empty(t, refs.GetReferrers())
 
 	// Remove the original manifest
 	_, err = store.Delete(ctx, &storev2.ObjectRef{Cid: manifestDigest})
@@ -290,9 +290,9 @@ func TestObjStoreRecord(t *testing.T) {
 	assert.Equal(t, "test-agent", meta.GetAnnotations()[packaging.ManifestKeyName])
 
 	// No referrers
-	refs, err := store.ListReferrers(ctx, &storev2.ObjectRef{Cid: desc.GetDigest()})
+	refs, err := store.ListReferrers(ctx, &storev2.ListReferrersRequest{Subject: &storev2.ObjectRef{Cid: desc.GetDigest()}})
 	require.NoError(t, err)
-	assert.Empty(t, refs.GetDescriptors())
+	assert.Empty(t, refs.GetReferrers())
 
 	// Cleanup
 	_, err = store.Delete(ctx, &storev2.ObjectRef{Cid: desc.GetDigest()})
@@ -386,10 +386,10 @@ func TestObjStoreManifestRecordReferrer(t *testing.T) {
 	require.NoError(t, err)
 
 	// ListReferrers on the base manifest should return the record manifest
-	refs, err := store.ListReferrers(ctx, &storev2.ObjectRef{Cid: baseDesc.GetDigest()})
+	refs, err := store.ListReferrers(ctx, &storev2.ListReferrersRequest{Subject: &storev2.ObjectRef{Cid: baseDesc.GetDigest()}})
 	require.NoError(t, err)
-	require.Len(t, refs.GetDescriptors(), 1)
-	referrer := refs.GetDescriptors()[0]
+	require.Len(t, refs.GetReferrers(), 1)
+	referrer := refs.GetReferrers()[0]
 	assert.Equal(t, recordManifestDesc.GetDigest(), referrer.GetDigest())
 	assert.Equal(t, packaging.RecordMediaType, referrer.GetArtifactType())
 

@@ -21,14 +21,6 @@ import (
 	"oras.land/oras-go/v2/registry/remote"
 )
 
-type objectType int
-
-const (
-	unknownObject objectType = iota
-	blobObject
-	manifestObject
-)
-
 type objstoreCtrl struct {
 	_ storev2.UnimplementedObjectStoreServer
 
@@ -89,6 +81,7 @@ func (o *objstoreCtrl) Get(ctx context.Context, ref *storev2.ObjectRef) (*storev
 	if err != nil {
 		return nil, fmt.Errorf("failed to get manifest: %w", err)
 	}
+
 	if manifest == nil {
 		return o.GetRaw(ctx, ref)
 	}
@@ -112,7 +105,7 @@ func (o *objstoreCtrl) Get(ctx context.Context, ref *storev2.ObjectRef) (*storev
 // GetRaw implements [v2.ObjectStoreServer].
 func (o *objstoreCtrl) GetRaw(ctx context.Context, ref *storev2.ObjectRef) (*storev2.Object, error) {
 	// Get descriptor for the object
-	_, desc, err := o.resolveRef(ctx, ref)
+	desc, err := o.resolveRef(ctx, ref)
 	if err != nil {
 		return nil, fmt.Errorf("failed to resolve reference: %w", err)
 	}
@@ -141,7 +134,7 @@ func (o *objstoreCtrl) GetRaw(ctx context.Context, ref *storev2.ObjectRef) (*sto
 // Has implements [v2.ObjectStoreServer].
 func (o *objstoreCtrl) Has(ctx context.Context, ref *storev2.ObjectRef) (*wrapperspb.BoolValue, error) {
 	// Get descriptor for the object
-	_, _, err := o.resolveRef(ctx, ref)
+	_, err := o.resolveRef(ctx, ref)
 	if errors.Is(err, oraserrs.ErrNotFound) {
 		return wrapperspb.Bool(false), nil
 	}
@@ -182,6 +175,7 @@ func (o *objstoreCtrl) Delete(ctx context.Context, ref *storev2.ObjectRef) (*emp
 	// Try deleting manifest first
 	// If manifest not found, try deleting blob
 	desc := ocispec.Descriptor{Digest: digest.Digest(ref.GetCid())}
+
 	err := o.target.Manifests().Delete(ctx, desc)
 	if errors.Is(err, oraserrs.ErrNotFound) {
 		err = o.target.Blobs().Delete(ctx, desc)
@@ -195,36 +189,39 @@ func (o *objstoreCtrl) Delete(ctx context.Context, ref *storev2.ObjectRef) (*emp
 }
 
 // ListReferrers implements [v2.ObjectStoreServer].
-func (o *objstoreCtrl) ListReferrers(ctx context.Context, ref *storev2.ObjectRef) (*storev2.ObjectDescriptors, error) {
+func (o *objstoreCtrl) ListReferrers(ctx context.Context, req *storev2.ListReferrersRequest) (*storev2.ListReferrersResponse, error) {
 	// Get descriptor for the object
-	objType, desc, err := o.resolveRef(ctx, ref)
+	desc, err := o.resolveRef(ctx, req.GetSubject())
 	if err != nil {
 		return nil, fmt.Errorf("failed to resolve reference: %w", err)
 	}
 
 	// If it's not a manifest, we can't lookup referrers since referrers are only supported for manifests in OCI spec
-	if objType != manifestObject {
-		return &storev2.ObjectDescriptors{}, nil
+	if desc.MediaType != ocispec.MediaTypeImageManifest {
+		return &storev2.ListReferrersResponse{}, nil
 	}
 
 	// Get referrers from target registry
 	var refs []*storev2.ObjectDescriptor
-	err = o.target.Referrers(ctx, desc, "", func(descs []ocispec.Descriptor) error {
-		for _, desc := range descs {
-			refs = append(refs, storev2.NewDescriptor(desc))
-		}
+	if err = o.target.Referrers(ctx, desc,
+		req.GetFilterMediaType(),
+		func(descs []ocispec.Descriptor) error {
+			for _, desc := range descs {
+				refs = append(refs, storev2.NewDescriptor(desc))
+			}
 
-		return nil
-	})
-	if err != nil {
+			return nil
+		},
+	); err != nil {
 		return nil, fmt.Errorf("failed to get referrers: %w", err)
 	}
 
-	return &storev2.ObjectDescriptors{
-		Descriptors: refs,
+	return &storev2.ListReferrersResponse{
+		Referrers: refs,
 	}, nil
 }
 
+//nolint:errcheck
 func (o *objstoreCtrl) getManifest(ctx context.Context, ref *storev2.ObjectRef) (*ocispec.Manifest, ocispec.Descriptor, error) {
 	// Fetch manifest from target registry
 	// Fallback to blob lookup if manifest fetch fails, since the reference may be a blob
@@ -240,7 +237,7 @@ func (o *objstoreCtrl) getManifest(ctx context.Context, ref *storev2.ObjectRef) 
 	defer reader.Close()
 
 	// If its not a manifest, we can't lookup metadata.
-	if desc.MediaType != "application/vnd.oci.image.manifest.v1+json" {
+	if desc.MediaType != ocispec.MediaTypeImageManifest {
 		return nil, desc, nil
 	}
 
@@ -259,7 +256,8 @@ func (o *objstoreCtrl) getManifest(ctx context.Context, ref *storev2.ObjectRef) 
 	return &manifest, desc, nil
 }
 
-func (o *objstoreCtrl) resolveRef(ctx context.Context, ref *storev2.ObjectRef) (objectType, ocispec.Descriptor, error) {
+//nolint:errcheck
+func (o *objstoreCtrl) resolveRef(ctx context.Context, ref *storev2.ObjectRef) (ocispec.Descriptor, error) {
 	// Resolve manifest from target registry
 	// Fallback to blob lookup if manifest fetch fails, since the reference may be a blob
 	desc, err := o.target.Manifests().Resolve(ctx, ref.GetCid())
@@ -268,14 +266,8 @@ func (o *objstoreCtrl) resolveRef(ctx context.Context, ref *storev2.ObjectRef) (
 	}
 
 	if err != nil {
-		return unknownObject, ocispec.Descriptor{}, err
+		return ocispec.Descriptor{}, err
 	}
 
-	// Determine if the reference is a manifest or blob based on media type
-	if desc.MediaType == "application/vnd.oci.image.manifest.v1+json" {
-		// It's a manifest reference
-		return manifestObject, desc, nil
-	}
-
-	return blobObject, desc, nil
+	return desc, nil
 }
