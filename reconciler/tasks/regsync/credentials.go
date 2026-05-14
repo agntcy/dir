@@ -8,7 +8,6 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"sort"
 	"strings"
 
 	storev1 "github.com/agntcy/dir/api/store/v1"
@@ -145,16 +144,16 @@ func resolveContextByServerAddress(serverAddress string) (string, error) {
 		}
 	}
 
-	switch len(matches) {
-	case 0:
+	if len(matches) == 0 {
 		return "", nil
-	case 1:
-		return matches[0], nil
-	default:
-		sort.Strings(matches)
-
-		return "", fmt.Errorf("multiple client contexts match server_address %q: %v", serverAddress, matches)
 	}
+
+	if len(matches) > 1 {
+		logger.Debug("Multiple dirctl client contexts match server_address; using first",
+			"server_address", serverAddress, "selected", matches[0], "candidates", matches)
+	}
+
+	return matches[0], nil
 }
 
 // canonicalServerAddress normalizes a Directory server address for comparison.

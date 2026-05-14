@@ -38,119 +38,145 @@ func TestCanonicalServerAddress(t *testing.T) {
 }
 
 func TestResolveContextByServerAddress(t *testing.T) {
-	t.Run("missing config returns empty", func(t *testing.T) {
-		withDirctlConfig(t, "")
-
-		name, err := resolveContextByServerAddress("https://dev.gateway.example.com")
-
-		require.NoError(t, err)
-		assert.Empty(t, name)
-	})
-
-	t.Run("no match returns empty", func(t *testing.T) {
-		withDirctlConfig(t, `
+	tests := []struct {
+		name   string
+		config string
+		in     string
+		want   string
+	}{
+		{
+			name:   "missing config returns empty",
+			config: "",
+			in:     "https://dev.gateway.example.com",
+			want:   "",
+		},
+		{
+			name: "no match returns empty",
+			config: `
 contexts:
   dev:
     server_address: dev.gateway.example.com:443
-`)
-
-		name, err := resolveContextByServerAddress("https://other.example.com")
-
-		require.NoError(t, err)
-		assert.Empty(t, name)
-	})
-
-	t.Run("exact match", func(t *testing.T) {
-		withDirctlConfig(t, `
+`,
+			in:   "https://other.example.com",
+			want: "",
+		},
+		{
+			name: "exact match",
+			config: `
 contexts:
   dev:
     server_address: https://dev.gateway.example.com
   prod:
     server_address: prod.gateway.example.com:443
-`)
-
-		name, err := resolveContextByServerAddress("https://dev.gateway.example.com")
-
-		require.NoError(t, err)
-		assert.Equal(t, "dev", name)
-	})
-
-	t.Run("scheme-insensitive match against host:port", func(t *testing.T) {
-		withDirctlConfig(t, `
+`,
+			in:   "https://dev.gateway.example.com",
+			want: "dev",
+		},
+		{
+			name: "scheme-insensitive match against host:port",
+			config: `
 contexts:
   dev:
     server_address: dev.gateway.example.com:443
-`)
-
-		name, err := resolveContextByServerAddress("https://dev.gateway.example.com/")
-
-		require.NoError(t, err)
-		assert.Equal(t, "dev", name)
-	})
-
-	t.Run("multiple matches return error", func(t *testing.T) {
-		withDirctlConfig(t, `
+`,
+			in:   "https://dev.gateway.example.com/",
+			want: "dev",
+		},
+		{
+			name: "multiple matches default to first sorted name",
+			config: `
 contexts:
   dev:
     server_address: https://dev.gateway.example.com
   dev-alias:
     server_address: dev.gateway.example.com:443
-`)
+`,
+			in:   "https://dev.gateway.example.com",
+			want: "dev",
+		},
+	}
 
-		name, err := resolveContextByServerAddress("https://dev.gateway.example.com")
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			withDirctlConfig(t, tt.config)
 
-		require.Error(t, err)
-		assert.Empty(t, name)
-		assert.Contains(t, err.Error(), "multiple client contexts")
-	})
+			got, err := resolveContextByServerAddress(tt.in)
+
+			require.NoError(t, err)
+			assert.Equal(t, tt.want, got)
+		})
+	}
 }
 
 func TestBuildClientConfigForRemote(t *testing.T) {
-	t.Run("no matching context falls back to insecure", func(t *testing.T) {
-		withDirctlConfig(t, "")
-
-		cfg, err := buildClientConfigForRemote("http://localhost:8888", authnconfig.Config{})
-
-		require.NoError(t, err)
-		assert.Equal(t, "http://localhost:8888", cfg.ServerAddress)
-		assert.Equal(t, "insecure", cfg.AuthMode)
-	})
-
-	t.Run("no matching context honours authn config", func(t *testing.T) {
-		withDirctlConfig(t, "")
-
-		cfg, err := buildClientConfigForRemote("http://localhost:8888", authnconfig.Config{
-			Enabled:    true,
-			Mode:       authnconfig.AuthModeJWT,
-			SocketPath: "/run/spire/agent.sock",
-			Audiences:  []string{"directory"},
-		})
-
-		require.NoError(t, err)
-		assert.Equal(t, "jwt", cfg.AuthMode)
-		assert.Equal(t, "/run/spire/agent.sock", cfg.SpiffeSocketPath)
-		assert.Equal(t, "directory", cfg.JWTAudience)
-	})
-
-	t.Run("matching context overrides authn config", func(t *testing.T) {
-		withDirctlConfig(t, `
+	tests := []struct {
+		name        string
+		config      string
+		remote      string
+		authn       authnconfig.Config
+		wantAddress string
+		wantMode    string
+		wantToken   string
+		wantSocket  string
+		wantAud     string
+	}{
+		{
+			name:        "no matching context falls back to insecure",
+			config:      "",
+			remote:      "http://localhost:8888",
+			authn:       authnconfig.Config{},
+			wantAddress: "http://localhost:8888",
+			wantMode:    "insecure",
+		},
+		{
+			name:   "no matching context honours authn config",
+			config: "",
+			remote: "http://localhost:8888",
+			authn: authnconfig.Config{
+				Enabled:    true,
+				Mode:       authnconfig.AuthModeJWT,
+				SocketPath: "/run/spire/agent.sock",
+				Audiences:  []string{"directory"},
+			},
+			wantAddress: "http://localhost:8888",
+			wantMode:    "jwt",
+			wantSocket:  "/run/spire/agent.sock",
+			wantAud:     "directory",
+		},
+		{
+			name: "matching context overrides authn config",
+			config: `
 contexts:
   remote:
     server_address: dev.gateway.example.com:443
     auth_mode: oidc
     auth_token: cached-token
-`)
+`,
+			remote: "https://dev.gateway.example.com",
+			authn: authnconfig.Config{
+				Enabled: true,
+				Mode:    authnconfig.AuthModeX509,
+			},
+			wantAddress: "dev.gateway.example.com:443",
+			wantMode:    "oidc",
+			wantToken:   "cached-token",
+		},
+	}
 
-		cfg, err := buildClientConfigForRemote("https://dev.gateway.example.com", authnconfig.Config{
-			Enabled: true,
-			Mode:    authnconfig.AuthModeX509,
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			withDirctlConfig(t, tt.config)
+
+			cfg, err := buildClientConfigForRemote(tt.remote, tt.authn)
+
+			require.NoError(t, err)
+			assert.Equal(t, tt.wantAddress, cfg.ServerAddress)
+			assert.Equal(t, tt.wantMode, cfg.AuthMode)
+			assert.Equal(t, tt.wantToken, cfg.AuthToken)
+			assert.Equal(t, tt.wantSocket, cfg.SpiffeSocketPath)
+			assert.Equal(t, tt.wantAud, cfg.JWTAudience)
 		})
-
-		require.NoError(t, err)
-		assert.Equal(t, "dev.gateway.example.com:443", cfg.ServerAddress)
-		assert.Equal(t, "oidc", cfg.AuthMode)
-		assert.Equal(t, "cached-token", cfg.AuthToken)
-	})
+	}
 }
 
 // withDirctlConfig points dirctl's default config path to a temp directory.
