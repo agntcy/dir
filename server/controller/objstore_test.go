@@ -1,6 +1,7 @@
 // Copyright AGNTCY Contributors (https://github.com/agntcy)
 // SPDX-License-Identifier: Apache-2.0
 
+//nolint:testifylint
 package controller
 
 import (
@@ -68,8 +69,8 @@ func TestObjStoreBlob(t *testing.T) {
 
 	// ListReferrers is not supported for blobs
 	referrers, err := store.ListReferrers(ctx, &storev2.ListReferrersRequest{Subject: &storev2.ObjectRef{Cid: blobDigest}})
-	assert.NoError(t, err)
-	assert.Empty(t, referrers.Referrers)
+	require.NoError(t, err)
+	assert.Empty(t, referrers.GetReferrers())
 
 	// Delete the blob
 	_, err = store.Delete(ctx, &storev2.ObjectRef{Cid: blobDigest})
@@ -391,23 +392,26 @@ func getCtrl(t *testing.T) storev2.ObjectStoreServer {
 	t.Helper()
 
 	// Start registry
-	listener, err := net.Listen("tcp", fmt.Sprintf("localhost:0"))
-	assert.NoError(t, err)
+	listener, err := (&net.ListenConfig{}).Listen(t.Context(), "tcp", "localhost:0")
+	require.NoError(t, err)
 
 	// Start a local in-memory registry on the listener
 	s := &http.Server{
 		ReadHeaderTimeout: 5 * time.Second, // prevent slowloris, quiet linter
 		Handler:           registry.New(registry.WithReferrersSupport(true)),
 	}
+
 	t.Cleanup(func() {
 		s.Close()
 		listener.Close()
 	})
+
 	go func() {
-		s.Serve(listener)
+		_ = s.Serve(listener)
 	}()
 
 	// Create repository to use
+	//nolint:forcetypeassert
 	repo, err := oci.NewORASRepository(ociconfig.Config{
 		RegistryAddress: fmt.Sprintf("localhost:%d", listener.Addr().(*net.TCPAddr).Port),
 		RepositoryName:  fmt.Sprintf("controller-test-%d", time.Now().UnixNano()),
