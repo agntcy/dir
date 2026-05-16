@@ -19,6 +19,7 @@ import (
 	routingv1 "github.com/agntcy/dir/api/routing/v1"
 	"github.com/agntcy/dir/server/datastore"
 	"github.com/agntcy/dir/server/events"
+	rankingcfg "github.com/agntcy/dir/server/ranking/config"
 	"github.com/agntcy/dir/server/types"
 	"google.golang.org/grpc/status"
 )
@@ -39,7 +40,7 @@ func (r *route) hasPeersInRoutingTable() bool {
 	return r.remote.server.DHT().RoutingTable().Size() > 0
 }
 
-func New(ctx context.Context, store types.StoreAPI, opts types.APIOptions) (types.RoutingAPI, error) {
+func New(ctx context.Context, store types.StoreAPI, db types.DatabaseAPI, rankingCfg rankingcfg.Config, opts types.APIOptions) (types.RoutingAPI, error) {
 	// Create main router
 	mainRounter := &route{
 		eventBus: opts.EventBus(),
@@ -57,7 +58,7 @@ func New(ctx context.Context, store types.StoreAPI, opts types.APIOptions) (type
 	}
 
 	// Create remote router first to get the peer ID
-	mainRounter.remote, err = newRemote(ctx, store, dstore, opts)
+	mainRounter.remote, err = newRemote(ctx, store, db, rankingCfg, dstore, opts)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create remote routing: %w", err)
 	}

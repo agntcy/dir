@@ -41,6 +41,13 @@ func (r *Record) GetRecordData() (types.RecordData, error) {
 	return &RecordDataAdapter{record: r}, nil
 }
 
+// GetSigned reports whether the record has at least one signature
+// attached. Implements types.SignedAware so the search controller can
+// extract the trust signal without re-querying signature_verifications.
+func (r *Record) GetSigned() bool {
+	return r.Signed
+}
+
 // RecordDataAdapter adapts Database Record to central RecordData interface.
 type RecordDataAdapter struct {
 	record *Record
@@ -202,8 +209,15 @@ func (d *DB) GetRecords(opts ...types.FilterOption) ([]types.Record, error) {
 		opt(cfg)
 	}
 
-	// Start with the base query for records.
-	query := d.gormDB.Model(&Record{})
+	// Preload child associations so RecordDataAdapter sees non-empty
+	// Skills/Locators/Modules/Domains; without these the ranking
+	// completeness signal silently scores zero. Adds four IN-list
+	// SELECTs total — CID-only callers should use GetRecordCIDs instead.
+	query := d.gormDB.Model(&Record{}).
+		Preload("Skills").
+		Preload("Locators").
+		Preload("Modules").
+		Preload("Domains")
 
 	// Apply pagination.
 	if cfg.Limit > 0 {
@@ -301,8 +315,13 @@ func (d *DB) RemoveRecord(cid string) error {
 
 // handleFilterOptions applies the provided filters to the query.
 //
-//nolint:gocognit,cyclop,nestif,gocyclo
+//nolint:gocognit,cyclop,nestif,gocyclo,maintidx
 func (d *DB) handleFilterOptions(query *gorm.DB, cfg *types.RecordFilters) *gorm.DB {
+	// CID filter is an indexed primary-key lookup; apply first.
+	if len(cfg.CIDs) > 0 {
+		query = query.Where("records.record_cid IN ?", cfg.CIDs)
+	}
+
 	// Apply record-level filters with wildcard support.
 	if len(cfg.Names) > 0 {
 		condition, args := utils.BuildWildcardCondition("records.name", cfg.Names)

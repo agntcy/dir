@@ -5,6 +5,7 @@ syntax = "proto3";
 
 package agntcy.dir.search.v1;
 
+import "agntcy/dir/core/v1/ranking.proto";
 import "agntcy/dir/core/v1/record.proto";
 import "agntcy/dir/search/v1/record_query.proto";
 
@@ -45,9 +46,27 @@ message SearchRecordsRequest {
 message SearchCIDsResponse {
   // The CID of the record that matches the search criteria.
   string record_cid = 1;
+
+  // Composite ranking score in [0, 1000] (fixed-point for cross-SDK
+  // determinism). Higher = better. Results are streamed in descending
+  // rank_score order, with deterministic tie-break on (created_at, cid).
+  uint32 rank_score = 2;
+
+  // Per-signal sub-scores that contributed to rank_score, for
+  // explainability.
+  agntcy.dir.core.v1.RankExplanation rank_explanation = 3;
 }
 
 message SearchRecordsResponse {
   // The full record that matches the search criteria.
   agntcy.dir.core.v1.Record record = 1;
+
+  // Composite ranking score in [0, 1000] (fixed-point for cross-SDK
+  // determinism). Higher = better. Results are streamed in descending
+  // rank_score order, with deterministic tie-break on (created_at, cid).
+  uint32 rank_score = 2;
+
+  // Per-signal sub-scores that contributed to rank_score, for
+  // explainability.
+  agntcy.dir.core.v1.RankExplanation rank_explanation = 3;
 }

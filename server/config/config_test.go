@@ -14,6 +14,7 @@ import (
 	ratelimitconfig "github.com/agntcy/dir/server/middleware/ratelimit/config"
 	naming "github.com/agntcy/dir/server/naming/config"
 	publication "github.com/agntcy/dir/server/publication/config"
+	rankingcfg "github.com/agntcy/dir/server/ranking/config"
 	routing "github.com/agntcy/dir/server/routing/config"
 	store "github.com/agntcy/dir/server/store/config"
 	oci "github.com/agntcy/dir/server/store/oci/config"
@@ -56,6 +57,8 @@ func TestConfig(t *testing.T) {
 				"DIRECTORY_SERVER_PUBLICATION_SCHEDULER_INTERVAL":      "10s",
 				"DIRECTORY_SERVER_PUBLICATION_WORKER_COUNT":            "1",
 				"DIRECTORY_SERVER_PUBLICATION_WORKER_TIMEOUT":          "10s",
+				"DIRECTORY_SERVER_RANKING_WEIGHTS_TRUST":               "0.5",
+				"DIRECTORY_SERVER_RANKING_MAX_CANDIDATES":              "500",
 			},
 			ExpectedConfig: &Config{
 				ListenAddress: "example.com:8889",
@@ -131,6 +134,25 @@ func TestConfig(t *testing.T) {
 				Naming: naming.Config{
 					TTL: naming.DefaultTTL,
 				},
+				Ranking: rankingcfg.Config{
+					Weights: rankingcfg.Weights{
+						QueryRelevance: rankingcfg.DefaultQueryRelevanceWeight,
+						Trust:          0.5,
+						Popularity:     rankingcfg.DefaultPopularityWeight,
+						Completeness:   rankingcfg.DefaultCompletenessWeight,
+						Freshness:      rankingcfg.DefaultFreshnessWeight,
+						SchemaRecency:  rankingcfg.DefaultSchemaRecencyWeight,
+					},
+					TrustSplit: rankingcfg.TrustSplit{
+						Signed:       rankingcfg.DefaultTrustSplitSigned,
+						SigVerified:  rankingcfg.DefaultTrustSplitSigVerified,
+						NameVerified: rankingcfg.DefaultTrustSplitNameVerified,
+					},
+					Freshness:     rankingcfg.Freshness{HalfLifeDays: rankingcfg.DefaultFreshnessHalfLifeDays},
+					Popularity:    rankingcfg.Popularity{SaturationAtProviders: rankingcfg.DefaultPopularitySaturation},
+					Completeness:  rankingcfg.Completeness{SaturationAtEntries: rankingcfg.DefaultCompletenessSaturation},
+					MaxCandidates: 500,
+				},
 			},
 		},
 		{
@@ -197,6 +219,25 @@ func TestConfig(t *testing.T) {
 				},
 				Naming: naming.Config{
 					TTL: naming.DefaultTTL,
+				},
+				Ranking: rankingcfg.Config{
+					Weights: rankingcfg.Weights{
+						QueryRelevance: rankingcfg.DefaultQueryRelevanceWeight,
+						Trust:          rankingcfg.DefaultTrustWeight,
+						Popularity:     rankingcfg.DefaultPopularityWeight,
+						Completeness:   rankingcfg.DefaultCompletenessWeight,
+						Freshness:      rankingcfg.DefaultFreshnessWeight,
+						SchemaRecency:  rankingcfg.DefaultSchemaRecencyWeight,
+					},
+					TrustSplit: rankingcfg.TrustSplit{
+						Signed:       rankingcfg.DefaultTrustSplitSigned,
+						SigVerified:  rankingcfg.DefaultTrustSplitSigVerified,
+						NameVerified: rankingcfg.DefaultTrustSplitNameVerified,
+					},
+					Freshness:     rankingcfg.Freshness{HalfLifeDays: rankingcfg.DefaultFreshnessHalfLifeDays},
+					Popularity:    rankingcfg.Popularity{SaturationAtProviders: rankingcfg.DefaultPopularitySaturation},
+					Completeness:  rankingcfg.Completeness{SaturationAtEntries: rankingcfg.DefaultCompletenessSaturation},
+					MaxCandidates: rankingcfg.DefaultMaxCandidates,
 				},
 			},
 		},

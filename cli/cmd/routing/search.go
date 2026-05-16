@@ -64,6 +64,7 @@ var searchOpts struct {
 	Modules  []string
 	Limit    uint32
 	MinScore uint32
+	Explain  bool
 }
 
 const (
@@ -80,6 +81,8 @@ func init() {
 	searchCmd.Flags().StringArrayVar(&searchOpts.Modules, "module", nil, "Search for records with specific module (can be repeated)")
 	searchCmd.Flags().Uint32Var(&searchOpts.Limit, "limit", defaultSearchLimit, "Maximum number of results to return")
 	searchCmd.Flags().Uint32Var(&searchOpts.MinScore, "min-score", defaultMinScore, "Minimum match score (number of queries that must match)")
+	// Only affects human output; json/jsonl always carry rank_explanation.
+	searchCmd.Flags().BoolVar(&searchOpts.Explain, "explain", false, "Print per-signal ranking breakdown beneath each result (human format only)")
 
 	// Add examples in flag help
 	searchCmd.Flags().Lookup("skill").Usage = "Search for records with specific skill (e.g., --skill 'AI' --skill 'ML')"
@@ -163,11 +166,48 @@ func runSearchCommand(cmd *cobra.Command) error {
 		return fmt.Errorf("failed to search routing: %w", err)
 	}
 
-	// Collect results
-	results := make([]any, 0, searchOpts.Limit)
+	// Concrete proto type so renderers don't need a type assertion.
+	responses := make([]*routingv1.SearchResponse, 0, searchOpts.Limit)
 	for result := range resultCh {
-		results = append(results, result)
+		responses = append(responses, result)
 	}
 
-	return presenter.PrintMessage(cmd, "remote records", "Remote records found", results)
+	return printRoutingSearchResults(cmd, responses)
+}
+
+// printRoutingSearchResults dispatches on --output: structured formats
+// forward the full proto to PrintMessage; human prints "[score] cid
+// (from peer)" with an optional --explain breakdown.
+func printRoutingSearchResults(cmd *cobra.Command, responses []*routingv1.SearchResponse) error {
+	outputOpts := presenter.GetOutputOptions(cmd)
+	if outputOpts.IsStructuredOutput() {
+		items := make([]any, 0, len(responses))
+		for _, r := range responses {
+			items = append(items, r)
+		}
+
+		return presenter.PrintMessage(cmd, "remote records", "Remote records found", items)
+	}
+
+	if len(responses) == 0 {
+		presenter.Println(cmd, "No remote records found")
+
+		return nil
+	}
+
+	for _, r := range responses {
+		cid := r.GetRecordRef().GetCid()
+		peer := r.GetPeer().GetId()
+
+		// match_score (per-query hit count) is distinct from rank_score
+		// (composite ordering signal); both surfaced so users can tell.
+		line := fmt.Sprintf("%s (from %s, match=%d)", cid, peer, r.GetMatchScore())
+		presenter.Println(cmd, presenter.FormatRankedLine(r.GetRankScore(), line))
+
+		if searchOpts.Explain {
+			presenter.Println(cmd, "       "+presenter.FormatRankExplanation(r.GetRankExplanation()))
+		}
+	}
+
+	return nil
 }
