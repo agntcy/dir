@@ -148,6 +148,7 @@ func resolveContextByServerAddress(serverAddress string) (string, error) {
 	if len(matches) == 0 {
 		return "", nil
 	}
+
 	sort.Strings(matches)
 
 	if len(matches) > 1 {
