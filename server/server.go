@@ -19,6 +19,7 @@ import (
 	searchv1 "github.com/agntcy/dir/api/search/v1"
 	signv1 "github.com/agntcy/dir/api/sign/v1"
 	storev1 "github.com/agntcy/dir/api/store/v1"
+	storev2 "github.com/agntcy/dir/api/store/v2"
 	"github.com/agntcy/dir/api/version"
 	"github.com/agntcy/dir/server/authn"
 	"github.com/agntcy/dir/server/authz"
@@ -305,6 +306,7 @@ func New(ctx context.Context, cfg *config.Config, opts ...ServerOption) (*Server
 	searchv1.RegisterSearchServiceServer(grpcServer, controller.NewSearchController(databaseAPI, storeAPI))
 	storev1.RegisterSyncServiceServer(grpcServer, controller.NewSyncController(databaseAPI, options))
 	signv1.RegisterSignServiceServer(grpcServer, controller.NewSignController(databaseAPI))
+	storev2.RegisterObjectStoreServer(grpcServer, controller.NewObjStore(storeAPI.Target()))
 	namingv1.RegisterNamingServiceServer(grpcServer, controller.NewNamingController(
 		storeAPI,
 		databaseAPI,
