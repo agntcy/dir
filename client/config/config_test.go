@@ -289,6 +289,30 @@ contexts:
 		assert.Equal(t, "env", resolved.Source)
 	})
 
+	t.Run("allows unknown fields when requested", func(t *testing.T) {
+		resetClientEnv(t)
+		path := writeConfig(t, `
+current_context: dev
+contexts:
+  dev:
+    server_address: dev.gateway.example.com:443
+    auth_mode: oidc
+    oidc_issuer: https://dev.idp.example.com
+    doctor:
+      timeout: 10s
+`)
+
+		cfg, resolved, err := Resolve(ResolveOptions{
+			Path:               path,
+			AllowUnknownFields: true,
+		})
+
+		require.NoError(t, err)
+		assert.Equal(t, "dev.gateway.example.com:443", cfg.ServerAddress)
+		assert.Equal(t, "https://dev.idp.example.com", cfg.OIDCIssuer)
+		assert.Equal(t, "dev", resolved.Name)
+	})
+
 	t.Run("works without config file when env provides required values", func(t *testing.T) {
 		resetClientEnv(t)
 		t.Setenv("XDG_CONFIG_HOME", t.TempDir())
