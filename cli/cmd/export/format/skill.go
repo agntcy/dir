@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
 	corev1 "github.com/agntcy/dir/api/core/v1"
 	"github.com/agntcy/oasf-sdk/pkg/translator"
@@ -47,18 +48,34 @@ func (f *skillFormatter) FormatBatch(records []*corev1.Record, outputDir string,
 		toExport = LatestByName(records)
 	}
 
+	absOutputDir, err := filepath.Abs(filepath.Clean(outputDir))
+	if err != nil {
+		return 0, fmt.Errorf("failed to resolve output directory %s: %w", outputDir, err)
+	}
+
 	exported := 0
 	seen := make(map[string]int)
 
 	for i, record := range toExport {
 		base := batchFileName(record, i, seen, allVersions)
+		cleanBase := filepath.Clean(base)
+		if cleanBase == "." || cleanBase == ".." || filepath.IsAbs(cleanBase) || cleanBase != base || strings.Contains(base, "/") || strings.Contains(base, "\\") {
+			return exported, fmt.Errorf("invalid batch file name %q", base)
+		}
 
 		output, err := f.Format(record)
 		if err != nil {
 			return exported, fmt.Errorf("failed to format skill %q: %w", base, err)
 		}
 
-		skillDir := filepath.Join(outputDir, base)
+		skillDir := filepath.Join(outputDir, cleanBase)
+		absSkillDir, err := filepath.Abs(filepath.Clean(skillDir))
+		if err != nil {
+			return exported, fmt.Errorf("failed to resolve output path %s: %w", skillDir, err)
+		}
+		if absSkillDir != absOutputDir && !strings.HasPrefix(absSkillDir, absOutputDir+string(os.PathSeparator)) {
+			return exported, fmt.Errorf("invalid output path %s", skillDir)
+		}
 		if err := os.MkdirAll(skillDir, 0o755); err != nil { //nolint:mnd
 			return exported, fmt.Errorf("failed to create directory %s: %w", skillDir, err)
 		}
