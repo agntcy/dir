@@ -18,16 +18,6 @@ tasks:
     cmds:
       - "{{.BUFBUILD_BIN}} dep update"
       - "{{.BUFBUILD_BIN}} generate --template buf.gen.yaml"
-      - task: runtime:gen
-
-  runtime:gen:
-    desc: Generate DeepCopy/DeepCopyObject methods for the runtime CRD types
-    dir: ./api
-    deps:
-      - deps:controller-gen
-    cmds:
-      # NOTE: CRD YAML manifests are generated in the dir-runtime repo (alongside its Helm chart).
-      - go run {{ .CONTROLLER_GEN_BIN }} object:headerFile="./runtime/crd/v1/boilerplate.go.txt" paths="./runtime/crd/v1/..."
 
   api:clean:
     desc: Clean generated API stubs
@@ -35,3 +25,8 @@ tasks:
     cmds:
       - find . \( -name "*.pb.go" \) -type f -delete
 
+  api:clean:runtime:go:
+    desc: Clean runtime generated golang API stubs
+    dir: ./runtime
+    cmds:
+      - find . \( -name "*.pb.go" \) -type f -delete

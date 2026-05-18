@@ -29,9 +29,6 @@ managed:
     - path: agntcy/dir/naming/v1
       file_option: go_package
       value: github.com/agntcy/dir/api/naming/v1
-    - path: agntcy/dir/runtime/v1
-      file_option: go_package
-      value: github.com/agntcy/dir/api/runtime/v1
 
 inputs:
   - directory: .

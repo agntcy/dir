@@ -1,0 +1,131 @@
+# MkDocs config lives in docs/; paths below are relative to this file.
+# Build: task docs:build   or: mkdocs build -f docs/mkdocs.yml --site-dir .build/site
+
+site_name: Directory documentation
+# Local `mkdocs serve` must use a site_url *without* a path segment, or only /dir/... URLs work (404 at /).
+# CI sets MKDOCS_SITE_URL for production builds. Default: local dev server root.
+site_url: !ENV [MKDOCS_SITE_URL, 'http://127.0.0.1:8000/']
+
+docs_dir: content
+
+repo_name: agntcy/dir
+repo_url: https://github.com/agntcy/dir
+edit_uri: edit/main/docs/content/
+
+extra:
+  version:
+    provider: mike
+  var:
+    docs_url: https://agntcy.github.io/dir/
+    repo_url: https://github.com/agntcy/dir
+    repo_slug: agntcy/dir
+    org: AGNTCY
+
+  copyright: Copyright AGNTCY Contributors.
+
+extra_css:
+  - stylesheets/agntcy-docs.css
+
+markdown_extensions:
+  - admonition
+  - attr_list
+  - def_list
+  - md_in_html
+  - pymdownx.details
+  - pymdownx.superfences
+  - pymdownx.tabbed:
+      alternate_style: true
+  - pymdownx.emoji:
+      emoji_index: !!python/name:material.extensions.emoji.twemoji
+      emoji_generator: !!python/name:material.extensions.emoji.to_svg
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+
+hooks:
+  - hooks.py
+
+plugins:
+  # Process includes before search indexing and versioned builds (mike).
+  include-markdown: {}
+  search:
+  mike:
+    alias_type: redirect
+  redirects:
+    redirect_maps: {}
+
+# Flat sidebar (all top-level). Using awesome-pages + content/dir/.index nested everything under "dir".
+nav:
+  - index.md
+  - Overview: dir/overview.md
+  - Getting Started: dir/getting-started.md
+  - Features and Usage Scenarios: dir/scenarios.md
+  - Production Deployment: dir/prod-deployment.md
+  - CLI Guide: dir/directory-cli.md
+  - MCP Server: dir/directory-mcp.md
+  - Directroy SDK: dir/directory-sdk.md
+  - Federation:
+      - Running a Federated Directory Instance: dir/partner-prod-federation.md
+      - Profiles: dir/federation-profiles.md
+      - Best Practices and Troubleshooting: dir/federation-troubleshooting.md
+  - Reference:
+      - CLI Reference: dir/directory-cli-reference.md
+      - API Reference: dir/dir-api-reference.md
+      - Directory SDK: dir/directory-sdk.md
+      - Directory GUI: dir/directory-gui.md
+  - Architecture: dir/architecture.md
+  - Components:
+      - Runtime Discovery: dir/runtime.md
+      - Event Streaming: dir/events.md
+      - Records and Validation: dir/records-validation.md
+      - Validation: dir/validation.md
+  - Trust Model: dir/trust-model.md
+
+theme:
+  name: material
+  custom_dir: overrides
+
+  features:
+    - announce.dismiss
+    - content.action.edit
+    - content.action.view
+    - content.code.annotate
+    - content.code.copy
+    - content.tabs.link
+    - content.tooltips
+    - navigation.footer
+    - navigation.indexes
+    - navigation.top
+    - navigation.tracking
+    - search.highlight
+    - search.share
+    - search.suggest
+    - toc.follow
+
+  palette:
+    - media: "(prefers-color-scheme)"
+      toggle:
+        icon: material/link
+        name: Switch to light mode
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/toggle-switch
+        name: Switch to dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: black
+      accent: indigo
+      toggle:
+        icon: material/toggle-switch-off
+        name: Switch to system preference
+  font:
+    text: Roboto
+    code: Roboto Mono
+  favicon: assets/agntcy/favicon.ico
+  logo_light: assets/agntcy/img/logo-light.svg
+  logo_dark: assets/agntcy/img/logo-dark.svg

@@ -1,0 +1,59 @@
+# SPDX-FileCopyrightText: Copyright (c) 2026 Cisco and/or its affiliates.
+# SPDX-License-Identifier: Apache-2.0
+#
+# Build-only documentation check.
+
+name: Documentation
+
+on:
+  workflow_call:
+    inputs:
+      version:
+        description: 'MkDocs macros VERSION (docs_build_version)'
+        required: true
+        type: string
+        default: dev
+
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'MkDocs macros VERSION'
+        required: false
+        type: string
+        default: dev
+
+permissions:
+  contents: read
+
+jobs:
+  docs:
+    name: Build docs
+    runs-on: ubuntu-latest
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+      MKDOCS_SITE_URL: https://agntcy.github.io/dir/
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          submodules: recursive
+
+      - name: Setup Taskfile
+        shell: bash
+        run: sh -c "$(curl --location https://taskfile.dev/install.sh)" -- -d -b ~/.local/bin
+
+      - name: Update GITHUB_PATH
+        shell: bash
+        run: echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+
+      - name: Install Python dependencies (docs)
+        shell: bash
+        run: python3 -m pip install -r docs/requirements.txt
+
+      - name: Build docs
+        shell: bash
+        run: |
+          V="${{ inputs.version }}"
+          export VERSION="${V:-dev}"
+          task docs:build
