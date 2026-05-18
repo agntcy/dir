@@ -12,7 +12,9 @@ import (
 
 	"buf.build/go/protovalidate"
 	corev1 "github.com/agntcy/dir/api/core/v1"
+	ownershipv1 "github.com/agntcy/dir/api/ownership/v1"
 	storev1 "github.com/agntcy/dir/api/store/v1"
+	"github.com/agntcy/dir/server/authn"
 	"github.com/agntcy/dir/server/events"
 	"github.com/agntcy/dir/server/types"
 	"github.com/agntcy/dir/server/types/adapters"
@@ -264,6 +266,39 @@ func (s storeCtrl) pushReferrer(ctx context.Context, request *storev1.PushReferr
 		}
 	}
 
+	// For ownership claims, parse the claim and enforce that the authenticated
+	// caller's identity matches the claimed owner_id.
+	var ownershipClaim *ownershipv1.OwnershipClaim
+
+	if request.GetType() == corev1.OwnershipClaimReferrerType {
+		claim := &ownershipv1.OwnershipClaim{}
+
+		claimRef := &corev1.RecordReferrer{Data: request.GetData()}
+		if err := claim.UnmarshalReferrer(claimRef); err != nil {
+			errMsg := fmt.Sprintf("invalid ownership claim payload: %v", err)
+
+			return &storev1.PushReferrerResponse{
+				Success:      false,
+				ErrorMessage: &errMsg,
+			}
+		}
+
+		// When authn is enabled, the caller's SPIFFE ID must match the claimed owner_id.
+		if spiffeID, ok := authn.SpiffeIDFromContext(ctx); ok {
+			callerIdentity := spiffeID.String()
+			if callerIdentity != claim.GetOwnerId() {
+				errMsg := fmt.Sprintf("ownership claim rejected: caller identity %q does not match owner_id %q", callerIdentity, claim.GetOwnerId())
+
+				return &storev1.PushReferrerResponse{
+					Success:      false,
+					ErrorMessage: &errMsg,
+				}
+			}
+		}
+
+		ownershipClaim = claim
+	}
+
 	referrer := corev1.RecordReferrer{
 		Type:        request.GetType(),
 		RecordRef:   request.GetRecordRef(),
@@ -279,6 +314,15 @@ func (s storeCtrl) pushReferrer(ctx context.Context, request *storev1.PushReferr
 		return &storev1.PushReferrerResponse{
 			Success:      false,
 			ErrorMessage: &errMsg,
+		}
+	}
+
+	// Index the ownership claim into the search database immediately.
+	if ownershipClaim != nil {
+		if err := s.db.AddOwner(recordCID, ownershipClaim.GetOwnerId(), ownershipClaim.GetClaimedAt()); err != nil {
+			storeLogger.Warn("Failed to index ownership claim", "error", err, "cid", recordCID, "owner_id", ownershipClaim.GetOwnerId())
+		} else {
+			storeLogger.Debug("Ownership claim indexed", "cid", recordCID, "owner_id", ownershipClaim.GetOwnerId())
 		}
 	}
 

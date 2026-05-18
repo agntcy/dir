@@ -23,6 +23,13 @@ type RecordFilters struct {
 	Trusted          *bool // Filter by trusted status (signature verification passed)
 	AnnotationKeys   []string
 	AnnotationValues []string
+	// OwnerAliases is populated by the manager resolver. It filters records whose
+	// owner.id annotation matches any alias in the list.
+	OwnerAliases []string
+
+	// Owners filters records whose ownership claim referrer (indexed in the owners table) contains the given owner ID.
+	// Supports wildcard patterns: "*@acme.com", "alice@*"
+	Owners []string
 }
 
 type FilterOption func(*RecordFilters)
@@ -157,5 +164,21 @@ func WithAnnotationKeys(keys ...string) FilterOption {
 func WithAnnotationValues(values ...string) FilterOption {
 	return func(sc *RecordFilters) {
 		sc.AnnotationValues = append(sc.AnnotationValues, values...)
+	}
+}
+
+// WithOwnerAliases filters records whose owner.id annotation matches any of the given aliases.
+// Used by the manager resolver to scope results to an org subtree.
+func WithOwnerAliases(aliases ...string) FilterOption {
+	return func(sc *RecordFilters) {
+		sc.OwnerAliases = append(sc.OwnerAliases, aliases...)
+	}
+}
+
+// WithOwners filters records by owner identity from the ownership claim referrer index.
+// Supports wildcard patterns: "*@acme.com", "alice@*".
+func WithOwners(owners ...string) FilterOption {
+	return func(sc *RecordFilters) {
+		sc.Owners = append(sc.Owners, owners...)
 	}
 }

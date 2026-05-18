@@ -30,6 +30,10 @@ server:
     worker_timeout: 30m
   naming:
     ttl: 168h
+  org_resolver:
+    type: "static"
+    static:
+      file: "org-chart.yaml"
 
 reconciler:
   local_registry:

@@ -170,6 +170,8 @@ func bindCredentialEnvVars(v *viper.Viper) {
 // resolveRelativePaths resolves non-empty path fields against opts.DataDir
 // when they are relative. Empty paths are left for the service to default.
 // Absolute paths set by the user are left as-is.
+// Config-file-adjacent paths (e.g. org chart) are resolved against the config
+// file's directory so they can live alongside the config file.
 func resolveRelativePaths(cfg *DaemonConfig) {
 	resolve := func(p string) string {
 		if p == "" || filepath.IsAbs(p) {
@@ -179,8 +181,21 @@ func resolveRelativePaths(cfg *DaemonConfig) {
 		return filepath.Join(opts.DataDir, p)
 	}
 
+	resolveFromConfig := func(p string) string {
+		if p == "" || filepath.IsAbs(p) {
+			return p
+		}
+
+		if opts.ConfigFile != "" {
+			return filepath.Join(filepath.Dir(opts.ConfigFile), p)
+		}
+
+		return filepath.Join(opts.DataDir, p)
+	}
+
 	cfg.Server.Store.OCI.LocalDir = resolve(cfg.Server.Store.OCI.LocalDir)
 	cfg.Server.Routing.KeyPath = resolve(cfg.Server.Routing.KeyPath)
 	cfg.Server.Routing.DatastoreDir = resolve(cfg.Server.Routing.DatastoreDir)
 	cfg.Server.Database.SQLite.Path = resolve(cfg.Server.Database.SQLite.Path)
+	cfg.Server.OrgResolver.Static.File = resolveFromConfig(cfg.Server.OrgResolver.Static.File)
 }

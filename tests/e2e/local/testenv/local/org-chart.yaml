@@ -1,0 +1,7 @@
+# Test org chart for manager-scoped search e2e tests.
+# alice manages bob and carol; bob manages dave.
+alice@example.com:
+  - bob@example.com
+  - carol@example.com
+bob@example.com:
+  - dave@example.com

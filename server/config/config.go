@@ -152,6 +152,25 @@ type Config struct {
 
 	// Naming holds name verification cache config (TTL for naming API; reconciler name task performs re-verification).
 	Naming naming.Config `json:"naming,omitzero" mapstructure:"naming"`
+
+	// OrgResolver configures the optional org hierarchy resolver used for manager-scoped search.
+	OrgResolver OrgResolverConfig `json:"org_resolver,omitzero" mapstructure:"org_resolver"`
+}
+
+// OrgResolverConfig configures the pluggable org resolver.
+// When Type is empty the resolver is disabled and --manager queries return an error.
+type OrgResolverConfig struct {
+	// Type selects the resolver implementation. Supported: "static".
+	Type string `json:"type,omitempty" mapstructure:"type"`
+
+	// Static configures the file-based resolver (type: "static").
+	Static StaticOrgResolverConfig `json:"static,omitzero" mapstructure:"static"`
+}
+
+// StaticOrgResolverConfig configures the static (file-based) org resolver.
+type StaticOrgResolverConfig struct {
+	// File is the path to the YAML org chart file.
+	File string `json:"file,omitempty" mapstructure:"file"`
 }
 
 type SyncConfig struct {
