@@ -1,6 +1,6 @@
 module github.com/agntcy/dir/tests
 
-go 1.26.2
+go 1.26.3
 
 // Replace local modules (paths relative to tests/; repo root is ..)
 replace (
