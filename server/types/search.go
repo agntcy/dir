@@ -23,6 +23,7 @@ type RecordFilters struct {
 	Trusted          *bool // Filter by trusted status (signature verification passed)
 	AnnotationKeys   []string
 	AnnotationValues []string
+	Owners           []string
 }
 
 type FilterOption func(*RecordFilters)
@@ -157,5 +158,12 @@ func WithAnnotationKeys(keys ...string) FilterOption {
 func WithAnnotationValues(values ...string) FilterOption {
 	return func(sc *RecordFilters) {
 		sc.AnnotationValues = append(sc.AnnotationValues, values...)
+	}
+}
+
+// WithOwners filters records by owner ID patterns.
+func WithOwners(owners ...string) FilterOption {
+	return func(sc *RecordFilters) {
+		sc.Owners = append(sc.Owners, owners...)
 	}
 }

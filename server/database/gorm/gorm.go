@@ -20,7 +20,7 @@ type DB struct {
 // New creates a new DB instance from a gorm.DB connection and runs migrations.
 func New(db *gorm.DB) (*DB, error) {
 	// Migrate record-related schema
-	if err := db.AutoMigrate(Record{}, Locator{}, Skill{}, Module{}, Domain{}, Annotation{}); err != nil {
+	if err := db.AutoMigrate(Record{}, Locator{}, Skill{}, Module{}, Domain{}, Annotation{}, Owner{}); err != nil {
 		return nil, fmt.Errorf("failed to migrate record schema: %w", err)
 	}
 

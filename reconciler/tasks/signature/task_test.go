@@ -276,5 +276,7 @@ func (f *fakeSignatureDB) InvalidateSignatureVerificationsForRecord(recordCID st
 	return nil
 }
 
-func (f *fakeSignatureDB) Close() error                 { return nil }
-func (f *fakeSignatureDB) IsReady(context.Context) bool { return true }
+func (f *fakeSignatureDB) AddOwner(recordCID, ownerID, claimedAt string) error { return nil }
+func (f *fakeSignatureDB) RemoveOwners(recordCID string) error                 { return nil }
+func (f *fakeSignatureDB) Close() error                                        { return nil }
+func (f *fakeSignatureDB) IsReady(context.Context) bool                        { return true }

@@ -27,6 +27,9 @@ type DatabaseAPI interface {
 	// SignatureVerificationDatabaseAPI handles management of signature verifications.
 	SignatureVerificationDatabaseAPI
 
+	// OwnershipDatabaseAPI handles management of ownership claims.
+	OwnershipDatabaseAPI
+
 	// Close closes the database connection and releases any resources.
 	Close() error
 
@@ -104,6 +107,14 @@ type NameVerificationDatabaseAPI interface {
 	// GetRecordsNeedingVerification retrieves signed records with verifiable names
 	// that either don't have a verification or have an expired verification.
 	GetRecordsNeedingVerification(ttl time.Duration) ([]Record, error)
+}
+
+type OwnershipDatabaseAPI interface {
+	// AddOwner adds or updates an ownership claim for a record.
+	AddOwner(recordCID, ownerID, claimedAt string) error
+
+	// RemoveOwners removes all ownership claims for a record.
+	RemoveOwners(recordCID string) error
 }
 
 type SignatureVerificationDatabaseAPI interface {
