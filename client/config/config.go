@@ -50,6 +50,12 @@ type Context struct {
 	OIDCIssuer       string `yaml:"oidc_issuer"`
 	OIDCClientID     string `yaml:"oidc_client_id"`
 	AuthToken        string `yaml:"auth_token"`
+	Doctor           Doctor `yaml:"doctor"`
+}
+
+// Doctor holds diagnostic-only settings for dirctl doctor.
+type Doctor struct {
+	BootstrapPeers []string `yaml:"bootstrap_peers"`
 }
 
 // ResolveOptions controls context and client configuration resolution.
@@ -183,6 +189,37 @@ func Resolve(opts ResolveOptions) (*dirclient.Config, *ResolvedContext, error) {
 		if err := validateClientConfig(cfg); err != nil {
 			return nil, nil, err
 		}
+	}
+
+	return cfg, &ResolvedContext{
+		Name:   contextName,
+		Source: source,
+		Path:   path,
+	}, nil
+}
+
+// ResolveDoctor resolves diagnostic-only settings for the selected context.
+func ResolveDoctor(opts ResolveOptions) (*Doctor, *ResolvedContext, error) {
+	path, explicitPath, err := resolvePath(opts.Path)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	file, err := loadOptionalFile(path, explicitPath)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	contextName, source := selectedContextName(opts, file)
+	cfg := &Doctor{}
+
+	if contextName != "" {
+		contextConfig, ok := file.Contexts[contextName]
+		if !ok {
+			return nil, nil, fmt.Errorf("unknown client context %q in %s", contextName, path)
+		}
+
+		cfg.BootstrapPeers = append([]string(nil), contextConfig.Doctor.BootstrapPeers...)
 	}
 
 	return cfg, &ResolvedContext{

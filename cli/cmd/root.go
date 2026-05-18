@@ -11,6 +11,7 @@ import (
 	contextcmd "github.com/agntcy/dir/cli/cmd/context"
 	"github.com/agntcy/dir/cli/cmd/daemon"
 	"github.com/agntcy/dir/cli/cmd/delete"
+	"github.com/agntcy/dir/cli/cmd/doctor"
 	"github.com/agntcy/dir/cli/cmd/events"
 	"github.com/agntcy/dir/cli/cmd/export"
 	importcmd "github.com/agntcy/dir/cli/cmd/import"
@@ -111,6 +112,7 @@ func init() {
 		contextcmd.Command,
 		// local commands
 		version.Command,
+		doctor.Command,
 		// initialize.Command, // REMOVED: Initialize functionality
 		sign.Command,
 		verify.Command,

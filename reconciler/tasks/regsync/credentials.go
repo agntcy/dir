@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"sort"
 	"strings"
 
 	storev1 "github.com/agntcy/dir/api/store/v1"
@@ -147,6 +148,8 @@ func resolveContextByServerAddress(serverAddress string) (string, error) {
 	if len(matches) == 0 {
 		return "", nil
 	}
+
+	sort.Strings(matches)
 
 	if len(matches) > 1 {
 		logger.Debug("Multiple dirctl client contexts match server_address; using first",
