@@ -126,15 +126,15 @@ var _ = ginkgo.Describe("Daemon e2e", ginkgo.Ordered, ginkgo.Serial, func() {
 		})
 	})
 
-	ginkgo.Context("runtime workflow", func() {
-		ginkgo.BeforeAll(func() {
+	ginkgo.Context("runtime workflow", ginkgo.Ordered, func() {
+		// Push the sample runtime record before the It block so the daemon's
+		// OASF resolver finds it within its bounded retry budget, instead of
+		// racing the resolver attempts from inside the spec.
+		ginkgo.BeforeAll(func(ctx context.Context) {
 			if !testEnv.Config.RunRuntimeDiscoveryTests {
 				ginkgo.Skip("skipping runtime tests")
 			}
-		})
 
-		ginkgo.It("runtime should discover docker workloads", func(ctx context.Context) {
-			// Push sample record to ensure there's something to discover and pull back for verification
 			record, err := corev1.UnmarshalRecord(sampleRuntimeRecord)
 			gomega.Expect(err).NotTo(gomega.HaveOccurred())
 
@@ -142,9 +142,9 @@ var _ = ginkgo.Describe("Daemon e2e", ginkgo.Ordered, ginkgo.Serial, func() {
 			gomega.Expect(err).NotTo(gomega.HaveOccurred())
 			gomega.Expect(recordRef).NotTo(gomega.BeNil())
 			gomega.Expect(recordRef.GetCid()).To(gomega.Equal(sampleRuntimeRecordCID))
+		})
 
-			// Use eventually to allow some time for the runtime to discover the workload and its service details.
-			// The test will poll the ListWorkloads API until it finds the expected workload with the correct OASF data, or until it times out.
+		ginkgo.It("runtime should discover docker workloads", func(ctx context.Context) {
 			gomega.Eventually(func(g gomega.Gomega) {
 				// Discover runtimes workloads
 				discoverResp, err := testEnv.Client.ListWorkloads(ctx, nil)
@@ -171,8 +171,8 @@ var _ = ginkgo.Describe("Daemon e2e", ginkgo.Ordered, ginkgo.Serial, func() {
 				g.Expect(err).NotTo(gomega.HaveOccurred())
 				g.Expect(oasfRecord).To(gomega.MatchJSON(sampleRuntimeRecord))
 			}).
-				WithPolling(10 * time.Second).
-				WithTimeout(2 * time.Minute).
+				WithPolling(5 * time.Second).
+				WithTimeout(3 * time.Minute).
 				Should(gomega.Succeed())
 		})
 	})
