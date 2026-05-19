@@ -6,6 +6,7 @@ package types
 type RecordFilters struct {
 	Limit            int
 	Offset           int
+	CIDs             []string
 	Names            []string
 	Versions         []string
 	SkillIDs         []uint64
@@ -45,6 +46,13 @@ func WithOffset(offset int) FilterOption {
 func WithNames(names ...string) FilterOption {
 	return func(sc *RecordFilters) {
 		sc.Names = append(sc.Names, names...)
+	}
+}
+
+// WithCIDs filters results to the given CID list (bulk-load by CID).
+func WithCIDs(cids ...string) FilterOption {
+	return func(sc *RecordFilters) {
+		sc.CIDs = append(sc.CIDs, cids...)
 	}
 }
 

@@ -98,20 +98,20 @@ func searchCIDs(cmd *cobra.Command, c *client.Client, queries []*searchv1.Record
 		return fmt.Errorf("failed to search CIDs: %w", err)
 	}
 
-	// Collect results and convert to any slice
-	results := make([]any, 0, opts.Limit)
+	// Keep the full proto response so renderers can reach rank_score
+	// and rank_explanation without re-fetching.
+	responses := make([]*searchv1.SearchCIDsResponse, 0, opts.Limit)
 
 	for {
 		select {
 		case resp := <-result.ResCh():
-			cid := resp.GetRecordCid()
-			if cid != "" {
-				results = append(results, cid)
+			if resp != nil && resp.GetRecordCid() != "" {
+				responses = append(responses, resp)
 			}
 		case err := <-result.ErrCh():
 			return fmt.Errorf("error receiving CID: %w", err)
 		case <-result.DoneCh():
-			return presenter.PrintMessage(cmd, "record CIDs", "Record CIDs found", results)
+			return printCIDResults(cmd, responses)
 		case <-cmd.Context().Done():
 			return cmd.Context().Err()
 		}
@@ -128,22 +128,94 @@ func searchRecords(cmd *cobra.Command, c *client.Client, queries []*searchv1.Rec
 		return fmt.Errorf("failed to search records: %w", err)
 	}
 
-	// Collect records
-	results := make([]any, 0, opts.Limit)
+	responses := make([]*searchv1.SearchRecordsResponse, 0, opts.Limit)
 
 	for {
 		select {
 		case resp := <-result.ResCh():
-			record := resp.GetRecord()
-			if record != nil {
-				results = append(results, record)
+			if resp != nil && resp.GetRecord() != nil {
+				responses = append(responses, resp)
 			}
 		case err := <-result.ErrCh():
 			return fmt.Errorf("error receiving record: %w", err)
 		case <-result.DoneCh():
-			return presenter.PrintMessage(cmd, "records", "Records found", results)
+			return printRecordResults(cmd, responses)
 		case <-cmd.Context().Done():
 			return cmd.Context().Err()
 		}
 	}
+}
+
+// printCIDResults dispatches on --output: human prints "[score] cid"
+// (plus an --explain breakdown), raw prints bare CIDs (xargs-safe),
+// json/jsonl serializes the full proto.
+func printCIDResults(cmd *cobra.Command, responses []*searchv1.SearchCIDsResponse) error {
+	outputOpts := presenter.GetOutputOptions(cmd)
+	if outputOpts.IsStructuredOutput() {
+		return printStructured(cmd, "record CIDs", responses, outputOpts.Format == presenter.FormatRaw, func(r *searchv1.SearchCIDsResponse) string {
+			return r.GetRecordCid()
+		})
+	}
+
+	if len(responses) == 0 {
+		presenter.Println(cmd, "No record CIDs found")
+
+		return nil
+	}
+
+	for _, r := range responses {
+		presenter.Println(cmd, presenter.FormatRankedLine(r.GetRankScore(), r.GetRecordCid()))
+
+		if opts.Explain {
+			presenter.Println(cmd, "       "+presenter.FormatRankExplanation(r.GetRankExplanation()))
+		}
+	}
+
+	return nil
+}
+
+// printRecordResults mirrors printCIDResults but for SearchRecords.
+// Human mode prints just "[score] cid"; use --output json for the body.
+func printRecordResults(cmd *cobra.Command, responses []*searchv1.SearchRecordsResponse) error {
+	outputOpts := presenter.GetOutputOptions(cmd)
+	if outputOpts.IsStructuredOutput() {
+		return printStructured(cmd, "records", responses, outputOpts.Format == presenter.FormatRaw, func(r *searchv1.SearchRecordsResponse) string {
+			return r.GetRecord().GetCid()
+		})
+	}
+
+	if len(responses) == 0 {
+		presenter.Println(cmd, "No records found")
+
+		return nil
+	}
+
+	for _, r := range responses {
+		presenter.Println(cmd, presenter.FormatRankedLine(r.GetRankScore(), r.GetRecord().GetCid()))
+
+		if opts.Explain {
+			presenter.Println(cmd, "       "+presenter.FormatRankExplanation(r.GetRankExplanation()))
+		}
+	}
+
+	return nil
+}
+
+// printStructured emits bare CIDs for raw output and forwards everything
+// else to PrintMessage so json/jsonl serialize the full proto.
+func printStructured[T any](cmd *cobra.Command, title string, responses []T, isRaw bool, cidOf func(T) string) error {
+	if isRaw {
+		for _, r := range responses {
+			presenter.Println(cmd, cidOf(r))
+		}
+
+		return nil
+	}
+
+	items := make([]any, 0, len(responses))
+	for _, r := range responses {
+		items = append(items, r)
+	}
+
+	return presenter.PrintMessage(cmd, title, title+" found", items)
 }

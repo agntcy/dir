@@ -1,0 +1,61 @@
+// Copyright AGNTCY Contributors (https://github.com/agntcy)
+// SPDX-License-Identifier: Apache-2.0
+
+syntax = "proto3";
+
+package agntcy.dir.core.v1;
+
+// Per-signal sub-scores that contributed to a record's ranking score,
+// for explainability ("why was this result ranked first?").
+//
+// All sub-score fields are fixed-point values in [0, 1000] for cross-SDK
+// determinism. Higher = better.
+message RankExplanation {
+  // How well the record matched the queries (per-query signal).
+  // For routing search this mirrors match_score / num_queries.
+  uint32 query_relevance = 1;
+
+  // Composite trust score: combines whether the record is signed,
+  // whether its signature is verified, and whether its name is verified.
+  uint32 trust = 2;
+
+  // Saturating function of how many peers in the network are providing
+  // this CID (DHT provider count).
+  uint32 popularity = 3;
+
+  // Saturating function of how much taxonomy metadata the record carries
+  // (skills + domains + modules + locators).
+  uint32 completeness = 4;
+
+  // Exponential decay on the record's authored creation time.
+  uint32 freshness = 5;
+
+  // Higher for records using newer OASF schema versions.
+  uint32 schema_recency = 6;
+
+  // Raw (non-normalized) DHT provider count, for display purposes.
+  uint32 provider_count = 7;
+
+  // How completely this record could be scored. PARTIAL or DEFAULTS_ONLY
+  // typically means the record was discovered remotely (DHT) but is not
+  // present in the local index, so per-record signals fell back to
+  // documented defaults.
+  ScoreStatus score_status = 8;
+}
+
+// Indicates how completely a record could be scored.
+enum ScoreStatus {
+  SCORE_STATUS_UNSPECIFIED = 0;
+
+  // All signals were evaluated against real data for this record.
+  SCORE_STATUS_FULL = 1;
+
+  // Some signals fell back to defaults (e.g. the record is locally
+  // known but missing some signature or verification state).
+  SCORE_STATUS_PARTIAL = 2;
+
+  // Only signals that do not depend on local record data were
+  // evaluated (typically query_relevance and popularity); all
+  // per-record signals fell back to defaults.
+  SCORE_STATUS_DEFAULTS_ONLY = 3;
+}

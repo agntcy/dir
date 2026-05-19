@@ -5,6 +5,7 @@ syntax = "proto3";
 
 package agntcy.dir.routing.v1;
 
+import "agntcy/dir/core/v1/ranking.proto";
 import "agntcy/dir/core/v1/record.proto";
 import "agntcy/dir/routing/v1/peer.proto";
 import "agntcy/dir/routing/v1/record_query.proto";
@@ -111,6 +112,15 @@ message SearchResponse {
 
   // The score of the search match.
   uint32 match_score = 4;
+
+  // Composite ranking score in [0, 1000] (fixed-point for cross-SDK
+  // determinism). Higher = better. Results are streamed in descending
+  // rank_score order, with deterministic tie-break on (created_at, cid).
+  uint32 rank_score = 5;
+
+  // Per-signal sub-scores that contributed to rank_score, for
+  // explainability.
+  core.v1.RankExplanation rank_explanation = 6;
 }
 
 message ListRequest {

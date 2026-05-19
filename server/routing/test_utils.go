@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/agntcy/dir/server/config"
+	rankingcfg "github.com/agntcy/dir/server/ranking/config"
 	routingconfig "github.com/agntcy/dir/server/routing/config"
 	"github.com/agntcy/dir/server/store"
 	storeconfig "github.com/agntcy/dir/server/store/config"
@@ -49,8 +50,26 @@ func newTestServer(t *testing.T, ctx context.Context, bootPeers []string) *route
 	s, err := store.New(opts)
 	assert.NoError(t, err)
 
-	// create example server
-	r, err := New(ctx, s, opts)
+	// create example server (nil DB; remote search will use defaults-only scoring)
+	r, err := New(ctx, s, nil, rankingcfg.Config{
+		Weights: rankingcfg.Weights{
+			QueryRelevance: rankingcfg.DefaultQueryRelevanceWeight,
+			Trust:          rankingcfg.DefaultTrustWeight,
+			Popularity:     rankingcfg.DefaultPopularityWeight,
+			Completeness:   rankingcfg.DefaultCompletenessWeight,
+			Freshness:      rankingcfg.DefaultFreshnessWeight,
+			SchemaRecency:  rankingcfg.DefaultSchemaRecencyWeight,
+		},
+		TrustSplit: rankingcfg.TrustSplit{
+			Signed:       rankingcfg.DefaultTrustSplitSigned,
+			SigVerified:  rankingcfg.DefaultTrustSplitSigVerified,
+			NameVerified: rankingcfg.DefaultTrustSplitNameVerified,
+		},
+		Freshness:     rankingcfg.Freshness{HalfLifeDays: rankingcfg.DefaultFreshnessHalfLifeDays},
+		Popularity:    rankingcfg.Popularity{SaturationAtProviders: rankingcfg.DefaultPopularitySaturation},
+		Completeness:  rankingcfg.Completeness{SaturationAtEntries: rankingcfg.DefaultCompletenessSaturation},
+		MaxCandidates: rankingcfg.DefaultMaxCandidates,
+	}, opts)
 	assert.NoError(t, err)
 
 	// check the type assertion

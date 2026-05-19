@@ -242,17 +242,19 @@ func New(ctx context.Context, cfg *config.Config, opts ...ServerOption) (*Server
 		return nil, fmt.Errorf("failed to create store: %w", err)
 	}
 
-	routingAPI, err := routing.New(ctx, storeAPI, options)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create routing: %w", err)
-	}
-
+	// Database is built before routing so remote-search ranking can
+	// enrich candidates with locally indexed signals.
 	databaseAPI := o.database
 	if databaseAPI == nil {
 		databaseAPI, err = database.New(cfg.Database)
 		if err != nil {
 			return nil, fmt.Errorf("failed to create database API: %w", err)
 		}
+	}
+
+	routingAPI, err := routing.New(ctx, storeAPI, databaseAPI, cfg.Ranking, options)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create routing: %w", err)
 	}
 
 	// Create JWT authentication service if enabled
@@ -302,7 +304,7 @@ func New(ctx context.Context, cfg *config.Config, opts ...ServerOption) (*Server
 	storev1.RegisterStoreServiceServer(grpcServer, controller.NewStoreController(storeAPI, databaseAPI, options.EventBus(), oasfValidator))
 	routingv1.RegisterRoutingServiceServer(grpcServer, controller.NewRoutingController(routingAPI, storeAPI, publicationService))
 	routingv1.RegisterPublicationServiceServer(grpcServer, controller.NewPublicationController(databaseAPI, options))
-	searchv1.RegisterSearchServiceServer(grpcServer, controller.NewSearchController(databaseAPI, storeAPI))
+	searchv1.RegisterSearchServiceServer(grpcServer, controller.NewSearchController(databaseAPI, storeAPI, cfg.Ranking))
 	storev1.RegisterSyncServiceServer(grpcServer, controller.NewSyncController(databaseAPI, options))
 	signv1.RegisterSignServiceServer(grpcServer, controller.NewSignController(databaseAPI))
 	namingv1.RegisterNamingServiceServer(grpcServer, controller.NewNamingController(

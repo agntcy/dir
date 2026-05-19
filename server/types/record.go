@@ -8,6 +8,14 @@ type Record interface {
 	GetRecordData() (RecordData, error)
 }
 
+// SignedAware is an optional capability: the GORM-backed search Record
+// carries a Signed bool independently of the body. OASF adapters don't
+// implement it — use RecordData.GetSignature() != nil instead. Callers
+// should type-assert and fall back to false on miss.
+type SignedAware interface {
+	GetSigned() bool
+}
+
 type RecordMeta interface {
 	GetCid() string
 	GetAnnotations() map[string]string

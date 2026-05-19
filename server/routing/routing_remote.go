@@ -12,6 +12,8 @@ import (
 
 	corev1 "github.com/agntcy/dir/api/core/v1"
 	routingv1 "github.com/agntcy/dir/api/routing/v1"
+	"github.com/agntcy/dir/server/ranking"
+	rankingcfg "github.com/agntcy/dir/server/ranking/config"
 	"github.com/agntcy/dir/server/routing/internal/p2p"
 	"github.com/agntcy/dir/server/routing/pubsub"
 	"github.com/agntcy/dir/server/routing/rpc"
@@ -97,6 +99,9 @@ func QueryAllNamespaces(ctx context.Context, dstore types.Datastore) ([]Namespac
 // It uses both GossipSub (efficient, wide propagation) and DHT+Pull (fallback).
 type routeRemote struct {
 	storeAPI        types.StoreAPI
+	db              types.DatabaseAPI // Enriches remote candidates with locally indexed signals.
+	rankingCfg      rankingcfg.Config
+	providerHandler *handler // Cheap access to DHT provider counts during Search.
 	server          *p2p.Server
 	service         *rpc.Service
 	notifyCh        chan *handlerSync
@@ -114,6 +119,8 @@ type routeRemote struct {
 
 func newRemote(parentCtx context.Context,
 	storeAPI types.StoreAPI,
+	db types.DatabaseAPI,
+	rankingCfg rankingcfg.Config,
 	dstore types.Datastore,
 	opts types.APIOptions,
 ) (*routeRemote, error) {
@@ -126,6 +133,8 @@ func newRemote(parentCtx context.Context,
 	// Create routing
 	routeAPI := &routeRemote{
 		storeAPI:        storeAPI,
+		db:              db,
+		rankingCfg:      rankingCfg,
 		notifyCh:        make(chan *handlerSync, NotificationChannelSize),
 		dstore:          dstore,
 		ctx:             routingCtx,
@@ -160,17 +169,21 @@ func newRemote(parentCtx context.Context,
 					types.LabelTypeModule.String(): labelValidators[types.LabelTypeModule.String()],
 				}
 
+				// Keep a handle on the provider store for ranking.
+				providerHandler := &handler{
+					ProviderManager: providerMgr,
+					hostID:          h.ID().String(),
+					notifyCh:        routeAPI.notifyCh,
+				}
+				routeAPI.providerHandler = providerHandler
+
 				return []dht.Option{
 					dht.Datastore(dstore),                           // custom DHT datastore
 					dht.ProtocolPrefix(protocol.ID(ProtocolPrefix)), // custom DHT protocol prefix
 					dht.Validator(validator),                        // custom validators for label namespaces
 					dht.MaxRecordAge(RecordTTL),                     // set consistent TTL for all DHT records
 					dht.Mode(dht.ModeServer),
-					dht.ProviderStore(&handler{
-						ProviderManager: providerMgr,
-						hostID:          h.ID().String(),
-						notifyCh:        routeAPI.notifyCh,
-					}),
+					dht.ProviderStore(providerHandler),
 				}, nil
 			},
 		),
@@ -301,8 +314,9 @@ func (r *routeRemote) Publish(ctx context.Context, record types.Record) error {
 	return nil
 }
 
-// Search queries remote records using cached labels with OR logic and minimum threshold.
-// Records are returned if they match at least minMatchScore queries (OR relationship).
+// Search discovers up to MaxCandidates remote records matching the
+// queries (OR logic, min-match threshold), scores them, and streams the
+// top req.Limit in rank_score DESC order (CID ASC as tiebreaker).
 func (r *routeRemote) Search(ctx context.Context, req *routingv1.SearchRequest) (<-chan *routingv1.SearchResponse, error) {
 	remoteLogger.Debug("Called remote routing's Search method", "req", req)
 
@@ -334,78 +348,198 @@ func (r *routeRemote) Search(ctx context.Context, req *routingv1.SearchRequest) 
 	return outCh, nil
 }
 
-// searchRemoteRecords searches for remote records using cached labels with OR logic.
-// Records are returned if they match at least minMatchScore queries.
+// searchCandidate hands data from discovery to scoring.
+type searchCandidate struct {
+	cid          string
+	peerID       string
+	matchQueries []*routingv1.RecordQuery
+	matchScore   uint32
+}
+
+// searchRemoteRecords runs discovery → score → sort → paginate.
 //
-//nolint:gocognit // Core search algorithm requires complex logic for namespace iteration, filtering, and scoring
+//nolint:gocognit // Pipeline still requires a non-trivial loop for namespace iteration and dedup
 func (r *routeRemote) searchRemoteRecords(ctx context.Context, queries []*routingv1.RecordQuery, limit uint32, minMatchScore uint32, outCh chan<- *routingv1.SearchResponse) {
-	localPeerID := r.server.Host().ID().String()
-	processedCIDs := make(map[string]bool) // Avoid duplicates
-	processedCount := 0
-	limitInt := int(limit)
-
-	remoteLogger.Debug("Starting remote search with OR logic and minimum threshold", "queries", len(queries), "minMatchScore", minMatchScore, "localPeerID", localPeerID)
-
-	// Query all namespaces to find remote records
-	entries, err := QueryAllNamespaces(ctx, r.dstore)
-	if err != nil {
-		remoteLogger.Error("Failed to get namespace entries for search", "error", err)
+	candidates := r.discoverCandidates(ctx, queries, minMatchScore)
+	if len(candidates) == 0 {
+		remoteLogger.Debug("Completed Search operation: no candidates", "queries", len(queries))
 
 		return
 	}
 
+	scored := r.scoreCandidates(ctx, candidates, queries)
+	ranking.SortDescending(scored)
+
+	limitInt := int(limit)
+	if limitInt > 0 && limitInt < len(scored) {
+		scored = scored[:limitInt]
+	}
+
+	for _, s := range scored {
+		if err := ctx.Err(); err != nil {
+			remoteLogger.Debug("Search canceled mid-stream", "error", err)
+
+			return
+		}
+
+		c, ok := s.Item.(*searchCandidate)
+		if !ok {
+			continue
+		}
+
+		peer := r.createPeerInfo(ctx, c.peerID)
+
+		outCh <- &routingv1.SearchResponse{
+			RecordRef:       &corev1.RecordRef{Cid: c.cid},
+			Peer:            peer,
+			MatchQueries:    c.matchQueries,
+			MatchScore:      c.matchScore,
+			RankScore:       s.Result.Score,
+			RankExplanation: s.Result.Explanation,
+		}
+	}
+
+	remoteLogger.Debug("Completed Search operation", "delivered", len(scored), "queries", len(queries))
+}
+
+// discoverCandidates returns one entry per remote CID that meets the
+// min-match-score threshold, capped at rankingCfg.MaxCandidates.
+func (r *routeRemote) discoverCandidates(ctx context.Context, queries []*routingv1.RecordQuery, minMatchScore uint32) []*searchCandidate {
+	localPeerID := r.server.Host().ID().String()
+	seen := make(map[string]bool)
+
+	entries, err := QueryAllNamespaces(ctx, r.dstore)
+	if err != nil {
+		remoteLogger.Error("Failed to get namespace entries for search", "error", err)
+
+		return nil
+	}
+
+	maxCandidates := r.rankingCfg.MaxCandidates
+	candidates := make([]*searchCandidate, 0, len(entries))
+
 	for _, entry := range entries {
-		if limitInt > 0 && processedCount >= limitInt {
+		if len(candidates) >= maxCandidates {
+			remoteLogger.Warn("Candidate set exceeds MaxCandidates; ranking partial result. "+
+				"Tighten your query or raise ranking.max_candidates.",
+				"max_candidates", maxCandidates)
+
 			break
 		}
 
-		_, keyCID, keyPeerID, err := ParseEnhancedLabelKey(entry.Key)
-		if err != nil {
-			remoteLogger.Warn("Failed to parse enhanced label key", "key", entry.Key, "error", err)
+		_, keyCID, keyPeerID, parseErr := ParseEnhancedLabelKey(entry.Key)
+		if parseErr != nil {
+			remoteLogger.Warn("Failed to parse enhanced label key", "key", entry.Key, "error", parseErr)
 
 			continue
 		}
 
 		// Filter for remote records only (exclude local records)
 		if keyPeerID == localPeerID {
-			continue // Skip local records
-		}
-
-		// Avoid duplicate CIDs (same record might have multiple matching labels)
-		if processedCIDs[keyCID] {
 			continue
 		}
 
-		// Calculate match score using OR logic (how many queries match this record)
-		matchQueries, score := r.calculateMatchScore(ctx, keyCID, queries, keyPeerID)
-
-		remoteLogger.Debug("Calculated match score for remote record", "cid", keyCID, "score", score, "minMatchScore", minMatchScore, "matchingQueries", len(matchQueries))
-
-		// Apply minimum match score filter (record included if score ≥ threshold)
-		if score >= minMatchScore {
-			peer := r.createPeerInfo(ctx, keyPeerID)
-
-			outCh <- &routingv1.SearchResponse{
-				RecordRef:    &corev1.RecordRef{Cid: keyCID},
-				Peer:         peer,
-				MatchQueries: matchQueries,
-				MatchScore:   score,
-			}
-
-			processedCIDs[keyCID] = true
-			processedCount++
-
-			remoteLogger.Debug("Record meets minimum threshold, including in results", "cid", keyCID, "score", score)
-
-			if limitInt > 0 && processedCount >= limitInt {
-				break
-			}
-		} else {
-			remoteLogger.Debug("Record does not meet minimum threshold, excluding from results", "cid", keyCID, "score", score, "minMatchScore", minMatchScore)
+		// Avoid duplicate CIDs (same record might have multiple matching labels)
+		if seen[keyCID] {
+			continue
 		}
+
+		matchQueries, score := r.calculateMatchScore(ctx, keyCID, queries, keyPeerID)
+		if score < minMatchScore {
+			continue
+		}
+
+		seen[keyCID] = true
+		candidates = append(candidates, &searchCandidate{
+			cid:          keyCID,
+			peerID:       keyPeerID,
+			matchQueries: matchQueries,
+			matchScore:   score,
+		})
 	}
 
-	remoteLogger.Debug("Completed Search operation", "processed", processedCount, "queries", len(queries))
+	return candidates
+}
+
+// scoreCandidates scores each candidate; caller must sort. Locally
+// indexed records are batched into one DB query so cost is O(1) DB +
+// O(N) DHT-cache reads.
+func (r *routeRemote) scoreCandidates(ctx context.Context, candidates []*searchCandidate, queries []*routingv1.RecordQuery) []ranking.Scored {
+	now := time.Now().UTC()
+	numQueries := safeIntToUint32(len(queries))
+	localByCID := r.batchLookupLocalRecords(candidates)
+
+	out := make([]ranking.Scored, 0, len(candidates))
+	for _, c := range candidates {
+		signals := ranking.BuildRemoteSignals(r.db, ranking.RemoteCandidate{
+			CID:           c.cid,
+			MatchScore:    c.matchScore,
+			NumQueries:    numQueries,
+			ProviderCount: r.providerCount(ctx, c.cid),
+			LocalRecord:   localByCID[c.cid],
+		}, now)
+
+		out = append(out, ranking.Scored{
+			CID:    c.cid,
+			Item:   c,
+			Result: ranking.Score(signals, r.rankingCfg),
+		})
+	}
+
+	return out
+}
+
+// providerCount returns the number of peers advertising cidStr in the
+// local DHT cache. Returns 0 on any error.
+func (r *routeRemote) providerCount(ctx context.Context, cidStr string) int {
+	if r.providerHandler == nil {
+		return 0
+	}
+
+	decoded, err := cid.Decode(cidStr)
+	if err != nil {
+		remoteLogger.Debug("providerCount: invalid CID", "cid", cidStr, "error", err)
+
+		return 0
+	}
+
+	providers, err := r.providerHandler.GetProviders(ctx, decoded.Hash())
+	if err != nil {
+		remoteLogger.Debug("providerCount: lookup failed", "cid", cidStr, "error", err)
+
+		return 0
+	}
+
+	return len(providers)
+}
+
+// batchLookupLocalRecords returns a CID → local Record map for every
+// candidate that is locally indexed. Missing CIDs are absent from the
+// map (treated as remote-only); a nil DB or lookup failure returns nil
+// (defaults-only scoring for all candidates).
+func (r *routeRemote) batchLookupLocalRecords(candidates []*searchCandidate) map[string]types.Record {
+	if r.db == nil || len(candidates) == 0 {
+		return nil
+	}
+
+	cids := make([]string, 0, len(candidates))
+	for _, c := range candidates {
+		cids = append(cids, c.cid)
+	}
+
+	records, err := r.db.GetRecords(types.WithCIDs(cids...))
+	if err != nil {
+		remoteLogger.Debug("batchLookupLocalRecords: DB lookup failed", "error", err)
+
+		return nil
+	}
+
+	out := make(map[string]types.Record, len(records))
+	for _, rec := range records {
+		out[rec.GetCid()] = rec
+	}
+
+	return out
 }
 
 // calculateMatchScore calculates how many queries match a remote record (OR logic).
