@@ -28,38 +28,103 @@ Examples:
 	RunE: runStatus,
 }
 
+var errStatusNotAuthenticated = errors.New("status not authenticated")
+
+var refreshExpiredStatusToken = client.RefreshExpiredCachedOIDCToken
+
+type statusTokenState string
+
+const (
+	statusTokenExpired   statusTokenState = "expired"
+	statusTokenRefreshed statusTokenState = "refreshed"
+	statusTokenValid     statusTokenState = "valid"
+)
+
+const (
+	githubWorkflowPrincipalPrefix = "ghwf:"
+	principalTypeGitHubWorkflow   = "github-workflow"
+	principalTypeHuman            = "human"
+	principalTypeServiceWorkload  = "service-or-workload"
+	principalTypeUnknown          = "unknown"
+)
+
 func runStatus(cmd *cobra.Command, _ []string) error {
-	cache, err := client.ResolveTokenCacheForIssuer(config.Client.OIDCIssuer)
-	if err != nil {
-		var ambiguousErr *client.AmbiguousTokenCacheError
-		if errors.As(err, &ambiguousErr) {
-			return fmt.Errorf("%w; use --oidc-issuer or DIRECTORY_CLIENT_OIDC_ISSUER", err)
-		}
-
-		if errors.Is(err, client.ErrNoCachedIssuer) {
-			cmd.Println("Status: Not authenticated")
-			cmd.Println()
-			cmd.Println("Run 'dirctl auth login' to authenticate.")
-
-			return nil
-		}
-
-		return fmt.Errorf("failed to resolve token cache: %w", err)
-	}
-
-	token, err := cache.Load()
-	if err != nil {
-		return fmt.Errorf("failed to read token cache: %w", err)
-	}
-
-	if token == nil {
-		cmd.Println("Status: Not authenticated")
-		cmd.Println()
-		cmd.Println("Run 'dirctl auth login' to authenticate.")
-
+	cache, err := resolveStatusTokenCache(cmd)
+	if errors.Is(err, errStatusNotAuthenticated) {
 		return nil
 	}
 
+	if err != nil {
+		return err
+	}
+
+	token, err := loadStatusToken(cmd, cache)
+	if errors.Is(err, errStatusNotAuthenticated) {
+		return nil
+	}
+
+	if err != nil {
+		return err
+	}
+
+	token, tokenStatus := resolveStatusToken(cmd, cache, token)
+	displayAuthenticatedStatus(cmd, cache, token, tokenStatus)
+
+	return nil
+}
+
+func resolveStatusTokenCache(cmd *cobra.Command) (*client.TokenCache, error) {
+	cache, err := client.ResolveTokenCacheForIssuer(config.Client.OIDCIssuer)
+	if err == nil {
+		return cache, nil
+	}
+
+	if _, ok := errors.AsType[*client.AmbiguousTokenCacheError](err); ok {
+		return nil, fmt.Errorf("%w; use --oidc-issuer or DIRECTORY_CLIENT_OIDC_ISSUER", err)
+	}
+
+	if errors.Is(err, client.ErrNoCachedIssuer) {
+		displayNotAuthenticated(cmd)
+
+		return nil, errStatusNotAuthenticated
+	}
+
+	return nil, fmt.Errorf("failed to resolve token cache: %w", err)
+}
+
+func loadStatusToken(cmd *cobra.Command, cache *client.TokenCache) (*client.CachedToken, error) {
+	token, err := cache.Load()
+	if err != nil {
+		return nil, fmt.Errorf("failed to read token cache: %w", err)
+	}
+
+	if token == nil {
+		displayNotAuthenticated(cmd)
+
+		return nil, errStatusNotAuthenticated
+	}
+
+	return token, nil
+}
+
+func resolveStatusToken(cmd *cobra.Command, cache *client.TokenCache, token *client.CachedToken) (*client.CachedToken, statusTokenState) {
+	if cache.IsValid(token) {
+		return token, statusTokenValid
+	}
+
+	if strings.TrimSpace(token.RefreshToken) == "" {
+		return token, statusTokenExpired
+	}
+
+	refreshedToken, refreshErr := refreshExpiredStatusToken(cmd.Context(), cache, token, config.Client.OIDCClientID)
+	if refreshErr != nil {
+		return token, statusTokenExpired
+	}
+
+	return refreshedToken, statusTokenRefreshed
+}
+
+func displayAuthenticatedStatus(cmd *cobra.Command, cache *client.TokenCache, token *client.CachedToken, tokenStatus statusTokenState) {
 	cmd.Println("Status: Authenticated")
 	cmd.Printf("  Provider: %s\n", displayOrUnknown(token.Provider))
 	cmd.Printf("  Subject: %s\n", displayOrUnknown(token.User))
@@ -80,21 +145,37 @@ func runStatus(cmd *cobra.Command, _ []string) error {
 	cmd.Printf("  Cached at: %s\n", token.CreatedAt.Format(time.RFC3339))
 
 	// Check token validity and display status
-	if cache.IsValid(token) {
+	switch tokenStatus {
+	case statusTokenValid:
 		displayValidToken(cmd, token)
-	} else {
+	case statusTokenRefreshed:
+		displayRefreshedToken(cmd, token)
+	case statusTokenExpired:
 		displayExpiredToken(cmd)
 	}
 
 	cmd.Printf("  Cache file: %s\n", cache.GetCachePath())
+}
 
-	return nil
+func displayNotAuthenticated(cmd *cobra.Command) {
+	cmd.Println("Status: Not authenticated")
+	cmd.Println()
+	cmd.Println("Run 'dirctl auth login' to authenticate.")
 }
 
 // displayValidToken shows details for a valid token.
 func displayValidToken(cmd *cobra.Command, token *client.CachedToken) {
 	cmd.Println("  Token: Valid ✓")
+	displayTokenExpiry(cmd, token)
+}
 
+// displayRefreshedToken shows details for a token refreshed during status inspection.
+func displayRefreshedToken(cmd *cobra.Command, token *client.CachedToken) {
+	cmd.Println("  Token: Refreshed ✓")
+	displayTokenExpiry(cmd, token)
+}
+
+func displayTokenExpiry(cmd *cobra.Command, token *client.CachedToken) {
 	if !token.ExpiresAt.IsZero() {
 		cmd.Printf("  Expires: %s\n", token.ExpiresAt.Format(time.RFC3339))
 	} else {
@@ -113,26 +194,26 @@ func displayExpiredToken(cmd *cobra.Command) {
 
 func detectPrincipalType(token *client.CachedToken) string {
 	if strings.TrimSpace(token.User) == "" && strings.TrimSpace(token.UserID) == "" {
-		return "unknown"
+		return principalTypeUnknown
 	}
 
 	if strings.TrimSpace(token.Email) != "" {
-		return "human"
+		return principalTypeHuman
 	}
 
 	user := strings.TrimSpace(token.User)
 
 	userID := strings.TrimSpace(token.UserID)
-	if strings.HasPrefix(user, "ghwf:") || strings.HasPrefix(userID, "ghwf:") {
-		return "github-workflow"
+	if strings.HasPrefix(user, githubWorkflowPrincipalPrefix) || strings.HasPrefix(userID, githubWorkflowPrincipalPrefix) {
+		return principalTypeGitHubWorkflow
 	}
 
-	return "service-or-workload"
+	return principalTypeServiceWorkload
 }
 
 func displayOrUnknown(v string) string {
 	if strings.TrimSpace(v) == "" {
-		return "unknown"
+		return principalTypeUnknown
 	}
 
 	return v

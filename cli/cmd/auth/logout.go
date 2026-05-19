@@ -29,8 +29,7 @@ Examples:
 func runLogout(cmd *cobra.Command, _ []string) error {
 	cache, err := client.ResolveTokenCacheForIssuer(config.Client.OIDCIssuer)
 	if err != nil {
-		var ambiguousErr *client.AmbiguousTokenCacheError
-		if errors.As(err, &ambiguousErr) {
+		if _, ok := errors.AsType[*client.AmbiguousTokenCacheError](err); ok {
 			return fmt.Errorf("%w; use --oidc-issuer or DIRECTORY_CLIENT_OIDC_ISSUER", err)
 		}
 

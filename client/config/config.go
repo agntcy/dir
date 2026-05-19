@@ -75,6 +75,17 @@ type ResolveOptions struct {
 	// SkipValidation skips required-field validation for callers that only need
 	// a subset of client config, such as auth token cache commands.
 	SkipValidation bool
+
+	// AllowUnknownFields permits forward-compatible parsing for callers that only
+	// need known client fields from a config that may include command extensions.
+	AllowUnknownFields bool
+}
+
+// LoadOptions controls how a reusable client context config file is loaded.
+type LoadOptions struct {
+	// AllowUnknownFields permits forward-compatible parsing for callers that only
+	// need known client fields from a config that may include command extensions.
+	AllowUnknownFields bool
 }
 
 // ResolvedContext describes which context was selected during resolution.
@@ -98,6 +109,15 @@ type ContextValidation struct {
 
 // LoadFile loads a reusable client context config file from path.
 func LoadFile(path string) (*File, error) {
+	return loadFile(path, false)
+}
+
+// LoadFileWithOptions loads a reusable client context config file from path with parsing options.
+func LoadFileWithOptions(path string, opts LoadOptions) (*File, error) {
+	return loadFile(path, opts.AllowUnknownFields)
+}
+
+func loadFile(path string, allowUnknownFields bool) (*File, error) {
 	if path == "" {
 		defaultPath, err := DefaultPath()
 		if err != nil {
@@ -114,7 +134,7 @@ func LoadFile(path string) (*File, error) {
 	defer f.Close()
 
 	decoder := yaml.NewDecoder(f)
-	decoder.KnownFields(true)
+	decoder.KnownFields(!allowUnknownFields)
 
 	file := &File{}
 	if err := decoder.Decode(file); err != nil {
@@ -154,7 +174,7 @@ func Resolve(opts ResolveOptions) (*dirclient.Config, *ResolvedContext, error) {
 		return nil, nil, err
 	}
 
-	file, err := loadOptionalFile(path, explicitPath)
+	file, err := loadOptionalFile(path, explicitPath, opts.AllowUnknownFields)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -199,7 +219,7 @@ func ListContexts(path string) ([]ContextSummary, error) {
 		return nil, err
 	}
 
-	file, err := loadOptionalFile(resolvedPath, explicitPath)
+	file, err := loadOptionalFile(resolvedPath, explicitPath, true)
 	if err != nil {
 		return nil, err
 	}
@@ -229,7 +249,7 @@ func CurrentContext(path string) (*ResolvedContext, error) {
 		return nil, err
 	}
 
-	file, err := loadOptionalFile(resolvedPath, explicitPath)
+	file, err := loadOptionalFile(resolvedPath, explicitPath, true)
 	if err != nil {
 		return nil, err
 	}
@@ -259,7 +279,7 @@ func SetCurrentContext(path string, name string) (*ResolvedContext, error) {
 		return nil, err
 	}
 
-	file, err := loadOptionalFile(resolvedPath, explicitPath)
+	file, err := loadOptionalFile(resolvedPath, explicitPath, false)
 	if err != nil {
 		return nil, err
 	}
@@ -322,7 +342,7 @@ func ValidateContexts(path string, name string) ([]ContextValidation, error) {
 		return nil, err
 	}
 
-	file, err := loadOptionalFile(resolvedPath, explicitPath)
+	file, err := loadOptionalFile(resolvedPath, explicitPath, true)
 	if err != nil {
 		return nil, err
 	}
@@ -367,8 +387,8 @@ func resolvePath(path string) (string, bool, error) {
 	return defaultPath, false, nil
 }
 
-func loadOptionalFile(path string, explicitPath bool) (*File, error) {
-	file, err := LoadFile(path)
+func loadOptionalFile(path string, explicitPath bool, allowUnknownFields bool) (*File, error) {
+	file, err := loadFile(path, allowUnknownFields)
 	if err == nil {
 		return file, nil
 	}

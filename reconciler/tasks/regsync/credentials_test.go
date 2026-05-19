@@ -73,6 +73,18 @@ contexts:
 			want: "dev",
 		},
 		{
+			name: "exact match with unknown context fields",
+			config: `
+contexts:
+  dev:
+    server_address: https://dev.gateway.example.com
+    doctor:
+      timeout: 10s
+`,
+			in:   "https://dev.gateway.example.com",
+			want: "dev",
+		},
+		{
 			name: "scheme-insensitive match against host:port",
 			config: `
 contexts:
@@ -151,6 +163,8 @@ contexts:
     server_address: dev.gateway.example.com:443
     auth_mode: oidc
     auth_token: cached-token
+    doctor:
+      timeout: 10s
 `,
 			remote: "https://dev.gateway.example.com",
 			authn: authnconfig.Config{
