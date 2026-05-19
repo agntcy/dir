@@ -59,9 +59,10 @@ func runShow(cmd *cobra.Command, args []string) error {
 	}
 
 	cfg, resolved, err := clientconfig.Resolve(clientconfig.ResolveOptions{
-		Context:        contextName,
-		Overrides:      overrides,
-		OverrideFields: fields,
+		Context:            contextName,
+		Overrides:          overrides,
+		OverrideFields:     fields,
+		AllowUnknownFields: true,
 	})
 	if err != nil {
 		return fmt.Errorf("failed to show context: %w", err)

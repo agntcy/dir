@@ -81,6 +81,13 @@ type ResolveOptions struct {
 	AllowUnknownFields bool
 }
 
+// LoadOptions controls how a reusable client context config file is loaded.
+type LoadOptions struct {
+	// AllowUnknownFields permits forward-compatible parsing for callers that only
+	// need known client fields from a config that may include command extensions.
+	AllowUnknownFields bool
+}
+
 // ResolvedContext describes which context was selected during resolution.
 type ResolvedContext struct {
 	Name   string
@@ -103,6 +110,11 @@ type ContextValidation struct {
 // LoadFile loads a reusable client context config file from path.
 func LoadFile(path string) (*File, error) {
 	return loadFile(path, false)
+}
+
+// LoadFileWithOptions loads a reusable client context config file from path with parsing options.
+func LoadFileWithOptions(path string, opts LoadOptions) (*File, error) {
+	return loadFile(path, opts.AllowUnknownFields)
 }
 
 func loadFile(path string, allowUnknownFields bool) (*File, error) {
@@ -207,7 +219,7 @@ func ListContexts(path string) ([]ContextSummary, error) {
 		return nil, err
 	}
 
-	file, err := loadOptionalFile(resolvedPath, explicitPath, false)
+	file, err := loadOptionalFile(resolvedPath, explicitPath, true)
 	if err != nil {
 		return nil, err
 	}
@@ -237,7 +249,7 @@ func CurrentContext(path string) (*ResolvedContext, error) {
 		return nil, err
 	}
 
-	file, err := loadOptionalFile(resolvedPath, explicitPath, false)
+	file, err := loadOptionalFile(resolvedPath, explicitPath, true)
 	if err != nil {
 		return nil, err
 	}
@@ -330,7 +342,7 @@ func ValidateContexts(path string, name string) ([]ContextValidation, error) {
 		return nil, err
 	}
 
-	file, err := loadOptionalFile(resolvedPath, explicitPath, false)
+	file, err := loadOptionalFile(resolvedPath, explicitPath, true)
 	if err != nil {
 		return nil, err
 	}

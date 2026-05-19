@@ -91,8 +91,9 @@ func buildClientConfigForRemote(remoteDirectoryURL string, authnConfig authnconf
 
 	if contextName != "" {
 		cfg, _, err := clientconfig.Resolve(clientconfig.ResolveOptions{
-			Context:        contextName,
-			SkipValidation: true,
+			Context:            contextName,
+			SkipValidation:     true,
+			AllowUnknownFields: true,
 		})
 		if err != nil {
 			return nil, fmt.Errorf("failed to resolve client context %q: %w", contextName, err)
@@ -123,7 +124,9 @@ func buildClientConfigForRemote(remoteDirectoryURL string, authnConfig authnconf
 // resolveContextByServerAddress returns the name of the dirctl client context
 // whose server_address matches the provided value.
 func resolveContextByServerAddress(serverAddress string) (string, error) {
-	file, err := clientconfig.LoadFile("")
+	file, err := clientconfig.LoadFileWithOptions("", clientconfig.LoadOptions{
+		AllowUnknownFields: true,
+	})
 	if err != nil {
 		// A missing config file is a valid setup (e.g. headless daemons),
 		// so treat it the same as "no matching context".
