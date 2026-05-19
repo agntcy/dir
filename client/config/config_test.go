@@ -131,6 +131,27 @@ contexts:
 		require.NoError(t, err)
 		assert.Empty(t, contexts)
 	})
+
+	t.Run("allows unknown context fields", func(t *testing.T) {
+		path := writeConfig(t, `
+current_context: prod
+contexts:
+  prod:
+    server_address: prod.gateway.example.com:443
+    doctor:
+      timeout: 10s
+  dev:
+    server_address: dev.gateway.example.com:443
+`)
+
+		contexts, err := ListContexts(path)
+
+		require.NoError(t, err)
+		assert.Equal(t, []ContextSummary{
+			{Name: "dev"},
+			{Name: "prod", Current: true},
+		}, contexts)
+	})
 }
 
 func TestSetCurrentContext(t *testing.T) {
@@ -155,8 +176,9 @@ contexts:
 }
 
 func TestCurrentContext(t *testing.T) {
-	resetClientEnv(t)
-	path := writeConfig(t, `
+	t.Run("returns persisted current context", func(t *testing.T) {
+		resetClientEnv(t)
+		path := writeConfig(t, `
 current_context: dev
 contexts:
   dev:
@@ -165,13 +187,32 @@ contexts:
     server_address: prod.gateway.example.com:443
 `)
 
-	t.Setenv(ClientContextEnv, "prod")
+		t.Setenv(ClientContextEnv, "prod")
 
-	current, err := CurrentContext(path)
+		current, err := CurrentContext(path)
 
-	require.NoError(t, err)
-	assert.Equal(t, "dev", current.Name)
-	assert.Equal(t, "current_context", current.Source)
+		require.NoError(t, err)
+		assert.Equal(t, "dev", current.Name)
+		assert.Equal(t, "current_context", current.Source)
+	})
+
+	t.Run("allows unknown context fields", func(t *testing.T) {
+		resetClientEnv(t)
+		path := writeConfig(t, `
+current_context: dev
+contexts:
+  dev:
+    server_address: dev.gateway.example.com:443
+    doctor:
+      timeout: 10s
+`)
+
+		current, err := CurrentContext(path)
+
+		require.NoError(t, err)
+		assert.Equal(t, "dev", current.Name)
+		assert.Equal(t, "current_context", current.Source)
+	})
 }
 
 func TestValidateContexts(t *testing.T) {
@@ -192,6 +233,24 @@ contexts:
 	require.ErrorContains(t, results[0].Error, "server_address is required")
 	assert.Equal(t, "valid", results[1].Name)
 	assert.NoError(t, results[1].Error)
+}
+
+func TestValidateContexts_AllowsUnknownContextFields(t *testing.T) {
+	path := writeConfig(t, `
+contexts:
+  valid:
+    server_address: dev.gateway.example.com:443
+    auth_mode: insecure
+    doctor:
+      timeout: 10s
+`)
+
+	results, err := ValidateContexts(path, "")
+
+	require.NoError(t, err)
+	require.Len(t, results, 1)
+	assert.Equal(t, "valid", results[0].Name)
+	assert.NoError(t, results[0].Error)
 }
 
 func TestResolve(t *testing.T) {
@@ -287,6 +346,30 @@ contexts:
 		assert.Equal(t, "dev.gateway.example.com:443", cfg.ServerAddress)
 		assert.Equal(t, "dev", resolved.Name)
 		assert.Equal(t, "env", resolved.Source)
+	})
+
+	t.Run("allows unknown fields when requested", func(t *testing.T) {
+		resetClientEnv(t)
+		path := writeConfig(t, `
+current_context: dev
+contexts:
+  dev:
+    server_address: dev.gateway.example.com:443
+    auth_mode: oidc
+    oidc_issuer: https://dev.idp.example.com
+    doctor:
+      timeout: 10s
+`)
+
+		cfg, resolved, err := Resolve(ResolveOptions{
+			Path:               path,
+			AllowUnknownFields: true,
+		})
+
+		require.NoError(t, err)
+		assert.Equal(t, "dev.gateway.example.com:443", cfg.ServerAddress)
+		assert.Equal(t, "https://dev.idp.example.com", cfg.OIDCIssuer)
+		assert.Equal(t, "dev", resolved.Name)
 	})
 
 	t.Run("works without config file when env provides required values", func(t *testing.T) {

@@ -43,10 +43,11 @@ func resolveAuthConfig(cmd *cobra.Command, _ []string) error {
 	}
 
 	cfg, _, err := clientconfig.Resolve(clientconfig.ResolveOptions{
-		Context:        config.Context,
-		Overrides:      overrides,
-		OverrideFields: fields,
-		SkipValidation: true,
+		Context:            config.Context,
+		Overrides:          overrides,
+		OverrideFields:     fields,
+		SkipValidation:     true,
+		AllowUnknownFields: true,
 	})
 	if err != nil {
 		return fmt.Errorf("failed to resolve auth config: %w", err)

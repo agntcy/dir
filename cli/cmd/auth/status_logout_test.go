@@ -5,6 +5,8 @@ package auth
 
 import (
 	"bytes"
+	"context"
+	"errors"
 	"os"
 	"path/filepath"
 	"strings"
@@ -14,12 +16,14 @@ import (
 	clcfg "github.com/agntcy/dir/cli/config"
 	"github.com/agntcy/dir/client"
 	"github.com/spf13/cobra"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 const (
 	testConfigDirPerm  = 0o700
 	testConfigFilePerm = 0o600
+	testOIDCClientID   = "test-client-id"
 )
 
 func TestRunStatus_NotAuthenticated(t *testing.T) {
@@ -68,6 +72,188 @@ func TestRunStatus_WithMachineToken(t *testing.T) {
 	require.Contains(t, got, "Principal type: service-or-workload")
 	require.Contains(t, got, "Token: Valid")
 	require.Contains(t, got, "Cache file:")
+}
+
+func TestRunStatus_ValidTokenDoesNotRefresh(t *testing.T) {
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+
+	refreshRequests := 0
+
+	stubStatusTokenRefresh(t, func(_ context.Context, _ *client.TokenCache, _ *client.CachedToken, _ string) (*client.CachedToken, error) {
+		refreshRequests++
+
+		return nil, errors.New("unexpected refresh")
+	})
+
+	configCopy := client.DefaultConfig
+	configCopy.OIDCClientID = testOIDCClientID
+	clcfg.Client = &configCopy
+
+	cache, err := client.NewTokenCacheForIssuer("https://issuer.example")
+	require.NoError(t, err)
+
+	//nolint:gosec // G101: test fixture token values, not real credentials
+	err = cache.Save(&client.CachedToken{
+		AccessToken:  "valid-token",
+		RefreshToken: "cached-refresh-token",
+		TokenType:    "Bearer",
+		Provider:     "oidc",
+		Issuer:       "https://issuer.example",
+		User:         "machine-client",
+		UserID:       "machine-sub",
+		CreatedAt:    time.Now().Add(-1 * time.Minute),
+		ExpiresAt:    time.Now().Add(1 * time.Hour),
+	})
+	require.NoError(t, err)
+
+	cmd, out := newTestCommand()
+	err = runStatus(cmd, nil)
+	require.NoError(t, err)
+
+	got := out.String()
+	require.Contains(t, got, "Status: Authenticated")
+	require.Contains(t, got, "Token: Valid")
+	require.NotContains(t, got, "Token: Refreshed")
+	require.Equal(t, 0, refreshRequests)
+}
+
+func TestRunStatus_ExpiredTokenRefreshSuccess(t *testing.T) {
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+
+	stubStatusTokenRefresh(t, func(_ context.Context, cache *client.TokenCache, token *client.CachedToken, clientID string) (*client.CachedToken, error) {
+		assert.Equal(t, testOIDCClientID, clientID)
+		assert.Equal(t, "cached-refresh-token", token.RefreshToken)
+
+		updatedToken := &client.CachedToken{
+			AccessToken:  "new-access-token",
+			RefreshToken: "rotated-refresh-token",
+			TokenType:    "Bearer",
+			Provider:     token.Provider,
+			Issuer:       token.Issuer,
+			User:         token.User,
+			UserID:       token.UserID,
+			CreatedAt:    time.Now().UTC(),
+			ExpiresAt:    time.Now().Add(1 * time.Hour),
+		}
+		require.NoError(t, cache.SaveAtomic(updatedToken))
+
+		return updatedToken, nil
+	})
+
+	configCopy := client.DefaultConfig
+	configCopy.OIDCClientID = testOIDCClientID
+	clcfg.Client = &configCopy
+
+	cache, err := client.NewTokenCacheForIssuer("https://issuer.example")
+	require.NoError(t, err)
+
+	//nolint:gosec // G101: test fixture token values, not real credentials
+	err = cache.Save(&client.CachedToken{
+		AccessToken:  "expired-token",
+		RefreshToken: "cached-refresh-token",
+		TokenType:    "Bearer",
+		Provider:     "oidc",
+		Issuer:       "https://issuer.example",
+		User:         "machine-client",
+		UserID:       "machine-sub",
+		CreatedAt:    time.Now().Add(-2 * time.Hour),
+		ExpiresAt:    time.Now().Add(-1 * time.Hour),
+	})
+	require.NoError(t, err)
+
+	cmd, out := newTestCommand()
+	err = runStatus(cmd, nil)
+	require.NoError(t, err)
+
+	got := out.String()
+	require.Contains(t, got, "Status: Authenticated")
+	require.Contains(t, got, "Token: Refreshed")
+	require.Contains(t, got, "Expires:")
+	require.NotContains(t, got, "dirctl auth login")
+
+	updatedToken, err := cache.Load()
+	require.NoError(t, err)
+	require.NotNil(t, updatedToken)
+	require.Equal(t, "new-access-token", updatedToken.AccessToken)
+	require.Equal(t, "rotated-refresh-token", updatedToken.RefreshToken)
+	require.True(t, cache.IsValid(updatedToken))
+}
+
+func TestRunStatus_ExpiredTokenWithoutRefreshToken(t *testing.T) {
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+
+	clcfg.Client = &client.DefaultConfig
+
+	cache, err := client.NewTokenCacheForIssuer("https://issuer.example")
+	require.NoError(t, err)
+
+	err = cache.Save(&client.CachedToken{
+		AccessToken: "expired-token",
+		TokenType:   "Bearer",
+		Provider:    "oidc",
+		Issuer:      "https://issuer.example",
+		User:        "machine-client",
+		UserID:      "machine-sub",
+		CreatedAt:   time.Now().Add(-2 * time.Hour),
+		ExpiresAt:   time.Now().Add(-1 * time.Hour),
+	})
+	require.NoError(t, err)
+
+	cmd, out := newTestCommand()
+	err = runStatus(cmd, nil)
+	require.NoError(t, err)
+
+	got := out.String()
+	require.Contains(t, got, "Status: Authenticated")
+	require.Contains(t, got, "Token: Expired")
+	require.Contains(t, got, "dirctl auth login")
+}
+
+func TestRunStatus_ExpiredTokenRefreshFailure(t *testing.T) {
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+
+	stubStatusTokenRefresh(t, func(_ context.Context, _ *client.TokenCache, token *client.CachedToken, clientID string) (*client.CachedToken, error) {
+		assert.Equal(t, testOIDCClientID, clientID)
+		assert.Equal(t, "cached-refresh-token", token.RefreshToken)
+
+		return nil, errors.New("refresh failed")
+	})
+
+	configCopy := client.DefaultConfig
+	configCopy.OIDCClientID = testOIDCClientID
+	clcfg.Client = &configCopy
+
+	cache, err := client.NewTokenCacheForIssuer("https://issuer.example")
+	require.NoError(t, err)
+
+	//nolint:gosec // G101: test fixture token values, not real credentials
+	err = cache.Save(&client.CachedToken{
+		AccessToken:  "expired-token",
+		RefreshToken: "cached-refresh-token",
+		TokenType:    "Bearer",
+		Provider:     "oidc",
+		Issuer:       "https://issuer.example",
+		User:         "machine-client",
+		UserID:       "machine-sub",
+		CreatedAt:    time.Now().Add(-2 * time.Hour),
+		ExpiresAt:    time.Now().Add(-1 * time.Hour),
+	})
+	require.NoError(t, err)
+
+	cmd, out := newTestCommand()
+	err = runStatus(cmd, nil)
+	require.NoError(t, err)
+
+	got := out.String()
+	require.Contains(t, got, "Status: Authenticated")
+	require.Contains(t, got, "Token: Expired")
+	require.Contains(t, got, "dirctl auth login")
+
+	cachedToken, err := cache.Load()
+	require.NoError(t, err)
+	require.NotNil(t, cachedToken)
+	require.Equal(t, "expired-token", cachedToken.AccessToken)
+	require.Equal(t, "cached-refresh-token", cachedToken.RefreshToken)
 }
 
 func TestRunLogout_ClearsCache(t *testing.T) {
@@ -221,6 +407,20 @@ func newTestCommand() (*cobra.Command, *bytes.Buffer) {
 	cmd.SetErr(out)
 
 	return cmd, out
+}
+
+func stubStatusTokenRefresh(
+	t *testing.T,
+	refresh func(context.Context, *client.TokenCache, *client.CachedToken, string) (*client.CachedToken, error),
+) {
+	t.Helper()
+
+	original := refreshExpiredStatusToken
+	refreshExpiredStatusToken = refresh
+
+	t.Cleanup(func() {
+		refreshExpiredStatusToken = original
+	})
 }
 
 func resetAuthTestEnv(t *testing.T) {

@@ -90,25 +90,35 @@ func isExpiredCachedOIDCToken(cache *TokenCache, cachedToken *CachedToken) bool 
 }
 
 func (o *options) refreshExpiredCachedOIDCToken(ctx context.Context, cache *TokenCache, cachedToken *CachedToken) (string, error) {
+	updatedToken, err := RefreshExpiredCachedOIDCToken(ctx, cache, cachedToken, o.config.OIDCClientID)
+	if err != nil {
+		return "", err
+	}
+
+	return updatedToken.AccessToken, nil
+}
+
+// RefreshExpiredCachedOIDCToken refreshes an expired cached OIDC token and persists the updated cache atomically.
+func RefreshExpiredCachedOIDCToken(ctx context.Context, cache *TokenCache, cachedToken *CachedToken, clientID string) (*CachedToken, error) {
 	if strings.TrimSpace(cachedToken.RefreshToken) == "" {
-		return "", errors.New("cached OIDC token has expired and no refresh token is available; run 'dirctl auth login' to refresh authentication")
+		return nil, errors.New("cached OIDC token has expired and no refresh token is available; run 'dirctl auth login' to refresh authentication")
 	}
 
 	refreshResult, err := OIDC.RefreshAccessToken(ctx, &RefreshTokenConfig{
 		Issuer:       cachedToken.Issuer,
-		ClientID:     o.config.OIDCClientID,
+		ClientID:     clientID,
 		RefreshToken: cachedToken.RefreshToken,
 	})
 	if err != nil {
-		return "", fmt.Errorf("cached OIDC token has expired and refresh failed; run 'dirctl auth login' to refresh authentication: %w", err)
+		return nil, fmt.Errorf("cached OIDC token has expired and refresh failed; run 'dirctl auth login' to refresh authentication: %w", err)
 	}
 
 	updatedToken := newRefreshedCachedToken(cachedToken, refreshResult)
 	if err := cache.SaveAtomic(updatedToken); err != nil {
-		return "", fmt.Errorf("cached OIDC token was refreshed but failed to persist cache; run 'dirctl auth login' to refresh authentication: %w", err)
+		return nil, fmt.Errorf("cached OIDC token was refreshed but failed to persist cache; run 'dirctl auth login' to refresh authentication: %w", err)
 	}
 
-	return updatedToken.AccessToken, nil
+	return updatedToken, nil
 }
 
 func newRefreshedCachedToken(cachedToken *CachedToken, refreshResult *AuthResult) *CachedToken {

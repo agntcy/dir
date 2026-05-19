@@ -84,9 +84,10 @@ func resolveClientConfig(cmd *cobra.Command) (*client.Config, error) {
 	}
 
 	cfg, _, err := clientconfig.Resolve(clientconfig.ResolveOptions{
-		Context:        cliconfig.Context,
-		Overrides:      overrides,
-		OverrideFields: fields,
+		Context:            cliconfig.Context,
+		Overrides:          overrides,
+		OverrideFields:     fields,
+		AllowUnknownFields: true,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to resolve client config: %w", err)
