@@ -201,7 +201,7 @@ func printRoutingSearchResults(cmd *cobra.Command, responses []*routingv1.Search
 
 		// match_score (per-query hit count) is distinct from rank_score
 		// (composite ordering signal); both surfaced so users can tell.
-		line := fmt.Sprintf("%s (from %s, match=%d)", cid, peer, r.GetMatchScore())
+		line := fmt.Sprintf("%s (from %s, match_score=%d)", cid, peer, r.GetMatchScore())
 		presenter.Println(cmd, presenter.FormatRankedLine(r.GetRankScore(), line))
 
 		if searchOpts.Explain {
