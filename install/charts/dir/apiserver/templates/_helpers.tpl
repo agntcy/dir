@@ -195,7 +195,7 @@ Priority order:
 {{/*
 Get OCI registry address.
 Priority order:
-  1. Explicit user configuration (config.store.oci.registry_address) - always respected
+  1. Explicit user configuration (config.store.registry_address) - always respected
   2. Auto-detected internal Zot service (when zot.enabled=true and no explicit address)
 
 This allows users to deploy the Zot subchart for convenience while still using
@@ -204,8 +204,8 @@ external ingress with TLS by explicitly setting registry_address.
 Note: Uses (get .Values.zot "enabled") for nil-safe access since zot may not be defined.
 */}}
 {{- define "chart.oci.registryAddress" -}}
-{{- if .Values.config.store.oci.registry_address -}}
-{{- .Values.config.store.oci.registry_address -}}
+{{- if .Values.config.store.registry_address -}}
+{{- .Values.config.store.registry_address -}}
 {{- else if and .Values.zot (get .Values.zot "enabled") -}}
 {{- printf "%s-zot.%s.svc.cluster.local:5000" .Release.Name .Release.Namespace -}}
 {{- end -}}
@@ -218,8 +218,8 @@ Returns user-configured value, or "dir" as default when using internal Zot.
 Note: Uses (get .Values.zot "enabled") for nil-safe access since zot may not be defined.
 */}}
 {{- define "chart.oci.repositoryName" -}}
-{{- if .Values.config.store.oci.repository_name -}}
-{{- .Values.config.store.oci.repository_name -}}
+{{- if .Values.config.store.repository_name -}}
+{{- .Values.config.store.repository_name -}}
 {{- else if and .Values.zot (get .Values.zot "enabled") -}}
 dir
 {{- end -}}
