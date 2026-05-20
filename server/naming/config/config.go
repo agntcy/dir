@@ -8,11 +8,17 @@ import "time"
 const (
 	// DefaultTTL is the default time-to-live for name verification cache (7 days).
 	DefaultTTL = 7 * 24 * time.Hour
+
+	// DefaultEnabled controls whether name verification is enabled by default.
+	DefaultEnabled = true
 )
 
-// Config holds configuration for the name verification cache (API server only).
-// Re-verification is done by the reconciler name task.
+// Config holds configuration for name verification.
 type Config struct {
+	// Enabled controls whether name verification is performed.
+	// Default: true
+	Enabled bool `json:"enabled,omitempty" mapstructure:"enabled"`
+
 	// TTL is the time-to-live for name verification results served by the naming API.
 	TTL time.Duration `json:"ttl,omitempty" mapstructure:"ttl"`
 }
