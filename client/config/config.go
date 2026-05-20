@@ -279,7 +279,7 @@ func SetCurrentContext(path string, name string) (*ResolvedContext, error) {
 		return nil, err
 	}
 
-	file, err := loadOptionalFile(resolvedPath, explicitPath, false)
+	file, err := loadOptionalFile(resolvedPath, explicitPath, true)
 	if err != nil {
 		return nil, err
 	}
