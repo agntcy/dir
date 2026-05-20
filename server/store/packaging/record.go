@@ -26,7 +26,7 @@ const (
 	// RecordMediaType is the media type used for records.
 	// This is the media type that clients should use when
 	// dealing with Record objects.
-	RecordMediaType = "application/vnd.agntcy.dir.v1+json"
+	RecordMediaType = "application/vnd.agntcy.dir.objects.record+json"
 
 	// Annotations for record manifests.
 	recordAnnotationPrefix        = "org.agntcy.dir.record"

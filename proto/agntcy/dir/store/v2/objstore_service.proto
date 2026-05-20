@@ -17,7 +17,8 @@ import "google/protobuf/wrappers.proto";
 // Supported media types:
 // - application/octet-stream
 // - application/vnd.oci.image.manifest.v1+json
-// - application/agntcy.dir.record+json
+// - application/vnd.agntcy.dir.objects.referrer+json
+// - application/vnd.agntcy.dir.objects.record+json
 service ObjectStore {
   // Writes the object to the store and returns its descriptor.
   //
@@ -39,18 +40,18 @@ service ObjectStore {
   // Deletes the object from the store. Returns an error if the object does not exist.
   rpc Delete(ObjectRef) returns (google.protobuf.Empty);
 
-  // Linkage details, returns objects that reference this object.
-  rpc ListReferrers(ListReferrersRequest) returns (ListReferrersResponse);
-
   // Indexing details, returns metadata of the object without retrieving
   // the actual data.
   rpc Lookup(ObjectRef) returns (ObjectDescriptor);
+
+  // Linkage details, returns objects that reference this object.
+  rpc ListReferrers(ListReferrersRequest) returns (ListReferrersResponse);
 }
 
 message ListReferrersRequest {
   // The subject reference for which to list referrers.
   ObjectRef subject = 1;
-  
+
   // If set, only return referrers with the given media type.
   optional string filter_media_type = 2;
 }

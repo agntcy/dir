@@ -12,6 +12,7 @@ import (
 	storev2 "github.com/agntcy/dir/api/store/v2"
 	"github.com/agntcy/dir/server/store/packaging"
 	"github.com/opencontainers/go-digest"
+	"github.com/opencontainers/image-spec/specs-go"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -193,20 +194,20 @@ func (o *objstoreCtrl) Delete(ctx context.Context, ref *storev2.ObjectRef) (*emp
 
 func (o *objstoreCtrl) ListReferrers(ctx context.Context, req *storev2.ListReferrersRequest) (*storev2.ListReferrersResponse, error) {
 	// Get descriptor for the object
-	desc, err := o.resolveRef(ctx, req.GetSubject())
+	subjectDesc, err := o.resolveRef(ctx, req.GetSubject())
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to resolve reference: %v", err)
 	}
 
 	// If it's not a manifest, we can't lookup referrers since referrers are only supported for manifests in OCI spec
-	if desc.MediaType != ocispec.MediaTypeImageManifest {
+	if subjectDesc.MediaType != ocispec.MediaTypeImageManifest {
 		return &storev2.ListReferrersResponse{}, nil
 	}
 
 	// Get referrers from target registry
 	var refs []*storev2.ObjectDescriptor
 
-	if err = o.target.Referrers(ctx, desc,
+	if err = o.target.Referrers(ctx, subjectDesc,
 		req.GetFilterMediaType(),
 		func(descs []ocispec.Descriptor) error {
 			for _, desc := range descs {

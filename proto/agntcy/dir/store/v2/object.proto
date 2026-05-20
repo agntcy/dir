@@ -25,8 +25,38 @@ message Object {
   bytes data = 3;
 }
 
-// ObjectDescriptor describes the metadata of an object stored in the ObjectStore.
-// It includes the content digest, media type, size, and other relevant information about the object.
+// ObjectReferrer is a special object that can be used
+// for linking one object to another.
+//
+// Use "application/agntcy.dir.objects.referrer+json" as
+// the media type for ObjectReferrer objects.
+//
+// referrer = Object{
+//   media_type: "application/agntcy.dir.objects.referrer+json"
+//   data: json.Marshal(ObjectReferrer{
+//      subject: ObjectRef{cid: "sha256:abcfd"},
+//      annotations: {"key": "value"},
+//      media_type: "application/signature",
+//      size: 1234,
+//      data: []byte("..."),
+//   })
+// }
+message ObjectReferrer {
+  // Subject describes the object being referred to.
+  ObjectRef subject = 1;
+  // Annotations attached to the referrer, if available.
+  map<string, string> annotations = 2;
+  // Media type of the referrer object, e.g., "application/vnd.oci.image.manifest.v1+json".
+  string media_type = 3;
+  // Size of the referrer object in bytes.
+  uint64 size = 4;
+  // Data of the referrer object.
+  bytes data = 5;
+}
+
+// ObjectDescriptor describes the object stored in the ObjectStore.
+// It includes the content digest, media type, size, and other
+// relevant information.
 //
 // Spec: https://specs.opencontainers.org/image-spec/descriptor/
 message ObjectDescriptor {
