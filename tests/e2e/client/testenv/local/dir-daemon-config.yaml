@@ -5,13 +5,11 @@ server:
   oasf_api_validation:
     schema_url: "https://schema.oasf.outshift.com"
   store:
-    provider: "oci"
-    oci:
-      local_dir: "store"
-      registry_address: "localhost:8890"
-      repository_name: "dir"
-      auth_config:
-        insecure: true
+    local_dir: "store"
+    registry_address: "localhost:8890"
+    repository_name: "dir"
+    auth_config:
+      insecure: true
   routing:
     listen_address: "/ip4/127.0.0.1/tcp/0"
     refresh_interval: "1s"

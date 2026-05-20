@@ -142,7 +142,7 @@ func (c *syncCtlr) RequestRegistryCredentials(_ context.Context, req *storev1.Re
 	syncLogger.Debug("Called sync controller's RequestRegistryCredentials method", "req", req)
 
 	// Get OCI configuration to determine registry details
-	ociConfig := c.opts.Config().Store.OCI
+	ociConfig := c.opts.Config().Store
 	syncConfig := c.opts.Config().Sync
 
 	registryAddress, err := ociConfig.GetRegistryAddress()

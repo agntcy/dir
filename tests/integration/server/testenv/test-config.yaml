@@ -12,18 +12,16 @@ authz:
   enabled: false
   enforcer_policy_file_path: /etc/agntcy/dir/authz_policies.csv
 store:
-  provider: oci
-  oci:
-    local_dir:
-    cache_dir:
-    registry_address: localhost:5556
-    repository_name: dir
-    auth_config:
-      insecure: true
-      username:
-      password:
-      access_token:
-      refresh_token:
+  local_dir:
+  cache_dir:
+  registry_address: localhost:5556
+  repository_name: dir
+  auth_config:
+    insecure: true
+    username:
+    password:
+    access_token:
+    refresh_token:
 routing:
   listen_address: /ip4/0.0.0.0/tcp/8999
   directory_api_address:
