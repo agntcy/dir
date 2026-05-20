@@ -17,7 +17,6 @@ import (
 	naming "github.com/agntcy/dir/server/naming/config"
 	publication "github.com/agntcy/dir/server/publication/config"
 	routing "github.com/agntcy/dir/server/routing/config"
-	store "github.com/agntcy/dir/server/store/config"
 	oci "github.com/agntcy/dir/server/store/oci/config"
 	"github.com/agntcy/dir/utils/logging"
 	"github.com/mitchellh/mapstructure"
@@ -143,8 +142,8 @@ type Config struct {
 	// Authz configuration
 	Authz authz.Config `json:"authz" mapstructure:"authz"`
 
-	// Store configuration
-	Store store.Config `json:"store" mapstructure:"store"`
+	// Store configuration (OCI-backed registry).
+	Store oci.Config `json:"store" mapstructure:"store"`
 
 	// Routing configuration
 	Routing routing.Config `json:"routing" mapstructure:"routing"`
@@ -458,30 +457,27 @@ func LoadConfig(opts ...ConfigOption) (*Config, error) {
 	v.SetDefault("authz.enforcer_policy_file_path", DefaultConfigPath+"/authz_policies.csv")
 
 	//
-	// Store configuration
+	// Store configuration (OCI-backed registry)
 	//
-	_ = v.BindEnv("store.provider")
-	v.SetDefault("store.provider", store.DefaultProvider)
+	_ = v.BindEnv("store.local_dir")
+	v.SetDefault("store.local_dir", "")
 
-	_ = v.BindEnv("store.oci.local_dir")
-	v.SetDefault("store.oci.local_dir", "")
+	_ = v.BindEnv("store.cache_dir")
+	v.SetDefault("store.cache_dir", "")
 
-	_ = v.BindEnv("store.oci.cache_dir")
-	v.SetDefault("store.oci.cache_dir", "")
+	_ = v.BindEnv("store.registry_address")
+	v.SetDefault("store.registry_address", oci.DefaultRegistryAddress)
 
-	_ = v.BindEnv("store.oci.registry_address")
-	v.SetDefault("store.oci.registry_address", oci.DefaultRegistryAddress)
+	_ = v.BindEnv("store.repository_name")
+	v.SetDefault("store.repository_name", oci.DefaultRepositoryName)
 
-	_ = v.BindEnv("store.oci.repository_name")
-	v.SetDefault("store.oci.repository_name", oci.DefaultRepositoryName)
+	_ = v.BindEnv("store.auth_config.insecure")
+	v.SetDefault("store.auth_config.insecure", oci.DefaultAuthConfigInsecure)
 
-	_ = v.BindEnv("store.oci.auth_config.insecure")
-	v.SetDefault("store.oci.auth_config.insecure", oci.DefaultAuthConfigInsecure)
-
-	_ = v.BindEnv("store.oci.auth_config.username")
-	_ = v.BindEnv("store.oci.auth_config.password")
-	_ = v.BindEnv("store.oci.auth_config.access_token")
-	_ = v.BindEnv("store.oci.auth_config.refresh_token")
+	_ = v.BindEnv("store.auth_config.username")
+	_ = v.BindEnv("store.auth_config.password")
+	_ = v.BindEnv("store.auth_config.access_token")
+	_ = v.BindEnv("store.auth_config.refresh_token")
 
 	//
 	// Routing configuration
