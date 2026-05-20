@@ -57,12 +57,12 @@ spec:
                   key: sync-password
             {{- end }}
             {{- if or .Values.secrets.ociAuth.username .Values.secrets.ociAuth.password (and .Values.externalSecrets.enabled .Values.externalSecrets.ociAuth.enabled) }}
-            - name: DIRECTORY_SERVER_STORE_OCI_AUTH_CONFIG_USERNAME
+            - name: DIRECTORY_SERVER_STORE_AUTH_CONFIG_USERNAME
               valueFrom:
                 secretKeyRef:
                   name: {{ include "chart.fullname" . }}
                   key: oci-username
-            - name: DIRECTORY_SERVER_STORE_OCI_AUTH_CONFIG_PASSWORD
+            - name: DIRECTORY_SERVER_STORE_AUTH_CONFIG_PASSWORD
               valueFrom:
                 secretKeyRef:
                   name: {{ include "chart.fullname" . }}
