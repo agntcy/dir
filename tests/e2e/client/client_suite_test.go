@@ -27,11 +27,15 @@ func TestClientE2E(t *testing.T) {
 
 	// Load configuration
 	cfg, err := config.LoadConfig()
-	gomega.Expect(err).NotTo(gomega.HaveOccurred())
+	if err != nil {
+		t.Fatalf("config.LoadConfig failed: %+v", err)
+	}
 
 	// Create client
 	client, err := client.New(t.Context(), client.WithConfig(&cfg.Client.ClientOptions))
-	gomega.Expect(err).NotTo(gomega.HaveOccurred())
+	if err != nil {
+		t.Fatalf("client.New failed: %+v", err)
+	}
 
 	// Set test environment
 	testEnv = &env{
