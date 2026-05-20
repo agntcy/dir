@@ -16,25 +16,32 @@ import (
 )
 
 var unpublishCmd = &cobra.Command{
-	Use:   "unpublish <cid>",
+	Use:   "unpublish <cid> [cid...]",
 	Short: "Unpublish record from the network",
 	Long: `Unpublish a record from the network to stop content discovery by other peers.
 
 This command removes a record's network announcements, making it no longer
-discoverable by other peers through the DHT. The record remains in local storage.
+discoverable by other peers through the DHT. Records remain in local storage.
 
 Key Features:
 - Network removal: Removes record from distributed discovery
 - Local cleanup: Removes record from local routing index
 - DHT cleanup: Removes record and label announcements from network
 - Immediate effect: Record becomes undiscoverable by other peers
+- Batch unpublication: Submit multiple CIDs in one request
 
 Usage examples:
 
 1. Unpublish a record from the network:
    dirctl routing unpublish <cid>
 
-2. Output formats:
+2. Unpublish multiple records in a single request:
+   dirctl routing unpublish <cid1> <cid2> <cid3>
+
+3. Unpublish records from stdin (JSON array or line-delimited CIDs):
+   dirctl search --format cid --limit 100 --output json | dirctl routing unpublish --stdin
+
+4. Output formats:
    # Unpublish with JSON confirmation
    dirctl routing unpublish <cid> --output json
    
@@ -43,35 +50,64 @@ Usage examples:
 
 Note: This only removes network announcements. Use 'dirctl delete' to remove the record entirely.
 `,
-	Args: cobra.ExactArgs(1),
-	RunE: func(cmd *cobra.Command, args []string) error {
-		return runUnpublishCommand(cmd, args[0])
+	Args: func(cmd *cobra.Command, args []string) error {
+		if unpublishOpts.FromStdin {
+			return cobra.MaximumNArgs(0)(cmd, args)
+		}
+
+		return cobra.MinimumNArgs(1)(cmd, args)
 	},
+	RunE: runUnpublishCommand,
 }
 
-func runUnpublishCommand(cmd *cobra.Command, cid string) error {
+var unpublishOpts struct {
+	FromStdin bool
+}
+
+func init() {
+	unpublishCmd.Flags().BoolVar(&unpublishOpts.FromStdin, "stdin", false,
+		"Read CIDs from standard input. Supports JSON array output from 'dirctl search --output json' and line-delimited CIDs.")
+}
+
+func runUnpublishCommand(cmd *cobra.Command, args []string) error {
 	// Get the client from the context
 	c, ok := ctxUtils.GetClientFromContext(cmd.Context())
 	if !ok {
 		return errors.New("failed to get client from context")
 	}
 
-	// Create RecordRef from cid
-	recordRef := &corev1.RecordRef{
-		Cid: cid,
+	cids := append([]string{}, args...)
+
+	if unpublishOpts.FromStdin {
+		stdinCIDs, err := readCIDsFromStdin(cmd.InOrStdin())
+		if err != nil {
+			return fmt.Errorf("failed to read CIDs from stdin: %w", err)
+		}
+
+		cids = append(cids, stdinCIDs...)
 	}
 
-	// Lookup metadata to verify record exists
-	_, err := c.Lookup(cmd.Context(), recordRef)
+	cids = deduplicateCIDs(cids)
+	if len(cids) == 0 {
+		return errors.New("at least one CID is required (pass arguments or use --stdin)")
+	}
+
+	recordRefs := make([]*corev1.RecordRef, 0, len(cids))
+	for _, cid := range cids {
+		recordRefs = append(recordRefs, &corev1.RecordRef{Cid: cid})
+	}
+
+	// Lookup metadata to verify records exist
+	_, err := c.LookupBatch(cmd.Context(), recordRefs)
 	if err != nil {
 		return fmt.Errorf("failed to lookup: %w", err)
 	}
 
-	// Start unpublishing using the same RecordRef
+	// Start unpublishing using record references
 	if err := c.Unpublish(cmd.Context(), &routingv1.UnpublishRequest{
 		Request: &routingv1.UnpublishRequest_RecordRefs{
 			RecordRefs: &routingv1.RecordRefs{
-				Refs: []*corev1.RecordRef{recordRef},
+				Refs: recordRefs,
 			},
 		},
 	}); err != nil {
@@ -80,9 +116,14 @@ func runUnpublishCommand(cmd *cobra.Command, cid string) error {
 
 	// Output in the appropriate format
 	result := map[string]any{
-		"cid":     recordRef.GetCid(),
+		"count":   len(recordRefs),
+		"cids":    cids,
 		"status":  "Successfully submitted unpublication request",
-		"message": "Record will not be discoverable by other peers after the unpublication service processes the request.",
+		"message": "Records will not be discoverable by other peers after the unpublication service processes the request.",
+	}
+
+	if len(cids) == 1 {
+		result["cid"] = cids[0]
 	}
 
 	return presenter.PrintMessage(cmd, "Unpublish", "Successfully unpublished record", result)
