@@ -484,12 +484,6 @@ func LoadConfig(opts ...ConfigOption) (*Config, error) {
 	_ = v.BindEnv("store.oci.auth_config.refresh_token")
 
 	//
-	// Store verification configuration
-	//
-	_ = v.BindEnv("store.verification.enabled")
-	v.SetDefault("store.verification.enabled", store.DefaultVerificationEnabled)
-
-	//
 	// Routing configuration
 	//
 	_ = v.BindEnv("routing.listen_address")
@@ -583,8 +577,12 @@ func LoadConfig(opts ...ConfigOption) (*Config, error) {
 	v.SetDefault("metrics.address", DefaultMetricsAddress)
 
 	//
-	// Naming (name verification cache TTL for API responses; re-verification is done by the reconciler name task)
+	// Naming (name verification: enabled flag + cache TTL for API responses;
+	// re-verification is done by the reconciler name task)
 	//
+	_ = v.BindEnv("naming.enabled")
+	v.SetDefault("naming.enabled", naming.DefaultEnabled)
+
 	_ = v.BindEnv("naming.ttl")
 	v.SetDefault("naming.ttl", naming.DefaultTTL)
 
