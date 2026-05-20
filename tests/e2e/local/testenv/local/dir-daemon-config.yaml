@@ -10,8 +10,6 @@ server:
       repository_name: "dir"
       auth_config:
         insecure: true
-    verification:
-      enabled: true
   metrics:
     enabled: true
     address: "localhost:19889"
@@ -33,6 +31,7 @@ server:
     worker_count: 1
     worker_timeout: 30m
   naming:
+    enabled: true
     ttl: 168h
 
 reconciler:

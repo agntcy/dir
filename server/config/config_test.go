@@ -85,9 +85,6 @@ func TestConfig(t *testing.T) {
 							AccessToken:  "access-token",
 						},
 					},
-					Verification: store.VerificationConfig{
-						Enabled: true,
-					},
 				},
 				Routing: routing.Config{
 					ListenAddress: "/ip4/1.1.1.1/tcp/1",
@@ -132,7 +129,8 @@ func TestConfig(t *testing.T) {
 					Address: ":9090",
 				},
 				Naming: naming.Config{
-					TTL: naming.DefaultTTL,
+					Enabled: naming.DefaultEnabled,
+					TTL:     naming.DefaultTTL,
 				},
 				HTTPGateway: HTTPGatewayConfig{
 					Enabled:       true,
@@ -164,9 +162,6 @@ func TestConfig(t *testing.T) {
 						AuthConfig: oci.AuthConfig{
 							Insecure: oci.DefaultAuthConfigInsecure,
 						},
-					},
-					Verification: store.VerificationConfig{
-						Enabled: store.DefaultVerificationEnabled,
 					},
 				},
 				Routing: routing.Config{
@@ -205,7 +200,8 @@ func TestConfig(t *testing.T) {
 					Address: DefaultMetricsAddress,
 				},
 				Naming: naming.Config{
-					TTL: naming.DefaultTTL,
+					Enabled: naming.DefaultEnabled,
+					TTL:     naming.DefaultTTL,
 				},
 				HTTPGateway: HTTPGatewayConfig{
 					Enabled:       DefaultHTTPGatewayEnabled,
