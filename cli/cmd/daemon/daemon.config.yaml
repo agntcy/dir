@@ -32,8 +32,6 @@ server:
       # To use a remote OCI registry, unset local_dir:
       #   registry_address: "ghcr.io"
       #   repository_name: "org/agents"
-    verification:
-      enabled: true
   routing:
     listen_address: "/ip4/0.0.0.0/tcp/8999"
     key_path: "node.key"
@@ -56,6 +54,7 @@ server:
     worker_count: 1
     worker_timeout: 30m
   naming:
+    enabled: true
     ttl: 168h
 
 reconciler:
