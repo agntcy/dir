@@ -8,14 +8,9 @@ import (
 	"testing"
 	"time"
 
-	authn "github.com/agntcy/dir/server/authn/config"
-	authz "github.com/agntcy/dir/server/authz/config"
-	dbconfig "github.com/agntcy/dir/server/database/config"
-	ratelimitconfig "github.com/agntcy/dir/server/middleware/ratelimit/config"
-	naming "github.com/agntcy/dir/server/naming/config"
-	publication "github.com/agntcy/dir/server/publication/config"
-	routing "github.com/agntcy/dir/server/routing/config"
-	oci "github.com/agntcy/dir/server/store/oci/config"
+	dircfg "github.com/agntcy/dir/config"
+	"github.com/agntcy/dir/config/auth"
+	namingcfg "github.com/agntcy/dir/config/naming"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -60,16 +55,16 @@ func TestConfig(t *testing.T) {
 					SchemaURL: "https://custom.schema.url",
 				},
 				Connection: DefaultConnectionConfig(), // Connection defaults applied
-				Authn: authn.Config{
+				Authn: auth.Authn{
 					Enabled:   false,
-					Mode:      authn.AuthModeX509, // Default from config.go:109
+					Mode:      auth.ModeX509,
 					Audiences: []string{},
 				},
-				Store: oci.Config{
+				Store: dircfg.Registry{
 					LocalDir:        "local-dir",
 					RegistryAddress: "example.com:5001",
 					RepositoryName:  "test-dir",
-					AuthConfig: oci.AuthConfig{
+					RegistryAuth: dircfg.RegistryAuth{
 						Insecure:     true,
 						Username:     "username",
 						Password:     "password",
@@ -77,23 +72,23 @@ func TestConfig(t *testing.T) {
 						AccessToken:  "access-token",
 					},
 				},
-				Routing: routing.Config{
+				Routing: dircfg.Routing{
 					ListenAddress: "/ip4/1.1.1.1/tcp/1",
 					BootstrapPeers: []string{
 						"/ip4/1.1.1.1/tcp/1",
 						"/ip4/1.1.1.1/tcp/2",
 					},
 					KeyPath: "/path/to/key",
-					GossipSub: routing.GossipSubConfig{
-						Enabled: true, // Default value
+					GossipSub: dircfg.GossipSub{
+						Enabled: true,
 					},
 				},
-				Database: dbconfig.Config{
+				Database: dircfg.Database{
 					Type: "postgres",
-					SQLite: dbconfig.SQLiteConfig{
-						Path: dbconfig.DefaultSQLitePath,
+					SQLite: dircfg.SQLite{
+						Path: dircfg.DefaultSQLitePath,
 					},
-					Postgres: dbconfig.PostgresConfig{
+					Postgres: dircfg.Postgres{
 						Host:     "localhost",
 						Port:     5432,
 						Database: "dir",
@@ -101,27 +96,32 @@ func TestConfig(t *testing.T) {
 					},
 				},
 				Sync: SyncConfig{
-					AuthConfig: oci.AuthConfig{
+					AuthConfig: dircfg.RegistryAuth{
 						Username: "sync-user",
 						Password: "sync-password",
 					},
 				},
-				Authz: authz.Config{
+				Authz: auth.Authz{
 					Enabled:                true,
 					EnforcerPolicyFilePath: "/tmp/authz_policies.csv",
 				},
-				Publication: publication.Config{
+				Publication: dircfg.Publication{
 					SchedulerInterval: 10 * time.Second,
 					WorkerCount:       1,
 					WorkerTimeout:     10 * time.Second,
+				},
+				Events: dircfg.Events{
+					SubscriberBufferSize: dircfg.DefaultEventsSubscriberBufferSize,
+					LogSlowConsumers:     dircfg.DefaultEventsLogSlowConsumers,
+					LogPublishedEvents:   dircfg.DefaultEventsLogPublishedEvents,
 				},
 				Metrics: MetricsConfig{
 					Enabled: true,
 					Address: ":9090",
 				},
-				Naming: naming.Config{
-					Enabled: naming.DefaultEnabled,
-					TTL:     naming.DefaultTTL,
+				Naming: namingcfg.Naming{
+					Enabled: namingcfg.DefaultEnabled,
+					TTL:     namingcfg.DefaultTTL,
 				},
 			},
 		},
@@ -131,59 +131,64 @@ func TestConfig(t *testing.T) {
 			ExpectedConfig: &Config{
 				ListenAddress: DefaultListenAddress,
 				OASFAPIValidation: OASFAPIValidationConfig{
-					SchemaURL: "", // Empty when not configured - default should come from Helm chart
+					SchemaURL: "",
 				},
-				Connection: DefaultConnectionConfig(), // Connection defaults applied
-				Authn: authn.Config{
+				Connection: DefaultConnectionConfig(),
+				Authn: auth.Authn{
 					Enabled:   false,
-					Mode:      authn.AuthModeX509, // Default from config.go:109
+					Mode:      auth.ModeX509,
 					Audiences: []string{},
 				},
-				Store: oci.Config{
-					RegistryAddress: oci.DefaultRegistryAddress,
-					RepositoryName:  oci.DefaultRepositoryName,
-					AuthConfig: oci.AuthConfig{
-						Insecure: oci.DefaultAuthConfigInsecure,
+				Store: dircfg.Registry{
+					RegistryAddress: dircfg.DefaultRegistryAddress,
+					RepositoryName:  dircfg.DefaultRepositoryName,
+					RegistryAuth: dircfg.RegistryAuth{
+						Insecure: dircfg.DefaultRegistryAuthInsecure,
 					},
 				},
-				Routing: routing.Config{
-					ListenAddress:  routing.DefaultListenAddress,
-					BootstrapPeers: routing.DefaultBootstrapPeers,
-					GossipSub: routing.GossipSubConfig{
-						Enabled: routing.DefaultGossipSubEnabled,
+				Routing: dircfg.Routing{
+					ListenAddress:  dircfg.DefaultRoutingListenAddress,
+					BootstrapPeers: dircfg.DefaultBootstrapPeers,
+					GossipSub: dircfg.GossipSub{
+						Enabled: dircfg.DefaultGossipSubEnabled,
 					},
 				},
-				Database: dbconfig.Config{
-					Type: dbconfig.DefaultType,
-					SQLite: dbconfig.SQLiteConfig{
-						Path: dbconfig.DefaultSQLitePath,
+				Database: dircfg.Database{
+					Type: dircfg.DefaultDatabaseType,
+					SQLite: dircfg.SQLite{
+						Path: dircfg.DefaultSQLitePath,
 					},
-					Postgres: dbconfig.PostgresConfig{
-						Host:     dbconfig.DefaultPostgresHost,
-						Port:     dbconfig.DefaultPostgresPort,
-						Database: dbconfig.DefaultPostgresDatabase,
-						SSLMode:  dbconfig.DefaultPostgresSSLMode,
+					Postgres: dircfg.Postgres{
+						Host:     dircfg.DefaultPostgresHost,
+						Port:     dircfg.DefaultPostgresPort,
+						Database: dircfg.DefaultPostgresDatabase,
+						SSLMode:  dircfg.DefaultPostgresSSLMode,
 					},
 				},
 				Sync: SyncConfig{
-					AuthConfig: oci.AuthConfig{},
+					AuthConfig: dircfg.RegistryAuth{},
 				},
-				Authz: authz.Config{
+				Authz: auth.Authz{
 					Enabled:                false,
 					EnforcerPolicyFilePath: DefaultConfigPath + "/authz_policies.csv",
 				},
-				Publication: publication.Config{
-					SchedulerInterval: publication.DefaultPublicationSchedulerInterval,
-					WorkerCount:       publication.DefaultPublicationWorkerCount,
-					WorkerTimeout:     publication.DefaultPublicationWorkerTimeout,
+				Publication: dircfg.Publication{
+					SchedulerInterval: dircfg.DefaultPublicationSchedulerInterval,
+					WorkerCount:       dircfg.DefaultPublicationWorkerCount,
+					WorkerTimeout:     dircfg.DefaultPublicationWorkerTimeout,
+				},
+				Events: dircfg.Events{
+					SubscriberBufferSize: dircfg.DefaultEventsSubscriberBufferSize,
+					LogSlowConsumers:     dircfg.DefaultEventsLogSlowConsumers,
+					LogPublishedEvents:   dircfg.DefaultEventsLogPublishedEvents,
 				},
 				Metrics: MetricsConfig{
 					Enabled: DefaultMetricsEnabled,
 					Address: DefaultMetricsAddress,
 				},
-				Naming: naming.Config{
-					Enabled: naming.DefaultEnabled,
-					TTL:     naming.DefaultTTL,
+				Naming: namingcfg.Naming{
+					Enabled: namingcfg.DefaultEnabled,
+					TTL:     namingcfg.DefaultTTL,
 				},
 			},
 		},
@@ -252,7 +257,7 @@ func TestConfig_RateLimiting(t *testing.T) {
 	tests := []struct {
 		name           string
 		envVars        map[string]string
-		expectedConfig ratelimitconfig.Config
+		expectedConfig dircfg.RateLimit
 	}{
 		{
 			name: "rate limiting enabled with custom values",
@@ -263,13 +268,13 @@ func TestConfig_RateLimiting(t *testing.T) {
 				"DIRECTORY_SERVER_RATELIMIT_PER_CLIENT_RPS":   "500.0",
 				"DIRECTORY_SERVER_RATELIMIT_PER_CLIENT_BURST": "1000",
 			},
-			expectedConfig: ratelimitconfig.Config{
+			expectedConfig: dircfg.RateLimit{
 				Enabled:        true,
 				GlobalRPS:      50.0,
 				GlobalBurst:    100,
 				PerClientRPS:   500.0,
 				PerClientBurst: 1000,
-				MethodLimits:   map[string]ratelimitconfig.MethodLimit{},
+				MethodLimits:   map[string]dircfg.MethodLimit{},
 			},
 		},
 		{
@@ -277,13 +282,13 @@ func TestConfig_RateLimiting(t *testing.T) {
 			envVars: map[string]string{
 				"DIRECTORY_SERVER_RATELIMIT_ENABLED": "false",
 			},
-			expectedConfig: ratelimitconfig.Config{
+			expectedConfig: dircfg.RateLimit{
 				Enabled:        false,
 				GlobalRPS:      0,
 				GlobalBurst:    0,
 				PerClientRPS:   0,
 				PerClientBurst: 0,
-				MethodLimits:   map[string]ratelimitconfig.MethodLimit{},
+				MethodLimits:   map[string]dircfg.MethodLimit{},
 			},
 		},
 		{
@@ -293,13 +298,13 @@ func TestConfig_RateLimiting(t *testing.T) {
 				"DIRECTORY_SERVER_RATELIMIT_GLOBAL_RPS":   "200.0",
 				"DIRECTORY_SERVER_RATELIMIT_GLOBAL_BURST": "400",
 			},
-			expectedConfig: ratelimitconfig.Config{
+			expectedConfig: dircfg.RateLimit{
 				Enabled:        true,
 				GlobalRPS:      200.0,
 				GlobalBurst:    400,
 				PerClientRPS:   0,
 				PerClientBurst: 0,
-				MethodLimits:   map[string]ratelimitconfig.MethodLimit{},
+				MethodLimits:   map[string]dircfg.MethodLimit{},
 			},
 		},
 	}
@@ -330,12 +335,12 @@ func TestConfig_RateLimiting(t *testing.T) {
 func TestConfig_RateLimitingValidation(t *testing.T) {
 	tests := []struct {
 		name        string
-		config      ratelimitconfig.Config
+		config      dircfg.RateLimit
 		shouldError bool
 	}{
 		{
 			name: "valid rate limiting configuration",
-			config: ratelimitconfig.Config{
+			config: dircfg.RateLimit{
 				Enabled:        true,
 				GlobalRPS:      100.0,
 				GlobalBurst:    200,
@@ -346,7 +351,7 @@ func TestConfig_RateLimitingValidation(t *testing.T) {
 		},
 		{
 			name: "invalid rate limiting - negative RPS",
-			config: ratelimitconfig.Config{
+			config: dircfg.RateLimit{
 				Enabled:        true,
 				GlobalRPS:      -10.0,
 				GlobalBurst:    200,
@@ -357,7 +362,7 @@ func TestConfig_RateLimitingValidation(t *testing.T) {
 		},
 		{
 			name: "invalid rate limiting - negative burst",
-			config: ratelimitconfig.Config{
+			config: dircfg.RateLimit{
 				Enabled:        true,
 				GlobalRPS:      100.0,
 				GlobalBurst:    -200,
@@ -368,9 +373,9 @@ func TestConfig_RateLimitingValidation(t *testing.T) {
 		},
 		{
 			name: "disabled rate limiting - no validation",
-			config: ratelimitconfig.Config{
+			config: dircfg.RateLimit{
 				Enabled:        false,
-				GlobalRPS:      -100.0, // Invalid but should be ignored
+				GlobalRPS:      -100.0,
 				GlobalBurst:    -200,
 				PerClientRPS:   -1000.0,
 				PerClientBurst: -2000,

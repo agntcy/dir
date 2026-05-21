@@ -1,20 +1,17 @@
 // Copyright AGNTCY Contributors (https://github.com/agntcy)
 // SPDX-License-Identifier: Apache-2.0
 
-package indexer
+package reconciler
 
-import (
-	"time"
-)
+import "time"
 
-const (
-	// DefaultInterval is the default reconciliation interval for the indexer.
-	DefaultInterval = 1 * time.Hour
-)
+// DefaultIndexerInterval is the default reconciliation interval for
+// the indexer task.
+const DefaultIndexerInterval = 1 * time.Hour
 
-// Config holds the configuration for the indexer reconciliation task.
-type Config struct {
-	// Enabled determines if the indexer task should run.
+// Indexer is the configuration for the indexer reconciliation task.
+type Indexer struct {
+	// Enabled determines whether the indexer task runs.
 	Enabled bool `json:"enabled,omitempty" mapstructure:"enabled"`
 
 	// Interval is how often to check for unindexed records.
@@ -22,9 +19,9 @@ type Config struct {
 }
 
 // GetInterval returns the interval with default fallback.
-func (c *Config) GetInterval() time.Duration {
+func (c *Indexer) GetInterval() time.Duration {
 	if c.Interval == 0 {
-		return DefaultInterval
+		return DefaultIndexerInterval
 	}
 
 	return c.Interval

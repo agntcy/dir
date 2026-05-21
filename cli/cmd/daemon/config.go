@@ -17,10 +17,9 @@ import (
 	adapterk8s "github.com/agntcy/dir-runtime/discovery/runtime/k8s"
 	runtimestore "github.com/agntcy/dir-runtime/store/config"
 	runtimestoresql "github.com/agntcy/dir-runtime/store/sql"
+	dircfg "github.com/agntcy/dir/config"
 	reconcilerconfig "github.com/agntcy/dir/reconciler/config"
 	serverconfig "github.com/agntcy/dir/server/config"
-	dbconfig "github.com/agntcy/dir/server/database/config"
-	storeconfig "github.com/agntcy/dir/server/store/oci/config"
 	"github.com/mitchellh/mapstructure"
 	"github.com/spf13/viper"
 )
@@ -50,16 +49,16 @@ type RuntimeConfig struct {
 }
 
 func registerServerDefaults(v *viper.Viper) {
-	v.SetDefault("server.store.registry_address", storeconfig.DefaultRegistryAddress)
-	v.SetDefault("server.store.repository_name", storeconfig.DefaultRepositoryName)
+	v.SetDefault("server.store.registry_address", dircfg.DefaultRegistryAddress)
+	v.SetDefault("server.store.repository_name", dircfg.DefaultRepositoryName)
 }
 
 func registerReconcilerDefaults(v *viper.Viper) {
-	v.SetDefault("reconciler.local_registry.registry_address", storeconfig.DefaultRegistryAddress)
-	v.SetDefault("reconciler.local_registry.repository_name", storeconfig.DefaultRepositoryName)
+	v.SetDefault("reconciler.local_registry.registry_address", dircfg.DefaultRegistryAddress)
+	v.SetDefault("reconciler.local_registry.repository_name", dircfg.DefaultRepositoryName)
 	v.SetDefault("reconciler.local_registry.auth_config.insecure", true)
 	v.SetDefault("reconciler.database.type", "sqlite")
-	v.SetDefault("reconciler.database.sqlite.path", dbconfig.DefaultSQLitePath)
+	v.SetDefault("reconciler.database.sqlite.path", dircfg.DefaultSQLitePath)
 }
 
 func registerRuntimeDefaults(v *viper.Viper) {

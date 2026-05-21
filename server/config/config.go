@@ -9,15 +9,9 @@ import (
 	"strings"
 	"time"
 
-	authn "github.com/agntcy/dir/server/authn/config"
-	authz "github.com/agntcy/dir/server/authz/config"
-	dbconfig "github.com/agntcy/dir/server/database/config"
-	events "github.com/agntcy/dir/server/events/config"
-	ratelimitconfig "github.com/agntcy/dir/server/middleware/ratelimit/config"
-	naming "github.com/agntcy/dir/server/naming/config"
-	publication "github.com/agntcy/dir/server/publication/config"
-	routing "github.com/agntcy/dir/server/routing/config"
-	oci "github.com/agntcy/dir/server/store/oci/config"
+	dircfg "github.com/agntcy/dir/config"
+	"github.com/agntcy/dir/config/auth"
+	namingcfg "github.com/agntcy/dir/config/naming"
 	"github.com/agntcy/dir/utils/logging"
 	"github.com/mitchellh/mapstructure"
 	"github.com/spf13/viper"
@@ -120,42 +114,42 @@ type Config struct {
 	Connection ConnectionConfig `json:"connection" mapstructure:"connection"`
 
 	// Rate limiting configuration
-	RateLimit ratelimitconfig.Config `json:"ratelimit" mapstructure:"ratelimit"`
+	RateLimit dircfg.RateLimit `json:"ratelimit" mapstructure:"ratelimit"`
 
 	// Authn configuration (JWT or X.509 authentication)
-	Authn authn.Config `json:"authn" mapstructure:"authn"`
+	Authn auth.Authn `json:"authn" mapstructure:"authn"`
 
 	// Authz configuration
-	Authz authz.Config `json:"authz" mapstructure:"authz"`
+	Authz auth.Authz `json:"authz" mapstructure:"authz"`
 
 	// Store configuration (OCI-backed registry).
-	Store oci.Config `json:"store" mapstructure:"store"`
+	Store dircfg.Registry `json:"store" mapstructure:"store"`
 
 	// Routing configuration
-	Routing routing.Config `json:"routing" mapstructure:"routing"`
+	Routing dircfg.Routing `json:"routing" mapstructure:"routing"`
 
 	// Database configuration
-	Database dbconfig.Config `json:"database" mapstructure:"database"`
+	Database dircfg.Database `json:"database" mapstructure:"database"`
 
 	// Sync configuration
 	Sync SyncConfig `json:"sync" mapstructure:"sync"`
 
 	// Publication configuration
-	Publication publication.Config `json:"publication" mapstructure:"publication"`
+	Publication dircfg.Publication `json:"publication" mapstructure:"publication"`
 
 	// Events configuration
-	Events events.Config `json:"events" mapstructure:"events"`
+	Events dircfg.Events `json:"events" mapstructure:"events"`
 
 	// Metrics configuration
 	Metrics MetricsConfig `json:"metrics" mapstructure:"metrics"`
 
 	// Naming holds name verification cache config (TTL for naming API; reconciler name task performs re-verification).
-	Naming naming.Config `json:"naming,omitzero" mapstructure:"naming"`
+	Naming namingcfg.Naming `json:"naming,omitzero" mapstructure:"naming"`
 }
 
 type SyncConfig struct {
 	// AuthConfig holds authentication configuration for sync operations.
-	AuthConfig oci.AuthConfig `json:"auth_config" mapstructure:"auth_config"`
+	AuthConfig dircfg.RegistryAuth `json:"auth_config" mapstructure:"auth_config"`
 }
 
 // OASFAPIValidationConfig defines OASF API validation configuration.
@@ -413,13 +407,13 @@ func LoadConfig(opts ...ConfigOption) (*Config, error) {
 	v.SetDefault("store.cache_dir", "")
 
 	_ = v.BindEnv("store.registry_address")
-	v.SetDefault("store.registry_address", oci.DefaultRegistryAddress)
+	v.SetDefault("store.registry_address", dircfg.DefaultRegistryAddress)
 
 	_ = v.BindEnv("store.repository_name")
-	v.SetDefault("store.repository_name", oci.DefaultRepositoryName)
+	v.SetDefault("store.repository_name", dircfg.DefaultRepositoryName)
 
 	_ = v.BindEnv("store.auth_config.insecure")
-	v.SetDefault("store.auth_config.insecure", oci.DefaultAuthConfigInsecure)
+	v.SetDefault("store.auth_config.insecure", dircfg.DefaultRegistryAuthInsecure)
 
 	_ = v.BindEnv("store.auth_config.username")
 	_ = v.BindEnv("store.auth_config.password")
@@ -430,13 +424,13 @@ func LoadConfig(opts ...ConfigOption) (*Config, error) {
 	// Routing configuration
 	//
 	_ = v.BindEnv("routing.listen_address")
-	v.SetDefault("routing.listen_address", routing.DefaultListenAddress)
+	v.SetDefault("routing.listen_address", dircfg.DefaultRoutingListenAddress)
 
 	_ = v.BindEnv("routing.directory_api_address")
 	v.SetDefault("routing.directory_api_address", "")
 
 	_ = v.BindEnv("routing.bootstrap_peers")
-	v.SetDefault("routing.bootstrap_peers", strings.Join(routing.DefaultBootstrapPeers, ","))
+	v.SetDefault("routing.bootstrap_peers", strings.Join(dircfg.DefaultBootstrapPeers, ","))
 
 	_ = v.BindEnv("routing.key_path")
 	v.SetDefault("routing.key_path", "")
@@ -450,33 +444,33 @@ func LoadConfig(opts ...ConfigOption) (*Config, error) {
 	// are hardcoded in server/routing/pubsub/constants.go for network compatibility.
 	//
 	_ = v.BindEnv("routing.gossipsub.enabled")
-	v.SetDefault("routing.gossipsub.enabled", routing.DefaultGossipSubEnabled)
+	v.SetDefault("routing.gossipsub.enabled", dircfg.DefaultGossipSubEnabled)
 
 	//
 	// Database configuration
 	//
 	_ = v.BindEnv("database.type")
-	v.SetDefault("database.type", dbconfig.DefaultType)
+	v.SetDefault("database.type", dircfg.DefaultDatabaseType)
 
 	// SQLite configuration
 	_ = v.BindEnv("database.sqlite.path")
-	v.SetDefault("database.sqlite.path", dbconfig.DefaultSQLitePath)
+	v.SetDefault("database.sqlite.path", dircfg.DefaultSQLitePath)
 
 	// PostgreSQL configuration
 	_ = v.BindEnv("database.postgres.host")
-	v.SetDefault("database.postgres.host", dbconfig.DefaultPostgresHost)
+	v.SetDefault("database.postgres.host", dircfg.DefaultPostgresHost)
 
 	_ = v.BindEnv("database.postgres.port")
-	v.SetDefault("database.postgres.port", dbconfig.DefaultPostgresPort)
+	v.SetDefault("database.postgres.port", dircfg.DefaultPostgresPort)
 
 	_ = v.BindEnv("database.postgres.database")
-	v.SetDefault("database.postgres.database", dbconfig.DefaultPostgresDatabase)
+	v.SetDefault("database.postgres.database", dircfg.DefaultPostgresDatabase)
 
 	_ = v.BindEnv("database.postgres.username")
 	_ = v.BindEnv("database.postgres.password")
 
 	_ = v.BindEnv("database.postgres.ssl_mode")
-	v.SetDefault("database.postgres.ssl_mode", dbconfig.DefaultPostgresSSLMode)
+	v.SetDefault("database.postgres.ssl_mode", dircfg.DefaultPostgresSSLMode)
 
 	//
 	// Sync configuration
@@ -489,26 +483,26 @@ func LoadConfig(opts ...ConfigOption) (*Config, error) {
 	//
 
 	_ = v.BindEnv("publication.scheduler_interval")
-	v.SetDefault("publication.scheduler_interval", publication.DefaultPublicationSchedulerInterval)
+	v.SetDefault("publication.scheduler_interval", dircfg.DefaultPublicationSchedulerInterval)
 
 	_ = v.BindEnv("publication.worker_count")
-	v.SetDefault("publication.worker_count", publication.DefaultPublicationWorkerCount)
+	v.SetDefault("publication.worker_count", dircfg.DefaultPublicationWorkerCount)
 
 	_ = v.BindEnv("publication.worker_timeout")
-	v.SetDefault("publication.worker_timeout", publication.DefaultPublicationWorkerTimeout)
+	v.SetDefault("publication.worker_timeout", dircfg.DefaultPublicationWorkerTimeout)
 
 	//
 	// Events configuration
 	//
 
 	_ = v.BindEnv("events.subscriber_buffer_size")
-	v.SetDefault("events.subscriber_buffer_size", events.DefaultSubscriberBufferSize)
+	v.SetDefault("events.subscriber_buffer_size", dircfg.DefaultEventsSubscriberBufferSize)
 
 	_ = v.BindEnv("events.log_slow_consumers")
-	v.SetDefault("events.log_slow_consumers", events.DefaultLogSlowConsumers)
+	v.SetDefault("events.log_slow_consumers", dircfg.DefaultEventsLogSlowConsumers)
 
 	_ = v.BindEnv("events.log_published_events")
-	v.SetDefault("events.log_published_events", events.DefaultLogPublishedEvents)
+	v.SetDefault("events.log_published_events", dircfg.DefaultEventsLogPublishedEvents)
 
 	//
 	// Metrics configuration
@@ -524,10 +518,10 @@ func LoadConfig(opts ...ConfigOption) (*Config, error) {
 	// re-verification is done by the reconciler name task)
 	//
 	_ = v.BindEnv("naming.enabled")
-	v.SetDefault("naming.enabled", naming.DefaultEnabled)
+	v.SetDefault("naming.enabled", namingcfg.DefaultEnabled)
 
 	_ = v.BindEnv("naming.ttl")
-	v.SetDefault("naming.ttl", naming.DefaultTTL)
+	v.SetDefault("naming.ttl", namingcfg.DefaultTTL)
 
 	//
 	// Connection management configuration

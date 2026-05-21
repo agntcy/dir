@@ -7,7 +7,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/agntcy/dir/server/authz/config"
+	"github.com/agntcy/dir/config/auth"
 	"github.com/agntcy/dir/utils/logging"
 	"google.golang.org/grpc"
 )
@@ -22,7 +22,7 @@ type Service struct {
 }
 
 // New creates a new authorization service.
-func New(_ context.Context, cfg config.Config) (*Service, error) {
+func New(_ context.Context, cfg auth.Authz) (*Service, error) {
 	// Validate
 	if err := cfg.Validate(); err != nil {
 		return nil, fmt.Errorf("invalid authz config: %w", err)

@@ -6,6 +6,7 @@ go 1.26.3
 replace (
 	github.com/agntcy/dir/api => ../api
 	github.com/agntcy/dir/client => ../client
+	github.com/agntcy/dir/config => ../config
 	github.com/agntcy/dir/utils => ../utils
 )
 
@@ -17,6 +18,7 @@ require (
 	buf.build/gen/go/agntcy/oasf/protocolbuffers/go v1.36.11-20260427075301-21bf512e44c9.1
 	buf.build/go/protovalidate v1.2.0
 	github.com/agntcy/dir/api v1.3.0
+	github.com/agntcy/dir/config v1.3.0
 	github.com/agntcy/dir/utils v1.3.0
 	github.com/agntcy/oasf-sdk/pkg v1.0.5
 	github.com/casbin/casbin/v2 v2.135.0

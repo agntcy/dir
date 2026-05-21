@@ -7,14 +7,14 @@ import (
 	"fmt"
 	"net/http"
 
-	ociconfig "github.com/agntcy/dir/server/store/oci/config"
+	"github.com/agntcy/dir/config"
 	"oras.land/oras-go/v2/registry/remote"
 	"oras.land/oras-go/v2/registry/remote/auth"
 	"oras.land/oras-go/v2/registry/remote/retry"
 )
 
 // NewORASRepository creates a new ORAS repository client configured with authentication.
-func NewORASRepository(cfg ociconfig.Config) (*remote.Repository, error) {
+func NewORASRepository(cfg config.Registry) (*remote.Repository, error) {
 	repo, err := remote.NewRepository(fmt.Sprintf("%s/%s", cfg.RegistryAddress, cfg.RepositoryName))
 	if err != nil {
 		return nil, fmt.Errorf("failed to connect to remote repo: %w", err)

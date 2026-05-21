@@ -1,7 +1,10 @@
 // Copyright AGNTCY Contributors (https://github.com/agntcy)
 // SPDX-License-Identifier: Apache-2.0
 
-// Package config handles configuration loading for the reconciler service.
+// Package config handles configuration loading for the reconciler
+// service. The actual schema (Database, Registry, task settings) lives
+// in github.com/agntcy/dir/config; this package only wires viper for
+// the standalone reconciler binary.
 package config
 
 import (
@@ -9,19 +12,16 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/agntcy/dir/reconciler/tasks/indexer"
-	"github.com/agntcy/dir/reconciler/tasks/name"
-	"github.com/agntcy/dir/reconciler/tasks/regsync"
-	"github.com/agntcy/dir/reconciler/tasks/signature"
-	dbconfig "github.com/agntcy/dir/server/database/config"
-	namingconfig "github.com/agntcy/dir/server/naming/config"
-	ociconfig "github.com/agntcy/dir/server/store/oci/config"
+	dircfg "github.com/agntcy/dir/config"
+	namingcfg "github.com/agntcy/dir/config/naming"
+	reconcilercfg "github.com/agntcy/dir/config/reconciler"
 	"github.com/agntcy/dir/utils/logging"
 	"github.com/spf13/viper"
 )
 
 const (
-	// DefaultEnvPrefix is the environment variable prefix.
+	// DefaultEnvPrefix is the environment variable prefix for the
+	// standalone reconciler binary.
 	DefaultEnvPrefix = "RECONCILER"
 
 	// DefaultConfigName is the default configuration file name.
@@ -36,28 +36,34 @@ const (
 
 var logger = logging.Logger("reconciler/config")
 
-// Config holds the reconciler configuration.
+// Config holds the reconciler configuration. Each field aliases the
+// canonical type from github.com/agntcy/dir/config so that the
+// reconciler binary and the in-process daemon both ingest the same
+// schema.
 type Config struct {
-	// Database holds PostgreSQL connection configuration.
-	Database dbconfig.Config `json:"database" mapstructure:"database"`
+	// Database holds the shared state-store configuration.
+	Database dircfg.Database `json:"database" mapstructure:"database"`
 
-	// LocalRegistry holds configuration for the local OCI registry.
-	LocalRegistry ociconfig.Config `json:"local_registry" mapstructure:"local_registry"`
+	// LocalRegistry holds the OCI registry both apiserver and
+	// reconciler read from. Named "local_registry" for backwards
+	// compatibility with existing reconciler.config.yml; the canonical
+	// Config exposes it as "registry".
+	LocalRegistry dircfg.Registry `json:"local_registry" mapstructure:"local_registry"`
 
 	// SchemaURL is the OASF schema URL for record validation.
 	SchemaURL string `json:"schema_url" mapstructure:"schema_url"`
 
 	// Regsync holds the regsync task configuration.
-	Regsync regsync.Config `json:"regsync" mapstructure:"regsync"`
+	Regsync reconcilercfg.Regsync `json:"regsync" mapstructure:"regsync"`
 
 	// Indexer holds the indexer task configuration.
-	Indexer indexer.Config `json:"indexer" mapstructure:"indexer"`
+	Indexer reconcilercfg.Indexer `json:"indexer" mapstructure:"indexer"`
 
-	// Name holds the name (name/DNS verification) task configuration.
-	Name name.Config `json:"name" mapstructure:"name"`
+	// Name holds the name (DNS / well-known) verification task configuration.
+	Name reconcilercfg.Name `json:"name" mapstructure:"name"`
 
 	// Signature holds the signature verification task configuration.
-	Signature signature.Config `json:"signature" mapstructure:"signature"`
+	Signature reconcilercfg.Signature `json:"signature" mapstructure:"signature"`
 }
 
 // LoadConfig loads the configuration from file and environment variables.
@@ -75,66 +81,55 @@ func LoadConfig() (*Config, error) {
 	v.AllowEmptyEnv(true)
 	v.AutomaticEnv()
 
-	// Read the config file
 	if err := v.ReadInConfig(); err != nil {
-		fileNotFoundError := viper.ConfigFileNotFoundError{}
-		if errors.As(err, &fileNotFoundError) {
+		var notFound viper.ConfigFileNotFoundError
+		if errors.As(err, &notFound) {
 			logger.Info("Config file not found, using defaults")
 		} else {
 			return nil, fmt.Errorf("failed to read configuration file: %w", err)
 		}
 	}
 
-	//
-	// Database configuration
-	//
+	// Database configuration.
 	_ = v.BindEnv("database.type")
-	v.SetDefault("database.type", dbconfig.DefaultType)
+	v.SetDefault("database.type", dircfg.DefaultDatabaseType)
 
-	// SQLite configuration
 	_ = v.BindEnv("database.sqlite.path")
-	v.SetDefault("database.sqlite.path", dbconfig.DefaultSQLitePath)
+	v.SetDefault("database.sqlite.path", dircfg.DefaultSQLitePath)
 
-	// PostgreSQL configuration
 	_ = v.BindEnv("database.postgres.host")
-	v.SetDefault("database.postgres.host", dbconfig.DefaultPostgresHost)
+	v.SetDefault("database.postgres.host", dircfg.DefaultPostgresHost)
 
 	_ = v.BindEnv("database.postgres.port")
-	v.SetDefault("database.postgres.port", dbconfig.DefaultPostgresPort)
+	v.SetDefault("database.postgres.port", dircfg.DefaultPostgresPort)
 
 	_ = v.BindEnv("database.postgres.database")
-	v.SetDefault("database.postgres.database", dbconfig.DefaultPostgresDatabase)
+	v.SetDefault("database.postgres.database", dircfg.DefaultPostgresDatabase)
 
 	_ = v.BindEnv("database.postgres.username")
 	_ = v.BindEnv("database.postgres.password")
 
 	_ = v.BindEnv("database.postgres.ssl_mode")
-	v.SetDefault("database.postgres.ssl_mode", dbconfig.DefaultPostgresSSLMode)
+	v.SetDefault("database.postgres.ssl_mode", dircfg.DefaultPostgresSSLMode)
 
-	//
-	// Local registry configuration (shared by all tasks)
-	//
+	// Local registry configuration (shared by all tasks).
 	_ = v.BindEnv("local_registry.registry_address")
 	_ = v.BindEnv("local_registry.repository_name")
 	_ = v.BindEnv("local_registry.auth_config.username")
 	_ = v.BindEnv("local_registry.auth_config.password")
 	_ = v.BindEnv("local_registry.auth_config.insecure")
 
-	//
-	// Regsync task configuration
-	//
+	// Regsync task configuration.
 	_ = v.BindEnv("regsync.enabled")
 	v.SetDefault("regsync.enabled", true)
 
 	_ = v.BindEnv("regsync.interval")
-	v.SetDefault("regsync.interval", regsync.DefaultInterval)
+	v.SetDefault("regsync.interval", reconcilercfg.DefaultRegsyncInterval)
 
 	_ = v.BindEnv("regsync.timeout")
-	v.SetDefault("regsync.timeout", regsync.DefaultTimeout)
+	v.SetDefault("regsync.timeout", reconcilercfg.DefaultRegsyncTimeout)
 
-	//
-	// Authentication configuration for registry credentials provider
-	//
+	// Authentication for the registry credentials provider.
 	_ = v.BindEnv("regsync.authn.enabled")
 	v.SetDefault("regsync.authn.enabled", false)
 
@@ -144,55 +139,46 @@ func LoadConfig() (*Config, error) {
 	_ = v.BindEnv("regsync.authn.socket_path")
 	_ = v.BindEnv("regsync.authn.audiences")
 
-	//
-	// Indexer task configuration
-	//
+	// Indexer task configuration.
 	_ = v.BindEnv("indexer.enabled")
 	v.SetDefault("indexer.enabled", true)
 
 	_ = v.BindEnv("indexer.interval")
-	v.SetDefault("indexer.interval", indexer.DefaultInterval)
+	v.SetDefault("indexer.interval", reconcilercfg.DefaultIndexerInterval)
 
-	//
-	// Name task configuration (name/DNS verification)
-	//
+	// Name task configuration (DNS / well-known verification).
 	_ = v.BindEnv("name.enabled")
 	v.SetDefault("name.enabled", false)
 
 	_ = v.BindEnv("name.interval")
-	v.SetDefault("name.interval", name.DefaultInterval)
+	v.SetDefault("name.interval", reconcilercfg.DefaultNameInterval)
 
 	_ = v.BindEnv("name.ttl")
-	v.SetDefault("name.ttl", namingconfig.DefaultTTL)
+	v.SetDefault("name.ttl", namingcfg.DefaultTTL)
 
 	_ = v.BindEnv("name.record_timeout")
-	v.SetDefault("name.record_timeout", name.DefaultRecordTimeout)
+	v.SetDefault("name.record_timeout", reconcilercfg.DefaultNameRecordTimeout)
 
-	//
-	// Signature task configuration (signature verification cache)
-	//
+	// Signature task configuration.
 	_ = v.BindEnv("signature.enabled")
 	v.SetDefault("signature.enabled", true)
 
 	_ = v.BindEnv("signature.interval")
-	v.SetDefault("signature.interval", signature.DefaultInterval)
+	v.SetDefault("signature.interval", reconcilercfg.DefaultSignatureInterval)
 
 	_ = v.BindEnv("signature.ttl")
-	v.SetDefault("signature.ttl", signature.DefaultTTL)
+	v.SetDefault("signature.ttl", reconcilercfg.DefaultSignatureTTL)
 
 	_ = v.BindEnv("signature.record_timeout")
-	v.SetDefault("signature.record_timeout", signature.DefaultRecordTimeout)
+	v.SetDefault("signature.record_timeout", reconcilercfg.DefaultSignatureRecordTimeout)
 
-	//
-	// OASF validation configuration
-	//
+	// OASF validation configuration.
 	_ = v.BindEnv("schema_url")
 
-	// Unmarshal into config struct
-	config := &Config{}
-	if err := v.Unmarshal(config); err != nil {
+	cfg := &Config{}
+	if err := v.Unmarshal(cfg); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal configuration: %w", err)
 	}
 
-	return config, nil
+	return cfg, nil
 }

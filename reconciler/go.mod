@@ -6,6 +6,7 @@ go 1.26.3
 replace (
 	github.com/agntcy/dir/api => ../api
 	github.com/agntcy/dir/client => ../client
+	github.com/agntcy/dir/config => ../config
 	github.com/agntcy/dir/server => ../server
 	github.com/agntcy/dir/utils => ../utils
 )
@@ -16,6 +17,7 @@ replace github.com/ThalesIgnite/crypto11 => github.com/ThalesGroup/crypto11 v1.6
 require (
 	github.com/agntcy/dir/api v1.3.0
 	github.com/agntcy/dir/client v1.3.0
+	github.com/agntcy/dir/config v1.3.0
 	github.com/agntcy/dir/server v1.3.0
 	github.com/agntcy/dir/utils v1.3.0
 	github.com/agntcy/oasf-sdk/pkg v1.0.5

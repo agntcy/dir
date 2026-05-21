@@ -6,13 +6,13 @@ package ratelimit
 import (
 	"testing"
 
-	"github.com/agntcy/dir/server/middleware/ratelimit/config"
+	"github.com/agntcy/dir/config"
 )
 
 // TestServerOptions_ValidConfiguration tests that ServerOptions correctly
 // creates interceptors with a valid configuration.
 func TestServerOptions_ValidConfiguration(t *testing.T) {
-	cfg := &config.Config{
+	cfg := &config.RateLimit{
 		Enabled:        true,
 		GlobalRPS:      100.0,
 		GlobalBurst:    200,
@@ -39,7 +39,7 @@ func TestServerOptions_ValidConfiguration(t *testing.T) {
 // TestServerOptions_DisabledConfiguration tests that ServerOptions works
 // correctly when rate limiting is disabled.
 func TestServerOptions_DisabledConfiguration(t *testing.T) {
-	cfg := &config.Config{
+	cfg := &config.RateLimit{
 		Enabled:        false,
 		GlobalRPS:      100.0,
 		GlobalBurst:    200,
@@ -66,7 +66,7 @@ func TestServerOptions_DisabledConfiguration(t *testing.T) {
 // TestServerOptions_InvalidConfiguration tests that ServerOptions returns
 // an error with invalid configuration.
 func TestServerOptions_InvalidConfiguration(t *testing.T) {
-	cfg := &config.Config{
+	cfg := &config.RateLimit{
 		Enabled:        true,
 		GlobalRPS:      -10.0, // Invalid: negative
 		GlobalBurst:    200,
@@ -100,7 +100,7 @@ func TestServerOptions_NilConfiguration(t *testing.T) {
 // TestServerOptions_WithMethodLimits tests that ServerOptions correctly
 // handles configuration with method-specific limits.
 func TestServerOptions_WithMethodLimits(t *testing.T) {
-	cfg := &config.Config{
+	cfg := &config.RateLimit{
 		Enabled:        true,
 		GlobalRPS:      100.0,
 		GlobalBurst:    200,

@@ -7,7 +7,7 @@ import (
 	_ "embed"
 	"fmt"
 
-	"github.com/agntcy/dir/server/authz/config"
+	"github.com/agntcy/dir/config/auth"
 	"github.com/casbin/casbin/v2"
 	"github.com/casbin/casbin/v2/model"
 	fileadapter "github.com/casbin/casbin/v2/persist/file-adapter"
@@ -23,7 +23,7 @@ type Authorizer struct {
 }
 
 // New creates a new Casbin-based Authorizer.
-func NewAuthorizer(cfg config.Config) (*Authorizer, error) {
+func NewAuthorizer(cfg auth.Authz) (*Authorizer, error) {
 	// Create model from string
 	model, err := model.NewModelFromString(modelConf)
 	if err != nil {

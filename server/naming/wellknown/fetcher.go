@@ -11,8 +11,8 @@ import (
 	"net/http"
 	"time"
 
+	namingcfg "github.com/agntcy/dir/config/naming"
 	"github.com/agntcy/dir/server/naming"
-	"github.com/agntcy/dir/server/naming/wellknown/config"
 	"github.com/agntcy/dir/utils/logging"
 	"github.com/lestrrat-go/jwx/v2/jwk"
 )
@@ -51,7 +51,7 @@ func WithTimeout(timeout time.Duration) Option {
 // NewFetcher creates a new well-known file fetcher with the given options.
 func NewFetcher(opts ...Option) *Fetcher {
 	f := &Fetcher{
-		timeout: config.DefaultTimeout,
+		timeout: namingcfg.DefaultWellKnownTimeout,
 	}
 
 	for _, opt := range opts {
@@ -69,9 +69,9 @@ func NewFetcher(opts ...Option) *Fetcher {
 }
 
 // NewFetcherFromConfig creates a new well-known fetcher from configuration.
-func NewFetcherFromConfig(cfg *config.Config) *Fetcher {
+func NewFetcherFromConfig(cfg *namingcfg.WellKnown) *Fetcher {
 	if cfg == nil {
-		cfg = config.DefaultConfig()
+		cfg = namingcfg.DefaultWellKnown()
 	}
 
 	return NewFetcher(

@@ -7,7 +7,8 @@ import (
 	"errors"
 	"testing"
 
-	ociconfig "github.com/agntcy/dir/server/store/oci/config"
+	"github.com/agntcy/dir/config"
+	reconcilercfg "github.com/agntcy/dir/config/reconciler"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -37,7 +38,7 @@ func TestCreateContentHash_OrderMatters(t *testing.T) {
 }
 
 func TestDetectNewTags(t *testing.T) {
-	task, _ := NewTask(Config{}, ociconfig.Config{}, nil, nil, nil, nil)
+	task, _ := NewTask(reconcilercfg.Indexer{}, config.Registry{}, nil, nil, nil, nil)
 
 	tests := []struct {
 		name        string

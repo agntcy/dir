@@ -1,61 +1,62 @@
 // Copyright AGNTCY Contributors (https://github.com/agntcy)
 // SPDX-License-Identifier: Apache-2.0
 
-package signature
+package signature_test
 
 import (
 	"testing"
 	"time"
 
+	"github.com/agntcy/dir/config/reconciler"
 	"github.com/stretchr/testify/assert"
 )
 
-func TestConfig_GetInterval(t *testing.T) {
+func TestSignature_GetInterval(t *testing.T) {
 	tests := []struct {
 		name     string
 		interval time.Duration
 		want     time.Duration
 	}{
-		{"zero uses default", 0, DefaultInterval},
+		{"zero uses default", 0, reconciler.DefaultSignatureInterval},
 		{"custom interval", 2 * time.Minute, 2 * time.Minute},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			c := &Config{Interval: tt.interval}
+			c := &reconciler.Signature{Interval: tt.interval}
 			assert.Equal(t, tt.want, c.GetInterval())
 		})
 	}
 }
 
-func TestConfig_GetTTL(t *testing.T) {
+func TestSignature_GetTTL(t *testing.T) {
 	tests := []struct {
 		name string
 		ttl  time.Duration
 		want time.Duration
 	}{
-		{"zero uses default", 0, DefaultTTL},
+		{"zero uses default", 0, reconciler.DefaultSignatureTTL},
 		{"custom TTL", 24 * time.Hour, 24 * time.Hour},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			c := &Config{TTL: tt.ttl}
+			c := &reconciler.Signature{TTL: tt.ttl}
 			assert.Equal(t, tt.want, c.GetTTL())
 		})
 	}
 }
 
-func TestConfig_GetRecordTimeout(t *testing.T) {
+func TestSignature_GetRecordTimeout(t *testing.T) {
 	tests := []struct {
 		name          string
 		recordTimeout time.Duration
 		want          time.Duration
 	}{
-		{"zero uses default", 0, DefaultRecordTimeout},
+		{"zero uses default", 0, reconciler.DefaultSignatureRecordTimeout},
 		{"custom record timeout", 10 * time.Second, 10 * time.Second},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			c := &Config{RecordTimeout: tt.recordTimeout}
+			c := &reconciler.Signature{RecordTimeout: tt.recordTimeout}
 			assert.Equal(t, tt.want, c.GetRecordTimeout())
 		})
 	}

@@ -15,6 +15,7 @@ import (
 	signv1 "github.com/agntcy/dir/api/sign/v1"
 	storev1 "github.com/agntcy/dir/api/store/v1"
 	"github.com/agntcy/dir/client/utils/verify"
+	"github.com/agntcy/dir/config/reconciler"
 	"github.com/agntcy/dir/server/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -22,7 +23,7 @@ import (
 
 func TestTask_Name_Interval_IsEnabled(t *testing.T) {
 	task, err := NewTask(
-		Config{Enabled: true, Interval: 2 * time.Minute},
+		reconciler.Signature{Enabled: true, Interval: 2 * time.Minute},
 		nil,
 		nil,
 	)
@@ -36,7 +37,7 @@ func TestTask_Name_Interval_IsEnabled(t *testing.T) {
 
 func TestTask_IsEnabled_False(t *testing.T) {
 	task, err := NewTask(
-		Config{Enabled: false, Interval: time.Minute},
+		reconciler.Signature{Enabled: false, Interval: time.Minute},
 		nil,
 		nil,
 	)
@@ -46,22 +47,22 @@ func TestTask_IsEnabled_False(t *testing.T) {
 
 func TestTask_Interval_Zero_UsesDefault(t *testing.T) {
 	task, err := NewTask(
-		Config{Enabled: true, Interval: 0},
+		reconciler.Signature{Enabled: true, Interval: 0},
 		nil,
 		nil,
 	)
 	require.NoError(t, err)
-	assert.Equal(t, DefaultInterval, task.Interval())
+	assert.Equal(t, reconciler.DefaultSignatureInterval, task.Interval())
 }
 
 func TestTask_GetRecordTimeout_Zero_UsesDefault(t *testing.T) {
 	task, err := NewTask(
-		Config{RecordTimeout: 0},
+		reconciler.Signature{RecordTimeout: 0},
 		nil,
 		nil,
 	)
 	require.NoError(t, err)
-	assert.Equal(t, DefaultRecordTimeout, task.config.GetRecordTimeout())
+	assert.Equal(t, reconciler.DefaultSignatureRecordTimeout, task.config.GetRecordTimeout())
 }
 
 func TestTask_Run_NoRecords_ReturnsNil(t *testing.T) {
@@ -70,7 +71,7 @@ func TestTask_Run_NoRecords_ReturnsNil(t *testing.T) {
 			return nil, nil
 		},
 	}
-	task, err := NewTask(Config{Enabled: true}, db, nil)
+	task, err := NewTask(reconciler.Signature{Enabled: true}, db, nil)
 	require.NoError(t, err)
 
 	err = task.Run(context.Background())
@@ -84,7 +85,7 @@ func TestTask_Run_DBError_ReturnsError(t *testing.T) {
 			return nil, wantErr
 		},
 	}
-	task, err := NewTask(Config{Enabled: true}, db, nil)
+	task, err := NewTask(reconciler.Signature{Enabled: true}, db, nil)
 	require.NoError(t, err)
 
 	err = task.Run(context.Background())
@@ -113,7 +114,7 @@ func TestTask_Run_WithOneRecord_NoSignatures_NoUpsert(t *testing.T) {
 			return nil, nil
 		},
 	}
-	task, err := NewTask(Config{Enabled: true, RecordTimeout: time.Second}, db, fakeFetcher)
+	task, err := NewTask(reconciler.Signature{Enabled: true, RecordTimeout: time.Second}, db, fakeFetcher)
 	require.NoError(t, err)
 
 	err = task.Run(context.Background())
@@ -137,7 +138,7 @@ func TestTask_Run_WithOneRecord_VerifyError_Continues(t *testing.T) {
 			return nil, nil
 		},
 	}
-	task, err := NewTask(Config{Enabled: true, RecordTimeout: time.Second}, db, fakeFetcher)
+	task, err := NewTask(reconciler.Signature{Enabled: true, RecordTimeout: time.Second}, db, fakeFetcher)
 	require.NoError(t, err)
 
 	err = task.Run(context.Background())

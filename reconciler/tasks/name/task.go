@@ -15,6 +15,7 @@ import (
 
 	corev1 "github.com/agntcy/dir/api/core/v1"
 	signv1 "github.com/agntcy/dir/api/sign/v1"
+	"github.com/agntcy/dir/config/reconciler"
 	gormdb "github.com/agntcy/dir/server/database/gorm"
 	namingprovider "github.com/agntcy/dir/server/naming"
 	"github.com/agntcy/dir/server/types"
@@ -26,16 +27,16 @@ var logger = logging.Logger("reconciler/name")
 
 // Task implements the name reconciler task (name/DNS ownership verification).
 type Task struct {
-	config   Config
+	config   reconciler.Name
 	db       types.DatabaseAPI
 	store    types.StoreAPI
 	provider *namingprovider.Provider
 }
 
 // NewTask creates a new name reconciliation task.
-func NewTask(config Config, db types.DatabaseAPI, store types.StoreAPI, provider *namingprovider.Provider) (*Task, error) {
+func NewTask(cfg reconciler.Name, db types.DatabaseAPI, store types.StoreAPI, provider *namingprovider.Provider) (*Task, error) {
 	return &Task{
-		config:   config,
+		config:   cfg,
 		db:       db,
 		store:    store,
 		provider: provider,

@@ -1,17 +1,18 @@
 // Copyright AGNTCY Contributors (https://github.com/agntcy)
 // SPDX-License-Identifier: Apache-2.0
 
-package config
+package config_test
 
 import (
 	"testing"
 
+	"github.com/agntcy/dir/config"
 	"github.com/stretchr/testify/require"
 )
 
 func TestGetRegistryAddressUsesDefaultRegistryPort(t *testing.T) {
-	address, err := Config{
-		AuthConfig: AuthConfig{
+	address, err := config.Registry{
+		RegistryAuth: config.RegistryAuth{
 			Insecure: true,
 		},
 	}.GetRegistryAddress()

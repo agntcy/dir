@@ -4,7 +4,7 @@
 package events
 
 import (
-	"github.com/agntcy/dir/server/events/config"
+	"github.com/agntcy/dir/config"
 )
 
 // Service manages the event streaming system lifecycle.
@@ -12,7 +12,7 @@ import (
 // for other services to publish events.
 type Service struct {
 	bus    *EventBus
-	config config.Config
+	config config.Events
 }
 
 // New creates a new event service with default configuration.
@@ -27,7 +27,7 @@ type Service struct {
 //	bus := eventService.Bus()
 //	bus.RecordPushed("bafyxxx", labels)
 func New() *Service {
-	cfg := config.DefaultConfig()
+	cfg := config.DefaultEvents()
 
 	logger.Info("Initializing event service",
 		"subscriber_buffer_size", cfg.SubscriberBufferSize,
@@ -41,7 +41,7 @@ func New() *Service {
 }
 
 // NewWithConfig creates a new event service with custom configuration.
-func NewWithConfig(cfg config.Config) *Service {
+func NewWithConfig(cfg config.Events) *Service {
 	logger.Info("Initializing event service with custom config",
 		"subscriber_buffer_size", cfg.SubscriberBufferSize,
 		"log_slow_consumers", cfg.LogSlowConsumers,

@@ -4,7 +4,7 @@
 package ratelimit
 
 import (
-	"github.com/agntcy/dir/server/middleware/ratelimit/config"
+	"github.com/agntcy/dir/config"
 	grpc_ratelimit "github.com/grpc-ecosystem/go-grpc-middleware/v2/interceptors/ratelimit"
 	"google.golang.org/grpc"
 )
@@ -39,7 +39,7 @@ import (
 //	// Logging and auth interceptors after rate limiting
 //	serverOpts = append(serverOpts, logging.ServerOptions(...)...)
 //	serverOpts = append(serverOpts, authn.GetServerOptions()...)
-func ServerOptions(cfg *config.Config) ([]grpc.ServerOption, error) {
+func ServerOptions(cfg *config.RateLimit) ([]grpc.ServerOption, error) {
 	// Create the client limiter that implements go-grpc-middleware/v2 Limiter interface
 	limiter, err := NewClientLimiter(cfg)
 	if err != nil {

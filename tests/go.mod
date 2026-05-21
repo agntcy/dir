@@ -7,6 +7,7 @@ replace (
 	github.com/agntcy/dir/api => ../api
 	github.com/agntcy/dir/cli => ../cli
 	github.com/agntcy/dir/client => ../client
+	github.com/agntcy/dir/config => ../config
 	github.com/agntcy/dir/reconciler => ../reconciler
 	github.com/agntcy/dir/server => ../server
 	github.com/agntcy/dir/utils => ../utils
@@ -30,7 +31,10 @@ require (
 	google.golang.org/protobuf v1.36.12-0.20260120151049-f2248ac996af
 )
 
-require github.com/mitchellh/mapstructure v1.5.1-0.20231216201459-8508981c8b6c // indirect
+require (
+	github.com/agntcy/dir/config v1.3.0 // indirect
+	github.com/mitchellh/mapstructure v1.5.1-0.20231216201459-8508981c8b6c // indirect
+)
 
 require (
 	buf.build/gen/go/agntcy/oasf-sdk/protocolbuffers/go v1.36.11-20260427074745-7826cb0d66b9.1 // indirect

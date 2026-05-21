@@ -8,15 +8,23 @@ import (
 	"path/filepath"
 )
 
+// Database type defaults.
 const (
-	// DefaultType is the default database type if not specified in the config.
-	DefaultType = "postgres"
+	// DefaultDatabaseType is the default database driver if not set in
+	// configuration.
+	DefaultDatabaseType = "postgres"
 
-	// PostgreSQL defaults.
-	DefaultPostgresHost     = "localhost"
-	DefaultPostgresPort     = 5432
+	// DefaultPostgresHost is the default PostgreSQL host.
+	DefaultPostgresHost = "localhost"
+
+	// DefaultPostgresPort is the default PostgreSQL port.
+	DefaultPostgresPort = 5432
+
+	// DefaultPostgresDatabase is the default PostgreSQL database name.
 	DefaultPostgresDatabase = "dir"
-	DefaultPostgresSSLMode  = "disable"
+
+	// DefaultPostgresSSLMode is the default PostgreSQL SSL mode.
+	DefaultPostgresSSLMode = "disable"
 )
 
 // DefaultDataDir is the persistent data directory (~/.dir).
@@ -35,7 +43,8 @@ func GetDataDir() string {
 	return homeDir
 }
 
-// EnsureFilePath creates parent directories for path and returns its absolute form.
+// EnsureFilePath creates parent directories for path and returns its
+// absolute form.
 func EnsureFilePath(path string) string {
 	if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil { //nolint:mnd
 		panic(err)
@@ -49,23 +58,27 @@ func EnsureFilePath(path string) string {
 	return absPath
 }
 
-type Config struct {
-	// Type is the type of the database (sqlite or postgres).
+// Database holds connection configuration for the shared state store.
+// Both the apiserver and the reconciler point at the same Database.
+type Database struct {
+	// Type is the database driver ("sqlite" or "postgres").
 	Type string `json:"type,omitempty" mapstructure:"type"`
 
-	// SQLite database configuration.
-	SQLite SQLiteConfig `json:"sqlite" mapstructure:"sqlite"`
+	// SQLite holds SQLite-specific configuration.
+	SQLite SQLite `json:"sqlite" mapstructure:"sqlite"`
 
-	// PostgreSQL database configuration.
-	Postgres PostgresConfig `json:"postgres" mapstructure:"postgres"`
+	// Postgres holds PostgreSQL-specific configuration.
+	Postgres Postgres `json:"postgres" mapstructure:"postgres"`
 }
 
-type SQLiteConfig struct {
+// SQLite holds SQLite-specific database configuration.
+type SQLite struct {
 	// Path is the filesystem path to the SQLite database file.
 	Path string `json:"path,omitempty" mapstructure:"path"`
 }
 
-type PostgresConfig struct {
+// Postgres holds PostgreSQL-specific database configuration.
+type Postgres struct {
 	// Host is the PostgreSQL server hostname.
 	Host string `json:"host,omitempty" mapstructure:"host"`
 
@@ -82,6 +95,6 @@ type PostgresConfig struct {
 	//nolint:gosec // G117: intentional config field for database auth
 	Password string `json:"password,omitempty" mapstructure:"password"`
 
-	// SSLMode indicates the SSL mode for the connection.
+	// SSLMode is the SSL mode for the connection.
 	SSLMode string `json:"ssl_mode,omitempty" mapstructure:"ssl_mode"`
 }

@@ -8,7 +8,7 @@ import (
 	"time"
 
 	eventsv1 "github.com/agntcy/dir/api/events/v1"
-	"github.com/agntcy/dir/server/events/config"
+	"github.com/agntcy/dir/config"
 )
 
 func TestEventBusPublishSubscribe(t *testing.T) {
@@ -155,7 +155,7 @@ func TestEventBusUnsubscribe(t *testing.T) {
 
 func TestEventBusSlowConsumer(t *testing.T) {
 	// Create bus with small buffer
-	cfg := config.DefaultConfig()
+	cfg := config.DefaultEvents()
 	cfg.SubscriberBufferSize = 2
 	cfg.LogSlowConsumers = false // Disable logging for cleaner test output
 	bus := NewEventBusWithConfig(cfg)

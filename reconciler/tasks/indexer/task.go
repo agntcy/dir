@@ -16,7 +16,8 @@ import (
 	"time"
 
 	corev1 "github.com/agntcy/dir/api/core/v1"
-	ociconfig "github.com/agntcy/dir/server/store/oci/config"
+	"github.com/agntcy/dir/config"
+	reconcilercfg "github.com/agntcy/dir/config/reconciler"
 	"github.com/agntcy/dir/server/types"
 	"github.com/agntcy/dir/server/types/adapters"
 	"github.com/agntcy/dir/utils/logging"
@@ -28,10 +29,10 @@ var logger = logging.Logger("reconciler/indexer")
 // Task implements the indexer reconciliation task.
 // It scans the local OCI registry for unindexed records and adds them to the database.
 type Task struct {
-	config    Config
+	config    reconcilercfg.Indexer
 	db        types.SearchDatabaseAPI
 	store     types.StoreAPI
-	ociConfig ociconfig.Config
+	ociConfig config.Registry
 	repo      registry.TagLister
 	validator corev1.Validator
 
@@ -53,9 +54,9 @@ var emptySnapshot = &registrySnapshot{
 }
 
 // NewTask creates a new indexer reconciliation task.
-func NewTask(config Config, localRegistry ociconfig.Config, store types.StoreAPI, repo registry.TagLister, db types.SearchDatabaseAPI, validator corev1.Validator) (*Task, error) {
+func NewTask(cfg reconcilercfg.Indexer, localRegistry config.Registry, store types.StoreAPI, repo registry.TagLister, db types.SearchDatabaseAPI, validator corev1.Validator) (*Task, error) {
 	return &Task{
-		config:       config,
+		config:       cfg,
 		db:           db,
 		store:        store,
 		ociConfig:    localRegistry,

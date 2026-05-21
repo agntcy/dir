@@ -14,7 +14,7 @@ import (
 
 	typesv1alpha1 "buf.build/gen/go/agntcy/oasf/protocolbuffers/go/agntcy/oasf/types/v1alpha1"
 	corev1 "github.com/agntcy/dir/api/core/v1"
-	ociconfig "github.com/agntcy/dir/server/store/oci/config"
+	"github.com/agntcy/dir/config"
 	"github.com/agntcy/dir/server/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -28,10 +28,10 @@ const (
 )
 
 // Integration test configuration.
-var integrationConfig = ociconfig.Config{
+var integrationConfig = config.Registry{
 	RegistryAddress: integrationRegistryAddress,
 	RepositoryName:  integrationRepositoryName,
-	AuthConfig: ociconfig.AuthConfig{
+	RegistryAuth: config.RegistryAuth{
 		Insecure: true, // Required for local zot registry
 	},
 }

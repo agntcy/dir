@@ -8,7 +8,7 @@ import (
 	"sync"
 
 	eventsv1 "github.com/agntcy/dir/api/events/v1"
-	"github.com/agntcy/dir/server/events/config"
+	"github.com/agntcy/dir/config"
 	"github.com/agntcy/dir/utils/logging"
 	"github.com/google/uuid"
 )
@@ -28,18 +28,18 @@ type Subscription struct {
 type EventBus struct {
 	mu          sync.RWMutex
 	subscribers map[string]*Subscription
-	config      config.Config
+	config      config.Events
 	metrics     Metrics
 	wg          sync.WaitGroup // Tracks in-flight publishAsync goroutines
 }
 
 // NewEventBus creates a new event bus with default configuration.
 func NewEventBus() *EventBus {
-	return NewEventBusWithConfig(config.DefaultConfig())
+	return NewEventBusWithConfig(config.DefaultEvents())
 }
 
 // NewEventBusWithConfig creates a new event bus with custom configuration.
-func NewEventBusWithConfig(cfg config.Config) *EventBus {
+func NewEventBusWithConfig(cfg config.Events) *EventBus {
 	return &EventBus{
 		subscribers: make(map[string]*Subscription),
 		config:      cfg,

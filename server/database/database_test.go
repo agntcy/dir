@@ -6,7 +6,7 @@ package database
 import (
 	"testing"
 
-	dbconfig "github.com/agntcy/dir/server/database/config"
+	"github.com/agntcy/dir/config"
 	gormdb "github.com/agntcy/dir/server/database/gorm"
 	"github.com/agntcy/dir/server/types"
 	"github.com/stretchr/testify/assert"
@@ -82,7 +82,7 @@ func (d *testDomain) GetAnnotations() map[string]string { return nil }
 func setupTestDB(t *testing.T) *gormdb.DB {
 	t.Helper()
 
-	db, err := newSQLite(dbconfig.SQLiteConfig{Path: "file::memory:"})
+	db, err := newSQLite(config.SQLite{Path: "file::memory:"})
 	require.NoError(t, err)
 
 	return db
@@ -173,9 +173,9 @@ func seedDB(t *testing.T, db *gormdb.DB) {
 }
 
 func TestNewSQLite(t *testing.T) {
-	cfg := dbconfig.Config{
+	cfg := config.Database{
 		Type:   "sqlite",
-		SQLite: dbconfig.SQLiteConfig{Path: "file::memory:"},
+		SQLite: config.SQLite{Path: "file::memory:"},
 	}
 
 	db, err := New(cfg)

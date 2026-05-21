@@ -1,38 +1,40 @@
 // Copyright AGNTCY Contributors (https://github.com/agntcy)
 // SPDX-License-Identifier: Apache-2.0
 
-package config
+package config_test
 
 import (
+	"strings"
 	"testing"
+
+	"github.com/agntcy/dir/config"
 )
 
-func TestDefaultConfig(t *testing.T) {
-	cfg := DefaultConfig()
+func TestDefaultRateLimit(t *testing.T) {
+	cfg := config.DefaultRateLimit()
 
 	if cfg == nil {
-		t.Fatal("DefaultConfig() returned nil")
+		t.Fatal("DefaultRateLimit() returned nil")
 	}
 
-	// Verify default values
 	if cfg.Enabled {
 		t.Error("Expected Enabled to be false by default")
 	}
 
-	if cfg.GlobalRPS != 100.0 {
-		t.Errorf("Expected GlobalRPS to be 100.0, got: %f", cfg.GlobalRPS)
+	if cfg.GlobalRPS != config.DefaultRateLimitGlobalRPS {
+		t.Errorf("Expected GlobalRPS to be %f, got: %f", config.DefaultRateLimitGlobalRPS, cfg.GlobalRPS)
 	}
 
-	if cfg.GlobalBurst != 200 {
-		t.Errorf("Expected GlobalBurst to be 200, got: %d", cfg.GlobalBurst)
+	if cfg.GlobalBurst != config.DefaultRateLimitGlobalBurst {
+		t.Errorf("Expected GlobalBurst to be %d, got: %d", config.DefaultRateLimitGlobalBurst, cfg.GlobalBurst)
 	}
 
-	if cfg.PerClientRPS != 1000.0 {
-		t.Errorf("Expected PerClientRPS to be 1000.0, got: %f", cfg.PerClientRPS)
+	if cfg.PerClientRPS != config.DefaultRateLimitPerClientRPS {
+		t.Errorf("Expected PerClientRPS to be %f, got: %f", config.DefaultRateLimitPerClientRPS, cfg.PerClientRPS)
 	}
 
-	if cfg.PerClientBurst != 1500 {
-		t.Errorf("Expected PerClientBurst to be 1500, got: %d", cfg.PerClientBurst)
+	if cfg.PerClientBurst != config.DefaultRateLimitPerClientBurst {
+		t.Errorf("Expected PerClientBurst to be %d, got: %d", config.DefaultRateLimitPerClientBurst, cfg.PerClientBurst)
 	}
 
 	if cfg.MethodLimits == nil {
@@ -44,32 +46,32 @@ func TestDefaultConfig(t *testing.T) {
 	}
 }
 
-// TestConfig_Validate_BasicCases tests basic validation behavior
+// TestRateLimit_Validate_BasicCases tests basic validation behavior
 // including disabled configurations and zero values.
-func TestConfig_Validate_BasicCases(t *testing.T) {
+func TestRateLimit_Validate_BasicCases(t *testing.T) {
 	tests := []struct {
 		name    string
-		config  Config
+		config  config.RateLimit
 		wantErr bool
 		errMsg  string
 	}{
 		{
 			name: "valid default configuration",
-			config: Config{
+			config: config.RateLimit{
 				Enabled:        true,
 				GlobalRPS:      100.0,
 				GlobalBurst:    200,
 				PerClientRPS:   1000.0,
 				PerClientBurst: 1500,
-				MethodLimits:   make(map[string]MethodLimit),
+				MethodLimits:   make(map[string]config.MethodLimit),
 			},
 			wantErr: false,
 		},
 		{
 			name: "disabled configuration should pass validation",
-			config: Config{
+			config: config.RateLimit{
 				Enabled:        false,
-				GlobalRPS:      -100.0, // Invalid, but should be ignored when disabled
+				GlobalRPS:      -100.0,
 				GlobalBurst:    -200,
 				PerClientRPS:   -1000.0,
 				PerClientBurst: -1500,
@@ -78,7 +80,7 @@ func TestConfig_Validate_BasicCases(t *testing.T) {
 		},
 		{
 			name: "zero values should be valid",
-			config: Config{
+			config: config.RateLimit{
 				Enabled:        true,
 				GlobalRPS:      0,
 				GlobalBurst:    0,
@@ -92,35 +94,22 @@ func TestConfig_Validate_BasicCases(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			err := tt.config.Validate()
-
-			if tt.wantErr {
-				if err == nil {
-					t.Errorf("Config.Validate() expected error but got none")
-
-					return
-				}
-
-				if tt.errMsg != "" && !contains(err.Error(), tt.errMsg) {
-					t.Errorf("Config.Validate() error = %q, want to contain %q", err.Error(), tt.errMsg)
-				}
-			} else if err != nil {
-				t.Errorf("Config.Validate() unexpected error: %v", err)
-			}
+			assertValidate(t, err, tt.wantErr, tt.errMsg)
 		})
 	}
 }
 
-// TestConfig_Validate_GlobalLimits tests validation of global rate limiting parameters.
-func TestConfig_Validate_GlobalLimits(t *testing.T) {
+// TestRateLimit_Validate_GlobalLimits tests validation of global rate limiting parameters.
+func TestRateLimit_Validate_GlobalLimits(t *testing.T) {
 	tests := []struct {
 		name    string
-		config  Config
+		config  config.RateLimit
 		wantErr bool
 		errMsg  string
 	}{
 		{
 			name: "negative global RPS should fail",
-			config: Config{
+			config: config.RateLimit{
 				Enabled:        true,
 				GlobalRPS:      -10.0,
 				GlobalBurst:    200,
@@ -132,7 +121,7 @@ func TestConfig_Validate_GlobalLimits(t *testing.T) {
 		},
 		{
 			name: "negative global burst should fail",
-			config: Config{
+			config: config.RateLimit{
 				Enabled:        true,
 				GlobalRPS:      100.0,
 				GlobalBurst:    -200,
@@ -144,10 +133,10 @@ func TestConfig_Validate_GlobalLimits(t *testing.T) {
 		},
 		{
 			name: "global burst less than RPS should fail",
-			config: Config{
+			config: config.RateLimit{
 				Enabled:        true,
 				GlobalRPS:      100.0,
-				GlobalBurst:    50, // Less than RPS
+				GlobalBurst:    50,
 				PerClientRPS:   1000.0,
 				PerClientBurst: 1500,
 			},
@@ -159,35 +148,22 @@ func TestConfig_Validate_GlobalLimits(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			err := tt.config.Validate()
-
-			if tt.wantErr {
-				if err == nil {
-					t.Errorf("Config.Validate() expected error but got none")
-
-					return
-				}
-
-				if tt.errMsg != "" && !contains(err.Error(), tt.errMsg) {
-					t.Errorf("Config.Validate() error = %q, want to contain %q", err.Error(), tt.errMsg)
-				}
-			} else if err != nil {
-				t.Errorf("Config.Validate() unexpected error: %v", err)
-			}
+			assertValidate(t, err, tt.wantErr, tt.errMsg)
 		})
 	}
 }
 
-// TestConfig_Validate_PerClientLimits tests validation of per-client rate limiting parameters.
-func TestConfig_Validate_PerClientLimits(t *testing.T) {
+// TestRateLimit_Validate_PerClientLimits tests validation of per-client rate limiting parameters.
+func TestRateLimit_Validate_PerClientLimits(t *testing.T) {
 	tests := []struct {
 		name    string
-		config  Config
+		config  config.RateLimit
 		wantErr bool
 		errMsg  string
 	}{
 		{
 			name: "negative per-client RPS should fail",
-			config: Config{
+			config: config.RateLimit{
 				Enabled:        true,
 				GlobalRPS:      100.0,
 				GlobalBurst:    200,
@@ -199,7 +175,7 @@ func TestConfig_Validate_PerClientLimits(t *testing.T) {
 		},
 		{
 			name: "negative per-client burst should fail",
-			config: Config{
+			config: config.RateLimit{
 				Enabled:        true,
 				GlobalRPS:      100.0,
 				GlobalBurst:    200,
@@ -211,12 +187,12 @@ func TestConfig_Validate_PerClientLimits(t *testing.T) {
 		},
 		{
 			name: "per-client burst less than RPS should fail",
-			config: Config{
+			config: config.RateLimit{
 				Enabled:        true,
 				GlobalRPS:      100.0,
 				GlobalBurst:    200,
 				PerClientRPS:   1000.0,
-				PerClientBurst: 500, // Less than RPS
+				PerClientBurst: 500,
 			},
 			wantErr: true,
 			errMsg:  "per_client_burst (500) should be >= per_client_rps (1000",
@@ -226,66 +202,44 @@ func TestConfig_Validate_PerClientLimits(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			err := tt.config.Validate()
-
-			if tt.wantErr {
-				if err == nil {
-					t.Errorf("Config.Validate() expected error but got none")
-
-					return
-				}
-
-				if tt.errMsg != "" && !contains(err.Error(), tt.errMsg) {
-					t.Errorf("Config.Validate() error = %q, want to contain %q", err.Error(), tt.errMsg)
-				}
-			} else if err != nil {
-				t.Errorf("Config.Validate() unexpected error: %v", err)
-			}
+			assertValidate(t, err, tt.wantErr, tt.errMsg)
 		})
 	}
 }
 
-// TestConfig_Validate_MethodLimits tests validation of method-specific rate limiting parameters.
-func TestConfig_Validate_MethodLimits(t *testing.T) {
+// TestRateLimit_Validate_MethodLimits tests validation of method-specific rate limiting parameters.
+func TestRateLimit_Validate_MethodLimits(t *testing.T) {
 	tests := []struct {
 		name    string
-		config  Config
+		config  config.RateLimit
 		wantErr bool
 		errMsg  string
 	}{
 		{
 			name: "valid configuration with method limits",
-			config: Config{
+			config: config.RateLimit{
 				Enabled:        true,
 				GlobalRPS:      100.0,
 				GlobalBurst:    200,
 				PerClientRPS:   1000.0,
 				PerClientBurst: 1500,
-				MethodLimits: map[string]MethodLimit{
-					"/agntcy.dir.store.v1.StoreService/CreateRecord": {
-						RPS:   50.0,
-						Burst: 100,
-					},
-					"/agntcy.dir.search.v1.SearchService/Search": {
-						RPS:   20.0,
-						Burst: 40,
-					},
+				MethodLimits: map[string]config.MethodLimit{
+					"/agntcy.dir.store.v1.StoreService/CreateRecord": {RPS: 50.0, Burst: 100},
+					"/agntcy.dir.search.v1.SearchService/Search":     {RPS: 20.0, Burst: 40},
 				},
 			},
 			wantErr: false,
 		},
 		{
 			name: "empty method key should fail",
-			config: Config{
+			config: config.RateLimit{
 				Enabled:        true,
 				GlobalRPS:      100.0,
 				GlobalBurst:    200,
 				PerClientRPS:   1000.0,
 				PerClientBurst: 1500,
-				MethodLimits: map[string]MethodLimit{
-					"": {
-						RPS:   50.0,
-						Burst: 100,
-					},
+				MethodLimits: map[string]config.MethodLimit{
+					"": {RPS: 50.0, Burst: 100},
 				},
 			},
 			wantErr: true,
@@ -293,17 +247,14 @@ func TestConfig_Validate_MethodLimits(t *testing.T) {
 		},
 		{
 			name: "negative method RPS should fail",
-			config: Config{
+			config: config.RateLimit{
 				Enabled:        true,
 				GlobalRPS:      100.0,
 				GlobalBurst:    200,
 				PerClientRPS:   1000.0,
 				PerClientBurst: 1500,
-				MethodLimits: map[string]MethodLimit{
-					"/test/Method": {
-						RPS:   -50.0,
-						Burst: 100,
-					},
+				MethodLimits: map[string]config.MethodLimit{
+					"/test/Method": {RPS: -50.0, Burst: 100},
 				},
 			},
 			wantErr: true,
@@ -311,17 +262,14 @@ func TestConfig_Validate_MethodLimits(t *testing.T) {
 		},
 		{
 			name: "negative method burst should fail",
-			config: Config{
+			config: config.RateLimit{
 				Enabled:        true,
 				GlobalRPS:      100.0,
 				GlobalBurst:    200,
 				PerClientRPS:   1000.0,
 				PerClientBurst: 1500,
-				MethodLimits: map[string]MethodLimit{
-					"/test/Method": {
-						RPS:   50.0,
-						Burst: -100,
-					},
+				MethodLimits: map[string]config.MethodLimit{
+					"/test/Method": {RPS: 50.0, Burst: -100},
 				},
 			},
 			wantErr: true,
@@ -329,17 +277,14 @@ func TestConfig_Validate_MethodLimits(t *testing.T) {
 		},
 		{
 			name: "method burst less than RPS should fail",
-			config: Config{
+			config: config.RateLimit{
 				Enabled:        true,
 				GlobalRPS:      100.0,
 				GlobalBurst:    200,
 				PerClientRPS:   1000.0,
 				PerClientBurst: 1500,
-				MethodLimits: map[string]MethodLimit{
-					"/test/Method": {
-						RPS:   100.0,
-						Burst: 50, // Less than RPS
-					},
+				MethodLimits: map[string]config.MethodLimit{
+					"/test/Method": {RPS: 100.0, Burst: 50},
 				},
 			},
 			wantErr: true,
@@ -350,36 +295,23 @@ func TestConfig_Validate_MethodLimits(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			err := tt.config.Validate()
-
-			if tt.wantErr {
-				if err == nil {
-					t.Errorf("Config.Validate() expected error but got none")
-
-					return
-				}
-
-				if tt.errMsg != "" && !contains(err.Error(), tt.errMsg) {
-					t.Errorf("Config.Validate() error = %q, want to contain %q", err.Error(), tt.errMsg)
-				}
-			} else if err != nil {
-				t.Errorf("Config.Validate() unexpected error: %v", err)
-			}
+			assertValidate(t, err, tt.wantErr, tt.errMsg)
 		})
 	}
 }
 
-// TestConfig_Validate_EdgeCases tests edge cases and special scenarios
-// for rate limiting configuration.
-func TestConfig_Validate_EdgeCases(t *testing.T) {
+// TestRateLimit_Validate_EdgeCases tests edge cases and special
+// scenarios for rate limiting configuration.
+func TestRateLimit_Validate_EdgeCases(t *testing.T) {
 	tests := []struct {
 		name    string
-		config  Config
+		config  config.RateLimit
 		wantErr bool
 		errMsg  string
 	}{
 		{
 			name: "very large values should be valid",
-			config: Config{
+			config: config.RateLimit{
 				Enabled:        true,
 				GlobalRPS:      1000000.0,
 				GlobalBurst:    2000000,
@@ -390,9 +322,9 @@ func TestConfig_Validate_EdgeCases(t *testing.T) {
 		},
 		{
 			name: "fractional RPS values should be valid",
-			config: Config{
+			config: config.RateLimit{
 				Enabled:        true,
-				GlobalRPS:      0.5, // 1 request per 2 seconds
+				GlobalRPS:      0.5,
 				GlobalBurst:    1,
 				PerClientRPS:   10.5,
 				PerClientBurst: 21,
@@ -401,10 +333,10 @@ func TestConfig_Validate_EdgeCases(t *testing.T) {
 		},
 		{
 			name: "burst equal to RPS should be valid",
-			config: Config{
+			config: config.RateLimit{
 				Enabled:        true,
 				GlobalRPS:      100.0,
-				GlobalBurst:    100, // Equal to RPS
+				GlobalBurst:    100,
 				PerClientRPS:   1000.0,
 				PerClientBurst: 1000,
 			},
@@ -412,10 +344,10 @@ func TestConfig_Validate_EdgeCases(t *testing.T) {
 		},
 		{
 			name: "zero RPS with non-zero burst should be valid",
-			config: Config{
+			config: config.RateLimit{
 				Enabled:        true,
-				GlobalRPS:      0,   // No sustained rate
-				GlobalBurst:    100, // But allows bursts
+				GlobalRPS:      0,
+				GlobalBurst:    100,
 				PerClientRPS:   0,
 				PerClientBurst: 100,
 			},
@@ -423,10 +355,10 @@ func TestConfig_Validate_EdgeCases(t *testing.T) {
 		},
 		{
 			name: "non-zero RPS with zero burst should skip burst validation",
-			config: Config{
+			config: config.RateLimit{
 				Enabled:        true,
 				GlobalRPS:      100.0,
-				GlobalBurst:    0, // Zero burst is allowed (will be handled by limiter)
+				GlobalBurst:    0,
 				PerClientRPS:   1000.0,
 				PerClientBurst: 0,
 			},
@@ -437,20 +369,7 @@ func TestConfig_Validate_EdgeCases(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			err := tt.config.Validate()
-
-			if tt.wantErr {
-				if err == nil {
-					t.Errorf("Config.Validate() expected error but got none")
-
-					return
-				}
-
-				if tt.errMsg != "" && !contains(err.Error(), tt.errMsg) {
-					t.Errorf("Config.Validate() error = %q, want to contain %q", err.Error(), tt.errMsg)
-				}
-			} else if err != nil {
-				t.Errorf("Config.Validate() unexpected error: %v", err)
-			}
+			assertValidate(t, err, tt.wantErr, tt.errMsg)
 		})
 	}
 }
@@ -459,84 +378,67 @@ func TestMethodLimit_Validation(t *testing.T) {
 	tests := []struct {
 		name    string
 		method  string
-		limit   MethodLimit
+		limit   config.MethodLimit
 		wantErr bool
 		errMsg  string
 	}{
 		{
-			name:   "valid method limit",
-			method: "/test/Method",
-			limit: MethodLimit{
-				RPS:   50.0,
-				Burst: 100,
-			},
+			name:    "valid method limit",
+			method:  "/test/Method",
+			limit:   config.MethodLimit{RPS: 50.0, Burst: 100},
 			wantErr: false,
 		},
 		{
-			name:   "zero RPS and burst",
-			method: "/test/Method",
-			limit: MethodLimit{
-				RPS:   0,
-				Burst: 0,
-			},
+			name:    "zero RPS and burst",
+			method:  "/test/Method",
+			limit:   config.MethodLimit{RPS: 0, Burst: 0},
 			wantErr: false,
 		},
 		{
-			name:   "fractional RPS",
-			method: "/test/Method",
-			limit: MethodLimit{
-				RPS:   0.1,
-				Burst: 1,
-			},
+			name:    "fractional RPS",
+			method:  "/test/Method",
+			limit:   config.MethodLimit{RPS: 0.1, Burst: 1},
 			wantErr: false,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			cfg := Config{
+			cfg := config.RateLimit{
 				Enabled:        true,
 				GlobalRPS:      100.0,
 				GlobalBurst:    200,
 				PerClientRPS:   1000.0,
 				PerClientBurst: 1500,
-				MethodLimits: map[string]MethodLimit{
+				MethodLimits: map[string]config.MethodLimit{
 					tt.method: tt.limit,
 				},
 			}
 
 			err := cfg.Validate()
-
-			if tt.wantErr {
-				if err == nil {
-					t.Errorf("Expected error but got none")
-
-					return
-				}
-
-				if tt.errMsg != "" && !contains(err.Error(), tt.errMsg) {
-					t.Errorf("Error message = %q, want to contain %q", err.Error(), tt.errMsg)
-				}
-			} else if err != nil {
-				t.Errorf("Unexpected error: %v", err)
-			}
+			assertValidate(t, err, tt.wantErr, tt.errMsg)
 		})
 	}
 }
 
-// contains checks if a string contains a substring.
-func contains(s, substr string) bool {
-	return len(s) >= len(substr) && (s == substr || len(substr) == 0 ||
-		(len(s) > 0 && len(substr) > 0 && indexOfString(s, substr) >= 0))
-}
+func assertValidate(t *testing.T, err error, wantErr bool, errMsg string) {
+	t.Helper()
 
-// indexOfString returns the index of substr in s, or -1 if not found.
-func indexOfString(s, substr string) int {
-	for i := 0; i <= len(s)-len(substr); i++ {
-		if s[i:i+len(substr)] == substr {
-			return i
+	if wantErr {
+		if err == nil {
+			t.Errorf("Validate() expected error but got none")
+
+			return
 		}
+
+		if errMsg != "" && !strings.Contains(err.Error(), errMsg) {
+			t.Errorf("Validate() error = %q, want to contain %q", err.Error(), errMsg)
+		}
+
+		return
 	}
 
-	return -1
+	if err != nil {
+		t.Errorf("Validate() unexpected error: %v", err)
+	}
 }

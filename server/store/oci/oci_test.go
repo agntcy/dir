@@ -11,7 +11,7 @@ import (
 
 	typesv1alpha1 "buf.build/gen/go/agntcy/oasf/protocolbuffers/go/agntcy/oasf/types/v1alpha1"
 	corev1 "github.com/agntcy/dir/api/core/v1"
-	ociconfig "github.com/agntcy/dir/server/store/oci/config"
+	"github.com/agntcy/dir/config"
 	"github.com/agntcy/dir/server/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -20,11 +20,11 @@ import (
 // TODO: this should be configurable to unified Storage API test flow.
 var (
 	// test config.
-	testConfig = ociconfig.Config{
-		LocalDir:        os.TempDir(),                         // used for local test/bench
-		RegistryAddress: ociconfig.DefaultRegistryAddress,     // used for remote test/bench
-		RepositoryName:  "test-store",                         // used for remote test/bench
-		AuthConfig:      ociconfig.AuthConfig{Insecure: true}, // used for remote test/bench
+	testConfig = config.Registry{
+		LocalDir:        os.TempDir(),                          // used for local test/bench
+		RegistryAddress: config.DefaultRegistryAddress,         // used for remote test/bench
+		RepositoryName:  "test-store",                          // used for remote test/bench
+		RegistryAuth:    config.RegistryAuth{Insecure: true},   // used for remote test/bench
 	}
 	runLocal = true
 	// TODO: this may blow quickly when doing rapid benchmarking if not tested against fresh OCI instance.
@@ -156,7 +156,7 @@ func loadLocalStore(t *testing.T) types.StoreAPI {
 	})
 
 	// create local
-	store, err := New(ociconfig.Config{LocalDir: tmpDir})
+	store, err := New(config.Registry{LocalDir: tmpDir})
 	assert.NoErrorf(t, err, "failed to create local store")
 
 	return store
@@ -167,10 +167,10 @@ func loadRemoteStore(t *testing.T) types.StoreAPI {
 
 	// create remote
 	store, err := New(
-		ociconfig.Config{
+		config.Registry{
 			RegistryAddress: testConfig.RegistryAddress,
 			RepositoryName:  testConfig.RepositoryName,
-			AuthConfig:      testConfig.AuthConfig,
+			RegistryAuth:    testConfig.RegistryAuth,
 		})
 	assert.NoErrorf(t, err, "failed to create remote store")
 

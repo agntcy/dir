@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	dbconfig "github.com/agntcy/dir/server/database/config"
+	dircfg "github.com/agntcy/dir/config"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -18,11 +18,11 @@ func TestLoadConfig_NoFile_ReturnsDefaults(t *testing.T) {
 	require.NotNil(t, cfg)
 
 	// Database defaults
-	assert.Equal(t, dbconfig.DefaultType, cfg.Database.Type)
-	assert.Equal(t, dbconfig.DefaultPostgresHost, cfg.Database.Postgres.Host)
-	assert.Equal(t, dbconfig.DefaultPostgresPort, cfg.Database.Postgres.Port)
-	assert.Equal(t, dbconfig.DefaultPostgresDatabase, cfg.Database.Postgres.Database)
-	assert.Equal(t, dbconfig.DefaultPostgresSSLMode, cfg.Database.Postgres.SSLMode)
+	assert.Equal(t, dircfg.DefaultDatabaseType, cfg.Database.Type)
+	assert.Equal(t, dircfg.DefaultPostgresHost, cfg.Database.Postgres.Host)
+	assert.Equal(t, dircfg.DefaultPostgresPort, cfg.Database.Postgres.Port)
+	assert.Equal(t, dircfg.DefaultPostgresDatabase, cfg.Database.Postgres.Database)
+	assert.Equal(t, dircfg.DefaultPostgresSSLMode, cfg.Database.Postgres.SSLMode)
 
 	// Task defaults
 	assert.True(t, cfg.Regsync.Enabled)

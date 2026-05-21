@@ -8,7 +8,7 @@ import (
 	"sync"
 
 	routingv1 "github.com/agntcy/dir/api/routing/v1"
-	"github.com/agntcy/dir/server/publication/config"
+	"github.com/agntcy/dir/config"
 	publypes "github.com/agntcy/dir/server/publication/types"
 	"github.com/agntcy/dir/server/types"
 	"github.com/agntcy/dir/utils/logging"
@@ -21,7 +21,7 @@ type Service struct {
 	db      types.DatabaseAPI
 	store   types.StoreAPI
 	routing types.RoutingAPI
-	config  config.Config
+	config  config.Publication
 
 	scheduler *Scheduler
 	workers   []*Worker
