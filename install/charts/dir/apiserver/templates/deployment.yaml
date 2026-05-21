@@ -42,27 +42,27 @@ spec:
               value: {{ .Values.log_level }}
             - name: DIRECTORY_LOGGER_LOG_FORMAT
               value: {{ .Values.log_format }}
-            - name: DIRECTORY_SERVER_LOGGING_VERBOSE
+            - name: DIRECTORY_LOGGING_VERBOSE
               value: "{{ .Values.grpc_logging_verbose }}"
             {{- if or .Values.secrets.syncAuth.username .Values.secrets.syncAuth.password (and .Values.externalSecrets.enabled .Values.externalSecrets.syncAuth.enabled) }}
-            - name: DIRECTORY_SERVER_SYNC_AUTH_CONFIG_USERNAME
+            - name: DIRECTORY_APISERVER_SYNC_AUTH_CONFIG_USERNAME
               valueFrom:
                 secretKeyRef:
                   name: {{ include "chart.fullname" . }}
                   key: sync-username
-            - name: DIRECTORY_SERVER_SYNC_AUTH_CONFIG_PASSWORD
+            - name: DIRECTORY_APISERVER_SYNC_AUTH_CONFIG_PASSWORD
               valueFrom:
                 secretKeyRef:
                   name: {{ include "chart.fullname" . }}
                   key: sync-password
             {{- end }}
             {{- if or .Values.secrets.ociAuth.username .Values.secrets.ociAuth.password (and .Values.externalSecrets.enabled .Values.externalSecrets.ociAuth.enabled) }}
-            - name: DIRECTORY_SERVER_STORE_AUTH_CONFIG_USERNAME
+            - name: DIRECTORY_REGISTRY_AUTH_CONFIG_USERNAME
               valueFrom:
                 secretKeyRef:
                   name: {{ include "chart.fullname" . }}
                   key: oci-username
-            - name: DIRECTORY_SERVER_STORE_AUTH_CONFIG_PASSWORD
+            - name: DIRECTORY_REGISTRY_AUTH_CONFIG_PASSWORD
               valueFrom:
                 secretKeyRef:
                   name: {{ include "chart.fullname" . }}
@@ -70,35 +70,35 @@ spec:
             {{- end }}
             {{- /* PostgreSQL database credentials */ -}}
             {{- if include "chart.postgres.credentialsConfigured" . }}
-            - name: DIRECTORY_SERVER_DATABASE_POSTGRES_USERNAME
+            - name: DIRECTORY_DATABASE_POSTGRES_USERNAME
               valueFrom:
                 secretKeyRef:
                   name: {{ include "chart.fullname" . }}
                   key: postgres-username
-            - name: DIRECTORY_SERVER_DATABASE_POSTGRES_PASSWORD
+            - name: DIRECTORY_DATABASE_POSTGRES_PASSWORD
               valueFrom:
                 secretKeyRef:
                   name: {{ include "chart.fullname" . }}
                   key: postgres-password
             {{- end }}
             {{- if eq .Values.spire.enabled true }}
-            - name: DIRECTORY_SERVER_AUTHZ_ENABLED
+            - name: DIRECTORY_APISERVER_AUTHN_ENABLED
               value: "true"
-            - name: DIRECTORY_SERVER_AUTHZ_SOCKET_PATH
-              value: {{ .Values.config.authn.socket_path | default "unix:///run/spire/agent-sockets/api.sock" | quote }}
-            - name: DIRECTORY_SERVER_AUTHZ_TRUST_DOMAIN
-              value: {{ .Values.spire.trustDomain }}
+            - name: DIRECTORY_APISERVER_AUTHN_SOCKET_PATH
+              value: {{ .Values.config.apiserver.authn.socket_path | default "unix:///run/spire/agent-sockets/api.sock" | quote }}
             {{- end }}
             {{- if and .Values.config.oasf_api_validation .Values.config.oasf_api_validation.schema_url }}
-            - name: DIRECTORY_SERVER_OASF_API_VALIDATION_SCHEMA_URL
+            - name: DIRECTORY_OASF_API_VALIDATION_SCHEMA_URL
               value: {{ .Values.config.oasf_api_validation.schema_url | quote }}
             {{- end }}
             {{- with .Values.extraEnv }}
             {{- toYaml . | nindent 12 }}
             {{- end }}
-            {{- if and .Values.config.authz.enabled (ne .Values.config.authz.enforcer_policy_file_path "") }}
-            - name: DIRECTORY_SERVER_AUTHZ_ENFORCER_POLICY_FILE_PATH
-              value: {{ .Values.config.authz.enforcer_policy_file_path | quote }}
+            {{- if and .Values.config.apiserver.authz.enabled (ne .Values.config.apiserver.authz.enforcer_policy_file_path "") }}
+            - name: DIRECTORY_APISERVER_AUTHZ_ENABLED
+              value: "true"
+            - name: DIRECTORY_APISERVER_AUTHZ_ENFORCER_POLICY_FILE_PATH
+              value: {{ .Values.config.apiserver.authz.enforcer_policy_file_path | quote }}
             {{- end }}
           securityContext:
             {{- toYaml .Values.securityContext | nindent 12 }}
@@ -106,11 +106,11 @@ spec:
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           ports:
             - name: grpc
-              containerPort: {{ .Values.config.listen_address | default "0.0.0.0:8888" | splitList ":" | last | int }}
+              containerPort: {{ .Values.config.apiserver.listen_address | default "0.0.0.0:8888" | splitList ":" | last | int }}
               protocol: TCP
             - name: routing
-              {{- if .Values.config.routing.listen_address }}
-              containerPort: {{ (split "/" .Values.config.routing.listen_address)._4 }}
+              {{- if .Values.config.apiserver.routing.listen_address }}
+              containerPort: {{ (split "/" .Values.config.apiserver.routing.listen_address)._4 }}
               {{- else }}
               containerPort: 8999
               {{- end }}
@@ -120,17 +120,17 @@ spec:
               containerPort: {{ .Values.metrics.port }}
               protocol: TCP
             {{- end }}
-          {{- if or (eq .Values.config.authn.enabled true) (eq .Values.spire.enabled true) }}
+          {{- if or (eq .Values.config.apiserver.authn.enabled true) (eq .Values.spire.enabled true) }}
           livenessProbe:
             tcpSocket:
-              port: {{ .Values.config.listen_address | default "0.0.0.0:8888" | splitList ":" | last | int }}
+              port: {{ .Values.config.apiserver.listen_address | default "0.0.0.0:8888" | splitList ":" | last | int }}
             initialDelaySeconds: 10
             periodSeconds: 10
             timeoutSeconds: 5
             failureThreshold: 3
           readinessProbe:
             tcpSocket:
-              port: {{ .Values.config.listen_address | default "0.0.0.0:8888" | splitList ":" | last | int }}
+              port: {{ .Values.config.apiserver.listen_address | default "0.0.0.0:8888" | splitList ":" | last | int }}
             initialDelaySeconds: 10
             periodSeconds: 5
             timeoutSeconds: 3
@@ -139,14 +139,14 @@ spec:
           {{- else }}
           livenessProbe:
             grpc:
-              port: {{ .Values.config.listen_address | default "0.0.0.0:8888" | splitList ":" | last | int }}
+              port: {{ .Values.config.apiserver.listen_address | default "0.0.0.0:8888" | splitList ":" | last | int }}
             initialDelaySeconds: 10
             periodSeconds: 10
             timeoutSeconds: 5
             failureThreshold: 3
           readinessProbe:
             grpc:
-              port: {{ .Values.config.listen_address | default "0.0.0.0:8888" | splitList ":" | last | int }}
+              port: {{ .Values.config.apiserver.listen_address | default "0.0.0.0:8888" | splitList ":" | last | int }}
             initialDelaySeconds: 10
             periodSeconds: 5
             timeoutSeconds: 3
@@ -157,11 +157,11 @@ spec:
             {{- toYaml .Values.resources | nindent 12 }}
           volumeMounts:
             - name: config-volume
-              mountPath: /etc/agntcy/dir/server.config.yml
-              subPath: server.config.yml
+              mountPath: /etc/agntcy/dir/dir.config.yml
+              subPath: dir.config.yml
             {{- if or .Values.secrets.privKey (and .Values.externalSecrets.enabled .Values.externalSecrets.nodeIdentity.enabled) }}
             - name: secret-volume
-              mountPath: {{ .Values.config.routing.key_path }}
+              mountPath: {{ .Values.config.apiserver.routing.key_path }}
               subPath: node.privkey
               readOnly: true
             {{- end }}
@@ -180,7 +180,7 @@ spec:
             {{- end }}
             {{- if .Values.pvc.create }}
             - name: routing-data
-              mountPath: {{ .Values.config.routing.datastore_dir }}
+              mountPath: {{ .Values.config.apiserver.routing.datastore_dir }}
             {{- end }}
             {{- if .Values.securityContext.readOnlyRootFilesystem }}
             - name: tmp-data
@@ -190,9 +190,9 @@ spec:
             {{- toYaml . | nindent 12 }}
             {{- end }}
 
-            {{- if and .Values.config.authz.enabled (ne .Values.config.authz.enforcer_policy_file_path "") (ne .Values.authz_policies_csv "") }}
+            {{- if and .Values.config.apiserver.authz.enabled (ne .Values.config.apiserver.authz.enforcer_policy_file_path "") (ne .Values.authz_policies_csv "") }}
             - name: config-volume
-              mountPath: {{ .Values.config.authz.enforcer_policy_file_path | quote }}
+              mountPath: {{ .Values.config.apiserver.authz.enforcer_policy_file_path | quote }}
               subPath: authz_policies.csv
             {{- end }}
       volumes:

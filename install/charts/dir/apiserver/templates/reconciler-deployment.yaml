@@ -32,26 +32,28 @@ spec:
           image: "{{ .Values.reconciler.image.repository }}:{{ .Values.reconciler.image.tag }}"
           imagePullPolicy: {{ .Values.reconciler.image.pullPolicy }}
           env:
-            # Secrets are injected via environment variables (override config file)
+            # Both the apiserver and the reconciler read the canonical
+            # DIRECTORY_* environment, so credentials are injected with the
+            # same key paths in both deployments.
             {{- if include "chart.postgres.credentialsConfigured" . }}
-            - name: RECONCILER_DATABASE_POSTGRES_USERNAME
+            - name: DIRECTORY_DATABASE_POSTGRES_USERNAME
               valueFrom:
                 secretKeyRef:
                   name: {{ include "chart.fullname" . }}
                   key: postgres-username
-            - name: RECONCILER_DATABASE_POSTGRES_PASSWORD
+            - name: DIRECTORY_DATABASE_POSTGRES_PASSWORD
               valueFrom:
                 secretKeyRef:
                   name: {{ include "chart.fullname" . }}
                   key: postgres-password
             {{- end }}
             {{- if or .Values.secrets.ociAuth.username .Values.secrets.ociAuth.password (and .Values.externalSecrets.enabled .Values.externalSecrets.ociAuth.enabled) }}
-            - name: RECONCILER_LOCAL_REGISTRY_AUTH_CONFIG_USERNAME
+            - name: DIRECTORY_REGISTRY_AUTH_CONFIG_USERNAME
               valueFrom:
                 secretKeyRef:
                   name: {{ include "chart.fullname" . }}
                   key: oci-username
-            - name: RECONCILER_LOCAL_REGISTRY_AUTH_CONFIG_PASSWORD
+            - name: DIRECTORY_REGISTRY_AUTH_CONFIG_PASSWORD
               valueFrom:
                 secretKeyRef:
                   name: {{ include "chart.fullname" . }}
@@ -61,9 +63,9 @@ spec:
             {{- toYaml . | nindent 12 }}
             {{- end }}
           volumeMounts:
-            - name: reconciler-config
-              mountPath: /etc/agntcy/reconciler/reconciler.config.yml
-              subPath: reconciler.config.yml
+            - name: dir-config
+              mountPath: /etc/agntcy/dir/dir.config.yml
+              subPath: dir.config.yml
             {{- if eq .Values.spire.enabled true }}
             - name: spire-agent-socket
               mountPath: /run/spire/agent-sockets
@@ -92,12 +94,12 @@ spec:
           resources:
             {{- toYaml .Values.reconciler.resources | nindent 12 }}
       volumes:
-        - name: reconciler-config
+        - name: dir-config
           configMap:
             name: {{ include "chart.fullname" . }}
             items:
-              - key: reconciler.config.yml
-                path: reconciler.config.yml
+              - key: dir.config.yml
+                path: dir.config.yml
         {{- if .Values.coverageVolume }}
         - name: coverage-volume
           emptyDir: {}

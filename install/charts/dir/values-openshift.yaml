@@ -56,15 +56,16 @@ apiserver:
   # only workloads with valid SPIFFE identities (e.g., the oidc-gateway) can
   # reach the apiserver.
   config:
-    authn:
-      enabled: true
-      # SPIRE agent socket path — must match the filename provided by the
-      # SPIFFE CSI driver. Check with a debug pod (see docs/openshift-install.md).
-      # Common values: api.sock (upstream SPIRE), spire-agent.sock (managed SPIRE operators)
-      socket_path: "unix:///run/spire/agent-sockets/<YOUR-SOCKET-FILENAME>"
-    authz:
-      enabled: true
-    # Point apiserver at the Helm-deployed PostgreSQL service.
+    apiserver:
+      authn:
+        enabled: true
+        # SPIRE agent socket path — must match the filename provided by the
+        # SPIFFE CSI driver. Check with a debug pod (see docs/openshift-install.md).
+        # Common values: api.sock (upstream SPIRE), spire-agent.sock (managed SPIRE operators)
+        socket_path: "unix:///run/spire/agent-sockets/<YOUR-SOCKET-FILENAME>"
+      authz:
+        enabled: true
+    # Point both apiserver and reconciler at the Helm-deployed PostgreSQL service.
     # Format: <release-name>-postgresql
     database:
       postgres:
@@ -140,11 +141,9 @@ apiserver:
       repository: ghcr.io/agntcy/dir-reconciler
       tag: latest
       pullPolicy: Always
-    # Point reconciler at the Helm-deployed PostgreSQL service.
-    config:
-      database:
-        postgres:
-          host: "<RELEASE-NAME>-postgresql"
+    # Note: the reconciler shares the canonical dir.config.yml with the
+    # apiserver, so the database host above (config.database.postgres.host)
+    # is read by both deployments. No separate reconciler.config block is needed.
 
   # -------------------------------------------------------------------------
   # PostgreSQL

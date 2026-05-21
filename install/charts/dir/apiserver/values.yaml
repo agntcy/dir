@@ -19,7 +19,7 @@ image:
   pullSecrets: []
 
 # Authorization policy file content (separate from config)
-# This is written to authz_policies.csv file, not part of the server config struct
+# This is written to authz_policies.csv file, not part of the dir config struct.
 authz_policies_csv: |
   p,example.org,*
   p,*,/agntcy.dir.store.v1.StoreService/Pull
@@ -27,48 +27,27 @@ authz_policies_csv: |
   p,*,/agntcy.dir.store.v1.StoreService/Lookup
   p,*,/agntcy.dir.sync.v1.SyncService/RequestRegistryCredentials
 
-# Server configuration (maps directly to server config.go Config struct)
+# Canonical dir configuration. The schema mirrors
+# github.com/agntcy/dir/config.Config (top-level Registry / Database /
+# OASFAPIValidation / Logging, plus apiserver: and reconciler: sub-trees).
+# Both the apiserver and the reconciler deployments mount this as
+# /etc/agntcy/dir/dir.config.yml.
 config:
-  # listen_address: "0.0.0.0:8888"
-
-  # Authentication settings (handles identity verification)
-  # Supports both X.509 (X.509-SVID) and JWT (JWT-SVID) authentication
-  authn:
-    # Enable authentication
-    enabled: false
-    # Authentication mode: "x509" or "jwt"
-    # - x509: Uses X.509-SVID from mutual TLS peer certificates
-    # - jwt: Uses JWT-SVID from Authorization header
-    mode: "x509"
-    # SPIFFE Workload API socket path (injected by SPIRE agent)
-    socket_path: "unix:///run/spire/agent-sockets/api.sock"
-    # Expected audiences for JWT validation (only used in JWT mode)
-    audiences:
-      - "spiffe://example.org/dir-server"
-
-  # Authorization settings (handles access control policies)
-  # Requires authentication to be enabled first
-  authz:
-    # Enable authorization policies
-    enabled: false
-
-    # Path to the authorization policy file
-    enforcer_policy_file_path: "/etc/agntcy/dir/authz_policies.csv"
-
-  # Store settings for the OCI-backed storage backend (the only supported provider).
-  store:
-    # Path to a local directory that will be to hold data instead of remote.
-    # If this is set to non-empty value, only local store will be used.
+  # Shared OCI-backed registry used by both the apiserver and the reconciler.
+  registry:
+    # Path to a local directory that will hold data instead of remote.
+    # If this is set to a non-empty value, only local store will be used.
     # local_dir: ""
 
     # Cache directory to use for metadata.
     # cache_dir: ""
 
-    # Registry address to connect to
+    # Registry address. Leave empty to auto-resolve to the bundled Zot
+    # subchart; set explicitly to use an external OCI registry.
     registry_address: ""
 
-    # All data will be stored under this repo.
-    # Objects are pushed as tags, manifests, and blobs.
+    # All data will be stored under this repo. Objects are pushed as
+    # tags, manifests, and blobs.
     repository_name: ""
 
     # Auth credentials to use.
@@ -79,159 +58,131 @@ config:
       # access_token: ""
       # refresh_token: ""
 
-  # Routing settings for the peer-to-peer network.
-  routing:
-    # Address to use for routing
-    # listen_address: "/ip4/0.0.0.0/tcp/5555"
-
-    # Path to private key file for peer ID.
-    # key_path: /tmp/agntcy-dir/node.privkey
-
-    # Nodes to use for bootstrapping of the DHT.
-    # We read initial routing tables here and get introduced
-    # to the network. Set to [] to make this server act as a bootstrap node.
-    # Default points to the Agntcy Directory testbed bootstrap node.
-    bootstrap_peers:
-      - /dns4/prod.routing.ads.outshift.io/tcp/5555/p2p/12D3KooWLf9p3cedc86xGQBaqak6rAFmQk1HxKAK1yh7umHE3amu
-
-    # GossipSub configuration for efficient label announcements
-    # When enabled, labels are propagated via GossipSub mesh to ALL subscribed peers
-    # When disabled, falls back to DHT+Pull mechanism (higher bandwidth, limited reach)
-    # Default: true (recommended for production)
-    gossipsub:
-      enabled: true
-
-  # Sync configuration
-  sync:
-    # Authentication configuration for sync operations
-    auth_config: {}
-      # username: ""
-      # password: ""
-
-  # Events configuration
-  events:
-    # Channel buffer size per subscriber
-    # Larger buffers allow subscribers to fall behind temporarily without dropping events
-    # Default: 100
-    subscriber_buffer_size: 100
-
-    # Enable logging when events are dropped due to slow consumers
-    # Default: true
-    log_slow_consumers: true
-
-    # Enable debug logging of all published events (verbose in production)
-    # Default: false
-    log_published_events: false
-
-  # Publication configuration
-  publication:
-    # How frequently the scheduler checks for pending publications
-    scheduler_interval: "1h"
-
-    # Maximum number of publication workers running concurrently
-    worker_count: 1
-
-    # Timeout for individual publication operations
-    worker_timeout: "30m"
-
-  # gRPC Connection Management configuration
-  # Protects server from resource exhaustion, zombie connections, and memory exhaustion
-  # Production-safe defaults are applied automatically - customization is optional
-  # Note: These settings can only be configured via Helm values (no environment variables)
-  connection:
-    # Connection limits
-    # max_concurrent_streams: 1000    # Maximum concurrent gRPC streams per connection (default: 1000)
-    # max_recv_msg_size: 4194304      # Maximum message size for receiving in bytes - 4MB (default: 4MB)
-    # max_send_msg_size: 4194304      # Maximum message size for sending in bytes - 4MB (default: 4MB)
-    # connection_timeout: 120s        # Timeout for establishing new connections (default: 120s)
-
-    # Keepalive configuration - detects dead connections and prevents resource leaks
-    # keepalive:
-    #   max_connection_idle: 15m      # Close connections idle for this duration (default: 15m)
-    #   max_connection_age: 30m       # Close connections after this age to rotate (default: 30m)
-    #   max_connection_age_grace: 5m  # Grace period for in-flight RPCs before closing aged connections (default: 5m)
-    #   time: 5m                      # Send keepalive pings every N duration (default: 5m)
-    #   timeout: 1m                   # Close connection if ping not acknowledged within timeout (default: 1m)
-    #   min_time: 1m                  # Minimum time between client pings (prevents abuse) (default: 1m)
-    #   permit_without_stream: true   # Allow keepalive pings without active streams (default: true)
-
-    # Example: High-traffic production configuration
-    # connection:
-    #   max_concurrent_streams: 2000
-    #   max_recv_msg_size: 8388608    # 8MB for larger records
-    #   max_send_msg_size: 8388608    # 8MB for larger records
-    #   connection_timeout: 60s
-    #   keepalive:
-    #     max_connection_idle: 10m
-    #     max_connection_age: 20m
-    #     max_connection_age_grace: 3m
-    #     time: 3m
-    #     timeout: 30s
-    #     min_time: 30s
-    #     permit_without_stream: false
-
-  # Rate limiting configuration
-  # Protects the server from abuse and resource exhaustion using token bucket algorithm
-  ratelimit:
-    # Enable rate limiting middleware
-    # Default: false (disabled for development/testing)
-    enabled: false
-
-    # Global rate limit (applies to all requests regardless of client)
-    # Set both to 0 to disable global limiting
-    # global_rps: 0       # Requests per second (float, e.g., 1000.0)
-    # global_burst: 0     # Burst capacity (int, e.g., 2000)
-
-    # Per-client rate limit (tracked by SPIFFE ID from mTLS)
-    # Default values shown below are reasonable for production
-    # Set both to 0 to disable per-client limiting
-    per_client_rps: 100 # Requests per second per client (float)
-    per_client_burst: 200 # Burst capacity per client (int)
-
-    # Per-method rate limit overrides (optional)
-    # Allows fine-grained control over specific gRPC methods
-    # Note: These can only be configured via Helm values, not environment variables
-    # method_limits:
-    #   "/agntcy.dir.store.v1.StoreService/CreateRecord":
-    #     rps: 50      # Lower limit for expensive operations
-    #     burst: 100
-    #   "/agntcy.dir.store.v1.StoreService/PullRecord":
-    #     rps: 200     # Higher limit for read operations
-    #     burst: 400
-
-  # Database configuration (PostgreSQL)
-  # Connection settings for the apiserver database.
-  # Credentials are managed separately via secrets.postgresAuth or externalSecrets.
+  # Shared state store (catalogue, sync state) used by both services.
   database:
     # Database type (only postgres is supported)
     type: "postgres"
 
-    # PostgreSQL connection settings
     postgres:
-      # PostgreSQL host address
+      # PostgreSQL host address.
       # For local (postgresql.enabled=true): use "<release-name>-postgresql"
-      # For external: your PostgreSQL hostname
+      # For external: your PostgreSQL hostname.
       host: ""
-
-      # PostgreSQL port
       port: 5432
-
-      # Database name
       database: "dir"
-
-      # SSL mode for PostgreSQL connection
-      # Options: disable, require, verify-ca, verify-full
       ssl_mode: "disable"
 
-  # OASF API validation configuration
+  # OASF API validation, used by both the apiserver (request validation)
+  # and the reconciler (record validation).
   oasf_api_validation:
-    # Schema URL for OASF validation
-    # Used by both the apiserver and reconciler for validating agent records
+    # Schema URL for OASF validation.
     schema_url: "https://schema.oasf.outshift.com"
 
-    # Disable OASF validation entirely (default: false)
-    # Set to true to skip schema validation (useful for testing)
+    # Disable OASF validation entirely (default: false).
+    # Set to true to skip schema validation (useful for testing).
     disable: false
+
+  # Process-wide logging configuration.
+  logging:
+    # Verbose enables verbose gRPC request/response logging on the apiserver.
+    verbose: false
+
+  # Apiserver-specific settings (gRPC frontend).
+  apiserver:
+    # listen_address: "0.0.0.0:8888"
+
+    # Authentication settings (handles identity verification).
+    # Supports both X.509 (X.509-SVID) and JWT (JWT-SVID) authentication.
+    authn:
+      enabled: false
+      # Authentication mode: "x509" or "jwt".
+      mode: "x509"
+      # SPIFFE Workload API socket path (injected by SPIRE agent).
+      socket_path: "unix:///run/spire/agent-sockets/api.sock"
+      # Expected audiences for JWT validation (only used in JWT mode).
+      audiences:
+        - "spiffe://example.org/dir-server"
+
+    # Authorization settings (handles access control policies).
+    # Requires authentication to be enabled first.
+    authz:
+      enabled: false
+      enforcer_policy_file_path: "/etc/agntcy/dir/authz_policies.csv"
+
+    # Routing settings for the peer-to-peer network.
+    routing:
+      # listen_address: "/ip4/0.0.0.0/tcp/5555"
+      # key_path: /tmp/agntcy-dir/node.privkey
+      bootstrap_peers:
+        - /dns4/prod.routing.ads.outshift.io/tcp/5555/p2p/12D3KooWLf9p3cedc86xGQBaqak6rAFmQk1HxKAK1yh7umHE3amu
+      gossipsub:
+        enabled: true
+
+    # Sync configuration (outbound sync auth).
+    sync:
+      auth_config: {}
+        # username: ""
+        # password: ""
+
+    # Events configuration (in-process event bus).
+    events:
+      subscriber_buffer_size: 100
+      log_slow_consumers: true
+      log_published_events: false
+
+    # Publication scheduler configuration.
+    publication:
+      scheduler_interval: "1h"
+      worker_count: 1
+      worker_timeout: "30m"
+
+    # gRPC connection management. Production-safe defaults are applied
+    # automatically by the apiserver - customization is optional.
+    # Note: these settings can only be configured via Helm values
+    # (no environment variables).
+    connection: {}
+      # max_concurrent_streams: 1000
+      # max_recv_msg_size: 4194304
+      # max_send_msg_size: 4194304
+      # connection_timeout: 120s
+      # keepalive:
+      #   max_connection_idle: 15m
+      #   max_connection_age: 30m
+      #   max_connection_age_grace: 5m
+      #   time: 5m
+      #   timeout: 1m
+      #   min_time: 1m
+      #   permit_without_stream: true
+
+    # Rate limiting configuration (token bucket).
+    ratelimit:
+      enabled: false
+      # global_rps: 0
+      # global_burst: 0
+      per_client_rps: 100
+      per_client_burst: 200
+      # method_limits:
+      #   "/agntcy.dir.store.v1.StoreService/CreateRecord":
+      #     rps: 50
+      #     burst: 100
+
+  # Reconciler-specific task settings. Shared infrastructure
+  # (registry/database/oasf_api_validation/logging) is NOT duplicated
+  # here — both services read it from the top-level keys above.
+  reconciler:
+    regsync:
+      enabled: true
+      interval: "1h"
+      timeout: "10m"
+    indexer:
+      enabled: true
+      interval: "1h"
+    name:
+      enabled: true
+      interval: "1h"
+    signature:
+      enabled: true
+      interval: "1h"
 
 # SPIRE configuration
 spire:
@@ -313,7 +264,7 @@ service:
 
 # Prometheus metrics configuration
 # This section configures BOTH the application metrics server AND Kubernetes service
-# The values are automatically injected into the server configuration
+# The values are automatically injected into the rendered dir.config.yml
 metrics:
   # Enable Prometheus metrics collection
   # Default: true (recommended for production)
@@ -591,7 +542,7 @@ oasf:
 # PostgreSQL subchart configuration
 # Deploys PostgreSQL alongside the apiserver for dev/production use.
 # Set enabled: false when using SQLite or external PostgreSQL.
-# Note: database.type (above) controls which backend the apiserver uses;
+# Note: config.database.type (above) controls which backend the apiserver uses;
 #       postgresql.enabled controls whether to deploy this subchart.
 # When enabled, postgresql.auth.* is the single source of truth for credentials.
 postgresql:
@@ -607,90 +558,12 @@ postgresql:
     password: "dirpassword"
     database: "dir"
 
-# Reconciler configuration
-# The reconciler handles async operations including:
-# - regsync: syncs records from remote registries
-# - indexer: indexes synced records into the database for search
-# Shares the same database as the apiserver.
+# Reconciler runtime configuration. The reconciler reads the same
+# dir.config.yml as the apiserver; only the deployment-level image and
+# resources are configured here.
 reconciler:
   image:
     repository: ghcr.io/agntcy/dir-reconciler
     tag: latest
     pullPolicy: IfNotPresent
-
-  # Reconciler configuration - all settings go here
-  # This entire section is rendered directly to reconciler.config.yml
-  config:
-    # Database configuration (PostgreSQL)
-    # Connection settings for the apiserver database.
-    # Credentials are managed separately via secrets.postgresAuth or externalSecrets.
-    database:
-      # Database type (only postgres is supported)
-      type: "postgres"
-
-      # PostgreSQL connection settings
-      postgres:
-        # PostgreSQL host address
-        # For local (postgresql.enabled=true): use "<release-name>-postgresql"
-        # For external: your PostgreSQL hostname
-        host: ""
-
-        # PostgreSQL port
-        port: 5432
-
-        # Database name
-        database: "dir"
-
-        # SSL mode for PostgreSQL connection
-        # Options: disable, require, verify-ca, verify-full
-        ssl_mode: "disable"
-
-    # Local registry configuration (for syncing)
-    local_registry:
-      # Path to a local directory that will be to hold data instead of remote.
-      # If this is set to non-empty value, only local store will be used.
-      # local_dir: ""
-
-      # Cache directory to use for metadata.
-      # cache_dir: ""
-
-      # Registry address to connect to
-      registry_address: ""
-
-      # All data will be stored under this repo.
-      # Objects are pushed as tags, manifests, and blobs.
-      repository_name: ""
-
-      # Auth credentials to use.
-      auth_config:
-        insecure: true
-        # username: ""
-        # password: ""
-        # access_token: ""
-        # refresh_token: ""
-
-    # OASF schema URL for validation
-    schema_url: "https://schema.oasf.outshift.com"
-
-    # Regsync task configuration
-    regsync:
-      enabled: true
-      interval: "1h"
-      timeout: "10m"
-
-    # Indexer task configuration
-    indexer:
-      enabled: true
-      interval: "1h"
-
-    # Name task configuration
-    name:
-      enabled: true
-      interval: "1h"
-
-    # Signature task configuration
-    signature:
-      enabled: true
-      interval: "1h"
-
   resources: {}
