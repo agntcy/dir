@@ -42,29 +42,22 @@ message KeyValue {
 //
 // Internally, the KVStore manages the following namespaces (no writes allowed):
 //
-// /objects/descriptors/<cid> -> ObjectDescriptor
-// /objects/descriptors/<cid>/<...> -> Nulll
+//  Objects catalog: `objects:<media_type>:<cid>` -> null
+//  Record metadata: `objects:application/vnd.agntcy.dir.objects.record+json:<cid>:<subkeys...>` -> value
+//  Routing metadata: `routing:oasf-<version>:<cid>:<taxonomy>:<cid>` -> null
 //
-//      Stores descriptor metadata of the object, keyed by CID.
-//      If not found in KVStore, the system will attempt to retrieve from
-//      the underlying block store and cache it.
+// Directory logic is built on top of these namespaces.
 //
-// /objects/agntcy.dir.core.v1.RecordMeta/<cid> -> corev1.RecordMeta
-// /objects/agntcy.dir.core.v1.RecordMeta/<cid>/<...> -> Null
-//
-//      Stores metadata for DIR records, keyed by CID.
-//      If not found in KVStore, the system will attempt to retrieve from
-//      the underlying services and cache it.
-//
-// /oasf/<version>/<cid>/{skills,domains,modules}/<name> -> Null
-//
-//      Stores metadata for OASF components, keyed by version and CID.
-//      Used for routing and discovery of OASF components across the system.
+// Clients can reserve specific namespaces for their own application logic (e.q. AI Catalog).
+// It is up to the clients to manage their own namespaces.
 //
 service KVStore {
   rpc Get(Key) returns (Value);
   rpc Has(Key) returns (google.protobuf.BoolValue);
   rpc Put(KeyValue) returns (google.protobuf.Empty);
   rpc Delete(Key) returns (google.protobuf.Empty);
-  rpc List(Key) returns (Keys);
+
+  // Query returns all keys that match the given query.
+  // Query supports prefix and wildcard matching, allowing clients to retrieve keys based on hierarchical patterns.
+  rpc Query(google.protobuf.StringValue) returns (Keys);
 }

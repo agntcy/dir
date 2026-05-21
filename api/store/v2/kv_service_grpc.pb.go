@@ -28,7 +28,7 @@ const (
 	KVStore_Has_FullMethodName    = "/agntcy.dir.store.v2.KVStore/Has"
 	KVStore_Put_FullMethodName    = "/agntcy.dir.store.v2.KVStore/Put"
 	KVStore_Delete_FullMethodName = "/agntcy.dir.store.v2.KVStore/Delete"
-	KVStore_List_FullMethodName   = "/agntcy.dir.store.v2.KVStore/List"
+	KVStore_Query_FullMethodName  = "/agntcy.dir.store.v2.KVStore/Query"
 )
 
 // KVStoreClient is the client API for KVStore service.
@@ -41,30 +41,22 @@ const (
 //
 // Internally, the KVStore manages the following namespaces (no writes allowed):
 //
-// /objects/descriptors/<cid> -> ObjectDescriptor
-// /objects/descriptors/<cid>/<...> -> Nulll
+//	Objects catalog: `objects:<media_type>:<cid>` -> null
+//	Record metadata: `objects:application/vnd.agntcy.dir.objects.record+json:<cid>:<subkeys...>` -> value
+//	Routing metadata: `routing:oasf-<version>:<cid>:<taxonomy>:<cid>` -> null
 //
-//	Stores descriptor metadata of the object, keyed by CID.
-//	If not found in KVStore, the system will attempt to retrieve from
-//	the underlying block store and cache it.
+// Directory logic is built on top of these namespaces.
 //
-// /objects/agntcy.dir.core.v1.RecordMeta/<cid> -> corev1.RecordMeta
-// /objects/agntcy.dir.core.v1.RecordMeta/<cid>/<...> -> Null
-//
-//	Stores metadata for DIR records, keyed by CID.
-//	If not found in KVStore, the system will attempt to retrieve from
-//	the underlying services and cache it.
-//
-// /oasf/<version>/<cid>/{skills,domains,modules}/<name> -> Null
-//
-//	Stores metadata for OASF components, keyed by version and CID.
-//	Used for routing and discovery of OASF components across the system.
+// Clients can reserve specific namespaces for their own application logic (e.q. AI Catalog).
+// It is up to the clients to manage their own namespaces.
 type KVStoreClient interface {
 	Get(ctx context.Context, in *Key, opts ...grpc.CallOption) (*Value, error)
 	Has(ctx context.Context, in *Key, opts ...grpc.CallOption) (*wrapperspb.BoolValue, error)
 	Put(ctx context.Context, in *KeyValue, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	Delete(ctx context.Context, in *Key, opts ...grpc.CallOption) (*emptypb.Empty, error)
-	List(ctx context.Context, in *Key, opts ...grpc.CallOption) (*Keys, error)
+	// Query returns all keys that match the given query.
+	// Query supports prefix and wildcard matching, allowing clients to retrieve keys based on hierarchical patterns.
+	Query(ctx context.Context, in *wrapperspb.StringValue, opts ...grpc.CallOption) (*Keys, error)
 }
 
 type kVStoreClient struct {
@@ -115,10 +107,10 @@ func (c *kVStoreClient) Delete(ctx context.Context, in *Key, opts ...grpc.CallOp
 	return out, nil
 }
 
-func (c *kVStoreClient) List(ctx context.Context, in *Key, opts ...grpc.CallOption) (*Keys, error) {
+func (c *kVStoreClient) Query(ctx context.Context, in *wrapperspb.StringValue, opts ...grpc.CallOption) (*Keys, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(Keys)
-	err := c.cc.Invoke(ctx, KVStore_List_FullMethodName, in, out, cOpts...)
+	err := c.cc.Invoke(ctx, KVStore_Query_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -135,30 +127,22 @@ func (c *kVStoreClient) List(ctx context.Context, in *Key, opts ...grpc.CallOpti
 //
 // Internally, the KVStore manages the following namespaces (no writes allowed):
 //
-// /objects/descriptors/<cid> -> ObjectDescriptor
-// /objects/descriptors/<cid>/<...> -> Nulll
+//	Objects catalog: `objects:<media_type>:<cid>` -> null
+//	Record metadata: `objects:application/vnd.agntcy.dir.objects.record+json:<cid>:<subkeys...>` -> value
+//	Routing metadata: `routing:oasf-<version>:<cid>:<taxonomy>:<cid>` -> null
 //
-//	Stores descriptor metadata of the object, keyed by CID.
-//	If not found in KVStore, the system will attempt to retrieve from
-//	the underlying block store and cache it.
+// Directory logic is built on top of these namespaces.
 //
-// /objects/agntcy.dir.core.v1.RecordMeta/<cid> -> corev1.RecordMeta
-// /objects/agntcy.dir.core.v1.RecordMeta/<cid>/<...> -> Null
-//
-//	Stores metadata for DIR records, keyed by CID.
-//	If not found in KVStore, the system will attempt to retrieve from
-//	the underlying services and cache it.
-//
-// /oasf/<version>/<cid>/{skills,domains,modules}/<name> -> Null
-//
-//	Stores metadata for OASF components, keyed by version and CID.
-//	Used for routing and discovery of OASF components across the system.
+// Clients can reserve specific namespaces for their own application logic (e.q. AI Catalog).
+// It is up to the clients to manage their own namespaces.
 type KVStoreServer interface {
 	Get(context.Context, *Key) (*Value, error)
 	Has(context.Context, *Key) (*wrapperspb.BoolValue, error)
 	Put(context.Context, *KeyValue) (*emptypb.Empty, error)
 	Delete(context.Context, *Key) (*emptypb.Empty, error)
-	List(context.Context, *Key) (*Keys, error)
+	// Query returns all keys that match the given query.
+	// Query supports prefix and wildcard matching, allowing clients to retrieve keys based on hierarchical patterns.
+	Query(context.Context, *wrapperspb.StringValue) (*Keys, error)
 }
 
 // UnimplementedKVStoreServer should be embedded to have
@@ -180,8 +164,8 @@ func (UnimplementedKVStoreServer) Put(context.Context, *KeyValue) (*emptypb.Empt
 func (UnimplementedKVStoreServer) Delete(context.Context, *Key) (*emptypb.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Delete not implemented")
 }
-func (UnimplementedKVStoreServer) List(context.Context, *Key) (*Keys, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method List not implemented")
+func (UnimplementedKVStoreServer) Query(context.Context, *wrapperspb.StringValue) (*Keys, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method Query not implemented")
 }
 func (UnimplementedKVStoreServer) testEmbeddedByValue() {}
 
@@ -275,20 +259,20 @@ func _KVStore_Delete_Handler(srv interface{}, ctx context.Context, dec func(inte
 	return interceptor(ctx, in, info, handler)
 }
 
-func _KVStore_List_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(Key)
+func _KVStore_Query_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(wrapperspb.StringValue)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(KVStoreServer).List(ctx, in)
+		return srv.(KVStoreServer).Query(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: KVStore_List_FullMethodName,
+		FullMethod: KVStore_Query_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(KVStoreServer).List(ctx, req.(*Key))
+		return srv.(KVStoreServer).Query(ctx, req.(*wrapperspb.StringValue))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -317,8 +301,8 @@ var KVStore_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _KVStore_Delete_Handler,
 		},
 		{
-			MethodName: "List",
-			Handler:    _KVStore_List_Handler,
+			MethodName: "Query",
+			Handler:    _KVStore_Query_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
