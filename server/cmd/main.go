@@ -6,8 +6,8 @@ package main
 import (
 	"fmt"
 
+	"github.com/agntcy/dir/config"
 	"github.com/agntcy/dir/server"
-	"github.com/agntcy/dir/server/config"
 	"github.com/spf13/cobra"
 )
 

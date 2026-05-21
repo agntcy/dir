@@ -9,8 +9,7 @@ import (
 	"testing"
 	"time"
 
-	dircfg "github.com/agntcy/dir/config"
-	"github.com/agntcy/dir/server/config"
+	"github.com/agntcy/dir/config"
 	"github.com/agntcy/dir/server/store"
 	"github.com/agntcy/dir/server/types"
 	"github.com/stretchr/testify/assert"
@@ -28,14 +27,16 @@ func newTestServer(t *testing.T, ctx context.Context, bootPeers []string) *route
 	// Use a unique temporary directory for each test to avoid datastore sharing
 	opts := types.NewOptions(
 		&config.Config{
-			Store: dircfg.Registry{
+			Registry: config.Registry{
 				LocalDir: t.TempDir(),
 			},
-			Routing: dircfg.Routing{
-				ListenAddress:   "/ip4/0.0.0.0/tcp/0",
-				BootstrapPeers:  bootPeers,
-				RefreshInterval: refreshInterval,
-				DatastoreDir:    t.TempDir(),
+			APIServer: config.APIServer{
+				Routing: config.Routing{
+					ListenAddress:   "/ip4/0.0.0.0/tcp/0",
+					BootstrapPeers:  bootPeers,
+					RefreshInterval: refreshInterval,
+					DatastoreDir:    t.TempDir(),
+				},
 			},
 		},
 	)

@@ -4,7 +4,7 @@
 package types
 
 import (
-	"github.com/agntcy/dir/server/config"
+	"github.com/agntcy/dir/config"
 	"github.com/agntcy/dir/server/events"
 )
 

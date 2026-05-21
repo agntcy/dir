@@ -22,8 +22,9 @@ func TestLoadConfigUsesMacOSFriendlyLocalRegistryPort(t *testing.T) {
 	cfg, err := loadConfig()
 
 	require.NoError(t, err)
-	require.Equal(t, "localhost:5555", cfg.Server.Store.RegistryAddress)
-	require.Equal(t, "localhost:5555", cfg.Reconciler.LocalRegistry.RegistryAddress)
+	// The registry is hoisted to the canonical top-level Config struct;
+	// both apiserver and reconciler now read it from cfg.Registry.
+	require.Equal(t, "localhost:5555", cfg.Registry.RegistryAddress)
 }
 
 // TestEmbeddedZot tests the embedded Zot server.

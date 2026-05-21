@@ -15,7 +15,7 @@ import (
 	"time"
 
 	corev1 "github.com/agntcy/dir/api/core/v1"
-	"github.com/agntcy/dir/reconciler/config"
+	"github.com/agntcy/dir/config"
 	"github.com/agntcy/dir/reconciler/service"
 	"github.com/agntcy/dir/server/database"
 	"github.com/agntcy/dir/server/store/oci"
@@ -44,7 +44,11 @@ func main() {
 func run() error {
 	logger.Info("Starting reconciler service")
 
-	// Load configuration
+	// Load the canonical dir configuration (DIRECTORY_* env vars and
+	// /etc/agntcy/dir/dir.config.yml by default). The standalone
+	// reconciler binary only reads the shared infrastructure
+	// (cfg.Registry, cfg.Database, cfg.OASFAPIValidation) and the
+	// reconciler-specific tasks (cfg.Reconciler).
 	cfg, err := config.LoadConfig()
 	if err != nil {
 		return err
@@ -54,15 +58,15 @@ func run() error {
 	// (*corev1.Record).Validate.
 	var oasfValidator corev1.Validator
 
-	if cfg.SchemaURL != "" {
-		v, err := validator.New(cfg.SchemaURL)
+	if schemaURL := cfg.OASFAPIValidation.SchemaURL; schemaURL != "" {
+		v, err := validator.New(schemaURL)
 		if err != nil {
 			return fmt.Errorf("failed to initialize OASF validator: %w", err)
 		}
 
 		oasfValidator = v
 
-		logger.Info("OASF validator initialized", "schema_url", cfg.SchemaURL)
+		logger.Info("OASF validator initialized", "schema_url", schemaURL)
 	} else {
 		logger.Warn("OASF schema URL not configured, record validation will fail for indexed records")
 	}
@@ -74,20 +78,20 @@ func run() error {
 	}
 	defer db.Close()
 
-	// Create OCI store for accessing the local registry
-	store, err := oci.New(cfg.LocalRegistry)
+	// Create OCI store for accessing the shared local registry.
+	store, err := oci.New(cfg.Registry)
 	if err != nil {
 		return err
 	}
 
 	// Create ORAS repository client for registry operations (e.g., listing tags)
-	repo, err := oci.NewORASRepository(cfg.LocalRegistry)
+	repo, err := oci.NewORASRepository(cfg.Registry)
 	if err != nil {
 		return err
 	}
 
 	// Create service with all tasks registered
-	svc, err := service.New(cfg, db, store, repo, oasfValidator)
+	svc, err := service.New(cfg.Reconciler, cfg.Registry, db, store, repo, oasfValidator)
 	if err != nil {
 		return err
 	}

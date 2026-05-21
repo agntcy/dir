@@ -20,9 +20,9 @@ import (
 	signv1 "github.com/agntcy/dir/api/sign/v1"
 	storev1 "github.com/agntcy/dir/api/store/v1"
 	"github.com/agntcy/dir/api/version"
+	"github.com/agntcy/dir/config"
 	"github.com/agntcy/dir/server/authn"
 	"github.com/agntcy/dir/server/authz"
-	"github.com/agntcy/dir/server/config"
 	"github.com/agntcy/dir/server/controller"
 	"github.com/agntcy/dir/server/database"
 	"github.com/agntcy/dir/server/events"
@@ -75,7 +75,7 @@ type Server struct {
 //
 // Connection management is applied BEFORE all interceptors to ensure limits are enforced
 // at the lowest level, protecting all other server components.
-func buildConnectionOptions(cfg config.ConnectionConfig) []grpc.ServerOption {
+func buildConnectionOptions(cfg config.Connection) []grpc.ServerOption {
 	opts := []grpc.ServerOption{
 		// Connection limits - prevent resource monopolization
 		grpc.MaxConcurrentStreams(cfg.MaxConcurrentStreams),
@@ -186,7 +186,7 @@ func New(ctx context.Context, cfg *config.Config, opts ...ServerOption) (*Server
 
 	// Add connection management options FIRST (lowest level - applies to all connections)
 	// This must be before interceptors to ensure connection limits protect all server components
-	connConfig := cfg.Connection.WithDefaults()
+	connConfig := cfg.APIServer.Connection.WithDefaults()
 	connectionOpts := buildConnectionOptions(connConfig)
 	serverOpts = append(serverOpts, connectionOpts...)
 
@@ -196,8 +196,8 @@ func New(ctx context.Context, cfg *config.Config, opts ...ServerOption) (*Server
 
 	// Add rate limiting interceptors (after recovery, before logging and auth)
 	// This protects authentication and other downstream processes from DDoS attacks
-	if cfg.RateLimit.Enabled {
-		rateLimitOpts, err := grpcratelimit.ServerOptions(&cfg.RateLimit)
+	if cfg.APIServer.RateLimit.Enabled {
+		rateLimitOpts, err := grpcratelimit.ServerOptions(&cfg.APIServer.RateLimit)
 		if err != nil {
 			return nil, fmt.Errorf("failed to create rate limit interceptors: %w", err)
 		}
@@ -205,23 +205,23 @@ func New(ctx context.Context, cfg *config.Config, opts ...ServerOption) (*Server
 		serverOpts = append(serverOpts, rateLimitOpts...)
 
 		logger.Info("Rate limiting enabled",
-			"global_rps", cfg.RateLimit.GlobalRPS,
-			"per_client_rps", cfg.RateLimit.PerClientRPS,
+			"global_rps", cfg.APIServer.RateLimit.GlobalRPS,
+			"per_client_rps", cfg.APIServer.RateLimit.PerClientRPS,
 		)
 	}
 
 	// Initialize metrics server (if enabled)
 	var metricsServer *metrics.Server
 
-	if cfg.Metrics.Enabled {
-		metricsServer = metrics.New(cfg.Metrics.Address)
+	if cfg.APIServer.Metrics.Enabled {
+		metricsServer = metrics.New(cfg.APIServer.Metrics.Address)
 
 		// Add gRPC metrics interceptors (after recovery/rate limit, before logging)
 		// Metrics should capture all requests, independent of logging configuration
 		metricsOpts := metrics.ServerOptions()
 		serverOpts = append(serverOpts, metricsOpts...)
 
-		logger.Info("Metrics enabled", "address", cfg.Metrics.Address)
+		logger.Info("Metrics enabled", "address", cfg.APIServer.Metrics.Address)
 	}
 
 	// Add gRPC logging interceptors (after metrics, before auth/authz)
@@ -257,8 +257,8 @@ func New(ctx context.Context, cfg *config.Config, opts ...ServerOption) (*Server
 
 	// Create JWT authentication service if enabled
 	var authnService *authn.Service
-	if cfg.Authn.Enabled {
-		authnService, err = authn.New(ctx, cfg.Authn)
+	if cfg.APIServer.Authn.Enabled {
+		authnService, err = authn.New(ctx, cfg.APIServer.Authn)
 		if err != nil {
 			return nil, fmt.Errorf("failed to create authn service: %w", err)
 		}
@@ -268,8 +268,8 @@ func New(ctx context.Context, cfg *config.Config, opts ...ServerOption) (*Server
 	}
 
 	var authzService *authz.Service
-	if cfg.Authz.Enabled {
-		authzService, err = authz.New(ctx, cfg.Authz)
+	if cfg.APIServer.Authz.Enabled {
+		authzService, err = authz.New(ctx, cfg.APIServer.Authz)
 		if err != nil {
 			return nil, fmt.Errorf("failed to create authz service: %w", err)
 		}
@@ -309,7 +309,7 @@ func New(ctx context.Context, cfg *config.Config, opts ...ServerOption) (*Server
 		storeAPI,
 		databaseAPI,
 		namingProvider,
-		controller.WithVerificationTTL(options.Config().Naming.GetTTL()),
+		controller.WithVerificationTTL(options.Config().APIServer.Naming.GetTTL()),
 	))
 
 	// Register health service
@@ -442,9 +442,9 @@ func (s Server) Start(ctx context.Context) error {
 	}
 
 	// Create a listener on TCP port
-	listen, err := net.Listen("tcp", s.Options().Config().ListenAddress) //nolint:noctx
+	listen, err := net.Listen("tcp", s.Options().Config().APIServer.ListenAddress) //nolint:noctx
 	if err != nil {
-		return fmt.Errorf("failed to listen on %s: %w", s.Options().Config().ListenAddress, err)
+		return fmt.Errorf("failed to listen on %s: %w", s.Options().Config().APIServer.ListenAddress, err)
 	}
 
 	// Add readiness checks
@@ -460,7 +460,7 @@ func (s Server) Start(ctx context.Context) error {
 
 	// Serve gRPC server in the background
 	go func() {
-		logger.Info("Server starting", "address", s.Options().Config().ListenAddress)
+		logger.Info("Server starting", "address", s.Options().Config().APIServer.ListenAddress)
 
 		if err := s.grpcServer.Serve(listen); err != nil {
 			logger.Error("Failed to start server", "error", err)

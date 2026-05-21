@@ -36,7 +36,7 @@ func New(db types.DatabaseAPI, store types.StoreAPI, routing types.RoutingAPI, o
 		db:      db,
 		store:   store,
 		routing: routing,
-		config:  opts.Config().Publication,
+		config:  opts.Config().APIServer.Publication,
 		stopCh:  make(chan struct{}),
 	}, nil
 }

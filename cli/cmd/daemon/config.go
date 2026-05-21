@@ -18,8 +18,6 @@ import (
 	runtimestore "github.com/agntcy/dir-runtime/store/config"
 	runtimestoresql "github.com/agntcy/dir-runtime/store/sql"
 	dircfg "github.com/agntcy/dir/config"
-	reconcilerconfig "github.com/agntcy/dir/reconciler/config"
-	serverconfig "github.com/agntcy/dir/server/config"
 	"github.com/mitchellh/mapstructure"
 	"github.com/spf13/viper"
 )
@@ -29,14 +27,22 @@ const (
 	DefaultConfigFile = "daemon.config.yaml"
 
 	// DefaultEnvPrefix is the environment variable prefix for daemon configuration.
+	// Daemon env vars use this prefix, while standalone apiserver / reconciler
+	// processes use the shorter "DIRECTORY_" prefix (see dircfg.DefaultEnvPrefix).
 	DefaultEnvPrefix = "DIRECTORY_DAEMON"
 )
 
-// DaemonConfig is the top-level daemon configuration combining component settings.
+// DaemonConfig is the top-level daemon configuration. It embeds the
+// canonical dir configuration so that the daemon, the standalone
+// apiserver, and the standalone reconciler all consume the same schema.
+// The only daemon-specific addition is Runtime, which configures the
+// discovery / runtime sidecar that the daemon embeds.
 type DaemonConfig struct {
-	Server     serverconfig.Config     `json:"server"     mapstructure:"server"`
-	Reconciler reconcilerconfig.Config `json:"reconciler" mapstructure:"reconciler"`
-	Runtime    RuntimeConfig           `json:"runtime"    mapstructure:"runtime"`
+	dircfg.Config `mapstructure:",squash"`
+
+	// Runtime configures the embedded discovery/runtime sidecar. This
+	// is daemon-only and intentionally not part of the canonical schema.
+	Runtime RuntimeConfig `json:"runtime" mapstructure:"runtime"`
 }
 
 // RuntimeConfig holds configuration for the runtime adapter and resolver used by
@@ -48,17 +54,9 @@ type RuntimeConfig struct {
 	Store    runtimestore.Config `json:"store"    mapstructure:"store"`
 }
 
-func registerServerDefaults(v *viper.Viper) {
-	v.SetDefault("server.store.registry_address", dircfg.DefaultRegistryAddress)
-	v.SetDefault("server.store.repository_name", dircfg.DefaultRepositoryName)
-}
-
-func registerReconcilerDefaults(v *viper.Viper) {
-	v.SetDefault("reconciler.local_registry.registry_address", dircfg.DefaultRegistryAddress)
-	v.SetDefault("reconciler.local_registry.repository_name", dircfg.DefaultRepositoryName)
-	v.SetDefault("reconciler.local_registry.auth_config.insecure", true)
-	v.SetDefault("reconciler.database.type", "sqlite")
-	v.SetDefault("reconciler.database.sqlite.path", dircfg.DefaultSQLitePath)
+func registerCanonicalDefaults(v *viper.Viper) {
+	v.SetDefault("registry.registry_address", dircfg.DefaultRegistryAddress)
+	v.SetDefault("registry.repository_name", dircfg.DefaultRepositoryName)
 }
 
 func registerRuntimeDefaults(v *viper.Viper) {
@@ -116,8 +114,7 @@ func loadConfig() (*DaemonConfig, error) {
 
 	bindCredentialEnvVars(v)
 	registerRuntimeDefaults(v)
-	registerServerDefaults(v)
-	registerReconcilerDefaults(v)
+	registerCanonicalDefaults(v)
 
 	if opts.ConfigFile != "" {
 		v.SetConfigFile(opts.ConfigFile)
@@ -142,7 +139,7 @@ func loadConfig() (*DaemonConfig, error) {
 		return nil, fmt.Errorf("failed to unmarshal config: %w", err)
 	}
 
-	cfg.Server.Connection = cfg.Server.Connection.WithDefaults()
+	cfg.APIServer.Connection = cfg.APIServer.Connection.WithDefaults()
 	resolveRelativePaths(cfg)
 
 	return cfg, nil
@@ -152,18 +149,18 @@ func loadConfig() (*DaemonConfig, error) {
 // resolve them. Without explicit BindEnv calls, viper cannot discover keys
 // that never appear in a config file.
 func bindCredentialEnvVars(v *viper.Viper) {
-	_ = v.BindEnv("server.database.postgres.username")
-	_ = v.BindEnv("server.database.postgres.password")
+	_ = v.BindEnv("database.postgres.username")
+	_ = v.BindEnv("database.postgres.password")
 
-	_ = v.BindEnv("server.routing.bootstrap_peers")
+	_ = v.BindEnv("apiserver.routing.bootstrap_peers")
 
-	_ = v.BindEnv("server.store.auth_config.username")
-	_ = v.BindEnv("server.store.auth_config.password")
-	_ = v.BindEnv("server.store.auth_config.access_token")
-	_ = v.BindEnv("server.store.auth_config.refresh_token")
+	_ = v.BindEnv("registry.auth_config.username")
+	_ = v.BindEnv("registry.auth_config.password")
+	_ = v.BindEnv("registry.auth_config.access_token")
+	_ = v.BindEnv("registry.auth_config.refresh_token")
 
-	_ = v.BindEnv("server.sync.auth_config.username")
-	_ = v.BindEnv("server.sync.auth_config.password")
+	_ = v.BindEnv("apiserver.sync.auth_config.username")
+	_ = v.BindEnv("apiserver.sync.auth_config.password")
 }
 
 // resolveRelativePaths resolves non-empty path fields against opts.DataDir
@@ -178,8 +175,8 @@ func resolveRelativePaths(cfg *DaemonConfig) {
 		return filepath.Join(opts.DataDir, p)
 	}
 
-	cfg.Server.Store.LocalDir = resolve(cfg.Server.Store.LocalDir)
-	cfg.Server.Routing.KeyPath = resolve(cfg.Server.Routing.KeyPath)
-	cfg.Server.Routing.DatastoreDir = resolve(cfg.Server.Routing.DatastoreDir)
-	cfg.Server.Database.SQLite.Path = resolve(cfg.Server.Database.SQLite.Path)
+	cfg.Registry.LocalDir = resolve(cfg.Registry.LocalDir)
+	cfg.APIServer.Routing.KeyPath = resolve(cfg.APIServer.Routing.KeyPath)
+	cfg.APIServer.Routing.DatastoreDir = resolve(cfg.APIServer.Routing.DatastoreDir)
+	cfg.Database.SQLite.Path = resolve(cfg.Database.SQLite.Path)
 }

@@ -142,8 +142,8 @@ func (c *syncCtlr) RequestRegistryCredentials(_ context.Context, req *storev1.Re
 	syncLogger.Debug("Called sync controller's RequestRegistryCredentials method", "req", req)
 
 	// Get OCI configuration to determine registry details
-	ociConfig := c.opts.Config().Store
-	syncConfig := c.opts.Config().Sync
+	ociConfig := c.opts.Config().Registry
+	syncConfig := c.opts.Config().APIServer.Sync
 
 	registryAddress, err := ociConfig.GetRegistryAddress()
 	if err != nil {
@@ -162,8 +162,8 @@ func (c *syncCtlr) RequestRegistryCredentials(_ context.Context, req *storev1.Re
 		RepositoryName:  repositoryName,
 		Credentials: &storev1.RequestRegistryCredentialsResponse_BasicAuth{
 			BasicAuth: &storev1.BasicAuthCredentials{
-				Username: syncConfig.AuthConfig.Username,
-				Password: syncConfig.AuthConfig.Password,
+				Username: syncConfig.RegistryAuth.Username,
+				Password: syncConfig.RegistryAuth.Password,
 			},
 		},
 		Insecure: ociConfig.Insecure,

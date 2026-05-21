@@ -47,7 +47,7 @@ func New(ctx context.Context, store types.StoreAPI, opts types.APIOptions) (type
 
 	// Create routing datastore
 	var dsOpts []datastore.Option
-	if dstoreDir := opts.Config().Routing.DatastoreDir; dstoreDir != "" {
+	if dstoreDir := opts.Config().APIServer.Routing.DatastoreDir; dstoreDir != "" {
 		dsOpts = append(dsOpts, datastore.WithFsProvider(dstoreDir))
 	}
 

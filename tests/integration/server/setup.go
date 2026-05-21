@@ -13,8 +13,8 @@ import (
 	"path/filepath"
 	"runtime"
 
+	"github.com/agntcy/dir/config"
 	"github.com/agntcy/dir/server"
-	"github.com/agntcy/dir/server/config"
 	"github.com/agntcy/dir/server/database" //nolint:typecheck
 	gormdb "github.com/agntcy/dir/server/database/gorm"
 	"github.com/agntcy/dir/server/events"
@@ -116,7 +116,7 @@ var _ = ginkgo.AfterEach(func(ctx ginkgo.SpecContext) {
 })
 
 func newRepository(options types.APIOptions) *remote.Repository {
-	repository, err := oci.NewORASRepository(options.Config().Store)
+	repository, err := oci.NewORASRepository(options.Config().Registry)
 	gomega.Expect(err).NotTo(gomega.HaveOccurred())
 
 	return repository
@@ -167,9 +167,9 @@ func bufDialer(listener *bufconn.Listener) func(context.Context, string) (net.Co
 // It's assumed the environment variables are already loaded at this stage.
 func getOptions() types.APIOptions {
 	c := conf
-	c.Store.RepositoryName = fmt.Sprintf(
+	c.Registry.RepositoryName = fmt.Sprintf(
 		"%s-%d-%s",
-		c.Store.RepositoryName,
+		c.Registry.RepositoryName,
 		ginkgo.GinkgoParallelProcess(),
 		getCurrentSpecID(),
 	)
