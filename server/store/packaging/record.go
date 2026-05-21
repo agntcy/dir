@@ -29,7 +29,7 @@ const (
 	RecordMediaType = "application/vnd.agntcy.dir.objects.record+json"
 
 	// Annotations for record manifests.
-	recordAnnotationPrefix        = "org.agntcy.dir.record"
+	recordAnnotationPrefix        = "org.agntcy.oasf.record"
 	recordNameAnnotation          = recordAnnotationPrefix + "/name"
 	recordVersionAnnotation       = recordAnnotationPrefix + "/version"
 	recordSchemaVersionAnnotation = recordAnnotationPrefix + "/schema-version"
@@ -58,7 +58,7 @@ func (r *record) Pack(ctx context.Context, repo *remote.Repository, obj *storev2
 	}
 
 	// If there is previous record CID, fetch its descriptor to add as subject
-	// The subject can only be a manifest, faily otherwise
+	// The subject can only be a manifest, fail otherwise
 	var subject *ocispec.Descriptor
 
 	if prevCID := recordData.GetPreviousRecordCid(); prevCID != "" {

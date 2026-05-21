@@ -12,7 +12,6 @@ import (
 	storev2 "github.com/agntcy/dir/api/store/v2"
 	"github.com/agntcy/dir/server/store/packaging"
 	"github.com/opencontainers/go-digest"
-	"github.com/opencontainers/image-spec/specs-go"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -69,7 +68,7 @@ func (o *objstoreCtrl) Put(ctx context.Context, obj *storev2.Object) (*storev2.O
 
 	// Return object descriptor
 	//
-	// TODO(ramizpolic): we can extract the data here directly instead of doing a redundant
+	// TODO: we can extract the data here directly instead of doing a redundant
 	// network lookup, but this is simpler for now. Change to avoid network call.
 	return o.Lookup(ctx, &storev2.ObjectRef{
 		Cid: desc.Digest.String(),

@@ -385,6 +385,110 @@ func TestObjStoreManifestRecordReferrer(t *testing.T) {
 	require.NoError(t, err)
 }
 
+// TestObjStoreObjectReferrerAPIOnly verifies the managed ObjectReferrer flow
+// end-to-end using only objstore APIs, without manually constructing OCI
+// manifests in the test.
+func TestObjStoreObjectReferrerAPIOnly(t *testing.T) {
+	store := getCtrl(t)
+	ctx := t.Context()
+
+	// Create a subject object via the record packer.
+	subjectRecord := corev1.New(&typesv1alpha1.Record{
+		Name:          "subject-agent",
+		Version:       "v1.2.3",
+		SchemaVersion: "0.7.0",
+		Description:   "Subject for managed object referrer",
+	})
+	subjectBytes, err := subjectRecord.Marshal()
+	require.NoError(t, err)
+
+	subjectDesc, err := store.Put(ctx, &storev2.Object{
+		MediaType: packaging.RecordMediaType,
+		Size:      uint64(len(subjectBytes)),
+		Data:      subjectBytes,
+	})
+	require.NoError(t, err)
+	assert.Equal(t, packaging.RecordMediaType, subjectDesc.GetArtifactType())
+
+	// Create the record payload to be embedded in ObjectReferrer.Data.
+	refPayload := corev1.New(&typesv1alpha1.Record{
+		Name:          "managed-referrer-agent",
+		Version:       "v0.0.1",
+		SchemaVersion: "0.7.0",
+		Description:   "Payload embedded in managed object referrer",
+		Annotations: map[string]string{
+			"owner": "objstore-test",
+		},
+	})
+	refPayloadBytes, err := refPayload.Marshal()
+	require.NoError(t, err)
+
+	managedReferrer := &storev2.ObjectReferrer{
+		Subject: &storev2.ObjectRef{Cid: subjectDesc.GetDigest()},
+		Annotations: map[string]string{
+			"org.test.kind": "managed",
+		},
+		MediaType: packaging.RecordMediaType,
+		Size:      uint64(len(refPayloadBytes)),
+		Data:      refPayloadBytes,
+	}
+	managedReferrerBytes, err := json.Marshal(managedReferrer)
+	require.NoError(t, err)
+
+	refDesc, err := store.Put(ctx, &storev2.Object{
+		MediaType: packaging.ReferrerMediaType,
+		Size:      uint64(len(managedReferrerBytes)),
+		Data:      managedReferrerBytes,
+	})
+	require.NoError(t, err)
+	assert.Equal(t, packaging.ReferrerMediaType, refDesc.GetArtifactType())
+
+	// Resolve referrers through the object-store API.
+	refs, err := store.ListReferrers(ctx, &storev2.ListReferrersRequest{
+		Subject: &storev2.ObjectRef{Cid: subjectDesc.GetDigest()},
+	})
+	require.NoError(t, err)
+	require.Len(t, refs.GetReferrers(), 1)
+	assert.Equal(t, refDesc.GetDigest(), refs.GetReferrers()[0].GetDigest())
+
+	// Get should return the unpacked ObjectReferrer payload.
+	got, err := store.Get(ctx, &storev2.ObjectRef{Cid: refDesc.GetDigest()})
+	require.NoError(t, err)
+	assert.Equal(t, packaging.ReferrerMediaType, got.GetMediaType())
+
+	var gotManagedReferrer storev2.ObjectReferrer
+	require.NoError(t, json.Unmarshal(got.GetData(), &gotManagedReferrer))
+	assert.Equal(t, subjectDesc.GetDigest(), gotManagedReferrer.GetSubject().GetCid())
+	assert.Equal(t, managedReferrer.GetAnnotations(), gotManagedReferrer.GetAnnotations())
+	assert.Equal(t, managedReferrer.GetMediaType(), gotManagedReferrer.GetMediaType())
+	assert.Equal(t, managedReferrer.GetSize(), gotManagedReferrer.GetSize())
+	assert.Equal(t, managedReferrer.GetData(), gotManagedReferrer.GetData())
+
+	gotPayloadRecord, err := corev1.UnmarshalRecord(gotManagedReferrer.GetData())
+	require.NoError(t, err)
+	assert.Equal(t, refPayload.GetCid(), gotPayloadRecord.GetCid())
+
+	// Cleanup and verify no referrers remain.
+	_, err = store.Delete(ctx, &storev2.ObjectRef{Cid: refDesc.GetDigest()})
+	require.NoError(t, err)
+
+	// Has should now report false for the deleted referrer
+	has, err := store.Has(ctx, &storev2.ObjectRef{Cid: refDesc.GetDigest()})
+	require.NoError(t, err)
+	assert.False(t, has.GetValue())
+
+	// ListReferrers should now be empty again
+	// TODO: this does not work for the current in-memory OCI, but works against ZOT
+	// refs, err = store.ListReferrers(ctx, &storev2.ListReferrersRequest{
+	// 	Subject: &storev2.ObjectRef{Cid: subjectDesc.GetDigest()},
+	// })
+	// require.NoError(t, err)
+	// assert.Empty(t, refs.GetReferrers())
+
+	_, err = store.Delete(ctx, &storev2.ObjectRef{Cid: subjectDesc.GetDigest()})
+	require.NoError(t, err)
+}
+
 // getCtrl creates an ObjectStoreServer backed by a fresh OCI repository
 // via in-memory registry. Each test gets its own repository name to avoid
 // cross test interference.
@@ -398,7 +502,10 @@ func getCtrl(t *testing.T) storev2.ObjectStoreServer {
 	// Start a local in-memory registry on the listener
 	s := &http.Server{
 		ReadHeaderTimeout: 5 * time.Second, // prevent slowloris, quiet linter
-		Handler:           registry.New(registry.WithReferrersSupport(true)),
+		Handler: registry.New(
+			registry.WithReferrersSupport(true),
+			registry.WithBlobHandler(registry.NewDiskBlobHandler(t.TempDir())),
+		),
 	}
 
 	t.Cleanup(func() {

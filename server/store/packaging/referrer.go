@@ -24,7 +24,7 @@ import (
 	"oras.land/oras-go/v2/registry/remote"
 )
 
-// Media type for referrer objects.
+// Media type for referrer object.
 const ReferrerMediaType = "application/vnd.agntcy.dir.objects.referrer+json"
 
 type referrer struct{}
@@ -47,7 +47,7 @@ func (p *referrer) Pack(ctx context.Context, repo *remote.Repository, obj *store
 	}
 
 	// Push the referrer bytes as a blob
-	referrerDesc, err := oras.PushBytes(ctx, repo, referrer.MediaType, referrer.Data)
+	referrerDesc, err := oras.PushBytes(ctx, repo, referrer.GetMediaType(), referrer.GetData())
 	if err != nil {
 		return nil, fmt.Errorf("failed to push referrer bytes: %w", err)
 	}
@@ -81,12 +81,13 @@ func (p *referrer) Unpack(ctx context.Context, repo *remote.Repository, manifest
 
 	// Create referrer object
 	referrer := &storev2.ObjectReferrer{
-		Subject:     &storev2.ObjectRef{Cid: manifest.Config.Digest.String()},
+		Subject:     &storev2.ObjectRef{Cid: manifest.Subject.Digest.String()},
 		Annotations: manifest.Annotations,
 		MediaType:   manifest.Config.MediaType,
 		Size:        uint64(len(referrerBytes)),
 		Data:        referrerBytes,
 	}
+
 	objectBytes, err := json.Marshal(referrer)
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal referrer object: %w", err)
