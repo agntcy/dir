@@ -16,6 +16,10 @@ type Module struct {
 	RecordCID string `gorm:"column:record_cid;not null;index"`
 	Name      string `gorm:"not null"`
 	ModuleID  uint64 `gorm:"column:module_id"`
+
+	ArtifactURL  string `gorm:"column:artifact_url"`
+	ArtifactData string `gorm:"column:artifact_data"`
+	Tags         string `gorm:"column:tags"`
 }
 
 func (module *Module) GetName() string {

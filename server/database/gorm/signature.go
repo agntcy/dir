@@ -26,6 +26,7 @@ type SignatureVerification struct {
 	SignerAlgorithm         string    `gorm:"column:signer_algorithm"`          // e.g. RSA-SHA256, Ed25519
 	CreatedAt               time.Time `gorm:"column:created_at;not null"`
 	UpdatedAt               time.Time `gorm:"column:updated_at;not null"`
+	Signature               string    `gorm:"column:signature;not null"` // The actual signature value (e.g. JWS compact serialization or raw signature)
 }
 
 // Ensure SignatureVerification implements types.SignatureVerificationObject.
@@ -211,4 +212,16 @@ func (d *DB) GetRecordsNeedingSignatureVerification(ttl time.Duration) ([]types.
 	}
 
 	return result, nil
+}
+
+func (s *SignatureVerification) Identity() string {
+	// switch case on signer type to determine identity format
+	switch s.SignerType {
+	case "oidc":
+		return fmt.Sprintf("oidc:%s:%s", s.SignerIssuer, s.SignerSubject)
+	case "key":
+		return fmt.Sprintf("key:%s", s.SignerPublicKey)
+	default:
+		return fmt.Sprintf("unknown:%s", s.SignerKey)
+	}
 }

@@ -14,6 +14,42 @@ import (
 	"gorm.io/gorm"
 )
 
+type CollectionSummary struct {
+	Module  []string // can only be MCP, A2A, or Skills
+	Skills  []string
+	Domains []string
+}
+
+func (c *CollectionSummary) WellKnown() interface{} {
+	return `
+{
+	"specVersion": "1.0",
+	"host": {
+		"displayName": "Acme Enterprise AI",
+		"identifier": "did:web:acme.com"
+	},
+	"entries": [], // published entries, can be MANY
+	"collections": [
+		{
+			"displayName": "MCP Record Catalog",
+			"url": "https://localhost:8080/agents?type=mcp",
+			"description": "Returns all available MCP records."
+		},
+		{
+			"displayName": "A2A Record Catalog",
+			"url": "https://localhost:8080/agents?type=a2a",
+			"description": "Returns all available A2A records."
+		},
+		{
+			"displayName": "Agents with Skill X",
+			"url": "https://localhost:8080/agents?type=skill_x&skill_name={skill_name}",
+			"description": "Returns all available agents with Skill X."
+		}
+	]
+}
+  `
+}
+
 type Record struct {
 	CreatedAt     time.Time
 	UpdatedAt     time.Time
@@ -24,12 +60,14 @@ type Record struct {
 	OASFCreatedAt string   `gorm:"column:oasf_created_at"`
 	Authors       []string `gorm:"column:authors;serializer:json"` // Stored as JSON array
 	Signed        bool     `gorm:"column:signed;default:false"`    // Whether at least one signature is attached
+	Published     bool     `gorm:"column:published;default:false"` // Whether the record is published (optional, can be used for future features)
 
-	Skills      []Skill      `gorm:"foreignKey:RecordCID;references:RecordCID;constraint:OnDelete:CASCADE"`
-	Locators    []Locator    `gorm:"foreignKey:RecordCID;references:RecordCID;constraint:OnDelete:CASCADE"`
-	Modules     []Module     `gorm:"foreignKey:RecordCID;references:RecordCID;constraint:OnDelete:CASCADE"`
-	Domains     []Domain     `gorm:"foreignKey:RecordCID;references:RecordCID;constraint:OnDelete:CASCADE"`
-	Annotations []Annotation `gorm:"foreignKey:RecordCID;references:RecordCID;constraint:OnDelete:CASCADE"`
+	Skills      []Skill                 `gorm:"foreignKey:RecordCID;references:RecordCID;constraint:OnDelete:CASCADE"`
+	Locators    []Locator               `gorm:"foreignKey:RecordCID;references:RecordCID;constraint:OnDelete:CASCADE"`
+	Modules     []Module                `gorm:"foreignKey:RecordCID;references:RecordCID;constraint:OnDelete:CASCADE"`
+	Domains     []Domain                `gorm:"foreignKey:RecordCID;references:RecordCID;constraint:OnDelete:CASCADE"`
+	Annotations []Annotation            `gorm:"foreignKey:RecordCID;references:RecordCID;constraint:OnDelete:CASCADE"`
+	Signatures  []SignatureVerification `gorm:"foreignKey:RecordCID;references:RecordCID;constraint:OnDelete:CASCADE"`
 }
 
 // Implement central Record interface.
@@ -123,11 +161,6 @@ func (r *RecordDataAdapter) GetModules() []types.Module {
 	}
 
 	return modules
-}
-
-func (r *RecordDataAdapter) GetSignature() types.Signature {
-	// Database records don't store signature information
-	return nil
 }
 
 func (r *RecordDataAdapter) GetPreviousRecordCid() string {
