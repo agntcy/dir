@@ -26,7 +26,9 @@ type SignatureVerification struct {
 	SignerAlgorithm         string    `gorm:"column:signer_algorithm"`          // e.g. RSA-SHA256, Ed25519
 	CreatedAt               time.Time `gorm:"column:created_at;not null"`
 	UpdatedAt               time.Time `gorm:"column:updated_at;not null"`
-	Signature               string    `gorm:"column:signature;not null"` // The actual signature value (e.g. JWS compact serialization or raw signature)
+
+	// AI Catalog required fields
+	Signature string `gorm:"column:signature;not null"` // The actual signature value (e.g. JWS compact serialization or raw signature)
 }
 
 // Ensure SignatureVerification implements types.SignatureVerificationObject.
@@ -80,6 +82,10 @@ func (s *SignatureVerification) GetUpdatedAt() time.Time {
 	return s.UpdatedAt
 }
 
+func (s *SignatureVerification) GetSignature() string {
+	return s.Signature
+}
+
 // CreateSignatureVerification creates a new signature verification row.
 func (d *DB) CreateSignatureVerification(verification types.SignatureVerificationObject) error {
 	now := time.Now()
@@ -97,6 +103,7 @@ func (d *DB) CreateSignatureVerification(verification types.SignatureVerificatio
 		SignerAlgorithm:         verification.GetSignerAlgorithm(),
 		CreatedAt:               now,
 		UpdatedAt:               now,
+		Signature:               verification.GetSignature(),
 	}
 	if err := d.gormDB.Create(sv).Error; err != nil {
 		return fmt.Errorf("failed to create signature verification: %w", err)

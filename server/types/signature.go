@@ -21,4 +21,5 @@ type SignatureVerificationObject interface {
 	GetSignerAlgorithm() string
 	GetCreatedAt() time.Time
 	GetUpdatedAt() time.Time
+	GetSignature() string
 }

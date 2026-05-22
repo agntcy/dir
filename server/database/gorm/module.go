@@ -17,6 +17,8 @@ type Module struct {
 	Name      string `gorm:"not null"`
 	ModuleID  uint64 `gorm:"column:module_id"`
 
+	// AI Catalog required fields
+	DisplayName  string `gorm:"column:display_name"`
 	ArtifactURL  string `gorm:"column:artifact_url"`
 	ArtifactData string `gorm:"column:artifact_data"`
 	Tags         string `gorm:"column:tags"`
