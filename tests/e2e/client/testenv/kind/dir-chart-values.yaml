@@ -5,19 +5,19 @@ apiserver:
     metricsNodePort: "30090"
 
   config:
-    publication:
-      scheduler_interval: "1s"
-    routing:
-      refresh_interval: "1s"
-    ratelimit:
-      enabled: "true"
-      global_rps: "100"
-      global_burst: "200"
-      per_client_rps: "100"
-      per_client_burst: "200"
+    apiserver:
+      publication:
+        scheduler_interval: "1s"
+      routing:
+        refresh_interval: "1s"
+      ratelimit:
+        enabled: "true"
+        global_rps: "100"
+        global_burst: "200"
+        per_client_rps: "100"
+        per_client_burst: "200"
 
-  reconciler:
-    config:
+    reconciler:
       regsync:
         interval: "10s"
       indexer:

@@ -1,7 +1,7 @@
 # Copyright AGNTCY Contributors (https://github.com/agntcy)
 # SPDX-License-Identifier: Apache-2.0
 
-{{- if .Values.config.routing.listen_address }}
+{{- if .Values.config.apiserver.routing.listen_address }}
 apiVersion: v1
 kind: Service
 metadata:
@@ -26,7 +26,7 @@ spec:
   externalTrafficPolicy: {{ .Values.routingService.externalTrafficPolicy }}
   {{- end }}
   ports:
-    - port: {{ (split "/" .Values.config.routing.listen_address)._4 }}
+    - port: {{ (split "/" .Values.config.apiserver.routing.listen_address)._4 }}
       targetPort: routing
       protocol: TCP
       name: routing

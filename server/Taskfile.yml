@@ -24,7 +24,7 @@ tasks:
     desc: Start local Directory server stack
     dir: ./install/docker
     env:
-      DIRECTORY_SERVER_PUBLICATION_SCHEDULER_INTERVAL: 1s
+      DIRECTORY_APISERVER_PUBLICATION_SCHEDULER_INTERVAL: 1s
     cmds:
       - docker compose up -d --build --wait
 
@@ -32,7 +32,7 @@ tasks:
     desc: Start local Directory server stack in debug mode
     dir: ./install/docker
     env:
-      DIRECTORY_SERVER_PUBLICATION_SCHEDULER_INTERVAL: 1s
+      DIRECTORY_APISERVER_PUBLICATION_SCHEDULER_INTERVAL: 1s
     cmds:
       - docker compose -f docker-compose.yml -f docker-compose.debug.yml up -d --build --wait
 

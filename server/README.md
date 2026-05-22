@@ -2,13 +2,13 @@
 
 ## Configuration
 
-The Directory server supports configuration via environment variables, YAML configuration files, or both. Environment variables follow the `DIRECTORY_SERVER_` prefix convention.
+The Directory server reads the canonical dir configuration (see [`github.com/agntcy/dir/config`](../config)). Configuration can be provided via YAML files, environment variables, or both. All environment variables share the unified `DIRECTORY_` prefix; legacy `DIRECTORY_SERVER_*` and `RECONCILER_*` prefixes are no longer supported.
 
 ### OASF Validation Configuration
 
 The server validates all records server-side. Records are validated using the configured OASF schema URL.
 
-- **`oasf_api_validation.schema_url`** / **`DIRECTORY_SERVER_OASF_API_VALIDATION_SCHEMA_URL`** - OASF schema URL for API-based validation (required)
+- **`oasf_api_validation.schema_url`** / **`DIRECTORY_OASF_API_VALIDATION_SCHEMA_URL`** - OASF schema URL for API-based validation (required)
   - **Default**: `https://schema.oasf.outshift.com`
   - URL of the OASF server to use for validation
   - This affects all record validation operations including push, sync, and import
@@ -19,18 +19,19 @@ The server validates all records server-side. Records are validated using the co
 ./dirctl-apiserver
 
 # Use custom OASF server
-DIRECTORY_SERVER_OASF_API_VALIDATION_SCHEMA_URL=http://localhost:8080 ./dirctl-apiserver
+DIRECTORY_OASF_API_VALIDATION_SCHEMA_URL=http://localhost:8080 ./dirctl-apiserver
 
 # Use custom OASF server
-DIRECTORY_SERVER_OASF_API_VALIDATION_SCHEMA_URL="http://localhost:8080" ./dirctl-apiserver
+DIRECTORY_OASF_API_VALIDATION_SCHEMA_URL="http://localhost:8080" ./dirctl-apiserver
 ```
 
 **Example with YAML configuration:**
 ```yaml
-# server.config.yml
+# /etc/agntcy/dir/dir.config.yml
 oasf_api_validation:
   schema_url: "https://schema.oasf.outshift.com"
-listen_address: "0.0.0.0:8888"
+apiserver:
+  listen_address: "0.0.0.0:8888"
 ```
 
 #### Testing with Local OASF Server
@@ -109,4 +110,4 @@ kubectl rollout restart deployment/dir-oasf-0-9-0-dev -n dir-server
 
 ### Other Configuration Options
 
-For complete server configuration including authentication, authorization, storage, routing, and database options, see the [server configuration reference](./config/config.go).
+For the full canonical schema (authentication, authorization, storage, routing, database, reconciler tasks) see [`config/config.go`](../config/config.go) in the top-level `config` module.

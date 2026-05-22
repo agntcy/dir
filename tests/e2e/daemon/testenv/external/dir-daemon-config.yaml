@@ -1,28 +1,31 @@
-server:
+registry:
+  registry_address: "localhost:25555"
+  repository_name: "dir"
+  auth_config:
+    insecure: true
+
+database:
+  type: "postgres"
+  postgres:
+    username: "postgres"
+    password: "postgres"
+    host: "localhost"
+    port: 25432
+    database: "directory"
+    ssl_mode: "disable"
+
+oasf_api_validation:
+  schema_url: "https://schema.oasf.outshift.com"
+
+apiserver:
   listen_address: "localhost:19234"
   metrics:
     enabled: false
-  oasf_api_validation:
-    schema_url: "https://schema.oasf.outshift.com"
-  store:
-    registry_address: "localhost:25555"
-    repository_name: "dir"
-    auth_config:
-      insecure: true
   routing:
     listen_address: "/ip4/127.0.0.1/tcp/0"
     datastore_dir: "routing"
     gossipsub:
       enabled: true
-  database:
-    type: "postgres"
-    postgres:
-      username: "postgres"
-      password: "postgres"
-      host: "localhost"
-      port: 25432
-      database: "directory"
-      ssl_mode: "disable"
   publication:
     scheduler_interval: 1h
     worker_count: 1
@@ -32,11 +35,6 @@ server:
     ttl: 168h
 
 reconciler:
-  local_registry:
-    registry_address: "localhost:25555"
-    repository_name: "dir"
-    auth_config:
-      insecure: true
   regsync:
     enabled: true
     interval: 10s
@@ -77,6 +75,6 @@ runtime:
         auth_mode: "insecure"
 
   store:
-    # Use SQLite for runtime store to avoid conflicts with the PostgreSQL database used by the server.
-    # This is an ephemeral store that only holds runtime state and does not need to be shared with the server.
+    # Use SQLite for runtime store to avoid conflicts with the PostgreSQL database used by the apiserver.
+    # This is an ephemeral store that only holds runtime state and does not need to be shared with the apiserver.
     type: "sqlite"

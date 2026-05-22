@@ -5,23 +5,23 @@ apiserver:
     metricsNodePort: "31090"
 
   config:
-    publication:
-      scheduler_interval: "1s"
-    routing:
-      refresh_interval: "1s"
-      # This peer is configured to use the bootstrap peer as a DHT node for discovery.
-      bootstrap_peers:
-      - "/dns4/dir-apiserver-routing.bootstrap.svc.cluster.local/tcp/8999/p2p/12D3KooWPShmqZQ1a69AT2bEi1zxTh7c8a7dD5rN4HDAFYJ5HCe9"
-      directory_api_address: "dir-apiserver.peer1.svc.cluster.local:8888"
-    ratelimit:
-      enabled: "true"
-      global_rps: "100"
-      global_burst: "200"
-      per_client_rps: "100"
-      per_client_burst: "200"
+    apiserver:
+      publication:
+        scheduler_interval: "1s"
+      routing:
+        refresh_interval: "1s"
+        # This peer is configured to use the bootstrap peer as a DHT node for discovery.
+        bootstrap_peers:
+        - "/dns4/dir-apiserver-routing.bootstrap.svc.cluster.local/tcp/8999/p2p/12D3KooWPShmqZQ1a69AT2bEi1zxTh7c8a7dD5rN4HDAFYJ5HCe9"
+        directory_api_address: "dir-apiserver.peer1.svc.cluster.local:8888"
+      ratelimit:
+        enabled: "true"
+        global_rps: "100"
+        global_burst: "200"
+        per_client_rps: "100"
+        per_client_burst: "200"
 
-  reconciler:
-    config:
+    reconciler:
       regsync:
         interval: "10s"
       indexer:

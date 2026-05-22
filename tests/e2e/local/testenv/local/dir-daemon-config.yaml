@@ -1,13 +1,20 @@
-server:
+registry:
+  local_dir: "store"
+  registry_address: "localhost:19890"
+  repository_name: "dir"
+  auth_config:
+    insecure: true
+
+database:
+  type: "sqlite"
+  sqlite:
+    path: "dir.db"
+
+oasf_api_validation:
+  schema_url: "https://schema.oasf.outshift.com"
+
+apiserver:
   listen_address: "localhost:19888"
-  oasf_api_validation:
-    schema_url: "https://schema.oasf.outshift.com"
-  store:
-    local_dir: "store"
-    registry_address: "localhost:19890"
-    repository_name: "dir"
-    auth_config:
-      insecure: true
   metrics:
     enabled: true
     address: "localhost:19889"
@@ -16,10 +23,6 @@ server:
     listen_address: "/ip4/127.0.0.1/tcp/0"
     gossipsub:
       enabled: true
-  database:
-    type: "sqlite"
-    sqlite:
-      path: "dir.db"
   publication:
     scheduler_interval: "1s"
     worker_count: 1
@@ -29,11 +32,6 @@ server:
     ttl: 168h
 
 reconciler:
-  local_registry:
-    registry_address: "localhost:19890"
-    repository_name: "dir"
-    auth_config:
-      insecure: true
   regsync:
     enabled: true
     interval: "10s"
