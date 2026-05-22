@@ -1,0 +1,457 @@
+// Copyright AGNTCY Contributors (https://github.com/agntcy)
+// SPDX-License-Identifier: Apache-2.0
+
+syntax = "proto3";
+
+package agntcy.dir.catalog.v1;
+
+import "buf/validate/validate.proto";
+import "google/protobuf/struct.proto";
+
+// AICatalog is the top-level JSON container for discovering heterogeneous
+// AI artifacts (MCP servers, A2A agents, plugins, datasets, skills, model
+// cards, nested catalogs, ...). It is the protobuf representation of a
+// document with the media type "application/ai-catalog+json".
+//
+// Specs:
+//   - https://agent-card.github.io/ai-catalog/
+//
+// JSON shape (per spec):
+//
+//   {
+//     "specVersion": "1.0",
+//     "host": { ... },
+//     "entries": [ ... ],
+//     "metadata": { ... }
+//   }
+message AICatalog {
+  // Version of the AI Catalog specification this document conforms to,
+  // in "Major.Minor" format (e.g. "1.0"). REQUIRED.
+  //
+  // Consumers MUST accept any minor version that matches their supported
+  // major version (forward compatible). Producers MUST NOT set this field
+  // to a version higher than they actually implement.
+  string spec_version = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.pattern = "^[0-9]+\\.[0-9]+$"
+  ];
+
+  // Identifies the operator of this catalog. OPTIONAL at Level 1 (Minimal)
+  // but REQUIRED at Level 2 (Discoverable) and Level 3 (Trusted).
+  optional HostInfo host = 2;
+
+  // Ordered list of catalog entries. MAY be empty. REQUIRED.
+  repeated CatalogEntry entries = 3;
+
+  // Open map of string keys to arbitrary JSON values for custom or
+  // vendor-specific metadata. Reverse-DNS prefixed keys are RECOMMENDED
+  // for vendor-specific keys (e.g. "io.acme.deploymentRegion"). OPTIONAL.
+  map<string, google.protobuf.Value> metadata = 4;
+}
+
+// WellKnownCatalog is an AICatalog served at the well-known URI
+// "/.well-known/ai-catalog.json" (see RFC 8615). It carries the same
+// content as an AICatalog and additionally exposes a list of dynamic
+// "collections" — pre-built queries that resolve to lists of records —
+// enabling agent-finder style dynamic discovery on top of the static
+// catalog entries.
+//
+// Specs:
+//   - https://agent-card.github.io/ai-catalog/#well-known-uri
+//   - Agent Finder dynamic discovery (collections extension)
+//
+// JSON shape:
+//
+//   {
+//     "specVersion": "1.0",
+//     "host": { ... },
+//     "entries": [ ... ],
+//     "collections": [
+//       {
+//         "displayName": "MCP Record Catalog",
+//         "url": "https://example.com/agents?type=mcp",
+//         "description": "Returns all available MCP records."
+//       }
+//     ],
+//     "metadata": { ... }
+//   }
+message WellKnownCatalog {
+  // Version of the AI Catalog specification this document conforms to,
+  // in "Major.Minor" format (e.g. "1.0"). REQUIRED.
+  string spec_version = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.pattern = "^[0-9]+\\.[0-9]+$"
+  ];
+
+  // Identifies the operator of this catalog. REQUIRED at Level 2 / Level 3.
+  optional HostInfo host = 2;
+
+  // Ordered list of statically published catalog entries. MAY be empty.
+  repeated CatalogEntry entries = 3;
+
+  // Dynamic collections exposed by the host. Each collection is a
+  // pre-defined query (typically a URL with query parameters) that, when
+  // fetched, returns a list of records or a nested AI Catalog. Collections
+  // enable a host to advertise filterable views of its content (e.g. "all
+  // MCP records", "all agents with a given skill") without enumerating
+  // every entry inline. OPTIONAL.
+  repeated CatalogCollection collections = 4;
+
+  // Open map of string keys to arbitrary JSON values for custom or
+  // vendor-specific metadata. OPTIONAL.
+  map<string, google.protobuf.Value> metadata = 5;
+}
+
+// CatalogCollection describes a dynamic, queryable collection of records.
+// Unlike a CatalogEntry, a collection is not a single artifact: fetching
+// its url returns a list of records (typically as a nested AICatalog or
+// an array of CatalogEntry objects) that match a server-side query.
+//
+// JSON shape:
+//
+//   {
+//     "displayName": "MCP Record Catalog",
+//     "url": "https://example.com/agents?type=mcp",
+//     "description": "Returns all available MCP records."
+//   }
+message CatalogCollection {
+  // Human-readable name for the collection. REQUIRED.
+  string display_name = 1 [(buf.validate.field).required = true];
+
+  // URL that resolves to the collection contents (e.g. a nested AI Catalog
+  // or a list of catalog entries). The endpoint MAY accept additional
+  // query parameters not encoded in the URL. REQUIRED.
+  string url = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.uri = true
+  ];
+
+  // Short description of what the collection returns. OPTIONAL.
+  optional string description = 3;
+
+  // Media type of the document returned by fetching url (e.g.
+  // "application/ai-catalog+json"). OPTIONAL.
+  optional string media_type = 4;
+
+  // Free-form tags for filtering and discovery. OPTIONAL.
+  repeated string tags = 5;
+
+  // Open map of string keys to arbitrary JSON values for custom metadata.
+  // OPTIONAL.
+  map<string, google.protobuf.Value> metadata = 6;
+}
+
+// HostInfo identifies the operator of an AI Catalog.
+//
+// JSON shape:
+//
+//   {
+//     "displayName": "Acme Enterprise AI",
+//     "identifier": "did:web:acme-corp.com",
+//     "documentationUrl": "https://docs.acme-corp.com/ai",
+//     "logoUrl": "data:image/svg+xml;base64,...",
+//     "trustManifest": { ... }
+//   }
+message HostInfo {
+  // Human-readable name of the host (e.g. the organization name). REQUIRED.
+  string display_name = 1 [(buf.validate.field).required = true];
+
+  // Verifiable identifier for the host (e.g. a DID or domain name).
+  // OPTIONAL.
+  optional string identifier = 2;
+
+  // URL to the host's documentation. OPTIONAL.
+  optional string documentation_url = 3;
+
+  // URL to the host's logo. Data URIs (RFC 2397) are RECOMMENDED to avoid
+  // leaking client information through image fetch requests. OPTIONAL.
+  optional string logo_url = 4;
+
+  // Trust Manifest providing verifiable identity and trust metadata for
+  // the host itself. OPTIONAL.
+  optional TrustManifest trust_manifest = 5;
+}
+
+// CatalogEntry describes a single AI artifact in the catalog. An entry
+// identifies the artifact, declares its type via a media type, and either
+// references the artifact remotely (url) or embeds it inline (data).
+//
+// JSON shape:
+//
+//   {
+//     "identifier": "urn:acme:agent:finance",
+//     "displayName": "Acme Finance Agent",
+//     "mediaType": "application/a2a-agent-card+json",
+//     "url": "https://example.com/agents/finance.json",
+//     "version": "2.1.0",
+//     "description": "...",
+//     "tags": ["finance", "a2a"],
+//     "publisher": { ... },
+//     "trustManifest": { ... },
+//     "updatedAt": "2026-03-15T10:00:00Z",
+//     "metadata": { ... }
+//   }
+//
+// Multi-Version Entries:
+// A catalog MAY contain multiple entries with the same identifier and
+// different version values. When version is present, the combination of
+// identifier and version MUST be unique within the catalog. When version
+// is absent, identifier alone MUST be unique.
+message CatalogEntry {
+  // Stable, globally unique identifier for the artifact. SHOULD be a URN
+  // (RFC 8141) or URI (RFC 3986), e.g. "urn:acme:agent:finance". REQUIRED.
+  string identifier = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1
+  ];
+
+  // Human-readable name for the artifact. REQUIRED.
+  string display_name = 2 [(buf.validate.field).required = true];
+
+  // Media type identifying the type of the referenced artifact. Well-known
+  // values include (but are not limited to):
+  //   - "application/ai-catalog+json"        — a nested AI Catalog
+  //   - "application/a2a-agent-card+json"    — an A2A Agent Card
+  //   - "application/mcp-server-card+json"   — an MCP Server Card
+  //   - "application/agentskill+zip"         — a skill definition
+  //   - "application/vnd.anthropic.claude-plugin+json"
+  //   - any other protocol-defined media type
+  // REQUIRED.
+  string media_type = 3 [(buf.validate.field).required = true];
+
+  // The artifact content. Exactly one of url or data MUST be set.
+  oneof artifact {
+    option (buf.validate.oneof).required = true;
+
+    // URL where the full artifact document can be retrieved. The
+    // document served at this URL SHOULD be served with the media type
+    // declared in media_type.
+    string url = 4 [(buf.validate.field).string.uri = true];
+
+    // Complete artifact document inline. The structure of this value is
+    // determined by media_type and is opaque to this specification.
+    // For nested AI Catalogs (media_type == "application/ai-catalog+json")
+    // this value is itself a JSON-encoded AICatalog document.
+    google.protobuf.Value data = 5;
+  }
+
+  // Version of this artifact. Semantic Versioning is RECOMMENDED but not
+  // required. OPTIONAL.
+  optional string version = 6;
+
+  // Short description of the artifact. OPTIONAL.
+  optional string description = 7;
+
+  // Free-form keywords for filtering and discovery. OPTIONAL.
+  repeated string tags = 8;
+
+  // The entity that publishes this artifact. This is the sole canonical
+  // location for publisher information; it is NOT duplicated in the
+  // Trust Manifest. OPTIONAL.
+  optional Publisher publisher = 9;
+
+  // Verifiable identity and trust metadata for this artifact. When
+  // present, trust_manifest.identity MUST match this entry's identifier.
+  // OPTIONAL.
+  optional TrustManifest trust_manifest = 10;
+
+  // ISO 8601 / RFC 3339 timestamp indicating when this entry was last
+  // modified (e.g. "2026-03-15T10:00:00Z"). OPTIONAL.
+  optional string updated_at = 11;
+
+  // Open map of string keys to arbitrary JSON values for custom data.
+  // OPTIONAL.
+  map<string, google.protobuf.Value> metadata = 12;
+}
+
+// Publisher identifies the entity responsible for a catalog artifact. It
+// is the canonical location for publisher information.
+//
+// JSON shape:
+//
+//   {
+//     "identifier": "did:web:acme-corp.com",
+//     "displayName": "Acme Financial Corp",
+//     "identityType": "did"
+//   }
+message Publisher {
+  // Verifiable identifier for the publisher organization (e.g. a DID,
+  // a domain name, or a URI). REQUIRED.
+  string identifier = 1 [(buf.validate.field).required = true];
+
+  // Human-readable name of the publisher. REQUIRED.
+  string display_name = 2 [(buf.validate.field).required = true];
+
+  // Type hint for the publisher identifier (e.g. "did", "dns").
+  // OPTIONAL — MAY be omitted when the type is evident from the
+  // identifier scheme.
+  optional string identity_type = 3;
+}
+
+// TrustManifest is an OPTIONAL companion to catalog entries and host
+// objects that provides verifiable identity, attestation, and provenance
+// metadata for an AI artifact.
+//
+// The Trust Manifest does NOT wrap the artifact: it sits alongside the
+// artifact as a peer element, keeping the native artifact format
+// unmodified. Publisher information is NOT duplicated here — the
+// informational publisher identity is carried on the CatalogEntry.
+//
+// JSON shape:
+//
+//   {
+//     "identity": "urn:acme:agent:finance",
+//     "identityType": "did",
+//     "trustSchema": { ... },
+//     "attestations": [ ... ],
+//     "provenance": [ ... ],
+//     "privacyPolicyUrl": "https://...",
+//     "termsOfServiceUrl": "https://...",
+//     "signature": "eyJhbGciOiJFUzI1NiJ9..."
+//   }
+message TrustManifest {
+  // Globally unique URI that serves as the primary subject identifier
+  // for the artifact. SHOULD be a DID, SPIFFE ID, or URL.
+  //
+  // When the Trust Manifest appears within a CatalogEntry, this field
+  // MUST match the entry's identifier. Consumers MUST reject a Trust
+  // Manifest whose identity does not match the containing entry's
+  // identifier. REQUIRED.
+  string identity = 1 [(buf.validate.field).required = true];
+
+  // Type hint for the identity URI (e.g. "did", "spiffe", "dns").
+  // OPTIONAL — MAY be omitted when the type is evident from the URI
+  // scheme.
+  optional string identity_type = 2;
+
+  // Trust framework applied to the artifact. OPTIONAL.
+  optional TrustSchema trust_schema = 3;
+
+  // Verifiable claims including publisher identity verification (using
+  // attestation type "publisher-identity"), compliance certifications,
+  // and other proofs. OPTIONAL.
+  repeated Attestation attestations = 4;
+
+  // Lineage information for the artifact. OPTIONAL.
+  repeated ProvenanceLink provenance = 5;
+
+  // URL to the privacy policy governing this artifact. OPTIONAL.
+  optional string privacy_policy_url = 6;
+
+  // URL to the terms of service. OPTIONAL.
+  optional string terms_of_service_url = 7;
+
+  // Detached JWS (RFC 7515) signature computed over the Trust Manifest
+  // content using JCS canonicalization (RFC 8785). Enables integrity
+  // verification of the trust metadata independent of the artifact.
+  // OPTIONAL.
+  optional string signature = 8;
+
+  // Open map of string keys to arbitrary JSON values for extending trust
+  // metadata. OPTIONAL.
+  map<string, google.protobuf.Value> metadata = 9;
+}
+
+// TrustSchema describes the trust framework applied to an artifact.
+//
+// JSON shape:
+//
+//   {
+//     "identifier": "urn:trust:acme-enterprise-v1",
+//     "version": "1.0",
+//     "governanceUri": "https://acme-corp.com/trust/governance.pdf",
+//     "verificationMethods": ["did", "x509"]
+//   }
+message TrustSchema {
+  // Identifier of the trust schema. REQUIRED.
+  string identifier = 1 [(buf.validate.field).required = true];
+
+  // Schema version. REQUIRED.
+  string version = 2 [(buf.validate.field).required = true];
+
+  // URI to the governance policy document. OPTIONAL.
+  optional string governance_uri = 3;
+
+  // Verification methods supported by the schema (e.g. "did", "x509",
+  // "dns-01"). OPTIONAL.
+  repeated string verification_methods = 4;
+}
+
+// Attestation provides verifiable proof of a claim about an artifact
+// (compliance certification, publisher identity binding, audit report,
+// SBOM, SLSA provenance, ...).
+//
+// JSON shape:
+//
+//   {
+//     "type": "SOC2-Type2",
+//     "uri": "https://trust.acme-corp.com/reports/soc2.pdf",
+//     "mediaType": "application/pdf",
+//     "digest": "sha256:a1b2c3d4...",
+//     "size": 245760,
+//     "description": "SOC2 Type 2 audit report (2026)"
+//   }
+message Attestation {
+  // Identifies the attestation type (e.g. "SOC2-Type2", "HIPAA-Audit",
+  // "ISO27001", "publisher-identity"). REQUIRED.
+  string type = 1 [(buf.validate.field).required = true];
+
+  // Location of the attestation document. This MAY be an HTTPS URL or an
+  // inline Data URI (RFC 2397). REQUIRED.
+  string uri = 2 [(buf.validate.field).required = true];
+
+  // Media type of the attestation document (e.g. "application/pdf",
+  // "application/jwt"). REQUIRED.
+  string media_type = 3 [(buf.validate.field).required = true];
+
+  // Cryptographic digest for integrity verification, formatted as
+  // "algorithm:hex-value" (e.g. "sha256:9f86d081..."). Producers SHOULD
+  // use SHA-256 or stronger. Consumers MUST reject digests using
+  // algorithms shorter than SHA-256. OPTIONAL.
+  optional string digest = 4;
+
+  // Size of the attestation document in bytes. OPTIONAL.
+  optional uint64 size = 5;
+
+  // Human-readable label for the attestation. OPTIONAL.
+  optional string description = 6;
+}
+
+// ProvenanceLink records lineage information for an artifact: where it
+// was built from, which registry it was published through, and an
+// optional signed provenance statement.
+//
+// JSON shape:
+//
+//   {
+//     "relation": "publishedFrom",
+//     "sourceId": "https://github.com/acme-corp/finance-agent",
+//     "sourceDigest": "sha256:fedcba0987...",
+//     "registryUri": "oci://registry.acme-corp.com/agents/finance",
+//     "statementUri": "https://trust.acme-corp.com/provenance/agent.json",
+//     "signatureRef": "did:web:acme-corp.com#key-1"
+//   }
+message ProvenanceLink {
+  // Type of relationship between the artifact and its source (e.g.
+  // "materializedFrom", "derivedFrom", "publishedFrom"). REQUIRED.
+  string relation = 1 [(buf.validate.field).required = true];
+
+  // Identifies the source artifact or data (e.g. a Git repository URL,
+  // an OCI image reference, a dataset URI). REQUIRED.
+  string source_id = 2 [(buf.validate.field).required = true];
+
+  // Cryptographic digest of the source, formatted as "algorithm:hex-value"
+  // (e.g. "sha256:fedcba0987..."). OPTIONAL.
+  optional string source_digest = 3;
+
+  // URI of the registry holding the source. OPTIONAL.
+  optional string registry_uri = 4;
+
+  // URI of a provenance statement document (e.g. an in-toto / SLSA
+  // statement). OPTIONAL.
+  optional string statement_uri = 5;
+
+  // Reference to the key used to sign the provenance statement (e.g.
+  // a DID URL with a key fragment). OPTIONAL.
+  optional string signature_ref = 6;
+}
