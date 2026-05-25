@@ -32,9 +32,8 @@ type Record struct {
 	Annotations []Annotation `gorm:"foreignKey:RecordCID;references:RecordCID;constraint:OnDelete:CASCADE"`
 
 	// AI Catalog required fields
-	Description string                  `gorm:"column:description"`             // From OASF.description; surfaced on catalog entries
-	Published   bool                    `gorm:"column:published;default:false"` // Whether the record is published (optional, can be used for well-known catalog entries)
-	Signatures  []SignatureVerification `gorm:"foreignKey:RecordCID;references:RecordCID;constraint:OnDelete:CASCADE"`
+	Description string `gorm:"column:description"`             // From OASF.description; surfaced on catalog entries
+	Published   bool   `gorm:"column:published;default:false"` // Whether the record is published (optional, can be used for well-known catalog entries)
 }
 
 // Implement central Record interface.

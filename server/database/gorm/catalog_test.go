@@ -51,9 +51,12 @@ func TestToCatalog_SingleMCPModule(t *testing.T) {
 		},
 	}
 
-	entry, err := r.ToCatalog()
+	// nil signatures → no trust manifest in the projected entry. The
+	// trust manifest path is exercised by a dedicated test below.
+	entry, err := r.ToCatalog(nil)
 	require.NoError(t, err)
 	require.NotNil(t, entry)
+	assert.Nil(t, entry.GetTrustManifest(), "no signatures → no trust manifest")
 
 	// Identifier + identity.
 	assert.Equal(t, "urn:ai:agntcy.org:cid:bafy-finance", entry.GetIdentifier())
@@ -123,9 +126,10 @@ func TestToCatalog_MCPAndSkillModules(t *testing.T) {
 		},
 	}
 
-	entry, err := r.ToCatalog()
+	entry, err := r.ToCatalog(nil)
 	require.NoError(t, err)
 	require.NotNil(t, entry)
+	assert.Nil(t, entry.GetTrustManifest(), "no signatures → no trust manifest")
 
 	// Container: record-level URN, display name from the record, container
 	// media type, and `data` (not `url`) used for the inline catalog.
@@ -208,4 +212,108 @@ func TestToCatalog_MCPAndSkillModules(t *testing.T) {
 	}
 
 	logCatalogEntry(t, "MCP + AgentSkills modules → container catalog entry", entry)
+}
+
+func TestToCatalog_TrustManifestFromVerifiedSignature(t *testing.T) {
+	t.Parallel()
+
+	r := &Record{
+		RecordCID:     "bafy-trust",
+		Name:          "Signed Finance Agent",
+		Version:       "1.0.0",
+		SchemaVersion: "1.0.0",
+		Signed:        true,
+		Modules: []Module{
+			{
+				Name:        "integration/mcp",
+				ArtifactURL: "https://api.acme.com/agents/finance-trader.json",
+			},
+		},
+	}
+
+	// Three rows: a failed OIDC verification (must be ignored), a
+	// verified OIDC signature (oldest → primary), and a later verified
+	// key-based co-signature.
+	primaryAt := time.Date(2026, 3, 14, 9, 0, 0, 0, time.UTC)
+	cosignAt := time.Date(2026, 3, 15, 9, 0, 0, 0, time.UTC)
+
+	signatures := []*SignatureVerification{
+		{
+			RecordCID:     "bafy-trust",
+			SignerKey:     "stale-key",
+			Status:        "failed",
+			SignerType:    "oidc",
+			SignerIssuer:  "https://accounts.google.com",
+			SignerSubject: "stale@example.com",
+			CreatedAt:     primaryAt.Add(-24 * time.Hour),
+		},
+		{
+			RecordCID:       "bafy-trust",
+			SignerKey:       "cosign-key",
+			Status:          signatureStatusVerified,
+			SignerType:      "key",
+			SignerPublicKey: "-----BEGIN PUBLIC KEY-----\nMIIB...\n-----END PUBLIC KEY-----",
+			CreatedAt:       cosignAt,
+		},
+		{
+			RecordCID:     "bafy-trust",
+			SignerKey:     "primary-key",
+			Status:        signatureStatusVerified,
+			SignerType:    "oidc",
+			SignerIssuer:  "https://accounts.acme.com",
+			SignerSubject: "release-bot@acme.com",
+			CreatedAt:     primaryAt,
+		},
+	}
+
+	entry, err := r.ToCatalog(signatures)
+	require.NoError(t, err)
+	require.NotNil(t, entry)
+
+	tm := entry.GetTrustManifest()
+	require.NotNil(t, tm, "verified signatures must produce a trust manifest")
+
+	// Identity comes from the primary (oldest verified) signer via
+	// SignatureVerification.Identity(). The "https://" scheme is stripped
+	// from the issuer so the identity stays a clean URI without two
+	// competing ':' delimiters.
+	assert.Equal(t,
+		"oidc:accounts.acme.com:release-bot@acme.com",
+		tm.GetIdentity(),
+	)
+
+	// identityType is the primary signer's SignerType.
+	require.NotNil(t, tm.IdentityType)
+	assert.Equal(t, "oidc", tm.GetIdentityType())
+
+	// Unimplemented for now — explicit assertions guard the TODOs.
+	assert.Empty(t, tm.GetAttestations(),
+		"per-signer attestations not emitted yet (see TODO in buildTrustManifest)")
+	assert.Nil(t, tm.Signature,
+		"detached-JWS manifest signature not emitted yet (see TODO in buildTrustManifest)")
+
+	logCatalogEntry(t, "verified signatures → leaf entry with trust manifest", entry)
+}
+
+// TestBuildTrustManifest_NoVerifiedSignatures covers the negative path
+// in isolation: any mix of failed-only / empty / nil inputs must yield
+// a nil manifest so the catalog entry stays clean of empty trust noise.
+func TestBuildTrustManifest_NoVerifiedSignatures(t *testing.T) {
+	t.Parallel()
+
+	cases := map[string][]*SignatureVerification{
+		"nil slice":     nil,
+		"empty slice":   {},
+		"nil row only":  {nil},
+		"failed only":   {{Status: "failed", SignerType: "oidc"}},
+		"unknown state": {{Status: "pending", SignerType: "oidc"}},
+	}
+
+	for name, sigs := range cases {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+
+			assert.Nil(t, buildTrustManifest(sigs))
+		})
+	}
 }

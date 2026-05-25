@@ -69,17 +69,24 @@ func (r *Record) GetAgents(filters ...string) ([]any, error) {
 	// - No version filter, default to latest (last created_at)
 
 	// Fetch
-	// run a query here to fetch: records, join with skills, modules, domains, signature
+	// run a query here to fetch: records, join with skills, modules, domains, annotations
 	// var records []Record
-	// err := db.Preload("Skills").Preload("Modules").Preload("Domains").Preload("Annotations").Preload("Signatures").Find(&records).Error
+	// err := db.Preload("Skills").Preload("Modules").Preload("Domains").Preload("Annotations").Find(&records).Error
 	// if err != nil {
 	// 	return nil, err
 	// }
 
-	// // Apply conversion to catalog format
+	// // Apply conversion to catalog format. Signatures are NOT preloaded
+	// // with the record (they live in their own table); fetch them per
+	// // record so the trust manifest can be built without paying the cost
+	// // for callers that don't need it.
 	// result := make([]interface{}, len(records))
 	// for i, record := range records {
-	// 	catalog, err := record.ToCatalog()
+	// 	var sigs []*SignatureVerification
+	// 	if err := db.Where("record_cid = ?", record.RecordCID).Find(&sigs).Error; err != nil {
+	// 		return nil, err
+	// 	}
+	// 	catalog, err := record.ToCatalog(sigs)
 	// 	if err != nil {
 	// 		return nil, err
 	// 	}
@@ -100,7 +107,12 @@ func (r *Record) GetAgents(filters ...string) ([]any, error) {
 //   - 2+ known modules → returns a CONTAINER entry whose media_type is
 //     "application/ai-catalog+json" and whose `data` field embeds a
 //     nested AICatalog with one CatalogEntry per known module.
-func (r *Record) ToCatalog() (*catalogv1.CatalogEntry, error) {
+//
+// signatures carries SignatureVerification rows associated with the
+// record.
+//
+//nolint:cyclop
+func (r *Record) ToCatalog(signatures []*SignatureVerification) (*catalogv1.CatalogEntry, error) {
 	if r == nil {
 		return nil, fmt.Errorf("ToCatalog called on nil record")
 	}
@@ -114,9 +126,10 @@ func (r *Record) ToCatalog() (*catalogv1.CatalogEntry, error) {
 	recordTags := r.catalogTags()
 	updatedAt := r.catalogUpdatedAt()
 	description := strings.TrimSpace(r.Description)
+	trustManifest := buildTrustManifest(signatures)
 
 	// Single known module — leaf entry on the parent URN.
-	if len(modules) == 1 {
+	if len(modules) == 1 { //nolint:nestif
 		m := modules[0]
 
 		entry, err := r.moduleToCatalogEntry(m, baseURN)
@@ -137,6 +150,10 @@ func (r *Record) ToCatalog() (*catalogv1.CatalogEntry, error) {
 
 		if updatedAt != "" {
 			entry.UpdatedAt = &updatedAt
+		}
+
+		if trustManifest != nil {
+			entry.TrustManifest = trustManifest
 		}
 
 		return entry, nil
@@ -191,6 +208,10 @@ func (r *Record) ToCatalog() (*catalogv1.CatalogEntry, error) {
 
 	if updatedAt != "" {
 		container.UpdatedAt = &updatedAt
+	}
+
+	if trustManifest != nil {
+		container.TrustManifest = trustManifest
 	}
 
 	return container, nil
@@ -334,6 +355,52 @@ func (r *Record) catalogUpdatedAt() string {
 	}
 
 	return r.UpdatedAt.UTC().Format(time.RFC3339)
+}
+
+// buildTrustManifest projects a set of signature verification rows onto
+// an AI Catalog TrustManifest:
+//
+//   - identity      = primary verified signer's Identity()
+//   - identityType  = primary verified signer's SignerType ("oidc", "key", ...)
+
+// TODO(ai-catalog): surface attestations and a JCS-canonicalised
+// detached-JWS signature on the manifest itself.
+func buildTrustManifest(signatures []*SignatureVerification) *catalogv1.TrustManifest {
+	verified := make([]*SignatureVerification, 0, len(signatures))
+
+	for _, s := range signatures {
+		if s == nil {
+			continue
+		}
+
+		if s.Status == signatureStatusVerified {
+			verified = append(verified, s)
+		}
+	}
+
+	if len(verified) == 0 {
+		return nil
+	}
+
+	sort.Slice(verified, func(i, j int) bool {
+		if !verified[i].CreatedAt.Equal(verified[j].CreatedAt) {
+			return verified[i].CreatedAt.Before(verified[j].CreatedAt)
+		}
+
+		return verified[i].SignerKey < verified[j].SignerKey
+	})
+
+	primary := verified[0]
+
+	tm := &catalogv1.TrustManifest{
+		Identity: primary.Identity(),
+	}
+
+	if it := strings.TrimSpace(primary.SignerType); it != "" {
+		tm.IdentityType = &it
+	}
+
+	return tm
 }
 
 // firstNonEmpty returns the first non-empty string in values, or "" if

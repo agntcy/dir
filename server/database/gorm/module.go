@@ -36,8 +36,7 @@ func (module *Module) GetID() uint64 {
 }
 
 func (module *Module) GetData() map[string]any {
-	// Database modules don't store data, return empty map
-	return make(map[string]any)
+	return module.ArtifactData
 }
 
 // convertModules transforms interface types to Database structs.

@@ -5,11 +5,14 @@ package gorm
 
 import (
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/agntcy/dir/server/types"
 	"gorm.io/gorm/clause"
 )
+
+const signatureStatusVerified = "verified"
 
 // SignatureVerification stores one signer verification result (one row per signer).
 // Rows are keyed by (record_cid, signer_key).
@@ -225,7 +228,10 @@ func (s *SignatureVerification) Identity() string {
 	// switch case on signer type to determine identity format
 	switch s.SignerType {
 	case "oidc":
-		return fmt.Sprintf("oidc:%s:%s", s.SignerIssuer, s.SignerSubject)
+		issuer := strings.TrimPrefix(s.SignerIssuer, "https://")
+		issuer = strings.TrimPrefix(issuer, "http://")
+
+		return fmt.Sprintf("oidc:%s:%s", issuer, s.SignerSubject)
 	case "key":
 		return fmt.Sprintf("key:%s", s.SignerPublicKey)
 	default:
