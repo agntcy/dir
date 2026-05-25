@@ -81,7 +81,7 @@ jobs:
           cache-dependency-path: "**/*.sum"
 
       - name: Install Task
-        uses: go-task/setup-task@3be4020d41929789a01026e0e427a4321ce0ad44 #v2.0.0
+        uses: go-task/setup-task@01a4adf9db2d14c1de7a560f09170b6e0df736aa # v2.1.0
 
       - name: Setup lint cache
         uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
@@ -109,7 +109,7 @@ jobs:
           fetch-depth: 0
 
       - name: Install Task
-        uses: go-task/setup-task@3be4020d41929789a01026e0e427a4321ce0ad44 #v2.0.0
+        uses: go-task/setup-task@01a4adf9db2d14c1de7a560f09170b6e0df736aa # v2.1.0
 
       - name: Setup license cache
         uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
@@ -144,7 +144,7 @@ jobs:
           fetch-depth: 0
 
       - name: Install Task
-        uses: go-task/setup-task@3be4020d41929789a01026e0e427a4321ce0ad44 #v2.0.0
+        uses: go-task/setup-task@01a4adf9db2d14c1de7a560f09170b6e0df736aa # v2.1.0
 
       - name: Check auto-generated code
         run: |
@@ -232,7 +232,7 @@ jobs:
           merge-multiple: true
 
       - name: Upload to Codecov
-        uses: codecov/codecov-action@57e3a136b779b570ffcdbf80b3bdc90e7fab3de2 # v6.0.0
+        uses: codecov/codecov-action@e79a6962e0d4c0c17b229090214935d2e33f8354 # v6.0.1
         with:
           codecov_yml_path: codecov.yml
           files: ".coverage/**/*.out"
