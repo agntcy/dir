@@ -24,7 +24,7 @@ jobs:
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
       - name: Install Task
-        uses: go-task/setup-task@3be4020d41929789a01026e0e427a4321ce0ad44 #v2.0.0
+        uses: go-task/setup-task@01a4adf9db2d14c1de7a560f09170b6e0df736aa # v2.1.0
 
       - name: Get image list from task
         id: matrix
@@ -67,7 +67,7 @@ jobs:
         run: echo "${{ matrix.image }}" > trivy-${{ steps.image-name.outputs.name }}.meta
 
       - name: Upload SARIF
-        uses: github/codeql-action/upload-sarif@68bde559dea0fdcac2102bfdf6230c5f70eb485e # v4.35.4
+        uses: github/codeql-action/upload-sarif@9e0d7b8d25671d64c341c19c0152d693099fb5ba # v4.35.5
         with:
           sarif_file: trivy-${{ steps.image-name.outputs.name }}.sarif
           category: trivy-${{ steps.image-name.outputs.name }}
