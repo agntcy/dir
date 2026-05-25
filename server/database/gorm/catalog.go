@@ -11,6 +11,8 @@ import (
 	"time"
 
 	catalogv1 "github.com/agntcy/dir/api/catalog/v1"
+	"github.com/agntcy/dir/server/types"
+	"github.com/agntcy/oasf-sdk/pkg/translator"
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/types/known/structpb"
 )
@@ -38,12 +40,11 @@ const (
 	catalogContainerMediaType = "application/ai-catalog+json"
 )
 
-// moduleProjection captures the per-module mapping rules.
+// moduleProjection captures the per-module projection rules that the
+// gorm package owns.
 type moduleProjection struct {
-	// MediaType is the catalog entry's media_type value.
-	MediaType string
-
-	// URNSuffix is appended to the record-level URN for nested entries.
+	// URNSuffix is appended to the record-level URN for nested entries
+	// inside a multi-module container (e.g. "...:mcp").
 	URNSuffix string
 
 	// Label is the short human-readable tag used when synthesising a
@@ -51,12 +52,13 @@ type moduleProjection struct {
 	Label string
 }
 
-// knownModules maps OASF integration module names onto AI Catalog
-// metadata.
+// knownModules maps OASF integration module names onto the catalog-
+// projection-specific data (URN suffix + display label). Media types
+// for these modules are looked up via types.CatalogMediaTypeForModule.
 var knownModules = map[string]moduleProjection{
-	"integration/mcp":                 {MediaType: "application/mcp-server-card+json", URNSuffix: "mcp", Label: "MCP"},
-	"integration/a2a":                 {MediaType: "application/a2a-agent-card+json", URNSuffix: "a2a", Label: "A2A"},
-	"core/language_model/agentskills": {MediaType: "application/agentskill+zip", URNSuffix: "agentskill", Label: "Skill"},
+	translator.MCPModuleName:         {URNSuffix: "mcp", Label: "MCP"},
+	translator.A2AModuleName:         {URNSuffix: "a2a", Label: "A2A"},
+	translator.AgentSkillsModuleName: {URNSuffix: "agentskill", Label: "Skill"},
 }
 
 func (r *Record) GetAgents(filters ...string) ([]any, error) {
@@ -222,14 +224,18 @@ func (r *Record) ToCatalog(signatures []*SignatureVerification) (*catalogv1.Cata
 // in by the caller because they differ between the single-module-leaf
 // and multi-module-nested cases.
 func (r *Record) moduleToCatalogEntry(m Module, identifier string) (*catalogv1.CatalogEntry, error) {
-	proj, ok := knownModules[m.Name]
-	if !ok {
+	if _, ok := knownModules[m.Name]; !ok {
 		return nil, fmt.Errorf("module %q has no AI Catalog projection rule", m.Name)
+	}
+
+	mediaType, ok := types.CatalogMediaTypeForModule(m.Name)
+	if !ok {
+		return nil, fmt.Errorf("module %q has no AI Catalog media type", m.Name)
 	}
 
 	entry := &catalogv1.CatalogEntry{
 		Identifier: identifier,
-		MediaType:  proj.MediaType,
+		MediaType:  mediaType,
 	}
 
 	// CatalogEntry.artifact is a required oneof of (url | data). Prefer a

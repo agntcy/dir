@@ -63,7 +63,7 @@ func TestToCatalog_SingleMCPModule(t *testing.T) {
 	assert.Equal(t, "Finance Agent", entry.GetDisplayName())
 
 	// Media type comes from the MCP projection rule.
-	assert.Equal(t, "application/mcp-server-card+json", entry.GetMediaType())
+	assert.Equal(t, "application/mcp-server+json", entry.GetMediaType())
 
 	// Leaf entries surface the module's URL via the artifact oneof.
 	assert.Equal(t, "https://api.acme.com/agents/finance-trader.json", entry.GetUrl())
@@ -187,11 +187,11 @@ func TestToCatalog_MCPAndSkillModules(t *testing.T) {
 
 	require.Contains(t, nested, mcpKey, "nested entry for MCP module must be present")
 	assert.Equal(t, "Trading Agent (MCP)", nested[mcpKey]["displayName"])
-	assert.Equal(t, "application/mcp-server-card+json", nested[mcpKey]["mediaType"])
+	assert.Equal(t, "application/mcp-server+json", nested[mcpKey]["mediaType"])
 
 	require.Contains(t, nested, skillKey, "nested entry for AgentSkills module must be present")
 	assert.Equal(t, "Market Analysis Skill", nested[skillKey]["displayName"])
-	assert.Equal(t, "application/agentskill+zip", nested[skillKey]["mediaType"])
+	assert.Equal(t, "application/ai-skill+md", nested[skillKey]["mediaType"])
 
 	// The MCP nested entry carries the URL; the AgentSkills nested entry
 	// carries inline data. (Quick artifact-shape check on each.)
