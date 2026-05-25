@@ -44,5 +44,5 @@ func TestLocalE2E(t *testing.T) {
 }
 
 var _ = ginkgo.BeforeSuite(func(ctx context.Context) {
-	utils.WaitForGrpcServerReady(ctx, testEnv.Config.ServerAddress)
+	utils.WaitForGrpcServerReady(ctx, testEnv.Config.ServerAddress, "")
 })

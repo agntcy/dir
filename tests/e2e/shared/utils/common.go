@@ -17,6 +17,9 @@ import (
 	"github.com/onsi/gomega"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
+	"github.com/spiffe/go-spiffe/v2/spiffegrpc/grpccredentials"
+	"github.com/spiffe/go-spiffe/v2/spiffetls/tlsconfig"
+	"github.com/spiffe/go-spiffe/v2/workloadapi"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/health/grpc_health_v1"
@@ -125,8 +128,63 @@ func resetNestedCommandFlags(cmd *cobra.Command) {
 
 // isGrpcServerReady checks whether the given gRPC server reports SERVING
 // on the gRPC health check endpoint.
-func isGrpcServerReady(ctx context.Context, addr string) error {
-	// Create client
+func isGrpcServerReady(ctx context.Context, addr string, spiffeSocketPath string) error {
+	if spiffeSocketPath != "" {
+		return isGrpcServerReadyWithWorkloadAPI(ctx, addr, spiffeSocketPath)
+	}
+
+	return isGrpcServerReadyInsecure(ctx, addr)
+}
+
+func isGrpcServerReadyWithWorkloadAPI(ctx context.Context, addr, spiffeSocketPath string) error {
+	source, bundleSrc, err := getWorkloadAPISources(ctx, spiffeSocketPath)
+	if err != nil {
+		return fmt.Errorf("failed to get Workload API sources: %w", err)
+	}
+
+	creds := grpccredentials.MTLSClientCredentials(source, bundleSrc, tlsconfig.AuthorizeAny())
+
+	client, err := grpc.NewClient(addr, grpc.WithTransportCredentials(creds))
+	if err != nil {
+		return fmt.Errorf("failed to connect to %s with SPIFFE Workload API TLS: %w", addr, err)
+	}
+
+	defer client.Close()
+
+	return checkGrpcHealth(ctx, client, addr)
+}
+
+func getWorkloadAPISources(ctx context.Context, spiffeSocketPath string) (*workloadapi.X509Source, *workloadapi.BundleSource, error) {
+	var (
+		source    *workloadapi.X509Source
+		bundleSrc *workloadapi.BundleSource
+		err       error
+	)
+
+	client, err := workloadapi.New(ctx, workloadapi.WithAddr(spiffeSocketPath))
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to create SPIFFE Workload API client: %w", err)
+	}
+
+	source, err = workloadapi.NewX509Source(ctx, workloadapi.WithClient(client))
+	if err != nil {
+		_ = client.Close()
+
+		return nil, nil, fmt.Errorf("failed to create X509 source: %w", err)
+	}
+
+	bundleSrc, err = workloadapi.NewBundleSource(ctx, workloadapi.WithClient(client))
+	if err != nil {
+		_ = source.Close()
+		_ = client.Close()
+
+		return nil, nil, fmt.Errorf("failed to create bundle source: %w", err)
+	}
+
+	return source, bundleSrc, nil
+}
+
+func isGrpcServerReadyInsecure(ctx context.Context, addr string) error {
 	client, err := grpc.NewClient(addr,
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
 	)
@@ -135,7 +193,10 @@ func isGrpcServerReady(ctx context.Context, addr string) error {
 	}
 	defer client.Close()
 
-	// Check health
+	return checkGrpcHealth(ctx, client, addr)
+}
+
+func checkGrpcHealth(ctx context.Context, client *grpc.ClientConn, addr string) error {
 	healthClient := grpc_health_v1.NewHealthClient(client)
 
 	resp, err := healthClient.Check(ctx, &grpc_health_v1.HealthCheckRequest{})
@@ -151,10 +212,10 @@ func isGrpcServerReady(ctx context.Context, addr string) error {
 }
 
 // WaitForGrpcServerReady waits until the gRPC server at the given address reports SERVING on the health check endpoint.
-func WaitForGrpcServerReady(ctx context.Context, addr string) {
+func WaitForGrpcServerReady(ctx context.Context, addr string, spiffeSocketPath string) {
 	ginkgo.GinkgoWriter.Printf("Waiting for gRPC server at %s...\n", addr)
 	gomega.Eventually(isGrpcServerReady).
-		WithArguments(addr).
+		WithArguments(addr, spiffeSocketPath).
 		WithPolling(PollingInterval).
 		WithTimeout(TimeoutInterval).
 		WithContext(ctx).

@@ -48,7 +48,11 @@ func TestClientE2E(t *testing.T) {
 }
 
 var _ = ginkgo.BeforeSuite(func(ctx context.Context) {
-	utils.WaitForGrpcServerReady(ctx, testEnv.Config.ClientOptions.ServerAddress)
+	utils.WaitForGrpcServerReady(
+		ctx,
+		testEnv.Config.ClientOptions.ServerAddress,
+		testEnv.Config.ClientOptions.SpiffeSocketPath,
+	)
 })
 
 var _ = ginkgo.AfterSuite(func() {
