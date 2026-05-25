@@ -18,10 +18,13 @@ type Module struct {
 	ModuleID  uint64 `gorm:"column:module_id"`
 
 	// AI Catalog required fields
-	DisplayName  string `gorm:"column:display_name"`
-	ArtifactURL  string `gorm:"column:artifact_url"`
-	ArtifactData string `gorm:"column:artifact_data"`
-	Tags         string `gorm:"column:tags"`
+	// TODO: AI Catalog either requires a url or a data field, as currently we save the module data, we will only set the data field and leave the url field empty.
+	// TODO: Display name should be the retrieved from the module's data
+	// TODO: Tags should be the retrieved from the module's data
+	DisplayName  string         `gorm:"column:display_name"`
+	ArtifactURL  string         `gorm:"column:artifact_url"`
+	ArtifactData map[string]any `gorm:"column:artifact_data;serializer:json"`
+	Tags         string         `gorm:"column:tags"`
 }
 
 func (module *Module) GetName() string {
@@ -38,13 +41,15 @@ func (module *Module) GetData() map[string]any {
 }
 
 // convertModules transforms interface types to Database structs.
-func convertModules(modules []types.Module, recordCID string) []Module {
+func convertModules(modules []types.Module, recordCID string, displayName string) []Module {
 	result := make([]Module, len(modules))
 	for i, module := range modules {
 		result[i] = Module{
-			RecordCID: recordCID,
-			Name:      module.GetName(),
-			ModuleID:  module.GetID(),
+			RecordCID:    recordCID,
+			Name:         module.GetName(),
+			ModuleID:     module.GetID(),
+			DisplayName:  displayName, // TODO: Display name should be the retrieved from the module's data
+			ArtifactData: module.GetData(),
 		}
 	}
 

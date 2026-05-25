@@ -32,8 +32,9 @@ type Record struct {
 	Annotations []Annotation `gorm:"foreignKey:RecordCID;references:RecordCID;constraint:OnDelete:CASCADE"`
 
 	// AI Catalog required fields
-	Published  bool                    `gorm:"column:published;default:false"` // Whether the record is published (optional, can be used for well-known catalog entries)
-	Signatures []SignatureVerification `gorm:"foreignKey:RecordCID;references:RecordCID;constraint:OnDelete:CASCADE"`
+	Description string                  `gorm:"column:description"`             // From OASF.description; surfaced on catalog entries
+	Published   bool                    `gorm:"column:published;default:false"` // Whether the record is published (optional, can be used for well-known catalog entries)
+	Signatures  []SignatureVerification `gorm:"foreignKey:RecordCID;references:RecordCID;constraint:OnDelete:CASCADE"`
 }
 
 // Implement central Record interface.
@@ -86,8 +87,7 @@ func (r *RecordDataAdapter) GetVersion() string {
 }
 
 func (r *RecordDataAdapter) GetDescription() string {
-	// Database records don't store description
-	return ""
+	return r.record.Description
 }
 
 func (r *RecordDataAdapter) GetAuthors() []string {
@@ -173,9 +173,10 @@ func (d *DB) AddRecord(record types.Record) error {
 		SchemaVersion: recordData.GetSchemaVersion(),
 		OASFCreatedAt: recordData.GetCreatedAt(),
 		Authors:       recordData.GetAuthors(),
+		Description:   recordData.GetDescription(),
 		Skills:        convertSkills(recordData.GetSkills(), cid),
 		Locators:      convertLocators(recordData.GetLocators(), cid),
-		Modules:       convertModules(recordData.GetModules(), cid),
+		Modules:       convertModules(recordData.GetModules(), cid, recordData.GetName()),
 		Domains:       convertDomains(recordData.GetDomains(), cid),
 		Annotations:   convertAnnotations(recordData.GetAnnotations(), cid),
 	}
