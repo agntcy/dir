@@ -10,6 +10,7 @@ import (
 	"testing"
 	"time"
 
+	catalogv1 "github.com/agntcy/dir/api/catalog/v1"
 	corev1 "github.com/agntcy/dir/api/core/v1"
 	routingv1 "github.com/agntcy/dir/api/routing/v1"
 	signv1 "github.com/agntcy/dir/api/sign/v1"
@@ -274,6 +275,10 @@ func (f *fakeSignatureDB) GetSignatureVerificationsByRecordCID(recordCID string)
 
 func (f *fakeSignatureDB) InvalidateSignatureVerificationsForRecord(recordCID string) error {
 	return nil
+}
+
+func (f *fakeSignatureDB) GetCatalogEntries(opts ...types.FilterOption) ([]*catalogv1.CatalogEntry, bool, error) {
+	return nil, false, nil
 }
 
 func (f *fakeSignatureDB) Close() error                 { return nil }

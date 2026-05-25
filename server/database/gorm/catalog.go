@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"sort"
 	"strings"
-	"time"
 
 	catalogv1 "github.com/agntcy/dir/api/catalog/v1"
 	"github.com/agntcy/dir/server/types"
@@ -27,8 +26,11 @@ import (
 
 const (
 	// catalogURNHost is the authority segment baked into every catalog
-	// entry URN: "urn:ai:<host>:cid:<record-cid>[:<suffix>]". Made a
-	// constant so it can later be made configurable from HostInfo.
+	// entry URN: "urn:ai:<host>:cid:<record-cid>[:<suffix>]".
+	//
+	// TODO(ai-catalog): make this configurable once we wire publisher
+	// data through the record schema. Until then every entry is rooted
+	// at the AGNTCY-wide authority.
 	catalogURNHost = "agntcy.org"
 
 	// catalogSpecVersion is the AI Catalog spec version embedded in the
@@ -38,6 +40,10 @@ const (
 	// catalogContainerMediaType is the media_type of the container entry
 	// produced when a record has more than one known module.
 	catalogContainerMediaType = "application/ai-catalog+json"
+
+	// defaultCatalogPageSize is applied by GetCatalogEntries when the
+	// caller doesn't set Limit.
+	defaultCatalogPageSize = 20
 )
 
 // moduleProjection captures the per-module projection rules that the
@@ -61,40 +67,127 @@ var knownModules = map[string]moduleProjection{
 	translator.AgentSkillsModuleName: {URNSuffix: "agentskill", Label: "Skill"},
 }
 
-func (r *Record) GetAgents(filters ...string) ([]any, error) {
-	// Convert filters
-	// = filters
+// GetCatalogEntries implements the AI Catalog Agent Finder list query
+// (Agent Finder Specification §7.2) on top of the existing OASF record
+// search. The flow is intentionally three short steps:
+//
+//  1. Apply the supplied FilterOptions to a Record query, with eager
+//     loading of Modules/Skills/Domains/Annotations so the projection
+//     has everything it needs.
+//  2. Peek-ahead pagination: request Limit+1 records and return
+//     hasMore=true when the extra row materialises. Cheaper than a
+//     separate COUNT(*) on filter-heavy queries.
+//  3. Per matched record, load its SignatureVerification rows
+//     on-demand and project via Record.ToCatalog.
+func (d *DB) GetCatalogEntries(opts ...types.FilterOption) ([]*catalogv1.CatalogEntry, bool, error) {
+	cfg := &types.RecordFilters{}
 
-	// Required filters to support:
-	// - Appendix A: Filter Expression Syntax
-	// - Filter by version, e.g. "version=1.0.0", or "include_versions=true" to include all versions
-	// - No version filter, default to latest (last created_at)
+	for _, opt := range opts {
+		if opt == nil {
+			return nil, false, fmt.Errorf("nil filter option provided")
+		}
 
-	// Fetch
-	// run a query here to fetch: records, join with skills, modules, domains, annotations
-	// var records []Record
-	// err := db.Preload("Skills").Preload("Modules").Preload("Domains").Preload("Annotations").Find(&records).Error
-	// if err != nil {
-	// 	return nil, err
-	// }
+		opt(cfg)
+	}
 
-	// // Apply conversion to catalog format. Signatures are NOT preloaded
-	// // with the record (they live in their own table); fetch them per
-	// // record so the trust manifest can be built without paying the cost
-	// // for callers that don't need it.
-	// result := make([]interface{}, len(records))
-	// for i, record := range records {
-	// 	var sigs []*SignatureVerification
-	// 	if err := db.Where("record_cid = ?", record.RecordCID).Find(&sigs).Error; err != nil {
-	// 		return nil, err
-	// 	}
-	// 	catalog, err := record.ToCatalog(sigs)
-	// 	if err != nil {
-	// 		return nil, err
-	// 	}
-	// 	result[i] = catalog
-	// }
-	return nil, nil
+	pageSize := cfg.Limit
+	if pageSize <= 0 {
+		pageSize = defaultCatalogPageSize
+	}
+
+	// Build the records query with eager preloads. The preloads are
+	// strictly necessary: Record.ToCatalog walks Modules/Skills/Domains
+	// /Annotations, all foreign-key associations.
+	query := d.gormDB.
+		Model(&Record{}).
+		Select("records.*").
+		Distinct().
+		Preload("Modules").
+		Preload("Skills").
+		Preload("Domains").
+		Preload("Annotations")
+
+	// Peek-ahead: request one more than the requested page size.
+	query = query.Limit(pageSize + 1)
+
+	if cfg.Offset > 0 {
+		query = query.Offset(cfg.Offset)
+	}
+
+	query = d.handleFilterOptions(query, cfg)
+
+	// Ordering. cfg.OrderBy is populated by the controller from its
+	// allow-list (controller.parseOrderBy), so Column is safe to
+	// interpolate. Empty defaults to created_at DESC, matching the
+	// existing GetRecords behaviour.
+	if len(cfg.OrderBy) == 0 {
+		query = query.Order("records.created_at DESC")
+	} else {
+		for _, o := range cfg.OrderBy {
+			dir := "ASC"
+			if o.Desc {
+				dir = "DESC"
+			}
+
+			query = query.Order(fmt.Sprintf("records.%s %s", o.Column, dir))
+		}
+	}
+
+	// Tiebreaker on the primary key so paging is stable when the sort
+	// columns produce ties.
+	query = query.Order("records.record_cid ASC")
+
+	var records []Record
+	if err := query.Find(&records).Error; err != nil {
+		return nil, false, fmt.Errorf("query catalog records: %w", err)
+	}
+
+	hasMore := len(records) > pageSize
+	if hasMore {
+		records = records[:pageSize]
+	}
+
+	entries := make([]*catalogv1.CatalogEntry, 0, len(records))
+
+	for i := range records {
+		r := &records[i]
+
+		sigs, err := d.loadSignatureVerifications(r.RecordCID)
+		if err != nil {
+			return nil, false, fmt.Errorf("load signatures for %s: %w", r.RecordCID, err)
+		}
+
+		entry, err := r.ToCatalog(sigs)
+		if err != nil {
+			// Records without a known catalog module are not an
+			// error — just skip them so partial datasets don't fail
+			// the whole page.
+			logger.Debug("skipping record without catalog projection",
+				"record_cid", r.RecordCID,
+				"error", err,
+			)
+
+			continue
+		}
+
+		entries = append(entries, entry)
+	}
+
+	return entries, hasMore, nil
+}
+
+// loadSignatureVerifications returns all SignatureVerification rows for
+// a given record CID. Used by GetCatalogEntries to build the optional
+// TrustManifest without paying the cost for callers that don't need
+// signature data.
+func (d *DB) loadSignatureVerifications(recordCID string) ([]*SignatureVerification, error) {
+	var sigs []*SignatureVerification
+
+	if err := d.gormDB.Where("record_cid = ?", recordCID).Find(&sigs).Error; err != nil {
+		return nil, fmt.Errorf("query signature_verifications: %w", err)
+	}
+
+	return sigs, nil
 }
 
 // ToCatalog projects this database Record onto its AI Catalog
@@ -353,14 +446,10 @@ func (r *Record) catalogTags() []string {
 	return out
 }
 
-// catalogUpdatedAt formats the record's UpdatedAt as RFC 3339 (the
-// timestamp shape mandated by the AI Catalog spec). Empty on zero value.
+// catalogUpdatedAt returns the timestamp surfaced as entry.updated_at on
+// the projected catalog entry.
 func (r *Record) catalogUpdatedAt() string {
-	if r.UpdatedAt.IsZero() {
-		return ""
-	}
-
-	return r.UpdatedAt.UTC().Format(time.RFC3339)
+	return r.OASFCreatedAt
 }
 
 // buildTrustManifest projects a set of signature verification rows onto

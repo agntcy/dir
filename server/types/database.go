@@ -7,6 +7,7 @@ import (
 	"context"
 	"time"
 
+	catalogv1 "github.com/agntcy/dir/api/catalog/v1"
 	routingv1 "github.com/agntcy/dir/api/routing/v1"
 	storev1 "github.com/agntcy/dir/api/store/v1"
 )
@@ -26,6 +27,10 @@ type DatabaseAPI interface {
 
 	// SignatureVerificationDatabaseAPI handles management of signature verifications.
 	SignatureVerificationDatabaseAPI
+
+	// CatalogDatabaseAPI handles deterministic browsing of AI Catalog
+	// entries (Agent Finder Specification §7.2).
+	CatalogDatabaseAPI
 
 	// Close closes the database connection and releases any resources.
 	Close() error
@@ -104,6 +109,16 @@ type NameVerificationDatabaseAPI interface {
 	// GetRecordsNeedingVerification retrieves signed records with verifiable names
 	// that either don't have a verification or have an expired verification.
 	GetRecordsNeedingVerification(ttl time.Duration) ([]Record, error)
+}
+
+// CatalogDatabaseAPI exposes the deterministic-browsing query used by
+// the Agent Finder Specification's GET /v1/agents endpoint (§7.2).
+type CatalogDatabaseAPI interface {
+	// GetCatalogEntries returns the catalog entries matching the given
+	// record search options.
+	GetCatalogEntries(
+		opts ...FilterOption,
+	) (entries []*catalogv1.CatalogEntry, hasMore bool, err error)
 }
 
 type SignatureVerificationDatabaseAPI interface {

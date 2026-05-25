@@ -31,7 +31,7 @@ func TestToCatalog_SingleMCPModule(t *testing.T) {
 		Version:       "1.0.1",
 		SchemaVersion: "1.0.0",
 		Description:   "An MCP-based trading agent with portfolio analysis capabilities.",
-		UpdatedAt:     time.Date(2026, 3, 15, 10, 0, 0, 0, time.UTC),
+		OASFCreatedAt: "2026-03-15T10:00:00Z",
 		Modules: []Module{
 			{
 				Name:        "integration/mcp",
@@ -102,7 +102,7 @@ func TestToCatalog_MCPAndSkillModules(t *testing.T) {
 		Version:       "1.0.1",
 		SchemaVersion: "1.0.0",
 		Description:   "A complete agent bundle with MCP server and reusable skill definitions for financial analysis.",
-		UpdatedAt:     time.Date(2026, 3, 15, 10, 0, 0, 0, time.UTC),
+		OASFCreatedAt: "2026-03-15T10:00:00Z",
 		Modules: []Module{
 			{
 				Name:        "integration/mcp",

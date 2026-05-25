@@ -60,7 +60,6 @@ server:
   http_gateway:
     enabled: true
     listen_address: "localhost:8889"
-    catalog_host: "agntcy.org"
 
 reconciler:
   regsync:
