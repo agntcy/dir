@@ -1,0 +1,35 @@
+{
+    "identifier": "urn:ai:agntcy.org:cid:baeareidjitk332cvvwzlkj53icbfuewtfq7zcf64cikosevgtdqtrsqvei",
+    "display_name": "brand-guidelines",
+    "media_type": "application/ai-skill+md",
+    "data": {
+        "skill_file": "SKILL.md",
+        "skill_manifest": {
+            "description": "Applies Anthropic's official brand colors and typography to any sort of artifact that may benefit from having Anthropic's look-and-feel. Use it when brand colors or style guidelines, visual formatting, or company design standards apply.",
+            "frontmatter_metadata": {
+                "author": "AGNTCY Contributors",
+                "version": "1.0.0"
+            },
+            "license": "Complete terms in LICENSE.txt",
+            "name": "brand-guidelines",
+            "version": "1.0.0"
+        }
+    },
+    "version": "1.0.0",
+    "description": "Applies Anthropic's official brand colors and typography to any sort of artifact that may benefit from having Anthropic's look-and-feel. Use itwhen brand colors or style guidelines, visual formatting, or company design standards apply.",
+    "tags": [
+        "oasf:v1.0.0:skills:natural_language_processing/natural_language_generation",
+        "oasf:v1.0.0:domain:technology/internet_of_things",
+        "oasf:v1.0.0:domain:technology/software_engineering"
+    ],
+    "trust_manifest": {
+        "identity": "key:-----BEGIN PUBLIC KEY-----\nMFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAE5GHp9pFg4MrwLZuVBX0rmfTJoVMP\nkJFatF87H3DIEfYuwjfVTyO7NuFMwxy/m2kp7IOmtuj59ZJDlYQGcJeAfw==\n-----END PUBLIC KEY-----\n",
+        "identity_type": "key",
+        "attestations": [],
+        "provenance": [],
+        "signature": "MEUCIAS6WrbplaL3Qq0979aolqcVH0gKOBX6SAKndrpnOpQGAiEA44S6myZ+FV9Jawsvfzs+7tLp/qIlbJWY5A/1lTv7m2E=",
+        "metadata": {}
+    },
+    "updated_at": "2026-05-26T15:19:29Z",
+    "metadata": {}
+}

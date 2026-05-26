@@ -24,7 +24,7 @@ type PerSignatureResult struct {
 	SignerKey  string
 	Status     string // "verified" or "failed"
 	SignerInfo *signv1.SignerInfo
-	Signature string
+	Signature  string
 }
 
 // VerifyWithFetcher runs signature verification using the given fetcher and returns the response plus per-signature results.

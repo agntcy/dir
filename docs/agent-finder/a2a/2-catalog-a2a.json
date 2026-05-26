@@ -1,0 +1,57 @@
+{
+    "identifier": "urn:ai:agntcy.org:cid:baeareihqc4tk4goxov5x77qguh5ieskearv653zjys5ul3czsctohovtcy",
+    "display_name": "Langraph Planner Agent",
+    "media_type": "application/a2a-agent-card+json",
+    "data": {
+        "card_data": {
+            "capabilities": {
+                "pushNotifications": true,
+                "stateTransitionHistory": false,
+                "streaming": true
+            },
+            "defaultInputModes": [
+                "text",
+                "text/plain"
+            ],
+            "defaultOutputModes": [
+                "text",
+                "text/plain"
+            ],
+            "description": "Helps breakdown a request in to actionable tasks",
+            "name": "Langraph Planner Agent",
+            "skills": [
+                {
+                    "description": "Helps breakdown a request in to actionable tasks",
+                    "examples": [
+                        "Plan my business trip from San Francisco to London, submit an expense report"
+                    ],
+                    "id": "planner",
+                    "name": "Task Planner",
+                    "tags": [
+                        "planner"
+                    ]
+                }
+            ],
+            "url": "http://localhost:10102/",
+            "version": "1.0.0"
+        },
+        "card_schema_version": "v1.0.0"
+    },
+    "version": "1.0.0",
+    "description": "Helps breakdown a request in to actionable tasks",
+    "tags": [
+        "oasf:v1.0.0:skills:advanced_reasoning_planning/strategic_planning",
+        "oasf:v1.0.0:skills:advanced_reasoning_planning/chain_of_thought_structuring",
+        "oasf:v1.0.0:domain:technology/software_engineering"
+    ],
+    "trust_manifest": {
+        "identity": "key:-----BEGIN PUBLIC KEY-----\nMFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAE5GHp9pFg4MrwLZuVBX0rmfTJoVMP\nkJFatF87H3DIEfYuwjfVTyO7NuFMwxy/m2kp7IOmtuj59ZJDlYQGcJeAfw==\n-----END PUBLIC KEY-----\n",
+        "identity_type": "key",
+        "attestations": [],
+        "provenance": [],
+        "signature": "MEUCIQCF1cJganW8RF0yYKcGsgZF2NC+FfKffvRYodaut1OyIgIgHPxH7znVp+AH+I4Mg8UgSWGA7YAsuQrd0d8PQWMaePo=",
+        "metadata": {}
+    },
+    "updated_at": "2026-05-26T15:31:52Z",
+    "metadata": {}
+}

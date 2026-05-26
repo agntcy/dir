@@ -1,0 +1,12 @@
+.bin/dirctl sync create https://prod.gateway.ads.outshift.io
+
+.bin/dirctl verify baeareibxiiy45pg4bjwhbijgh35epzjhnh6lvaxts2qggcgssn3glzdh64
+Record signature is: trusted
+Found 1 valid signer(s):
+  [1] Type: oidc
+       Issuer: https://token.actions.githubusercontent.com
+       Subject: https://github.com/agntcy/dir/.github/workflows/import-records.yaml@refs/heads/main
+
+curl -s --get 'http://127.0.0.1:8889/v1/agents' \
+  --data-urlencode 'filter=displayName=io.github.github/github-mcp-server AND createdAfter=2026-05-12T00:00:00Z' \
+  | jq .
