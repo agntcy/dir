@@ -32,6 +32,9 @@ contexts:
     auth_mode: oidc
     oidc_issuer: https://dev.idp.example.com
     oidc_client_id: dirctl
+    doctor:
+      bootstrap_peers:
+        - /dns4/dev.routing.example.com/tcp/5555/p2p/12D3KooWExample
 `)
 
 		file, err := LoadFile(path)
@@ -40,6 +43,7 @@ contexts:
 		assert.Equal(t, "dev", file.CurrentContext)
 		require.Contains(t, file.Contexts, "dev")
 		assert.Equal(t, "dev.gateway.example.com:443", file.Contexts["dev"].ServerAddress)
+		assert.Equal(t, []string{"/dns4/dev.routing.example.com/tcp/5555/p2p/12D3KooWExample"}, file.Contexts["dev"].Doctor.BootstrapPeers)
 	})
 
 	t.Run("rejects unknown fields", func(t *testing.T) {
@@ -99,6 +103,50 @@ contexts:
 		require.Error(t, err)
 		assert.Nil(t, file)
 		assert.Contains(t, err.Error(), "must not contain path separators")
+	})
+}
+
+func TestResolveDoctor(t *testing.T) {
+	t.Run("resolves doctor settings from selected context", func(t *testing.T) {
+		resetClientEnv(t)
+		path := writeConfig(t, `
+current_context: prod
+contexts:
+  dev:
+    server_address: dev.gateway.example.com:443
+    auth_mode: insecure
+    doctor:
+      bootstrap_peers:
+        - /dns4/dev.routing.example.com/tcp/5555/p2p/12D3KooWDev
+  prod:
+    server_address: prod.gateway.example.com:443
+    auth_mode: insecure
+    doctor:
+      bootstrap_peers:
+        - /dns4/prod.routing.example.com/tcp/5555/p2p/12D3KooWProd
+`)
+
+		cfg, resolved, err := ResolveDoctor(ResolveOptions{
+			Path:    path,
+			Context: "dev",
+		})
+
+		require.NoError(t, err)
+		assert.Equal(t, "dev", resolved.Name)
+		assert.Equal(t, "option", resolved.Source)
+		assert.Equal(t, []string{"/dns4/dev.routing.example.com/tcp/5555/p2p/12D3KooWDev"}, cfg.BootstrapPeers)
+	})
+
+	t.Run("returns empty config without a selected context", func(t *testing.T) {
+		resetClientEnv(t)
+		t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+
+		cfg, resolved, err := ResolveDoctor(ResolveOptions{})
+
+		require.NoError(t, err)
+		assert.Empty(t, resolved.Name)
+		assert.Equal(t, "none", resolved.Source)
+		assert.Empty(t, cfg.BootstrapPeers)
 	})
 }
 
