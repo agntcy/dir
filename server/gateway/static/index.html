@@ -98,6 +98,24 @@
         </div>
     </main>
 
+    <!-- Detail modal -->
+    <div id="modal-backdrop" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+        <div id="modal" class="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[85vh] flex flex-col overflow-hidden">
+            <div class="flex items-start justify-between px-6 py-4 border-b border-gray-200">
+                <div class="min-w-0 flex-1 mr-4">
+                    <h2 id="modal-title" class="text-lg font-semibold text-gray-900 truncate"></h2>
+                    <p id="modal-identifier" class="text-sm text-gray-500 mt-0.5 break-all select-all cursor-text"></p>
+                </div>
+                <button id="modal-close" class="p-1.5 rounded-lg hover:bg-gray-100 transition flex-shrink-0">
+                    <svg class="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                    </svg>
+                </button>
+            </div>
+            <div id="modal-body" class="flex-1 overflow-y-auto px-6 py-5 space-y-5"></div>
+        </div>
+    </div>
+
     <script>
     (function() {
         let allAgents = [];
@@ -192,7 +210,7 @@
             return '<span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-800">' + type.split('/').pop().split('+')[0] + '</span>';
         }
 
-        function renderCard(agent) {
+        function renderCard(agent, index) {
             const types = extractEntryTypes(agent);
             const badges = types.map(t => mediaTypeBadge(t)).join(' ');
             const tags = (agent.tags || []).slice(0, 3).map(t =>
@@ -200,10 +218,10 @@
             ).join(' ');
 
             const updatedAt = agent.updated_at ? new Date(agent.updated_at).toLocaleDateString() : '';
-            const moduleCount = types.length;
+            const entryCount = types.length;
 
             return `
-                <article class="bg-white rounded-xl border border-gray-200 p-5 hover:shadow-md transition-shadow">
+                <article class="bg-white rounded-xl border border-gray-200 p-5 hover:shadow-md transition-shadow cursor-pointer" data-agent-index="${index}">
                     <div class="flex items-start justify-between gap-3 mb-2">
                         <h3 class="font-semibold text-gray-900 truncate">${agent.display_name || 'Unnamed Agent'}</h3>
                         <span class="text-xs text-gray-400 whitespace-nowrap">${agent.version || ''}</span>
@@ -212,7 +230,7 @@
                     <div class="flex flex-wrap gap-1.5 mb-3">${badges}</div>
                     <div class="flex flex-wrap gap-1.5 mb-3">${tags}</div>
                     <div class="flex items-center justify-between text-xs text-gray-400">
-                        <span>${moduleCount} module${moduleCount !== 1 ? 's' : ''}</span>
+                        <span>${entryCount} entr${entryCount !== 1 ? 'ies' : 'y'}</span>
                         ${updatedAt ? `<span>Updated ${updatedAt}</span>` : ''}
                     </div>
                 </article>
@@ -222,8 +240,116 @@
         function render() {
             const filtered = allAgents.filter(matchesFilters);
             empty.classList.toggle('hidden', filtered.length > 0);
-            grid.innerHTML = filtered.map(renderCard).join('');
+            grid.innerHTML = filtered.map((agent, i) => renderCard(agent, allAgents.indexOf(agent))).join('');
         }
+
+        // Modal elements
+        const modalBackdrop = document.getElementById('modal-backdrop');
+        const modalTitle = document.getElementById('modal-title');
+        const modalBody = document.getElementById('modal-body');
+        const modalClose = document.getElementById('modal-close');
+
+        function escapeHtml(str) {
+            const div = document.createElement('div');
+            div.textContent = str;
+            return div.innerHTML;
+        }
+
+        function openModal(agent) {
+            const types = extractEntryTypes(agent);
+            const badges = types.map(t => mediaTypeBadge(t)).join(' ');
+            const tags = (agent.tags || []).map(t =>
+                `<span class="inline-flex items-center px-2.5 py-1 rounded-md text-xs bg-gray-100 text-gray-700 break-all">${escapeHtml(t)}</span>`
+            ).join(' ');
+            const updatedAt = agent.updated_at ? new Date(agent.updated_at).toLocaleDateString() : 'N/A';
+            const jsonStr = JSON.stringify(agent, null, 2);
+
+            modalTitle.textContent = agent.display_name || 'Unnamed Agent';
+            document.getElementById('modal-identifier').textContent = agent.identifier || '';
+            modalBody.innerHTML = `
+                <div class="space-y-4">
+                    <div>
+                        <p class="text-sm text-gray-600">${escapeHtml(agent.description || 'No description available.')}</p>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-4 text-sm">
+                        <div>
+                            <span class="font-medium text-gray-700">Version</span>
+                            <p class="text-gray-600 mt-0.5">${escapeHtml(agent.version || 'N/A')}</p>
+                        </div>
+                        <div>
+                            <span class="font-medium text-gray-700">Updated</span>
+                            <p class="text-gray-600 mt-0.5">${updatedAt}</p>
+                        </div>
+                    </div>
+
+                    <div>
+                        <span class="font-medium text-gray-700 text-sm">Media Types</span>
+                        <div class="flex flex-wrap gap-1.5 mt-1.5">${badges || '<span class="text-sm text-gray-400">None</span>'}</div>
+                    </div>
+
+                    <div>
+                        <span class="font-medium text-gray-700 text-sm">Tags</span>
+                        <div class="flex flex-wrap gap-1.5 mt-1.5">${tags || '<span class="text-sm text-gray-400">None</span>'}</div>
+                    </div>
+
+                    <div>
+                        <div class="flex items-center justify-between mb-2">
+                            <span class="font-medium text-gray-700 text-sm">Catalog Entry JSON</span>
+                            <button id="copy-json-btn" class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-brand-700 bg-brand-50 rounded-lg hover:bg-brand-100 transition">
+                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/>
+                                </svg>
+                                Copy
+                            </button>
+                        </div>
+                        <pre class="bg-gray-900 text-gray-100 rounded-lg p-4 text-xs overflow-x-auto max-h-64 overflow-y-auto"><code>${escapeHtml(jsonStr)}</code></pre>
+                    </div>
+                </div>
+            `;
+
+            document.getElementById('copy-json-btn').addEventListener('click', function() {
+                navigator.clipboard.writeText(jsonStr).then(() => {
+                    this.innerHTML = `
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                        </svg>
+                        Copied!
+                    `;
+                    setTimeout(() => {
+                        this.innerHTML = `
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/>
+                            </svg>
+                            Copy
+                        `;
+                    }, 2000);
+                });
+            });
+
+            modalBackdrop.classList.remove('hidden');
+            document.body.style.overflow = 'hidden';
+        }
+
+        function closeModal() {
+            modalBackdrop.classList.add('hidden');
+            document.body.style.overflow = '';
+        }
+
+        modalClose.addEventListener('click', closeModal);
+        modalBackdrop.addEventListener('click', (e) => {
+            if (e.target === modalBackdrop) closeModal();
+        });
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && !modalBackdrop.classList.contains('hidden')) closeModal();
+        });
+
+        grid.addEventListener('click', (e) => {
+            const card = e.target.closest('[data-agent-index]');
+            if (!card) return;
+            const agent = allAgents[parseInt(card.dataset.agentIndex, 10)];
+            if (agent) openModal(agent);
+        });
 
         async function loadAgents() {
             loading.classList.remove('hidden');
