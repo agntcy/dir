@@ -31,6 +31,37 @@ service AgentFinderService {
   rpc ListAgents(ListAgentsRequest) returns (ListAgentsResponse) {
     option (google.api.http) = {get: "/v1/agents"};
   }
+
+  // GetWellKnownCatalog returns the AI Catalog "well-known" document
+  // published by this directory at the RFC 8615 well-known URI. The
+  // payload contains the host descriptor, any catalog entries the host
+  // has explicitly published, and a set of pre-built collections that
+  // expose filterable views over the dynamic catalog (Agent Finder).
+  //
+  // HTTP mapping:
+  //   GET /.well-known/ai-catalog.json
+  //
+  // See https://agent-card.github.io/ai-catalog/#well-known-uri.
+  rpc GetWellKnownCatalog(GetWellKnownCatalogRequest) returns (GetWellKnownCatalogResponse) {
+    option (google.api.http) = {
+      get: "/.well-known/ai-catalog.json"
+      response_body: "catalog"
+    };
+  }
+}
+
+// GetWellKnownCatalogRequest is intentionally empty: the well-known
+// endpoint is parameter-less per the spec. The message exists for
+// forward compatibility so future query parameters can be added
+// without breaking the RPC ABI.
+message GetWellKnownCatalogRequest {}
+
+// GetWellKnownCatalogResponse exists purely to satisfy the buf
+// RPC_RESPONSE_STANDARD_NAME rule. The gRPC HTTP gateway extracts the
+// inner `catalog` field via `response_body` so HTTP consumers see the
+// bare WellKnownCatalog JSON document at the well-known URI.
+message GetWellKnownCatalogResponse {
+  WellKnownCatalog catalog = 1 [(buf.validate.field).required = true];
 }
 
 // ListAgentsRequest carries the four parameters defined in §7.2 of the spec.

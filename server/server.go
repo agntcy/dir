@@ -315,8 +315,18 @@ func New(ctx context.Context, cfg *config.Config, opts ...ServerOption) (*Server
 		controller.WithVerificationTTL(options.Config().Naming.GetTTL()),
 	))
 
-	// AI Catalog Agent Finder API (Agent Finder Specification §7).
-	catalogv1.RegisterAgentFinderServiceServer(grpcServer, controller.NewAgentFinderController(databaseAPI))
+	// AI Catalog Agent Finder API (Agent Finder Specification §7) + the
+	// AI Catalog well-known surface (RFC 8615 /.well-known/ai-catalog.json).
+	// publicBaseURL is the scheme+authority embedded in the well-known
+	// collection URLs so clients can dereference them directly; empty
+	// when the HTTP gateway is disabled (the controller falls back to a
+	// sentinel default in that case).
+	publicBaseURL := ""
+	if cfg.HTTPGateway.Enabled && cfg.HTTPGateway.ListenAddress != "" {
+		publicBaseURL = "http://" + cfg.HTTPGateway.ListenAddress
+	}
+
+	catalogv1.RegisterAgentFinderServiceServer(grpcServer, controller.NewAgentFinderController(databaseAPI, publicBaseURL))
 
 	// Register health service
 	healthChecker.Register(grpcServer)

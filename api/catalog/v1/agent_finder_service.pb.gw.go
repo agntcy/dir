@@ -70,6 +70,27 @@ func local_request_AgentFinderService_ListAgents_0(ctx context.Context, marshale
 	return msg, metadata, err
 }
 
+func request_AgentFinderService_GetWellKnownCatalog_0(ctx context.Context, marshaler runtime.Marshaler, client AgentFinderServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+	var (
+		protoReq GetWellKnownCatalogRequest
+		metadata runtime.ServerMetadata
+	)
+	if req.Body != nil {
+		_, _ = io.Copy(io.Discard, req.Body)
+	}
+	msg, err := client.GetWellKnownCatalog(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
+	return msg, metadata, err
+}
+
+func local_request_AgentFinderService_GetWellKnownCatalog_0(ctx context.Context, marshaler runtime.Marshaler, server AgentFinderServiceServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+	var (
+		protoReq GetWellKnownCatalogRequest
+		metadata runtime.ServerMetadata
+	)
+	msg, err := server.GetWellKnownCatalog(ctx, &protoReq)
+	return msg, metadata, err
+}
+
 // RegisterAgentFinderServiceHandlerServer registers the http handlers for service AgentFinderService to "mux".
 // UnaryRPC     :call AgentFinderServiceServer directly.
 // StreamingRPC :currently unsupported pending https://github.com/grpc/grpc-go/issues/906.
@@ -95,6 +116,26 @@ func RegisterAgentFinderServiceHandlerServer(ctx context.Context, mux *runtime.S
 			return
 		}
 		forward_AgentFinderService_ListAgents_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+	})
+	mux.Handle(http.MethodGet, pattern_AgentFinderService_GetWellKnownCatalog_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+		ctx, cancel := context.WithCancel(req.Context())
+		defer cancel()
+		var stream runtime.ServerTransportStream
+		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
+		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
+		annotatedContext, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/agntcy.dir.catalog.v1.AgentFinderService/GetWellKnownCatalog", runtime.WithHTTPPathPattern("/.well-known/ai-catalog.json"))
+		if err != nil {
+			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
+			return
+		}
+		resp, md, err := local_request_AgentFinderService_GetWellKnownCatalog_0(annotatedContext, inboundMarshaler, server, req, pathParams)
+		md.HeaderMD, md.TrailerMD = metadata.Join(md.HeaderMD, stream.Header()), metadata.Join(md.TrailerMD, stream.Trailer())
+		annotatedContext = runtime.NewServerMetadataContext(annotatedContext, md)
+		if err != nil {
+			runtime.HTTPError(annotatedContext, mux, outboundMarshaler, w, req, err)
+			return
+		}
+		forward_AgentFinderService_GetWellKnownCatalog_0(annotatedContext, mux, outboundMarshaler, w, req, response_AgentFinderService_GetWellKnownCatalog_0{resp.(*GetWellKnownCatalogResponse)}, mux.GetForwardResponseOptions()...)
 	})
 
 	return nil
@@ -153,13 +194,41 @@ func RegisterAgentFinderServiceHandlerClient(ctx context.Context, mux *runtime.S
 		}
 		forward_AgentFinderService_ListAgents_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
 	})
+	mux.Handle(http.MethodGet, pattern_AgentFinderService_GetWellKnownCatalog_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+		ctx, cancel := context.WithCancel(req.Context())
+		defer cancel()
+		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
+		annotatedContext, err := runtime.AnnotateContext(ctx, mux, req, "/agntcy.dir.catalog.v1.AgentFinderService/GetWellKnownCatalog", runtime.WithHTTPPathPattern("/.well-known/ai-catalog.json"))
+		if err != nil {
+			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
+			return
+		}
+		resp, md, err := request_AgentFinderService_GetWellKnownCatalog_0(annotatedContext, inboundMarshaler, client, req, pathParams)
+		annotatedContext = runtime.NewServerMetadataContext(annotatedContext, md)
+		if err != nil {
+			runtime.HTTPError(annotatedContext, mux, outboundMarshaler, w, req, err)
+			return
+		}
+		forward_AgentFinderService_GetWellKnownCatalog_0(annotatedContext, mux, outboundMarshaler, w, req, response_AgentFinderService_GetWellKnownCatalog_0{resp.(*GetWellKnownCatalogResponse)}, mux.GetForwardResponseOptions()...)
+	})
 	return nil
 }
 
+type response_AgentFinderService_GetWellKnownCatalog_0 struct {
+	*GetWellKnownCatalogResponse
+}
+
+func (m response_AgentFinderService_GetWellKnownCatalog_0) XXX_ResponseBody() interface{} {
+	response := m.GetWellKnownCatalogResponse
+	return response.Catalog
+}
+
 var (
-	pattern_AgentFinderService_ListAgents_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1}, []string{"v1", "agents"}, ""))
+	pattern_AgentFinderService_ListAgents_0          = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1}, []string{"v1", "agents"}, ""))
+	pattern_AgentFinderService_GetWellKnownCatalog_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1}, []string{".well-known", "ai-catalog.json"}, ""))
 )
 
 var (
-	forward_AgentFinderService_ListAgents_0 = runtime.ForwardResponseMessage
+	forward_AgentFinderService_ListAgents_0          = runtime.ForwardResponseMessage
+	forward_AgentFinderService_GetWellKnownCatalog_0 = runtime.ForwardResponseMessage
 )

@@ -135,3 +135,61 @@ curl -s --get 'http://127.0.0.1:8889/v1/agents' \
   --data-urlencode 'filter=createdAfter=2024-01-01T00:00:00Z' \
   | jq '.results | length'
 ```
+
+## 6. Fetch the well-known AI Catalog
+
+The directory also publishes an AI Catalog document at the RFC 8615
+well-known URI. It carries the host descriptor and a set of pre-built
+collections — convenience links that point back at `GET /v1/agents`
+filtered by media type — so external consumers can discover the dynamic
+catalog without having to learn the filter grammar first.
+
+```bash
+curl -s 'http://127.0.0.1:8889/.well-known/ai-catalog.json' | jq .
+```
+
+Expected shape:
+
+```json
+{
+  "specVersion": "1.0",
+  "host": {
+    "displayName": "AGNTCY Directory",
+    "identifier": "agntcy.org"
+  },
+  "collections": [
+    {
+      "displayName": "A2A Agents",
+      "url": "http://localhost:8889/v1/agents?filter=type%3Dapplication%2Fa2a-agent-card%2Bjson",
+      "description": "Agents that publish an A2A agent card.",
+      "mediaType": "application/ai-catalog+json"
+    },
+    {
+      "displayName": "MCP Servers",
+      "url": "http://localhost:8889/v1/agents?filter=type%3Dapplication%2Fmcp-server%2Bjson",
+      ...
+    },
+    {
+      "displayName": "AI Skills",
+      "url": "http://localhost:8889/v1/agents?filter=type%3Dapplication%2Fai-skill%2Bmd",
+      ...
+    }
+  ]
+}
+```
+
+Notes:
+
+- `entries` is intentionally absent (or empty) for now: there is no
+  publish/unpublish write path yet, so the well-known document is a
+  pure discovery surface (host + collections).
+- The `url` on each collection is absolute and built from the gateway's
+  configured `listen_address`, so the values are clickable in any
+  HTTP client and `curl`-able verbatim — try one to round-trip back
+  into `GET /v1/agents`:
+
+```bash
+curl -s "$(curl -s 'http://127.0.0.1:8889/.well-known/ai-catalog.json' \
+  | jq -r '.collections[] | select(.displayName == "MCP Servers") | .url')" \
+  | jq '.results[].display_name'
+```

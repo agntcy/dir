@@ -22,7 +22,8 @@ import (
 const _ = grpc.SupportPackageIsVersion8
 
 const (
-	AgentFinderService_ListAgents_FullMethodName = "/agntcy.dir.catalog.v1.AgentFinderService/ListAgents"
+	AgentFinderService_ListAgents_FullMethodName          = "/agntcy.dir.catalog.v1.AgentFinderService/ListAgents"
+	AgentFinderService_GetWellKnownCatalog_FullMethodName = "/agntcy.dir.catalog.v1.AgentFinderService/GetWellKnownCatalog"
 )
 
 // AgentFinderServiceClient is the client API for AgentFinderService service.
@@ -50,6 +51,18 @@ type AgentFinderServiceClient interface {
 	// Query parameters are bound from top-level scalar fields on the request
 	// message per the grpc-gateway query-parameter rules.
 	ListAgents(ctx context.Context, in *ListAgentsRequest, opts ...grpc.CallOption) (*ListAgentsResponse, error)
+	// GetWellKnownCatalog returns the AI Catalog "well-known" document
+	// published by this directory at the RFC 8615 well-known URI. The
+	// payload contains the host descriptor, any catalog entries the host
+	// has explicitly published, and a set of pre-built collections that
+	// expose filterable views over the dynamic catalog (Agent Finder).
+	//
+	// HTTP mapping:
+	//
+	//	GET /.well-known/ai-catalog.json
+	//
+	// See https://agent-card.github.io/ai-catalog/#well-known-uri.
+	GetWellKnownCatalog(ctx context.Context, in *GetWellKnownCatalogRequest, opts ...grpc.CallOption) (*GetWellKnownCatalogResponse, error)
 }
 
 type agentFinderServiceClient struct {
@@ -64,6 +77,16 @@ func (c *agentFinderServiceClient) ListAgents(ctx context.Context, in *ListAgent
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(ListAgentsResponse)
 	err := c.cc.Invoke(ctx, AgentFinderService_ListAgents_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *agentFinderServiceClient) GetWellKnownCatalog(ctx context.Context, in *GetWellKnownCatalogRequest, opts ...grpc.CallOption) (*GetWellKnownCatalogResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetWellKnownCatalogResponse)
+	err := c.cc.Invoke(ctx, AgentFinderService_GetWellKnownCatalog_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -95,6 +118,18 @@ type AgentFinderServiceServer interface {
 	// Query parameters are bound from top-level scalar fields on the request
 	// message per the grpc-gateway query-parameter rules.
 	ListAgents(context.Context, *ListAgentsRequest) (*ListAgentsResponse, error)
+	// GetWellKnownCatalog returns the AI Catalog "well-known" document
+	// published by this directory at the RFC 8615 well-known URI. The
+	// payload contains the host descriptor, any catalog entries the host
+	// has explicitly published, and a set of pre-built collections that
+	// expose filterable views over the dynamic catalog (Agent Finder).
+	//
+	// HTTP mapping:
+	//
+	//	GET /.well-known/ai-catalog.json
+	//
+	// See https://agent-card.github.io/ai-catalog/#well-known-uri.
+	GetWellKnownCatalog(context.Context, *GetWellKnownCatalogRequest) (*GetWellKnownCatalogResponse, error)
 }
 
 // UnimplementedAgentFinderServiceServer should be embedded to have
@@ -106,6 +141,9 @@ type UnimplementedAgentFinderServiceServer struct{}
 
 func (UnimplementedAgentFinderServiceServer) ListAgents(context.Context, *ListAgentsRequest) (*ListAgentsResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ListAgents not implemented")
+}
+func (UnimplementedAgentFinderServiceServer) GetWellKnownCatalog(context.Context, *GetWellKnownCatalogRequest) (*GetWellKnownCatalogResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetWellKnownCatalog not implemented")
 }
 func (UnimplementedAgentFinderServiceServer) testEmbeddedByValue() {}
 
@@ -145,6 +183,24 @@ func _AgentFinderService_ListAgents_Handler(srv interface{}, ctx context.Context
 	return interceptor(ctx, in, info, handler)
 }
 
+func _AgentFinderService_GetWellKnownCatalog_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetWellKnownCatalogRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AgentFinderServiceServer).GetWellKnownCatalog(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: AgentFinderService_GetWellKnownCatalog_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AgentFinderServiceServer).GetWellKnownCatalog(ctx, req.(*GetWellKnownCatalogRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // AgentFinderService_ServiceDesc is the grpc.ServiceDesc for AgentFinderService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -155,6 +211,10 @@ var AgentFinderService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "ListAgents",
 			Handler:    _AgentFinderService_ListAgents_Handler,
+		},
+		{
+			MethodName: "GetWellKnownCatalog",
+			Handler:    _AgentFinderService_GetWellKnownCatalog_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

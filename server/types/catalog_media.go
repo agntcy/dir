@@ -15,6 +15,11 @@ import (
 // module ↔ AI Catalog media-type mapping defined in §3.3 / §4.1 of the
 // Agent Finder Specification.
 
+// CatalogContainerMediaType is the AI Catalog media type used for
+// container entries (records that bundle multiple modules) and for the
+// WellKnownCatalog document itself.
+const CatalogContainerMediaType = "application/ai-catalog+json"
+
 // catalogMediaTypes maps an OASF integration module name onto the
 // canonical AI Catalog media type that records carrying that module
 // advertise.

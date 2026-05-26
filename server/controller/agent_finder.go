@@ -31,13 +31,20 @@ type agentFinderCtlr struct {
 	catalogv1.UnimplementedAgentFinderServiceServer
 
 	db types.CatalogDatabaseAPI
+
+	// publicBaseURL is the absolute scheme+authority URL clients can
+	// reach this directory at, e.g. "http://localhost:8889".
+	publicBaseURL string
 }
 
 // NewAgentFinderController returns a catalogv1.AgentFinderServiceServer
-// that serves the deterministic-browsing surface from the AI Catalog
-// Agent Finder Specification (§7.2).
-func NewAgentFinderController(db types.CatalogDatabaseAPI) catalogv1.AgentFinderServiceServer {
-	return &agentFinderCtlr{db: db}
+// that serves the AI Catalog Agent Finder surface (§7.2 list + RFC 8615
+// well-known catalog).
+func NewAgentFinderController(db types.CatalogDatabaseAPI, publicBaseURL string) catalogv1.AgentFinderServiceServer {
+	return &agentFinderCtlr{
+		db:            db,
+		publicBaseURL: publicBaseURL,
+	}
 }
 
 // ListAgents implements the GET /v1/agents endpoint.

@@ -39,7 +39,7 @@ const (
 
 	// catalogContainerMediaType is the media_type of the container entry
 	// produced when a record has more than one known module.
-	catalogContainerMediaType = "application/ai-catalog+json"
+	catalogContainerMediaType = types.CatalogContainerMediaType
 
 	// defaultCatalogPageSize is applied by GetCatalogEntries when the
 	// caller doesn't set Limit.
@@ -540,40 +540,4 @@ func aiCatalogToValue(c *catalogv1.AICatalog) (*structpb.Value, error) {
 	}
 
 	return structpb.NewValue(generic) //nolint:wrapcheck
-}
-
-type CollectionSummary struct {
-	Module  []string // can only be MCP, A2A, or Skills
-	Skills  []string
-	Domains []string
-}
-
-func (c *CollectionSummary) WellKnown() any {
-	return `
-{
-	"specVersion": "1.0",
-	"host": {
-		"displayName": "Acme Enterprise AI",
-		"identifier": "did:web:acme.com"
-	},
-	"entries": [], // published entries, can be MANY
-	"collections": [
-		{
-			"displayName": "MCP Record Catalog",
-			"url": "https://localhost:8080/agents?type=mcp",
-			"description": "Returns all available MCP records."
-		},
-		{
-			"displayName": "A2A Record Catalog",
-			"url": "https://localhost:8080/agents?type=a2a",
-			"description": "Returns all available A2A records."
-		},
-		{
-			"displayName": "Agents with Skill X",
-			"url": "https://localhost:8080/agents?type=skill_x&skill_name={skill_name}",
-			"description": "Returns all available agents with Skill X."
-		}
-	]
-}
-  `
 }
