@@ -237,6 +237,11 @@ func TestToCatalog_TrustManifestFromVerifiedSignature(t *testing.T) {
 	primaryAt := time.Date(2026, 3, 14, 9, 0, 0, 0, time.UTC)
 	cosignAt := time.Date(2026, 3, 15, 9, 0, 0, 0, time.UTC)
 
+	// The primary signature value mirrors the base64-encoded raw ECDSA
+	// signature produced by the cosign signing flow (see e.g. the value
+	// observed in `dirctl pull --signature` output).
+	primarySignature := "MEQCIBvfkVWVT+K2wjCoX2lJflCrZfDbBlMIiNbCtKg/pP6rAiA+1oMyTN1n6TTIUjA2hpSkLAM6mrdrjx1SEMGugOyFiw=="
+
 	signatures := []*SignatureVerification{
 		{
 			RecordCID:     "bafy-trust",
@@ -246,6 +251,7 @@ func TestToCatalog_TrustManifestFromVerifiedSignature(t *testing.T) {
 			SignerIssuer:  "https://accounts.google.com",
 			SignerSubject: "stale@example.com",
 			CreatedAt:     primaryAt.Add(-24 * time.Hour),
+			Signature:     "ignored-because-failed",
 		},
 		{
 			RecordCID:       "bafy-trust",
@@ -254,6 +260,7 @@ func TestToCatalog_TrustManifestFromVerifiedSignature(t *testing.T) {
 			SignerType:      "key",
 			SignerPublicKey: "-----BEGIN PUBLIC KEY-----\nMIIB...\n-----END PUBLIC KEY-----",
 			CreatedAt:       cosignAt,
+			Signature:       "MEYCIQDl...cosign-cosig...",
 		},
 		{
 			RecordCID:     "bafy-trust",
@@ -263,6 +270,7 @@ func TestToCatalog_TrustManifestFromVerifiedSignature(t *testing.T) {
 			SignerIssuer:  "https://accounts.acme.com",
 			SignerSubject: "release-bot@acme.com",
 			CreatedAt:     primaryAt,
+			Signature:     primarySignature,
 		},
 	}
 
@@ -286,13 +294,56 @@ func TestToCatalog_TrustManifestFromVerifiedSignature(t *testing.T) {
 	require.NotNil(t, tm.IdentityType)
 	assert.Equal(t, "oidc", tm.GetIdentityType())
 
-	// Unimplemented for now — explicit assertions guard the TODOs.
+	// Signature is sourced from the primary verified signer's row, NOT
+	// from the failed row or the later-co-signed key row.
+	require.NotNil(t, tm.Signature, "raw signature from primary signer must be surfaced on the trust manifest")
+	assert.Equal(t, primarySignature, tm.GetSignature())
+
+	// Attestations remain unimplemented for now — explicit assertion
+	// guards the TODO in buildTrustManifest.
 	assert.Empty(t, tm.GetAttestations(),
 		"per-signer attestations not emitted yet (see TODO in buildTrustManifest)")
-	assert.Nil(t, tm.Signature,
-		"detached-JWS manifest signature not emitted yet (see TODO in buildTrustManifest)")
 
 	logCatalogEntry(t, "verified signatures → leaf entry with trust manifest", entry)
+}
+
+func TestToCatalog_TrustManifestOmitsEmptySignature(t *testing.T) {
+	t.Parallel()
+
+	r := &Record{
+		RecordCID:     "bafy-trust-legacy",
+		Name:          "Legacy Signed Agent",
+		Version:       "1.0.0",
+		SchemaVersion: "1.0.0",
+		Signed:        true,
+		Modules: []Module{
+			{
+				Name:        "integration/mcp",
+				ArtifactURL: "https://api.acme.com/agents/legacy.json",
+			},
+		},
+	}
+
+	signatures := []*SignatureVerification{
+		{
+			RecordCID:     "bafy-trust-legacy",
+			SignerKey:     "primary-key",
+			Status:        signatureStatusVerified,
+			SignerType:    "oidc",
+			SignerIssuer:  "https://accounts.acme.com",
+			SignerSubject: "release-bot@acme.com",
+			CreatedAt:     time.Date(2026, 3, 14, 9, 0, 0, 0, time.UTC),
+			// Signature deliberately left empty.
+		},
+	}
+
+	entry, err := r.ToCatalog(signatures)
+	require.NoError(t, err)
+
+	tm := entry.GetTrustManifest()
+	require.NotNil(t, tm, "verified signatures must produce a trust manifest")
+	assert.Equal(t, "oidc:accounts.acme.com:release-bot@acme.com", tm.GetIdentity())
+	assert.Nil(t, tm.Signature, "empty signature column must omit the optional field rather than emit \"\"")
 }
 
 // TestBuildTrustManifest_NoVerifiedSignatures covers the negative path

@@ -457,9 +457,11 @@ func (r *Record) catalogUpdatedAt() string {
 //
 //   - identity      = primary verified signer's Identity()
 //   - identityType  = primary verified signer's SignerType ("oidc", "key", ...)
-
-// TODO(ai-catalog): surface attestations and a JCS-canonicalised
-// detached-JWS signature on the manifest itself.
+//   - signature     = primary verified signer's raw signature value, when
+//     cached on the verification row (see SignatureVerification.Signature).
+//
+// TODO(ai-catalog): also surface per-signer attestations of type
+// "publisher-identity" once the schema for them is settled.
 func buildTrustManifest(signatures []*SignatureVerification) *catalogv1.TrustManifest {
 	verified := make([]*SignatureVerification, 0, len(signatures))
 
@@ -493,6 +495,10 @@ func buildTrustManifest(signatures []*SignatureVerification) *catalogv1.TrustMan
 
 	if it := strings.TrimSpace(primary.SignerType); it != "" {
 		tm.IdentityType = &it
+	}
+
+	if sig := strings.TrimSpace(primary.Signature); sig != "" {
+		tm.Signature = &sig
 	}
 
 	return tm

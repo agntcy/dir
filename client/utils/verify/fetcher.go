@@ -24,6 +24,7 @@ type PerSignatureResult struct {
 	SignerKey  string
 	Status     string // "verified" or "failed"
 	SignerInfo *signv1.SignerInfo
+	Signature string
 }
 
 // VerifyWithFetcher runs signature verification using the given fetcher and returns the response plus per-signature results.
@@ -110,6 +111,7 @@ func VerifyWithFetcher(ctx context.Context, req *signv1.VerifyRequest, fetcher F
 			SignerKey:  signerKey,
 			Status:     "verified",
 			SignerInfo: signerInfo,
+			Signature:  sig.GetSignature(),
 		})
 		signers = append(signers, signerInfo)
 	}

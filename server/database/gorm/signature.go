@@ -141,7 +141,7 @@ func (d *DB) UpdateSignatureVerification(verification types.SignatureVerificatio
 	return nil
 }
 
-// UpsertSignatureVerification inserts or updates a row keyed by (record_cid, signature).
+// UpsertSignatureVerification inserts or updates a row keyed by (record_cid, signer_key).
 func (d *DB) UpsertSignatureVerification(verification types.SignatureVerificationObject) error {
 	now := time.Now()
 	sv := &SignatureVerification{
@@ -157,11 +157,12 @@ func (d *DB) UpsertSignatureVerification(verification types.SignatureVerificatio
 		SignerAlgorithm:         verification.GetSignerAlgorithm(),
 		CreatedAt:               now,
 		UpdatedAt:               now,
+		Signature:               verification.GetSignature(),
 	}
 
 	err := d.gormDB.Clauses(clause.OnConflict{
 		Columns:   []clause.Column{{Name: "record_cid"}, {Name: "signer_key"}},
-		DoUpdates: clause.AssignmentColumns([]string{"status", "error_message", "signer_type", "signer_issuer", "signer_subject", "signer_certificate_issuer", "signer_public_key", "signer_algorithm", "updated_at"}),
+		DoUpdates: clause.AssignmentColumns([]string{"status", "error_message", "signer_type", "signer_issuer", "signer_subject", "signer_certificate_issuer", "signer_public_key", "signer_algorithm", "signature", "updated_at"}),
 	}).Create(sv).Error
 	if err != nil {
 		return fmt.Errorf("upsert signature verification: %w", err)

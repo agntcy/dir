@@ -158,6 +158,7 @@ func (t *Task) verifyRecord(ctx context.Context, recordCID string) error {
 			SignerAlgorithm:         algorithm,
 			CreatedAt:               now,
 			UpdatedAt:               now,
+			Signature:               p.Signature,
 		}
 		if err := t.db.UpsertSignatureVerification(sv); err != nil {
 			logger.Warn("Failed to upsert signature verification", "record_cid", recordCID, "error", err)
