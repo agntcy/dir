@@ -17,4 +17,14 @@ message Claim {
 
   // The timestamp when the ownership claim was created (RFC3339 format).
   string claimed_at = 2;
+
+  // ECDSA/RSA signature over SHA-256(owner_id + ":" + claimed_at),
+  // produced with the private key of the owner's SPIFFE X.509 SVID.
+  // When present, certificate must also be set.
+  bytes signature = 3;
+
+  // DER-encoded X.509 leaf certificate from the owner's SPIFFE SVID.
+  // The certificate's URI SAN must equal owner_id.
+  // Used by verifiers to authenticate the signature without a live SPIFFE agent.
+  bytes certificate = 4;
 }

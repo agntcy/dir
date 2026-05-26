@@ -327,12 +327,13 @@ func (s storeCtrl) pushReferrer(ctx context.Context, request *storev1.PushReferr
 		}
 	}
 
-	// Index the ownership claim in the search database.
+	// Eagerly index the ownership claim so it is immediately searchable.
+	// The OCI referrer (written above) is the source of truth; the DB owners table
+	// is a derived search index. If this write fails, the ownership reconciler will
+	// re-sync from the referrer store on its next cycle — log and continue.
 	if ownershipClaim != nil {
-		if err := s.db.AddOwner(recordCID, ownershipClaim.GetOwnerId(), ownershipClaim.GetClaimedAt()); err != nil {
-			storeLogger.Warn("Failed to index ownership claim", "error", err, "cid", recordCID)
-		} else {
-			storeLogger.Debug("Ownership claim indexed", "cid", recordCID, "owner_id", ownershipClaim.GetOwnerId())
+		if errMsg := s.indexOwnershipClaim(recordCID, ownershipClaim); errMsg != "" {
+			return &storev1.PushReferrerResponse{Success: false, ErrorMessage: &errMsg}
 		}
 	}
 
@@ -342,6 +343,27 @@ func (s storeCtrl) pushReferrer(ctx context.Context, request *storev1.PushReferr
 		Success:     true,
 		ReferrerRef: referrerRef,
 	}
+}
+
+// indexOwnershipClaim verifies a signed claim's signature and writes it to the
+// owners search index. Returns a non-empty error message string on failure.
+func (s storeCtrl) indexOwnershipClaim(recordCID string, claim *ownershipv1.Claim) string {
+	// The SPIFFE identity check in pushReferrer already validated owner_id == caller,
+	// but we still verify the cryptographic signature so that a tampered claim (e.g.
+	// replayed with an altered claimed_at) is rejected at push time.
+	if ownershipv1.IsSigned(claim) {
+		if err := ownershipv1.VerifyClaim(claim, nil); err != nil {
+			return fmt.Sprintf("ownership claim signature verification failed: %v", err)
+		}
+	}
+
+	if err := s.db.AddOwner(recordCID, claim.GetOwnerId(), claim.GetClaimedAt()); err != nil {
+		storeLogger.Warn("Failed to index ownership claim", "error", err, "cid", recordCID)
+	} else {
+		storeLogger.Debug("Ownership claim indexed", "cid", recordCID, "owner_id", claim.GetOwnerId())
+	}
+
+	return ""
 }
 
 // PullReferrer handles retrieving referrers (like signatures) for records.

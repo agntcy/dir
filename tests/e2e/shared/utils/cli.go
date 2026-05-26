@@ -144,6 +144,18 @@ func (o *OwnershipCommands) Claim(recordCID, ownerID string) *CommandBuilder {
 	return o.cli.Command("ownership").WithArgs("claim", "--record", recordCID, "--owner", ownerID)
 }
 
+// ClaimSigned pushes a signed ownership claim using the given PEM key and certificate files.
+// The SPIFFE ID in the certificate must match ownerID, otherwise the CLI will reject it.
+func (o *OwnershipCommands) ClaimSigned(recordCID, ownerID, keyPath, certPath string) *CommandBuilder {
+	return o.cli.Command("ownership").WithArgs(
+		"claim",
+		"--record", recordCID,
+		"--owner", ownerID,
+		"--key", keyPath,
+		"--cert", certPath,
+	)
+}
+
 func (c *CLI) Import(importType, filePath string) *CommandBuilder {
 	return c.Command("import").WithArgs("--type="+importType, "--file-path="+filePath)
 }

@@ -30,14 +30,20 @@ var claimCmd = &cobra.Command{
 var (
 	claimRecord string
 	claimOwner  string
+	claimKey    string
+	claimCert   string
 )
 
 func init() {
 	claimCmd.Flags().StringVar(&claimRecord, "record", "", "CID of the record to claim ownership of (required)")
-	claimCmd.Flags().StringVar(&claimOwner, "owner", "", "Owner identity (SPIFFE ID or similar) to claim (required)")
+	claimCmd.Flags().StringVar(&claimOwner, "owner", "", "Owner identity (SPIFFE ID) to claim (required)")
+	claimCmd.Flags().StringVar(&claimKey, "key", "", "Path to PEM-encoded private key for signing the claim")
+	claimCmd.Flags().StringVar(&claimCert, "cert", "", "Path to PEM-encoded X.509 certificate whose URI SAN must match --owner")
 
 	_ = claimCmd.MarkFlagRequired("record")
 	_ = claimCmd.MarkFlagRequired("owner")
+
+	claimCmd.MarkFlagsRequiredTogether("key", "cert")
 
 	Command.AddCommand(claimCmd)
 }
@@ -53,6 +59,15 @@ func runClaim(cmd *cobra.Command, _ []string) error {
 	claim := &ownershipv1.Claim{
 		OwnerId:   claimOwner,
 		ClaimedAt: time.Now().UTC().Format(time.RFC3339),
+	}
+
+	// Sign the claim when key and cert are provided.
+	// The signing step validates that the cert's URI SAN matches --owner before
+	// touching the network, so identity mismatches are caught client-side.
+	if claimKey != "" {
+		if err := ownershipv1.SignClaimWithKeyFile(claim, claimKey, claimCert); err != nil {
+			return fmt.Errorf("failed to sign ownership claim: %w", err)
+		}
 	}
 
 	ref, err := claim.MarshalReferrer()
@@ -73,7 +88,11 @@ func runClaim(cmd *cobra.Command, _ []string) error {
 		return fmt.Errorf("push ownership claim failed: %s", resp.GetErrorMessage())
 	}
 
-	cmd.Printf("Ownership claim pushed successfully for record %s\n", claimRecord)
+	if ownershipv1.IsSigned(claim) {
+		cmd.Printf("Signed ownership claim pushed successfully for record %s\n", claimRecord)
+	} else {
+		cmd.Printf("Ownership claim pushed successfully for record %s\n", claimRecord)
+	}
 
 	return nil
 }
