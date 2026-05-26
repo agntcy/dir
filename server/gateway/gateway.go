@@ -30,8 +30,10 @@ package gateway
 
 import (
 	"context"
+	"embed"
 	"errors"
 	"fmt"
+	"io/fs"
 	"net"
 	"net/http"
 	"time"
@@ -43,6 +45,9 @@ import (
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/protobuf/encoding/protojson"
 )
+
+//go:embed static
+var staticFS embed.FS
 
 var logger = logging.Logger("gateway")
 
@@ -133,9 +138,18 @@ func New(ctx context.Context, opts Options) (*Server, error) {
 		return nil, fmt.Errorf("failed to register grpc-gateway handlers: %w", err)
 	}
 
+	staticContent, err := fs.Sub(staticFS, "static")
+	if err != nil {
+		_ = conn.Close()
+
+		return nil, fmt.Errorf("failed to load embedded static files: %w", err)
+	}
+
+	handler := withStaticFallback(mux, staticContent)
+
 	httpServer := &http.Server{
 		Addr:              opts.HTTPAddress,
-		Handler:           mux,
+		Handler:           handler,
 		ReadTimeout:       httpReadTimeout,
 		ReadHeaderTimeout: httpReadHeaderTimeout,
 		WriteTimeout:      httpWriteTimeout,
@@ -204,4 +218,38 @@ func RegisterAgentFinder(ctx context.Context, mux *runtime.ServeMux, conn *grpc.
 	}
 
 	return nil
+}
+
+// withStaticFallback wraps the gRPC-gateway mux so that requests not
+// matching any registered RPC pattern are served from the embedded
+// static filesystem. The root path "/" serves index.html.
+func withStaticFallback(mux *runtime.ServeMux, static fs.FS) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/" || r.URL.Path == "/index.html" {
+			data, err := fs.ReadFile(static, "index.html")
+			if err != nil {
+				http.Error(w, "internal error", http.StatusInternalServerError)
+
+				return
+			}
+
+			w.Header().Set("Content-Type", "text/html; charset=utf-8")
+			w.WriteHeader(http.StatusOK)
+			_, _ = w.Write(data)
+
+			return
+		}
+
+		// For any path that exists in the static FS, serve it directly.
+		if name := r.URL.Path[1:]; name != "" {
+			if _, err := fs.Stat(static, name); err == nil {
+				http.ServeFileFS(w, r, static, name)
+
+				return
+			}
+		}
+
+		// Otherwise delegate to the gRPC-gateway mux (API routes).
+		mux.ServeHTTP(w, r)
+	})
 }
