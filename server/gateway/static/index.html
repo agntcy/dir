@@ -61,6 +61,10 @@
                                 <input type="checkbox" value="application/mcp-server+json" class="rounded border-gray-300 text-brand-600 focus:ring-brand-500">
                                 <span>MCP Server</span>
                             </label>
+                            <label class="flex items-center gap-2 text-sm cursor-pointer">
+                                <input type="checkbox" value="application/ai-skill+md" class="rounded border-gray-300 text-brand-600 focus:ring-brand-500">
+                                <span>SKILL</span>
+                            </label>
                         </div>
                     </div>
 
@@ -207,6 +211,7 @@
         function mediaTypeBadge(type) {
             if (type.includes('a2a')) return '<span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-purple-100 text-purple-800">A2A</span>';
             if (type.includes('mcp')) return '<span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800">MCP</span>';
+            if (type.includes('ai-skill')) return '<span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-amber-100 text-amber-800">SKILL</span>';
             return '<span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-800">' + type.split('/').pop().split('+')[0] + '</span>';
         }
 
