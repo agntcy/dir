@@ -100,6 +100,12 @@
                 </div>
 
                 <div id="agents-grid" class="grid gap-4 sm:grid-cols-1 md:grid-cols-2"></div>
+
+                <nav id="pagination" class="hidden flex items-center justify-center gap-2 mt-6 pb-4">
+                    <button id="page-prev" class="px-3 py-1.5 text-sm rounded-lg border border-gray-300 hover:bg-gray-100 disabled:opacity-40 disabled:cursor-not-allowed transition">Previous</button>
+                    <div id="page-numbers" class="flex items-center gap-1"></div>
+                    <button id="page-next" class="px-3 py-1.5 text-sm rounded-lg border border-gray-300 hover:bg-gray-100 disabled:opacity-40 disabled:cursor-not-allowed transition">Next</button>
+                </nav>
             </section>
         </div>
     </main>
@@ -126,6 +132,8 @@
     (function() {
         let allAgents = [];
         let activeTags = new Set();
+        let currentPage = 1;
+        const pageSize = 20;
 
         const searchInput = document.getElementById('search');
         const mediaTypeContainer = document.getElementById('media-type-filters');
@@ -136,6 +144,10 @@
         const errorEl = document.getElementById('error');
         const errorMsg = document.getElementById('error-message');
         const countEl = document.getElementById('agent-count');
+        const pagination = document.getElementById('pagination');
+        const pagePrev = document.getElementById('page-prev');
+        const pageNext = document.getElementById('page-next');
+        const pageNumbers = document.getElementById('page-numbers');
 
         function getMediaTypes() {
             const checked = mediaTypeContainer.querySelectorAll('input:checked');
@@ -178,6 +190,7 @@
                 label.querySelector('input').addEventListener('change', (e) => {
                     if (e.target.checked) activeTags.add(tag);
                     else activeTags.delete(tag);
+                    currentPage = 1;
                     render();
                 });
                 tagContainer.appendChild(label);
@@ -246,8 +259,58 @@
 
         function render() {
             const filtered = allAgents.filter(matchesFilters);
+            const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
+            if (currentPage > totalPages) currentPage = totalPages;
+
+            const start = (currentPage - 1) * pageSize;
+            const pageItems = filtered.slice(start, start + pageSize);
+
             empty.classList.toggle('hidden', filtered.length > 0);
-            grid.innerHTML = filtered.map((agent, i) => renderCard(agent, allAgents.indexOf(agent))).join('');
+            grid.innerHTML = pageItems.map(agent => renderCard(agent, allAgents.indexOf(agent))).join('');
+
+            renderPagination(totalPages, filtered.length);
+        }
+
+        function renderPagination(totalPages, totalItems) {
+            if (totalItems <= pageSize) {
+                pagination.classList.add('hidden');
+                return;
+            }
+            pagination.classList.remove('hidden');
+            pagePrev.disabled = currentPage <= 1;
+            pageNext.disabled = currentPage >= totalPages;
+
+            let buttons = '';
+            const maxVisible = 7;
+            let pages = [];
+
+            if (totalPages <= maxVisible) {
+                for (let i = 1; i <= totalPages; i++) pages.push(i);
+            } else {
+                pages.push(1);
+                if (currentPage > 3) pages.push('...');
+                const rangeStart = Math.max(2, currentPage - 1);
+                const rangeEnd = Math.min(totalPages - 1, currentPage + 1);
+                for (let i = rangeStart; i <= rangeEnd; i++) pages.push(i);
+                if (currentPage < totalPages - 2) pages.push('...');
+                pages.push(totalPages);
+            }
+
+            for (const p of pages) {
+                if (p === '...') {
+                    buttons += '<span class="px-2 py-1 text-sm text-gray-400">...</span>';
+                } else {
+                    const active = p === currentPage;
+                    buttons += `<button data-page="${p}" class="px-3 py-1.5 text-sm rounded-lg transition ${active ? 'bg-brand-600 text-white' : 'border border-gray-300 hover:bg-gray-100'}">${p}</button>`;
+                }
+            }
+            pageNumbers.innerHTML = buttons;
+        }
+
+        function goToPage(page) {
+            currentPage = page;
+            render();
+            grid.scrollIntoView({ behavior: 'smooth', block: 'start' });
         }
 
         // Modal elements
@@ -364,10 +427,19 @@
             grid.innerHTML = '';
 
             try {
-                const resp = await fetch('/v1/agents');
-                if (!resp.ok) throw new Error(`HTTP ${resp.status}: ${resp.statusText}`);
-                const data = await resp.json();
-                allAgents = data.results || [];
+                let results = [];
+                let pageToken = '';
+                do {
+                    const url = pageToken
+                        ? `/v1/agents?page_token=${encodeURIComponent(pageToken)}`
+                        : '/v1/agents';
+                    const resp = await fetch(url);
+                    if (!resp.ok) throw new Error(`HTTP ${resp.status}: ${resp.statusText}`);
+                    const data = await resp.json();
+                    results = results.concat(data.results || []);
+                    pageToken = data.next_page_token || '';
+                } while (pageToken);
+                allAgents = results;
                 countEl.textContent = allAgents.length;
                 buildTagFilters();
                 render();
@@ -388,7 +460,7 @@
             });
         });
 
-        searchInput.addEventListener('input', render);
+        searchInput.addEventListener('input', () => { currentPage = 1; render(); });
         mediaTypeContainer.addEventListener('change', (e) => {
             if (e.target.value === 'all' && e.target.checked) {
                 mediaTypeContainer.querySelectorAll('input:not([value="all"])').forEach(c => c.checked = false);
@@ -397,7 +469,15 @@
             }
             const anyChecked = mediaTypeContainer.querySelectorAll('input:checked').length > 0;
             if (!anyChecked) mediaTypeContainer.querySelector('input[value="all"]').checked = true;
+            currentPage = 1;
             render();
+        });
+
+        pagePrev.addEventListener('click', () => { if (currentPage > 1) goToPage(currentPage - 1); });
+        pageNext.addEventListener('click', () => goToPage(currentPage + 1));
+        pageNumbers.addEventListener('click', (e) => {
+            const btn = e.target.closest('[data-page]');
+            if (btn) goToPage(parseInt(btn.dataset.page, 10));
         });
 
         loadAgents();
