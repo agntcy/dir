@@ -4,6 +4,8 @@
 package gorm
 
 import (
+	"encoding/base64"
+	"encoding/pem"
 	"fmt"
 	"strings"
 	"time"
@@ -225,17 +227,60 @@ func (d *DB) GetRecordsNeedingSignatureVerification(ttl time.Duration) ([]types.
 	return result, nil
 }
 
+// Identity projects a signer onto a stable, URI-style identifier surfaced as
+// catalogv1.TrustManifest.identity.
 func (s *SignatureVerification) Identity() string {
-	// switch case on signer type to determine identity format
 	switch s.SignerType {
 	case "oidc":
-		issuer := strings.TrimPrefix(s.SignerIssuer, "https://")
-		issuer = strings.TrimPrefix(issuer, "http://")
-
-		return fmt.Sprintf("oidc:%s:%s", issuer, s.SignerSubject)
+		return fmt.Sprintf("oidc:%s:%s", trimURLScheme(s.SignerIssuer), trimURLScheme(s.SignerSubject))
 	case "key":
-		return fmt.Sprintf("key:%s", s.SignerPublicKey)
+		return fmt.Sprintf("key:%s", normalizePublicKeyForIdentity(s.SignerPublicKey))
 	default:
 		return fmt.Sprintf("unknown:%s", s.SignerKey)
 	}
+}
+
+// trimURLScheme strips a leading "https://" / "http://" so the resulting
+// identity URI keeps a single scheme delimiter ("oidc:").
+func trimURLScheme(s string) string {
+	s = strings.TrimPrefix(s, "https://")
+	s = strings.TrimPrefix(s, "http://")
+
+	return s
+}
+
+// normalizePublicKeyForIdentity collapses a PEM-encoded SubjectPublicKeyInfo
+// (or any single PEM block) into a single-line base64 body, dropping the
+// "-----BEGIN/END ... -----" armor and all whitespace.
+func normalizePublicKeyForIdentity(raw string) string {
+	trimmed := strings.TrimSpace(raw)
+	if trimmed == "" {
+		return ""
+	}
+
+	if block, _ := pem.Decode([]byte(trimmed)); block != nil && len(block.Bytes) > 0 {
+		return base64.StdEncoding.EncodeToString(block.Bytes)
+	}
+
+	// Fallback: not a parseable PEM block. Strip BEGIN/END armor lines if
+	// present and collapse any internal whitespace so we still emit a
+	// single-line identifier.
+	var b strings.Builder
+
+	b.Grow(len(trimmed))
+
+	for line := range strings.SplitSeq(trimmed, "\n") {
+		line = strings.TrimSpace(line)
+		if line == "" {
+			continue
+		}
+
+		if strings.HasPrefix(line, "-----BEGIN") || strings.HasPrefix(line, "-----END") {
+			continue
+		}
+
+		b.WriteString(line)
+	}
+
+	return b.String()
 }

@@ -45,7 +45,7 @@
         "oasf:v1.0.0:domain:technology/software_engineering"
     ],
     "trust_manifest": {
-        "identity": "key:-----BEGIN PUBLIC KEY-----\nMFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAE5GHp9pFg4MrwLZuVBX0rmfTJoVMP\nkJFatF87H3DIEfYuwjfVTyO7NuFMwxy/m2kp7IOmtuj59ZJDlYQGcJeAfw==\n-----END PUBLIC KEY-----\n",
+        "identity": "key:MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAE5GHp9pFg4MrwLZuVBX0rmfTJoVMPkJFatF87H3DIEfYuwjfVTyO7NuFMwxy/m2kp7IOmtuj59ZJDlYQGcJeAfw==",
         "identity_type": "key",
         "attestations": [],
         "provenance": [],
