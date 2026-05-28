@@ -68,6 +68,24 @@
                         </div>
                     </div>
 
+                    <div class="flex-shrink-0">
+                        <label class="block text-sm font-medium text-gray-700 mb-1.5">Status</label>
+                        <div class="space-y-1.5" id="status-filters">
+                            <label class="flex items-center gap-2 text-sm cursor-pointer">
+                                <input type="radio" name="status" value="all" checked class="border-gray-300 text-brand-600 focus:ring-brand-500">
+                                <span>All</span>
+                            </label>
+                            <label class="flex items-center gap-2 text-sm cursor-pointer">
+                                <input type="radio" name="status" value="trusted" class="border-gray-300 text-brand-600 focus:ring-brand-500">
+                                <span>Trusted</span>
+                            </label>
+                            <label class="flex items-center gap-2 text-sm cursor-pointer">
+                                <input type="radio" name="status" value="verified" class="border-gray-300 text-brand-600 focus:ring-brand-500">
+                                <span>Verified</span>
+                            </label>
+                        </div>
+                    </div>
+
                     <div class="flex-1 flex flex-col min-h-0">
                         <label class="block text-sm font-medium text-gray-700 mb-1.5 flex-shrink-0">Tags</label>
                         <input type="text" id="tag-search" placeholder="Filter tags..."
@@ -221,6 +239,11 @@
                     if (agentTags.has(t)) { hasAny = true; break; }
                 }
                 if (!hasAny) return false;
+            }
+
+            const statusFilter = document.querySelector('#status-filters input[name="status"]:checked').value;
+            if (statusFilter === 'trusted' || statusFilter === 'verified') {
+                if (!hasTrustManifest(agent)) return false;
             }
 
             return true;
@@ -570,6 +593,7 @@
         });
 
         searchInput.addEventListener('input', () => { currentPage = 1; render(); });
+        document.getElementById('status-filters').addEventListener('change', () => { currentPage = 1; render(); });
         mediaTypeContainer.addEventListener('change', (e) => {
             if (e.target.value === 'all' && e.target.checked) {
                 mediaTypeContainer.querySelectorAll('input:not([value="all"])').forEach(c => c.checked = false);
