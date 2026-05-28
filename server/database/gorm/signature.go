@@ -4,12 +4,17 @@
 package gorm
 
 import (
+	"encoding/base64"
+	"encoding/pem"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/agntcy/dir/server/types"
 	"gorm.io/gorm/clause"
 )
+
+const signatureStatusVerified = "verified"
 
 // SignatureVerification stores one signer verification result (one row per signer).
 // Rows are keyed by (record_cid, signer_key).
@@ -26,6 +31,9 @@ type SignatureVerification struct {
 	SignerAlgorithm         string    `gorm:"column:signer_algorithm"`          // e.g. RSA-SHA256, Ed25519
 	CreatedAt               time.Time `gorm:"column:created_at;not null"`
 	UpdatedAt               time.Time `gorm:"column:updated_at;not null"`
+
+	// AI Catalog required fields
+	Signature string `gorm:"column:signature;not null"` // The actual signature value (e.g. JWS compact serialization or raw signature)
 }
 
 // Ensure SignatureVerification implements types.SignatureVerificationObject.
@@ -79,6 +87,10 @@ func (s *SignatureVerification) GetUpdatedAt() time.Time {
 	return s.UpdatedAt
 }
 
+func (s *SignatureVerification) GetSignature() string {
+	return s.Signature
+}
+
 // CreateSignatureVerification creates a new signature verification row.
 func (d *DB) CreateSignatureVerification(verification types.SignatureVerificationObject) error {
 	now := time.Now()
@@ -96,6 +108,7 @@ func (d *DB) CreateSignatureVerification(verification types.SignatureVerificatio
 		SignerAlgorithm:         verification.GetSignerAlgorithm(),
 		CreatedAt:               now,
 		UpdatedAt:               now,
+		Signature:               verification.GetSignature(),
 	}
 	if err := d.gormDB.Create(sv).Error; err != nil {
 		return fmt.Errorf("failed to create signature verification: %w", err)
@@ -130,7 +143,7 @@ func (d *DB) UpdateSignatureVerification(verification types.SignatureVerificatio
 	return nil
 }
 
-// UpsertSignatureVerification inserts or updates a row keyed by (record_cid, signature).
+// UpsertSignatureVerification inserts or updates a row keyed by (record_cid, signer_key).
 func (d *DB) UpsertSignatureVerification(verification types.SignatureVerificationObject) error {
 	now := time.Now()
 	sv := &SignatureVerification{
@@ -146,11 +159,12 @@ func (d *DB) UpsertSignatureVerification(verification types.SignatureVerificatio
 		SignerAlgorithm:         verification.GetSignerAlgorithm(),
 		CreatedAt:               now,
 		UpdatedAt:               now,
+		Signature:               verification.GetSignature(),
 	}
 
 	err := d.gormDB.Clauses(clause.OnConflict{
 		Columns:   []clause.Column{{Name: "record_cid"}, {Name: "signer_key"}},
-		DoUpdates: clause.AssignmentColumns([]string{"status", "error_message", "signer_type", "signer_issuer", "signer_subject", "signer_certificate_issuer", "signer_public_key", "signer_algorithm", "updated_at"}),
+		DoUpdates: clause.AssignmentColumns([]string{"status", "error_message", "signer_type", "signer_issuer", "signer_subject", "signer_certificate_issuer", "signer_public_key", "signer_algorithm", "signature", "updated_at"}),
 	}).Create(sv).Error
 	if err != nil {
 		return fmt.Errorf("upsert signature verification: %w", err)
@@ -211,4 +225,62 @@ func (d *DB) GetRecordsNeedingSignatureVerification(ttl time.Duration) ([]types.
 	}
 
 	return result, nil
+}
+
+// Identity projects a signer onto a stable, URI-style identifier surfaced as
+// catalogv1.TrustManifest.identity.
+func (s *SignatureVerification) Identity() string {
+	switch s.SignerType {
+	case "oidc":
+		return fmt.Sprintf("oidc:%s:%s", trimURLScheme(s.SignerIssuer), trimURLScheme(s.SignerSubject))
+	case "key":
+		return fmt.Sprintf("key:%s", normalizePublicKeyForIdentity(s.SignerPublicKey))
+	default:
+		return fmt.Sprintf("unknown:%s", s.SignerKey)
+	}
+}
+
+// trimURLScheme strips a leading "https://" / "http://" so the resulting
+// identity URI keeps a single scheme delimiter ("oidc:").
+func trimURLScheme(s string) string {
+	s = strings.TrimPrefix(s, "https://")
+	s = strings.TrimPrefix(s, "http://")
+
+	return s
+}
+
+// normalizePublicKeyForIdentity collapses a PEM-encoded SubjectPublicKeyInfo
+// (or any single PEM block) into a single-line base64 body, dropping the
+// "-----BEGIN/END ... -----" armor and all whitespace.
+func normalizePublicKeyForIdentity(raw string) string {
+	trimmed := strings.TrimSpace(raw)
+	if trimmed == "" {
+		return ""
+	}
+
+	if block, _ := pem.Decode([]byte(trimmed)); block != nil && len(block.Bytes) > 0 {
+		return base64.StdEncoding.EncodeToString(block.Bytes)
+	}
+
+	// Fallback: not a parseable PEM block. Strip BEGIN/END armor lines if
+	// present and collapse any internal whitespace so we still emit a
+	// single-line identifier.
+	var b strings.Builder
+
+	b.Grow(len(trimmed))
+
+	for line := range strings.SplitSeq(trimmed, "\n") {
+		line = strings.TrimSpace(line)
+		if line == "" {
+			continue
+		}
+
+		if strings.HasPrefix(line, "-----BEGIN") || strings.HasPrefix(line, "-----END") {
+			continue
+		}
+
+		b.WriteString(line)
+	}
+
+	return b.String()
 }

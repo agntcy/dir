@@ -12,6 +12,7 @@ import (
 	"syscall"
 	"time"
 
+	catalogv1 "github.com/agntcy/dir/api/catalog/v1"
 	corev1 "github.com/agntcy/dir/api/core/v1"
 	eventsv1 "github.com/agntcy/dir/api/events/v1"
 	namingv1 "github.com/agntcy/dir/api/naming/v1"
@@ -26,6 +27,7 @@ import (
 	"github.com/agntcy/dir/server/controller"
 	"github.com/agntcy/dir/server/database"
 	"github.com/agntcy/dir/server/events"
+	"github.com/agntcy/dir/server/gateway"
 	"github.com/agntcy/dir/server/healthcheck"
 	"github.com/agntcy/dir/server/metrics"
 	grpclogging "github.com/agntcy/dir/server/middleware/logging"
@@ -67,6 +69,7 @@ type Server struct {
 	health             *healthcheck.Checker
 	grpcServer         *grpc.Server
 	metricsServer      *metrics.Server
+	httpGateway        *gateway.Server
 }
 
 // buildConnectionOptions creates gRPC server options for connection management.
@@ -312,6 +315,19 @@ func New(ctx context.Context, cfg *config.Config, opts ...ServerOption) (*Server
 		controller.WithVerificationTTL(options.Config().Naming.GetTTL()),
 	))
 
+	// AI Catalog Agent Finder API (Agent Finder Specification §7) + the
+	// AI Catalog well-known surface (RFC 8615 /.well-known/ai-catalog.json).
+	// publicBaseURL is the scheme+authority embedded in the well-known
+	// collection URLs so clients can dereference them directly; empty
+	// when the HTTP gateway is disabled (the controller falls back to a
+	// sentinel default in that case).
+	publicBaseURL := ""
+	if cfg.HTTPGateway.Enabled && cfg.HTTPGateway.ListenAddress != "" {
+		publicBaseURL = "http://" + cfg.HTTPGateway.ListenAddress
+	}
+
+	catalogv1.RegisterAgentFinderServiceServer(grpcServer, controller.NewAgentFinderController(databaseAPI, publicBaseURL))
+
 	// Register health service
 	healthChecker.Register(grpcServer)
 
@@ -323,6 +339,30 @@ func New(ctx context.Context, cfg *config.Config, opts ...ServerOption) (*Server
 		metrics.InitializeMetrics(grpcServer, metricsServer)
 
 		logger.Info("gRPC metrics registered")
+	}
+
+	// Build the HTTP gateway sidecar if enabled. The gRPC client conn it
+	// holds is lazy (grpc.NewClient), so this is safe to construct before
+	// grpcServer.Serve is called.
+	var httpGateway *gateway.Server
+
+	if cfg.HTTPGateway.Enabled {
+		gwCfg := cfg.HTTPGateway.WithDefaults()
+		grpcEndpoint := gatewayLoopbackEndpoint(cfg.ListenAddress)
+
+		httpGateway, err = gateway.New(ctx, gateway.Options{
+			HTTPAddress:      gwCfg.ListenAddress,
+			GRPCEndpoint:     grpcEndpoint,
+			RegisterHandlers: gateway.RegisterAgentFinder,
+		})
+		if err != nil {
+			return nil, fmt.Errorf("failed to create HTTP gateway: %w", err)
+		}
+
+		logger.Info("HTTP gateway configured",
+			"address", gwCfg.ListenAddress,
+			"grpc_endpoint", grpcEndpoint,
+		)
 	}
 
 	return &Server{
@@ -338,7 +378,36 @@ func New(ctx context.Context, cfg *config.Config, opts ...ServerOption) (*Server
 		health:             healthChecker,
 		grpcServer:         grpcServer,
 		metricsServer:      metricsServer,
+		httpGateway:        httpGateway,
 	}, nil
+}
+
+// gatewayLoopbackEndpoint returns the loopback address the in-process HTTP
+// gateway should dial. We rebuild from cfg.ListenAddress so that any host
+// portion (e.g. "0.0.0.0:8888") is rewritten to 127.0.0.1, since dialing
+// the gateway through a non-loopback address has no benefit and would
+// trip noctx/security checks.
+func gatewayLoopbackEndpoint(listenAddress string) string {
+	// listenAddress is "host:port" or ":port". In either case we replace
+	// the host with 127.0.0.1.
+	if idx := lastColon(listenAddress); idx >= 0 {
+		return "127.0.0.1" + listenAddress[idx:]
+	}
+
+	return "127.0.0.1:" + listenAddress
+}
+
+// lastColon returns the index of the last ':' so we can split "host:port"
+// without pulling in net.SplitHostPort (which surfaces an error for the
+// ":port" shorthand we already accept elsewhere).
+func lastColon(s string) int {
+	for i := len(s) - 1; i >= 0; i-- {
+		if s[i] == ':' {
+			return i
+		}
+	}
+
+	return -1
 }
 
 func (s Server) GRPCServer() *grpc.Server { return s.grpcServer }
@@ -416,6 +485,17 @@ func (s Server) Close(ctx context.Context) {
 		}
 	}
 
+	// Stop HTTP gateway if running (must precede grpcServer.GracefulStop
+	// so the gateway's loopback gRPC conn is closed cleanly first).
+	if s.httpGateway != nil {
+		stopCtx, cancel := context.WithTimeout(ctx, 10*time.Second) //nolint:mnd
+		defer cancel()
+
+		if err := s.httpGateway.Stop(stopCtx); err != nil {
+			logger.Error("Failed to stop HTTP gateway", "error", err)
+		}
+	}
+
 	s.grpcServer.GracefulStop()
 }
 
@@ -466,6 +546,15 @@ func (s Server) Start(ctx context.Context) error {
 			logger.Error("Failed to start server", "error", err)
 		}
 	}()
+
+	// Start the HTTP gateway (grpc-gateway) sidecar when configured. The
+	// loopback gRPC client is lazy, so it tolerates the gRPC server still
+	// warming up at this exact moment.
+	if s.httpGateway != nil {
+		if err := s.httpGateway.Start(); err != nil {
+			return fmt.Errorf("failed to start HTTP gateway: %w", err)
+		}
+	}
 
 	return nil
 }

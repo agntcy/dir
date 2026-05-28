@@ -1,0 +1,120 @@
+// Copyright AGNTCY Contributors (https://github.com/agntcy)
+// SPDX-License-Identifier: Apache-2.0
+
+syntax = "proto3";
+
+package agntcy.dir.catalog.v1;
+
+import "agntcy/dir/catalog/v1/models.proto";
+import "buf/validate/validate.proto";
+import "google/api/annotations.proto";
+
+// AgentFinderService implements the federated discovery surface defined by
+// the Agent Finder Specification (v0.4.2).
+//
+// The service is exposed natively over gRPC and additionally as a REST API
+// via grpc-gateway, as mandated by §3.5 of the spec ("Universal Baseline for
+// Federation"): every Agent Registry MUST expose a standard HTTP REST search
+// interface so that any HTTP client can participate in discovery.
+service AgentFinderService {
+  // ListAgents returns catalog entries with deterministic browsing semantics.
+  //
+  // Corresponds to §7.2 of the Agent Finder Specification: highly cacheable,
+  // relies on strict database filtering, and does NOT support relevance-based
+  // sorting. For semantic, ranked discovery, see the future Search RPC (§7.1).
+  //
+  // HTTP mapping:
+  //   GET /v1/agents?filter=...&orderBy=...&pageSize=...&pageToken=...
+  //
+  // Query parameters are bound from top-level scalar fields on the request
+  // message per the grpc-gateway query-parameter rules.
+  rpc ListAgents(ListAgentsRequest) returns (ListAgentsResponse) {
+    option (google.api.http) = {get: "/v1/agents"};
+  }
+
+  // GetWellKnownCatalog returns the AI Catalog "well-known" document
+  // published by this directory at the RFC 8615 well-known URI. The
+  // payload contains the host descriptor, any catalog entries the host
+  // has explicitly published, and a set of pre-built collections that
+  // expose filterable views over the dynamic catalog (Agent Finder).
+  //
+  // HTTP mapping:
+  //   GET /.well-known/ai-catalog.json
+  //
+  // See https://agent-card.github.io/ai-catalog/#well-known-uri.
+  rpc GetWellKnownCatalog(GetWellKnownCatalogRequest) returns (GetWellKnownCatalogResponse) {
+    option (google.api.http) = {
+      get: "/.well-known/ai-catalog.json"
+      response_body: "catalog"
+    };
+  }
+}
+
+// GetWellKnownCatalogRequest is intentionally empty: the well-known
+// endpoint is parameter-less per the spec. The message exists for
+// forward compatibility so future query parameters can be added
+// without breaking the RPC ABI.
+message GetWellKnownCatalogRequest {}
+
+// GetWellKnownCatalogResponse exists purely to satisfy the buf
+// RPC_RESPONSE_STANDARD_NAME rule. The gRPC HTTP gateway extracts the
+// inner `catalog` field via `response_body` so HTTP consumers see the
+// bare WellKnownCatalog JSON document at the well-known URI.
+message GetWellKnownCatalogResponse {
+  WellKnownCatalog catalog = 1 [(buf.validate.field).required = true];
+}
+
+// ListAgentsRequest carries the four parameters defined in §7.2 of the spec.
+// All fields are optional; an empty request returns the first page using
+// server defaults.
+message ListAgentsRequest {
+  // EBNF-style filter expression. See Appendix A of the Agent Finder
+  // Specification for the supported fields.
+  //
+  // Grammar (informal):
+  //
+  //     filter   = clause { WS+ "AND" WS+ clause } ;
+  //     clause   = field "=" value ;
+  //     field    = "displayName" | "type" | "publisherId"
+  //              | "createdAfter" | "updatedAfter" ;
+  //     value    = token { "," token } ;
+  //     token    = unquoted_token | quoted_string ;
+  //
+  // Logical AND is applied across distinct fields; comma-separated values
+  // within a single field are OR-combined.
+  //
+  // Length-bounded to mitigate DoS from oversize filter strings; the limit
+  // mirrors the largest filter the spec contemplates (a handful of fields
+  // with reasonable value lengths).
+  string filter = 1 [(buf.validate.field).string.max_len = 2048];
+
+  // Sort fields. Comma-separated, each optionally suffixed with "ASC" or
+  // "DESC" (default ASC). Supported fields:
+  //
+  //   * name          — module name (OASF integration name)
+  //   * display_name  — human-readable name
+  //   * created_at    — first-indexed timestamp
+  //   * updated_at    — last-modified timestamp
+  //
+  // Example: "created_at DESC, display_name ASC"
+  string order_by = 2 [(buf.validate.field).string.max_len = 256];
+
+  // Maximum number of entries to return. Default: 20. Maximum: 100.
+  // Values above the maximum are clamped server-side.
+  uint32 page_size = 3 [(buf.validate.field).uint32.lte = 100];
+
+  // Opaque continuation token returned by a previous ListAgents call.
+  // Clients MUST NOT inspect or modify this value.
+  string page_token = 4 [(buf.validate.field).string.max_len = 1024];
+}
+
+// ListAgentsResponse follows the catalog-entry response shape from §7.1 of
+// the spec, with the deterministic-listing simplifications of §7.2 (no
+// relevance scores, no `source`, no `referrals`).
+message ListAgentsResponse {
+  // Catalog entries on this page, in the requested sort order.
+  repeated CatalogEntry results = 1;
+
+  // Opaque continuation token. Empty when there are no more results.
+  string next_page_token = 2;
+}

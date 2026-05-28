@@ -1,0 +1,14 @@
+https://github.com/a2aproject/a2a-samples/blob/22b48d5e8f88a35b7098ab06257d0c2c3eb47c0b/samples/python/agents/a2a_mcp/agent_cards/planner_agent.json
+
+.bin/dirctl search --module "integration/a2a" --name "Langraph Planner Agent"
+
+.bin/dirctl verify baeareihqc4tk4goxov5x77qguh5ieskearv653zjys5ul3czsctohovtcy           
+Record signature is: trusted
+Found 1 valid signer(s):
+  [1] Type: key
+       Public Key: -----BEGIN PUBLIC KEY-----
+MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQ...
+
+curl -s --get 'http://127.0.0.1:8889/v1/agents' \
+  --data-urlencode 'filter=displayName=Langraph Planner Agent' \
+  | jq .

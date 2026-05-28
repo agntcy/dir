@@ -32,6 +32,9 @@ managed:
     - path: agntcy/dir/runtime/v1
       file_option: go_package
       value: github.com/agntcy/dir/api/runtime/v1
+    - path: agntcy/dir/catalog/v1
+      file_option: go_package
+      value: github.com/agntcy/dir/api/catalog/v1
 
 inputs:
   - directory: .
@@ -48,3 +51,10 @@ plugins:
       - module=github.com/agntcy/dir/api
       - require_unimplemented_servers=false
       - use_generic_streams_experimental=false
+  # grpc-gateway reverse proxy: generates HTTP/JSON ↔ gRPC handlers for any
+  # service annotated with google.api.http options. Required by the Agent
+  # Finder REST API surface (proto/agntcy/dir/catalog/v1/agent_finder_service.proto).
+  - remote: buf.build/grpc-ecosystem/gateway:v2.29.0
+    out: ../api
+    opt:
+      - module=github.com/agntcy/dir/api

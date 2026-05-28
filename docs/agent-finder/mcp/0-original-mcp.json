@@ -1,0 +1,49 @@
+{
+    "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+    "name": "io.github.github/github-mcp-server",
+    "description": "Connect AI assistants to GitHub - manage repos, issues, PRs, and workflows through natural language.",
+    "title": "GitHub",
+    "repository": {
+        "url": "https://github.com/github/github-mcp-server",
+        "source": "github"
+    },
+    "version": "1.0.4",
+    "packages": [
+        {
+            "registryType": "oci",
+            "identifier": "ghcr.io/github/github-mcp-server:1.0.4",
+            "transport": {
+                "type": "stdio"
+            },
+            "runtimeArguments": [
+                {
+                    "description": "Set an environment variable in the runtime",
+                    "isRequired": true,
+                    "value": "GITHUB_PERSONAL_ACCESS_TOKEN={token}",
+                    "variables": {
+                        "token": {
+                            "isRequired": true,
+                            "format": "string",
+                            "isSecret": true
+                        }
+                    },
+                    "type": "named",
+                    "name": "-e"
+                }
+            ]
+        }
+    ],
+    "remotes": [
+        {
+            "type": "streamable-http",
+            "url": "https://api.githubcopilot.com/mcp/",
+            "headers": [
+                {
+                    "description": "Authorization header with authentication token (PAT or App token)",
+                    "isSecret": true,
+                    "name": "Authorization"
+                }
+            ]
+        }
+    ]
+}

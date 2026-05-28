@@ -1,0 +1,92 @@
+{
+    "identifier": "urn:ai:agntcy.org:cid:baeareibxiiy45pg4bjwhbijgh35epzjhnh6lvaxts2qggcgssn3glzdh64",
+    "display_name": "io.github.github/github-mcp-server",
+    "media_type": "application/mcp-server+json",
+    "data": {
+        "connections": [
+            {
+                "args": [
+                    "run",
+                    "-e",
+                    "ghcr.io/github/github-mcp-server:1.0.4"
+                ],
+                "command": "docker",
+                "type": "stdio"
+            },
+            {
+                "headers": {
+                    "Authorization": "{authorization}"
+                },
+                "type": "streamable-http",
+                "url": "https://api.githubcopilot.com/mcp/"
+            }
+        ],
+        "description": "Connect AI assistants to GitHub - manage repos, issues, PRs, and workflows through natural language.",
+        "mcp_data": {
+            "description": "Connect AI assistants to GitHub - manage repos, issues, PRs, and workflows through natural language.",
+            "name": "io.github.github/github-mcp-server",
+            "packages": [
+                {
+                    "identifier": "ghcr.io/github/github-mcp-server:1.0.4",
+                    "registryType": "oci",
+                    "runtimeArguments": [
+                        {
+                            "description": "Set an environment variable in the runtime",
+                            "isRequired": true,
+                            "name": "-e",
+                            "type": "named",
+                            "value": "GITHUB_PERSONAL_ACCESS_TOKEN={token}",
+                            "variables": {
+                                "token": {
+                                    "format": "string",
+                                    "isRequired": true,
+                                    "isSecret": true
+                                }
+                            }
+                        }
+                    ],
+                    "transport": {
+                        "type": "stdio"
+                    }
+                }
+            ],
+            "remotes": [
+                {
+                    "headers": [
+                        {
+                            "description": "Authorization header with authentication token (PAT or App token)",
+                            "isSecret": true,
+                            "name": "Authorization"
+                        }
+                    ],
+                    "type": "streamable-http",
+                    "url": "https://api.githubcopilot.com/mcp/"
+                }
+            ],
+            "repository": {
+                "source": "github",
+                "url": "https://github.com/github/github-mcp-server"
+            },
+            "title": "GitHub",
+            "version": "1.0.4"
+        },
+        "name": "io.github.github/github-mcp-server"
+    },
+    "version": "1.0.4",
+    "description": "Connect AI assistants to GitHub - manage repos, issues, PRs, and workflows through natural language.",
+    "tags": [
+        "oasf:v1.0.0:skills:retrieval_augmented_generation/document_or_database_question_answering",
+        "oasf:v1.0.0:skills:retrieval_augmented_generation/retrieval_of_information",
+        "oasf:v1.0.0:domain:technology/cloud_computing"
+    ],
+    "trust_manifest": {
+        "identity": "oidc:token.actions.githubusercontent.com:github.com/agntcy/dir/.github/workflows/import-records.yaml@refs/heads/main",
+        "identity_type": "oidc",
+        "attestations": [],
+        "provenance": [],
+        "signature": "MEQCIALTmNmtyylHnTp84zek9U7seHXUMbIJx1EMTK21iPiJAiBO8iU7EnS2xpTnXQB4VWGaiOERQcf7luZI2ZZB36NPZw==",
+        "metadata": {}
+    },
+    "updated_at": "2026-05-12T00:40:01Z",
+    "metadata": {}
+}

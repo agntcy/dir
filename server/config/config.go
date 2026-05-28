@@ -103,6 +103,20 @@ const (
 
 	// DefaultMetricsAddress is the default listen address for the metrics HTTP server.
 	DefaultMetricsAddress = ":9090"
+
+	// HTTP gateway (grpc-gateway) configuration.
+
+	// DefaultHTTPGatewayEnabled controls whether the REST gateway runs by
+	// default. Disabled to keep existing deployments byte-compatible;
+	// operators opt in by setting http_gateway.enabled = true and a
+	// listen_address in their config.
+	DefaultHTTPGatewayEnabled = false
+
+	// DefaultHTTPGatewayAddress is the default listen address used when the
+	// gateway is enabled but no address is configured. The Agent Finder
+	// Specification (§7) mandates HTTP/REST as the federation baseline, so
+	// when enabled it MUST bind a real address.
+	DefaultHTTPGatewayAddress = ":8889"
 )
 
 var logger = logging.Logger("config")
@@ -152,6 +166,38 @@ type Config struct {
 
 	// Naming holds name verification cache config (TTL for naming API; reconciler name task performs re-verification).
 	Naming naming.Config `json:"naming,omitzero" mapstructure:"naming"`
+
+	// HTTPGateway exposes the gRPC services over HTTP/JSON via grpc-gateway.
+	// Disabled by default; enable to serve the Agent Finder REST API
+	// (GET /v1/agents) and any future REST endpoints.
+	HTTPGateway HTTPGatewayConfig `json:"http_gateway,omitzero" mapstructure:"http_gateway"`
+}
+
+// HTTPGatewayConfig configures the in-process grpc-gateway sidecar that
+// exposes annotated gRPC services as HTTP/JSON. It is disabled by default.
+//
+// The Agent Finder Specification (§3.5, §7) mandates a HTTP REST search
+// interface for federated discovery. Operators enable this in production
+// to participate in the AI Catalog federation.
+type HTTPGatewayConfig struct {
+	// Enabled toggles the HTTP gateway sidecar. When false, the server
+	// behaves identically to a pre-gateway deployment.
+	Enabled bool `json:"enabled,omitempty" mapstructure:"enabled"`
+
+	// ListenAddress is the HTTP gateway listen address (e.g. ":8889").
+	// Ignored when Enabled is false.
+	ListenAddress string `json:"listen_address,omitempty" mapstructure:"listen_address"`
+}
+
+// WithDefaults returns a copy of the gateway config with empty fields
+// filled in from the package-level defaults.
+func (c HTTPGatewayConfig) WithDefaults() HTTPGatewayConfig {
+	out := c
+	if out.ListenAddress == "" {
+		out.ListenAddress = DefaultHTTPGatewayAddress
+	}
+
+	return out
 }
 
 type SyncConfig struct {

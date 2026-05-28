@@ -1,0 +1,13 @@
+https://github.com/anthropics/skills/blob/main/skills/brand-guidelines/SKILL.md
+
+.bin/dirctl import --type agent-skill --file-path docs/agent-finder/skill/ --enrich-config docs/agent-finder/utils/enricher.json
+
+.bin/dirctl search --module "core/language_model/agentskills"
+
+.bin/dirctl sign baeareidjitk332cvvwzlkj53icbfuewtfq7zcf64cikosevgtdqtrsqvei --key cosign.key 
+
+.bin/dirctl verify baeareidjitk332cvvwzlkj53icbfuewtfq7zcf64cikosevgtdqtrsqvei
+
+curl -s --get 'http://127.0.0.1:8889/v1/agents' \
+  --data-urlencode 'filter=displayName=brand-guidelines' \
+  | jq .

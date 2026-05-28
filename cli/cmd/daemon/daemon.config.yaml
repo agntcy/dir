@@ -57,6 +57,9 @@ server:
     worker_timeout: 30m
   naming:
     ttl: 168h
+  http_gateway:
+    enabled: true
+    listen_address: "localhost:8889"
 
 reconciler:
   regsync:
