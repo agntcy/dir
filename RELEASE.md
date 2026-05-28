@@ -45,9 +45,19 @@ git push origin api/v1.3.0 client/v1.3.0 utils/v1.3.0
 
 Do not create the root `v1.3.0` tag during this phase. Root tags trigger artifact releases.
 
+## 2a. Optional: Release API Consumers
+
+After the API module tags are pushed, you can update API consumers with the new `api`, `client`, and `utils` tags and create releases for them:
+
+- [`dir-mcp`](https://github.com/agntcy/dir-mcp)
+- [`dir-importer`](https://github.com/agntcy/dir-importer)
+- [`dir-runtime`](https://github.com/agntcy/dir-runtime)
+
+This step is useful when those projects need to publish releases against the new API module versions before the Directory server release. The `cli` and `server` dependency updates can happen later in the server release preparation step.
+
 ## 3. Prepare Server Release
 
-After the dependent repositories are updated and released, prepare the server module set release branch:
+Prepare the server module set release branch:
 
 ```sh
 task release:create:server RELEASE_VERSION=v1.3.0
