@@ -1,14 +1,14 @@
 // Copyright AGNTCY Contributors (https://github.com/agntcy)
 // SPDX-License-Identifier: Apache-2.0
 
-package format_test
+package exportfmt_test
 
 import (
 	"encoding/json"
 	"testing"
 
 	corev1 "github.com/agntcy/dir/api/core/v1"
-	"github.com/agntcy/dir/cli/cmd/export/format"
+	"github.com/agntcy/dir/api/exportfmt"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/encoding/protojson"
@@ -64,13 +64,13 @@ func newA2ATestRecord(t *testing.T) *corev1.Record {
 }
 
 func TestGetA2AFormatter(t *testing.T) {
-	f, err := format.GetFormatter("a2a")
+	f, err := exportfmt.GetFormatter("a2a")
 	require.NoError(t, err)
 	assert.NotNil(t, f)
 }
 
 func TestA2AFormatter_Format(t *testing.T) {
-	f, err := format.GetFormatter("a2a")
+	f, err := exportfmt.GetFormatter("a2a")
 	require.NoError(t, err)
 
 	t.Run("formats a record with A2A module data", func(t *testing.T) {
@@ -99,11 +99,18 @@ func TestA2AFormatter_Format(t *testing.T) {
 		_, err := f.Format(record)
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "failed to translate record to A2A AgentCard")
+
+		// Translator failures must satisfy errors.Is(err,
+		// ErrUnsupportedRecord) so the HTTP gateway can map them to
+		// FailedPrecondition (400) rather than Internal (500). Locking
+		// this in here keeps the contract auditable from the formatter
+		// side without depending on a live gateway.
+		assert.ErrorIs(t, err, exportfmt.ErrUnsupportedRecord)
 	})
 }
 
 func TestA2AFormatter_FileExtension(t *testing.T) {
-	f, err := format.GetFormatter("a2a")
+	f, err := exportfmt.GetFormatter("a2a")
 	require.NoError(t, err)
 	assert.Equal(t, ".json", f.FileExtension())
 }

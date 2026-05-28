@@ -11,6 +11,7 @@ require (
 	github.com/multiformats/go-multihash v0.2.3
 	github.com/opencontainers/go-digest v1.0.0
 	github.com/stretchr/testify v1.11.1
+	golang.org/x/mod v0.35.0
 	google.golang.org/genproto/googleapis/api v0.0.0-20260414002931-afd174a4e478
 	google.golang.org/grpc v1.81.1
 	google.golang.org/protobuf v1.36.12-0.20260120151049-f2248ac996af

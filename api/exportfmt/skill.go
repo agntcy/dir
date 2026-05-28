@@ -1,7 +1,7 @@
 // Copyright AGNTCY Contributors (https://github.com/agntcy)
 // SPDX-License-Identifier: Apache-2.0
 
-package format
+package exportfmt
 
 import (
 	"fmt"
@@ -28,7 +28,11 @@ func (f *skillFormatter) Format(record *corev1.Record) ([]byte, error) {
 
 	skillMarkdown, err := translator.RecordToSkillMarkdown(data)
 	if err != nil {
-		return nil, fmt.Errorf("failed to translate record to SKILL.md: %w", err)
+		// Tag with ErrUnsupportedRecord so the HTTP gateway can map this
+		// to FailedPrecondition (HTTP 400) instead of Internal (500):
+		// a record without core/language_model/agentskills can never be
+		// rendered as SKILL.md; that's a data mismatch, not a fault.
+		return nil, AsUnsupportedRecord(fmt.Errorf("failed to translate record to SKILL.md: %w", err))
 	}
 
 	return []byte(skillMarkdown), nil

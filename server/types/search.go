@@ -4,8 +4,15 @@
 package types
 
 type RecordFilters struct {
-	Limit            int
-	Offset           int
+	Limit  int
+	Offset int
+
+	// RecordCIDs restricts the result set to records whose
+	// content-addressable identifier is in this list. Used by the
+	// per-record retrieval endpoint (GET /v1/agents/{cid}) and any
+	// future bulk-by-CID queries.
+	RecordCIDs []string
+
 	Names            []string
 	Versions         []string
 	SkillIDs         []uint64
@@ -48,6 +55,15 @@ func WithLimit(limit int) FilterOption {
 func WithOffset(offset int) FilterOption {
 	return func(sc *RecordFilters) {
 		sc.Offset = offset
+	}
+}
+
+// WithCIDs filters records by content-addressable identifier.
+// Multiple CIDs are OR-combined; the resulting query is equivalent
+// to "records.record_cid IN ?".
+func WithCIDs(cids ...string) FilterOption {
+	return func(sc *RecordFilters) {
+		sc.RecordCIDs = append(sc.RecordCIDs, cids...)
 	}
 }
 

@@ -8,6 +8,7 @@ package agntcy.dir.catalog.v1;
 import "agntcy/dir/catalog/v1/models.proto";
 import "buf/validate/validate.proto";
 import "google/api/annotations.proto";
+import "google/api/httpbody.proto";
 
 // AgentFinderService implements the federated discovery surface defined by
 // the Agent Finder Specification (v0.4.2).
@@ -30,6 +31,72 @@ service AgentFinderService {
   // message per the grpc-gateway query-parameter rules.
   rpc ListAgents(ListAgentsRequest) returns (ListAgentsResponse) {
     option (google.api.http) = {get: "/v1/agents"};
+  }
+
+  // GetAgent returns a single CatalogEntry by CID. The response is
+  // the exact same shape as one of the entries in ListAgents — so a
+  // client that lists, picks a row, and drills in by CID gets the
+  // same object it already had in the list, just on its own URL.
+  //
+  // For the underlying OASF record (or any other supported export
+  // format) of the same agent, see ExportAgent — that's a separate
+  // sub-resource because the OASF document is a different surface
+  // from the AI Catalog projection (different field names, different
+  // schemas, different cacheability semantics).
+  //
+  // HTTP mapping:
+  //
+  //   GET /v1/agents/{cid}
+  //
+  // The `response_body: "entry"` directive instructs grpc-gateway to
+  // emit the CatalogEntry as the bare HTTP body, mirroring the
+  // GetWellKnownCatalog pattern in the same service.
+  //
+  // Errors:
+  //
+  //   * InvalidArgument (400): cid is empty or fails length validation.
+  //   * NotFound       (404): no catalog entry exists for this CID.
+  //   * Internal       (500): backing database failure.
+  rpc GetAgent(GetAgentRequest) returns (GetAgentResponse) {
+    option (google.api.http) = {
+      get: "/v1/agents/{cid}"
+      response_body: "entry"
+    };
+  }
+
+  // ExportAgent returns the full agent record in one of the formats
+  // supported by `dirctl export`:
+  //
+  //   * oasf          (default): the canonical OASF JSON record
+  //   * a2a           : Agent-to-Agent (A2A) AgentCard JSON
+  //   * agent-skill   : SKILL.md markdown (`skill` is an alias)
+  //   * mcp-ghcopilot : GitHub Copilot MCP server config JSON
+  //
+  // The bytes are byte-identical to what the CLI writes to stdout:
+  // same indentation, same trailing newline, same translation. The
+  // server selects an appropriate Content-Type (application/json for
+  // the JSON formats, text/markdown for agent-skill) and writes the
+  // bytes directly into the response body via google.api.HttpBody.
+  //
+  // HTTP mapping:
+  //
+  //   GET /v1/agents/{cid}/export
+  //   GET /v1/agents/{cid}/export?format=a2a
+  //
+  // Format is bound from the query string; omitting it falls back to
+  // "oasf". The format set MUST stay in sync with the registry in
+  // api/exportfmt — controller validation surfaces unsupported values
+  // as InvalidArgument (400).
+  //
+  // Errors:
+  //
+  //   * InvalidArgument (400): cid is empty, or format is unknown.
+  //   * NotFound       (404): no record exists with the given CID.
+  //   * Internal       (500): backing store failure, or format
+  //                            translation failed.
+  //   * Unimplemented  (501): no StoreAPI was wired into the controller.
+  rpc ExportAgent(ExportAgentRequest) returns (google.api.HttpBody) {
+    option (google.api.http) = {get: "/v1/agents/{cid}/export"};
   }
 
   // GetWellKnownCatalog returns the AI Catalog "well-known" document
@@ -117,4 +184,60 @@ message ListAgentsResponse {
 
   // Opaque continuation token. Empty when there are no more results.
   string next_page_token = 2;
+}
+
+// GetAgentRequest carries the CID of the catalog entry to retrieve.
+// The CID is the same content-addressable identifier exposed in
+// CatalogEntry.identifier (after URN decoding) and accepted by the
+// StoreService.Pull RPC.
+message GetAgentRequest {
+  // Content-addressable identifier of the agent record. The length
+  // bounds mirror the `is_cid` predicate used elsewhere in this API
+  // (1..128 bytes); they are deliberately permissive because the CID
+  // encoding (multibase / multihash) can vary and the catalog
+  // database performs the authoritative lookup.
+  string cid = 1 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 128
+  }];
+}
+
+// GetAgentResponse wraps a single CatalogEntry in a named field so
+// the message satisfies the buf RPC_RESPONSE_STANDARD_NAME rule. The
+// HTTP gateway extracts `entry` via `response_body`, so REST
+// consumers receive the bare CatalogEntry — the same shape they
+// already saw inside ListAgentsResponse.results[].
+message GetAgentResponse {
+  // CatalogEntry for the requested CID.
+  CatalogEntry entry = 1 [(buf.validate.field).required = true];
+}
+
+// ExportAgentRequest selects an agent and the format to render it in.
+// The format names mirror the `dirctl export --format=` flag values
+// so anyone familiar with the CLI can craft the HTTP URL directly.
+message ExportAgentRequest {
+  // Content-addressable identifier of the agent record.
+  string cid = 1 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 128
+  }];
+
+  // Export format. Allow-listed at the proto layer to surface bad
+  // input as InvalidArgument before it reaches the controller. The
+  // empty string is accepted and treated as "oasf" so curl-friendly
+  // URLs without a format query parameter still work.
+  //
+  // Keep this list in sync with api/exportfmt's RegisterFormatter
+  // calls; the controller logs a warning when it observes a format
+  // that is in this enum but missing from the runtime registry.
+  string format = 2 [(buf.validate.field).string = {
+    in: [
+      "",
+      "oasf",
+      "a2a",
+      "agent-skill",
+      "skill",
+      "mcp-ghcopilot"
+    ]
+  }];
 }

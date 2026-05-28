@@ -11,8 +11,8 @@ import (
 	"path/filepath"
 
 	corev1 "github.com/agntcy/dir/api/core/v1"
+	exportfmt "github.com/agntcy/dir/api/exportfmt"
 	searchv1 "github.com/agntcy/dir/api/search/v1"
-	"github.com/agntcy/dir/cli/cmd/export/format"
 	"github.com/agntcy/dir/cli/cmd/search"
 	"github.com/agntcy/dir/cli/presenter"
 	ctxUtils "github.com/agntcy/dir/cli/util/context"
@@ -69,7 +69,7 @@ func runExport(cmd *cobra.Command, input string) error {
 		return errors.New("failed to get client from context")
 	}
 
-	formatter, err := format.GetFormatter(opts.Format)
+	formatter, err := exportfmt.GetFormatter(opts.Format)
 	if err != nil {
 		return err
 	}
@@ -111,7 +111,7 @@ func runBatchExport(cmd *cobra.Command) error {
 		return errors.New("failed to get client from context")
 	}
 
-	formatter, err := format.GetFormatter(opts.Format)
+	formatter, err := exportfmt.GetFormatter(opts.Format)
 	if err != nil {
 		return err
 	}
@@ -138,10 +138,10 @@ func runBatchExport(cmd *cobra.Command) error {
 
 	var exported int
 
-	if bf, ok := formatter.(format.BatchFormatter); ok {
+	if bf, ok := formatter.(exportfmt.BatchFormatter); ok {
 		exported, err = bf.FormatBatch(records, opts.OutputDir, opts.AllVersions)
 	} else {
-		exported, err = format.DefaultBatchExport(formatter, records, opts.OutputDir, opts.AllVersions)
+		exported, err = exportfmt.DefaultBatchExport(formatter, records, opts.OutputDir, opts.AllVersions)
 	}
 
 	if err != nil {

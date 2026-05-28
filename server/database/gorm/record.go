@@ -307,6 +307,13 @@ func (d *DB) RemoveRecord(cid string) error {
 //
 //nolint:gocognit,cyclop,nestif,gocyclo,maintidx
 func (d *DB) handleFilterOptions(query *gorm.DB, cfg *types.RecordFilters) *gorm.DB {
+	// Record CID is a primary-key lookup, applied verbatim. Using
+	// IN(?) covers both the single-record case (GET /v1/agents/{cid})
+	// and any future bulk-by-CID queries without paying for a join.
+	if len(cfg.RecordCIDs) > 0 {
+		query = query.Where("records.record_cid IN ?", cfg.RecordCIDs)
+	}
+
 	// Apply record-level filters with wildcard support.
 	if len(cfg.Names) > 0 {
 		condition, args := utils.BuildWildcardCondition("records.name", cfg.Names)

@@ -1,10 +1,18 @@
 # Agent Finder API — local testing guide
 
 This branch (`poc/ai-catalog`) adds the AI Catalog projection on top of OASF
-records and exposes the Agent Finder Specification's `GET /v1/agents`
-endpoint via the new in-process HTTP gateway. This guide walks through
-compiling `dirctl`, starting the daemon, pushing a sample agent, and
-querying the endpoint with the supported filters.
+records and exposes four discovery endpoints via the new in-process HTTP
+gateway:
+
+| Endpoint                              | Returns                                    |
+| ------------------------------------- | ------------------------------------------ |
+| `GET /v1/agents`                      | Paginated list of `CatalogEntry` summaries |
+| `GET /v1/agents/{cid}`                | A single `CatalogEntry` (REST-symmetric)   |
+| `GET /v1/agents/{cid}/export?format=` | Full record in any `dirctl export` format  |
+| `GET /.well-known/ai-catalog.json`    | Host descriptor + pre-built collections    |
+
+This guide walks through compiling `dirctl`, starting the daemon, pushing a
+sample agent, and exercising each endpoint with `curl`.
 
 The default daemon config embeds a local filesystem OCI store and turns
 the HTTP gateway on, so no Docker, registry, or extra services are
@@ -136,7 +144,134 @@ curl -s --get 'http://127.0.0.1:8889/v1/agents' \
   | jq '.results | length'
 ```
 
-## 6. Fetch the well-known AI Catalog
+## 6. Fetch a single agent by CID (`GET /v1/agents/{cid}`)
+
+`GET /v1/agents/{cid}` returns the same `CatalogEntry` shape you'd see
+inside `results[]` from §5 — just on its own URL with its own cache
+key. This is the "drill in" path for any UI that lists, picks a row,
+and wants the row's detail view without re-paging.
+
+The full OASF record (and any other `dirctl export` format) lives on
+`GET /v1/agents/{cid}/export`, covered next in §7. The two surfaces
+are intentionally split: the catalog view is a compact discovery
+projection; the export view is the authoritative source document.
+
+The examples below assume the CID printed in the daemon log after §4;
+stash it in a shell variable so it's easy to reuse across §6 and §7:
+
+```bash
+CID=baeareiabbog2umgduqhlcb64fzt6adn34kblzvru3fdzkl75hjhwt6h3da
+curl -s "http://127.0.0.1:8889/v1/agents/${CID}" | jq .
+```
+
+## 7. Export an agent in any `dirctl export` format (`GET /v1/agents/{cid}/export`)
+
+`GET /v1/agents/{cid}/export` returns the full record translated into
+the requested format — **byte-identical** to the bytes
+`dirctl export --format=<X>` would write to stdout. Same translator,
+same indentation, same trailing newline. The server picks an
+appropriate `Content-Type` per format and writes the bytes straight
+into the response body via `google.api.HttpBody`.
+
+The `?format=` query parameter mirrors `dirctl export --format=`.
+Omit it and you get the canonical OASF document.
+
+### 7.0 Format prerequisites
+
+Each non-OASF format projects from a specific OASF module. If a record
+doesn't carry that module, the request will succeed up to format
+resolution but the projection itself fails — see §7.5 for the exact
+response shape. OASF is the canonical representation and works for
+every record.
+
+| `?format=`      | Reads OASF module                      | `Content-Type`                |
+|-----------------|----------------------------------------|-------------------------------|
+| _omitted_       | _(none — canonical record)_            | `application/json`            |
+| `oasf`          | _(none — canonical record)_            | `application/json`            |
+| `a2a`           | `integration/a2a`                      | `application/json`            |
+| `mcp-ghcopilot` | `integration/mcp`                      | `application/json`            |
+| `agent-skill`   | `core/language_model/agentskills`      | `text/markdown; charset=utf-8`|
+| `skill`         | _alias for `agent-skill` (deprecated)_ | `text/markdown; charset=utf-8`|
+
+The `record_100.json` fixture from §4 carries `integration/a2a` and
+`integration/mcp` but **not** `core/language_model/agentskills`, so
+§7.1, §7.2 and §7.4 work directly against it; §7.3 (`agent-skill`)
+demonstrates the `FailedPrecondition` path against that same record.
+Push a SKILL.md-derived record if you want to see §7.3 succeed
+(`dirctl push <your-skill.md>` — outside the scope of this guide).
+
+### 7.1 OASF (default)
+
+```bash
+CID=baeareiabbog2umgduqhlcb64fzt6adn34kblzvru3fdzkl75hjhwt6h3da
+
+curl -s "http://127.0.0.1:8889/v1/agents/${CID}/export" \
+  | jq .
+```
+
+### 7.2 A2A AgentCard
+
+```bash
+curl -s "http://127.0.0.1:8889/v1/agents/${CID}/export?format=a2a" | jq .
+```
+
+The body is an [A2A AgentCard](https://a2a.dev/spec/agent-card)
+synthesised from the record's `integration/a2a` module.
+`Content-Type: application/json`.
+
+### 7.3 SKILL.md (text/markdown)
+
+The `agent-skill` formatter returns Markdown, not JSON, and reads
+from the record's `core/language_model/agentskills` module. Against
+the `record_100.json` fixture — which has _no_ such module — the
+server returns a 400 (gRPC `FailedPrecondition`) with a message that
+names both the CID and the format:
+
+```bash
+curl -s -i "http://127.0.0.1:8889/v1/agents/${CID}/export?format=agent-skill"
+# HTTP/1.1 400 Bad Request
+# Content-Type: application/json
+# ...
+# {"code":9,"message":"record \"baeareiab...\" cannot be exported in \"agent-skill\" format: failed to translate record to SKILL.md: ...","details":[]}
+```
+
+This is the documented shape for "the record can't be projected to
+the requested format" (`codes.FailedPrecondition` = HTTP 400) — it is
+**not** a 5xx and should not page operators. The error message is
+self-describing so an HTTP client can surface it directly.
+
+Against a record that _does_ carry `core/language_model/agentskills`
+(e.g. one pushed from a SKILL.md), the same call returns the markdown
+with `Content-Type: text/markdown; charset=utf-8`:
+
+```bash
+SKILL_CID=<a CID for a SKILL.md-derived record>
+
+# Headers — confirms the markdown media type
+curl -s -D - -o /dev/null \
+  "http://127.0.0.1:8889/v1/agents/${SKILL_CID}/export?format=agent-skill" \
+  | grep -i content-type
+# Content-Type: text/markdown; charset=utf-8
+
+# Body — the SKILL.md verbatim
+curl -s "http://127.0.0.1:8889/v1/agents/${SKILL_CID}/export?format=agent-skill" \
+  | head -30
+```
+
+`skill` is a deprecated alias that resolves to `agent-skill` — useful
+if you've already wired older CLI scripts.
+
+### 7.4 GitHub Copilot MCP config
+
+```bash
+curl -s "http://127.0.0.1:8889/v1/agents/${CID}/export?format=mcp-ghcopilot" \
+  | jq .
+```
+
+The body is a GitHub Copilot–shaped MCP config file with `servers`
+and `inputs`. `Content-Type: application/json`.
+
+## 8. Fetch the well-known AI Catalog
 
 The directory also publishes an AI Catalog document at the RFC 8615
 well-known URI. It carries the host descriptor and a set of pre-built

@@ -1,7 +1,7 @@
 // Copyright AGNTCY Contributors (https://github.com/agntcy)
 // SPDX-License-Identifier: Apache-2.0
 
-package format
+package exportfmt
 
 import (
 	"encoding/json"
@@ -28,7 +28,11 @@ func (f *mcpGHCopilotFormatter) Format(record *corev1.Record) ([]byte, error) {
 
 	ghCopilotConfig, err := translator.RecordToGHCopilot(data)
 	if err != nil {
-		return nil, fmt.Errorf("failed to translate record to GitHub Copilot MCP config: %w", err)
+		// Tag with ErrUnsupportedRecord so the HTTP gateway can map this
+		// to FailedPrecondition (HTTP 400) instead of Internal (500):
+		// a record without integration/mcp has nothing to project into
+		// a Copilot config; that's a data mismatch, not a fault.
+		return nil, AsUnsupportedRecord(fmt.Errorf("failed to translate record to GitHub Copilot MCP config: %w", err))
 	}
 
 	raw, err := json.MarshalIndent(ghCopilotConfig, "", "  ")

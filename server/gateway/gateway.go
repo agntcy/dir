@@ -117,19 +117,35 @@ func New(ctx context.Context, opts Options) (*Server, error) {
 		return nil, fmt.Errorf("failed to create gRPC client for %q: %w", opts.GRPCEndpoint, err)
 	}
 
+	// Default JSON marshaler. UseProtoNames keeps the wire JSON in
+	// snake_case (what the spec shows in its examples); EmitUnpopulated
+	// ensures clients see a consistent shape even when optional fields
+	// are missing.
+	jsonMarshaler := &runtime.JSONPb{
+		MarshalOptions: protojson.MarshalOptions{
+			UseProtoNames:   true,
+			EmitUnpopulated: true,
+		},
+		UnmarshalOptions: protojson.UnmarshalOptions{
+			DiscardUnknown: true,
+		},
+	}
+
+	// HTTPBodyMarshaler wraps the JSON marshaler so that RPCs returning
+	// google.api.HttpBody (e.g. AgentFinderService.ExportAgent) emit
+	// the embedded Data bytes verbatim with the supplied ContentType,
+	// instead of being JSON-encoded as a regular protobuf message
+	// ({content_type, data: <base64>}). Required for the GET
+	// /v1/agents/{cid}/export endpoint to be byte-identical to
+	// `dirctl export` and to serve mixed content types (JSON for most
+	// formats, text/markdown for agent-skill).
+	//
+	// For non-HttpBody messages this transparently falls back to the
+	// JSON marshaler above, so no other endpoint sees any change.
+	httpBodyMarshaler := &runtime.HTTPBodyMarshaler{Marshaler: jsonMarshaler}
+
 	mux := runtime.NewServeMux(
-		// UseProtoNames keeps the wire JSON in snake_case (what the spec
-		// shows in its examples); EmitUnpopulated ensures clients see a
-		// consistent shape even when optional fields are missing.
-		runtime.WithMarshalerOption(runtime.MIMEWildcard, &runtime.JSONPb{
-			MarshalOptions: protojson.MarshalOptions{
-				UseProtoNames:   true,
-				EmitUnpopulated: true,
-			},
-			UnmarshalOptions: protojson.UnmarshalOptions{
-				DiscardUnknown: true,
-			},
-		}),
+		runtime.WithMarshalerOption(runtime.MIMEWildcard, httpBodyMarshaler),
 	)
 
 	if err := opts.RegisterHandlers(ctx, mux, conn); err != nil {

@@ -19,7 +19,6 @@ replace (
 )
 
 require (
-	buf.build/gen/go/agntcy/oasf/protocolbuffers/go v1.36.11-20260427075301-21bf512e44c9.1
 	github.com/agntcy/dir-importer v1.3.1-0.20260513134649-3276412ac13b
 	github.com/agntcy/dir-mcp v1.3.0
 	github.com/agntcy/dir-runtime/discovery v1.3.0
@@ -47,6 +46,7 @@ require (
 )
 
 require (
+	buf.build/gen/go/agntcy/oasf/protocolbuffers/go v1.36.11-20260427075301-21bf512e44c9.1 // indirect
 	cloud.google.com/go v0.123.0 // indirect
 	cloud.google.com/go/auth v0.20.0 // indirect
 	cloud.google.com/go/auth/oauth2adapt v0.2.8 // indirect

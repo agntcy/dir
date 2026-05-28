@@ -11,6 +11,7 @@ package v1
 
 import (
 	context "context"
+	httpbody "google.golang.org/genproto/googleapis/api/httpbody"
 	grpc "google.golang.org/grpc"
 	codes "google.golang.org/grpc/codes"
 	status "google.golang.org/grpc/status"
@@ -23,6 +24,8 @@ const _ = grpc.SupportPackageIsVersion8
 
 const (
 	AgentFinderService_ListAgents_FullMethodName          = "/agntcy.dir.catalog.v1.AgentFinderService/ListAgents"
+	AgentFinderService_GetAgent_FullMethodName            = "/agntcy.dir.catalog.v1.AgentFinderService/GetAgent"
+	AgentFinderService_ExportAgent_FullMethodName         = "/agntcy.dir.catalog.v1.AgentFinderService/ExportAgent"
 	AgentFinderService_GetWellKnownCatalog_FullMethodName = "/agntcy.dir.catalog.v1.AgentFinderService/GetWellKnownCatalog"
 )
 
@@ -51,6 +54,63 @@ type AgentFinderServiceClient interface {
 	// Query parameters are bound from top-level scalar fields on the request
 	// message per the grpc-gateway query-parameter rules.
 	ListAgents(ctx context.Context, in *ListAgentsRequest, opts ...grpc.CallOption) (*ListAgentsResponse, error)
+	// GetAgent returns a single CatalogEntry by CID. The response is
+	// the exact same shape as one of the entries in ListAgents — so a
+	// client that lists, picks a row, and drills in by CID gets the
+	// same object it already had in the list, just on its own URL.
+	//
+	// For the underlying OASF record (or any other supported export
+	// format) of the same agent, see ExportAgent — that's a separate
+	// sub-resource because the OASF document is a different surface
+	// from the AI Catalog projection (different field names, different
+	// schemas, different cacheability semantics).
+	//
+	// HTTP mapping:
+	//
+	//	GET /v1/agents/{cid}
+	//
+	// The `response_body: "entry"` directive instructs grpc-gateway to
+	// emit the CatalogEntry as the bare HTTP body, mirroring the
+	// GetWellKnownCatalog pattern in the same service.
+	//
+	// Errors:
+	//
+	//   - InvalidArgument (400): cid is empty or fails length validation.
+	//   - NotFound       (404): no catalog entry exists for this CID.
+	//   - Internal       (500): backing database failure.
+	GetAgent(ctx context.Context, in *GetAgentRequest, opts ...grpc.CallOption) (*GetAgentResponse, error)
+	// ExportAgent returns the full agent record in one of the formats
+	// supported by `dirctl export`:
+	//
+	//   - oasf          (default): the canonical OASF JSON record
+	//   - a2a           : Agent-to-Agent (A2A) AgentCard JSON
+	//   - agent-skill   : SKILL.md markdown (`skill` is an alias)
+	//   - mcp-ghcopilot : GitHub Copilot MCP server config JSON
+	//
+	// The bytes are byte-identical to what the CLI writes to stdout:
+	// same indentation, same trailing newline, same translation. The
+	// server selects an appropriate Content-Type (application/json for
+	// the JSON formats, text/markdown for agent-skill) and writes the
+	// bytes directly into the response body via google.api.HttpBody.
+	//
+	// HTTP mapping:
+	//
+	//	GET /v1/agents/{cid}/export
+	//	GET /v1/agents/{cid}/export?format=a2a
+	//
+	// Format is bound from the query string; omitting it falls back to
+	// "oasf". The format set MUST stay in sync with the registry in
+	// api/exportfmt — controller validation surfaces unsupported values
+	// as InvalidArgument (400).
+	//
+	// Errors:
+	//
+	//   - InvalidArgument (400): cid is empty, or format is unknown.
+	//   - NotFound       (404): no record exists with the given CID.
+	//   - Internal       (500): backing store failure, or format
+	//     translation failed.
+	//   - Unimplemented  (501): no StoreAPI was wired into the controller.
+	ExportAgent(ctx context.Context, in *ExportAgentRequest, opts ...grpc.CallOption) (*httpbody.HttpBody, error)
 	// GetWellKnownCatalog returns the AI Catalog "well-known" document
 	// published by this directory at the RFC 8615 well-known URI. The
 	// payload contains the host descriptor, any catalog entries the host
@@ -77,6 +137,26 @@ func (c *agentFinderServiceClient) ListAgents(ctx context.Context, in *ListAgent
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(ListAgentsResponse)
 	err := c.cc.Invoke(ctx, AgentFinderService_ListAgents_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *agentFinderServiceClient) GetAgent(ctx context.Context, in *GetAgentRequest, opts ...grpc.CallOption) (*GetAgentResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetAgentResponse)
+	err := c.cc.Invoke(ctx, AgentFinderService_GetAgent_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *agentFinderServiceClient) ExportAgent(ctx context.Context, in *ExportAgentRequest, opts ...grpc.CallOption) (*httpbody.HttpBody, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(httpbody.HttpBody)
+	err := c.cc.Invoke(ctx, AgentFinderService_ExportAgent_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -118,6 +198,63 @@ type AgentFinderServiceServer interface {
 	// Query parameters are bound from top-level scalar fields on the request
 	// message per the grpc-gateway query-parameter rules.
 	ListAgents(context.Context, *ListAgentsRequest) (*ListAgentsResponse, error)
+	// GetAgent returns a single CatalogEntry by CID. The response is
+	// the exact same shape as one of the entries in ListAgents — so a
+	// client that lists, picks a row, and drills in by CID gets the
+	// same object it already had in the list, just on its own URL.
+	//
+	// For the underlying OASF record (or any other supported export
+	// format) of the same agent, see ExportAgent — that's a separate
+	// sub-resource because the OASF document is a different surface
+	// from the AI Catalog projection (different field names, different
+	// schemas, different cacheability semantics).
+	//
+	// HTTP mapping:
+	//
+	//	GET /v1/agents/{cid}
+	//
+	// The `response_body: "entry"` directive instructs grpc-gateway to
+	// emit the CatalogEntry as the bare HTTP body, mirroring the
+	// GetWellKnownCatalog pattern in the same service.
+	//
+	// Errors:
+	//
+	//   - InvalidArgument (400): cid is empty or fails length validation.
+	//   - NotFound       (404): no catalog entry exists for this CID.
+	//   - Internal       (500): backing database failure.
+	GetAgent(context.Context, *GetAgentRequest) (*GetAgentResponse, error)
+	// ExportAgent returns the full agent record in one of the formats
+	// supported by `dirctl export`:
+	//
+	//   - oasf          (default): the canonical OASF JSON record
+	//   - a2a           : Agent-to-Agent (A2A) AgentCard JSON
+	//   - agent-skill   : SKILL.md markdown (`skill` is an alias)
+	//   - mcp-ghcopilot : GitHub Copilot MCP server config JSON
+	//
+	// The bytes are byte-identical to what the CLI writes to stdout:
+	// same indentation, same trailing newline, same translation. The
+	// server selects an appropriate Content-Type (application/json for
+	// the JSON formats, text/markdown for agent-skill) and writes the
+	// bytes directly into the response body via google.api.HttpBody.
+	//
+	// HTTP mapping:
+	//
+	//	GET /v1/agents/{cid}/export
+	//	GET /v1/agents/{cid}/export?format=a2a
+	//
+	// Format is bound from the query string; omitting it falls back to
+	// "oasf". The format set MUST stay in sync with the registry in
+	// api/exportfmt — controller validation surfaces unsupported values
+	// as InvalidArgument (400).
+	//
+	// Errors:
+	//
+	//   - InvalidArgument (400): cid is empty, or format is unknown.
+	//   - NotFound       (404): no record exists with the given CID.
+	//   - Internal       (500): backing store failure, or format
+	//     translation failed.
+	//   - Unimplemented  (501): no StoreAPI was wired into the controller.
+	ExportAgent(context.Context, *ExportAgentRequest) (*httpbody.HttpBody, error)
 	// GetWellKnownCatalog returns the AI Catalog "well-known" document
 	// published by this directory at the RFC 8615 well-known URI. The
 	// payload contains the host descriptor, any catalog entries the host
@@ -141,6 +278,12 @@ type UnimplementedAgentFinderServiceServer struct{}
 
 func (UnimplementedAgentFinderServiceServer) ListAgents(context.Context, *ListAgentsRequest) (*ListAgentsResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ListAgents not implemented")
+}
+func (UnimplementedAgentFinderServiceServer) GetAgent(context.Context, *GetAgentRequest) (*GetAgentResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetAgent not implemented")
+}
+func (UnimplementedAgentFinderServiceServer) ExportAgent(context.Context, *ExportAgentRequest) (*httpbody.HttpBody, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ExportAgent not implemented")
 }
 func (UnimplementedAgentFinderServiceServer) GetWellKnownCatalog(context.Context, *GetWellKnownCatalogRequest) (*GetWellKnownCatalogResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetWellKnownCatalog not implemented")
@@ -183,6 +326,42 @@ func _AgentFinderService_ListAgents_Handler(srv interface{}, ctx context.Context
 	return interceptor(ctx, in, info, handler)
 }
 
+func _AgentFinderService_GetAgent_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetAgentRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AgentFinderServiceServer).GetAgent(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: AgentFinderService_GetAgent_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AgentFinderServiceServer).GetAgent(ctx, req.(*GetAgentRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _AgentFinderService_ExportAgent_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ExportAgentRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AgentFinderServiceServer).ExportAgent(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: AgentFinderService_ExportAgent_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AgentFinderServiceServer).ExportAgent(ctx, req.(*ExportAgentRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _AgentFinderService_GetWellKnownCatalog_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(GetWellKnownCatalogRequest)
 	if err := dec(in); err != nil {
@@ -211,6 +390,14 @@ var AgentFinderService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "ListAgents",
 			Handler:    _AgentFinderService_ListAgents_Handler,
+		},
+		{
+			MethodName: "GetAgent",
+			Handler:    _AgentFinderService_GetAgent_Handler,
+		},
+		{
+			MethodName: "ExportAgent",
+			Handler:    _AgentFinderService_ExportAgent_Handler,
 		},
 		{
 			MethodName: "GetWellKnownCatalog",

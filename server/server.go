@@ -326,7 +326,7 @@ func New(ctx context.Context, cfg *config.Config, opts ...ServerOption) (*Server
 		publicBaseURL = "http://" + cfg.HTTPGateway.ListenAddress
 	}
 
-	catalogv1.RegisterAgentFinderServiceServer(grpcServer, controller.NewAgentFinderController(databaseAPI, publicBaseURL))
+	catalogv1.RegisterAgentFinderServiceServer(grpcServer, controller.NewAgentFinderController(databaseAPI, storeAPI, publicBaseURL))
 
 	// Register health service
 	healthChecker.Register(grpcServer)

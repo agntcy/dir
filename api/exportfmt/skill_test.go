@@ -1,13 +1,13 @@
 // Copyright AGNTCY Contributors (https://github.com/agntcy)
 // SPDX-License-Identifier: Apache-2.0
 
-package format_test
+package exportfmt_test
 
 import (
 	"testing"
 
 	corev1 "github.com/agntcy/dir/api/core/v1"
-	"github.com/agntcy/dir/cli/cmd/export/format"
+	"github.com/agntcy/dir/api/exportfmt"
 	"github.com/agntcy/oasf-sdk/pkg/translator"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -38,20 +38,20 @@ func newSkillTestRecord(t *testing.T) *corev1.Record {
 
 func TestGetSkillFormatter(t *testing.T) {
 	t.Run("returns formatter for agent-skill", func(t *testing.T) {
-		f, err := format.GetFormatter("agent-skill")
+		f, err := exportfmt.GetFormatter("agent-skill")
 		require.NoError(t, err)
 		assert.NotNil(t, f)
 	})
 
 	t.Run("returns formatter for skill alias", func(t *testing.T) {
-		f, err := format.GetFormatter("skill")
+		f, err := exportfmt.GetFormatter("skill")
 		require.NoError(t, err)
 		assert.NotNil(t, f)
 	})
 }
 
 func TestSkillFormatter_Format(t *testing.T) {
-	f, err := format.GetFormatter("agent-skill")
+	f, err := exportfmt.GetFormatter("agent-skill")
 	require.NoError(t, err)
 
 	t.Run("round-trips skill markdown", func(t *testing.T) {
@@ -79,11 +79,17 @@ func TestSkillFormatter_Format(t *testing.T) {
 		_, err := f.Format(record)
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "failed to translate record to SKILL.md")
+
+		// Records that lack the agentskills module are an *expected*
+		// caller mistake (asking for SKILL.md on something that doesn't
+		// carry one), so the gateway must classify them as
+		// FailedPrecondition (HTTP 400). Lock the sentinel in here.
+		assert.ErrorIs(t, err, exportfmt.ErrUnsupportedRecord)
 	})
 }
 
 func TestSkillFormatter_FileExtension(t *testing.T) {
-	f, err := format.GetFormatter("agent-skill")
+	f, err := exportfmt.GetFormatter("agent-skill")
 	require.NoError(t, err)
 	assert.Equal(t, ".md", f.FileExtension())
 }

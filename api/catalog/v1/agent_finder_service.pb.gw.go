@@ -70,6 +70,98 @@ func local_request_AgentFinderService_ListAgents_0(ctx context.Context, marshale
 	return msg, metadata, err
 }
 
+func request_AgentFinderService_GetAgent_0(ctx context.Context, marshaler runtime.Marshaler, client AgentFinderServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+	var (
+		protoReq GetAgentRequest
+		metadata runtime.ServerMetadata
+		err      error
+	)
+	if req.Body != nil {
+		_, _ = io.Copy(io.Discard, req.Body)
+	}
+	val, ok := pathParams["cid"]
+	if !ok {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "cid")
+	}
+	protoReq.Cid, err = runtime.String(val)
+	if err != nil {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "cid", err)
+	}
+	msg, err := client.GetAgent(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
+	return msg, metadata, err
+}
+
+func local_request_AgentFinderService_GetAgent_0(ctx context.Context, marshaler runtime.Marshaler, server AgentFinderServiceServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+	var (
+		protoReq GetAgentRequest
+		metadata runtime.ServerMetadata
+		err      error
+	)
+	val, ok := pathParams["cid"]
+	if !ok {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "cid")
+	}
+	protoReq.Cid, err = runtime.String(val)
+	if err != nil {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "cid", err)
+	}
+	msg, err := server.GetAgent(ctx, &protoReq)
+	return msg, metadata, err
+}
+
+var filter_AgentFinderService_ExportAgent_0 = &utilities.DoubleArray{Encoding: map[string]int{"cid": 0}, Base: []int{1, 1, 0}, Check: []int{0, 1, 2}}
+
+func request_AgentFinderService_ExportAgent_0(ctx context.Context, marshaler runtime.Marshaler, client AgentFinderServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+	var (
+		protoReq ExportAgentRequest
+		metadata runtime.ServerMetadata
+		err      error
+	)
+	if req.Body != nil {
+		_, _ = io.Copy(io.Discard, req.Body)
+	}
+	val, ok := pathParams["cid"]
+	if !ok {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "cid")
+	}
+	protoReq.Cid, err = runtime.String(val)
+	if err != nil {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "cid", err)
+	}
+	if err := req.ParseForm(); err != nil {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
+	}
+	if err := runtime.PopulateQueryParameters(&protoReq, req.Form, filter_AgentFinderService_ExportAgent_0); err != nil {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
+	}
+	msg, err := client.ExportAgent(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
+	return msg, metadata, err
+}
+
+func local_request_AgentFinderService_ExportAgent_0(ctx context.Context, marshaler runtime.Marshaler, server AgentFinderServiceServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+	var (
+		protoReq ExportAgentRequest
+		metadata runtime.ServerMetadata
+		err      error
+	)
+	val, ok := pathParams["cid"]
+	if !ok {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "cid")
+	}
+	protoReq.Cid, err = runtime.String(val)
+	if err != nil {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "cid", err)
+	}
+	if err := req.ParseForm(); err != nil {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
+	}
+	if err := runtime.PopulateQueryParameters(&protoReq, req.Form, filter_AgentFinderService_ExportAgent_0); err != nil {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
+	}
+	msg, err := server.ExportAgent(ctx, &protoReq)
+	return msg, metadata, err
+}
+
 func request_AgentFinderService_GetWellKnownCatalog_0(ctx context.Context, marshaler runtime.Marshaler, client AgentFinderServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
 	var (
 		protoReq GetWellKnownCatalogRequest
@@ -116,6 +208,46 @@ func RegisterAgentFinderServiceHandlerServer(ctx context.Context, mux *runtime.S
 			return
 		}
 		forward_AgentFinderService_ListAgents_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+	})
+	mux.Handle(http.MethodGet, pattern_AgentFinderService_GetAgent_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+		ctx, cancel := context.WithCancel(req.Context())
+		defer cancel()
+		var stream runtime.ServerTransportStream
+		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
+		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
+		annotatedContext, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/agntcy.dir.catalog.v1.AgentFinderService/GetAgent", runtime.WithHTTPPathPattern("/v1/agents/{cid}"))
+		if err != nil {
+			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
+			return
+		}
+		resp, md, err := local_request_AgentFinderService_GetAgent_0(annotatedContext, inboundMarshaler, server, req, pathParams)
+		md.HeaderMD, md.TrailerMD = metadata.Join(md.HeaderMD, stream.Header()), metadata.Join(md.TrailerMD, stream.Trailer())
+		annotatedContext = runtime.NewServerMetadataContext(annotatedContext, md)
+		if err != nil {
+			runtime.HTTPError(annotatedContext, mux, outboundMarshaler, w, req, err)
+			return
+		}
+		forward_AgentFinderService_GetAgent_0(annotatedContext, mux, outboundMarshaler, w, req, response_AgentFinderService_GetAgent_0{resp.(*GetAgentResponse)}, mux.GetForwardResponseOptions()...)
+	})
+	mux.Handle(http.MethodGet, pattern_AgentFinderService_ExportAgent_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+		ctx, cancel := context.WithCancel(req.Context())
+		defer cancel()
+		var stream runtime.ServerTransportStream
+		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
+		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
+		annotatedContext, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/agntcy.dir.catalog.v1.AgentFinderService/ExportAgent", runtime.WithHTTPPathPattern("/v1/agents/{cid}/export"))
+		if err != nil {
+			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
+			return
+		}
+		resp, md, err := local_request_AgentFinderService_ExportAgent_0(annotatedContext, inboundMarshaler, server, req, pathParams)
+		md.HeaderMD, md.TrailerMD = metadata.Join(md.HeaderMD, stream.Header()), metadata.Join(md.TrailerMD, stream.Trailer())
+		annotatedContext = runtime.NewServerMetadataContext(annotatedContext, md)
+		if err != nil {
+			runtime.HTTPError(annotatedContext, mux, outboundMarshaler, w, req, err)
+			return
+		}
+		forward_AgentFinderService_ExportAgent_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
 	})
 	mux.Handle(http.MethodGet, pattern_AgentFinderService_GetWellKnownCatalog_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
@@ -194,6 +326,40 @@ func RegisterAgentFinderServiceHandlerClient(ctx context.Context, mux *runtime.S
 		}
 		forward_AgentFinderService_ListAgents_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
 	})
+	mux.Handle(http.MethodGet, pattern_AgentFinderService_GetAgent_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+		ctx, cancel := context.WithCancel(req.Context())
+		defer cancel()
+		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
+		annotatedContext, err := runtime.AnnotateContext(ctx, mux, req, "/agntcy.dir.catalog.v1.AgentFinderService/GetAgent", runtime.WithHTTPPathPattern("/v1/agents/{cid}"))
+		if err != nil {
+			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
+			return
+		}
+		resp, md, err := request_AgentFinderService_GetAgent_0(annotatedContext, inboundMarshaler, client, req, pathParams)
+		annotatedContext = runtime.NewServerMetadataContext(annotatedContext, md)
+		if err != nil {
+			runtime.HTTPError(annotatedContext, mux, outboundMarshaler, w, req, err)
+			return
+		}
+		forward_AgentFinderService_GetAgent_0(annotatedContext, mux, outboundMarshaler, w, req, response_AgentFinderService_GetAgent_0{resp.(*GetAgentResponse)}, mux.GetForwardResponseOptions()...)
+	})
+	mux.Handle(http.MethodGet, pattern_AgentFinderService_ExportAgent_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+		ctx, cancel := context.WithCancel(req.Context())
+		defer cancel()
+		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
+		annotatedContext, err := runtime.AnnotateContext(ctx, mux, req, "/agntcy.dir.catalog.v1.AgentFinderService/ExportAgent", runtime.WithHTTPPathPattern("/v1/agents/{cid}/export"))
+		if err != nil {
+			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
+			return
+		}
+		resp, md, err := request_AgentFinderService_ExportAgent_0(annotatedContext, inboundMarshaler, client, req, pathParams)
+		annotatedContext = runtime.NewServerMetadataContext(annotatedContext, md)
+		if err != nil {
+			runtime.HTTPError(annotatedContext, mux, outboundMarshaler, w, req, err)
+			return
+		}
+		forward_AgentFinderService_ExportAgent_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+	})
 	mux.Handle(http.MethodGet, pattern_AgentFinderService_GetWellKnownCatalog_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
@@ -214,6 +380,15 @@ func RegisterAgentFinderServiceHandlerClient(ctx context.Context, mux *runtime.S
 	return nil
 }
 
+type response_AgentFinderService_GetAgent_0 struct {
+	*GetAgentResponse
+}
+
+func (m response_AgentFinderService_GetAgent_0) XXX_ResponseBody() interface{} {
+	response := m.GetAgentResponse
+	return response.Entry
+}
+
 type response_AgentFinderService_GetWellKnownCatalog_0 struct {
 	*GetWellKnownCatalogResponse
 }
@@ -225,10 +400,14 @@ func (m response_AgentFinderService_GetWellKnownCatalog_0) XXX_ResponseBody() in
 
 var (
 	pattern_AgentFinderService_ListAgents_0          = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1}, []string{"v1", "agents"}, ""))
+	pattern_AgentFinderService_GetAgent_0            = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2}, []string{"v1", "agents", "cid"}, ""))
+	pattern_AgentFinderService_ExportAgent_0         = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2, 2, 3}, []string{"v1", "agents", "cid", "export"}, ""))
 	pattern_AgentFinderService_GetWellKnownCatalog_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1}, []string{".well-known", "ai-catalog.json"}, ""))
 )
 
 var (
 	forward_AgentFinderService_ListAgents_0          = runtime.ForwardResponseMessage
+	forward_AgentFinderService_GetAgent_0            = runtime.ForwardResponseMessage
+	forward_AgentFinderService_ExportAgent_0         = runtime.ForwardResponseMessage
 	forward_AgentFinderService_GetWellKnownCatalog_0 = runtime.ForwardResponseMessage
 )

@@ -1,7 +1,7 @@
 // Copyright AGNTCY Contributors (https://github.com/agntcy)
 // SPDX-License-Identifier: Apache-2.0
 
-package format_test
+package exportfmt_test
 
 import (
 	"encoding/json"
@@ -11,7 +11,7 @@ import (
 	"testing"
 
 	corev1 "github.com/agntcy/dir/api/core/v1"
-	"github.com/agntcy/dir/cli/cmd/export/format"
+	"github.com/agntcy/dir/api/exportfmt"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/encoding/protojson"
@@ -66,14 +66,14 @@ func newA2ATestRecordWithVersion(t *testing.T, version string) *corev1.Record {
 }
 
 func TestDefaultBatchExport(t *testing.T) {
-	f, err := format.GetFormatter("a2a")
+	f, err := exportfmt.GetFormatter("a2a")
 	require.NoError(t, err)
 
 	t.Run("uses name only by default", func(t *testing.T) {
 		dir := t.TempDir()
 		records := []*corev1.Record{newA2ATestRecord(t)}
 
-		n, err := format.DefaultBatchExport(f, records, dir, false)
+		n, err := exportfmt.DefaultBatchExport(f, records, dir, false)
 		require.NoError(t, err)
 		assert.Equal(t, 1, n)
 
@@ -90,7 +90,7 @@ func TestDefaultBatchExport(t *testing.T) {
 		// older version first — the exporter should still pick 2.0.0
 		records := []*corev1.Record{older, newer}
 
-		n, err := format.DefaultBatchExport(f, records, dir, false)
+		n, err := exportfmt.DefaultBatchExport(f, records, dir, false)
 		require.NoError(t, err)
 		assert.Equal(t, 1, n)
 
@@ -113,7 +113,7 @@ func TestDefaultBatchExport(t *testing.T) {
 		older := newA2ATestRecordWithVersion(t, "1.0.0")
 		records := []*corev1.Record{newer, older}
 
-		n, err := format.DefaultBatchExport(f, records, dir, false)
+		n, err := exportfmt.DefaultBatchExport(f, records, dir, false)
 		require.NoError(t, err)
 		assert.Equal(t, 1, n)
 
@@ -129,7 +129,7 @@ func TestDefaultBatchExport(t *testing.T) {
 		dir := t.TempDir()
 		records := []*corev1.Record{newA2ATestRecord(t)}
 
-		n, err := format.DefaultBatchExport(f, records, dir, true)
+		n, err := exportfmt.DefaultBatchExport(f, records, dir, true)
 		require.NoError(t, err)
 		assert.Equal(t, 1, n)
 
@@ -145,7 +145,7 @@ func TestDefaultBatchExport(t *testing.T) {
 		v2 := newA2ATestRecordWithVersion(t, "2.0.0")
 		records := []*corev1.Record{v1, v2}
 
-		n, err := format.DefaultBatchExport(f, records, dir, true)
+		n, err := exportfmt.DefaultBatchExport(f, records, dir, true)
 		require.NoError(t, err)
 		assert.Equal(t, 2, n)
 
@@ -162,7 +162,7 @@ func TestDefaultBatchExport(t *testing.T) {
 		dir := t.TempDir()
 		records := []*corev1.Record{newA2ATestRecord(t), newA2ATestRecord(t)}
 
-		n, err := format.DefaultBatchExport(f, records, dir, true)
+		n, err := exportfmt.DefaultBatchExport(f, records, dir, true)
 		require.NoError(t, err)
 		assert.Equal(t, 2, n)
 
@@ -177,17 +177,17 @@ func TestDefaultBatchExport(t *testing.T) {
 
 	t.Run("returns zero for empty slice", func(t *testing.T) {
 		dir := t.TempDir()
-		n, err := format.DefaultBatchExport(f, nil, dir, false)
+		n, err := exportfmt.DefaultBatchExport(f, nil, dir, false)
 		require.NoError(t, err)
 		assert.Equal(t, 0, n)
 	})
 }
 
 func TestSkillBatchFormatter(t *testing.T) {
-	f, err := format.GetFormatter("agent-skill")
+	f, err := exportfmt.GetFormatter("agent-skill")
 	require.NoError(t, err)
 
-	bf, ok := f.(format.BatchFormatter)
+	bf, ok := f.(exportfmt.BatchFormatter)
 	require.True(t, ok, "agent-skill should implement BatchFormatter")
 
 	t.Run("uses name only by default", func(t *testing.T) {
@@ -220,10 +220,10 @@ func TestSkillBatchFormatter(t *testing.T) {
 }
 
 func TestMCPGHCopilotBatchFormatter(t *testing.T) {
-	f, err := format.GetFormatter("mcp-ghcopilot")
+	f, err := exportfmt.GetFormatter("mcp-ghcopilot")
 	require.NoError(t, err)
 
-	bf, ok := f.(format.BatchFormatter)
+	bf, ok := f.(exportfmt.BatchFormatter)
 	require.True(t, ok, "mcp-ghcopilot should implement BatchFormatter")
 
 	t.Run("merges multiple records into single mcp.json", func(t *testing.T) {
@@ -264,7 +264,7 @@ func TestLatestByName(t *testing.T) {
 		v1 := newA2ATestRecordWithVersion(t, "1.0.0")
 		v2 := newA2ATestRecordWithVersion(t, "2.0.0")
 
-		result := format.LatestByName([]*corev1.Record{v1, v2})
+		result := exportfmt.LatestByName([]*corev1.Record{v1, v2})
 		require.Len(t, result, 1)
 
 		assert.Equal(t, "test-a2a-agent", result[0].GetName())
@@ -275,7 +275,7 @@ func TestLatestByName(t *testing.T) {
 		v1 := newA2ATestRecordWithVersion(t, "v1.0.0")
 		v2 := newA2ATestRecordWithVersion(t, "v2.0.0")
 
-		result := format.LatestByName([]*corev1.Record{v1, v2})
+		result := exportfmt.LatestByName([]*corev1.Record{v1, v2})
 		require.Len(t, result, 1)
 		assert.Equal(t, "v2.0.0", result[0].GetVersion())
 	})
@@ -284,7 +284,7 @@ func TestLatestByName(t *testing.T) {
 		r1 := newA2ATestRecord(t)
 		r2 := newTestRecord() // name="test-agent"
 
-		result := format.LatestByName([]*corev1.Record{r1, r2})
+		result := exportfmt.LatestByName([]*corev1.Record{r1, r2})
 		assert.Len(t, result, 2)
 	})
 
@@ -293,7 +293,7 @@ func TestLatestByName(t *testing.T) {
 		r2 := newTestRecord()     // name="test-agent"
 		r3 := newA2ATestRecord(t) // duplicate — should merge with r1
 
-		result := format.LatestByName([]*corev1.Record{r1, r2, r3})
+		result := exportfmt.LatestByName([]*corev1.Record{r1, r2, r3})
 		require.Len(t, result, 2)
 		assert.Equal(t, "test-a2a-agent", result[0].GetName())
 		assert.Equal(t, "test-agent", result[1].GetName())
@@ -304,7 +304,7 @@ func TestLatestByName(t *testing.T) {
 		r1 := newA2ATestRecordWithVersion(t, "1.0.0")
 		r2 := newA2ATestRecordWithVersion(t, "1.0.0")
 
-		result := format.LatestByName([]*corev1.Record{r1, r2})
+		result := exportfmt.LatestByName([]*corev1.Record{r1, r2})
 		require.Len(t, result, 1)
 	})
 
@@ -312,14 +312,14 @@ func TestLatestByName(t *testing.T) {
 		alpha := newA2ATestRecordWithVersion(t, "1.0.0-alpha")
 		release := newA2ATestRecordWithVersion(t, "1.0.0")
 
-		result := format.LatestByName([]*corev1.Record{alpha, release})
+		result := exportfmt.LatestByName([]*corev1.Record{alpha, release})
 		require.Len(t, result, 1)
 
 		assert.NotContains(t, result[0].GetVersion(), "alpha", "release should beat alpha")
 	})
 
 	t.Run("returns nil for empty input", func(t *testing.T) {
-		result := format.LatestByName(nil)
+		result := exportfmt.LatestByName(nil)
 		assert.Empty(t, result)
 	})
 }
@@ -332,7 +332,7 @@ func TestRecordGetName(t *testing.T) {
 }
 
 func TestSanitizeName(t *testing.T) {
-	assert.Equal(t, "io.example-code-review", format.SanitizeName("io.example/code-review"))
-	assert.Equal(t, "simple-name", format.SanitizeName("simple-name"))
-	assert.Equal(t, "with-spaces", format.SanitizeName("with spaces"))
+	assert.Equal(t, "io.example-code-review", exportfmt.SanitizeName("io.example/code-review"))
+	assert.Equal(t, "simple-name", exportfmt.SanitizeName("simple-name"))
+	assert.Equal(t, "with-spaces", exportfmt.SanitizeName("with spaces"))
 }

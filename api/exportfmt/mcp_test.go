@@ -1,14 +1,14 @@
 // Copyright AGNTCY Contributors (https://github.com/agntcy)
 // SPDX-License-Identifier: Apache-2.0
 
-package format_test
+package exportfmt_test
 
 import (
 	"encoding/json"
 	"testing"
 
 	corev1 "github.com/agntcy/dir/api/core/v1"
-	"github.com/agntcy/dir/cli/cmd/export/format"
+	"github.com/agntcy/dir/api/exportfmt"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/encoding/protojson"
@@ -56,13 +56,13 @@ func newMCPGHCopilotTestRecord(t *testing.T, recordJSON string) *corev1.Record {
 }
 
 func TestGetMCPGHCopilotFormatter(t *testing.T) {
-	f, err := format.GetFormatter("mcp-ghcopilot")
+	f, err := exportfmt.GetFormatter("mcp-ghcopilot")
 	require.NoError(t, err)
 	assert.NotNil(t, f)
 }
 
 func TestMCPGHCopilotFormatter_Format(t *testing.T) {
-	f, err := format.GetFormatter("mcp-ghcopilot")
+	f, err := exportfmt.GetFormatter("mcp-ghcopilot")
 	require.NoError(t, err)
 
 	t.Run("formats a record with MCP module data into GHCopilot config", func(t *testing.T) {
@@ -104,11 +104,16 @@ func TestMCPGHCopilotFormatter_Format(t *testing.T) {
 		_, err := f.Format(record)
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "failed to translate record to GitHub Copilot MCP config")
+
+		// Records without integration/mcp can never be projected to a
+		// Copilot config — that's a client/data mismatch, so the
+		// gateway must see it as FailedPrecondition (HTTP 400).
+		assert.ErrorIs(t, err, exportfmt.ErrUnsupportedRecord)
 	})
 }
 
 func TestMCPGHCopilotFormatter_FileExtension(t *testing.T) {
-	f, err := format.GetFormatter("mcp-ghcopilot")
+	f, err := exportfmt.GetFormatter("mcp-ghcopilot")
 	require.NoError(t, err)
 	assert.Equal(t, ".json", f.FileExtension())
 }
