@@ -438,6 +438,93 @@
             `;
         }
 
+        function extractCid(identifier) {
+            if (!identifier) return '';
+            const parts = identifier.split(':');
+            return parts[parts.length - 1];
+        }
+
+        function exportFormatForType(mediaType) {
+            if (mediaType.includes('a2a')) return { format: 'a2a', label: 'Download JSON', ext: 'json' };
+            if (mediaType.includes('mcp')) return { format: 'mcp-ghcopilot', label: 'Download JSON', ext: 'json' };
+            if (mediaType.includes('ai-skill')) return { format: 'agent-skill', label: 'Download Markdown', ext: 'md' };
+            return { format: 'oasf', label: 'Download Asset', ext: 'json' };
+        }
+
+        function extractEntryName(entry) {
+            const mt = entry.mediaType || '';
+            if (mt.includes('a2a')) return entry.data?.card_data?.name || entry.displayName || entry.display_name || 'Unnamed';
+            if (mt.includes('mcp')) return entry.data?.name || entry.displayName || entry.display_name || 'Unnamed';
+            return entry.displayName || entry.display_name || 'Unnamed';
+        }
+
+        function extractEntryVersion(entry) {
+            const mt = entry.mediaType || '';
+            if (mt.includes('a2a')) return entry.data?.card_data?.version || entry.version || '-';
+            return entry.version || '-';
+        }
+
+        function renderEntriesTable(agent) {
+            const cid = extractCid(agent.identifier);
+            const entries = agent.data?.entries || [];
+            let rows = '';
+
+            if (entries.length > 0) {
+                rows = entries.map(e => {
+                    const exp = exportFormatForType(e.mediaType || '');
+                    const name = extractEntryName(e);
+                    const version = extractEntryVersion(e);
+                    const filename = name.replace(/[^a-z0-9_-]/gi, '_') + '.' + exp.ext;
+                    return `
+                        <tr class="border-t border-gray-100">
+                            <td class="py-2 pr-3 text-sm text-gray-900">${escapeHtml(name)}</td>
+                            <td class="py-2 pr-3 text-sm text-gray-500">${escapeHtml(version)}</td>
+                            <td class="py-2 pr-3">${mediaTypeBadge(e.mediaType || '')}</td>
+                            <td class="py-2 text-right">
+                                <a href="/v1/agents/${encodeURIComponent(cid)}/export?format=${exp.format}" download="${filename}"
+                                   class="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-medium text-brand-700 bg-brand-50 rounded-lg hover:bg-brand-100 transition">
+                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+                                    ${exp.label}
+                                </a>
+                            </td>
+                        </tr>`;
+                }).join('');
+            } else if (agent.media_type && agent.media_type !== 'application/ai-catalog+json') {
+                const exp = exportFormatForType(agent.media_type);
+                const name = agent.data?.skill_manifest?.name || agent.display_name || 'Unnamed';
+                const version = agent.data?.skill_manifest?.version || agent.version || '-';
+                const filename = name.replace(/[^a-z0-9_-]/gi, '_') + '.' + exp.ext;
+                rows = `
+                    <tr class="border-t border-gray-100">
+                        <td class="py-2 pr-3 text-sm text-gray-900">${escapeHtml(name)}</td>
+                        <td class="py-2 pr-3 text-sm text-gray-500">${escapeHtml(version)}</td>
+                        <td class="py-2 pr-3">${mediaTypeBadge(agent.media_type)}</td>
+                        <td class="py-2 text-right">
+                            <a href="/v1/agents/${encodeURIComponent(cid)}/export?format=${exp.format}" download="${filename}"
+                               class="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-medium text-brand-700 bg-brand-50 rounded-lg hover:bg-brand-100 transition">
+                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+                                ${exp.label}
+                            </a>
+                        </td>
+                    </tr>`;
+            }
+
+            if (!rows) return '<span class="text-sm text-gray-400">No entries</span>';
+
+            return `
+                <table class="w-full text-left">
+                    <thead>
+                        <tr class="text-xs text-gray-500 uppercase tracking-wide">
+                            <th class="pb-2 font-medium">Name</th>
+                            <th class="pb-2 font-medium">Version</th>
+                            <th class="pb-2 font-medium">Type</th>
+                            <th class="pb-2 font-medium text-right">Export</th>
+                        </tr>
+                    </thead>
+                    <tbody>${rows}</tbody>
+                </table>`;
+        }
+
         function openModal(agent) {
             const types = extractEntryTypes(agent);
             const badges = types.map(t => mediaTypeBadge(t)).join(' ');
@@ -484,8 +571,8 @@
                     </div>
 
                     <div>
-                        <span class="font-medium text-gray-700 text-sm">Media Types</span>
-                        <div class="flex flex-wrap gap-1.5 mt-1.5">${badges}</div>
+                        <span class="font-medium text-gray-700 text-sm mb-2 block">Entries</span>
+                        ${renderEntriesTable(agent)}
                     </div>
 
                     <div>
