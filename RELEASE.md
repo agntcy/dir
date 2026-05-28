@@ -47,7 +47,9 @@ Do not create the root `v1.3.0` tag during this phase. Root tags trigger artifac
 
 ## 2a. Optional: Release API Consumers
 
-After the API module tags are pushed, you can update API consumers with the new `api`, `client`, and `utils` tags and create releases for them:
+After the API module tags are pushed, you can update API consumers with the new `api`, `client`, and `utils` tags and create releases for them.
+
+Released API consumers:
 
 - [`dir-mcp`](https://github.com/agntcy/dir-mcp)
 - [`dir-importer`](https://github.com/agntcy/dir-importer)
@@ -69,6 +71,12 @@ This prepares only the `server` module set:
 - `github.com/agntcy/dir/tests`
 - `github.com/agntcy/dir/server`
 - `github.com/agntcy/dir/reconciler`
+
+If optional API consumer releases were created in step 2a, update the corresponding dependencies as well:
+
+- `github.com/agntcy/dir-mcp`
+- `github.com/agntcy/dir-importer`
+- `github.com/agntcy/dir-runtime`
 
 If the release preparation updates Go module versions, tidy the module files before pushing the release branch:
 
