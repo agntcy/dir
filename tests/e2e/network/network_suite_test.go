@@ -60,7 +60,7 @@ func TestNetworkE2E(t *testing.T) {
 
 var _ = ginkgo.BeforeSuite(func(ctx context.Context) {
 	for _, addr := range testEnv.PeerAddresses() {
-		utils.WaitForGrpcServerReady(ctx, addr)
+		utils.WaitForGrpcServerReady(ctx, addr, "")
 	}
 })
 
