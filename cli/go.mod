@@ -22,9 +22,9 @@ require (
 	buf.build/gen/go/agntcy/oasf/protocolbuffers/go v1.36.11-20260427075301-21bf512e44c9.1
 	github.com/agntcy/dir-importer v1.3.1-0.20260513134649-3276412ac13b
 	github.com/agntcy/dir-mcp v1.3.0
-	github.com/agntcy/dir-runtime/discovery v1.3.0
-	github.com/agntcy/dir-runtime/server v1.3.0
-	github.com/agntcy/dir-runtime/store v1.3.0
+	github.com/agntcy/dir-runtime/discovery v1.3.1
+	github.com/agntcy/dir-runtime/server v1.3.1
+	github.com/agntcy/dir-runtime/store v1.3.1
 	github.com/agntcy/dir/api v1.4.0
 	github.com/agntcy/dir/client v1.4.0
 	github.com/agntcy/dir/reconciler v1.4.0
@@ -362,7 +362,7 @@ require (
 	github.com/Masterminds/semver/v3 v3.5.0 // indirect
 	github.com/Microsoft/go-winio v0.6.3-0.20251027160822-ad3df93bed29 // indirect
 	github.com/ThalesIgnite/crypto11 v1.6.0 // indirect
-	github.com/agntcy/dir-runtime/utils v1.3.0 // indirect
+	github.com/agntcy/dir-runtime/utils v1.3.1 // indirect
 	github.com/antlr4-go/antlr/v4 v4.13.1 // indirect
 	github.com/asaskevich/govalidator v0.0.0-20230301143203-a9d515a09cc2 // indirect
 	github.com/aws/aws-sdk-go-v2/config v1.32.17 // indirect

@@ -81,10 +81,10 @@ require (
 	github.com/agext/levenshtein v1.2.3 // indirect
 	github.com/agnivade/levenshtein v1.2.1 // indirect
 	github.com/agntcy/dir-mcp v1.3.0 // indirect
-	github.com/agntcy/dir-runtime/discovery v1.3.0 // indirect
-	github.com/agntcy/dir-runtime/server v1.3.0 // indirect
-	github.com/agntcy/dir-runtime/store v1.3.0 // indirect
-	github.com/agntcy/dir-runtime/utils v1.3.0 // indirect
+	github.com/agntcy/dir-runtime/discovery v1.3.1 // indirect
+	github.com/agntcy/dir-runtime/server v1.3.1 // indirect
+	github.com/agntcy/dir-runtime/store v1.3.1 // indirect
+	github.com/agntcy/dir-runtime/utils v1.3.1 // indirect
 	github.com/agntcy/dir/reconciler v1.4.0 // indirect
 	github.com/agntcy/dir/server v1.4.0
 	github.com/agntcy/dir/utils v1.4.0 // indirect
@@ -517,7 +517,7 @@ require (
 	github.com/spdx/tools-golang v0.5.7 // indirect
 	github.com/spf13/afero v1.15.0 // indirect
 	github.com/spf13/cast v1.10.0 // indirect
-	github.com/spiffe/go-spiffe/v2 v2.6.0 // indirect
+	github.com/spiffe/go-spiffe/v2 v2.6.0
 	github.com/stretchr/objx v0.5.3 // indirect
 	github.com/stretchr/testify v1.11.1 // indirect
 	github.com/subosito/gotenv v1.6.0 // indirect
