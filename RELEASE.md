@@ -70,6 +70,12 @@ This prepares only the `server` module set:
 - `github.com/agntcy/dir/server`
 - `github.com/agntcy/dir/reconciler`
 
+If the release preparation updates Go module versions, tidy the module files before pushing the release branch:
+
+```sh
+task deps:tidy
+```
+
 Open a pull request from the generated release branch, wait for approval, and merge it into `main`.
 
 ## 4. Create Root Release Tag
