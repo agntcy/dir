@@ -237,6 +237,35 @@
             return agent.trust_manifest && agent.trust_manifest.signature;
         }
 
+        function fakeStats(agent) {
+            let hash = 0;
+            const id = agent.identifier || agent.display_name || '';
+            for (let i = 0; i < id.length; i++) hash = ((hash << 5) - hash + id.charCodeAt(i)) | 0;
+            const seed = Math.abs(hash);
+            return {
+                downloads: 100 + (seed % 9900),
+                rating: 3 + ((seed % 20) / 10),
+                providers: 1 + (seed % 12)
+            };
+        }
+
+        function renderStars(rating) {
+            const full = Math.floor(rating);
+            const half = rating - full >= 0.5;
+            let html = '';
+            for (let i = 0; i < 5; i++) {
+                if (i < full) html += '<svg class="w-3.5 h-3.5 text-amber-400" fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>';
+                else if (i === full && half) html += '<svg class="w-3.5 h-3.5 text-amber-400" fill="currentColor" viewBox="0 0 20 20"><defs><linearGradient id="half"><stop offset="50%" stop-color="currentColor"/><stop offset="50%" stop-color="#d1d5db"/></linearGradient></defs><path fill="url(#half)" d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>';
+                else html += '<svg class="w-3.5 h-3.5 text-gray-300" fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>';
+            }
+            return html;
+        }
+
+        function formatDownloads(n) {
+            if (n >= 1000) return (n / 1000).toFixed(1).replace(/\.0$/, '') + 'k';
+            return n.toString();
+        }
+
         function verifiedBadge() {
             return `<span class="inline-flex flex-shrink-0" title="Verified — signed trust manifest"><svg class="w-4 h-4 text-blue-600" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M6.267 3.455a3.066 3.066 0 001.745-.723 3.066 3.066 0 013.976 0 3.066 3.066 0 001.745.723 3.066 3.066 0 012.812 2.812c.051.643.304 1.254.723 1.745a3.066 3.066 0 010 3.976 3.066 3.066 0 00-.723 1.745 3.066 3.066 0 01-2.812 2.812 3.066 3.066 0 00-1.745.723 3.066 3.066 0 01-3.976 0 3.066 3.066 0 00-1.745-.723 3.066 3.066 0 01-2.812-2.812 3.066 3.066 0 00-.723-1.745 3.066 3.066 0 010-3.976 3.066 3.066 0 00.723-1.745 3.066 3.066 0 012.812-2.812zm7.44 5.252a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg></span>`;
         }
@@ -250,10 +279,10 @@
             ).join(' ');
 
             const updatedAt = agent.updated_at ? new Date(agent.updated_at).toLocaleDateString() : '';
-            const entryCount = types.length;
+            const stats = fakeStats(agent);
 
             return `
-                <article class="bg-white rounded-xl border border-gray-200 p-5 hover:shadow-md transition-shadow cursor-pointer" data-agent-index="${index}">
+                <article class="bg-white rounded-xl border border-gray-200 p-5 hover:shadow-md transition-shadow cursor-pointer flex flex-col h-full" data-agent-index="${index}">
                     <div class="flex items-start justify-between gap-3 mb-2">
                         <div class="flex items-center gap-1.5 min-w-0">
                             <h3 class="font-semibold text-gray-900 truncate">${agent.display_name || 'Unnamed Agent'}</h3>
@@ -264,9 +293,12 @@
                     <p class="text-sm text-gray-600 mb-3 line-clamp-2">${agent.description || 'No description available.'}</p>
                     <div class="flex flex-wrap gap-1.5 mb-3">${badges}</div>
                     <div class="flex flex-wrap gap-1.5 mb-3">${tags}</div>
-                    <div class="flex items-center justify-between text-xs text-gray-400">
-                        <span>${entryCount} entr${entryCount !== 1 ? 'ies' : 'y'}</span>
-                        ${updatedAt ? `<span>Updated ${updatedAt}</span>` : ''}
+                    <div class="flex items-center justify-between text-xs text-gray-400 mt-auto pt-2 border-t border-gray-100">
+                        <span class="inline-flex items-center gap-0.5">${renderStars(stats.rating)}</span>
+                        <span class="flex items-center gap-3">
+                            <span class="inline-flex items-center gap-1" title="Downloads"><svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>${formatDownloads(stats.downloads)}</span>
+                            <span class="inline-flex items-center gap-1" title="Providers"><svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 12h14M5 12a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v4a2 2 0 01-2 2M5 12a2 2 0 00-2 2v4a2 2 0 002 2h14a2 2 0 002-2v-4a2 2 0 00-2-2"/></svg>${stats.providers}</span>
+                        </span>
                     </div>
                 </article>
             `;
@@ -403,20 +435,34 @@
                         <p class="text-sm text-gray-600">${escapeHtml(agent.description || 'No description available.')}</p>
                     </div>
 
-                    <div class="grid grid-cols-2 gap-4 text-sm">
+                    <div class="grid grid-cols-2 sm:grid-cols-4 gap-x-6 gap-y-3 text-sm border rounded-lg p-4 bg-gray-50">
                         <div>
-                            <span class="font-medium text-gray-700">Version</span>
-                            <p class="text-gray-600 mt-0.5">${escapeHtml(agent.version || 'N/A')}</p>
+                            <span class="font-medium text-gray-500 text-xs uppercase tracking-wide">Version</span>
+                            <p class="text-gray-900 mt-0.5 font-medium">${escapeHtml(agent.version || 'N/A')}</p>
                         </div>
                         <div>
-                            <span class="font-medium text-gray-700">Updated</span>
-                            <p class="text-gray-600 mt-0.5">${updatedAt}</p>
+                            <span class="font-medium text-gray-500 text-xs uppercase tracking-wide">Updated</span>
+                            <p class="text-gray-900 mt-0.5 font-medium">${updatedAt || 'N/A'}</p>
                         </div>
+                        <div>
+                            <span class="font-medium text-gray-500 text-xs uppercase tracking-wide">Downloads</span>
+                            <p class="text-gray-900 mt-0.5 font-medium">${fakeStats(agent).downloads.toLocaleString()}</p>
+                        </div>
+                        <div>
+                            <span class="font-medium text-gray-500 text-xs uppercase tracking-wide">Providers</span>
+                            <p class="text-gray-900 mt-0.5 font-medium">${fakeStats(agent).providers} node${fakeStats(agent).providers !== 1 ? 's' : ''}</p>
+                        </div>
+                    </div>
+
+                    <div class="flex items-center gap-2 text-sm">
+                        <span class="font-medium text-gray-500 text-xs uppercase tracking-wide">Rating</span>
+                        <span class="inline-flex">${renderStars(fakeStats(agent).rating)}</span>
+                        <span class="text-gray-700 font-medium">${fakeStats(agent).rating.toFixed(1)}</span>
                     </div>
 
                     <div>
                         <span class="font-medium text-gray-700 text-sm">Media Types</span>
-                        <div class="flex flex-wrap gap-1.5 mt-1.5">${badges} ${verified}</div>
+                        <div class="flex flex-wrap gap-1.5 mt-1.5">${badges}</div>
                     </div>
 
                     <div>
