@@ -45,9 +45,21 @@ git push origin api/v1.3.0 client/v1.3.0 utils/v1.3.0
 
 Do not create the root `v1.3.0` tag during this phase. Root tags trigger artifact releases.
 
+## 2a. Optional: Release API Consumers
+
+After the API module tags are pushed, you can update API consumers with the new `api`, `client`, and `utils` tags and create releases for them.
+
+Released API consumers:
+
+- [`dir-mcp`](https://github.com/agntcy/dir-mcp)
+- [`dir-importer`](https://github.com/agntcy/dir-importer)
+- [`dir-runtime`](https://github.com/agntcy/dir-runtime)
+
+This step is useful when those projects need to publish releases against the new API module versions before the Directory server release. The `cli` and `server` dependency updates can happen later in the server release preparation step.
+
 ## 3. Prepare Server Release
 
-After the dependent repositories are updated and released, prepare the server module set release branch:
+Prepare the server module set release branch:
 
 ```sh
 task release:create:server RELEASE_VERSION=v1.3.0
@@ -59,6 +71,18 @@ This prepares only the `server` module set:
 - `github.com/agntcy/dir/tests`
 - `github.com/agntcy/dir/server`
 - `github.com/agntcy/dir/reconciler`
+
+If optional API consumer releases were created in step 2a, update the corresponding dependencies as well:
+
+- `github.com/agntcy/dir-mcp`
+- `github.com/agntcy/dir-importer`
+- `github.com/agntcy/dir-runtime`
+
+If the release preparation updates Go module versions, tidy the module files before pushing the release branch:
+
+```sh
+task deps:tidy
+```
 
 Open a pull request from the generated release branch, wait for approval, and merge it into `main`.
 
