@@ -1,0 +1,16 @@
+{
+  "mcpServers": {
+    "dir-mcp-server": {
+      "command": "dirctl",
+      "args": [
+        "mcp",
+        "serve"
+      ],
+      "env": {
+        "OASF_API_VALIDATION_SCHEMA_URL": "https://schema.oasf.outshift.com"
+      }
+    }
+  },
+  "model": "azure:gpt-4o",
+  "max-steps": 10
+}
