@@ -106,6 +106,26 @@ func TestContextCommandsDoNotRequireClientConfig(t *testing.T) {
 	require.Contains(t, stdout.String(), "No contexts configured.")
 }
 
+func TestCompletionDoesNotRequireClientConfig(t *testing.T) {
+	resetClientEnv(t)
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	resetClientConfig()
+
+	var (
+		stdout bytes.Buffer
+		stderr bytes.Buffer
+	)
+
+	RootCmd.SetArgs([]string{"completion", "bash"})
+	RootCmd.SetContext(context.Background())
+	RootCmd.SetOut(&stdout)
+	RootCmd.SetErr(&stderr)
+
+	err := RootCmd.Execute()
+
+	require.NoError(t, err)
+}
+
 func TestResolveClientConfigUsesCurrentContext(t *testing.T) {
 	resetClientEnv(t)
 	configHome := t.TempDir()
