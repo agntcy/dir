@@ -73,7 +73,14 @@ func skipClientSetup(_ *cobra.Command, _ []string) error {
 }
 
 func shouldSkipClientSetup(cmd *cobra.Command) bool {
-	return cmd.Name() == "help" || cmd.Name() == "completion"
+	for current := cmd; current != nil; current = current.Parent() {
+		switch current.Name() {
+		case "help", "completion":
+			return true
+		}
+	}
+
+	return false
 }
 
 func resolveClientConfig(cmd *cobra.Command) (*client.Config, error) {
