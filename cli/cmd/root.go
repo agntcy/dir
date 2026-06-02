@@ -113,6 +113,7 @@ func init() {
 	network.Command.PersistentPreRunE = skipClientSetup
 	validate.Command.PersistentPreRunE = skipClientSetup
 	version.Command.PersistentPreRunE = skipClientSetup
+	mcp.Command.PersistentPreRunE = skipClientSetup
 
 	RootCmd.AddCommand(
 		// auth commands
