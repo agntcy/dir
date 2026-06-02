@@ -192,8 +192,8 @@ github.com/agnivade/levenshtein v1.2.1 h1:EHBY3UOn1gwdy/VbFwgo4cxecRznFk7fKWN1KO
 github.com/agnivade/levenshtein v1.2.1/go.mod h1:QVVI16kDrtSuwcpd0p1+xMC6Z/VfhtCyDIjcwga4/DU=
 github.com/agntcy/dir-importer v1.4.0 h1:LYvYFVK76uuhdJe5XcQXRNARFOPX/BrGz6FjA7Zzzx4=
 github.com/agntcy/dir-importer v1.4.0/go.mod h1:2IiVw8bUz6mW2qtwb0/iGIMvNXfHBpZ7XhCyWPTRyZU=
-github.com/agntcy/dir-mcp v1.3.0 h1:xG7qkcsile69u0I7x3VrSvyVKT0NuBlgDK29WrHo5dg=
-github.com/agntcy/dir-mcp v1.3.0/go.mod h1:4GqrwnqlzBvzkrnd0DV3N0iq7rRANtOlQ2aMIzrLQHo=
+github.com/agntcy/dir-mcp v1.3.1 h1:KoyFof//ylamRsw7xg57W0TCF1u93Y6sFl0JSTUWYUA=
+github.com/agntcy/dir-mcp v1.3.1/go.mod h1:ISREp2R0HUpzrk+Pv1Y3+hynf3oC4pC0D8SKSjjIBNk=
 github.com/agntcy/dir-runtime/discovery v1.3.1 h1:z+NHyGrm0bU0fbFz426OXg3bFwXqipp1F9YDsETxpUE=
 github.com/agntcy/dir-runtime/discovery v1.3.1/go.mod h1:wRRnxnvuAQmfxvajCLCKhUFurGqQqWyf2/4N8Y8h0FA=
 github.com/agntcy/dir-runtime/server v1.3.1 h1:tbfm949JnVskBCUHlfXvNtss1IjlefS3FVrI+jz65v4=
@@ -1272,8 +1272,8 @@ github.com/moby/sys/userns v0.1.0 h1:tVLXkFOxVu9A64/yh59slHVv9ahO9UIev4JZusOLG/g
 github.com/moby/sys/userns v0.1.0/go.mod h1:IHUYgu/kao6N8YZlp9Cf444ySSvCmDlmzUcYfDHOl28=
 github.com/moby/term v0.5.2 h1:6qk3FJAFDs6i/q3W/pQ97SX192qKfZgGjCQqfCJkgzQ=
 github.com/moby/term v0.5.2/go.mod h1:d3djjFCrjnB+fl8NJux+EJzu0msscUP+f8it8hPkFLc=
-github.com/modelcontextprotocol/go-sdk v1.6.0 h1:PPLS3kn7WtOEnR+Af4X5H96SG0qSab8R/ZQT/HkhPkY=
-github.com/modelcontextprotocol/go-sdk v1.6.0/go.mod h1:kzm3kzFL1/+AziGOE0nUs3gvPoNxMCvkxokMkuFapXQ=
+github.com/modelcontextprotocol/go-sdk v1.6.1 h1:0zOSupjKUxPKSocPT1Wtago+mUHU2/uZ4xSOY0FGReU=
+github.com/modelcontextprotocol/go-sdk v1.6.1/go.mod h1:kzm3kzFL1/+AziGOE0nUs3gvPoNxMCvkxokMkuFapXQ=
 github.com/modelcontextprotocol/registry v1.7.9 h1:vpPfx2A2egjhm6YlbwfkX8NkR2N0S2eYmvYXI8bXaBs=
 github.com/modelcontextprotocol/registry v1.7.9/go.mod h1:y03zY98e+REsiCaj1sUKzXbk3qEp++Y3gzAnV83wrNs=
 github.com/modern-go/concurrent v0.0.0-20180228061459-e0a39a4cb421/go.mod h1:6dJC0mAP4ikYIbvyc7fijjWJddQyLn8Ig3JB5CqoB9Q=
