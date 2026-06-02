@@ -471,7 +471,6 @@ contexts:
     auth_mode: jwt
     jwt_audience: directory
     spiffe_socket_path: /tmp/spire-agent.sock
-    spiffe_token: spiffe-jwt
     tls_skip_verify: true
     tls_ca_file: /tmp/ca.pem
     tls_cert_file: /tmp/client.pem
@@ -489,7 +488,6 @@ contexts:
 		assert.Equal(t, "jwt", cfg.AuthMode)
 		assert.Equal(t, "directory", cfg.JWTAudience)
 		assert.Equal(t, "/tmp/spire-agent.sock", cfg.SpiffeSocketPath)
-		assert.Equal(t, "spiffe-jwt", cfg.SpiffeToken)
 		assert.True(t, cfg.TlsSkipVerify)
 		assert.Equal(t, "/tmp/ca.pem", cfg.TlsCAFile)
 		assert.Equal(t, "/tmp/client.pem", cfg.TlsCertFile)

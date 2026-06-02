@@ -111,7 +111,6 @@ func buildClientConfigForRemote(remoteDirectoryURL string, authnConfig authnconf
 	}
 
 	if authnConfig.Enabled {
-		cfg.AuthMode = string(authnConfig.Mode)
 		cfg.SpiffeSocketPath = authnConfig.SocketPath
 
 		if len(authnConfig.Audiences) > 0 {

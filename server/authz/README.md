@@ -1,6 +1,6 @@
 ### Authorization Policies
 
-Directory supports fine-grained authorization policies that control which SPIFFE trust domains can access specific API methods. Authorization policies work in conjunction with authentication (either X.509-SVID or JWT-SVID) to provide comprehensive access control.
+Directory supports fine-grained authorization policies that control which SPIFFE trust domains can access specific API methods. Authorization policies work in conjunction with authentication to provide comprehensive access control.
 
 #### Policy Format
 
@@ -11,7 +11,7 @@ p,<trust_domain>,<api_method>
 ```
 
 Where:
-- `trust_domain`: SPIFFE trust domain extracted from the client's X.509-SVID or JWT-SVID
+- `trust_domain`: SPIFFE trust domain extracted from the client's SPIFFE ID
 - `api_method`: gRPC method name in the format `/package.Service/Method`
 
 #### Matching Rules
@@ -96,7 +96,6 @@ config:
   # Authentication must be enabled first
   authn:
     enabled: true
-    mode: "x509"  # or "jwt"
     socket_path: "unix:///run/spire/agent-sockets/api.sock"
 
   # Authorization policies
@@ -105,6 +104,6 @@ config:
     enforcer_policy_file_path: "/etc/agntcy/dir/authz_policies.csv"
 ```
 
-**Important:** Authorization requires authentication to be enabled. The authorization system extracts the trust domain from the authenticated SPIFFE ID (either from X.509-SVID or JWT-SVID) and evaluates it against the configured policies.
+**Important:** Authorization requires authentication to be enabled. The authorization system extracts the trust domain from the authenticated SPIFFE ID and evaluates it against the configured policies.
 
 

@@ -112,13 +112,6 @@ func TestClientClose_ClosesSPIFFESources(t *testing.T) {
 			wantClosed: []string{},
 		},
 		{
-			name:       "x509 auth pattern (bundleSrc + x509Src)",
-			bundleSrc:  newMockCloser(),
-			x509Src:    newMockCloser(),
-			jwtSource:  nil,
-			wantClosed: []string{"x509Src", "bundleSrc"},
-		},
-		{
 			name:       "jwt auth pattern (bundleSrc + jwtSource)",
 			bundleSrc:  newMockCloser(),
 			x509Src:    nil,
@@ -393,30 +386,6 @@ func TestClientClose_SPIFFESourcesWithConnection(t *testing.T) {
 
 // TestClientClose_PartialSPIFFESources tests closing when only some sources are present.
 func TestClientClose_PartialSPIFFESources(t *testing.T) {
-	// Test X.509 auth pattern (bundleSrc + x509Src, no jwtSource)
-	t.Run("x509 auth pattern", func(t *testing.T) {
-		bundleSrc := newMockCloser()
-		x509Src := newMockCloser()
-
-		client := &Client{
-			bundleSrc: bundleSrc,
-			x509Src:   x509Src,
-			jwtSource: nil, // Not used in X.509 auth
-		}
-
-		if err := client.Close(); err != nil {
-			t.Errorf("Close() returned error: %v", err)
-		}
-
-		if !bundleSrc.closed {
-			t.Error("bundleSrc was not closed")
-		}
-
-		if !x509Src.closed {
-			t.Error("x509Src was not closed")
-		}
-	})
-
 	// Test JWT auth pattern (bundleSrc + jwtSource, no x509Src)
 	t.Run("jwt auth pattern", func(t *testing.T) {
 		bundleSrc := newMockCloser()

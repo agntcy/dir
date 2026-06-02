@@ -101,10 +101,6 @@ func validateClientConfig(cfg *client.Config) error {
 	switch cfg.AuthMode {
 	case "", "insecure", "none":
 		return nil
-	case "x509":
-		if cfg.SpiffeSocketPath == "" {
-			return errors.New("spiffe_socket_path is required for x509 authentication")
-		}
 	case "jwt":
 		if cfg.SpiffeSocketPath == "" {
 			return errors.New("spiffe_socket_path is required for jwt authentication")
@@ -112,10 +108,6 @@ func validateClientConfig(cfg *client.Config) error {
 
 		if cfg.JWTAudience == "" {
 			return errors.New("jwt_audience is required for jwt authentication")
-		}
-	case "token":
-		if cfg.SpiffeToken == "" {
-			return errors.New("spiffe_token is required for token authentication")
 		}
 	case "tls":
 		if cfg.TlsCAFile == "" || cfg.TlsCertFile == "" || cfg.TlsKeyFile == "" {

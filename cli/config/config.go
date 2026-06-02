@@ -22,7 +22,6 @@ func ChangedClientConfigFields(cmd *cobra.Command) []string {
 		"server-addr":        "server_address",
 		"auth-mode":          "auth_mode",
 		"spiffe-socket-path": "spiffe_socket_path",
-		"spiffe-token":       "spiffe_token",
 		"jwt-audience":       "jwt_audience",
 		"tls-skip-verify":    "tls_skip_verify",
 		"tls-ca-file":        "tls_ca_file",

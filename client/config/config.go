@@ -44,7 +44,6 @@ type Context struct {
 	TlsKeyFile       string `yaml:"tls_key_file"`
 	TlsCAFile        string `yaml:"tls_ca_file"`
 	SpiffeSocketPath string `yaml:"spiffe_socket_path"`
-	SpiffeToken      string `yaml:"spiffe_token"`
 	AuthMode         string `yaml:"auth_mode"`
 	JWTAudience      string `yaml:"jwt_audience"`
 	OIDCIssuer       string `yaml:"oidc_issuer"`
@@ -468,7 +467,6 @@ func applyEnv(cfg *dirclient.Config, prefix string) error {
 		"tls_key_file":       &cfg.TlsKeyFile,
 		"tls_ca_file":        &cfg.TlsCAFile,
 		"spiffe_socket_path": &cfg.SpiffeSocketPath,
-		"spiffe_token":       &cfg.SpiffeToken,
 		"auth_mode":          &cfg.AuthMode,
 		"jwt_audience":       &cfg.JWTAudience,
 		"oidc_issuer":        &cfg.OIDCIssuer,
@@ -539,10 +537,6 @@ func applyNonZeroOverrides(cfg *dirclient.Config, overrides *dirclient.Config) {
 		cfg.SpiffeSocketPath = overrides.SpiffeSocketPath
 	}
 
-	if overrides.SpiffeToken != "" {
-		cfg.SpiffeToken = overrides.SpiffeToken
-	}
-
 	if overrides.AuthMode != "" {
 		cfg.AuthMode = overrides.AuthMode
 	}
@@ -578,8 +572,6 @@ func applyOverrideField(cfg *dirclient.Config, overrides *dirclient.Config, fiel
 		cfg.TlsCAFile = overrides.TlsCAFile
 	case "spiffe_socket_path":
 		cfg.SpiffeSocketPath = overrides.SpiffeSocketPath
-	case "spiffe_token":
-		cfg.SpiffeToken = overrides.SpiffeToken
 	case "auth_mode":
 		cfg.AuthMode = overrides.AuthMode
 	case "jwt_audience":
@@ -606,10 +598,6 @@ func validateClientConfig(cfg *dirclient.Config) error {
 	switch cfg.AuthMode {
 	case "", "insecure", "none":
 		return nil
-	case "x509":
-		if cfg.SpiffeSocketPath == "" {
-			return errors.New("spiffe_socket_path is required for x509 authentication")
-		}
 	case "jwt":
 		if cfg.SpiffeSocketPath == "" {
 			return errors.New("spiffe_socket_path is required for jwt authentication")
@@ -617,10 +605,6 @@ func validateClientConfig(cfg *dirclient.Config) error {
 
 		if cfg.JWTAudience == "" {
 			return errors.New("jwt_audience is required for jwt authentication")
-		}
-	case "token":
-		if cfg.SpiffeToken == "" {
-			return errors.New("spiffe_token is required for token authentication")
 		}
 	case "tls":
 		if cfg.TlsCAFile == "" || cfg.TlsCertFile == "" || cfg.TlsKeyFile == "" {
@@ -671,7 +655,6 @@ func (c Context) toClientConfig() dirclient.Config {
 		TlsKeyFile:       c.TlsKeyFile,
 		TlsCAFile:        c.TlsCAFile,
 		SpiffeSocketPath: c.SpiffeSocketPath,
-		SpiffeToken:      c.SpiffeToken,
 		AuthMode:         c.AuthMode,
 		JWTAudience:      c.JWTAudience,
 		OIDCIssuer:       c.OIDCIssuer,

@@ -112,7 +112,6 @@ func resolvedConfigValues(cfg *client.Config) map[string]string {
 		"oidc_issuer":        cfg.OIDCIssuer,
 		"server_address":     cfg.ServerAddress,
 		"spiffe_socket_path": cfg.SpiffeSocketPath,
-		"spiffe_token":       redact(cfg.SpiffeToken),
 		"tls_ca_file":        cfg.TlsCAFile,
 		"tls_cert_file":      cfg.TlsCertFile,
 		"tls_key_file":       cfg.TlsKeyFile,

@@ -138,9 +138,6 @@ func LoadConfig() (*Config, error) {
 	_ = v.BindEnv("regsync.authn.enabled")
 	v.SetDefault("regsync.authn.enabled", false)
 
-	_ = v.BindEnv("regsync.authn.mode")
-	v.SetDefault("regsync.authn.mode", "x509")
-
 	_ = v.BindEnv("regsync.authn.socket_path")
 	_ = v.BindEnv("regsync.authn.audiences")
 

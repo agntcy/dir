@@ -123,7 +123,7 @@ type Config struct {
 	// Rate limiting configuration
 	RateLimit ratelimitconfig.Config `json:"ratelimit" mapstructure:"ratelimit"`
 
-	// Authn configuration (JWT or X.509 authentication)
+	// Authn configuration
 	Authn authn.Config `json:"authn" mapstructure:"authn"`
 
 	// Authz configuration
@@ -381,19 +381,16 @@ func LoadConfig(opts ...ConfigOption) (*Config, error) {
 	//         burst: 100
 
 	//
-	// Authn configuration (authentication: JWT or X.509)
+	// Authn configuration
 	//
 	_ = v.BindEnv("authn.enabled")
 	v.SetDefault("authn.enabled", "false")
-
-	_ = v.BindEnv("authn.mode")
-	v.SetDefault("authn.mode", "x509")
 
 	_ = v.BindEnv("authn.socket_path")
 	v.SetDefault("authn.socket_path", "")
 
 	_ = v.BindEnv("authn.audiences")
-	v.SetDefault("authn.audiences", "")
+	v.SetDefault("authn.audiences", authn.DefaultAudience)
 
 	//
 	// Authz configuration (authorization policies)

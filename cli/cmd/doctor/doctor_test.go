@@ -249,7 +249,6 @@ func newDoctorTestCommand() *cobra.Command {
 	root.PersistentFlags().StringVar(&cliconfig.Client.ServerAddress, "server-addr", cliconfig.Client.ServerAddress, "Directory Server API address")
 	root.PersistentFlags().StringVar(&cliconfig.Client.AuthMode, "auth-mode", cliconfig.Client.AuthMode, "Authentication mode")
 	root.PersistentFlags().StringVar(&cliconfig.Client.SpiffeSocketPath, "spiffe-socket-path", cliconfig.Client.SpiffeSocketPath, "Path to SPIFFE Workload API socket")
-	root.PersistentFlags().StringVar(&cliconfig.Client.SpiffeToken, "spiffe-token", cliconfig.Client.SpiffeToken, "Path to JSON file containing SPIFFE token")
 	root.PersistentFlags().StringVar(&cliconfig.Client.JWTAudience, "jwt-audience", cliconfig.Client.JWTAudience, "JWT audience")
 	root.PersistentFlags().BoolVar(&cliconfig.Client.TlsSkipVerify, "tls-skip-verify", cliconfig.Client.TlsSkipVerify, "Skip TLS verification")
 	root.PersistentFlags().StringVar(&cliconfig.Client.TlsCAFile, "tls-ca-file", cliconfig.Client.TlsCAFile, "Path to TLS CA file")

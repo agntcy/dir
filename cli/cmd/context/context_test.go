@@ -172,7 +172,6 @@ contexts:
     server_address: dev.gateway.example.com:443
     auth_mode: insecure
     auth_token: secret-token
-    spiffe_token: secret-spiffe-token
 `)
 
 	output, err := executeShowCommand(t)
@@ -180,7 +179,6 @@ contexts:
 	require.NoError(t, err)
 	require.Contains(t, output, "name: dev\n")
 	require.Contains(t, output, "auth_token: <redacted>")
-	require.Contains(t, output, "spiffe_token: <redacted>")
 	require.NotContains(t, output, "secret-token")
 	require.NotContains(t, output, "secret-spiffe-token")
 }

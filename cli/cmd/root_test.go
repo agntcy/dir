@@ -283,7 +283,6 @@ func resetClientConfig() {
 	config.Client.ServerAddress = ""
 	config.Client.AuthMode = ""
 	config.Client.SpiffeSocketPath = ""
-	config.Client.SpiffeToken = ""
 	config.Client.JWTAudience = ""
 	config.Client.TlsSkipVerify = false
 	config.Client.TlsCAFile = ""
@@ -305,7 +304,6 @@ func resetClientEnv(t *testing.T) {
 		"DIRECTORY_CLIENT_TLS_KEY_FILE",
 		"DIRECTORY_CLIENT_TLS_CA_FILE",
 		"DIRECTORY_CLIENT_SPIFFE_SOCKET_PATH",
-		"DIRECTORY_CLIENT_SPIFFE_TOKEN",
 		"DIRECTORY_CLIENT_AUTH_MODE",
 		"DIRECTORY_CLIENT_JWT_AUDIENCE",
 		"DIRECTORY_CLIENT_OIDC_ISSUER",
@@ -344,7 +342,6 @@ func newResolveTestCommand(t *testing.T) *cobra.Command {
 	flags.StringVar(&config.Client.ServerAddress, "server-addr", config.Client.ServerAddress, "Directory Server API address")
 	flags.StringVar(&config.Client.AuthMode, "auth-mode", config.Client.AuthMode, "Authentication mode")
 	flags.StringVar(&config.Client.SpiffeSocketPath, "spiffe-socket-path", config.Client.SpiffeSocketPath, "Path to SPIFFE Workload API socket")
-	flags.StringVar(&config.Client.SpiffeToken, "spiffe-token", config.Client.SpiffeToken, "Path to JSON file containing SPIFFE token")
 	flags.StringVar(&config.Client.JWTAudience, "jwt-audience", config.Client.JWTAudience, "JWT audience")
 	flags.BoolVar(&config.Client.TlsSkipVerify, "tls-skip-verify", config.Client.TlsSkipVerify, "Skip TLS verification")
 	flags.StringVar(&config.Client.TlsCAFile, "tls-ca-file", config.Client.TlsCAFile, "Path to TLS CA file")

@@ -55,9 +55,9 @@ The SDK can be configured via environment variables or direct instantiation.
 | Variable | Description | Default |
 |----------|-------------|---------|
 | `DIRECTORY_CLIENT_SERVER_ADDRESS` | Directory server address | `0.0.0.0:8888` |
-| `DIRECTORY_CLIENT_AUTH_MODE` | Authentication mode: `x509`, `jwt`, or empty for insecure | `""` (insecure) |
+| `DIRECTORY_CLIENT_AUTH_MODE` | Authentication mode: `jwt`, `oidc`, `tls`, or empty for insecure | `""` (insecure) |
 | `DIRECTORY_CLIENT_SPIFFE_SOCKET_PATH` | SPIFFE Workload API socket path | `""` |
-| `DIRECTORY_CLIENT_JWT_AUDIENCE` | JWT audience for JWT authentication | `""` |
+| `DIRECTORY_CLIENT_JWT_AUDIENCE` | JWT audience for SPIFFE JWT authentication | `""` |
 
 ### Authentication
 
@@ -92,40 +92,7 @@ if err != nil {
 defer c.Close() // Always close to cleanup resources
 ```
 
-#### 2. X509 (X.509-SVID)
-
-Recommended for production. Requires SPIRE agent.
-
-**Environment Variables:**
-```bash
-export DIRECTORY_CLIENT_SERVER_ADDRESS="localhost:8888"
-export DIRECTORY_CLIENT_AUTH_MODE="x509"
-export DIRECTORY_CLIENT_SPIFFE_SOCKET_PATH="unix:///run/spire/agent-sockets/api.sock"
-```
-
-**Code Example:**
-```go
-import (
-    "context"
-    "github.com/agntcy/dir/client"
-)
-
-ctx := context.Background()
-config := &client.Config{
-    ServerAddress:    "localhost:8888",
-    AuthMode:         "x509",
-    SpiffeSocketPath: "unix:///run/spire/agent-sockets/api.sock",
-}
-c, err := client.New(ctx, client.WithConfig(config))
-if err != nil {
-    // handle error
-}
-defer c.Close() // Always close to cleanup resources
-```
-
-#### 3. JWT (JWT-SVID)
-
-Alternative to X.509 for client authentication. Requires SPIRE agent.
+#### 2. JWT (JWT-SVID)
 
 > **Note**: In JWT mode, the server presents its X.509-SVID via TLS for server 
 > authentication and encryption, while the client authenticates using a JWT-SVID. 
@@ -161,7 +128,7 @@ if err != nil {
 defer c.Close() // Always close to cleanup resources
 ```
 
-#### 4. OIDC (OpenID Connect)
+#### 3. OIDC (OpenID Connect)
 
 For human users and CI/scripts authenticating via an OIDC provider (e.g. Dex).
 

@@ -308,27 +308,6 @@ func TestSetupJWTAuth_Validation(t *testing.T) {
 	})
 }
 
-func TestSetupX509Auth_Validation(t *testing.T) {
-	t.Run("should attempt x509 auth setup", func(t *testing.T) {
-		opts := &options{
-			config: &Config{
-				ServerAddress:    testServerAddr,
-				SpiffeSocketPath: testSpiffeSocket,
-				AuthMode:         "x509",
-			},
-		}
-
-		ctx := context.Background()
-		opt := withAuth(ctx)
-		err := opt(opts)
-
-		// Should fail because we can't connect to SPIFFE socket
-		require.Error(t, err)
-		// Error should be about SPIFFE connection
-		t.Logf("Error (expected): %v", err)
-	})
-}
-
 func TestWithAuth_SPIFFESocketConnection(t *testing.T) {
 	t.Run("should error when SPIFFE socket does not exist", func(t *testing.T) {
 		// Use a non-existent socket path
@@ -340,26 +319,6 @@ func TestWithAuth_SPIFFESocketConnection(t *testing.T) {
 				SpiffeSocketPath: nonExistentSocket,
 				AuthMode:         "jwt",
 				JWTAudience:      testJWTAudience,
-			},
-		}
-
-		ctx := context.Background()
-		opt := withAuth(ctx)
-		err := opt(opts)
-
-		// Should error because socket doesn't exist
-		require.Error(t, err)
-		assert.Contains(t, err.Error(), "failed to create SPIFFE client")
-	})
-
-	t.Run("should error with x509 auth and non-existent socket", func(t *testing.T) {
-		nonExistentSocket := "/tmp/non-existent-spiffe-x509-" + t.Name() + ".sock"
-
-		opts := &options{
-			config: &Config{
-				ServerAddress:    testServerAddr,
-				SpiffeSocketPath: nonExistentSocket,
-				AuthMode:         "x509",
 			},
 		}
 
@@ -385,13 +344,6 @@ func TestWithAuth_AllAuthModes(t *testing.T) {
 			name:          "jwt mode without socket",
 			authMode:      "jwt",
 			jwtAudience:   testJWTAudience,
-			expectError:   true,
-			errorContains: "failed to create SPIFFE client",
-		},
-		{
-			name:          "x509 mode without socket",
-			authMode:      "x509",
-			jwtAudience:   "",
 			expectError:   true,
 			errorContains: "failed to create SPIFFE client",
 		},

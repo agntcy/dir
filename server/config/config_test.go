@@ -41,6 +41,9 @@ func TestConfig(t *testing.T) {
 				"DIRECTORY_SERVER_STORE_OCI_AUTH_CONFIG_PASSWORD":      "password",
 				"DIRECTORY_SERVER_STORE_OCI_AUTH_CONFIG_ACCESS_TOKEN":  "access-token",
 				"DIRECTORY_SERVER_STORE_OCI_AUTH_CONFIG_REFRESH_TOKEN": "refresh-token",
+				"DIRECTORY_SERVER_AUTHN_ENABLED":                       "true",
+				"DIRECTORY_SERVER_AUTHN_AUDIENCES":                     "custom-audience1,custom-audience2",
+				"DIRECTORY_SERVER_AUTHN_SOCKET_PATH":                   "/tmp/agent.sock",
 				"DIRECTORY_SERVER_ROUTING_LISTEN_ADDRESS":              "/ip4/1.1.1.1/tcp/1",
 				"DIRECTORY_SERVER_ROUTING_BOOTSTRAP_PEERS":             "/ip4/1.1.1.1/tcp/1,/ip4/1.1.1.1/tcp/2",
 				"DIRECTORY_SERVER_ROUTING_KEY_PATH":                    "/path/to/key",
@@ -64,9 +67,9 @@ func TestConfig(t *testing.T) {
 				},
 				Connection: DefaultConnectionConfig(), // Connection defaults applied
 				Authn: authn.Config{
-					Enabled:   false,
-					Mode:      authn.AuthModeX509, // Default from config.go:109
-					Audiences: []string{},
+					Enabled:    true,
+					SocketPath: "/tmp/agent.sock",
+					Audiences:  []string{"custom-audience1", "custom-audience2"},
 				},
 				Store: store.Config{
 					Provider: "provider",
@@ -144,8 +147,7 @@ func TestConfig(t *testing.T) {
 				Connection: DefaultConnectionConfig(), // Connection defaults applied
 				Authn: authn.Config{
 					Enabled:   false,
-					Mode:      authn.AuthModeX509, // Default from config.go:109
-					Audiences: []string{},
+					Audiences: []string{authn.DefaultAudience},
 				},
 				Store: store.Config{
 					Provider: store.DefaultProvider,

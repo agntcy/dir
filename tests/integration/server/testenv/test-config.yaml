@@ -5,7 +5,6 @@ logging:
   verbose: false
 authn:
   enabled: false
-  mode: x509
   socket_path:
   audiences:
 authz:

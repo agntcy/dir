@@ -14,8 +14,8 @@ The core Directory Service consists of:
 | **Zot registry** | OCI-compliant container registry used as the storage backend |
 | **PostgreSQL** | Database for record metadata and indexing |
 
-When SPIRE is enabled, internal communication uses SPIFFE X.509-SVIDs for
-mTLS authentication. The apiserver only accepts connections from workloads
+When SPIRE is enabled, internal communication uses SPIFFE JWT-SVIDs for
+TLS authentication. The apiserver only accepts connections from workloads
 with valid SPIFFE identities.
 
 ### External Access

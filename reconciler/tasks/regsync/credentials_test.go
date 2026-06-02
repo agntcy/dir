@@ -146,7 +146,6 @@ func TestBuildClientConfigForRemote(t *testing.T) {
 			remote: "http://localhost:8888",
 			authn: authnconfig.Config{
 				Enabled:    true,
-				Mode:       authnconfig.AuthModeJWT,
 				SocketPath: "/run/spire/agent.sock",
 				Audiences:  []string{"directory"},
 			},
@@ -169,7 +168,6 @@ contexts:
 			remote: "https://dev.gateway.example.com",
 			authn: authnconfig.Config{
 				Enabled: true,
-				Mode:    authnconfig.AuthModeX509,
 			},
 			wantAddress: "dev.gateway.example.com:443",
 			wantMode:    "oidc",

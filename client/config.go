@@ -19,6 +19,7 @@ const (
 	DefaultTlsSkipVerify = false
 	DefaultCallbackPort  = 8484
 	DefaultOAuthTimeout  = 5 * time.Minute
+	DefaultJwtAudience   = "agntcy-dir"
 )
 
 var DefaultConfig = Config{
@@ -32,7 +33,6 @@ type Config struct {
 	TlsKeyFile       string `json:"tls_key_file,omitempty"       mapstructure:"tls_key_file"`
 	TlsCAFile        string `json:"tls_ca_file,omitempty"        mapstructure:"tls_ca_file"`
 	SpiffeSocketPath string `json:"spiffe_socket_path,omitempty" mapstructure:"spiffe_socket_path"`
-	SpiffeToken      string `json:"spiffe_token,omitempty"       mapstructure:"spiffe_token"`
 	AuthMode         string `json:"auth_mode,omitempty"          mapstructure:"auth_mode"`
 	JWTAudience      string `json:"jwt_audience,omitempty"       mapstructure:"jwt_audience"`
 
@@ -63,14 +63,11 @@ func LoadConfig() (*Config, error) {
 	_ = v.BindEnv("spiffe_socket_path")
 	v.SetDefault("spiffe_socket_path", "")
 
-	_ = v.BindEnv("spiffe_token")
-	v.SetDefault("spiffe_token", "")
-
 	_ = v.BindEnv("auth_mode")
 	v.SetDefault("auth_mode", "")
 
 	_ = v.BindEnv("jwt_audience")
-	v.SetDefault("jwt_audience", "")
+	v.SetDefault("jwt_audience", DefaultJwtAudience)
 
 	_ = v.BindEnv("oidc_issuer")
 	v.SetDefault("oidc_issuer", "")

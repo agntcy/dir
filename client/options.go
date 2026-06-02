@@ -7,9 +7,6 @@ import (
 	"context"
 	"crypto/tls"
 	"crypto/x509"
-	"encoding/base64"
-	"encoding/json"
-	"encoding/pem"
 	"errors"
 	"fmt"
 	"io"
@@ -17,7 +14,6 @@ import (
 	"strings"
 
 	"github.com/agntcy/dir/utils/logging"
-	"github.com/agntcy/dir/utils/spiffe"
 	"github.com/spiffe/go-spiffe/v2/spiffegrpc/grpccredentials"
 	"github.com/spiffe/go-spiffe/v2/spiffetls/tlsconfig"
 	"github.com/spiffe/go-spiffe/v2/workloadapi"
@@ -72,11 +68,6 @@ func withAuth(ctx context.Context) Option {
 		case "jwt":
 			// NOTE: jwt source must live for the entire client lifetime, not just the initialization phase
 			return o.setupJWTAuth(ctx) //nolint:contextcheck
-		case "x509":
-			// NOTE: x509 source must live for the entire client lifetime, not just the initialization phase
-			return o.setupX509Auth(ctx) //nolint:contextcheck
-		case "token":
-			return o.setupSpiffeAuth(ctx)
 		case "tls":
 			return o.setupTlsAuth(ctx)
 		case "oidc":
@@ -86,7 +77,7 @@ func withAuth(ctx context.Context) Option {
 			return o.setupAutoDetectAuth(ctx)
 		default:
 			// Invalid auth mode specified - return error to prevent silent security issues
-			return fmt.Errorf("unsupported auth mode: %s (supported: 'jwt', 'x509', 'token', 'tls', 'oidc', 'insecure', 'none', or empty for auto-detect)", o.config.AuthMode)
+			return fmt.Errorf("unsupported auth mode: %s (supported: 'jwt', 'tls', 'oidc', 'insecure', 'none', or empty for auto-detect)", o.config.AuthMode)
 		}
 	}
 }
@@ -200,209 +191,6 @@ func (o *options) setupJWTAuth(ctx context.Context) error {
 		),
 		grpc.WithPerRPCCredentials(newJWTCredentials(jwtSource, o.config.JWTAudience)),
 	)
-
-	return nil
-}
-
-func (o *options) setupX509Auth(ctx context.Context) error {
-	// Validate SPIFFE socket path is set
-	if o.config.SpiffeSocketPath == "" {
-		return errors.New("spiffe socket path is required for x509 authentication")
-	}
-
-	authLogger.Debug("Setting up X509 authentication", "spiffe_socket_path", o.config.SpiffeSocketPath)
-
-	// Create SPIFFE client
-	client, err := workloadapi.New(ctx, workloadapi.WithAddr(o.config.SpiffeSocketPath))
-	if err != nil {
-		return fmt.Errorf("failed to create SPIFFE client: %w", err)
-	}
-
-	authLogger.Debug("Created SPIFFE workload API client")
-
-	// Create SPIFFE x509 services
-	// Note: Use context.Background() because this source must live for the entire client lifetime,
-	// not just the initialization phase. It will be properly closed in client.Close().
-	x509Src, err := workloadapi.NewX509Source(context.Background(), workloadapi.WithClient(client)) //nolint:contextcheck
-	if err != nil {
-		_ = client.Close()
-
-		return fmt.Errorf("failed to create x509 source: %w", err)
-	}
-
-	authLogger.Debug("Created X509 source, starting retry logic to get valid SVID")
-
-	// Wait for X509-SVID to be available with retry logic
-	// This handles timing issues where the SPIRE entry hasn't been synced to the agent yet
-	// (common with CronJobs and other short-lived workloads)
-	// The agent may return a certificate without a URI SAN (SPIFFE ID) if the entry hasn't synced,
-	// so we must validate that the certificate actually contains a valid SPIFFE ID.
-	svid, svidErr := spiffe.GetX509SVIDWithRetry(
-		x509Src,
-		spiffe.DefaultMaxRetries,
-		spiffe.DefaultInitialBackoff,
-		spiffe.DefaultMaxBackoff,
-		authLogger,
-	)
-	if svidErr != nil {
-		_ = client.Close()
-		_ = x509Src.Close()
-
-		authLogger.Error("Failed to get valid X509-SVID after retries", "error", svidErr, "max_retries", spiffe.DefaultMaxRetries)
-
-		return fmt.Errorf("failed to get valid X509-SVID after retries (SPIRE entry may not be synced yet): %w", svidErr)
-	}
-
-	authLogger.Info("Successfully obtained valid X509-SVID", "spiffe_id", svid.ID.String())
-
-	// Wrap x509Src with retry logic so GetX509SVID() calls during TLS handshake also retry
-	// This is critical because grpccredentials.MTLSClientCredentials calls GetX509SVID()
-	// during the actual TLS handshake, not just during setup. Without this wrapper,
-	// the TLS handshake may fail if the certificate doesn't have a URI SAN at that moment.
-	//
-	// Connection flow: dirctl → Ingress (TLS passthrough) → apiserver pod
-	// The TLS handshake happens between dirctl and apiserver, and during this handshake,
-	// grpccredentials.MTLSClientCredentials calls GetX509SVID() again.
-	//
-	// Note: x509Src is *workloadapi.X509Source (concrete type that implements x509svid.Source).
-	// We use it directly as the Source interface and also as io.Closer.
-	wrappedX509Src := spiffe.NewX509SourceWithRetry(
-		x509Src, // Use pointer directly (implements x509svid.Source)
-		x509Src, // Same pointer (implements io.Closer)
-		authLogger,
-		spiffe.DefaultMaxRetries,
-		spiffe.DefaultInitialBackoff,
-		spiffe.DefaultMaxBackoff,
-	)
-
-	authLogger.Debug("Created X509SourceWithRetry wrapper",
-		"wrapped_type", fmt.Sprintf("%T", wrappedX509Src),
-		"src_type", fmt.Sprintf("%T", x509Src),
-		"implements_source", true)
-
-	// Create SPIFFE bundle services
-	// Note: Use context.Background() because this source must live for the entire client lifetime,
-	// not just the initialization phase. It will be properly closed in client.Close().
-	bundleSrc, err := workloadapi.NewBundleSource(context.Background(), workloadapi.WithClient(client)) //nolint:contextcheck
-	if err != nil {
-		_ = client.Close()
-		_ = x509Src.Close() // Fix Issue #4: Close x509Src on error
-
-		return fmt.Errorf("failed to create bundle source: %w", err)
-	}
-
-	// Update options
-	o.authClient = client
-	o.x509Src = wrappedX509Src // Store wrapped source for cleanup
-	o.bundleSrc = bundleSrc
-
-	authLogger.Debug("Creating MTLSClientCredentials with wrapped source",
-		"wrapped_source_type", fmt.Sprintf("%T", wrappedX509Src),
-		"wrapped_implements_source", true)
-
-	creds := grpccredentials.MTLSClientCredentials(wrappedX509Src, bundleSrc, tlsconfig.AuthorizeAny())
-	o.authOpts = append(o.authOpts, grpc.WithTransportCredentials(creds))
-
-	authLogger.Debug("MTLSClientCredentials created successfully, wrapper will be used for TLS handshake")
-
-	return nil
-}
-
-func (o *options) setupSpiffeAuth(_ context.Context) error {
-	// Validate token file is set
-	if o.config.SpiffeToken == "" {
-		return errors.New("spiffe token file path is required for token authentication")
-	}
-
-	// Read token file
-	tokenData, err := os.ReadFile(o.config.SpiffeToken)
-	if err != nil {
-		return fmt.Errorf("failed to read SPIFFE token file: %w", err)
-	}
-
-	// SpiffeTokenData represents the structure of SPIFFE token JSON
-	//nolint:gosec // G117: intentional private key field
-	type SpiffeTokenData struct {
-		X509SVID   []string `json:"x509_svid"`   // DER-encoded certificates in base64
-		PrivateKey string   `json:"private_key"` // DER-encoded private key in base64
-		RootCAs    []string `json:"root_cas"`    // DER-encoded root CA certificates in base64
-	}
-
-	// Parse SPIFFE token JSON
-	var spiffeData []SpiffeTokenData
-	if err := json.Unmarshal(tokenData, &spiffeData); err != nil {
-		return fmt.Errorf("failed to parse SPIFFE token: %w", err)
-	}
-
-	if len(spiffeData) == 0 {
-		return errors.New("no SPIFFE data found in token")
-	}
-
-	// Use the first SPIFFE data entry
-	data := spiffeData[0]
-
-	// Parse the certificate chain
-	if len(data.X509SVID) == 0 {
-		return errors.New("no X.509 SVID certificates found")
-	}
-
-	// From base64 DER to PEM
-	certDER, err := base64.StdEncoding.DecodeString(data.X509SVID[0])
-	if err != nil {
-		return fmt.Errorf("failed to decode certificate: %w", err)
-	}
-
-	certPEM := pem.EncodeToMemory(&pem.Block{
-		Type:  "CERTIFICATE",
-		Bytes: certDER,
-	})
-
-	// The private key is base64-encoded DER format
-	keyDER, err := base64.StdEncoding.DecodeString(data.PrivateKey)
-	if err != nil {
-		return fmt.Errorf("failed to decode private key: %w", err)
-	}
-
-	keyPEM := pem.EncodeToMemory(&pem.Block{
-		Type:  "PRIVATE KEY",
-		Bytes: keyDER,
-	})
-
-	// Create certificate from PEM data
-	cert, err := tls.X509KeyPair(certPEM, keyPEM)
-	if err != nil {
-		return fmt.Errorf("failed to create certificate from SPIFFE data: %w", err)
-	}
-
-	// Create CA pool from root CAs
-	capool := x509.NewCertPool()
-
-	for _, rootCA := range data.RootCAs {
-		// Root CAs are also base64-encoded DER
-		caDER, err := base64.StdEncoding.DecodeString(rootCA)
-		if err != nil {
-			return fmt.Errorf("failed to decode root CA: %w", err)
-		}
-
-		caPEM := pem.EncodeToMemory(&pem.Block{
-			Type:  "CERTIFICATE",
-			Bytes: caDER,
-		})
-
-		if !capool.AppendCertsFromPEM(caPEM) {
-			return errors.New("failed to append root CA certificate to CA pool")
-		}
-	}
-
-	// Create TLS config
-	tlsConfig := &tls.Config{
-		Certificates:       []tls.Certificate{cert},
-		RootCAs:            capool,
-		InsecureSkipVerify: o.config.TlsSkipVerify, //nolint:gosec
-	}
-
-	// Update options
-	o.authOpts = append(o.authOpts, grpc.WithTransportCredentials(credentials.NewTLS(tlsConfig)))
 
 	return nil
 }
