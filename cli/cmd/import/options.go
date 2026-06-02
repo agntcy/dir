@@ -4,19 +4,49 @@
 package importcmd
 
 import (
+	_ "embed"
+	"encoding/json"
+	"fmt"
+	"os"
+
 	"github.com/agntcy/dir-importer/config"
 	enricherconfig "github.com/agntcy/dir-importer/enricher/config"
 	scannerconfig "github.com/agntcy/dir-importer/scanner/config"
 	signcmd "github.com/agntcy/dir/cli/cmd/sign"
 )
 
+//go:embed enricher.json
+var defaultEnrichConfig []byte
+
 var opts = &options{}
 
 type options struct {
 	config.Config
-	TypeFlag      string
-	Sign          bool
-	OutputCIDFile string
+	TypeFlag         string
+	Sign             bool
+	OutputCIDFile    string
+	EnrichConfigFile string
+}
+
+// loadEnrichConfig populates the in-memory ToolHost config (model, mcpServers,
+// max-steps).
+func (o *options) loadEnrichConfig() error {
+	data := defaultEnrichConfig
+
+	if o.EnrichConfigFile != "" {
+		fileData, err := os.ReadFile(o.EnrichConfigFile)
+		if err != nil {
+			return fmt.Errorf("enricher config file not found: %w", err)
+		}
+
+		data = fileData
+	}
+
+	if err := json.Unmarshal(data, &o.Enricher.ToolHost); err != nil {
+		return fmt.Errorf("failed to parse enricher config: %w", err)
+	}
+
+	return nil
 }
 
 func init() {
@@ -32,7 +62,7 @@ func init() {
 	flags.IntVar(&opts.Limit, "limit", 0, "Maximum number of records to import (0 = no limit)")
 
 	// Enrichment flags
-	flags.StringVar(&opts.Enricher.ConfigFile, "enrich-config", enricherconfig.DefaultConfigFile, "Path to enricher configuration (JSON: model, mcpServers, max-steps)")
+	flags.StringVar(&opts.EnrichConfigFile, "enrich-config", "", "Path to enricher configuration (JSON: model, mcpServers, max-steps); defaults to the built-in config")
 	flags.StringVar(&opts.Enricher.SkillsPromptTemplate, "enrich-skills-prompt", "", "Path to custom skills prompt template file")
 	flags.StringVar(&opts.Enricher.DomainsPromptTemplate, "enrich-domains-prompt", "", "Path to custom domains prompt template file")
 	flags.IntVar(&opts.Enricher.RequestsPerMinute, "enrich-rate-limit", enricherconfig.DefaultRequestsPerMinute, "Maximum LLM API requests per minute (to avoid rate limit errors)")

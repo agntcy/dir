@@ -85,6 +85,10 @@ func runImport(cmd *cobra.Command) error {
 		}
 	}
 
+	if err := opts.loadEnrichConfig(); err != nil {
+		return fmt.Errorf("invalid enricher configuration: %w", err)
+	}
+
 	if err := opts.Validate(); err != nil {
 		return fmt.Errorf("invalid configuration: %w", err)
 	}

@@ -11,9 +11,9 @@ import (
 	"strings"
 	"time"
 
+	typesv1 "buf.build/gen/go/agntcy/oasf/protocolbuffers/go/agntcy/oasf/types/v1"
 	importer "github.com/agntcy/dir-importer"
 	importerconfig "github.com/agntcy/dir-importer/config"
-	"github.com/agntcy/dir-importer/enricher"
 	"github.com/agntcy/dir-importer/factory"
 	"github.com/agntcy/dir-importer/types"
 	"github.com/agntcy/dir/tests/e2e/shared/testdata"
@@ -22,10 +22,16 @@ import (
 	"github.com/onsi/gomega"
 )
 
-// importerWithStaticEnricher wraps importer.New, injecting a StaticEnricher so that
-// e2e tests can import records without an LLM.
+// importerWithStaticEnricher wraps importer.New, forcing the built-in static
+// enricher (SkipEnricher) so that e2e tests can import records without an LLM.
 func importerWithStaticEnricher(ctx context.Context, client importerconfig.ClientInterface, cfg importerconfig.Config) (types.Importer, error) {
-	cfg.EnricherOverride = enricher.NewStaticEnricher()
+	cfg.Enricher.SkipEnricher = true
+	cfg.Enricher.Skills = []*typesv1.Skill{
+		{Name: "natural_language_processing/natural_language_understanding/contextual_comprehension", Id: 10101},
+	}
+	cfg.Enricher.Domains = []*typesv1.Domain{
+		{Name: "technology/software_engineering", Id: 102},
+	}
 
 	return importer.New(ctx, client, cfg) //nolint:wrapcheck
 }
@@ -232,13 +238,9 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests for the export command"
 			cardPath := filepath.Join(tempDir, "agent-card.json")
 			gomega.Expect(os.WriteFile(cardPath, testdata.A2AAgentCard, 0o600)).To(gomega.Succeed())
 
-			// Dummy config satisfies enricher validation; the actual enricher is replaced via factory.
-			enrichCfg := filepath.Join(tempDir, "mcphost.json")
-			gomega.Expect(os.WriteFile(enrichCfg, []byte(`{}`), 0o600)).To(gomega.Succeed())
-
 			cidFile := filepath.Join(tempDir, "imported.cids")
 
-			testEnv.CLI.Import("a2a", cardPath).WithArgs("--force", "--enrich-config="+enrichCfg, "--output-cids="+cidFile).ShouldEventuallySucceed(60 * time.Second)
+			testEnv.CLI.Import("a2a", cardPath).WithArgs("--force", "--output-cids="+cidFile).ShouldEventuallySucceed(60 * time.Second)
 
 			cidData, err := os.ReadFile(cidFile)
 			gomega.Expect(err).NotTo(gomega.HaveOccurred())
@@ -410,13 +412,9 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests for the export command"
 			gomega.Expect(os.MkdirAll(skillDir, 0o755)).To(gomega.Succeed())
 			gomega.Expect(os.WriteFile(filepath.Join(skillDir, "SKILL.md"), testdata.SkillMarkdown, 0o600)).To(gomega.Succeed())
 
-			// Dummy config satisfies enricher validation; the actual enricher is replaced via factory.
-			enrichCfg := filepath.Join(tempDir, "mcphost.json")
-			gomega.Expect(os.WriteFile(enrichCfg, []byte(`{}`), 0o600)).To(gomega.Succeed())
-
 			cidFile := filepath.Join(tempDir, "imported.cids")
 
-			testEnv.CLI.Import("agent-skill", skillDir).WithArgs("--force", "--enrich-config="+enrichCfg, "--output-cids="+cidFile).ShouldSucceed()
+			testEnv.CLI.Import("agent-skill", skillDir).WithArgs("--force", "--output-cids="+cidFile).ShouldSucceed()
 
 			cidData, err := os.ReadFile(cidFile)
 			gomega.Expect(err).NotTo(gomega.HaveOccurred())
