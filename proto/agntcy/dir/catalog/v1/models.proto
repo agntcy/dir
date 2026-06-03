@@ -1,0 +1,253 @@
+// Copyright AGNTCY Contributors (https://github.com/agntcy)
+// SPDX-License-Identifier: Apache-2.0
+
+syntax = "proto3";
+
+package agntcy.dir.catalog.v1;
+
+import "buf/validate/validate.proto";
+import "google/protobuf/struct.proto";
+
+// AICatalog is the top-level container for discovering heterogeneous AI
+// artifacts (MCP servers, A2A agents, skills, nested catalogs, etc.).
+// Serialized as media type "application/ai-catalog+json".
+// Specs: https://agent-card.github.io/ai-catalog/
+message AICatalog {
+  // AI Catalog spec version this document conforms to, as "Major.Minor".
+  string spec_version = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.pattern = "^[0-9]+\\.[0-9]+$"
+  ];
+
+  // Operator of this catalog. Required at the Discoverable/Trusted levels.
+  optional HostInfo host = 2;
+
+  // Catalog entries. May be empty.
+  repeated CatalogEntry entries = 3;
+
+  // Custom or vendor-specific metadata.
+  map<string, google.protobuf.Value> metadata = 4;
+}
+
+// WellKnownCatalog is an AICatalog served at "/.well-known/ai-catalog.json"
+// (RFC 8615) that additionally advertises dynamic collections.
+// Specs: https://agent-card.github.io/ai-catalog/#well-known-uri
+message WellKnownCatalog {
+  // AI Catalog spec version this document conforms to, as "Major.Minor".
+  string spec_version = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.pattern = "^[0-9]+\\.[0-9]+$"
+  ];
+
+  // Operator of this catalog. Required at the Discoverable/Trusted levels.
+  optional HostInfo host = 2;
+
+  // Statically published catalog entries. May be empty.
+  repeated CatalogEntry entries = 3;
+
+  // Dynamic collections: pre-built queries that resolve to lists of records.
+  repeated CatalogCollection collections = 4;
+
+  // Custom or vendor-specific metadata.
+  map<string, google.protobuf.Value> metadata = 5;
+}
+
+// CatalogCollection is a dynamic, queryable view: fetching its url returns a
+// list of records (e.g. a nested AICatalog) matching a server-side query.
+message CatalogCollection {
+  // Human-readable name for the collection.
+  string display_name = 1 [(buf.validate.field).required = true];
+
+  // URL that resolves to the collection contents.
+  string url = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.uri = true
+  ];
+
+  // Description of what the collection returns.
+  optional string description = 3;
+
+  // Media type of the document returned by fetching url.
+  optional string media_type = 4;
+
+  // Free-form tags for filtering and discovery.
+  repeated string tags = 5;
+
+  // Custom metadata.
+  map<string, google.protobuf.Value> metadata = 6;
+}
+
+// HostInfo identifies the operator of an AI Catalog.
+message HostInfo {
+  // Human-readable name of the host (e.g. the organization name).
+  string display_name = 1 [(buf.validate.field).required = true];
+
+  // Verifiable identifier for the host (e.g. a DID or domain name).
+  optional string identifier = 2;
+
+  // URL to the host's documentation.
+  optional string documentation_url = 3;
+
+  // URL to the host's logo. Data URIs (RFC 2397) are recommended.
+  optional string logo_url = 4;
+
+  // Trust metadata for the host itself.
+  optional TrustManifest trust_manifest = 5;
+}
+
+// CatalogEntry describes a single AI artifact: it identifies the artifact,
+// declares its type via media_type, and either references it (url) or embeds
+// it inline (data). When version is set, (identifier, version) must be unique
+// within a catalog; otherwise identifier alone must be unique.
+message CatalogEntry {
+  // Stable, globally unique identifier, ideally a URN (RFC 8141) or URI.
+  string identifier = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1
+  ];
+
+  // Human-readable name for the artifact.
+  string display_name = 2 [(buf.validate.field).required = true];
+
+  // Media type of the artifact, e.g. "application/a2a-agent-card+json",
+  // "application/mcp-server-card+json", or "application/ai-catalog+json"
+  // for a nested catalog.
+  string media_type = 3 [(buf.validate.field).required = true];
+
+  // Artifact content. Exactly one of url or data must be set.
+  oneof artifact {
+    option (buf.validate.oneof).required = true;
+
+    // URL where the artifact document can be retrieved.
+    string url = 4 [(buf.validate.field).string.uri = true];
+
+    // Artifact document embedded inline; its structure follows media_type.
+    google.protobuf.Value data = 5;
+  }
+
+  // Artifact version. Semantic Versioning is recommended.
+  optional string version = 6;
+
+  // Description of the artifact.
+  optional string description = 7;
+
+  // Free-form keywords for filtering and discovery.
+  repeated string tags = 8;
+
+  // Publishing entity. Canonical location for publisher info, not duplicated
+  // in trust_manifest.
+  optional Publisher publisher = 9;
+
+  // Trust metadata. When present, trust_manifest.identity must match identifier.
+  optional TrustManifest trust_manifest = 10;
+
+  // RFC 3339 timestamp of the last modification to this entry.
+  optional string updated_at = 11;
+
+  // Custom metadata.
+  map<string, google.protobuf.Value> metadata = 12;
+}
+
+// Publisher is the canonical identity of the entity responsible for an artifact.
+message Publisher {
+  // Verifiable identifier (e.g. a DID, domain name, or URI).
+  string identifier = 1 [(buf.validate.field).required = true];
+
+  // Human-readable name of the publisher.
+  string display_name = 2 [(buf.validate.field).required = true];
+
+  // Type hint for identifier (e.g. "did", "dns"). May be omitted when evident.
+  optional string identity_type = 3;
+}
+
+// TrustManifest provides verifiable identity, attestation, and provenance
+// metadata for an artifact. It sits alongside the artifact as a peer element
+// and does not wrap or modify it. Publisher info is carried on CatalogEntry.
+message TrustManifest {
+  // Primary subject identifier (DID, SPIFFE ID, or URL). Within a CatalogEntry
+  // it must match the entry's identifier.
+  string identity = 1 [(buf.validate.field).required = true];
+
+  // Type hint for identity (e.g. "did", "spiffe", "dns").
+  optional string identity_type = 2;
+
+  // Trust framework applied to the artifact.
+  optional TrustSchema trust_schema = 3;
+
+  // Verifiable claims (publisher identity, compliance certifications, etc.).
+  repeated Attestation attestations = 4;
+
+  // Lineage information for the artifact.
+  repeated ProvenanceLink provenance = 5;
+
+  // URL to the privacy policy governing this artifact.
+  optional string privacy_policy_url = 6;
+
+  // URL to the terms of service.
+  optional string terms_of_service_url = 7;
+
+  // Detached JWS (RFC 7515) signature over the manifest, using JCS (RFC 8785).
+  optional string signature = 8;
+
+  // Custom metadata.
+  map<string, google.protobuf.Value> metadata = 9;
+}
+
+// TrustSchema describes the trust framework applied to an artifact.
+message TrustSchema {
+  // Identifier of the trust schema.
+  string identifier = 1 [(buf.validate.field).required = true];
+
+  // Schema version.
+  string version = 2 [(buf.validate.field).required = true];
+
+  // URI to the governance policy document.
+  optional string governance_uri = 3;
+
+  // Supported verification methods (e.g. "did", "x509").
+  repeated string verification_methods = 4;
+}
+
+// Attestation is verifiable proof of a claim about an artifact (compliance
+// certification, publisher identity binding, audit report, SBOM, etc.).
+message Attestation {
+  // Attestation type (e.g. "SOC2-Type2", "ISO27001", "publisher-identity").
+  string type = 1 [(buf.validate.field).required = true];
+
+  // Location of the attestation document (HTTPS URL or Data URI).
+  string uri = 2 [(buf.validate.field).required = true];
+
+  // Media type of the attestation document (e.g. "application/pdf").
+  string media_type = 3 [(buf.validate.field).required = true];
+
+  // Integrity digest as "algorithm:hex" (SHA-256 or stronger).
+  optional string digest = 4;
+
+  // Size of the attestation document in bytes.
+  optional uint64 size = 5;
+
+  // Human-readable label for the attestation.
+  optional string description = 6;
+}
+
+// ProvenanceLink records lineage for an artifact: its source, registry, and
+// optional signed provenance statement.
+message ProvenanceLink {
+  // Relationship to the source (e.g. "derivedFrom", "publishedFrom").
+  string relation = 1 [(buf.validate.field).required = true];
+
+  // Source artifact or data (e.g. a Git repo URL, OCI ref, dataset URI).
+  string source_id = 2 [(buf.validate.field).required = true];
+
+  // Integrity digest of the source as "algorithm:hex".
+  optional string source_digest = 3;
+
+  // URI of the registry holding the source.
+  optional string registry_uri = 4;
+
+  // URI of a provenance statement (e.g. an in-toto / SLSA statement).
+  optional string statement_uri = 5;
+
+  // Reference to the key used to sign the provenance statement.
+  optional string signature_ref = 6;
+}
