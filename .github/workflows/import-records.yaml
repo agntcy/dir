@@ -30,7 +30,7 @@ on:
       server_address:
         description: "Directory server address"
         type: string
-        default: "prod.gateway.ads.outshift.io:443"
+        default: "ads.outshift.io:443"
   schedule:
     - cron: "0 0 * * *"
 
@@ -42,7 +42,7 @@ jobs:
       # Resolved inputs with proper fallback for non-dispatch triggers (github.event.inputs.* returns strings, avoiding boolean falsy issues)
       dry_run: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.dry_run || 'false' }}
       rate_limit: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.rate_limit || '50' }}
-      server_address: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.server_address || 'prod.gateway.ads.outshift.io:443' }}
+      server_address: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.server_address || 'ads.outshift.io:443' }}
       sign: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.sign || 'true' }}
       force: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.force || 'false' }}
       scanner_enabled: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.scanner_enabled || 'false' }}

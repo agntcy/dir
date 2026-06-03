@@ -10,7 +10,7 @@ on:
         required: false
         type: string
         description: "Directory gateway address (host:port)"
-        default: "dev.gateway.ads.outshift.io:443"
+        default: "dev.ads.outshift.io:443"
       version_query:
         required: false
         type: string
@@ -59,7 +59,7 @@ jobs:
           SERVER_ADDR="${{ github.event.inputs.server_addr }}"
           VERSION_QUERY="${{ github.event.inputs.version_query }}"
 
-          SERVER_ADDR="${SERVER_ADDR:-dev.gateway.ads.outshift.io:443}"
+          SERVER_ADDR="${SERVER_ADDR:-dev.ads.outshift.io:443}"
           VERSION_QUERY="${VERSION_QUERY:-v1.*}"
 
           "${DIRCTL_PATH}" search --version "${VERSION_QUERY}" \
