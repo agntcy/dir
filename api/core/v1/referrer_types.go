@@ -10,4 +10,7 @@ const (
 
 	// SignatureReferrerType is the type for Signature referrers.
 	SignatureReferrerType = "agntcy.dir.sign.v1.Signature"
+
+	// OwnershipClaimReferrerType is the type for OwnershipClaim referrers.
+	OwnershipClaimReferrerType = "agntcy.dir.ownership.v1.Claim"
 )

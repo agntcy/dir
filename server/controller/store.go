@@ -12,7 +12,9 @@ import (
 
 	"buf.build/go/protovalidate"
 	corev1 "github.com/agntcy/dir/api/core/v1"
+	ownershipv1 "github.com/agntcy/dir/api/ownership/v1"
 	storev1 "github.com/agntcy/dir/api/store/v1"
+	"github.com/agntcy/dir/server/authn"
 	"github.com/agntcy/dir/server/events"
 	"github.com/agntcy/dir/server/types"
 	"github.com/agntcy/dir/server/types/adapters"
@@ -252,6 +254,28 @@ func (s storeCtrl) pushReferrer(ctx context.Context, request *storev1.PushReferr
 
 	recordCID := request.GetRecordRef().GetCid()
 
+	// Enforce ownership: the caller's authenticated identity must match the owner_id in the claim.
+	var ownershipClaim *ownershipv1.Claim
+
+	if request.GetType() == corev1.OwnershipClaimReferrerType {
+		claim := &ownershipv1.Claim{}
+		if err := claim.UnmarshalReferrer(&corev1.RecordReferrer{Data: request.GetData()}); err != nil {
+			errMsg := fmt.Sprintf("failed to decode ownership claim: %v", err)
+
+			return &storev1.PushReferrerResponse{Success: false, ErrorMessage: &errMsg}
+		}
+
+		if spiffeID, ok := authn.SpiffeIDFromContext(ctx); ok {
+			if spiffeID.String() != claim.GetOwnerId() {
+				errMsg := "ownership claim owner_id does not match authenticated caller identity"
+
+				return &storev1.PushReferrerResponse{Success: false, ErrorMessage: &errMsg}
+			}
+		}
+
+		ownershipClaim = claim
+	}
+
 	// Use ReferrerStoreAPI to push the referrer
 	// The store implementation handles type-specific logic
 	refStore, ok := s.store.(types.ReferrerStoreAPI)
@@ -303,12 +327,43 @@ func (s storeCtrl) pushReferrer(ctx context.Context, request *storev1.PushReferr
 		}
 	}
 
+	// Eagerly index the ownership claim so it is immediately searchable.
+	// The OCI referrer (written above) is the source of truth; the DB owners table
+	// is a derived search index. If this write fails, the ownership reconciler will
+	// re-sync from the referrer store on its next cycle — log and continue.
+	if ownershipClaim != nil {
+		if errMsg := s.indexOwnershipClaim(recordCID, ownershipClaim); errMsg != "" {
+			return &storev1.PushReferrerResponse{Success: false, ErrorMessage: &errMsg}
+		}
+	}
+
 	storeLogger.Debug("Referrer pushed successfully", "cid", recordCID, "type", request.GetType())
 
 	return &storev1.PushReferrerResponse{
 		Success:     true,
 		ReferrerRef: referrerRef,
 	}
+}
+
+// indexOwnershipClaim verifies a signed claim's signature and writes it to the
+// owners search index. Returns a non-empty error message string on failure.
+func (s storeCtrl) indexOwnershipClaim(recordCID string, claim *ownershipv1.Claim) string {
+	// The SPIFFE identity check in pushReferrer already validated owner_id == caller,
+	// but we still verify the cryptographic signature so that a tampered claim (e.g.
+	// replayed with an altered claimed_at) is rejected at push time.
+	if ownershipv1.IsSigned(claim) {
+		if err := ownershipv1.VerifyClaim(claim, nil); err != nil {
+			return fmt.Sprintf("ownership claim signature verification failed: %v", err)
+		}
+	}
+
+	if err := s.db.AddOwner(recordCID, claim.GetOwnerId(), claim.GetClaimedAt()); err != nil {
+		storeLogger.Warn("Failed to index ownership claim", "error", err, "cid", recordCID)
+	} else {
+		storeLogger.Debug("Ownership claim indexed", "cid", recordCID, "owner_id", claim.GetOwnerId())
+	}
+
+	return ""
 }
 
 // PullReferrer handles retrieving referrers (like signatures) for records.
