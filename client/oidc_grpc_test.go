@@ -17,7 +17,7 @@ import (
 func Test_serverNameFromAddr(t *testing.T) {
 	t.Parallel()
 
-	assert.Equal(t, "dev.gateway.ads.outshift.io", serverNameFromAddr("dev.gateway.ads.outshift.io:443"))
+	assert.Equal(t, "dev.ads.outshift.io", serverNameFromAddr("dev.ads.outshift.io:443"))
 	assert.Equal(t, "localhost", serverNameFromAddr("localhost:9999"))
 	assert.Equal(t, "badaddr", serverNameFromAddr("badaddr"))
 }
