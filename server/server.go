@@ -26,6 +26,7 @@ import (
 	"github.com/agntcy/dir/server/controller"
 	"github.com/agntcy/dir/server/database"
 	"github.com/agntcy/dir/server/events"
+	"github.com/agntcy/dir/server/gateway"
 	"github.com/agntcy/dir/server/healthcheck"
 	"github.com/agntcy/dir/server/metrics"
 	grpclogging "github.com/agntcy/dir/server/middleware/logging"
@@ -67,6 +68,7 @@ type Server struct {
 	health             *healthcheck.Checker
 	grpcServer         *grpc.Server
 	metricsServer      *metrics.Server
+	httpGateway        *gateway.Server
 }
 
 // buildConnectionOptions creates gRPC server options for connection management.
@@ -325,6 +327,29 @@ func New(ctx context.Context, cfg *config.Config, opts ...ServerOption) (*Server
 		logger.Info("gRPC metrics registered")
 	}
 
+	// Build the HTTP gateway sidecar if enabled.
+	var httpGateway *gateway.Server
+
+	if cfg.HTTPGateway.Enabled {
+		gwCfg := cfg.HTTPGateway.WithDefaults()
+
+		// The gateway dials the gRPC server over loopback, so keep the
+		// configured port but force the host to 127.0.0.1.
+		_, grpcPort, _ := net.SplitHostPort(cfg.ListenAddress)
+		grpcEndpoint := net.JoinHostPort("127.0.0.1", grpcPort)
+
+		httpGateway, err = gateway.New(ctx, gateway.Options{
+			HTTPAddress:      gwCfg.ListenAddress,
+			GRPCEndpoint:     grpcEndpoint,
+			RegisterHandlers: gateway.RegisterAIFinder,
+		})
+		if err != nil {
+			return nil, fmt.Errorf("failed to create HTTP gateway: %w", err)
+		}
+
+		logger.Info("HTTP gateway configured", "address", gwCfg.ListenAddress, "grpc_endpoint", grpcEndpoint)
+	}
+
 	return &Server{
 		options:            options,
 		store:              storeAPI,
@@ -338,6 +363,7 @@ func New(ctx context.Context, cfg *config.Config, opts ...ServerOption) (*Server
 		health:             healthChecker,
 		grpcServer:         grpcServer,
 		metricsServer:      metricsServer,
+		httpGateway:        httpGateway,
 	}, nil
 }
 
@@ -416,6 +442,16 @@ func (s Server) Close(ctx context.Context) {
 		}
 	}
 
+	// Stop HTTP gateway before grpcServer.GracefulStop to close its loopback conn first.
+	if s.httpGateway != nil {
+		stopCtx, cancel := context.WithTimeout(ctx, 10*time.Second) //nolint:mnd
+		defer cancel()
+
+		if err := s.httpGateway.Stop(stopCtx); err != nil {
+			logger.Error("Failed to stop HTTP gateway", "error", err)
+		}
+	}
+
 	s.grpcServer.GracefulStop()
 }
 
@@ -466,6 +502,13 @@ func (s Server) Start(ctx context.Context) error {
 			logger.Error("Failed to start server", "error", err)
 		}
 	}()
+
+	// Start the HTTP gateway sidecar when configured.
+	if s.httpGateway != nil {
+		if err := s.httpGateway.Start(); err != nil {
+			return fmt.Errorf("failed to start HTTP gateway: %w", err)
+		}
+	}
 
 	return nil
 }
