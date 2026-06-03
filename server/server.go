@@ -12,6 +12,7 @@ import (
 	"syscall"
 	"time"
 
+	catalogv1 "github.com/agntcy/dir/api/catalog/v1"
 	corev1 "github.com/agntcy/dir/api/core/v1"
 	eventsv1 "github.com/agntcy/dir/api/events/v1"
 	namingv1 "github.com/agntcy/dir/api/naming/v1"
@@ -313,6 +314,7 @@ func New(ctx context.Context, cfg *config.Config, opts ...ServerOption) (*Server
 		namingProvider,
 		controller.WithVerificationTTL(options.Config().Naming.GetTTL()),
 	))
+	catalogv1.RegisterAIFinderServiceServer(grpcServer, controller.NewAIFinderController(databaseAPI))
 
 	// Register health service
 	healthChecker.Register(grpcServer)
