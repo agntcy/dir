@@ -1,0 +1,67 @@
+// Copyright AGNTCY Contributors (https://github.com/agntcy)
+// SPDX-License-Identifier: Apache-2.0
+
+syntax = "proto3";
+
+package agntcy.dir.catalog.v1;
+
+import "agntcy/dir/catalog/v1/models.proto";
+import "buf/validate/validate.proto";
+import "google/api/annotations.proto";
+
+// AIFinderService is the federated AI Finder discovery surface over the AI
+// Catalog model. It is exposed over gRPC and, via grpc-gateway, as a REST API.
+service AIFinderService {
+  // ListAgents returns catalog entries with deterministic, cacheable browsing
+  // semantics (database filtering, no relevance ranking).
+  rpc ListAgents(ListAgentsRequest) returns (ListAgentsResponse) {
+    option (google.api.http) = {get: "/v1/agents"};
+  }
+
+  // GetWellKnownCatalog returns the AI Catalog well-known document (host
+  // descriptor, published entries, and dynamic collections) at the RFC 8615 URI.
+  rpc GetWellKnownCatalog(GetWellKnownCatalogRequest) returns (GetWellKnownCatalogResponse) {
+    option (google.api.http) = {
+      get: "/.well-known/ai-catalog.json"
+      response_body: "catalog"
+    };
+  }
+}
+
+// ListAgentsRequest carries the AI Finder browsing parameters. All fields are
+// optional; an empty request returns the first page with server defaults.
+message ListAgentsRequest {
+  // Filter expression: "field=value" clauses joined by AND; comma-separated
+  // values within a field are OR-combined.
+  string filter = 1 [(buf.validate.field).string.max_len = 2048];
+
+  // Sort fields, comma-separated, each optionally suffixed "ASC"/"DESC"
+  // (default ASC), e.g. "created_at DESC, display_name ASC".
+  string order_by = 2 [(buf.validate.field).string.max_len = 256];
+
+  // Maximum entries to return. Default 20, clamped to 100.
+  uint32 page_size = 3 [(buf.validate.field).uint32.lte = 100];
+
+  // Opaque continuation token from a previous call.
+  string page_token = 4 [(buf.validate.field).string.max_len = 1024];
+}
+
+// ListAgentsResponse returns one page of catalog entries.
+message ListAgentsResponse {
+  // Catalog entries on this page, in the requested sort order.
+  repeated CatalogEntry results = 1;
+
+  // Opaque continuation token. Empty when there are no more results.
+  string next_page_token = 2;
+}
+
+// GetWellKnownCatalogRequest is intentionally empty; it exists for forward
+// compatibility with future query parameters.
+message GetWellKnownCatalogRequest {}
+
+// GetWellKnownCatalogResponse wraps the document in a named field (buf
+// RPC_RESPONSE_STANDARD_NAME); the gateway emits the bare WellKnownCatalog.
+message GetWellKnownCatalogResponse {
+  // The well-known AI Catalog document.
+  WellKnownCatalog catalog = 1 [(buf.validate.field).required = true];
+}
