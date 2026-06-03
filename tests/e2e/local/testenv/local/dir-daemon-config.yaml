@@ -15,6 +15,9 @@ server:
   metrics:
     enabled: true
     address: "localhost:19889"
+  http_gateway:
+    enabled: true
+    listen_address: "localhost:19892"
   routing:
     refresh_interval: "1s"
     listen_address: "/ip4/127.0.0.1/tcp/0"
