@@ -22,6 +22,7 @@ import (
 	"github.com/agntcy/dir/utils/logging"
 	ipfsdatastore "github.com/ipfs/go-datastore"
 	"github.com/stretchr/testify/assert"
+	"oras.land/oras-go/v2/registry/remote"
 )
 
 const testPeerID = "test-peer-id"
@@ -54,6 +55,10 @@ func newMockStore() *mockStore {
 	return &mockStore{
 		data: make(map[string]*corev1.Record),
 	}
+}
+
+func (m *mockStore) Target() *remote.Repository {
+	return nil
 }
 
 func (m *mockStore) Push(_ context.Context, record *corev1.Record) (*corev1.RecordRef, error) {

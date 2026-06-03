@@ -15,6 +15,7 @@ import (
 	"github.com/agntcy/dir/utils/logging"
 	"github.com/ipfs/go-datastore"
 	"google.golang.org/protobuf/proto"
+	"oras.land/oras-go/v2/registry/remote"
 )
 
 var logger = logging.Logger("store/cache")
@@ -31,6 +32,10 @@ func Wrap(source types.StoreAPI, cache types.Datastore) types.StoreAPI {
 		source: source,
 		cache:  cache,
 	}
+}
+
+func (s *cachedStore) Target() *remote.Repository {
+	return s.source.Target()
 }
 
 // Push pushes a record to the source store and caches it.

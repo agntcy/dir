@@ -1,0 +1,61 @@
+// Copyright AGNTCY Contributors (https://github.com/agntcy)
+// SPDX-License-Identifier: Apache-2.0
+
+syntax = "proto3";
+
+package agntcy.dir.store.v2;
+
+import "agntcy/dir/store/v2/object.proto";
+import "google/protobuf/empty.proto";
+import "google/protobuf/wrappers.proto";
+
+// ObjectStore provides APIs for managing objects in a content-addressable store.
+//
+// It is a thin wrapper around the OCI Distribution Spec that performs content
+// validation and normalization for certain media types.
+//
+// Supported media types:
+// - application/octet-stream
+// - application/vnd.oci.image.manifest.v1+json
+// - application/vnd.agntcy.dir.objects.referrer+json
+// - application/vnd.agntcy.dir.objects.record+json
+service ObjectStore {
+  // Writes the object to the store and returns its descriptor.
+  //
+  // Put may perform content validation/normalization, and return the
+  // canonical descriptor of the stored object.
+  rpc Put(Object) returns (ObjectDescriptor);
+
+  // Returns the object data for the given reference.
+  rpc Get(ObjectRef) returns (Object);
+
+  // Returns the raw object data for the given reference without any content validation/normalization.
+  // For example, if the object is an OCI image manifest, GetRaw will return the original manifest data
+  // as stored in the registry.
+  rpc GetRaw(ObjectRef) returns (Object);
+
+  // Returns true if the object exists in the store.
+  rpc Has(ObjectRef) returns (google.protobuf.BoolValue);
+
+  // Deletes the object from the store. Returns an error if the object does not exist.
+  rpc Delete(ObjectRef) returns (google.protobuf.Empty);
+
+  // Indexing details, returns metadata of the object without retrieving
+  // the actual data.
+  rpc Lookup(ObjectRef) returns (ObjectDescriptor);
+
+  // Linkage details, returns objects that reference this object.
+  rpc ListReferrers(ListReferrersRequest) returns (ListReferrersResponse);
+}
+
+message ListReferrersRequest {
+  // The subject reference for which to list referrers.
+  ObjectRef subject = 1;
+
+  // If set, only return referrers with the given media type.
+  optional string filter_media_type = 2;
+}
+
+message ListReferrersResponse {
+  repeated ObjectDescriptor referrers = 1;
+}

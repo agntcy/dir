@@ -14,11 +14,26 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
+	"oras.land/oras-go/v2/registry/remote"
 )
 
 // MockStoreAPI is a mock implementation of types.StoreAPI for testing.
 type MockStoreAPI struct {
 	mock.Mock
+}
+
+func (m *MockStoreAPI) Target() *remote.Repository {
+	args := m.Called()
+	if args.Get(0) == nil {
+		return nil
+	}
+
+	target, ok := args.Get(0).(*remote.Repository)
+	if !ok {
+		panic("MockStoreAPI.Target: expected *remote.Repository, got different type")
+	}
+
+	return target
 }
 
 func (m *MockStoreAPI) Push(ctx context.Context, record *corev1.Record) (*corev1.RecordRef, error) {

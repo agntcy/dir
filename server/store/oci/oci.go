@@ -103,6 +103,15 @@ func isNotFoundError(err error) bool {
 	return strings.Contains(errMsg, "not found") || strings.Contains(errMsg, "NOT_FOUND")
 }
 
+func (s *store) Target() *remote.Repository {
+	repo, ok := s.repo.(*remote.Repository)
+	if !ok {
+		panic(fmt.Sprintf("store repo is not a remote repository: actual type %T", s.repo))
+	}
+
+	return repo
+}
+
 // tagWithRetry attempts to tag a manifest with exponential backoff retry logic.
 // This is necessary because under concurrent load, oras.PackManifest may push the manifest
 // to the registry, but it might not be immediately available when oras.Tag is called.
