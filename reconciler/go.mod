@@ -18,7 +18,7 @@ require (
 	github.com/agntcy/dir/client v1.4.0
 	github.com/agntcy/dir/server v1.4.0
 	github.com/agntcy/dir/utils v1.4.0
-	github.com/agntcy/oasf-sdk/pkg v1.0.5
+	github.com/agntcy/oasf-sdk/pkg v1.0.6-0.20260603092510-c72d9654e557
 	github.com/csirmazbendeguz/regclient v0.0.0-20260429082137-82ab6d426079
 	github.com/sigstore/sigstore v1.10.7
 	github.com/spf13/viper v1.21.0

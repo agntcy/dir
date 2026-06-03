@@ -10,6 +10,7 @@ import (
 	"testing"
 	"time"
 
+	catalogv1 "github.com/agntcy/dir/api/catalog/v1"
 	corev1 "github.com/agntcy/dir/api/core/v1"
 	routingv1 "github.com/agntcy/dir/api/routing/v1"
 	signv1 "github.com/agntcy/dir/api/sign/v1"
@@ -200,6 +201,10 @@ func (f *fakeSignatureDB) GetRecordCIDs(opts ...types.FilterOption) ([]string, e
 
 func (f *fakeSignatureDB) GetRecords(opts ...types.FilterOption) ([]types.Record, error) {
 	return nil, nil
+}
+
+func (f *fakeSignatureDB) GetCatalogEntries(opts ...types.FilterOption) ([]*catalogv1.CatalogEntry, bool, error) {
+	return nil, false, nil
 }
 func (f *fakeSignatureDB) RemoveRecord(cid string) error          { return nil }
 func (f *fakeSignatureDB) SetRecordSigned(recordCID string) error { return nil }

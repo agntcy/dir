@@ -23,6 +23,14 @@ type RecordFilters struct {
 	Trusted          *bool // Filter by trusted status (signature verification passed)
 	AnnotationKeys   []string
 	AnnotationValues []string
+
+	OrderBy []RecordOrderClause // Order by directives applied in sequence.
+}
+
+// RecordOrderClause is a single ORDER BY directive.
+type RecordOrderClause struct {
+	Column string
+	Desc   bool
 }
 
 type FilterOption func(*RecordFilters)
@@ -108,6 +116,13 @@ func WithDomainNames(names ...string) FilterOption {
 func WithCreatedAts(createdAts ...string) FilterOption {
 	return func(sc *RecordFilters) {
 		sc.CreatedAts = append(sc.CreatedAts, createdAts...)
+	}
+}
+
+// WithOrderBy appends ORDER BY directives.
+func WithOrderBy(clauses ...RecordOrderClause) FilterOption {
+	return func(sc *RecordFilters) {
+		sc.OrderBy = append(sc.OrderBy, clauses...)
 	}
 }
 
