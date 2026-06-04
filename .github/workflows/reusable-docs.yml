@@ -56,4 +56,4 @@ jobs:
         run: |
           V="${{ inputs.version }}"
           export VERSION="${V:-dev}"
-          task docs:build
+          task -t docs/Taskfile.yml build
