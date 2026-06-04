@@ -62,7 +62,7 @@ ADS leverages [Content Identifiers](https://github.com/multiformats/cid) for
 naming directory records. CIDs provide a self-describing, content-addressed
 naming scheme that ensures data integrity and immutability.
 
-In addition to CID-based addressing, ADS supports verifiable domain-based names that enable human-readable references while maintaining cryptographic verification. See the [Directory CLI documentation](dir/directory-cli.md#name-verification) for details.
+In addition to CID-based addressing, ADS supports verifiable domain-based names that enable human-readable references while maintaining cryptographic verification. See [Features and Usage Scenarios — Name Verification](dir/dir-features-scenarios.md#name-verification) and the [CLI Reference](dir/dir-cli-reference.md#security-verification) for details.
 
 ## Content Routing
 
@@ -139,6 +139,6 @@ sequenceDiagram
 
 Ready to get started? Choose your path:
 
-- Run a local instance: deploy Directory with SPIRE in a Kind cluster for development and testing. See [Getting Started](dir/getting-started.md).
-- Connect to the public Directory: use the existing network at `prod.api.ads.outshift.io` to discover and publish agents. See [Running a Federated Directory Instance](dir/partner-prod-federation.md).
-- Deploy for production: run your own Directory instance on AWS EKS and optionally federate with the network. See [Production Deployment](dir/prod-deployment.md).
+- Run a local instance: follow the [Quickstart](dir/dir-quickstart.md) or see [Local Deployment](dir/dir-deployment-local.md) and [Kubernetes Deployment](dir/dir-deployment-kubernetes.md).
+- Connect to the public Directory: use the existing network at `ads.outshift.io` to discover and publish agents. See [Running a Federated Directory Instance](dir/dir-federation-setup.md).
+- Deploy for production: run your own Directory instance on AWS EKS and optionally federate with the network. See [Production Deployment](dir/dir-prod-deployment.md).

@@ -54,34 +54,62 @@ plugins:
   mike:
     alias_type: redirect
   redirects:
-    redirect_maps: {}
+    redirect_maps:
+      'dir/getting-started.md': 'dir/dir-quickstart.md'
+      'dir/dir-getting-started.md': 'dir/dir-quickstart.md'
+      'dir/overview.md': 'dir/dir-overview.md'
+      'dir/architecture.md': 'dir/dir-architecture.md'
+      'dir/scenarios.md': 'dir/dir-features-scenarios.md'
+      'dir/records-validation.md': 'dir/dir-component-records-validation.md'
+      'dir/runtime.md': 'dir/dir-component-runtime-discovery.md'
+      'dir/events.md': 'dir/dir-component-event-streaming.md'
+      'dir/directory-mcp.md': 'dir/dir-component-mcp-server.md'
+      'dir/directory-gui.md': 'dir/dir-component-gui.md'
+      'dir/trust-model.md': 'dir/dir-component-trust-model.md'
+      'dir/directory-cli.md': 'dir/dir-cli-reference.md'
+      'dir/dir-cli-guide.md': 'dir/dir-cli-reference.md'
+      'dir/directory-cli-reference.md': 'dir/dir-cli-reference.md'
+      'dir/directory-sdk.md': 'dir/dir-sdk.md'
+      'dir/prod-deployment.md': 'dir/dir-prod-deployment.md'
+      'dir/partner-prod-federation.md': 'dir/dir-federation-setup.md'
+      'dir/federation-profiles.md': 'dir/dir-federation-profiles.md'
+      'dir/federation-troubleshooting.md': 'dir/dir-federation-troubleshooting.md'
+      'dir/validation.md': 'dir/dir-validation.md'
 
-# Flat sidebar (all top-level). Using awesome-pages + content/dir/.index nested everything under "dir".
+# Navigation aligned with agntcy/docs dir-restructure (docs/dir/.index).
 nav:
   - index.md
-  - Overview: dir/overview.md
-  - Getting Started: dir/getting-started.md
-  - Features and Usage Scenarios: dir/scenarios.md
-  - Production Deployment: dir/prod-deployment.md
-  - CLI Guide: dir/directory-cli.md
-  - MCP Server: dir/directory-mcp.md
-  - Directroy SDK: dir/directory-sdk.md
-  - Federation:
-      - Running a Federated Directory Instance: dir/partner-prod-federation.md
-      - Profiles: dir/federation-profiles.md
-      - Best Practices and Troubleshooting: dir/federation-troubleshooting.md
+  - Get Started:
+      - Overview: dir/dir-overview.md
+      - Features and Usage Scenarios: dir/dir-features-scenarios.md
+      - Quickstart: dir/dir-quickstart.md
+  - Concepts:
+      - Architecture: dir/dir-architecture.md
+      - Records: dir/dir-component-records-validation.md
+      - Store: dir/dir-component-store.md
+      - Routing: dir/dir-component-routing.md
+      - Trust Model: dir/dir-component-trust-model.md
+      - Federation: dir/dir-federation-overview.md
+      - Extensions:
+          - Runtime Discovery: dir/dir-component-runtime-discovery.md
+          - Event Streaming: dir/dir-component-event-streaming.md
+          - MCP Server: dir/dir-component-mcp-server.md
+          - GUI: dir/dir-component-gui.md
+  - Deploy:
+      - Local Deployment: dir/dir-deployment-local.md
+      - Kubernetes Deployment: dir/dir-deployment-kubernetes.md
+      - Production Deployment: dir/dir-prod-deployment.md
+      - Federation Deployment:
+          - Federation on Amazon EKS: dir/dir-federation-aws-eks.md
+          - Running a Federated Directory Instance: dir/dir-federation-setup.md
+          - Profiles: dir/dir-federation-profiles.md
+          - Best Practices and Troubleshooting: dir/dir-federation-troubleshooting.md
+      - OIDC Authentication: dir/dir-component-oidc-authentication.md
+  - SDKs:
+      - SDK Overview: dir/dir-sdk.md
   - Reference:
-      - CLI Reference: dir/directory-cli-reference.md
+      - CLI Reference: dir/dir-cli-reference.md
       - API Reference: dir/dir-api-reference.md
-      - Directory SDK: dir/directory-sdk.md
-      - Directory GUI: dir/directory-gui.md
-  - Architecture: dir/architecture.md
-  - Components:
-      - Runtime Discovery: dir/runtime.md
-      - Event Streaming: dir/events.md
-      - Records and Validation: dir/records-validation.md
-      - Validation: dir/validation.md
-  - Trust Model: dir/trust-model.md
 
 theme:
   name: material

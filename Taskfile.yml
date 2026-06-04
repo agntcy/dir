@@ -43,6 +43,11 @@ includes:
     flatten: true
     excludes: [default]
 
+  docs:
+    taskfile: docs/Taskfile.yml
+    dir: docs
+    excludes: [default]
+
 tasks:
   ##
   ## General

@@ -9,9 +9,9 @@ version: "3"
 interval: "500ms"
 
 vars:
-  DOCS_DIR: "{{.TASKFILE_DIR}}"
   REPO:
-    sh: cd "{{.DOCS_DIR}}/.." && pwd
+    sh: git rev-parse --show-toplevel
+  DOCS_DIR: "{{.REPO}}/docs"
   MKDOCS_CONFIG: "{{.DOCS_DIR}}/mkdocs.yml"
   BUILD_SITE: "{{.REPO}}/.build/site"
   SPELL_CONFIG: "{{.DOCS_DIR}}/codespellrc"
