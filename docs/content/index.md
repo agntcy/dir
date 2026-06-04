@@ -1,144 +1,132 @@
-# Agent Directory Service
+---
+hide:
 
-The Agent Directory Service (ADS) is a distributed directory service designed to
-store metadata for AI agent applications. This metadata, stored as directory
-records, enables the discovery of agent applications with specific skills for
-solving various problems.
-The implementation features distributed directories that interconnect through a
-content-routing protocol. This protocol maps agent skills to directory record
-identifiers and maintains a list of directory servers currently hosting those
-records.
-Directory records are identified by globally unique names that are routable
-within a DHT (Distributed Hash Table) to locate peer directory servers.
-Similarly, the skill taxonomy is routable in the DHT to map skillsets to records
-that announce those skills.
+  - navigation
+  - toc
 
-The Agent Directory leverages the [OASF](https://github.com/agntcy/oasf) to
-describe AI agents and provides a set of APIs and tools to build, store, publish
-and discover AI agents across the network by their attributes and constraints.
-Directory also leverages the [CSIT](https://github.com/agntcy/csit) for continuous system
-integration and testing across different versions, environments, and features.
+---
 
-Each directory record must include skills from a defined taxonomy, as specified
-in the [Taxonomy of AI Agent Skills](https://schema.oasf.outshift.com/skill_categories) from the [OASF](https://github.com/agntcy/oasf).
-While all record data is modeled using the [OASF](https://github.com/agntcy/oasf), only skills are
-leveraged for content routing in the distributed network of directory servers.
-The ADS specification is under active development and is published as an
-Internet Draft at [ADS Spec](https://spec.dir.agntcy.org). The source code is
-available in the [ADS Spec sources](https://github.com/agntcy/dir-spec).
-The current reference implementation, written in Go, provides server and client
-nodes with gRPC and protocol buffer interfaces. The directory record storage is
-built on [ORAS](https://oras.land) (OCI Registry As Storage), while data
-distribution uses the [zot](https://zotregistry.dev) OCI server implementation.
+<div class="landing-hero">
+  <div class="centered-logo-text-group">
+    <h1>Agent Directory Service</h1>
+  </div>
+  <div class="lf-partner-badge">
+    <span class="lf-partner-badge__text">part of</span>
+    <a
+      href="https://www.linuxfoundation.org/press/linux-foundation-welcomes-the-agntcy-project-to-standardize-open-multi-agent-system-infrastructure-and-break-down-ai-agent-silos"
+      target="_blank"
+      rel="noopener noreferrer"
+    >
+      <img
+        src="assets/lf-horizontal-black.png"
+        alt="Linux Foundation"
+        class="logo-light lf-partner-badge__logo"
+      />
+      <img
+        src="assets/lf-horizontal-white.png"
+        alt="Linux Foundation"
+        class="logo-dark lf-partner-badge__logo"
+      />
+    </a>
+  </div>
+</div>
 
-## Features
+## What is the Agent Directory Service?
 
-ADS enables several key capabilities for the agentic AI ecosystem:
+The **Agent Directory Service (ADS)** is the discovery layer of agents, an open source
+project under the [Linux Foundation](https://www.linuxfoundation.org/press/linux-foundation-welcomes-the-agntcy-project-to-standardize-open-multi-agent-system-infrastructure-and-break-down-ai-agent-silos)
+building the Internet of Agents.
+It gives agent builders a place to publish structured metadata about their agents and
+lets others find them by capability, trust signals, and federation policy—not by
+vendor or framework.
 
-- **Capability-Based Discovery**: Agents publish structured metadata describing their
-functional characteristics as described by the [OASF](https://github.com/agntcy/oasf).
-The system organizes this information using hierarchical taxonomies,
-enabling efficient matching of capabilities to requirements.
-- **Verifiable Claims**: While agent capabilities are often subjectively evaluated,
-ADS provides cryptographic mechanisms for data integrity and provenance tracking.
-This allows users to make informed decisions about agent selection.
-- **Semantic Linkage**: Components can be securely linked to create various relationships
-like version histories for evolutionary development, collaborative partnerships where
-complementary skills solve complex problems, and dependency chains for composite agent workflows.
-- **Distributed Architecture**: Built on proven distributed systems principles,
-ADS uses content-addressing for global uniqueness and implements distributed hash tables (DHT)
-for scalable content discovery across decentralized networks.
-- **Runtime Discovery**: Automatically discover and query agent workloads running in container
-runtimes (Docker, Kubernetes). The discovery system watches for labeled containers/pods,
-resolves their metadata (A2A cards, OASF records), and exposes them via gRPC API for
-integration with other Directory components.
+Directory records use the
+[OASF](https://docs.agntcy.org/oasf/open-agentic-schema-framework/) schema, discovery
+follows a hierarchical skill taxonomy, and independent directory nodes interconnect
+through content routing and DHT-based federation.
 
-## Naming
+## Why use the Agent Directory Service
 
-In distributed systems, having a reliable and collision-resistant naming scheme
-is crucial. The agent directory uses cryptographic hashes to generate globally
-unique identifiers for data records.
-ADS leverages [Content Identifiers](https://github.com/multiformats/cid) for
-naming directory records. CIDs provide a self-describing, content-addressed
-naming scheme that ensures data integrity and immutability.
+<div class="grid cards" markdown>
 
-In addition to CID-based addressing, ADS supports verifiable domain-based names that enable human-readable references while maintaining cryptographic verification. See [Features and Usage Scenarios — Name Verification](dir/dir-features-scenarios.md#name-verification) and the [CLI Reference](dir/dir-cli-reference.md#security-verification) for details.
+- :material-magnify:{ .lg .middle } **Capability-Based Discovery**
 
-## Content Routing
+    Publish and find agents by structured skills and attributes using OASF taxonomies
+    and content routing across a distributed network of directory servers.
 
-ADS implements capability-based record discovery through a hierarchical skill
-taxonomy. This architecture enables:
+- :material-lan:{ .lg .middle } **Federated Architecture**
 
-1. Capability Announcement:
-    1. Multi-agent systems can publish their capabilities by encoding them as skill taxonomies.
-    2. Each record contains metadata describing the agent's functional capabilities.
-    3. Skills are structured in a hierarchical format for efficient matching.
-2. Discovery Process: The system performs a two-phase discovery operation:
-    1. Matches queried capabilities against the skill taxonomy to determine records by their identifier.
-    2. Identifies the server nodes storing relevant records.
-3. Distributed Resolution: Local nodes execute targeted retrievals based on:
-    1. Skill matching results: Evaluates capability requirements.
-    2. Server location information: Determines optimal data sources.
+    Interconnect directory instances through DHT-based content routing, enabling
+    decentralized discovery without a single central registry.
 
-ADS uses [libp2p Kad-DH](https://github.com/libp2p/specs/tree/master/kad-dht) for server and content discovery.
+- :material-shield-check:{ .lg .middle } **Verifiable Claims**
 
-## Distributed Object Storage
+    Cryptographic integrity and provenance for directory records help users make
+    informed decisions about agent selection and trust.
 
-ADS differs from block storage systems like
-[IPFS](https://ipfs.tech/) in its approach to distributed object storage.
-The differences are described in the following sections.
+</div>
 
-### Simplified Content Retrieval
+## Get started with ADS
 
-1. ADS directly stores complete records rather than splitting them into blocks.
-2. No special optimizations needed for retrieving content from multiple sources.
-3. Records are retrieved as complete units using standard OCI protocols.
+<div class="grid cards" markdown>
 
-### OCI Integration
+- :material-rocket-launch:{ .lg .middle } **Quickstart**
 
-ADS leverages the OCI distribution specification for content storage and retrieval:
+    Run a local Directory instance in minutes.
 
-1. Records are stored and transferred using OCI artifacts.
-2. Any OCI distribution-compliant server can participate in the network.
-3. Servers retrieve records directly from each other using standard OCI protocols.
+    [:octicons-arrow-right-24: Quickstart](dir/dir-quickstart.md)
 
-While ADS uses [zot](https://zotregistry.dev) as its reference OCI server implementation, the system works
-with any server that implements the OCI distribution specification.
+- :material-book-open:{ .lg .middle } **Read the Introduction**
 
-## Flow Diagrams
+    Understand core concepts, architecture, and features.
 
-```mermaid
-sequenceDiagram
-    participant User
-    participant DHT
-    participant ServerA
-    participant ServerB
-    participant ServerC
+    [:octicons-arrow-right-24: Overview](dir/dir-overview.md)
 
-    Note over ServerA,ServerC: Publication Phase
-    ServerA->>ServerA: Generate record CID
-    ServerA->>ServerA: Extract skills from record
-    ServerA->>ServerA: Store record locally
-    ServerA->>DHT: Announce CID + skills
-    ServerB->>ServerB: Generate record CID
-    ServerB->>ServerB: Extract skills from record
-    ServerB->>ServerB: Store record locally
-    ServerB->>DHT: Announce CID + skills
-    DHT->>DHT: Update routing tables<br/>(skills→CIDs→servers)
+    [:octicons-arrow-right-24: Architecture](dir/dir-architecture.md)
 
-    Note over User,ServerC: Discovery Phase
-    User->>DHT: Query by skills
-    DHT->>DHT: Search routing tables
-    DHT->>User: Return matching CIDs<br/>+ server addresses
-    User->>User: Select records
-    User->>ServerA: Download record 1
-    User->>ServerB: Download record 2
-```
+- :material-file-document-outline:{ .lg .middle } **Dive into the Specification**
 
-## Next Steps
+    Explore the ADS Internet Draft and protocol definition.
 
-Ready to get started? Choose your path:
+    [:octicons-arrow-right-24: ADS Specification](https://datatracker.ietf.org/doc/draft-mp-agntcy-ads)
 
-- Run a local instance: follow the [Quickstart](dir/dir-quickstart.md) or see [Local Deployment](dir/dir-deployment-local.md) and [Kubernetes Deployment](dir/dir-deployment-kubernetes.md).
-- Connect to the public Directory: use the existing network at `ads.outshift.io` to discover and publish agents. See [Running a Federated Directory Instance](dir/dir-federation-setup.md).
-- Deploy for production: run your own Directory instance on AWS EKS and optionally federate with the network. See [Production Deployment](dir/dir-prod-deployment.md).
+- :material-code-braces:{ .lg .middle } **SDKs and Tools**
+
+    Client libraries, CLI, and API references.
+
+    [:octicons-arrow-right-24: SDK Overview](dir/dir-sdk.md)
+
+    [:octicons-arrow-right-24: CLI Reference](dir/dir-cli-reference.md)
+
+- :material-cloud-upload:{ .lg .middle } **Deploy**
+
+    Local, Kubernetes, and production deployment guides.
+
+    [:octicons-arrow-right-24: Local Deployment](dir/dir-deployment-local.md)
+
+    [:octicons-arrow-right-24: Production Deployment](dir/dir-prod-deployment.md)
+
+- :fontawesome-brands-github:{ .lg .middle } **Source Code**
+
+    Reference implementation and related repositories.
+
+    [:octicons-arrow-right-24: github.com/agntcy/dir](https://github.com/agntcy/dir)
+
+- :material-lan-connect:{ .lg .middle } **Join the Federation Testbed**
+
+    We invite organizations, researchers, and developers to join the Agent
+    Directory Testbed—a decentralized, open staging environment for next-generation
+    AI agent discovery and secure registry federation.
+
+    [:octicons-arrow-right-24: Call for federation partners](https://github.com/agntcy/dir/discussions/455)
+
+    [:octicons-arrow-right-24: Federated Directory setup](dir/dir-federation-setup.md)
+
+- :material-newspaper-variant-outline:{ .lg .middle } **Linux Foundation Press Release**
+
+    Read how the Linux Foundation welcomed the AGNTCY project to standardize open
+    multi-agent system infrastructure and break down AI agent silos.
+
+    [:octicons-arrow-right-24: LF press release](https://www.linuxfoundation.org/press/linux-foundation-welcomes-the-agntcy-project-to-standardize-open-multi-agent-system-infrastructure-and-break-down-ai-agent-silos)
+
+</div>

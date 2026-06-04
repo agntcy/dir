@@ -18,7 +18,7 @@ vars:
   MIKE_SITE: "{{.REPO}}/.build/mike-site"
   CONTENT_DIR: "{{.DOCS_DIR}}/content"
   # Pages in mkdocs nav (exclude draft/orphan pages under content/)
-  LINT_PATHS: "{{.CONTENT_DIR}}/index.md {{.CONTENT_DIR}}/dir"
+  LINT_PATHS: "{{.CONTENT_DIR}}/index.md {{.CONTENT_DIR}}/community.md {{.CONTENT_DIR}}/dir"
   SPELL_CONFIG: "{{.DOCS_DIR}}/codespellrc"
   MD_CONFIG: "{{.DOCS_DIR}}/pymarkdown.yaml"
   LYCHEE_CONFIG: "{{.DOCS_DIR}}/lychee.toml"
@@ -138,6 +138,7 @@ tasks:
       - deps:sync
     cmds:
       - cd "{{.MKDOCS_DIR}}" && uv run pymarkdown --config {{.MD_CONFIG}} fix {{.CONTENT_DIR}}/index.md
+      - cd "{{.MKDOCS_DIR}}" && uv run pymarkdown --config {{.MD_CONFIG}} fix {{.CONTENT_DIR}}/community.md
       - cd "{{.MKDOCS_DIR}}" && uv run pymarkdown --config {{.MD_CONFIG}} fix -r {{.CONTENT_DIR}}/dir
 
   mike:deploy:run:

@@ -24,7 +24,7 @@ in the [Taxonomy of AI Agent Skills](https://schema.oasf.outshift.com/skill_cate
 While all record data is modeled using the [OASF](https://docs.agntcy.org/oasf/open-agentic-schema-framework/), only skills are
 leveraged for content routing in the distributed network of directory servers.
 The ADS specification is under active development and is published as an
-Internet Draft at [ADS Spec](https://spec.dir.agntcy.org). The source code is
+Internet Draft at [ADS Spec](https://datatracker.ietf.org/doc/draft-mp-agntcy-ads). The source code is
 available in the [ADS Spec sources](https://github.com/agntcy/dir-spec).
 Directory gRPC APIs and protobuf definitions are published on
 [buf.build/agntcy/dir](https://buf.build/agntcy/dir).

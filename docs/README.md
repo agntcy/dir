@@ -1,4 +1,4 @@
-# Directory documentation
+# Agent Directory Service documentation
 
 MkDocs site for [agntcy/dir](https://github.com/agntcy/dir), published at [https://agntcy.github.io/dir/](https://agntcy.github.io/dir/) with a **version selector** (latest release by default, older releases in the dropdown).
 
@@ -17,7 +17,7 @@ MkDocs site for [agntcy/dir](https://github.com/agntcy/dir), published at [https
 - [uv](https://docs.astral.sh/uv/)
 - [lychee](https://github.com/lycheeverse/lychee) (required for `task docs:ci` / `task docs:test`; installed automatically in CI)
 
-Lint checks run on published nav content (`content/index.md` and `content/dir/`), not orphan pages under `content/`.
+Lint checks run on published nav content (`content/index.md`, `content/community.md`, and `content/dir/`), not orphan pages under `content/`.
 
 ## Commands (from repo root)
 
