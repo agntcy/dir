@@ -17,79 +17,103 @@
          <lastmod>2026-06-04</lastmod>
     </url>
     <url>
-         <loc>https://agntcy.github.io/dir/1.4.0/dir/architecture/</loc>
-         <lastmod>2026-06-04</lastmod>
-    </url>
-    <url>
          <loc>https://agntcy.github.io/dir/1.4.0/dir/dir-api-reference/</loc>
          <lastmod>2026-06-04</lastmod>
     </url>
     <url>
-         <loc>https://agntcy.github.io/dir/1.4.0/dir/directory-cli-reference/</loc>
+         <loc>https://agntcy.github.io/dir/1.4.0/dir/dir-architecture/</loc>
          <lastmod>2026-06-04</lastmod>
     </url>
     <url>
-         <loc>https://agntcy.github.io/dir/1.4.0/dir/directory-cli/</loc>
+         <loc>https://agntcy.github.io/dir/1.4.0/dir/dir-cli-reference/</loc>
          <lastmod>2026-06-04</lastmod>
     </url>
     <url>
-         <loc>https://agntcy.github.io/dir/1.4.0/dir/directory-gui/</loc>
+         <loc>https://agntcy.github.io/dir/1.4.0/dir/dir-component-event-streaming/</loc>
          <lastmod>2026-06-04</lastmod>
     </url>
     <url>
-         <loc>https://agntcy.github.io/dir/1.4.0/dir/directory-mcp/</loc>
+         <loc>https://agntcy.github.io/dir/1.4.0/dir/dir-component-gui/</loc>
          <lastmod>2026-06-04</lastmod>
     </url>
     <url>
-         <loc>https://agntcy.github.io/dir/1.4.0/dir/directory-sdk/</loc>
+         <loc>https://agntcy.github.io/dir/1.4.0/dir/dir-component-mcp-server/</loc>
          <lastmod>2026-06-04</lastmod>
     </url>
     <url>
-         <loc>https://agntcy.github.io/dir/1.4.0/dir/events/</loc>
+         <loc>https://agntcy.github.io/dir/1.4.0/dir/dir-component-oidc-authentication/</loc>
          <lastmod>2026-06-04</lastmod>
     </url>
     <url>
-         <loc>https://agntcy.github.io/dir/1.4.0/dir/federation-profiles/</loc>
+         <loc>https://agntcy.github.io/dir/1.4.0/dir/dir-component-records-validation/</loc>
          <lastmod>2026-06-04</lastmod>
     </url>
     <url>
-         <loc>https://agntcy.github.io/dir/1.4.0/dir/federation-troubleshooting/</loc>
+         <loc>https://agntcy.github.io/dir/1.4.0/dir/dir-component-routing/</loc>
          <lastmod>2026-06-04</lastmod>
     </url>
     <url>
-         <loc>https://agntcy.github.io/dir/1.4.0/dir/getting-started/</loc>
+         <loc>https://agntcy.github.io/dir/1.4.0/dir/dir-component-runtime-discovery/</loc>
          <lastmod>2026-06-04</lastmod>
     </url>
     <url>
-         <loc>https://agntcy.github.io/dir/1.4.0/dir/overview/</loc>
+         <loc>https://agntcy.github.io/dir/1.4.0/dir/dir-component-store/</loc>
          <lastmod>2026-06-04</lastmod>
     </url>
     <url>
-         <loc>https://agntcy.github.io/dir/1.4.0/dir/partner-prod-federation/</loc>
+         <loc>https://agntcy.github.io/dir/1.4.0/dir/dir-component-trust-model/</loc>
          <lastmod>2026-06-04</lastmod>
     </url>
     <url>
-         <loc>https://agntcy.github.io/dir/1.4.0/dir/prod-deployment/</loc>
+         <loc>https://agntcy.github.io/dir/1.4.0/dir/dir-deployment-kubernetes/</loc>
          <lastmod>2026-06-04</lastmod>
     </url>
     <url>
-         <loc>https://agntcy.github.io/dir/1.4.0/dir/records-validation/</loc>
+         <loc>https://agntcy.github.io/dir/1.4.0/dir/dir-deployment-local/</loc>
          <lastmod>2026-06-04</lastmod>
     </url>
     <url>
-         <loc>https://agntcy.github.io/dir/1.4.0/dir/runtime/</loc>
+         <loc>https://agntcy.github.io/dir/1.4.0/dir/dir-features-scenarios/</loc>
          <lastmod>2026-06-04</lastmod>
     </url>
     <url>
-         <loc>https://agntcy.github.io/dir/1.4.0/dir/scenarios/</loc>
+         <loc>https://agntcy.github.io/dir/1.4.0/dir/dir-federation-aws-eks/</loc>
          <lastmod>2026-06-04</lastmod>
     </url>
     <url>
-         <loc>https://agntcy.github.io/dir/1.4.0/dir/trust-model/</loc>
+         <loc>https://agntcy.github.io/dir/1.4.0/dir/dir-federation-overview/</loc>
          <lastmod>2026-06-04</lastmod>
     </url>
     <url>
-         <loc>https://agntcy.github.io/dir/1.4.0/dir/validation/</loc>
+         <loc>https://agntcy.github.io/dir/1.4.0/dir/dir-federation-profiles/</loc>
+         <lastmod>2026-06-04</lastmod>
+    </url>
+    <url>
+         <loc>https://agntcy.github.io/dir/1.4.0/dir/dir-federation-setup/</loc>
+         <lastmod>2026-06-04</lastmod>
+    </url>
+    <url>
+         <loc>https://agntcy.github.io/dir/1.4.0/dir/dir-federation-troubleshooting/</loc>
+         <lastmod>2026-06-04</lastmod>
+    </url>
+    <url>
+         <loc>https://agntcy.github.io/dir/1.4.0/dir/dir-overview/</loc>
+         <lastmod>2026-06-04</lastmod>
+    </url>
+    <url>
+         <loc>https://agntcy.github.io/dir/1.4.0/dir/dir-prod-deployment/</loc>
+         <lastmod>2026-06-04</lastmod>
+    </url>
+    <url>
+         <loc>https://agntcy.github.io/dir/1.4.0/dir/dir-quickstart/</loc>
+         <lastmod>2026-06-04</lastmod>
+    </url>
+    <url>
+         <loc>https://agntcy.github.io/dir/1.4.0/dir/dir-sdk/</loc>
+         <lastmod>2026-06-04</lastmod>
+    </url>
+    <url>
+         <loc>https://agntcy.github.io/dir/1.4.0/dir/dir-validation/</loc>
          <lastmod>2026-06-04</lastmod>
     </url>
 </urlset>
