@@ -30,6 +30,14 @@ type Record struct {
 	Modules     []Module     `gorm:"foreignKey:RecordCID;references:RecordCID;constraint:OnDelete:CASCADE"`
 	Domains     []Domain     `gorm:"foreignKey:RecordCID;references:RecordCID;constraint:OnDelete:CASCADE"`
 	Annotations []Annotation `gorm:"foreignKey:RecordCID;references:RecordCID;constraint:OnDelete:CASCADE"`
+	Owners      []Owner      `gorm:"foreignKey:RecordCID;references:RecordCID;constraint:OnDelete:CASCADE"`
+}
+
+// Owner represents a single ownership claim for a record, indexed from the OCI ownership referrer.
+type Owner struct {
+	RecordCID string `gorm:"column:record_cid;not null;index"`
+	OwnerID   string `gorm:"column:owner_id;not null;index"`
+	ClaimedAt string `gorm:"column:claimed_at"`
 }
 
 // Implement central Record interface.
@@ -301,7 +309,7 @@ func (d *DB) RemoveRecord(cid string) error {
 
 // handleFilterOptions applies the provided filters to the query.
 //
-//nolint:gocognit,cyclop,nestif,gocyclo
+//nolint:gocognit,cyclop,nestif,gocyclo,maintidx
 func (d *DB) handleFilterOptions(query *gorm.DB, cfg *types.RecordFilters) *gorm.DB {
 	// Apply record-level filters with wildcard support.
 	if len(cfg.Names) > 0 {
@@ -378,6 +386,18 @@ func (d *DB) handleFilterOptions(query *gorm.DB, cfg *types.RecordFilters) *gorm
 			if condition != "" {
 				query = query.Where(condition, args...)
 			}
+		}
+	}
+
+	// Handle owner alias filter (from --manager expansion). Uses a separate JOIN alias
+	// to avoid interfering with general annotation filters.
+	if len(cfg.OwnerAliases) > 0 {
+		query = query.Joins("JOIN annotations owner_ann ON owner_ann.record_cid = records.record_cid")
+		query = query.Where("LOWER(owner_ann.key) = ?", "owner.id")
+
+		condition, args := utils.BuildWildcardCondition("owner_ann.value", cfg.OwnerAliases)
+		if condition != "" {
+			query = query.Where(condition, args...)
 		}
 	}
 
@@ -467,7 +487,51 @@ func (d *DB) handleFilterOptions(query *gorm.DB, cfg *types.RecordFilters) *gorm
 		}
 	}
 
+	// Handle owner filter (records with a matching ownership claim referrer indexed in the owners table).
+	if len(cfg.Owners) > 0 {
+		query = query.Joins("JOIN owners ON owners.record_cid = records.record_cid")
+
+		condition, args := utils.BuildWildcardCondition("owners.owner_id", cfg.Owners)
+		if condition != "" {
+			query = query.Where(condition, args...)
+		}
+	}
+
 	return query
+}
+
+// AddOwner indexes an ownership claim for a record.
+// It upserts by (record_cid, owner_id) so re-claiming is idempotent.
+func (d *DB) AddOwner(recordCID, ownerID, claimedAt string) error {
+	owner := &Owner{
+		RecordCID: recordCID,
+		OwnerID:   ownerID,
+		ClaimedAt: claimedAt,
+	}
+
+	// Use a raw upsert so SQLite and Postgres both work without a unique index conflict.
+	result := d.gormDB.
+		Where(Owner{RecordCID: recordCID, OwnerID: ownerID}).
+		Assign(Owner{ClaimedAt: claimedAt}).
+		FirstOrCreate(owner)
+	if result.Error != nil {
+		return fmt.Errorf("failed to add owner %s for record %s: %w", ownerID, recordCID, result.Error)
+	}
+
+	logger.Debug("Indexed ownership claim", "record_cid", recordCID, "owner_id", ownerID)
+
+	return nil
+}
+
+// RemoveOwners removes all ownership claims for a record.
+func (d *DB) RemoveOwners(recordCID string) error {
+	if err := d.gormDB.Where("record_cid = ?", recordCID).Delete(&Owner{}).Error; err != nil {
+		return fmt.Errorf("failed to remove owners for record %s: %w", recordCID, err)
+	}
+
+	logger.Debug("Removed ownership claims", "record_cid", recordCID)
+
+	return nil
 }
 
 // SetRecordSigned marks a record as signed.

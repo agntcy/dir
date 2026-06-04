@@ -15,6 +15,7 @@ import (
 	"github.com/agntcy/dir/reconciler/tasks"
 	"github.com/agntcy/dir/reconciler/tasks/indexer"
 	"github.com/agntcy/dir/reconciler/tasks/name"
+	"github.com/agntcy/dir/reconciler/tasks/ownership"
 	"github.com/agntcy/dir/reconciler/tasks/regsync"
 	"github.com/agntcy/dir/reconciler/tasks/signature"
 	namingprovider "github.com/agntcy/dir/server/naming"
@@ -91,6 +92,20 @@ func (s *Service) registerTasks(cfg *config.Config, db types.DatabaseAPI, store 
 			t, err := signature.NewTask(cfg.Signature, db, signature.NewStoreFetcher(refStore))
 			if err != nil {
 				return fmt.Errorf("failed to create signature task: %w", err)
+			}
+
+			s.addTask(t)
+		}
+	}
+
+	if cfg.Ownership.Enabled {
+		refStore, ok := store.(types.ReferrerStoreAPI)
+		if !ok {
+			logger.Warn("Store does not support referrers, skipping ownership task")
+		} else {
+			t, err := ownership.NewTask(cfg.Ownership, db, db, refStore)
+			if err != nil {
+				return fmt.Errorf("failed to create ownership task: %w", err)
 			}
 
 			s.addTask(t)

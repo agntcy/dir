@@ -33,6 +33,7 @@ import (
 	grpcrecovery "github.com/agntcy/dir/server/middleware/recovery"
 	"github.com/agntcy/dir/server/naming"
 	"github.com/agntcy/dir/server/naming/wellknown"
+	"github.com/agntcy/dir/server/org/static"
 	"github.com/agntcy/dir/server/publication"
 	"github.com/agntcy/dir/server/routing"
 	"github.com/agntcy/dir/server/store"
@@ -302,7 +303,7 @@ func New(ctx context.Context, cfg *config.Config, opts ...ServerOption) (*Server
 	storev1.RegisterStoreServiceServer(grpcServer, controller.NewStoreController(storeAPI, databaseAPI, options.EventBus(), oasfValidator))
 	routingv1.RegisterRoutingServiceServer(grpcServer, controller.NewRoutingController(routingAPI, storeAPI, publicationService))
 	routingv1.RegisterPublicationServiceServer(grpcServer, controller.NewPublicationController(databaseAPI, options))
-	searchv1.RegisterSearchServiceServer(grpcServer, controller.NewSearchController(databaseAPI, storeAPI))
+	searchv1.RegisterSearchServiceServer(grpcServer, controller.NewSearchController(databaseAPI, storeAPI, buildOrgResolverOpt(options.Config())...))
 	storev1.RegisterSyncServiceServer(grpcServer, controller.NewSyncController(databaseAPI, options))
 	signv1.RegisterSignServiceServer(grpcServer, controller.NewSignController(databaseAPI))
 	namingv1.RegisterNamingServiceServer(grpcServer, controller.NewNamingController(
@@ -417,6 +418,30 @@ func (s Server) Close(ctx context.Context) {
 	}
 
 	s.grpcServer.GracefulStop()
+}
+
+// buildOrgResolverOpt constructs a WithOrgResolver option when an org resolver
+// is configured, or returns nil if the feature is disabled.
+func buildOrgResolverOpt(cfg *config.Config) []controller.SearchControllerOption {
+	switch cfg.OrgResolver.Type {
+	case "static":
+		r, err := static.New(static.Config{File: cfg.OrgResolver.Static.File})
+		if err != nil {
+			logger.Warn("Failed to load static org resolver, manager queries will be unavailable", "error", err)
+
+			return nil
+		}
+
+		logger.Info("Org resolver loaded", "type", "static", "file", cfg.OrgResolver.Static.File)
+
+		return []controller.SearchControllerOption{controller.WithOrgResolver(r)}
+	case "":
+		return nil
+	default:
+		logger.Warn("Unknown org resolver type, manager queries will be unavailable", "type", cfg.OrgResolver.Type)
+
+		return nil
+	}
 }
 
 // Start launches the gRPC server, metrics, publication service, and health checks.

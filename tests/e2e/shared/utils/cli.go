@@ -98,6 +98,8 @@ func (c *CLI) Search() *SearchBuilder {
 		schemaVersions:   []string{},
 		moduleIDs:        []string{},
 		annotations:      []string{},
+		managers:         []string{},
+		owners:           []string{},
 		outputFormatArgs: []string{},
 		limit:            0,
 		offset:           0,
@@ -121,10 +123,17 @@ func (c *CLI) SearchRecords() *SearchBuilder {
 		schemaVersions:   []string{},
 		moduleIDs:        []string{},
 		annotations:      []string{},
+		managers:         []string{},
+		owners:           []string{},
 		outputFormatArgs: []string{},
 		limit:            0,
 		offset:           0,
 	}
+}
+
+// Ownership returns a CommandBuilder for 'dirctl ownership' subcommands.
+func (c *CLI) Ownership(subcommand string) *CommandBuilder {
+	return c.Command("ownership").WithArgs(subcommand)
 }
 
 func (c *CLI) Import(importType, filePath string) *CommandBuilder {
@@ -486,6 +495,8 @@ type SearchBuilder struct {
 	schemaVersions   []string
 	moduleIDs        []string
 	annotations      []string
+	managers         []string
+	owners           []string
 	outputFormatArgs []string
 	limit            int
 	offset           int
@@ -569,6 +580,18 @@ func (s *SearchBuilder) WithAnnotation(annotation string) *SearchBuilder {
 	return s
 }
 
+func (s *SearchBuilder) WithManager(manager string) *SearchBuilder {
+	s.managers = append(s.managers, manager)
+
+	return s
+}
+
+func (s *SearchBuilder) WithOwner(owner string) *SearchBuilder {
+	s.owners = append(s.owners, owner)
+
+	return s
+}
+
 func (s *SearchBuilder) WithLimit(limit int) *SearchBuilder {
 	s.limit = limit
 
@@ -610,6 +633,8 @@ func (s *SearchBuilder) Execute() (string, error) {
 	searchArgs = appendFlagValues(searchArgs, "--schema-version", s.schemaVersions)
 	searchArgs = appendFlagValues(searchArgs, "--module-id", s.moduleIDs)
 	searchArgs = appendFlagValues(searchArgs, "--annotation", s.annotations)
+	searchArgs = appendFlagValues(searchArgs, "--manager", s.managers)
+	searchArgs = appendFlagValues(searchArgs, "--owner", s.owners)
 
 	if s.limit > 0 {
 		searchArgs = append(searchArgs, "--limit", strconv.Itoa(s.limit))

@@ -27,6 +27,9 @@ type DatabaseAPI interface {
 	// SignatureVerificationDatabaseAPI handles management of signature verifications.
 	SignatureVerificationDatabaseAPI
 
+	// OwnershipDatabaseAPI handles management of ownership claims.
+	OwnershipDatabaseAPI
+
 	// Close closes the database connection and releases any resources.
 	Close() error
 
@@ -124,4 +127,14 @@ type SignatureVerificationDatabaseAPI interface {
 
 	// InvalidateSignatureVerificationsForRecord removes all cached verification rows for a record so the reconciler will re-verify it (e.g. when a new signature or public key referrer is pushed).
 	InvalidateSignatureVerificationsForRecord(recordCID string) error
+}
+
+type OwnershipDatabaseAPI interface {
+	// AddOwner indexes an ownership claim for a record.
+	// Called when an ownership referrer is pushed (controller) or on reconciler startup.
+	AddOwner(recordCID, ownerID, claimedAt string) error
+
+	// RemoveOwners removes all ownership claims for a record.
+	// Called when a record is deleted.
+	RemoveOwners(recordCID string) error
 }
