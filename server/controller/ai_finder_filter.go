@@ -25,14 +25,8 @@ import (
 // Logical AND across fields, comma-OR within a field's value list; each field
 // may appear at most once.
 
-const (
-	// filterMaxLen mirrors the proto validator (max_len=2048).
-	filterMaxLen = 2048
-
-	// rfc3339UTC is the timestamp format used for createdAfter/updatedAfter
-	// clauses emitted to the data layer.
-	rfc3339UTC = "2006-01-02T15:04:05Z07:00"
-)
+// filterMaxLen mirrors the proto validator (max_len=2048).
+const filterMaxLen = 2048
 
 // agentFilter is the parsed representation of the ListAgents filter query.
 type agentFilter struct {
@@ -148,11 +142,11 @@ func buildRecordFilterOptions(f agentFilter, order []orderByClause, pageSize, of
 	// createdAfter / updatedAfter both resolve to a strict '>' comparison on
 	// the only OASF-supplied record timestamp.
 	if !f.CreatedAfter.IsZero() {
-		opts = append(opts, types.WithCreatedAts(">"+f.CreatedAfter.UTC().Format(rfc3339UTC)))
+		opts = append(opts, types.WithCreatedAts(">"+f.CreatedAfter.UTC().Format(time.RFC3339)))
 	}
 
 	if !f.UpdatedAfter.IsZero() {
-		opts = append(opts, types.WithCreatedAts(">"+f.UpdatedAfter.UTC().Format(rfc3339UTC)))
+		opts = append(opts, types.WithCreatedAts(">"+f.UpdatedAfter.UTC().Format(time.RFC3339)))
 	}
 
 	if len(order) > 0 {
