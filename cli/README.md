@@ -12,7 +12,7 @@ Command-line tools for the AGNTCY Directory.
 - **MCP** — Run an MCP server for AI/agent tooling.
 - **Auth** — Login, logout, and check status (for federation nodes).
 
-Full documentation: [https://docs.agntcy.org/dir/directory-cli/](https://docs.agntcy.org/dir/directory-cli/)
+Full documentation: [https://docs.agntcy.org/dir/dir-cli-reference/](https://docs.agntcy.org/dir/dir-cli-reference/)
 
 ## Quick start:
 

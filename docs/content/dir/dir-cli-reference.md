@@ -1,0 +1,1150 @@
+# Directory CLI Command Reference
+
+Command-line reference for `dirctl`. Install the CLI in the [Quickstart](dir-quickstart.md)
+only; workflow examples live in [Features and Usage Scenarios](dir-features-scenarios.md).
+
+## Global options
+
+### Output formats
+
+All commands support `--output` / `-o`:
+
+| Format | Description | Use case |
+|--------|-------------|----------|
+| `human` | Formatted tables and colors (default) | Interactive use |
+| `json` | Pretty-printed JSON | Debugging, single-record scripts |
+| `jsonl` | One JSON object per line | Streaming, batch processing |
+| `raw` | Values only (CIDs, IDs) | Shell pipelines |
+
+Structured formats send data to **stdout** and messages to **stderr**, so piping to `jq`
+works cleanly.
+
+```bash
+CID=$(dirctl push record.json -o raw)
+dirctl routing search --skill "AI" -o json | jq '.[] | .record_ref.cid'
+dirctl events listen -o jsonl | jq -c 'select(.type == "EVENT_TYPE_RECORD_PUSHED")'
+```
+
+### Server connection
+
+```bash
+dirctl --server-addr localhost:8888 routing list
+export DIRECTORY_CLIENT_SERVER_ADDRESS=localhost:8888
+dirctl --context dev routing list   # see Context Operations below
+```
+
+### Authentication
+
+For remote servers, authenticate with OIDC before running commands. The full auth model,
+gateway endpoints, and SPIFFE/SPIRE integration are documented in
+[OIDC Authentication](dir-component-oidc-authentication.md).
+
+| Command | Description |
+|---------|-------------|
+| `dirctl auth login` | OIDC login (PKCE, `--no-browser`, or `--device`) |
+| `dirctl auth logout` | Clear cached credentials |
+| `dirctl auth status` | Show current auth state |
+
+```bash
+dirctl auth login --oidc-issuer "https://idp.ads.outshift.io" --oidc-client-id "dirctl"
+dirctl --auth-mode=oidc --server-addr ads.outshift.io:443 search --skill "AI"
+```
+
+Pre-issued tokens: `--auth-token` or `DIRECTORY_CLIENT_AUTH_TOKEN` for CI and automation.
+Other modes: `--auth-mode=x509`, `jwt`, `tls`, or `insecure` for local development. Default
+(empty) auto-detects SPIFFE → OIDC → insecure.
+
+### Command groups
+
+| Group | Commands |
+|-------|----------|
+| Daemon | `daemon start`, `stop`, `status` |
+| Auth | `auth login`, `logout`, `status` |
+| Context | `context list`, `current`, `set`, `show`, `validate` |
+| Storage | `push`, `pull`, `delete`, `info` |
+| Import / Export | `import`, `export` |
+| Routing | `routing publish`, `list`, `search` |
+| Search | `search` |
+| Security | `sign`, `verify`, `validate`, `naming verify` |
+| Sync | `sync create`, `status`, `list`, `delete` |
+| Events | `events listen` |
+
+### Getting help
+
+```bash
+dirctl --help
+dirctl routing --help
+dirctl routing search --help
+```
+
+## Daemon Operations
+
+The daemon commands run a self-contained local directory server that bundles the gRPC apiserver and reconciler into a single process with embedded SQLite and a filesystem OCI store. All state is stored under `~/.agntcy/dir/` by default.
+
+### `dirctl daemon start`
+
+Starts the local directory daemon in the foreground. The process blocks until `SIGINT` or `SIGTERM` is received.
+
+The daemon starts a gRPC apiserver on `localhost:8888` and runs all reconciler tasks (regsync, indexer, name resolution, signature verification) in-process. It uses SQLite for persistence and a local persistent OCI store, so no external dependencies (PostgreSQL, container registry, etc.) are required.
+
+A PID file is written to the data directory to prevent multiple instances from running simultaneously.
+
+Without `--config`, built-in defaults are used. When `--config` is provided, the file is read as the complete configuration.
+
+| Flag | Description | Default |
+|------|-------------|---------|
+| `--data-dir` | Data directory for daemon state | `~/.agntcy/dir/` |
+| `--config` | Path to daemon config file | `<data-dir>/daemon.config.yaml` (built-in defaults) |
+
+??? example
+
+    ```bash
+    # Start the daemon (foreground, blocks until signal)
+    dirctl daemon start
+
+    # Start with a custom data directory
+    dirctl daemon start --data-dir /path/to/data
+
+    # Start with a custom config file
+    dirctl daemon start --config /path/to/config.yaml
+
+    # Run in the background using shell job control
+    dirctl daemon start &
+    ```
+
+**Data directory layout:**
+
+```
+~/.agntcy/dir/
+├── dir.db          # SQLite database
+├── store/          # Persistent OCI store
+├── routing/        # DHT routing datastore
+└── daemon.pid      # PID file for lifecycle management
+```
+
+**Configuration:**
+
+The daemon ships with sensible built-in defaults. To customize, pass a YAML config file via `--config`. Relative paths in the config (e.g. `store`, `dir.db`) are resolved against `--data-dir`. Credentials can be set via environment variables prefixed with `DIRECTORY_DAEMON_` (e.g. `DIRECTORY_DAEMON_SERVER_DATABASE_POSTGRES_PASSWORD`).
+
+??? example "Reference config file"
+
+    ```yaml
+    server:
+      listen_address: "localhost:8888"
+      oasf_api_validation:
+        schema_url: "https://schema.oasf.outshift.com"
+      store:
+        provider: "oci"
+        oci:
+          local_dir: "store"
+          registry_address: "localhost:5000"
+          repository_name: "dir"
+          auth_config:
+            insecure: true
+        verification:
+          enabled: true
+      routing:
+        listen_address: "/ip4/0.0.0.0/tcp/0"
+        datastore_dir: "routing"
+        gossipsub:
+          enabled: true
+      database:
+        type: "sqlite"
+        sqlite:
+          path: "dir.db"
+        postgres:
+          host: "localhost"
+          port: 5432
+          database: "dir"
+          ssl_mode: "disable"
+      publication:
+        scheduler_interval: 1h
+        worker_count: 1
+        worker_timeout: 30m
+      naming:
+        ttl: 168h
+
+
+    reconciler:
+      regsync:
+        enabled: true
+        interval: 1m
+      indexer:
+        enabled: true
+        interval: 1m
+      signature:
+        enabled: true
+        interval: 1m
+        ttl: 168h
+        record_timeout: 30s
+      name:
+        enabled: true
+        interval: 1m
+        ttl: 168h
+        record_timeout: 30s
+      local_registry:
+        registry_address: "localhost:5000"
+        repository_name: "dir"
+        auth_config:
+          insecure: true
+      database:
+        type: "sqlite"
+        sqlite:
+          path: "dir.db"
+    ```
+
+### `dirctl daemon stop`
+
+Stops a running daemon by sending `SIGTERM` to the process recorded in the PID file. The command waits for the process to exit gracefully and cleans up the PID file.
+
+| Flag | Description | Default |
+|------|-------------|---------|
+| `--data-dir` | Data directory for daemon state | `~/.agntcy/dir/` |
+
+??? example
+
+    ```bash
+    # Stop the running daemon
+    dirctl daemon stop
+
+    # Stop a daemon using a custom data directory
+    dirctl daemon stop --data-dir /path/to/data
+    ```
+
+### `dirctl daemon status`
+
+Checks whether the daemon is currently running by inspecting the PID file.
+
+| Flag | Description | Default |
+|------|-------------|---------|
+| `--data-dir` | Data directory for daemon state | `~/.agntcy/dir/` |
+
+??? example
+
+    ```bash
+    # Check daemon status
+    dirctl daemon status
+    ```
+
+    Example output when running:
+
+    ```
+    Daemon is running (PID 12345)
+    ```
+
+    Example output when stopped:
+
+    ```
+    Daemon is not running
+    ```
+
+## Context Operations
+
+Starting with Directory v1.4.0, the context commands manage reusable `dirctl` client contexts. Contexts describe Directory endpoints and their client-side authentication, TLS, and SPIFFE settings.
+
+The default config file is `~/.config/dirctl/config.yaml`, or `$XDG_CONFIG_HOME/dirctl/config.yaml` when `XDG_CONFIG_HOME` is set.
+
+```yaml
+current_context: prod
+contexts:
+  prod:
+    server_address: gateway.example.com:443
+    auth_mode: oidc
+    oidc_issuer: https://idp.example.com
+    oidc_client_id: dirctl
+  staging:
+    server_address: staging.gateway.example.com:443
+    auth_mode: oidc
+    oidc_issuer: https://staging.idp.example.com
+    oidc_client_id: dirctl
+```
+
+Regular `dirctl` commands select a context in this order:
+
+1. `--context <name>`
+2. `DIRECTORY_CLIENT_CONTEXT`
+3. `current_context` from the config file
+
+After context selection, environment variables and explicit root flags such as `--server-addr`, `--auth-mode`, `--oidc-issuer`, and `--auth-token` override the selected context for that invocation.
+
+!!! note "Sensitive values"
+
+    `dirctl context show` redacts `auth_token` and `spiffe_token` values. Prefer environment variables or a secret manager for bearer tokens instead of storing long-lived tokens in `config.yaml`.
+
+### `dirctl context list`
+
+Lists configured contexts in sorted order and marks the persisted `current_context` with `*`. This command reads local config only; it does not contact a Directory server.
+
+??? example
+
+    ```bash
+    dirctl context list
+    ```
+
+    Example output:
+
+    ```text
+    * prod
+      staging
+    ```
+
+### `dirctl context current`
+
+Prints the persisted `current_context` from the config file. It intentionally ignores one-off overrides such as `--context` and `DIRECTORY_CLIENT_CONTEXT`, so it matches the marker shown by `dirctl context list`.
+
+| Flag | Description | Default |
+|------|-------------|---------|
+| `--quiet` | Print only the context name; print nothing when no context is set | `false` |
+| `--json` | Print current context details as JSON | `false` |
+
+??? example
+
+    ```bash
+    # Print the current context with a trailing newline
+    dirctl context current
+
+    # Prompt-friendly output
+    dirctl context current --quiet
+
+    # Machine-readable output
+    dirctl context current --json
+    ```
+
+    Example JSON output:
+
+    ```json
+    {
+      "name": "prod",
+      "source": "current_context",
+      "path": "/home/user/.config/dirctl/config.yaml"
+    }
+    ```
+
+### `dirctl context set <name>`
+
+Sets the persisted active context by updating `current_context` in the client config file. The target context must already exist.
+
+??? example
+
+    ```bash
+    # Persist prod as the active context
+    dirctl context set prod
+
+    # Run one command against staging without changing current_context
+    dirctl --context staging info <record-cid>
+    ```
+
+### `dirctl context show [name]`
+
+Shows the effective client configuration for a context with sensitive values redacted. If `[name]` is omitted, the command uses the same context selection rules as other `dirctl` commands. Environment variables and explicitly changed root flags are included in the effective output.
+
+??? example
+
+    ```bash
+    # Show the active effective context
+    dirctl context show
+
+    # Show a specific context
+    dirctl context show prod
+
+    # Preview a context with a one-off server override
+    dirctl --server-addr localhost:8888 context show prod
+    ```
+
+    Example output:
+
+    ```yaml
+    name: prod
+    source: current_context
+    path: /home/user/.config/dirctl/config.yaml
+    config:
+      auth_mode: oidc
+      oidc_client_id: dirctl
+      oidc_issuer: https://idp.example.com
+      server_address: gateway.example.com:443
+      tls_skip_verify: false
+    ```
+
+### `dirctl context validate [name]`
+
+Validates stored context definitions without applying environment variable overrides. It catches missing required fields, unsupported auth modes, and auth-mode-specific configuration mistakes before a context is used.
+
+If `[name]` is provided, only that context is validated. If omitted, all configured contexts are validated in sorted order.
+
+??? example
+
+    ```bash
+    # Validate all contexts
+    dirctl context validate
+
+    # Validate one context
+    dirctl context validate prod
+    ```
+
+    Example output:
+
+    ```text
+    prod: ok
+    staging: ok
+    ```
+
+## Storage Operations
+
+### `dirctl push <file>`
+
+Stores records in the content-addressable store. Has the following features:
+
+- Supports OASF v1, v2, v3 record formats
+- Content-addressable storage with CID generation
+- Optional cryptographic signing
+- Data integrity validation
+
+??? example
+
+    ```bash
+    # Push from file
+    dirctl push agent-model.json
+
+    # Push from stdin
+    cat agent-model.json | dirctl push --stdin
+
+    # Push with signature
+    dirctl push agent-model.json --sign --key private.key
+    ```
+
+### `dirctl pull <reference>`
+
+Retrieves records by their Content Identifier (CID) or name reference.
+
+**Supported Reference Formats:**
+
+| Format | Description |
+|--------|-------------|
+| `<cid>` | Direct lookup by CID |
+| `<name>` | Retrieves the latest version |
+| `<name>:<version>` | Retrieves the specified version |
+| `<name>@<cid>` | Hash-verified lookup (fails if resolved CID doesn't match) |
+| `<name>:<version>@<cid>` | Hash-verified lookup for a specific version |
+
+??? example
+
+    ```bash
+    # Pull by CID
+    dirctl pull baeareihdr6t7s6sr2q4zo456sza66eewqc7huzatyfgvoupaqyjw23ilvi
+
+    # Pull by name (latest version)
+    dirctl pull cisco.com/agent
+
+    # Pull by name with specific version
+    dirctl pull cisco.com/agent:v1.0.0
+
+    # Pull with hash verification
+    dirctl pull cisco.com/agent@bafyreib...
+    dirctl pull cisco.com/agent:v1.0.0@bafyreib...
+
+    # Pull with signature verification
+    dirctl pull <cid> --signature --public-key public.key
+    ```
+
+**Hash Verification:**
+
+The `@<cid>` suffix enables hash verification. This command fails if the resolved CID doesn't match the expected digest:
+
+```bash
+# Succeeds if cisco.com/agent:v1.0.0 resolves to bafyreib...
+dirctl pull cisco.com/agent:v1.0.0@bafyreib...
+
+# Fails with error if CIDs don't match
+dirctl pull cisco.com/agent@wrong-cid
+# Error: hash verification failed: resolved CID "bafyreib..." does not match expected digest "wrong-cid"
+```
+
+**Version Resolution:**
+
+When no version is specified, commands return the most recently created record (by record's `created_at` field). This allows non-semver tags like `latest`, `dev`, or `stable`.
+
+### `dirctl delete <cid>`
+
+Removes records from storage.
+
+??? example
+
+    ```bash
+    # Delete a record
+    dirctl delete baeareihdr6t7s6sr2q4zo456sza66eewqc7huzatyfgvoupaqyjw23ilvi
+    ```
+
+### `dirctl info <reference>`
+
+Displays metadata about stored records using CID or name reference.
+
+**Supported Reference Formats:**
+
+| Format | Description |
+|--------|-------------|
+| `<cid>` | Direct lookup by content address |
+| `<name>` | Displays the most recently created version |
+| `<name>:<version>` | Displays the specified version |
+| `<name>@<cid>` | Hash-verified lookup |
+| `<name>:<version>@<cid>` | Hash-verified lookup for a specific version |
+
+??? example
+
+    ```bash
+    # Info by CID (existing)
+    dirctl info baeareihdr6t7s6sr2q4zo456sza66eewqc7huzatyfgvoupaqyjw23ilvi
+
+    # Info by name (latest version)
+    dirctl info cisco.com/agent --output json
+
+    # Info by name with specific version
+    dirctl info cisco.com/agent:v1.0.0 --output json
+    ```
+
+## Import Operations
+
+Import records from external registries into DIR. Supports automated batch imports from various registry types.
+
+### `dirctl import [flags]`
+
+Fetch and import records from external registries.
+
+**Supported Registries:**
+
+- `mcp` - Model Context Protocol registry v0.1
+
+**Configuration Options:**
+
+| Flag | Environment Variable | Description | Required | Default |
+|------|---------------------|-------------|----------|---------|
+| `--type` | - | Registry type (mcp, a2a) | Yes | - |
+| `--url` | - | Registry base URL | Yes | - |
+| `--filter` | - | Registry-specific filters (key=value, repeatable) | No | - |
+| `--limit` | - | Maximum records to import (0 = no limit) | No | 0 |
+| `--dry-run` | - | Preview without importing; transformed records are written to `--output-dir` (one JSON file per record) so they can be reviewed and re-imported later via `dirctl push` or `dirctl import` | No | false |
+| `--output-dir` | - | Directory to write per-record JSON files when `--dry-run` is set. Each record is written as `<cid>.record.json` | No | `./import-dry-run-<timestamp>` in the current working directory |
+| `--debug` | - | Enable debug output (shows MCP source and OASF record for failures) | No | false |
+| `--force` | - | Force reimport of existing records (skip deduplication) | No | false |
+| `--enrich-config` | - | Path to MCPHost configuration file (mcphost.json) | No | importer/enricher/mcphost.json |
+| `--enrich-skills-prompt` | - | Optional: path to custom skills prompt template or inline prompt | No | "" (uses default) |
+| `--enrich-domains-prompt` | - | Optional: path to custom domains prompt template or inline prompt | No | "" (uses default) |
+| `--enrich-rate-limit` | - | Maximum LLM API requests per minute (to avoid rate limit errors) | No | 10 |
+| `--sign` | - | Sign records after pushing (uses OIDC by default) | No | false |
+| `--key` | - | Path to private key file for signing (requires `--sign`) | No | - |
+| `--oidc-token` | - | OIDC token for non-interactive signing (requires `--sign`) | No | - |
+| `--fulcio-url` | - | Sigstore Fulcio URL (requires `--sign`) | No | https://fulcio.sigstore.dev |
+| `--rekor-url` | - | Sigstore Rekor URL (requires `--sign`) | No | https://rekor.sigstore.dev |
+| `--server-addr` | DIRECTORY_CLIENT_SERVER_ADDRESS | DIR server address | No | localhost:8888 |
+
+!!! note
+
+    By default, the importer performs deduplication: it builds a cache of existing records (by name and version) and skips importing records that already exist. This prevents duplicate imports when running the import command multiple times. Use `--force` to bypass deduplication and reimport existing records. Use `--debug` to see detailed output including which records were skipped and why imports failed.
+
+??? example
+
+    ```bash
+    # Import from MCP registry
+    dirctl import --type=mcp --url=https://registry.modelcontextprotocol.io/v0.1
+
+    # Import with debug output (shows detailed diagnostics for failures)
+    dirctl import --type=mcp \
+      --url=https://registry.modelcontextprotocol.io/v0.1 \
+      --debug
+
+    # Force reimport of existing records (skips deduplication)
+    dirctl import --type=mcp \
+      --url=https://registry.modelcontextprotocol.io/v0.1 \
+      --force
+
+    # Import with time-based filter
+    dirctl import --type=mcp \
+      --url=https://registry.modelcontextprotocol.io/v0.1 \
+      --filter=updated_since=2025-08-07T13:15:04.280Z
+
+    # Combine multiple filters
+    dirctl import --type=mcp \
+      --url=https://registry.modelcontextprotocol.io/v0.1 \
+      --filter=search=github \
+      --filter=version=latest \
+      --filter=updated_since=2025-08-07T13:15:04.280Z
+
+    # Limit number of records
+    dirctl import --type=mcp \
+      --url=https://registry.modelcontextprotocol.io/v0.1 \
+      --limit=50
+
+    # Preview without importing (dry run)
+    # Records are written as <cid>.record.json into a timestamped directory
+    # (default: ./import-dry-run-<timestamp>) so they can be reviewed and
+    # re-imported later via `dirctl push` or `dirctl import`.
+    dirctl import --type=mcp \
+      --url=https://registry.modelcontextprotocol.io/v0.1 \
+      --dry-run
+
+    # Dry run with a custom output directory
+    dirctl import --type=mcp \
+      --url=https://registry.modelcontextprotocol.io/v0.1 \
+      --dry-run \
+      --output-dir=./out
+
+    # Import and sign records with OIDC (opens browser for authentication)
+    dirctl import --type=mcp \
+      --url=https://registry.modelcontextprotocol.io/v0.1 \
+      --sign
+
+    # Import and sign records with a private key
+    dirctl import --type=mcp \
+      --url=https://registry.modelcontextprotocol.io/v0.1 \
+      --sign \
+      --key=/path/to/cosign.key
+
+    # Import with rate limiting for LLM API calls
+    dirctl import --type=mcp \
+      --url=https://registry.modelcontextprotocol.io/v0.1 \
+      --enrich-rate-limit=5
+    ```
+
+**MCP Registry Filters:**
+
+For the Model Context Protocol registry, available filters include:
+
+- `search` - Filter by server name (substring match)
+- `version` - Filter by version ('latest' for latest version, or an exact version like '1.2.3')
+- `updated_since` - Filter by updated time (RFC3339 datetime format, e.g., '2025-08-07T13:15:04.280Z')
+
+See the [MCP Registry API docs](https://registry.modelcontextprotocol.io/docs#/operations/list-servers#Query-Parameters) for the complete list of supported filters.
+
+### LLM-based Enrichment (Mandatory)
+
+**Enrichment is mandatory** — the import command automatically enriches MCP server records using LLM models to map them to appropriate OASF skills and domains. Records from the oasf-sdk translator are incomplete and require enrichment to be valid. This is powered by [mcphost](https://github.com/mark3labs/mcphost), which provides a Model Context Protocol (MCP) host that can run AI models with tool-calling capabilities.
+
+**Requirements:**
+
+- `dirctl` binary (includes the built-in MCP server with `agntcy_oasf_get_schema_skills` and `agntcy_oasf_get_schema_domains` tools)
+- An LLM model with tool-calling support (GPT-4o, Claude, or compatible Ollama models)
+- The `mcphost.json` configuration file must include the `dir-mcp-server` entry that runs `dirctl mcp serve`. This MCP server provides the schema tools needed for enrichment.
+
+**How it works:**
+
+1. The enricher starts an MCP server using `dirctl mcp serve`
+2. The LLM uses the `agntcy_oasf_get_schema_skills` tool to browse available OASF skills
+3. The LLM uses the `agntcy_oasf_get_schema_domains` tool to browse available OASF domains
+4. Based on the MCP server description and capabilities, the LLM selects appropriate skills and domains
+5. Selected skills and domains replace the defaults in the imported records
+
+**Setting up mcphost:**
+
+Edit a configuration file (default: `importer/enricher/mcphost.json`):
+
+```json
+{
+  "mcpServers": {
+    "dir-mcp-server": {
+      "command": "dirctl",
+      "args": ["mcp", "serve"],
+      "env": {
+        "OASF_API_VALIDATION_SCHEMA_URL": "https://schema.oasf.outshift.com"
+      }
+    }
+  },
+  "model": "azure:gpt-4o",
+  "max-tokens": 4096,
+  "max-steps": 20
+}
+```
+
+**Recommended LLM providers:**
+
+- `azure:gpt-4o` - Azure OpenAI GPT-4o (recommended for speed and accuracy)
+- `ollama:qwen3:8b` - Local Qwen3 via Ollama
+
+**Environment variables for LLM providers:**
+
+- Azure OpenAI: `AZURE_OPENAI_API_KEY`, `AZURE_OPENAI_ENDPOINT`, `AZURE_OPENAI_DEPLOYMENT`
+
+**Customizing Enrichment Prompts:**
+
+The enricher uses separate default prompt templates for skills and domains. You can customize these prompts for specific use cases:
+
+- **Skills**: Use default (omit `--enrich-skills-prompt`), or `--enrich-skills-prompt=/path/to/custom-skills-prompt.md`, or `--enrich-skills-prompt="Your custom prompt text..."`
+- **Domains**: Use default (omit `--enrich-domains-prompt`), or `--enrich-domains-prompt=/path/to/custom-domains-prompt.md`, or `--enrich-domains-prompt="Your custom prompt text..."`
+
+The default prompt templates are available at `importer/enricher/enricher.skills.prompt.md` and `importer/enricher/enricher.domains.prompt.md`.
+
+??? example "Import with custom enrichment"
+
+    ```bash
+    # Import with custom mcphost configuration
+    dirctl import --type=mcp \
+      --url=https://registry.modelcontextprotocol.io/v0.1 \
+      --enrich-config=/path/to/custom-mcphost.json
+
+    # Import with custom prompt templates
+    dirctl import --type=mcp \
+      --url=https://registry.modelcontextprotocol.io/v0.1 \
+      --enrich-skills-prompt=/path/to/custom-skills-prompt.md \
+      --enrich-domains-prompt=/path/to/custom-domains-prompt.md \
+      --debug
+    ```
+
+### Dry Run Output Directory
+
+When `--dry-run` is set, the importer does **not** push records to the Directory node. Instead, every transformed record is written to disk as a separate JSON file, one per record. This produces a reviewable artifact set that is drop-in compatible with the existing import / push commands, so users who do not want the importer to push directly to a Directory node can review or modify the records first and upload them later.
+
+**Output layout:**
+
+- Target directory: value of `--output-dir`, or — when not set — `./import-dry-run-<timestamp>/` in the current working directory.
+- The directory is created if it does not exist.
+- Each record is written as `<cid>.record.json`, where `<cid>` is the record's content identifier. The naming scheme is deterministic and filesystem-safe so files can be diffed, signed, or selectively re-imported.
+
+**Typical workflow:**
+
+```bash
+# 1. Dry run — write transformed records to ./out
+dirctl import --type=mcp \
+  --url=https://registry.modelcontextprotocol.io/v0.1 \
+  --dry-run \
+  --output-dir=./out
+
+# 2. Review / diff / sign the per-record files on disk
+ls ./out
+# bafkrei...record.json
+# bafkrei...record.json
+# ...
+
+# 3. Re-import the artifacts later via dirctl push (or another import flow)
+for f in ./out/*.record.json; do
+  dirctl push "$f"
+done
+```
+
+### Signing Records During Import
+
+Records can be signed during import using the `--sign` flag. Signing options work the same as the standalone `dirctl sign` command (see [Security & Verification](#security-verification)).
+
+```bash
+# Sign with OIDC (opens browser)
+dirctl import --type=mcp --url=https://registry.modelcontextprotocol.io/v0.1 --sign
+
+# Sign with a private key
+dirctl import --type=mcp --url=https://registry.modelcontextprotocol.io/v0.1 --sign --key=/path/to/cosign.key
+```
+
+### Rate Limiting for LLM API Calls
+
+When importing large batches of records, the enrichment process makes LLM API calls for each record. To avoid hitting rate limits from LLM providers, use the `--enrich-rate-limit` flag:
+
+```bash
+# Import with reduced rate limit (5 requests per minute)
+dirctl import --type=mcp \
+  --url=https://registry.modelcontextprotocol.io/v0.1 \
+  --enrich-rate-limit=5
+
+# Import with higher rate limit for providers with generous limits
+dirctl import --type=mcp \
+  --url=https://registry.modelcontextprotocol.io/v0.1 \
+  --enrich-rate-limit=30
+```
+
+## Export Operations
+
+Export records from the Directory into formats consumable by external tools and agentic CLIs. Supports single-record export by CID/name and batch export from search results.
+
+### `dirctl export <cid-or-name[:version][@digest]> [flags]`
+
+Pull a record and transform it to the requested format.
+
+**Supported Formats:**
+
+| Format | Output | Description |
+|--------|--------|-------------|
+| `oasf` | `.json` | Raw OASF record JSON (default) |
+| `a2a` | `.json` | A2A AgentCard JSON for Agent-to-Agent protocol interop |
+| `agent-skill` | `.md` | SKILL.md artifact for agentic CLI consumption (Cursor, Claude Code, etc.) |
+| `mcp-ghcopilot` | `.json` | GitHub Copilot MCP configuration JSON |
+
+**Single-record Flags:**
+
+| Flag | Description | Default |
+|------|-------------|---------|
+| `--format` | Export format (see table above) | `oasf` |
+| `--output-file` | File path to write the exported data (default: stdout) | - |
+
+**Batch Export Flags:**
+
+| Flag | Description | Default |
+|------|-------------|---------|
+| `--output-dir` | Directory for batch export from search results | - |
+| `--all-versions` | Keep all versions (default: only latest semver per name) | `false` |
+| `--limit` | Maximum number of records to export | `100` |
+
+When `--output-dir` is used, at least one search filter is required. All standard search filters are available (`--name`, `--version`, `--module`, `--skill`, `--author`, etc.).
+
+!!! note "Batch behaviour varies by format"
+
+    For different export formats, the batch behaviour varies:
+
+    - **a2a / oasf**: One file per record (`<name>.json`).
+    - **agent-skill**: One subdirectory per skill (`<name>/SKILL.md`).
+    - **mcp-ghcopilot**: All matched MCP servers are merged into a single `mcp.json` with combined `servers` and `inputs` maps.
+
+??? example
+
+    ```bash
+    # Export a single record as A2A AgentCard to stdout
+    dirctl export baeareihdr6t7s6... --format=a2a
+
+    # Export to a file (auto-appends extension if omitted)
+    dirctl export my-agent:1.0 --format=a2a --output-file=./agent-card.json
+    dirctl export my-agent:1.0 --format=agent-skill --output-file=./SKILL.md
+
+    # Batch export A2A records to a directory
+    dirctl export --output-dir=./exports/ --format=a2a --module "integration/a2a"
+
+    # Batch export skills (creates subdirectories with SKILL.md)
+    dirctl export --output-dir=./exports/ --format=agent-skill \
+      --module "core/language_model/agentskills"
+
+    # Batch export MCP servers (merged into a single config)
+    dirctl export --output-dir=./exports/ --format=mcp-ghcopilot \
+      --module "integration/mcp"
+
+    # Export all versions instead of only the latest
+    dirctl export --output-dir=./exports/ --format=a2a \
+      --name "my-agent" --all-versions
+
+    # Combine multiple search filters
+    dirctl export --output-dir=./exports/ --format=a2a \
+      --author "acme" --skill "natural_language_processing"
+    ```
+
+## Routing Operations
+
+The routing commands manage record announcement and discovery across the peer-to-peer network.
+
+### `dirctl routing publish <cid>`
+
+Announces records to the network for discovery by other peers. The command does the following:
+
+- Announces record to DHT network.
+- Makes record discoverable by other peers.
+- Stores routing metadata locally.
+- Enables network-wide discovery.
+
+??? example
+
+    ```bash
+    # Publish a record to the network
+    dirctl routing publish baeareihdr6t7s6sr2q4zo456sza66eewqc7huzatyfgvoupaqyjw23ilvi
+    ```
+
+### `dirctl routing unpublish <cid>`
+
+Removes records from network discovery while keeping them in local storage. The command does the following:
+
+- Removes DHT announcements.
+- Stops network discovery.
+- Keeps record in local storage.
+- Cleans up routing metadata.
+
+??? example
+
+    ```bash
+    # Remove from network discovery
+    dirctl routing unpublish baeareihdr6t7s6sr2q4zo456sza66eewqc7huzatyfgvoupaqyjw23ilvi
+    ```
+
+### `dirctl routing list [flags]`
+
+Queries local published records with optional filtering.
+
+The following flags are available:
+
+- `--skill <skill>` - Filter by skill (repeatable)
+- `--locator <type>` - Filter by locator type (repeatable)
+- `--domain <domain>` - Filter by domain (repeatable)
+- `--module <module>` - Filter by module name (repeatable)
+- `--cid <cid>` - List specific record by CID
+- `--limit <number>` - Limit number of results
+
+??? example
+
+    ```bash
+    # List all local published records
+    dirctl routing list
+
+    # List by skill
+    dirctl routing list --skill "AI"
+    dirctl routing list --skill "Natural Language Processing"
+
+    # List by locator type
+    dirctl routing list --locator "docker-image"
+
+    # List by module
+    dirctl routing list --module "runtime/framework"
+
+    # Multiple criteria (AND logic)
+    dirctl routing list --skill "AI" --locator "docker-image"
+    dirctl routing list --domain "healthcare" --module "runtime/language"
+
+    # Specific record by CID
+    dirctl routing list --cid baeareihdr6t7s6sr2q4zo456sza66eewqc7huzatyfgvoupaqyjw23ilvi
+
+    # Limit results
+    dirctl routing list --skill "AI" --limit 5
+    ```
+
+### `dirctl routing search [flags]`
+
+Discovers records from other peers across the network.
+
+The following flags are available:
+
+- `--skill <skill>` - Search by skill (repeatable)
+- `--locator <type>` - Search by locator type (repeatable)
+- `--domain <domain>` - Search by domain (repeatable)
+- `--module <module>` - Search by module name (repeatable)
+- `--limit <number>` - Maximum results to return
+- `--min-score <score>` - Minimum match score threshold
+
+The output includes the following:
+
+- Record CID and provider peer information
+- Match score showing query relevance
+- Specific queries that matched
+- Peer connection details
+
+??? example
+
+    ```bash
+    # Search for AI records across the network
+    dirctl routing search --skill "AI"
+
+    # Search with multiple criteria
+    dirctl routing search --skill "AI" --skill "ML" --min-score 2
+
+    # Search by locator type
+    dirctl routing search --locator "docker-image"
+
+    # Search by module
+    dirctl routing search --module "runtime/framework"
+
+    # Advanced search with scoring
+    dirctl routing search --skill "web-development" --limit 10 --min-score 1
+    dirctl routing search --domain "finance" --module "validation" --min-score 2
+    ```
+
+**Output includes:**
+
+### `dirctl routing info`
+
+Shows routing statistics and summary information.
+
+The output includes the following:
+
+- Total published records count
+- Skills distribution with counts
+- Locators distribution with counts
+- Helpful usage tips
+
+??? example
+
+    ```bash
+    # Show local routing statistics
+    dirctl routing info
+    ```
+
+## Search & Discovery
+
+### `dirctl search [flags]`
+
+General content search across all records using the search service.
+
+The following flags are available:
+
+- `--query <key=value>` - Search criteria (repeatable)
+- `--limit <number>` - Maximum results
+- `--offset <number>` - Result offset for pagination
+
+??? example
+
+    ```bash
+    # Search by record name
+    dirctl search --query "name=my-agent"
+
+    # Search by version
+    dirctl search --query "version=v1.0.0"
+
+    # Search by skill ID
+    dirctl search --query "skill-id=10201"
+
+    # Complex search with multiple criteria
+    dirctl search --limit 10 --offset 0 \
+    --query "name=my-agent" \
+    --query "skill-name=Text Completion" \
+    --query "locator=docker-image:https://example.com/image"
+    ```
+
+## Security & Verification
+
+### Name Verification
+
+Record name verification proves that the signing key is authorized by the domain claimed in the record's name field.
+
+**Requirements:**
+
+- Record name must include a protocol prefix: `https://domain/path` or `http://domain/path`
+- A JWKS file must be hosted at `<scheme>://<domain>/.well-known/jwks.json`
+- The record must be signed with the private key corresponding to a public key present in that JWKS file
+
+**Workflow:**
+
+1. Push a record with a verifiable name.
+
+    ```bash
+    dirctl push record.json --output raw
+    # Returns: bafyreib...
+    ```
+
+2. Sign the record (triggers automatic verification).
+
+    ```bash
+    dirctl sign <cid> --key private.key
+    ```
+
+3. Check verification status using [`dirctl naming verify`](#dirctl-naming-verify-reference).
+
+### `dirctl sign <cid> [flags]`
+
+Signs records for integrity and authenticity. When signing a record with a verifiable name (e.g., `https://domain/path`), the system automatically attempts to verify domain authorization via JWKS. See [Name Verification](#name-verification) for details.
+
+??? example
+
+    ```bash
+    # Sign with private key
+    dirctl sign <cid> --key private.key
+
+    # Sign with OIDC (keyless signing)
+    dirctl sign <cid> --oidc --fulcio-url https://fulcio.example.com
+    ```
+
+### `dirctl naming verify <reference>`
+
+Verifies that a record's signing key is authorized by the domain claimed in its name field. Checks if the signing key matches a public key in the domain's JWKS file hosted at `/.well-known/jwks.json`.
+
+**Supported Reference Formats:**
+
+| Format | Description |
+|--------|-------------|
+| `<cid>` | Verify by content address |
+| `<name>` | Verify the most recently created version |
+| `<name>:<version>` | Verify a specific version |
+
+??? example
+
+    ```bash
+    # Verify by CID
+    dirctl naming verify bafyreib... --output json
+
+    # Verify by name (latest version)
+    dirctl naming verify cisco.com/agent --output json
+
+    # Verify by name with specific version
+    dirctl naming verify cisco.com/agent:v1.0.0 --output json
+    ```
+
+    Example verification response:
+
+    ```json
+    {
+    "cid": "bafyreib...",
+    "verified": true,
+    "domain": "cisco.com",
+    "method": "jwks",
+    "key_id": "key-1",
+    "verified_at": "2026-01-21T10:30:00Z"
+    }
+    ```
+
+### `dirctl verify <record> <signature> [flags]`
+
+Verifies record signatures.
+
+??? example
+
+    ```bash
+    # Verify with public key
+    dirctl verify record.json signature.sig --key public.key
+    ```
+
+### `dirctl validate [<file>] [flags]`
+
+Validates OASF record JSON from a file or stdin against the OASF schema. The JSON can be provided as a file path or piped from stdin (e.g., from `dirctl pull`). A schema URL must be provided via `--url` for API-based validation.
+
+| Flag | Description |
+|------|-------------|
+| `--url <url>` | OASF schema URL for API-based validation (required) |
+
+??? example
+
+    ```bash
+    # Validate a file with API-based validation
+    dirctl validate record.json --url https://schema.oasf.outshift.com
+
+    # Validate JSON piped from stdin
+    cat record.json | dirctl validate --url https://schema.oasf.outshift.com
+
+    # Validate a record pulled from directory
+    dirctl pull <cid> --output json | dirctl validate --url https://schema.oasf.outshift.com
+
+    # Validate all records (using shell scripting)
+    for cid in $(dirctl search --output jsonl | jq -r '.record_cid'); do
+      dirctl pull "$cid" | dirctl validate --url https://schema.oasf.outshift.com
+    done
+    ```
+
+## Synchronization
+
+### `dirctl sync create <url>`
+
+Creates peer-to-peer synchronization.
+
+??? example
+
+    ```bash
+    # Create sync with remote peer
+    dirctl sync create https://peer.example.com
+    ```
+
+### `dirctl sync list`
+
+Lists active synchronizations.
+
+??? example
+
+    ```bash
+    # Show all active syncs
+    dirctl sync list
+    ```
+
+### `dirctl sync status <sync-id>`
+
+Checks synchronization status.
+
+??? example
+
+    ```bash
+    # Check specific sync status
+    dirctl sync status abc123-def456-ghi789
+    ```
+
+### `dirctl sync delete <sync-id>`
+
+Removes synchronization.
+
+??? example
+
+    ```bash
+    # Delete a sync
+    dirctl sync delete abc123-def456-ghi789
+    ```

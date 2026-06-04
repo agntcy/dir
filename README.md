@@ -42,7 +42,7 @@ to ensure the integrity and authenticity of Directory records and nodes.
 
 ## Documentation
 
-Check the [Documentation](https://docs.agntcy.org/dir/overview/) for a full walkthrough of all the Directory features.
+Check the [Documentation](https://docs.agntcy.org/dir/dir-overview/) for a full walkthrough of all the Directory features.
 
 ## Source tree
 
@@ -149,7 +149,7 @@ All release binaries are distributed via [GitHub Releases](https://github.com/ag
 
 ## Deployment
 
-See the [Getting Started](https://docs.agntcy.org/dir/getting-started/) documentation for the full platform support matrix, prerequisites, and configuration details.
+See the [Quickstart](https://docs.agntcy.org/dir/dir-quickstart/) documentation for the full platform support matrix, prerequisites, and configuration details.
 
 ### Using dirctl daemon
 
