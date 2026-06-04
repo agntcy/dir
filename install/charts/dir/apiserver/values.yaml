@@ -409,6 +409,48 @@ securityContext: {}
   # runAsNonRoot: true
   # runAsUser: 1000
 
+# HTTP Gateway configuration (grpc-gateway)
+# Exposes gRPC services over HTTP/JSON via grpc-gateway sidecar
+# Values are automatically injected into the server configuration
+httpGateway:
+  # Enable the HTTP gateway
+  # Default: false
+  enabled: false
+
+  # Port for the HTTP gateway endpoint
+  # Used for both the application listen address and Kubernetes service/ingress port
+  # Default: 8889
+  port: 8889
+
+  # Service configuration for HTTP gateway traffic (separate from gRPC service)
+  service:
+    # Service type for HTTP gateway traffic
+    # Options: ClusterIP, NodePort, LoadBalancer
+    # Default: ClusterIP
+    type: ClusterIP
+
+    # Optional: Fixed NodePort (only used when type is NodePort)
+    # nodePort: 30889
+
+    # Optional: Additional custom annotations
+    annotations: {}
+
+  # Ingress configuration for HTTP gateway
+  ingress:
+    # Enable Ingress resource for the HTTP gateway
+    enabled: false
+    className: ""
+    annotations: {}
+    hosts:
+      - host: chart-example.local
+        paths:
+          - path: /
+            pathType: Prefix
+    tls: []
+    #  - secretName: chart-example-tls
+    #    hosts:
+    #      - chart-example.local
+
 # OpenShift Route configuration (optional)
 # Creates an OpenShift Route to expose the gRPC API externally.
 # Only applicable on OpenShift clusters. Disabled by default.

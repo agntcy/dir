@@ -1,0 +1,27 @@
+# Copyright AGNTCY Contributors (https://github.com/agntcy)
+# SPDX-License-Identifier: Apache-2.0
+
+{{- if .Values.httpGateway.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "chart.fullname" . }}-http-gateway
+  labels:
+    {{- include "chart.labels" . | nindent 4 }}
+  {{- with .Values.httpGateway.service.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  type: {{ .Values.httpGateway.service.type }}
+  ports:
+    - port: {{ .Values.httpGateway.port }}
+      targetPort: http-gateway
+      protocol: TCP
+      name: http
+      {{- if and (eq .Values.httpGateway.service.type "NodePort") .Values.httpGateway.service.nodePort }}
+      nodePort: {{ .Values.httpGateway.service.nodePort }}
+      {{- end }}
+  selector:
+    {{- include "chart.selectorLabels" . | nindent 4 }}
+{{- end }}

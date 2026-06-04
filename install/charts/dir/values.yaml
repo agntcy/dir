@@ -12,6 +12,37 @@ apiserver:
   service:
     type: NodePort # Default for local/dev - change to ClusterIP for cloud with Ingress
 
+  # HTTP Gateway configuration (grpc-gateway)
+  # Exposes gRPC services over HTTP/JSON via grpc-gateway sidecar
+  # The values are automatically injected into the server configuration
+  httpGateway:
+    # Enable the HTTP gateway
+    # Default: false
+    enabled: false
+
+    # Port for the HTTP gateway endpoint
+    # Default: 8889
+    port: 8889
+
+    # Service configuration for HTTP gateway traffic (separate from gRPC service)
+    service:
+      # Service type: ClusterIP, NodePort, LoadBalancer
+      type: ClusterIP
+      # nodePort: 30889
+      annotations: {}
+
+    # Ingress configuration for HTTP gateway
+    ingress:
+      enabled: false
+      className: ""
+      annotations: {}
+      hosts:
+        - host: chart-example.local
+          paths:
+            - path: /
+              pathType: Prefix
+      tls: []
+
   # Prometheus metrics configuration
   # This section configures BOTH the application metrics server AND Kubernetes service
   # The values are automatically injected into the server configuration

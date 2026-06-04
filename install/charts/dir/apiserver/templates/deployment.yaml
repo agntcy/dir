@@ -120,6 +120,11 @@ spec:
               containerPort: {{ .Values.metrics.port }}
               protocol: TCP
             {{- end }}
+            {{- if .Values.httpGateway.enabled }}
+            - name: http-gateway
+              containerPort: {{ .Values.httpGateway.port }}
+              protocol: TCP
+            {{- end }}
           {{- if or (eq .Values.config.authn.enabled true) (eq .Values.spire.enabled true) }}
           livenessProbe:
             tcpSocket:

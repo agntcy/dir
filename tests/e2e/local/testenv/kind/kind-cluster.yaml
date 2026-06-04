@@ -9,3 +9,6 @@ nodes:
     # DIR metrics server
     - hostPort: 18889
       containerPort: 30090
+    # DIR HTTP gateway
+    - hostPort: 18892
+      containerPort: 30889

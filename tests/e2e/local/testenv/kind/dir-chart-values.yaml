@@ -26,3 +26,10 @@ apiserver:
         interval: "5s"
       signature:
         interval: "5s"
+
+  httpGateway:
+    enabled: true
+    port: 8889
+    service:
+      type: NodePort
+      nodePort: 30889

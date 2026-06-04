@@ -26,5 +26,11 @@ spec:
       nodePort: {{ .Values.service.metricsNodePort }}
       {{- end }}
     {{- end }}
+    {{- if .Values.httpGateway.enabled }}
+    - port: {{ .Values.httpGateway.port }}
+      targetPort: http-gateway
+      protocol: TCP
+      name: http-gateway
+    {{- end }}
   selector:
     {{- include "chart.selectorLabels" . | nindent 4 }}
