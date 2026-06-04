@@ -1,0 +1,96 @@
+# SPDX-FileCopyrightText: Copyright (c) 2026 Cisco and/or its affiliates.
+# SPDX-License-Identifier: Apache-2.0
+#
+# Publish versioned docs to the gh-pages branch (mike). GitHub Pages should use branch "gh-pages" / root.
+# Triggers: release (published), semver tags, or manual run with a version string.
+
+name: Deploy documentation
+
+on:
+  release:
+    types: [published]
+
+  push:
+    tags:
+      - 'v*.*.*'
+
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Docs version label for mike (e.g. 1.2.0 or 2.0.0-rc.1; no leading v required)'
+        required: true
+        type: string
+
+# Queue deploys so concurrent gh-pages commits (e.g. tag + release) do not race.
+concurrency:
+  group: docs-deploy-gh-pages
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  deploy:
+    name: mike deploy → gh-pages
+    runs-on: ubuntu-latest
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+      MKDOCS_SITE_URL: https://agntcy.github.io/dir/
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Resolve version label
+        id: ver
+        shell: bash
+        env:
+          TAG_NAME: ${{ github.event.release.tag_name }}
+        run: |
+          set -euo pipefail
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            V="${{ github.event.inputs.version }}"
+          elif [ "${{ github.event_name }}" = "release" ] && [ -n "${TAG_NAME:-}" ]; then
+            V="${TAG_NAME}"
+          elif [ "${{ github.ref_type }}" = "tag" ]; then
+            V="${{ github.ref_name }}"
+          else
+            echo "::error::Could not resolve version from event"
+            exit 1
+          fi
+          V="${V#v}"
+          if [ -z "$V" ]; then
+            echo "::error::Empty version after normalizing tag/input"
+            exit 1
+          fi
+          echo "version=${V}" >> "$GITHUB_OUTPUT"
+          echo "Deploying mike version: ${V}"
+
+      - name: Install Python dependencies (docs)
+        shell: bash
+        run: python3 -m pip install -r docs/requirements.txt
+
+      - name: Git identity (mike commits to gh-pages)
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+      - name: Fetch gh-pages (history for mike)
+        shell: bash
+        run: git fetch origin gh-pages --depth=1 2>/dev/null || true
+
+      - name: Mike deploy
+        shell: bash
+        env:
+          VERSION: ${{ steps.ver.outputs.version }}
+        run: |
+          set -euo pipefail
+          : "${VERSION:?Missing VERSION from resolve step}"
+          MIKE_VERSION="${VERSION}"
+          echo "Mike version: ${MIKE_VERSION}"
+          mike deploy -F docs/mkdocs.yml --push "$MIKE_VERSION"
+          mike set-default -F docs/mkdocs.yml --push "$MIKE_VERSION"
+          for stale in dev latest; do mike delete -F docs/mkdocs.yml --push "$stale" 2>/dev/null || true; done
+          mike list -F docs/mkdocs.yml
