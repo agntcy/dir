@@ -56,6 +56,9 @@ func TestConfig(t *testing.T) {
 				"DIRECTORY_SERVER_PUBLICATION_SCHEDULER_INTERVAL":      "10s",
 				"DIRECTORY_SERVER_PUBLICATION_WORKER_COUNT":            "1",
 				"DIRECTORY_SERVER_PUBLICATION_WORKER_TIMEOUT":          "10s",
+				"DIRECTORY_SERVER_HTTP_GATEWAY_ENABLED":                "true",
+				"DIRECTORY_SERVER_HTTP_GATEWAY_LISTEN_ADDRESS":         "address:123",
+				"DIRECTORY_SERVER_HTTP_GATEWAY_PUBLIC_URL":             "https://example.com",
 			},
 			ExpectedConfig: &Config{
 				ListenAddress: "example.com:8889",
@@ -131,6 +134,11 @@ func TestConfig(t *testing.T) {
 				Naming: naming.Config{
 					TTL: naming.DefaultTTL,
 				},
+				HTTPGateway: HTTPGatewayConfig{
+					Enabled:       true,
+					ListenAddress: "address:123",
+					PublicURL:     "https://example.com",
+				},
 			},
 		},
 		{
@@ -197,6 +205,11 @@ func TestConfig(t *testing.T) {
 				},
 				Naming: naming.Config{
 					TTL: naming.DefaultTTL,
+				},
+				HTTPGateway: HTTPGatewayConfig{
+					Enabled:       DefaultHTTPGatewayEnabled,
+					ListenAddress: DefaultHTTPGatewayAddress,
+					PublicURL:     DefaultHTTPGatewayPublicURL,
 				},
 			},
 		},
