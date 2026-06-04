@@ -22,7 +22,7 @@ func TestLoadConfigUsesMacOSFriendlyLocalRegistryPort(t *testing.T) {
 	cfg, err := loadConfig()
 
 	require.NoError(t, err)
-	require.Equal(t, "localhost:5555", cfg.Server.Store.OCI.RegistryAddress)
+	require.Equal(t, "localhost:5555", cfg.Server.Store.RegistryAddress)
 	require.Equal(t, "localhost:5555", cfg.Reconciler.LocalRegistry.RegistryAddress)
 }
 

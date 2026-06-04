@@ -15,7 +15,6 @@ import (
 	naming "github.com/agntcy/dir/server/naming/config"
 	publication "github.com/agntcy/dir/server/publication/config"
 	routing "github.com/agntcy/dir/server/routing/config"
-	store "github.com/agntcy/dir/server/store/config"
 	oci "github.com/agntcy/dir/server/store/oci/config"
 	"github.com/stretchr/testify/assert"
 )
@@ -29,33 +28,31 @@ func TestConfig(t *testing.T) {
 		{
 			Name: "Custom config",
 			EnvVars: map[string]string{
-				"DIRECTORY_SERVER_LISTEN_ADDRESS":                      "example.com:8889",
-				"DIRECTORY_SERVER_OASF_API_VALIDATION_SCHEMA_URL":      "https://custom.schema.url",
-				"DIRECTORY_SERVER_STORE_PROVIDER":                      "provider",
-				"DIRECTORY_SERVER_STORE_OCI_TYPE":                      "ghcr",
-				"DIRECTORY_SERVER_STORE_OCI_LOCAL_DIR":                 "local-dir",
-				"DIRECTORY_SERVER_STORE_OCI_REGISTRY_ADDRESS":          "example.com:5001",
-				"DIRECTORY_SERVER_STORE_OCI_REPOSITORY_NAME":           "test-dir",
-				"DIRECTORY_SERVER_STORE_OCI_AUTH_CONFIG_INSECURE":      "true",
-				"DIRECTORY_SERVER_STORE_OCI_AUTH_CONFIG_USERNAME":      "username",
-				"DIRECTORY_SERVER_STORE_OCI_AUTH_CONFIG_PASSWORD":      "password",
-				"DIRECTORY_SERVER_STORE_OCI_AUTH_CONFIG_ACCESS_TOKEN":  "access-token",
-				"DIRECTORY_SERVER_STORE_OCI_AUTH_CONFIG_REFRESH_TOKEN": "refresh-token",
-				"DIRECTORY_SERVER_ROUTING_LISTEN_ADDRESS":              "/ip4/1.1.1.1/tcp/1",
-				"DIRECTORY_SERVER_ROUTING_BOOTSTRAP_PEERS":             "/ip4/1.1.1.1/tcp/1,/ip4/1.1.1.1/tcp/2",
-				"DIRECTORY_SERVER_ROUTING_KEY_PATH":                    "/path/to/key",
-				"DIRECTORY_SERVER_DATABASE_TYPE":                       "postgres",
-				"DIRECTORY_SERVER_DATABASE_POSTGRES_HOST":              "localhost",
-				"DIRECTORY_SERVER_DATABASE_POSTGRES_PORT":              "5432",
-				"DIRECTORY_SERVER_DATABASE_POSTGRES_DATABASE":          "dir",
-				"DIRECTORY_SERVER_DATABASE_POSTGRES_SSL_MODE":          "auto",
-				"DIRECTORY_SERVER_SYNC_AUTH_CONFIG_USERNAME":           "sync-user",
-				"DIRECTORY_SERVER_SYNC_AUTH_CONFIG_PASSWORD":           "sync-password",
-				"DIRECTORY_SERVER_AUTHZ_ENABLED":                       "true",
-				"DIRECTORY_SERVER_AUTHZ_ENFORCER_POLICY_FILE_PATH":     "/tmp/authz_policies.csv",
-				"DIRECTORY_SERVER_PUBLICATION_SCHEDULER_INTERVAL":      "10s",
-				"DIRECTORY_SERVER_PUBLICATION_WORKER_COUNT":            "1",
-				"DIRECTORY_SERVER_PUBLICATION_WORKER_TIMEOUT":          "10s",
+				"DIRECTORY_SERVER_LISTEN_ADDRESS":                  "example.com:8889",
+				"DIRECTORY_SERVER_OASF_API_VALIDATION_SCHEMA_URL":  "https://custom.schema.url",
+				"DIRECTORY_SERVER_STORE_LOCAL_DIR":                 "local-dir",
+				"DIRECTORY_SERVER_STORE_REGISTRY_ADDRESS":          "example.com:5001",
+				"DIRECTORY_SERVER_STORE_REPOSITORY_NAME":           "test-dir",
+				"DIRECTORY_SERVER_STORE_AUTH_CONFIG_INSECURE":      "true",
+				"DIRECTORY_SERVER_STORE_AUTH_CONFIG_USERNAME":      "username",
+				"DIRECTORY_SERVER_STORE_AUTH_CONFIG_PASSWORD":      "password",
+				"DIRECTORY_SERVER_STORE_AUTH_CONFIG_ACCESS_TOKEN":  "access-token",
+				"DIRECTORY_SERVER_STORE_AUTH_CONFIG_REFRESH_TOKEN": "refresh-token",
+				"DIRECTORY_SERVER_ROUTING_LISTEN_ADDRESS":          "/ip4/1.1.1.1/tcp/1",
+				"DIRECTORY_SERVER_ROUTING_BOOTSTRAP_PEERS":         "/ip4/1.1.1.1/tcp/1,/ip4/1.1.1.1/tcp/2",
+				"DIRECTORY_SERVER_ROUTING_KEY_PATH":                "/path/to/key",
+				"DIRECTORY_SERVER_DATABASE_TYPE":                   "postgres",
+				"DIRECTORY_SERVER_DATABASE_POSTGRES_HOST":          "localhost",
+				"DIRECTORY_SERVER_DATABASE_POSTGRES_PORT":          "5432",
+				"DIRECTORY_SERVER_DATABASE_POSTGRES_DATABASE":      "dir",
+				"DIRECTORY_SERVER_DATABASE_POSTGRES_SSL_MODE":      "auto",
+				"DIRECTORY_SERVER_SYNC_AUTH_CONFIG_USERNAME":       "sync-user",
+				"DIRECTORY_SERVER_SYNC_AUTH_CONFIG_PASSWORD":       "sync-password",
+				"DIRECTORY_SERVER_AUTHZ_ENABLED":                   "true",
+				"DIRECTORY_SERVER_AUTHZ_ENFORCER_POLICY_FILE_PATH": "/tmp/authz_policies.csv",
+				"DIRECTORY_SERVER_PUBLICATION_SCHEDULER_INTERVAL":  "10s",
+				"DIRECTORY_SERVER_PUBLICATION_WORKER_COUNT":        "1",
+				"DIRECTORY_SERVER_PUBLICATION_WORKER_TIMEOUT":      "10s",
 			},
 			ExpectedConfig: &Config{
 				ListenAddress: "example.com:8889",
@@ -68,22 +65,16 @@ func TestConfig(t *testing.T) {
 					Mode:      authn.AuthModeX509, // Default from config.go:109
 					Audiences: []string{},
 				},
-				Store: store.Config{
-					Provider: "provider",
-					OCI: oci.Config{
-						LocalDir:        "local-dir",
-						RegistryAddress: "example.com:5001",
-						RepositoryName:  "test-dir",
-						AuthConfig: oci.AuthConfig{
-							Insecure:     true,
-							Username:     "username",
-							Password:     "password",
-							RefreshToken: "refresh-token",
-							AccessToken:  "access-token",
-						},
-					},
-					Verification: store.VerificationConfig{
-						Enabled: true,
+				Store: oci.Config{
+					LocalDir:        "local-dir",
+					RegistryAddress: "example.com:5001",
+					RepositoryName:  "test-dir",
+					AuthConfig: oci.AuthConfig{
+						Insecure:     true,
+						Username:     "username",
+						Password:     "password",
+						RefreshToken: "refresh-token",
+						AccessToken:  "access-token",
 					},
 				},
 				Routing: routing.Config{
@@ -129,7 +120,8 @@ func TestConfig(t *testing.T) {
 					Address: ":9090",
 				},
 				Naming: naming.Config{
-					TTL: naming.DefaultTTL,
+					Enabled: naming.DefaultEnabled,
+					TTL:     naming.DefaultTTL,
 				},
 			},
 		},
@@ -147,17 +139,11 @@ func TestConfig(t *testing.T) {
 					Mode:      authn.AuthModeX509, // Default from config.go:109
 					Audiences: []string{},
 				},
-				Store: store.Config{
-					Provider: store.DefaultProvider,
-					OCI: oci.Config{
-						RegistryAddress: oci.DefaultRegistryAddress,
-						RepositoryName:  oci.DefaultRepositoryName,
-						AuthConfig: oci.AuthConfig{
-							Insecure: oci.DefaultAuthConfigInsecure,
-						},
-					},
-					Verification: store.VerificationConfig{
-						Enabled: store.DefaultVerificationEnabled,
+				Store: oci.Config{
+					RegistryAddress: oci.DefaultRegistryAddress,
+					RepositoryName:  oci.DefaultRepositoryName,
+					AuthConfig: oci.AuthConfig{
+						Insecure: oci.DefaultAuthConfigInsecure,
 					},
 				},
 				Routing: routing.Config{
@@ -196,7 +182,8 @@ func TestConfig(t *testing.T) {
 					Address: DefaultMetricsAddress,
 				},
 				Naming: naming.Config{
-					TTL: naming.DefaultTTL,
+					Enabled: naming.DefaultEnabled,
+					TTL:     naming.DefaultTTL,
 				},
 			},
 		},
