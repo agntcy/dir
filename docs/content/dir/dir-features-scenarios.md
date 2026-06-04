@@ -220,7 +220,7 @@ execution environment (like GitHub Actions) to sign records. The signing process
 pre-obtained OIDC token along with provider-specific configuration to establish identity
 without user interaction.
 
-```
+```yaml
 - name: Push and sign record
   run: |
     bin/dirctl push record.json --sign \
@@ -572,9 +572,9 @@ The import feature extends Directory's synchronization capabilities beyond DIR-t
 
 **How Import Works**: The import system uses registry-specific adapters to fetch records from external sources and transform them into OASF-compliant records. Each registry type has its own import logic that handles authentication, pagination, filtering, and data transformation. Records are automatically deduplicated and can be enriched with LLM-powered skill and domain mapping to ensure consistency with the OASF schema.
 
-**How Translation and Enrichment Work**: Records are transformed from external registry data to OASF-compliant format, directly impacting how records are indexed and discovered across the network. 
+**How Translation and Enrichment Work**: Records are transformed from external registry data to OASF-compliant format, directly impacting how records are indexed and discovered across the network.
 
-Three methods are available: 
+Three methods are available:
 
 - **Basic translation** uses [OASF-SDK basic translation](https://docs.agntcy.org/oasf/translation/) with rule-based mapping. This method is fast and deterministic but produces a record without any skills or domains, requiring manual or LLM-based enrichment after the initial translation.
 - **Local LLM enrichment** runs LLM locally for intelligent skill and domain mapping, requiring local LLM runtime.

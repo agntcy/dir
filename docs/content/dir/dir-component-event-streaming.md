@@ -43,7 +43,7 @@ dirctl events listen
 
 **Output:**
 
-```
+```text
 Listening to events (press Ctrl+C to stop)...
 
 [14:23:15] RECORD_PUSHED: bafybeigdyrzt5sfp7udm7hu76uh7y26nf3efuylqabf3oclgtqy55fbzdi

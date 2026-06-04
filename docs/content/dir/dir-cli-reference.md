@@ -114,7 +114,7 @@ Without `--config`, built-in defaults are used. When `--config` is provided, the
 
 **Data directory layout:**
 
-```
+```text
 ~/.agntcy/dir/
 ├── dir.db          # SQLite database
 ├── store/          # Persistent OCI store
