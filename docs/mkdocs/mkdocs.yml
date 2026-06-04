@@ -1,12 +1,12 @@
-# MkDocs config lives in docs/; paths below are relative to this file.
-# Build: task docs:build   or: mkdocs build -f docs/mkdocs.yml --site-dir .build/site
+# MkDocs config lives in docs/mkdocs/; paths below are relative to this file.
+# Build: task docs:build   or: uv run mkdocs build (from docs/mkdocs)
 
 site_name: Directory documentation
 # Local `mkdocs serve` must use a site_url *without* a path segment, or only /dir/... URLs work (404 at /).
 # CI sets MKDOCS_SITE_URL for production builds. Default: local dev server root.
 site_url: !ENV [MKDOCS_SITE_URL, 'http://127.0.0.1:8000/']
 
-docs_dir: content
+docs_dir: ../content
 
 repo_name: agntcy/dir
 repo_url: https://github.com/agntcy/dir

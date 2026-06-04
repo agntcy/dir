@@ -7,6 +7,9 @@
 .env
 .envrc
 
+# Task cache
+.task/
+
 # Builds
 .bin/
 .build/
@@ -16,6 +19,7 @@ site/
 # Python
 __pycache__/
 *.egg-info
+docs/mkdocs/.venv/
 
 # JS
 node_modules

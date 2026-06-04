@@ -1,4 +1,4 @@
-"""Print mike version from mike_versions.ini; optional VERSION env overrides release."""
+"""Print mike version: local from mike_versions.ini; release from VERSION env (CI)."""
 
 from __future__ import annotations
 
@@ -18,28 +18,22 @@ def main() -> None:
     parser.add_argument("mode", choices=("local", "release"))
     args = parser.parse_args()
 
-    ini = Path(__file__).resolve().parent / "mike_versions.ini"
-    cfg = configparser.ConfigParser()
-    if not cfg.read(ini, encoding="utf-8"):
-        raise SystemExit(f"could not read {ini}")
-
     if args.mode == "local":
+        ini = Path(__file__).resolve().parent / "mike_versions.ini"
+        cfg = configparser.ConfigParser()
+        if not cfg.read(ini, encoding="utf-8"):
+            raise SystemExit(f"could not read {ini}")
         raw = cfg.get("versions", "local", fallback="dev")
         out = strip_leading_v(raw) or "dev"
         print(out)
         return
 
     env = os.environ.get("VERSION", "").strip()
-    if env:
-        print(strip_leading_v(env))
-        return
-
-    raw = cfg.get("versions", "release", fallback="").strip()
-    if not raw:
+    if not env:
         raise SystemExit(
-            "Set [versions] release in docs/mike_versions.ini or export VERSION=..."
+            "VERSION is required (docs-deploy workflow sets it from the tag or release)"
         )
-    print(strip_leading_v(raw))
+    print(strip_leading_v(env))
 
 
 if __name__ == "__main__":

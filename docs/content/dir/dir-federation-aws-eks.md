@@ -660,10 +660,10 @@ This guide does not try to provision the AWS infrastructure from zero in the mai
 
     If you want a fuller post-deployment smoke test against your own Directory, use the CLI workflows in [Features and Usage Scenarios](dir-features-scenarios.md) and the [CLI Reference](dir-cli-reference.md):
 
-    - `dirctl push record.json`
-    - `dirctl info <cid>`
-    - `dirctl search --name <name>`
-    - `dirctl sync create https://ads.outshift.io:443`
+     - `dirctl push record.json`
+     - `dirctl info <cid>`
+     - `dirctl search --name <name>`
+     - `dirctl sync create https://ads.outshift.io:443`
 
 ## Troubleshooting
 

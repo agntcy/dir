@@ -42,22 +42,24 @@ The **Settings Screen** allows you to configure the "Brain" of the application
 (the LLM) and the connections to external services.
 
 ### LLM Providers
+
 You can switch between different AI models to power the chat experience:
 
-*   **Google Gemini**: Use Google's generative AI models.
-*   **Azure OpenAI**: Connect to your enterprise Azure deployments.
-*   **OpenAI Compatible**: Connect to standard OpenAI APIs or compatible proxies.
-*   **Ollama (Local)**: Use local models running on your machine (e.g., `gemma3:4b`, `llama3`). This enables a fully local stack where data never leaves your device.
+-   **Google Gemini**: Use Google's generative AI models.
+-   **Azure OpenAI**: Connect to your enterprise Azure deployments.
+-   **OpenAI Compatible**: Connect to standard OpenAI APIs or compatible proxies.
+-   **Ollama (Local)**: Use local models running on your machine (e.g., `gemma3:4b`, `llama3`). This enables a fully local stack where data never leaves your device.
 
 ### Configuration Fields
-*   **API Keys**: Securely input keys for cloud providers.
-*   **Endpoints**: Custom endpoints for Azure or local servers.
-*   **Model Selection**: Specify exactly which model version you want to use (e.g., defaulting to `gemma3:4b` for Ollama).
+
+-   **API Keys**: Securely input keys for cloud providers.
+-   **Endpoints**: Custom endpoints for Azure or local servers.
+-   **Model Selection**: Specify exactly which model version you want to use (e.g., defaulting to `gemma3:4b` for Ollama).
 
 ### Directory Connection
-*   **Server Address**: Point the internal MCP server to your remote or local Directory Service instance.
-*   **Authentication**: detailed configuration for tokens to ensure secure access to your directory data.
 
+-   **Server Address**: Point the internal MCP server to your remote or local Directory Service instance.
+-   **Authentication**: detailed configuration for tokens to ensure secure access to your directory data.
 
 <video src="../assets/dir-gui.mov" controls="controls" style="max-width: 100%;"></video>
 
@@ -65,8 +67,8 @@ You can switch between different AI models to power the chat experience:
 
 You can find the latest build artifacts for each platform below:
 
-*   **Windows**: [Download Windows App](https://github.com/agntcy/dir-gui/releases/download/v1.0.1/dir-gui-windows-amd64.zip)
-*   **macOS**: [Download macOS App](https://github.com/agntcy/dir-gui/releases/download/v1.0.1/dir-gui-darwin-universal.dmg)
+-   **Windows**: [Download Windows App](https://github.com/agntcy/dir-gui/releases/download/v1.0.1/dir-gui-windows-amd64.zip)
+-   **macOS**: [Download macOS App](https://github.com/agntcy/dir-gui/releases/download/v1.0.1/dir-gui-darwin-universal.dmg)
 
 or check the [Release Page](https://github.com/agntcy/dir-gui/releases).
 
@@ -103,13 +105,12 @@ missing, the file is not blocked.
 You can also bypass SmartScreen by clicking "More info" > "Run anyway".
 
 ### Why This Happens
-*   **Unknown Publisher/Unsigned Code**: Many independent developers on GitHub
+
+-   **Unknown Publisher/Unsigned Code**: Many independent developers on GitHub
    do not purchase expensive digital code-signing certificates. Windows
    defaults to blocking these.
-*   **Low Reputation**: Even if signed, new apps need time for Windows to build
+-   **Low Reputation**: Even if signed, new apps need time for Windows to build
    a "reputation score" based on user adoption. New or rarely downloaded tools
    will trigger this warning.
-*   **False Positives**: Sometimes, generic malware detection flags legitimate
+-   **False Positives**: Sometimes, generic malware detection flags legitimate
    software, particularly in installer packages.
-
-

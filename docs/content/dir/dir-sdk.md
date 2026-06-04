@@ -73,7 +73,7 @@ const spiffeClient = new Client(config, transport);
 
 ## Python SDK
 
-Documentation for the Python SDK can be found on [GitHub](https://github.com/agntcy/dir-sdk-python). 
+Documentation for the Python SDK can be found on [GitHub](https://github.com/agntcy/dir-sdk-python).
 The SDK supports Python 3.10+ applications. The package is published on [PyPI](https://pypi.org/project/agntcy-dir/).
 
 ### Installation

@@ -99,7 +99,7 @@ listen_address: "0.0.0.0:8888"
 ```
 
 !!! note
-    
+  
     The server itself does not have a built-in default schema URL. Deployment tools like Helm and Taskfile set `https://schema.oasf.outshift.com` as the default. When using Docker Compose or running the server binary directly, you must explicitly set the `DIRECTORY_SERVER_OASF_API_VALIDATION_SCHEMA_URL` environment variable.
 
 ### Validation Behavior

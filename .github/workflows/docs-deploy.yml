@@ -1,8 +1,8 @@
 # SPDX-FileCopyrightText: Copyright (c) 2026 Cisco and/or its affiliates.
 # SPDX-License-Identifier: Apache-2.0
 #
-# Publish versioned docs to the gh-pages branch (mike). GitHub Pages should use branch "gh-pages" / root.
-# Triggers: release (published), semver tags, or manual run with a version string.
+# Publish versioned docs (mike) via GitHub Actions Pages. gh-pages branch is the version ledger (CI push only).
+# Site: https://agntcy.github.io/dir/
 
 name: Deploy documentation
 
@@ -21,27 +21,18 @@ on:
         required: true
         type: string
 
-# Queue deploys so concurrent gh-pages commits (e.g. tag + release) do not race.
+# Queue deploys so concurrent mike/gh-pages updates do not race.
 concurrency:
-  group: docs-deploy-gh-pages
+  group: docs-deploy-pages
   cancel-in-progress: false
 
-permissions:
-  contents: write
-
 jobs:
-  deploy:
-    name: mike deploy → gh-pages
+  version:
+    name: Resolve version
     runs-on: ubuntu-latest
-    env:
-      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
-      MKDOCS_SITE_URL: https://agntcy.github.io/dir/
+    outputs:
+      version: ${{ steps.ver.outputs.version }}
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
       - name: Resolve version label
         id: ver
         shell: bash
@@ -67,30 +58,15 @@ jobs:
           echo "version=${V}" >> "$GITHUB_OUTPUT"
           echo "Deploying mike version: ${V}"
 
-      - name: Install Python dependencies (docs)
-        shell: bash
-        run: python3 -m pip install -r docs/requirements.txt
-
-      - name: Git identity (mike commits to gh-pages)
-        shell: bash
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-
-      - name: Fetch gh-pages (history for mike)
-        shell: bash
-        run: git fetch origin gh-pages --depth=1 2>/dev/null || true
-
-      - name: Mike deploy
-        shell: bash
-        env:
-          VERSION: ${{ steps.ver.outputs.version }}
-        run: |
-          set -euo pipefail
-          : "${VERSION:?Missing VERSION from resolve step}"
-          MIKE_VERSION="${VERSION}"
-          echo "Mike version: ${MIKE_VERSION}"
-          mike deploy -F docs/mkdocs.yml --push "$MIKE_VERSION"
-          mike set-default -F docs/mkdocs.yml --push "$MIKE_VERSION"
-          for stale in dev latest; do mike delete -F docs/mkdocs.yml --push "$stale" 2>/dev/null || true; done
-          mike list -F docs/mkdocs.yml
+  docs:
+    name: Build and deploy docs
+    needs: version
+    uses: ./.github/workflows/reusable-docs.yml
+    permissions:
+      contents: write
+      pages: write
+      id-token: write
+    with:
+      task: mike:pages-build
+      version: ${{ needs.version.outputs.version }}
+      deploy: true
