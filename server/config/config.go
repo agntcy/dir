@@ -111,6 +111,9 @@ const (
 
 	// DefaultHTTPGatewayAddress is the default gateway listen address.
 	DefaultHTTPGatewayAddress = ":8889"
+
+	// DefaultHTTPGatewayPublicURL is the default public base URL for the gateway.
+	DefaultHTTPGatewayPublicURL = "http://localhost:8889"
 )
 
 var logger = logging.Logger("config")
@@ -173,13 +176,21 @@ type HTTPGatewayConfig struct {
 
 	// ListenAddress is the HTTP gateway listen address (e.g. ":8889").
 	ListenAddress string `json:"listen_address,omitempty" mapstructure:"listen_address"`
+
+	// PublicURL is the public base URL for the gateway (e.g. "https://api.example.com").
+	PublicURL string `json:"public_url,omitempty" mapstructure:"public_url"`
 }
 
 // WithDefaults returns a copy with empty fields filled from package defaults.
 func (c HTTPGatewayConfig) WithDefaults() HTTPGatewayConfig {
 	out := c
+
 	if out.ListenAddress == "" {
 		out.ListenAddress = DefaultHTTPGatewayAddress
+	}
+
+	if out.PublicURL == "" {
+		out.PublicURL = DefaultHTTPGatewayPublicURL
 	}
 
 	return out
@@ -331,6 +342,7 @@ func WithFile(file string) ConfigOption {
 	}
 }
 
+//nolint:maintidx
 func LoadConfig(opts ...ConfigOption) (*Config, error) {
 	var options ConfigOptions
 	for _, opt := range opts {
@@ -586,6 +598,18 @@ func LoadConfig(opts ...ConfigOption) (*Config, error) {
 	//
 	// No viper defaults needed - defaults are applied via ConnectionConfig.WithDefaults()
 	// after loading to ensure clean separation between loading and defaulting logic.
+
+	//
+	// Gateway configuration
+	//
+	_ = v.BindEnv("http_gateway.enabled")
+	v.SetDefault("http_gateway.enabled", DefaultHTTPGatewayEnabled)
+
+	_ = v.BindEnv("http_gateway.listen_address")
+	v.SetDefault("http_gateway.listen_address", DefaultHTTPGatewayAddress)
+
+	_ = v.BindEnv("http_gateway.public_url")
+	v.SetDefault("http_gateway.public_url", DefaultHTTPGatewayPublicURL)
 
 	// Load configuration into struct
 	decodeHooks := mapstructure.ComposeDecodeHookFunc(
