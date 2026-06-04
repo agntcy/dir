@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	catalogv1 "github.com/agntcy/dir/api/catalog/v1"
+	"github.com/agntcy/dir/server/config"
 	"github.com/agntcy/dir/server/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -44,7 +45,7 @@ func entry(id string) *catalogv1.CatalogEntry {
 
 func TestListAgents_DefaultsAndResults(t *testing.T) {
 	db := &fakeCatalogDB{entries: []*catalogv1.CatalogEntry{entry("a"), entry("b")}}
-	ctrl := NewAIFinderController(db)
+	ctrl := NewAIFinderController(db, config.HTTPGatewayConfig{})
 
 	resp, err := ctrl.ListAgents(context.Background(), &catalogv1.ListAgentsRequest{})
 	require.NoError(t, err)
@@ -60,7 +61,7 @@ func TestListAgents_DefaultsAndResults(t *testing.T) {
 
 func TestListAgents_NextPageToken(t *testing.T) {
 	db := &fakeCatalogDB{entries: []*catalogv1.CatalogEntry{entry("a")}, hasMore: true}
-	ctrl := NewAIFinderController(db)
+	ctrl := NewAIFinderController(db, config.HTTPGatewayConfig{})
 
 	resp, err := ctrl.ListAgents(context.Background(), &catalogv1.ListAgentsRequest{PageSize: 5})
 	require.NoError(t, err)
@@ -73,7 +74,7 @@ func TestListAgents_NextPageToken(t *testing.T) {
 
 func TestListAgents_PageTokenAppliesOffset(t *testing.T) {
 	db := &fakeCatalogDB{}
-	ctrl := NewAIFinderController(db)
+	ctrl := NewAIFinderController(db, config.HTTPGatewayConfig{})
 
 	_, err := ctrl.ListAgents(context.Background(), &catalogv1.ListAgentsRequest{
 		PageSize:  10,
@@ -86,7 +87,7 @@ func TestListAgents_PageTokenAppliesOffset(t *testing.T) {
 
 func TestListAgents_FilterTranslation(t *testing.T) {
 	db := &fakeCatalogDB{}
-	ctrl := NewAIFinderController(db)
+	ctrl := NewAIFinderController(db, config.HTTPGatewayConfig{})
 
 	_, err := ctrl.ListAgents(context.Background(), &catalogv1.ListAgentsRequest{
 		Filter: `displayName=weather AND type=application/a2a-agent-card+json AND createdAfter=2024-01-01T00:00:00Z`,
@@ -99,7 +100,7 @@ func TestListAgents_FilterTranslation(t *testing.T) {
 
 func TestListAgents_UnknownTypeYieldsZeroRows(t *testing.T) {
 	db := &fakeCatalogDB{}
-	ctrl := NewAIFinderController(db)
+	ctrl := NewAIFinderController(db, config.HTTPGatewayConfig{})
 
 	resp, err := ctrl.ListAgents(context.Background(), &catalogv1.ListAgentsRequest{Filter: "type=application/unknown+json"})
 	require.NoError(t, err)
@@ -108,7 +109,7 @@ func TestListAgents_UnknownTypeYieldsZeroRows(t *testing.T) {
 }
 
 func TestListAgents_Errors(t *testing.T) {
-	ctrl := NewAIFinderController(&fakeCatalogDB{})
+	ctrl := NewAIFinderController(&fakeCatalogDB{}, config.HTTPGatewayConfig{})
 
 	tests := []struct {
 		name string
@@ -131,7 +132,7 @@ func TestListAgents_Errors(t *testing.T) {
 
 func TestListAgents_DBError(t *testing.T) {
 	db := &fakeCatalogDB{err: assert.AnError}
-	ctrl := NewAIFinderController(db)
+	ctrl := NewAIFinderController(db, config.HTTPGatewayConfig{})
 
 	_, err := ctrl.ListAgents(context.Background(), &catalogv1.ListAgentsRequest{})
 	require.Error(t, err)
@@ -222,4 +223,15 @@ func TestClampPageSize(t *testing.T) {
 	assert.Equal(t, uint32(20), clampPageSize(0))
 	assert.Equal(t, uint32(50), clampPageSize(50))
 	assert.Equal(t, uint32(100), clampPageSize(1000))
+}
+
+func TestWellKnown(t *testing.T) {
+	ctrl := NewAIFinderController(&fakeCatalogDB{}, config.HTTPGatewayConfig{})
+
+	resp, err := ctrl.GetWellKnownCatalog(t.Context(), nil)
+	require.NoError(t, err)
+
+	assert.Equal(t, wellKnownHostIdentifier, resp.GetCatalog().GetHost().GetIdentifier())
+	assert.Len(t, resp.GetCatalog().GetCollections(), 3)
+	assert.Empty(t, resp.GetCatalog().GetEntries())
 }

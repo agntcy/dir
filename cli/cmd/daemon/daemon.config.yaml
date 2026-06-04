@@ -55,6 +55,10 @@ server:
     scheduler_interval: 5m
     worker_count: 1
     worker_timeout: 30m
+  http_gateway:
+    enabled: true
+    listen_address: ":8889"
+    public_url: "http://localhost:8889"
   naming:
     ttl: 168h
 

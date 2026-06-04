@@ -5,26 +5,53 @@ package controller
 
 import (
 	"context"
+	"fmt"
+	"net/url"
+	"strings"
 
 	catalogv1 "github.com/agntcy/dir/api/catalog/v1"
+	"github.com/agntcy/dir/server/config"
 	"github.com/agntcy/dir/server/types"
 	"github.com/agntcy/dir/utils/logging"
+	"github.com/agntcy/oasf-sdk/pkg/translator"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
 
 var aiFinderLogger = logging.Logger("controller/ai-finder")
 
+const (
+	// wellKnownSpecVersion is the AI Catalog spec version embedded in
+	// the served WellKnownCatalog payload.
+	wellKnownSpecVersion = "1.0"
+
+	// wellKnownHostDisplayName is the human-readable name for the
+	// directory operator. Currently hardcoded; tracks catalogURNHost in
+	// the data layer.
+	//
+	// TODO(ai-catalog): make this configurable once publisher data is
+	// wired through the schema.
+	wellKnownHostDisplayName = "AGNTCY Directory"
+
+	// wellKnownHostIdentifier matches the URN authority emitted by the
+	// catalog entry projection (catalogURNHost in the data layer).
+	wellKnownHostIdentifier = "org.agntcy"
+)
+
 // aiFinderController adapts the AI Finder query language to the catalog query
 // layer. GetWellKnownCatalog is served by the embedded Unimplemented server.
 type aiFinderController struct {
 	catalogv1.UnimplementedAIFinderServiceServer
 
-	db types.CatalogDatabaseAPI
+	db  types.CatalogDatabaseAPI
+	cfg config.HTTPGatewayConfig
 }
 
-func NewAIFinderController(db types.CatalogDatabaseAPI) catalogv1.AIFinderServiceServer {
-	return &aiFinderController{db: db}
+func NewAIFinderController(db types.CatalogDatabaseAPI, cfg config.HTTPGatewayConfig) catalogv1.AIFinderServiceServer {
+	return &aiFinderController{
+		db:  db,
+		cfg: cfg,
+	}
 }
 
 // ListAgents parses the filter, order, and paging arguments, queries the
@@ -82,4 +109,51 @@ func (c *aiFinderController) ListAgents(ctx context.Context, req *catalogv1.List
 		Results:       entries,
 		NextPageToken: nextPageToken,
 	}, nil
+}
+
+// GetWellKnownCatalog returns a well-known catalog of agents. This is intended to be used
+// for delegated discovery and returns catalog collections rather than catalog entries since
+// there may be many entries.
+func (c *aiFinderController) GetWellKnownCatalog(ctx context.Context, _ *catalogv1.GetWellKnownCatalogRequest) (*catalogv1.GetWellKnownCatalogResponse, error) {
+	return &catalogv1.GetWellKnownCatalogResponse{
+		Catalog: &catalogv1.WellKnownCatalog{
+			SpecVersion: wellKnownSpecVersion,
+			Host: &catalogv1.HostInfo{
+				DisplayName: wellKnownHostDisplayName,
+				Identifier:  new(wellKnownHostIdentifier),
+			},
+			Collections: []*catalogv1.CatalogCollection{
+				{
+					DisplayName: "A2A Agents",
+					Url:         c.collectionURL(translator.A2ACatalogMediaType),
+					Description: new("Agents that publish an A2A agent card."),
+					MediaType:   new(translator.A2ACatalogMediaType),
+				},
+				{
+					DisplayName: "MCP Servers",
+					Url:         c.collectionURL(translator.MCPCatalogMediaType),
+					Description: new("Agents that expose an MCP server connection."),
+					MediaType:   new(translator.MCPCatalogMediaType),
+				},
+				{
+					DisplayName: "AI Skills",
+					Url:         c.collectionURL(translator.AgentSkillsCatalogMediaType),
+					Description: new("Agents that publish a reusable AI skill definition."),
+					MediaType:   new(translator.AgentSkillsCatalogMediaType),
+				},
+			},
+		},
+	}, nil
+}
+
+// collectionURL builds an absolute URL pointing at GET /v1/agents
+// constrained to a single AI Catalog media type. The filter value is
+// percent-encoded so the URL is safe to embed verbatim in JSON.
+func (c *aiFinderController) collectionURL(mediaType string) string {
+	base := strings.TrimRight(c.cfg.PublicURL, "/")
+
+	v := url.Values{}
+	v.Set("filter", "type="+mediaType)
+
+	return fmt.Sprintf("%s/v1/agents?%s", base, v.Encode())
 }
