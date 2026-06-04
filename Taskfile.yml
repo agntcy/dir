@@ -45,7 +45,6 @@ includes:
 
   docs:
     taskfile: docs/Taskfile.yml
-    dir: docs
     excludes: [default]
 
 tasks:

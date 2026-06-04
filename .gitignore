@@ -7,6 +7,9 @@
 .env
 .envrc
 
+# Task cache
+.task/
+
 # Builds
 .bin/
 .build/

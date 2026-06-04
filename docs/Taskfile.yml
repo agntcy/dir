@@ -1,8 +1,8 @@
 # Copyright AGNTCY Contributors (https://github.com/agntcy)
 # SPDX-License-Identifier: CC-BY-4.0
 #
-# Documentation tasks. Run from repo root: task docs:build
-# Or: task -t docs/Taskfile.yml build
+# Documentation tasks. From repo root: task docs:run
+# Or: task -t docs/Taskfile.yml run
 
 version: "3"
 
@@ -12,8 +12,13 @@ vars:
   REPO:
     sh: git rev-parse --show-toplevel
   DOCS_DIR: "{{.REPO}}/docs"
-  MKDOCS_CONFIG: "{{.DOCS_DIR}}/mkdocs.yml"
+  MKDOCS_DIR: "{{.DOCS_DIR}}/mkdocs"
+  MKDOCS_CONFIG: "{{.MKDOCS_DIR}}/mkdocs.yml"
   BUILD_SITE: "{{.REPO}}/.build/site"
+  MIKE_SITE: "{{.REPO}}/.build/mike-site"
+  CONTENT_DIR: "{{.DOCS_DIR}}/content"
+  # Pages in mkdocs nav (exclude draft/orphan pages under content/)
+  LINT_PATHS: "{{.CONTENT_DIR}}/index.md {{.CONTENT_DIR}}/dir"
   SPELL_CONFIG: "{{.DOCS_DIR}}/codespellrc"
   MD_CONFIG: "{{.DOCS_DIR}}/pymarkdown.yaml"
   LYCHEE_CONFIG: "{{.DOCS_DIR}}/lychee.toml"
@@ -24,117 +29,181 @@ tasks:
     cmds:
       - task --list
 
+  deps:sync:
+    desc: Install MkDocs stack via uv (docs/mkdocs)
+    internal: true
+    run: once
+    preconditions:
+      - sh: command -v uv
+        msg: "uv is required; see https://docs.astral.sh/uv/"
+    cmds:
+      - cd "{{.MKDOCS_DIR}}" && uv sync
+    sources:
+      - "{{.MKDOCS_DIR}}/pyproject.toml"
+      - "{{.MKDOCS_DIR}}/uv.lock"
+    generates:
+      - "{{.MKDOCS_DIR}}/.venv/**"
+
   build:
     desc: Build documentation site to .build/site
+    deps:
+      - deps:sync
     cmds:
       - mkdir -p "{{.BUILD_SITE}}"
-      - (cd "{{.REPO}}" && mkdocs build -f "{{.MKDOCS_CONFIG}}" --site-dir "{{.BUILD_SITE}}")
+      - cd "{{.MKDOCS_DIR}}" && DISABLE_MKDOCS_2_WARNING="${DISABLE_MKDOCS_2_WARNING:-true}" uv run mkdocs build --site-dir "{{.BUILD_SITE}}"
       - 'echo "Docs built: file://{{.BUILD_SITE}}/index.html"'
 
   run:
     desc: >-
       Run mkdocs serve (live reload). Picks the first free port in 8000–8009 unless MKDOCS_ADDR
       is set (e.g. MKDOCS_ADDR=127.0.0.1:9000). Sets DISABLE_MKDOCS_2_WARNING=true by default.
+    deps:
+      - deps:sync
     cmds:
       - |
         set -e
-        cd "{{.REPO}}"
+        cd "{{.MKDOCS_DIR}}"
         export DISABLE_MKDOCS_2_WARNING="${DISABLE_MKDOCS_2_WARNING:-true}"
         if [ -n "${MKDOCS_ADDR:-}" ]; then
-          exec mkdocs serve -f "{{.MKDOCS_CONFIG}}" -a "$MKDOCS_ADDR"
+          exec uv run mkdocs serve -a "$MKDOCS_ADDR"
         fi
         for port in 8000 8001 8002 8003 8004 8005 8006 8007 8008 8009; do
           if ! lsof -nP -iTCP:"$port" -sTCP:LISTEN >/dev/null 2>&1; then
             echo "mkdocs serve on 127.0.0.1:$port (set MKDOCS_ADDR to override)"
-            exec mkdocs serve -f "{{.MKDOCS_CONFIG}}" -a "127.0.0.1:$port"
+            exec uv run mkdocs serve -a "127.0.0.1:$port"
           fi
         done
         echo "No free port between 8000 and 8009. Free one or set MKDOCS_ADDR." >&2
         exit 1
 
+  ci:
+    desc: CI checks (build + lint)
+    cmds:
+      - task: build
+      - task: test
+
   test:
     desc: Run all documentation lint checks
+    deps:
+      - deps:sync
     cmds:
       - task: lint
 
   lint:
     desc: Run spelling, markdown, and link checks
+    deps:
+      - deps:sync
     cmds:
       - task: lint:spelling
       - task: lint:markdown
       - task: lint:links
 
   lint:spelling:
-    desc: Check spelling under docs/
+    desc: Check spelling under docs/content
+    deps:
+      - deps:sync
     cmds:
-      - codespell --config "{{.SPELL_CONFIG}}" "{{.DOCS_DIR}}"
+      - cd "{{.MKDOCS_DIR}}" && uv run codespell --config {{.SPELL_CONFIG}} {{.LINT_PATHS}}
 
   lint:markdown:
-    desc: Check Markdown style under docs/
+    desc: Check Markdown style under docs/content
+    deps:
+      - deps:sync
     cmds:
-      - pymarkdown --config "{{.MD_CONFIG}}" scan "{{.DOCS_DIR}}"
+      - cd "{{.MKDOCS_DIR}}" && uv run pymarkdown --config {{.MD_CONFIG}} scan {{.LINT_PATHS}}
 
   lint:links:
-    desc: Check links in markdown under docs/ (requires lychee on PATH)
+    desc: Check links in markdown under docs/content (requires lychee on PATH)
     cmds:
-      - lychee --config "{{.LYCHEE_CONFIG}}" "{{.DOCS_DIR}}"
+      - lychee --config "{{.LYCHEE_CONFIG}}" {{.LINT_PATHS}}
 
   lint:fix:
     desc: Auto-fix spelling and markdown where supported
+    deps:
+      - deps:sync
     cmds:
       - task: lint:fix:spelling
       - task: lint:fix:markdown
 
   lint:fix:spelling:
-    desc: Apply codespell write-fixes to docs/
+    desc: Apply codespell write-fixes to docs/content
+    deps:
+      - deps:sync
     cmds:
-      - codespell --config "{{.SPELL_CONFIG}}" "{{.DOCS_DIR}}" --write-changes
+      - cd "{{.MKDOCS_DIR}}" && uv run codespell --config {{.SPELL_CONFIG}} {{.LINT_PATHS}} --write-changes
 
   lint:fix:markdown:
-    desc: Apply pymarkdown fixes under docs/
+    desc: Apply pymarkdown fixes to published nav content (index.md and dir/)
+    deps:
+      - deps:sync
     cmds:
-      - pymarkdown --config "{{.MD_CONFIG}}" fix -r "{{.DOCS_DIR}}"
+      - cd "{{.MKDOCS_DIR}}" && uv run pymarkdown --config {{.MD_CONFIG}} fix {{.CONTENT_DIR}}/index.md
+      - cd "{{.MKDOCS_DIR}}" && uv run pymarkdown --config {{.MD_CONFIG}} fix -r {{.CONTENT_DIR}}/dir
+
+  mike:deploy:run:
+    desc: Run mike deploy/set-default/delete-stale (internal)
+    internal: true
+    dir: "{{.REPO}}"
+    requires:
+      vars: [MIKE_VERSION_KIND]
+    deps:
+      - deps:sync
+    env:
+      VERSION: '{{env "VERSION"}}'
+    cmds:
+      - 'test -f "{{.DOCS_DIR}}/mike_version.py" || { echo "Missing docs/mike_version.py"; exit 1; }'
+      - git fetch origin gh-pages --depth=1 2>/dev/null || true
+      - |
+        set -euo pipefail
+        export MKDOCS_SITE_URL="${MKDOCS_SITE_URL:-https://agntcy.github.io/dir/}"
+        if [ "{{.MIKE_VERSION_KIND}}" = "release" ] && [ -n "${VERSION:-}" ]; then
+          echo "Mike version from VERSION env: ${VERSION}"
+        fi
+        MIKE_VER="$(python3 "{{.DOCS_DIR}}/mike_version.py" {{.MIKE_VERSION_KIND}})"
+        echo "Deploying mike version: ${MIKE_VER}"
+        CFG="{{.MKDOCS_CONFIG}}"
+        cd "{{.MKDOCS_DIR}}"
+        uv run mike deploy -F "$CFG" "$MIKE_VER"
+        uv run mike set-default -F "$CFG" "$MIKE_VER"
+        for stale in dev latest; do uv run mike delete -F "$CFG" "$stale" 2>/dev/null || true; done
+        uv run mike list -F "$CFG"
+
+  mike:pages-build:
+    desc: >-
+      CI/release only — build multi-version site for GitHub Pages (requires VERSION). No remote push from Taskfile.
+    dir: "{{.REPO}}"
+    deps:
+      - deps:sync
+    preconditions:
+      - sh: '[ -n "${VERSION:-}" ]'
+        msg: "VERSION is required (set by docs-deploy workflow)"
+    cmds:
+      - task: mike:deploy:run
+        vars:
+          MIKE_VERSION_KIND: release
+      - |
+        set -euo pipefail
+        git worktree remove "{{.MIKE_SITE}}" --force 2>/dev/null || true
+        rm -rf "{{.MIKE_SITE}}"
+        git worktree add "{{.MIKE_SITE}}" gh-pages
+        echo "Mike site ready for Pages artifact: {{.MIKE_SITE}}"
 
   mike:deploy-local:
     desc: >-
-      Deploy current docs to local gh-pages as a single version label ([versions] local); no latest alias, no git push
-    dir: "{{.REPO}}"
+      Deploy current docs to local gh-pages as a single version label ([versions] local in mike_versions.ini); no git push
     cmds:
-      - 'test -f "{{.DOCS_DIR}}/mike_version.py" || { echo "Missing docs/mike_version.py"; exit 1; }'
-      - git fetch origin gh-pages --depth=1 2>/dev/null || true
-      - |
-        set -euo pipefail
-        export MKDOCS_SITE_URL="${MKDOCS_SITE_URL:-https://agntcy.github.io/dir/}"
-        MIKE_LOCAL="$(python3 "{{.DOCS_DIR}}/mike_version.py" local)"
-        CFG="{{.MKDOCS_CONFIG}}"
-        mike deploy -F "$CFG" "$MIKE_LOCAL"
-        mike set-default -F "$CFG" "$MIKE_LOCAL"
-        for stale in dev latest; do mike delete -F "$CFG" "$stale" 2>/dev/null || true; done
-        mike list -F "$CFG"
-        echo "Local gh-pages updated. Run task docs:mike:serve from the repo root and open http://127.0.0.1:8000/"
-
-  mike:deploy:
-    desc: >-
-      Push docs to origin/gh-pages as a single version (no latest alias). Set release in mike_versions.ini or VERSION=…
-    dir: "{{.REPO}}"
-    cmds:
-      - 'test -f "{{.DOCS_DIR}}/mike_version.py" || { echo "Missing docs/mike_version.py"; exit 1; }'
-      - git fetch origin gh-pages --depth=1 2>/dev/null || true
-      - |
-        set -euo pipefail
-        export MKDOCS_SITE_URL="${MKDOCS_SITE_URL:-https://agntcy.github.io/dir/}"
-        MIKE_VERSION="$(python3 "{{.DOCS_DIR}}/mike_version.py" release)"
-        CFG="{{.MKDOCS_CONFIG}}"
-        mike deploy -F "$CFG" --push "$MIKE_VERSION"
-        mike set-default -F "$CFG" --push "$MIKE_VERSION"
-        for stale in dev latest; do mike delete -F "$CFG" --push "$stale" 2>/dev/null || true; done
-        mike list -F "$CFG"
+      - task: mike:deploy:run
+        vars:
+          MIKE_VERSION_KIND: local
+      - echo "Local gh-pages updated. Run task docs:mike:serve and open http://127.0.0.1:8000/"
 
   mike:serve:
     desc: >-
       Serve versioned site from local gh-pages (run mike:deploy-local first). Uses MKDOCS_SITE_URL if set.
-    dir: "{{.REPO}}"
+    deps:
+      - deps:sync
     cmds:
       - |
+        cd "{{.MKDOCS_DIR}}"
         export MKDOCS_SITE_URL="${MKDOCS_SITE_URL:-https://agntcy.github.io/dir/}"
-        exec mike serve -F "{{.MKDOCS_CONFIG}}" -a 127.0.0.1:8000
+        exec uv run mike serve -F "{{.MKDOCS_CONFIG}}" -a 127.0.0.1:8000
