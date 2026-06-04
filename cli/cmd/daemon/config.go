@@ -20,6 +20,7 @@ import (
 	reconcilerconfig "github.com/agntcy/dir/reconciler/config"
 	serverconfig "github.com/agntcy/dir/server/config"
 	dbconfig "github.com/agntcy/dir/server/database/config"
+	rankingcfg "github.com/agntcy/dir/server/ranking/config"
 	storeconfig "github.com/agntcy/dir/server/store/oci/config"
 	"github.com/mitchellh/mapstructure"
 	"github.com/spf13/viper"
@@ -52,6 +53,20 @@ type RuntimeConfig struct {
 func registerServerDefaults(v *viper.Viper) {
 	v.SetDefault("server.store.oci.registry_address", storeconfig.DefaultRegistryAddress)
 	v.SetDefault("server.store.oci.repository_name", storeconfig.DefaultRepositoryName)
+
+	v.SetDefault("server.ranking.weights.query_relevance", rankingcfg.DefaultQueryRelevanceWeight)
+	v.SetDefault("server.ranking.weights.trust", rankingcfg.DefaultTrustWeight)
+	v.SetDefault("server.ranking.weights.popularity", rankingcfg.DefaultPopularityWeight)
+	v.SetDefault("server.ranking.weights.completeness", rankingcfg.DefaultCompletenessWeight)
+	v.SetDefault("server.ranking.weights.freshness", rankingcfg.DefaultFreshnessWeight)
+	v.SetDefault("server.ranking.weights.schema_recency", rankingcfg.DefaultSchemaRecencyWeight)
+	v.SetDefault("server.ranking.trust_split.signed", rankingcfg.DefaultTrustSplitSigned)
+	v.SetDefault("server.ranking.trust_split.sig_verified", rankingcfg.DefaultTrustSplitSigVerified)
+	v.SetDefault("server.ranking.trust_split.name_verified", rankingcfg.DefaultTrustSplitNameVerified)
+	v.SetDefault("server.ranking.freshness.half_life_days", rankingcfg.DefaultFreshnessHalfLifeDays)
+	v.SetDefault("server.ranking.popularity.saturation_at_providers", rankingcfg.DefaultPopularitySaturation)
+	v.SetDefault("server.ranking.completeness.saturation_at_entries", rankingcfg.DefaultCompletenessSaturation)
+	v.SetDefault("server.ranking.max_candidates", rankingcfg.DefaultMaxCandidates)
 }
 
 func registerReconcilerDefaults(v *viper.Viper) {

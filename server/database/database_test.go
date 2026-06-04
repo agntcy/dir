@@ -348,3 +348,35 @@ func TestGetRecordCIDs_NilOption(t *testing.T) {
 	_, err := db.GetRecordCIDs(nilOpt)
 	assert.Error(t, err)
 }
+
+// TestGetRecords_PreloadsTaxonomyAssociations pins the four Preload
+// calls in GetRecords. Without them, the ranking completeness signal
+// silently scores zero for every record.
+func TestGetRecords_PreloadsTaxonomyAssociations(t *testing.T) {
+	db := setupTestDB(t)
+	seedDB(t, db)
+
+	records, err := db.GetRecords()
+	require.NoError(t, err)
+	require.NotEmpty(t, records, "seedDB should have inserted at least one record")
+
+	var got types.Record
+
+	for _, r := range records {
+		if r.GetCid() == marketingAgent.cid {
+			got = r
+
+			break
+		}
+	}
+
+	require.NotNil(t, got, "marketing-agent fixture missing from GetRecords output")
+
+	data, err := got.GetRecordData()
+	require.NoError(t, err)
+
+	assert.NotEmpty(t, data.GetSkills(), "Skills association not preloaded")
+	assert.NotEmpty(t, data.GetLocators(), "Locators association not preloaded")
+	assert.NotEmpty(t, data.GetModules(), "Modules association not preloaded")
+	assert.NotEmpty(t, data.GetDomains(), "Domains association not preloaded")
+}

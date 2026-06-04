@@ -16,6 +16,7 @@ import (
 	ratelimitconfig "github.com/agntcy/dir/server/middleware/ratelimit/config"
 	naming "github.com/agntcy/dir/server/naming/config"
 	publication "github.com/agntcy/dir/server/publication/config"
+	rankingcfg "github.com/agntcy/dir/server/ranking/config"
 	routing "github.com/agntcy/dir/server/routing/config"
 	store "github.com/agntcy/dir/server/store/config"
 	oci "github.com/agntcy/dir/server/store/oci/config"
@@ -152,6 +153,9 @@ type Config struct {
 
 	// Naming holds name verification cache config (TTL for naming API; reconciler name task performs re-verification).
 	Naming naming.Config `json:"naming,omitzero" mapstructure:"naming"`
+
+	// Ranking holds tunable parameters for search result ranking.
+	Ranking rankingcfg.Config `json:"ranking" mapstructure:"ranking"`
 }
 
 type SyncConfig struct {
@@ -300,6 +304,7 @@ func WithFile(file string) ConfigOption {
 	}
 }
 
+//nolint:maintidx // Pure config-loading boilerplate; one BindEnv/SetDefault per knob.
 func LoadConfig(opts ...ConfigOption) (*Config, error) {
 	var options ConfigOptions
 	for _, opt := range opts {
@@ -534,6 +539,53 @@ func LoadConfig(opts ...ConfigOption) (*Config, error) {
 	//
 	_ = v.BindEnv("naming.ttl")
 	v.SetDefault("naming.ttl", naming.DefaultTTL)
+
+	//
+	// Ranking configuration
+	//
+
+	_ = v.BindEnv("ranking.weights.query_relevance")
+	v.SetDefault("ranking.weights.query_relevance", rankingcfg.DefaultQueryRelevanceWeight)
+
+	_ = v.BindEnv("ranking.weights.trust")
+	v.SetDefault("ranking.weights.trust", rankingcfg.DefaultTrustWeight)
+
+	_ = v.BindEnv("ranking.weights.popularity")
+	v.SetDefault("ranking.weights.popularity", rankingcfg.DefaultPopularityWeight)
+
+	_ = v.BindEnv("ranking.weights.completeness")
+	v.SetDefault("ranking.weights.completeness", rankingcfg.DefaultCompletenessWeight)
+
+	_ = v.BindEnv("ranking.weights.freshness")
+	v.SetDefault("ranking.weights.freshness", rankingcfg.DefaultFreshnessWeight)
+
+	_ = v.BindEnv("ranking.weights.schema_recency")
+	v.SetDefault("ranking.weights.schema_recency", rankingcfg.DefaultSchemaRecencyWeight)
+
+	// Trust split across the three boolean inputs.
+	_ = v.BindEnv("ranking.trust_split.signed")
+	v.SetDefault("ranking.trust_split.signed", rankingcfg.DefaultTrustSplitSigned)
+
+	_ = v.BindEnv("ranking.trust_split.sig_verified")
+	v.SetDefault("ranking.trust_split.sig_verified", rankingcfg.DefaultTrustSplitSigVerified)
+
+	_ = v.BindEnv("ranking.trust_split.name_verified")
+	v.SetDefault("ranking.trust_split.name_verified", rankingcfg.DefaultTrustSplitNameVerified)
+
+	// Per-signal tuning.
+	_ = v.BindEnv("ranking.freshness.half_life_days")
+	v.SetDefault("ranking.freshness.half_life_days", rankingcfg.DefaultFreshnessHalfLifeDays)
+
+	_ = v.BindEnv("ranking.popularity.saturation_at_providers")
+	v.SetDefault("ranking.popularity.saturation_at_providers", rankingcfg.DefaultPopularitySaturation)
+
+	_ = v.BindEnv("ranking.completeness.saturation_at_entries")
+	v.SetDefault("ranking.completeness.saturation_at_entries", rankingcfg.DefaultCompletenessSaturation)
+
+	// Operator-facing safety knob: how many filter-matched records will
+	// be scored in memory per request.
+	_ = v.BindEnv("ranking.max_candidates")
+	v.SetDefault("ranking.max_candidates", rankingcfg.DefaultMaxCandidates)
 
 	//
 	// Connection management configuration
