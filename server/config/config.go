@@ -103,6 +103,14 @@ const (
 
 	// DefaultMetricsAddress is the default listen address for the metrics HTTP server.
 	DefaultMetricsAddress = ":9090"
+
+	// HTTP gateway (grpc-gateway) configuration.
+
+	// DefaultHTTPGatewayEnabled controls whether the REST gateway runs by default.
+	DefaultHTTPGatewayEnabled = false
+
+	// DefaultHTTPGatewayAddress is the default gateway listen address.
+	DefaultHTTPGatewayAddress = ":8889"
 )
 
 var logger = logging.Logger("config")
@@ -152,6 +160,29 @@ type Config struct {
 
 	// Naming holds name verification cache config (TTL for naming API; reconciler name task performs re-verification).
 	Naming naming.Config `json:"naming,omitzero" mapstructure:"naming"`
+
+	// HTTPGateway exposes the gRPC services over HTTP/JSON via grpc-gateway.
+	HTTPGateway HTTPGatewayConfig `json:"http_gateway,omitzero" mapstructure:"http_gateway"`
+}
+
+// HTTPGatewayConfig configures the in-process grpc-gateway sidecar.
+// It is disabled by default.
+type HTTPGatewayConfig struct {
+	// Enabled toggles the HTTP gateway sidecar.
+	Enabled bool `json:"enabled,omitempty" mapstructure:"enabled"`
+
+	// ListenAddress is the HTTP gateway listen address (e.g. ":8889").
+	ListenAddress string `json:"listen_address,omitempty" mapstructure:"listen_address"`
+}
+
+// WithDefaults returns a copy with empty fields filled from package defaults.
+func (c HTTPGatewayConfig) WithDefaults() HTTPGatewayConfig {
+	out := c
+	if out.ListenAddress == "" {
+		out.ListenAddress = DefaultHTTPGatewayAddress
+	}
+
+	return out
 }
 
 type SyncConfig struct {

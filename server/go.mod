@@ -18,11 +18,12 @@ require (
 	buf.build/go/protovalidate v1.2.0
 	github.com/agntcy/dir/api v1.4.0
 	github.com/agntcy/dir/utils v1.4.0
-	github.com/agntcy/oasf-sdk/pkg v1.0.5
+	github.com/agntcy/oasf-sdk/pkg v1.0.6-0.20260603092510-c72d9654e557
 	github.com/casbin/casbin/v2 v2.135.0
 	github.com/glebarez/sqlite v1.11.0
 	github.com/grpc-ecosystem/go-grpc-middleware/v2 v2.3.3
 	github.com/grpc-ecosystem/go-grpc-prometheus v1.2.0
+	github.com/grpc-ecosystem/grpc-gateway/v2 v2.29.0
 	github.com/ipfs/go-datastore v0.9.1
 	github.com/lestrrat-go/jwx/v2 v2.1.6
 	github.com/libp2p/go-libp2p v0.48.0
@@ -36,6 +37,7 @@ require (
 	github.com/spf13/viper v1.21.0
 	github.com/spiffe/go-spiffe/v2 v2.6.0
 	github.com/stretchr/testify v1.11.1
+	google.golang.org/genproto/googleapis/api v0.0.0-20260504160031-60b97b32f348
 	google.golang.org/grpc v1.81.1
 	google.golang.org/protobuf v1.36.12-0.20260120151049-f2248ac996af
 	gorm.io/driver/postgres v1.6.0
@@ -57,7 +59,6 @@ require (
 	github.com/pion/turn/v5 v5.0.3 // indirect
 	github.com/remyoudompheng/bigfft v0.0.0-20230129092748-24d4a6f8daec // indirect
 	github.com/smarty/assertions v1.16.0 // indirect
-	google.golang.org/genproto/googleapis/api v0.0.0-20260504160031-60b97b32f348 // indirect
 	modernc.org/libc v1.72.2 // indirect
 	modernc.org/mathutil v1.7.1 // indirect
 	modernc.org/memory v1.11.0 // indirect

@@ -16,6 +16,13 @@ type Module struct {
 	RecordCID string `gorm:"column:record_cid;not null;index"`
 	Name      string `gorm:"not null"`
 	ModuleID  uint64 `gorm:"column:module_id"`
+
+	// Data is the module's structured payload (e.g. the A2A agent card or
+	// MCP server definition).
+	//
+	// TODO: this is a temporary solution. The module data will be stored as a
+	// separate artifact in the future and will need to be retrieved differently.
+	Data map[string]any `gorm:"column:data;serializer:json"`
 }
 
 func (module *Module) GetName() string {
@@ -27,8 +34,7 @@ func (module *Module) GetID() uint64 {
 }
 
 func (module *Module) GetData() map[string]any {
-	// Database modules don't store data, return empty map
-	return make(map[string]any)
+	return module.Data
 }
 
 // convertModules transforms interface types to Database structs.
@@ -39,6 +45,7 @@ func convertModules(modules []types.Module, recordCID string) []Module {
 			RecordCID: recordCID,
 			Name:      module.GetName(),
 			ModuleID:  module.GetID(),
+			Data:      module.GetData(),
 		}
 	}
 

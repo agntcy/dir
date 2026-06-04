@@ -10,6 +10,11 @@ type Config struct {
 	// MetricsAddress is the address the metric endpoint binds to.
 	MetricsAddress string `json:"metrics_address,omitempty" mapstructure:"metrics_address"`
 
+	// GatewayAddress is the base URL of the HTTP gateway (e.g.
+	// "http://localhost:19892"). Empty when the gateway is not deployed in
+	// this environment, in which case AI Finder HTTP tests are skipped.
+	GatewayAddress string `json:"gateway_address,omitempty" mapstructure:"gateway_address"`
+
 	// CliPath is the path to the CLI binary.
 	CliPath string `json:"cli_path,omitempty" mapstructure:"cli_path"`
 

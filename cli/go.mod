@@ -30,7 +30,7 @@ require (
 	github.com/agntcy/dir/reconciler v1.4.0
 	github.com/agntcy/dir/server v1.4.0
 	github.com/agntcy/dir/utils v1.4.0
-	github.com/agntcy/oasf-sdk/pkg v1.0.5
+	github.com/agntcy/oasf-sdk/pkg v1.0.6-0.20260603092510-c72d9654e557
 	github.com/ipfs/go-cid v0.6.1
 	github.com/libp2p/go-libp2p v0.48.0
 	github.com/mitchellh/mapstructure v1.5.1-0.20231216201459-8508981c8b6c

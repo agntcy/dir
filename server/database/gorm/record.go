@@ -20,6 +20,7 @@ type Record struct {
 	RecordCID     string   `gorm:"column:record_cid;primarykey;not null"`
 	Name          string   `gorm:"not null"`
 	Version       string   `gorm:"not null"`
+	Description   string   `gorm:"column:description"`
 	SchemaVersion string   `gorm:"column:schema_version"`
 	OASFCreatedAt string   `gorm:"column:oasf_created_at"`
 	Authors       []string `gorm:"column:authors;serializer:json"` // Stored as JSON array
@@ -82,8 +83,7 @@ func (r *RecordDataAdapter) GetVersion() string {
 }
 
 func (r *RecordDataAdapter) GetDescription() string {
-	// Database records don't store description
-	return ""
+	return r.record.Description
 }
 
 func (r *RecordDataAdapter) GetAuthors() []string {
@@ -166,6 +166,7 @@ func (d *DB) AddRecord(record types.Record) error {
 		RecordCID:     cid,
 		Name:          recordData.GetName(),
 		Version:       recordData.GetVersion(),
+		Description:   recordData.GetDescription(),
 		SchemaVersion: recordData.GetSchemaVersion(),
 		OASFCreatedAt: recordData.GetCreatedAt(),
 		Authors:       recordData.GetAuthors(),

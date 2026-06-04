@@ -22,12 +22,12 @@ func (r *testRecord) GetCid() string                           { return r.cid }
 func (r *testRecord) GetRecordData() (types.RecordData, error) { return r.data, nil }
 
 type testRecordData struct {
-	name, version, schemaVersion, createdAt string
-	authors                                 []string
-	skills                                  []types.Skill
-	locators                                []types.Locator
-	modules                                 []types.Module
-	domains                                 []types.Domain
+	name, version, description, schemaVersion, createdAt string
+	authors                                              []string
+	skills                                               []types.Skill
+	locators                                             []types.Locator
+	modules                                              []types.Module
+	domains                                              []types.Domain
 }
 
 func (d *testRecordData) GetName() string                   { return d.name }
@@ -39,7 +39,7 @@ func (d *testRecordData) GetSkills() []types.Skill          { return d.skills }
 func (d *testRecordData) GetLocators() []types.Locator      { return d.locators }
 func (d *testRecordData) GetModules() []types.Module        { return d.modules }
 func (d *testRecordData) GetDomains() []types.Domain        { return d.domains }
-func (d *testRecordData) GetDescription() string            { return "" }
+func (d *testRecordData) GetDescription() string            { return d.description }
 func (d *testRecordData) GetAnnotations() map[string]string { return nil }
 func (d *testRecordData) GetSignature() types.Signature     { return nil }
 func (d *testRecordData) GetPreviousRecordCid() string      { return "" }
