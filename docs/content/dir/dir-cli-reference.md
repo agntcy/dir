@@ -532,8 +532,8 @@ Fetch and import records from external registries.
 | `--sign` | - | Sign records after pushing (uses OIDC by default) | No | false |
 | `--key` | - | Path to private key file for signing (requires `--sign`) | No | - |
 | `--oidc-token` | - | OIDC token for non-interactive signing (requires `--sign`) | No | - |
-| `--fulcio-url` | - | Sigstore Fulcio URL (requires `--sign`) | No | https://fulcio.sigstore.dev |
-| `--rekor-url` | - | Sigstore Rekor URL (requires `--sign`) | No | https://rekor.sigstore.dev |
+| `--fulcio-url` | - | Sigstore Fulcio URL (requires `--sign`) | No | `https://fulcio.sigstore.dev` |
+| `--rekor-url` | - | Sigstore Rekor URL (requires `--sign`) | No | `https://rekor.sigstore.dev` |
 | `--server-addr` | DIRECTORY_CLIENT_SERVER_ADDRESS | DIR server address | No | localhost:8888 |
 
 !!! note
