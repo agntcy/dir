@@ -9,8 +9,10 @@ package gateway
 
 import (
 	"context"
+	"embed"
 	"errors"
 	"fmt"
+	"io/fs"
 	"net"
 	"net/http"
 	"time"
@@ -22,6 +24,9 @@ import (
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/protobuf/encoding/protojson"
 )
+
+//go:embed all:static
+var staticFS embed.FS
 
 var logger = logging.Logger("gateway")
 
@@ -104,9 +109,18 @@ func New(ctx context.Context, opts Options) (*Server, error) {
 		return nil, fmt.Errorf("failed to register grpc-gateway handlers: %w", err)
 	}
 
+	staticContent, err := fs.Sub(staticFS, "static")
+	if err != nil {
+		_ = conn.Close()
+
+		return nil, fmt.Errorf("failed to load embedded static files: %w", err)
+	}
+
+	handler := withStaticFallback(mux, staticContent)
+
 	httpServer := &http.Server{
 		Addr:              opts.HTTPAddress,
-		Handler:           mux,
+		Handler:           handler,
 		ReadTimeout:       httpReadTimeout,
 		ReadHeaderTimeout: httpReadHeaderTimeout,
 		WriteTimeout:      httpWriteTimeout,
@@ -170,4 +184,51 @@ func RegisterAIFinder(ctx context.Context, mux *runtime.ServeMux, conn *grpc.Cli
 	}
 
 	return nil
+}
+
+// withStaticFallback wraps the gRPC-gateway mux so that requests not
+// matching any registered RPC pattern are served from the embedded
+// static filesystem. The root path "/" serves index.html. Paths starting
+// with /v1/ or /.well-known/ are delegated to the gRPC-gateway mux.
+// All other paths that don't match a static file serve index.html to
+// support SPA client-side routing.
+func withStaticFallback(mux *runtime.ServeMux, static fs.FS) http.Handler {
+	indexHTML, _ := fs.ReadFile(static, "index.html")
+
+	serveIndex := func(w http.ResponseWriter) {
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write(indexHTML)
+	}
+
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		path := r.URL.Path
+
+		// API routes go straight to the gRPC-gateway mux.
+		if len(path) >= 4 && path[:4] == "/v1/" ||
+			len(path) >= 13 && path[:13] == "/.well-known/" {
+			mux.ServeHTTP(w, r)
+
+			return
+		}
+
+		// Root or explicit index.html.
+		if path == "/" || path == "/index.html" {
+			serveIndex(w)
+
+			return
+		}
+
+		// Serve static file if it exists (JS, CSS, images, etc).
+		if name := path[1:]; name != "" {
+			if _, err := fs.Stat(static, name); err == nil {
+				http.ServeFileFS(w, r, static, name)
+
+				return
+			}
+		}
+
+		// SPA fallback: serve index.html for client-side routing.
+		serveIndex(w)
+	})
 }

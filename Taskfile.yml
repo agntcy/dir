@@ -47,6 +47,11 @@ includes:
     taskfile: docs/Taskfile.yml
     excludes: [default]
 
+  ui:
+    taskfile: server/gateway/ui/Taskfile.yml
+    flatten: true
+    excludes: [default]
+
 tasks:
   ##
   ## General

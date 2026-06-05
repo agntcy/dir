@@ -1,0 +1,78 @@
+import type { CatalogEntry, SubEntry, ExportFormat } from './types';
+
+export function extractEntryTypes(agent: CatalogEntry): string[] {
+	const entries = agent.data?.entries || [];
+	if (entries.length > 0) return entries.map((e) => e.mediaType || '');
+	if (agent.mediaType && agent.mediaType !== 'application/ai-catalog+json')
+		return [agent.mediaType];
+	return [];
+}
+
+export function extractShortTag(tag: string): string {
+	if (tag.startsWith('oasf:')) {
+		const segment = tag.split('/').pop() || '';
+		return segment
+			.split('_')
+			.map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+			.join(' ');
+	}
+	const parts = tag.split(':');
+	return (parts[parts.length - 1] || '').replace(/_/g, ' ');
+}
+
+export function hasTrustManifest(agent: CatalogEntry): boolean {
+	return !!(agent.trustManifest && agent.trustManifest.signature);
+}
+
+export function fakeStats(agent: CatalogEntry) {
+	let hash = 0;
+	const id = agent.identifier || agent.displayName || '';
+	for (let i = 0; i < id.length; i++) hash = ((hash << 5) - hash + id.charCodeAt(i)) | 0;
+	const seed = Math.abs(hash);
+	return {
+		downloads: 100 + (seed % 9900),
+		rating: 3 + (seed % 20) / 10,
+		providers: 1 + (seed % 12)
+	};
+}
+
+export function formatDownloads(n: number): string {
+	if (n >= 1000) return (n / 1000).toFixed(1).replace(/\.0$/, '') + 'k';
+	return n.toString();
+}
+
+export function extractCid(identifier: string): string {
+	if (!identifier) return '';
+	const parts = identifier.split(':');
+	return parts[parts.length - 1];
+}
+
+export function exportFormatForType(mediaType: string): ExportFormat {
+	if (mediaType.includes('a2a')) return { format: 'a2a', label: 'Download JSON', ext: 'json' };
+	if (mediaType.includes('mcp'))
+		return { format: 'mcp-ghcopilot', label: 'Download JSON', ext: 'json' };
+	if (mediaType.includes('ai-skill'))
+		return { format: 'agent-skill', label: 'Download Markdown', ext: 'md' };
+	return { format: 'oasf', label: 'Download Asset', ext: 'json' };
+}
+
+export function extractEntryName(entry: SubEntry): string {
+	const mt = entry.mediaType || '';
+	const data = entry.data as Record<string, unknown> | undefined;
+	if (mt.includes('a2a')) {
+		const card = data?.card_data as Record<string, unknown> | undefined;
+		return (card?.name as string) || entry.displayName || 'Unnamed';
+	}
+	if (mt.includes('mcp')) return (data?.name as string) || entry.displayName || 'Unnamed';
+	return entry.displayName || 'Unnamed';
+}
+
+export function extractEntryVersion(entry: SubEntry): string {
+	const mt = entry.mediaType || '';
+	const data = entry.data as Record<string, unknown> | undefined;
+	if (mt.includes('a2a')) {
+		const card = data?.card_data as Record<string, unknown> | undefined;
+		return (card?.version as string) || entry.version || '-';
+	}
+	return entry.version || '-';
+}

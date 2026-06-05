@@ -1,0 +1,21 @@
+# Copyright AGNTCY Contributors (https://github.com/agntcy)
+# SPDX-License-Identifier: Apache-2.0
+
+version: "3"
+
+tasks:
+  default:
+    cmd: echo "Run the main Taskfile instead of this one."
+
+  ui:build:
+    desc: Build the gateway UI (SvelteKit static output)
+    dir: ./server/gateway/ui
+    cmds:
+      - npm ci
+      - npm run build
+
+  ui:dev:
+    desc: Start the gateway UI dev server with HMR
+    dir: ./server/gateway/ui
+    cmds:
+      - npm run dev
