@@ -154,6 +154,20 @@ jobs:
             exit 1
           fi
 
+      - name: Setup Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: "22"
+
+      - name: Check UI build is up to date
+        run: |
+          task ui:build
+          if [[ -n "$(git status --porcelain server/gateway/static)" ]]; then
+            echo "::error::UI static files are out of date. Run 'task ui:build' and commit the changes."
+            git diff --stat server/gateway/static
+            exit 1
+          fi
+
   # This build builds local artifacts to the workflow run so that
   # we can load and test functionalities locally.
   # It does not push a tag as it includes test-specific instrumentation
