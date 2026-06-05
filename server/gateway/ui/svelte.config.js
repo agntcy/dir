@@ -12,6 +12,9 @@ const config = {
 		}),
 		paths: {
 			base: ''
+		},
+		version: {
+			name: '0'
 		}
 	}
 };
