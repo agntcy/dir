@@ -2,118 +2,122 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
     <url>
          <loc>https://agntcy.github.io/dir/1.4.0/</loc>
-         <lastmod>2026-06-04</lastmod>
+         <lastmod>2026-06-05</lastmod>
+    </url>
+    <url>
+         <loc>https://agntcy.github.io/dir/1.4.0/community/</loc>
+         <lastmod>2026-06-05</lastmod>
     </url>
     <url>
          <loc>https://agntcy.github.io/dir/1.4.0/integrations/</loc>
-         <lastmod>2026-06-04</lastmod>
+         <lastmod>2026-06-05</lastmod>
     </url>
     <url>
          <loc>https://agntcy.github.io/dir/1.4.0/research-integration-slides/</loc>
-         <lastmod>2026-06-04</lastmod>
+         <lastmod>2026-06-05</lastmod>
     </url>
     <url>
          <loc>https://agntcy.github.io/dir/1.4.0/security-schema/</loc>
-         <lastmod>2026-06-04</lastmod>
+         <lastmod>2026-06-05</lastmod>
     </url>
     <url>
          <loc>https://agntcy.github.io/dir/1.4.0/dir/dir-api-reference/</loc>
-         <lastmod>2026-06-04</lastmod>
+         <lastmod>2026-06-05</lastmod>
     </url>
     <url>
          <loc>https://agntcy.github.io/dir/1.4.0/dir/dir-architecture/</loc>
-         <lastmod>2026-06-04</lastmod>
+         <lastmod>2026-06-05</lastmod>
     </url>
     <url>
          <loc>https://agntcy.github.io/dir/1.4.0/dir/dir-cli-reference/</loc>
-         <lastmod>2026-06-04</lastmod>
+         <lastmod>2026-06-05</lastmod>
     </url>
     <url>
          <loc>https://agntcy.github.io/dir/1.4.0/dir/dir-component-event-streaming/</loc>
-         <lastmod>2026-06-04</lastmod>
+         <lastmod>2026-06-05</lastmod>
     </url>
     <url>
          <loc>https://agntcy.github.io/dir/1.4.0/dir/dir-component-gui/</loc>
-         <lastmod>2026-06-04</lastmod>
+         <lastmod>2026-06-05</lastmod>
     </url>
     <url>
          <loc>https://agntcy.github.io/dir/1.4.0/dir/dir-component-mcp-server/</loc>
-         <lastmod>2026-06-04</lastmod>
+         <lastmod>2026-06-05</lastmod>
     </url>
     <url>
          <loc>https://agntcy.github.io/dir/1.4.0/dir/dir-component-oidc-authentication/</loc>
-         <lastmod>2026-06-04</lastmod>
+         <lastmod>2026-06-05</lastmod>
     </url>
     <url>
          <loc>https://agntcy.github.io/dir/1.4.0/dir/dir-component-records-validation/</loc>
-         <lastmod>2026-06-04</lastmod>
+         <lastmod>2026-06-05</lastmod>
     </url>
     <url>
          <loc>https://agntcy.github.io/dir/1.4.0/dir/dir-component-routing/</loc>
-         <lastmod>2026-06-04</lastmod>
+         <lastmod>2026-06-05</lastmod>
     </url>
     <url>
          <loc>https://agntcy.github.io/dir/1.4.0/dir/dir-component-runtime-discovery/</loc>
-         <lastmod>2026-06-04</lastmod>
+         <lastmod>2026-06-05</lastmod>
     </url>
     <url>
          <loc>https://agntcy.github.io/dir/1.4.0/dir/dir-component-store/</loc>
-         <lastmod>2026-06-04</lastmod>
+         <lastmod>2026-06-05</lastmod>
     </url>
     <url>
          <loc>https://agntcy.github.io/dir/1.4.0/dir/dir-component-trust-model/</loc>
-         <lastmod>2026-06-04</lastmod>
+         <lastmod>2026-06-05</lastmod>
     </url>
     <url>
          <loc>https://agntcy.github.io/dir/1.4.0/dir/dir-deployment-kubernetes/</loc>
-         <lastmod>2026-06-04</lastmod>
+         <lastmod>2026-06-05</lastmod>
     </url>
     <url>
          <loc>https://agntcy.github.io/dir/1.4.0/dir/dir-deployment-local/</loc>
-         <lastmod>2026-06-04</lastmod>
+         <lastmod>2026-06-05</lastmod>
     </url>
     <url>
          <loc>https://agntcy.github.io/dir/1.4.0/dir/dir-features-scenarios/</loc>
-         <lastmod>2026-06-04</lastmod>
+         <lastmod>2026-06-05</lastmod>
     </url>
     <url>
          <loc>https://agntcy.github.io/dir/1.4.0/dir/dir-federation-aws-eks/</loc>
-         <lastmod>2026-06-04</lastmod>
+         <lastmod>2026-06-05</lastmod>
     </url>
     <url>
          <loc>https://agntcy.github.io/dir/1.4.0/dir/dir-federation-overview/</loc>
-         <lastmod>2026-06-04</lastmod>
+         <lastmod>2026-06-05</lastmod>
     </url>
     <url>
          <loc>https://agntcy.github.io/dir/1.4.0/dir/dir-federation-profiles/</loc>
-         <lastmod>2026-06-04</lastmod>
+         <lastmod>2026-06-05</lastmod>
     </url>
     <url>
          <loc>https://agntcy.github.io/dir/1.4.0/dir/dir-federation-setup/</loc>
-         <lastmod>2026-06-04</lastmod>
+         <lastmod>2026-06-05</lastmod>
     </url>
     <url>
          <loc>https://agntcy.github.io/dir/1.4.0/dir/dir-federation-troubleshooting/</loc>
-         <lastmod>2026-06-04</lastmod>
+         <lastmod>2026-06-05</lastmod>
     </url>
     <url>
          <loc>https://agntcy.github.io/dir/1.4.0/dir/dir-overview/</loc>
-         <lastmod>2026-06-04</lastmod>
+         <lastmod>2026-06-05</lastmod>
     </url>
     <url>
          <loc>https://agntcy.github.io/dir/1.4.0/dir/dir-prod-deployment/</loc>
-         <lastmod>2026-06-04</lastmod>
+         <lastmod>2026-06-05</lastmod>
     </url>
     <url>
          <loc>https://agntcy.github.io/dir/1.4.0/dir/dir-quickstart/</loc>
-         <lastmod>2026-06-04</lastmod>
+         <lastmod>2026-06-05</lastmod>
     </url>
     <url>
          <loc>https://agntcy.github.io/dir/1.4.0/dir/dir-sdk/</loc>
-         <lastmod>2026-06-04</lastmod>
+         <lastmod>2026-06-05</lastmod>
     </url>
     <url>
          <loc>https://agntcy.github.io/dir/1.4.0/dir/dir-validation/</loc>
-         <lastmod>2026-06-04</lastmod>
+         <lastmod>2026-06-05</lastmod>
     </url>
 </urlset>
