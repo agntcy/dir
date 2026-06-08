@@ -11,6 +11,7 @@ package v1
 
 import (
 	context "context"
+	httpbody "google.golang.org/genproto/googleapis/api/httpbody"
 	grpc "google.golang.org/grpc"
 	codes "google.golang.org/grpc/codes"
 	status "google.golang.org/grpc/status"
@@ -23,6 +24,8 @@ const _ = grpc.SupportPackageIsVersion8
 
 const (
 	AIFinderService_ListAgents_FullMethodName          = "/agntcy.dir.catalog.v1.AIFinderService/ListAgents"
+	AIFinderService_GetAgent_FullMethodName            = "/agntcy.dir.catalog.v1.AIFinderService/GetAgent"
+	AIFinderService_ExportAgent_FullMethodName         = "/agntcy.dir.catalog.v1.AIFinderService/ExportAgent"
 	AIFinderService_GetWellKnownCatalog_FullMethodName = "/agntcy.dir.catalog.v1.AIFinderService/GetWellKnownCatalog"
 )
 
@@ -36,6 +39,15 @@ type AIFinderServiceClient interface {
 	// ListAgents returns catalog entries with deterministic, cacheable browsing
 	// semantics (database filtering, no relevance ranking).
 	ListAgents(ctx context.Context, in *ListAgentsRequest, opts ...grpc.CallOption) (*ListAgentsResponse, error)
+	// GetAgent returns a single CatalogEntry by CID. The response shape is the
+	// same as one element in ListAgentsResponse.results[], providing a stable
+	// detail URL for any agent discovered through listing.
+	GetAgent(ctx context.Context, in *GetAgentRequest, opts ...grpc.CallOption) (*GetAgentResponse, error)
+	// ExportAgent returns the full agent record in one of the supported export
+	// formats (oasf, a2a, agent-skill, mcp-ghcopilot). The bytes are written
+	// directly into the response body via google.api.HttpBody with an appropriate
+	// Content-Type.
+	ExportAgent(ctx context.Context, in *ExportAgentRequest, opts ...grpc.CallOption) (*httpbody.HttpBody, error)
 	// GetWellKnownCatalog returns the AI Catalog well-known document (host
 	// descriptor, published entries, and dynamic collections) at the RFC 8615 URI.
 	GetWellKnownCatalog(ctx context.Context, in *GetWellKnownCatalogRequest, opts ...grpc.CallOption) (*GetWellKnownCatalogResponse, error)
@@ -53,6 +65,26 @@ func (c *aIFinderServiceClient) ListAgents(ctx context.Context, in *ListAgentsRe
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(ListAgentsResponse)
 	err := c.cc.Invoke(ctx, AIFinderService_ListAgents_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *aIFinderServiceClient) GetAgent(ctx context.Context, in *GetAgentRequest, opts ...grpc.CallOption) (*GetAgentResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetAgentResponse)
+	err := c.cc.Invoke(ctx, AIFinderService_GetAgent_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *aIFinderServiceClient) ExportAgent(ctx context.Context, in *ExportAgentRequest, opts ...grpc.CallOption) (*httpbody.HttpBody, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(httpbody.HttpBody)
+	err := c.cc.Invoke(ctx, AIFinderService_ExportAgent_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -79,6 +111,15 @@ type AIFinderServiceServer interface {
 	// ListAgents returns catalog entries with deterministic, cacheable browsing
 	// semantics (database filtering, no relevance ranking).
 	ListAgents(context.Context, *ListAgentsRequest) (*ListAgentsResponse, error)
+	// GetAgent returns a single CatalogEntry by CID. The response shape is the
+	// same as one element in ListAgentsResponse.results[], providing a stable
+	// detail URL for any agent discovered through listing.
+	GetAgent(context.Context, *GetAgentRequest) (*GetAgentResponse, error)
+	// ExportAgent returns the full agent record in one of the supported export
+	// formats (oasf, a2a, agent-skill, mcp-ghcopilot). The bytes are written
+	// directly into the response body via google.api.HttpBody with an appropriate
+	// Content-Type.
+	ExportAgent(context.Context, *ExportAgentRequest) (*httpbody.HttpBody, error)
 	// GetWellKnownCatalog returns the AI Catalog well-known document (host
 	// descriptor, published entries, and dynamic collections) at the RFC 8615 URI.
 	GetWellKnownCatalog(context.Context, *GetWellKnownCatalogRequest) (*GetWellKnownCatalogResponse, error)
@@ -93,6 +134,12 @@ type UnimplementedAIFinderServiceServer struct{}
 
 func (UnimplementedAIFinderServiceServer) ListAgents(context.Context, *ListAgentsRequest) (*ListAgentsResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ListAgents not implemented")
+}
+func (UnimplementedAIFinderServiceServer) GetAgent(context.Context, *GetAgentRequest) (*GetAgentResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetAgent not implemented")
+}
+func (UnimplementedAIFinderServiceServer) ExportAgent(context.Context, *ExportAgentRequest) (*httpbody.HttpBody, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ExportAgent not implemented")
 }
 func (UnimplementedAIFinderServiceServer) GetWellKnownCatalog(context.Context, *GetWellKnownCatalogRequest) (*GetWellKnownCatalogResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetWellKnownCatalog not implemented")
@@ -135,6 +182,42 @@ func _AIFinderService_ListAgents_Handler(srv interface{}, ctx context.Context, d
 	return interceptor(ctx, in, info, handler)
 }
 
+func _AIFinderService_GetAgent_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetAgentRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AIFinderServiceServer).GetAgent(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: AIFinderService_GetAgent_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AIFinderServiceServer).GetAgent(ctx, req.(*GetAgentRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _AIFinderService_ExportAgent_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ExportAgentRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AIFinderServiceServer).ExportAgent(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: AIFinderService_ExportAgent_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AIFinderServiceServer).ExportAgent(ctx, req.(*ExportAgentRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _AIFinderService_GetWellKnownCatalog_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(GetWellKnownCatalogRequest)
 	if err := dec(in); err != nil {
@@ -163,6 +246,14 @@ var AIFinderService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "ListAgents",
 			Handler:    _AIFinderService_ListAgents_Handler,
+		},
+		{
+			MethodName: "GetAgent",
+			Handler:    _AIFinderService_GetAgent_Handler,
+		},
+		{
+			MethodName: "ExportAgent",
+			Handler:    _AIFinderService_ExportAgent_Handler,
 		},
 		{
 			MethodName: "GetWellKnownCatalog",
