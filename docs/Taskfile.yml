@@ -1,5 +1,5 @@
 # Copyright AGNTCY Contributors (https://github.com/agntcy)
-# SPDX-License-Identifier: CC-BY-4.0
+# SPDX-License-Identifier: Apache-2.0
 #
 # Documentation tasks. From repo root: task docs:run
 # Or: task -t docs/Taskfile.yml run
@@ -15,13 +15,17 @@ vars:
   MKDOCS_DIR: "{{.DOCS_DIR}}/mkdocs"
   MKDOCS_CONFIG: "{{.MKDOCS_DIR}}/mkdocs.yml"
   BUILD_SITE: "{{.REPO}}/.build/site"
-  MIKE_SITE: "{{.REPO}}/.build/mike-site"
   CONTENT_DIR: "{{.DOCS_DIR}}/content"
   # Pages in mkdocs nav (exclude draft/orphan pages under content/)
   LINT_PATHS: "{{.CONTENT_DIR}}/index.md {{.CONTENT_DIR}}/community.md {{.CONTENT_DIR}}/dir"
   SPELL_CONFIG: "{{.DOCS_DIR}}/codespellrc"
   MD_CONFIG: "{{.DOCS_DIR}}/pymarkdown.yaml"
   LYCHEE_CONFIG: "{{.DOCS_DIR}}/lychee.toml"
+  # Deploy (mike --push to gh-pages). Defaults overridable from the environment.
+  MIKE_REMOTE: '{{.MIKE_REMOTE | default "origin"}}'
+  SITE_URL: '{{.SITE_URL | default "https://agntcy.github.io/dir/"}}'
+  BOT_NAME: "github-actions[bot]"
+  BOT_EMAIL: "41898282+github-actions[bot]@users.noreply.github.com"
 
 tasks:
   default:
@@ -141,62 +145,78 @@ tasks:
       - cd "{{.MKDOCS_DIR}}" && uv run pymarkdown --config {{.MD_CONFIG}} fix {{.CONTENT_DIR}}/community.md
       - cd "{{.MKDOCS_DIR}}" && uv run pymarkdown --config {{.MD_CONFIG}} fix -r {{.CONTENT_DIR}}/dir
 
-  mike:deploy:run:
-    desc: Run mike deploy/set-default/delete-stale (internal)
-    internal: true
-    dir: "{{.REPO}}"
-    requires:
-      vars: [MIKE_VERSION_KIND]
+  # CI deploy tasks (mike --push to gh-pages). The docs workflows
+  # (.github/workflows/docs-deploy.yml -> reusable-docs.yml) only provision
+  # tools and call these:
+  #   push to main           -> docs:deploy:dev      (`dev` version)
+  #   release tag / dispatch -> docs:deploy:release  (`<version>` + `latest`, default)
+  #   any deploy             -> docs:deploy:root-files (404/robots/llms at branch root)
+  # They push to the remote and refuse to run outside CI unless ALLOW_DOCS_PUSH=1.
+  # For local, no-push preview use docs:mike:deploy-local / docs:mike:serve below.
+
+  deploy:dev:
+    desc: "CI: publish current docs as the `dev` version (mike --push to gh-pages)."
     deps:
       - deps:sync
-    env:
-      VERSION: '{{env "VERSION"}}'
+    preconditions:
+      - sh: '[ "${CI:-}" = "true" ] || [ "${ALLOW_DOCS_PUSH:-}" = "1" ]'
+        msg: "Refusing to push docs outside CI. Set ALLOW_DOCS_PUSH=1 to override."
     cmds:
-      - 'test -f "{{.DOCS_DIR}}/mike_version.py" || { echo "Missing docs/mike_version.py"; exit 1; }'
+      - git config user.name "{{.BOT_NAME}}"
+      - git config user.email "{{.BOT_EMAIL}}"
+      - |
+        set -euo pipefail
+        export MKDOCS_SITE_URL="${MKDOCS_SITE_URL:-{{.SITE_URL}}}"
+        cd "{{.MKDOCS_DIR}}"
+        uv run mike deploy --push --remote "{{.MIKE_REMOTE}}" -F "{{.MKDOCS_CONFIG}}" dev
+        uv run mike list -F "{{.MKDOCS_CONFIG}}"
+
+  deploy:release:
+    desc: "CI: publish VERSION + `latest` alias (set-default `latest`) via mike --push. Requires VERSION."
+    deps:
+      - deps:sync
+    requires:
+      vars: [VERSION]
+    preconditions:
+      - sh: '[ "${CI:-}" = "true" ] || [ "${ALLOW_DOCS_PUSH:-}" = "1" ]'
+        msg: "Refusing to push docs outside CI. Set ALLOW_DOCS_PUSH=1 to override."
+    cmds:
+      - git config user.name "{{.BOT_NAME}}"
+      - git config user.email "{{.BOT_EMAIL}}"
+      - |
+        set -euo pipefail
+        VERSION="{{.VERSION}}"
+        VERSION="${VERSION#v}"
+        [ -n "${VERSION}" ] || { echo "::error::VERSION is empty after normalizing leading v"; exit 1; }
+        echo "Deploying docs version: ${VERSION}"
+        export MKDOCS_SITE_URL="${MKDOCS_SITE_URL:-{{.SITE_URL}}}"
+        cd "{{.MKDOCS_DIR}}"
+        uv run mike deploy --push --update-aliases --remote "{{.MIKE_REMOTE}}" -F "{{.MKDOCS_CONFIG}}" "${VERSION}" latest
+        uv run mike set-default --push --remote "{{.MIKE_REMOTE}}" -F "{{.MKDOCS_CONFIG}}" latest
+        uv run mike list -F "{{.MKDOCS_CONFIG}}"
+
+  deploy:root-files:
+    desc: "CI: publish 404.html/robots.txt/llms.txt to gh-pages root. Requires REPO_SLUG + GH_TOKEN env."
+    preconditions:
+      - sh: '[ -n "${GH_TOKEN:-}" ]'
+        msg: "GH_TOKEN environment variable is required."
+    cmds:
+      - bash "{{.DOCS_DIR}}/scripts/deploy_root_files.sh" "${REPO_SLUG:?REPO_SLUG environment variable is required}"
+
+  mike:deploy-local:
+    desc: >-
+      Deploy current docs to local gh-pages as the `dev` version (no git push). Run docs:mike:serve to preview.
+    deps:
+      - deps:sync
+    cmds:
       - git fetch origin gh-pages --depth=1 2>/dev/null || true
       - |
         set -euo pipefail
         export MKDOCS_SITE_URL="${MKDOCS_SITE_URL:-https://agntcy.github.io/dir/}"
-        if [ "{{.MIKE_VERSION_KIND}}" = "release" ] && [ -n "${VERSION:-}" ]; then
-          echo "Mike version from VERSION env: ${VERSION}"
-        fi
-        MIKE_VER="$(python3 "{{.DOCS_DIR}}/mike_version.py" {{.MIKE_VERSION_KIND}})"
-        echo "Deploying mike version: ${MIKE_VER}"
-        CFG="{{.MKDOCS_CONFIG}}"
         cd "{{.MKDOCS_DIR}}"
-        uv run mike deploy -F "$CFG" "$MIKE_VER"
-        uv run mike set-default -F "$CFG" "$MIKE_VER"
-        for stale in dev latest; do uv run mike delete -F "$CFG" "$stale" 2>/dev/null || true; done
-        uv run mike list -F "$CFG"
-
-  mike:pages-build:
-    desc: >-
-      CI/release only — build multi-version site for GitHub Pages (requires VERSION). No remote push from Taskfile.
-    dir: "{{.REPO}}"
-    deps:
-      - deps:sync
-    preconditions:
-      - sh: '[ -n "${VERSION:-}" ]'
-        msg: "VERSION is required (set by docs-deploy workflow)"
-    cmds:
-      - task: mike:deploy:run
-        vars:
-          MIKE_VERSION_KIND: release
-      - |
-        set -euo pipefail
-        git worktree remove "{{.MIKE_SITE}}" --force 2>/dev/null || true
-        rm -rf "{{.MIKE_SITE}}"
-        git worktree add "{{.MIKE_SITE}}" gh-pages
-        echo "Mike site ready for Pages artifact: {{.MIKE_SITE}}"
-
-  mike:deploy-local:
-    desc: >-
-      Deploy current docs to local gh-pages as a single version label ([versions] local in mike_versions.ini); no git push
-    cmds:
-      - task: mike:deploy:run
-        vars:
-          MIKE_VERSION_KIND: local
-      - echo "Local gh-pages updated. Run task docs:mike:serve and open http://127.0.0.1:8000/"
+        uv run mike deploy -F "{{.MKDOCS_CONFIG}}" dev
+        uv run mike list -F "{{.MKDOCS_CONFIG}}"
+      - echo "Local gh-pages updated (dev). Run task docs:mike:serve and open http://127.0.0.1:8000/"
 
   mike:serve:
     desc: >-

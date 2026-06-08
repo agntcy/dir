@@ -1,3 +1,6 @@
+/* Copyright AGNTCY Contributors (https://github.com/agntcy) */
+/* SPDX-License-Identifier: Apache-2.0 */
+
 [data-md-color-scheme="default"] {
   --md-primary-fg-color: rgb(243, 246, 253);
   --md-primary-bg-color: rgb(2, 81, 175);
@@ -444,6 +447,7 @@ h1#agent-directory-service {
   position: static;
 }
 
+.md-version,
 .md-content--community .md-sidebar--secondary,
 .md-content--home .md-sidebar--secondary {
   display: none;

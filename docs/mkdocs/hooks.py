@@ -1,3 +1,6 @@
+# Copyright AGNTCY Contributors (https://github.com/agntcy)
+# SPDX-License-Identifier: Apache-2.0
+
 """MkDocs hooks: trust store for urllib (HTTPS includes in mkdocs-include-markdown-plugin)."""
 import ssl
 import certifi

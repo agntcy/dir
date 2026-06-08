@@ -1,72 +1,82 @@
-# SPDX-FileCopyrightText: Copyright (c) 2026 Cisco and/or its affiliates.
+# Copyright AGNTCY Contributors (https://github.com/agntcy)
 # SPDX-License-Identifier: Apache-2.0
 #
-# Publish versioned docs (mike) via GitHub Actions Pages. gh-pages branch is the version ledger (CI push only).
-# Site: https://agntcy.github.io/dir/
+# Docs deploys via the reusable docs pipeline:
+#   - push to main         -> mode deploy-dev      (`dev` version; never `latest`)
+#   - release tag vX.Y.Z    -> mode deploy-release  (`X.Y.Z` + `latest`, default)
+#   - workflow_dispatch     -> mode deploy-release, version from input
+#
+# gh-pages is the version ledger (mike --push). Event parsing lives here (needs
+# the GitHub event context); the mike/task mechanics live in docs/Taskfile.yml.
 
-name: Deploy documentation
+name: Documentation Deploy
 
 on:
-  release:
-    types: [published]
-
   push:
+    branches: [main]
+    paths:
+      - 'docs/**'
+      - '.github/workflows/docs-deploy.yml'
+      - '.github/workflows/reusable-docs.yml'
     tags:
       - 'v*.*.*'
-
+  release:
+    types: [published]
   workflow_dispatch:
     inputs:
       version:
-        description: 'Docs version label for mike (e.g. 1.2.0 or 2.0.0-rc.1; no leading v required)'
+        description: 'Docs version label for mike (e.g. 1.2.0; no leading v required)'
         required: true
         type: string
 
-# Queue deploys so concurrent mike/gh-pages updates do not race.
+# Serialize gh-pages updates so concurrent mike pushes do not race.
 concurrency:
   group: docs-deploy-pages
   cancel-in-progress: false
 
 jobs:
-  version:
-    name: Resolve version
+  resolve:
+    name: Resolve deploy mode + version
     runs-on: ubuntu-latest
     outputs:
-      version: ${{ steps.ver.outputs.version }}
+      mode: ${{ steps.r.outputs.mode }}
+      version: ${{ steps.r.outputs.version }}
     steps:
-      - name: Resolve version label
-        id: ver
+      - name: Resolve mode and version
+        id: r
         shell: bash
         env:
-          TAG_NAME: ${{ github.event.release.tag_name }}
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+          INPUT_VERSION: ${{ github.event.inputs.version }}
         run: |
           set -euo pipefail
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            V="${{ github.event.inputs.version }}"
-          elif [ "${{ github.event_name }}" = "release" ] && [ -n "${TAG_NAME:-}" ]; then
-            V="${TAG_NAME}"
+          MODE=""
+          VERSION=""
+          if [ "${{ github.event_name }}" = "push" ] && [ "${{ github.ref }}" = "refs/heads/main" ]; then
+            MODE="deploy-dev"
+          elif [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            MODE="deploy-release"
+            VERSION="${INPUT_VERSION}"
+          elif [ "${{ github.event_name }}" = "release" ] && [ -n "${RELEASE_TAG:-}" ]; then
+            MODE="deploy-release"
+            VERSION="${RELEASE_TAG}"
           elif [ "${{ github.ref_type }}" = "tag" ]; then
-            V="${{ github.ref_name }}"
+            MODE="deploy-release"
+            VERSION="${{ github.ref_name }}"
           else
-            echo "::error::Could not resolve version from event"
+            echo "::error::Could not resolve deploy mode from event ${{ github.event_name }} (${{ github.ref }})"
             exit 1
           fi
-          V="${V#v}"
-          if [ -z "$V" ]; then
-            echo "::error::Empty version after normalizing tag/input"
-            exit 1
-          fi
-          echo "version=${V}" >> "$GITHUB_OUTPUT"
-          echo "Deploying mike version: ${V}"
+          echo "mode=${MODE}" >> "${GITHUB_OUTPUT}"
+          echo "version=${VERSION}" >> "${GITHUB_OUTPUT}"
+          echo "Resolved mode=${MODE} version=${VERSION:-<none>}"
 
-  docs:
-    name: Build and deploy docs
-    needs: version
-    uses: ./.github/workflows/reusable-docs.yml
+  deploy:
+    needs: resolve
     permissions:
       contents: write
-      pages: write
-      id-token: write
+    uses: ./.github/workflows/reusable-docs.yml
     with:
-      task: mike:pages-build
-      version: ${{ needs.version.outputs.version }}
-      deploy: true
+      mode: ${{ needs.resolve.outputs.mode }}
+      version: ${{ needs.resolve.outputs.version }}
+    secrets: inherit
