@@ -58,21 +58,21 @@ jobs:
       VERSION: ${{ inputs.version }}
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
         with:
           fetch-depth: 0
           submodules: recursive
 
       - name: Setup Pages
         if: inputs.deploy == true || inputs.deploy == 'true'
-        uses: actions/configure-pages@v5
+        uses: actions/configure-pages@983d7736d9b0ae728b81ab479565c72886d7745b # v5
 
       - name: Setup Taskfile
         shell: bash
         run: sh -c "$(curl --location https://taskfile.dev/install.sh)" -- -d -b ~/.local/bin
 
       - name: Setup uv
-        uses: astral-sh/setup-uv@v5
+        uses: astral-sh/setup-uv@d4b2f3b6ecc6e67c4457f6d3e41ec42d3d0fcb86 # v5.4.2
 
       - name: Update GITHUB_PATH
         shell: bash
@@ -111,14 +111,14 @@ jobs:
 
       - name: Upload Pages artifact (mike)
         if: (inputs.deploy == true || inputs.deploy == 'true') && inputs.task == 'mike:pages-build'
-        uses: actions/upload-pages-artifact@v4
+        uses: actions/upload-pages-artifact@7b1f4a764d45c48632c6b24a0339c27f5614fb0b # v4
         with:
           name: dir-docs-website
           path: .build/mike-site
 
       - name: Upload Pages artifact (mkdocs)
         if: (inputs.deploy == true || inputs.deploy == 'true') && inputs.task != 'mike:pages-build'
-        uses: actions/upload-pages-artifact@v4
+        uses: actions/upload-pages-artifact@7b1f4a764d45c48632c6b24a0339c27f5614fb0b # v4
         with:
           name: dir-docs-website
           path: .build/site
@@ -135,7 +135,7 @@ jobs:
     steps:
       - name: Deploy to GitHub Pages
         id: deployment
-        uses: actions/deploy-pages@v4
+        uses: actions/deploy-pages@d6db90164ac5ed86f2b6aed7e0febac5b3c0c03e # v4.0.5
         with:
           artifact_name: dir-docs-website
 

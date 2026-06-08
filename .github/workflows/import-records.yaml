@@ -50,7 +50,7 @@ jobs:
       IMPORT_CONFIG: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.import_config || '.github/workflows/scripts/import-records.json' }}
     steps:
       - name: Checkout code
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
 
       - name: Set up matrix from config
         id: set-matrix
@@ -95,7 +95,7 @@ jobs:
       SCANNER_ENABLED: ${{ needs.setup-matrix.outputs.scanner_enabled }}
     steps:
       - name: Checkout code
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
 
       - name: Build dirctl from source
         id: setup-dirctl
