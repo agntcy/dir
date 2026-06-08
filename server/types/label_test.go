@@ -8,7 +8,6 @@ import (
 
 	corev1 "github.com/agntcy/dir/api/core/v1"
 	"github.com/agntcy/dir/server/types"
-	"github.com/agntcy/dir/server/types/adapters"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -42,9 +41,10 @@ func TestGetLabelsFromRecord(t *testing.T) {
 
 		record, err := corev1.UnmarshalRecord([]byte(recordJSON))
 		require.NoError(t, err)
+		reader, err := record.GetReader()
+		require.NoError(t, err)
 
-		adapter := adapters.NewRecordAdapter(record)
-		labels := types.GetLabelsFromRecord(adapter)
+		labels := types.GetLabelsFromRecord(reader)
 		require.NotNil(t, labels)
 
 		// Should have at least skill, locator, and module labels
@@ -100,9 +100,10 @@ func TestGetLabelsFromRecord(t *testing.T) {
 
 		record, err := corev1.UnmarshalRecord([]byte(recordJSON))
 		require.NoError(t, err)
+		reader, err := record.GetReader()
+		require.NoError(t, err)
 
-		adapter := adapters.NewRecordAdapter(record)
-		labels := types.GetLabelsFromRecord(adapter)
+		labels := types.GetLabelsFromRecord(reader)
 		require.NotNil(t, labels)
 
 		// Should have skill, domain, locator, and module labels
@@ -133,8 +134,10 @@ func TestGetLabelsFromRecord(t *testing.T) {
 			return
 		}
 
-		adapter := adapters.NewRecordAdapter(record)
-		labels := types.GetLabelsFromRecord(adapter)
+		reader, err := record.GetReader()
+		assert.NoError(t, err)
+
+		labels := types.GetLabelsFromRecord(reader)
 		// Should handle gracefully and return nil or empty slice
 		assert.Empty(t, labels)
 	})

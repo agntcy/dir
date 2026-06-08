@@ -11,6 +11,8 @@ import (
 	"errors"
 	"strings"
 	"time"
+
+	coretypes "github.com/agntcy/dir/api/core/types"
 )
 
 // LabelType represents the category of a label based on its namespace.
@@ -38,6 +40,14 @@ func (lt LabelType) Prefix() string {
 	}
 
 	return "/" + string(lt) + "/"
+}
+
+func (lt LabelType) LabelKey(key string) Label {
+	if lt == LabelTypeUnknown {
+		return Label(key) // No namespace, return as-is
+	}
+
+	return Label(lt.Prefix() + key)
 }
 
 // IsValid checks if the label type is one of the supported types.
@@ -165,34 +175,30 @@ const (
 	MinLabelKeyParts = 5
 )
 
-// GetLabelsFromRecord extracts labels from a record using the LabelProvider interface.
-// This function works at the types interface level, making it usable from any package
-// without circular dependencies.
-//
-// The caller is responsible for wrapping concrete record types (e.g., *corev1.Record)
-// with the appropriate adapter before calling this function.
-//
-// Example:
-//
-//	adapter := adapters.NewRecordAdapter(corev1Record)
-//	labels := types.GetLabelsFromRecord(adapter)
-//
-// Returns:
-//   - []Label: List of all labels extracted from the record
-//   - nil: If record is nil, has no data, or doesn't implement LabelProvider
-func GetLabelsFromRecord(record Record) []Label {
+// GetLabelsFromRecord extracts labels from a record.
+func GetLabelsFromRecord(record coretypes.RecordReader) []Label {
 	if record == nil {
 		return nil
 	}
 
-	recordData, err := record.GetRecordData()
-	if err != nil {
-		return nil
+	// Extract skills, domains, modules, and locators as labels.
+	labels := make([]Label, 0)
+
+	for _, skill := range record.GetSkills() {
+		labels = append(labels, LabelTypeSkill.LabelKey(skill.Name))
 	}
 
-	if provider, ok := recordData.(LabelProvider); ok {
-		return provider.GetAllLabels()
+	for _, domain := range record.GetDomains() {
+		labels = append(labels, LabelTypeDomain.LabelKey(domain.Name))
 	}
 
-	return nil
+	for _, module := range record.GetModules() {
+		labels = append(labels, LabelTypeModule.LabelKey(module.Name))
+	}
+
+	for _, locator := range record.GetLocators() {
+		labels = append(labels, LabelTypeLocator.LabelKey(locator.Type))
+	}
+
+	return labels
 }

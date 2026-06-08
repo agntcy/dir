@@ -8,6 +8,7 @@ import (
 	"time"
 
 	catalogv1 "github.com/agntcy/dir/api/catalog/v1"
+	coretypes "github.com/agntcy/dir/api/core/types"
 	routingv1 "github.com/agntcy/dir/api/routing/v1"
 	storev1 "github.com/agntcy/dir/api/store/v1"
 )
@@ -40,13 +41,13 @@ type DatabaseAPI interface {
 
 type SearchDatabaseAPI interface {
 	// AddRecord adds a new record to the search database.
-	AddRecord(record Record) error
+	AddRecord(record coretypes.RecordReader) error
 
 	// GetRecordCIDs retrieves record CIDs based on the provided filters.
 	GetRecordCIDs(opts ...FilterOption) ([]string, error)
 
 	// GetRecords retrieves full records based on the provided filters.
-	GetRecords(opts ...FilterOption) ([]Record, error)
+	GetRecords(opts ...FilterOption) ([]coretypes.RecordReader, error)
 
 	// RemoveRecord removes a record from the search database by CID.
 	RemoveRecord(cid string) error
@@ -107,7 +108,7 @@ type NameVerificationDatabaseAPI interface {
 
 	// GetRecordsNeedingVerification retrieves signed records with verifiable names
 	// that either don't have a verification or have an expired verification.
-	GetRecordsNeedingVerification(ttl time.Duration) ([]Record, error)
+	GetRecordsNeedingVerification(ttl time.Duration) ([]coretypes.RecordReader, error)
 }
 
 // CatalogDatabaseAPI exposes the deterministic-browsing query backing the
@@ -132,7 +133,7 @@ type SignatureVerificationDatabaseAPI interface {
 	GetSignatureVerificationsByRecordCID(recordCID string) ([]SignatureVerificationObject, error)
 
 	// GetRecordsNeedingSignatureVerification returns signed records that have no verification or expired verification.
-	GetRecordsNeedingSignatureVerification(ttl time.Duration) ([]Record, error)
+	GetRecordsNeedingSignatureVerification(ttl time.Duration) ([]coretypes.RecordReader, error)
 
 	// InvalidateSignatureVerificationsForRecord removes all cached verification rows for a record so the reconciler will re-verify it (e.g. when a new signature or public key referrer is pushed).
 	InvalidateSignatureVerificationsForRecord(recordCID string) error
