@@ -1,7 +1,7 @@
 // Copyright AGNTCY Contributors (https://github.com/agntcy)
 // SPDX-License-Identifier: Apache-2.0
 
-package format
+package exportfmt
 
 import (
 	"encoding/json"
@@ -12,7 +12,7 @@ import (
 )
 
 func init() {
-	RegisterFormatter("a2a", &a2aFormatter{})
+	RegisterFormatter(FormatA2A, &a2aFormatter{})
 }
 
 type a2aFormatter struct{}
@@ -25,7 +25,7 @@ func (f *a2aFormatter) Format(record *corev1.Record) ([]byte, error) {
 
 	a2aCard, err := translator.RecordToA2A(data)
 	if err != nil {
-		return nil, fmt.Errorf("failed to translate record to A2A AgentCard: %w", err)
+		return nil, fmt.Errorf("%w: failed to translate record to A2A AgentCard: %w", ErrUnsupportedRecord, err)
 	}
 
 	raw, err := json.MarshalIndent(a2aCard, "", "  ")

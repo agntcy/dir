@@ -1,7 +1,7 @@
 // Copyright AGNTCY Contributors (https://github.com/agntcy)
 // SPDX-License-Identifier: Apache-2.0
 
-package format
+package exportfmt
 
 import (
 	"fmt"
@@ -11,7 +11,7 @@ import (
 )
 
 func init() {
-	RegisterFormatter("oasf", &oasfFormatter{})
+	RegisterFormatter(FormatOASF, &oasfFormatter{})
 }
 
 type oasfFormatter struct{}

@@ -1,7 +1,7 @@
 // Copyright AGNTCY Contributors (https://github.com/agntcy)
 // SPDX-License-Identifier: Apache-2.0
 
-package format_test
+package export
 
 import (
 	"encoding/json"
@@ -10,13 +10,71 @@ import (
 	"path/filepath"
 	"testing"
 
+	oasfv1alpha1 "buf.build/gen/go/agntcy/oasf/protocolbuffers/go/agntcy/oasf/types/v1alpha1"
 	corev1 "github.com/agntcy/dir/api/core/v1"
-	"github.com/agntcy/dir/cli/cmd/export/format"
+	"github.com/agntcy/dir/api/exportfmt"
+	"github.com/agntcy/oasf-sdk/pkg/translator"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/types/known/structpb"
 )
+
+func newTestRecord() *corev1.Record {
+	return corev1.New(&oasfv1alpha1.Record{
+		Name:          "test-agent",
+		SchemaVersion: "v0.5.0",
+		Description:   "A test agent for export formatting",
+		Version:       "1.0.0",
+	})
+}
+
+const testA2ARecordJSON = `{
+  "schema_version": "1.0.0",
+  "name": "test-a2a-agent",
+  "version": "1.0.0",
+  "description": "A test A2A agent",
+  "modules": [
+    {
+      "name": "integration/a2a",
+      "data": {
+        "card_data": {
+          "name": "test-a2a-agent",
+          "description": "A test A2A agent",
+          "version": "1.0.0",
+          "protocolVersions": ["0.2.6"],
+          "supportedInterfaces": [
+            {
+              "url": "https://example.com/a2a",
+              "protocolBinding": "HTTP+JSON"
+            }
+          ],
+          "capabilities": {},
+          "defaultInputModes": ["text"],
+          "defaultOutputModes": ["text"],
+          "skills": [
+            {
+              "id": "test-skill",
+              "name": "Test Skill",
+              "description": "A skill for testing"
+            }
+          ]
+        },
+        "card_schema_version": "v1.0.0"
+      }
+    }
+  ]
+}`
+
+func newA2ATestRecord(t *testing.T) *corev1.Record {
+	t.Helper()
+
+	var data structpb.Struct
+
+	require.NoError(t, protojson.Unmarshal([]byte(testA2ARecordJSON), &data))
+
+	return &corev1.Record{Data: &data}
+}
 
 func newA2ATestRecordWithVersion(t *testing.T, version string) *corev1.Record {
 	t.Helper()
@@ -65,15 +123,75 @@ func newA2ATestRecordWithVersion(t *testing.T, version string) *corev1.Record {
 	return &corev1.Record{Data: &data}
 }
 
+const testMCPGHCopilotRecordJSON = `{
+  "schema_version": "1.0.0",
+  "name": "io.example/code-review-server",
+  "version": "1.0.0",
+  "description": "MCP server for code review",
+  "modules": [
+    {
+      "name": "integration/mcp",
+      "data": {
+        "name": "io.example/code-review-server",
+        "connections": [
+          {
+            "type": "stdio",
+            "command": "npx",
+            "args": ["@example/code-review-server@1.0.0"],
+            "env_vars": [
+              {
+                "name": "API_KEY",
+                "description": "API key for authentication"
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ]
+}`
+
+func newMCPGHCopilotTestRecord(t *testing.T, recordJSON string) *corev1.Record {
+	t.Helper()
+
+	var data structpb.Struct
+
+	require.NoError(t, protojson.Unmarshal([]byte(recordJSON), &data))
+
+	return &corev1.Record{Data: &data}
+}
+
+const testSkillMarkdown = `---
+name: code-review
+description: Review code for bugs and style.
+---
+
+Use this skill when users ask for code review.
+`
+
+func newSkillTestRecord(t *testing.T) *corev1.Record {
+	t.Helper()
+
+	skillInput, err := structpb.NewStruct(map[string]any{
+		"skillMarkdown": testSkillMarkdown,
+	})
+	require.NoError(t, err)
+
+	recordStruct, err := translator.SkillMarkdownToRecord(skillInput)
+	require.NoError(t, err)
+
+	return &corev1.Record{Data: recordStruct}
+}
+
 func TestDefaultBatchExport(t *testing.T) {
-	f, err := format.GetFormatter("a2a")
+	f, err := exportfmt.GetFormatter("a2a")
 	require.NoError(t, err)
 
 	t.Run("uses name only by default", func(t *testing.T) {
 		dir := t.TempDir()
 		records := []*corev1.Record{newA2ATestRecord(t)}
 
-		n, err := format.DefaultBatchExport(f, records, dir, false)
+		n, err := defaultBatchExport(f, records, dir, false)
 		require.NoError(t, err)
 		assert.Equal(t, 1, n)
 
@@ -90,7 +208,7 @@ func TestDefaultBatchExport(t *testing.T) {
 		// older version first — the exporter should still pick 2.0.0
 		records := []*corev1.Record{older, newer}
 
-		n, err := format.DefaultBatchExport(f, records, dir, false)
+		n, err := defaultBatchExport(f, records, dir, false)
 		require.NoError(t, err)
 		assert.Equal(t, 1, n)
 
@@ -113,7 +231,7 @@ func TestDefaultBatchExport(t *testing.T) {
 		older := newA2ATestRecordWithVersion(t, "1.0.0")
 		records := []*corev1.Record{newer, older}
 
-		n, err := format.DefaultBatchExport(f, records, dir, false)
+		n, err := defaultBatchExport(f, records, dir, false)
 		require.NoError(t, err)
 		assert.Equal(t, 1, n)
 
@@ -129,7 +247,7 @@ func TestDefaultBatchExport(t *testing.T) {
 		dir := t.TempDir()
 		records := []*corev1.Record{newA2ATestRecord(t)}
 
-		n, err := format.DefaultBatchExport(f, records, dir, true)
+		n, err := defaultBatchExport(f, records, dir, true)
 		require.NoError(t, err)
 		assert.Equal(t, 1, n)
 
@@ -145,7 +263,7 @@ func TestDefaultBatchExport(t *testing.T) {
 		v2 := newA2ATestRecordWithVersion(t, "2.0.0")
 		records := []*corev1.Record{v1, v2}
 
-		n, err := format.DefaultBatchExport(f, records, dir, true)
+		n, err := defaultBatchExport(f, records, dir, true)
 		require.NoError(t, err)
 		assert.Equal(t, 2, n)
 
@@ -162,7 +280,7 @@ func TestDefaultBatchExport(t *testing.T) {
 		dir := t.TempDir()
 		records := []*corev1.Record{newA2ATestRecord(t), newA2ATestRecord(t)}
 
-		n, err := format.DefaultBatchExport(f, records, dir, true)
+		n, err := defaultBatchExport(f, records, dir, true)
 		require.NoError(t, err)
 		assert.Equal(t, 2, n)
 
@@ -177,18 +295,15 @@ func TestDefaultBatchExport(t *testing.T) {
 
 	t.Run("returns zero for empty slice", func(t *testing.T) {
 		dir := t.TempDir()
-		n, err := format.DefaultBatchExport(f, nil, dir, false)
+		n, err := defaultBatchExport(f, nil, dir, false)
 		require.NoError(t, err)
 		assert.Equal(t, 0, n)
 	})
 }
 
 func TestSkillBatchFormatter(t *testing.T) {
-	f, err := format.GetFormatter("agent-skill")
-	require.NoError(t, err)
-
-	bf, ok := f.(format.BatchFormatter)
-	require.True(t, ok, "agent-skill should implement BatchFormatter")
+	bf := getBatchFormatter("agent-skill")
+	require.NotNil(t, bf, "agent-skill should have a batch formatter")
 
 	t.Run("uses name only by default", func(t *testing.T) {
 		dir := t.TempDir()
@@ -220,11 +335,8 @@ func TestSkillBatchFormatter(t *testing.T) {
 }
 
 func TestMCPGHCopilotBatchFormatter(t *testing.T) {
-	f, err := format.GetFormatter("mcp-ghcopilot")
-	require.NoError(t, err)
-
-	bf, ok := f.(format.BatchFormatter)
-	require.True(t, ok, "mcp-ghcopilot should implement BatchFormatter")
+	bf := getBatchFormatter("mcp-ghcopilot")
+	require.NotNil(t, bf, "mcp-ghcopilot should have a batch formatter")
 
 	t.Run("merges multiple records into single mcp.json", func(t *testing.T) {
 		dir := t.TempDir()
@@ -264,7 +376,7 @@ func TestLatestByName(t *testing.T) {
 		v1 := newA2ATestRecordWithVersion(t, "1.0.0")
 		v2 := newA2ATestRecordWithVersion(t, "2.0.0")
 
-		result := format.LatestByName([]*corev1.Record{v1, v2})
+		result := latestByName([]*corev1.Record{v1, v2})
 		require.Len(t, result, 1)
 
 		assert.Equal(t, "test-a2a-agent", result[0].GetName())
@@ -275,7 +387,7 @@ func TestLatestByName(t *testing.T) {
 		v1 := newA2ATestRecordWithVersion(t, "v1.0.0")
 		v2 := newA2ATestRecordWithVersion(t, "v2.0.0")
 
-		result := format.LatestByName([]*corev1.Record{v1, v2})
+		result := latestByName([]*corev1.Record{v1, v2})
 		require.Len(t, result, 1)
 		assert.Equal(t, "v2.0.0", result[0].GetVersion())
 	})
@@ -284,7 +396,7 @@ func TestLatestByName(t *testing.T) {
 		r1 := newA2ATestRecord(t)
 		r2 := newTestRecord() // name="test-agent"
 
-		result := format.LatestByName([]*corev1.Record{r1, r2})
+		result := latestByName([]*corev1.Record{r1, r2})
 		assert.Len(t, result, 2)
 	})
 
@@ -293,7 +405,7 @@ func TestLatestByName(t *testing.T) {
 		r2 := newTestRecord()     // name="test-agent"
 		r3 := newA2ATestRecord(t) // duplicate — should merge with r1
 
-		result := format.LatestByName([]*corev1.Record{r1, r2, r3})
+		result := latestByName([]*corev1.Record{r1, r2, r3})
 		require.Len(t, result, 2)
 		assert.Equal(t, "test-a2a-agent", result[0].GetName())
 		assert.Equal(t, "test-agent", result[1].GetName())
@@ -304,7 +416,7 @@ func TestLatestByName(t *testing.T) {
 		r1 := newA2ATestRecordWithVersion(t, "1.0.0")
 		r2 := newA2ATestRecordWithVersion(t, "1.0.0")
 
-		result := format.LatestByName([]*corev1.Record{r1, r2})
+		result := latestByName([]*corev1.Record{r1, r2})
 		require.Len(t, result, 1)
 	})
 
@@ -312,14 +424,14 @@ func TestLatestByName(t *testing.T) {
 		alpha := newA2ATestRecordWithVersion(t, "1.0.0-alpha")
 		release := newA2ATestRecordWithVersion(t, "1.0.0")
 
-		result := format.LatestByName([]*corev1.Record{alpha, release})
+		result := latestByName([]*corev1.Record{alpha, release})
 		require.Len(t, result, 1)
 
 		assert.NotContains(t, result[0].GetVersion(), "alpha", "release should beat alpha")
 	})
 
 	t.Run("returns nil for empty input", func(t *testing.T) {
-		result := format.LatestByName(nil)
+		result := latestByName(nil)
 		assert.Empty(t, result)
 	})
 }
@@ -332,7 +444,7 @@ func TestRecordGetName(t *testing.T) {
 }
 
 func TestSanitizeName(t *testing.T) {
-	assert.Equal(t, "io.example-code-review", format.SanitizeName("io.example/code-review"))
-	assert.Equal(t, "simple-name", format.SanitizeName("simple-name"))
-	assert.Equal(t, "with-spaces", format.SanitizeName("with spaces"))
+	assert.Equal(t, "io.example-code-review", sanitizeName("io.example/code-review"))
+	assert.Equal(t, "simple-name", sanitizeName("simple-name"))
+	assert.Equal(t, "with-spaces", sanitizeName("with spaces"))
 }
