@@ -52,6 +52,9 @@ type Options struct {
 	// GRPCEndpoint is the loopback address of the gRPC server to proxy to.
 	GRPCEndpoint string
 
+	// GRPCDialOptions are additional options to use when dialing the gRPC server.
+	GRPCDialOptions []grpc.DialOption
+
 	// RegisterHandlers registers each annotated service with the gateway mux
 	// (e.g. RegisterAIFinder).
 	RegisterHandlers func(ctx context.Context, mux *runtime.ServeMux, conn *grpc.ClientConn) error
@@ -71,13 +74,16 @@ func New(ctx context.Context, opts Options) (*Server, error) {
 		return nil, errors.New("gateway register handlers function is required")
 	}
 
+	if len(opts.GRPCDialOptions) == 0 {
+		opts.GRPCDialOptions = []grpc.DialOption{
+			grpc.WithTransportCredentials(insecure.NewCredentials()),
+		}
+	}
+
 	// Loopback dial only, so insecure credentials are appropriate. grpc.NewClient
 	// is non-blocking, so the gateway can be constructed before the gRPC server
 	// accepts connections.
-	conn, err := grpc.NewClient(
-		opts.GRPCEndpoint,
-		grpc.WithTransportCredentials(insecure.NewCredentials()),
-	)
+	conn, err := grpc.NewClient(opts.GRPCEndpoint, opts.GRPCDialOptions...)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create gRPC client for %q: %w", opts.GRPCEndpoint, err)
 	}

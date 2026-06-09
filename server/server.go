@@ -186,6 +186,7 @@ func New(ctx context.Context, cfg *config.Config, opts ...ServerOption) (*Server
 	// Load options
 	options := types.NewOptions(cfg)
 	serverOpts := []grpc.ServerOption{}
+	clientOpts := []grpc.DialOption{}
 
 	// Add connection management options FIRST (lowest level - applies to all connections)
 	// This must be before interceptors to ensure connection limits protect all server components
@@ -258,7 +259,7 @@ func New(ctx context.Context, cfg *config.Config, opts ...ServerOption) (*Server
 		}
 	}
 
-	// Create JWT authentication service if enabled
+	// Create authentication service if enabled
 	var authnService *authn.Service
 	if cfg.Authn.Enabled {
 		authnService, err = authn.New(ctx, cfg.Authn)
@@ -268,6 +269,7 @@ func New(ctx context.Context, cfg *config.Config, opts ...ServerOption) (*Server
 
 		//nolint:contextcheck
 		serverOpts = append(serverOpts, authnService.GetServerOptions()...)
+		clientOpts = append(clientOpts, authnService.GetClientOptions()...)
 	}
 
 	var authzService *authz.Service
@@ -343,6 +345,7 @@ func New(ctx context.Context, cfg *config.Config, opts ...ServerOption) (*Server
 		httpGateway, err = gateway.New(ctx, gateway.Options{
 			HTTPAddress:      gwCfg.ListenAddress,
 			GRPCEndpoint:     grpcEndpoint,
+			GRPCDialOptions:  clientOpts,
 			RegisterHandlers: gateway.RegisterAIFinder,
 		})
 		if err != nil {

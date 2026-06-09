@@ -16,6 +16,7 @@ import (
 	"github.com/spiffe/go-spiffe/v2/svid/x509svid"
 	"github.com/spiffe/go-spiffe/v2/workloadapi"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 )
 
 var logger = logging.Logger("authn")
@@ -243,6 +244,30 @@ func (s *Service) GetServerOptions() []grpc.ServerOption {
 		logger.Error("Unsupported auth mode", "mode", s.mode)
 
 		return []grpc.ServerOption{}
+	}
+}
+
+func (s *Service) GetClientOptions() []grpc.DialOption {
+	switch s.mode {
+	case config.AuthModeJWT:
+		return []grpc.DialOption{
+			grpc.WithTransportCredentials(
+				grpccredentials.TLSClientCredentials(s.bundleSrc, tlsconfig.AuthorizeAny()),
+			),
+			grpc.WithPerRPCCredentials(newJWTCredentials(s.jwtSource, s.audiences)),
+		}
+
+	case config.AuthModeX509:
+		return []grpc.DialOption{
+			grpc.WithTransportCredentials(
+				grpccredentials.MTLSClientCredentials(s.x509Src, s.bundleSrc, tlsconfig.AuthorizeAny()),
+			),
+		}
+
+	default:
+		return []grpc.DialOption{
+			grpc.WithTransportCredentials(insecure.NewCredentials()),
+		}
 	}
 }
 
