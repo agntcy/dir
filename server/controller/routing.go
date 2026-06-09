@@ -9,7 +9,6 @@ import (
 	corev1 "github.com/agntcy/dir/api/core/v1"
 	routingv1 "github.com/agntcy/dir/api/routing/v1"
 	"github.com/agntcy/dir/server/types"
-	"github.com/agntcy/dir/server/types/adapters"
 	"github.com/agntcy/dir/utils/logging"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -109,7 +108,10 @@ func (c *routingCtlr) Unpublish(ctx context.Context, req *routingv1.UnpublishReq
 		}
 
 		// Wrap record with adapter for interface-based unpublishing
-		adapter := adapters.NewRecordAdapter(record)
+		adapter, err := record.Decode()
+		if err != nil {
+			return nil, status.Errorf(codes.Internal, "failed to decode record: %s", err.Error())
+		}
 
 		err = c.routing.Unpublish(ctx, adapter)
 		if err != nil {

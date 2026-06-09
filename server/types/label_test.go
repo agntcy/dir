@@ -41,10 +41,10 @@ func TestGetLabelsFromRecord(t *testing.T) {
 
 		record, err := corev1.UnmarshalRecord([]byte(recordJSON))
 		require.NoError(t, err)
-		reader, err := record.GetReader()
+		adapter, err := record.Decode()
 		require.NoError(t, err)
 
-		labels := types.GetLabelsFromRecord(reader)
+		labels := types.GetLabelsFromRecord(adapter)
 		require.NotNil(t, labels)
 
 		// Should have at least skill, locator, and module labels
@@ -100,10 +100,10 @@ func TestGetLabelsFromRecord(t *testing.T) {
 
 		record, err := corev1.UnmarshalRecord([]byte(recordJSON))
 		require.NoError(t, err)
-		reader, err := record.GetReader()
+		adapter, err := record.Decode()
 		require.NoError(t, err)
 
-		labels := types.GetLabelsFromRecord(reader)
+		labels := types.GetLabelsFromRecord(adapter)
 		require.NotNil(t, labels)
 
 		// Should have skill, domain, locator, and module labels
@@ -134,10 +134,10 @@ func TestGetLabelsFromRecord(t *testing.T) {
 			return
 		}
 
-		reader, err := record.GetReader()
-		assert.NoError(t, err)
+		adapter, err := record.Decode()
+		require.NoError(t, err)
 
-		labels := types.GetLabelsFromRecord(reader)
+		labels := types.GetLabelsFromRecord(adapter)
 		// Should handle gracefully and return nil or empty slice
 		assert.Empty(t, labels)
 	})

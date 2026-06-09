@@ -16,6 +16,7 @@ import (
 	"context"
 	"fmt"
 
+	coretypes "github.com/agntcy/dir/api/core/types"
 	routingv1 "github.com/agntcy/dir/api/routing/v1"
 	"github.com/agntcy/dir/server/datastore"
 	"github.com/agntcy/dir/server/events"
@@ -71,7 +72,7 @@ func New(ctx context.Context, store types.StoreAPI, opts types.APIOptions) (type
 	return mainRounter, nil
 }
 
-func (r *route) Publish(ctx context.Context, record types.Record) error {
+func (r *route) Publish(ctx context.Context, record coretypes.Record) error {
 	// Always publish data locally for archival/querying
 	err := r.local.Publish(ctx, record)
 	if err != nil {
@@ -115,7 +116,7 @@ func (r *route) Search(ctx context.Context, req *routingv1.SearchRequest) (<-cha
 	return r.remote.Search(ctx, req)
 }
 
-func (r *route) Unpublish(ctx context.Context, record types.Record) error {
+func (r *route) Unpublish(ctx context.Context, record coretypes.Record) error {
 	err := r.local.Unpublish(ctx, record)
 	if err != nil {
 		st := status.Convert(err)

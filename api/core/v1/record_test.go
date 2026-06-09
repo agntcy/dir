@@ -324,111 +324,112 @@ func TestRecord_ValidateWith_RecordSize(t *testing.T) {
 	}
 }
 
-// func TestRecord_Decode(t *testing.T) {
-// 	tests := []struct {
-// 		name     string
-// 		record   *corev1.Record
-// 		wantResp any
-// 		wantFail bool
-// 	}{
-// 		{
-// 			name: "valid 0.7.0 record",
-// 			record: corev1.New(&oasfv1alpha1.Record{
-// 				Name:          "valid-agent-v2",
-// 				SchemaVersion: "0.7.0",
-// 				Description:   "A valid agent record",
-// 				Version:       "1.0.0",
-// 				CreatedAt:     "2024-01-01T00:00:00Z",
-// 			}),
-// 			wantResp: &oasfv1alpha1.Record{
-// 				Name:          "valid-agent-v2",
-// 				SchemaVersion: "0.7.0",
-// 				Description:   "A valid agent record",
-// 				Version:       "1.0.0",
-// 				CreatedAt:     "2024-01-01T00:00:00Z",
-// 			},
-// 		},
-// 		{
-// 			name: "valid 1.0.0 record",
-// 			record: func() *corev1.Record {
-// 				record, _ := corev1.UnmarshalRecord([]byte(`{
-// 					"name": "test-agent-v3",
-// 					"schema_version": "1.0.0",
-// 					"version": "1.0.0",
-// 					"description": "A valid agent record",
-// 					"created_at": "2024-01-01T00:00:00Z",
-// 					"authors": ["test@example.com"],
-// 					"skills": [{"name": "natural_language_processing/natural_language_understanding/contextual_comprehension", "id": 10101}],
-// 					"locators": [{"type": "container_image", "urls": ["https://example.com/agent"]}]
-// 				}`))
+func TestRecord_Decode(t *testing.T) {
+	tests := []struct {
+		name     string
+		record   *corev1.Record
+		wantResp any
+		wantFail bool
+	}{
+		{
+			name: "valid 0.7.0 record",
+			record: corev1.New(&oasfv1alpha1.Record{
+				Name:          "valid-agent-v2",
+				SchemaVersion: "0.7.0",
+				Description:   "A valid agent record",
+				Version:       "1.0.0",
+				CreatedAt:     "2024-01-01T00:00:00Z",
+			}),
+			wantResp: &oasfv1alpha1.Record{
+				Name:          "valid-agent-v2",
+				SchemaVersion: "0.7.0",
+				Description:   "A valid agent record",
+				Version:       "1.0.0",
+				CreatedAt:     "2024-01-01T00:00:00Z",
+			},
+		},
+		{
+			name: "valid 1.0.0 record",
+			record: func() *corev1.Record {
+				record, _ := corev1.UnmarshalRecord([]byte(`{
+					"name": "test-agent-v3",
+					"schema_version": "1.0.0",
+					"version": "1.0.0",
+					"description": "A valid agent record",
+					"created_at": "2024-01-01T00:00:00Z",
+					"authors": ["test@example.com"],
+					"skills": [{"name": "natural_language_processing/natural_language_understanding/contextual_comprehension", "id": 10101}],
+					"locators": [{"type": "container_image", "urls": ["https://example.com/agent"]}]
+				}`))
 
-// 				return record
-// 			}(),
-// 			wantResp: func() any {
-// 				// Decode the expected record to get the v1 record
-// 				record, _ := corev1.UnmarshalRecord([]byte(`{
-// 					"name": "test-agent-v3",
-// 					"schema_version": "1.0.0",
-// 					"version": "1.0.0",
-// 					"description": "A valid agent record",
-// 					"created_at": "2024-01-01T00:00:00Z",
-// 					"authors": ["test@example.com"],
-// 					"skills": [{"name": "natural_language_processing/natural_language_understanding/contextual_comprehension", "id": 10101}],
-// 					"locators": [{"type": "container_image", "urls": ["https://example.com/agent"]}]
-// 				}`))
+				return record
+			}(),
+			wantResp: func() any {
+				// Decode the expected record to get the v1 record
+				record, _ := corev1.UnmarshalRecord([]byte(`{
+					"name": "test-agent-v3",
+					"schema_version": "1.0.0",
+					"version": "1.0.0",
+					"description": "A valid agent record",
+					"created_at": "2024-01-01T00:00:00Z",
+					"authors": ["test@example.com"],
+					"skills": [{"name": "natural_language_processing/natural_language_understanding/contextual_comprehension", "id": 10101}],
+					"locators": [{"type": "container_image", "urls": ["https://example.com/agent"]}]
+				}`))
+				decoded, _ := record.Decode()
 
-// 				return record
-// 			}(),
-// 			wantFail: false,
-// 		},
-// 		{
-// 			name:     "nil record",
-// 			record:   nil,
-// 			wantFail: true,
-// 		},
-// 		{
-// 			name:     "empty record",
-// 			record:   &corev1.Record{},
-// 			wantFail: true,
-// 		},
-// 		{
-// 			name: "record with invalid generic data",
-// 			record: &corev1.Record{
-// 				Data: &structpb.Struct{
-// 					Fields: map[string]*structpb.Value{
-// 						"invalid_field": {
-// 							Kind: &structpb.Value_StringValue{StringValue: "some value"},
-// 						},
-// 					},
-// 				},
-// 			},
-// 			wantFail: true,
-// 		},
-// 	}
+				return decoded.GetRecord()
+			}(),
+			wantFail: false,
+		},
+		{
+			name:     "nil record",
+			record:   nil,
+			wantFail: true,
+		},
+		{
+			name:     "empty record",
+			record:   &corev1.Record{},
+			wantFail: true,
+		},
+		{
+			name: "record with invalid generic data",
+			record: &corev1.Record{
+				Data: &structpb.Struct{
+					Fields: map[string]*structpb.Value{
+						"invalid_field": {
+							Kind: &structpb.Value_StringValue{StringValue: "some value"},
+						},
+					},
+				},
+			},
+			wantFail: true,
+		},
+	}
 
-// 	for _, tt := range tests {
-// 		t.Run(tt.name, func(t *testing.T) {
-// 			got, err := tt.record.GetRecordData()
-// 			if err != nil {
-// 				if !tt.wantFail {
-// 					t.Errorf("GetRecordData() unexpected error: %v", err)
-// 				}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := tt.record.Decode()
+			if err != nil {
+				if !tt.wantFail {
+					t.Errorf("Decode() unexpected error: %v", err)
+				}
 
-// 				return
-// 			}
+				return
+			}
 
-// 			if got == nil {
-// 				t.Errorf("GetRecordData() got nil record, want %v", tt.wantResp)
+			if got == nil {
+				t.Errorf("Decode() got nil record, want %v", tt.wantResp)
 
-// 				return
-// 			}
+				return
+			}
 
-// 			if !assert.EqualValues(t, tt.wantResp, got.GetRecord()) {
-// 				t.Errorf("GetRecordData() got %v, want %v", got, tt.wantResp)
-// 			}
-// 		})
-// 	}
-// }
+			if !assert.EqualValues(t, tt.wantResp, got.GetRecord()) {
+				t.Errorf("Decode() got %v, want %v", got, tt.wantResp)
+			}
+		})
+	}
+}
 
 func TestRecord_GetName(t *testing.T) {
 	tests := []struct {
@@ -469,9 +470,7 @@ func TestRecord_GetName(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			reader, err := tt.record.GetReader()
-			require.NoError(t, err, "GetReader() should not error")
-			assert.Equal(t, tt.want, reader.GetName())
+			assert.Equal(t, tt.want, tt.record.GetName())
 		})
 	}
 }
@@ -516,9 +515,7 @@ func TestRecord_GetVersion(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			reader, err := tt.record.GetReader()
-			require.NoError(t, err, "GetReader() should not error")
-			assert.Equal(t, tt.want, reader.GetVersion())
+			assert.Equal(t, tt.want, tt.record.GetVersion())
 		})
 	}
 }

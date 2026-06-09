@@ -17,7 +17,7 @@ type Peer = peer.AddrInfo
 type RoutingAPI interface {
 	// Publish record to the network
 	// The caller must wrap concrete record types (e.g. *corev1.Record) with adapters.NewRecordAdapter()
-	Publish(context.Context, coretypes.RecordReader) error
+	Publish(context.Context, coretypes.Record) error
 
 	// List all records that this peer is currently providing (local-only operation)
 	List(context.Context, *routingv1.ListRequest) (<-chan *routingv1.ListResponse, error)
@@ -27,7 +27,7 @@ type RoutingAPI interface {
 
 	// Unpublish record from the network
 	// The caller must wrap concrete record types (e.g. *corev1.Record) with adapters.NewRecordAdapter()
-	Unpublish(context.Context, coretypes.RecordReader) error
+	Unpublish(context.Context, coretypes.Record) error
 
 	// Stop stops the routing services and releases resources
 	// Should be called during server shutdown for graceful cleanup

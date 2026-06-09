@@ -6,7 +6,8 @@ package gorm
 import (
 	"time"
 
-	"github.com/agntcy/dir/server/types"
+	coretypes "github.com/agntcy/dir/api/core/types"
+	"google.golang.org/protobuf/types/known/structpb"
 )
 
 type Module struct {
@@ -33,19 +34,26 @@ func (module *Module) GetID() uint64 {
 	return module.ModuleID
 }
 
-func (module *Module) GetData() map[string]any {
-	return module.Data
+func (module *Module) GetData() *structpb.Struct {
+	data, _ := structpb.NewStruct(module.Data)
+
+	return data
+}
+
+func (module *Module) GetAnnotations() map[string]string {
+	// Modules do not store annotations in the database
+	return nil
 }
 
 // convertModules transforms interface types to Database structs.
-func convertModules(modules []types.Module, recordCID string) []Module {
+func convertModules(modules []coretypes.Module, recordCID string) []Module {
 	result := make([]Module, len(modules))
 	for i, module := range modules {
 		result[i] = Module{
 			RecordCID: recordCID,
 			Name:      module.GetName(),
 			ModuleID:  module.GetID(),
-			Data:      module.GetData(),
+			Data:      module.GetData().AsMap(),
 		}
 	}
 

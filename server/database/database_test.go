@@ -6,43 +6,37 @@ package database
 import (
 	"testing"
 
+	coretypes "github.com/agntcy/dir/api/core/types"
 	dbconfig "github.com/agntcy/dir/server/database/config"
 	gormdb "github.com/agntcy/dir/server/database/gorm"
 	"github.com/agntcy/dir/server/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/protobuf/types/known/structpb"
 )
 
 type testRecord struct {
-	cid  string
-	data *testRecordData
+	cid, name, version, description, schemaVersion, createdAt string
+	authors                                                   []string
+	skills                                                    []coretypes.Skill
+	locators                                                  []coretypes.Locator
+	modules                                                   []coretypes.Module
+	domains                                                   []coretypes.Domain
 }
 
-func (r *testRecord) GetCid() string                           { return r.cid }
-func (r *testRecord) GetRecordData() (types.RecordData, error) { return r.data, nil }
-
-type testRecordData struct {
-	name, version, description, schemaVersion, createdAt string
-	authors                                              []string
-	skills                                               []types.Skill
-	locators                                             []types.Locator
-	modules                                              []types.Module
-	domains                                              []types.Domain
-}
-
-func (d *testRecordData) GetName() string                   { return d.name }
-func (d *testRecordData) GetVersion() string                { return d.version }
-func (d *testRecordData) GetSchemaVersion() string          { return d.schemaVersion }
-func (d *testRecordData) GetCreatedAt() string              { return d.createdAt }
-func (d *testRecordData) GetAuthors() []string              { return d.authors }
-func (d *testRecordData) GetSkills() []types.Skill          { return d.skills }
-func (d *testRecordData) GetLocators() []types.Locator      { return d.locators }
-func (d *testRecordData) GetModules() []types.Module        { return d.modules }
-func (d *testRecordData) GetDomains() []types.Domain        { return d.domains }
-func (d *testRecordData) GetDescription() string            { return d.description }
-func (d *testRecordData) GetAnnotations() map[string]string { return nil }
-func (d *testRecordData) GetSignature() types.Signature     { return nil }
-func (d *testRecordData) GetPreviousRecordCid() string      { return "" }
+func (r *testRecord) GetCid() string                    { return r.cid }
+func (r *testRecord) GetName() string                   { return r.name }
+func (r *testRecord) GetVersion() string                { return r.version }
+func (r *testRecord) GetSchemaVersion() string          { return r.schemaVersion }
+func (r *testRecord) GetCreatedAt() string              { return r.createdAt }
+func (r *testRecord) GetAuthors() []string              { return r.authors }
+func (r *testRecord) GetSkills() []coretypes.Skill      { return r.skills }
+func (r *testRecord) GetLocators() []coretypes.Locator  { return r.locators }
+func (r *testRecord) GetModules() []coretypes.Module    { return r.modules }
+func (r *testRecord) GetDomains() []coretypes.Domain    { return r.domains }
+func (r *testRecord) GetDescription() string            { return r.description }
+func (r *testRecord) GetAnnotations() map[string]string { return nil }
+func (r *testRecord) GetPreviousRecordCid() string      { return "" }
 
 type testSkill struct {
 	id   uint64
@@ -66,9 +60,10 @@ type testModule struct {
 	name string
 }
 
-func (m *testModule) GetID() uint64           { return m.id }
-func (m *testModule) GetName() string         { return m.name }
-func (m *testModule) GetData() map[string]any { return nil }
+func (m *testModule) GetID() uint64                     { return m.id }
+func (m *testModule) GetName() string                   { return m.name }
+func (m *testModule) GetData() *structpb.Struct         { return nil }
+func (m *testModule) GetAnnotations() map[string]string { return nil }
 
 type testDomain struct {
 	id   uint64
@@ -90,76 +85,70 @@ func setupTestDB(t *testing.T) *gormdb.DB {
 
 var (
 	marketingAgent = &testRecord{
-		cid: "bafybeigdyrzt5sfp7udm7hu76uh7y26nf3efuylqabf3oclgtqy55fbzdi",
-		data: &testRecordData{
-			name:          "directory.agntcy.org/cisco/marketing-strategy",
-			version:       "1.0.0",
-			schemaVersion: "0.8.0",
-			createdAt:     "2024-01-15T10:30:00Z",
-			authors:       []string{"alice@cisco.com", "bob@cisco.com"},
-			skills: []types.Skill{
-				&testSkill{id: 10201, name: "natural_language_processing/natural_language_generation/text_completion"},
-				&testSkill{id: 104, name: "natural_language_processing/creative_content"},
-			},
-			locators: []types.Locator{
-				&testLocator{locType: "docker_image", url: "ghcr.io/agntcy/marketing-strategy:v1.0.0"},
-			},
-			modules: []types.Module{
-				&testModule{id: 201, name: "integration/acp"},
-			},
-			domains: []types.Domain{
-				&testDomain{id: 2405, name: "marketing_and_advertising/marketing_analytics"},
-				&testDomain{id: 2403, name: "marketing_and_advertising/digital_marketing"},
-			},
+		cid:           "bafybeigdyrzt5sfp7udm7hu76uh7y26nf3efuylqabf3oclgtqy55fbzdi",
+		name:          "directory.agntcy.org/cisco/marketing-strategy",
+		version:       "1.0.0",
+		schemaVersion: "0.8.0",
+		createdAt:     "2024-01-15T10:30:00Z",
+		authors:       []string{"alice@cisco.com", "bob@cisco.com"},
+		skills: []coretypes.Skill{
+			&testSkill{id: 10201, name: "natural_language_processing/natural_language_generation/text_completion"},
+			&testSkill{id: 104, name: "natural_language_processing/creative_content"},
+		},
+		locators: []coretypes.Locator{
+			&testLocator{locType: "docker_image", url: "ghcr.io/agntcy/marketing-strategy:v1.0.0"},
+		},
+		modules: []coretypes.Module{
+			&testModule{id: 201, name: "integration/acp"},
+		},
+		domains: []coretypes.Domain{
+			&testDomain{id: 2405, name: "marketing_and_advertising/marketing_analytics"},
+			&testDomain{id: 2403, name: "marketing_and_advertising/digital_marketing"},
 		},
 	}
 
 	healthcareAgent = &testRecord{
-		cid: "bafybeihkoviema7g3gxyt6la7b7kbblo2hm7zgi3f6d67dqd7wy3yqhqxu",
-		data: &testRecordData{
-			name:          "directory.agntcy.org/medtech/health-assistant",
-			version:       "2.0.0",
-			schemaVersion: "0.7.0",
-			createdAt:     "2024-06-20T14:45:00Z",
-			authors:       []string{"charlie@medtech.io"},
-			skills: []types.Skill{
-				&testSkill{id: 601, name: "retrieval_augmented_generation/retrieval_of_information"},
-				&testSkill{id: 10302, name: "natural_language_processing/information_retrieval_synthesis/question_answering"},
-			},
-			locators: []types.Locator{
-				&testLocator{locType: "source_code", url: "https://github.com/medtech/health-assistant"},
-			},
-			modules: []types.Module{
-				&testModule{id: 202, name: "integration/mcp"},
-				&testModule{id: 10201, name: "core/llm/model"},
-			},
-			domains: []types.Domain{
-				&testDomain{id: 901, name: "healthcare/medical_technology"},
-				&testDomain{id: 902, name: "healthcare/telemedicine"},
-			},
+		cid:           "bafybeihkoviema7g3gxyt6la7b7kbblo2hm7zgi3f6d67dqd7wy3yqhqxu",
+		name:          "directory.agntcy.org/medtech/health-assistant",
+		version:       "2.0.0",
+		schemaVersion: "0.7.0",
+		createdAt:     "2024-06-20T14:45:00Z",
+		authors:       []string{"charlie@medtech.io"},
+		skills: []coretypes.Skill{
+			&testSkill{id: 601, name: "retrieval_augmented_generation/retrieval_of_information"},
+			&testSkill{id: 10302, name: "natural_language_processing/information_retrieval_synthesis/question_answering"},
+		},
+		locators: []coretypes.Locator{
+			&testLocator{locType: "source_code", url: "https://github.com/medtech/health-assistant"},
+		},
+		modules: []coretypes.Module{
+			&testModule{id: 202, name: "integration/mcp"},
+			&testModule{id: 10201, name: "core/llm/model"},
+		},
+		domains: []coretypes.Domain{
+			&testDomain{id: 901, name: "healthcare/medical_technology"},
+			&testDomain{id: 902, name: "healthcare/telemedicine"},
 		},
 	}
 
 	codeAssistant = &testRecord{
-		cid: "bafybeihdwdcefgh4dqkjv67uzcmw7ojzge6uyuvma5kw7bzydb56wxfao",
-		data: &testRecordData{
-			name:          "directory.agntcy.org/devtools/code-assistant",
-			version:       "1.0.0",
-			schemaVersion: "0.8.0",
-			createdAt:     "2024-03-10T09:00:00Z",
-			authors:       []string{"alice@cisco.com"},
-			skills: []types.Skill{
-				&testSkill{id: 50201, name: "analytical_skills/coding_skills/text_to_code"},
-				&testSkill{id: 50204, name: "analytical_skills/coding_skills/code_optimization"},
-			},
-			locators: []types.Locator{
-				&testLocator{locType: "docker_image", url: "ghcr.io/devtools/code-assistant:v1.0.0"},
-			},
-			modules: []types.Module{},
-			domains: []types.Domain{
-				&testDomain{id: 102, name: "technology/software_engineering"},
-				&testDomain{id: 10201, name: "technology/software_engineering/software_development"},
-			},
+		cid:           "bafybeihdwdcefgh4dqkjv67uzcmw7ojzge6uyuvma5kw7bzydb56wxfao",
+		name:          "directory.agntcy.org/devtools/code-assistant",
+		version:       "1.0.0",
+		schemaVersion: "0.8.0",
+		createdAt:     "2024-03-10T09:00:00Z",
+		authors:       []string{"alice@cisco.com"},
+		skills: []coretypes.Skill{
+			&testSkill{id: 50201, name: "analytical_skills/coding_skills/text_to_code"},
+			&testSkill{id: 50204, name: "analytical_skills/coding_skills/code_optimization"},
+		},
+		locators: []coretypes.Locator{
+			&testLocator{locType: "docker_image", url: "ghcr.io/devtools/code-assistant:v1.0.0"},
+		},
+		modules: []coretypes.Module{},
+		domains: []coretypes.Domain{
+			&testDomain{id: 102, name: "technology/software_engineering"},
+			&testDomain{id: 10201, name: "technology/software_engineering/software_development"},
 		},
 	}
 )
@@ -167,7 +156,7 @@ var (
 func seedDB(t *testing.T, db *gormdb.DB) {
 	t.Helper()
 
-	for _, r := range []types.Record{marketingAgent, healthcareAgent, codeAssistant} {
+	for _, r := range []coretypes.Record{marketingAgent, healthcareAgent, codeAssistant} {
 		require.NoError(t, db.AddRecord(r))
 	}
 }

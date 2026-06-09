@@ -15,7 +15,6 @@ import (
 	storev1 "github.com/agntcy/dir/api/store/v1"
 	"github.com/agntcy/dir/server/events"
 	"github.com/agntcy/dir/server/types"
-	"github.com/agntcy/dir/server/types/adapters"
 	"github.com/agntcy/dir/utils/logging"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -387,8 +386,14 @@ func (s storeCtrl) pushRecordToStore(ctx context.Context, record *corev1.Record)
 
 	// Add record to search index for discoverability
 	// Use the adapter pattern to convert corev1.Record to types.Record
-	recordAdapter := adapters.NewRecordAdapter(record)
-	if err := s.db.AddRecord(recordAdapter); err != nil {
+	recordData, err := record.Decode()
+	if err != nil {
+		storeLogger.Error("Failed to decode record for search index", "error", err, "cid", pushedRef.GetCid())
+
+		return pushedRef, nil // Don't fail the push if we can't index, but log the error
+	}
+
+	if err := s.db.AddRecord(recordData); err != nil {
 		// Log error but don't fail the push operation
 		storeLogger.Error("Failed to add record to search index", "error", err, "cid", pushedRef.GetCid())
 	} else {
@@ -427,9 +432,7 @@ func extractRecordInfo(record *corev1.Record) (string, string) {
 	name := "unknown"
 	version := "unknown"
 
-	adapter := adapters.NewRecordAdapter(record)
-
-	recordData, err := adapter.GetRecordData()
+	recordData, err := record.Decode()
 	if err != nil {
 		return name, version
 	}

@@ -176,7 +176,7 @@ const (
 )
 
 // GetLabelsFromRecord extracts labels from a record.
-func GetLabelsFromRecord(record coretypes.RecordReader) []Label {
+func GetLabelsFromRecord(record coretypes.Record) []Label {
 	if record == nil {
 		return nil
 	}
@@ -185,19 +185,19 @@ func GetLabelsFromRecord(record coretypes.RecordReader) []Label {
 	labels := make([]Label, 0)
 
 	for _, skill := range record.GetSkills() {
-		labels = append(labels, LabelTypeSkill.LabelKey(skill.Name))
+		labels = append(labels, LabelTypeSkill.LabelKey(skill.GetName()))
 	}
 
 	for _, domain := range record.GetDomains() {
-		labels = append(labels, LabelTypeDomain.LabelKey(domain.Name))
+		labels = append(labels, LabelTypeDomain.LabelKey(domain.GetName()))
 	}
 
 	for _, module := range record.GetModules() {
-		labels = append(labels, LabelTypeModule.LabelKey(module.Name))
+		labels = append(labels, LabelTypeModule.LabelKey(module.GetName()))
 	}
 
 	for _, locator := range record.GetLocators() {
-		labels = append(labels, LabelTypeLocator.LabelKey(locator.Type))
+		labels = append(labels, LabelTypeLocator.LabelKey(locator.GetType()))
 	}
 
 	return labels

@@ -3,12 +3,17 @@
 
 package types
 
-import "google.golang.org/protobuf/types/known/structpb"
+import (
+	"google.golang.org/protobuf/types/known/structpb"
+)
 
-// RecordReader is an interface that defines methods to read a record's data.
+// Record is an interface that defines methods to access a record's data.
 // It abstracts the underlying data structure of a record and allows for different
-// implementations to provide access to the record's information.
-type RecordReader interface {
+// implementations and versions to provide unified access to relevant information.
+//
+//nolint:interfacebloat
+type Record interface {
+	GetCid() string
 	GetAnnotations() map[string]string
 	GetSchemaVersion() string
 	GetName() string
@@ -23,29 +28,35 @@ type RecordReader interface {
 	GetModules() []Module
 }
 
-// Module defines the necessary data for a module, which is a component of a record.
-// It includes annotations, name, ID, and data.
-type Module struct {
-	Annotations map[string]string
-	Name        string
-	ID          uint64
-	Data        *structpb.Struct
+// Module defines the necessary data for a module.
+type Module interface {
+	GetAnnotations() map[string]string
+	GetName() string
+	GetID() uint64
+	GetData() *structpb.Struct
 }
 
-type Skill struct {
-	Annotations map[string]string
-	Name        string
-	ID          uint64
+// Skill defines the necessary data for a skill.
+//
+//nolint:iface
+type Skill interface {
+	GetAnnotations() map[string]string
+	GetName() string
+	GetID() uint64
 }
 
-type Domain struct {
-	Annotations map[string]string
-	Name        string
-	ID          uint64
+// Domain defines the necessary data for a domain.
+//
+//nolint:iface
+type Domain interface {
+	GetAnnotations() map[string]string
+	GetName() string
+	GetID() uint64
 }
 
-type Locator struct {
-	Annotations map[string]string
-	Type        string
-	URLs        []string
+// Locator defines the necessary data for a locator.
+type Locator interface {
+	GetAnnotations() map[string]string
+	GetType() string
+	GetURL() string
 }

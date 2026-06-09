@@ -3,7 +3,6 @@ module github.com/agntcy/dir/api
 go 1.26.3
 
 require (
-	buf.build/gen/go/agntcy/oasf-sdk/protocolbuffers/go v1.36.11-20260605133504-61a98cf01763.1
 	buf.build/gen/go/agntcy/oasf/protocolbuffers/go v1.36.11-20260602080720-2b66557c6456.1
 	buf.build/gen/go/bufbuild/protovalidate/protocolbuffers/go v1.36.11-20260415201107-50325440f8f2.1
 	github.com/agntcy/oasf-sdk/pkg v1.0.5
@@ -18,6 +17,7 @@ require (
 )
 
 require (
+	buf.build/gen/go/agntcy/oasf-sdk/protocolbuffers/go v1.36.11-20260605133504-61a98cf01763.1 // indirect
 	github.com/Masterminds/semver/v3 v3.5.0 // indirect
 	github.com/fxamacker/cbor/v2 v2.9.2 // indirect
 	github.com/go-logr/logr v1.4.3 // indirect

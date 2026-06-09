@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"time"
 
+	coretypes "github.com/agntcy/dir/api/core/types"
 	"github.com/agntcy/dir/server/types"
 	"gorm.io/gorm/clause"
 )
@@ -186,7 +187,7 @@ func (d *DB) InvalidateSignatureVerificationsForRecord(recordCID string) error {
 }
 
 // GetRecordsNeedingSignatureVerification returns signed records that have no verification or expired verification.
-func (d *DB) GetRecordsNeedingSignatureVerification(ttl time.Duration) ([]types.Record, error) {
+func (d *DB) GetRecordsNeedingSignatureVerification(ttl time.Duration) ([]coretypes.Record, error) {
 	expiredBefore := time.Now().Add(-ttl)
 
 	// Subquery: record_cids that have at least one verification row updated after expiredBefore.
@@ -205,7 +206,7 @@ func (d *DB) GetRecordsNeedingSignatureVerification(ttl time.Duration) ([]types.
 		return nil, fmt.Errorf("failed to get records needing signature verification: %w", err)
 	}
 
-	result := make([]types.Record, len(records))
+	result := make([]coretypes.Record, len(records))
 	for i := range records {
 		result[i] = &records[i]
 	}

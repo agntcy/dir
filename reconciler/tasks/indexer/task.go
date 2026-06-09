@@ -18,7 +18,6 @@ import (
 	corev1 "github.com/agntcy/dir/api/core/v1"
 	ociconfig "github.com/agntcy/dir/server/store/oci/config"
 	"github.com/agntcy/dir/server/types"
-	"github.com/agntcy/dir/server/types/adapters"
 	"github.com/agntcy/dir/utils/logging"
 	"oras.land/oras-go/v2/registry"
 )
@@ -212,9 +211,14 @@ func (t *Task) indexRecord(ctx context.Context, tag string) error {
 		return fmt.Errorf("record validation failed: %v", validationErrors)
 	}
 
+	// Get reader for the record content
+	adapter, err := record.Decode()
+	if err != nil {
+		return fmt.Errorf("failed to get record adapter: %w", err)
+	}
+
 	// Add to database
-	recordAdapter := adapters.NewRecordAdapter(record)
-	if err := t.db.AddRecord(recordAdapter); err != nil {
+	if err := t.db.AddRecord(adapter); err != nil {
 		// Check if this is a duplicate record error - if so, it's not really an error
 		if isDuplicateRecordError(err) {
 			logger.Debug("Record already indexed, skipping", "cid", tag)

@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"time"
 
+	coretypes "github.com/agntcy/dir/api/core/types"
 	"github.com/agntcy/dir/server/routing/internal/p2p"
 	"github.com/agntcy/dir/server/types"
 	"github.com/agntcy/dir/utils/logging"
@@ -128,7 +129,7 @@ func New(ctx context.Context, h host.Host) (*Manager, error) {
 //   - error: If validation or publishing fails
 //
 // Note: This is non-blocking. GossipSub handles propagation asynchronously.
-func (m *Manager) PublishRecord(ctx context.Context, record types.Record) error {
+func (m *Manager) PublishRecord(ctx context.Context, record coretypes.Record) error {
 	if record == nil {
 		return errors.New("record is nil")
 	}

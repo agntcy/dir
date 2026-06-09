@@ -8,10 +8,9 @@ import (
 	"fmt"
 	"sort"
 
+	coretypes "github.com/agntcy/dir/api/core/types"
 	corev1 "github.com/agntcy/dir/api/core/v1"
 	"github.com/agntcy/oasf-sdk/pkg/decoder"
-
-	coretypes "github.com/agntcy/dir/api/core/types"
 	"google.golang.org/protobuf/types/known/structpb"
 )
 
@@ -27,7 +26,7 @@ const (
 	// CatalogSpecVersion is the AI Catalog spec version.
 	CatalogSpecVersion = "1.0"
 
-	// Protocol-specific media types supported by AI Catalog
+	// Protocol-specific media types supported by AI Catalog.
 	ProtocolA2ACardJsonMediaType   = "application/a2a-agent-card+json"
 	ProtocolMCPCardJsonMediaType   = "application/mcp-server-card+json"
 	ProtocolAgentSkillsMdMediaType = "application/agentskill+md"
@@ -50,11 +49,14 @@ type catalogModuleProjection struct {
 // Mapped from OASF module names: https://schema.oasf.outshift.com/modules
 var catalogModules = map[string]catalogModuleProjection{
 	"integration/mcp": {
-		MediaType: ProtocolMCPCardJsonMediaType, URNSuffix: "mcp", Label: "MCP"},
+		MediaType: ProtocolMCPCardJsonMediaType, URNSuffix: "mcp", Label: "MCP",
+	},
 	"integration/a2a": {
-		MediaType: ProtocolA2ACardJsonMediaType, URNSuffix: "a2a", Label: "A2A"},
+		MediaType: ProtocolA2ACardJsonMediaType, URNSuffix: "a2a", Label: "A2A",
+	},
 	"core/language_model/agentskills": {
-		MediaType: ProtocolAgentSkillsMdMediaType, URNSuffix: "agentskill", Label: "Skill"},
+		MediaType: ProtocolAgentSkillsMdMediaType, URNSuffix: "agentskill", Label: "Skill",
+	},
 }
 
 // RecordToCatalog projects an OASF record onto its AI Catalog entry
@@ -79,14 +81,14 @@ func RecordToCatalog(record *corev1.Record) (*CatalogEntry, error) {
 		return nil, errors.New("record is nil")
 	}
 
-	// Get reader
-	reader, err := record.GetReader()
+	// Get adapter
+	adapter, err := record.Decode()
 	if err != nil {
-		return nil, fmt.Errorf("failed to get record reader: %w", err)
+		return nil, fmt.Errorf("failed to get record adapter: %w", err)
 	}
 
 	// Extract valid modules
-	modules := knownCatalogModules(reader)
+	modules := knownCatalogModules(adapter)
 	if len(modules) == 0 {
 		return nil, errors.New("record has no known catalog modules")
 	}
@@ -100,38 +102,39 @@ func RecordToCatalog(record *corev1.Record) (*CatalogEntry, error) {
 
 		return &CatalogEntry{
 			Identifier:  catalogURN(record.GetCid(), ""),
-			DisplayName: reader.GetName(),
-			Version:     new(reader.GetVersion()),
-			Description: new(reader.GetDescription()),
-			UpdatedAt:   new(reader.GetCreatedAt()),
-			MediaType:   entry.MediaType,
-			Artifact:    entry.Artifact,
-			Tags:        catalogTags(reader),
+			DisplayName: adapter.GetName(),
+			Version:     new(adapter.GetVersion()),
+			Description: new(adapter.GetDescription()),
+			UpdatedAt:   new(adapter.GetCreatedAt()),
+			MediaType:   entry.GetMediaType(),
+			Artifact:    entry.GetArtifact(),
+			Tags:        catalogTags(adapter),
 		}, nil
 	}
 
 	// Multiple known modules — container entry on the parent URN, with one
 	// nested entry per module.
 	parentCID := record.GetCid()
-	parentName := reader.GetName()
+	parentName := adapter.GetName()
+
 	entries := make([]*CatalogEntry, 0, len(modules))
 	for _, module := range modules {
 		entry := moduleToCatalogEntry(module)
 		if entry == nil {
-			return nil, fmt.Errorf("failed to project module %q to catalog entry", module.Name)
+			return nil, fmt.Errorf("failed to project module %q to catalog entry", module.GetName())
 		}
 
 		entries = append(entries, &CatalogEntry{
-			Identifier:  catalogURN(parentCID, catalogModules[module.Name].URNSuffix),
-			DisplayName: fmt.Sprintf("%s - %s", parentName, catalogModules[module.Name].Label),
-			MediaType:   entry.MediaType,
-			Artifact:    entry.Artifact,
+			Identifier:  catalogURN(parentCID, catalogModules[module.GetName()].URNSuffix),
+			DisplayName: fmt.Sprintf("%s - %s", parentName, catalogModules[module.GetName()].Label),
+			MediaType:   entry.GetMediaType(),
+			Artifact:    entry.GetArtifact(),
 		})
 	}
 
 	// Sort entries by URN suffix for deterministic output
 	sort.Slice(entries, func(i, j int) bool {
-		return entries[i].Identifier < entries[j].Identifier
+		return entries[i].GetIdentifier() < entries[j].GetIdentifier()
 	})
 
 	// Create container entry with nested catalog data
@@ -146,11 +149,11 @@ func RecordToCatalog(record *corev1.Record) (*CatalogEntry, error) {
 	return &CatalogEntry{
 		Identifier:  catalogURN(parentCID, ""),
 		DisplayName: parentName,
-		Description: new(reader.GetDescription()),
-		Version:     new(reader.GetVersion()),
-		UpdatedAt:   new(reader.GetCreatedAt()),
+		Description: new(adapter.GetDescription()),
+		Version:     new(adapter.GetVersion()),
+		UpdatedAt:   new(adapter.GetCreatedAt()),
 		MediaType:   CatalogMediaType,
-		Tags:        catalogTags(reader),
+		Tags:        catalogTags(adapter),
 		Artifact: &CatalogEntry_Data{
 			Data: structpb.NewStructValue(container),
 		},
@@ -162,7 +165,7 @@ func RecordToCatalog(record *corev1.Record) (*CatalogEntry, error) {
 // A catalog entry requires exactly one of `url` or `data`. We always carry
 // the module's structured data inline via `data` in OASF.
 func moduleToCatalogEntry(module coretypes.Module) *CatalogEntry {
-	proj, known := catalogModules[module.Name]
+	proj, known := catalogModules[module.GetName()]
 	if !known {
 		return nil
 	}
@@ -170,32 +173,32 @@ func moduleToCatalogEntry(module coretypes.Module) *CatalogEntry {
 	return &CatalogEntry{
 		MediaType: proj.MediaType,
 		Artifact: &CatalogEntry_Data{
-			Data: structpb.NewStructValue(module.Data),
+			Data: structpb.NewStructValue(module.GetData()),
 		},
 	}
 }
 
 // knownCatalogModules returns the record's modules that have a catalog
 // projection rule, sorted by name for deterministic output.
-func knownCatalogModules(rd coretypes.RecordReader) []coretypes.Module {
+func knownCatalogModules(rd coretypes.Record) []coretypes.Module {
 	modules := rd.GetModules()
 	out := make([]coretypes.Module, 0, len(modules))
 
 	for _, module := range modules {
 		// Skip modules with no known projection rule
-		if _, known := catalogModules[module.Name]; !known {
+		if _, known := catalogModules[module.GetName()]; !known {
 			continue
 		}
 
 		// Skip modules with no data
-		if module.Data == nil {
+		if module.GetData() == nil {
 			continue
 		}
 
 		out = append(out, module)
 	}
 
-	sort.Slice(out, func(i, j int) bool { return out[i].Name < out[j].Name })
+	sort.Slice(out, func(i, j int) bool { return out[i].GetName() < out[j].GetName() })
 
 	return out
 }
@@ -204,15 +207,15 @@ func knownCatalogModules(rd coretypes.RecordReader) []coretypes.Module {
 // leaf and container entries: one tag per skill and domain
 // ("oasf:v<schema>:skills:<name>" / "oasf:v<schema>:domain:<name>"),
 // followed by record annotations ("key" or "key=value").
-func catalogTags(rd coretypes.RecordReader) []string {
+func catalogTags(rd coretypes.Record) []string {
 	out := make([]string, 0)
 
 	for _, skill := range rd.GetSkills() {
-		out = append(out, fmt.Sprintf("oasf:%s:skills:%s", rd.GetSchemaVersion(), skill.Name))
+		out = append(out, fmt.Sprintf("oasf:%s:skills:%s", rd.GetSchemaVersion(), skill.GetName()))
 	}
 
 	for _, domain := range rd.GetDomains() {
-		out = append(out, fmt.Sprintf("oasf:%s:domains:%s", rd.GetSchemaVersion(), domain.Name))
+		out = append(out, fmt.Sprintf("oasf:%s:domains:%s", rd.GetSchemaVersion(), domain.GetName()))
 	}
 
 	// Sort output before appending annotation tags

@@ -6,14 +6,11 @@ package v1
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"time"
 
-	typesv1 "buf.build/gen/go/agntcy/oasf/protocolbuffers/go/agntcy/oasf/types/v1"
-	typesv1alpha1 "buf.build/gen/go/agntcy/oasf/protocolbuffers/go/agntcy/oasf/types/v1alpha1"
-	typesv1alpha2 "buf.build/gen/go/agntcy/oasf/protocolbuffers/go/agntcy/oasf/types/v1alpha2"
-	coretypes "github.com/agntcy/dir/api/core/types"
-	"github.com/agntcy/dir/api/core/v1/adapters"
+	"github.com/agntcy/dir/api/core/adapters"
 	"github.com/agntcy/oasf-sdk/pkg/decoder"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/structpb"
@@ -41,6 +38,74 @@ type Validator interface {
 	// It returns whether the record is valid, a slice of error messages, a slice of
 	// warning messages, and any transport/server error encountered while validating.
 	ValidateRecord(ctx context.Context, data *structpb.Struct) (valid bool, errors []string, warnings []string, err error)
+}
+
+// GetName extracts the top-level "name" field from the record's data.
+func (r *Record) GetName() string {
+	if r == nil || r.GetData() == nil {
+		return ""
+	}
+
+	if v, ok := r.GetData().GetFields()["name"]; ok {
+		return v.GetStringValue()
+	}
+
+	return ""
+}
+
+// GetVersion extracts the top-level "version" field from the record's data.
+func (r *Record) GetVersion() string {
+	if r == nil || r.GetData() == nil {
+		return ""
+	}
+
+	if v, ok := r.GetData().GetFields()["version"]; ok {
+		return v.GetStringValue()
+	}
+
+	return ""
+}
+
+func (r *Record) GetSchemaVersion() string {
+	if r == nil || r.GetData() == nil {
+		return ""
+	}
+
+	// Get schema version from raw using OASF SDK
+	schemaVersion, _ := decoder.GetRecordSchemaVersion(r.GetData())
+
+	return schemaVersion
+}
+
+// Decode decodes the Record's data into a concrete type using the OASF SDK.
+func (r *Record) Decode() (DecodedRecord, error) {
+	if r == nil || r.GetData() == nil {
+		return nil, errors.New("record is nil")
+	}
+
+	// Decode the record using OASF SDK
+	decoded, err := decoder.DecodeRecord(r.GetData())
+	if err != nil {
+		return nil, fmt.Errorf("failed to decode Record: %w", err)
+	}
+
+	// Get CID for adapter
+	cid := r.GetCid()
+	if cid == "" {
+		return nil, fmt.Errorf("failed to calculate CID for record")
+	}
+
+	// Create adapter based on record type
+	adapter, err := adapters.GetRecordAdapter(cid, decoded)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create Record adapter: %w", err)
+	}
+
+	// Wrap in our DecodedRecord interface
+	return &decodedRecord{
+		DecodeRecordResponse: decoded,
+		Record:               adapter,
+	}, nil
 }
 
 // GetCid calculates and returns the CID for this record.
@@ -174,24 +239,4 @@ func UnmarshalRecord(data []byte) (*Record, error) {
 	return &Record{
 		Data: dataStruct,
 	}, nil
-}
-
-// New creates a Record for a supported OASF typed record.
-func New[T typesv1alpha1.Record | typesv1alpha2.Record | typesv1.Record](record *T) *Record {
-	data, _ := decoder.StructToProto(record)
-
-	return &Record{
-		Data: data,
-	}
-}
-
-// GetReader returns the Record with common interface, using the appropriate adapter
-// based on the underlying OASF record type.
-func (r *Record) GetReader() (coretypes.RecordReader, error) {
-	reader, err := adapters.GetRecordReader(r.Data)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create Record adapter: %w", err)
-	}
-
-	return reader, nil
 }

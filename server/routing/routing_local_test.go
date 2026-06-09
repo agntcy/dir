@@ -14,11 +14,11 @@ import (
 	"time"
 
 	typesv1alpha1 "buf.build/gen/go/agntcy/oasf/protocolbuffers/go/agntcy/oasf/types/v1alpha1"
+	coretypes "github.com/agntcy/dir/api/core/types"
 	corev1 "github.com/agntcy/dir/api/core/v1"
 	routingv1 "github.com/agntcy/dir/api/routing/v1"
 	"github.com/agntcy/dir/server/datastore"
 	"github.com/agntcy/dir/server/types"
-	"github.com/agntcy/dir/server/types/adapters"
 	"github.com/agntcy/dir/utils/logging"
 	ipfsdatastore "github.com/ipfs/go-datastore"
 	"github.com/stretchr/testify/assert"
@@ -37,13 +37,18 @@ func TestPublish_InvalidObject(t *testing.T) {
 	})
 
 	t.Run("record with no CID", func(t *testing.T) {
-		record := &corev1.Record{}
-		adapter := adapters.NewRecordAdapter(record)
-		err := r.Publish(t.Context(), adapter)
-
+		err := r.Publish(t.Context(), &mockRecord{})
 		assert.Error(t, err)
 		assert.ErrorContains(t, err, "record has no CID")
 	})
+}
+
+type mockRecord struct {
+	coretypes.Record
+}
+
+func (mockRecord) GetCid() string {
+	return ""
 }
 
 type mockStore struct {
@@ -148,12 +153,14 @@ func TestPublishList_ValidSingleSkillQuery(t *testing.T) {
 	assert.NoError(t, err)
 
 	// Publish first record
-	adapter := adapters.NewRecordAdapter(testRecord)
+	adapter, err := testRecord.Decode()
+	assert.NoError(t, err)
 	err = r.Publish(t.Context(), adapter)
 	assert.NoError(t, err)
 
 	// Publish second record
-	adapter2 := adapters.NewRecordAdapter(testRecord2)
+	adapter2, err := testRecord2.Decode()
+	assert.NoError(t, err)
 	err = r.Publish(t.Context(), adapter2)
 	assert.NoError(t, err)
 
@@ -203,7 +210,8 @@ func TestPublishList_ValidSingleSkillQuery(t *testing.T) {
 	}
 
 	// Unpublish second record
-	adapterUnpub := adapters.NewRecordAdapter(testRecord2)
+	adapterUnpub, err := testRecord2.Decode()
+	assert.NoError(t, err)
 	err = r.Unpublish(t.Context(), adapterUnpub)
 	assert.NoError(t, err)
 
@@ -258,7 +266,8 @@ func TestPublishList_ValidMultiSkillQuery(t *testing.T) {
 	assert.NoError(t, err)
 
 	// Publish first record
-	adapter := adapters.NewRecordAdapter(testRecord)
+	adapter, err := testRecord.Decode()
+	assert.NoError(t, err)
 	err = r.Publish(t.Context(), adapter)
 	assert.NoError(t, err)
 
@@ -344,7 +353,9 @@ func Benchmark_RouteLocal(b *testing.B) {
 	assert.NoError(b, err)
 
 	b.Run("Badger DB Publish and Unpublish", func(b *testing.B) {
-		adapter := adapters.NewRecordAdapter(record)
+		adapter, err := record.Decode()
+		assert.NoError(b, err)
+
 		for b.Loop() {
 			_ = badgerRouter.Publish(b.Context(), adapter)
 			err := badgerRouter.Unpublish(b.Context(), adapter)
@@ -353,7 +364,8 @@ func Benchmark_RouteLocal(b *testing.B) {
 	})
 
 	b.Run("Badger DB List", func(b *testing.B) {
-		adapter := adapters.NewRecordAdapter(record)
+		adapter, err := record.Decode()
+		assert.NoError(b, err)
 
 		_ = badgerRouter.Publish(b.Context(), adapter)
 		for b.Loop() {
@@ -370,7 +382,9 @@ func Benchmark_RouteLocal(b *testing.B) {
 	})
 
 	b.Run("In memory DB Publish and Unpublish", func(b *testing.B) {
-		adapter := adapters.NewRecordAdapter(record)
+		adapter, err := record.Decode()
+		assert.NoError(b, err)
+
 		for b.Loop() {
 			_ = inMemoryRouter.Publish(b.Context(), adapter)
 			err := inMemoryRouter.Unpublish(b.Context(), adapter)
@@ -379,7 +393,8 @@ func Benchmark_RouteLocal(b *testing.B) {
 	})
 
 	b.Run("In memory DB List", func(b *testing.B) {
-		adapter := adapters.NewRecordAdapter(record)
+		adapter, err := record.Decode()
+		assert.NoError(b, err)
 
 		_ = inMemoryRouter.Publish(b.Context(), adapter)
 		for b.Loop() {

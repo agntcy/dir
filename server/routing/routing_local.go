@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	coretypes "github.com/agntcy/dir/api/core/types"
 	corev1 "github.com/agntcy/dir/api/core/v1"
 	routingv1 "github.com/agntcy/dir/api/routing/v1"
 	"github.com/agntcy/dir/server/types"
@@ -36,7 +37,7 @@ func newLocal(store types.StoreAPI, dstore types.Datastore, localPeerID string) 
 	}
 }
 
-func (r *routeLocal) Publish(ctx context.Context, record types.Record) error {
+func (r *routeLocal) Publish(ctx context.Context, record coretypes.Record) error {
 	if record == nil {
 		return status.Error(codes.InvalidArgument, "record is required") //nolint:wrapcheck // Mock should return exact error without wrapping
 	}
@@ -247,7 +248,7 @@ func (r *routeLocal) getRecordLabelsEfficiently(ctx context.Context, cid string)
 	return labelList
 }
 
-func (r *routeLocal) Unpublish(ctx context.Context, record types.Record) error {
+func (r *routeLocal) Unpublish(ctx context.Context, record coretypes.Record) error {
 	if record == nil {
 		return status.Error(codes.InvalidArgument, "record is required") //nolint:wrapcheck // Mock should return exact error without wrapping
 	}

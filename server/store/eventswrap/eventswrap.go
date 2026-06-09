@@ -12,7 +12,6 @@ import (
 	corev1 "github.com/agntcy/dir/api/core/v1"
 	"github.com/agntcy/dir/server/events"
 	"github.com/agntcy/dir/server/types"
-	"github.com/agntcy/dir/server/types/adapters"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
@@ -40,8 +39,14 @@ func (s *eventsStore) Push(ctx context.Context, record *corev1.Record) (*corev1.
 		return nil, err //nolint:wrapcheck // Transparent wrapper - pass through errors unchanged
 	}
 
+	// Get record adapter
+	adapter, err := record.Decode()
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to create record adapter: %v", err)
+	}
+
 	// Emit event after successful push
-	labels := types.GetLabelsFromRecord(adapters.NewRecordAdapter(record))
+	labels := types.GetLabelsFromRecord(adapter)
 	labelStrings := make([]string, len(labels))
 
 	for i, label := range labels {
@@ -62,7 +67,12 @@ func (s *eventsStore) Pull(ctx context.Context, ref *corev1.RecordRef) (*corev1.
 	}
 
 	// Emit event after successful pull
-	labels := types.GetLabelsFromRecord(adapters.NewRecordAdapter(record))
+	adapter, err := record.Decode()
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to create record adapter: %v", err)
+	}
+
+	labels := types.GetLabelsFromRecord(adapter)
 	labelStrings := make([]string, len(labels))
 
 	for i, label := range labels {

@@ -166,21 +166,27 @@ func TestRecordToCatalog(t *testing.T) {
 				if err == nil {
 					t.Fatalf("expected error, got nil")
 				}
+
 				return
 			}
+
 			if err != nil {
 				t.Fatalf("unexpected error: %v", err)
 			}
 
 			// compare as any structs for better readability in test failures
 			var got any
+
+			//nolint:musttag
 			catalogBytes, err := json.Marshal(catalog)
 			if err != nil {
 				t.Fatalf("failed to marshal catalog: %v", err)
 			}
+
 			if err := json.Unmarshal(catalogBytes, &got); err != nil {
 				t.Fatalf("invalid test expectation JSON: %v", err)
 			}
+
 			var want any
 			if err := json.Unmarshal(tc.expect, &want); err != nil {
 				t.Fatalf("invalid test expectation JSON: %v", err)

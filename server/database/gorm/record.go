@@ -9,10 +9,13 @@ import (
 	"strings"
 	"time"
 
+	coretypes "github.com/agntcy/dir/api/core/types"
 	"github.com/agntcy/dir/server/database/utils"
 	"github.com/agntcy/dir/server/types"
 	"gorm.io/gorm"
 )
+
+var _ coretypes.Record = (*Record)(nil)
 
 type Record struct {
 	CreatedAt     time.Time
@@ -33,122 +36,101 @@ type Record struct {
 	Annotations []Annotation `gorm:"foreignKey:RecordCID;references:RecordCID;constraint:OnDelete:CASCADE"`
 }
 
-// Implement central Record interface.
 func (r *Record) GetCid() string {
 	return r.RecordCID
 }
 
-func (r *Record) GetRecordData() (types.RecordData, error) {
-	return &RecordDataAdapter{record: r}, nil
-}
-
-// RecordDataAdapter adapts Database Record to central RecordData interface.
-type RecordDataAdapter struct {
-	record *Record
-}
-
-func (r *RecordDataAdapter) GetAnnotations() map[string]string {
-	annotations := make(map[string]string, len(r.record.Annotations))
-	for _, a := range r.record.Annotations {
+func (r *Record) GetAnnotations() map[string]string {
+	annotations := make(map[string]string, len(r.Annotations))
+	for _, a := range r.Annotations {
 		annotations[a.Key] = a.Value
 	}
 
 	return annotations
 }
 
-func (r *RecordDataAdapter) GetDomains() []types.Domain {
-	domains := make([]types.Domain, len(r.record.Domains))
-	for i, domain := range r.record.Domains {
+func (r *Record) GetDomains() []coretypes.Domain {
+	domains := make([]coretypes.Domain, len(r.Domains))
+	for i, domain := range r.Domains {
 		domains[i] = &domain
 	}
 
 	return domains
 }
 
-func (r *RecordDataAdapter) GetSchemaVersion() string {
-	if r.record.SchemaVersion != "" {
-		return r.record.SchemaVersion
+func (r *Record) GetSchemaVersion() string {
+	if r.SchemaVersion != "" {
+		return r.SchemaVersion
 	}
 
 	// Default schema version for search records
 	return "v1"
 }
 
-func (r *RecordDataAdapter) GetName() string {
-	return r.record.Name
+func (r *Record) GetName() string {
+	return r.Name
 }
 
-func (r *RecordDataAdapter) GetVersion() string {
-	return r.record.Version
+func (r *Record) GetVersion() string {
+	return r.Version
 }
 
-func (r *RecordDataAdapter) GetDescription() string {
-	return r.record.Description
+func (r *Record) GetDescription() string {
+	return r.Description
 }
 
-func (r *RecordDataAdapter) GetAuthors() []string {
-	return r.record.Authors
+func (r *Record) GetAuthors() []string {
+	return r.Authors
 }
 
-func (r *RecordDataAdapter) GetCreatedAt() string {
-	if r.record.OASFCreatedAt != "" {
-		return r.record.OASFCreatedAt
+func (r *Record) GetCreatedAt() string {
+	if r.OASFCreatedAt != "" {
+		return r.OASFCreatedAt
 	}
 
-	return r.record.CreatedAt.Format("2006-01-02T15:04:05Z")
+	return r.CreatedAt.Format("2006-01-02T15:04:05Z")
 }
 
-func (r *RecordDataAdapter) GetSkills() []types.Skill {
-	skills := make([]types.Skill, len(r.record.Skills))
-	for i, skill := range r.record.Skills {
+func (r *Record) GetSkills() []coretypes.Skill {
+	skills := make([]coretypes.Skill, len(r.Skills))
+	for i, skill := range r.Skills {
 		skills[i] = &skill
 	}
 
 	return skills
 }
 
-func (r *RecordDataAdapter) GetLocators() []types.Locator {
-	locators := make([]types.Locator, len(r.record.Locators))
-	for i, locator := range r.record.Locators {
+func (r *Record) GetLocators() []coretypes.Locator {
+	locators := make([]coretypes.Locator, len(r.Locators))
+	for i, locator := range r.Locators {
 		locators[i] = &locator
 	}
 
 	return locators
 }
 
-func (r *RecordDataAdapter) GetModules() []types.Module {
-	modules := make([]types.Module, len(r.record.Modules))
-	for i, module := range r.record.Modules {
+func (r *Record) GetModules() []coretypes.Module {
+	modules := make([]coretypes.Module, len(r.Modules))
+	for i, module := range r.Modules {
 		modules[i] = &module
 	}
 
 	return modules
 }
 
-func (r *RecordDataAdapter) GetSignature() types.Signature {
-	// Database records don't store signature information
-	return nil
-}
-
-func (r *RecordDataAdapter) GetPreviousRecordCid() string {
+func (r *Record) GetPreviousRecordCid() string {
 	// Database records don't store previous record CID
 	return ""
 }
 
-func (d *DB) AddRecord(record types.Record) error {
-	// Extract record data
-	recordData, err := record.GetRecordData()
-	if err != nil {
-		return fmt.Errorf("failed to get record data: %w", err)
-	}
-
+func (d *DB) AddRecord(record coretypes.Record) error {
 	// Get CID
 	cid := record.GetCid()
 
 	// Check if record already exists
 	var existingRecord Record
 
-	err = d.gormDB.Where("record_cid = ?", cid).First(&existingRecord).Error
+	err := d.gormDB.Where("record_cid = ?", cid).First(&existingRecord).Error
 	if err == nil {
 		// Record exists, skip insert
 		logger.Debug("Record already exists in search database, skipping insert", "record_cid", existingRecord.RecordCID, "cid", cid)
@@ -164,17 +146,17 @@ func (d *DB) AddRecord(record types.Record) error {
 	// Build complete Record with all associations
 	dbRecord := &Record{
 		RecordCID:     cid,
-		Name:          recordData.GetName(),
-		Version:       recordData.GetVersion(),
-		Description:   recordData.GetDescription(),
-		SchemaVersion: recordData.GetSchemaVersion(),
-		OASFCreatedAt: recordData.GetCreatedAt(),
-		Authors:       recordData.GetAuthors(),
-		Skills:        convertSkills(recordData.GetSkills(), cid),
-		Locators:      convertLocators(recordData.GetLocators(), cid),
-		Modules:       convertModules(recordData.GetModules(), cid),
-		Domains:       convertDomains(recordData.GetDomains(), cid),
-		Annotations:   convertAnnotations(recordData.GetAnnotations(), cid),
+		Name:          record.GetName(),
+		Version:       record.GetVersion(),
+		Description:   record.GetDescription(),
+		SchemaVersion: record.GetSchemaVersion(),
+		OASFCreatedAt: record.GetCreatedAt(),
+		Authors:       record.GetAuthors(),
+		Skills:        convertSkills(record.GetSkills(), cid),
+		Locators:      convertLocators(record.GetLocators(), cid),
+		Modules:       convertModules(record.GetModules(), cid),
+		Domains:       convertDomains(record.GetDomains(), cid),
+		Annotations:   convertAnnotations(record.GetAnnotations(), cid),
 	}
 
 	// Let GORM handle the entire creation with associations
@@ -190,7 +172,7 @@ func (d *DB) AddRecord(record types.Record) error {
 }
 
 // GetRecords retrieves full records based on the provided filters.
-func (d *DB) GetRecords(opts ...types.FilterOption) ([]types.Record, error) {
+func (d *DB) GetRecords(opts ...types.FilterOption) ([]coretypes.Record, error) {
 	// Create default configuration.
 	cfg := &types.RecordFilters{}
 
@@ -226,7 +208,7 @@ func (d *DB) GetRecords(opts ...types.FilterOption) ([]types.Record, error) {
 	}
 
 	// Convert to interface type.
-	result := make([]types.Record, len(records))
+	result := make([]coretypes.Record, len(records))
 	for i := range records {
 		result[i] = &records[i]
 	}

@@ -6,7 +6,7 @@ package gorm
 import (
 	"time"
 
-	"github.com/agntcy/dir/server/types"
+	coretypes "github.com/agntcy/dir/api/core/types"
 )
 
 type Skill struct {
@@ -32,7 +32,7 @@ func (skill *Skill) GetName() string {
 }
 
 // convertSkills transforms interface types to Database structs.
-func convertSkills(skills []types.Skill, recordCID string) []Skill {
+func convertSkills(skills []coretypes.Skill, recordCID string) []Skill {
 	result := make([]Skill, len(skills))
 	for i, skill := range skills {
 		result[i] = Skill{
