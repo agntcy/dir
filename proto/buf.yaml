@@ -14,6 +14,7 @@ lint:
       - agntcy/dir/routing/v1/routing_service.proto
       - agntcy/dir/store/v1/store_service.proto
     RPC_RESPONSE_STANDARD_NAME:
+      - agntcy/dir/catalog/v1/ai_finder_service.proto
       - agntcy/dir/routing/v1/publication_service.proto
       - agntcy/dir/routing/v1/routing_service.proto
       - agntcy/dir/store/v1/store_service.proto

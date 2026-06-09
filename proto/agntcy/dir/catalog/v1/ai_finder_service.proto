@@ -8,6 +8,7 @@ package agntcy.dir.catalog.v1;
 import "agntcy/dir/catalog/v1/models.proto";
 import "buf/validate/validate.proto";
 import "google/api/annotations.proto";
+import "google/api/httpbody.proto";
 
 // AIFinderService is the federated AI Finder discovery surface over the AI
 // Catalog model. It is exposed over gRPC and, via grpc-gateway, as a REST API.
@@ -16,6 +17,24 @@ service AIFinderService {
   // semantics (database filtering, no relevance ranking).
   rpc ListAgents(ListAgentsRequest) returns (ListAgentsResponse) {
     option (google.api.http) = {get: "/v1/agents"};
+  }
+
+  // GetAgent returns a single CatalogEntry by CID. The response shape is the
+  // same as one element in ListAgentsResponse.results[], providing a stable
+  // detail URL for any agent discovered through listing.
+  rpc GetAgent(GetAgentRequest) returns (GetAgentResponse) {
+    option (google.api.http) = {
+      get: "/v1/agents/{cid}"
+      response_body: "entry"
+    };
+  }
+
+  // ExportAgent returns the full agent record in one of the supported export
+  // formats (oasf, a2a, agent-skill, mcp-ghcopilot). The bytes are written
+  // directly into the response body via google.api.HttpBody with an appropriate
+  // Content-Type.
+  rpc ExportAgent(ExportAgentRequest) returns (google.api.HttpBody) {
+    option (google.api.http) = {get: "/v1/agents/{cid}/export"};
   }
 
   // GetWellKnownCatalog returns the AI Catalog well-known document (host
@@ -53,6 +72,44 @@ message ListAgentsResponse {
 
   // Opaque continuation token. Empty when there are no more results.
   string next_page_token = 2;
+}
+
+// GetAgentRequest carries the CID of the catalog entry to retrieve.
+message GetAgentRequest {
+  // Content-addressable identifier of the agent record.
+  string cid = 1 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 128
+  }];
+}
+
+// GetAgentResponse wraps a single CatalogEntry. The HTTP gateway extracts
+// the "entry" field via response_body so REST consumers receive the bare
+// CatalogEntry JSON.
+message GetAgentResponse {
+  // CatalogEntry for the requested CID.
+  CatalogEntry entry = 1 [(buf.validate.field).required = true];
+}
+
+// ExportAgentRequest selects an agent and the format to render it in.
+message ExportAgentRequest {
+  // Content-addressable identifier of the agent record.
+  string cid = 1 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 128
+  }];
+
+  // Export format. Empty string is treated as "oasf".
+  string format = 2 [(buf.validate.field).string = {
+    in: [
+      "",
+      "oasf",
+      "a2a",
+      "agent-skill",
+      "skill",
+      "mcp-ghcopilot"
+    ]
+  }];
 }
 
 // GetWellKnownCatalogRequest is intentionally empty; it exists for forward

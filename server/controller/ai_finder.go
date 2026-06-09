@@ -5,15 +5,19 @@ package controller
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/url"
 	"strings"
 
 	catalogv1 "github.com/agntcy/dir/api/catalog/v1"
+	corev1 "github.com/agntcy/dir/api/core/v1"
+	"github.com/agntcy/dir/api/exportfmt"
 	"github.com/agntcy/dir/server/config"
 	"github.com/agntcy/dir/server/types"
 	"github.com/agntcy/dir/utils/logging"
 	"github.com/agntcy/oasf-sdk/pkg/translator"
+	httpbodypb "google.golang.org/genproto/googleapis/api/httpbody"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
@@ -43,14 +47,19 @@ const (
 type aiFinderController struct {
 	catalogv1.UnimplementedAIFinderServiceServer
 
-	db  types.CatalogDatabaseAPI
-	cfg config.HTTPGatewayConfig
+	db    types.CatalogDatabaseAPI
+	store types.StoreAPI
+	cfg   config.HTTPGatewayConfig
 }
 
-func NewAIFinderController(db types.CatalogDatabaseAPI, cfg config.HTTPGatewayConfig) catalogv1.AIFinderServiceServer {
+// NewAIFinderController returns an AIFinderServiceServer that serves the AI
+// Catalog AI Finder surface. store may be nil — when omitted the ExportAgent
+// RPC returns UNIMPLEMENTED (HTTP 501). All other RPCs remain functional.
+func NewAIFinderController(db types.CatalogDatabaseAPI, cfg config.HTTPGatewayConfig, store types.StoreAPI) catalogv1.AIFinderServiceServer {
 	return &aiFinderController{
-		db:  db,
-		cfg: cfg,
+		db:    db,
+		store: store,
+		cfg:   cfg,
 	}
 }
 
@@ -143,6 +152,108 @@ func (c *aiFinderController) GetWellKnownCatalog(ctx context.Context, _ *catalog
 				},
 			},
 		},
+	}, nil
+}
+
+// GetAgent returns a single CatalogEntry by CID.
+func (c *aiFinderController) GetAgent(ctx context.Context, req *catalogv1.GetAgentRequest) (*catalogv1.GetAgentResponse, error) {
+	if req == nil {
+		return nil, status.Error(codes.InvalidArgument, "request is required") //nolint:wrapcheck
+	}
+
+	cid := strings.TrimSpace(req.GetCid())
+	if cid == "" {
+		return nil, status.Error(codes.InvalidArgument, "cid is required") //nolint:wrapcheck
+	}
+
+	aiFinderLogger.Debug("GetAgent called", "cid", cid)
+
+	if err := ctx.Err(); err != nil {
+		return nil, status.Errorf(codes.Canceled, "%v", err)
+	}
+
+	entries, _, err := c.db.GetCatalogEntries(types.WithCIDs(cid), types.WithLimit(1))
+	if err != nil {
+		aiFinderLogger.Error("failed to load catalog entry", "cid", cid, "error", err)
+
+		return nil, status.Error(codes.Internal, "failed to load catalog entry") //nolint:wrapcheck
+	}
+
+	if len(entries) == 0 {
+		return nil, status.Errorf(codes.NotFound, "no catalog entry found for cid %q", cid)
+	}
+
+	return &catalogv1.GetAgentResponse{Entry: entries[0]}, nil
+}
+
+// ExportAgent pulls the full OASF record from the store and renders it in the
+// requested format, returning raw bytes via google.api.HttpBody.
+func (c *aiFinderController) ExportAgent(ctx context.Context, req *catalogv1.ExportAgentRequest) (*httpbodypb.HttpBody, error) {
+	if req == nil {
+		return nil, status.Error(codes.InvalidArgument, "request is required") //nolint:wrapcheck
+	}
+
+	cid := strings.TrimSpace(req.GetCid())
+	if cid == "" {
+		return nil, status.Error(codes.InvalidArgument, "cid is required") //nolint:wrapcheck
+	}
+
+	formatName := strings.TrimSpace(req.GetFormat())
+	if formatName == "" {
+		formatName = exportfmt.FormatOASF
+	}
+
+	aiFinderLogger.Debug("ExportAgent called", "cid", cid, "format", formatName)
+
+	if c.store == nil {
+		return nil, status.Error(codes.Unimplemented, "agent export is not enabled on this registry") //nolint:wrapcheck
+	}
+
+	formatter, err := exportfmt.GetFormatter(formatName)
+	if err != nil {
+		return nil, status.Errorf(codes.InvalidArgument, "unsupported format %q; supported: %s",
+			formatName, strings.Join(exportfmt.KnownFormats(), ", "))
+	}
+
+	if err := ctx.Err(); err != nil {
+		return nil, status.Errorf(codes.Canceled, "%v", err)
+	}
+
+	record, err := c.store.Pull(ctx, &corev1.RecordRef{Cid: cid})
+	if err != nil {
+		st := status.Convert(err)
+		if st.Code() == codes.Unknown {
+			aiFinderLogger.Error("failed to pull record", "cid", cid, "error", err)
+
+			return nil, status.Error(codes.Internal, "failed to retrieve agent") //nolint:wrapcheck
+		}
+
+		return nil, status.Error(st.Code(), st.Message()) //nolint:wrapcheck
+	}
+
+	if record.GetData() == nil {
+		aiFinderLogger.Error("record has no data field", "cid", cid)
+
+		return nil, status.Error(codes.Internal, "agent record is missing OASF data") //nolint:wrapcheck
+	}
+
+	data, err := formatter.Format(record)
+	if err != nil {
+		aiFinderLogger.Warn("failed to format record",
+			"cid", cid, "format", formatName, "error", err)
+
+		if errors.Is(err, exportfmt.ErrUnsupportedRecord) {
+			return nil, status.Errorf(codes.FailedPrecondition,
+				"record %q cannot be exported in %q format: %s",
+				cid, formatName, err.Error())
+		}
+
+		return nil, status.Errorf(codes.Internal, "failed to render agent in %s format", formatName) //nolint:wrapcheck
+	}
+
+	return &httpbodypb.HttpBody{
+		ContentType: exportfmt.ContentTypeForExtension(formatter.FileExtension()),
+		Data:        data,
 	}, nil
 }
 
