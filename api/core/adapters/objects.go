@@ -3,19 +3,17 @@
 
 package adapters
 
-import "google.golang.org/protobuf/types/known/structpb"
-
 type module struct {
 	Annotations map[string]string
 	Name        string
 	ID          uint64
-	Data        *structpb.Struct
+	Data        map[string]any
 }
 
 func (module *module) GetAnnotations() map[string]string { return module.Annotations }
 func (module *module) GetName() string                   { return module.Name }
 func (module *module) GetID() uint64                     { return module.ID }
-func (module *module) GetData() *structpb.Struct         { return module.Data }
+func (module *module) GetData() map[string]any           { return module.Data }
 
 type skill struct {
 	Annotations map[string]string

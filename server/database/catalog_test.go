@@ -12,7 +12,6 @@ import (
 	"github.com/agntcy/oasf-sdk/pkg/translator"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"google.golang.org/protobuf/types/known/structpb"
 )
 
 var _ coretypes.Module = (*catalogModuleFixture)(nil)
@@ -29,11 +28,7 @@ type catalogModuleFixture struct {
 func (m *catalogModuleFixture) GetAnnotations() map[string]string { return nil }
 func (m *catalogModuleFixture) GetID() uint64                     { return m.id }
 func (m *catalogModuleFixture) GetName() string                   { return m.name }
-func (m *catalogModuleFixture) GetData() *structpb.Struct {
-	data, _ := structpb.NewStruct(m.data)
-
-	return data
-}
+func (m *catalogModuleFixture) GetData() map[string]any           { return m.data }
 
 func catalogRecord(cid, name, createdAt string, modules []coretypes.Module) coretypes.Record {
 	return &testRecord{

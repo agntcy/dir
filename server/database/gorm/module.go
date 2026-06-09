@@ -7,7 +7,6 @@ import (
 	"time"
 
 	coretypes "github.com/agntcy/dir/api/core/types"
-	"google.golang.org/protobuf/types/known/structpb"
 )
 
 type Module struct {
@@ -34,10 +33,8 @@ func (module *Module) GetID() uint64 {
 	return module.ModuleID
 }
 
-func (module *Module) GetData() *structpb.Struct {
-	data, _ := structpb.NewStruct(module.Data)
-
-	return data
+func (module *Module) GetData() map[string]any {
+	return module.Data
 }
 
 func (module *Module) GetAnnotations() map[string]string {
@@ -53,7 +50,7 @@ func convertModules(modules []coretypes.Module, recordCID string) []Module {
 			RecordCID: recordCID,
 			Name:      module.GetName(),
 			ModuleID:  module.GetID(),
-			Data:      module.GetData().AsMap(),
+			Data:      module.GetData(),
 		}
 	}
 

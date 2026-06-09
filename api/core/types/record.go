@@ -3,10 +3,6 @@
 
 package types
 
-import (
-	"google.golang.org/protobuf/types/known/structpb"
-)
-
 // Record is an interface that defines methods to access a record's data.
 // It abstracts the underlying data structure of a record and allows for different
 // implementations and versions to provide unified access to relevant information.
@@ -33,7 +29,7 @@ type Module interface {
 	GetAnnotations() map[string]string
 	GetName() string
 	GetID() uint64
-	GetData() *structpb.Struct
+	GetData() map[string]any
 }
 
 // Skill defines the necessary data for a skill.

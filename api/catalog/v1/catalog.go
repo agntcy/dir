@@ -170,10 +170,15 @@ func moduleToCatalogEntry(module coretypes.Module) *CatalogEntry {
 		return nil
 	}
 
+	data, err := structpb.NewStruct(module.GetData())
+	if err != nil {
+		return nil
+	}
+
 	return &CatalogEntry{
 		MediaType: proj.MediaType,
 		Artifact: &CatalogEntry_Data{
-			Data: structpb.NewStructValue(module.GetData()),
+			Data: structpb.NewStructValue(data),
 		},
 	}
 }

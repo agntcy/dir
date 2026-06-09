@@ -12,7 +12,6 @@ import (
 	"github.com/agntcy/dir/server/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"google.golang.org/protobuf/types/known/structpb"
 )
 
 type testRecord struct {
@@ -62,7 +61,7 @@ type testModule struct {
 
 func (m *testModule) GetID() uint64                     { return m.id }
 func (m *testModule) GetName() string                   { return m.name }
-func (m *testModule) GetData() *structpb.Struct         { return nil }
+func (m *testModule) GetData() map[string]any           { return nil }
 func (m *testModule) GetAnnotations() map[string]string { return nil }
 
 type testDomain struct {

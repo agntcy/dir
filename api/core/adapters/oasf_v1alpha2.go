@@ -31,7 +31,7 @@ func (v *v1Alpha2Adapter) GetModules() []coretypes.Module {
 			Annotations: m.GetAnnotations(),
 			Name:        m.GetName(),
 			ID:          uint64(m.GetId()),
-			Data:        m.GetData(),
+			Data:        m.GetData().AsMap(),
 		})
 	}
 
