@@ -15,6 +15,7 @@ import (
 	"github.com/spiffe/go-spiffe/v2/workloadapi"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
 )
@@ -167,4 +168,47 @@ type wrappedServerStream struct {
 
 func (w *wrappedServerStream) Context() context.Context {
 	return w.ctx
+}
+
+// jwtPerRPCCredentials implements credentials.PerRPCCredentials for JWT authentication.
+type jwtPerRPCCredentials struct {
+	jwtSource *workloadapi.JWTSource
+	audiences []string
+}
+
+// GetRequestMetadata gets the current JWT token and attaches it to the request metadata.
+func (c *jwtPerRPCCredentials) GetRequestMetadata(ctx context.Context, _ ...string) (map[string]string, error) {
+	// Fetch JWT-SVID for the configured audiences, returning the first valid one
+	for _, audience := range c.audiences {
+		jwtSVID, err := c.jwtSource.FetchJWTSVID(ctx, jwtsvid.Params{
+			Audience: audience,
+		})
+		if err != nil {
+			logger.Warn("Failed to fetch JWT-SVID",
+				"error", err,
+				"audience", audience,
+			)
+
+			continue
+		}
+
+		return map[string]string{
+			"authorization": "Bearer " + jwtSVID.Marshal(),
+		}, nil
+	}
+
+	return nil, errors.New("failed to fetch JWT-SVID for any audience")
+}
+
+// Returns true because JWT-SVID authentication should be used over TLS.
+func (c *jwtPerRPCCredentials) RequireTransportSecurity() bool {
+	return true
+}
+
+// newJWTCredentials creates a new PerRPCCredentials that injects JWT-SVIDs.
+func newJWTCredentials(jwtSource *workloadapi.JWTSource, audiences []string) credentials.PerRPCCredentials {
+	return &jwtPerRPCCredentials{
+		jwtSource: jwtSource,
+		audiences: audiences,
+	}
 }
