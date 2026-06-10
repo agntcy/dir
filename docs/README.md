@@ -37,23 +37,25 @@ task run
 task -t Taskfile.yml ci
 ```
 
-## Version selector (production)
-
-Each release or semver tag deploy:
-
-1. Builds **only that version** with [mike](https://github.com/jimporter/mike).
-2. Sets it as the **default** (`mike set-default`) so https://agntcy.github.io/dir/ opens the latest release.
-3. Keeps **older versions** in the dropdown (not rebuilt on later tags).
-4. Publishes the combined site via **GitHub Actions Pages**; the `gh-pages` branch is updated **only in CI** as a version ledger between releases.
-
-The live site is whatever **deploy-pages** publishes from the CI artifact (run **Docs** and **Deploy artifacts** in the same workflow). The `gh-pages` branch grows as you keep older versions; prune with `mike delete` when retiring doc releases.
-
-Publishing is not available from a local Taskfile push—use GitHub Actions (release, `v*.*.*` tag, or workflow dispatch with a version).
-
 ## CI and deploy
 
-- **PRs** (when `docs/**` or docs workflows change): [`.github/workflows/docs-ci.yaml`](../.github/workflows/docs-ci.yaml) runs `task docs:ci`.
-- **Releases / tags**: [`.github/workflows/docs-deploy.yml`](../.github/workflows/docs-deploy.yml) runs `task docs:mike:pages-build` with `VERSION` from the tag or release, then deploys `.build/mike-site`.
+All build, lint, and deploy logic lives in [`Taskfile.yml`](Taskfile.yml). The GitHub Actions workflows are thin: they provision tools (`uv`, `task`, `lychee`) and call task entries. Dependencies come from `mkdocs/pyproject.toml` / `mkdocs/uv.lock` via `task` → `uv sync`.
+
+- [`.github/workflows/reusable-docs.yml`](../.github/workflows/reusable-docs.yml) — reusable pipeline (`workflow_call`) with a `mode` input (`ci` / `deploy-dev` / `deploy-release`); holds the shared setup + task calls.
+- [`.github/workflows/docs-ci.yaml`](../.github/workflows/docs-ci.yaml) — on pull requests, calls the reusable pipeline with `mode: ci`.
+- [`.github/workflows/docs-deploy.yml`](../.github/workflows/docs-deploy.yml) — on push to `main`, `v*.*.*` tags, releases, and manual dispatch; resolves the mode/version from the event and calls the reusable pipeline.
+
+| Trigger | Mode | Task(s) invoked | Effect |
+| --- | --- | --- | --- |
+| Pull request (touching `docs/**` or the workflows) | `ci` | `task docs:ci` | Build + lint (codespell, pymarkdown, lychee). No deploy. |
+| Push to `main` | `deploy-dev` | `task docs:ci` + `docs:deploy:dev` + `docs:deploy:root-files` | Build + lint, then `mike deploy --push dev` (the `dev` version). **Never touches `latest`.** |
+| Release published / `v*.*.*` tag / manual dispatch | `deploy-release` | `task docs:deploy:release VERSION=<v>` + `docs:deploy:root-files` | `mike deploy --push --update-aliases <version> latest` then `mike set-default latest`, so https://agntcy.github.io/dir/ opens the latest release. |
+
+Deploys use [mike](https://github.com/jimporter/mike) to push each version into a subdirectory of the `gh-pages` branch (the version ledger). `dev` is published as its own version (push to `main`) and `latest` is an alias of the newest release. With `alias_type: copy` plus `canonical_version: latest`, the `latest` alias is a full standalone copy of the release version, so both `/dev/` and `/latest/` serve content in place (HTTP 200, no redirect). Older versions stay in the dropdown; prune with `mike delete` when retiring doc releases. The `docs:deploy:*` tasks push to the remote, so they refuse to run outside CI unless `ALLOW_DOCS_PUSH=1` is set; root-file publishing reads its token from the `GH_TOKEN` environment variable (`REPO_SLUG` selects the repo).
+
+> One-time migration: an earlier setup used `alias_type: redirect` and published `dev` as an alias of a `main` version, so `/dev/` and `/latest/` bounced via HTTP redirect. After this change, run `mike delete --push main` once (CI or `ALLOW_DOCS_PUSH=1`) to drop the stale `main` version, then let the next `main` push (`dev`) and release (`latest`) redeploy so the `latest` alias is recreated as an in-place copy.
+
+GitHub Pages serves directly from the `gh-pages` branch (**Settings → Pages → Build and deployment → Deploy from a branch → `gh-pages`**).
 
 ### Local version-selector preview
 
@@ -61,10 +63,6 @@ Publishing is not available from a local Taskfile push—use GitHub Actions (rel
 # Optional: fetch existing versions from origin
 git fetch origin gh-pages
 
-task docs:mike:deploy-local   # label from [versions] local in mike_versions.ini
-task docs:mike:serve          # http://127.0.0.1:8000/ with dropdown
+task docs:mike:deploy-local   # deploys the current docs to local gh-pages as `dev` (no push)
+task docs:mike:serve          # http://127.0.0.1:8000/ with the version dropdown
 ```
-
-GitHub repo **Settings → Pages → Build and deployment** must use **GitHub Actions** as the source.
-
-**Settings → Environments → github-pages → Deployment branches and tags** must allow release tags (e.g. add tag pattern `v*`) or use **No restriction**. Otherwise tag-triggered deploys fail with environment protection errors.

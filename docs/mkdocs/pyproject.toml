@@ -1,3 +1,6 @@
+# Copyright AGNTCY Contributors (https://github.com/agntcy)
+# SPDX-License-Identifier: Apache-2.0
+
 [project]
 name = "dir-docs"
 version = "0.1.0"
@@ -6,7 +9,7 @@ readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [
     "mkdocs>=1.6,<2",
-    "mkdocs-material==9.6.12",
+    "mkdocs-material>=9.7,<10",
     "mkdocs-material-extensions>=1.0.3",
     "markdown>=3.2",
     "pymdown-extensions>=10.21.3",

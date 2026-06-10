@@ -1,3 +1,6 @@
+# Copyright AGNTCY Contributors (https://github.com/agntcy)
+# SPDX-License-Identifier: Apache-2.0
+#
 # MkDocs config lives in docs/mkdocs/; paths below are relative to this file.
 # Build: task docs:build   or: uv run mkdocs build (from docs/mkdocs)
 
@@ -71,7 +74,8 @@ plugins:
   include-markdown: {}
   search:
   mike:
-    alias_type: redirect
+    alias_type: copy
+    canonical_version: latest
   redirects:
     redirect_maps:
       'dir/getting-started.md': 'dir/dir-quickstart.md'

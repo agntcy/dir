@@ -1,3 +1,6 @@
+/* Copyright AGNTCY Contributors (https://github.com/agntcy) */
+/* SPDX-License-Identifier: Apache-2.0 */
+
 /* Grid card enhancements: featured highlight and single-link stretch targets. */
 document$.subscribe(function () {
   document.querySelectorAll(".md-typeset .grid.cards > ul > li").forEach(function (li) {

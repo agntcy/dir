@@ -16,7 +16,7 @@ Internet Draft.
 ## Repository and specification
 
 - Reference implementation: https://github.com/agntcy/dir
-- ADS Internet Draft: https://spec.dir.agntcy.org/draft-mp-agntcy-ads.html
+- ADS Internet Draft: https://datatracker.ietf.org/doc/draft-mp-agntcy-ads
 - Spec sources: https://github.com/agntcy/dir-spec
 - gRPC / protobuf APIs: https://buf.build/agntcy/dir
 - Documentation site: https://agntcy.github.io/dir/

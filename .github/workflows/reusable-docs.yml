@@ -1,85 +1,54 @@
-# SPDX-FileCopyrightText: Copyright (c) 2026 Cisco and/or its affiliates.
+# Copyright AGNTCY Contributors (https://github.com/agntcy)
 # SPDX-License-Identifier: Apache-2.0
 #
-# Reusable documentation workflow. Build/lint/deploy logic lives in docs/Taskfile.yml.
-# Release deploy: mike multi-version site → gh-pages ledger (CI push) → GitHub Actions Pages.
+# Reusable docs pipeline for https://agntcy.github.io/dir/. Provisions tools
+# (uv, task, lychee) and calls task entries from docs/Taskfile.yml. All build,
+# lint, and deploy logic lives in the Taskfile; this only wires it to CI.
+#
+# Behavior by `mode`:
+#   ci             -> task docs:ci                     (build + lint)
+#   deploy-dev     -> build + lint, then docs:deploy:dev (`dev` version) + docs:deploy:root-files
+#   deploy-release -> docs:deploy:release VERSION=<v> + docs:deploy:root-files
 
-name: Documentation
+name: Reusable Docs
 
 on:
   workflow_call:
     inputs:
-      deploy:
-        description: 'Publish to GitHub Pages via deploy-pages'
+      mode:
+        description: "ci | deploy-dev | deploy-release"
         required: true
-        type: boolean
-        default: false
+        type: string
       version:
-        description: 'Mike version label for mike:pages-build (from tag/release/input)'
+        description: "Raw version label for deploy-release (leading v stripped by the task)"
         required: false
         type: string
-        default: ''
-      task:
-        description: 'Taskfile task to run (ci, build, mike:pages-build)'
-        required: true
-        type: string
-        default: ci
-
-  workflow_dispatch:
-    inputs:
-      deploy:
-        description: 'Publish to GitHub Pages'
-        required: true
-        type: boolean
-        default: false
-      version:
-        description: 'Mike version label for mike:pages-build'
-        required: false
-        type: string
-        default: ''
-      task:
-        description: 'Taskfile task (ci, build, mike:pages-build)'
-        required: false
-        type: string
-        default: ci
-
-# Do not set contents here — reusable workflows ignore caller permissions when defined.
-# docs-deploy passes contents: write; docs-ci passes contents: read.
+        default: ""
 
 jobs:
-  build:
-    name: Docs
+  docs:
+    name: Docs (${{ inputs.mode }})
     runs-on: ubuntu-latest
-    # contents: write for mike/gh-pages comes from the caller (docs-deploy); CI callers pass contents: read
-    env:
-      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
-      DISABLE_MKDOCS_2_WARNING: true
-      MKDOCS_SITE_URL: https://agntcy.github.io/dir/
-      VERSION: ${{ inputs.version }}
+    # GITHUB_TOKEN permissions are controlled by the caller:
+    #   docs-ci.yaml  -> contents: read (lint/build only)
+    #   docs-deploy.yml deploy job -> contents: write (mike --push, root files)
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
+          # mike needs full history and the gh-pages branch to deploy versions.
           fetch-depth: 0
-          submodules: recursive
-
-      - name: Setup Pages
-        if: inputs.deploy == true || inputs.deploy == 'true'
-        uses: actions/configure-pages@v5
-
-      - name: Setup Taskfile
-        shell: bash
-        run: sh -c "$(curl --location https://taskfile.dev/install.sh)" -- -d -b ~/.local/bin
+          # Keep checkout credentials for mike --push in deploy modes.
+          persist-credentials: true
 
       - name: Setup uv
-        uses: astral-sh/setup-uv@v5
+        uses: astral-sh/setup-uv@d4b2f3b6ecc6e67c4457f6d3e41ec42d3d0fcb86 # v5.4.2
 
-      - name: Update GITHUB_PATH
-        shell: bash
-        run: echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+      - name: Setup task
+        uses: go-task/setup-task@01a4adf9db2d14c1de7a560f09170b6e0df736aa # v2.1.0
 
-      - name: Install lychee
-        if: inputs.task == 'ci'
+      - name: Install lychee (link checker)
+        if: inputs.mode == 'ci' || inputs.mode == 'deploy-dev'
         shell: bash
         run: |
           curl -sSfL https://github.com/lycheeverse/lychee/releases/download/lychee-v0.18.1/lychee-x86_64-unknown-linux-gnu.tar.gz \
@@ -87,72 +56,27 @@ jobs:
           sudo mv lychee /usr/local/bin/lychee
           lychee --version
 
-      - name: Git identity (mike gh-pages ledger)
-        if: (inputs.deploy == true || inputs.deploy == 'true') && inputs.task == 'mike:pages-build'
+      - name: CI checks (build + lint)
+        if: inputs.mode == 'ci' || inputs.mode == 'deploy-dev'
         shell: bash
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+        run: task docs:ci
 
-      - name: Run docs task
+      - name: Deploy dev
+        if: inputs.mode == 'deploy-dev'
         shell: bash
-        run: task -t docs/Taskfile.yml ${{ inputs.task }}
+        run: task docs:deploy:dev
 
-      - name: Push gh-pages version ledger
-        if: (inputs.deploy == true || inputs.deploy == 'true') && inputs.task == 'mike:pages-build'
-        shell: bash
-        run: |
-          set -euo pipefail
-          if git show-ref --verify --quiet refs/heads/gh-pages; then
-            git push origin gh-pages
-          else
-            echo "::warning::gh-pages branch not found after mike deploy; skipping push"
-          fi
-
-      - name: Upload Pages artifact (mike)
-        if: (inputs.deploy == true || inputs.deploy == 'true') && inputs.task == 'mike:pages-build'
-        uses: actions/upload-pages-artifact@v4
-        with:
-          name: dir-docs-website
-          path: .build/mike-site
-
-      - name: Upload Pages artifact (mkdocs)
-        if: (inputs.deploy == true || inputs.deploy == 'true') && inputs.task != 'mike:pages-build'
-        uses: actions/upload-pages-artifact@v4
-        with:
-          name: dir-docs-website
-          path: .build/site
-
-  deploy:
-    name: Deploy artifacts
-    if: inputs.deploy == true || inputs.deploy == 'true'
-    needs:
-      - build
-    runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    steps:
-      - name: Deploy to GitHub Pages
-        id: deployment
-        uses: actions/deploy-pages@v4
-        with:
-          artifact_name: dir-docs-website
-
-      - name: Smoke test live site
+      - name: Deploy release version + latest
+        if: inputs.mode == 'deploy-release'
         shell: bash
         env:
-          SITE_URL: https://agntcy.github.io/dir/
-        run: |
-          set -euo pipefail
-          echo "Deployed to: ${{ steps.deployment.outputs.page_url }}"
-          for attempt in 1 2 3 4 5 6; do
-            if curl -sfI "$SITE_URL" | head -1 | grep -qE 'HTTP/[0-9.]+ (200|301|302|307|308)'; then
-              echo "OK: $SITE_URL"
-              exit 0
-            fi
-            echo "Attempt $attempt: waiting for $SITE_URL ..."
-            sleep 15
-          done
-          echo "::error::Site not reachable at $SITE_URL after deploy"
-          exit 1
+          VERSION_INPUT: ${{ inputs.version }}
+        run: task docs:deploy:release VERSION="${VERSION_INPUT}"
+
+      - name: Deploy root-level files (404/robots/llms)
+        if: inputs.mode == 'deploy-dev' || inputs.mode == 'deploy-release'
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO_SLUG: ${{ github.repository }}
+        run: task docs:deploy:root-files
