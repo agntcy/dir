@@ -47,6 +47,7 @@ Examples (local A2A AgentCard JSON):
 Examples (Agent Skill directory):
   dirctl import --type=agent-skill --file-path=./my-skill
   dirctl import --type=agent-skill --file-path=./my-skill --dry-run
+  dirctl import --type=agent-skill --file-path=./skills --author="ACME Corp" --author="Example Team"
 
 Preview and output:
   dirctl import --type=mcp-registry --url=https://registry.modelcontextprotocol.io/v0.1 --dry-run

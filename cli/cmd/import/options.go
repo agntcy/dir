@@ -60,6 +60,8 @@ func init() {
 	flags.StringVar(&opts.RegistryURL, "url", "", "Registry base URL (required when --type=mcp-registry)")
 	flags.StringToStringVar(&opts.Filters, "filter", nil, "Filters (key=value)")
 	flags.IntVar(&opts.Limit, "limit", 0, "Maximum number of records to import (0 = no limit)")
+	flags.StringArrayVar(&opts.Authors, "author", nil,
+		"OASF record author (repeatable); overrides authors derived from the source")
 
 	// Enrichment flags
 	flags.StringVar(&opts.EnrichConfigFile, "enrich-config", "", "Path to enricher configuration (JSON: model, mcpServers, max-steps); defaults to the built-in config")
