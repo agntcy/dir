@@ -1,0 +1,89 @@
+# Agent Directory Service (ADS) High-Level Summary
+
+The **Agent Directory Service (ADS)** is an open source discovery layer for AI agents,
+maintained by [AGNTCY](https://github.com/agntcy) under the Linux Foundation. ADS lets
+builders publish structured metadata about agents and lets others find them by capability,
+trust signals, and federation policy—not by vendor or framework.
+
+Directory records use the [Open Agentic Schema Framework (OASF)](https://docs.agntcy.org/oasf/open-agentic-schema-framework/).
+Discovery follows a hierarchical skill taxonomy. Independent directory nodes interconnect
+through content routing and DHT-based federation.
+
+This documentation site covers the reference implementation, deployment guides, SDKs,
+CLI, and federation operations. The normative protocol is published separately as an
+Internet Draft.
+
+## Repository and specification
+
+- Reference implementation: https://github.com/agntcy/dir
+- ADS Internet Draft: https://datatracker.ietf.org/doc/draft-mp-agntcy-ads
+- Spec sources: https://github.com/agntcy/dir-spec
+- gRPC / protobuf APIs: https://buf.build/agntcy/dir
+- Documentation site: https://agntcy.github.io/dir/
+- LLM-oriented summary (this file): https://agntcy.github.io/dir/llms.txt
+
+## Key documentation pages
+
+- Home: https://agntcy.github.io/dir/
+- Community (Slack, repos, news): https://agntcy.github.io/dir/community/
+- Overview: https://agntcy.github.io/dir/dir/dir-overview/
+- Architecture: https://agntcy.github.io/dir/dir/dir-architecture/
+- Features and usage scenarios: https://agntcy.github.io/dir/dir/dir-features-scenarios/
+- Quickstart: https://agntcy.github.io/dir/dir/dir-quickstart/
+- Federation overview: https://agntcy.github.io/dir/dir/dir-federation-overview/
+- CLI reference (`dirctl`): https://agntcy.github.io/dir/dir/dir-cli-reference/
+- SDK overview: https://agntcy.github.io/dir/dir/dir-sdk/
+- API reference: https://agntcy.github.io/dir/dir/dir-api-reference/
+
+## Core concepts
+
+### Directory records
+
+- Metadata for AI agents and multi-agent systems, modeled with OASF.
+- Each record must declare skills from the [OASF skill taxonomy](https://schema.oasf.outshift.com/skill_categories).
+- Records are content-addressed with [CIDs](https://github.com/multiformats/cid) for global uniqueness and integrity.
+- Optional verifiable domain-based names support human-readable references with cryptographic verification.
+
+### Content routing and discovery
+
+1. **Publication:** A directory server stores a record locally, extracts skills, and announces
+   `(CID, skills)` mappings into the routing layer (DHT).
+2. **Lookup:** A client queries by skill taxonomy; the network returns matching CIDs and the
+   directory servers that host those records.
+3. **Retrieval:** The client selects records and downloads them from the hosting servers.
+
+### Federation
+
+- Multiple directory instances form a decentralized network without a single central registry.
+- Federation supports SPIFFE/SPIRE workload identity, trust domains, and cross-organization discovery.
+- Deployment guides cover local Kind setups, Kubernetes, Amazon EKS, and partner production federation.
+
+### Extensions
+
+- **Runtime discovery:** Watch Docker/Kubernetes workloads and expose labeled agents via gRPC.
+- **MCP server:** Query the directory from IDEs through the Model Context Protocol.
+- **Event streaming:** Subscribe to directory change notifications.
+- **GUI:** Browse and manage records interactively.
+
+## Implementation stack
+
+- **Language:** Go reference server and client nodes.
+- **Storage:** [ORAS](https://oras.land) on [zot](https://zotregistry.dev) (OCI registry as storage).
+- **APIs:** gRPC with protocol buffers; HTTP where applicable.
+- **CLI:** `dirctl` for publish, search, federation, and authentication workflows.
+- **SDKs:** Client libraries for integrating discovery into applications (see SDK overview).
+- **Testing:** [CSIT](https://docs.agntcy.org/csit/csit/) for cross-version integration testing.
+
+## Security and trust
+
+- Dual-mode authentication (e.g., OIDC for users, SPIFFE for workloads).
+- Cryptographic integrity and provenance for directory records.
+- SPIFFE ID–based authorization policies across federation trust domains.
+- See trust model and OIDC authentication docs for configuration details.
+
+## Related AGNTCY projects
+
+- [OASF](https://docs.agntcy.org/oasf/open-agentic-schema-framework/) — agent schema and skill taxonomy.
+- [SLIM](https://docs.agntcy.org/slim/overview/) — secure lightweight inter-agent messaging.
+- [oasf-sdk](https://github.com/agntcy/oasf-sdk), [dir-importer](https://github.com/agntcy/dir-importer),
+  [oidc-gateway](https://github.com/agntcy/oidc-gateway) — supporting tooling.

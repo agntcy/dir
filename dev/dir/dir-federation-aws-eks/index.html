@@ -1,0 +1,3177 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+      
+      
+        <link rel="canonical" href="https://agntcy.github.io/dir/latest/dir/dir-federation-aws-eks/">
+      
+      
+        <link rel="prev" href="../dir-prod-deployment/">
+      
+      
+        <link rel="next" href="../dir-federation-setup/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../assets/agntcy/favicon.ico">
+      <meta name="generator" content="mkdocs-ProperDocs 1.6.7, mkdocs-material-9.7.6">
+    
+    
+      
+        <title>Federation on Amazon EKS - Agent Directory Service</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/main.484c7ddc.min.css">
+      
+        
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../../stylesheets/agntcy-docs.css">
+    
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+  
+
+
+  
+  
+
+<script id="__analytics">function __md_analytics(){function e(){dataLayer.push(arguments)}window.dataLayer=window.dataLayer||[],e("js",new Date),e("config","G-H5NVFB80VS"),document.addEventListener("DOMContentLoaded",(function(){document.forms.search&&document.forms.search.query.addEventListener("blur",(function(){this.value&&e("event","search",{search_term:this.value})}));document$.subscribe((function(){var t=document.forms.feedback;if(void 0!==t)for(var a of t.querySelectorAll("[type=submit]"))a.addEventListener("click",(function(a){a.preventDefault();var n=document.location.pathname,d=this.getAttribute("data-md-value");e("event","feedback",{page:n,data:d}),t.firstElementChild.disabled=!0;var r=t.querySelector(".md-feedback__note [data-md-value='"+d+"']");r&&(r.hidden=!1)})),t.hidden=!1})),location$.subscribe((function(t){e("config","G-H5NVFB80VS",{page_path:t.pathname})}))}));var t=document.createElement("script");t.async=!0,t.src="https://www.googletagmanager.com/gtag/js?id=G-H5NVFB80VS",document.getElementById("__analytics").insertAdjacentElement("afterEnd",t)}</script>
+  
+    <script>if("undefined"!=typeof __md_analytics){var consent=__md_get("__consent");consent&&consent.analytics&&__md_analytics()}</script>
+  
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#federation-on-amazon-eks" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+        <aside class="md-banner">
+          <div class="md-banner__inner md-grid md-typeset">
+            
+              <button class="md-banner__button md-icon" aria-label="Don't show this again">
+                
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+              </button>
+            
+            
+  Join the Federation Testbed! For more information,
+  <a
+    href="https://github.com/agntcy/dir/discussions/455"
+    target="_blank"
+    rel="noopener noreferrer"
+  >see here</a>.
+
+          </div>
+          
+            <script>var el=document.querySelector("[data-md-component=announce]");if(el){var content=el.querySelector(".md-typeset");__md_hash(content.innerHTML)===__md_get("__announce")&&(el.hidden=!0)}</script>
+          
+        </aside>
+      
+    </div>
+    
+      <div data-md-color-scheme="default" data-md-component="outdated" hidden>
+        
+      </div>
+    
+    
+      
+
+<header class="md-header" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../.." title="Agent Directory Service" class="md-header__button md-logo" aria-label="Agent Directory Service" data-md-component="logo">
+      <img src="../../assets/agntcy/img/logo-light.svg" alt="logo" class="logo-light" />
+<img src="../../assets/agntcy/img/logo-dark.svg" alt="logo" class="logo-dark" />
+<span class="md-logo__brand-name">Agent Directory Service</span>
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Agent Directory Service
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Federation on Amazon EKS
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme)" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3.9 12c0-1.71 1.39-3.1 3.1-3.1h4V7H7a5 5 0 0 0-5 5 5 5 0 0 0 5 5h4v-1.9H7c-1.71 0-3.1-1.39-3.1-3.1M8 13h8v-2H8zm9-6h-4v1.9h4c1.71 0 3.1 1.39 3.1 3.1s-1.39 3.1-3.1 3.1h-4V17h4a5 5 0 0 0 5-5 5 5 0 0 0-5-5"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_2" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M17 7H7a5 5 0 0 0-5 5 5 5 0 0 0 5 5h10a5 5 0 0 0 5-5 5 5 0 0 0-5-5m0 8a3 3 0 0 1-3-3 3 3 0 0 1 3-3 3 3 0 0 1 3 3 3 3 0 0 1-3 3"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="black" data-md-color-accent="indigo"  aria-label="Switch to system preference"  type="radio" name="__palette" id="__palette_2">
+    
+      <label class="md-header__button md-icon" title="Switch to system preference" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M17 7H7a5 5 0 0 0-5 5 5 5 0 0 0 5 5h10a5 5 0 0 0 5-5 5 5 0 0 0-5-5M7 15a3 3 0 0 1-3-3 3 3 0 0 1 3-3 3 3 0 0 1 3 3 3 3 0 0 1-3 3"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+          <a href="javascript:void(0)" class="md-search__icon md-icon" title="Share" aria-label="Share" data-clipboard data-clipboard-text="" data-md-component="search-share" tabindex="-1">
+            
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M18 16.08c-.76 0-1.44.3-1.96.77L8.91 12.7c.05-.23.09-.46.09-.7s-.04-.47-.09-.7l7.05-4.11c.54.5 1.25.81 2.04.81a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3c0 .24.04.47.09.7L8.04 9.81C7.5 9.31 6.79 9 6 9a3 3 0 0 0-3 3 3 3 0 0 0 3 3c.79 0 1.5-.31 2.04-.81l7.12 4.15c-.05.21-.08.43-.08.66 0 1.61 1.31 2.91 2.92 2.91s2.92-1.3 2.92-2.91A2.92 2.92 0 0 0 18 16.08"/></svg>
+          </a>
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/agntcy/dir" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    agntcy/dir
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+            
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../.." class="md-tabs__link">
+        
+  
+  
+    
+  
+  Home
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+    
+  
+  
+    
+    
+      
+  
+  
+  
+    
+  
+  
+    
+    
+      <li class="md-tabs__item md-tabs__item--active">
+        <a href="../dir-overview/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Documentation
+
+        </a>
+      </li>
+    
+  
+
+    
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../../community/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Community
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="https://datatracker.ietf.org/doc/draft-mp-agntcy-ads" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Specification
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="https://blogs.agntcy.org/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Blog
+
+      </a>
+    </li>
+  
+
+      
+    </ul>
+  </div>
+</nav>
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../.." title="Agent Directory Service" class="md-nav__button md-logo" aria-label="Agent Directory Service" data-md-component="logo">
+      <img src="../../assets/agntcy/img/logo-light.svg" alt="logo" class="logo-light" />
+<img src="../../assets/agntcy/img/logo-dark.svg" alt="logo" class="logo-dark" />
+<span class="md-logo__brand-name">Agent Directory Service</span>
+    </a>
+    Agent Directory Service
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/agntcy/dir" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    agntcy/dir
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+        
+        
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Documentation
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Documentation
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+          
+          
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_1" >
+        
+          
+          <label class="md-nav__link" for="__nav_2_1" id="__nav_2_1_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Get Started
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_1_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_1">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Get Started
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../dir-overview/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../dir-features-scenarios/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Features and Usage Scenarios
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../dir-quickstart/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Quickstart
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+          
+          
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2_2" id="__nav_2_2_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Concepts
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Concepts
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../dir-architecture/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Architecture
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../dir-component-records-validation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Records
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../dir-component-store/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Store
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../dir-component-routing/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Routing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../dir-component-trust-model/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Trust Model
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../dir-federation-overview/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Federation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_2_7" >
+        
+          
+          <label class="md-nav__link" for="__nav_2_2_7" id="__nav_2_2_7_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Extensions
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_2_2_7_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_2_7">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Extensions
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../dir-component-runtime-discovery/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Runtime Discovery
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../dir-component-event-streaming/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Event Streaming
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../dir-component-mcp-server/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    MCP Server
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../dir-component-gui/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    GUI
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+          
+          
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_3" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_2_3" id="__nav_2_3_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Deploy
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_3_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_2_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Deploy
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../dir-deployment-local/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Local Deployment
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../dir-deployment-kubernetes/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Kubernetes Deployment
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../dir-prod-deployment/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Production Deployment
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_3_4" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_2_3_4" id="__nav_2_3_4_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Federation Deployment
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_2_3_4_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_2_3_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Federation Deployment
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Federation on Amazon EKS
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Federation on Amazon EKS
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#what-you-will-build" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What You Will Build
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#decisions-before-you-start" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Decisions Before You Start
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#version-pins-used-in-this-guide" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Version Pins Used in This Guide
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#before-you-start" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Before You Start
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#setting-up-federation-using-aws-eks" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Setting Up Federation Using AWS EKS
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#troubleshooting" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Troubleshooting
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#appendix-best-effort-aws-provisioning-notes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Appendix: Best-Effort AWS Provisioning Notes
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Appendix: Best-Effort AWS Provisioning Notes">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#eks-cluster" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        EKS Cluster
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#route53-and-dns" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Route53 and DNS
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#iam-and-workload-identity" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        IAM and Workload Identity
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ingress-and-load-balancers" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Ingress and Load Balancers
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#security-groups-and-networking" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Security Groups and Networking
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#storage" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Storage
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#a-good-first-cut" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        A Good First Cut
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../dir-federation-setup/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Running a Federated Directory Instance
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../dir-federation-profiles/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Profiles
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../dir-federation-troubleshooting/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Best Practices and Troubleshooting
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../dir-component-oidc-authentication/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    OIDC Authentication
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+    
+    
+    
+      
+      
+        
+          
+          
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_2_4" id="__nav_2_4_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    SDKs
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    SDKs
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../dir-sdk/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    SDK Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+          
+          
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_2_5" id="__nav_2_5_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Reference
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Reference
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../dir-cli-reference/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    CLI Reference
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../dir-api-reference/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    API Reference
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../community/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Community
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://datatracker.ietf.org/doc/draft-mp-agntcy-ads" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Specification
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://blogs.agntcy.org/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Blog
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#what-you-will-build" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What You Will Build
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#decisions-before-you-start" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Decisions Before You Start
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#version-pins-used-in-this-guide" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Version Pins Used in This Guide
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#before-you-start" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Before You Start
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#setting-up-federation-using-aws-eks" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Setting Up Federation Using AWS EKS
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#troubleshooting" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Troubleshooting
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#appendix-best-effort-aws-provisioning-notes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Appendix: Best-Effort AWS Provisioning Notes
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Appendix: Best-Effort AWS Provisioning Notes">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#eks-cluster" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        EKS Cluster
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#route53-and-dns" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Route53 and DNS
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#iam-and-workload-identity" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        IAM and Workload Identity
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ingress-and-load-balancers" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Ingress and Load Balancers
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#security-groups-and-networking" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Security Groups and Networking
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#storage" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Storage
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#a-good-first-cut" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        A Good First Cut
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+                
+
+
+
+  
+
+
+  <nav class="md-path" aria-label="Navigation" >
+    <ol class="md-path__list">
+      
+        
+  
+  
+    <li class="md-path__item">
+      <a href="../.." class="md-path__link">
+        
+  <span class="md-ellipsis">
+    Home
+  </span>
+
+      </a>
+    </li>
+  
+
+      
+      
+        
+  
+  
+    
+    
+      
+  
+  
+    
+    
+      <li class="md-path__item">
+        <a href="../dir-overview/" class="md-path__link">
+          
+  <span class="md-ellipsis">
+    Documentation
+  </span>
+
+        </a>
+      </li>
+    
+  
+
+    
+  
+
+      
+        
+  
+  
+    
+    
+      <li class="md-path__item">
+        <a href="../dir-deployment-local/" class="md-path__link">
+          
+  <span class="md-ellipsis">
+    Deploy
+  </span>
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+    
+    
+      <li class="md-path__item">
+        <a href="./" class="md-path__link">
+          
+  <span class="md-ellipsis">
+    Federation Deployment
+  </span>
+
+        </a>
+      </li>
+    
+  
+
+      
+    </ol>
+  </nav>
+
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+    <a href="https://github.com/agntcy/dir/edit/main/docs/content/dir/dir-federation-aws-eks.md" title="Edit this page" class="md-content__button md-icon" rel="edit">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M10 20H6V4h7v5h5v3.1l2-2V8l-6-6H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h4zm10.2-7c.1 0 .3.1.4.2l1.3 1.3c.2.2.2.6 0 .8l-1 1-2.1-2.1 1-1c.1-.1.2-.2.4-.2m0 3.9L14.1 23H12v-2.1l6.1-6.1z"/></svg>
+    </a>
+  
+  
+    
+      
+    
+    <a href="https://github.com/agntcy/dir/raw/main/docs/content/dir/dir-federation-aws-eks.md" title="View source of this page" class="md-content__button md-icon">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M17 18c.56 0 1 .44 1 1s-.44 1-1 1-1-.44-1-1 .44-1 1-1m0-3c-2.73 0-5.06 1.66-6 4 .94 2.34 3.27 4 6 4s5.06-1.66 6-4c-.94-2.34-3.27-4-6-4m0 6.5a2.5 2.5 0 0 1-2.5-2.5 2.5 2.5 0 0 1 2.5-2.5 2.5 2.5 0 0 1 2.5 2.5 2.5 2.5 0 0 1-2.5 2.5M9.27 20H6V4h7v5h5v4.07c.7.08 1.36.25 2 .49V8l-6-6H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h4.5a8.2 8.2 0 0 1-1.23-2"/></svg>
+    </a>
+  
+
+
+<h1 id="federation-on-amazon-eks">Federation on Amazon EKS</h1>
+<p>This guide is the opinionated AWS happy path for running your own AGNTCY Directory instance and federating it with the public Directory network.</p>
+<p>It makes the following choices for you:</p>
+<ul>
+<li>Amazon Web Services</li>
+<li>Amazon EKS</li>
+<li>Helm-first deployment</li>
+<li><code>https_web</code> SPIRE federation</li>
+<li>NGINX ingress</li>
+<li>Route53 with ExternalDNS</li>
+<li>cert-manager with Let's Encrypt</li>
+<li>EBS-backed persistence</li>
+<li>Zot as the OCI registry</li>
+<li>SPIRE as the workload identity system</li>
+</ul>
+<p>If you want the reference material behind this guide, see the following guides:</p>
+<ul>
+<li><a href="../dir-prod-deployment/">Production Deployment</a></li>
+<li><a href="../dir-federation-setup/">Running a Federated Directory Instance</a></li>
+<li><a href="../dir-federation-profiles/">Federation Bundle Profiles</a></li>
+<li><a href="../dir-federation-troubleshooting/">Federation Best Practices and Troubleshooting</a></li>
+</ul>
+<p>This document is intentionally narrow. It does not try to cover GitOps, Azure, GCP, on-premises deployment, or the <code>https_spiffe</code> profile. The goal is to give first-time operators one concrete path that they can follow end to end.</p>
+<h2 id="what-you-will-build">What You Will Build</h2>
+<pre class="mermaid"><code>flowchart TD
+    internet[Internet]
+    route53[Route53]
+    nginx[NGINXIngress]
+    nlb[AWSNLB]
+    api[DirectoryAPI]
+    reconciler[Reconciler]
+    zot[ZotRegistry]
+    pg[PostgreSQL]
+    spireIngress[SPIREFederationIngress]
+    spire[SPIREServer]
+    oidc[SPIREOIDCDiscovery]
+    ebs[EBSVolumes]
+    prod[PublicDirectoryProd]
+
+    internet --&gt; route53
+    route53 --&gt; nginx
+    route53 --&gt; nlb
+    nginx --&gt; api
+    nginx --&gt; zot
+    nginx --&gt; spireIngress
+    nginx --&gt; oidc
+    nlb --&gt;|P2P routing| api
+    spireIngress --&gt; spire
+    api --&gt; pg
+    api --&gt; ebs
+    reconciler --&gt; pg
+    reconciler --&gt; zot
+    zot --&gt; ebs
+    pg --&gt; ebs
+    api --&gt; spire
+    reconciler --&gt; spire
+    spire --&gt; prod</code></pre>
+<h2 id="decisions-before-you-start">Decisions Before You Start</h2>
+<p>Choose these before you install anything:</p>
+<ul>
+<li>
+<p>Your SPIRE trust domain.</p>
+<p>This is permanent for the deployment.</p>
+</li>
+<li>
+<p>Your public DNS names.</p>
+</li>
+<li>
+<p>Your federation profile.</p>
+<p>This guide always uses <code>https_web</code>.</p>
+</li>
+</ul>
+<p>To keep the mental model simple, this guide uses the same base domain for both DNS and the trust domain:</p>
+<ul>
+<li>Trust domain: <code>partner.example.com</code></li>
+<li>Directory API: <code>api.partner.example.com</code></li>
+<li>Zot: <code>zot.partner.example.com</code></li>
+<li>P2P routing: <code>routing.partner.example.com</code></li>
+<li>SPIRE federation endpoint: <code>spire.partner.example.com</code></li>
+<li>SPIRE OIDC discovery: <code>oidc-discovery.spire.partner.example.com</code></li>
+</ul>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Do not split these in your first deployment. You can change them later.</p>
+</div>
+<h2 id="version-pins-used-in-this-guide">Version Pins Used in This Guide</h2>
+<p>These pins match the current staging deployment references at the time this guide was written:</p>
+<table>
+<thead>
+<tr>
+<th>Component</th>
+<th>Source</th>
+<th>Version</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Directory Helm chart</td>
+<td><code>oci://ghcr.io/agntcy/dir/helm-charts/dir</code></td>
+<td><code>v1.2.0</code></td>
+</tr>
+<tr>
+<td>Directory apiserver image</td>
+<td><code>ghcr.io/agntcy/dir-apiserver</code></td>
+<td><code>v1.2.0</code></td>
+</tr>
+<tr>
+<td>Directory reconciler image</td>
+<td><code>ghcr.io/agntcy/dir-reconciler</code></td>
+<td><code>v1.2.0</code></td>
+</tr>
+<tr>
+<td>SPIRE Helm chart</td>
+<td><code>spiffe/spire</code></td>
+<td><code>0.28.3</code></td>
+</tr>
+</tbody>
+</table>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Older Directory docs still show <code>v1.0.0</code> examples. Prefer the versions above for a fresh deployment.</p>
+</div>
+<h2 id="before-you-start">Before You Start</h2>
+<p>This guide assumes you already have:</p>
+<ul>
+<li>An EKS cluster running and reachable with <code>kubectl</code></li>
+<li>An ingress-nginx controller installed in the cluster</li>
+<li><code>--enable-ssl-passthrough=true</code> enabled on that ingress controller</li>
+<li>cert-manager installed with a production ClusterIssuer such as <code>letsencrypt-prod</code></li>
+<li>ExternalDNS configured to manage records in your Route53 hosted zone</li>
+<li>An EBS-backed StorageClass named <code>ebs-sc-encrypted</code></li>
+<li><code>kubectl</code>, <code>helm</code>, <code>openssl</code>, <code>jq</code>, and <code>htpasswd</code> installed locally</li>
+</ul>
+<p>This guide does not try to provision the AWS infrastructure from zero in the main flow. For the AWS-specific provisioning considerations, see the <a href="#appendix-best-effort-aws-provisioning-notes">Appendix</a>.</p>
+<h2 id="setting-up-federation-using-aws-eks">Setting Up Federation Using AWS EKS</h2>
+<ol>
+<li>
+<p>Export the Variables Used by the Rest of the Guide</p>
+<div class="highlight"><pre><span></span><code><span class="nb">export</span><span class="w"> </span><span class="nv">TRUST_DOMAIN</span><span class="o">=</span><span class="s2">&quot;partner.example.com&quot;</span>
+<span class="nb">export</span><span class="w"> </span><span class="nv">BASE_DOMAIN</span><span class="o">=</span><span class="s2">&quot;partner.example.com&quot;</span>
+
+<span class="nb">export</span><span class="w"> </span><span class="nv">DIR_API_HOST</span><span class="o">=</span><span class="s2">&quot;api.</span><span class="si">${</span><span class="nv">BASE_DOMAIN</span><span class="si">}</span><span class="s2">&quot;</span>
+<span class="nb">export</span><span class="w"> </span><span class="nv">DIR_ZOT_HOST</span><span class="o">=</span><span class="s2">&quot;zot.</span><span class="si">${</span><span class="nv">BASE_DOMAIN</span><span class="si">}</span><span class="s2">&quot;</span>
+<span class="nb">export</span><span class="w"> </span><span class="nv">DIR_ROUTING_HOST</span><span class="o">=</span><span class="s2">&quot;routing.</span><span class="si">${</span><span class="nv">BASE_DOMAIN</span><span class="si">}</span><span class="s2">&quot;</span>
+<span class="nb">export</span><span class="w"> </span><span class="nv">SPIRE_FEDERATION_HOST</span><span class="o">=</span><span class="s2">&quot;spire.</span><span class="si">${</span><span class="nv">BASE_DOMAIN</span><span class="si">}</span><span class="s2">&quot;</span>
+<span class="nb">export</span><span class="w"> </span><span class="nv">SPIRE_OIDC_HOST</span><span class="o">=</span><span class="s2">&quot;oidc-discovery.spire.</span><span class="si">${</span><span class="nv">BASE_DOMAIN</span><span class="si">}</span><span class="s2">&quot;</span>
+
+<span class="nb">export</span><span class="w"> </span><span class="nv">DIR_NAMESPACE</span><span class="o">=</span><span class="s2">&quot;dir&quot;</span>
+<span class="nb">export</span><span class="w"> </span><span class="nv">SPIRE_NAMESPACE</span><span class="o">=</span><span class="s2">&quot;spire&quot;</span>
+<span class="nb">export</span><span class="w"> </span><span class="nv">CERT_ISSUER</span><span class="o">=</span><span class="s2">&quot;letsencrypt-prod&quot;</span>
+<span class="nb">export</span><span class="w"> </span><span class="nv">STORAGE_CLASS</span><span class="o">=</span><span class="s2">&quot;ebs-sc-encrypted&quot;</span>
+</code></pre></div>
+</li>
+<li>
+<p>Verify the Cluster Add-Ons Before You Deploy Anything</p>
+<p>Check that the required controllers and storage class already exist:</p>
+<div class="highlight"><pre><span></span><code>kubectl<span class="w"> </span>get<span class="w"> </span>ns
+kubectl<span class="w"> </span>get<span class="w"> </span>deployment<span class="w"> </span>-A<span class="w"> </span><span class="p">|</span><span class="w"> </span>egrep<span class="w"> </span><span class="s1">&#39;ingress-nginx|cert-manager|external-dns&#39;</span>
+kubectl<span class="w"> </span>get<span class="w"> </span>storageclass
+kubectl<span class="w"> </span>get<span class="w"> </span>clusterissuer
+</code></pre></div>
+<p>Confirm that the ingress-nginx controller has SSL passthrough enabled:</p>
+<div class="highlight"><pre><span></span><code>kubectl<span class="w"> </span>get<span class="w"> </span>deployment<span class="w"> </span>-n<span class="w"> </span>ingress-nginx<span class="w"> </span>ingress-nginx-controller<span class="w"> </span>-o<span class="w"> </span>yaml<span class="w"> </span><span class="p">|</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>grep<span class="w"> </span>enable-ssl-passthrough
+</code></pre></div>
+<p>Expected result:</p>
+<ul>
+<li><code>ingress-nginx-controller</code> is present</li>
+<li><code>cert-manager</code> is present</li>
+<li><code>external-dns</code> is present</li>
+<li>your <code>ClusterIssuer</code> exists</li>
+<li><code>ebs-sc-encrypted</code> exists</li>
+<li>the ingress controller arguments include <code>--enable-ssl-passthrough=true</code></li>
+</ul>
+<p>If any of these are missing, stop here and resolve them first. This guide assumes the platform layer is already working.</p>
+</li>
+<li>
+<p>Generate the Credentials Used by Directory and Zot</p>
+<p>Use generated values instead of hardcoding static credentials in your shell history or values files:</p>
+<div class="highlight"><pre><span></span><code><span class="nb">export</span><span class="w"> </span><span class="nv">DIR_OCI_ADMIN_PASSWORD</span><span class="o">=</span><span class="s2">&quot;</span><span class="k">$(</span>openssl<span class="w"> </span>rand<span class="w"> </span>-base64<span class="w"> </span><span class="m">24</span><span class="k">)</span><span class="s2">&quot;</span>
+<span class="nb">export</span><span class="w"> </span><span class="nv">DIR_SYNC_PASSWORD</span><span class="o">=</span><span class="s2">&quot;</span><span class="k">$(</span>openssl<span class="w"> </span>rand<span class="w"> </span>-base64<span class="w"> </span><span class="m">24</span><span class="k">)</span><span class="s2">&quot;</span>
+<span class="nb">export</span><span class="w"> </span><span class="nv">DIR_DB_PASSWORD</span><span class="o">=</span><span class="s2">&quot;</span><span class="k">$(</span>openssl<span class="w"> </span>rand<span class="w"> </span>-base64<span class="w"> </span><span class="m">24</span><span class="k">)</span><span class="s2">&quot;</span>
+
+htpasswd<span class="w"> </span>-nbB<span class="w"> </span>admin<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">DIR_OCI_ADMIN_PASSWORD</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span>&gt;<span class="w"> </span>zot.htpasswd
+htpasswd<span class="w"> </span>-nbB<span class="w"> </span>user<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">DIR_SYNC_PASSWORD</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span>&gt;&gt;<span class="w"> </span>zot.htpasswd
+
+openssl<span class="w"> </span>genpkey<span class="w"> </span>-algorithm<span class="w"> </span>Ed25519<span class="w"> </span>-out<span class="w"> </span>node.privkey
+</code></pre></div>
+<p>Keep <code>node.privkey</code> on disk. It will be injected into the Helm release via <code>--set-file</code> later.</p>
+</li>
+<li>
+<p>Install SPIRE for <code>https_web</code> Federation</p>
+<p>Add the hardened SPIRE chart repository and install the CRDs:</p>
+<div class="highlight"><pre><span></span><code>helm<span class="w"> </span>repo<span class="w"> </span>add<span class="w"> </span>spiffe<span class="w"> </span>https://spiffe.github.io/helm-charts-hardened
+helm<span class="w"> </span>repo<span class="w"> </span>update
+
+helm<span class="w"> </span>upgrade<span class="w"> </span>--install<span class="w"> </span>spire-crds<span class="w"> </span>spire-crds<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--repo<span class="w"> </span>https://spiffe.github.io/helm-charts-hardened<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--namespace<span class="w"> </span>spire-crds<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--create-namespace
+</code></pre></div>
+<p>Create <code>spire-values.yaml</code>:</p>
+<div class="highlight"><pre><span></span><code>cat<span class="w"> </span><span class="s">&lt;&lt;EOF &gt; spire-values.yaml</span>
+<span class="s">global:</span>
+<span class="s">  spire:</span>
+<span class="s">    trustDomain: ${TRUST_DOMAIN}</span>
+<span class="s">    clusterName: eks</span>
+<span class="s">    namespaces:</span>
+<span class="s">      create: false</span>
+<span class="s">    ingressControllerType: other</span>
+
+<span class="s">  installAndUpgradeHooks:</span>
+<span class="s">    enabled: false</span>
+
+<span class="s">  deleteHooks:</span>
+<span class="s">    enabled: false</span>
+
+<span class="s">spire-server:</span>
+<span class="s">  federation:</span>
+<span class="s">    enabled: true</span>
+<span class="s">    tls:</span>
+<span class="s">      spire:</span>
+<span class="s">        enabled: false</span>
+<span class="s">      certManager:</span>
+<span class="s">        enabled: true</span>
+<span class="s">        issuer:</span>
+<span class="s">          create: false</span>
+<span class="s">        certificate:</span>
+<span class="s">          issuerRef:</span>
+<span class="s">            kind: ClusterIssuer</span>
+<span class="s">            name: ${CERT_ISSUER}</span>
+<span class="s">    ingress:</span>
+<span class="s">      enabled: true</span>
+<span class="s">      className: nginx</span>
+<span class="s">      controllerType: other</span>
+<span class="s">      host: ${SPIRE_FEDERATION_HOST}</span>
+<span class="s">      tlsSecret: spire-federation-cert</span>
+<span class="s">      annotations:</span>
+<span class="s">        cert-manager.io/cluster-issuer: ${CERT_ISSUER}</span>
+<span class="s">        external-dns.alpha.kubernetes.io/hostname: ${SPIRE_FEDERATION_HOST}</span>
+<span class="s">        nginx.ingress.kubernetes.io/ssl-passthrough: &quot;false&quot;</span>
+<span class="s">        nginx.ingress.kubernetes.io/backend-protocol: &quot;HTTPS&quot;</span>
+<span class="s">        nginx.ingress.kubernetes.io/proxy-ssl-server-name: &quot;on&quot;</span>
+<span class="s">        nginx.ingress.kubernetes.io/proxy-ssl-name: &quot;${SPIRE_FEDERATION_HOST}&quot;</span>
+<span class="s">        # SPIRE serves its own self-signed cert on the backend; the ingress</span>
+<span class="s">        # controller cannot validate it, so upstream verification is disabled.</span>
+<span class="s">        nginx.ingress.kubernetes.io/proxy-ssl-verify: &quot;off&quot;</span>
+<span class="s">  controllerManager:</span>
+<span class="s">    watchClassless: true</span>
+<span class="s">    className: dir-spire</span>
+<span class="s">    identities:</span>
+<span class="s">      clusterFederatedTrustDomain:</span>
+<span class="s">        enabled: true</span>
+<span class="s">      clusterSPIFFEIDs:</span>
+<span class="s">        default:</span>
+<span class="s">          federatesWith:</span>
+<span class="s">            - spire.ads.outshift.io</span>
+
+<span class="s">spiffe-oidc-discovery-provider:</span>
+<span class="s">  ingress:</span>
+<span class="s">    enabled: true</span>
+<span class="s">    className: nginx</span>
+<span class="s">    host: ${SPIRE_OIDC_HOST}</span>
+<span class="s">    annotations:</span>
+<span class="s">      cert-manager.io/cluster-issuer: ${CERT_ISSUER}</span>
+<span class="s">      external-dns.alpha.kubernetes.io/hostname: ${SPIRE_OIDC_HOST}</span>
+<span class="s">  config:</span>
+<span class="s">    domains:</span>
+<span class="s">      - ${SPIRE_OIDC_HOST}</span>
+<span class="s">EOF</span>
+</code></pre></div>
+<p>Install SPIRE:</p>
+<div class="highlight"><pre><span></span><code>helm<span class="w"> </span>upgrade<span class="w"> </span>--install<span class="w"> </span>spire<span class="w"> </span>spiffe/spire<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--version<span class="w"> </span><span class="m">0</span>.28.3<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--namespace<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">SPIRE_NAMESPACE</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--create-namespace<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-f<span class="w"> </span>spire-values.yaml
+</code></pre></div>
+<p>Wait for SPIRE to become healthy:</p>
+<div class="highlight"><pre><span></span><code>kubectl<span class="w"> </span><span class="nb">wait</span><span class="w"> </span>--for<span class="o">=</span><span class="nv">condition</span><span class="o">=</span>ready<span class="w"> </span>pod<span class="w"> </span>-n<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">SPIRE_NAMESPACE</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-l<span class="w"> </span>app.kubernetes.io/name<span class="o">=</span>server<span class="w"> </span>--timeout<span class="o">=</span>300s
+
+kubectl<span class="w"> </span><span class="nb">wait</span><span class="w"> </span>--for<span class="o">=</span><span class="nv">condition</span><span class="o">=</span>ready<span class="w"> </span>pod<span class="w"> </span>-n<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">SPIRE_NAMESPACE</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-l<span class="w"> </span>app.kubernetes.io/name<span class="o">=</span>agent<span class="w"> </span>--timeout<span class="o">=</span>300s
+</code></pre></div>
+</li>
+<li>
+<p>Verify the SPIRE Public Endpoints</p>
+<p>Check that the ingress objects and public certificates exist:</p>
+<div class="highlight"><pre><span></span><code>kubectl<span class="w"> </span>get<span class="w"> </span>ingress<span class="w"> </span>-n<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">SPIRE_NAMESPACE</span><span class="si">}</span><span class="s2">&quot;</span>
+kubectl<span class="w"> </span>get<span class="w"> </span>certificate<span class="w"> </span>-n<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">SPIRE_NAMESPACE</span><span class="si">}</span><span class="s2">&quot;</span>
+</code></pre></div>
+<p>Verify the federation endpoint:</p>
+<div class="highlight"><pre><span></span><code>curl<span class="w"> </span>-I<span class="w"> </span><span class="s2">&quot;https://</span><span class="si">${</span><span class="nv">SPIRE_FEDERATION_HOST</span><span class="si">}</span><span class="s2">&quot;</span>
+</code></pre></div>
+<p>Verify the OIDC discovery document:</p>
+<div class="highlight"><pre><span></span><code>curl<span class="w"> </span><span class="s2">&quot;https://</span><span class="si">${</span><span class="nv">SPIRE_OIDC_HOST</span><span class="si">}</span><span class="s2">/.well-known/openid-configuration&quot;</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>jq<span class="w"> </span>.
+</code></pre></div>
+<p>Confirm that Route53 and ExternalDNS have published the hostnames:</p>
+<div class="highlight"><pre><span></span><code>dig<span class="w"> </span>+short<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">SPIRE_FEDERATION_HOST</span><span class="si">}</span><span class="s2">&quot;</span>
+dig<span class="w"> </span>+short<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">SPIRE_OIDC_HOST</span><span class="si">}</span><span class="s2">&quot;</span>
+</code></pre></div>
+<p>At this point, your SPIRE bundle endpoint should already be externally reachable over standard HTTPS.</p>
+</li>
+<li>
+<p>Create the Directory Values File</p>
+<p>Create <code>dir-values.yaml</code>:</p>
+<div class="highlight"><pre><span></span><code>cat<span class="w"> </span><span class="s">&lt;&lt;EOF &gt; dir-values.yaml</span>
+<span class="s">apiserver:</span>
+<span class="s">  image:</span>
+<span class="s">    repository: ghcr.io/agntcy/dir-apiserver</span>
+<span class="s">    tag: v1.2.0</span>
+<span class="s">    pullPolicy: IfNotPresent</span>
+
+<span class="s">  spire:</span>
+<span class="s">    enabled: true</span>
+<span class="s">    className: dir-spire</span>
+<span class="s">    trustDomain: ${TRUST_DOMAIN}</span>
+<span class="s">    useCSIDriver: true</span>
+<span class="s">    dnsNameTemplates:</span>
+<span class="s">      - ${DIR_API_HOST}</span>
+<span class="s">    federation:</span>
+<span class="s">      - className: dir-spire</span>
+<span class="s">            trustDomain: spire.ads.outshift.io</span>
+<span class="s">        bundleEndpointURL: https://spire.ads.outshift.io</span>
+<span class="s">        bundleEndpointProfile:</span>
+<span class="s">          type: https_web</span>
+
+<span class="s">  routingService:</span>
+<span class="s">    type: LoadBalancer</span>
+<span class="s">    cloudProvider: &quot;aws&quot;</span>
+<span class="s">    aws:</span>
+<span class="s">      internal: false</span>
+<span class="s">      nlbTargetType: &quot;instance&quot;</span>
+<span class="s">    externalTrafficPolicy: Local</span>
+<span class="s">    annotations:</span>
+<span class="s">      external-dns.alpha.kubernetes.io/hostname: &quot;routing.${BASE_DOMAIN}&quot;</span>
+
+<span class="s">  config:</span>
+<span class="s">    listen_address: &quot;0.0.0.0:8888&quot;</span>
+<span class="s">    oasf_api_validation:</span>
+<span class="s">      disable: true</span>
+<span class="s">    authn:</span>
+<span class="s">      enabled: true</span>
+<span class="s">      mode: &quot;x509&quot;</span>
+<span class="s">      socket_path: &quot;unix:///run/spire/agent-sockets/api.sock&quot;</span>
+<span class="s">      audiences:</span>
+<span class="s">        - &quot;spiffe://${TRUST_DOMAIN}/spire/server&quot;</span>
+<span class="s">    authz:</span>
+<span class="s">      enabled: true</span>
+<span class="s">      enforcer_policy_file_path: &quot;/etc/agntcy/dir/authz_policies.csv&quot;</span>
+<span class="s">    store:</span>
+<span class="s">      provider: &quot;oci&quot;</span>
+<span class="s">      oci:</span>
+<span class="s">        # Use the external address, not the internal .svc.cluster.local name.</span>
+<span class="s">        # The apiserver shares this address with remote peers via the</span>
+<span class="s">        # RequestRegistryCredentials RPC so they can pull records during sync.</span>
+<span class="s">        registry_address: &quot;${DIR_ZOT_HOST}&quot;</span>
+<span class="s">        auth_config:</span>
+<span class="s">          insecure: &quot;false&quot;</span>
+<span class="s">          username: &quot;admin&quot;</span>
+<span class="s">          password: &quot;${DIR_OCI_ADMIN_PASSWORD}&quot;</span>
+<span class="s">    routing:</span>
+<span class="s">      listen_address: &quot;/ip4/0.0.0.0/tcp/5555&quot;</span>
+<span class="s">      key_path: /etc/routing/node.privkey</span>
+<span class="s">      datastore_dir: /etc/routing/datastore</span>
+<span class="s">      directory_api_address: &quot;${DIR_API_HOST}:443&quot;</span>
+<span class="s">      gossipsub:</span>
+<span class="s">        enabled: true</span>
+<span class="s">    sync:</span>
+<span class="s">      auth_config:</span>
+<span class="s">        username: &quot;user&quot;</span>
+<span class="s">        password: &quot;${DIR_SYNC_PASSWORD}&quot;</span>
+<span class="s">    publication:</span>
+<span class="s">      scheduler_interval: &quot;1h&quot;</span>
+<span class="s">      worker_count: 1</span>
+<span class="s">      worker_timeout: &quot;30m&quot;</span>
+<span class="s">    database:</span>
+<span class="s">      type: &quot;postgres&quot;</span>
+<span class="s">      postgres:</span>
+<span class="s">        host: &quot;&quot;</span>
+<span class="s">        port: 5432</span>
+<span class="s">        database: &quot;dir&quot;</span>
+<span class="s">        # PostgreSQL runs as a subchart in the same namespace, so traffic</span>
+<span class="s">        # stays within the pod network. Use &quot;require&quot; or &quot;verify-full&quot; if</span>
+<span class="s">        # your PostgreSQL instance is external or crosses a network boundary.</span>
+<span class="s">        ssl_mode: &quot;disable&quot;</span>
+
+<span class="s">  authz_policies_csv: |</span>
+<span class="s">    p,${TRUST_DOMAIN},*</span>
+<span class="s">    p,*,/agntcy.dir.store.v1.StoreService/Pull</span>
+<span class="s">    p,*,/agntcy.dir.store.v1.StoreService/PullReferrer</span>
+<span class="s">    p,*,/agntcy.dir.store.v1.StoreService/Lookup</span>
+<span class="s">    p,*,/agntcy.dir.store.v1.SyncService/RequestRegistryCredentials</span>
+
+<span class="s">  pvc:</span>
+<span class="s">    create: true</span>
+<span class="s">    storageClassName: ${STORAGE_CLASS}</span>
+<span class="s">    size: 20Gi</span>
+
+<span class="s">  strategy:</span>
+<span class="s">    type: Recreate</span>
+
+<span class="s">  ingress:</span>
+<span class="s">    enabled: true</span>
+<span class="s">    className: nginx</span>
+<span class="s">    annotations:</span>
+<span class="s">      nginx.ingress.kubernetes.io/ssl-passthrough: &quot;true&quot;</span>
+<span class="s">      nginx.ingress.kubernetes.io/backend-protocol: &quot;GRPCS&quot;</span>
+<span class="s">      external-dns.alpha.kubernetes.io/hostname: ${DIR_API_HOST}</span>
+<span class="s">    hosts:</span>
+<span class="s">      - host: ${DIR_API_HOST}</span>
+<span class="s">        paths:</span>
+<span class="s">          - path: /</span>
+<span class="s">            pathType: ImplementationSpecific</span>
+<span class="s">    tls:</span>
+<span class="s">      - hosts:</span>
+<span class="s">          - ${DIR_API_HOST}</span>
+
+<span class="s">  postgresql:</span>
+<span class="s">    enabled: true</span>
+<span class="s">    auth:</span>
+<span class="s">      username: &quot;dir&quot;</span>
+<span class="s">      password: &quot;${DIR_DB_PASSWORD}&quot;</span>
+<span class="s">      database: &quot;dir&quot;</span>
+<span class="s">    primary:</span>
+<span class="s">      persistence:</span>
+<span class="s">        enabled: true</span>
+<span class="s">        storageClass: ${STORAGE_CLASS}</span>
+<span class="s">        size: 20Gi</span>
+
+<span class="s">  reconciler:</span>
+<span class="s">    enabled: true</span>
+<span class="s">    image:</span>
+<span class="s">      repository: ghcr.io/agntcy/dir-reconciler</span>
+<span class="s">      tag: v1.2.0</span>
+<span class="s">      pullPolicy: IfNotPresent</span>
+<span class="s">    config:</span>
+<span class="s">      database:</span>
+<span class="s">        type: &quot;postgres&quot;</span>
+<span class="s">        postgres:</span>
+<span class="s">          host: &quot;&quot;</span>
+<span class="s">          port: 5432</span>
+<span class="s">          database: &quot;dir&quot;</span>
+<span class="s">          ssl_mode: &quot;disable&quot;</span>
+<span class="s">      local_registry:</span>
+<span class="s">        registry_address: &quot;${DIR_ZOT_HOST}&quot;</span>
+<span class="s">        repository_name: &quot;&quot;</span>
+<span class="s">        auth_config:</span>
+<span class="s">          insecure: false</span>
+<span class="s">      regsync:</span>
+<span class="s">        enabled: true</span>
+<span class="s">        interval: &quot;1m&quot;</span>
+<span class="s">        timeout: &quot;30m&quot;</span>
+<span class="s">        authn:</span>
+<span class="s">          enabled: true</span>
+<span class="s">          mode: &quot;x509&quot;</span>
+<span class="s">          socket_path: &quot;unix:///run/spire/agent-sockets/api.sock&quot;</span>
+<span class="s">      indexer:</span>
+<span class="s">        enabled: true</span>
+<span class="s">        interval: &quot;30m&quot;</span>
+
+<span class="s">  secrets:</span>
+<span class="s">    # privKey is injected via --set-file in the helm install command.</span>
+<span class="s">    # PEM data is multiline and cannot be safely embedded in a YAML heredoc.</span>
+<span class="s">    syncAuth:</span>
+<span class="s">      username: &quot;user&quot;</span>
+<span class="s">      password: &quot;${DIR_SYNC_PASSWORD}&quot;</span>
+<span class="s">    ociAuth:</span>
+<span class="s">      username: &quot;admin&quot;</span>
+<span class="s">      password: &quot;${DIR_OCI_ADMIN_PASSWORD}&quot;</span>
+<span class="s">    postgresAuth:</span>
+<span class="s">      username: &quot;dir&quot;</span>
+<span class="s">      password: &quot;${DIR_DB_PASSWORD}&quot;</span>
+
+<span class="s">  zot:</span>
+<span class="s">    persistence: true</span>
+<span class="s">    pvc:</span>
+<span class="s">      create: true</span>
+<span class="s">      accessModes: [&quot;ReadWriteOnce&quot;]</span>
+<span class="s">      storage: 100Gi</span>
+<span class="s">      storageClassName: ${STORAGE_CLASS}</span>
+<span class="s">    mountSecret: true</span>
+<span class="s">    authHeader: &quot;admin:${DIR_OCI_ADMIN_PASSWORD}&quot;</span>
+<span class="s">    secretFiles:</span>
+<span class="s">      htpasswd: |-</span>
+<span class="s">$(sed &#39;s/^/        /&#39; zot.htpasswd)</span>
+<span class="s">    mountConfig: true</span>
+<span class="s">    ingress:</span>
+<span class="s">      enabled: true</span>
+<span class="s">      className: nginx</span>
+<span class="s">      annotations:</span>
+<span class="s">        cert-manager.io/cluster-issuer: ${CERT_ISSUER}</span>
+<span class="s">        external-dns.alpha.kubernetes.io/hostname: ${DIR_ZOT_HOST}</span>
+<span class="s">      hosts:</span>
+<span class="s">        - host: ${DIR_ZOT_HOST}</span>
+<span class="s">          paths:</span>
+<span class="s">            - path: /</span>
+<span class="s">              pathType: ImplementationSpecific</span>
+<span class="s">      tls:</span>
+<span class="s">        - secretName: zot-public-tls</span>
+<span class="s">          hosts:</span>
+<span class="s">            - ${DIR_ZOT_HOST}</span>
+<span class="s">EOF</span>
+</code></pre></div>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>The routing datastore, PostgreSQL, and Zot PVCs are all pinned to <code>ebs-sc-encrypted</code>. If your cluster uses a different default StorageClass, update the <code>storageClassName</code> values for each component before you install Directory.</p>
+</div>
+</li>
+<li>
+<p>Install Directory</p>
+<div class="highlight"><pre><span></span><code>helm<span class="w"> </span>upgrade<span class="w"> </span>--install<span class="w"> </span>dir<span class="w"> </span>oci://ghcr.io/agntcy/dir/helm-charts/dir<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--version<span class="w"> </span>v1.2.0<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--namespace<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">DIR_NAMESPACE</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--create-namespace<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-f<span class="w"> </span>dir-values.yaml<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--set-file<span class="w"> </span>apiserver.secrets.privKey<span class="o">=</span>node.privkey
+</code></pre></div>
+<p><code>--set-file</code> reads the PEM file and passes its exact bytes to the chart, which base64-encodes them into the Kubernetes Secret. This avoids the multiline-in-YAML corruption that would happen if the key were embedded directly in the values file.</p>
+<p>Wait for the main workloads:</p>
+<div class="highlight"><pre><span></span><code>kubectl<span class="w"> </span><span class="nb">wait</span><span class="w"> </span>--for<span class="o">=</span><span class="nv">condition</span><span class="o">=</span>ready<span class="w"> </span>pod<span class="w"> </span>-n<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">DIR_NAMESPACE</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-l<span class="w"> </span>app.kubernetes.io/name<span class="o">=</span>apiserver<span class="w"> </span>--timeout<span class="o">=</span>300s
+
+kubectl<span class="w"> </span>get<span class="w"> </span>pods<span class="w"> </span>-n<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">DIR_NAMESPACE</span><span class="si">}</span><span class="s2">&quot;</span>
+kubectl<span class="w"> </span>get<span class="w"> </span>svc<span class="w"> </span>-n<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">DIR_NAMESPACE</span><span class="si">}</span><span class="s2">&quot;</span>
+kubectl<span class="w"> </span>get<span class="w"> </span>ingress<span class="w"> </span>-n<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">DIR_NAMESPACE</span><span class="si">}</span><span class="s2">&quot;</span>
+kubectl<span class="w"> </span>get<span class="w"> </span>pvc<span class="w"> </span>-n<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">DIR_NAMESPACE</span><span class="si">}</span><span class="s2">&quot;</span>
+</code></pre></div>
+</li>
+<li>
+<p>Verify the Directory Endpoints and Certificates</p>
+<p>Check that the public API hostname presents the SPIFFE-issued certificate rather than the ingress default certificate:</p>
+<div class="highlight"><pre><span></span><code><span class="nb">echo</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>openssl<span class="w"> </span>s_client<span class="w"> </span>-connect<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">DIR_API_HOST</span><span class="si">}</span><span class="s2">:443&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-servername<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">DIR_API_HOST</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="m">2</span>&gt;/dev/null<span class="w"> </span><span class="p">|</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>openssl<span class="w"> </span>x509<span class="w"> </span>-noout<span class="w"> </span>-subject
+</code></pre></div>
+<p>If SSL passthrough is working, the certificate subject should come from SPIRE and not from the ingress controller.</p>
+<p>Confirm that the API server successfully obtained an X.509-SVID:</p>
+<div class="highlight"><pre><span></span><code>kubectl<span class="w"> </span>logs<span class="w"> </span>-n<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">DIR_NAMESPACE</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span>-l<span class="w"> </span>app.kubernetes.io/name<span class="o">=</span>apiserver<span class="w"> </span><span class="p">|</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>grep<span class="w"> </span><span class="s2">&quot;Successfully obtained valid X509-SVID&quot;</span>
+</code></pre></div>
+<p>Verify that Zot is reachable over HTTPS:</p>
+<div class="highlight"><pre><span></span><code>curl<span class="w"> </span>-u<span class="w"> </span><span class="s2">&quot;admin:</span><span class="si">${</span><span class="nv">DIR_OCI_ADMIN_PASSWORD</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="s2">&quot;https://</span><span class="si">${</span><span class="nv">DIR_ZOT_HOST</span><span class="si">}</span><span class="s2">/v2/_catalog&quot;</span>
+</code></pre></div>
+<p>Verify the DNS records:</p>
+<div class="highlight"><pre><span></span><code>dig<span class="w"> </span>+short<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">DIR_API_HOST</span><span class="si">}</span><span class="s2">&quot;</span>
+dig<span class="w"> </span>+short<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">DIR_ZOT_HOST</span><span class="si">}</span><span class="s2">&quot;</span>
+</code></pre></div>
+<p>Verify the persistent volumes:</p>
+<div class="highlight"><pre><span></span><code>kubectl<span class="w"> </span>get<span class="w"> </span>pvc<span class="w"> </span>-n<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">DIR_NAMESPACE</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span>-o<span class="w"> </span>wide
+</code></pre></div>
+<p>The PVCs should be <code>Bound</code> and backed by EBS.</p>
+</li>
+<li>
+<p>Confirm Federation with the Public Directory</p>
+<p>The first proof point is that your SPIRE server can fetch the public Directory trust bundle:</p>
+<div class="highlight"><pre><span></span><code>kubectl<span class="w"> </span><span class="nb">exec</span><span class="w"> </span>-n<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">SPIRE_NAMESPACE</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span>spire-server-0<span class="w"> </span>-c<span class="w"> </span>spire-server<span class="w"> </span>--<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>spire-server<span class="w"> </span>bundle<span class="w"> </span>list<span class="w"> </span>-id<span class="w"> </span>spiffe://spire.ads.outshift.io<span class="w"> </span>-format<span class="w"> </span>spiffe
+</code></pre></div>
+<p>If the bundle is missing:</p>
+<ul>
+<li>check that your SPIRE federation endpoint is externally reachable</li>
+<li>check that <code>https://spire.ads.outshift.io</code> is reachable from the cluster</li>
+<li>check cert-manager and DNS for <code>${SPIRE_FEDERATION_HOST}</code></li>
+</ul>
+</li>
+<li>
+<p>Onboard Your Trust Domain into <code>dir-staging</code></p>
+<p>Your cluster trusting prod is only half of the setup. The public production Directory must also learn how to trust your SPIRE domain.</p>
+<p>Create a file named <code>onboarding/federation/${TRUST_DOMAIN}.yaml</code> in your <code>dir-staging</code> fork with this content:</p>
+<div class="highlight"><pre><span></span><code><span class="nt">className</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">dir-spire</span>
+<span class="nt">trustDomain</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">partner.example.com</span>
+<span class="nt">bundleEndpointURL</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">https://spire.partner.example.com</span>
+<span class="nt">bundleEndpointProfile</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">https_web</span>
+</code></pre></div>
+<p>Then:</p>
+<ol>
+<li>Open a pull request against <code>agntcy/dir-staging</code>.</li>
+<li>Wait for the maintainers to merge it and roll it out.</li>
+<li>Make sure the public side also adds the authorization policy for your trust domain.</li>
+</ol>
+<p>Until that pull request is merged and applied, prod will not accept requests authenticated with your trust domain.</p>
+</li>
+<li>
+<p>Validate from a SPIRE-Enabled Client</p>
+<p>The easiest client validation is to run <code>dirctl</code> from an environment that already has a SPIRE agent socket for your trust domain.</p>
+<p>Set the client environment:</p>
+<div class="highlight"><pre><span></span><code><span class="nb">export</span><span class="w"> </span><span class="nv">DIRECTORY_CLIENT_SERVER_ADDRESS</span><span class="o">=</span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">DIR_API_HOST</span><span class="si">}</span><span class="s2">:443&quot;</span>
+<span class="nb">export</span><span class="w"> </span><span class="nv">DIRECTORY_CLIENT_SPIFFE_SOCKET_PATH</span><span class="o">=</span><span class="s2">&quot;/tmp/spire-agent/public.sock&quot;</span>
+</code></pre></div>
+<p>Then run a basic connectivity check against your own Directory:</p>
+<div class="highlight"><pre><span></span><code>dirctl<span class="w"> </span>info<span class="w"> </span>bafytest123
+<span class="c1"># Expected: Error: record not found</span>
+</code></pre></div>
+<p>Once the <code>dir-staging</code> onboarding pull request is merged, validate access to the public Directory as well:</p>
+<div class="highlight"><pre><span></span><code>dirctl<span class="w"> </span>pull<span class="w"> </span>bafytest123<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--server-addr<span class="w"> </span>ads.outshift.io:443<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--spiffe-socket-path<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">DIRECTORY_CLIENT_SPIFFE_SOCKET_PATH</span><span class="si">}</span><span class="s2">&quot;</span>
+<span class="c1"># Expected: Error: record not found</span>
+</code></pre></div>
+<p>If you want a fuller post-deployment smoke test against your own Directory, use the CLI workflows in <a href="../dir-features-scenarios/">Features and Usage Scenarios</a> and the <a href="../dir-cli-reference/">CLI Reference</a>:</p>
+<ul>
+<li><code>dirctl push record.json</code></li>
+<li><code>dirctl info &lt;cid&gt;</code></li>
+<li><code>dirctl search --name &lt;name&gt;</code></li>
+<li><code>dirctl sync create https://ads.outshift.io:443</code></li>
+</ul>
+</li>
+</ol>
+<h2 id="troubleshooting">Troubleshooting</h2>
+<p>If you get stuck, check these first:</p>
+<ul>
+<li><code>certificate is valid for ingress.local</code>: SSL passthrough is not working, or the API ingress is configured with a terminating TLS secret.</li>
+<li><code>certificate signed by unknown authority</code> on the federation endpoint: cert-manager or the ClusterIssuer is misconfigured.</li>
+<li>missing prod bundle in SPIRE: your cluster cannot reach <code>https://spire.ads.outshift.io</code>, or your SPIRE federation controller settings are wrong.</li>
+<li><code>Pending</code> PVCs: your EBS CSI setup or StorageClass defaulting is incomplete.</li>
+<li>prod rejects your trust domain after local federation works: your <code>dir-staging</code> onboarding pull request has not been merged or rolled out yet.</li>
+</ul>
+<p>For in-depth troubleshooting, see <a href="../dir-federation-troubleshooting/">Federation Best Practices and Troubleshooting</a>.</p>
+<h2 id="appendix-best-effort-aws-provisioning-notes">Appendix: Best-Effort AWS Provisioning Notes</h2>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>This appendix is intentionally marked as best effort. It reflects the AWS shape assumed by the rest of the guide, but it was not validated end to end in the environment used to write this document.</p>
+</div>
+<p>If you do not already have the platform prerequisites, these are the usual AWS building blocks you need before the main walkthrough starts:</p>
+<h3 id="eks-cluster">EKS Cluster</h3>
+<ol>
+<li>Create an EKS cluster in subnets that allow the ingress controller and worker nodes to reach the public internet.</li>
+<li>Use managed node groups unless your platform team already standardizes on Karpenter or a custom node model.</li>
+<li>Make sure the cluster can provision EBS volumes through the EBS CSI driver.</li>
+</ol>
+<h3 id="route53-and-dns">Route53 and DNS</h3>
+<ol>
+<li>Create or reuse a hosted zone for the base domain.</li>
+<li>Make sure ExternalDNS can write records into that zone.</li>
+<li>
+<p>Reserve the five public names used in this guide:</p>
+<ul>
+<li><code>api.&lt;domain&gt;</code></li>
+<li><code>zot.&lt;domain&gt;</code></li>
+<li><code>routing.&lt;domain&gt;</code></li>
+<li><code>spire.&lt;domain&gt;</code></li>
+<li><code>oidc-discovery.spire.&lt;domain&gt;</code></li>
+</ul>
+</li>
+</ol>
+<h3 id="iam-and-workload-identity">IAM and Workload Identity</h3>
+<ol>
+<li>ExternalDNS usually needs an IAM role that can change Route53 records.</li>
+<li>cert-manager may need additional AWS permissions if you use Route53-based DNS challenges instead of an HTTP challenge flow.</li>
+<li>If your platform uses IAM Roles for Service Accounts (IRSA) or the newer EKS Pod Identity, create those bindings before you install the controllers. AWS recommends EKS Pod Identity for new EC2-based clusters; IRSA is still required for Fargate workloads.</li>
+</ol>
+<h3 id="ingress-and-load-balancers">Ingress and Load Balancers</h3>
+<ol>
+<li>The ingress-nginx controller must be exposed through an AWS load balancer that is reachable from the public internet.</li>
+<li>The Directory API path depends on SSL passthrough, so verify that the ingress controller keeps that capability when you customize the Service annotations.</li>
+<li>The public production deployment model uses an AWS Network Load Balancer for TCP passthrough. If your platform defaults to a different load balancer behavior, validate it carefully before exposing the API hostname.</li>
+</ol>
+<h3 id="security-groups-and-networking">Security Groups and Networking</h3>
+<ol>
+<li>Worker nodes and the ingress load balancer must allow inbound HTTPS from the internet for the public hostnames.</li>
+<li>
+<p>Egress must allow the cluster to reach:</p>
+<ul>
+<li>Let's Encrypt</li>
+<li>Route53 APIs, if used by your controller setup</li>
+<li><code>https://spire.ads.outshift.io</code></li>
+</ul>
+</li>
+<li>
+<p>If your company routes outbound traffic through a NAT or firewall, confirm that cert-manager and SPIRE can still complete their external calls.</p>
+</li>
+</ol>
+<h3 id="storage">Storage</h3>
+<ol>
+<li>Make <code>ebs-sc-encrypted</code> the default StorageClass if you want the subcharts to inherit EBS automatically.</li>
+<li>Verify after install that PostgreSQL, Zot, and the routing datastore PVC all bind to the expected StorageClass.</li>
+</ol>
+<h3 id="a-good-first-cut">A Good First Cut</h3>
+<p>If your platform team asks what they need to hand you before you can follow the main guide, ask for this:</p>
+<ul>
+<li>A working EKS cluster</li>
+<li>Ingress-nginx with SSL passthrough</li>
+<li>cert-manager with a production ClusterIssuer</li>
+<li>ExternalDNS wired to Route53</li>
+<li>An encrypted EBS StorageClass named <code>ebs-sc-encrypted</code></li>
+<li>Public DNS delegation for your chosen domain</li>
+</ul>
+
+
+
+
+
+
+
+
+
+  
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+  <script>var tabs=__md_get("__tabs");if(Array.isArray(tabs))e:for(var set of document.querySelectorAll(".tabbed-set")){var labels=set.querySelector(".tabbed-labels");for(var tab of tabs)for(var label of labels.getElementsByTagName("label"))if(label.innerText.trim()===tab){var input=document.getElementById(label.htmlFor);input.checked=!0;continue e}}</script>
+
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+    
+      
+      <nav class="md-footer__inner md-grid" aria-label="Footer" >
+        
+          
+          <a href="../dir-prod-deployment/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Production Deployment">
+            <div class="md-footer__button md-icon">
+              
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+            </div>
+            <div class="md-footer__title">
+              <span class="md-footer__direction">
+                Previous
+              </span>
+              <div class="md-ellipsis">
+                Production Deployment
+              </div>
+            </div>
+          </a>
+        
+        
+          
+          <a href="../dir-federation-setup/" class="md-footer__link md-footer__link--next" aria-label="Next: Running a Federated Directory Instance">
+            <div class="md-footer__title">
+              <span class="md-footer__direction">
+                Next
+              </span>
+              <div class="md-ellipsis">
+                Running a Federated Directory Instance
+              </div>
+            </div>
+            <div class="md-footer__button md-icon">
+              
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M4 11v2h12l-5.5 5.5 1.42 1.42L19.84 12l-7.92-7.92L10.5 5.5 16 11z"/></svg>
+            </div>
+          </a>
+        
+      </nav>
+    
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div style="text-align: center; font-size: 0.75rem; margin-top: 1rem; color: var(--md-default-fg-color--light);">
+  © Copyright AGNTCY Contributors. <a href="#__consent">Change cookie settings</a>
+
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+      <div class="md-consent" data-md-component="consent" id="__consent" hidden>
+        <div class="md-consent__overlay"></div>
+        <aside class="md-consent__inner">
+          <form class="md-consent__form md-grid md-typeset" name="consent">
+            
+
+
+
+  
+
+<h4>Cookie consent</h4>
+<p>We use cookies to recognize your repeated visits and preferences, as well as to measure the effectiveness of our documentation and whether users find what they're searching for. With your consent, you're helping us to make our documentation better.</p>
+<input class="md-toggle" type="checkbox" id="__settings" checked>
+<div class="md-consent__settings">
+  <ul class="task-list">
+    
+    
+      
+        
+  
+  
+    
+    
+  
+  <li class="task-list-item">
+    <label class="task-list-control">
+      <input type="checkbox" name="analytics" checked>
+      <span class="task-list-indicator"></span>
+      Google Analytics
+    </label>
+  </li>
+
+      
+    
+    
+      
+        
+  
+  
+    
+    
+  
+  <li class="task-list-item">
+    <label class="task-list-control">
+      <input type="checkbox" name="github" checked>
+      <span class="task-list-indicator"></span>
+      GitHub
+    </label>
+  </li>
+
+      
+    
+    
+  </ul>
+</div>
+<div class="md-consent__controls">
+  
+    
+      <button class="md-button md-button--primary">Accept</button>
+    
+    
+    
+  
+    
+    
+      <button type="reset" class="md-button md-button--primary">Reject</button>
+    
+    
+  
+</div>
+          </form>
+        </aside>
+      </div>
+      <script>var consent=__md_get("__consent");if(consent)for(var input of document.forms.consent.elements)input.name&&(input.checked=consent[input.name]||!1);else"file:"!==location.protocol&&setTimeout((function(){document.querySelector("[data-md-component=consent]").hidden=!1}),250);var form=document.forms.consent;for(var action of["submit","reset"])form.addEventListener(action,(function(e){if(e.preventDefault(),"reset"===e.type)for(var n of document.forms.consent.elements)n.name&&(n.checked=!1);__md_set("__consent",Object.fromEntries(Array.from(new FormData(form).keys()).map((function(e){return[e,!0]})))),location.hash="",location.reload()}))</script>
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["announce.dismiss", "content.action.edit", "content.action.view", "content.code.annotate", "content.code.copy", "content.tabs.link", "content.tooltips", "navigation.footer", "navigation.indexes", "navigation.path", "navigation.sections", "navigation.tabs", "navigation.top", "navigation.tracking", "search.highlight", "search.share", "search.suggest", "toc.follow"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"provider": "mike"}}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.79ae519e.min.js"></script>
+      
+        <script src="../../javascripts/card-links.js"></script>
+      
+        <script src="../../javascripts/external-links.js"></script>
+      
+    
+  </body>
+</html>
