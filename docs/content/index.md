@@ -31,6 +31,10 @@ hide:
   </div>
 </div>
 
+<p class="landing-lede">
+  Open-source discovery layer for the Internet of Agents. Publish structured agent metadata and find others by capability, trust, and federation.
+</p>
+
 <section class="dirctl-terminal-section">
   <div class="dirctl-terminal-layout">
     <div class="dirctl-terminal-main">
@@ -89,20 +93,6 @@ hide:
   </div>
 </section>
 
-## What is the Agent Directory Service?
-
-The **Agent Directory Service (ADS)** is the discovery layer of agents, an open source
-project under the [Linux Foundation](https://www.linuxfoundation.org/press/linux-foundation-welcomes-the-agntcy-project-to-standardize-open-multi-agent-system-infrastructure-and-break-down-ai-agent-silos)
-building the Internet of Agents.
-It gives agent builders a place to publish structured metadata about their agents and
-lets others find them by capability, trust signals, and federation policy—not by
-vendor or framework.
-
-Directory records use the
-[OASF](https://docs.agntcy.org/oasf/open-agentic-schema-framework/) schema, discovery
-follows a hierarchical skill taxonomy, and independent directory nodes interconnect
-through content routing and DHT-based federation.
-
 ## Why use the Agent Directory Service
 
 <div class="grid cards" markdown>
@@ -122,6 +112,15 @@ through content routing and DHT-based federation.
     Cryptographic integrity and provenance for directory records help users make
     informed decisions about agent selection and trust.
 
+</div>
+
+<div class="landing-graph">
+  <img
+    src="assets/dir-graph-light.svg"
+    alt="Agent Directory Service architecture: agents, directory nodes, and discovery across a federated network"
+    class="dir-graph"
+    loading="lazy"
+  />
 </div>
 
 ## Get started with ADS

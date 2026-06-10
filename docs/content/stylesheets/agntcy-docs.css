@@ -325,7 +325,30 @@ html [data-md-color-primary=black] .md-nav--primary .md-nav__source {
   flex-direction: column;
   align-items: center;
   text-align: center;
-  margin-bottom: 1.5em;
+  margin-bottom: 1em;
+}
+
+.landing-lede {
+  max-width: 42rem;
+  margin: 0 auto 1.75rem;
+  text-align: center;
+  font-size: 1.05rem;
+  line-height: 1.6;
+  color: var(--md-default-fg-color--light);
+}
+
+.landing-graph {
+  margin: 2rem auto 2.5rem;
+  max-width: 58rem;
+  text-align: center;
+}
+
+.md-typeset .landing-graph img.dir-graph {
+  display: block;
+  width: 100%;
+  height: auto;
+  margin: 0 auto;
+  border: none;
 }
 
 .centered-logo-text-group {
