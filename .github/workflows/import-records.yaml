@@ -184,10 +184,11 @@ jobs:
           echo "--- Processing MCP Entry $((${{ matrix.entry.index }} + 1)) ---"
 
           CIDS_FILE="imported-cids-${{ matrix.entry.index }}.txt"
+          DRY_RUN_DIR="dry-run-output-mcp-${{ matrix.entry.index }}"
           CMD=("${DIRCTL_PATH}" import --type=mcp-registry --url=https://registry.modelcontextprotocol.io/v0.1 --server-addr="${{ env.SERVER_ADDRESS }}" --auth-mode=oidc "--auth-token=${DIR_AUTH_TOKEN}" --enrich-config=mcphost_ci.json --enrich-rate-limit="${{ env.RATE_LIMIT }}")
 
           if [[ "${{ env.DRY_RUN }}" == "true" ]]; then
-             CMD+=("--dry-run")
+             CMD+=("--dry-run" "--output-dir=$DRY_RUN_DIR")
           else
              CMD+=("--output-cids=$CIDS_FILE")
           fi
@@ -223,10 +224,17 @@ jobs:
             exit "$EXIT"
           fi
 
-          JSONL_FILE=$(echo "$OUTPUT" | grep 'Records saved to:' | sed 's/.*Records saved to: //')
-          if [ -n "$JSONL_FILE" ] && [ -f "$JSONL_FILE" ]; then
-            echo "--- JSONL Output ($JSONL_FILE) ---"
-            cat "$JSONL_FILE"
+          # Print per-record JSON files (dry-run mode). The importer writes one
+          # <cid>.record.json per record into $DRY_RUN_DIR.
+          if [[ "${{ env.DRY_RUN }}" == "true" ]] && [ -d "$DRY_RUN_DIR" ]; then
+            shopt -s nullglob
+            RECORD_FILES=("$DRY_RUN_DIR"/*.record.json)
+            echo "--- Dry-run records ($DRY_RUN_DIR): ${#RECORD_FILES[@]} file(s) ---"
+            for f in "${RECORD_FILES[@]}"; do
+              echo "=== $(basename "$f") ==="
+              cat "$f"
+              echo
+            done
           fi
 
           echo "cids_file=$CIDS_FILE" >> $GITHUB_OUTPUT
@@ -394,6 +402,7 @@ jobs:
           echo "--- Processing Agent Skill Repo $((${{ matrix.entry.index }} + 1)): ${{ matrix.entry.repo }} ---"
 
           CIDS_FILE="imported-cids-${{ matrix.entry.index }}.txt"
+          DRY_RUN_DIR="dry-run-output-agent-skills-${{ matrix.entry.index }}"
           CMD=("${DIRCTL_PATH}" import --type=agent-skill --file-path="${{ steps.sync-repo.outputs.repo_dir }}" --server-addr="${{ env.SERVER_ADDRESS }}" --auth-mode=oidc "--auth-token=${DIR_AUTH_TOKEN}" --enrich-config=mcphost_ci.json --enrich-rate-limit="${{ env.RATE_LIMIT }}")
 
           while IFS= read -r AUTHOR; do
@@ -402,7 +411,7 @@ jobs:
           done < <(echo "$AUTHORS_JSON" | jq -r '.[]')
 
           if [[ "${{ env.DRY_RUN }}" == "true" ]]; then
-             CMD+=("--dry-run")
+             CMD+=("--dry-run" "--output-dir=$DRY_RUN_DIR")
           else
              CMD+=("--output-cids=$CIDS_FILE")
           fi
@@ -422,10 +431,17 @@ jobs:
             exit "$EXIT"
           fi
 
-          JSONL_FILE=$(echo "$OUTPUT" | grep 'Records saved to directory:' | sed 's/.*Records saved to directory: //')
-          if [ -n "$JSONL_FILE" ] && [ -d "$JSONL_FILE" ]; then
-            echo "--- Dry-run output directory ($JSONL_FILE) ---"
-            find "$JSONL_FILE" -maxdepth 1 -name '*.record.json' -print
+          # Print per-record JSON files (dry-run mode). The importer writes one
+          # <cid>.record.json per record into $DRY_RUN_DIR.
+          if [[ "${{ env.DRY_RUN }}" == "true" ]] && [ -d "$DRY_RUN_DIR" ]; then
+            shopt -s nullglob
+            RECORD_FILES=("$DRY_RUN_DIR"/*.record.json)
+            echo "--- Dry-run records ($DRY_RUN_DIR): ${#RECORD_FILES[@]} file(s) ---"
+            for f in "${RECORD_FILES[@]}"; do
+              echo "=== $(basename "$f") ==="
+              cat "$f"
+              echo
+            done
           fi
 
           echo "cids_file=$CIDS_FILE" >> $GITHUB_OUTPUT
