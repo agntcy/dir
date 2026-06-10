@@ -36,7 +36,7 @@ hide:
     <div class="dirctl-terminal-main">
       <div class="dirctl-terminal" data-mode="demo">
         <div class="dirctl-terminal-bar">
-          <span class="dirctl-terminal-title">user@dir:~</span>
+          <span class="dirctl-terminal-title">cursor@workspace:~</span>
           <div class="dirctl-terminal-controls" aria-hidden="true">
             <button type="button" class="dirctl-terminal-control" data-term="min" title="Minimize">&#8211;</button>
             <button type="button" class="dirctl-terminal-control dirctl-terminal-control-close" data-term="close" title="Close">&#10005;</button>
@@ -67,25 +67,23 @@ hide:
       </div>
       <div class="dirctl-terminal-actions">
         <div class="dirctl-terminal-demo-level">
-          <button type="button" class="dirctl-terminal-btn is-active" data-demo-level="cli">CLI basics</button>
-          <button type="button" class="dirctl-terminal-btn" data-demo-level="agent">With your agent</button>
+          <button type="button" class="dirctl-terminal-btn is-active" data-demo-level="agent">With your agent</button>
+          <button type="button" class="dirctl-terminal-btn" data-demo-level="cli">CLI basics</button>
         </div>
-        <button type="button" class="dirctl-terminal-btn" data-mode-switch="try">Try dirctl</button>
+        <button type="button" class="dirctl-terminal-btn" data-mode-switch="try">Try it yourself</button>
         <button type="button" class="dirctl-terminal-btn" data-mode-switch="demo" hidden>Back to demo</button>
         <button type="button" class="dirctl-terminal-btn dirctl-terminal-reopen" hidden>Reopen terminal</button>
       </div>
     </div>
     <div class="dirctl-terminal-intro-group">
-      <p class="dirctl-terminal-intro" data-intro-level="cli">
+      <p class="dirctl-terminal-intro" data-intro-level="cli" hidden>
         Publish and discover agent records in a few commands.
         Install the real CLI from the <a href="dir/dir-quickstart.md">Quickstart</a>.
       </p>
-      <p class="dirctl-terminal-intro" data-intro-level="agent" hidden>
-        In Cursor, Claude Code, or any agent harness: you describe a task that needs a
-        <strong>skill</strong>, an <strong>MCP server</strong>, or <strong>A2A</strong> collaboration.
-        The agent queries the <a href="dir/dir-component-mcp-server.md">Directory MCP server</a>,
-        finds a match, adds it to the session as a tool, and you both use it right away.
-        Click <strong>Try it yourself</strong> to walk through the flow.
+      <p class="dirctl-terminal-intro" data-intro-level="agent">
+        Need a skill, MCP server, or A2A partner? Your agent searches the Directory,
+        wires it in, and uses it right away. See 
+        <a href="dir/dir-component-mcp-server.md">MCP server</a> for more details.
       </p>
     </div>
   </div>

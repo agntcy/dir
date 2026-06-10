@@ -134,36 +134,46 @@
   max-height: 11.5rem;
 }
 
-.dirctl-terminal-cmd {
+/* Line colors inside the terminal — explicit contrast on code-bg, not header tokens. */
+.md-typeset .dirctl-terminal-output .dirctl-terminal-cmd {
   color: var(--md-accent-fg-color);
 }
 
-.dirctl-terminal-user {
+.md-typeset .dirctl-terminal-output .dirctl-terminal-user {
+  color: var(--md-default-fg-color);
+  font-weight: 500;
+}
+
+.md-typeset .dirctl-terminal-output .dirctl-terminal-agent {
+  color: #6d28d9;
+}
+
+.md-typeset .dirctl-terminal-output .dirctl-terminal-tool {
+  color: #047857;
+}
+
+.md-typeset .dirctl-terminal-output .dirctl-terminal-out {
   color: var(--md-default-fg-color);
 }
 
-.dirctl-terminal-agent {
-  color: var(--md-primary-fg-color, var(--md-accent-fg-color));
-}
-
-.dirctl-terminal-tool {
-  color: #50c878;
-}
-
-[data-md-color-scheme="slate"] .dirctl-terminal-tool {
-  color: #6ee7a0;
-}
-
-.dirctl-terminal-out {
-  color: var(--md-default-fg-color);
-}
-
-.dirctl-terminal-muted {
+.md-typeset .dirctl-terminal-output .dirctl-terminal-muted {
   color: var(--md-default-fg-color--light);
 }
 
-.dirctl-terminal-err {
-  color: #e06c75;
+.md-typeset .dirctl-terminal-output .dirctl-terminal-err {
+  color: #dc2626;
+}
+
+[data-md-color-scheme="slate"] .md-typeset .dirctl-terminal-output .dirctl-terminal-agent {
+  color: #c4b5fd;
+}
+
+[data-md-color-scheme="slate"] .md-typeset .dirctl-terminal-output .dirctl-terminal-tool {
+  color: #6ee7a0;
+}
+
+[data-md-color-scheme="slate"] .md-typeset .dirctl-terminal-output .dirctl-terminal-err {
+  color: #f87171;
 }
 
 .dirctl-terminal-cursor {

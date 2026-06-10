@@ -48,8 +48,8 @@
 
     var state = {
       mode: "demo",
-      demoLevel: "cli",
-      tryLevel: "cli",
+      demoLevel: "agent",
+      tryLevel: "agent",
       daemonRunning: false,
       lastCid: getData().demoCid || "",
       published: false,
