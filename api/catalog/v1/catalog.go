@@ -7,10 +7,11 @@ import (
 	"errors"
 	"fmt"
 	"sort"
+	"strings"
 
 	coretypes "github.com/agntcy/dir/api/core/types"
-	corev1 "github.com/agntcy/dir/api/core/v1"
-	"github.com/agntcy/oasf-sdk/pkg/decoder"
+	"google.golang.org/protobuf/encoding/protojson"
+	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/structpb"
 )
 
@@ -38,7 +39,6 @@ const (
 // used to synthesise nested display names.
 type catalogModuleProjection struct {
 	MediaType string
-	URNSuffix string
 	Label     string
 }
 
@@ -49,13 +49,13 @@ type catalogModuleProjection struct {
 // Mapped from OASF module names: https://schema.oasf.outshift.com/modules
 var catalogModules = map[string]catalogModuleProjection{
 	"integration/mcp": {
-		MediaType: ProtocolMCPCardJsonMediaType, URNSuffix: "mcp", Label: "MCP",
+		MediaType: ProtocolMCPCardJsonMediaType, Label: "MCP",
 	},
 	"integration/a2a": {
-		MediaType: ProtocolA2ACardJsonMediaType, URNSuffix: "a2a", Label: "A2A",
+		MediaType: ProtocolA2ACardJsonMediaType, Label: "A2A",
 	},
 	"core/language_model/agentskills": {
-		MediaType: ProtocolAgentSkillsMdMediaType, URNSuffix: "agentskill", Label: "Skill",
+		MediaType: ProtocolAgentSkillsMdMediaType, Label: "Skill",
 	},
 }
 
@@ -76,21 +76,24 @@ var catalogModules = map[string]catalogModuleProjection{
 // signature-derived TrustManifests) and any publisher/host data beyond the
 // URN host are layered on by the caller and intentionally not produced
 // here.
-func RecordToCatalog(record *corev1.Record) (*CatalogEntry, error) {
+func RecordToCatalog(record coretypes.Record) (*CatalogEntry, error) {
 	if record == nil {
 		return nil, errors.New("record is nil")
 	}
 
-	// Get adapter
-	adapter, err := record.Decode()
-	if err != nil {
-		return nil, fmt.Errorf("failed to get record adapter: %w", err)
-	}
-
 	// Extract valid modules
-	modules := knownCatalogModules(adapter)
+	modules := knownCatalogModules(record)
 	if len(modules) == 0 {
 		return nil, errors.New("record has no known catalog modules")
+	}
+
+	// Extract publisher from record
+	var publisher *Publisher
+	if authors := record.GetAuthors(); len(authors) > 0 {
+		publisher = &Publisher{
+			Identifier:  catalogURN(record.GetCid(), "authors"),
+			DisplayName: strings.Join(authors, ", "),
+		}
 	}
 
 	// Single known module — leaf entry on the parent URN.
@@ -102,20 +105,21 @@ func RecordToCatalog(record *corev1.Record) (*CatalogEntry, error) {
 
 		return &CatalogEntry{
 			Identifier:  catalogURN(record.GetCid(), ""),
-			DisplayName: adapter.GetName(),
-			Version:     new(adapter.GetVersion()),
-			Description: new(adapter.GetDescription()),
-			UpdatedAt:   new(adapter.GetCreatedAt()),
+			DisplayName: record.GetName(),
+			Version:     new(record.GetVersion()),
+			Description: new(record.GetDescription()),
+			UpdatedAt:   new(record.GetCreatedAt()),
 			MediaType:   entry.GetMediaType(),
 			Artifact:    entry.GetArtifact(),
-			Tags:        catalogTags(adapter),
+			Tags:        append(catalogTags(record), entry.GetTags()...),
+			Publisher:   publisher,
 		}, nil
 	}
 
 	// Multiple known modules — container entry on the parent URN, with one
 	// nested entry per module.
 	parentCID := record.GetCid()
-	parentName := adapter.GetName()
+	parentName := record.GetName()
 
 	entries := make([]*CatalogEntry, 0, len(modules))
 	for _, module := range modules {
@@ -125,10 +129,10 @@ func RecordToCatalog(record *corev1.Record) (*CatalogEntry, error) {
 		}
 
 		entries = append(entries, &CatalogEntry{
-			Identifier:  catalogURN(parentCID, catalogModules[module.GetName()].URNSuffix),
 			DisplayName: fmt.Sprintf("%s - %s", parentName, catalogModules[module.GetName()].Label),
 			MediaType:   entry.GetMediaType(),
 			Artifact:    entry.GetArtifact(),
+			Tags:        entry.GetTags(),
 		})
 	}
 
@@ -138,7 +142,7 @@ func RecordToCatalog(record *corev1.Record) (*CatalogEntry, error) {
 	})
 
 	// Create container entry with nested catalog data
-	container, err := decoder.StructToProto(&AICatalog{
+	container, err := objectToStruct(&AICatalog{
 		SpecVersion: CatalogSpecVersion,
 		Entries:     entries,
 	})
@@ -149,14 +153,15 @@ func RecordToCatalog(record *corev1.Record) (*CatalogEntry, error) {
 	return &CatalogEntry{
 		Identifier:  catalogURN(parentCID, ""),
 		DisplayName: parentName,
-		Description: new(adapter.GetDescription()),
-		Version:     new(adapter.GetVersion()),
-		UpdatedAt:   new(adapter.GetCreatedAt()),
+		Description: new(record.GetDescription()),
+		Version:     new(record.GetVersion()),
+		UpdatedAt:   new(record.GetCreatedAt()),
 		MediaType:   CatalogMediaType,
-		Tags:        catalogTags(adapter),
+		Tags:        catalogTags(record),
 		Artifact: &CatalogEntry_Data{
 			Data: structpb.NewStructValue(container),
 		},
+		Publisher: publisher,
 	}, nil
 }
 
@@ -180,6 +185,7 @@ func moduleToCatalogEntry(module coretypes.Module) *CatalogEntry {
 		Artifact: &CatalogEntry_Data{
 			Data: structpb.NewStructValue(data),
 		},
+		Tags: getAnnotationTags(module.GetAnnotations()),
 	}
 }
 
@@ -226,14 +232,8 @@ func catalogTags(rd coretypes.Record) []string {
 	// Sort output before appending annotation tags
 	sort.Strings(out)
 
-	// Append annotations as tags
-	for key, value := range rd.GetAnnotations() {
-		if value == "" {
-			out = append(out, key)
-		} else {
-			out = append(out, fmt.Sprintf("%s=%s", key, value))
-		}
-	}
+	// Append annotation tags
+	out = append(out, getAnnotationTags(rd.GetAnnotations())...)
 
 	return out
 }
@@ -247,4 +247,34 @@ func catalogURN(cid, suffix string) string {
 	}
 
 	return base + ":" + suffix
+}
+
+func objectToStruct(goObj proto.Message) (*structpb.Struct, error) {
+	data, err := protojson.Marshal(goObj)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal Go struct to JSON: %w", err)
+	}
+
+	result := &structpb.Struct{}
+	if err := result.UnmarshalJSON(data); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal JSON to protobuf struct: %w", err)
+	}
+
+	return result, nil
+}
+
+func getAnnotationTags(annotations map[string]string) []string {
+	var annotationTags []string
+
+	for key, value := range annotations {
+		if value == "" {
+			annotationTags = append(annotationTags, key)
+		} else {
+			annotationTags = append(annotationTags, fmt.Sprintf("%s=%s", key, value))
+		}
+	}
+
+	sort.Strings(annotationTags)
+
+	return annotationTags
 }
