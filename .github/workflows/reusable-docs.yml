@@ -34,13 +34,15 @@ jobs:
     #   docs-deploy.yml deploy job -> contents: write (mike --push, root files)
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           # mike needs full history and the gh-pages branch to deploy versions.
           fetch-depth: 0
+          # Keep checkout credentials for mike --push in deploy modes.
+          persist-credentials: true
 
       - name: Setup uv
-        uses: astral-sh/setup-uv@v5
+        uses: astral-sh/setup-uv@d4b2f3b6ecc6e67c4457f6d3e41ec42d3d0fcb86 # v5.4.2
 
       - name: Setup task
         uses: go-task/setup-task@01a4adf9db2d14c1de7a560f09170b6e0df736aa # v2.1.0
@@ -67,7 +69,9 @@ jobs:
       - name: Deploy release version + latest
         if: inputs.mode == 'deploy-release'
         shell: bash
-        run: task docs:deploy:release VERSION=${{ inputs.version }}
+        env:
+          VERSION_INPUT: ${{ inputs.version }}
+        run: task docs:deploy:release VERSION="${VERSION_INPUT}"
 
       - name: Deploy root-level files (404/robots/llms)
         if: inputs.mode == 'deploy-dev' || inputs.mode == 'deploy-release'

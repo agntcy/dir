@@ -13,6 +13,15 @@ on:
       - reopened
       - labeled
       - unlabeled
+    paths:
+      # Only run proto checks when proto-relevant files change (skip docs-only PRs).
+      - "**.proto"
+      - "**/buf.yaml"
+      - "**/buf.lock"
+      - "**/buf.md"
+      - "**/README.md"
+      - "**/LICENSE"
+      - ".github/workflows/buf-ci.yaml"
 
 permissions:
   contents: read
