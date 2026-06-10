@@ -1,35 +1,159 @@
-[
-  {
-    "search": "com.microsoft"
-  },
-  {
-    "search": "io.github.microsoft"
-  },
-  {
-    "search": "io.github.github/"
-  },
-  {
-    "search": "io.github.google"
-  },
-  {
-    "search": "io.github.aws"
-  },
-  {
-    "search": "com.cisco"
-  },
-  {
-    "search": "com.thousandeyes"
-  },
-  {
-    "search": "io.github.redhat"
-  },
-  {
-    "search": "io.github.arm"
-  },
-  {
-    "search": "io.github.pagerduty"
-  },
-  {
-    "search": "com.postman"
-  }
-]
+{
+  "mcp-registry": [
+    {
+      "search": "com.microsoft"
+    },
+    {
+      "search": "io.github.microsoft"
+    },
+    {
+      "search": "io.github.github/"
+    },
+    {
+      "search": "io.github.google"
+    },
+    {
+      "search": "io.github.aws"
+    },
+    {
+      "search": "com.cisco"
+    },
+    {
+      "search": "com.thousandeyes"
+    },
+    {
+      "search": "io.github.redhat"
+    },
+    {
+      "search": "io.github.arm"
+    },
+    {
+      "search": "io.github.pagerduty"
+    },
+    {
+      "search": "com.postman"
+    }
+  ],
+  "agent-skill": [
+    {
+      "repo": "https://github.com/anthropics/skills",
+      "authors": ["Anthropic"]
+    },
+    {
+      "repo": "https://github.com/anthropics/claude-code",
+      "authors": ["Anthropic"]
+    },
+    {
+      "repo": "https://github.com/anthropics/knowledge-work-plugins",
+      "authors": ["Anthropic"]
+    },
+    {
+      "repo": "https://github.com/anthropics/claude-plugins-official",
+      "authors": ["Anthropic"]
+    },
+    {
+      "repo": "https://github.com/vercel-labs/skills",
+      "authors": ["Vercel"]
+    },
+    {
+      "repo": "https://github.com/vercel-labs/agent-skills",
+      "authors": ["Vercel"]
+    },
+    {
+      "repo": "https://github.com/vercel-labs/agent-browser",
+      "authors": ["Vercel"]
+    },
+    {
+      "repo": "https://github.com/vercel-labs/next-skills",
+      "authors": ["Vercel"]
+    },
+    {
+      "repo": "https://github.com/vercel-labs/json-render",
+      "authors": ["Vercel"]
+    },
+    {
+      "repo": "https://github.com/vercel-labs/bash-tool",
+      "authors": ["Vercel"]
+    },
+    {
+      "repo": "https://github.com/microsoft/skills",
+      "authors": ["Microsoft"]
+    },
+    {
+      "repo": "https://github.com/microsoft/azure-skills",
+      "authors": ["Microsoft"]
+    },
+    {
+      "repo": "https://github.com/cloudflare/skills",
+      "authors": ["Cloudflare"]
+    },
+    {
+      "repo": "https://github.com/openai/skills",
+      "authors": ["OpenAI"]
+    },
+    {
+      "repo": "https://github.com/nvidia/skills",
+      "authors": ["NVIDIA"]
+    },
+    {
+      "repo": "https://github.com/github/awesome-copilot",
+      "authors": ["GitHub"]
+    },
+    {
+      "repo": "https://github.com/google/skills",
+      "authors": ["Google"]
+    },
+    {
+      "repo": "https://github.com/huggingface/skills",
+      "authors": ["Hugging Face"]
+    },
+    {
+      "repo": "https://github.com/firebase/agent-skills",
+      "authors": ["Google"]
+    },
+    {
+      "repo": "https://github.com/redis/agent-skills",
+      "authors": ["Redis"]
+    },
+    {
+      "repo": "https://github.com/mongodb/agent-skills",
+      "authors": ["MongoDB"]
+    },
+    {
+      "repo": "https://github.com/flutter/skills",
+      "authors": ["Google"]
+    },
+    {
+      "repo": "https://github.com/dart-lang/skills",
+      "authors": ["Google"]
+    },
+    {
+      "repo": "https://github.com/netlify/context-and-tools",
+      "authors": ["Netlify"]
+    },
+    {
+      "repo": "https://github.com/hashicorp/agent-skills",
+      "authors": ["HashiCorp"]
+    },
+    {
+      "repo": "https://github.com/stripe/ai",
+      "authors": ["Stripe"]
+    },
+    {
+      "repo": "https://github.com/angular/skills",
+      "authors": ["Google"]
+    },
+    {
+      "repo": "https://github.com/elastic/agent-skills",
+      "authors": ["Elastic"]
+    },
+    {
+      "repo": "https://github.com/microsoft/github-copilot-for-azure",
+      "authors": ["Microsoft"]
+    },
+    {
+      "repo": "https://github.com/fluxcd/agent-skills",
+      "authors": ["Flux"]
+    }
+  ]
+}
