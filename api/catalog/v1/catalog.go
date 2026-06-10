@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	coretypes "github.com/agntcy/dir/api/core/types"
+	ocidigest "github.com/opencontainers/go-digest"
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/structpb"
@@ -59,6 +60,18 @@ var catalogModules = map[string]catalogModuleProjection{
 	},
 }
 
+type convertOptions struct {
+	signatures []coretypes.ObjectSignature
+}
+
+type ConvertOption func(*convertOptions)
+
+func WithSignatures(signatures []coretypes.ObjectSignature) ConvertOption {
+	return func(opts *convertOptions) {
+		opts.signatures = signatures
+	}
+}
+
 // RecordToCatalog projects an OASF record onto its AI Catalog entry
 // representation, returned as a structpb.Struct. The result depends
 // on how many known integration modules the record carries.
@@ -76,10 +89,19 @@ var catalogModules = map[string]catalogModuleProjection{
 // signature-derived TrustManifests) and any publisher/host data beyond the
 // URN host are layered on by the caller and intentionally not produced
 // here.
-func RecordToCatalog(record coretypes.Record) (*CatalogEntry, error) {
+func RecordToCatalog(record coretypes.Record, opts ...ConvertOption) (*CatalogEntry, error) {
 	if record == nil {
 		return nil, errors.New("record is nil")
 	}
+
+	// Apply options
+	options := &convertOptions{}
+	for _, opt := range opts {
+		opt(options)
+	}
+
+	// Get trust manifest for the given record
+	trustManifest := catalogSignatures(record, options.signatures)
 
 	// Extract valid modules
 	modules := knownCatalogModules(record)
@@ -104,15 +126,16 @@ func RecordToCatalog(record coretypes.Record) (*CatalogEntry, error) {
 		}
 
 		return &CatalogEntry{
-			Identifier:  catalogURN(record.GetCid(), ""),
-			DisplayName: record.GetName(),
-			Version:     new(record.GetVersion()),
-			Description: new(record.GetDescription()),
-			UpdatedAt:   new(record.GetCreatedAt()),
-			MediaType:   entry.GetMediaType(),
-			Artifact:    entry.GetArtifact(),
-			Tags:        append(catalogTags(record), entry.GetTags()...),
-			Publisher:   publisher,
+			Identifier:    catalogURN(record.GetCid(), ""),
+			DisplayName:   record.GetName(),
+			Version:       new(record.GetVersion()),
+			Description:   new(record.GetDescription()),
+			UpdatedAt:     new(record.GetCreatedAt()),
+			MediaType:     entry.GetMediaType(),
+			Artifact:      entry.GetArtifact(),
+			Tags:          append(catalogTags(record), entry.GetTags()...),
+			Publisher:     publisher,
+			TrustManifest: trustManifest,
 		}, nil
 	}
 
@@ -161,7 +184,8 @@ func RecordToCatalog(record coretypes.Record) (*CatalogEntry, error) {
 		Artifact: &CatalogEntry_Data{
 			Data: structpb.NewStructValue(container),
 		},
-		Publisher: publisher,
+		Publisher:     publisher,
+		TrustManifest: trustManifest,
 	}, nil
 }
 
@@ -249,6 +273,49 @@ func catalogURN(cid, suffix string) string {
 	return base + ":" + suffix
 }
 
+func catalogSignatures(record coretypes.Record, signatures []coretypes.ObjectSignature) *TrustManifest {
+	if len(signatures) == 0 {
+		return nil
+	}
+
+	// convert signatures to provenance
+	var (
+		provenanceLinks  []*ProvenanceLink
+		attestations     []*Attestation
+		mergedSignatures []string
+	)
+
+	for _, sig := range signatures {
+		sigDigest := ocidigest.FromString(sig.GetSignature()).String()
+		signer := fmt.Sprintf("urn:ai:%s:signer:%s", CatalogHostURN, getSignatureIdentifier(sig))
+
+		provenanceLinks = append(provenanceLinks, &ProvenanceLink{
+			Relation:     "derivedFrom",
+			SourceId:     signer,
+			SignatureRef: &sigDigest,
+		})
+
+		attestations = append(attestations, &Attestation{
+			Type:        "publisher-identity",
+			Uri:         fmt.Sprintf("base64:%s", sig.GetSignature()),
+			MediaType:   sig.GetContentType(),
+			Digest:      &sigDigest,
+			Size:        new(uint64(len(sig.GetSignature()))),
+			Description: new(fmt.Sprintf("Verified signature by %s", signer)),
+		})
+
+		mergedSignatures = append(mergedSignatures, sig.GetSignature())
+	}
+
+	return &TrustManifest{
+		Identity:     catalogURN(record.GetCid(), ""),
+		IdentityType: new("did"),
+		Attestations: attestations,
+		Provenance:   provenanceLinks,
+		Signature:    new(strings.Join(mergedSignatures, ".")),
+	}
+}
+
 func objectToStruct(goObj proto.Message) (*structpb.Struct, error) {
 	data, err := protojson.Marshal(goObj)
 	if err != nil {
@@ -277,4 +344,26 @@ func getAnnotationTags(annotations map[string]string) []string {
 	sort.Strings(annotationTags)
 
 	return annotationTags
+}
+
+func getSignatureIdentifier(sig coretypes.ObjectSignature) string {
+	switch sig.GetSignerType() {
+	case "key":
+		return fmt.Sprintf("key:%s:%s", sig.GetSignerAlgorithm(), sig.GetSignerKey())
+	case "oidc":
+		signer := trimPrefixes(sig.GetSignerIssuer(), "https://", "http://")
+		subject := trimPrefixes(sig.GetSignerSubject(), "https://", "http://")
+
+		return fmt.Sprintf("oidc:%s:%s:%s", sig.GetSignerCertificateIssuer(), signer, subject)
+	default:
+		return ""
+	}
+}
+
+func trimPrefixes(s string, prefixes ...string) string {
+	for _, prefix := range prefixes {
+		s = strings.TrimPrefix(s, prefix)
+	}
+
+	return s
 }

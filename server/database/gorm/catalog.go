@@ -54,6 +54,7 @@ func (d *DB) GetCatalogEntries(opts ...types.FilterOption) ([]*catalogv1.Catalog
 		Preload("Skills").
 		Preload("Domains").
 		Preload("Annotations").
+		Preload("Signatures").
 		Limit(pageSize + 1)
 
 	if cfg.Offset > 0 {
@@ -80,7 +81,9 @@ func (d *DB) GetCatalogEntries(opts ...types.FilterOption) ([]*catalogv1.Catalog
 	entries := make([]*catalogv1.CatalogEntry, 0, len(records))
 
 	for i := range records {
-		entry, err := catalogv1.RecordToCatalog(&records[i])
+		entry, err := catalogv1.RecordToCatalog(&records[i],
+			catalogv1.WithSignatures(convertSignatures(records[i].Signatures)),
+		)
 		if err != nil {
 			// Expected for records without a known catalog module.
 			logger.Debug("skipping record without catalog projection", "record_cid", records[i].RecordCID, "error", err)
