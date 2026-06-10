@@ -43,8 +43,11 @@ extra:
 
 extra_css:
   - stylesheets/agntcy-docs.css
+  - stylesheets/dirctl-terminal.css
 
 extra_javascript:
+  - javascripts/dirctl-demo-data.js
+  - javascripts/dirctl-terminal.js
   - javascripts/card-links.js
   - javascripts/external-links.js
 

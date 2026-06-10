@@ -31,6 +31,46 @@ hide:
   </div>
 </div>
 
+<section class="dirctl-terminal-section" aria-labelledby="dirctl-terminal-heading">
+  <h2 id="dirctl-terminal-heading">Try dirctl</h2>
+  <p class="dirctl-terminal-intro">
+    Publish and discover agent records in a few commands.
+    Install the real CLI from the <a href="dir/dir-quickstart.md">Quickstart</a>
+    or see the full <a href="dir/dir-cli-reference.md">CLI Reference</a>.
+  </p>
+  <div class="dirctl-terminal" data-mode="demo">
+    <div class="dirctl-terminal-bar">
+      <span class="dirctl-terminal-title">user@dir:~</span>
+      <div class="dirctl-terminal-controls" aria-hidden="true">
+        <button type="button" class="dirctl-terminal-control" data-term="min" title="Minimize">&#8211;</button>
+        <button type="button" class="dirctl-terminal-control dirctl-terminal-control-close" data-term="close" title="Close">&#10005;</button>
+      </div>
+    </div>
+    <pre
+      class="dirctl-terminal-output"
+      id="dirctl-terminal-output"
+      aria-live="polite"
+      aria-label="Terminal output"
+    ></pre>
+    <form class="dirctl-terminal-input" hidden>
+      <label class="dirctl-terminal-prompt" for="dirctl-terminal-command">user@dir:~$</label>
+      <input
+        id="dirctl-terminal-command"
+        class="dirctl-terminal-command"
+        type="text"
+        autocomplete="off"
+        spellcheck="false"
+        aria-label="Enter a dirctl command"
+      />
+    </form>
+  </div>
+  <div class="dirctl-terminal-actions">
+    <button type="button" class="dirctl-terminal-btn" data-mode-switch="try">Try it</button>
+    <button type="button" class="dirctl-terminal-btn" data-mode-switch="demo" hidden>Back to demo</button>
+    <button type="button" class="dirctl-terminal-btn dirctl-terminal-reopen" hidden>Reopen terminal</button>
+  </div>
+</section>
+
 ## What is the Agent Directory Service?
 
 The **Agent Directory Service (ADS)** is the discovery layer of agents, an open source
