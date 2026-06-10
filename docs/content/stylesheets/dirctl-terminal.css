@@ -5,7 +5,7 @@
 
 .dirctl-terminal-section {
   margin: 0 auto 2.5rem;
-  max-width: 960px;
+  width: 100%;
 }
 
 .dirctl-terminal-layout {
@@ -17,11 +17,6 @@
 .dirctl-terminal-main {
   flex: 1 1 58%;
   min-width: 0;
-}
-
-.dirctl-terminal-section h2 {
-  margin: 0 0 0.5rem;
-  font-size: clamp(1.25rem, 2.5vw, 1.6rem);
 }
 
 .dirctl-terminal-intro-group {
@@ -322,10 +317,6 @@
 }
 
 @media (max-width: 600px) {
-  .dirctl-terminal-section {
-    max-width: 100%;
-  }
-
   .md-typeset .dirctl-terminal-output {
     font-size: 0.78rem;
     height: 12rem;

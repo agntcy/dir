@@ -35,6 +35,8 @@ hide:
   Open-source discovery layer for the Internet of Agents. Publish structured agent metadata and find others by capability, trust, and federation.
 </p>
 
+## See it in action
+
 <section class="dirctl-terminal-section">
   <div class="dirctl-terminal-layout">
     <div class="dirctl-terminal-main">
@@ -86,7 +88,7 @@ hide:
       </p>
       <p class="dirctl-terminal-intro" data-intro-level="agent">
         Need a skill, MCP server, or A2A partner? Your agent searches the Directory,
-        wires it in, and uses it right away. See
+        wires it in, and uses it right away. See the
         <a href="dir/dir-component-mcp-server.md">MCP server</a> for more details.
       </p>
     </div>
@@ -118,8 +120,15 @@ hide:
   <img
     src="assets/dir-graph-light.svg"
     alt="Agent Directory Service architecture: agents, directory nodes, and discovery across a federated network"
-    class="dir-graph"
+    class="dir-graph logo-light"
     loading="lazy"
+  />
+  <img
+    src="assets/dir-graph-dark.svg"
+    alt=""
+    class="dir-graph logo-dark"
+    loading="lazy"
+    aria-hidden="true"
   />
 </div>
 
