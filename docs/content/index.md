@@ -82,7 +82,7 @@ hide:
       </p>
       <p class="dirctl-terminal-intro" data-intro-level="agent">
         Need a skill, MCP server, or A2A partner? Your agent searches the Directory,
-        wires it in, and uses it right away. See 
+        wires it in, and uses it right away. See
         <a href="dir/dir-component-mcp-server.md">MCP server</a> for more details.
       </p>
     </div>
