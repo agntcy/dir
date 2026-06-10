@@ -1,4 +1,4 @@
-name: Import MCP Records
+name: Import Records
 
 on:
   workflow_dispatch:
@@ -7,6 +7,14 @@ on:
         description: "JSON config file path or inline JSON content"
         type: string
         default: ".github/workflows/scripts/import-records.json"
+      run_mcp_import:
+        description: "Run MCP registry import"
+        type: boolean
+        default: true
+      run_agent_skills_import:
+        description: "Run agent skills import from trusted GitHub repos"
+        type: boolean
+        default: true
       dry_run:
         description: "Dry run mode - no records will be imported"
         type: boolean
@@ -24,7 +32,7 @@ on:
         type: boolean
         default: false
       scanner_enabled:
-        description: "Run security scanner on each record"
+        description: "Run security scanner on each MCP record"
         type: boolean
         default: true
       server_address:
@@ -38,7 +46,10 @@ jobs:
   setup-matrix:
     runs-on: ubuntu-latest
     outputs:
-      matrix: ${{ steps.set-matrix.outputs.matrix }}
+      mcp_matrix: ${{ steps.set-matrix.outputs.mcp_matrix }}
+      agent_skills_matrix: ${{ steps.set-matrix.outputs.agent_skills_matrix }}
+      run_mcp_import: ${{ steps.set-matrix.outputs.run_mcp_import }}
+      run_agent_skills_import: ${{ steps.set-matrix.outputs.run_agent_skills_import }}
       # Resolved inputs with proper fallback for non-dispatch triggers (github.event.inputs.* returns strings, avoiding boolean falsy issues)
       dry_run: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.dry_run || 'false' }}
       rate_limit: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.rate_limit || '50' }}
@@ -54,6 +65,9 @@ jobs:
 
       - name: Set up matrix from config
         id: set-matrix
+        env:
+          RUN_MCP_IMPORT: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.run_mcp_import || 'true' }}
+          RUN_AGENT_SKILLS_IMPORT: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.run_agent_skills_import || 'true' }}
         run: |
           # Determine if IMPORT_CONFIG is a file path or direct JSON content
           if [ -f "$IMPORT_CONFIG" ]; then
@@ -64,20 +78,39 @@ jobs:
             CONFIG_CONTENT="$IMPORT_CONFIG"
           fi
 
-          # Validate JSON is an array
-          LENGTH=$(echo "$CONFIG_CONTENT" | jq 'length')
-          if [ -z "$LENGTH" ] || [ "$LENGTH" = "null" ]; then
-            echo "Error: Invalid JSON configuration or not an array"
+          # Backward compatibility: legacy flat array configs are treated as mcp-registry entries
+          if echo "$CONFIG_CONTENT" | jq -e 'type == "array"' > /dev/null; then
+            echo "Legacy array config detected; wrapping as mcp-registry entries"
+            CONFIG_CONTENT=$(echo "$CONFIG_CONTENT" | jq -c '{ "mcp-registry": ., "agent-skill": [] }')
+          fi
+
+          if ! echo "$CONFIG_CONTENT" | jq -e 'type == "object"' > /dev/null; then
+            echo "Error: Invalid JSON configuration (expected object with mcp-registry and agent-skill keys)"
             exit 1
           fi
 
-          # Add index to each entry for display purposes
-          MATRIX=$(echo "$CONFIG_CONTENT" | jq -c '[to_entries | .[] | .value + {index: .key}]')
-          echo "matrix=$MATRIX" >> $GITHUB_OUTPUT
-          echo "Generated matrix with $LENGTH entries"
+          INVALID_AGENT_SKILLS=$(echo "$CONFIG_CONTENT" | jq '[."agent-skill" // [] | .[] | select((.repo // "") == "" or (.authors | type) != "array" or (.authors | length) == 0)] | length')
+          if [ "$INVALID_AGENT_SKILLS" -gt 0 ]; then
+            echo "Error: Each agent-skill entry must include a non-empty repo and authors array"
+            exit 1
+          fi
+
+          MCP_MATRIX=$(echo "$CONFIG_CONTENT" | jq -c '."mcp-registry" // [] | [to_entries | .[] | .value + {index: .key}]')
+          AGENT_SKILLS_MATRIX=$(echo "$CONFIG_CONTENT" | jq -c '."agent-skill" // [] | [to_entries | .[] | .value + {index: .key, repo_slug: (.value.repo | sub("^https://"; "") | gsub("/"; "-") | gsub("[^a-zA-Z0-9.-]"; "-"))}]')
+
+          MCP_COUNT=$(echo "$MCP_MATRIX" | jq 'length')
+          AGENT_SKILLS_COUNT=$(echo "$AGENT_SKILLS_MATRIX" | jq 'length')
+
+          echo "mcp_matrix=$MCP_MATRIX" >> $GITHUB_OUTPUT
+          echo "agent_skills_matrix=$AGENT_SKILLS_MATRIX" >> $GITHUB_OUTPUT
+          echo "run_mcp_import=$RUN_MCP_IMPORT" >> $GITHUB_OUTPUT
+          echo "run_agent_skills_import=$RUN_AGENT_SKILLS_IMPORT" >> $GITHUB_OUTPUT
+          echo "Generated MCP matrix with $MCP_COUNT entries"
+          echo "Generated agent-skill matrix with $AGENT_SKILLS_COUNT entries"
 
   import-mcp:
     needs: setup-matrix
+    if: ${{ needs.setup-matrix.outputs.run_mcp_import == 'true' && needs.setup-matrix.outputs.mcp_matrix != '[]' }}
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -85,7 +118,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        entry: ${{ fromJson(needs.setup-matrix.outputs.matrix) }}
+        entry: ${{ fromJson(needs.setup-matrix.outputs.mcp_matrix) }}
     env:
       DRY_RUN: ${{ needs.setup-matrix.outputs.dry_run }}
       RATE_LIMIT: ${{ needs.setup-matrix.outputs.rate_limit }}
@@ -148,19 +181,14 @@ jobs:
           DIRCTL_PATH: dirctl
           DIR_AUTH_TOKEN: ${{ steps.oidc-dir-import.outputs.token }}
         run: |
-          echo "--- Processing Entry $((${{ matrix.entry.index }} + 1)) ---"
+          echo "--- Processing MCP Entry $((${{ matrix.entry.index }} + 1)) ---"
 
           CIDS_FILE="imported-cids-${{ matrix.entry.index }}.txt"
-          # TODO: Uncomment when the importer supports saving per-record JSON files.
-          # DRY_RUN_DIR="dry-run-output-${{ matrix.entry.index }}"
           CMD=("${DIRCTL_PATH}" import --type=mcp-registry --url=https://registry.modelcontextprotocol.io/v0.1 --server-addr="${{ env.SERVER_ADDRESS }}" --auth-mode=oidc "--auth-token=${DIR_AUTH_TOKEN}" --enrich-config=mcphost_ci.json --enrich-rate-limit="${{ env.RATE_LIMIT }}")
 
           if [[ "${{ env.DRY_RUN }}" == "true" ]]; then
              CMD+=("--dry-run")
-             # TODO: Replace with the following block when the importer supports saving per-record JSON files.
-             # CMD+=("--dry-run" "--output-dir=$DRY_RUN_DIR")
           else
-             # Output CIDs for deferred signing (only in non-dry-run mode)
              CMD+=("--output-cids=$CIDS_FILE")
           fi
 
@@ -195,28 +223,12 @@ jobs:
             exit "$EXIT"
           fi
 
-          # Print jsonl output (dry-run mode)
           JSONL_FILE=$(echo "$OUTPUT" | grep 'Records saved to:' | sed 's/.*Records saved to: //')
           if [ -n "$JSONL_FILE" ] && [ -f "$JSONL_FILE" ]; then
             echo "--- JSONL Output ($JSONL_FILE) ---"
             cat "$JSONL_FILE"
           fi
 
-          # TODO: Replace print above with the following block when the importer supports saving per-record JSON files.
-          # # Print per-record JSON files (dry-run mode). The importer writes one
-          # # <cid>.record.json per record into $DRY_RUN_DIR.
-          # if [[ "${{ env.DRY_RUN }}" == "true" ]] && [ -d "$DRY_RUN_DIR" ]; then
-          #   shopt -s nullglob
-          #   RECORD_FILES=("$DRY_RUN_DIR"/*.record.json)
-          #   echo "--- Dry-run records ($DRY_RUN_DIR): ${#RECORD_FILES[@]} file(s) ---"
-          #   for f in "${RECORD_FILES[@]}"; do
-          #     echo "=== $(basename "$f") ==="
-          #     cat "$f"
-          #     echo
-          #   done
-          # fi
-
-          # Output CIDs file path for signing step
           echo "cids_file=$CIDS_FILE" >> $GITHUB_OUTPUT
 
       - name: Fetch Sigstore OIDC token
@@ -233,8 +245,6 @@ jobs:
         with:
           audience: dir
 
-      # Sign records with fresh OIDC tokens after import completes
-      # This avoids token expiration issues during long-running imports
       - name: Sign Imported Records
         if: ${{ env.SIGN == 'true' && env.DRY_RUN == 'false' }}
         env:
@@ -261,7 +271,206 @@ jobs:
 
           while IFS= read -r CID || [ -n "$CID" ]; do
             [ -z "$CID" ] && continue
-            
+
+            echo "Signing CID: $CID"
+
+            if "${DIRCTL_PATH}" sign "$CID" \
+              --server-addr="${{ env.SERVER_ADDRESS }}" \
+              --auth-mode=oidc \
+              --auth-token="${DIR_AUTH_TOKEN}" \
+              --oidc-token="${SIGSTORE_OIDC_TOKEN}" \
+              --oidc-provider-url="https://token.actions.githubusercontent.com" \
+              --oidc-client-id="https://github.com/${{ github.repository }}/.github/workflows/import-records.yaml@${{ github.ref }}"; then
+              SIGNED=$((SIGNED + 1))
+            else
+              echo "Failed to sign CID: $CID"
+              FAILED=$((FAILED + 1))
+            fi
+          done < "$CIDS_FILE"
+
+          echo "=== Signing Summary ==="
+          echo "Signed: $SIGNED"
+          echo "Failed: $FAILED"
+
+          if [ "$FAILED" -gt 0 ]; then
+            exit 1
+          fi
+
+  import-agent-skills:
+    needs: setup-matrix
+    if: ${{ needs.setup-matrix.outputs.run_agent_skills_import == 'true' && needs.setup-matrix.outputs.agent_skills_matrix != '[]' }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write # Required for OIDC signing with Sigstore
+    strategy:
+      fail-fast: false
+      matrix:
+        entry: ${{ fromJson(needs.setup-matrix.outputs.agent_skills_matrix) }}
+    env:
+      DRY_RUN: ${{ needs.setup-matrix.outputs.dry_run }}
+      RATE_LIMIT: ${{ needs.setup-matrix.outputs.rate_limit }}
+      SERVER_ADDRESS: ${{ needs.setup-matrix.outputs.server_address }}
+      SIGN: ${{ needs.setup-matrix.outputs.sign }}
+      FORCE: ${{ needs.setup-matrix.outputs.force }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Cache skill repo
+        uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
+        with:
+          path: /tmp/agent-skill-repos/repo-${{ matrix.entry.index }}
+          key: agent-skill-repo-${{ matrix.entry.index }}-${{ matrix.entry.repo_slug }}
+          restore-keys: |
+            agent-skill-repo-${{ matrix.entry.index }}-${{ matrix.entry.repo_slug }}
+
+      - name: Sync trusted skill repo to latest main
+        id: sync-repo
+        run: |
+          REPO_URL="${{ matrix.entry.repo }}"
+          REPO_DIR="/tmp/agent-skill-repos/repo-${{ matrix.entry.index }}"
+
+          mkdir -p "$(dirname "$REPO_DIR")"
+
+          if [ ! -d "$REPO_DIR/.git" ]; then
+            echo "Cloning $REPO_URL"
+            git clone "$REPO_URL" "$REPO_DIR"
+          else
+            echo "Using cached clone at $REPO_DIR"
+          fi
+
+          git -C "$REPO_DIR" remote set-url origin "$REPO_URL"
+          git -C "$REPO_DIR" fetch origin main
+          git -C "$REPO_DIR" checkout -B main origin/main
+          git -C "$REPO_DIR" reset --hard origin/main
+
+          echo "Synced $(git -C "$REPO_DIR" rev-parse --short HEAD) from origin/main"
+          echo "repo_dir=$REPO_DIR" >> $GITHUB_OUTPUT
+
+      - name: Build dirctl from source
+        id: setup-dirctl
+        uses: ./.github/actions/build-dirctl
+
+      - name: Create Enricher Config
+        run: |
+          cat <<'EOF' > mcphost_ci.json
+          {
+            "mcpServers": {
+              "dir-mcp-server": {
+                "command": "${{ steps.setup-dirctl.outputs.dirctl_path }}",
+                "args": [
+                  "mcp",
+                  "serve"
+                ],
+                "env": {
+                  "OASF_API_VALIDATION_SCHEMA_URL": "https://schema.oasf.outshift.com",
+                  "DIRECTORY_CLIENT_AUTH_MODE": "insecure"
+                }
+              }
+            },
+            "model": "azure:gpt-4o",
+            "max-steps": 10
+          }
+          EOF
+
+      - name: Fetch Directory OIDC token
+        id: oidc-dir-import
+        uses: ./.github/actions/fetch-oidc-token
+        with:
+          audience: dir
+
+      - name: Import Agent Skills
+        id: import
+        env:
+          AZURE_OPENAI_API_KEY: ${{ secrets.AZURE_OPENAI_API_KEY }}
+          AZURE_OPENAI_BASE_URL: ${{ secrets.AZURE_OPENAI_ENDPOINT }}
+          AZURE_OPENAI_DEPLOYMENT: "gpt-4o"
+          AZURE_OPENAI_API_VERSION: "2024-10-21"
+          DIRCTL_PATH: dirctl
+          DIR_AUTH_TOKEN: ${{ steps.oidc-dir-import.outputs.token }}
+          AUTHORS_JSON: ${{ toJSON(matrix.entry.authors) }}
+        run: |
+          echo "--- Processing Agent Skill Repo $((${{ matrix.entry.index }} + 1)): ${{ matrix.entry.repo }} ---"
+
+          CIDS_FILE="imported-cids-${{ matrix.entry.index }}.txt"
+          CMD=("${DIRCTL_PATH}" import --type=agent-skill --file-path="${{ steps.sync-repo.outputs.repo_dir }}" --server-addr="${{ env.SERVER_ADDRESS }}" --auth-mode=oidc "--auth-token=${DIR_AUTH_TOKEN}" --enrich-config=mcphost_ci.json --enrich-rate-limit="${{ env.RATE_LIMIT }}")
+
+          while IFS= read -r AUTHOR; do
+            [ -z "$AUTHOR" ] && continue
+            CMD+=("--author=${AUTHOR}")
+          done < <(echo "$AUTHORS_JSON" | jq -r '.[]')
+
+          if [[ "${{ env.DRY_RUN }}" == "true" ]]; then
+             CMD+=("--dry-run")
+          else
+             CMD+=("--output-cids=$CIDS_FILE")
+          fi
+
+          if [[ "${{ env.FORCE }}" == "true" ]]; then
+             CMD+=("--force")
+          fi
+
+          echo "Running: ${CMD[*]}"
+          set +e
+          OUTPUT=$("${CMD[@]}" 2>&1)
+          EXIT=$?
+          set -e
+          echo "$OUTPUT"
+          if [ "$EXIT" -ne 0 ]; then
+            echo "--- Import failed with exit code $EXIT ---"
+            exit "$EXIT"
+          fi
+
+          JSONL_FILE=$(echo "$OUTPUT" | grep 'Records saved to directory:' | sed 's/.*Records saved to directory: //')
+          if [ -n "$JSONL_FILE" ] && [ -d "$JSONL_FILE" ]; then
+            echo "--- Dry-run output directory ($JSONL_FILE) ---"
+            find "$JSONL_FILE" -maxdepth 1 -name '*.record.json' -print
+          fi
+
+          echo "cids_file=$CIDS_FILE" >> $GITHUB_OUTPUT
+
+      - name: Fetch Sigstore OIDC token
+        if: ${{ env.SIGN == 'true' && env.DRY_RUN == 'false' }}
+        id: oidc-sigstore
+        uses: ./.github/actions/fetch-oidc-token
+        with:
+          audience: sigstore
+
+      - name: Fetch Directory OIDC token for signing
+        if: ${{ env.SIGN == 'true' && env.DRY_RUN == 'false' }}
+        id: oidc-dir-sign
+        uses: ./.github/actions/fetch-oidc-token
+        with:
+          audience: dir
+
+      - name: Sign Imported Records
+        if: ${{ env.SIGN == 'true' && env.DRY_RUN == 'false' }}
+        env:
+          SIGSTORE_OIDC_TOKEN: ${{ steps.oidc-sigstore.outputs.token }}
+          DIRCTL_PATH: dirctl
+          DIR_AUTH_TOKEN: ${{ steps.oidc-dir-sign.outputs.token }}
+        run: |
+          CIDS_FILE="${{ steps.import.outputs.cids_file }}"
+
+          if [ ! -f "$CIDS_FILE" ]; then
+            echo "No CIDs file found - no records were imported"
+            exit 0
+          fi
+
+          CID_COUNT=$(wc -l < "$CIDS_FILE" | tr -d ' ')
+          if [ "$CID_COUNT" -eq 0 ]; then
+            echo "No CIDs to sign"
+            exit 0
+          fi
+
+          echo "Signing $CID_COUNT records..."
+          SIGNED=0
+          FAILED=0
+
+          while IFS= read -r CID || [ -n "$CID" ]; do
+            [ -z "$CID" ] && continue
+
             echo "Signing CID: $CID"
 
             if "${DIRCTL_PATH}" sign "$CID" \
