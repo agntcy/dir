@@ -42,7 +42,7 @@ to ensure the integrity and authenticity of Directory records and nodes.
 
 ## Documentation
 
-Check the [Documentation](https://docs.agntcy.org/dir/dir-overview/) for a full walkthrough of all the Directory features.
+Check the [Documentation](https://agntcy.github.io/dir/latest/) for a full walkthrough of all the Directory features.
 
 ## Source tree
 
