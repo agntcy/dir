@@ -4,9 +4,19 @@
 /* Interactive dirctl terminal on the home page */
 
 .dirctl-terminal-section {
-  text-align: center;
   margin: 0 auto 2.5rem;
-  max-width: 720px;
+  max-width: 960px;
+}
+
+.dirctl-terminal-layout {
+  display: flex;
+  align-items: center;
+  gap: 2rem;
+}
+
+.dirctl-terminal-main {
+  flex: 1 1 58%;
+  min-width: 0;
 }
 
 .dirctl-terminal-section h2 {
@@ -14,11 +24,20 @@
   font-size: clamp(1.25rem, 2.5vw, 1.6rem);
 }
 
+.dirctl-terminal-intro-group {
+  flex: 1 1 34%;
+  text-align: left;
+}
+
 .dirctl-terminal-intro {
   color: var(--md-default-fg-color--light);
   font-size: 0.95rem;
-  margin: 0 auto 1rem;
-  max-width: 560px;
+  line-height: 1.6;
+  margin: 0;
+}
+
+.dirctl-terminal-intro[hidden] {
+  display: none;
 }
 
 .dirctl-terminal-intro a {
@@ -26,7 +45,9 @@
 }
 
 .dirctl-terminal {
-  margin: 0.75rem auto 0;
+  display: flex;
+  flex-direction: column;
+  margin: 0;
   text-align: left;
   background: var(--md-code-bg-color);
   border: 1px solid var(--md-default-fg-color--lightest);
@@ -42,6 +63,7 @@
 
 .dirctl-terminal-bar {
   display: flex;
+  flex-shrink: 0;
   align-items: center;
   justify-content: space-between;
   padding: 0.35rem 0.4rem 0.35rem 0.85rem;
@@ -86,27 +108,50 @@
   color: #fff;
 }
 
-.dirctl-terminal-output {
+.md-typeset .dirctl-terminal-output {
+  flex: 0 0 14rem;
+  height: 14rem;
+  min-height: 14rem;
+  max-height: 14rem;
   margin: 0;
   padding: 1rem 0.9rem;
-  min-height: 12rem;
-  max-height: 20rem;
+  overflow-x: auto;
   overflow-y: auto;
+  overscroll-behavior: contain;
   font-family: var(--md-code-font, "Roboto Mono"), ui-monospace, monospace;
   font-size: 0.82rem;
   line-height: 1.65;
   color: var(--md-default-fg-color);
   white-space: pre-wrap;
   word-break: break-word;
+  -webkit-overflow-scrolling: touch;
 }
 
 .dirctl-terminal[data-mode="try"] .dirctl-terminal-output {
-  min-height: 10rem;
-  max-height: 14rem;
+  flex: 0 0 11.5rem;
+  height: 11.5rem;
+  min-height: 11.5rem;
+  max-height: 11.5rem;
 }
 
 .dirctl-terminal-cmd {
   color: var(--md-accent-fg-color);
+}
+
+.dirctl-terminal-user {
+  color: var(--md-default-fg-color);
+}
+
+.dirctl-terminal-agent {
+  color: var(--md-primary-fg-color, var(--md-accent-fg-color));
+}
+
+.dirctl-terminal-tool {
+  color: #50c878;
+}
+
+[data-md-color-scheme="slate"] .dirctl-terminal-tool {
+  color: #6ee7a0;
 }
 
 .dirctl-terminal-out {
@@ -140,6 +185,7 @@
 
 .dirctl-terminal-input {
   display: flex;
+  flex-shrink: 0;
   align-items: center;
   gap: 0.35rem;
   padding: 0.55rem 0.9rem;
@@ -173,8 +219,26 @@
   display: flex;
   flex-wrap: wrap;
   gap: 0.5rem;
-  justify-content: center;
+  justify-content: flex-start;
+  align-items: center;
   margin-top: 0.85rem;
+}
+
+.dirctl-terminal-demo-level {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin-right: 0.25rem;
+}
+
+.dirctl-terminal-demo-level[hidden] {
+  display: none;
+}
+
+.dirctl-terminal-btn.is-active {
+  color: var(--md-accent-fg-color);
+  border-color: var(--md-accent-fg-color);
+  border-style: solid;
 }
 
 .dirctl-terminal-btn {
@@ -231,13 +295,37 @@
   overflow: hidden;
 }
 
+@media (max-width: 768px) {
+  .dirctl-terminal-layout {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 1rem;
+  }
+
+  .dirctl-terminal-intro-group {
+    text-align: center;
+  }
+
+  .dirctl-terminal-actions {
+    justify-content: center;
+  }
+}
+
 @media (max-width: 600px) {
   .dirctl-terminal-section {
     max-width: 100%;
   }
 
-  .dirctl-terminal-output {
+  .md-typeset .dirctl-terminal-output {
     font-size: 0.78rem;
+    height: 12rem;
+    min-height: 12rem;
+    max-height: 12rem;
+  }
+
+  .dirctl-terminal[data-mode="try"] .dirctl-terminal-output {
+    height: 10rem;
     min-height: 10rem;
+    max-height: 10rem;
   }
 }

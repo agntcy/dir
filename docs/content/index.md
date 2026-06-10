@@ -31,43 +31,63 @@ hide:
   </div>
 </div>
 
-<section class="dirctl-terminal-section" aria-labelledby="dirctl-terminal-heading">
-  <h2 id="dirctl-terminal-heading">Try dirctl</h2>
-  <p class="dirctl-terminal-intro">
-    Publish and discover agent records in a few commands.
-    Install the real CLI from the <a href="dir/dir-quickstart.md">Quickstart</a>
-    or see the full <a href="dir/dir-cli-reference.md">CLI Reference</a>.
-  </p>
-  <div class="dirctl-terminal" data-mode="demo">
-    <div class="dirctl-terminal-bar">
-      <span class="dirctl-terminal-title">user@dir:~</span>
-      <div class="dirctl-terminal-controls" aria-hidden="true">
-        <button type="button" class="dirctl-terminal-control" data-term="min" title="Minimize">&#8211;</button>
-        <button type="button" class="dirctl-terminal-control dirctl-terminal-control-close" data-term="close" title="Close">&#10005;</button>
+<section class="dirctl-terminal-section">
+  <div class="dirctl-terminal-layout">
+    <div class="dirctl-terminal-main">
+      <div class="dirctl-terminal" data-mode="demo">
+        <div class="dirctl-terminal-bar">
+          <span class="dirctl-terminal-title">user@dir:~</span>
+          <div class="dirctl-terminal-controls" aria-hidden="true">
+            <button type="button" class="dirctl-terminal-control" data-term="min" title="Minimize">&#8211;</button>
+            <button type="button" class="dirctl-terminal-control dirctl-terminal-control-close" data-term="close" title="Close">&#10005;</button>
+          </div>
+        </div>
+        <pre
+          class="dirctl-terminal-output"
+          id="dirctl-terminal-output"
+          aria-live="polite"
+          aria-label="Terminal output"
+        ></pre>
+        <form class="dirctl-terminal-input" hidden>
+          <label
+            class="dirctl-terminal-prompt"
+            for="dirctl-terminal-command"
+            data-prompt-cli="user@dir:~$"
+            data-prompt-agent="&gt;"
+          >user@dir:~$</label>
+          <input
+            id="dirctl-terminal-command"
+            class="dirctl-terminal-command"
+            type="text"
+            autocomplete="off"
+            spellcheck="false"
+            aria-label="Enter a command"
+          />
+        </form>
+      </div>
+      <div class="dirctl-terminal-actions">
+        <div class="dirctl-terminal-demo-level">
+          <button type="button" class="dirctl-terminal-btn is-active" data-demo-level="cli">CLI basics</button>
+          <button type="button" class="dirctl-terminal-btn" data-demo-level="agent">With your agent</button>
+        </div>
+        <button type="button" class="dirctl-terminal-btn" data-mode-switch="try">Try dirctl</button>
+        <button type="button" class="dirctl-terminal-btn" data-mode-switch="demo" hidden>Back to demo</button>
+        <button type="button" class="dirctl-terminal-btn dirctl-terminal-reopen" hidden>Reopen terminal</button>
       </div>
     </div>
-    <pre
-      class="dirctl-terminal-output"
-      id="dirctl-terminal-output"
-      aria-live="polite"
-      aria-label="Terminal output"
-    ></pre>
-    <form class="dirctl-terminal-input" hidden>
-      <label class="dirctl-terminal-prompt" for="dirctl-terminal-command">user@dir:~$</label>
-      <input
-        id="dirctl-terminal-command"
-        class="dirctl-terminal-command"
-        type="text"
-        autocomplete="off"
-        spellcheck="false"
-        aria-label="Enter a dirctl command"
-      />
-    </form>
-  </div>
-  <div class="dirctl-terminal-actions">
-    <button type="button" class="dirctl-terminal-btn" data-mode-switch="try">Try it</button>
-    <button type="button" class="dirctl-terminal-btn" data-mode-switch="demo" hidden>Back to demo</button>
-    <button type="button" class="dirctl-terminal-btn dirctl-terminal-reopen" hidden>Reopen terminal</button>
+    <div class="dirctl-terminal-intro-group">
+      <p class="dirctl-terminal-intro" data-intro-level="cli">
+        Publish and discover agent records in a few commands.
+        Install the real CLI from the <a href="dir/dir-quickstart.md">Quickstart</a>.
+      </p>
+      <p class="dirctl-terminal-intro" data-intro-level="agent" hidden>
+        In Cursor, Claude Code, or any agent harness: you describe a task that needs a
+        <strong>skill</strong>, an <strong>MCP server</strong>, or <strong>A2A</strong> collaboration.
+        The agent queries the <a href="dir/dir-component-mcp-server.md">Directory MCP server</a>,
+        finds a match, adds it to the session as a tool, and you both use it right away.
+        Click <strong>Try it yourself</strong> to walk through the flow.
+      </p>
+    </div>
   </div>
 </section>
 

@@ -35,6 +35,10 @@
     var tryBtn = section.querySelector('[data-mode-switch="try"]');
     var demoBtn = section.querySelector('[data-mode-switch="demo"]');
     var reopenBtn = section.querySelector(".dirctl-terminal-reopen");
+    var demoLevelBar = section.querySelector(".dirctl-terminal-demo-level");
+    var titleEl = section.querySelector(".dirctl-terminal-title");
+    var promptEl = section.querySelector(".dirctl-terminal-prompt");
+    var introEls = section.querySelectorAll(".dirctl-terminal-intro[data-intro-level]");
 
     if (!terminal || !output) {
       return null;
@@ -44,14 +48,63 @@
 
     var state = {
       mode: "demo",
+      demoLevel: "cli",
+      tryLevel: "cli",
       daemonRunning: false,
       lastCid: getData().demoCid || "",
       published: false,
+      agentSearched: false,
+      agentTool: null,
       tryHistory: [],
       demoTimer: null,
       demoObserver: null,
       demoRunning: false,
     };
+
+    var demoLineMeta = {
+      command: { prefix: "$ ", className: "dirctl-terminal-cmd" },
+      user: { prefix: "> ", className: "dirctl-terminal-user" },
+      agent: { prefix: "● ", className: "dirctl-terminal-agent" },
+      tool: { prefix: "→ ", className: "dirctl-terminal-tool" },
+    };
+
+    function getActiveScript() {
+      var data = getData();
+      if (state.demoLevel === "agent") {
+        return data.agentDemoScript || [];
+      }
+      return data.demoScript || [];
+    }
+
+    function updateDemoChrome() {
+      var data = getData();
+      var titles = data.demoTitles || {};
+      var tryLabels = data.tryButtonLabels || {};
+      if (titleEl) {
+        titleEl.textContent = titles[state.demoLevel] || titles.cli || "user@dir:~";
+      }
+      if (tryBtn) {
+        tryBtn.textContent =
+          tryLabels[state.demoLevel] || tryLabels.cli || "Try it";
+      }
+      introEls.forEach(function (el) {
+        var level = el.getAttribute("data-intro-level");
+        el.hidden = level !== state.demoLevel;
+      });
+      section.querySelectorAll("[data-demo-level]").forEach(function (btn) {
+        btn.classList.toggle("is-active", btn.getAttribute("data-demo-level") === state.demoLevel);
+      });
+    }
+
+    function formatDemoLine(step) {
+      var meta = demoLineMeta[step.type];
+      if (!meta) {
+        return null;
+      }
+      return (
+        '<span class="' + meta.className + '">' + meta.prefix + escapeHtml(step.text) + "</span>"
+      );
+    }
 
     function clearDemoTimer() {
       if (state.demoTimer) {
@@ -60,46 +113,109 @@
       }
     }
 
+    function updateTryChrome() {
+      var data = getData();
+      var titles = data.demoTitles || {};
+      if (state.tryLevel === "agent") {
+        if (titleEl) {
+          titleEl.textContent = titles.agent || "cursor@workspace:~";
+        }
+        if (promptEl) {
+          promptEl.textContent = promptEl.getAttribute("data-prompt-agent") || ">";
+        }
+        if (input) {
+          input.setAttribute("aria-label", "Message the agent");
+        }
+      } else {
+        if (titleEl) {
+          titleEl.textContent = titles.cli || "user@dir:~";
+        }
+        if (promptEl) {
+          promptEl.textContent = promptEl.getAttribute("data-prompt-cli") || "user@dir:~$";
+        }
+        if (input) {
+          input.setAttribute("aria-label", "Enter a dirctl command");
+        }
+      }
+    }
+
+    function resetAgentTryState() {
+      state.agentSearched = false;
+      state.agentTool = null;
+    }
+
     function setMode(mode) {
       clearDemoTimer();
       state.mode = mode;
       terminal.setAttribute("data-mode", mode);
 
       if (mode === "try") {
+        state.tryLevel = state.demoLevel;
         state.demoRunning = false;
         if (state.demoObserver) {
           state.demoObserver.disconnect();
           state.demoObserver = null;
         }
         output.innerHTML = "";
+        resetAgentTryState();
         inputForm.hidden = false;
         tryBtn.hidden = true;
         demoBtn.hidden = false;
+        if (demoLevelBar) {
+          demoLevelBar.hidden = true;
+        }
+        updateTryChrome();
         input.focus();
-        appendTryOutput("Type a command or enter help for suggestions.", "muted");
+        if (state.tryLevel === "agent") {
+          appendTryLine("Describe a task that needs a skill, MCP server, or A2A partner.", "muted");
+        } else {
+          appendTryLine("Type a command or enter help for suggestions.", "muted");
+        }
       } else {
         inputForm.hidden = true;
         tryBtn.hidden = false;
         demoBtn.hidden = true;
+        if (demoLevelBar) {
+          demoLevelBar.hidden = false;
+        }
         output.innerHTML = "";
+        resetAgentTryState();
+        updateDemoChrome();
         startDemoObserver();
       }
     }
 
-    function appendTryOutput(text, kind) {
+    function setDemoLevel(level) {
+      if (state.demoLevel === level || state.mode !== "demo") {
+        return;
+      }
+      state.demoLevel = level;
+      updateDemoChrome();
+      resetDemo();
+    }
+
+    function appendTryLine(text, kind) {
       var className = "dirctl-terminal-out";
+      var prefix = "";
       if (kind === "muted") {
         className = "dirctl-terminal-muted";
       } else if (kind === "err") {
         className = "dirctl-terminal-err";
+      } else if (kind === "user") {
+        className = "dirctl-terminal-user";
+        prefix = "> ";
+      } else if (kind === "agent") {
+        className = "dirctl-terminal-agent";
+        prefix = "● ";
+      } else if (kind === "tool") {
+        className = "dirctl-terminal-tool";
+        prefix = "→ ";
+      } else if (kind === "command") {
+        className = "dirctl-terminal-cmd";
+        prefix = "$ ";
       }
-      output.innerHTML += '<span class="' + className + '">' + escapeHtml(text) + "</span>\n";
-      output.scrollTop = output.scrollHeight;
-    }
-
-    function appendTryCommand(line) {
       output.innerHTML +=
-        '<span class="dirctl-terminal-cmd">$ ' + escapeHtml(line) + "</span>\n";
+        '<span class="' + className + '">' + prefix + escapeHtml(text) + "</span>\n";
       output.scrollTop = output.scrollHeight;
     }
 
@@ -143,26 +259,129 @@
 
     function requireDaemon() {
       if (!state.daemonRunning) {
-        appendTryOutput("error: Directory daemon is not running. Try: dirctl daemon start", "err");
+        appendTryLine("error: Directory daemon is not running. Try: dirctl daemon start", "err");
         return false;
       }
       return true;
     }
 
-    function handleTryCommand(line) {
-      var trimmed = line.trim();
-      if (!trimmed) {
+    function matchesAny(text, terms) {
+      return terms.some(function (term) {
+        return text.indexOf(term) !== -1;
+      });
+    }
+
+    function runAgentSearch() {
+      var data = getData();
+      state.agentSearched = true;
+      appendTryLine(
+        "I need GitHub access. Searching the Directory for an MCP server or A2A agent...",
+        "agent"
+      );
+      appendTryLine(
+        'agntcy_dir_search_local({ module: "integration/mcp", skill: "issue_tracking" })',
+        "tool"
+      );
+      appendTryLine(data.agentSearchResults || "No matches found.");
+    }
+
+    function addAgentTool(toolName) {
+      if (!state.agentSearched) {
+        appendTryLine("Search the Directory first — describe a task that needs GitHub or triage.", "agent");
         return;
       }
+      if (toolName === "github-mcp-server") {
+        state.agentTool = "github-mcp-server";
+        appendTryLine('mcp.add_server("github-mcp-server")', "tool");
+        appendTryLine("Added github-mcp-server to this session. Ready to use.");
+        return;
+      }
+      if (toolName === "issue-triage-agent") {
+        state.agentTool = "issue-triage-agent";
+        appendTryLine('a2a.connect("issue-triage-agent")', "tool");
+        appendTryLine("Connected to issue-triage-agent (A2A). Ready to delegate.");
+        return;
+      }
+      appendTryLine("Unknown capability. Try: add github-mcp-server or add issue-triage-agent", "err");
+    }
 
-      appendTryCommand(trimmed);
-      state.tryHistory.push(trimmed);
-
+    function handleAgentTryInput(line) {
+      var trimmed = line.trim();
       var lower = trimmed.toLowerCase();
       var data = getData();
 
+      appendTryLine(trimmed, "user");
+      state.tryHistory.push(trimmed);
+
       if (lower === "help") {
-        appendTryOutput(data.helpText || "Enter a dirctl command.");
+        appendTryLine(data.agentHelpText || "Describe a task for the agent.");
+        return;
+      }
+      if (lower === "clear") {
+        output.innerHTML = "";
+        resetAgentTryState();
+        return;
+      }
+
+      if (lower === "use 1" || lower.indexOf("add github") !== -1 || lower.indexOf("use github-mcp") !== -1) {
+        addAgentTool("github-mcp-server");
+        return;
+      }
+      if (lower === "use 2" || lower.indexOf("add issue-triage") !== -1 || lower.indexOf("use a2a") !== -1) {
+        addAgentTool("issue-triage-agent");
+        return;
+      }
+
+      if (
+        matchesAny(lower, ["list issue", "open issue", "show issue", "newest issue", "agntcy/dir"])
+      ) {
+        if (!state.agentTool) {
+          appendTryLine("Add a capability first: add github-mcp-server or add issue-triage-agent", "agent");
+          return;
+        }
+        if (state.agentTool === "github-mcp-server") {
+          appendTryLine(
+            'github-mcp-server.list_issues({ owner: "agntcy", repo: "dir", state: "open", limit: 5 })',
+            "tool"
+          );
+          appendTryLine(data.agentIssueList || "(no issues found)");
+          return;
+        }
+        appendTryLine("issue-triage-agent.delegate({ task: \"triage open issues\" })", "tool");
+        appendTryLine(data.agentA2aSummary || "A2A agent completed the task.");
+        return;
+      }
+
+      if (
+        !state.agentSearched &&
+        matchesAny(lower, ["issue", "triage", "github", "monorepo", "repo", "mcp", "a2a", "skill"])
+      ) {
+        runAgentSearch();
+        appendTryLine('Say add github-mcp-server (or use 1), then ask for open issues.', "agent");
+        return;
+      }
+
+      if (state.agentSearched && !state.agentTool) {
+        appendTryLine("Pick a match: add github-mcp-server (1) or add issue-triage-agent (2)", "agent");
+        return;
+      }
+
+      appendTryLine(
+        "Try describing a task (issues, GitHub, triage) or type help.",
+        "agent"
+      );
+    }
+
+    function handleCliTryInput(line) {
+      var trimmed = line.trim();
+      var lower = trimmed.toLowerCase();
+      var data = getData();
+
+      appendTryLine(trimmed, "command");
+      state.tryHistory.push(trimmed);
+
+      if (lower === "help") {
+        appendTryLine(data.helpText || "Enter a dirctl command.");
         return;
       }
       if (lower === "clear") {
@@ -172,12 +391,12 @@
 
       var tokens = tokenize(trimmed);
       if (tokens[0] !== "dirctl") {
-        appendTryOutput("command not found: " + trimmed, "err");
+        appendTryLine("command not found: " + trimmed, "err");
         return;
       }
 
       if (tokens.length === 1 || (tokens.length === 2 && tokens[1] === "--help")) {
-        appendTryOutput(data.dirctlHelp || "dirctl help");
+        appendTryLine(data.dirctlHelp || "dirctl help");
         return;
       }
 
@@ -185,7 +404,7 @@
 
       if (sub === "daemon" && tokens[2] === "start") {
         state.daemonRunning = true;
-        appendTryOutput("Directory daemon listening on localhost:8888");
+        appendTryLine("Directory daemon listening on localhost:8888");
         return;
       }
 
@@ -195,13 +414,13 @@
         }
         state.lastCid = data.demoCid || state.lastCid;
         var rawOutput = tokens.indexOf("--output") !== -1 && tokens[tokens.indexOf("--output") + 1] === "raw";
-        appendTryOutput(rawOutput ? state.lastCid : "Stored record: " + state.lastCid);
+        appendTryLine(rawOutput ? state.lastCid : "Stored record: " + state.lastCid);
         return;
       }
 
       if (sub === "routing") {
         if (tokens[2] === "--help") {
-          appendTryOutput(data.routingHelp || "dirctl routing help");
+          appendTryLine(data.routingHelp || "dirctl routing help");
           return;
         }
         if (!requireDaemon()) {
@@ -210,35 +429,35 @@
         if (tokens[2] === "publish") {
           var publishCid = tokens[3];
           if (!publishCid) {
-            appendTryOutput("error: CID required. Usage: dirctl routing publish <cid>", "err");
+            appendTryLine("error: CID required. Usage: dirctl routing publish <cid>", "err");
             return;
           }
           if (publishCid !== state.lastCid && publishCid !== data.demoCid) {
-            appendTryOutput("error: record not found in local store: " + publishCid, "err");
+            appendTryLine("error: record not found in local store: " + publishCid, "err");
             return;
           }
           state.published = true;
-          appendTryOutput("Published record to routing network.");
+          appendTryLine("Published record to routing network.");
           return;
         }
         if (tokens[2] === "list") {
           if (!state.published) {
-            appendTryOutput("(no published records)");
+            appendTryLine("(no published records)");
             return;
           }
-          appendTryOutput(data.routingList || state.lastCid);
+          appendTryLine(data.routingList || state.lastCid);
           return;
         }
         if (tokens[2] === "search") {
           var skillIdx = tokens.indexOf("--skill");
           if (skillIdx === -1) {
-            appendTryOutput("error: --skill is required", "err");
+            appendTryLine("error: --skill is required", "err");
             return;
           }
-          appendTryOutput(data.routingSearch || "No records found.");
+          appendTryLine(data.routingSearch || "No records found.");
           return;
         }
-        appendTryOutput("dirctl: unknown routing command. Try: dirctl routing --help", "err");
+        appendTryLine("dirctl: unknown routing command. Try: dirctl routing --help", "err");
         return;
       }
 
@@ -248,18 +467,29 @@
         }
         var pullCid = tokens[2];
         if (!pullCid) {
-          appendTryOutput("error: CID required. Usage: dirctl pull <cid>", "err");
+          appendTryLine("error: CID required. Usage: dirctl pull <cid>", "err");
           return;
         }
         if (pullCid !== state.lastCid && pullCid !== data.demoCid) {
-          appendTryOutput("error: record not found: " + pullCid, "err");
+          appendTryLine("error: record not found: " + pullCid, "err");
           return;
         }
-        appendTryOutput(data.pullRecord || "{}");
+        appendTryLine(data.pullRecord || "{}");
         return;
       }
 
-      appendTryOutput("dirctl: unknown command \"" + sub + "\". Try: dirctl --help", "err");
+      appendTryLine("dirctl: unknown command \"" + sub + "\". Try: dirctl --help", "err");
+    }
+
+    function handleTryInput(line) {
+      if (!line.trim()) {
+        return;
+      }
+      if (state.tryLevel === "agent") {
+        handleAgentTryInput(line);
+      } else {
+        handleCliTryInput(line);
+      }
     }
 
     function renderDemoBlock(doneLines, partial) {
@@ -278,7 +508,7 @@
         return;
       }
 
-      var script = getData().demoScript || [];
+      var script = getActiveScript();
       var doneLines = [];
       var stepIndex = 0;
       state.demoRunning = true;
@@ -319,17 +549,16 @@
           return;
         }
 
-        if (step.type === "command") {
+        if (demoLineMeta[step.type]) {
+          var lineMeta = demoLineMeta[step.type];
           if (prefersReducedMotion()) {
-            doneLines.push(
-              '<span class="dirctl-terminal-cmd">$ ' + escapeHtml(step.text) + "</span>"
-            );
+            doneLines.push(formatDemoLine(step));
             renderDemoBlock(doneLines, null);
             finishStep();
             return;
           }
 
-          var prefix = '<span class="dirctl-terminal-cmd">$ </span>';
+          var prefixHtml = '<span class="' + lineMeta.className + '">' + lineMeta.prefix + "</span>";
           var text = step.text;
           var charIndex = 0;
 
@@ -338,15 +567,14 @@
               return;
             }
             var partial =
-              prefix + '<span class="dirctl-terminal-cmd">' + escapeHtml(text.slice(0, charIndex)) + "</span>";
+              prefixHtml +
+              '<span class="' + lineMeta.className + '">' + escapeHtml(text.slice(0, charIndex)) + "</span>";
             renderDemoBlock(doneLines, partial);
             if (charIndex <= text.length) {
               charIndex++;
               state.demoTimer = setTimeout(typeChar, TYPE_MS);
             } else {
-              doneLines.push(
-                '<span class="dirctl-terminal-cmd">$ ' + escapeHtml(text) + "</span>"
-              );
+              doneLines.push(formatDemoLine(step));
               finishStep();
             }
           }
@@ -357,10 +585,8 @@
 
       if (prefersReducedMotion()) {
         script.forEach(function (step) {
-          if (step.type === "command") {
-            doneLines.push(
-              '<span class="dirctl-terminal-cmd">$ ' + escapeHtml(step.text) + "</span>"
-            );
+          if (demoLineMeta[step.type]) {
+            doneLines.push(formatDemoLine(step));
           } else if (step.type === "output") {
             doneLines.push(
               '<span class="dirctl-terminal-out">' + escapeHtml(step.text) + "</span>"
@@ -444,15 +670,22 @@
       });
     }
 
+    section.querySelectorAll("[data-demo-level]").forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        setDemoLevel(btn.getAttribute("data-demo-level") || "cli");
+      });
+    });
+
     if (inputForm && input) {
       inputForm.addEventListener("submit", function (event) {
         event.preventDefault();
         var value = input.value;
         input.value = "";
-        handleTryCommand(value);
+        handleTryInput(value);
       });
     }
 
+    updateDemoChrome();
     setMode("demo");
 
     return {
