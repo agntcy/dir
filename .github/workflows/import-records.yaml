@@ -328,28 +328,26 @@ jobs:
       - name: Cache skill repo
         uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
         with:
-          path: /tmp/agent-skill-repos/repo-${{ matrix.entry.index }}
-          key: agent-skill-repo-${{ matrix.entry.index }}-${{ matrix.entry.repo_slug }}
-          restore-keys: |
-            agent-skill-repo-${{ matrix.entry.index }}-${{ matrix.entry.repo_slug }}
+          path: ${{ runner.temp }}/skill-repos/${{ matrix.entry.repo_slug }}
+          key: agent-skill-repo-${{ matrix.entry.repo_slug }}
 
       - name: Sync trusted skill repo to latest main
         id: sync-repo
         run: |
           REPO_URL="${{ matrix.entry.repo }}"
-          REPO_DIR="/tmp/agent-skill-repos/repo-${{ matrix.entry.index }}"
+          REPO_DIR="${RUNNER_TEMP}/skill-repos/${{ matrix.entry.repo_slug }}"
 
           mkdir -p "$(dirname "$REPO_DIR")"
 
           if [ ! -d "$REPO_DIR/.git" ]; then
-            echo "Cloning $REPO_URL"
-            git clone "$REPO_URL" "$REPO_DIR"
+            echo "Cloning $REPO_URL (shallow)"
+            git clone --depth 1 --branch main --single-branch "$REPO_URL" "$REPO_DIR"
           else
             echo "Using cached clone at $REPO_DIR"
           fi
 
           git -C "$REPO_DIR" remote set-url origin "$REPO_URL"
-          git -C "$REPO_DIR" fetch origin main
+          git -C "$REPO_DIR" fetch --depth 1 origin main
           git -C "$REPO_DIR" checkout -B main origin/main
           git -C "$REPO_DIR" reset --hard origin/main
 
