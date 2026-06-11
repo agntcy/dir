@@ -20,6 +20,11 @@ apiserver:
     # Default: false
     enabled: false
 
+    ## Public URL for the HTTP gateway (optional)
+    # This is the URL that clients will use to access the HTTP gateway.
+    # It is used in the server configuration for generating correct links and CORS settings.
+    publicURL: "example.com"
+
     # Port for the HTTP gateway endpoint
     # Default: 8889
     port: 8889
