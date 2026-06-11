@@ -11,8 +11,8 @@ import (
 
 func init() {
 	register(Migration{
-		ID:      "01_catalog_sync",
-		Details: "Sync the database by dropping existing fields to regenrate index data.",
+		ID:      "001_catalog_sync",
+		Details: "Sync the database by dropping existing fields to regenerate index data.",
 		Run: func(db *gorm.DB) error {
 			// Drop tables to force regeneration of index data. This is a brute-force approach that
 			// will cause downtime, but it's simpler than writing a reversible migration that
@@ -24,9 +24,10 @@ func init() {
 					"modules",
 					"skills",
 					"domains",
+					"locators",
 					"annotations",
-					"signature_verifications",
 					"name_verifications",
+					"signature_verifications",
 				); err != nil {
 				return fmt.Errorf("failed to drop tables for catalog sync: %w", err)
 			}
