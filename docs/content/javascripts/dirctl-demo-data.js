@@ -42,7 +42,7 @@ window.DirctlDemoData = {
   ],
 
   agentDemoScript: [
-    { type: "user", text: "Help me triage open issues on our monorepo." },
+    { type: "user", text: "Help me triage open issues in our repository." },
     { type: "pause", ms: 1400 },
     {
       type: "agent",
@@ -63,32 +63,27 @@ window.DirctlDemoData = {
     { type: "tool", text: 'mcp.add_server("github-mcp-server")' },
     { type: "output", text: "Added github-mcp-server to this session. Ready to use." },
     { type: "pause", ms: 1200 },
-    { type: "user", text: "List the 5 newest open issues in agntcy/dir" },
+    { type: "user", text: "List the 5 latest open issues in acme/example" },
     { type: "pause", ms: 1000 },
     {
       type: "tool",
-      text: 'github-mcp-server.list_issues({ owner: "agntcy", repo: "dir", state: "open", limit: 5 })',
+      text: 'github-mcp-server.list_issues({ owner: "acme", repo: "example", state: "open", limit: 5 })',
     },
     {
       type: "output",
       text:
-        "#455 Call for federation partners\n" +
-        "#442 MCP export format\n" +
-        "#401 Routing search filters\n" +
-        "#388 OIDC gateway notes\n" +
-        "#371 Federation testbed setup",
+        "#42 Improve README examples\n" +
+        "#38 Add retry logic for webhooks\n" +
+        "#31 Document pagination defaults\n" +
+        "#24 Cache dependency lookups\n" +
+        "#19 Parallelize CI workflows",
     },
     { type: "pause", ms: 4000 },
   ],
 
   demoTitles: {
     cli: "user@dir:~",
-    agent: "cursor@workspace:~",
-  },
-
-  tryButtonLabels: {
-    cli: "Try dirctl",
-    agent: "Try it yourself",
+    agent: "agent@workspace:~",
   },
 
   helpText:
@@ -106,7 +101,7 @@ window.DirctlDemoData = {
     "  Describe a task needing GitHub, issues, or triage\n" +
     "  add github-mcp-server   (or: use 1)\n" +
     "  add issue-triage-agent  (or: use 2, use a2a)\n" +
-    "  list open issues in agntcy/dir\n" +
+    "  list open issues in acme/example\n" +
     "  help | clear",
 
   agentSearchResults:
@@ -114,16 +109,16 @@ window.DirctlDemoData = {
     "2. issue-triage-agent    A2A · protocol 0.2.6",
 
   agentIssueList:
-    "#455 Call for federation partners\n" +
-    "#442 MCP export format\n" +
-    "#401 Routing search filters\n" +
-    "#388 OIDC gateway notes\n" +
-    "#371 Federation testbed setup",
+    "#42 Improve README examples\n" +
+    "#38 Add retry logic for webhooks\n" +
+    "#31 Document pagination defaults\n" +
+    "#24 Cache dependency lookups\n" +
+    "#19 Parallelize CI workflows",
 
   agentA2aSummary:
     "Delegated to issue-triage-agent (A2A).\n" +
-    "Summary: 5 open issues — 2 federation-related, 2 docs/MCP, 1 routing.\n" +
-    "Suggested next: review #455 federation testbed discussion.",
+    "Summary: 5 open issues — 2 documentation, 2 infrastructure, 1 CI.\n" +
+    "Suggested next: review #42 README examples.",
 
   dirctlHelp:
     "Directory CLI (dirctl)\n\n" +

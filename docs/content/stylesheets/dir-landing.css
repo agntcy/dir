@@ -1,0 +1,512 @@
+/* Copyright AGNTCY Contributors (https://github.com/agntcy) */
+/* SPDX-License-Identifier: Apache-2.0 */
+
+/* Landing page (home). Section styles for the redesigned index.md. */
+
+:root {
+  --dir-dark: rgb(0, 20, 43);
+  --dir-yellow: rgb(251, 175, 69);
+  --dir-text-strong: rgb(0, 20, 43);
+  --dir-text-inverse: rgb(232, 233, 234);
+  --dir-border: rgb(213, 223, 247);
+  --dir-card-shadow: 0 4px 40px rgba(207, 222, 255, 0.3);
+  --dir-on-spec: rgb(255, 255, 255);
+  /* Hero CTAs sit on the gradient; keep a fixed light surface in both color schemes. */
+  --dir-hero-btn-bg: rgb(245, 248, 253);
+  --dir-feature-card-bg: var(--md-default-bg-color--lightest);
+  --dir-feature-card-border: var(--dir-border);
+  --dir-feature-card-shadow: var(--dir-card-shadow);
+  --dir-feature-icon-bg: rgb(255, 255, 255);
+  --dir-feature-icon-border: var(--dir-border);
+  --dir-hero-gradient: linear-gradient(
+    101.5deg,
+    rgb(251, 171, 44) 0%,
+    rgb(24, 122, 220) 53%,
+    rgb(0, 20, 43) 100%
+  );
+  --dir-action-btn-bg: rgb(239, 243, 252);
+  --dir-action-btn-bg-active: rgb(255, 255, 255);
+  --dir-action-btn-color: var(--dir-text-strong);
+  --dir-action-btn-border: var(--dir-border);
+  --dir-spec-gradient: linear-gradient(
+    147deg,
+    rgb(13, 39, 77) 15.8%,
+    rgb(0, 81, 175) 50.4%,
+    rgb(251, 175, 69) 84.8%
+  );
+
+  /* Hero: fixed chrome clearance (header + tabs) vs. visible content inset. */
+  --dir-hero-chrome-top: calc(var(--md-header-height) + 3rem);
+  --dir-hero-pad-block: 3.75rem;
+}
+
+[data-md-color-scheme="slate"] {
+  --dir-feature-card-bg: var(--md-code-bg-color);
+  --dir-feature-card-border: rgb(13, 39, 77);
+  --dir-feature-card-shadow: 0 4px 24px rgba(0, 0, 0, 0.35);
+  --dir-feature-icon-bg: var(--md-primary-fg-color);
+  --dir-feature-icon-border: rgb(13, 39, 77);
+  --dir-action-btn-bg: rgb(0, 42, 77);
+  --dir-action-btn-bg-active: rgb(12, 31, 54);
+  --dir-action-btn-color: rgb(227, 227, 227);
+  --dir-action-btn-border: rgb(13, 39, 77);
+}
+
+/* Home page only: MkDocs chrome adjustments for full-bleed hero. */
+.md-content:has(.dir-landing) .md-content__button {
+  display: none;
+}
+
+.md-main__inner:has(.dir-landing) {
+  margin-top: 0;
+}
+
+.md-content:has(.dir-landing) .md-content__inner {
+  padding-top: 0;
+}
+
+.md-content:has(.dir-landing) .md-content__inner::before {
+  display: none;
+}
+
+.md-main:has(.dir-landing) {
+  overflow-x: hidden;
+}
+
+.dir-features,
+.md-typeset .dir-howto,
+.dir-quickstart,
+.md-typeset .dir-spec {
+  margin: 0 auto 3.5rem;
+}
+
+.md-typeset .dir-section-title {
+  font-weight: 300;
+  font-size: 1.6rem;
+  line-height: 1.25;
+  text-align: center;
+  margin: 0 0 1.75rem;
+  color: var(--md-default-fg-color);
+}
+
+.md-typeset .dir-quickstart .dir-section-title {
+  text-align: left;
+}
+
+/* ----------------------------------------------------------------------------
+   Hero
+---------------------------------------------------------------------------- */
+.md-typeset .dir-hero,
+.dir-landing .dir-hero {
+  position: relative;
+  width: 100vw;
+  max-width: 100vw;
+  margin-left: calc(50% - 50vw);
+  margin-right: calc(50% - 50vw);
+  /* Slide under fixed header + tabs so the gradient is full-bleed. */
+  margin-top: calc(-1 * var(--dir-hero-chrome-top));
+  margin-bottom: 3rem;
+  border-radius: 0;
+  background: var(--dir-hero-gradient);
+  padding: var(--dir-hero-chrome-top) 2rem 0;
+  overflow: hidden;
+}
+
+.dir-hero__inner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 1.5rem;
+  max-width: 58rem;
+  margin: 0 auto;
+  padding-block: var(--dir-hero-pad-block);
+}
+
+.md-typeset .dir-hero__title {
+  margin: 0;
+  font-weight: 300;
+  font-size: 2.5rem;
+  line-height: 1.1;
+  color: var(--dir-text-inverse);
+}
+
+.dir-hero__partner {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.dir-hero__partner-text {
+  font-size: 0.9rem;
+  color: var(--dir-text-inverse);
+}
+
+.md-typeset .dir-hero__partner img {
+  display: block;
+  height: 1rem;
+  width: auto;
+  max-width: none;
+}
+
+.md-typeset .dir-hero__tagline {
+  margin: 0;
+  font-weight: 300;
+  font-size: 1.4rem;
+  line-height: 1.3;
+  color: var(--dir-text-inverse);
+}
+
+.dir-hero__flip-wrap {
+  display: inline-block;
+  min-width: 9.5ch;
+  perspective: 500px;
+  vertical-align: baseline;
+}
+
+.dir-hero__flip {
+  display: inline-block;
+  font-weight: 400;
+  transform-origin: center center;
+  backface-visibility: hidden;
+}
+
+.dir-hero__flip.is-flipping-out {
+  animation: dir-hero-flip-out 0.4s ease-in forwards;
+}
+
+.dir-hero__flip.is-flipping-in {
+  animation: dir-hero-flip-in 0.4s ease-out forwards;
+}
+
+@keyframes dir-hero-flip-out {
+  from {
+    transform: rotateY(0deg);
+    opacity: 1;
+  }
+
+  to {
+    transform: rotateY(90deg);
+    opacity: 0;
+  }
+}
+
+@keyframes dir-hero-flip-in {
+  from {
+    transform: rotateY(-90deg);
+    opacity: 0;
+  }
+
+  to {
+    transform: rotateY(0deg);
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dir-hero__flip.is-flipping-out,
+  .dir-hero__flip.is-flipping-in {
+    animation: none;
+  }
+}
+
+.md-typeset .dir-hero__lede {
+  margin: 0;
+  max-width: 52rem;
+  font-weight: 300;
+  font-size: 1rem;
+  line-height: 1.65;
+  color: var(--dir-text-inverse);
+}
+
+.dir-hero__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  justify-content: center;
+  margin-top: 0.5rem;
+}
+
+.md-typeset .dir-hero__btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.65rem 1.8rem;
+  border-radius: 50px;
+  background: var(--dir-hero-btn-bg);
+  color: var(--dir-text-strong);
+  font-size: 1rem;
+  font-weight: 500;
+  text-decoration: none;
+  border: 1px solid transparent;
+  transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+}
+
+.md-typeset .dir-hero__btn:hover {
+  background: rgb(255, 255, 255);
+  transform: translateY(-1px);
+  box-shadow: 0 6px 18px rgba(0, 20, 43, 0.25);
+}
+
+.md-typeset .dir-hero__btn svg,
+.md-typeset .dir-spec__banner svg {
+  fill: currentColor;
+}
+
+.md-typeset .dir-hero__btn svg {
+  height: 1.2em;
+  width: 1.2em;
+}
+
+/* ----------------------------------------------------------------------------
+   Feature cards
+---------------------------------------------------------------------------- */
+.dir-features {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1.25rem;
+  width: 100%;
+  max-width: 100%;
+}
+
+.md-typeset .dir-feature-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 1rem;
+  min-width: 0;
+  padding: 1.625rem 1.125rem;
+  border-radius: 10px;
+  background: var(--dir-feature-card-bg);
+  border: 1px solid var(--dir-feature-card-border);
+  box-shadow: var(--dir-feature-card-shadow);
+}
+
+.dir-feature-card__art {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.75rem;
+  height: 2.75rem;
+  border-radius: 12px;
+  background: var(--dir-feature-icon-bg);
+  border: 1px solid var(--dir-feature-icon-border);
+}
+
+.md-typeset .dir-feature-card__art img {
+  display: block;
+  height: 1.375rem;
+  width: 1.375rem;
+  max-width: 100%;
+}
+
+.md-typeset .dir-feature-card__title {
+  margin: 0;
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--md-default-fg-color);
+}
+
+.md-typeset .dir-feature-card__text {
+  margin: 0;
+  font-size: 0.825rem;
+  line-height: 1.55;
+  color: var(--md-default-fg-color--light);
+}
+
+[data-md-color-scheme="slate"] .md-typeset .dir-feature-card__text {
+  color: rgba(227, 227, 227, 0.82);
+}
+
+/* ----------------------------------------------------------------------------
+   How does ADS work — hub & spoke diagram
+---------------------------------------------------------------------------- */
+.dir-graph-wrap {
+  display: flex;
+  justify-content: center;
+  max-width: 64rem;
+  margin: 0 auto;
+}
+
+.md-typeset .dir-graph {
+  width: 100%;
+  height: auto;
+  max-width: 56rem;
+}
+
+/* ----------------------------------------------------------------------------
+   Agentic Resource Discovery Specification (dark)
+---------------------------------------------------------------------------- */
+.md-typeset .dir-spec {
+  background: var(--dir-spec-gradient);
+  border-radius: 20px;
+  padding: 3.75rem;
+  box-shadow: 0 4px 30px rgba(207, 222, 255, 0.3);
+  color: var(--dir-on-spec);
+}
+
+.dir-spec__banner {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.25rem 1rem;
+  border-radius: 20px;
+  background: var(--dir-yellow);
+  color: var(--dir-dark);
+  font-size: 0.9rem;
+  font-weight: 500;
+}
+
+.md-typeset .dir-spec__banner svg {
+  height: 1.1em;
+  width: 1.1em;
+}
+
+.md-typeset .dir-spec__title {
+  margin: 2rem 0 0;
+  font-weight: 300;
+  font-size: 1.6rem;
+  color: var(--dir-on-spec);
+}
+
+.md-typeset .dir-spec__intro {
+  margin: 1.25rem 0 0;
+  max-width: 38rem;
+  font-size: 1rem;
+  line-height: 1.65;
+  color: var(--dir-on-spec);
+}
+
+.md-typeset .dir-spec__label {
+  margin: 2.75rem 0 0;
+  font-size: 0.85rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--dir-on-spec);
+}
+
+.dir-spec__partners {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  gap: 1.5rem;
+  margin-top: 1.75rem;
+}
+
+.md-typeset .dir-spec__logo {
+  display: block;
+  height: 1.75rem;
+  width: auto;
+  max-width: 100%;
+  opacity: 0.95;
+}
+
+.md-typeset .dir-spec__logo--hf {
+  height: 2.5rem;
+}
+
+.dir-spec__stack {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1.5rem;
+  margin-top: 1.5rem;
+}
+
+.md-typeset .dir-spec-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  min-width: 0;
+  padding: 1.25rem;
+  border-radius: 8px;
+  background: var(--dir-dark);
+  color: var(--dir-on-spec);
+}
+
+.md-typeset .dir-spec-card__kicker {
+  margin: 0;
+  font-size: 0.8rem;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.75);
+}
+
+.md-typeset .dir-spec-card__name {
+  margin: 0;
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--dir-on-spec);
+}
+
+.md-typeset .dir-spec-card__text {
+  margin: 0;
+  font-size: 0.825rem;
+  line-height: 1.55;
+  color: rgba(255, 255, 255, 0.9);
+}
+
+/* ----------------------------------------------------------------------------
+   Responsive
+---------------------------------------------------------------------------- */
+@media screen and (max-width: 76.1875em) {
+  .dir-spec__stack {
+    gap: 1rem;
+  }
+
+  .md-typeset .dir-spec-card {
+    padding: 1.125rem 1rem;
+  }
+
+  .dir-features {
+    gap: 1rem;
+  }
+
+  .md-typeset .dir-feature-card {
+    padding: 1.5rem 1rem;
+  }
+}
+
+@media screen and (max-width: 59.9375em) {
+  :root {
+    --dir-hero-pad-block: 2.75rem;
+  }
+
+  .md-typeset .dir-hero,
+  .dir-landing .dir-hero {
+    padding: var(--dir-hero-chrome-top) 1.25rem 0;
+  }
+
+  .md-typeset .dir-hero__title {
+    font-size: 2rem;
+  }
+
+  .md-typeset .dir-hero__tagline {
+    font-size: 1.2rem;
+  }
+
+  .dir-features {
+    grid-template-columns: 1fr;
+    gap: 1.25rem;
+  }
+
+  .md-typeset .dir-feature-card {
+    padding: 1.625rem 1.125rem;
+  }
+
+  .dir-spec__stack {
+    grid-template-columns: 1fr;
+  }
+
+  .md-typeset .dir-spec {
+    padding: 2rem 1.5rem;
+  }
+
+  .dir-spec__partners {
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 1.5rem 2rem;
+  }
+}

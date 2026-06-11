@@ -6,46 +6,106 @@ hide:
 
 ---
 
-<div class="landing-hero">
-  <div class="centered-logo-text-group">
-    <h1>Agent Directory Service</h1>
+<div class="dir-landing">
+
+<section class="dir-hero">
+  <div class="dir-hero__inner">
+    <h1 class="dir-hero__title">Agent Directory Service</h1>
+    <div class="dir-hero__partner">
+      <span class="dir-hero__partner-text">part of</span>
+      <a
+        href="https://www.linuxfoundation.org/press/linux-foundation-welcomes-the-agntcy-project-to-standardize-open-multi-agent-system-infrastructure-and-break-down-ai-agent-silos"
+        target="_blank"
+        rel="noopener noreferrer"
+      >
+        <img src="assets/lf-horizontal-white.png" alt="Linux Foundation" />
+      </a>
+    </div>
+    <p class="dir-hero__tagline">
+      One federated registry for cross-<span class="dir-hero__flip-wrap"><span class="dir-hero__flip" data-words="framework,protocol,registry" aria-live="polite">framework</span></span> agent discovery.
+    </p>
+    <p class="dir-hero__lede">
+      An open-source, framework-agnostic registry for managing the full agent lifecycle.
+      ADS provides a federated control plane to publish, verify, and discover agents across
+      any vendor or platform, enabling seamless interoperability for complex, multi-agent workflows.
+    </p>
+    <div class="dir-hero__actions">
+      <a class="dir-hero__btn" href="#quick-start">
+        Quick start
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4l-1.41 1.41L16.17 11H4v2h12.17l-5.58 5.59L12 20l8-8z"/></svg>
+      </a>
+      <a class="dir-hero__btn" href="https://github.com/agntcy/dir" target="_blank" rel="noopener noreferrer">
+        GitHub
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 .5C5.73.5.5 5.73.5 12c0 5.08 3.29 9.39 7.86 10.91.58.11.79-.25.79-.56 0-.28-.01-1.02-.02-2-3.2.7-3.88-1.54-3.88-1.54-.53-1.34-1.29-1.7-1.29-1.7-1.05-.72.08-.71.08-.71 1.16.08 1.77 1.19 1.77 1.19 1.03 1.77 2.7 1.26 3.36.96.1-.75.4-1.26.73-1.55-2.55-.29-5.23-1.28-5.23-5.69 0-1.26.45-2.29 1.19-3.1-.12-.29-.52-1.46.11-3.05 0 0 .97-.31 3.18 1.18a11.1 11.1 0 0 1 5.8 0c2.2-1.49 3.17-1.18 3.17-1.18.63 1.59.23 2.76.11 3.05.74.81 1.19 1.84 1.19 3.1 0 4.42-2.69 5.39-5.25 5.68.41.36.78 1.06.78 2.14 0 1.55-.01 2.8-.01 3.18 0 .31.21.68.8.56A11.51 11.51 0 0 0 23.5 12C23.5 5.73 18.27.5 12 .5z"/></svg>
+      </a>
+    </div>
   </div>
-  <div class="lf-partner-badge">
-    <span class="lf-partner-badge__text">part of</span>
-    <a
-      href="https://www.linuxfoundation.org/press/linux-foundation-welcomes-the-agntcy-project-to-standardize-open-multi-agent-system-infrastructure-and-break-down-ai-agent-silos"
-      target="_blank"
-      rel="noopener noreferrer"
-    >
-      <img
-        src="assets/lf-horizontal-black.png"
-        alt="Linux Foundation"
-        class="logo-light lf-partner-badge__logo"
-      />
-      <img
-        src="assets/lf-horizontal-white.png"
-        alt="Linux Foundation"
-        class="logo-dark lf-partner-badge__logo"
-      />
-    </a>
+</section>
+
+<div class="dir-features">
+  <div class="dir-feature-card">
+    <div class="dir-feature-card__art">
+      <img src="assets/landing/feature-discovery.svg" alt="" loading="lazy" />
+    </div>
+    <p class="dir-feature-card__title">Capability-Based Discovery</p>
+    <p class="dir-feature-card__text">
+      Publish and find agents by structured skills and attributes using OASF taxonomies
+      and content routing across a distributed network of directory servers.
+    </p>
+  </div>
+  <div class="dir-feature-card">
+    <div class="dir-feature-card__art">
+      <img src="assets/landing/feature-federation.svg" alt="" loading="lazy" />
+    </div>
+    <p class="dir-feature-card__title">Federated Architecture</p>
+    <p class="dir-feature-card__text">
+      Interconnect directory instances through DHT-based content routing, enabling
+      decentralized discovery without a single central registry.
+    </p>
+  </div>
+  <div class="dir-feature-card">
+    <div class="dir-feature-card__art">
+      <img src="assets/landing/feature-trust.svg" alt="" loading="lazy" />
+    </div>
+    <p class="dir-feature-card__title">Verifiable Claims</p>
+    <p class="dir-feature-card__text">
+      Cryptographic integrity and provenance for directory records help users make
+      informed decisions about agent selection and trust.
+    </p>
   </div>
 </div>
 
-<p class="landing-lede">
-  Open-source discovery layer for the Internet of Agents. Publish structured agent metadata and find others by capability, trust, and federation.
-</p>
+<section class="dir-howto">
+  <h2 class="dir-section-title">Publish, verify, and discover</h2>
+  <div class="dir-graph-wrap">
+    <img
+      src="assets/dir-graph-light.svg"
+      alt="Agent Directory Service architecture: agents, directory nodes, and discovery across a federated network"
+      class="dir-graph logo-light"
+      loading="lazy"
+    />
+    <img
+      src="assets/dir-graph-dark.svg"
+      alt=""
+      class="dir-graph logo-dark"
+      loading="lazy"
+      aria-hidden="true"
+    />
+  </div>
+</section>
 
-## See it in action
+<section class="dir-quickstart">
+<h2 class="dir-section-title" id="quick-start">Quick start</h2>
 
 <section class="dirctl-terminal-section">
   <div class="dirctl-terminal-layout">
     <div class="dirctl-terminal-main">
       <div class="dirctl-terminal" data-mode="demo">
         <div class="dirctl-terminal-bar">
-          <span class="dirctl-terminal-title">cursor@workspace:~</span>
+          <span class="dirctl-terminal-title">agent@workspace:~</span>
           <div class="dirctl-terminal-controls" aria-hidden="true">
-            <button type="button" class="dirctl-terminal-control" data-term="min" title="Minimize">&#8211;</button>
-            <button type="button" class="dirctl-terminal-control dirctl-terminal-control-close" data-term="close" title="Close">&#10005;</button>
+            <span class="dirctl-terminal-control">&#8211;</span>
+            <span class="dirctl-terminal-control dirctl-terminal-control-close">&#10005;</span>
           </div>
         </div>
         <pre
@@ -71,65 +131,30 @@ hide:
           />
         </form>
       </div>
+    </div>
+    <div class="dirctl-terminal-side">
       <div class="dirctl-terminal-actions">
-        <div class="dirctl-terminal-demo-level">
-          <button type="button" class="dirctl-terminal-btn is-active" data-demo-level="agent">With your agent</button>
-          <button type="button" class="dirctl-terminal-btn" data-demo-level="cli">CLI basics</button>
-        </div>
+        <button type="button" class="dirctl-terminal-btn is-active" data-demo-level="agent">With your agent</button>
+        <button type="button" class="dirctl-terminal-btn" data-demo-level="cli">CLI basics</button>
         <button type="button" class="dirctl-terminal-btn" data-mode-switch="try">Try it yourself</button>
-        <button type="button" class="dirctl-terminal-btn" data-mode-switch="demo" hidden>Back to demo</button>
         <button type="button" class="dirctl-terminal-btn dirctl-terminal-reopen" hidden>Reopen terminal</button>
       </div>
-    </div>
-    <div class="dirctl-terminal-intro-group">
-      <p class="dirctl-terminal-intro" data-intro-level="cli" hidden>
-        Publish and discover agent records in a few commands.
-        Install the real CLI from the <a href="dir/dir-quickstart.md">Quickstart</a>.
-      </p>
-      <p class="dirctl-terminal-intro" data-intro-level="agent">
-        Need a skill, MCP server, or A2A partner? Your agent searches the Directory,
-        wires it in, and uses it right away. See the
-        <a href="dir/dir-component-mcp-server.md">MCP server</a> for more details.
-      </p>
+      <div class="dirctl-terminal-intro-group">
+        <p class="dirctl-terminal-intro" data-intro-level="cli" hidden>
+          Publish and discover agent records in a few commands.
+          Install the real CLI from the <a href="dir/dir-quickstart.md">Quickstart</a>.
+        </p>
+        <p class="dirctl-terminal-intro" data-intro-level="agent">
+          Need a skill, MCP server, or A2A partner? Your agent searches the Directory,
+          wires it in, and uses it right away. See the
+          <a href="dir/dir-component-mcp-server.md">MCP server</a> for more details.
+        </p>
+      </div>
     </div>
   </div>
 </section>
+</section>
 
-## Why use the Agent Directory Service
-
-<div class="grid cards" markdown>
-
-- :material-magnify:{ .lg .middle } **Capability-Based Discovery**
-
-    Publish and find agents by structured skills and attributes using OASF taxonomies
-    and content routing across a distributed network of directory servers.
-
-- :material-lan:{ .lg .middle } **Federated Architecture**
-
-    Interconnect directory instances through DHT-based content routing, enabling
-    decentralized discovery without a single central registry.
-
-- :material-shield-check:{ .lg .middle } **Verifiable Claims**
-
-    Cryptographic integrity and provenance for directory records help users make
-    informed decisions about agent selection and trust.
-
-</div>
-
-<div class="landing-graph">
-  <img
-    src="assets/dir-graph-light.svg"
-    alt="Agent Directory Service architecture: agents, directory nodes, and discovery across a federated network"
-    class="dir-graph logo-light"
-    loading="lazy"
-  />
-  <img
-    src="assets/dir-graph-dark.svg"
-    alt=""
-    class="dir-graph logo-dark"
-    loading="lazy"
-    aria-hidden="true"
-  />
 </div>
 
 ## Get started with ADS
@@ -172,11 +197,12 @@ hide:
 
     [:octicons-arrow-right-24: Production Deployment](dir/dir-prod-deployment.md)
 
-- :fontawesome-brands-github:{ .lg .middle } **Source Code**
+- :material-newspaper-variant-outline:{ .lg .middle } **Linux Foundation Press Release**
 
-    Reference implementation and related repositories.
+    Read how the Linux Foundation welcomed the AGNTCY project to standardize open
+    multi-agent system infrastructure and break down AI agent silos.
 
-    [:octicons-arrow-right-24: github.com/agntcy/dir](https://github.com/agntcy/dir)
+    [:octicons-arrow-right-24: LF press release](https://www.linuxfoundation.org/press/linux-foundation-welcomes-the-agntcy-project-to-standardize-open-multi-agent-system-infrastructure-and-break-down-ai-agent-silos)
 
 - :material-lan-connect:{ .lg .middle } **Join the Federation Testbed**
 
@@ -187,12 +213,5 @@ hide:
     [:octicons-arrow-right-24: Call for federation partners](https://github.com/agntcy/dir/discussions/455)
 
     [:octicons-arrow-right-24: Federated Directory setup](dir/dir-federation-setup.md)
-
-- :material-newspaper-variant-outline:{ .lg .middle } **Linux Foundation Press Release**
-
-    Read how the Linux Foundation welcomed the AGNTCY project to standardize open
-    multi-agent system infrastructure and break down AI agent silos.
-
-    [:octicons-arrow-right-24: LF press release](https://www.linuxfoundation.org/press/linux-foundation-welcomes-the-agntcy-project-to-standardize-open-multi-agent-system-infrastructure-and-break-down-ai-agent-silos)
 
 </div>

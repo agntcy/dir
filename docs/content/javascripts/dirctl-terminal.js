@@ -33,9 +33,7 @@
     var inputForm = section.querySelector(".dirctl-terminal-input");
     var input = section.querySelector(".dirctl-terminal-command");
     var tryBtn = section.querySelector('[data-mode-switch="try"]');
-    var demoBtn = section.querySelector('[data-mode-switch="demo"]');
     var reopenBtn = section.querySelector(".dirctl-terminal-reopen");
-    var demoLevelBar = section.querySelector(".dirctl-terminal-demo-level");
     var titleEl = section.querySelector(".dirctl-terminal-title");
     var promptEl = section.querySelector(".dirctl-terminal-prompt");
     var introEls = section.querySelectorAll(".dirctl-terminal-intro[data-intro-level]");
@@ -76,24 +74,30 @@
       return data.demoScript || [];
     }
 
+    function updateActionChrome() {
+      var activeLevel = state.mode === "try" ? state.tryLevel : state.demoLevel;
+      introEls.forEach(function (el) {
+        el.hidden = el.getAttribute("data-intro-level") !== activeLevel;
+      });
+      section.querySelectorAll("[data-demo-level]").forEach(function (btn) {
+        btn.classList.toggle(
+          "is-active",
+          state.mode === "demo" &&
+            btn.getAttribute("data-demo-level") === state.demoLevel
+        );
+      });
+      if (tryBtn) {
+        tryBtn.classList.toggle("is-active", state.mode === "try");
+      }
+    }
+
     function updateDemoChrome() {
       var data = getData();
       var titles = data.demoTitles || {};
-      var tryLabels = data.tryButtonLabels || {};
       if (titleEl) {
         titleEl.textContent = titles[state.demoLevel] || titles.cli || "user@dir:~";
       }
-      if (tryBtn) {
-        tryBtn.textContent =
-          tryLabels[state.demoLevel] || tryLabels.cli || "Try it";
-      }
-      introEls.forEach(function (el) {
-        var level = el.getAttribute("data-intro-level");
-        el.hidden = level !== state.demoLevel;
-      });
-      section.querySelectorAll("[data-demo-level]").forEach(function (btn) {
-        btn.classList.toggle("is-active", btn.getAttribute("data-demo-level") === state.demoLevel);
-      });
+      updateActionChrome();
     }
 
     function formatDemoLine(step) {
@@ -118,7 +122,7 @@
       var titles = data.demoTitles || {};
       if (state.tryLevel === "agent") {
         if (titleEl) {
-          titleEl.textContent = titles.agent || "cursor@workspace:~";
+          titleEl.textContent = titles.agent || "agent@workspace:~";
         }
         if (promptEl) {
           promptEl.textContent = promptEl.getAttribute("data-prompt-agent") || ">";
@@ -159,12 +163,8 @@
         output.innerHTML = "";
         resetAgentTryState();
         inputForm.hidden = false;
-        tryBtn.hidden = true;
-        demoBtn.hidden = false;
-        if (demoLevelBar) {
-          demoLevelBar.hidden = true;
-        }
         updateTryChrome();
+        updateActionChrome();
         input.focus();
         if (state.tryLevel === "agent") {
           appendTryLine("Describe a task that needs a skill, MCP server, or A2A partner.", "muted");
@@ -173,11 +173,6 @@
         }
       } else {
         inputForm.hidden = true;
-        tryBtn.hidden = false;
-        demoBtn.hidden = true;
-        if (demoLevelBar) {
-          demoLevelBar.hidden = false;
-        }
         output.innerHTML = "";
         resetAgentTryState();
         updateDemoChrome();
@@ -186,7 +181,12 @@
     }
 
     function setDemoLevel(level) {
-      if (state.demoLevel === level || state.mode !== "demo") {
+      if (state.mode === "try") {
+        state.demoLevel = level;
+        setMode("demo");
+        return;
+      }
+      if (state.demoLevel === level) {
         return;
       }
       state.demoLevel = level;
@@ -333,7 +333,15 @@
       }
 
       if (
-        matchesAny(lower, ["list issue", "open issue", "show issue", "newest issue", "agntcy/dir"])
+        matchesAny(lower, [
+          "list issue",
+          "open issue",
+          "show issue",
+          "latest issue",
+          "newest issue",
+          "acme/example",
+          "acme",
+        ])
       ) {
         if (!state.agentTool) {
           appendTryLine("Add a capability first: add github-mcp-server or add issue-triage-agent", "agent");
@@ -341,7 +349,7 @@
         }
         if (state.agentTool === "github-mcp-server") {
           appendTryLine(
-            'github-mcp-server.list_issues({ owner: "agntcy", repo: "dir", state: "open", limit: 5 })',
+            'github-mcp-server.list_issues({ owner: "acme", repo: "example", state: "open", limit: 5 })',
             "tool"
           );
           appendTryLine(data.agentIssueList || "(no issues found)");
@@ -354,7 +362,7 @@
 
       if (
         !state.agentSearched &&
-        matchesAny(lower, ["issue", "triage", "github", "monorepo", "repo", "mcp", "a2a", "skill"])
+        matchesAny(lower, ["issue", "triage", "github", "repository", "repo", "mcp", "a2a", "skill"])
       ) {
         runAgentSearch();
         appendTryLine('Say add github-mcp-server (or use 1), then ask for open issues.', "agent");
@@ -628,23 +636,6 @@
       state.demoObserver.observe(output);
     }
 
-    terminal.querySelectorAll("[data-term]").forEach(function (btn) {
-      btn.addEventListener("click", function () {
-        var action = btn.getAttribute("data-term");
-        if (action === "min") {
-          terminal.classList.toggle("dirctl-terminal-min");
-        } else if (action === "close") {
-          clearDemoTimer();
-          terminal.classList.add("dirctl-terminal-closed");
-          terminal.classList.remove("dirctl-terminal-min");
-          if (reopenBtn) {
-            reopenBtn.classList.add("show");
-            reopenBtn.hidden = false;
-          }
-        }
-      });
-    });
-
     if (reopenBtn) {
       reopenBtn.addEventListener("click", function () {
         terminal.classList.remove("dirctl-terminal-closed", "dirctl-terminal-min");
@@ -661,12 +652,6 @@
     if (tryBtn) {
       tryBtn.addEventListener("click", function () {
         setMode("try");
-      });
-    }
-
-    if (demoBtn) {
-      demoBtn.addEventListener("click", function () {
-        setMode("demo");
       });
     }
 
