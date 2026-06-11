@@ -96,30 +96,6 @@ window.DirctlDemoData = {
     "  dirctl routing list\n" +
     "  help | clear",
 
-  agentHelpText:
-    "Talk to the agent like you would in Cursor or Claude Code:\n" +
-    "  Describe a task needing GitHub, issues, or triage\n" +
-    "  add github-mcp-server   (or: use 1)\n" +
-    "  add issue-triage-agent  (or: use 2, use a2a)\n" +
-    "  list open issues in acme/example\n" +
-    "  help | clear",
-
-  agentSearchResults:
-    "1. github-mcp-server     MCP · stdio\n" +
-    "2. issue-triage-agent    A2A · protocol 0.2.6",
-
-  agentIssueList:
-    "#42 Improve README examples\n" +
-    "#38 Add retry logic for webhooks\n" +
-    "#31 Document pagination defaults\n" +
-    "#24 Cache dependency lookups\n" +
-    "#19 Parallelize CI workflows",
-
-  agentA2aSummary:
-    "Delegated to issue-triage-agent (A2A).\n" +
-    "Summary: 5 open issues — 2 documentation, 2 infrastructure, 1 CI.\n" +
-    "Suggested next: review #42 README examples.",
-
   dirctlHelp:
     "Directory CLI (dirctl)\n\n" +
     "Usage:\n" +

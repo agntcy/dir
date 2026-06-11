@@ -128,8 +128,6 @@ hide:
           <label
             class="dirctl-terminal-prompt"
             for="dirctl-terminal-command"
-            data-prompt-cli="user@dir:~$"
-            data-prompt-agent="&gt;"
           >user@dir:~$</label>
           <input
             id="dirctl-terminal-command"
@@ -137,7 +135,7 @@ hide:
             type="text"
             autocomplete="off"
             spellcheck="false"
-            aria-label="Enter a command"
+            aria-label="Enter a dirctl command"
           />
         </form>
       </div>
@@ -152,12 +150,16 @@ hide:
       <div class="dirctl-terminal-intro-group">
         <p class="dirctl-terminal-intro" data-intro-level="cli" hidden>
           Publish and discover agent records in a few commands.
-          Install the real CLI from the <a href="dir/dir-quickstart.md">Quickstart</a>.
+          Install the real CLI from the <a href="dir/dir-quickstart">Quickstart</a>.
+        </p>
+        <p class="dirctl-terminal-intro" data-intro-level="try" hidden>
+          Use <code>dirctl --help</code> to see available commands.
+          See the <a href="dir/dir-cli-reference">CLI reference</a> for more details.
         </p>
         <p class="dirctl-terminal-intro" data-intro-level="agent">
           Need a skill, MCP server, or A2A partner? Your agent searches the Directory,
           wires it in, and uses it right away. See the
-          <a href="dir/dir-component-mcp-server.md">MCP server</a> for more details.
+          <a href="dir/dir-component-mcp-server">MCP server</a> for more details.
         </p>
       </div>
     </div>

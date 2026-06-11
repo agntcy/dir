@@ -1,7 +1,7 @@
 /* Copyright AGNTCY Contributors (https://github.com/agntcy) */
 /* SPDX-License-Identifier: Apache-2.0 */
 
-/* Home-page dirctl terminal: scripted demo + limited try-it shell. */
+/* Home-page dirctl terminal: scripted demos + dirctl try-it shell. */
 (function () {
   var CURSOR = '<span class="dirctl-terminal-cursor">|</span>';
   var TYPE_MS = 32;
@@ -47,12 +47,9 @@
     var state = {
       mode: "demo",
       demoLevel: "agent",
-      tryLevel: "agent",
       daemonRunning: false,
       lastCid: getData().demoCid || "",
       published: false,
-      agentSearched: false,
-      agentTool: null,
       tryHistory: [],
       demoTimer: null,
       demoObserver: null,
@@ -75,7 +72,7 @@
     }
 
     function updateActionChrome() {
-      var activeLevel = state.mode === "try" ? state.tryLevel : state.demoLevel;
+      var activeLevel = state.mode === "try" ? "try" : state.demoLevel;
       introEls.forEach(function (el) {
         el.hidden = el.getAttribute("data-intro-level") !== activeLevel;
       });
@@ -120,32 +117,15 @@
     function updateTryChrome() {
       var data = getData();
       var titles = data.demoTitles || {};
-      if (state.tryLevel === "agent") {
-        if (titleEl) {
-          titleEl.textContent = titles.agent || "agent@workspace:~";
-        }
-        if (promptEl) {
-          promptEl.textContent = promptEl.getAttribute("data-prompt-agent") || ">";
-        }
-        if (input) {
-          input.setAttribute("aria-label", "Message the agent");
-        }
-      } else {
-        if (titleEl) {
-          titleEl.textContent = titles.cli || "user@dir:~";
-        }
-        if (promptEl) {
-          promptEl.textContent = promptEl.getAttribute("data-prompt-cli") || "user@dir:~$";
-        }
-        if (input) {
-          input.setAttribute("aria-label", "Enter a dirctl command");
-        }
+      if (titleEl) {
+        titleEl.textContent = titles.cli || "user@dir:~";
       }
-    }
-
-    function resetAgentTryState() {
-      state.agentSearched = false;
-      state.agentTool = null;
+      if (promptEl) {
+        promptEl.textContent = "user@dir:~$";
+      }
+      if (input) {
+        input.setAttribute("aria-label", "Enter a dirctl command");
+      }
     }
 
     function setMode(mode) {
@@ -154,27 +134,20 @@
       terminal.setAttribute("data-mode", mode);
 
       if (mode === "try") {
-        state.tryLevel = state.demoLevel;
         state.demoRunning = false;
         if (state.demoObserver) {
           state.demoObserver.disconnect();
           state.demoObserver = null;
         }
         output.innerHTML = "";
-        resetAgentTryState();
         inputForm.hidden = false;
         updateTryChrome();
         updateActionChrome();
         input.focus();
-        if (state.tryLevel === "agent") {
-          appendTryLine("Describe a task that needs a skill, MCP server, or A2A partner.", "muted");
-        } else {
-          appendTryLine("Type a command or enter help for suggestions.", "muted");
-        }
+        appendTryLine("Type a command or enter help for suggestions.", "muted");
       } else {
         inputForm.hidden = true;
         output.innerHTML = "";
-        resetAgentTryState();
         updateDemoChrome();
         startDemoObserver();
       }
@@ -201,15 +174,6 @@
         className = "dirctl-terminal-muted";
       } else if (kind === "err") {
         className = "dirctl-terminal-err";
-      } else if (kind === "user") {
-        className = "dirctl-terminal-user";
-        prefix = "> ";
-      } else if (kind === "agent") {
-        className = "dirctl-terminal-agent";
-        prefix = "● ";
-      } else if (kind === "tool") {
-        className = "dirctl-terminal-tool";
-        prefix = "→ ";
       } else if (kind === "command") {
         className = "dirctl-terminal-cmd";
         prefix = "$ ";
@@ -263,121 +227,6 @@
         return false;
       }
       return true;
-    }
-
-    function matchesAny(text, terms) {
-      return terms.some(function (term) {
-        return text.indexOf(term) !== -1;
-      });
-    }
-
-    function runAgentSearch() {
-      var data = getData();
-      state.agentSearched = true;
-      appendTryLine(
-        "I need GitHub access. Searching the Directory for an MCP server or A2A agent...",
-        "agent"
-      );
-      appendTryLine(
-        'agntcy_dir_search_local({ module: "integration/mcp", skill: "issue_tracking" })',
-        "tool"
-      );
-      appendTryLine(data.agentSearchResults || "No matches found.");
-    }
-
-    function addAgentTool(toolName) {
-      if (!state.agentSearched) {
-        appendTryLine("Search the Directory first — describe a task that needs GitHub or triage.", "agent");
-        return;
-      }
-      if (toolName === "github-mcp-server") {
-        state.agentTool = "github-mcp-server";
-        appendTryLine('mcp.add_server("github-mcp-server")', "tool");
-        appendTryLine("Added github-mcp-server to this session. Ready to use.");
-        return;
-      }
-      if (toolName === "issue-triage-agent") {
-        state.agentTool = "issue-triage-agent";
-        appendTryLine('a2a.connect("issue-triage-agent")', "tool");
-        appendTryLine("Connected to issue-triage-agent (A2A). Ready to delegate.");
-        return;
-      }
-      appendTryLine("Unknown capability. Try: add github-mcp-server or add issue-triage-agent", "err");
-    }
-
-    function handleAgentTryInput(line) {
-      var trimmed = line.trim();
-      var lower = trimmed.toLowerCase();
-      var data = getData();
-
-      appendTryLine(trimmed, "user");
-      state.tryHistory.push(trimmed);
-
-      if (lower === "help") {
-        appendTryLine(data.agentHelpText || "Describe a task for the agent.");
-        return;
-      }
-      if (lower === "clear") {
-        output.innerHTML = "";
-        resetAgentTryState();
-        return;
-      }
-
-      if (lower === "use 1" || lower.indexOf("add github") !== -1 || lower.indexOf("use github-mcp") !== -1) {
-        addAgentTool("github-mcp-server");
-        return;
-      }
-      if (lower === "use 2" || lower.indexOf("add issue-triage") !== -1 || lower.indexOf("use a2a") !== -1) {
-        addAgentTool("issue-triage-agent");
-        return;
-      }
-
-      if (
-        matchesAny(lower, [
-          "list issue",
-          "open issue",
-          "show issue",
-          "latest issue",
-          "newest issue",
-          "acme/example",
-          "acme",
-        ])
-      ) {
-        if (!state.agentTool) {
-          appendTryLine("Add a capability first: add github-mcp-server or add issue-triage-agent", "agent");
-          return;
-        }
-        if (state.agentTool === "github-mcp-server") {
-          appendTryLine(
-            'github-mcp-server.list_issues({ owner: "acme", repo: "example", state: "open", limit: 5 })',
-            "tool"
-          );
-          appendTryLine(data.agentIssueList || "(no issues found)");
-          return;
-        }
-        appendTryLine("issue-triage-agent.delegate({ task: \"triage open issues\" })", "tool");
-        appendTryLine(data.agentA2aSummary || "A2A agent completed the task.");
-        return;
-      }
-
-      if (
-        !state.agentSearched &&
-        matchesAny(lower, ["issue", "triage", "github", "repository", "repo", "mcp", "a2a", "skill"])
-      ) {
-        runAgentSearch();
-        appendTryLine('Say add github-mcp-server (or use 1), then ask for open issues.', "agent");
-        return;
-      }
-
-      if (state.agentSearched && !state.agentTool) {
-        appendTryLine("Pick a match: add github-mcp-server (1) or add issue-triage-agent (2)", "agent");
-        return;
-      }
-
-      appendTryLine(
-        "Try describing a task (issues, GitHub, triage) or type help.",
-        "agent"
-      );
     }
 
     function handleCliTryInput(line) {
@@ -493,11 +342,7 @@
       if (!line.trim()) {
         return;
       }
-      if (state.tryLevel === "agent") {
-        handleAgentTryInput(line);
-      } else {
-        handleCliTryInput(line);
-      }
+      handleCliTryInput(line);
     }
 
     function renderDemoBlock(doneLines, partial) {
@@ -651,6 +496,7 @@
 
     if (tryBtn) {
       tryBtn.addEventListener("click", function () {
+        state.demoLevel = "cli";
         setMode("try");
       });
     }
