@@ -11,6 +11,7 @@ import (
 	"time"
 
 	catalogv1 "github.com/agntcy/dir/api/catalog/v1"
+	coretypes "github.com/agntcy/dir/api/core/types"
 	corev1 "github.com/agntcy/dir/api/core/v1"
 	routingv1 "github.com/agntcy/dir/api/routing/v1"
 	signv1 "github.com/agntcy/dir/api/sign/v1"
@@ -67,7 +68,7 @@ func TestTask_GetRecordTimeout_Zero_UsesDefault(t *testing.T) {
 
 func TestTask_Run_NoRecords_ReturnsNil(t *testing.T) {
 	db := &fakeSignatureDB{
-		getRecordsNeedingSignatureVerification: func(time.Duration) ([]types.Record, error) {
+		getRecordsNeedingSignatureVerification: func(time.Duration) ([]coretypes.Record, error) {
 			return nil, nil
 		},
 	}
@@ -81,7 +82,7 @@ func TestTask_Run_NoRecords_ReturnsNil(t *testing.T) {
 func TestTask_Run_DBError_ReturnsError(t *testing.T) {
 	wantErr := errors.New("db unavailable")
 	db := &fakeSignatureDB{
-		getRecordsNeedingSignatureVerification: func(time.Duration) ([]types.Record, error) {
+		getRecordsNeedingSignatureVerification: func(time.Duration) ([]coretypes.Record, error) {
 			return nil, wantErr
 		},
 	}
@@ -100,8 +101,8 @@ func TestTask_Run_WithOneRecord_NoSignatures_NoUpsert(t *testing.T) {
 	upsertCount := 0
 
 	db := &fakeSignatureDB{
-		getRecordsNeedingSignatureVerification: func(time.Duration) ([]types.Record, error) {
-			return []types.Record{&fakeRecord{cid: testCID}}, nil
+		getRecordsNeedingSignatureVerification: func(time.Duration) ([]coretypes.Record, error) {
+			return []coretypes.Record{&fakeRecord{cid: testCID}}, nil
 		},
 		upsertSignatureVerification: func(types.SignatureVerificationObject) { upsertCount++ },
 	}
@@ -126,8 +127,8 @@ func TestTask_Run_WithOneRecord_VerifyError_Continues(t *testing.T) {
 	const testCID = "test-record-cid"
 
 	db := &fakeSignatureDB{
-		getRecordsNeedingSignatureVerification: func(time.Duration) ([]types.Record, error) {
-			return []types.Record{&fakeRecord{cid: testCID}}, nil
+		getRecordsNeedingSignatureVerification: func(time.Duration) ([]coretypes.Record, error) {
+			return []coretypes.Record{&fakeRecord{cid: testCID}}, nil
 		},
 	}
 	fakeFetcher := &fakeFetcher{
@@ -148,11 +149,11 @@ func TestTask_Run_WithOneRecord_VerifyError_Continues(t *testing.T) {
 // fakeRecord implements types.Record for tests (signature task only uses GetCid).
 type fakeRecord struct {
 	cid string
+
+	coretypes.Record
 }
 
 func (r *fakeRecord) GetCid() string { return r.cid }
-
-func (r *fakeRecord) GetRecordData() (types.RecordData, error) { return nil, nil }
 
 // Ensure fakeFetcher implements verify.Fetcher.
 var _ verify.Fetcher = (*fakeFetcher)(nil)
@@ -182,11 +183,11 @@ func (f *fakeFetcher) PullPublicKeys(ctx context.Context, recordRef *corev1.Reco
 // fakeSignatureDB implements types.DatabaseAPI for tests.
 // GetRecordsNeedingSignatureVerification and UpsertSignatureVerification are configurable.
 type fakeSignatureDB struct {
-	getRecordsNeedingSignatureVerification func(time.Duration) ([]types.Record, error)
+	getRecordsNeedingSignatureVerification func(time.Duration) ([]coretypes.Record, error)
 	upsertSignatureVerification            func(types.SignatureVerificationObject)
 }
 
-func (f *fakeSignatureDB) GetRecordsNeedingSignatureVerification(ttl time.Duration) ([]types.Record, error) {
+func (f *fakeSignatureDB) GetRecordsNeedingSignatureVerification(ttl time.Duration) ([]coretypes.Record, error) {
 	if f.getRecordsNeedingSignatureVerification != nil {
 		return f.getRecordsNeedingSignatureVerification(ttl)
 	}
@@ -194,12 +195,12 @@ func (f *fakeSignatureDB) GetRecordsNeedingSignatureVerification(ttl time.Durati
 	return nil, nil
 }
 
-func (f *fakeSignatureDB) AddRecord(record types.Record) error { return nil }
+func (f *fakeSignatureDB) AddRecord(record coretypes.Record) error { return nil }
 func (f *fakeSignatureDB) GetRecordCIDs(opts ...types.FilterOption) ([]string, error) {
 	return nil, nil
 }
 
-func (f *fakeSignatureDB) GetRecords(opts ...types.FilterOption) ([]types.Record, error) {
+func (f *fakeSignatureDB) GetRecords(opts ...types.FilterOption) ([]coretypes.Record, error) {
 	return nil, nil
 }
 
@@ -253,7 +254,7 @@ func (f *fakeSignatureDB) GetVerificationByCID(cid string) (types.NameVerificati
 	return nil, nil
 }
 
-func (f *fakeSignatureDB) GetRecordsNeedingVerification(ttl time.Duration) ([]types.Record, error) {
+func (f *fakeSignatureDB) GetRecordsNeedingVerification(ttl time.Duration) ([]coretypes.Record, error) {
 	return nil, nil
 }
 

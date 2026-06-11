@@ -6,7 +6,7 @@ package gorm
 import (
 	"time"
 
-	"github.com/agntcy/dir/server/types"
+	coretypes "github.com/agntcy/dir/api/core/types"
 )
 
 type Module struct {
@@ -37,8 +37,13 @@ func (module *Module) GetData() map[string]any {
 	return module.Data
 }
 
+func (module *Module) GetAnnotations() map[string]string {
+	// Modules do not store annotations in the database
+	return nil
+}
+
 // convertModules transforms interface types to Database structs.
-func convertModules(modules []types.Module, recordCID string) []Module {
+func convertModules(modules []coretypes.Module, recordCID string) []Module {
 	result := make([]Module, len(modules))
 	for i, module := range modules {
 		result[i] = Module{

@@ -10,6 +10,7 @@ import (
 	"sync"
 	"time"
 
+	coretypes "github.com/agntcy/dir/api/core/types"
 	corev1 "github.com/agntcy/dir/api/core/v1"
 	routingv1 "github.com/agntcy/dir/api/routing/v1"
 	"github.com/agntcy/dir/server/routing/internal/p2p"
@@ -17,7 +18,6 @@ import (
 	"github.com/agntcy/dir/server/routing/rpc"
 	validators "github.com/agntcy/dir/server/routing/validators"
 	"github.com/agntcy/dir/server/types"
-	"github.com/agntcy/dir/server/types/adapters"
 	"github.com/agntcy/dir/utils/logging"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
@@ -250,7 +250,7 @@ func newRemote(parentCtx context.Context,
 //
 // Returns:
 //   - error: If critical operations fail (validation, CID parsing, DHT announcement)
-func (r *routeRemote) Publish(ctx context.Context, record types.Record) error {
+func (r *routeRemote) Publish(ctx context.Context, record coretypes.Record) error {
 	// Validation
 	if record == nil {
 		return status.Error(codes.InvalidArgument, "record is required") //nolint:wrapcheck
@@ -726,7 +726,15 @@ func (r *routeRemote) handleCIDProviderNotification(ctx context.Context, notif *
 		return
 	}
 
-	adapter := adapters.NewRecordAdapter(record)
+	adapter, err := record.Decode()
+	if err != nil {
+		remoteLogger.Error("Failed to get record adapter for label extraction",
+			"cid", notif.Ref.GetCid(),
+			"peer", peerIDStr,
+			"error", err)
+
+		return
+	}
 
 	labelList := types.GetLabelsFromRecord(adapter)
 	if len(labelList) == 0 {

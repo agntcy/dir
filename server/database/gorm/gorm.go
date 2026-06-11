@@ -19,34 +19,14 @@ type DB struct {
 
 // New creates a new DB instance from a gorm.DB connection and runs migrations.
 func New(db *gorm.DB) (*DB, error) {
-	// Migrate record-related schema
-	if err := db.AutoMigrate(Record{}, Locator{}, Skill{}, Module{}, Domain{}, Annotation{}); err != nil {
-		return nil, fmt.Errorf("failed to migrate record schema: %w", err)
+	database := &DB{gormDB: db}
+
+	// Execute migrations
+	if err := database.migrate(); err != nil {
+		return nil, fmt.Errorf("failed to run migrations: %w", err)
 	}
 
-	// Migrate sync-related schema
-	if err := db.AutoMigrate(Sync{}); err != nil {
-		return nil, fmt.Errorf("failed to migrate sync schema: %w", err)
-	}
-
-	// Migrate publication-related schema
-	if err := db.AutoMigrate(Publication{}); err != nil {
-		return nil, fmt.Errorf("failed to migrate publication schema: %w", err)
-	}
-
-	// Migrate name verification schema
-	if err := db.AutoMigrate(NameVerification{}); err != nil {
-		return nil, fmt.Errorf("failed to migrate name verification schema: %w", err)
-	}
-
-	// Migrate signature verification schema
-	if err := db.AutoMigrate(SignatureVerification{}); err != nil {
-		return nil, fmt.Errorf("failed to migrate signature verification schema: %w", err)
-	}
-
-	return &DB{
-		gormDB: db,
-	}, nil
+	return database, nil
 }
 
 // IsReady checks if the database connection is ready to serve traffic.

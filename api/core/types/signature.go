@@ -8,7 +8,7 @@ import "time"
 // SignatureVerificationObject represents one signer verification result.
 //
 //nolint:interfacebloat
-type SignatureVerificationObject interface {
+type ObjectSignature interface {
 	GetRecordCID() string
 	GetSignerKey() string
 	GetStatus() string
@@ -19,8 +19,8 @@ type SignatureVerificationObject interface {
 	GetSignerCertificateIssuer() string
 	GetSignerPublicKey() string
 	GetSignerAlgorithm() string
-	GetContentType() string
 	GetCreatedAt() time.Time
 	GetUpdatedAt() time.Time
 	GetSignature() string
+	GetContentType() string
 }

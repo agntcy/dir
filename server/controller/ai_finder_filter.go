@@ -10,6 +10,7 @@ import (
 	"time"
 	"unicode"
 
+	catalogv1 "github.com/agntcy/dir/api/catalog/v1"
 	"github.com/agntcy/dir/server/types"
 	"github.com/agntcy/oasf-sdk/pkg/translator"
 )
@@ -41,11 +42,11 @@ type agentFilter struct {
 // registry indexes, or ("", false) for unknown types.
 func oasfModuleForMediaType(mediaType string) (string, bool) {
 	switch strings.ToLower(strings.TrimSpace(mediaType)) {
-	case translator.A2ACatalogMediaType:
+	case catalogv1.ProtocolA2ACardJsonMediaType:
 		return translator.A2AModuleName, true
-	case translator.MCPCatalogMediaType:
+	case catalogv1.ProtocolMCPCardJsonMediaType:
 		return translator.MCPModuleName, true
-	case "application/ai-skill", translator.AgentSkillsCatalogMediaType:
+	case catalogv1.ProtocolAgentSkillsMdMediaType:
 		return translator.AgentSkillsModuleName, true
 	default:
 		return "", false

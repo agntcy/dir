@@ -6,6 +6,7 @@ package verify
 
 import (
 	"context"
+	"encoding/base64"
 	"fmt"
 
 	corev1 "github.com/agntcy/dir/api/core/v1"
@@ -21,9 +22,11 @@ type Fetcher interface {
 
 // PerSignatureResult is the verification result for one signer (for DB cache).
 type PerSignatureResult struct {
-	SignerKey  string
-	Status     string // "verified" or "failed"
-	SignerInfo *signv1.SignerInfo
+	SignerKey   string
+	Status      string // "verified" or "failed"
+	Signature   string // The signature content (e.g. the key or OIDC sub) used to identify the signer
+	ContentType string
+	SignerInfo  *signv1.SignerInfo
 }
 
 // VerifyWithFetcher runs signature verification using the given fetcher and returns the response plus per-signature results.
@@ -107,9 +110,11 @@ func VerifyWithFetcher(ctx context.Context, req *signv1.VerifyRequest, fetcher F
 		seenKeys[signerKey] = true
 
 		perSig = append(perSig, PerSignatureResult{
-			SignerKey:  signerKey,
-			Status:     "verified",
-			SignerInfo: signerInfo,
+			SignerKey:   signerKey,
+			Status:      "verified",
+			Signature:   base64.StdEncoding.EncodeToString([]byte(sig.GetContentBundle())),
+			ContentType: sig.GetContentType(),
+			SignerInfo:  signerInfo,
 		})
 		signers = append(signers, signerInfo)
 	}

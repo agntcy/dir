@@ -316,7 +316,7 @@ func New(ctx context.Context, cfg *config.Config, opts ...ServerOption) (*Server
 		namingProvider,
 		controller.WithVerificationTTL(options.Config().Naming.GetTTL()),
 	))
-	catalogv1.RegisterAIFinderServiceServer(grpcServer, controller.NewAIFinderController(databaseAPI, cfg.HTTPGateway, storeAPI))
+	catalogv1.RegisterAIFinderServiceServer(grpcServer, controller.NewAIFinderController(routingAPI.GetPeerID(), databaseAPI, cfg.HTTPGateway, storeAPI))
 
 	// Register health service
 	healthChecker.Register(grpcServer)

@@ -20,7 +20,8 @@ import (
 func TestHandler(t *testing.T) {
 	// Test data
 	testRecord := corev1.New(&typesv1.Record{
-		Name: "test-handler-agent",
+		Name:          "test-handler-agent",
+		SchemaVersion: "1.0.0",
 		Skills: []*typesv1.Skill{
 			{Name: "test_skill", Id: 1},
 		},

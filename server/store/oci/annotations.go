@@ -7,7 +7,6 @@ import (
 	"strings"
 
 	corev1 "github.com/agntcy/dir/api/core/v1"
-	"github.com/agntcy/dir/server/types/adapters"
 )
 
 // extractManifestAnnotations extracts manifest annotations from record using adapter pattern.
@@ -20,16 +19,16 @@ func extractManifestAnnotations(record *corev1.Record) map[string]string {
 	annotations[manifestDirObjectTypeKey] = "record"
 
 	// Use adapter pattern to get version-agnostic access to record data
-	adapter := adapters.NewRecordAdapter(record)
-
-	recordData, err := adapter.GetRecordData()
+	recordData, err := record.Decode()
 	if err != nil {
 		// Return minimal annotations if no valid data
 		return annotations
 	}
 
+	// Get adapter
+
 	// Add version details
-	annotations[ManifestKeyOASFVersion] = record.GetSchemaVersion()
+	annotations[ManifestKeyOASFVersion] = recordData.GetSchemaVersion()
 
 	// Core identity fields (version-agnostic via adapter)
 	if name := recordData.GetName(); name != "" {

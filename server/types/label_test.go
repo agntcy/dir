@@ -8,7 +8,6 @@ import (
 
 	corev1 "github.com/agntcy/dir/api/core/v1"
 	"github.com/agntcy/dir/server/types"
-	"github.com/agntcy/dir/server/types/adapters"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -42,8 +41,9 @@ func TestGetLabelsFromRecord(t *testing.T) {
 
 		record, err := corev1.UnmarshalRecord([]byte(recordJSON))
 		require.NoError(t, err)
+		adapter, err := record.Decode()
+		require.NoError(t, err)
 
-		adapter := adapters.NewRecordAdapter(record)
 		labels := types.GetLabelsFromRecord(adapter)
 		require.NotNil(t, labels)
 
@@ -100,8 +100,9 @@ func TestGetLabelsFromRecord(t *testing.T) {
 
 		record, err := corev1.UnmarshalRecord([]byte(recordJSON))
 		require.NoError(t, err)
+		adapter, err := record.Decode()
+		require.NoError(t, err)
 
-		adapter := adapters.NewRecordAdapter(record)
 		labels := types.GetLabelsFromRecord(adapter)
 		require.NotNil(t, labels)
 
@@ -133,7 +134,9 @@ func TestGetLabelsFromRecord(t *testing.T) {
 			return
 		}
 
-		adapter := adapters.NewRecordAdapter(record)
+		adapter, err := record.Decode()
+		require.NoError(t, err)
+
 		labels := types.GetLabelsFromRecord(adapter)
 		// Should handle gracefully and return nil or empty slice
 		assert.Empty(t, labels)

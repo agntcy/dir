@@ -77,17 +77,8 @@ func (t *Task) Run(ctx context.Context) error {
 	var succeeded, failed int
 
 	for _, r := range records {
-		recordData, err := r.GetRecordData()
-		if err != nil {
-			logger.Warn("Failed to get record data", "cid", r.GetCid(), "error", err)
-
-			failed++
-
-			continue
-		}
-
 		recordCtx, cancel := context.WithTimeout(ctx, t.config.GetRecordTimeout())
-		verified := t.verifyNameOwnership(recordCtx, r.GetCid(), recordData.GetName())
+		verified := t.verifyNameOwnership(recordCtx, r.GetCid(), r.GetName())
 
 		cancel()
 

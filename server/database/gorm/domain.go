@@ -6,7 +6,7 @@ package gorm
 import (
 	"time"
 
-	"github.com/agntcy/dir/server/types"
+	coretypes "github.com/agntcy/dir/api/core/types"
 )
 
 type Domain struct {
@@ -32,7 +32,7 @@ func (domain *Domain) GetID() uint64 {
 }
 
 // convertDomains converts domain interfaces to Database Domain structs.
-func convertDomains(domains []types.Domain, recordCID string) []Domain {
+func convertDomains(domains []coretypes.Domain, recordCID string) []Domain {
 	result := make([]Domain, len(domains))
 	for i, domain := range domains {
 		result[i] = Domain{
