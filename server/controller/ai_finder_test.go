@@ -238,7 +238,7 @@ func TestWellKnown(t *testing.T) {
 	resp, err := ctrl.GetWellKnownCatalog(t.Context(), nil)
 	require.NoError(t, err)
 
-	assert.Contains(t, resp.GetCatalog().GetHost().GetIdentifier(), "hostId-name")
+	assert.Contains(t, resp.GetCatalog().GetHost().GetTrustManifest().GetIdentity(), "hostId-name")
 	assert.Len(t, resp.GetCatalog().GetCollections(), 3)
 	assert.Empty(t, resp.GetCatalog().GetEntries())
 }
