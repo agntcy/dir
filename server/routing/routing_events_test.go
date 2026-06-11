@@ -11,7 +11,6 @@ import (
 	eventsv1 "github.com/agntcy/dir/api/events/v1"
 	"github.com/agntcy/dir/server/events"
 	"github.com/agntcy/dir/server/types"
-	"github.com/agntcy/dir/server/types/adapters"
 )
 
 func TestRoutingPublishEmitsEvent(t *testing.T) {
@@ -45,8 +44,13 @@ func TestRoutingPublishEmitsEvent(t *testing.T) {
 		},
 	})
 
+	adapter, err := record.Decode()
+	if err != nil {
+		t.Fatalf("Failed to get record adapter: %v", err)
+	}
+
 	// Directly emit event (simulating what Publish does)
-	labels := types.GetLabelsFromRecord(adapters.NewRecordAdapter(record))
+	labels := types.GetLabelsFromRecord(adapter)
 	labelStrings := make([]string, len(labels))
 
 	for i, label := range labels {

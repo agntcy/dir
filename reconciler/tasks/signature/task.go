@@ -153,6 +153,8 @@ func (t *Task) verifyRecord(ctx context.Context, recordCID string) error {
 			SignerType:              signerType,
 			SignerIssuer:            issuer,
 			SignerSubject:           subject,
+			Signature:               p.Signature,
+			ContentType:             p.ContentType,
 			SignerCertificateIssuer: certificateIssuer,
 			SignerPublicKey:         pubKey,
 			SignerAlgorithm:         algorithm,

@@ -19,6 +19,8 @@ type SignatureVerificationObject interface {
 	GetSignerCertificateIssuer() string
 	GetSignerPublicKey() string
 	GetSignerAlgorithm() string
+	GetContentType() string
 	GetCreatedAt() time.Time
 	GetUpdatedAt() time.Time
+	GetSignature() string
 }

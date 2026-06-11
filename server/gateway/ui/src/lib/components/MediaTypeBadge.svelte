@@ -8,18 +8,18 @@
 	let label = $derived(
 		type.includes('a2a') ? 'A2A' :
 		type.includes('mcp') ? 'MCP' :
-		type.includes('ai-skill') ? 'SKILL' :
+		type.includes('agentskill') ? 'SKILL' :
 		type.split('/').pop()?.split('+')[0] || type
 	);
 
 	let classes = $derived(
-		type.includes('a2a') ? 'bg-purple-100 text-purple-800' :
-		type.includes('mcp') ? 'bg-green-100 text-green-800' :
-		type.includes('ai-skill') ? 'bg-amber-100 text-amber-800' :
-		'bg-gray-100 text-gray-800'
+		type.includes('a2a') ? 'bg-accent-teal text-accent-teal-ink' :
+		type.includes('mcp') ? 'bg-brand-200 text-brand-600' :
+		type.includes('agentskill') ? 'bg-[#fdeccc] text-[#8a5a06]' :
+		'bg-surface-tag text-ink'
 	);
 </script>
 
-<span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium {classes}">
+<span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold {classes}">
 	{label}
 </span>

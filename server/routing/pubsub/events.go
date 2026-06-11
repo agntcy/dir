@@ -10,7 +10,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/agntcy/dir/server/types"
+	coretypes "github.com/agntcy/dir/api/core/types"
 )
 
 // PublishEventHandler is a callback function type for handling record publication events.
@@ -32,7 +32,7 @@ import (
 //	type CleanupManager struct {
 //	    publishFunc pubsub.PublishEventHandler
 //	}
-type PublishEventHandler func(context.Context, types.Record) error
+type PublishEventHandler func(context.Context, coretypes.Record) error
 
 // RecordPublishEvent is the wire format for record publication announcements via GossipSub.
 // This is a minimal structure optimized for network efficiency.

@@ -14,7 +14,6 @@ import (
 	databaseutils "github.com/agntcy/dir/server/database/utils"
 	publypes "github.com/agntcy/dir/server/publication/types"
 	"github.com/agntcy/dir/server/types"
-	"github.com/agntcy/dir/server/types/adapters"
 )
 
 // Worker processes publication requests from the work queue.
@@ -165,7 +164,10 @@ func (w *Worker) announceToDHT(ctx context.Context, cid string) error {
 	}
 
 	// Wrap record with adapter for interface-based publishing
-	adapter := adapters.NewRecordAdapter(record)
+	adapter, err := record.Decode()
+	if err != nil {
+		return fmt.Errorf("failed to get record adapter: %w", err)
+	}
 
 	// Publish the record to the network
 	err = w.routing.Publish(ctx, adapter)

@@ -15,7 +15,6 @@ import (
 	"github.com/agntcy/dir/server/routing/internal/p2p"
 	"github.com/agntcy/dir/server/routing/pubsub"
 	"github.com/agntcy/dir/server/types"
-	"github.com/agntcy/dir/server/types/adapters"
 	"github.com/agntcy/dir/utils/logging"
 	"github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-datastore/query"
@@ -193,7 +192,16 @@ func (c *CleanupManager) republishLocalProviders(ctx context.Context) {
 		}
 
 		// Wrap record with adapter for interface-based publishing
-		adapter := adapters.NewRecordAdapter(record)
+		adapter, err := record.Decode()
+		if err != nil {
+			cleanupLogger.Warn("Failed to create record adapter for republishing",
+				"cid", cidStr,
+				"error", err)
+
+			errorCount++
+
+			continue
+		}
 
 		// Use injected publishing function (handles both DHT and GossipSub)
 		// This reuses routeRemote.Publish logic without circular dependency

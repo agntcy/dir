@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"time"
 
+	coretypes "github.com/agntcy/dir/api/core/types"
 	"github.com/agntcy/dir/server/types"
 	"gorm.io/gorm/clause"
 )
@@ -18,6 +19,8 @@ type SignatureVerification struct {
 	SignerKey               string    `gorm:"column:signer_key;primaryKey;not null"`
 	Status                  string    `gorm:"column:status;not null;index"` // "verified" or "failed"
 	ErrorMessage            string    `gorm:"column:error_message"`
+	Signature               string    `gorm:"column:signature"`                 // encoded signature data
+	ContentType             string    `gorm:"column:content_type;not null"`     // media type of the signed content (e.g. "application/vnd.oci.image.manifest.v1+json")
 	SignerType              string    `gorm:"column:signer_type"`               // "oidc" or "key"
 	SignerIssuer            string    `gorm:"column:signer_issuer"`             // OIDC issuer
 	SignerSubject           string    `gorm:"column:signer_subject"`            // OIDC subject
@@ -79,6 +82,14 @@ func (s *SignatureVerification) GetUpdatedAt() time.Time {
 	return s.UpdatedAt
 }
 
+func (s *SignatureVerification) GetSignature() string {
+	return s.Signature
+}
+
+func (s *SignatureVerification) GetContentType() string {
+	return s.ContentType
+}
+
 // CreateSignatureVerification creates a new signature verification row.
 func (d *DB) CreateSignatureVerification(verification types.SignatureVerificationObject) error {
 	now := time.Now()
@@ -94,6 +105,8 @@ func (d *DB) CreateSignatureVerification(verification types.SignatureVerificatio
 		SignerCertificateIssuer: verification.GetSignerCertificateIssuer(),
 		SignerPublicKey:         verification.GetSignerPublicKey(),
 		SignerAlgorithm:         verification.GetSignerAlgorithm(),
+		Signature:               verification.GetSignature(),
+		ContentType:             verification.GetContentType(),
 		CreatedAt:               now,
 		UpdatedAt:               now,
 	}
@@ -144,13 +157,15 @@ func (d *DB) UpsertSignatureVerification(verification types.SignatureVerificatio
 		SignerCertificateIssuer: verification.GetSignerCertificateIssuer(),
 		SignerPublicKey:         verification.GetSignerPublicKey(),
 		SignerAlgorithm:         verification.GetSignerAlgorithm(),
+		Signature:               verification.GetSignature(),
+		ContentType:             verification.GetContentType(),
 		CreatedAt:               now,
 		UpdatedAt:               now,
 	}
 
 	err := d.gormDB.Clauses(clause.OnConflict{
 		Columns:   []clause.Column{{Name: "record_cid"}, {Name: "signer_key"}},
-		DoUpdates: clause.AssignmentColumns([]string{"status", "error_message", "signer_type", "signer_issuer", "signer_subject", "signer_certificate_issuer", "signer_public_key", "signer_algorithm", "updated_at"}),
+		DoUpdates: clause.AssignmentColumns([]string{"status", "error_message", "signer_type", "signer_issuer", "signer_subject", "signer_certificate_issuer", "signer_public_key", "signer_algorithm", "signature", "content_type", "updated_at"}),
 	}).Create(sv).Error
 	if err != nil {
 		return fmt.Errorf("upsert signature verification: %w", err)
@@ -186,7 +201,7 @@ func (d *DB) InvalidateSignatureVerificationsForRecord(recordCID string) error {
 }
 
 // GetRecordsNeedingSignatureVerification returns signed records that have no verification or expired verification.
-func (d *DB) GetRecordsNeedingSignatureVerification(ttl time.Duration) ([]types.Record, error) {
+func (d *DB) GetRecordsNeedingSignatureVerification(ttl time.Duration) ([]coretypes.Record, error) {
 	expiredBefore := time.Now().Add(-ttl)
 
 	// Subquery: record_cids that have at least one verification row updated after expiredBefore.
@@ -205,10 +220,19 @@ func (d *DB) GetRecordsNeedingSignatureVerification(ttl time.Duration) ([]types.
 		return nil, fmt.Errorf("failed to get records needing signature verification: %w", err)
 	}
 
-	result := make([]types.Record, len(records))
+	result := make([]coretypes.Record, len(records))
 	for i := range records {
 		result[i] = &records[i]
 	}
 
 	return result, nil
+}
+
+func convertSignatures(sigs []SignatureVerification) []coretypes.ObjectSignature {
+	result := make([]coretypes.ObjectSignature, len(sigs))
+	for i := range sigs {
+		result[i] = &sigs[i]
+	}
+
+	return result
 }

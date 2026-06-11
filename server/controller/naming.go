@@ -16,7 +16,6 @@ import (
 	"github.com/agntcy/dir/server/naming"
 	namingconfig "github.com/agntcy/dir/server/naming/config"
 	"github.com/agntcy/dir/server/types"
-	"github.com/agntcy/dir/server/types/adapters"
 	"github.com/agntcy/dir/utils/logging"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -149,9 +148,7 @@ func (n *namingCtrl) getDomainFromRecord(ctx context.Context, cid string) string
 		return ""
 	}
 
-	adapter := adapters.NewRecordAdapter(record)
-
-	recordData, err := adapter.GetRecordData()
+	recordData, err := record.Decode()
 	if err != nil {
 		return ""
 	}
@@ -203,10 +200,9 @@ func (n *namingCtrl) Resolve(ctx context.Context, req *namingv1.ResolveRequest) 
 	refs := make([]*corev1.NamedRecordRef, 0, len(records))
 
 	for _, r := range records {
-		data, _ := r.GetRecordData()
 		refs = append(refs, &corev1.NamedRecordRef{
-			Name:    data.GetName(),
-			Version: data.GetVersion(),
+			Name:    r.GetName(),
+			Version: r.GetVersion(),
 			Cid:     r.GetCid(),
 		})
 	}

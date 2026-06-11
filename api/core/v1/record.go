@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/agntcy/dir/api/core/adapters"
 	"github.com/agntcy/oasf-sdk/pkg/decoder"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/structpb"
@@ -95,6 +96,48 @@ func (r *Record) GetCid() string {
 	return cid
 }
 
+func (r *Record) GetSchemaVersion() string {
+	if r == nil || r.GetData() == nil {
+		return ""
+	}
+
+	// Get schema version from raw using OASF SDK
+	schemaVersion, _ := decoder.GetRecordSchemaVersion(r.GetData())
+
+	return schemaVersion
+}
+
+// Decode decodes the Record's data into a concrete type using the OASF SDK.
+func (r *Record) Decode() (DecodedRecord, error) {
+	if r == nil || r.GetData() == nil {
+		return nil, errors.New("record is nil")
+	}
+
+	// Decode the record using OASF SDK
+	decoded, err := decoder.DecodeRecord(r.GetData())
+	if err != nil {
+		return nil, fmt.Errorf("failed to decode Record: %w", err)
+	}
+
+	// Get CID for adapter
+	cid := r.GetCid()
+	if cid == "" {
+		return nil, fmt.Errorf("failed to calculate CID for record")
+	}
+
+	// Create adapter based on record type
+	adapter, err := adapters.GetRecordAdapter(cid, decoded)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create Record adapter: %w", err)
+	}
+
+	// Wrap in our DecodedRecord interface
+	return &decodedRecord{
+		DecodeRecordResponse: decoded,
+		Record:               adapter,
+	}, nil
+}
+
 // Marshal marshals the Record using canonical JSON serialization.
 // This ensures deterministic, cross-language compatible byte representation.
 // The output represents the pure Record data and is used for both CID calculation and storage.
@@ -126,35 +169,6 @@ func (r *Record) Marshal() ([]byte, error) {
 	}
 
 	return canonicalBytes, nil
-}
-
-func (r *Record) GetSchemaVersion() string {
-	if r == nil || r.GetData() == nil {
-		return ""
-	}
-
-	// Get schema version from raw using OASF SDK
-	schemaVersion, _ := decoder.GetRecordSchemaVersion(r.GetData())
-
-	return schemaVersion
-}
-
-// Decode decodes the Record's data into a concrete type using the OASF SDK.
-func (r *Record) Decode() (DecodedRecord, error) {
-	if r == nil || r.GetData() == nil {
-		return nil, errors.New("record is nil")
-	}
-
-	// Decode the record using OASF SDK
-	decoded, err := decoder.DecodeRecord(r.GetData())
-	if err != nil {
-		return nil, fmt.Errorf("failed to decode Record: %w", err)
-	}
-
-	// Wrap in our DecodedRecord interface
-	return &decodedRecord{
-		DecodeRecordResponse: decoded,
-	}, nil
 }
 
 // ValidateWith validates the Record's data using the supplied Validator.
@@ -213,18 +227,16 @@ func UnmarshalRecord(data []byte) (*Record, error) {
 		return nil, fmt.Errorf("failed to unmarshal Record: %w", err)
 	}
 
-	// Construct a record
-	record := &Record{
-		Data: dataStruct,
-	}
-
 	// If we can decode the record, then it is structurally valid.
 	// Loaded record may be syntactically valid but semantically invalid (e.g. missing required fields).
 	// We leave full semantic validation to the caller.
-	_, err = record.Decode()
+	// Decode the record using OASF SDK
+	_, err = decoder.DecodeRecord(dataStruct)
 	if err != nil {
 		return nil, fmt.Errorf("failed to decode Record: %w", err)
 	}
 
-	return record, nil
+	return &Record{
+		Data: dataStruct,
+	}, nil
 }

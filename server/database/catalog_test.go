@@ -7,13 +7,17 @@ import (
 	"strings"
 	"testing"
 
+	catalogv1 "github.com/agntcy/dir/api/catalog/v1"
+	coretypes "github.com/agntcy/dir/api/core/types"
 	"github.com/agntcy/dir/server/types"
 	"github.com/agntcy/oasf-sdk/pkg/translator"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
-// catalogModuleFixture is a types.Module carrying structured data, which the
+var _ coretypes.Module = (*catalogModuleFixture)(nil)
+
+// catalogModuleFixture is a coretypes.Module carrying structured data, which the
 // shared testModule fixture does not.
 type catalogModuleFixture struct {
 	id   uint64
@@ -21,40 +25,40 @@ type catalogModuleFixture struct {
 	data map[string]any
 }
 
-func (m *catalogModuleFixture) GetID() uint64           { return m.id }
-func (m *catalogModuleFixture) GetName() string         { return m.name }
-func (m *catalogModuleFixture) GetData() map[string]any { return m.data }
+// GetAnnotations implements [types.Module].
+func (m *catalogModuleFixture) GetAnnotations() map[string]string { return nil }
+func (m *catalogModuleFixture) GetID() uint64                     { return m.id }
+func (m *catalogModuleFixture) GetName() string                   { return m.name }
+func (m *catalogModuleFixture) GetData() map[string]any           { return m.data }
 
-func catalogRecord(cid, name, createdAt string, modules []types.Module) *testRecord {
+func catalogRecord(cid, name, createdAt string, modules []coretypes.Module) coretypes.Record {
 	return &testRecord{
-		cid: cid,
-		data: &testRecordData{
-			name:          name,
-			version:       "1.0.0",
-			description:   "a " + name + " agent",
-			schemaVersion: "0.5.0",
-			createdAt:     createdAt,
-			skills:        []types.Skill{&testSkill{id: 1, name: "test_skill"}},
-			modules:       modules,
-		},
+		cid:           cid,
+		name:          name,
+		version:       "1.0.0",
+		description:   "a " + name + " agent",
+		schemaVersion: "0.5.0",
+		createdAt:     createdAt,
+		skills:        []coretypes.Skill{&testSkill{id: 1, name: "test_skill"}},
+		modules:       modules,
 	}
 }
 
 var (
-	a2aRecord = catalogRecord("cid-a2a", "alpha", "2024-01-01T00:00:00Z", []types.Module{
+	a2aRecord = catalogRecord("cid-a2a", "alpha", "2024-01-01T00:00:00Z", []coretypes.Module{
 		&catalogModuleFixture{id: 1, name: translator.A2AModuleName, data: map[string]any{"protocol_version": "1.0"}},
 	})
 
-	mcpRecord = catalogRecord("cid-mcp", "bravo", "2024-02-01T00:00:00Z", []types.Module{
+	mcpRecord = catalogRecord("cid-mcp", "bravo", "2024-02-01T00:00:00Z", []coretypes.Module{
 		&catalogModuleFixture{id: 2, name: translator.MCPModuleName, data: map[string]any{"name": "mcp-server"}},
 	})
 
-	containerRecord = catalogRecord("cid-both", "charlie", "2024-03-01T00:00:00Z", []types.Module{
+	containerRecord = catalogRecord("cid-both", "charlie", "2024-03-01T00:00:00Z", []coretypes.Module{
 		&catalogModuleFixture{id: 2, name: translator.MCPModuleName, data: map[string]any{"name": "mcp-server"}},
 		&catalogModuleFixture{id: 1, name: translator.A2AModuleName, data: map[string]any{"protocol_version": "1.0"}},
 	})
 
-	unprojectableRecord = catalogRecord("cid-none", "delta", "2024-04-01T00:00:00Z", []types.Module{
+	unprojectableRecord = catalogRecord("cid-none", "delta", "2024-04-01T00:00:00Z", []coretypes.Module{
 		&catalogModuleFixture{id: 9, name: "integration/acp"},
 	})
 )
@@ -69,7 +73,7 @@ func TestGetCatalogEntries_LeafProjection(t *testing.T) {
 	require.Len(t, entries, 1)
 
 	entry := entries[0]
-	assert.Equal(t, translator.A2ACatalogMediaType, entry.GetMediaType())
+	assert.Equal(t, catalogv1.ProtocolA2ACardJsonMediaType, entry.GetMediaType())
 	assert.Equal(t, "urn:ai:org.agntcy:cid:cid-a2a", entry.GetIdentifier())
 	assert.Equal(t, "alpha", entry.GetDisplayName())
 	assert.Equal(t, "a alpha agent", entry.GetDescription())
@@ -86,7 +90,7 @@ func TestGetCatalogEntries_ContainerProjection(t *testing.T) {
 	require.Len(t, entries, 1)
 
 	entry := entries[0]
-	assert.Equal(t, translator.CatalogContainerMediaType, entry.GetMediaType())
+	assert.Equal(t, catalogv1.CatalogMediaType, entry.GetMediaType())
 	assert.Equal(t, "urn:ai:org.agntcy:cid:cid-both", entry.GetIdentifier())
 	assert.NotNil(t, entry.GetData(), "container entry should embed a nested catalog")
 }
@@ -105,7 +109,7 @@ func TestGetCatalogEntries_SkipsUnprojectable(t *testing.T) {
 
 func TestGetCatalogEntries_Pagination(t *testing.T) {
 	db := setupTestDB(t)
-	for _, r := range []types.Record{a2aRecord, mcpRecord, containerRecord} {
+	for _, r := range []coretypes.Record{a2aRecord, mcpRecord, containerRecord} {
 		require.NoError(t, db.AddRecord(r))
 	}
 
@@ -122,7 +126,7 @@ func TestGetCatalogEntries_Pagination(t *testing.T) {
 
 func TestGetCatalogEntries_Ordering(t *testing.T) {
 	db := setupTestDB(t)
-	for _, r := range []types.Record{containerRecord, a2aRecord, mcpRecord} {
+	for _, r := range []coretypes.Record{containerRecord, a2aRecord, mcpRecord} {
 		require.NoError(t, db.AddRecord(r))
 	}
 

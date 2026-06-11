@@ -8,6 +8,7 @@ import (
 	typesv1 "buf.build/gen/go/agntcy/oasf/protocolbuffers/go/agntcy/oasf/types/v1"
 	typesv1alpha1 "buf.build/gen/go/agntcy/oasf/protocolbuffers/go/agntcy/oasf/types/v1alpha1"
 	typesv1alpha2 "buf.build/gen/go/agntcy/oasf/protocolbuffers/go/agntcy/oasf/types/v1alpha2"
+	coretypes "github.com/agntcy/dir/api/core/types"
 	"github.com/agntcy/oasf-sdk/pkg/decoder"
 )
 
@@ -28,10 +29,14 @@ type DecodedRecord interface {
 	// HasV1 checks if the record is of type V1 (OASF 1.0.0).
 	HasV1() bool
 	GetV1() *typesv1.Record
+
+	// Implements coretypes.Record interface.
+	coretypes.Record
 }
 
 type decodedRecord struct {
 	*decodingv1.DecodeRecordResponse
+	coretypes.Record
 }
 
 func (d *decodedRecord) GetRecord() any {

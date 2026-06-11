@@ -16,7 +16,6 @@ import (
 	"github.com/agntcy/dir/server/config"
 	"github.com/agntcy/dir/server/types"
 	"github.com/agntcy/dir/utils/logging"
-	"github.com/agntcy/oasf-sdk/pkg/translator"
 	httpbodypb "google.golang.org/genproto/googleapis/api/httpbody"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -36,10 +35,6 @@ const (
 	// TODO(ai-catalog): make this configurable once publisher data is
 	// wired through the schema.
 	wellKnownHostDisplayName = "AGNTCY Directory"
-
-	// wellKnownHostIdentifier matches the URN authority emitted by the
-	// catalog entry projection (catalogURNHost in the data layer).
-	wellKnownHostIdentifier = "org.agntcy"
 )
 
 // aiFinderController adapts the AI Finder query language to the catalog query
@@ -47,19 +42,21 @@ const (
 type aiFinderController struct {
 	catalogv1.UnimplementedAIFinderServiceServer
 
-	db    types.CatalogDatabaseAPI
-	store types.StoreAPI
-	cfg   config.HTTPGatewayConfig
+	hostId string
+	db     types.CatalogDatabaseAPI
+	store  types.StoreAPI
+	cfg    config.HTTPGatewayConfig
 }
 
 // NewAIFinderController returns an AIFinderServiceServer that serves the AI
 // Catalog AI Finder surface. store may be nil — when omitted the ExportAgent
 // RPC returns UNIMPLEMENTED (HTTP 501). All other RPCs remain functional.
-func NewAIFinderController(db types.CatalogDatabaseAPI, cfg config.HTTPGatewayConfig, store types.StoreAPI) catalogv1.AIFinderServiceServer {
+func NewAIFinderController(hostId string, db types.CatalogDatabaseAPI, cfg config.HTTPGatewayConfig, store types.StoreAPI) catalogv1.AIFinderServiceServer {
 	return &aiFinderController{
-		db:    db,
-		store: store,
-		cfg:   cfg,
+		db:     db,
+		store:  store,
+		cfg:    cfg,
+		hostId: hostId,
 	}
 }
 
@@ -129,26 +126,30 @@ func (c *aiFinderController) GetWellKnownCatalog(ctx context.Context, _ *catalog
 			SpecVersion: wellKnownSpecVersion,
 			Host: &catalogv1.HostInfo{
 				DisplayName: wellKnownHostDisplayName,
-				Identifier:  new(wellKnownHostIdentifier),
+				Identifier:  new(c.cfg.PublicURL),
+				TrustManifest: &catalogv1.TrustManifest{
+					Identity:     catalogv1.GetCatalogUrnFor("host", c.hostId),
+					IdentityType: new("did"),
+				},
 			},
 			Collections: []*catalogv1.CatalogCollection{
 				{
 					DisplayName: "A2A Agents",
-					Url:         c.collectionURL(translator.A2ACatalogMediaType),
+					Url:         c.collectionURL(catalogv1.ProtocolA2ACardJsonMediaType),
 					Description: new("Agents that publish an A2A agent card."),
-					MediaType:   new(translator.A2ACatalogMediaType),
+					MediaType:   new(catalogv1.ProtocolA2ACardJsonMediaType),
 				},
 				{
 					DisplayName: "MCP Servers",
-					Url:         c.collectionURL(translator.MCPCatalogMediaType),
+					Url:         c.collectionURL(catalogv1.ProtocolMCPCardJsonMediaType),
 					Description: new("Agents that expose an MCP server connection."),
-					MediaType:   new(translator.MCPCatalogMediaType),
+					MediaType:   new(catalogv1.ProtocolMCPCardJsonMediaType),
 				},
 				{
-					DisplayName: "AI Skills",
-					Url:         c.collectionURL(translator.AgentSkillsCatalogMediaType),
-					Description: new("Agents that publish a reusable AI skill definition."),
-					MediaType:   new(translator.AgentSkillsCatalogMediaType),
+					DisplayName: "Agent Skills",
+					Url:         c.collectionURL(catalogv1.ProtocolAgentSkillsMdMediaType),
+					Description: new("Agents that publish a reusable Agent Skill definition."),
+					MediaType:   new(catalogv1.ProtocolAgentSkillsMdMediaType),
 				},
 			},
 		},

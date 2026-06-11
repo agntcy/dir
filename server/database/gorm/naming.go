@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"time"
 
+	coretypes "github.com/agntcy/dir/api/core/types"
 	"github.com/agntcy/dir/server/types"
 	"gorm.io/gorm"
 )
@@ -124,7 +125,7 @@ func (d *DB) GetVerificationByCID(cid string) (types.NameVerificationObject, err
 
 // GetRecordsNeedingVerification retrieves signed records with verifiable names
 // that either don't have a verification or have an expired verification.
-func (d *DB) GetRecordsNeedingVerification(ttl time.Duration) ([]types.Record, error) {
+func (d *DB) GetRecordsNeedingVerification(ttl time.Duration) ([]coretypes.Record, error) {
 	expiredBefore := time.Now().Add(-ttl)
 
 	// Query records that:
@@ -144,7 +145,7 @@ func (d *DB) GetRecordsNeedingVerification(ttl time.Duration) ([]types.Record, e
 		return nil, fmt.Errorf("failed to get records needing verification: %w", err)
 	}
 
-	result := make([]types.Record, len(records))
+	result := make([]coretypes.Record, len(records))
 	for i := range records {
 		result[i] = &records[i]
 	}

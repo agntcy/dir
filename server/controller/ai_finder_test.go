@@ -52,7 +52,7 @@ func entry(id string) *catalogv1.CatalogEntry {
 
 func TestListAgents_DefaultsAndResults(t *testing.T) {
 	db := &fakeCatalogDB{entries: []*catalogv1.CatalogEntry{entry("a"), entry("b")}}
-	ctrl := NewAIFinderController(db, config.HTTPGatewayConfig{}, nil)
+	ctrl := NewAIFinderController("hostId", db, config.HTTPGatewayConfig{}, nil)
 
 	resp, err := ctrl.ListAgents(context.Background(), &catalogv1.ListAgentsRequest{})
 	require.NoError(t, err)
@@ -68,7 +68,7 @@ func TestListAgents_DefaultsAndResults(t *testing.T) {
 
 func TestListAgents_NextPageToken(t *testing.T) {
 	db := &fakeCatalogDB{entries: []*catalogv1.CatalogEntry{entry("a")}, hasMore: true}
-	ctrl := NewAIFinderController(db, config.HTTPGatewayConfig{}, nil)
+	ctrl := NewAIFinderController("hostId", db, config.HTTPGatewayConfig{}, nil)
 
 	resp, err := ctrl.ListAgents(context.Background(), &catalogv1.ListAgentsRequest{PageSize: 5})
 	require.NoError(t, err)
@@ -81,7 +81,7 @@ func TestListAgents_NextPageToken(t *testing.T) {
 
 func TestListAgents_PageTokenAppliesOffset(t *testing.T) {
 	db := &fakeCatalogDB{}
-	ctrl := NewAIFinderController(db, config.HTTPGatewayConfig{}, nil)
+	ctrl := NewAIFinderController("hostId", db, config.HTTPGatewayConfig{}, nil)
 
 	_, err := ctrl.ListAgents(context.Background(), &catalogv1.ListAgentsRequest{
 		PageSize:  10,
@@ -94,7 +94,7 @@ func TestListAgents_PageTokenAppliesOffset(t *testing.T) {
 
 func TestListAgents_FilterTranslation(t *testing.T) {
 	db := &fakeCatalogDB{}
-	ctrl := NewAIFinderController(db, config.HTTPGatewayConfig{}, nil)
+	ctrl := NewAIFinderController("hostId", db, config.HTTPGatewayConfig{}, nil)
 
 	_, err := ctrl.ListAgents(context.Background(), &catalogv1.ListAgentsRequest{
 		Filter: `displayName=weather AND type=application/a2a-agent-card+json AND createdAfter=2024-01-01T00:00:00Z`,
@@ -107,7 +107,7 @@ func TestListAgents_FilterTranslation(t *testing.T) {
 
 func TestListAgents_UnknownTypeYieldsZeroRows(t *testing.T) {
 	db := &fakeCatalogDB{}
-	ctrl := NewAIFinderController(db, config.HTTPGatewayConfig{}, nil)
+	ctrl := NewAIFinderController("hostId", db, config.HTTPGatewayConfig{}, nil)
 
 	resp, err := ctrl.ListAgents(context.Background(), &catalogv1.ListAgentsRequest{Filter: "type=application/unknown+json"})
 	require.NoError(t, err)
@@ -116,7 +116,7 @@ func TestListAgents_UnknownTypeYieldsZeroRows(t *testing.T) {
 }
 
 func TestListAgents_Errors(t *testing.T) {
-	ctrl := NewAIFinderController(&fakeCatalogDB{}, config.HTTPGatewayConfig{}, nil)
+	ctrl := NewAIFinderController("hostId", &fakeCatalogDB{}, config.HTTPGatewayConfig{}, nil)
 
 	tests := []struct {
 		name string
@@ -139,7 +139,7 @@ func TestListAgents_Errors(t *testing.T) {
 
 func TestListAgents_DBError(t *testing.T) {
 	db := &fakeCatalogDB{err: assert.AnError}
-	ctrl := NewAIFinderController(db, config.HTTPGatewayConfig{}, nil)
+	ctrl := NewAIFinderController("hostId", db, config.HTTPGatewayConfig{}, nil)
 
 	_, err := ctrl.ListAgents(context.Background(), &catalogv1.ListAgentsRequest{})
 	require.Error(t, err)
@@ -233,12 +233,12 @@ func TestClampPageSize(t *testing.T) {
 }
 
 func TestWellKnown(t *testing.T) {
-	ctrl := NewAIFinderController(&fakeCatalogDB{}, config.HTTPGatewayConfig{}, nil)
+	ctrl := NewAIFinderController("hostId-name", &fakeCatalogDB{}, config.HTTPGatewayConfig{}, nil)
 
 	resp, err := ctrl.GetWellKnownCatalog(t.Context(), nil)
 	require.NoError(t, err)
 
-	assert.Equal(t, wellKnownHostIdentifier, resp.GetCatalog().GetHost().GetIdentifier())
+	assert.Contains(t, resp.GetCatalog().GetHost().GetTrustManifest().GetIdentity(), "hostId-name")
 	assert.Len(t, resp.GetCatalog().GetCollections(), 3)
 	assert.Empty(t, resp.GetCatalog().GetEntries())
 }
@@ -275,7 +275,7 @@ func (f *fakeStoreAPI) IsReady(context.Context) bool {
 
 func TestGetAgent_Success(t *testing.T) {
 	db := &fakeCatalogDB{entries: []*catalogv1.CatalogEntry{entry("cid123")}}
-	ctrl := NewAIFinderController(db, config.HTTPGatewayConfig{}, nil)
+	ctrl := NewAIFinderController("hostId", db, config.HTTPGatewayConfig{}, nil)
 
 	resp, err := ctrl.GetAgent(context.Background(), &catalogv1.GetAgentRequest{Cid: "cid123"})
 	require.NoError(t, err)
@@ -286,7 +286,7 @@ func TestGetAgent_Success(t *testing.T) {
 
 func TestGetAgent_NotFound(t *testing.T) {
 	db := &fakeCatalogDB{entries: nil}
-	ctrl := NewAIFinderController(db, config.HTTPGatewayConfig{}, nil)
+	ctrl := NewAIFinderController("hostId", db, config.HTTPGatewayConfig{}, nil)
 
 	_, err := ctrl.GetAgent(context.Background(), &catalogv1.GetAgentRequest{Cid: "missing"})
 	require.Error(t, err)
@@ -294,7 +294,7 @@ func TestGetAgent_NotFound(t *testing.T) {
 }
 
 func TestGetAgent_EmptyCID(t *testing.T) {
-	ctrl := NewAIFinderController(&fakeCatalogDB{}, config.HTTPGatewayConfig{}, nil)
+	ctrl := NewAIFinderController("hostId", &fakeCatalogDB{}, config.HTTPGatewayConfig{}, nil)
 
 	_, err := ctrl.GetAgent(context.Background(), &catalogv1.GetAgentRequest{Cid: ""})
 	require.Error(t, err)
@@ -302,7 +302,7 @@ func TestGetAgent_EmptyCID(t *testing.T) {
 }
 
 func TestGetAgent_NilRequest(t *testing.T) {
-	ctrl := NewAIFinderController(&fakeCatalogDB{}, config.HTTPGatewayConfig{}, nil)
+	ctrl := NewAIFinderController("hostId", &fakeCatalogDB{}, config.HTTPGatewayConfig{}, nil)
 
 	_, err := ctrl.GetAgent(context.Background(), nil)
 	require.Error(t, err)
@@ -311,7 +311,7 @@ func TestGetAgent_NilRequest(t *testing.T) {
 
 func TestGetAgent_DBError(t *testing.T) {
 	db := &fakeCatalogDB{err: assert.AnError}
-	ctrl := NewAIFinderController(db, config.HTTPGatewayConfig{}, nil)
+	ctrl := NewAIFinderController("hostId", db, config.HTTPGatewayConfig{}, nil)
 
 	_, err := ctrl.GetAgent(context.Background(), &catalogv1.GetAgentRequest{Cid: "cid123"})
 	require.Error(t, err)
@@ -326,7 +326,7 @@ func TestExportAgent_Success(t *testing.T) {
 		Version:       "1.0.0",
 	})
 	store := &fakeStoreAPI{record: record}
-	ctrl := NewAIFinderController(&fakeCatalogDB{}, config.HTTPGatewayConfig{}, store)
+	ctrl := NewAIFinderController("hostId", &fakeCatalogDB{}, config.HTTPGatewayConfig{}, store)
 
 	resp, err := ctrl.ExportAgent(context.Background(), &catalogv1.ExportAgentRequest{Cid: "cid123"})
 	require.NoError(t, err)
@@ -340,7 +340,7 @@ func TestExportAgent_DefaultFormat(t *testing.T) {
 		SchemaVersion: "v0.5.0",
 	})
 	store := &fakeStoreAPI{record: record}
-	ctrl := NewAIFinderController(&fakeCatalogDB{}, config.HTTPGatewayConfig{}, store)
+	ctrl := NewAIFinderController("hostId", &fakeCatalogDB{}, config.HTTPGatewayConfig{}, store)
 
 	resp, err := ctrl.ExportAgent(context.Background(), &catalogv1.ExportAgentRequest{Cid: "cid123", Format: ""})
 	require.NoError(t, err)
@@ -348,7 +348,7 @@ func TestExportAgent_DefaultFormat(t *testing.T) {
 }
 
 func TestExportAgent_NoStore(t *testing.T) {
-	ctrl := NewAIFinderController(&fakeCatalogDB{}, config.HTTPGatewayConfig{}, nil)
+	ctrl := NewAIFinderController("hostId", &fakeCatalogDB{}, config.HTTPGatewayConfig{}, nil)
 
 	_, err := ctrl.ExportAgent(context.Background(), &catalogv1.ExportAgentRequest{Cid: "cid123"})
 	require.Error(t, err)
@@ -357,7 +357,7 @@ func TestExportAgent_NoStore(t *testing.T) {
 
 func TestExportAgent_EmptyCID(t *testing.T) {
 	store := &fakeStoreAPI{}
-	ctrl := NewAIFinderController(&fakeCatalogDB{}, config.HTTPGatewayConfig{}, store)
+	ctrl := NewAIFinderController("hostId", &fakeCatalogDB{}, config.HTTPGatewayConfig{}, store)
 
 	_, err := ctrl.ExportAgent(context.Background(), &catalogv1.ExportAgentRequest{Cid: ""})
 	require.Error(t, err)
@@ -366,7 +366,7 @@ func TestExportAgent_EmptyCID(t *testing.T) {
 
 func TestExportAgent_NilRequest(t *testing.T) {
 	store := &fakeStoreAPI{}
-	ctrl := NewAIFinderController(&fakeCatalogDB{}, config.HTTPGatewayConfig{}, store)
+	ctrl := NewAIFinderController("hostId", &fakeCatalogDB{}, config.HTTPGatewayConfig{}, store)
 
 	_, err := ctrl.ExportAgent(context.Background(), nil)
 	require.Error(t, err)
@@ -375,7 +375,7 @@ func TestExportAgent_NilRequest(t *testing.T) {
 
 func TestExportAgent_StoreNotFound(t *testing.T) {
 	store := &fakeStoreAPI{err: status.Error(codes.NotFound, "not found")}
-	ctrl := NewAIFinderController(&fakeCatalogDB{}, config.HTTPGatewayConfig{}, store)
+	ctrl := NewAIFinderController("hostId", &fakeCatalogDB{}, config.HTTPGatewayConfig{}, store)
 
 	_, err := ctrl.ExportAgent(context.Background(), &catalogv1.ExportAgentRequest{Cid: "missing"})
 	require.Error(t, err)
@@ -384,7 +384,7 @@ func TestExportAgent_StoreNotFound(t *testing.T) {
 
 func TestExportAgent_NilData(t *testing.T) {
 	store := &fakeStoreAPI{record: &corev1.Record{}}
-	ctrl := NewAIFinderController(&fakeCatalogDB{}, config.HTTPGatewayConfig{}, store)
+	ctrl := NewAIFinderController("hostId", &fakeCatalogDB{}, config.HTTPGatewayConfig{}, store)
 
 	_, err := ctrl.ExportAgent(context.Background(), &catalogv1.ExportAgentRequest{Cid: "cid123"})
 	require.Error(t, err)

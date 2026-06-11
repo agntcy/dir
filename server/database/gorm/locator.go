@@ -6,7 +6,7 @@ package gorm
 import (
 	"time"
 
-	"github.com/agntcy/dir/server/types"
+	coretypes "github.com/agntcy/dir/api/core/types"
 )
 
 type Locator struct {
@@ -42,7 +42,7 @@ func (locator *Locator) GetDigest() string {
 }
 
 // convertLocators transforms interface types to Database structs.
-func convertLocators(locators []types.Locator, recordCID string) []Locator {
+func convertLocators(locators []coretypes.Locator, recordCID string) []Locator {
 	result := make([]Locator, len(locators))
 	for i, locator := range locators {
 		result[i] = Locator{
