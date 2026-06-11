@@ -1,4 +1,29 @@
-import type { CatalogEntry, SubEntry, ExportFormat } from './types';
+import type { AgentFilterCriteria, CatalogEntry, SubEntry, ExportFormat } from './types';
+
+export function applyClientFilters(
+	agents: CatalogEntry[],
+	criteria: AgentFilterCriteria
+): CatalogEntry[] {
+	return agents.filter((agent) => {
+		if (criteria.activeTags.size > 0) {
+			const agentTags = new Set(agent.tags || []);
+			let hasAny = false;
+			for (const t of criteria.activeTags) {
+				if (agentTags.has(t)) {
+					hasAny = true;
+					break;
+				}
+			}
+			if (!hasAny) return false;
+		}
+
+		if (criteria.statusFilter === 'trusted' || criteria.statusFilter === 'verified') {
+			if (!hasTrustManifest(agent)) return false;
+		}
+
+		return true;
+	});
+}
 
 export function extractEntryTypes(agent: CatalogEntry): string[] {
 	const entries = agent.data?.entries || [];

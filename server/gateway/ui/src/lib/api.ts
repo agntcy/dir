@@ -1,14 +1,40 @@
-import type { CatalogEntry } from './types';
+import type { AgentFilterCriteria, CatalogEntry } from './types';
 
-export async function fetchAllAgents(): Promise<CatalogEntry[]> {
+const API_PAGE_SIZE = 100;
+
+export function buildAgentFilterQuery(criteria: AgentFilterCriteria): string {
+	const clauses: string[] = [];
+
+	const search = criteria.searchQuery.trim();
+	if (search) {
+		clauses.push(`displayName=${search}`);
+	}
+
+	if (!criteria.mediaTypes.has('all')) {
+		const types = [...criteria.mediaTypes].filter((t) => t !== 'all');
+		if (types.length > 0) {
+			clauses.push(`type=${types.join(',')}`);
+		}
+	}
+
+	return clauses.join(' AND ');
+}
+
+export async function fetchAgents(options: {
+	filter?: string;
+	pageSize?: number;
+} = {}): Promise<CatalogEntry[]> {
+	const pageSize = options.pageSize ?? API_PAGE_SIZE;
 	let results: CatalogEntry[] = [];
 	let pageToken = '';
 
 	do {
-		const url = pageToken
-			? `/v1/agents?page_token=${encodeURIComponent(pageToken)}`
-			: '/v1/agents';
-		const resp = await fetch(url);
+		const query = new URLSearchParams();
+		query.set('page_size', String(pageSize));
+		if (options.filter) query.set('filter', options.filter);
+		if (pageToken) query.set('page_token', pageToken);
+
+		const resp = await fetch(`/v1/agents?${query}`);
 		if (!resp.ok) throw new Error(`HTTP ${resp.status}: ${resp.statusText}`);
 		const data = await resp.json();
 		results = results.concat(data.results || []);

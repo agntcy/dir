@@ -1,13 +1,13 @@
 <script lang="ts">
-	import type { CatalogEntry } from '$lib/types';
-	import { extractEntryTypes, extractShortTag, hasTrustManifest } from '$lib/utils';
+	import type { AgentFilterCriteria, CatalogEntry } from '$lib/types';
+	import { extractShortTag } from '$lib/utils';
 
 	interface Props {
 		agents: CatalogEntry[];
-		onfilter: (filtered: CatalogEntry[]) => void;
+		onchange: (criteria: AgentFilterCriteria) => void;
 	}
 
-	let { agents, onfilter }: Props = $props();
+	let { agents, onchange }: Props = $props();
 
 	let searchQuery = $state('');
 	let mediaTypes = $state<Set<string>>(new Set(['all']));
@@ -23,42 +23,9 @@
 		tagSearch ? allTags.filter((t) => t.toLowerCase().includes(tagSearch.toLowerCase())) : allTags
 	);
 
-	function applyFilters() {
-		const filtered = agents.filter((agent) => {
-			if (searchQuery) {
-				const q = searchQuery.toLowerCase();
-				const name = (agent.displayName || '').toLowerCase();
-				const desc = (agent.description || '').toLowerCase();
-				if (!name.includes(q) && !desc.includes(q)) return false;
-			}
-
-			if (!mediaTypes.has('all')) {
-				const types = extractEntryTypes(agent);
-				if (!types.some((t) => mediaTypes.has(t))) return false;
-			}
-
-			if (activeTags.size > 0) {
-				const agentTags = new Set(agent.tags || []);
-				let hasAny = false;
-				for (const t of activeTags) {
-					if (agentTags.has(t)) { hasAny = true; break; }
-				}
-				if (!hasAny) return false;
-			}
-
-			if (statusFilter === 'trusted' || statusFilter === 'verified') {
-				if (!hasTrustManifest(agent)) return false;
-			}
-
-			return true;
-		});
-		onfilter(filtered);
+	function notifyChange() {
+		onchange({ searchQuery, mediaTypes, statusFilter, activeTags });
 	}
-
-	$effect(() => {
-		searchQuery; mediaTypes; statusFilter; activeTags;
-		applyFilters();
-	});
 
 	function handleMediaType(value: string, checked: boolean) {
 		const next = new Set(mediaTypes);
@@ -72,6 +39,7 @@
 			if (next.size === 0) next.add('all');
 		}
 		mediaTypes = next;
+		notifyChange();
 	}
 
 	function handleTag(tag: string, checked: boolean) {
@@ -79,6 +47,7 @@
 		if (checked) next.add(tag);
 		else next.delete(tag);
 		activeTags = next;
+		notifyChange();
 	}
 
 	const MEDIA_TYPE_OPTIONS = [
@@ -95,9 +64,10 @@
 		<input
 			type="text"
 			id="search"
-			placeholder="Filter by name or description..."
+			placeholder="Filter by name..."
 			class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent"
 			bind:value={searchQuery}
+			oninput={notifyChange}
 		/>
 	</div>
 
@@ -123,8 +93,15 @@
 		<div class="space-y-1.5">
 			{#each ['all', 'trusted', 'verified'] as value}
 				<label class="flex items-center gap-2 text-sm cursor-pointer">
-					<input type="radio" name="status" {value} checked={statusFilter === value}
-						onchange={() => { statusFilter = value; }}
+					<input
+						type="radio"
+						name="status"
+						{value}
+						checked={statusFilter === value}
+						onchange={() => {
+							statusFilter = value;
+							notifyChange();
+						}}
 						class="border-gray-300 text-brand-600 focus:ring-brand-500"
 					/>
 					<span class="capitalize">{value}</span>
