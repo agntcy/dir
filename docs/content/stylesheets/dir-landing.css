@@ -142,11 +142,11 @@
   color: var(--dir-text-inverse);
 }
 
-.md-typeset .dir-hero__partner img {
+.md-typeset .dir-hero__partner-logo {
   display: block;
-  height: 1rem;
   width: auto;
   max-width: none;
+  height: 1rem;
 }
 
 .md-typeset .dir-hero__tagline {
@@ -466,6 +466,10 @@
 
   .md-typeset .dir-hero__tagline {
     font-size: 1.2rem;
+  }
+
+  .md-typeset .dir-hero__partner-logo {
+    height: 1.7rem;
   }
 
   .dir-features {

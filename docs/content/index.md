@@ -18,7 +18,17 @@ hide:
         target="_blank"
         rel="noopener noreferrer"
       >
-        <img src="assets/lf-horizontal-white.png" alt="Linux Foundation" />
+        <picture>
+          <source
+            media="(max-width: 59.9375em)"
+            srcset="assets/lf-stacked-white.png"
+          />
+          <img
+            src="assets/lf-horizontal-white.png"
+            alt="Linux Foundation"
+            class="dir-hero__partner-logo"
+          />
+        </picture>
       </a>
     </div>
     <p class="dir-hero__tagline">
