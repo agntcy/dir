@@ -132,10 +132,6 @@ func TestRecordToCatalog(t *testing.T) {
 				"description": "A test record with multiple modules.",
 				"updatedAt": "2024-02-01T00:00:00Z",
 				"mediaType": "application/ai-catalog+json",
-				"publisher": {
-					"identifier": "urn:ai:org.agntcy:cid:baeareifgarfb5mezccohu3h7ubfsdkn37edsmqvfv2q37k4qs6nzwqk4ve:authors",
-					"displayName": "Test Publisher"
-				},
 				"data": {
 					"specVersion": "1.0",
 					"entries": [

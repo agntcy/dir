@@ -109,15 +109,6 @@ func RecordToCatalog(record coretypes.Record, opts ...ConvertOption) (*CatalogEn
 		return nil, errors.New("record has no known catalog modules")
 	}
 
-	// Extract publisher from record
-	var publisher *Publisher
-	if authors := record.GetAuthors(); len(authors) > 0 {
-		publisher = &Publisher{
-			Identifier:  catalogURN(record.GetCid(), "authors"),
-			DisplayName: strings.Join(authors, ", "),
-		}
-	}
-
 	// Single known module — leaf entry on the parent URN.
 	if len(modules) == 1 {
 		entry := moduleToCatalogEntry(modules[0])
@@ -134,7 +125,6 @@ func RecordToCatalog(record coretypes.Record, opts ...ConvertOption) (*CatalogEn
 			MediaType:     entry.GetMediaType(),
 			Artifact:      entry.GetArtifact(),
 			Tags:          append(catalogTags(record), entry.GetTags()...),
-			Publisher:     publisher,
 			TrustManifest: trustManifest,
 		}, nil
 	}
@@ -184,7 +174,6 @@ func RecordToCatalog(record coretypes.Record, opts ...ConvertOption) (*CatalogEn
 		Artifact: &CatalogEntry_Data{
 			Data: structpb.NewStructValue(container),
 		},
-		Publisher:     publisher,
 		TrustManifest: trustManifest,
 	}, nil
 }
