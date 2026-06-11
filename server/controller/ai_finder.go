@@ -126,7 +126,11 @@ func (c *aiFinderController) GetWellKnownCatalog(ctx context.Context, _ *catalog
 			SpecVersion: wellKnownSpecVersion,
 			Host: &catalogv1.HostInfo{
 				DisplayName: wellKnownHostDisplayName,
-				Identifier:  new(catalogv1.GetCatalogUrnFor("host", c.hostId)),
+				Identifier:  new(c.cfg.PublicURL),
+				TrustManifest: &catalogv1.TrustManifest{
+					Identity:     catalogv1.GetCatalogUrnFor("host", c.hostId),
+					IdentityType: new("did"),
+				},
 			},
 			Collections: []*catalogv1.CatalogCollection{
 				{

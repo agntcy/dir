@@ -262,8 +262,8 @@ func catalogURN(cid, suffix string) string {
 	return base + ":" + suffix
 }
 
-func GetCatalogUrnFor(namespace, value string) string {
-	return fmt.Sprintf("urn:ai:%s:%s:%s", CatalogHostURN, namespace, value)
+func GetCatalogUrnFor(values ...string) string {
+	return fmt.Sprintf("urn:ai:%s:%s", CatalogHostURN, strings.Join(values, ":"))
 }
 
 func catalogSignatures(cid string, signatures []coretypes.ObjectSignature) *TrustManifest {
