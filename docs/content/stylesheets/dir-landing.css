@@ -158,55 +158,36 @@
 }
 
 .dir-hero__flip-wrap {
-  display: inline-block;
-  min-width: 9.5ch;
-  perspective: 500px;
-  vertical-align: baseline;
+  display: inline;
 }
 
 .dir-hero__flip {
-  display: inline-block;
-  font-weight: 400;
-  transform-origin: center center;
-  backface-visibility: hidden;
+  display: inline;
+  font: inherit;
 }
 
-.dir-hero__flip.is-flipping-out {
-  animation: dir-hero-flip-out 0.4s ease-in forwards;
+.dir-hero__flip::after {
+  content: "|";
+  font: inherit;
+  animation: dir-hero-type-cursor 1.05s steps(1) infinite;
 }
 
-.dir-hero__flip.is-flipping-in {
-  animation: dir-hero-flip-in 0.4s ease-out forwards;
-}
-
-@keyframes dir-hero-flip-out {
-  from {
-    transform: rotateY(0deg);
+@keyframes dir-hero-type-cursor {
+  0%,
+  49% {
     opacity: 1;
   }
 
-  to {
-    transform: rotateY(90deg);
+  50%,
+  100% {
     opacity: 0;
-  }
-}
-
-@keyframes dir-hero-flip-in {
-  from {
-    transform: rotateY(-90deg);
-    opacity: 0;
-  }
-
-  to {
-    transform: rotateY(0deg);
-    opacity: 1;
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .dir-hero__flip.is-flipping-out,
-  .dir-hero__flip.is-flipping-in {
+  .dir-hero__flip::after {
     animation: none;
+    opacity: 1;
   }
 }
 
