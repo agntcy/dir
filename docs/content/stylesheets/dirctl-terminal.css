@@ -35,6 +35,11 @@
   text-align: left;
 }
 
+/* Parsed intros sit at the top of the page until terminal JS mounts them. */
+.md-typeset .md-content__inner > .dirctl-terminal-intro-group {
+  display: none;
+}
+
 .dirctl-terminal-intro {
   color: var(--md-default-fg-color--light);
   font-size: 0.95rem;

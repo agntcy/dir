@@ -23,10 +23,22 @@
     return window.DirctlDemoData || {};
   }
 
+  function mountIntroGroup(section) {
+    var side = section.querySelector(".dirctl-terminal-side");
+    var introGroup = document.getElementById("dirctl-terminal-intros");
+    if (!side || !introGroup || introGroup.getAttribute("data-dirctl-mounted") === "1") {
+      return;
+    }
+    side.appendChild(introGroup);
+    introGroup.setAttribute("data-dirctl-mounted", "1");
+  }
+
   function createTerminal(section) {
     if (section.getAttribute("data-dirctl-bound") === "1") {
       return null;
     }
+
+    mountIntroGroup(section);
 
     var terminal = section.querySelector(".dirctl-terminal");
     var output = section.querySelector(".dirctl-terminal-output");

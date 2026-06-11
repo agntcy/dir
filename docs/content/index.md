@@ -6,6 +6,19 @@ hide:
 
 ---
 
+<div class="dirctl-terminal-intro-group" id="dirctl-terminal-intros" markdown="1">
+
+Publish and discover agent records in a few commands. Install the real CLI from the [Quickstart](dir/dir-quickstart.md).
+{: .dirctl-terminal-intro data-intro-level="cli" hidden}
+
+Use `dirctl --help` to see available commands. See the [CLI Reference](dir/dir-cli-reference.md) for more details.
+{: .dirctl-terminal-intro data-intro-level="try" hidden}
+
+Need a skill, MCP server, or A2A partner? Your agent searches the Directory, wires it in, and uses it right away. See the [MCP server](dir/dir-component-mcp-server.md) for more details.
+{: .dirctl-terminal-intro data-intro-level="agent"}
+
+</div>
+
 <div class="dir-landing">
 
 <section class="dir-hero">
@@ -146,21 +159,6 @@ hide:
         <button type="button" class="dirctl-terminal-btn" data-demo-level="cli">CLI basics</button>
         <button type="button" class="dirctl-terminal-btn" data-mode-switch="try">Try it yourself</button>
         <button type="button" class="dirctl-terminal-btn dirctl-terminal-reopen" hidden>Reopen terminal</button>
-      </div>
-      <div class="dirctl-terminal-intro-group">
-        <p class="dirctl-terminal-intro" data-intro-level="cli" hidden>
-          Publish and discover agent records in a few commands.
-          Install the real CLI from the <a href="dir/dir-quickstart">Quickstart</a>.
-        </p>
-        <p class="dirctl-terminal-intro" data-intro-level="try" hidden>
-          Use <code>dirctl --help</code> to see available commands.
-          See the <a href="dir/dir-cli-reference">CLI reference</a> for more details.
-        </p>
-        <p class="dirctl-terminal-intro" data-intro-level="agent">
-          Need a skill, MCP server, or A2A partner? Your agent searches the Directory,
-          wires it in, and uses it right away. See the
-          <a href="dir/dir-component-mcp-server">MCP server</a> for more details.
-        </p>
       </div>
     </div>
   </div>
