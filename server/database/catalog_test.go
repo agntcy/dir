@@ -7,6 +7,7 @@ import (
 	"strings"
 	"testing"
 
+	catalogv1 "github.com/agntcy/dir/api/catalog/v1"
 	coretypes "github.com/agntcy/dir/api/core/types"
 	"github.com/agntcy/dir/server/types"
 	"github.com/agntcy/oasf-sdk/pkg/translator"
@@ -72,7 +73,7 @@ func TestGetCatalogEntries_LeafProjection(t *testing.T) {
 	require.Len(t, entries, 1)
 
 	entry := entries[0]
-	assert.Equal(t, translator.A2ACatalogMediaType, entry.GetMediaType())
+	assert.Equal(t, catalogv1.ProtocolA2ACardJsonMediaType, entry.GetMediaType())
 	assert.Equal(t, "urn:ai:org.agntcy:cid:cid-a2a", entry.GetIdentifier())
 	assert.Equal(t, "alpha", entry.GetDisplayName())
 	assert.Equal(t, "a alpha agent", entry.GetDescription())
@@ -89,7 +90,7 @@ func TestGetCatalogEntries_ContainerProjection(t *testing.T) {
 	require.Len(t, entries, 1)
 
 	entry := entries[0]
-	assert.Equal(t, translator.CatalogContainerMediaType, entry.GetMediaType())
+	assert.Equal(t, catalogv1.CatalogMediaType, entry.GetMediaType())
 	assert.Equal(t, "urn:ai:org.agntcy:cid:cid-both", entry.GetIdentifier())
 	assert.NotNil(t, entry.GetData(), "container entry should embed a nested catalog")
 }

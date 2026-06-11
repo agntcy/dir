@@ -100,8 +100,12 @@ func RecordToCatalog(record coretypes.Record, opts ...ConvertOption) (*CatalogEn
 		opt(options)
 	}
 
+	// Get common record details
+	recordCid := record.GetCid()
+	recordName := record.GetName()
+
 	// Get trust manifest for the given record
-	trustManifest := catalogSignatures(record, options.signatures)
+	trustManifest := catalogSignatures(recordCid, options.signatures)
 
 	// Extract valid modules
 	modules := knownCatalogModules(record)
@@ -117,8 +121,8 @@ func RecordToCatalog(record coretypes.Record, opts ...ConvertOption) (*CatalogEn
 		}
 
 		return &CatalogEntry{
-			Identifier:    catalogURN(record.GetCid(), ""),
-			DisplayName:   record.GetName(),
+			Identifier:    catalogURN(recordCid, ""),
+			DisplayName:   recordName,
 			Version:       new(record.GetVersion()),
 			Description:   new(record.GetDescription()),
 			UpdatedAt:     new(record.GetCreatedAt()),
@@ -129,11 +133,7 @@ func RecordToCatalog(record coretypes.Record, opts ...ConvertOption) (*CatalogEn
 		}, nil
 	}
 
-	// Multiple known modules — container entry on the parent URN, with one
-	// nested entry per module.
-	parentCID := record.GetCid()
-	parentName := record.GetName()
-
+	// Multiple known modules — container entry on the parent URN with nested entries for each module.
 	entries := make([]*CatalogEntry, 0, len(modules))
 	for _, module := range modules {
 		entry := moduleToCatalogEntry(module)
@@ -142,7 +142,7 @@ func RecordToCatalog(record coretypes.Record, opts ...ConvertOption) (*CatalogEn
 		}
 
 		entries = append(entries, &CatalogEntry{
-			DisplayName: fmt.Sprintf("%s - %s", parentName, catalogModules[module.GetName()].Label),
+			DisplayName: fmt.Sprintf("%s - %s", recordName, catalogModules[module.GetName()].Label),
 			MediaType:   entry.GetMediaType(),
 			Artifact:    entry.GetArtifact(),
 			Tags:        entry.GetTags(),
@@ -164,8 +164,8 @@ func RecordToCatalog(record coretypes.Record, opts ...ConvertOption) (*CatalogEn
 	}
 
 	return &CatalogEntry{
-		Identifier:  catalogURN(parentCID, ""),
-		DisplayName: parentName,
+		Identifier:  catalogURN(recordCid, ""),
+		DisplayName: recordName,
 		Description: new(record.GetDescription()),
 		Version:     new(record.GetVersion()),
 		UpdatedAt:   new(record.GetCreatedAt()),
@@ -262,11 +262,11 @@ func catalogURN(cid, suffix string) string {
 	return base + ":" + suffix
 }
 
-func catalogSignatures(record coretypes.Record, signatures []coretypes.ObjectSignature) *TrustManifest {
-	if len(signatures) == 0 {
-		return nil
-	}
+func GetCatalogUrnFor(namespace, value string) string {
+	return fmt.Sprintf("urn:ai:%s:%s:%s", CatalogHostURN, namespace, value)
+}
 
+func catalogSignatures(cid string, signatures []coretypes.ObjectSignature) *TrustManifest {
 	// convert signatures to provenance
 	var (
 		provenanceLinks  []*ProvenanceLink
@@ -275,6 +275,10 @@ func catalogSignatures(record coretypes.Record, signatures []coretypes.ObjectSig
 	)
 
 	for _, sig := range signatures {
+		if len(sig.GetSignature()) == 0 {
+			continue
+		}
+
 		sigDigest := ocidigest.FromString(sig.GetSignature()).String()
 		signer := fmt.Sprintf("urn:ai:%s:signer:%s", CatalogHostURN, getSignatureIdentifier(sig))
 
@@ -296,8 +300,12 @@ func catalogSignatures(record coretypes.Record, signatures []coretypes.ObjectSig
 		mergedSignatures = append(mergedSignatures, sig.GetSignature())
 	}
 
+	if len(mergedSignatures) == 0 {
+		return nil
+	}
+
 	return &TrustManifest{
-		Identity:     catalogURN(record.GetCid(), ""),
+		Identity:     catalogURN(cid, ""),
 		IdentityType: new("did"),
 		Attestations: attestations,
 		Provenance:   provenanceLinks,
@@ -338,7 +346,7 @@ func getAnnotationTags(annotations map[string]string) []string {
 func getSignatureIdentifier(sig coretypes.ObjectSignature) string {
 	switch sig.GetSignerType() {
 	case "key":
-		return fmt.Sprintf("key:%s:%s", sig.GetSignerAlgorithm(), sig.GetSignerKey())
+		return fmt.Sprintf("key:%s:%s", sig.GetSignerAlgorithm(), sig.GetSignerPublicKey())
 	case "oidc":
 		signer := trimPrefixes(sig.GetSignerIssuer(), "https://", "http://")
 		subject := trimPrefixes(sig.GetSignerSubject(), "https://", "http://")

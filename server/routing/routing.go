@@ -28,6 +28,7 @@ type route struct {
 	local    *routeLocal
 	remote   *routeRemote
 	eventBus *events.SafeEventBus
+	peerID   string
 }
 
 // hasPeersInRoutingTable checks if we have any peers in the DHT routing table.
@@ -64,10 +65,10 @@ func New(ctx context.Context, store types.StoreAPI, opts types.APIOptions) (type
 	}
 
 	// Get local peer ID from the remote server host
-	localPeerID := mainRounter.remote.server.Host().ID().String()
+	mainRounter.peerID = mainRounter.remote.server.Host().ID().String()
 
 	// Create local router with peer ID
-	mainRounter.local = newLocal(store, dstore, localPeerID)
+	mainRounter.local = newLocal(store, dstore, mainRounter.peerID)
 
 	return mainRounter, nil
 }
@@ -162,4 +163,8 @@ func (r *route) IsReady(ctx context.Context) bool {
 	}
 
 	return r.remote.IsReady(ctx)
+}
+
+func (r *route) GetPeerID() string {
+	return r.peerID
 }

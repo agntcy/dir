@@ -33,6 +33,9 @@ type RoutingAPI interface {
 	// Should be called during server shutdown for graceful cleanup
 	Stop() error
 
+	// GetPeerID returns the peer ID of the current host.
+	GetPeerID() string
+
 	// IsReady checks if the routing subsystem is ready to serve traffic.
 	IsReady(context.Context) bool
 }
