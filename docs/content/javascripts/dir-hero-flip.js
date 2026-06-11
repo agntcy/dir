@@ -4,7 +4,7 @@
 /* Hero tagline: typewriter cycle between framework / protocol / registry. */
 document$.subscribe(function () {
   var reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-  var pauseMs = 2000;
+  var pauseMs = 1200;
   var typeMs = 75;
   var deleteMs = 45;
   var staticIntervalMs = 2800;

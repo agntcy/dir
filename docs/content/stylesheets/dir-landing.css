@@ -157,6 +157,10 @@
   color: var(--dir-text-inverse);
 }
 
+.dir-hero__tagline-break {
+  display: none;
+}
+
 .dir-hero__flip-wrap {
   display: inline;
 }
@@ -466,6 +470,10 @@
 
   .md-typeset .dir-hero__tagline {
     font-size: 1.2rem;
+  }
+
+  .dir-hero__tagline-break {
+    display: block;
   }
 
   .md-typeset .dir-hero__partner-logo {

@@ -32,7 +32,7 @@ hide:
       </a>
     </div>
     <p class="dir-hero__tagline">
-      One federated registry for cross-<span class="dir-hero__flip-wrap"><span class="dir-hero__flip" data-words="framework,protocol,registry" aria-live="polite">framework</span></span> agent discovery.
+      One federated registry for <br class="dir-hero__tagline-break" aria-hidden="true" />cross-<span class="dir-hero__flip-wrap"><span class="dir-hero__flip" data-words="framework,protocol,registry" aria-live="polite">framework</span></span> agent discovery.
     </p>
     <p class="dir-hero__lede">
       An open-source, framework-agnostic registry for managing the full agent lifecycle.

@@ -75,7 +75,7 @@
 .md-header,
 [data-md-color-primary="black"] .md-header {
   background-color: var(--md-primary-fg-color) !important;
-  border-bottom: 1px solid var(--md-header-border);
+  border-bottom: none;
   box-shadow:
     inset 0 1px 0 var(--md-header-highlight),
     0 1px 2px rgba(0, 0, 0, 0.04);
@@ -278,22 +278,24 @@ html [data-md-color-primary=black] .md-nav--primary .md-nav__source {
   display: none !important;
 }
 
-/* Header: show site name beside the AGNTCY logo */
-.md-header__button.md-logo {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.6rem;
-  width: auto;
-  max-width: none;
-  padding: 0 0.6rem 0 0.2rem;
-}
+/* Header: show site name beside the AGNTCY logo (desktop only — Material hides the header logo on narrow viewports). */
+@media screen and (min-width: 76.25em) {
+  .md-header__button.md-logo {
+    display: inline-flex !important;
+    align-items: center;
+    gap: 0.6rem;
+    width: auto;
+    max-width: none;
+    padding: 0 0.6rem 0 0.2rem;
+  }
 
-.md-header__button.md-logo .md-logo__brand-name {
-  font-size: 0.85rem;
-  font-weight: 600;
-  line-height: 1.2;
-  color: var(--md-primary-bg-color);
-  white-space: nowrap;
+  .md-header__button.md-logo .md-logo__brand-name {
+    font-size: 0.85rem;
+    font-weight: 600;
+    line-height: 1.2;
+    color: var(--md-primary-bg-color);
+    white-space: nowrap;
+  }
 }
 
 /* Drawer logo: image only (site name follows in nav title) */
@@ -410,7 +412,8 @@ html [data-md-color-primary=black] .md-nav--primary .md-nav__source {
   filter: brightness(1.05);
 }
 
-.md-grid {
+/* Constrain page content only — not header/tabs/footer chrome. */
+.md-main__inner.md-grid {
   max-width: 80%;
 }
 
