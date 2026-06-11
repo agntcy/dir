@@ -58,7 +58,7 @@ task ui:build && task cli:compile
 server/gateway/ui/
   src/
     routes/           SvelteKit file-based routes
-      +page.svelte    Agent Finder dashboard (home page)
+      +page.svelte    AI Catalog dashboard (home page)
       +layout.svelte  Shared layout (imports CSS)
       +layout.ts      Static rendering config
     lib/
