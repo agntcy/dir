@@ -1,3 +1,10 @@
+export interface AgentFilterCriteria {
+	searchQuery: string;
+	mediaTypes: Set<string>;
+	statusFilter: string;
+	activeTags: Set<string>;
+}
+
 export interface CatalogEntry {
 	identifier: string;
 	displayName: string;

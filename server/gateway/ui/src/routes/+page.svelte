@@ -1,6 +1,7 @@
 <script lang="ts">
-	import type { CatalogEntry } from '$lib/types';
-	import { fetchAllAgents } from '$lib/api';
+	import type { AgentFilterCriteria, CatalogEntry } from '$lib/types';
+	import { buildAgentFilterQuery, fetchAgents } from '$lib/api';
+	import { applyClientFilters } from '$lib/utils';
 	import AgentCard from '$lib/components/AgentCard.svelte';
 	import FilterSidebar from '$lib/components/FilterSidebar.svelte';
 	import DetailModal from '$lib/components/DetailModal.svelte';
@@ -8,21 +9,64 @@
 	import DisclaimerBanner from '$lib/components/DisclaimerBanner.svelte';
 	import { onMount } from 'svelte';
 
-	let allAgents = $state<CatalogEntry[]>([]);
+	let agents = $state<CatalogEntry[]>([]);
 	let filteredAgents = $state<CatalogEntry[]>([]);
 	let loading = $state(true);
 	let error = $state('');
 	let currentPage = $state(1);
 	let selectedAgent = $state<CatalogEntry | null>(null);
 
+	let latestCriteria = $state<AgentFilterCriteria | null>(null);
+	let loadedServerFilter = $state<string | null>(null);
+	let loadRequestId = 0;
+	let searchDebounce: ReturnType<typeof setTimeout> | undefined;
+
 	const PAGE_SIZE = 20;
 
 	let totalPages = $derived(Math.max(1, Math.ceil(filteredAgents.length / PAGE_SIZE)));
 	let pageItems = $derived(filteredAgents.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE));
 
-	function handleFilter(filtered: CatalogEntry[]) {
-		filteredAgents = filtered;
+	function applyFilters(loaded: CatalogEntry[], criteria: AgentFilterCriteria) {
+		filteredAgents = applyClientFilters(loaded, criteria);
 		currentPage = 1;
+	}
+
+	async function loadAgents(criteria: AgentFilterCriteria) {
+		const requestId = ++loadRequestId;
+		const filter = buildAgentFilterQuery(criteria);
+		loading = true;
+		error = '';
+
+		try {
+			const loaded = await fetchAgents({ filter: filter || undefined });
+			if (requestId !== loadRequestId) return;
+			agents = loaded;
+			loadedServerFilter = filter;
+			applyFilters(loaded, criteria);
+		} catch (e) {
+			if (requestId !== loadRequestId) return;
+			error = e instanceof Error ? e.message : 'Unknown error';
+			agents = [];
+			filteredAgents = [];
+		} finally {
+			if (requestId === loadRequestId) loading = false;
+		}
+	}
+
+	function handleCriteriaChange(criteria: AgentFilterCriteria) {
+		latestCriteria = criteria;
+		const serverFilter = buildAgentFilterQuery(criteria);
+
+		if (serverFilter !== loadedServerFilter) {
+			clearTimeout(searchDebounce);
+			const delay = criteria.searchQuery.trim() ? 300 : 0;
+			searchDebounce = setTimeout(() => {
+				if (latestCriteria) loadAgents(latestCriteria);
+			}, delay);
+			return;
+		}
+
+		applyFilters(agents, criteria);
 	}
 
 	function handlePage(page: number) {
@@ -30,15 +74,15 @@
 		document.getElementById('agents-grid')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
 	}
 
-	onMount(async () => {
-		try {
-			allAgents = await fetchAllAgents();
-			filteredAgents = allAgents;
-		} catch (e) {
-			error = e instanceof Error ? e.message : 'Unknown error';
-		} finally {
-			loading = false;
-		}
+	onMount(() => {
+		const initial: AgentFilterCriteria = {
+			searchQuery: '',
+			mediaTypes: new Set(['all']),
+			statusFilter: 'all',
+			activeTags: new Set()
+		};
+		latestCriteria = initial;
+		loadAgents(initial);
 	});
 </script>
 
@@ -52,7 +96,7 @@
 			<h1 class="text-lg font-medium text-gray-700">AI Catalog</h1>
 		</div>
 		<div class="text-sm text-gray-500">
-			<span>{allAgents.length}</span> agents indexed
+			<span>{filteredAgents.length}</span> agents indexed
 		</div>
 	</div>
 </header>
@@ -62,7 +106,7 @@
 <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
 	<div class="flex flex-col lg:flex-row gap-6">
 		<aside class="lg:w-64 flex-shrink-0">
-			<FilterSidebar agents={allAgents} onfilter={handleFilter} />
+			<FilterSidebar {agents} onchange={handleCriteriaChange} />
 		</aside>
 
 		<section class="flex-1 min-w-0">
@@ -77,7 +121,7 @@
 						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z"/>
 					</svg>
 					<p class="mt-3 text-red-600 font-medium">Failed to load agents: {error}</p>
-					<button onclick={() => location.reload()} class="mt-4 px-4 py-2 bg-brand-600 text-white text-sm rounded-lg hover:bg-brand-700 transition">Retry</button>
+					<button onclick={() => latestCriteria && loadAgents(latestCriteria)} class="mt-4 px-4 py-2 bg-brand-600 text-white text-sm rounded-lg hover:bg-brand-700 transition">Retry</button>
 				</div>
 			{:else if pageItems.length === 0}
 				<div class="text-center py-20">
