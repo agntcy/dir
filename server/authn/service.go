@@ -40,10 +40,14 @@ func New(ctx context.Context, cfg config.Config) (*Service, error) {
 	}
 
 	// Create a client for SPIRE Workload API
+	logger.Debug("Creating SPIRE Workload API client...")
+
 	client, err := workloadapi.New(ctx, workloadapi.WithAddr(cfg.SocketPath))
 	if err != nil {
 		return nil, fmt.Errorf("failed to create workload API client: %w", err)
 	}
+
+	logger.Debug("Created SPIRE Workload API client")
 
 	service := &Service{
 		mode:   cfg.Mode,
@@ -53,6 +57,8 @@ func New(ctx context.Context, cfg config.Config) (*Service, error) {
 	// Initialize based on authentication mode
 	switch cfg.Mode {
 	case config.AuthModeJWT:
+		logger.Debug("Initializing JWT...")
+
 		if err := service.initJWT(ctx, cfg); err != nil {
 			_ = client.Close()
 
@@ -62,6 +68,8 @@ func New(ctx context.Context, cfg config.Config) (*Service, error) {
 		logger.Info("JWT authentication service initialized", "audiences", cfg.Audiences)
 
 	case config.AuthModeX509:
+		logger.Debug("Initializing X509...")
+
 		if err := service.initX509(ctx); err != nil {
 			_ = client.Close()
 
