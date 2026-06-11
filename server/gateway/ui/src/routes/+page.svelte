@@ -5,6 +5,7 @@
 	import FilterSidebar from '$lib/components/FilterSidebar.svelte';
 	import DetailModal from '$lib/components/DetailModal.svelte';
 	import Pagination from '$lib/components/Pagination.svelte';
+	import DisclaimerBanner from '$lib/components/DisclaimerBanner.svelte';
 	import { onMount } from 'svelte';
 
 	let allAgents = $state<CatalogEntry[]>([]);
@@ -55,6 +56,8 @@
 		</div>
 	</div>
 </header>
+
+<DisclaimerBanner />
 
 <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
 	<div class="flex flex-col lg:flex-row gap-6">
