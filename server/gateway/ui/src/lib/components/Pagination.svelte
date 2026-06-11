@@ -28,7 +28,7 @@
 {#if totalPages > 1}
 	<nav class="flex items-center justify-center gap-2 mt-6 pb-4">
 		<button
-			class="px-3 py-1.5 text-sm rounded-lg border border-gray-300 hover:bg-gray-100 disabled:opacity-40 disabled:cursor-not-allowed transition"
+			class="px-3 py-1.5 text-sm font-medium rounded text-ink border-2 border-line bg-surface-light hover:border-line-strong disabled:opacity-40 disabled:cursor-not-allowed transition"
 			disabled={currentPage <= 1}
 			onclick={() => onpage(currentPage - 1)}
 		>Previous</button>
@@ -36,10 +36,10 @@
 		<div class="flex items-center gap-1">
 			{#each pages as p}
 				{#if p === '...'}
-					<span class="px-2 py-1 text-sm text-gray-400">...</span>
+					<span class="px-2 py-1 text-sm text-ink-weak">...</span>
 				{:else}
 					<button
-						class="px-3 py-1.5 text-sm rounded-lg transition {p === currentPage ? 'bg-brand-600 text-white' : 'border border-gray-300 hover:bg-gray-100'}"
+						class="min-w-9 h-9 px-2 text-sm font-medium rounded-full transition {p === currentPage ? 'bg-brand-500 text-white' : 'text-ink hover:bg-surface-strong'}"
 						onclick={() => onpage(p)}
 					>{p}</button>
 				{/if}
@@ -47,7 +47,7 @@
 		</div>
 
 		<button
-			class="px-3 py-1.5 text-sm rounded-lg border border-gray-300 hover:bg-gray-100 disabled:opacity-40 disabled:cursor-not-allowed transition"
+			class="px-3 py-1.5 text-sm font-medium rounded text-ink border-2 border-line bg-surface-light hover:border-line-strong disabled:opacity-40 disabled:cursor-not-allowed transition"
 			disabled={currentPage >= totalPages}
 			onclick={() => onpage(currentPage + 1)}
 		>Next</button>

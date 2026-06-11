@@ -58,29 +58,29 @@
 	];
 </script>
 
-<div class="bg-white rounded-xl border border-gray-200 p-4 space-y-5 sticky top-20 max-h-[calc(100vh-6rem)] flex flex-col overflow-hidden">
+<div class="bg-surface-strong rounded-card border border-line p-4 space-y-5 sticky top-24 max-h-[calc(100vh-7rem)] flex flex-col overflow-hidden">
 	<div class="flex-shrink-0">
-		<label for="search" class="block text-sm font-medium text-gray-700 mb-1.5">Search</label>
+		<label for="search" class="block text-xs font-semibold uppercase tracking-wide text-ink-medium mb-1.5">Search</label>
 		<input
 			type="text"
 			id="search"
 			placeholder="Filter by name..."
-			class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent"
+			class="w-full rounded-control border-2 border-line bg-surface-light px-3 py-2 text-sm text-ink placeholder:text-ink-weak focus:outline-none focus:border-brand-500"
 			bind:value={searchQuery}
 			oninput={notifyChange}
 		/>
 	</div>
 
 	<div class="flex-shrink-0">
-		<span class="block text-sm font-medium text-gray-700 mb-1.5">Media Type</span>
+		<span class="block text-xs font-semibold uppercase tracking-wide text-ink-medium mb-2">Media Type</span>
 		<div class="space-y-1.5">
 			{#each MEDIA_TYPE_OPTIONS as opt}
-				<label class="flex items-center gap-2 text-sm cursor-pointer">
+				<label class="flex items-center gap-2 text-sm text-ink cursor-pointer">
 					<input
 						type="checkbox"
 						checked={mediaTypes.has(opt.value)}
 						onchange={(e) => handleMediaType(opt.value, (e.target as HTMLInputElement).checked)}
-						class="rounded border-gray-300 text-brand-600 focus:ring-brand-500"
+						class="rounded border-line-strong text-brand-500 focus:ring-brand-500"
 					/>
 					<span>{opt.label}</span>
 				</label>
@@ -89,10 +89,10 @@
 	</div>
 
 	<div class="flex-shrink-0">
-		<span class="block text-sm font-medium text-gray-700 mb-1.5">Status</span>
+		<span class="block text-xs font-semibold uppercase tracking-wide text-ink-medium mb-2">Status</span>
 		<div class="space-y-1.5">
 			{#each ['all', 'trusted', 'verified'] as value}
-				<label class="flex items-center gap-2 text-sm cursor-pointer">
+				<label class="flex items-center gap-2 text-sm text-ink cursor-pointer">
 					<input
 						type="radio"
 						name="status"
@@ -102,7 +102,7 @@
 							statusFilter = value;
 							notifyChange();
 						}}
-						class="border-gray-300 text-brand-600 focus:ring-brand-500"
+						class="border-line-strong text-brand-500 focus:ring-brand-500"
 					/>
 					<span class="capitalize">{value}</span>
 				</label>
@@ -111,21 +111,21 @@
 	</div>
 
 	<div class="flex-1 flex flex-col min-h-0">
-		<span class="block text-sm font-medium text-gray-700 mb-1.5 flex-shrink-0">Tags</span>
+		<span class="block text-xs font-semibold uppercase tracking-wide text-ink-medium mb-2 flex-shrink-0">Tags</span>
 		<input
 			type="text"
 			placeholder="Filter tags..."
-			class="w-full rounded-lg border border-gray-300 px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent mb-2 flex-shrink-0"
+			class="w-full rounded-control border-2 border-line bg-surface-light px-3 py-1.5 text-sm text-ink placeholder:text-ink-weak focus:outline-none focus:border-brand-500 mb-2 flex-shrink-0"
 			bind:value={tagSearch}
 		/>
 		<div class="space-y-1.5 overflow-y-auto flex-1">
 			{#each visibleTags as tag}
-				<label class="flex items-center gap-2 text-sm cursor-pointer">
+				<label class="flex items-center gap-2 text-sm text-ink cursor-pointer">
 					<input
 						type="checkbox"
 						checked={activeTags.has(tag)}
 						onchange={(e) => handleTag(tag, (e.target as HTMLInputElement).checked)}
-						class="rounded border-gray-300 text-brand-600 focus:ring-brand-500"
+						class="rounded border-line-strong text-brand-500 focus:ring-brand-500"
 					/>
 					<span class="truncate" title={tag}>{extractShortTag(tag)}</span>
 				</label>

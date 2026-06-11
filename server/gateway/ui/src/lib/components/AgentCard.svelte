@@ -20,39 +20,47 @@
 
 <!-- svelte-ignore a11y_no_noninteractive_element_to_interactive_role -->
 <article
-	class="bg-white rounded-xl border border-gray-200 p-5 hover:shadow-md transition-shadow cursor-pointer flex flex-col h-full"
+	class="bg-surface-light rounded-card border border-line/70 shadow-card p-4 hover:shadow-card-hover hover:border-line-strong transition cursor-pointer flex flex-col h-full gap-3"
 	onclick={onclick}
 	onkeydown={(e) => { if (e.key === 'Enter') onclick(); }}
 	role="button"
 	tabindex="0"
 >
-	<div class="flex items-start justify-between gap-3 mb-2">
-		<div class="flex items-center gap-1.5 min-w-0">
-			<h3 class="font-semibold text-gray-900 truncate">{agent.displayName || 'Unnamed Agent'}</h3>
-			{#if verified}
-				<VerifiedBadge />
-			{/if}
+	<div class="flex items-start justify-between gap-3">
+		<div class="min-w-0">
+			<div class="flex items-center gap-1.5 min-w-0">
+				<h3 class="font-semibold text-ink-strong truncate">{agent.displayName || 'Unnamed Agent'}</h3>
+				{#if verified}
+					<VerifiedBadge />
+				{/if}
+			</div>
+			<p class="text-xs text-ink-medium mt-0.5">
+				{#if agent.version}Version {agent.version}{/if}
+				{#if agent.version && agent.updatedAt} &bull; {/if}
+				{#if agent.updatedAt}{new Date(agent.updatedAt).toLocaleDateString()}{/if}
+			</p>
 		</div>
-		<span class="text-xs text-gray-400 whitespace-nowrap">{agent.version || ''}</span>
 	</div>
 
-	<p class="text-sm text-gray-600 mb-3 line-clamp-2">{agent.description || 'No description available.'}</p>
+	<p class="text-sm text-ink line-clamp-2">{agent.description || 'No description available.'}</p>
 
-	<div class="flex flex-wrap gap-1.5 mb-3">
+	{#if tags.length}
+		<div class="flex flex-wrap gap-1.5">
+			{#each tags as tag}
+				<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-surface-tag text-ink whitespace-normal break-words max-w-full" title={tag}>
+					{extractShortTag(tag)}
+				</span>
+			{/each}
+		</div>
+	{/if}
+
+	<div class="flex flex-wrap gap-1.5">
 		{#each types as type}
 			<MediaTypeBadge {type} />
 		{/each}
 	</div>
 
-	<div class="flex flex-wrap gap-1.5 mb-3">
-		{#each tags as tag}
-			<span class="inline-flex items-center px-2 py-0.5 rounded text-xs bg-gray-100 text-gray-600 truncate max-w-[150px]" title={tag}>
-				{extractShortTag(tag)}
-			</span>
-		{/each}
-	</div>
-
-	<div class="flex items-center justify-between text-xs text-gray-400 mt-auto pt-2 border-t border-gray-100">
+	<div class="flex items-center justify-between text-xs text-ink-weak mt-auto pt-2.5 border-t border-line/70">
 		<StarRating rating={stats.rating} />
 		<span class="flex items-center gap-3">
 			<span class="inline-flex items-center gap-1" title="Downloads">

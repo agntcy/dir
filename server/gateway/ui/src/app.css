@@ -1,15 +1,63 @@
 @import 'tailwindcss';
 
+/*
+ * Design tokens extracted from the Figma "Phoenix" design
+ * (Outshift / Agent Directory). Mapped to Tailwind v4 theme tokens.
+ */
 @theme {
-	--color-brand-50: #f5f8fd;
-	--color-brand-100: #eff3fc;
-	--color-brand-200: #e8eefb;
-	--color-brand-300: #dce2ee;
+	/* Brand blues (light -> dark) */
+	--color-brand-50: #f5f8fd; /* control / background weak */
+	--color-brand-100: #eff3fc; /* base / background strong (sidebar) */
+	--color-brand-200: #e8f1ff; /* brand / background primary weak */
+	--color-brand-300: #d5dff7; /* border default */
 	--color-brand-400: #4a9ee8;
-	--color-brand-500: #187ADC;
-	--color-brand-600: #0251AF;
-	--color-brand-700: #003d85;
-	--color-surface: #eff3fc;
-	--color-surface-light: #f5f8fd;
-	--color-surface-dark: #e8eefb;
+	--color-brand-500: #187adc; /* interactive / primary */
+	--color-brand-600: #0051af; /* brand / text primary */
+	--color-brand-700: #004ba8; /* neutral / text */
+	--color-brand-800: #0d274d; /* brand / logo secondary (navy) */
+	--color-brand-900: #00142b; /* base / text strong */
+
+	/* Surfaces */
+	--color-surface: #f5f8fd; /* page background */
+	--color-surface-light: #fbfcfe; /* card / control background */
+	--color-surface-strong: #eff3fc; /* sidebar / sunken background */
+	--color-surface-tag: #e3eafa; /* tag / chip background */
+
+	/* Text / ink */
+	--color-ink-strong: #00142b;
+	--color-ink: #3c4551;
+	--color-ink-medium: #59616b;
+	--color-ink-weak: #777d85;
+
+	/* Lines / borders */
+	--color-line: #d5dff7;
+	--color-line-strong: #c8d5f5;
+
+	/* Accents */
+	--color-accent-teal: #dff1f5;
+	--color-accent-teal-ink: #0f6e85;
+	--color-success: #00b285;
+	--color-warn: #fbab2c;
+
+	/* Typography */
+	--font-sans:
+		'Inter', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial,
+		sans-serif;
+	--font-display:
+		'Inter', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial,
+		sans-serif;
+
+	/* Radii */
+	--radius-card: 8px;
+	--radius-control: 4px;
+
+	/* Shadows */
+	--shadow-card: 0 4px 4px 0 rgba(200, 213, 245, 0.33);
+	--shadow-card-hover: 0 6px 16px 0 rgba(200, 213, 245, 0.55);
+}
+
+html {
+	font-family: var(--font-sans);
+	-webkit-font-smoothing: antialiased;
+	text-rendering: optimizeLegibility;
 }
