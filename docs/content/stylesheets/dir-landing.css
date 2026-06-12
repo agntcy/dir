@@ -56,6 +56,10 @@
   --dir-graph-panel-border: #4d8fd440;
   --dir-graph-panel-text: #0d1f3c;
   --dir-graph-hint: #8a9ab0;
+  --dir-graph-pill-bg: #ffffff;
+  --dir-graph-pill-border: #4d8fd455;
+  --dir-graph-pill-text: #0d1f3c;
+  --dir-graph-pill-icon: #8a9ab0;
 }
 
 [data-md-color-scheme="slate"] {
@@ -86,6 +90,10 @@
   --dir-graph-panel-border: #4d8fd430;
   --dir-graph-panel-text: rgba(255, 255, 255, 0.65);
   --dir-graph-hint: rgba(255, 255, 255, 0.18);
+  --dir-graph-pill-bg: #4d8fd408;
+  --dir-graph-pill-border: #4d8fd433;
+  --dir-graph-pill-text: rgba(255, 255, 255, 0.4);
+  --dir-graph-pill-icon: rgba(255, 255, 255, 0.3);
 }
 
 /* Home page only: MkDocs chrome adjustments for full-bleed hero. */
@@ -423,17 +431,20 @@
   outline: none;
 }
 
-.dir-graph-node-glow,
-.dir-graph-node-ring {
+.dir-graph-node-glow {
   opacity: 0;
-  transition: opacity 0.25s ease;
+  pointer-events: none;
+  transition: opacity 0.3s ease;
+}
+
+.dir-graph-node-ring {
+  display: none;
 }
 
 .dir-graph-node.is-active .dir-graph-node-glow,
-.dir-graph-node.is-active .dir-graph-node-ring,
-.dir-graph-node:focus-visible .dir-graph-node-glow,
-.dir-graph-node:focus-visible .dir-graph-node-ring {
-  opacity: 1;
+.dir-graph-node:focus-visible .dir-graph-node-glow {
+  opacity: 0.85;
+  filter: url(#dir-graph-node-soft-glow);
 }
 
 .dir-graph-node-fill {
@@ -449,39 +460,44 @@
 
 .dir-graph-node.is-active .dir-graph-node-stroke,
 .dir-graph-node:focus-visible .dir-graph-node-stroke {
-  stroke-width: 1.5;
+  stroke-width: 1;
 }
 
 .dir-graph-node.is-active[data-accent="#4d8fd4"] .dir-graph-node-stroke,
 .dir-graph-node:focus-visible[data-accent="#4d8fd4"] .dir-graph-node-stroke {
-  stroke: #4d8fd4;
+  stroke: rgba(77, 143, 212, 0.38);
 }
 
 .dir-graph-node.is-active[data-accent="#f0a830"] .dir-graph-node-stroke,
 .dir-graph-node:focus-visible[data-accent="#f0a830"] .dir-graph-node-stroke {
-  stroke: #f0a830;
+  stroke: rgba(240, 168, 48, 0.38);
 }
 
 .dir-graph-node-icon {
+  fill: none;
   stroke: var(--dir-graph-icon);
-  transition: stroke 0.25s ease;
+  stroke-width: 1.8;
+  transition: stroke 0.25s ease, stroke-width 0.25s ease;
 }
 
 .dir-graph-node-label {
   fill: var(--dir-graph-label);
   font-family: Roboto, sans-serif;
-  font-size: 11px;
+  font-size: 12px;
   letter-spacing: 0.04em;
-  transition: fill 0.25s ease, font-weight 0.25s ease;
+  transition: fill 0.25s ease;
 }
 
 .dir-graph-node.is-active .dir-graph-node-icon,
-.dir-graph-node.is-active .dir-graph-node-label,
-.dir-graph-node:focus-visible .dir-graph-node-icon,
-.dir-graph-node:focus-visible .dir-graph-node-label {
+.dir-graph-node:focus-visible .dir-graph-node-icon {
+  fill: none;
   stroke: var(--dir-graph-accent-active);
+  stroke-width: 2.1;
+}
+
+.dir-graph-node.is-active .dir-graph-node-label,
+.dir-graph-node:focus-visible .dir-graph-node-label {
   fill: var(--dir-graph-accent-active);
-  font-weight: 600;
 }
 
 .dir-graph-node.is-active[data-accent="#4d8fd4"],
@@ -562,6 +578,77 @@
   line-height: 1.65;
 }
 
+.dir-graph-pills {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.375rem;
+  margin-top: 1rem;
+  padding: 0 0.5rem;
+}
+
+.md-typeset .dir-graph-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  margin: 0;
+  padding: 0.3rem 0.625rem;
+  border: 1px solid var(--dir-graph-pill-border);
+  border-radius: 0.125rem;
+  background: var(--dir-graph-pill-bg);
+  color: var(--dir-graph-pill-text);
+  font-family: Roboto, sans-serif;
+  font-size: 0.625rem;
+  font-weight: 400;
+  letter-spacing: 0.08em;
+  line-height: 1.2;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: background 0.2s ease, border-color 0.2s ease, color 0.2s ease;
+}
+
+.md-typeset .dir-graph-pill:hover {
+  color: var(--dir-graph-pill-text);
+}
+
+.dir-graph-pill__icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--dir-graph-pill-icon);
+  transition: color 0.2s ease;
+}
+
+.dir-graph-pill__icon svg {
+  display: block;
+  width: 0.625rem;
+  height: 0.625rem;
+}
+
+.dir-graph-pill.is-active[data-accent="#4d8fd4"],
+.dir-graph-pill:focus-visible[data-accent="#4d8fd4"] {
+  background: rgba(77, 143, 212, 0.15);
+  border-color: #4d8fd4;
+  color: #4d8fd4;
+}
+
+.dir-graph-pill.is-active[data-accent="#4d8fd4"] .dir-graph-pill__icon,
+.dir-graph-pill:focus-visible[data-accent="#4d8fd4"] .dir-graph-pill__icon {
+  color: #4d8fd4;
+}
+
+.dir-graph-pill.is-active[data-accent="#f0a830"],
+.dir-graph-pill:focus-visible[data-accent="#f0a830"] {
+  background: rgba(240, 168, 48, 0.15);
+  border-color: #f0a830;
+  color: #f0a830;
+}
+
+.dir-graph-pill.is-active[data-accent="#f0a830"] .dir-graph-pill__icon,
+.dir-graph-pill:focus-visible[data-accent="#f0a830"] .dir-graph-pill__icon {
+  color: #f0a830;
+}
+
 .dir-graph-hint {
   margin: 1.5rem 0 0;
   text-align: center;
@@ -588,7 +675,9 @@
   .dir-graph-node-icon,
   .dir-graph-node-label,
   .dir-graph-node-glow,
-  .dir-graph-node-ring {
+  .dir-graph-node-ring,
+  .dir-graph-pill,
+  .dir-graph-pill__icon {
     transition: none;
   }
 }

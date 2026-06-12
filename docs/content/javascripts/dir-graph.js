@@ -227,7 +227,7 @@ document$.subscribe(function () {
           n.x.toFixed(2) +
           '" cy="' +
           n.y.toFixed(2) +
-          '" r="52" fill="url(#dir-graph-node-glow-' +
+          '" r="62" fill="url(#dir-graph-node-glow-' +
           (n.index % 2 === 0 ? "blue" : "amber") +
           ')"/>' +
           '<circle class="dir-graph-node-ring" cx="' +
@@ -236,7 +236,7 @@ document$.subscribe(function () {
           n.y.toFixed(2) +
           '" r="' +
           (NODE_R + 5) +
-          '"/>' +
+          '" fill="none"/>' +
           '<circle class="dir-graph-node-fill" cx="' +
           n.x.toFixed(2) +
           '" cy="' +
@@ -288,7 +288,13 @@ document$.subscribe(function () {
       '<radialGradient id="dir-graph-node-glow-blue" cx="50%" cy="50%" r="50%">' +
       '<stop offset="0%" stop-color="' +
       BLUE +
-      '" stop-opacity="0.18"/>' +
+      '" stop-opacity="0.28"/>' +
+      '<stop offset="40%" stop-color="' +
+      BLUE +
+      '" stop-opacity="0.14"/>' +
+      '<stop offset="72%" stop-color="' +
+      BLUE +
+      '" stop-opacity="0.05"/>' +
       '<stop offset="100%" stop-color="' +
       BLUE +
       '" stop-opacity="0"/>' +
@@ -296,11 +302,20 @@ document$.subscribe(function () {
       '<radialGradient id="dir-graph-node-glow-amber" cx="50%" cy="50%" r="50%">' +
       '<stop offset="0%" stop-color="' +
       AMBER +
-      '" stop-opacity="0.18"/>' +
+      '" stop-opacity="0.28"/>' +
+      '<stop offset="40%" stop-color="' +
+      AMBER +
+      '" stop-opacity="0.14"/>' +
+      '<stop offset="72%" stop-color="' +
+      AMBER +
+      '" stop-opacity="0.05"/>' +
       '<stop offset="100%" stop-color="' +
       AMBER +
       '" stop-opacity="0"/>' +
       "</radialGradient>" +
+      '<filter id="dir-graph-node-soft-glow" x="-100%" y="-100%" width="300%" height="300%">' +
+      '<feGaussianBlur in="SourceGraphic" stdDeviation="5"/>' +
+      "</filter>" +
       "</defs>" +
       buildDotGrid() +
       '<circle cx="' +
@@ -404,6 +419,31 @@ document$.subscribe(function () {
       "</p>";
   }
 
+  function buildPills() {
+    return (
+      '<div class="dir-graph-pills">' +
+      NODES.map(function (n, i) {
+        var accent = accentColor(i);
+        return (
+          '<button type="button" class="dir-graph-pill" data-node="' +
+          n.id +
+          '" data-accent="' +
+          accent +
+          '" aria-label="' +
+          n.label +
+          '">' +
+          '<span class="dir-graph-pill__icon" aria-hidden="true">' +
+          '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' +
+          ICON_PATHS[n.id] +
+          "</svg></span>" +
+          n.label +
+          "</button>"
+        );
+      }).join("") +
+      "</div>"
+    );
+  }
+
   function setActive(wrap, nodeId) {
     var activeId = nodeId || null;
     wrap.querySelectorAll(".dir-graph-node").forEach(function (el) {
@@ -412,7 +452,40 @@ document$.subscribe(function () {
     wrap.querySelectorAll(".dir-graph-spoke").forEach(function (el) {
       el.classList.toggle("is-active", el.getAttribute("data-node") === activeId);
     });
+    wrap.querySelectorAll(".dir-graph-pill").forEach(function (el) {
+      el.classList.toggle("is-active", el.getAttribute("data-node") === activeId);
+    });
     renderPanel(wrap.querySelector(".dir-graph-panel"), activeId);
+  }
+
+  function bindHighlightTarget(el, wrap, getPinned, activate) {
+    var nodeId = el.getAttribute("data-node");
+
+    el.addEventListener("mouseenter", function () {
+      if (!getPinned()) {
+        setActive(wrap, nodeId);
+      }
+    });
+
+    el.addEventListener("mouseleave", function () {
+      if (!getPinned()) {
+        setActive(wrap, null);
+      }
+    });
+
+    el.addEventListener("focus", function () {
+      setActive(wrap, nodeId);
+    });
+
+    el.addEventListener("blur", function () {
+      if (!getPinned()) {
+        setActive(wrap, null);
+      }
+    });
+
+    el.addEventListener("click", function () {
+      activate(nodeId);
+    });
   }
 
   document.querySelectorAll(".dir-graph-wrap[data-dir-graph]").forEach(function (wrap) {
@@ -431,9 +504,12 @@ document$.subscribe(function () {
       "</div>" +
       '<div class="dir-graph-panel" hidden></div>' +
       "</div>" +
+      buildPills() +
       '<p class="dir-graph-hint">Hover or tap nodes to explore the lifecycle</p>';
 
-    var panel = wrap.querySelector(".dir-graph-panel");
+    function getPinned() {
+      return pinned;
+    }
 
     function activate(nodeId) {
       if (pinned) {
@@ -445,38 +521,12 @@ document$.subscribe(function () {
     }
 
     wrap.querySelectorAll(".dir-graph-node").forEach(function (nodeEl) {
-      var nodeId = nodeEl.getAttribute("data-node");
-
-      nodeEl.addEventListener("mouseenter", function () {
-        if (!pinned) {
-          setActive(wrap, nodeId);
-        }
-      });
-
-      nodeEl.addEventListener("mouseleave", function () {
-        if (!pinned) {
-          setActive(wrap, null);
-        }
-      });
-
-      nodeEl.addEventListener("focus", function () {
-        setActive(wrap, nodeId);
-      });
-
-      nodeEl.addEventListener("blur", function () {
-        if (!pinned) {
-          setActive(wrap, null);
-        }
-      });
-
-      nodeEl.addEventListener("click", function () {
-        activate(nodeId);
-      });
+      bindHighlightTarget(nodeEl, wrap, getPinned, activate);
 
       nodeEl.addEventListener("keydown", function (event) {
         if (event.key === "Enter" || event.key === " ") {
           event.preventDefault();
-          activate(nodeId);
+          activate(nodeEl.getAttribute("data-node"));
         }
         if (event.key === "Escape") {
           pinned = null;
@@ -484,6 +534,10 @@ document$.subscribe(function () {
           nodeEl.blur();
         }
       });
+    });
+
+    wrap.querySelectorAll(".dir-graph-pill").forEach(function (pillEl) {
+      bindHighlightTarget(pillEl, wrap, getPinned, activate);
     });
 
     wrap.addEventListener("mouseleave", function () {
