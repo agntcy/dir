@@ -42,6 +42,10 @@ on:
   schedule:
     - cron: "0 0 * * *"
 
+concurrency:
+  group: import-records
+  cancel-in-progress: false
+
 jobs:
   setup-matrix:
     runs-on: ubuntu-latest
@@ -204,6 +208,7 @@ jobs:
 
       - name: Import MCP Records
         id: import
+        timeout-minutes: 300
         env:
           AZURE_OPENAI_API_KEY: ${{ secrets.AZURE_OPENAI_API_KEY }}
           AZURE_OPENAI_BASE_URL: ${{ secrets.AZURE_OPENAI_ENDPOINT }}
@@ -429,6 +434,7 @@ jobs:
 
       - name: Import Agent Skills
         id: import
+        timeout-minutes: 300
         env:
           AZURE_OPENAI_API_KEY: ${{ secrets.AZURE_OPENAI_API_KEY }}
           AZURE_OPENAI_BASE_URL: ${{ secrets.AZURE_OPENAI_ENDPOINT }}
