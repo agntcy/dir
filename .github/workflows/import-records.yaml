@@ -196,26 +196,11 @@ jobs:
         run: chmod +x .bin/mcp-scanner
 
       - name: Create Enricher Config
+        env:
+          DIRCTL_PATH: ${{ steps.setup-dirctl.outputs.dirctl_path }}
         run: |
-          cat <<'EOF' > mcphost_ci.json
-          {
-            "mcpServers": {
-              "dir-mcp-server": {
-                "command": "${{ steps.setup-dirctl.outputs.dirctl_path }}",
-                "args": [
-                  "mcp",
-                  "serve"
-                ],
-                "env": {
-                  "OASF_API_VALIDATION_SCHEMA_URL": "https://schema.oasf.outshift.com",
-                  "DIRECTORY_CLIENT_AUTH_MODE": "insecure"
-                }
-              }
-            },
-            "model": "azure:gpt-4o",
-            "max-steps": 10
-          }
-          EOF
+          sed "s|__DIRCTL_PATH__|${DIRCTL_PATH}|g" \
+            .github/workflows/scripts/mcphost_ci.json.template > mcphost_ci.json
 
       - name: Fetch Directory OIDC token
         id: oidc-dir-import
@@ -422,26 +407,11 @@ jobs:
           echo "repo_dir=$REPO_DIR" >> $GITHUB_OUTPUT
 
       - name: Create Enricher Config
+        env:
+          DIRCTL_PATH: ${{ steps.setup-dirctl.outputs.dirctl_path }}
         run: |
-          cat <<'EOF' > mcphost_ci.json
-          {
-            "mcpServers": {
-              "dir-mcp-server": {
-                "command": "${{ steps.setup-dirctl.outputs.dirctl_path }}",
-                "args": [
-                  "mcp",
-                  "serve"
-                ],
-                "env": {
-                  "OASF_API_VALIDATION_SCHEMA_URL": "https://schema.oasf.outshift.com",
-                  "DIRECTORY_CLIENT_AUTH_MODE": "insecure"
-                }
-              }
-            },
-            "model": "azure:gpt-4o",
-            "max-steps": 10
-          }
-          EOF
+          sed "s|__DIRCTL_PATH__|${DIRCTL_PATH}|g" \
+            .github/workflows/scripts/mcphost_ci.json.template > mcphost_ci.json
 
       - name: Fetch Directory OIDC token
         id: oidc-dir-import
