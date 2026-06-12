@@ -12,14 +12,14 @@ the moment of subscription, without maintaining history or supporting replay fun
 
 ### Supported Event Types
 
-The Directory tracks 9 distinct event types organized by service:
+The Directory tracks 10 distinct event types organized by service:
 
 | Service | Event Types | Description |
 |---------|-------------|-------------|
 | **Store** | RECORD_PUSHED<br/>RECORD_PULLED<br/>RECORD_DELETED | Local storage operations |
 | **Routing** | RECORD_PUBLISHED<br/>RECORD_UNPUBLISHED | Network announcement operations |
 | **Sync** | SYNC_CREATED<br/>SYNC_COMPLETED<br/>SYNC_FAILED | Directory synchronization operations |
-| **Sign** | RECORD_SIGNED | Cryptographic signing operations |
+| **Sign** | RECORD_SIGNED<br/>PUBLIC_KEY_UPLOADED | Cryptographic signing and key upload operations |
 
 ## Key Characteristics
 
@@ -151,17 +151,18 @@ import (
 )
 
 func main() {
+    ctx := context.Background()
+
     // Create client
-    c, err := client.New(
-        client.WithAddress("localhost:8080"),
-    )
+    c, err := client.New(ctx, client.WithConfig(&client.Config{
+        ServerAddress: "localhost:8888",
+    }))
     if err != nil {
         panic(err)
     }
     defer c.Close()
     
     // Subscribe to all events
-    ctx := context.Background()
     result, err := c.ListenStream(ctx, &eventsv1.ListenRequest{})
     if err != nil {
         panic(err)
@@ -216,7 +217,7 @@ from agntcy.dir_sdk.client import Client
 from agntcy.dir_sdk.models import events_v1
 
 # Create client
-client = Client(address="localhost:8080")
+client = Client(server_address="localhost:8888")
 
 # Subscribe to events
 request = events_v1.ListenRequest()

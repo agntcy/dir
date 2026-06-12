@@ -54,22 +54,20 @@ To test with a local OASF instance deployed alongside the directory server:
    Replace `dir` with your Helm release name and `dir-server` with your namespace if different.
 
 3. **Deploy**:
-   ```bash
-   task build
-   task deploy:local
-   ```
+   Follow the [Kubernetes Deployment](https://docs.agntcy.org/dir/dir-deployment-kubernetes/) guide
+   to create a Kind cluster and install the Directory Helm chart with the OASF subchart enabled.
 
 The OASF instance will be deployed as a subchart in the same namespace and automatically configured for multi-version routing via ingress.
 
 #### Using a Locally Built OASF Image
 
-If you want to deploy with a locally built OASF image (e.g., containing `0.9.0-dev` schema files), you need to load the image into Kind **before** deploying. The `task deploy:local` command automatically creates a cluster and loads images, but it doesn't load custom OASF images. Follow these steps:
+If you want to deploy with a locally built OASF image (e.g., containing `0.9.0-dev` schema files), you need to load the image into Kind **before** deploying. Recreating the Kind cluster after loading a custom OASF image will discard it. Follow these steps:
 
 1. **Create the Kind cluster first**:
    ```bash
-   task test-env:kubernetes:setup-cluster
+   kind create cluster --name agntcy-cluster
+   task build
    ```
-   This creates the cluster and loads the Directory server images.
 
 2. **Build and tag your local OASF image**:
    ```bash
@@ -94,7 +92,7 @@ If you want to deploy with a locally built OASF image (e.g., containing `0.9.0-d
            default: true
    ```
 
-5. **Deploy with Helm** (don't use `task deploy:local` as it will recreate the cluster):
+5. **Deploy with Helm** (without recreating the cluster):
    ```bash
    helm upgrade --install dir ./install/charts/dir \
      -f ./install/charts/dir/values.yaml \
