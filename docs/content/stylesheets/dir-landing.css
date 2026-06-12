@@ -357,7 +357,7 @@
 
 .dir-graph-group-label {
   font-family: "Roboto Mono", monospace;
-  font-size: 10.5px;
+  font-size: 12px;
   font-weight: 500;
   letter-spacing: 0.1em;
   opacity: 0.7;
@@ -373,7 +373,8 @@
 .dir-graph-hub-ring {
   fill: none;
   stroke: var(--dir-graph-hub-ring);
-  stroke-width: 7;
+  stroke-width: 6;
+  stroke-opacity: 0.72;
 }
 
 .dir-graph-hub-title {
@@ -603,5 +604,44 @@
     flex-wrap: wrap;
     justify-content: center;
     gap: 1.5rem 2rem;
+  }
+
+  .md-typeset .dir-howto .dir-section-title {
+    padding-inline: 1.25rem;
+  }
+
+  .md-typeset .dir-howto {
+    padding-inline: 0;
+  }
+
+  .dir-graph-wrap {
+    width: 95vw;
+    max-width: none;
+    margin-inline: calc(50% - 47.5vw);
+  }
+
+  .dir-graph-root {
+    width: 100%;
+    height: auto;
+  }
+
+  .dir-graph-group-label {
+    font-size: 13.5px;
+  }
+
+  .dir-graph-hub-title {
+    font-size: 17px;
+  }
+
+  .dir-graph-hub-sub {
+    font-size: 12px;
+  }
+
+  .dir-graph-card-label {
+    font-size: 16px;
+  }
+
+  .dir-graph-card-desc {
+    font-size: 12px;
   }
 }
