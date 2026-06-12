@@ -660,12 +660,31 @@
 }
 
 @media (max-width: 59.9375em) {
+  .dir-graph-wrap {
+    display: flex;
+    flex-direction: column;
+  }
+
   .dir-graph-layout {
-    grid-template-columns: 1fr;
+    display: contents;
+  }
+
+  .dir-graph-stage {
+    order: 0;
+  }
+
+  .dir-graph-pills {
+    order: 1;
   }
 
   .dir-graph-panel {
+    order: 2;
     min-height: 0;
+    margin-top: 0.75rem;
+  }
+
+  .dir-graph-hint {
+    order: 3;
   }
 }
 
