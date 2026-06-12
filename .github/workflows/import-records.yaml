@@ -133,6 +133,25 @@ jobs:
           path: ${{ steps.setup-dirctl.outputs.dirctl_path }}
           retention-days: 7
 
+      - name: Install Task
+        if: ${{ needs.setup-matrix.outputs.scanner_enabled == 'true' && needs.setup-matrix.outputs.run_mcp_import == 'true' && needs.setup-matrix.outputs.mcp_matrix != '[]' }}
+        uses: go-task/setup-task@01a4adf9db2d14c1de7a560f09170b6e0df736aa # v2.1.0
+
+      - name: Install mcp-scanner
+        if: ${{ needs.setup-matrix.outputs.scanner_enabled == 'true' && needs.setup-matrix.outputs.run_mcp_import == 'true' && needs.setup-matrix.outputs.mcp_matrix != '[]' }}
+        run: |
+          task importer:deps:mcp-scanner
+          mkdir -p .bin
+          install -m 755 "${HOME}/.local/bin/mcp-scanner" .bin/mcp-scanner
+
+      - name: Upload mcp-scanner artifact
+        if: ${{ needs.setup-matrix.outputs.scanner_enabled == 'true' && needs.setup-matrix.outputs.run_mcp_import == 'true' && needs.setup-matrix.outputs.mcp_matrix != '[]' }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: mcp-scanner
+          path: .bin/mcp-scanner
+          retention-days: 7
+
   import-mcp:
     needs: [setup-matrix, build-dirctl]
     if: ${{ needs.setup-matrix.outputs.run_mcp_import == 'true' && needs.setup-matrix.outputs.mcp_matrix != '[]' }}
@@ -169,14 +188,16 @@ jobs:
           echo "${GITHUB_WORKSPACE}/.bin" >> "${GITHUB_PATH}"
           echo "dirctl_path=${GITHUB_WORKSPACE}/.bin/dirctl" >> "${GITHUB_OUTPUT}"
 
-      - name: Install Task
-        uses: go-task/setup-task@70f2430ad412f838533de8c0515c749ffb2b8bd3 # v1.1.0
-        with:
-          version: 3.49.1
-
-      - name: Install mcp-scanner
+      - name: Download mcp-scanner
         if: ${{ env.SCANNER_ENABLED == 'true' }}
-        run: task importer:deps:mcp-scanner
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: mcp-scanner
+          path: .bin
+
+      - name: Prepare mcp-scanner
+        if: ${{ env.SCANNER_ENABLED == 'true' }}
+        run: chmod +x .bin/mcp-scanner
 
       - name: Create Enricher Config
         run: |
@@ -234,7 +255,7 @@ jobs:
           fi
 
           if [[ "${{ env.SCANNER_ENABLED }}" == "true" ]]; then
-             CMD+=("--scanner-enabled")
+             CMD+=("--scanner-enabled" "--scanner-cli-path=${GITHUB_WORKSPACE}/.bin/mcp-scanner")
           fi
 
           if [ -n "${{ matrix.entry.search }}" ]; then
