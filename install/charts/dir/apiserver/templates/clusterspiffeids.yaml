@@ -27,10 +27,4 @@ spec:
   dnsNameTemplates:
     {{- toYaml .Values.spire.dnsNameTemplates | nindent 4 }}
   {{- end }}
-  {{- if .Values.spire.federation }}
-  federatesWith:
-  {{ range .Values.spire.federation }}
-    - {{ .trustDomain }}
-  {{ end }}
-  {{- end }}
 {{- end }}

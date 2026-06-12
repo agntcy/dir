@@ -23,10 +23,4 @@ spec:
     - k8s:sa:{{ include "chart.serviceAccountName" . }}
   spiffeIDTemplate: {{ "spiffe://{{ .TrustDomain }}/ns/{{ .PodMeta.Namespace }}/sa/{{ .PodSpec.ServiceAccountName }}" }}
   autoPopulateDNSNames: true
-  {{- if .Values.spire.federation }}
-  federatesWith:
-  {{ range .Values.spire.federation }}
-    - {{ .trustDomain }}
-  {{ end }}
-  {{- end }}
 {{- end }}
