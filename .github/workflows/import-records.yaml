@@ -133,10 +133,6 @@ jobs:
           path: ${{ steps.setup-dirctl.outputs.dirctl_path }}
           retention-days: 7
 
-      - name: Install Task
-        if: ${{ needs.setup-matrix.outputs.scanner_enabled == 'true' && needs.setup-matrix.outputs.run_mcp_import == 'true' && needs.setup-matrix.outputs.mcp_matrix != '[]' }}
-        uses: go-task/setup-task@01a4adf9db2d14c1de7a560f09170b6e0df736aa # v2.1.0
-
       - name: Install mcp-scanner
         if: ${{ needs.setup-matrix.outputs.scanner_enabled == 'true' && needs.setup-matrix.outputs.run_mcp_import == 'true' && needs.setup-matrix.outputs.mcp_matrix != '[]' }}
         run: |
