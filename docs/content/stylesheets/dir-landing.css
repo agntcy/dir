@@ -38,6 +38,24 @@
   /* Hero: fixed chrome clearance (header + tabs) vs. visible content inset. */
   --dir-hero-chrome-top: calc(var(--md-header-height) + 3rem);
   --dir-hero-pad-block: 3.75rem;
+
+  /* Interactive lifecycle graph (light). */
+  --dir-graph-node: #ffffff;
+  --dir-graph-node-border: #4d8fd455;
+  --dir-graph-orbit: #4d8fd438;
+  --dir-graph-spoke: #4d8fd430;
+  --dir-graph-seg: #4d8fd428;
+  --dir-graph-dot: #4d8fd430;
+  --dir-graph-hub-fill: #ffffff;
+  --dir-graph-hub-stroke: #4d8fd488;
+  --dir-graph-hub-ring: #4d8fd430;
+  --dir-graph-hub-text: #0d1f3c;
+  --dir-graph-label: #0d1f3c;
+  --dir-graph-icon: #8a9ab0;
+  --dir-graph-panel-bg: #fffffff5;
+  --dir-graph-panel-border: #4d8fd440;
+  --dir-graph-panel-text: #0d1f3c;
+  --dir-graph-hint: #8a9ab0;
 }
 
 [data-md-color-scheme="slate"] {
@@ -50,6 +68,24 @@
   --dir-action-btn-bg-active: rgb(12, 31, 54);
   --dir-action-btn-color: rgb(227, 227, 227);
   --dir-action-btn-border: rgb(13, 39, 77);
+
+  /* Interactive lifecycle graph (dark). */
+  --dir-graph-node: var(--md-default-bg-color);
+  --dir-graph-node-border: #4d8fd444;
+  --dir-graph-orbit: #4d8fd428;
+  --dir-graph-spoke: #4d8fd422;
+  --dir-graph-seg: #4d8fd418;
+  --dir-graph-dot: #4d8fd422;
+  --dir-graph-hub-fill: var(--md-default-bg-color);
+  --dir-graph-hub-stroke: #4d8fd455;
+  --dir-graph-hub-ring: #4d8fd420;
+  --dir-graph-hub-text: #ffffff;
+  --dir-graph-label: rgba(255, 255, 255, 0.65);
+  --dir-graph-icon: rgba(255, 255, 255, 0.55);
+  --dir-graph-panel-bg: #0b1829f5;
+  --dir-graph-panel-border: #4d8fd430;
+  --dir-graph-panel-text: rgba(255, 255, 255, 0.65);
+  --dir-graph-hint: rgba(255, 255, 255, 0.18);
 }
 
 /* Home page only: MkDocs chrome adjustments for full-bleed hero. */
@@ -305,19 +341,256 @@
 }
 
 /* ----------------------------------------------------------------------------
-   How does ADS work — hub & spoke diagram
+   Lifecycle graph — interactive hub & spoke
 ---------------------------------------------------------------------------- */
 .dir-graph-wrap {
-  display: flex;
-  justify-content: center;
   max-width: 64rem;
   margin: 0 auto;
 }
 
-.md-typeset .dir-graph {
+.dir-graph-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 16.25rem;
+  gap: 0.25rem;
+  align-items: center;
+}
+
+.dir-graph-stage {
+  min-width: 0;
+}
+
+.dir-graph-root {
+  display: block;
   width: 100%;
   height: auto;
-  max-width: 56rem;
+  background: transparent;
+}
+
+.dir-graph-dot {
+  fill: var(--dir-graph-dot);
+}
+
+.dir-graph-orbit {
+  fill: none;
+  stroke: var(--dir-graph-orbit);
+  stroke-width: 1;
+  stroke-dasharray: 5 9;
+}
+
+.dir-graph-spoke-line {
+  stroke: var(--dir-graph-spoke);
+  stroke-width: 1;
+  transition: stroke 0.25s ease, stroke-width 0.25s ease;
+}
+
+.dir-graph-spoke.is-active[data-accent="#4d8fd4"] .dir-graph-spoke-line {
+  stroke: #4d8fd4;
+  stroke-width: 1.5;
+}
+
+.dir-graph-spoke.is-active[data-accent="#f0a830"] .dir-graph-spoke-line {
+  stroke: #f0a830;
+  stroke-width: 1.5;
+}
+
+.dir-graph-seg {
+  stroke: var(--dir-graph-seg);
+  stroke-width: 0.8;
+  stroke-dasharray: 3 7;
+}
+
+.dir-graph-hub-fill {
+  fill: var(--dir-graph-hub-fill);
+  stroke: var(--dir-graph-hub-stroke);
+  stroke-width: 1.5;
+}
+
+.dir-graph-hub-ring {
+  fill: none;
+  stroke: var(--dir-graph-hub-ring);
+  stroke-width: 8;
+}
+
+.dir-graph-hub-text {
+  fill: var(--dir-graph-hub-text);
+  font-family: Roboto, sans-serif;
+  font-size: 10px;
+  font-weight: 500;
+}
+
+.dir-graph-node {
+  cursor: pointer;
+  outline: none;
+}
+
+.dir-graph-node-glow,
+.dir-graph-node-ring {
+  opacity: 0;
+  transition: opacity 0.25s ease;
+}
+
+.dir-graph-node.is-active .dir-graph-node-glow,
+.dir-graph-node.is-active .dir-graph-node-ring,
+.dir-graph-node:focus-visible .dir-graph-node-glow,
+.dir-graph-node:focus-visible .dir-graph-node-ring {
+  opacity: 1;
+}
+
+.dir-graph-node-fill {
+  fill: var(--dir-graph-node);
+}
+
+.dir-graph-node-stroke {
+  fill: transparent;
+  stroke: var(--dir-graph-node-border);
+  stroke-width: 1;
+  transition: stroke 0.25s ease, stroke-width 0.25s ease;
+}
+
+.dir-graph-node.is-active .dir-graph-node-stroke,
+.dir-graph-node:focus-visible .dir-graph-node-stroke {
+  stroke-width: 1.5;
+}
+
+.dir-graph-node.is-active[data-accent="#4d8fd4"] .dir-graph-node-stroke,
+.dir-graph-node:focus-visible[data-accent="#4d8fd4"] .dir-graph-node-stroke {
+  stroke: #4d8fd4;
+}
+
+.dir-graph-node.is-active[data-accent="#f0a830"] .dir-graph-node-stroke,
+.dir-graph-node:focus-visible[data-accent="#f0a830"] .dir-graph-node-stroke {
+  stroke: #f0a830;
+}
+
+.dir-graph-node-icon {
+  stroke: var(--dir-graph-icon);
+  transition: stroke 0.25s ease;
+}
+
+.dir-graph-node-label {
+  fill: var(--dir-graph-label);
+  font-family: Roboto, sans-serif;
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  transition: fill 0.25s ease, font-weight 0.25s ease;
+}
+
+.dir-graph-node.is-active .dir-graph-node-icon,
+.dir-graph-node.is-active .dir-graph-node-label,
+.dir-graph-node:focus-visible .dir-graph-node-icon,
+.dir-graph-node:focus-visible .dir-graph-node-label {
+  stroke: var(--dir-graph-accent-active);
+  fill: var(--dir-graph-accent-active);
+  font-weight: 600;
+}
+
+.dir-graph-node.is-active[data-accent="#4d8fd4"],
+.dir-graph-node:focus-visible[data-accent="#4d8fd4"] {
+  --dir-graph-accent-active: #4d8fd4;
+}
+
+.dir-graph-node.is-active[data-accent="#f0a830"],
+.dir-graph-node:focus-visible[data-accent="#f0a830"] {
+  --dir-graph-accent-active: #f0a830;
+}
+
+.dir-graph-particle {
+  pointer-events: none;
+}
+
+.dir-graph-panel {
+  border: 1px solid var(--dir-graph-panel-border);
+  border-radius: 0.5rem;
+  background: var(--dir-graph-panel-bg);
+  backdrop-filter: blur(12px);
+  padding: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  min-height: 8.5rem;
+}
+
+.dir-graph-panel[hidden] {
+  display: none;
+}
+
+.dir-graph-panel__badge {
+  align-self: flex-start;
+  padding: 0.125rem 0.5rem;
+  border-radius: 0.125rem;
+  border: 1px solid;
+  font-family: "Roboto Mono", monospace;
+  font-size: 0.58rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.dir-graph-panel__header {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+}
+
+.dir-graph-panel__icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.125rem;
+  height: 2.125rem;
+  border-radius: 0.25rem;
+  border: 1px solid;
+  flex-shrink: 0;
+}
+
+.dir-graph-panel__title {
+  font-family: Roboto, sans-serif;
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.dir-graph-panel__divider {
+  height: 1px;
+  background: var(--dir-graph-panel-border);
+}
+
+.dir-graph-panel__desc {
+  margin: 0;
+  color: var(--dir-graph-panel-text);
+  font-family: Roboto, sans-serif;
+  font-size: 0.83rem;
+  font-weight: 300;
+  line-height: 1.65;
+}
+
+.dir-graph-hint {
+  margin: 1.5rem 0 0;
+  text-align: center;
+  color: var(--dir-graph-hint);
+  font-family: "Roboto Mono", monospace;
+  font-size: 0.68rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+
+@media (max-width: 59.9375em) {
+  .dir-graph-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .dir-graph-panel {
+    min-height: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dir-graph-spoke-line,
+  .dir-graph-node-stroke,
+  .dir-graph-node-icon,
+  .dir-graph-node-label,
+  .dir-graph-node-glow,
+  .dir-graph-node-ring {
+    transition: none;
+  }
 }
 
 /* ----------------------------------------------------------------------------

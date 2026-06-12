@@ -100,21 +100,12 @@ Need a skill, MCP server, or A2A partner? Your agent searches the Directory, wir
 
 <section class="dir-howto">
   <h2 class="dir-section-title">Publish, verify, and discover</h2>
-  <div class="dir-graph-wrap">
-    <img
-      src="assets/dir-graph-light.svg"
-      alt="Agent Directory Service architecture: agents, directory nodes, and discovery across a federated network"
-      class="dir-graph logo-light"
-      loading="lazy"
-    />
-    <img
-      src="assets/dir-graph-dark.svg"
-      alt=""
-      class="dir-graph logo-dark"
-      loading="lazy"
-      aria-hidden="true"
-    />
-  </div>
+  <div
+    class="dir-graph-wrap"
+    data-dir-graph
+    role="img"
+    aria-label="Agent Directory Service lifecycle: Import, Discover, Build, Verify, Sync, Export, Announce, and Store"
+  ></div>
 </section>
 
 <section class="dir-quickstart">
