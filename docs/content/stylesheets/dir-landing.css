@@ -257,6 +257,22 @@
   box-shadow: 0 6px 18px rgba(0, 20, 43, 0.25);
 }
 
+.md-typeset .dir-hero__btn--highlight {
+  padding: calc(0.65rem - 1px) calc(1.8rem - 1px);
+  border: 2px solid transparent;
+  background:
+    linear-gradient(var(--dir-hero-btn-bg), var(--dir-hero-btn-bg)) padding-box,
+    var(--dir-hero-gradient) border-box;
+  box-shadow: none;
+}
+
+.md-typeset .dir-hero__btn--highlight:hover {
+  background:
+    linear-gradient(rgb(255, 255, 255), rgb(255, 255, 255)) padding-box,
+    var(--dir-hero-gradient) border-box;
+  box-shadow: 0 4px 14px rgba(0, 20, 43, 0.12);
+}
+
 .md-typeset .dir-hero__btn svg,
 .md-typeset .dir-spec__banner svg {
   fill: currentColor;
@@ -460,10 +476,32 @@
 
 .md-typeset .dir-spec__intro {
   margin: 1.25rem 0 0;
-  max-width: 38rem;
+  max-width: 42rem;
   font-size: 1rem;
   line-height: 1.65;
   color: var(--dir-on-spec);
+}
+
+.md-typeset .dir-spec__intro a {
+  color: var(--dir-yellow);
+  text-decoration: underline;
+  text-underline-offset: 0.15em;
+}
+
+.md-typeset .dir-spec__intro a:hover {
+  color: rgb(255, 255, 255);
+}
+
+.md-typeset .dir-spec__intro code {
+  font-size: 0.875em;
+  padding: 0.1em 0.35em;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.12);
+  color: var(--dir-on-spec);
+}
+
+.dir-spec__actions {
+  margin-top: 1.75rem;
 }
 
 .md-typeset .dir-spec__label {
