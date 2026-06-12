@@ -53,6 +53,7 @@ extra_javascript:
   - javascripts/dir-graph.js
   - javascripts/card-links.js
   - javascripts/external-links.js
+  - javascripts/palette-tooltip-fix.js
 
 markdown_extensions:
   - admonition
