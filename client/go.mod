@@ -41,7 +41,7 @@ require (
 )
 
 require (
-	buf.build/gen/go/agntcy/oasf-sdk/protocolbuffers/go v1.36.11-20260605133504-61a98cf01763.1 // indirect
+	buf.build/gen/go/agntcy/oasf-sdk/protocolbuffers/go v1.36.11-20260610090943-03acfe1f6b7e.1 // indirect
 	buf.build/gen/go/agntcy/oasf/protocolbuffers/go v1.36.11-20260602080720-2b66557c6456.1 // indirect
 	github.com/Azure/go-ansiterm v0.0.0-20250102033503-faa5f7b0171c // indirect
 	github.com/Masterminds/semver/v3 v3.5.0 // indirect
