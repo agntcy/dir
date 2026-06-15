@@ -1,6 +1,6 @@
 <script lang="ts">
 	import type { AgentFilterCriteria, CatalogEntry } from '$lib/types';
-	import { buildAgentFilterQuery, CATALOG_PAGE_SIZE, fetchAgentsPage } from '$lib/api';
+	import { buildAgentFilterQuery, CATALOG_HYDRATION_PAGE_SIZE, CATALOG_PAGE_SIZE, fetchAgentsPage } from '$lib/api';
 	import { applyClientFilters, collectSortedTags, hasActiveClientFilters, mergeSortedTags } from '$lib/utils';
 	import AgentCard from '$lib/components/AgentCard.svelte';
 	import FilterSidebar from '$lib/components/FilterSidebar.svelte';
@@ -69,6 +69,7 @@
 
 			const page = await fetchAgentsPage({
 				filter: filter || undefined,
+				pageSize: CATALOG_HYDRATION_PAGE_SIZE,
 				pageToken: nextPageToken,
 				signal
 			});

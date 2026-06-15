@@ -3,6 +3,9 @@ import type { AgentFilterCriteria, CatalogEntry } from './types';
 /** Matches the 3-column grid layout (18 = 6 full rows). */
 export const CATALOG_PAGE_SIZE = 18;
 
+/** Backend max page size; used for background catalog hydration. */
+export const CATALOG_HYDRATION_PAGE_SIZE = 100;
+
 export interface AgentsPage {
 	results: CatalogEntry[];
 	nextPageToken: string;
