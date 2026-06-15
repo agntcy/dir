@@ -1,7 +1,7 @@
 <script lang="ts">
 	import type { AgentFilterCriteria, CatalogEntry } from '$lib/types';
 	import { buildAgentFilterQuery, CATALOG_PAGE_SIZE, fetchAgentsPage } from '$lib/api';
-	import { applyClientFilters } from '$lib/utils';
+	import { applyClientFilters, hasActiveClientFilters } from '$lib/utils';
 	import AgentCard from '$lib/components/AgentCard.svelte';
 	import FilterSidebar from '$lib/components/FilterSidebar.svelte';
 	import DetailModal from '$lib/components/DetailModal.svelte';
@@ -43,6 +43,17 @@
 		if (resetPage) currentPage = 1;
 	}
 
+	function appendAgentPage(newAgents: CatalogEntry[], criteria: AgentFilterCriteria) {
+		if (newAgents.length === 0) return;
+
+		agents = agents.concat(newAgents);
+		if (hasActiveClientFilters(criteria)) {
+			filteredAgents = filteredAgents.concat(applyClientFilters(newAgents, criteria));
+		} else {
+			filteredAgents = agents;
+		}
+	}
+
 	async function hydrateCatalog(
 		filter: string,
 		pageToken: string,
@@ -62,9 +73,8 @@
 
 			if (signal.aborted || requestId !== loadRequestId) return;
 
-			agents = agents.concat(page.results);
 			if (latestCriteria) {
-				applyFilters(agents, latestCriteria, false);
+				appendAgentPage(page.results, latestCriteria);
 			}
 			nextPageToken = page.nextPageToken;
 		}

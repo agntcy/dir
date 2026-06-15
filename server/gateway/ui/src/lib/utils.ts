@@ -1,5 +1,13 @@
 import type { AgentFilterCriteria, CatalogEntry, SubEntry, ExportFormat } from './types';
 
+export function hasActiveClientFilters(criteria: AgentFilterCriteria): boolean {
+	return (
+		criteria.activeTags.size > 0 ||
+		criteria.statusFilter === 'trusted' ||
+		criteria.statusFilter === 'verified'
+	);
+}
+
 export function applyClientFilters(
 	agents: CatalogEntry[],
 	criteria: AgentFilterCriteria
