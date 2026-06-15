@@ -68,18 +68,19 @@ Need a skill, MCP server, or A2A partner? Your agent searches the Directory, wir
       <div class="dir-hero__spotlight-header">
         <div class="dir-hero__spotlight-badge">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6zm-1 2 5 5h-5V4zM8 13h8v2H8v-2zm0 4h5v2H8v-2z"/></svg>
-          AI Catalog export
+          AI Catalog implementation
         </div>
-        <p class="dir-hero__spotlight-title">Publish here. Discover everywhere.</p>
+        <p class="dir-hero__spotlight-title">Directory implements the AI Catalog spec</p>
       </div>
       <div class="dir-hero__spotlight-body">
         <div class="dir-hero__spotlight-copy">
           <p class="dir-hero__spotlight-text">
-            Register agents in Directory and they show up in the open
+            Directory is a reference implementation of the open
             <a href="https://agent-card.github.io/ai-catalog/" target="_blank" rel="noopener noreferrer">AI Catalog</a>
-            index: a standard list any tool can read. MCP servers, A2A partners, and skills appear in one place,
-            clients browse a node at <code>/.well-known/ai-catalog.json</code> or <code>/v1/agents</code>
-            without a Directory-specific integration.
+            specification. Publish MCP servers, A2A agents, and skills to a federated registry and expose them through
+            standard endpoints such as <code>/.well-known/ai-catalog.json</code> and <code>/v1/agents</code>.
+            A hosted instance that implements the spec is available at
+            <a href="https://ai-catalog.io/" target="_blank" rel="noopener noreferrer">ai-catalog.io</a>.
           </p>
           <div class="dir-hero__spotlight-tags" aria-label="Supported artifact types">
             <span>MCP</span>
@@ -89,7 +90,7 @@ Need a skill, MCP server, or A2A partner? Your agent searches the Directory, wir
         </div>
         <div class="dir-hero__spotlight-actions">
           <a class="dir-hero__btn dir-hero__btn--highlight" href="https://ai-catalog.io/" target="_blank" rel="noopener noreferrer">
-            Explore AI Catalog
+            Browse hosted instance
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19 19H5V5h7V3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14c1.1 0 2-.9 2-2v-7h-2v7zM14 3v2h3.59l-9.83 9.83 1.41 1.41L19 6.41V10h2V3h-7z"/></svg>
           </a>
           <a class="dir-hero__btn dir-hero__btn--highlight" href="https://agent-card.github.io/ai-catalog/" target="_blank" rel="noopener noreferrer">
