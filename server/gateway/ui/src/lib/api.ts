@@ -1,4 +1,4 @@
-import type { CatalogEntry } from "./types";
+import type { AgentFilterCriteria, CatalogEntry } from "./types";
 
 /** Matches the 3-column grid layout (18 = 6 full rows). */
 export const CATALOG_PAGE_SIZE = 18;
@@ -8,10 +8,9 @@ export interface AgentsPage {
   nextPageToken: string;
 }
 
-export function buildAgentFilterQuery(criteria: {
-  searchQuery: string;
-  mediaTypes: Set<string>;
-}): string {
+export function buildAgentFilterQuery(
+  criteria: Pick<AgentFilterCriteria, "searchQuery" | "mediaTypes">,
+): string {
   const clauses: string[] = [];
 
   const search = criteria.searchQuery.trim();
