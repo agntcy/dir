@@ -3,7 +3,7 @@
 Command-line tools for the AGNTCY Directory.
 
 - **Storage** — Push, pull, delete, and inspect records (info).
-- **Routing** — Publish, unpublish, list, search, and info across the network.
+- **Routing** — Publish, unpublish, list, and search records across the network.
 - **Integrity** — Sign, verify, and validate artifacts.
 - **Import / Export** — Bulk-import from registries or local files; export to OASF, A2A, Agent Skills, and MCP formats.
 - **Naming** — Domain verification (`naming verify`).

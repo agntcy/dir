@@ -100,7 +100,7 @@ Prints the `dirctl` build version.
 
 ### `dirctl mcp serve`
 
-Starts the built-in MCP server used by import enrichment and external AI tooling. Delegates to the
+Starts the built-in MCP server used by external AI tooling. Delegates to the
 [`dir-mcp`](https://github.com/agntcy/dir-mcp) module.
 
 ## Daemon Operations
@@ -120,7 +120,7 @@ Without `--config`, built-in defaults are used. When `--config` is provided, the
 | Flag | Description | Default |
 |------|-------------|---------|
 | `--data-dir` | Data directory for daemon state | `~/.agntcy/dir/` |
-| `--config` | Path to daemon config file | Built-in embedded defaults (not read from data dir) |
+| `--config` | Path to daemon config file | Built-in embedded defaults |
 
 ??? example
 
@@ -187,10 +187,6 @@ The daemon ships with sensible built-in defaults. To customize, pass a YAML conf
         scheduler_interval: 5m
         worker_count: 1
         worker_timeout: 30m
-      http_gateway:
-        enabled: true
-        listen_address: ":8889"
-        public_url: "http://localhost:8889"
       naming:
         ttl: 168h
 
@@ -1001,7 +997,7 @@ The output includes the following:
 
 ### `dirctl search [flags]`
 
-Search the local index using structured filter flags (not free-form queries).
+Search the local index using structured filter flags.
 
 **Filter flags** (all repeatable):
 
@@ -1136,7 +1132,7 @@ Verifies that a record's signing key is authorized by the domain claimed in its 
 
 ### `dirctl verify <record-cid> [flags]`
 
-Verifies a record signature. Signatures are fetched from the directory; no local signature file is required.
+Verifies a record signature. Signatures are fetched from the directory.
 
 | Flag | Description |
 |------|-------------|

@@ -197,7 +197,7 @@ To test with a local OASF instance deployed alongside the directory server:
 
     Replace `dir` with your Helm release name and `dir-server` with your namespace if different.
 
-3. Deploy the local OASF instance
+3. Deploy the Directory chart with OASF enabled
 
     Follow [Kubernetes Deployment](dir-deployment-kubernetes.md) to create a Kind cluster and
     install the Directory Helm chart with the OASF subchart enabled in your `values.yaml`.
