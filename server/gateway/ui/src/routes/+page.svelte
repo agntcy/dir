@@ -56,6 +56,10 @@
 		}
 	}
 
+	function hydrationMatchesServerFilter(filter: string): boolean {
+		return latestCriteria !== null && buildAgentFilterQuery(latestCriteria) === filter;
+	}
+
 	async function hydrateCatalog(
 		filter: string,
 		pageToken: string,
@@ -66,6 +70,7 @@
 
 		while (nextPageToken) {
 			if (signal.aborted || requestId !== loadRequestId) return;
+			if (!hydrationMatchesServerFilter(filter)) return;
 
 			const page = await fetchAgentsPage({
 				filter: filter || undefined,
@@ -75,10 +80,9 @@
 			});
 
 			if (signal.aborted || requestId !== loadRequestId) return;
+			if (!hydrationMatchesServerFilter(filter)) return;
 
-			if (latestCriteria) {
-				appendAgentPage(page.results, latestCriteria);
-			}
+			appendAgentPage(page.results, latestCriteria!);
 			nextPageToken = page.nextPageToken;
 		}
 	}
@@ -139,6 +143,7 @@
 
 		if (serverFilter !== loadedServerFilter) {
 			clearTimeout(searchDebounce);
+			backgroundAbort?.abort();
 			const delay = criteria.searchQuery.trim() ? 300 : 0;
 			searchDebounce = setTimeout(() => {
 				if (latestCriteria) loadAgents(latestCriteria);
