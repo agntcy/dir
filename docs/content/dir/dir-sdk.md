@@ -44,7 +44,9 @@ Install the SDK using one of available JS package managers like [npm](https://ww
 
 ### Configuration
 
-The SDK can be configured via environment variables or direct instantiation:
+The SDK can be configured via environment variables or direct instantiation. See the
+[JavaScript SDK repository](https://github.com/agntcy/dir-sdk-javascript) for the current
+constructor API.
 
 ```js
 import {Config, Client} from 'agntcy-dir';
@@ -55,16 +57,18 @@ process.env.DIRCTL_PATH = "/path/to/dirctl";
 const client = new Client();
 
 // Or configure directly
-const config = new Config(
-    serverAddress="localhost:8888",
-    dirctlPath="/usr/local/bin/dirctl"
-);
+const config = new Config({
+  serverAddress: "localhost:8888",
+  dirctlPath: "/usr/local/bin/dirctl",
+});
 const client = new Client(config);
 
 // Use SPIRE for mTLS communication
-const config = new Config(spiffeEndpointSocket="/tmp/agent.sock");
-const transport = await Client.createGRPCTransport(config);
-const spiffeClient = new Client(config, transport);
+const spiffeConfig = new Config({
+  spiffeEndpointSocket: "/tmp/agent.sock",
+});
+const transport = await Client.createGRPCTransport(spiffeConfig);
+const spiffeClient = new Client(spiffeConfig, transport);
 ```
 
 !!! note
@@ -95,23 +99,24 @@ Install the SDK using [uv](https://github.com/astral-sh/uv)
 The SDK can be configured via environment variables or direct instantiation:
 
 ```python
+import os
 from agntcy.dir_sdk.client import Config, Client
 
 # Environment variables
-export DIRECTORY_CLIENT_SERVER_ADDRESS="localhost:8888"
-export DIRCTL_PATH="/path/to/dirctl"
+os.environ["DIRECTORY_CLIENT_SERVER_ADDRESS"] = "localhost:8888"
+os.environ["DIRCTL_PATH"] = "/path/to/dirctl"
 client = Client()
 
 # Or configure directly
 config = Config(
     server_address="localhost:8888",
-    dirctl_path="/usr/local/bin/dirctl"
+    dirctl_path="/usr/local/bin/dirctl",
 )
 client = Client(config)
 
 # Use SPIRE for mTLS communication
 config = Config(
-    spiffe_socket_path="/tmp/agent.sock"
+    spiffe_socket_path="/tmp/agent.sock",
 )
 client = Client(config)
 ```
@@ -137,26 +142,49 @@ go get github.com/agntcy/dir/client
 The SDK can be configured via environment variables or direct instantiation:
 
 ```go
-import "github.com/agntcy/dir/client"
+import (
+    "context"
+    "os"
+
+    "github.com/agntcy/dir/client"
+)
+
+ctx := context.Background()
 
 // Environment variables
 os.Setenv("DIRECTORY_CLIENT_SERVER_ADDRESS", "localhost:8888")
-os.Setenv("DIRCTL_PATH", "/path/to/dirctl")
-client := client.New()
+c, err := client.New(ctx, client.WithEnvConfig())
+if err != nil {
+    // handle error
+}
+defer c.Close()
 
 // Or configure directly
 config := &client.Config{
     ServerAddress: "localhost:8888",
 }
-client := client.New(client.WithConfig(config))
+c, err = client.New(ctx, client.WithConfig(config))
+if err != nil {
+    // handle error
+}
+defer c.Close()
 
 // Use SPIRE for mTLS communication
-config := &client.Config{
-    SpiffeSocketPath: "/tmp/agent.sock",
+config = &client.Config{
+    ServerAddress:    "localhost:8888",
+    AuthMode:         "x509",
+    SpiffeSocketPath: "unix:///run/spire/agent-sockets/api.sock",
 }
-client := client.New(client.WithConfig(config))
+c, err = client.New(ctx, client.WithConfig(config))
+if err != nil {
+    // handle error
+}
+defer c.Close()
 ```
 
 !!! note
 
     Golang SDK does not require Directory CLI (dirctl) and can be used standalone.
+
+For full Go SDK examples including authentication modes and event streaming, see the
+[client README](https://github.com/agntcy/dir/tree/main/client).

@@ -582,15 +582,18 @@ Three methods are available:
 
 This example demonstrates how to import records from external registries into your local Directory instance. The import feature supports automated batch imports with filtering, deduplication, and optional LLM-based enrichment.
 
-**Supported Registries:**
+**Supported import kinds:**
 
-- `mcp` - [Model Context Protocol registry v0.1](https://github.com/modelcontextprotocol/registry)
+- `mcp-registry` — [Model Context Protocol registry v0.1](https://github.com/modelcontextprotocol/registry) (requires `--url`)
+- `mcp` — local MCP server JSON (requires `--file-path`)
+- `a2a` — local A2A AgentCard JSON (requires `--file-path`)
+- `agent-skill` — local Agent Skills directory with `SKILL.md` (requires `--file-path`)
 
 ### Basic Usage
 
 ```bash
 # Import from MCP registry
-dirctl import --type=mcp --url=https://registry.modelcontextprotocol.io/v0.1
+dirctl import --type=mcp-registry --url=https://registry.modelcontextprotocol.io/v0.1
 ```
 
 ### Automated Imports
@@ -605,7 +608,7 @@ cronjobs:
     schedule: '0 */6 * * *'  # Every 6 hours
     args:
       - 'import'
-      - '--type=mcp'
+      - '--type=mcp-registry'
       - '--url=https://registry.modelcontextprotocol.io/v0.1'
 ```
 
@@ -613,21 +616,21 @@ cronjobs:
 
 ```bash
 # Basic import from MCP registry
-dirctl import --type=mcp --url=https://registry.modelcontextprotocol.io/v0.1
+dirctl import --type=mcp-registry --url=https://registry.modelcontextprotocol.io/v0.1
 
 # Import with filtering and limits
-dirctl import --type=mcp \
+dirctl import --type=mcp-registry \
   --url=https://registry.modelcontextprotocol.io/v0.1 \
   --filter=version=latest \
   --limit=50
 
-# Import with LLM enrichment
-dirctl import --type=mcp \
+# Import with custom LLM enrichment config
+dirctl import --type=mcp-registry \
   --url=https://registry.modelcontextprotocol.io/v0.1 \
-  --enrich
+  --enrich-config=./enricher.json
 
 # Force reimport of existing records (bypasses deduplication)
-dirctl import --type=mcp \
+dirctl import --type=mcp-registry \
   --url=https://registry.modelcontextprotocol.io/v0.1 \
   --force
 ```

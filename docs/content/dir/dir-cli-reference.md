@@ -7,7 +7,7 @@ only; workflow examples live in [Features and Usage Scenarios](dir-features-scen
 
 ### Output formats
 
-All commands support `--output` / `-o`:
+Most data-producing commands support `--output` / `-o`. Exceptions include `validate`, `context`, `auth`, `daemon`, `mcp serve`, and `version`.
 
 | Format | Description | Use case |
 |--------|-------------|----------|
@@ -51,8 +51,10 @@ dirctl --auth-mode=oidc --server-addr ads.outshift.io:443 search --skill "AI"
 ```
 
 Pre-issued tokens: `--auth-token` or `DIRECTORY_CLIENT_AUTH_TOKEN` for CI and automation.
-Other modes: `--auth-mode=x509`, `jwt`, `tls`, or `insecure` for local development. Default
-(empty) auto-detects SPIFFE → OIDC → insecure.
+Other modes: `--auth-mode=x509`, `jwt`, `token`, `tls`, `oidc`, `insecure`, or `none`. When
+`--auth-mode` is empty, the client auto-detects OIDC (cached token, issuer, or client ID) and
+falls back to insecure for local development. SPIFFE modes (`x509`, `jwt`, `token`) require an
+explicit `--auth-mode`.
 
 ### Command groups
 
@@ -63,11 +65,13 @@ Other modes: `--auth-mode=x509`, `jwt`, `tls`, or `insecure` for local developme
 | Context | `context list`, `current`, `set`, `show`, `validate` |
 | Storage | `push`, `pull`, `delete`, `info` |
 | Import / Export | `import`, `export` |
-| Routing | `routing publish`, `list`, `search` |
+| Routing | `routing publish`, `unpublish`, `list`, `search`, `info` |
 | Search | `search` |
 | Security | `sign`, `verify`, `validate`, `naming verify` |
 | Sync | `sync create`, `status`, `list`, `delete` |
 | Events | `events listen` |
+| MCP | `mcp serve` |
+| Diagnostics | `doctor`, `version` |
 
 ### Getting help
 
@@ -76,6 +80,28 @@ dirctl --help
 dirctl routing --help
 dirctl routing search --help
 ```
+
+## Diagnostics
+
+### `dirctl doctor [flags]`
+
+Runs connectivity and configuration checks against the configured Directory server and routing layer.
+
+| Flag | Description | Default |
+|------|-------------|---------|
+| `--timeout` | Per-check timeout | `2s` |
+| `--bootstrap-peer` | Bootstrap peer multiaddr to validate (repeatable) | - |
+
+### `dirctl version`
+
+Prints the `dirctl` build version.
+
+## MCP Server
+
+### `dirctl mcp serve`
+
+Starts the built-in MCP server used by external AI tooling. Delegates to the
+[`dir-mcp`](https://github.com/agntcy/dir-mcp) module.
 
 ## Daemon Operations
 
@@ -94,7 +120,7 @@ Without `--config`, built-in defaults are used. When `--config` is provided, the
 | Flag | Description | Default |
 |------|-------------|---------|
 | `--data-dir` | Data directory for daemon state | `~/.agntcy/dir/` |
-| `--config` | Path to daemon config file | `<data-dir>/daemon.config.yaml` (built-in defaults) |
+| `--config` | Path to daemon config file | Built-in embedded defaults |
 
 ??? example
 
@@ -137,14 +163,14 @@ The daemon ships with sensible built-in defaults. To customize, pass a YAML conf
         provider: "oci"
         oci:
           local_dir: "store"
-          registry_address: "localhost:5000"
+          registry_address: "localhost:5555"
           repository_name: "dir"
           auth_config:
             insecure: true
         verification:
           enabled: true
       routing:
-        listen_address: "/ip4/0.0.0.0/tcp/0"
+        listen_address: "/ip4/0.0.0.0/tcp/8999"
         datastore_dir: "routing"
         gossipsub:
           enabled: true
@@ -158,7 +184,7 @@ The daemon ships with sensible built-in defaults. To customize, pass a YAML conf
           database: "dir"
           ssl_mode: "disable"
       publication:
-        scheduler_interval: 1h
+        scheduler_interval: 5m
         worker_count: 1
         worker_timeout: 30m
       naming:
@@ -183,7 +209,7 @@ The daemon ships with sensible built-in defaults. To customize, pass a YAML conf
         ttl: 168h
         record_timeout: 30s
       local_registry:
-        registry_address: "localhost:5000"
+        registry_address: "localhost:5555"
         repository_name: "dir"
         auth_config:
           insecure: true
@@ -442,8 +468,8 @@ Retrieves records by their Content Identifier (CID) or name reference.
     dirctl pull cisco.com/agent@bafyreib...
     dirctl pull cisco.com/agent:v1.0.0@bafyreib...
 
-    # Pull with signature verification
-    dirctl pull <cid> --signature --public-key public.key
+    # Pull signature and public-key referrer artifacts from the server
+    dirctl pull <cid> --signature --public-key
     ```
 
 **Hash Verification:**
@@ -503,29 +529,42 @@ Displays metadata about stored records using CID or name reference.
 
 ## Import Operations
 
-Import records from external registries into DIR. Supports automated batch imports from various registry types.
+Import records from external registries or local files into DIR. Supports automated batch imports with optional LLM enrichment and security scanning.
 
 ### `dirctl import [flags]`
 
-Fetch and import records from external registries.
+Fetch and import records from registries or local sources.
 
-**Supported Registries:**
+**Import kinds (`--type`):**
 
-- `mcp` - Model Context Protocol registry v0.1
+| Type | Source | Required flags |
+|------|--------|----------------|
+| `mcp-registry` | HTTP MCP registry (e.g. v0.1 list API) | `--url` |
+| `mcp` | Local JSON (one server or array) | `--file-path` |
+| `a2a` | Local A2A AgentCard JSON | `--file-path` |
+| `agent-skill` | Local Agent Skills directory with `SKILL.md` | `--file-path` |
 
 **Configuration Options:**
 
 | Flag | Environment Variable | Description | Required | Default |
 |------|---------------------|-------------|----------|---------|
-| `--type` | - | Registry type (mcp, a2a) | Yes | - |
-| `--url` | - | Registry base URL | Yes | - |
+| `--type` | - | Import kind (`mcp-registry`, `mcp`, `a2a`, `agent-skill`) | Yes | - |
+| `--url` | - | Registry base URL (required when `--type=mcp-registry`) | No | - |
+| `--file-path` | - | Path to local JSON file or skill directory | No | - |
+| `--author` | - | OASF record author (repeatable; overrides source-derived authors) | No | - |
+| `--output-cids` | - | Write imported CIDs to a file (one per line) | No | - |
 | `--filter` | - | Registry-specific filters (key=value, repeatable) | No | - |
 | `--limit` | - | Maximum records to import (0 = no limit) | No | 0 |
 | `--dry-run` | - | Preview without importing; transformed records are written to `--output-dir` (one JSON file per record) so they can be reviewed and re-imported later via `dirctl push` or `dirctl import` | No | false |
 | `--output-dir` | - | Directory to write per-record JSON files when `--dry-run` is set. Each record is written as `<cid>.record.json` | No | `./import-dry-run-<timestamp>` in the current working directory |
 | `--debug` | - | Enable debug output (shows MCP source and OASF record for failures) | No | false |
 | `--force` | - | Force reimport of existing records (skip deduplication) | No | false |
-| `--enrich-config` | - | Path to MCPHost configuration file (mcphost.json) | No | importer/enricher/mcphost.json |
+| `--enrich-config` | - | Path to MCPHost configuration JSON (model, mcpServers, max-steps) | No | Built-in embedded config |
+| `--scanner-enabled` | - | Run security scanners on each record | No | `false` |
+| `--scanner-timeout` | - | Timeout per record scan | No | `5m` |
+| `--scanner-cli-path` | - | Path to `mcp-scanner` binary | No | `mcp-scanner` from `PATH` |
+| `--scanner-fail-on-error` | - | Skip records with error-severity findings | No | `false` |
+| `--scanner-fail-on-warning` | - | Skip records with warning-severity findings | No | `false` |
 | `--enrich-skills-prompt` | - | Optional: path to custom skills prompt template or inline prompt | No | "" (uses default) |
 | `--enrich-domains-prompt` | - | Optional: path to custom domains prompt template or inline prompt | No | "" (uses default) |
 | `--enrich-rate-limit` | - | Maximum LLM API requests per minute (to avoid rate limit errors) | No | 10 |
@@ -544,32 +583,32 @@ Fetch and import records from external registries.
 
     ```bash
     # Import from MCP registry
-    dirctl import --type=mcp --url=https://registry.modelcontextprotocol.io/v0.1
+    dirctl import --type=mcp-registry --url=https://registry.modelcontextprotocol.io/v0.1
 
     # Import with debug output (shows detailed diagnostics for failures)
-    dirctl import --type=mcp \
+    dirctl import --type=mcp-registry \
       --url=https://registry.modelcontextprotocol.io/v0.1 \
       --debug
 
     # Force reimport of existing records (skips deduplication)
-    dirctl import --type=mcp \
+    dirctl import --type=mcp-registry \
       --url=https://registry.modelcontextprotocol.io/v0.1 \
       --force
 
     # Import with time-based filter
-    dirctl import --type=mcp \
+    dirctl import --type=mcp-registry \
       --url=https://registry.modelcontextprotocol.io/v0.1 \
       --filter=updated_since=2025-08-07T13:15:04.280Z
 
     # Combine multiple filters
-    dirctl import --type=mcp \
+    dirctl import --type=mcp-registry \
       --url=https://registry.modelcontextprotocol.io/v0.1 \
       --filter=search=github \
       --filter=version=latest \
       --filter=updated_since=2025-08-07T13:15:04.280Z
 
     # Limit number of records
-    dirctl import --type=mcp \
+    dirctl import --type=mcp-registry \
       --url=https://registry.modelcontextprotocol.io/v0.1 \
       --limit=50
 
@@ -577,29 +616,29 @@ Fetch and import records from external registries.
     # Records are written as <cid>.record.json into a timestamped directory
     # (default: ./import-dry-run-<timestamp>) so they can be reviewed and
     # re-imported later via `dirctl push` or `dirctl import`.
-    dirctl import --type=mcp \
+    dirctl import --type=mcp-registry \
       --url=https://registry.modelcontextprotocol.io/v0.1 \
       --dry-run
 
     # Dry run with a custom output directory
-    dirctl import --type=mcp \
+    dirctl import --type=mcp-registry \
       --url=https://registry.modelcontextprotocol.io/v0.1 \
       --dry-run \
       --output-dir=./out
 
     # Import and sign records with OIDC (opens browser for authentication)
-    dirctl import --type=mcp \
+    dirctl import --type=mcp-registry \
       --url=https://registry.modelcontextprotocol.io/v0.1 \
       --sign
 
     # Import and sign records with a private key
-    dirctl import --type=mcp \
+    dirctl import --type=mcp-registry \
       --url=https://registry.modelcontextprotocol.io/v0.1 \
       --sign \
       --key=/path/to/cosign.key
 
     # Import with rate limiting for LLM API calls
-    dirctl import --type=mcp \
+    dirctl import --type=mcp-registry \
       --url=https://registry.modelcontextprotocol.io/v0.1 \
       --enrich-rate-limit=5
     ```
@@ -622,7 +661,7 @@ See the [MCP Registry API docs](https://registry.modelcontextprotocol.io/docs#/o
 
 - `dirctl` binary (includes the built-in MCP server with `agntcy_oasf_get_schema_skills` and `agntcy_oasf_get_schema_domains` tools)
 - An LLM model with tool-calling support (GPT-4o, Claude, or compatible Ollama models)
-- The `mcphost.json` configuration file must include the `dir-mcp-server` entry that runs `dirctl mcp serve`. This MCP server provides the schema tools needed for enrichment.
+- The enricher configuration must include a `dir-mcp-server` entry that runs `dirctl mcp serve`. This MCP server provides the schema tools needed for enrichment. A built-in config is used by default; override with `--enrich-config`.
 
 **How it works:**
 
@@ -634,7 +673,7 @@ See the [MCP Registry API docs](https://registry.modelcontextprotocol.io/docs#/o
 
 **Setting up mcphost:**
 
-Edit a configuration file (default: `importer/enricher/mcphost.json`):
+To customize the LLM host, create a configuration file and pass it with `--enrich-config`:
 
 ```json
 {
@@ -675,12 +714,12 @@ The default prompt templates are available at `importer/enricher/enricher.skills
 
     ```bash
     # Import with custom mcphost configuration
-    dirctl import --type=mcp \
+    dirctl import --type=mcp-registry \
       --url=https://registry.modelcontextprotocol.io/v0.1 \
       --enrich-config=/path/to/custom-mcphost.json
 
     # Import with custom prompt templates
-    dirctl import --type=mcp \
+    dirctl import --type=mcp-registry \
       --url=https://registry.modelcontextprotocol.io/v0.1 \
       --enrich-skills-prompt=/path/to/custom-skills-prompt.md \
       --enrich-domains-prompt=/path/to/custom-domains-prompt.md \
@@ -701,7 +740,7 @@ When `--dry-run` is set, the importer does **not** push records to the Directory
 
 ```bash
 # 1. Dry run — write transformed records to ./out
-dirctl import --type=mcp \
+dirctl import --type=mcp-registry \
   --url=https://registry.modelcontextprotocol.io/v0.1 \
   --dry-run \
   --output-dir=./out
@@ -724,10 +763,10 @@ Records can be signed during import using the `--sign` flag. Signing options wor
 
 ```bash
 # Sign with OIDC (opens browser)
-dirctl import --type=mcp --url=https://registry.modelcontextprotocol.io/v0.1 --sign
+dirctl import --type=mcp-registry --url=https://registry.modelcontextprotocol.io/v0.1 --sign
 
 # Sign with a private key
-dirctl import --type=mcp --url=https://registry.modelcontextprotocol.io/v0.1 --sign --key=/path/to/cosign.key
+dirctl import --type=mcp-registry --url=https://registry.modelcontextprotocol.io/v0.1 --sign --key=/path/to/cosign.key
 ```
 
 ### Rate Limiting for LLM API Calls
@@ -736,12 +775,12 @@ When importing large batches of records, the enrichment process makes LLM API ca
 
 ```bash
 # Import with reduced rate limit (5 requests per minute)
-dirctl import --type=mcp \
+dirctl import --type=mcp-registry \
   --url=https://registry.modelcontextprotocol.io/v0.1 \
   --enrich-rate-limit=5
 
 # Import with higher rate limit for providers with generous limits
-dirctl import --type=mcp \
+dirctl import --type=mcp-registry \
   --url=https://registry.modelcontextprotocol.io/v0.1 \
   --enrich-rate-limit=30
 ```
@@ -958,31 +997,53 @@ The output includes the following:
 
 ### `dirctl search [flags]`
 
-General content search across all records using the search service.
+Search the local index using structured filter flags.
 
-The following flags are available:
+**Filter flags** (all repeatable):
 
-- `--query <key=value>` - Search criteria (repeatable)
-- `--limit <number>` - Maximum results
-- `--offset <number>` - Result offset for pagination
+| Flag | Description |
+|------|-------------|
+| `--name` | Record name (supports wildcards, e.g. `web-*`) |
+| `--version` | Record version (e.g. `v1.0.0`, `v1.*`) |
+| `--skill-id` | Skill ID (e.g. `10201`) |
+| `--skill` | Skill name (e.g. `natural_language_processing`) |
+| `--locator` | Locator type (e.g. `docker-image`) |
+| `--module` | Module path (e.g. `core/llm/model`) |
+| `--domain-id` | Domain ID |
+| `--domain` | Domain name |
+| `--author` | Author name |
+| `--schema-version` | OASF schema version |
+| `--module-id` | Module ID |
+| `--annotation` | Annotation key=value |
+| `--verified` | Only verified records |
+| `--trusted` | Only trusted records |
+
+**Other flags:**
+
+| Flag | Description | Default |
+|------|-------------|---------|
+| `--format` | Output format: `cid` or `record` | `cid` |
+| `--limit` | Maximum results | `100` |
+| `--offset` | Pagination offset | `0` |
 
 ??? example
 
     ```bash
     # Search by record name
-    dirctl search --query "name=my-agent"
+    dirctl search --name my-agent
 
     # Search by version
-    dirctl search --query "version=v1.0.0"
+    dirctl search --version v1.0.0
 
     # Search by skill ID
-    dirctl search --query "skill-id=10201"
+    dirctl search --skill-id 10201
 
     # Complex search with multiple criteria
     dirctl search --limit 10 --offset 0 \
-    --query "name=my-agent" \
-    --query "skill-name=Text Completion" \
-    --query "locator=docker-image:https://example.com/image"
+      --name my-agent \
+      --skill "Text Completion" \
+      --locator docker-image \
+      --format record
     ```
 
 ## Security & Verification
@@ -1024,8 +1085,11 @@ Signs records for integrity and authenticity. When signing a record with a verif
     # Sign with private key
     dirctl sign <cid> --key private.key
 
-    # Sign with OIDC (keyless signing)
-    dirctl sign <cid> --oidc --fulcio-url https://fulcio.example.com
+    # Sign with OIDC (keyless signing; default when --key is omitted)
+    dirctl sign <cid> --fulcio-url https://fulcio.example.com
+
+    # Sign with a pre-issued OIDC token (non-interactive)
+    dirctl sign <cid> --oidc-token "$OIDC_TOKEN"
     ```
 
 ### `dirctl naming verify <reference>`
@@ -1066,15 +1130,31 @@ Verifies that a record's signing key is authorized by the domain claimed in its 
     }
     ```
 
-### `dirctl verify <record> <signature> [flags]`
+### `dirctl verify <record-cid> [flags]`
 
-Verifies record signatures.
+Verifies a record signature. Signatures are fetched from the directory.
+
+| Flag | Description |
+|------|-------------|
+| `--key` | Public key file path, URL, or KMS URI |
+| `--oidc-issuer` | OIDC issuer to match (supports regexp) |
+| `--oidc-subject` | OIDC subject to match (supports regexp) |
+| `--from-server` | Use the server's cached verification result |
+| `--ignore-tlog` | Skip transparency log verification |
 
 ??? example
 
     ```bash
-    # Verify with public key
-    dirctl verify record.json signature.sig --key public.key
+    # Verify any valid signature on the record
+    dirctl verify <record-cid>
+
+    # Verify against a specific public key
+    dirctl verify <record-cid> --key /path/to/cosign.pub
+
+    # Verify against an OIDC identity
+    dirctl verify <record-cid> \
+      --oidc-issuer https://github.com/login/oauth \
+      --oidc-subject user@example.com
     ```
 
 ### `dirctl validate [<file>] [flags]`
