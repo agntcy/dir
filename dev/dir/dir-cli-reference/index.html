@@ -1775,6 +1775,73 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#diagnostics" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Diagnostics
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Diagnostics">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#dirctl-doctor-flags" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        dirctl doctor [flags]
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#dirctl-version" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        dirctl version
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#mcp-server" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        MCP Server
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="MCP Server">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#dirctl-mcp-serve" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        dirctl mcp serve
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#daemon-operations" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2203,10 +2270,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#dirctl-verify-record-signature-flags" class="md-nav__link">
+  <a href="#dirctl-verify-record-cid-flags" class="md-nav__link">
     <span class="md-ellipsis">
       
-        dirctl verify &lt;record&gt; &lt;signature&gt; [flags]
+        dirctl verify &lt;record-cid&gt; [flags]
       
     </span>
   </a>
@@ -2522,6 +2589,73 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#diagnostics" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Diagnostics
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Diagnostics">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#dirctl-doctor-flags" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        dirctl doctor [flags]
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#dirctl-version" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        dirctl version
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#mcp-server" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        MCP Server
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="MCP Server">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#dirctl-mcp-serve" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        dirctl mcp serve
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#daemon-operations" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2950,10 +3084,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#dirctl-verify-record-signature-flags" class="md-nav__link">
+  <a href="#dirctl-verify-record-cid-flags" class="md-nav__link">
     <span class="md-ellipsis">
       
-        dirctl verify &lt;record&gt; &lt;signature&gt; [flags]
+        dirctl verify &lt;record-cid&gt; [flags]
       
     </span>
   </a>
@@ -3149,7 +3283,7 @@
 only; workflow examples live in <a href="../dir-features-scenarios/">Features and Usage Scenarios</a>.</p>
 <h2 id="global-options">Global options</h2>
 <h3 id="output-formats">Output formats</h3>
-<p>All commands support <code>--output</code> / <code>-o</code>:</p>
+<p>Most data-producing commands support <code>--output</code> / <code>-o</code>. Exceptions include <code>validate</code>, <code>context</code>, <code>auth</code>, <code>daemon</code>, <code>mcp serve</code>, and <code>version</code>.</p>
 <table>
 <thead>
 <tr>
@@ -3222,8 +3356,10 @@ gateway endpoints, and SPIFFE/SPIRE integration are documented in
 dirctl<span class="w"> </span>--auth-mode<span class="o">=</span>oidc<span class="w"> </span>--server-addr<span class="w"> </span>ads.outshift.io:443<span class="w"> </span>search<span class="w"> </span>--skill<span class="w"> </span><span class="s2">&quot;AI&quot;</span>
 </code></pre></div>
 <p>Pre-issued tokens: <code>--auth-token</code> or <code>DIRECTORY_CLIENT_AUTH_TOKEN</code> for CI and automation.
-Other modes: <code>--auth-mode=x509</code>, <code>jwt</code>, <code>tls</code>, or <code>insecure</code> for local development. Default
-(empty) auto-detects SPIFFE → OIDC → insecure.</p>
+Other modes: <code>--auth-mode=x509</code>, <code>jwt</code>, <code>token</code>, <code>tls</code>, <code>oidc</code>, <code>insecure</code>, or <code>none</code>. When
+<code>--auth-mode</code> is empty, the client auto-detects OIDC (cached token, issuer, or client ID) and
+falls back to insecure for local development. SPIFFE modes (<code>x509</code>, <code>jwt</code>, <code>token</code>) require an
+explicit <code>--auth-mode</code>.</p>
 <h3 id="command-groups">Command groups</h3>
 <table>
 <thead>
@@ -3255,7 +3391,7 @@ Other modes: <code>--auth-mode=x509</code>, <code>jwt</code>, <code>tls</code>, 
 </tr>
 <tr>
 <td>Routing</td>
-<td><code>routing publish</code>, <code>list</code>, <code>search</code></td>
+<td><code>routing publish</code>, <code>unpublish</code>, <code>list</code>, <code>search</code>, <code>info</code></td>
 </tr>
 <tr>
 <td>Search</td>
@@ -3273,6 +3409,14 @@ Other modes: <code>--auth-mode=x509</code>, <code>jwt</code>, <code>tls</code>, 
 <td>Events</td>
 <td><code>events listen</code></td>
 </tr>
+<tr>
+<td>MCP</td>
+<td><code>mcp serve</code></td>
+</tr>
+<tr>
+<td>Diagnostics</td>
+<td><code>doctor</code>, <code>version</code></td>
+</tr>
 </tbody>
 </table>
 <h3 id="getting-help">Getting help</h3>
@@ -3280,6 +3424,36 @@ Other modes: <code>--auth-mode=x509</code>, <code>jwt</code>, <code>tls</code>, 
 dirctl<span class="w"> </span>routing<span class="w"> </span>--help
 dirctl<span class="w"> </span>routing<span class="w"> </span>search<span class="w"> </span>--help
 </code></pre></div>
+<h2 id="diagnostics">Diagnostics</h2>
+<h3 id="dirctl-doctor-flags"><code>dirctl doctor [flags]</code></h3>
+<p>Runs connectivity and configuration checks against the configured Directory server and routing layer.</p>
+<table>
+<thead>
+<tr>
+<th>Flag</th>
+<th>Description</th>
+<th>Default</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>--timeout</code></td>
+<td>Per-check timeout</td>
+<td><code>2s</code></td>
+</tr>
+<tr>
+<td><code>--bootstrap-peer</code></td>
+<td>Bootstrap peer multiaddr to validate (repeatable)</td>
+<td>-</td>
+</tr>
+</tbody>
+</table>
+<h3 id="dirctl-version"><code>dirctl version</code></h3>
+<p>Prints the <code>dirctl</code> build version.</p>
+<h2 id="mcp-server">MCP Server</h2>
+<h3 id="dirctl-mcp-serve"><code>dirctl mcp serve</code></h3>
+<p>Starts the built-in MCP server used by external AI tooling. Delegates to the
+<a href="https://github.com/agntcy/dir-mcp"><code>dir-mcp</code></a> module.</p>
 <h2 id="daemon-operations">Daemon Operations</h2>
 <p>The daemon commands run a self-contained local directory server that bundles the gRPC apiserver and reconciler into a single process with embedded SQLite and a filesystem OCI store. All state is stored under <code>~/.agntcy/dir/</code> by default.</p>
 <h3 id="dirctl-daemon-start"><code>dirctl daemon start</code></h3>
@@ -3304,7 +3478,7 @@ dirctl<span class="w"> </span>routing<span class="w"> </span>search<span class="
 <tr>
 <td><code>--config</code></td>
 <td>Path to daemon config file</td>
-<td><code>&lt;data-dir&gt;/daemon.config.yaml</code> (built-in defaults)</td>
+<td>Built-in embedded defaults</td>
 </tr>
 </tbody>
 </table>
@@ -3342,14 +3516,14 @@ dirctl<span class="w"> </span>daemon<span class="w"> </span>start<span class="w"
 <span class="w">    </span><span class="nt">provider</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;oci&quot;</span>
 <span class="w">    </span><span class="nt">oci</span><span class="p">:</span>
 <span class="w">      </span><span class="nt">local_dir</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;store&quot;</span>
-<span class="w">      </span><span class="nt">registry_address</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;localhost:5000&quot;</span>
+<span class="w">      </span><span class="nt">registry_address</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;localhost:5555&quot;</span>
 <span class="w">      </span><span class="nt">repository_name</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;dir&quot;</span>
 <span class="w">      </span><span class="nt">auth_config</span><span class="p">:</span>
 <span class="w">        </span><span class="nt">insecure</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
 <span class="w">    </span><span class="nt">verification</span><span class="p">:</span>
 <span class="w">      </span><span class="nt">enabled</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
 <span class="w">  </span><span class="nt">routing</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">listen_address</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;/ip4/0.0.0.0/tcp/0&quot;</span>
+<span class="w">    </span><span class="nt">listen_address</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;/ip4/0.0.0.0/tcp/8999&quot;</span>
 <span class="w">    </span><span class="nt">datastore_dir</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;routing&quot;</span>
 <span class="w">    </span><span class="nt">gossipsub</span><span class="p">:</span>
 <span class="w">      </span><span class="nt">enabled</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
@@ -3363,7 +3537,7 @@ dirctl<span class="w"> </span>daemon<span class="w"> </span>start<span class="w"
 <span class="w">      </span><span class="nt">database</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;dir&quot;</span>
 <span class="w">      </span><span class="nt">ssl_mode</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;disable&quot;</span>
 <span class="w">  </span><span class="nt">publication</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">scheduler_interval</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">1h</span>
+<span class="w">    </span><span class="nt">scheduler_interval</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">5m</span>
 <span class="w">    </span><span class="nt">worker_count</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">1</span>
 <span class="w">    </span><span class="nt">worker_timeout</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">30m</span>
 <span class="w">  </span><span class="nt">naming</span><span class="p">:</span>
@@ -3388,7 +3562,7 @@ dirctl<span class="w"> </span>daemon<span class="w"> </span>start<span class="w"
 <span class="w">    </span><span class="nt">ttl</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">168h</span>
 <span class="w">    </span><span class="nt">record_timeout</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">30s</span>
 <span class="w">  </span><span class="nt">local_registry</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">registry_address</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;localhost:5000&quot;</span>
+<span class="w">    </span><span class="nt">registry_address</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;localhost:5555&quot;</span>
 <span class="w">    </span><span class="nt">repository_name</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;dir&quot;</span>
 <span class="w">    </span><span class="nt">auth_config</span><span class="p">:</span>
 <span class="w">      </span><span class="nt">insecure</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
@@ -3656,8 +3830,8 @@ dirctl<span class="w"> </span>pull<span class="w"> </span>cisco.com/agent:v1.0.0
 dirctl<span class="w"> </span>pull<span class="w"> </span>cisco.com/agent@bafyreib...
 dirctl<span class="w"> </span>pull<span class="w"> </span>cisco.com/agent:v1.0.0@bafyreib...
 
-<span class="c1"># Pull with signature verification</span>
-dirctl<span class="w"> </span>pull<span class="w"> </span>&lt;cid&gt;<span class="w"> </span>--signature<span class="w"> </span>--public-key<span class="w"> </span>public.key
+<span class="c1"># Pull signature and public-key referrer artifacts from the server</span>
+dirctl<span class="w"> </span>pull<span class="w"> </span>&lt;cid&gt;<span class="w"> </span>--signature<span class="w"> </span>--public-key
 </code></pre></div>
 </details>
 <p><strong>Hash Verification:</strong></p>
@@ -3725,13 +3899,41 @@ dirctl<span class="w"> </span>info<span class="w"> </span>cisco.com/agent:v1.0.0
 </code></pre></div>
 </details>
 <h2 id="import-operations">Import Operations</h2>
-<p>Import records from external registries into DIR. Supports automated batch imports from various registry types.</p>
+<p>Import records from external registries or local files into DIR. Supports automated batch imports with optional LLM enrichment and security scanning.</p>
 <h3 id="dirctl-import-flags"><code>dirctl import [flags]</code></h3>
-<p>Fetch and import records from external registries.</p>
-<p><strong>Supported Registries:</strong></p>
-<ul>
-<li><code>mcp</code> - Model Context Protocol registry v0.1</li>
-</ul>
+<p>Fetch and import records from registries or local sources.</p>
+<p><strong>Import kinds (<code>--type</code>):</strong></p>
+<table>
+<thead>
+<tr>
+<th>Type</th>
+<th>Source</th>
+<th>Required flags</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>mcp-registry</code></td>
+<td>HTTP MCP registry (e.g. v0.1 list API)</td>
+<td><code>--url</code></td>
+</tr>
+<tr>
+<td><code>mcp</code></td>
+<td>Local JSON (one server or array)</td>
+<td><code>--file-path</code></td>
+</tr>
+<tr>
+<td><code>a2a</code></td>
+<td>Local A2A AgentCard JSON</td>
+<td><code>--file-path</code></td>
+</tr>
+<tr>
+<td><code>agent-skill</code></td>
+<td>Local Agent Skills directory with <code>SKILL.md</code></td>
+<td><code>--file-path</code></td>
+</tr>
+</tbody>
+</table>
 <p><strong>Configuration Options:</strong></p>
 <table>
 <thead>
@@ -3747,15 +3949,36 @@ dirctl<span class="w"> </span>info<span class="w"> </span>cisco.com/agent:v1.0.0
 <tr>
 <td><code>--type</code></td>
 <td>-</td>
-<td>Registry type (mcp, a2a)</td>
+<td>Import kind (<code>mcp-registry</code>, <code>mcp</code>, <code>a2a</code>, <code>agent-skill</code>)</td>
 <td>Yes</td>
 <td>-</td>
 </tr>
 <tr>
 <td><code>--url</code></td>
 <td>-</td>
-<td>Registry base URL</td>
-<td>Yes</td>
+<td>Registry base URL (required when <code>--type=mcp-registry</code>)</td>
+<td>No</td>
+<td>-</td>
+</tr>
+<tr>
+<td><code>--file-path</code></td>
+<td>-</td>
+<td>Path to local JSON file or skill directory</td>
+<td>No</td>
+<td>-</td>
+</tr>
+<tr>
+<td><code>--author</code></td>
+<td>-</td>
+<td>OASF record author (repeatable; overrides source-derived authors)</td>
+<td>No</td>
+<td>-</td>
+</tr>
+<tr>
+<td><code>--output-cids</code></td>
+<td>-</td>
+<td>Write imported CIDs to a file (one per line)</td>
+<td>No</td>
 <td>-</td>
 </tr>
 <tr>
@@ -3803,9 +4026,44 @@ dirctl<span class="w"> </span>info<span class="w"> </span>cisco.com/agent:v1.0.0
 <tr>
 <td><code>--enrich-config</code></td>
 <td>-</td>
-<td>Path to MCPHost configuration file (mcphost.json)</td>
+<td>Path to MCPHost configuration JSON (model, mcpServers, max-steps)</td>
 <td>No</td>
-<td>importer/enricher/mcphost.json</td>
+<td>Built-in embedded config</td>
+</tr>
+<tr>
+<td><code>--scanner-enabled</code></td>
+<td>-</td>
+<td>Run security scanners on each record</td>
+<td>No</td>
+<td><code>false</code></td>
+</tr>
+<tr>
+<td><code>--scanner-timeout</code></td>
+<td>-</td>
+<td>Timeout per record scan</td>
+<td>No</td>
+<td><code>5m</code></td>
+</tr>
+<tr>
+<td><code>--scanner-cli-path</code></td>
+<td>-</td>
+<td>Path to <code>mcp-scanner</code> binary</td>
+<td>No</td>
+<td><code>mcp-scanner</code> from <code>PATH</code></td>
+</tr>
+<tr>
+<td><code>--scanner-fail-on-error</code></td>
+<td>-</td>
+<td>Skip records with error-severity findings</td>
+<td>No</td>
+<td><code>false</code></td>
+</tr>
+<tr>
+<td><code>--scanner-fail-on-warning</code></td>
+<td>-</td>
+<td>Skip records with warning-severity findings</td>
+<td>No</td>
+<td><code>false</code></td>
 </tr>
 <tr>
 <td><code>--enrich-skills-prompt</code></td>
@@ -3879,32 +4137,32 @@ dirctl<span class="w"> </span>info<span class="w"> </span>cisco.com/agent:v1.0.0
 <details class="example">
 <summary>Example</summary>
 <div class="highlight"><pre><span></span><code><span class="c1"># Import from MCP registry</span>
-dirctl<span class="w"> </span>import<span class="w"> </span>--type<span class="o">=</span>mcp<span class="w"> </span>--url<span class="o">=</span>https://registry.modelcontextprotocol.io/v0.1
+dirctl<span class="w"> </span>import<span class="w"> </span>--type<span class="o">=</span>mcp-registry<span class="w"> </span>--url<span class="o">=</span>https://registry.modelcontextprotocol.io/v0.1
 
 <span class="c1"># Import with debug output (shows detailed diagnostics for failures)</span>
-dirctl<span class="w"> </span>import<span class="w"> </span>--type<span class="o">=</span>mcp<span class="w"> </span><span class="se">\</span>
+dirctl<span class="w"> </span>import<span class="w"> </span>--type<span class="o">=</span>mcp-registry<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--url<span class="o">=</span>https://registry.modelcontextprotocol.io/v0.1<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--debug
 
 <span class="c1"># Force reimport of existing records (skips deduplication)</span>
-dirctl<span class="w"> </span>import<span class="w"> </span>--type<span class="o">=</span>mcp<span class="w"> </span><span class="se">\</span>
+dirctl<span class="w"> </span>import<span class="w"> </span>--type<span class="o">=</span>mcp-registry<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--url<span class="o">=</span>https://registry.modelcontextprotocol.io/v0.1<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--force
 
 <span class="c1"># Import with time-based filter</span>
-dirctl<span class="w"> </span>import<span class="w"> </span>--type<span class="o">=</span>mcp<span class="w"> </span><span class="se">\</span>
+dirctl<span class="w"> </span>import<span class="w"> </span>--type<span class="o">=</span>mcp-registry<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--url<span class="o">=</span>https://registry.modelcontextprotocol.io/v0.1<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--filter<span class="o">=</span><span class="nv">updated_since</span><span class="o">=</span><span class="m">2025</span>-08-07T13:15:04.280Z
 
 <span class="c1"># Combine multiple filters</span>
-dirctl<span class="w"> </span>import<span class="w"> </span>--type<span class="o">=</span>mcp<span class="w"> </span><span class="se">\</span>
+dirctl<span class="w"> </span>import<span class="w"> </span>--type<span class="o">=</span>mcp-registry<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--url<span class="o">=</span>https://registry.modelcontextprotocol.io/v0.1<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--filter<span class="o">=</span><span class="nv">search</span><span class="o">=</span>github<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--filter<span class="o">=</span><span class="nv">version</span><span class="o">=</span>latest<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--filter<span class="o">=</span><span class="nv">updated_since</span><span class="o">=</span><span class="m">2025</span>-08-07T13:15:04.280Z
 
 <span class="c1"># Limit number of records</span>
-dirctl<span class="w"> </span>import<span class="w"> </span>--type<span class="o">=</span>mcp<span class="w"> </span><span class="se">\</span>
+dirctl<span class="w"> </span>import<span class="w"> </span>--type<span class="o">=</span>mcp-registry<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--url<span class="o">=</span>https://registry.modelcontextprotocol.io/v0.1<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--limit<span class="o">=</span><span class="m">50</span>
 
@@ -3912,29 +4170,29 @@ dirctl<span class="w"> </span>import<span class="w"> </span>--type<span class="o
 <span class="c1"># Records are written as &lt;cid&gt;.record.json into a timestamped directory</span>
 <span class="c1"># (default: ./import-dry-run-&lt;timestamp&gt;) so they can be reviewed and</span>
 <span class="c1"># re-imported later via `dirctl push` or `dirctl import`.</span>
-dirctl<span class="w"> </span>import<span class="w"> </span>--type<span class="o">=</span>mcp<span class="w"> </span><span class="se">\</span>
+dirctl<span class="w"> </span>import<span class="w"> </span>--type<span class="o">=</span>mcp-registry<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--url<span class="o">=</span>https://registry.modelcontextprotocol.io/v0.1<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--dry-run
 
 <span class="c1"># Dry run with a custom output directory</span>
-dirctl<span class="w"> </span>import<span class="w"> </span>--type<span class="o">=</span>mcp<span class="w"> </span><span class="se">\</span>
+dirctl<span class="w"> </span>import<span class="w"> </span>--type<span class="o">=</span>mcp-registry<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--url<span class="o">=</span>https://registry.modelcontextprotocol.io/v0.1<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--dry-run<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--output-dir<span class="o">=</span>./out
 
 <span class="c1"># Import and sign records with OIDC (opens browser for authentication)</span>
-dirctl<span class="w"> </span>import<span class="w"> </span>--type<span class="o">=</span>mcp<span class="w"> </span><span class="se">\</span>
+dirctl<span class="w"> </span>import<span class="w"> </span>--type<span class="o">=</span>mcp-registry<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--url<span class="o">=</span>https://registry.modelcontextprotocol.io/v0.1<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--sign
 
 <span class="c1"># Import and sign records with a private key</span>
-dirctl<span class="w"> </span>import<span class="w"> </span>--type<span class="o">=</span>mcp<span class="w"> </span><span class="se">\</span>
+dirctl<span class="w"> </span>import<span class="w"> </span>--type<span class="o">=</span>mcp-registry<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--url<span class="o">=</span>https://registry.modelcontextprotocol.io/v0.1<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--sign<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--key<span class="o">=</span>/path/to/cosign.key
 
 <span class="c1"># Import with rate limiting for LLM API calls</span>
-dirctl<span class="w"> </span>import<span class="w"> </span>--type<span class="o">=</span>mcp<span class="w"> </span><span class="se">\</span>
+dirctl<span class="w"> </span>import<span class="w"> </span>--type<span class="o">=</span>mcp-registry<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--url<span class="o">=</span>https://registry.modelcontextprotocol.io/v0.1<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--enrich-rate-limit<span class="o">=</span><span class="m">5</span>
 </code></pre></div>
@@ -3953,7 +4211,7 @@ dirctl<span class="w"> </span>import<span class="w"> </span>--type<span class="o
 <ul>
 <li><code>dirctl</code> binary (includes the built-in MCP server with <code>agntcy_oasf_get_schema_skills</code> and <code>agntcy_oasf_get_schema_domains</code> tools)</li>
 <li>An LLM model with tool-calling support (GPT-4o, Claude, or compatible Ollama models)</li>
-<li>The <code>mcphost.json</code> configuration file must include the <code>dir-mcp-server</code> entry that runs <code>dirctl mcp serve</code>. This MCP server provides the schema tools needed for enrichment.</li>
+<li>The enricher configuration must include a <code>dir-mcp-server</code> entry that runs <code>dirctl mcp serve</code>. This MCP server provides the schema tools needed for enrichment. A built-in config is used by default; override with <code>--enrich-config</code>.</li>
 </ul>
 <p><strong>How it works:</strong></p>
 <ol>
@@ -3964,7 +4222,7 @@ dirctl<span class="w"> </span>import<span class="w"> </span>--type<span class="o
 <li>Selected skills and domains replace the defaults in the imported records</li>
 </ol>
 <p><strong>Setting up mcphost:</strong></p>
-<p>Edit a configuration file (default: <code>importer/enricher/mcphost.json</code>):</p>
+<p>To customize the LLM host, create a configuration file and pass it with <code>--enrich-config</code>:</p>
 <div class="highlight"><pre><span></span><code><span class="p">{</span>
 <span class="w">  </span><span class="nt">&quot;mcpServers&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
 <span class="w">    </span><span class="nt">&quot;dir-mcp-server&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
@@ -3999,12 +4257,12 @@ dirctl<span class="w"> </span>import<span class="w"> </span>--type<span class="o
 <details class="example">
 <summary>Import with custom enrichment</summary>
 <div class="highlight"><pre><span></span><code><span class="c1"># Import with custom mcphost configuration</span>
-dirctl<span class="w"> </span>import<span class="w"> </span>--type<span class="o">=</span>mcp<span class="w"> </span><span class="se">\</span>
+dirctl<span class="w"> </span>import<span class="w"> </span>--type<span class="o">=</span>mcp-registry<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--url<span class="o">=</span>https://registry.modelcontextprotocol.io/v0.1<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--enrich-config<span class="o">=</span>/path/to/custom-mcphost.json
 
 <span class="c1"># Import with custom prompt templates</span>
-dirctl<span class="w"> </span>import<span class="w"> </span>--type<span class="o">=</span>mcp<span class="w"> </span><span class="se">\</span>
+dirctl<span class="w"> </span>import<span class="w"> </span>--type<span class="o">=</span>mcp-registry<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--url<span class="o">=</span>https://registry.modelcontextprotocol.io/v0.1<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--enrich-skills-prompt<span class="o">=</span>/path/to/custom-skills-prompt.md<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--enrich-domains-prompt<span class="o">=</span>/path/to/custom-domains-prompt.md<span class="w"> </span><span class="se">\</span>
@@ -4021,7 +4279,7 @@ dirctl<span class="w"> </span>import<span class="w"> </span>--type<span class="o
 </ul>
 <p><strong>Typical workflow:</strong></p>
 <div class="highlight"><pre><span></span><code><span class="c1"># 1. Dry run — write transformed records to ./out</span>
-dirctl<span class="w"> </span>import<span class="w"> </span>--type<span class="o">=</span>mcp<span class="w"> </span><span class="se">\</span>
+dirctl<span class="w"> </span>import<span class="w"> </span>--type<span class="o">=</span>mcp-registry<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--url<span class="o">=</span>https://registry.modelcontextprotocol.io/v0.1<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--dry-run<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--output-dir<span class="o">=</span>./out
@@ -4040,20 +4298,20 @@ ls<span class="w"> </span>./out
 <h3 id="signing-records-during-import">Signing Records During Import</h3>
 <p>Records can be signed during import using the <code>--sign</code> flag. Signing options work the same as the standalone <code>dirctl sign</code> command (see <a href="#security-verification">Security &amp; Verification</a>).</p>
 <div class="highlight"><pre><span></span><code><span class="c1"># Sign with OIDC (opens browser)</span>
-dirctl<span class="w"> </span>import<span class="w"> </span>--type<span class="o">=</span>mcp<span class="w"> </span>--url<span class="o">=</span>https://registry.modelcontextprotocol.io/v0.1<span class="w"> </span>--sign
+dirctl<span class="w"> </span>import<span class="w"> </span>--type<span class="o">=</span>mcp-registry<span class="w"> </span>--url<span class="o">=</span>https://registry.modelcontextprotocol.io/v0.1<span class="w"> </span>--sign
 
 <span class="c1"># Sign with a private key</span>
-dirctl<span class="w"> </span>import<span class="w"> </span>--type<span class="o">=</span>mcp<span class="w"> </span>--url<span class="o">=</span>https://registry.modelcontextprotocol.io/v0.1<span class="w"> </span>--sign<span class="w"> </span>--key<span class="o">=</span>/path/to/cosign.key
+dirctl<span class="w"> </span>import<span class="w"> </span>--type<span class="o">=</span>mcp-registry<span class="w"> </span>--url<span class="o">=</span>https://registry.modelcontextprotocol.io/v0.1<span class="w"> </span>--sign<span class="w"> </span>--key<span class="o">=</span>/path/to/cosign.key
 </code></pre></div>
 <h3 id="rate-limiting-for-llm-api-calls">Rate Limiting for LLM API Calls</h3>
 <p>When importing large batches of records, the enrichment process makes LLM API calls for each record. To avoid hitting rate limits from LLM providers, use the <code>--enrich-rate-limit</code> flag:</p>
 <div class="highlight"><pre><span></span><code><span class="c1"># Import with reduced rate limit (5 requests per minute)</span>
-dirctl<span class="w"> </span>import<span class="w"> </span>--type<span class="o">=</span>mcp<span class="w"> </span><span class="se">\</span>
+dirctl<span class="w"> </span>import<span class="w"> </span>--type<span class="o">=</span>mcp-registry<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--url<span class="o">=</span>https://registry.modelcontextprotocol.io/v0.1<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--enrich-rate-limit<span class="o">=</span><span class="m">5</span>
 
 <span class="c1"># Import with higher rate limit for providers with generous limits</span>
-dirctl<span class="w"> </span>import<span class="w"> </span>--type<span class="o">=</span>mcp<span class="w"> </span><span class="se">\</span>
+dirctl<span class="w"> </span>import<span class="w"> </span>--type<span class="o">=</span>mcp-registry<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--url<span class="o">=</span>https://registry.modelcontextprotocol.io/v0.1<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--enrich-rate-limit<span class="o">=</span><span class="m">30</span>
 </code></pre></div>
@@ -4303,29 +4561,118 @@ dirctl<span class="w"> </span>routing<span class="w"> </span>info
 </details>
 <h2 id="search-discovery">Search &amp; Discovery</h2>
 <h3 id="dirctl-search-flags"><code>dirctl search [flags]</code></h3>
-<p>General content search across all records using the search service.</p>
-<p>The following flags are available:</p>
-<ul>
-<li><code>--query &lt;key=value&gt;</code> - Search criteria (repeatable)</li>
-<li><code>--limit &lt;number&gt;</code> - Maximum results</li>
-<li><code>--offset &lt;number&gt;</code> - Result offset for pagination</li>
-</ul>
+<p>Search the local index using structured filter flags.</p>
+<p><strong>Filter flags</strong> (all repeatable):</p>
+<table>
+<thead>
+<tr>
+<th>Flag</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>--name</code></td>
+<td>Record name (supports wildcards, e.g. <code>web-*</code>)</td>
+</tr>
+<tr>
+<td><code>--version</code></td>
+<td>Record version (e.g. <code>v1.0.0</code>, <code>v1.*</code>)</td>
+</tr>
+<tr>
+<td><code>--skill-id</code></td>
+<td>Skill ID (e.g. <code>10201</code>)</td>
+</tr>
+<tr>
+<td><code>--skill</code></td>
+<td>Skill name (e.g. <code>natural_language_processing</code>)</td>
+</tr>
+<tr>
+<td><code>--locator</code></td>
+<td>Locator type (e.g. <code>docker-image</code>)</td>
+</tr>
+<tr>
+<td><code>--module</code></td>
+<td>Module path (e.g. <code>core/llm/model</code>)</td>
+</tr>
+<tr>
+<td><code>--domain-id</code></td>
+<td>Domain ID</td>
+</tr>
+<tr>
+<td><code>--domain</code></td>
+<td>Domain name</td>
+</tr>
+<tr>
+<td><code>--author</code></td>
+<td>Author name</td>
+</tr>
+<tr>
+<td><code>--schema-version</code></td>
+<td>OASF schema version</td>
+</tr>
+<tr>
+<td><code>--module-id</code></td>
+<td>Module ID</td>
+</tr>
+<tr>
+<td><code>--annotation</code></td>
+<td>Annotation key=value</td>
+</tr>
+<tr>
+<td><code>--verified</code></td>
+<td>Only verified records</td>
+</tr>
+<tr>
+<td><code>--trusted</code></td>
+<td>Only trusted records</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Other flags:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Flag</th>
+<th>Description</th>
+<th>Default</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>--format</code></td>
+<td>Output format: <code>cid</code> or <code>record</code></td>
+<td><code>cid</code></td>
+</tr>
+<tr>
+<td><code>--limit</code></td>
+<td>Maximum results</td>
+<td><code>100</code></td>
+</tr>
+<tr>
+<td><code>--offset</code></td>
+<td>Pagination offset</td>
+<td><code>0</code></td>
+</tr>
+</tbody>
+</table>
 <details class="example">
 <summary>Example</summary>
 <div class="highlight"><pre><span></span><code><span class="c1"># Search by record name</span>
-dirctl<span class="w"> </span>search<span class="w"> </span>--query<span class="w"> </span><span class="s2">&quot;name=my-agent&quot;</span>
+dirctl<span class="w"> </span>search<span class="w"> </span>--name<span class="w"> </span>my-agent
 
 <span class="c1"># Search by version</span>
-dirctl<span class="w"> </span>search<span class="w"> </span>--query<span class="w"> </span><span class="s2">&quot;version=v1.0.0&quot;</span>
+dirctl<span class="w"> </span>search<span class="w"> </span>--version<span class="w"> </span>v1.0.0
 
 <span class="c1"># Search by skill ID</span>
-dirctl<span class="w"> </span>search<span class="w"> </span>--query<span class="w"> </span><span class="s2">&quot;skill-id=10201&quot;</span>
+dirctl<span class="w"> </span>search<span class="w"> </span>--skill-id<span class="w"> </span><span class="m">10201</span>
 
 <span class="c1"># Complex search with multiple criteria</span>
 dirctl<span class="w"> </span>search<span class="w"> </span>--limit<span class="w"> </span><span class="m">10</span><span class="w"> </span>--offset<span class="w"> </span><span class="m">0</span><span class="w"> </span><span class="se">\</span>
---query<span class="w"> </span><span class="s2">&quot;name=my-agent&quot;</span><span class="w"> </span><span class="se">\</span>
---query<span class="w"> </span><span class="s2">&quot;skill-name=Text Completion&quot;</span><span class="w"> </span><span class="se">\</span>
---query<span class="w"> </span><span class="s2">&quot;locator=docker-image:https://example.com/image&quot;</span>
+<span class="w">  </span>--name<span class="w"> </span>my-agent<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--skill<span class="w"> </span><span class="s2">&quot;Text Completion&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--locator<span class="w"> </span>docker-image<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--format<span class="w"> </span>record
 </code></pre></div>
 </details>
 <h2 id="security-verification">Security &amp; Verification</h2>
@@ -4361,8 +4708,11 @@ dirctl<span class="w"> </span>search<span class="w"> </span>--limit<span class="
 <div class="highlight"><pre><span></span><code><span class="c1"># Sign with private key</span>
 dirctl<span class="w"> </span>sign<span class="w"> </span>&lt;cid&gt;<span class="w"> </span>--key<span class="w"> </span>private.key
 
-<span class="c1"># Sign with OIDC (keyless signing)</span>
-dirctl<span class="w"> </span>sign<span class="w"> </span>&lt;cid&gt;<span class="w"> </span>--oidc<span class="w"> </span>--fulcio-url<span class="w"> </span>https://fulcio.example.com
+<span class="c1"># Sign with OIDC (keyless signing; default when --key is omitted)</span>
+dirctl<span class="w"> </span>sign<span class="w"> </span>&lt;cid&gt;<span class="w"> </span>--fulcio-url<span class="w"> </span>https://fulcio.example.com
+
+<span class="c1"># Sign with a pre-issued OIDC token (non-interactive)</span>
+dirctl<span class="w"> </span>sign<span class="w"> </span>&lt;cid&gt;<span class="w"> </span>--oidc-token<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$OIDC_TOKEN</span><span class="s2">&quot;</span>
 </code></pre></div>
 </details>
 <h3 id="dirctl-naming-verify-reference"><code>dirctl naming verify &lt;reference&gt;</code></h3>
@@ -4412,12 +4762,50 @@ dirctl<span class="w"> </span>naming<span class="w"> </span>verify<span class="w
 <span class="p">}</span>
 </code></pre></div>
 </details>
-<h3 id="dirctl-verify-record-signature-flags"><code>dirctl verify &lt;record&gt; &lt;signature&gt; [flags]</code></h3>
-<p>Verifies record signatures.</p>
+<h3 id="dirctl-verify-record-cid-flags"><code>dirctl verify &lt;record-cid&gt; [flags]</code></h3>
+<p>Verifies a record signature. Signatures are fetched from the directory.</p>
+<table>
+<thead>
+<tr>
+<th>Flag</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>--key</code></td>
+<td>Public key file path, URL, or KMS URI</td>
+</tr>
+<tr>
+<td><code>--oidc-issuer</code></td>
+<td>OIDC issuer to match (supports regexp)</td>
+</tr>
+<tr>
+<td><code>--oidc-subject</code></td>
+<td>OIDC subject to match (supports regexp)</td>
+</tr>
+<tr>
+<td><code>--from-server</code></td>
+<td>Use the server's cached verification result</td>
+</tr>
+<tr>
+<td><code>--ignore-tlog</code></td>
+<td>Skip transparency log verification</td>
+</tr>
+</tbody>
+</table>
 <details class="example">
 <summary>Example</summary>
-<div class="highlight"><pre><span></span><code><span class="c1"># Verify with public key</span>
-dirctl<span class="w"> </span>verify<span class="w"> </span>record.json<span class="w"> </span>signature.sig<span class="w"> </span>--key<span class="w"> </span>public.key
+<div class="highlight"><pre><span></span><code><span class="c1"># Verify any valid signature on the record</span>
+dirctl<span class="w"> </span>verify<span class="w"> </span>&lt;record-cid&gt;
+
+<span class="c1"># Verify against a specific public key</span>
+dirctl<span class="w"> </span>verify<span class="w"> </span>&lt;record-cid&gt;<span class="w"> </span>--key<span class="w"> </span>/path/to/cosign.pub
+
+<span class="c1"># Verify against an OIDC identity</span>
+dirctl<span class="w"> </span>verify<span class="w"> </span>&lt;record-cid&gt;<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--oidc-issuer<span class="w"> </span>https://github.com/login/oauth<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--oidc-subject<span class="w"> </span>user@example.com
 </code></pre></div>
 </details>
 <h3 id="dirctl-validate-file-flags"><code>dirctl validate [&lt;file&gt;] [flags]</code></h3>

@@ -2875,7 +2875,7 @@ tools to react to changes as they occur across the distributed directory network
 synchronization, and signing activities. The event system delivers notifications in real-time from
 the moment of subscription, without maintaining history or supporting replay functionality.</p>
 <h3 id="supported-event-types">Supported Event Types</h3>
-<p>The Directory tracks 9 distinct event types organized by service:</p>
+<p>The Directory tracks 10 distinct event types organized by service:</p>
 <table>
 <thead>
 <tr>
@@ -2902,8 +2902,8 @@ the moment of subscription, without maintaining history or supporting replay fun
 </tr>
 <tr>
 <td><strong>Sign</strong></td>
-<td>RECORD_SIGNED</td>
-<td>Cryptographic signing operations</td>
+<td>RECORD_SIGNED<br/>PUBLIC_KEY_UPLOADED</td>
+<td>Cryptographic signing and key upload operations</td>
 </tr>
 </tbody>
 </table>
@@ -3004,17 +3004,18 @@ dirctl<span class="w"> </span>events<span class="w"> </span>listen<span class="w
 <span class="p">)</span>
 
 <span class="kd">func</span><span class="w"> </span><span class="nx">main</span><span class="p">()</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nx">ctx</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">context</span><span class="p">.</span><span class="nx">Background</span><span class="p">()</span>
+
 <span class="w">    </span><span class="c1">// Create client</span>
-<span class="w">    </span><span class="nx">c</span><span class="p">,</span><span class="w"> </span><span class="nx">err</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">client</span><span class="p">.</span><span class="nx">New</span><span class="p">(</span>
-<span class="w">        </span><span class="nx">client</span><span class="p">.</span><span class="nx">WithAddress</span><span class="p">(</span><span class="s">&quot;localhost:8080&quot;</span><span class="p">),</span>
-<span class="w">    </span><span class="p">)</span>
+<span class="w">    </span><span class="nx">c</span><span class="p">,</span><span class="w"> </span><span class="nx">err</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">client</span><span class="p">.</span><span class="nx">New</span><span class="p">(</span><span class="nx">ctx</span><span class="p">,</span><span class="w"> </span><span class="nx">client</span><span class="p">.</span><span class="nx">WithConfig</span><span class="p">(</span><span class="o">&amp;</span><span class="nx">client</span><span class="p">.</span><span class="nx">Config</span><span class="p">{</span>
+<span class="w">        </span><span class="nx">ServerAddress</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;localhost:8888&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="p">}))</span>
 <span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="nx">err</span><span class="w"> </span><span class="o">!=</span><span class="w"> </span><span class="kc">nil</span><span class="w"> </span><span class="p">{</span>
 <span class="w">        </span><span class="nb">panic</span><span class="p">(</span><span class="nx">err</span><span class="p">)</span>
 <span class="w">    </span><span class="p">}</span>
 <span class="w">    </span><span class="k">defer</span><span class="w"> </span><span class="nx">c</span><span class="p">.</span><span class="nx">Close</span><span class="p">()</span>
 
 <span class="w">    </span><span class="c1">// Subscribe to all events</span>
-<span class="w">    </span><span class="nx">ctx</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">context</span><span class="p">.</span><span class="nx">Background</span><span class="p">()</span>
 <span class="w">    </span><span class="nx">result</span><span class="p">,</span><span class="w"> </span><span class="nx">err</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">c</span><span class="p">.</span><span class="nx">ListenStream</span><span class="p">(</span><span class="nx">ctx</span><span class="p">,</span><span class="w"> </span><span class="o">&amp;</span><span class="nx">eventsv1</span><span class="p">.</span><span class="nx">ListenRequest</span><span class="p">{})</span>
 <span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="nx">err</span><span class="w"> </span><span class="o">!=</span><span class="w"> </span><span class="kc">nil</span><span class="w"> </span><span class="p">{</span>
 <span class="w">        </span><span class="nb">panic</span><span class="p">(</span><span class="nx">err</span><span class="p">)</span>
@@ -3063,7 +3064,7 @@ dirctl<span class="w"> </span>events<span class="w"> </span>listen<span class="w
 <span class="kn">from</span><span class="w"> </span><span class="nn">agntcy.dir_sdk.models</span><span class="w"> </span><span class="kn">import</span> <span class="n">events_v1</span>
 
 <span class="c1"># Create client</span>
-<span class="n">client</span> <span class="o">=</span> <span class="n">Client</span><span class="p">(</span><span class="n">address</span><span class="o">=</span><span class="s2">&quot;localhost:8080&quot;</span><span class="p">)</span>
+<span class="n">client</span> <span class="o">=</span> <span class="n">Client</span><span class="p">(</span><span class="n">server_address</span><span class="o">=</span><span class="s2">&quot;localhost:8888&quot;</span><span class="p">)</span>
 
 <span class="c1"># Subscribe to events</span>
 <span class="n">request</span> <span class="o">=</span> <span class="n">events_v1</span><span class="o">.</span><span class="n">ListenRequest</span><span class="p">()</span>

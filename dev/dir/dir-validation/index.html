@@ -1973,7 +1973,10 @@ task<span class="w"> </span>server:start
 </code></pre></div>
 <div class="admonition note">
 <p class="admonition-title">Note</p>
-<p>The server itself does not have a built-in default schema URL. Deployment tools like Helm and Taskfile set <code>https://schema.oasf.outshift.com</code> as the default. When using Docker Compose or running the server binary directly, you must explicitly set the <code>DIRECTORY_SERVER_OASF_API_VALIDATION_SCHEMA_URL</code> environment variable.</p>
+<p>The Go server binary does not set a default schema URL in code; it must be configured via
+environment variable or YAML. Deployment tooling provides defaults: Docker Compose and the
+<code>dirctl</code> daemon use <code>https://schema.oasf.outshift.com</code>, and Helm charts set the same value
+unless overridden.</p>
 </div>
 <h3 id="validation-behavior">Validation Behavior</h3>
 <p>The Directory server uses API-based validation against the configured OASF schema server:</p>
@@ -2059,23 +2062,23 @@ Records validated here form the most strict, compatible set.</p>
 <p>Replace <code>dir</code> with your Helm release name and <code>dir-server</code> with your namespace if different.</p>
 </li>
 <li>
-<p>Deploy the local OASF instance</p>
-<div class="highlight"><pre><span></span><code>task<span class="w"> </span>build
-task<span class="w"> </span>deploy:local
-</code></pre></div>
+<p>Deploy the Directory chart with OASF enabled</p>
+<p>Follow <a href="../dir-deployment-kubernetes/">Kubernetes Deployment</a> to create a Kind cluster and
+install the Directory Helm chart with the OASF subchart enabled in your <code>values.yaml</code>.</p>
 </li>
 </ol>
 <p>The OASF instance is deployed as a subchart in the same namespace and automatically configured for multi-version routing via ingress.</p>
 <h4 id="using-a-locally-built-oasf-image">Using a Locally Built OASF Image</h4>
 <p>If you want to deploy with a locally built OASF image (e.g., containing <code>0.9.0-dev</code> schema files), you need to load the image into Kind before deploying.
-The <code>task deploy:local</code> command automatically creates a cluster and loads images, but it doesn't load custom OASF images.</p>
+Recreating the Kind cluster after loading a custom OASF image will discard it, so create the cluster once and deploy with Helm.</p>
 <p>Follow the steps below:</p>
 <ol>
 <li>
 <p>Create the Kind cluster</p>
-<div class="highlight"><pre><span></span><code>task<span class="w"> </span>deploy:kubernetes:setup-cluster
+<div class="highlight"><pre><span></span><code>kind<span class="w"> </span>create<span class="w"> </span>cluster<span class="w"> </span>--name<span class="w"> </span>agntcy-cluster
+task<span class="w"> </span>build
 </code></pre></div>
-<p>This creates the cluster and loads the Directory server images.</p>
+<p>Build Directory images before deploying. See <a href="../dir-deployment-kubernetes/">Kubernetes Deployment</a> for the full SPIRE and Helm setup.</p>
 </li>
 <li>
 <p>Build your local OASF image with the <code>latest</code> tag</p>
@@ -2102,8 +2105,10 @@ task<span class="w"> </span>build
 </li>
 <li>
 <p>Deploy the Directory</p>
-<p>Don't use <code>task deploy:local</code> as it will recreate the cluster.</p>
-<div class="highlight"><pre><span></span><code>task<span class="w"> </span>deploy:kubernetes:dir
+<p>Deploy with Helm without recreating the cluster:</p>
+<div class="highlight"><pre><span></span><code>helm<span class="w"> </span>upgrade<span class="w"> </span>--install<span class="w"> </span>dir<span class="w"> </span>./install/charts/dir<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-f<span class="w"> </span>./install/charts/dir/values.yaml<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-n<span class="w"> </span>dir-server<span class="w"> </span>--create-namespace
 </code></pre></div>
 </li>
 </ol>

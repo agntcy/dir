@@ -2260,7 +2260,9 @@ language that fits your stack.</p>
 </li>
 </ol>
 <h3 id="configuration">Configuration</h3>
-<p>The SDK can be configured via environment variables or direct instantiation:</p>
+<p>The SDK can be configured via environment variables or direct instantiation. See the
+<a href="https://github.com/agntcy/dir-sdk-javascript">JavaScript SDK repository</a> for the current
+constructor API.</p>
 <div class="highlight"><pre><span></span><code><span class="k">import</span><span class="w"> </span><span class="p">{</span><span class="nx">Config</span><span class="p">,</span><span class="w"> </span><span class="nx">Client</span><span class="p">}</span><span class="w"> </span><span class="kr">from</span><span class="w"> </span><span class="s1">&#39;agntcy-dir&#39;</span><span class="p">;</span>
 
 <span class="c1">// Environment variables</span>
@@ -2269,16 +2271,18 @@ language that fits your stack.</p>
 <span class="kd">const</span><span class="w"> </span><span class="nx">client</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="ow">new</span><span class="w"> </span><span class="nx">Client</span><span class="p">();</span>
 
 <span class="c1">// Or configure directly</span>
-<span class="kd">const</span><span class="w"> </span><span class="nx">config</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="ow">new</span><span class="w"> </span><span class="nx">Config</span><span class="p">(</span>
-<span class="w">    </span><span class="nx">serverAddress</span><span class="o">=</span><span class="s2">&quot;localhost:8888&quot;</span><span class="p">,</span>
-<span class="w">    </span><span class="nx">dirctlPath</span><span class="o">=</span><span class="s2">&quot;/usr/local/bin/dirctl&quot;</span>
-<span class="p">);</span>
+<span class="kd">const</span><span class="w"> </span><span class="nx">config</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="ow">new</span><span class="w"> </span><span class="nx">Config</span><span class="p">({</span>
+<span class="w">  </span><span class="nx">serverAddress</span><span class="o">:</span><span class="w"> </span><span class="s2">&quot;localhost:8888&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nx">dirctlPath</span><span class="o">:</span><span class="w"> </span><span class="s2">&quot;/usr/local/bin/dirctl&quot;</span><span class="p">,</span>
+<span class="p">});</span>
 <span class="kd">const</span><span class="w"> </span><span class="nx">client</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="ow">new</span><span class="w"> </span><span class="nx">Client</span><span class="p">(</span><span class="nx">config</span><span class="p">);</span>
 
 <span class="c1">// Use SPIRE for mTLS communication</span>
-<span class="kd">const</span><span class="w"> </span><span class="nx">config</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="ow">new</span><span class="w"> </span><span class="nx">Config</span><span class="p">(</span><span class="nx">spiffeEndpointSocket</span><span class="o">=</span><span class="s2">&quot;/tmp/agent.sock&quot;</span><span class="p">);</span>
-<span class="kd">const</span><span class="w"> </span><span class="nx">transport</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="nx">Client</span><span class="p">.</span><span class="nx">createGRPCTransport</span><span class="p">(</span><span class="nx">config</span><span class="p">);</span>
-<span class="kd">const</span><span class="w"> </span><span class="nx">spiffeClient</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="ow">new</span><span class="w"> </span><span class="nx">Client</span><span class="p">(</span><span class="nx">config</span><span class="p">,</span><span class="w"> </span><span class="nx">transport</span><span class="p">);</span>
+<span class="kd">const</span><span class="w"> </span><span class="nx">spiffeConfig</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="ow">new</span><span class="w"> </span><span class="nx">Config</span><span class="p">({</span>
+<span class="w">  </span><span class="nx">spiffeEndpointSocket</span><span class="o">:</span><span class="w"> </span><span class="s2">&quot;/tmp/agent.sock&quot;</span><span class="p">,</span>
+<span class="p">});</span>
+<span class="kd">const</span><span class="w"> </span><span class="nx">transport</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="nx">Client</span><span class="p">.</span><span class="nx">createGRPCTransport</span><span class="p">(</span><span class="nx">spiffeConfig</span><span class="p">);</span>
+<span class="kd">const</span><span class="w"> </span><span class="nx">spiffeClient</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="ow">new</span><span class="w"> </span><span class="nx">Client</span><span class="p">(</span><span class="nx">spiffeConfig</span><span class="p">,</span><span class="w"> </span><span class="nx">transport</span><span class="p">);</span>
 </code></pre></div>
 <div class="admonition note">
 <p class="admonition-title">Note</p>
@@ -2303,23 +2307,24 @@ The SDK supports Python 3.10+ applications. The package is published on <a href=
 </ol>
 <h3 id="configuration_1">Configuration</h3>
 <p>The SDK can be configured via environment variables or direct instantiation:</p>
-<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">agntcy.dir_sdk.client</span><span class="w"> </span><span class="kn">import</span> <span class="n">Config</span><span class="p">,</span> <span class="n">Client</span>
+<div class="highlight"><pre><span></span><code><span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">agntcy.dir_sdk.client</span><span class="w"> </span><span class="kn">import</span> <span class="n">Config</span><span class="p">,</span> <span class="n">Client</span>
 
 <span class="c1"># Environment variables</span>
-<span class="n">export</span> <span class="n">DIRECTORY_CLIENT_SERVER_ADDRESS</span><span class="o">=</span><span class="s2">&quot;localhost:8888&quot;</span>
-<span class="n">export</span> <span class="n">DIRCTL_PATH</span><span class="o">=</span><span class="s2">&quot;/path/to/dirctl&quot;</span>
+<span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="p">[</span><span class="s2">&quot;DIRECTORY_CLIENT_SERVER_ADDRESS&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;localhost:8888&quot;</span>
+<span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="p">[</span><span class="s2">&quot;DIRCTL_PATH&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;/path/to/dirctl&quot;</span>
 <span class="n">client</span> <span class="o">=</span> <span class="n">Client</span><span class="p">()</span>
 
 <span class="c1"># Or configure directly</span>
 <span class="n">config</span> <span class="o">=</span> <span class="n">Config</span><span class="p">(</span>
     <span class="n">server_address</span><span class="o">=</span><span class="s2">&quot;localhost:8888&quot;</span><span class="p">,</span>
-    <span class="n">dirctl_path</span><span class="o">=</span><span class="s2">&quot;/usr/local/bin/dirctl&quot;</span>
+    <span class="n">dirctl_path</span><span class="o">=</span><span class="s2">&quot;/usr/local/bin/dirctl&quot;</span><span class="p">,</span>
 <span class="p">)</span>
 <span class="n">client</span> <span class="o">=</span> <span class="n">Client</span><span class="p">(</span><span class="n">config</span><span class="p">)</span>
 
 <span class="c1"># Use SPIRE for mTLS communication</span>
 <span class="n">config</span> <span class="o">=</span> <span class="n">Config</span><span class="p">(</span>
-    <span class="n">spiffe_socket_path</span><span class="o">=</span><span class="s2">&quot;/tmp/agent.sock&quot;</span>
+    <span class="n">spiffe_socket_path</span><span class="o">=</span><span class="s2">&quot;/tmp/agent.sock&quot;</span><span class="p">,</span>
 <span class="p">)</span>
 <span class="n">client</span> <span class="o">=</span> <span class="n">Client</span><span class="p">(</span><span class="n">config</span><span class="p">)</span>
 </code></pre></div>
@@ -2335,29 +2340,51 @@ The SDK supports Python 3.10+ applications. The package is published on <a href=
 </code></pre></div>
 <h3 id="configuration_2">Configuration</h3>
 <p>The SDK can be configured via environment variables or direct instantiation:</p>
-<div class="highlight"><pre><span></span><code><span class="kn">import</span><span class="w"> </span><span class="s">&quot;github.com/agntcy/dir/client&quot;</span>
+<div class="highlight"><pre><span></span><code><span class="kn">import</span><span class="w"> </span><span class="p">(</span>
+<span class="w">    </span><span class="s">&quot;context&quot;</span>
+<span class="w">    </span><span class="s">&quot;os&quot;</span>
+
+<span class="w">    </span><span class="s">&quot;github.com/agntcy/dir/client&quot;</span>
+<span class="p">)</span>
+
+<span class="nx">ctx</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">context</span><span class="p">.</span><span class="nx">Background</span><span class="p">()</span>
 
 <span class="c1">// Environment variables</span>
 <span class="nx">os</span><span class="p">.</span><span class="nx">Setenv</span><span class="p">(</span><span class="s">&quot;DIRECTORY_CLIENT_SERVER_ADDRESS&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;localhost:8888&quot;</span><span class="p">)</span>
-<span class="nx">os</span><span class="p">.</span><span class="nx">Setenv</span><span class="p">(</span><span class="s">&quot;DIRCTL_PATH&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;/path/to/dirctl&quot;</span><span class="p">)</span>
-<span class="nx">client</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">client</span><span class="p">.</span><span class="nx">New</span><span class="p">()</span>
+<span class="nx">c</span><span class="p">,</span><span class="w"> </span><span class="nx">err</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">client</span><span class="p">.</span><span class="nx">New</span><span class="p">(</span><span class="nx">ctx</span><span class="p">,</span><span class="w"> </span><span class="nx">client</span><span class="p">.</span><span class="nx">WithEnvConfig</span><span class="p">())</span>
+<span class="k">if</span><span class="w"> </span><span class="nx">err</span><span class="w"> </span><span class="o">!=</span><span class="w"> </span><span class="kc">nil</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="c1">// handle error</span>
+<span class="p">}</span>
+<span class="k">defer</span><span class="w"> </span><span class="nx">c</span><span class="p">.</span><span class="nx">Close</span><span class="p">()</span>
 
 <span class="c1">// Or configure directly</span>
 <span class="nx">config</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="o">&amp;</span><span class="nx">client</span><span class="p">.</span><span class="nx">Config</span><span class="p">{</span>
 <span class="w">    </span><span class="nx">ServerAddress</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;localhost:8888&quot;</span><span class="p">,</span>
 <span class="p">}</span>
-<span class="nx">client</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">client</span><span class="p">.</span><span class="nx">New</span><span class="p">(</span><span class="nx">client</span><span class="p">.</span><span class="nx">WithConfig</span><span class="p">(</span><span class="nx">config</span><span class="p">))</span>
+<span class="nx">c</span><span class="p">,</span><span class="w"> </span><span class="nx">err</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="nx">client</span><span class="p">.</span><span class="nx">New</span><span class="p">(</span><span class="nx">ctx</span><span class="p">,</span><span class="w"> </span><span class="nx">client</span><span class="p">.</span><span class="nx">WithConfig</span><span class="p">(</span><span class="nx">config</span><span class="p">))</span>
+<span class="k">if</span><span class="w"> </span><span class="nx">err</span><span class="w"> </span><span class="o">!=</span><span class="w"> </span><span class="kc">nil</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="c1">// handle error</span>
+<span class="p">}</span>
+<span class="k">defer</span><span class="w"> </span><span class="nx">c</span><span class="p">.</span><span class="nx">Close</span><span class="p">()</span>
 
 <span class="c1">// Use SPIRE for mTLS communication</span>
-<span class="nx">config</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="o">&amp;</span><span class="nx">client</span><span class="p">.</span><span class="nx">Config</span><span class="p">{</span>
-<span class="w">    </span><span class="nx">SpiffeSocketPath</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;/tmp/agent.sock&quot;</span><span class="p">,</span>
+<span class="nx">config</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="o">&amp;</span><span class="nx">client</span><span class="p">.</span><span class="nx">Config</span><span class="p">{</span>
+<span class="w">    </span><span class="nx">ServerAddress</span><span class="p">:</span><span class="w">    </span><span class="s">&quot;localhost:8888&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nx">AuthMode</span><span class="p">:</span><span class="w">         </span><span class="s">&quot;x509&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nx">SpiffeSocketPath</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;unix:///run/spire/agent-sockets/api.sock&quot;</span><span class="p">,</span>
 <span class="p">}</span>
-<span class="nx">client</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">client</span><span class="p">.</span><span class="nx">New</span><span class="p">(</span><span class="nx">client</span><span class="p">.</span><span class="nx">WithConfig</span><span class="p">(</span><span class="nx">config</span><span class="p">))</span>
+<span class="nx">c</span><span class="p">,</span><span class="w"> </span><span class="nx">err</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="nx">client</span><span class="p">.</span><span class="nx">New</span><span class="p">(</span><span class="nx">ctx</span><span class="p">,</span><span class="w"> </span><span class="nx">client</span><span class="p">.</span><span class="nx">WithConfig</span><span class="p">(</span><span class="nx">config</span><span class="p">))</span>
+<span class="k">if</span><span class="w"> </span><span class="nx">err</span><span class="w"> </span><span class="o">!=</span><span class="w"> </span><span class="kc">nil</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="c1">// handle error</span>
+<span class="p">}</span>
+<span class="k">defer</span><span class="w"> </span><span class="nx">c</span><span class="p">.</span><span class="nx">Close</span><span class="p">()</span>
 </code></pre></div>
 <div class="admonition note">
 <p class="admonition-title">Note</p>
 <p>Golang SDK does not require Directory CLI (dirctl) and can be used standalone.</p>
 </div>
+<p>For full Go SDK examples including authentication modes and event streaming, see the
+<a href="https://github.com/agntcy/dir/tree/main/client">client README</a>.</p>
 
 
 

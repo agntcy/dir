@@ -3319,13 +3319,16 @@ syncing only the specific CIDs that matched your search criteria.</p>
 <li><strong>Remote LLM enrichment</strong> uses external LLM services for skill and domain mapping, requiring API credentials. Both LLM methods require <a href="https://github.com/mark3labs/mcphost?tab=readme-ov-file#environment-setup">MCPHost environment setup</a>.</li>
 </ul>
 <p>This example demonstrates how to import records from external registries into your local Directory instance. The import feature supports automated batch imports with filtering, deduplication, and optional LLM-based enrichment.</p>
-<p><strong>Supported Registries:</strong></p>
+<p><strong>Supported import kinds:</strong></p>
 <ul>
-<li><code>mcp</code> - <a href="https://github.com/modelcontextprotocol/registry">Model Context Protocol registry v0.1</a></li>
+<li><code>mcp-registry</code> — <a href="https://github.com/modelcontextprotocol/registry">Model Context Protocol registry v0.1</a> (requires <code>--url</code>)</li>
+<li><code>mcp</code> — local MCP server JSON (requires <code>--file-path</code>)</li>
+<li><code>a2a</code> — local A2A AgentCard JSON (requires <code>--file-path</code>)</li>
+<li><code>agent-skill</code> — local Agent Skills directory with <code>SKILL.md</code> (requires <code>--file-path</code>)</li>
 </ul>
 <h3 id="basic-usage">Basic Usage</h3>
 <div class="highlight"><pre><span></span><code><span class="c1"># Import from MCP registry</span>
-dirctl<span class="w"> </span>import<span class="w"> </span>--type<span class="o">=</span>mcp<span class="w"> </span>--url<span class="o">=</span>https://registry.modelcontextprotocol.io/v0.1
+dirctl<span class="w"> </span>import<span class="w"> </span>--type<span class="o">=</span>mcp-registry<span class="w"> </span>--url<span class="o">=</span>https://registry.modelcontextprotocol.io/v0.1
 </code></pre></div>
 <h3 id="automated-imports">Automated Imports</h3>
 <p>For Kubernetes deployments, you can configure automated imports using the <a href="https://github.com/agntcy/dir/blob/2aea0d670ef9d537b9a9237928dd1af7b02de447/install/charts/dirctl/values.yaml#L55">Helm chart configuration</a>:</p>
@@ -3336,26 +3339,26 @@ dirctl<span class="w"> </span>import<span class="w"> </span>--type<span class="o
 <span class="w">    </span><span class="nt">schedule</span><span class="p">:</span><span class="w"> </span><span class="s">&#39;0</span><span class="nv"> </span><span class="s">*/6</span><span class="nv"> </span><span class="s">*</span><span class="nv"> </span><span class="s">*</span><span class="nv"> </span><span class="s">*&#39;</span><span class="w">  </span><span class="c1"># Every 6 hours</span>
 <span class="w">    </span><span class="nt">args</span><span class="p">:</span>
 <span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="s">&#39;import&#39;</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="s">&#39;--type=mcp&#39;</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="s">&#39;--type=mcp-registry&#39;</span>
 <span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="s">&#39;--url=https://registry.modelcontextprotocol.io/v0.1&#39;</span>
 </code></pre></div>
 <h3 id="common-import-options">Common Import Options</h3>
 <div class="highlight"><pre><span></span><code><span class="c1"># Basic import from MCP registry</span>
-dirctl<span class="w"> </span>import<span class="w"> </span>--type<span class="o">=</span>mcp<span class="w"> </span>--url<span class="o">=</span>https://registry.modelcontextprotocol.io/v0.1
+dirctl<span class="w"> </span>import<span class="w"> </span>--type<span class="o">=</span>mcp-registry<span class="w"> </span>--url<span class="o">=</span>https://registry.modelcontextprotocol.io/v0.1
 
 <span class="c1"># Import with filtering and limits</span>
-dirctl<span class="w"> </span>import<span class="w"> </span>--type<span class="o">=</span>mcp<span class="w"> </span><span class="se">\</span>
+dirctl<span class="w"> </span>import<span class="w"> </span>--type<span class="o">=</span>mcp-registry<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--url<span class="o">=</span>https://registry.modelcontextprotocol.io/v0.1<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--filter<span class="o">=</span><span class="nv">version</span><span class="o">=</span>latest<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--limit<span class="o">=</span><span class="m">50</span>
 
-<span class="c1"># Import with LLM enrichment</span>
-dirctl<span class="w"> </span>import<span class="w"> </span>--type<span class="o">=</span>mcp<span class="w"> </span><span class="se">\</span>
+<span class="c1"># Import with custom LLM enrichment config</span>
+dirctl<span class="w"> </span>import<span class="w"> </span>--type<span class="o">=</span>mcp-registry<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--url<span class="o">=</span>https://registry.modelcontextprotocol.io/v0.1<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--enrich
+<span class="w">  </span>--enrich-config<span class="o">=</span>./enricher.json
 
 <span class="c1"># Force reimport of existing records (bypasses deduplication)</span>
-dirctl<span class="w"> </span>import<span class="w"> </span>--type<span class="o">=</span>mcp<span class="w"> </span><span class="se">\</span>
+dirctl<span class="w"> </span>import<span class="w"> </span>--type<span class="o">=</span>mcp-registry<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--url<span class="o">=</span>https://registry.modelcontextprotocol.io/v0.1<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--force
 </code></pre></div>
