@@ -13,6 +13,7 @@
 	let filteredAgents = $state<CatalogEntry[]>([]);
 	let loading = $state(true);
 	let catalogHydrating = $state(false);
+	let hydrationError = $state('');
 	let error = $state('');
 	let currentPage = $state(1);
 	let selectedAgent = $state<CatalogEntry | null>(null);
@@ -78,6 +79,7 @@
 		const filter = buildAgentFilterQuery(criteria);
 		loading = true;
 		catalogHydrating = false;
+		hydrationError = '';
 		error = '';
 
 		try {
@@ -95,7 +97,13 @@
 
 			if (firstPage.nextPageToken) {
 				catalogHydrating = true;
-				await hydrateCatalog(filter, firstPage.nextPageToken, requestId, signal);
+				try {
+					await hydrateCatalog(filter, firstPage.nextPageToken, requestId, signal);
+				} catch (e) {
+					if (signal.aborted || requestId !== loadRequestId) return;
+					hydrationError =
+						e instanceof Error ? e.message : 'Failed to load remaining records';
+				}
 			}
 		} catch (e) {
 			if (signal.aborted || requestId !== loadRequestId) return;
@@ -168,6 +176,8 @@
 			agents indexed
 			{#if catalogHydrating}
 				<p class="text-xs text-ink-weak mt-0.5">Loading full catalog…</p>
+			{:else if hydrationError}
+				<p class="text-xs text-amber-700 mt-0.5">Partial catalog loaded ({hydrationError})</p>
 			{/if}
 		</div>
 	</div>
@@ -219,6 +229,10 @@
 				<Pagination {currentPage} {totalPages} onpage={handlePage} />
 				{#if catalogHydrating}
 					<p class="mt-3 text-center text-xs text-ink-weak">Loading more records for filters and pagination…</p>
+				{:else if hydrationError}
+					<p class="mt-3 text-center text-xs text-amber-700">
+						Some records could not be loaded. Filters and pagination may be incomplete.
+					</p>
 				{/if}
 			{/if}
 		</section>
