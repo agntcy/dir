@@ -8,6 +8,28 @@ export function hasActiveClientFilters(criteria: AgentFilterCriteria): boolean {
 	);
 }
 
+export function collectSortedTags(agents: CatalogEntry[]): string[] {
+	return Array.from(new Set(agents.flatMap((agent) => agent.tags || []))).sort();
+}
+
+export function mergeSortedTags(existing: string[], newAgents: CatalogEntry[]): string[] {
+	if (newAgents.length === 0) return existing;
+
+	const seen = new Set(existing);
+	let added = false;
+
+	for (const agent of newAgents) {
+		for (const tag of agent.tags || []) {
+			if (!seen.has(tag)) {
+				seen.add(tag);
+				added = true;
+			}
+		}
+	}
+
+	return added ? Array.from(seen).sort() : existing;
+}
+
 export function applyClientFilters(
 	agents: CatalogEntry[],
 	criteria: AgentFilterCriteria

@@ -1,24 +1,20 @@
 <script lang="ts">
-	import type { AgentFilterCriteria, CatalogEntry } from '$lib/types';
+	import type { AgentFilterCriteria } from '$lib/types';
 	import { extractShortTag } from '$lib/utils';
 
 	interface Props {
-		agents: CatalogEntry[];
+		allTags: string[];
 		catalogHydrating?: boolean;
 		onchange: (criteria: AgentFilterCriteria) => void;
 	}
 
-	let { agents, catalogHydrating = false, onchange }: Props = $props();
+	let { allTags, catalogHydrating = false, onchange }: Props = $props();
 
 	let searchQuery = $state('');
 	let mediaTypes = $state<Set<string>>(new Set(['all']));
 	let statusFilter = $state('all');
 	let activeTags = $state<Set<string>>(new Set());
 	let tagSearch = $state('');
-
-	let allTags = $derived(
-		Array.from(new Set(agents.flatMap((a) => a.tags || []))).sort()
-	);
 
 	let visibleTags = $derived(
 		tagSearch ? allTags.filter((t) => t.toLowerCase().includes(tagSearch.toLowerCase())) : allTags

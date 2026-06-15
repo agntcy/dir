@@ -1,7 +1,7 @@
 <script lang="ts">
 	import type { AgentFilterCriteria, CatalogEntry } from '$lib/types';
 	import { buildAgentFilterQuery, CATALOG_PAGE_SIZE, fetchAgentsPage } from '$lib/api';
-	import { applyClientFilters, hasActiveClientFilters } from '$lib/utils';
+	import { applyClientFilters, collectSortedTags, hasActiveClientFilters, mergeSortedTags } from '$lib/utils';
 	import AgentCard from '$lib/components/AgentCard.svelte';
 	import FilterSidebar from '$lib/components/FilterSidebar.svelte';
 	import DetailModal from '$lib/components/DetailModal.svelte';
@@ -11,6 +11,7 @@
 
 	let agents = $state<CatalogEntry[]>([]);
 	let filteredAgents = $state<CatalogEntry[]>([]);
+	let catalogTags = $state<string[]>([]);
 	let loading = $state(true);
 	let catalogHydrating = $state(false);
 	let hydrationError = $state('');
@@ -47,6 +48,7 @@
 		if (newAgents.length === 0) return;
 
 		agents = agents.concat(newAgents);
+		catalogTags = mergeSortedTags(catalogTags, newAgents);
 		if (hasActiveClientFilters(criteria)) {
 			filteredAgents = filteredAgents.concat(applyClientFilters(newAgents, criteria));
 		} else {
@@ -101,6 +103,7 @@
 			if (requestId !== loadRequestId) return;
 
 			agents = firstPage.results;
+			catalogTags = collectSortedTags(firstPage.results);
 			loadedServerFilter = filter;
 			applyFilters(agents, criteria);
 			loading = false;
@@ -120,6 +123,7 @@
 			error = e instanceof Error ? e.message : 'Unknown error';
 			agents = [];
 			filteredAgents = [];
+			catalogTags = [];
 		} finally {
 			if (requestId === loadRequestId) {
 				loading = false;
@@ -205,7 +209,7 @@
 
 	<div class="flex flex-col lg:flex-row gap-6">
 		<aside class="lg:w-64 flex-shrink-0">
-			<FilterSidebar {agents} {catalogHydrating} onchange={handleCriteriaChange} />
+			<FilterSidebar allTags={catalogTags} {catalogHydrating} onchange={handleCriteriaChange} />
 		</aside>
 
 		<section class="flex-1 min-w-0">
