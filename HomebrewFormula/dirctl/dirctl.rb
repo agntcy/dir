@@ -16,6 +16,7 @@ class Dirctl < Formula
               bin.install "dirctl-darwin-arm64" => "dirctl"
 
               system "chmod", "+x", bin/"dirctl"
+              ENV["DIRECTORY_CLIENT_SERVER_ADDRESS"] = "127.0.0.1:8888"
               generate_completions_from_executable(bin/"dirctl", "completion", shells: [:bash, :zsh, :fish])
           end
       end
@@ -28,6 +29,7 @@ class Dirctl < Formula
               bin.install "dirctl-darwin-amd64" => "dirctl"
 
               system "chmod", "+x", bin/"dirctl"
+              ENV["DIRECTORY_CLIENT_SERVER_ADDRESS"] = "127.0.0.1:8888"
               generate_completions_from_executable(bin/"dirctl", "completion", shells: [:bash, :zsh, :fish])
           end
       end
@@ -42,6 +44,7 @@ class Dirctl < Formula
               bin.install "dirctl-linux-arm64" => "dirctl"
 
               system "chmod", "+x", bin/"dirctl"
+              ENV["DIRECTORY_CLIENT_SERVER_ADDRESS"] = "127.0.0.1:8888"
               generate_completions_from_executable(bin/"dirctl", "completion", shells: [:bash, :zsh, :fish])
           end
       end
@@ -54,6 +57,7 @@ class Dirctl < Formula
               bin.install "dirctl-linux-amd64" => "dirctl"
 
               system "chmod", "+x", bin/"dirctl"
+              ENV["DIRECTORY_CLIENT_SERVER_ADDRESS"] = "127.0.0.1:8888"
               generate_completions_from_executable(bin/"dirctl", "completion", shells: [:bash, :zsh, :fish])
           end
       end

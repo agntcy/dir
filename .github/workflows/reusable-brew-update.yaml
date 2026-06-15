@@ -144,6 +144,8 @@ jobs:
 
           dirctl --help
 
+          dirctl completion bash > /dev/null
+
       - name: Create PR
         if: ${{ steps.brew-formula.outputs.DIFF_FOUND == 1 && steps.test-brew-formula.outcome == 'success' && inputs.dry-run == false }}
         run: |

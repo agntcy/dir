@@ -5,6 +5,11 @@
     brew tap agntcy/dir https://github.com/agntcy/dir/
 ```
 
+## Trust the formulae for getting updates
+```bash
+    brew trust agntcy/dir
+```
+
 ## How to install the latest dirctl formula
 ```bash
     brew install dirctl
