@@ -63,6 +63,43 @@ Need a skill, MCP server, or A2A partner? Your agent searches the Directory, wir
       </a>
     </div>
   </div>
+  <div class="dir-hero__spotlight">
+    <div class="dir-hero__spotlight-inner">
+      <div class="dir-hero__spotlight-header">
+        <div class="dir-hero__spotlight-badge">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6zm-1 2 5 5h-5V4zM8 13h8v2H8v-2zm0 4h5v2H8v-2z"/></svg>
+          AI Catalog export
+        </div>
+        <p class="dir-hero__spotlight-title">Publish here. Discover everywhere.</p>
+      </div>
+      <div class="dir-hero__spotlight-body">
+        <div class="dir-hero__spotlight-copy">
+          <p class="dir-hero__spotlight-text">
+            Register agents in Directory and they show up in the open
+            <a href="https://agent-card.github.io/ai-catalog/" target="_blank" rel="noopener noreferrer">AI Catalog</a>
+            index: a standard list any tool can read. MCP servers, A2A partners, and skills appear in one place,
+            clients browse a node at <code>/.well-known/ai-catalog.json</code> or <code>/v1/agents</code>
+            without a Directory-specific integration.
+          </p>
+          <div class="dir-hero__spotlight-tags" aria-label="Supported artifact types">
+            <span>MCP</span>
+            <span>A2A</span>
+            <span>Skills</span>
+          </div>
+        </div>
+        <div class="dir-hero__spotlight-actions">
+          <a class="dir-hero__btn dir-hero__btn--highlight" href="https://ai-catalog.io/" target="_blank" rel="noopener noreferrer">
+            Explore AI Catalog
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19 19H5V5h7V3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14c1.1 0 2-.9 2-2v-7h-2v7zM14 3v2h3.59l-9.83 9.83 1.41 1.41L19 6.41V10h2V3h-7z"/></svg>
+          </a>
+          <a class="dir-hero__btn dir-hero__btn--highlight" href="https://agent-card.github.io/ai-catalog/" target="_blank" rel="noopener noreferrer">
+            Read the spec
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19 19H5V5h7V3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14c1.1 0 2-.9 2-2v-7h-2v7zM14 3v2h3.59l-9.83 9.83 1.41 1.41L19 6.41V10h2V3h-7z"/></svg>
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
 </section>
 
 <div class="dir-features">
@@ -97,50 +134,6 @@ Need a skill, MCP server, or A2A partner? Your agent searches the Directory, wir
     </p>
   </div>
 </div>
-
-<section class="dir-spec">
-  <div class="dir-spec__banner">
-    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6zm-1 2 5 5h-5V4zM8 13h8v2H8v-2zm0 4h5v2H8v-2z"/></svg>
-    Open standard
-  </div>
-  <h2 class="dir-spec__title">AI Catalog discovery</h2>
-  <p class="dir-spec__intro">
-    Directory publishes OASF records into the
-    <a href="https://agent-card.github.io/ai-catalog/" target="_blank" rel="noopener noreferrer">AI Catalog</a>
-    format. Any client can browse the Directory instance at
-    <code>/.well-known/ai-catalog.json</code> or query <code>/v1/agents</code> without knowing Directory internals.
-  </p>
-  <div class="dir-spec__actions">
-    <a class="dir-hero__btn dir-hero__btn--highlight" href="https://ai-catalog.io/" target="_blank" rel="noopener noreferrer">
-      Explore AI Catalog
-      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19 19H5V5h7V3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14c1.1 0 2-.9 2-2v-7h-2v7zM14 3v2h3.59l-9.83 9.83 1.41 1.41L19 6.41V10h2V3h-7z"/></svg>
-    </a>
-  </div>
-  <p class="dir-spec__label">Supported artifact types</p>
-  <div class="dir-spec__stack">
-    <div class="dir-spec-card">
-      <p class="dir-spec-card__kicker">Protocol</p>
-      <p class="dir-spec-card__name">A2A Agent Cards</p>
-      <p class="dir-spec-card__text">
-        Find agents that expose Agent-to-Agent endpoints, capabilities, and authentication requirements.
-      </p>
-    </div>
-    <div class="dir-spec-card">
-      <p class="dir-spec-card__kicker">Protocol</p>
-      <p class="dir-spec-card__name">MCP Server Cards</p>
-      <p class="dir-spec-card__text">
-        Discover MCP servers with transport configuration, tools, and resources for tool-using agents.
-      </p>
-    </div>
-    <div class="dir-spec-card">
-      <p class="dir-spec-card__kicker">Format</p>
-      <p class="dir-spec-card__name">Agent Skills</p>
-      <p class="dir-spec-card__text">
-        Locate reusable skill definitions that agents can load and invoke at runtime.
-      </p>
-    </div>
-  </div>
-</section>
 
 <section class="dir-howto">
   <h2 class="dir-section-title">Publish, verify, and discover</h2>
