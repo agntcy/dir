@@ -1,6 +1,6 @@
 <script lang="ts">
 	import type { AgentFilterCriteria, CatalogEntry } from '$lib/types';
-	import { buildAgentFilterQuery, fetchAgents } from '$lib/api';
+	import { buildAgentFilterQuery, CATALOG_PAGE_SIZE, fetchAgentsPage } from '$lib/api';
 	import { applyClientFilters } from '$lib/utils';
 	import AgentCard from '$lib/components/AgentCard.svelte';
 	import FilterSidebar from '$lib/components/FilterSidebar.svelte';
@@ -12,6 +12,7 @@
 	let agents = $state<CatalogEntry[]>([]);
 	let filteredAgents = $state<CatalogEntry[]>([]);
 	let loading = $state(true);
+	let catalogHydrating = $state(false);
 	let error = $state('');
 	let currentPage = $state(1);
 	let selectedAgent = $state<CatalogEntry | null>(null);
@@ -20,36 +21,91 @@
 	let loadedServerFilter = $state<string | null>(null);
 	let loadRequestId = 0;
 	let searchDebounce: ReturnType<typeof setTimeout> | undefined;
+	let backgroundAbort: AbortController | undefined;
 
-	const PAGE_SIZE = 20;
+	let totalPages = $derived(
+		Math.max(1, Math.ceil(filteredAgents.length / CATALOG_PAGE_SIZE))
+	);
+	let pageItems = $derived(
+		filteredAgents.slice(
+			(currentPage - 1) * CATALOG_PAGE_SIZE,
+			currentPage * CATALOG_PAGE_SIZE
+		)
+	);
 
-	let totalPages = $derived(Math.max(1, Math.ceil(filteredAgents.length / PAGE_SIZE)));
-	let pageItems = $derived(filteredAgents.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE));
-
-	function applyFilters(loaded: CatalogEntry[], criteria: AgentFilterCriteria) {
+	function applyFilters(
+		loaded: CatalogEntry[],
+		criteria: AgentFilterCriteria,
+		resetPage = true
+	) {
 		filteredAgents = applyClientFilters(loaded, criteria);
-		currentPage = 1;
+		if (resetPage) currentPage = 1;
+	}
+
+	async function hydrateCatalog(
+		criteria: AgentFilterCriteria,
+		filter: string,
+		pageToken: string,
+		requestId: number,
+		signal: AbortSignal
+	) {
+		let nextPageToken = pageToken;
+
+		while (nextPageToken) {
+			if (signal.aborted || requestId !== loadRequestId) return;
+
+			const page = await fetchAgentsPage({
+				filter: filter || undefined,
+				pageToken: nextPageToken,
+				signal
+			});
+
+			if (signal.aborted || requestId !== loadRequestId) return;
+
+			agents = agents.concat(page.results);
+			applyFilters(agents, criteria, false);
+			nextPageToken = page.nextPageToken;
+		}
 	}
 
 	async function loadAgents(criteria: AgentFilterCriteria) {
 		const requestId = ++loadRequestId;
+		backgroundAbort?.abort();
+		backgroundAbort = new AbortController();
+		const signal = backgroundAbort.signal;
+
 		const filter = buildAgentFilterQuery(criteria);
 		loading = true;
+		catalogHydrating = false;
 		error = '';
 
 		try {
-			const loaded = await fetchAgents({ filter: filter || undefined });
+			const firstPage = await fetchAgentsPage({
+				filter: filter || undefined,
+				signal
+			});
+
 			if (requestId !== loadRequestId) return;
-			agents = loaded;
+
+			agents = firstPage.results;
 			loadedServerFilter = filter;
-			applyFilters(loaded, criteria);
+			applyFilters(agents, criteria);
+			loading = false;
+
+			if (firstPage.nextPageToken) {
+				catalogHydrating = true;
+				await hydrateCatalog(criteria, filter, firstPage.nextPageToken, requestId, signal);
+			}
 		} catch (e) {
-			if (requestId !== loadRequestId) return;
+			if (signal.aborted || requestId !== loadRequestId) return;
 			error = e instanceof Error ? e.message : 'Unknown error';
 			agents = [];
 			filteredAgents = [];
 		} finally {
-			if (requestId === loadRequestId) loading = false;
+			if (requestId === loadRequestId) {
+				loading = false;
+				catalogHydrating = false;
+			}
 		}
 	}
 
@@ -83,6 +139,11 @@
 		};
 		latestCriteria = initial;
 		loadAgents(initial);
+
+		return () => {
+			backgroundAbort?.abort();
+			clearTimeout(searchDebounce);
+		};
 	});
 </script>
 
@@ -98,8 +159,15 @@
 				<p class="text-xs text-gray-500 leading-tight mt-0.5">powered by Agent Directory Service</p>
 			</div>
 		</div>
-		<div class="text-sm text-ink-medium">
-			<span class="font-semibold text-ink-strong">{filteredAgents.length}</span> agents indexed
+		<div class="text-sm text-ink-medium text-right">
+			<span class="font-semibold text-ink-strong">{filteredAgents.length}</span>
+			{#if catalogHydrating}
+				<span class="text-ink-weak">+</span>
+			{/if}
+			agents indexed
+			{#if catalogHydrating}
+				<p class="text-xs text-ink-weak mt-0.5">Loading full catalog…</p>
+			{/if}
 		</div>
 	</div>
 </header>
@@ -116,7 +184,7 @@
 
 	<div class="flex flex-col lg:flex-row gap-6">
 		<aside class="lg:w-64 flex-shrink-0">
-			<FilterSidebar {agents} onchange={handleCriteriaChange} />
+			<FilterSidebar {agents} {catalogHydrating} onchange={handleCriteriaChange} />
 		</aside>
 
 		<section class="flex-1 min-w-0">
@@ -148,6 +216,9 @@
 				</div>
 
 				<Pagination {currentPage} {totalPages} onpage={handlePage} />
+				{#if catalogHydrating}
+					<p class="mt-3 text-center text-xs text-ink-weak">Loading more records for filters and pagination…</p>
+				{/if}
 			{/if}
 		</section>
 	</div>

@@ -4,10 +4,11 @@
 
 	interface Props {
 		agents: CatalogEntry[];
+		catalogHydrating?: boolean;
 		onchange: (criteria: AgentFilterCriteria) => void;
 	}
 
-	let { agents, onchange }: Props = $props();
+	let { agents, catalogHydrating = false, onchange }: Props = $props();
 
 	let searchQuery = $state('');
 	let mediaTypes = $state<Set<string>>(new Set(['all']));
@@ -111,7 +112,12 @@
 	</div>
 
 	<div class="flex-1 flex flex-col min-h-0">
-		<span class="block text-xs font-semibold uppercase tracking-wide text-ink-medium mb-2 flex-shrink-0">Tags</span>
+		<div class="flex items-center justify-between gap-2 mb-2 flex-shrink-0">
+			<span class="block text-xs font-semibold uppercase tracking-wide text-ink-medium">Tags</span>
+			{#if catalogHydrating}
+				<span class="text-xs text-ink-weak">Loading…</span>
+			{/if}
+		</div>
 		<input
 			type="text"
 			placeholder="Filter tags..."
