@@ -1,245 +1,213 @@
 /* Copyright AGNTCY Contributors (https://github.com/agntcy) */
 /* SPDX-License-Identifier: Apache-2.0 */
 
-/* Operations radial view: static mind-map SVG with flow particles. */
+/* Operations workflow: horizontal pipeline SVG with flowing particles.
+   Stages, left to right: Record Sources -> Ingest -> Directory -> Discover
+   -> Trust & Provenance -> Consume. */
 document$.subscribe(function () {
   var BLUE = "#4d8fd4";
   var AMBER = "#f0a830";
   var TEAL = "#2dd4bf";
   var PURPLE = "#a78bfa";
-  var MOBILE_MQL = window.matchMedia("(max-width: 59.9375em)");
+  var SLATE = "#7c8aa0";
+
+  var VIEW_W = 1330;
+  var VIEW_H = 540;
+
+  /* Column x-centres, one per stage. */
+  var COL = { src: 100, ing: 330, dir: 560, dis: 790, trust: 1010, con: 1230 };
+  /* Row y-centres. */
+  var ROW = { top: 145, mid: 300, bot: 455, up: 222, dn: 378, ctr: 300 };
+
+  var CW = 152;
+  var CH = 92;
 
   var ICON_PATHS = {
+    file: '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/>',
+    registries:
+      '<rect width="20" height="8" x="2" y="2" rx="2"/><rect width="20" height="8" x="2" y="14" rx="2"/><path d="M6 6h.01"/><path d="M6 18h.01"/>',
+    globe:
+      '<circle cx="12" cy="12" r="10"/><path d="M2 12h20"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>',
+    push: '<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m17 8-5-5-5 5"/><path d="M12 3v12"/>',
     import:
       '<path d="M12 17V3"/><path d="m6 11 6 6 6-6"/><path d="M19 21H5"/>',
-    discover:
-      '<circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/>',
-    build:
-      '<path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/>',
-    verify: '<path d="M20 6 9 17l-5-5"/>',
-    sync:
-      '<path d="m2 9 3-3 3 3"/><path d="M13 18H7a2 2 0 0 1-2-2V6"/><path d="m22 15-3 3-3-3"/><path d="M11 6h6a2 2 0 0 1 2 2v10"/>',
-    export:
-      '<path d="m18 9-6-6-6 6"/><path d="M12 3v14"/><path d="M5 21h14"/>',
-    announce:
-      '<path d="m3 11 19-9-9 19-2-8-8-2z"/>',
+    sync: '<path d="m2 9 3-3 3 3"/><path d="M13 18H7a2 2 0 0 1-2-2V6"/><path d="m22 15-3 3-3-3"/><path d="M11 6h6a2 2 0 0 1 2 2v10"/>',
     store:
       '<rect width="20" height="5" x="2" y="3" rx="1"/><path d="M4 8v11a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8"/><path d="M10 12h4"/>',
+    routing:
+      '<rect x="16" y="16" width="6" height="6" rx="1"/><rect x="2" y="16" width="6" height="6" rx="1"/><rect x="9" y="2" width="6" height="6" rx="1"/><path d="M5 16v-3a1 1 0 0 1 1-1h12a1 1 0 0 1 1 1v3"/><path d="M12 12V8"/>',
+    search: '<circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/>',
+    rsearch:
+      '<circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/><path d="M11 8v6"/><path d="M8 11h6"/>',
+    verify: '<path d="M20 6 9 17l-5-5"/>',
+    pull: '<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5"/><path d="M12 15V3"/>',
+    export:
+      '<path d="m18 9-6-6-6 6"/><path d="M12 3v14"/><path d="M5 21h14"/>',
+    mcp: '<path d="M12 8V4H8"/><rect width="16" height="12" x="4" y="8" rx="2"/><path d="M2 14h2"/><path d="M20 14h2"/><path d="M15 13v2"/><path d="M9 13v2"/>',
   };
 
-  var BASE_NODES = [
-    {
-      id: "import",
-      label: "Import",
-      color: BLUE,
-      flow: "outbound",
-      cx: 118,
-      cy: 240,
-      cardDesc: "Pull from connectors",
-    },
-    {
-      id: "discover",
-      label: "Discover",
-      color: BLUE,
-      flow: "outbound",
-      cx: 118,
-      cy: 452,
-      cardDesc: "Scan catalogs",
-    },
-    {
-      id: "build",
-      label: "Build",
-      color: AMBER,
-      flow: "outbound",
-      cx: 600,
-      cy: 76,
-      cardDesc: "Merge & enrich",
-    },
-    {
-      id: "verify",
-      label: "Verify",
-      color: TEAL,
-      flow: "pingpong",
-      cx: 1062,
-      cy: 240,
-      cardDesc: "Validate & audit",
-    },
-    {
-      id: "sync",
-      label: "Sync",
-      color: TEAL,
-      flow: "pingpong",
-      cx: 1062,
-      cy: 452,
-      cardDesc: "Propagate deltas",
-    },
-    {
-      id: "export",
-      label: "Export",
-      color: PURPLE,
-      flow: "inbound",
-      cx: 278,
-      cy: 614,
-      cardDesc: "Serialize to targets",
-    },
-    {
-      id: "announce",
-      label: "Announce",
-      color: PURPLE,
-      flow: "inbound",
-      cx: 600,
-      cy: 648,
-      cardDesc: "Broadcast via event bus",
-    },
-    {
-      id: "store",
-      label: "Store",
-      color: PURPLE,
-      flow: "inbound",
-      cx: 922,
-      cy: 614,
-      cardDesc: "Commit to registry",
-    },
+  var NODES = [
+    { id: "oasf", label: "OASF JSON", desc: "Manually built", icon: "file", color: SLATE, cx: COL.src, cy: ROW.top },
+    { id: "registries", label: "External registries", desc: "MCP registry, GitHub repos", icon: "registries", color: SLATE, cx: COL.src, cy: ROW.mid },
+    { id: "remote", label: "Other Directories", desc: "Directory Peers, OCI registries", icon: "globe", color: SLATE, cx: COL.src, cy: ROW.bot },
+
+    { id: "push", label: "push", desc: "upload OASF record", icon: "push", color: BLUE, cx: COL.ing, cy: ROW.top },
+    { id: "import", label: "import", desc: "translate & enrich to OASF", icon: "import", color: BLUE, cx: COL.ing, cy: ROW.mid },
+    { id: "sync", label: "sync", desc: "replicate", icon: "sync", color: BLUE, cx: COL.ing, cy: ROW.bot },
+
+    { id: "store", label: "Store", desc: "store OCI artifact", icon: "store", color: BLUE, cx: COL.dir, cy: ROW.up },
+    { id: "routing", label: "Routing", desc: "announce record to DHT network", icon: "routing", color: BLUE, cx: COL.dir, cy: ROW.dn },
+
+    { id: "search", label: "search", desc: "local query", icon: "search", color: AMBER, cx: COL.dis, cy: ROW.up },
+    { id: "rsearch", label: "routing search", desc: "discover records in peers", icon: "rsearch", color: AMBER, cx: COL.dis, cy: ROW.dn },
+
+    { id: "verify", label: "verify", desc: "validate signature (Cosign)", icon: "verify", color: TEAL, cx: COL.trust, cy: ROW.ctr },
+
+    { id: "pull", label: "pull", desc: "raw OASF record", icon: "pull", color: PURPLE, cx: COL.con, cy: ROW.top },
+    { id: "export", label: "export", desc: "to A2A, SKILL.md, Copilot\u2026", icon: "export", color: PURPLE, cx: COL.con, cy: ROW.mid },
+    { id: "mcp", label: "mcp serve", desc: "AI tools / IDE", icon: "mcp", color: PURPLE, cx: COL.con, cy: ROW.bot },
   ];
 
-  var BASE_GROUP_LABELS = [
-    { label: "Discover", x: 308, y: 338, color: BLUE },
-    { label: "Build", x: 600, y: 196, color: AMBER },
-    { label: "Verify & Sync", x: 882, y: 338, color: TEAL },
-    { label: "Announce", x: 600, y: 526, color: PURPLE },
+  var NODE_BY_ID = {};
+  NODES.forEach(function (n) {
+    NODE_BY_ID[n.id] = n;
+  });
+
+  var GROUP_LABELS = [
+    { label: "Record Sources", x: COL.src, color: SLATE },
+    { label: "Ingest", x: COL.ing, color: BLUE },
+    { label: "Directory", x: COL.dir, color: BLUE },
+    { label: "Discover", x: COL.dis, color: AMBER },
+    { label: "Trust & Provenance", x: COL.trust, color: TEAL },
+    { label: "Consume", x: COL.con, color: PURPLE },
   ];
 
-  var DESKTOP_PROFILE = {
-    viewBox: "0 0 1200 720",
-    hcx: 600,
-    hcy: 345,
-    hw: 230,
-    hh: 72,
-    cw: 158,
-    ch: 122,
-    pathScale: 1,
-  };
+  /* from -> to edges; colour follows the downstream stage. */
+  var EDGES = [
+    { from: "oasf", to: "push", color: BLUE },
+    { from: "registries", to: "import", color: BLUE },
+    { from: "remote", to: "sync", color: BLUE },
+    { from: "import", to: "push", color: BLUE },
+    { from: "push", to: "store", color: BLUE },
+    { from: "sync", to: "store", color: BLUE },
+    { from: "store", to: "routing", color: BLUE },
+    { from: "store", to: "search", color: AMBER },
+    { from: "routing", to: "rsearch", color: AMBER },
+    { from: "search", to: "verify", color: TEAL },
+    { from: "rsearch", to: "verify", color: TEAL },
+    { from: "verify", to: "pull", color: PURPLE },
+    { from: "verify", to: "export", color: PURPLE },
+    { from: "verify", to: "mcp", color: PURPLE },
+  ];
 
-  var COMPACT_PROFILE = {
-    hcx: 600,
-    hcy: 345,
-    hw: 200,
-    hh: 64,
-    cw: 148,
-    ch: 112,
-    pathScale: 0.72,
-    viewPadX: 6,
-    viewPadY: 10,
-  };
+  var FLOW_DUR = 3.0;
 
-  var FLOW_DUR = 2.6;
-  var FLOW_DUR_JITTER = 0.5;
-  /* Ping-pong runs hub → card → hub in one cycle; 2× duration matches leg speed. */
-  var FLOW_DUR_PINGPONG_MULT = 2;
-  var graphMqlBound = false;
-
-  function computeViewBox(layout, padX, padY) {
-    var halfW = layout.cw / 2;
-    var halfH = layout.ch / 2;
-    var hubPadX = layout.hw / 2 + 7;
-    var hubPadY = layout.hh / 2 + 7;
-    var minX = layout.hcx - hubPadX;
-    var maxX = layout.hcx + hubPadX;
-    var minY = layout.hcy - hubPadY;
-    var maxY = layout.hcy + hubPadY;
-
-    layout.nodes.forEach(function (node) {
-      minX = Math.min(minX, node.cx - halfW);
-      maxX = Math.max(maxX, node.cx + halfW);
-      minY = Math.min(minY, node.cy - halfH);
-      maxY = Math.max(maxY, node.cy + halfH);
-    });
-
-    layout.groupLabels.forEach(function (group) {
-      minX = Math.min(minX, group.x - 80);
-      maxX = Math.max(maxX, group.x + 80);
-      minY = Math.min(minY, group.y - 14);
-      maxY = Math.max(maxY, group.y + 6);
-    });
-
-    minX -= padX;
-    minY -= padY;
-    maxX += padX;
-    maxY += padY;
-
+  function edgePath(a, b) {
+    if (a.cx === b.cx) {
+      /* Same column: vertical curve bowing to the left. */
+      var down = b.cy > a.cy;
+      var sy = a.cy + (down ? CH / 2 : -CH / 2);
+      var ty = b.cy + (down ? -CH / 2 : CH / 2);
+      var bow = a.cx - 52;
+      var span = ty - sy;
+      return (
+        "M" + a.cx + "," + sy +
+        " C" + bow + "," + (sy + span * 0.3) +
+        " " + bow + "," + (ty - span * 0.3) +
+        " " + b.cx + "," + ty
+      );
+    }
+    /* Different columns: horizontal S-curve, right edge -> left edge. */
+    var sx = a.cx + CW / 2;
+    var tx = b.cx - CW / 2;
+    var dx = (tx - sx) * 0.5;
     return (
-      Math.floor(minX) +
-      " " +
-      Math.floor(minY) +
-      " " +
-      Math.ceil(maxX - minX) +
-      " " +
-      Math.ceil(maxY - minY)
+      "M" + sx + "," + a.cy +
+      " C" + (sx + dx) + "," + a.cy +
+      " " + (tx - dx) + "," + b.cy +
+      " " + tx + "," + b.cy
     );
   }
 
-  function buildLayout(profile) {
-    var scale = profile.pathScale;
-    var hcx = profile.hcx;
-    var hcy = profile.hcy;
-    var nodes = BASE_NODES.map(function (node) {
-      return {
-        id: node.id,
-        label: node.label,
-        color: node.color,
-        flow: node.flow,
-        cardDesc: node.cardDesc,
-        cx: hcx + (node.cx - hcx) * scale,
-        cy: hcy + (node.cy - hcy) * scale,
-      };
-    });
-    var groupLabels = BASE_GROUP_LABELS.map(function (group) {
-      return {
-        label: group.label,
-        color: group.color,
-        x: hcx + (group.x - hcx) * scale,
-        y: hcy + (group.y - hcy) * scale,
-      };
-    });
-    var layout = {
-      hcx: hcx,
-      hcy: hcy,
-      hw: profile.hw,
-      hh: profile.hh,
-      cw: profile.cw,
-      ch: profile.ch,
-      nodes: nodes,
-      groupLabels: groupLabels,
-    };
-
-    layout.viewBox =
-      profile.viewBox ||
-      computeViewBox(
-        layout,
-        profile.viewPadX != null ? profile.viewPadX : 16,
-        profile.viewPadY != null ? profile.viewPadY : 16,
-      );
-
-    return layout;
-  }
-
-  function pickLayout() {
-    return buildLayout(MOBILE_MQL.matches ? COMPACT_PROFILE : DESKTOP_PROFILE);
-  }
-
-  function randomFlowDur(flow) {
-    var base =
-      flow === "pingpong" ? FLOW_DUR * FLOW_DUR_PINGPONG_MULT : FLOW_DUR;
+  function buildParticle(path, color, delay, dur) {
     return (
-      base +
-      (Math.random() * FLOW_DUR_JITTER * 2 - FLOW_DUR_JITTER)
-    ).toFixed(2);
+      '<g class="dir-graph-particle" data-flow="outbound">' +
+      '<animateMotion dur="' + dur + 's" repeatCount="indefinite" begin="' +
+      delay + 's" path="' + path + '"/>' +
+      '<animate attributeName="opacity" values="0;0.9;0.9;0" dur="' +
+      dur + 's" repeatCount="indefinite" begin="' + delay + 's"/>' +
+      '<circle r="2.6" fill="' + color +
+      '" filter="url(#dir-graph-particle-glow)"/>' +
+      "</g>"
+    );
+  }
+
+  function wrapText(text, maxChars) {
+    var words = text.split(" ");
+    var lines = [];
+    var line = "";
+    words.forEach(function (word) {
+      var candidate = line ? line + " " + word : word;
+      if (candidate.length > maxChars && line) {
+        lines.push(line);
+        line = word;
+      } else {
+        line = candidate;
+      }
+    });
+    if (line) {
+      lines.push(line);
+    }
+    return lines.slice(0, 2);
+  }
+
+  function buildCard(node) {
+    var halfW = CW / 2;
+    var halfH = CH / 2;
+    var top = node.cy - halfH;
+    var iconSize = 20;
+    var scale = iconSize / 24;
+    var tx = node.cx - iconSize / 2;
+    var ty = node.cy - 28 - iconSize / 2;
+
+    var lines = wrapText(node.desc, 24);
+    var descStartY = lines.length > 1 ? node.cy + 14 : node.cy + 17;
+    var desc = lines
+      .map(function (line, i) {
+        return (
+          '<text class="dir-graph-card-desc" x="' + node.cx +
+          '" y="' + (descStartY + i * 13) +
+          '" text-anchor="middle">' + line + "</text>"
+        );
+      })
+      .join("");
+
+    return (
+      '<g class="dir-graph-card">' +
+      '<rect class="dir-graph-card-fill" x="' + (node.cx - halfW) +
+      '" y="' + top + '" width="' + CW + '" height="' + CH + '" rx="12"/>' +
+      '<rect class="dir-graph-card-tint" x="' + (node.cx - halfW) +
+      '" y="' + top + '" width="' + CW + '" height="' + CH +
+      '" rx="12" fill="' + node.color + '"/>' +
+      '<rect class="dir-graph-card-border" x="' + (node.cx - halfW) +
+      '" y="' + top + '" width="' + CW + '" height="' + CH +
+      '" rx="12" stroke="' + node.color + '"/>' +
+      '<g class="dir-graph-card-icon" transform="translate(' + tx + "," + ty +
+      ") scale(" + scale.toFixed(4) + ')" fill="none" stroke="' + node.color +
+      '" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">' +
+      ICON_PATHS[node.icon] + "</g>" +
+      '<text class="dir-graph-card-label" x="' + node.cx +
+      '" y="' + (node.cy - 2) + '" text-anchor="middle">' + node.label +
+      "</text>" +
+      desc +
+      "</g>"
+    );
   }
 
   function buildDotGrid() {
     var dots = [];
-    for (var x = 20; x <= 1180; x += 40) {
-      for (var y = 20; y <= 700; y += 40) {
+    for (var x = 20; x <= VIEW_W - 20; x += 40) {
+      for (var y = 20; y <= VIEW_H - 20; y += 40) {
         dots.push(
           '<circle cx="' + x + '" cy="' + y + '" r="1" class="dir-graph-dot"/>',
         );
@@ -248,316 +216,68 @@ document$.subscribe(function () {
     return dots.join("");
   }
 
-  function buildSvg(layout) {
-    var HCX = layout.hcx;
-    var HCY = layout.hcy;
-    var HW = layout.hw;
-    var HH = layout.hh;
-    var CW = layout.cw;
-    var CH = layout.ch;
-    var NODES = layout.nodes;
-    var GROUP_LABELS = layout.groupLabels;
-
-    function branchPath(fcx, fcy) {
-      var cpx = HCX + (fcx - HCX) * 0.45;
-      var cpy = HCY + (fcy - HCY) * 0.45;
-      return (
-        "M" +
-        HCX +
-        "," +
-        HCY +
-        " Q" +
-        cpx +
-        "," +
-        cpy +
-        " " +
-        fcx +
-        "," +
-        fcy
-      );
-    }
-
-    function inboundPath(fcx, fcy) {
-      var cpx = HCX + (fcx - HCX) * 0.45;
-      var cpy = HCY + (fcy - HCY) * 0.45;
-      return (
-        "M" +
-        fcx +
-        "," +
-        fcy +
-        " Q" +
-        cpx +
-        "," +
-        cpy +
-        " " +
-        HCX +
-        "," +
-        HCY
-      );
-    }
-
-    function buildParticle(node, delay) {
-      if (node.flow === "none") {
-        return "";
-      }
-
-      var dur = randomFlowDur(node.flow) + "s";
-      var motion = "";
-
-      if (node.flow === "inbound") {
-        motion =
-          '<animateMotion dur="' +
-          dur +
-          '" repeatCount="1" begin="' +
-          delay +
-          's" path="' +
-          inboundPath(node.cx, node.cy) +
-          '"/>';
-      } else if (node.flow === "pingpong") {
-        motion =
-          '<animateMotion dur="' +
-          dur +
-          '" repeatCount="1" begin="' +
-          delay +
-          's" path="' +
-          branchPath(node.cx, node.cy) +
-          '" keyPoints="0;1;0" keyTimes="0;0.5;1" calcMode="linear"/>';
-      } else {
-        motion =
-          '<animateMotion dur="' +
-          dur +
-          '" repeatCount="1" begin="' +
-          delay +
-          's" path="' +
-          branchPath(node.cx, node.cy) +
-          '"/>';
-      }
-
-      return (
-        '<g class="dir-graph-particle" data-flow="' +
-        node.flow +
-        '">' +
-        motion +
-        '<animate attributeName="opacity" values="0;0.9;0.9;0" dur="' +
-        dur +
-        '" repeatCount="1" begin="' +
-        delay +
-        's"/>' +
-        '<circle r="2.5" fill="' +
-        node.color +
-        '" filter="url(#dir-graph-particle-glow)"/>' +
-        "</g>"
-      );
-    }
-
-    function buildCard(node) {
-      var halfW = CW / 2;
-      var halfH = CH / 2;
-      var iconSize = 22;
-      var scale = iconSize / 24;
-      var tx = node.cx - iconSize / 2;
-      var ty = node.cy - 30 - iconSize / 2;
-
-      return (
-        '<g class="dir-graph-card">' +
-        '<rect class="dir-graph-card-fill" x="' +
-        (node.cx - halfW) +
-        '" y="' +
-        (node.cy - halfH) +
-        '" width="' +
-        CW +
-        '" height="' +
-        CH +
-        '" rx="10"/>' +
-        '<rect class="dir-graph-card-tint" x="' +
-        (node.cx - halfW) +
-        '" y="' +
-        (node.cy - halfH) +
-        '" width="' +
-        CW +
-        '" height="' +
-        CH +
-        '" rx="10" fill="' +
-        node.color +
-        '"/>' +
-        '<rect class="dir-graph-card-border" x="' +
-        (node.cx - halfW) +
-        '" y="' +
-        (node.cy - halfH) +
-        '" width="' +
-        CW +
-        '" height="' +
-        CH +
-        '" rx="10" stroke="' +
-        node.color +
-        '"/>' +
-        '<g class="dir-graph-card-icon" transform="translate(' +
-        tx +
-        "," +
-        ty +
-        ") scale(" +
-        scale.toFixed(4) +
-        ')" fill="none" stroke="' +
-        node.color +
-        '" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">' +
-        ICON_PATHS[node.id] +
-        "</g>" +
-        '<text class="dir-graph-card-label" x="' +
-        node.cx +
-        '" y="' +
-        (node.cy + 16) +
-        '" text-anchor="middle">' +
-        node.label +
-        "</text>" +
-        '<text class="dir-graph-card-desc" x="' +
-        node.cx +
-        '" y="' +
-        (node.cy + 35) +
-        '" text-anchor="middle">' +
-        node.cardDesc +
-        "</text>" +
-        "</g>"
-      );
-    }
-
-    var branches = NODES.map(function (node, i) {
+  function buildSvg() {
+    var edges = EDGES.map(function (edge, i) {
+      var a = NODE_BY_ID[edge.from];
+      var b = NODE_BY_ID[edge.to];
+      var path = edgePath(a, b);
       return (
         '<g class="dir-graph-branch">' +
-        '<path class="dir-graph-branch-line" d="' +
-        branchPath(node.cx, node.cy) +
-        '" stroke="' +
-        node.color +
-        '"/>' +
-        buildParticle(node, (i * 0.38).toFixed(2)) +
+        '<path class="dir-graph-branch-line" d="' + path +
+        '" stroke="' + edge.color + '"/>' +
+        buildParticle(path, edge.color, (i * 0.32).toFixed(2), FLOW_DUR.toFixed(2)) +
         "</g>"
       );
     }).join("");
 
-    var groupLabels = GROUP_LABELS.map(function (group) {
+    var groups = GROUP_LABELS.map(function (group) {
       return (
-        '<text class="dir-graph-group-label" x="' +
-        group.x +
-        '" y="' +
-        group.y +
-        '" text-anchor="middle" fill="' +
-        group.color +
-        '">' +
-        group.label.toUpperCase() +
-        "</text>"
+        '<text class="dir-graph-group-label" x="' + group.x +
+        '" y="58" text-anchor="middle" fill="' + group.color + '">' +
+        group.label.toUpperCase() + "</text>"
       );
     }).join("");
+
+    /* Faint backdrop highlighting the Directory core. */
+    var coreTop = ROW.up - CH / 2 - 22;
+    var coreBottom = ROW.dn + CH / 2 + 22;
+    var core =
+      '<rect x="' + (COL.dir - CW / 2 - 16) + '" y="' + coreTop +
+      '" width="' + (CW + 32) + '" height="' + (coreBottom - coreTop) +
+      '" rx="18" fill="' + BLUE + '" fill-opacity="0.05" stroke="' + BLUE +
+      '" stroke-opacity="0.22" stroke-width="1.2"/>';
 
     var cards = NODES.map(buildCard).join("");
 
     return (
-      '<svg class="dir-graph-root" viewBox="' +
-      layout.viewBox +
+      '<svg class="dir-graph-root" viewBox="0 0 ' + VIEW_W + " " + VIEW_H +
       '" preserveAspectRatio="xMidYMid meet" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">' +
       "<defs>" +
-      '<radialGradient id="dir-graph-wash" cx="50%" cy="50%" r="55%">' +
-      '<stop offset="0%" stop-color="' +
-      BLUE +
-      '" stop-opacity="0.08"/>' +
-      '<stop offset="100%" stop-color="' +
-      BLUE +
-      '" stop-opacity="0"/>' +
+      '<radialGradient id="dir-graph-wash" cx="50%" cy="50%" r="60%">' +
+      '<stop offset="0%" stop-color="' + BLUE + '" stop-opacity="0.07"/>' +
+      '<stop offset="100%" stop-color="' + BLUE + '" stop-opacity="0"/>' +
       "</radialGradient>" +
-      '<radialGradient id="dir-graph-hub-glow" cx="50%" cy="50%" r="50%">' +
-      '<stop offset="0%" stop-color="' +
-      BLUE +
-      '" stop-opacity="0.4"/>' +
-      '<stop offset="100%" stop-color="' +
-      BLUE +
-      '" stop-opacity="0"/>' +
-      "</radialGradient>" +
-      '<filter id="dir-graph-hub-ring-soft" x="-30%" y="-30%" width="160%" height="160%">' +
-      '<feGaussianBlur stdDeviation="2.5"/>' +
-      "</filter>" +
       '<filter id="dir-graph-particle-glow" x="-100%" y="-100%" width="300%" height="300%">' +
       '<feGaussianBlur in="SourceGraphic" stdDeviation="1.6" result="blur"/>' +
-      "<feMerge>" +
-      '<feMergeNode in="blur"/>' +
-      '<feMergeNode in="SourceGraphic"/>' +
-      "</feMerge>" +
+      "<feMerge><feMergeNode in=\"blur\"/><feMergeNode in=\"SourceGraphic\"/></feMerge>" +
       "</filter>" +
       "</defs>" +
       buildDotGrid() +
-      '<rect width="1200" height="720" fill="url(#dir-graph-wash)"/>' +
-      branches +
-      groupLabels +
-      '<ellipse cx="' +
-      HCX +
-      '" cy="' +
-      HCY +
-      '" rx="' +
-      (HW * 0.59) +
-      '" ry="' +
-      (HH * 0.59) +
-      '" fill="url(#dir-graph-hub-glow)"/>' +
-      '<rect class="dir-graph-hub-ring" x="' +
-      (HCX - HW / 2 - 7) +
-      '" y="' +
-      (HCY - HH / 2 - 7) +
-      '" width="' +
-      (HW + 14) +
-      '" height="' +
-      (HH + 14) +
-      '" rx="' +
-      (HH / 2 + 7) +
-      '" filter="url(#dir-graph-hub-ring-soft)"/>' +
-      '<rect class="dir-graph-hub-fill" x="' +
-      (HCX - HW / 2) +
-      '" y="' +
-      (HCY - HH / 2) +
-      '" width="' +
-      HW +
-      '" height="' +
-      HH +
-      '" rx="' +
-      HH / 2 +
-      '"/>' +
-      '<text class="dir-graph-hub-title" x="' +
-      HCX +
-      '" y="' +
-      (HCY + 5) +
-      '" text-anchor="middle">Agent Directory Service</text>' +
+      '<rect width="' + VIEW_W + '" height="' + VIEW_H +
+      '" fill="url(#dir-graph-wash)"/>' +
+      core +
+      groups +
+      edges +
       cards +
       "</svg>"
     );
   }
 
-  function bindParticleCycleRandomization(wrap) {
-    wrap.querySelectorAll(".dir-graph-particle").forEach(function (particle) {
-      var flow = particle.getAttribute("data-flow");
-      var motion = particle.querySelector("animateMotion");
-      var opacity = particle.querySelector('animate[attributeName="opacity"]');
-      if (!motion || !opacity || !flow || flow === "none") {
-        return;
-      }
-
-      motion.addEventListener("endEvent", function () {
-        var dur = randomFlowDur(flow) + "s";
-        motion.setAttribute("dur", dur);
-        opacity.setAttribute("dur", dur);
-        motion.beginElement();
-        opacity.beginElement();
-      });
-    });
-  }
-
   function renderGraph(wrap) {
-    wrap.innerHTML = buildSvg(pickLayout());
-    bindParticleCycleRandomization(wrap);
+    wrap.innerHTML = buildSvg();
   }
 
-  document.querySelectorAll(".dir-graph-wrap[data-dir-graph]").forEach(renderGraph);
-
-  if (!graphMqlBound) {
-    graphMqlBound = true;
-    MOBILE_MQL.addEventListener("change", function () {
-      document
-        .querySelectorAll(".dir-graph-wrap[data-dir-graph]")
-        .forEach(renderGraph);
-    });
-  }
+  document
+    .querySelectorAll(".dir-graph-wrap[data-dir-graph]")
+    .forEach(renderGraph);
 });
