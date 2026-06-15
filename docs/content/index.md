@@ -48,57 +48,25 @@ Need a skill, MCP server, or A2A partner? Your agent searches the Directory, wir
       One federated registry for <br class="dir-hero__tagline-break" aria-hidden="true" />cross-<span class="dir-hero__flip-wrap"><span class="dir-hero__flip" data-words="framework,protocol,registry" aria-live="polite">framework</span></span> agent discovery.
     </p>
     <p class="dir-hero__lede">
-      An open-source, framework-agnostic registry for managing the full agent lifecycle.
-      ADS provides a federated control plane to publish, verify, and discover agents across
-      any vendor or platform, enabling seamless interoperability for complex, multi-agent workflows.
+      Agent Directory implements the
+      <a href="https://agent-card.github.io/ai-catalog/" target="_blank" rel="noopener noreferrer">AI Catalog</a>
+      specification and provides an open-source, framework-agnostic registry for managing the full agent lifecycle.
+      Publish, verify, and discover MCP servers, A2A agents, and skills through a federated control plane, enabling
+      seamless interoperability for complex, multi-agent workflows.
     </p>
     <div class="dir-hero__actions">
       <a class="dir-hero__btn" href="#quick-start">
         Quick start
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4l-1.41 1.41L16.17 11H4v2h12.17l-5.58 5.59L12 20l8-8z"/></svg>
       </a>
+      <a class="dir-hero__btn" href="https://ai-catalog.outshift.io/" target="_blank" rel="noopener noreferrer">
+        AI Catalog
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19 19H5V5h7V3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14c1.1 0 2-.9 2-2v-7h-2v7zM14 3v2h3.59l-9.83 9.83 1.41 1.41L19 6.41V10h2V3h-7z"/></svg>
+      </a>
       <a class="dir-hero__btn" href="https://github.com/agntcy/dir" target="_blank" rel="noopener noreferrer">
         GitHub
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 .5C5.73.5.5 5.73.5 12c0 5.08 3.29 9.39 7.86 10.91.58.11.79-.25.79-.56 0-.28-.01-1.02-.02-2-3.2.7-3.88-1.54-3.88-1.54-.53-1.34-1.29-1.7-1.29-1.7-1.05-.72.08-.71.08-.71 1.16.08 1.77 1.19 1.77 1.19 1.03 1.77 2.7 1.26 3.36.96.1-.75.4-1.26.73-1.55-2.55-.29-5.23-1.28-5.23-5.69 0-1.26.45-2.29 1.19-3.1-.12-.29-.52-1.46.11-3.05 0 0 .97-.31 3.18 1.18a11.1 11.1 0 0 1 5.8 0c2.2-1.49 3.17-1.18 3.17-1.18.63 1.59.23 2.76.11 3.05.74.81 1.19 1.84 1.19 3.1 0 4.42-2.69 5.39-5.25 5.68.41.36.78 1.06.78 2.14 0 1.55-.01 2.8-.01 3.18 0 .31.21.68.8.56A11.51 11.51 0 0 0 23.5 12C23.5 5.73 18.27.5 12 .5z"/></svg>
       </a>
-    </div>
-  </div>
-  <div class="dir-hero__spotlight">
-    <div class="dir-hero__spotlight-inner">
-      <div class="dir-hero__spotlight-header">
-        <div class="dir-hero__spotlight-badge">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6zm-1 2 5 5h-5V4zM8 13h8v2H8v-2zm0 4h5v2H8v-2z"/></svg>
-          AI Catalog implementation
-        </div>
-        <p class="dir-hero__spotlight-title">Directory implements the AI Catalog spec</p>
-      </div>
-      <div class="dir-hero__spotlight-body">
-        <div class="dir-hero__spotlight-copy">
-          <p class="dir-hero__spotlight-text">
-            Directory is a reference implementation of the open
-            <a href="https://agent-card.github.io/ai-catalog/" target="_blank" rel="noopener noreferrer">AI Catalog</a>
-            specification. Publish MCP servers, A2A agents, and skills to a federated registry and expose them through
-            standard endpoints such as <code>/.well-known/ai-catalog.json</code> and <code>/v1/agents</code>.
-            A hosted instance that implements the spec is available at
-            <a href="https://ai-catalog.io/" target="_blank" rel="noopener noreferrer">ai-catalog.io</a>.
-          </p>
-          <div class="dir-hero__spotlight-tags" aria-label="Supported artifact types">
-            <span>MCP</span>
-            <span>A2A</span>
-            <span>Skills</span>
-          </div>
-        </div>
-        <div class="dir-hero__spotlight-actions">
-          <a class="dir-hero__btn dir-hero__btn--highlight" href="https://ai-catalog.io/" target="_blank" rel="noopener noreferrer">
-            Browse hosted instance
-            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19 19H5V5h7V3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14c1.1 0 2-.9 2-2v-7h-2v7zM14 3v2h3.59l-9.83 9.83 1.41 1.41L19 6.41V10h2V3h-7z"/></svg>
-          </a>
-          <a class="dir-hero__btn dir-hero__btn--highlight" href="https://agent-card.github.io/ai-catalog/" target="_blank" rel="noopener noreferrer">
-            Read the spec
-            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19 19H5V5h7V3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14c1.1 0 2-.9 2-2v-7h-2v7zM14 3v2h3.59l-9.83 9.83 1.41 1.41L19 6.41V10h2V3h-7z"/></svg>
-          </a>
-        </div>
-      </div>
     </div>
   </div>
 </section>
