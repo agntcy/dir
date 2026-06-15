@@ -31,6 +31,8 @@ var _ = ginkgo.Describe("DIR self-published SKILL record", func() {
 		var cid string
 
 		// Publishing happens asynchronously after Start returns; poll for it.
+		// `search --output raw` formats results as `[<cid> <cid> ...]`; strip
+		// the brackets so the CID can be passed straight to `pull`.
 		gomega.Eventually(func(g gomega.Gomega) {
 			out := testEnv.CLI.Search().
 				WithName(skillRecordName).
@@ -38,9 +40,11 @@ var _ = ginkgo.Describe("DIR self-published SKILL record", func() {
 				WithArgs("--output", "raw").
 				ShouldSucceed()
 
-			cid = strings.TrimSpace(out)
+			cid = strings.Trim(strings.TrimSpace(out), "[]")
 			g.Expect(cid).NotTo(gomega.BeEmpty(),
 				"DIR skill record should be searchable by name %q", skillRecordName)
+			g.Expect(cid).NotTo(gomega.ContainSubstring(" "),
+				"search returned multiple CIDs; expected exactly one")
 		}).WithTimeout(30 * time.Second).WithPolling(time.Second).Should(gomega.Succeed())
 
 		raw := testEnv.CLI.Pull(cid).WithArgs("--output", "json").ShouldSucceed()
