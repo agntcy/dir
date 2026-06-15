@@ -1,7 +1,7 @@
 <script lang="ts">
 	import type { AgentFilterCriteria, CatalogEntry } from '$lib/types';
-	import { buildAgentFilterQuery, fetchAgents } from '$lib/api';
-	import { applyClientFilters } from '$lib/utils';
+	import { buildAgentFilterQuery, CATALOG_HYDRATION_PAGE_SIZE, CATALOG_PAGE_SIZE, fetchAgentsPage } from '$lib/api';
+	import { applyClientFilters, collectSortedTags, hasActiveClientFilters, mergeSortedTags } from '$lib/utils';
 	import AgentCard from '$lib/components/AgentCard.svelte';
 	import FilterSidebar from '$lib/components/FilterSidebar.svelte';
 	import DetailModal from '$lib/components/DetailModal.svelte';
@@ -11,7 +11,10 @@
 
 	let agents = $state<CatalogEntry[]>([]);
 	let filteredAgents = $state<CatalogEntry[]>([]);
+	let catalogTags = $state<string[]>([]);
 	let loading = $state(true);
+	let catalogHydrating = $state(false);
+	let hydrationError = $state('');
 	let error = $state('');
 	let currentPage = $state(1);
 	let selectedAgent = $state<CatalogEntry | null>(null);
@@ -20,36 +23,117 @@
 	let loadedServerFilter = $state<string | null>(null);
 	let loadRequestId = 0;
 	let searchDebounce: ReturnType<typeof setTimeout> | undefined;
+	let backgroundAbort: AbortController | undefined;
 
-	const PAGE_SIZE = 20;
+	let totalPages = $derived(
+		Math.max(1, Math.ceil(filteredAgents.length / CATALOG_PAGE_SIZE))
+	);
+	let pageItems = $derived(
+		filteredAgents.slice(
+			(currentPage - 1) * CATALOG_PAGE_SIZE,
+			currentPage * CATALOG_PAGE_SIZE
+		)
+	);
 
-	let totalPages = $derived(Math.max(1, Math.ceil(filteredAgents.length / PAGE_SIZE)));
-	let pageItems = $derived(filteredAgents.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE));
-
-	function applyFilters(loaded: CatalogEntry[], criteria: AgentFilterCriteria) {
+	function applyFilters(
+		loaded: CatalogEntry[],
+		criteria: AgentFilterCriteria,
+		resetPage = true
+	) {
 		filteredAgents = applyClientFilters(loaded, criteria);
-		currentPage = 1;
+		if (resetPage) currentPage = 1;
+	}
+
+	function appendAgentPage(newAgents: CatalogEntry[], criteria: AgentFilterCriteria) {
+		if (newAgents.length === 0) return;
+
+		agents = agents.concat(newAgents);
+		catalogTags = mergeSortedTags(catalogTags, newAgents);
+		if (hasActiveClientFilters(criteria)) {
+			filteredAgents = filteredAgents.concat(applyClientFilters(newAgents, criteria));
+		} else {
+			filteredAgents = agents;
+		}
+	}
+
+	function hydrationMatchesServerFilter(filter: string): boolean {
+		return latestCriteria !== null && buildAgentFilterQuery(latestCriteria) === filter;
+	}
+
+	async function hydrateCatalog(
+		filter: string,
+		pageToken: string,
+		requestId: number,
+		signal: AbortSignal
+	) {
+		let nextPageToken = pageToken;
+
+		while (nextPageToken) {
+			if (signal.aborted || requestId !== loadRequestId) return;
+			if (!hydrationMatchesServerFilter(filter)) return;
+
+			const page = await fetchAgentsPage({
+				filter: filter || undefined,
+				pageSize: CATALOG_HYDRATION_PAGE_SIZE,
+				pageToken: nextPageToken,
+				signal
+			});
+
+			if (signal.aborted || requestId !== loadRequestId) return;
+			if (!hydrationMatchesServerFilter(filter)) return;
+
+			appendAgentPage(page.results, latestCriteria!);
+			nextPageToken = page.nextPageToken;
+		}
 	}
 
 	async function loadAgents(criteria: AgentFilterCriteria) {
 		const requestId = ++loadRequestId;
+		backgroundAbort?.abort();
+		backgroundAbort = new AbortController();
+		const signal = backgroundAbort.signal;
+
 		const filter = buildAgentFilterQuery(criteria);
 		loading = true;
+		catalogHydrating = false;
+		hydrationError = '';
 		error = '';
 
 		try {
-			const loaded = await fetchAgents({ filter: filter || undefined });
+			const firstPage = await fetchAgentsPage({
+				filter: filter || undefined,
+				signal
+			});
+
 			if (requestId !== loadRequestId) return;
-			agents = loaded;
+
+			agents = firstPage.results;
+			catalogTags = collectSortedTags(firstPage.results);
 			loadedServerFilter = filter;
-			applyFilters(loaded, criteria);
+			applyFilters(agents, criteria);
+			loading = false;
+
+			if (firstPage.nextPageToken) {
+				catalogHydrating = true;
+				try {
+					await hydrateCatalog(filter, firstPage.nextPageToken, requestId, signal);
+				} catch (e) {
+					if (signal.aborted || requestId !== loadRequestId) return;
+					hydrationError =
+						e instanceof Error ? e.message : 'Failed to load remaining records';
+				}
+			}
 		} catch (e) {
-			if (requestId !== loadRequestId) return;
+			if (signal.aborted || requestId !== loadRequestId) return;
 			error = e instanceof Error ? e.message : 'Unknown error';
 			agents = [];
 			filteredAgents = [];
+			catalogTags = [];
 		} finally {
-			if (requestId === loadRequestId) loading = false;
+			if (requestId === loadRequestId) {
+				loading = false;
+				catalogHydrating = false;
+			}
 		}
 	}
 
@@ -59,6 +143,7 @@
 
 		if (serverFilter !== loadedServerFilter) {
 			clearTimeout(searchDebounce);
+			backgroundAbort?.abort();
 			const delay = criteria.searchQuery.trim() ? 300 : 0;
 			searchDebounce = setTimeout(() => {
 				if (latestCriteria) loadAgents(latestCriteria);
@@ -83,6 +168,11 @@
 		};
 		latestCriteria = initial;
 		loadAgents(initial);
+
+		return () => {
+			backgroundAbort?.abort();
+			clearTimeout(searchDebounce);
+		};
 	});
 </script>
 
@@ -98,8 +188,17 @@
 				<p class="text-xs text-gray-500 leading-tight mt-0.5">powered by Agent Directory Service</p>
 			</div>
 		</div>
-		<div class="text-sm text-ink-medium">
-			<span class="font-semibold text-ink-strong">{filteredAgents.length}</span> agents indexed
+		<div class="text-sm text-ink-medium text-right">
+			<span class="font-semibold text-ink-strong">{filteredAgents.length}</span>
+			{#if catalogHydrating}
+				<span class="text-ink-weak">+</span>
+			{/if}
+			agents indexed
+			{#if catalogHydrating}
+				<p class="text-xs text-ink-weak mt-0.5">Loading full catalog…</p>
+			{:else if hydrationError}
+				<p class="text-xs text-amber-700 mt-0.5">Partial catalog loaded ({hydrationError})</p>
+			{/if}
 		</div>
 	</div>
 </header>
@@ -116,7 +215,7 @@
 
 	<div class="flex flex-col lg:flex-row gap-6">
 		<aside class="lg:w-64 flex-shrink-0">
-			<FilterSidebar {agents} onchange={handleCriteriaChange} />
+			<FilterSidebar allTags={catalogTags} {catalogHydrating} onchange={handleCriteriaChange} />
 		</aside>
 
 		<section class="flex-1 min-w-0">
@@ -148,6 +247,13 @@
 				</div>
 
 				<Pagination {currentPage} {totalPages} onpage={handlePage} />
+				{#if catalogHydrating}
+					<p class="mt-3 text-center text-xs text-ink-weak">Loading more records for filters and pagination…</p>
+				{:else if hydrationError}
+					<p class="mt-3 text-center text-xs text-amber-700">
+						Some records could not be loaded. Filters and pagination may be incomplete.
+					</p>
+				{/if}
 			{/if}
 		</section>
 	</div>
