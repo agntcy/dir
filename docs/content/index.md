@@ -112,7 +112,7 @@ Need a skill, MCP server, or A2A partner? Your agent searches the Directory, wir
     class="dir-graph-wrap"
     data-dir-graph
     role="img"
-    aria-label="Agent Directory Service operations: Import, Acquire, Build, Verify, Sync, Export, Publish, and Store"
+    aria-label="Agent Directory Service operations: Import, Discover, Build, Verify, Sync, Export, Announce, and Store"
   ></div>
 </section>
 
