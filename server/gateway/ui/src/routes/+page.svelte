@@ -43,7 +43,6 @@
 	}
 
 	async function hydrateCatalog(
-		criteria: AgentFilterCriteria,
 		filter: string,
 		pageToken: string,
 		requestId: number,
@@ -63,7 +62,9 @@
 			if (signal.aborted || requestId !== loadRequestId) return;
 
 			agents = agents.concat(page.results);
-			applyFilters(agents, criteria, false);
+			if (latestCriteria) {
+				applyFilters(agents, latestCriteria, false);
+			}
 			nextPageToken = page.nextPageToken;
 		}
 	}
@@ -94,7 +95,7 @@
 
 			if (firstPage.nextPageToken) {
 				catalogHydrating = true;
-				await hydrateCatalog(criteria, filter, firstPage.nextPageToken, requestId, signal);
+				await hydrateCatalog(filter, firstPage.nextPageToken, requestId, signal);
 			}
 		} catch (e) {
 			if (signal.aborted || requestId !== loadRequestId) return;
