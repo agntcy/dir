@@ -277,70 +277,40 @@ jobs:
 
           echo "cids_file=$CIDS_FILE" >> $GITHUB_OUTPUT
 
-      - name: Fetch Sigstore OIDC token
+      - name: Load imported CIDs for signing
         if: ${{ env.SIGN == 'true' && env.DRY_RUN == 'false' }}
-        id: oidc-sigstore
-        uses: ./.github/actions/fetch-oidc-token
-        with:
-          audience: sigstore
+        id: sign-cids
+        run: |
+          CIDS_FILE="${{ steps.import.outputs.cids_file }}"
+          if [ ! -f "$CIDS_FILE" ] || [ ! -s "$CIDS_FILE" ]; then
+            echo "No CIDs to sign"
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          echo "skip=false" >> "$GITHUB_OUTPUT"
+          {
+            echo 'cids<<EOF'
+            cat "$CIDS_FILE"
+            echo 'EOF'
+          } >> "$GITHUB_OUTPUT"
 
       - name: Fetch Directory OIDC token for signing
-        if: ${{ env.SIGN == 'true' && env.DRY_RUN == 'false' }}
+        if: ${{ env.SIGN == 'true' && env.DRY_RUN == 'false' && steps.sign-cids.outputs.skip != 'true' }}
         id: oidc-dir-sign
         uses: ./.github/actions/fetch-oidc-token
         with:
           audience: dir
 
-      - name: Sign Imported Records
-        if: ${{ env.SIGN == 'true' && env.DRY_RUN == 'false' }}
-        env:
-          SIGSTORE_OIDC_TOKEN: ${{ steps.oidc-sigstore.outputs.token }}
-          DIRCTL_PATH: dirctl
-          DIR_AUTH_TOKEN: ${{ steps.oidc-dir-sign.outputs.token }}
-        run: |
-          CIDS_FILE="${{ steps.import.outputs.cids_file }}"
-
-          if [ ! -f "$CIDS_FILE" ]; then
-            echo "No CIDs file found - no records were imported"
-            exit 0
-          fi
-
-          CID_COUNT=$(wc -l < "$CIDS_FILE" | tr -d ' ')
-          if [ "$CID_COUNT" -eq 0 ]; then
-            echo "No CIDs to sign"
-            exit 0
-          fi
-
-          echo "Signing $CID_COUNT records..."
-          SIGNED=0
-          FAILED=0
-
-          while IFS= read -r CID || [ -n "$CID" ]; do
-            [ -z "$CID" ] && continue
-
-            echo "Signing CID: $CID"
-
-            if "${DIRCTL_PATH}" sign "$CID" \
-              --server-addr="${{ env.SERVER_ADDRESS }}" \
-              --auth-mode=oidc \
-              --auth-token="${DIR_AUTH_TOKEN}" \
-              --oidc-token="${SIGSTORE_OIDC_TOKEN}" \
-              --oidc-provider-url="https://token.actions.githubusercontent.com" \
-              --oidc-client-id="https://github.com/${{ github.repository }}/.github/workflows/import-records.yaml@${{ github.ref }}"; then
-              SIGNED=$((SIGNED + 1))
-            else
-              echo "Failed to sign CID: $CID"
-              FAILED=$((FAILED + 1))
-            fi
-          done < "$CIDS_FILE"
-
-          echo "=== Signing Summary ==="
-          echo "Signed: $SIGNED"
-          echo "Failed: $FAILED"
-
-          if [ "$FAILED" -gt 0 ]; then
-            exit 1
-          fi
+      - name: Sign imported records
+        if: ${{ env.SIGN == 'true' && env.DRY_RUN == 'false' && steps.sign-cids.outputs.skip != 'true' }}
+        uses: ./.github/actions/sign-record
+        with:
+          cids: ${{ steps.sign-cids.outputs.cids }}
+          oidc_client_id: https://github.com/${{ github.repository }}/.github/workflows/import-records.yaml@${{ github.ref }}
+          server_addr: ${{ env.SERVER_ADDRESS }}
+          auth_token: ${{ steps.oidc-dir-sign.outputs.token }}
+          dirctl_path: ${{ steps.setup-dirctl.outputs.dirctl_path }}
 
   import-agent-skills:
     needs: [setup-matrix, build-dirctl]
@@ -478,67 +448,37 @@ jobs:
 
           echo "cids_file=$CIDS_FILE" >> $GITHUB_OUTPUT
 
-      - name: Fetch Sigstore OIDC token
+      - name: Load imported CIDs for signing
         if: ${{ env.SIGN == 'true' && env.DRY_RUN == 'false' }}
-        id: oidc-sigstore
-        uses: ./.github/actions/fetch-oidc-token
-        with:
-          audience: sigstore
+        id: sign-cids
+        run: |
+          CIDS_FILE="${{ steps.import.outputs.cids_file }}"
+          if [ ! -f "$CIDS_FILE" ] || [ ! -s "$CIDS_FILE" ]; then
+            echo "No CIDs to sign"
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          echo "skip=false" >> "$GITHUB_OUTPUT"
+          {
+            echo 'cids<<EOF'
+            cat "$CIDS_FILE"
+            echo 'EOF'
+          } >> "$GITHUB_OUTPUT"
 
       - name: Fetch Directory OIDC token for signing
-        if: ${{ env.SIGN == 'true' && env.DRY_RUN == 'false' }}
+        if: ${{ env.SIGN == 'true' && env.DRY_RUN == 'false' && steps.sign-cids.outputs.skip != 'true' }}
         id: oidc-dir-sign
         uses: ./.github/actions/fetch-oidc-token
         with:
           audience: dir
 
-      - name: Sign Imported Records
-        if: ${{ env.SIGN == 'true' && env.DRY_RUN == 'false' }}
-        env:
-          SIGSTORE_OIDC_TOKEN: ${{ steps.oidc-sigstore.outputs.token }}
-          DIRCTL_PATH: dirctl
-          DIR_AUTH_TOKEN: ${{ steps.oidc-dir-sign.outputs.token }}
-        run: |
-          CIDS_FILE="${{ steps.import.outputs.cids_file }}"
-
-          if [ ! -f "$CIDS_FILE" ]; then
-            echo "No CIDs file found - no records were imported"
-            exit 0
-          fi
-
-          CID_COUNT=$(wc -l < "$CIDS_FILE" | tr -d ' ')
-          if [ "$CID_COUNT" -eq 0 ]; then
-            echo "No CIDs to sign"
-            exit 0
-          fi
-
-          echo "Signing $CID_COUNT records..."
-          SIGNED=0
-          FAILED=0
-
-          while IFS= read -r CID || [ -n "$CID" ]; do
-            [ -z "$CID" ] && continue
-
-            echo "Signing CID: $CID"
-
-            if "${DIRCTL_PATH}" sign "$CID" \
-              --server-addr="${{ env.SERVER_ADDRESS }}" \
-              --auth-mode=oidc \
-              --auth-token="${DIR_AUTH_TOKEN}" \
-              --oidc-token="${SIGSTORE_OIDC_TOKEN}" \
-              --oidc-provider-url="https://token.actions.githubusercontent.com" \
-              --oidc-client-id="https://github.com/${{ github.repository }}/.github/workflows/import-records.yaml@${{ github.ref }}"; then
-              SIGNED=$((SIGNED + 1))
-            else
-              echo "Failed to sign CID: $CID"
-              FAILED=$((FAILED + 1))
-            fi
-          done < "$CIDS_FILE"
-
-          echo "=== Signing Summary ==="
-          echo "Signed: $SIGNED"
-          echo "Failed: $FAILED"
-
-          if [ "$FAILED" -gt 0 ]; then
-            exit 1
-          fi
+      - name: Sign imported records
+        if: ${{ env.SIGN == 'true' && env.DRY_RUN == 'false' && steps.sign-cids.outputs.skip != 'true' }}
+        uses: ./.github/actions/sign-record
+        with:
+          cids: ${{ steps.sign-cids.outputs.cids }}
+          oidc_client_id: https://github.com/${{ github.repository }}/.github/workflows/import-records.yaml@${{ github.ref }}
+          server_addr: ${{ env.SERVER_ADDRESS }}
+          auth_token: ${{ steps.oidc-dir-sign.outputs.token }}
+          dirctl_path: ${{ steps.setup-dirctl.outputs.dirctl_path }}
