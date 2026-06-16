@@ -342,7 +342,7 @@ This guide does not try to provision the AWS infrastructure from zero in the mai
           - ${DIR_API_HOST}
         federation:
           - className: dir-spire
-                trustDomain: spire.ads.outshift.io
+            trustDomain: spire.ads.outshift.io
             bundleEndpointURL: https://spire.ads.outshift.io
             bundleEndpointProfile:
               type: https_web
