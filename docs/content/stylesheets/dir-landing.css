@@ -467,6 +467,98 @@ body:has(.dir-landing) .md-tabs__item--active .md-tabs__link {
   pointer-events: none;
 }
 
+.dir-graph-stage {
+  width: 100%;
+}
+
+.dir-graph-journeys {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.55rem;
+  margin-top: 1.35rem;
+  padding-inline: 0.5rem;
+}
+
+.md-typeset .dir-graph-journey-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--md-text-font, "Roboto"), sans-serif;
+  font-size: 0.85rem;
+  font-weight: 500;
+  line-height: 1.2;
+  color: var(--dir-action-btn-color);
+  background: var(--dir-action-btn-bg);
+  border: 2px solid var(--dir-action-btn-border);
+  border-radius: 50px;
+  padding: calc(0.45rem - 1px) calc(1.05rem - 1px);
+  white-space: nowrap;
+  cursor: pointer;
+  transition:
+    background 0.2s ease,
+    border-color 0.2s ease,
+    transform 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+.md-typeset .dir-graph-journey-btn.is-active {
+  border: 2px solid transparent;
+  background:
+    linear-gradient(var(--dir-action-btn-bg-active), var(--dir-action-btn-bg-active))
+      padding-box,
+    var(--dir-hero-gradient) border-box;
+  box-shadow: 0 4px 14px rgba(0, 20, 43, 0.1);
+}
+
+.md-typeset .dir-graph-journey-btn:not(.is-active):hover {
+  background: var(--dir-action-btn-bg-active);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 14px rgba(0, 20, 43, 0.12);
+}
+
+.md-typeset .dir-graph-journey-btn.is-active:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 14px rgba(0, 20, 43, 0.14);
+}
+
+.dir-graph-card,
+.dir-graph-branch-line,
+.dir-graph-card-label,
+.dir-graph-card-desc,
+.dir-graph-card-icon {
+  transition: opacity 0.28s ease;
+}
+
+.dir-graph-wrap--journey-active .dir-graph-card--dimmed {
+  opacity: 0.2;
+}
+
+.dir-graph-wrap--journey-active .dir-graph-card--active .dir-graph-card-border {
+  stroke-width: 2.4;
+}
+
+.dir-graph-wrap--journey-active .dir-graph-card--active .dir-graph-card-tint {
+  opacity: 0.14;
+}
+
+.dir-graph-wrap--journey-active .dir-graph-branch--dimmed .dir-graph-branch-line {
+  opacity: 0.1;
+}
+
+.dir-graph-wrap--journey-active .dir-graph-branch--dimmed .dir-graph-particle {
+  display: none;
+}
+
+.dir-graph-wrap--journey-active .dir-graph-branch--active .dir-graph-branch-line {
+  opacity: 0.95;
+  stroke-width: 2.1;
+}
+
+.dir-graph-wrap--journey-active .dir-graph-group-label {
+  opacity: 0.35;
+}
+
 /* ----------------------------------------------------------------------------
    Responsive
 ---------------------------------------------------------------------------- */
@@ -571,5 +663,15 @@ body:has(.dir-landing) .md-tabs__item--active .md-tabs__link {
 
   .dir-graph-card-desc {
     font-size: 12px;
+  }
+
+  .dir-graph-journeys {
+    gap: 0.45rem;
+    margin-top: 1rem;
+  }
+
+  .md-typeset .dir-graph-journey-btn {
+    font-size: 0.78rem;
+    padding: calc(0.38rem - 1px) calc(0.85rem - 1px);
   }
 }
