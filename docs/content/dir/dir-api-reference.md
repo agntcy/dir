@@ -19,6 +19,20 @@ canonical schema live on [buf.build/agntcy/dir](https://buf.build/agntcy/dir).
 Use the Buf schema browser for message types, RPC names, and versioned packages. The
 [Architecture](dir-architecture.md) page describes how these APIs map to Directory components.
 
+## Error codes
+
+Server APIs return standard gRPC status codes:
+
+| Error Code | Description |
+|------------|-------------|
+| `codes.InvalidArgument` | Client provided an invalid or malformed argument, such as a missing or invalid record reference or record. |
+| `codes.NotFound` | The requested object does not exist in the local store or across the network. |
+| `codes.FailedPrecondition` | The server environment or configuration is not in the required state (e.g., failed to create a directory or temp file). |
+| `codes.Internal` | An unexpected internal error occurred, such as I/O failures, serialization errors, or other server-side issues. |
+| `codes.Canceled` | The operation was canceled by the client or the context expired. |
+| `codes.Unauthenticated` | The client is not authenticated to perform the operation. |
+| `codes.PermissionDenied` | The client does not have permission to perform the operation. |
+
 ## Clients
 
 - **CLI** — [Directory CLI Reference](dir-cli-reference.md) (`dirctl`)

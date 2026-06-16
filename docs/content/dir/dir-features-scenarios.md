@@ -64,77 +64,9 @@ OCI digest into a CIDv1 format using CID multihash encoding. Each record is then
 its CID in the registry, enabling direct lookup and ensuring content integrity through
 cryptographic addressing.
 
-### Supported Registries
-
-The Directory supports multiple OCI-compatible registry backends:
-
-| Registry Type | Description |
-|---------------|-------------|
-| `zot` | [Zot](https://github.com/project-zot/zot) OCI registry (default) |
-| `ghcr` | GitHub Container Registry |
-| `dockerhub` | Docker Hub |
-
-#### Registry Configuration
-
-The registry backend is configured via environment variables on the Directory server:
-
-| Environment Variable | Description | Default |
-|---------------------|-------------|---------|
-| `DIRECTORY_SERVER_STORE_OCI_TYPE` | Registry type (`zot`, `ghcr`, `dockerhub`) | `zot` |
-| `DIRECTORY_SERVER_STORE_OCI_REGISTRY_ADDRESS` | Registry address | `127.0.0.1:5000` |
-| `DIRECTORY_SERVER_STORE_OCI_REPOSITORY_NAME` | Repository name | `dir` |
-
-### Authentication Configuration
-
-Credentials for the registry are configured via environment variables:
-
-| Environment Variable | Description |
-|---------------------|-------------|
-| `DIRECTORY_SERVER_STORE_OCI_AUTH_CONFIG_USERNAME` | Username for basic authentication |
-| `DIRECTORY_SERVER_STORE_OCI_AUTH_CONFIG_PASSWORD` | Password for basic authentication |
-| `DIRECTORY_SERVER_STORE_OCI_AUTH_CONFIG_ACCESS_TOKEN` | Access token for token-based authentication |
-| `DIRECTORY_SERVER_STORE_OCI_AUTH_CONFIG_INSECURE` | Skip TLS verification (default: `true`) |
-
-### Configuration Examples
-
-**Zot (Local Development)**
-
-```bash
-export DIRECTORY_SERVER_STORE_OCI_TYPE=zot
-export DIRECTORY_SERVER_STORE_OCI_REGISTRY_ADDRESS=localhost:5000
-export DIRECTORY_SERVER_STORE_OCI_REPOSITORY_NAME=dir
-export DIRECTORY_SERVER_STORE_OCI_AUTH_CONFIG_INSECURE=true
-```
-
-**GitHub Container Registry (GHCR)**
-
-```bash
-export DIRECTORY_SERVER_STORE_OCI_TYPE=ghcr
-export DIRECTORY_SERVER_STORE_OCI_REGISTRY_ADDRESS=ghcr.io
-export DIRECTORY_SERVER_STORE_OCI_REPOSITORY_NAME=your-org/dir
-export DIRECTORY_SERVER_STORE_OCI_AUTH_CONFIG_USERNAME=your-github-username
-export DIRECTORY_SERVER_STORE_OCI_AUTH_CONFIG_PASSWORD=your-github-token
-export DIRECTORY_SERVER_STORE_OCI_AUTH_CONFIG_INSECURE=false
-```
-
-!!! warning
-    GHCR does not support record deletion via the OCI API. Attempting to
-    delete a record when using GHCR will return an error.
-    To manage packages hosted on GHCR, use the GitHub UI, REST API, or
-    GraphQL API instead. See
-    [Deleting and restoring a package](https://docs.github.com/en/packages/learn-github-packages/deleting-and-restoring-a-package)
-    for details.
-
-**Docker Hub**
-
-```bash
-export DIRECTORY_SERVER_STORE_OCI_TYPE=dockerhub
-export DIRECTORY_SERVER_STORE_OCI_REGISTRY_ADDRESS=docker.io
-export DIRECTORY_SERVER_STORE_OCI_REPOSITORY_NAME=your-username/dir
-export DIRECTORY_SERVER_STORE_OCI_AUTH_CONFIG_USERNAME=your-dockerhub-username
-export DIRECTORY_SERVER_STORE_OCI_AUTH_CONFIG_PASSWORD=your-dockerhub-token
-export DIRECTORY_SERVER_STORE_OCI_AUTH_CONFIG_INSECURE=false
-```
+The server can be backed by Zot (default), GHCR, or Docker Hub. For the supported registry
+backends and the server-side environment variables that configure them, see
+[Store — Backends and configuration](dir-component-store.md#backends-and-configuration).
 
 ### Basic Operations
 
@@ -498,15 +430,8 @@ dirctl search --name "api-*-service" --version "v2.*"
 dirctl search --skill "*machine*learning*"
 ```
 
-**Available Search Flags:**
-
-- `--name <name>` - Search by record name
-- `--version <version>` - Search by record version
-- `--skill-id <id>` - Search by skill ID number
-- `--skill <skill>` - Search by skill name
-- `--locator <type>` - Search by locator type
-- `--domain <domain>` - Search by domain
-- `--module <module>` - Search by module name
+For the full list of search filter flags and output options, see
+[CLI Reference — `dirctl search`](dir-cli-reference.md#dirctl-search-flags).
 
 **Search Logic:**
 
@@ -657,27 +582,3 @@ dirctl export --output-dir=./exports/ --format=a2a --module "integration/a2a"
 
 By default, only the latest semver version is exported; use `--all-versions` to export every
 version. See [CLI Reference — Export Operations](dir-cli-reference.md#export-operations).
-
-## gRPC Error Codes
-
-The following table lists the gRPC error codes returned by the server APIs, along with a
-description of when each code is used:
-
-| Error Code                 | Description                                                  |
-| -------------------------- | ------------------------------------------------------------ |
-| `codes.InvalidArgument`    | When client provides an invalid or malformed argument, such |
-|                            | as a missing or invalid record reference or record.         |
-| `codes.NotFound`           | When the requested object does not exist in the local store |
-|                            | or across the network.                                       |
-| `codes.FailedPrecondition` | When the server environment or configuration is not in the  |
-|                            | required state (e.g., failed to create a directory or temp  |
-|                            | file).                                                       |
-| `codes.Internal`           | When an unexpected internal error occurs, such as I/O       |
-|                            | failures, serialization errors, or other server-side        |
-|                            | issues.                                                      |
-| `codes.Canceled`           | When the operation is canceled by the client or context     |
-|                            | expires.                                                     |
-| `codes.Unauthenticated`    | When the client is not authenticated to perform the         |
-|                            | operation.                                                   |
-| `codes.PermissionDenied`   | When the client does not have permission to perform the     |
-|                            | operation.                                                   |
