@@ -43,6 +43,12 @@
   --dir-graph-hub-text: #0d1f3c;
   --dir-graph-label: #0d1f3c;
   --dir-graph-card-desc: #8a9ab0;
+  --dir-graph-group-record-sources: #59616b;
+  --dir-graph-group-ingest: #187adc;
+  --dir-graph-group-directory: #187adc;
+  --dir-graph-group-discover: #fb861f;
+  --dir-graph-group-trust: #00b285;
+  --dir-graph-group-consume: #9c4eea;
 }
 
 [data-md-color-scheme="slate"] {
@@ -67,6 +73,12 @@
   --dir-graph-hub-text: #ffffff;
   --dir-graph-label: rgba(255, 255, 255, 0.65);
   --dir-graph-card-desc: rgba(255, 255, 255, 0.38);
+  --dir-graph-group-record-sources: #7c8aa0;
+  --dir-graph-group-ingest: #4d8fd4;
+  --dir-graph-group-directory: #4d8fd4;
+  --dir-graph-group-discover: #f0a830;
+  --dir-graph-group-trust: #2dd4bf;
+  --dir-graph-group-consume: #a78bfa;
 }
 
 /* Home page only: MkDocs chrome adjustments for full-bleed hero. */
@@ -408,6 +420,30 @@ body:has(.dir-landing) .md-tabs__item--active .md-tabs__link {
   pointer-events: none;
 }
 
+.dir-graph-group-label--record-sources {
+  fill: var(--dir-graph-group-record-sources);
+}
+
+.dir-graph-group-label--ingest {
+  fill: var(--dir-graph-group-ingest);
+}
+
+.dir-graph-group-label--directory {
+  fill: var(--dir-graph-group-directory);
+}
+
+.dir-graph-group-label--discover {
+  fill: var(--dir-graph-group-discover);
+}
+
+.dir-graph-group-label--trust {
+  fill: var(--dir-graph-group-trust);
+}
+
+.dir-graph-group-label--consume {
+  fill: var(--dir-graph-group-consume);
+}
+
 .dir-graph-hub-fill {
   fill: var(--dir-graph-hub-fill);
   stroke: var(--dir-graph-hub-stroke);
@@ -454,6 +490,14 @@ body:has(.dir-landing) .md-tabs__item--active .md-tabs__link {
   font-family: Roboto, sans-serif;
   font-size: 14px;
   font-weight: 700;
+}
+
+.dir-graph-card-label--mono {
+  font-family: "Roboto Mono", monospace;
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  text-transform: lowercase;
 }
 
 .dir-graph-card-desc {
@@ -719,6 +763,10 @@ body:has(.dir-landing) .md-tabs__item--active .md-tabs__link {
 
   .dir-graph-card-label {
     font-size: 16px;
+  }
+
+  .dir-graph-card-label--mono {
+    font-size: 14px;
   }
 
   .dir-graph-card-desc {
