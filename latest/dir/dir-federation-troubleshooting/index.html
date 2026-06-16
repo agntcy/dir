@@ -53,6 +53,10 @@
     
       <link rel="stylesheet" href="../../stylesheets/agntcy-docs.css">
     
+      <link rel="stylesheet" href="../../stylesheets/dir-landing.css">
+    
+      <link rel="stylesheet" href="../../stylesheets/dirctl-terminal.css">
+    
     <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
     
       
@@ -2385,7 +2389,7 @@
 
 
 <h1 id="federation-best-practices-and-troubleshooting">Federation Best Practices and Troubleshooting</h1>
-<p>This page covers operational best practices and troubleshooting for Directory federation. It applies to both <a href="federation-profiles.md#profile-comparison">https_web and https_spiffe</a> profiles. For profile selection and configuration details, see <a href="federation-profiles.md">Federation Bundle Profiles</a>.</p>
+<p>This page covers operational best practices and troubleshooting for Directory federation. It applies to both <a href="../dir-federation-profiles/#profile-comparison">https_web and https_spiffe</a> profiles. For profile selection and configuration details, see <a href="../dir-federation-profiles/">Federation Bundle Profiles</a>.</p>
 <h2 id="operational-best-practices">Operational Best Practices</h2>
 <h3 id="universal-best-practices">Universal Best Practices</h3>
 <ul>
@@ -2593,7 +2597,7 @@ kubectl<span class="w"> </span>logs<span class="w"> </span>-n<span class="w"> </
 </code></pre></div></p>
 <h4 id="issue-certificate-signed-by-unknown-authority_1">Issue: "certificate signed by unknown authority"</h4>
 <p><strong>Root Cause:</strong> Bootstrap bundle is missing, stale, or incorrectly formatted.</p>
-<p><strong>Resolution:</strong> Obtain a fresh bundle from your federation partner, validate it, and update <code>trustDomainBundle</code> in your federation resource. See <a href="federation-profiles.md#bootstrap-bundle-exchange-process-https_spiffe">Bootstrap Bundle Exchange Process</a> for extraction and validation steps:</p>
+<p><strong>Resolution:</strong> Obtain a fresh bundle from your federation partner, validate it, and update <code>trustDomainBundle</code> in your federation resource. See <a href="../dir-federation-profiles/#bootstrap-bundle-exchange-process-https_spiffe">Bootstrap Bundle Exchange Process</a> for extraction and validation steps:</p>
 <div class="highlight"><pre><span></span><code><span class="c1"># Obtain fresh bundle from federation partner</span>
 curl<span class="w"> </span>-k<span class="w"> </span>https://spire.partner.com<span class="w"> </span>&gt;<span class="w"> </span>fresh-partner-bundle.json
 
@@ -2790,9 +2794,19 @@ kubectl<span class="w"> </span>patch<span class="w"> </span>deployment<span clas
     
       <script src="../../assets/javascripts/bundle.79ae519e.min.js"></script>
       
+        <script src="../../javascripts/dirctl-demo-data.js"></script>
+      
+        <script src="../../javascripts/dirctl-terminal.js"></script>
+      
+        <script src="../../javascripts/dir-hero-flip.js"></script>
+      
+        <script src="../../javascripts/dir-graph.js"></script>
+      
         <script src="../../javascripts/card-links.js"></script>
       
         <script src="../../javascripts/external-links.js"></script>
+      
+        <script src="../../javascripts/palette-tooltip-fix.js"></script>
       
     
   </body>
