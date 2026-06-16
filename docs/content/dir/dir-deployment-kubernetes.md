@@ -215,9 +215,8 @@ The Agent Directory Service can be deployed using Helm or GitOps / Argo CD. Helm
     8. In another terminal, verify with token-based auth:
 
         ```bash
-        # Install dirctl (if needed)
-        brew tap agntcy/dir https://github.com/agntcy/dir
-        brew install dirctl
+        # Install dirctl first if needed — see the Quickstart:
+        # https://agntcy.github.io/dir/dir/dir-quickstart/#install-the-cli
 
         # Create SPIFFE SVID for local client
         SPIRE_POD=$(kubectl get pods -n dir-dev-spire -l app.kubernetes.io/name=server -o jsonpath='{.items[0].metadata.name}')
