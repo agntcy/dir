@@ -467,6 +467,158 @@ body:has(.dir-landing) .md-tabs__item--active .md-tabs__link {
   pointer-events: none;
 }
 
+.dir-graph-stage {
+  width: 100%;
+}
+
+.dir-graph-heading {
+  text-align: center;
+  margin: 0 0 1.75rem;
+}
+
+.dir-graph-journeys {
+  display: inline-flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: baseline;
+  gap: 0;
+  max-width: 100%;
+  padding-inline: 0.5rem;
+}
+
+.dir-graph-heading__sep {
+  font-size: 1.6rem;
+  font-weight: 300;
+  line-height: 1.25;
+  color: var(--md-default-fg-color);
+  user-select: none;
+  white-space: pre;
+}
+
+.md-typeset .dir-graph-journey-btn {
+  display: inline;
+  font-family: inherit;
+  font-size: 1.6rem;
+  font-weight: 300;
+  line-height: 1.25;
+  color: var(--md-default-fg-color);
+  background: none;
+  border: none;
+  border-radius: 0;
+  padding: 0 0.04em;
+  margin: 0;
+  white-space: nowrap;
+  cursor: pointer;
+  text-decoration: underline dotted rgba(77, 143, 212, 0.55);
+  text-decoration-thickness: 2px;
+  text-underline-offset: 0.2em;
+  transition:
+    color 0.2s ease,
+    text-decoration-color 0.2s ease,
+    text-decoration-style 0.2s ease,
+    font-weight 0.2s ease;
+}
+
+.md-typeset .dir-graph-journey-btn.is-active {
+  font-weight: 500;
+  color: var(--dir-text-strong, var(--md-default-fg-color));
+  text-decoration-style: solid;
+  text-decoration-color: #4d8fd4;
+  box-shadow: none;
+}
+
+.md-typeset .dir-graph-journey-btn:not(.is-active):hover,
+.md-typeset .dir-graph-journey-btn.is-preview:not(.is-active) {
+  color: #4d8fd4;
+  text-decoration-style: solid;
+  text-decoration-color: rgba(77, 143, 212, 0.75);
+  transform: none;
+  box-shadow: none;
+}
+
+.md-typeset .dir-graph-journey-btn.is-active:hover {
+  text-decoration-color: #3a7fc8;
+  transform: none;
+  box-shadow: none;
+}
+
+.md-typeset .dir-graph-journey-btn:focus-visible {
+  outline: 2px solid #4d8fd4;
+  outline-offset: 4px;
+  border-radius: 2px;
+}
+
+[data-md-color-scheme="slate"] .md-typeset .dir-graph-journey-btn {
+  text-decoration-color: rgba(107, 168, 232, 0.55);
+}
+
+[data-md-color-scheme="slate"] .md-typeset .dir-graph-journey-btn.is-active {
+  color: #ffffff;
+  text-decoration-color: #6ba8e8;
+}
+
+[data-md-color-scheme="slate"] .md-typeset .dir-graph-journey-btn:not(.is-active):hover,
+[data-md-color-scheme="slate"] .md-typeset .dir-graph-journey-btn.is-preview:not(.is-active) {
+  color: #8ec0f0;
+}
+
+.dir-graph-card-link {
+  cursor: pointer;
+  text-decoration: none;
+  outline: none;
+}
+
+.dir-graph-card-link:focus-visible .dir-graph-card-border {
+  stroke-width: 2.6;
+}
+
+.dir-graph-wrap--journey-active .dir-graph-card-link.dir-graph-card--dimmed,
+.dir-graph-wrap--journey-active .dir-graph-card--dimmed {
+  opacity: 0.2;
+}
+
+.dir-graph-wrap--journey-active .dir-graph-card-link.dir-graph-card--active .dir-graph-card-border,
+.dir-graph-wrap--journey-active .dir-graph-card--active .dir-graph-card-border {
+  stroke-width: 2.4;
+}
+
+.dir-graph-wrap--journey-active .dir-graph-card-link.dir-graph-card--active .dir-graph-card-tint,
+.dir-graph-wrap--journey-active .dir-graph-card--active .dir-graph-card-tint {
+  opacity: 0.14;
+}
+
+.dir-graph-card,
+.dir-graph-branch-line,
+.dir-graph-card-label,
+.dir-graph-card-desc,
+.dir-graph-card-icon,
+.dir-graph-card-link {
+  transition: opacity 0.28s ease;
+}
+
+.dir-graph-wrap--journey-active .dir-graph-branch-line {
+  opacity: 0;
+  visibility: hidden;
+}
+
+.dir-graph-wrap--journey-active .dir-graph-particle {
+  display: none;
+}
+
+.dir-graph-wrap--journey-active .dir-graph-branch--active .dir-graph-branch-line {
+  opacity: 0.95;
+  visibility: visible;
+  stroke-width: 2.1;
+}
+
+.dir-graph-wrap--journey-active .dir-graph-branch--active .dir-graph-particle {
+  display: block;
+}
+
+.dir-graph-wrap--journey-active .dir-graph-group-label {
+  opacity: 0.35;
+}
+
 /* ----------------------------------------------------------------------------
    Responsive
 ---------------------------------------------------------------------------- */
@@ -571,5 +723,14 @@ body:has(.dir-landing) .md-tabs__item--active .md-tabs__link {
 
   .dir-graph-card-desc {
     font-size: 12px;
+  }
+
+  .dir-graph-heading {
+    padding-inline: 1.25rem;
+  }
+
+  .dir-graph-heading__sep,
+  .md-typeset .dir-graph-journey-btn {
+    font-size: 1.35rem;
   }
 }
