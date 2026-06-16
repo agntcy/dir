@@ -104,7 +104,7 @@ plugins:
       'dir/partner-prod-federation.md': 'dir/dir-federation-setup.md'
       'dir/federation-profiles.md': 'dir/dir-federation-profiles.md'
       'dir/federation-troubleshooting.md': 'dir/dir-federation-troubleshooting.md'
-      'dir/validation.md': 'dir/dir-validation.md'
+      'dir/validation.md': 'dir/dir-component-records-validation.md'
 
 nav:
   - Home: index.md
