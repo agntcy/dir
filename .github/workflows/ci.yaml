@@ -40,6 +40,9 @@ jobs:
             code:
               - '!gui/**'
               - '!docs/**'
+              - '!.github/workflows/docs-ci.yaml'
+              - '!.github/workflows/docs-deploy.yml'
+              - '!.github/workflows/reusable-docs.yml'
               - '!README.md'
               - '!CHANGELOG.md'
               - '!CONTRIBUTING.md'

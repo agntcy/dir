@@ -16,6 +16,9 @@ on:
     branches: [main]
     paths:
       - 'docs/**'
+      - '.github/workflows/docs-ci.yaml'
+      - '.github/workflows/docs-deploy.yml'
+      - '.github/workflows/reusable-docs.yml'
     tags:
       - 'v*.*.*'
   release:
