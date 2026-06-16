@@ -117,24 +117,17 @@ sequenceDiagram
     participant DHT
     participant ServerA
     participant ServerB
-    participant ServerC
 
-    Note over ServerA,ServerC: Publication Phase
-    ServerA->>ServerA: Generate record CID
-    ServerA->>ServerA: Extract skills from record
-    ServerA->>ServerA: Store record locally
+    Note over ServerA,ServerB: Publication Phase
+    ServerA->>ServerA: Generate CID, store record, extract skills
     ServerA->>DHT: Announce CID + skills
-    ServerB->>ServerB: Generate record CID
-    ServerB->>ServerB: Extract skills from record
-    ServerB->>ServerB: Store record locally
+    ServerB->>ServerB: Generate CID, store record, extract skills
     ServerB->>DHT: Announce CID + skills
     DHT->>DHT: Update routing tables<br/>(skills→CIDs→servers)
 
-    Note over User,ServerC: Discovery Phase
+    Note over User,ServerB: Discovery Phase
     User->>DHT: Query by skills
-    DHT->>DHT: Search routing tables
     DHT->>User: Return matching CIDs<br/>+ server addresses
-    User->>User: Select records
     User->>ServerA: Download record 1
     User->>ServerB: Download record 2
 ```
@@ -144,6 +137,5 @@ sequenceDiagram
 Ready to get started? Choose your path:
 
 - Run a local instance: follow the [Quickstart](dir-quickstart.md) or see [Local Deployment](dir-deployment-local.md) and [Kubernetes Deployment](dir-deployment-kubernetes.md).
-- Configure external user or automation access with OIDC: see [OIDC Authentication for Directory](dir-component-oidc-authentication.md).
 - Connect to the public Directory: use the existing network at `ads.outshift.io` to discover and publish agents. See [Running a Federated Directory Instance](dir-federation-setup.md).
 - Deploy for production: run your own Directory instance on AWS EKS and optionally federate with the network. See [Production Deployment](dir-prod-deployment.md).
