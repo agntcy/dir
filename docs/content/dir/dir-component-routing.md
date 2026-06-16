@@ -22,6 +22,32 @@ Discovery uses:
 Skill matching supports exact and hierarchical prefix matching. Network search results
 reflect cached announcements and may be stale or incomplete until peers replicate records.
 
+ADS uses [libp2p Kad-DHT](https://github.com/libp2p/specs/tree/master/kad-dht) for server and
+content discovery.
+
+## Publication and discovery flow
+
+```mermaid
+sequenceDiagram
+    participant User
+    participant DHT
+    participant ServerA
+    participant ServerB
+
+    Note over ServerA,ServerB: Publication Phase
+    ServerA->>ServerA: Generate CID, store record, extract labels
+    ServerA->>DHT: Announce CID + labels
+    ServerB->>ServerB: Generate CID, store record, extract labels
+    ServerB->>DHT: Announce CID + labels
+    DHT->>DHT: Update routing tables<br/>(labels→CIDs→servers)
+
+    Note over User,ServerB: Discovery Phase
+    User->>DHT: Query by labels
+    DHT->>User: Return matching CIDs<br/>+ server addresses
+    User->>ServerA: Download record 1
+    User->>ServerB: Download record 2
+```
+
 ## Related documentation
 
 - [Architecture](dir-architecture.md) — full system design and diagram

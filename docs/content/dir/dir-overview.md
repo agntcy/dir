@@ -48,81 +48,6 @@ complementary skills solve complex problems, and dependency chains for composite
 ADS uses content-addressing for global uniqueness and implements distributed hash tables (DHT)
 for scalable content discovery across decentralized networks.
 
-## Naming
-
-In distributed systems, having a reliable and collision-resistant naming scheme
-is crucial. The agent directory uses cryptographic hashes to generate globally
-unique identifiers for data records.
-ADS leverages [Content Identifiers](https://github.com/multiformats/cid) for
-naming directory records. CIDs provide a self-describing, content-addressed
-naming scheme that ensures data integrity and immutability.
-
-In addition to CID-based addressing, ADS supports verifiable domain-based names that enable human-readable references while maintaining cryptographic verification. See [Features and Usage Scenarios — Name Verification](dir-features-scenarios.md#name-verification) and the [CLI Reference](dir-cli-reference.md#security-verification) for details.
-
-## Content Routing
-
-ADS implements capability-based record discovery through a hierarchical skill
-taxonomy. This architecture enables:
-
-1. Capability Announcement:
-    1. Multi-agent systems can publish their capabilities by encoding them as skill taxonomies.
-    2. Each record contains metadata describing the agent's functional capabilities.
-    3. Skills are structured in a hierarchical format for efficient matching.
-2. Discovery Process: The system performs a two-phase discovery operation:
-    1. Matches queried capabilities against the skill taxonomy to determine records by their identifier.
-    2. Identifies the server nodes storing relevant records.
-3. Distributed Resolution: Local nodes execute targeted retrievals based on:
-    1. Skill matching results: Evaluates capability requirements.
-    2. Server location information: Determines optimal data sources.
-
-ADS uses [libp2p Kad-DH](https://github.com/libp2p/specs/tree/master/kad-dht) for server and content discovery.
-
-## Distributed Object Storage
-
-ADS differs from block storage systems like
-[IPFS](https://ipfs.tech/) in its approach to distributed object storage.
-The differences are described in the following sections.
-
-### Simplified Content Retrieval
-
-1. ADS directly stores complete records rather than splitting them into blocks.
-2. No special optimizations needed for retrieving content from multiple sources.
-3. Records are retrieved as complete units using standard OCI protocols.
-
-### OCI Integration
-
-ADS leverages the OCI distribution specification for content storage and retrieval:
-
-1. Records are stored and transferred using OCI artifacts.
-2. Any OCI distribution-compliant server can participate in the network.
-3. Servers retrieve records directly from each other using standard OCI protocols.
-
-While ADS uses [zot](https://zotregistry.dev) as its reference OCI server implementation, the system works
-with any server that implements the OCI distribution specification.
-
-## Flow Diagrams
-
-```mermaid
-sequenceDiagram
-    participant User
-    participant DHT
-    participant ServerA
-    participant ServerB
-
-    Note over ServerA,ServerB: Publication Phase
-    ServerA->>ServerA: Generate CID, store record, extract skills
-    ServerA->>DHT: Announce CID + skills
-    ServerB->>ServerB: Generate CID, store record, extract skills
-    ServerB->>DHT: Announce CID + skills
-    DHT->>DHT: Update routing tables<br/>(skills→CIDs→servers)
-
-    Note over User,ServerB: Discovery Phase
-    User->>DHT: Query by skills
-    DHT->>User: Return matching CIDs<br/>+ server addresses
-    User->>ServerA: Download record 1
-    User->>ServerB: Download record 2
-```
-
 ## Specifications and references
 
 - [ADS Specification](https://datatracker.ietf.org/doc/draft-mp-agntcy-ads) — IETF Internet Draft (under active development)
@@ -135,6 +60,7 @@ sequenceDiagram
 
 Ready to get started? Choose your path:
 
+- Understand how it works: see the [Architecture](dir-architecture.md) overview and the core components — [Records](dir-component-records-validation.md), [Store](dir-component-store.md), and [Routing](dir-component-routing.md).
 - Run a local instance: follow the [Quickstart](dir-quickstart.md) or see [Local Deployment](dir-deployment-local.md) and [Kubernetes Deployment](dir-deployment-kubernetes.md).
 - Connect to the public Directory: use the existing network at `ads.outshift.io` to discover and publish agents. See [Running a Federated Directory Instance](dir-federation-setup.md).
 - Deploy for production: run your own Directory instance on AWS EKS and optionally federate with the network. See [Production Deployment](dir-prod-deployment.md).

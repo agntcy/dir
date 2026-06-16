@@ -85,6 +85,21 @@ export DIRECTORY_SERVER_STORE_OCI_AUTH_CONFIG_INSECURE=false
 See also [Local Deployment](dir-deployment-local.md) and
 [Production Deployment](dir-prod-deployment.md) for deployment-specific configuration.
 
+## Storage model
+
+ADS differs from block storage systems like [IPFS](https://ipfs.tech/) in its approach to
+distributed object storage:
+
+- **Simplified content retrieval** — ADS stores complete records rather than splitting them
+  into blocks, so no special optimizations are needed to reassemble content from multiple
+  sources. Records are retrieved as complete units using standard OCI protocols.
+- **OCI integration** — records are stored and transferred as OCI artifacts, so any
+  OCI distribution-compliant server can participate in the network and peers retrieve records
+  directly from each other using standard OCI protocols.
+
+While ADS uses [zot](https://zotregistry.dev) as its reference OCI server implementation, the
+system works with any server that implements the OCI distribution specification.
+
 ## Related documentation
 
 - [Records](dir-component-records-validation.md) — OASF record model, CIDs, and validation
