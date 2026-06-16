@@ -20,6 +20,7 @@ append_overview() {
     echo "| Server | \`${SERVER_ADDRESS}\` |"
     echo "| Dry run | ${DRY_RUN} |"
     echo "| Sign | ${SIGN} |"
+    echo "| Debug | ${DEBUG} |"
     echo "| MCP import enabled | ${RUN_MCP_IMPORT} |"
     echo "| Agent skills import enabled | ${RUN_AGENT_SKILLS_IMPORT} |"
     echo ""

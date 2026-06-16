@@ -39,6 +39,10 @@ on:
         description: "Directory server address"
         type: string
         default: "ads.outshift.io:443"
+      debug:
+        description: "Enable dirctl import debug output (dedup and validation details)"
+        type: boolean
+        default: false
   schedule:
     - cron: "0 0 * * *"
 
@@ -61,6 +65,7 @@ jobs:
       sign: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.sign || 'true' }}
       force: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.force || 'false' }}
       scanner_enabled: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.scanner_enabled || 'false' }}
+      debug: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.debug || 'false' }}
     env:
       IMPORT_CONFIG: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.import_config || '.github/workflows/scripts/import-records.json' }}
     steps:
@@ -167,6 +172,7 @@ jobs:
       SIGN: ${{ needs.setup-matrix.outputs.sign }}
       FORCE: ${{ needs.setup-matrix.outputs.force }}
       SCANNER_ENABLED: ${{ needs.setup-matrix.outputs.scanner_enabled }}
+      DEBUG: ${{ needs.setup-matrix.outputs.debug }}
     steps:
       - name: Checkout code
         uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
@@ -251,6 +257,10 @@ jobs:
             CMD+=(--filter="updated_since=${{ matrix.entry.updated_since }}")
           fi
 
+          if [[ "${{ env.DEBUG }}" == "true" ]]; then
+            CMD+=(--debug)
+          fi
+
           echo "Running: ${CMD[*]}"
           set +e
           OUTPUT=$("${CMD[@]}" 2>&1)
@@ -330,6 +340,7 @@ jobs:
       SERVER_ADDRESS: ${{ needs.setup-matrix.outputs.server_address }}
       SIGN: ${{ needs.setup-matrix.outputs.sign }}
       FORCE: ${{ needs.setup-matrix.outputs.force }}
+      DEBUG: ${{ needs.setup-matrix.outputs.debug }}
     steps:
       - name: Checkout code
         uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
@@ -422,6 +433,10 @@ jobs:
              CMD+=("--force")
           fi
 
+          if [[ "${{ env.DEBUG }}" == "true" ]]; then
+            CMD+=(--debug)
+          fi
+
           echo "Running: ${CMD[*]}"
           set +e
           OUTPUT=$("${CMD[@]}" 2>&1)
@@ -500,6 +515,7 @@ jobs:
       SIGN: ${{ needs.setup-matrix.outputs.sign }}
       RUN_MCP_IMPORT: ${{ needs.setup-matrix.outputs.run_mcp_import }}
       RUN_AGENT_SKILLS_IMPORT: ${{ needs.setup-matrix.outputs.run_agent_skills_import }}
+      DEBUG: ${{ needs.setup-matrix.outputs.debug }}
       SETUP_MATRIX_RESULT: ${{ needs.setup-matrix.result }}
       BUILD_DIRCTL_RESULT: ${{ needs.build-dirctl.result }}
       IMPORT_MCP_RESULT: ${{ needs.import-mcp.result }}
