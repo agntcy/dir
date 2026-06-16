@@ -82,11 +82,6 @@
 }
 
 /* Home page only: MkDocs chrome adjustments for full-bleed hero. */
-body:has(.dir-landing) .md-header,
-body:has(.dir-landing) .md-header[data-md-state="shadow"] {
-  box-shadow: none;
-}
-
 body:has(.dir-landing) .md-tabs__item--active .md-tabs__link {
   border-bottom-color: transparent;
 }
