@@ -21,8 +21,10 @@ integration and testing across different versions, environments, and features.
 
 Each directory record must include skills from a defined taxonomy, as specified
 in the [Taxonomy of AI Agent Skills](https://schema.oasf.outshift.com/skill_categories) from the [OASF](https://docs.agntcy.org/oasf/open-agentic-schema-framework/).
-While all record data is modeled using the [OASF](https://docs.agntcy.org/oasf/open-agentic-schema-framework/), only skills are
-leveraged for content routing in the distributed network of directory servers.
+While all record data is modeled using the [OASF](https://docs.agntcy.org/oasf/open-agentic-schema-framework/), content routing
+in the distributed network of directory servers is driven by a subset of record attributes —
+skills, domains, modules, and locators — which are announced as labels and used for network
+discovery.
 The ADS specification is under active development and is published as an
 Internet Draft at [ADS Spec](https://datatracker.ietf.org/doc/draft-mp-agntcy-ads). The source code is
 available in the [ADS Spec sources](https://github.com/agntcy/dir-spec).
