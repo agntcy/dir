@@ -24,11 +24,10 @@ Directory supports multiple OCI-compatible registry backends:
 | `ghcr` | GitHub Container Registry |
 | `dockerhub` | Docker Hub |
 
-The backend is selected and configured via environment variables on the Directory server:
+The backend is configured via environment variables on the Directory server:
 
 | Environment Variable | Description | Default |
 |---------------------|-------------|---------|
-| `DIRECTORY_SERVER_STORE_OCI_TYPE` | Registry type (`zot`, `ghcr`, `dockerhub`) | `zot` |
 | `DIRECTORY_SERVER_STORE_OCI_REGISTRY_ADDRESS` | Registry address | `127.0.0.1:5000` |
 | `DIRECTORY_SERVER_STORE_OCI_REPOSITORY_NAME` | Repository name | `dir` |
 
@@ -46,7 +45,6 @@ Credentials are supplied through additional environment variables:
 **Zot (local development)**
 
 ```bash
-export DIRECTORY_SERVER_STORE_OCI_TYPE=zot
 export DIRECTORY_SERVER_STORE_OCI_REGISTRY_ADDRESS=localhost:5000
 export DIRECTORY_SERVER_STORE_OCI_REPOSITORY_NAME=dir
 export DIRECTORY_SERVER_STORE_OCI_AUTH_CONFIG_INSECURE=true
@@ -55,7 +53,6 @@ export DIRECTORY_SERVER_STORE_OCI_AUTH_CONFIG_INSECURE=true
 **GitHub Container Registry (GHCR)**
 
 ```bash
-export DIRECTORY_SERVER_STORE_OCI_TYPE=ghcr
 export DIRECTORY_SERVER_STORE_OCI_REGISTRY_ADDRESS=ghcr.io
 export DIRECTORY_SERVER_STORE_OCI_REPOSITORY_NAME=your-org/dir
 export DIRECTORY_SERVER_STORE_OCI_AUTH_CONFIG_USERNAME=your-github-username
@@ -74,7 +71,6 @@ export DIRECTORY_SERVER_STORE_OCI_AUTH_CONFIG_INSECURE=false
 **Docker Hub**
 
 ```bash
-export DIRECTORY_SERVER_STORE_OCI_TYPE=dockerhub
 export DIRECTORY_SERVER_STORE_OCI_REGISTRY_ADDRESS=docker.io
 export DIRECTORY_SERVER_STORE_OCI_REPOSITORY_NAME=your-username/dir
 export DIRECTORY_SERVER_STORE_OCI_AUTH_CONFIG_USERNAME=your-dockerhub-username
