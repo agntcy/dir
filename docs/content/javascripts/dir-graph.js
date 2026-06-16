@@ -77,7 +77,7 @@ document$.subscribe(function () {
   };
 
   var NODES = [
-    { id: "oasf", label: "OASF JSON", desc: "Manually built", icon: "filetext", color: SLATE, cx: COL.src, cy: ROW.src1 },
+    { id: "oasf", label: "OASF JSON", desc: "manually built", icon: "filetext", color: SLATE, cx: COL.src, cy: ROW.src1 },
     {
       id: "files",
       label: "Files",
@@ -104,7 +104,7 @@ document$.subscribe(function () {
     { id: "verify", label: "Verify", desc: "validate signature", icon: "checkcircle", color: TEAL, cx: COL.trust, cy: ROW.verify, monoLabel: true },
 
     { id: "pull", label: "Pull", desc: "raw OASF record", icon: "arrowdown", color: PURPLE, cx: COL.con, cy: ROW.con1, monoLabel: true },
-    { id: "export", label: "Export", desc: "Export to A2A, SKILL.md, GitHub Copilot MCP", icon: "upload", color: PURPLE, cx: COL.con, cy: ROW.con2, monoLabel: true },
+    { id: "export", label: "Export", desc: "export to A2A, SKILL.md, GitHub Copilot MCP", icon: "upload", color: PURPLE, cx: COL.con, cy: ROW.con2, monoLabel: true },
     { id: "mcp", label: "MCP Serve", desc: "AI tools / IDE", icon: "server", color: PURPLE, cx: COL.con, cy: ROW.con3, monoLabel: true },
   ];
 
