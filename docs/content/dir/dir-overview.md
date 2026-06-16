@@ -25,15 +25,10 @@ While all record data is modeled using the [OASF](https://docs.agntcy.org/oasf/o
 in the distributed network of directory servers is driven by a subset of record attributes —
 skills, domains, modules, and locators — which are announced as labels and used for network
 discovery.
-The ADS specification is under active development and is published as an
-Internet Draft at [ADS Spec](https://datatracker.ietf.org/doc/draft-mp-agntcy-ads). The source code is
-available in the [ADS Spec sources](https://github.com/agntcy/dir-spec).
-Directory gRPC APIs and protobuf definitions are published on
-[buf.build/agntcy/dir](https://buf.build/agntcy/dir).
-The current reference implementation, written in Go, provides server and client
-nodes with gRPC and protocol buffer interfaces. The directory record storage is
-built on [ORAS](https://oras.land) (OCI Registry As Storage), while data
-distribution uses the [zot](https://zotregistry.dev) OCI server implementation.
+
+The ADS specification is under active development as an IETF Internet Draft, with a Go
+reference implementation that exposes gRPC and protocol buffer interfaces. See
+[Specifications and references](#specifications-and-references) for the relevant links.
 
 ## Features
 
@@ -131,6 +126,14 @@ sequenceDiagram
     User->>ServerA: Download record 1
     User->>ServerB: Download record 2
 ```
+
+## Specifications and references
+
+- [ADS Specification](https://datatracker.ietf.org/doc/draft-mp-agntcy-ads) — IETF Internet Draft (under active development)
+- [ADS Spec sources](https://github.com/agntcy/dir-spec) — specification source repository
+- [gRPC API & protobuf](https://buf.build/agntcy/dir) — published schema on buf.build
+- [OASF](https://docs.agntcy.org/oasf/open-agentic-schema-framework/) — Open Agentic Schema Framework (record data model)
+- [CSIT](https://docs.agntcy.org/csit/csit/) — continuous system integration and testing
 
 ## Next Steps
 
