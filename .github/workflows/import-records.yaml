@@ -482,3 +482,35 @@ jobs:
           server_addr: ${{ env.SERVER_ADDRESS }}
           auth_token: ${{ steps.oidc-dir-sign.outputs.token }}
           dirctl_path: ${{ steps.setup-dirctl.outputs.dirctl_path }}
+
+  import-summary:
+    needs:
+      - setup-matrix
+      - build-dirctl
+      - import-mcp
+      - import-agent-skills
+    if: ${{ always() && !cancelled() && needs.setup-matrix.result == 'success' }}
+    runs-on: ubuntu-latest
+    permissions:
+      actions: read
+      contents: read
+    env:
+      SERVER_ADDRESS: ${{ needs.setup-matrix.outputs.server_address }}
+      DRY_RUN: ${{ needs.setup-matrix.outputs.dry_run }}
+      SIGN: ${{ needs.setup-matrix.outputs.sign }}
+      RUN_MCP_IMPORT: ${{ needs.setup-matrix.outputs.run_mcp_import }}
+      RUN_AGENT_SKILLS_IMPORT: ${{ needs.setup-matrix.outputs.run_agent_skills_import }}
+      SETUP_MATRIX_RESULT: ${{ needs.setup-matrix.result }}
+      BUILD_DIRCTL_RESULT: ${{ needs.build-dirctl.result }}
+      IMPORT_MCP_RESULT: ${{ needs.import-mcp.result }}
+      IMPORT_AGENT_SKILLS_RESULT: ${{ needs.import-agent-skills.result }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Write import run summary
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          chmod +x .github/workflows/scripts/import-records-summary.sh
+          .github/workflows/scripts/import-records-summary.sh
