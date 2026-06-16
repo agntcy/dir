@@ -19,7 +19,7 @@ vars:
   # renovate: datasource=go depName=github.com/spiffe/spire versioning=semver
   SPIRE_VERSION: "1.15.1"
   # renovate: datasource=docker depName=docker.io/bitnami/postgresql
-  POSTGRESQL_VERSION: "latest@sha256:7651d7f24aad83fe68a222f7f20eded10d325c96ebee285ca5bf8162eddcba64"
+  POSTGRESQL_VERSION: "latest@sha256:638095e080399612204f0123bae5b669867d549b43342dc316d05a78cdda643a"
 
   ## Container images for vulnerability scanning
   VULN_SCAN_IMAGES:
@@ -60,7 +60,7 @@ vars:
   MULTIMOD_VERSION: "0.29.0"
   MULTIMOD_BIN: "{{ .BIN_DIR }}/multimod-{{.MULTIMOD_VERSION}}"
   # renovate: datasource=go depName=github.com/mikefarah/yq/v4 versioning=semver
-  YQ_VERSION: "4.53.2"
+  YQ_VERSION: "4.53.3"
   YQ_BIN: "{{ .BIN_DIR }}/yq-{{.YQ_VERSION}}"
   GOLANGCI_LINT_VERSION: "2.11.3"
   GOLANGCI_LINT_BIN: "{{ .BIN_DIR }}/golangci-lint-{{.GOLANGCI_LINT_VERSION}}"

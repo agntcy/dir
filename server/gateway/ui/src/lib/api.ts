@@ -1,8 +1,19 @@
 import type { AgentFilterCriteria, CatalogEntry } from './types';
 
-const API_PAGE_SIZE = 100;
+/** Matches the 3-column grid layout (18 = 6 full rows). */
+export const CATALOG_PAGE_SIZE = 18;
 
-export function buildAgentFilterQuery(criteria: AgentFilterCriteria): string {
+/** Backend max page size; used for background catalog hydration. */
+export const CATALOG_HYDRATION_PAGE_SIZE = 100;
+
+export interface AgentsPage {
+	results: CatalogEntry[];
+	nextPageToken: string;
+}
+
+export function buildAgentFilterQuery(
+	criteria: Pick<AgentFilterCriteria, 'searchQuery' | 'mediaTypes'>
+): string {
 	const clauses: string[] = [];
 
 	const search = criteria.searchQuery.trim();
@@ -20,26 +31,26 @@ export function buildAgentFilterQuery(criteria: AgentFilterCriteria): string {
 	return clauses.join(' AND ');
 }
 
-export async function fetchAgents(options: {
-	filter?: string;
-	pageSize?: number;
-} = {}): Promise<CatalogEntry[]> {
-	const pageSize = options.pageSize ?? API_PAGE_SIZE;
-	let results: CatalogEntry[] = [];
-	let pageToken = '';
+export async function fetchAgentsPage(
+	options: {
+		filter?: string;
+		pageSize?: number;
+		pageToken?: string;
+		signal?: AbortSignal;
+	} = {}
+): Promise<AgentsPage> {
+	const pageSize = options.pageSize ?? CATALOG_PAGE_SIZE;
+	const query = new URLSearchParams();
+	query.set('page_size', String(pageSize));
+	if (options.filter) query.set('filter', options.filter);
+	if (options.pageToken) query.set('page_token', options.pageToken);
 
-	do {
-		const query = new URLSearchParams();
-		query.set('page_size', String(pageSize));
-		if (options.filter) query.set('filter', options.filter);
-		if (pageToken) query.set('page_token', pageToken);
+	const resp = await fetch(`/v1/agents?${query}`, { signal: options.signal });
+	if (!resp.ok) throw new Error(`HTTP ${resp.status}: ${resp.statusText}`);
 
-		const resp = await fetch(`/v1/agents?${query}`);
-		if (!resp.ok) throw new Error(`HTTP ${resp.status}: ${resp.statusText}`);
-		const data = await resp.json();
-		results = results.concat(data.results || []);
-		pageToken = data.nextPageToken || '';
-	} while (pageToken);
-
-	return results;
+	const data = await resp.json();
+	return {
+		results: data.results || [],
+		nextPageToken: data.nextPageToken || ''
+	};
 }

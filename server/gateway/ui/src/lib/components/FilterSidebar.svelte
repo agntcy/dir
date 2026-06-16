@@ -1,23 +1,20 @@
 <script lang="ts">
-	import type { AgentFilterCriteria, CatalogEntry } from '$lib/types';
+	import type { AgentFilterCriteria } from '$lib/types';
 	import { extractShortTag } from '$lib/utils';
 
 	interface Props {
-		agents: CatalogEntry[];
+		allTags: string[];
+		catalogHydrating?: boolean;
 		onchange: (criteria: AgentFilterCriteria) => void;
 	}
 
-	let { agents, onchange }: Props = $props();
+	let { allTags, catalogHydrating = false, onchange }: Props = $props();
 
 	let searchQuery = $state('');
 	let mediaTypes = $state<Set<string>>(new Set(['all']));
 	let statusFilter = $state('all');
 	let activeTags = $state<Set<string>>(new Set());
 	let tagSearch = $state('');
-
-	let allTags = $derived(
-		Array.from(new Set(agents.flatMap((a) => a.tags || []))).sort()
-	);
 
 	let visibleTags = $derived(
 		tagSearch ? allTags.filter((t) => t.toLowerCase().includes(tagSearch.toLowerCase())) : allTags
@@ -111,7 +108,12 @@
 	</div>
 
 	<div class="flex-1 flex flex-col min-h-0">
-		<span class="block text-xs font-semibold uppercase tracking-wide text-ink-medium mb-2 flex-shrink-0">Tags</span>
+		<div class="flex items-center justify-between gap-2 mb-2 flex-shrink-0">
+			<span class="block text-xs font-semibold uppercase tracking-wide text-ink-medium">Tags</span>
+			{#if catalogHydrating}
+				<span class="text-xs text-ink-weak">Loading…</span>
+			{/if}
+		</div>
 		<input
 			type="text"
 			placeholder="Filter tags..."

@@ -37,7 +37,7 @@ jobs:
       GH_TOKEN: ${{ secrets.AGNTCY_BUILD_BOT_GH_TOKEN }}
     steps:
       - name: Checkout code
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
         with:
           fetch-depth: 0
 
@@ -143,6 +143,8 @@ jobs:
           brew install agntcy/dir-test/dirctl --verbose
 
           dirctl --help
+
+          dirctl completion bash > /dev/null
 
       - name: Create PR
         if: ${{ steps.brew-formula.outputs.DIFF_FOUND == 1 && steps.test-brew-formula.outcome == 'success' && inputs.dry-run == false }}
