@@ -91,21 +91,21 @@ document$.subscribe(function () {
     { id: "registries", label: "External Registries", desc: "MCP registry, GitHub repos", icon: "globe", color: SLATE, cx: COL.src, cy: ROW.src3 },
     { id: "remote", label: "Other Directories", desc: "Directory Peers, OCI registries", icon: "layers", color: SLATE, cx: COL.src, cy: ROW.src4 },
 
-    { id: "push", label: "Push", desc: "upload OASF record", icon: "upload", color: BLUE, cx: COL.ing, cy: ROW.src1 },
-    { id: "import", label: "Import", desc: "translate & enrich to OASF", icon: "download", color: BLUE, cx: COL.ing, cy: 283 },
-    { id: "sync", label: "Sync", desc: "replicate", icon: "refreshcw", color: BLUE, cx: COL.ing, cy: ROW.src4 },
+    { id: "push", label: "Push", desc: "upload OASF record", icon: "upload", color: BLUE, cx: COL.ing, cy: ROW.src1, monoLabel: true },
+    { id: "import", label: "Import", desc: "translate & enrich to OASF", icon: "download", color: BLUE, cx: COL.ing, cy: 283, monoLabel: true },
+    { id: "sync", label: "Sync", desc: "replicate", icon: "refreshcw", color: BLUE, cx: COL.ing, cy: ROW.src4, monoLabel: true },
 
     { id: "store", label: "Store", desc: "store OCI artifact", icon: "database", color: BLUE, cx: COL.dir, cy: ROW.up },
     { id: "routing", label: "Routing", desc: "announce record to DHT network", icon: "radio", color: BLUE, cx: COL.dir, cy: ROW.dn },
 
-    { id: "search", label: "Search", desc: "local query", icon: "search", color: AMBER, cx: COL.dis, cy: ROW.up },
-    { id: "rsearch", label: "Routing Search", desc: "discover records in peers", icon: "search", color: AMBER, cx: COL.dis, cy: ROW.dn },
+    { id: "search", label: "Search", desc: "local query", icon: "search", color: AMBER, cx: COL.dis, cy: ROW.up, monoLabel: true },
+    { id: "rsearch", label: "Routing Search", desc: "discover records in peers", icon: "search", color: AMBER, cx: COL.dis, cy: ROW.dn, monoLabel: true },
 
-    { id: "verify", label: "Verify", desc: "validate signature", icon: "checkcircle", color: TEAL, cx: COL.trust, cy: ROW.verify },
+    { id: "verify", label: "Verify", desc: "validate signature", icon: "checkcircle", color: TEAL, cx: COL.trust, cy: ROW.verify, monoLabel: true },
 
-    { id: "pull", label: "Pull", desc: "raw OASF record", icon: "arrowdown", color: PURPLE, cx: COL.con, cy: ROW.con1 },
-    { id: "export", label: "Export", desc: "Export to A2A, SKILL.md, GitHub Copilot MCP", icon: "upload", color: PURPLE, cx: COL.con, cy: ROW.con2 },
-    { id: "mcp", label: "MCP Serve", desc: "AI tools / IDE", icon: "server", color: PURPLE, cx: COL.con, cy: ROW.con3 },
+    { id: "pull", label: "Pull", desc: "raw OASF record", icon: "arrowdown", color: PURPLE, cx: COL.con, cy: ROW.con1, monoLabel: true },
+    { id: "export", label: "Export", desc: "Export to A2A, SKILL.md, GitHub Copilot MCP", icon: "upload", color: PURPLE, cx: COL.con, cy: ROW.con2, monoLabel: true },
+    { id: "mcp", label: "MCP Serve", desc: "AI tools / IDE", icon: "server", color: PURPLE, cx: COL.con, cy: ROW.con3, monoLabel: true },
   ];
 
   var NODE_BY_ID = {};
@@ -114,12 +114,12 @@ document$.subscribe(function () {
   });
 
   var GROUP_LABELS = [
-    { label: "Record Sources", x: COL.src, color: SLATE },
-    { label: "Ingest", x: COL.ing, color: BLUE },
-    { label: "Directory", x: COL.dir, color: BLUE },
-    { label: "Discover", x: COL.dis, color: AMBER },
-    { label: "Trust & Provenance", x: COL.trust, color: TEAL },
-    { label: "Consume", x: COL.con, color: PURPLE },
+    { label: "Record Sources", x: COL.src, id: "record-sources" },
+    { label: "Ingest", x: COL.ing, id: "ingest" },
+    { label: "Directory", x: COL.dir, id: "directory" },
+    { label: "Discover", x: COL.dis, id: "discover" },
+    { label: "Trust & Provenance", x: COL.trust, id: "trust" },
+    { label: "Consume", x: COL.con, id: "consume" },
   ];
 
   /* from -> to edges; colour follows the downstream stage. */
@@ -312,7 +312,9 @@ document$.subscribe(function () {
       ") scale(" + scale.toFixed(4) + ')" fill="none" stroke="' + node.color +
       '" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">' +
       ICON_PATHS[node.icon] + "</g>" +
-      '<text class="dir-graph-card-label" x="' + node.cx +
+      '<text class="dir-graph-card-label' +
+      (node.monoLabel ? " dir-graph-card-label--mono" : "") +
+      '" x="' + node.cx +
       '" y="' + (node.cy - 2) + '" text-anchor="middle">' + node.label +
       "</text>" +
       desc;
@@ -357,8 +359,9 @@ document$.subscribe(function () {
 
     var groups = GROUP_LABELS.map(function (group) {
       return (
-        '<text class="dir-graph-group-label" x="' + group.x +
-        '" y="58" text-anchor="middle" fill="' + group.color + '">' +
+        '<text class="dir-graph-group-label dir-graph-group-label--' + group.id +
+        '" x="' + group.x +
+        '" y="58" text-anchor="middle">' +
         group.label.toUpperCase() + "</text>"
       );
     }).join("");
@@ -566,6 +569,16 @@ document$.subscribe(function () {
     });
     wrap.addEventListener("mouseout", function (event) {
       handleJourneyPointerOut(wrap, event);
+    });
+    document.addEventListener("click", function (event) {
+      if (wrap.contains(event.target)) {
+        return;
+      }
+      var pinned = wrap.getAttribute("data-pinned-journey") || "";
+      var preview = wrap.getAttribute("data-preview-journey") || "";
+      if (pinned || preview) {
+        setPinnedJourney(wrap, null);
+      }
     });
     renderGraph(wrap);
   }
