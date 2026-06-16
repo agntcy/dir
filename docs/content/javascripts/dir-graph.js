@@ -163,7 +163,7 @@ document$.subscribe(function () {
     },
     discover: {
       label: "Discover",
-      edges: ["store-search", "routing-rsearch"],
+      edges: ["store-search", "store-routing", "routing-rsearch"],
     },
     verify: {
       label: "Verify",
@@ -177,7 +177,12 @@ document$.subscribe(function () {
     },
   };
 
-  var FLOW_DUR = 3.0;
+  var FLOW_DUR_MIN = 1.5;
+  var FLOW_DUR_MAX = 2.0;
+
+  function randomFlowDur() {
+    return (FLOW_DUR_MIN + Math.random() * (FLOW_DUR_MAX - FLOW_DUR_MIN)).toFixed(2);
+  }
 
   function edgeId(edge) {
     return edge.from + "-" + edge.to;
@@ -337,7 +342,7 @@ document$.subscribe(function () {
   }
 
   function buildSvg() {
-    var edges = EDGES.map(function (edge, i) {
+    var edges = EDGES.map(function (edge) {
       var a = NODE_BY_ID[edge.from];
       var b = NODE_BY_ID[edge.to];
       var path = edgePath(a, b);
@@ -345,7 +350,7 @@ document$.subscribe(function () {
         '<g class="dir-graph-branch" data-edge-id="' + edgeId(edge) + '">' +
         '<path class="dir-graph-branch-line" d="' + path +
         '" stroke="' + edge.color + '"/>' +
-        buildParticle(path, edge.color, (i * 0.32).toFixed(2), FLOW_DUR.toFixed(2)) +
+        buildParticle(path, edge.color, "0", randomFlowDur()) +
         "</g>"
       );
     }).join("");
