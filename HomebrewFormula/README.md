@@ -2,7 +2,7 @@
 
 ## How to add this homebrew tap to your system
 ```bash
-    brew tap agntcy/dir https://github.com/agntcy/dir/
+    brew tap agntcy/dir https://github.com/agntcy/dir
 ```
 
 ## Trust the formulae for getting updates

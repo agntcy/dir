@@ -8,7 +8,8 @@ only page on the docs site with CLI installation instructions.
 === "Homebrew"
 
     ```bash
-    brew tap agntcy/dir https://github.com/agntcy/dir/
+    brew tap agntcy/dir https://github.com/agntcy/dir
+    brew trust agntcy/dir
     brew install dirctl
     ```
 
