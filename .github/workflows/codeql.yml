@@ -6,6 +6,11 @@ name: "CodeQL Advanced"
 on:
   push:
     branches: ["main"]
+    paths-ignore:
+      - 'docs/**'
+      - '.github/workflows/docs-ci.yaml'
+      - '.github/workflows/docs-deploy.yml'
+      - '.github/workflows/reusable-docs.yml'
   pull_request:
     branches: ["main"]
     paths-ignore:
