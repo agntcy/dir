@@ -33,60 +33,79 @@ document$.subscribe(function () {
   var CW = 152;
   var CH = 92;
 
+  /* Lucide icons — aligned with Interactive Product Feature Graph (Figma Make). */
   var ICON_PATHS = {
-    file: '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/>',
-    registries:
-      '<rect width="20" height="8" x="2" y="2" rx="2"/><rect width="20" height="8" x="2" y="14" rx="2"/><path d="M6 6h.01"/><path d="M6 18h.01"/>',
+    filetext:
+      '<path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/>' +
+      '<path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M10 9H8"/><path d="M16 13H8"/><path d="M16 17H8"/>',
+    files:
+      '<path d="M20 7h-3a2 2 0 0 1-2-2V2"/>' +
+      '<path d="M9 18a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h7l4 4v10a2 2 0 0 1-2 2Z"/>' +
+      '<path d="M3 7.6v12.8A2 2 0 0 0 5 22h9.7a2 2 0 0 0 1.7-1"/>',
     globe:
-      '<circle cx="12" cy="12" r="10"/><path d="M2 12h20"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>',
-    push: '<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m17 8-5-5-5 5"/><path d="M12 3v12"/>',
-    import:
-      '<path d="M12 17V3"/><path d="m6 11 6 6 6-6"/><path d="M19 21H5"/>',
-    sync: '<path d="m2 9 3-3 3 3"/><path d="M13 18H7a2 2 0 0 1-2-2V6"/><path d="m22 15-3 3-3-3"/><path d="M11 6h6a2 2 0 0 1 2 2v10"/>',
-    store:
-      '<rect width="20" height="5" x="2" y="3" rx="1"/><path d="M4 8v11a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8"/><path d="M10 12h4"/>',
-    routing:
-      '<rect x="16" y="16" width="6" height="6" rx="1"/><rect x="2" y="16" width="6" height="6" rx="1"/><rect x="9" y="2" width="6" height="6" rx="1"/><path d="M5 16v-3a1 1 0 0 1 1-1h12a1 1 0 0 1 1 1v3"/><path d="M12 12V8"/>',
+      '<circle cx="12" cy="12" r="10"/>' +
+      '<path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"/><path d="M2 12h20"/>',
+    layers:
+      '<path d="M12.83 2.18a2 2 0 0 0-1.66 0L2.6 6.08a1 1 0 0 0 0 1.83l8.58 3.91a2 2 0 0 0 1.66 0l8.58-3.9a1 1 0 0 0 0-1.83z"/>' +
+      '<path d="M2 12a1 1 0 0 0 .58.91l8.6 3.91a2 2 0 0 0 1.65 0l8.58-3.9A1 1 0 0 0 22 12"/>' +
+      '<path d="M2 17a1 1 0 0 0 .58.91l8.6 3.91a2 2 0 0 0 1.65 0l8.58-3.9A1 1 0 0 0 22 17"/>',
+    upload:
+      '<path d="M12 3v12"/><path d="m17 8-5-5-5 5"/>' +
+      '<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>',
+    download:
+      '<path d="M12 15V3"/><path d="m7 10 5 5 5-5"/>' +
+      '<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>',
+    refreshcw:
+      '<path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/>' +
+      '<path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/>' +
+      '<path d="M8 16H3v5"/>',
+    database:
+      '<ellipse cx="12" cy="5" rx="9" ry="3"/>' +
+      '<path d="M3 5V19A9 3 0 0 0 21 19V5"/><path d="M3 12A9 3 0 0 0 21 12"/>',
+    radio:
+      '<path d="M16.247 7.761a6 6 0 0 1 0 8.478"/>' +
+      '<path d="M19.075 4.933a10 10 0 0 1 0 14.134"/>' +
+      '<path d="M4.925 19.067a10 10 0 0 1 0-14.134"/>' +
+      '<path d="M7.753 16.239a6 6 0 0 1 0-8.478"/><circle cx="12" cy="12" r="2"/>',
     search: '<circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/>',
-    rsearch:
-      '<circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/><path d="M11 8v6"/><path d="M8 11h6"/>',
-    verify: '<path d="M20 6 9 17l-5-5"/>',
-    pull: '<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5"/><path d="M12 15V3"/>',
-    export:
-      '<path d="m18 9-6-6-6 6"/><path d="M12 3v14"/><path d="M5 21h14"/>',
-    mcp: '<path d="M12 8V4H8"/><rect width="16" height="12" x="4" y="8" rx="2"/><path d="M2 14h2"/><path d="M20 14h2"/><path d="M15 13v2"/><path d="M9 13v2"/>',
+    checkcircle: '<circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/>',
+    arrowdown: '<path d="M12 5v14"/><path d="m19 12-7 7-7-7"/>',
+    server:
+      '<rect width="20" height="8" x="2" y="2" rx="2" ry="2"/>' +
+      '<rect width="20" height="8" x="2" y="14" rx="2" ry="2"/>' +
+      '<line x1="6" x2="6.01" y1="6" y2="6"/><line x1="6" x2="6.01" y1="18" y2="18"/>',
   };
 
   var NODES = [
-    { id: "oasf", label: "OASF JSON", desc: "Manually built", icon: "file", color: SLATE, cx: COL.src, cy: ROW.src1 },
+    { id: "oasf", label: "OASF JSON", desc: "Manually built", icon: "filetext", color: SLATE, cx: COL.src, cy: ROW.src1 },
     {
       id: "files",
       label: "Files",
       desc: "MCP JSON, A2A JSON, Agent Skill Markdown",
-      icon: "file",
+      icon: "files",
       color: SLATE,
       cx: COL.src,
       cy: ROW.src2,
       href: "dir/dir-features-scenarios/#import",
     },
-    { id: "registries", label: "External Registries", desc: "MCP registry, GitHub repos", icon: "registries", color: SLATE, cx: COL.src, cy: ROW.src3 },
-    { id: "remote", label: "Other Directories", desc: "Directory Peers, OCI registries", icon: "globe", color: SLATE, cx: COL.src, cy: ROW.src4 },
+    { id: "registries", label: "External Registries", desc: "MCP registry, GitHub repos", icon: "globe", color: SLATE, cx: COL.src, cy: ROW.src3 },
+    { id: "remote", label: "Other Directories", desc: "Directory Peers, OCI registries", icon: "layers", color: SLATE, cx: COL.src, cy: ROW.src4 },
 
-    { id: "push", label: "Push", desc: "upload OASF record", icon: "push", color: BLUE, cx: COL.ing, cy: ROW.src1 },
-    { id: "import", label: "Import", desc: "translate & enrich to OASF", icon: "import", color: BLUE, cx: COL.ing, cy: 283 },
-    { id: "sync", label: "Sync", desc: "replicate", icon: "sync", color: BLUE, cx: COL.ing, cy: ROW.src4 },
+    { id: "push", label: "Push", desc: "upload OASF record", icon: "upload", color: BLUE, cx: COL.ing, cy: ROW.src1 },
+    { id: "import", label: "Import", desc: "translate & enrich to OASF", icon: "download", color: BLUE, cx: COL.ing, cy: 283 },
+    { id: "sync", label: "Sync", desc: "replicate", icon: "refreshcw", color: BLUE, cx: COL.ing, cy: ROW.src4 },
 
-    { id: "store", label: "Store", desc: "store OCI artifact", icon: "store", color: BLUE, cx: COL.dir, cy: ROW.up },
-    { id: "routing", label: "Routing", desc: "announce record to DHT network", icon: "routing", color: BLUE, cx: COL.dir, cy: ROW.dn },
+    { id: "store", label: "Store", desc: "store OCI artifact", icon: "database", color: BLUE, cx: COL.dir, cy: ROW.up },
+    { id: "routing", label: "Routing", desc: "announce record to DHT network", icon: "radio", color: BLUE, cx: COL.dir, cy: ROW.dn },
 
     { id: "search", label: "Search", desc: "local query", icon: "search", color: AMBER, cx: COL.dis, cy: ROW.up },
-    { id: "rsearch", label: "Routing Search", desc: "discover records in peers", icon: "rsearch", color: AMBER, cx: COL.dis, cy: ROW.dn },
+    { id: "rsearch", label: "Routing Search", desc: "discover records in peers", icon: "search", color: AMBER, cx: COL.dis, cy: ROW.dn },
 
-    { id: "verify", label: "Verify", desc: "validate signature", icon: "verify", color: TEAL, cx: COL.trust, cy: ROW.verify },
+    { id: "verify", label: "Verify", desc: "validate signature", icon: "checkcircle", color: TEAL, cx: COL.trust, cy: ROW.verify },
 
-    { id: "pull", label: "Pull", desc: "raw OASF record", icon: "pull", color: PURPLE, cx: COL.con, cy: ROW.con1 },
-    { id: "export", label: "Export", desc: "Export to A2A, SKILL.md, GitHub Copilot MCP", icon: "export", color: PURPLE, cx: COL.con, cy: ROW.con2 },
-    { id: "mcp", label: "MCP Serve", desc: "AI tools / IDE", icon: "mcp", color: PURPLE, cx: COL.con, cy: ROW.con3 },
+    { id: "pull", label: "Pull", desc: "raw OASF record", icon: "arrowdown", color: PURPLE, cx: COL.con, cy: ROW.con1 },
+    { id: "export", label: "Export", desc: "Export to A2A, SKILL.md, GitHub Copilot MCP", icon: "upload", color: PURPLE, cx: COL.con, cy: ROW.con2 },
+    { id: "mcp", label: "MCP Serve", desc: "AI tools / IDE", icon: "server", color: PURPLE, cx: COL.con, cy: ROW.con3 },
   ];
 
   var NODE_BY_ID = {};
