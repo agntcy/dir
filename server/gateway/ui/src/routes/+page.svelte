@@ -184,7 +184,7 @@
 			</svg>
 			<span class="text-gray-300 text-lg font-light">|</span>
 			<div>
-				<h1 class="text-lg font-medium text-gray-700 leading-tight">AI Catalog</h1>
+				<h1 class="text-lg font-medium text-gray-700 leading-tight">Cisco AI Catalog</h1>
 				<p class="text-xs text-gray-500 leading-tight mt-0.5">powered by Agent Directory Service</p>
 			</div>
 		</div>
