@@ -14,12 +14,13 @@ import (
 	"github.com/onsi/gomega"
 )
 
-// Duplicated as literals (rather than imported from server/skill) to keep the
-// e2e tests module independent of the server module and to assert the
-// wire-level contract consumers will rely on.
+// Hard-coded (not imported from server/skill) to keep the e2e module
+// independent and to assert the wire-level contract consumers rely on.
 const (
-	skillRecordName = "agntcy.dir/skill"
-	skillModuleName = "core/language_model/agentskills"
+	skillRecordName       = "org.agntcy/directory"
+	skillModuleName       = "core/language_model/agentskills"
+	mcpModuleName         = "integration/mcp"
+	skillArtifactMediaTyp = "application/agentskill+md"
 )
 
 var _ = ginkgo.Describe("DIR self-published SKILL record", func() {
@@ -27,12 +28,12 @@ var _ = ginkgo.Describe("DIR self-published SKILL record", func() {
 		utils.ResetCLIState()
 	})
 
-	ginkgo.It("should be discoverable by name and carry the SKILL.md bytes in its module artifact", func() {
+	ginkgo.It("should be discoverable by name and carry the SKILL.md bytes plus an MCP module", func() {
 		var cid string
 
-		// Publishing happens asynchronously after Start returns; poll for it.
-		// `search --output raw` formats results as `[<cid> <cid> ...]`; strip
-		// the brackets so the CID can be passed straight to `pull`.
+		// Publish runs asynchronously after Start; poll for it.
+		// `search --output raw` returns `[<cid> ...]`; strip the brackets
+		// so the value is a bare CID `pull` can accept.
 		gomega.Eventually(func(g gomega.Gomega) {
 			out := testEnv.CLI.Search().
 				WithName(skillRecordName).
@@ -68,17 +69,37 @@ var _ = ginkgo.Describe("DIR self-published SKILL record", func() {
 		gomega.Expect(doc.Name).To(gomega.Equal(skillRecordName))
 		gomega.Expect(doc.Description).NotTo(gomega.BeEmpty())
 
-		gomega.Expect(doc.Modules).NotTo(gomega.BeEmpty())
-		gomega.Expect(doc.Modules[0].Name).To(gomega.Equal(skillModuleName))
+		// Both modules must live on the same record.
+		moduleNames := make([]string, 0, len(doc.Modules))
+		for _, m := range doc.Modules {
+			moduleNames = append(moduleNames, m.Name)
+		}
 
-		artifact := doc.Modules[0].Artifact
-		gomega.Expect(artifact.MediaType).To(gomega.Equal("text/markdown"))
-		gomega.Expect(artifact.Digest).To(gomega.HavePrefix("sha256:"))
-		gomega.Expect(artifact.Size).To(gomega.BeNumerically(">", 0))
+		gomega.Expect(moduleNames).To(gomega.ContainElement(skillModuleName))
+		gomega.Expect(moduleNames).To(gomega.ContainElement(mcpModuleName))
 
-		decoded, err := base64.StdEncoding.DecodeString(artifact.Data)
+		skillArtifact := struct {
+			MediaType string `json:"media_type"`
+			Data      string `json:"data"`
+			Digest    string `json:"digest"`
+			Size      int    `json:"size"`
+		}{}
+
+		for _, m := range doc.Modules {
+			if m.Name == skillModuleName {
+				skillArtifact = m.Artifact
+
+				break
+			}
+		}
+
+		gomega.Expect(skillArtifact.MediaType).To(gomega.Equal(skillArtifactMediaTyp))
+		gomega.Expect(skillArtifact.Digest).To(gomega.HavePrefix("sha256:"))
+		gomega.Expect(skillArtifact.Size).To(gomega.BeNumerically(">", 0))
+
+		decoded, err := base64.StdEncoding.DecodeString(skillArtifact.Data)
 		gomega.Expect(err).NotTo(gomega.HaveOccurred())
 		gomega.Expect(string(decoded)).To(gomega.ContainSubstring("# AGNTCY Directory"))
-		gomega.Expect(decoded).To(gomega.HaveLen(artifact.Size))
+		gomega.Expect(decoded).To(gomega.HaveLen(skillArtifact.Size))
 	})
 })

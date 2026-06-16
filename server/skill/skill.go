@@ -1,66 +1,44 @@
 // Copyright AGNTCY Contributors (https://github.com/agntcy)
 // SPDX-License-Identifier: Apache-2.0
 
-// Package skill builds and publishes an OASF record describing how an AI agent
-// can interact with this Directory instance. The embedded SKILL.md is carried
-// inline at modules[0].artifact.data (base64) so a single Pull returns
-// everything needed to consume the skill.
+// Package skill builds and publishes an OASF record describing how an AI
+// agent can interact with this Directory instance.
 package skill
 
 import (
-	"crypto/sha256"
 	_ "embed"
-	"encoding/base64"
-	"encoding/hex"
-	"encoding/json"
 	"fmt"
 	"time"
 
+	typesv1 "buf.build/gen/go/agntcy/oasf/protocolbuffers/go/agntcy/oasf/types/v1"
+	catalogv1 "github.com/agntcy/dir/api/catalog/v1"
 	corev1 "github.com/agntcy/dir/api/core/v1"
 	"github.com/agntcy/dir/api/version"
+	ocidigest "github.com/opencontainers/go-digest"
+	"google.golang.org/protobuf/types/known/structpb"
 )
 
 //go:embed SKILL.md
-var markdown string
+var DirSkill string
 
 const (
-	// RecordName is the OASF record name consumers search for.
-	RecordName = "agntcy.dir/skill"
-
-	// SchemaVersion is the OASF schema version emitted.
+	RecordName    = "org.agntcy/directory"
 	SchemaVersion = "1.0.0"
 
-	// MediaType is the IANA media type of the embedded payload.
-	MediaType = "text/markdown"
+	MCPModuleName         = "integration/mcp"
+	AgentSkillsModuleName = "core/language_model/agentskills"
+	MCPServerName         = "agntcy-dir-mcp"
 
-	// SkillFileName is the value placed in agentskills.data.skill_file (a path,
-	// not the body).
-	SkillFileName = "SKILL.md"
-
-	agentskillsModuleName = "core/language_model/agentskills"
-	agentskillsModuleID   = 10302
-
-	// OASF requires at least one entry in `skills`. This taxonomy node is the
-	// closest fit for a documentation/instructional record.
-	skillContextualComprehensionID = 10101
-
-	// fallbackVersion is used when the binary was built without a version
-	// stamped in via ldflags (e.g. `go run`).
+	// Used when the binary lacks an ldflags-stamped version (e.g. `go run`).
 	fallbackVersion = "0.0.0-dev"
+
+	// OASF requires `skills` to be non-empty; pick the closest taxonomy
+	// node for an instructional record.
+	skillContextualComprehensionName = "natural_language_processing/natural_language_understanding/contextual_comprehension"
 )
 
-// Markdown returns the embedded SKILL.md content.
-func Markdown() string { return markdown }
-
-// ContentSHA256 returns the lowercase hex sha256 of the embedded markdown.
-func ContentSHA256() string {
-	sum := sha256.Sum256([]byte(markdown))
-
-	return hex.EncodeToString(sum[:])
-}
-
-// RecordVersion returns the OASF record's `version` field, mirroring the DIR
-// build version so each release publishes a distinct revision.
+// RecordVersion returns the record's `version`, stripping the commit suffix
+// that version.String() appends so it stays semver-shaped.
 func RecordVersion() string {
 	if version.Version != "" {
 		return version.Version
@@ -69,68 +47,101 @@ func RecordVersion() string {
 	return fallbackVersion
 }
 
-// BuildRecord constructs the OASF record. `now` is injected for deterministic
-// testing; production callers should pass time.Now().UTC().
+// ContentDigest returns the OCI-form sha256 digest of the embedded SKILL.md.
+func ContentDigest() string {
+	return ocidigest.FromString(DirSkill).String()
+}
+
+// BuildRecord constructs the typed OASF record. `now` is injected so tests
+// can pin time; production callers should pass time.Now().UTC().
 func BuildRecord(now time.Time) (*corev1.Record, error) {
-	recordVersion := RecordVersion()
-	contentBytes := []byte(markdown)
+	rv := RecordVersion()
+	skillBytes := []byte(DirSkill)
 
-	digest := "sha256:" + ContentSHA256()
-	encodedPayload := base64.StdEncoding.EncodeToString(contentBytes)
-
-	doc := map[string]any{
-		"name":           RecordName,
-		"schema_version": SchemaVersion,
-		"version":        recordVersion,
-		"description":    "Self-describing usage guide for this AGNTCY Directory (DIR) instance: how an AI agent can publish, search, pull, sign, and verify OASF agent records.",
-		"authors":        []string{"AGNTCY Contributors"},
-		"created_at":     now.UTC().Format(time.RFC3339),
-		// `domains` is Recommended, not Required; emit empty to silence the
-		// validator warning without binding to a specific domain.
-		"domains": []any{},
-		"skills": []map[string]any{
-			{
-				"name": "natural_language_processing/natural_language_understanding/contextual_comprehension",
-				"id":   skillContextualComprehensionID,
-			},
-		},
-		"modules": []map[string]any{
-			{
-				"name": agentskillsModuleName,
-				"id":   agentskillsModuleID,
-				"data": map[string]any{
-					"skill_file": SkillFileName,
-					"skill_manifest": map[string]any{
-						"name":        "agntcy-dir",
-						"description": "Use this skill to interact with an AGNTCY Directory (DIR) instance.",
-						"version":     recordVersion,
-						"frontmatter_metadata": map[string]any{
-							"author": "AGNTCY Contributors",
-						},
-					},
-				},
-				// agentskills.artifact is the OASF descriptor slot for inline
-				// module payloads. descriptor.data is bytestring_t, so the
-				// markdown is base64-encoded.
-				"artifact": map[string]any{
-					"media_type": MediaType,
-					"size":       len(contentBytes),
-					"digest":     digest,
-					"data":       encodedPayload,
-				},
-			},
-		},
-	}
-
-	raw, err := json.Marshal(doc)
+	skillModule, err := buildAgentSkillsModule(rv, skillBytes)
 	if err != nil {
-		return nil, fmt.Errorf("marshal skill record: %w", err)
+		return nil, err
 	}
 
-	record, err := corev1.UnmarshalRecord(raw)
+	mcpModule, err := buildMCPModule()
 	if err != nil {
-		return nil, fmt.Errorf("decode skill record: %w", err)
+		return nil, err
 	}
 
-	return record, nil
+	return corev1.New(&typesv1.Record{
+		Name:          RecordName,
+		SchemaVersion: SchemaVersion,
+		Version:       rv,
+		Description:   "Self-describing usage guide for this AGNTCY Directory (DIR) instance: how an AI agent can publish, search, pull, sign, and verify OASF agent records.",
+		Authors:       []string{"https://github.com/agntcy/dir"},
+		CreatedAt:     now.UTC().Format(time.RFC3339),
+		Skills: []*typesv1.Skill{
+			{Name: skillContextualComprehensionName},
+		},
+		Modules: []*typesv1.Module{skillModule, mcpModule},
+	}), nil
+}
+
+// Descriptor.Data is proto `bytes`, which the JSON wire layer base64-encodes
+// automatically — pass raw bytes, not a pre-encoded string.
+func buildAgentSkillsModule(recordVer string, skillBytes []byte) (*typesv1.Module, error) {
+	manifest, err := structpb.NewStruct(map[string]any{
+		"name":        "agntcy-dir",
+		"description": "Use this skill to interact with an AGNTCY Directory (DIR) instance.",
+		"version":     recordVer,
+		"frontmatter_metadata": map[string]any{
+			"author": "AGNTCY Contributors",
+		},
+	})
+	if err != nil {
+		return nil, fmt.Errorf("build skill_manifest struct: %w", err)
+	}
+
+	data, err := structpb.NewStruct(map[string]any{
+		"skill_file": "SKILL.md",
+	})
+	if err != nil {
+		return nil, fmt.Errorf("build agentskills data struct: %w", err)
+	}
+
+	data.GetFields()["skill_manifest"] = structpb.NewStructValue(manifest)
+
+	return &typesv1.Module{
+		Name: AgentSkillsModuleName,
+		Data: data,
+		Artifact: &typesv1.Descriptor{
+			MediaType: catalogv1.ProtocolAgentSkillsMdMediaType,
+			Size:      uint64(len(skillBytes)),
+			Digest:    ocidigest.FromBytes(skillBytes).String(),
+			Data:      skillBytes,
+		},
+	}, nil
+}
+
+// Concrete connection command/args are TBD; finalize once dir-mcp deployment
+// is settled.
+func buildMCPModule() (*typesv1.Module, error) {
+	connection, err := structpb.NewStruct(map[string]any{
+		"type": "stdio",
+	})
+	if err != nil {
+		return nil, fmt.Errorf("build mcp connection struct: %w", err)
+	}
+
+	data, err := structpb.NewStruct(map[string]any{
+		"name":        MCPServerName,
+		"description": "MCP server fronting this AGNTCY Directory instance.",
+	})
+	if err != nil {
+		return nil, fmt.Errorf("build mcp data struct: %w", err)
+	}
+
+	data.GetFields()["connections"] = structpb.NewListValue(&structpb.ListValue{
+		Values: []*structpb.Value{structpb.NewStructValue(connection)},
+	})
+
+	return &typesv1.Module{
+		Name: MCPModuleName,
+		Data: data,
+	}, nil
 }

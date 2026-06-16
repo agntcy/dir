@@ -21,7 +21,7 @@ your environment supports.
 - **Record** — an OASF JSON document describing one agent (name, version, skills, locators, modules, signatures).
 - **CID** — Content Identifier; the SHA-based hash that uniquely names a record. Pushing the same record twice yields the same CID.
 - **Skill / Domain** — OASF taxonomy nodes describing what an agent does (e.g. `natural_language_processing/text_completion`) and where it operates.
-- **Module** — typed extension on a record (e.g. `core/language_model/agentskills`, `runtime/mcp`, `integration/a2a`).
+- **Module** — typed extension on a record (e.g. `core/language_model/agentskills`, `integration/mcp`, `integration/a2a`).
 - **Locator** — pointer to a runnable artifact for the agent (`container_image`, `source_code`, `helm_chart`, `package`, `binary`, `url`).
 
 ## Channels

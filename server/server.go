@@ -516,8 +516,7 @@ func (s Server) Start(ctx context.Context) error {
 		}
 	}
 
-	// Best-effort: publishing the DIR self-skill is a usability aid, not a
-	// service dependency, so a failure must not block startup.
+	// Best-effort, non-blocking: a failure here must not block startup.
 	go func() {
 		if err := skill.Publish(ctx, s.store, s.database, s.oasfValidator); err != nil {
 			logger.Warn("Failed to publish DIR skill record", "error", err)
