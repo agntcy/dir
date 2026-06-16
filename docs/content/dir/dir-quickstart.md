@@ -96,16 +96,23 @@ guides instead of the daemon.
 
 ## Discover records
 
-Search the network by skill, then pull a result:
+The quickstart runs a single local Directory, so the published record lives on this peer.
+List it locally by skill, then pull it:
 
 ```bash
-dirctl routing search --skill "images_computer_vision" --limit 5
+dirctl routing list --skill "images_computer_vision"
 dirctl pull "$CID"
 ```
 
-For local-only listings, use `dirctl routing list`. See
-[Features and Usage Scenarios](dir-features-scenarios.md) for signing, sync, import, export, and other
-workflows.
+To discover records announced by *other* peers across a network or federation, use
+`dirctl routing search`. It queries cached network announcements and deliberately excludes
+local records, so it returns nothing in a single-node setup:
+
+```bash
+dirctl routing search --skill "images_computer_vision" --limit 5
+```
+
+See [Features and Usage Scenarios](dir-features-scenarios.md) for signing, sync, import, export, and other workflows.
 
 ## Authenticate to a remote Directory
 
