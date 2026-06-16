@@ -107,12 +107,11 @@ Need a skill, MCP server, or A2A partner? Your agent searches the Directory, wir
 </div>
 
 <section class="dir-howto">
-  <h2 class="dir-section-title">Publish, verify, and discover</h2>
   <div
     class="dir-graph-wrap"
     data-dir-graph
     role="img"
-    aria-label="Agent Directory Service operations: Import, Discover, Build, Verify, Sync, Export, Announce, and Store"
+    aria-label="Agent Directory Service workflow: publish, discover, and verify"
   ></div>
 </section>
 

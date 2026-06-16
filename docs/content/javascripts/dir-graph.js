@@ -12,12 +12,23 @@ document$.subscribe(function () {
   var SLATE = "#7c8aa0";
 
   var VIEW_W = 1330;
-  var VIEW_H = 540;
+  var VIEW_H = 590;
 
   /* Column x-centres, one per stage. */
   var COL = { src: 100, ing: 330, dir: 560, dis: 790, trust: 1010, con: 1230 };
-  /* Row y-centres. */
-  var ROW = { top: 145, mid: 300, bot: 455, up: 222, dn: 378, ctr: 300 };
+  /* Row y-centres (four source rows + directory/discover split). */
+  var ROW = {
+    src1: 118,
+    src2: 228,
+    src3: 338,
+    src4: 448,
+    up: 250,
+    dn: 400,
+    verify: 307,
+    con1: 195,
+    con2: 325,
+    con3: 455,
+  };
 
   var CW = 152;
   var CH = 92;
@@ -47,13 +58,23 @@ document$.subscribe(function () {
   };
 
   var NODES = [
-    { id: "oasf", label: "OASF JSON", desc: "Manually built", icon: "file", color: SLATE, cx: COL.src, cy: ROW.top },
-    { id: "registries", label: "External Registries", desc: "MCP registry, GitHub repos", icon: "registries", color: SLATE, cx: COL.src, cy: ROW.mid },
-    { id: "remote", label: "Other Directories", desc: "Directory Peers, OCI registries", icon: "globe", color: SLATE, cx: COL.src, cy: ROW.bot },
+    { id: "oasf", label: "OASF JSON", desc: "Manually built", icon: "file", color: SLATE, cx: COL.src, cy: ROW.src1 },
+    {
+      id: "files",
+      label: "Files",
+      desc: "MCP JSON, A2A JSON, Agent Skill Markdown",
+      icon: "file",
+      color: SLATE,
+      cx: COL.src,
+      cy: ROW.src2,
+      href: "dir/dir-features-scenarios/#import",
+    },
+    { id: "registries", label: "External Registries", desc: "MCP registry, GitHub repos", icon: "registries", color: SLATE, cx: COL.src, cy: ROW.src3 },
+    { id: "remote", label: "Other Directories", desc: "Directory Peers, OCI registries", icon: "globe", color: SLATE, cx: COL.src, cy: ROW.src4 },
 
-    { id: "push", label: "Push", desc: "upload OASF record", icon: "push", color: BLUE, cx: COL.ing, cy: ROW.top },
-    { id: "import", label: "Import", desc: "translate & enrich to OASF", icon: "import", color: BLUE, cx: COL.ing, cy: ROW.mid },
-    { id: "sync", label: "Sync", desc: "replicate", icon: "sync", color: BLUE, cx: COL.ing, cy: ROW.bot },
+    { id: "push", label: "Push", desc: "upload OASF record", icon: "push", color: BLUE, cx: COL.ing, cy: ROW.src1 },
+    { id: "import", label: "Import", desc: "translate & enrich to OASF", icon: "import", color: BLUE, cx: COL.ing, cy: 283 },
+    { id: "sync", label: "Sync", desc: "replicate", icon: "sync", color: BLUE, cx: COL.ing, cy: ROW.src4 },
 
     { id: "store", label: "Store", desc: "store OCI artifact", icon: "store", color: BLUE, cx: COL.dir, cy: ROW.up },
     { id: "routing", label: "Routing", desc: "announce record to DHT network", icon: "routing", color: BLUE, cx: COL.dir, cy: ROW.dn },
@@ -61,11 +82,11 @@ document$.subscribe(function () {
     { id: "search", label: "Search", desc: "local query", icon: "search", color: AMBER, cx: COL.dis, cy: ROW.up },
     { id: "rsearch", label: "Routing Search", desc: "discover records in peers", icon: "rsearch", color: AMBER, cx: COL.dis, cy: ROW.dn },
 
-    { id: "verify", label: "Verify", desc: "validate signature (Cosign)", icon: "verify", color: TEAL, cx: COL.trust, cy: ROW.ctr },
+    { id: "verify", label: "Verify", desc: "validate signature", icon: "verify", color: TEAL, cx: COL.trust, cy: ROW.verify },
 
-    { id: "pull", label: "Pull", desc: "raw OASF record", icon: "pull", color: PURPLE, cx: COL.con, cy: ROW.top },
-    { id: "export", label: "Export", desc: "to A2A, SKILL.md, Copilot\u2026", icon: "export", color: PURPLE, cx: COL.con, cy: ROW.mid },
-    { id: "mcp", label: "MCP Serve", desc: "AI tools / IDE", icon: "mcp", color: PURPLE, cx: COL.con, cy: ROW.bot },
+    { id: "pull", label: "Pull", desc: "raw OASF record", icon: "pull", color: PURPLE, cx: COL.con, cy: ROW.con1 },
+    { id: "export", label: "Export", desc: "Export to A2A, SKILL.md, GitHub Copilot MCP", icon: "export", color: PURPLE, cx: COL.con, cy: ROW.con2 },
+    { id: "mcp", label: "MCP Serve", desc: "AI tools / IDE", icon: "mcp", color: PURPLE, cx: COL.con, cy: ROW.con3 },
   ];
 
   var NODE_BY_ID = {};
@@ -85,6 +106,7 @@ document$.subscribe(function () {
   /* from -> to edges; colour follows the downstream stage. */
   var EDGES = [
     { from: "oasf", to: "push", color: BLUE },
+    { from: "files", to: "import", color: BLUE },
     { from: "registries", to: "import", color: BLUE },
     { from: "remote", to: "sync", color: BLUE },
     { from: "import", to: "push", color: BLUE },
@@ -100,42 +122,38 @@ document$.subscribe(function () {
     { from: "verify", to: "mcp", color: PURPLE },
   ];
 
-  /* Core process journeys: nodes and edges to highlight when selected. */
+  var EDGE_BY_ID = {};
+  EDGES.forEach(function (edge) {
+    EDGE_BY_ID[edgeId(edge)] = edge;
+  });
+
+  /* Core process journeys: edges to highlight when selected. Nodes are derived. */
   var JOURNEYS = {
     publish: {
       label: "Publish",
-      nodes: ["oasf", "push", "store", "routing"],
-      edges: ["oasf-push", "push-store", "store-routing"],
+      edges: [
+        "oasf-push",
+        "files-import",
+        "registries-import",
+        "import-push",
+        "remote-sync",
+        "push-store",
+        "sync-store",
+        "store-routing",
+      ],
     },
     discover: {
       label: "Discover",
-      nodes: ["store", "routing", "search", "rsearch", "verify", "pull", "export", "mcp"],
+      edges: ["store-search", "routing-rsearch"],
+    },
+    verify: {
+      label: "Verify",
       edges: [
-        "store-search",
-        "store-routing",
-        "routing-rsearch",
         "search-verify",
         "rsearch-verify",
         "verify-pull",
         "verify-export",
         "verify-mcp",
-      ],
-    },
-    aggregate: {
-      label: "Aggregate",
-      nodes: ["registries", "remote", "import", "sync", "push", "store"],
-      edges: ["registries-import", "import-push", "push-store", "remote-sync", "sync-store"],
-    },
-    federation: {
-      label: "Federation",
-      nodes: ["oasf", "remote", "push", "sync", "store", "routing", "rsearch"],
-      edges: [
-        "oasf-push",
-        "remote-sync",
-        "push-store",
-        "sync-store",
-        "store-routing",
-        "routing-rsearch",
       ],
     },
   };
@@ -152,6 +170,29 @@ document$.subscribe(function () {
       lookup[item] = true;
     });
     return lookup;
+  }
+
+  function nodeLookupForJourney(journey) {
+    var nodes = {};
+    journey.edges.forEach(function (edgeKey) {
+      var edge = EDGE_BY_ID[edgeKey];
+      if (!edge) {
+        return;
+      }
+      nodes[edge.from] = true;
+      nodes[edge.to] = true;
+    });
+    return nodes;
+  }
+
+  function clearJourneyVisuals(wrap) {
+    wrap.querySelectorAll(".dir-graph-card[data-node-id], .dir-graph-card-link[data-node-id]").forEach(function (card) {
+      card.classList.remove("dir-graph-card--active", "dir-graph-card--dimmed");
+    });
+
+    wrap.querySelectorAll(".dir-graph-branch").forEach(function (branch) {
+      branch.classList.remove("dir-graph-branch--active");
+    });
   }
 
   function edgePath(a, b) {
@@ -210,7 +251,7 @@ document$.subscribe(function () {
     if (line) {
       lines.push(line);
     }
-    return lines.slice(0, 2);
+    return lines.slice(0, 3);
   }
 
   function buildCard(node) {
@@ -222,8 +263,8 @@ document$.subscribe(function () {
     var tx = node.cx - iconSize / 2;
     var ty = node.cy - 28 - iconSize / 2;
 
-    var lines = wrapText(node.desc, 24);
-    var descStartY = lines.length > 1 ? node.cy + 14 : node.cy + 17;
+    var lines = wrapText(node.desc, 22);
+    var descStartY = node.cy + (lines.length === 1 ? 17 : lines.length === 2 ? 14 : 10);
     var desc = lines
       .map(function (line, i) {
         return (
@@ -234,8 +275,7 @@ document$.subscribe(function () {
       })
       .join("");
 
-    return (
-      '<g class="dir-graph-card" data-node-id="' + node.id + '">' +
+    var inner =
       '<rect class="dir-graph-card-fill" x="' + (node.cx - halfW) +
       '" y="' + top + '" width="' + CW + '" height="' + CH + '" rx="12"/>' +
       '<rect class="dir-graph-card-tint" x="' + (node.cx - halfW) +
@@ -251,8 +291,17 @@ document$.subscribe(function () {
       '<text class="dir-graph-card-label" x="' + node.cx +
       '" y="' + (node.cy - 2) + '" text-anchor="middle">' + node.label +
       "</text>" +
-      desc +
-      "</g>"
+      desc;
+
+    if (node.href) {
+      return (
+        '<a class="dir-graph-card-link" href="' + node.href + '" data-node-id="' + node.id + '">' +
+        '<g class="dir-graph-card dir-graph-card--link">' + inner + "</g></a>"
+      );
+    }
+
+    return (
+      '<g class="dir-graph-card" data-node-id="' + node.id + '">' + inner + "</g>"
     );
   }
 
@@ -325,66 +374,179 @@ document$.subscribe(function () {
     );
   }
 
+  function journeyTitleLabel(key, index) {
+    var label = JOURNEYS[key].label;
+    if (index > 0) {
+      return label.charAt(0).toLowerCase() + label.slice(1);
+    }
+    return label;
+  }
+
   function buildJourneyButtons() {
+    var keys = Object.keys(JOURNEYS);
+    var parts = [];
+
+    keys.forEach(function (key, index) {
+      if (index === keys.length - 1 && keys.length > 1) {
+        parts.push('<span class="dir-graph-heading__sep" aria-hidden="true">, and </span>');
+      } else if (index > 0) {
+        parts.push('<span class="dir-graph-heading__sep" aria-hidden="true">, </span>');
+      }
+
+      parts.push(
+        '<button type="button" class="dir-graph-journey-btn" role="tab" ' +
+        'aria-selected="false" data-journey="' + key + '">' +
+        journeyTitleLabel(key, index) +
+        "</button>",
+      );
+    });
+
     return (
-      '<div class="dir-graph-journeys" role="tablist" aria-label="Highlight a process">' +
-      Object.keys(JOURNEYS)
-        .map(function (key) {
-          return (
-            '<button type="button" class="dir-graph-journey-btn" role="tab" ' +
-            'aria-selected="false" data-journey="' + key + '">' +
-            JOURNEYS[key].label +
-            "</button>"
-          );
-        })
-        .join("") +
-      "</div>"
+      '<header class="dir-graph-heading">' +
+      '<div class="dir-graph-journeys" role="tablist" aria-label="Publish, discover, and verify">' +
+      parts.join("") +
+      "</div></header>"
     );
   }
 
-  function setActiveJourney(wrap, journeyId) {
+  function applyJourneyHighlight(wrap, journeyId) {
     var journey = journeyId ? JOURNEYS[journeyId] : null;
-    var nodeLookup = journey ? toLookup(journey.nodes) : null;
+    var journeyActive = !!journey;
     var edgeLookup = journey ? toLookup(journey.edges) : null;
+    var nodeLookup = journey ? nodeLookupForJourney(journey) : null;
 
-    wrap.setAttribute("data-active-journey", journeyId || "");
-    wrap.classList.toggle("dir-graph-wrap--journey-active", !!journey);
+    clearJourneyVisuals(wrap);
+    wrap.classList.toggle("dir-graph-wrap--journey-active", journeyActive);
 
-    wrap.querySelectorAll(".dir-graph-card").forEach(function (card) {
+    if (!journeyActive) {
+      return;
+    }
+
+    wrap.querySelectorAll(".dir-graph-card[data-node-id], .dir-graph-card-link[data-node-id]").forEach(function (card) {
       var id = card.getAttribute("data-node-id");
-      var inJourney = !journey || nodeLookup[id];
-      card.classList.toggle("dir-graph-card--active", !!journey && inJourney);
-      card.classList.toggle("dir-graph-card--dimmed", !!journey && !inJourney);
+      var inJourney = !!nodeLookup[id];
+      card.classList.toggle("dir-graph-card--active", inJourney);
+      card.classList.toggle("dir-graph-card--dimmed", !inJourney);
     });
 
     wrap.querySelectorAll(".dir-graph-branch").forEach(function (branch) {
       var id = branch.getAttribute("data-edge-id");
-      var inJourney = !journey || edgeLookup[id];
-      branch.classList.toggle("dir-graph-branch--active", !!journey && inJourney);
-      branch.classList.toggle("dir-graph-branch--dimmed", !!journey && !inJourney);
-    });
-
-    wrap.querySelectorAll(".dir-graph-journey-btn").forEach(function (btn) {
-      var selected = btn.getAttribute("data-journey") === journeyId;
-      btn.classList.toggle("is-active", selected);
-      btn.setAttribute("aria-selected", selected ? "true" : "false");
+      if (edgeLookup[id]) {
+        branch.classList.add("dir-graph-branch--active");
+      }
     });
   }
 
-  function renderGraph(wrap) {
-    wrap.innerHTML =
-      '<div class="dir-graph-stage">' + buildSvg() + "</div>" + buildJourneyButtons();
+  function updateJourneyButtonStates(wrap) {
+    var pinned = wrap.getAttribute("data-pinned-journey") || "";
+    var preview = wrap.getAttribute("data-preview-journey") || "";
 
     wrap.querySelectorAll(".dir-graph-journey-btn").forEach(function (btn) {
-      btn.addEventListener("click", function () {
-        var journey = btn.getAttribute("data-journey");
-        var active = wrap.getAttribute("data-active-journey");
-        setActiveJourney(wrap, active === journey ? null : journey);
-      });
+      var id = btn.getAttribute("data-journey");
+      btn.classList.toggle("is-active", id === pinned);
+      btn.classList.toggle("is-preview", id === preview && id !== pinned);
+      btn.setAttribute("aria-selected", id === pinned ? "true" : "false");
     });
+  }
+
+  function setPinnedJourney(wrap, journeyId) {
+    wrap.setAttribute("data-pinned-journey", journeyId || "");
+    wrap.removeAttribute("data-preview-journey");
+    applyJourneyHighlight(wrap, journeyId || null);
+    updateJourneyButtonStates(wrap);
+  }
+
+  function previewJourney(wrap, journeyId) {
+    if (!journeyId || !JOURNEYS[journeyId]) {
+      return;
+    }
+
+    var pinned = wrap.getAttribute("data-pinned-journey") || "";
+    if (journeyId === pinned) {
+      wrap.removeAttribute("data-preview-journey");
+    } else {
+      wrap.setAttribute("data-preview-journey", journeyId);
+    }
+
+    applyJourneyHighlight(wrap, journeyId);
+    updateJourneyButtonStates(wrap);
+  }
+
+  function clearJourneyPreview(wrap) {
+    if (!wrap.getAttribute("data-preview-journey")) {
+      return;
+    }
+
+    wrap.removeAttribute("data-preview-journey");
+    var pinned = wrap.getAttribute("data-pinned-journey") || "";
+    applyJourneyHighlight(wrap, pinned || null);
+    updateJourneyButtonStates(wrap);
+  }
+
+  function handleJourneyClick(wrap, event) {
+    var btn = event.target.closest(".dir-graph-journey-btn");
+    if (!btn || !wrap.contains(btn)) {
+      return;
+    }
+
+    var journey = btn.getAttribute("data-journey");
+    var pinned = wrap.getAttribute("data-pinned-journey") || "";
+    setPinnedJourney(wrap, pinned === journey ? null : journey);
+  }
+
+  function handleJourneyPointerOver(wrap, event) {
+    var btn = event.target.closest(".dir-graph-journey-btn");
+    if (!btn || !wrap.contains(btn)) {
+      return;
+    }
+
+    previewJourney(wrap, btn.getAttribute("data-journey"));
+  }
+
+  function handleJourneyPointerOut(wrap, event) {
+    var btn = event.target.closest(".dir-graph-journey-btn");
+    if (!btn || !wrap.contains(btn)) {
+      return;
+    }
+
+    var related = event.relatedTarget;
+    if (related && related.closest && related.closest(".dir-graph-journey-btn")) {
+      return;
+    }
+
+    clearJourneyPreview(wrap);
+  }
+
+  function renderGraph(wrap) {
+    var pinnedJourney = wrap.getAttribute("data-pinned-journey") || "";
+
+    wrap.innerHTML =
+      buildJourneyButtons() + '<div class="dir-graph-stage">' + buildSvg() + "</div>";
+
+    if (pinnedJourney && JOURNEYS[pinnedJourney]) {
+      setPinnedJourney(wrap, pinnedJourney);
+    }
+  }
+
+  function initGraph(wrap) {
+    if (wrap.dataset.dirGraphInit) {
+      return;
+    }
+
+    wrap.dataset.dirGraphInit = "1";
+    wrap.addEventListener("click", function (event) {
+      handleJourneyClick(wrap, event);
+    });
+    wrap.addEventListener("mouseover", function (event) {
+      handleJourneyPointerOver(wrap, event);
+    });
+    wrap.addEventListener("mouseout", function (event) {
+      handleJourneyPointerOut(wrap, event);
+    });
+    renderGraph(wrap);
   }
 
   document
     .querySelectorAll(".dir-graph-wrap[data-dir-graph]")
-    .forEach(renderGraph);
+    .forEach(initGraph);
 });
