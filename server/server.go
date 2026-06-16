@@ -37,6 +37,7 @@ import (
 	"github.com/agntcy/dir/server/naming/wellknown"
 	"github.com/agntcy/dir/server/publication"
 	"github.com/agntcy/dir/server/routing"
+	"github.com/agntcy/dir/server/skill"
 	"github.com/agntcy/dir/server/store"
 	"github.com/agntcy/dir/server/types"
 	"github.com/agntcy/dir/utils/logging"
@@ -514,6 +515,13 @@ func (s Server) Start(ctx context.Context) error {
 			return fmt.Errorf("failed to start HTTP gateway: %w", err)
 		}
 	}
+
+	// Best-effort, non-blocking: a failure here must not block startup.
+	go func() {
+		if err := skill.Publish(ctx, s.store, s.database, s.oasfValidator); err != nil {
+			logger.Warn("Failed to publish DIR skill record", "error", err)
+		}
+	}()
 
 	return nil
 }
