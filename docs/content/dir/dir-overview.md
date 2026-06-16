@@ -47,10 +47,6 @@ complementary skills solve complex problems, and dependency chains for composite
 - **Distributed Architecture**: Built on proven distributed systems principles,
 ADS uses content-addressing for global uniqueness and implements distributed hash tables (DHT)
 for scalable content discovery across decentralized networks.
-- **Runtime Discovery**: Automatically discover and query agent workloads running in container
-runtimes (Docker, Kubernetes). The discovery system watches for labeled containers/pods,
-resolves their metadata (A2A cards, OASF records), and exposes them via gRPC API for
-integration with other Directory components.
 
 ## Naming
 
