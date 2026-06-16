@@ -46,6 +46,18 @@ After building the UI, recompile the Go binary to embed the fresh assets:
 task cli:compile
 ```
 
+### Static asset caching
+
+The Go gateway sets HTTP cache and compression headers for embedded UI assets:
+
+- `/_app/immutable/*` — `Cache-Control: public, max-age=31536000, immutable` plus gzip when accepted
+- `/` and SPA fallbacks — `Cache-Control: no-cache` so deploys pick up new hashed bundles
+- Inter font files are bundled via `@fontsource/inter` (Latin subset; no Google Fonts at runtime)
+
+When exposing the HTTP gateway through F5 NGINX Ingress, enable edge gzip and upstream
+keepalive via `httpGateway.ingress.annotations` (see chart defaults in
+`install/charts/dir/apiserver/values.yaml`).
+
 ## Full rebuild (UI + CLI binary)
 
 ```bash

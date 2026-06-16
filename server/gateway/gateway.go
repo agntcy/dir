@@ -201,12 +201,6 @@ func RegisterAIFinder(ctx context.Context, mux *runtime.ServeMux, conn *grpc.Cli
 func withStaticFallback(mux *runtime.ServeMux, static fs.FS) http.Handler {
 	indexHTML, _ := fs.ReadFile(static, "index.html")
 
-	serveIndex := func(w http.ResponseWriter) {
-		w.Header().Set("Content-Type", "text/html; charset=utf-8")
-		w.WriteHeader(http.StatusOK)
-		_, _ = w.Write(indexHTML)
-	}
-
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		path := r.URL.Path
 
@@ -220,7 +214,7 @@ func withStaticFallback(mux *runtime.ServeMux, static fs.FS) http.Handler {
 
 		// Root or explicit index.html.
 		if path == "/" || path == "/index.html" {
-			serveIndex(w)
+			serveIndexHTML(w, r, indexHTML)
 
 			return
 		}
@@ -228,13 +222,15 @@ func withStaticFallback(mux *runtime.ServeMux, static fs.FS) http.Handler {
 		// Serve static file if it exists (JS, CSS, images, etc).
 		if name := path[1:]; name != "" {
 			if _, err := fs.Stat(static, name); err == nil {
-				http.ServeFileFS(w, r, static, name)
+				if err := serveStaticFile(w, r, static, name); err != nil {
+					http.NotFound(w, r)
+				}
 
 				return
 			}
 		}
 
 		// SPA fallback: serve index.html for client-side routing.
-		serveIndex(w)
+		serveIndexHTML(w, r, indexHTML)
 	})
 }
