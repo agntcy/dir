@@ -29,12 +29,21 @@ const (
 	AgentSkillsModuleName = "core/language_model/agentskills"
 	MCPServerName         = "agntcy-dir-mcp"
 
+	// OASF taxonomy IDs (verified against the 1.0.0 JSON schema). Mismatching
+	// these is a hard validation error, missing them is only a warning.
+	skillContextualComprehensionID uint32 = 10101
+	agentSkillsModuleID            uint32 = 10302
+	mcpModuleID                    uint32 = 202
+	domainAPIsIntegrationID        uint32 = 10204
+
 	// Used when the binary lacks an ldflags-stamped version (e.g. `go run`).
 	fallbackVersion = "0.0.0-dev"
 
 	// OASF requires `skills` to be non-empty; pick the closest taxonomy
 	// node for an instructional record.
 	skillContextualComprehensionName = "natural_language_processing/natural_language_understanding/contextual_comprehension"
+
+	domainAPIsIntegrationName = "technology/software_engineering/apis_integration"
 )
 
 // RecordVersion returns the record's `version`, stripping the commit suffix
@@ -76,7 +85,10 @@ func BuildRecord(now time.Time) (*corev1.Record, error) {
 		Authors:       []string{"https://github.com/agntcy/dir"},
 		CreatedAt:     now.UTC().Format(time.RFC3339),
 		Skills: []*typesv1.Skill{
-			{Name: skillContextualComprehensionName},
+			{Name: skillContextualComprehensionName, Id: skillContextualComprehensionID},
+		},
+		Domains: []*typesv1.Domain{
+			{Name: domainAPIsIntegrationName, Id: domainAPIsIntegrationID},
 		},
 		Modules: []*typesv1.Module{skillModule, mcpModule},
 	}), nil
@@ -108,6 +120,7 @@ func buildAgentSkillsModule(recordVer string, skillBytes []byte) (*typesv1.Modul
 
 	return &typesv1.Module{
 		Name: AgentSkillsModuleName,
+		Id:   agentSkillsModuleID,
 		Data: data,
 		Artifact: &typesv1.Descriptor{
 			MediaType: catalogv1.ProtocolAgentSkillsMdMediaType,
@@ -118,11 +131,12 @@ func buildAgentSkillsModule(recordVer string, skillBytes []byte) (*typesv1.Modul
 	}, nil
 }
 
-// Concrete connection command/args are TBD; finalize once dir-mcp deployment
-// is settled.
 func buildMCPModule() (*typesv1.Module, error) {
+	// `dirctl mcp serve` is the embedded MCP server that fronts this Directory.
 	connection, err := structpb.NewStruct(map[string]any{
-		"type": "stdio",
+		"type":    "stdio",
+		"command": "dirctl",
+		"args":    []any{"mcp", "serve"},
 	})
 	if err != nil {
 		return nil, fmt.Errorf("build mcp connection struct: %w", err)
@@ -142,6 +156,7 @@ func buildMCPModule() (*typesv1.Module, error) {
 
 	return &typesv1.Module{
 		Name: MCPModuleName,
+		Id:   mcpModuleID,
 		Data: data,
 	}, nil
 }
