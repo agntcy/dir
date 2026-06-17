@@ -230,6 +230,13 @@ func TestWithStaticFallback(t *testing.T) {
 	})
 }
 
+func TestEmbeddedFaviconIsICO(t *testing.T) {
+	data, err := fs.ReadFile(staticFS, "static/favicon.ico")
+	require.NoError(t, err)
+	require.GreaterOrEqual(t, len(data), 4, "favicon.ico should have ICO header")
+	assert.Equal(t, []byte{0x00, 0x00, 0x01, 0x00}, data[:4], "favicon.ico must be a Windows ICO file, not a PNG renamed with .ico")
+}
+
 type errorFS struct{}
 
 func (errorFS) Open(string) (fs.File, error) {
