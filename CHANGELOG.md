@@ -5,6 +5,72 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v1.5.0] - 2026-06-17
+
+### Added
+- **API**: `AIFinderService` catalog models and AI Catalog well-known endpoint (#1579, #1590)
+- **API**: Full record to AI Catalog mappings (#1609)
+- **API**: Well-known identifier and identity resolution (#1623)
+- **API**: AI Finder HTTP API via grpc-gateway sidecar and AI Finder UI (#1582, #1595)
+- **API**: Add native Directory `SKILL.md` for agent tooling (#1640)
+- **UI**: AI Catalog UI design alignment fixes (#1622)
+- **UI**: About page, favicon, customizable title, and paginated AI Catalog first load (#1658, #1638)
+- **UI**: Static asset cache headers, gzip, and self-hosted fonts (#1653)
+- **Docs**: In-repo documentation site with main and community pages (#1591, #1585, #1594)
+- **Docs**: `dev` (main) and `latest` (vX.Y.Z) docs deployment (#1611)
+- **Docs**: Get Started trim/reorder, main-page refactor, and ARD specification (#1656, #1619, #1652)
+- **CLI**: Agent Skill import workflow (#1617)
+- **CLI**: AI Finder agent export (#1610)
+
+### Changed
+- **CLI**: Bump dir-importer and adapt to new enricher config API (#1570)
+- **Docs**: Prune outdated pages, consolidate CLI install instructions, refresh diagrams, and update release documentation (#1657, #1646, #1647, #1650, #1615, #1589, #1552)
+- **Helm**: Production follow-up changes (#1580)
+- **Deps**: Docs CI workflow updates (#1649)
+- **Deps**: Update Homebrew formula version (#1568)
+- **Deps**: Bump Go to 1.26.4 (#1668)
+- **Deps**: Update SPIRE, Zot, PostgreSQL, Busybox, GitHub Actions, OASF SDK protobufs, Helm Zot chart, `sigstore-go`, `yq`, and other module dependencies (#1560–#1664, #1602, #1630–#1636, #1669)
+
+### Fixed
+- **API**: Enable authenticated client usage for HTTP gateway (#1614)
+- **API**: AI Catalog name (#1654)
+- **API**: Config unit tests (#1592)
+- **CLI**: Completion context skip (#1566)
+- **CLI**: Homebrew formula fixes and missing env in latest formulae (#1567, #1569, #1608)
+- **Docs**: Restore header shadow (#1655)
+- **Helm**: Drop unused `federatesWith` SPIRE config for services (#1625)
+- **CI**: Harden import-records workflow for nightly catalog sync (#1651)
+- **Deps**: Security update for `quic-go` (#1583)
+
+## [v1.4.0] - 2026-05-28
+
+### Added
+- **API**: Annotation-based search support (#1442)
+- **API**: Integration tests for the server module (#1093)
+- **CLI**: Batch routing publish and batch unpublish (#1526, #1530)
+- **CLI**: `dirctl doctor network diagnose` command (#1515)
+- **CLI**: Reusable client configuration (#1496)
+- **CLI**: Refresh expired OIDC tokens from `dirctl auth status` (#1516)
+- **CLI**: `--output-dir` option on the import command (#1498)
+- **Helm**: OpenShift install support and documentation (#1423)
+
+### Changed
+- **API**: Remove deprecated validator globals from core/v1 (#1458)
+- **API**: Enhance credential negotiation with client config builder from context (#1499)
+- **API**: Cleanup and v1.3.0 release alignment (#1495)
+- **Helm**: Clarify auto-resolve behavior in chart values comments (#1477)
+- **Deps**: Improve daemon/runtime e2e tests with better context usage and timeouts (#1513)
+- **Deps**: Update Homebrew formula version (#1463)
+- **Deps**: Bump Go to 1.26.3 (#1504, #1506)
+- **Deps**: Update SPIRE, Zot, PostgreSQL, libp2p-kad-dht, Kubernetes, GitHub Actions, CodeQL, and other module dependencies (#1455, #1456, #1479–#1549)
+
+### Fixed
+- **CLI**: Skip auth for local-only commands and fix local registry default port (#1471, #1473)
+- **API**: Renovate runner (#1467)
+- **Tests**: Naming test and test suite initializer error logging (#1491, #1523)
+- **Tests**: Handle mTLS healthchecks in e2e tests (#1550)
+- **Deps**: Security updates for `golang.org/x/crypto`, `golang.org/x/net`, `golang.org/x/sys`, containerd, go-git, and modelcontextprotocol/registry (#1492, #1521, #1522, #1534–#1539)
+
 ## [v1.3.0] - 2026-05-05
 
 ### Added
