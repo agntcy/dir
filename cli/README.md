@@ -20,7 +20,8 @@ Full documentation: [https://docs.agntcy.org/dir/dir-cli-reference/](https://doc
 
 ```bash
 # Install (Homebrew)
-brew tap agntcy/dir https://github.com/agntcy/dir/
+brew tap agntcy/dir https://github.com/agntcy/dir
+brew trust agntcy/dir
 brew install dirctl
 
 # Store, publish, search, pull

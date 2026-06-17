@@ -111,8 +111,8 @@ nav:
   - Documentation:
       - Get Started:
           - Overview: dir/dir-overview.md
-          - Features and Usage Scenarios: dir/dir-features-scenarios.md
           - Quickstart: dir/dir-quickstart.md
+          - Features and Usage Scenarios: dir/dir-features-scenarios.md
       - Concepts:
           - Architecture: dir/dir-architecture.md
           - Records: dir/dir-component-records-validation.md

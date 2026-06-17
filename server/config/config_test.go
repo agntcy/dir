@@ -32,7 +32,6 @@ func TestConfig(t *testing.T) {
 				"DIRECTORY_SERVER_LISTEN_ADDRESS":                      "example.com:8889",
 				"DIRECTORY_SERVER_OASF_API_VALIDATION_SCHEMA_URL":      "https://custom.schema.url",
 				"DIRECTORY_SERVER_STORE_PROVIDER":                      "provider",
-				"DIRECTORY_SERVER_STORE_OCI_TYPE":                      "ghcr",
 				"DIRECTORY_SERVER_STORE_OCI_LOCAL_DIR":                 "local-dir",
 				"DIRECTORY_SERVER_STORE_OCI_REGISTRY_ADDRESS":          "example.com:5001",
 				"DIRECTORY_SERVER_STORE_OCI_REPOSITORY_NAME":           "test-dir",
