@@ -13,7 +13,7 @@ inputs:
   go_version:
     description: Go version to use for building dirctl
     required: false
-    default: "1.26.3"
+    default: "1.26.4"
 
 outputs:
   dirctl_path:
