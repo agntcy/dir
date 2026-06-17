@@ -45,23 +45,7 @@ The `dirctl` CLI binary is available for all platforms regardless of which deplo
 
 ### dirctl daemon
 
-- dirctl binary: install via Homebrew or download from [GitHub Releases](https://github.com/agntcy/dir/releases):
-
-=== "Homebrew (macOS / Linux)"
-
-    ```bash
-    brew tap agntcy/dir https://github.com/agntcy/dir
-    brew install dirctl
-    ```
-
-=== "Release binary"
-
-    ```bash
-    # Example for Linux amd64 — adjust OS and architecture as needed
-    curl -L https://github.com/agntcy/dir/releases/latest/download/dirctl-linux-amd64 -o dirctl
-    chmod +x dirctl
-    sudo mv dirctl /usr/local/bin/
-    ```
+- `dirctl` binary — install via Homebrew, release binary, source, or container as described in the [Quickstart](dir-quickstart.md#install-the-cli).
 
 ### Docker Compose
 
