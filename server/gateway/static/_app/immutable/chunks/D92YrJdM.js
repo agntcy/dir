@@ -1,0 +1,1 @@
+import{H as e,O as t,U as n}from"./CbnoFSQH.js";var r=new class{#e=n(null);get stats(){return t(this.#e)}set stats(t){e(this.#e,t,!0)}set(e){this.stats=e}};export{r as t};

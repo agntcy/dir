@@ -422,6 +422,10 @@ httpGateway:
   # It is used in the server configuration for generating correct links and CORS settings.
   publicURL: "example.com"
 
+  # Display title for the embedded AI Catalog UI (served via /ui/config.json).
+  # Default: AI Catalog
+  catalogTitle: "AI Catalog"
+
   # Port for the HTTP gateway endpoint
   # Used for both the application listen address and Kubernetes service/ingress port
   # Default: 8889

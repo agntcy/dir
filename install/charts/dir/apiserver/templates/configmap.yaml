@@ -30,7 +30,7 @@ data:
     {{- $_ := set $config "metrics" $metricsConfig }}
     {{- end }}
     {{- if .Values.httpGateway }}
-    {{- $gwConfig := dict "enabled" .Values.httpGateway.enabled "listen_address" (printf "0.0.0.0:%d" (.Values.httpGateway.port | int)) "public_url" .Values.httpGateway.publicURL }}
+    {{- $gwConfig := dict "enabled" .Values.httpGateway.enabled "listen_address" (printf "0.0.0.0:%d" (.Values.httpGateway.port | int)) "public_url" .Values.httpGateway.publicURL "catalog_title" (.Values.httpGateway.catalogTitle | default "AI Catalog") }}
     {{- $_ := set $config "http_gateway" $gwConfig }}
     {{- end }}
     {{- $config | toYaml | nindent 4 }}

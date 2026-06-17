@@ -6,16 +6,16 @@
 	import VerifiedBadge from './VerifiedBadge.svelte';
 
 	interface Props {
-		agent: CatalogEntry;
+		aicard: CatalogEntry;
 		onclick: () => void;
 	}
 
-	let { agent, onclick }: Props = $props();
+	let { aicard, onclick }: Props = $props();
 
-	let types = $derived(extractEntryTypes(agent));
-	let verified = $derived(hasTrustManifest(agent));
-	let tags = $derived((agent.tags || []).slice(0, 3));
-	let stats = $derived(fakeStats(agent));
+	let types = $derived(extractEntryTypes(aicard));
+	let verified = $derived(hasTrustManifest(aicard));
+	let tags = $derived((aicard.tags || []).slice(0, 3));
+	let stats = $derived(fakeStats(aicard));
 </script>
 
 <!-- svelte-ignore a11y_no_noninteractive_element_to_interactive_role -->
@@ -29,20 +29,20 @@
 	<div class="flex items-start justify-between gap-3">
 		<div class="min-w-0">
 			<div class="flex items-center gap-1.5 min-w-0">
-				<h3 class="font-semibold text-ink-strong truncate">{agent.displayName || 'Unnamed Agent'}</h3>
+				<h3 class="font-semibold text-ink-strong truncate">{aicard.displayName || 'Unnamed AI card'}</h3>
 				{#if verified}
 					<VerifiedBadge />
 				{/if}
 			</div>
 			<p class="text-xs text-ink-medium mt-0.5">
-				{#if agent.version}Version {agent.version}{/if}
-				{#if agent.version && agent.updatedAt} &bull; {/if}
-				{#if agent.updatedAt}{new Date(agent.updatedAt).toLocaleDateString()}{/if}
+				{#if aicard.version}Version {aicard.version}{/if}
+				{#if aicard.version && aicard.updatedAt} &bull; {/if}
+				{#if aicard.updatedAt}{new Date(aicard.updatedAt).toLocaleDateString()}{/if}
 			</p>
 		</div>
 	</div>
 
-	<p class="text-sm text-ink line-clamp-2">{agent.description || 'No description available.'}</p>
+	<p class="text-sm text-ink line-clamp-2">{aicard.description || 'No description available.'}</p>
 
 	{#if tags.length}
 		<div class="flex flex-wrap gap-1.5">

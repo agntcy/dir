@@ -348,6 +348,9 @@ func New(ctx context.Context, cfg *config.Config, opts ...ServerOption) (*Server
 			GRPCEndpoint:     grpcEndpoint,
 			GRPCDialOptions:  clientOpts,
 			RegisterHandlers: gateway.RegisterAIFinder,
+			UIConfig: gateway.UIConfig{
+				CatalogTitle: gwCfg.CatalogTitle,
+			},
 		})
 		if err != nil {
 			return nil, fmt.Errorf("failed to create HTTP gateway: %w", err)

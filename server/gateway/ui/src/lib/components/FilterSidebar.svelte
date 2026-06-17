@@ -1,11 +1,11 @@
 <script lang="ts">
-	import type { AgentFilterCriteria } from '$lib/types';
+	import type { AICardFilterCriteria } from '$lib/types';
 	import { extractShortTag } from '$lib/utils';
 
 	interface Props {
 		allTags: string[];
 		catalogHydrating?: boolean;
-		onchange: (criteria: AgentFilterCriteria) => void;
+		onchange: (criteria: AICardFilterCriteria) => void;
 	}
 
 	let { allTags, catalogHydrating = false, onchange }: Props = $props();

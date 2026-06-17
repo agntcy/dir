@@ -7,7 +7,8 @@ export default defineConfig({
 	server: {
 		proxy: {
 			'/v1': 'http://localhost:8889',
-			'/.well-known': 'http://localhost:8889'
+			'/.well-known': 'http://localhost:8889',
+			'/ui': 'http://localhost:8889'
 		}
 	}
 });
