@@ -221,8 +221,9 @@ func normalizeCatalogTitle(title string) string {
 		return "AI Catalog"
 	}
 
-	if len(title) > maxCatalogTitleLen {
-		return title[:maxCatalogTitleLen]
+	runes := []rune(title)
+	if len(runes) > maxCatalogTitleLen {
+		return string(runes[:maxCatalogTitleLen])
 	}
 
 	return title

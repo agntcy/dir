@@ -166,9 +166,6 @@
 			catalogHydrating,
 			hydrationError
 		});
-		return () => {
-			headerStatsState.set(null);
-		};
 	});
 
 	onMount(() => {
@@ -184,6 +181,7 @@
 		return () => {
 			backgroundAbort?.abort();
 			clearTimeout(searchDebounce);
+			headerStatsState.set(null);
 		};
 	});
 </script>

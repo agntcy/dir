@@ -11,6 +11,7 @@ import (
 	"io/fs"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"testing/fstest"
 
@@ -248,6 +249,7 @@ func TestNormalizeCatalogTitle(t *testing.T) {
 	assert.Equal(t, "Cisco AI Catalog", normalizeCatalogTitle("  Cisco AI Catalog  "))
 	assert.Equal(t, "badtitle", normalizeCatalogTitle("bad\x00title"))
 	assert.Equal(t, "AI Catalog", normalizeCatalogTitle("\x00\x1f"))
+	assert.Equal(t, strings.Repeat("é", maxCatalogTitleLen), normalizeCatalogTitle(strings.Repeat("é", maxCatalogTitleLen+1)))
 }
 
 func TestEmbeddedFaviconIsICO(t *testing.T) {
