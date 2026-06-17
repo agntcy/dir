@@ -230,15 +230,6 @@ body:has(.dir-landing) .md-tabs__item--active .md-tabs__link {
   }
 }
 
-.dir-hero__lede-group {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 0.4rem;
-  max-width: 52rem;
-  width: 100%;
-}
-
 .md-typeset .dir-hero__lede {
   margin: 0;
   max-width: 52rem;
