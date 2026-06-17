@@ -696,10 +696,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#start-a-local-directory" class="md-nav__link">
+  <a href="#start-a-local-node" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Start a local Directory
+        Start a local node
       
     </span>
   </a>
@@ -718,10 +718,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#discover-records" class="md-nav__link">
+  <a href="#sign-and-verify" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Discover records
+        Sign and verify
       
     </span>
   </a>
@@ -729,13 +729,41 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#authenticate-to-a-remote-directory" class="md-nav__link">
+  <a href="#discovery" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Authenticate to a remote Directory
+        Discovery
       
     </span>
   </a>
+  
+    <nav class="md-nav" aria-label="Discovery">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#local-discovery" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Local discovery
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#network-discovery" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Network discovery
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
   
 </li>
       
@@ -773,7 +801,7 @@
   <span class="md-ellipsis">
     
   
-    Features and Usage Scenarios
+    Features
   
 
     
@@ -1879,10 +1907,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#start-a-local-directory" class="md-nav__link">
+  <a href="#start-a-local-node" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Start a local Directory
+        Start a local node
       
     </span>
   </a>
@@ -1901,10 +1929,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#discover-records" class="md-nav__link">
+  <a href="#sign-and-verify" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Discover records
+        Sign and verify
       
     </span>
   </a>
@@ -1912,13 +1940,41 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#authenticate-to-a-remote-directory" class="md-nav__link">
+  <a href="#discovery" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Authenticate to a remote Directory
+        Discovery
       
     </span>
   </a>
+  
+    <nav class="md-nav" aria-label="Discovery">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#local-discovery" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Local discovery
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#network-discovery" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Network discovery
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
   
 </li>
       
@@ -2071,15 +2127,21 @@ docker<span class="w"> </span>run<span class="w"> </span>--rm<span class="w"> </
 </div>
 </div>
 </div>
-<h2 id="start-a-local-directory">Start a local Directory</h2>
-<p>The built-in daemon runs a full local Directory with no external dependencies:</p>
+<h2 id="start-a-local-node">Start a local node</h2>
+<p>The built-in daemon runs a full local Directory node with no external dependencies:</p>
 <div class="highlight"><pre><span></span><code>dirctl<span class="w"> </span>daemon<span class="w"> </span>start
 </code></pre></div>
-<p>This listens on <code>localhost:8888</code> and stores state under <code>~/.agntcy/dir/</code>. See
-<a href="../dir-deployment-local/">Local Deployment</a> for configuration, Docker Compose, and platform
-details.</p>
-<p>For Kubernetes or production-style deployments, see <a href="../dir-deployment-kubernetes/">Deploy</a>
-guides instead of the daemon.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>The daemon stores the data under <code>~/.agntcy/dir/</code> and exposes the following services locally:</p>
+<ul>
+<li>HTTP API and dashboard on <code>localhost:8889</code> for real-time visibility into node's data</li>
+<li>gRPC DIR API on <code>localhost:8888</code> for client integrations</li>
+<li>DHT API on <code>localhost:8999</code> for network announcements</li>
+<li>OCI registry on <code>localhost:5555</code> for content-addressed storage</li>
+</ul>
+</div>
+<p>Check <a href="../dir-deployment-local/">Local Deployment</a> for configuration and platform details. For production deployments, see <a href="../dir-deployment-kubernetes/">Deploy</a> guides.</p>
 <h2 id="publish-a-record">Publish a record</h2>
 <ol>
 <li>
@@ -2091,6 +2153,9 @@ guides instead of the daemon.</p>
 <span class="s">  &quot;version&quot;: &quot;v1.0.0&quot;,</span>
 <span class="s">  &quot;description&quot;: &quot;Quickstart example agent&quot;,</span>
 <span class="s">  &quot;schema_version&quot;: &quot;1.0.0&quot;,</span>
+<span class="s">  &quot;annotations&quot;: {</span>
+<span class="s">    &quot;owner&quot;: &quot;alice&quot;</span>
+<span class="s">  },</span>
 <span class="s">  &quot;skills&quot;: [</span>
 <span class="s">    {</span>
 <span class="s">      &quot;id&quot;: 201,</span>
@@ -2121,29 +2186,45 @@ guides instead of the daemon.</p>
 </code></pre></div>
 </li>
 </ol>
-<h2 id="discover-records">Discover records</h2>
-<p>The quickstart runs a single local Directory, so the published record lives on this peer.
-List it locally by skill, then pull it:</p>
+<h2 id="sign-and-verify">Sign and verify</h2>
+<p>Records are unsigned by default. To ensure trust between publishers and consumers, Directory supports signing and verification of records.</p>
+<ol>
+<li>
+<p>Sign a record with OIDC-based identity:</p>
+<div class="highlight"><pre><span></span><code>dirctl<span class="w"> </span>sign<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$CID</span><span class="s2">&quot;</span>
+</code></pre></div>
+</li>
+<li>
+<p>Verify the signature and integrity of a record:</p>
+<div class="highlight"><pre><span></span><code>dirctl<span class="w"> </span>verify<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$CID</span><span class="s2">&quot;</span>
+</code></pre></div>
+</li>
+</ol>
+<h2 id="discovery">Discovery</h2>
+<p>Directory supports multiple discovery modes. Depending on the use case, you can search locally or across the network.</p>
+<h3 id="local-discovery">Local discovery</h3>
+<p>Search the local store for records matching a skill:</p>
+<div class="highlight"><pre><span></span><code>dirctl<span class="w"> </span>search<span class="w"> </span>--skill<span class="w"> </span><span class="s2">&quot;*vision*&quot;</span>
+dirctl<span class="w"> </span>search<span class="w"> </span>--annotation<span class="w"> </span><span class="s1">&#39;owner:*&#39;</span>
+</code></pre></div>
+<h3 id="network-discovery">Network discovery</h3>
+<p>The quickstart runs a single local Directory node, so the published record lives on this peer.
+To list records announced by <em>this peer</em>, use:</p>
 <div class="highlight"><pre><span></span><code>dirctl<span class="w"> </span>routing<span class="w"> </span>list<span class="w"> </span>--skill<span class="w"> </span><span class="s2">&quot;images_computer_vision&quot;</span>
-dirctl<span class="w"> </span>pull<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$CID</span><span class="s2">&quot;</span>
+dirctl<span class="w"> </span>pull<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$CID</span><span class="s2">&quot;</span><span class="w"> </span>--output<span class="w"> </span>json
 </code></pre></div>
-<p>To discover records announced by <em>other</em> peers across a network or federation, use
-<code>dirctl routing search</code>. It queries cached network announcements and deliberately excludes
-local records, so it returns nothing in a single-node setup:</p>
-<div class="highlight"><pre><span></span><code>dirctl<span class="w"> </span>routing<span class="w"> </span>search<span class="w"> </span>--skill<span class="w"> </span><span class="s2">&quot;images_computer_vision&quot;</span><span class="w"> </span>--limit<span class="w"> </span><span class="m">5</span>
+<p>In addition, Directory supports searching the network for records matching a given criteria.
+To discover records announced by <em>other peers</em> across a network or federation, use:</p>
+<div class="highlight"><pre><span></span><code>dirctl<span class="w"> </span>routing<span class="w"> </span>search<span class="w"> </span>--skill<span class="w"> </span><span class="s2">&quot;images_computer_vision&quot;</span>
 </code></pre></div>
-<p>See <a href="../dir-features-scenarios/">Features and Usage Scenarios</a> for signing, sync, import, export, and other workflows.</p>
-<h2 id="authenticate-to-a-remote-directory">Authenticate to a remote Directory</h2>
-<p>For production or federated gateways, log in with OIDC before using remote servers:</p>
-<div class="highlight"><pre><span></span><code>dirctl<span class="w"> </span>auth<span class="w"> </span>login<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--oidc-issuer<span class="w"> </span><span class="s2">&quot;https://idp.ads.outshift.io&quot;</span><span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--oidc-client-id<span class="w"> </span><span class="s2">&quot;dirctl&quot;</span>
-</code></pre></div>
-<p>See <a href="../dir-component-oidc-authentication/">OIDC Authentication</a> for the auth model and
-<a href="../dir-cli-reference/#global-options">CLI Reference</a> for command details.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Since network-wide search queries the cached network announcements and deliberately excludes
+local records; it returns nothing in a single-node setup.</p>
+</div>
 <h2 id="next-steps">Next steps</h2>
 <ul>
-<li><a href="../dir-features-scenarios/">Features and Usage Scenarios</a> — capability tour and CLI workflows</li>
+<li><a href="../dir-features-scenarios/">Features and Usage Scenarios</a> — capability tour and workflows</li>
 <li><a href="../dir-architecture/">Architecture</a> — how Directory fits together</li>
 <li><a href="../dir-deployment-local/">Local</a> / <a href="../dir-deployment-kubernetes/">Kubernetes</a> /
   <a href="../dir-prod-deployment/">Production</a> deployment</li>
@@ -2208,13 +2289,13 @@ local records, so it returns nothing in a single-node setup:</p>
         
         
           
-          <a href="../dir-features-scenarios/" class="md-footer__link md-footer__link--next" aria-label="Next: Features and Usage Scenarios">
+          <a href="../dir-features-scenarios/" class="md-footer__link md-footer__link--next" aria-label="Next: Features">
             <div class="md-footer__title">
               <span class="md-footer__direction">
                 Next
               </span>
               <div class="md-ellipsis">
-                Features and Usage Scenarios
+                Features
               </div>
             </div>
             <div class="md-footer__button md-icon">
