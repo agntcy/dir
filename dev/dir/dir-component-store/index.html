@@ -623,14 +623,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../dir-features-scenarios/" class="md-nav__link">
+      <a href="../dir-quickstart/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    Features and Usage Scenarios
+    Quickstart
   
 
     
@@ -651,14 +651,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../dir-quickstart/" class="md-nav__link">
+      <a href="../dir-features-scenarios/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    Quickstart
+    Features and Usage Scenarios
   
 
     
@@ -887,10 +887,38 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#backends" class="md-nav__link">
+  <a href="#backends-and-configuration" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Backends
+        Backends and configuration
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Backends and configuration">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#configuration-examples" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Configuration examples
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#storage-model" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Storage model
       
     </span>
   </a>
@@ -1906,10 +1934,38 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#backends" class="md-nav__link">
+  <a href="#backends-and-configuration" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Backends
+        Backends and configuration
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Backends and configuration">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#configuration-examples" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Configuration examples
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#storage-model" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Storage model
       
     </span>
   </a>
@@ -2046,15 +2102,127 @@
 </ol>
 <p>Records can be retrieved by CID or, when configured with a verifiable name, by
 Docker-style name references (<code>name</code>, <code>name:version</code>, <code>name:version@cid</code>).</p>
-<h2 id="backends">Backends</h2>
-<p>Directory supports OCI-compatible registries including <a href="https://github.com/project-zot/zot">Zot</a>
-(default for local deployments), GitHub Container Registry, and Docker Hub. The server selects
-the backend via store configuration (see <a href="../dir-deployment-local/">Local Deployment</a> and
-<a href="../dir-prod-deployment/">Production Deployment</a>).</p>
+<h2 id="backends-and-configuration">Backends and configuration</h2>
+<p>Directory supports multiple OCI-compatible registry backends:</p>
+<table>
+<thead>
+<tr>
+<th>Registry Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>zot</code></td>
+<td><a href="https://github.com/project-zot/zot">Zot</a> OCI registry (default for local deployments)</td>
+</tr>
+<tr>
+<td><code>ghcr</code></td>
+<td>GitHub Container Registry</td>
+</tr>
+<tr>
+<td><code>dockerhub</code></td>
+<td>Docker Hub</td>
+</tr>
+</tbody>
+</table>
+<p>The backend is configured via environment variables on the Directory server:</p>
+<table>
+<thead>
+<tr>
+<th>Environment Variable</th>
+<th>Description</th>
+<th>Default</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>DIRECTORY_SERVER_STORE_OCI_REGISTRY_ADDRESS</code></td>
+<td>Registry address</td>
+<td><code>127.0.0.1:5000</code></td>
+</tr>
+<tr>
+<td><code>DIRECTORY_SERVER_STORE_OCI_REPOSITORY_NAME</code></td>
+<td>Repository name</td>
+<td><code>dir</code></td>
+</tr>
+</tbody>
+</table>
+<p>Credentials are supplied through additional environment variables:</p>
+<table>
+<thead>
+<tr>
+<th>Environment Variable</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>DIRECTORY_SERVER_STORE_OCI_AUTH_CONFIG_USERNAME</code></td>
+<td>Username for basic authentication</td>
+</tr>
+<tr>
+<td><code>DIRECTORY_SERVER_STORE_OCI_AUTH_CONFIG_PASSWORD</code></td>
+<td>Password for basic authentication</td>
+</tr>
+<tr>
+<td><code>DIRECTORY_SERVER_STORE_OCI_AUTH_CONFIG_ACCESS_TOKEN</code></td>
+<td>Access token for token-based authentication</td>
+</tr>
+<tr>
+<td><code>DIRECTORY_SERVER_STORE_OCI_AUTH_CONFIG_INSECURE</code></td>
+<td>Skip TLS verification (default: <code>true</code>)</td>
+</tr>
+</tbody>
+</table>
+<h3 id="configuration-examples">Configuration examples</h3>
+<p><strong>Zot (local development)</strong></p>
+<div class="highlight"><pre><span></span><code><span class="nb">export</span><span class="w"> </span><span class="nv">DIRECTORY_SERVER_STORE_OCI_REGISTRY_ADDRESS</span><span class="o">=</span>localhost:5000
+<span class="nb">export</span><span class="w"> </span><span class="nv">DIRECTORY_SERVER_STORE_OCI_REPOSITORY_NAME</span><span class="o">=</span>dir
+<span class="nb">export</span><span class="w"> </span><span class="nv">DIRECTORY_SERVER_STORE_OCI_AUTH_CONFIG_INSECURE</span><span class="o">=</span><span class="nb">true</span>
+</code></pre></div>
+<p><strong>GitHub Container Registry (GHCR)</strong></p>
+<div class="highlight"><pre><span></span><code><span class="nb">export</span><span class="w"> </span><span class="nv">DIRECTORY_SERVER_STORE_OCI_REGISTRY_ADDRESS</span><span class="o">=</span>ghcr.io
+<span class="nb">export</span><span class="w"> </span><span class="nv">DIRECTORY_SERVER_STORE_OCI_REPOSITORY_NAME</span><span class="o">=</span>your-org/dir
+<span class="nb">export</span><span class="w"> </span><span class="nv">DIRECTORY_SERVER_STORE_OCI_AUTH_CONFIG_USERNAME</span><span class="o">=</span>your-github-username
+<span class="nb">export</span><span class="w"> </span><span class="nv">DIRECTORY_SERVER_STORE_OCI_AUTH_CONFIG_PASSWORD</span><span class="o">=</span>your-github-token
+<span class="nb">export</span><span class="w"> </span><span class="nv">DIRECTORY_SERVER_STORE_OCI_AUTH_CONFIG_INSECURE</span><span class="o">=</span><span class="nb">false</span>
+</code></pre></div>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p>GHCR does not support record deletion via the OCI API. Attempting to
+delete a record when using GHCR will return an error.
+To manage packages hosted on GHCR, use the GitHub UI, REST API, or
+GraphQL API instead. See
+<a href="https://docs.github.com/en/packages/learn-github-packages/deleting-and-restoring-a-package">Deleting and restoring a package</a>
+for details.</p>
+</div>
+<p><strong>Docker Hub</strong></p>
+<div class="highlight"><pre><span></span><code><span class="nb">export</span><span class="w"> </span><span class="nv">DIRECTORY_SERVER_STORE_OCI_REGISTRY_ADDRESS</span><span class="o">=</span>docker.io
+<span class="nb">export</span><span class="w"> </span><span class="nv">DIRECTORY_SERVER_STORE_OCI_REPOSITORY_NAME</span><span class="o">=</span>your-username/dir
+<span class="nb">export</span><span class="w"> </span><span class="nv">DIRECTORY_SERVER_STORE_OCI_AUTH_CONFIG_USERNAME</span><span class="o">=</span>your-dockerhub-username
+<span class="nb">export</span><span class="w"> </span><span class="nv">DIRECTORY_SERVER_STORE_OCI_AUTH_CONFIG_PASSWORD</span><span class="o">=</span>your-dockerhub-token
+<span class="nb">export</span><span class="w"> </span><span class="nv">DIRECTORY_SERVER_STORE_OCI_AUTH_CONFIG_INSECURE</span><span class="o">=</span><span class="nb">false</span>
+</code></pre></div>
+<p>See also <a href="../dir-deployment-local/">Local Deployment</a> and
+<a href="../dir-prod-deployment/">Production Deployment</a> for deployment-specific configuration.</p>
+<h2 id="storage-model">Storage model</h2>
+<p>ADS differs from block storage systems like <a href="https://ipfs.tech/">IPFS</a> in its approach to
+distributed object storage:</p>
+<ul>
+<li><strong>Simplified content retrieval</strong> — ADS stores complete records rather than splitting them
+  into blocks, so no special optimizations are needed to reassemble content from multiple
+  sources. Records are retrieved as complete units using standard OCI protocols.</li>
+<li><strong>OCI integration</strong> — records are stored and transferred as OCI artifacts, so any
+  OCI distribution-compliant server can participate in the network and peers retrieve records
+  directly from each other using standard OCI protocols.</li>
+</ul>
+<p>While ADS uses <a href="https://zotregistry.dev">zot</a> as its reference OCI server implementation, the
+system works with any server that implements the OCI distribution specification.</p>
 <h2 id="related-documentation">Related documentation</h2>
 <ul>
 <li><a href="../dir-component-records-validation/">Records</a> — OASF record model, CIDs, and validation</li>
-<li><a href="../dir-features-scenarios/#store">Features and Usage Scenarios — Store</a> — CLI examples and registry configuration</li>
+<li><a href="../dir-features-scenarios/#store">Features and Usage Scenarios — Store</a> — CLI examples for push, pull, and info</li>
 <li><a href="../dir-cli-reference/#storage-operations">CLI Reference — Storage Operations</a> — <code>push</code>, <code>pull</code>, <code>delete</code>, <code>info</code></li>
 </ul>
 

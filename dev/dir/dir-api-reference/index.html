@@ -623,14 +623,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../dir-features-scenarios/" class="md-nav__link">
+      <a href="../dir-quickstart/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    Features and Usage Scenarios
+    Quickstart
   
 
     
@@ -651,14 +651,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../dir-quickstart/" class="md-nav__link">
+      <a href="../dir-features-scenarios/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    Quickstart
+    Features and Usage Scenarios
   
 
     
@@ -1742,6 +1742,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#error-codes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Error codes
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#clients" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1888,6 +1899,17 @@
     <span class="md-ellipsis">
       
         Protocol surface
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#error-codes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Error codes
       
     </span>
   </a>
@@ -2060,6 +2082,46 @@ canonical schema live on <a href="https://buf.build/agntcy/dir">buf.build/agntcy
 </table>
 <p>Use the Buf schema browser for message types, RPC names, and versioned packages. The
 <a href="../dir-architecture/">Architecture</a> page describes how these APIs map to Directory components.</p>
+<h2 id="error-codes">Error codes</h2>
+<p>Server APIs return standard gRPC status codes:</p>
+<table>
+<thead>
+<tr>
+<th>Error Code</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>codes.InvalidArgument</code></td>
+<td>Client provided an invalid or malformed argument, such as a missing or invalid record reference or record.</td>
+</tr>
+<tr>
+<td><code>codes.NotFound</code></td>
+<td>The requested object does not exist in the local store or across the network.</td>
+</tr>
+<tr>
+<td><code>codes.FailedPrecondition</code></td>
+<td>The server environment or configuration is not in the required state (e.g., failed to create a directory or temp file).</td>
+</tr>
+<tr>
+<td><code>codes.Internal</code></td>
+<td>An unexpected internal error occurred, such as I/O failures, serialization errors, or other server-side issues.</td>
+</tr>
+<tr>
+<td><code>codes.Canceled</code></td>
+<td>The operation was canceled by the client or the context expired.</td>
+</tr>
+<tr>
+<td><code>codes.Unauthenticated</code></td>
+<td>The client is not authenticated to perform the operation.</td>
+</tr>
+<tr>
+<td><code>codes.PermissionDenied</code></td>
+<td>The client does not have permission to perform the operation.</td>
+</tr>
+</tbody>
+</table>
 <h2 id="clients">Clients</h2>
 <ul>
 <li><strong>CLI</strong> — <a href="../dir-cli-reference/">Directory CLI Reference</a> (<code>dirctl</code>)</li>

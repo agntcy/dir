@@ -14,7 +14,7 @@
         <link rel="prev" href="../..">
       
       
-        <link rel="next" href="../dir-features-scenarios/">
+        <link rel="next" href="../dir-quickstart/">
       
       
         
@@ -668,71 +668,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#naming" class="md-nav__link">
+  <a href="#specifications-and-references" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Naming
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#content-routing" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Content Routing
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#distributed-object-storage" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Distributed Object Storage
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Distributed Object Storage">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#simplified-content-retrieval" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Simplified Content Retrieval
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#oci-integration" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        OCI Integration
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#flow-diagrams" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Flow Diagrams
+        Specifications and references
       
     </span>
   </a>
@@ -766,14 +705,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../dir-features-scenarios/" class="md-nav__link">
+      <a href="../dir-quickstart/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    Features and Usage Scenarios
+    Quickstart
   
 
     
@@ -794,14 +733,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../dir-quickstart/" class="md-nav__link">
+      <a href="../dir-features-scenarios/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    Quickstart
+    Features and Usage Scenarios
   
 
     
@@ -1967,71 +1906,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#naming" class="md-nav__link">
+  <a href="#specifications-and-references" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Naming
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#content-routing" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Content Routing
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#distributed-object-storage" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Distributed Object Storage
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Distributed Object Storage">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#simplified-content-retrieval" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Simplified Content Retrieval
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#oci-integration" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        OCI Integration
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#flow-diagrams" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Flow Diagrams
+        Specifications and references
       
     </span>
   </a>
@@ -2176,17 +2054,13 @@ Directory also leverages the <a href="https://docs.agntcy.org/csit/csit/">CSIT</
 integration and testing across different versions, environments, and features.</p>
 <p>Each directory record must include skills from a defined taxonomy, as specified
 in the <a href="https://schema.oasf.outshift.com/skill_categories">Taxonomy of AI Agent Skills</a> from the <a href="https://docs.agntcy.org/oasf/open-agentic-schema-framework/">OASF</a>.
-While all record data is modeled using the <a href="https://docs.agntcy.org/oasf/open-agentic-schema-framework/">OASF</a>, only skills are
-leveraged for content routing in the distributed network of directory servers.
-The ADS specification is under active development and is published as an
-Internet Draft at <a href="https://datatracker.ietf.org/doc/draft-mp-agntcy-ads">ADS Spec</a>. The source code is
-available in the <a href="https://github.com/agntcy/dir-spec">ADS Spec sources</a>.
-Directory gRPC APIs and protobuf definitions are published on
-<a href="https://buf.build/agntcy/dir">buf.build/agntcy/dir</a>.
-The current reference implementation, written in Go, provides server and client
-nodes with gRPC and protocol buffer interfaces. The directory record storage is
-built on <a href="https://oras.land">ORAS</a> (OCI Registry As Storage), while data
-distribution uses the <a href="https://zotregistry.dev">zot</a> OCI server implementation.</p>
+While all record data is modeled using the <a href="https://docs.agntcy.org/oasf/open-agentic-schema-framework/">OASF</a>, content routing
+in the distributed network of directory servers is driven by a subset of record attributes —
+skills, domains, modules, and locators — which are announced as labels and used for network
+discovery.</p>
+<p>The ADS specification is under active development as an IETF Internet Draft, with a Go
+reference implementation that exposes gRPC and protocol buffer interfaces. See
+<a href="#specifications-and-references">Specifications and references</a> for the relevant links.</p>
 <h2 id="features">Features</h2>
 <p>ADS enables several key capabilities for the agentic AI ecosystem:</p>
 <ul>
@@ -2203,91 +2077,20 @@ complementary skills solve complex problems, and dependency chains for composite
 <li><strong>Distributed Architecture</strong>: Built on proven distributed systems principles,
 ADS uses content-addressing for global uniqueness and implements distributed hash tables (DHT)
 for scalable content discovery across decentralized networks.</li>
-<li><strong>Runtime Discovery</strong>: Automatically discover and query agent workloads running in container
-runtimes (Docker, Kubernetes). The discovery system watches for labeled containers/pods,
-resolves their metadata (A2A cards, OASF records), and exposes them via gRPC API for
-integration with other Directory components.</li>
 </ul>
-<h2 id="naming">Naming</h2>
-<p>In distributed systems, having a reliable and collision-resistant naming scheme
-is crucial. The agent directory uses cryptographic hashes to generate globally
-unique identifiers for data records.
-ADS leverages <a href="https://github.com/multiformats/cid">Content Identifiers</a> for
-naming directory records. CIDs provide a self-describing, content-addressed
-naming scheme that ensures data integrity and immutability.</p>
-<p>In addition to CID-based addressing, ADS supports verifiable domain-based names that enable human-readable references while maintaining cryptographic verification. See <a href="../dir-features-scenarios/#name-verification">Features and Usage Scenarios — Name Verification</a> and the <a href="../dir-cli-reference/#security-verification">CLI Reference</a> for details.</p>
-<h2 id="content-routing">Content Routing</h2>
-<p>ADS implements capability-based record discovery through a hierarchical skill
-taxonomy. This architecture enables:</p>
-<ol>
-<li>Capability Announcement:<ol>
-<li>Multi-agent systems can publish their capabilities by encoding them as skill taxonomies.</li>
-<li>Each record contains metadata describing the agent's functional capabilities.</li>
-<li>Skills are structured in a hierarchical format for efficient matching.</li>
-</ol>
-</li>
-<li>Discovery Process: The system performs a two-phase discovery operation:<ol>
-<li>Matches queried capabilities against the skill taxonomy to determine records by their identifier.</li>
-<li>Identifies the server nodes storing relevant records.</li>
-</ol>
-</li>
-<li>Distributed Resolution: Local nodes execute targeted retrievals based on:<ol>
-<li>Skill matching results: Evaluates capability requirements.</li>
-<li>Server location information: Determines optimal data sources.</li>
-</ol>
-</li>
-</ol>
-<p>ADS uses <a href="https://github.com/libp2p/specs/tree/master/kad-dht">libp2p Kad-DH</a> for server and content discovery.</p>
-<h2 id="distributed-object-storage">Distributed Object Storage</h2>
-<p>ADS differs from block storage systems like
-<a href="https://ipfs.tech/">IPFS</a> in its approach to distributed object storage.
-The differences are described in the following sections.</p>
-<h3 id="simplified-content-retrieval">Simplified Content Retrieval</h3>
-<ol>
-<li>ADS directly stores complete records rather than splitting them into blocks.</li>
-<li>No special optimizations needed for retrieving content from multiple sources.</li>
-<li>Records are retrieved as complete units using standard OCI protocols.</li>
-</ol>
-<h3 id="oci-integration">OCI Integration</h3>
-<p>ADS leverages the OCI distribution specification for content storage and retrieval:</p>
-<ol>
-<li>Records are stored and transferred using OCI artifacts.</li>
-<li>Any OCI distribution-compliant server can participate in the network.</li>
-<li>Servers retrieve records directly from each other using standard OCI protocols.</li>
-</ol>
-<p>While ADS uses <a href="https://zotregistry.dev">zot</a> as its reference OCI server implementation, the system works
-with any server that implements the OCI distribution specification.</p>
-<h2 id="flow-diagrams">Flow Diagrams</h2>
-<pre class="mermaid"><code>sequenceDiagram
-    participant User
-    participant DHT
-    participant ServerA
-    participant ServerB
-    participant ServerC
-
-    Note over ServerA,ServerC: Publication Phase
-    ServerA-&gt;&gt;ServerA: Generate record CID
-    ServerA-&gt;&gt;ServerA: Extract skills from record
-    ServerA-&gt;&gt;ServerA: Store record locally
-    ServerA-&gt;&gt;DHT: Announce CID + skills
-    ServerB-&gt;&gt;ServerB: Generate record CID
-    ServerB-&gt;&gt;ServerB: Extract skills from record
-    ServerB-&gt;&gt;ServerB: Store record locally
-    ServerB-&gt;&gt;DHT: Announce CID + skills
-    DHT-&gt;&gt;DHT: Update routing tables&lt;br/&gt;(skills→CIDs→servers)
-
-    Note over User,ServerC: Discovery Phase
-    User-&gt;&gt;DHT: Query by skills
-    DHT-&gt;&gt;DHT: Search routing tables
-    DHT-&gt;&gt;User: Return matching CIDs&lt;br/&gt;+ server addresses
-    User-&gt;&gt;User: Select records
-    User-&gt;&gt;ServerA: Download record 1
-    User-&gt;&gt;ServerB: Download record 2</code></pre>
+<h2 id="specifications-and-references">Specifications and references</h2>
+<ul>
+<li><a href="https://datatracker.ietf.org/doc/draft-mp-agntcy-ads">ADS Specification</a> — IETF Internet Draft (under active development)</li>
+<li><a href="https://github.com/agntcy/dir-spec">ADS Spec sources</a> — specification source repository</li>
+<li><a href="https://buf.build/agntcy/dir">gRPC API &amp; protobuf</a> — published schema on buf.build</li>
+<li><a href="https://docs.agntcy.org/oasf/open-agentic-schema-framework/">OASF</a> — Open Agentic Schema Framework (record data model)</li>
+<li><a href="https://docs.agntcy.org/csit/csit/">CSIT</a> — continuous system integration and testing</li>
+</ul>
 <h2 id="next-steps">Next Steps</h2>
 <p>Ready to get started? Choose your path:</p>
 <ul>
+<li>Understand how it works: see the <a href="../dir-architecture/">Architecture</a> overview and the core components — <a href="../dir-component-records-validation/">Records</a>, <a href="../dir-component-store/">Store</a>, and <a href="../dir-component-routing/">Routing</a>.</li>
 <li>Run a local instance: follow the <a href="../dir-quickstart/">Quickstart</a> or see <a href="../dir-deployment-local/">Local Deployment</a> and <a href="../dir-deployment-kubernetes/">Kubernetes Deployment</a>.</li>
-<li>Configure external user or automation access with OIDC: see <a href="../dir-component-oidc-authentication/">OIDC Authentication for Directory</a>.</li>
 <li>Connect to the public Directory: use the existing network at <code>ads.outshift.io</code> to discover and publish agents. See <a href="../dir-federation-setup/">Running a Federated Directory Instance</a>.</li>
 <li>Deploy for production: run your own Directory instance on AWS EKS and optionally federate with the network. See <a href="../dir-prod-deployment/">Production Deployment</a>.</li>
 </ul>
@@ -2347,13 +2150,13 @@ with any server that implements the OCI distribution specification.</p>
         
         
           
-          <a href="../dir-features-scenarios/" class="md-footer__link md-footer__link--next" aria-label="Next: Features and Usage Scenarios">
+          <a href="../dir-quickstart/" class="md-footer__link md-footer__link--next" aria-label="Next: Quickstart">
             <div class="md-footer__title">
               <span class="md-footer__direction">
                 Next
               </span>
               <div class="md-ellipsis">
-                Features and Usage Scenarios
+                Quickstart
               </div>
             </div>
             <div class="md-footer__button md-icon">

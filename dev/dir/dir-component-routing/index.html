@@ -623,14 +623,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../dir-features-scenarios/" class="md-nav__link">
+      <a href="../dir-quickstart/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    Features and Usage Scenarios
+    Quickstart
   
 
     
@@ -651,14 +651,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../dir-quickstart/" class="md-nav__link">
+      <a href="../dir-features-scenarios/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    Quickstart
+    Features and Usage Scenarios
   
 
     
@@ -908,6 +908,17 @@
     <span class="md-ellipsis">
       
         Announce and discover
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#publication-and-discovery-flow" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Publication and discovery flow
       
     </span>
   </a>
@@ -1895,6 +1906,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#publication-and-discovery-flow" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Publication and discovery flow
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#related-documentation" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2032,6 +2054,27 @@ discovery scales across a decentralized network of peers.</p>
 </ul>
 <p>Skill matching supports exact and hierarchical prefix matching. Network search results
 reflect cached announcements and may be stale or incomplete until peers replicate records.</p>
+<p>ADS uses <a href="https://github.com/libp2p/specs/tree/master/kad-dht">libp2p Kad-DHT</a> for server and
+content discovery.</p>
+<h2 id="publication-and-discovery-flow">Publication and discovery flow</h2>
+<pre class="mermaid"><code>sequenceDiagram
+    participant User
+    participant DHT
+    participant ServerA
+    participant ServerB
+
+    Note over ServerA,ServerB: Publication Phase
+    ServerA-&gt;&gt;ServerA: Generate CID, store record, extract labels
+    ServerA-&gt;&gt;DHT: Announce CID + labels
+    ServerB-&gt;&gt;ServerB: Generate CID, store record, extract labels
+    ServerB-&gt;&gt;DHT: Announce CID + labels
+    DHT-&gt;&gt;DHT: Update routing tables&lt;br/&gt;(labels→CIDs→servers)
+
+    Note over User,ServerB: Discovery Phase
+    User-&gt;&gt;DHT: Query by labels
+    DHT-&gt;&gt;User: Return matching CIDs&lt;br/&gt;+ server addresses
+    User-&gt;&gt;ServerA: Download record 1
+    User-&gt;&gt;ServerB: Download record 2</code></pre>
 <h2 id="related-documentation">Related documentation</h2>
 <ul>
 <li><a href="../dir-architecture/">Architecture</a> — full system design and diagram</li>

@@ -11,10 +11,10 @@
         <link rel="canonical" href="https://agntcy.github.io/dir/latest/dir/dir-quickstart/">
       
       
-        <link rel="prev" href="../dir-features-scenarios/">
+        <link rel="prev" href="../dir-overview/">
       
       
-        <link rel="next" href="../dir-architecture/">
+        <link rel="next" href="../dir-features-scenarios/">
       
       
         
@@ -622,34 +622,6 @@
                 
   
   
-  
-  
-    <li class="md-nav__item">
-      <a href="../dir-features-scenarios/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Features and Usage Scenarios
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
     
   
   
@@ -782,6 +754,34 @@
   
 </nav>
       
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../dir-features-scenarios/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Features and Usage Scenarios
+  
+
+    
+  </span>
+  
+  
+
+      </a>
     </li>
   
 
@@ -2107,7 +2107,8 @@ only page on the docs site with CLI installation instructions.</p>
 <div class="tabbed-set tabbed-alternate" data-tabs="1:4"><input checked="checked" id="__tabbed_1_1" name="__tabbed_1" type="radio" /><input id="__tabbed_1_2" name="__tabbed_1" type="radio" /><input id="__tabbed_1_3" name="__tabbed_1" type="radio" /><input id="__tabbed_1_4" name="__tabbed_1" type="radio" /><div class="tabbed-labels"><label for="__tabbed_1_1">Homebrew</label><label for="__tabbed_1_2">Release binaries</label><label for="__tabbed_1_3">Source</label><label for="__tabbed_1_4">Container</label></div>
 <div class="tabbed-content">
 <div class="tabbed-block">
-<div class="highlight"><pre><span></span><code>brew<span class="w"> </span>tap<span class="w"> </span>agntcy/dir<span class="w"> </span>https://github.com/agntcy/dir/
+<div class="highlight"><pre><span></span><code>brew<span class="w"> </span>tap<span class="w"> </span>agntcy/dir<span class="w"> </span>https://github.com/agntcy/dir
+brew<span class="w"> </span>trust<span class="w"> </span>agntcy/dir
 brew<span class="w"> </span>install<span class="w"> </span>dirctl
 </code></pre></div>
 </div>
@@ -2181,13 +2182,17 @@ guides instead of the daemon.</p>
 </li>
 </ol>
 <h2 id="discover-records">Discover records</h2>
-<p>Search the network by skill, then pull a result:</p>
-<div class="highlight"><pre><span></span><code>dirctl<span class="w"> </span>routing<span class="w"> </span>search<span class="w"> </span>--skill<span class="w"> </span><span class="s2">&quot;images_computer_vision&quot;</span><span class="w"> </span>--limit<span class="w"> </span><span class="m">5</span>
+<p>The quickstart runs a single local Directory, so the published record lives on this peer.
+List it locally by skill, then pull it:</p>
+<div class="highlight"><pre><span></span><code>dirctl<span class="w"> </span>routing<span class="w"> </span>list<span class="w"> </span>--skill<span class="w"> </span><span class="s2">&quot;images_computer_vision&quot;</span>
 dirctl<span class="w"> </span>pull<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$CID</span><span class="s2">&quot;</span>
 </code></pre></div>
-<p>For local-only listings, use <code>dirctl routing list</code>. See
-<a href="../dir-features-scenarios/">Features and Usage Scenarios</a> for signing, sync, import, export, and other
-workflows.</p>
+<p>To discover records announced by <em>other</em> peers across a network or federation, use
+<code>dirctl routing search</code>. It queries cached network announcements and deliberately excludes
+local records, so it returns nothing in a single-node setup:</p>
+<div class="highlight"><pre><span></span><code>dirctl<span class="w"> </span>routing<span class="w"> </span>search<span class="w"> </span>--skill<span class="w"> </span><span class="s2">&quot;images_computer_vision&quot;</span><span class="w"> </span>--limit<span class="w"> </span><span class="m">5</span>
+</code></pre></div>
+<p>See <a href="../dir-features-scenarios/">Features and Usage Scenarios</a> for signing, sync, import, export, and other workflows.</p>
 <h2 id="authenticate-to-a-remote-directory">Authenticate to a remote Directory</h2>
 <p>For production or federated gateways, log in with OIDC before using remote servers:</p>
 <div class="highlight"><pre><span></span><code>dirctl<span class="w"> </span>auth<span class="w"> </span>login<span class="w"> </span><span class="se">\</span>
@@ -2246,7 +2251,7 @@ workflows.</p>
       <nav class="md-footer__inner md-grid" aria-label="Footer" >
         
           
-          <a href="../dir-features-scenarios/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Features and Usage Scenarios">
+          <a href="../dir-overview/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Overview">
             <div class="md-footer__button md-icon">
               
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
@@ -2256,20 +2261,20 @@ workflows.</p>
                 Previous
               </span>
               <div class="md-ellipsis">
-                Features and Usage Scenarios
+                Overview
               </div>
             </div>
           </a>
         
         
           
-          <a href="../dir-architecture/" class="md-footer__link md-footer__link--next" aria-label="Next: Architecture">
+          <a href="../dir-features-scenarios/" class="md-footer__link md-footer__link--next" aria-label="Next: Features and Usage Scenarios">
             <div class="md-footer__title">
               <span class="md-footer__direction">
                 Next
               </span>
               <div class="md-ellipsis">
-                Architecture
+                Features and Usage Scenarios
               </div>
             </div>
             <div class="md-footer__button md-icon">

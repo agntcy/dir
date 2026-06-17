@@ -11,10 +11,10 @@
         <link rel="canonical" href="https://agntcy.github.io/dir/latest/dir/dir-features-scenarios/">
       
       
-        <link rel="prev" href="../dir-overview/">
+        <link rel="prev" href="../dir-quickstart/">
       
       
-        <link rel="next" href="../dir-quickstart/">
+        <link rel="next" href="../dir-architecture/">
       
       
         
@@ -622,6 +622,34 @@
                 
   
   
+  
+  
+    <li class="md-nav__item">
+      <a href="../dir-quickstart/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Quickstart
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
     
   
   
@@ -717,56 +745,6 @@
   
     <nav class="md-nav" aria-label="Store">
       <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#supported-registries" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Supported Registries
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Supported Registries">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#registry-configuration" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Registry Configuration
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#authentication-configuration" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Authentication Configuration
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#configuration-examples" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Configuration Examples
-      
-    </span>
-  </a>
-  
-</li>
         
           <li class="md-nav__item">
   <a href="#basic-operations" class="md-nav__link">
@@ -1084,49 +1062,10 @@
   
 </li>
       
-        <li class="md-nav__item">
-  <a href="#grpc-error-codes" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        gRPC Error Codes
-      
-    </span>
-  </a>
-  
-</li>
-      
     </ul>
   
 </nav>
       
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../dir-quickstart/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Quickstart
-  
-
-    
-  </span>
-  
-  
-
-      </a>
     </li>
   
 
@@ -2307,56 +2246,6 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#supported-registries" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Supported Registries
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Supported Registries">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#registry-configuration" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Registry Configuration
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#authentication-configuration" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Authentication Configuration
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#configuration-examples" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Configuration Examples
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
   <a href="#basic-operations" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2672,17 +2561,6 @@
   
 </li>
       
-        <li class="md-nav__item">
-  <a href="#grpc-error-codes" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        gRPC Error Codes
-      
-    </span>
-  </a>
-  
-</li>
-      
     </ul>
   
 </nav>
@@ -2846,118 +2724,9 @@ is pushed, it is stored as an OCI blob and the CID is calculated by converting t
 OCI digest into a CIDv1 format using CID multihash encoding. Each record is then tagged with
 its CID in the registry, enabling direct lookup and ensuring content integrity through
 cryptographic addressing.</p>
-<h3 id="supported-registries">Supported Registries</h3>
-<p>The Directory supports multiple OCI-compatible registry backends:</p>
-<table>
-<thead>
-<tr>
-<th>Registry Type</th>
-<th>Description</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><code>zot</code></td>
-<td><a href="https://github.com/project-zot/zot">Zot</a> OCI registry (default)</td>
-</tr>
-<tr>
-<td><code>ghcr</code></td>
-<td>GitHub Container Registry</td>
-</tr>
-<tr>
-<td><code>dockerhub</code></td>
-<td>Docker Hub</td>
-</tr>
-</tbody>
-</table>
-<h4 id="registry-configuration">Registry Configuration</h4>
-<p>The registry backend is configured via environment variables on the Directory server:</p>
-<table>
-<thead>
-<tr>
-<th>Environment Variable</th>
-<th>Description</th>
-<th>Default</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><code>DIRECTORY_SERVER_STORE_OCI_TYPE</code></td>
-<td>Registry type (<code>zot</code>, <code>ghcr</code>, <code>dockerhub</code>)</td>
-<td><code>zot</code></td>
-</tr>
-<tr>
-<td><code>DIRECTORY_SERVER_STORE_OCI_REGISTRY_ADDRESS</code></td>
-<td>Registry address</td>
-<td><code>127.0.0.1:5000</code></td>
-</tr>
-<tr>
-<td><code>DIRECTORY_SERVER_STORE_OCI_REPOSITORY_NAME</code></td>
-<td>Repository name</td>
-<td><code>dir</code></td>
-</tr>
-</tbody>
-</table>
-<h3 id="authentication-configuration">Authentication Configuration</h3>
-<p>Credentials for the registry are configured via environment variables:</p>
-<table>
-<thead>
-<tr>
-<th>Environment Variable</th>
-<th>Description</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><code>DIRECTORY_SERVER_STORE_OCI_AUTH_CONFIG_USERNAME</code></td>
-<td>Username for basic authentication</td>
-</tr>
-<tr>
-<td><code>DIRECTORY_SERVER_STORE_OCI_AUTH_CONFIG_PASSWORD</code></td>
-<td>Password for basic authentication</td>
-</tr>
-<tr>
-<td><code>DIRECTORY_SERVER_STORE_OCI_AUTH_CONFIG_ACCESS_TOKEN</code></td>
-<td>Access token for token-based authentication</td>
-</tr>
-<tr>
-<td><code>DIRECTORY_SERVER_STORE_OCI_AUTH_CONFIG_INSECURE</code></td>
-<td>Skip TLS verification (default: <code>true</code>)</td>
-</tr>
-</tbody>
-</table>
-<h3 id="configuration-examples">Configuration Examples</h3>
-<p><strong>Zot (Local Development)</strong></p>
-<div class="highlight"><pre><span></span><code><span class="nb">export</span><span class="w"> </span><span class="nv">DIRECTORY_SERVER_STORE_OCI_TYPE</span><span class="o">=</span>zot
-<span class="nb">export</span><span class="w"> </span><span class="nv">DIRECTORY_SERVER_STORE_OCI_REGISTRY_ADDRESS</span><span class="o">=</span>localhost:5000
-<span class="nb">export</span><span class="w"> </span><span class="nv">DIRECTORY_SERVER_STORE_OCI_REPOSITORY_NAME</span><span class="o">=</span>dir
-<span class="nb">export</span><span class="w"> </span><span class="nv">DIRECTORY_SERVER_STORE_OCI_AUTH_CONFIG_INSECURE</span><span class="o">=</span><span class="nb">true</span>
-</code></pre></div>
-<p><strong>GitHub Container Registry (GHCR)</strong></p>
-<div class="highlight"><pre><span></span><code><span class="nb">export</span><span class="w"> </span><span class="nv">DIRECTORY_SERVER_STORE_OCI_TYPE</span><span class="o">=</span>ghcr
-<span class="nb">export</span><span class="w"> </span><span class="nv">DIRECTORY_SERVER_STORE_OCI_REGISTRY_ADDRESS</span><span class="o">=</span>ghcr.io
-<span class="nb">export</span><span class="w"> </span><span class="nv">DIRECTORY_SERVER_STORE_OCI_REPOSITORY_NAME</span><span class="o">=</span>your-org/dir
-<span class="nb">export</span><span class="w"> </span><span class="nv">DIRECTORY_SERVER_STORE_OCI_AUTH_CONFIG_USERNAME</span><span class="o">=</span>your-github-username
-<span class="nb">export</span><span class="w"> </span><span class="nv">DIRECTORY_SERVER_STORE_OCI_AUTH_CONFIG_PASSWORD</span><span class="o">=</span>your-github-token
-<span class="nb">export</span><span class="w"> </span><span class="nv">DIRECTORY_SERVER_STORE_OCI_AUTH_CONFIG_INSECURE</span><span class="o">=</span><span class="nb">false</span>
-</code></pre></div>
-<div class="admonition warning">
-<p class="admonition-title">Warning</p>
-<p>GHCR does not support record deletion via the OCI API. Attempting to
-delete a record when using GHCR will return an error.
-To manage packages hosted on GHCR, use the GitHub UI, REST API, or
-GraphQL API instead. See
-<a href="https://docs.github.com/en/packages/learn-github-packages/deleting-and-restoring-a-package">Deleting and restoring a package</a>
-for details.</p>
-</div>
-<p><strong>Docker Hub</strong></p>
-<div class="highlight"><pre><span></span><code><span class="nb">export</span><span class="w"> </span><span class="nv">DIRECTORY_SERVER_STORE_OCI_TYPE</span><span class="o">=</span>dockerhub
-<span class="nb">export</span><span class="w"> </span><span class="nv">DIRECTORY_SERVER_STORE_OCI_REGISTRY_ADDRESS</span><span class="o">=</span>docker.io
-<span class="nb">export</span><span class="w"> </span><span class="nv">DIRECTORY_SERVER_STORE_OCI_REPOSITORY_NAME</span><span class="o">=</span>your-username/dir
-<span class="nb">export</span><span class="w"> </span><span class="nv">DIRECTORY_SERVER_STORE_OCI_AUTH_CONFIG_USERNAME</span><span class="o">=</span>your-dockerhub-username
-<span class="nb">export</span><span class="w"> </span><span class="nv">DIRECTORY_SERVER_STORE_OCI_AUTH_CONFIG_PASSWORD</span><span class="o">=</span>your-dockerhub-token
-<span class="nb">export</span><span class="w"> </span><span class="nv">DIRECTORY_SERVER_STORE_OCI_AUTH_CONFIG_INSECURE</span><span class="o">=</span><span class="nb">false</span>
-</code></pre></div>
+<p>The server can be backed by Zot (default), GHCR, or Docker Hub. For the supported registry
+backends and the server-side environment variables that configure them, see
+<a href="../dir-component-store/#backends-and-configuration">Store — Backends and configuration</a>.</p>
 <h3 id="basic-operations">Basic Operations</h3>
 <p>Once the server is configured, the CLI operations work the same regardless of the underlying
 registry backend:</p>
@@ -3254,16 +3023,8 @@ dirctl<span class="w"> </span>search<span class="w"> </span>--skill<span class="
 dirctl<span class="w"> </span>search<span class="w"> </span>--name<span class="w"> </span><span class="s2">&quot;api-*-service&quot;</span><span class="w"> </span>--version<span class="w"> </span><span class="s2">&quot;v2.*&quot;</span>
 dirctl<span class="w"> </span>search<span class="w"> </span>--skill<span class="w"> </span><span class="s2">&quot;*machine*learning*&quot;</span>
 </code></pre></div>
-<p><strong>Available Search Flags:</strong></p>
-<ul>
-<li><code>--name &lt;name&gt;</code> - Search by record name</li>
-<li><code>--version &lt;version&gt;</code> - Search by record version</li>
-<li><code>--skill-id &lt;id&gt;</code> - Search by skill ID number</li>
-<li><code>--skill &lt;skill&gt;</code> - Search by skill name</li>
-<li><code>--locator &lt;type&gt;</code> - Search by locator type</li>
-<li><code>--domain &lt;domain&gt;</code> - Search by domain</li>
-<li><code>--module &lt;module&gt;</code> - Search by module name</li>
-</ul>
+<p>For the full list of search filter flags and output options, see
+<a href="../dir-cli-reference/#dirctl-search-flags">CLI Reference — <code>dirctl search</code></a>.</p>
 <p><strong>Search Logic:</strong></p>
 <p>Multiple flags of different types are combined with AND logic (all criteria must match).
 Multiple flags of the same type are combined with OR logic (any criteria can match).
@@ -3379,83 +3140,6 @@ dirctl<span class="w"> </span><span class="nb">export</span><span class="w"> </s
 </code></pre></div>
 <p>By default, only the latest semver version is exported; use <code>--all-versions</code> to export every
 version. See <a href="../dir-cli-reference/#export-operations">CLI Reference — Export Operations</a>.</p>
-<h2 id="grpc-error-codes">gRPC Error Codes</h2>
-<p>The following table lists the gRPC error codes returned by the server APIs, along with a
-description of when each code is used:</p>
-<table>
-<thead>
-<tr>
-<th>Error Code</th>
-<th>Description</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><code>codes.InvalidArgument</code></td>
-<td>When client provides an invalid or malformed argument, such</td>
-</tr>
-<tr>
-<td></td>
-<td>as a missing or invalid record reference or record.</td>
-</tr>
-<tr>
-<td><code>codes.NotFound</code></td>
-<td>When the requested object does not exist in the local store</td>
-</tr>
-<tr>
-<td></td>
-<td>or across the network.</td>
-</tr>
-<tr>
-<td><code>codes.FailedPrecondition</code></td>
-<td>When the server environment or configuration is not in the</td>
-</tr>
-<tr>
-<td></td>
-<td>required state (e.g., failed to create a directory or temp</td>
-</tr>
-<tr>
-<td></td>
-<td>file).</td>
-</tr>
-<tr>
-<td><code>codes.Internal</code></td>
-<td>When an unexpected internal error occurs, such as I/O</td>
-</tr>
-<tr>
-<td></td>
-<td>failures, serialization errors, or other server-side</td>
-</tr>
-<tr>
-<td></td>
-<td>issues.</td>
-</tr>
-<tr>
-<td><code>codes.Canceled</code></td>
-<td>When the operation is canceled by the client or context</td>
-</tr>
-<tr>
-<td></td>
-<td>expires.</td>
-</tr>
-<tr>
-<td><code>codes.Unauthenticated</code></td>
-<td>When the client is not authenticated to perform the</td>
-</tr>
-<tr>
-<td></td>
-<td>operation.</td>
-</tr>
-<tr>
-<td><code>codes.PermissionDenied</code></td>
-<td>When the client does not have permission to perform the</td>
-</tr>
-<tr>
-<td></td>
-<td>operation.</td>
-</tr>
-</tbody>
-</table>
 
 
 
@@ -3495,7 +3179,7 @@ description of when each code is used:</p>
       <nav class="md-footer__inner md-grid" aria-label="Footer" >
         
           
-          <a href="../dir-overview/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Overview">
+          <a href="../dir-quickstart/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Quickstart">
             <div class="md-footer__button md-icon">
               
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
@@ -3505,20 +3189,20 @@ description of when each code is used:</p>
                 Previous
               </span>
               <div class="md-ellipsis">
-                Overview
+                Quickstart
               </div>
             </div>
           </a>
         
         
           
-          <a href="../dir-quickstart/" class="md-footer__link md-footer__link--next" aria-label="Next: Quickstart">
+          <a href="../dir-architecture/" class="md-footer__link md-footer__link--next" aria-label="Next: Architecture">
             <div class="md-footer__title">
               <span class="md-footer__direction">
                 Next
               </span>
               <div class="md-ellipsis">
-                Quickstart
+                Architecture
               </div>
             </div>
             <div class="md-footer__button md-icon">
