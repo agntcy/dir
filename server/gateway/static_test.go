@@ -117,6 +117,13 @@ func TestEncodingAccepted(t *testing.T) {
 	}
 }
 
+func TestIsStaticPathTraversal(t *testing.T) {
+	assert.True(t, isStaticPathTraversal("../secret"))
+	assert.True(t, isStaticPathTraversal("foo/../bar"))
+	assert.False(t, isStaticPathTraversal("agents/"))
+	assert.False(t, isStaticPathTraversal("_app/immutable/chunks/app.js"))
+}
+
 func TestWriteStaticResponse_VaryWithoutGzip(t *testing.T) {
 	req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/_app/immutable/assets/app.css", nil)
 	rec := httptest.NewRecorder()
@@ -194,13 +201,23 @@ func TestWithStaticFallback(t *testing.T) {
 		assert.Equal(t, http.StatusInternalServerError, rec.Code)
 	})
 
-	t.Run("returns 404 for invalid static path", func(t *testing.T) {
+	t.Run("returns 404 for traversal static path", func(t *testing.T) {
 		req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/../secret", nil)
 		rec := httptest.NewRecorder()
 
 		handler.ServeHTTP(rec, req)
 
 		assert.Equal(t, http.StatusNotFound, rec.Code)
+	})
+
+	t.Run("spa fallback for trailing slash route", func(t *testing.T) {
+		req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/agents/", nil)
+		rec := httptest.NewRecorder()
+
+		handler.ServeHTTP(rec, req)
+
+		assert.Equal(t, http.StatusOK, rec.Code)
+		assert.Equal(t, cacheControlNoCache, rec.Header().Get("Cache-Control"))
 	})
 
 	t.Run("returns 404 for missing app asset", func(t *testing.T) {

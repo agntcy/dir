@@ -32,6 +32,16 @@ var compressibleContentTypes = map[string]struct{}{
 	"text/plain":             {},
 }
 
+func isStaticPathTraversal(name string) bool {
+	for elem := range strings.SplitSeq(name, "/") {
+		if elem == ".." {
+			return true
+		}
+	}
+
+	return false
+}
+
 func cacheControlForPath(path string) string {
 	switch {
 	case path == "/" || path == "/index.html" || path == "/_app/version.json":

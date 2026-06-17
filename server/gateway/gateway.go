@@ -221,33 +221,46 @@ func withStaticFallback(mux *runtime.ServeMux, static fs.FS) http.Handler {
 		}
 
 		// Serve static file if it exists (JS, CSS, images, etc).
-		if name := path[1:]; name != "" {
-			if !fs.ValidPath(name) {
-				http.NotFound(w, r)
-
-				return
-			}
-
-			err := serveStaticFile(w, r, static, name)
-			if err == nil {
-				return
-			}
-
-			if !errors.Is(err, fs.ErrNotExist) {
-				logger.Error("failed to serve static file", "path", path, "error", err)
-				http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
-
-				return
-			}
-
-			if strings.HasPrefix(path, "/_app/") {
-				http.NotFound(w, r)
-
-				return
-			}
+		if name := path[1:]; name != "" && tryServeStatic(w, r, static, path, name) {
+			return
 		}
 
 		// SPA fallback: serve index.html for client-side routing.
 		serveIndexHTML(w, r, indexHTML)
 	})
+}
+
+// tryServeStatic serves a static asset when possible. It returns true when the
+// request is fully handled (including 404/500). Benign non-file paths (e.g.
+// trailing-slash routes) return false so the caller can SPA-fallback.
+func tryServeStatic(w http.ResponseWriter, r *http.Request, static fs.FS, path, name string) bool {
+	if isStaticPathTraversal(name) {
+		http.NotFound(w, r)
+
+		return true
+	}
+
+	if !fs.ValidPath(name) {
+		return false
+	}
+
+	err := serveStaticFile(w, r, static, name)
+	if err == nil {
+		return true
+	}
+
+	if !errors.Is(err, fs.ErrNotExist) {
+		logger.Error("failed to serve static file", "path", path, "error", err)
+		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+
+		return true
+	}
+
+	if strings.HasPrefix(path, "/_app/") {
+		http.NotFound(w, r)
+
+		return true
+	}
+
+	return false
 }
