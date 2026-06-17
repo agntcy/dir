@@ -1,6 +1,6 @@
 module github.com/agntcy/dir/server
 
-go 1.26.3
+go 1.26.4
 
 // Replace local modules
 replace (
