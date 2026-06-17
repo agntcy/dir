@@ -53,6 +53,7 @@ Check the [Documentation](https://agntcy.github.io/dir/latest/) for a full walkt
 - [docs](./docs) - research details and documentation around the project
 - [install](./install) - deployment assets (Helm charts, Docker Compose)
 - [reconciler](./reconciler) - standalone service for periodic reconciliation (regsync, indexer)
+- [samples](./samples) - sample applications demonstrating the use of Directory features
 - [server](./server) - API services to manage storage, routing, and networking operations
 - [utils](./utils) - shared utilities (logging, SPIFFE)
 - [tests](./tests) - test suites and end-to-end (e2e) testing framework
