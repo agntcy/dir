@@ -222,6 +222,15 @@ func TestWithStaticFallback(t *testing.T) {
 		assert.Equal(t, cacheControlNoCache, rec.Header().Get("Cache-Control"))
 	})
 
+	t.Run("returns 404 for missing sveltekit data json", func(t *testing.T) {
+		req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/about/__data.json", nil)
+		rec := httptest.NewRecorder()
+
+		handler.ServeHTTP(rec, req)
+
+		assert.Equal(t, http.StatusNotFound, rec.Code)
+	})
+
 	t.Run("returns 404 for missing app asset", func(t *testing.T) {
 		req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/_app/immutable/chunks/missing.js", nil)
 		rec := httptest.NewRecorder()

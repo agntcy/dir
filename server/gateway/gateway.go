@@ -209,13 +209,13 @@ func RegisterAIFinder(ctx context.Context, mux *runtime.ServeMux, conn *grpc.Cli
 // support SPA client-side routing.
 func withStaticFallback(mux *runtime.ServeMux, static fs.FS, ui UIConfig) http.Handler {
 	indexHTML, _ := fs.ReadFile(static, "index.html")
-	uiConfigJSON := uiConfigJSON(ui)
+	uiConfigPayload := uiConfigJSON(ui)
 
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		path := r.URL.Path
 
 		if path == "/ui/config.json" {
-			serveUIConfig(w, r, uiConfigJSON)
+			serveUIConfig(w, r, uiConfigPayload)
 
 			return
 		}
@@ -237,6 +237,14 @@ func withStaticFallback(mux *runtime.ServeMux, static fs.FS, ui UIConfig) http.H
 
 		// Serve static file if it exists (JS, CSS, images, etc).
 		if name := path[1:]; name != "" && tryServeStatic(w, r, static, path, name) {
+			return
+		}
+
+		// SvelteKit may request /route/__data.json during client navigations. Do not
+		// SPA-fallback with HTML here — that JSON parse failure surfaces as a 500 page.
+		if strings.HasSuffix(path, "/__data.json") {
+			http.NotFound(w, r)
+
 			return
 		}
 
