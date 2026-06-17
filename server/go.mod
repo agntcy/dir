@@ -16,8 +16,8 @@ replace github.com/ThalesIgnite/crypto11 => github.com/ThalesGroup/crypto11 v1.6
 require (
 	buf.build/gen/go/agntcy/oasf/protocolbuffers/go v1.36.11-20260602080720-2b66557c6456.1
 	buf.build/go/protovalidate v1.2.0
-	github.com/agntcy/dir/api v1.4.0
-	github.com/agntcy/dir/utils v1.4.0
+	github.com/agntcy/dir/api v1.5.0
+	github.com/agntcy/dir/utils v1.5.0
 	github.com/agntcy/oasf-sdk/pkg v1.0.6-0.20260612113147-8fdda6fd3eb8
 	github.com/casbin/casbin/v2 v2.135.0
 	github.com/glebarez/sqlite v1.11.0
@@ -148,7 +148,7 @@ require (
 	github.com/multiformats/go-multistream v0.6.1 // indirect
 	github.com/multiformats/go-varint v0.1.0 // indirect
 	github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822 // indirect
-	github.com/opencontainers/go-digest v1.0.0 // indirect
+	github.com/opencontainers/go-digest v1.0.0
 	github.com/pbnjay/memory v0.0.0-20210728143218-7b4eea64cf58 // indirect
 	github.com/pelletier/go-toml/v2 v2.3.1 // indirect
 	github.com/pion/datachannel v1.6.0 // indirect

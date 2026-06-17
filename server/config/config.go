@@ -114,6 +114,9 @@ const (
 
 	// DefaultHTTPGatewayPublicURL is the default public base URL for the gateway.
 	DefaultHTTPGatewayPublicURL = "http://localhost:8889"
+
+	// DefaultHTTPGatewayCatalogTitle is the default AI Catalog UI title.
+	DefaultHTTPGatewayCatalogTitle = "AI Catalog"
 )
 
 var logger = logging.Logger("config")
@@ -179,6 +182,9 @@ type HTTPGatewayConfig struct {
 
 	// PublicURL is the public base URL for the gateway (e.g. "https://api.example.com").
 	PublicURL string `json:"public_url,omitempty" mapstructure:"public_url"`
+
+	// CatalogTitle is the display name shown in the embedded AI Catalog UI.
+	CatalogTitle string `json:"catalog_title,omitempty" mapstructure:"catalog_title"`
 }
 
 // WithDefaults returns a copy with empty fields filled from package defaults.
@@ -191,6 +197,10 @@ func (c HTTPGatewayConfig) WithDefaults() HTTPGatewayConfig {
 
 	if out.PublicURL == "" {
 		out.PublicURL = DefaultHTTPGatewayPublicURL
+	}
+
+	if strings.TrimSpace(out.CatalogTitle) == "" {
+		out.CatalogTitle = DefaultHTTPGatewayCatalogTitle
 	}
 
 	return out
@@ -610,6 +620,9 @@ func LoadConfig(opts ...ConfigOption) (*Config, error) {
 
 	_ = v.BindEnv("http_gateway.public_url")
 	v.SetDefault("http_gateway.public_url", DefaultHTTPGatewayPublicURL)
+
+	_ = v.BindEnv("http_gateway.catalog_title")
+	v.SetDefault("http_gateway.catalog_title", DefaultHTTPGatewayCatalogTitle)
 
 	// Load configuration into struct
 	decodeHooks := mapstructure.ComposeDecodeHookFunc(

@@ -11,6 +11,7 @@ import (
 	"io/fs"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"testing/fstest"
 
@@ -27,6 +28,7 @@ func TestCacheControlForPath(t *testing.T) {
 		{path: "/", want: cacheControlNoCache},
 		{path: "/index.html", want: cacheControlNoCache},
 		{path: "/_app/version.json", want: cacheControlNoCache},
+		{path: "/ui/config.json", want: cacheControlNoCache},
 		{path: "/_app/immutable/assets/app.css", want: cacheControlImmutable},
 		{path: "/_app/immutable/chunks/start.js", want: cacheControlImmutable},
 		{path: "/favicon.ico", want: cacheControlLongLived},
@@ -158,7 +160,7 @@ func TestWithStaticFallback(t *testing.T) {
 	}
 
 	mux := runtime.NewServeMux()
-	handler := withStaticFallback(mux, static)
+	handler := withStaticFallback(mux, static, UIConfig{})
 
 	t.Run("serves immutable asset", func(t *testing.T) {
 		req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/_app/immutable/assets/app.css", nil)
@@ -191,7 +193,7 @@ func TestWithStaticFallback(t *testing.T) {
 	})
 
 	t.Run("returns 500 on static read failure", func(t *testing.T) {
-		handler := withStaticFallback(mux, errorFS{})
+		handler := withStaticFallback(mux, errorFS{}, UIConfig{})
 
 		req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/broken.css", nil)
 		rec := httptest.NewRecorder()
@@ -220,6 +222,15 @@ func TestWithStaticFallback(t *testing.T) {
 		assert.Equal(t, cacheControlNoCache, rec.Header().Get("Cache-Control"))
 	})
 
+	t.Run("returns 404 for missing sveltekit data json", func(t *testing.T) {
+		req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/about/__data.json", nil)
+		rec := httptest.NewRecorder()
+
+		handler.ServeHTTP(rec, req)
+
+		assert.Equal(t, http.StatusNotFound, rec.Code)
+	})
+
 	t.Run("returns 404 for missing app asset", func(t *testing.T) {
 		req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/_app/immutable/chunks/missing.js", nil)
 		rec := httptest.NewRecorder()
@@ -228,6 +239,33 @@ func TestWithStaticFallback(t *testing.T) {
 
 		assert.Equal(t, http.StatusNotFound, rec.Code)
 	})
+
+	t.Run("serves ui config without cache", func(t *testing.T) {
+		req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/ui/config.json", nil)
+		rec := httptest.NewRecorder()
+
+		withStaticFallback(mux, static, UIConfig{CatalogTitle: "Cisco AI Catalog"}).ServeHTTP(rec, req)
+
+		assert.Equal(t, http.StatusOK, rec.Code)
+		assert.Equal(t, cacheControlNoCache, rec.Header().Get("Cache-Control"))
+		assert.Equal(t, "application/json; charset=utf-8", rec.Header().Get("Content-Type"))
+		assert.JSONEq(t, `{"catalogTitle":"Cisco AI Catalog"}`, rec.Body.String())
+	})
+}
+
+func TestNormalizeCatalogTitle(t *testing.T) {
+	assert.Equal(t, "AI Catalog", normalizeCatalogTitle(""))
+	assert.Equal(t, "Cisco AI Catalog", normalizeCatalogTitle("  Cisco AI Catalog  "))
+	assert.Equal(t, "badtitle", normalizeCatalogTitle("bad\x00title"))
+	assert.Equal(t, "AI Catalog", normalizeCatalogTitle("\x00\x1f"))
+	assert.Equal(t, strings.Repeat("é", maxCatalogTitleLen), normalizeCatalogTitle(strings.Repeat("é", maxCatalogTitleLen+1)))
+}
+
+func TestEmbeddedFaviconIsICO(t *testing.T) {
+	data, err := fs.ReadFile(staticFS, "static/favicon.ico")
+	require.NoError(t, err)
+	require.GreaterOrEqual(t, len(data), 4, "favicon.ico should have ICO header")
+	assert.Equal(t, []byte{0x00, 0x00, 0x01, 0x00}, data[:4], "favicon.ico must be a Windows ICO file, not a PNG renamed with .ico")
 }
 
 type errorFS struct{}

@@ -25,6 +25,9 @@ apiserver:
     # It is used in the server configuration for generating correct links and CORS settings.
     publicURL: "example.com"
 
+    # Display title for the embedded AI Catalog UI (served via /ui/config.json).
+    catalogTitle: "AI Catalog"
+
     # Port for the HTTP gateway endpoint
     # Default: 8889
     port: 8889

@@ -6,19 +6,19 @@
 	import VerifiedBadge from './VerifiedBadge.svelte';
 
 	interface Props {
-		agent: CatalogEntry;
+		aicard: CatalogEntry;
 		onclose: () => void;
 	}
 
-	let { agent, onclose }: Props = $props();
+	let { aicard, onclose }: Props = $props();
 
-	let stats = $derived(fakeStats(agent));
-	let verified = $derived(hasTrustManifest(agent));
-	let tags = $derived(agent.tags || []);
-	let cid = $derived(extractCid(agent.identifier));
-	let entries = $derived(agent.data?.entries || []);
-	let isSingleModule = $derived(!entries.length && agent.mediaType !== 'application/ai-catalog+json');
-	let jsonStr = $derived(JSON.stringify(agent, null, 2));
+	let stats = $derived(fakeStats(aicard));
+	let verified = $derived(hasTrustManifest(aicard));
+	let tags = $derived(aicard.tags || []);
+	let cid = $derived(extractCid(aicard.identifier));
+	let entries = $derived(aicard.data?.entries || []);
+	let isSingleModule = $derived(!entries.length && aicard.mediaType !== 'application/ai-catalog+json');
+	let jsonStr = $derived(JSON.stringify(aicard, null, 2));
 
 	let copied = $state(false);
 
@@ -46,12 +46,12 @@
 		<div class="flex items-start justify-between px-6 py-4 border-b border-line">
 			<div class="min-w-0 flex-1 mr-4">
 				<div class="flex items-center gap-2">
-					<h2 class="text-lg font-semibold text-ink-strong truncate">{agent.displayName || 'Unnamed Agent'}</h2>
+					<h2 class="text-lg font-semibold text-ink-strong truncate">{aicard.displayName || 'Unnamed AI card'}</h2>
 					{#if verified}
 						<VerifiedBadge />
 					{/if}
 				</div>
-				<p class="text-sm text-ink-weak mt-0.5 break-all select-all cursor-text">{agent.identifier || ''}</p>
+				<p class="text-sm text-ink-weak mt-0.5 break-all select-all cursor-text">{aicard.identifier || ''}</p>
 			</div>
 			<button class="p-1.5 rounded hover:bg-surface-strong transition flex-shrink-0" onclick={onclose} aria-label="Close">
 				<svg class="w-5 h-5 text-ink-medium" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -61,16 +61,16 @@
 		</div>
 
 		<div class="flex-1 overflow-y-auto px-6 py-5 space-y-5">
-			<p class="text-sm text-ink">{agent.description || 'No description available.'}</p>
+			<p class="text-sm text-ink">{aicard.description || 'No description available.'}</p>
 
 			<div class="grid grid-cols-2 sm:grid-cols-4 gap-x-6 gap-y-3 text-sm border border-line rounded-card p-4 bg-surface-strong">
 				<div>
 					<span class="font-semibold text-ink-medium text-xs uppercase tracking-wide">Version</span>
-					<p class="text-ink-strong mt-0.5 font-medium">{agent.version || 'N/A'}</p>
+					<p class="text-ink-strong mt-0.5 font-medium">{aicard.version || 'N/A'}</p>
 				</div>
 				<div>
 					<span class="font-semibold text-ink-medium text-xs uppercase tracking-wide">Updated</span>
-					<p class="text-ink-strong mt-0.5 font-medium">{agent.updatedAt ? new Date(agent.updatedAt).toLocaleDateString() : 'N/A'}</p>
+					<p class="text-ink-strong mt-0.5 font-medium">{aicard.updatedAt ? new Date(aicard.updatedAt).toLocaleDateString() : 'N/A'}</p>
 				</div>
 				<div>
 					<span class="font-semibold text-ink-medium text-xs uppercase tracking-wide">Downloads</span>
@@ -123,9 +123,9 @@
 						</tbody>
 					</table>
 			{:else if isSingleModule}
-				{@const exp = exportFormatForType(agent.mediaType)}
-				{@const name = agent.data?.skillManifest?.name || agent.displayName || 'Unnamed'}
-				{@const version = agent.data?.skillManifest?.version || agent.version || '-'}
+				{@const exp = exportFormatForType(aicard.mediaType)}
+				{@const name = aicard.data?.skillManifest?.name || aicard.displayName || 'Unnamed'}
+				{@const version = aicard.data?.skillManifest?.version || aicard.version || '-'}
 				{@const filename = name.replace(/[^a-z0-9_-]/gi, '_') + '.' + exp.ext}
 					<table class="w-full text-left">
 						<thead>
@@ -140,7 +140,7 @@
 							<tr class="border-t border-line/70">
 								<td class="py-2 pr-3 text-sm text-ink-strong">{name}</td>
 								<td class="py-2 pr-3 text-sm text-ink-medium">{version}</td>
-								<td class="py-2 pr-3"><MediaTypeBadge type={agent.mediaType} /></td>
+								<td class="py-2 pr-3"><MediaTypeBadge type={aicard.mediaType} /></td>
 								<td class="py-2 text-right">
 									<a href="/v1/agents/{encodeURIComponent(cid)}/export?format={exp.format}" download={filename}
 										class="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold text-brand-600 bg-brand-200 rounded hover:bg-brand-300 transition">
@@ -169,8 +169,8 @@
 			</div>
 
 			<!-- Trust manifest -->
-		{#if agent.trustManifest?.signature}
-			{@const tm = agent.trustManifest}
+		{#if aicard.trustManifest?.signature}
+			{@const tm = aicard.trustManifest}
 			{@const shortSig = tm.signature && tm.signature.length > 40 ? tm.signature.slice(0, 20) + '...' + tm.signature.slice(-20) : tm.signature}
 				<div class="rounded-card border border-line bg-brand-200 p-4">
 					<div class="flex items-center gap-2 mb-3">

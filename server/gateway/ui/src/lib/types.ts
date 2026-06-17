@@ -1,4 +1,4 @@
-export interface AgentFilterCriteria {
+export interface AICardFilterCriteria {
 	searchQuery: string;
 	mediaTypes: Set<string>;
 	statusFilter: string;

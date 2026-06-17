@@ -59,6 +59,7 @@ server:
     enabled: true
     listen_address: ":8889"
     public_url: "http://localhost:8889"
+    # catalog_title: "AI Catalog"
   naming:
     ttl: 168h
 
