@@ -58,6 +58,7 @@ func TestConfig(t *testing.T) {
 				"DIRECTORY_SERVER_HTTP_GATEWAY_ENABLED":                "true",
 				"DIRECTORY_SERVER_HTTP_GATEWAY_LISTEN_ADDRESS":         "address:123",
 				"DIRECTORY_SERVER_HTTP_GATEWAY_PUBLIC_URL":             "https://example.com",
+				"DIRECTORY_SERVER_HTTP_GATEWAY_CATALOG_TITLE":          "Cisco AI Catalog",
 			},
 			ExpectedConfig: &Config{
 				ListenAddress: "example.com:8889",
@@ -137,6 +138,7 @@ func TestConfig(t *testing.T) {
 					Enabled:       true,
 					ListenAddress: "address:123",
 					PublicURL:     "https://example.com",
+					CatalogTitle:  "Cisco AI Catalog",
 				},
 			},
 		},
@@ -209,6 +211,7 @@ func TestConfig(t *testing.T) {
 					Enabled:       DefaultHTTPGatewayEnabled,
 					ListenAddress: DefaultHTTPGatewayAddress,
 					PublicURL:     DefaultHTTPGatewayPublicURL,
+					CatalogTitle:  DefaultHTTPGatewayCatalogTitle,
 				},
 			},
 		},

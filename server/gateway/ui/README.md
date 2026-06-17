@@ -60,6 +60,15 @@ When exposing the HTTP gateway through F5 NGINX Ingress, enable edge gzip and up
 keepalive via `httpGateway.ingress.annotations` (see chart defaults in
 `install/charts/dir/apiserver/values.yaml`).
 
+### Catalog title
+
+The browser tab and header title default to **AI Catalog**. Override at deploy time via:
+
+- Config: `http_gateway.catalog_title` (YAML) or env `DIRECTORY_SERVER_HTTP_GATEWAY_CATALOG_TITLE`
+- Helm: `apiserver.httpGateway.catalogTitle`
+
+The UI loads `GET /ui/config.json` (`{"catalogTitle":"..."}`) at runtime.
+
 ## Full rebuild (UI + CLI binary)
 
 ```bash

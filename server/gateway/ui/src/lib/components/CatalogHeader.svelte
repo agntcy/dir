@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { page } from '$app/state';
+	import { catalogTitleState } from '$lib/catalog-title.svelte';
 	import { headerStatsState } from '$lib/header-stats.svelte';
 
 	const isAbout = $derived(page.url.pathname === '/about');
@@ -13,7 +14,7 @@
 			</svg>
 			<span class="text-gray-300 text-lg font-light hidden sm:inline" aria-hidden="true">|</span>
 			<div class="min-w-0">
-				<p class="text-lg font-medium text-gray-700 leading-tight">Cisco AI Catalog</p>
+				<p class="text-lg font-medium text-gray-700 leading-tight">{catalogTitleState.title}</p>
 				<p class="text-xs text-gray-500 leading-tight mt-0.5 hidden sm:block">powered by Agent Directory Service</p>
 			</div>
 		</a>

@@ -45,6 +45,11 @@ type Server struct {
 	address    string
 }
 
+// UIConfig holds runtime configuration for the embedded catalog UI.
+type UIConfig struct {
+	CatalogTitle string
+}
+
 // Options configures the gateway sidecar.
 type Options struct {
 	// HTTPAddress is the address the HTTP gateway binds to (e.g. ":8889").
@@ -59,6 +64,9 @@ type Options struct {
 	// RegisterHandlers registers each annotated service with the gateway mux
 	// (e.g. RegisterAIFinder).
 	RegisterHandlers func(ctx context.Context, mux *runtime.ServeMux, conn *grpc.ClientConn) error
+
+	// UIConfig supplies deployment-specific settings for the embedded catalog UI.
+	UIConfig UIConfig
 }
 
 // New constructs a gateway server. Call Start to begin serving.
@@ -123,7 +131,7 @@ func New(ctx context.Context, opts Options) (*Server, error) {
 		return nil, fmt.Errorf("failed to load embedded static files: %w", err)
 	}
 
-	handler := withStaticFallback(mux, staticContent)
+	handler := withStaticFallback(mux, staticContent, opts.UIConfig)
 
 	httpServer := &http.Server{
 		Addr:              opts.HTTPAddress,
@@ -199,11 +207,18 @@ func RegisterAIFinder(ctx context.Context, mux *runtime.ServeMux, conn *grpc.Cli
 // with /v1/ or /.well-known/ are delegated to the gRPC-gateway mux.
 // All other paths that don't match a static file serve index.html to
 // support SPA client-side routing.
-func withStaticFallback(mux *runtime.ServeMux, static fs.FS) http.Handler {
+func withStaticFallback(mux *runtime.ServeMux, static fs.FS, ui UIConfig) http.Handler {
 	indexHTML, _ := fs.ReadFile(static, "index.html")
+	uiConfigJSON := uiConfigJSON(ui)
 
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		path := r.URL.Path
+
+		if path == "/ui/config.json" {
+			serveUIConfig(w, r, uiConfigJSON)
+
+			return
+		}
 
 		// API routes go straight to the gRPC-gateway mux.
 		if len(path) >= 4 && path[:4] == "/v1/" ||

@@ -1,9 +1,10 @@
 <script lang="ts">
 	import VerifiedBadge from '$lib/components/VerifiedBadge.svelte';
+	import { catalogTitleState } from '$lib/catalog-title.svelte';
 </script>
 
 <svelte:head>
-	<title>About — Cisco AI Catalog</title>
+	<title>About — {catalogTitleState.title}</title>
 </svelte:head>
 
 <main class="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-10">

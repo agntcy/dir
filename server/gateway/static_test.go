@@ -27,6 +27,7 @@ func TestCacheControlForPath(t *testing.T) {
 		{path: "/", want: cacheControlNoCache},
 		{path: "/index.html", want: cacheControlNoCache},
 		{path: "/_app/version.json", want: cacheControlNoCache},
+		{path: "/ui/config.json", want: cacheControlNoCache},
 		{path: "/_app/immutable/assets/app.css", want: cacheControlImmutable},
 		{path: "/_app/immutable/chunks/start.js", want: cacheControlImmutable},
 		{path: "/favicon.ico", want: cacheControlLongLived},
@@ -158,7 +159,7 @@ func TestWithStaticFallback(t *testing.T) {
 	}
 
 	mux := runtime.NewServeMux()
-	handler := withStaticFallback(mux, static)
+	handler := withStaticFallback(mux, static, UIConfig{})
 
 	t.Run("serves immutable asset", func(t *testing.T) {
 		req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/_app/immutable/assets/app.css", nil)
@@ -191,7 +192,7 @@ func TestWithStaticFallback(t *testing.T) {
 	})
 
 	t.Run("returns 500 on static read failure", func(t *testing.T) {
-		handler := withStaticFallback(mux, errorFS{})
+		handler := withStaticFallback(mux, errorFS{}, UIConfig{})
 
 		req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/broken.css", nil)
 		rec := httptest.NewRecorder()
@@ -228,6 +229,25 @@ func TestWithStaticFallback(t *testing.T) {
 
 		assert.Equal(t, http.StatusNotFound, rec.Code)
 	})
+
+	t.Run("serves ui config without cache", func(t *testing.T) {
+		req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/ui/config.json", nil)
+		rec := httptest.NewRecorder()
+
+		withStaticFallback(mux, static, UIConfig{CatalogTitle: "Cisco AI Catalog"}).ServeHTTP(rec, req)
+
+		assert.Equal(t, http.StatusOK, rec.Code)
+		assert.Equal(t, cacheControlNoCache, rec.Header().Get("Cache-Control"))
+		assert.Equal(t, "application/json; charset=utf-8", rec.Header().Get("Content-Type"))
+		assert.JSONEq(t, `{"catalogTitle":"Cisco AI Catalog"}`, rec.Body.String())
+	})
+}
+
+func TestNormalizeCatalogTitle(t *testing.T) {
+	assert.Equal(t, "AI Catalog", normalizeCatalogTitle(""))
+	assert.Equal(t, "Cisco AI Catalog", normalizeCatalogTitle("  Cisco AI Catalog  "))
+	assert.Equal(t, "badtitle", normalizeCatalogTitle("bad\x00title"))
+	assert.Equal(t, "AI Catalog", normalizeCatalogTitle("\x00\x1f"))
 }
 
 func TestEmbeddedFaviconIsICO(t *testing.T) {

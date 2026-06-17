@@ -5,6 +5,7 @@ package gateway
 
 import (
 	"compress/gzip"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io/fs"
@@ -19,6 +20,7 @@ const (
 	cacheControlImmutable = "public, max-age=31536000, immutable"
 	cacheControlNoCache   = "no-cache"
 	cacheControlLongLived = "public, max-age=31536000"
+	maxCatalogTitleLen    = 128
 )
 
 var compressibleContentTypes = map[string]struct{}{
@@ -44,7 +46,7 @@ func isStaticPathTraversal(name string) bool {
 
 func cacheControlForPath(path string) string {
 	switch {
-	case path == "/" || path == "/index.html" || path == "/_app/version.json":
+	case path == "/" || path == "/index.html" || path == "/_app/version.json" || path == "/ui/config.json":
 		return cacheControlNoCache
 	case strings.HasPrefix(path, "/_app/immutable/"):
 		return cacheControlImmutable
@@ -177,4 +179,51 @@ func serveStaticFile(w http.ResponseWriter, r *http.Request, static fs.FS, name 
 
 func serveIndexHTML(w http.ResponseWriter, r *http.Request, indexHTML []byte) {
 	writeStaticResponse(w, r, "/", indexHTML, "text/html; charset=utf-8")
+}
+
+func serveUIConfig(w http.ResponseWriter, r *http.Request, uiConfigJSON []byte) {
+	writeStaticResponse(w, r, "/ui/config.json", uiConfigJSON, "application/json; charset=utf-8")
+}
+
+func uiConfigJSON(ui UIConfig) []byte {
+	title := normalizeCatalogTitle(ui.CatalogTitle)
+
+	payload, err := json.Marshal(struct {
+		CatalogTitle string `json:"catalogTitle"`
+	}{
+		CatalogTitle: title,
+	})
+	if err != nil {
+		return []byte(`{"catalogTitle":"AI Catalog"}`)
+	}
+
+	return payload
+}
+
+func normalizeCatalogTitle(title string) string {
+	title = strings.TrimSpace(title)
+	if title == "" {
+		return "AI Catalog"
+	}
+
+	var b strings.Builder
+
+	for _, r := range title {
+		if r < 0x20 || r == 0x7f {
+			continue
+		}
+
+		b.WriteRune(r)
+	}
+
+	title = strings.TrimSpace(b.String())
+	if title == "" {
+		return "AI Catalog"
+	}
+
+	if len(title) > maxCatalogTitleLen {
+		return title[:maxCatalogTitleLen]
+	}
+
+	return title
 }

@@ -1,1 +1,0 @@
-import{D as e,H as t,V as n}from"./BVcZFfsS.js";var r=new class{#e=t(null);get stats(){return e(this.#e)}set stats(e){n(this.#e,e,!0)}set(e){this.stats=e}};export{r as t};
