@@ -6,7 +6,9 @@ package gateway
 import (
 	"compress/gzip"
 	"context"
+	"errors"
 	"io"
+	"io/fs"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -92,6 +94,39 @@ func TestServeStaticFile_ImmutableCacheAndGzip(t *testing.T) {
 	}
 }
 
+func TestEncodingAccepted(t *testing.T) {
+	tests := []struct {
+		header   string
+		encoding string
+		want     bool
+	}{
+		{header: "", encoding: "gzip", want: false},
+		{header: "gzip", encoding: "gzip", want: true},
+		{header: "gzip, deflate", encoding: "gzip", want: true},
+		{header: "deflate, gzip;q=0.8", encoding: "gzip", want: true},
+		{header: "gzip;q=0", encoding: "gzip", want: false},
+		{header: "gzip;q=0.0", encoding: "gzip", want: false},
+		{header: "deflate", encoding: "gzip", want: false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.header, func(t *testing.T) {
+			assert.Equal(t, tt.want, encodingAccepted(tt.header, tt.encoding))
+		})
+	}
+}
+
+func TestWriteStaticResponse_VaryWithoutGzip(t *testing.T) {
+	req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/_app/immutable/assets/app.css", nil)
+	rec := httptest.NewRecorder()
+
+	writeStaticResponse(rec, req, "/_app/immutable/assets/app.css", []byte("body { }"), "text/css; charset=utf-8")
+
+	assert.Equal(t, http.StatusOK, rec.Code)
+	assert.Empty(t, rec.Header().Get("Content-Encoding"))
+	assert.Equal(t, "Accept-Encoding", rec.Header().Get("Vary"))
+}
+
 func TestServeIndexHTML_NoCache(t *testing.T) {
 	req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/", nil)
 	rec := httptest.NewRecorder()
@@ -146,4 +181,21 @@ func TestWithStaticFallback(t *testing.T) {
 		assert.Equal(t, http.StatusOK, rec.Code)
 		assert.Equal(t, cacheControlNoCache, rec.Header().Get("Cache-Control"))
 	})
+
+	t.Run("returns 500 on static read failure", func(t *testing.T) {
+		handler := withStaticFallback(mux, errorFS{})
+
+		req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/broken.css", nil)
+		rec := httptest.NewRecorder()
+
+		handler.ServeHTTP(rec, req)
+
+		assert.Equal(t, http.StatusInternalServerError, rec.Code)
+	})
+}
+
+type errorFS struct{}
+
+func (errorFS) Open(string) (fs.File, error) {
+	return nil, errors.New("static filesystem read failure")
 }

@@ -227,7 +227,8 @@ func withStaticFallback(mux *runtime.ServeMux, static fs.FS) http.Handler {
 			}
 
 			if !errors.Is(err, fs.ErrNotExist) {
-				http.NotFound(w, r)
+				logger.Error("failed to serve static file", "path", path, "error", err)
+				http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 
 				return
 			}
