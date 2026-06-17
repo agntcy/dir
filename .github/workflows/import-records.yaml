@@ -228,7 +228,7 @@ jobs:
 
       - name: Import MCP Records
         id: import
-        timeout-minutes: 300
+        timeout-minutes: 360
         env:
           AZURE_OPENAI_API_KEY: ${{ secrets.AZURE_OPENAI_API_KEY }}
           AZURE_OPENAI_BASE_URL: ${{ secrets.AZURE_OPENAI_ENDPOINT }}
@@ -432,7 +432,7 @@ jobs:
 
       - name: Import Agent Skills
         id: import
-        timeout-minutes: 300
+        timeout-minutes: 360
         env:
           AZURE_OPENAI_API_KEY: ${{ secrets.AZURE_OPENAI_API_KEY }}
           AZURE_OPENAI_BASE_URL: ${{ secrets.AZURE_OPENAI_ENDPOINT }}
