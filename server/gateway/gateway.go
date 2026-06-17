@@ -15,6 +15,7 @@ import (
 	"io/fs"
 	"net"
 	"net/http"
+	"strings"
 	"time"
 
 	catalogv1 "github.com/agntcy/dir/api/catalog/v1"
@@ -201,12 +202,6 @@ func RegisterAIFinder(ctx context.Context, mux *runtime.ServeMux, conn *grpc.Cli
 func withStaticFallback(mux *runtime.ServeMux, static fs.FS) http.Handler {
 	indexHTML, _ := fs.ReadFile(static, "index.html")
 
-	serveIndex := func(w http.ResponseWriter) {
-		w.Header().Set("Content-Type", "text/html; charset=utf-8")
-		w.WriteHeader(http.StatusOK)
-		_, _ = w.Write(indexHTML)
-	}
-
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		path := r.URL.Path
 
@@ -220,21 +215,52 @@ func withStaticFallback(mux *runtime.ServeMux, static fs.FS) http.Handler {
 
 		// Root or explicit index.html.
 		if path == "/" || path == "/index.html" {
-			serveIndex(w)
+			serveIndexHTML(w, r, indexHTML)
 
 			return
 		}
 
 		// Serve static file if it exists (JS, CSS, images, etc).
-		if name := path[1:]; name != "" {
-			if _, err := fs.Stat(static, name); err == nil {
-				http.ServeFileFS(w, r, static, name)
-
-				return
-			}
+		if name := path[1:]; name != "" && tryServeStatic(w, r, static, path, name) {
+			return
 		}
 
 		// SPA fallback: serve index.html for client-side routing.
-		serveIndex(w)
+		serveIndexHTML(w, r, indexHTML)
 	})
+}
+
+// tryServeStatic serves a static asset when possible. It returns true when the
+// request is fully handled (including 404/500). Benign non-file paths (e.g.
+// trailing-slash routes) return false so the caller can SPA-fallback.
+func tryServeStatic(w http.ResponseWriter, r *http.Request, static fs.FS, path, name string) bool {
+	if isStaticPathTraversal(name) {
+		http.NotFound(w, r)
+
+		return true
+	}
+
+	if !fs.ValidPath(name) {
+		return false
+	}
+
+	err := serveStaticFile(w, r, static, name)
+	if err == nil {
+		return true
+	}
+
+	if !errors.Is(err, fs.ErrNotExist) {
+		logger.Error("failed to serve static file", "path", path, "error", err)
+		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+
+		return true
+	}
+
+	if strings.HasPrefix(path, "/_app/") {
+		http.NotFound(w, r)
+
+		return true
+	}
+
+	return false
 }
