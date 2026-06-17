@@ -5,6 +5,76 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v1.5.0] - 2026-06-17
+
+### Added
+- **Proto/API**: `AIFinderService` catalog models and AI Catalog well-known endpoint (#1579, #1590)
+- **API**: Full record to AI Catalog mappings (#1609)
+- **Server**: AI Finder HTTP API via grpc-gateway sidecar and AI Finder UI (#1582, #1595)
+- **CLI/API**: AI Finder agent export (#1610)
+- **Gateway/UI**: AI Catalog UI aligned to Figma Phoenix design (#1622)
+- **Catalog**: Well-known identifier and identity resolution (#1623)
+- **UI**: About page, favicon, customizable title, and paginated AI Catalog first load (#1658, #1638)
+- **Docs**: In-repo documentation site with main and community pages (#1591, #1585, #1594)
+- **Docs**: `dev` (main) and `latest` (vX.Y.Z) docs deployment (#1611)
+- **Docs**: Get Started trim/reorder, main-page refactor, and ARD specification (#1656, #1619, #1652)
+- **Dir**: `SKILL.md` for agent tooling (#1640)
+- **CLI/CI**: Agent Skill import workflow (#1617)
+
+### Changed
+- **CLI/Importer**: Bump dir-importer and adapt to new enricher config API (#1570)
+- **Docs**: Prune outdated pages, consolidate CLI install instructions, refresh diagrams, and update release documentation (#1657, #1646, #1647, #1650, #1615, #1589, #1552)
+- **Helm**: Production follow-up changes (#1580)
+- **UI**: Static asset cache headers, gzip, and self-hosted fonts (#1653)
+- **CI**: Docs CI workflow updates (#1649)
+- **Packaging**: Update Homebrew formula version (#1568)
+- **Toolchain**: Bump Go to 1.26.4 (#1668)
+- **Dependencies**: Update SPIRE, Zot, PostgreSQL, Busybox, GitHub Actions, OASF SDK protobufs, Helm Zot chart, `sigstore-go`, `yq`, and other module dependencies (#1560–#1664, #1602, #1630–#1636, #1669)
+
+### Fixed
+- **Gateway**: Enable authenticated client usage (#1614)
+- **Helm**: Drop unused `federatesWith` SPIRE config for services (#1625)
+- **CLI**: Completion context skip (#1566)
+- **Dirctl**: Homebrew formula fixes and missing env in latest formulae (#1567, #1569, #1608)
+- **Dir**: AI Catalog name (#1654)
+- **API**: Config unit tests (#1592)
+- **Docs**: Restore header shadow (#1655)
+- **CI**: Harden import-records workflow for nightly catalog sync (#1651)
+
+### Security
+- **Dependencies**: Security update for `quic-go` (#1583)
+
+## [v1.4.0] - 2026-05-28
+
+### Added
+- **Dir**: Annotation-based search support (#1442)
+- **Dir**: Integration tests for the server module (#1093)
+- **CLI**: Batch routing publish and batch unpublish (#1526, #1530)
+- **CLI**: `dirctl doctor network diagnose` command (#1515)
+- **CLI/Client**: Reusable client configuration (#1496)
+- **CLI**: Refresh expired OIDC tokens from `dirctl auth status` (#1516)
+- **CLI**: `--output-dir` option on the import command (#1498)
+- **Helm**: OpenShift install support and documentation (#1423)
+
+### Changed
+- **API**: Remove deprecated validator globals from core/v1 (#1458)
+- **Reconciler**: Enhance credential negotiation with client config builder from context (#1499)
+- **Dir**: Cleanup and v1.3.0 release alignment (#1495)
+- **Helm**: Clarify auto-resolve behavior in chart values comments (#1477)
+- **Tests**: Improve daemon/runtime e2e tests with better context usage and timeouts (#1513)
+- **Packaging**: Update Homebrew formula version (#1463)
+- **Toolchain**: Bump Go to 1.26.3 (#1504, #1506)
+- **Dependencies**: Update SPIRE, Zot, PostgreSQL, libp2p-kad-dht, Kubernetes, GitHub Actions, CodeQL, and other module dependencies (#1455, #1456, #1479–#1549)
+
+### Fixed
+- **CLI**: Skip auth for local-only commands and fix local registry default port (#1471, #1473)
+- **Dir**: Renovate runner (#1467)
+- **Tests**: Naming test and test suite initializer error logging (#1491, #1523)
+- **E2E**: Handle mTLS healthchecks in e2e tests (#1550)
+
+### Security
+- **Dependencies**: Security updates for `golang.org/x/crypto`, `golang.org/x/net`, `golang.org/x/sys`, containerd, go-git, and modelcontextprotocol/registry (#1492, #1521, #1522, #1534–#1539)
+
 ## [v1.3.0] - 2026-05-05
 
 ### Added
