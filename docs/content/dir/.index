@@ -1,7 +1,7 @@
 nav:
   - Get Started:
     - Overview: dir-overview.md
-    - Features and Usage Scenarios: dir-features-scenarios.md
+    - Features: dir-features-scenarios.md
     - Quickstart: dir-quickstart.md
   - Concepts:
     - Architecture: dir-architecture.md
