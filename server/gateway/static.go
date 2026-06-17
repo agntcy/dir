@@ -5,6 +5,7 @@ package gateway
 
 import (
 	"compress/gzip"
+	"errors"
 	"fmt"
 	"io/fs"
 	"mime"
@@ -20,11 +21,13 @@ const (
 )
 
 var compressibleContentTypes = map[string]struct{}{
+	"application/ecmascript": {},
 	"application/javascript": {},
 	"application/json":       {},
 	"image/svg+xml":          {},
 	"text/css":               {},
 	"text/html":              {},
+	"text/javascript":        {},
 	"text/plain":             {},
 }
 
@@ -89,6 +92,10 @@ func writeStaticResponse(w http.ResponseWriter, r *http.Request, path string, da
 func serveStaticFile(w http.ResponseWriter, r *http.Request, static fs.FS, name string) error {
 	data, err := fs.ReadFile(static, name)
 	if err != nil {
+		if errors.Is(err, fs.ErrNotExist) {
+			return fs.ErrNotExist
+		}
+
 		return fmt.Errorf("read static file %q: %w", name, err)
 	}
 

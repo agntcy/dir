@@ -221,10 +221,13 @@ func withStaticFallback(mux *runtime.ServeMux, static fs.FS) http.Handler {
 
 		// Serve static file if it exists (JS, CSS, images, etc).
 		if name := path[1:]; name != "" {
-			if _, err := fs.Stat(static, name); err == nil {
-				if err := serveStaticFile(w, r, static, name); err != nil {
-					http.NotFound(w, r)
-				}
+			err := serveStaticFile(w, r, static, name)
+			if err == nil {
+				return
+			}
+
+			if !errors.Is(err, fs.ErrNotExist) {
+				http.NotFound(w, r)
 
 				return
 			}

@@ -37,31 +37,59 @@ func TestCacheControlForPath(t *testing.T) {
 }
 
 func TestServeStaticFile_ImmutableCacheAndGzip(t *testing.T) {
-	static := fstest.MapFS{
-		"app.css": &fstest.MapFile{
-			Data: []byte("body { color: red; }"),
+	tests := []struct {
+		name        string
+		fileName    string
+		requestPath string
+		data        []byte
+		wantBody    string
+		wantMIME    string
+	}{
+		{
+			name:        "css",
+			fileName:    "app.css",
+			requestPath: "/_app/immutable/assets/app.css",
+			data:        []byte("body { color: red; }"),
+			wantBody:    "body { color: red; }",
+			wantMIME:    "text/css; charset=utf-8",
+		},
+		{
+			name:        "js",
+			fileName:    "app.js",
+			requestPath: "/_app/immutable/chunks/app.js",
+			data:        []byte("export {}"),
+			wantBody:    "export {}",
+			wantMIME:    "text/javascript; charset=utf-8",
 		},
 	}
 
-	req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/_app/immutable/assets/app.css", nil)
-	req.Header.Set("Accept-Encoding", "gzip")
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			static := fstest.MapFS{
+				tt.fileName: &fstest.MapFile{Data: tt.data},
+			}
 
-	rec := httptest.NewRecorder()
+			req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, tt.requestPath, nil)
+			req.Header.Set("Accept-Encoding", "gzip")
 
-	require.NoError(t, serveStaticFile(rec, req, static, "app.css"))
-	assert.Equal(t, http.StatusOK, rec.Code)
-	assert.Equal(t, cacheControlImmutable, rec.Header().Get("Cache-Control"))
-	assert.Equal(t, "gzip", rec.Header().Get("Content-Encoding"))
-	assert.Equal(t, "text/css; charset=utf-8", rec.Header().Get("Content-Type"))
-	assert.Contains(t, rec.Header().Get("Vary"), "Accept-Encoding")
+			rec := httptest.NewRecorder()
 
-	reader, err := gzip.NewReader(rec.Body)
-	require.NoError(t, err)
+			require.NoError(t, serveStaticFile(rec, req, static, tt.fileName))
+			assert.Equal(t, http.StatusOK, rec.Code)
+			assert.Equal(t, cacheControlImmutable, rec.Header().Get("Cache-Control"))
+			assert.Equal(t, "gzip", rec.Header().Get("Content-Encoding"))
+			assert.Equal(t, tt.wantMIME, rec.Header().Get("Content-Type"))
+			assert.Contains(t, rec.Header().Get("Vary"), "Accept-Encoding")
 
-	body, err := io.ReadAll(reader)
-	require.NoError(t, err)
-	require.NoError(t, reader.Close())
-	assert.Equal(t, "body { color: red; }", string(body))
+			reader, err := gzip.NewReader(rec.Body)
+			require.NoError(t, err)
+
+			body, err := io.ReadAll(reader)
+			require.NoError(t, err)
+			require.NoError(t, reader.Close())
+			assert.Equal(t, tt.wantBody, string(body))
+		})
+	}
 }
 
 func TestServeIndexHTML_NoCache(t *testing.T) {
