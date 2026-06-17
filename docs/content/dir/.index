@@ -1,8 +1,8 @@
 nav:
   - Get Started:
     - Overview: dir-overview.md
-    - Features: dir-features-scenarios.md
     - Quickstart: dir-quickstart.md
+    - Usage Guide: dir-features-scenarios.md
   - Concepts:
     - Architecture: dir-architecture.md
     - Records: dir-component-records-validation.md

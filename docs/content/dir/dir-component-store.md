@@ -99,5 +99,5 @@ system works with any server that implements the OCI distribution specification.
 ## Related documentation
 
 - [Records](dir-component-records-validation.md) — OASF record model, CIDs, and validation
-- [Features and Usage Scenarios — Store](dir-features-scenarios.md#store) — CLI examples for push, pull, and info
+- [Usage Guide — Store](dir-features-scenarios.md#store) — CLI examples for push, pull, and info
 - [CLI Reference — Storage Operations](dir-cli-reference.md#storage-operations) — `push`, `pull`, `delete`, `info`

@@ -21,7 +21,7 @@ Records must include a `name` field with a domain-based identifier that enables 
 - The domain must host a JWKS file at `<scheme>://<domain>/.well-known/jwks.json`.
 - Records signed with a private key associated with a public key present in that JWKS file can be verified as authorized by the domain.
 
-See [Features and Usage Scenarios — Name Verification](dir-features-scenarios.md#name-verification) and the [CLI Reference](dir-cli-reference.md#security-verification) for name verification workflows.
+See [Usage Guide — Name Verification](dir-features-scenarios.md#name-verification) and the [CLI Reference](dir-cli-reference.md#security-verification) for name verification workflows.
 
 ### Example Email Agent
 

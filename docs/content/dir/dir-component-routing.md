@@ -52,6 +52,6 @@ sequenceDiagram
 
 - [Architecture](dir-architecture.md) — full system design and diagram
 - [Records](dir-component-records-validation.md) — skill taxonomy and record structure
-- [Features and Usage Scenarios — Announce / Discover](dir-features-scenarios.md#announce) — CLI walkthroughs
+- [Usage Guide — Announce / Discover](dir-features-scenarios.md#announce) — CLI walkthroughs
 - [CLI Reference — Routing Operations](dir-cli-reference.md#routing-operations) — `routing publish`, `unpublish`, `list`, `search`, `info`
 - [Federation](dir-federation-overview.md) — multi-instance routing across federated directories
