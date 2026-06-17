@@ -21,8 +21,8 @@
 			<h2 class="font-display text-xl font-semibold text-ink-strong">AI Catalog</h2>
 			<p class="mt-3 text-sm text-ink leading-relaxed">
 				AI Catalog is a JSON format specification (<code class="text-xs bg-surface-tag px-1.5 py-0.5 rounded">application/ai-catalog+json</code>)
-				for discovering heterogeneous AI artifacts such as MCP servers, A2A agents, skills, datasets, and
-				model cards. Each catalog entry declares its artifact type with a media type and references or
+				for describing heterogeneous AI artifacts such as MCP servers, A2A agents, skills, datasets, and
+				model cards. Each catalog entry declares its artifact type and references or
 				embeds the native metadata, giving one discovery mechanism across protocols and platforms.
 			</p>
 			<p class="mt-3 text-sm text-ink leading-relaxed">
@@ -48,16 +48,15 @@
 			<h2 class="font-display text-xl font-semibold text-ink-strong">Agentic Resource Discovery</h2>
 			<p class="mt-3 text-sm text-ink leading-relaxed">
 				Agentic Resource Discovery (ARD) is a specification for how AI artifacts are cataloged,
-				discovered, and searched across federated registries. It aligns with the AI Catalog data model
+				discovered, and searched within or across registries. It aligns with the AI Catalog data model
 				and promotes search-first discovery: registries maintain a shared index so clients can find
 				capabilities over standard HTTP REST APIs instead of loading every tool description into an LLM
 				context window.
 			</p>
 			<p class="mt-3 text-sm text-ink leading-relaxed">
-				The DIR gateway exposes ARD as
-				<code class="text-xs bg-surface-tag px-1.5 py-0.5 rounded">GET /v1/agents</code> and
-				<code class="text-xs bg-surface-tag px-1.5 py-0.5 rounded">GET /v1/agents/&#123;cid&#125;</code>;
-				this UI uses those endpoints for browsing and detail views.
+				The DIR gateway exposes ARD over the
+				<code class="text-xs bg-surface-tag px-1.5 py-0.5 rounded">GET /v1/agents</code> endpoint, which
+				this UI uses for browsing and detail views.
 			</p>
 			<ul class="mt-4 space-y-2 text-sm">
 				<li>
@@ -76,9 +75,16 @@
 		<section class="bg-surface-light rounded-card border border-line/70 shadow-card p-6">
 			<h2 class="font-display text-xl font-semibold text-ink-strong">Agent Directory Service (ADS)</h2>
 			<p class="mt-3 text-sm text-ink leading-relaxed">
-				ADS is the distributed directory for OASF agent metadata, trust attestations, and federation.
-				Operators publish records to ADS; gateways and tools like this catalog surface them for
-				discovery.
+				ADS is a distributed registry that exposes
+				<a
+					href="https://docs.agntcy.org/oasf/open-agentic-schema-framework/"
+					target="_blank"
+					rel="noopener noreferrer"
+					class="text-brand-600 hover:text-brand-700 underline underline-offset-2 rounded-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500"
+				>OASF</a>
+				records as AI Catalog entries and serves them securely over the ARD endpoints so the same inventory
+				is reachable by both ADS and ARD client integration. Operators publish records to ADS and consumers
+				discover through ARD, verify through ADS, and invoke through MCP or A2A — one flow, many protocols.
 			</p>
 			<ul class="mt-4 space-y-2 text-sm">
 				<li>
