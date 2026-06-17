@@ -9,7 +9,7 @@ MkDocs site for [agntcy/dir](https://github.com/agntcy/dir), published at [https
 | `content/` | Published Markdown |
 | `mkdocs/` | MkDocs config, uv project, theme overrides |
 | `Taskfile.yml` | Build, serve, lint, and local mike preview tasks |
-| `research/`, `rfc/` | Drafts and experiments (not in site nav) |
+| `research/` | Drafts and experiments (not in site nav) |
 
 ## Prerequisites
 
