@@ -10,7 +10,9 @@ for an overview of the protocol surface.
 
 - **Records**: The fundamental units of information in the ADS, representing individual agents and their capabilities. Each record is uniquely identified and contains metadata describing the agent's skills, attributes, and constraints.
 
-- **Distributed Hash Table (DHT)**: A decentralized storage system that enables efficient lookup and retrieval of directory records. The DHT maps agent skills to record identifiers, allowing for quick discovery of relevant agents based on their capabilities.
+- **Store**: The content-addressable storage layer for records, backed by an OCI registry (such as Zot). Records are stored and retrieved by their content identifier (CID), ensuring integrity and deduplication.
+
+- **Distributed Hash Table (DHT)**: A decentralized storage system that enables efficient lookup and retrieval of directory records. The DHT maps agent attributes—skills, domains, modules, and locators—to record identifiers, allowing for quick discovery of relevant agents based on their capabilities.
 
 - **Content Routing Protocol**: A set of rules and mechanisms for routing requests and responses between agents and directory servers. This protocol ensures that queries for agent capabilities are efficiently directed to the appropriate servers hosting the relevant records.
 
@@ -20,21 +22,7 @@ for an overview of the protocol surface.
 
 - **Runtime Discovery**: Components that watch container runtimes (Docker, Kubernetes) for workloads and provide a gRPC API for querying them. Enables dynamic discovery of agents running in containerized environments, with support for resolving A2A agent cards and OASF records from discovered workloads.
 
-- **Event Streaming**: Real-time notification system that publishes Directory events to message brokers, enabling subscribers to react to record changes, discoveries, and other Directory operations.
-
 - **Security and Trust Mechanisms**: Features that ensure the integrity and authenticity of directory records and nodes, including cryptographic signing, verification of claims, secure communication protocols, and access controls.
-
-### Core vs extensions
-
-Per the [Directory specification](https://github.com/agntcy/dir-spec), **Records**, **Store**, and
-**Routing** are the defining core components. They are documented at depth in
-[Records](dir-component-records-validation.md), [Store](dir-component-store.md), and
-[Routing](dir-component-routing.md).
-
-Optional **extensions** include
-[Runtime Discovery](dir-component-runtime-discovery.md) and the
-[MCP Server](dir-component-mcp-server.md). External access
-via [OIDC](dir-component-oidc-authentication.md) is configured at deployment time.
 
 ## Principles
 
