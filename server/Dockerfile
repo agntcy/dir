@@ -45,7 +45,7 @@ FROM builder AS debug
 WORKDIR /
 
 COPY --from=builder /bin/apiserver ./apiserver
-COPY --from=ghcr.io/grpc-ecosystem/grpc-health-probe:v0.4.48 /ko-app/grpc-health-probe /bin/grpc-health-probe
+COPY --from=ghcr.io/grpc-ecosystem/grpc-health-probe:v0.4.52 /ko-app/grpc-health-probe /bin/grpc-health-probe
 
 RUN xx-go install github.com/go-delve/delve/cmd/dlv@v1.26.2
 
@@ -57,7 +57,7 @@ FROM gcr.io/distroless/static:nonroot@sha256:963fa6c544fe5ce420f1f54fb88b6fb0147
 WORKDIR /
 
 COPY --from=builder /bin/apiserver ./apiserver
-COPY --from=ghcr.io/grpc-ecosystem/grpc-health-probe:v0.4.48 /ko-app/grpc-health-probe /bin/grpc-health-probe
+COPY --from=ghcr.io/grpc-ecosystem/grpc-health-probe:v0.4.52 /ko-app/grpc-health-probe /bin/grpc-health-probe
 
 USER 65532:65532
 
@@ -72,7 +72,7 @@ COPY --from=builder /etc/ssl/certs /etc/ssl/certs
 COPY --from=builder /usr/share/ca-certificates /usr/share/ca-certificates
 
 COPY --from=builder /bin/apiserver ./apiserver
-COPY --from=ghcr.io/grpc-ecosystem/grpc-health-probe:v0.4.48 /ko-app/grpc-health-probe /bin/grpc-health-probe
+COPY --from=ghcr.io/grpc-ecosystem/grpc-health-probe:v0.4.52 /ko-app/grpc-health-probe /bin/grpc-health-probe
 
 # Create a non-root user for coverage
 RUN addgroup -g 55532 -S nonroot && adduser -u 55532 -S nonroot -G nonroot
