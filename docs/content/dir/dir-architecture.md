@@ -32,9 +32,8 @@ Per the [Directory specification](https://github.com/agntcy/dir-spec), **Records
 [Routing](dir-component-routing.md).
 
 Optional **extensions** include
-[Runtime Discovery](dir-component-runtime-discovery.md),
-[Event Streaming](dir-component-event-streaming.md), the
-[MCP Server](dir-component-mcp-server.md), and the [GUI](dir-component-gui.md). External access
+[Runtime Discovery](dir-component-runtime-discovery.md) and the
+[MCP Server](dir-component-mcp-server.md). External access
 via [OIDC](dir-component-oidc-authentication.md) is configured at deployment time.
 
 ## Principles
