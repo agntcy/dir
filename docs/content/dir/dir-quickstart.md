@@ -112,7 +112,7 @@ Records are unsigned by default. To ensure trust between publishers and consumer
     ```
 
 1. Verify the signature and integrity of a record:
-   
+  
     ```bash
     dirctl verify "$CID"
     ```
