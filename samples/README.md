@@ -8,6 +8,8 @@ This directory contains sample applications that demonstrate how to use the Agen
 
 This sample application shows how to use the ARD protocol over the ADS service. It demonstrates how to start an ADS daemon, publish agent records, and perform discovery using ARD queries. Below is a sequence diagram showing a sample end-to-end flow, from discovery to invocation, across heterogeneous protocols. The idea is simple: an agentic application queries ADS over ARD, discovers capabilities, verifies trust, and dispatches work to the appropriate protocol based on its requirements. 
 
+> This example is part of the **[ARD over Agent Directory: Interoperability by Design](https://blogs.agntcy.org/technical/2026/06/17/ai-catalog-over-directory.html)** blogpost.
+
 ```mermaid
 sequenceDiagram
     autonumber

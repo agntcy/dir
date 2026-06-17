@@ -35,12 +35,12 @@ Stay involved with the AGNTCY community and DIR contributors:
 
 Stay up to date with announcements, tutorials, and technical deep dives from the DIR team and community:
 
+- **[ARD over Agent Directory: Interoperability by Design](https://blogs.agntcy.org/technical/2026/06/17/ai-catalog-over-directory.html)** — *June 17, 2026*
 - **[lazydir: A Terminal UI for Browsing Agent Directory](https://blogs.agntcy.org/technical/2026/05/20/lazydir-v0.0.1.html)** — *May 20, 2026*
 - **[Directory Federation Hands-On: SPIRE and SPIFFE in a Local Kind Environment](https://blogs.agntcy.org/technical/security/directory/2026/02/25/directory-federation.html)** — *February 25, 2026*
 - **[Directory MCP Server: Bringing AI Agent Discovery to Your IDE](https://blogs.agntcy.org/technical/2026/02/19/directory-mcp-server.html)** — *February 19, 2026*
 - **[Agent Directory v1.0: Distributed Announce and Discovery of Multi-Agentic-Systems](https://blogs.agntcy.org/technical/2026/02/19/dir-v1.html)** — *February 19, 2026*
 - **[Directory v1.0: Dual-Mode Authentication for Secure Agent Discovery](https://blogs.agntcy.org/security/authentication/directory/2026/01/22/directory-authentication-dual-mode-security.html)** — *January 22, 2026*
-- **[The Future of Travel: Building a Multi-Agent Ecosystem with the Internet of Agents](https://blogs.agntcy.org/agents/kubernetes/demo/slim/open-telemetry/2026/01/15/blog-touring-scheduling-system.html)** — *January 15, 2026*
 
 ---
 
