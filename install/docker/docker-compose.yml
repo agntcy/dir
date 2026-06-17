@@ -41,7 +41,7 @@ services:
         condition: on-failure
 
   zot:
-    image: ghcr.io/project-zot/zot:v2.1.16
+    image: ghcr.io/project-zot/zot:v2.1.17
     ports:
       - 5555:5000
     deploy:
