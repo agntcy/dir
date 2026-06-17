@@ -39,8 +39,24 @@ on:
         description: "Directory server address"
         type: string
         default: "ads.outshift.io:443"
+      debug:
+        description: "Enable dirctl import debug output (dedup and validation details)"
+        type: boolean
+        default: false
+      sign_max_retries:
+        description: "Per-CID signature attempts before deleting unsigned records"
+        type: number
+        default: 3
+      sign_cleanup_on_failure:
+        description: "Delete unsigned records when signing fails after all retries"
+        type: boolean
+        default: true
   schedule:
     - cron: "0 0 * * *"
+
+concurrency:
+  group: import-records
+  cancel-in-progress: false
 
 jobs:
   setup-matrix:
@@ -57,6 +73,9 @@ jobs:
       sign: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.sign || 'true' }}
       force: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.force || 'false' }}
       scanner_enabled: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.scanner_enabled || 'false' }}
+      debug: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.debug || 'false' }}
+      sign_max_retries: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.sign_max_retries || '3' }}
+      sign_cleanup_on_failure: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.sign_cleanup_on_failure || 'true' }}
     env:
       IMPORT_CONFIG: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.import_config || '.github/workflows/scripts/import-records.json' }}
     steps:
@@ -108,8 +127,44 @@ jobs:
           echo "Generated MCP matrix with $MCP_COUNT entries"
           echo "Generated agent-skill matrix with $AGENT_SKILLS_COUNT entries"
 
-  import-mcp:
+  build-dirctl:
     needs: setup-matrix
+    if: |
+      (needs.setup-matrix.outputs.run_mcp_import == 'true' && needs.setup-matrix.outputs.mcp_matrix != '[]') ||
+      (needs.setup-matrix.outputs.run_agent_skills_import == 'true' && needs.setup-matrix.outputs.agent_skills_matrix != '[]')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Build dirctl from source
+        id: setup-dirctl
+        uses: ./.github/actions/build-dirctl
+
+      - name: Upload dirctl artifact
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: dirctl
+          path: ${{ steps.setup-dirctl.outputs.dirctl_path }}
+          retention-days: 7
+
+      - name: Install mcp-scanner
+        if: ${{ needs.setup-matrix.outputs.scanner_enabled == 'true' && needs.setup-matrix.outputs.run_mcp_import == 'true' && needs.setup-matrix.outputs.mcp_matrix != '[]' }}
+        run: |
+          task importer:deps:mcp-scanner
+          mkdir -p .bin
+          install -m 755 "${HOME}/.local/bin/mcp-scanner" .bin/mcp-scanner
+
+      - name: Upload mcp-scanner artifact
+        if: ${{ needs.setup-matrix.outputs.scanner_enabled == 'true' && needs.setup-matrix.outputs.run_mcp_import == 'true' && needs.setup-matrix.outputs.mcp_matrix != '[]' }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: mcp-scanner
+          path: .bin/mcp-scanner
+          retention-days: 7
+
+  import-mcp:
+    needs: [setup-matrix, build-dirctl]
     if: ${{ needs.setup-matrix.outputs.run_mcp_import == 'true' && needs.setup-matrix.outputs.mcp_matrix != '[]' }}
     runs-on: ubuntu-latest
     permissions:
@@ -117,6 +172,7 @@ jobs:
       id-token: write # Required for OIDC signing with Sigstore
     strategy:
       fail-fast: false
+      max-parallel: 1
       matrix:
         entry: ${{ fromJson(needs.setup-matrix.outputs.mcp_matrix) }}
     env:
@@ -126,44 +182,43 @@ jobs:
       SIGN: ${{ needs.setup-matrix.outputs.sign }}
       FORCE: ${{ needs.setup-matrix.outputs.force }}
       SCANNER_ENABLED: ${{ needs.setup-matrix.outputs.scanner_enabled }}
+      DEBUG: ${{ needs.setup-matrix.outputs.debug }}
+      SIGN_MAX_RETRIES: ${{ needs.setup-matrix.outputs.sign_max_retries }}
+      SIGN_CLEANUP_ON_FAILURE: ${{ needs.setup-matrix.outputs.sign_cleanup_on_failure }}
     steps:
       - name: Checkout code
         uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
 
-      - name: Build dirctl from source
-        id: setup-dirctl
-        uses: ./.github/actions/build-dirctl
-
-      - name: Install Task
-        uses: go-task/setup-task@70f2430ad412f838533de8c0515c749ffb2b8bd3 # v1.1.0
+      - name: Download dirctl
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
-          version: 3.49.1
+          name: dirctl
+          path: .bin
 
-      - name: Install mcp-scanner
+      - name: Prepare dirctl
+        id: setup-dirctl
+        run: |
+          chmod +x .bin/dirctl
+          echo "${GITHUB_WORKSPACE}/.bin" >> "${GITHUB_PATH}"
+          echo "dirctl_path=${GITHUB_WORKSPACE}/.bin/dirctl" >> "${GITHUB_OUTPUT}"
+
+      - name: Download mcp-scanner
         if: ${{ env.SCANNER_ENABLED == 'true' }}
-        run: task importer:deps:mcp-scanner
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: mcp-scanner
+          path: .bin
+
+      - name: Prepare mcp-scanner
+        if: ${{ env.SCANNER_ENABLED == 'true' }}
+        run: chmod +x .bin/mcp-scanner
 
       - name: Create Enricher Config
+        env:
+          DIRCTL_PATH: ${{ steps.setup-dirctl.outputs.dirctl_path }}
         run: |
-          cat <<'EOF' > mcphost_ci.json
-          {
-            "mcpServers": {
-              "dir-mcp-server": {
-                "command": "${{ steps.setup-dirctl.outputs.dirctl_path }}",
-                "args": [
-                  "mcp",
-                  "serve"
-                ],
-                "env": {
-                  "OASF_API_VALIDATION_SCHEMA_URL": "https://schema.oasf.outshift.com",
-                  "DIRECTORY_CLIENT_AUTH_MODE": "insecure"
-                }
-              }
-            },
-            "model": "azure:gpt-4o",
-            "max-steps": 10
-          }
-          EOF
+          sed "s|__DIRCTL_PATH__|${DIRCTL_PATH}|g" \
+            .github/workflows/scripts/mcphost_ci.json.template > mcphost_ci.json
 
       - name: Fetch Directory OIDC token
         id: oidc-dir-import
@@ -173,6 +228,7 @@ jobs:
 
       - name: Import MCP Records
         id: import
+        timeout-minutes: 360
         env:
           AZURE_OPENAI_API_KEY: ${{ secrets.AZURE_OPENAI_API_KEY }}
           AZURE_OPENAI_BASE_URL: ${{ secrets.AZURE_OPENAI_ENDPOINT }}
@@ -198,7 +254,7 @@ jobs:
           fi
 
           if [[ "${{ env.SCANNER_ENABLED }}" == "true" ]]; then
-             CMD+=("--scanner-enabled")
+             CMD+=("--scanner-enabled" "--scanner-cli-path=${GITHUB_WORKSPACE}/.bin/mcp-scanner")
           fi
 
           if [ -n "${{ matrix.entry.search }}" ]; then
@@ -211,6 +267,10 @@ jobs:
 
           if [ -n "${{ matrix.entry.updated_since }}" ]; then
             CMD+=(--filter="updated_since=${{ matrix.entry.updated_since }}")
+          fi
+
+          if [[ "${{ env.DEBUG }}" == "true" ]]; then
+            CMD+=(--debug)
           fi
 
           echo "Running: ${CMD[*]}"
@@ -239,73 +299,59 @@ jobs:
 
           echo "cids_file=$CIDS_FILE" >> $GITHUB_OUTPUT
 
-      - name: Fetch Sigstore OIDC token
+      - name: Load imported CIDs for signing
         if: ${{ env.SIGN == 'true' && env.DRY_RUN == 'false' }}
-        id: oidc-sigstore
-        uses: ./.github/actions/fetch-oidc-token
-        with:
-          audience: sigstore
+        id: sign-cids
+        run: |
+          CIDS_FILE="${{ steps.import.outputs.cids_file }}"
+          if [ ! -f "$CIDS_FILE" ] || [ ! -s "$CIDS_FILE" ]; then
+            echo "No CIDs to sign"
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          echo "skip=false" >> "$GITHUB_OUTPUT"
+          {
+            echo 'cids<<EOF'
+            cat "$CIDS_FILE"
+            echo 'EOF'
+          } >> "$GITHUB_OUTPUT"
 
       - name: Fetch Directory OIDC token for signing
-        if: ${{ env.SIGN == 'true' && env.DRY_RUN == 'false' }}
+        if: ${{ env.SIGN == 'true' && env.DRY_RUN == 'false' && steps.sign-cids.outputs.skip != 'true' }}
         id: oidc-dir-sign
         uses: ./.github/actions/fetch-oidc-token
         with:
           audience: dir
 
-      - name: Sign Imported Records
-        if: ${{ env.SIGN == 'true' && env.DRY_RUN == 'false' }}
-        env:
-          SIGSTORE_OIDC_TOKEN: ${{ steps.oidc-sigstore.outputs.token }}
-          DIRCTL_PATH: dirctl
-          DIR_AUTH_TOKEN: ${{ steps.oidc-dir-sign.outputs.token }}
+      - name: Sign imported records
+        if: ${{ env.SIGN == 'true' && env.DRY_RUN == 'false' && steps.sign-cids.outputs.skip != 'true' }}
+        id: sign-records
+        uses: ./.github/actions/sign-record
+        with:
+          cids: ${{ steps.sign-cids.outputs.cids }}
+          oidc_client_id: https://github.com/${{ github.repository }}/.github/workflows/import-records.yaml@${{ github.ref }}
+          server_addr: ${{ env.SERVER_ADDRESS }}
+          auth_token: ${{ steps.oidc-dir-sign.outputs.token }}
+          dirctl_path: ${{ steps.setup-dirctl.outputs.dirctl_path }}
+          max_retries: ${{ env.SIGN_MAX_RETRIES }}
+          cleanup_on_failure: ${{ env.SIGN_CLEANUP_ON_FAILURE }}
+
+      - name: Write failed-to-sign artifact
+        if: ${{ env.SIGN == 'true' && env.DRY_RUN == 'false' && steps.sign-cids.outputs.skip != 'true' && steps.sign-records.outputs.failed != '0' }}
         run: |
-          CIDS_FILE="${{ steps.import.outputs.cids_file }}"
+          printf '%s\n' "${{ steps.sign-records.outputs.failed_cids }}" > failed-to-sign.txt
 
-          if [ ! -f "$CIDS_FILE" ]; then
-            echo "No CIDs file found - no records were imported"
-            exit 0
-          fi
-
-          CID_COUNT=$(wc -l < "$CIDS_FILE" | tr -d ' ')
-          if [ "$CID_COUNT" -eq 0 ]; then
-            echo "No CIDs to sign"
-            exit 0
-          fi
-
-          echo "Signing $CID_COUNT records..."
-          SIGNED=0
-          FAILED=0
-
-          while IFS= read -r CID || [ -n "$CID" ]; do
-            [ -z "$CID" ] && continue
-
-            echo "Signing CID: $CID"
-
-            if "${DIRCTL_PATH}" sign "$CID" \
-              --server-addr="${{ env.SERVER_ADDRESS }}" \
-              --auth-mode=oidc \
-              --auth-token="${DIR_AUTH_TOKEN}" \
-              --oidc-token="${SIGSTORE_OIDC_TOKEN}" \
-              --oidc-provider-url="https://token.actions.githubusercontent.com" \
-              --oidc-client-id="https://github.com/${{ github.repository }}/.github/workflows/import-records.yaml@${{ github.ref }}"; then
-              SIGNED=$((SIGNED + 1))
-            else
-              echo "Failed to sign CID: $CID"
-              FAILED=$((FAILED + 1))
-            fi
-          done < "$CIDS_FILE"
-
-          echo "=== Signing Summary ==="
-          echo "Signed: $SIGNED"
-          echo "Failed: $FAILED"
-
-          if [ "$FAILED" -gt 0 ]; then
-            exit 1
-          fi
+      - name: Upload unsigned CIDs after sign failure
+        if: ${{ env.SIGN == 'true' && env.DRY_RUN == 'false' && steps.sign-cids.outputs.skip != 'true' && steps.sign-records.outputs.failed != '0' }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: failed-to-sign-mcp-${{ matrix.entry.index }}
+          path: failed-to-sign.txt
+          if-no-files-found: ignore
 
   import-agent-skills:
-    needs: setup-matrix
+    needs: [setup-matrix, build-dirctl]
     if: ${{ needs.setup-matrix.outputs.run_agent_skills_import == 'true' && needs.setup-matrix.outputs.agent_skills_matrix != '[]' }}
     runs-on: ubuntu-latest
     permissions:
@@ -313,6 +359,7 @@ jobs:
       id-token: write # Required for OIDC signing with Sigstore
     strategy:
       fail-fast: false
+      max-parallel: 1
       matrix:
         entry: ${{ fromJson(needs.setup-matrix.outputs.agent_skills_matrix) }}
     env:
@@ -321,9 +368,25 @@ jobs:
       SERVER_ADDRESS: ${{ needs.setup-matrix.outputs.server_address }}
       SIGN: ${{ needs.setup-matrix.outputs.sign }}
       FORCE: ${{ needs.setup-matrix.outputs.force }}
+      DEBUG: ${{ needs.setup-matrix.outputs.debug }}
+      SIGN_MAX_RETRIES: ${{ needs.setup-matrix.outputs.sign_max_retries }}
+      SIGN_CLEANUP_ON_FAILURE: ${{ needs.setup-matrix.outputs.sign_cleanup_on_failure }}
     steps:
       - name: Checkout code
         uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+
+      - name: Download dirctl
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: dirctl
+          path: .bin
+
+      - name: Prepare dirctl
+        id: setup-dirctl
+        run: |
+          chmod +x .bin/dirctl
+          echo "${GITHUB_WORKSPACE}/.bin" >> "${GITHUB_PATH}"
+          echo "dirctl_path=${GITHUB_WORKSPACE}/.bin/dirctl" >> "${GITHUB_OUTPUT}"
 
       - name: Cache skill repo
         uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
@@ -354,31 +417,12 @@ jobs:
           echo "Synced $(git -C "$REPO_DIR" rev-parse --short HEAD) from origin/main"
           echo "repo_dir=$REPO_DIR" >> $GITHUB_OUTPUT
 
-      - name: Build dirctl from source
-        id: setup-dirctl
-        uses: ./.github/actions/build-dirctl
-
       - name: Create Enricher Config
+        env:
+          DIRCTL_PATH: ${{ steps.setup-dirctl.outputs.dirctl_path }}
         run: |
-          cat <<'EOF' > mcphost_ci.json
-          {
-            "mcpServers": {
-              "dir-mcp-server": {
-                "command": "${{ steps.setup-dirctl.outputs.dirctl_path }}",
-                "args": [
-                  "mcp",
-                  "serve"
-                ],
-                "env": {
-                  "OASF_API_VALIDATION_SCHEMA_URL": "https://schema.oasf.outshift.com",
-                  "DIRECTORY_CLIENT_AUTH_MODE": "insecure"
-                }
-              }
-            },
-            "model": "azure:gpt-4o",
-            "max-steps": 10
-          }
-          EOF
+          sed "s|__DIRCTL_PATH__|${DIRCTL_PATH}|g" \
+            .github/workflows/scripts/mcphost_ci.json.template > mcphost_ci.json
 
       - name: Fetch Directory OIDC token
         id: oidc-dir-import
@@ -388,6 +432,7 @@ jobs:
 
       - name: Import Agent Skills
         id: import
+        timeout-minutes: 360
         env:
           AZURE_OPENAI_API_KEY: ${{ secrets.AZURE_OPENAI_API_KEY }}
           AZURE_OPENAI_BASE_URL: ${{ secrets.AZURE_OPENAI_ENDPOINT }}
@@ -418,6 +463,10 @@ jobs:
              CMD+=("--force")
           fi
 
+          if [[ "${{ env.DEBUG }}" == "true" ]]; then
+            CMD+=(--debug)
+          fi
+
           echo "Running: ${CMD[*]}"
           set +e
           OUTPUT=$("${CMD[@]}" 2>&1)
@@ -444,67 +493,88 @@ jobs:
 
           echo "cids_file=$CIDS_FILE" >> $GITHUB_OUTPUT
 
-      - name: Fetch Sigstore OIDC token
+      - name: Load imported CIDs for signing
         if: ${{ env.SIGN == 'true' && env.DRY_RUN == 'false' }}
-        id: oidc-sigstore
-        uses: ./.github/actions/fetch-oidc-token
-        with:
-          audience: sigstore
+        id: sign-cids
+        run: |
+          CIDS_FILE="${{ steps.import.outputs.cids_file }}"
+          if [ ! -f "$CIDS_FILE" ] || [ ! -s "$CIDS_FILE" ]; then
+            echo "No CIDs to sign"
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          echo "skip=false" >> "$GITHUB_OUTPUT"
+          {
+            echo 'cids<<EOF'
+            cat "$CIDS_FILE"
+            echo 'EOF'
+          } >> "$GITHUB_OUTPUT"
 
       - name: Fetch Directory OIDC token for signing
-        if: ${{ env.SIGN == 'true' && env.DRY_RUN == 'false' }}
+        if: ${{ env.SIGN == 'true' && env.DRY_RUN == 'false' && steps.sign-cids.outputs.skip != 'true' }}
         id: oidc-dir-sign
         uses: ./.github/actions/fetch-oidc-token
         with:
           audience: dir
 
-      - name: Sign Imported Records
-        if: ${{ env.SIGN == 'true' && env.DRY_RUN == 'false' }}
-        env:
-          SIGSTORE_OIDC_TOKEN: ${{ steps.oidc-sigstore.outputs.token }}
-          DIRCTL_PATH: dirctl
-          DIR_AUTH_TOKEN: ${{ steps.oidc-dir-sign.outputs.token }}
+      - name: Sign imported records
+        if: ${{ env.SIGN == 'true' && env.DRY_RUN == 'false' && steps.sign-cids.outputs.skip != 'true' }}
+        id: sign-records
+        uses: ./.github/actions/sign-record
+        with:
+          cids: ${{ steps.sign-cids.outputs.cids }}
+          oidc_client_id: https://github.com/${{ github.repository }}/.github/workflows/import-records.yaml@${{ github.ref }}
+          server_addr: ${{ env.SERVER_ADDRESS }}
+          auth_token: ${{ steps.oidc-dir-sign.outputs.token }}
+          dirctl_path: ${{ steps.setup-dirctl.outputs.dirctl_path }}
+          max_retries: ${{ env.SIGN_MAX_RETRIES }}
+          cleanup_on_failure: ${{ env.SIGN_CLEANUP_ON_FAILURE }}
+
+      - name: Write failed-to-sign artifact
+        if: ${{ env.SIGN == 'true' && env.DRY_RUN == 'false' && steps.sign-cids.outputs.skip != 'true' && steps.sign-records.outputs.failed != '0' }}
         run: |
-          CIDS_FILE="${{ steps.import.outputs.cids_file }}"
+          printf '%s\n' "${{ steps.sign-records.outputs.failed_cids }}" > failed-to-sign.txt
 
-          if [ ! -f "$CIDS_FILE" ]; then
-            echo "No CIDs file found - no records were imported"
-            exit 0
-          fi
+      - name: Upload unsigned CIDs after sign failure
+        if: ${{ env.SIGN == 'true' && env.DRY_RUN == 'false' && steps.sign-cids.outputs.skip != 'true' && steps.sign-records.outputs.failed != '0' }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: failed-to-sign-agent-skills-${{ matrix.entry.index }}
+          path: failed-to-sign.txt
+          if-no-files-found: ignore
 
-          CID_COUNT=$(wc -l < "$CIDS_FILE" | tr -d ' ')
-          if [ "$CID_COUNT" -eq 0 ]; then
-            echo "No CIDs to sign"
-            exit 0
-          fi
+  import-summary:
+    needs:
+      - setup-matrix
+      - build-dirctl
+      - import-mcp
+      - import-agent-skills
+    if: ${{ always() && !cancelled() && needs.setup-matrix.result == 'success' }}
+    runs-on: ubuntu-latest
+    permissions:
+      actions: read
+      contents: read
+    env:
+      SERVER_ADDRESS: ${{ needs.setup-matrix.outputs.server_address }}
+      DRY_RUN: ${{ needs.setup-matrix.outputs.dry_run }}
+      SIGN: ${{ needs.setup-matrix.outputs.sign }}
+      RUN_MCP_IMPORT: ${{ needs.setup-matrix.outputs.run_mcp_import }}
+      RUN_AGENT_SKILLS_IMPORT: ${{ needs.setup-matrix.outputs.run_agent_skills_import }}
+      DEBUG: ${{ needs.setup-matrix.outputs.debug }}
+      SIGN_MAX_RETRIES: ${{ needs.setup-matrix.outputs.sign_max_retries }}
+      SIGN_CLEANUP_ON_FAILURE: ${{ needs.setup-matrix.outputs.sign_cleanup_on_failure }}
+      SETUP_MATRIX_RESULT: ${{ needs.setup-matrix.result }}
+      BUILD_DIRCTL_RESULT: ${{ needs.build-dirctl.result }}
+      IMPORT_MCP_RESULT: ${{ needs.import-mcp.result }}
+      IMPORT_AGENT_SKILLS_RESULT: ${{ needs.import-agent-skills.result }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
-          echo "Signing $CID_COUNT records..."
-          SIGNED=0
-          FAILED=0
-
-          while IFS= read -r CID || [ -n "$CID" ]; do
-            [ -z "$CID" ] && continue
-
-            echo "Signing CID: $CID"
-
-            if "${DIRCTL_PATH}" sign "$CID" \
-              --server-addr="${{ env.SERVER_ADDRESS }}" \
-              --auth-mode=oidc \
-              --auth-token="${DIR_AUTH_TOKEN}" \
-              --oidc-token="${SIGSTORE_OIDC_TOKEN}" \
-              --oidc-provider-url="https://token.actions.githubusercontent.com" \
-              --oidc-client-id="https://github.com/${{ github.repository }}/.github/workflows/import-records.yaml@${{ github.ref }}"; then
-              SIGNED=$((SIGNED + 1))
-            else
-              echo "Failed to sign CID: $CID"
-              FAILED=$((FAILED + 1))
-            fi
-          done < "$CIDS_FILE"
-
-          echo "=== Signing Summary ==="
-          echo "Signed: $SIGNED"
-          echo "Failed: $FAILED"
-
-          if [ "$FAILED" -gt 0 ]; then
-            exit 1
-          fi
+      - name: Write import run summary
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          chmod +x .github/workflows/scripts/import-records-summary.sh
+          .github/workflows/scripts/import-records-summary.sh

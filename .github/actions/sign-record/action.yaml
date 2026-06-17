@@ -30,6 +30,18 @@ inputs:
     description: Optional absolute path to the dirctl binary. Defaults to PATH lookup.
     required: false
     default: ""
+  max_retries:
+    description: Number of sign attempts per CID (fresh Sigstore OIDC token each attempt)
+    required: false
+    default: "3"
+  retry_delay_seconds:
+    description: Base delay in seconds between sign retries (multiplied by attempt number)
+    required: false
+    default: "30"
+  cleanup_on_failure:
+    description: Delete unsigned records with dirctl delete when signing fails after all retries
+    required: false
+    default: "false"
 
 outputs:
   success:
@@ -38,9 +50,18 @@ outputs:
   signed:
     description: Number of CIDs successfully signed
     value: ${{ steps.sign.outputs.signed }}
+  cleaned:
+    description: Number of unsigned CIDs deleted after sign failure
+    value: ${{ steps.sign.outputs.cleaned }}
   failed:
-    description: Number of CIDs that failed to sign
+    description: Number of CIDs that failed to sign and were not cleaned up
     value: ${{ steps.sign.outputs.failed }}
+  failed_cids:
+    description: Newline-separated CIDs that remain unsigned on the server
+    value: ${{ steps.sign.outputs.failed_cids }}
+  cleaned_cids:
+    description: Newline-separated CIDs deleted after sign failure
+    value: ${{ steps.sign.outputs.cleaned_cids }}
 
 runs:
   using: "composite"
@@ -54,6 +75,9 @@ runs:
         AUTH_TOKEN: ${{ inputs.auth_token }}
         OIDC_CLIENT_ID: ${{ inputs.oidc_client_id }}
         DIRCTL_PATH: ${{ inputs.dirctl_path }}
+        MAX_RETRIES: ${{ inputs.max_retries }}
+        RETRY_DELAY_SECONDS: ${{ inputs.retry_delay_seconds }}
+        CLEANUP_ON_FAILURE: ${{ inputs.cleanup_on_failure }}
       run: |
         chmod +x "${{ github.action_path }}/sign.sh"
         "${{ github.action_path }}/sign.sh"

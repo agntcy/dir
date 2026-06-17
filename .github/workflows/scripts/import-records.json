@@ -1,37 +1,40 @@
 {
   "mcp-registry": [
     {
-      "search": "com.microsoft"
+      "search": "com.microsoft/"
     },
     {
-      "search": "io.github.microsoft"
+      "search": "io.github.microsoft/"
     },
     {
       "search": "io.github.github/"
     },
     {
-      "search": "io.github.google"
+      "search": "io.github.GoogleCloudPlatform/"
     },
     {
-      "search": "io.github.aws"
+      "search": "io.github.googleapis/"
     },
     {
-      "search": "com.cisco"
+      "search": "io.github.aws/"
     },
     {
-      "search": "com.thousandeyes"
+      "search": "com.cisco/"
     },
     {
-      "search": "io.github.redhat"
+      "search": "com.thousandeyes/"
     },
     {
-      "search": "io.github.arm"
+      "search": "io.github.RedHatInsights/"
     },
     {
-      "search": "io.github.pagerduty"
+      "search": "io.github.arm/"
     },
     {
-      "search": "com.postman"
+      "search": "io.github.pagerduty/"
+    },
+    {
+      "search": "com.postman/"
     }
   ],
   "agent-skill": [

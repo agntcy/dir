@@ -16,7 +16,7 @@ replace (
 replace github.com/ThalesIgnite/crypto11 => github.com/ThalesGroup/crypto11 v1.6.0
 
 require (
-	github.com/agntcy/dir-importer v1.4.1-0.20260610125234-c3d75c103025
+	github.com/agntcy/dir-importer v1.4.1-0.20260612122304-f331bd5b73d6
 	github.com/agntcy/dir/api v1.4.0
 	github.com/agntcy/dir/cli v1.4.0
 	github.com/agntcy/dir/client v1.4.0
@@ -92,7 +92,7 @@ require (
 	github.com/agntcy/dir/reconciler v1.4.0 // indirect
 	github.com/agntcy/dir/server v1.4.0
 	github.com/agntcy/dir/utils v1.4.0 // indirect
-	github.com/agntcy/oasf-sdk/pkg v1.0.6-0.20260610090927-85c0d92a3374 // indirect
+	github.com/agntcy/oasf-sdk/pkg v1.0.6-0.20260612113147-8fdda6fd3eb8 // indirect
 	github.com/alecthomas/chroma v0.10.0 // indirect
 	github.com/anchore/go-struct-converter v0.1.0 // indirect
 	github.com/antlr4-go/antlr/v4 v4.13.1 // indirect
