@@ -47,15 +47,17 @@ Need a skill, MCP server, or A2A partner? Your agent searches the Directory, wir
     <p class="dir-hero__tagline">
       One federated registry for <br class="dir-hero__tagline-break" aria-hidden="true" />cross-<span class="dir-hero__flip-wrap"><span class="dir-hero__flip" data-words="framework,protocol,registry" aria-live="polite">framework</span></span> agent discovery.
     </p>
-    <p class="dir-hero__lede">
-      Agent Directory implements the
-      <a href="https://agent-card.github.io/ai-catalog/" target="_blank" rel="noopener noreferrer">AI Catalog</a>
-      specification, and exposes the
-      <a href="https://agenticresourcediscovery.org/" target="_blank" rel="noopener noreferrer">ARD spec</a>
-      (coming soon) providing an open-source, framework-agnostic registry for managing the full agent lifecycle.
-      Publish, verify, and discover MCP servers, A2A agents, and skills through a federated control plane, enabling
-      seamless interoperability for complex, multi-agent workflows.
-    </p>
+    <div class="dir-hero__lede-group">
+      <p class="dir-hero__lede">
+        Agent Directory provides an open-source, framework-agnostic registry for agentic resource discovery and management.
+        Publish, verify, and discover MCP servers, A2A agents, and Agent Skills through a federated control plane, enabling
+        native interoperability for complex, multi-agent workflows.
+      </p>
+      <p class="dir-hero__lede">
+        Agent Directory implements the
+        <a href="https://agenticresourcediscovery.org/" target="_blank" rel="noopener noreferrer">ARD specification</a>.
+      </p>
+    </div>
     <div class="dir-hero__actions">
       <div class="dir-hero__actions-main">
         <a class="dir-hero__btn" href="#quick-start">
