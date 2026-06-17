@@ -12,9 +12,7 @@ nav:
     - Federation: dir-federation-overview.md
     - Extensions:
       - Runtime Discovery: dir-component-runtime-discovery.md
-      - Event Streaming: dir-component-event-streaming.md
       - MCP Server: dir-component-mcp-server.md
-      - GUI: dir-component-gui.md
   - Deploy:
     - Local Deployment: dir-deployment-local.md
     - Kubernetes Deployment: dir-deployment-kubernetes.md

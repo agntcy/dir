@@ -92,9 +92,11 @@ plugins:
       'dir/scenarios.md': 'dir/dir-features-scenarios.md'
       'dir/records-validation.md': 'dir/dir-component-records-validation.md'
       'dir/runtime.md': 'dir/dir-component-runtime-discovery.md'
-      'dir/events.md': 'dir/dir-component-event-streaming.md'
+      'dir/events.md': 'dir/dir-architecture.md'
+      'dir/dir-component-event-streaming.md': 'dir/dir-architecture.md'
       'dir/directory-mcp.md': 'dir/dir-component-mcp-server.md'
-      'dir/directory-gui.md': 'dir/dir-component-gui.md'
+      'dir/directory-gui.md': 'dir/dir-architecture.md'
+      'dir/dir-component-gui.md': 'dir/dir-architecture.md'
       'dir/trust-model.md': 'dir/dir-component-trust-model.md'
       'dir/directory-cli.md': 'dir/dir-cli-reference.md'
       'dir/dir-cli-guide.md': 'dir/dir-cli-reference.md'
@@ -122,9 +124,7 @@ nav:
           - Federation: dir/dir-federation-overview.md
           - Extensions:
               - Runtime Discovery: dir/dir-component-runtime-discovery.md
-              - Event Streaming: dir/dir-component-event-streaming.md
               - MCP Server: dir/dir-component-mcp-server.md
-              - GUI: dir/dir-component-gui.md
       - Deploy:
           - Local Deployment: dir/dir-deployment-local.md
           - Kubernetes Deployment: dir/dir-deployment-kubernetes.md
