@@ -18,7 +18,7 @@ require (
 	buf.build/go/protovalidate v1.2.0
 	github.com/agntcy/dir/api v1.4.0
 	github.com/agntcy/dir/utils v1.4.0
-	github.com/agntcy/oasf-sdk/pkg v1.0.6-0.20260605125511-e0bbc735d1b8
+	github.com/agntcy/oasf-sdk/pkg v1.0.6-0.20260612113147-8fdda6fd3eb8
 	github.com/casbin/casbin/v2 v2.135.0
 	github.com/glebarez/sqlite v1.11.0
 	github.com/grpc-ecosystem/go-grpc-middleware/v2 v2.3.3
@@ -148,7 +148,7 @@ require (
 	github.com/multiformats/go-multistream v0.6.1 // indirect
 	github.com/multiformats/go-varint v0.1.0 // indirect
 	github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822 // indirect
-	github.com/opencontainers/go-digest v1.0.0 // indirect
+	github.com/opencontainers/go-digest v1.0.0
 	github.com/pbnjay/memory v0.0.0-20210728143218-7b4eea64cf58 // indirect
 	github.com/pelletier/go-toml/v2 v2.3.1 // indirect
 	github.com/pion/datachannel v1.6.0 // indirect
