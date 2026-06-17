@@ -16,7 +16,7 @@ replace (
 replace github.com/ThalesIgnite/crypto11 => github.com/ThalesGroup/crypto11 v1.6.0
 
 require (
-	github.com/agntcy/dir-importer v1.4.1-0.20260612122304-f331bd5b73d6
+	github.com/agntcy/dir-importer v1.4.1-0.20260617131802-d34f9928155e
 	github.com/agntcy/dir/api v1.5.0
 	github.com/agntcy/dir/cli v1.4.0
 	github.com/agntcy/dir/client v1.5.0
