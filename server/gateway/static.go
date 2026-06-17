@@ -34,7 +34,7 @@ var compressibleContentTypes = map[string]struct{}{
 
 func cacheControlForPath(path string) string {
 	switch {
-	case path == "/" || path == "/index.html":
+	case path == "/" || path == "/index.html" || path == "/_app/version.json":
 		return cacheControlNoCache
 	case strings.HasPrefix(path, "/_app/immutable/"):
 		return cacheControlImmutable

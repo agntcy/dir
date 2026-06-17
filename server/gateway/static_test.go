@@ -26,6 +26,7 @@ func TestCacheControlForPath(t *testing.T) {
 	}{
 		{path: "/", want: cacheControlNoCache},
 		{path: "/index.html", want: cacheControlNoCache},
+		{path: "/_app/version.json", want: cacheControlNoCache},
 		{path: "/_app/immutable/assets/app.css", want: cacheControlImmutable},
 		{path: "/_app/immutable/chunks/start.js", want: cacheControlImmutable},
 		{path: "/favicon.ico", want: cacheControlLongLived},
@@ -191,6 +192,15 @@ func TestWithStaticFallback(t *testing.T) {
 		handler.ServeHTTP(rec, req)
 
 		assert.Equal(t, http.StatusInternalServerError, rec.Code)
+	})
+
+	t.Run("returns 404 for invalid static path", func(t *testing.T) {
+		req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/../secret", nil)
+		rec := httptest.NewRecorder()
+
+		handler.ServeHTTP(rec, req)
+
+		assert.Equal(t, http.StatusNotFound, rec.Code)
 	})
 }
 
