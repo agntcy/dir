@@ -1,4 +1,4 @@
-# Features and Usage Scenarios
+# Features
 
 This document defines a basic overview of main Directory features, components, and usage
 scenarios. All code snippets below are tested against the Directory `v1.0.0` release.

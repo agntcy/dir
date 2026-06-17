@@ -36,20 +36,24 @@ only page on the docs site with CLI installation instructions.
     docker run --rm ghcr.io/agntcy/dir-ctl:latest --help
     ```
 
-## Start a local Directory
+## Start a local node
 
-The built-in daemon runs a full local Directory with no external dependencies:
+The built-in daemon runs a full local Directory node with no external dependencies:
 
 ```bash
 dirctl daemon start
 ```
 
-This listens on `localhost:8888` and stores state under `~/.agntcy/dir/`. See
-[Local Deployment](dir-deployment-local.md) for configuration, Docker Compose, and platform
-details.
+!!! note
 
-For Kubernetes or production-style deployments, see [Deploy](dir-deployment-kubernetes.md)
-guides instead of the daemon.
+    The daemon stores the data under `~/.agntcy/dir/` and exposes the following services locally:
+
+    - HTTP API and dashboard on `localhost:8889` for real-time visibility into node's data
+    - gRPC DIR API on `localhost:8888` for client integrations
+    - DHT API on `localhost:8999` for network announcements
+    - OCI registry on `localhost:5555` for content-addressed storage
+
+Check [Local Deployment](dir-deployment-local.md) for configuration and platform details. For production deployments, see [Deploy](dir-deployment-kubernetes.md) guides.
 
 ## Publish a record
 
@@ -63,6 +67,9 @@ guides instead of the daemon.
       "version": "v1.0.0",
       "description": "Quickstart example agent",
       "schema_version": "1.0.0",
+      "annotations": {
+        "owner": "alice"
+      },
       "skills": [
         {
           "id": 201,
@@ -94,42 +101,60 @@ guides instead of the daemon.
     dirctl routing publish "$CID"
     ```
 
-## Discover records
+## Sign and verify
 
-The quickstart runs a single local Directory, so the published record lives on this peer.
-List it locally by skill, then pull it:
+Records are unsigned by default. To ensure trust between publishers and consumers, Directory supports signing and verification of records.
+
+1. Sign a record with OIDC-based identity:
+
+    ```bash
+    dirctl sign "$CID"
+    ```
+
+1. Verify the signature and integrity of a record:
+   
+    ```bash
+    dirctl verify "$CID"
+    ```
+
+## Discovery
+
+Directory supports multiple discovery modes. Depending on the use case, you can search locally or across the network.
+
+### Local discovery
+
+Search the local store for records matching a skill:
+
+```bash
+dirctl search --skill "*vision*"
+dirctl search --annotation 'owner:*'
+```
+
+### Network discovery
+
+The quickstart runs a single local Directory node, so the published record lives on this peer.
+To list records announced by *this peer*, use:
 
 ```bash
 dirctl routing list --skill "images_computer_vision"
-dirctl pull "$CID"
+dirctl pull "$CID" --output json
 ```
 
-To discover records announced by *other* peers across a network or federation, use
-`dirctl routing search`. It queries cached network announcements and deliberately excludes
-local records, so it returns nothing in a single-node setup:
+In addition, Directory supports searching the network for records matching a given criteria.
+To discover records announced by *other peers* across a network or federation, use:
 
 ```bash
-dirctl routing search --skill "images_computer_vision" --limit 5
+dirctl routing search --skill "images_computer_vision"
 ```
 
-See [Features and Usage Scenarios](dir-features-scenarios.md) for signing, sync, import, export, and other workflows.
+!!! note
 
-## Authenticate to a remote Directory
-
-For production or federated gateways, log in with OIDC before using remote servers:
-
-```bash
-dirctl auth login \
-  --oidc-issuer "https://idp.ads.outshift.io" \
-  --oidc-client-id "dirctl"
-```
-
-See [OIDC Authentication](dir-component-oidc-authentication.md) for the auth model and
-[CLI Reference](dir-cli-reference.md#global-options) for command details.
+    Since network-wide search queries the cached network announcements and deliberately excludes
+    local records; it returns nothing in a single-node setup.
 
 ## Next steps
 
-- [Features and Usage Scenarios](dir-features-scenarios.md) — capability tour and CLI workflows
+- [Features and Usage Scenarios](dir-features-scenarios.md) — capability tour and workflows
 - [Architecture](dir-architecture.md) — how Directory fits together
 - [Local](dir-deployment-local.md) / [Kubernetes](dir-deployment-kubernetes.md) /
   [Production](dir-prod-deployment.md) deployment
