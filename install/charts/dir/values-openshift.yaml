@@ -8,7 +8,7 @@
 #
 # IMPORTANT: External gRPC access requires the oidc-gateway deployed
 # separately with a TLS passthrough route. OpenShift's edge routes do not
-# reliably support gRPC (HTTP/2). See docs/openshift-install.md for details.
+# reliably support gRPC (HTTP/2). See install/openshift-install.md for details.
 #
 # Prerequisites:
 #   - SPIRE deployed on the cluster (server, agent, CSI driver, controller manager)
@@ -22,7 +22,7 @@
 #     -f install/charts/dir/my-values.yaml \
 #     --timeout 20m
 #
-# See docs/openshift-install.md for the full step-by-step guide.
+# See install/openshift-install.md for the full step-by-step guide.
 
 apiserver:
   image:
@@ -59,7 +59,7 @@ apiserver:
     authn:
       enabled: true
       # SPIRE agent socket path — must match the filename provided by the
-      # SPIFFE CSI driver. Check with a debug pod (see docs/openshift-install.md).
+      # SPIFFE CSI driver. Check with a debug pod (see install/openshift-install.md).
       # Common values: api.sock (upstream SPIRE), spire-agent.sock (managed SPIRE operators)
       socket_path: "unix:///run/spire/agent-sockets/<YOUR-SOCKET-FILENAME>"
     authz:
@@ -75,7 +75,7 @@ apiserver:
   # Additional rules grant public read access to specific API methods.
   #
   # Replace <YOUR-TRUST-DOMAIN> with the trust domain configured in your
-  # SPIRE server (see docs/openshift-install.md).
+  # SPIRE server (see install/openshift-install.md).
   authz_policies_csv: |
     p,<YOUR-TRUST-DOMAIN>,*
     p,*,/agntcy.dir.store.v1.StoreService/Pull
