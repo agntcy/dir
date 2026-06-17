@@ -16,7 +16,7 @@ replace (
 replace github.com/ThalesIgnite/crypto11 => github.com/ThalesGroup/crypto11 v1.6.0
 
 require (
-	github.com/agntcy/dir-importer v1.4.1-0.20260612122304-f331bd5b73d6
+	github.com/agntcy/dir-importer v1.4.1
 	github.com/agntcy/dir/api v1.5.0
 	github.com/agntcy/dir/cli v1.5.0
 	github.com/agntcy/dir/client v1.5.0
@@ -84,11 +84,11 @@ require (
 	github.com/VividCortex/ewma v1.2.0 // indirect
 	github.com/agext/levenshtein v1.2.3 // indirect
 	github.com/agnivade/levenshtein v1.2.1 // indirect
-	github.com/agntcy/dir-mcp v1.3.1 // indirect
-	github.com/agntcy/dir-runtime/discovery v1.3.1 // indirect
-	github.com/agntcy/dir-runtime/server v1.3.1 // indirect
-	github.com/agntcy/dir-runtime/store v1.3.1 // indirect
-	github.com/agntcy/dir-runtime/utils v1.3.1 // indirect
+	github.com/agntcy/dir-mcp v1.3.2 // indirect
+	github.com/agntcy/dir-runtime/discovery v1.3.2 // indirect
+	github.com/agntcy/dir-runtime/server v1.3.2 // indirect
+	github.com/agntcy/dir-runtime/store v1.3.2 // indirect
+	github.com/agntcy/dir-runtime/utils v1.3.2 // indirect
 	github.com/agntcy/dir/reconciler v1.5.0 // indirect
 	github.com/agntcy/dir/server v1.5.0
 	github.com/agntcy/dir/utils v1.5.0 // indirect
