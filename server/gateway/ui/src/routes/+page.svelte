@@ -1,8 +1,8 @@
 <script lang="ts">
-	import type { AgentFilterCriteria, CatalogEntry } from '$lib/types';
-	import { buildAgentFilterQuery, CATALOG_HYDRATION_PAGE_SIZE, CATALOG_PAGE_SIZE, fetchAgentsPage } from '$lib/api';
+	import type { AICardFilterCriteria, CatalogEntry } from '$lib/types';
+	import { buildAICardFilterQuery, CATALOG_HYDRATION_PAGE_SIZE, CATALOG_PAGE_SIZE, fetchAICardsPage } from '$lib/api';
 	import { applyClientFilters, collectSortedTags, hasActiveClientFilters, mergeSortedTags } from '$lib/utils';
-	import AgentCard from '$lib/components/AgentCard.svelte';
+	import AICard from '$lib/components/AICard.svelte';
 	import FilterSidebar from '$lib/components/FilterSidebar.svelte';
 	import DetailModal from '$lib/components/DetailModal.svelte';
 	import Pagination from '$lib/components/Pagination.svelte';
@@ -10,27 +10,27 @@
 	import { headerStatsState } from '$lib/header-stats.svelte';
 	import { onMount } from 'svelte';
 
-	let agents = $state<CatalogEntry[]>([]);
-	let filteredAgents = $state<CatalogEntry[]>([]);
+	let aicards = $state<CatalogEntry[]>([]);
+	let filteredAicards = $state<CatalogEntry[]>([]);
 	let catalogTags = $state<string[]>([]);
 	let loading = $state(true);
 	let catalogHydrating = $state(false);
 	let hydrationError = $state('');
 	let error = $state('');
 	let currentPage = $state(1);
-	let selectedAgent = $state<CatalogEntry | null>(null);
+	let selectedAicard = $state<CatalogEntry | null>(null);
 
-	let latestCriteria = $state<AgentFilterCriteria | null>(null);
+	let latestCriteria = $state<AICardFilterCriteria | null>(null);
 	let loadedServerFilter = $state<string | null>(null);
 	let loadRequestId = 0;
 	let searchDebounce: ReturnType<typeof setTimeout> | undefined;
 	let backgroundAbort: AbortController | undefined;
 
 	let totalPages = $derived(
-		Math.max(1, Math.ceil(filteredAgents.length / CATALOG_PAGE_SIZE))
+		Math.max(1, Math.ceil(filteredAicards.length / CATALOG_PAGE_SIZE))
 	);
 	let pageItems = $derived(
-		filteredAgents.slice(
+		filteredAicards.slice(
 			(currentPage - 1) * CATALOG_PAGE_SIZE,
 			currentPage * CATALOG_PAGE_SIZE
 		)
@@ -38,27 +38,27 @@
 
 	function applyFilters(
 		loaded: CatalogEntry[],
-		criteria: AgentFilterCriteria,
+		criteria: AICardFilterCriteria,
 		resetPage = true
 	) {
-		filteredAgents = applyClientFilters(loaded, criteria);
+		filteredAicards = applyClientFilters(loaded, criteria);
 		if (resetPage) currentPage = 1;
 	}
 
-	function appendAgentPage(newAgents: CatalogEntry[], criteria: AgentFilterCriteria) {
-		if (newAgents.length === 0) return;
+	function appendAICardPage(newAicards: CatalogEntry[], criteria: AICardFilterCriteria) {
+		if (newAicards.length === 0) return;
 
-		agents = agents.concat(newAgents);
-		catalogTags = mergeSortedTags(catalogTags, newAgents);
+		aicards = aicards.concat(newAicards);
+		catalogTags = mergeSortedTags(catalogTags, newAicards);
 		if (hasActiveClientFilters(criteria)) {
-			filteredAgents = filteredAgents.concat(applyClientFilters(newAgents, criteria));
+			filteredAicards = filteredAicards.concat(applyClientFilters(newAicards, criteria));
 		} else {
-			filteredAgents = agents;
+			filteredAicards = aicards;
 		}
 	}
 
 	function hydrationMatchesServerFilter(filter: string): boolean {
-		return latestCriteria !== null && buildAgentFilterQuery(latestCriteria) === filter;
+		return latestCriteria !== null && buildAICardFilterQuery(latestCriteria) === filter;
 	}
 
 	async function hydrateCatalog(
@@ -73,7 +73,7 @@
 			if (signal.aborted || requestId !== loadRequestId) return;
 			if (!hydrationMatchesServerFilter(filter)) return;
 
-			const page = await fetchAgentsPage({
+			const page = await fetchAICardsPage({
 				filter: filter || undefined,
 				pageSize: CATALOG_HYDRATION_PAGE_SIZE,
 				pageToken: nextPageToken,
@@ -83,35 +83,35 @@
 			if (signal.aborted || requestId !== loadRequestId) return;
 			if (!hydrationMatchesServerFilter(filter)) return;
 
-			appendAgentPage(page.results, latestCriteria!);
+			appendAICardPage(page.results, latestCriteria!);
 			nextPageToken = page.nextPageToken;
 		}
 	}
 
-	async function loadAgents(criteria: AgentFilterCriteria) {
+	async function loadAICards(criteria: AICardFilterCriteria) {
 		const requestId = ++loadRequestId;
 		backgroundAbort?.abort();
 		backgroundAbort = new AbortController();
 		const signal = backgroundAbort.signal;
 
-		const filter = buildAgentFilterQuery(criteria);
+		const filter = buildAICardFilterQuery(criteria);
 		loading = true;
 		catalogHydrating = false;
 		hydrationError = '';
 		error = '';
 
 		try {
-			const firstPage = await fetchAgentsPage({
+			const firstPage = await fetchAICardsPage({
 				filter: filter || undefined,
 				signal
 			});
 
 			if (requestId !== loadRequestId) return;
 
-			agents = firstPage.results;
+			aicards = firstPage.results;
 			catalogTags = collectSortedTags(firstPage.results);
 			loadedServerFilter = filter;
-			applyFilters(agents, criteria);
+			applyFilters(aicards, criteria);
 			loading = false;
 
 			if (firstPage.nextPageToken) {
@@ -127,8 +127,8 @@
 		} catch (e) {
 			if (signal.aborted || requestId !== loadRequestId) return;
 			error = e instanceof Error ? e.message : 'Unknown error';
-			agents = [];
-			filteredAgents = [];
+			aicards = [];
+			filteredAicards = [];
 			catalogTags = [];
 		} finally {
 			if (requestId === loadRequestId) {
@@ -138,31 +138,31 @@
 		}
 	}
 
-	function handleCriteriaChange(criteria: AgentFilterCriteria) {
+	function handleCriteriaChange(criteria: AICardFilterCriteria) {
 		latestCriteria = criteria;
-		const serverFilter = buildAgentFilterQuery(criteria);
+		const serverFilter = buildAICardFilterQuery(criteria);
 
 		if (serverFilter !== loadedServerFilter) {
 			clearTimeout(searchDebounce);
 			backgroundAbort?.abort();
 			const delay = criteria.searchQuery.trim() ? 300 : 0;
 			searchDebounce = setTimeout(() => {
-				if (latestCriteria) loadAgents(latestCriteria);
+				if (latestCriteria) loadAICards(latestCriteria);
 			}, delay);
 			return;
 		}
 
-		applyFilters(agents, criteria);
+		applyFilters(aicards, criteria);
 	}
 
 	function handlePage(page: number) {
 		currentPage = page;
-		document.getElementById('agents-grid')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+		document.getElementById('ai-cards-grid')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
 	}
 
 	$effect(() => {
 		headerStatsState.set({
-			count: filteredAgents.length,
+			count: filteredAicards.length,
 			catalogHydrating,
 			hydrationError
 		});
@@ -172,14 +172,14 @@
 	});
 
 	onMount(() => {
-		const initial: AgentFilterCriteria = {
+		const initial: AICardFilterCriteria = {
 			searchQuery: '',
 			mediaTypes: new Set(['all']),
 			statusFilter: 'all',
 			activeTags: new Set()
 		};
 		latestCriteria = initial;
-		loadAgents(initial);
+		loadAICards(initial);
 
 		return () => {
 			backgroundAbort?.abort();
@@ -215,7 +215,7 @@
 						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z"/>
 					</svg>
 					<p class="mt-3 text-red-600 font-medium">Failed to load records: {error}</p>
-					<button onclick={() => latestCriteria && loadAgents(latestCriteria)} class="mt-4 px-4 py-2 bg-brand-500 text-white text-sm font-medium rounded hover:bg-brand-600 transition">Retry</button>
+					<button onclick={() => latestCriteria && loadAICards(latestCriteria)} class="mt-4 px-4 py-2 bg-brand-500 text-white text-sm font-medium rounded hover:bg-brand-600 transition">Retry</button>
 				</div>
 			{:else if pageItems.length === 0}
 				<div class="text-center py-20">
@@ -225,9 +225,9 @@
 					<p class="mt-3 text-ink-medium">No records match your filters.</p>
 				</div>
 			{:else}
-				<div id="agents-grid" class="grid gap-4 sm:grid-cols-1 md:grid-cols-2 xl:grid-cols-3">
-					{#each pageItems as agent (agent.identifier)}
-						<AgentCard {agent} onclick={() => { selectedAgent = agent; }} />
+				<div id="ai-cards-grid" class="grid gap-4 sm:grid-cols-1 md:grid-cols-2 xl:grid-cols-3">
+					{#each pageItems as aicard (aicard.identifier)}
+						<AICard {aicard} onclick={() => { selectedAicard = aicard; }} />
 					{/each}
 				</div>
 
@@ -244,6 +244,6 @@
 	</div>
 </main>
 
-{#if selectedAgent}
-	<DetailModal agent={selectedAgent} onclose={() => { selectedAgent = null; }} />
+{#if selectedAicard}
+	<DetailModal aicard={selectedAicard} onclose={() => { selectedAicard = null; }} />
 {/if}

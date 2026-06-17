@@ -35,7 +35,7 @@
 					{#if headerStatsState.stats.catalogHydrating}
 						<span class="text-ink-weak">+</span>
 					{/if}
-					agents indexed
+					AI cards indexed
 					{#if headerStatsState.stats.catalogHydrating}
 						<p class="text-xs text-ink-weak mt-0.5">Loading full catalog…</p>
 					{:else if headerStatsState.stats.hydrationError}

@@ -77,7 +77,7 @@ server/gateway/ui/
       +layout.ts      Static rendering config
     lib/
       components/     Reusable Svelte components
-        AgentCard.svelte
+        AICard.svelte
         DetailModal.svelte
         FilterSidebar.svelte
         MediaTypeBadge.svelte

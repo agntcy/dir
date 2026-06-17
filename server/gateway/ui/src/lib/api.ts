@@ -1,4 +1,4 @@
-import type { AgentFilterCriteria, CatalogEntry } from './types';
+import type { AICardFilterCriteria, CatalogEntry } from './types';
 
 /** Matches the 3-column grid layout (18 = 6 full rows). */
 export const CATALOG_PAGE_SIZE = 18;
@@ -6,13 +6,13 @@ export const CATALOG_PAGE_SIZE = 18;
 /** Backend max page size; used for background catalog hydration. */
 export const CATALOG_HYDRATION_PAGE_SIZE = 100;
 
-export interface AgentsPage {
+export interface AICardsPage {
 	results: CatalogEntry[];
 	nextPageToken: string;
 }
 
-export function buildAgentFilterQuery(
-	criteria: Pick<AgentFilterCriteria, 'searchQuery' | 'mediaTypes'>
+export function buildAICardFilterQuery(
+	criteria: Pick<AICardFilterCriteria, 'searchQuery' | 'mediaTypes'>
 ): string {
 	const clauses: string[] = [];
 
@@ -31,14 +31,14 @@ export function buildAgentFilterQuery(
 	return clauses.join(' AND ');
 }
 
-export async function fetchAgentsPage(
+export async function fetchAICardsPage(
 	options: {
 		filter?: string;
 		pageSize?: number;
 		pageToken?: string;
 		signal?: AbortSignal;
 	} = {}
-): Promise<AgentsPage> {
+): Promise<AICardsPage> {
 	const pageSize = options.pageSize ?? CATALOG_PAGE_SIZE;
 	const query = new URLSearchParams();
 	query.set('page_size', String(pageSize));

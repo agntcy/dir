@@ -1,6 +1,6 @@
-import type { AgentFilterCriteria, CatalogEntry, SubEntry, ExportFormat } from './types';
+import type { AICardFilterCriteria, CatalogEntry, SubEntry, ExportFormat } from './types';
 
-export function hasActiveClientFilters(criteria: AgentFilterCriteria): boolean {
+export function hasActiveClientFilters(criteria: AICardFilterCriteria): boolean {
 	return (
 		criteria.activeTags.size > 0 ||
 		criteria.statusFilter === 'trusted' ||
@@ -8,18 +8,18 @@ export function hasActiveClientFilters(criteria: AgentFilterCriteria): boolean {
 	);
 }
 
-export function collectSortedTags(agents: CatalogEntry[]): string[] {
-	return Array.from(new Set(agents.flatMap((agent) => agent.tags || []))).sort();
+export function collectSortedTags(aicards: CatalogEntry[]): string[] {
+	return Array.from(new Set(aicards.flatMap((aicard) => aicard.tags || []))).sort();
 }
 
-export function mergeSortedTags(existing: string[], newAgents: CatalogEntry[]): string[] {
-	if (newAgents.length === 0) return existing;
+export function mergeSortedTags(existing: string[], newAicards: CatalogEntry[]): string[] {
+	if (newAicards.length === 0) return existing;
 
 	const seen = new Set(existing);
 	let added = false;
 
-	for (const agent of newAgents) {
-		for (const tag of agent.tags || []) {
+	for (const aicard of newAicards) {
+		for (const tag of aicard.tags || []) {
 			if (!seen.has(tag)) {
 				seen.add(tag);
 				added = true;
@@ -31,15 +31,15 @@ export function mergeSortedTags(existing: string[], newAgents: CatalogEntry[]): 
 }
 
 export function applyClientFilters(
-	agents: CatalogEntry[],
-	criteria: AgentFilterCriteria
+	aicards: CatalogEntry[],
+	criteria: AICardFilterCriteria
 ): CatalogEntry[] {
-	return agents.filter((agent) => {
+	return aicards.filter((aicard) => {
 		if (criteria.activeTags.size > 0) {
-			const agentTags = new Set(agent.tags || []);
+			const aicardTags = new Set(aicard.tags || []);
 			let hasAny = false;
 			for (const t of criteria.activeTags) {
-				if (agentTags.has(t)) {
+				if (aicardTags.has(t)) {
 					hasAny = true;
 					break;
 				}
@@ -48,18 +48,18 @@ export function applyClientFilters(
 		}
 
 		if (criteria.statusFilter === 'trusted' || criteria.statusFilter === 'verified') {
-			if (!hasTrustManifest(agent)) return false;
+			if (!hasTrustManifest(aicard)) return false;
 		}
 
 		return true;
 	});
 }
 
-export function extractEntryTypes(agent: CatalogEntry): string[] {
-	const entries = agent.data?.entries || [];
+export function extractEntryTypes(aicard: CatalogEntry): string[] {
+	const entries = aicard.data?.entries || [];
 	if (entries.length > 0) return entries.map((e) => e.mediaType || '');
-	if (agent.mediaType && agent.mediaType !== 'application/ai-catalog+json')
-		return [agent.mediaType];
+	if (aicard.mediaType && aicard.mediaType !== 'application/ai-catalog+json')
+		return [aicard.mediaType];
 	return [];
 }
 
@@ -75,13 +75,13 @@ export function extractShortTag(tag: string): string {
 	return (parts[parts.length - 1] || '').replace(/_/g, ' ');
 }
 
-export function hasTrustManifest(agent: CatalogEntry): boolean {
-	return !!(agent.trustManifest && agent.trustManifest.signature);
+export function hasTrustManifest(aicard: CatalogEntry): boolean {
+	return !!(aicard.trustManifest && aicard.trustManifest.signature);
 }
 
-export function fakeStats(agent: CatalogEntry) {
+export function fakeStats(aicard: CatalogEntry) {
 	let hash = 0;
-	const id = agent.identifier || agent.displayName || '';
+	const id = aicard.identifier || aicard.displayName || '';
 	for (let i = 0; i < id.length; i++) hash = ((hash << 5) - hash + id.charCodeAt(i)) | 0;
 	const seed = Math.abs(hash);
 	return {
