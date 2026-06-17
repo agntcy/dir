@@ -128,7 +128,13 @@ func writeStaticResponse(w http.ResponseWriter, r *http.Request, path string, da
 	if compressible && acceptsGzip(r) {
 		w.Header().Set("Content-Encoding", "gzip")
 
-		gz := gzip.NewWriter(w)
+		gz, err := gzip.NewWriterLevel(w, gzip.BestSpeed)
+		if err != nil {
+			w.WriteHeader(http.StatusOK)
+			_, _ = w.Write(data) //nolint:gosec // G705: static assets are compiled into the binary
+
+			return
+		}
 
 		defer func() { _ = gz.Close() }()
 

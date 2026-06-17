@@ -50,9 +50,11 @@ task cli:compile
 
 The Go gateway sets HTTP cache and compression headers for embedded UI assets:
 
-- `/_app/immutable/*` — `Cache-Control: public, max-age=31536000, immutable` plus gzip when accepted
+- `/_app/immutable/*` — `Cache-Control: public, max-age=31536000, immutable`; gzip at `BestSpeed` when the client accepts gzip and the asset is a compressible text type (CSS, JS, HTML, JSON, SVG)
+- `/_app/version.json` — `Cache-Control: no-cache` for SvelteKit deployment update checks
 - `/` and SPA fallbacks — `Cache-Control: no-cache` so deploys pick up new hashed bundles
-- Inter font files are bundled via `@fontsource/inter` (Latin subset; no Google Fonts at runtime)
+- Missing `/_app/*` assets return 404 (not the SPA shell) so broken deploys are visible
+- Inter font files are bundled via `@fontsource/inter` (Latin subset; no Google Fonts at runtime); woff/woff2 fonts are served uncompressed
 
 When exposing the HTTP gateway through F5 NGINX Ingress, enable edge gzip and upstream
 keepalive via `httpGateway.ingress.annotations` (see chart defaults in
