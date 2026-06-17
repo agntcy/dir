@@ -2213,9 +2213,8 @@ kubectl<span class="w"> </span><span class="nb">wait</span><span class="w"> </sp
 </li>
 <li>
 <p>In another terminal, verify with token-based auth:</p>
-<div class="highlight"><pre><span></span><code><span class="c1"># Install dirctl (if needed)</span>
-brew<span class="w"> </span>tap<span class="w"> </span>agntcy/dir<span class="w"> </span>https://github.com/agntcy/dir
-brew<span class="w"> </span>install<span class="w"> </span>dirctl
+<div class="highlight"><pre><span></span><code><span class="c1"># Install dirctl first if needed — see the Quickstart:</span>
+<span class="c1"># https://agntcy.github.io/dir/dir/dir-quickstart/#install-the-cli</span>
 
 <span class="c1"># Create SPIFFE SVID for local client</span>
 <span class="nv">SPIRE_POD</span><span class="o">=</span><span class="k">$(</span>kubectl<span class="w"> </span>get<span class="w"> </span>pods<span class="w"> </span>-n<span class="w"> </span>dir-dev-spire<span class="w"> </span>-l<span class="w"> </span>app.kubernetes.io/name<span class="o">=</span>server<span class="w"> </span>-o<span class="w"> </span><span class="nv">jsonpath</span><span class="o">=</span><span class="s1">&#39;{.items[0].metadata.name}&#39;</span><span class="k">)</span>

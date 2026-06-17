@@ -2468,24 +2468,8 @@
 <h2 id="prerequisites">Prerequisites</h2>
 <h3 id="dirctl-daemon">dirctl daemon</h3>
 <ul>
-<li>dirctl binary: install via Homebrew or download from <a href="https://github.com/agntcy/dir/releases">GitHub Releases</a>:</li>
+<li><code>dirctl</code> binary — install via Homebrew, release binary, source, or container as described in the <a href="../dir-quickstart/#install-the-cli">Quickstart</a>.</li>
 </ul>
-<div class="tabbed-set tabbed-alternate" data-tabs="1:2"><input checked="checked" id="__tabbed_1_1" name="__tabbed_1" type="radio" /><input id="__tabbed_1_2" name="__tabbed_1" type="radio" /><div class="tabbed-labels"><label for="__tabbed_1_1">Homebrew (macOS / Linux)</label><label for="__tabbed_1_2">Release binary</label></div>
-<div class="tabbed-content">
-<div class="tabbed-block">
-<div class="highlight"><pre><span></span><code>brew<span class="w"> </span>tap<span class="w"> </span>agntcy/dir<span class="w"> </span>https://github.com/agntcy/dir
-brew<span class="w"> </span>install<span class="w"> </span>dirctl
-</code></pre></div>
-</div>
-<div class="tabbed-block">
-<div class="highlight"><pre><span></span><code><span class="c1"># Example for Linux amd64 — adjust OS and architecture as needed</span>
-curl<span class="w"> </span>-L<span class="w"> </span>https://github.com/agntcy/dir/releases/latest/download/dirctl-linux-amd64<span class="w"> </span>-o<span class="w"> </span>dirctl
-chmod<span class="w"> </span>+x<span class="w"> </span>dirctl
-sudo<span class="w"> </span>mv<span class="w"> </span>dirctl<span class="w"> </span>/usr/local/bin/
-</code></pre></div>
-</div>
-</div>
-</div>
 <h3 id="docker-compose_1">Docker Compose</h3>
 <ul>
 <li>Docker with the Compose plugin (v2)</li>
