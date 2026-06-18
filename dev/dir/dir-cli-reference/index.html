@@ -932,6 +932,8 @@
       
         
       
+        
+      
     
     
     
@@ -1020,6 +1022,34 @@
     
   
     MCP Server
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../dir-component-import/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Import and Export
   
 
     
@@ -3966,7 +3996,7 @@ dirctl<span class="w"> </span>info<span class="w"> </span>cisco.com/agent:v1.0.0
 <tr>
 <td><code>--enrich-config</code></td>
 <td>-</td>
-<td>Path to MCPHost configuration JSON (model, mcpServers, max-steps)</td>
+<td>Path to enricher configuration JSON (model, mcpServers, max-steps)</td>
 <td>No</td>
 <td>Built-in embedded config</td>
 </tr>
@@ -4146,7 +4176,7 @@ dirctl<span class="w"> </span>import<span class="w"> </span>--type<span class="o
 </ul>
 <p>See the <a href="https://registry.modelcontextprotocol.io/docs#/operations/list-servers#Query-Parameters">MCP Registry API docs</a> for the complete list of supported filters.</p>
 <h3 id="llm-based-enrichment-mandatory">LLM-based Enrichment (Mandatory)</h3>
-<p><strong>Enrichment is mandatory</strong> — the import command automatically enriches MCP server records using LLM models to map them to appropriate OASF skills and domains. Records from the oasf-sdk translator are incomplete and require enrichment to be valid. This is powered by <a href="https://github.com/mark3labs/mcphost">mcphost</a>, which provides a Model Context Protocol (MCP) host that can run AI models with tool-calling capabilities.</p>
+<p><strong>Enrichment is mandatory</strong> — the import command automatically enriches MCP server records using LLM models to map them to appropriate OASF skills and domains. Records from the oasf-sdk translator are incomplete and require enrichment to be valid. The enrichment pipeline is built into <code>dirctl</code>: it runs an LLM with tool-calling support against the OASF schema tools exposed by <code>dirctl mcp serve</code>, so no external tooling is required.</p>
 <p><strong>Requirements:</strong></p>
 <ul>
 <li><code>dirctl</code> binary (includes the built-in MCP server with <code>agntcy_oasf_get_schema_skills</code> and <code>agntcy_oasf_get_schema_domains</code> tools)</li>
@@ -4161,7 +4191,7 @@ dirctl<span class="w"> </span>import<span class="w"> </span>--type<span class="o
 <li>Based on the MCP server description and capabilities, the LLM selects appropriate skills and domains</li>
 <li>Selected skills and domains replace the defaults in the imported records</li>
 </ol>
-<p><strong>Setting up mcphost:</strong></p>
+<p><strong>Customizing the enricher:</strong></p>
 <p>To customize the LLM host, create a configuration file and pass it with <code>--enrich-config</code>:</p>
 <div class="highlight"><pre><span></span><code><span class="p">{</span>
 <span class="w">  </span><span class="nt">&quot;mcpServers&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
@@ -4196,10 +4226,10 @@ dirctl<span class="w"> </span>import<span class="w"> </span>--type<span class="o
 <p>The default prompt templates are available at <code>importer/enricher/enricher.skills.prompt.md</code> and <code>importer/enricher/enricher.domains.prompt.md</code>.</p>
 <details class="example">
 <summary>Import with custom enrichment</summary>
-<div class="highlight"><pre><span></span><code><span class="c1"># Import with custom mcphost configuration</span>
+<div class="highlight"><pre><span></span><code><span class="c1"># Import with custom enricher configuration</span>
 dirctl<span class="w"> </span>import<span class="w"> </span>--type<span class="o">=</span>mcp-registry<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--url<span class="o">=</span>https://registry.modelcontextprotocol.io/v0.1<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--enrich-config<span class="o">=</span>/path/to/custom-mcphost.json
+<span class="w">  </span>--enrich-config<span class="o">=</span>/path/to/custom-enricher.json
 
 <span class="c1"># Import with custom prompt templates</span>
 dirctl<span class="w"> </span>import<span class="w"> </span>--type<span class="o">=</span>mcp-registry<span class="w"> </span><span class="se">\</span>
