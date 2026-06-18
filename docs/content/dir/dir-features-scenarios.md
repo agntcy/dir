@@ -67,35 +67,21 @@ Once the server is configured, the CLI operations work the same regardless of th
 registry backend:
 
 ```bash
-# Push the record and store its CID to a file
+# Push the record and capture its CID
 dirctl push record.json > record.cid
-
-# Set the CID as a variable for easier reference
 RECORD_CID=$(cat record.cid)
 
-# Pull the record by CID
-# Returns the same data as record.json
+# Pull the record by CID (returns the same data as record.json)
 dirctl pull $RECORD_CID
 
-# Pull the record by name (if it has a verifiable name)
-# Returns the same data as record.json
-dirctl pull example.com/agents/my-record:v1.0.0
-
-# Lookup basic metadata about the record by CID
-# Returns annotations, creation timestamp and OASF schema version
+# Look up basic metadata (annotations, creation timestamp, OASF schema version)
 dirctl info $RECORD_CID
-
-# Lookup basic metadata by name
-dirctl info example.com/agents/my-record:v1.0.0
 ```
 
-Records with verifiable names can be referenced using Docker-style formats:
-
-- `example.com/agents/my-record` - Latest version
-- `example.com/agents/my-record:v1.0.0` - Specific version
-- `example.com/agents/my-record:v1.0.0@bafyreib...` - Hash-verified lookup
-  
-Name-based references work with `pull`, `info`, and `naming verify` commands.
+Records with verifiable names can also be referenced using Docker-style formats
+(`name`, `name:version`, `name:version@cid`) with the `pull`, `info`, and `naming verify`
+commands. For all storage flags and output options, see
+[CLI Reference — Storage Operations](dir-cli-reference.md#storage-operations).
 
 ## Signing and Verification
 
@@ -217,32 +203,16 @@ When verification succeeds, you'll receive a response like:
 
 ### Using Verified Names
 
-Once verified, you can use convenient name-based references instead of CIDs:
+Once verified, records can be referenced by name instead of CID across `pull`, `info`, and
+`naming verify`. When no version is specified, commands resolve to the most recently created
+record (by `created_at`), so non-semver tags like `latest`, `dev`, or `stable` also work:
 
 ```bash
-# Pull by name (latest version)
+# Resolve the latest version by name
 dirctl pull example.com/agents/my-record
 
-# Pull specific version
-dirctl pull example.com/agents/my-record:v1.0.0
-
-# Pull with hash verification (fails if CID doesn't match)
+# Pin a specific version, optionally with hash verification
 dirctl pull example.com/agents/my-record:v1.0.0@$RECORD_CID
-
-# Get info by name
-dirctl info example.com/agents/my-record:v1.0.0 --output json
-```
-
-### Version Resolution
-
-When no version is specified, commands return the most recently created record (by the
-record's `created_at` field). This allows non-semver tags like `latest`, `dev`, or `stable`:
-
-```bash
-# These all pull the most recent version
-dirctl pull example.com/agents/my-record
-dirctl pull example.com/agents/my-record:latest
-dirctl pull example.com/agents/my-record:dev
 ```
 
 ## Announce
@@ -271,18 +241,9 @@ Use `dirctl routing list` to discover records stored locally on this peer only. 
 the server's local storage index and does not search other peers on the network.
 
 ```bash
-# List all local records
+# List all local records, or filter by skill
 dirctl routing list
-
-# List local records with specific skill
 dirctl routing list --skill "images_computer_vision/image_segmentation"
-
-# List records with multiple criteria (AND logic)
-dirctl routing list --skill "images_computer_vision/image_segmentation" \
-                    --locator "source_code"
-
-# List specific record by CID
-dirctl routing list --cid $RECORD_CID
 ```
 
 ### Network Discovery
@@ -291,118 +252,40 @@ Use `dirctl routing search` to discover records from other peers across the netw
 uses cached network announcements and filters out local records.
 
 ```bash
-# Search for records with exact skill match
-dirctl routing search --skill "images_computer_vision/image_segmentation"
-
-# Search for records with skill prefix match (finds all NLP-related skills)
+# Search across the network by skill (exact or prefix match)
 dirctl routing search --skill "images_computer_vision"
-
-# Search with multiple criteria (OR logic with minimum score)
-dirctl routing search --skill "images_computer_vision" \
-                      --skill "audio" \
-                      --min-score 2
-
-# Search with result limiting
-dirctl routing search --skill "images_computer_vision" \
-                      --limit 5
 ```
 
 Network search supports hierarchical matching where skills, domains, and modules use both
-exact and prefix matching (e.g., `images_computer_vision` matches both `images_computer_vision`
-and `images_computer_vision/image_segmentation` as a prefix). Network search results rely on
-cached announcements from other peers, so they are not guaranteed to be available, valid, or
-up to date. See [Routing](dir-component-routing.md) for details.
+exact and prefix matching (e.g., `images_computer_vision` also matches
+`images_computer_vision/image_segmentation`). Results rely on cached announcements from other
+peers, so they are not guaranteed to be available, valid, or up to date. For all filters
+(`--locator`, `--cid`, `--min-score`, `--limit`, and so on), see
+[CLI Reference — Routing Operations](dir-cli-reference.md#routing-operations); for concepts,
+see [Routing](dir-component-routing.md).
 
 ## Search
 
-This example demonstrates how to search for records in your local directory using various filters
-and query parameters. The search functionality allows you to find records based on specific
-attributes like name, version, skills, locators, domains and modules using structured
-filters with wildcard support. All searches are case insensitive.
-
-Search queries the local record index, supports pagination, and returns Content Identifier
-(CID) values that can be used with other Directory commands like `pull`, `info`, and `verify`.
+Search finds records in the local directory by attributes such as name, version, skills,
+locators, domains, and modules, with wildcard support and case-insensitive matching. It
+queries the local record index, supports pagination, and returns CIDs usable with other
+commands like `pull`, `info`, and `verify`.
 
 ```bash
-# Basic search for records by name
-dirctl search --name "my-agent-name"
-
-# Search for records with verifiable domain-based names
-dirctl search --name "example.com/agents/my-record"
-
-# Search for records with a specific version
-dirctl search --version "v1.0.0"
-
-# Search for records that have a particular skill by ID
-dirctl search --skill-id "10201"
-
-# Search for records with a specific skill name
+# Search by a single filter (name, version, skill, locator, domain, module, ...)
 dirctl search --skill "images_computer_vision/image_segmentation"
 
-# Search for records with a specific locator type
-dirctl search --locator "docker-image"
+# Combine filters; wildcards (* and ?) are supported in values
+dirctl search --name "example.com/*" --version "v1.*"
 
-# Search for records with a specific domain
-dirctl search --domain "healthcare"
-
-# Search for records with a specific module
-dirctl search --module "runtime/framework"
-
-# Combine multiple filters (AND operation)
-dirctl search \
-  --name "my-agent" \
-  --version "v1.0.0" \
-  --skill "images_computer_vision/image_segmentation"
-
-# Use multiple values for the same filter (OR operation within filter type)
-dirctl search \
-  --skill "images_computer_vision" \
-  --skill "natural_language_processing"
-
-# Use pagination to limit results and specify offset
-dirctl search \
-  --skill "images_computer_vision/image_segmentation" \
-  --limit 10 \
-  --offset 0
-
-# Get the next page of results
-dirctl search \
-  --skill "images_computer_vision/image_segmentation" \
-  --limit 10 \
-  --offset 10
+# Paginate results
+dirctl search --skill "images_computer_vision" --limit 10 --offset 0
 ```
 
-### Wildcard Search
-
-The search functionality supports wildcard patterns for flexible matching:
-
-```bash
-# Asterisk (*) wildcard - matches zero or more characters
-dirctl search --name "web*"                    # Find all web-related agents
-dirctl search --name "example.com/*"           # Find all agents from example.com domain
-dirctl search --version "v1.*"                 # Find all v1.x versions
-dirctl search --skill "audio*"                 # Find Audio-related skills
-dirctl search --locator "http*"                # Find HTTP-based locators
-
-# Question mark (?) wildcard - matches exactly one character
-dirctl search --version "v1.0.?"               # Find version v1.0.x (single digit)
-dirctl search --name "???api"                  # Find 3-character names ending in "api"
-dirctl search --skill "Pytho?"                 # Find skills with single character variations
-
-# Complex wildcard combinations
-dirctl search --name "api-*-service" --version "v2.*"
-dirctl search --skill "*machine*learning*"
-```
-
-For the full list of search filter flags and output options, see
+**Search Logic:** flags of different types are combined with AND (all must match); repeated
+flags of the same type are combined with OR (any can match). For the full list of filter
+flags, wildcard rules, and output options, see
 [CLI Reference — `dirctl search`](dir-cli-reference.md#dirctl-search-flags).
-
-**Search Logic:**
-
-Multiple flags of different types are combined with AND logic (all criteria must match).
-Multiple flags of the same type are combined with OR logic (any criteria can match).
-For example, `--skill "audio" --skill "video" --locator "docker-image"` finds records that have
-either "audio" OR "video" skills AND use "docker-image" locators.
 
 ## Sync
 
@@ -417,36 +300,27 @@ local instance.
 ### Basic Sync Operations
 
 ```bash
-# Create a sync operation (reconciler will run sync and pull all records from remote)
+# Create a sync from a remote directory (add --cids to sync specific records only)
 dirctl sync create https://remote-directory.example.com:8888
 
-# Sync specific records by CID
-dirctl sync create https://remote-directory.example.com:8888 \
-                   --cids cid1,cid2,cid3
-
-# List all sync operations
+# List syncs, check status, and delete when no longer needed
 dirctl sync list
-
-# Check the status of a specific sync operation
 dirctl sync status <sync-id>
-
-# Mark a sync for deletion (reconciler will process and remove it)
 dirctl sync delete <sync-id>
 ```
 
 ### Advanced Sync with Routing
 
-You can combine routing search with sync operations to selectively synchronize records that
-match specific criteria:
+Routing search can be combined with sync to selectively synchronize records that match
+specific criteria. The following pipes search results into a sync, creating a sync operation
+for each remote peer found and syncing only the matched CIDs:
 
 ```bash
-# Search for agents with a given skill across
-# the network and sync them automatically
 dirctl routing search --skill "Audio" --output json | dirctl sync create --stdin
 ```
 
-This creates separate sync operations for each remote peer found in the search results,
-syncing only the specific CIDs that matched your search criteria.
+For all sync flags, see
+[CLI Reference — Synchronization](dir-cli-reference.md#synchronization).
 
 ## Import
 
@@ -481,30 +355,9 @@ cronjobs:
       - '--url=https://registry.modelcontextprotocol.io/v0.1'
 ```
 
-### Common Import Options
-
-```bash
-# Basic import from MCP registry
-dirctl import --type=mcp-registry --url=https://registry.modelcontextprotocol.io/v0.1
-
-# Import with filtering and limits
-dirctl import --type=mcp-registry \
-  --url=https://registry.modelcontextprotocol.io/v0.1 \
-  --filter=version=latest \
-  --limit=50
-
-# Import with custom LLM enrichment config
-dirctl import --type=mcp-registry \
-  --url=https://registry.modelcontextprotocol.io/v0.1 \
-  --enrich-config=./enricher.json
-
-# Force reimport of existing records (bypasses deduplication)
-dirctl import --type=mcp-registry \
-  --url=https://registry.modelcontextprotocol.io/v0.1 \
-  --force
-```
-
-For comprehensive documentation including all configuration options, filtering capabilities, LLM enrichment setup, and advanced usage examples, see the [CLI Import Workflow documentation](https://github.com/agntcy/dir/tree/main/cli#-import-workflow).
+For filtering, limits, custom enrichment config, force reimport, and all other options, see
+[CLI Reference — Import Operations](dir-cli-reference.md#import-operations) and the
+[CLI Import Workflow documentation](https://github.com/agntcy/dir/tree/main/cli#-import-workflow).
 
 ## Export
 
