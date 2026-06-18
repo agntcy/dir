@@ -658,7 +658,7 @@
   <span class="md-ellipsis">
     
   
-    Features
+    Usage Guide
   
 
     
@@ -2015,7 +2015,7 @@ kubectl<span class="w"> </span><span class="nb">wait</span><span class="w"> </sp
 <p>Deploy Directory (API server, Zot, PostgreSQL)</p>
 <p>The Directory chart includes the API server, Zot registry, and PostgreSQL. Pipe values from stdin using <code>-f -</code>:</p>
 <div class="highlight"><pre><span></span><code>helm<span class="w"> </span>install<span class="w"> </span>dir<span class="w"> </span>oci://ghcr.io/agntcy/dir/helm-charts/dir<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--version<span class="w"> </span>v1.0.0<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--version<span class="w"> </span>v1.5.0<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--namespace<span class="w"> </span>dir-dev-dir<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--create-namespace<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>-f<span class="w"> </span>-<span class="w"> </span><span class="s">&lt;&lt;&#39;EOF&#39;</span>
@@ -2024,7 +2024,7 @@ kubectl<span class="w"> </span><span class="nb">wait</span><span class="w"> </sp
 <span class="s">apiserver:</span>
 <span class="s">  image:</span>
 <span class="s">    repository: ghcr.io/agntcy/dir-apiserver</span>
-<span class="s">    tag: v1.0.0</span>
+<span class="s">    tag: v1.5.0</span>
 <span class="s">    pullPolicy: IfNotPresent</span>
 <span class="s">  service:</span>
 <span class="s">    type: NodePort</span>
@@ -2217,7 +2217,7 @@ kind<span class="w"> </span>delete<span class="w"> </span>cluster<span class="w"
 <tr>
 <td><strong>Directory</strong></td>
 <td><code>oci://ghcr.io/agntcy/dir/helm-charts/dir</code></td>
-<td>v1.0.0</td>
+<td>v1.5.0</td>
 </tr>
 </tbody>
 </table>
