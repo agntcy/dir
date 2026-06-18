@@ -31,6 +31,6 @@ federating user-facing endpoints.
 
 ## Concepts
 
-- [Trust Model](dir-component-trust-model.md) — signing, verification, and SPIFFE/SPIRE identity
-- [Routing](dir-component-routing.md) — how skill-based discovery works within and across peers
+- [Trust Model](dir-component-trust-model.md) — record signing/verification and SPIFFE/SPIRE workload identity
+- [Routing](dir-component-routing.md) — skill-based discovery and synchronization within and across peers
 - [Architecture](dir-architecture.md) — Directory components and trust boundaries

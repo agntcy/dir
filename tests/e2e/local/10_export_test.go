@@ -322,7 +322,7 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests for the export command"
 			serverPath := filepath.Join(tempDir, "mcp-server.json")
 			gomega.Expect(os.WriteFile(serverPath, testdata.MCPServer, 0o600)).To(gomega.Succeed())
 
-			enrichCfg := filepath.Join(tempDir, "mcphost.json")
+			enrichCfg := filepath.Join(tempDir, "enricher.json")
 			gomega.Expect(os.WriteFile(enrichCfg, []byte(`{}`), 0o600)).To(gomega.Succeed())
 
 			cidFile := filepath.Join(tempDir, "imported.cids")

@@ -44,14 +44,43 @@ sequenceDiagram
     Note over User,ServerB: Discovery Phase
     User->>DHT: Query by labels
     DHT->>User: Return matching CIDs<br/>+ server addresses
-    User->>ServerA: Download record 1
-    User->>ServerB: Download record 2
+    User->>ServerA: Sync record 1
+    User->>ServerB: Sync record 2
 ```
+
+## Synchronization
+
+Discovery identifies *where* records live; **synchronization (sync)** replicates them
+locally. After `routing search` surfaces records hosted on a remote peer, those records can
+be synced into the local node for offline access, backup, and cross-network collaboration.
+Sync is one-way: content flows from a remote Directory instance to the local node.
+
+### How sync works
+
+Directory uses [regsync](https://github.com/regclient/regclient/tree/main/cmd/regsync)
+(from regclient) as the synchronization engine for all registry types. When a sync operation
+is created, the reconciler generates a regsync configuration and runs `regsync once` to pull
+content from remote registries. Objects are stored as OCI artifacts (manifests, blobs, and
+tags), enabling container-native synchronization with secure credential exchange between
+Directory nodes.
+
+Sync operations are managed asynchronously by a reconciler. Creating, listing, checking the
+status of, and deleting a sync are all recorded as desired state that the reconciler
+processes in the background.
+
+### Sync driven by search
+
+Because sync pairs naturally with discovery, routing search results can drive selective
+replication: feeding `routing search` output into a sync operation creates separate sync
+operations for each remote peer found, syncing only the CIDs that matched the search.
 
 ## Related documentation
 
 - [Architecture](dir-architecture.md) — full system design and diagram
 - [Records](dir-component-records-validation.md) — skill taxonomy and record structure
 - [Usage Guide — Announce / Discover](dir-features-scenarios.md#announce) — CLI walkthroughs
+- [Usage Guide — Sync](dir-features-scenarios.md#sync) — sync CLI walkthroughs
 - [CLI Reference — Routing Operations](dir-cli-reference.md#routing-operations) — `routing publish`, `unpublish`, `list`, `search`, `info`
+- [CLI Reference — Synchronization](dir-cli-reference.md#synchronization) — `sync create`, `list`, `status`, `delete`
+- [Import](dir-component-import.md) — bringing records in from external (non-Directory) registries
 - [Federation](dir-federation-overview.md) — multi-instance routing across federated directories

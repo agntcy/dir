@@ -218,7 +218,7 @@ jobs:
           DIRCTL_PATH: ${{ steps.setup-dirctl.outputs.dirctl_path }}
         run: |
           sed "s|__DIRCTL_PATH__|${DIRCTL_PATH}|g" \
-            .github/workflows/scripts/mcphost_ci.json.template > mcphost_ci.json
+            .github/workflows/scripts/enricher_ci.json.template > enricher_ci.json
 
       - name: Fetch Directory OIDC token
         id: oidc-dir-import
@@ -241,7 +241,7 @@ jobs:
 
           CIDS_FILE="imported-cids-${{ matrix.entry.index }}.txt"
           DRY_RUN_DIR="dry-run-output-mcp-${{ matrix.entry.index }}"
-          CMD=("${DIRCTL_PATH}" import --type=mcp-registry --url=https://registry.modelcontextprotocol.io/v0.1 --server-addr="${{ env.SERVER_ADDRESS }}" --auth-mode=oidc "--auth-token=${DIR_AUTH_TOKEN}" --enrich-config=mcphost_ci.json --enrich-rate-limit="${{ env.RATE_LIMIT }}")
+          CMD=("${DIRCTL_PATH}" import --type=mcp-registry --url=https://registry.modelcontextprotocol.io/v0.1 --server-addr="${{ env.SERVER_ADDRESS }}" --auth-mode=oidc "--auth-token=${DIR_AUTH_TOKEN}" --enrich-config=enricher_ci.json --enrich-rate-limit="${{ env.RATE_LIMIT }}")
 
           if [[ "${{ env.DRY_RUN }}" == "true" ]]; then
              CMD+=("--dry-run" "--output-dir=$DRY_RUN_DIR")
@@ -422,7 +422,7 @@ jobs:
           DIRCTL_PATH: ${{ steps.setup-dirctl.outputs.dirctl_path }}
         run: |
           sed "s|__DIRCTL_PATH__|${DIRCTL_PATH}|g" \
-            .github/workflows/scripts/mcphost_ci.json.template > mcphost_ci.json
+            .github/workflows/scripts/enricher_ci.json.template > enricher_ci.json
 
       - name: Fetch Directory OIDC token
         id: oidc-dir-import
@@ -446,7 +446,7 @@ jobs:
 
           CIDS_FILE="imported-cids-${{ matrix.entry.index }}.txt"
           DRY_RUN_DIR="dry-run-output-agent-skills-${{ matrix.entry.index }}"
-          CMD=("${DIRCTL_PATH}" import --type=agent-skill --file-path="${{ steps.sync-repo.outputs.repo_dir }}" --server-addr="${{ env.SERVER_ADDRESS }}" --auth-mode=oidc "--auth-token=${DIR_AUTH_TOKEN}" --enrich-config=mcphost_ci.json --enrich-rate-limit="${{ env.RATE_LIMIT }}")
+          CMD=("${DIRCTL_PATH}" import --type=agent-skill --file-path="${{ steps.sync-repo.outputs.repo_dir }}" --server-addr="${{ env.SERVER_ADDRESS }}" --auth-mode=oidc "--auth-token=${DIR_AUTH_TOKEN}" --enrich-config=enricher_ci.json --enrich-rate-limit="${{ env.RATE_LIMIT }}")
 
           while IFS= read -r AUTHOR; do
             [ -z "$AUTHOR" ] && continue
