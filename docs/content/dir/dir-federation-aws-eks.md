@@ -95,14 +95,10 @@ These pins match the current staging deployment references at the time this guid
 
 | Component | Source | Version |
 |-----------|--------|---------|
-| Directory Helm chart | `oci://ghcr.io/agntcy/dir/helm-charts/dir` | `v1.2.0` |
-| Directory apiserver image | `ghcr.io/agntcy/dir-apiserver` | `v1.2.0` |
-| Directory reconciler image | `ghcr.io/agntcy/dir-reconciler` | `v1.2.0` |
+| Directory Helm chart | `oci://ghcr.io/agntcy/dir/helm-charts/dir` | `{{ dir_version }}` |
+| Directory apiserver image | `ghcr.io/agntcy/dir-apiserver` | `{{ dir_version }}` |
+| Directory reconciler image | `ghcr.io/agntcy/dir-reconciler` | `{{ dir_version }}` |
 | SPIRE Helm chart | `spiffe/spire` | `0.28.3` |
-
-!!! note
-
-    Older Directory docs still show `v1.0.0` examples. Prefer the versions above for a fresh deployment.
 
 ## Before You Start
 
@@ -330,7 +326,7 @@ This guide does not try to provision the AWS infrastructure from zero in the mai
     apiserver:
       image:
         repository: ghcr.io/agntcy/dir-apiserver
-        tag: v1.2.0
+        tag: {{ dir_version }}
         pullPolicy: IfNotPresent
 
       spire:
@@ -454,7 +450,7 @@ This guide does not try to provision the AWS infrastructure from zero in the mai
         enabled: true
         image:
           repository: ghcr.io/agntcy/dir-reconciler
-          tag: v1.2.0
+          tag: {{ dir_version }}
           pullPolicy: IfNotPresent
         config:
           database:
@@ -533,7 +529,7 @@ This guide does not try to provision the AWS infrastructure from zero in the mai
 
     ```bash
     helm upgrade --install dir oci://ghcr.io/agntcy/dir/helm-charts/dir \
-      --version v1.2.0 \
+      --version {{ dir_version }} \
       --namespace "${DIR_NAMESPACE}" \
       --create-namespace \
       -f dir-values.yaml \
