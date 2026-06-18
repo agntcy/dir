@@ -54,7 +54,7 @@ Preview and output:
   dirctl import --type=mcp-registry --url=https://registry.modelcontextprotocol.io/v0.1 --dry-run --output-dir=./out
   dirctl import --type=mcp-registry --url=https://registry.modelcontextprotocol.io/v0.1 --output-cids=./imported.cids
 
-Enrichment (MCPHost / LLM):
+Enrichment (LLM):
   dirctl import --type=mcp --file-path=./server.json --enrich-config=./enricher.json
   dirctl import --type=mcp-registry --url=https://registry.modelcontextprotocol.io/v0.1 --enrich-skills-prompt=./skills.md --enrich-domains-prompt=./domains.md --enrich-rate-limit=5
 

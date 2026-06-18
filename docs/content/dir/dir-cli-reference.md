@@ -559,7 +559,7 @@ Fetch and import records from registries or local sources.
 | `--output-dir` | - | Directory to write per-record JSON files when `--dry-run` is set. Each record is written as `<cid>.record.json` | No | `./import-dry-run-<timestamp>` in the current working directory |
 | `--debug` | - | Enable debug output (shows MCP source and OASF record for failures) | No | false |
 | `--force` | - | Force reimport of existing records (skip deduplication) | No | false |
-| `--enrich-config` | - | Path to MCPHost configuration JSON (model, mcpServers, max-steps) | No | Built-in embedded config |
+| `--enrich-config` | - | Path to enricher configuration JSON (model, mcpServers, max-steps) | No | Built-in embedded config |
 | `--scanner-enabled` | - | Run security scanners on each record | No | `false` |
 | `--scanner-timeout` | - | Timeout per record scan | No | `5m` |
 | `--scanner-cli-path` | - | Path to `mcp-scanner` binary | No | `mcp-scanner` from `PATH` |
@@ -655,7 +655,7 @@ See the [MCP Registry API docs](https://registry.modelcontextprotocol.io/docs#/o
 
 ### LLM-based Enrichment (Mandatory)
 
-**Enrichment is mandatory** — the import command automatically enriches MCP server records using LLM models to map them to appropriate OASF skills and domains. Records from the oasf-sdk translator are incomplete and require enrichment to be valid. This is powered by [mcphost](https://github.com/mark3labs/mcphost), which provides a Model Context Protocol (MCP) host that can run AI models with tool-calling capabilities.
+**Enrichment is mandatory** — the import command automatically enriches MCP server records using LLM models to map them to appropriate OASF skills and domains. Records from the oasf-sdk translator are incomplete and require enrichment to be valid. The enrichment pipeline is built into `dirctl`: it runs an LLM with tool-calling support against the OASF schema tools exposed by `dirctl mcp serve`, so no external tooling is required.
 
 **Requirements:**
 
@@ -671,7 +671,7 @@ See the [MCP Registry API docs](https://registry.modelcontextprotocol.io/docs#/o
 4. Based on the MCP server description and capabilities, the LLM selects appropriate skills and domains
 5. Selected skills and domains replace the defaults in the imported records
 
-**Setting up mcphost:**
+**Customizing the enricher:**
 
 To customize the LLM host, create a configuration file and pass it with `--enrich-config`:
 
@@ -713,10 +713,10 @@ The default prompt templates are available at `importer/enricher/enricher.skills
 ??? example "Import with custom enrichment"
 
     ```bash
-    # Import with custom mcphost configuration
+    # Import with custom enricher configuration
     dirctl import --type=mcp-registry \
       --url=https://registry.modelcontextprotocol.io/v0.1 \
-      --enrich-config=/path/to/custom-mcphost.json
+      --enrich-config=/path/to/custom-enricher.json
 
     # Import with custom prompt templates
     dirctl import --type=mcp-registry \
