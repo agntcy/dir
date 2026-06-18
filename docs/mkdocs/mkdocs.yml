@@ -125,6 +125,7 @@ nav:
           - Extensions:
               - Runtime Discovery: dir/dir-component-runtime-discovery.md
               - MCP Server: dir/dir-component-mcp-server.md
+              - Import and Export: dir/dir-component-import.md
       - Deploy:
           - Local Deployment: dir/dir-deployment-local.md
           - Kubernetes Deployment: dir/dir-deployment-kubernetes.md

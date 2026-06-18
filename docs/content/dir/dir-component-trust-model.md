@@ -3,9 +3,17 @@
 ## Overview
 
 Directory is a system designed to provide secure, authenticated, and authorized access to
-services and resources across multiple environments and organizations. It leverages
-[SPIRE](https://spiffe.io/) to manage workload identities and
-enable zero-trust security principles.
+services and resources across multiple environments and organizations. Its trust model has
+two complementary layers:
+
+- **Record signing and verification** — cryptographic provenance and integrity for
+  individual records (see [Record Signing and Verification](#record-signing-and-verification)).
+- **Workload identity** — authenticated, authorized communication between components,
+  built on [SPIRE](https://spiffe.io/) and zero-trust principles (covered in the rest of
+  this page).
+
+The workload identity layer leverages [SPIRE](https://spiffe.io/) to manage workload
+identities and enable zero-trust security principles.
 
 [SPIRE](https://spiffe.io/docs/latest/spire-about/) (SPIFFE Runtime Environment) is an open-source system that provides automated,
 cryptographically secure identities to workloads in modern infrastructure. It implements the
@@ -19,6 +27,63 @@ In the Directory project, SPIRE is used to:
 - Support dynamic, scalable, and multi-environment deployments.
 - Enable interconnectivity between different organizations.
 - Provide primitives for authorization logic.
+
+## Record Signing and Verification
+
+Establishing trust and authenticity is critical in distributed AI agent ecosystems, where
+records may be shared across multiple nodes and networks. By cryptographically signing
+records, publishers can prove authorship and ensure data integrity, while consumers can
+verify that records haven't been tampered with and originate from trusted sources before
+deploying or executing agent code.
+
+### How signing works
+
+Signatures and public keys are stored in the OCI registry as referrer artifacts that
+maintain subject relationships with their associated records. When a record is signed, the
+signature is attached as a Cosign-compatible OCI artifact. Public keys are similarly stored
+as separate OCI artifacts, creating a verifiable chain of trust through OCI's native
+referrer mechanism.
+
+Server-side verification leverages Zot's trust extension through GraphQL queries that check
+both signature validity and trust status. When public keys are uploaded to Zot, they enable
+the registry to mark signatures as "trusted" when they can be cryptographically verified
+against the stored public keys. The verification process queries Zot's search API to
+retrieve signature metadata including the `IsSigned` and `IsTrusted` status, allowing the
+Directory server to make trust decisions based on the cryptographic verification performed
+by the underlying OCI registry infrastructure.
+
+### Signing methods
+
+Directory supports several signing flows depending on the environment:
+
+- **OIDC-based interactive** — identity-based signing through a browser-based OIDC flow,
+  implemented with [Sigstore](https://www.sigstore.dev/). Best for local, interactive use.
+- **OIDC-based non-interactive** — uses OIDC tokens provided by the execution environment
+  (such as GitHub Actions) to sign records in automated pipelines without user interaction.
+- **Self-managed keys** — uses a signing keypair (for example, generated with Cosign) where
+  the private key signs the record. Suitable for CI/CD where browser-based authentication is
+  not possible or desired.
+
+For CLI walkthroughs of each method, see
+[Usage Guide — Signing and Verification](dir-features-scenarios.md#signing-and-verification).
+
+### Name verification
+
+Name verification proves that the signing key is authorized by the domain claimed in the
+record's `name` field. This provides cryptographic proof of domain ownership and enables
+human-readable references while maintaining security.
+
+A record qualifies for name verification when:
+
+- The record name includes a protocol prefix: `https://domain/path` or `http://domain/path`.
+- A [JWKS (JSON Web Key Set)](https://datatracker.ietf.org/doc/html/rfc7517) file is hosted
+  at `<scheme>://<domain>/.well-known/jwks.json`.
+- The record is signed with the private key corresponding to a public key present in that
+  JWKS file.
+
+Once a name is verified, records can be referenced using Docker-style name references
+(`name`, `name:version`, `name:version@cid`) instead of raw CIDs. See
+[Records](dir-component-records-validation.md) for the verifiable name model.
 
 ## Authentication and Authorization
 
