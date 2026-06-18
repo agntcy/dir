@@ -74,7 +74,7 @@ The Agent Directory Service can be deployed using Helm or GitOps / Argo CD. Helm
 
         ```bash
         helm install dir oci://ghcr.io/agntcy/dir/helm-charts/dir \
-          --version v1.0.0 \
+          --version {{ dir_version }} \
           --namespace dir-dev-dir \
           --create-namespace \
           -f - <<'EOF'
@@ -83,7 +83,7 @@ The Agent Directory Service can be deployed using Helm or GitOps / Argo CD. Helm
         apiserver:
           image:
             repository: ghcr.io/agntcy/dir-apiserver
-            tag: v1.0.0
+            tag: {{ dir_version }}
             pullPolicy: IfNotPresent
           service:
             type: NodePort
@@ -263,7 +263,7 @@ The Agent Directory Service can be deployed using Helm or GitOps / Argo CD. Helm
     |-----------|-------|---------|
     | **SPIRE CRDs** | `spiffe/spire-crds` | 0.5.0 |
     | **SPIRE** | `spiffe/spire` | 0.27.0 |
-    | **Directory** | `oci://ghcr.io/agntcy/dir/helm-charts/dir` | v1.0.0 |
+    | **Directory** | `oci://ghcr.io/agntcy/dir/helm-charts/dir` | {{ dir_version }} |
 
     For full configuration examples see the [dir-staging applications](https://github.com/agntcy/dir-staging/tree/main/applications).
 

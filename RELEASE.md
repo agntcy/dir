@@ -125,3 +125,7 @@ Publishing the root GitHub Release creates only the server-side module tags:
 - `reconciler/v1.3.0`
 
 It does not re-tag `api`, `client`, or `utils`.
+
+## 6. Update Hardcoded Versions in the README
+
+Bump the pinned release version in the `README.md` distribution examples (the `docker pull` image tags and the `helm` `--version` flags).
