@@ -356,8 +356,7 @@ cronjobs:
 ```
 
 For filtering, limits, custom enrichment config, force reimport, and all other options, see
-[CLI Reference — Import Operations](dir-cli-reference.md#import-operations) and the
-[CLI Import Workflow documentation](https://github.com/agntcy/dir/tree/main/cli#-import-workflow).
+[CLI Reference — Import Operations](dir-cli-reference.md#import-operations).
 
 ## Export
 

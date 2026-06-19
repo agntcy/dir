@@ -87,4 +87,3 @@ MCP servers into a single configuration file.
 - [Usage Guide — Export](dir-features-scenarios.md#export) — export CLI walkthroughs
 - [CLI Reference — Import Operations](dir-cli-reference.md#import-operations) — `dirctl import` flags
 - [CLI Reference — Export Operations](dir-cli-reference.md#export-operations) — `dirctl export` flags
-- [CLI Import Workflow](https://github.com/agntcy/dir/tree/main/cli#-import-workflow) — full import configuration reference
