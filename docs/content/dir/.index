@@ -9,21 +9,21 @@ nav:
     - Store: dir-component-store.md
     - Routing: dir-component-routing.md
     - Trust Model: dir-component-trust-model.md
-    - Federation: dir-federation-overview.md
     - Extensions:
       - Runtime Discovery: dir-component-runtime-discovery.md
       - MCP Server: dir-component-mcp-server.md
       - Import and Export: dir-component-import.md
+      - OIDC Authentication: dir-component-oidc-authentication.md
   - Deploy:
     - Local Deployment: dir-deployment-local.md
     - Kubernetes Deployment: dir-deployment-kubernetes.md
     - Production Deployment: dir-prod-deployment.md
     - Federation Deployment:
+      - Overview: dir-federation-overview.md
       - Federation on Amazon EKS: dir-federation-aws-eks.md
       - Running a Federated Directory Instance: dir-federation-setup.md
       - Profiles: dir-federation-profiles.md
       - Best Practices and Troubleshooting: dir-federation-troubleshooting.md
-    - OIDC Authentication: dir-component-oidc-authentication.md
   - SDKs:
     - SDK Overview: dir-sdk.md
   - Reference:
