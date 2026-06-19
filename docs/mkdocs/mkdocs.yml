@@ -125,6 +125,7 @@ nav:
               - Runtime Discovery: dir/dir-component-runtime-discovery.md
               - MCP Server: dir/dir-component-mcp-server.md
               - Import and Export: dir/dir-component-import.md
+              - OIDC Authentication: dir/dir-component-oidc-authentication.md
       - Deploy:
           - Local Deployment: dir/dir-deployment-local.md
           - Kubernetes Deployment: dir/dir-deployment-kubernetes.md
@@ -135,7 +136,6 @@ nav:
               - Running a Federated Directory Instance: dir/dir-federation-setup.md
               - Profiles: dir/dir-federation-profiles.md
               - Best Practices and Troubleshooting: dir/dir-federation-troubleshooting.md
-          - OIDC Authentication: dir/dir-component-oidc-authentication.md
       - SDKs:
           - SDK Overview: dir/dir-sdk.md
       - Reference:
