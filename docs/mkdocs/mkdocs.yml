@@ -121,7 +121,6 @@ nav:
           - Store: dir/dir-component-store.md
           - Routing: dir/dir-component-routing.md
           - Trust Model: dir/dir-component-trust-model.md
-          - Federation: dir/dir-federation-overview.md
           - Extensions:
               - Runtime Discovery: dir/dir-component-runtime-discovery.md
               - MCP Server: dir/dir-component-mcp-server.md
@@ -131,6 +130,7 @@ nav:
           - Kubernetes Deployment: dir/dir-deployment-kubernetes.md
           - Production Deployment: dir/dir-prod-deployment.md
           - Federation Deployment:
+              - Overview: dir/dir-federation-overview.md
               - Federation on Amazon EKS: dir/dir-federation-aws-eks.md
               - Running a Federated Directory Instance: dir/dir-federation-setup.md
               - Profiles: dir/dir-federation-profiles.md
