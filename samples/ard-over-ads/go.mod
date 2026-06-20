@@ -1,6 +1,6 @@
 module protocol_interop
 
-go 1.26.3
+go 1.26.4
 
 // TODO: replace once v1.5 is out
 replace (
@@ -72,14 +72,14 @@ require (
 	github.com/VividCortex/ewma v1.2.0 // indirect
 	github.com/agext/levenshtein v1.2.3 // indirect
 	github.com/agnivade/levenshtein v1.2.1 // indirect
-	github.com/agntcy/dir-importer v1.4.1-0.20260612122304-f331bd5b73d6 // indirect
-	github.com/agntcy/dir-mcp v1.3.1 // indirect
-	github.com/agntcy/dir-runtime/discovery v1.3.1 // indirect
-	github.com/agntcy/dir-runtime/server v1.3.1 // indirect
-	github.com/agntcy/dir-runtime/store v1.3.1 // indirect
-	github.com/agntcy/dir-runtime/utils v1.3.1 // indirect
-	github.com/agntcy/dir/reconciler v1.4.0 // indirect
-	github.com/agntcy/dir/server v1.4.0 // indirect
+	github.com/agntcy/dir-importer v1.4.1 // indirect
+	github.com/agntcy/dir-mcp v1.3.2 // indirect
+	github.com/agntcy/dir-runtime/discovery v1.3.2 // indirect
+	github.com/agntcy/dir-runtime/server v1.3.2 // indirect
+	github.com/agntcy/dir-runtime/store v1.3.2 // indirect
+	github.com/agntcy/dir-runtime/utils v1.3.2 // indirect
+	github.com/agntcy/dir/reconciler v1.5.0 // indirect
+	github.com/agntcy/dir/server v1.5.0 // indirect
 	github.com/agntcy/dir/utils v1.5.0 // indirect
 	github.com/agntcy/oasf-sdk/pkg v1.0.6-0.20260612113147-8fdda6fd3eb8 // indirect
 	github.com/alecthomas/chroma v0.10.0 // indirect
@@ -151,7 +151,7 @@ require (
 	github.com/cloudflare/circl v1.6.3 // indirect
 	github.com/cncf/xds/go v0.0.0-20260202195803-dba9d589def2 // indirect
 	github.com/containerd/cgroups/v3 v3.1.3 // indirect
-	github.com/containerd/containerd v1.7.32 // indirect
+	github.com/containerd/containerd v1.7.33 // indirect
 	github.com/containerd/containerd/api v1.11.1 // indirect
 	github.com/containerd/containerd/v2 v2.3.1 // indirect
 	github.com/containerd/continuity v0.5.0 // indirect
