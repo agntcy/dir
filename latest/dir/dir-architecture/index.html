@@ -658,7 +658,7 @@
   <span class="md-ellipsis">
     
   
-    Features
+    Usage Guide
   
 
     
@@ -690,8 +690,6 @@
   
     
     
-      
-        
       
         
       
@@ -827,23 +825,6 @@
       
     </span>
   </a>
-  
-    <nav class="md-nav" aria-label="Components">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#core-vs-extensions" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Core vs extensions
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
   
 </li>
       
@@ -996,36 +977,12 @@
   
   
   
-    <li class="md-nav__item">
-      <a href="../dir-federation-overview/" class="md-nav__link">
+    
+    
+      
         
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Federation
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    
-    
+      
+        
       
         
       
@@ -1044,10 +1001,10 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_2_7" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_2_6" >
         
           
-          <label class="md-nav__link" for="__nav_2_2_7" id="__nav_2_2_7_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_2_2_6" id="__nav_2_2_6_label" tabindex="0">
             
   
   
@@ -1065,8 +1022,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_2_2_7_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_2_2_7">
+        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_2_2_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_2_6">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -1132,6 +1089,62 @@
 
               
             
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../dir-component-import/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Import and Export
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../dir-component-oidc-authentication/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    OIDC Authentication
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
           </ul>
         </nav>
       
@@ -1156,8 +1169,6 @@
   
     
     
-      
-        
       
         
       
@@ -1316,6 +1327,8 @@
       
         
       
+        
+      
     
     
     
@@ -1360,6 +1373,34 @@
 
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../dir-federation-overview/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
             
               
                 
@@ -1476,34 +1517,6 @@
           </ul>
         </nav>
       
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../dir-component-oidc-authentication/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    OIDC Authentication
-  
-
-    
-  </span>
-  
-  
-
-      </a>
     </li>
   
 
@@ -1860,23 +1873,6 @@
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Components">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#core-vs-extensions" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Core vs extensions
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
 </li>
       
         <li class="md-nav__item">
@@ -2019,7 +2015,10 @@ for an overview of the protocol surface.</p>
 <p><strong>Records</strong>: The fundamental units of information in the ADS, representing individual agents and their capabilities. Each record is uniquely identified and contains metadata describing the agent's skills, attributes, and constraints.</p>
 </li>
 <li>
-<p><strong>Distributed Hash Table (DHT)</strong>: A decentralized storage system that enables efficient lookup and retrieval of directory records. The DHT maps agent skills to record identifiers, allowing for quick discovery of relevant agents based on their capabilities.</p>
+<p><strong>Store</strong>: The content-addressable storage layer for records, backed by an OCI registry (such as Zot). Records are stored and retrieved by their content identifier (CID), ensuring integrity and deduplication.</p>
+</li>
+<li>
+<p><strong>Distributed Hash Table (DHT)</strong>: A decentralized storage system that enables efficient lookup and retrieval of directory records. The DHT maps agent attributes—skills, domains, modules, and locators—to record identifiers, allowing for quick discovery of relevant agents based on their capabilities.</p>
 </li>
 <li>
 <p><strong>Content Routing Protocol</strong>: A set of rules and mechanisms for routing requests and responses between agents and directory servers. This protocol ensures that queries for agent capabilities are efficiently directed to the appropriate servers hosting the relevant records.</p>
@@ -2034,21 +2033,9 @@ for an overview of the protocol surface.</p>
 <p><strong>Runtime Discovery</strong>: Components that watch container runtimes (Docker, Kubernetes) for workloads and provide a gRPC API for querying them. Enables dynamic discovery of agents running in containerized environments, with support for resolving A2A agent cards and OASF records from discovered workloads.</p>
 </li>
 <li>
-<p><strong>Event Streaming</strong>: Real-time notification system that publishes Directory events to message brokers, enabling subscribers to react to record changes, discoveries, and other Directory operations.</p>
-</li>
-<li>
 <p><strong>Security and Trust Mechanisms</strong>: Features that ensure the integrity and authenticity of directory records and nodes, including cryptographic signing, verification of claims, secure communication protocols, and access controls.</p>
 </li>
 </ul>
-<h3 id="core-vs-extensions">Core vs extensions</h3>
-<p>Per the <a href="https://github.com/agntcy/dir-spec">Directory specification</a>, <strong>Records</strong>, <strong>Store</strong>, and
-<strong>Routing</strong> are the defining core components. They are documented at depth in
-<a href="../dir-component-records-validation/">Records</a>, <a href="../dir-component-store/">Store</a>, and
-<a href="../dir-component-routing/">Routing</a>.</p>
-<p>Optional <strong>extensions</strong> include
-<a href="../dir-component-runtime-discovery/">Runtime Discovery</a> and the
-<a href="../dir-component-mcp-server/">MCP Server</a>. External access
-via <a href="../dir-component-oidc-authentication/">OIDC</a> is configured at deployment time.</p>
 <h2 id="principles">Principles</h2>
 <ul>
 <li>
@@ -2111,7 +2098,7 @@ via <a href="../dir-component-oidc-authentication/">OIDC</a> is configured at de
       <nav class="md-footer__inner md-grid" aria-label="Footer" >
         
           
-          <a href="../dir-features-scenarios/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Features">
+          <a href="../dir-features-scenarios/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Usage Guide">
             <div class="md-footer__button md-icon">
               
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
@@ -2121,7 +2108,7 @@ via <a href="../dir-component-oidc-authentication/">OIDC</a> is configured at de
                 Previous
               </span>
               <div class="md-ellipsis">
-                Features
+                Usage Guide
               </div>
             </div>
           </a>

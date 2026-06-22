@@ -8,13 +8,13 @@
       
       
       
-        <link rel="canonical" href="https://agntcy.github.io/dir/latest/dir/dir-component-oidc-authentication/">
+        <link rel="canonical" href="https://agntcy.github.io/dir/latest/dir/dir-component-import/">
       
       
-        <link rel="prev" href="../dir-component-import/">
+        <link rel="prev" href="../dir-component-mcp-server/">
       
       
-        <link rel="next" href="../dir-deployment-local/">
+        <link rel="next" href="../dir-component-oidc-authentication/">
       
       
         
@@ -25,7 +25,7 @@
     
     
       
-        <title>OIDC Authentication - Agent Directory Service</title>
+        <title>Import and Export - Agent Directory Service</title>
       
     
     
@@ -92,7 +92,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#oidc-authentication-for-directory" class="md-skip">
+        <a href="#import-and-export" class="md-skip">
           Skip to content
         </a>
       
@@ -151,7 +151,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              OIDC Authentication
+              Import and Export
             
           </span>
         </div>
@@ -1015,34 +1015,6 @@
                 
   
   
-  
-  
-    <li class="md-nav__item">
-      <a href="../dir-component-import/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Import and Export
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
     
   
   
@@ -1062,7 +1034,7 @@
   <span class="md-ellipsis">
     
   
-    OIDC Authentication
+    Import and Export
   
 
     
@@ -1080,7 +1052,7 @@
   <span class="md-ellipsis">
     
   
-    OIDC Authentication
+    Import and Export
   
 
     
@@ -1106,22 +1078,44 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#why-use-oidc" class="md-nav__link">
+  <a href="#import" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Why Use OIDC
+        Import
       
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Why Use OIDC">
+    <nav class="md-nav" aria-label="Import">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#what-this-is-not" class="md-nav__link">
+  <a href="#how-import-works" class="md-nav__link">
     <span class="md-ellipsis">
       
-        What This Is Not
+        How import works
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#translation-and-enrichment" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Translation and enrichment
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#supported-import-kinds" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Supported import kinds
       
     </span>
   </a>
@@ -1134,44 +1128,22 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#external-oidc-compared-to-internal-spiffe-trust" class="md-nav__link">
+  <a href="#export" class="md-nav__link">
     <span class="md-ellipsis">
       
-        External OIDC Compared to Internal SPIFFE Trust
+        Export
       
     </span>
   </a>
   
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#architecture-overview" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Architecture Overview
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#supported-identity-patterns" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Supported Identity Patterns
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Supported Identity Patterns">
+    <nav class="md-nav" aria-label="Export">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#human-interactive-login" class="md-nav__link">
+  <a href="#how-export-works" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Human Interactive Login
+        How export works
       
     </span>
   </a>
@@ -1179,21 +1151,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#service-users-and-non-interactive-automation" class="md-nav__link">
+  <a href="#supported-export-formats" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Service Users and Non-Interactive Automation
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#github-actions-workload-identity" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        GitHub Actions Workload Identity
+        Supported export formats
       
     </span>
   </a>
@@ -1206,88 +1167,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#idp-agnostic-by-design" class="md-nav__link">
+  <a href="#related-documentation" class="md-nav__link">
     <span class="md-ellipsis">
       
-        IdP-Agnostic by Design
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="IdP-Agnostic by Design">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#where-dex-fits-in-the-architecture" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Where Dex Fits in the Architecture
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#choosing-direct-idp-integration-versus-dex" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Choosing Direct IdP Integration Versus Dex
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#relationship-to-dirctl-and-deployment-configuration" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Relationship to dirctl and Deployment Configuration
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#oidc-gateway-configuration-walkthrough" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        oidc-gateway Configuration Walkthrough
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="oidc-gateway Configuration Walkthrough">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#recommended-mental-model-for-the-yaml" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Recommended Mental Model for the YAML
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#further-reading" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Further Reading
+        Related documentation
       
     </span>
   </a>
@@ -1298,6 +1181,34 @@
   
 </nav>
       
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../dir-component-oidc-authentication/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    OIDC Authentication
+  
+
+    
+  </span>
+  
+  
+
+      </a>
     </li>
   
 
@@ -2023,22 +1934,44 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#why-use-oidc" class="md-nav__link">
+  <a href="#import" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Why Use OIDC
+        Import
       
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Why Use OIDC">
+    <nav class="md-nav" aria-label="Import">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#what-this-is-not" class="md-nav__link">
+  <a href="#how-import-works" class="md-nav__link">
     <span class="md-ellipsis">
       
-        What This Is Not
+        How import works
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#translation-and-enrichment" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Translation and enrichment
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#supported-import-kinds" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Supported import kinds
       
     </span>
   </a>
@@ -2051,44 +1984,22 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#external-oidc-compared-to-internal-spiffe-trust" class="md-nav__link">
+  <a href="#export" class="md-nav__link">
     <span class="md-ellipsis">
       
-        External OIDC Compared to Internal SPIFFE Trust
+        Export
       
     </span>
   </a>
   
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#architecture-overview" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Architecture Overview
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#supported-identity-patterns" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Supported Identity Patterns
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Supported Identity Patterns">
+    <nav class="md-nav" aria-label="Export">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#human-interactive-login" class="md-nav__link">
+  <a href="#how-export-works" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Human Interactive Login
+        How export works
       
     </span>
   </a>
@@ -2096,21 +2007,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#service-users-and-non-interactive-automation" class="md-nav__link">
+  <a href="#supported-export-formats" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Service Users and Non-Interactive Automation
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#github-actions-workload-identity" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        GitHub Actions Workload Identity
+        Supported export formats
       
     </span>
   </a>
@@ -2123,88 +2023,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#idp-agnostic-by-design" class="md-nav__link">
+  <a href="#related-documentation" class="md-nav__link">
     <span class="md-ellipsis">
       
-        IdP-Agnostic by Design
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="IdP-Agnostic by Design">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#where-dex-fits-in-the-architecture" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Where Dex Fits in the Architecture
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#choosing-direct-idp-integration-versus-dex" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Choosing Direct IdP Integration Versus Dex
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#relationship-to-dirctl-and-deployment-configuration" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Relationship to dirctl and Deployment Configuration
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#oidc-gateway-configuration-walkthrough" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        oidc-gateway Configuration Walkthrough
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="oidc-gateway Configuration Walkthrough">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#recommended-mental-model-for-the-yaml" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Recommended Mental Model for the YAML
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#further-reading" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Further Reading
+        Related documentation
       
     </span>
   </a>
@@ -2320,7 +2142,7 @@
 
 
   
-    <a href="https://github.com/agntcy/dir/edit/main/docs/content/dir/dir-component-oidc-authentication.md" title="Edit this page" class="md-content__button md-icon" rel="edit">
+    <a href="https://github.com/agntcy/dir/edit/main/docs/content/dir/dir-component-import.md" title="Edit this page" class="md-content__button md-icon" rel="edit">
       
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M10 20H6V4h7v5h5v3.1l2-2V8l-6-6H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h4zm10.2-7c.1 0 .3.1.4.2l1.3 1.3c.2.2.2.6 0 .8l-1 1-2.1-2.1 1-1c.1-.1.2-.2.4-.2m0 3.9L14.1 23H12v-2.1l6.1-6.1z"/></svg>
     </a>
@@ -2329,340 +2151,135 @@
     
       
     
-    <a href="https://github.com/agntcy/dir/raw/main/docs/content/dir/dir-component-oidc-authentication.md" title="View source of this page" class="md-content__button md-icon">
+    <a href="https://github.com/agntcy/dir/raw/main/docs/content/dir/dir-component-import.md" title="View source of this page" class="md-content__button md-icon">
       
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M17 18c.56 0 1 .44 1 1s-.44 1-1 1-1-.44-1-1 .44-1 1-1m0-3c-2.73 0-5.06 1.66-6 4 .94 2.34 3.27 4 6 4s5.06-1.66 6-4c-.94-2.34-3.27-4-6-4m0 6.5a2.5 2.5 0 0 1-2.5-2.5 2.5 2.5 0 0 1 2.5-2.5 2.5 2.5 0 0 1 2.5 2.5 2.5 2.5 0 0 1-2.5 2.5M9.27 20H6V4h7v5h5v4.07c.7.08 1.36.25 2 .49V8l-6-6H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h4.5a8.2 8.2 0 0 1-1.23-2"/></svg>
     </a>
   
 
 
-<h1 id="oidc-authentication-for-directory">OIDC Authentication for Directory</h1>
-<p>Directory supports an optional <code>oidc-gateway</code> authentication layer for users, automation, and workloads that access the API from outside the cluster. This keeps external access standards-based while preserving SPIFFE/SPIRE as the primary trust model for in-cluster workloads and service-to-service communication.</p>
-<p>At a high level:</p>
+<h1 id="import-and-export">Import and Export</h1>
+<p>Import and export are complementary extensions that bridge Directory and external systems.
+<strong>Import</strong> brings agent records <em>into</em> Directory from heterogeneous external sources —
+remote registries as well as local files (JSON A2A Cards, MCP server definitions, Agent
+Skills directories) — while <strong>export</strong> transforms stored records <em>out</em> into formats consumed
+by external tools and agentic CLIs.</p>
+<h2 id="import">Import</h2>
+<p><strong>Import</strong> extends Directory's synchronization capabilities beyond Directory-to-Directory
+<a href="../dir-component-routing/#synchronization">sync</a> to support heterogeneous external sources.
+It aggregates agent records into the local Directory instance from remote registries as well
+as local files such as A2A AgentCards, MCP server definitions, and Agent Skills.</p>
+<h3 id="how-import-works">How import works</h3>
+<p>The import system uses source-specific adapters to fetch records from external sources —
+remote registries or local files — and transform them into OASF-compliant records. Each
+source kind has its own import logic that handles authentication, pagination, filtering, and
+data transformation. Records are automatically deduplicated and can be enriched with
+LLM-powered skill and domain mapping to ensure consistency with the OASF schema.</p>
+<h3 id="translation-and-enrichment">Translation and enrichment</h3>
+<p>Records are transformed from external registry data into OASF-compliant format, which
+directly impacts how records are indexed and discovered across the network. Three methods are
+available:</p>
 <ul>
-<li>Directory is OIDC IdP agnostic for external access.</li>
-<li><code>Envoy</code> and <code>ext_authz</code> form the authentication and authorization layer at the edge.</li>
-<li><code>Dex</code> is one useful deployment pattern, not a requirement.</li>
-<li><code>oidc-gateway</code> v1.1.1 accepts OIDC JWT, SPIFFE JWT-SVID, and SPIFFE X.509-SVID identities, and can expose OIDC/JWT and X.509-SVID mTLS traffic on separate hostnames from one gateway deployment.</li>
-<li>Internal backend trust can remain SPIFFE-based even when external callers use OIDC bearer tokens.</li>
+<li><strong>Basic translation</strong> uses <a href="https://docs.agntcy.org/oasf/translation/">OASF-SDK basic translation</a>
+  with rule-based mapping. It is fast and deterministic but produces a record without any
+  skills or domains, requiring manual or LLM-based enrichment afterwards.</li>
+<li><strong>Local LLM enrichment</strong> runs an LLM locally for intelligent skill and domain mapping,
+  requiring a local LLM runtime.</li>
+<li><strong>Remote LLM enrichment</strong> uses external LLM services for skill and domain mapping,
+  requiring API credentials.</li>
 </ul>
-<h2 id="why-use-oidc">Why Use OIDC</h2>
-<p>The default Directory deployment model is a strong fit for in-cluster workloads that already use SPIFFE/SPIRE. OIDC becomes useful when you also need authenticated access from outside the cluster, for example:</p>
+<p>Both LLM methods require access to an LLM with tool-calling support and the corresponding
+provider credentials (for example, Azure OpenAI, or a local model via Ollama). The enrichment
+pipeline is built into <code>dirctl</code> — it runs the OASF schema tools exposed by <code>dirctl mcp serve</code>
+against the model using a built-in configuration that can be overridden with <code>--enrich-config</code>.
+See <a href="../dir-cli-reference/#llm-based-enrichment-mandatory">CLI Reference — LLM-based Enrichment</a>
+for provider setup and configuration details.</p>
+<h3 id="supported-import-kinds">Supported import kinds</h3>
+<table>
+<thead>
+<tr>
+<th>Kind</th>
+<th>Description</th>
+<th>Required flag</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>mcp-registry</code></td>
+<td><a href="https://github.com/modelcontextprotocol/registry">Model Context Protocol registry v0.1</a></td>
+<td><code>--url</code></td>
+</tr>
+<tr>
+<td><code>mcp</code></td>
+<td>Local MCP server JSON</td>
+<td><code>--file-path</code></td>
+</tr>
+<tr>
+<td><code>a2a</code></td>
+<td>Local A2A AgentCard JSON</td>
+<td><code>--file-path</code></td>
+</tr>
+<tr>
+<td><code>agent-skill</code></td>
+<td>Local Agent Skills directory with <code>SKILL.md</code></td>
+<td><code>--file-path</code></td>
+</tr>
+</tbody>
+</table>
+<h2 id="export">Export</h2>
+<p><strong>Export</strong> is the inverse of import: it pulls stored OASF records and transforms them into
+formats that external tools and agentic CLIs can consume directly, such as A2A AgentCards,
+<code>SKILL.md</code> artifacts, or MCP configuration. This lets records published to Directory feed
+back into the broader agent ecosystem without manual conversion.</p>
+<h3 id="how-export-works">How export works</h3>
+<p>Export retrieves a record by CID or name and runs it through a format-specific transformer.
+Records can be exported one at a time, or in batches driven by the same search filters used
+for <a href="../dir-component-routing/">discovery</a> (<code>--name</code>, <code>--version</code>, <code>--module</code>, <code>--skill</code>,
+<code>--author</code>, and so on). By default only the latest semver version per name is exported;
+<code>--all-versions</code> exports every version.</p>
+<h3 id="supported-export-formats">Supported export formats</h3>
+<table>
+<thead>
+<tr>
+<th>Format</th>
+<th>Output</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>oasf</code></td>
+<td><code>.json</code></td>
+<td>Raw OASF record JSON (default)</td>
+</tr>
+<tr>
+<td><code>a2a</code></td>
+<td><code>.json</code></td>
+<td>A2A AgentCard JSON for Agent-to-Agent protocol interop</td>
+</tr>
+<tr>
+<td><code>agent-skill</code></td>
+<td><code>.md</code></td>
+<td><code>SKILL.md</code> artifact for agentic CLIs (Cursor, Claude Code, etc.)</td>
+</tr>
+<tr>
+<td><code>mcp-ghcopilot</code></td>
+<td><code>.json</code></td>
+<td>GitHub Copilot MCP configuration JSON</td>
+</tr>
+</tbody>
+</table>
+<p>Batch behaviour varies by format: <code>a2a</code> and <code>oasf</code> produce one file per record,
+<code>agent-skill</code> produces one subdirectory per skill, and <code>mcp-ghcopilot</code> merges all matched
+MCP servers into a single configuration file.</p>
+<h2 id="related-documentation">Related documentation</h2>
 <ul>
-<li>Developers using <code>dirctl</code> from a laptop or workstation.</li>
-<li>Service users and scheduled jobs running outside Kubernetes.</li>
-<li>CI workflows such as GitHub Actions.</li>
-<li>Enterprise users authenticating through an existing IdP.</li>
-</ul>
-<p>This gateway layer is optional. If you only need in-cluster, SPIFFE-native access, you do not need to enable it.</p>
-<h3 id="what-this-is-not">What This Is Not</h3>
-<p>To avoid confusion with other documentation in this section:</p>
-<ul>
-<li>This page is about external OIDC authentication for Directory API access.</li>
-<li>It is not the same as SPIRE OIDC discovery used in federation-related docs.</li>
-<li>It does not replace SPIFFE/SPIRE for internal workload trust.</li>
-</ul>
-<h2 id="external-oidc-compared-to-internal-spiffe-trust">External OIDC Compared to Internal SPIFFE Trust</h2>
-<p>These two layers solve different problems and should be described separately:</p>
-<ul>
-<li>OIDC handles caller identity for remote users and automation.</li>
-<li>SPIFFE/SPIRE handles workload identity and service trust inside the platform.</li>
-</ul>
-<p>Directory does not need to choose one or the other globally. A common deployment pattern is:</p>
-<ul>
-<li>Remote callers authenticate with OIDC</li>
-<li>Envoy validates tokens and calls <code>ext_authz</code></li>
-<li>Authorized requests are forwarded to the Directory API</li>
-<li>Backend services continue using SPIFFE-aware trust and identity</li>
-</ul>
-<h2 id="architecture-overview">Architecture Overview</h2>
-<pre class="mermaid"><code>flowchart LR
-    humanUser["Human user with dirctl"] --&gt;|"OIDC JWT"| oidcEndpoint["OIDC/JWT hostname"]
-    serviceUser["Service user or automation"] --&gt;|"OIDC JWT or SPIFFE JWT-SVID"| oidcEndpoint
-    githubActions["GitHub Actions workload"] --&gt;|"OIDC JWT"| oidcEndpoint
-    spiffeWorkload["SPIFFE workload"] --&gt;|"X.509-SVID mTLS"| mtlsEndpoint["mTLS hostname"]
-
-    oidcIdp["OIDC provider or broker"] --&gt;|"JWKS and issuer metadata"| envoyGateway["Envoy gateway"]
-
-    oidcEndpoint --&gt; envoyGateway
-    mtlsEndpoint --&gt; envoyGateway
-    envoyGateway --&gt;|"Verified identity context"| extAuthz["ext_authz policy service"]
-    extAuthz --&gt;|"Allow or deny"| envoyGateway
-    envoyGateway --&gt;|"Authorized request + x-auth-principal"| directoryApi["Directory API"]</code></pre>
-<p>At the edge:</p>
-<ol>
-<li>A client presents an OIDC JWT, SPIFFE JWT-SVID, or SPIFFE X.509-SVID.</li>
-<li>Envoy validates bearer JWTs with <code>jwt_authn</code> on the OIDC/JWT listener, or validates downstream SPIFFE mTLS on the mTLS listener.</li>
-<li><code>ext_authz</code> maps trusted identity data to a canonical principal and role policy.</li>
-<li>Only authorized requests reach the Directory API.</li>
-</ol>
-<p>With <code>oidc-gateway</code> v1.1.1, the recommended production shape is a single gateway deployment with two optional downstream endpoints:</p>
-<ul>
-<li><code>envoy.endpoints.oidc</code> plus <code>ingress.oidc</code> for human users, CI, and automation that present bearer JWTs.</li>
-<li><code>envoy.endpoints.mtls</code> plus <code>ingress.mtls</code> for SPIFFE X.509-SVID clients. This listener typically requires a client certificate and does not run Envoy <code>jwt_authn</code>; <code>ext_authz</code> authorizes the SPIFFE principal derived from the TLS session. The downstream TLS listener advertises HTTP/2 (<code>h2</code>) with ALPN for gRPC client compatibility.</li>
-</ul>
-<p>This keeps token handling and policy enforcement at the edge rather than spreading it across clients and backend services.</p>
-<div class="admonition note">
-<p class="admonition-title">v1.1.1 mTLS gRPC compatibility</p>
-<p><code>oidc-gateway</code> v1.1.1 fixes downstream gRPC interoperability for the SPIFFE X.509-SVID mTLS listener by advertising HTTP/2 (<code>h2</code>) with ALPN in Envoy's downstream TLS configuration. If mTLS clients fail during the TLS handshake with an error similar to <code>credentials: cannot check peer: missing selected ALPN property</code>, upgrade the gateway to v1.1.1 or verify that the rendered Envoy listener includes <code>alpn_protocols: ["h2"]</code>.</p>
-</div>
-<h2 id="supported-identity-patterns">Supported Identity Patterns</h2>
-<h3 id="human-interactive-login">Human Interactive Login</h3>
-<p>Human users typically authenticate with <code>dirctl auth login</code>, using browser-based PKCE, headless login, or device flow. This is the best fit for operators and developers who need interactive CLI access to a remote Directory.</p>
-<p>Use the <a href="../dir-cli-reference/#global-options">CLI Reference</a> for command examples and token cache behavior.</p>
-<h3 id="service-users-and-non-interactive-automation">Service Users and Non-Interactive Automation</h3>
-<p>Service users, bots, and external automation can pass a pre-issued bearer token by flag or environment variable. This is useful when a machine identity already receives tokens from a trusted OIDC issuer and does not need an interactive login flow.</p>
-<p>This pattern is a good fit for:</p>
-<ul>
-<li>Cron jobs</li>
-<li>External controllers</li>
-<li>MCP agents</li>
-<li>Service integrations running outside the cluster</li>
-</ul>
-<h3 id="github-actions-workload-identity">GitHub Actions Workload Identity</h3>
-<p>GitHub Actions can present short-lived OIDC workload identity tokens instead of long-lived static credentials. This lets Directory authorize specific workflows without requiring personal access tokens or other long-lived secrets.</p>
-<p>This should be treated as workload identity, not human login federation.</p>
-<h2 id="idp-agnostic-by-design">IdP-Agnostic by Design</h2>
-<p>Directory does not depend on a single identity provider. The OIDC layer is designed to work with standards-compliant providers as long as you configure trusted issuers, audiences, and claim mappings appropriately.</p>
-<p>Supported IdPs include the following:</p>
-<ul>
-<li><a href="https://zitadel.com/">Zitadel</a></li>
-<li><a href="https://www.keycloak.org/">Keycloak</a></li>
-<li><a href="https://auth0.com/">Auth0</a></li>
-<li><a href="https://www.okta.com/">Okta</a></li>
-<li><a href="https://www.microsoft.com/en-us/security/business/identity-access/azure-active-directory">Microsoft Entra ID</a></li>
-<li><a href="https://github.com/dexidp/dex">Dex</a></li>
-</ul>
-<p>Directory trusts OIDC tokens at the edge through configuration and policy. It does not require a Directory-specific identity system.</p>
-<h3 id="where-dex-fits-in-the-architecture">Where Dex Fits in the Architecture</h3>
-<p>Dex is best understood as an optional broker or convenience layer, especially when you want a lightweight way to support human login and upstream federation.</p>
-<p>Dex can be a good choice when you want:</p>
-<ul>
-<li>GitHub-backed login for human users.</li>
-<li>A simple OIDC facade in front of upstream identity sources.</li>
-<li>A lightweight IdP component for a demo, lab, or small deployment.</li>
-</ul>
-<p>Dex is not required if you:</p>
-<ul>
-<li>Already have an enterprise OIDC provider.</li>
-<li>Want Directory to trust an existing IdP directly.</li>
-<li>Mainly need machine-to-machine or workload identity from another standard issuer.</li>
-</ul>
-<h3 id="choosing-direct-idp-integration-versus-dex">Choosing Direct IdP Integration Versus Dex</h3>
-<p>Use direct IdP integration when:</p>
-<ul>
-<li>Your organization already standardizes on an OIDC provider.</li>
-<li>Want fewer identity components in the deployment.</li>
-<li>Want Directory to consume tokens issued by your enterprise platform directly.</li>
-</ul>
-<p>Use Dex when you want:</p>
-<ul>
-<li>A broker in front of upstream identity systems.</li>
-<li>GitHub federation for human login.</li>
-<li>A simpler lab or reference deployment pattern that is easy to explain and reproduce.</li>
-</ul>
-<p>In both cases, the Directory-facing model is the same: the edge validates tokens, <code>ext_authz</code> evaluates policy, and the Directory API receives only authorized requests.</p>
-<h2 id="relationship-to-dirctl-and-deployment-configuration">Relationship to <code>dirctl</code> and Deployment Configuration</h2>
-<p>The two main operator touchpoints are:</p>
-<ul>
-<li><a href="../dir-cli-reference/#global-options">CLI Reference</a> for <code>dirctl auth login</code>, <code>dirctl auth status</code>, <code>--auth-mode=oidc</code>, and pre-issued token usage</li>
-<li>deployment configuration for Envoy and the <code>ext_authz</code> layer that trusts one or more issuers and maps verified identities to principals and roles</li>
-</ul>
-<p>When documenting or configuring this feature, it helps to think in three layers:</p>
-<ol>
-<li>Client behavior: how <code>dirctl</code> or automation gets and sends tokens.</li>
-<li>Edge trust: how Envoy validates JWTs from trusted issuers.</li>
-<li>Authorization policy: how <code>ext_authz</code> maps identities and enforces access.</li>
-</ol>
-<h2 id="oidc-gateway-configuration-walkthrough"><code>oidc-gateway</code> Configuration Walkthrough</h2>
-<p>The staging example in <a href="https://github.com/agntcy/dir-staging/blob/main/applications/oidc-gateway/dev/values.yaml"><code>dir-staging/applications/oidc-gateway/dev/values.yaml</code></a> is a good reference for how this model is wired in practice.</p>
-<p>The public <code>dir</code> chart no longer embeds an <code>envoy-authz</code> add-on. Starting with the standalone <code>oidc-gateway</code> model, deploy the gateway as its own Helm application in front of the internal Directory API service.</p>
-<p>The configuration is split into four main areas:</p>
-<ul>
-<li>Envoy edge behavior</li>
-<li><code>ext_authz</code> principal extraction and RBAC</li>
-<li>SPIFFE and backend trust</li>
-<li>External ingress exposure</li>
-</ul>
-<p>To configure <code>oidc-gateway</code>:</p>
-<ol>
-<li>
-<p>Configure Envoy as the Edge</p>
-<p>The <code>envoy</code> block defines how Envoy fronts the internal Directory API:</p>
-<div class="highlight"><pre><span></span><code><span class="nt">envoy</span><span class="p">:</span>
-<span class="w">  </span><span class="nt">endpoints</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">oidc</span><span class="p">:</span>
-<span class="w">      </span><span class="nt">enabled</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
-<span class="w">      </span><span class="nt">port</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">8080</span>
-<span class="w">      </span><span class="nt">servicePort</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">8080</span>
-<span class="w">      </span><span class="nt">downstreamTls</span><span class="p">:</span>
-<span class="w">        </span><span class="nt">enabled</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">false</span>
-<span class="w">        </span><span class="nt">requireClientCertificate</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">false</span>
-<span class="w">    </span><span class="nt">mtls</span><span class="p">:</span>
-<span class="w">      </span><span class="nt">enabled</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
-<span class="w">      </span><span class="nt">port</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">8443</span>
-<span class="w">      </span><span class="nt">servicePort</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">8443</span>
-<span class="w">      </span><span class="nt">downstreamTls</span><span class="p">:</span>
-<span class="w">        </span><span class="nt">enabled</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
-<span class="w">        </span><span class="nt">requireClientCertificate</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
-
-<span class="w">  </span><span class="nt">backend</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">address</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;dir-apiserver.dir.svc.cluster.local&quot;</span>
-<span class="w">    </span><span class="nt">port</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">8888</span>
-<span class="w">    </span><span class="nt">streamingPath</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;/agntcy.dir.events.v1.EventService/Listen&quot;</span>
-<span class="w">    </span><span class="nt">listenRouteTimeout</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0s</span>
-
-<span class="w">  </span><span class="nt">oidc</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">issuers</span><span class="p">:</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">dex</span>
-<span class="w">        </span><span class="nt">enabled</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
-<span class="w">        </span><span class="nt">issuer</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;https://dex.example.com&quot;</span>
-<span class="w">        </span><span class="nt">jwksUri</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;https://dex.example.com/keys&quot;</span>
-<span class="w">        </span><span class="nt">jwksHost</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;dex.example.com&quot;</span>
-<span class="w">    </span><span class="nt">github</span><span class="p">:</span>
-<span class="w">      </span><span class="nt">enabled</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
-<span class="w">      </span><span class="nt">issuer</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;https://token.actions.githubusercontent.com&quot;</span>
-<span class="w">      </span><span class="nt">jwksUri</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;https://token.actions.githubusercontent.com/.well-known/jwks&quot;</span>
-<span class="w">      </span><span class="nt">jwksHost</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;token.actions.githubusercontent.com&quot;</span>
-<span class="w">      </span><span class="nt">audiences</span><span class="p">:</span>
-<span class="w">        </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="s">&quot;dir&quot;</span>
-
-<span class="w">  </span><span class="nt">spiffe</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">enabled</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
-<span class="w">    </span><span class="nt">trustDomain</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">example.org</span>
-<span class="w">    </span><span class="nt">className</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">dir-spire</span>
-</code></pre></div>
-<p>This block does these important things:</p>
-<ul>
-<li><code>endpoints.oidc</code> exposes the listener that accepts OIDC JWT, GitHub OIDC, and SPIFFE JWT-SVID bearer tokens.</li>
-<li><code>endpoints.mtls</code> exposes the listener that accepts SPIFFE X.509-SVID client certificates over downstream mTLS. In v1.1.1, downstream TLS listeners advertise HTTP/2 (<code>h2</code>) with ALPN for gRPC clients.</li>
-<li><code>backend.*</code> points Envoy at the internal Kubernetes Service for the Directory API, not at either public ingress hostname.</li>
-<li><code>oidc.issuers[]</code> creates Envoy <code>jwt_authn</code> providers and JWKS clusters for bearer JWT validation.</li>
-<li><code>oidc.github.*</code> enables JWT validation for GitHub Actions workload identity tokens.</li>
-<li><code>spiffe.*</code> keeps Envoy-to-Directory traffic anchored in SPIFFE/SPIRE-based service trust.</li>
-</ul>
-<p>If you use a different IdP such as Zitadel, Keycloak, Auth0, Okta, or Entra ID, replace the Dex issuer and JWKS values with the corresponding issuer metadata for that provider.</p>
-</li>
-<li>
-<p>Configure <code>ext_authz</code> Principal Extraction</p>
-<p>After Envoy validates a bearer token, it forwards the verified JWT payload to the authorization server. The <code>authServer.oidc</code> block controls how <code>ext_authz</code> interprets that payload and turns it into a canonical principal:</p>
-<div class="highlight"><pre><span></span><code><span class="nt">authServer</span><span class="p">:</span>
-<span class="w">  </span><span class="nt">oidc</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">claims</span><span class="p">:</span>
-<span class="w">      </span><span class="nt">principalClaim</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;sub&quot;</span>
-<span class="w">      </span><span class="nt">emailClaimPath</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;email&quot;</span>
-<span class="w">    </span><span class="nt">headers</span><span class="p">:</span>
-<span class="w">      </span><span class="nt">authPrincipal</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;x-auth-principal&quot;</span>
-<span class="w">    </span><span class="nt">issuers</span><span class="p">:</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">providerKey</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;dex&quot;</span>
-<span class="w">        </span><span class="nt">provider</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;https://dex.example.com&quot;</span>
-<span class="w">        </span><span class="nt">authFamily</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;oidc&quot;</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">providerKey</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;github&quot;</span>
-<span class="w">        </span><span class="nt">provider</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;https://token.actions.githubusercontent.com&quot;</span>
-<span class="w">        </span><span class="nt">authFamily</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;oidc&quot;</span>
-<span class="w">    </span><span class="nt">denyList</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[]</span>
-</code></pre></div>
-<p>This is where you define the trust boundary for authorization:</p>
-<ul>
-<li><code>claims.principalClaim</code> selects which claim becomes the default OIDC principal value. <code>sub</code> is the safest generic default.</li>
-<li><code>claims.emailClaimPath</code> tells <code>ext_authz</code> where to read email-like identity metadata when present.</li>
-<li><code>headers.authPrincipal</code> sets the upstream header that carries the canonical principal to Directory. The default is <code>x-auth-principal</code>.</li>
-<li><code>issuers[].provider</code> must match the token <code>iss</code> value.</li>
-<li><code>issuers[].providerKey</code> is the stable short name used in policy strings such as <code>oidc:dex:alice</code>.</li>
-<li><code>issuers[].authFamily</code> is usually <code>oidc</code>. Use <code>spiffe</code> for SPIFFE JWT-SVID issuers.</li>
-<li><code>denyList</code> blocks specific canonical principals or email claim values before RBAC evaluation.</li>
-</ul>
-<p>Envoy strips client-supplied values for the configured principal header before forwarding requests, so clients cannot spoof <code>x-auth-principal</code>.</p>
-</li>
-<li>
-<p>Use Canonical Principal Strings in Roles</p>
-<p>The <code>roles</code> section is where the high-level access model becomes concrete:</p>
-<div class="highlight"><pre><span></span><code><span class="nt">roles</span><span class="p">:</span>
-<span class="w">  </span><span class="nt">admin</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">allowedMethods</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="s">&quot;*&quot;</span><span class="p p-Indicator">]</span>
-<span class="w">    </span><span class="nt">principals</span><span class="p">:</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="s">&quot;oidc:dex:alice&quot;</span>
-
-<span class="w">  </span><span class="nt">viewer</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">allowedMethods</span><span class="p">:</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="s">&quot;/agntcy.dir.store.v1.StoreService/Pull&quot;</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="s">&quot;/agntcy.dir.search.v1.SearchService/SearchRecords&quot;</span>
-<span class="w">    </span><span class="nt">principals</span><span class="p">:</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="s">&quot;oidc:dex:reader-service&quot;</span>
-
-<span class="w">  </span><span class="nt">ci-writer</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">allowedMethods</span><span class="p">:</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="s">&quot;/agntcy.dir.store.v1.StoreService/Push&quot;</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="s">&quot;/agntcy.dir.search.v1.SearchService/SearchRecords&quot;</span>
-<span class="w">    </span><span class="nt">principals</span><span class="p">:</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="s">&quot;oidc:github:repo:your-org/your-repo:workflow:import-records.yaml:ref:refs/heads/main&quot;</span>
-</code></pre></div>
-<p>Supported principal forms include:</p>
-<ul>
-<li><code>oidc:&lt;providerKey&gt;:&lt;principal&gt;</code></li>
-<li><code>oidc:github:repo:&lt;owner&gt;/&lt;repo&gt;:workflow:&lt;workflow-file&gt;:ref:&lt;git-ref&gt;</code></li>
-<li><code>spiffe:spiffe://&lt;trust-domain&gt;/&lt;path&gt;</code></li>
-</ul>
-<p>GitHub workflow wildcard matching is intentionally strict. A wildcard may contain exactly one <code>*</code>, it must be the final character, and it is only supported in the branch ref segment, for example:</p>
-<div class="highlight"><pre><span></span><code>oidc:github:repo:your-org/your-repo:workflow:deploy.yaml:ref:refs/heads/release-*
-</code></pre></div>
-<p>Practical guidance:</p>
-<ul>
-<li>keep roles least-privilege</li>
-<li>grant write methods only where needed</li>
-<li>list specific GitHub workflow principals rather than trusting all workflows</li>
-<li>prefer explicit principals over broad catch-all mappings</li>
-</ul>
-</li>
-<li>
-<p>Expose the Gateway Externally</p>
-<p>The <code>ingress</code> block controls whether each gateway endpoint is reachable from outside the cluster:</p>
-<div class="highlight"><pre><span></span><code><span class="nt">ingress</span><span class="p">:</span>
-<span class="w">  </span><span class="nt">oidc</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">enabled</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
-<span class="w">    </span><span class="nt">className</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">nginx</span>
-<span class="w">    </span><span class="nt">host</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;gateway.example.com&quot;</span>
-<span class="w">    </span><span class="nt">annotations</span><span class="p">:</span>
-<span class="w">      </span><span class="nt">nginx.ingress.kubernetes.io/backend-protocol</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;GRPC&quot;</span>
-<span class="w">      </span><span class="nt">nginx.ingress.kubernetes.io/grpc-backend</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;true&quot;</span>
-<span class="w">    </span><span class="nt">tls</span><span class="p">:</span>
-<span class="w">      </span><span class="nt">enabled</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
-<span class="w">      </span><span class="nt">secretName</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;&quot;</span>
-
-<span class="w">  </span><span class="nt">mtls</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">enabled</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
-<span class="w">    </span><span class="nt">className</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">nginx-internal</span>
-<span class="w">    </span><span class="nt">host</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;gateway-mtls.example.com&quot;</span>
-<span class="w">    </span><span class="nt">annotations</span><span class="p">:</span>
-<span class="w">      </span><span class="nt">nginx.ingress.kubernetes.io/ssl-passthrough</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;true&quot;</span>
-<span class="w">      </span><span class="nt">nginx.ingress.kubernetes.io/backend-protocol</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;GRPCS&quot;</span>
-<span class="w">    </span><span class="nt">tls</span><span class="p">:</span>
-<span class="w">      </span><span class="nt">enabled</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
-<span class="w">      </span><span class="nt">secretName</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;&quot;</span>
-</code></pre></div>
-<p><code>ingress.oidc.host</code> is the hostname that remote <code>dirctl</code> users, SDK clients, or CI workflows target when they present bearer JWTs. <code>ingress.mtls.host</code> is the separate hostname for SPIFFE X.509-SVID callers; use an ingress controller/class that supports TLS passthrough so Envoy, not the ingress controller, terminates mTLS and sees the client certificate.</p>
-<p>In TLS-passthrough mode, <code>tls.secretName</code> is intentionally empty. The ingress object still advertises the TLS host for SNI routing, but the certificate is provided by Envoy via SPIFFE/SPIRE instead of by an ingress TLS secret.</p>
-</li>
-</ol>
-<h3 id="recommended-mental-model-for-the-yaml">Recommended Mental Model for the YAML</h3>
-<p>When reading or editing the staging values, use this sequence:</p>
-<ol>
-<li><code>envoy.backend</code>: where should authorized requests go?</li>
-<li><code>envoy.oidc.*</code>: which bearer-token issuers can Envoy validate?</li>
-<li><code>envoy.endpoints.*</code>: which downstream listener(s) and Service ports are exposed?</li>
-<li><code>envoy.spiffe.*</code>: how does Envoy authenticate to Directory and, optionally, accept SPIFFE X.509-SVID clients?</li>
-<li><code>authServer.oidc.issuers</code>: how does <code>ext_authz</code> map verified issuers to canonical principal prefixes?</li>
-<li><code>authServer.oidc.roles</code>: which canonical principals can call which methods?</li>
-<li><code>ingress.oidc</code> / <code>ingress.mtls</code>: how do external clients reach the correct gateway listener?</li>
-</ol>
-<p>That sequence mirrors the actual request path:</p>
-<p>Client identity -&gt; Envoy validation -&gt; <code>ext_authz</code> canonical principal mapping -&gt; role check -&gt; Directory API.</p>
-<h2 id="further-reading">Further Reading</h2>
-<ul>
-<li><a href="../dir-cli-reference/">CLI Reference</a> for command-level usage</li>
-<li><a href="../dir-quickstart/">Quickstart</a> and <a href="../dir-deployment-local/">Deploy</a> for deployment entry points</li>
-<li><a href="../dir-prod-deployment/">Production Deployment</a> for production topology and external endpoints</li>
-<li><a href="../dir-federation-setup/">Running a Federated Directory Instance</a> for network federation guidance</li>
+<li><a href="../dir-component-routing/#synchronization">Sync</a> — Directory-to-Directory replication</li>
+<li><a href="../dir-component-records-validation/">Records</a> — the OASF record model that import and export target</li>
+<li><a href="../dir-features-scenarios/#import">Usage Guide — Import</a> — import CLI walkthroughs</li>
+<li><a href="../dir-features-scenarios/#export">Usage Guide — Export</a> — export CLI walkthroughs</li>
+<li><a href="../dir-cli-reference/#import-operations">CLI Reference — Import Operations</a> — <code>dirctl import</code> flags</li>
+<li><a href="../dir-cli-reference/#export-operations">CLI Reference — Export Operations</a> — <code>dirctl export</code> flags</li>
 </ul>
 
 
@@ -2703,7 +2320,7 @@
       <nav class="md-footer__inner md-grid" aria-label="Footer" >
         
           
-          <a href="../dir-component-import/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Import and Export">
+          <a href="../dir-component-mcp-server/" class="md-footer__link md-footer__link--prev" aria-label="Previous: MCP Server">
             <div class="md-footer__button md-icon">
               
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
@@ -2713,20 +2330,20 @@
                 Previous
               </span>
               <div class="md-ellipsis">
-                Import and Export
+                MCP Server
               </div>
             </div>
           </a>
         
         
           
-          <a href="../dir-deployment-local/" class="md-footer__link md-footer__link--next" aria-label="Next: Local Deployment">
+          <a href="../dir-component-oidc-authentication/" class="md-footer__link md-footer__link--next" aria-label="Next: OIDC Authentication">
             <div class="md-footer__title">
               <span class="md-footer__direction">
                 Next
               </span>
               <div class="md-ellipsis">
-                Local Deployment
+                OIDC Authentication
               </div>
             </div>
             <div class="md-footer__button md-icon">
