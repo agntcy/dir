@@ -15,6 +15,7 @@ import (
 	naming "github.com/agntcy/dir/server/naming/config"
 	publication "github.com/agntcy/dir/server/publication/config"
 	routing "github.com/agntcy/dir/server/routing/config"
+	startupconfig "github.com/agntcy/dir/server/startup/config"
 	store "github.com/agntcy/dir/server/store/config"
 	oci "github.com/agntcy/dir/server/store/oci/config"
 	"github.com/stretchr/testify/assert"
@@ -140,6 +141,7 @@ func TestConfig(t *testing.T) {
 					PublicURL:     "https://example.com",
 					CatalogTitle:  "Cisco AI Catalog",
 				},
+				Startup: startupconfig.DefaultConfig(),
 			},
 		},
 		{
@@ -213,6 +215,7 @@ func TestConfig(t *testing.T) {
 					PublicURL:     DefaultHTTPGatewayPublicURL,
 					CatalogTitle:  DefaultHTTPGatewayCatalogTitle,
 				},
+				Startup: startupconfig.DefaultConfig(),
 			},
 		},
 	}
@@ -633,6 +636,12 @@ func TestLoadConfig_ConnectionDefaults(t *testing.T) {
 	assert.Equal(t, DefaultKeepaliveTimeout, cfg.Connection.Keepalive.Timeout)
 	assert.Equal(t, DefaultMinTime, cfg.Connection.Keepalive.MinTime)
 	assert.Equal(t, DefaultPermitWithoutStream, cfg.Connection.Keepalive.PermitWithoutStream)
+
+	assert.True(t, cfg.Startup.WaitPostgreSQL)
+	assert.True(t, cfg.Startup.WaitOCIRegistry)
+	assert.Equal(t, startupconfig.DefaultDependencyWaitTimeout, cfg.Startup.Timeout)
+	assert.Equal(t, startupconfig.DefaultInitialBackoff, cfg.Startup.InitialBackoff)
+	assert.Equal(t, startupconfig.DefaultMaxBackoff, cfg.Startup.MaxBackoff)
 }
 
 // TestConnectionConfig_YAMLSerialization verifies that connection configuration
