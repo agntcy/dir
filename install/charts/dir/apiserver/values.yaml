@@ -228,6 +228,19 @@ config:
       # Options: disable, require, verify-ca, verify-full
       ssl_mode: "disable"
 
+  # Startup dependency wait configuration
+  startup:
+    # Wait for PostgreSQL to accept connections before continuing startup
+    wait_postgresql: true
+    # Wait for the remote OCI registry to become reachable before continuing startup
+    wait_oci_registry: true
+    # Maximum time to wait for each dependency
+    timeout: "3m"
+    # Initial delay between readiness checks
+    initial_backoff: "500ms"
+    # Maximum delay between readiness checks
+    max_backoff: "10s"
+
   # OASF API validation configuration
   oasf_api_validation:
     # Schema URL for OASF validation
@@ -700,8 +713,8 @@ reconciler:
     # Kubernetes Secret holding the API key (AZURE_OPENAI_API_KEY).
     # Defaults to the chart secret populated by externalSecrets.azureOpenAI.
     apiKey:
-      secretName: ""                     # empty => chart fullname secret
-      secretKey: "azure-openai-api-key"  # key within that secret
+      secretName: "" # empty => chart fullname secret
+      secretKey: "azure-openai-api-key" # key within that secret
 
   # Reconciler configuration - all settings go here
   # This entire section is rendered directly to reconciler.config.yml
@@ -767,6 +780,14 @@ reconciler:
     metrics:
       enabled: true
       interval: "15m"
+
+    # Startup dependency wait configuration
+    startup:
+      wait_postgresql: true
+      wait_oci_registry: true
+      timeout: "3m"
+      initial_backoff: "500ms"
+      max_backoff: "10s"
 
     # Regsync task configuration
     regsync:
