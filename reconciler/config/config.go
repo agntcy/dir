@@ -15,6 +15,7 @@ import (
 	"github.com/agntcy/dir/reconciler/tasks/signature"
 	dbconfig "github.com/agntcy/dir/server/database/config"
 	namingconfig "github.com/agntcy/dir/server/naming/config"
+	startupconfig "github.com/agntcy/dir/server/startup/config"
 	ociconfig "github.com/agntcy/dir/server/store/oci/config"
 	"github.com/agntcy/dir/utils/logging"
 	"github.com/spf13/viper"
@@ -58,6 +59,9 @@ type Config struct {
 
 	// Signature holds the signature verification task configuration.
 	Signature signature.Config `json:"signature" mapstructure:"signature"`
+
+	// Startup controls optional dependency readiness waits during boot.
+	Startup startupconfig.Config `json:"startup" mapstructure:"startup"`
 }
 
 // LoadConfig loads the configuration from file and environment variables.
@@ -188,11 +192,31 @@ func LoadConfig() (*Config, error) {
 	//
 	_ = v.BindEnv("schema_url")
 
+	//
+	// Startup dependency wait configuration
+	//
+	_ = v.BindEnv("startup.wait_postgresql")
+	v.SetDefault("startup.wait_postgresql", startupconfig.DefaultWaitPostgreSQL)
+
+	_ = v.BindEnv("startup.wait_oci_registry")
+	v.SetDefault("startup.wait_oci_registry", startupconfig.DefaultWaitOCIRegistry)
+
+	_ = v.BindEnv("startup.timeout")
+	v.SetDefault("startup.timeout", startupconfig.DefaultDependencyWaitTimeout)
+
+	_ = v.BindEnv("startup.initial_backoff")
+	v.SetDefault("startup.initial_backoff", startupconfig.DefaultInitialBackoff)
+
+	_ = v.BindEnv("startup.max_backoff")
+	v.SetDefault("startup.max_backoff", startupconfig.DefaultMaxBackoff)
+
 	// Unmarshal into config struct
 	config := &Config{}
 	if err := v.Unmarshal(config); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal configuration: %w", err)
 	}
+
+	config.Startup = config.Startup.WithDefaults()
 
 	return config, nil
 }

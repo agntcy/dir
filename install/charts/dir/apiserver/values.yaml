@@ -228,6 +228,19 @@ config:
       # Options: disable, require, verify-ca, verify-full
       ssl_mode: "disable"
 
+  # Startup dependency wait configuration
+  startup:
+    # Wait for PostgreSQL to accept connections before continuing startup
+    wait_postgresql: true
+    # Wait for the remote OCI registry to become reachable before continuing startup
+    wait_oci_registry: true
+    # Maximum time to wait for each dependency
+    timeout: "3m"
+    # Initial delay between readiness checks
+    initial_backoff: "500ms"
+    # Maximum delay between readiness checks
+    max_backoff: "10s"
+
   # OASF API validation configuration
   oasf_api_validation:
     # Schema URL for OASF validation
@@ -727,6 +740,14 @@ reconciler:
 
     # OASF schema URL for validation
     schema_url: "https://schema.oasf.outshift.com"
+
+    # Startup dependency wait configuration
+    startup:
+      wait_postgresql: true
+      wait_oci_registry: true
+      timeout: "3m"
+      initial_backoff: "500ms"
+      max_backoff: "10s"
 
     # Regsync task configuration
     regsync:

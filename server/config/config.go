@@ -17,6 +17,7 @@ import (
 	naming "github.com/agntcy/dir/server/naming/config"
 	publication "github.com/agntcy/dir/server/publication/config"
 	routing "github.com/agntcy/dir/server/routing/config"
+	startupconfig "github.com/agntcy/dir/server/startup/config"
 	store "github.com/agntcy/dir/server/store/config"
 	oci "github.com/agntcy/dir/server/store/oci/config"
 	"github.com/agntcy/dir/utils/logging"
@@ -169,6 +170,9 @@ type Config struct {
 
 	// HTTPGateway exposes the gRPC services over HTTP/JSON via grpc-gateway.
 	HTTPGateway HTTPGatewayConfig `json:"http_gateway,omitzero" mapstructure:"http_gateway"`
+
+	// Startup controls optional dependency readiness waits during boot.
+	Startup startupconfig.Config `json:"startup" mapstructure:"startup"`
 }
 
 // HTTPGatewayConfig configures the in-process grpc-gateway sidecar.
@@ -624,6 +628,24 @@ func LoadConfig(opts ...ConfigOption) (*Config, error) {
 	_ = v.BindEnv("http_gateway.catalog_title")
 	v.SetDefault("http_gateway.catalog_title", DefaultHTTPGatewayCatalogTitle)
 
+	//
+	// Startup dependency wait configuration
+	//
+	_ = v.BindEnv("startup.wait_postgresql")
+	v.SetDefault("startup.wait_postgresql", startupconfig.DefaultWaitPostgreSQL)
+
+	_ = v.BindEnv("startup.wait_oci_registry")
+	v.SetDefault("startup.wait_oci_registry", startupconfig.DefaultWaitOCIRegistry)
+
+	_ = v.BindEnv("startup.timeout")
+	v.SetDefault("startup.timeout", startupconfig.DefaultDependencyWaitTimeout)
+
+	_ = v.BindEnv("startup.initial_backoff")
+	v.SetDefault("startup.initial_backoff", startupconfig.DefaultInitialBackoff)
+
+	_ = v.BindEnv("startup.max_backoff")
+	v.SetDefault("startup.max_backoff", startupconfig.DefaultMaxBackoff)
+
 	// Load configuration into struct
 	decodeHooks := mapstructure.ComposeDecodeHookFunc(
 		mapstructure.TextUnmarshallerHookFunc(),
@@ -639,6 +661,7 @@ func LoadConfig(opts ...ConfigOption) (*Config, error) {
 	// Apply connection management defaults if not configured
 	// This happens after unmarshal so YAML config takes precedence over defaults
 	config.Connection = config.Connection.WithDefaults()
+	config.Startup = config.Startup.WithDefaults()
 
 	return config, nil
 }

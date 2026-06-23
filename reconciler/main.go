@@ -18,6 +18,7 @@ import (
 	"github.com/agntcy/dir/reconciler/config"
 	"github.com/agntcy/dir/reconciler/service"
 	"github.com/agntcy/dir/server/database"
+	"github.com/agntcy/dir/server/startup"
 	"github.com/agntcy/dir/server/store/oci"
 	"github.com/agntcy/dir/utils/logging"
 	"github.com/agntcy/oasf-sdk/pkg/validator"
@@ -67,6 +68,17 @@ func run() error {
 		logger.Warn("OASF schema URL not configured, record validation will fail for indexed records")
 	}
 
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	if err := startup.WaitForPostgreSQL(ctx, cfg.Startup, cfg.Database); err != nil {
+		return err
+	}
+
+	if err := startup.WaitForOCIRegistry(ctx, cfg.Startup, cfg.LocalRegistry); err != nil {
+		return err
+	}
+
 	// Create database connection
 	db, err := database.New(cfg.Database)
 	if err != nil {
@@ -91,10 +103,6 @@ func run() error {
 	if err != nil {
 		return err
 	}
-
-	// Create context that listens for signals
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
 
 	// Start health check server with database and store readiness check
 	healthServer := startHealthServer(func(ctx context.Context) bool {
