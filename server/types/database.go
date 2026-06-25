@@ -32,6 +32,9 @@ type DatabaseAPI interface {
 	// CatalogDatabaseAPI handles deterministic browsing of AI Catalog entries.
 	CatalogDatabaseAPI
 
+	// UsageMetricsDatabaseAPI handles per-record usage counters for popularity ranking.
+	UsageMetricsDatabaseAPI
+
 	// Close closes the database connection and releases any resources.
 	Close() error
 
@@ -117,6 +120,20 @@ type CatalogDatabaseAPI interface {
 	// GetCatalogEntries returns the AI Catalog entries matching the given
 	// record filters, along with whether more results exist beyond the page.
 	GetCatalogEntries(opts ...FilterOption) (entries []*catalogv1.CatalogEntry, hasMore bool, err error)
+}
+
+type UsageMetricsDatabaseAPI interface {
+	// IncrementPullCount atomically increments the pull counter for a record and
+	// updates last_used_at. Creates the row on first use.
+	IncrementPullCount(cid string) error
+
+	// SetProviderCount sets the provider count gauge for a record (point-in-time,
+	// refreshed by the reconciler). Creates the row if it does not exist.
+	SetProviderCount(cid string, count uint32) error
+
+	// GetUsageMetrics returns the usage metrics for a record. Returns a zero-value
+	// result (not an error) if no usage has been recorded yet.
+	GetUsageMetrics(cid string) (UsageMetricsObject, error)
 }
 
 type SignatureVerificationDatabaseAPI interface {
