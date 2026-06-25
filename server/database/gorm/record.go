@@ -265,6 +265,11 @@ func (d *DB) RemoveRecord(cid string) error {
 		return fmt.Errorf("failed to remove signature verifications: %w", err)
 	}
 
+	// Remove usage metrics
+	if err := d.gormDB.Where("record_cid = ?", cid).Delete(&RecordUsageMetrics{}).Error; err != nil {
+		return fmt.Errorf("failed to remove usage metrics: %w", err)
+	}
+
 	result := d.gormDB.Where("record_cid = ?", cid).Delete(&Record{})
 
 	if result.Error != nil {
