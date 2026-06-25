@@ -424,6 +424,11 @@ func (s storeCtrl) pullRecordFromStore(ctx context.Context, recordRef *corev1.Re
 
 	storeLogger.Debug("Record pulled successfully", "cid", recordRef.GetCid())
 
+	// Increment pull count. Counter failures are logged but do not fail the pull.
+	if err := s.db.IncrementPullCount(recordRef.GetCid()); err != nil {
+		storeLogger.Warn("Failed to increment pull count", "cid", recordRef.GetCid(), "error", err)
+	}
+
 	return record, nil
 }
 
