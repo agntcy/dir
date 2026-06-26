@@ -104,6 +104,10 @@ func (c *aiFinderController) ListAgents(ctx context.Context, req *catalogv1.List
 		return nil, status.Error(codes.Internal, "failed to list catalog entries") //nolint:wrapcheck
 	}
 
+	if len(parsedFilter.Types) > 0 {
+		entries = filterCatalogEntriesByMediaType(entries, parsedFilter.Types)
+	}
+
 	var nextPageToken string
 	if hasMore {
 		// Advance by the page size: the number of records consumed,
@@ -148,8 +152,14 @@ func (c *aiFinderController) GetWellKnownCatalog(ctx context.Context, _ *catalog
 				{
 					DisplayName: "Agent Skills",
 					Url:         c.collectionURL(catalogv1.ProtocolAgentSkillsMdMediaType),
-					Description: new("Agents that publish a reusable Agent Skill definition."),
+					Description: new("Agents that publish a reusable Agent Skill definition as SKILL.md."),
 					MediaType:   new(catalogv1.ProtocolAgentSkillsMdMediaType),
+				},
+				{
+					DisplayName: "Agent Skill Bundles",
+					Url:         c.collectionURL(catalogv1.ProtocolAgentSkillsBundleMediaType),
+					Description: new("Agents that publish an Agent Skill directory bundled as .tar.gz."),
+					MediaType:   new(catalogv1.ProtocolAgentSkillsBundleMediaType),
 				},
 			},
 		},

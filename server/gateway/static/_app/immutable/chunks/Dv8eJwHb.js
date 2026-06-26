@@ -1,0 +1,1 @@
+import{U as e,W as t,k as n}from"./CwQddPBI.js";var r=new class{#e=t(null);get stats(){return n(this.#e)}set stats(t){e(this.#e,t,!0)}set(e){this.stats=e}};export{r as t};
