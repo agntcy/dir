@@ -15,6 +15,7 @@ import (
 	"time"
 
 	corev1 "github.com/agntcy/dir/api/core/v1"
+	"github.com/agntcy/dir/client"
 	"github.com/agntcy/dir/reconciler/config"
 	"github.com/agntcy/dir/reconciler/service"
 	"github.com/agntcy/dir/reconciler/tasks/metrics"
@@ -93,15 +94,30 @@ func run() error {
 	// If no server address is configured the metrics task is skipped.
 	var counters metrics.ProviderCounterAPI
 
-	if cfg.ServerAddress != "" {
-		grpcCounter, err := metrics.NewGRPCProviderCounter(cfg.ServerAddress)
+	if cfg.ServerAddress != "" { //nolint:nestif
+		// Build a client.Config from the server address and authn settings.
+		serverClientCfg := &client.Config{
+			ServerAddress: cfg.ServerAddress,
+			AuthMode:      "insecure",
+		}
+
+		if cfg.ServerAuthn.Enabled {
+			serverClientCfg.AuthMode = string(cfg.ServerAuthn.Mode)
+			serverClientCfg.SpiffeSocketPath = cfg.ServerAuthn.SocketPath
+
+			if len(cfg.ServerAuthn.Audiences) > 0 {
+				serverClientCfg.JWTAudience = cfg.ServerAuthn.Audiences[0]
+			}
+		}
+
+		dirClient, err := client.New(context.Background(), client.WithConfig(serverClientCfg))
 		if err != nil {
 			return fmt.Errorf("failed to connect to apiserver for provider counts: %w", err)
 		}
 
-		defer grpcCounter.Close()
+		defer dirClient.Close()
 
-		counters = grpcCounter
+		counters = metrics.NewGRPCProviderCounterFromClient(dirClient.RoutingServiceClient)
 
 		logger.Info("Provider counter connected to apiserver", "address", cfg.ServerAddress)
 	} else {

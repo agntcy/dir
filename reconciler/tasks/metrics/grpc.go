@@ -20,10 +20,18 @@ type GRPCProviderCounter struct {
 	conn   *grpc.ClientConn
 }
 
-// NewGRPCProviderCounter dials the apiserver at addr and returns a
-// GRPCProviderCounter. The caller is responsible for calling Close when done.
-func NewGRPCProviderCounter(addr string) (*GRPCProviderCounter, error) {
-	conn, err := grpc.NewClient(addr, grpc.WithTransportCredentials(insecure.NewCredentials()))
+// NewGRPCProviderCounter dials the apiserver at addr with the provided dial
+// options and returns a GRPCProviderCounter. If no options are provided,
+// insecure credentials are used as a fallback. For authenticated deployments
+// pass the appropriate TLS/JWT options via opts — the same options returned by
+// authn.Service.GetClientOptions() or built from a client.Config.
+// The caller is responsible for calling Close when done.
+func NewGRPCProviderCounter(addr string, opts ...grpc.DialOption) (*GRPCProviderCounter, error) {
+	if len(opts) == 0 {
+		opts = []grpc.DialOption{grpc.WithTransportCredentials(insecure.NewCredentials())}
+	}
+
+	conn, err := grpc.NewClient(addr, opts...)
 	if err != nil {
 		return nil, fmt.Errorf("failed to connect to apiserver at %s: %w", addr, err)
 	}
@@ -32,6 +40,13 @@ func NewGRPCProviderCounter(addr string) (*GRPCProviderCounter, error) {
 		client: routingv1.NewRoutingServiceClient(conn),
 		conn:   conn,
 	}, nil
+}
+
+// NewGRPCProviderCounterFromClient builds a GRPCProviderCounter from an
+// already-dialed RoutingServiceClient. The caller owns the connection lifecycle;
+// Close on the returned counter is a no-op.
+func NewGRPCProviderCounterFromClient(c routingv1.RoutingServiceClient) *GRPCProviderCounter {
+	return &GRPCProviderCounter{client: c}
 }
 
 // GetProviderCount calls the apiserver's RoutingService.GetProviderCount RPC.
@@ -44,8 +59,13 @@ func (g *GRPCProviderCounter) GetProviderCount(ctx context.Context, cid string) 
 	return int(resp.GetCount()), nil
 }
 
-// Close releases the underlying gRPC connection.
+// Close releases the underlying gRPC connection. It is a no-op when the
+// counter was created with NewGRPCProviderCounterFromClient.
 func (g *GRPCProviderCounter) Close() error {
+	if g.conn == nil {
+		return nil
+	}
+
 	if err := g.conn.Close(); err != nil {
 		return fmt.Errorf("failed to close gRPC connection: %w", err)
 	}
