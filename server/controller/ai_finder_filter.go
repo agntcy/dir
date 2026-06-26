@@ -48,12 +48,35 @@ func oasfModuleForMediaType(mediaType string) (string, bool) {
 		return translator.MCPModuleName, true
 	case catalogv1.ProtocolAgentSkillsMdMediaType:
 		return translator.AgentSkillsModuleName, true
+	case catalogv1.ProtocolAgentSkillsBundleMediaType:
+		return translator.AgentSkillsModuleName, true
 	default:
 		return "", false
 	}
 }
 
-// parseAgentFilter parses the filter syntax. Any unsupported syntax
+// filterCatalogEntriesByMediaType keeps entries whose media_type matches one of
+// the requested AI Catalog types. Required for Agent Skills because markdown
+// and bundle records share the same OASF module name in the DB index.
+func filterCatalogEntriesByMediaType(entries []*catalogv1.CatalogEntry, mediaTypes []string) []*catalogv1.CatalogEntry {
+	if len(mediaTypes) == 0 || len(entries) == 0 {
+		return entries
+	}
+
+	allowed := make(map[string]struct{}, len(mediaTypes))
+	for _, mt := range mediaTypes {
+		allowed[strings.ToLower(strings.TrimSpace(mt))] = struct{}{}
+	}
+
+	out := make([]*catalogv1.CatalogEntry, 0, len(entries))
+	for _, entry := range entries {
+		if _, ok := allowed[strings.ToLower(entry.GetMediaType())]; ok {
+			out = append(out, entry)
+		}
+	}
+
+	return out
+}
 // (parentheses, OR keywords, unknown or duplicate fields, missing values) is
 // rejected so callers map it to INVALID_ARGUMENT. Empty input is a no-op.
 func parseAgentFilter(input string) (agentFilter, error) {

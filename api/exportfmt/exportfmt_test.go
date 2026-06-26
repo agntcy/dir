@@ -4,6 +4,10 @@
 package exportfmt_test
 
 import (
+	"archive/tar"
+	"bytes"
+	"compress/gzip"
+	"encoding/base64"
 	"encoding/json"
 	"testing"
 
@@ -133,6 +137,38 @@ func newSkillTestRecord(t *testing.T) *corev1.Record {
 	return &corev1.Record{Data: recordStruct}
 }
 
+func newSkillBundleTestRecord(t *testing.T) *corev1.Record {
+	t.Helper()
+
+	skillInput, err := structpb.NewStruct(map[string]any{
+		"skillMarkdown": testSkillMarkdown,
+		"skillArchive":  skillBundleArchiveBase64(t),
+	})
+	require.NoError(t, err)
+
+	recordStruct, err := translator.SkillBundleToRecord(skillInput)
+	require.NoError(t, err)
+
+	return &corev1.Record{Data: recordStruct}
+}
+
+func skillBundleArchiveBase64(t *testing.T) string {
+	t.Helper()
+
+	var buf bytes.Buffer
+	gzw := gzip.NewWriter(&buf)
+	tw := tar.NewWriter(gzw)
+	content := []byte(testSkillMarkdown)
+	hdr := &tar.Header{Name: "SKILL.md", Mode: 0o600, Size: int64(len(content))}
+	require.NoError(t, tw.WriteHeader(hdr))
+	_, err := tw.Write(content)
+	require.NoError(t, err)
+	require.NoError(t, tw.Close())
+	require.NoError(t, gzw.Close())
+
+	return base64.StdEncoding.EncodeToString(buf.Bytes())
+}
+
 func TestGetFormatter(t *testing.T) {
 	t.Run("returns oasf formatter", func(t *testing.T) {
 		f, err := exportfmt.GetFormatter("oasf")
@@ -148,6 +184,12 @@ func TestGetFormatter(t *testing.T) {
 
 	t.Run("returns agent-skill formatter", func(t *testing.T) {
 		f, err := exportfmt.GetFormatter("agent-skill")
+		require.NoError(t, err)
+		assert.NotNil(t, f)
+	})
+
+	t.Run("returns agent-skill-bundle formatter", func(t *testing.T) {
+		f, err := exportfmt.GetFormatter("agent-skill-bundle")
 		require.NoError(t, err)
 		assert.NotNil(t, f)
 	})
@@ -177,6 +219,7 @@ func TestKnownFormats(t *testing.T) {
 	assert.Contains(t, formats, "oasf")
 	assert.Contains(t, formats, "a2a")
 	assert.Contains(t, formats, "agent-skill")
+	assert.Contains(t, formats, "agent-skill-bundle")
 	assert.Contains(t, formats, "skill")
 	assert.Contains(t, formats, "mcp-ghcopilot")
 }
@@ -290,6 +333,43 @@ func TestSkillFormatter_FileExtension(t *testing.T) {
 	assert.Equal(t, ".md", f.FileExtension())
 }
 
+func TestSkillBundleFormatter_Format(t *testing.T) {
+	f, err := exportfmt.GetFormatter("agent-skill-bundle")
+	require.NoError(t, err)
+
+	t.Run("round-trips skill bundle archive", func(t *testing.T) {
+		record := newSkillBundleTestRecord(t)
+		wantArchive, err := base64.StdEncoding.DecodeString(skillBundleArchiveBase64(t))
+		require.NoError(t, err)
+
+		output, err := f.Format(record)
+		require.NoError(t, err)
+		assert.Equal(t, wantArchive, output)
+	})
+
+	t.Run("returns error for record with nil data", func(t *testing.T) {
+		record := &corev1.Record{}
+
+		_, err := f.Format(record)
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "record contains no data")
+	})
+
+	t.Run("returns error for markdown-only skill record", func(t *testing.T) {
+		record := newSkillTestRecord(t)
+
+		_, err := f.Format(record)
+		require.Error(t, err)
+		assert.ErrorIs(t, err, exportfmt.ErrUnsupportedRecord)
+	})
+}
+
+func TestSkillBundleFormatter_FileExtension(t *testing.T) {
+	f, err := exportfmt.GetFormatter("agent-skill-bundle")
+	require.NoError(t, err)
+	assert.Equal(t, ".tar.gz", f.FileExtension())
+}
+
 func TestMCPGHCopilotFormatter_Format(t *testing.T) {
 	f, err := exportfmt.GetFormatter("mcp-ghcopilot")
 	require.NoError(t, err)
@@ -343,5 +423,6 @@ func TestMCPGHCopilotFormatter_FileExtension(t *testing.T) {
 func TestContentTypeForExtension(t *testing.T) {
 	assert.Equal(t, "application/json", exportfmt.ContentTypeForExtension(".json"))
 	assert.Equal(t, "text/markdown", exportfmt.ContentTypeForExtension(".md"))
+	assert.Equal(t, "application/gzip", exportfmt.ContentTypeForExtension(".tar.gz"))
 	assert.Equal(t, "application/octet-stream", exportfmt.ContentTypeForExtension(".bin"))
 }

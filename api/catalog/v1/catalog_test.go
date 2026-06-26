@@ -191,3 +191,81 @@ func TestRecordToCatalog(t *testing.T) {
 		})
 	}
 }
+
+func TestRecordToCatalog_AgentSkillsMediaTypes(t *testing.T) {
+	t.Parallel()
+
+	for _, tc := range []struct {
+		name      string
+		module    *oasftypesv1.Module
+		wantMedia string
+	}{
+		{
+			name: "markdown skill",
+			module: &oasftypesv1.Module{
+				Name: AgentSkillsModuleName,
+				Id:   10302,
+				Data: toStruct(t, map[string]any{
+					"skill_file": "SKILL.md",
+					"skill_manifest": map[string]any{
+						"name":        "summarize-text",
+						"description": "Summarize documents.",
+						"version":     "1.0.0",
+					},
+				}),
+			},
+			wantMedia: ProtocolAgentSkillsMdMediaType,
+		},
+		{
+			name: "bundled skill",
+			module: &oasftypesv1.Module{
+				Name: AgentSkillsModuleName,
+				Id:   10302,
+				Data: toStruct(t, map[string]any{
+					"skill_file": "SKILL.md",
+					"skill_manifest": map[string]any{
+						"name":        "summarize-text",
+						"description": "Summarize documents.",
+						"version":     "1.0.0",
+					},
+					"artifacts": []any{
+						map[string]any{
+							"path": "references/style-guide.md",
+							"type": "file",
+						},
+					},
+				}),
+			},
+			wantMedia: ProtocolAgentSkillsBundleMediaType,
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			record := corev1.New(&oasftypesv1.Record{
+				SchemaVersion: "1.0.0",
+				Name:          "summarize-text",
+				Description:   "Summarize documents.",
+				Version:       "1.0.0",
+				CreatedAt:     "2024-01-01T00:00:00Z",
+				Modules:       []*oasftypesv1.Module{tc.module},
+			})
+
+			adapter, err := record.Decode()
+			require.NoError(t, err)
+
+			entry, err := RecordToCatalog(adapter)
+			require.NoError(t, err)
+			assert.Equal(t, tc.wantMedia, entry.GetMediaType())
+		})
+	}
+}
+
+func toStruct(t *testing.T, data map[string]any) *structpb.Struct {
+	t.Helper()
+
+	st, err := structpb.NewStruct(data)
+	require.NoError(t, err)
+
+	return st
+}

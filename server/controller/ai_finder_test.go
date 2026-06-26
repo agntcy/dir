@@ -390,3 +390,23 @@ func TestExportAgent_NilData(t *testing.T) {
 	require.Error(t, err)
 	assert.Equal(t, codes.Internal, status.Code(err))
 }
+
+func TestOASFModuleForMediaType_AgentSkillBundle(t *testing.T) {
+	module, ok := oasfModuleForMediaType(catalogv1.ProtocolAgentSkillsBundleMediaType)
+	assert.True(t, ok)
+	assert.Equal(t, "core/language_model/agentskills", module)
+}
+
+func TestFilterCatalogEntriesByMediaType(t *testing.T) {
+	entries := []*catalogv1.CatalogEntry{
+		{MediaType: catalogv1.ProtocolAgentSkillsMdMediaType},
+		{MediaType: catalogv1.ProtocolAgentSkillsBundleMediaType},
+		{MediaType: catalogv1.ProtocolMCPCardJsonMediaType},
+	}
+
+	got := filterCatalogEntriesByMediaType(entries, []string{
+		catalogv1.ProtocolAgentSkillsBundleMediaType,
+	})
+	require.Len(t, got, 1)
+	assert.Equal(t, catalogv1.ProtocolAgentSkillsBundleMediaType, got[0].GetMediaType())
+}
