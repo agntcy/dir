@@ -44,6 +44,11 @@ service RoutingService {
   // that match the given parameters.
   // This operation does not interact with the network.
   rpc List(ListRequest) returns (stream ListResponse);
+
+  // GetProviderCount returns the number of distinct peers (including this node)
+  // currently announcing the given CID in the routing layer.
+  // Used by the reconciler to populate the provider_count popularity signal.
+  rpc GetProviderCount(GetProviderCountRequest) returns (GetProviderCountResponse);
 }
 
 message PublishRequest {
@@ -130,4 +135,17 @@ message ListResponse {
   // Labels associated with this record (skills, domains, modules)
   // Derived from the record content for CLI display purposes
   repeated string labels = 2;
+}
+
+message GetProviderCountRequest {
+  // CID of the record to query.
+  string cid = 1;
+}
+
+message GetProviderCountResponse {
+  // Number of distinct peers (including the local node) currently announcing
+  // this CID in the routing layer. This is a point-in-time gauge derived from
+  // the local routing datastore — it reflects peers seen since the last DHT
+  // refresh, not a live network query.
+  uint32 count = 1;
 }
