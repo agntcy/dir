@@ -283,6 +283,7 @@ func (f *fakeSignatureDB) InvalidateSignatureVerificationsForRecord(recordCID st
 }
 
 func (f *fakeSignatureDB) IncrementPullCount(cid string) error             { return nil }
+func (f *fakeSignatureDB) IncrementLookupCount(cid string) error           { return nil }
 func (f *fakeSignatureDB) SetProviderCount(cid string, count uint32) error { return nil }
 func (f *fakeSignatureDB) GetUsageMetrics(cid string) (types.UsageMetricsObject, error) {
 	return nil, nil

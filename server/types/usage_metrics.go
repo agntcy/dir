@@ -9,6 +9,7 @@ type UsageMetricsObject interface {
 	GetRecordCID() string
 	GetPullCount() uint64
 	GetProviderCount() uint32
+	GetLookupCount() uint64
 	GetExportCount() uint64
 	GetViewCount() uint64
 	GetLastUsedAt() *time.Time

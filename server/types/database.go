@@ -127,6 +127,11 @@ type UsageMetricsDatabaseAPI interface {
 	// updates last_used_at. Creates the row on first use.
 	IncrementPullCount(cid string) error
 
+	// IncrementLookupCount atomically increments the lookup counter for a record.
+	// Lookups are metadata-only requests (StoreService.Lookup) and carry less
+	// weight than pulls in the popularity signal. Creates the row on first use.
+	IncrementLookupCount(cid string) error
+
 	// SetProviderCount sets the provider count gauge for a record (point-in-time,
 	// refreshed by the reconciler). Creates the row if it does not exist.
 	SetProviderCount(cid string, count uint32) error
