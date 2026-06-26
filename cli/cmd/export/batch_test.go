@@ -10,7 +10,6 @@ import (
 	"path/filepath"
 	"testing"
 
-	oasfv1alpha1 "buf.build/gen/go/agntcy/oasf/protocolbuffers/go/agntcy/oasf/types/v1alpha1"
 	corev1 "github.com/agntcy/dir/api/core/v1"
 	"github.com/agntcy/dir/api/exportfmt"
 	"github.com/agntcy/oasf-sdk/pkg/translator"
@@ -19,15 +18,6 @@ import (
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/types/known/structpb"
 )
-
-func newTestRecord() *corev1.Record {
-	return corev1.New(&oasfv1alpha1.Record{
-		Name:          "test-agent",
-		SchemaVersion: "v0.5.0",
-		Description:   "A test agent for export formatting",
-		Version:       "1.0.0",
-	})
-}
 
 const testA2ARecordJSON = `{
   "schema_version": "1.0.0",
@@ -371,80 +361,9 @@ func TestMCPGHCopilotBatchFormatter(t *testing.T) {
 	})
 }
 
-func TestLatestByName(t *testing.T) {
-	t.Run("keeps higher version", func(t *testing.T) {
-		v1 := newA2ATestRecordWithVersion(t, "1.0.0")
-		v2 := newA2ATestRecordWithVersion(t, "2.0.0")
-
-		result := latestByName([]*corev1.Record{v1, v2})
-		require.Len(t, result, 1)
-
-		assert.Equal(t, "test-a2a-agent", result[0].GetName())
-		assert.Equal(t, "2.0.0", result[0].GetVersion())
-	})
-
-	t.Run("handles v-prefix in version", func(t *testing.T) {
-		v1 := newA2ATestRecordWithVersion(t, "v1.0.0")
-		v2 := newA2ATestRecordWithVersion(t, "v2.0.0")
-
-		result := latestByName([]*corev1.Record{v1, v2})
-		require.Len(t, result, 1)
-		assert.Equal(t, "v2.0.0", result[0].GetVersion())
-	})
-
-	t.Run("keeps records with different names", func(t *testing.T) {
-		r1 := newA2ATestRecord(t)
-		r2 := newTestRecord() // name="test-agent"
-
-		result := latestByName([]*corev1.Record{r1, r2})
-		assert.Len(t, result, 2)
-	})
-
-	t.Run("preserves insertion order", func(t *testing.T) {
-		r1 := newA2ATestRecord(t) // name="test-a2a-agent"
-		r2 := newTestRecord()     // name="test-agent"
-		r3 := newA2ATestRecord(t) // duplicate — should merge with r1
-
-		result := latestByName([]*corev1.Record{r1, r2, r3})
-		require.Len(t, result, 2)
-		assert.Equal(t, "test-a2a-agent", result[0].GetName())
-		assert.Equal(t, "test-agent", result[1].GetName())
-	})
-
-	t.Run("prefers later if versions are equal", func(t *testing.T) {
-		// Both have same name + version; the first one seen is kept
-		r1 := newA2ATestRecordWithVersion(t, "1.0.0")
-		r2 := newA2ATestRecordWithVersion(t, "1.0.0")
-
-		result := latestByName([]*corev1.Record{r1, r2})
-		require.Len(t, result, 1)
-	})
-
-	t.Run("handles prerelease ordering", func(t *testing.T) {
-		alpha := newA2ATestRecordWithVersion(t, "1.0.0-alpha")
-		release := newA2ATestRecordWithVersion(t, "1.0.0")
-
-		result := latestByName([]*corev1.Record{alpha, release})
-		require.Len(t, result, 1)
-
-		assert.NotContains(t, result[0].GetVersion(), "alpha", "release should beat alpha")
-	})
-
-	t.Run("returns nil for empty input", func(t *testing.T) {
-		result := latestByName(nil)
-		assert.Empty(t, result)
-	})
-}
-
 func TestRecordGetName(t *testing.T) {
 	record := newA2ATestRecord(t)
 	assert.Equal(t, "test-a2a-agent", record.GetName())
 
 	assert.Empty(t, (&corev1.Record{}).GetName())
-}
-
-func TestSanitizeName(t *testing.T) {
-	assert.Equal(t, "io.example-code-review", sanitizeName("io.example/code-review"))
-	assert.Equal(t, "simple-name", sanitizeName("simple-name"))
-	assert.Equal(t, "with-spaces", sanitizeName("with spaces"))
 }

@@ -53,9 +53,17 @@ func GetOutputOptions(cmd *cobra.Command) OutputOptions {
 	return opts
 }
 
-// AddOutputFlags adds the standard --output flag to a command.
+// AddOutputFlags adds the standard --output flag to a command, defaulting to
+// human-readable output.
 func AddOutputFlags(cmd *cobra.Command) {
-	cmd.Flags().StringP("output", "o", "human", "Output format: human|json|jsonl|raw")
+	AddOutputFlagsWithDefault(cmd, string(FormatHuman))
+}
+
+// AddOutputFlagsWithDefault adds the standard --output flag with a caller-chosen
+// default format. Useful for commands whose output is primarily machine-consumed
+// (e.g. `dirctl pull` defaults to JSON).
+func AddOutputFlagsWithDefault(cmd *cobra.Command, defaultFormat string) {
+	cmd.Flags().StringP("output", "o", defaultFormat, "Output format: human|json|jsonl|raw")
 }
 
 // PrintMessage outputs data in the appropriate format based on command flags.

@@ -12,12 +12,11 @@ import (
 
 	corev1 "github.com/agntcy/dir/api/core/v1"
 	"github.com/agntcy/dir/api/exportfmt"
-	searchv1 "github.com/agntcy/dir/api/search/v1"
 	"github.com/agntcy/dir/cli/cmd/search"
 	"github.com/agntcy/dir/cli/presenter"
 	ctxUtils "github.com/agntcy/dir/cli/util/context"
+	recordutil "github.com/agntcy/dir/cli/util/records"
 	"github.com/agntcy/dir/cli/util/reference"
-	"github.com/agntcy/dir/client"
 	"github.com/spf13/cobra"
 )
 
@@ -27,12 +26,14 @@ var Command = &cobra.Command{
 	Long: `Export pulls a record from the Directory, transforms it to the requested format,
 and writes the result to a file or stdout.
 
-The --format flag selects the output format:
+The --format flag selects the output format (required):
 
-  oasf           Raw OASF record JSON (default)
   agent-skill    SKILL.md artifact for agentic CLI consumption (Cursor, Claude Code, etc.)
   a2a            A2A AgentCard JSON for Agent-to-Agent protocol interop
   mcp-ghcopilot  GitHub Copilot MCP configuration JSON
+
+For raw OASF record JSON, use 'dirctl pull' (which supports --output-file,
+--output-dir, and search filters for batch retrieval).
 
 Single-record examples:
 
@@ -63,7 +64,25 @@ Batch export from search results:
 	},
 }
 
+// validateExportFormat rejects formats that `dirctl export` no longer serves.
+// Raw OASF records are exported via `dirctl pull`; every other format is derived
+// from the record's modules and handled by the format registry.
+func validateExportFormat(format string) error {
+	switch format {
+	case "":
+		return errors.New("--format is required (agent-skill, a2a, or mcp-ghcopilot); for raw OASF records use `dirctl pull`")
+	case exportfmt.FormatOASF:
+		return errors.New("raw OASF export has moved to `dirctl pull` (it supports --output-file, --output-dir, and search filters); `dirctl export` no longer supports --format=oasf")
+	default:
+		return nil
+	}
+}
+
 func runExport(cmd *cobra.Command, input string) error {
+	if err := validateExportFormat(opts.Format); err != nil {
+		return err
+	}
+
 	c, ok := ctxUtils.GetClientFromContext(cmd.Context())
 	if !ok {
 		return errors.New("failed to get client from context")
@@ -106,6 +125,10 @@ func runExport(cmd *cobra.Command, input string) error {
 }
 
 func runBatchExport(cmd *cobra.Command) error {
+	if err := validateExportFormat(opts.Format); err != nil {
+		return err
+	}
+
 	c, ok := ctxUtils.GetClientFromContext(cmd.Context())
 	if !ok {
 		return errors.New("failed to get client from context")
@@ -125,7 +148,7 @@ func runBatchExport(cmd *cobra.Command) error {
 		return fmt.Errorf("failed to create output directory: %w", err)
 	}
 
-	records, err := searchAndPull(cmd, c, queries)
+	records, err := recordutil.SearchAndPull(cmd.Context(), c, queries, opts.Limit)
 	if err != nil {
 		return err
 	}
@@ -151,53 +174,6 @@ func runBatchExport(cmd *cobra.Command) error {
 	presenter.PrintSmartf(cmd, "Exported %d record(s) to %s\n", exported, opts.OutputDir)
 
 	return nil
-}
-
-func searchAndPull(cmd *cobra.Command, c *client.Client, queries []*searchv1.RecordQuery) ([]*corev1.Record, error) {
-	cids, err := collectCIDs(cmd, c, queries)
-	if err != nil {
-		return nil, err
-	}
-
-	records := make([]*corev1.Record, 0, len(cids))
-
-	for _, cid := range cids {
-		record, err := c.Pull(cmd.Context(), &corev1.RecordRef{Cid: cid})
-		if err != nil {
-			return nil, fmt.Errorf("failed to pull record %s: %w", cid, err)
-		}
-
-		records = append(records, record)
-	}
-
-	return records, nil
-}
-
-func collectCIDs(cmd *cobra.Command, c *client.Client, queries []*searchv1.RecordQuery) ([]string, error) {
-	result, err := c.SearchCIDs(cmd.Context(), &searchv1.SearchCIDsRequest{
-		Limit:   &opts.Limit,
-		Queries: queries,
-	})
-	if err != nil {
-		return nil, fmt.Errorf("search failed: %w", err)
-	}
-
-	var cids []string
-
-	for {
-		select {
-		case resp := <-result.ResCh():
-			if cid := resp.GetRecordCid(); cid != "" {
-				cids = append(cids, cid)
-			}
-		case err := <-result.ErrCh():
-			return nil, fmt.Errorf("error during search: %w", err)
-		case <-result.DoneCh():
-			return cids, nil
-		case <-cmd.Context().Done():
-			return nil, cmd.Context().Err()
-		}
-	}
 }
 
 func writeFile(cmd *cobra.Command, path string, data []byte) error {
