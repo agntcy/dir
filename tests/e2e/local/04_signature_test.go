@@ -5,6 +5,7 @@ package local
 
 import (
 	_ "embed"
+	"net/http"
 	"os"
 	"path/filepath"
 	"time"
@@ -133,6 +134,65 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests to check signature supp
 			testEnv.CLI.Command("pull").
 				WithArgs(cid, "--public-key").
 				ShouldContain("-----BEGIN PUBLIC KEY-----")
+		})
+	})
+
+	// Regression test for: key-based signatures stored with empty Signature field
+	// cause catalogSignatures() to skip the entry, producing no trustManifest.
+	ginkgo.Context("key signature appears in AI catalog after reconciliation", ginkgo.Ordered, func() {
+		var (
+			catalogPaths     *signTestPaths
+			catalogRecordCID string
+		)
+
+		ginkgo.BeforeAll(func() {
+			if testEnv.Config.GatewayAddress == "" {
+				ginkgo.Skip("HTTP gateway address not configured for this environment")
+			}
+
+			catalogPaths = setupSignTestPaths()
+
+			// v100 record carries integration/mcp, so it projects to an AI catalog entry.
+			err := os.WriteFile(catalogPaths.record, testdata.ExpectedRecordV100JSON, 0o600)
+			gomega.Expect(err).NotTo(gomega.HaveOccurred())
+
+			cosignPassword := "testpassword"
+			utils.GenerateCosignKeyPair(catalogPaths.tempDir, cosignPassword)
+			gomega.Expect(catalogPaths.privateKey).To(gomega.BeAnExistingFile())
+			gomega.Expect(catalogPaths.publicKey).To(gomega.BeAnExistingFile())
+
+			err = os.Setenv("COSIGN_PASSWORD", cosignPassword)
+			gomega.Expect(err).NotTo(gomega.HaveOccurred())
+		})
+
+		ginkgo.AfterAll(func() {
+			os.Unsetenv("COSIGN_PASSWORD")
+
+			if catalogPaths != nil && catalogPaths.tempDir != "" {
+				_ = os.RemoveAll(catalogPaths.tempDir)
+			}
+		})
+
+		ginkgo.It("should push and sign a catalog record with a key", func() {
+			catalogRecordCID = testEnv.CLI.Push(catalogPaths.record).
+				WithArgs("--output", "raw").ShouldSucceed()
+			gomega.Expect(catalogRecordCID).NotTo(gomega.BeEmpty())
+
+			_ = testEnv.CLI.Sign(catalogRecordCID, catalogPaths.privateKey).ShouldSucceed()
+		})
+
+		ginkgo.It("should include trustManifest in the AI catalog entry after the reconciler processes the key signature", func(ctx ginkgo.SpecContext) {
+			// The reconciler (interval: 5s) reads the signature from OCI and stores it in the DB.
+			// catalogSignatures() skips any DB row where Signature=="", so the trustManifest field
+			// is only populated when the Signature is correctly persisted by the reconciler.
+			// This test fails when fetcher.go stores base64(ContentBundle) instead of GetSignature()
+			// for key-based signatures, because ContentBundle is always empty for key-based sigs.
+			gomega.Eventually(func(g gomega.Gomega) {
+				status, body := getAgents(ctx, "")
+				g.Expect(status).To(gomega.Equal(http.StatusOK))
+				g.Expect(body).To(gomega.ContainSubstring(catalogRecordCID))
+				g.Expect(body).To(gomega.ContainSubstring(`"trustManifest"`))
+			}).WithContext(ctx).WithTimeout(30 * time.Second).WithPolling(2 * time.Second).Should(gomega.Succeed())
 		})
 	})
 })
