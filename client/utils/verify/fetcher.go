@@ -109,10 +109,17 @@ func VerifyWithFetcher(ctx context.Context, req *signv1.VerifyRequest, fetcher F
 
 		seenKeys[signerKey] = true
 
+		// For key-based signatures ContentBundle is empty; use the raw signature instead.
+		// For OIDC signatures ContentBundle carries the Sigstore bundle.
+		sigData := sig.GetSignature()
+		if sig.GetContentBundle() != "" {
+			sigData = base64.StdEncoding.EncodeToString([]byte(sig.GetContentBundle()))
+		}
+
 		perSig = append(perSig, PerSignatureResult{
 			SignerKey:   signerKey,
 			Status:      "verified",
-			Signature:   base64.StdEncoding.EncodeToString([]byte(sig.GetContentBundle())),
+			Signature:   sigData,
 			ContentType: sig.GetContentType(),
 			SignerInfo:  signerInfo,
 		})
