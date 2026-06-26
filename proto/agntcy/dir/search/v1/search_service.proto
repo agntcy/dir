@@ -8,6 +8,23 @@ package agntcy.dir.search.v1;
 import "agntcy/dir/core/v1/record.proto";
 import "agntcy/dir/search/v1/record_query.proto";
 
+// SortMode controls the ordering of search results.
+enum SortMode {
+  // SORT_MODE_UNSPECIFIED defaults to SORT_MODE_RECENCY.
+  SORT_MODE_UNSPECIFIED = 0;
+
+  // SORT_MODE_RECENCY orders results by creation time, newest first.
+  SORT_MODE_RECENCY = 1;
+
+  // SORT_MODE_POPULARITY orders results by pull count plus lookup count
+  // (direct usage signal), highest first.
+  SORT_MODE_POPULARITY = 2;
+
+  // SORT_MODE_PROVIDER_COUNT orders results by the number of DHT peers
+  // currently announcing the record (network distribution signal), highest first.
+  SORT_MODE_PROVIDER_COUNT = 3;
+}
+
 service SearchService {
   // Search for record CIDs that match the given parameters.
   // Returns only CIDs for efficient lookups and piping to other commands.
@@ -29,6 +46,9 @@ message SearchCIDsRequest {
 
   // Optional offset for pagination of results.
   optional uint32 offset = 3;
+
+  // Sort mode for the results. Defaults to SORT_MODE_RECENCY.
+  SortMode sort_mode = 4;
 }
 
 message SearchRecordsRequest {
@@ -40,6 +60,9 @@ message SearchRecordsRequest {
 
   // Optional offset for pagination of results.
   optional uint32 offset = 3;
+
+  // Sort mode for the results. Defaults to SORT_MODE_RECENCY.
+  SortMode sort_mode = 4;
 }
 
 message SearchCIDsResponse {
