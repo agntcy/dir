@@ -126,6 +126,21 @@ func (c *routingCtlr) Unpublish(ctx context.Context, req *routingv1.UnpublishReq
 	return &emptypb.Empty{}, nil
 }
 
+func (c *routingCtlr) GetProviderCount(ctx context.Context, req *routingv1.GetProviderCountRequest) (*routingv1.GetProviderCountResponse, error) {
+	routingLogger.Debug("Called routing controller's GetProviderCount method", "cid", req.GetCid())
+
+	if req.GetCid() == "" {
+		return nil, status.Error(codes.InvalidArgument, "cid is required") //nolint:wrapcheck
+	}
+
+	count, err := c.routing.GetProviderCount(ctx, req.GetCid())
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to get provider count: %v", err)
+	}
+
+	return &routingv1.GetProviderCountResponse{Count: uint32(count)}, nil //nolint:gosec
+}
+
 func (c *routingCtlr) getRecord(ctx context.Context, ref *corev1.RecordRef) (*corev1.Record, error) {
 	routingLogger.Debug("Called routing controller's getRecord method", "ref", ref)
 

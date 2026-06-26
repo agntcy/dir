@@ -23,10 +23,11 @@ import (
 const _ = grpc.SupportPackageIsVersion8
 
 const (
-	RoutingService_Publish_FullMethodName   = "/agntcy.dir.routing.v1.RoutingService/Publish"
-	RoutingService_Unpublish_FullMethodName = "/agntcy.dir.routing.v1.RoutingService/Unpublish"
-	RoutingService_Search_FullMethodName    = "/agntcy.dir.routing.v1.RoutingService/Search"
-	RoutingService_List_FullMethodName      = "/agntcy.dir.routing.v1.RoutingService/List"
+	RoutingService_Publish_FullMethodName          = "/agntcy.dir.routing.v1.RoutingService/Publish"
+	RoutingService_Unpublish_FullMethodName        = "/agntcy.dir.routing.v1.RoutingService/Unpublish"
+	RoutingService_Search_FullMethodName           = "/agntcy.dir.routing.v1.RoutingService/Search"
+	RoutingService_List_FullMethodName             = "/agntcy.dir.routing.v1.RoutingService/List"
+	RoutingService_GetProviderCount_FullMethodName = "/agntcy.dir.routing.v1.RoutingService/GetProviderCount"
 )
 
 // RoutingServiceClient is the client API for RoutingService service.
@@ -63,6 +64,10 @@ type RoutingServiceClient interface {
 	// that match the given parameters.
 	// This operation does not interact with the network.
 	List(ctx context.Context, in *ListRequest, opts ...grpc.CallOption) (RoutingService_ListClient, error)
+	// GetProviderCount returns the number of distinct peers (including this node)
+	// currently announcing the given CID in the routing layer.
+	// Used by the reconciler to populate the provider_count popularity signal.
+	GetProviderCount(ctx context.Context, in *GetProviderCountRequest, opts ...grpc.CallOption) (*GetProviderCountResponse, error)
 }
 
 type routingServiceClient struct {
@@ -159,6 +164,16 @@ func (x *routingServiceListClient) Recv() (*ListResponse, error) {
 	return m, nil
 }
 
+func (c *routingServiceClient) GetProviderCount(ctx context.Context, in *GetProviderCountRequest, opts ...grpc.CallOption) (*GetProviderCountResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetProviderCountResponse)
+	err := c.cc.Invoke(ctx, RoutingService_GetProviderCount_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // RoutingServiceServer is the server API for RoutingService service.
 // All implementations should embed UnimplementedRoutingServiceServer
 // for forward compatibility.
@@ -193,6 +208,10 @@ type RoutingServiceServer interface {
 	// that match the given parameters.
 	// This operation does not interact with the network.
 	List(*ListRequest, RoutingService_ListServer) error
+	// GetProviderCount returns the number of distinct peers (including this node)
+	// currently announcing the given CID in the routing layer.
+	// Used by the reconciler to populate the provider_count popularity signal.
+	GetProviderCount(context.Context, *GetProviderCountRequest) (*GetProviderCountResponse, error)
 }
 
 // UnimplementedRoutingServiceServer should be embedded to have
@@ -213,6 +232,9 @@ func (UnimplementedRoutingServiceServer) Search(*SearchRequest, RoutingService_S
 }
 func (UnimplementedRoutingServiceServer) List(*ListRequest, RoutingService_ListServer) error {
 	return status.Errorf(codes.Unimplemented, "method List not implemented")
+}
+func (UnimplementedRoutingServiceServer) GetProviderCount(context.Context, *GetProviderCountRequest) (*GetProviderCountResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetProviderCount not implemented")
 }
 func (UnimplementedRoutingServiceServer) testEmbeddedByValue() {}
 
@@ -312,6 +334,24 @@ func (x *routingServiceListServer) Send(m *ListResponse) error {
 	return x.ServerStream.SendMsg(m)
 }
 
+func _RoutingService_GetProviderCount_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetProviderCountRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(RoutingServiceServer).GetProviderCount(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: RoutingService_GetProviderCount_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(RoutingServiceServer).GetProviderCount(ctx, req.(*GetProviderCountRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // RoutingService_ServiceDesc is the grpc.ServiceDesc for RoutingService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -326,6 +366,10 @@ var RoutingService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "Unpublish",
 			Handler:    _RoutingService_Unpublish_Handler,
+		},
+		{
+			MethodName: "GetProviderCount",
+			Handler:    _RoutingService_GetProviderCount_Handler,
 		},
 	},
 	Streams: []grpc.StreamDesc{

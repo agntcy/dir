@@ -168,3 +168,28 @@ func (r *route) IsReady(ctx context.Context) bool {
 func (r *route) GetPeerID() string {
 	return r.peerID
 }
+
+// GetProviderCount returns the number of distinct peers (including the local
+// node) currently announcing the given CID, by counting unique peerIDs in the
+// routing datastore.
+func (r *route) GetProviderCount(ctx context.Context, cid string) (int, error) {
+	entries, err := QueryAllNamespaces(ctx, r.remote.dstore)
+	if err != nil {
+		return 0, fmt.Errorf("failed to query routing datastore for %s: %w", cid, err)
+	}
+
+	seen := make(map[string]struct{})
+
+	for _, entry := range entries {
+		_, keyCID, keyPeerID, parseErr := ParseEnhancedLabelKey(entry.Key)
+		if parseErr != nil {
+			continue
+		}
+
+		if keyCID == cid {
+			seen[keyPeerID] = struct{}{}
+		}
+	}
+
+	return len(seen), nil
+}
