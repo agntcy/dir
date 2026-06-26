@@ -17,6 +17,7 @@ import (
 	corev1 "github.com/agntcy/dir/api/core/v1"
 	"github.com/agntcy/dir/reconciler/config"
 	"github.com/agntcy/dir/reconciler/service"
+	"github.com/agntcy/dir/reconciler/tasks/metrics"
 	"github.com/agntcy/dir/server/database"
 	"github.com/agntcy/dir/server/store/oci"
 	"github.com/agntcy/dir/utils/logging"
@@ -86,8 +87,28 @@ func run() error {
 		return err
 	}
 
-	// Create service with all tasks registered
-	svc, err := service.New(cfg, db, store, repo, oasfValidator)
+	// Create provider counter. In standalone mode the routing layer (Badger
+	// datastore) lives inside the server process and cannot be shared across
+	// process boundaries, so we connect to the server over gRPC instead.
+	// If no server address is configured the metrics task is skipped.
+	var counters metrics.ProviderCounterAPI
+
+	if cfg.ServerAddress != "" {
+		grpcCounter, err := metrics.NewGRPCProviderCounter(cfg.ServerAddress)
+		if err != nil {
+			return fmt.Errorf("failed to connect to apiserver for provider counts: %w", err)
+		}
+
+		defer grpcCounter.Close()
+
+		counters = grpcCounter
+
+		logger.Info("Provider counter connected to apiserver", "address", cfg.ServerAddress)
+	} else {
+		logger.Warn("server_address not configured; metrics task (provider counts) will be skipped")
+	}
+
+	svc, err := service.New(cfg, db, store, repo, oasfValidator, counters)
 	if err != nil {
 		return err
 	}

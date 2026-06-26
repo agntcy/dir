@@ -14,12 +14,13 @@ import (
 	"github.com/agntcy/dir/reconciler/config"
 	"github.com/agntcy/dir/reconciler/tasks"
 	"github.com/agntcy/dir/reconciler/tasks/indexer"
+	"github.com/agntcy/dir/reconciler/tasks/metrics"
 	"github.com/agntcy/dir/reconciler/tasks/name"
 	"github.com/agntcy/dir/reconciler/tasks/regsync"
 	"github.com/agntcy/dir/reconciler/tasks/signature"
 	namingprovider "github.com/agntcy/dir/server/naming"
 	"github.com/agntcy/dir/server/naming/wellknown"
-	"github.com/agntcy/dir/server/types"
+	servertypes "github.com/agntcy/dir/server/types"
 	"github.com/agntcy/dir/utils/logging"
 	"oras.land/oras-go/v2/registry"
 )
@@ -36,22 +37,24 @@ type Service struct {
 }
 
 // New creates a reconciler service with tasks registered according to cfg.
-// The caller supplies the database, store, and OASF validator so that an embedding
-// process (e.g. the daemon) can share them with the apiserver.
-func New(cfg *config.Config, db types.DatabaseAPI, store types.StoreAPI, repo registry.TagLister, oasfValidator corev1.Validator) (*Service, error) {
+// The caller supplies the database, store, provider counter, and OASF validator
+// so that an embedding process (e.g. the daemon) can share them with the
+// apiserver. counters may be nil; if so, the metrics task is skipped even when
+// cfg.Metrics.Enabled is true.
+func New(cfg *config.Config, db servertypes.DatabaseAPI, store servertypes.StoreAPI, repo registry.TagLister, oasfValidator corev1.Validator, counters metrics.ProviderCounterAPI) (*Service, error) {
 	svc := &Service{
 		tasks:  []tasks.Task{},
 		stopCh: make(chan struct{}),
 	}
 
-	if err := svc.registerTasks(cfg, db, store, repo, oasfValidator); err != nil {
+	if err := svc.registerTasks(cfg, db, store, repo, oasfValidator, counters); err != nil {
 		return nil, err
 	}
 
 	return svc, nil
 }
 
-func (s *Service) registerTasks(cfg *config.Config, db types.DatabaseAPI, store types.StoreAPI, repo registry.TagLister, oasfValidator corev1.Validator) error {
+func (s *Service) registerTasks(cfg *config.Config, db servertypes.DatabaseAPI, store servertypes.StoreAPI, repo registry.TagLister, oasfValidator corev1.Validator, counters metrics.ProviderCounterAPI) error {
 	if cfg.Regsync.Enabled {
 		t, err := regsync.NewTask(cfg.Regsync, cfg.LocalRegistry, db)
 		if err != nil {
@@ -84,13 +87,26 @@ func (s *Service) registerTasks(cfg *config.Config, db types.DatabaseAPI, store 
 	}
 
 	if cfg.Signature.Enabled {
-		refStore, ok := store.(types.ReferrerStoreAPI)
+		refStore, ok := store.(servertypes.ReferrerStoreAPI)
 		if !ok {
 			logger.Warn("Store does not support referrers, skipping signature task")
 		} else {
 			t, err := signature.NewTask(cfg.Signature, db, signature.NewStoreFetcher(refStore))
 			if err != nil {
 				return fmt.Errorf("failed to create signature task: %w", err)
+			}
+
+			s.addTask(t)
+		}
+	}
+
+	if cfg.Metrics.Enabled {
+		if counters == nil {
+			logger.Warn("Provider counter not available, skipping metrics task")
+		} else {
+			t, err := metrics.NewTask(cfg.Metrics, db, counters)
+			if err != nil {
+				return fmt.Errorf("failed to create metrics task: %w", err)
 			}
 
 			s.addTask(t)

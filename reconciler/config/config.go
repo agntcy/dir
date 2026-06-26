@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	"github.com/agntcy/dir/reconciler/tasks/indexer"
+	"github.com/agntcy/dir/reconciler/tasks/metrics"
 	"github.com/agntcy/dir/reconciler/tasks/name"
 	"github.com/agntcy/dir/reconciler/tasks/regsync"
 	"github.com/agntcy/dir/reconciler/tasks/signature"
@@ -44,6 +45,14 @@ type Config struct {
 	// LocalRegistry holds configuration for the local OCI registry.
 	LocalRegistry ociconfig.Config `json:"local_registry" mapstructure:"local_registry"`
 
+	// ServerAddress is the gRPC address of the apiserver (e.g. "localhost:8888").
+	// Required by the metrics task when the reconciler runs as a standalone process,
+	// because the routing layer (Badger datastore) is embedded in the server and
+	// cannot be shared across process boundaries. The metrics task calls
+	// RoutingService.GetProviderCount over gRPC instead.
+	// Leave empty in daemon mode — the in-process routing API is used directly.
+	ServerAddress string `json:"server_address" mapstructure:"server_address"`
+
 	// SchemaURL is the OASF schema URL for record validation.
 	SchemaURL string `json:"schema_url" mapstructure:"schema_url"`
 
@@ -58,6 +67,9 @@ type Config struct {
 
 	// Signature holds the signature verification task configuration.
 	Signature signature.Config `json:"signature" mapstructure:"signature"`
+
+	// Metrics holds the usage-metrics refresh task configuration.
+	Metrics metrics.Config `json:"metrics" mapstructure:"metrics"`
 }
 
 // LoadConfig loads the configuration from file and environment variables.
@@ -182,6 +194,20 @@ func LoadConfig() (*Config, error) {
 
 	_ = v.BindEnv("signature.record_timeout")
 	v.SetDefault("signature.record_timeout", signature.DefaultRecordTimeout)
+
+	//
+	// Providers task configuration (provider-count gauge)
+	//
+	_ = v.BindEnv("metrics.enabled")
+	v.SetDefault("metrics.enabled", true)
+
+	_ = v.BindEnv("metrics.interval")
+	v.SetDefault("metrics.interval", metrics.DefaultInterval)
+
+	//
+	// Server address (used by the metrics task in standalone mode)
+	//
+	_ = v.BindEnv("server_address")
 
 	//
 	// OASF validation configuration
