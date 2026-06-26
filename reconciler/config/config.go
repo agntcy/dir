@@ -14,6 +14,7 @@ import (
 	"github.com/agntcy/dir/reconciler/tasks/name"
 	"github.com/agntcy/dir/reconciler/tasks/regsync"
 	"github.com/agntcy/dir/reconciler/tasks/signature"
+	authnconfig "github.com/agntcy/dir/server/authn/config"
 	dbconfig "github.com/agntcy/dir/server/database/config"
 	namingconfig "github.com/agntcy/dir/server/naming/config"
 	ociconfig "github.com/agntcy/dir/server/store/oci/config"
@@ -52,6 +53,10 @@ type Config struct {
 	// RoutingService.GetProviderCount over gRPC instead.
 	// Leave empty in daemon mode — the in-process routing API is used directly.
 	ServerAddress string `json:"server_address" mapstructure:"server_address"`
+
+	// ServerAuthn holds authentication configuration for the gRPC connection to
+	// the apiserver.
+	ServerAuthn authnconfig.Config `json:"server_authn" mapstructure:"server_authn"`
 
 	// SchemaURL is the OASF schema URL for record validation.
 	SchemaURL string `json:"schema_url" mapstructure:"schema_url"`
@@ -208,6 +213,18 @@ func LoadConfig() (*Config, error) {
 	// Server address (used by the metrics task in standalone mode)
 	//
 	_ = v.BindEnv("server_address")
+
+	//
+	// Server authn configuration (used by the metrics task in standalone mode)
+	//
+	_ = v.BindEnv("server_authn.enabled")
+	v.SetDefault("server_authn.enabled", false)
+
+	_ = v.BindEnv("server_authn.mode")
+	v.SetDefault("server_authn.mode", "x509")
+
+	_ = v.BindEnv("server_authn.socket_path")
+	_ = v.BindEnv("server_authn.audiences")
 
 	//
 	// OASF validation configuration
