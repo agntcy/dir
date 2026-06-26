@@ -36,6 +36,11 @@ type RoutingAPI interface {
 	// GetPeerID returns the peer ID of the current host.
 	GetPeerID() string
 
+	// GetProviderCount returns the number of distinct peers (including the local
+	// node) that are currently announcing the given CID in the routing layer.
+	// Used by the reconciler to populate the provider_count popularity signal.
+	GetProviderCount(ctx context.Context, cid string) (int, error)
+
 	// IsReady checks if the routing subsystem is ready to serve traffic.
 	IsReady(context.Context) bool
 }
