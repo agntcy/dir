@@ -27,12 +27,14 @@ var Command = &cobra.Command{
 	Long: `Export pulls a record from the Directory, transforms it to the requested format,
 and writes the result to a file or stdout.
 
-The --format flag selects the output format:
+The --format flag selects the output format (required):
 
-  oasf           Raw OASF record JSON (default)
   agent-skill    SKILL.md artifact for agentic CLI consumption (Cursor, Claude Code, etc.)
   a2a            A2A AgentCard JSON for Agent-to-Agent protocol interop
   mcp-ghcopilot  GitHub Copilot MCP configuration JSON
+
+For raw OASF record JSON, use 'dirctl pull' (which supports --output-file,
+--output-dir, and search filters for batch retrieval).
 
 Single-record examples:
 
@@ -63,7 +65,25 @@ Batch export from search results:
 	},
 }
 
+// validateExportFormat rejects formats that `dirctl export` no longer serves.
+// Raw OASF records are exported via `dirctl pull`; every other format is derived
+// from the record's modules and handled by the format registry.
+func validateExportFormat(format string) error {
+	switch format {
+	case "":
+		return errors.New("--format is required (agent-skill, a2a, or mcp-ghcopilot); for raw OASF records use `dirctl pull`")
+	case exportfmt.FormatOASF:
+		return errors.New("raw OASF export has moved to `dirctl pull` (it supports --output-file, --output-dir, and search filters); `dirctl export` no longer supports --format=oasf")
+	default:
+		return nil
+	}
+}
+
 func runExport(cmd *cobra.Command, input string) error {
+	if err := validateExportFormat(opts.Format); err != nil {
+		return err
+	}
+
 	c, ok := ctxUtils.GetClientFromContext(cmd.Context())
 	if !ok {
 		return errors.New("failed to get client from context")
@@ -106,6 +126,10 @@ func runExport(cmd *cobra.Command, input string) error {
 }
 
 func runBatchExport(cmd *cobra.Command) error {
+	if err := validateExportFormat(opts.Format); err != nil {
+		return err
+	}
+
 	c, ok := ctxUtils.GetClientFromContext(cmd.Context())
 	if !ok {
 		return errors.New("failed to get client from context")

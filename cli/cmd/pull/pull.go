@@ -11,9 +11,11 @@ import (
 	corev1 "github.com/agntcy/dir/api/core/v1"
 	signv1 "github.com/agntcy/dir/api/sign/v1"
 	storev1 "github.com/agntcy/dir/api/store/v1"
+	"github.com/agntcy/dir/cli/cmd/search"
 	"github.com/agntcy/dir/cli/presenter"
 	ctxUtils "github.com/agntcy/dir/cli/util/context"
 	"github.com/agntcy/dir/cli/util/reference"
+	"github.com/agntcy/dir/client"
 	"github.com/spf13/cobra"
 )
 
@@ -73,23 +75,33 @@ Usage examples:
 	# Get raw record data for piping
 	dirctl pull <cid-or-name> --output raw > record.json
 `,
+	Args: cobra.MaximumNArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		if len(args) != 1 {
-			return errors.New("cid or name is a required argument")
+		var input string
+		if len(args) > 0 {
+			input = args[0]
 		}
 
-		return runCommand(cmd, args[0])
+		hasFilters := len(search.BuildQueries(&opts.Filters)) > 0
+		if err := validatePullInvocation(input != "", opts.OutputFile, opts.OutputDir, hasFilters); err != nil {
+			return err
+		}
+
+		c, ok := ctxUtils.GetClientFromContext(cmd.Context())
+		if !ok {
+			return errors.New("failed to get client from context")
+		}
+
+		if opts.OutputDir != "" {
+			return runBatchPull(cmd, c)
+		}
+
+		return runCommand(cmd, c, input)
 	},
 }
 
 //nolint:cyclop,gocognit
-func runCommand(cmd *cobra.Command, input string) error {
-	// Get the client from the context.
-	c, ok := ctxUtils.GetClientFromContext(cmd.Context())
-	if !ok {
-		return errors.New("failed to get client from context")
-	}
-
+func runCommand(cmd *cobra.Command, c *client.Client, input string) error {
 	// Resolve the input to a CID
 	recordCID, err := reference.ResolveToCID(cmd.Context(), c, input)
 	if err != nil {
@@ -106,7 +118,7 @@ func runCommand(cmd *cobra.Command, input string) error {
 
 	if !opts.PublicKey && !opts.Signature {
 		// Handle different output formats
-		return presenter.PrintMessage(cmd, "record", "Record data", record.GetData())
+		return outputSingle(cmd, "Record data", record.GetData())
 	}
 
 	publicKeys := make([]*signv1.PublicKey, 0)
@@ -195,5 +207,21 @@ func runCommand(cmd *cobra.Command, input string) error {
 	}
 
 	// Output the structured data
-	return presenter.PrintMessage(cmd, "record", "Record data with keys and signatures", structuredData)
+	return outputSingle(cmd, "Record data with keys and signatures", structuredData)
+}
+
+// outputSingle writes a single record's value to --output-file (as JSON) when
+// set, otherwise to stdout in the selected --output format.
+func outputSingle(cmd *cobra.Command, message string, value any) error {
+	if opts.OutputFile != "" {
+		if err := presenter.WriteMessageToFile(opts.OutputFile, value); err != nil {
+			return fmt.Errorf("failed to write %s: %w", opts.OutputFile, err)
+		}
+
+		presenter.PrintSmartf(cmd, "Pulled to: %s\n", opts.OutputFile)
+
+		return nil
+	}
+
+	return presenter.PrintMessage(cmd, "record", message, value)
 }

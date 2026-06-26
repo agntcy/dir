@@ -535,6 +535,27 @@ func TestAddOutputFlags(t *testing.T) {
 	}
 }
 
+func TestAddOutputFlagsWithDefaultSetsDefault(t *testing.T) {
+	cmd := &cobra.Command{}
+	AddOutputFlagsWithDefault(cmd, string(FormatJSON))
+
+	flag := cmd.Flags().Lookup(outputFlagName)
+	if flag == nil {
+		t.Fatal(flagNotFoundMsg)
+
+		return
+	}
+
+	if flag.DefValue != string(FormatJSON) {
+		t.Errorf("default value = %q, want %q", flag.DefValue, FormatJSON)
+	}
+
+	// Without an explicit -o, GetOutputOptions reflects the custom default.
+	if got := GetOutputOptions(cmd).Format; got != FormatJSON {
+		t.Errorf("GetOutputOptions format = %q, want %q", got, FormatJSON)
+	}
+}
+
 func TestPrintMessageMarshalError(t *testing.T) {
 	// Create a value that can't be marshaled to JSON
 	invalidValue := make(chan int)
