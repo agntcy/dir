@@ -29,6 +29,7 @@ and writes the result to a file or stdout.
 The --format flag selects the output format (required):
 
   agent-skill    SKILL.md artifact for agentic CLI consumption (Cursor, Claude Code, etc.)
+  agent-skill-bundle  Skill bundle archive (.gzip) for multi-file skills
   a2a            A2A AgentCard JSON for Agent-to-Agent protocol interop
   mcp-ghcopilot  GitHub Copilot MCP configuration JSON
 
@@ -39,6 +40,7 @@ Single-record examples:
 
   dirctl export bafyreib... --format=a2a --output-file=./agent-card.json
   dirctl export my-agent:1.0 --format=agent-skill --output-file=./SKILL.md
+  dirctl export my-agent:1.0 --format=agent-skill-bundle --output-file=./skill.gzip
 
 Batch export from search results:
 

@@ -30,6 +30,8 @@ func getBatchFormatter(name string) batchFormatter {
 	switch name {
 	case "agent-skill", "skill":
 		return &skillBatchExporter{}
+	case "agent-skill-bundle":
+		return &skillBundleBatchExporter{}
 	case "mcp-ghcopilot":
 		return &mcpBatchExporter{}
 	default:
@@ -108,6 +110,19 @@ func (f *skillBatchExporter) FormatBatch(records []*corev1.Record, outputDir str
 	}
 
 	return exported, nil
+}
+
+// --- skill bundle batch ---
+
+type skillBundleBatchExporter struct{}
+
+func (f *skillBundleBatchExporter) FormatBatch(records []*corev1.Record, outputDir string, allVersions bool) (int, error) {
+	formatter, err := exportfmt.GetFormatter(exportfmt.FormatAgentSkillBundle)
+	if err != nil {
+		return 0, fmt.Errorf("failed to get agent-skill-bundle formatter: %w", err)
+	}
+
+	return defaultBatchExport(formatter, records, outputDir, allVersions)
 }
 
 // --- mcp batch ---

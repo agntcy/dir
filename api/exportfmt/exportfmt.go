@@ -28,14 +28,18 @@ type Formatter interface {
 }
 
 const (
+	// Extensions.
 	ExtJSON = ".json"
 	ExtMD   = ".md"
+	ExtGzip = ".gzip"
 
-	FormatOASF        = "oasf"
-	FormatA2A         = "a2a"
-	FormatAgentSkill  = "agent-skill"
-	FormatSkill       = "skill"
-	FormatMCPGHCopiot = "mcp-ghcopilot"
+	// Formats.
+	FormatOASF             = "oasf"
+	FormatA2A              = "a2a"
+	FormatAgentSkill       = "agent-skill"
+	FormatAgentSkillBundle = "agent-skill-bundle"
+	FormatSkill            = "skill"
+	FormatMCPGHCopiot      = "mcp-ghcopilot"
 )
 
 var (
@@ -86,6 +90,8 @@ func ContentTypeForExtension(ext string) string {
 		return "application/json"
 	case ExtMD:
 		return "text/markdown"
+	case ExtGzip:
+		return "application/gzip"
 	default:
 		return "application/octet-stream"
 	}

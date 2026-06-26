@@ -24,6 +24,41 @@
 		onchange({ searchQuery, mediaTypes, statusFilter, activeTags });
 	}
 
+	function ensureMediaTypesSelection(next: Set<string>) {
+		if (next.size === 0) {
+			next.add('all');
+		}
+
+		return next;
+	}
+
+	function leafValues(opt: MediaTypeOption): string[] {
+		if (isMediaTypeGroup(opt)) {
+			return opt.children.flatMap((child) => leafValues(child));
+		}
+
+		return [opt.value];
+	}
+
+	type GroupCheckState = 'none' | 'some' | 'all';
+
+	function groupCheckState(group: MediaTypeGroup): GroupCheckState {
+		const values = leafValues(group);
+		if (values.length === 0) {
+			return 'none';
+		}
+
+		const selected = values.filter((value) => mediaTypes.has(value)).length;
+		if (selected === 0) {
+			return 'none';
+		}
+		if (selected === values.length) {
+			return 'all';
+		}
+
+		return 'some';
+	}
+
 	function handleMediaType(value: string, checked: boolean) {
 		const next = new Set(mediaTypes);
 		if (value === 'all' && checked) {
@@ -33,10 +68,35 @@
 			next.delete('all');
 			if (checked) next.add(value);
 			else next.delete(value);
-			if (next.size === 0) next.add('all');
 		}
-		mediaTypes = next;
+		mediaTypes = ensureMediaTypesSelection(next);
 		notifyChange();
+	}
+
+	function handleGroupMediaType(group: MediaTypeGroup, checked: boolean) {
+		const next = new Set(mediaTypes);
+		next.delete('all');
+
+		for (const value of leafValues(group)) {
+			if (checked) {
+				next.add(value);
+			} else {
+				next.delete(value);
+			}
+		}
+
+		mediaTypes = ensureMediaTypesSelection(next);
+		notifyChange();
+	}
+
+	/** Keeps parent checkboxes in the indeterminate (−) state when partially selected. */
+	function indeterminateCheckbox(node: HTMLInputElement, indeterminate: boolean) {
+		node.indeterminate = indeterminate;
+		return {
+			update(next: boolean) {
+				node.indeterminate = next;
+			}
+		};
 	}
 
 	function handleTag(tag: string, checked: boolean) {
@@ -47,13 +107,68 @@
 		notifyChange();
 	}
 
-	const MEDIA_TYPE_OPTIONS = [
+	type MediaTypeLeaf = {
+		value: string;
+		label: string;
+	};
+
+	type MediaTypeGroup = {
+		label: string;
+		children: MediaTypeOption[];
+	};
+
+	type MediaTypeOption = MediaTypeLeaf | MediaTypeGroup;
+
+	function isMediaTypeGroup(opt: MediaTypeOption): opt is MediaTypeGroup {
+		return 'children' in opt;
+	}
+
+	/** Top-level media type filters; groups may nest further checkboxes under `children`. */
+	const MEDIA_TYPE_OPTIONS: MediaTypeOption[] = [
 		{ value: 'all', label: 'All' },
 		{ value: 'application/a2a-agent-card+json', label: 'A2A Agent' },
 		{ value: 'application/mcp-server-card+json', label: 'MCP Server' },
-		{ value: 'application/agent-skills+md', label: 'SKILL' }
+        {
+            label: 'SKILL',
+            children: [
+                { value: 'application/agent-skills+md', label: 'Markdown' },
+                { value: 'application/agent-skills+gzip', label: 'Bundle' }
+            ]
+        }
 	];
 </script>
+
+{#snippet mediaTypeOption(opt: MediaTypeOption)}
+	{#if isMediaTypeGroup(opt)}
+		{@const groupState = groupCheckState(opt)}
+		<label class="flex items-center gap-2 text-sm text-ink cursor-pointer">
+			<input
+				type="checkbox"
+				checked={groupState === 'all'}
+				use:indeterminateCheckbox={groupState === 'some'}
+				onchange={(e) =>
+					handleGroupMediaType(opt, (e.target as HTMLInputElement).checked)}
+				class="rounded border-line-strong text-brand-500 focus:ring-brand-500"
+			/>
+			<span>{opt.label}</span>
+		</label>
+		<div class="space-y-1.5 pl-5 ml-0.5 border-l-2 border-line/70">
+			{#each opt.children as child (child.label)}
+				{@render mediaTypeOption(child)}
+			{/each}
+		</div>
+	{:else}
+		<label class="flex items-center gap-2 text-sm text-ink cursor-pointer">
+			<input
+				type="checkbox"
+				checked={mediaTypes.has(opt.value)}
+				onchange={(e) => handleMediaType(opt.value, (e.target as HTMLInputElement).checked)}
+				class="rounded border-line-strong text-brand-500 focus:ring-brand-500"
+			/>
+			<span>{opt.label}</span>
+		</label>
+	{/if}
+{/snippet}
 
 <div class="bg-surface-strong rounded-card border border-line p-4 space-y-5 sticky top-24 max-h-[calc(100vh-7rem)] flex flex-col overflow-hidden">
 	<div class="flex-shrink-0">
@@ -71,16 +186,8 @@
 	<div class="flex-shrink-0">
 		<span class="block text-xs font-semibold uppercase tracking-wide text-ink-medium mb-2">Media Type</span>
 		<div class="space-y-1.5">
-			{#each MEDIA_TYPE_OPTIONS as opt}
-				<label class="flex items-center gap-2 text-sm text-ink cursor-pointer">
-					<input
-						type="checkbox"
-						checked={mediaTypes.has(opt.value)}
-						onchange={(e) => handleMediaType(opt.value, (e.target as HTMLInputElement).checked)}
-						class="rounded border-line-strong text-brand-500 focus:ring-brand-500"
-					/>
-					<span>{opt.label}</span>
-				</label>
+			{#each MEDIA_TYPE_OPTIONS as opt (opt.label)}
+				{@render mediaTypeOption(opt)}
 			{/each}
 		</div>
 	</div>

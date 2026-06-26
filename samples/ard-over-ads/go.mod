@@ -72,7 +72,7 @@ require (
 	github.com/VividCortex/ewma v1.2.0 // indirect
 	github.com/agext/levenshtein v1.2.3 // indirect
 	github.com/agnivade/levenshtein v1.2.1 // indirect
-	github.com/agntcy/dir-importer v1.4.1 // indirect
+	github.com/agntcy/dir-importer v1.4.2-0.20260630074812-d4501aa27c3d // indirect
 	github.com/agntcy/dir-mcp v1.3.2 // indirect
 	github.com/agntcy/dir-runtime/discovery v1.3.2 // indirect
 	github.com/agntcy/dir-runtime/server v1.3.2 // indirect
@@ -81,7 +81,7 @@ require (
 	github.com/agntcy/dir/reconciler v1.5.0 // indirect
 	github.com/agntcy/dir/server v1.5.0 // indirect
 	github.com/agntcy/dir/utils v1.5.0 // indirect
-	github.com/agntcy/oasf-sdk/pkg v1.0.6-0.20260612113147-8fdda6fd3eb8 // indirect
+	github.com/agntcy/oasf-sdk/pkg v1.0.6-0.20260629100853-cc016581c7f5 // indirect
 	github.com/alecthomas/chroma v0.10.0 // indirect
 	github.com/anchore/go-struct-converter v0.1.0 // indirect
 	github.com/antlr4-go/antlr/v4 v4.13.1 // indirect
