@@ -272,7 +272,7 @@ require (
 	github.com/rbcervilla/redisstore/v9 v9.0.0 // indirect
 	github.com/rcrowley/go-metrics v0.0.0-20250401214520-65e299d6c5c9 // indirect
 	github.com/redis/go-redis/v9 v9.19.0 // indirect
-	github.com/regclient/regclient v0.11.3 // indirect
+	github.com/regclient/regclient v0.11.5 // indirect
 	github.com/rubenv/sql-migrate v1.8.1 // indirect
 	github.com/russross/blackfriday/v2 v2.1.0 // indirect
 	github.com/rust-secure-code/go-rustaudit v0.0.0-20250226111315-e20ec32e963c // indirect
