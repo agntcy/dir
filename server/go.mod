@@ -24,7 +24,7 @@ require (
 	github.com/grpc-ecosystem/go-grpc-middleware/v2 v2.3.3
 	github.com/grpc-ecosystem/go-grpc-prometheus v1.2.0
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.29.0
-	github.com/ipfs/go-datastore v0.9.1
+	github.com/ipfs/go-datastore v0.9.2
 	github.com/lestrrat-go/jwx/v2 v2.1.6
 	github.com/libp2p/go-libp2p v0.48.0
 	github.com/libp2p/go-libp2p-gorpc v0.6.0
@@ -41,7 +41,7 @@ require (
 	google.golang.org/grpc v1.81.1
 	google.golang.org/protobuf v1.36.12-0.20260120151049-f2248ac996af
 	gorm.io/driver/postgres v1.6.0
-	gorm.io/gorm v1.31.1
+	gorm.io/gorm v1.31.2
 	oras.land/oras-go/v2 v2.6.1
 )
 
@@ -66,7 +66,7 @@ require (
 )
 
 require (
-	buf.build/gen/go/agntcy/oasf-sdk/protocolbuffers/go v1.36.11-20260610090943-03acfe1f6b7e.1 // indirect
+	buf.build/gen/go/agntcy/oasf-sdk/protocolbuffers/go v1.36.11-20260612113157-d775d6ffb86b.1 // indirect
 	github.com/AndreasBriese/bbloom v0.0.0-20190825152654-46b345b51c96 // indirect
 	github.com/Microsoft/go-winio v0.6.2 // indirect
 	github.com/benbjohnson/clock v1.3.5 // indirect
@@ -188,9 +188,9 @@ require (
 	github.com/whyrusleeping/go-keyspace v0.0.0-20160322163242-5b898ac5add1 // indirect
 	github.com/wlynxg/anet v0.0.5 // indirect
 	go.opentelemetry.io/auto/sdk v1.2.1 // indirect
-	go.opentelemetry.io/otel v1.43.0 // indirect
-	go.opentelemetry.io/otel/metric v1.43.0 // indirect
-	go.opentelemetry.io/otel/trace v1.43.0 // indirect
+	go.opentelemetry.io/otel v1.44.0 // indirect
+	go.opentelemetry.io/otel/metric v1.44.0 // indirect
+	go.opentelemetry.io/otel/trace v1.44.0 // indirect
 	go.uber.org/dig v1.19.0 // indirect
 	go.uber.org/fx v1.24.0 // indirect
 	go.uber.org/mock v0.6.0 // indirect
