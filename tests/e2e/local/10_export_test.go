@@ -322,12 +322,9 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests for the export command"
 			serverPath := filepath.Join(tempDir, "mcp-server.json")
 			gomega.Expect(os.WriteFile(serverPath, testdata.MCPServer, 0o600)).To(gomega.Succeed())
 
-			enrichCfg := filepath.Join(tempDir, "enricher.json")
-			gomega.Expect(os.WriteFile(enrichCfg, []byte(`{}`), 0o600)).To(gomega.Succeed())
-
 			cidFile := filepath.Join(tempDir, "imported.cids")
 
-			testEnv.CLI.Import("mcp", serverPath).WithArgs("--force", "--enrich-config="+enrichCfg, "--output-cids="+cidFile).ShouldEventuallySucceed(60 * time.Second)
+			testEnv.CLI.Import("mcp", serverPath).WithArgs("--force", "--output-cids="+cidFile).ShouldEventuallySucceed(60 * time.Second)
 
 			cidData, err := os.ReadFile(cidFile)
 			gomega.Expect(err).NotTo(gomega.HaveOccurred())
