@@ -158,6 +158,11 @@ func (s storeCtrl) Lookup(stream storev1.StoreService_LookupServer) error {
 
 		storeLogger.Debug("Record metadata retrieved successfully", "cid", recordRef.GetCid())
 
+		// Increment lookup count. Counter failures are logged but do not fail the lookup.
+		if err := s.db.IncrementLookupCount(recordRef.GetCid()); err != nil {
+			storeLogger.Warn("Failed to increment lookup count", "cid", recordRef.GetCid(), "error", err)
+		}
+
 		// Send RecordMeta back via stream
 		if err := stream.Send(recordMeta); err != nil {
 			return status.Errorf(codes.Internal, "failed to send record metadata: %v", err)
@@ -423,6 +428,11 @@ func (s storeCtrl) pullRecordFromStore(ctx context.Context, recordRef *corev1.Re
 	}
 
 	storeLogger.Debug("Record pulled successfully", "cid", recordRef.GetCid())
+
+	// Increment pull count. Counter failures are logged but do not fail the pull.
+	if err := s.db.IncrementPullCount(recordRef.GetCid()); err != nil {
+		storeLogger.Warn("Failed to increment pull count", "cid", recordRef.GetCid(), "error", err)
+	}
 
 	return record, nil
 }

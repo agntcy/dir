@@ -40,6 +40,7 @@ func (c *searchCtlr) SearchCIDs(req *searchv1.SearchCIDsRequest, srv searchv1.Se
 	filterOptions = append(filterOptions,
 		types.WithLimit(int(req.GetLimit())),
 		types.WithOffset(int(req.GetOffset())),
+		sortModeToOrderBy(req.GetSortMode()),
 	)
 
 	recordCIDs, err := c.db.GetRecordCIDs(filterOptions...)
@@ -67,6 +68,7 @@ func (c *searchCtlr) SearchRecords(req *searchv1.SearchRecordsRequest, srv searc
 	filterOptions = append(filterOptions,
 		types.WithLimit(int(req.GetLimit())),
 		types.WithOffset(int(req.GetOffset())),
+		sortModeToOrderBy(req.GetSortMode()),
 	)
 
 	recordCIDs, err := c.db.GetRecordCIDs(filterOptions...)
@@ -92,4 +94,18 @@ func (c *searchCtlr) SearchRecords(req *searchv1.SearchRecordsRequest, srv searc
 	}
 
 	return nil
+}
+
+// sortModeToOrderBy converts a proto SortMode into a WithOrderBy filter option.
+func sortModeToOrderBy(mode searchv1.SortMode) types.FilterOption {
+	switch mode {
+	case searchv1.SortMode_SORT_MODE_POPULARITY:
+		return types.WithOrderBy(types.RecordOrderClause{Column: "popularity_score", Desc: true})
+	case searchv1.SortMode_SORT_MODE_PROVIDER_COUNT:
+		return types.WithOrderBy(types.RecordOrderClause{Column: "provider_count", Desc: true})
+	case searchv1.SortMode_SORT_MODE_UNSPECIFIED, searchv1.SortMode_SORT_MODE_RECENCY:
+		return types.WithOrderBy()
+	}
+
+	return types.WithOrderBy()
 }

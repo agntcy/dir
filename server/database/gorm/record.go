@@ -17,6 +17,26 @@ import (
 
 var _ coretypes.Record = (*Record)(nil)
 
+// recordSortColumns allow-lists the columns GetRecords may sort by, mapping
+// the logical name to the SQL expression so caller-supplied keys are never
+// interpolated into the query verbatim.
+var recordSortColumns = map[string]string{
+	"created_at":       "records.created_at",
+	"name":             "records.name",
+	"version":          "records.version",
+	"schema_version":   "records.schema_version",
+	"record_cid":       "records.record_cid",
+	"popularity_score": "COALESCE(rum.pull_count, 0) + COALESCE(rum.lookup_count, 0)",
+	"provider_count":   "COALESCE(rum.provider_count, 0)",
+}
+
+// usageMetricsColumns is the subset of recordSortColumns that require a LEFT
+// JOIN on record_usage_metrics.
+var usageMetricsColumns = map[string]bool{
+	"popularity_score": true,
+	"provider_count":   true,
+}
+
 type Record struct {
 	CreatedAt     time.Time
 	UpdatedAt     time.Time
@@ -200,7 +220,13 @@ func (d *DB) GetRecords(opts ...types.FilterOption) ([]coretypes.Record, error) 
 
 	// Apply all filters.
 	query = d.handleFilterOptions(query, cfg)
-	query = query.Order("records.created_at DESC")
+
+	var err error
+
+	query, err = applyRecordOrder(query, cfg)
+	if err != nil {
+		return nil, err
+	}
 
 	// Execute the query.
 	var records []Record
@@ -247,6 +273,13 @@ func (d *DB) GetRecordCIDs(opts ...types.FilterOption) ([]string, error) {
 	// Apply all filters.
 	query = d.handleFilterOptions(query, cfg)
 
+	var err error
+
+	query, err = applyRecordOrder(query, cfg)
+	if err != nil {
+		return nil, fmt.Errorf("failed to apply order: %w", err)
+	}
+
 	// Execute the query to get only CIDs (no preloading needed).
 	var cids []string
 	if err := query.Pluck("record_cid", &cids).Error; err != nil {
@@ -265,6 +298,11 @@ func (d *DB) RemoveRecord(cid string) error {
 		return fmt.Errorf("failed to remove signature verifications: %w", err)
 	}
 
+	// Remove usage metrics
+	if err := d.gormDB.Where("record_cid = ?", cid).Delete(&RecordUsageMetrics{}).Error; err != nil {
+		return fmt.Errorf("failed to remove usage metrics: %w", err)
+	}
+
 	result := d.gormDB.Where("record_cid = ?", cid).Delete(&Record{})
 
 	if result.Error != nil {
@@ -281,6 +319,47 @@ func (d *DB) RemoveRecord(cid string) error {
 	logger.Debug("Removed record from search database", "cid", cid, "rows_affected", result.RowsAffected)
 
 	return nil
+}
+
+// applyRecordOrder appends ORDER BY clauses to query. Automatically adds a
+// LEFT JOIN on record_usage_metrics when a popularity column is requested.
+// Defaults to newest-first when no OrderBy directives are provided.
+// A stable secondary sort (created_at DESC, record_cid ASC) is always appended
+// so pagination is deterministic regardless of the primary sort mode.
+func applyRecordOrder(query *gorm.DB, cfg *types.RecordFilters) (*gorm.DB, error) {
+	if len(cfg.OrderBy) == 0 {
+		return query.Order("records.created_at DESC").Order("records.record_cid ASC"), nil
+	}
+
+	needsUsageJoin := false
+
+	for _, o := range cfg.OrderBy {
+		if usageMetricsColumns[o.Column] {
+			needsUsageJoin = true
+
+			break
+		}
+	}
+
+	if needsUsageJoin {
+		query = query.Joins("LEFT JOIN record_usage_metrics rum ON rum.record_cid = records.record_cid")
+	}
+
+	for _, o := range cfg.OrderBy {
+		col, ok := recordSortColumns[o.Column]
+		if !ok {
+			return nil, fmt.Errorf("unsupported sort column %q", o.Column)
+		}
+
+		dir := "ASC"
+		if o.Desc {
+			dir = "DESC"
+		}
+
+		query = query.Order(fmt.Sprintf("%s %s", col, dir))
+	}
+
+	return query.Order("records.created_at DESC").Order("records.record_cid ASC"), nil
 }
 
 // handleFilterOptions applies the provided filters to the query.
