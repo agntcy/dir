@@ -1,0 +1,59 @@
+# import.config.yaml — reference configuration for `dirctl import --config`.
+#
+# Precedence (low to high) is:
+#   config file < command-line flags
+# so flags commonly varied across runs (--filter, --limit, --dry-run,
+# --output-dir) stay usable and the same file can drive multiple invocations:
+#
+#   dirctl import --config import.config.yaml --filter search=analytics
+#   dirctl import --config import.config.yaml --filter search=devtools --limit 50
+#   dirctl import --config import.config.yaml --dry-run --output-dir ./out
+
+type: mcp-registry            # mcp | mcp-registry | a2a | agent-skill
+url: https://registry.modelcontextprotocol.io/v0.1
+# file_path: ./servers.json   # required when type is mcp | a2a | agent-skill
+
+filters:
+  search: analytics
+limit: 100                    # 0 = no limit
+
+# authors:                    # overrides authors derived from the source
+#   - "ACME Corp"
+
+enricher:
+  tool_host:
+    model: azure:gpt-4o
+    max_steps: 10
+    mcp_servers:
+      dir-mcp-server:
+        command: dirctl
+        args: [mcp, serve]
+        env:
+          OASF_API_VALIDATION_SCHEMA_URL: https://schema.oasf.outshift.com
+          DIRECTORY_CLIENT_AUTH_MODE: insecure
+  # skills_prompt_template: ./prompts/skills.md
+  # domains_prompt_template: ./prompts/domains.md
+  requests_per_minute: 5
+
+  # Skip LLM-based enrichment entirely and tag every imported record with the
+  # static skills/domains below (each entry needs a name and/or numeric id).
+  # When skip_enricher is true, the tool_host above is not required.
+  # skip_enricher: false
+  # skills:
+  #   - name: natural_language_processing/natural_language_generation/text_completion
+  #     id: 10201
+  # domains:
+  #   - name: technology
+  #     id: 1
+
+scanner:
+  enabled: true
+  timeout: 5m
+  cli_path: /usr/local/bin/mcp-scanner
+  fail_on_error: true
+  fail_on_warning: false
+
+output_dir: ./import-out
+dry_run: false
+force: false
+debug: false

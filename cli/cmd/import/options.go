@@ -4,53 +4,25 @@
 package importcmd
 
 import (
-	_ "embed"
-	"encoding/json"
-	"fmt"
-	"os"
-
 	"github.com/agntcy/dir-importer/config"
-	enricherconfig "github.com/agntcy/dir-importer/enricher/config"
-	scannerconfig "github.com/agntcy/dir-importer/scanner/config"
 	signcmd "github.com/agntcy/dir/cli/cmd/sign"
 )
-
-//go:embed enricher.json
-var defaultEnrichConfig []byte
 
 var opts = &options{}
 
 type options struct {
 	config.Config
-	TypeFlag         string
-	Sign             bool
-	OutputCIDFile    string
-	EnrichConfigFile string
-}
-
-// loadEnrichConfig populates the in-memory ToolHost config (model, mcpServers,
-// max-steps).
-func (o *options) loadEnrichConfig() error {
-	data := defaultEnrichConfig
-
-	if o.EnrichConfigFile != "" {
-		fileData, err := os.ReadFile(o.EnrichConfigFile)
-		if err != nil {
-			return fmt.Errorf("enricher config file not found: %w", err)
-		}
-
-		data = fileData
-	}
-
-	if err := json.Unmarshal(data, &o.Enricher.ToolHost); err != nil {
-		return fmt.Errorf("failed to parse enricher config: %w", err)
-	}
-
-	return nil
+	TypeFlag      string
+	Sign          bool
+	OutputCIDFile string
+	ConfigFile    string
 }
 
 func init() {
 	flags := Command.Flags()
+
+	// Config file
+	flags.StringVar(&opts.ConfigFile, "config", "", "Path to a YAML import config file. Values are overridden by command-line flags")
 
 	// File flags
 	flags.StringVar(&opts.FilePath, "file-path", "", "Path to source: JSON file for mcp/a2a, or skill directory for agent-skill")
@@ -60,21 +32,6 @@ func init() {
 	flags.StringVar(&opts.RegistryURL, "url", "", "Registry base URL (required when --type=mcp-registry)")
 	flags.StringToStringVar(&opts.Filters, "filter", nil, "Filters (key=value)")
 	flags.IntVar(&opts.Limit, "limit", 0, "Maximum number of records to import (0 = no limit)")
-	flags.StringArrayVar(&opts.Authors, "author", nil,
-		"OASF record author (repeatable); overrides authors derived from the source")
-
-	// Enrichment flags
-	flags.StringVar(&opts.EnrichConfigFile, "enrich-config", "", "Path to enricher configuration (JSON: model, mcpServers, max-steps); defaults to the built-in config")
-	flags.StringVar(&opts.Enricher.SkillsPromptTemplate, "enrich-skills-prompt", "", "Path to custom skills prompt template file")
-	flags.StringVar(&opts.Enricher.DomainsPromptTemplate, "enrich-domains-prompt", "", "Path to custom domains prompt template file")
-	flags.IntVar(&opts.Enricher.RequestsPerMinute, "enrich-rate-limit", enricherconfig.DefaultRequestsPerMinute, "Maximum LLM API requests per minute (to avoid rate limit errors)")
-
-	// Scanner flags
-	flags.BoolVar(&opts.Scanner.Enabled, "scanner-enabled", scannerconfig.DefaultScannerEnabled, "Run all registered security scanners on each record")
-	flags.DurationVar(&opts.Scanner.Timeout, "scanner-timeout", scannerconfig.DefaultTimeout, "Timeout per record scan")
-	flags.StringVar(&opts.Scanner.CLIPath, "scanner-cli-path", scannerconfig.DefaultCLIPath, "Path to mcp-scanner binary (default: mcp-scanner from PATH)")
-	flags.BoolVar(&opts.Scanner.FailOnError, "scanner-fail-on-error", scannerconfig.DefaultFailOnError, "Do not import records that have error-severity scanner findings")
-	flags.BoolVar(&opts.Scanner.FailOnWarning, "scanner-fail-on-warning", scannerconfig.DefaultFailOnWarning, "Do not import records that have warning-severity scanner findings")
 
 	// Signing flags
 	flags.BoolVar(&opts.Sign, "sign", false, "Sign records after pushing")
@@ -86,6 +43,4 @@ func init() {
 	flags.StringVar(&opts.OutputDir, "output-dir", "", "Directory to write per-record JSON files when --dry-run is set (defaults to ./import-dry-run-<timestamp> in the current working directory)")
 	flags.BoolVar(&opts.Force, "force", false, "Force push even if record already exists")
 	flags.BoolVar(&opts.Debug, "debug", false, "Enable debug output for deduplication and validation failures")
-
-	Command.MarkFlagRequired("type") //nolint:errcheck
 }
