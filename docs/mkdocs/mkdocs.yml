@@ -25,8 +25,7 @@ extra:
     org: AGNTCY
 
   copyright: >
-    © Copyright AGNTCY Contributors.
-    <a href="#__consent">Change cookie settings</a>
+    © 2026, Agntcy, a Series of LF Projects, LLC. All rights reserved.
   analytics:
     provider: google
     property: G-H5NVFB80VS
@@ -157,7 +156,6 @@ theme:
     - content.code.copy
     - content.tabs.link
     - content.tooltips
-    - navigation.footer
     - navigation.indexes
     - navigation.path
     - navigation.sections
