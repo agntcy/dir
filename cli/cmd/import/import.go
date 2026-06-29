@@ -10,7 +10,6 @@ import (
 	"os"
 	"strings"
 
-	"github.com/agntcy/dir-importer/config"
 	"github.com/agntcy/dir-importer/factory"
 	"github.com/agntcy/dir-importer/types"
 	signcmd "github.com/agntcy/dir/cli/cmd/sign"
@@ -31,41 +30,16 @@ Import kinds (--type):
   a2a            Local JSON: one A2A AgentCard or an array of cards (--file-path)
   agent-skill    Local directory: one Agent Skills folder containing SKILL.md (--file-path); see https://agentskills.io/specification
 
-Examples (MCP registry):
+Examples:
+  dirctl import --config import.config.yaml
+  dirctl import --config import.config.yaml --filter=search=analytics --dry-run --output-dir=./out
+
   dirctl import --type=mcp-registry --url=https://registry.modelcontextprotocol.io/v0.1
-  dirctl import --type=mcp-registry --url=https://registry.modelcontextprotocol.io/v0.1 --filter=search=analytics --limit=50
-  dirctl import --type=mcp-registry --url=https://registry.modelcontextprotocol.io/v0.1 --force --debug
-
-Examples (local MCP JSON file):
   dirctl import --type=mcp --file-path=./servers.json
-  dirctl import --type=mcp --file-path=./server.json --force --debug
-
-Examples (local A2A AgentCard JSON):
   dirctl import --type=a2a --file-path=./agent.json
-  dirctl import --type=a2a --file-path=./agents.json --dry-run
-
-Examples (Agent Skill directory):
   dirctl import --type=agent-skill --file-path=./my-skill
-  dirctl import --type=agent-skill --file-path=./my-skill --dry-run
-  dirctl import --type=agent-skill --file-path=./skills --author="ACME Corp" --author="Example Team"
 
-Preview and output:
-  dirctl import --type=mcp-registry --url=https://registry.modelcontextprotocol.io/v0.1 --dry-run
-  dirctl import --type=mcp-registry --url=https://registry.modelcontextprotocol.io/v0.1 --dry-run --output-dir=./out
-  dirctl import --type=mcp-registry --url=https://registry.modelcontextprotocol.io/v0.1 --output-cids=./imported.cids
-
-Enrichment (LLM):
-  dirctl import --type=mcp --file-path=./server.json --enrich-config=./enricher.json
-  dirctl import --type=mcp-registry --url=https://registry.modelcontextprotocol.io/v0.1 --enrich-skills-prompt=./skills.md --enrich-domains-prompt=./domains.md --enrich-rate-limit=5
-
-Scanner (mcp-scanner):
-  dirctl import --type=mcp-registry --url=https://registry.modelcontextprotocol.io/v0.1 --scanner-enabled --scanner-timeout=5m --scanner-cli-path=/usr/local/bin/mcp-scanner
-  dirctl import --type=mcp-registry --url=https://registry.modelcontextprotocol.io/v0.1 --scanner-enabled --scanner-fail-on-error --scanner-fail-on-warning
-
-Signing (after push; same flags as dirctl sign):
   dirctl import --type=mcp-registry --url=https://registry.modelcontextprotocol.io/v0.1 --sign --key=./cosign.key
-  dirctl import --type=mcp --file-path=./server.json --sign --key=env://COSIGN_PRIVATE_KEY --fulcio-url=https://fulcio.sigstore.dev --rekor-url=https://rekor.sigstore.dev --timestamp-url=https://timestamp.sigstore.dev
-  dirctl import --type=mcp-registry --url=https://registry.modelcontextprotocol.io/v0.1 --sign --key=./cosign.key --skip-tlog --oidc-token="$OIDC_TOKEN"
 `,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		return runImport(cmd)
@@ -78,16 +52,14 @@ func runImport(cmd *cobra.Command) error {
 		return errors.New("failed to get client from context")
 	}
 
-	opts.Type = config.ImportType(opts.TypeFlag)
+	if err := opts.loadConfig(cmd.Flags()); err != nil {
+		return fmt.Errorf("invalid configuration: %w", err)
+	}
 
 	if opts.Sign {
 		opts.SignFunc = func(ctx context.Context, cid string) error {
 			return signcmd.Sign(ctx, c, cid)
 		}
-	}
-
-	if err := opts.loadEnrichConfig(); err != nil {
-		return fmt.Errorf("invalid enricher configuration: %w", err)
 	}
 
 	if err := opts.Validate(); err != nil {

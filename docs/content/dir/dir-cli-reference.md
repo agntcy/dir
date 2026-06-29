@@ -548,10 +548,10 @@ Fetch and import records from registries or local sources.
 
 | Flag | Environment Variable | Description | Required | Default |
 |------|---------------------|-------------|----------|---------|
-| `--type` | - | Import kind (`mcp-registry`, `mcp`, `a2a`, `agent-skill`) | Yes | - |
+| `--config` | - | Path to a YAML import config file (enricher, scanner, authors, and more); values are overridden by command-line flags | No | - |
+| `--type` | - | Import kind (`mcp-registry`, `mcp`, `a2a`, `agent-skill`) | No | - |
 | `--url` | - | Registry base URL (required when `--type=mcp-registry`) | No | - |
 | `--file-path` | - | Path to local JSON file or skill directory | No | - |
-| `--author` | - | OASF record author (repeatable; overrides source-derived authors) | No | - |
 | `--output-cids` | - | Write imported CIDs to a file (one per line) | No | - |
 | `--filter` | - | Registry-specific filters (key=value, repeatable) | No | - |
 | `--limit` | - | Maximum records to import (0 = no limit) | No | 0 |
@@ -559,15 +559,6 @@ Fetch and import records from registries or local sources.
 | `--output-dir` | - | Directory to write per-record JSON files when `--dry-run` is set. Each record is written as `<cid>.record.json` | No | `./import-dry-run-<timestamp>` in the current working directory |
 | `--debug` | - | Enable debug output (shows MCP source and OASF record for failures) | No | false |
 | `--force` | - | Force reimport of existing records (skip deduplication) | No | false |
-| `--enrich-config` | - | Path to enricher configuration JSON (model, mcpServers, max-steps) | No | Built-in embedded config |
-| `--scanner-enabled` | - | Run security scanners on each record | No | `false` |
-| `--scanner-timeout` | - | Timeout per record scan | No | `5m` |
-| `--scanner-cli-path` | - | Path to `mcp-scanner` binary | No | `mcp-scanner` from `PATH` |
-| `--scanner-fail-on-error` | - | Skip records with error-severity findings | No | `false` |
-| `--scanner-fail-on-warning` | - | Skip records with warning-severity findings | No | `false` |
-| `--enrich-skills-prompt` | - | Optional: path to custom skills prompt template or inline prompt | No | "" (uses default) |
-| `--enrich-domains-prompt` | - | Optional: path to custom domains prompt template or inline prompt | No | "" (uses default) |
-| `--enrich-rate-limit` | - | Maximum LLM API requests per minute (to avoid rate limit errors) | No | 10 |
 | `--sign` | - | Sign records after pushing (uses OIDC by default) | No | false |
 | `--key` | - | Path to private key file for signing (requires `--sign`) | No | - |
 | `--oidc-token` | - | OIDC token for non-interactive signing (requires `--sign`) | No | - |
@@ -637,10 +628,6 @@ Fetch and import records from registries or local sources.
       --sign \
       --key=/path/to/cosign.key
 
-    # Import with rate limiting for LLM API calls
-    dirctl import --type=mcp-registry \
-      --url=https://registry.modelcontextprotocol.io/v0.1 \
-      --enrich-rate-limit=5
     ```
 
 **MCP Registry Filters:**
@@ -653,78 +640,68 @@ For the Model Context Protocol registry, available filters include:
 
 See the [MCP Registry API docs](https://registry.modelcontextprotocol.io/docs#/operations/list-servers#Query-Parameters) for the complete list of supported filters.
 
-### LLM-based Enrichment (Mandatory)
+### Enrichment
 
-**Enrichment is mandatory** — the import command automatically enriches MCP server records using LLM models to map them to appropriate OASF skills and domains. Records from the oasf-sdk translator are incomplete and require enrichment to be valid. The enrichment pipeline is built into `dirctl`: it runs an LLM with tool-calling support against the OASF schema tools exposed by `dirctl mcp serve`, so no external tooling is required.
+By default, the import command automatically enriches records using an LLM to map them to appropriate OASF skills and domains. The enrichment pipeline is built into `dirctl`: it runs an LLM with tool-calling support against the OASF schema tools exposed by `dirctl mcp serve`, so no external tooling is required. LLM enrichment can be skipped by specifying skills and domains explicitly in the config file (see **Skip enrichment** below).
 
 **Requirements:**
 
 - `dirctl` binary (includes the built-in MCP server with `agntcy_oasf_get_schema_skills` and `agntcy_oasf_get_schema_domains` tools)
 - An LLM model with tool-calling support (GPT-4o, Claude, or compatible Ollama models)
-- The enricher configuration must include a `dir-mcp-server` entry that runs `dirctl mcp serve`. This MCP server provides the schema tools needed for enrichment. A built-in config is used by default; override with `--enrich-config`.
 
 **How it works:**
 
 1. The enricher starts an MCP server using `dirctl mcp serve`
 2. The LLM uses the `agntcy_oasf_get_schema_skills` tool to browse available OASF skills
 3. The LLM uses the `agntcy_oasf_get_schema_domains` tool to browse available OASF domains
-4. Based on the MCP server description and capabilities, the LLM selects appropriate skills and domains
-5. Selected skills and domains replace the defaults in the imported records
+4. Based on the record description and capabilities, the LLM selects appropriate skills and domains
 
-**Customizing the enricher:**
+**Configuration via `--config`:**
 
-To customize the LLM host, create a configuration file and pass it with `--enrich-config`:
+Enrichment is configured under the `enricher` key in the `--config` YAML file. A built-in default (azure:gpt-4o, 2 RPM) is used when no config file is provided. The YAML below shows all available options:
 
-```json
-{
-  "mcpServers": {
-    "dir-mcp-server": {
-      "command": "dirctl",
-      "args": ["mcp", "serve"],
-      "env": {
-        "OASF_API_VALIDATION_SCHEMA_URL": "https://schema.oasf.outshift.com"
-      }
-    }
-  },
-  "model": "azure:gpt-4o",
-  "max-tokens": 4096,
-  "max-steps": 20
-}
+```yaml
+enricher:
+  requests_per_minute: 5          # LLM API calls per minute (rate limit)
+  tool_host:
+    model: azure:gpt-4o
+    max_steps: 10
+    mcp_servers:
+      dir-mcp-server:
+        command: dirctl
+        args: [mcp, serve]
+        env:
+          OASF_API_VALIDATION_SCHEMA_URL: https://schema.oasf.outshift.com
+          DIRECTORY_CLIENT_AUTH_MODE: insecure
+  skills_prompt_template: ./prompts/skills.md    # optional custom prompt
+  domains_prompt_template: ./prompts/domains.md  # optional custom prompt
+```
+
+See `cli/cmd/import/import.config.yaml` in the repository for a fully annotated reference configuration.
+
+**Skip enrichment** (static taxonomy):
+
+To bypass LLM enrichment and tag every record with fixed skills and domains, set `skip_enricher: true` — no `tool_host` or LLM credentials are required:
+
+```yaml
+enricher:
+  skip_enricher: true
+  skills:
+    - name: natural_language_processing/text_completion
+      id: 10201
+  domains:
+    - name: technology
+      id: 1
 ```
 
 **Recommended LLM providers:**
 
-- `azure:gpt-4o` - Azure OpenAI GPT-4o (recommended for speed and accuracy)
-- `ollama:qwen3:8b` - Local Qwen3 via Ollama
+- `azure:gpt-4o` — Azure OpenAI GPT-4o (recommended for speed and accuracy)
+- `ollama:qwen3:8b` — Local Qwen3 via Ollama
 
 **Environment variables for LLM providers:**
 
 - Azure OpenAI: `AZURE_OPENAI_API_KEY`, `AZURE_OPENAI_ENDPOINT`, `AZURE_OPENAI_DEPLOYMENT`
-
-**Customizing Enrichment Prompts:**
-
-The enricher uses separate default prompt templates for skills and domains. You can customize these prompts for specific use cases:
-
-- **Skills**: Use default (omit `--enrich-skills-prompt`), or `--enrich-skills-prompt=/path/to/custom-skills-prompt.md`, or `--enrich-skills-prompt="Your custom prompt text..."`
-- **Domains**: Use default (omit `--enrich-domains-prompt`), or `--enrich-domains-prompt=/path/to/custom-domains-prompt.md`, or `--enrich-domains-prompt="Your custom prompt text..."`
-
-The default prompt templates are available at `importer/enricher/enricher.skills.prompt.md` and `importer/enricher/enricher.domains.prompt.md`.
-
-??? example "Import with custom enrichment"
-
-    ```bash
-    # Import with custom enricher configuration
-    dirctl import --type=mcp-registry \
-      --url=https://registry.modelcontextprotocol.io/v0.1 \
-      --enrich-config=/path/to/custom-enricher.json
-
-    # Import with custom prompt templates
-    dirctl import --type=mcp-registry \
-      --url=https://registry.modelcontextprotocol.io/v0.1 \
-      --enrich-skills-prompt=/path/to/custom-skills-prompt.md \
-      --enrich-domains-prompt=/path/to/custom-domains-prompt.md \
-      --debug
-    ```
 
 ### Dry Run Output Directory
 
@@ -767,22 +744,6 @@ dirctl import --type=mcp-registry --url=https://registry.modelcontextprotocol.io
 
 # Sign with a private key
 dirctl import --type=mcp-registry --url=https://registry.modelcontextprotocol.io/v0.1 --sign --key=/path/to/cosign.key
-```
-
-### Rate Limiting for LLM API Calls
-
-When importing large batches of records, the enrichment process makes LLM API calls for each record. To avoid hitting rate limits from LLM providers, use the `--enrich-rate-limit` flag:
-
-```bash
-# Import with reduced rate limit (5 requests per minute)
-dirctl import --type=mcp-registry \
-  --url=https://registry.modelcontextprotocol.io/v0.1 \
-  --enrich-rate-limit=5
-
-# Import with higher rate limit for providers with generous limits
-dirctl import --type=mcp-registry \
-  --url=https://registry.modelcontextprotocol.io/v0.1 \
-  --enrich-rate-limit=30
 ```
 
 ## Export Operations

@@ -30,16 +30,20 @@ available:
 - **Basic translation** uses [OASF-SDK basic translation](https://docs.agntcy.org/oasf/translation/)
   with rule-based mapping. It is fast and deterministic but produces a record without any
   skills or domains, requiring manual or LLM-based enrichment afterwards.
+- **Static enrichment** assigns fixed skills and domains to every record by setting
+  `skip_enricher: true` in the `--config` file and listing the taxonomy entries explicitly.
+  No LLM or API credentials are required.
 - **Local LLM enrichment** runs an LLM locally for intelligent skill and domain mapping,
   requiring a local LLM runtime.
 - **Remote LLM enrichment** uses external LLM services for skill and domain mapping,
   requiring API credentials.
 
-Both LLM methods require access to an LLM with tool-calling support and the corresponding
-provider credentials (for example, Azure OpenAI, or a local model via Ollama). The enrichment
-pipeline is built into `dirctl` — it runs the OASF schema tools exposed by `dirctl mcp serve`
-against the model using a built-in configuration that can be overridden with `--enrich-config`.
-See [CLI Reference — LLM-based Enrichment](dir-cli-reference.md#llm-based-enrichment-mandatory)
+LLM enrichment runs automatically by default (azure:gpt-4o, 2 RPM) and can be customised or
+skipped entirely via the `--config` YAML file. Both LLM methods require access to an LLM with
+tool-calling support and the corresponding provider credentials (for example, Azure OpenAI, or
+a local model via Ollama). The enrichment pipeline is built into `dirctl` — it runs the OASF
+schema tools exposed by `dirctl mcp serve` against the model.
+See [CLI Reference — Enrichment](dir-cli-reference.md#enrichment)
 for provider setup and configuration details.
 
 ### Supported import kinds

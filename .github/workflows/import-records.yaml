@@ -213,12 +213,33 @@ jobs:
         if: ${{ env.SCANNER_ENABLED == 'true' }}
         run: chmod +x .bin/mcp-scanner
 
-      - name: Create Enricher Config
+      - name: Create Import Config
         env:
           DIRCTL_PATH: ${{ steps.setup-dirctl.outputs.dirctl_path }}
         run: |
-          sed "s|__DIRCTL_PATH__|${DIRCTL_PATH}|g" \
-            .github/workflows/scripts/enricher_ci.json.template > enricher_ci.json
+          cat > import_ci.yaml << EOF
+          type: mcp-registry
+          url: https://registry.modelcontextprotocol.io/v0.1
+
+          enricher:
+            requests_per_minute: ${RATE_LIMIT}
+            tool_host:
+              model: azure:gpt-4o
+              max_steps: 10
+              mcp_servers:
+                dir-mcp-server:
+                  command: ${DIRCTL_PATH}
+                  args: [mcp, serve]
+                  env:
+                    OASF_API_VALIDATION_SCHEMA_URL: https://schema.oasf.outshift.com
+                    DIRECTORY_CLIENT_AUTH_MODE: insecure
+
+          scanner:
+            enabled: ${SCANNER_ENABLED}
+            cli_path: ${GITHUB_WORKSPACE}/.bin/mcp-scanner
+            timeout: 5m
+            fail_on_error: true
+          EOF
 
       - name: Fetch Directory OIDC token
         id: oidc-dir-import
@@ -241,7 +262,7 @@ jobs:
 
           CIDS_FILE="imported-cids-${{ matrix.entry.index }}.txt"
           DRY_RUN_DIR="dry-run-output-mcp-${{ matrix.entry.index }}"
-          CMD=("${DIRCTL_PATH}" import --type=mcp-registry --url=https://registry.modelcontextprotocol.io/v0.1 --server-addr="${{ env.SERVER_ADDRESS }}" --auth-mode=oidc "--auth-token=${DIR_AUTH_TOKEN}" --enrich-config=enricher_ci.json --enrich-rate-limit="${{ env.RATE_LIMIT }}")
+          CMD=("${DIRCTL_PATH}" import --config=import_ci.yaml --server-addr="${{ env.SERVER_ADDRESS }}" --auth-mode=oidc "--auth-token=${DIR_AUTH_TOKEN}")
 
           if [[ "${{ env.DRY_RUN }}" == "true" ]]; then
              CMD+=("--dry-run" "--output-dir=$DRY_RUN_DIR")
@@ -251,10 +272,6 @@ jobs:
 
           if [[ "${{ env.FORCE }}" == "true" ]]; then
              CMD+=("--force")
-          fi
-
-          if [[ "${{ env.SCANNER_ENABLED }}" == "true" ]]; then
-             CMD+=("--scanner-enabled" "--scanner-cli-path=${GITHUB_WORKSPACE}/.bin/mcp-scanner")
           fi
 
           if [ -n "${{ matrix.entry.search }}" ]; then
@@ -417,12 +434,31 @@ jobs:
           echo "Synced $(git -C "$REPO_DIR" rev-parse --short HEAD) from origin/main"
           echo "repo_dir=$REPO_DIR" >> $GITHUB_OUTPUT
 
-      - name: Create Enricher Config
+      - name: Create Import Config
         env:
           DIRCTL_PATH: ${{ steps.setup-dirctl.outputs.dirctl_path }}
+          AUTHORS_JSON: ${{ toJSON(matrix.entry.authors) }}
         run: |
-          sed "s|__DIRCTL_PATH__|${DIRCTL_PATH}|g" \
-            .github/workflows/scripts/enricher_ci.json.template > enricher_ci.json
+          AUTHORS_YAML=$(echo "$AUTHORS_JSON" | jq -r '.[] | "- " + .')
+          cat > import_ci.yaml << EOF
+          type: agent-skill
+
+          authors:
+          ${AUTHORS_YAML}
+
+          enricher:
+            requests_per_minute: ${RATE_LIMIT}
+            tool_host:
+              model: azure:gpt-4o
+              max_steps: 10
+              mcp_servers:
+                dir-mcp-server:
+                  command: ${DIRCTL_PATH}
+                  args: [mcp, serve]
+                  env:
+                    OASF_API_VALIDATION_SCHEMA_URL: https://schema.oasf.outshift.com
+                    DIRECTORY_CLIENT_AUTH_MODE: insecure
+          EOF
 
       - name: Fetch Directory OIDC token
         id: oidc-dir-import
@@ -440,18 +476,12 @@ jobs:
           AZURE_OPENAI_API_VERSION: "2024-10-21"
           DIRCTL_PATH: dirctl
           DIR_AUTH_TOKEN: ${{ steps.oidc-dir-import.outputs.token }}
-          AUTHORS_JSON: ${{ toJSON(matrix.entry.authors) }}
         run: |
           echo "--- Processing Agent Skill Repo $((${{ matrix.entry.index }} + 1)): ${{ matrix.entry.repo }} ---"
 
           CIDS_FILE="imported-cids-${{ matrix.entry.index }}.txt"
           DRY_RUN_DIR="dry-run-output-agent-skills-${{ matrix.entry.index }}"
-          CMD=("${DIRCTL_PATH}" import --type=agent-skill --file-path="${{ steps.sync-repo.outputs.repo_dir }}" --server-addr="${{ env.SERVER_ADDRESS }}" --auth-mode=oidc "--auth-token=${DIR_AUTH_TOKEN}" --enrich-config=enricher_ci.json --enrich-rate-limit="${{ env.RATE_LIMIT }}")
-
-          while IFS= read -r AUTHOR; do
-            [ -z "$AUTHOR" ] && continue
-            CMD+=("--author=${AUTHOR}")
-          done < <(echo "$AUTHORS_JSON" | jq -r '.[]')
+          CMD=("${DIRCTL_PATH}" import --config=import_ci.yaml --file-path="${{ steps.sync-repo.outputs.repo_dir }}" --server-addr="${{ env.SERVER_ADDRESS }}" --auth-mode=oidc "--auth-token=${DIR_AUTH_TOKEN}")
 
           if [[ "${{ env.DRY_RUN }}" == "true" ]]; then
              CMD+=("--dry-run" "--output-dir=$DRY_RUN_DIR")

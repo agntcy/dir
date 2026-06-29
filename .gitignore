@@ -76,3 +76,4 @@ gui/.env
 
 # Test environment logs
 tests/**/*.log
+CLAUDE.md
