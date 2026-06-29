@@ -74,6 +74,18 @@ func TestBatchFileNameFallsBackToIndex(t *testing.T) {
 	assert.Equal(t, "record_3", BatchFileName(rec("", ""), 3, seen, false))
 }
 
+func TestBatchFileNameDisambiguatesSanitizedCollisionsWithoutAllVersions(t *testing.T) {
+	seen := map[string]int{}
+
+	// Distinct names that sanitize to the same base must not overwrite each other.
+	first := BatchFileName(rec("a/b", "1.0.0"), 0, seen, false)
+	second := BatchFileName(rec("a-b", "2.0.0"), 1, seen, false)
+
+	assert.Equal(t, "a-b", first)
+	assert.Equal(t, "a-b-1", second)
+	assert.NotEqual(t, first, second)
+}
+
 func TestBatchFileNameDeduplicatesCollisions(t *testing.T) {
 	seen := map[string]int{}
 

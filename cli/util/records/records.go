@@ -115,8 +115,10 @@ func LatestByName(records []*corev1.Record) []*corev1.Record {
 }
 
 // BatchFileName derives a stable, filesystem-safe base name for a record. When
-// allVersions is set the version is appended and collisions are suffixed using
-// the seen map (which the caller threads across records).
+// allVersions is set the version is appended to the base. Filename collisions
+// are always disambiguated via the seen map (which the caller threads across
+// records), so distinct names that sanitize to the same base — or repeated
+// name+version pairs — never overwrite one another.
 func BatchFileName(record *corev1.Record, index int, seen map[string]int, allVersions bool) string {
 	name := record.GetName()
 	if name == "" {
@@ -129,13 +131,13 @@ func BatchFileName(record *corev1.Record, index int, seen map[string]int, allVer
 		if version := record.GetVersion(); version != "" {
 			base += "-" + SanitizeName(version)
 		}
+	}
 
-		count := seen[base]
-		seen[base] = count + 1
+	count := seen[base]
+	seen[base] = count + 1
 
-		if count > 0 {
-			base = fmt.Sprintf("%s-%d", base, count)
-		}
+	if count > 0 {
+		base = fmt.Sprintf("%s-%d", base, count)
 	}
 
 	return base
