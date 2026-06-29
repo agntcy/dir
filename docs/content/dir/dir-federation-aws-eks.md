@@ -367,16 +367,14 @@ This guide does not try to provision the AWS infrastructure from zero in the mai
           enabled: true
           enforcer_policy_file_path: "/etc/agntcy/dir/authz_policies.csv"
         store:
-          provider: "oci"
-          oci:
-            # Use the external address, not the internal .svc.cluster.local name.
-            # The apiserver shares this address with remote peers via the
-            # RequestRegistryCredentials RPC so they can pull records during sync.
-            registry_address: "${DIR_ZOT_HOST}"
-            auth_config:
-              insecure: "false"
-              username: "admin"
-              password: "${DIR_OCI_ADMIN_PASSWORD}"
+          # Use the external address, not the internal .svc.cluster.local name.
+          # The apiserver shares this address with remote peers via the
+          # RequestRegistryCredentials RPC so they can pull records during sync.
+          registry_address: "${DIR_ZOT_HOST}"
+          auth_config:
+            insecure: "false"
+            username: "admin"
+            password: "${DIR_OCI_ADMIN_PASSWORD}"
         routing:
           listen_address: "/ip4/0.0.0.0/tcp/5555"
           key_path: /etc/routing/node.privkey
