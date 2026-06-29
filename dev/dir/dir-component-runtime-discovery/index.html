@@ -1045,10 +1045,10 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#discovery-runtimediscovery" class="md-nav__link">
+  <a href="#discovery-discovery" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Discovery (runtime/discovery/)
+        Discovery (discovery/)
       
     </span>
   </a>
@@ -1056,10 +1056,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#server-runtimeserver" class="md-nav__link">
+  <a href="#server-server" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Server (runtime/server/)
+        Server (server/)
       
     </span>
   </a>
@@ -2163,10 +2163,10 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#discovery-runtimediscovery" class="md-nav__link">
+  <a href="#discovery-discovery" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Discovery (runtime/discovery/)
+        Discovery (discovery/)
       
     </span>
   </a>
@@ -2174,10 +2174,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#server-runtimeserver" class="md-nav__link">
+  <a href="#server-server" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Server (runtime/server/)
+        Server (server/)
       
     </span>
   </a>
@@ -2576,12 +2576,12 @@ In addition, it also resolves workloads using various resolvers (A2A, OASF) to e
 <h2 id="architecture">Architecture</h2>
 <p>The system is split into two independent components:</p>
 <pre class="mermaid"><code>flowchart LR
- subgraph Discovery["Discovery (runtime/discovery)"]
+ subgraph Discovery["Discovery (discovery/)"]
         RA["Runtime Adapters&lt;br&gt;• Docker&lt;br&gt;• Kubernetes"]
         RES["Resolvers&lt;br&gt;• A2A&lt;br&gt;• OASF"]
         SW["Store Writer"]
   end
- subgraph Server["Server (runtime/server)"]
+ subgraph Server["Server (server/)"]
         SPACE[" "]
         API["gRPC API&lt;br&gt;/ListWorkloads"]
   end
@@ -2594,7 +2594,7 @@ In addition, it also resolves workloads using various resolvers (A2A, OASF) to e
 
     style SPACE fill:none,stroke:none</code></pre>
 <h2 id="components">Components</h2>
-<h3 id="discovery-runtimediscovery">Discovery (<code>runtime/discovery/</code>)</h3>
+<h3 id="discovery-discovery">Discovery (<code>discovery/</code>)</h3>
 <p>The discovery component is responsible for:</p>
 <ul>
 <li>
@@ -2624,7 +2624,7 @@ In Kubernetes environments, CRDs can be used for a more native experience to ens
     n1["Runtime Discovery"] --&gt; n3["Runtime Server (for querying workloads via gRPC)"] &amp; n4["CRD (for querying workloads via Kubernetes API)"]
 
     n1@{ shape: rect}</code></pre>
-<h3 id="server-runtimeserver">Server (<code>runtime/server/</code>)</h3>
+<h3 id="server-server">Server (<code>server/</code>)</h3>
 <p>The server component provides a gRPC API for querying discovered workloads.</p>
 <h2 id="example-setup">Example Setup</h2>
 <h3 id="build-container-images">Build Container Images</h3>
@@ -2632,10 +2632,10 @@ In Kubernetes environments, CRDs can be used for a more native experience to ens
 </code></pre></div>
 <h3 id="docker-compose">Docker Compose</h3>
 <div class="highlight"><pre><span></span><code><span class="c1"># Deploy the stack</span>
-docker<span class="w"> </span>compose<span class="w"> </span>-f<span class="w"> </span>runtime/install/docker/docker-compose.yml<span class="w"> </span>up<span class="w"> </span>-d
+docker<span class="w"> </span>compose<span class="w"> </span>-f<span class="w"> </span>install/docker/docker-compose.yml<span class="w"> </span>up<span class="w"> </span>-d
 
 <span class="c1"># Deploy example workloads</span>
-docker<span class="w"> </span>compose<span class="w"> </span>-f<span class="w"> </span>runtime/install/examples/docker-compose.yml<span class="w"> </span>up<span class="w"> </span>-d
+docker<span class="w"> </span>compose<span class="w"> </span>-f<span class="w"> </span>install/examples/docker-compose.yml<span class="w"> </span>up<span class="w"> </span>-d
 
 <span class="c1"># Add discovery to all networks (required for resolvers to work)</span>
 docker<span class="w"> </span>network<span class="w"> </span>connect<span class="w"> </span>examples_team-a<span class="w"> </span>runtime-discovery
@@ -2646,8 +2646,8 @@ docker<span class="w"> </span>restart<span class="w"> </span>runtime-discovery
 grpcurl<span class="w"> </span>-plaintext<span class="w"> </span>localhost:8080<span class="w"> </span>agntcy.dir.runtime.v1.DiscoveryService/ListWorkloads
 
 <span class="c1"># Cleanup</span>
-docker<span class="w"> </span>compose<span class="w"> </span>-f<span class="w"> </span>runtime/install/docker/docker-compose.yml<span class="w"> </span>down
-docker<span class="w"> </span>compose<span class="w"> </span>-f<span class="w"> </span>runtime/install/examples/docker-compose.yml<span class="w"> </span>down
+docker<span class="w"> </span>compose<span class="w"> </span>-f<span class="w"> </span>install/docker/docker-compose.yml<span class="w"> </span>down
+docker<span class="w"> </span>compose<span class="w"> </span>-f<span class="w"> </span>install/examples/docker-compose.yml<span class="w"> </span>down
 </code></pre></div>
 <h3 id="kubernetes">Kubernetes</h3>
 <p>The Helm chart supports both CRD and etcd storage backends.</p>
@@ -2660,11 +2660,11 @@ kind<span class="w"> </span>load<span class="w"> </span>docker-image<span class=
 kind<span class="w"> </span>load<span class="w"> </span>docker-image<span class="w"> </span>ghcr.io/agntcy/dir-runtime-server:latest<span class="w"> </span>--name<span class="w"> </span>runtime
 </code></pre></div>
 <h4 id="deploy-example-workloads">Deploy Example Workloads</h4>
-<div class="highlight"><pre><span></span><code>kubectl<span class="w"> </span>apply<span class="w"> </span>-f<span class="w"> </span>runtime/install/examples/k8s.workloads.yaml
+<div class="highlight"><pre><span></span><code>kubectl<span class="w"> </span>apply<span class="w"> </span>-f<span class="w"> </span>install/examples/k8s.workloads.yaml
 </code></pre></div>
 <h4 id="deploy-with-crd-storage">Deploy with CRD Storage</h4>
 <div class="highlight"><pre><span></span><code><span class="c1"># Install the chart with CRD storage (default)</span>
-helm<span class="w"> </span>install<span class="w"> </span>runtime<span class="w"> </span>runtime/install/chart/
+helm<span class="w"> </span>install<span class="w"> </span>runtime<span class="w"> </span>install/chart/
 
 <span class="c1"># Wait for pods</span>
 kubectl<span class="w"> </span><span class="nb">wait</span><span class="w"> </span>--for<span class="o">=</span><span class="nv">condition</span><span class="o">=</span>ready<span class="w"> </span>pod<span class="w"> </span>-l<span class="w"> </span>app.kubernetes.io/component<span class="o">=</span>discovery<span class="w"> </span>--timeout<span class="o">=</span>60s
@@ -2679,7 +2679,7 @@ kubectl<span class="w"> </span>get<span class="w"> </span>dw
 </code></pre></div>
 <h4 id="deploy-with-etcd-storage">Deploy with etcd Storage</h4>
 <div class="highlight"><pre><span></span><code><span class="c1"># Install the chart with etcd storage</span>
-helm<span class="w"> </span>install<span class="w"> </span>runtime<span class="w"> </span>runtime/install/chart/<span class="w"> </span><span class="se">\</span>
+helm<span class="w"> </span>install<span class="w"> </span>runtime<span class="w"> </span>install/chart/<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--set<span class="w"> </span>etcd.enabled<span class="o">=</span><span class="nb">true</span><span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--set<span class="w"> </span>discovery.config.store.type<span class="o">=</span>etcd<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--set<span class="w"> </span>server.config.store.type<span class="o">=</span>etcd
@@ -2935,7 +2935,7 @@ They provide additional information about the workload's capabilities.</p>
 <h4 id="discovery-oasf-resolver">Discovery OASF Resolver</h4>
 <p>The OASF resolver requires Directory client configuration via environment variables.
 These are the same as those used by the Directory client library, e.g. <code>DIRECTORY_CLIENT_SERVER_ADDRESS</code>.
-Refer to the <a href="../dir-sdk/#go-sdk">Directory Go SDK</a> for all available options.</p>
+Refer to the <a href="https://github.com/agntcy/dir/tree/main/client">Directory Client documentation</a> for all available options.</p>
 <p>When a workload has the configured OASF resolver label, the resolver attempts to fetch the corresponding record from Directory and validate its signature before attaching it to the workload.</p>
 <h3 id="server-component">Server Component</h3>
 <table>
