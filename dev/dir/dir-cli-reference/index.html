@@ -3782,6 +3782,51 @@ dirctl<span class="w"> </span>pull<span class="w"> </span>cisco.com/agent:v1.0.0
 dirctl<span class="w"> </span>pull<span class="w"> </span>&lt;cid&gt;<span class="w"> </span>--signature<span class="w"> </span>--public-key
 </code></pre></div>
 </details>
+<p><strong>Output and batch retrieval:</strong></p>
+<p><code>pull</code> defaults to <code>--output json</code> (records are primarily machine-consumed); <code>-o human|jsonl|raw</code> are also available. Use <code>--output-file</code> to write a single record's JSON to a file, or <code>--output-dir</code> with search filters to pull many records at once (one <code>&lt;name&gt;.json</code> per record).</p>
+<table>
+<thead>
+<tr>
+<th>Flag</th>
+<th>Description</th>
+<th>Default</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>--output-file</code></td>
+<td>Write the record JSON to a file instead of stdout (single record)</td>
+<td>-</td>
+</tr>
+<tr>
+<td><code>--output-dir</code></td>
+<td>Directory for batch pull from search results (one JSON file per record)</td>
+<td>-</td>
+</tr>
+<tr>
+<td><code>--limit</code></td>
+<td>Maximum number of records to pull in batch mode</td>
+<td><code>100</code></td>
+</tr>
+<tr>
+<td><code>--all-versions</code></td>
+<td>Keep all versions in batch pull (default: latest per name wins)</td>
+<td><code>false</code></td>
+</tr>
+</tbody>
+</table>
+<p>When <code>--output-dir</code> is used, at least one search filter is required. All standard search filters are available (<code>--name</code>, <code>--version</code>, <code>--module</code>, <code>--skill</code>, <code>--author</code>, etc.). A positional reference and <code>--output-dir</code> are mutually exclusive.</p>
+<details class="example">
+<summary>Example</summary>
+<div class="highlight"><pre><span></span><code><span class="c1"># Single record JSON to stdout (default) or a file</span>
+dirctl<span class="w"> </span>pull<span class="w"> </span>cisco.com/agent
+dirctl<span class="w"> </span>pull<span class="w"> </span>cisco.com/agent<span class="w"> </span>--output-file<span class="o">=</span>./agent.json
+
+<span class="c1"># Batch: pull every matching record into a directory</span>
+dirctl<span class="w"> </span>pull<span class="w"> </span>--output-dir<span class="o">=</span>./records/<span class="w"> </span>--name<span class="w"> </span><span class="s2">&quot;web*&quot;</span>
+dirctl<span class="w"> </span>pull<span class="w"> </span>--output-dir<span class="o">=</span>./records/<span class="w"> </span>--module<span class="w"> </span><span class="s2">&quot;integration/mcp&quot;</span><span class="w"> </span>--all-versions
+</code></pre></div>
+</details>
 <p><strong>Hash Verification:</strong></p>
 <p>The <code>@&lt;cid&gt;</code> suffix enables hash verification. This command fails if the resolved CID doesn't match the expected digest:</p>
 <div class="highlight"><pre><span></span><code><span class="c1"># Succeeds if cisco.com/agent:v1.0.0 resolves to bafyreib...</span>
@@ -4186,11 +4231,6 @@ dirctl<span class="w"> </span>import<span class="w"> </span>--type<span class="o
 </thead>
 <tbody>
 <tr>
-<td><code>oasf</code></td>
-<td><code>.json</code></td>
-<td>Raw OASF record JSON (default)</td>
-</tr>
-<tr>
 <td><code>a2a</code></td>
 <td><code>.json</code></td>
 <td>A2A AgentCard JSON for Agent-to-Agent protocol interop</td>
@@ -4207,6 +4247,9 @@ dirctl<span class="w"> </span>import<span class="w"> </span>--type<span class="o
 </tr>
 </tbody>
 </table>
+<blockquote>
+<p><strong>Note:</strong> For raw OASF record JSON, use <a href="#dirctl-pull-reference"><code>dirctl pull</code></a> — it supports <code>--output-file</code>, <code>--output-dir</code>, and search filters for batch retrieval. <code>dirctl export</code> no longer accepts <code>--format=oasf</code>.</p>
+</blockquote>
 <p><strong>Single-record Flags:</strong></p>
 <table>
 <thead>
@@ -4219,8 +4262,8 @@ dirctl<span class="w"> </span>import<span class="w"> </span>--type<span class="o
 <tbody>
 <tr>
 <td><code>--format</code></td>
-<td>Export format (see table above)</td>
-<td><code>oasf</code></td>
+<td>Export format (see table above); <strong>required</strong></td>
+<td>-</td>
 </tr>
 <tr>
 <td><code>--output-file</code></td>
