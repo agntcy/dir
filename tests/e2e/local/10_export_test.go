@@ -41,7 +41,7 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests for the export command"
 		utils.ResetCLIState()
 	})
 
-	ginkgo.Context("Export with default oasf format", ginkgo.Ordered, ginkgo.Serial, func() {
+	ginkgo.Context("Export format handling", ginkgo.Ordered, ginkgo.Serial, func() {
 		var cid string
 
 		tempDir, err := os.MkdirTemp("", "export-e2e-*")
@@ -60,50 +60,14 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests for the export command"
 			gomega.Expect(cid).NotTo(gomega.BeEmpty())
 		})
 
-		ginkgo.It("should export a record to stdout by CID", func() {
-			output := testEnv.CLI.Export(cid).ShouldSucceed()
-			gomega.Expect(output).NotTo(gomega.BeEmpty())
-
-			var parsed map[string]any
-
-			err := json.Unmarshal([]byte(output), &parsed)
-			gomega.Expect(err).NotTo(gomega.HaveOccurred(), "stdout output should be valid JSON")
-			gomega.Expect(parsed).To(gomega.HaveKey("name"))
+		ginkgo.It("should require --format (raw OASF moved to dirctl pull)", func() {
+			err := testEnv.CLI.Export(cid).ShouldFail()
+			gomega.Expect(err.Error()).To(gomega.ContainSubstring("--format is required"))
 		})
 
-		ginkgo.It("should export a record to a file with explicit extension", func() {
-			outPath := filepath.Join(tempDir, "exported_record.json")
-
-			testEnv.CLI.Export(cid).WithArgs("--output-file", outPath).ShouldSucceed()
-
-			data, err := os.ReadFile(outPath)
-			gomega.Expect(err).NotTo(gomega.HaveOccurred())
-			gomega.Expect(data).NotTo(gomega.BeEmpty())
-
-			var parsed map[string]any
-
-			err = json.Unmarshal(data, &parsed)
-			gomega.Expect(err).NotTo(gomega.HaveOccurred(), "file content should be valid JSON")
-			gomega.Expect(parsed).To(gomega.HaveKey("name"))
-		})
-
-		ginkgo.It("should auto-append file extension when omitted", func() {
-			outPath := filepath.Join(tempDir, "no_ext_record")
-			expectedPath := outPath + ".json"
-
-			testEnv.CLI.Export(cid).WithArgs("--output-file", outPath).ShouldSucceed()
-
-			_, err := os.Stat(expectedPath)
-			gomega.Expect(err).NotTo(gomega.HaveOccurred(),
-				"file with auto-appended .json extension should exist")
-
-			data, err := os.ReadFile(expectedPath)
-			gomega.Expect(err).NotTo(gomega.HaveOccurred())
-
-			var parsed map[string]any
-
-			err = json.Unmarshal(data, &parsed)
-			gomega.Expect(err).NotTo(gomega.HaveOccurred(), "file content should be valid JSON")
+		ginkgo.It("should reject --format=oasf and point to dirctl pull", func() {
+			err := testEnv.CLI.Export(cid).WithArgs("--format", "oasf").ShouldFail()
+			gomega.Expect(err.Error()).To(gomega.ContainSubstring("dirctl pull"))
 		})
 
 		ginkgo.It("should fail with an unsupported format", func() {
@@ -112,7 +76,7 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests for the export command"
 		})
 
 		ginkgo.It("should fail for a non-existent CID", func() {
-			_ = testEnv.CLI.Export("non-existent-CID").ShouldFail()
+			_ = testEnv.CLI.Export("non-existent-CID").WithArgs("--format", "a2a").ShouldFail()
 		})
 
 		ginkgo.It("should clean up the test record", func() {

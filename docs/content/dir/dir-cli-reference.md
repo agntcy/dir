@@ -472,6 +472,31 @@ Retrieves records by their Content Identifier (CID) or name reference.
     dirctl pull <cid> --signature --public-key
     ```
 
+**Output and batch retrieval:**
+
+`pull` defaults to `--output json` (records are primarily machine-consumed); `-o human|jsonl|raw` are also available. Use `--output-file` to write a single record's JSON to a file, or `--output-dir` with search filters to pull many records at once (one `<name>.json` per record).
+
+| Flag | Description | Default |
+|------|-------------|---------|
+| `--output-file` | Write the record JSON to a file instead of stdout (single record) | - |
+| `--output-dir` | Directory for batch pull from search results (one JSON file per record) | - |
+| `--limit` | Maximum number of records to pull in batch mode | `100` |
+| `--all-versions` | Keep all versions in batch pull (default: latest per name wins) | `false` |
+
+When `--output-dir` is used, at least one search filter is required. All standard search filters are available (`--name`, `--version`, `--module`, `--skill`, `--author`, etc.). A positional reference and `--output-dir` are mutually exclusive.
+
+??? example
+
+    ```bash
+    # Single record JSON to stdout (default) or a file
+    dirctl pull cisco.com/agent
+    dirctl pull cisco.com/agent --output-file=./agent.json
+
+    # Batch: pull every matching record into a directory
+    dirctl pull --output-dir=./records/ --name "web*"
+    dirctl pull --output-dir=./records/ --module "integration/mcp" --all-versions
+    ```
+
 **Hash Verification:**
 
 The `@<cid>` suffix enables hash verification. This command fails if the resolved CID doesn't match the expected digest:
@@ -758,16 +783,17 @@ Pull a record and transform it to the requested format.
 
 | Format | Output | Description |
 |--------|--------|-------------|
-| `oasf` | `.json` | Raw OASF record JSON (default) |
 | `a2a` | `.json` | A2A AgentCard JSON for Agent-to-Agent protocol interop |
 | `agent-skill` | `.md` | SKILL.md artifact for agentic CLI consumption (Cursor, Claude Code, etc.) |
 | `mcp-ghcopilot` | `.json` | GitHub Copilot MCP configuration JSON |
+
+> **Note:** For raw OASF record JSON, use [`dirctl pull`](#dirctl-pull-reference) — it supports `--output-file`, `--output-dir`, and search filters for batch retrieval. `dirctl export` no longer accepts `--format=oasf`.
 
 **Single-record Flags:**
 
 | Flag | Description | Default |
 |------|-------------|---------|
-| `--format` | Export format (see table above) | `oasf` |
+| `--format` | Export format (see table above); **required** | - |
 | `--output-file` | File path to write the exported data (default: stdout) | - |
 
 **Batch Export Flags:**
