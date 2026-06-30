@@ -20,7 +20,7 @@ const (
 	skillRecordName       = "org.agntcy/directory"
 	skillModuleName       = "core/language_model/agentskills"
 	mcpModuleName         = "integration/mcp"
-	skillArtifactMediaTyp = "application/agentskill+md"
+	skillArtifactMediaTyp = "application/agent-skills+md"
 )
 
 var _ = ginkgo.Describe("DIR self-published SKILL record", func() {

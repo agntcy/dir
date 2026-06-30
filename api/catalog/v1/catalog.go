@@ -31,7 +31,7 @@ const (
 	// Protocol-specific media types supported by AI Catalog.
 	ProtocolA2ACardJsonMediaType   = "application/a2a-agent-card+json"
 	ProtocolMCPCardJsonMediaType   = "application/mcp-server-card+json"
-	ProtocolAgentSkillsMdMediaType = "application/agentskill+md"
+	ProtocolAgentSkillsMdMediaType = "application/agent-skills+md"
 )
 
 // catalogModuleProjection captures the per-module projection rules: the

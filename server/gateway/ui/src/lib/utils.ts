@@ -106,7 +106,7 @@ export function exportFormatForType(mediaType: string): ExportFormat {
 	if (mediaType.includes('a2a')) return { format: 'a2a', label: 'Download JSON', ext: 'json' };
 	if (mediaType.includes('mcp'))
 		return { format: 'mcp-ghcopilot', label: 'Download JSON', ext: 'json' };
-	if (mediaType.includes('agentskill'))
+	if (mediaType.includes('agent-skills'))
 		return { format: 'agent-skill', label: 'Download Markdown', ext: 'md' };
 	return { format: 'oasf', label: 'Download Asset', ext: 'json' };
 }

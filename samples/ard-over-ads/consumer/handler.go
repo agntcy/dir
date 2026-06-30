@@ -39,7 +39,7 @@ func Dispatch(ctx context.Context, e *catalogv1.CatalogEntry, task map[string]an
 	case "application/a2a-agent-card+json":
 		// Load the A2A agent card at e.URL, then speak A2A.
 		fmt.Printf("Invoking A2A agent: %s\n", e.Identifier)
-	case "application/agentskill+md":
+	case "application/agent-skills+md":
 		// Load the Agent Skill at e.URL
 		fmt.Printf("Invoking Agent Skill: %s\n", e.Identifier)
 	default:

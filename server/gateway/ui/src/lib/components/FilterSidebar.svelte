@@ -51,7 +51,7 @@
 		{ value: 'all', label: 'All' },
 		{ value: 'application/a2a-agent-card+json', label: 'A2A Agent' },
 		{ value: 'application/mcp-server-card+json', label: 'MCP Server' },
-		{ value: 'application/agentskill+md', label: 'SKILL' }
+		{ value: 'application/agent-skills+md', label: 'SKILL' }
 	];
 </script>
 
