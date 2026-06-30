@@ -8,7 +8,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	authnconfig "github.com/agntcy/dir/server/authn/config"
+	authnconfig "github.com/agntcy/dir/config/auth"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -125,7 +125,7 @@ func TestBuildClientConfigForRemote(t *testing.T) {
 		name        string
 		config      string
 		remote      string
-		authn       authnconfig.Config
+		authn       authnconfig.Authn
 		wantAddress string
 		wantMode    string
 		wantToken   string
@@ -136,7 +136,7 @@ func TestBuildClientConfigForRemote(t *testing.T) {
 			name:        "no matching context falls back to insecure",
 			config:      "",
 			remote:      "http://localhost:8888",
-			authn:       authnconfig.Config{},
+			authn:       authnconfig.Authn{},
 			wantAddress: "http://localhost:8888",
 			wantMode:    "insecure",
 		},
@@ -144,9 +144,9 @@ func TestBuildClientConfigForRemote(t *testing.T) {
 			name:   "no matching context honours authn config",
 			config: "",
 			remote: "http://localhost:8888",
-			authn: authnconfig.Config{
+			authn: authnconfig.Authn{
 				Enabled:    true,
-				Mode:       authnconfig.AuthModeJWT,
+				Mode:       authnconfig.ModeJWT,
 				SocketPath: "/run/spire/agent.sock",
 				Audiences:  []string{"directory"},
 			},
@@ -167,9 +167,9 @@ contexts:
       timeout: 10s
 `,
 			remote: "https://dev.gateway.example.com",
-			authn: authnconfig.Config{
+			authn: authnconfig.Authn{
 				Enabled: true,
-				Mode:    authnconfig.AuthModeX509,
+				Mode:    authnconfig.ModeX509,
 			},
 			wantAddress: "dev.gateway.example.com:443",
 			wantMode:    "oidc",

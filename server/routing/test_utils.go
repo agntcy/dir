@@ -9,10 +9,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/agntcy/dir/server/config"
-	routingconfig "github.com/agntcy/dir/server/routing/config"
+	dircfg "github.com/agntcy/dir/config"
 	"github.com/agntcy/dir/server/store"
-	ociconfig "github.com/agntcy/dir/server/store/oci/config"
 	"github.com/agntcy/dir/server/types"
 	"github.com/stretchr/testify/assert"
 )
@@ -28,15 +26,17 @@ func newTestServer(t *testing.T, ctx context.Context, bootPeers []string) *route
 	// define opts with faster refresh interval for testing
 	// Use a unique temporary directory for each test to avoid datastore sharing
 	opts := types.NewOptions(
-		&config.Config{
-			Store: ociconfig.Config{
+		&dircfg.Config{
+			Store: dircfg.Registry{
 				LocalDir: t.TempDir(),
 			},
-			Routing: routingconfig.Config{
-				ListenAddress:   "/ip4/0.0.0.0/tcp/0",
-				BootstrapPeers:  bootPeers,
-				RefreshInterval: refreshInterval, // Fast refresh for testing
-				DatastoreDir:    t.TempDir(),     // Use isolated BadgerDB for each test
+			APIServer: dircfg.APIServer{
+				Routing: dircfg.Routing{
+					ListenAddress:   "/ip4/0.0.0.0/tcp/0",
+					BootstrapPeers:  bootPeers,
+					RefreshInterval: refreshInterval,
+					DatastoreDir:    t.TempDir(),
+				},
 			},
 		},
 	)

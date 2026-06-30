@@ -59,8 +59,8 @@ func runStart(cmd *cobra.Command, _ []string) error {
 		return fmt.Errorf("failed to load config: %w", err)
 	}
 
-	if cfg.Server.Routing.KeyPath != "" {
-		if err := ensureKeyFile(cfg.Server.Routing.KeyPath); err != nil {
+	if cfg.APIServer.Routing.KeyPath != "" {
+		if err := ensureKeyFile(cfg.APIServer.Routing.KeyPath); err != nil {
 			return fmt.Errorf("failed to ensure peer identity key: %w", err)
 		}
 	}
@@ -70,14 +70,14 @@ func runStart(cmd *cobra.Command, _ []string) error {
 
 	zotCtx := context.Background()
 
-	if cfg.Server.Store.LocalDir != "" {
-		zotCtx = runEmbeddedZot(ctx, cfg.Server.Store.RegistryAddress, cfg.Server.Store.LocalDir)
+	if cfg.Store.LocalDir != "" {
+		zotCtx = runEmbeddedZot(ctx, cfg.Store.RegistryAddress, cfg.Store.LocalDir)
 
-		cfg.Server.Store.LocalDir = ""
+		cfg.Store.LocalDir = ""
 	}
 
 	// Create API server
-	srv, err := server.New(ctx, &cfg.Server)
+	srv, err := server.New(ctx, cfg.serverConfig())
 	if err != nil {
 		return fmt.Errorf("failed to create server: %w", err)
 	}
@@ -125,7 +125,7 @@ func runStart(cmd *cobra.Command, _ []string) error {
 	}
 	defer srv.Close(ctx)
 
-	logger.Info("Server started", "address", cfg.Server.ListenAddress)
+	logger.Info("Server started", "address", cfg.APIServer.ListenAddress)
 
 	tagLister, err := newTagLister(cfg)
 	if err != nil {
@@ -201,7 +201,7 @@ func ensureKeyFile(path string) error {
 // When a local OCI directory is configured, a local oci.Store is opened.
 // Otherwise a remote ORAS repository is created from the OCI config.
 func newTagLister(cfg *DaemonConfig) (registry.TagLister, error) {
-	if dir := cfg.Server.Store.LocalDir; dir != "" {
+	if dir := cfg.Store.LocalDir; dir != "" {
 		repo, err := ocistore.New(dir)
 		if err != nil {
 			return nil, fmt.Errorf("failed to open local OCI store: %w", err)
@@ -210,7 +210,7 @@ func newTagLister(cfg *DaemonConfig) (registry.TagLister, error) {
 		return repo, nil
 	}
 
-	repo, err := ocilib.NewORASRepository(cfg.Server.Store)
+	repo, err := ocilib.NewORASRepository(cfg.Store)
 	if err != nil {
 		return nil, fmt.Errorf("failed to connect to remote OCI registry: %w", err)
 	}

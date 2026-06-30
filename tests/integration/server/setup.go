@@ -13,8 +13,8 @@ import (
 	"path/filepath"
 	"runtime"
 
+	dircfg "github.com/agntcy/dir/config"
 	"github.com/agntcy/dir/server"
-	"github.com/agntcy/dir/server/config"
 	"github.com/agntcy/dir/server/database" //nolint:typecheck
 	gormdb "github.com/agntcy/dir/server/database/gorm"
 	"github.com/agntcy/dir/server/events"
@@ -29,7 +29,7 @@ import (
 	"oras.land/oras-go/v2/registry/remote"
 )
 
-const DefaultConfig = "./testenv/test-config.yaml"
+const DefaultConfig = "./testenv/test-dircfg.yaml"
 
 const (
 	bufSize = 1024 * 1024
@@ -44,7 +44,7 @@ type TestVars struct {
 }
 
 var (
-	conf *config.Config
+	conf *dircfg.Config
 	t    TestVars
 )
 
@@ -56,9 +56,9 @@ func init() {
 	flag.String("test-config", "", "Absolute path to test configuration file (optional)")
 }
 
-func loadConfig() *config.Config {
+func loadConfig() *dircfg.Config {
 	configFile := getConfigFile()
-	c, err := config.LoadConfig(config.WithFile(configFile))
+	c, err := dircfg.LoadConfig(dircfg.WithFile(configFile))
 	gomega.Expect(err).NotTo(gomega.HaveOccurred())
 
 	return c

@@ -7,6 +7,7 @@ replace (
 	github.com/agntcy/dir/api => ../api
 	github.com/agntcy/dir/cli => ../cli
 	github.com/agntcy/dir/client => ../client
+	github.com/agntcy/dir/config => ../config
 	github.com/agntcy/dir/reconciler => ../reconciler
 	github.com/agntcy/dir/server => ../server
 	github.com/agntcy/dir/utils => ../utils
@@ -32,6 +33,7 @@ require (
 
 require (
 	github.com/Azure/azure-sdk-for-go/sdk/storage/azblob v1.8.0 // indirect
+	github.com/agntcy/dir/config v0.0.0-00010101000000-000000000000 // indirect
 	github.com/coder/websocket v1.8.14 // indirect
 	github.com/dylibso/observe-sdk/go v0.0.0-20240819160327-2d926c5d788a // indirect
 	github.com/evanphx/json-patch/v5 v5.9.11 // indirect

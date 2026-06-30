@@ -10,7 +10,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/agntcy/dir/server/database/config"
+	dircfg "github.com/agntcy/dir/config"
 	gormdb "github.com/agntcy/dir/server/database/gorm"
 	"github.com/agntcy/dir/server/types"
 	"github.com/agntcy/dir/utils/logging"
@@ -29,7 +29,7 @@ const (
 	Postgres DB = "postgres"
 )
 
-func New(cfg config.Config) (types.DatabaseAPI, error) {
+func New(cfg dircfg.Database) (types.DatabaseAPI, error) {
 	switch db := DB(cfg.Type); db {
 	case SQLite:
 		logger.Info("Initializing SQLite database", "path", cfg.SQLite.Path)
@@ -75,14 +75,14 @@ func isMemoryDSN(path string) bool {
 }
 
 // newSQLite creates a new database connection using the pure-Go SQLite driver.
-func newSQLite(cfg config.SQLiteConfig) (*gormdb.DB, error) {
+func newSQLite(cfg dircfg.SQLite) (*gormdb.DB, error) {
 	path := cfg.Path
 	if path == "" {
-		path = config.DefaultSQLitePath
+		path = dircfg.DefaultSQLitePath()
 	}
 
 	if !isMemoryDSN(path) {
-		path = config.EnsureFilePath(path)
+		path = dircfg.EnsureFilePath(path)
 	}
 
 	db, err := gorm.Open(sqlite.Open(path), &gorm.Config{
@@ -106,7 +106,7 @@ func newSQLite(cfg config.SQLiteConfig) (*gormdb.DB, error) {
 }
 
 // newPostgres creates a new database connection using PostgreSQL driver.
-func newPostgres(cfg config.PostgresConfig) (*gormdb.DB, error) {
+func newPostgres(cfg dircfg.Postgres) (*gormdb.DB, error) {
 	db, err := NewPostgresGormDb(cfg)
 	if err != nil {
 		return nil, fmt.Errorf("failed to connect to PostgreSQL database: %w", err)
@@ -120,20 +120,20 @@ func newPostgres(cfg config.PostgresConfig) (*gormdb.DB, error) {
 	return gdb, nil
 }
 
-func NewPostgresGormDb(cfg config.PostgresConfig) (*gorm.DB, error) {
+func NewPostgresGormDb(cfg dircfg.Postgres) (*gorm.DB, error) {
 	host := cfg.Host
 	if host == "" {
-		host = config.DefaultPostgresHost
+		host = dircfg.DefaultPostgresHost
 	}
 
 	port := cfg.Port
 	if port == 0 {
-		port = config.DefaultPostgresPort
+		port = dircfg.DefaultPostgresPort
 	}
 
 	database := cfg.Database
 	if database == "" {
-		database = config.DefaultPostgresDatabase
+		database = dircfg.DefaultPostgresDatabase
 	}
 
 	sslMode := "disable"

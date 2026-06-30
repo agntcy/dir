@@ -18,7 +18,8 @@ import (
 	"time"
 
 	storev1 "github.com/agntcy/dir/api/store/v1"
-	ociconfig "github.com/agntcy/dir/server/store/oci/config"
+	dircfg "github.com/agntcy/dir/config"
+	reconcilercfg "github.com/agntcy/dir/config/reconciler"
 	"github.com/agntcy/dir/server/types"
 	"github.com/agntcy/dir/utils/logging"
 )
@@ -29,14 +30,14 @@ var logger = logging.Logger("reconciler/regsync")
 // It monitors for pending syncs and creates workers to process them.
 type Task struct {
 	mu            sync.RWMutex
-	config        Config
-	localRegistry ociconfig.Config
+	config        reconcilercfg.Regsync
+	localRegistry dircfg.Registry
 	db            types.SyncDatabaseAPI
 	activeWorkers map[string]*Worker // Map of syncID -> Worker
 }
 
 // NewTask creates a new regsync reconciliation task.
-func NewTask(config Config, localRegistry ociconfig.Config, db types.SyncDatabaseAPI) (*Task, error) {
+func NewTask(config reconcilercfg.Regsync, localRegistry dircfg.Registry, db types.SyncDatabaseAPI) (*Task, error) {
 	return &Task{
 		config:        config,
 		localRegistry: localRegistry,

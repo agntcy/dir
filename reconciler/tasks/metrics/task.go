@@ -14,6 +14,7 @@ import (
 	"fmt"
 	"time"
 
+	reconcilercfg "github.com/agntcy/dir/config/reconciler"
 	"github.com/agntcy/dir/server/types"
 	"github.com/agntcy/dir/utils/logging"
 )
@@ -36,14 +37,14 @@ type ProviderCounterAPI interface {
 
 // Task implements the usage-metrics reconciliation task.
 type Task struct {
-	config   Config
+	config   reconcilercfg.Metrics
 	db       types.UsageMetricsDatabaseAPI
 	search   types.SearchDatabaseAPI
 	counters ProviderCounterAPI
 }
 
 // NewTask creates a new usage-metrics reconciliation task.
-func NewTask(config Config, db types.DatabaseAPI, counters ProviderCounterAPI) (*Task, error) {
+func NewTask(config reconcilercfg.Metrics, db types.DatabaseAPI, counters ProviderCounterAPI) (*Task, error) {
 	return &Task{
 		config:   config,
 		db:       db,

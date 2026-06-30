@@ -121,7 +121,7 @@ func newRemote(parentCtx context.Context,
 	routingCtx, cancel := context.WithCancel(parentCtx)
 
 	// Determine if this is a bootstrap node (no bootstrap peers configured)
-	isBootstrapNode := len(opts.Config().Routing.BootstrapPeers) == 0
+	isBootstrapNode := len(opts.Config().APIServer.Routing.BootstrapPeers) == 0
 
 	// Create routing
 	routeAPI := &routeRemote{
@@ -134,18 +134,18 @@ func newRemote(parentCtx context.Context,
 	}
 
 	refreshInterval := RefreshInterval
-	if opts.Config().Routing.RefreshInterval > 0 {
-		refreshInterval = opts.Config().Routing.RefreshInterval
+	if opts.Config().APIServer.Routing.RefreshInterval > 0 {
+		refreshInterval = opts.Config().APIServer.Routing.RefreshInterval
 	}
 
 	// Use parent context for p2p server (should live as long as the server)
 	server, err := p2p.New(parentCtx,
-		p2p.WithListenAddress(opts.Config().Routing.ListenAddress),
-		p2p.WithDirectoryAPIAddress(opts.Config().Routing.DirectoryAPIAddress),
-		p2p.WithBootstrapAddrs(opts.Config().Routing.BootstrapPeers),
+		p2p.WithListenAddress(opts.Config().APIServer.Routing.ListenAddress),
+		p2p.WithDirectoryAPIAddress(opts.Config().APIServer.Routing.DirectoryAPIAddress),
+		p2p.WithBootstrapAddrs(opts.Config().APIServer.Routing.BootstrapPeers),
 		p2p.WithRefreshInterval(refreshInterval),
 		p2p.WithRandevous(ProtocolRendezvous), // enable libp2p auto-discovery
-		p2p.WithIdentityKeyPath(opts.Config().Routing.KeyPath),
+		p2p.WithIdentityKeyPath(opts.Config().APIServer.Routing.KeyPath),
 		p2p.WithCustomDHTOpts(
 			func(h host.Host) ([]dht.Option, error) {
 				providerMgr, err := records.NewProviderManager(parentCtx, h.ID(), h.Peerstore(), dstore)
@@ -193,7 +193,7 @@ func newRemote(parentCtx context.Context,
 	// Initialize GossipSub manager if enabled
 	// Protocol parameters (topic, message size) are defined in pubsub.constants
 	// and are NOT configurable to ensure network-wide compatibility
-	if opts.Config().Routing.GossipSub.Enabled {
+	if opts.Config().APIServer.Routing.GossipSub.Enabled {
 		// Use parent context for GossipSub (should live as long as the server)
 		pubsubManager, err := pubsub.New(parentCtx, server.Host())
 		if err != nil {

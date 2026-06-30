@@ -1,5 +1,11 @@
 # Reference daemon configuration for dirctl.
 #
+# Shared infrastructure lives at the top level:
+#   store.*      — OCI store (shared by apiserver and reconciler)
+#   database.*   — state store (shared by apiserver and reconciler)
+#
+# Apiserver-specific settings live under server.*
+#
 # To use PostgreSQL instead of SQLite, change database.type to "postgres"
 # and configure the postgres section.
 #
@@ -12,24 +18,39 @@
 #   DIRECTORY_DAEMON_SERVER_LISTEN_ADDRESS
 #   DIRECTORY_DAEMON_SERVER_ROUTING_LISTEN_ADDRESS
 #   DIRECTORY_DAEMON_SERVER_ROUTING_BOOTSTRAP_PEERS  (comma-separated)
-#   DIRECTORY_DAEMON_SERVER_DATABASE_POSTGRES_USERNAME
-#   DIRECTORY_DAEMON_SERVER_DATABASE_POSTGRES_PASSWORD
-#   DIRECTORY_DAEMON_SERVER_STORE_AUTH_CONFIG_USERNAME
-#   DIRECTORY_DAEMON_SERVER_STORE_AUTH_CONFIG_PASSWORD
+#   DIRECTORY_DAEMON_DATABASE_POSTGRES_USERNAME
+#   DIRECTORY_DAEMON_DATABASE_POSTGRES_PASSWORD
+#   DIRECTORY_DAEMON_STORE_AUTH_CONFIG_USERNAME
+#   DIRECTORY_DAEMON_STORE_AUTH_CONFIG_PASSWORD
 
+oasf_api_validation:
+  schema_url: "https://schema.oasf.outshift.com"
+
+# Shared OCI store — used by both the apiserver and the reconciler.
+store:
+  local_dir: "store" # relative to data-dir or can be absolute path like "/tmp/agntcy/dir/oci/"
+  registry_address: "localhost:5555"
+  repository_name: "dir"
+  auth_config:
+    insecure: true
+  # To use a remote OCI registry, unset local_dir:
+  #   registry_address: "ghcr.io"
+  #   repository_name: "org/agents"
+
+# Shared database — used by both the apiserver and the reconciler.
+database:
+  type: "sqlite"
+  sqlite:
+    path: "dir.db"
+  postgres:
+    host: "localhost"
+    port: 5432
+    database: "dir"
+    ssl_mode: "disable"
+
+# Apiserver-specific settings.
 server:
   listen_address: "localhost:8888"
-  oasf_api_validation:
-    schema_url: "https://schema.oasf.outshift.com"
-  store:
-    local_dir: "store" # relative to data-dir or can be absolute path like "/tmp/agntcy/dir/oci/"
-    registry_address: "localhost:5555"
-    repository_name: "dir"
-    auth_config:
-      insecure: true
-    # To use a remote OCI registry, unset local_dir:
-    #   registry_address: "ghcr.io"
-    #   repository_name: "org/agents"
   routing:
     listen_address: "/ip4/0.0.0.0/tcp/8999"
     key_path: "node.key"
@@ -38,15 +59,6 @@ server:
     #   - "/dns4/remote-dir.example.com/tcp/8999/p2p/<peer-id>"
     gossipsub:
       enabled: true
-  database:
-    type: "sqlite"
-    sqlite:
-      path: "dir.db"
-    postgres:
-      host: "localhost"
-      port: 5432
-      database: "dir"
-      ssl_mode: "disable"
   publication:
     scheduler_interval: 5m
     worker_count: 1
@@ -61,6 +73,9 @@ server:
     ttl: 168h
 
 reconciler:
+  # In daemon mode the reconciler uses the server's shared store and database
+  # directly; local_registry and database fields are only relevant when the
+  # reconciler runs as a standalone process.
   regsync:
     enabled: true
     interval: 1m
@@ -77,15 +92,6 @@ reconciler:
     interval: 1m
     ttl: 168h
     record_timeout: 30s
-  local_registry:
-    registry_address: "localhost:5555"
-    repository_name: "dir"
-    auth_config:
-      insecure: true
-  database:
-    type: "sqlite"
-    sqlite:
-      path: "dir.db"
 
 runtime:
   enabled: false

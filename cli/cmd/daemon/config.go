@@ -17,10 +17,7 @@ import (
 	adapterk8s "github.com/agntcy/dir-runtime/discovery/runtime/k8s"
 	runtimestore "github.com/agntcy/dir-runtime/store/config"
 	runtimestoresql "github.com/agntcy/dir-runtime/store/sql"
-	reconcilerconfig "github.com/agntcy/dir/reconciler/config"
-	serverconfig "github.com/agntcy/dir/server/config"
-	dbconfig "github.com/agntcy/dir/server/database/config"
-	storeconfig "github.com/agntcy/dir/server/store/oci/config"
+	dircfg "github.com/agntcy/dir/config"
 	"github.com/mitchellh/mapstructure"
 	"github.com/spf13/viper"
 )
@@ -33,11 +30,42 @@ const (
 	DefaultEnvPrefix = "DIRECTORY_DAEMON"
 )
 
-// DaemonConfig is the top-level daemon configuration combining component settings.
+// DaemonConfig is the top-level daemon configuration.
+// Shared infrastructure (Store, Database) and apiserver settings are at the top level;
+// reconciler-specific and runtime settings are nested under their own keys.
 type DaemonConfig struct {
-	Server     serverconfig.Config     `json:"server"     mapstructure:"server"`
-	Reconciler reconcilerconfig.Config `json:"reconciler" mapstructure:"reconciler"`
-	Runtime    RuntimeConfig           `json:"runtime"    mapstructure:"runtime"`
+	// Shared OCI store used by both the apiserver and the reconciler.
+	Store dircfg.Registry `json:"store" mapstructure:"store"`
+
+	// Shared database used by both the apiserver and the reconciler.
+	Database dircfg.Database `json:"database" mapstructure:"database"`
+
+	// OASFAPIValidation holds the schema URL for OASF record validation.
+	OASFAPIValidation dircfg.OASFAPIValidation `json:"oasf_api_validation" mapstructure:"oasf_api_validation"`
+
+	// Logging configures process-wide logging.
+	Logging dircfg.Logging `json:"logging" mapstructure:"logging"`
+
+	// APIServer holds settings specific to the gRPC apiserver.
+	APIServer dircfg.APIServer `json:"server" mapstructure:"server"`
+
+	// Reconciler holds the reconciler service configuration.
+	Reconciler dircfg.ReconcilerConfig `json:"reconciler" mapstructure:"reconciler"`
+
+	// Runtime holds configuration for the runtime adapter and resolver.
+	Runtime RuntimeConfig `json:"runtime" mapstructure:"runtime"`
+}
+
+// serverConfig builds a canonical *dircfg.Config from the flat daemon config
+// for passing to server.New.
+func (d *DaemonConfig) serverConfig() *dircfg.Config {
+	return &dircfg.Config{
+		Store:             d.Store,
+		Database:          d.Database,
+		OASFAPIValidation: d.OASFAPIValidation,
+		Logging:           d.Logging,
+		APIServer:         d.APIServer,
+	}
 }
 
 // RuntimeConfig holds configuration for the runtime adapter and resolver used by
@@ -50,16 +78,16 @@ type RuntimeConfig struct {
 }
 
 func registerServerDefaults(v *viper.Viper) {
-	v.SetDefault("server.store.registry_address", storeconfig.DefaultRegistryAddress)
-	v.SetDefault("server.store.repository_name", storeconfig.DefaultRepositoryName)
+	v.SetDefault("store.registry_address", dircfg.DefaultRegistryAddress)
+	v.SetDefault("store.repository_name", dircfg.DefaultRepositoryName)
 }
 
 func registerReconcilerDefaults(v *viper.Viper) {
-	v.SetDefault("reconciler.local_registry.registry_address", storeconfig.DefaultRegistryAddress)
-	v.SetDefault("reconciler.local_registry.repository_name", storeconfig.DefaultRepositoryName)
+	v.SetDefault("reconciler.local_registry.registry_address", dircfg.DefaultRegistryAddress)
+	v.SetDefault("reconciler.local_registry.repository_name", dircfg.DefaultRepositoryName)
 	v.SetDefault("reconciler.local_registry.auth_config.insecure", true)
 	v.SetDefault("reconciler.database.type", "sqlite")
-	v.SetDefault("reconciler.database.sqlite.path", dbconfig.DefaultSQLitePath)
+	v.SetDefault("reconciler.database.sqlite.path", dircfg.DefaultSQLitePath())
 }
 
 func registerRuntimeDefaults(v *viper.Viper) {
@@ -143,7 +171,7 @@ func loadConfig() (*DaemonConfig, error) {
 		return nil, fmt.Errorf("failed to unmarshal config: %w", err)
 	}
 
-	cfg.Server.Connection = cfg.Server.Connection.WithDefaults()
+	cfg.APIServer.Connection = cfg.APIServer.Connection.WithDefaults()
 	resolveRelativePaths(cfg)
 
 	return cfg, nil
@@ -153,15 +181,15 @@ func loadConfig() (*DaemonConfig, error) {
 // resolve them. Without explicit BindEnv calls, viper cannot discover keys
 // that never appear in a config file.
 func bindCredentialEnvVars(v *viper.Viper) {
-	_ = v.BindEnv("server.database.postgres.username")
-	_ = v.BindEnv("server.database.postgres.password")
+	_ = v.BindEnv("database.postgres.username")
+	_ = v.BindEnv("database.postgres.password")
 
 	_ = v.BindEnv("server.routing.bootstrap_peers")
 
-	_ = v.BindEnv("server.store.auth_config.username")
-	_ = v.BindEnv("server.store.auth_config.password")
-	_ = v.BindEnv("server.store.auth_config.access_token")
-	_ = v.BindEnv("server.store.auth_config.refresh_token")
+	_ = v.BindEnv("store.auth_config.username")
+	_ = v.BindEnv("store.auth_config.password")
+	_ = v.BindEnv("store.auth_config.access_token")
+	_ = v.BindEnv("store.auth_config.refresh_token")
 
 	_ = v.BindEnv("server.sync.auth_config.username")
 	_ = v.BindEnv("server.sync.auth_config.password")
@@ -179,8 +207,8 @@ func resolveRelativePaths(cfg *DaemonConfig) {
 		return filepath.Join(opts.DataDir, p)
 	}
 
-	cfg.Server.Store.LocalDir = resolve(cfg.Server.Store.LocalDir)
-	cfg.Server.Routing.KeyPath = resolve(cfg.Server.Routing.KeyPath)
-	cfg.Server.Routing.DatastoreDir = resolve(cfg.Server.Routing.DatastoreDir)
-	cfg.Server.Database.SQLite.Path = resolve(cfg.Server.Database.SQLite.Path)
+	cfg.Store.LocalDir = resolve(cfg.Store.LocalDir)
+	cfg.APIServer.Routing.KeyPath = resolve(cfg.APIServer.Routing.KeyPath)
+	cfg.APIServer.Routing.DatastoreDir = resolve(cfg.APIServer.Routing.DatastoreDir)
+	cfg.Database.SQLite.Path = resolve(cfg.Database.SQLite.Path)
 }

@@ -7,25 +7,25 @@ import (
 	"testing"
 
 	storev1 "github.com/agntcy/dir/api/store/v1"
-	"github.com/agntcy/dir/server/authz/config"
+	"github.com/agntcy/dir/config/auth"
 )
 
 func TestAuthorizer(t *testing.T) {
-	allowAllAuthz, err := NewAuthorizer(config.Config{
+	allowAllAuthz, err := NewAuthorizer(auth.Authz{
 		EnforcerPolicyFilePath: "./testdata/allow_all_policies.csv",
 	})
 	if err != nil {
 		t.Fatalf("failed to create Casbin authorizer: %v", err)
 	}
 
-	externalsOnlyAuthz, err := NewAuthorizer(config.Config{
+	externalsOnlyAuthz, err := NewAuthorizer(auth.Authz{
 		EnforcerPolicyFilePath: "./testdata/externals_only_policies.csv",
 	})
 	if err != nil {
 		t.Fatalf("failed to create Casbin authorizer: %v", err)
 	}
 
-	externalPullOnlyAuthz, err := NewAuthorizer(config.Config{
+	externalPullOnlyAuthz, err := NewAuthorizer(auth.Authz{
 		EnforcerPolicyFilePath: "./testdata/external_pull_only_policies.csv",
 	})
 	if err != nil {
