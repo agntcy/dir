@@ -11,11 +11,11 @@ data:
   server.config.yml: |
     {{- $config := deepCopy .Values.config }}
     {{- /* Dynamically set OCI registry address and repository name */ -}}
-    {{- if and (hasKey $config "store") (hasKey $config.store "oci") }}
-    {{- $_ := set $config.store.oci "registry_address" (include "chart.oci.registryAddress" .) }}
+    {{- if hasKey $config "store" }}
+    {{- $_ := set $config.store "registry_address" (include "chart.oci.registryAddress" .) }}
     {{- $repoName := include "chart.oci.repositoryName" . }}
     {{- if $repoName }}
-    {{- $_ := set $config.store.oci "repository_name" $repoName }}
+    {{- $_ := set $config.store "repository_name" $repoName }}
     {{- end }}
     {{- end }}
     {{- /* Dynamically set PostgreSQL host */ -}}

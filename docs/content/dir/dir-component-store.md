@@ -28,36 +28,36 @@ The backend is configured via environment variables on the Directory server:
 
 | Environment Variable | Description | Default |
 |---------------------|-------------|---------|
-| `DIRECTORY_SERVER_STORE_OCI_REGISTRY_ADDRESS` | Registry address | `127.0.0.1:5000` |
-| `DIRECTORY_SERVER_STORE_OCI_REPOSITORY_NAME` | Repository name | `dir` |
+| `DIRECTORY_SERVER_STORE_REGISTRY_ADDRESS` | Registry address | `127.0.0.1:5000` |
+| `DIRECTORY_SERVER_STORE_REPOSITORY_NAME` | Repository name | `dir` |
 
 Credentials are supplied through additional environment variables:
 
 | Environment Variable | Description |
 |---------------------|-------------|
-| `DIRECTORY_SERVER_STORE_OCI_AUTH_CONFIG_USERNAME` | Username for basic authentication |
-| `DIRECTORY_SERVER_STORE_OCI_AUTH_CONFIG_PASSWORD` | Password for basic authentication |
-| `DIRECTORY_SERVER_STORE_OCI_AUTH_CONFIG_ACCESS_TOKEN` | Access token for token-based authentication |
-| `DIRECTORY_SERVER_STORE_OCI_AUTH_CONFIG_INSECURE` | Skip TLS verification (default: `true`) |
+| `DIRECTORY_SERVER_STORE_AUTH_CONFIG_USERNAME` | Username for basic authentication |
+| `DIRECTORY_SERVER_STORE_AUTH_CONFIG_PASSWORD` | Password for basic authentication |
+| `DIRECTORY_SERVER_STORE_AUTH_CONFIG_ACCESS_TOKEN` | Access token for token-based authentication |
+| `DIRECTORY_SERVER_STORE_AUTH_CONFIG_INSECURE` | Skip TLS verification (default: `true`) |
 
 ### Configuration examples
 
 **Zot (local development)**
 
 ```bash
-export DIRECTORY_SERVER_STORE_OCI_REGISTRY_ADDRESS=localhost:5000
-export DIRECTORY_SERVER_STORE_OCI_REPOSITORY_NAME=dir
-export DIRECTORY_SERVER_STORE_OCI_AUTH_CONFIG_INSECURE=true
+export DIRECTORY_SERVER_STORE_REGISTRY_ADDRESS=localhost:5000
+export DIRECTORY_SERVER_STORE_REPOSITORY_NAME=dir
+export DIRECTORY_SERVER_STORE_AUTH_CONFIG_INSECURE=true
 ```
 
 **GitHub Container Registry (GHCR)**
 
 ```bash
-export DIRECTORY_SERVER_STORE_OCI_REGISTRY_ADDRESS=ghcr.io
-export DIRECTORY_SERVER_STORE_OCI_REPOSITORY_NAME=your-org/dir
-export DIRECTORY_SERVER_STORE_OCI_AUTH_CONFIG_USERNAME=your-github-username
-export DIRECTORY_SERVER_STORE_OCI_AUTH_CONFIG_PASSWORD=your-github-token
-export DIRECTORY_SERVER_STORE_OCI_AUTH_CONFIG_INSECURE=false
+export DIRECTORY_SERVER_STORE_REGISTRY_ADDRESS=ghcr.io
+export DIRECTORY_SERVER_STORE_REPOSITORY_NAME=your-org/dir
+export DIRECTORY_SERVER_STORE_AUTH_CONFIG_USERNAME=your-github-username
+export DIRECTORY_SERVER_STORE_AUTH_CONFIG_PASSWORD=your-github-token
+export DIRECTORY_SERVER_STORE_AUTH_CONFIG_INSECURE=false
 ```
 
 !!! warning
@@ -71,11 +71,11 @@ export DIRECTORY_SERVER_STORE_OCI_AUTH_CONFIG_INSECURE=false
 **Docker Hub**
 
 ```bash
-export DIRECTORY_SERVER_STORE_OCI_REGISTRY_ADDRESS=docker.io
-export DIRECTORY_SERVER_STORE_OCI_REPOSITORY_NAME=your-username/dir
-export DIRECTORY_SERVER_STORE_OCI_AUTH_CONFIG_USERNAME=your-dockerhub-username
-export DIRECTORY_SERVER_STORE_OCI_AUTH_CONFIG_PASSWORD=your-dockerhub-token
-export DIRECTORY_SERVER_STORE_OCI_AUTH_CONFIG_INSECURE=false
+export DIRECTORY_SERVER_STORE_REGISTRY_ADDRESS=docker.io
+export DIRECTORY_SERVER_STORE_REPOSITORY_NAME=your-username/dir
+export DIRECTORY_SERVER_STORE_AUTH_CONFIG_USERNAME=your-dockerhub-username
+export DIRECTORY_SERVER_STORE_AUTH_CONFIG_PASSWORD=your-dockerhub-token
+export DIRECTORY_SERVER_STORE_AUTH_CONFIG_INSECURE=false
 ```
 
 See also [Local Deployment](dir-deployment-local.md) and
