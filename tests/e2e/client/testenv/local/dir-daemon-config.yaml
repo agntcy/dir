@@ -1,20 +1,23 @@
+oasf_api_validation:
+  schema_url: "https://schema.oasf.outshift.com"
+
+store:
+  local_dir: "store"
+  registry_address: "localhost:8890"
+  repository_name: "dir"
+  auth_config:
+    insecure: true
+
+database:
+  type: "sqlite"
+
 server:
   listen_address: "localhost:8889"
   metrics:
     enabled: false
-  oasf_api_validation:
-    schema_url: "https://schema.oasf.outshift.com"
-  store:
-    local_dir: "store"
-    registry_address: "localhost:8890"
-    repository_name: "dir"
-    auth_config:
-      insecure: true
   routing:
     listen_address: "/ip4/127.0.0.1/tcp/0"
     refresh_interval: "1s"
-  database:
-    type: "sqlite"
   publication:
     scheduler_interval: 1s
     worker_count: 1

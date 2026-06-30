@@ -21,6 +21,7 @@ require (
 	github.com/agntcy/dir/api v1.5.0
 	github.com/agntcy/dir/cli v1.5.0
 	github.com/agntcy/dir/client v1.5.0
+	github.com/agntcy/dir/config v0.0.0-00010101000000-000000000000
 	github.com/google/uuid v1.6.0
 	github.com/onsi/ginkgo/v2 v2.28.3
 	github.com/onsi/gomega v1.42.0
@@ -33,7 +34,6 @@ require (
 
 require (
 	github.com/Azure/azure-sdk-for-go/sdk/storage/azblob v1.8.0 // indirect
-	github.com/agntcy/dir/config v0.0.0-00010101000000-000000000000 // indirect
 	github.com/coder/websocket v1.8.14 // indirect
 	github.com/dylibso/observe-sdk/go v0.0.0-20240819160327-2d926c5d788a // indirect
 	github.com/evanphx/json-patch/v5 v5.9.11 // indirect
