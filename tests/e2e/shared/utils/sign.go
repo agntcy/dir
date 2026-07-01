@@ -16,8 +16,12 @@ import (
 // Helper function for signature testing.
 func GenerateCosignKeyPair(dir, password string) {
 	cosignBin := "cosign"
+
 	if bin := os.Getenv("COSIGN_BIN"); bin != "" {
-		cosignBin = bin
+		if _, err := os.Stat(bin); err == nil { //nolint:gosec
+			cosignBin = bin
+		}
+		// If the explicit binary doesn't exist, fall through to the system "cosign".
 	}
 
 	cmd := exec.CommandContext(context.Background(), cosignBin, "generate-key-pair") //nolint:gosec
