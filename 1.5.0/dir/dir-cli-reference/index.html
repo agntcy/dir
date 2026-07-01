@@ -2018,10 +2018,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#llm-based-enrichment-mandatory" class="md-nav__link">
+  <a href="#enrichment" class="md-nav__link">
     <span class="md-ellipsis">
       
-        LLM-based Enrichment (Mandatory)
+        Enrichment
       
     </span>
   </a>
@@ -2044,17 +2044,6 @@
     <span class="md-ellipsis">
       
         Signing Records During Import
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#rate-limiting-for-llm-api-calls" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Rate Limiting for LLM API Calls
       
     </span>
   </a>
@@ -2832,10 +2821,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#llm-based-enrichment-mandatory" class="md-nav__link">
+  <a href="#enrichment" class="md-nav__link">
     <span class="md-ellipsis">
       
-        LLM-based Enrichment (Mandatory)
+        Enrichment
       
     </span>
   </a>
@@ -2858,17 +2847,6 @@
     <span class="md-ellipsis">
       
         Signing Records During Import
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#rate-limiting-for-llm-api-calls" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Rate Limiting for LLM API Calls
       
     </span>
   </a>
@@ -3804,6 +3782,51 @@ dirctl<span class="w"> </span>pull<span class="w"> </span>cisco.com/agent:v1.0.0
 dirctl<span class="w"> </span>pull<span class="w"> </span>&lt;cid&gt;<span class="w"> </span>--signature<span class="w"> </span>--public-key
 </code></pre></div>
 </details>
+<p><strong>Output and batch retrieval:</strong></p>
+<p><code>pull</code> defaults to <code>--output json</code> (records are primarily machine-consumed); <code>-o human|jsonl|raw</code> are also available. Use <code>--output-file</code> to write a single record's JSON to a file, or <code>--output-dir</code> with search filters to pull many records at once (one <code>&lt;name&gt;.json</code> per record).</p>
+<table>
+<thead>
+<tr>
+<th>Flag</th>
+<th>Description</th>
+<th>Default</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>--output-file</code></td>
+<td>Write the record JSON to a file instead of stdout (single record)</td>
+<td>-</td>
+</tr>
+<tr>
+<td><code>--output-dir</code></td>
+<td>Directory for batch pull from search results (one JSON file per record)</td>
+<td>-</td>
+</tr>
+<tr>
+<td><code>--limit</code></td>
+<td>Maximum number of records to pull in batch mode</td>
+<td><code>100</code></td>
+</tr>
+<tr>
+<td><code>--all-versions</code></td>
+<td>Keep all versions in batch pull (default: latest per name wins)</td>
+<td><code>false</code></td>
+</tr>
+</tbody>
+</table>
+<p>When <code>--output-dir</code> is used, at least one search filter is required. All standard search filters are available (<code>--name</code>, <code>--version</code>, <code>--module</code>, <code>--skill</code>, <code>--author</code>, etc.). A positional reference and <code>--output-dir</code> are mutually exclusive.</p>
+<details class="example">
+<summary>Example</summary>
+<div class="highlight"><pre><span></span><code><span class="c1"># Single record JSON to stdout (default) or a file</span>
+dirctl<span class="w"> </span>pull<span class="w"> </span>cisco.com/agent
+dirctl<span class="w"> </span>pull<span class="w"> </span>cisco.com/agent<span class="w"> </span>--output-file<span class="o">=</span>./agent.json
+
+<span class="c1"># Batch: pull every matching record into a directory</span>
+dirctl<span class="w"> </span>pull<span class="w"> </span>--output-dir<span class="o">=</span>./records/<span class="w"> </span>--name<span class="w"> </span><span class="s2">&quot;web*&quot;</span>
+dirctl<span class="w"> </span>pull<span class="w"> </span>--output-dir<span class="o">=</span>./records/<span class="w"> </span>--module<span class="w"> </span><span class="s2">&quot;integration/mcp&quot;</span><span class="w"> </span>--all-versions
+</code></pre></div>
+</details>
 <p><strong>Hash Verification:</strong></p>
 <p>The <code>@&lt;cid&gt;</code> suffix enables hash verification. This command fails if the resolved CID doesn't match the expected digest:</p>
 <div class="highlight"><pre><span></span><code><span class="c1"># Succeeds if cisco.com/agent:v1.0.0 resolves to bafyreib...</span>
@@ -3917,10 +3940,17 @@ dirctl<span class="w"> </span>info<span class="w"> </span>cisco.com/agent:v1.0.0
 </thead>
 <tbody>
 <tr>
+<td><code>--config</code></td>
+<td>-</td>
+<td>Path to a YAML import config file (enricher, scanner, authors, and more); values are overridden by command-line flags</td>
+<td>No</td>
+<td>-</td>
+</tr>
+<tr>
 <td><code>--type</code></td>
 <td>-</td>
 <td>Import kind (<code>mcp-registry</code>, <code>mcp</code>, <code>a2a</code>, <code>agent-skill</code>)</td>
-<td>Yes</td>
+<td>No</td>
 <td>-</td>
 </tr>
 <tr>
@@ -3934,13 +3964,6 @@ dirctl<span class="w"> </span>info<span class="w"> </span>cisco.com/agent:v1.0.0
 <td><code>--file-path</code></td>
 <td>-</td>
 <td>Path to local JSON file or skill directory</td>
-<td>No</td>
-<td>-</td>
-</tr>
-<tr>
-<td><code>--author</code></td>
-<td>-</td>
-<td>OASF record author (repeatable; overrides source-derived authors)</td>
 <td>No</td>
 <td>-</td>
 </tr>
@@ -3992,69 +4015,6 @@ dirctl<span class="w"> </span>info<span class="w"> </span>cisco.com/agent:v1.0.0
 <td>Force reimport of existing records (skip deduplication)</td>
 <td>No</td>
 <td>false</td>
-</tr>
-<tr>
-<td><code>--enrich-config</code></td>
-<td>-</td>
-<td>Path to enricher configuration JSON (model, mcpServers, max-steps)</td>
-<td>No</td>
-<td>Built-in embedded config</td>
-</tr>
-<tr>
-<td><code>--scanner-enabled</code></td>
-<td>-</td>
-<td>Run security scanners on each record</td>
-<td>No</td>
-<td><code>false</code></td>
-</tr>
-<tr>
-<td><code>--scanner-timeout</code></td>
-<td>-</td>
-<td>Timeout per record scan</td>
-<td>No</td>
-<td><code>5m</code></td>
-</tr>
-<tr>
-<td><code>--scanner-cli-path</code></td>
-<td>-</td>
-<td>Path to <code>mcp-scanner</code> binary</td>
-<td>No</td>
-<td><code>mcp-scanner</code> from <code>PATH</code></td>
-</tr>
-<tr>
-<td><code>--scanner-fail-on-error</code></td>
-<td>-</td>
-<td>Skip records with error-severity findings</td>
-<td>No</td>
-<td><code>false</code></td>
-</tr>
-<tr>
-<td><code>--scanner-fail-on-warning</code></td>
-<td>-</td>
-<td>Skip records with warning-severity findings</td>
-<td>No</td>
-<td><code>false</code></td>
-</tr>
-<tr>
-<td><code>--enrich-skills-prompt</code></td>
-<td>-</td>
-<td>Optional: path to custom skills prompt template or inline prompt</td>
-<td>No</td>
-<td>"" (uses default)</td>
-</tr>
-<tr>
-<td><code>--enrich-domains-prompt</code></td>
-<td>-</td>
-<td>Optional: path to custom domains prompt template or inline prompt</td>
-<td>No</td>
-<td>"" (uses default)</td>
-</tr>
-<tr>
-<td><code>--enrich-rate-limit</code></td>
-<td>-</td>
-<td>Maximum LLM API requests per minute (to avoid rate limit errors)</td>
-<td>No</td>
-<td>10</td>
 </tr>
 <tr>
 <td><code>--sign</code></td>
@@ -4160,11 +4120,6 @@ dirctl<span class="w"> </span>import<span class="w"> </span>--type<span class="o
 <span class="w">  </span>--url<span class="o">=</span>https://registry.modelcontextprotocol.io/v0.1<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--sign<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--key<span class="o">=</span>/path/to/cosign.key
-
-<span class="c1"># Import with rate limiting for LLM API calls</span>
-dirctl<span class="w"> </span>import<span class="w"> </span>--type<span class="o">=</span>mcp-registry<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--url<span class="o">=</span>https://registry.modelcontextprotocol.io/v0.1<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--enrich-rate-limit<span class="o">=</span><span class="m">5</span>
 </code></pre></div>
 </details>
 <p><strong>MCP Registry Filters:</strong></p>
@@ -4175,70 +4130,58 @@ dirctl<span class="w"> </span>import<span class="w"> </span>--type<span class="o
 <li><code>updated_since</code> - Filter by updated time (RFC3339 datetime format, e.g., '2025-08-07T13:15:04.280Z')</li>
 </ul>
 <p>See the <a href="https://registry.modelcontextprotocol.io/docs#/operations/list-servers#Query-Parameters">MCP Registry API docs</a> for the complete list of supported filters.</p>
-<h3 id="llm-based-enrichment-mandatory">LLM-based Enrichment (Mandatory)</h3>
-<p><strong>Enrichment is mandatory</strong> — the import command automatically enriches MCP server records using LLM models to map them to appropriate OASF skills and domains. Records from the oasf-sdk translator are incomplete and require enrichment to be valid. The enrichment pipeline is built into <code>dirctl</code>: it runs an LLM with tool-calling support against the OASF schema tools exposed by <code>dirctl mcp serve</code>, so no external tooling is required.</p>
+<h3 id="enrichment">Enrichment</h3>
+<p>By default, the import command automatically enriches records using an LLM to map them to appropriate OASF skills and domains. The enrichment pipeline is built into <code>dirctl</code>: it runs an LLM with tool-calling support against the OASF schema tools exposed by <code>dirctl mcp serve</code>, so no external tooling is required. LLM enrichment can be skipped by specifying skills and domains explicitly in the config file (see <strong>Skip enrichment</strong> below).</p>
 <p><strong>Requirements:</strong></p>
 <ul>
 <li><code>dirctl</code> binary (includes the built-in MCP server with <code>agntcy_oasf_get_schema_skills</code> and <code>agntcy_oasf_get_schema_domains</code> tools)</li>
 <li>An LLM model with tool-calling support (GPT-4o, Claude, or compatible Ollama models)</li>
-<li>The enricher configuration must include a <code>dir-mcp-server</code> entry that runs <code>dirctl mcp serve</code>. This MCP server provides the schema tools needed for enrichment. A built-in config is used by default; override with <code>--enrich-config</code>.</li>
 </ul>
 <p><strong>How it works:</strong></p>
 <ol>
 <li>The enricher starts an MCP server using <code>dirctl mcp serve</code></li>
 <li>The LLM uses the <code>agntcy_oasf_get_schema_skills</code> tool to browse available OASF skills</li>
 <li>The LLM uses the <code>agntcy_oasf_get_schema_domains</code> tool to browse available OASF domains</li>
-<li>Based on the MCP server description and capabilities, the LLM selects appropriate skills and domains</li>
-<li>Selected skills and domains replace the defaults in the imported records</li>
+<li>Based on the record description and capabilities, the LLM selects appropriate skills and domains</li>
 </ol>
-<p><strong>Customizing the enricher:</strong></p>
-<p>To customize the LLM host, create a configuration file and pass it with <code>--enrich-config</code>:</p>
-<div class="highlight"><pre><span></span><code><span class="p">{</span>
-<span class="w">  </span><span class="nt">&quot;mcpServers&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
-<span class="w">    </span><span class="nt">&quot;dir-mcp-server&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
-<span class="w">      </span><span class="nt">&quot;command&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;dirctl&quot;</span><span class="p">,</span>
-<span class="w">      </span><span class="nt">&quot;args&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;mcp&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;serve&quot;</span><span class="p">],</span>
-<span class="w">      </span><span class="nt">&quot;env&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
-<span class="w">        </span><span class="nt">&quot;OASF_API_VALIDATION_SCHEMA_URL&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;https://schema.oasf.outshift.com&quot;</span>
-<span class="w">      </span><span class="p">}</span>
-<span class="w">    </span><span class="p">}</span>
-<span class="w">  </span><span class="p">},</span>
-<span class="w">  </span><span class="nt">&quot;model&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;azure:gpt-4o&quot;</span><span class="p">,</span>
-<span class="w">  </span><span class="nt">&quot;max-tokens&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">4096</span><span class="p">,</span>
-<span class="w">  </span><span class="nt">&quot;max-steps&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">20</span>
-<span class="p">}</span>
+<p><strong>Configuration via <code>--config</code>:</strong></p>
+<p>Enrichment is configured under the <code>enricher</code> key in the <code>--config</code> YAML file. A built-in default (azure:gpt-4o, 2 RPM) is used when no config file is provided. The YAML below shows all available options:</p>
+<div class="highlight"><pre><span></span><code><span class="nt">enricher</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">requests_per_minute</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">5</span><span class="w">          </span><span class="c1"># LLM API calls per minute (rate limit)</span>
+<span class="w">  </span><span class="nt">tool_host</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">model</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">azure:gpt-4o</span>
+<span class="w">    </span><span class="nt">max_steps</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">10</span>
+<span class="w">    </span><span class="nt">mcp_servers</span><span class="p">:</span>
+<span class="w">      </span><span class="nt">dir-mcp-server</span><span class="p">:</span>
+<span class="w">        </span><span class="nt">command</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">dirctl</span>
+<span class="w">        </span><span class="nt">args</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">mcp</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">serve</span><span class="p p-Indicator">]</span>
+<span class="w">        </span><span class="nt">env</span><span class="p">:</span>
+<span class="w">          </span><span class="nt">OASF_API_VALIDATION_SCHEMA_URL</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">https://schema.oasf.outshift.com</span>
+<span class="w">          </span><span class="nt">DIRECTORY_CLIENT_AUTH_MODE</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">insecure</span>
+<span class="w">  </span><span class="nt">skills_prompt_template</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">./prompts/skills.md</span><span class="w">    </span><span class="c1"># optional custom prompt</span>
+<span class="w">  </span><span class="nt">domains_prompt_template</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">./prompts/domains.md</span><span class="w">  </span><span class="c1"># optional custom prompt</span>
+</code></pre></div>
+<p>See <code>cli/cmd/import/import.config.yaml</code> in the repository for a fully annotated reference configuration.</p>
+<p><strong>Skip enrichment</strong> (static taxonomy):</p>
+<p>To bypass LLM enrichment and tag every record with fixed skills and domains, set <code>skip_enricher: true</code> — no <code>tool_host</code> or LLM credentials are required:</p>
+<div class="highlight"><pre><span></span><code><span class="nt">enricher</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">skip_enricher</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+<span class="w">  </span><span class="nt">skills</span><span class="p">:</span>
+<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">natural_language_processing/text_completion</span>
+<span class="w">      </span><span class="nt">id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">10201</span>
+<span class="w">  </span><span class="nt">domains</span><span class="p">:</span>
+<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">technology</span>
+<span class="w">      </span><span class="nt">id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">1</span>
 </code></pre></div>
 <p><strong>Recommended LLM providers:</strong></p>
 <ul>
-<li><code>azure:gpt-4o</code> - Azure OpenAI GPT-4o (recommended for speed and accuracy)</li>
-<li><code>ollama:qwen3:8b</code> - Local Qwen3 via Ollama</li>
+<li><code>azure:gpt-4o</code> — Azure OpenAI GPT-4o (recommended for speed and accuracy)</li>
+<li><code>ollama:qwen3:8b</code> — Local Qwen3 via Ollama</li>
 </ul>
 <p><strong>Environment variables for LLM providers:</strong></p>
 <ul>
 <li>Azure OpenAI: <code>AZURE_OPENAI_API_KEY</code>, <code>AZURE_OPENAI_ENDPOINT</code>, <code>AZURE_OPENAI_DEPLOYMENT</code></li>
 </ul>
-<p><strong>Customizing Enrichment Prompts:</strong></p>
-<p>The enricher uses separate default prompt templates for skills and domains. You can customize these prompts for specific use cases:</p>
-<ul>
-<li><strong>Skills</strong>: Use default (omit <code>--enrich-skills-prompt</code>), or <code>--enrich-skills-prompt=/path/to/custom-skills-prompt.md</code>, or <code>--enrich-skills-prompt="Your custom prompt text..."</code></li>
-<li><strong>Domains</strong>: Use default (omit <code>--enrich-domains-prompt</code>), or <code>--enrich-domains-prompt=/path/to/custom-domains-prompt.md</code>, or <code>--enrich-domains-prompt="Your custom prompt text..."</code></li>
-</ul>
-<p>The default prompt templates are available at <code>importer/enricher/enricher.skills.prompt.md</code> and <code>importer/enricher/enricher.domains.prompt.md</code>.</p>
-<details class="example">
-<summary>Import with custom enrichment</summary>
-<div class="highlight"><pre><span></span><code><span class="c1"># Import with custom enricher configuration</span>
-dirctl<span class="w"> </span>import<span class="w"> </span>--type<span class="o">=</span>mcp-registry<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--url<span class="o">=</span>https://registry.modelcontextprotocol.io/v0.1<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--enrich-config<span class="o">=</span>/path/to/custom-enricher.json
-
-<span class="c1"># Import with custom prompt templates</span>
-dirctl<span class="w"> </span>import<span class="w"> </span>--type<span class="o">=</span>mcp-registry<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--url<span class="o">=</span>https://registry.modelcontextprotocol.io/v0.1<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--enrich-skills-prompt<span class="o">=</span>/path/to/custom-skills-prompt.md<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--enrich-domains-prompt<span class="o">=</span>/path/to/custom-domains-prompt.md<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--debug
-</code></pre></div>
-</details>
 <h3 id="dry-run-output-directory">Dry Run Output Directory</h3>
 <p>When <code>--dry-run</code> is set, the importer does <strong>not</strong> push records to the Directory node. Instead, every transformed record is written to disk as a separate JSON file, one per record. This produces a reviewable artifact set that is drop-in compatible with the existing import / push commands, so users who do not want the importer to push directly to a Directory node can review or modify the records first and upload them later.</p>
 <p><strong>Output layout:</strong></p>
@@ -4273,18 +4216,6 @@ dirctl<span class="w"> </span>import<span class="w"> </span>--type<span class="o
 <span class="c1"># Sign with a private key</span>
 dirctl<span class="w"> </span>import<span class="w"> </span>--type<span class="o">=</span>mcp-registry<span class="w"> </span>--url<span class="o">=</span>https://registry.modelcontextprotocol.io/v0.1<span class="w"> </span>--sign<span class="w"> </span>--key<span class="o">=</span>/path/to/cosign.key
 </code></pre></div>
-<h3 id="rate-limiting-for-llm-api-calls">Rate Limiting for LLM API Calls</h3>
-<p>When importing large batches of records, the enrichment process makes LLM API calls for each record. To avoid hitting rate limits from LLM providers, use the <code>--enrich-rate-limit</code> flag:</p>
-<div class="highlight"><pre><span></span><code><span class="c1"># Import with reduced rate limit (5 requests per minute)</span>
-dirctl<span class="w"> </span>import<span class="w"> </span>--type<span class="o">=</span>mcp-registry<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--url<span class="o">=</span>https://registry.modelcontextprotocol.io/v0.1<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--enrich-rate-limit<span class="o">=</span><span class="m">5</span>
-
-<span class="c1"># Import with higher rate limit for providers with generous limits</span>
-dirctl<span class="w"> </span>import<span class="w"> </span>--type<span class="o">=</span>mcp-registry<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--url<span class="o">=</span>https://registry.modelcontextprotocol.io/v0.1<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--enrich-rate-limit<span class="o">=</span><span class="m">30</span>
-</code></pre></div>
 <h2 id="export-operations">Export Operations</h2>
 <p>Export records from the Directory into formats consumable by external tools and agentic CLIs. Supports single-record export by CID/name and batch export from search results.</p>
 <h3 id="dirctl-export-cid-or-nameversiondigest-flags"><code>dirctl export &lt;cid-or-name[:version][@digest]&gt; [flags]</code></h3>
@@ -4299,11 +4230,6 @@ dirctl<span class="w"> </span>import<span class="w"> </span>--type<span class="o
 </tr>
 </thead>
 <tbody>
-<tr>
-<td><code>oasf</code></td>
-<td><code>.json</code></td>
-<td>Raw OASF record JSON (default)</td>
-</tr>
 <tr>
 <td><code>a2a</code></td>
 <td><code>.json</code></td>
@@ -4321,6 +4247,9 @@ dirctl<span class="w"> </span>import<span class="w"> </span>--type<span class="o
 </tr>
 </tbody>
 </table>
+<blockquote>
+<p><strong>Note:</strong> For raw OASF record JSON, use <a href="#dirctl-pull-reference"><code>dirctl pull</code></a> — it supports <code>--output-file</code>, <code>--output-dir</code>, and search filters for batch retrieval. <code>dirctl export</code> no longer accepts <code>--format=oasf</code>.</p>
+</blockquote>
 <p><strong>Single-record Flags:</strong></p>
 <table>
 <thead>
@@ -4333,8 +4262,8 @@ dirctl<span class="w"> </span>import<span class="w"> </span>--type<span class="o
 <tbody>
 <tr>
 <td><code>--format</code></td>
-<td>Export format (see table above)</td>
-<td><code>oasf</code></td>
+<td>Export format (see table above); <strong>required</strong></td>
+<td>-</td>
 </tr>
 <tr>
 <td><code>--output-file</code></td>
@@ -4878,51 +4807,13 @@ dirctl<span class="w"> </span>sync<span class="w"> </span>delete<span class="w">
       
         <footer class="md-footer">
   
-    
-      
-      <nav class="md-footer__inner md-grid" aria-label="Footer" >
-        
-          
-          <a href="../dir-sdk/" class="md-footer__link md-footer__link--prev" aria-label="Previous: SDK Overview">
-            <div class="md-footer__button md-icon">
-              
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
-            </div>
-            <div class="md-footer__title">
-              <span class="md-footer__direction">
-                Previous
-              </span>
-              <div class="md-ellipsis">
-                SDK Overview
-              </div>
-            </div>
-          </a>
-        
-        
-          
-          <a href="../dir-api-reference/" class="md-footer__link md-footer__link--next" aria-label="Next: API Reference">
-            <div class="md-footer__title">
-              <span class="md-footer__direction">
-                Next
-              </span>
-              <div class="md-ellipsis">
-                API Reference
-              </div>
-            </div>
-            <div class="md-footer__button md-icon">
-              
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M4 11v2h12l-5.5 5.5 1.42 1.42L19.84 12l-7.92-7.92L10.5 5.5 16 11z"/></svg>
-            </div>
-          </a>
-        
-      </nav>
-    
-  
   <div class="md-footer-meta md-typeset">
     <div class="md-footer-meta__inner md-grid">
-      <div style="text-align: center; font-size: 0.75rem; margin-top: 1rem; color: var(--md-default-fg-color--light);">
-  © Copyright AGNTCY Contributors. <a href="#__consent">Change cookie settings</a>
+      <div class="md-copyright md-copyright--centered">
+  <div class="md-copyright__highlight">
+    © 2026, Agntcy, a Series of LF Projects, LLC. All rights reserved.
 
+  </div>
 </div>
       
     </div>
@@ -5013,7 +4904,7 @@ dirctl<span class="w"> </span>sync<span class="w"> </span>delete<span class="w">
     
       
       
-      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["announce.dismiss", "content.action.edit", "content.action.view", "content.code.annotate", "content.code.copy", "content.tabs.link", "content.tooltips", "navigation.footer", "navigation.indexes", "navigation.path", "navigation.sections", "navigation.tabs", "navigation.top", "navigation.tracking", "search.highlight", "search.share", "search.suggest", "toc.follow"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"provider": "mike"}}</script>
+      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["announce.dismiss", "content.action.edit", "content.action.view", "content.code.annotate", "content.code.copy", "content.tabs.link", "content.tooltips", "navigation.indexes", "navigation.path", "navigation.sections", "navigation.tabs", "navigation.top", "navigation.tracking", "search.highlight", "search.share", "search.suggest", "toc.follow"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"provider": "mike"}}</script>
     
     
       <script src="../../assets/javascripts/bundle.79ae519e.min.js"></script>
