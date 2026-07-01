@@ -2,47 +2,239 @@
 <!--
   Copyright AGNTCY Contributors (https://github.com/agntcy)
   SPDX-License-Identifier: Apache-2.0
+
+  GitHub Pages site-wide 404. Deployed to the gh-pages branch root by deploy_root_files.sh.
+  Unversioned doc URLs are redirected to /dir/latest/... before this page is shown.
 -->
-<html>
-
+<html lang="en">
 <head>
-    <meta charset="utf-8">
-    <title>Redirecting...</title>
-    <script>
-        (function () {
-            const basePath = '/dir/';
-            const latestVersion = 'latest';
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex">
+  <title>Page not found — Agent Directory Service</title>
+  <link rel="icon" href="/dir/latest/assets/agntcy/favicon.ico">
+  <style>
+    :root {
+      color-scheme: light dark;
+      --dir-404-bg: rgb(239, 243, 252);
+      --dir-404-fg: rgb(28, 30, 33);
+      --dir-404-fg-muted: rgba(28, 30, 33, 0.72);
+      --dir-404-accent: rgb(2, 81, 175);
+      --dir-404-btn-bg: rgb(239, 243, 252);
+      --dir-404-btn-border: rgb(213, 223, 247);
+    }
 
-            const path = window.location.pathname;
-            const redirected = sessionStorage.getItem('redirected');
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --dir-404-bg: rgb(3, 20, 43);
+        --dir-404-fg: rgb(227, 227, 227);
+        --dir-404-fg-muted: rgba(227, 227, 227, 0.78);
+        --dir-404-accent: rgb(251, 175, 70);
+        --dir-404-btn-bg: rgb(0, 42, 77);
+        --dir-404-btn-border: rgb(13, 39, 77);
+      }
+    }
 
-            if (redirected) {
-                sessionStorage.removeItem('redirected');
-                console.warn('Redirect loop detected. Stopping redirect.');
-                return;
-            }
+    * {
+      box-sizing: border-box;
+    }
 
-            // Skip assets and already-versioned paths (e.g. /dir/latest/ or /dir/1.2.0/).
-            const isAsset = path.includes('/assets/') || path.includes('/stylesheets/');
-            const isVersioned = new RegExp(`${basePath}(v?(\\d+\\.\\d+(\\.\\d+)?)|${latestVersion})/`).test(path);
+    body {
+      margin: 0;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 2rem 1.25rem;
+      font-family: Roboto, system-ui, -apple-system, sans-serif;
+      background: var(--dir-404-bg);
+      color: var(--dir-404-fg);
+    }
 
-            if (!isVersioned && !isAsset) {
-                // Example: /dir/dir-overview/ -> /dir/latest/dir-overview/
-                const newPath = path.replace(basePath, basePath + latestVersion + '/');
-                sessionStorage.setItem('redirected', 'true');
-                window.location.replace(newPath + window.location.search + window.location.hash);
-            } else {
-                window.location.replace('https://agntcy.github.io/dir/');
-            }
-        })();
-    </script>
+    .agntcy-not-found {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      max-width: 36rem;
+    }
+
+    .agntcy-not-found__logo {
+      display: block;
+      height: 2rem;
+      width: auto;
+      margin-bottom: 2rem;
+    }
+
+    .agntcy-not-found__code {
+      margin: 0 0 0.75rem;
+      font-size: clamp(4rem, 12vw, 6.5rem);
+      font-weight: 700;
+      line-height: 1;
+      background: linear-gradient(
+        101.5deg,
+        rgb(251, 171, 44) 0%,
+        rgb(24, 122, 220) 53%,
+        rgb(0, 20, 43) 100%
+      );
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+    }
+
+    h1 {
+      margin: 0 0 1rem;
+      font-weight: 300;
+      font-size: 1.75rem;
+      line-height: 1.25;
+    }
+
+    p {
+      margin: 0 0 2rem;
+      font-size: 0.95rem;
+      line-height: 1.6;
+      color: var(--dir-404-fg-muted);
+    }
+
+    .agntcy-not-found__actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.75rem;
+      justify-content: center;
+    }
+
+    .agntcy-not-found__btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.45rem;
+      padding: 0.6rem 1.5rem;
+      border-radius: 50px;
+      background: var(--dir-404-btn-bg);
+      color: var(--dir-404-fg);
+      border: 1px solid var(--dir-404-btn-border);
+      font-size: 0.9rem;
+      font-weight: 500;
+      text-decoration: none;
+      transition: transform 0.15s ease, box-shadow 0.15s ease;
+    }
+
+    .agntcy-not-found__btn:hover,
+    .agntcy-not-found__btn:focus-visible {
+      transform: translateY(-1px);
+      box-shadow: 0 6px 18px rgba(2, 81, 175, 0.12);
+    }
+
+    .agntcy-not-found__btn--primary {
+      background: var(--dir-404-accent);
+      border-color: var(--dir-404-accent);
+      color: #fff;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      .agntcy-not-found__btn--primary {
+        color: rgb(3, 20, 43);
+      }
+    }
+
+    .agntcy-not-found__btn--primary:hover,
+    .agntcy-not-found__btn--primary:focus-visible {
+      background: var(--dir-404-accent);
+      border-color: var(--dir-404-accent);
+      color: #fff;
+      filter: brightness(1.08);
+    }
+
+    @media (prefers-color-scheme: dark) {
+      .agntcy-not-found__btn--primary:hover,
+      .agntcy-not-found__btn--primary:focus-visible {
+        color: rgb(3, 20, 43);
+      }
+    }
+
+    .agntcy-not-found__btn svg {
+      fill: currentColor;
+      height: 1.1em;
+      width: 1.1em;
+      flex-shrink: 0;
+    }
+
+    .agntcy-not-found__status {
+      margin-top: 1.5rem;
+      font-size: 0.85rem;
+      color: var(--dir-404-fg-muted);
+    }
+
+    .agntcy-not-found__status[hidden] {
+      display: none;
+    }
+  </style>
+  <script>
+    (function () {
+      const basePath = "/dir/";
+      const latestVersion = "latest";
+      const homeUrl = basePath + latestVersion + "/";
+      const path = window.location.pathname;
+      const redirected = sessionStorage.getItem("redirected");
+
+      if (redirected) {
+        sessionStorage.removeItem("redirected");
+        return;
+      }
+
+      const isAsset = path.includes("/assets/") || path.includes("/stylesheets/");
+      const isVersioned = new RegExp(
+        `${basePath}(v?(\\d+\\.\\d+(\\.\\d+)?)|${latestVersion})/`
+      ).test(path);
+
+      if (!isVersioned && !isAsset) {
+        const newPath = path.replace(basePath, basePath + latestVersion + "/");
+        sessionStorage.setItem("redirected", "true");
+        window.location.replace(newPath + window.location.search + window.location.hash);
+        return;
+      }
+
+      const status = document.getElementById("redirect-status");
+      if (status) {
+        status.hidden = false;
+        status.textContent = "Redirecting to the documentation home…";
+      }
+      window.setTimeout(function () {
+        window.location.replace(homeUrl);
+      }, 1200);
+    })();
+  </script>
 </head>
-
 <body>
-    <h1>Agent Directory Service - Page Not Found</h1>
-    <p>We are attempting to redirect you to the latest version of this page.</p>
-    <p>If you are not redirected automatically, please navigate to the
-        <a href="https://agntcy.github.io/dir/">Agent Directory Service documentation homepage</a>.</p>
+  <main class="agntcy-not-found">
+    <a href="/dir/latest/">
+      <picture>
+        <source
+          media="(prefers-color-scheme: dark)"
+          srcset="/dir/latest/assets/agntcy/img/logo-dark.svg"
+        >
+        <img
+          class="agntcy-not-found__logo"
+          src="/dir/latest/assets/agntcy/img/logo-light.svg"
+          alt="Agent Directory Service"
+          width="120"
+          height="32"
+        >
+      </picture>
+    </a>
+    <p class="agntcy-not-found__code" aria-hidden="true">404</p>
+    <h1>Page not found</h1>
+    <p>
+      The page you requested does not exist or may have moved.
+      If you followed an old link, we will try to send you to the latest docs.
+    </p>
+    <div class="agntcy-not-found__actions">
+      <a class="agntcy-not-found__btn agntcy-not-found__btn--primary" href="/dir/latest/">
+        Back to home
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg>
+      </a>
+    </div>
+    <p id="redirect-status" class="agntcy-not-found__status" hidden></p>
+  </main>
 </body>
-
 </html>
