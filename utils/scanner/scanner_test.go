@@ -81,6 +81,15 @@ func TestMerge_AllSkipped(t *testing.T) {
 	}
 }
 
+func TestMerge_NilElementsSkipped(t *testing.T) {
+	t.Parallel()
+
+	got := merge([]*ScanResult{nil, {Safe: true}, nil})
+	if !got.Safe {
+		t.Error("nil elements should be skipped; surviving safe result should win")
+	}
+}
+
 func TestMerge_FindingsAlwaysMakeSafeFalse(t *testing.T) {
 	t.Parallel()
 
@@ -91,6 +100,44 @@ func TestMerge_FindingsAlwaysMakeSafeFalse(t *testing.T) {
 
 	if got.Safe {
 		t.Error("merged result with any finding should be unsafe")
+	}
+}
+
+// --- HasError / HasWarning ---
+
+func TestHasError_False(t *testing.T) {
+	t.Parallel()
+
+	r := &ScanResult{Findings: []Finding{{Severity: SeverityWarning}}}
+	if r.HasError() {
+		t.Error("no error-severity finding should return false")
+	}
+}
+
+func TestHasError_True(t *testing.T) {
+	t.Parallel()
+
+	r := &ScanResult{Findings: []Finding{{Severity: SeverityError}}}
+	if !r.HasError() {
+		t.Error("error-severity finding should return true")
+	}
+}
+
+func TestHasWarning_False(t *testing.T) {
+	t.Parallel()
+
+	r := &ScanResult{Findings: []Finding{{Severity: SeverityInfo}}}
+	if r.HasWarning() {
+		t.Error("no warning-severity finding should return false")
+	}
+}
+
+func TestHasWarning_True(t *testing.T) {
+	t.Parallel()
+
+	r := &ScanResult{Findings: []Finding{{Severity: SeverityWarning}}}
+	if !r.HasWarning() {
+		t.Error("warning-severity finding should return true")
 	}
 }
 
@@ -160,6 +207,30 @@ func TestRunAll_AllFail_ReturnsError(t *testing.T) {
 	_, err := RunAll(context.Background(), runners, newRecord(t), nil)
 	if err == nil {
 		t.Error("all runners failing should return an error")
+	}
+}
+
+type captureLogger struct{ msgs []string }
+
+func (l *captureLogger) Warn(msg string, _ ...any) { l.msgs = append(l.msgs, msg) }
+
+func TestRunAll_FailedRunnerLogsViaLogger(t *testing.T) {
+	t.Parallel()
+
+	log := &captureLogger{}
+
+	runners := []Runner{
+		&stubRunner{name: "down", err: errors.New("offline")},
+		&stubRunner{name: "up", result: &ScanResult{Safe: true}},
+	}
+
+	_, err := RunAll(context.Background(), runners, newRecord(t), log)
+	if err != nil {
+		t.Fatalf("partial failure should not error: %v", err)
+	}
+
+	if len(log.msgs) == 0 {
+		t.Error("expected at least one Warn call for the failing runner")
 	}
 }
 
