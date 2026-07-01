@@ -44,7 +44,7 @@ spec:
               value: {{ .Values.log_level }}
             - name: DIRECTORY_LOGGER_LOG_FORMAT
               value: {{ .Values.log_format }}
-            - name: DIRECTORY_SERVER_LOGGING_VERBOSE
+            - name: DIRECTORY_LOGGING_VERBOSE
               value: "{{ .Values.grpc_logging_verbose }}"
             {{- if or .Values.secrets.syncAuth.username .Values.secrets.syncAuth.password (and .Values.externalSecrets.enabled .Values.externalSecrets.syncAuth.enabled) }}
             - name: DIRECTORY_SERVER_SYNC_AUTH_CONFIG_USERNAME
@@ -59,12 +59,12 @@ spec:
                   key: sync-password
             {{- end }}
             {{- if or .Values.secrets.ociAuth.username .Values.secrets.ociAuth.password (and .Values.externalSecrets.enabled .Values.externalSecrets.ociAuth.enabled) }}
-            - name: DIRECTORY_SERVER_STORE_OCI_AUTH_CONFIG_USERNAME
+            - name: DIRECTORY_STORE_AUTH_CONFIG_USERNAME
               valueFrom:
                 secretKeyRef:
                   name: {{ include "chart.fullname" . }}
                   key: oci-username
-            - name: DIRECTORY_SERVER_STORE_OCI_AUTH_CONFIG_PASSWORD
+            - name: DIRECTORY_STORE_AUTH_CONFIG_PASSWORD
               valueFrom:
                 secretKeyRef:
                   name: {{ include "chart.fullname" . }}
@@ -72,12 +72,12 @@ spec:
             {{- end }}
             {{- /* PostgreSQL database credentials */ -}}
             {{- if include "chart.postgres.credentialsConfigured" . }}
-            - name: DIRECTORY_SERVER_DATABASE_POSTGRES_USERNAME
+            - name: DIRECTORY_DATABASE_POSTGRES_USERNAME
               valueFrom:
                 secretKeyRef:
                   name: {{ include "chart.fullname" . }}
                   key: postgres-username
-            - name: DIRECTORY_SERVER_DATABASE_POSTGRES_PASSWORD
+            - name: DIRECTORY_DATABASE_POSTGRES_PASSWORD
               valueFrom:
                 secretKeyRef:
                   name: {{ include "chart.fullname" . }}
@@ -92,7 +92,7 @@ spec:
               value: {{ .Values.spire.trustDomain }}
             {{- end }}
             {{- if and .Values.config.oasf_api_validation .Values.config.oasf_api_validation.schema_url }}
-            - name: DIRECTORY_SERVER_OASF_API_VALIDATION_SCHEMA_URL
+            - name: DIRECTORY_OASF_API_VALIDATION_SCHEMA_URL
               value: {{ .Values.config.oasf_api_validation.schema_url | quote }}
             {{- end }}
             {{- with .Values.extraEnv }}

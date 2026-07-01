@@ -11,9 +11,9 @@ import (
 	"time"
 
 	corev1 "github.com/agntcy/dir/api/core/v1"
+	dircfg "github.com/agntcy/dir/config"
 	"github.com/agntcy/dir/server/datastore"
 	"github.com/agntcy/dir/server/store/cache"
-	ociconfig "github.com/agntcy/dir/server/store/oci/config"
 	"github.com/agntcy/dir/server/types"
 	"github.com/agntcy/dir/utils/logging"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
@@ -37,7 +37,7 @@ const (
 
 type store struct {
 	repo   oras.GraphTarget
-	config ociconfig.Config
+	config dircfg.Registry
 }
 
 // Compile-time interface checks to ensure store implements all capability interfaces.
@@ -47,7 +47,7 @@ var (
 	_ types.FullStore        = (*store)(nil)
 )
 
-func New(cfg ociconfig.Config) (types.StoreAPI, error) {
+func New(cfg dircfg.Registry) (types.StoreAPI, error) {
 	if repoPath := cfg.LocalDir; repoPath != "" {
 		logger.Info("Initializing local OCI store", "path", repoPath)
 

@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	storeconfig "github.com/agntcy/dir/server/store/oci/config"
+	dircfg "github.com/agntcy/dir/config"
 	"github.com/stretchr/testify/require"
 )
 
@@ -22,13 +22,12 @@ func TestLoadConfigUsesMacOSFriendlyLocalRegistryPort(t *testing.T) {
 	cfg, err := loadConfig()
 
 	require.NoError(t, err)
-	require.Equal(t, "localhost:5555", cfg.Server.Store.OCI.RegistryAddress)
-	require.Equal(t, "localhost:5555", cfg.Reconciler.LocalRegistry.RegistryAddress)
+	require.Equal(t, "localhost:5555", cfg.Store.RegistryAddress)
 }
 
 // TestEmbeddedZot tests the embedded Zot server.
 func TestEmbeddedZot(t *testing.T) {
-	address := storeconfig.DefaultRegistryAddress
+	address := dircfg.DefaultRegistryAddress
 	rootDirectory := "/tmp/agntcy/dir/oci/"
 
 	go func() {

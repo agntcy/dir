@@ -1,37 +1,37 @@
+oasf_api_validation:
+  schema_url: "https://schema.oasf.outshift.com"
+
+store:
+  registry_address: "localhost:25555"
+  repository_name: "dir"
+  auth_config:
+    insecure: true
+
+database:
+  type: "postgres"
+  postgres:
+    username: "postgres"
+    password: "postgres"
+    host: "localhost"
+    port: 25432
+    database: "directory"
+    ssl_mode: "disable"
+
 server:
   listen_address: "localhost:19234"
   metrics:
     enabled: false
-  oasf_api_validation:
-    schema_url: "https://schema.oasf.outshift.com"
-  store:
-    provider: "oci"
-    oci:
-      registry_address: "localhost:25555"
-      repository_name: "dir"
-      auth_config:
-        insecure: true
-    verification:
-      enabled: true
   routing:
     listen_address: "/ip4/127.0.0.1/tcp/0"
     datastore_dir: "routing"
     gossipsub:
       enabled: true
-  database:
-    type: "postgres"
-    postgres:
-      username: "postgres"
-      password: "postgres"
-      host: "localhost"
-      port: 25432
-      database: "directory"
-      ssl_mode: "disable"
   publication:
     scheduler_interval: 1h
     worker_count: 1
     worker_timeout: 30m
   naming:
+    enabled: true
     ttl: 168h
 
 reconciler:

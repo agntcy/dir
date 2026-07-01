@@ -6,6 +6,7 @@ go 1.26.4
 replace (
 	github.com/agntcy/dir/api => ../api
 	github.com/agntcy/dir/client => ../client
+	github.com/agntcy/dir/config => ../config
 	github.com/agntcy/dir/reconciler => ../reconciler
 	github.com/agntcy/dir/server => ../server
 	github.com/agntcy/dir/utils => ../utils
@@ -27,6 +28,7 @@ require (
 	github.com/agntcy/dir-runtime/store v1.3.2
 	github.com/agntcy/dir/api v1.5.0
 	github.com/agntcy/dir/client v1.5.0
+	github.com/agntcy/dir/config v0.0.0-00010101000000-000000000000
 	github.com/agntcy/dir/reconciler v1.5.0
 	github.com/agntcy/dir/server v1.5.0
 	github.com/agntcy/dir/utils v1.5.0

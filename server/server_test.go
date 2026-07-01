@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/agntcy/dir/server/config"
+	dircfg "github.com/agntcy/dir/config"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc"
@@ -19,12 +19,12 @@ import (
 func TestBuildConnectionOptions(t *testing.T) {
 	tests := []struct {
 		name     string
-		config   config.ConnectionConfig
+		config   dircfg.Connection
 		validate func(t *testing.T, opts []grpc.ServerOption)
 	}{
 		{
 			name:   "default configuration",
-			config: config.DefaultConnectionConfig(),
+			config: dircfg.DefaultConnection(),
 			validate: func(t *testing.T, opts []grpc.ServerOption) {
 				t.Helper()
 				// Verify we get the expected number of options
@@ -34,12 +34,12 @@ func TestBuildConnectionOptions(t *testing.T) {
 		},
 		{
 			name: "custom configuration",
-			config: config.ConnectionConfig{
+			config: dircfg.Connection{
 				MaxConcurrentStreams: 500,
 				MaxRecvMsgSize:       2 * 1024 * 1024,
 				MaxSendMsgSize:       2 * 1024 * 1024,
 				ConnectionTimeout:    30 * time.Second,
-				Keepalive: config.KeepaliveConfig{
+				Keepalive: dircfg.Keepalive{
 					MaxConnectionIdle:     5 * time.Minute,
 					MaxConnectionAge:      10 * time.Minute,
 					MaxConnectionAgeGrace: 2 * time.Minute,
@@ -69,7 +69,7 @@ func TestBuildConnectionOptions(t *testing.T) {
 // TestBuildConnectionOptions_AllOptionsPresent verifies that all required
 // connection management options are included.
 func TestBuildConnectionOptions_AllOptionsPresent(t *testing.T) {
-	cfg := config.DefaultConnectionConfig()
+	cfg := dircfg.DefaultConnection()
 	opts := buildConnectionOptions(cfg)
 
 	// We should have exactly 6 options:
@@ -91,12 +91,12 @@ func TestBuildConnectionOptions_AllOptionsPresent(t *testing.T) {
 // parameters are correctly configured.
 func TestBuildConnectionOptions_KeepaliveParameters(t *testing.T) {
 	// Create a config with known keepalive values
-	cfg := config.ConnectionConfig{
+	cfg := dircfg.Connection{
 		MaxConcurrentStreams: 1000,
 		MaxRecvMsgSize:       4 * 1024 * 1024,
 		MaxSendMsgSize:       4 * 1024 * 1024,
 		ConnectionTimeout:    120 * time.Second,
-		Keepalive: config.KeepaliveConfig{
+		Keepalive: dircfg.Keepalive{
 			MaxConnectionIdle:     15 * time.Minute,
 			MaxConnectionAge:      30 * time.Minute,
 			MaxConnectionAgeGrace: 5 * time.Minute,
@@ -141,12 +141,12 @@ func TestBuildConnectionOptions_MessageSizeLimits(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			cfg := config.ConnectionConfig{
+			cfg := dircfg.Connection{
 				MaxConcurrentStreams: 1000,
 				MaxRecvMsgSize:       tt.maxRecvMsgSize,
 				MaxSendMsgSize:       tt.maxSendMsgSize,
 				ConnectionTimeout:    120 * time.Second,
-				Keepalive:            config.KeepaliveConfig{},
+				Keepalive:            dircfg.Keepalive{},
 			}
 
 			opts := buildConnectionOptions(cfg)
@@ -178,12 +178,12 @@ func TestBuildConnectionOptions_StreamLimits(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			cfg := config.ConnectionConfig{
+			cfg := dircfg.Connection{
 				MaxConcurrentStreams: tt.maxConcurrentStreams,
 				MaxRecvMsgSize:       4 * 1024 * 1024,
 				MaxSendMsgSize:       4 * 1024 * 1024,
 				ConnectionTimeout:    120 * time.Second,
-				Keepalive:            config.KeepaliveConfig{},
+				Keepalive:            dircfg.Keepalive{},
 			}
 
 			opts := buildConnectionOptions(cfg)
@@ -195,7 +195,7 @@ func TestBuildConnectionOptions_StreamLimits(t *testing.T) {
 // TestKeepaliveServerParameters_StructCreation verifies that we can create
 // keepalive.ServerParameters with our configuration values.
 func TestKeepaliveServerParameters_StructCreation(t *testing.T) {
-	cfg := config.KeepaliveConfig{
+	cfg := dircfg.Keepalive{
 		MaxConnectionIdle:     15 * time.Minute,
 		MaxConnectionAge:      30 * time.Minute,
 		MaxConnectionAgeGrace: 5 * time.Minute,
@@ -239,12 +239,14 @@ func TestServerInitialization_SchemaURL(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			// Create a minimal config with the schema URL
-			cfg := &config.Config{
-				ListenAddress: config.DefaultListenAddress,
-				OASFAPIValidation: config.OASFAPIValidationConfig{
+			cfg := &dircfg.Config{
+				OASFAPIValidation: dircfg.OASFAPIValidation{
 					SchemaURL: tt.schemaURL,
 				},
-				Connection: config.DefaultConnectionConfig(),
+				APIServer: dircfg.APIServer{
+					ListenAddress: dircfg.DefaultListenAddress,
+					Connection:    dircfg.DefaultConnection(),
+				},
 			}
 
 			// We can't fully test New() because it tries to start services,
@@ -288,12 +290,14 @@ func TestServerInitialization_OASFValidation(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			// Create a config with OASF validation settings
-			cfg := &config.Config{
-				ListenAddress: config.DefaultListenAddress,
-				OASFAPIValidation: config.OASFAPIValidationConfig{
+			cfg := &dircfg.Config{
+				OASFAPIValidation: dircfg.OASFAPIValidation{
 					SchemaURL: tt.schemaURL,
 				},
-				Connection: config.DefaultConnectionConfig(),
+				APIServer: dircfg.APIServer{
+					ListenAddress: dircfg.DefaultListenAddress,
+					Connection:    dircfg.DefaultConnection(),
+				},
 			}
 
 			// Verify config values are set correctly
@@ -323,12 +327,14 @@ func TestServerInitialization_EmptySchemaURL(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			// Create a config with empty schema URL
-			cfg := &config.Config{
-				ListenAddress: config.DefaultListenAddress,
-				OASFAPIValidation: config.OASFAPIValidationConfig{
+			cfg := &dircfg.Config{
+				OASFAPIValidation: dircfg.OASFAPIValidation{
 					SchemaURL: tt.schemaURL,
 				},
-				Connection: config.DefaultConnectionConfig(),
+				APIServer: dircfg.APIServer{
+					ListenAddress: dircfg.DefaultListenAddress,
+					Connection:    dircfg.DefaultConnection(),
+				},
 			}
 
 			// newOASFValidator must reject an empty schema URL so that misconfigured
@@ -345,7 +351,7 @@ func TestServerInitialization_EmptySchemaURL(t *testing.T) {
 // TestKeepaliveEnforcementPolicy_StructCreation verifies that we can create
 // keepalive.EnforcementPolicy with our configuration values.
 func TestKeepaliveEnforcementPolicy_StructCreation(t *testing.T) {
-	cfg := config.KeepaliveConfig{
+	cfg := dircfg.Keepalive{
 		MinTime:             1 * time.Minute,
 		PermitWithoutStream: true,
 	}

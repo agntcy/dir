@@ -8,7 +8,7 @@ import (
 	"sync"
 
 	routingv1 "github.com/agntcy/dir/api/routing/v1"
-	"github.com/agntcy/dir/server/publication/config"
+	dircfg "github.com/agntcy/dir/config"
 	publypes "github.com/agntcy/dir/server/publication/types"
 	"github.com/agntcy/dir/server/types"
 	"github.com/agntcy/dir/utils/logging"
@@ -21,7 +21,7 @@ type Service struct {
 	db      types.DatabaseAPI
 	store   types.StoreAPI
 	routing types.RoutingAPI
-	config  config.Config
+	config  dircfg.Publication
 
 	scheduler *Scheduler
 	workers   []*Worker
@@ -36,7 +36,7 @@ func New(db types.DatabaseAPI, store types.StoreAPI, routing types.RoutingAPI, o
 		db:      db,
 		store:   store,
 		routing: routing,
-		config:  opts.Config().Publication,
+		config:  opts.Config().APIServer.Publication,
 		stopCh:  make(chan struct{}),
 	}, nil
 }
