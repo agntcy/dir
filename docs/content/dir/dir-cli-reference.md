@@ -150,42 +150,52 @@ Without `--config`, built-in defaults are used. When `--config` is provided, the
 
 **Configuration:**
 
-The daemon ships with sensible built-in defaults. To customize, pass a YAML config file via `--config`. Relative paths in the config (e.g. `store`, `dir.db`) are resolved against `--data-dir`. Credentials can be set via environment variables prefixed with `DIRECTORY_DAEMON_` (e.g. `DIRECTORY_DAEMON_SERVER_DATABASE_POSTGRES_PASSWORD`).
+The daemon ships with sensible built-in defaults. To customize, pass a YAML config file via `--config`. Relative paths in the config (e.g. `store`, `dir.db`) are resolved against `--data-dir`. Credentials can be set via environment variables prefixed with `DIRECTORY_DAEMON_` (e.g. `DIRECTORY_DAEMON_DATABASE_POSTGRES_PASSWORD`).
 
 ??? example "Reference config file"
 
     ```yaml
+    oasf_api_validation:
+      schema_url: "https://schema.oasf.outshift.com"
+
+    # Shared OCI store — used by both the apiserver and the reconciler.
+    store:
+      local_dir: "store"
+      registry_address: "localhost:5555"
+      repository_name: "dir"
+      auth_config:
+        insecure: true
+
+    # Shared database — used by both the apiserver and the reconciler.
+    database:
+      type: "sqlite"
+      sqlite:
+        path: "dir.db"
+      postgres:
+        host: "localhost"
+        port: 5432
+        database: "dir"
+        ssl_mode: "disable"
+
+    # Apiserver-specific settings.
     server:
       listen_address: "localhost:8888"
-      oasf_api_validation:
-        schema_url: "https://schema.oasf.outshift.com"
-      store:
-        local_dir: "store"
-        registry_address: "localhost:5555"
-        repository_name: "dir"
-        auth_config:
-          insecure: true
       routing:
         listen_address: "/ip4/0.0.0.0/tcp/8999"
         datastore_dir: "routing"
         gossipsub:
           enabled: true
-      database:
-        type: "sqlite"
-        sqlite:
-          path: "dir.db"
-        postgres:
-          host: "localhost"
-          port: 5432
-          database: "dir"
-          ssl_mode: "disable"
       publication:
         scheduler_interval: 5m
         worker_count: 1
         worker_timeout: 30m
       naming:
+        enabled: true
         ttl: 168h
-
+      http_gateway:
+        enabled: true
+        listen_address: ":8889"
+        public_url: "http://localhost:8889"
 
     reconciler:
       regsync:
@@ -204,15 +214,6 @@ The daemon ships with sensible built-in defaults. To customize, pass a YAML conf
         interval: 1m
         ttl: 168h
         record_timeout: 30s
-      local_registry:
-        registry_address: "localhost:5555"
-        repository_name: "dir"
-        auth_config:
-          insecure: true
-      database:
-        type: "sqlite"
-        sqlite:
-          path: "dir.db"
     ```
 
 ### `dirctl daemon stop`
