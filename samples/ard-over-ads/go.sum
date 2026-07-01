@@ -200,6 +200,7 @@ github.com/agnivade/levenshtein v1.2.1 h1:EHBY3UOn1gwdy/VbFwgo4cxecRznFk7fKWN1KO
 github.com/agnivade/levenshtein v1.2.1/go.mod h1:QVVI16kDrtSuwcpd0p1+xMC6Z/VfhtCyDIjcwga4/DU=
 github.com/agntcy/dir-importer v1.4.1 h1:ose8rUkLaxI4J0YovcgpA/KY7ht+BOQZJUC9W97Rfp4=
 github.com/agntcy/dir-importer v1.4.1/go.mod h1:gxzbZBBSoiOWqkmdUjQEbsvYxY2y4DDp77a6lk9204s=
+github.com/agntcy/dir-importer v1.4.2-0.20260630074812-d4501aa27c3d/go.mod h1:emTmHmARlhxAF9giWVukFW5Yvx63QZbpPBUEoqrA8xA=
 github.com/agntcy/dir-mcp v1.3.2 h1:wZYJ/RiN+gAw2p0FLOgadCatKvubLpw7THO+ZOXNem0=
 github.com/agntcy/dir-mcp v1.3.2/go.mod h1:GPHHhPgbrfJwMxzjjchYHftZPaPSWVUM41UB4DDZsQA=
 github.com/agntcy/dir-runtime/discovery v1.3.2 h1:/flBeZSEUGzxGPeYHvfq0x9dv9S8gzb+ItRgYkz6GVs=
@@ -212,6 +213,7 @@ github.com/agntcy/dir-runtime/utils v1.3.2 h1:dRpcEKHp6svEOf+3g/mayDWNgvxSHwa+T2
 github.com/agntcy/dir-runtime/utils v1.3.2/go.mod h1:kPyp84+ER5CTtZkzVVJijNDx3VoYXXaM9ltufmNeyxg=
 github.com/agntcy/oasf-sdk/pkg v1.0.6-0.20260612113147-8fdda6fd3eb8 h1:wvavxaeUuqyKzGU2JZhHshFrl7l74ADEKBiBfg4rgN8=
 github.com/agntcy/oasf-sdk/pkg v1.0.6-0.20260612113147-8fdda6fd3eb8/go.mod h1:6dii5LpZlAPNhko78tvD2LOhJ2qwOXDy95aSjrsJbgg=
+github.com/agntcy/oasf-sdk/pkg v1.0.6-0.20260629100853-cc016581c7f5/go.mod h1:6dii5LpZlAPNhko78tvD2LOhJ2qwOXDy95aSjrsJbgg=
 github.com/alecthomas/chroma v0.10.0 h1:7XDcGkCQopCNKjZHfYrNLraA+M7e0fMiJ/Mfikbfjek=
 github.com/alecthomas/chroma v0.10.0/go.mod h1:jtJATyUxlIORhUOFNA9NZDWGAQ8wpxQQqNSB4rjA/1s=
 github.com/alecthomas/template v0.0.0-20160405071501-a0175ee3bccc/go.mod h1:LOuyumcjzFXgccqObfd/Ljyb9UuFJ6TxHnclSeseNhc=

@@ -29,9 +29,13 @@ const (
 	CatalogSpecVersion = "1.0"
 
 	// Protocol-specific media types supported by AI Catalog.
-	ProtocolA2ACardJsonMediaType   = "application/a2a-agent-card+json"
-	ProtocolMCPCardJsonMediaType   = "application/mcp-server-card+json"
-	ProtocolAgentSkillsMdMediaType = "application/agent-skills+md"
+	ProtocolA2ACardJsonMediaType       = "application/a2a-agent-card+json"
+	ProtocolMCPCardJsonMediaType       = "application/mcp-server-card+json"
+	ProtocolAgentSkillsMdMediaType     = "application/agent-skills+md"
+	ProtocolAgentSkillsBundleMediaType = "application/agent-skills+gzip"
+
+	// OASF module names.
+	AgentSkillsModuleName = "core/language_model/agentskills"
 )
 
 // catalogModuleProjection captures the per-module projection rules: the
@@ -55,8 +59,10 @@ var catalogModules = map[string]catalogModuleProjection{
 	"integration/a2a": {
 		MediaType: ProtocolA2ACardJsonMediaType, Label: "A2A",
 	},
-	"core/language_model/agentskills": {
-		MediaType: ProtocolAgentSkillsMdMediaType, Label: "Skill",
+	AgentSkillsModuleName: {
+		// Markdown vs bundle is resolved from module data in getModuleMediaType.
+		MediaType: ProtocolAgentSkillsMdMediaType,
+		Label:     "Skill",
 	},
 }
 
@@ -194,12 +200,34 @@ func moduleToCatalogEntry(module coretypes.Module) *CatalogEntry {
 	}
 
 	return &CatalogEntry{
-		MediaType: proj.MediaType,
+		MediaType: getModuleMediaType(module, proj),
 		Artifact: &CatalogEntry_Data{
 			Data: structpb.NewStructValue(data),
 		},
 		Tags: getAnnotationTags(module.GetAnnotations()),
 	}
+}
+
+func getModuleMediaType(module coretypes.Module, proj catalogModuleProjection) string {
+	if module.GetName() == AgentSkillsModuleName {
+		return getAgentSkillsMediaType(module)
+	}
+
+	return proj.MediaType
+}
+
+func getAgentSkillsMediaType(module coretypes.Module) string {
+	if hasArtifacts(module.GetData()) {
+		return ProtocolAgentSkillsBundleMediaType
+	}
+
+	return ProtocolAgentSkillsMdMediaType
+}
+
+func hasArtifacts(data map[string]any) bool {
+	artifacts, ok := data["artifacts"].([]any)
+
+	return ok && len(artifacts) > 0
 }
 
 // knownCatalogModules returns the record's modules that have a catalog
