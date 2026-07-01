@@ -51,7 +51,7 @@ services:
         condition: on-failure
 
   postgres:
-    image: docker.io/bitnami/postgresql:latest@sha256:f67b10b185d344b15e9999b57bdbedb13b9a4c33aa3a939467ee519cec49d40e
+    image: docker.io/bitnami/postgresql:latest@sha256:6b092d90dd734cd60c00e74cd997aa58acfef3c25b9c44b028e9f267f5d0d25e
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
