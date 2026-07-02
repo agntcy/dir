@@ -46,6 +46,7 @@ Batch export from search results:
 
   dirctl export --output-dir=./exports/ --format=a2a --name "web*"
   dirctl export --output-dir=./exports/ --format=agent-skill --skill "code*"
+  dirctl export --output-dir=./exports/ --format=agent-skill-bundle --skill "code*"
   dirctl export --output-dir=./exports/ --format=mcp-ghcopilot --module "integration/mcp"
 `,
 	Args: cobra.MaximumNArgs(1),
