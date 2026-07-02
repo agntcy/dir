@@ -39,9 +39,8 @@ func TestRunInstallWritesMCPEntryIdempotently(t *testing.T) {
 	}
 	agent := agentcfg.Agent{Name: "Claude Code", MCP: target}
 	agents := []agentcfg.Agent{agent}
-	set := agentcfg.ArtifactSet{MCP: true}
 
-	first := runInstall(env, arts, agents, set, false)
+	first := runInstall(env, arts, agents, false)
 	require.Len(t, first, 1)
 	require.Equal(t, agentcfg.ActionAdded, first[0].Action)
 
@@ -53,7 +52,7 @@ func TestRunInstallWritesMCPEntryIdempotently(t *testing.T) {
 	_, present := codec.GetNested(m, "mcpServers", "code-review")
 	require.True(t, present)
 
-	second := runInstall(env, arts, agents, set, false)
+	second := runInstall(env, arts, agents, false)
 	require.Len(t, second, 1)
 	require.Equal(t, agentcfg.ActionUnchanged, second[0].Action)
 }
@@ -79,9 +78,8 @@ func TestRunInstallWritesSkill(t *testing.T) {
 	}
 	agent := agentcfg.Agent{Name: "Claude Code", Skill: target}
 	agents := []agentcfg.Agent{agent}
-	set := agentcfg.ArtifactSet{Skill: true}
 
-	outcomes := runInstall(env, arts, agents, set, false)
+	outcomes := runInstall(env, arts, agents, false)
 	require.Len(t, outcomes, 1)
 	require.Equal(t, agentcfg.ActionAdded, outcomes[0].Action)
 
@@ -119,9 +117,8 @@ func TestRunInstallDedupesSharedSkillPath(t *testing.T) {
 		{Name: "Claude Code", Skill: claudeCode},
 		{Name: "Claude Desktop", Skill: claudeDesktop},
 	}
-	set := agentcfg.ArtifactSet{Skill: true}
 
-	outcomes := runInstall(env, arts, agents, set, false)
+	outcomes := runInstall(env, arts, agents, false)
 
 	// Both agents resolve to the same skills path, so dedupeSkill collapses the
 	// shared target to a single skill outcome.

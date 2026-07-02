@@ -20,14 +20,13 @@ var uninstallCmd = &cobra.Command{
 		}
 
 		env := agentcfg.ResolveEnv()
-		set := agentcfg.ResolveArtifacts(opts.mcpOnly, opts.skillOnly)
 
 		selected, err := selectAgents(cmd, env)
 		if err != nil {
 			return err
 		}
 
-		plan := runUninstall(env, arts, selected, set, true)
+		plan := runUninstall(env, arts, selected, true)
 		presenter.Printf(cmd, "%s", agentcfg.FormatPlan(plan))
 
 		if len(plan) == 0 {
@@ -47,7 +46,7 @@ var uninstallCmd = &cobra.Command{
 			}
 		}
 
-		outcomes := runUninstall(env, arts, selected, set, opts.dryRun)
+		outcomes := runUninstall(env, arts, selected, opts.dryRun)
 		presenter.Printf(cmd, "%s", agentcfg.FormatSummary(outcomes, opts.dryRun))
 
 		return nil

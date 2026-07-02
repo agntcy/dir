@@ -20,8 +20,6 @@ const allAgents = "all"
 func addSelectionFlags(cmd *cobra.Command, opts *options) {
 	flags := cmd.PersistentFlags()
 
-	flags.BoolVar(&opts.mcpOnly, "mcp", false, "Act only on the MCP server entry")
-	flags.BoolVar(&opts.skillOnly, "skill", false, "Act only on the skill/rules")
 	flags.StringSliceVar(&opts.agents, "agents", []string{allAgents},
 		fmt.Sprintf("Agents to target: %q (default, all detected) or a comma-separated list of agent IDs (%s)",
 			allAgents, strings.Join(agentIDs(), ", ")))

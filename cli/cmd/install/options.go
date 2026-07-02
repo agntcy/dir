@@ -5,9 +5,7 @@ package install
 
 // options holds the shared flags for the install subcommands.
 type options struct {
-	mcpOnly   bool
-	skillOnly bool
-	agents    []string
-	dryRun    bool
-	yes       bool
+	agents []string
+	dryRun bool
+	yes    bool
 }

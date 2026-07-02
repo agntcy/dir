@@ -39,7 +39,7 @@ directly into the configuration of detected AI coding agents.
 Examples:
   dirctl install cisco.com/agent:v1.0.0
   dirctl install bafyrei... --dry-run
-  dirctl install cisco.com/agent --mcp --agents claude-code,cursor
+  dirctl install cisco.com/agent --agents claude-code,cursor
   dirctl install uninstall cisco.com/agent
 `,
 	Args: cobra.MaximumNArgs(1),
@@ -107,14 +107,13 @@ func runInstallCmd(cmd *cobra.Command, input string) error {
 	}
 
 	env := agentcfg.ResolveEnv()
-	set := agentcfg.ResolveArtifacts(opts.mcpOnly, opts.skillOnly)
 
 	selected, err := selectAgents(cmd, env)
 	if err != nil {
 		return err
 	}
 
-	plan := runInstall(env, arts, selected, set, true)
+	plan := runInstall(env, arts, selected, true)
 	presenter.Printf(cmd, "%s", agentcfg.FormatPlan(plan))
 
 	if len(plan) == 0 {
@@ -134,7 +133,7 @@ func runInstallCmd(cmd *cobra.Command, input string) error {
 		}
 	}
 
-	outcomes := runInstall(env, arts, selected, set, opts.dryRun)
+	outcomes := runInstall(env, arts, selected, opts.dryRun)
 	presenter.Printf(cmd, "%s", agentcfg.FormatSummary(outcomes, opts.dryRun))
 
 	return nil

@@ -49,10 +49,3 @@ func TestResolveSelectionUndetectedNeverInstalled(t *testing.T) {
 	assert.Empty(t, selected)
 	assert.Equal(t, []string{"b"}, skipped)
 }
-
-func TestResolveArtifacts(t *testing.T) {
-	assert.Equal(t, ArtifactSet{MCP: true, Skill: true}, ResolveArtifacts(false, false))
-	assert.Equal(t, ArtifactSet{MCP: true, Skill: true}, ResolveArtifacts(true, true))
-	assert.Equal(t, ArtifactSet{MCP: true, Skill: false}, ResolveArtifacts(true, false))
-	assert.Equal(t, ArtifactSet{MCP: false, Skill: true}, ResolveArtifacts(false, true))
-}

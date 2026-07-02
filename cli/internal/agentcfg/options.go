@@ -3,22 +3,6 @@
 
 package agentcfg
 
-// ArtifactSet records which artifacts to act on.
-type ArtifactSet struct {
-	MCP   bool
-	Skill bool
-}
-
-// ResolveArtifacts maps the --mcp/--skill flags to the artifact set. Neither or
-// both flags means both artifacts.
-func ResolveArtifacts(mcpFlag, skillFlag bool) ArtifactSet {
-	if mcpFlag == skillFlag {
-		return ArtifactSet{MCP: true, Skill: true}
-	}
-
-	return ArtifactSet{MCP: mcpFlag, Skill: skillFlag}
-}
-
 // ResolveSelection returns the agents to act on. Detection is always required —
 // an agent is never selected unless it is detected on this machine.
 //

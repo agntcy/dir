@@ -11,13 +11,13 @@ import (
 
 // runInstall applies the record's artifacts to the selected agents, one outcome
 // per touched artifact. Errors on one agent never abort the rest.
-func runInstall(env agentcfg.Env, arts artifacts, agents []agentcfg.Agent, set agentcfg.ArtifactSet, dryRun bool) []agentcfg.Outcome {
+func runInstall(env agentcfg.Env, arts artifacts, agents []agentcfg.Agent, dryRun bool) []agentcfg.Outcome {
 	var outcomes []agentcfg.Outcome
 
 	seenSkill := map[string]bool{}
 
 	for _, agent := range agents {
-		if set.MCP && agent.MCP != nil {
+		if agent.MCP != nil {
 			for _, srv := range arts.mcpServers {
 				entry := styleEntry(srv.entry, agent.MCP.EntryStyle)
 				o, _ := agentcfg.InstallMCP(agent.MCP, env, entry, srv.name, dryRun)
@@ -26,7 +26,7 @@ func runInstall(env agentcfg.Env, arts artifacts, agents []agentcfg.Agent, set a
 			}
 		}
 
-		if set.Skill && agent.Skill != nil && arts.skill != "" {
+		if agent.Skill != nil && arts.skill != "" {
 			if dedupeSkill(seenSkill, agent.Skill, env, arts.slug) {
 				continue
 			}
@@ -41,13 +41,13 @@ func runInstall(env agentcfg.Env, arts artifacts, agents []agentcfg.Agent, set a
 }
 
 // runUninstall removes the record's artifacts from the selected agents.
-func runUninstall(env agentcfg.Env, arts artifacts, agents []agentcfg.Agent, set agentcfg.ArtifactSet, dryRun bool) []agentcfg.Outcome {
+func runUninstall(env agentcfg.Env, arts artifacts, agents []agentcfg.Agent, dryRun bool) []agentcfg.Outcome {
 	var outcomes []agentcfg.Outcome
 
 	seenSkill := map[string]bool{}
 
 	for _, agent := range agents {
-		if set.MCP && agent.MCP != nil {
+		if agent.MCP != nil {
 			for _, srv := range arts.mcpServers {
 				o, _ := agentcfg.RemoveMCP(agent.MCP, env, srv.name, dryRun)
 				o.Agent = agent.Name
@@ -55,7 +55,7 @@ func runUninstall(env agentcfg.Env, arts artifacts, agents []agentcfg.Agent, set
 			}
 		}
 
-		if set.Skill && agent.Skill != nil && arts.skill != "" {
+		if agent.Skill != nil && arts.skill != "" {
 			if dedupeSkill(seenSkill, agent.Skill, env, arts.slug) {
 				continue
 			}
