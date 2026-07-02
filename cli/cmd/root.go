@@ -16,6 +16,7 @@ import (
 	"github.com/agntcy/dir/cli/cmd/export"
 	importcmd "github.com/agntcy/dir/cli/cmd/import"
 	"github.com/agntcy/dir/cli/cmd/info"
+	"github.com/agntcy/dir/cli/cmd/install"
 	"github.com/agntcy/dir/cli/cmd/mcp"
 	"github.com/agntcy/dir/cli/cmd/naming"
 	"github.com/agntcy/dir/cli/cmd/network"
@@ -114,6 +115,9 @@ func init() {
 	validate.Command.PersistentPreRunE = skipClientSetup
 	version.Command.PersistentPreRunE = skipClientSetup
 	mcp.Command.PersistentPreRunE = skipClientSetup
+	// `install list` makes no Directory calls, so it must not require a client;
+	// `install`/`install run`/`install uninstall` use the client from context.
+	install.ListCommand.PersistentPreRunE = skipClientSetup
 
 	RootCmd.AddCommand(
 		// auth commands
@@ -147,6 +151,8 @@ func init() {
 		events.Command, // Contains: listen
 		// mcp commands
 		mcp.Command, // Contains: serve
+		// install commands
+		install.Command, // Contains: run, uninstall, list
 		// daemon commands
 		daemon.Command, // Contains: start, stop, status
 	)

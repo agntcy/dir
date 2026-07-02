@@ -1,0 +1,27 @@
+{
+  "schema_version": "1.0.0",
+  "name": "io.example/code-review-server",
+  "version": "1.0.0",
+  "description": "MCP server for code review",
+  "modules": [
+    {
+      "name": "integration/mcp",
+      "data": {
+        "name": "io.example/code-review-server",
+        "connections": [
+          {
+            "type": "stdio",
+            "command": "npx",
+            "args": ["@example/code-review-server@1.0.0"],
+            "env_vars": [
+              {
+                "name": "API_KEY",
+                "description": "API key for authentication"
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ]
+}
