@@ -38,10 +38,10 @@ func TestRunInstallWritesMCPEntryIdempotently(t *testing.T) {
 		}},
 	}
 	agent := agentcfg.Agent{Name: "Claude Code", MCP: target}
-	sels := []agentcfg.Selection{{Agent: agent, Forced: true}}
+	agents := []agentcfg.Agent{agent}
 	set := agentcfg.ArtifactSet{MCP: true}
 
-	first := runInstall(env, arts, sels, set, false)
+	first := runInstall(env, arts, agents, set, false)
 	require.Len(t, first, 1)
 	require.Equal(t, agentcfg.ActionAdded, first[0].Action)
 
@@ -53,7 +53,7 @@ func TestRunInstallWritesMCPEntryIdempotently(t *testing.T) {
 	_, present := codec.GetNested(m, "mcpServers", "code-review")
 	require.True(t, present)
 
-	second := runInstall(env, arts, sels, set, false)
+	second := runInstall(env, arts, agents, set, false)
 	require.Len(t, second, 1)
 	require.Equal(t, agentcfg.ActionUnchanged, second[0].Action)
 }
@@ -78,10 +78,10 @@ func TestRunInstallWritesSkill(t *testing.T) {
 		skill: "---\nname: code-review\ndescription: x\n---\n\nbody\n",
 	}
 	agent := agentcfg.Agent{Name: "Claude Code", Skill: target}
-	sels := []agentcfg.Selection{{Agent: agent, Forced: true}}
+	agents := []agentcfg.Agent{agent}
 	set := agentcfg.ArtifactSet{Skill: true}
 
-	outcomes := runInstall(env, arts, sels, set, false)
+	outcomes := runInstall(env, arts, agents, set, false)
 	require.Len(t, outcomes, 1)
 	require.Equal(t, agentcfg.ActionAdded, outcomes[0].Action)
 
@@ -115,13 +115,13 @@ func TestRunInstallDedupesSharedSkillPath(t *testing.T) {
 		slug:  "code-review",
 		skill: "---\nname: code-review\ndescription: x\n---\n\nbody\n",
 	}
-	sels := []agentcfg.Selection{
-		{Agent: agentcfg.Agent{Name: "Claude Code", Skill: claudeCode}, Forced: true},
-		{Agent: agentcfg.Agent{Name: "Claude Desktop", Skill: claudeDesktop}, Forced: true},
+	agents := []agentcfg.Agent{
+		{Name: "Claude Code", Skill: claudeCode},
+		{Name: "Claude Desktop", Skill: claudeDesktop},
 	}
 	set := agentcfg.ArtifactSet{Skill: true}
 
-	outcomes := runInstall(env, arts, sels, set, false)
+	outcomes := runInstall(env, arts, agents, set, false)
 
 	// Both agents resolve to the same skills path, so dedupeSkill collapses the
 	// shared target to a single skill outcome.

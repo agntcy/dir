@@ -17,44 +17,37 @@ func fakeAgents() []Agent {
 	}
 }
 
-func selectedIDs(sels []Selection) []string {
-	ids := make([]string, 0, len(sels))
-	for _, s := range sels {
-		ids = append(ids, s.Agent.ID)
+func agentIDs(agents []Agent) []string {
+	ids := make([]string, 0, len(agents))
+	for _, a := range agents {
+		ids = append(ids, a.ID)
 	}
 
 	return ids
 }
 
-func TestResolveSelectionDefaultUsesDetected(t *testing.T) {
-	sels := ResolveSelection(fakeAgents(), Env{}, nil, false, false)
-	assert.Equal(t, []string{"a", "c"}, selectedIDs(sels))
-
-	for _, s := range sels {
-		assert.False(t, s.Forced)
-	}
+func TestResolveSelectionEmptyChosenUsesDetected(t *testing.T) {
+	selected, skipped := ResolveSelection(fakeAgents(), Env{}, nil)
+	assert.Equal(t, []string{"a", "c"}, agentIDs(selected))
+	assert.Empty(t, skipped)
 }
 
-func TestResolveSelectionExplicitFlagsForceChosen(t *testing.T) {
+func TestResolveSelectionExplicitChosenOnlyDetected(t *testing.T) {
+	// "a" is detected, "b" is not; both requested.
+	chosen := map[string]bool{"a": true, "b": true}
+
+	selected, skipped := ResolveSelection(fakeAgents(), Env{}, chosen)
+	assert.Equal(t, []string{"a"}, agentIDs(selected))
+	assert.Equal(t, []string{"b"}, skipped)
+}
+
+func TestResolveSelectionUndetectedNeverInstalled(t *testing.T) {
+	// Requesting only an undetected agent selects nothing and reports it skipped.
 	chosen := map[string]bool{"b": true}
 
-	sels := ResolveSelection(fakeAgents(), Env{}, chosen, false, false)
-	assert.Equal(t, []string{"b"}, selectedIDs(sels))
-	assert.True(t, sels[0].Forced)
-}
-
-func TestResolveSelectionAllUsesDetected(t *testing.T) {
-	sels := ResolveSelection(fakeAgents(), Env{}, nil, true, false)
-	assert.Equal(t, []string{"a", "c"}, selectedIDs(sels))
-}
-
-func TestResolveSelectionForceWithoutFlagsActsOnAll(t *testing.T) {
-	sels := ResolveSelection(fakeAgents(), Env{}, nil, false, true)
-	assert.Equal(t, []string{"a", "b", "c"}, selectedIDs(sels))
-
-	for _, s := range sels {
-		assert.True(t, s.Forced)
-	}
+	selected, skipped := ResolveSelection(fakeAgents(), Env{}, chosen)
+	assert.Empty(t, selected)
+	assert.Equal(t, []string{"b"}, skipped)
 }
 
 func TestResolveArtifacts(t *testing.T) {

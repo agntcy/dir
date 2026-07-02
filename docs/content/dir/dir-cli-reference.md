@@ -144,43 +144,44 @@ Directory.
 Pulls the record, derives its artifacts, prints the planned changes (per agent and
 artifact, marked add / updated / unchanged), asks for confirmation, then installs.
 `dirctl install <cid-or-name>` is shorthand for `dirctl install run <cid-or-name>`.
-By default it acts on all detected agents.
+By default it acts on all detected agents. Detection is always required — an agent
+is never installed into unless it is detected on this machine; an explicitly
+requested agent that is not detected is reported as skipped.
 
 | Flag | Description | Default |
 |------|-------------|---------|
+| `--agents` | Agents to target: `all` (every detected agent) or a comma-separated list of agent IDs (e.g. `--agents claude-code,cursor`; repeatable) | `all` |
 | `--mcp` | Act only on the MCP server entry | both |
 | `--skill` | Act only on the skill/rules | both |
-| `--all` | Act on all detected agents | - |
-| `--<agent>` | Target a specific agent (e.g. `--claude-code`, `--cursor`); implies force for that agent | - |
-| `--force` | Create config paths even if the agent isn't detected | `false` |
 | `--dry-run` | Preview the plan without writing | `false` |
 | `--yes` / `-y` | Skip the confirmation prompt | `false` |
 
-After completion, a summary lists every location added, updated, removed, or
-skipped with its absolute path.
+Valid agent IDs: `claude-code`, `claude-desktop`, `cursor`, `vscode`, `windsurf`,
+`cline`, `roo`, `gemini`, `opencode`, `zed`, `continue`, `codex` (see
+`dirctl install list`). After completion, a summary lists every location added,
+updated, removed, or skipped with its absolute path.
 
 ```bash
 # Preview what installing a record would change
-dirctl install my-agent:1.0.0 --dry-run
+dirctl install cisco.com/agent:v1.0.0 --dry-run
 
 # Install a record's artifacts into all detected agents
-dirctl install my-agent:1.0.0 --yes
+dirctl install cisco.com/agent:v1.0.0 --yes
 
 # Install only the MCP server into specific agents
-dirctl install my-agent --mcp --claude-code --cursor
+dirctl install cisco.com/agent --mcp --agents claude-code,cursor
 ```
 
 ### `dirctl install uninstall <cid-or-name> [flags]`
 
 Removes what `install` added for that record — its MCP entry and/or skill —
 leaving all other content intact. Shares the same selection/artifact flags as
-install (`--mcp`, `--skill`, `--all`, per-agent flags, `--dry-run`, `--yes`).
-Idempotent: an agent with nothing of ours installed is reported as unchanged,
-never an error.
+install (`--agents`, `--mcp`, `--skill`, `--dry-run`, `--yes`). Idempotent: an
+agent with nothing of ours installed is reported as unchanged, never an error.
 
 ```bash
-dirctl install uninstall my-agent --all --yes
-dirctl install uninstall my-agent --skill --cursor
+dirctl install uninstall cisco.com/agent --yes
+dirctl install uninstall cisco.com/agent --skill --agents cursor
 ```
 
 ## Daemon Operations

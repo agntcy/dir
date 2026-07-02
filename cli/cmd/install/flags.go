@@ -5,43 +5,72 @@ package install
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/agntcy/dir/cli/internal/agentcfg"
 	"github.com/spf13/cobra"
 )
 
-// addSelectionFlags registers the shared install/uninstall flags plus one
-// per-agent selection flag, returning a map of agent ID -> flag value pointer.
-func addSelectionFlags(cmd *cobra.Command, opts *options) map[string]*bool {
+// allAgents is the --agents sentinel selecting every detected agent.
+const allAgents = "all"
+
+// addSelectionFlags registers the shared install/uninstall flags: which agents to
+// target (--agents), which artifacts (--mcp/--skill), and the dry-run/confirm
+// flags.
+func addSelectionFlags(cmd *cobra.Command, opts *options) {
 	flags := cmd.PersistentFlags()
 
 	flags.BoolVar(&opts.mcpOnly, "mcp", false, "Act only on the MCP server entry")
 	flags.BoolVar(&opts.skillOnly, "skill", false, "Act only on the skill/rules")
-	flags.BoolVar(&opts.all, "all", false, "Act on all detected agents")
-	flags.BoolVar(&opts.force, "force", false, "Create config paths even if the agent isn't detected")
+	flags.StringSliceVar(&opts.agents, "agents", []string{allAgents},
+		fmt.Sprintf("Agents to target: %q (default, all detected) or a comma-separated list of agent IDs (%s)",
+			allAgents, strings.Join(agentIDs(), ", ")))
 	flags.BoolVar(&opts.dryRun, "dry-run", false, "Preview changes without writing")
 	flags.BoolVarP(&opts.yes, "yes", "y", false, "Skip the confirmation prompt")
-
-	agentFlags := map[string]*bool{}
-
-	for _, agent := range agentcfg.Registry() {
-		value := new(bool)
-		agentFlags[agent.ID] = value
-		flags.BoolVar(value, agent.Flag, false, fmt.Sprintf("Target %s", agent.Name))
-	}
-
-	return agentFlags
 }
 
-// chosenFrom collects the agent IDs whose per-agent flag was set.
-func chosenFrom(agentFlags map[string]*bool) map[string]bool {
-	chosen := map[string]bool{}
+// agentIDs returns the known agent IDs from the registry, for flag help and
+// validation.
+func agentIDs() []string {
+	agents := agentcfg.Registry()
+	ids := make([]string, 0, len(agents))
 
-	for id, value := range agentFlags {
-		if *value {
+	for _, a := range agents {
+		ids = append(ids, a.ID)
+	}
+
+	return ids
+}
+
+// resolveChosen validates the --agents values and returns the chosen agent-ID
+// set. An empty result means "all detected agents". It errors on an unknown ID
+// or on combining "all" with specific IDs.
+func resolveChosen(agents []string) (map[string]bool, error) {
+	valid := map[string]bool{}
+	for _, id := range agentIDs() {
+		valid[id] = true
+	}
+
+	chosen := map[string]bool{}
+	allMode := false
+
+	for _, raw := range agents {
+		id := strings.TrimSpace(raw)
+
+		switch {
+		case id == allAgents:
+			allMode = true
+		case valid[id]:
 			chosen[id] = true
+		default:
+			return nil, fmt.Errorf("unknown agent %q; valid values: %s, %s",
+				id, allAgents, strings.Join(agentIDs(), ", "))
 		}
 	}
 
-	return chosen
+	if allMode && len(chosen) > 0 {
+		return nil, fmt.Errorf("--agents: %q cannot be combined with specific agent IDs", allAgents)
+	}
+
+	return chosen, nil
 }

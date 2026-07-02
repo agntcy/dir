@@ -11,7 +11,7 @@ import (
 
 var uninstallCmd = &cobra.Command{
 	Use:   "uninstall <cid-or-name[:version][@digest]>",
-	Short: "Remove a record's artifacts from detected (or selected) agents",
+	Short: "Remove a record's artifacts from detected agents",
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		arts, err := pullAndDerive(cmd, args[0])
@@ -21,10 +21,13 @@ var uninstallCmd = &cobra.Command{
 
 		env := agentcfg.ResolveEnv()
 		set := agentcfg.ResolveArtifacts(opts.mcpOnly, opts.skillOnly)
-		chosen := chosenFrom(agentFlags)
-		sels := agentcfg.ResolveSelection(agentcfg.Registry(), env, chosen, opts.all, opts.force)
 
-		plan := runUninstall(env, arts, sels, set, true)
+		selected, err := selectAgents(cmd, env)
+		if err != nil {
+			return err
+		}
+
+		plan := runUninstall(env, arts, selected, set, true)
 		presenter.Printf(cmd, "%s", agentcfg.FormatPlan(plan))
 
 		if len(plan) == 0 {
@@ -44,7 +47,7 @@ var uninstallCmd = &cobra.Command{
 			}
 		}
 
-		outcomes := runUninstall(env, arts, sels, set, opts.dryRun)
+		outcomes := runUninstall(env, arts, selected, set, opts.dryRun)
 		presenter.Printf(cmd, "%s", agentcfg.FormatSummary(outcomes, opts.dryRun))
 
 		return nil

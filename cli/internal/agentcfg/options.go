@@ -3,13 +3,6 @@
 
 package agentcfg
 
-// Selection is one agent resolved for action, plus whether it was forced
-// (explicitly selected or --force), which bypasses detection.
-type Selection struct {
-	Agent  Agent
-	Forced bool
-}
-
 // ArtifactSet records which artifacts to act on.
 type ArtifactSet struct {
 	MCP   bool
@@ -26,31 +19,32 @@ func ResolveArtifacts(mcpFlag, skillFlag bool) ArtifactSet {
 	return ArtifactSet{MCP: mcpFlag, Skill: skillFlag}
 }
 
-// ResolveSelection decides which agents to act on:
-//   - explicit per-agent flags → exactly those, forced (detection bypassed);
-//   - --force without explicit flags → all known agents, forced;
-//   - default or --all → detected agents only.
-func ResolveSelection(agents []Agent, env Env, chosen map[string]bool, all, force bool) []Selection {
+// ResolveSelection returns the agents to act on. Detection is always required —
+// an agent is never selected unless it is detected on this machine.
+//
+//   - When chosen is empty ("all"), every detected agent is selected.
+//   - When chosen is non-empty, only the chosen agents that are detected are
+//     selected; chosen agents that are not detected are returned as the second
+//     result so the caller can report them.
+func ResolveSelection(agents []Agent, env Env, chosen map[string]bool) ([]Agent, []string) {
 	explicit := len(chosen) > 0
 
-	var out []Selection
+	var selected []Agent
+
+	var skipped []string
 
 	for _, agent := range agents {
-		switch {
-		case explicit:
-			if chosen[agent.ID] {
-				out = append(out, Selection{Agent: agent, Forced: true})
-			}
-		case force:
-			out = append(out, Selection{Agent: agent, Forced: true})
-		default: // default and --all both act on detected agents
-			_ = all
+		if explicit && !chosen[agent.ID] {
+			continue
+		}
 
-			if agent.Detect(env) {
-				out = append(out, Selection{Agent: agent, Forced: false})
-			}
+		switch {
+		case agent.Detect(env):
+			selected = append(selected, agent)
+		case explicit:
+			skipped = append(skipped, agent.ID)
 		}
 	}
 
-	return out
+	return selected, skipped
 }

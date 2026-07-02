@@ -17,13 +17,10 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// opts and agentFlags are shared by the parent `install`, `run`, and `uninstall`
-// via persistent flags on the parent. Only one of those executes per invocation,
-// so a single shared set is correct.
-var (
-	opts       options
-	agentFlags map[string]*bool
-)
+// opts is shared by the parent `install`, `run`, and `uninstall` via persistent
+// flags on the parent. Only one of those executes per invocation, so a single
+// shared set is correct.
+var opts options
 
 // Command is the `dirctl install` parent. With a positional CID/name it runs an
 // install (equivalent to `install run`); with no argument it prints help.
@@ -40,10 +37,10 @@ directly into the configuration of detected AI coding agents.
   dirctl install list                     show detected agents and target paths
 
 Examples:
-  dirctl install my-agent:1.0.0
+  dirctl install cisco.com/agent:v1.0.0
   dirctl install bafyrei... --dry-run
-  dirctl install my-agent --mcp --claude-code --cursor
-  dirctl install uninstall my-agent --all
+  dirctl install cisco.com/agent --mcp --agents claude-code,cursor
+  dirctl install uninstall cisco.com/agent
 `,
 	Args: cobra.MaximumNArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
@@ -56,11 +53,29 @@ Examples:
 }
 
 func init() {
-	agentFlags = addSelectionFlags(Command, &opts)
+	addSelectionFlags(Command, &opts)
 
 	Command.AddCommand(runCmd)
 	Command.AddCommand(uninstallCmd)
 	Command.AddCommand(ListCommand)
+}
+
+// selectAgents validates the --agents flag and resolves it to the detected
+// agents to act on, printing a note for any explicitly-requested agent that is
+// not detected (never installed for undetected agents).
+func selectAgents(cmd *cobra.Command, env agentcfg.Env) ([]agentcfg.Agent, error) {
+	chosen, err := resolveChosen(opts.agents)
+	if err != nil {
+		return nil, err
+	}
+
+	selected, skipped := agentcfg.ResolveSelection(agentcfg.Registry(), env, chosen)
+
+	for _, id := range skipped {
+		presenter.Printf(cmd, "Skipping %s: not detected.\n", id)
+	}
+
+	return selected, nil
 }
 
 // pullAndDerive resolves the ref, pulls the record, and derives its artifacts.
@@ -93,10 +108,13 @@ func runInstallCmd(cmd *cobra.Command, input string) error {
 
 	env := agentcfg.ResolveEnv()
 	set := agentcfg.ResolveArtifacts(opts.mcpOnly, opts.skillOnly)
-	chosen := chosenFrom(agentFlags)
-	sels := agentcfg.ResolveSelection(agentcfg.Registry(), env, chosen, opts.all, opts.force)
 
-	plan := runInstall(env, arts, sels, set, true)
+	selected, err := selectAgents(cmd, env)
+	if err != nil {
+		return err
+	}
+
+	plan := runInstall(env, arts, selected, set, true)
 	presenter.Printf(cmd, "%s", agentcfg.FormatPlan(plan))
 
 	if len(plan) == 0 {
@@ -116,7 +134,7 @@ func runInstallCmd(cmd *cobra.Command, input string) error {
 		}
 	}
 
-	outcomes := runInstall(env, arts, sels, set, opts.dryRun)
+	outcomes := runInstall(env, arts, selected, set, opts.dryRun)
 	presenter.Printf(cmd, "%s", agentcfg.FormatSummary(outcomes, opts.dryRun))
 
 	return nil

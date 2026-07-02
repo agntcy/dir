@@ -11,28 +11,28 @@ import (
 
 // runInstall applies the record's artifacts to the selected agents, one outcome
 // per touched artifact. Errors on one agent never abort the rest.
-func runInstall(env agentcfg.Env, arts artifacts, sels []agentcfg.Selection, set agentcfg.ArtifactSet, dryRun bool) []agentcfg.Outcome {
+func runInstall(env agentcfg.Env, arts artifacts, agents []agentcfg.Agent, set agentcfg.ArtifactSet, dryRun bool) []agentcfg.Outcome {
 	var outcomes []agentcfg.Outcome
 
 	seenSkill := map[string]bool{}
 
-	for _, sel := range sels {
-		if set.MCP && sel.Agent.MCP != nil {
+	for _, agent := range agents {
+		if set.MCP && agent.MCP != nil {
 			for _, srv := range arts.mcpServers {
-				entry := styleEntry(srv.entry, sel.Agent.MCP.EntryStyle)
-				o, _ := agentcfg.InstallMCP(sel.Agent.MCP, env, entry, srv.name, dryRun)
-				o.Agent = sel.Agent.Name
+				entry := styleEntry(srv.entry, agent.MCP.EntryStyle)
+				o, _ := agentcfg.InstallMCP(agent.MCP, env, entry, srv.name, dryRun)
+				o.Agent = agent.Name
 				outcomes = append(outcomes, o)
 			}
 		}
 
-		if set.Skill && sel.Agent.Skill != nil && arts.skill != "" {
-			if dedupeSkill(seenSkill, sel.Agent.Skill, env, arts.slug) {
+		if set.Skill && agent.Skill != nil && arts.skill != "" {
+			if dedupeSkill(seenSkill, agent.Skill, env, arts.slug) {
 				continue
 			}
 
-			o, _ := agentcfg.InstallSkill(sel.Agent.Skill, env, arts.slug, arts.skill, dryRun)
-			o.Agent = sel.Agent.Name
+			o, _ := agentcfg.InstallSkill(agent.Skill, env, arts.slug, arts.skill, dryRun)
+			o.Agent = agent.Name
 			outcomes = append(outcomes, o)
 		}
 	}
@@ -41,27 +41,27 @@ func runInstall(env agentcfg.Env, arts artifacts, sels []agentcfg.Selection, set
 }
 
 // runUninstall removes the record's artifacts from the selected agents.
-func runUninstall(env agentcfg.Env, arts artifacts, sels []agentcfg.Selection, set agentcfg.ArtifactSet, dryRun bool) []agentcfg.Outcome {
+func runUninstall(env agentcfg.Env, arts artifacts, agents []agentcfg.Agent, set agentcfg.ArtifactSet, dryRun bool) []agentcfg.Outcome {
 	var outcomes []agentcfg.Outcome
 
 	seenSkill := map[string]bool{}
 
-	for _, sel := range sels {
-		if set.MCP && sel.Agent.MCP != nil {
+	for _, agent := range agents {
+		if set.MCP && agent.MCP != nil {
 			for _, srv := range arts.mcpServers {
-				o, _ := agentcfg.RemoveMCP(sel.Agent.MCP, env, srv.name, dryRun)
-				o.Agent = sel.Agent.Name
+				o, _ := agentcfg.RemoveMCP(agent.MCP, env, srv.name, dryRun)
+				o.Agent = agent.Name
 				outcomes = append(outcomes, o)
 			}
 		}
 
-		if set.Skill && sel.Agent.Skill != nil && arts.skill != "" {
-			if dedupeSkill(seenSkill, sel.Agent.Skill, env, arts.slug) {
+		if set.Skill && agent.Skill != nil && arts.skill != "" {
+			if dedupeSkill(seenSkill, agent.Skill, env, arts.slug) {
 				continue
 			}
 
-			o, _ := agentcfg.RemoveSkill(sel.Agent.Skill, env, arts.slug, dryRun)
-			o.Agent = sel.Agent.Name
+			o, _ := agentcfg.RemoveSkill(agent.Skill, env, arts.slug, dryRun)
+			o.Agent = agent.Name
 			outcomes = append(outcomes, o)
 		}
 	}

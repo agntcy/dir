@@ -7,8 +7,7 @@ package install
 type options struct {
 	mcpOnly   bool
 	skillOnly bool
-	all       bool
-	force     bool
+	agents    []string
 	dryRun    bool
 	yes       bool
 }
