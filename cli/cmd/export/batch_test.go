@@ -4,6 +4,10 @@
 package export
 
 import (
+	"archive/tar"
+	"bytes"
+	"compress/gzip"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -292,12 +296,26 @@ func TestDefaultBatchExport(t *testing.T) {
 }
 
 func TestSkillBatchFormatter(t *testing.T) {
-	bf := getBatchFormatter("agent-skill")
-	require.NotNil(t, bf, "agent-skill should have a batch formatter")
+	testSkillDirectoryBatchFormatter(t, "agent-skill", newSkillTestRecord)
+}
+
+func TestSkillBundleBatchFormatter(t *testing.T) {
+	testSkillDirectoryBatchFormatter(t, "agent-skill-bundle", newSkillBundleTestRecord)
+}
+
+func testSkillDirectoryBatchFormatter(
+	t *testing.T,
+	formatName string,
+	newRecord func(t *testing.T) *corev1.Record,
+) {
+	t.Helper()
+
+	bf := getBatchFormatter(formatName)
+	require.NotNil(t, bf, "%s should have a batch formatter", formatName)
 
 	t.Run("uses name only by default", func(t *testing.T) {
 		dir := t.TempDir()
-		records := []*corev1.Record{newSkillTestRecord(t)}
+		records := []*corev1.Record{newRecord(t)}
 
 		n, err := bf.FormatBatch(records, dir, false)
 		require.NoError(t, err)
@@ -311,7 +329,7 @@ func TestSkillBatchFormatter(t *testing.T) {
 
 	t.Run("all-versions includes version in directory name", func(t *testing.T) {
 		dir := t.TempDir()
-		records := []*corev1.Record{newSkillTestRecord(t)}
+		records := []*corev1.Record{newRecord(t)}
 
 		n, err := bf.FormatBatch(records, dir, true)
 		require.NoError(t, err)
@@ -359,6 +377,39 @@ func TestMCPGHCopilotBatchFormatter(t *testing.T) {
 		require.NoError(t, json.Unmarshal(data, &parsed))
 		assert.Empty(t, parsed["servers"])
 	})
+}
+
+func newSkillBundleTestRecord(t *testing.T) *corev1.Record {
+	t.Helper()
+
+	skillInput, err := structpb.NewStruct(map[string]any{
+		"skillMarkdown": testSkillMarkdown,
+		"skillArchive":  skillBundleArchiveBase64(t),
+	})
+	require.NoError(t, err)
+
+	recordStruct, err := translator.SkillBundleToRecord(skillInput)
+	require.NoError(t, err)
+
+	return &corev1.Record{Data: recordStruct}
+}
+
+func skillBundleArchiveBase64(t *testing.T) string {
+	t.Helper()
+
+	var buf bytes.Buffer
+
+	gzw := gzip.NewWriter(&buf)
+	tw := tar.NewWriter(gzw)
+	content := []byte(testSkillMarkdown)
+	hdr := &tar.Header{Name: "SKILL.md", Mode: 0o600, Size: int64(len(content))}
+	require.NoError(t, tw.WriteHeader(hdr))
+	_, err := tw.Write(content)
+	require.NoError(t, err)
+	require.NoError(t, tw.Close())
+	require.NoError(t, gzw.Close())
+
+	return base64.StdEncoding.EncodeToString(buf.Bytes())
 }
 
 func TestRecordGetName(t *testing.T) {

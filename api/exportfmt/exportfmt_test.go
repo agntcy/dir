@@ -9,6 +9,8 @@ import (
 	"compress/gzip"
 	"encoding/base64"
 	"encoding/json"
+	"os"
+	"path/filepath"
 	"testing"
 
 	oasfv1alpha1 "buf.build/gen/go/agntcy/oasf/protocolbuffers/go/agntcy/oasf/types/v1alpha1"
@@ -369,6 +371,39 @@ func TestSkillBundleFormatter_FileExtension(t *testing.T) {
 	f, err := exportfmt.GetFormatter("agent-skill-bundle")
 	require.NoError(t, err)
 	assert.Equal(t, ".gzip", f.FileExtension())
+}
+
+func TestExtractSkillBundleArchive(t *testing.T) {
+	t.Run("extracts gzip tar archive", func(t *testing.T) {
+		dir := t.TempDir()
+		archive, err := base64.StdEncoding.DecodeString(skillBundleArchiveBase64(t))
+		require.NoError(t, err)
+
+		require.NoError(t, exportfmt.ExtractSkillBundleArchive(archive, dir))
+
+		data, err := os.ReadFile(filepath.Join(dir, "SKILL.md"))
+		require.NoError(t, err)
+		assert.Contains(t, string(data), "name: code-review")
+	})
+
+	t.Run("rejects path traversal", func(t *testing.T) {
+		dir := t.TempDir()
+
+		var buf bytes.Buffer
+
+		gzipWriter := gzip.NewWriter(&buf)
+		tarWriter := tar.NewWriter(gzipWriter)
+		header := &tar.Header{Name: "../escape.txt", Mode: 0o600, Size: 4, Typeflag: tar.TypeReg}
+		require.NoError(t, tarWriter.WriteHeader(header))
+		_, err := tarWriter.Write([]byte("evil"))
+		require.NoError(t, err)
+		require.NoError(t, tarWriter.Close())
+		require.NoError(t, gzipWriter.Close())
+
+		err = exportfmt.ExtractSkillBundleArchive(buf.Bytes(), dir)
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "non-local")
+	})
 }
 
 func TestMCPGHCopilotFormatter_Format(t *testing.T) {

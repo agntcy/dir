@@ -122,7 +122,31 @@ func (f *skillBundleBatchExporter) FormatBatch(records []*corev1.Record, outputD
 		return 0, fmt.Errorf("failed to get agent-skill-bundle formatter: %w", err)
 	}
 
-	return defaultBatchExport(formatter, records, outputDir, allVersions)
+	toExport := records
+	if !allVersions {
+		toExport = recordutil.LatestByName(records)
+	}
+
+	exported := 0
+	seen := make(map[string]int)
+
+	for i, record := range toExport {
+		base := recordutil.BatchFileName(record, i, seen, allVersions)
+
+		archive, err := formatter.Format(record)
+		if err != nil {
+			return exported, fmt.Errorf("failed to format skill bundle %q: %w", base, err)
+		}
+
+		skillDir := filepath.Join(outputDir, base)
+		if err := exportfmt.ExtractSkillBundleArchive(archive, skillDir); err != nil {
+			return exported, fmt.Errorf("failed to extract skill bundle %q: %w", base, err)
+		}
+
+		exported++
+	}
+
+	return exported, nil
 }
 
 // --- mcp batch ---
