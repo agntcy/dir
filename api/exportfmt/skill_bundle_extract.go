@@ -13,7 +13,11 @@ import (
 	"path/filepath"
 )
 
-// ExtractSkillBundleArchive unpacks a gzip-compressed tar skill bundle into destDir.
+const skillManifestFile = "SKILL.md"
+
+// ExtractSkillBundleArchive extracts a skill artifact into destDir.
+// The artifact is either a gzip-compressed tar bundle (full skill with code samples)
+// or a plain-text SKILL.md manifest. Both formats are handled transparently.
 func ExtractSkillBundleArchive(archive []byte, destDir string) error {
 	if len(archive) == 0 {
 		return fmt.Errorf("skill bundle archive is empty")
@@ -21,6 +25,10 @@ func ExtractSkillBundleArchive(archive []byte, destDir string) error {
 
 	if err := os.MkdirAll(destDir, 0o755); err != nil { //nolint:mnd
 		return fmt.Errorf("create destination directory: %w", err)
+	}
+
+	if !isGzipArchive(archive) {
+		return os.WriteFile(filepath.Join(destDir, skillManifestFile), archive, 0o600) //nolint:mnd,wrapcheck
 	}
 
 	root, err := os.OpenRoot(destDir)
@@ -112,6 +120,10 @@ func localTarEntryPath(name string) (string, error) {
 	}
 
 	return rel, nil
+}
+
+func isGzipArchive(b []byte) bool {
+	return len(b) >= 2 && b[0] == 0x1f && b[1] == 0x8b
 }
 
 func dirPerm(hdr *tar.Header) os.FileMode {

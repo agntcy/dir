@@ -410,3 +410,12 @@ tasks:
       - cmd: echo "Installing mcp-scanner"
       - cmd: >-
           {{.UV_BIN}} tool install --python 3.13 cisco-ai-mcp-scanner
+
+  importer:deps:skill-scanner:
+    desc: Install skill-scanner CLI via uv (used by import-records workflow)
+    deps:
+      - task: deps:uv
+    cmds:
+      - cmd: echo "Installing skill-scanner"
+      - cmd: >-
+          {{.UV_BIN}} tool install --python 3.13 cisco-ai-skill-scanner
