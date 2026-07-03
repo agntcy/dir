@@ -3,7 +3,7 @@
 
 syntax = "proto3";
 
-package agntcy.dir.scan.v1;
+package agntcy.dir.security.v1;
 
 // ScannerType identifies which scanner produced a ScanReport.
 enum ScannerType {
@@ -49,11 +49,11 @@ message Finding {
 }
 
 // ScanReport is the result of running a scanner against a record's source
-// artifact. It is stored as a referrer of type "agntcy.dir.scan.v1.ScanReport"
+// artifact. It is stored as a referrer of type "agntcy.dir.security.v1.ScanReport"
 // and attached to the record CID it describes.
 //
 // ScanReport can be encoded into a RecordReferrer object as follows:
-//   type = "agntcy.dir.scan.v1.ScanReport"
+//   type = "agntcy.dir.security.v1.ScanReport"
 //   data = ScanReport message encoded as JSON
 message ScanReport {
   // Type of scanner that produced this report.
@@ -76,4 +76,9 @@ message ScanReport {
 
   // Names of the analyzer modules that ran (e.g. "static_analyzer", "bytecode").
   repeated string analyzers = 7;
+
+  // Arbitrary key-value metadata attached by the scanner or the caller.
+  // Clients running custom scanners can use this to surface extra details
+  // without extending the schema (e.g. "policy_version", "ruleset_url").
+  map<string, string> annotations = 8;
 }

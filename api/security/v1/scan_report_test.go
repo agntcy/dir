@@ -7,7 +7,7 @@ import (
 	"testing"
 
 	corev1 "github.com/agntcy/dir/api/core/v1"
-	scanv1 "github.com/agntcy/dir/api/scan/v1"
+	scanv1 "github.com/agntcy/dir/api/security/v1"
 )
 
 func TestScanReport_ReferrerType(t *testing.T) {

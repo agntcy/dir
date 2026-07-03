@@ -8,13 +8,13 @@ import (
 	"fmt"
 
 	corev1 "github.com/agntcy/dir/api/core/v1"
-	scanv1 "github.com/agntcy/dir/api/scan/v1"
+	securityv1 "github.com/agntcy/dir/api/security/v1"
 	storev1 "github.com/agntcy/dir/api/store/v1"
 )
 
 // PushScanReport stores a ScanReport as a referrer attached to the given record.
 // Failures are returned so the caller can decide whether to treat them as fatal.
-func (c *Client) PushScanReport(ctx context.Context, recordRef *corev1.RecordRef, report *scanv1.ScanReport) error {
+func (c *Client) PushScanReport(ctx context.Context, recordRef *corev1.RecordRef, report *securityv1.ScanReport) error {
 	referrer, err := report.MarshalReferrer()
 	if err != nil {
 		return fmt.Errorf("marshal scan report: %w", err)
