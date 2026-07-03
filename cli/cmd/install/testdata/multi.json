@@ -1,0 +1,40 @@
+{
+  "schema_version": "1.0.0",
+  "name": "multi-agent",
+  "version": "1.0.0",
+  "description": "An agent with both skill and MCP modules",
+  "modules": [
+    {
+      "name": "core/language_model/agentskills",
+      "id": 10302,
+      "data": {
+        "skill_file": "SKILL.md",
+        "skill_manifest": {
+          "name": "code-review",
+          "description": "Review code for bugs and style.",
+          "license": "Apache-2.0",
+          "version": "1.0.0"
+        }
+      }
+    },
+    {
+      "name": "integration/mcp",
+      "data": {
+        "name": "io.example/code-review-server",
+        "connections": [
+          {
+            "type": "stdio",
+            "command": "npx",
+            "args": ["@example/code-review-server@1.0.0"],
+            "env_vars": [
+              {
+                "name": "API_KEY",
+                "description": "API key for authentication"
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ]
+}

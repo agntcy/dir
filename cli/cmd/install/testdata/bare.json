@@ -1,0 +1,7 @@
+{
+  "schema_version": "1.0.0",
+  "name": "bare",
+  "version": "1.0.0",
+  "description": "A record with no modules",
+  "modules": []
+}

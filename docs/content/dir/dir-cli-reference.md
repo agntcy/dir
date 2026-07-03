@@ -71,6 +71,7 @@ explicit `--auth-mode`.
 | Sync | `sync create`, `status`, `list`, `delete` |
 | Events | `events listen` |
 | MCP | `mcp serve` |
+| Install | `install run`, `install uninstall` (or top-level `uninstall`), `install list` |
 | Diagnostics | `doctor`, `version` |
 
 ### Getting help
@@ -102,6 +103,92 @@ Prints the `dirctl` build version.
 
 Starts the built-in MCP server used by external AI tooling. Delegates to the
 [`dir-mcp`](https://github.com/agntcy/dir-mcp) module.
+
+## Agent Install
+
+`dirctl install <cid-or-name>` pulls a record from the active Directory and
+installs its artifacts — an MCP server entry and/or an Agent Skill, derived from
+the record's OASF modules — directly into the configuration of detected AI coding
+agents.
+
+Which artifacts are installed is determined by the record's modules, not a flag:
+
+- `core/language_model/agentskills` → an Agent Skill (`SKILL.md`), rendered into
+  whatever persistent-instruction mechanism each agent supports (a native skill
+  folder, a per-tool rules file, or a managed block in a shared instruction file).
+- `integration/mcp` → an MCP server entry (`command`/`args`/`env`) placed under
+  each agent's MCP servers key.
+- `integration/a2a` → not installable into agent configs; the command errors and
+  points you to `dirctl export`.
+
+A multi-module record installs all applicable artifacts. The per-record identity
+is the sanitized record name, so re-running `install` with a newer version of the
+same-named record replaces the old artifacts cleanly, and different records
+coexist.
+
+Supported agents: Claude Code, Claude Desktop, Cursor, VS Code (Copilot),
+Windsurf, Cline, Roo Code, Gemini CLI, OpenCode, Zed, Continue, and Codex CLI.
+
+Writes are atomic and surgical: only our own MCP entry, skill file/folder, or
+delimited managed block is added/updated/removed — all of your existing
+configuration is preserved.
+
+### `dirctl install list`
+
+Lists every supported agent, whether it is detected on this machine, and the
+config files that install would touch. Makes no changes and does not contact the
+Directory.
+
+### `dirctl install <cid-or-name>` / `dirctl install run <cid-or-name>`
+
+Pulls the record, derives its artifacts, prints the planned changes (per agent and
+artifact, marked add / updated / unchanged), asks for confirmation, then installs.
+`dirctl install <cid-or-name>` is shorthand for `dirctl install run <cid-or-name>`.
+By default it acts on all detected agents. Detection is always required — an agent
+is never installed into unless it is detected on this machine; an explicitly
+requested agent that is not detected is reported as skipped.
+
+The artifacts to install are determined entirely by the record's modules (above),
+not by flags. A record carrying neither an MCP nor an Agent Skill module has
+nothing installable: the command errors (making no changes) and, for an
+A2A-only record, points you to `dirctl export`.
+
+| Flag | Description | Default |
+|------|-------------|---------|
+| `--agents` | Agents to target: `all` (every detected agent) or a comma-separated list of agent IDs (e.g. `--agents claude-code,cursor`; repeatable) | `all` |
+| `--dry-run` | Preview the plan without writing | `false` |
+| `--yes` / `-y` | Skip the confirmation prompt | `false` |
+
+Valid agent IDs: `claude-code`, `claude-desktop`, `cursor`, `vscode`, `windsurf`,
+`cline`, `roo`, `gemini`, `opencode`, `zed`, `continue`, `codex` (see
+`dirctl install list`). After completion, a summary lists every location added,
+updated, removed, or skipped with its absolute path.
+
+```bash
+# Preview what installing a record would change
+dirctl install cisco.com/agent:v1.0.0 --dry-run
+
+# Install a record's artifacts into all detected agents
+dirctl install cisco.com/agent:v1.0.0 --yes
+
+# Install into specific agents only
+dirctl install cisco.com/agent --agents claude-code,cursor
+```
+
+### `dirctl install uninstall <cid-or-name> [flags]`
+
+Removes what `install` added for that record — its MCP entry and/or skill —
+leaving all other content intact. Shares the same flags as install (`--agents`,
+`--dry-run`, `--yes`). Idempotent: an agent with nothing of ours installed is
+reported as unchanged, never an error.
+
+`dirctl uninstall <cid-or-name>` is a top-level shorthand for
+`dirctl install uninstall <cid-or-name>` (same flags and behavior).
+
+```bash
+dirctl install uninstall cisco.com/agent --yes
+dirctl uninstall cisco.com/agent --agents cursor
+```
 
 ## Daemon Operations
 

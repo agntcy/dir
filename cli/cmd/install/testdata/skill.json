@@ -1,0 +1,21 @@
+{
+  "schema_version": "1.0.0",
+  "name": "code-review",
+  "version": "1.0.0",
+  "description": "Review code for bugs and style.",
+  "modules": [
+    {
+      "name": "core/language_model/agentskills",
+      "id": 10302,
+      "data": {
+        "skill_file": "SKILL.md",
+        "skill_manifest": {
+          "name": "code-review",
+          "description": "Review code for bugs and style.",
+          "license": "Apache-2.0",
+          "version": "1.0.0"
+        }
+      }
+    }
+  ]
+}

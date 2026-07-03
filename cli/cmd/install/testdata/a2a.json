@@ -1,0 +1,36 @@
+{
+  "schema_version": "1.0.0",
+  "name": "test-a2a-agent",
+  "version": "1.0.0",
+  "description": "A test A2A agent",
+  "modules": [
+    {
+      "name": "integration/a2a",
+      "data": {
+        "card_data": {
+          "name": "test-a2a-agent",
+          "description": "A test A2A agent",
+          "version": "1.0.0",
+          "protocolVersions": ["0.2.6"],
+          "supportedInterfaces": [
+            {
+              "url": "https://example.com/a2a",
+              "protocolBinding": "HTTP+JSON"
+            }
+          ],
+          "capabilities": {},
+          "defaultInputModes": ["text"],
+          "defaultOutputModes": ["text"],
+          "skills": [
+            {
+              "id": "test-skill",
+              "name": "Test Skill",
+              "description": "A skill for testing"
+            }
+          ]
+        },
+        "card_schema_version": "v1.0.0"
+      }
+    }
+  ]
+}
