@@ -5,6 +5,7 @@ package install
 
 import (
 	"fmt"
+	"sort"
 	"strings"
 
 	corev1 "github.com/agntcy/dir/api/core/v1"
@@ -59,10 +60,19 @@ func deriveArtifacts(record *corev1.Record) (artifacts, error) {
 			return artifacts{}, fmt.Errorf("translate MCP module: %w", err)
 		}
 
-		for name, srv := range cfg.Servers {
+		// Sort server names so the derived order (and thus plan/summary output) is
+		// deterministic across runs; map iteration order is otherwise random.
+		names := make([]string, 0, len(cfg.Servers))
+		for name := range cfg.Servers {
+			names = append(names, name)
+		}
+
+		sort.Strings(names)
+
+		for _, name := range names {
 			arts.mcpServers = append(arts.mcpServers, mcpServer{
 				name:  name,
-				entry: mcpEntry(srv),
+				entry: mcpEntry(cfg.Servers[name]),
 			})
 		}
 	}

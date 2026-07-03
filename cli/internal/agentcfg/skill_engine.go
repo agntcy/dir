@@ -39,7 +39,10 @@ func InstallSkill(target *SkillTarget, env Env, slug, canonical string, dryRun b
 		return outcome, err
 	}
 
-	existing, existed := readFileIfExists(path)
+	existing, existed, err := readFileIfExists(path)
+	if err != nil {
+		return failOutcome(outcome, err)
+	}
 
 	switch {
 	case target.Strategy == ManagedBlock:
@@ -115,7 +118,10 @@ func renderForTarget(target *SkillTarget, slug, canonical, path string) ([]byte,
 			return nil, err
 		}
 
-		existing, _ := readFileIfExists(path)
+		existing, _, err := readFileIfExists(path)
+		if err != nil {
+			return nil, err
+		}
 
 		return []byte(upsertBlock(slug, string(existing), string(inner))), nil
 	case DedicatedFile:
@@ -171,7 +177,11 @@ func removeSkillFile(outcome Outcome, path string, dryRun bool) (Outcome, error)
 }
 
 func removeSkillBlock(outcome Outcome, path, slug string, dryRun bool) (Outcome, error) {
-	existing, existed := readFileIfExists(path)
+	existing, existed, err := readFileIfExists(path)
+	if err != nil {
+		return failOutcome(outcome, err)
+	}
+
 	if !existed {
 		outcome.Action = ActionUnchanged
 
@@ -239,11 +249,18 @@ func ResolveSkillTargetPath(target *SkillTarget, env Env, slug string) (string, 
 	return resolveSkillTargetPath(target, env, slug)
 }
 
-func readFileIfExists(path string) ([]byte, bool) {
+// readFileIfExists reads path and reports whether it exists. A missing file is
+// (nil, false, nil); a real read error (e.g. permissions) is (nil, false, err)
+// so callers can surface it rather than silently treating the file as absent.
+func readFileIfExists(path string) ([]byte, bool, error) {
 	data, err := os.ReadFile(path)
 	if err != nil {
-		return nil, false
+		if os.IsNotExist(err) {
+			return nil, false, nil
+		}
+
+		return nil, false, fmt.Errorf("read %s: %w", path, err)
 	}
 
-	return data, true
+	return data, true, nil
 }

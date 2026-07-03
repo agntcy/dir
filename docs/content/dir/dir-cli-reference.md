@@ -149,8 +149,9 @@ is never installed into unless it is detected on this machine; an explicitly
 requested agent that is not detected is reported as skipped.
 
 The artifacts to install are determined entirely by the record's modules (above),
-not by flags. A record carrying neither an MCP nor an Agent Skill module is
-reported as having nothing installable and the command exits without changes.
+not by flags. A record carrying neither an MCP nor an Agent Skill module has
+nothing installable: the command errors (making no changes) and, for an
+A2A-only record, points you to `dirctl export`.
 
 | Flag | Description | Default |
 |------|-------------|---------|

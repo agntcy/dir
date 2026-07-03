@@ -35,7 +35,8 @@ func TestRenderContinueHasNameAndAlwaysApply(t *testing.T) {
 	require.NoError(t, err)
 
 	s := string(out)
-	assert.Contains(t, s, "name: agntcy-dir")
+	// The name is YAML-quoted so names with YAML-significant characters stay valid.
+	assert.Contains(t, s, `name: "agntcy-dir"`)
 	assert.Contains(t, s, "alwaysApply: true")
 }
 

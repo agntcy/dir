@@ -71,7 +71,7 @@ func renderContinue(canonical string) ([]byte, error) {
 	}
 
 	return withFrontmatter([]kv{
-		{"name", fm.Name},
+		{"name", strconv.Quote(fm.Name)},
 		{"description", strconv.Quote(fm.Description)},
 		{"alwaysApply", "true"},
 	}, body), nil
