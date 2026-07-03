@@ -1,0 +1,205 @@
+// Copyright AGNTCY Contributors (https://github.com/agntcy)
+// SPDX-License-Identifier: Apache-2.0
+
+//nolint:wrapcheck
+package init
+
+import (
+	"bufio"
+	"context"
+	"fmt"
+	"os"
+	"strings"
+
+	extractor "github.com/agntcy/dir/cli/internal/extractor"
+	"github.com/agntcy/dir/cli/presenter"
+	clientconfig "github.com/agntcy/dir/client/config"
+	"github.com/spf13/cobra"
+)
+
+// printWelcome prints the wizard's opening banner and the Step 1 explanation.
+func printWelcome(cmd *cobra.Command) {
+	presenter.Printf(cmd, `Welcome to dirctl — the CLI for the AGNTCY Directory, a distributed registry
+of AI agent records described in OASF.
+
+This wizard sets up your local environment. Steps:
+  1. Provision the OASF taxonomy extractor   ← now
+  (more steps — MCP server & skills — coming soon)
+
+Step 1 — OASF taxonomy extractor
+Maps free-form text onto the OASF taxonomy so dirctl can enrich records and
+(soon) answer free-text searches locally — in-process, with no LLM or API
+calls. It needs a one-time ~89 MB model + the taxonomy downloaded to your
+machine; provisioned once, reused everywhere.
+`)
+}
+
+// run dispatches to the remove or provision flow.
+func run(cmd *cobra.Command, opts *options) error {
+	if opts.remove {
+		return runRemove(cmd, opts)
+	}
+
+	return runProvision(cmd, opts)
+}
+
+// configFromOpts builds the engine config from flags, resolving defaults.
+func configFromOpts(opts *options) extractor.Config {
+	return extractor.Config{OASFURL: opts.oasfURL, AssetDir: opts.assetDir}.Resolve()
+}
+
+// preferSavedConfig fills cfg's asset dir / OASF URL from the persisted config
+// for any value the user did not set via a flag, so a bare re-run targets the
+// previously provisioned install instead of the defaults. An explicit flag
+// always wins; a missing or unreadable config leaves cfg untouched.
+func preferSavedConfig(cfg extractor.Config, opts *options) extractor.Config {
+	saved, err := clientconfig.LoadExtractor("")
+	if err != nil || saved == nil {
+		return cfg
+	}
+
+	if opts.assetDir == "" && saved.AssetDir != "" {
+		cfg.AssetDir = saved.AssetDir
+	}
+
+	if opts.oasfURL == extractor.DefaultOASFURL && saved.OASFURL != "" {
+		cfg.OASFURL = saved.OASFURL
+	}
+
+	return cfg
+}
+
+// runProvision provisions the extractor assets, persists the choice, and runs a
+// smoke check. It prompts for confirmation and the OASF URL unless --yes.
+func runProvision(cmd *cobra.Command, opts *options) error {
+	printWelcome(cmd)
+
+	cfg := preferSavedConfig(configFromOpts(opts), opts)
+
+	if extractor.IsProvisioned(cfg) {
+		presenter.Printf(cmd, "Extractor already provisioned at %s (OASF URL %s).\n",
+			cfg.AssetDir, cfg.OASFURL)
+		presenter.Printf(cmd, "Re-running updates it; use --remove to tear it down.\n")
+	}
+
+	if !opts.yes {
+		ok, err := confirm(cmd, "\nProvision the OASF extractor (~89 MB)?")
+		if err != nil {
+			return err
+		}
+
+		if !ok {
+			presenter.Printf(cmd, "Skipped. No changes made. Pass --yes to provision non-interactively.\n")
+
+			return nil
+		}
+
+		url, err := promptOASFURL(cmd, cfg.OASFURL)
+		if err != nil {
+			return err
+		}
+
+		cfg.OASFURL = url
+	}
+
+	if err := cfg.Validate(); err != nil {
+		return err
+	}
+
+	presenter.Printf(cmd, "\nProvisioning extractor assets to %s\n", cfg.AssetDir)
+
+	captured, err := runWithSpinner(cmd.Context(), os.Stdout, phaseDownload, phaseFor,
+		func(ctx context.Context) error { return extractor.Provision(ctx, cfg) })
+	if err != nil {
+		// cobra prints the returned error ("Error: …"); we add the captured
+		// provisioning output beneath it so failures are diagnosable.
+		printDetails(cmd, captured)
+
+		return err
+	}
+
+	// Persist the choice before the smoke check so a diagnostic smoke-check
+	// failure never discards the on-disk assets or the saved config.
+	if err := clientconfig.SaveExtractor("", &clientconfig.Extractor{
+		OASFURL:  cfg.OASFURL,
+		AssetDir: cfg.AssetDir,
+	}); err != nil {
+		return fmt.Errorf("save extractor config: %w", err)
+	}
+
+	captured, err = runWithSpinner(cmd.Context(), os.Stdout, "Verifying setup…", nil,
+		func(ctx context.Context) error { return extractor.SmokeCheck(ctx, cfg) })
+	if err != nil {
+		presenter.Printf(cmd, "⚠ Assets provisioned, but the smoke check failed: %v\n", err)
+		printDetails(cmd, captured)
+		presenter.Printf(cmd, "The assets are on disk at %s; re-run `dirctl init` to retry.\n", cfg.AssetDir)
+
+		return nil
+	}
+
+	presenter.Printf(cmd, "✔ Extractor ready.\n  asset dir: %s\n  OASF URL:  %s\nEnrichment and free-text search can now run locally.\n",
+		cfg.AssetDir, cfg.OASFURL)
+
+	return nil
+}
+
+// printDetails surfaces captured provisioning output as an indented block, used
+// only when a step fails so the raw logs stay hidden on the happy path.
+func printDetails(cmd *cobra.Command, captured string) {
+	if details := strings.TrimSpace(captured); details != "" {
+		presenter.Errorf(cmd, "\nDetails:\n%s\n", indentLines(details, "  "))
+	}
+}
+
+// runRemove tears down the provisioned assets and clears the saved config.
+func runRemove(cmd *cobra.Command, opts *options) error {
+	// Prefer the persisted asset dir so removal targets what was provisioned.
+	cfg := preferSavedConfig(configFromOpts(opts), opts)
+
+	if !opts.yes {
+		ok, err := confirm(cmd, fmt.Sprintf("Remove extractor assets at %s?", cfg.AssetDir))
+		if err != nil {
+			return err
+		}
+
+		if !ok {
+			presenter.Printf(cmd, "Aborted. Nothing removed.\n")
+
+			return nil
+		}
+	}
+
+	if err := extractor.Teardown(cfg); err != nil {
+		return err
+	}
+
+	if err := clientconfig.ClearExtractor(""); err != nil {
+		return fmt.Errorf("clear extractor config: %w", err)
+	}
+
+	presenter.Printf(cmd, "Removed extractor assets at %s and cleared saved config.\n", cfg.AssetDir)
+
+	return nil
+}
+
+// promptOASFURL asks for the OASF URL, returning def when the user enters
+// nothing (or stdin is at EOF).
+//
+//nolint:unparam
+func promptOASFURL(cmd *cobra.Command, def string) (string, error) {
+	presenter.Printf(cmd, "OASF URL [%s]: ", def)
+
+	reader := bufio.NewReader(cmd.InOrStdin())
+
+	line, err := reader.ReadString('\n')
+	if err != nil && line == "" {
+		return def, nil
+	}
+
+	answer := strings.TrimSpace(line)
+	if answer == "" {
+		return def, nil
+	}
+
+	return answer, nil
+}

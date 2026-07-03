@@ -2,6 +2,7 @@
 
 Command-line tools for the AGNTCY Directory.
 
+- **Setup** — Guided first-run onboarding (`init`): provision the OASF taxonomy extractor for local, LLM-free record enrichment and (soon) free-text search. Start here after installing.
 - **Storage** — Push, pull, delete, and inspect records (info).
 - **Routing** — Publish, unpublish, list, and search records across the network.
 - **Integrity** — Sign, verify, and validate artifacts.
@@ -23,6 +24,9 @@ Full documentation: [https://docs.agntcy.org/dir/dir-cli-reference/](https://doc
 brew tap agntcy/dir https://github.com/agntcy/dir
 brew trust agntcy/dir
 brew install dirctl
+
+# First-run setup (guided): provision the OASF taxonomy extractor
+dirctl init
 
 # Store, publish, search, pull
 dirctl push my-record.json

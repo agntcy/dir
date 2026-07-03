@@ -16,6 +16,7 @@ import (
 	"github.com/agntcy/dir/cli/cmd/export"
 	importcmd "github.com/agntcy/dir/cli/cmd/import"
 	"github.com/agntcy/dir/cli/cmd/info"
+	initcmd "github.com/agntcy/dir/cli/cmd/init"
 	"github.com/agntcy/dir/cli/cmd/install"
 	"github.com/agntcy/dir/cli/cmd/mcp"
 	"github.com/agntcy/dir/cli/cmd/naming"
@@ -118,6 +119,7 @@ func init() {
 	// `install list` makes no Directory calls, so it must not require a client;
 	// `install`/`install run`/`install uninstall` use the client from context.
 	install.ListCommand.PersistentPreRunE = skipClientSetup
+	initcmd.Command.PersistentPreRunE = skipClientSetup
 
 	RootCmd.AddCommand(
 		// auth commands
@@ -126,6 +128,7 @@ func init() {
 		// local commands
 		version.Command,
 		doctor.Command,
+		initcmd.Command,
 		// initialize.Command, // REMOVED: Initialize functionality
 		sign.Command,
 		verify.Command,
