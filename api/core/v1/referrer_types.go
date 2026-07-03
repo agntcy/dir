@@ -10,4 +10,7 @@ const (
 
 	// SignatureReferrerType is the type for Signature referrers.
 	SignatureReferrerType = "agntcy.dir.sign.v1.Signature"
+
+	// ScanReportReferrerType is the type for ScanReport referrers.
+	ScanReportReferrerType = "agntcy.dir.security.v1.ScanReport"
 )
