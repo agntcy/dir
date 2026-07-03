@@ -112,3 +112,156 @@ func TestInstallMCPDryRunWritesNothing(t *testing.T) {
 	_, err = os.Stat(path)
 	assert.True(t, os.IsNotExist(err))
 }
+
+// --- YAML format ---
+
+func testYAMLMCPTarget(path string) *MCPTarget {
+	return &MCPTarget{
+		ConfigPath: func(_ Env) (string, error) { return path, nil },
+		Format:     codec.YAML,
+		ServersKey: []string{"mcpServers"},
+		EntryStyle: CommandArgsEnv,
+	}
+}
+
+func TestInstallMCPYAMLCreatesFileWithEntry(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "sub", "config.yaml")
+
+	outcome, err := InstallMCP(testYAMLMCPTarget(path), Env{}, sampleEntry(), testServerName, false)
+	require.NoError(t, err)
+	assert.Equal(t, ActionAdded, outcome.Action)
+
+	data, err := os.ReadFile(path)
+	require.NoError(t, err)
+
+	m, err := codec.Decode(codec.YAML, data)
+	require.NoError(t, err)
+
+	_, ok := codec.GetNested(m, "mcpServers", testServerName)
+	assert.True(t, ok)
+}
+
+func TestInstallMCPYAMLPreservesForeignServers(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "config.yaml")
+	require.NoError(t, os.WriteFile(path,
+		[]byte("mcpServers:\n  other:\n    command: node\n"), 0o600))
+
+	_, err := InstallMCP(testYAMLMCPTarget(path), Env{}, sampleEntry(), testServerName, false)
+	require.NoError(t, err)
+
+	data, _ := os.ReadFile(path)
+	m, _ := codec.Decode(codec.YAML, data)
+
+	_, ok := codec.GetNested(m, "mcpServers", "other")
+	assert.True(t, ok, "sibling server must be preserved")
+
+	_, ok = codec.GetNested(m, "mcpServers", testServerName)
+	assert.True(t, ok)
+}
+
+func TestRemoveMCPYAMLDeletesOnlyOurKey(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "config.yaml")
+	require.NoError(t, os.WriteFile(path,
+		[]byte("mcpServers:\n  agntcy-dir-mcp:\n    command: dirctl\n  other:\n    command: node\n"), 0o600))
+
+	outcome, err := RemoveMCP(testYAMLMCPTarget(path), Env{}, testServerName, false)
+	require.NoError(t, err)
+	assert.Equal(t, ActionRemoved, outcome.Action)
+
+	data, _ := os.ReadFile(path)
+	m, _ := codec.Decode(codec.YAML, data)
+
+	_, ok := codec.GetNested(m, "mcpServers", testServerName)
+	assert.False(t, ok)
+
+	_, ok = codec.GetNested(m, "mcpServers", "other")
+	assert.True(t, ok, "foreign server must be preserved")
+}
+
+// --- TOML format ---
+
+func testTOMLMCPTarget(path string) *MCPTarget {
+	return &MCPTarget{
+		ConfigPath: func(_ Env) (string, error) { return path, nil },
+		Format:     codec.TOML,
+		ServersKey: []string{"mcp_servers"},
+		EntryStyle: CommandArgsEnv,
+	}
+}
+
+func TestInstallMCPTOMLCreatesFileWithEntry(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "sub", "config.toml")
+
+	outcome, err := InstallMCP(testTOMLMCPTarget(path), Env{}, sampleEntry(), testServerName, false)
+	require.NoError(t, err)
+	assert.Equal(t, ActionAdded, outcome.Action)
+
+	data, err := os.ReadFile(path)
+	require.NoError(t, err)
+
+	m, err := codec.Decode(codec.TOML, data)
+	require.NoError(t, err)
+
+	_, ok := codec.GetNested(m, "mcp_servers", testServerName)
+	assert.True(t, ok)
+}
+
+func TestInstallMCPTOMLPreservesForeignServers(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "config.toml")
+	require.NoError(t, os.WriteFile(path,
+		[]byte("[mcp_servers.other]\ncommand = \"node\"\n"), 0o600))
+
+	_, err := InstallMCP(testTOMLMCPTarget(path), Env{}, sampleEntry(), testServerName, false)
+	require.NoError(t, err)
+
+	data, _ := os.ReadFile(path)
+	m, _ := codec.Decode(codec.TOML, data)
+
+	_, ok := codec.GetNested(m, "mcp_servers", "other")
+	assert.True(t, ok, "sibling server must be preserved")
+
+	_, ok = codec.GetNested(m, "mcp_servers", testServerName)
+	assert.True(t, ok)
+}
+
+func TestRemoveMCPTOMLDeletesOnlyOurKey(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "config.toml")
+	require.NoError(t, os.WriteFile(path,
+		[]byte("[mcp_servers.agntcy-dir-mcp]\ncommand = \"dirctl\"\n[mcp_servers.other]\ncommand = \"node\"\n"), 0o600))
+
+	outcome, err := RemoveMCP(testTOMLMCPTarget(path), Env{}, testServerName, false)
+	require.NoError(t, err)
+	assert.Equal(t, ActionRemoved, outcome.Action)
+
+	data, _ := os.ReadFile(path)
+	m, _ := codec.Decode(codec.TOML, data)
+
+	_, ok := codec.GetNested(m, "mcp_servers", testServerName)
+	assert.False(t, ok)
+
+	_, ok = codec.GetNested(m, "mcp_servers", "other")
+	assert.True(t, ok, "foreign server must be preserved")
+}
+
+// --- MCPEntryPresent ---
+
+func TestMCPEntryPresentTrue(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "mcp.json")
+	require.NoError(t, os.WriteFile(path,
+		[]byte(`{"mcpServers":{"agntcy-dir-mcp":{"command":"dirctl"}}}`), 0o600))
+
+	assert.True(t, MCPEntryPresent(testMCPTarget(path), Env{}, testServerName))
+}
+
+func TestMCPEntryPresentFalseWhenAbsent(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "mcp.json")
+	require.NoError(t, os.WriteFile(path, []byte(`{"mcpServers":{"other":{}}}`), 0o600))
+
+	assert.False(t, MCPEntryPresent(testMCPTarget(path), Env{}, testServerName))
+}
+
+func TestMCPEntryPresentFalseWhenFileMissing(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "nonexistent.json")
+
+	assert.False(t, MCPEntryPresent(testMCPTarget(path), Env{}, testServerName))
+}

@@ -10,6 +10,7 @@ import (
 
 	"github.com/agntcy/dir/cli/internal/agentcfg"
 	"github.com/agntcy/dir/cli/internal/agentcfg/codec"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -87,6 +88,99 @@ func TestRunInstallWritesSkill(t *testing.T) {
 	raw, err := os.ReadFile(skillFile)
 	require.NoError(t, err)
 	require.NotEmpty(t, raw)
+}
+
+func TestStyleEntryZedContextServerAddSource(t *testing.T) {
+	base := map[string]any{"command": "dirctl", "args": []any{"mcp", "serve"}}
+	got := styleEntry(base, agentcfg.ZedContextServer)
+
+	assert.Equal(t, "custom", got["source"])
+	assert.Equal(t, "dirctl", got["command"])
+
+	// Must not mutate the original.
+	_, hadSource := base["source"]
+	assert.False(t, hadSource, "styleEntry must not mutate the input map")
+}
+
+func TestStyleEntryCommandArgsEnvUnchanged(t *testing.T) {
+	base := map[string]any{"command": "dirctl", "args": []any{"mcp", "serve"}}
+	got := styleEntry(base, agentcfg.CommandArgsEnv)
+
+	_, hasSource := got["source"]
+	assert.False(t, hasSource, "CommandArgsEnv must not add a source field")
+	assert.Equal(t, "dirctl", got["command"])
+}
+
+func TestRunUninstallRemovesMCPEntryAndPreservesSibling(t *testing.T) {
+	home := t.TempDir()
+	env := agentcfg.Env{Home: home, GOOS: "linux", Cwd: home}
+
+	var mcpTarget *agentcfg.MCPTarget
+
+	for _, a := range agentcfg.Registry() {
+		if a.ID == claudeCodeID {
+			mcpTarget = a.MCP
+		}
+	}
+
+	require.NotNil(t, mcpTarget)
+
+	// First install both our server and a sibling.
+	path, err := mcpTarget.ConfigPath(env)
+	require.NoError(t, err)
+
+	initialJSON := []byte(`{"mcpServers":{"agntcy-dir-mcp":{"command":"dirctl"},"sibling":{"command":"node"}}}`)
+
+	require.NoError(t, os.MkdirAll(filepath.Dir(path), 0o755))
+	require.NoError(t, os.WriteFile(path, initialJSON, 0o600))
+
+	arts := artifacts{
+		slug: "agntcy-dir",
+		mcpServers: []mcpServer{{
+			name:  "agntcy-dir-mcp",
+			entry: map[string]any{"command": "dirctl"},
+		}},
+	}
+	agent := agentcfg.Agent{Name: "Claude Code", MCP: mcpTarget}
+	outcomes := runUninstall(env, arts, []agentcfg.Agent{agent}, false)
+	require.Len(t, outcomes, 1)
+	require.Equal(t, agentcfg.ActionRemoved, outcomes[0].Action)
+
+	// Sibling must survive.
+	raw, err := os.ReadFile(path)
+	require.NoError(t, err)
+
+	require.Contains(t, string(raw), "sibling")
+	require.NotContains(t, string(raw), "agntcy-dir-mcp")
+}
+
+func TestRunUninstallRemovesSkill(t *testing.T) {
+	home := t.TempDir()
+	env := agentcfg.Env{Home: home, GOOS: "linux", Cwd: home}
+
+	var skillTarget *agentcfg.SkillTarget
+
+	for _, a := range agentcfg.Registry() {
+		if a.ID == claudeCodeID {
+			skillTarget = a.Skill
+		}
+	}
+
+	require.NotNil(t, skillTarget)
+
+	arts := artifacts{
+		slug:  "code-review",
+		skill: "---\nname: code-review\ndescription: x\n---\n\nbody\n",
+	}
+	agent := agentcfg.Agent{Name: "Claude Code", Skill: skillTarget}
+
+	// Install first.
+	runInstall(env, arts, []agentcfg.Agent{agent}, false)
+
+	// Uninstall.
+	outcomes := runUninstall(env, arts, []agentcfg.Agent{agent}, false)
+	require.Len(t, outcomes, 1)
+	require.Equal(t, agentcfg.ActionRemoved, outcomes[0].Action)
 }
 
 func TestRunInstallDedupesSharedSkillPath(t *testing.T) {

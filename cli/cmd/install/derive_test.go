@@ -67,6 +67,42 @@ func TestDeriveBareErrors(t *testing.T) {
 	require.Contains(t, strings.ToLower(err.Error()), "no installable")
 }
 
+// --- moduleNames tests ---
+
+func TestModuleNamesNoModulesField(t *testing.T) {
+	// A struct with no "modules" key returns ["none"].
+	data, err := structpb.NewStruct(map[string]any{"name": "foo"})
+	require.NoError(t, err)
+
+	got := moduleNames(data)
+	require.Equal(t, []string{"none"}, got)
+}
+
+func TestModuleNamesWithModules(t *testing.T) {
+	// Build a structpb.Struct that has a modules list with named entries.
+	data, err := structpb.NewStruct(map[string]any{
+		"modules": []any{
+			map[string]any{"name": "skills"},
+			map[string]any{"name": "mcp"},
+		},
+	})
+	require.NoError(t, err)
+
+	got := moduleNames(data)
+	require.Equal(t, []string{"skills", "mcp"}, got)
+}
+
+func TestModuleNamesEmptyModulesList(t *testing.T) {
+	// modules list exists but is empty → ["none"].
+	data, err := structpb.NewStruct(map[string]any{
+		"modules": []any{},
+	})
+	require.NoError(t, err)
+
+	got := moduleNames(data)
+	require.Equal(t, []string{"none"}, got)
+}
+
 func TestSanitizeSlug(t *testing.T) {
 	require.Equal(t, "io.example-code-review-server", sanitizeSlug("io.example/code-review-server"))
 	require.Equal(t, "my-agent", sanitizeSlug("my agent"))

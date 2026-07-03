@@ -141,3 +141,106 @@ func TestTOMLRoundTripPreservesForeignData(t *testing.T) {
 	_, ok = GetNested(got, "mcp_servers", "other")
 	assert.True(t, ok)
 }
+
+// --- Decode error cases ---
+
+func TestDecodeMalformedJSON(t *testing.T) {
+	_, err := Decode(JSON, []byte(`{not valid json`))
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "decode json")
+}
+
+func TestDecodeMalformedYAML(t *testing.T) {
+	// Tabs are not valid YAML indentation.
+	_, err := Decode(YAML, []byte("key:\n\t- bad"))
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "decode yaml")
+}
+
+func TestDecodeMalformedTOML(t *testing.T) {
+	_, err := Decode(TOML, []byte("[[not.valid\n"))
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "decode toml")
+}
+
+func TestDecodeUnsupportedFormat(t *testing.T) {
+	_, err := Decode(Format(99), []byte("data"))
+	require.Error(t, err)
+}
+
+func TestEncodeUnsupportedFormat(t *testing.T) {
+	_, err := Encode(Format(99), map[string]any{"a": 1})
+	require.Error(t, err)
+}
+
+// --- GetNested edge cases ---
+
+func TestGetNestedEmptyPath(t *testing.T) {
+	m := map[string]any{"a": 1}
+	_, ok := GetNested(m)
+	assert.False(t, ok)
+}
+
+func TestGetNestedThroughNonMap(t *testing.T) {
+	// Trying to walk through a non-map value should return false.
+	m := map[string]any{"a": "string-value"}
+	_, ok := GetNested(m, "a", "b")
+	assert.False(t, ok)
+}
+
+// --- SetNested edge cases ---
+
+func TestSetNestedEmptyPathIsNoOp(t *testing.T) {
+	m := map[string]any{"a": 1}
+	SetNested(m, "value")
+	assert.Equal(t, map[string]any{"a": 1}, m)
+}
+
+func TestSetNestedOverwritesNonMap(t *testing.T) {
+	// If an intermediate key holds a non-map value, SetNested replaces it.
+	m := map[string]any{"a": "old"}
+	SetNested(m, "new-value", "a", "b")
+	got, ok := GetNested(m, "a", "b")
+	require.True(t, ok)
+	assert.Equal(t, "new-value", got)
+}
+
+// --- DeleteNested edge cases ---
+
+func TestDeleteNestedEmptyPath(t *testing.T) {
+	m := map[string]any{"a": 1}
+	removed := DeleteNested(m)
+	assert.False(t, removed)
+	assert.Equal(t, map[string]any{"a": 1}, m)
+}
+
+func TestDeleteNestedThroughNonMap(t *testing.T) {
+	// Walking through a non-map must not panic and return false.
+	m := map[string]any{"a": "not-a-map"}
+	removed := DeleteNested(m, "a", "b")
+	assert.False(t, removed)
+}
+
+// --- asStringMap via YAML round-trip ---
+
+func TestAsStringMapViaYAMLDecode(t *testing.T) {
+	// YAML decode produces map[string]any; after GetNested wraps it we can still
+	// traverse nested keys, which exercises asStringMap internally.
+	input := []byte("outer:\n  inner:\n    leaf: value\n")
+
+	m, err := Decode(YAML, input)
+	require.NoError(t, err)
+
+	got, ok := GetNested(m, "outer", "inner", "leaf")
+	require.True(t, ok)
+	assert.Equal(t, "value", got)
+}
+
+// --- Format.String() ---
+
+func TestFormatString(t *testing.T) {
+	assert.Equal(t, "json", JSON.String())
+	assert.Equal(t, "yaml", YAML.String())
+	assert.Equal(t, "toml", TOML.String())
+	assert.Equal(t, "unknown", Format(99).String())
+}
