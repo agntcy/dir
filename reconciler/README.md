@@ -49,3 +49,25 @@ The signature task verifies record signatures and caches results. It:
 2. For each record, collects signatures and public keys from the store
 3. Verifies each signature using shared verification logic (key-based or OIDC)
 4. Upserts verification results to the database
+
+### Metrics Task
+
+The metrics task refreshes computed usage metrics for locally known records. It:
+
+1. Queries the search database for all locally known record CIDs
+2. For each CID, queries the routing layer for the number of distinct announcing peers
+3. Persists the provider count into the `record_usage_metrics` table for use in popularity ranking
+
+The routing layer uses an embedded Badger store that does not support concurrent multi-process access. In standalone reconciler mode the task reaches the routing layer over gRPC rather than sharing the datastore directory.
+
+### Scan Task
+
+The scan task runs security scanners against record artifacts and persists the results. It:
+
+1. Queries the database for records with no recent scan result (per configured TTL)
+2. For each record, pulls the full record from the store
+3. Runs each configured scanner (mcp-scanner, skill-scanner) independently
+4. Pushes each scanner's `ScanReport` as an OCI referrer (`agntcy.dir.security.v1.ScanReport`) attached to the record CID
+5. Upserts a summary row into the `scan_reports` table for efficient TTL-based filtering
+
+Scanner failures for one runner do not block the others. Referrer storage failures are logged as warnings and do not abort the scan.
