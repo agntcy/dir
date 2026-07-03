@@ -1,0 +1,79 @@
+// Copyright AGNTCY Contributors (https://github.com/agntcy)
+// SPDX-License-Identifier: Apache-2.0
+
+syntax = "proto3";
+
+package agntcy.dir.scan.v1;
+
+// ScannerType identifies which scanner produced a ScanReport.
+enum ScannerType {
+  SCANNER_TYPE_UNSPECIFIED = 0;
+  // MCP behavioral scanner (github.com/cisco-ai-defense/mcp-scanner).
+  SCANNER_TYPE_MCP = 1;
+  // Skill security scanner (github.com/cisco-ai-defense/skill-scanner).
+  SCANNER_TYPE_SKILL = 2;
+  // A2A scanner (github.com/cisco-ai-defense/a2a-scanner).
+  SCANNER_TYPE_A2A = 3;
+}
+
+// Severity ranks the impact of a finding or the overall scan result.
+enum Severity {
+  SEVERITY_UNSPECIFIED = 0;
+  SEVERITY_NONE = 1;
+  SEVERITY_INFO = 2;
+  SEVERITY_LOW = 3;
+  SEVERITY_MEDIUM = 4;
+  SEVERITY_HIGH = 5;
+  SEVERITY_CRITICAL = 6;
+}
+
+// Finding is a single issue identified by a scanner.
+message Finding {
+  // Unique rule identifier within the scanner (e.g. "SOCIAL_ENG_ANTHROPIC_IMPERSONATION").
+  string rule_id = 1;
+
+  // Severity of this finding.
+  Severity severity = 2;
+
+  // Human-readable description of the issue.
+  string message = 3;
+
+  // File or artifact location where the issue was detected.
+  string location = 4;
+
+  // Logical category of the issue (e.g. "social_engineering", "policy_violation").
+  string category = 5;
+
+  // Suggested remediation for the issue.
+  string remediation = 6;
+}
+
+// ScanReport is the result of running a scanner against a record's source
+// artifact. It is stored as a referrer of type "agntcy.dir.scan.v1.ScanReport"
+// and attached to the record CID it describes.
+//
+// ScanReport can be encoded into a RecordReferrer object as follows:
+//   type = "agntcy.dir.scan.v1.ScanReport"
+//   data = ScanReport message encoded as JSON
+message ScanReport {
+  // Type of scanner that produced this report.
+  ScannerType scanner_type = 1;
+
+  // Version string of the scanner binary (e.g. "0.4.2").
+  string scanner_version = 2;
+
+  // Timestamp at which the scan was performed, in RFC3339 format.
+  string scanned_at = 3;
+
+  // Whether the scanner considers the artifact safe.
+  bool is_safe = 4;
+
+  // Highest severity level observed across all findings.
+  Severity max_severity = 5;
+
+  // Individual findings produced by the scan. Empty when is_safe is true.
+  repeated Finding findings = 6;
+
+  // Names of the analyzer modules that ran (e.g. "static_analyzer", "bytecode").
+  repeated string analyzers = 7;
+}

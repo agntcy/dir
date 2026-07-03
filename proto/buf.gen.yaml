@@ -35,6 +35,9 @@ managed:
     - path: agntcy/dir/catalog/v1
       file_option: go_package
       value: github.com/agntcy/dir/api/catalog/v1
+    - path: agntcy/dir/scan/v1
+      file_option: go_package
+      value: github.com/agntcy/dir/api/scan/v1
 
 inputs:
   - directory: .
