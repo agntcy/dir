@@ -1812,6 +1812,56 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#agent-install" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Agent Install
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Agent Install">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#dirctl-install-list" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        dirctl install list
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#dirctl-install-cid-or-name-dirctl-install-run-cid-or-name" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        dirctl install &lt;cid-or-name&gt; / dirctl install run &lt;cid-or-name&gt;
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#dirctl-install-uninstall-cid-or-name-flags" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        dirctl install uninstall &lt;cid-or-name&gt; [flags]
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#daemon-operations" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2615,6 +2665,56 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#agent-install" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Agent Install
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Agent Install">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#dirctl-install-list" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        dirctl install list
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#dirctl-install-cid-or-name-dirctl-install-run-cid-or-name" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        dirctl install &lt;cid-or-name&gt; / dirctl install run &lt;cid-or-name&gt;
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#dirctl-install-uninstall-cid-or-name-flags" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        dirctl install uninstall &lt;cid-or-name&gt; [flags]
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#daemon-operations" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -3362,6 +3462,10 @@ explicit <code>--auth-mode</code>.</p>
 <td><code>mcp serve</code></td>
 </tr>
 <tr>
+<td>Install</td>
+<td><code>install run</code>, <code>install uninstall</code> (or top-level <code>uninstall</code>), <code>install list</code></td>
+</tr>
+<tr>
 <td>Diagnostics</td>
 <td><code>doctor</code>, <code>version</code></td>
 </tr>
@@ -3402,6 +3506,94 @@ dirctl<span class="w"> </span>routing<span class="w"> </span>search<span class="
 <h3 id="dirctl-mcp-serve"><code>dirctl mcp serve</code></h3>
 <p>Starts the built-in MCP server used by external AI tooling. Delegates to the
 <a href="https://github.com/agntcy/dir-mcp"><code>dir-mcp</code></a> module.</p>
+<h2 id="agent-install">Agent Install</h2>
+<p><code>dirctl install &lt;cid-or-name&gt;</code> pulls a record from the active Directory and
+installs its artifacts — an MCP server entry and/or an Agent Skill, derived from
+the record's OASF modules — directly into the configuration of detected AI coding
+agents.</p>
+<p>Which artifacts are installed is determined by the record's modules, not a flag:</p>
+<ul>
+<li><code>core/language_model/agentskills</code> → an Agent Skill (<code>SKILL.md</code>), rendered into
+  whatever persistent-instruction mechanism each agent supports (a native skill
+  folder, a per-tool rules file, or a managed block in a shared instruction file).</li>
+<li><code>integration/mcp</code> → an MCP server entry (<code>command</code>/<code>args</code>/<code>env</code>) placed under
+  each agent's MCP servers key.</li>
+<li><code>integration/a2a</code> → not installable into agent configs; the command errors and
+  points you to <code>dirctl export</code>.</li>
+</ul>
+<p>A multi-module record installs all applicable artifacts. The per-record identity
+is the sanitized record name, so re-running <code>install</code> with a newer version of the
+same-named record replaces the old artifacts cleanly, and different records
+coexist.</p>
+<p>Supported agents: Claude Code, Claude Desktop, Cursor, VS Code (Copilot),
+Windsurf, Cline, Roo Code, Gemini CLI, OpenCode, Zed, Continue, and Codex CLI.</p>
+<p>Writes are atomic and surgical: only our own MCP entry, skill file/folder, or
+delimited managed block is added/updated/removed — all of your existing
+configuration is preserved.</p>
+<h3 id="dirctl-install-list"><code>dirctl install list</code></h3>
+<p>Lists every supported agent, whether it is detected on this machine, and the
+config files that install would touch. Makes no changes and does not contact the
+Directory.</p>
+<h3 id="dirctl-install-cid-or-name-dirctl-install-run-cid-or-name"><code>dirctl install &lt;cid-or-name&gt;</code> / <code>dirctl install run &lt;cid-or-name&gt;</code></h3>
+<p>Pulls the record, derives its artifacts, prints the planned changes (per agent and
+artifact, marked add / updated / unchanged), asks for confirmation, then installs.
+<code>dirctl install &lt;cid-or-name&gt;</code> is shorthand for <code>dirctl install run &lt;cid-or-name&gt;</code>.
+By default it acts on all detected agents. Detection is always required — an agent
+is never installed into unless it is detected on this machine; an explicitly
+requested agent that is not detected is reported as skipped.</p>
+<p>The artifacts to install are determined entirely by the record's modules (above),
+not by flags. A record carrying neither an MCP nor an Agent Skill module has
+nothing installable: the command errors (making no changes) and, for an
+A2A-only record, points you to <code>dirctl export</code>.</p>
+<table>
+<thead>
+<tr>
+<th>Flag</th>
+<th>Description</th>
+<th>Default</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>--agents</code></td>
+<td>Agents to target: <code>all</code> (every detected agent) or a comma-separated list of agent IDs (e.g. <code>--agents claude-code,cursor</code>; repeatable)</td>
+<td><code>all</code></td>
+</tr>
+<tr>
+<td><code>--dry-run</code></td>
+<td>Preview the plan without writing</td>
+<td><code>false</code></td>
+</tr>
+<tr>
+<td><code>--yes</code> / <code>-y</code></td>
+<td>Skip the confirmation prompt</td>
+<td><code>false</code></td>
+</tr>
+</tbody>
+</table>
+<p>Valid agent IDs: <code>claude-code</code>, <code>claude-desktop</code>, <code>cursor</code>, <code>vscode</code>, <code>windsurf</code>,
+<code>cline</code>, <code>roo</code>, <code>gemini</code>, <code>opencode</code>, <code>zed</code>, <code>continue</code>, <code>codex</code> (see
+<code>dirctl install list</code>). After completion, a summary lists every location added,
+updated, removed, or skipped with its absolute path.</p>
+<div class="highlight"><pre><span></span><code><span class="c1"># Preview what installing a record would change</span>
+dirctl<span class="w"> </span>install<span class="w"> </span>cisco.com/agent:v1.0.0<span class="w"> </span>--dry-run
+
+<span class="c1"># Install a record&#39;s artifacts into all detected agents</span>
+dirctl<span class="w"> </span>install<span class="w"> </span>cisco.com/agent:v1.0.0<span class="w"> </span>--yes
+
+<span class="c1"># Install into specific agents only</span>
+dirctl<span class="w"> </span>install<span class="w"> </span>cisco.com/agent<span class="w"> </span>--agents<span class="w"> </span>claude-code,cursor
+</code></pre></div>
+<h3 id="dirctl-install-uninstall-cid-or-name-flags"><code>dirctl install uninstall &lt;cid-or-name&gt; [flags]</code></h3>
+<p>Removes what <code>install</code> added for that record — its MCP entry and/or skill —
+leaving all other content intact. Shares the same flags as install (<code>--agents</code>,
+<code>--dry-run</code>, <code>--yes</code>). Idempotent: an agent with nothing of ours installed is
+reported as unchanged, never an error.</p>
+<p><code>dirctl uninstall &lt;cid-or-name&gt;</code> is a top-level shorthand for
+<code>dirctl install uninstall &lt;cid-or-name&gt;</code> (same flags and behavior).</p>
+<div class="highlight"><pre><span></span><code>dirctl<span class="w"> </span>install<span class="w"> </span>uninstall<span class="w"> </span>cisco.com/agent<span class="w"> </span>--yes
+dirctl<span class="w"> </span>uninstall<span class="w"> </span>cisco.com/agent<span class="w"> </span>--agents<span class="w"> </span>cursor
+</code></pre></div>
 <h2 id="daemon-operations">Daemon Operations</h2>
 <p>The daemon commands run a self-contained local directory server that bundles the gRPC apiserver and reconciler into a single process with embedded SQLite and a filesystem OCI store. All state is stored under <code>~/.agntcy/dir/</code> by default.</p>
 <h3 id="dirctl-daemon-start"><code>dirctl daemon start</code></h3>
