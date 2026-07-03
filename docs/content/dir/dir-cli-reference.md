@@ -71,7 +71,7 @@ explicit `--auth-mode`.
 | Sync | `sync create`, `status`, `list`, `delete` |
 | Events | `events listen` |
 | MCP | `mcp serve` |
-| Install | `install run`, `uninstall`, `list` |
+| Install | `install run`, `install uninstall` (or top-level `uninstall`), `install list` |
 | Diagnostics | `doctor`, `version` |
 
 ### Getting help
@@ -181,9 +181,12 @@ leaving all other content intact. Shares the same flags as install (`--agents`,
 `--dry-run`, `--yes`). Idempotent: an agent with nothing of ours installed is
 reported as unchanged, never an error.
 
+`dirctl uninstall <cid-or-name>` is a top-level shorthand for
+`dirctl install uninstall <cid-or-name>` (same flags and behavior).
+
 ```bash
 dirctl install uninstall cisco.com/agent --yes
-dirctl install uninstall cisco.com/agent --agents cursor
+dirctl uninstall cisco.com/agent --agents cursor
 ```
 
 ## Daemon Operations

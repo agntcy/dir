@@ -29,3 +29,13 @@ func TestParentHasSubcommands(t *testing.T) {
 	require.True(t, names["uninstall"])
 	require.True(t, names["list"])
 }
+
+func TestTopLevelUninstallShorthand(t *testing.T) {
+	// The top-level `dirctl uninstall` shorthand takes one positional and carries
+	// its own selection flags (it has no `install` parent to inherit them from).
+	require.Equal(t, "uninstall", UninstallCommand.Name())
+	require.NotNil(t, UninstallCommand.RunE)
+	require.NotNil(t, UninstallCommand.PersistentFlags().Lookup("agents"))
+	require.NotNil(t, UninstallCommand.PersistentFlags().Lookup("dry-run"))
+	require.NotNil(t, UninstallCommand.PersistentFlags().Lookup("yes"))
+}

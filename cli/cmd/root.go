@@ -152,7 +152,8 @@ func init() {
 		// mcp commands
 		mcp.Command, // Contains: serve
 		// install commands
-		install.Command, // Contains: run, uninstall, list
+		install.Command,          // Contains: run, uninstall, list
+		install.UninstallCommand, // top-level `uninstall` shorthand for `install uninstall`
 		// daemon commands
 		daemon.Command, // Contains: start, stop, status
 	)
