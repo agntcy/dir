@@ -9,9 +9,12 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"strings"
+	"time"
 
 	"buf.build/go/protovalidate"
 	corev1 "github.com/agntcy/dir/api/core/v1"
+	securityv1 "github.com/agntcy/dir/api/security/v1"
 	storev1 "github.com/agntcy/dir/api/store/v1"
 	"github.com/agntcy/dir/server/events"
 	"github.com/agntcy/dir/server/types"
@@ -307,6 +310,25 @@ func (s storeCtrl) pushReferrer(ctx context.Context, request *storev1.PushReferr
 		}
 	}
 
+	// When a ScanReport referrer is pushed, upsert the scan_reports summary row so
+	// the SCANNED and SCAN_SEVERITY search filters reflect the latest result immediately.
+	if request.GetType() == corev1.ScanReportReferrerType {
+		report := &securityv1.ScanReport{}
+		if err := report.UnmarshalReferrer(&corev1.RecordReferrer{
+			Type: request.GetType(),
+			Data: request.GetData(),
+		}); err != nil {
+			storeLogger.Warn("Failed to unmarshal scan report referrer for DB indexing", "error", err, "cid", recordCID)
+		} else if err := s.db.UpsertScanReport(&scanReportRow{
+			recordCID:   recordCID,
+			scannerType: scannerTypeShortName(report.GetScannerType()),
+			isSafe:      report.GetIsSafe(),
+			maxSeverity: severityShortName(report.GetMaxSeverity()),
+		}); err != nil {
+			storeLogger.Warn("Failed to upsert scan report summary", "error", err, "cid", recordCID)
+		}
+	}
+
 	storeLogger.Debug("Referrer pushed successfully", "cid", recordCID, "type", request.GetType())
 
 	return &storev1.PushReferrerResponse{
@@ -435,6 +457,40 @@ func (s storeCtrl) pullRecordFromStore(ctx context.Context, recordRef *corev1.Re
 	}
 
 	return record, nil
+}
+
+// scanReportRow adapts inline scan report data to types.ScanReportObject for DB upsert.
+type scanReportRow struct {
+	recordCID   string
+	scannerType string
+	isSafe      bool
+	maxSeverity string
+}
+
+func (r *scanReportRow) GetRecordCID() string    { return r.recordCID }
+func (r *scanReportRow) GetScannerType() string  { return r.scannerType }
+func (r *scanReportRow) GetIsSafe() bool         { return r.isSafe }
+func (r *scanReportRow) GetMaxSeverity() string  { return r.maxSeverity }
+func (r *scanReportRow) GetUpdatedAt() time.Time { return time.Time{} }
+
+// scannerTypeShortName strips the "SCANNER_TYPE_" proto prefix to get the DB column value (e.g. "MCP").
+func scannerTypeShortName(t securityv1.ScannerType) string {
+	name := t.String()
+	if after, ok := strings.CutPrefix(name, "SCANNER_TYPE_"); ok {
+		return after
+	}
+
+	return name
+}
+
+// severityShortName strips the "SEVERITY_" proto prefix to get the DB column value (e.g. "HIGH").
+func severityShortName(s securityv1.Severity) string {
+	name := s.String()
+	if after, ok := strings.CutPrefix(name, "SEVERITY_"); ok {
+		return after
+	}
+
+	return name
 }
 
 // extractRecordInfo extracts name and version from a record for logging.

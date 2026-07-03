@@ -535,7 +535,55 @@ func (d *DB) handleFilterOptions(query *gorm.DB, cfg *types.RecordFilters) *gorm
 		}
 	}
 
+	// Handle scan safe filter (is_safe column across all scanner types).
+	if cfg.ScanSafe != nil {
+		if *cfg.ScanSafe {
+			// Safe: scanned AND no scanner flagged as unsafe.
+			query = query.Where(
+				"EXISTS (SELECT 1 FROM scan_reports sr WHERE sr.record_cid = records.record_cid) AND " +
+					"NOT EXISTS (SELECT 1 FROM scan_reports sr WHERE sr.record_cid = records.record_cid AND sr.is_safe = false)",
+			)
+		} else {
+			// Unsafe: at least one scanner reported is_safe = false.
+			query = query.Where("EXISTS (SELECT 1 FROM scan_reports sr WHERE sr.record_cid = records.record_cid AND sr.is_safe = false)")
+		}
+	}
+
+	// Handle scan severity filter (max severity >= threshold across all scanner types).
+	if len(cfg.ScanSeverities) > 0 {
+		var severities []string
+		for _, threshold := range cfg.ScanSeverities {
+			severities = append(severities, scanSeveritiesGTE(threshold)...)
+		}
+
+		if len(severities) > 0 {
+			query = query.Where("EXISTS (SELECT 1 FROM scan_reports sr WHERE sr.record_cid = records.record_cid AND sr.max_severity IN ?)", severities)
+		}
+	}
+
 	return query
+}
+
+// scanSeveritiesGTE returns all severity strings that are >= the given threshold.
+// Values are the short names stored in the max_severity column (e.g. "HIGH").
+func scanSeveritiesGTE(threshold string) []string {
+	order := []string{"NONE", "INFO", "LOW", "MEDIUM", "HIGH", "CRITICAL"}
+
+	idx := -1
+
+	for i, s := range order {
+		if strings.EqualFold(s, threshold) {
+			idx = i
+
+			break
+		}
+	}
+
+	if idx < 0 {
+		return nil
+	}
+
+	return order[idx:]
 }
 
 // SetRecordSigned marks a record as signed.

@@ -219,6 +219,15 @@ func QueryToFilters(queries []*searchv1.RecordQuery) ([]types.FilterOption, erro
 				}
 			}
 
+		case searchv1.RecordQueryType_RECORD_QUERY_TYPE_SCAN_SEVERITY:
+			if query.GetValue() != "" {
+				options = append(options, types.WithScanSeverities(strings.ToUpper(query.GetValue())))
+			}
+
+		case searchv1.RecordQueryType_RECORD_QUERY_TYPE_SCAN_SAFE:
+			safe := strings.EqualFold(query.GetValue(), "true")
+			options = append(options, types.WithScanSafe(safe))
+
 		default:
 			logger.Warn("Unknown query type", "type", query.GetType())
 		}
