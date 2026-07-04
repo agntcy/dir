@@ -49,6 +49,7 @@
   "enabled": true,
   "minimumReleaseAge": "7 days",
   "schedule": ["before 6am on Monday"],
+  "prCreation": "not-pending",
   "enabledManagers": [
     "custom.regex",
     "docker-compose",
