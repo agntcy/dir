@@ -48,7 +48,11 @@
   "dependencyDashboardOSVVulnerabilitySummary": "all",
   "enabled": true,
   "minimumReleaseAge": "7 days",
-  "schedule": ["before 8am on Monday"],
+  "schedule": [
+    "before 8am on Monday",
+    "before 8am on Wednesday",
+    "before 8am on Friday"
+  ],
   "prCreation": "not-pending",
   "enabledManagers": [
     "custom.regex",
