@@ -123,6 +123,8 @@ tasks:
   e2e:test:*:*:
     desc: Run E2E test suite for a test environment (use SKIP_TESTENV=true to skip setup/teardown)
     silent: true
+    env:
+      COSIGN_BIN: "{{ .COSIGN_BIN }}"
     vars:
       # User input
       TEST_CASE: '{{index .MATCH 0}}'

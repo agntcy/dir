@@ -6,6 +6,7 @@ go 1.26.4
 replace (
 	github.com/agntcy/dir/api => ../api
 	github.com/agntcy/dir/client => ../client
+	github.com/agntcy/dir/config => ../config
 	github.com/agntcy/dir/utils => ../utils
 )
 
@@ -17,6 +18,7 @@ require (
 	buf.build/gen/go/agntcy/oasf/protocolbuffers/go v1.36.11-20260602080720-2b66557c6456.1
 	buf.build/go/protovalidate v1.2.0
 	github.com/agntcy/dir/api v1.5.0
+	github.com/agntcy/dir/config v0.0.0-00010101000000-000000000000
 	github.com/agntcy/dir/utils v1.5.0
 	github.com/agntcy/oasf-sdk/pkg v1.0.6-0.20260629100853-cc016581c7f5
 	github.com/casbin/casbin/v2 v2.135.0
@@ -31,10 +33,8 @@ require (
 	github.com/libp2p/go-libp2p-kad-dht v0.40.0
 	github.com/libp2p/go-libp2p-pubsub v0.16.0
 	github.com/libp2p/go-libp2p-record v0.3.1
-	github.com/mitchellh/mapstructure v1.5.1-0.20231216201459-8508981c8b6c
 	github.com/opencontainers/image-spec v1.1.1
 	github.com/spf13/cobra v1.10.2
-	github.com/spf13/viper v1.21.0
 	github.com/spiffe/go-spiffe/v2 v2.8.1
 	github.com/stretchr/testify v1.11.1
 	google.golang.org/genproto/googleapis/api v0.0.0-20260622175928-b703f567277d
@@ -55,10 +55,12 @@ require (
 	github.com/glebarez/go-sqlite v1.22.0 // indirect
 	github.com/golang/mock v1.7.0-rc.1 // indirect
 	github.com/google/cel-go v0.28.0 // indirect
+	github.com/mitchellh/mapstructure v1.5.1-0.20231216201459-8508981c8b6c // indirect
 	github.com/ncruces/go-strftime v1.0.0 // indirect
 	github.com/pion/turn/v5 v5.0.3 // indirect
 	github.com/remyoudompheng/bigfft v0.0.0-20230129092748-24d4a6f8daec // indirect
 	github.com/smarty/assertions v1.16.0 // indirect
+	github.com/spf13/viper v1.21.0 // indirect
 	modernc.org/libc v1.72.2 // indirect
 	modernc.org/mathutil v1.7.1 // indirect
 	modernc.org/memory v1.11.0 // indirect

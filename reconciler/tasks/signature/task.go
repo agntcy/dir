@@ -13,6 +13,7 @@ import (
 	corev1 "github.com/agntcy/dir/api/core/v1"
 	signv1 "github.com/agntcy/dir/api/sign/v1"
 	"github.com/agntcy/dir/client/utils/verify"
+	reconcilercfg "github.com/agntcy/dir/config/reconciler"
 	gormdb "github.com/agntcy/dir/server/database/gorm"
 	"github.com/agntcy/dir/server/types"
 	"github.com/agntcy/dir/utils/logging"
@@ -22,14 +23,14 @@ var logger = logging.Logger("reconciler/signature")
 
 // Task implements the signature verification reconciler task.
 type Task struct {
-	config  Config
+	config  reconcilercfg.Signature
 	db      types.DatabaseAPI
 	fetcher verify.Fetcher
 }
 
 // NewTask creates a new signature verification task.
 // fetcher supplies signatures and public keys (e.g. storeFetcher from the OCI store).
-func NewTask(config Config, db types.DatabaseAPI, fetcher verify.Fetcher) (*Task, error) {
+func NewTask(config reconcilercfg.Signature, db types.DatabaseAPI, fetcher verify.Fetcher) (*Task, error) {
 	return &Task{
 		config:  config,
 		db:      db,

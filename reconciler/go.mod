@@ -6,6 +6,7 @@ go 1.26.4
 replace (
 	github.com/agntcy/dir/api => ../api
 	github.com/agntcy/dir/client => ../client
+	github.com/agntcy/dir/config => ../config
 	github.com/agntcy/dir/server => ../server
 	github.com/agntcy/dir/utils => ../utils
 )
@@ -16,12 +17,12 @@ replace github.com/ThalesIgnite/crypto11 => github.com/ThalesGroup/crypto11 v1.6
 require (
 	github.com/agntcy/dir/api v1.5.0
 	github.com/agntcy/dir/client v1.5.0
+	github.com/agntcy/dir/config v0.0.0-00010101000000-000000000000
 	github.com/agntcy/dir/server v1.5.0
 	github.com/agntcy/dir/utils v1.5.0
 	github.com/agntcy/oasf-sdk/pkg v1.0.6-0.20260629100853-cc016581c7f5
 	github.com/csirmazbendeguz/regclient v0.0.0-20260429082137-82ab6d426079
 	github.com/sigstore/sigstore v1.10.8
-	github.com/spf13/viper v1.21.0
 	github.com/stretchr/testify v1.11.1
 	google.golang.org/grpc v1.81.1
 	gopkg.in/yaml.v3 v3.0.1
@@ -170,6 +171,7 @@ require (
 	github.com/spf13/cast v1.10.0 // indirect
 	github.com/spf13/cobra v1.10.2 // indirect
 	github.com/spf13/pflag v1.0.10 // indirect
+	github.com/spf13/viper v1.21.0 // indirect
 	github.com/spiffe/go-spiffe/v2 v2.8.1 // indirect
 	github.com/subosito/gotenv v1.6.0 // indirect
 	github.com/syndtr/goleveldb v1.0.1-0.20220721030215-126854af5e6d // indirect

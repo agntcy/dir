@@ -11,11 +11,11 @@ data:
   server.config.yml: |
     {{- $config := deepCopy .Values.config }}
     {{- /* Dynamically set OCI registry address and repository name */ -}}
-    {{- if and (hasKey $config "store") (hasKey $config.store "oci") }}
-    {{- $_ := set $config.store.oci "registry_address" (include "chart.oci.registryAddress" .) }}
+    {{- if hasKey $config "store" }}
+    {{- $_ := set $config.store "registry_address" (include "chart.oci.registryAddress" .) }}
     {{- $repoName := include "chart.oci.repositoryName" . }}
     {{- if $repoName }}
-    {{- $_ := set $config.store.oci "repository_name" $repoName }}
+    {{- $_ := set $config.store "repository_name" $repoName }}
     {{- end }}
     {{- end }}
     {{- /* Dynamically set PostgreSQL host */ -}}
@@ -25,14 +25,28 @@ data:
     {{- end }}
     {{- $_ := set $config.database.postgres "host" (include "chart.postgres.host" .) }}
     {{- end }}
+    {{- /* Collect apiserver-specific keys into the "server" sub-config.
+         The Config struct wraps all apiserver settings under APIServer (json:"server"),
+         so they must be nested under a "server" key in the config file.
+         Top-level keys (store, database, oasf_api_validation, logging, reconciler) stay as-is. */ -}}
+    {{- $serverKeys := list "listen_address" "authn" "authz" "connection" "ratelimit" "routing" "sync" "publication" "events" "naming" }}
+    {{- $serverConfig := dict }}
+    {{- range $serverKeys }}
+    {{- if hasKey $config . }}
+    {{- $_ := set $serverConfig . (get $config .) }}
+    {{- $_ := unset $config . }}
+    {{- end }}
+    {{- end }}
+    {{- /* Inject metrics and http_gateway from chart-level values into the server sub-config */ -}}
     {{- if .Values.metrics }}
     {{- $metricsConfig := dict "enabled" .Values.metrics.enabled "address" (printf ":%d" (.Values.metrics.port | int)) }}
-    {{- $_ := set $config "metrics" $metricsConfig }}
+    {{- $_ := set $serverConfig "metrics" $metricsConfig }}
     {{- end }}
     {{- if .Values.httpGateway }}
     {{- $gwConfig := dict "enabled" .Values.httpGateway.enabled "listen_address" (printf "0.0.0.0:%d" (.Values.httpGateway.port | int)) "public_url" .Values.httpGateway.publicURL "catalog_title" (.Values.httpGateway.catalogTitle | default "AI Catalog") }}
-    {{- $_ := set $config "http_gateway" $gwConfig }}
+    {{- $_ := set $serverConfig "http_gateway" $gwConfig }}
     {{- end }}
+    {{- $_ := set $config "server" $serverConfig }}
     {{- $config | toYaml | nindent 4 }}
 
   authz_policies.csv: |

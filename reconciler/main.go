@@ -16,7 +16,7 @@ import (
 
 	corev1 "github.com/agntcy/dir/api/core/v1"
 	"github.com/agntcy/dir/client"
-	"github.com/agntcy/dir/reconciler/config"
+	dircfg "github.com/agntcy/dir/config"
 	"github.com/agntcy/dir/reconciler/service"
 	"github.com/agntcy/dir/reconciler/tasks/metrics"
 	"github.com/agntcy/dir/server/database"
@@ -47,7 +47,7 @@ func run() error {
 	logger.Info("Starting reconciler service")
 
 	// Load configuration
-	cfg, err := config.LoadConfig()
+	cfg, err := dircfg.LoadReconcilerConfig()
 	if err != nil {
 		return err
 	}

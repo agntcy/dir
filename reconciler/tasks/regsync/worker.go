@@ -10,7 +10,8 @@ import (
 	"os"
 	"strings"
 
-	ociconfig "github.com/agntcy/dir/server/store/oci/config"
+	dircfg "github.com/agntcy/dir/config"
+	reconcilercfg "github.com/agntcy/dir/config/reconciler"
 	"github.com/agntcy/dir/server/types"
 	regsync "github.com/csirmazbendeguz/regclient/cmd/regsync/root"
 )
@@ -21,14 +22,14 @@ import (
 // Worker does not have direct database access - it reports results
 // back to the task which handles database updates.
 type Worker struct {
-	config        Config
-	localRegistry ociconfig.Config
+	config        reconcilercfg.Regsync
+	localRegistry dircfg.Registry
 	syncID        string
 	syncObj       types.SyncObject
 }
 
 // NewWorker creates a new worker to process a single sync request.
-func NewWorker(config Config, localRegistry ociconfig.Config, syncObj types.SyncObject) *Worker {
+func NewWorker(config reconcilercfg.Regsync, localRegistry dircfg.Registry, syncObj types.SyncObject) *Worker {
 	return &Worker{
 		config:        config,
 		localRegistry: localRegistry,

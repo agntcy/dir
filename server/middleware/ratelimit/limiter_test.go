@@ -10,8 +10,8 @@ import (
 	"testing"
 	"time"
 
+	dircfg "github.com/agntcy/dir/config"
 	"github.com/agntcy/dir/server/authn"
-	"github.com/agntcy/dir/server/middleware/ratelimit/config"
 	"github.com/spiffe/go-spiffe/v2/spiffeid"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -52,19 +52,19 @@ func (m *mockServerTransportStream) SetTrailer(md metadata.MD) error { return ni
 func TestNewClientLimiter(t *testing.T) {
 	tests := []struct {
 		name    string
-		config  *config.Config
+		config  *dircfg.RateLimit
 		wantErr bool
 		errMsg  string
 	}{
 		{
 			name: "valid configuration",
-			config: &config.Config{
+			config: &dircfg.RateLimit{
 				Enabled:        true,
 				GlobalRPS:      100.0,
 				GlobalBurst:    200,
 				PerClientRPS:   1000.0,
 				PerClientBurst: 1500,
-				MethodLimits:   make(map[string]config.MethodLimit),
+				MethodLimits:   make(map[string]dircfg.MethodLimit),
 			},
 			wantErr: false,
 		},
@@ -76,7 +76,7 @@ func TestNewClientLimiter(t *testing.T) {
 		},
 		{
 			name: "invalid configuration should fail",
-			config: &config.Config{
+			config: &dircfg.RateLimit{
 				Enabled:        true,
 				GlobalRPS:      -100.0, // Invalid
 				GlobalBurst:    200,
@@ -88,7 +88,7 @@ func TestNewClientLimiter(t *testing.T) {
 		},
 		{
 			name: "disabled configuration should succeed",
-			config: &config.Config{
+			config: &dircfg.RateLimit{
 				Enabled:        false,
 				GlobalRPS:      100.0,
 				GlobalBurst:    200,
@@ -99,7 +99,7 @@ func TestNewClientLimiter(t *testing.T) {
 		},
 		{
 			name: "zero global RPS should create limiter without global limit",
-			config: &config.Config{
+			config: &dircfg.RateLimit{
 				Enabled:        true,
 				GlobalRPS:      0, // Zero means no global limit
 				GlobalBurst:    0,
@@ -141,13 +141,13 @@ func TestNewClientLimiter(t *testing.T) {
 }
 
 func TestClientLimiter_Limit_PerClientLimiting(t *testing.T) {
-	cfg := &config.Config{
+	cfg := &dircfg.RateLimit{
 		Enabled:        true,
 		GlobalRPS:      10.0,
 		GlobalBurst:    20,
 		PerClientRPS:   10.0, // 10 req/sec
 		PerClientBurst: 20,   // burst 20
-		MethodLimits:   make(map[string]config.MethodLimit),
+		MethodLimits:   make(map[string]dircfg.MethodLimit),
 	}
 
 	limiter, err := NewClientLimiter(cfg)
@@ -188,13 +188,13 @@ func TestClientLimiter_Limit_PerClientLimiting(t *testing.T) {
 }
 
 func TestClientLimiter_Limit_GlobalLimiting(t *testing.T) {
-	cfg := &config.Config{
+	cfg := &dircfg.RateLimit{
 		Enabled:        true,
 		GlobalRPS:      10.0,
 		GlobalBurst:    20,
 		PerClientRPS:   0, // No per-client limit
 		PerClientBurst: 0,
-		MethodLimits:   make(map[string]config.MethodLimit),
+		MethodLimits:   make(map[string]dircfg.MethodLimit),
 	}
 
 	limiter, err := NewClientLimiter(cfg)
@@ -220,13 +220,13 @@ func TestClientLimiter_Limit_GlobalLimiting(t *testing.T) {
 }
 
 func TestClientLimiter_Limit_MethodOverrides(t *testing.T) {
-	cfg := &config.Config{
+	cfg := &dircfg.RateLimit{
 		Enabled:        true,
 		GlobalRPS:      100.0,
 		GlobalBurst:    200,
 		PerClientRPS:   100.0,
 		PerClientBurst: 200,
-		MethodLimits: map[string]config.MethodLimit{
+		MethodLimits: map[string]dircfg.MethodLimit{
 			"/expensive/Method": {
 				RPS:   5.0,
 				Burst: 10,
@@ -265,13 +265,13 @@ func TestClientLimiter_Limit_MethodOverrides(t *testing.T) {
 }
 
 func TestClientLimiter_Limit_TokenRefill(t *testing.T) {
-	cfg := &config.Config{
+	cfg := &dircfg.RateLimit{
 		Enabled:        true,
 		GlobalRPS:      10.0, // 10 req/sec = 1 token per 100ms
 		GlobalBurst:    10,   // Burst should be >= RPS
 		PerClientRPS:   10.0,
 		PerClientBurst: 10,
-		MethodLimits:   make(map[string]config.MethodLimit),
+		MethodLimits:   make(map[string]dircfg.MethodLimit),
 	}
 
 	limiter, err := NewClientLimiter(cfg)
@@ -303,7 +303,7 @@ func TestClientLimiter_Limit_TokenRefill(t *testing.T) {
 }
 
 func TestClientLimiter_Limit_Disabled(t *testing.T) {
-	cfg := &config.Config{
+	cfg := &dircfg.RateLimit{
 		Enabled:        false,
 		GlobalRPS:      1.0, // Very low limit
 		GlobalBurst:    1,
@@ -328,13 +328,13 @@ func TestClientLimiter_Limit_Disabled(t *testing.T) {
 
 func TestClientLimiter_Limit_ConcurrentAccess(t *testing.T) {
 	// This test should be run with: go test -race
-	cfg := &config.Config{
+	cfg := &dircfg.RateLimit{
 		Enabled:        true,
 		GlobalRPS:      1000.0,
 		GlobalBurst:    2000,
 		PerClientRPS:   1000.0,
 		PerClientBurst: 2000,
-		MethodLimits:   make(map[string]config.MethodLimit),
+		MethodLimits:   make(map[string]dircfg.MethodLimit),
 	}
 
 	limiter, err := NewClientLimiter(cfg)
@@ -373,13 +373,13 @@ func TestClientLimiter_Limit_ConcurrentAccess(t *testing.T) {
 }
 
 func TestClientLimiter_GetLimiterCount(t *testing.T) {
-	cfg := &config.Config{
+	cfg := &dircfg.RateLimit{
 		Enabled:        true,
 		GlobalRPS:      100.0,
 		GlobalBurst:    200,
 		PerClientRPS:   100.0,
 		PerClientBurst: 200,
-		MethodLimits:   make(map[string]config.MethodLimit),
+		MethodLimits:   make(map[string]dircfg.MethodLimit),
 	}
 
 	limiter, err := NewClientLimiter(cfg)
@@ -416,13 +416,13 @@ func TestClientLimiter_GetLimiterCount(t *testing.T) {
 }
 
 func TestClientLimiter_MethodSpecificLimiters(t *testing.T) {
-	cfg := &config.Config{
+	cfg := &dircfg.RateLimit{
 		Enabled:        true,
 		GlobalRPS:      100.0,
 		GlobalBurst:    200,
 		PerClientRPS:   100.0,
 		PerClientBurst: 200,
-		MethodLimits: map[string]config.MethodLimit{
+		MethodLimits: map[string]dircfg.MethodLimit{
 			"/method1": {RPS: 10.0, Burst: 20},
 			"/method2": {RPS: 20.0, Burst: 40},
 		},
@@ -453,13 +453,13 @@ func TestClientLimiter_MethodSpecificLimiters(t *testing.T) {
 }
 
 func TestClientLimiter_ZeroRPS(t *testing.T) {
-	cfg := &config.Config{
+	cfg := &dircfg.RateLimit{
 		Enabled:        true,
 		GlobalRPS:      0, // Zero RPS = unlimited
 		GlobalBurst:    0,
 		PerClientRPS:   0,
 		PerClientBurst: 0,
-		MethodLimits:   make(map[string]config.MethodLimit),
+		MethodLimits:   make(map[string]dircfg.MethodLimit),
 	}
 
 	limiter, err := NewClientLimiter(cfg)
@@ -481,7 +481,7 @@ func TestClientLimiter_ZeroRPS(t *testing.T) {
 // when an invalid type is stored in the limiters map.
 // This should never happen in normal operation but protects against internal bugs.
 func TestClientLimiter_PanicOnInvalidTypeInMap(t *testing.T) {
-	cfg := &config.Config{
+	cfg := &dircfg.RateLimit{
 		Enabled:        true,
 		GlobalRPS:      100.0,
 		GlobalBurst:    200,
@@ -519,7 +519,7 @@ func TestClientLimiter_PanicOnInvalidTypeInMap(t *testing.T) {
 // TestClientLimiter_PanicOnInvalidTypeInLoadOrStore tests the defensive panic
 // in the LoadOrStore path when an invalid type is encountered.
 func TestClientLimiter_PanicOnInvalidTypeInLoadOrStore(t *testing.T) {
-	cfg := &config.Config{
+	cfg := &dircfg.RateLimit{
 		Enabled:        true,
 		GlobalRPS:      100.0,
 		GlobalBurst:    200,

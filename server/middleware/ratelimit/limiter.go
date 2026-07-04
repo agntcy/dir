@@ -9,8 +9,8 @@ import (
 	"fmt"
 	"sync"
 
+	dircfg "github.com/agntcy/dir/config"
 	"github.com/agntcy/dir/server/authn"
-	"github.com/agntcy/dir/server/middleware/ratelimit/config"
 	"github.com/agntcy/dir/utils/logging"
 	"golang.org/x/time/rate"
 	"google.golang.org/grpc"
@@ -48,12 +48,12 @@ type ClientLimiter struct {
 	globalLimiter *rate.Limiter
 
 	// config holds the rate limiting configuration
-	config *config.Config
+	config *dircfg.RateLimit
 }
 
 // NewClientLimiter creates a new ClientLimiter with the given configuration.
 // It validates the configuration and initializes the global rate limiter.
-func NewClientLimiter(cfg *config.Config) (*ClientLimiter, error) {
+func NewClientLimiter(cfg *dircfg.RateLimit) (*ClientLimiter, error) {
 	if cfg == nil {
 		return nil, errors.New("config cannot be nil")
 	}

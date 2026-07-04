@@ -13,8 +13,8 @@ import (
 	"path/filepath"
 	"runtime"
 
+	dircfg "github.com/agntcy/dir/config"
 	"github.com/agntcy/dir/server"
-	"github.com/agntcy/dir/server/config"
 	"github.com/agntcy/dir/server/database" //nolint:typecheck
 	gormdb "github.com/agntcy/dir/server/database/gorm"
 	"github.com/agntcy/dir/server/events"
@@ -29,7 +29,7 @@ import (
 	"oras.land/oras-go/v2/registry/remote"
 )
 
-const DefaultConfig = "./testenv/test-config.yaml"
+const DefaultConfig = "./testenv/test-dircfg.yaml"
 
 const (
 	bufSize = 1024 * 1024
@@ -44,7 +44,7 @@ type TestVars struct {
 }
 
 var (
-	conf *config.Config
+	conf *dircfg.Config
 	t    TestVars
 )
 
@@ -56,9 +56,9 @@ func init() {
 	flag.String("test-config", "", "Absolute path to test configuration file (optional)")
 }
 
-func loadConfig() *config.Config {
+func loadConfig() *dircfg.Config {
 	configFile := getConfigFile()
-	c, err := config.LoadConfig(config.WithFile(configFile))
+	c, err := dircfg.LoadConfig(dircfg.WithFile(configFile))
 	gomega.Expect(err).NotTo(gomega.HaveOccurred())
 
 	return c
@@ -116,7 +116,7 @@ var _ = ginkgo.AfterEach(func(ctx ginkgo.SpecContext) {
 })
 
 func newRepository(options types.APIOptions) *remote.Repository {
-	repository, err := oci.NewORASRepository(options.Config().Store.OCI)
+	repository, err := oci.NewORASRepository(options.Config().Store)
 	gomega.Expect(err).NotTo(gomega.HaveOccurred())
 
 	return repository
@@ -167,9 +167,9 @@ func bufDialer(listener *bufconn.Listener) func(context.Context, string) (net.Co
 // It's assumed the environment variables are already loaded at this stage.
 func getOptions() types.APIOptions {
 	c := conf
-	c.Store.OCI.RepositoryName = fmt.Sprintf(
+	c.Store.RepositoryName = fmt.Sprintf(
 		"%s-%d-%s",
-		c.Store.OCI.RepositoryName,
+		c.Store.RepositoryName,
 		ginkgo.GinkgoParallelProcess(),
 		getCurrentSpecID(),
 	)

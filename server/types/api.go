@@ -4,7 +4,7 @@
 package types
 
 import (
-	"github.com/agntcy/dir/server/config"
+	dircfg "github.com/agntcy/dir/config"
 	"github.com/agntcy/dir/server/events"
 )
 
@@ -26,7 +26,7 @@ type API interface {
 // APIOptions collects internal dependencies for all API services.
 type APIOptions interface {
 	// Config returns the config data. Read only! Unsafe to edit.
-	Config() *config.Config
+	Config() *dircfg.Config
 
 	// EventBus returns the safe event bus for publishing events.
 	// Returns a nil-safe wrapper that won't panic even if events are disabled.
@@ -37,18 +37,18 @@ type APIOptions interface {
 }
 
 type options struct {
-	config   *config.Config
+	config   *dircfg.Config
 	eventBus *events.SafeEventBus
 }
 
-func NewOptions(config *config.Config) APIOptions {
+func NewOptions(config *dircfg.Config) APIOptions {
 	return &options{
 		config:   config,
 		eventBus: events.NewSafeEventBus(nil), // Default to nil-safe no-op
 	}
 }
 
-func (o *options) Config() *config.Config { return o.config }
+func (o *options) Config() *dircfg.Config { return o.config }
 
 func (o *options) EventBus() *events.SafeEventBus { return o.eventBus }
 

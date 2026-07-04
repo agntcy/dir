@@ -11,7 +11,7 @@ import (
 	"time"
 
 	corev1 "github.com/agntcy/dir/api/core/v1"
-	"github.com/agntcy/dir/reconciler/config"
+	dircfg "github.com/agntcy/dir/config"
 	"github.com/agntcy/dir/reconciler/tasks"
 	"github.com/agntcy/dir/reconciler/tasks/indexer"
 	"github.com/agntcy/dir/reconciler/tasks/metrics"
@@ -41,7 +41,7 @@ type Service struct {
 // so that an embedding process (e.g. the daemon) can share them with the
 // apiserver. counters may be nil; if so, the metrics task is skipped even when
 // cfg.Metrics.Enabled is true.
-func New(cfg *config.Config, db servertypes.DatabaseAPI, store servertypes.StoreAPI, repo registry.TagLister, oasfValidator corev1.Validator, counters metrics.ProviderCounterAPI) (*Service, error) {
+func New(cfg *dircfg.ReconcilerConfig, db servertypes.DatabaseAPI, store servertypes.StoreAPI, repo registry.TagLister, oasfValidator corev1.Validator, counters metrics.ProviderCounterAPI) (*Service, error) {
 	svc := &Service{
 		tasks:  []tasks.Task{},
 		stopCh: make(chan struct{}),
@@ -54,7 +54,7 @@ func New(cfg *config.Config, db servertypes.DatabaseAPI, store servertypes.Store
 	return svc, nil
 }
 
-func (s *Service) registerTasks(cfg *config.Config, db servertypes.DatabaseAPI, store servertypes.StoreAPI, repo registry.TagLister, oasfValidator corev1.Validator, counters metrics.ProviderCounterAPI) error {
+func (s *Service) registerTasks(cfg *dircfg.ReconcilerConfig, db servertypes.DatabaseAPI, store servertypes.StoreAPI, repo registry.TagLister, oasfValidator corev1.Validator, counters metrics.ProviderCounterAPI) error {
 	if cfg.Regsync.Enabled {
 		t, err := regsync.NewTask(cfg.Regsync, cfg.LocalRegistry, db)
 		if err != nil {

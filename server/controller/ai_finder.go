@@ -13,7 +13,7 @@ import (
 	catalogv1 "github.com/agntcy/dir/api/catalog/v1"
 	corev1 "github.com/agntcy/dir/api/core/v1"
 	"github.com/agntcy/dir/api/exportfmt"
-	"github.com/agntcy/dir/server/config"
+	dircfg "github.com/agntcy/dir/config"
 	"github.com/agntcy/dir/server/types"
 	"github.com/agntcy/dir/utils/logging"
 	httpbodypb "google.golang.org/genproto/googleapis/api/httpbody"
@@ -45,13 +45,13 @@ type aiFinderController struct {
 	hostId string
 	db     types.CatalogDatabaseAPI
 	store  types.StoreAPI
-	cfg    config.HTTPGatewayConfig
+	cfg    dircfg.HTTPGateway
 }
 
 // NewAIFinderController returns an AIFinderServiceServer that serves the AI
 // Catalog AI Finder surface. store may be nil — when omitted the ExportAgent
 // RPC returns UNIMPLEMENTED (HTTP 501). All other RPCs remain functional.
-func NewAIFinderController(hostId string, db types.CatalogDatabaseAPI, cfg config.HTTPGatewayConfig, store types.StoreAPI) catalogv1.AIFinderServiceServer {
+func NewAIFinderController(hostId string, db types.CatalogDatabaseAPI, cfg dircfg.HTTPGateway, store types.StoreAPI) catalogv1.AIFinderServiceServer {
 	return &aiFinderController{
 		db:     db,
 		store:  store,

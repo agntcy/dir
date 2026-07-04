@@ -14,7 +14,7 @@ import (
 	storev1 "github.com/agntcy/dir/api/store/v1"
 	"github.com/agntcy/dir/client"
 	clientconfig "github.com/agntcy/dir/client/config"
-	authnconfig "github.com/agntcy/dir/server/authn/config"
+	authnconfig "github.com/agntcy/dir/config/auth"
 )
 
 // CredentialsResult holds the result of credential negotiation with a remote Directory node.
@@ -43,7 +43,7 @@ func (r *CredentialsResult) FullRepositoryURL() string {
 }
 
 // NegotiateCredentials negotiates registry credentials with a remote Directory node.
-func NegotiateCredentials(ctx context.Context, remoteDirectoryURL string, authnConfig authnconfig.Config) (*CredentialsResult, error) {
+func NegotiateCredentials(ctx context.Context, remoteDirectoryURL string, authnConfig authnconfig.Authn) (*CredentialsResult, error) {
 	clientConfig, err := buildClientConfigForRemote(remoteDirectoryURL, authnConfig)
 	if err != nil {
 		return nil, fmt.Errorf("failed to build client config for %s: %w", remoteDirectoryURL, err)
@@ -84,7 +84,7 @@ func NegotiateCredentials(ctx context.Context, remoteDirectoryURL string, authnC
 
 // buildClientConfigForRemote prepares the client.Config used to talk to a
 // remote Directory node.
-func buildClientConfigForRemote(remoteDirectoryURL string, authnConfig authnconfig.Config) (*client.Config, error) {
+func buildClientConfigForRemote(remoteDirectoryURL string, authnConfig authnconfig.Authn) (*client.Config, error) {
 	contextName, err := resolveContextByServerAddress(remoteDirectoryURL)
 	if err != nil {
 		return nil, err

@@ -7,6 +7,7 @@ replace (
 	github.com/agntcy/dir/api => ../api
 	github.com/agntcy/dir/cli => ../cli
 	github.com/agntcy/dir/client => ../client
+	github.com/agntcy/dir/config => ../config
 	github.com/agntcy/dir/reconciler => ../reconciler
 	github.com/agntcy/dir/server => ../server
 	github.com/agntcy/dir/utils => ../utils
@@ -20,6 +21,7 @@ require (
 	github.com/agntcy/dir/api v1.5.0
 	github.com/agntcy/dir/cli v1.5.0
 	github.com/agntcy/dir/client v1.5.0
+	github.com/agntcy/dir/config v0.0.0-00010101000000-000000000000
 	github.com/google/uuid v1.6.0
 	github.com/onsi/ginkgo/v2 v2.28.3
 	github.com/onsi/gomega v1.42.0

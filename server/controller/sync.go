@@ -11,7 +11,7 @@ import (
 	"strings"
 
 	storev1 "github.com/agntcy/dir/api/store/v1"
-	ociconfig "github.com/agntcy/dir/server/store/oci/config"
+	dircfg "github.com/agntcy/dir/config"
 	"github.com/agntcy/dir/server/types"
 	"github.com/agntcy/dir/utils/logging"
 	"google.golang.org/grpc/codes"
@@ -142,8 +142,8 @@ func (c *syncCtlr) RequestRegistryCredentials(_ context.Context, req *storev1.Re
 	syncLogger.Debug("Called sync controller's RequestRegistryCredentials method", "req", req)
 
 	// Get OCI configuration to determine registry details
-	ociConfig := c.opts.Config().Store.OCI
-	syncConfig := c.opts.Config().Sync
+	ociConfig := c.opts.Config().Store
+	syncConfig := c.opts.Config().APIServer.Sync
 
 	registryAddress, err := ociConfig.GetRegistryAddress()
 	if err != nil {
@@ -153,7 +153,7 @@ func (c *syncCtlr) RequestRegistryCredentials(_ context.Context, req *storev1.Re
 	// Get repository name with default fallback
 	repositoryName := ociConfig.RepositoryName
 	if repositoryName == "" {
-		repositoryName = ociconfig.DefaultRepositoryName
+		repositoryName = dircfg.DefaultRepositoryName
 	}
 
 	return &storev1.RequestRegistryCredentialsResponse{
@@ -162,8 +162,8 @@ func (c *syncCtlr) RequestRegistryCredentials(_ context.Context, req *storev1.Re
 		RepositoryName:  repositoryName,
 		Credentials: &storev1.RequestRegistryCredentialsResponse_BasicAuth{
 			BasicAuth: &storev1.BasicAuthCredentials{
-				Username: syncConfig.AuthConfig.Username,
-				Password: syncConfig.AuthConfig.Password,
+				Username: syncConfig.RegistryAuth.Username,
+				Password: syncConfig.RegistryAuth.Password,
 			},
 		},
 		Insecure: ociConfig.Insecure,

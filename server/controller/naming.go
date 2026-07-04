@@ -12,9 +12,9 @@ import (
 
 	corev1 "github.com/agntcy/dir/api/core/v1"
 	namingv1 "github.com/agntcy/dir/api/naming/v1"
+	namingconfig "github.com/agntcy/dir/config/naming"
 	gormdb "github.com/agntcy/dir/server/database/gorm"
 	"github.com/agntcy/dir/server/naming"
-	namingconfig "github.com/agntcy/dir/server/naming/config"
 	"github.com/agntcy/dir/server/types"
 	"github.com/agntcy/dir/utils/logging"
 	"google.golang.org/grpc/codes"

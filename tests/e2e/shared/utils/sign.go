@@ -15,8 +15,16 @@ import (
 // GenerateCosignKeyPair generates a cosign key pair in the specified directory.
 // Helper function for signature testing.
 func GenerateCosignKeyPair(dir, password string) {
-	// Prepare cosign generate-key-pair command
-	cmd := exec.CommandContext(context.Background(), "cosign", "generate-key-pair")
+	cosignBin := "cosign"
+
+	if bin := os.Getenv("COSIGN_BIN"); bin != "" {
+		if _, err := os.Stat(bin); err == nil { //nolint:gosec
+			cosignBin = bin
+		}
+		// If the explicit binary doesn't exist, fall through to the system "cosign".
+	}
+
+	cmd := exec.CommandContext(context.Background(), cosignBin, "generate-key-pair") //nolint:gosec
 	cmd.Dir = dir
 
 	cmd.Env = append(os.Environ(), "COSIGN_PASSWORD="+password)

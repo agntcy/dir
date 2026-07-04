@@ -8,7 +8,7 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/agntcy/dir/server/authn/config"
+	auth "github.com/agntcy/dir/config/auth"
 	"github.com/agntcy/dir/utils/logging"
 	"github.com/agntcy/dir/utils/spiffe"
 	"github.com/spiffe/go-spiffe/v2/spiffegrpc/grpccredentials"
@@ -23,7 +23,7 @@ var logger = logging.Logger("authn")
 
 // Service manages authentication using SPIFFE (X.509 or JWT).
 type Service struct {
-	mode       config.AuthMode
+	mode       auth.Mode
 	audiences  []string
 	client     *workloadapi.Client
 	jwtSource  *workloadapi.JWTSource
@@ -33,7 +33,7 @@ type Service struct {
 }
 
 // New creates a new authentication service (JWT or X.509 based on config).
-func New(ctx context.Context, cfg config.Config) (*Service, error) {
+func New(ctx context.Context, cfg auth.Authn) (*Service, error) {
 	// Validate
 	if err := cfg.Validate(); err != nil {
 		return nil, fmt.Errorf("invalid authn config: %w", err)
@@ -52,7 +52,7 @@ func New(ctx context.Context, cfg config.Config) (*Service, error) {
 
 	// Initialize based on authentication mode
 	switch cfg.Mode {
-	case config.AuthModeJWT:
+	case auth.ModeJWT:
 		if err := service.initJWT(ctx, cfg); err != nil {
 			_ = client.Close()
 
@@ -61,7 +61,7 @@ func New(ctx context.Context, cfg config.Config) (*Service, error) {
 
 		logger.Info("JWT authentication service initialized", "audiences", cfg.Audiences)
 
-	case config.AuthModeX509:
+	case auth.ModeX509:
 		if err := service.initX509(ctx); err != nil {
 			_ = client.Close()
 
@@ -82,7 +82,7 @@ func New(ctx context.Context, cfg config.Config) (*Service, error) {
 // initJWT initializes JWT authentication components.
 // For JWT mode, the server presents its X.509-SVID via TLS (for server authentication and encryption),
 // while clients authenticate using JWT-SVIDs. This follows the official SPIFFE JWT pattern.
-func (s *Service) initJWT(ctx context.Context, cfg config.Config) error {
+func (s *Service) initJWT(ctx context.Context, cfg auth.Authn) error {
 	// Create X.509 source for server's TLS certificate
 	x509Src, err := workloadapi.NewX509Source(ctx, workloadapi.WithClient(s.client))
 	if err != nil {
@@ -221,7 +221,7 @@ func (s *Service) initX509(ctx context.Context) error {
 // GetServerOptions returns gRPC server options for authentication.
 func (s *Service) GetServerOptions() []grpc.ServerOption {
 	switch s.mode {
-	case config.AuthModeJWT:
+	case auth.ModeJWT:
 		// JWT mode: Server presents X.509-SVID via TLS, clients authenticate with JWT-SVID
 		return []grpc.ServerOption{
 			grpc.Creds(
@@ -231,7 +231,7 @@ func (s *Service) GetServerOptions() []grpc.ServerOption {
 			grpc.ChainStreamInterceptor(JWTStreamInterceptor(s.jwtSource, s.audiences)),
 		}
 
-	case config.AuthModeX509:
+	case auth.ModeX509:
 		return []grpc.ServerOption{
 			grpc.Creds(
 				grpccredentials.MTLSServerCredentials(s.x509Src, s.bundleSrc, tlsconfig.AuthorizeAny()),
@@ -249,7 +249,7 @@ func (s *Service) GetServerOptions() []grpc.ServerOption {
 
 func (s *Service) GetClientOptions() []grpc.DialOption {
 	switch s.mode {
-	case config.AuthModeJWT:
+	case auth.ModeJWT:
 		return []grpc.DialOption{
 			grpc.WithTransportCredentials(
 				grpccredentials.TLSClientCredentials(s.bundleSrc, tlsconfig.AuthorizeAny()),
@@ -257,7 +257,7 @@ func (s *Service) GetClientOptions() []grpc.DialOption {
 			grpc.WithPerRPCCredentials(newJWTCredentials(s.jwtSource, s.audiences)),
 		}
 
-	case config.AuthModeX509:
+	case auth.ModeX509:
 		return []grpc.DialOption{
 			grpc.WithTransportCredentials(
 				grpccredentials.MTLSClientCredentials(s.x509Src, s.bundleSrc, tlsconfig.AuthorizeAny()),
