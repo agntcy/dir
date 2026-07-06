@@ -5,7 +5,9 @@ name: "CodeQL Advanced"
 
 on:
   push:
-    branches: ["main"]
+    branches:
+      - main
+      - renovate/**
     paths-ignore:
       - 'docs/**'
       - '.github/workflows/docs-ci.yaml'
