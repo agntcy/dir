@@ -215,6 +215,52 @@ dirctl pull example.com/agents/my-record
 dirctl pull example.com/agents/my-record:v1.0.0@$RECORD_CID
 ```
 
+## Security Scanning
+
+The Directory reconciler automatically scans records for security issues using
+[`mcp-scanner`](https://cisco-ai-defense.github.io/docs/mcp-scanner)
+(for MCP server source code) and
+[`skill-scanner`](https://cisco-ai-defense.github.io/docs/skill-scanner)
+(for agent skill bundles). Scan results are
+stored as OCI referrers and indexed in the local database so they can be surfaced through
+search filters and pulled alongside records.
+
+### Pull scan reports
+
+```bash
+# Pull the security scan reports attached to a record
+dirctl pull $RECORD_CID --scan-report
+```
+
+The response contains a `scanReports` array — one entry per scanner that ran. Each entry
+includes `scanner_type`, `is_safe`, `max_severity`, `analyzers`, and a `findings` list with
+individual issue details (severity, message, location, remediation).
+
+Records are re-scanned automatically when the previous result is older than the configured
+TTL (default 7 days).
+
+### Filter by scan status
+
+```bash
+# Only records where all scanners reported is_safe=true
+dirctl search --safe
+
+# Only records whose highest finding severity is HIGH or above
+dirctl search --scan-severity HIGH
+
+# Combine scan filters with other search criteria
+dirctl search --name "cisco.com/*" --safe
+dirctl search --module "integration/mcp" --scan-severity MEDIUM
+```
+
+`--safe` requires that at least one scanner ran and that no scanner reported `is_safe=false`.
+Records where all scanners were skipped (no source repo locator for MCP, no skill bundle for
+skill-scanner) are excluded.
+
+`--scan-severity <threshold>` returns records whose highest recorded severity is at or above
+the threshold. Severity levels from lowest to highest: `NONE`, `INFO`, `LOW`, `MEDIUM`,
+`HIGH`, `CRITICAL`.
+
 ## Announce
 
 This example demonstrates how to publish records to allow content discovery across the

@@ -557,11 +557,26 @@ Retrieves records by their Content Identifier (CID) or name reference.
 
     # Pull signature and public-key referrer artifacts from the server
     dirctl pull <cid> --signature --public-key
+
+    # Pull security scan reports for the record
+    dirctl pull <cid> --scan-report
     ```
 
 **Output and batch retrieval:**
 
 `pull` defaults to `--output json` (records are primarily machine-consumed); `-o human|jsonl|raw` are also available. Use `--output-file` to write a single record's JSON to a file, or `--output-dir` with search filters to pull many records at once (one `<name>.json` per record).
+
+**Referrer flags** — these extend the output with OCI referrer artifacts attached to the record:
+
+| Flag | Description |
+|------|-------------|
+| `--public-key` | Include the public key referrer attached to the record |
+| `--signature` | Include the signature referrer attached to the record |
+| `--scan-report` | Include security scan reports for the record |
+
+When any referrer flag is set, the response is a structured JSON object with a `record` key and one or more of `publicKeys`, `signatures`, `scanReports`.
+
+**Output and batch retrieval:**
 
 | Flag | Description | Default |
 |------|-------------|---------|
@@ -1090,7 +1105,9 @@ Search the local index using structured filter flags.
 | `--module-id` | Module ID |
 | `--annotation` | Annotation key=value |
 | `--verified` | Only verified records |
-| `--trusted` | Only trusted records |
+| `--trusted` | Only trusted records (signature verification passed) |
+| `--safe` | Only records where all security scanners reported `is_safe=true` |
+| `--scan-severity` | Only records whose highest scan severity meets or exceeds a threshold (`NONE`, `INFO`, `LOW`, `MEDIUM`, `HIGH`, `CRITICAL`) |
 
 **Other flags:**
 
@@ -1118,9 +1135,53 @@ Search the local index using structured filter flags.
       --skill "Text Completion" \
       --locator docker-image \
       --format record
+
+    # Security scan filters
+    dirctl search --safe
+    dirctl search --scan-severity HIGH
+    dirctl search --safe --scan-severity MEDIUM
     ```
 
 ## Security & Verification
+
+### Security Scanning
+
+The Directory reconciler automatically runs security scanners against records and stores the results as OCI referrers. Scan results are indexed in the local database so they can be queried as search filters. Two scanners are supported: [mcp-scanner](https://cisco-ai-defense.github.io/docs/mcp-scanner) for MCP server source code and [skill-scanner](https://cisco-ai-defense.github.io/docs/skill-scanner) for agent skill bundles.
+
+**Pull scan reports for a record:**
+
+```bash
+dirctl pull <cid> --scan-report
+```
+
+The response includes a `scanReports` array. Each entry covers one scanner type and contains:
+
+| Field | Description |
+|-------|-------------|
+| `scanner_type` | Scanner that produced this report (`SCANNER_TYPE_MCP`, `SCANNER_TYPE_SKILL`) |
+| `scanner_version` | Version of the scanner binary |
+| `scanned_at` | RFC 3339 timestamp of when the scan ran |
+| `is_safe` | `true` if the scanner found no security issues |
+| `max_severity` | Highest severity across all findings (`SEVERITY_NONE`, `SEVERITY_INFO`, `SEVERITY_MEDIUM`, `SEVERITY_HIGH`, `SEVERITY_CRITICAL`) |
+| `analyzers` | Analyzer modules that were invoked |
+| `findings` | List of individual findings (rule ID, severity, message, location, remediation) |
+
+**Filter records by scan status:**
+
+```bash
+# Records where all scanners reported is_safe=true
+dirctl search --safe
+
+# Records whose highest severity meets or exceeds a threshold
+dirctl search --scan-severity HIGH
+dirctl search --scan-severity MEDIUM
+
+# Combine with other filters
+dirctl search --name "cisco.com/*" --safe
+dirctl search --safe --scan-severity MEDIUM
+```
+
+A record appears in `--safe` results only when at least one scanner has run and no scanner has reported `is_safe=false`. Records where all scanners were skipped (no source repo, no skill bundle) are not included.
 
 ### Name Verification
 
