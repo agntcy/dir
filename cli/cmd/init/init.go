@@ -39,13 +39,19 @@ func init() {
 	addFlags(Command, &opts)
 }
 
-// confirm prompts for a yes/no answer on the command's input stream. Empty
-// input, "no", or EOF (e.g. a non-interactive stdin) all return false.
-// The error return is reserved for Task 7 (run.go), which may propagate errors.
+// confirm prompts for a yes/no answer on the command's input stream. defaultYes
+// selects the answer for an empty line (just Enter) and the displayed hint
+// ([Y/n] vs [y/N]). EOF with no input (a non-interactive stdin) always returns
+// false, so a heavy or destructive default is never assumed without a keystroke.
 //
-//nolint:unparam
-func confirm(cmd *cobra.Command, prompt string) (bool, error) {
-	presenter.Printf(cmd, "%s [y/N]: ", prompt)
+//nolint:unparam // error return is part of the prompt contract used by callers.
+func confirm(cmd *cobra.Command, prompt string, defaultYes bool) (bool, error) {
+	hint := "[y/N]"
+	if defaultYes {
+		hint = "[Y/n]"
+	}
+
+	presenter.Printf(cmd, "%s %s: ", prompt, hint)
 
 	reader := bufio.NewReader(cmd.InOrStdin())
 
@@ -54,7 +60,12 @@ func confirm(cmd *cobra.Command, prompt string) (bool, error) {
 		return false, nil
 	}
 
-	answer := strings.ToLower(strings.TrimSpace(line))
-
-	return answer == "y" || answer == "yes", nil
+	switch strings.ToLower(strings.TrimSpace(line)) {
+	case "y", "yes":
+		return true, nil
+	case "n", "no":
+		return false, nil
+	default: // empty line (Enter) or anything else falls back to the default
+		return defaultYes, nil
+	}
 }

@@ -23,18 +23,35 @@ func newTestCmd(stdin string) (*cobra.Command, *bytes.Buffer) {
 	return cmd, out
 }
 
-func TestConfirm(t *testing.T) {
+func TestConfirmDefaultNo(t *testing.T) {
 	cases := map[string]bool{
 		"y\n":   true,
 		"Y\n":   true,
 		"yes\n": true,
 		"n\n":   false,
-		"\n":    false,
+		"\n":    false, // Enter → default (No)
 		"":      false, // EOF
 	}
 	for in, want := range cases {
 		cmd, _ := newTestCmd(in)
-		got, err := confirm(cmd, "Proceed?")
+		got, err := confirm(cmd, "Proceed?", false)
+		require.NoError(t, err)
+		assert.Equal(t, want, got, "input %q", in)
+	}
+}
+
+func TestConfirmDefaultYes(t *testing.T) {
+	cases := map[string]bool{
+		"y\n":   true,
+		"yes\n": true,
+		"n\n":   false,
+		"no\n":  false,
+		"\n":    true,  // Enter → default (Yes)
+		"":      false, // EOF: never assume yes without a keystroke
+	}
+	for in, want := range cases {
+		cmd, _ := newTestCmd(in)
+		got, err := confirm(cmd, "Proceed?", true)
 		require.NoError(t, err)
 		assert.Equal(t, want, got, "input %q", in)
 	}

@@ -15,7 +15,17 @@ import (
 	"github.com/agntcy/dir/cli/presenter"
 	clientconfig "github.com/agntcy/dir/client/config"
 	"github.com/spf13/cobra"
+	"golang.org/x/term"
 )
+
+// isInteractive reports whether the command's stdin is a terminal. Provisioning
+// is opt-out for interactive users (Enter provisions) but must not fire an
+// ~89 MB download unattended, so a non-TTY run without --yes skips instead.
+func isInteractive(cmd *cobra.Command) bool {
+	f, ok := cmd.InOrStdin().(*os.File)
+
+	return ok && term.IsTerminal(int(f.Fd())) //nolint:gosec // G115: a file descriptor fits in an int.
+}
 
 // printWelcome prints the wizard's opening banner and the Step 1 explanation.
 func printWelcome(cmd *cobra.Command) {
@@ -103,13 +113,21 @@ func runProvision(cmd *cobra.Command, opts *options) error {
 	}
 
 	if !opts.yes {
-		ok, err := confirm(cmd, "\nProvision the OASF extractor (~89 MB)?")
+		// Opt-out, but never unattended: a non-interactive run without --yes
+		// skips rather than triggering an ~89 MB download in CI/scripts.
+		if !isInteractive(cmd) {
+			presenter.Printf(cmd, "Skipping extractor provisioning (non-interactive). Pass --yes to provision.\n")
+
+			return nil
+		}
+
+		ok, err := confirm(cmd, "\nProvision the OASF extractor (~89 MB)?", true)
 		if err != nil {
 			return err
 		}
 
 		if !ok {
-			presenter.Printf(cmd, "Skipped. No changes made. Pass --yes to provision non-interactively.\n")
+			presenter.Printf(cmd, "Skipped. No changes made.\n")
 
 			return nil
 		}
@@ -183,7 +201,7 @@ func runRemove(cmd *cobra.Command, opts *options) error {
 	}
 
 	if !opts.yes {
-		ok, err := confirm(cmd, fmt.Sprintf("Remove extractor assets at %s?", cfg.AssetDir))
+		ok, err := confirm(cmd, fmt.Sprintf("Remove extractor assets at %s?", cfg.AssetDir), false)
 		if err != nil {
 			return err
 		}
