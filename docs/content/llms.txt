@@ -25,7 +25,7 @@ Internet Draft.
 ## Key documentation pages
 
 - Home: https://agntcy.github.io/dir/
-- Community (Slack, repos, news): https://agntcy.github.io/dir/community/
+- Community (Discord, repos, news): https://agntcy.github.io/dir/community/
 - Overview: https://agntcy.github.io/dir/dir/dir-overview/
 - Architecture: https://agntcy.github.io/dir/dir/dir-architecture/
 - Features and usage scenarios: https://agntcy.github.io/dir/dir/dir-features-scenarios/

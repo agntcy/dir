@@ -11,7 +11,7 @@ hide:
 Contributors to the **Agent Directory Service (ADS)** work in the open on the
 specification, server implementation, client SDKs, and federation deployments.
 If you run a directory node, publish OASF agent records, or integrate discovery
-into your stack, the links below are where the work happens—repos, Slack,
+into your stack, the links below are where the work happens—repos, Discord,
 meetings, and recent posts from the team.
 
 ADS is developed within
@@ -24,7 +24,7 @@ infrastructure for open, vendor-neutral agent discovery.
 
 Stay involved with the AGNTCY community and DIR contributors:
 
-- **[AGNTCY Slack workspace](https://join.slack.com/t/agntcy/shared_invite/zt-3xozr6nzq-i6LXv2P8l2kVW4_Prnny2w)** — chat with maintainers and contributors
+- **[AGNTCY Discord server](https://discord.gg/7dhMdJuc)** — chat with maintainers and contributors
 - **[AGNTCY Meeting Calendar](https://zoom-lfx.platform.linuxfoundation.org/meetings/agntcy?view=week)** — working group and community meetings
 - **[AGNTCY on GitHub](https://github.com/agntcy)** — organization home for all IoA projects
 - **[AGNTCY Blogs](https://blogs.agntcy.org/)** — announcements, tutorials, and project updates

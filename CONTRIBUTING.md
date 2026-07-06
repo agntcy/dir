@@ -12,7 +12,7 @@ close any lingering issues or pull requests after 60 days of inactivity.
 Please note that all of your interactions in the project are subject to our
 [Code of Conduct](/CODE_OF_CONDUCT.md). This includes creation of issues or pull
 requests, commenting on issues or pull requests, and extends to all interactions
-in any real-time space e.g., Slack, Discord, etc.
+in any real-time space e.g., Discord, etc.
 
 ## Reporting Issues
 
