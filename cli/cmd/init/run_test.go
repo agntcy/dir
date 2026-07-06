@@ -73,6 +73,27 @@ func TestRunProvisionUsesSavedAssetDir(t *testing.T) {
 	assert.Contains(t, out.String(), "already provisioned at "+assetDir)
 }
 
+func TestPreferSavedConfigExplicitFlagWins(t *testing.T) {
+	t.Setenv("XDG_CONFIG_HOME", filepath.Join(t.TempDir(), "xdg"))
+	require.NoError(t, clientconfig.SaveExtractor("", &clientconfig.Extractor{
+		OASFURL:  "https://saved.example",
+		AssetDir: "/saved/dir",
+	}))
+
+	base := extractor.Config{OASFURL: extractor.DefaultOASFURL, AssetDir: extractor.DefaultAssetDir()}
+
+	// Flags explicitly set — even to the default value — must win over saved
+	// config, so a user can force-reset back to the default URL.
+	set := preferSavedConfig(base, true, true)
+	assert.Equal(t, extractor.DefaultOASFURL, set.OASFURL)
+	assert.Equal(t, extractor.DefaultAssetDir(), set.AssetDir)
+
+	// Flags not set — the saved config is preferred.
+	unset := preferSavedConfig(base, false, false)
+	assert.Equal(t, "https://saved.example", unset.OASFURL)
+	assert.Equal(t, "/saved/dir", unset.AssetDir)
+}
+
 func TestRunProvisionNonTTYWithoutYesIsNoOp(t *testing.T) {
 	t.Setenv("XDG_CONFIG_HOME", filepath.Join(t.TempDir(), "xdg"))
 

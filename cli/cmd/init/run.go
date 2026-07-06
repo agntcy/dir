@@ -50,23 +50,35 @@ func configFromOpts(opts *options) extractor.Config {
 
 // preferSavedConfig fills cfg's asset dir / OASF URL from the persisted config
 // for any value the user did not set via a flag, so a bare re-run targets the
-// previously provisioned install instead of the defaults. An explicit flag
-// always wins; a missing or unreadable config leaves cfg untouched.
-func preferSavedConfig(cfg extractor.Config, opts *options) extractor.Config {
+// previously provisioned install instead of the defaults. urlSet/dirSet report
+// whether the corresponding flag was explicitly passed — an explicit flag always
+// wins (including one set back to the default value). A missing or unreadable
+// config leaves cfg untouched.
+func preferSavedConfig(cfg extractor.Config, urlSet, dirSet bool) extractor.Config {
 	saved, err := clientconfig.LoadExtractor("")
 	if err != nil || saved == nil {
 		return cfg
 	}
 
-	if opts.assetDir == "" && saved.AssetDir != "" {
+	if !dirSet && saved.AssetDir != "" {
 		cfg.AssetDir = saved.AssetDir
 	}
 
-	if opts.oasfURL == extractor.DefaultOASFURL && saved.OASFURL != "" {
+	if !urlSet && saved.OASFURL != "" {
 		cfg.OASFURL = saved.OASFURL
 	}
 
 	return cfg
+}
+
+// resolveConfig builds the effective config from flags, then prefers the saved
+// config for any flag the user did not explicitly set.
+func resolveConfig(cmd *cobra.Command, opts *options) extractor.Config {
+	return preferSavedConfig(
+		configFromOpts(opts),
+		cmd.Flags().Changed("oasf-url"),
+		cmd.Flags().Changed("asset-dir"),
+	)
 }
 
 // runProvision provisions the extractor assets, persists the choice, and runs a
@@ -74,7 +86,7 @@ func preferSavedConfig(cfg extractor.Config, opts *options) extractor.Config {
 func runProvision(cmd *cobra.Command, opts *options) error {
 	printWelcome(cmd)
 
-	cfg := preferSavedConfig(configFromOpts(opts), opts)
+	cfg := resolveConfig(cmd, opts)
 
 	if extractor.IsProvisioned(cfg) {
 		presenter.Printf(cmd, "Extractor already provisioned at %s (OASF URL %s).\n",
@@ -154,7 +166,7 @@ func printDetails(cmd *cobra.Command, captured string) {
 // runRemove tears down the provisioned assets and clears the saved config.
 func runRemove(cmd *cobra.Command, opts *options) error {
 	// Prefer the persisted asset dir so removal targets what was provisioned.
-	cfg := preferSavedConfig(configFromOpts(opts), opts)
+	cfg := resolveConfig(cmd, opts)
 
 	if !opts.yes {
 		ok, err := confirm(cmd, fmt.Sprintf("Remove extractor assets at %s?", cfg.AssetDir))

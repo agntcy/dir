@@ -42,7 +42,7 @@ func TestTeardownRefusesDangerousPaths(t *testing.T) {
 	home, err := os.UserHomeDir()
 	require.NoError(t, err)
 
-	for _, bad := range []string{"", "/", home, "  "} {
+	for _, bad := range []string{"", "/", home, "  ", "..", "../assets", "relative/dir", "."} {
 		assert.Error(t, Teardown(Config{OASFURL: "https://x", AssetDir: bad}),
 			"expected refusal for %q", bad)
 	}

@@ -635,6 +635,20 @@ func TestLoadExtractorAbsentFile(t *testing.T) {
 	assert.Nil(t, got)
 }
 
+func TestClearExtractorAbsentFileDoesNotCreateFile(t *testing.T) {
+	t.Setenv("XDG_CONFIG_HOME", filepath.Join(t.TempDir(), "xdg"))
+
+	path, err := DefaultPath()
+	require.NoError(t, err)
+
+	// Clearing when no config exists must be a genuine no-op (matches how the
+	// command calls it: ClearExtractor("")).
+	require.NoError(t, ClearExtractor(""))
+
+	_, statErr := os.Stat(path)
+	assert.True(t, os.IsNotExist(statErr), "ClearExtractor must not create a config file when none exists")
+}
+
 func TestSaveExtractorPreservesContexts(t *testing.T) {
 	path := writeConfig(t, `
 current_context: dev

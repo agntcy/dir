@@ -416,9 +416,26 @@ func SaveExtractor(path string, e *Extractor) error {
 }
 
 // ClearExtractor removes the machine-wide extractor section, preserving all
-// other config. It is a no-op when the section is already absent.
+// other config. It is a genuine no-op when the section is already absent (or no
+// config file exists): it does not create or rewrite the file in that case.
 func ClearExtractor(path string) error {
-	return SaveExtractor(path, nil)
+	resolvedPath, explicitPath, err := resolvePath(path)
+	if err != nil {
+		return err
+	}
+
+	file, err := loadOptionalFile(resolvedPath, explicitPath, true)
+	if err != nil {
+		return err
+	}
+
+	if file.Extractor == nil {
+		return nil
+	}
+
+	file.Extractor = nil
+
+	return SaveFile(resolvedPath, file)
 }
 
 // ValidateContexts validates stored context definitions without applying environment overrides.

@@ -4,6 +4,7 @@
 package extractor
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -48,12 +49,18 @@ func Teardown(cfg Config) error {
 // guardAssetDir rejects paths that must never be recursively removed.
 func guardAssetDir(dir string) error {
 	if dir == "" {
-		return fmt.Errorf("refusing to remove empty asset dir")
+		return errors.New("refusing to remove empty asset dir")
+	}
+
+	// Require an absolute path: a relative dir like ".." or "../x" would make
+	// RemoveAll delete outside the intended asset directory.
+	if !filepath.IsAbs(dir) {
+		return fmt.Errorf("refusing to remove non-absolute asset dir %q; an absolute path is required", dir)
 	}
 
 	clean := filepath.Clean(dir)
-	if clean == string(filepath.Separator) || clean == "." {
-		return fmt.Errorf("refusing to remove asset dir %q", dir)
+	if clean == string(filepath.Separator) {
+		return fmt.Errorf("refusing to remove filesystem root %q", dir)
 	}
 
 	if home, err := os.UserHomeDir(); err == nil && clean == filepath.Clean(home) {
