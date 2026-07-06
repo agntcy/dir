@@ -8,6 +8,8 @@ two complementary layers:
 
 - **Record signing and verification** — cryptographic provenance and integrity for
   individual records (see [Record Signing and Verification](#record-signing-and-verification)).
+- **Security scanning** — automated behavioral and static analysis of record source code and
+  skill bundles (see [Security Scanning](#security-scanning)).
 - **Workload identity** — authenticated, authorized communication between components,
   built on [SPIRE](https://spiffe.io/) and zero-trust principles (covered in the rest of
   this page).
@@ -84,6 +86,76 @@ A record qualifies for name verification when:
 Once a name is verified, records can be referenced using Docker-style name references
 (`name`, `name:version`, `name:version@cid`) instead of raw CIDs. See
 [Records](dir-component-records-validation.md) for the verifiable name model.
+
+## Security Scanning
+
+Security scanning provides automated behavioral and static analysis of records to detect
+vulnerabilities, policy violations, and malicious patterns before records are consumed.
+
+### How scanning works
+
+The Directory reconciler runs two scanner types against each record:
+
+- **[MCP scanner](https://cisco-ai-defense.github.io/docs/mcp-scanner)** (`mcp-scanner behavioral`) — clones the source repository referenced in the
+  record's `source_code` locator and runs behavioral analysis. Invoked automatically for
+  records that have a source-code locator.
+- **[Skill scanner](https://cisco-ai-defense.github.io/docs/skill-scanner)** (`skill-scanner scan --use-behavioral --use-trigger`) — extracts the
+  agentskills bundle from the record's `integration/mcp` module artifact and runs static,
+  bytecode, pipeline, behavioral, and trigger analyzers. Invoked automatically for records
+  that include a skill bundle.
+
+Scan results are persisted in two places:
+
+1. **OCI referrer** — the full `ScanReport` (findings, severity, analyzer list, timestamp) is
+   stored as an OCI referrer artifact attached to the record in the registry.
+2. **Search index** — a summary row (`is_safe`, `max_severity`, scanner type) is written to
+   the local database so `--safe` and `--scan-severity` search filters work without
+   fetching referrers.
+
+Records are re-scanned when the previous result is older than the configured TTL (default
+7 days). The scanner runs only when the scanner binary is available on PATH (or at the
+configured CLI path); it is skipped otherwise.
+
+### Trust semantics
+
+| State | Meaning |
+|-------|---------|
+| No scan report | Record has not been scanned yet (scanner was skipped or hasn't run) |
+| `is_safe=true` | Scanner ran and found no security issues |
+| `is_safe=false` | Scanner ran and flagged at least one issue |
+
+A record is considered **safe** (matched by `--safe`) only when:
+
+- At least one scanner ran (was not skipped)
+- No scanner reported `is_safe=false`
+
+Records where all applicable scanners were skipped (no source repo, no skill bundle) are not
+considered safe and will not appear in `--safe` search results.
+
+### Scanner installation
+
+Scanners are installed via `uv`:
+
+```bash
+task deps:scanners
+```
+
+This installs `mcp-scanner` and `skill-scanner` to `~/.local/bin/` (added to PATH automatically by `uv`). For CI environments, the task is also available as `task deps:mcp-scanner` and `task deps:skill-scanner` separately.
+
+### Accessing scan results
+
+```bash
+# Pull scan reports for a record
+dirctl pull <cid> --scan-report
+
+# Search for records all scanners reported as safe
+dirctl search --safe
+
+# Search by maximum finding severity
+dirctl search --scan-severity HIGH
+```
+
+For full CLI usage, see [Security Scanning — Features Guide](dir-features-scenarios.md#security-scanning) and [CLI Reference — Security Scanning](dir-cli-reference.md#security-scanning).
 
 ## Authentication and Authorization
 

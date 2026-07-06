@@ -11,8 +11,9 @@ import (
 var opts = &options{}
 
 type options struct {
-	PublicKey bool
-	Signature bool
+	PublicKey  bool
+	Signature  bool
+	ScanReport bool
 
 	// File output (single record) and batch output (search → directory).
 	OutputFile  string
@@ -26,6 +27,7 @@ func init() {
 	flags := Command.Flags()
 	flags.BoolVar(&opts.PublicKey, "public-key", false, "Pull the public key for the record.")
 	flags.BoolVar(&opts.Signature, "signature", false, "Pull the signature for the record.")
+	flags.BoolVar(&opts.ScanReport, "scan-report", false, "Pull security scan reports for the record.")
 
 	// Output destinations.
 	flags.StringVar(&opts.OutputFile, "output-file", "", "Write the record JSON to a file instead of stdout (single record)")

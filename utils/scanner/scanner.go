@@ -8,6 +8,7 @@ package scanner
 
 import (
 	"context"
+	"os/exec"
 	"strings"
 
 	corev1 "github.com/agntcy/dir/api/core/v1"
@@ -34,6 +35,27 @@ type ScanResult struct {
 	Skipped       bool
 	SkippedReason string
 	Findings      []Finding
+	Version       string   // scanner binary version, if detectable
+	Analyzers     []string // analyzer names that were invoked
+}
+
+// getVersion runs cliPath with the given args and returns the last whitespace-separated
+// token on the first line of stdout (e.g. "skill-scanner 2.0.12" → "2.0.12").
+// Returns "" if the command fails or produces no output.
+func getVersion(cliPath string, args ...string) string {
+	out, err := exec.Command(cliPath, args...).Output() //nolint:gosec,noctx
+	if err != nil {
+		return ""
+	}
+
+	line := strings.TrimSpace(strings.SplitN(string(out), "\n", 2)[0]) //nolint:mnd
+
+	parts := strings.Fields(line)
+	if len(parts) > 0 {
+		return parts[len(parts)-1]
+	}
+
+	return ""
 }
 
 // HasError reports whether any finding has error severity.
@@ -103,6 +125,7 @@ func RunAll(ctx context.Context, runners []Runner, record *corev1.Record, logger
 // merge combines results from multiple runners into a single ScanResult.
 // The merged result is Safe only if all non-skipped runners reported safe.
 // It is Skipped only if ALL runners skipped.
+// Analyzers are unioned; Version is not meaningful across different runners and is left empty.
 func merge(results []*ScanResult) *ScanResult {
 	if len(results) == 0 {
 		return &ScanResult{Skipped: true, SkippedReason: "no runners"}
@@ -115,6 +138,8 @@ func merge(results []*ScanResult) *ScanResult {
 	merged := &ScanResult{Safe: true, Skipped: true}
 
 	var skipReasons []string
+
+	analyzerSet := make(map[string]struct{})
 
 	for _, r := range results {
 		if r == nil {
@@ -132,6 +157,14 @@ func merge(results []*ScanResult) *ScanResult {
 		}
 
 		merged.Findings = append(merged.Findings, r.Findings...)
+
+		for _, a := range r.Analyzers {
+			analyzerSet[a] = struct{}{}
+		}
+	}
+
+	for a := range analyzerSet {
+		merged.Analyzers = append(merged.Analyzers, a)
 	}
 
 	if merged.Skipped {

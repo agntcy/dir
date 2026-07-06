@@ -13,6 +13,7 @@ import (
 	"github.com/agntcy/dir/reconciler/tasks/metrics"
 	"github.com/agntcy/dir/reconciler/tasks/name"
 	"github.com/agntcy/dir/reconciler/tasks/regsync"
+	"github.com/agntcy/dir/reconciler/tasks/scan"
 	"github.com/agntcy/dir/reconciler/tasks/signature"
 	authnconfig "github.com/agntcy/dir/server/authn/config"
 	dbconfig "github.com/agntcy/dir/server/database/config"
@@ -72,6 +73,9 @@ type Config struct {
 
 	// Signature holds the signature verification task configuration.
 	Signature signature.Config `json:"signature" mapstructure:"signature"`
+
+	// Scan holds the security scan task configuration.
+	Scan scan.Config `json:"scan" mapstructure:"scan"`
 
 	// Metrics holds the usage-metrics refresh task configuration.
 	Metrics metrics.Config `json:"metrics" mapstructure:"metrics"`
@@ -199,6 +203,27 @@ func LoadConfig() (*Config, error) {
 
 	_ = v.BindEnv("signature.record_timeout")
 	v.SetDefault("signature.record_timeout", signature.DefaultRecordTimeout)
+
+	//
+	// Scan task configuration (security scanning)
+	//
+	_ = v.BindEnv("scan.enabled")
+	v.SetDefault("scan.enabled", false)
+
+	_ = v.BindEnv("scan.interval")
+	v.SetDefault("scan.interval", scan.DefaultInterval)
+
+	_ = v.BindEnv("scan.ttl")
+	v.SetDefault("scan.ttl", scan.DefaultTTL)
+
+	_ = v.BindEnv("scan.record_timeout")
+	v.SetDefault("scan.record_timeout", scan.DefaultRecordTimeout)
+
+	_ = v.BindEnv("scan.mcp_cli_path")
+	v.SetDefault("scan.mcp_cli_path", scan.DefaultMCPCLIPath)
+
+	_ = v.BindEnv("scan.skill_cli_path")
+	v.SetDefault("scan.skill_cli_path", scan.DefaultSkillCLIPath)
 
 	//
 	// Providers task configuration (provider-count gauge)

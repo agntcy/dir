@@ -29,6 +29,9 @@ type DatabaseAPI interface {
 	// SignatureVerificationDatabaseAPI handles management of signature verifications.
 	SignatureVerificationDatabaseAPI
 
+	// ScanReportDatabaseAPI handles persistence of security scan results.
+	ScanReportDatabaseAPI
+
 	// CatalogDatabaseAPI handles deterministic browsing of AI Catalog entries.
 	CatalogDatabaseAPI
 
@@ -159,4 +162,22 @@ type SignatureVerificationDatabaseAPI interface {
 
 	// InvalidateSignatureVerificationsForRecord removes all cached verification rows for a record so the reconciler will re-verify it (e.g. when a new signature or public key referrer is pushed).
 	InvalidateSignatureVerificationsForRecord(recordCID string) error
+}
+
+// ScanReportObject is a single scanner-run result row, keyed by (record_cid, scanner_type).
+type ScanReportObject interface {
+	GetRecordCID() string
+	GetScannerType() string // "MCP", "SKILL", or "A2A"
+	GetIsSafe() bool
+	GetMaxSeverity() string // proto Severity name suffix, e.g. "HIGH", "NONE"
+	GetUpdatedAt() time.Time
+}
+
+// ScanReportDatabaseAPI handles persistence and querying of security scan results.
+type ScanReportDatabaseAPI interface {
+	// UpsertScanReport inserts or updates a scan result row keyed by (record_cid, scanner_type).
+	UpsertScanReport(report ScanReportObject) error
+
+	// GetRecordsNeedingScan returns records that have no scan result newer than ttl.
+	GetRecordsNeedingScan(ttl time.Duration) ([]coretypes.Record, error)
 }

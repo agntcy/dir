@@ -8,7 +8,7 @@ extend buf.validate.StringRules {
   optional bool is_referrer_type = 50000 [(buf.validate.predefined).cel = {
     id: "string.is_referrer_type"
     message: "value must be a valid referrer type"
-    expression: "this in ['agntcy.dir.sign.v1.PublicKey', 'agntcy.dir.sign.v1.Signature']"
+    expression: "this in ['agntcy.dir.sign.v1.PublicKey', 'agntcy.dir.sign.v1.Signature', 'agntcy.dir.security.v1.ScanReport']"
   }];
   optional bool is_cid = 50001 [(buf.validate.predefined).cel = {
     id: "string.is_cid"

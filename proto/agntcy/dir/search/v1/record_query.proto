@@ -87,4 +87,15 @@ enum RecordQueryType {
   // Query for annotation key:value pairs.
   // Supports wildcard patterns in both key and value: "manager:alice", "team:*", "env:prod"
   RECORD_QUERY_TYPE_ANNOTATION = 15;
+
+  // Filter for records whose highest scan severity meets or exceeds a threshold.
+  // Value is a severity name: "NONE", "INFO", "LOW", "MEDIUM", "HIGH", or "CRITICAL".
+  // Returns records where max_severity >= the given threshold across all scanner types.
+  RECORD_QUERY_TYPE_SCAN_SEVERITY = 17;
+
+  // Filter for records where all scanners reported the artifact as safe (is_safe = true).
+  // Boolean field - use "true" or "false" as value.
+  // "true"  → scanned AND no scanner flagged the record as unsafe.
+  // "false" → at least one scanner reported is_safe = false.
+  RECORD_QUERY_TYPE_SCAN_SAFE = 18;
 }

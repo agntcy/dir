@@ -402,8 +402,8 @@ tasks:
   ## Importer tools
   ##
 
-  importer:deps:mcp-scanner:
-    desc: Install mcp-scanner CLI via uv (used by import-records workflow)
+  deps:mcp-scanner:
+    desc: Install mcp-scanner CLI via uv
     deps:
       - task: deps:uv
     cmds:
@@ -411,11 +411,17 @@ tasks:
       - cmd: >-
           {{.UV_BIN}} tool install --python 3.13 cisco-ai-mcp-scanner
 
-  importer:deps:skill-scanner:
-    desc: Install skill-scanner CLI via uv (used by import-records workflow)
+  deps:skill-scanner:
+    desc: Install skill-scanner CLI via uv
     deps:
       - task: deps:uv
     cmds:
       - cmd: echo "Installing skill-scanner"
       - cmd: >-
           {{.UV_BIN}} tool install --python 3.13 cisco-ai-skill-scanner
+
+  deps:scanners:
+    desc: Install all security scanner CLIs (mcp-scanner and skill-scanner) via uv
+    cmds:
+      - task: deps:mcp-scanner
+      - task: deps:skill-scanner

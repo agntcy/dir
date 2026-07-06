@@ -151,7 +151,7 @@ jobs:
       - name: Install mcp-scanner
         if: ${{ needs.setup-matrix.outputs.scanner_enabled == 'true' && needs.setup-matrix.outputs.run_mcp_import == 'true' && needs.setup-matrix.outputs.mcp_matrix != '[]' }}
         run: |
-          task importer:deps:mcp-scanner
+          task deps:mcp-scanner
           mkdir -p .bin
           install -m 755 "${HOME}/.local/bin/mcp-scanner" .bin/mcp-scanner
 

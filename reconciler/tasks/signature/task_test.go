@@ -289,5 +289,10 @@ func (f *fakeSignatureDB) GetUsageMetrics(cid string) (types.UsageMetricsObject,
 	return nil, nil
 }
 
+func (f *fakeSignatureDB) UpsertScanReport(types.ScanReportObject) error { return nil }
+func (f *fakeSignatureDB) GetRecordsNeedingScan(time.Duration) ([]coretypes.Record, error) {
+	return nil, nil
+}
+
 func (f *fakeSignatureDB) Close() error                 { return nil }
 func (f *fakeSignatureDB) IsReady(context.Context) bool { return true }

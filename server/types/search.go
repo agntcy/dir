@@ -20,8 +20,10 @@ type RecordFilters struct {
 	CreatedAts       []string
 	Authors          []string
 	SchemaVersions   []string
-	Verified         *bool // Filter by verified status (name ownership verified via JWKS)
-	Trusted          *bool // Filter by trusted status (signature verification passed)
+	Verified         *bool    // Filter by verified status (name ownership verified via JWKS)
+	Trusted          *bool    // Filter by trusted status (signature verification passed)
+	ScanSafe         *bool    // Filter by is_safe: true = all scanners safe, false = at least one unsafe
+	ScanSeverities   []string // Filter by max scan severity >= threshold (e.g. "HIGH")
 	AnnotationKeys   []string
 	AnnotationValues []string
 
@@ -166,6 +168,20 @@ func WithVerified(verified bool) FilterOption {
 func WithTrusted(trusted bool) FilterOption {
 	return func(sc *RecordFilters) {
 		sc.Trusted = &trusted
+	}
+}
+
+// WithScanSafe filters records by whether all scanners reported is_safe = true.
+func WithScanSafe(safe bool) FilterOption {
+	return func(sc *RecordFilters) {
+		sc.ScanSafe = &safe
+	}
+}
+
+// WithScanSeverities filters records whose highest scan severity meets or exceeds a threshold.
+func WithScanSeverities(severities ...string) FilterOption {
+	return func(sc *RecordFilters) {
+		sc.ScanSeverities = append(sc.ScanSeverities, severities...)
 	}
 }
 

@@ -25,6 +25,8 @@ type Filters struct {
 	ModuleIDs      []string
 	Verified       bool
 	Trusted        bool
+	Safe           bool
+	ScanSeverity   string
 	Annotations    []string
 }
 
@@ -61,6 +63,10 @@ func RegisterFilterFlags(cmd *cobra.Command, f *Filters) {
 		"Filter for records with verified name ownership only")
 	flags.BoolVar(&f.Trusted, "trusted", false,
 		"Filter for records with trusted signature only (signature verification passed)")
+	flags.BoolVar(&f.Safe, "safe", false,
+		"Filter for records where all security scanners reported is_safe=true")
+	flags.StringVar(&f.ScanSeverity, "scan-severity", "",
+		"Filter for records whose highest scan severity meets or exceeds a threshold (NONE, INFO, LOW, MEDIUM, HIGH, CRITICAL)")
 	flags.StringArrayVar(&f.Annotations, "annotation", nil,
 		"Search for records with specific annotation in key:value format (e.g., --annotation 'manager:alice' --annotation 'team:*')")
 }
@@ -115,6 +121,20 @@ func BuildQueries(f *Filters) []*searchv1.RecordQuery {
 		queries = append(queries, &searchv1.RecordQuery{
 			Type:  searchv1.RecordQueryType_RECORD_QUERY_TYPE_TRUSTED,
 			Value: "true",
+		})
+	}
+
+	if f.Safe {
+		queries = append(queries, &searchv1.RecordQuery{
+			Type:  searchv1.RecordQueryType_RECORD_QUERY_TYPE_SCAN_SAFE,
+			Value: "true",
+		})
+	}
+
+	if f.ScanSeverity != "" {
+		queries = append(queries, &searchv1.RecordQuery{
+			Type:  searchv1.RecordQueryType_RECORD_QUERY_TYPE_SCAN_SEVERITY,
+			Value: f.ScanSeverity,
 		})
 	}
 

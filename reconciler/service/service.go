@@ -17,6 +17,7 @@ import (
 	"github.com/agntcy/dir/reconciler/tasks/metrics"
 	"github.com/agntcy/dir/reconciler/tasks/name"
 	"github.com/agntcy/dir/reconciler/tasks/regsync"
+	"github.com/agntcy/dir/reconciler/tasks/scan"
 	"github.com/agntcy/dir/reconciler/tasks/signature"
 	namingprovider "github.com/agntcy/dir/server/naming"
 	"github.com/agntcy/dir/server/naming/wellknown"
@@ -54,6 +55,7 @@ func New(cfg *config.Config, db servertypes.DatabaseAPI, store servertypes.Store
 	return svc, nil
 }
 
+//nolint:cyclop
 func (s *Service) registerTasks(cfg *config.Config, db servertypes.DatabaseAPI, store servertypes.StoreAPI, repo registry.TagLister, oasfValidator corev1.Validator, counters metrics.ProviderCounterAPI) error {
 	if cfg.Regsync.Enabled {
 		t, err := regsync.NewTask(cfg.Regsync, cfg.LocalRegistry, db)
@@ -94,6 +96,20 @@ func (s *Service) registerTasks(cfg *config.Config, db servertypes.DatabaseAPI, 
 			t, err := signature.NewTask(cfg.Signature, db, signature.NewStoreFetcher(refStore))
 			if err != nil {
 				return fmt.Errorf("failed to create signature task: %w", err)
+			}
+
+			s.addTask(t)
+		}
+	}
+
+	if cfg.Scan.Enabled {
+		refStore, ok := store.(servertypes.ReferrerStoreAPI)
+		if !ok {
+			logger.Warn("Store does not support referrers, skipping scan task")
+		} else {
+			t, err := scan.NewTask(cfg.Scan, db, store, refStore)
+			if err != nil {
+				return fmt.Errorf("failed to create scan task: %w", err)
 			}
 
 			s.addTask(t)
