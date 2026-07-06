@@ -76,7 +76,17 @@ func (r *SkillRunner) Run(ctx context.Context, record *corev1.Record) (*ScanResu
 		return nil, fmt.Errorf("skill-scanner: %w", err)
 	}
 
-	return parseSkillOutput(rawOutput)
+	result, err := parseSkillOutput(rawOutput)
+	if err != nil {
+		return nil, err
+	}
+
+	result.Version = getVersion(r.cfg.CLIPath, "--version")
+	// static, bytecode, and pipeline run by default; behavioral and trigger are
+	// explicitly enabled via --use-behavioral and --use-trigger.
+	result.Analyzers = []string{"behavioral", "bytecode", "pipeline", "static", "trigger"}
+
+	return result, nil
 }
 
 // skillArtifactBytes finds the agentskills module in the record and returns the

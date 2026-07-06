@@ -87,7 +87,14 @@ func (r *MCPRunner) Run(ctx context.Context, record *corev1.Record) (*ScanResult
 		return nil, fmt.Errorf("mcp-scanner: %w", err)
 	}
 
-	return parseMCPOutput(rawOutput)
+	result, err := parseMCPOutput(rawOutput)
+	if err != nil {
+		return nil, err
+	}
+
+	result.Analyzers = []string{"behavioral"}
+
+	return result, nil
 }
 
 // extractSourceInfo decodes the record and extracts the source-code repository URL

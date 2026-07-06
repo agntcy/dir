@@ -176,11 +176,13 @@ func buildScanReport(runnerName string, result *scanner.ScanResult) *scanv1.Scan
 	}
 
 	return &scanv1.ScanReport{
-		ScannerType: toProtoScannerType(runnerName),
-		IsSafe:      result.Safe,
-		ScannedAt:   time.Now().UTC().Format(time.RFC3339),
-		MaxSeverity: maxSev,
-		Findings:    findings,
+		ScannerType:    toProtoScannerType(runnerName),
+		ScannerVersion: result.Version,
+		IsSafe:         result.Safe,
+		ScannedAt:      time.Now().UTC().Format(time.RFC3339),
+		MaxSeverity:    maxSev,
+		Findings:       findings,
+		Analyzers:      result.Analyzers,
 	}
 }
 
