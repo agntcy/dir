@@ -84,12 +84,14 @@ func TestPreferSavedConfigExplicitFlagWins(t *testing.T) {
 
 	// Flags explicitly set — even to the default value — must win over saved
 	// config, so a user can force-reset back to the default URL.
-	set := preferSavedConfig(base, true, true)
+	set, err := preferSavedConfig(base, true, true)
+	require.NoError(t, err)
 	assert.Equal(t, extractor.DefaultOASFURL, set.OASFURL)
 	assert.Equal(t, extractor.DefaultAssetDir(), set.AssetDir)
 
 	// Flags not set — the saved config is preferred.
-	unset := preferSavedConfig(base, false, false)
+	unset, err := preferSavedConfig(base, false, false)
+	require.NoError(t, err)
 	assert.Equal(t, "https://saved.example", unset.OASFURL)
 	assert.Equal(t, "/saved/dir", unset.AssetDir)
 }

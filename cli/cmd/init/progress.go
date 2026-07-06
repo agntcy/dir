@@ -77,8 +77,8 @@ func runWithSpinner(
 	phaseFn func(string) (string, bool),
 	action provisionAction,
 ) (string, error) {
-	pr, pw, err := os.Pipe()
-	if err != nil {
+	pr, pw, pipeErr := os.Pipe()
+	if pipeErr != nil {
 		// Capture unavailable — run the action directly rather than fail the
 		// whole command over a progress nicety.
 		return "", action(ctx)
@@ -103,9 +103,38 @@ func runWithSpinner(
 	}
 
 	var (
-		captured bytes.Buffer
-		wg       sync.WaitGroup
+		buf  bytes.Buffer
+		wg   sync.WaitGroup
+		once sync.Once
 	)
+
+	// cleanup drains the pipe, joins the reader goroutine, and restores the real
+	// stdout/stderr/logger. It runs exactly once — on the normal path below, or
+	// via the recover handler if action panics — so the process is never left
+	// with redirected output or a leaked goroutine.
+	cleanup := func() {
+		once.Do(func() {
+			_ = pw.Close()
+
+			wg.Wait()
+
+			_ = pr.Close()
+
+			os.Stdout, os.Stderr = origStdout, origStderr
+			zlog.Logger = prevLogger
+
+			if isTTY {
+				sp.Stop()
+			}
+		})
+	}
+
+	defer func() {
+		if r := recover(); r != nil {
+			cleanup()
+			panic(r)
+		}
+	}()
 
 	wg.Go(func() {
 		scanner := bufio.NewScanner(pr)
@@ -115,8 +144,8 @@ func runWithSpinner(
 
 		for scanner.Scan() {
 			line := scanner.Text()
-			captured.WriteString(line)
-			captured.WriteByte('\n')
+			buf.WriteString(line)
+			buf.WriteByte('\n')
 
 			if phaseFn == nil {
 				continue
@@ -140,22 +169,9 @@ func runWithSpinner(
 
 	actionErr := action(ctx)
 
-	// Closing the write end lets the scanner drain and return.
-	_ = pw.Close()
+	cleanup()
 
-	wg.Wait()
-
-	_ = pr.Close()
-
-	// Restore the real stdout/stderr/logger before drawing anything else.
-	os.Stdout, os.Stderr = origStdout, origStderr
-	zlog.Logger = prevLogger
-
-	if isTTY {
-		sp.Stop()
-	}
-
-	return captured.String(), actionErr
+	return buf.String(), actionErr
 }
 
 // indentLines prefixes every non-empty line of s with prefix, for readable

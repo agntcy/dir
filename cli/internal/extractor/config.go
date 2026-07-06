@@ -70,5 +70,17 @@ func (c Config) Validate() error {
 		return fmt.Errorf("invalid OASF URL %q: missing host", c.OASFURL)
 	}
 
+	// AssetDir must be an absolute path: a relative dir would make the on-disk
+	// assets resolve against the current working directory and could not be torn
+	// down (Teardown refuses non-absolute paths). Resolve fills an empty AssetDir
+	// with the absolute default, so this only rejects an explicit relative value.
+	if c.AssetDir == "" {
+		return fmt.Errorf("asset dir is required")
+	}
+
+	if !filepath.IsAbs(c.AssetDir) {
+		return fmt.Errorf("asset dir must be an absolute path, got %q", c.AssetDir)
+	}
+
 	return nil
 }

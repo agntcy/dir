@@ -52,12 +52,17 @@ func configFromOpts(opts *options) extractor.Config {
 // for any value the user did not set via a flag, so a bare re-run targets the
 // previously provisioned install instead of the defaults. urlSet/dirSet report
 // whether the corresponding flag was explicitly passed — an explicit flag always
-// wins (including one set back to the default value). A missing or unreadable
-// config leaves cfg untouched.
-func preferSavedConfig(cfg extractor.Config, urlSet, dirSet bool) extractor.Config {
+// wins (including one set back to the default value). An absent config leaves cfg
+// untouched; a present-but-unreadable config is an error (so we fail fast rather
+// than provision against defaults and only trip over the bad file later).
+func preferSavedConfig(cfg extractor.Config, urlSet, dirSet bool) (extractor.Config, error) {
 	saved, err := clientconfig.LoadExtractor("")
-	if err != nil || saved == nil {
-		return cfg
+	if err != nil {
+		return cfg, fmt.Errorf("read extractor config: %w", err)
+	}
+
+	if saved == nil {
+		return cfg, nil
 	}
 
 	if !dirSet && saved.AssetDir != "" {
@@ -68,12 +73,12 @@ func preferSavedConfig(cfg extractor.Config, urlSet, dirSet bool) extractor.Conf
 		cfg.OASFURL = saved.OASFURL
 	}
 
-	return cfg
+	return cfg, nil
 }
 
 // resolveConfig builds the effective config from flags, then prefers the saved
 // config for any flag the user did not explicitly set.
-func resolveConfig(cmd *cobra.Command, opts *options) extractor.Config {
+func resolveConfig(cmd *cobra.Command, opts *options) (extractor.Config, error) {
 	return preferSavedConfig(
 		configFromOpts(opts),
 		cmd.Flags().Changed("oasf-url"),
@@ -86,7 +91,10 @@ func resolveConfig(cmd *cobra.Command, opts *options) extractor.Config {
 func runProvision(cmd *cobra.Command, opts *options) error {
 	printWelcome(cmd)
 
-	cfg := resolveConfig(cmd, opts)
+	cfg, err := resolveConfig(cmd, opts)
+	if err != nil {
+		return err
+	}
 
 	if extractor.IsProvisioned(cfg) {
 		presenter.Printf(cmd, "Extractor already provisioned at %s (OASF URL %s).\n",
@@ -142,11 +150,14 @@ func runProvision(cmd *cobra.Command, opts *options) error {
 	captured, err = runWithSpinner(cmd.Context(), os.Stdout, "Verifying setup…", nil,
 		func(ctx context.Context) error { return extractor.SmokeCheck(ctx, cfg) })
 	if err != nil {
-		presenter.Printf(cmd, "⚠ Assets provisioned, but the smoke check failed: %v\n", err)
+		// The assets and saved config are kept (persisted above) so a retry is
+		// cheap, but verification failed — return a non-nil error so `--yes`/CI
+		// runs surface the broken setup instead of reporting success. cobra
+		// prints the error; we add context and the captured details.
+		presenter.Printf(cmd, "⚠ Assets provisioned at %s, but verification failed. Re-run `dirctl init` to retry.\n", cfg.AssetDir)
 		printDetails(cmd, captured)
-		presenter.Printf(cmd, "The assets are on disk at %s; re-run `dirctl init` to retry.\n", cfg.AssetDir)
 
-		return nil
+		return fmt.Errorf("extractor verification failed: %w", err)
 	}
 
 	presenter.Printf(cmd, "✔ Extractor ready.\n  asset dir: %s\n  OASF URL:  %s\nEnrichment and free-text search can now run locally.\n",
@@ -166,7 +177,10 @@ func printDetails(cmd *cobra.Command, captured string) {
 // runRemove tears down the provisioned assets and clears the saved config.
 func runRemove(cmd *cobra.Command, opts *options) error {
 	// Prefer the persisted asset dir so removal targets what was provisioned.
-	cfg := resolveConfig(cmd, opts)
+	cfg, err := resolveConfig(cmd, opts)
+	if err != nil {
+		return err
+	}
 
 	if !opts.yes {
 		ok, err := confirm(cmd, fmt.Sprintf("Remove extractor assets at %s?", cfg.AssetDir))

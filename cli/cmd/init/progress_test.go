@@ -83,6 +83,25 @@ func TestRunWithSpinnerSuccess(t *testing.T) {
 	assert.Same(t, orig, os.Stdout, "os.Stdout must be restored after the call")
 }
 
+// TestRunWithSpinnerRestoresOnPanic confirms a panic in the action still
+// restores os.Stdout (and propagates the panic) rather than leaving the process
+// with redirected output.
+func TestRunWithSpinnerRestoresOnPanic(t *testing.T) {
+	uiOut, err := os.CreateTemp(t.TempDir(), "ui-*")
+	require.NoError(t, err)
+
+	t.Cleanup(func() { _ = uiOut.Close() })
+
+	orig := os.Stdout
+
+	require.Panics(t, func() {
+		_, _ = runWithSpinner(context.Background(), uiOut, phaseDownload, phaseFor,
+			func(_ context.Context) error { panic("boom") })
+	})
+
+	assert.Same(t, orig, os.Stdout, "os.Stdout must be restored even when action panics")
+}
+
 func TestIndentLines(t *testing.T) {
 	assert.Equal(t, "  a\n  b", indentLines("a\nb\n", "  "))
 	assert.Equal(t, "  solo", indentLines("solo", "  "))
