@@ -5,6 +5,7 @@ package extractor
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	sdk "github.com/agntcy/oasf-sdk/pkg/extractor"
@@ -38,22 +39,12 @@ func Provision(ctx context.Context, cfg Config, opts ...sdk.Option) error {
 }
 
 // SmokeCheck loads the provisioned assets and runs one extraction, returning an
-// error if construction fails or the round-trip yields no skills and no
+// error if the client can't be built or the round-trip yields no skills and no
 // domains. It confirms the assets are usable in-process by consumers.
 func SmokeCheck(ctx context.Context, cfg Config, opts ...sdk.Option) error {
-	cfg = cfg.Resolve()
-	if err := cfg.Validate(); err != nil {
-		return err
-	}
-
-	base := []sdk.Option{
-		sdk.WithOASFURL(cfg.OASFURL),
-		sdk.WithAssetDir(cfg.AssetDir),
-	}
-
-	e, err := sdk.New(append(base, opts...)...)
+	e, err := Load(cfg, opts...)
 	if err != nil {
-		return fmt.Errorf("load provisioned extractor: %w", err)
+		return err
 	}
 
 	res, err := e.Extract(ctx, smokeSampleText)
@@ -62,7 +53,7 @@ func SmokeCheck(ctx context.Context, cfg Config, opts ...sdk.Option) error {
 	}
 
 	if len(res.Skills) == 0 && len(res.Domains) == 0 {
-		return fmt.Errorf("extractor smoke check returned no skills or domains")
+		return errors.New("extractor smoke check returned no skills or domains")
 	}
 
 	return nil
