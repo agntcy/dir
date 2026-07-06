@@ -426,3 +426,29 @@ dirctl export --output-dir=./exports/ --format=a2a --module "integration/a2a"
 
 By default, only the latest semver version is exported; use `--all-versions` to export every
 version. See [CLI Reference — Export Operations](dir-cli-reference.md#export-operations).
+
+## Install
+
+Where `export` writes artifacts to files you manage, `install` places them directly into the
+configuration of detected AI coding agents (Claude Code, Cursor, VS Code, Windsurf, and more).
+What gets installed is derived from the record's OASF modules — an MCP server entry and/or an
+Agent Skill — not from a flag; a record with neither errors (an A2A-only record points you to
+`export`). See [CLI Reference — Agent Install](dir-cli-reference.md#agent-install).
+
+```bash
+# Preview what installing a record would change across detected agents
+dirctl install cisco.com/agent:v1.0.0 --dry-run
+
+# Install into all detected agents
+dirctl install cisco.com/agent:v1.0.0 --yes
+
+# Install into specific agents only
+dirctl install cisco.com/agent --agents claude-code,cursor
+
+# Remove what install added (top-level shorthand for `install uninstall`)
+dirctl uninstall cisco.com/agent
+```
+
+Detection is always required — an agent is never written to unless it is detected. Re-installing
+a newer version of the same record replaces the old artifacts cleanly. `dirctl install list`
+shows which agents are detected and the config files install would touch.

@@ -60,6 +60,7 @@ explicit `--auth-mode`.
 
 | Group | Commands |
 |-------|----------|
+| Setup | `init` |
 | Daemon | `daemon start`, `stop`, `status` |
 | Auth | `auth login`, `logout`, `status` |
 | Context | `context list`, `current`, `set`, `show`, `validate` |
@@ -80,6 +81,46 @@ explicit `--auth-mode`.
 dirctl --help
 dirctl routing --help
 dirctl routing search --help
+```
+
+## Setup
+
+### `dirctl init [flags]`
+
+Guided first-run setup for a new environment — run it once after installing
+`dirctl`. It provisions the **OASF taxonomy extractor**: a small
+sentence-transformer model (`all-MiniLM-L6-v2`, ~89 MB) plus the OASF taxonomy,
+downloaded to a local asset directory. Those assets power local, **LLM-free**
+record enrichment (and, in future, free-text search) that runs in-process — no
+Python, no external inference service, no LLM API. The chosen OASF endpoint and
+asset directory are saved to the `dirctl` config so other commands load the
+provisioned assets automatically.
+
+Provisioning is **opt-out** in an interactive terminal — the prompt defaults to
+yes, so pressing Enter provisions. To avoid an unattended ~89 MB download, a
+**non-interactive** run (no TTY, e.g. CI or a pipe) skips unless you pass
+`--yes`. Re-running is idempotent: nothing is re-downloaded when the assets are
+present and current, and the taxonomy is re-embedded only when it changed.
+
+| Flag | Description | Default |
+|------|-------------|---------|
+| `--oasf-url` | OASF schema endpoint to pull the taxonomy from | `https://schema.oasf.outshift.com` |
+| `--asset-dir` | Local directory for the provisioned assets | `~/.agntcy/oasf-sdk/extractor` |
+| `--yes` / `-y` | Provision without prompting (required for non-interactive runs) | `false` |
+| `--remove` | Remove the provisioned assets and clear the saved config | `false` |
+
+```bash
+# Interactive setup (prompts; Enter accepts)
+dirctl init
+
+# Non-interactive (CI): provision with defaults
+dirctl init --yes
+
+# Provision from a local OASF instance
+dirctl init --oasf-url http://localhost:8080 --yes
+
+# Tear down what init provisioned
+dirctl init --remove --yes
 ```
 
 ## Diagnostics
