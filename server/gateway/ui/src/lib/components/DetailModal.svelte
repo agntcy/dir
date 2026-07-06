@@ -1,7 +1,8 @@
 <script lang="ts">
 	import type { CatalogEntry } from '$lib/types';
-	import { extractEntryTypes, extractShortTag, hasTrustManifest, fakeStats, extractCid, exportFormatForType, extractEntryName, extractEntryVersion } from '$lib/utils';
+	import { extractEntryTypes, extractShortTag, hasTrustManifest, getScanManifest, fakeStats, extractCid, exportFormatForType, extractEntryName, extractEntryVersion } from '$lib/utils';
 	import MediaTypeBadge from './MediaTypeBadge.svelte';
+	import ScanBadge from './ScanBadge.svelte';
 	import StarRating from './StarRating.svelte';
 	import VerifiedBadge from './VerifiedBadge.svelte';
 
@@ -14,6 +15,7 @@
 
 	let stats = $derived(fakeStats(aicard));
 	let verified = $derived(hasTrustManifest(aicard));
+	let scanManifest = $derived(getScanManifest(aicard));
 	let tags = $derived(aicard.tags || []);
 	let cid = $derived(extractCid(aicard.identifier));
 	let entries = $derived(aicard.data?.entries || []);
@@ -200,6 +202,34 @@
 							<span class="font-semibold text-brand-800">Signature</span>
 							<p class="text-brand-600 mt-0.5 text-xs font-mono break-all select-all cursor-text" title={tm.signature}>{shortSig}</p>
 						</div>
+					</div>
+				</div>
+			{/if}
+
+			<!-- Security scan -->
+			{#if scanManifest}
+				{@const sm = scanManifest}
+				<div class="rounded-card border border-line p-4" class:bg-emerald-50={sm.isSafe} class:bg-red-50={!sm.isSafe}>
+					<div class="flex items-center gap-2 mb-3">
+						<ScanBadge scan={sm} />
+						<span class="font-semibold text-sm text-ink-strong">Security Scan Results</span>
+					</div>
+					<div class="space-y-2">
+						{#each sm.reports as report}
+							<div class="flex items-center justify-between text-sm border-t border-line/70 pt-2">
+								<span class="font-medium text-ink capitalize">{report.scannerType.toLowerCase()} scanner</span>
+								<div class="flex items-center gap-2">
+									{#if report.isSafe}
+										<span class="text-emerald-600 font-semibold text-xs">Safe</span>
+									{:else}
+										<span class="text-red-600 font-semibold text-xs">{report.maxSeverity}</span>
+									{/if}
+									{#if report.updatedAt}
+										<span class="text-xs text-ink-weak">{new Date(report.updatedAt).toLocaleDateString()}</span>
+									{/if}
+								</div>
+							</div>
+						{/each}
 					</div>
 				</div>
 			{/if}

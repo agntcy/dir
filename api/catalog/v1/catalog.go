@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"sort"
 	"strings"
+	"time"
 
 	coretypes "github.com/agntcy/dir/api/core/types"
 	ocidigest "github.com/opencontainers/go-digest"
@@ -66,8 +67,17 @@ var catalogModules = map[string]catalogModuleProjection{
 	},
 }
 
+// ScanReportSummary summarizes one scanner's result for embedding in catalog metadata.
+type ScanReportSummary interface {
+	GetScannerType() string
+	GetIsSafe() bool
+	GetMaxSeverity() string
+	GetUpdatedAt() time.Time
+}
+
 type convertOptions struct {
-	signatures []coretypes.ObjectSignature
+	signatures  []coretypes.ObjectSignature
+	scanReports []ScanReportSummary
 }
 
 type ConvertOption func(*convertOptions)
@@ -75,6 +85,13 @@ type ConvertOption func(*convertOptions)
 func WithSignatures(signatures []coretypes.ObjectSignature) ConvertOption {
 	return func(opts *convertOptions) {
 		opts.signatures = signatures
+	}
+}
+
+// WithScanReports embeds scan report summaries as metadata["scanManifest"] in the entry.
+func WithScanReports(reports []ScanReportSummary) ConvertOption {
+	return func(opts *convertOptions) {
+		opts.scanReports = reports
 	}
 }
 
@@ -126,7 +143,7 @@ func RecordToCatalog(record coretypes.Record, opts ...ConvertOption) (*CatalogEn
 			return nil, errors.New("failed to project module to catalog entry")
 		}
 
-		return &CatalogEntry{
+		result := &CatalogEntry{
 			Identifier:    catalogURN(recordCid, ""),
 			DisplayName:   recordName,
 			Version:       new(record.GetVersion()),
@@ -136,7 +153,10 @@ func RecordToCatalog(record coretypes.Record, opts ...ConvertOption) (*CatalogEn
 			Artifact:      entry.GetArtifact(),
 			Tags:          append(catalogTags(record), entry.GetTags()...),
 			TrustManifest: trustManifest,
-		}, nil
+		}
+		injectScanManifest(result, options.scanReports)
+
+		return result, nil
 	}
 
 	// Multiple known modules — container entry on the parent URN with nested entries for each module.
@@ -169,7 +189,7 @@ func RecordToCatalog(record coretypes.Record, opts ...ConvertOption) (*CatalogEn
 		return nil, fmt.Errorf("failed to convert container to proto: %w", err)
 	}
 
-	return &CatalogEntry{
+	containerEntry := &CatalogEntry{
 		Identifier:  catalogURN(recordCid, ""),
 		DisplayName: recordName,
 		Description: new(record.GetDescription()),
@@ -181,7 +201,10 @@ func RecordToCatalog(record coretypes.Record, opts ...ConvertOption) (*CatalogEn
 			Data: structpb.NewStructValue(container),
 		},
 		TrustManifest: trustManifest,
-	}, nil
+	}
+	injectScanManifest(containerEntry, options.scanReports)
+
+	return containerEntry, nil
 }
 
 // moduleToCatalogEntry builds a leaf catalog entry for a single module.
@@ -339,6 +362,57 @@ func catalogSignatures(cid string, signatures []coretypes.ObjectSignature) *Trus
 		Provenance:   provenanceLinks,
 		Signature:    new(strings.Join(mergedSignatures, ".")),
 	}
+}
+
+//nolint:mnd
+var scanSeverityOrder = map[string]int{
+	"NONE": 0, "INFO": 1, "LOW": 2, "MEDIUM": 3, "HIGH": 4, "CRITICAL": 5,
+}
+
+func buildScanManifestValue(reports []ScanReportSummary) (*structpb.Value, error) {
+	allSafe := true
+	maxSev := "NONE"
+	reportList := make([]any, 0, len(reports))
+
+	for _, r := range reports {
+		if !r.GetIsSafe() {
+			allSafe = false
+		}
+
+		if scanSeverityOrder[r.GetMaxSeverity()] > scanSeverityOrder[maxSev] {
+			maxSev = r.GetMaxSeverity()
+		}
+
+		reportList = append(reportList, map[string]any{
+			"scannerType": r.GetScannerType(),
+			"isSafe":      r.GetIsSafe(),
+			"maxSeverity": r.GetMaxSeverity(),
+			"updatedAt":   r.GetUpdatedAt().UTC().Format(time.RFC3339),
+		})
+	}
+
+	return structpb.NewValue(map[string]any{ //nolint:wrapcheck
+		"isSafe":      allSafe,
+		"maxSeverity": maxSev,
+		"reports":     reportList,
+	})
+}
+
+func injectScanManifest(entry *CatalogEntry, reports []ScanReportSummary) {
+	if len(reports) == 0 {
+		return
+	}
+
+	val, err := buildScanManifestValue(reports)
+	if err != nil {
+		return
+	}
+
+	if entry.Metadata == nil {
+		entry.Metadata = make(map[string]*structpb.Value)
+	}
+
+	entry.Metadata["scanManifest"] = val
 }
 
 func objectToStruct(goObj proto.Message) (*structpb.Struct, error) {

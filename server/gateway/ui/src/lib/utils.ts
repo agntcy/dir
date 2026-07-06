@@ -1,11 +1,21 @@
-import type { AICardFilterCriteria, CatalogEntry, SubEntry, ExportFormat } from './types';
+import type { AICardFilterCriteria, CatalogEntry, ScanManifest, SubEntry, ExportFormat } from './types';
 
 export function hasActiveClientFilters(criteria: AICardFilterCriteria): boolean {
 	return (
 		criteria.activeTags.size > 0 ||
-		criteria.statusFilter === 'trusted' ||
-		criteria.statusFilter === 'verified'
+		criteria.statusFilters.size > 0 ||
+		criteria.scanSafe
 	);
+}
+
+export function getScanManifest(aicard: CatalogEntry): ScanManifest | null {
+	const sm = aicard.metadata?.scanManifest as ScanManifest | undefined;
+	if (!sm || !Array.isArray(sm.reports) || sm.reports.length === 0) return null;
+	return sm;
+}
+
+export function hasScanManifest(aicard: CatalogEntry): boolean {
+	return getScanManifest(aicard) !== null;
 }
 
 export function collectSortedTags(aicards: CatalogEntry[]): string[] {
@@ -47,8 +57,13 @@ export function applyClientFilters(
 			if (!hasAny) return false;
 		}
 
-		if (criteria.statusFilter === 'trusted' || criteria.statusFilter === 'verified') {
+		if (criteria.statusFilters.size > 0) {
 			if (!hasTrustManifest(aicard)) return false;
+		}
+
+		if (criteria.scanSafe) {
+			const sm = getScanManifest(aicard);
+			if (!sm || !sm.isSafe) return false;
 		}
 
 		return true;
