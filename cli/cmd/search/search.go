@@ -50,7 +50,15 @@ Examples:
    dirctl search --trusted
    dirctl search --name "web*" --trusted
 
-7. Search by annotation key:value pairs:
+7. Search for security-scanned records where all scanners reported safe:
+   dirctl search --safe
+   dirctl search --name "web*" --safe
+
+8. Search for records whose highest scan severity meets or exceeds a threshold:
+   dirctl search --scan-severity HIGH
+   dirctl search --safe --scan-severity MEDIUM
+
+9. Search by annotation key:value pairs:
    dirctl search --annotation 'manager:alice'
    dirctl search --annotation 'team:*'
    dirctl search --annotation 'env:prod' --annotation 'region:us-*'
