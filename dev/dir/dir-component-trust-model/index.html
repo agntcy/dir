@@ -991,6 +991,67 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#security-scanning" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Security Scanning
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Security Scanning">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#how-scanning-works" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        How scanning works
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#trust-semantics" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Trust semantics
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#scanner-installation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Scanner installation
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#accessing-scan-results" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Accessing scan results
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#authentication-and-authorization" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2127,6 +2188,67 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#security-scanning" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Security Scanning
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Security Scanning">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#how-scanning-works" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        How scanning works
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#trust-semantics" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Trust semantics
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#scanner-installation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Scanner installation
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#accessing-scan-results" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Accessing scan results
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#authentication-and-authorization" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2414,6 +2536,8 @@ two complementary layers:</p>
 <ul>
 <li><strong>Record signing and verification</strong> — cryptographic provenance and integrity for
   individual records (see <a href="#record-signing-and-verification">Record Signing and Verification</a>).</li>
+<li><strong>Security scanning</strong> — automated behavioral and static analysis of record source code and
+  skill bundles (see <a href="#security-scanning">Security Scanning</a>).</li>
 <li><strong>Workload identity</strong> — authenticated, authorized communication between components,
   built on <a href="https://spiffe.io/">SPIRE</a> and zero-trust principles (covered in the rest of
   this page).</li>
@@ -2479,6 +2603,77 @@ human-readable references while maintaining security.</p>
 <p>Once a name is verified, records can be referenced using Docker-style name references
 (<code>name</code>, <code>name:version</code>, <code>name:version@cid</code>) instead of raw CIDs. See
 <a href="../dir-component-records-validation/">Records</a> for the verifiable name model.</p>
+<h2 id="security-scanning">Security Scanning</h2>
+<p>Security scanning provides automated behavioral and static analysis of records to detect
+vulnerabilities, policy violations, and malicious patterns before records are consumed.</p>
+<h3 id="how-scanning-works">How scanning works</h3>
+<p>The Directory reconciler runs two scanner types against each record:</p>
+<ul>
+<li><strong><a href="https://cisco-ai-defense.github.io/docs/mcp-scanner">MCP scanner</a></strong> (<code>mcp-scanner behavioral</code>) — clones the source repository referenced in the
+  record's <code>source_code</code> locator and runs behavioral analysis. Invoked automatically for
+  records that have a source-code locator.</li>
+<li><strong><a href="https://cisco-ai-defense.github.io/docs/skill-scanner">Skill scanner</a></strong> (<code>skill-scanner scan --use-behavioral --use-trigger</code>) — extracts the
+  agentskills bundle from the record's <code>integration/mcp</code> module artifact and runs static,
+  bytecode, pipeline, behavioral, and trigger analyzers. Invoked automatically for records
+  that include a skill bundle.</li>
+</ul>
+<p>Scan results are persisted in two places:</p>
+<ol>
+<li><strong>OCI referrer</strong> — the full <code>ScanReport</code> (findings, severity, analyzer list, timestamp) is
+   stored as an OCI referrer artifact attached to the record in the registry.</li>
+<li><strong>Search index</strong> — a summary row (<code>is_safe</code>, <code>max_severity</code>, scanner type) is written to
+   the local database so <code>--safe</code> and <code>--scan-severity</code> search filters work without
+   fetching referrers.</li>
+</ol>
+<p>Records are re-scanned when the previous result is older than the configured TTL (default
+7 days). The scanner runs only when the scanner binary is available on PATH (or at the
+configured CLI path); it is skipped otherwise.</p>
+<h3 id="trust-semantics">Trust semantics</h3>
+<table>
+<thead>
+<tr>
+<th>State</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>No scan report</td>
+<td>Record has not been scanned yet (scanner was skipped or hasn't run)</td>
+</tr>
+<tr>
+<td><code>is_safe=true</code></td>
+<td>Scanner ran and found no security issues</td>
+</tr>
+<tr>
+<td><code>is_safe=false</code></td>
+<td>Scanner ran and flagged at least one issue</td>
+</tr>
+</tbody>
+</table>
+<p>A record is considered <strong>safe</strong> (matched by <code>--safe</code>) only when:</p>
+<ul>
+<li>At least one scanner ran (was not skipped)</li>
+<li>No scanner reported <code>is_safe=false</code></li>
+</ul>
+<p>Records where all applicable scanners were skipped (no source repo, no skill bundle) are not
+considered safe and will not appear in <code>--safe</code> search results.</p>
+<h3 id="scanner-installation">Scanner installation</h3>
+<p>Scanners are installed via <code>uv</code>:</p>
+<div class="highlight"><pre><span></span><code>task<span class="w"> </span>deps:scanners
+</code></pre></div>
+<p>This installs <code>mcp-scanner</code> and <code>skill-scanner</code> to <code>~/.local/bin/</code> (added to PATH automatically by <code>uv</code>). For CI environments, the task is also available as <code>task deps:mcp-scanner</code> and <code>task deps:skill-scanner</code> separately.</p>
+<h3 id="accessing-scan-results">Accessing scan results</h3>
+<div class="highlight"><pre><span></span><code><span class="c1"># Pull scan reports for a record</span>
+dirctl<span class="w"> </span>pull<span class="w"> </span>&lt;cid&gt;<span class="w"> </span>--scan-report
+
+<span class="c1"># Search for records all scanners reported as safe</span>
+dirctl<span class="w"> </span>search<span class="w"> </span>--safe
+
+<span class="c1"># Search by maximum finding severity</span>
+dirctl<span class="w"> </span>search<span class="w"> </span>--scan-severity<span class="w"> </span>HIGH
+</code></pre></div>
+<p>For full CLI usage, see <a href="../dir-features-scenarios/#security-scanning">Security Scanning — Features Guide</a> and <a href="../dir-cli-reference/#security-scanning">CLI Reference — Security Scanning</a>.</p>
 <h2 id="authentication-and-authorization">Authentication and Authorization</h2>
 <h3 id="authentication">Authentication</h3>
 <p>SPIRE provides strong, cryptographically verifiable identities (SPIFFE IDs) to every

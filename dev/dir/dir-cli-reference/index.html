@@ -2246,6 +2246,17 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
+  <a href="#security-scanning" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Security Scanning
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#name-verification" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -3097,6 +3108,17 @@
   
     <nav class="md-nav" aria-label="Security &amp; Verification">
       <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#security-scanning" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Security Scanning
+      
+    </span>
+  </a>
+  
+</li>
         
           <li class="md-nav__item">
   <a href="#name-verification" class="md-nav__link">
@@ -3972,10 +3994,38 @@ dirctl<span class="w"> </span>pull<span class="w"> </span>cisco.com/agent:v1.0.0
 
 <span class="c1"># Pull signature and public-key referrer artifacts from the server</span>
 dirctl<span class="w"> </span>pull<span class="w"> </span>&lt;cid&gt;<span class="w"> </span>--signature<span class="w"> </span>--public-key
+
+<span class="c1"># Pull security scan reports for the record</span>
+dirctl<span class="w"> </span>pull<span class="w"> </span>&lt;cid&gt;<span class="w"> </span>--scan-report
 </code></pre></div>
 </details>
 <p><strong>Output and batch retrieval:</strong></p>
 <p><code>pull</code> defaults to <code>--output json</code> (records are primarily machine-consumed); <code>-o human|jsonl|raw</code> are also available. Use <code>--output-file</code> to write a single record's JSON to a file, or <code>--output-dir</code> with search filters to pull many records at once (one <code>&lt;name&gt;.json</code> per record).</p>
+<p><strong>Referrer flags</strong> — these extend the output with OCI referrer artifacts attached to the record:</p>
+<table>
+<thead>
+<tr>
+<th>Flag</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>--public-key</code></td>
+<td>Include the public key referrer attached to the record</td>
+</tr>
+<tr>
+<td><code>--signature</code></td>
+<td>Include the signature referrer attached to the record</td>
+</tr>
+<tr>
+<td><code>--scan-report</code></td>
+<td>Include security scan reports for the record</td>
+</tr>
+</tbody>
+</table>
+<p>When any referrer flag is set, the response is a structured JSON object with a <code>record</code> key and one or more of <code>publicKeys</code>, <code>signatures</code>, <code>scanReports</code>.</p>
+<p><strong>Output and batch retrieval:</strong></p>
 <table>
 <thead>
 <tr>
@@ -4716,7 +4766,15 @@ dirctl<span class="w"> </span>routing<span class="w"> </span>info
 </tr>
 <tr>
 <td><code>--trusted</code></td>
-<td>Only trusted records</td>
+<td>Only trusted records (signature verification passed)</td>
+</tr>
+<tr>
+<td><code>--safe</code></td>
+<td>Only records where all security scanners reported <code>is_safe=true</code></td>
+</tr>
+<tr>
+<td><code>--scan-severity</code></td>
+<td>Only records whose highest scan severity meets or exceeds a threshold (<code>NONE</code>, <code>INFO</code>, <code>LOW</code>, <code>MEDIUM</code>, <code>HIGH</code>, <code>CRITICAL</code>)</td>
 </tr>
 </tbody>
 </table>
@@ -4764,9 +4822,71 @@ dirctl<span class="w"> </span>search<span class="w"> </span>--limit<span class="
 <span class="w">  </span>--skill<span class="w"> </span><span class="s2">&quot;Text Completion&quot;</span><span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--locator<span class="w"> </span>docker-image<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--format<span class="w"> </span>record
+
+<span class="c1"># Security scan filters</span>
+dirctl<span class="w"> </span>search<span class="w"> </span>--safe
+dirctl<span class="w"> </span>search<span class="w"> </span>--scan-severity<span class="w"> </span>HIGH
+dirctl<span class="w"> </span>search<span class="w"> </span>--safe<span class="w"> </span>--scan-severity<span class="w"> </span>MEDIUM
 </code></pre></div>
 </details>
 <h2 id="security-verification">Security &amp; Verification</h2>
+<h3 id="security-scanning">Security Scanning</h3>
+<p>The Directory reconciler automatically runs security scanners against records and stores the results as OCI referrers. Scan results are indexed in the local database so they can be queried as search filters. Two scanners are supported: <a href="https://cisco-ai-defense.github.io/docs/mcp-scanner">mcp-scanner</a> for MCP server source code and <a href="https://cisco-ai-defense.github.io/docs/skill-scanner">skill-scanner</a> for agent skill bundles.</p>
+<p><strong>Pull scan reports for a record:</strong></p>
+<div class="highlight"><pre><span></span><code>dirctl<span class="w"> </span>pull<span class="w"> </span>&lt;cid&gt;<span class="w"> </span>--scan-report
+</code></pre></div>
+<p>The response includes a <code>scanReports</code> array. Each entry covers one scanner type and contains:</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>scanner_type</code></td>
+<td>Scanner that produced this report (<code>SCANNER_TYPE_MCP</code>, <code>SCANNER_TYPE_SKILL</code>)</td>
+</tr>
+<tr>
+<td><code>scanner_version</code></td>
+<td>Version of the scanner binary</td>
+</tr>
+<tr>
+<td><code>scanned_at</code></td>
+<td>RFC 3339 timestamp of when the scan ran</td>
+</tr>
+<tr>
+<td><code>is_safe</code></td>
+<td><code>true</code> if the scanner found no security issues</td>
+</tr>
+<tr>
+<td><code>max_severity</code></td>
+<td>Highest severity across all findings (<code>SEVERITY_NONE</code>, <code>SEVERITY_INFO</code>, <code>SEVERITY_MEDIUM</code>, <code>SEVERITY_HIGH</code>, <code>SEVERITY_CRITICAL</code>)</td>
+</tr>
+<tr>
+<td><code>analyzers</code></td>
+<td>Analyzer modules that were invoked</td>
+</tr>
+<tr>
+<td><code>findings</code></td>
+<td>List of individual findings (rule ID, severity, message, location, remediation)</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Filter records by scan status:</strong></p>
+<div class="highlight"><pre><span></span><code><span class="c1"># Records where all scanners reported is_safe=true</span>
+dirctl<span class="w"> </span>search<span class="w"> </span>--safe
+
+<span class="c1"># Records whose highest severity meets or exceeds a threshold</span>
+dirctl<span class="w"> </span>search<span class="w"> </span>--scan-severity<span class="w"> </span>HIGH
+dirctl<span class="w"> </span>search<span class="w"> </span>--scan-severity<span class="w"> </span>MEDIUM
+
+<span class="c1"># Combine with other filters</span>
+dirctl<span class="w"> </span>search<span class="w"> </span>--name<span class="w"> </span><span class="s2">&quot;cisco.com/*&quot;</span><span class="w"> </span>--safe
+dirctl<span class="w"> </span>search<span class="w"> </span>--safe<span class="w"> </span>--scan-severity<span class="w"> </span>MEDIUM
+</code></pre></div>
+<p>A record appears in <code>--safe</code> results only when at least one scanner has run and no scanner has reported <code>is_safe=false</code>. Records where all scanners were skipped (no source repo, no skill bundle) are not included.</p>
 <h3 id="name-verification">Name Verification</h3>
 <p>Record name verification proves that the signing key is authorized by the domain claimed in the record's name field.</p>
 <p><strong>Requirements:</strong></p>
