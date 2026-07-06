@@ -36,6 +36,20 @@ only page on the docs site with CLI installation instructions.
     docker run --rm ghcr.io/agntcy/dir-ctl:latest --help
     ```
 
+## Set up your environment
+
+Run the guided first-run setup once after installing. It provisions the OASF
+taxonomy extractor (a ~89 MB model plus the taxonomy) for local, LLM-free record
+enrichment and future free-text search:
+
+```bash
+dirctl init
+```
+
+In an interactive terminal the prompt defaults to yes — press Enter to provision.
+In non-interactive contexts (CI, pipes) pass `--yes`. See the
+[CLI reference](dir-cli-reference.md#dirctl-init-flags) for flags and `--remove`.
+
 ## Start a local node
 
 The built-in daemon runs a full local Directory node with no external dependencies:
