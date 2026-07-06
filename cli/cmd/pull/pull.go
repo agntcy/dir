@@ -9,6 +9,7 @@ import (
 	"fmt"
 
 	corev1 "github.com/agntcy/dir/api/core/v1"
+	securityv1 "github.com/agntcy/dir/api/security/v1"
 	signv1 "github.com/agntcy/dir/api/sign/v1"
 	storev1 "github.com/agntcy/dir/api/store/v1"
 	"github.com/agntcy/dir/cli/cmd/search"
@@ -64,7 +65,11 @@ Usage examples:
 
 	dirctl pull <cid-or-name> --signature
 
-7. Output formats:
+7. Pull with security scan report:
+
+	dirctl pull <cid-or-name> --scan-report
+
+8. Output formats:
 
 	# Get record as JSON
 	dirctl pull <cid-or-name> --output json
@@ -116,7 +121,7 @@ func runCommand(cmd *cobra.Command, c *client.Client, input string) error {
 		return fmt.Errorf("failed to pull data: %w", err)
 	}
 
-	if !opts.PublicKey && !opts.Signature {
+	if !opts.PublicKey && !opts.Signature && !opts.ScanReport {
 		// Handle different output formats
 		return outputSingle(cmd, "Record data", record.GetData())
 	}
@@ -175,6 +180,31 @@ func runCommand(cmd *cobra.Command, c *client.Client, input string) error {
 		}
 	}
 
+	scanReports := make([]*securityv1.ScanReport, 0)
+
+	if opts.ScanReport {
+		scanReportType := corev1.ScanReportReferrerType
+
+		responses, err := c.PullReferrer(cmd.Context(), &storev1.PullReferrerRequest{
+			RecordRef: &corev1.RecordRef{
+				Cid: recordCID,
+			},
+			ReferrerType: &scanReportType,
+		})
+		if err != nil {
+			return fmt.Errorf("failed to pull scan results: %w", err)
+		}
+
+		for _, response := range responses {
+			report := &securityv1.ScanReport{}
+			if err := report.UnmarshalReferrer(response.GetReferrer()); err != nil {
+				return fmt.Errorf("failed to decode scan report from referrer: %w", err)
+			}
+
+			scanReports = append(scanReports, report)
+		}
+	}
+
 	// Create structured data object
 	structuredData := map[string]any{
 		"record": map[string]any{
@@ -206,8 +236,39 @@ func runCommand(cmd *cobra.Command, c *client.Client, input string) error {
 		structuredData["signatures"] = signatureData
 	}
 
+	// Add scan reports if any
+	if len(scanReports) > 0 {
+		scanData := make([]map[string]any, len(scanReports))
+		for i, r := range scanReports {
+			findings := make([]map[string]any, len(r.GetFindings()))
+			for j, f := range r.GetFindings() {
+				findings[j] = map[string]any{
+					"rule_id":     f.GetRuleId(),
+					"severity":    f.GetSeverity().String(),
+					"message":     f.GetMessage(),
+					"location":    f.GetLocation(),
+					"category":    f.GetCategory(),
+					"remediation": f.GetRemediation(),
+				}
+			}
+
+			scanData[i] = map[string]any{
+				"scanner_type":    r.GetScannerType().String(),
+				"scanner_version": r.GetScannerVersion(),
+				"scanned_at":      r.GetScannedAt(),
+				"is_safe":         r.GetIsSafe(),
+				"max_severity":    r.GetMaxSeverity().String(),
+				"findings":        findings,
+				"analyzers":       r.GetAnalyzers(),
+				"annotations":     r.GetAnnotations(),
+			}
+		}
+
+		structuredData["scanReports"] = scanData
+	}
+
 	// Output the structured data
-	return outputSingle(cmd, "Record data with keys and signatures", structuredData)
+	return outputSingle(cmd, "Record data", structuredData)
 }
 
 // outputSingle writes a single record's value to --output-file (as JSON) when
