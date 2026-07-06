@@ -137,6 +137,9 @@ nav:
               - Best Practices and Troubleshooting: dir/dir-federation-troubleshooting.md
       - SDKs:
           - SDK Overview: dir/dir-sdk.md
+          - Go SDK: dir/dir-sdk-go.md
+          - Python SDK: dir/dir-sdk-python.md
+          - JavaScript / TypeScript SDK: dir/dir-sdk-javascript.md
       - Reference:
           - CLI Reference: dir/dir-cli-reference.md
           - API Reference: dir/dir-api-reference.md
