@@ -604,6 +604,71 @@ func writeConfig(t *testing.T, content string) string {
 	return path
 }
 
+func TestExtractorRoundTrip(t *testing.T) {
+	t.Setenv("XDG_CONFIG_HOME", filepath.Join(t.TempDir(), "xdg"))
+
+	path, err := DefaultPath()
+	require.NoError(t, err)
+
+	// Save on a machine with no config file yet.
+	require.NoError(t, SaveExtractor(path, &Extractor{
+		OASFURL:  "https://schema.oasf.outshift.com",
+		AssetDir: "/home/u/.agntcy/oasf-sdk/extractor",
+	}))
+
+	got, err := LoadExtractor(path)
+	require.NoError(t, err)
+	require.NotNil(t, got)
+	assert.Equal(t, "https://schema.oasf.outshift.com", got.OASFURL)
+	assert.Equal(t, "/home/u/.agntcy/oasf-sdk/extractor", got.AssetDir)
+
+	// Clear removes the section but keeps the file loadable.
+	require.NoError(t, ClearExtractor(path))
+	got, err = LoadExtractor(path)
+	require.NoError(t, err)
+	assert.Nil(t, got)
+}
+
+func TestLoadExtractorAbsentFile(t *testing.T) {
+	got, err := LoadExtractor(filepath.Join(t.TempDir(), "nope.yaml"))
+	require.NoError(t, err)
+	assert.Nil(t, got)
+}
+
+func TestClearExtractorAbsentFileDoesNotCreateFile(t *testing.T) {
+	t.Setenv("XDG_CONFIG_HOME", filepath.Join(t.TempDir(), "xdg"))
+
+	path, err := DefaultPath()
+	require.NoError(t, err)
+
+	// Clearing when no config exists must be a genuine no-op (matches how the
+	// command calls it: ClearExtractor("")).
+	require.NoError(t, ClearExtractor(""))
+
+	_, statErr := os.Stat(path)
+	assert.True(t, os.IsNotExist(statErr), "ClearExtractor must not create a config file when none exists")
+}
+
+func TestSaveExtractorPreservesContexts(t *testing.T) {
+	path := writeConfig(t, `
+current_context: dev
+contexts:
+  dev:
+    server_address: dev.example.com:443
+`)
+	require.NoError(t, SaveExtractor(path, &Extractor{
+		OASFURL:  "https://schema.oasf.outshift.com",
+		AssetDir: "/assets",
+	}))
+
+	file, err := LoadFile(path)
+	require.NoError(t, err)
+	assert.Equal(t, "dev", file.CurrentContext)
+	require.Contains(t, file.Contexts, "dev")
+	require.NotNil(t, file.Extractor)
+	assert.Equal(t, "https://schema.oasf.outshift.com", file.Extractor.OASFURL)
+}
+
 func resetClientEnv(t *testing.T) {
 	t.Helper()
 

@@ -34,6 +34,15 @@ const (
 type File struct {
 	CurrentContext string             `yaml:"current_context"`
 	Contexts       map[string]Context `yaml:"contexts"`
+	Extractor      *Extractor         `yaml:"extractor,omitempty"`
+}
+
+// Extractor is the machine-wide OASF taxonomy extractor provisioning record,
+// written by `dirctl init` so import/search consumers can load the provisioned
+// assets in-process without re-choosing the endpoint or asset location.
+type Extractor struct {
+	OASFURL  string `yaml:"oasf_url"`
+	AssetDir string `yaml:"asset_dir"`
 }
 
 // Context is a named client configuration block.
@@ -370,6 +379,63 @@ func SaveFile(path string, file *File) error {
 	}
 
 	return nil
+}
+
+// LoadExtractor returns the persisted machine-wide extractor section, or nil
+// when it is unset or the config file does not exist.
+func LoadExtractor(path string) (*Extractor, error) {
+	resolvedPath, _, err := resolvePath(path)
+	if err != nil {
+		return nil, err
+	}
+
+	file, err := loadOptionalFile(resolvedPath, false, true)
+	if err != nil {
+		return nil, err
+	}
+
+	return file.Extractor, nil
+}
+
+// SaveExtractor persists the machine-wide extractor section, preserving all
+// other config (contexts, current_context).
+func SaveExtractor(path string, e *Extractor) error {
+	resolvedPath, _, err := resolvePath(path)
+	if err != nil {
+		return err
+	}
+
+	file, err := loadOptionalFile(resolvedPath, false, true)
+	if err != nil {
+		return err
+	}
+
+	file.Extractor = e
+
+	return SaveFile(resolvedPath, file)
+}
+
+// ClearExtractor removes the machine-wide extractor section, preserving all
+// other config. It is a genuine no-op when the section is already absent (or no
+// config file exists): it does not create or rewrite the file in that case.
+func ClearExtractor(path string) error {
+	resolvedPath, explicitPath, err := resolvePath(path)
+	if err != nil {
+		return err
+	}
+
+	file, err := loadOptionalFile(resolvedPath, explicitPath, true)
+	if err != nil {
+		return err
+	}
+
+	if file.Extractor == nil {
+		return nil
+	}
+
+	file.Extractor = nil
+
+	return SaveFile(resolvedPath, file)
 }
 
 // ValidateContexts validates stored context definitions without applying environment overrides.

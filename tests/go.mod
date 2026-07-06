@@ -39,9 +39,15 @@ require (
 	github.com/fluxcd/cli-utils v1.2.0 // indirect
 	github.com/go-openapi/runtime/server-middleware v0.30.0 // indirect
 	github.com/gofrs/flock v0.13.0 // indirect
+	github.com/google/flatbuffers v25.2.10+incompatible // indirect
 	github.com/google/go-github/v88 v88.0.0 // indirect
 	github.com/ianlancetaylor/demangle v0.0.0-20250417193237-f615e6bd150b // indirect
 	github.com/mitchellh/mapstructure v1.5.1-0.20231216201459-8508981c8b6c // indirect
+	github.com/nlpodyssey/cybertron v0.2.1 // indirect
+	github.com/nlpodyssey/gopickle v0.2.0 // indirect
+	github.com/nlpodyssey/gotokenizers v0.2.0 // indirect
+	github.com/nlpodyssey/spago v1.1.0 // indirect
+	github.com/rs/zerolog v1.31.0 // indirect
 	github.com/tetratelabs/wabin v0.0.0-20230304001439-f6f874872834 // indirect
 	github.com/youmark/pkcs8 v0.0.0-20240726163527-a2c0da244d78 // indirect
 	gopkg.in/ini.v1 v1.67.2 // indirect
@@ -104,7 +110,7 @@ require (
 	github.com/agntcy/dir/reconciler v1.5.0 // indirect
 	github.com/agntcy/dir/server v1.5.0
 	github.com/agntcy/dir/utils v1.5.0 // indirect
-	github.com/agntcy/oasf-sdk/pkg v1.0.6-0.20260629100853-cc016581c7f5 // indirect
+	github.com/agntcy/oasf-sdk/pkg v1.0.6-0.20260702111004-a058446d13b7 // indirect
 	github.com/alecthomas/chroma v0.10.0 // indirect
 	github.com/anchore/go-struct-converter v0.1.0 // indirect
 	github.com/antlr4-go/antlr/v4 v4.13.1 // indirect
