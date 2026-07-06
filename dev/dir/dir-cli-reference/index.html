@@ -1745,6 +1745,34 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#setup" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Setup
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Setup">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#dirctl-init-flags" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        dirctl init [flags]
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#diagnostics" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2609,6 +2637,34 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#setup" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Setup
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Setup">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#dirctl-init-flags" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        dirctl init [flags]
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#diagnostics" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -3440,6 +3496,10 @@ explicit <code>--auth-mode</code>.</p>
 </thead>
 <tbody>
 <tr>
+<td>Setup</td>
+<td><code>init</code></td>
+</tr>
+<tr>
 <td>Daemon</td>
 <td><code>daemon start</code>, <code>stop</code>, <code>status</code></td>
 </tr>
@@ -3497,6 +3557,64 @@ explicit <code>--auth-mode</code>.</p>
 <div class="highlight"><pre><span></span><code>dirctl<span class="w"> </span>--help
 dirctl<span class="w"> </span>routing<span class="w"> </span>--help
 dirctl<span class="w"> </span>routing<span class="w"> </span>search<span class="w"> </span>--help
+</code></pre></div>
+<h2 id="setup">Setup</h2>
+<h3 id="dirctl-init-flags"><code>dirctl init [flags]</code></h3>
+<p>Guided first-run setup for a new environment — run it once after installing
+<code>dirctl</code>. It provisions the <strong>OASF taxonomy extractor</strong>: a small
+sentence-transformer model (<code>all-MiniLM-L6-v2</code>, ~89 MB) plus the OASF taxonomy,
+downloaded to a local asset directory. Those assets power local, <strong>LLM-free</strong>
+record enrichment (and, in future, free-text search) that runs in-process — no
+Python, no external inference service, no LLM API. The chosen OASF endpoint and
+asset directory are saved to the <code>dirctl</code> config so other commands load the
+provisioned assets automatically.</p>
+<p>Provisioning is <strong>opt-out</strong> in an interactive terminal — the prompt defaults to
+yes, so pressing Enter provisions. To avoid an unattended ~89 MB download, a
+<strong>non-interactive</strong> run (no TTY, e.g. CI or a pipe) skips unless you pass
+<code>--yes</code>. Re-running is idempotent: nothing is re-downloaded when the assets are
+present and current, and the taxonomy is re-embedded only when it changed.</p>
+<table>
+<thead>
+<tr>
+<th>Flag</th>
+<th>Description</th>
+<th>Default</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>--oasf-url</code></td>
+<td>OASF schema endpoint to pull the taxonomy from</td>
+<td><code>https://schema.oasf.outshift.com</code></td>
+</tr>
+<tr>
+<td><code>--asset-dir</code></td>
+<td>Local directory for the provisioned assets</td>
+<td><code>~/.agntcy/oasf-sdk/extractor</code></td>
+</tr>
+<tr>
+<td><code>--yes</code> / <code>-y</code></td>
+<td>Provision without prompting (required for non-interactive runs)</td>
+<td><code>false</code></td>
+</tr>
+<tr>
+<td><code>--remove</code></td>
+<td>Remove the provisioned assets and clear the saved config</td>
+<td><code>false</code></td>
+</tr>
+</tbody>
+</table>
+<div class="highlight"><pre><span></span><code><span class="c1"># Interactive setup (prompts; Enter accepts)</span>
+dirctl<span class="w"> </span>init
+
+<span class="c1"># Non-interactive (CI): provision with defaults</span>
+dirctl<span class="w"> </span>init<span class="w"> </span>--yes
+
+<span class="c1"># Provision from a local OASF instance</span>
+dirctl<span class="w"> </span>init<span class="w"> </span>--oasf-url<span class="w"> </span>http://localhost:8080<span class="w"> </span>--yes
+
+<span class="c1"># Tear down what init provisioned</span>
+dirctl<span class="w"> </span>init<span class="w"> </span>--remove<span class="w"> </span>--yes
 </code></pre></div>
 <h2 id="diagnostics">Diagnostics</h2>
 <h3 id="dirctl-doctor-flags"><code>dirctl doctor [flags]</code></h3>
