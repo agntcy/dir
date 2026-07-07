@@ -415,6 +415,29 @@ func SaveExtractor(path string, e *Extractor) error {
 	return SaveFile(resolvedPath, file)
 }
 
+// SaveContext adds or replaces a named context, preserving all other config. When
+// setCurrent is true it also marks that context as current_context. Callers that
+// must not overwrite an existing context should check first (e.g. ListContexts).
+func SaveContext(path string, name string, ctx Context, setCurrent bool) error {
+	resolvedPath, _, err := resolvePath(path)
+	if err != nil {
+		return err
+	}
+
+	file, err := loadOptionalFile(resolvedPath, false, true)
+	if err != nil {
+		return err
+	}
+
+	file.Contexts[name] = ctx
+
+	if setCurrent {
+		file.CurrentContext = name
+	}
+
+	return SaveFile(resolvedPath, file)
+}
+
 // ClearExtractor removes the machine-wide extractor section, preserving all
 // other config. It is a genuine no-op when the section is already absent (or no
 // config file exists): it does not create or rewrite the file in that case.
