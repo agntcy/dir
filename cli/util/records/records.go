@@ -73,6 +73,13 @@ func SanitizeName(name string) string {
 	return r.Replace(name)
 }
 
+// SanitizeSlug is SanitizeName with leading/trailing dots and hyphens trimmed so
+// a slug cannot be "." or ".." or escape a parent directory when used as a path
+// component.
+func SanitizeSlug(name string) string {
+	return strings.Trim(SanitizeName(name), "-.")
+}
+
 // LatestByName deduplicates records by name, keeping the highest semver version
 // for each unique name while preserving first-seen order.
 func LatestByName(records []*corev1.Record) []*corev1.Record {

@@ -9,6 +9,8 @@ import (
 	"github.com/agntcy/dir/cli/internal/agentcfg"
 )
 
+const skillBundleFolderOnlyReason = "skill bundle requires a multi-file skills directory; this agent only supports single instruction files"
+
 // runInstall applies the record's artifacts to the selected agents, one outcome
 // per touched artifact. Errors on one agent never abort the rest.
 func runInstall(env agentcfg.Env, arts artifacts, agents []agentcfg.Agent, dryRun bool) []agentcfg.Outcome {
@@ -26,12 +28,29 @@ func runInstall(env agentcfg.Env, arts artifacts, agents []agentcfg.Agent, dryRu
 			}
 		}
 
-		if agent.Skill != nil && arts.skill != "" {
+		if agent.Skill != nil && arts.hasSkill() {
+			if arts.hasSkillBundle() && agent.Skill.Strategy != agentcfg.SkillFolder {
+				outcomes = append(outcomes, agentcfg.Outcome{
+					Agent:    agent.Name,
+					Artifact: "skill",
+					Action:   agentcfg.ActionSkipped,
+					Reason:   skillBundleFolderOnlyReason,
+				})
+
+				continue
+			}
+
 			if dedupeSkill(seenSkill, agent.Skill, env, arts.slug) {
 				continue
 			}
 
-			o, _ := agentcfg.InstallSkill(agent.Skill, env, arts.slug, arts.skill, dryRun)
+			var o agentcfg.Outcome
+			if arts.hasSkillBundle() {
+				o, _ = agentcfg.InstallSkillBundle(agent.Skill, env, arts.slug, arts.skillBundle, dryRun)
+			} else {
+				o, _ = agentcfg.InstallSkill(agent.Skill, env, arts.slug, arts.skill, dryRun)
+			}
+
 			o.Agent = agent.Name
 			outcomes = append(outcomes, o)
 		}
@@ -55,7 +74,11 @@ func runUninstall(env agentcfg.Env, arts artifacts, agents []agentcfg.Agent, dry
 			}
 		}
 
-		if agent.Skill != nil && arts.skill != "" {
+		if agent.Skill != nil && arts.hasSkill() {
+			if arts.hasSkillBundle() && agent.Skill.Strategy != agentcfg.SkillFolder {
+				continue
+			}
+
 			if dedupeSkill(seenSkill, agent.Skill, env, arts.slug) {
 				continue
 			}

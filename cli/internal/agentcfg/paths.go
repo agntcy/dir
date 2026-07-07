@@ -161,7 +161,7 @@ func claudeCodeSkillPath(env Env, slug string) (string, error) {
 	return filepath.Join(env.Home, ".claude", "skills", slug, "SKILL.md"), nil
 }
 
-func zedSkillPath(env Env, slug string) (string, error) {
+func zedUserSkillPath(env Env, slug string) (string, error) {
 	if err := requireHome(env); err != nil {
 		return "", err
 	}
@@ -169,42 +169,76 @@ func zedSkillPath(env Env, slug string) (string, error) {
 	return filepath.Join(env.Home, ".agents", "skills", slug, "SKILL.md"), nil
 }
 
-func copilotSkillPath(env Env, slug string) (string, error) {
-	if err := requireHome(env); err != nil {
-		return "", err
+func zedProjectSkillPath(env Env, slug string) (string, error) {
+	if env.Cwd == "" {
+		return "", fmt.Errorf("cannot determine current directory for Zed project skill")
 	}
 
-	return filepath.Join(vscodeUserDir(env), "prompts", slug+".instructions.md"), nil
+	return filepath.Join(env.Cwd, ".agents", "skills", slug, "SKILL.md"), nil
 }
 
-func windsurfSkillPath(env Env, _ string) (string, error) {
+func copilotUserSkillPath(env Env, slug string) (string, error) {
 	if err := requireHome(env); err != nil {
 		return "", err
 	}
 
-	return filepath.Join(env.Home, ".codeium", "windsurf", "memories", "global_rules.md"), nil
+	return filepath.Join(env.Home, ".copilot", "skills", slug, "SKILL.md"), nil
 }
 
-func clineSkillPath(env Env, slug string) (string, error) {
-	if err := requireHome(env); err != nil {
-		return "", err
+func copilotProjectSkillPath(env Env, slug string) (string, error) {
+	if env.Cwd == "" {
+		return "", fmt.Errorf("cannot determine current directory for Copilot project skill")
 	}
 
-	// Cline reads global rules from ~/Documents/Cline/Rules on macOS/Windows and
-	// ~/Cline/Rules on Linux.
-	if env.GOOS == "linux" {
-		return filepath.Join(env.Home, "Cline", "Rules", slug+".md"), nil
-	}
-
-	return filepath.Join(env.Home, "Documents", "Cline", "Rules", slug+".md"), nil
+	return filepath.Join(env.Cwd, ".github", "skills", slug, "SKILL.md"), nil
 }
 
-func rooSkillPath(env Env, slug string) (string, error) {
+func windsurfUserSkillPath(env Env, slug string) (string, error) {
 	if err := requireHome(env); err != nil {
 		return "", err
 	}
 
-	return filepath.Join(env.Home, ".roo", "rules", slug+".md"), nil
+	return filepath.Join(env.Home, ".codeium", "windsurf", "skills", slug, "SKILL.md"), nil
+}
+
+func windsurfProjectSkillPath(env Env, slug string) (string, error) {
+	if env.Cwd == "" {
+		return "", fmt.Errorf("cannot determine current directory for Windsurf project skill")
+	}
+
+	return filepath.Join(env.Cwd, ".windsurf", "skills", slug, "SKILL.md"), nil
+}
+
+func clineUserSkillPath(env Env, slug string) (string, error) {
+	if err := requireHome(env); err != nil {
+		return "", err
+	}
+
+	return filepath.Join(env.Home, ".cline", "skills", slug, "SKILL.md"), nil
+}
+
+func clineProjectSkillPath(env Env, slug string) (string, error) {
+	if env.Cwd == "" {
+		return "", fmt.Errorf("cannot determine current directory for Cline project skill")
+	}
+
+	return filepath.Join(env.Cwd, ".cline", "skills", slug, "SKILL.md"), nil
+}
+
+func rooUserSkillPath(env Env, slug string) (string, error) {
+	if err := requireHome(env); err != nil {
+		return "", err
+	}
+
+	return filepath.Join(env.Home, ".roo", "skills", slug, "SKILL.md"), nil
+}
+
+func rooProjectSkillPath(env Env, slug string) (string, error) {
+	if env.Cwd == "" {
+		return "", fmt.Errorf("cannot determine current directory for Roo Code project skill")
+	}
+
+	return filepath.Join(env.Cwd, ".roo", "skills", slug, "SKILL.md"), nil
 }
 
 func continueSkillPath(env Env, slug string) (string, error) {
@@ -215,42 +249,68 @@ func continueSkillPath(env Env, slug string) (string, error) {
 	return filepath.Join(env.Home, ".continue", "rules", slug+".md"), nil
 }
 
-func geminiSkillPath(env Env, _ string) (string, error) {
+func geminiUserSkillPath(env Env, slug string) (string, error) {
 	if err := requireHome(env); err != nil {
 		return "", err
 	}
 
-	return filepath.Join(env.Home, ".gemini", "GEMINI.md"), nil
+	return filepath.Join(env.Home, ".gemini", "skills", slug, "SKILL.md"), nil
 }
 
-func codexSkillPath(env Env, _ string) (string, error) {
+func geminiProjectSkillPath(env Env, slug string) (string, error) {
+	if env.Cwd == "" {
+		return "", fmt.Errorf("cannot determine current directory for Gemini CLI project skill")
+	}
+
+	return filepath.Join(env.Cwd, ".gemini", "skills", slug, "SKILL.md"), nil
+}
+
+func codexUserSkillPath(env Env, slug string) (string, error) {
 	if err := requireHome(env); err != nil {
 		return "", err
 	}
 
-	return filepath.Join(env.Home, ".codex", "AGENTS.md"), nil
+	return filepath.Join(env.Home, ".agents", "skills", slug, "SKILL.md"), nil
 }
 
-func opencodeSkillPath(env Env, _ string) (string, error) {
+func codexProjectSkillPath(env Env, slug string) (string, error) {
+	if env.Cwd == "" {
+		return "", fmt.Errorf("cannot determine current directory for Codex CLI project skill")
+	}
+
+	return filepath.Join(env.Cwd, ".agents", "skills", slug, "SKILL.md"), nil
+}
+
+func opencodeUserSkillPath(env Env, slug string) (string, error) {
 	if err := requireHome(env); err != nil {
 		return "", err
 	}
 
-	return filepath.Join(env.Home, ".config", "opencode", "AGENTS.md"), nil
+	return filepath.Join(env.Home, ".config", "opencode", "skills", slug, "SKILL.md"), nil
 }
 
-// cursorNoGlobalSkill signals that Cursor has no global rules mechanism, so the
-// engine falls back to the project path.
-func cursorNoGlobalSkill(_ Env, _ string) (string, error) {
-	return "", ErrNoGlobalPath
+func opencodeProjectSkillPath(env Env, slug string) (string, error) {
+	if env.Cwd == "" {
+		return "", fmt.Errorf("cannot determine current directory for OpenCode project skill")
+	}
+
+	return filepath.Join(env.Cwd, ".opencode", "skills", slug, "SKILL.md"), nil
+}
+
+func cursorUserSkillPath(env Env, slug string) (string, error) {
+	if err := requireHome(env); err != nil {
+		return "", err
+	}
+
+	return filepath.Join(env.Home, ".cursor", "skills", slug, "SKILL.md"), nil
 }
 
 func cursorProjectSkillPath(env Env, slug string) (string, error) {
 	if env.Cwd == "" {
-		return "", fmt.Errorf("cannot determine current directory for Cursor project rule")
+		return "", fmt.Errorf("cannot determine current directory for Cursor project skill")
 	}
 
-	return filepath.Join(env.Cwd, ".cursor", "rules", slug+".mdc"), nil
+	return filepath.Join(env.Cwd, ".cursor", "skills", slug, "SKILL.md"), nil
 }
 
 func codexMarker(env Env) (string, error)    { return filepath.Join(env.Home, ".codex"), nil }
