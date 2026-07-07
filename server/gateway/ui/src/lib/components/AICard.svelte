@@ -30,13 +30,13 @@
 >
 	<div class="flex items-start justify-between gap-3">
 		<div class="min-w-0">
-			<div class="flex items-center gap-1.5 min-w-0 flex-wrap">
+			<div class="flex items-center gap-1.5 min-w-0">
 				<h3 class="font-semibold text-ink-strong truncate">{aicard.displayName || 'Unnamed AI card'}</h3>
 				{#if verified}
 					<VerifiedBadge />
 				{/if}
 				{#if scanManifest}
-					<ScanBadge scan={scanManifest} />
+					<ScanBadge scan={scanManifest} iconOnly />
 				{/if}
 			</div>
 			<p class="text-xs text-ink-medium mt-0.5">

@@ -412,7 +412,7 @@ func injectScanManifest(entry *CatalogEntry, reports []ScanReportSummary) {
 		entry.Metadata = make(map[string]*structpb.Value)
 	}
 
-	entry.Metadata["scanManifest"] = val
+	entry.Metadata["agntcy.dir.security.v1.ScanResult"] = val
 }
 
 func objectToStruct(goObj proto.Message) (*structpb.Struct, error) {

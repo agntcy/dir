@@ -9,7 +9,7 @@ export function hasActiveClientFilters(criteria: AICardFilterCriteria): boolean 
 }
 
 export function getScanManifest(aicard: CatalogEntry): ScanManifest | null {
-	const sm = aicard.metadata?.scanManifest as ScanManifest | undefined;
+	const sm = aicard.metadata?.["agntcy.dir.security.v1.ScanResult"] as ScanManifest | undefined;
 	if (!sm || !Array.isArray(sm.reports) || sm.reports.length === 0) return null;
 	return sm;
 }

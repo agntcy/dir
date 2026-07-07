@@ -2,7 +2,7 @@
 	import type { CatalogEntry } from '$lib/types';
 	import { extractEntryTypes, extractShortTag, hasTrustManifest, getScanManifest, fakeStats, extractCid, exportFormatForType, extractEntryName, extractEntryVersion } from '$lib/utils';
 	import MediaTypeBadge from './MediaTypeBadge.svelte';
-	import ScanBadge from './ScanBadge.svelte';
+
 	import StarRating from './StarRating.svelte';
 	import VerifiedBadge from './VerifiedBadge.svelte';
 
@@ -209,20 +209,28 @@
 			<!-- Security scan -->
 			{#if scanManifest}
 				{@const sm = scanManifest}
-				<div class="rounded-card border border-line p-4" class:bg-emerald-50={sm.isSafe} class:bg-red-50={!sm.isSafe}>
-					<div class="flex items-center gap-2 mb-3">
-						<ScanBadge scan={sm} />
-						<span class="font-semibold text-sm text-ink-strong">Security Scan Results</span>
-					</div>
-					<div class="space-y-2">
+				<div>
+					<span class="font-semibold text-ink-strong text-sm mb-2 block">Scanner Details</span>
+					<div class="rounded-card border border-line p-3 space-y-1">
 						{#each sm.reports as report}
-							<div class="flex items-center justify-between text-sm border-t border-line/70 pt-2">
+							{@const sev = report.maxSeverity || 'NONE'}
+							{@const sevLabel = sev.charAt(0) + sev.slice(1).toLowerCase()}
+							{@const sevClass = sev === 'CRITICAL' ? 'text-red-600' : sev === 'HIGH' ? 'text-orange-600' : sev === 'MEDIUM' ? 'text-amber-600' : sev === 'LOW' ? 'text-blue-600' : 'text-emerald-600'}
+							<div class="flex items-center justify-between text-sm border-t border-line/70 pt-2 first:border-t-0 first:pt-0">
 								<span class="font-medium text-ink capitalize">{report.scannerType.toLowerCase()} scanner</span>
 								<div class="flex items-center gap-2">
 									{#if report.isSafe}
-										<span class="text-emerald-600 font-semibold text-xs">Safe</span>
+										<span class="font-semibold text-xs">
+											<span class="text-emerald-600">Safe</span>
+											<span class="text-ink-weak mx-0.5">&middot;</span>
+											<span class="{sevClass}">{sevLabel} severity</span>
+										</span>
 									{:else}
-										<span class="text-red-600 font-semibold text-xs">{report.maxSeverity}</span>
+										<span class="font-semibold text-xs">
+											<span class="text-red-600">Issues</span>
+											<span class="text-ink-weak mx-0.5">&middot;</span>
+											<span class="{sevClass}">{sevLabel} severity</span>
+										</span>
 									{/if}
 									{#if report.updatedAt}
 										<span class="text-xs text-ink-weak">{new Date(report.updatedAt).toLocaleDateString()}</span>
