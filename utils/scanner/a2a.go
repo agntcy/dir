@@ -227,7 +227,7 @@ func parseA2AOutput(raw []byte) (*ScanResult, error) {
 
 	for _, f := range result.Findings {
 		findings = append(findings, Finding{
-			Severity: mapA2ASeverity(f.Severity),
+			Severity: mapScannerSeverity(f.Severity),
 			Message:  fmt.Sprintf("[%s] %s: %s", f.RuleID, f.Category, f.Description),
 		})
 	}
@@ -242,15 +242,4 @@ func trimToA2AJSON(raw []byte) []byte {
 	}
 
 	return raw
-}
-
-func mapA2ASeverity(s string) FindingSeverity {
-	switch strings.ToUpper(s) {
-	case "CRITICAL", "HIGH":
-		return SeverityError
-	case "MEDIUM":
-		return SeverityWarning
-	default:
-		return SeverityInfo
-	}
 }

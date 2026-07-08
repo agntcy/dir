@@ -328,39 +328,6 @@ func TestTrimToA2AJSON_NoJSON(t *testing.T) {
 	}
 }
 
-// --- mapA2ASeverity ---
-
-func TestMapA2ASeverity(t *testing.T) {
-	t.Parallel()
-
-	cases := []struct {
-		input string
-		want  FindingSeverity
-	}{
-		{"CRITICAL", SeverityError},
-		{"critical", SeverityError},
-		{"HIGH", SeverityError},
-		{"high", SeverityError},
-		{"MEDIUM", SeverityWarning},
-		{"medium", SeverityWarning},
-		{"LOW", SeverityInfo},
-		{"low", SeverityInfo},
-		{"INFO", SeverityInfo},
-		{"UNKNOWN", SeverityInfo},
-		{"", SeverityInfo},
-	}
-
-	for _, tc := range cases {
-		t.Run(tc.input, func(t *testing.T) {
-			t.Parallel()
-
-			if got := mapA2ASeverity(tc.input); got != tc.want {
-				t.Errorf("mapA2ASeverity(%q) = %q, want %q", tc.input, got, tc.want)
-			}
-		})
-	}
-}
-
 // --- buildA2AScannerEnv ---
 
 func TestBuildA2AScannerEnv_ContainsParentEnv(t *testing.T) {
@@ -375,40 +342,7 @@ func TestBuildA2AScannerEnv_ContainsParentEnv(t *testing.T) {
 }
 
 func TestBuildA2AScannerEnv_MapsAzureVars(t *testing.T) {
-	t.Setenv("AZURE_OPENAI_API_KEY", "test-key")
-	t.Setenv("AZURE_OPENAI_BASE_URL", "https://openai.example.com")
-	t.Setenv("AZURE_OPENAI_DEPLOYMENT", "gpt-4o")
-	t.Setenv("AZURE_OPENAI_API_VERSION", "2024-08-01")
-
-	// Ensure A2A vars are absent so they get derived.
-	t.Setenv("A2A_SCANNER_LLM_API_KEY", "")
-	t.Setenv("A2A_SCANNER_LLM_BASE_URL", "")
-	t.Setenv("A2A_SCANNER_LLM_MODEL", "")
-	t.Setenv("A2A_SCANNER_LLM_API_VERSION", "")
-	t.Setenv("A2A_SCANNER_LLM_PROVIDER", "")
-
-	env := buildA2AScannerEnv()
-	envMap := make(map[string]string)
-
-	for _, e := range env {
-		if k, v, ok := splitEnvEntry(e); ok {
-			envMap[k] = v
-		}
-	}
-
-	cases := map[string]string{
-		"A2A_SCANNER_LLM_API_KEY":     "test-key",
-		"A2A_SCANNER_LLM_BASE_URL":    "https://openai.example.com",
-		"A2A_SCANNER_LLM_MODEL":       "azure/gpt-4o",
-		"A2A_SCANNER_LLM_API_VERSION": "2024-08-01",
-		"A2A_SCANNER_LLM_PROVIDER":    "openai-compatible",
-	}
-
-	for k, want := range cases {
-		if got := envMap[k]; got != want {
-			t.Errorf("env[%s] = %q, want %q", k, got, want)
-		}
-	}
+	testAzureEnvDerivation(t, "A2A_SCANNER", buildA2AScannerEnv)
 }
 
 func TestBuildA2AScannerEnv_ExistingA2AVarNotOverridden(t *testing.T) {
