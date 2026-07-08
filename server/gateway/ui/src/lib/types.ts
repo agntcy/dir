@@ -1,8 +1,22 @@
 export interface AICardFilterCriteria {
 	searchQuery: string;
 	mediaTypes: Set<string>;
-	statusFilter: string;
+	statusFilters: Set<string>; // 'trusted' | 'verified' — independently selectable
 	activeTags: Set<string>;
+	scanSafe: boolean; // true = show only records where all scanners report safe
+}
+
+export interface ScanReportSummary {
+	scannerType: string;
+	isSafe: boolean;
+	maxSeverity: string;
+	updatedAt?: string;
+}
+
+export interface ScanManifest {
+	isSafe: boolean;
+	maxSeverity: string;
+	reports: ScanReportSummary[];
 }
 
 export interface CatalogEntry {

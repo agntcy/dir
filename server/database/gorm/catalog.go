@@ -55,6 +55,7 @@ func (d *DB) GetCatalogEntries(opts ...types.FilterOption) ([]*catalogv1.Catalog
 		Preload("Domains").
 		Preload("Annotations").
 		Preload("Signatures").
+		Preload("ScanReports").
 		Limit(pageSize + 1)
 
 	if cfg.Offset > 0 {
@@ -83,6 +84,7 @@ func (d *DB) GetCatalogEntries(opts ...types.FilterOption) ([]*catalogv1.Catalog
 	for i := range records {
 		entry, err := catalogv1.RecordToCatalog(&records[i],
 			catalogv1.WithSignatures(convertSignatures(records[i].Signatures)),
+			catalogv1.WithScanReports(convertScanReports(records[i].ScanReports)),
 		)
 		if err != nil {
 			// Expected for records without a known catalog module.
@@ -95,6 +97,15 @@ func (d *DB) GetCatalogEntries(opts ...types.FilterOption) ([]*catalogv1.Catalog
 	}
 
 	return entries, hasMore, nil
+}
+
+func convertScanReports(reports []ScanReport) []catalogv1.ScanReportSummary {
+	result := make([]catalogv1.ScanReportSummary, len(reports))
+	for i := range reports {
+		result[i] = &reports[i]
+	}
+
+	return result
 }
 
 // applyCatalogOrder appends the allow-listed ORDER BY clauses plus a

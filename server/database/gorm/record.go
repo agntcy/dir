@@ -55,6 +55,7 @@ type Record struct {
 	Domains     []Domain                `gorm:"foreignKey:RecordCID;references:RecordCID;constraint:OnDelete:CASCADE"`
 	Annotations []Annotation            `gorm:"foreignKey:RecordCID;references:RecordCID;constraint:OnDelete:CASCADE"`
 	Signatures  []SignatureVerification `gorm:"foreignKey:RecordCID;references:RecordCID;constraint:OnDelete:CASCADE"`
+	ScanReports []ScanReport            `gorm:"foreignKey:RecordCID;references:RecordCID"`
 }
 
 func (r *Record) GetCid() string {
