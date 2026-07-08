@@ -131,10 +131,11 @@ func extractSourceCodeURL(locators []*typesv1.Locator) string {
 	return ""
 }
 
-// extractSubfolder walks modules[*].data.mcp_data.repository.subfolder.
+// extractSubfolder walks modules[*].data.repository.subfolder. A module's
+// data is itself the OASF mcp_data object, so repository sits directly under it.
 func extractSubfolder(modules []*typesv1.Module) string {
 	for _, mod := range modules {
-		sf := getNestedString(mod.GetData(), "mcp_data", "repository", "subfolder")
+		sf := getNestedString(mod.GetData(), "repository", "subfolder")
 		if sf != "" {
 			return sf
 		}

@@ -89,12 +89,12 @@ func TestExtractConnectionURLs_Nil(t *testing.T) {
 	}
 }
 
-func TestExtractConnectionURLs_NoMCPData(t *testing.T) {
+func TestExtractConnectionURLs_NoConnections(t *testing.T) {
 	t.Parallel()
 
 	data, _ := structpb.NewStruct(map[string]any{"other_data": "x"})
 	if got := extractConnectionURLs(data); got != nil {
-		t.Errorf("no mcp_data should return nil, got %v", got)
+		t.Errorf("data without a connections field should return nil, got %v", got)
 	}
 }
 
@@ -102,10 +102,8 @@ func TestExtractConnectionURLs_StdioOnly_Excluded(t *testing.T) {
 	t.Parallel()
 
 	data, _ := structpb.NewStruct(map[string]any{
-		"mcp_data": map[string]any{
-			"connections": []any{
-				map[string]any{"type": "stdio", "command": "python server.py"},
-			},
+		"connections": []any{
+			map[string]any{"type": "stdio", "command": "python server.py"},
 		},
 	})
 
@@ -120,10 +118,8 @@ func TestExtractConnectionURLs_SSEFound(t *testing.T) {
 	want := "https://example.com/sse"
 
 	data, _ := structpb.NewStruct(map[string]any{
-		"mcp_data": map[string]any{
-			"connections": []any{
-				map[string]any{"type": "sse", "url": want},
-			},
+		"connections": []any{
+			map[string]any{"type": "sse", "url": want},
 		},
 	})
 
@@ -139,10 +135,8 @@ func TestExtractConnectionURLs_StreamableHTTPFound(t *testing.T) {
 	want := "https://example.com/mcp"
 
 	data, _ := structpb.NewStruct(map[string]any{
-		"mcp_data": map[string]any{
-			"connections": []any{
-				map[string]any{"type": "streamable-http", "url": want},
-			},
+		"connections": []any{
+			map[string]any{"type": "streamable-http", "url": want},
 		},
 	})
 
@@ -158,11 +152,9 @@ func TestExtractConnectionURLs_MixedTransports_OnlyRemoteReturned(t *testing.T) 
 	want := "https://example.com/mcp"
 
 	data, _ := structpb.NewStruct(map[string]any{
-		"mcp_data": map[string]any{
-			"connections": []any{
-				map[string]any{"type": "stdio", "command": "python server.py"},
-				map[string]any{"type": "streamable-http", "url": want},
-			},
+		"connections": []any{
+			map[string]any{"type": "stdio", "command": "python server.py"},
+			map[string]any{"type": "streamable-http", "url": want},
 		},
 	})
 
@@ -176,10 +168,8 @@ func TestExtractConnectionURLs_RemoteTypeWithoutURL_Excluded(t *testing.T) {
 	t.Parallel()
 
 	data, _ := structpb.NewStruct(map[string]any{
-		"mcp_data": map[string]any{
-			"connections": []any{
-				map[string]any{"type": "sse"},
-			},
+		"connections": []any{
+			map[string]any{"type": "sse"},
 		},
 	})
 
@@ -192,11 +182,9 @@ func TestExtractConnectionURLs_MultipleRemoteConnections(t *testing.T) {
 	t.Parallel()
 
 	data, _ := structpb.NewStruct(map[string]any{
-		"mcp_data": map[string]any{
-			"connections": []any{
-				map[string]any{"type": "sse", "url": "https://a.example.com/sse"},
-				map[string]any{"type": "streamable-http", "url": "https://b.example.com/mcp"},
-			},
+		"connections": []any{
+			map[string]any{"type": "sse", "url": "https://a.example.com/sse"},
+			map[string]any{"type": "streamable-http", "url": "https://b.example.com/mcp"},
 		},
 	})
 
@@ -217,11 +205,9 @@ func TestExtractConnectionURLs_NonStructConnection_Skipped(t *testing.T) {
 	want := "https://valid.example.com/mcp"
 
 	data, err := structpb.NewStruct(map[string]any{
-		"mcp_data": map[string]any{
-			"connections": []any{
-				"not-an-object",
-				map[string]any{"type": "streamable-http", "url": want},
-			},
+		"connections": []any{
+			"not-an-object",
+			map[string]any{"type": "streamable-http", "url": want},
 		},
 	})
 	if err != nil {
@@ -354,10 +340,8 @@ func TestExtractRemoteEndpoints_WalksModulesAndCollectsURLs(t *testing.T) {
 			map[string]any{
 				"name": "core/mcp",
 				"data": map[string]any{
-					"mcp_data": map[string]any{
-						"connections": []any{
-							map[string]any{"type": "sse", "url": "https://example.com/sse"},
-						},
+					"connections": []any{
+						map[string]any{"type": "sse", "url": "https://example.com/sse"},
 					},
 				},
 			},
@@ -510,9 +494,7 @@ func remoteRecordWithEndpoints(t *testing.T, urls ...string) *corev1.Record {
 		"modules": []any{
 			map[string]any{
 				"name": "core/mcp",
-				"data": map[string]any{
-					"mcp_data": map[string]any{"connections": conns},
-				},
+				"data": map[string]any{"connections": conns},
 			},
 		},
 	})

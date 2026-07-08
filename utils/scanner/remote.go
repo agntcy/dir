@@ -167,12 +167,13 @@ func extractRemoteEndpoints(record *corev1.Record) []string {
 	return urls
 }
 
-// extractConnectionURLs walks data.mcp_data.connections[] and returns the
-// url of every connection whose transport type is remote-capable ("sse" or
-// "streamable-http"). "stdio" connections are local (spawned via command)
-// and have no endpoint to scan.
+// extractConnectionURLs walks data.connections[] and returns the url of every
+// connection whose transport type is remote-capable ("sse" or
+// "streamable-http"). A module's data is itself the OASF mcp_data object, so
+// connections live directly under it. "stdio" connections are local (spawned
+// via command) and have no endpoint to scan.
 func extractConnectionURLs(data *structpb.Struct) []string {
-	conns := data.GetFields()["mcp_data"].GetStructValue().GetFields()["connections"].GetListValue().GetValues()
+	conns := data.GetFields()["connections"].GetListValue().GetValues()
 
 	var urls []string
 

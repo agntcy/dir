@@ -360,10 +360,8 @@ func TestExtractSubfolder_Found(t *testing.T) {
 	t.Parallel()
 
 	data, _ := structpb.NewStruct(map[string]any{
-		"mcp_data": map[string]any{
-			"repository": map[string]any{
-				"subfolder": "src/server",
-			},
+		"repository": map[string]any{
+			"subfolder": "src/server",
 		},
 	})
 	mods := []*typesv1.Module{{Data: data}}
