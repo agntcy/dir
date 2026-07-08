@@ -172,8 +172,9 @@
 		const initial: AICardFilterCriteria = {
 			searchQuery: '',
 			mediaTypes: new Set(['all']),
-			statusFilter: 'all',
-			activeTags: new Set()
+			statusFilters: new Set(),
+			activeTags: new Set(),
+			scanSafe: false
 		};
 		latestCriteria = initial;
 		loadAICards(initial);

@@ -12,7 +12,8 @@
 
 	let searchQuery = $state('');
 	let mediaTypes = $state<Set<string>>(new Set(['all']));
-	let statusFilter = $state('all');
+	let statusFilters = $state<Set<string>>(new Set());
+	let scanSafe = $state(false);
 	let activeTags = $state<Set<string>>(new Set());
 	let tagSearch = $state('');
 
@@ -21,7 +22,15 @@
 	);
 
 	function notifyChange() {
-		onchange({ searchQuery, mediaTypes, statusFilter, activeTags });
+		onchange({ searchQuery, mediaTypes, statusFilters, scanSafe, activeTags });
+	}
+
+	function handleStatusFilter(value: string, checked: boolean) {
+		const next = new Set(statusFilters);
+		if (checked) next.add(value);
+		else next.delete(value);
+		statusFilters = next;
+		notifyChange();
 	}
 
 	function ensureMediaTypesSelection(next: Set<string>) {
@@ -195,22 +204,29 @@
 	<div class="flex-shrink-0">
 		<span class="block text-xs font-semibold uppercase tracking-wide text-ink-medium mb-2">Status</span>
 		<div class="space-y-1.5">
-			{#each ['all', 'trusted', 'verified'] as value}
+			{#each [['trusted', 'Trusted'], ['verified', 'Verified']] as [value, label]}
 				<label class="flex items-center gap-2 text-sm text-ink cursor-pointer">
 					<input
-						type="radio"
-						name="status"
-						{value}
-						checked={statusFilter === value}
-						onchange={() => {
-							statusFilter = value;
-							notifyChange();
-						}}
-						class="border-line-strong text-brand-500 focus:ring-brand-500"
+						type="checkbox"
+						checked={statusFilters.has(value)}
+						onchange={(e) => handleStatusFilter(value, (e.target as HTMLInputElement).checked)}
+						class="rounded border-line-strong text-brand-500 focus:ring-brand-500"
 					/>
-					<span class="capitalize">{value}</span>
+					<span>{label}</span>
 				</label>
 			{/each}
+			<label class="flex items-center gap-2 text-sm text-ink cursor-pointer">
+				<input
+					type="checkbox"
+					checked={scanSafe}
+					onchange={(e) => {
+						scanSafe = (e.target as HTMLInputElement).checked;
+						notifyChange();
+					}}
+					class="rounded border-line-strong text-brand-500 focus:ring-brand-500"
+				/>
+				<span>Safe</span>
+			</label>
 		</div>
 	</div>
 
