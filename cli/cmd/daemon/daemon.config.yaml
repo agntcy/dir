@@ -96,6 +96,7 @@ reconciler:
     record_timeout: 2m
     mcp_cli_path: "mcp-scanner"
     skill_cli_path: "skill-scanner"
+    a2a_cli_path: "a2a-scanner"
   local_registry:
     registry_address: "localhost:5555"
     repository_name: "dir"

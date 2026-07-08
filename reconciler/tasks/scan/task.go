@@ -37,6 +37,7 @@ func NewTask(config Config, db types.DatabaseAPI, store types.StoreAPI, refStore
 	runners := []scanner.Runner{
 		scanner.NewMCPRunner(scanner.MCPConfig{CLIPath: config.GetMCPCLIPath()}),
 		scanner.NewSkillRunner(scanner.SkillConfig{CLIPath: config.GetSkillCLIPath()}),
+		scanner.NewA2ARunner(scanner.A2AConfig{CLIPath: config.GetA2ACLIPath()}),
 	}
 
 	return &Task{
