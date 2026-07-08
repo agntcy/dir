@@ -111,13 +111,11 @@ func TestExtractA2ACard_Found(t *testing.T) {
 			map[string]any{
 				"name": "integration/a2a",
 				"data": map[string]any{
-					"a2a_data": map[string]any{
-						"card_data": map[string]any{
-							"name":    "burger_seller_agent",
-							"version": "1.0.0",
-						},
-						"card_schema_version": "v1.0.0",
+					"card_data": map[string]any{
+						"name":    "burger_seller_agent",
+						"version": "1.0.0",
 					},
+					"card_schema_version": "v1.0.0",
 				},
 			},
 		},

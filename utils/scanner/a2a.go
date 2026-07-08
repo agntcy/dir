@@ -30,8 +30,8 @@ type A2AConfig struct {
 }
 
 // A2ARunner invokes a2a-scanner to scan an Agent-to-Agent (A2A) protocol
-// AgentCard. It reads the a2a_data module stored on the record, writes the
-// card to a temporary file, and runs `a2a-scanner scan-card`.
+// AgentCard. It reads the a2a module's card_data stored on the record, writes
+// the card to a temporary file, and runs `a2a-scanner scan-card`.
 type A2ARunner struct {
 	cfg A2AConfig
 }
@@ -101,8 +101,11 @@ func (r *A2ARunner) Run(ctx context.Context, record *corev1.Record) (*ScanResult
 }
 
 // extractA2ACard decodes the record and returns the A2A AgentCard stored in
-// the a2a_data module's card_data field, if present. The bool return
-// indicates whether a card was found.
+// the a2a module's card_data field, if present. Per the OASF a2a_data schema
+// (https://schema.oasf.outshift.com/1.0.0/objects/a2a_data) the module's data
+// object holds card_data directly, so the lookup is data.card_data — not a
+// nested data.a2a_data.card_data. The bool return indicates whether a card was
+// found.
 func extractA2ACard(record *corev1.Record) (map[string]any, bool) {
 	if record == nil {
 		return nil, false
@@ -118,7 +121,7 @@ func extractA2ACard(record *corev1.Record) (map[string]any, bool) {
 	}
 
 	for _, mod := range decoded.GetV1().GetModules() {
-		if card := getNestedStructValue(mod.GetData(), "a2a_data", "card_data"); card != nil {
+		if card := getNestedStructValue(mod.GetData(), "card_data"); card != nil {
 			return card.AsMap(), true
 		}
 	}
