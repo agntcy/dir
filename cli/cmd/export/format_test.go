@@ -23,7 +23,7 @@ func TestValidateExportFormatRejectsEmpty(t *testing.T) {
 }
 
 func TestValidateExportFormatAllowsKnownFormats(t *testing.T) {
-	for _, f := range []string{"agent-skill", "skill", "a2a", "mcp-ghcopilot"} {
+	for _, f := range []string{"agent-skill", "skill", "a2a", "mcp-ghcopilot", "mcp-cursor"} {
 		assert.NoError(t, validateExportFormat(f), "format %q should be allowed", f)
 	}
 }

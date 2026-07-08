@@ -40,6 +40,7 @@ const (
 	FormatAgentSkillBundle = "agent-skill-bundle"
 	FormatSkill            = "skill"
 	FormatMCPGHCopiot      = "mcp-ghcopilot"
+	FormatMCPCursor        = "mcp-cursor"
 )
 
 var (

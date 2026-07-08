@@ -32,6 +32,7 @@ The --format flag selects the output format (required):
   agent-skill-bundle  Skill bundle archive (.gzip) for multi-file skills
   a2a            A2A AgentCard JSON for Agent-to-Agent protocol interop
   mcp-ghcopilot  GitHub Copilot MCP configuration JSON
+  mcp-cursor     Cursor IDE MCP configuration JSON (.cursor/mcp.json "mcpServers" shape)
 
 For raw OASF record JSON, use 'dirctl pull' (which supports --output-file,
 --output-dir, and search filters for batch retrieval).
@@ -41,6 +42,7 @@ Single-record examples:
   dirctl export bafyreib... --format=a2a --output-file=./agent-card.json
   dirctl export my-agent:1.0 --format=agent-skill --output-file=./SKILL.md
   dirctl export my-agent:1.0 --format=agent-skill-bundle --output-file=./skill.gzip
+  dirctl export my-mcp-server --format=mcp-cursor --output-file=.cursor/mcp.json
 
 Batch export from search results:
 
@@ -48,6 +50,7 @@ Batch export from search results:
   dirctl export --output-dir=./exports/ --format=agent-skill --skill "code*"
   dirctl export --output-dir=./exports/ --format=agent-skill-bundle --skill "code*"
   dirctl export --output-dir=./exports/ --format=mcp-ghcopilot --module "integration/mcp"
+  dirctl export --output-dir=./cursor-configs/ --format=mcp-cursor --module "integration/mcp"
 `,
 	Args: cobra.MaximumNArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
@@ -73,7 +76,7 @@ Batch export from search results:
 func validateExportFormat(format string) error {
 	switch format {
 	case "":
-		return errors.New("--format is required (agent-skill, a2a, or mcp-ghcopilot); for raw OASF records use `dirctl pull`")
+		return errors.New("--format is required (agent-skill, a2a, mcp-ghcopilot, or mcp-cursor); for raw OASF records use `dirctl pull`")
 	case exportfmt.FormatOASF:
 		return errors.New("raw OASF export has moved to `dirctl pull` (it supports --output-file, --output-dir, and search filters); `dirctl export` no longer supports --format=oasf")
 	default:

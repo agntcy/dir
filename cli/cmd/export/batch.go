@@ -34,6 +34,8 @@ func getBatchFormatter(name string) batchFormatter {
 		return &skillBundleBatchExporter{}
 	case "mcp-ghcopilot":
 		return &mcpBatchExporter{}
+	case "mcp-cursor":
+		return &mcpCursorBatchExporter{}
 	default:
 		return nil
 	}

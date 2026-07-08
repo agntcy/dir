@@ -78,10 +78,11 @@ for [discovery](dir-component-routing.md) (`--name`, `--version`, `--module`, `-
 | `a2a` | `.json` | A2A AgentCard JSON for Agent-to-Agent protocol interop |
 | `agent-skill` | `.md` | `SKILL.md` artifact for agentic CLIs (Cursor, Claude Code, etc.) |
 | `mcp-ghcopilot` | `.json` | GitHub Copilot MCP configuration JSON |
+| `mcp-cursor` | `.json` | Cursor IDE MCP configuration JSON (`.cursor/mcp.json` `mcpServers` shape) |
 
 Batch behaviour varies by format: `a2a` and `oasf` produce one file per record,
-`agent-skill` produces one subdirectory per skill, and `mcp-ghcopilot` merges all matched
-MCP servers into a single configuration file.
+`agent-skill` produces one subdirectory per skill, and `mcp-ghcopilot` / `mcp-cursor`
+merge all matched MCP servers into a single configuration file.
 
 ## Related documentation
 
