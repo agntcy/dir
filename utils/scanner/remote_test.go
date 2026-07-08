@@ -5,6 +5,8 @@ package scanner
 
 import (
 	"context"
+	"slices"
+	"strings"
 	"testing"
 
 	corev1 "github.com/agntcy/dir/api/core/v1"
@@ -204,6 +206,34 @@ func TestExtractConnectionURLs_MultipleRemoteConnections(t *testing.T) {
 	}
 }
 
+func TestExtractConnectionURLs_NonStructConnection_Skipped(t *testing.T) {
+	t.Parallel()
+
+	// The connections list is untyped (structpb.ListValue), so a malformed
+	// entry that isn't an object at all (here, a bare string) must be
+	// skipped via the `if conn == nil { continue }` guard rather than
+	// panicking on a nil GetStructValue(), while a valid entry later in the
+	// same list is still picked up.
+	want := "https://valid.example.com/mcp"
+
+	data, err := structpb.NewStruct(map[string]any{
+		"mcp_data": map[string]any{
+			"connections": []any{
+				"not-an-object",
+				map[string]any{"type": "streamable-http", "url": want},
+			},
+		},
+	})
+	if err != nil {
+		t.Fatalf("structpb.NewStruct: %v", err)
+	}
+
+	got := extractConnectionURLs(data)
+	if len(got) != 1 || got[0] != want {
+		t.Errorf("want [%q], got %v", want, got)
+	}
+}
+
 // --- tagFindings ---
 
 func TestTagFindings_Empty(t *testing.T) {
@@ -256,17 +286,337 @@ func TestTagFindings_PreservesOrderAndCount(t *testing.T) {
 
 // --- extractRemoteEndpoints ---
 //
-// extractRemoteEndpoints itself is exercised indirectly via the Run() tests
-// above. Like extractSourceInfo in mcp.go, it is a thin decode-and-delegate
-// wrapper around record.Decode(); the interesting per-connection logic lives
-// in extractConnectionURLs, which is unit tested directly above against
-// hand-built structpb.Struct values (mirroring extractSubfolder's tests in
-// mcp_test.go) rather than through a full OASF SDK decode of a synthetic record.
+// The per-connection logic is unit tested directly above via
+// extractConnectionURLs against hand-built structpb.Struct values (mirroring
+// extractSubfolder's tests in mcp_test.go). The decode-and-delegate wrapper
+// itself is exercised both indirectly (via the Run() tests above) and
+// directly below, including its two error returns (decode failure, non-v1
+// schema) and the module-walking loop, which none of the tests above touch
+// since they use records with no modules at all.
 
 func TestExtractRemoteEndpoints_NilRecord(t *testing.T) {
 	t.Parallel()
 
 	if got := extractRemoteEndpoints(nil); got != nil {
 		t.Errorf("nil record should return nil, got %v", got)
+	}
+}
+
+func TestExtractRemoteEndpoints_DecodeError_ReturnsNil(t *testing.T) {
+	t.Parallel()
+
+	// No "schema_version" field at all: record.Decode() fails inside
+	// decoder.GetRecordSchemaVersion, so extractRemoteEndpoints must hit its
+	// `if err != nil { return nil }` branch rather than panicking or the
+	// nil-decoded-record propagating further.
+	data, err := structpb.NewStruct(map[string]any{"name": "no-schema-version"})
+	if err != nil {
+		t.Fatalf("structpb.NewStruct: %v", err)
+	}
+
+	got := extractRemoteEndpoints(&corev1.Record{Data: data})
+	if got != nil {
+		t.Errorf("record with undecodable data should return nil, got %v", got)
+	}
+}
+
+func TestExtractRemoteEndpoints_NonV1Schema_ReturnsNil(t *testing.T) {
+	t.Parallel()
+
+	// schema_version 0.7.x decodes successfully as OASF v1alpha1, so
+	// decoded.HasV1() is false and extractRemoteEndpoints must return nil
+	// without attempting to read v1-shaped modules.
+	data, err := structpb.NewStruct(map[string]any{"schema_version": "0.7.0"})
+	if err != nil {
+		t.Fatalf("structpb.NewStruct: %v", err)
+	}
+
+	got := extractRemoteEndpoints(&corev1.Record{Data: data})
+	if got != nil {
+		t.Errorf("non-v1 record should return nil, got %v", got)
+	}
+}
+
+func TestExtractRemoteEndpoints_WalksModulesAndCollectsURLs(t *testing.T) {
+	t.Parallel()
+
+	// A real v1 record with two modules, only one of which carries a
+	// remote-capable MCP connection, so the loop body in
+	// extractRemoteEndpoints (append(urls, extractConnectionURLs(...)...))
+	// actually runs across more than zero modules.
+	data, err := structpb.NewStruct(map[string]any{
+		"schema_version": "1.0.0",
+		"modules": []any{
+			map[string]any{
+				"name": "core/other",
+				"data": map[string]any{"unrelated": "x"},
+			},
+			map[string]any{
+				"name": "core/mcp",
+				"data": map[string]any{
+					"mcp_data": map[string]any{
+						"connections": []any{
+							map[string]any{"type": "sse", "url": "https://example.com/sse"},
+						},
+					},
+				},
+			},
+		},
+	})
+	if err != nil {
+		t.Fatalf("structpb.NewStruct: %v", err)
+	}
+
+	got := extractRemoteEndpoints(&corev1.Record{Data: data})
+	if len(got) != 1 || got[0] != "https://example.com/sse" {
+		t.Errorf("want [%q], got %v", "https://example.com/sse", got)
+	}
+}
+
+// --- runMCPScannerRemote ---
+//
+// These exercise the real exec.CommandContext invocation using
+// testdata/fakecli as a stand-in mcp-scanner binary (see fakecli_test.go).
+
+func TestRunMCPScannerRemote_Success_ReturnsStdout(t *testing.T) {
+	t.Parallel()
+
+	cli := fakeCLIPath(t)
+
+	out, err := runMCPScannerRemote(context.Background(), cli, "remote", "https://ok.example.com/mcp")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if !strings.Contains(string(out), `"tool_name":"remote"`) {
+		t.Errorf("stdout should contain the fake CLI's canned finding tagged with the subcommand, got %q", out)
+	}
+}
+
+func TestRunMCPScannerRemote_ExecFailure_WrapsStderr(t *testing.T) {
+	t.Parallel()
+
+	cli := fakeCLIPath(t)
+
+	_, err := runMCPScannerRemote(context.Background(), cli, "remote", "https://fail-exec.example.com/mcp")
+	if err == nil {
+		t.Fatal("want an error when the mcp-scanner process exits non-zero")
+	}
+
+	if !strings.Contains(err.Error(), "simulated exec failure") {
+		t.Errorf("error should surface the process's stderr, got %q", err)
+	}
+
+	if !strings.Contains(err.Error(), "exited with error") {
+		t.Errorf("error should describe the failure as a non-zero exit, got %q", err)
+	}
+}
+
+// --- RemoteRunner.runOne ---
+
+func TestRemoteRunner_RunOne_Success_TagsAndSetsAnalyzer(t *testing.T) {
+	t.Parallel()
+
+	r := NewRemoteRunner(RemoteConfig{CLIPath: fakeCLIPath(t)})
+
+	got := r.runOne(context.Background(), "prompts", "https://ok.example.com/mcp")
+
+	if got.Skipped {
+		t.Fatalf("want a non-skipped result, got skipped: %s", got.SkippedReason)
+	}
+
+	if len(got.Findings) != 1 {
+		t.Fatalf("want 1 finding, got %d: %+v", len(got.Findings), got.Findings)
+	}
+
+	wantPrefix := "[prompts https://ok.example.com/mcp]"
+	if !strings.HasPrefix(got.Findings[0].Message, wantPrefix) {
+		t.Errorf("finding message should be tagged with subcommand+url, want prefix %q, got %q", wantPrefix, got.Findings[0].Message)
+	}
+
+	if len(got.Analyzers) != 1 || got.Analyzers[0] != "prompts" {
+		t.Errorf("want Analyzers=[prompts], got %v", got.Analyzers)
+	}
+}
+
+func TestRemoteRunner_RunOne_ExecFailure_SkippedNotError(t *testing.T) {
+	t.Parallel()
+
+	r := NewRemoteRunner(RemoteConfig{CLIPath: fakeCLIPath(t)})
+
+	got := r.runOne(context.Background(), "remote", "https://fail-exec.example.com/mcp")
+
+	if !got.Skipped {
+		t.Fatal("an unreachable endpoint must be skipped, not surfaced as a hard error")
+	}
+
+	for _, want := range []string{"remote", "fail-exec.example.com", "simulated exec failure"} {
+		if !strings.Contains(got.SkippedReason, want) {
+			t.Errorf("SkippedReason should contain %q for traceability, got %q", want, got.SkippedReason)
+		}
+	}
+}
+
+func TestRemoteRunner_RunOne_UnparsableOutput_SkippedNotError(t *testing.T) {
+	t.Parallel()
+
+	r := NewRemoteRunner(RemoteConfig{CLIPath: fakeCLIPath(t)})
+
+	got := r.runOne(context.Background(), "resources", "https://bad-json.example.com/mcp")
+
+	if !got.Skipped {
+		t.Fatal("unparsable mcp-scanner output must be skipped, not surfaced as a hard error")
+	}
+
+	if !strings.Contains(got.SkippedReason, "unparsable output") {
+		t.Errorf("SkippedReason should mention unparsable output, got %q", got.SkippedReason)
+	}
+}
+
+func TestRemoteRunner_RunOne_EmptySafeOutput_NoFindings(t *testing.T) {
+	t.Parallel()
+
+	r := NewRemoteRunner(RemoteConfig{CLIPath: fakeCLIPath(t)})
+
+	got := r.runOne(context.Background(), "instructions", "https://empty-safe.example.com/mcp")
+
+	if got.Skipped {
+		t.Fatalf("want a non-skipped, safe result, got skipped: %s", got.SkippedReason)
+	}
+
+	if !got.Safe || len(got.Findings) != 0 {
+		t.Errorf("empty mcp-scanner output should produce Safe=true with no findings: %+v", got)
+	}
+
+	if len(got.Analyzers) != 1 || got.Analyzers[0] != "instructions" {
+		t.Errorf("want Analyzers=[instructions], got %v", got.Analyzers)
+	}
+}
+
+// --- RemoteRunner.Run (end to end, via testdata/fakecli) ---
+
+// remoteRecordWithEndpoints builds a v1 record whose sole MCP module
+// declares one remote-capable ("streamable-http") connection per URL given.
+func remoteRecordWithEndpoints(t *testing.T, urls ...string) *corev1.Record {
+	t.Helper()
+
+	conns := make([]any, 0, len(urls))
+	for _, u := range urls {
+		conns = append(conns, map[string]any{"type": "streamable-http", "url": u})
+	}
+
+	data, err := structpb.NewStruct(map[string]any{
+		"schema_version": "1.0.0",
+		"modules": []any{
+			map[string]any{
+				"name": "core/mcp",
+				"data": map[string]any{
+					"mcp_data": map[string]any{"connections": conns},
+				},
+			},
+		},
+	})
+	if err != nil {
+		t.Fatalf("structpb.NewStruct: %v", err)
+	}
+
+	return &corev1.Record{Data: data}
+}
+
+func TestRemoteRunner_Run_MergesFindingsAcrossEndpointsAndSubcommands(t *testing.T) {
+	t.Parallel()
+
+	r := NewRemoteRunner(RemoteConfig{CLIPath: fakeCLIPath(t)})
+	rec := remoteRecordWithEndpoints(t, "https://a.example.com/mcp", "https://b.example.com/mcp")
+
+	got, err := r.Run(context.Background(), rec)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if got.Skipped {
+		t.Fatalf("want a non-skipped result when endpoints succeed, got skipped: %s", got.SkippedReason)
+	}
+
+	// 2 endpoints * 4 subcommands (remote, prompts, resources, instructions),
+	// each producing exactly 1 tagged finding from the fake CLI.
+	const wantFindings = 2 * 4
+
+	if len(got.Findings) != wantFindings {
+		t.Errorf("want %d merged findings, got %d: %+v", wantFindings, len(got.Findings), got.Findings)
+	}
+
+	if got.Safe {
+		t.Error("merged result should be Safe=false: every sub-scan reported an unsafe finding")
+	}
+
+	wantAnalyzers := []string{"remote", "prompts", "resources", "instructions"}
+	for _, a := range wantAnalyzers {
+		if !slices.Contains(got.Analyzers, a) {
+			t.Errorf("merged Analyzers missing %q, got %v", a, got.Analyzers)
+		}
+	}
+}
+
+func TestRemoteRunner_Run_AllEndpointsUnreachable_SkippedNotError(t *testing.T) {
+	t.Parallel()
+
+	r := NewRemoteRunner(RemoteConfig{CLIPath: fakeCLIPath(t)})
+	rec := remoteRecordWithEndpoints(t, "https://fail-exec.example.com/mcp")
+
+	got, err := r.Run(context.Background(), rec)
+	if err != nil {
+		t.Fatalf("network failures must not be surfaced as a hard error, got: %v", err)
+	}
+
+	if !got.Skipped {
+		t.Fatal("want the merged result to be Skipped when every sub-scan failed to reach its endpoint")
+	}
+
+	if !strings.Contains(got.SkippedReason, "fail-exec.example.com") {
+		t.Errorf("SkippedReason should reference the unreachable endpoint, got %q", got.SkippedReason)
+	}
+}
+
+func TestRemoteRunner_Run_MixedReachability_KeepsSuccessfulFindings(t *testing.T) {
+	t.Parallel()
+
+	r := NewRemoteRunner(RemoteConfig{CLIPath: fakeCLIPath(t)})
+	rec := remoteRecordWithEndpoints(t, "https://ok.example.com/mcp", "https://fail-exec.example.com/mcp")
+
+	got, err := r.Run(context.Background(), rec)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if got.Skipped {
+		t.Fatal("one reachable endpoint should be enough for the merged result to not be Skipped")
+	}
+
+	// Only the reachable endpoint's 4 subcommands contribute findings; the
+	// unreachable one is dropped as a skip, not merged in as an error.
+	const wantFindings = 4
+	if len(got.Findings) != wantFindings {
+		t.Errorf("want %d findings (from the reachable endpoint only), got %d", wantFindings, len(got.Findings))
+	}
+}
+
+func TestRemoteRunner_Run_UnparsableEndpoint_SkippedNotError(t *testing.T) {
+	t.Parallel()
+
+	r := NewRemoteRunner(RemoteConfig{CLIPath: fakeCLIPath(t)})
+	rec := remoteRecordWithEndpoints(t, "https://bad-json.example.com/mcp")
+
+	got, err := r.Run(context.Background(), rec)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if !got.Skipped {
+		t.Fatal("want the merged result to be Skipped when every sub-scan produced unparsable output")
+	}
+
+	if !strings.Contains(got.SkippedReason, "unparsable output") {
+		t.Errorf("SkippedReason should mention unparsable output, got %q", got.SkippedReason)
 	}
 }
