@@ -635,6 +635,67 @@ func TestLoadExtractorAbsentFile(t *testing.T) {
 	assert.Nil(t, got)
 }
 
+func TestSaveContextSeedsAndSetsCurrent(t *testing.T) {
+	t.Setenv("XDG_CONFIG_HOME", filepath.Join(t.TempDir(), "xdg"))
+
+	path, err := DefaultPath()
+	require.NoError(t, err)
+
+	ctx := Context{ServerAddress: "localhost:8888", AuthMode: "insecure"}
+	require.NoError(t, SaveContext("", "local", ctx, true))
+
+	file, err := LoadFile(path)
+	require.NoError(t, err)
+	assert.Equal(t, "local", file.CurrentContext)
+	require.Contains(t, file.Contexts, "local")
+	assert.Equal(t, "localhost:8888", file.Contexts["local"].ServerAddress)
+	assert.Equal(t, "insecure", file.Contexts["local"].AuthMode)
+}
+
+func TestSaveContextPreservesOtherConfigAndHonorsSetCurrentFalse(t *testing.T) {
+	t.Setenv("XDG_CONFIG_HOME", filepath.Join(t.TempDir(), "xdg"))
+
+	path, err := DefaultPath()
+	require.NoError(t, err)
+
+	// Seed an extractor section and a pre-existing current_context.
+	require.NoError(t, SaveExtractor("", &Extractor{OASFURL: "https://x", AssetDir: "/a"}))
+	require.NoError(t, SaveContext("", "prod", Context{ServerAddress: "prod:443"}, true))
+
+	// Adding another context with setCurrent=false must not change current_context
+	// and must preserve the extractor section and the existing context.
+	require.NoError(t, SaveContext("", "local", Context{ServerAddress: "localhost:8888"}, false))
+
+	file, err := LoadFile(path)
+	require.NoError(t, err)
+	assert.Equal(t, "prod", file.CurrentContext)
+	require.Contains(t, file.Contexts, "prod")
+	require.Contains(t, file.Contexts, "local")
+	require.NotNil(t, file.Extractor)
+	assert.Equal(t, "https://x", file.Extractor.OASFURL)
+}
+
+func TestSaveFileAtomicLeavesNoTempFiles(t *testing.T) {
+	t.Setenv("XDG_CONFIG_HOME", filepath.Join(t.TempDir(), "xdg"))
+
+	path, err := DefaultPath()
+	require.NoError(t, err)
+
+	require.NoError(t, SaveContext("", "local", Context{ServerAddress: "localhost:8888"}, true))
+
+	entries, err := os.ReadDir(filepath.Dir(path))
+	require.NoError(t, err)
+
+	for _, e := range entries {
+		assert.NotContains(t, e.Name(), ".tmp-", "atomic write must not leave temp files behind")
+	}
+
+	// The final file is intact and parseable.
+	file, err := LoadFile(path)
+	require.NoError(t, err)
+	require.Contains(t, file.Contexts, "local")
+}
+
 func TestClearExtractorAbsentFileDoesNotCreateFile(t *testing.T) {
 	t.Setenv("XDG_CONFIG_HOME", filepath.Join(t.TempDir(), "xdg"))
 
