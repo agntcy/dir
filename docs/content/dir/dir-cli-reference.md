@@ -930,6 +930,7 @@ Pull a record and transform it to the requested format.
 | `agent-skill` | `.md` | SKILL.md artifact for agentic CLI consumption (Cursor, Claude Code, etc.) |
 | `mcp-ghcopilot` | `.json` | GitHub Copilot MCP configuration JSON |
 | `mcp-claudecode` | `.json` | Claude Code MCP configuration JSON (`.mcp.json` `mcpServers` shape) |
+| `mcp-cursor` | `.json` | Cursor IDE MCP configuration JSON (`.cursor/mcp.json` `mcpServers` shape) |
 
 > **Note:** For raw OASF record JSON, use [`dirctl pull`](#dirctl-pull-reference) — it supports `--output-file`, `--output-dir`, and search filters for batch retrieval. `dirctl export` no longer accepts `--format=oasf`.
 
@@ -958,6 +959,7 @@ When `--output-dir` is used, at least one search filter is required. All standar
     - **agent-skill**: One subdirectory per skill (`<name>/SKILL.md`).
     - **mcp-ghcopilot**: All matched MCP servers are merged into a single `mcp.json` with combined `servers` and `inputs` maps.
     - **mcp-claudecode**: All matched MCP servers are merged into a single `mcp.json` with a combined `mcpServers` map.
+    - **mcp-cursor**: All matched MCP servers are merged into a single `mcp.json` with a combined `mcpServers` map.
 
 ??? example
 
@@ -983,6 +985,9 @@ When `--output-dir` is used, at least one search filter is required. All standar
     # Export a single record as a Claude Code .mcp.json
     dirctl export my-mcp-server --format=mcp-claudecode --output-file=.mcp.json
 
+    # Export a single record as a Cursor IDE mcp.json
+    dirctl export my-mcp-server --format=mcp-cursor --output-file=.cursor/mcp.json
+    
     # Export all versions instead of only the latest
     dirctl export --output-dir=./exports/ --format=a2a \
       --name "my-agent" --all-versions

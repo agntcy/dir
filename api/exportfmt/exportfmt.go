@@ -41,6 +41,12 @@ const (
 	FormatSkill            = "skill"
 	FormatMCPGHCopiot      = "mcp-ghcopilot"
 	FormatMCPClaudeCode    = "mcp-claudecode"
+	FormatMCPCursor        = "mcp-cursor"
+
+	// OASF MCP connection transport types.
+	connTypeStdio          = "stdio"
+	connTypeStreamableHTTP = "streamable-http"
+	connTypeSSE            = "sse"
 )
 
 var (

@@ -5,6 +5,6 @@ package export
 
 import "testing"
 
-func TestMCPClaudeCodeBatchFormatter(t *testing.T) {
-	testMCPServersBatchFormatter(t, "mcp-claudecode")
+func TestMCPCursorBatchFormatter(t *testing.T) {
+	testMCPServersBatchFormatter(t, "mcp-cursor")
 }

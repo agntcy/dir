@@ -79,9 +79,10 @@ for [discovery](dir-component-routing.md) (`--name`, `--version`, `--module`, `-
 | `agent-skill` | `.md` | `SKILL.md` artifact for agentic CLIs (Cursor, Claude Code, etc.) |
 | `mcp-ghcopilot` | `.json` | GitHub Copilot MCP configuration JSON |
 | `mcp-claudecode` | `.json` | Claude Code MCP configuration JSON (`.mcp.json` `mcpServers` shape) |
+| `mcp-cursor` | `.json` | Cursor IDE MCP configuration JSON (`.cursor/mcp.json` `mcpServers` shape) |
 
 Batch behaviour varies by format: `a2a` and `oasf` produce one file per record,
-`agent-skill` produces one subdirectory per skill, and `mcp-ghcopilot` / `mcp-claudecode`
+`agent-skill` produces one subdirectory per skill, and `mcp-ghcopilot` / `mcp-claudecode` / `mcp-cursor`
 merge all matched MCP servers into a single configuration file.
 
 ## Related documentation

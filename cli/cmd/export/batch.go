@@ -14,6 +14,7 @@ import (
 	"github.com/agntcy/dir/api/exportfmt"
 	recordutil "github.com/agntcy/dir/cli/util/records"
 	"github.com/agntcy/oasf-sdk/pkg/translator"
+	"google.golang.org/protobuf/types/known/structpb"
 )
 
 // batchFormatter exports multiple records at once for formats that need
@@ -36,6 +37,8 @@ func getBatchFormatter(name string) batchFormatter {
 		return &mcpBatchExporter{}
 	case "mcp-claudecode":
 		return &mcpClaudeCodeBatchExporter{}
+	case "mcp-cursor":
+		return &mcpCursorBatchExporter{}
 	default:
 		return nil
 	}
@@ -152,6 +155,54 @@ func (f *skillBundleBatchExporter) FormatBatch(records []*corev1.Record, outputD
 }
 
 // --- mcp batch ---
+
+func mergeMCPServersBatch[S any](
+	records []*corev1.Record,
+	outputDir string,
+	allVersions bool,
+	label string,
+	recordToServers func(*structpb.Struct) (map[string]S, error),
+) (int, error) {
+	toMerge := records
+	if !allVersions {
+		toMerge = recordutil.LatestByName(records)
+	}
+
+	merged := make(map[string]S)
+	exported := 0
+
+	for _, record := range toMerge {
+		data := record.GetData()
+		if data == nil {
+			continue
+		}
+
+		servers, err := recordToServers(data)
+		if err != nil {
+			continue
+		}
+
+		maps.Copy(merged, servers)
+
+		exported++
+	}
+
+	raw, err := json.MarshalIndent(struct {
+		MCPServers map[string]S `json:"mcpServers"`
+	}{MCPServers: merged}, "", "  ")
+	if err != nil {
+		return 0, fmt.Errorf("failed to marshal merged %s MCP config: %w", label, err)
+	}
+
+	raw = append(raw, '\n')
+
+	outPath := filepath.Join(outputDir, "mcp.json")
+	if err := os.WriteFile(outPath, raw, 0o600); err != nil { //nolint:mnd
+		return 0, fmt.Errorf("failed to write %s: %w", outPath, err)
+	}
+
+	return exported, nil
+}
 
 type mcpBatchExporter struct{}
 

@@ -5,13 +5,9 @@ package exportfmt
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
-	"strings"
 
 	corev1 "github.com/agntcy/dir/api/core/v1"
-	recordutil "github.com/agntcy/oasf-sdk/pkg/record"
-	"github.com/agntcy/oasf-sdk/pkg/translator"
 	"google.golang.org/protobuf/types/known/structpb"
 )
 
@@ -83,54 +79,14 @@ func (f *mcpClaudeCodeFormatter) FileExtension() string {
 // 0.7.0/0.8.0 "servers" array format (still handled by
 // translator.RecordToGHCopilot for GitHub Copilot) is not.
 func RecordToClaudeCode(record *structpb.Struct) (*ClaudeCodeMCPConfig, error) {
-	found, moduleStruct := recordutil.GetModule(record, translator.MCPModuleName)
-	if !found {
-		return nil, errors.New("MCP module not found in record")
+	name, server, err := recordToMCPServer(record, claudeCodeServerFromConnection)
+	if err != nil {
+		return nil, err
 	}
 
-	moduleData := moduleStruct.GetFields()["data"].GetStructValue()
-	if moduleData == nil {
-		return nil, errors.New("MCP module has no data")
-	}
-
-	nameVal, ok := moduleData.GetFields()["name"]
-	if !ok {
-		return nil, errors.New("missing 'name' in MCP module data")
-	}
-
-	serverName := claudeCodeNormalizeServerName(nameVal.GetStringValue())
-
-	connectionsVal, ok := moduleData.GetFields()["connections"]
-	if !ok {
-		return nil, errors.New("missing 'connections' in MCP module data")
-	}
-
-	connectionsList := connectionsVal.GetListValue()
-	if connectionsList == nil {
-		return nil, errors.New("'connections' must be an array")
-	}
-
-	// Connections are alternative ways to reach the same server. Take the
-	// first one we know how to represent (stdio, streamable-http, or sse).
-	for _, connVal := range connectionsList.GetValues() {
-		connMap := connVal.GetStructValue()
-		if connMap == nil {
-			continue
-		}
-
-		connType := connMap.GetFields()["type"].GetStringValue()
-
-		server, ok := claudeCodeServerFromConnection(connType, connMap)
-		if !ok {
-			continue
-		}
-
-		return &ClaudeCodeMCPConfig{
-			MCPServers: map[string]ClaudeCodeMCPServer{serverName: server},
-		}, nil
-	}
-
-	return nil, errors.New("no supported MCP connection found (stdio, streamable-http, sse)")
+	return &ClaudeCodeMCPConfig{
+		MCPServers: map[string]ClaudeCodeMCPServer{name: server},
+	}, nil
 }
 
 // claudeCodeServerFromConnection builds a ClaudeCodeMCPServer from a single
@@ -138,17 +94,17 @@ func RecordToClaudeCode(record *structpb.Struct) (*ClaudeCodeMCPConfig, error) {
 // not one Claude Code can represent.
 func claudeCodeServerFromConnection(connType string, connMap *structpb.Struct) (ClaudeCodeMCPServer, bool) {
 	switch connType {
-	case "stdio":
+	case connTypeStdio:
 		return ClaudeCodeMCPServer{
 			Command: connMap.GetFields()["command"].GetStringValue(),
-			Args:    claudeCodeStringList(connMap.GetFields()["args"]),
+			Args:    mcpStringList(connMap.GetFields()["args"]),
 			Env:     claudeCodeEnvFromEnvVars(connMap.GetFields()["env_vars"]),
 		}, true
-	case "streamable-http", "sse":
+	case connTypeStreamableHTTP, connTypeSSE:
 		return ClaudeCodeMCPServer{
 			Type:    claudeCodeConnectionType(connType),
 			URL:     connMap.GetFields()["url"].GetStringValue(),
-			Headers: claudeCodeStringMap(connMap.GetFields()["headers"]),
+			Headers: mcpStringMap(connMap.GetFields()["headers"]),
 		}, true
 	default:
 		return ClaudeCodeMCPServer{}, false
@@ -160,55 +116,11 @@ func claudeCodeServerFromConnection(connType string, connMap *structpb.Struct) (
 // "streamable-http" becomes Claude Code's "http" -- the two schemas use
 // different vocabulary for the same transport.
 func claudeCodeConnectionType(oasfType string) string {
-	if oasfType == "streamable-http" {
+	if oasfType == connTypeStreamableHTTP {
 		return "http"
 	}
 
 	return oasfType
-}
-
-// claudeCodeNormalizeServerName strips common MCP server-name suffixes
-// (mirroring translator.RecordToGHCopilot's normalization) so that, e.g.,
-// "github-mcp-server" becomes "github" across every MCP export format in
-// this repo.
-func claudeCodeNormalizeServerName(name string) string {
-	name = strings.TrimSuffix(name, "-mcp-server")
-	name = strings.TrimSuffix(name, "-server")
-	name = strings.TrimSuffix(name, "-mcp")
-
-	return name
-}
-
-// claudeCodeStringList reads a structpb list-of-strings value. Returns nil
-// (omitted from JSON output) if val is not a non-empty list.
-func claudeCodeStringList(val *structpb.Value) []string {
-	list := val.GetListValue()
-	if list == nil || len(list.GetValues()) == 0 {
-		return nil
-	}
-
-	out := make([]string, 0, len(list.GetValues()))
-	for _, v := range list.GetValues() {
-		out = append(out, v.GetStringValue())
-	}
-
-	return out
-}
-
-// claudeCodeStringMap reads a structpb struct value as a flat string map.
-// Returns nil (omitted from JSON output) if val is not a non-empty struct.
-func claudeCodeStringMap(val *structpb.Value) map[string]string {
-	s := val.GetStructValue()
-	if s == nil || len(s.GetFields()) == 0 {
-		return nil
-	}
-
-	out := make(map[string]string, len(s.GetFields()))
-	for k, v := range s.GetFields() {
-		out[k] = v.GetStringValue()
-	}
-
-	return out
 }
 
 // claudeCodeEnvFromEnvVars converts an OASF 1.0.0 "env_vars" array (a list of
