@@ -228,6 +228,11 @@ func QueryToFilters(queries []*searchv1.RecordQuery) ([]types.FilterOption, erro
 			safe := strings.EqualFold(query.GetValue(), "true")
 			options = append(options, types.WithScanSafe(safe))
 
+		case searchv1.RecordQueryType_RECORD_QUERY_TYPE_DESCRIPTION:
+			if strings.TrimSpace(query.GetValue()) != "" {
+				options = append(options, types.WithDescriptions(query.GetValue()))
+			}
+
 		default:
 			logger.Warn("Unknown query type", "type", query.GetType())
 		}
