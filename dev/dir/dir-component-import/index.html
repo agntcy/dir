@@ -2366,10 +2366,15 @@ for <a href="../dir-component-routing/">discovery</a> (<code>--name</code>, <cod
 <td><code>.json</code></td>
 <td>Claude Code MCP configuration JSON (<code>.mcp.json</code> <code>mcpServers</code> shape)</td>
 </tr>
+<tr>
+<td><code>mcp-cursor</code></td>
+<td><code>.json</code></td>
+<td>Cursor IDE MCP configuration JSON (<code>.cursor/mcp.json</code> <code>mcpServers</code> shape)</td>
+</tr>
 </tbody>
 </table>
 <p>Batch behaviour varies by format: <code>a2a</code> and <code>oasf</code> produce one file per record,
-<code>agent-skill</code> produces one subdirectory per skill, and <code>mcp-ghcopilot</code> / <code>mcp-claudecode</code>
+<code>agent-skill</code> produces one subdirectory per skill, and <code>mcp-ghcopilot</code> / <code>mcp-claudecode</code> / <code>mcp-cursor</code>
 merge all matched MCP servers into a single configuration file.</p>
 <h2 id="related-documentation">Related documentation</h2>
 <ul>
