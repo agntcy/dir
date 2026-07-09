@@ -11,7 +11,7 @@
         <link rel="canonical" href="https://agntcy.github.io/dir/latest/dir/dir-cli-reference/">
       
       
-        <link rel="prev" href="../dir-sdk/">
+        <link rel="prev" href="../dir-sdk-javascript/">
       
       
         <link rel="next" href="../dir-api-reference/">
@@ -1459,6 +1459,12 @@
       
         
       
+        
+      
+        
+      
+        
+      
     
     
     
@@ -1522,6 +1528,90 @@
     
   
     SDK Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../dir-sdk-go/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Go SDK
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../dir-sdk-python/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Python SDK
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../dir-sdk-javascript/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    JavaScript / TypeScript SDK
   
 
     
@@ -1745,6 +1835,34 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#setup" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Setup
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Setup">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#dirctl-init-flags" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        dirctl init [flags]
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#diagnostics" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1800,6 +1918,56 @@
     <span class="md-ellipsis">
       
         dirctl mcp serve
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#agent-install" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Agent Install
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Agent Install">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#dirctl-install-list" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        dirctl install list
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#dirctl-install-cid-or-name-dirctl-install-run-cid-or-name" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        dirctl install &lt;cid-or-name&gt; / dirctl install run &lt;cid-or-name&gt;
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#dirctl-install-uninstall-cid-or-name-flags" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        dirctl install uninstall &lt;cid-or-name&gt; [flags]
       
     </span>
   </a>
@@ -2194,6 +2362,17 @@
   
     <nav class="md-nav" aria-label="Security &amp; Verification">
       <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#security-scanning" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Security Scanning
+      
+    </span>
+  </a>
+  
+</li>
         
           <li class="md-nav__item">
   <a href="#name-verification" class="md-nav__link">
@@ -2548,6 +2727,34 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#setup" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Setup
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Setup">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#dirctl-init-flags" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        dirctl init [flags]
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#diagnostics" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2603,6 +2810,56 @@
     <span class="md-ellipsis">
       
         dirctl mcp serve
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#agent-install" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Agent Install
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Agent Install">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#dirctl-install-list" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        dirctl install list
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#dirctl-install-cid-or-name-dirctl-install-run-cid-or-name" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        dirctl install &lt;cid-or-name&gt; / dirctl install run &lt;cid-or-name&gt;
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#dirctl-install-uninstall-cid-or-name-flags" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        dirctl install uninstall &lt;cid-or-name&gt; [flags]
       
     </span>
   </a>
@@ -2999,6 +3256,17 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
+  <a href="#security-scanning" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Security Scanning
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#name-verification" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -3318,6 +3586,10 @@ explicit <code>--auth-mode</code>.</p>
 </thead>
 <tbody>
 <tr>
+<td>Setup</td>
+<td><code>init</code></td>
+</tr>
+<tr>
 <td>Daemon</td>
 <td><code>daemon start</code>, <code>stop</code>, <code>status</code></td>
 </tr>
@@ -3362,6 +3634,10 @@ explicit <code>--auth-mode</code>.</p>
 <td><code>mcp serve</code></td>
 </tr>
 <tr>
+<td>Install</td>
+<td><code>install run</code>, <code>install uninstall</code> (or top-level <code>uninstall</code>), <code>install list</code></td>
+</tr>
+<tr>
 <td>Diagnostics</td>
 <td><code>doctor</code>, <code>version</code></td>
 </tr>
@@ -3371,6 +3647,64 @@ explicit <code>--auth-mode</code>.</p>
 <div class="highlight"><pre><span></span><code>dirctl<span class="w"> </span>--help
 dirctl<span class="w"> </span>routing<span class="w"> </span>--help
 dirctl<span class="w"> </span>routing<span class="w"> </span>search<span class="w"> </span>--help
+</code></pre></div>
+<h2 id="setup">Setup</h2>
+<h3 id="dirctl-init-flags"><code>dirctl init [flags]</code></h3>
+<p>Guided first-run setup for a new environment — run it once after installing
+<code>dirctl</code>. It provisions the <strong>OASF taxonomy extractor</strong>: a small
+sentence-transformer model (<code>all-MiniLM-L6-v2</code>, ~89 MB) plus the OASF taxonomy,
+downloaded to a local asset directory. Those assets power local, <strong>LLM-free</strong>
+record enrichment (and, in future, free-text search) that runs in-process — no
+Python, no external inference service, no LLM API. The chosen OASF endpoint and
+asset directory are saved to the <code>dirctl</code> config so other commands load the
+provisioned assets automatically.</p>
+<p>Provisioning is <strong>opt-out</strong> in an interactive terminal — the prompt defaults to
+yes, so pressing Enter provisions. To avoid an unattended ~89 MB download, a
+<strong>non-interactive</strong> run (no TTY, e.g. CI or a pipe) skips unless you pass
+<code>--yes</code>. Re-running is idempotent: nothing is re-downloaded when the assets are
+present and current, and the taxonomy is re-embedded only when it changed.</p>
+<table>
+<thead>
+<tr>
+<th>Flag</th>
+<th>Description</th>
+<th>Default</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>--oasf-url</code></td>
+<td>OASF schema endpoint to pull the taxonomy from</td>
+<td><code>https://schema.oasf.outshift.com</code></td>
+</tr>
+<tr>
+<td><code>--asset-dir</code></td>
+<td>Local directory for the provisioned assets</td>
+<td><code>~/.agntcy/oasf-sdk/extractor</code></td>
+</tr>
+<tr>
+<td><code>--yes</code> / <code>-y</code></td>
+<td>Provision without prompting (required for non-interactive runs)</td>
+<td><code>false</code></td>
+</tr>
+<tr>
+<td><code>--remove</code></td>
+<td>Remove the provisioned assets and clear the saved config</td>
+<td><code>false</code></td>
+</tr>
+</tbody>
+</table>
+<div class="highlight"><pre><span></span><code><span class="c1"># Interactive setup (prompts; Enter accepts)</span>
+dirctl<span class="w"> </span>init
+
+<span class="c1"># Non-interactive (CI): provision with defaults</span>
+dirctl<span class="w"> </span>init<span class="w"> </span>--yes
+
+<span class="c1"># Provision from a local OASF instance</span>
+dirctl<span class="w"> </span>init<span class="w"> </span>--oasf-url<span class="w"> </span>http://localhost:8080<span class="w"> </span>--yes
+
+<span class="c1"># Tear down what init provisioned</span>
+dirctl<span class="w"> </span>init<span class="w"> </span>--remove<span class="w"> </span>--yes
 </code></pre></div>
 <h2 id="diagnostics">Diagnostics</h2>
 <h3 id="dirctl-doctor-flags"><code>dirctl doctor [flags]</code></h3>
@@ -3402,6 +3736,94 @@ dirctl<span class="w"> </span>routing<span class="w"> </span>search<span class="
 <h3 id="dirctl-mcp-serve"><code>dirctl mcp serve</code></h3>
 <p>Starts the built-in MCP server used by external AI tooling. Delegates to the
 <a href="https://github.com/agntcy/dir-mcp"><code>dir-mcp</code></a> module.</p>
+<h2 id="agent-install">Agent Install</h2>
+<p><code>dirctl install &lt;cid-or-name&gt;</code> pulls a record from the active Directory and
+installs its artifacts — an MCP server entry and/or an Agent Skill, derived from
+the record's OASF modules — directly into the configuration of detected AI coding
+agents.</p>
+<p>Which artifacts are installed is determined by the record's modules, not a flag:</p>
+<ul>
+<li><code>core/language_model/agentskills</code> → an Agent Skill (<code>SKILL.md</code>), rendered into
+  whatever persistent-instruction mechanism each agent supports (a native skill
+  folder, a per-tool rules file, or a managed block in a shared instruction file).</li>
+<li><code>integration/mcp</code> → an MCP server entry (<code>command</code>/<code>args</code>/<code>env</code>) placed under
+  each agent's MCP servers key.</li>
+<li><code>integration/a2a</code> → not installable into agent configs; the command errors and
+  points you to <code>dirctl export</code>.</li>
+</ul>
+<p>A multi-module record installs all applicable artifacts. The per-record identity
+is the sanitized record name, so re-running <code>install</code> with a newer version of the
+same-named record replaces the old artifacts cleanly, and different records
+coexist.</p>
+<p>Supported agents: Claude Code, Claude Desktop, Cursor, VS Code (Copilot),
+Windsurf, Cline, Roo Code, Gemini CLI, OpenCode, Zed, Continue, and Codex CLI.</p>
+<p>Writes are atomic and surgical: only our own MCP entry, skill file/folder, or
+delimited managed block is added/updated/removed — all of your existing
+configuration is preserved.</p>
+<h3 id="dirctl-install-list"><code>dirctl install list</code></h3>
+<p>Lists every supported agent, whether it is detected on this machine, and the
+config files that install would touch. Makes no changes and does not contact the
+Directory.</p>
+<h3 id="dirctl-install-cid-or-name-dirctl-install-run-cid-or-name"><code>dirctl install &lt;cid-or-name&gt;</code> / <code>dirctl install run &lt;cid-or-name&gt;</code></h3>
+<p>Pulls the record, derives its artifacts, prints the planned changes (per agent and
+artifact, marked add / updated / unchanged), asks for confirmation, then installs.
+<code>dirctl install &lt;cid-or-name&gt;</code> is shorthand for <code>dirctl install run &lt;cid-or-name&gt;</code>.
+By default it acts on all detected agents. Detection is always required — an agent
+is never installed into unless it is detected on this machine; an explicitly
+requested agent that is not detected is reported as skipped.</p>
+<p>The artifacts to install are determined entirely by the record's modules (above),
+not by flags. A record carrying neither an MCP nor an Agent Skill module has
+nothing installable: the command errors (making no changes) and, for an
+A2A-only record, points you to <code>dirctl export</code>.</p>
+<table>
+<thead>
+<tr>
+<th>Flag</th>
+<th>Description</th>
+<th>Default</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>--agents</code></td>
+<td>Agents to target: <code>all</code> (every detected agent) or a comma-separated list of agent IDs (e.g. <code>--agents claude-code,cursor</code>; repeatable)</td>
+<td><code>all</code></td>
+</tr>
+<tr>
+<td><code>--dry-run</code></td>
+<td>Preview the plan without writing</td>
+<td><code>false</code></td>
+</tr>
+<tr>
+<td><code>--yes</code> / <code>-y</code></td>
+<td>Skip the confirmation prompt</td>
+<td><code>false</code></td>
+</tr>
+</tbody>
+</table>
+<p>Valid agent IDs: <code>claude-code</code>, <code>claude-desktop</code>, <code>cursor</code>, <code>vscode</code>, <code>windsurf</code>,
+<code>cline</code>, <code>roo</code>, <code>gemini</code>, <code>opencode</code>, <code>zed</code>, <code>continue</code>, <code>codex</code> (see
+<code>dirctl install list</code>). After completion, a summary lists every location added,
+updated, removed, or skipped with its absolute path.</p>
+<div class="highlight"><pre><span></span><code><span class="c1"># Preview what installing a record would change</span>
+dirctl<span class="w"> </span>install<span class="w"> </span>cisco.com/agent:v1.0.0<span class="w"> </span>--dry-run
+
+<span class="c1"># Install a record&#39;s artifacts into all detected agents</span>
+dirctl<span class="w"> </span>install<span class="w"> </span>cisco.com/agent:v1.0.0<span class="w"> </span>--yes
+
+<span class="c1"># Install into specific agents only</span>
+dirctl<span class="w"> </span>install<span class="w"> </span>cisco.com/agent<span class="w"> </span>--agents<span class="w"> </span>claude-code,cursor
+</code></pre></div>
+<h3 id="dirctl-install-uninstall-cid-or-name-flags"><code>dirctl install uninstall &lt;cid-or-name&gt; [flags]</code></h3>
+<p>Removes what <code>install</code> added for that record — its MCP entry and/or skill —
+leaving all other content intact. Shares the same flags as install (<code>--agents</code>,
+<code>--dry-run</code>, <code>--yes</code>). Idempotent: an agent with nothing of ours installed is
+reported as unchanged, never an error.</p>
+<p><code>dirctl uninstall &lt;cid-or-name&gt;</code> is a top-level shorthand for
+<code>dirctl install uninstall &lt;cid-or-name&gt;</code> (same flags and behavior).</p>
+<div class="highlight"><pre><span></span><code>dirctl<span class="w"> </span>install<span class="w"> </span>uninstall<span class="w"> </span>cisco.com/agent<span class="w"> </span>--yes
+dirctl<span class="w"> </span>uninstall<span class="w"> </span>cisco.com/agent<span class="w"> </span>--agents<span class="w"> </span>cursor
+</code></pre></div>
 <h2 id="daemon-operations">Daemon Operations</h2>
 <p>The daemon commands run a self-contained local directory server that bundles the gRPC apiserver and reconciler into a single process with embedded SQLite and a filesystem OCI store. All state is stored under <code>~/.agntcy/dir/</code> by default.</p>
 <h3 id="dirctl-daemon-start"><code>dirctl daemon start</code></h3>
@@ -3780,10 +4202,38 @@ dirctl<span class="w"> </span>pull<span class="w"> </span>cisco.com/agent:v1.0.0
 
 <span class="c1"># Pull signature and public-key referrer artifacts from the server</span>
 dirctl<span class="w"> </span>pull<span class="w"> </span>&lt;cid&gt;<span class="w"> </span>--signature<span class="w"> </span>--public-key
+
+<span class="c1"># Pull security scan reports for the record</span>
+dirctl<span class="w"> </span>pull<span class="w"> </span>&lt;cid&gt;<span class="w"> </span>--scan-report
 </code></pre></div>
 </details>
 <p><strong>Output and batch retrieval:</strong></p>
 <p><code>pull</code> defaults to <code>--output json</code> (records are primarily machine-consumed); <code>-o human|jsonl|raw</code> are also available. Use <code>--output-file</code> to write a single record's JSON to a file, or <code>--output-dir</code> with search filters to pull many records at once (one <code>&lt;name&gt;.json</code> per record).</p>
+<p><strong>Referrer flags</strong> — these extend the output with OCI referrer artifacts attached to the record:</p>
+<table>
+<thead>
+<tr>
+<th>Flag</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>--public-key</code></td>
+<td>Include the public key referrer attached to the record</td>
+</tr>
+<tr>
+<td><code>--signature</code></td>
+<td>Include the signature referrer attached to the record</td>
+</tr>
+<tr>
+<td><code>--scan-report</code></td>
+<td>Include security scan reports for the record</td>
+</tr>
+</tbody>
+</table>
+<p>When any referrer flag is set, the response is a structured JSON object with a <code>record</code> key and one or more of <code>publicKeys</code>, <code>signatures</code>, <code>scanReports</code>.</p>
+<p><strong>Output and batch retrieval:</strong></p>
 <table>
 <thead>
 <tr>
@@ -4524,7 +4974,15 @@ dirctl<span class="w"> </span>routing<span class="w"> </span>info
 </tr>
 <tr>
 <td><code>--trusted</code></td>
-<td>Only trusted records</td>
+<td>Only trusted records (signature verification passed)</td>
+</tr>
+<tr>
+<td><code>--safe</code></td>
+<td>Only records where all security scanners reported <code>is_safe=true</code></td>
+</tr>
+<tr>
+<td><code>--scan-severity</code></td>
+<td>Only records whose highest scan severity meets or exceeds a threshold (<code>NONE</code>, <code>INFO</code>, <code>LOW</code>, <code>MEDIUM</code>, <code>HIGH</code>, <code>CRITICAL</code>)</td>
 </tr>
 </tbody>
 </table>
@@ -4572,9 +5030,71 @@ dirctl<span class="w"> </span>search<span class="w"> </span>--limit<span class="
 <span class="w">  </span>--skill<span class="w"> </span><span class="s2">&quot;Text Completion&quot;</span><span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--locator<span class="w"> </span>docker-image<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--format<span class="w"> </span>record
+
+<span class="c1"># Security scan filters</span>
+dirctl<span class="w"> </span>search<span class="w"> </span>--safe
+dirctl<span class="w"> </span>search<span class="w"> </span>--scan-severity<span class="w"> </span>HIGH
+dirctl<span class="w"> </span>search<span class="w"> </span>--safe<span class="w"> </span>--scan-severity<span class="w"> </span>MEDIUM
 </code></pre></div>
 </details>
 <h2 id="security-verification">Security &amp; Verification</h2>
+<h3 id="security-scanning">Security Scanning</h3>
+<p>The Directory reconciler automatically runs security scanners against records and stores the results as OCI referrers. Scan results are indexed in the local database so they can be queried as search filters. Two scanners are supported: <a href="https://cisco-ai-defense.github.io/docs/mcp-scanner">mcp-scanner</a> for MCP server source code and <a href="https://cisco-ai-defense.github.io/docs/skill-scanner">skill-scanner</a> for agent skill bundles.</p>
+<p><strong>Pull scan reports for a record:</strong></p>
+<div class="highlight"><pre><span></span><code>dirctl<span class="w"> </span>pull<span class="w"> </span>&lt;cid&gt;<span class="w"> </span>--scan-report
+</code></pre></div>
+<p>The response includes a <code>scanReports</code> array. Each entry covers one scanner type and contains:</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>scanner_type</code></td>
+<td>Scanner that produced this report (<code>SCANNER_TYPE_MCP</code>, <code>SCANNER_TYPE_SKILL</code>)</td>
+</tr>
+<tr>
+<td><code>scanner_version</code></td>
+<td>Version of the scanner binary</td>
+</tr>
+<tr>
+<td><code>scanned_at</code></td>
+<td>RFC 3339 timestamp of when the scan ran</td>
+</tr>
+<tr>
+<td><code>is_safe</code></td>
+<td><code>true</code> if the scanner found no security issues</td>
+</tr>
+<tr>
+<td><code>max_severity</code></td>
+<td>Highest severity across all findings (<code>SEVERITY_NONE</code>, <code>SEVERITY_INFO</code>, <code>SEVERITY_MEDIUM</code>, <code>SEVERITY_HIGH</code>, <code>SEVERITY_CRITICAL</code>)</td>
+</tr>
+<tr>
+<td><code>analyzers</code></td>
+<td>Analyzer modules that were invoked</td>
+</tr>
+<tr>
+<td><code>findings</code></td>
+<td>List of individual findings (rule ID, severity, message, location, remediation)</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Filter records by scan status:</strong></p>
+<div class="highlight"><pre><span></span><code><span class="c1"># Records where all scanners reported is_safe=true</span>
+dirctl<span class="w"> </span>search<span class="w"> </span>--safe
+
+<span class="c1"># Records whose highest severity meets or exceeds a threshold</span>
+dirctl<span class="w"> </span>search<span class="w"> </span>--scan-severity<span class="w"> </span>HIGH
+dirctl<span class="w"> </span>search<span class="w"> </span>--scan-severity<span class="w"> </span>MEDIUM
+
+<span class="c1"># Combine with other filters</span>
+dirctl<span class="w"> </span>search<span class="w"> </span>--name<span class="w"> </span><span class="s2">&quot;cisco.com/*&quot;</span><span class="w"> </span>--safe
+dirctl<span class="w"> </span>search<span class="w"> </span>--safe<span class="w"> </span>--scan-severity<span class="w"> </span>MEDIUM
+</code></pre></div>
+<p>A record appears in <code>--safe</code> results only when at least one scanner has run and no scanner has reported <code>is_safe=false</code>. Records where all scanners were skipped (no source repo, no skill bundle) are not included.</p>
 <h3 id="name-verification">Name Verification</h3>
 <p>Record name verification proves that the signing key is authorized by the domain claimed in the record's name field.</p>
 <p><strong>Requirements:</strong></p>

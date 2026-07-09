@@ -863,6 +863,45 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#security-scanning" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Security Scanning
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Security Scanning">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#pull-scan-reports" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Pull scan reports
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#filter-by-scan-status" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Filter by scan status
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#announce" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1006,6 +1045,17 @@
     <span class="md-ellipsis">
       
         Export
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#install" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Install
       
     </span>
   </a>
@@ -1808,6 +1858,12 @@
       
         
       
+        
+      
+        
+      
+        
+      
     
     
     
@@ -1871,6 +1927,90 @@
     
   
     SDK Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../dir-sdk-go/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Go SDK
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../dir-sdk-python/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Python SDK
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../dir-sdk-javascript/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    JavaScript / TypeScript SDK
   
 
     
@@ -2282,6 +2422,45 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#security-scanning" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Security Scanning
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Security Scanning">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#pull-scan-reports" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Pull scan reports
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#filter-by-scan-status" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Filter by scan status
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#announce" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2425,6 +2604,17 @@
     <span class="md-ellipsis">
       
         Export
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#install" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Install
       
     </span>
   </a>
@@ -2713,6 +2903,40 @@ dirctl<span class="w"> </span>pull<span class="w"> </span>example.com/agents/my-
 <span class="c1"># Pin a specific version, optionally with hash verification</span>
 dirctl<span class="w"> </span>pull<span class="w"> </span>example.com/agents/my-record:v1.0.0@<span class="nv">$RECORD_CID</span>
 </code></pre></div>
+<h2 id="security-scanning">Security Scanning</h2>
+<p>The Directory reconciler automatically scans records for security issues using
+<a href="https://cisco-ai-defense.github.io/docs/mcp-scanner"><code>mcp-scanner</code></a>
+(for MCP server source code) and
+<a href="https://cisco-ai-defense.github.io/docs/skill-scanner"><code>skill-scanner</code></a>
+(for agent skill bundles). Scan results are
+stored as OCI referrers and indexed in the local database so they can be surfaced through
+search filters and pulled alongside records.</p>
+<h3 id="pull-scan-reports">Pull scan reports</h3>
+<div class="highlight"><pre><span></span><code><span class="c1"># Pull the security scan reports attached to a record</span>
+dirctl<span class="w"> </span>pull<span class="w"> </span><span class="nv">$RECORD_CID</span><span class="w"> </span>--scan-report
+</code></pre></div>
+<p>The response contains a <code>scanReports</code> array — one entry per scanner that ran. Each entry
+includes <code>scanner_type</code>, <code>is_safe</code>, <code>max_severity</code>, <code>analyzers</code>, and a <code>findings</code> list with
+individual issue details (severity, message, location, remediation).</p>
+<p>Records are re-scanned automatically when the previous result is older than the configured
+TTL (default 7 days).</p>
+<h3 id="filter-by-scan-status">Filter by scan status</h3>
+<div class="highlight"><pre><span></span><code><span class="c1"># Only records where all scanners reported is_safe=true</span>
+dirctl<span class="w"> </span>search<span class="w"> </span>--safe
+
+<span class="c1"># Only records whose highest finding severity is HIGH or above</span>
+dirctl<span class="w"> </span>search<span class="w"> </span>--scan-severity<span class="w"> </span>HIGH
+
+<span class="c1"># Combine scan filters with other search criteria</span>
+dirctl<span class="w"> </span>search<span class="w"> </span>--name<span class="w"> </span><span class="s2">&quot;cisco.com/*&quot;</span><span class="w"> </span>--safe
+dirctl<span class="w"> </span>search<span class="w"> </span>--module<span class="w"> </span><span class="s2">&quot;integration/mcp&quot;</span><span class="w"> </span>--scan-severity<span class="w"> </span>MEDIUM
+</code></pre></div>
+<p><code>--safe</code> requires that at least one scanner ran and that no scanner reported <code>is_safe=false</code>.
+Records where all scanners were skipped (no source repo locator for MCP, no skill bundle for
+skill-scanner) are excluded.</p>
+<p><code>--scan-severity &lt;threshold&gt;</code> returns records whose highest recorded severity is at or above
+the threshold. Severity levels from lowest to highest: <code>NONE</code>, <code>INFO</code>, <code>LOW</code>, <code>MEDIUM</code>,
+<code>HIGH</code>, <code>CRITICAL</code>.</p>
 <h2 id="announce">Announce</h2>
 <p>This example demonstrates how to publish records to allow content discovery across the
 network. Announcements are processed asynchronously and have a TTL, so republish
@@ -2831,6 +3055,27 @@ dirctl<span class="w"> </span><span class="nb">export</span><span class="w"> </s
 </code></pre></div>
 <p>By default, only the latest semver version is exported; use <code>--all-versions</code> to export every
 version. See <a href="../dir-cli-reference/#export-operations">CLI Reference — Export Operations</a>.</p>
+<h2 id="install">Install</h2>
+<p>Where <code>export</code> writes artifacts to files you manage, <code>install</code> places them directly into the
+configuration of detected AI coding agents (Claude Code, Cursor, VS Code, Windsurf, and more).
+What gets installed is derived from the record's OASF modules — an MCP server entry and/or an
+Agent Skill — not from a flag; a record with neither errors (an A2A-only record points you to
+<code>export</code>). See <a href="../dir-cli-reference/#agent-install">CLI Reference — Agent Install</a>.</p>
+<div class="highlight"><pre><span></span><code><span class="c1"># Preview what installing a record would change across detected agents</span>
+dirctl<span class="w"> </span>install<span class="w"> </span>cisco.com/agent:v1.0.0<span class="w"> </span>--dry-run
+
+<span class="c1"># Install into all detected agents</span>
+dirctl<span class="w"> </span>install<span class="w"> </span>cisco.com/agent:v1.0.0<span class="w"> </span>--yes
+
+<span class="c1"># Install into specific agents only</span>
+dirctl<span class="w"> </span>install<span class="w"> </span>cisco.com/agent<span class="w"> </span>--agents<span class="w"> </span>claude-code,cursor
+
+<span class="c1"># Remove what install added (top-level shorthand for `install uninstall`)</span>
+dirctl<span class="w"> </span>uninstall<span class="w"> </span>cisco.com/agent
+</code></pre></div>
+<p>Detection is always required — an agent is never written to unless it is detected. Re-installing
+a newer version of the same record replaces the old artifacts cleanly. <code>dirctl install list</code>
+shows which agents are detected and the config files install would touch.</p>
 
 
 

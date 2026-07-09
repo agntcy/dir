@@ -8,13 +8,13 @@
       
       
       
-        <link rel="canonical" href="https://agntcy.github.io/dir/latest/dir/dir-component-records-validation/">
+        <link rel="canonical" href="https://agntcy.github.io/dir/latest/dir/dir-sdk-python/">
       
       
-        <link rel="prev" href="../dir-architecture/">
+        <link rel="prev" href="../dir-sdk-go/">
       
       
-        <link rel="next" href="../dir-component-store/">
+        <link rel="next" href="../dir-sdk-javascript/">
       
       
         
@@ -25,7 +25,7 @@
     
     
       
-        <title>Records - Agent Directory Service</title>
+        <title>Python SDK - Agent Directory Service</title>
       
     
     
@@ -92,7 +92,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#records-and-validation" class="md-skip">
+        <a href="#python-sdk" class="md-skip">
           Skip to content
         </a>
       
@@ -151,7 +151,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Records
+              Python SDK
             
           </span>
         </div>
@@ -684,8 +684,6 @@
                 
   
   
-    
-  
   
   
     
@@ -715,11 +713,11 @@
       
     
     
-    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_2" checked>
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_2" >
         
           
           <label class="md-nav__link" for="__nav_2_2" id="__nav_2_2_label" tabindex="">
@@ -740,7 +738,7 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_2_label" aria-expanded="true">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_2_label" aria-expanded="false">
           <label class="md-nav__title" for="__nav_2_2">
             <span class="md-nav__icon md-icon"></span>
             
@@ -783,37 +781,10 @@
                 
   
   
-    
   
   
-  
-    <li class="md-nav__item md-nav__item--active">
-      
-      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
-      
-      
-        
-      
-      
-        <label class="md-nav__link md-nav__link--active" for="__toc">
-          
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Records
-  
-
-    
-  </span>
-  
-  
-
-          <span class="md-nav__icon md-icon"></span>
-        </label>
-      
-      <a href="./" class="md-nav__link md-nav__link--active">
+    <li class="md-nav__item">
+      <a href="../dir-component-records-validation/" class="md-nav__link">
         
   
   
@@ -829,215 +800,6 @@
   
 
       </a>
-      
-        
-
-<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
-  
-  
-  
-    
-  
-  
-    <label class="md-nav__title" for="__toc">
-      <span class="md-nav__icon md-icon"></span>
-      Table of contents
-    </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#ads-records" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        ADS Records
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="ADS Records">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#content-identifier" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Content Identifier
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#verifiable-names" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Verifiable Names
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#example-email-agent" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Example Email Agent
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#validation" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Validation
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Validation">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#configuration" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Configuration
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#validation-behavior" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Validation Behavior
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#oasf-instance-configurations" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        OASF Instance Configurations
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="OASF Instance Configurations">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#official-oasf-instance" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Official OASF Instance
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#custom-oasf-instance-additional-taxonomy" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Custom OASF Instance (Additional Taxonomy)
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#custom-oasf-instance-changed-taxonomy" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Custom OASF Instance (Changed Taxonomy)
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#deploying-a-local-oasf-instance" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Deploying a Local OASF Instance
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Deploying a Local OASF Instance">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#testing-with-local-oasf-server" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Testing with Local OASF Server
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#using-a-locally-built-oasf-image" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Using a Locally Built OASF Image
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#related-documentation" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Related Documentation
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-    </ul>
-  
-</nav>
-      
     </li>
   
 
@@ -1690,6 +1452,8 @@
                 
   
   
+    
+  
   
   
     
@@ -1715,11 +1479,11 @@
       
     
     
-    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_4" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_4" checked>
         
           
           <label class="md-nav__link" for="__nav_2_4" id="__nav_2_4_label" tabindex="">
@@ -1740,7 +1504,7 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_4_label" aria-expanded="false">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_4_label" aria-expanded="true">
           <label class="md-nav__title" for="__nav_2_4">
             <span class="md-nav__icon md-icon"></span>
             
@@ -1811,10 +1575,37 @@
                 
   
   
+    
   
   
-    <li class="md-nav__item">
-      <a href="../dir-sdk-python/" class="md-nav__link">
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Python SDK
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
         
   
   
@@ -1830,6 +1621,253 @@
   
 
       </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#features" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Features
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#installation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Installation
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#configuration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Configuration
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Configuration">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#environment-variables" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Environment variables
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#direct-instantiation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Direct instantiation
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#docker-based-dirctl" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Docker-based dirctl
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#oauth-20-oidc-bearer-auth" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        OAuth 2.0 / OIDC bearer auth
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#usage" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Usage
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Usage">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#store-push-and-pull-records" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Store — push and pull records
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#routing-publish-and-discover" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Routing — publish and discover
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#search" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Search
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#naming-resolve-and-verify" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Naming — resolve and verify
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#events-real-time-streaming" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Events — real-time streaming
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#signing-and-verification" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Signing and verification
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#error-handling" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Error handling
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#prerequisites" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Prerequisites
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#examples" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Examples
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Examples">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#examplesexamplepy" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        examples/example.py
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#examplesexample_interactive_oidcpy" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        examples/example_interactive_oidc.py
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
     </li>
   
 
@@ -2111,22 +2149,44 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#ads-records" class="md-nav__link">
+  <a href="#features" class="md-nav__link">
     <span class="md-ellipsis">
       
-        ADS Records
+        Features
       
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="ADS Records">
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#installation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Installation
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#configuration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Configuration
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Configuration">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#content-identifier" class="md-nav__link">
+  <a href="#environment-variables" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Content Identifier
+        Environment variables
       
     </span>
   </a>
@@ -2134,10 +2194,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#verifiable-names" class="md-nav__link">
+  <a href="#direct-instantiation" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Verifiable Names
+        Direct instantiation
       
     </span>
   </a>
@@ -2145,10 +2205,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#example-email-agent" class="md-nav__link">
+  <a href="#docker-based-dirctl" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Example Email Agent
+        Docker-based dirctl
       
     </span>
   </a>
@@ -2161,22 +2221,33 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#validation" class="md-nav__link">
+  <a href="#oauth-20-oidc-bearer-auth" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Validation
+        OAuth 2.0 / OIDC bearer auth
       
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Validation">
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#usage" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Usage
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Usage">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#configuration" class="md-nav__link">
+  <a href="#store-push-and-pull-records" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Configuration
+        Store — push and pull records
       
     </span>
   </a>
@@ -2184,10 +2255,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#validation-behavior" class="md-nav__link">
+  <a href="#routing-publish-and-discover" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Validation Behavior
+        Routing — publish and discover
       
     </span>
   </a>
@@ -2195,22 +2266,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#oasf-instance-configurations" class="md-nav__link">
+  <a href="#search" class="md-nav__link">
     <span class="md-ellipsis">
       
-        OASF Instance Configurations
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="OASF Instance Configurations">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#official-oasf-instance" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Official OASF Instance
+        Search
       
     </span>
   </a>
@@ -2218,10 +2277,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#custom-oasf-instance-additional-taxonomy" class="md-nav__link">
+  <a href="#naming-resolve-and-verify" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Custom OASF Instance (Additional Taxonomy)
+        Naming — resolve and verify
       
     </span>
   </a>
@@ -2229,10 +2288,21 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#custom-oasf-instance-changed-taxonomy" class="md-nav__link">
+  <a href="#events-real-time-streaming" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Custom OASF Instance (Changed Taxonomy)
+        Events — real-time streaming
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#signing-and-verification" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Signing and verification
       
     </span>
   </a>
@@ -2243,24 +2313,46 @@
     </nav>
   
 </li>
-        
-          <li class="md-nav__item">
-  <a href="#deploying-a-local-oasf-instance" class="md-nav__link">
+      
+        <li class="md-nav__item">
+  <a href="#error-handling" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Deploying a Local OASF Instance
+        Error handling
       
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Deploying a Local OASF Instance">
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#prerequisites" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Prerequisites
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#examples" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Examples
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Examples">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#testing-with-local-oasf-server" class="md-nav__link">
+  <a href="#examplesexamplepy" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Testing with Local OASF Server
+        examples/example.py
       
     </span>
   </a>
@@ -2268,26 +2360,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#using-a-locally-built-oasf-image" class="md-nav__link">
+  <a href="#examplesexample_interactive_oidcpy" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Using a Locally Built OASF Image
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#related-documentation" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Related Documentation
+        examples/example_interactive_oidc.py
       
     </span>
   </a>
@@ -2368,10 +2444,10 @@
     
     
       <li class="md-path__item">
-        <a href="../dir-architecture/" class="md-path__link">
+        <a href="../dir-sdk/" class="md-path__link">
           
   <span class="md-ellipsis">
-    Concepts
+    SDKs
   </span>
 
         </a>
@@ -2390,7 +2466,7 @@
 
 
   
-    <a href="https://github.com/agntcy/dir/edit/main/docs/content/dir/dir-component-records-validation.md" title="Edit this page" class="md-content__button md-icon" rel="edit">
+    <a href="https://github.com/agntcy/dir/edit/main/docs/content/dir/dir-sdk-python.md" title="Edit this page" class="md-content__button md-icon" rel="edit">
       
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M10 20H6V4h7v5h5v3.1l2-2V8l-6-6H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h4zm10.2-7c.1 0 .3.1.4.2l1.3 1.3c.2.2.2.6 0 .8l-1 1-2.1-2.1 1-1c.1-.1.2-.2.4-.2m0 3.9L14.1 23H12v-2.1l6.1-6.1z"/></svg>
     </a>
@@ -2399,248 +2475,340 @@
     
       
     
-    <a href="https://github.com/agntcy/dir/raw/main/docs/content/dir/dir-component-records-validation.md" title="View source of this page" class="md-content__button md-icon">
+    <a href="https://github.com/agntcy/dir/raw/main/docs/content/dir/dir-sdk-python.md" title="View source of this page" class="md-content__button md-icon">
       
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M17 18c.56 0 1 .44 1 1s-.44 1-1 1-1-.44-1-1 .44-1 1-1m0-3c-2.73 0-5.06 1.66-6 4 .94 2.34 3.27 4 6 4s5.06-1.66 6-4c-.94-2.34-3.27-4-6-4m0 6.5a2.5 2.5 0 0 1-2.5-2.5 2.5 2.5 0 0 1 2.5-2.5 2.5 2.5 0 0 1 2.5 2.5 2.5 2.5 0 0 1-2.5 2.5M9.27 20H6V4h7v5h5v4.07c.7.08 1.36.25 2 .49V8l-6-6H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h4.5a8.2 8.2 0 0 1-1.23-2"/></svg>
     </a>
   
 
 
-<h1 id="records-and-validation">Records and Validation</h1>
-<h2 id="ads-records">ADS Records</h2>
-<p>Directory uses <a href="https://schema.oasf.outshift.com">Open Agent Schema Framework</a> (OASF) which defines a standardized schema for representing agents and their capabilities using <a href="https://schema.oasf.outshift.com/objects/record">OASF Record specification</a>. This ensures interoperability and consistency across different implementations of the directory service.</p>
-<h3 id="content-identifier">Content Identifier</h3>
-<p>The content identifier of the record is a <a href="https://github.com/multiformats/cid">Content IDentifier</a> (CID) hash digest which makes it:</p>
-<ul>
-<li>Globally unique</li>
-<li>Content-addressable</li>
-<li>Collision-resistant</li>
-<li>Immutable</li>
-</ul>
-<h3 id="verifiable-names">Verifiable Names</h3>
-<p>Records must include a <code>name</code> field with a domain-based identifier that enables name verification. When a record uses a verifiable name:</p>
-<ul>
-<li>The name must include a protocol prefix: <code>https://domain/path</code> or <code>http://domain/path</code>.</li>
-<li>The domain must host a JWKS file at <code>&lt;scheme&gt;://&lt;domain&gt;/.well-known/jwks.json</code>.</li>
-<li>Records signed with a private key associated with a public key present in that JWKS file can be verified as authorized by the domain.</li>
-</ul>
-<p>See <a href="../dir-features-scenarios/#name-verification">Usage Guide — Name Verification</a> and the <a href="../dir-cli-reference/#security-verification">CLI Reference</a> for name verification workflows.</p>
-<h3 id="example-email-agent">Example Email Agent</h3>
-<p>You can generate your own example records using the <a href="https://schema.oasf.outshift.com/sample/objects/record">OASF Record Sample generator</a>. Below is an example OASF record for an email agent that is capable of sending and receiving emails.</p>
-<div class="highlight"><pre><span></span><code><span class="p">{</span>
-<span class="w">  </span><span class="nt">&quot;schema_version&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;1.0.0&quot;</span><span class="p">,</span>
-<span class="w">  </span><span class="nt">&quot;name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;https://www.cisco.com/agents/email-agent&quot;</span><span class="p">,</span>
-<span class="w">  </span><span class="nt">&quot;version&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;v1.0.0&quot;</span><span class="p">,</span>
-<span class="w">  </span><span class="nt">&quot;authors&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;Cisco Systems Inc.&quot;</span><span class="p">],</span>
-<span class="w">  </span><span class="nt">&quot;description&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;An agent that can send and receive emails.&quot;</span><span class="p">,</span>
-<span class="w">  </span><span class="nt">&quot;created_at&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;2025-08-11T16:20:37.159072Z&quot;</span><span class="p">,</span>
-<span class="w">  </span><span class="nt">&quot;skills&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
-<span class="w">    </span><span class="p">{</span>
-<span class="w">      </span><span class="nt">&quot;id&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">10306</span><span class="p">,</span>
-<span class="w">      </span><span class="nt">&quot;name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;natural_language_processing/information_retrieval_synthesis/information_retrieval_synthesis_search&quot;</span>
-<span class="w">    </span><span class="p">},</span>
-<span class="w">    </span><span class="p">{</span>
-<span class="w">      </span><span class="nt">&quot;id&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">10202</span><span class="p">,</span>
-<span class="w">      </span><span class="nt">&quot;name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;natural_language_processing/natural_language_generation/summarization&quot;</span>
-<span class="w">    </span><span class="p">},</span>
-<span class="w">    </span><span class="p">{</span>
-<span class="w">      </span><span class="nt">&quot;id&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">60103</span><span class="p">,</span>
-<span class="w">      </span><span class="nt">&quot;name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;retrieval_augmented_generation/retrieval_of_information/document_retrieval&quot;</span>
-<span class="w">    </span><span class="p">}</span>
-<span class="w">  </span><span class="p">],</span>
-<span class="w">  </span><span class="nt">&quot;locators&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
-<span class="w">    </span><span class="p">{</span>
-<span class="w">      </span><span class="nt">&quot;urls&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
-<span class="w">        </span><span class="s2">&quot;https://github.com/agntcy/agentic-apps/tree/main/email_reviewer&quot;</span>
-<span class="w">      </span><span class="p">],</span>
-<span class="w">      </span><span class="nt">&quot;type&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;source_code&quot;</span>
-<span class="w">    </span><span class="p">},</span>
-<span class="w">    </span><span class="p">{</span>
-<span class="w">      </span><span class="nt">&quot;urls&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
-<span class="w">        </span><span class="s2">&quot;https://github.com/agntcy/agentic-apps/tree/main/email_reviewer/pyproject.toml&quot;</span>
-<span class="w">      </span><span class="p">],</span>
-<span class="w">      </span><span class="nt">&quot;type&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;package&quot;</span>
-<span class="w">    </span><span class="p">}</span>
-<span class="w">  </span><span class="p">]</span>
-<span class="p">}</span>
-</code></pre></div>
-<div class="admonition note">
-<p class="admonition-title">Note</p>
-<p>The <code>name</code> field uses a verifiable domain-based format (<code>https://cisco.com/agents/email-agent</code>). When signed with a key authorized by the domain's JWKS file at <code>https://cisco.com/.well-known/jwks.json</code>, this record can be pulled using the convenient reference <code>cisco.com/agents/email-agent:v1.0.0</code> instead of its CID.</p>
-</div>
-<h2 id="validation">Validation</h2>
-<p>The Directory enforces validation on all records before accepting them.
-Validation is performed using the <a href="https://docs.agntcy.org/oasf/oasf-sdk/">OASF SDK</a>, which requires an OASF schema server URL for validation.</p>
-<h3 id="configuration">Configuration</h3>
-<p>The Directory server validates records using an OASF schema URL. By default, it uses <code>https://schema.oasf.outshift.com</code>, but you can configure a different OASF instance:</p>
-<p><strong>Using environment variables:</strong></p>
-<div class="highlight"><pre><span></span><code><span class="c1"># Use default OASF instance (https://schema.oasf.outshift.com)</span>
-task<span class="w"> </span>server:start
-
-<span class="c1"># Use custom OASF instance</span>
-<span class="nv">DIRECTORY_SERVER_OASF_API_VALIDATION_SCHEMA_URL</span><span class="o">=</span>https://your-custom-oasf.com<span class="w"> </span>task<span class="w"> </span>server:start
-</code></pre></div>
-<p><strong>Using YAML configuration:</strong></p>
-<div class="highlight"><pre><span></span><code><span class="c1"># server.config.yml</span>
-<span class="nt">oasf_api_validation</span><span class="p">:</span>
-<span class="w">  </span><span class="nt">schema_url</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;https://schema.oasf.outshift.com&quot;</span>
-<span class="nt">listen_address</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;0.0.0.0:8888&quot;</span>
-</code></pre></div>
-<div class="admonition note">
-<p class="admonition-title">Note</p>
-<p>The Go server binary does not set a default schema URL in code; it must be configured via
-environment variable or YAML. Deployment tooling provides defaults: Docker Compose and the
-<code>dirctl</code> daemon use <code>https://schema.oasf.outshift.com</code>, and Helm charts set the same value
-unless overridden.</p>
-</div>
-<h3 id="validation-behavior">Validation Behavior</h3>
-<p>The Directory server uses API-based validation against the configured OASF schema server:</p>
-<ul>
-<li><strong>Validation Method</strong>: HTTP requests to the OASF schema server API.</li>
-<li><strong>Errors vs Warnings</strong>: Only errors cause validation to fail. Warnings are returned but do not affect the validation result.</li>
-<li><strong>Schema Version Detection</strong>: The schema version is automatically detected from each record's <code>schema_version</code> field.</li>
-<li><strong>Supported Versions</strong>: The OASF SDK decoder supports specific schema versions (currently: 0.7.0, 0.8.0, and 1.0.0). Records using unsupported versions are not validated.</li>
-<li><strong>Unknown Classes</strong>: Classes (such as modules, skills, and domains) not defined in the OASF schema are rejected with an error. Records must only use classes that are defined in the configured OASF schema instance.</li>
-</ul>
-<h3 id="oasf-instance-configurations">OASF Instance Configurations</h3>
-<p>While there is only one validation method (API validation), you can configure the Directory server to use different OASF instances.
-The choice of OASF instance affects which records are accepted and how compatible your directory instance is with other directory instances.</p>
-<p>The following table shows which OASF instance configurations can exchange records with each other:</p>
+<h1 id="python-sdk">Python SDK</h1>
+<p><a href="https://pypi.org/project/agntcy-dir/"><img alt="PyPI version" src="https://img.shields.io/pypi/v/agntcy-dir.svg" /></a></p>
+<p>The Directory Python SDK (<code>agntcy-dir</code>) provides a high-level client for interacting with the
+Directory gRPC API from Python 3.10+ applications.</p>
+<p>Source and issue tracker: <a href="https://github.com/agntcy/dir-sdk-python">github.com/agntcy/dir-sdk-python</a></p>
+<h2 id="features">Features</h2>
 <table>
 <thead>
 <tr>
-<th>Instance Type</th>
-<th>Can Pull From</th>
-<th>Can Be Pulled By</th>
+<th>API</th>
+<th>Methods</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td><strong>Official OASF Instance</strong></td>
-<td>Official OASF instance only</td>
-<td>Official OASF instance and custom instances with additional taxonomy</td>
+<td><strong>Store</strong></td>
+<td><code>push</code>, <code>pull</code>, <code>lookup</code>, <code>delete</code>, <code>push_referrer</code>, <code>pull_referrer</code>, <code>delete_referrer</code></td>
 </tr>
 <tr>
-<td><strong>Custom OASF Instance (Additional Taxonomy)</strong></td>
-<td>Official OASF instance, custom instances with same extended taxonomy</td>
-<td>Custom instances with same extended taxonomy only</td>
+<td><strong>Search</strong></td>
+<td><code>search_records</code>, <code>search_cids</code></td>
 </tr>
 <tr>
-<td><strong>Custom OASF Instance (Changed Taxonomy)</strong></td>
-<td>Custom instances with same changed taxonomy only</td>
-<td>Custom instances with same changed taxonomy only</td>
+<td><strong>Routing</strong></td>
+<td><code>publish</code>, <code>unpublish</code>, <code>list</code>, <code>search_routing</code></td>
+</tr>
+<tr>
+<td><strong>Publication</strong></td>
+<td><code>create_publication</code>, <code>get_publication</code>, <code>list_publication</code></td>
+</tr>
+<tr>
+<td><strong>Naming</strong></td>
+<td><code>resolve</code>, <code>get_verification_info</code></td>
+</tr>
+<tr>
+<td><strong>Sync</strong></td>
+<td><code>create_sync</code>, <code>get_sync</code>, <code>list_syncs</code>, <code>delete_sync</code></td>
+</tr>
+<tr>
+<td><strong>Events</strong></td>
+<td><code>listen</code> (server-streaming)</td>
+</tr>
+<tr>
+<td><strong>Signing</strong></td>
+<td><code>sign</code> (local via <code>dirctl</code>), <code>verify</code> (remote gRPC)</td>
 </tr>
 </tbody>
 </table>
-<h4 id="official-oasf-instance">Official OASF Instance</h4>
-<p>Using the official OASF instance (<code>https://schema.oasf.outshift.com</code>) provides the baseline for the official network.
-Records validated here form the most strict, compatible set.</p>
-<p><strong>Configuration:</strong></p>
-<div class="highlight"><pre><span></span><code><span class="nt">oasf_api_validation</span><span class="p">:</span>
-<span class="w">  </span><span class="nt">schema_url</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;https://schema.oasf.outshift.com&quot;</span>
-</code></pre></div>
-<h4 id="custom-oasf-instance-additional-taxonomy">Custom OASF Instance (Additional Taxonomy)</h4>
-<p>Using a custom OASF instance with extensions that add to the taxonomy (with modules, skills, and domains that extend the official taxonomy but doesn't change or remove).</p>
-<p>Records using the extended taxonomy can only be pulled by nodes using the exact same extended taxonomy.</p>
-<p><strong>Configuration:</strong></p>
-<div class="highlight"><pre><span></span><code><span class="nt">oasf_api_validation</span><span class="p">:</span>
-<span class="w">  </span><span class="nt">schema_url</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;https://your-custom-oasf-instance.com&quot;</span>
-</code></pre></div>
-<h4 id="custom-oasf-instance-changed-taxonomy">Custom OASF Instance (Changed Taxonomy)</h4>
-<p>Using a custom OASF instance with extensions that modify the taxonomy (with modules, skills, and domains that change or remove from the official taxonomy).</p>
-<p>This approach is completely incompatible with all other options, can only work with nodes using the exact same changed taxonomy.</p>
-<p><strong>Configuration:</strong></p>
-<div class="highlight"><pre><span></span><code><span class="nt">oasf_api_validation</span><span class="p">:</span>
-<span class="w">  </span><span class="nt">schema_url</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;https://your-custom-oasf-instance.com&quot;</span>
-</code></pre></div>
-<h3 id="deploying-a-local-oasf-instance">Deploying a Local OASF Instance</h3>
-<p>You can deploy a local OASF instance alongside the Directory server for testing or development purposes.</p>
-<h4 id="testing-with-local-oasf-server">Testing with Local OASF Server</h4>
-<p>To test with a local OASF instance deployed alongside the directory server:</p>
+<h2 id="installation">Installation</h2>
+<p>Requires <a href="https://github.com/astral-sh/uv">uv</a>.</p>
 <ol>
 <li>
-<p>Enable OASF in Helm values</p>
-<p>Edit <code>install/charts/dir/values.yaml</code> with the following configuration:</p>
-<div class="highlight"><pre><span></span><code><span class="nt">apiserver</span><span class="p">:</span>
-<span class="w">  </span><span class="nt">oasf</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">enabled</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+<p>Initialize the project:</p>
+<div class="highlight"><pre><span></span><code>uv<span class="w"> </span>init
 </code></pre></div>
 </li>
 <li>
-<p>Set schema URL to use the deployed OASF instance</p>
-<p>In the same file, set the schema URL to use the deployed OASF instance:</p>
-<div class="highlight"><pre><span></span><code><span class="nt">apiserver</span><span class="p">:</span>
-<span class="w">  </span><span class="nt">config</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">oasf_api_validation</span><span class="p">:</span>
-<span class="w">      </span><span class="nt">schema_url</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;http://dir-ingress-controller.dir-server.svc.cluster.local&quot;</span>
-</code></pre></div>
-<p>Replace <code>dir</code> with your Helm release name and <code>dir-server</code> with your namespace if different.</p>
-</li>
-<li>
-<p>Deploy the Directory chart with OASF enabled</p>
-<p>Follow <a href="../dir-deployment-kubernetes/">Kubernetes Deployment</a> to create a Kind cluster and
-install the Directory Helm chart with the OASF subchart enabled in your <code>values.yaml</code>.</p>
-</li>
-</ol>
-<p>The OASF instance is deployed as a subchart in the same namespace and automatically configured for multi-version routing via ingress.</p>
-<h4 id="using-a-locally-built-oasf-image">Using a Locally Built OASF Image</h4>
-<p>If you want to deploy with a locally built OASF image (e.g., containing <code>0.9.0-dev</code> schema files), you need to load the image into Kind before deploying.
-Recreating the Kind cluster after loading a custom OASF image will discard it, so create the cluster once and deploy with Helm.</p>
-<p>Follow the steps below:</p>
-<ol>
-<li>
-<p>Create the Kind cluster</p>
-<div class="highlight"><pre><span></span><code>kind<span class="w"> </span>create<span class="w"> </span>cluster<span class="w"> </span>--name<span class="w"> </span>agntcy-cluster
-task<span class="w"> </span>build
-</code></pre></div>
-<p>Build Directory images before deploying. See <a href="../dir-deployment-kubernetes/">Kubernetes Deployment</a> for the full SPIRE and Helm setup.</p>
-</li>
-<li>
-<p>Build your local OASF image with the <code>latest</code> tag</p>
-<div class="highlight"><pre><span></span><code><span class="nb">cd</span><span class="w"> </span>/path/to/oasf/server
-task<span class="w"> </span>build
-</code></pre></div>
-</li>
-<li>
-<p>Load the OASF image into Kind</p>
-<div class="highlight"><pre><span></span><code>kind<span class="w"> </span>load<span class="w"> </span>docker-image<span class="w"> </span>ghcr.io/agntcy/oasf-server:latest<span class="w"> </span>--name<span class="w"> </span>agntcy-cluster
-</code></pre></div>
-</li>
-<li>
-<p>Configure <code>values.yaml</code> to use the local image:</p>
-<div class="highlight"><pre><span></span><code><span class="nt">oasf</span><span class="p">:</span>
-<span class="w">  </span><span class="nt">enabled</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
-<span class="w">  </span><span class="nt">image</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">repository</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ghcr.io/agntcy/oasf-server</span>
-<span class="w">    </span><span class="nt">versions</span><span class="p">:</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">server</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">latest</span>
-<span class="w">        </span><span class="nt">schema</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.9.0-dev</span>
-<span class="w">        </span><span class="nt">default</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
-</code></pre></div>
-</li>
-<li>
-<p>Deploy the Directory</p>
-<p>Deploy with Helm without recreating the cluster:</p>
-<div class="highlight"><pre><span></span><code>helm<span class="w"> </span>upgrade<span class="w"> </span>--install<span class="w"> </span>dir<span class="w"> </span>./install/charts/dir<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>-f<span class="w"> </span>./install/charts/dir/values.yaml<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>-n<span class="w"> </span>dir-server<span class="w"> </span>--create-namespace
+<p>Add the SDK — the buf.build index is required for the generated protobuf packages:</p>
+<div class="highlight"><pre><span></span><code>uv<span class="w"> </span>add<span class="w"> </span>agntcy-dir<span class="w"> </span>--index<span class="w"> </span>https://buf.build/gen/python
 </code></pre></div>
 </li>
 </ol>
+<h2 id="configuration">Configuration</h2>
+<h3 id="environment-variables">Environment variables</h3>
+<div class="highlight"><pre><span></span><code><span class="c1"># Insecure (local development)</span>
+<span class="nb">export</span><span class="w"> </span><span class="nv">DIRECTORY_CLIENT_SERVER_ADDRESS</span><span class="o">=</span><span class="s2">&quot;localhost:8888&quot;</span>
+<span class="nb">export</span><span class="w"> </span><span class="nv">DIRCTL_PATH</span><span class="o">=</span><span class="s2">&quot;/path/to/dirctl&quot;</span>
+
+<span class="c1"># X.509 / SPIFFE</span>
+<span class="nb">export</span><span class="w"> </span><span class="nv">DIRECTORY_CLIENT_SERVER_ADDRESS</span><span class="o">=</span><span class="s2">&quot;localhost:8888&quot;</span>
+<span class="nb">export</span><span class="w"> </span><span class="nv">DIRECTORY_CLIENT_AUTH_MODE</span><span class="o">=</span><span class="s2">&quot;x509&quot;</span>
+<span class="nb">export</span><span class="w"> </span><span class="nv">DIRECTORY_CLIENT_SPIFFE_SOCKET_PATH</span><span class="o">=</span><span class="s2">&quot;/tmp/agent.sock&quot;</span>
+
+<span class="c1"># JWT / SPIFFE</span>
+<span class="nb">export</span><span class="w"> </span><span class="nv">DIRECTORY_CLIENT_AUTH_MODE</span><span class="o">=</span><span class="s2">&quot;jwt&quot;</span>
+<span class="nb">export</span><span class="w"> </span><span class="nv">DIRECTORY_CLIENT_SPIFFE_SOCKET_PATH</span><span class="o">=</span><span class="s2">&quot;/tmp/agent.sock&quot;</span>
+<span class="nb">export</span><span class="w"> </span><span class="nv">DIRECTORY_CLIENT_JWT_AUDIENCE</span><span class="o">=</span><span class="s2">&quot;spiffe://example.org/dir-server&quot;</span>
+
+<span class="c1"># TLS (custom CA / mTLS)</span>
+<span class="nb">export</span><span class="w"> </span><span class="nv">DIRECTORY_CLIENT_AUTH_MODE</span><span class="o">=</span><span class="s2">&quot;tls&quot;</span>
+<span class="nb">export</span><span class="w"> </span><span class="nv">DIRECTORY_CLIENT_TLS_CA_FILE</span><span class="o">=</span><span class="s2">&quot;/path/to/ca.crt&quot;</span>
+<span class="nb">export</span><span class="w"> </span><span class="nv">DIRECTORY_CLIENT_TLS_CERT_FILE</span><span class="o">=</span><span class="s2">&quot;/path/to/client.crt&quot;</span>
+<span class="nb">export</span><span class="w"> </span><span class="nv">DIRECTORY_CLIENT_TLS_KEY_FILE</span><span class="o">=</span><span class="s2">&quot;/path/to/client.key&quot;</span>
+</code></pre></div>
+<p>Then create a client from the environment:</p>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">agntcy.dir_sdk.client</span><span class="w"> </span><span class="kn">import</span> <span class="n">Client</span>
+
+<span class="n">client</span> <span class="o">=</span> <span class="n">Client</span><span class="p">()</span>  <span class="c1"># reads DIRECTORY_CLIENT_* env vars</span>
+</code></pre></div>
+<h3 id="direct-instantiation">Direct instantiation</h3>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">agntcy.dir_sdk.client</span><span class="w"> </span><span class="kn">import</span> <span class="n">Config</span><span class="p">,</span> <span class="n">Client</span>
+
+<span class="c1"># Insecure (local development only)</span>
+<span class="n">config</span> <span class="o">=</span> <span class="n">Config</span><span class="p">(</span>
+    <span class="n">server_address</span><span class="o">=</span><span class="s2">&quot;localhost:8888&quot;</span><span class="p">,</span>
+    <span class="n">dirctl_path</span><span class="o">=</span><span class="s2">&quot;/usr/local/bin/dirctl&quot;</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="n">client</span> <span class="o">=</span> <span class="n">Client</span><span class="p">(</span><span class="n">config</span><span class="p">)</span>
+
+<span class="c1"># X.509 with SPIRE</span>
+<span class="n">config</span> <span class="o">=</span> <span class="n">Config</span><span class="p">(</span>
+    <span class="n">server_address</span><span class="o">=</span><span class="s2">&quot;localhost:8888&quot;</span><span class="p">,</span>
+    <span class="n">spiffe_socket_path</span><span class="o">=</span><span class="s2">&quot;/tmp/agent.sock&quot;</span><span class="p">,</span>
+    <span class="n">auth_mode</span><span class="o">=</span><span class="s2">&quot;x509&quot;</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="n">client</span> <span class="o">=</span> <span class="n">Client</span><span class="p">(</span><span class="n">config</span><span class="p">)</span>
+
+<span class="c1"># JWT with SPIRE</span>
+<span class="n">config</span> <span class="o">=</span> <span class="n">Config</span><span class="p">(</span>
+    <span class="n">server_address</span><span class="o">=</span><span class="s2">&quot;localhost:8888&quot;</span><span class="p">,</span>
+    <span class="n">spiffe_socket_path</span><span class="o">=</span><span class="s2">&quot;/tmp/agent.sock&quot;</span><span class="p">,</span>
+    <span class="n">auth_mode</span><span class="o">=</span><span class="s2">&quot;jwt&quot;</span><span class="p">,</span>
+    <span class="n">jwt_audience</span><span class="o">=</span><span class="s2">&quot;spiffe://example.org/dir-server&quot;</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="n">client</span> <span class="o">=</span> <span class="n">Client</span><span class="p">(</span><span class="n">config</span><span class="p">)</span>
+</code></pre></div>
+<h3 id="docker-based-dirctl">Docker-based dirctl</h3>
+<p>If you don't have <code>dirctl</code> installed locally you can run it via Docker by passing a
+<code>DockerConfig</code> instead of <code>dirctl_path</code>:</p>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">agntcy.dir_sdk.client</span><span class="w"> </span><span class="kn">import</span> <span class="n">Config</span><span class="p">,</span> <span class="n">Client</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">agntcy.dir_sdk.client.config</span><span class="w"> </span><span class="kn">import</span> <span class="n">DockerConfig</span>
+
+<span class="n">config</span> <span class="o">=</span> <span class="n">Config</span><span class="p">(</span>
+    <span class="n">server_address</span><span class="o">=</span><span class="s2">&quot;localhost:8888&quot;</span><span class="p">,</span>
+    <span class="n">docker_config</span><span class="o">=</span><span class="n">DockerConfig</span><span class="p">(</span>
+        <span class="n">dirctl_image</span><span class="o">=</span><span class="s2">&quot;ghcr.io/agntcy/dir-ctl&quot;</span><span class="p">,</span>
+        <span class="n">dirctl_image_tag</span><span class="o">=</span><span class="s2">&quot;latest&quot;</span><span class="p">,</span>
+    <span class="p">),</span>
+<span class="p">)</span>
+<span class="n">client</span> <span class="o">=</span> <span class="n">Client</span><span class="p">(</span><span class="n">config</span><span class="p">)</span>
+</code></pre></div>
 <div class="admonition note">
 <p class="admonition-title">Note</p>
-<p>If you update the local OASF image, reload it into Kind and restart the deployment:</p>
-<div class="highlight"><pre><span></span><code>kind<span class="w"> </span>load<span class="w"> </span>docker-image<span class="w"> </span>ghcr.io/agntcy/oasf-server:latest<span class="w"> </span>--name<span class="w"> </span>agntcy-cluster
-kubectl<span class="w"> </span>rollout<span class="w"> </span>restart<span class="w"> </span>deployment/dir-oasf-0-9-0-dev<span class="w"> </span>-n<span class="w"> </span>dir-server
-</code></pre></div>
+<p><code>dirctl_path</code> and <code>docker_config</code> are mutually exclusive. Setting both raises a
+<code>ValueError</code>.</p>
 </div>
-<h3 id="related-documentation">Related Documentation</h3>
-<p>For more information, see the following:</p>
+<h2 id="oauth-20-oidc-bearer-auth">OAuth 2.0 / OIDC bearer auth</h2>
+<p>Use <code>auth_mode="oidc"</code> when your deployment expects a Bearer token on gRPC (e.g. via an
+Envoy gateway that validates OIDC tokens).</p>
+<div class="highlight"><pre><span></span><code><span class="nb">export</span><span class="w"> </span><span class="nv">DIRECTORY_CLIENT_AUTH_MODE</span><span class="o">=</span><span class="s2">&quot;oidc&quot;</span>
+<span class="nb">export</span><span class="w"> </span><span class="nv">DIRECTORY_CLIENT_SERVER_ADDRESS</span><span class="o">=</span><span class="s2">&quot;directory.example.com:443&quot;</span>
+<span class="nb">export</span><span class="w"> </span><span class="nv">DIRECTORY_CLIENT_OIDC_ISSUER</span><span class="o">=</span><span class="s2">&quot;https://your-idp-provider.example.com&quot;</span>
+<span class="nb">export</span><span class="w"> </span><span class="nv">DIRECTORY_CLIENT_OIDC_CLIENT_ID</span><span class="o">=</span><span class="s2">&quot;your-app-client-id&quot;</span>
+<span class="c1"># Optional — use a random placeholder for public clients:</span>
+<span class="nb">export</span><span class="w"> </span><span class="nv">DIRECTORY_CLIENT_OIDC_CLIENT_SECRET</span><span class="o">=</span><span class="s2">&quot;random-non-secret-string&quot;</span>
+<span class="nb">export</span><span class="w"> </span><span class="nv">DIRECTORY_CLIENT_OIDC_REDIRECT_URI</span><span class="o">=</span><span class="s2">&quot;http://localhost:8484/callback&quot;</span>
+<span class="c1"># Optional: comma-separated extra scopes</span>
+<span class="nb">export</span><span class="w"> </span><span class="nv">DIRECTORY_CLIENT_OIDC_SCOPES</span><span class="o">=</span><span class="s2">&quot;openid,profile,email&quot;</span>
+<span class="c1"># Optional: non-interactive use — skip the browser flow</span>
+<span class="nb">export</span><span class="w"> </span><span class="nv">DIRECTORY_CLIENT_AUTH_TOKEN</span><span class="o">=</span><span class="s2">&quot;your-access-token&quot;</span>
+</code></pre></div>
+<p><strong>Interactive PKCE login</strong> (opens a browser):</p>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">agntcy.dir_sdk.client</span><span class="w"> </span><span class="kn">import</span> <span class="n">Client</span><span class="p">,</span> <span class="n">Config</span><span class="p">,</span> <span class="n">OAuthPkceError</span>
+
+<span class="n">config</span> <span class="o">=</span> <span class="n">Config</span><span class="p">(</span>
+    <span class="n">server_address</span><span class="o">=</span><span class="s2">&quot;directory.example.com:443&quot;</span><span class="p">,</span>
+    <span class="n">auth_mode</span><span class="o">=</span><span class="s2">&quot;oidc&quot;</span><span class="p">,</span>
+    <span class="n">oidc_issuer</span><span class="o">=</span><span class="s2">&quot;https://your-idp-provider.example.com&quot;</span><span class="p">,</span>
+    <span class="n">oidc_client_id</span><span class="o">=</span><span class="s2">&quot;your-app-client-id&quot;</span><span class="p">,</span>
+    <span class="n">oidc_redirect_uri</span><span class="o">=</span><span class="s2">&quot;http://localhost:8484/callback&quot;</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="n">client</span> <span class="o">=</span> <span class="n">Client</span><span class="p">(</span><span class="n">config</span><span class="p">)</span>
+
+<span class="k">try</span><span class="p">:</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">client</span><span class="o">.</span><span class="n">has_cached_oauth_token</span><span class="p">():</span>
+        <span class="n">client</span><span class="o">.</span><span class="n">authenticate_oauth_pkce</span><span class="p">()</span>
+<span class="k">except</span> <span class="n">OAuthPkceError</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Login failed: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+</code></pre></div>
+<p><strong>Non-interactive</strong> (CI / pre-issued token):</p>
+<div class="highlight"><pre><span></span><code><span class="n">config</span> <span class="o">=</span> <span class="n">Config</span><span class="p">(</span>
+    <span class="n">server_address</span><span class="o">=</span><span class="s2">&quot;directory.example.com:443&quot;</span><span class="p">,</span>
+    <span class="n">auth_mode</span><span class="o">=</span><span class="s2">&quot;oidc&quot;</span><span class="p">,</span>
+    <span class="n">auth_token</span><span class="o">=</span><span class="s2">&quot;your-access-token&quot;</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="n">client</span> <span class="o">=</span> <span class="n">Client</span><span class="p">(</span><span class="n">config</span><span class="p">)</span>
+</code></pre></div>
+<p>Interactive sessions are cached at <code>$XDG_CONFIG_HOME/dirctl/auth-token.json</code> (or
+<code>~/.config/dirctl/auth-token.json</code>) and shared with the <code>dirctl</code> CLI.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p><code>TLS_SKIP_VERIFY</code> applies only to HTTPS calls to the OIDC issuer (discovery and token
+endpoints), not to the gRPC TLS connection to the Directory server.</p>
+</div>
+<h2 id="usage">Usage</h2>
+<h3 id="store-push-and-pull-records">Store — push and pull records</h3>
+<div class="highlight"><pre><span></span><code><span class="kn">import</span><span class="w"> </span><span class="nn">json</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">agntcy.dir_sdk.client</span><span class="w"> </span><span class="kn">import</span> <span class="n">Client</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">agntcy.dir_sdk.models</span><span class="w"> </span><span class="kn">import</span> <span class="n">core_v1</span>
+
+<span class="n">client</span> <span class="o">=</span> <span class="n">Client</span><span class="p">()</span>
+
+<span class="c1"># Push a record</span>
+<span class="n">record</span> <span class="o">=</span> <span class="n">core_v1</span><span class="o">.</span><span class="n">Record</span><span class="p">()</span>
+<span class="n">record</span><span class="o">.</span><span class="n">blob</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">dumps</span><span class="p">({</span><span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="s2">&quot;my-agent&quot;</span><span class="p">,</span> <span class="s2">&quot;version&quot;</span><span class="p">:</span> <span class="s2">&quot;1.0.0&quot;</span><span class="p">})</span><span class="o">.</span><span class="n">encode</span><span class="p">()</span>
+
+<span class="n">refs</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">push</span><span class="p">([</span><span class="n">record</span><span class="p">])</span>
+<span class="n">cid</span> <span class="o">=</span> <span class="n">refs</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">cid</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Pushed record CID: </span><span class="si">{</span><span class="n">cid</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+<span class="c1"># Pull it back</span>
+<span class="n">records</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">pull</span><span class="p">(</span><span class="n">refs</span><span class="p">)</span>
+
+<span class="c1"># Look up metadata only (no content download)</span>
+<span class="n">metas</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">lookup</span><span class="p">(</span><span class="n">refs</span><span class="p">)</span>
+</code></pre></div>
+<h3 id="routing-publish-and-discover">Routing — publish and discover</h3>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">agntcy.dir_sdk.models</span><span class="w"> </span><span class="kn">import</span> <span class="n">routing_v1</span>
+
+<span class="c1"># Publish a CID to the routing layer</span>
+<span class="n">client</span><span class="o">.</span><span class="n">publish</span><span class="p">(</span><span class="n">routing_v1</span><span class="o">.</span><span class="n">PublishRequest</span><span class="p">(</span><span class="n">cid</span><span class="o">=</span><span class="n">cid</span><span class="p">))</span>
+
+<span class="c1"># List published records</span>
+<span class="n">responses</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">list</span><span class="p">(</span><span class="n">routing_v1</span><span class="o">.</span><span class="n">ListRequest</span><span class="p">())</span>
+<span class="k">for</span> <span class="n">resp</span> <span class="ow">in</span> <span class="n">responses</span><span class="p">:</span>
+    <span class="nb">print</span><span class="p">(</span><span class="n">resp</span><span class="o">.</span><span class="n">cid</span><span class="p">)</span>
+
+<span class="c1"># Search the routing layer</span>
+<span class="n">results</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">search_routing</span><span class="p">(</span><span class="n">routing_v1</span><span class="o">.</span><span class="n">SearchRequest</span><span class="p">(</span><span class="n">query</span><span class="o">=</span><span class="s2">&quot;my skill&quot;</span><span class="p">))</span>
+
+<span class="c1"># Unpublish</span>
+<span class="n">client</span><span class="o">.</span><span class="n">unpublish</span><span class="p">(</span><span class="n">routing_v1</span><span class="o">.</span><span class="n">UnpublishRequest</span><span class="p">(</span><span class="n">cid</span><span class="o">=</span><span class="n">cid</span><span class="p">))</span>
+</code></pre></div>
+<h3 id="search">Search</h3>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">agntcy.dir_sdk.models</span><span class="w"> </span><span class="kn">import</span> <span class="n">search_v1</span>
+
+<span class="c1"># Full-text / semantic record search</span>
+<span class="n">results</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">search_records</span><span class="p">(</span>
+    <span class="n">search_v1</span><span class="o">.</span><span class="n">SearchRecordsRequest</span><span class="p">(</span><span class="n">query</span><span class="o">=</span><span class="s2">&quot;my-agent&quot;</span><span class="p">)</span>
+<span class="p">)</span>
+
+<span class="c1"># CID-only search</span>
+<span class="n">cids</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">search_cids</span><span class="p">(</span>
+    <span class="n">search_v1</span><span class="o">.</span><span class="n">SearchCIDsRequest</span><span class="p">(</span><span class="n">query</span><span class="o">=</span><span class="s2">&quot;my-agent&quot;</span><span class="p">)</span>
+<span class="p">)</span>
+</code></pre></div>
+<h3 id="naming-resolve-and-verify">Naming — resolve and verify</h3>
+<div class="highlight"><pre><span></span><code><span class="c1"># Resolve a name to a record reference</span>
+<span class="n">resp</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">resolve</span><span class="p">(</span><span class="s2">&quot;my-agent&quot;</span><span class="p">,</span> <span class="n">version</span><span class="o">=</span><span class="s2">&quot;1.0.0&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">resp</span><span class="o">.</span><span class="n">ref</span><span class="o">.</span><span class="n">cid</span><span class="p">)</span>
+
+<span class="c1"># Get signing/verification metadata</span>
+<span class="n">info</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">get_verification_info</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s2">&quot;my-agent&quot;</span><span class="p">,</span> <span class="n">version</span><span class="o">=</span><span class="s2">&quot;1.0.0&quot;</span><span class="p">)</span>
+</code></pre></div>
+<h3 id="events-real-time-streaming">Events — real-time streaming</h3>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">agntcy.dir_sdk.models</span><span class="w"> </span><span class="kn">import</span> <span class="n">events_v1</span>
+
+<span class="n">stream</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">listen</span><span class="p">(</span><span class="n">events_v1</span><span class="o">.</span><span class="n">ListenRequest</span><span class="p">())</span>
+<span class="k">for</span> <span class="n">event</span> <span class="ow">in</span> <span class="n">stream</span><span class="p">:</span>
+    <span class="nb">print</span><span class="p">(</span><span class="n">event</span><span class="p">)</span>
+</code></pre></div>
+<h3 id="signing-and-verification">Signing and verification</h3>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">agntcy.dir_sdk.models</span><span class="w"> </span><span class="kn">import</span> <span class="n">sign_v1</span>
+
+<span class="c1"># Sign a record locally (requires dirctl binary)</span>
+<span class="n">client</span><span class="o">.</span><span class="n">sign</span><span class="p">(</span><span class="n">sign_v1</span><span class="o">.</span><span class="n">SignRequest</span><span class="p">(</span><span class="n">cid</span><span class="o">=</span><span class="n">cid</span><span class="p">))</span>
+
+<span class="c1"># Verify a record signature via gRPC</span>
+<span class="n">resp</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">verify</span><span class="p">(</span><span class="n">sign_v1</span><span class="o">.</span><span class="n">VerifyRequest</span><span class="p">(</span><span class="n">cid</span><span class="o">=</span><span class="n">cid</span><span class="p">))</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">resp</span><span class="o">.</span><span class="n">valid</span><span class="p">)</span>
+</code></pre></div>
+<h2 id="error-handling">Error handling</h2>
+<p>The SDK raises <code>grpc.RpcError</code> for gRPC errors and <code>RuntimeError</code> for configuration problems:</p>
+<div class="highlight"><pre><span></span><code><span class="kn">import</span><span class="w"> </span><span class="nn">grpc</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">agntcy.dir_sdk.client</span><span class="w"> </span><span class="kn">import</span> <span class="n">Client</span><span class="p">,</span> <span class="n">OAuthPkceError</span>
+
+<span class="k">try</span><span class="p">:</span>
+    <span class="n">client</span> <span class="o">=</span> <span class="n">Client</span><span class="p">()</span>
+    <span class="n">records</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">pull</span><span class="p">([</span><span class="n">ref</span><span class="p">])</span>
+<span class="k">except</span> <span class="n">grpc</span><span class="o">.</span><span class="n">RpcError</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+    <span class="k">if</span> <span class="n">e</span><span class="o">.</span><span class="n">code</span><span class="p">()</span> <span class="o">==</span> <span class="n">grpc</span><span class="o">.</span><span class="n">StatusCode</span><span class="o">.</span><span class="n">NOT_FOUND</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Record not found&quot;</span><span class="p">)</span>
+    <span class="k">elif</span> <span class="n">e</span><span class="o">.</span><span class="n">code</span><span class="p">()</span> <span class="o">==</span> <span class="n">grpc</span><span class="o">.</span><span class="n">StatusCode</span><span class="o">.</span><span class="n">UNAVAILABLE</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Server unavailable&quot;</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;gRPC error: </span><span class="si">{</span><span class="n">e</span><span class="o">.</span><span class="n">details</span><span class="p">()</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<span class="k">except</span> <span class="ne">RuntimeError</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Configuration error: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<span class="k">except</span> <span class="n">OAuthPkceError</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;OAuth error: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+</code></pre></div>
+<p>Common status codes: <code>NOT_FOUND</code>, <code>ALREADY_EXISTS</code>, <code>UNAVAILABLE</code>, <code>PERMISSION_DENIED</code>,
+<code>INVALID_ARGUMENT</code>.</p>
+<h2 id="prerequisites">Prerequisites</h2>
 <ul>
-<li><a href="https://docs.agntcy.org/oasf/validation/">OASF Validation Service</a> - Detailed validation service documentation</li>
-<li><a href="https://docs.agntcy.org/oasf/validation-comparison/">Validation Comparison</a> - Comparison between API validator and JSON Schema</li>
-<li><a href="https://github.com/agntcy/oasf/blob/main/CONTRIBUTING.md#oasf-extensions">OASF Extensions</a> - Information about creating OASF extensions</li>
+<li>Python 3.10 or higher</li>
+<li><a href="https://github.com/astral-sh/uv">uv</a> package manager</li>
+<li><a href="https://github.com/agntcy/dir/releases">dirctl</a> CLI binary (signing operations only)</li>
+<li>A running Directory server — see <a href="../dir-quickstart/">Quickstart</a> or
+  <a href="../dir-deployment-kubernetes/">Kubernetes Deployment</a></li>
 </ul>
+<h2 id="examples">Examples</h2>
+<h3 id="examplesexamplepy"><code>examples/example.py</code></h3>
+<p><strong>Source:</strong> <a href="https://github.com/agntcy/dir-sdk-python/blob/main/examples/example.py"><code>examples/example.py</code></a></p>
+<p>Demonstrates the core store and routing workflow end-to-end:</p>
+<ol>
+<li>Pushes two OASF records and prints their CIDs</li>
+<li>Pulls the records back and prints their content</li>
+<li>Looks up record metadata (without re-downloading content)</li>
+<li>Publishes one record to the routing layer</li>
+<li>Lists routing entries filtered by skill</li>
+<li>Searches CIDs by version pattern (<code>v1.*</code>)</li>
+<li>Searches CIDs by annotation key:value (<code>env:prod</code>)</li>
+<li>Unpublishes the record</li>
+<li>Deletes both records from the store</li>
+</ol>
+<p><strong>Run:</strong></p>
+<div class="highlight"><pre><span></span><code><span class="nb">cd</span><span class="w"> </span>examples
+uv<span class="w"> </span>sync
+uv<span class="w"> </span>run<span class="w"> </span>example.py
+</code></pre></div>
+<h3 id="examplesexample_interactive_oidcpy"><code>examples/example_interactive_oidc.py</code></h3>
+<p><strong>Source:</strong> <a href="https://github.com/agntcy/dir-sdk-python/blob/main/examples/example_interactive_oidc.py"><code>examples/example_interactive_oidc.py</code></a></p>
+<p>Demonstrates OIDC/PKCE interactive login. Reuses a cached token if one exists, otherwise
+opens the system browser for the authorization flow. Once authenticated, runs a <code>SearchCIDs</code>
+query filtered by version.</p>
+<p><strong>Required environment variable:</strong></p>
+<div class="highlight"><pre><span></span><code><span class="nb">export</span><span class="w"> </span><span class="nv">DIRECTORY_CLIENT_OIDC_CLIENT_ID</span><span class="o">=</span><span class="s2">&quot;your-client-id&quot;</span>
+</code></pre></div>
+<p><strong>Optional overrides:</strong> <code>DIRECTORY_CLIENT_SERVER_ADDRESS</code>, <code>DIRECTORY_CLIENT_OIDC_CLIENT_SECRET</code>,
+<code>DIRECTORY_CLIENT_OIDC_REDIRECT_URI</code>, <code>DIRECTORY_CLIENT_OIDC_CALLBACK_PORT</code>,
+<code>DIRECTORY_CLIENT_AUTH_TOKEN</code> (skips the browser flow when pre-issued token is available).</p>
+<p><strong>Run:</strong></p>
+<div class="highlight"><pre><span></span><code><span class="nb">cd</span><span class="w"> </span>examples
+uv<span class="w"> </span>sync
+uv<span class="w"> </span>run<span class="w"> </span>example_interactive_oidc.py<span class="w"> </span>--version<span class="w"> </span><span class="s2">&quot;v1*&quot;</span><span class="w"> </span>--limit<span class="w"> </span><span class="m">3</span>
+</code></pre></div>
 
 
 
