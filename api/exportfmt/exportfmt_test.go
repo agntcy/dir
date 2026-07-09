@@ -215,7 +215,7 @@ func TestGetFormatter(t *testing.T) {
 		assert.NotNil(t, f)
 	})
 
-  	t.Run("returns mcp-cursor formatter", func(t *testing.T) {
+	t.Run("returns mcp-cursor formatter", func(t *testing.T) {
 		f, err := exportfmt.GetFormatter("mcp-cursor")
 		require.NoError(t, err)
 		assert.NotNil(t, f)
