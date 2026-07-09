@@ -4695,6 +4695,11 @@ dirctl<span class="w"> </span>import<span class="w"> </span>--type<span class="o
 <td><code>.json</code></td>
 <td>GitHub Copilot MCP configuration JSON</td>
 </tr>
+<tr>
+<td><code>mcp-claudecode</code></td>
+<td><code>.json</code></td>
+<td>Claude Code MCP configuration JSON (<code>.mcp.json</code> <code>mcpServers</code> shape)</td>
+</tr>
 </tbody>
 </table>
 <blockquote>
@@ -4757,6 +4762,7 @@ dirctl<span class="w"> </span>import<span class="w"> </span>--type<span class="o
 <li><strong>a2a / oasf</strong>: One file per record (<code>&lt;name&gt;.json</code>).</li>
 <li><strong>agent-skill</strong>: One subdirectory per skill (<code>&lt;name&gt;/SKILL.md</code>).</li>
 <li><strong>mcp-ghcopilot</strong>: All matched MCP servers are merged into a single <code>mcp.json</code> with combined <code>servers</code> and <code>inputs</code> maps.</li>
+<li><strong>mcp-claudecode</strong>: All matched MCP servers are merged into a single <code>mcp.json</code> with a combined <code>mcpServers</code> map.</li>
 </ul>
 </div>
 <details class="example">
@@ -4778,6 +4784,9 @@ dirctl<span class="w"> </span><span class="nb">export</span><span class="w"> </s
 <span class="c1"># Batch export MCP servers (merged into a single config)</span>
 dirctl<span class="w"> </span><span class="nb">export</span><span class="w"> </span>--output-dir<span class="o">=</span>./exports/<span class="w"> </span>--format<span class="o">=</span>mcp-ghcopilot<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--module<span class="w"> </span><span class="s2">&quot;integration/mcp&quot;</span>
+
+<span class="c1"># Export a single record as a Claude Code .mcp.json</span>
+dirctl<span class="w"> </span><span class="nb">export</span><span class="w"> </span>my-mcp-server<span class="w"> </span>--format<span class="o">=</span>mcp-claudecode<span class="w"> </span>--output-file<span class="o">=</span>.mcp.json
 
 <span class="c1"># Export all versions instead of only the latest</span>
 dirctl<span class="w"> </span><span class="nb">export</span><span class="w"> </span>--output-dir<span class="o">=</span>./exports/<span class="w"> </span>--format<span class="o">=</span>a2a<span class="w"> </span><span class="se">\</span>
