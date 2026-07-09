@@ -675,6 +675,27 @@ func TestSaveContextPreservesOtherConfigAndHonorsSetCurrentFalse(t *testing.T) {
 	assert.Equal(t, "https://x", file.Extractor.OASFURL)
 }
 
+func TestSaveFileAtomicLeavesNoTempFiles(t *testing.T) {
+	t.Setenv("XDG_CONFIG_HOME", filepath.Join(t.TempDir(), "xdg"))
+
+	path, err := DefaultPath()
+	require.NoError(t, err)
+
+	require.NoError(t, SaveContext("", "local", Context{ServerAddress: "localhost:8888"}, true))
+
+	entries, err := os.ReadDir(filepath.Dir(path))
+	require.NoError(t, err)
+
+	for _, e := range entries {
+		assert.NotContains(t, e.Name(), ".tmp-", "atomic write must not leave temp files behind")
+	}
+
+	// The final file is intact and parseable.
+	file, err := LoadFile(path)
+	require.NoError(t, err)
+	require.Contains(t, file.Contexts, "local")
+}
+
 func TestClearExtractorAbsentFileDoesNotCreateFile(t *testing.T) {
 	t.Setenv("XDG_CONFIG_HOME", filepath.Join(t.TempDir(), "xdg"))
 
