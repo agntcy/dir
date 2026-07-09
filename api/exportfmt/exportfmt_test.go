@@ -209,7 +209,13 @@ func TestGetFormatter(t *testing.T) {
 		assert.NotNil(t, f)
 	})
 
-	t.Run("returns mcp-cursor formatter", func(t *testing.T) {
+	t.Run("returns mcp-claudecode formatter", func(t *testing.T) {
+		f, err := exportfmt.GetFormatter("mcp-claudecode")
+		require.NoError(t, err)
+		assert.NotNil(t, f)
+	})
+
+  	t.Run("returns mcp-cursor formatter", func(t *testing.T) {
 		f, err := exportfmt.GetFormatter("mcp-cursor")
 		require.NoError(t, err)
 		assert.NotNil(t, f)
@@ -232,6 +238,7 @@ func TestKnownFormats(t *testing.T) {
 	assert.Contains(t, formats, "skill")
 	assert.Contains(t, formats, "mcp-ghcopilot")
 	assert.Contains(t, formats, "mcp-cursor")
+	assert.Contains(t, formats, "mcp-claudecode")
 }
 
 func TestOASFFormatter_Format(t *testing.T) {

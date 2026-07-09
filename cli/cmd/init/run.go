@@ -27,27 +27,28 @@ func isInteractive(cmd *cobra.Command) bool {
 	return ok && term.IsTerminal(int(f.Fd())) //nolint:gosec // G115: a file descriptor fits in an int.
 }
 
-// printWelcome prints the wizard's opening banner and the Step 1 explanation.
+// printWelcome prints the wizard's opening banner and the list of steps.
 func printWelcome(cmd *cobra.Command) {
 	presenter.Printf(cmd, `Welcome to dirctl — the CLI for the AGNTCY Directory, a distributed registry
 of AI agent records described in OASF.
 
 This wizard sets up your local environment. Steps:
-  1. Provision the OASF taxonomy extractor   ← now
+  1. Configure a local client context
+  2. Provision the OASF taxonomy extractor
   (more steps — MCP server & skills — coming soon)
-
-Step 1 — OASF taxonomy extractor
-Maps free-form text onto the OASF taxonomy so dirctl can enrich records and
-(soon) answer free-text searches locally — in-process, with no LLM or API
-calls. It needs a one-time ~89 MB model + the taxonomy downloaded to your
-machine; provisioned once, reused everywhere.
 `)
 }
 
-// run dispatches to the remove or provision flow.
+// run dispatches to the remove flow, or runs the setup steps in order.
 func run(cmd *cobra.Command, opts *options) error {
 	if opts.remove {
 		return runRemove(cmd, opts)
+	}
+
+	printWelcome(cmd)
+
+	if err := runContextSetup(cmd, opts); err != nil {
+		return err
 	}
 
 	return runProvision(cmd, opts)
@@ -99,7 +100,13 @@ func resolveConfig(cmd *cobra.Command, opts *options) (extractor.Config, error) 
 // runProvision provisions the extractor assets, persists the choice, and runs a
 // smoke check. It prompts for confirmation and the OASF URL unless --yes.
 func runProvision(cmd *cobra.Command, opts *options) error {
-	printWelcome(cmd)
+	presenter.Printf(cmd, `
+Step 2 — OASF taxonomy extractor
+Maps free-form text onto the OASF taxonomy so dirctl can enrich records and
+(soon) answer free-text searches locally — in-process, with no LLM or API
+calls. It needs a one-time ~89 MB model + the taxonomy downloaded to your
+machine; provisioned once, reused everywhere.
+`)
 
 	cfg, err := resolveConfig(cmd, opts)
 	if err != nil {

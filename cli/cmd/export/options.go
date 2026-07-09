@@ -21,7 +21,7 @@ type options struct {
 
 func init() {
 	flags := Command.Flags()
-	flags.StringVar(&opts.Format, "format", "", "Export format: agent-skill, a2a, mcp-ghcopilot, mcp-cursor (required). For raw OASF records use `dirctl pull`.")
+	flags.StringVar(&opts.Format, "format", "", "Export format: agent-skill, a2a, mcp-ghcopilot, mcp-claudecode, mcp-cursor (required). For raw OASF records use `dirctl pull`.")
 	flags.StringVar(&opts.OutputFile, "output-file", "", "File path to write the exported data (default: stdout)")
 	flags.StringVar(&opts.OutputDir, "output-dir", "", "Directory for batch export from search results")
 	flags.Uint32Var(&opts.Limit, "limit", 100, "Maximum number of records to export in batch mode") //nolint:mnd

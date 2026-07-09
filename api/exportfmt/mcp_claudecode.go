@@ -16,18 +16,18 @@ import (
 )
 
 func init() {
-	RegisterFormatter(FormatMCPCursor, &mcpCursorFormatter{})
+	RegisterFormatter(FormatMCPClaudeCode, &mcpClaudeCodeFormatter{})
 }
 
-// CursorMCPServer models a single entry under "mcpServers" in Cursor's
-// mcp.json configuration file (.cursor/mcp.json project-scoped, or
-// ~/.cursor/mcp.json global).
+// ClaudeCodeMCPServer models a single entry under "mcpServers" in Claude
+// Code's project-scoped .mcp.json configuration file.
 //
 // Command/Args/Env describe a local, stdio-launched server. URL/Headers
-// describe a remote (SSE or streamable HTTP) server -- Cursor has no "type"
-// field and infers the transport from the presence of URL.
-// See https://cursor.com/docs/context/mcp.
-type CursorMCPServer struct {
+// describe a remote server; Type is only set ("http" or "sse") for remote
+// servers -- Claude Code has no "type" field for stdio and infers it from
+// the presence of Command. See https://code.claude.com/docs/en/mcp.
+type ClaudeCodeMCPServer struct {
+	Type    string            `json:"type,omitempty"`
 	Command string            `json:"command,omitempty"`
 	Args    []string          `json:"args,omitempty"`
 	Env     map[string]string `json:"env,omitempty"`
@@ -35,27 +35,27 @@ type CursorMCPServer struct {
 	Headers map[string]string `json:"headers,omitempty"`
 }
 
-// CursorMCPConfig models Cursor's mcp.json file.
-type CursorMCPConfig struct {
-	MCPServers map[string]CursorMCPServer `json:"mcpServers"`
+// ClaudeCodeMCPConfig models Claude Code's project-scoped .mcp.json file.
+type ClaudeCodeMCPConfig struct {
+	MCPServers map[string]ClaudeCodeMCPServer `json:"mcpServers"`
 }
 
-type mcpCursorFormatter struct{}
+type mcpClaudeCodeFormatter struct{}
 
-func (f *mcpCursorFormatter) Format(record *corev1.Record) ([]byte, error) {
+func (f *mcpClaudeCodeFormatter) Format(record *corev1.Record) ([]byte, error) {
 	data := record.GetData()
 	if data == nil {
 		return nil, fmt.Errorf("record contains no data")
 	}
 
-	cfg, err := RecordToCursor(data)
+	cfg, err := RecordToClaudeCode(data)
 	if err != nil {
-		return nil, fmt.Errorf("%w: failed to translate record to Cursor MCP config: %w", ErrUnsupportedRecord, err)
+		return nil, fmt.Errorf("%w: failed to translate record to Claude Code MCP config: %w", ErrUnsupportedRecord, err)
 	}
 
 	raw, err := json.MarshalIndent(cfg, "", "  ")
 	if err != nil {
-		return nil, fmt.Errorf("failed to marshal Cursor MCP config to JSON: %w", err)
+		return nil, fmt.Errorf("failed to marshal Claude Code MCP config to JSON: %w", err)
 	}
 
 	raw = append(raw, '\n')
@@ -63,26 +63,26 @@ func (f *mcpCursorFormatter) Format(record *corev1.Record) ([]byte, error) {
 	return raw, nil
 }
 
-func (f *mcpCursorFormatter) FileExtension() string {
+func (f *mcpClaudeCodeFormatter) FileExtension() string {
 	return ExtJSON
 }
 
-// RecordToCursor translates a record's "integration/mcp" module (OASF 1.0.0
-// "connections" format) into a CursorMCPConfig. Exported (like
+// RecordToClaudeCode translates a record's "integration/mcp" module (OASF
+// 1.0.0 "connections" format) into a ClaudeCodeMCPConfig. Exported (like
 // translator.RecordToGHCopilot) so cli/cmd/export's batch exporter can merge
-// several records' configs into one mcp.json without round-tripping through
-// JSON.
+// several records' configs into one .mcp.json without round-tripping
+// through JSON.
 //
 // This is a local implementation rather than a call to an oasf-sdk
-// translator function (issue #1385 proposes a RecordToCursor in oasf-sdk's
-// translator package). Keeping it here lets the format ship without
-// blocking on an oasf-sdk release; it can move upstream later without
-// changing this package's public surface.
+// translator function (issue #1386 proposes a RecordToClaudeCode in
+// oasf-sdk's translator package). Keeping it here lets the format ship
+// without blocking on an oasf-sdk release; it can move upstream later
+// without changing this package's public surface.
 //
 // Only the OASF 1.0.0 "connections" array format is supported. The legacy
 // 0.7.0/0.8.0 "servers" array format (still handled by
 // translator.RecordToGHCopilot for GitHub Copilot) is not.
-func RecordToCursor(record *structpb.Struct) (*CursorMCPConfig, error) {
+func RecordToClaudeCode(record *structpb.Struct) (*ClaudeCodeMCPConfig, error) {
 	found, moduleStruct := recordutil.GetModule(record, translator.MCPModuleName)
 	if !found {
 		return nil, errors.New("MCP module not found in record")
@@ -98,7 +98,7 @@ func RecordToCursor(record *structpb.Struct) (*CursorMCPConfig, error) {
 		return nil, errors.New("missing 'name' in MCP module data")
 	}
 
-	serverName := cursorNormalizeServerName(nameVal.GetStringValue())
+	serverName := claudeCodeNormalizeServerName(nameVal.GetStringValue())
 
 	connectionsVal, ok := moduleData.GetFields()["connections"]
 	if !ok {
@@ -120,46 +120,58 @@ func RecordToCursor(record *structpb.Struct) (*CursorMCPConfig, error) {
 
 		connType := connMap.GetFields()["type"].GetStringValue()
 
-		server, ok := cursorServerFromConnection(connType, connMap)
+		server, ok := claudeCodeServerFromConnection(connType, connMap)
 		if !ok {
 			continue
 		}
 
-		return &CursorMCPConfig{
-			MCPServers: map[string]CursorMCPServer{serverName: server},
+		return &ClaudeCodeMCPConfig{
+			MCPServers: map[string]ClaudeCodeMCPServer{serverName: server},
 		}, nil
 	}
 
 	return nil, errors.New("no supported MCP connection found (stdio, streamable-http, sse)")
 }
 
-// cursorServerFromConnection builds a CursorMCPServer from a single OASF
-// connection struct, given its "type" field. ok is false if connType is not
-// one Cursor can represent. Cursor infers the transport from the config
-// shape (command vs url), so remote connections carry no explicit type.
-func cursorServerFromConnection(connType string, connMap *structpb.Struct) (CursorMCPServer, bool) {
+// claudeCodeServerFromConnection builds a ClaudeCodeMCPServer from a single
+// OASF connection struct, given its "type" field. ok is false if connType is
+// not one Claude Code can represent.
+func claudeCodeServerFromConnection(connType string, connMap *structpb.Struct) (ClaudeCodeMCPServer, bool) {
 	switch connType {
 	case connTypeStdio:
-		return CursorMCPServer{
+		return ClaudeCodeMCPServer{
 			Command: connMap.GetFields()["command"].GetStringValue(),
-			Args:    cursorStringList(connMap.GetFields()["args"]),
-			Env:     cursorEnvFromEnvVars(connMap.GetFields()["env_vars"]),
+			Args:    claudeCodeStringList(connMap.GetFields()["args"]),
+			Env:     claudeCodeEnvFromEnvVars(connMap.GetFields()["env_vars"]),
 		}, true
 	case connTypeStreamableHTTP, connTypeSSE:
-		return CursorMCPServer{
+		return ClaudeCodeMCPServer{
+			Type:    claudeCodeConnectionType(connType),
 			URL:     connMap.GetFields()["url"].GetStringValue(),
-			Headers: cursorStringMap(connMap.GetFields()["headers"]),
+			Headers: claudeCodeStringMap(connMap.GetFields()["headers"]),
 		}, true
 	default:
-		return CursorMCPServer{}, false
+		return ClaudeCodeMCPServer{}, false
 	}
 }
 
-// cursorNormalizeServerName strips common MCP server-name suffixes
+// claudeCodeConnectionType maps an OASF connection "type" to the value
+// Claude Code expects for a remote server's "type" field. OASF's
+// "streamable-http" becomes Claude Code's "http" -- the two schemas use
+// different vocabulary for the same transport.
+func claudeCodeConnectionType(oasfType string) string {
+	if oasfType == connTypeStreamableHTTP {
+		return "http"
+	}
+
+	return oasfType
+}
+
+// claudeCodeNormalizeServerName strips common MCP server-name suffixes
 // (mirroring translator.RecordToGHCopilot's normalization) so that, e.g.,
 // "github-mcp-server" becomes "github" across every MCP export format in
 // this repo.
-func cursorNormalizeServerName(name string) string {
+func claudeCodeNormalizeServerName(name string) string {
 	name = strings.TrimSuffix(name, "-mcp-server")
 	name = strings.TrimSuffix(name, "-server")
 	name = strings.TrimSuffix(name, "-mcp")
@@ -167,9 +179,9 @@ func cursorNormalizeServerName(name string) string {
 	return name
 }
 
-// cursorStringList reads a structpb list-of-strings value. Returns nil
+// claudeCodeStringList reads a structpb list-of-strings value. Returns nil
 // (omitted from JSON output) if val is not a non-empty list.
-func cursorStringList(val *structpb.Value) []string {
+func claudeCodeStringList(val *structpb.Value) []string {
 	list := val.GetListValue()
 	if list == nil || len(list.GetValues()) == 0 {
 		return nil
@@ -183,9 +195,9 @@ func cursorStringList(val *structpb.Value) []string {
 	return out
 }
 
-// cursorStringMap reads a structpb struct value as a flat string map.
+// claudeCodeStringMap reads a structpb struct value as a flat string map.
 // Returns nil (omitted from JSON output) if val is not a non-empty struct.
-func cursorStringMap(val *structpb.Value) map[string]string {
+func claudeCodeStringMap(val *structpb.Value) map[string]string {
 	s := val.GetStructValue()
 	if s == nil || len(s.GetFields()) == 0 {
 		return nil
@@ -199,17 +211,17 @@ func cursorStringMap(val *structpb.Value) map[string]string {
 	return out
 }
 
-// cursorEnvFromEnvVars converts an OASF 1.0.0 "env_vars" array (a list of
-// {name, description, default_value} objects) into the flat env map Cursor's
-// mcp.json expects.
+// claudeCodeEnvFromEnvVars converts an OASF 1.0.0 "env_vars" array (a list of
+// {name, description, default_value} objects) into the flat env map Claude
+// Code's .mcp.json expects.
 //
-// When an entry has no default_value, this emits "${env:NAME}" so Cursor
-// resolves it from the user's environment at launch time (Cursor supports
-// ${env:NAME} interpolation in command, args, env, url, and headers). This
-// differs from translator.RecordToGHCopilot, which emits VS Code's
-// "${input:NAME}" prompt placeholder for the same case -- that mechanism is
-// VS Code/GH Copilot specific and has no Cursor equivalent.
-func cursorEnvFromEnvVars(val *structpb.Value) map[string]string {
+// When an entry has no default_value, this emits "${NAME}" so Claude Code
+// resolves it from the user's shell environment at launch time (Claude Code
+// supports $VAR / ${VAR} expansion in .mcp.json). This differs from
+// translator.RecordToGHCopilot, which emits VS Code's "${input:NAME}" prompt
+// placeholder for the same case -- that mechanism is VS Code/GH Copilot
+// specific and has no Claude Code equivalent.
+func claudeCodeEnvFromEnvVars(val *structpb.Value) map[string]string {
 	list := val.GetListValue()
 	if list == nil || len(list.GetValues()) == 0 {
 		return nil
@@ -231,7 +243,7 @@ func cursorEnvFromEnvVars(val *structpb.Value) map[string]string {
 		if def := envVar.GetFields()["default_value"].GetStringValue(); def != "" {
 			env[name] = def
 		} else {
-			env[name] = fmt.Sprintf("${env:%s}", name)
+			env[name] = fmt.Sprintf("${%s}", name)
 		}
 	}
 

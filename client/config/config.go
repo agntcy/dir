@@ -374,8 +374,49 @@ func SaveFile(path string, file *File) error {
 		return fmt.Errorf("failed to create client config directory %s: %w", filepath.Dir(path), err)
 	}
 
-	if err := os.WriteFile(path, data, configFilePerm); err != nil {
+	if err := atomicWriteFile(path, data, configFilePerm); err != nil {
 		return fmt.Errorf("failed to write client config file %s: %w", path, err)
+	}
+
+	return nil
+}
+
+// atomicWriteFile writes data to a temp file in the same directory and renames it
+// over path, so an interrupted write can never leave a partially-written config
+// (rename is atomic within a filesystem). The temp file is removed on any failure
+// before the rename.
+func atomicWriteFile(path string, data []byte, perm os.FileMode) error {
+	tmp, err := os.CreateTemp(filepath.Dir(path), "."+filepath.Base(path)+".tmp-*")
+	if err != nil {
+		return fmt.Errorf("create temp file: %w", err)
+	}
+
+	tmpName := tmp.Name()
+
+	if err := tmp.Chmod(perm); err != nil {
+		_ = tmp.Close()
+		_ = os.Remove(tmpName)
+
+		return fmt.Errorf("chmod temp file: %w", err)
+	}
+
+	if _, err := tmp.Write(data); err != nil {
+		_ = tmp.Close()
+		_ = os.Remove(tmpName)
+
+		return fmt.Errorf("write temp file: %w", err)
+	}
+
+	if err := tmp.Close(); err != nil {
+		_ = os.Remove(tmpName)
+
+		return fmt.Errorf("close temp file: %w", err)
+	}
+
+	if err := os.Rename(tmpName, path); err != nil {
+		_ = os.Remove(tmpName)
+
+		return fmt.Errorf("rename temp file into place: %w", err)
 	}
 
 	return nil
@@ -411,6 +452,30 @@ func SaveExtractor(path string, e *Extractor) error {
 	}
 
 	file.Extractor = e
+
+	return SaveFile(resolvedPath, file)
+}
+
+// SaveContext adds or replaces a named context, preserving the other recognized
+// config (current_context, extractor, and the other contexts). When setCurrent is
+// true it also marks that context as current_context. Callers that must not
+// overwrite an existing context should check first (e.g. ListContexts).
+func SaveContext(path string, name string, ctx Context, setCurrent bool) error {
+	resolvedPath, _, err := resolvePath(path)
+	if err != nil {
+		return err
+	}
+
+	file, err := loadOptionalFile(resolvedPath, false, true)
+	if err != nil {
+		return err
+	}
+
+	file.Contexts[name] = ctx
+
+	if setCurrent {
+		file.CurrentContext = name
+	}
 
 	return SaveFile(resolvedPath, file)
 }
