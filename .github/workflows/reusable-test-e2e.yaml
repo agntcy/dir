@@ -77,6 +77,12 @@ jobs:
           cp tmp/artifacts/dirctl-debug ./.bin/dirctl
           chmod +x ./.bin/dirctl
 
+      - name: Cache OASF extractor model
+        uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
+        with:
+          path: ~/.agntcy/oasf-sdk
+          key: oasf-extractor-${{ runner.os }}-v1
+
       - name: Run end-to-end tests
         env:
           IMAGE_REPO: ${{ inputs.image_repo }}
