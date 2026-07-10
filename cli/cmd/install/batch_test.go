@@ -8,6 +8,7 @@ import (
 
 	oasfv1alpha1 "buf.build/gen/go/agntcy/oasf/protocolbuffers/go/agntcy/oasf/types/v1alpha1"
 	corev1 "github.com/agntcy/dir/api/core/v1"
+	"github.com/agntcy/dir/cli/internal/agentinstall"
 	"github.com/stretchr/testify/require"
 )
 
@@ -96,7 +97,16 @@ func TestBatchInstallSkipsUnsuitableRecords(t *testing.T) {
 
 	defer func() { opts = orig }()
 
-	_, err := deriveArtifacts(loadRecord(t, "bare.json"))
+	// Bare record: no modules, so DeriveArtifacts must reject it. Built inline
+	// rather than via loadRecord/testdata, which moved with the derive/apply
+	// logic into the agentinstall package.
+	bare := corev1.New(&oasfv1alpha1.Record{
+		Name:        "bare",
+		Version:     "1.0.0",
+		Description: "A record with no modules",
+	})
+
+	_, err := agentinstall.DeriveArtifacts(bare)
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "no installable")
 }
