@@ -85,3 +85,19 @@ RUN mkdir -p /tmp/coverage && chown -R 55532:55532 /tmp/coverage
 USER 55532:55532
 
 ENTRYPOINT ["./reconciler"]
+
+FROM python:3.13-slim AS scanner
+
+RUN groupadd -g 55532 -r nonroot && useradd -u 55532 -r -g nonroot nonroot
+
+WORKDIR /
+
+COPY --from=builder /etc/ssl/certs /etc/ssl/certs
+COPY --from=builder /usr/share/ca-certificates /usr/share/ca-certificates
+COPY --from=builder /bin/reconciler ./reconciler
+
+RUN pip install --no-cache-dir cisco-ai-mcp-scanner cisco-ai-skill-scanner
+
+USER 55532:55532
+
+ENTRYPOINT ["./reconciler"]

@@ -8,8 +8,10 @@ import (
 	"sort"
 	"strings"
 
+	catalogv1 "github.com/agntcy/dir/api/catalog/v1"
 	corev1 "github.com/agntcy/dir/api/core/v1"
 	"github.com/agntcy/dir/api/exportfmt"
+	"github.com/agntcy/dir/cli/util/records"
 	recordutil "github.com/agntcy/oasf-sdk/pkg/record"
 	"github.com/agntcy/oasf-sdk/pkg/translator"
 	"google.golang.org/protobuf/types/known/structpb"
@@ -24,9 +26,18 @@ type mcpServer struct {
 
 // artifacts is the set of installable artifacts derived from a record's modules.
 type artifacts struct {
-	slug       string // sanitized record name; skill folder/file + block marker id
-	skill      string // canonical SKILL.md content, empty if the record has no skill
-	mcpServers []mcpServer
+	slug        string // sanitized record name; skill folder/file + block marker id
+	skill       string // canonical SKILL.md content for single-file skill targets
+	skillBundle []byte // gzip skill bundle when the record stores application/agent-skills+gzip
+	mcpServers  []mcpServer
+}
+
+func (a artifacts) hasSkill() bool {
+	return a.skill != "" || a.hasSkillBundle()
+}
+
+func (a artifacts) hasSkillBundle() bool {
+	return len(a.skillBundle) > 0
 }
 
 // deriveArtifacts inspects the record's OASF modules and builds the installable
@@ -41,17 +52,9 @@ func deriveArtifacts(record *corev1.Record) (artifacts, error) {
 	arts := artifacts{slug: sanitizeSlug(record.GetName())}
 
 	if ok, _ := recordutil.GetModule(data, translator.AgentSkillsModuleName); ok {
-		f, err := exportfmt.GetFormatter(exportfmt.FormatAgentSkill)
-		if err != nil {
-			return artifacts{}, fmt.Errorf("get agent-skill formatter: %w", err)
+		if err := deriveSkillArtifacts(record, &arts); err != nil {
+			return artifacts{}, err
 		}
-
-		out, err := f.Format(record)
-		if err != nil {
-			return artifacts{}, fmt.Errorf("render skill: %w", err)
-		}
-
-		arts.skill = string(out)
 	}
 
 	if ok, _ := recordutil.GetModule(data, translator.MCPModuleName); ok {
@@ -77,7 +80,7 @@ func deriveArtifacts(record *corev1.Record) (artifacts, error) {
 		}
 	}
 
-	if arts.skill == "" && len(arts.mcpServers) == 0 {
+	if !arts.hasSkill() && len(arts.mcpServers) == 0 {
 		if ok, _ := recordutil.GetModule(data, translator.A2AModuleName); ok {
 			return artifacts{}, fmt.Errorf(
 				"record carries an A2A AgentCard (%s), which cannot be installed into agent configs; use `dirctl export` instead",
@@ -95,6 +98,52 @@ func deriveArtifacts(record *corev1.Record) (artifacts, error) {
 	}
 
 	return arts, nil
+}
+
+func deriveSkillArtifacts(record *corev1.Record, arts *artifacts) error {
+	data := record.GetData()
+	mediaType := agentSkillsArtifactMediaType(data)
+
+	formatName := exportfmt.FormatAgentSkill
+	if mediaType == catalogv1.ProtocolAgentSkillsBundleMediaType {
+		formatName = exportfmt.FormatAgentSkillBundle
+	}
+
+	f, err := exportfmt.GetFormatter(formatName)
+	if err != nil {
+		return fmt.Errorf("get %s formatter: %w", formatName, err)
+	}
+
+	out, err := f.Format(record)
+	if err != nil {
+		return fmt.Errorf("render skill: %w", err)
+	}
+
+	if formatName == exportfmt.FormatAgentSkillBundle {
+		arts.skillBundle = out
+
+		md, err := exportfmt.SkillMarkdownFromArchive(out)
+		if err != nil {
+			return fmt.Errorf("read SKILL.md from bundle: %w", err)
+		}
+
+		arts.skill = md
+
+		return nil
+	}
+
+	arts.skill = string(out)
+
+	return nil
+}
+
+func agentSkillsArtifactMediaType(data *structpb.Struct) string {
+	ok, module := recordutil.GetModule(data, translator.AgentSkillsModuleName)
+	if !ok || module == nil {
+		return ""
+	}
+
+	return module.GetFields()["artifact"].GetStructValue().GetFields()["media_type"].GetStringValue()
 }
 
 // mcpEntry converts a translator MCP server into a config entry using any-typed
@@ -142,11 +191,5 @@ func moduleNames(data *structpb.Struct) []string {
 
 // sanitizeSlug turns a record name into a filesystem/marker-safe slug.
 func sanitizeSlug(name string) string {
-	r := strings.NewReplacer("/", "-", "\\", "-", ":", "-", " ", "-")
-
-	// Trim leading/trailing "." as well as "-" so a name of "." or ".." (and
-	// "../../etc" after the separator replacement above) cannot escape a parent
-	// directory when the slug is used as a filesystem path component. Embedded
-	// dots (e.g. "io.example") are preserved as a single filename component.
-	return strings.Trim(r.Replace(name), "-.")
+	return records.SanitizeSlug(name)
 }

@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	corev1 "github.com/agntcy/dir/api/core/v1"
+	"github.com/agntcy/dir/cli/cmd/search"
 	"github.com/agntcy/dir/cli/internal/agentcfg"
 	"github.com/agntcy/dir/cli/presenter"
 	ctxUtils "github.com/agntcy/dir/cli/util/context"
@@ -36,6 +37,16 @@ directly into the configuration of detected AI coding agents.
   dirctl install uninstall <cid-or-name>  remove what install added
   dirctl install list                     show detected agents and target paths
 
+Batch install from search filters (no positional argument):
+
+  dirctl install --module integration/mcp --name "web*" --agents all
+  dirctl install --skill "code*" --dry-run
+
+Batch uninstall from search filters:
+
+  dirctl install uninstall --module integration/mcp --name "web*"
+  dirctl uninstall --skill "code*" --dry-run
+
 Examples:
   dirctl install cisco.com/agent:v1.0.0
   dirctl install bafyrei... --dry-run
@@ -44,16 +55,28 @@ Examples:
 `,
 	Args: cobra.MaximumNArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		if len(args) == 0 {
-			return cmd.Help()
+		var input string
+		if len(args) > 0 {
+			input = args[0]
 		}
 
-		return runInstallCmd(cmd, args[0])
+		queries := search.BuildQueries(&opts.filters)
+		hasInput := input != ""
+		hasFilters := len(queries) > 0
+
+		return resolveBatchOrInput(
+			hasInput,
+			hasFilters,
+			func() error { return runBatchInstall(cmd) },
+			func() error { return runInstallCmd(cmd, input) },
+			func() error { return cmd.Help() },
+		)
 	},
 }
 
 func init() {
 	addSelectionFlags(Command, &opts)
+	addBatchFlags(Command, &opts)
 
 	Command.AddCommand(runCmd)
 	Command.AddCommand(uninstallCmd)

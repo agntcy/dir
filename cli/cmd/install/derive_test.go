@@ -4,11 +4,17 @@
 package install
 
 import (
+	"archive/tar"
+	"bytes"
+	"compress/gzip"
+	"encoding/base64"
 	"os"
 	"strings"
 	"testing"
 
+	catalogv1 "github.com/agntcy/dir/api/catalog/v1"
 	corev1 "github.com/agntcy/dir/api/core/v1"
+	"github.com/agntcy/oasf-sdk/pkg/translator"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/types/known/structpb"
@@ -53,6 +59,55 @@ func TestDeriveMulti(t *testing.T) {
 	require.NoError(t, err)
 	require.NotEmpty(t, arts.skill)
 	require.NotEmpty(t, arts.mcpServers)
+}
+
+func TestDeriveSkillBundle(t *testing.T) {
+	arts, err := deriveArtifacts(newSkillBundleRecord(t))
+	require.NoError(t, err)
+	require.NotEmpty(t, arts.skillBundle)
+	require.NotEmpty(t, arts.skill)
+	require.Contains(t, arts.skill, "name:")
+}
+
+func TestAgentSkillsArtifactMediaType(t *testing.T) {
+	record := loadRecord(t, "skill.json")
+	require.Empty(t, agentSkillsArtifactMediaType(record.GetData()))
+
+	bundle := newSkillBundleRecord(t)
+	require.Equal(t, catalogv1.ProtocolAgentSkillsBundleMediaType, agentSkillsArtifactMediaType(bundle.GetData()))
+}
+
+func newSkillBundleRecord(t *testing.T) *corev1.Record {
+	t.Helper()
+
+	skillMarkdown := `---
+name: summarize
+description: Summarize content.
+---
+`
+
+	var buf bytes.Buffer
+
+	gzw := gzip.NewWriter(&buf)
+	tw := tar.NewWriter(gzw)
+	content := []byte(skillMarkdown)
+	hdr := &tar.Header{Name: "SKILL.md", Mode: 0o600, Size: int64(len(content))}
+	require.NoError(t, tw.WriteHeader(hdr))
+	_, err := tw.Write(content)
+	require.NoError(t, err)
+	require.NoError(t, tw.Close())
+	require.NoError(t, gzw.Close())
+
+	skillInput, err := structpb.NewStruct(map[string]any{
+		"skillMarkdown": skillMarkdown,
+		"skillArchive":  base64.StdEncoding.EncodeToString(buf.Bytes()),
+	})
+	require.NoError(t, err)
+
+	recordStruct, err := translator.SkillBundleToRecord(skillInput)
+	require.NoError(t, err)
+
+	return &corev1.Record{Data: recordStruct}
 }
 
 func TestDeriveA2AErrors(t *testing.T) {

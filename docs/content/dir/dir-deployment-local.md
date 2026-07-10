@@ -72,6 +72,50 @@ DIRECTORY_DAEMON_SERVER_LISTEN_ADDRESS="localhost:9999" dirctl daemon start
 
 When `--config` is provided, the file replaces built-in defaults entirely. See the [reference configuration](https://github.com/agntcy/dir/blob/main/cli/cmd/daemon/daemon.config.yaml) for all available options.
 
+## Security Scanning
+
+The reconciler scans records using [`mcp-scanner`](https://cisco-ai-defense.github.io/docs/mcp-scanner) (MCP server source code) and [`skill-scanner`](https://cisco-ai-defense.github.io/docs/skill-scanner) (agent skill bundles). Both are LLM-backed and require Azure OpenAI credentials. See [Security Scanning](dir-features-scenarios.md#security-scanning) for how to pull and filter scan results.
+
+### dirctl daemon
+
+The scanner CLIs are not bundled with `dirctl`. Install them before starting the daemon:
+
+```bash
+task deps:scanners
+```
+
+Then export the LLM credentials and start the daemon:
+
+```bash
+export AZURE_OPENAI_API_KEY=<your-key>
+export AZURE_OPENAI_BASE_URL=<your-endpoint>     # e.g. https://your-instance.openai.azure.com/
+export AZURE_OPENAI_DEPLOYMENT=<deployment-name> # e.g. gpt-4o
+export AZURE_OPENAI_API_VERSION=<api-version>    # e.g. 2024-02-01
+
+dirctl daemon start
+```
+
+If the scanner binaries are not on `PATH`, specify their locations in the daemon config:
+
+```yaml
+reconciler:
+  scan:
+    mcp_cli_path: /path/to/mcp-scanner
+    skill_cli_path: /path/to/skill-scanner
+```
+
+### Docker Compose
+
+The reconciler container image includes both scanner CLIs. Add your Azure OpenAI credentials to `install/docker/reconciler.env` before starting the stack:
+
+```bash
+# install/docker/reconciler.env
+AZURE_OPENAI_API_KEY=<your-key>
+AZURE_OPENAI_BASE_URL=<your-endpoint>
+AZURE_OPENAI_DEPLOYMENT=<deployment-name>
+AZURE_OPENAI_API_VERSION=<api-version>
+```
+
 ## Docker Compose deployment
 
 The Docker Compose stack runs separate containers for the apiserver, reconciler, Zot OCI registry, and PostgreSQL:
