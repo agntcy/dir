@@ -56,12 +56,12 @@ var modules = []Module{
 }
 
 var skills = []Skill{
-	{Id: 101, Name: "natural_language_processing/natural_language_understanding"},                            //nolint:mnd
-	{Id: 10101, Name: "natural_language_processing/natural_language_understanding/contextual_comprehension"}, //nolint:mnd
-	{Id: 10102, Name: "natural_language_processing/natural_language_understanding/semantic_understanding"},   //nolint:mnd
-	{Id: 108, Name: "natural_language_processing/ethical_interaction"},                                       //nolint:mnd
-	{Id: 201, Name: "images_computer_vision/image_segmentation"},                                             //nolint:mnd
-	{Id: 1504, Name: "advanced_reasoning_planning/hypothesis_generation"},                                    //nolint:mnd
+	{Id: 101, Name: "language_processing/language_understanding"},                            //nolint:mnd
+	{Id: 10101, Name: "language_processing/language_understanding/contextual_comprehension"}, //nolint:mnd
+	{Id: 10102, Name: "language_processing/language_understanding/semantic_understanding"},   //nolint:mnd
+	{Id: 10103, Name: "language_processing/language_understanding/entity_recognition"},       //nolint:mnd
+	{Id: 20103, Name: "computer_vision/image_analysis/image_segmentation"},                   //nolint:mnd
+	{Id: 1504, Name: "reasoning_planning/strategic_planning"},                                //nolint:mnd
 }
 
 var GofakeitOASF100Lookups = map[string]gofakeit.Info{
