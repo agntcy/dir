@@ -4,6 +4,9 @@
 package install
 
 import (
+	"archive/tar"
+	"bytes"
+	"compress/gzip"
 	"os"
 	"path/filepath"
 	"testing"
@@ -218,4 +221,133 @@ func TestRunInstallDedupesSharedSkillPath(t *testing.T) {
 	// shared target to a single skill outcome.
 	require.Len(t, outcomes, 1)
 	require.Equal(t, "skill", outcomes[0].Artifact)
+}
+
+func TestRunInstallWritesSkillBundle(t *testing.T) {
+	home := t.TempDir()
+	env := agentcfg.Env{Home: home, GOOS: "linux", Cwd: home}
+
+	var target *agentcfg.SkillTarget
+
+	for _, a := range agentcfg.Registry() {
+		if a.ID == claudeCodeID {
+			target = a.Skill
+		}
+	}
+
+	require.NotNil(t, target)
+
+	arts := artifacts{
+		slug:        "summarize",
+		skill:       "---\nname: summarize\ndescription: x\n---\n\nbody\n",
+		skillBundle: skillBundleArchiveBytes(t),
+	}
+	agent := agentcfg.Agent{Name: "Claude Code", Skill: target}
+	outcomes := runInstall(env, arts, []agentcfg.Agent{agent}, false)
+	require.Len(t, outcomes, 1)
+	require.Equal(t, agentcfg.ActionAdded, outcomes[0].Action)
+
+	skillFile := filepath.Join(home, ".claude", "skills", "summarize", "SKILL.md")
+	raw, err := os.ReadFile(skillFile)
+	require.NoError(t, err)
+	require.Contains(t, string(raw), "name: summarize")
+
+	extraFile := filepath.Join(home, ".claude", "skills", "summarize", "scripts", "run.sh")
+	extra, err := os.ReadFile(extraFile)
+	require.NoError(t, err)
+	require.Equal(t, "#!/bin/sh\n", string(extra))
+}
+
+func TestRunInstallExtractsSkillBundleToFolderAgents(t *testing.T) {
+	home := t.TempDir()
+	env := agentcfg.Env{Home: home, GOOS: "linux", Cwd: home}
+
+	var claudeCode, cursor, vscode *agentcfg.SkillTarget
+
+	for _, a := range agentcfg.Registry() {
+		switch a.ID {
+		case claudeCodeID:
+			claudeCode = a.Skill
+		case "cursor":
+			cursor = a.Skill
+		case "vscode":
+			vscode = a.Skill
+		}
+	}
+
+	require.NotNil(t, claudeCode)
+	require.NotNil(t, cursor)
+	require.NotNil(t, vscode)
+
+	arts := artifacts{
+		slug:        "summarize",
+		skill:       "---\nname: summarize\ndescription: x\n---\n\nbody\n",
+		skillBundle: skillBundleArchiveBytes(t),
+	}
+	agents := []agentcfg.Agent{
+		{Name: "Claude Code", Skill: claudeCode},
+		{Name: "Cursor", Skill: cursor},
+		{Name: "VS Code (Copilot)", Skill: vscode},
+	}
+
+	outcomes := runInstall(env, arts, agents, true)
+	require.Len(t, outcomes, 3)
+
+	byAgent := map[string]agentcfg.Outcome{}
+	for _, o := range outcomes {
+		byAgent[o.Agent] = o
+	}
+
+	require.Equal(t, agentcfg.ActionAdded, byAgent["Claude Code"].Action)
+	require.Equal(t, agentcfg.ActionAdded, byAgent["Cursor"].Action)
+	require.Equal(t, agentcfg.ActionAdded, byAgent["VS Code (Copilot)"].Action)
+}
+
+func TestRunInstallSkipsSkillBundleForNonFolderAgents(t *testing.T) {
+	home := t.TempDir()
+	env := agentcfg.Env{Home: home, GOOS: "linux", Cwd: home}
+
+	var continueAgent *agentcfg.SkillTarget
+
+	for _, a := range agentcfg.Registry() {
+		if a.ID == "continue" {
+			continueAgent = a.Skill
+		}
+	}
+
+	require.NotNil(t, continueAgent)
+
+	arts := artifacts{
+		slug:        "summarize",
+		skill:       "---\nname: summarize\ndescription: x\n---\n\nbody\n",
+		skillBundle: skillBundleArchiveBytes(t),
+	}
+	outcomes := runInstall(env, arts, []agentcfg.Agent{{Name: "Continue", Skill: continueAgent}}, true)
+	require.Len(t, outcomes, 1)
+	require.Equal(t, agentcfg.ActionSkipped, outcomes[0].Action)
+	require.Equal(t, skillBundleFolderOnlyReason, outcomes[0].Reason)
+}
+
+func skillBundleArchiveBytes(t *testing.T) []byte {
+	t.Helper()
+
+	var buf bytes.Buffer
+
+	gzw := gzip.NewWriter(&buf)
+	tw := tar.NewWriter(gzw)
+
+	writeFile := func(name, content string) {
+		data := []byte(content)
+		hdr := &tar.Header{Name: name, Mode: 0o600, Size: int64(len(data)), Typeflag: tar.TypeReg}
+		require.NoError(t, tw.WriteHeader(hdr))
+		_, err := tw.Write(data)
+		require.NoError(t, err)
+	}
+
+	writeFile("SKILL.md", "---\nname: summarize\ndescription: x\n---\n\nbody\n")
+	writeFile("scripts/run.sh", "#!/bin/sh\n")
+	require.NoError(t, tw.Close())
+	require.NoError(t, gzw.Close())
+
+	return buf.Bytes()
 }

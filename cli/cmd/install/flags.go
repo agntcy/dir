@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/agntcy/dir/cli/cmd/search"
 	"github.com/agntcy/dir/cli/internal/agentcfg"
 	"github.com/spf13/cobra"
 )
@@ -25,6 +26,15 @@ func addSelectionFlags(cmd *cobra.Command, opts *options) {
 			allAgents, strings.Join(agentIDs(), ", ")))
 	flags.BoolVar(&opts.dryRun, "dry-run", false, "Preview changes without writing")
 	flags.BoolVarP(&opts.yes, "yes", "y", false, "Skip the confirmation prompt")
+}
+
+func addBatchFlags(cmd *cobra.Command, opts *options) {
+	flags := cmd.PersistentFlags()
+
+	flags.Uint32Var(&opts.limit, "limit", 100, "Maximum number of records to process in batch mode") //nolint:mnd
+	flags.BoolVar(&opts.allVersions, "all-versions", false, "Process all matched versions (default: latest per name wins)")
+
+	search.RegisterPersistentFilterFlags(cmd, &opts.filters)
 }
 
 // agentIDs returns the known agent IDs from the registry, for flag help and

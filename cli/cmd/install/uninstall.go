@@ -4,19 +4,42 @@
 package install
 
 import (
+	"github.com/agntcy/dir/cli/cmd/search"
 	"github.com/agntcy/dir/cli/internal/agentcfg"
 	"github.com/agntcy/dir/cli/presenter"
 	"github.com/spf13/cobra"
 )
 
 // uninstallCmd is the `dirctl install uninstall` subcommand. It inherits the
-// selection flags from the `install` parent's persistent flags.
+// selection and batch flags from the `install` parent's persistent flags.
 var uninstallCmd = &cobra.Command{
 	Use:   "uninstall <cid-or-name[:version][@digest]>",
 	Short: "Remove a record's artifacts from detected agents",
-	Args:  cobra.ExactArgs(1),
+	Long: `Remove artifacts that install added for a record from detected agents.
+
+  dirctl install uninstall <cid-or-name>   remove from detected agents
+  dirctl install uninstall --module integration/mcp --name "web*"  batch remove
+
+Batch uninstall uses the same search filters as batch install (--name, --module,
+--skill, etc.).`,
+	Args: cobra.MaximumNArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		return runUninstallCmd(cmd, args[0])
+		var input string
+		if len(args) > 0 {
+			input = args[0]
+		}
+
+		queries := search.BuildQueries(&opts.filters)
+		hasInput := input != ""
+		hasFilters := len(queries) > 0
+
+		return resolveBatchOrInput(
+			hasInput,
+			hasFilters,
+			func() error { return runBatchUninstall(cmd) },
+			func() error { return runUninstallCmd(cmd, input) },
+			func() error { return cmd.Help() },
+		)
 	},
 }
 
@@ -26,14 +49,34 @@ var uninstallCmd = &cobra.Command{
 var UninstallCommand = &cobra.Command{
 	Use:   "uninstall <cid-or-name[:version][@digest]>",
 	Short: "Remove a record's artifacts from detected agents (shorthand for 'install uninstall')",
-	Args:  cobra.ExactArgs(1),
+	Long: `Remove artifacts that install added for a record from detected agents.
+
+  dirctl uninstall <cid-or-name>              remove from detected agents
+  dirctl uninstall --module integration/mcp   batch remove matched records`,
+	Args: cobra.MaximumNArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		return runUninstallCmd(cmd, args[0])
+		var input string
+		if len(args) > 0 {
+			input = args[0]
+		}
+
+		queries := search.BuildQueries(&opts.filters)
+		hasInput := input != ""
+		hasFilters := len(queries) > 0
+
+		return resolveBatchOrInput(
+			hasInput,
+			hasFilters,
+			func() error { return runBatchUninstall(cmd) },
+			func() error { return runUninstallCmd(cmd, input) },
+			func() error { return cmd.Help() },
+		)
 	},
 }
 
 func init() {
 	addSelectionFlags(UninstallCommand, &opts)
+	addBatchFlags(UninstallCommand, &opts)
 }
 
 // runUninstallCmd is the shared body for both `install uninstall` and the

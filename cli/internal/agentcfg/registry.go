@@ -44,10 +44,9 @@ func Registry() []Agent {
 			Detect: detectByMarker(cursorMarker),
 			MCP:    jsonMCP(cursorMCPPath, "mcpServers"),
 			Skill: &SkillTarget{
-				Strategy:    DedicatedFile,
-				Path:        cursorNoGlobalSkill, // no global rules mechanism
+				Strategy:    SkillFolder,
+				Path:        cursorUserSkillPath,
 				ProjectPath: cursorProjectSkillPath,
-				Render:      renderCursor,
 			},
 		},
 		{
@@ -57,9 +56,9 @@ func Registry() []Agent {
 			Detect: detectByMarker(vscodeMarker),
 			MCP:    jsonMCP(vscodeMCPPath, "servers"),
 			Skill: &SkillTarget{
-				Strategy: DedicatedFile,
-				Path:     copilotSkillPath,
-				Render:   renderCopilot,
+				Strategy:    SkillFolder,
+				Path:        copilotUserSkillPath,
+				ProjectPath: copilotProjectSkillPath,
 			},
 		},
 		{
@@ -69,9 +68,9 @@ func Registry() []Agent {
 			Detect: detectByMarker(windsurfMarker),
 			MCP:    jsonMCP(windsurfMCPPath, "mcpServers"),
 			Skill: &SkillTarget{
-				Strategy: ManagedBlock,
-				Path:     windsurfSkillPath,
-				Render:   renderManagedInner,
+				Strategy:    SkillFolder,
+				Path:        windsurfUserSkillPath,
+				ProjectPath: windsurfProjectSkillPath,
 			},
 		},
 		{
@@ -81,9 +80,9 @@ func Registry() []Agent {
 			Detect: detectByMarker(clineMarker),
 			MCP:    jsonMCP(clineMCPPath, "mcpServers"),
 			Skill: &SkillTarget{
-				Strategy: DedicatedFile,
-				Path:     clineSkillPath,
-				Render:   renderCline,
+				Strategy:    SkillFolder,
+				Path:        clineUserSkillPath,
+				ProjectPath: clineProjectSkillPath,
 			},
 		},
 		{
@@ -93,9 +92,9 @@ func Registry() []Agent {
 			Detect: detectByMarker(rooMarker),
 			MCP:    jsonMCP(rooMCPPath, "mcpServers"),
 			Skill: &SkillTarget{
-				Strategy: DedicatedFile,
-				Path:     rooSkillPath,
-				Render:   renderRoo,
+				Strategy:    SkillFolder,
+				Path:        rooUserSkillPath,
+				ProjectPath: rooProjectSkillPath,
 			},
 		},
 		{
@@ -105,9 +104,9 @@ func Registry() []Agent {
 			Detect: detectByMarker(geminiMarker),
 			MCP:    jsonMCP(geminiMCPPath, "mcpServers"),
 			Skill: &SkillTarget{
-				Strategy: ManagedBlock,
-				Path:     geminiSkillPath,
-				Render:   renderManagedInner,
+				Strategy:    SkillFolder,
+				Path:        geminiUserSkillPath,
+				ProjectPath: geminiProjectSkillPath,
 			},
 		},
 		{
@@ -117,9 +116,9 @@ func Registry() []Agent {
 			Detect: detectByMarker(opencodeMarker),
 			MCP:    jsonMCP(opencodeMCPPath, "mcp"),
 			Skill: &SkillTarget{
-				Strategy: ManagedBlock,
-				Path:     opencodeSkillPath,
-				Render:   renderManagedInner,
+				Strategy:    SkillFolder,
+				Path:        opencodeUserSkillPath,
+				ProjectPath: opencodeProjectSkillPath,
 			},
 		},
 		{
@@ -134,8 +133,9 @@ func Registry() []Agent {
 				EntryStyle: ZedContextServer,
 			},
 			Skill: &SkillTarget{
-				Strategy: SkillFolder,
-				Path:     zedSkillPath,
+				Strategy:    SkillFolder,
+				Path:        zedUserSkillPath,
+				ProjectPath: zedProjectSkillPath,
 			},
 		},
 		{
@@ -167,9 +167,9 @@ func Registry() []Agent {
 				EntryStyle: CommandArgsEnv,
 			},
 			Skill: &SkillTarget{
-				Strategy: ManagedBlock,
-				Path:     codexSkillPath,
-				Render:   renderManagedInner,
+				Strategy:    SkillFolder,
+				Path:        codexUserSkillPath,
+				ProjectPath: codexProjectSkillPath,
 			},
 		},
 	}

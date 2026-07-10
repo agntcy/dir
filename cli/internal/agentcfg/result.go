@@ -32,6 +32,7 @@ func failOutcome(outcome Outcome, err error) (Outcome, error) {
 
 // Outcome records what happened to one artifact (MCP or skill) for one agent.
 type Outcome struct {
+	Record   string // optional record label for batch install grouping
 	Agent    string // human-readable agent name
 	Artifact string // "mcp" or "skill"
 	Path     string // absolute path that was (or would be) touched

@@ -4,6 +4,9 @@
 package agentcfg
 
 import (
+	"archive/tar"
+	"bytes"
+	"compress/gzip"
 	"os"
 	"path/filepath"
 	"strings"
@@ -105,13 +108,12 @@ func TestInstallSkillManagedBlockPreservesUserContent(t *testing.T) {
 
 func TestInstallSkillProjectFallback(t *testing.T) {
 	root := t.TempDir()
-	projectPath := filepath.Join(root, "repo", ".cursor", "rules", "test-skill.mdc")
+	projectPath := filepath.Join(root, "repo", ".cursor", "skills", "test-skill", "SKILL.md")
 
 	target := &SkillTarget{
-		Strategy:    DedicatedFile,
+		Strategy:    SkillFolder,
 		Path:        func(Env, string) (string, error) { return "", ErrNoGlobalPath },
 		ProjectPath: func(Env, string) (string, error) { return projectPath, nil },
-		Render:      renderCursor,
 	}
 
 	outcome, err := InstallSkill(target, Env{}, "test-skill", sampleDoc, false)
@@ -186,6 +188,58 @@ func TestInstallSkillVersionReplace(t *testing.T) {
 	renderedB, err := renderContinue(canonicalB)
 	require.NoError(t, err)
 	assert.Equal(t, string(renderedB), string(got), "file content should equal the render of canonical B")
+}
+
+func TestInstallSkillBundleExtractsArchive(t *testing.T) {
+	root := t.TempDir()
+	skillPath := filepath.Join(root, "skills", "test-skill", "SKILL.md")
+	archive := skillBundleArchive(t)
+
+	target := &SkillTarget{
+		Strategy: SkillFolder,
+		Path:     func(Env, string) (string, error) { return skillPath, nil },
+	}
+
+	outcome, err := InstallSkillBundle(target, Env{}, "test-skill", archive, false)
+	require.NoError(t, err)
+	assert.Equal(t, ActionAdded, outcome.Action)
+
+	got, err := os.ReadFile(skillPath)
+	require.NoError(t, err)
+	assert.Equal(t, sampleDoc, string(got))
+
+	extraPath := filepath.Join(root, "skills", "test-skill", "scripts", "run.sh")
+	extra, err := os.ReadFile(extraPath)
+	require.NoError(t, err)
+	assert.Equal(t, "#!/bin/sh\n", string(extra))
+
+	again, err := InstallSkillBundle(target, Env{}, "test-skill", archive, false)
+	require.NoError(t, err)
+	assert.Equal(t, ActionUnchanged, again.Action)
+}
+
+func skillBundleArchive(t *testing.T) []byte {
+	t.Helper()
+
+	var buf bytes.Buffer
+
+	gzw := gzip.NewWriter(&buf)
+	tw := tar.NewWriter(gzw)
+
+	writeFile := func(name, content string) {
+		data := []byte(content)
+		hdr := &tar.Header{Name: name, Mode: 0o600, Size: int64(len(data)), Typeflag: tar.TypeReg}
+		require.NoError(t, tw.WriteHeader(hdr))
+		_, err := tw.Write(data)
+		require.NoError(t, err)
+	}
+
+	writeFile("SKILL.md", sampleDoc)
+	writeFile("scripts/run.sh", "#!/bin/sh\n")
+	require.NoError(t, tw.Close())
+	require.NoError(t, gzw.Close())
+
+	return buf.Bytes()
 }
 
 func TestInstallSkillManagedBlockVersionReplace(t *testing.T) {
