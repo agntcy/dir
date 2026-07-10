@@ -101,22 +101,39 @@ func decodeKey(r *bufio.Reader) (key, error) {
 	case 'q', byteCtrlC: // q or Ctrl-C
 		return keyAbort, nil
 	case byteEsc: // ESC: bare escape aborts; ESC-[-A/B is an arrow key
-		if r.Buffered() == 0 {
-			return keyAbort, nil
-		}
+		return decodeEscape(r)
+	default:
+		return keyNone, nil
+	}
+}
 
-		if b2, _ := r.ReadByte(); b2 != '[' {
-			return keyNone, nil
-		}
+// decodeEscape decodes the bytes following an ESC (0x1b). A bare ESC (nothing
+// buffered) aborts; ESC-[-A / ESC-[-B are the up / down arrows. Read errors
+// mid-sequence are propagated rather than silently decoded as keyNone.
+func decodeEscape(r *bufio.Reader) (key, error) {
+	if r.Buffered() == 0 {
+		return keyAbort, nil
+	}
 
-		switch b3, _ := r.ReadByte(); b3 {
-		case 'A':
-			return keyUp, nil
-		case 'B':
-			return keyDown, nil
-		default:
-			return keyNone, nil
-		}
+	b2, err := r.ReadByte()
+	if err != nil {
+		return keyNone, err //nolint:wrapcheck
+	}
+
+	if b2 != '[' {
+		return keyNone, nil
+	}
+
+	b3, err := r.ReadByte()
+	if err != nil {
+		return keyNone, err //nolint:wrapcheck
+	}
+
+	switch b3 {
+	case 'A':
+		return keyUp, nil
+	case 'B':
+		return keyDown, nil
 	default:
 		return keyNone, nil
 	}

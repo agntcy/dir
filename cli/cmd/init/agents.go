@@ -23,8 +23,9 @@ is built in — no Directory connection is made. Writes are idempotent and atomi
 `
 
 // agentSelector picks a subset of the candidate agents for one artifact. It is
-// injected so the interactive huh multi-select (production) can be swapped for a
-// deterministic fake in tests. Returning an empty slice means "install nowhere".
+// injected so the interactive checkbox selector (promptMultiSelect, production)
+// can be swapped for a deterministic fake in tests. Returning an empty slice
+// means "install nowhere".
 type agentSelector func(cmd *cobra.Command, title string, candidates []agentcfg.Agent) ([]agentcfg.Agent, error)
 
 // interactiveCheck reports whether the command may prompt. It is a package var
