@@ -166,7 +166,7 @@ Need a skill, MCP server, or A2A partner? Your agent searches the Directory, wir
   <h2 class="dir-section-title">Community</h2>
   <p class="dir-community__lede">
     Connect with AGNTCY contributors, join working group meetings, and help shape open agent discovery.
-    <a href="community.md">View the full community page</a>.
+    For more information, see the <a href="community.md">community page</a>.
   </p>
 
   <div class="dir-community-social">
@@ -181,7 +181,7 @@ Need a skill, MCP server, or A2A partner? Your agent searches the Directory, wir
       </span>
       <span class="dir-community-card__body">
         <span class="dir-community-card__title">Discord</span>
-        <span class="dir-community-card__text">Chat with maintainers and contributors in the AGNTCY Discord server.</span>
+        <span class="dir-community-card__text">Chat with maintainers and contributors in the Agent Directory Discord server.</span>
       </span>
     </a>
 
@@ -202,21 +202,6 @@ Need a skill, MCP server, or A2A partner? Your agent searches the Directory, wir
 
     <a
       class="dir-community-card"
-      href="https://github.com/agntcy"
-      target="_blank"
-      rel="noopener noreferrer"
-    >
-      <span class="dir-community-card__icon" aria-hidden="true">
-        <svg viewBox="0 0 24 24" role="img"><path d="M12 .5C5.73.5.5 5.73.5 12c0 5.08 3.29 9.39 7.86 10.91.58.11.79-.25.79-.56 0-.28-.01-1.02-.02-2-3.2.7-3.88-1.54-3.88-1.54-.53-1.34-1.29-1.7-1.29-1.7-1.05-.72.08-.71.08-.71 1.16.08 1.77 1.19 1.77 1.19 1.03 1.77 2.7 1.26 3.36.96.1-.75.4-1.26.73-1.55-2.55-.29-5.23-1.28-5.23-5.69 0-1.26.45-2.29 1.19-3.1-.12-.29-.52-1.46.11-3.05 0 0 .97-.31 3.18 1.18a11.1 11.1 0 0 1 5.8 0c2.2-1.49 3.17-1.18 3.17-1.18.63 1.59.23 2.76.11 3.05.74.81 1.19 1.84 1.19 3.1 0 4.42-2.69 5.39-5.25 5.68.41.36.78 1.06.78 2.14 0 1.55-.01 2.8-.01 3.18 0 .31.21.68.8.56A11.51 11.51 0 0 0 23.5 12C23.5 5.73 18.27.5 12 .5z"/></svg>
-      </span>
-      <span class="dir-community-card__body">
-        <span class="dir-community-card__title">GitHub</span>
-        <span class="dir-community-card__text">Browse AGNTCY repositories, issues, and pull requests across the organization.</span>
-      </span>
-    </a>
-
-    <a
-      class="dir-community-card"
       href="https://blogs.agntcy.org/"
       target="_blank"
       rel="noopener noreferrer"
@@ -226,7 +211,7 @@ Need a skill, MCP server, or A2A partner? Your agent searches the Directory, wir
       </span>
       <span class="dir-community-card__body">
         <span class="dir-community-card__title">Blog</span>
-        <span class="dir-community-card__text">Read announcements, tutorials, and technical deep dives from the DIR team.</span>
+        <span class="dir-community-card__text">Read announcements, tutorials, and technical deep dives from the Agent Directory team.</span>
       </span>
     </a>
   </div>
@@ -236,7 +221,7 @@ Need a skill, MCP server, or A2A partner? Your agent searches the Directory, wir
       <h3 class="dir-community-contribute__title">Contribute</h3>
       <p>
         Help build the Agent Directory Service by contributing code, reporting bugs, or suggesting
-        enhancements. Pick up a good first issue, review open pull requests, or read the AGNTCY
+        enhancements. Pick up a good first issue, review open pull requests, or read the
         contributing guide to get started.
       </p>
       <div class="dir-community-contribute__actions">
@@ -250,7 +235,7 @@ Need a skill, MCP server, or A2A partner? Your agent searches the Directory, wir
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 .5C5.73.5.5 5.73.5 12c0 5.08 3.29 9.39 7.86 10.91.58.11.79-.25.79-.56 0-.28-.01-1.02-.02-2-3.2.7-3.88-1.54-3.88-1.54-.53-1.34-1.29-1.7-1.29-1.7-1.05-.72.08-.71.08-.71 1.16.08 1.77 1.19 1.77 1.19 1.03 1.77 2.7 1.26 3.36.96.1-.75.4-1.26.73-1.55-2.55-.29-5.23-1.28-5.23-5.69 0-1.26.45-2.29 1.19-3.1-.12-.29-.52-1.46.11-3.05 0 0 .97-.31 3.18 1.18a11.1 11.1 0 0 1 5.8 0c2.2-1.49 3.17-1.18 3.17-1.18.63 1.59.23 2.76.11 3.05.74.81 1.19 1.84 1.19 3.1 0 4.42-2.69 5.39-5.25 5.68.41.36.78 1.06.78 2.14 0 1.55-.01 2.8-.01 3.18 0 .31.21.68.8.56A11.51 11.51 0 0 0 23.5 12C23.5 5.73 18.27.5 12 .5z"/></svg>
         </a>
         <a
-          class="dir-community-contribute__btn dir-community-contribute__btn--secondary"
+          class="dir-community-contribute__btn dir-community-contribute__btn--highlight"
           href="https://github.com/search?q=org%3Aagntcy+type%3Aissue+label%3A%22good-first-issue%22%2C%22good+first+issue%22&type=issues"
           target="_blank"
           rel="noopener noreferrer"
@@ -261,53 +246,17 @@ Need a skill, MCP server, or A2A partner? Your agent searches the Directory, wir
     </div>
     <div class="dir-community-contribute__metrics">
       <a
-        class="dir-community-metrics__panel"
+        class="dir-repobeats__link"
         href="https://github.com/agntcy/dir/pulse"
         target="_blank"
         rel="noopener noreferrer"
+        data-dir-repobeats
+        data-repo="agntcy/dir"
       >
-        <div class="dir-community-metrics__row">
-          <span class="dir-community-metrics__label">Repository activity</span>
-          <span class="dir-community-metrics__badges">
-            <img
-              src="https://img.shields.io/github/stars/agntcy/dir?style=flat-square&logo=github"
-              alt="GitHub stars"
-              loading="lazy"
-              height="20"
-            />
-            <img
-              src="https://img.shields.io/github/forks/agntcy/dir?style=flat-square&logo=github"
-              alt="GitHub forks"
-              loading="lazy"
-              height="20"
-            />
-            <img
-              src="https://img.shields.io/github/issues/agntcy/dir?style=flat-square&logo=github"
-              alt="Open issues"
-              loading="lazy"
-              height="20"
-            />
-          </span>
-        </div>
-        <div class="dir-community-metrics__row dir-community-metrics__row--contributors">
-          <span class="dir-community-metrics__label">Top contributors</span>
-          <img
-            class="dir-community-metrics__contrib"
-            src="https://contrib.rocks/image?repo=agntcy/dir&amp;max=42"
-            alt="Top contributors to agntcy/dir"
-            decoding="async"
-            loading="lazy"
-          />
+        <div class="dir-repobeats" aria-busy="true" aria-label="GitHub repository metrics">
+          <p class="dir-repobeats__loading">Loading repository metrics…</p>
         </div>
       </a>
-      <p class="dir-community-metrics__credit">
-        Metrics from
-        <a
-          href="https://github.com/agntcy/dir/graphs/contributors"
-          target="_blank"
-          rel="noopener noreferrer"
-        >GitHub</a>
-      </p>
     </div>
   </div>
 </section>
