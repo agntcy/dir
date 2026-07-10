@@ -1335,6 +1335,45 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#security-scanning" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Security Scanning
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Security Scanning">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#dirctl-daemon_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        dirctl daemon
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#docker-compose_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Docker Compose
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#docker-compose-deployment" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2227,6 +2266,45 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#security-scanning" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Security Scanning
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Security Scanning">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#dirctl-daemon_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        dirctl daemon
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#docker-compose_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Docker Compose
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#docker-compose-deployment" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2549,6 +2627,34 @@ dirctl<span class="w"> </span>daemon<span class="w"> </span>start<span class="w"
 <span class="nv">DIRECTORY_DAEMON_SERVER_LISTEN_ADDRESS</span><span class="o">=</span><span class="s2">&quot;localhost:9999&quot;</span><span class="w"> </span>dirctl<span class="w"> </span>daemon<span class="w"> </span>start
 </code></pre></div>
 <p>When <code>--config</code> is provided, the file replaces built-in defaults entirely. See the <a href="https://github.com/agntcy/dir/blob/main/cli/cmd/daemon/daemon.config.yaml">reference configuration</a> for all available options.</p>
+<h2 id="security-scanning">Security Scanning</h2>
+<p>The reconciler scans records using <a href="https://cisco-ai-defense.github.io/docs/mcp-scanner"><code>mcp-scanner</code></a> (MCP server source code) and <a href="https://cisco-ai-defense.github.io/docs/skill-scanner"><code>skill-scanner</code></a> (agent skill bundles). Both are LLM-backed and require Azure OpenAI credentials. See <a href="../dir-features-scenarios/#security-scanning">Security Scanning</a> for how to pull and filter scan results.</p>
+<h3 id="dirctl-daemon_1">dirctl daemon</h3>
+<p>The scanner CLIs are not bundled with <code>dirctl</code>. Install them before starting the daemon:</p>
+<div class="highlight"><pre><span></span><code>task<span class="w"> </span>deps:scanners
+</code></pre></div>
+<p>Then export the LLM credentials and start the daemon:</p>
+<div class="highlight"><pre><span></span><code><span class="nb">export</span><span class="w"> </span><span class="nv">AZURE_OPENAI_API_KEY</span><span class="o">=</span>&lt;your-key&gt;
+<span class="nb">export</span><span class="w"> </span><span class="nv">AZURE_OPENAI_BASE_URL</span><span class="o">=</span>&lt;your-endpoint&gt;<span class="w">     </span><span class="c1"># e.g. https://your-instance.openai.azure.com/</span>
+<span class="nb">export</span><span class="w"> </span><span class="nv">AZURE_OPENAI_DEPLOYMENT</span><span class="o">=</span>&lt;deployment-name&gt;<span class="w"> </span><span class="c1"># e.g. gpt-4o</span>
+<span class="nb">export</span><span class="w"> </span><span class="nv">AZURE_OPENAI_API_VERSION</span><span class="o">=</span>&lt;api-version&gt;<span class="w">    </span><span class="c1"># e.g. 2024-02-01</span>
+
+dirctl<span class="w"> </span>daemon<span class="w"> </span>start
+</code></pre></div>
+<p>If the scanner binaries are not on <code>PATH</code>, specify their locations in the daemon config:</p>
+<div class="highlight"><pre><span></span><code><span class="nt">reconciler</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">scan</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">mcp_cli_path</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/path/to/mcp-scanner</span>
+<span class="w">    </span><span class="nt">skill_cli_path</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/path/to/skill-scanner</span>
+</code></pre></div>
+<h3 id="docker-compose_2">Docker Compose</h3>
+<p>The reconciler container image includes both scanner CLIs. Add your Azure OpenAI credentials to <code>install/docker/reconciler.env</code> before starting the stack:</p>
+<div class="highlight"><pre><span></span><code><span class="c1"># install/docker/reconciler.env</span>
+<span class="nv">AZURE_OPENAI_API_KEY</span><span class="o">=</span>&lt;your-key&gt;
+<span class="nv">AZURE_OPENAI_BASE_URL</span><span class="o">=</span>&lt;your-endpoint&gt;
+<span class="nv">AZURE_OPENAI_DEPLOYMENT</span><span class="o">=</span>&lt;deployment-name&gt;
+<span class="nv">AZURE_OPENAI_API_VERSION</span><span class="o">=</span>&lt;api-version&gt;
+</code></pre></div>
 <h2 id="docker-compose-deployment">Docker Compose deployment</h2>
 <p>The Docker Compose stack runs separate containers for the apiserver, reconciler, Zot OCI registry, and PostgreSQL:</p>
 <div class="highlight"><pre><span></span><code><span class="nb">cd</span><span class="w"> </span>install/docker

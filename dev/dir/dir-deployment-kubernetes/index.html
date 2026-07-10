@@ -1262,6 +1262,17 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#security-scanning" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Security Scanning
+      
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -1965,6 +1976,17 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#security-scanning" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Security Scanning
+      
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -2371,6 +2393,28 @@ kubectl<span class="w"> </span><span class="nb">wait</span><span class="w"> </sp
 </div>
 </div>
 </div>
+<h2 id="security-scanning">Security Scanning</h2>
+<p>The reconciler image includes <a href="https://cisco-ai-defense.github.io/docs/mcp-scanner"><code>mcp-scanner</code></a> and <a href="https://cisco-ai-defense.github.io/docs/skill-scanner"><code>skill-scanner</code></a> pre-installed. The scan task is enabled by default and requires Azure OpenAI credentials to perform LLM-backed analysis.</p>
+<p>Inject the credentials via <code>extraEnv</code> in your Helm values. Use a Kubernetes Secret to avoid storing keys in plaintext:</p>
+<div class="highlight"><pre><span></span><code>kubectl<span class="w"> </span>create<span class="w"> </span>secret<span class="w"> </span>generic<span class="w"> </span>azure-openai<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--namespace<span class="w"> </span>dir-dev-dir<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--from-literal<span class="o">=</span>api-key<span class="o">=</span>&lt;your-key&gt;
+</code></pre></div>
+<div class="highlight"><pre><span></span><code><span class="nt">extraEnv</span><span class="p">:</span>
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">AZURE_OPENAI_API_KEY</span>
+<span class="w">    </span><span class="nt">valueFrom</span><span class="p">:</span>
+<span class="w">      </span><span class="nt">secretKeyRef</span><span class="p">:</span>
+<span class="w">        </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">azure-openai</span>
+<span class="w">        </span><span class="nt">key</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">api-key</span>
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">AZURE_OPENAI_BASE_URL</span>
+<span class="w">    </span><span class="nt">value</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;https://your-instance.openai.azure.com/&quot;</span>
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">AZURE_OPENAI_DEPLOYMENT</span>
+<span class="w">    </span><span class="nt">value</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;gpt-4o&quot;</span>
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">AZURE_OPENAI_API_VERSION</span>
+<span class="w">    </span><span class="nt">value</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;2024-02-01&quot;</span>
+</code></pre></div>
+<p>To disable scanning, set <code>reconciler.config.scan.enabled: false</code> in your Helm values.</p>
+<p>See <a href="../dir-features-scenarios/#security-scanning">Security Scanning</a> for how to pull and filter scan results.</p>
 
 
 
