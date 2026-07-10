@@ -5,9 +5,7 @@
 package init
 
 import (
-	"bufio"
 	"fmt"
-	"strings"
 	"time"
 
 	"github.com/agntcy/dir/cli/internal/agentcfg"
@@ -23,6 +21,16 @@ Wire this Directory into your AI coding agents: an MCP server entry (so an agent
 can push, search, and pull records) plus the DIR skill (a usage guide). Content
 is built in — no Directory connection is made. Writes are idempotent and atomic.
 `
+
+// agentSelector picks a subset of the candidate agents for one artifact. It is
+// injected so the interactive huh multi-select (production) can be swapped for a
+// deterministic fake in tests. Returning an empty slice means "install nowhere".
+type agentSelector func(cmd *cobra.Command, title string, candidates []agentcfg.Agent) ([]agentcfg.Agent, error)
+
+// interactiveCheck reports whether the command may prompt. It is a package var
+// (defaulting to isInteractive) so tests can drive the interactive branch without
+// a real TTY.
+var interactiveCheck = isInteractive
 
 // dirArtifacts builds the built-in DIR record locally and derives its
 // installable artifacts (skill + MCP server). No Directory round-trip.
@@ -40,14 +48,17 @@ func dirArtifacts() (agentinstall.Artifacts, error) {
 	return arts, nil
 }
 
-// runAgentSetup runs Step 3 against the resolved ambient environment.
+// runAgentSetup runs Step 3 against the resolved ambient environment, using the
+// interactive checkbox prompt for per-agent selection.
 func runAgentSetup(cmd *cobra.Command, opts *options) error {
-	return installAgents(cmd, agentcfg.ResolveEnv(), opts)
+	return installAgents(cmd, agentcfg.ResolveEnv(), opts, promptMultiSelect)
 }
 
-// installAgents is the testable core of Step 3: detect + select agents, then
-// place the built-in DIR MCP server & skill via the shared agentinstall engine.
-func installAgents(cmd *cobra.Command, env agentcfg.Env, opts *options) error {
+// installAgents is the testable core of Step 3: detect the candidate agents,
+// then (interactively) ask which of them get the DIR skill and, separately,
+// which get the DIR MCP server — installing each artifact via the shared
+// agentinstall engine. selectAgents is the per-artifact chooser (injected).
+func installAgents(cmd *cobra.Command, env agentcfg.Env, opts *options, selectAgents agentSelector) error {
 	presenter.Printf(cmd, "%s", agentStepIntro)
 
 	chosen, err := agentcfg.ParseSelection(opts.agents)
@@ -55,12 +66,12 @@ func installAgents(cmd *cobra.Command, env agentcfg.Env, opts *options) error {
 		return err
 	}
 
-	selected, skipped := agentcfg.ResolveSelection(agentcfg.Registry(), env, chosen)
+	candidates, skipped := agentcfg.ResolveSelection(agentcfg.Registry(), env, chosen)
 	for _, id := range skipped {
 		presenter.Printf(cmd, "Skipping %s: not detected.\n", id)
 	}
 
-	if len(selected) == 0 {
+	if len(candidates) == 0 {
 		presenter.Printf(cmd, "No supported AI coding agents detected; skipping.\n")
 
 		return nil
@@ -71,45 +82,50 @@ func installAgents(cmd *cobra.Command, env agentcfg.Env, opts *options) error {
 		return err
 	}
 
-	presenter.Printf(cmd, "Detected agents:\n")
-
-	for _, a := range selected {
-		presenter.Printf(cmd, "  • %s\n", a.Name)
-	}
-
-	if !opts.yes {
-		// Opt-out, but never unattended: a non-TTY run without --yes skips.
-		if !isInteractive(cmd) {
+	// Non-interactive: never prompt. With --yes, install both artifacts into
+	// every candidate; without it, skip rather than act unattended.
+	if opts.yes || !interactiveCheck(cmd) {
+		if !opts.yes {
 			presenter.Printf(cmd, "Skipping MCP server & skill setup (non-interactive). Pass --yes to install.\n")
 
 			return nil
 		}
 
-		proceed, narrowed, err := promptAgentSelection(cmd, selected)
-		if err != nil {
-			return err
-		}
+		apply(cmd, env, arts.SkillOnly(), candidates, "DIR skill")
+		apply(cmd, env, arts.MCPOnly(), candidates, "DIR MCP server")
 
-		if !proceed {
-			presenter.Printf(cmd, "Skipped. No changes made.\n")
-
-			return nil
-		}
-
-		selected = narrowed
-	}
-
-	plan := agentinstall.Install(env, arts, selected, true)
-	presenter.Printf(cmd, "%s", agentcfg.FormatPlan(plan))
-
-	if len(plan) == 0 {
 		return nil
 	}
 
-	outcomes := agentinstall.Install(env, arts, selected, false)
-	presenter.Printf(cmd, "%s", agentcfg.FormatSummary(outcomes, false))
+	// Interactive: one prompt per artifact, each pre-selecting all candidates.
+	skillAgents, err := selectAgents(cmd, "Install the DIR skill into:", candidates)
+	if err != nil {
+		return err
+	}
+
+	apply(cmd, env, arts.SkillOnly(), skillAgents, "DIR skill")
+
+	mcpAgents, err := selectAgents(cmd, "Install the DIR MCP server into:", candidates)
+	if err != nil {
+		return err
+	}
+
+	apply(cmd, env, arts.MCPOnly(), mcpAgents, "DIR MCP server")
 
 	return nil
+}
+
+// apply installs one artifact set into the chosen agents and prints the summary.
+// An empty selection is a no-op with a short note (the user deselected everyone).
+func apply(cmd *cobra.Command, env agentcfg.Env, arts agentinstall.Artifacts, agents []agentcfg.Agent, label string) {
+	if len(agents) == 0 {
+		presenter.Printf(cmd, "%s: no agents selected; skipping.\n", label)
+
+		return
+	}
+
+	outcomes := agentinstall.Install(env, arts, agents, false)
+	presenter.Printf(cmd, "%s", agentcfg.FormatSummary(outcomes, false))
 }
 
 // removeAgents strips the built-in DIR MCP server & skill from detected agents.
@@ -161,50 +177,4 @@ func removeAgents(cmd *cobra.Command, env agentcfg.Env, opts *options) error {
 	presenter.Printf(cmd, "%s", agentcfg.FormatSummary(outcomes, false))
 
 	return nil
-}
-
-// promptAgentSelection confirms installing into all detected agents, or narrows
-// to a typed comma-separated subset of agent IDs. An empty line (Enter) accepts
-// all; EOF with no input returns proceed=false so nothing is assumed.
-//
-//nolint:unparam
-func promptAgentSelection(cmd *cobra.Command, detected []agentcfg.Agent) (bool, []agentcfg.Agent, error) {
-	presenter.Printf(cmd, "\nConfigure these agents? [Y/n], or type a comma-separated subset of IDs: ")
-
-	reader := bufio.NewReader(cmd.InOrStdin())
-
-	line, err := reader.ReadString('\n')
-	if err != nil && line == "" {
-		return false, nil, nil
-	}
-
-	answer := strings.TrimSpace(line)
-
-	switch strings.ToLower(answer) {
-	case "", "y", "yes":
-		return true, detected, nil
-	case "n", "no":
-		return false, nil, nil
-	}
-
-	chosen, err := agentcfg.ParseSelection(strings.Split(answer, ","))
-	if err != nil {
-		return false, nil, err
-	}
-
-	var narrowed []agentcfg.Agent
-
-	for _, a := range detected {
-		if chosen[a.ID] {
-			narrowed = append(narrowed, a)
-		}
-	}
-
-	if len(narrowed) == 0 {
-		presenter.Printf(cmd, "None of the typed IDs match a detected agent; skipping.\n")
-
-		return false, nil, nil
-	}
-
-	return true, narrowed, nil
 }
