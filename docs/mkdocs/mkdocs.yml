@@ -50,6 +50,8 @@ extra_javascript:
   - javascripts/dirctl-terminal.js
   - javascripts/dir-hero-flip.js
   - javascripts/dir-graph.js
+  - javascripts/dir-repobeats-data.js
+  - javascripts/dir-repobeats.js
   - javascripts/card-links.js
   - javascripts/external-links.js
   - javascripts/palette-tooltip-fix.js

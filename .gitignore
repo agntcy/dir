@@ -77,3 +77,6 @@ gui/.env
 # Test environment logs
 tests/**/*.log
 CLAUDE.md
+
+# MkDocs GitHub metrics cache (generated at build time)
+docs/mkdocs/.cache/
