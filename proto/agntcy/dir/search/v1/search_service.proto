@@ -23,6 +23,10 @@ enum SortMode {
   // SORT_MODE_PROVIDER_COUNT orders results by the number of DHT peers
   // currently announcing the record (network distribution signal), highest first.
   SORT_MODE_PROVIDER_COUNT = 3;
+
+  // SORT_MODE_RELEVANCE orders results by how many query signals matched the
+  // record, highest first. Used with natural-language search fan-out queries.
+  SORT_MODE_RELEVANCE = 4;
 }
 
 service SearchService {

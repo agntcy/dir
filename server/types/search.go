@@ -26,6 +26,7 @@ type RecordFilters struct {
 	ScanSeverities   []string // Filter by max scan severity >= threshold (e.g. "HIGH")
 	AnnotationKeys   []string
 	AnnotationValues []string
+	Descriptions     []string // Match against record description field.
 
 	OrderBy []RecordOrderClause // Order by directives applied in sequence.
 }
@@ -196,5 +197,12 @@ func WithAnnotationKeys(keys ...string) FilterOption {
 func WithAnnotationValues(values ...string) FilterOption {
 	return func(sc *RecordFilters) {
 		sc.AnnotationValues = append(sc.AnnotationValues, values...)
+	}
+}
+
+// WithDescriptions filters records by description patterns.
+func WithDescriptions(descriptions ...string) FilterOption {
+	return func(sc *RecordFilters) {
+		sc.Descriptions = append(sc.Descriptions, descriptions...)
 	}
 }

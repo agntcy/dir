@@ -56,3 +56,8 @@ var SkillMarkdown []byte
 //
 //go:embed skill_record.json
 var SkillRecordJSON []byte
+
+// DirectoryRecordJSON is an OASF record for the agntcy Directory service.
+//
+//go:embed directory-record.json
+var DirectoryRecordJSON []byte

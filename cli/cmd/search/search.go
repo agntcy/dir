@@ -16,59 +16,77 @@ import (
 )
 
 var Command = &cobra.Command{
-	Use:   "search",
+	Use:   "search [query]",
 	Short: "Search for records in the directory",
-	Long: `Search for records in the directory using various filters and options.
+	Long: `Search for records in the directory.
 
-The --format flag controls what is returned:
-- cid: Return only record CIDs (default, efficient for piping)
-- record: Return full record data
+Provide a free-text query as a positional argument to use natural-language
+search: the OASF extractor (set up by 'dirctl init') decomposes the phrase
+into skill, domain, and keyword signals. Each signal is queried independently
+and results are ranked by how many signals matched.
+
+Omit the positional argument to use structured search with explicit flags
+(--name, --skill, --domain, etc.).
 
 Examples:
 
-1. Search for CIDs only (default, efficient for piping):
+1. Natural-language search (requires 'dirctl init'):
+   dirctl search "Github MCP server that manages issues"
+   dirctl search "real-time fraud detection for banking" --format record
+
+2. Structured search for CIDs (default, efficient for piping):
    dirctl search --name "web*" | xargs -I {} dirctl pull {}
 
-2. Search and get full records:
+3. Structured search with full records:
    dirctl search --name "web*" --format record --output json
 
-3. Wildcard search examples:
+4. Wildcard search examples:
    dirctl search --name "web*"
    dirctl search --version "v1.*"
    dirctl search --skill "python*" --skill "*script"
    dirctl search --domain "*education*"
 
-4. Comparison operators (for version, created-at, schema-version):
+5. Comparison operators (for version, created-at, schema-version):
    dirctl search --version ">=1.0.0" --version "<2.0.0"
    dirctl search --created-at ">=2024-01-01"
 
-5. Search for verified records only:
+6. Search for verified records only:
    dirctl search --verified
    dirctl search --name "cisco.com/*" --verified
 
-6. Search for trusted records only (signature verification passed):
+7. Search for trusted records only (signature verification passed):
    dirctl search --trusted
    dirctl search --name "web*" --trusted
 
-7. Search for security-scanned records where all scanners reported safe:
+8. Search for security-scanned records where all scanners reported safe:
    dirctl search --safe
    dirctl search --name "web*" --safe
 
-8. Search for records whose highest scan severity meets or exceeds a threshold:
+9. Search for records whose highest scan severity meets or exceeds a threshold:
    dirctl search --scan-severity HIGH
    dirctl search --safe --scan-severity MEDIUM
 
-9. Search by annotation key:value pairs:
-   dirctl search --annotation 'manager:alice'
-   dirctl search --annotation 'team:*'
-   dirctl search --annotation 'env:prod' --annotation 'region:us-*'
+10. Search by annotation key:value pairs:
+    dirctl search --annotation 'manager:alice'
+    dirctl search --annotation 'team:*'
+    dirctl search --annotation 'env:prod' --annotation 'region:us-*'
 
 Supported wildcards:
   * - matches zero or more characters
   ? - matches exactly one character
 `,
-	RunE: func(cmd *cobra.Command, _ []string) error {
-		return runSearchCommand(cmd)
+	Args: cobra.MaximumNArgs(1),
+	RunE: func(cmd *cobra.Command, args []string) error {
+		c, ok := ctxUtils.GetClientFromContext(cmd.Context())
+		if !ok {
+			return errors.New("failed to get client from context")
+		}
+
+		if len(args) == 1 {
+			return runNLSearch(cmd, args[0], c)
+		}
+
+		return runStructuredSearch(cmd, c)
 	},
 }
 
@@ -77,13 +95,8 @@ func init() {
 	presenter.AddOutputFlags(Command)
 }
 
-func runSearchCommand(cmd *cobra.Command) error {
-	c, ok := ctxUtils.GetClientFromContext(cmd.Context())
-	if !ok {
-		return errors.New("failed to get client from context")
-	}
-
-	// Build queries from direct field flags
+// runStructuredSearch handles the flag-driven search path (unchanged behaviour).
+func runStructuredSearch(cmd *cobra.Command, c *client.Client) error {
 	queries := buildQueriesFromFlags()
 
 	switch opts.Format {
@@ -98,15 +111,15 @@ func runSearchCommand(cmd *cobra.Command) error {
 
 func searchCIDs(cmd *cobra.Command, c *client.Client, queries []*searchv1.RecordQuery) error {
 	result, err := c.SearchCIDs(cmd.Context(), &searchv1.SearchCIDsRequest{
-		Limit:   &opts.Limit,
-		Offset:  &opts.Offset,
-		Queries: queries,
+		Limit:    &opts.Limit,
+		Offset:   &opts.Offset,
+		Queries:  queries,
+		SortMode: sortMode(),
 	})
 	if err != nil {
 		return fmt.Errorf("failed to search CIDs: %w", err)
 	}
 
-	// Collect results and convert to any slice
 	results := make([]any, 0, opts.Limit)
 
 	for {
@@ -128,15 +141,15 @@ func searchCIDs(cmd *cobra.Command, c *client.Client, queries []*searchv1.Record
 
 func searchRecords(cmd *cobra.Command, c *client.Client, queries []*searchv1.RecordQuery) error {
 	result, err := c.SearchRecords(cmd.Context(), &searchv1.SearchRecordsRequest{
-		Limit:   &opts.Limit,
-		Offset:  &opts.Offset,
-		Queries: queries,
+		Limit:    &opts.Limit,
+		Offset:   &opts.Offset,
+		Queries:  queries,
+		SortMode: sortMode(),
 	})
 	if err != nil {
 		return fmt.Errorf("failed to search records: %w", err)
 	}
 
-	// Collect records
 	results := make([]any, 0, opts.Limit)
 
 	for {

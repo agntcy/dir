@@ -121,9 +121,9 @@ func applyCatalogOrder(query *gorm.DB, cfg *types.RecordFilters) (*gorm.DB, erro
 			return nil, fmt.Errorf("unsupported sort column %q", o.Column)
 		}
 
-		direction := "ASC"
+		direction := sortASC
 		if o.Desc {
-			direction = "DESC"
+			direction = sortDESC
 		}
 
 		query = query.Order(fmt.Sprintf("%s %s", column, direction))

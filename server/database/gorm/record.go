@@ -30,6 +30,11 @@ var recordSortColumns = map[string]string{
 	"provider_count":   "COALESCE(rum.provider_count, 0)",
 }
 
+const (
+	sortASC  = "ASC"
+	sortDESC = "DESC"
+)
+
 // usageMetricsColumns is the subset of recordSortColumns that require a LEFT
 // JOIN on record_usage_metrics.
 var usageMetricsColumns = map[string]bool{
@@ -352,9 +357,9 @@ func applyRecordOrder(query *gorm.DB, cfg *types.RecordFilters) (*gorm.DB, error
 			return nil, fmt.Errorf("unsupported sort column %q", o.Column)
 		}
 
-		dir := "ASC"
+		dir := sortASC
 		if o.Desc {
-			dir = "DESC"
+			dir = sortDESC
 		}
 
 		query = query.Order(fmt.Sprintf("%s %s", col, dir))
@@ -547,6 +552,14 @@ func (d *DB) handleFilterOptions(query *gorm.DB, cfg *types.RecordFilters) *gorm
 		} else {
 			// Unsafe: at least one scanner reported is_safe = false.
 			query = query.Where("EXISTS (SELECT 1 FROM scan_reports sr WHERE sr.record_cid = records.record_cid AND sr.is_safe = false)")
+		}
+	}
+
+	// Handle description filters with wildcard support.
+	if len(cfg.Descriptions) > 0 {
+		condition, args := utils.BuildWildcardCondition("records.description", cfg.Descriptions)
+		if condition != "" {
+			query = query.Where(condition, args...)
 		}
 	}
 
