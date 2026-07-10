@@ -619,7 +619,7 @@ require (
 	golang.org/x/mod v0.37.0 // indirect
 	golang.org/x/net v0.56.0 // indirect
 	golang.org/x/oauth2 v0.36.0 // indirect
-	golang.org/x/sync v0.21.0 // indirect
+	golang.org/x/sync v0.22.0 // indirect
 	golang.org/x/sys v0.46.0 // indirect
 	golang.org/x/telemetry v0.0.0-20260508192327-42602be52be6 // indirect
 	golang.org/x/term v0.44.0 // indirect
@@ -655,7 +655,7 @@ require (
 	modernc.org/memory v1.11.0 // indirect
 	modernc.org/sqlite v1.52.0 // indirect
 	mvdan.cc/sh/v3 v3.13.1 // indirect
-	oras.land/oras-go/v2 v2.6.1
+	oras.land/oras-go/v2 v2.6.2
 	sigs.k8s.io/controller-runtime v0.24.1 // indirect
 	sigs.k8s.io/json v0.0.0-20250730193827-2d320260d730 // indirect
 	sigs.k8s.io/kustomize/api v0.21.1 // indirect
