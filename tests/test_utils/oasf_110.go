@@ -64,11 +64,11 @@ var skills = []Skill{
 	{Id: 1504, Name: "reasoning_planning/strategic_planning"},                                //nolint:mnd
 }
 
-var GofakeitOASF100Lookups = map[string]gofakeit.Info{
-	"oasf100skills": {
-		Display:     "OASF100Skills",
+var GofakeitOASF110Lookups = map[string]gofakeit.Info{
+	"oasf110skills": {
+		Display:     "OASF110Skills",
 		Category:    "oasf",
-		Description: "OASF 1.0.0 skills (a slice of 1 to 5 skills)",
+		Description: "OASF 1.1.0 skills (a slice of 1 to 5 skills)",
 		Output:      "Skills",
 		Generate: func(f *gofakeit.Faker, m *gofakeit.MapParams, info *gofakeit.Info) (any, error) {
 			skillsCopy := make(Skills, len(skills))
@@ -80,10 +80,10 @@ var GofakeitOASF100Lookups = map[string]gofakeit.Info{
 			return skillsCopy[:n], nil
 		},
 	},
-	"oasf100modules": {
-		Display:     "OASF100Modules",
+	"oasf110modules": {
+		Display:     "OASF110Modules",
 		Category:    "oasf",
-		Description: "OASF 1.0.0 modules (a slice of 1 to 2 modules)",
+		Description: "OASF 1.1.0 modules (a slice of 1 to 2 modules)",
 		Output:      "Modules",
 		Generate: func(f *gofakeit.Faker, m *gofakeit.MapParams, info *gofakeit.Info) (any, error) {
 			modulesCopy := make(Modules, len(modules))
@@ -95,20 +95,20 @@ var GofakeitOASF100Lookups = map[string]gofakeit.Info{
 			return modulesCopy[:n], nil
 		},
 	},
-	"oasf100recordname": {
-		Display:     "OASF100RecordName",
+	"oasf110recordname": {
+		Display:     "OASF110RecordName",
 		Category:    "oasf",
-		Description: "OASF 1.0.0 record name",
+		Description: "OASF 1.1.0 record name",
 		Example:     "Marketing Strategy Agent",
 		Output:      "string",
 		Generate: func(f *gofakeit.Faker, m *gofakeit.MapParams, info *gofakeit.Info) (any, error) {
 			return fmt.Sprintf("%s Agent", gofakeit.JobTitle()), nil
 		},
 	},
-	"oasf100authors": {
-		Display:     "OASF100Authors",
+	"oasf110authors": {
+		Display:     "OASF110Authors",
 		Category:    "oasf",
-		Description: "OASF 1.0.0 authors",
+		Description: "OASF 1.1.0 authors",
 		Output:      "[]string",
 		Generate: func(f *gofakeit.Faker, m *gofakeit.MapParams, info *gofakeit.Info) (any, error) {
 			n := f.Number(1, 5) //nolint:mnd
@@ -126,8 +126,8 @@ var GofakeitOASF100Lookups = map[string]gofakeit.Info{
 	},
 }
 
-// Skill represents an OASF 1.0.0 Skill category
-// https://schema.oasf.outshift.com/1.0.0/skill_categories
+// Skill represents an OASF 1.1.0 Skill category
+// https://schema.oasf.outshift.com/1.1.0/skill_categories
 type Skill struct {
 	Id   int    `json:"id"`
 	Name string `json:"name"`
@@ -137,15 +137,15 @@ type Skill struct {
 // (Gofakeit doesn't work with anonymous slices).
 type Skills []Skill
 
-// Locator represents an OASF 1.0.0 Locator object
-// https://schema.oasf.outshift.com/1.0.0/objects/locator
+// Locator represents an OASF 1.1.0 Locator object
+// https://schema.oasf.outshift.com/1.1.0/objects/locator
 type Locator struct {
 	LocatorType string   `fake:"{randomstring:[binary,container_image,helm_chart,package,source_code,unspecified,url]}" json:"type"`
 	Urls        []string `fake:"{url}"                                                                                  json:"urls"`
 }
 
-// Module represents an OASF 1.0.0 Module category
-// https://schema.oasf.outshift.com/1.0.0/module_categories
+// Module represents an OASF 1.1.0 Module category
+// https://schema.oasf.outshift.com/1.1.0/module_categories
 type Module struct {
 	Name string `json:"name"`
 	Data any    `json:"data"`
@@ -155,15 +155,15 @@ type Module struct {
 // (Gofakeit doesn't work with anonymous slices).
 type Modules []Module
 
-// MCPData represents an OASF 1.0.0 MCP Data object
-// https://schema.oasf.outshift.com/1.0.0/objects/mcp_data
+// MCPData represents an OASF 1.1.0 MCP Data object
+// https://schema.oasf.outshift.com/1.1.0/objects/mcp_data
 type MCPData struct {
 	Name        string                `json:"name"`
 	Connections []MCPServerConnection `json:"connections"`
 }
 
-// MCPServerConnection represents an OASF 1.0.0 MCP Server Connection object
-// https://schema.oasf.outshift.com/1.0.0/objects/mcp_server_connection
+// MCPServerConnection represents an OASF 1.1.0 MCP Server Connection object
+// https://schema.oasf.outshift.com/1.1.0/objects/mcp_server_connection
 type MCPServerConnection struct {
 	Type    string                `fake:"{randomstring:[sse,stdio,streamable-http]}" json:"type"`
 	Args    []string              `json:"args"`
@@ -173,8 +173,8 @@ type MCPServerConnection struct {
 	Url     string                `json:"url,omitempty"`
 }
 
-// EnvironmentVariable represents an OASF 1.0.0 Environment Variable object
-// https://schema.oasf.outshift.com/1.0.0/objects/env_var
+// EnvironmentVariable represents an OASF 1.1.0 Environment Variable object
+// https://schema.oasf.outshift.com/1.1.0/objects/env_var
 type EnvironmentVariable struct {
 	Name         string `json:"name"`
 	Description  string `json:"description"`
@@ -182,25 +182,25 @@ type EnvironmentVariable struct {
 	Required     bool   `json:"required"`
 }
 
-// A2AData represents an OASF 1.0.0 A2A Data object
-// https://schema.oasf.outshift.com/1.0.0/objects/a2a_data
+// A2AData represents an OASF 1.1.0 A2A Data object
+// https://schema.oasf.outshift.com/1.1.0/objects/a2a_data
 type A2AData struct {
 	CardData          any    `json:"card_data"`
 	CardSchemaVersion string `fake:"{appversion}" json:"card_schema_version"`
 }
 
-// Record represents an OASF 1.0.0 Record object
-// https://schema.oasf.outshift.com/1.0.0/objects/record
+// Record represents an OASF 1.1.0 Record object
+// https://schema.oasf.outshift.com/1.1.0/objects/record
 type Record struct {
-	Name          string    `fake:"{oasf100recordname}"  json:"name"`
-	SchemaVersion string    `fake:"1.0.0"                json:"schema_version"`
+	Name          string    `fake:"{oasf110recordname}"  json:"name"`
+	SchemaVersion string    `fake:"1.1.0"                json:"schema_version"`
 	Version       string    `fake:"{appversion}"         json:"version"`
 	Description   string    `fake:"{productdescription}" json:"description"`
-	Authors       []string  `fake:"{oasf100authors}"     json:"authors"`
+	Authors       []string  `fake:"{oasf110authors}"     json:"authors"`
 	CreatedAt     string    `fake:"{pastdaterfc3339}"    json:"created_at"`
-	Skills        Skills    `fake:"{oasf100skills}"      json:"skills"`
+	Skills        Skills    `fake:"{oasf110skills}"      json:"skills"`
 	Locators      []Locator `fakesize:"1"                json:"locators"`
-	Modules       Modules   `fake:"{oasf100modules}"     json:"modules"`
+	Modules       Modules   `fake:"{oasf110modules}"     json:"modules"`
 }
 
 func FakeRecord() *Record {
