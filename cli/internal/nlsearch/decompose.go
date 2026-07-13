@@ -55,13 +55,21 @@ func (s Signal) QueryType() searchv1.RecordQueryType {
 	return searchv1.RecordQueryType_RECORD_QUERY_TYPE_DESCRIPTION
 }
 
-// minTaxonomyScore is the minimum semantic similarity score a skill or domain
-// must reach to be used as a search signal.
-const minTaxonomyScore = 0.3
+// DefaultMinTaxonomyScore is the minimum semantic similarity score a skill or
+// domain must reach to be used as a search signal. Callers can override this
+// via DecomposeWithMinScore when a looser threshold is appropriate (e.g. routing
+// search, where the DHT has exact taxonomy matches and recall matters more).
+const DefaultMinTaxonomyScore = 0.3
 
 // Decompose extracts search signals from free-form text using the provisioned
-// OASF extractor.
+// OASF extractor, applying DefaultMinTaxonomyScore to filter weak matches.
 func Decompose(ctx context.Context, text string, ext *sdk.Extractor) ([]Signal, error) {
+	return DecomposeWithMinScore(ctx, text, ext, DefaultMinTaxonomyScore)
+}
+
+// DecomposeWithMinScore is like Decompose but uses the given minScore threshold
+// instead of DefaultMinTaxonomyScore.
+func DecomposeWithMinScore(ctx context.Context, text string, ext *sdk.Extractor, minScore float64) ([]Signal, error) {
 	res, err := ext.Extract(ctx, text)
 	if err != nil {
 		return nil, fmt.Errorf("extract signals from %q: %w", text, err)
@@ -70,7 +78,7 @@ func Decompose(ctx context.Context, text string, ext *sdk.Extractor) ([]Signal, 
 	var signals []Signal
 
 	for _, s := range res.Skills {
-		if s.Tier == 1 && s.Score >= minTaxonomyScore {
+		if s.Tier == 1 && s.Score >= minScore {
 			signals = append(signals, Signal{
 				Type:  SignalTypeSkillName,
 				Value: s.Name,
@@ -80,7 +88,7 @@ func Decompose(ctx context.Context, text string, ext *sdk.Extractor) ([]Signal, 
 	}
 
 	for _, d := range res.Domains {
-		if d.Tier == 1 && d.Score >= minTaxonomyScore {
+		if d.Tier == 1 && d.Score >= minScore {
 			signals = append(signals, Signal{
 				Type:  SignalTypeDomainName,
 				Value: d.Name,
