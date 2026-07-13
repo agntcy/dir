@@ -32,12 +32,12 @@ type storeCtrl struct {
 	validator corev1.Validator
 }
 
-func NewStoreController(store types.StoreAPI, db types.DatabaseAPI, eventBus *events.SafeEventBus, validator corev1.Validator) storev1.StoreServiceServer {
+func NewStoreController(store types.StoreAPI, db types.DatabaseAPI, ingestor ingest.Ingestor, eventBus *events.SafeEventBus, validator corev1.Validator) storev1.StoreServiceServer {
 	return &storeCtrl{
 		UnimplementedStoreServiceServer: storev1.UnimplementedStoreServiceServer{},
 		store:                           store,
 		db:                              db,
-		ingestor:                        ingest.New(store, db),
+		ingestor:                        ingestor,
 		eventBus:                        eventBus,
 		validator:                       validator,
 	}
