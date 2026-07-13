@@ -6,6 +6,7 @@ package rpc
 
 import (
 	"context"
+	"errors"
 
 	corev1 "github.com/agntcy/dir/api/core/v1"
 	"github.com/agntcy/dir/server/types"
@@ -20,14 +21,22 @@ import (
 
 var logger = logging.Logger("rpc")
 
+var (
+	errReferrerListCap = errors.New("referrer list cap reached")
+	errReferrerFound   = errors.New("referrer found")
+)
+
 // TODO: proper cleanup and implementation needed!
 
 const (
-	Protocol             = protocol.ID("/dir/rpc/1.0.0")
-	DirService           = "RPCAPI"
-	DirServiceFuncLookup = "Lookup"
-	DirServiceFuncPull   = "Pull"
-	MaxPullSize          = 4 * 1024 * 1024 // 4 MB
+	Protocol                    = protocol.ID("/dir/rpc/1.0.0")
+	DirService                  = "RPCAPI"
+	DirServiceFuncLookup        = "Lookup"
+	DirServiceFuncPull          = "Pull"
+	DirServiceFuncListReferrers = "ListReferrers"
+	DirServiceFuncPullReferrer  = "PullReferrer"
+	MaxPullSize                 = 4 * 1024 * 1024 // 4 MB
+	MaxListReferrers            = 1024
 )
 
 type RPCAPI struct {
@@ -43,6 +52,26 @@ type PullResponse struct {
 type LookupResponse struct {
 	Cid         string
 	Annotations map[string]string
+}
+
+// ReferrerDescriptor carries referrer metadata without blob data.
+type ReferrerDescriptor struct {
+	Cid  string
+	Type string
+}
+
+type ListReferrersResponse struct {
+	Referrers []ReferrerDescriptor
+	Truncated bool
+}
+
+type PullReferrerRequest struct {
+	RecordRef *corev1.RecordRef
+	Referrer  *ReferrerDescriptor
+}
+
+type PullReferrerResponse struct {
+	Referrer *corev1.RecordReferrer
 }
 
 // NOTE: List-related types removed since List is a local-only operation
@@ -112,6 +141,153 @@ func (r *RPCAPI) Pull(ctx context.Context, in *corev1.RecordRef, out *PullRespon
 	return nil
 }
 
+func (r *RPCAPI) ListReferrers(ctx context.Context, in *corev1.RecordRef, out *ListReferrersResponse) error {
+	if in == nil || out == nil {
+		return status.Error(codes.InvalidArgument, "invalid request: nil request/response") //nolint:wrapcheck
+	}
+
+	requestPeer, _ := rpc.GetRequestSender(ctx)
+
+	logger.Debug("P2p RPC: Executing ListReferrers request on remote peer",
+		"peer", r.service.localPeerID(),
+		"request_peer", requestPeer,
+		"record_cid", in.GetCid(),
+	)
+
+	if err := validateRecordRef(in); err != nil {
+		return err //nolint:wrapcheck
+	}
+
+	refStore, err := r.service.getReferrerStore()
+	if err != nil {
+		return err //nolint:wrapcheck
+	}
+
+	var (
+		referrers []ReferrerDescriptor
+		truncated bool
+	)
+
+	walkFn := func(referrer *corev1.RecordReferrer) error {
+		if len(referrers) >= MaxListReferrers {
+			truncated = true
+
+			return errReferrerListCap
+		}
+
+		referrers = append(referrers, ReferrerDescriptor{
+			Cid:  referrer.GetReferrerRef().GetCid(),
+			Type: referrer.GetType(),
+		})
+
+		return nil
+	}
+
+	if err := refStore.WalkReferrers(ctx, in.GetCid(), "", walkFn); err != nil && !errors.Is(err, errReferrerListCap) {
+		st := status.Convert(err)
+
+		return status.Errorf(st.Code(), "failed to list referrers: %s", st.Message())
+	}
+
+	if truncated {
+		logger.Warn("ListReferrers returned truncated referrer metadata",
+			"request_peer", requestPeer,
+			"record_cid", in.GetCid(),
+			"count", len(referrers),
+		)
+	}
+
+	*out = ListReferrersResponse{Referrers: referrers, Truncated: truncated}
+
+	return nil
+}
+
+func (r *RPCAPI) PullReferrer(ctx context.Context, in *PullReferrerRequest, out *PullReferrerResponse) error {
+	if in == nil || out == nil {
+		return status.Error(codes.InvalidArgument, "invalid request: nil request/response") //nolint:wrapcheck
+	}
+
+	requestPeer, _ := rpc.GetRequestSender(ctx)
+
+	logger.Debug("P2p RPC: Executing PullReferrer request on remote peer",
+		"peer", r.service.localPeerID(),
+		"request_peer", requestPeer,
+		"record_cid", in.RecordRef.GetCid(),
+		"referrer_type", in.Referrer.Type,
+		"referrer_cid", in.Referrer.Cid,
+	)
+
+	if err := validateRecordRef(in.RecordRef); err != nil {
+		return err //nolint:wrapcheck
+	}
+
+	if in.Referrer.Type == "" {
+		return status.Error(codes.InvalidArgument, "referrer type is required") //nolint:wrapcheck
+	}
+
+	if in.Referrer.Cid == "" {
+		return status.Error(codes.InvalidArgument, "referrer cid is required") //nolint:wrapcheck
+	}
+
+	refStore, err := r.service.getReferrerStore()
+	if err != nil {
+		return err //nolint:wrapcheck
+	}
+
+	var matched *corev1.RecordReferrer
+
+	walkFn := func(referrer *corev1.RecordReferrer) error {
+		if referrer.GetReferrerRef().GetCid() != in.Referrer.Cid {
+			return nil
+		}
+
+		matched = referrer
+
+		return errReferrerFound
+	}
+
+	err = refStore.WalkReferrers(ctx, in.RecordRef.GetCid(), in.Referrer.Type, walkFn)
+	if err != nil && !errors.Is(err, errReferrerFound) {
+		st := status.Convert(err)
+
+		return status.Errorf(st.Code(), "failed to pull referrer: %s", st.Message())
+	}
+
+	if matched == nil {
+		return status.Errorf(codes.NotFound, "referrer %s not found for record %s", in.Referrer.Cid, in.RecordRef.GetCid())
+	}
+
+	blob, err := matched.Marshal()
+	if err != nil {
+		return status.Errorf(codes.Internal, "failed to marshal referrer: %v", err)
+	}
+
+	if len(blob) > MaxPullSize {
+		logger.Warn("PullReferrer rejected oversize referrer blob",
+			"request_peer", requestPeer,
+			"record_cid", in.RecordRef.GetCid(),
+			"referrer_type", in.Referrer.Type,
+			"referrer_cid", in.Referrer.Cid,
+			"size", len(blob),
+			"max_size", MaxPullSize,
+		)
+
+		return status.Errorf(codes.FailedPrecondition, "referrer blob exceeds maximum size of %d bytes", MaxPullSize)
+	}
+
+	logger.Info("PullReferrer served referrer",
+		"request_peer", requestPeer,
+		"record_cid", in.RecordRef.GetCid(),
+		"referrer_type", in.Referrer.Type,
+		"referrer_cid", in.Referrer.Cid,
+		"size", len(blob),
+	)
+
+	*out = PullReferrerResponse{Referrer: matched}
+
+	return nil
+}
+
 // NOTE: List RPC method removed since List is a local-only operation
 
 type Service struct {
@@ -119,13 +295,20 @@ type Service struct {
 	rpcClient *rpc.Client
 	host      host.Host
 	store     types.StoreAPI
+	refStore  types.ReferrerStoreAPI
 }
 
 func New(host host.Host, store types.StoreAPI) (*Service, error) {
+	var refStore types.ReferrerStoreAPI
+	if rs, ok := store.(types.ReferrerStoreAPI); ok {
+		refStore = rs
+	}
+
 	service := &Service{
 		rpcServer: rpc.NewServer(host, Protocol),
 		host:      host,
 		store:     store,
+		refStore:  refStore,
 	}
 
 	// register api
@@ -173,6 +356,74 @@ func (s *Service) Pull(ctx context.Context, peer peer.ID, req *corev1.RecordRef)
 	}
 
 	return record, nil
+}
+
+func (s *Service) ListReferrers(ctx context.Context, peerID peer.ID, req *corev1.RecordRef) ([]ReferrerDescriptor, error) {
+	logger.Debug("P2p RPC: Executing ListReferrers request on remote peer", "peer", peerID, "req", req)
+
+	var resp ListReferrersResponse
+
+	err := s.rpcClient.CallContext(ctx, peerID, DirService, DirServiceFuncListReferrers, req, &resp)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to call remote peer: %v", err)
+	}
+
+	return resp.Referrers, nil
+}
+
+func (s *Service) PullReferrer(
+	ctx context.Context,
+	peerID peer.ID,
+	recordRef *corev1.RecordRef,
+	referrer ReferrerDescriptor,
+) (*corev1.RecordReferrer, error) {
+	logger.Debug("P2p RPC: Executing PullReferrer request on remote peer",
+		"peer", peerID,
+		"record_ref", recordRef,
+		"referrer_type", referrer.Type,
+		"referrer_cid", referrer.Cid,
+	)
+
+	req := &PullReferrerRequest{
+		RecordRef: recordRef,
+		Referrer: &ReferrerDescriptor{
+			Type: referrer.Type,
+			Cid:  referrer.Cid,
+		},
+	}
+
+	var resp PullReferrerResponse
+
+	err := s.rpcClient.CallContext(ctx, peerID, DirService, DirServiceFuncPullReferrer, req, &resp)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to call remote peer: %v", err)
+	}
+
+	return resp.Referrer, nil
+}
+
+func (s *Service) getReferrerStore() (types.ReferrerStoreAPI, error) {
+	if s.refStore == nil {
+		return nil, status.Error(codes.Unimplemented, "referrer storage is not supported by the current store implementation") //nolint:wrapcheck
+	}
+
+	return s.refStore, nil
+}
+
+func (s *Service) localPeerID() peer.ID {
+	if s.host == nil {
+		return ""
+	}
+
+	return s.host.ID()
+}
+
+func validateRecordRef(recordRef *corev1.RecordRef) error {
+	if recordRef == nil || recordRef.GetCid() == "" {
+		return status.Error(codes.InvalidArgument, "record cid is required") //nolint:wrapcheck
+	}
+
+	return nil
 }
 
 // NOTE: List RPC client method removed since List is a local-only operation
