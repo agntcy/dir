@@ -110,7 +110,7 @@ require (
 	github.com/agntcy/dir/reconciler v1.5.0 // indirect
 	github.com/agntcy/dir/server v1.5.0
 	github.com/agntcy/dir/utils v1.5.0 // indirect
-	github.com/agntcy/oasf-sdk/pkg v1.0.6-0.20260702111004-a058446d13b7 // indirect
+	github.com/agntcy/oasf-sdk/pkg v1.0.6-0.20260710132952-88bd9672f57e // indirect
 	github.com/alecthomas/chroma v0.10.0 // indirect
 	github.com/anchore/go-struct-converter v0.1.0 // indirect
 	github.com/antlr4-go/antlr/v4 v4.13.1 // indirect

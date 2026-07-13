@@ -30,7 +30,7 @@ require (
 	github.com/agntcy/dir/reconciler v1.5.0
 	github.com/agntcy/dir/server v1.5.0
 	github.com/agntcy/dir/utils v1.5.0
-	github.com/agntcy/oasf-sdk/pkg v1.0.6-0.20260702111004-a058446d13b7
+	github.com/agntcy/oasf-sdk/pkg v1.0.6-0.20260710132952-88bd9672f57e
 	github.com/briandowns/spinner v1.23.2
 	github.com/ipfs/go-cid v0.6.1
 	github.com/libp2p/go-libp2p v0.48.0

@@ -210,8 +210,8 @@ github.com/agntcy/dir-runtime/store v1.3.2 h1:hFT7/YCAV0jxeyS4GGOo9uC+i79L9Mgiq+
 github.com/agntcy/dir-runtime/store v1.3.2/go.mod h1:ODt3giBEmOiI3gwARZawtF/iIGnU9WD3pjDowCWJkdY=
 github.com/agntcy/dir-runtime/utils v1.3.2 h1:dRpcEKHp6svEOf+3g/mayDWNgvxSHwa+T2/4h2WrLY8=
 github.com/agntcy/dir-runtime/utils v1.3.2/go.mod h1:kPyp84+ER5CTtZkzVVJijNDx3VoYXXaM9ltufmNeyxg=
-github.com/agntcy/oasf-sdk/pkg v1.0.6-0.20260702111004-a058446d13b7 h1:+BEhjN06hqeIC8WZu3Bh8UZ6ZVChhYUWPjGL1So98Ho=
-github.com/agntcy/oasf-sdk/pkg v1.0.6-0.20260702111004-a058446d13b7/go.mod h1:MAWceG+fNkVjgWbfrQOp64h6f5dbJbd1InP93fiMEiQ=
+github.com/agntcy/oasf-sdk/pkg v1.0.6-0.20260710132952-88bd9672f57e h1:eEZTeb2s7+btzQVaVfuHgTxEdqQ0zMAqyrmI4CjSOkg=
+github.com/agntcy/oasf-sdk/pkg v1.0.6-0.20260710132952-88bd9672f57e/go.mod h1:MAWceG+fNkVjgWbfrQOp64h6f5dbJbd1InP93fiMEiQ=
 github.com/alecthomas/chroma v0.10.0 h1:7XDcGkCQopCNKjZHfYrNLraA+M7e0fMiJ/Mfikbfjek=
 github.com/alecthomas/chroma v0.10.0/go.mod h1:jtJATyUxlIORhUOFNA9NZDWGAQ8wpxQQqNSB4rjA/1s=
 github.com/alecthomas/template v0.0.0-20160405071501-a0175ee3bccc/go.mod h1:LOuyumcjzFXgccqObfd/Ljyb9UuFJ6TxHnclSeseNhc=
