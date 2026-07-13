@@ -516,6 +516,14 @@ func LoadConfig(opts ...ConfigOption) (*Config, error) {
 	v.SetDefault("routing.gossipsub.enabled", routing.DefaultGossipSubEnabled)
 
 	//
+	// Routing autosync configuration (DHT-based record + referrer sync).
+	// Note: routing.autosync.peerlist is a list of objects and is configured via
+	// config file/YAML only (it cannot be bound to a single environment variable).
+	//
+	_ = v.BindEnv("routing.autosync.enabled")
+	v.SetDefault("routing.autosync.enabled", routing.DefaultAutosyncEnabled)
+
+	//
 	// Database configuration
 	//
 	_ = v.BindEnv("database.type")

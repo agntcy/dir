@@ -3,7 +3,12 @@
 
 package config
 
-import "time"
+import (
+	"fmt"
+	"time"
+
+	"github.com/libp2p/go-libp2p/core/peer"
+)
 
 var (
 	DefaultListenAddress  = "/ip4/0.0.0.0/tcp/8999"
@@ -13,6 +18,9 @@ var (
 
 	// GossipSub default (only enable/disable is configurable).
 	DefaultGossipSubEnabled = true
+
+	// Autosync default (disabled by default; deny-by-default policy).
+	DefaultAutosyncEnabled = false
 )
 
 type Config struct {
@@ -41,6 +49,9 @@ type Config struct {
 
 	// GossipSub configuration for label announcements
 	GossipSub GossipSubConfig `json:"gossipsub" mapstructure:"gossipsub"`
+
+	// Autosync configuration for DHT-based record + referrer synchronization
+	Autosync AutosyncConfig `json:"autosync" mapstructure:"autosync"`
 }
 
 // GossipSubConfig configures GossipSub-based label announcements.
@@ -62,4 +73,63 @@ type GossipSubConfig struct {
 	// Note: Protocol parameters (topic, message size) are hardcoded in
 	// server/routing/pubsub/constants.go for network compatibility.
 	Enabled bool `json:"enabled,omitempty" mapstructure:"enabled"`
+}
+
+// AutosyncConfig configures DHT-based record + referrer synchronization.
+//
+// When enabled, DHT provider announcements originating from a peer in PeerList
+// trigger the node to pull the announced record (and its referrers) from that
+// peer over libp2p RPC and ingest them locally with full parity to a normal
+// push (content store + search index + referrer state).
+//
+// The policy is deny-by-default: only peers explicitly listed in PeerList are
+// ever synced from. Allow-list matching is performed against libp2p's
+// authenticated peer.ID (never a self-reported/payload field).
+type AutosyncConfig struct {
+	// Enabled controls whether DHT-based autosync is active.
+	// Default: false (deny-by-default).
+	Enabled bool `json:"enabled,omitempty" mapstructure:"enabled"`
+
+	// PeerList is the allow-list of trusted source peers to auto-sync from.
+	//
+	// Note: this is a list of objects (not bare peer-ID strings) so that
+	// per-peer policy fields (e.g. a future "republish" flag) can be added
+	// without a breaking config change. Because it is a list of structs, it is
+	// configured via config file/YAML only (not via a single environment
+	// variable).
+	PeerList []AutosyncPeer `json:"peerlist,omitempty" mapstructure:"peerlist"`
+}
+
+// AutosyncPeer identifies a single trusted source peer in the autosync
+// allow-list.
+type AutosyncPeer struct {
+	// Peer is the libp2p peer ID of the trusted source peer
+	// (e.g. "12D3KooW...").
+	Peer string `json:"peer" mapstructure:"peer"`
+
+	// NOTE: A "Republish" flag is intentionally deferred to a future iteration.
+	// Keeping this a struct (rather than a bare string) makes adding it later a
+	// non-breaking change.
+}
+
+// AllowSet parses the configured PeerList into a set of libp2p peer IDs for
+// O(1) membership checks by the autosync manager.
+//
+// It fails fast: an invalid peer ID returns an error identifying the offending
+// entry, rather than being silently skipped. This is deliberate for a security
+// allow-list — a typo in a trusted peer ID should be surfaced at startup, not
+// silently ignored (which could otherwise cause a trusted peer to never sync).
+func (c AutosyncConfig) AllowSet() (map[peer.ID]struct{}, error) {
+	allowSet := make(map[peer.ID]struct{}, len(c.PeerList))
+
+	for i, p := range c.PeerList {
+		pid, err := peer.Decode(p.Peer)
+		if err != nil {
+			return nil, fmt.Errorf("invalid autosync peer ID at peerlist[%d] (%q): %w", i, p.Peer, err)
+		}
+
+		allowSet[pid] = struct{}{}
+	}
+
+	return allowSet, nil
 }
