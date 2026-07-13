@@ -23,7 +23,9 @@ var searchCmd = &cobra.Command{
 Provide a free-text query as a positional argument to use natural-language
 search: the OASF extractor (set up by 'dirctl init') decomposes the phrase
 into skill and domain signals. Each signal is queried independently against
-the routing DHT and results are ranked by match score, best-first.
+the routing DHT. The discovered records (up to --limit) are then reordered
+by match score, best-first. This is not a global top-N: only the window of
+records returned by the DHT within the limit is reordered.
 
 Omit the positional argument to use structured search with explicit flags
 (--skill, --domain, --locator, --module).
@@ -31,7 +33,7 @@ Omit the positional argument to use structured search with explicit flags
 Key Features:
 - Remote-only: Only returns records from other peers
 - OR logic: Records returned if they match ≥ minScore queries
-- Match scoring: Results sorted by match score (highest first)
+- Match scoring: Discovered window reordered by match score (highest first); not a global top-N
 - Peer information: Shows which peer provides each record
 
 Usage examples:
@@ -175,7 +177,7 @@ func runRoutingSearch(cmd *cobra.Command, queries []*routingv1.RecordQuery) erro
 		responses = append(responses, result)
 	}
 
-	// Sort by match_score descending so the best matches come first.
+	// Reorder the discovered window by match_score descending; not a global top-N.
 	sort.SliceStable(responses, func(i, j int) bool {
 		return responses[i].GetMatchScore() > responses[j].GetMatchScore()
 	})
