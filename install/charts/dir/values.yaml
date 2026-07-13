@@ -210,6 +210,17 @@ apiserver:
       gossipsub:
         enabled: true
 
+      # DHT-based record + referrer autosync.
+      # Deny-by-default: when enabled, only records announced by a peer in
+      # peerlist are pulled and ingested locally over the libp2p/DHT transport.
+      # peerlist is a list of trusted source peers (by libp2p peer ID) and is
+      # configured via values/config only (not a single environment variable).
+      autosync:
+        enabled: false
+        # peerlist:
+        #   - peer: "12D3KooW...peerID1"
+        #   - peer: "12D3KooW...peerID2"
+
     # Sync configuration
     sync:
       # Authentication configuration for sync operations
