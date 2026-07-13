@@ -42,6 +42,15 @@ server:
     #   - "/dns4/remote-dir.example.com/tcp/8999/p2p/<peer-id>"
     gossipsub:
       enabled: true
+    # DHT-based record + referrer autosync (deny-by-default; disabled unless set).
+    # When enabled, records announced by an allow-listed peer are pulled and
+    # ingested locally over the libp2p/DHT transport.
+    autosync:
+      enabled: false
+      # peerlist is a list of trusted source peers (by libp2p peer ID).
+      # peerlist:
+      #   - peer: "12D3KooW...peerID1"
+      #   - peer: "12D3KooW...peerID2"
   database:
     type: "sqlite"
     sqlite:
