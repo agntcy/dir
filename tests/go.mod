@@ -47,7 +47,7 @@ require (
 	github.com/nlpodyssey/gopickle v0.2.0 // indirect
 	github.com/nlpodyssey/gotokenizers v0.2.0 // indirect
 	github.com/nlpodyssey/spago v1.1.0 // indirect
-	github.com/rs/zerolog v1.31.0 // indirect
+	github.com/rs/zerolog v1.35.1 // indirect
 	github.com/tetratelabs/wabin v0.0.0-20230304001439-f6f874872834 // indirect
 	github.com/youmark/pkcs8 v0.0.0-20240726163527-a2c0da244d78 // indirect
 	gopkg.in/ini.v1 v1.67.2 // indirect
