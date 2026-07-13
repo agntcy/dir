@@ -86,7 +86,7 @@ USER 55532:55532
 
 ENTRYPOINT ["./reconciler"]
 
-FROM python:3.13-slim AS scanner
+FROM python:3.14-slim AS scanner
 
 RUN groupadd -g 55532 -r nonroot && useradd -u 55532 -r -g nonroot nonroot
 
