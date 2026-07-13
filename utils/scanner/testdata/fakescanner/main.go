@@ -43,7 +43,7 @@ func main() {
 	if outputPath != "" && os.Getenv("FAKE_A2A_NO_FILE") != "1" {
 		body := os.Getenv("FAKE_A2A_OUTPUT")
 		if body == "" {
-			body = `{"is_safe": true, "findings": []}`
+			body = `{"status": "completed", "findings": [], "total_findings": 0, "high_severity_count": 0}`
 		}
 
 		if err := os.WriteFile(outputPath, []byte(body), 0o600); err != nil {

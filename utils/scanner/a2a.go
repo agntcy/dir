@@ -188,27 +188,27 @@ func buildA2AScannerEnv() []string {
 
 // --- output parsing ---
 
-// a2aScanResult represents the single-object result of `a2a-scanner scan-card`.
+// a2aScanResult represents the JSON result of `a2a-scanner scan-card --output`.
 //
-// NOTE: a2a-scanner's JSON output schema is not fully documented upstream at
-// the time of writing (see https://cisco-ai-defense.github.io/docs/a2a-scanner).
-// The field names below follow the same is_safe/findings[severity,category,
-// rule_id,description,remediation] contract already exposed by skill-scanner,
-// the other single-artifact scanner in this family. If the installed
-// a2a-scanner binary uses different field names, update this struct and
-// parseA2AOutput to match — the CLI invocation and record-extraction logic
-// above are unaffected by this assumption.
+// The field names are verified against cisco-ai-a2a-scanner v1.0.0
+// (a2ascanner.core.models.ScanResult.to_dict /
+// a2ascanner.core.analyzers.base.SecurityFinding.to_dict): the result object
+// carries a findings[] array plus a total_findings count, and — unlike
+// skill-scanner and mcp-scanner — does NOT emit an is_safe flag. Safety is
+// therefore derived from the finding count. Each finding exposes
+// severity/threat_name/scanner_category/description/summary (there is no
+// rule_id/category/remediation triple).
 type a2aScanResult struct {
-	IsSafe   bool         `json:"is_safe"`
-	Findings []a2aFinding `json:"findings"`
+	Findings      []a2aFinding `json:"findings"`
+	TotalFindings int          `json:"total_findings"`
 }
 
 type a2aFinding struct {
-	Severity    string `json:"severity"`
-	Category    string `json:"category"`
-	RuleID      string `json:"rule_id"`
-	Description string `json:"description"`
-	Remediation string `json:"remediation"`
+	Severity        string `json:"severity"`
+	ThreatName      string `json:"threat_name"`
+	ScannerCategory string `json:"scanner_category"`
+	Description     string `json:"description"`
+	Summary         string `json:"summary"`
 }
 
 func parseA2AOutput(raw []byte) (*ScanResult, error) {
@@ -226,13 +226,23 @@ func parseA2AOutput(raw []byte) (*ScanResult, error) {
 	var findings []Finding
 
 	for _, f := range result.Findings {
+		desc := f.Description
+		if desc == "" {
+			desc = f.Summary
+		}
+
 		findings = append(findings, Finding{
 			Severity: mapScannerSeverity(f.Severity),
-			Message:  fmt.Sprintf("[%s] %s: %s", f.RuleID, f.Category, f.Description),
+			Message:  fmt.Sprintf("[%s] %s: %s", f.ThreatName, f.ScannerCategory, desc),
 		})
 	}
 
-	return &ScanResult{Safe: result.IsSafe, Findings: findings}, nil
+	// a2a-scanner emits no is_safe flag; a card is safe when the scan produced
+	// zero findings, mirroring the scanner's own "no threats detected" summary,
+	// which keys on total_findings.
+	safe := result.TotalFindings == 0 && len(findings) == 0
+
+	return &ScanResult{Safe: safe, Findings: findings}, nil
 }
 
 // trimToA2AJSON strips leading non-JSON bytes by finding the first '{' or '['.

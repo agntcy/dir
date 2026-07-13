@@ -71,7 +71,7 @@ func a2aRecordWithCard(t *testing.T) *corev1.Record {
 func TestA2ARunner_Run_Safe(t *testing.T) {
 	// Not parallel: uses t.Setenv.
 	bin := fakeScannerBin(t)
-	// No FAKE_A2A_OUTPUT set: the fake emits its default is_safe=true payload.
+	// No FAKE_A2A_OUTPUT set: the fake emits its default zero-finding payload.
 
 	r := NewA2ARunner(A2AConfig{CLIPath: bin})
 
@@ -85,7 +85,7 @@ func TestA2ARunner_Run_Safe(t *testing.T) {
 	}
 
 	if !got.Safe {
-		t.Errorf("is_safe=true output should produce Safe=true, got %+v", got)
+		t.Errorf("zero-finding output should produce Safe=true, got %+v", got)
 	}
 
 	if len(got.Findings) != 0 {
@@ -104,8 +104,9 @@ func TestA2ARunner_Run_Safe(t *testing.T) {
 
 func TestA2ARunner_Run_UnsafeWithFindings(t *testing.T) {
 	// Not parallel: uses t.Setenv.
-	t.Setenv("FAKE_A2A_OUTPUT", `{"is_safe":false,"findings":[`+
-		`{"rule_id":"A2A_DELEG","category":"delegation","severity":"HIGH","description":"unsafe delegation chain"}]}`)
+	t.Setenv("FAKE_A2A_OUTPUT", `{"status":"completed","findings":[`+
+		`{"threat_name":"unsafe_delegation","scanner_category":"delegation","severity":"HIGH","description":"unsafe delegation chain"}],`+
+		`"total_findings":1,"high_severity_count":1}`)
 
 	r := NewA2ARunner(A2AConfig{CLIPath: fakeScannerBin(t)})
 
@@ -115,7 +116,7 @@ func TestA2ARunner_Run_UnsafeWithFindings(t *testing.T) {
 	}
 
 	if got.Safe {
-		t.Error("is_safe=false output should produce Safe=false")
+		t.Error("output with findings should produce Safe=false")
 	}
 
 	if len(got.Findings) != 1 {
@@ -171,7 +172,7 @@ func TestA2ARunner_Run_InvalidScannerOutput(t *testing.T) {
 
 func TestRunA2AScanner_WritesOutput(t *testing.T) {
 	// Not parallel: uses t.Setenv.
-	t.Setenv("FAKE_A2A_OUTPUT", `{"is_safe":true,"findings":[]}`)
+	t.Setenv("FAKE_A2A_OUTPUT", `{"status":"completed","findings":[],"total_findings":0}`)
 
 	bin := fakeScannerBin(t)
 	dir := t.TempDir()
@@ -191,7 +192,7 @@ func TestRunA2AScanner_WritesOutput(t *testing.T) {
 		t.Fatalf("output file not written: %v", err)
 	}
 
-	if !strings.Contains(string(body), "is_safe") {
+	if !strings.Contains(string(body), "total_findings") {
 		t.Errorf("unexpected output body: %s", body)
 	}
 }

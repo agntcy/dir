@@ -205,7 +205,7 @@ func TestParseA2AOutput_EmptyBytes(t *testing.T) {
 func TestParseA2AOutput_SafeNoFindings(t *testing.T) {
 	t.Parallel()
 
-	raw := `{"is_safe":true,"findings":[]}`
+	raw := `{"status":"completed","findings":[],"total_findings":0,"high_severity_count":0}`
 
 	got, err := parseA2AOutput([]byte(raw))
 	if err != nil {
@@ -213,7 +213,7 @@ func TestParseA2AOutput_SafeNoFindings(t *testing.T) {
 	}
 
 	if !got.Safe || len(got.Findings) != 0 {
-		t.Errorf("safe object with no findings: want Safe=true, Findings=0; got %+v", got)
+		t.Errorf("zero-finding result: want Safe=true, Findings=0; got %+v", got)
 	}
 }
 
@@ -221,10 +221,12 @@ func TestParseA2AOutput_UnsafeWithFindings(t *testing.T) {
 	t.Parallel()
 
 	raw := `{
-		"is_safe": false,
+		"status": "completed",
 		"findings": [
-			{"rule_id":"A2A_RULE1","category":"delegation","severity":"HIGH","description":"unsafe delegation chain"}
-		]
+			{"threat_name":"unsafe_delegation","scanner_category":"delegation","severity":"HIGH","description":"unsafe delegation chain"}
+		],
+		"total_findings": 1,
+		"high_severity_count": 1
 	}`
 
 	got, err := parseA2AOutput([]byte(raw))
@@ -233,7 +235,7 @@ func TestParseA2AOutput_UnsafeWithFindings(t *testing.T) {
 	}
 
 	if got.Safe {
-		t.Error("is_safe=false should produce Safe=false")
+		t.Error("a result with findings should produce Safe=false")
 	}
 
 	if len(got.Findings) != 1 {
@@ -245,31 +247,78 @@ func TestParseA2AOutput_UnsafeWithFindings(t *testing.T) {
 		t.Errorf("HIGH severity should map to SeverityError, got %q", f.Severity)
 	}
 
-	for _, part := range []string{"A2A_RULE1", "delegation", "unsafe delegation chain"} {
+	for _, part := range []string{"unsafe_delegation", "delegation", "unsafe delegation chain"} {
 		if !strings.Contains(f.Message, part) {
 			t.Errorf("message %q should contain %q", f.Message, part)
 		}
 	}
 }
 
-func TestParseA2AOutput_TrustsScannerSafeVerdict(t *testing.T) {
+func TestParseA2AOutput_FindingsDeriveUnsafe(t *testing.T) {
 	t.Parallel()
 
-	raw := `{"is_safe":true,"findings":[
-		{"rule_id":"R1","category":"injection","severity":"CRITICAL","description":"critical"}
-	]}`
+	// a2a-scanner reports no is_safe flag: any finding must derive Safe=false.
+	// This finding also omits "description", exercising the summary fallback.
+	raw := `{"status":"completed","findings":[
+		{"threat_name":"prompt_injection","scanner_category":"injection","severity":"CRITICAL","summary":"injection detected"}
+	],"total_findings":1,"high_severity_count":1}`
 
 	got, err := parseA2AOutput([]byte(raw))
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	if !got.Safe {
-		t.Error("is_safe=true should be trusted even when a CRITICAL finding is present")
+	if got.Safe {
+		t.Error("a result with findings must be Safe=false even without an is_safe flag")
 	}
 
 	if len(got.Findings) != 1 {
-		t.Errorf("finding must still be surfaced; got %d", len(got.Findings))
+		t.Fatalf("finding must be surfaced; got %d", len(got.Findings))
+	}
+
+	if got.Findings[0].Severity != SeverityError {
+		t.Errorf("CRITICAL severity should map to SeverityError, got %q", got.Findings[0].Severity)
+	}
+
+	if !strings.Contains(got.Findings[0].Message, "injection detected") {
+		t.Errorf("message should fall back to summary when description is empty, got %q", got.Findings[0].Message)
+	}
+}
+
+func TestParseA2AOutput_FindingsPresentButZeroCount_Unsafe(t *testing.T) {
+	t.Parallel()
+
+	// Defends the len(findings) clause of the safety conjunction: if the scanner
+	// ever reports findings without a matching total_findings count, the presence
+	// of a finding must still derive Safe=false.
+	raw := `{"status":"completed","findings":[
+		{"threat_name":"t","scanner_category":"c","severity":"HIGH","description":"d"}
+	],"total_findings":0}`
+
+	got, err := parseA2AOutput([]byte(raw))
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if got.Safe {
+		t.Error("a surfaced finding must force Safe=false even when total_findings is 0")
+	}
+}
+
+func TestParseA2AOutput_NonzeroCountNoFindings_Unsafe(t *testing.T) {
+	t.Parallel()
+
+	// Defends the TotalFindings clause: a non-zero count with an empty findings
+	// array must still derive Safe=false.
+	raw := `{"status":"completed","findings":[],"total_findings":2,"high_severity_count":1}`
+
+	got, err := parseA2AOutput([]byte(raw))
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if got.Safe {
+		t.Error("a non-zero total_findings must force Safe=false even with an empty findings array")
 	}
 }
 
@@ -285,7 +334,7 @@ func TestParseA2AOutput_InvalidJSON(t *testing.T) {
 func TestParseA2AOutput_LeadingTextStripped(t *testing.T) {
 	t.Parallel()
 
-	raw := "progress output\n" + `{"is_safe":true,"findings":[]}`
+	raw := "progress output\n" + `{"status":"completed","findings":[],"total_findings":0}`
 
 	got, err := parseA2AOutput([]byte(raw))
 	if err != nil {
