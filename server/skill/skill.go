@@ -23,27 +23,27 @@ var DirSkill string
 
 const (
 	RecordName    = "org.agntcy/directory"
-	SchemaVersion = "1.0.0"
+	SchemaVersion = "1.1.0"
 
 	MCPModuleName         = "integration/mcp"
 	AgentSkillsModuleName = "core/language_model/agentskills"
 	MCPServerName         = "agntcy-dir-mcp"
 
-	// OASF taxonomy IDs (verified against the 1.0.0 JSON schema). Mismatching
+	// OASF taxonomy IDs (verified against the 1.1.0 JSON schema). Mismatching
 	// these is a hard validation error, missing them is only a warning.
 	skillContextualComprehensionID uint32 = 10101
 	agentSkillsModuleID            uint32 = 10302
 	mcpModuleID                    uint32 = 202
-	domainAPIsIntegrationID        uint32 = 10204
+	domainSoftwareEngineeringID    uint32 = 102
 
 	// Used when the binary lacks an ldflags-stamped version (e.g. `go run`).
 	fallbackVersion = "0.0.0-dev"
 
 	// OASF requires `skills` to be non-empty; pick the closest taxonomy
 	// node for an instructional record.
-	skillContextualComprehensionName = "natural_language_processing/natural_language_understanding/contextual_comprehension"
+	skillContextualComprehensionName = "language_processing/language_understanding/contextual_comprehension"
 
-	domainAPIsIntegrationName = "technology/software_engineering/apis_integration"
+	domainSoftwareEngineeringName = "technology/software_engineering"
 )
 
 // RecordVersion returns the record's `version`, stripping the commit suffix
@@ -88,7 +88,7 @@ func BuildRecord(now time.Time) (*corev1.Record, error) {
 			{Name: skillContextualComprehensionName, Id: skillContextualComprehensionID},
 		},
 		Domains: []*typesv1.Domain{
-			{Name: domainAPIsIntegrationName, Id: domainAPIsIntegrationID},
+			{Name: domainSoftwareEngineeringName, Id: domainSoftwareEngineeringID},
 		},
 		Modules: []*typesv1.Module{skillModule, mcpModule},
 	}), nil
