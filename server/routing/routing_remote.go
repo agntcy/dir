@@ -13,6 +13,7 @@ import (
 	coretypes "github.com/agntcy/dir/api/core/types"
 	corev1 "github.com/agntcy/dir/api/core/v1"
 	routingv1 "github.com/agntcy/dir/api/routing/v1"
+	"github.com/agntcy/dir/server/ingest"
 	"github.com/agntcy/dir/server/routing/internal/p2p"
 	"github.com/agntcy/dir/server/routing/pubsub"
 	"github.com/agntcy/dir/server/routing/rpc"
@@ -96,7 +97,17 @@ func QueryAllNamespaces(ctx context.Context, dstore types.Datastore) ([]Namespac
 // routeRemote handles routing across the network with hybrid label discovery.
 // It uses both GossipSub (efficient, wide propagation) and DHT+Pull (fallback).
 type routeRemote struct {
-	storeAPI        types.StoreAPI
+	storeAPI types.StoreAPI
+
+	// ingestor is the shared ingestion path used to persist records/referrers
+	// pulled during DHT autosync. autosyncPeers is the deny-by-default allow-set
+	// of trusted source peers (empty when autosync is disabled). Both are wired
+	// here and consumed by the autosync worker.
+	//nolint:unused // consumed by the DHT autosync worker (follow-up)
+	ingestor ingest.Ingestor
+	//nolint:unused // consumed by the DHT autosync worker (follow-up)
+	autosyncPeers map[peer.ID]struct{}
+
 	server          *p2p.Server
 	service         *rpc.Service
 	notifyCh        chan *handlerSync
@@ -114,6 +125,7 @@ type routeRemote struct {
 
 func newRemote(parentCtx context.Context,
 	storeAPI types.StoreAPI,
+	ingestor ingest.Ingestor,
 	dstore types.Datastore,
 	opts types.APIOptions,
 ) (*routeRemote, error) {
@@ -123,9 +135,36 @@ func newRemote(parentCtx context.Context,
 	// Determine if this is a bootstrap node (no bootstrap peers configured)
 	isBootstrapNode := len(opts.Config().Routing.BootstrapPeers) == 0
 
+	// Resolve autosync policy up front so a bad peer ID fails fast at startup
+	// (deny-by-default: the allow-set is empty unless autosync is enabled).
+	autosyncCfg := opts.Config().Routing.Autosync
+
+	var autosyncPeers map[peer.ID]struct{}
+
+	if autosyncCfg.Enabled {
+		allowSet, err := autosyncCfg.AllowSet()
+		if err != nil {
+			cancel()
+
+			return nil, fmt.Errorf("invalid autosync configuration: %w", err)
+		}
+
+		if ingestor == nil {
+			cancel()
+
+			return nil, fmt.Errorf("autosync is enabled but no ingestion service was provided")
+		}
+
+		autosyncPeers = allowSet
+
+		remoteLogger.Info("DHT autosync enabled", "trusted_peers", len(autosyncPeers))
+	}
+
 	// Create routing
 	routeAPI := &routeRemote{
 		storeAPI:        storeAPI,
+		ingestor:        ingestor,
+		autosyncPeers:   autosyncPeers,
 		notifyCh:        make(chan *handlerSync, NotificationChannelSize),
 		dstore:          dstore,
 		ctx:             routingCtx,
