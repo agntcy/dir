@@ -27,7 +27,7 @@ import (
 func importerWithStaticEnricher(ctx context.Context, client importerconfig.ClientInterface, cfg importerconfig.Config) (types.Importer, error) {
 	cfg.Enricher.SkipEnricher = true
 	cfg.Enricher.Skills = []*typesv1.Skill{
-		{Name: "natural_language_processing/natural_language_understanding/contextual_comprehension", Id: 10101},
+		{Name: "language_processing/language_understanding/contextual_comprehension", Id: 10101},
 	}
 	cfg.Enricher.Domains = []*typesv1.Domain{
 		{Name: "technology/software_engineering", Id: 102},
