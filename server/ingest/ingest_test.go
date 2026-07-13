@@ -35,11 +35,13 @@ type mockDB struct {
 
 func (m *mockDB) AddRecord(coretypes.Record) error {
 	m.addRecordCalls++
+
 	return m.addRecordErr
 }
 
 func (m *mockDB) SetRecordSigned(string) error {
 	m.setSignedCalls++
+
 	return m.setSignedErr
 }
 
