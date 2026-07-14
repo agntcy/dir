@@ -269,19 +269,28 @@ func setupAutoRelay(h host.Host, kdht *dht.IpfsDHT, staticRelays []peer.AddrInfo
 		return peerChan
 	}
 
-	// Enable AutoRelay with a DHT-based peer source, plus any configured static
-	// relays (preferred for reliable connectivity behind NAT).
-	autoRelayOpts := []autorelay.Option{autorelay.WithPeerSource(peerSource)}
+	// AutoRelay accepts EITHER static relays OR a peer source, not both. Prefer
+	// configured static relays (more reliable behind NAT); otherwise discover
+	// relay candidates from the DHT routing table.
+	var (
+		autoRelayOpt autorelay.Option
+		relaySource  string
+	)
+
 	if len(staticRelays) > 0 {
-		autoRelayOpts = append(autoRelayOpts, autorelay.WithStaticRelays(staticRelays))
+		autoRelayOpt = autorelay.WithStaticRelays(staticRelays)
+		relaySource = "static"
+	} else {
+		autoRelayOpt = autorelay.WithPeerSource(peerSource)
+		relaySource = "dht"
 	}
 
-	_, err := autorelay.NewAutoRelay(h, autoRelayOpts...)
+	_, err := autorelay.NewAutoRelay(h, autoRelayOpt)
 	if err != nil {
 		return fmt.Errorf("failed to enable AutoRelay: %w", err)
 	}
 
-	logger.Info("AutoRelay enabled", "peer_source", "dht", "static_relays", len(staticRelays))
+	logger.Info("AutoRelay enabled", "relay_source", relaySource, "static_relays", len(staticRelays))
 
 	return nil
 }
