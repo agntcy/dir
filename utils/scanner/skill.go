@@ -195,7 +195,7 @@ func parseSkillOutput(raw []byte) (*ScanResult, error) {
 	for _, r := range results {
 		for _, f := range r.Findings {
 			findings = append(findings, Finding{
-				Severity: mapSkillSeverity(f.Severity),
+				Severity: mapScannerSeverity(f.Severity),
 				Message:  fmt.Sprintf("[%s] %s: %s", f.RuleID, f.Category, f.Description),
 			})
 		}
@@ -249,15 +249,4 @@ func parseSkillJSON(raw []byte) ([]skillScanResult, error) {
 	}
 
 	return []skillScanResult{result}, nil
-}
-
-func mapSkillSeverity(s string) FindingSeverity {
-	switch strings.ToUpper(s) {
-	case "CRITICAL", "HIGH":
-		return SeverityError
-	case "MEDIUM":
-		return SeverityWarning
-	default:
-		return SeverityInfo
-	}
 }

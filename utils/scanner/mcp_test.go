@@ -157,38 +157,6 @@ func TestParseMCPOutput_InvalidJSON(t *testing.T) {
 	}
 }
 
-// --- mapMCPSeverity ---
-
-func TestMapMCPSeverity(t *testing.T) {
-	t.Parallel()
-
-	cases := []struct {
-		input string
-		want  FindingSeverity
-	}{
-		{"CRITICAL", SeverityError},
-		{"critical", SeverityError},
-		{"HIGH", SeverityError},
-		{"high", SeverityError},
-		{"MEDIUM", SeverityWarning},
-		{"medium", SeverityWarning},
-		{"LOW", SeverityInfo},
-		{"low", SeverityInfo},
-		{"UNKNOWN", SeverityInfo},
-		{"", SeverityInfo},
-	}
-
-	for _, tc := range cases {
-		t.Run(tc.input, func(t *testing.T) {
-			t.Parallel()
-
-			if got := mapMCPSeverity(tc.input); got != tc.want {
-				t.Errorf("mapMCPSeverity(%q) = %q, want %q", tc.input, got, tc.want)
-			}
-		})
-	}
-}
-
 // --- trimToJSON ---
 
 func TestTrimToJSON_AlreadyJSON(t *testing.T) {
