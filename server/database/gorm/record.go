@@ -249,6 +249,11 @@ func (d *DB) GetRecords(opts ...types.FilterOption) ([]coretypes.Record, error) 
 	return result, nil
 }
 
+// cidRecord is a minimal scan target for GetRecordCIDs.
+type cidRecord struct {
+	RecordCID string `gorm:"column:record_cid"`
+}
+
 // GetRecordCIDs retrieves only record CIDs based on the provided options.
 // This is optimized for cases where only CIDs are needed, avoiding expensive joins and preloads.
 func (d *DB) GetRecordCIDs(opts ...types.FilterOption) ([]string, error) {
@@ -264,8 +269,28 @@ func (d *DB) GetRecordCIDs(opts ...types.FilterOption) ([]string, error) {
 		opt(cfg)
 	}
 
-	// Start with the base query for records - only select CID for efficiency.
-	query := d.gormDB.Model(&Record{}).Select("records.record_cid").Distinct()
+	// Check whether usage-metrics columns are needed for ORDER BY before building SELECT.
+	needsUsageMetrics := false
+
+	for _, o := range cfg.OrderBy {
+		if usageMetricsColumns[o.Column] {
+			needsUsageMetrics = true
+
+			break
+		}
+	}
+
+	// PostgreSQL requires every ORDER BY expression to appear in the SELECT list when
+	// using SELECT DISTINCT. Include all columns that applyRecordOrder may reference.
+	// Since record_cid is the primary key, all records columns are functionally
+	// dependent on it, so DISTINCT still de-duplicates at the record level.
+	selectCols := "records.record_cid, records.created_at, records.name, records.version, records.schema_version"
+	if needsUsageMetrics {
+		selectCols += ", COALESCE(rum.pull_count, 0) + COALESCE(rum.lookup_count, 0)"
+		selectCols += ", COALESCE(rum.provider_count, 0)"
+	}
+
+	query := d.gormDB.Model(&Record{}).Select(selectCols).Distinct()
 
 	// Apply pagination.
 	if cfg.Limit > 0 {
@@ -287,12 +312,16 @@ func (d *DB) GetRecordCIDs(opts ...types.FilterOption) ([]string, error) {
 	}
 
 	// Execute the query to get only CIDs (no preloading needed).
-	var cids []string
-	if err := query.Pluck("record_cid", &cids).Error; err != nil {
+	var results []cidRecord
+	if err := query.Find(&results).Error; err != nil {
 		return nil, fmt.Errorf("failed to query record CIDs: %w", err)
 	}
 
-	// Return CIDs directly - no need for wrapper objects.
+	cids := make([]string, len(results))
+	for i, r := range results {
+		cids[i] = r.RecordCID
+	}
+
 	return cids, nil
 }
 
