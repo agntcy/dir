@@ -21,6 +21,9 @@ var (
 
 	// Autosync default (disabled by default; deny-by-default policy).
 	DefaultAutosyncEnabled = false
+
+	// RelayService default (disabled; enable only on publicly-reachable nodes).
+	DefaultRelayServiceEnabled = false
 )
 
 type Config struct {
@@ -46,6 +49,16 @@ type Config struct {
 	// If not set or zero, uses the default RefreshInterval constant.
 	// This is primarily used for testing with faster intervals.
 	RefreshInterval time.Duration `json:"refresh_interval,omitempty" mapstructure:"refresh_interval"`
+
+	// RelayService enables a circuit-relay v2 service on this node so it can
+	// relay traffic for NAT'd peers. Enable only on publicly-reachable nodes
+	// (e.g. bootstrap nodes); it consumes bandwidth on behalf of other peers.
+	RelayService bool `json:"relay_service,omitempty" mapstructure:"relay_service"`
+
+	// StaticRelays is a list of relay multiaddrs (each including /p2p/<peer-id>)
+	// this node uses as AutoRelay static relays to obtain circuit addresses when
+	// it is behind NAT. Configured via config file/YAML only (list of strings).
+	StaticRelays []string `json:"static_relays,omitempty" mapstructure:"static_relays"`
 
 	// GossipSub configuration for label announcements
 	GossipSub GossipSubConfig `json:"gossipsub" mapstructure:"gossipsub"`

@@ -124,7 +124,7 @@ func start(ctx context.Context, opts *options) <-chan status {
 		defer cancel()
 
 		// Create host
-		host, err := newHost(opts.ListenAddress, opts.DirectoryAPIAddress, opts.Key)
+		host, err := newHost(opts.ListenAddress, opts.DirectoryAPIAddress, opts.Key, opts.RelayService)
 		if err != nil {
 			statusCh <- status{Err: err}
 
@@ -160,7 +160,7 @@ func start(ctx context.Context, opts *options) <-chan status {
 		// Enable AutoRelay with DHT as peer source for finding relay candidates.
 		// AutoRelay makes NAT'd peers reachable by establishing relay circuits.
 		// The DHT routing table is queried to find potential relay peers.
-		if err := setupAutoRelay(host, kdht); err != nil {
+		if err := setupAutoRelay(host, kdht, opts.StaticRelays); err != nil {
 			logger.Warn("Failed to setup AutoRelay", "error", err)
 		}
 
@@ -229,7 +229,7 @@ func start(ctx context.Context, opts *options) <-chan status {
 // setupAutoRelay enables AutoRelay with DHT as the peer source for finding relay candidates.
 // AutoRelay provides guaranteed connectivity for NAT'd peers by establishing relay circuits.
 // The DHT routing table is used to discover potential relay peers (public nodes).
-func setupAutoRelay(h host.Host, kdht *dht.IpfsDHT) error {
+func setupAutoRelay(h host.Host, kdht *dht.IpfsDHT, staticRelays []peer.AddrInfo) error {
 	// Create a peer source function that queries DHT for relay candidates
 	peerSource := func(ctx context.Context, numPeers int) <-chan peer.AddrInfo {
 		peerChan := make(chan peer.AddrInfo)
@@ -269,13 +269,19 @@ func setupAutoRelay(h host.Host, kdht *dht.IpfsDHT) error {
 		return peerChan
 	}
 
-	// Enable AutoRelay with DHT-based peer source
-	_, err := autorelay.NewAutoRelay(h, autorelay.WithPeerSource(peerSource))
+	// Enable AutoRelay with a DHT-based peer source, plus any configured static
+	// relays (preferred for reliable connectivity behind NAT).
+	autoRelayOpts := []autorelay.Option{autorelay.WithPeerSource(peerSource)}
+	if len(staticRelays) > 0 {
+		autoRelayOpts = append(autoRelayOpts, autorelay.WithStaticRelays(staticRelays))
+	}
+
+	_, err := autorelay.NewAutoRelay(h, autoRelayOpts...)
 	if err != nil {
 		return fmt.Errorf("failed to enable AutoRelay: %w", err)
 	}
 
-	logger.Info("AutoRelay enabled with DHT peer source")
+	logger.Info("AutoRelay enabled", "peer_source", "dht", "static_relays", len(staticRelays))
 
 	return nil
 }

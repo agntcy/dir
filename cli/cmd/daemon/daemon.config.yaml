@@ -51,6 +51,13 @@ server:
       # peerlist:
       #   - peer: "12D3KooW...peerID1"
       #   - peer: "12D3KooW...peerID2"
+    # Circuit-relay v2 for NAT traversal.
+    # relay_service: enable a relay service on this node (only on publicly
+    #   reachable nodes, e.g. bootstrap) so it can relay traffic for NAT'd peers.
+    # static_relays: relays this node uses to obtain a circuit address under NAT.
+    relay_service: false
+    # static_relays:
+    #   - "/dns4/relay.example.com/tcp/8999/p2p/<relay-peer-id>"
   database:
     type: "sqlite"
     sqlite:

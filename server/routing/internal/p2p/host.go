@@ -47,7 +47,7 @@ func init() {
 }
 
 // newHost creates a new host libp2p host.
-func newHost(listenAddr, dirAPIAddr string, key crypto.PrivKey) (host.Host, error) {
+func newHost(listenAddr, dirAPIAddr string, key crypto.PrivKey, enableRelayService bool) (host.Host, error) {
 	// Create connection manager to limit and manage peer connections.
 	// This prevents resource exhaustion and enables smart peer pruning based on priority.
 	connMgr, err := connmgr.NewConnManager(
@@ -58,8 +58,8 @@ func newHost(listenAddr, dirAPIAddr string, key crypto.PrivKey) (host.Host, erro
 	if err != nil {
 		return nil, fmt.Errorf("failed to create p2p host connection manager: %w", err)
 	}
-	// Create host
-	host, err := libp2p.New(
+
+	hostOpts := []libp2p.Option{
 		// Add directory API address to the host address factory
 		libp2p.AddrsFactory(
 			func(addrs []ma.Multiaddr) []ma.Multiaddr {
@@ -98,7 +98,15 @@ func newHost(listenAddr, dirAPIAddr string, key crypto.PrivKey) (host.Host, erro
 		// Note: AutoNAT client (for detecting our own NAT status) runs automatically.
 		// This service is highly rate-limited and should not cause any performance issues.
 		libp2p.EnableNATService(),
-	)
+	}
+
+	// Enable a circuit-relay v2 service on publicly-reachable nodes so they can
+	// relay traffic for NAT'd peers (and let DCUtR coordinate hole punching).
+	if enableRelayService {
+		hostOpts = append(hostOpts, libp2p.EnableRelayService())
+	}
+
+	host, err := libp2p.New(hostOpts...)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create p2p host: %w", err)
 	}

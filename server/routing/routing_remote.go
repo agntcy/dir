@@ -184,6 +184,8 @@ func newRemote(parentCtx context.Context,
 		p2p.WithRefreshInterval(refreshInterval),
 		p2p.WithRandevous(ProtocolRendezvous), // enable libp2p auto-discovery
 		p2p.WithIdentityKeyPath(opts.Config().Routing.KeyPath),
+		p2p.WithRelayService(opts.Config().Routing.RelayService),
+		p2p.WithStaticRelays(opts.Config().Routing.StaticRelays),
 		p2p.WithCustomDHTOpts(
 			func(h host.Host) ([]dht.Option, error) {
 				providerMgr, err := records.NewProviderManager(parentCtx, h.ID(), h.Peerstore(), dstore)

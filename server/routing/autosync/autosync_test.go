@@ -23,9 +23,10 @@ import (
 // --- mocks ---
 
 type fakeTransport struct {
-	pullRecord *corev1.Record
-	pullErr    error
-	pullCalls  int
+	pullRecord      *corev1.Record
+	pullErr         error
+	pullCalls       int
+	pullFailsBefore int // number of initial Pull calls that return a transient error
 
 	descriptors []rpc.ReferrerDescriptor
 	listErr     error
@@ -37,6 +38,10 @@ type fakeTransport struct {
 
 func (f *fakeTransport) Pull(_ context.Context, _ peer.ID, _ *corev1.RecordRef) (*corev1.Record, error) {
 	f.pullCalls++
+
+	if f.pullCalls <= f.pullFailsBefore {
+		return nil, errors.New("transient pull failure")
+	}
 
 	return f.pullRecord, f.pullErr
 }
@@ -279,6 +284,31 @@ func TestProcess_ReferrerBelongsToOtherRecordRejected(t *testing.T) {
 
 	assert.Equal(t, 1, ing.importRecordCalls)
 	assert.Equal(t, 0, ing.importReferrerCalls, "referrer belonging to a different record must be rejected")
+}
+
+func TestPullRecord_RetriesThenSucceeds(t *testing.T) {
+	trusted := randomPeerID(t)
+	rec := testRecord(t)
+	cid := rec.GetCid()
+
+	tr := &fakeTransport{pullRecord: rec, pullFailsBefore: 1} // fail once, then succeed
+	ing := &fakeIngestor{}
+
+	m := newTestManager(map[peer.ID]struct{}{trusted: {}}, tr, ing, &fakeStore{}, true)
+	m.process(t.Context(), job{ref: &corev1.RecordRef{Cid: cid}, peer: peer.AddrInfo{ID: trusted}})
+
+	assert.Equal(t, 2, tr.pullCalls, "should retry after a transient failure")
+	assert.Equal(t, 1, ing.importRecordCalls, "record ingested after retry")
+}
+
+func TestComputeBackoff(t *testing.T) {
+	// First retry (attempt 2) is at least the base and below the cap+jitter.
+	b := computeBackoff(2)
+	assert.GreaterOrEqual(t, b, pullBackoffBase)
+
+	// Large attempts are capped (plus at most ~50% jitter).
+	capped := computeBackoff(100)
+	assert.LessOrEqual(t, capped, pullBackoffMax+pullBackoffMax/2+1)
 }
 
 func TestVerifyReferrer(t *testing.T) {

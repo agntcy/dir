@@ -221,6 +221,16 @@ apiserver:
         #   - peer: "12D3KooW...peerID1"
         #   - peer: "12D3KooW...peerID2"
 
+      # Circuit-relay v2 for NAT traversal.
+      # relay_service: run a relay service on this node so it can relay traffic
+      #   for NAT'd peers. Enable only on publicly-reachable nodes (e.g. the
+      #   bootstrap nodes); it consumes bandwidth on behalf of other peers.
+      # static_relays: relays this node uses (as AutoRelay static relays) to
+      #   obtain a circuit address when it is behind NAT.
+      relay_service: false
+      # static_relays:
+      #   - "/dns4/relay.example.com/tcp/5555/p2p/<relay-peer-id>"
+
     # Sync configuration
     sync:
       # Authentication configuration for sync operations

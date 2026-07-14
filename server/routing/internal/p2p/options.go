@@ -31,6 +31,8 @@ type options struct {
 	APIRegistrer        APIRegistrer
 	ProviderStore       records.ProviderStore
 	DHTCustomOpts       func(host.Host) ([]dht.Option, error)
+	RelayService        bool
+	StaticRelays        []peer.AddrInfo
 }
 
 type Option func(*options) error
@@ -154,6 +156,37 @@ func WithAPIRegistrer(reg APIRegistrer) Option {
 func WithCustomDHTOpts(dhtOptFactory func(host.Host) ([]dht.Option, error)) Option {
 	return func(opts *options) error {
 		opts.DHTCustomOpts = dhtOptFactory
+
+		return nil
+	}
+}
+
+// WithRelayService enables a circuit-relay v2 service on this node so it can
+// relay traffic for NAT'd peers. Enable only on publicly-reachable nodes.
+func WithRelayService(enabled bool) Option {
+	return func(opts *options) error {
+		opts.RelayService = enabled
+
+		return nil
+	}
+}
+
+// WithStaticRelays configures relay multiaddrs (each including /p2p/<peer-id>)
+// to use as AutoRelay static relays for obtaining circuit addresses under NAT.
+func WithStaticRelays(addrs []string) Option {
+	return func(opts *options) error {
+		relays := make([]peer.AddrInfo, 0, len(addrs))
+
+		for _, addr := range addrs {
+			peerinfo, err := peer.AddrInfoFromString(addr)
+			if err != nil {
+				return fmt.Errorf("invalid static relay addr %q: %w", addr, err)
+			}
+
+			relays = append(relays, *peerinfo)
+		}
+
+		opts.StaticRelays = relays
 
 		return nil
 	}
