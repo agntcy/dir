@@ -1,6 +1,6 @@
 module github.com/agntcy/dir/reconciler
 
-go 1.26.4
+go 1.26.5
 
 // Replace local modules
 replace (
