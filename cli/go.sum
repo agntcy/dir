@@ -198,10 +198,8 @@ github.com/agext/levenshtein v1.2.3 h1:YB2fHEn0UJagG8T1rrWknE3ZQzWM06O8AMAatNn7l
 github.com/agext/levenshtein v1.2.3/go.mod h1:JEDfjyjHDjOF/1e4FlBE/PkbqA9OfWu2ki2W0IB5558=
 github.com/agnivade/levenshtein v1.2.1 h1:EHBY3UOn1gwdy/VbFwgo4cxecRznFk7fKWN1KOX7eoM=
 github.com/agnivade/levenshtein v1.2.1/go.mod h1:QVVI16kDrtSuwcpd0p1+xMC6Z/VfhtCyDIjcwga4/DU=
-github.com/agntcy/dir-importer v1.4.2-0.20260714100437-8f334cfdc281 h1:x2ikF1DWCKjT7NCwQMP7PZ86Fx34WyGvM969/egC0yk=
-github.com/agntcy/dir-importer v1.4.2-0.20260714100437-8f334cfdc281/go.mod h1:+sNVLiYPRTfac7/pKJq4UtF8lYXYOhq8JFAp5F78Brw=
-github.com/agntcy/dir-importer v1.4.2-0.20260714104042-e546d560a400 h1:7ptXH8lLd7dGFxKDbHngm23Bj0DK+TGrJKhW4190ZiY=
-github.com/agntcy/dir-importer v1.4.2-0.20260714104042-e546d560a400/go.mod h1:NsyBBP2WAPI5ukJov1kWPd/LbzdH+RYCvclGiAAI810=
+github.com/agntcy/dir-importer v1.4.2-0.20260714135757-70c2faf1c4b5 h1:M5hapq0lyarTAb5L3/yeiHy7JNqSBId8VrZ9JFPMSfc=
+github.com/agntcy/dir-importer v1.4.2-0.20260714135757-70c2faf1c4b5/go.mod h1:kGy+Gwbc+i9pL0/Ky1JPzKZcDWQKXAOVkXUCTFUtn4c=
 github.com/agntcy/dir-mcp v1.3.2 h1:wZYJ/RiN+gAw2p0FLOgadCatKvubLpw7THO+ZOXNem0=
 github.com/agntcy/dir-mcp v1.3.2/go.mod h1:GPHHhPgbrfJwMxzjjchYHftZPaPSWVUM41UB4DDZsQA=
 github.com/agntcy/dir-runtime/discovery v1.3.2 h1:/flBeZSEUGzxGPeYHvfq0x9dv9S8gzb+ItRgYkz6GVs=
@@ -212,8 +210,8 @@ github.com/agntcy/dir-runtime/store v1.3.2 h1:hFT7/YCAV0jxeyS4GGOo9uC+i79L9Mgiq+
 github.com/agntcy/dir-runtime/store v1.3.2/go.mod h1:ODt3giBEmOiI3gwARZawtF/iIGnU9WD3pjDowCWJkdY=
 github.com/agntcy/dir-runtime/utils v1.3.2 h1:dRpcEKHp6svEOf+3g/mayDWNgvxSHwa+T2/4h2WrLY8=
 github.com/agntcy/dir-runtime/utils v1.3.2/go.mod h1:kPyp84+ER5CTtZkzVVJijNDx3VoYXXaM9ltufmNeyxg=
-github.com/agntcy/oasf-sdk/pkg v1.0.6-0.20260702111004-a058446d13b7 h1:+BEhjN06hqeIC8WZu3Bh8UZ6ZVChhYUWPjGL1So98Ho=
-github.com/agntcy/oasf-sdk/pkg v1.0.6-0.20260702111004-a058446d13b7/go.mod h1:MAWceG+fNkVjgWbfrQOp64h6f5dbJbd1InP93fiMEiQ=
+github.com/agntcy/oasf-sdk/pkg v1.1.0 h1:Z2CfQ+XIjoHvlw2P0jcTRs59nbgVpjdnSVGGxmJTIEo=
+github.com/agntcy/oasf-sdk/pkg v1.1.0/go.mod h1:MAWceG+fNkVjgWbfrQOp64h6f5dbJbd1InP93fiMEiQ=
 github.com/alecthomas/chroma v0.10.0 h1:7XDcGkCQopCNKjZHfYrNLraA+M7e0fMiJ/Mfikbfjek=
 github.com/alecthomas/chroma v0.10.0/go.mod h1:jtJATyUxlIORhUOFNA9NZDWGAQ8wpxQQqNSB4rjA/1s=
 github.com/alecthomas/template v0.0.0-20160405071501-a0175ee3bccc/go.mod h1:LOuyumcjzFXgccqObfd/Ljyb9UuFJ6TxHnclSeseNhc=
