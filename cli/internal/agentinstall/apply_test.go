@@ -1,7 +1,7 @@
 // Copyright AGNTCY Contributors (https://github.com/agntcy)
 // SPDX-License-Identifier: Apache-2.0
 
-package install
+package agentinstall
 
 import (
 	"archive/tar"
@@ -34,7 +34,7 @@ func TestRunInstallWritesMCPEntryIdempotently(t *testing.T) {
 
 	require.NotNil(t, target)
 
-	arts := artifacts{
+	arts := Artifacts{
 		slug: "code-review",
 		mcpServers: []mcpServer{{
 			name:  "code-review",
@@ -44,7 +44,7 @@ func TestRunInstallWritesMCPEntryIdempotently(t *testing.T) {
 	agent := agentcfg.Agent{Name: "Claude Code", MCP: target}
 	agents := []agentcfg.Agent{agent}
 
-	first := runInstall(env, arts, agents, false)
+	first := Install(env, arts, agents, false)
 	require.Len(t, first, 1)
 	require.Equal(t, agentcfg.ActionAdded, first[0].Action)
 
@@ -56,7 +56,7 @@ func TestRunInstallWritesMCPEntryIdempotently(t *testing.T) {
 	_, present := codec.GetNested(m, "mcpServers", "code-review")
 	require.True(t, present)
 
-	second := runInstall(env, arts, agents, false)
+	second := Install(env, arts, agents, false)
 	require.Len(t, second, 1)
 	require.Equal(t, agentcfg.ActionUnchanged, second[0].Action)
 }
@@ -76,14 +76,14 @@ func TestRunInstallWritesSkill(t *testing.T) {
 
 	require.NotNil(t, target)
 
-	arts := artifacts{
+	arts := Artifacts{
 		slug:  "code-review",
 		skill: "---\nname: code-review\ndescription: x\n---\n\nbody\n",
 	}
 	agent := agentcfg.Agent{Name: "Claude Code", Skill: target}
 	agents := []agentcfg.Agent{agent}
 
-	outcomes := runInstall(env, arts, agents, false)
+	outcomes := Install(env, arts, agents, false)
 	require.Len(t, outcomes, 1)
 	require.Equal(t, agentcfg.ActionAdded, outcomes[0].Action)
 
@@ -137,7 +137,7 @@ func TestRunUninstallRemovesMCPEntryAndPreservesSibling(t *testing.T) {
 	require.NoError(t, os.MkdirAll(filepath.Dir(path), 0o755))
 	require.NoError(t, os.WriteFile(path, initialJSON, 0o600))
 
-	arts := artifacts{
+	arts := Artifacts{
 		slug: "agntcy-dir",
 		mcpServers: []mcpServer{{
 			name:  "agntcy-dir-mcp",
@@ -145,7 +145,7 @@ func TestRunUninstallRemovesMCPEntryAndPreservesSibling(t *testing.T) {
 		}},
 	}
 	agent := agentcfg.Agent{Name: "Claude Code", MCP: mcpTarget}
-	outcomes := runUninstall(env, arts, []agentcfg.Agent{agent}, false)
+	outcomes := Uninstall(env, arts, []agentcfg.Agent{agent}, false)
 	require.Len(t, outcomes, 1)
 	require.Equal(t, agentcfg.ActionRemoved, outcomes[0].Action)
 
@@ -171,17 +171,17 @@ func TestRunUninstallRemovesSkill(t *testing.T) {
 
 	require.NotNil(t, skillTarget)
 
-	arts := artifacts{
+	arts := Artifacts{
 		slug:  "code-review",
 		skill: "---\nname: code-review\ndescription: x\n---\n\nbody\n",
 	}
 	agent := agentcfg.Agent{Name: "Claude Code", Skill: skillTarget}
 
 	// Install first.
-	runInstall(env, arts, []agentcfg.Agent{agent}, false)
+	Install(env, arts, []agentcfg.Agent{agent}, false)
 
 	// Uninstall.
-	outcomes := runUninstall(env, arts, []agentcfg.Agent{agent}, false)
+	outcomes := Uninstall(env, arts, []agentcfg.Agent{agent}, false)
 	require.Len(t, outcomes, 1)
 	require.Equal(t, agentcfg.ActionRemoved, outcomes[0].Action)
 }
@@ -206,7 +206,7 @@ func TestRunInstallDedupesSharedSkillPath(t *testing.T) {
 	require.NotNil(t, claudeCode)
 	require.NotNil(t, claudeDesktop)
 
-	arts := artifacts{
+	arts := Artifacts{
 		slug:  "code-review",
 		skill: "---\nname: code-review\ndescription: x\n---\n\nbody\n",
 	}
@@ -215,7 +215,7 @@ func TestRunInstallDedupesSharedSkillPath(t *testing.T) {
 		{Name: "Claude Desktop", Skill: claudeDesktop},
 	}
 
-	outcomes := runInstall(env, arts, agents, false)
+	outcomes := Install(env, arts, agents, false)
 
 	// Both agents resolve to the same skills path, so dedupeSkill collapses the
 	// shared target to a single skill outcome.
@@ -237,13 +237,13 @@ func TestRunInstallWritesSkillBundle(t *testing.T) {
 
 	require.NotNil(t, target)
 
-	arts := artifacts{
+	arts := Artifacts{
 		slug:        "summarize",
 		skill:       "---\nname: summarize\ndescription: x\n---\n\nbody\n",
 		skillBundle: skillBundleArchiveBytes(t),
 	}
 	agent := agentcfg.Agent{Name: "Claude Code", Skill: target}
-	outcomes := runInstall(env, arts, []agentcfg.Agent{agent}, false)
+	outcomes := Install(env, arts, []agentcfg.Agent{agent}, false)
 	require.Len(t, outcomes, 1)
 	require.Equal(t, agentcfg.ActionAdded, outcomes[0].Action)
 
@@ -279,7 +279,7 @@ func TestRunInstallExtractsSkillBundleToFolderAgents(t *testing.T) {
 	require.NotNil(t, cursor)
 	require.NotNil(t, vscode)
 
-	arts := artifacts{
+	arts := Artifacts{
 		slug:        "summarize",
 		skill:       "---\nname: summarize\ndescription: x\n---\n\nbody\n",
 		skillBundle: skillBundleArchiveBytes(t),
@@ -290,7 +290,7 @@ func TestRunInstallExtractsSkillBundleToFolderAgents(t *testing.T) {
 		{Name: "VS Code (Copilot)", Skill: vscode},
 	}
 
-	outcomes := runInstall(env, arts, agents, true)
+	outcomes := Install(env, arts, agents, true)
 	require.Len(t, outcomes, 3)
 
 	byAgent := map[string]agentcfg.Outcome{}
@@ -317,12 +317,12 @@ func TestRunInstallSkipsSkillBundleForNonFolderAgents(t *testing.T) {
 
 	require.NotNil(t, continueAgent)
 
-	arts := artifacts{
+	arts := Artifacts{
 		slug:        "summarize",
 		skill:       "---\nname: summarize\ndescription: x\n---\n\nbody\n",
 		skillBundle: skillBundleArchiveBytes(t),
 	}
-	outcomes := runInstall(env, arts, []agentcfg.Agent{{Name: "Continue", Skill: continueAgent}}, true)
+	outcomes := Install(env, arts, []agentcfg.Agent{{Name: "Continue", Skill: continueAgent}}, true)
 	require.Len(t, outcomes, 1)
 	require.Equal(t, agentcfg.ActionSkipped, outcomes[0].Action)
 	require.Equal(t, skillBundleFolderOnlyReason, outcomes[0].Reason)

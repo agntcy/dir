@@ -6,6 +6,7 @@ package install
 import (
 	"github.com/agntcy/dir/cli/cmd/search"
 	"github.com/agntcy/dir/cli/internal/agentcfg"
+	"github.com/agntcy/dir/cli/internal/agentinstall"
 	"github.com/agntcy/dir/cli/presenter"
 	"github.com/spf13/cobra"
 )
@@ -95,7 +96,7 @@ func runUninstallCmd(cmd *cobra.Command, input string) error {
 		return err
 	}
 
-	plan := runUninstall(env, arts, selected, true)
+	plan := agentinstall.Uninstall(env, arts, selected, true)
 	presenter.Printf(cmd, "%s", agentcfg.FormatPlan(plan))
 
 	if len(plan) == 0 {
@@ -115,7 +116,7 @@ func runUninstallCmd(cmd *cobra.Command, input string) error {
 		}
 	}
 
-	outcomes := runUninstall(env, arts, selected, opts.dryRun)
+	outcomes := agentinstall.Uninstall(env, arts, selected, opts.dryRun)
 	presenter.Printf(cmd, "%s", agentcfg.FormatSummary(outcomes, opts.dryRun))
 
 	return nil
