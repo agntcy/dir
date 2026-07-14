@@ -1,7 +1,7 @@
 // Copyright AGNTCY Contributors (https://github.com/agntcy)
 // SPDX-License-Identifier: Apache-2.0
 
-package install
+package agentinstall
 
 import (
 	"archive/tar"
@@ -33,7 +33,7 @@ func loadRecord(t *testing.T, name string) *corev1.Record {
 }
 
 func TestDeriveSkillOnly(t *testing.T) {
-	arts, err := deriveArtifacts(loadRecord(t, "skill.json"))
+	arts, err := DeriveArtifacts(loadRecord(t, "skill.json"))
 	require.NoError(t, err)
 	require.Equal(t, "code-review", arts.slug)
 	require.NotEmpty(t, arts.skill)
@@ -41,7 +41,7 @@ func TestDeriveSkillOnly(t *testing.T) {
 }
 
 func TestDeriveMCPOnly(t *testing.T) {
-	arts, err := deriveArtifacts(loadRecord(t, "mcp.json"))
+	arts, err := DeriveArtifacts(loadRecord(t, "mcp.json"))
 	require.NoError(t, err)
 	require.Equal(t, "io.example-code-review-server", arts.slug)
 	require.Empty(t, arts.skill)
@@ -55,14 +55,14 @@ func TestDeriveMCPOnly(t *testing.T) {
 }
 
 func TestDeriveMulti(t *testing.T) {
-	arts, err := deriveArtifacts(loadRecord(t, "multi.json"))
+	arts, err := DeriveArtifacts(loadRecord(t, "multi.json"))
 	require.NoError(t, err)
 	require.NotEmpty(t, arts.skill)
 	require.NotEmpty(t, arts.mcpServers)
 }
 
 func TestDeriveSkillBundle(t *testing.T) {
-	arts, err := deriveArtifacts(newSkillBundleRecord(t))
+	arts, err := DeriveArtifacts(newSkillBundleRecord(t))
 	require.NoError(t, err)
 	require.NotEmpty(t, arts.skillBundle)
 	require.NotEmpty(t, arts.skill)
@@ -111,13 +111,13 @@ description: Summarize content.
 }
 
 func TestDeriveA2AErrors(t *testing.T) {
-	_, err := deriveArtifacts(loadRecord(t, "a2a.json"))
+	_, err := DeriveArtifacts(loadRecord(t, "a2a.json"))
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "dirctl export")
 }
 
 func TestDeriveBareErrors(t *testing.T) {
-	_, err := deriveArtifacts(loadRecord(t, "bare.json"))
+	_, err := DeriveArtifacts(loadRecord(t, "bare.json"))
 	require.Error(t, err)
 	require.Contains(t, strings.ToLower(err.Error()), "no installable")
 }

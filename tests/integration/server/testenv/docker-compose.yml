@@ -28,7 +28,10 @@ services:
       retries: 60
       start_period: 10s
   oasf:
-    image: ghcr.io/agntcy/oasf-server:latest
+    # Pin to the released 1.1.0 schema image. Using `latest` tracks the moving
+    # `1.1.0-dev` pre-release schema, which drifts from the 1.1.0 test data
+    # (e.g. skill ID/name reassignments) and breaks validation in these tests.
+    image: ghcr.io/agntcy/oasf-server:v1.1.0
     ports:
       - 8092:8080
     deploy:

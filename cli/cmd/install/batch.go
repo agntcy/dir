@@ -12,6 +12,7 @@ import (
 	searchv1 "github.com/agntcy/dir/api/search/v1"
 	"github.com/agntcy/dir/cli/cmd/search"
 	"github.com/agntcy/dir/cli/internal/agentcfg"
+	"github.com/agntcy/dir/cli/internal/agentinstall"
 	"github.com/agntcy/dir/cli/presenter"
 	ctxUtils "github.com/agntcy/dir/cli/util/context"
 	"github.com/agntcy/dir/cli/util/records"
@@ -98,10 +99,10 @@ func formatSkippedSummary(skipped []skippedRecord) string {
 
 type installTarget struct {
 	label string
-	arts  artifacts
+	arts  agentinstall.Artifacts
 }
 
-type recordApplyFn func(env agentcfg.Env, arts artifacts, agents []agentcfg.Agent, dryRun bool) []agentcfg.Outcome
+type recordApplyFn func(env agentcfg.Env, arts agentinstall.Artifacts, agents []agentcfg.Agent, dryRun bool) []agentcfg.Outcome
 
 func buildTaggedOutcomes(
 	env agentcfg.Env,
@@ -143,7 +144,7 @@ func buildBatchTargets(cmd *cobra.Command, recs []*corev1.Record) ([]installTarg
 	for _, record := range recs {
 		label := getRecordLabel(record)
 
-		arts, err := deriveArtifacts(record)
+		arts, err := agentinstall.DeriveArtifacts(record)
 		if err != nil {
 			skipped = append(skipped, skippedRecord{label: label, reason: err.Error()})
 			presenter.Printf(cmd, "Warning: skipping %s: %s\n", label, err.Error())
@@ -242,10 +243,10 @@ func runBatch(cmd *cobra.Command, apply recordApplyFn, confirmFn func(*cobra.Com
 
 // runBatchInstall searches for records and installs each into the selected agents.
 func runBatchInstall(cmd *cobra.Command) error {
-	return runBatch(cmd, runInstall, confirmBatchChanges)
+	return runBatch(cmd, agentinstall.Install, confirmBatchChanges)
 }
 
 // runBatchUninstall searches for records and removes each from the selected agents.
 func runBatchUninstall(cmd *cobra.Command) error {
-	return runBatch(cmd, runUninstall, confirmBatchUninstall)
+	return runBatch(cmd, agentinstall.Uninstall, confirmBatchUninstall)
 }

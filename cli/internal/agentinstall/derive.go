@@ -1,7 +1,7 @@
 // Copyright AGNTCY Contributors (https://github.com/agntcy)
 // SPDX-License-Identifier: Apache-2.0
 
-package install
+package agentinstall
 
 import (
 	"fmt"
@@ -24,43 +24,43 @@ type mcpServer struct {
 	entry map[string]any
 }
 
-// artifacts is the set of installable artifacts derived from a record's modules.
-type artifacts struct {
+// Artifacts is the set of installable artifacts derived from a record's modules.
+type Artifacts struct {
 	slug        string // sanitized record name; skill folder/file + block marker id
 	skill       string // canonical SKILL.md content for single-file skill targets
 	skillBundle []byte // gzip skill bundle when the record stores application/agent-skills+gzip
 	mcpServers  []mcpServer
 }
 
-func (a artifacts) hasSkill() bool {
+func (a Artifacts) hasSkill() bool {
 	return a.skill != "" || a.hasSkillBundle()
 }
 
-func (a artifacts) hasSkillBundle() bool {
+func (a Artifacts) hasSkillBundle() bool {
 	return len(a.skillBundle) > 0
 }
 
-// deriveArtifacts inspects the record's OASF modules and builds the installable
+// DeriveArtifacts inspects the record's OASF modules and builds the installable
 // artifact set. A record with only integration/a2a, or with no installable
 // module, returns an error.
-func deriveArtifacts(record *corev1.Record) (artifacts, error) {
+func DeriveArtifacts(record *corev1.Record) (Artifacts, error) {
 	data := record.GetData()
 	if data == nil {
-		return artifacts{}, fmt.Errorf("record contains no data")
+		return Artifacts{}, fmt.Errorf("record contains no data")
 	}
 
-	arts := artifacts{slug: sanitizeSlug(record.GetName())}
+	arts := Artifacts{slug: sanitizeSlug(record.GetName())}
 
 	if ok, _ := recordutil.GetModule(data, translator.AgentSkillsModuleName); ok {
 		if err := deriveSkillArtifacts(record, &arts); err != nil {
-			return artifacts{}, err
+			return Artifacts{}, err
 		}
 	}
 
 	if ok, _ := recordutil.GetModule(data, translator.MCPModuleName); ok {
 		cfg, err := translator.RecordToGHCopilot(data)
 		if err != nil {
-			return artifacts{}, fmt.Errorf("translate MCP module: %w", err)
+			return Artifacts{}, fmt.Errorf("translate MCP module: %w", err)
 		}
 
 		// Sort server names so the derived order (and thus plan/summary output) is
@@ -82,25 +82,25 @@ func deriveArtifacts(record *corev1.Record) (artifacts, error) {
 
 	if !arts.hasSkill() && len(arts.mcpServers) == 0 {
 		if ok, _ := recordutil.GetModule(data, translator.A2AModuleName); ok {
-			return artifacts{}, fmt.Errorf(
+			return Artifacts{}, fmt.Errorf(
 				"record carries an A2A AgentCard (%s), which cannot be installed into agent configs; use `dirctl export` instead",
 				translator.A2AModuleName)
 		}
 
-		return artifacts{}, fmt.Errorf(
+		return Artifacts{}, fmt.Errorf(
 			"record has no installable module (found: %s); installable modules are %s and %s",
 			strings.Join(moduleNames(data), ", "),
 			translator.AgentSkillsModuleName, translator.MCPModuleName)
 	}
 
 	if arts.slug == "" {
-		return artifacts{}, fmt.Errorf("record has no name; cannot derive an install identity")
+		return Artifacts{}, fmt.Errorf("record has no name; cannot derive an install identity")
 	}
 
 	return arts, nil
 }
 
-func deriveSkillArtifacts(record *corev1.Record, arts *artifacts) error {
+func deriveSkillArtifacts(record *corev1.Record, arts *Artifacts) error {
 	data := record.GetData()
 	mediaType := agentSkillsArtifactMediaType(data)
 

@@ -1,7 +1,7 @@
 // Copyright AGNTCY Contributors (https://github.com/agntcy)
 // SPDX-License-Identifier: Apache-2.0
 
-package install
+package agentinstall
 
 import (
 	"maps"
@@ -11,9 +11,9 @@ import (
 
 const skillBundleFolderOnlyReason = "skill bundle requires a multi-file skills directory; this agent only supports single instruction files"
 
-// runInstall applies the record's artifacts to the selected agents, one outcome
+// Install applies the record's artifacts to the selected agents, one outcome
 // per touched artifact. Errors on one agent never abort the rest.
-func runInstall(env agentcfg.Env, arts artifacts, agents []agentcfg.Agent, dryRun bool) []agentcfg.Outcome {
+func Install(env agentcfg.Env, arts Artifacts, agents []agentcfg.Agent, dryRun bool) []agentcfg.Outcome {
 	var outcomes []agentcfg.Outcome
 
 	seenSkill := map[string]bool{}
@@ -59,8 +59,8 @@ func runInstall(env agentcfg.Env, arts artifacts, agents []agentcfg.Agent, dryRu
 	return outcomes
 }
 
-// runUninstall removes the record's artifacts from the selected agents.
-func runUninstall(env agentcfg.Env, arts artifacts, agents []agentcfg.Agent, dryRun bool) []agentcfg.Outcome {
+// Uninstall removes the record's artifacts from the selected agents.
+func Uninstall(env agentcfg.Env, arts Artifacts, agents []agentcfg.Agent, dryRun bool) []agentcfg.Outcome {
 	var outcomes []agentcfg.Outcome
 
 	seenSkill := map[string]bool{}

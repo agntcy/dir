@@ -1,6 +1,7 @@
 // Copyright AGNTCY Contributors (https://github.com/agntcy)
 // SPDX-License-Identifier: Apache-2.0
 
+//nolint:wrapcheck
 package install
 
 import (
@@ -12,6 +13,7 @@ import (
 	corev1 "github.com/agntcy/dir/api/core/v1"
 	"github.com/agntcy/dir/cli/cmd/search"
 	"github.com/agntcy/dir/cli/internal/agentcfg"
+	"github.com/agntcy/dir/cli/internal/agentinstall"
 	"github.com/agntcy/dir/cli/presenter"
 	ctxUtils "github.com/agntcy/dir/cli/util/context"
 	"github.com/agntcy/dir/cli/util/reference"
@@ -87,7 +89,7 @@ func init() {
 // agents to act on, printing a note for any explicitly-requested agent that is
 // not detected (never installed for undetected agents).
 func selectAgents(cmd *cobra.Command, env agentcfg.Env) ([]agentcfg.Agent, error) {
-	chosen, err := resolveChosen(opts.agents)
+	chosen, err := agentcfg.ParseSelection(opts.agents)
 	if err != nil {
 		return nil, err
 	}
@@ -102,23 +104,23 @@ func selectAgents(cmd *cobra.Command, env agentcfg.Env) ([]agentcfg.Agent, error
 }
 
 // pullAndDerive resolves the ref, pulls the record, and derives its artifacts.
-func pullAndDerive(cmd *cobra.Command, input string) (artifacts, error) {
+func pullAndDerive(cmd *cobra.Command, input string) (agentinstall.Artifacts, error) {
 	c, ok := ctxUtils.GetClientFromContext(cmd.Context())
 	if !ok {
-		return artifacts{}, errors.New("failed to get client from context")
+		return agentinstall.Artifacts{}, errors.New("failed to get client from context")
 	}
 
 	cid, err := reference.ResolveToCID(cmd.Context(), c, input)
 	if err != nil {
-		return artifacts{}, fmt.Errorf("resolve reference: %w", err)
+		return agentinstall.Artifacts{}, fmt.Errorf("resolve reference: %w", err)
 	}
 
 	record, err := c.Pull(cmd.Context(), &corev1.RecordRef{Cid: cid})
 	if err != nil {
-		return artifacts{}, fmt.Errorf("failed to pull record: %w", err)
+		return agentinstall.Artifacts{}, fmt.Errorf("failed to pull record: %w", err)
 	}
 
-	return deriveArtifacts(record)
+	return agentinstall.DeriveArtifacts(record)
 }
 
 // runInstallCmd is the shared body for the parent's bare-positional form and the
@@ -136,7 +138,7 @@ func runInstallCmd(cmd *cobra.Command, input string) error {
 		return err
 	}
 
-	plan := runInstall(env, arts, selected, true)
+	plan := agentinstall.Install(env, arts, selected, true)
 	presenter.Printf(cmd, "%s", agentcfg.FormatPlan(plan))
 
 	if len(plan) == 0 {
@@ -156,7 +158,7 @@ func runInstallCmd(cmd *cobra.Command, input string) error {
 		}
 	}
 
-	outcomes := runInstall(env, arts, selected, opts.dryRun)
+	outcomes := agentinstall.Install(env, arts, selected, opts.dryRun)
 	presenter.Printf(cmd, "%s", agentcfg.FormatSummary(outcomes, opts.dryRun))
 
 	return nil
