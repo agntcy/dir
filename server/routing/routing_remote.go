@@ -14,6 +14,7 @@ import (
 	corev1 "github.com/agntcy/dir/api/core/v1"
 	routingv1 "github.com/agntcy/dir/api/routing/v1"
 	"github.com/agntcy/dir/server/ingest"
+	"github.com/agntcy/dir/server/routing/autosync"
 	"github.com/agntcy/dir/server/routing/internal/p2p"
 	"github.com/agntcy/dir/server/routing/pubsub"
 	"github.com/agntcy/dir/server/routing/rpc"
@@ -99,14 +100,9 @@ func QueryAllNamespaces(ctx context.Context, dstore types.Datastore) ([]Namespac
 type routeRemote struct {
 	storeAPI types.StoreAPI
 
-	// ingestor is the shared ingestion path used to persist records/referrers
-	// pulled during DHT autosync. autosyncPeers is the deny-by-default allow-set
-	// of trusted source peers (empty when autosync is disabled). Both are wired
-	// here and consumed by the autosync worker.
-	//nolint:unused // consumed by the DHT autosync worker (follow-up)
-	ingestor ingest.Ingestor
-	//nolint:unused // consumed by the DHT autosync worker (follow-up)
-	autosyncPeers map[peer.ID]struct{}
+	// autosyncMgr pulls+ingests records from trusted peers on DHT announcements.
+	// It is nil when autosync is disabled (deny-by-default).
+	autosyncMgr *autosync.Manager
 
 	server          *p2p.Server
 	service         *rpc.Service
@@ -126,6 +122,7 @@ type routeRemote struct {
 func newRemote(parentCtx context.Context,
 	storeAPI types.StoreAPI,
 	ingestor ingest.Ingestor,
+	validator corev1.Validator,
 	dstore types.Datastore,
 	opts types.APIOptions,
 ) (*routeRemote, error) {
@@ -155,16 +152,18 @@ func newRemote(parentCtx context.Context,
 			return nil, fmt.Errorf("autosync is enabled but no ingestion service was provided")
 		}
 
-		autosyncPeers = allowSet
+		if validator == nil {
+			cancel()
 
-		remoteLogger.Info("DHT autosync enabled", "trusted_peers", len(autosyncPeers))
+			return nil, fmt.Errorf("autosync is enabled but no record validator was provided")
+		}
+
+		autosyncPeers = allowSet
 	}
 
 	// Create routing
 	routeAPI := &routeRemote{
 		storeAPI:        storeAPI,
-		ingestor:        ingestor,
-		autosyncPeers:   autosyncPeers,
 		notifyCh:        make(chan *handlerSync, NotificationChannelSize),
 		dstore:          dstore,
 		ctx:             routingCtx,
@@ -257,6 +256,17 @@ func newRemote(parentCtx context.Context,
 	// Pass Publish as callback to avoid circular dependency
 	// The method value captures routeAPI's state (server, pubsubManager)
 	routeAPI.cleanupManager = NewCleanupManager(dstore, storeAPI, server, routeAPI.Publish)
+
+	// Initialize DHT autosync if enabled (deny-by-default). The manager pulls and
+	// ingests records/referrers announced by trusted peers, off the notification
+	// handler goroutine.
+	if autosyncCfg.Enabled {
+		routeAPI.autosyncMgr = autosync.NewManager(autosyncPeers, rpcService, server, ingestor, storeAPI, validator)
+		//nolint:contextcheck // Intentionally passing routing context to worker goroutines for lifecycle management
+		routeAPI.autosyncMgr.Start(routeAPI.ctx, &routeAPI.wg)
+
+		remoteLogger.Info("DHT autosync enabled", "trusted_peers", len(autosyncPeers))
+	}
 
 	// Start all background goroutines with routing context
 	routeAPI.wg.Add(1)
@@ -729,6 +739,13 @@ func (r *routeRemote) handleCIDProviderNotification(ctx context.Context, notif *
 
 	// Store peer addresses for later use
 	r.storePeerAddresses(ctx, peerIDStr, notif.Peer.ID, notif.Peer.Addrs, notif.Ref.GetCid())
+
+	// DHT autosync: if enabled and the announcing peer is trusted, schedule a
+	// pull+ingest of the record (and its referrers). Non-blocking and independent
+	// of the label-discovery logic below.
+	if r.autosyncMgr != nil {
+		r.autosyncMgr.MaybeEnqueue(notif.Ref, notif.Peer)
+	}
 
 	// Check if we already have labels cached (from GossipSub announcement)
 	if r.hasRemoteRecordCached(ctx, notif.Ref.GetCid(), peerIDStr) {

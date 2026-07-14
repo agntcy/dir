@@ -17,6 +17,7 @@ import (
 	"fmt"
 
 	coretypes "github.com/agntcy/dir/api/core/types"
+	corev1 "github.com/agntcy/dir/api/core/v1"
 	routingv1 "github.com/agntcy/dir/api/routing/v1"
 	"github.com/agntcy/dir/server/datastore"
 	"github.com/agntcy/dir/server/events"
@@ -42,7 +43,7 @@ func (r *route) hasPeersInRoutingTable() bool {
 	return r.remote.server.DHT().RoutingTable().Size() > 0
 }
 
-func New(ctx context.Context, store types.StoreAPI, ingestor ingest.Ingestor, opts types.APIOptions) (types.RoutingAPI, error) {
+func New(ctx context.Context, store types.StoreAPI, ingestor ingest.Ingestor, validator corev1.Validator, opts types.APIOptions) (types.RoutingAPI, error) {
 	// Create main router
 	mainRounter := &route{
 		eventBus: opts.EventBus(),
@@ -60,7 +61,7 @@ func New(ctx context.Context, store types.StoreAPI, ingestor ingest.Ingestor, op
 	}
 
 	// Create remote router first to get the peer ID
-	mainRounter.remote, err = newRemote(ctx, store, ingestor, dstore, opts)
+	mainRounter.remote, err = newRemote(ctx, store, ingestor, validator, dstore, opts)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create remote routing: %w", err)
 	}
