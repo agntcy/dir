@@ -40,11 +40,11 @@ enricher:
   # When skip_enricher is true, the tool_host above is not required.
   # skip_enricher: false
   # skills:
-  #   - name: natural_language_processing/natural_language_generation/text_completion
-  #     id: 10201
+  #   - name: language_processing/language_generation/dialogue_generation
+  #     id: 10304
   # domains:
-  #   - name: technology
-  #     id: 1
+  #   - name: technology/software_engineering
+  #     id: 102
 
 scanner:
   enabled: true
