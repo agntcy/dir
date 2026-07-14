@@ -198,8 +198,8 @@ github.com/agext/levenshtein v1.2.3 h1:YB2fHEn0UJagG8T1rrWknE3ZQzWM06O8AMAatNn7l
 github.com/agext/levenshtein v1.2.3/go.mod h1:JEDfjyjHDjOF/1e4FlBE/PkbqA9OfWu2ki2W0IB5558=
 github.com/agnivade/levenshtein v1.2.1 h1:EHBY3UOn1gwdy/VbFwgo4cxecRznFk7fKWN1KOX7eoM=
 github.com/agnivade/levenshtein v1.2.1/go.mod h1:QVVI16kDrtSuwcpd0p1+xMC6Z/VfhtCyDIjcwga4/DU=
-github.com/agntcy/dir-importer v1.4.2-0.20260713172338-b92ad73bc0dd h1:z88/qXfr5KNBULyunJ/hUAPLTJgNxrNdrL//gTQ3HHE=
-github.com/agntcy/dir-importer v1.4.2-0.20260713172338-b92ad73bc0dd/go.mod h1:emTmHmARlhxAF9giWVukFW5Yvx63QZbpPBUEoqrA8xA=
+github.com/agntcy/dir-importer v1.4.2-0.20260714100437-8f334cfdc281 h1:x2ikF1DWCKjT7NCwQMP7PZ86Fx34WyGvM969/egC0yk=
+github.com/agntcy/dir-importer v1.4.2-0.20260714100437-8f334cfdc281/go.mod h1:+sNVLiYPRTfac7/pKJq4UtF8lYXYOhq8JFAp5F78Brw=
 github.com/agntcy/dir-mcp v1.3.2 h1:wZYJ/RiN+gAw2p0FLOgadCatKvubLpw7THO+ZOXNem0=
 github.com/agntcy/dir-mcp v1.3.2/go.mod h1:GPHHhPgbrfJwMxzjjchYHftZPaPSWVUM41UB4DDZsQA=
 github.com/agntcy/dir-runtime/discovery v1.3.2 h1:/flBeZSEUGzxGPeYHvfq0x9dv9S8gzb+ItRgYkz6GVs=
@@ -1199,8 +1199,8 @@ github.com/magiconair/properties v1.8.10 h1:s31yESBquKXCV9a/ScB3ESkOjUYYv+X0rg8S
 github.com/magiconair/properties v1.8.10/go.mod h1:Dhd985XPs7jluiymwWYZ0G4Z61jb3vdS329zhj2hYo0=
 github.com/marcopolo/simnet v0.0.4 h1:50Kx4hS9kFGSRIbrt9xUS3NJX33EyPqHVmpXvaKLqrY=
 github.com/marcopolo/simnet v0.0.4/go.mod h1:tfQF1u2DmaB6WHODMtQaLtClEf3a296CKQLq5gAsIS0=
-github.com/mark3labs/mcp-go v0.54.1 h1:Ap/ptEB9FtWzFKM8NDsTA7QDxerQOC06eZigrTldVj0=
-github.com/mark3labs/mcp-go v0.54.1/go.mod h1:+8WclSK1ZUweCP3hvktSji8n8ABG/95QaEkeVE/Uwas=
+github.com/mark3labs/mcp-go v0.56.0 h1:7aCj2wODCskMi08f923ADG+EfELZBdiKILny415cIS8=
+github.com/mark3labs/mcp-go v0.56.0/go.mod h1:+8WclSK1ZUweCP3hvktSji8n8ABG/95QaEkeVE/Uwas=
 github.com/marten-seemann/tcp v0.0.0-20210406111302-dfbc87cc63fd h1:br0buuQ854V8u83wA0rVZ8ttrq5CpaPZdvrK0LP2lOk=
 github.com/marten-seemann/tcp v0.0.0-20210406111302-dfbc87cc63fd/go.mod h1:QuCEs1Nt24+FYQEqAAncTDPJIuGs+LxK1MCiFL25pMU=
 github.com/maruel/natural v1.1.1 h1:Hja7XhhmvEFhcByqDoHz9QZbkWey+COd9xWfCfn1ioo=

@@ -20,7 +20,7 @@ replace (
 
 require (
 	buf.build/gen/go/agntcy/oasf/protocolbuffers/go v1.36.11-20260703134941-ebce38fee5a5.1
-	github.com/agntcy/dir-importer v1.4.2-0.20260713172338-b92ad73bc0dd
+	github.com/agntcy/dir-importer v1.4.2-0.20260714100437-8f334cfdc281
 	github.com/agntcy/dir-mcp v1.3.2
 	github.com/agntcy/dir-runtime/discovery v1.3.2
 	github.com/agntcy/dir-runtime/server v1.3.2
@@ -508,7 +508,7 @@ require (
 	github.com/libp2p/go-reuseport v0.4.0 // indirect
 	github.com/libp2p/go-yamux/v5 v5.1.0 // indirect
 	github.com/libp2p/zeroconf/v2 v2.2.0 // indirect
-	github.com/mark3labs/mcp-go v0.54.1 // indirect
+	github.com/mark3labs/mcp-go v0.56.0 // indirect
 	github.com/marten-seemann/tcp v0.0.0-20210406111302-dfbc87cc63fd // indirect
 	github.com/mattn/go-isatty v0.0.22 // indirect
 	github.com/miekg/dns v1.1.72 // indirect

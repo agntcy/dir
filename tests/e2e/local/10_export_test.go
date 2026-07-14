@@ -14,6 +14,7 @@ import (
 	typesv1 "buf.build/gen/go/agntcy/oasf/protocolbuffers/go/agntcy/oasf/types/v1"
 	importer "github.com/agntcy/dir-importer"
 	importerconfig "github.com/agntcy/dir-importer/config"
+	enricherconfig "github.com/agntcy/dir-importer/enricher/config"
 	"github.com/agntcy/dir-importer/factory"
 	"github.com/agntcy/dir-importer/types"
 	"github.com/agntcy/dir/tests/e2e/shared/testdata"
@@ -22,15 +23,18 @@ import (
 	"github.com/onsi/gomega"
 )
 
-// importerWithStaticEnricher wraps importer.New, forcing the built-in static
-// enricher (SkipEnricher) so that e2e tests can import records without an LLM.
+// importerWithStaticEnricher wraps importer.New, forcing the static enricher so
+// that e2e tests can import records without an LLM or local model.
 func importerWithStaticEnricher(ctx context.Context, client importerconfig.ClientInterface, cfg importerconfig.Config) (types.Importer, error) {
-	cfg.Enricher.SkipEnricher = true
-	cfg.Enricher.Skills = []*typesv1.Skill{
-		{Name: "language_processing/language_understanding/contextual_comprehension", Id: 10101},
-	}
-	cfg.Enricher.Domains = []*typesv1.Domain{
-		{Name: "technology/software_engineering", Id: 102},
+	cfg.Enricher = enricherconfig.Config{
+		Static: &enricherconfig.StaticConfig{
+			Skills: []*typesv1.Skill{
+				{Name: "language_processing/language_understanding/contextual_comprehension", Id: 10101},
+			},
+			Domains: []*typesv1.Domain{
+				{Name: "technology/software_engineering", Id: 102},
+			},
+		},
 	}
 
 	return importer.New(ctx, client, cfg) //nolint:wrapcheck

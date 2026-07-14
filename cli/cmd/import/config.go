@@ -14,6 +14,8 @@ import (
 	enricherconfig "github.com/agntcy/dir-importer/enricher/config"
 	"github.com/agntcy/dir-importer/enricher/toolhost"
 	scannerconfig "github.com/agntcy/dir-importer/scanner/config"
+	internalextractor "github.com/agntcy/dir/cli/internal/extractor"
+	sdk "github.com/agntcy/oasf-sdk/pkg/extractor"
 	"github.com/spf13/pflag"
 	"gopkg.in/yaml.v3"
 )
@@ -36,13 +38,29 @@ type importFileConfig struct {
 }
 
 type enricherFileConfig struct {
+	LLM       *llmEnricherFileConfig       `yaml:"llm"`
+	Static    *staticEnricherFileConfig    `yaml:"static"`
+	Extractor *extractorEnricherFileConfig `yaml:"extractor"`
+}
+
+// extractorEnricherFileConfig configures the local OASF extractor enricher.
+// Both fields are optional: when absent the extractor uses the config saved by
+// `dirctl init`; explicit values override it.
+type extractorEnricherFileConfig struct {
+	OASFUrl  string `yaml:"oasf_url"`
+	AssetDir string `yaml:"asset_dir"`
+}
+
+type llmEnricherFileConfig struct {
 	ToolHost              *toolHostFileConfig `yaml:"tool_host"`
 	SkillsPromptTemplate  string              `yaml:"skills_prompt_template"`
 	DomainsPromptTemplate string              `yaml:"domains_prompt_template"`
 	RequestsPerMinute     int                 `yaml:"requests_per_minute"`
-	SkipEnricher          bool                `yaml:"skip_enricher"`
-	Skills                []taxonomyEntry     `yaml:"skills"`
-	Domains               []taxonomyEntry     `yaml:"domains"`
+}
+
+type staticEnricherFileConfig struct {
+	Skills  []taxonomyEntry `yaml:"skills"`
+	Domains []taxonomyEntry `yaml:"domains"`
 }
 
 type toolHostFileConfig struct {
@@ -90,9 +108,8 @@ func (d *yamlDuration) UnmarshalYAML(value *yaml.Node) error {
 //nolint:nestif
 func (o *options) loadConfig(flags *pflag.FlagSet) error {
 	o.Scanner = defaultScannerConfig()
-	o.Enricher.RequestsPerMinute = enricherconfig.DefaultRequestsPerMinute
 
-	fileHasToolHost := false
+	fileHasEnricher := false
 
 	if o.ConfigFile != "" {
 		fc, err := parseConfigFile(o.ConfigFile)
@@ -100,7 +117,7 @@ func (o *options) loadConfig(flags *pflag.FlagSet) error {
 			return err
 		}
 
-		fileHasToolHost = fc.Enricher.ToolHost != nil
+		fileHasEnricher = fc.Enricher.LLM != nil || fc.Enricher.Static != nil || fc.Enricher.Extractor != nil
 
 		// The flags share storage with the config.Config fields, so applying the
 		// file config below overwrites any flag value. Snapshot the explicitly-set
@@ -129,6 +146,21 @@ func (o *options) loadConfig(flags *pflag.FlagSet) error {
 		if flagFilters != nil {
 			o.Filters = flagFilters
 		}
+
+		// Extractor enricher needs a live SDK instance; load it after all file
+		// config is applied and flags are restored.
+		if fc.Enricher.Extractor != nil {
+			sdkExt, loadErr := loadExtractorFromConfig(fc.Enricher.Extractor)
+			if loadErr != nil {
+				return fmt.Errorf("extractor enricher: %w", loadErr)
+			}
+
+			o.Enricher = enricherconfig.Config{
+				Extractor: &enricherconfig.ExtractorConfig{
+					Extractor: &oasfExtractorAdapter{ext: sdkExt},
+				},
+			}
+		}
 	}
 
 	// --type binds to a plain string (TypeFlag); map it onto the typed field,
@@ -137,11 +169,15 @@ func (o *options) loadConfig(flags *pflag.FlagSet) error {
 		o.Type = config.ImportType(o.TypeFlag)
 	}
 
-	// Enricher tool host: an inline enricher.tool_host in the file wins;
-	// otherwise fall back to the built-in default. Not needed when enrichment is
-	// skipped.
-	if !o.Enricher.SkipEnricher && !fileHasToolHost {
-		o.Enricher.ToolHost = defaultToolHostConfig()
+	// Default to LLM enrichment with the built-in tool host when no enricher
+	// method was provided via the config file.
+	if !fileHasEnricher {
+		o.Enricher = enricherconfig.Config{
+			LLM: &enricherconfig.LLMConfig{
+				ToolHost:          defaultToolHostConfig(),
+				RequestsPerMinute: enricherconfig.DefaultRequestsPerMinute,
+			},
+		}
 	}
 
 	return nil
@@ -154,9 +190,6 @@ func parseConfigFile(path string) (importFileConfig, error) {
 		Scanner: scannerFileConfig{
 			Timeout: yamlDuration(scannerconfig.DefaultTimeout),
 			CLIPath: scannerconfig.DefaultCLIPath,
-		},
-		Enricher: enricherFileConfig{
-			RequestsPerMinute: enricherconfig.DefaultRequestsPerMinute,
 		},
 	}
 
@@ -215,30 +248,39 @@ func applyFileConfig(fc importFileConfig, cfg *config.Config) {
 		FailOnWarning: fc.Scanner.FailOnWarning,
 	}
 
-	cfg.Enricher.RequestsPerMinute = fc.Enricher.RequestsPerMinute
+	if fc.Enricher.LLM != nil {
+		llm := fc.Enricher.LLM
+		llmCfg := &enricherconfig.LLMConfig{
+			RequestsPerMinute:     llm.RequestsPerMinute,
+			SkillsPromptTemplate:  llm.SkillsPromptTemplate,
+			DomainsPromptTemplate: llm.DomainsPromptTemplate,
+		}
 
-	if fc.Enricher.SkillsPromptTemplate != "" {
-		cfg.Enricher.SkillsPromptTemplate = fc.Enricher.SkillsPromptTemplate
-	}
+		if llmCfg.RequestsPerMinute == 0 {
+			llmCfg.RequestsPerMinute = enricherconfig.DefaultRequestsPerMinute
+		}
 
-	if fc.Enricher.DomainsPromptTemplate != "" {
-		cfg.Enricher.DomainsPromptTemplate = fc.Enricher.DomainsPromptTemplate
-	}
+		if llm.ToolHost != nil {
+			llmCfg.ToolHost = toToolHostConfig(*llm.ToolHost)
+		} else {
+			llmCfg.ToolHost = defaultToolHostConfig()
+		}
 
-	cfg.Enricher.SkipEnricher = fc.Enricher.SkipEnricher
+		cfg.Enricher = enricherconfig.Config{LLM: llmCfg}
+	} else if fc.Enricher.Static != nil {
+		staticCfg := &enricherconfig.StaticConfig{}
 
-	for _, s := range fc.Enricher.Skills {
-		cfg.Enricher.Skills = append(cfg.Enricher.Skills,
-			typesv1.Skill_builder{Name: s.Name, Id: s.ID}.Build())
-	}
+		for _, s := range fc.Enricher.Static.Skills {
+			staticCfg.Skills = append(staticCfg.Skills,
+				typesv1.Skill_builder{Name: s.Name, Id: s.ID}.Build())
+		}
 
-	for _, d := range fc.Enricher.Domains {
-		cfg.Enricher.Domains = append(cfg.Enricher.Domains,
-			typesv1.Domain_builder{Name: d.Name, Id: d.ID}.Build())
-	}
+		for _, d := range fc.Enricher.Static.Domains {
+			staticCfg.Domains = append(staticCfg.Domains,
+				typesv1.Domain_builder{Name: d.Name, Id: d.ID}.Build())
+		}
 
-	if fc.Enricher.ToolHost != nil {
-		cfg.Enricher.ToolHost = toToolHostConfig(*fc.Enricher.ToolHost)
+		cfg.Enricher = enricherconfig.Config{Static: staticCfg}
 	}
 }
 
@@ -268,6 +310,30 @@ func defaultScannerConfig() scannerconfig.Config {
 		FailOnError:   scannerconfig.DefaultFailOnError,
 		FailOnWarning: scannerconfig.DefaultFailOnWarning,
 	}
+}
+
+// loadExtractorFromConfig loads the local OASF extractor for the extractor enricher.
+// When both OASFUrl and AssetDir are empty it defers to the config saved by
+// `dirctl init`; explicit values override the saved config.
+func loadExtractorFromConfig(fc *extractorEnricherFileConfig) (*sdk.Extractor, error) {
+	if fc.OASFUrl == "" && fc.AssetDir == "" {
+		ext, err := internalextractor.LoadConfigured()
+		if err != nil {
+			return nil, fmt.Errorf("load configured extractor: %w", err)
+		}
+
+		return ext, nil
+	}
+
+	ext, err := internalextractor.Load(internalextractor.Config{
+		OASFURL:  fc.OASFUrl,
+		AssetDir: fc.AssetDir,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("load extractor: %w", err)
+	}
+
+	return ext, nil
 }
 
 // defaultToolHostConfig is the built-in enricher tool host used when neither the
