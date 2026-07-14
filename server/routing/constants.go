@@ -53,19 +53,3 @@ const (
 )
 
 const ResultChannelBufferSize = 100
-
-// DHT autosync worker pool configuration.
-const (
-	// AutosyncWorkerCount is the number of concurrent workers pulling+ingesting
-	// records from trusted peers. Bounded to avoid overwhelming the node.
-	AutosyncWorkerCount = 4
-
-	// AutosyncQueueSize bounds the pending autosync jobs. When full, new
-	// announcements are dropped (a later re-announcement/republish re-triggers),
-	// so autosync never blocks the DHT notification handler.
-	AutosyncQueueSize = 256
-
-	// AutosyncJobTimeout bounds a single record's pull + ingest (record +
-	// referrers) so a slow/unreachable peer cannot tie up a worker indefinitely.
-	AutosyncJobTimeout = 60 * time.Second
-)

@@ -1,7 +1,7 @@
 // Copyright AGNTCY Contributors (https://github.com/agntcy)
 // SPDX-License-Identifier: Apache-2.0
 
-package routing
+package autosync
 
 import (
 	"context"
@@ -140,8 +140,8 @@ func testRecord(t *testing.T) *corev1.Record {
 	return rec
 }
 
-func newTestManager(allow map[peer.ID]struct{}, tr *fakeTransport, ing *fakeIngestor, st *fakeStore, valid bool) *autosyncManager {
-	return newAutosyncManager(allow, tr, fakeRouter{}, ing, st, fakeValidator{valid: valid})
+func newTestManager(allow map[peer.ID]struct{}, tr *fakeTransport, ing *fakeIngestor, st *fakeStore, valid bool) *Manager {
+	return newManager(allow, tr, fakeRouter{}, ing, st, fakeValidator{valid: valid})
 }
 
 // --- tests ---
@@ -153,11 +153,11 @@ func TestMaybeEnqueue_AllowListGating(t *testing.T) {
 	m := newTestManager(map[peer.ID]struct{}{trusted: {}}, &fakeTransport{}, &fakeIngestor{}, &fakeStore{}, true)
 
 	// Untrusted peer: ignored.
-	m.maybeEnqueue(&handlerSync{Ref: &corev1.RecordRef{Cid: "cid-a"}, Peer: peer.AddrInfo{ID: untrusted}})
+	m.MaybeEnqueue(&corev1.RecordRef{Cid: "cid-a"}, peer.AddrInfo{ID: untrusted})
 	assert.Empty(t, m.queue)
 
 	// Trusted peer: enqueued.
-	m.maybeEnqueue(&handlerSync{Ref: &corev1.RecordRef{Cid: "cid-a"}, Peer: peer.AddrInfo{ID: trusted}})
+	m.MaybeEnqueue(&corev1.RecordRef{Cid: "cid-a"}, peer.AddrInfo{ID: trusted})
 	assert.Len(t, m.queue, 1)
 }
 
@@ -165,9 +165,9 @@ func TestMaybeEnqueue_Dedupe(t *testing.T) {
 	trusted := randomPeerID(t)
 	m := newTestManager(map[peer.ID]struct{}{trusted: {}}, &fakeTransport{}, &fakeIngestor{}, &fakeStore{}, true)
 
-	notif := &handlerSync{Ref: &corev1.RecordRef{Cid: "cid-a"}, Peer: peer.AddrInfo{ID: trusted}}
-	m.maybeEnqueue(notif)
-	m.maybeEnqueue(notif) // same CID already in flight
+	ref := &corev1.RecordRef{Cid: "cid-a"}
+	m.MaybeEnqueue(ref, peer.AddrInfo{ID: trusted})
+	m.MaybeEnqueue(ref, peer.AddrInfo{ID: trusted}) // same CID already in flight
 
 	assert.Len(t, m.queue, 1, "duplicate CID must not be enqueued twice")
 }
@@ -191,7 +191,7 @@ func TestProcess_HappyPath(t *testing.T) {
 	ing := &fakeIngestor{}
 
 	m := newTestManager(map[peer.ID]struct{}{trusted: {}}, tr, ing, &fakeStore{}, true)
-	m.process(t.Context(), autosyncJob{ref: &corev1.RecordRef{Cid: cid}, peer: peer.AddrInfo{ID: trusted}})
+	m.process(t.Context(), job{ref: &corev1.RecordRef{Cid: cid}, peer: peer.AddrInfo{ID: trusted}})
 
 	assert.Equal(t, 1, ing.importRecordCalls, "record should be ingested")
 	assert.Equal(t, cid, ing.lastRecord.GetCid())
@@ -204,7 +204,7 @@ func TestProcess_AlreadyLocalSkipsPull(t *testing.T) {
 	ing := &fakeIngestor{}
 
 	m := newTestManager(map[peer.ID]struct{}{trusted: {}}, tr, ing, &fakeStore{found: true}, true)
-	m.process(t.Context(), autosyncJob{ref: &corev1.RecordRef{Cid: "cid-a"}, peer: peer.AddrInfo{ID: trusted}})
+	m.process(t.Context(), job{ref: &corev1.RecordRef{Cid: "cid-a"}, peer: peer.AddrInfo{ID: trusted}})
 
 	assert.Equal(t, 0, tr.pullCalls, "must not pull a record we already have")
 	assert.Equal(t, 0, ing.importRecordCalls)
@@ -219,7 +219,7 @@ func TestProcess_CIDMismatchRejected(t *testing.T) {
 
 	m := newTestManager(map[peer.ID]struct{}{trusted: {}}, tr, ing, &fakeStore{}, true)
 	// Announce a CID that does not match the pulled record's content.
-	m.process(t.Context(), autosyncJob{ref: &corev1.RecordRef{Cid: "different-cid"}, peer: peer.AddrInfo{ID: trusted}})
+	m.process(t.Context(), job{ref: &corev1.RecordRef{Cid: "different-cid"}, peer: peer.AddrInfo{ID: trusted}})
 
 	assert.Equal(t, 0, ing.importRecordCalls, "record with mismatched CID must be rejected")
 }
@@ -232,7 +232,7 @@ func TestProcess_ValidationFailureRejected(t *testing.T) {
 	tr := &fakeTransport{pullRecord: rec}
 
 	m := newTestManager(map[peer.ID]struct{}{trusted: {}}, tr, ing, &fakeStore{}, false) // validator rejects
-	m.process(t.Context(), autosyncJob{ref: &corev1.RecordRef{Cid: rec.GetCid()}, peer: peer.AddrInfo{ID: trusted}})
+	m.process(t.Context(), job{ref: &corev1.RecordRef{Cid: rec.GetCid()}, peer: peer.AddrInfo{ID: trusted}})
 
 	assert.Equal(t, 0, ing.importRecordCalls, "OASF-invalid record must be rejected")
 }
@@ -249,7 +249,7 @@ func TestProcess_DisallowedReferrerTypeSkipped(t *testing.T) {
 	}
 
 	m := newTestManager(map[peer.ID]struct{}{trusted: {}}, tr, ing, &fakeStore{}, true)
-	m.process(t.Context(), autosyncJob{ref: &corev1.RecordRef{Cid: cid}, peer: peer.AddrInfo{ID: trusted}})
+	m.process(t.Context(), job{ref: &corev1.RecordRef{Cid: cid}, peer: peer.AddrInfo{ID: trusted}})
 
 	assert.Equal(t, 1, ing.importRecordCalls, "record still ingested")
 	assert.Equal(t, 0, tr.pullReferrerCalls, "disallowed referrer type must not be pulled")
@@ -275,14 +275,14 @@ func TestProcess_ReferrerBelongsToOtherRecordRejected(t *testing.T) {
 	}
 
 	m := newTestManager(map[peer.ID]struct{}{trusted: {}}, tr, ing, &fakeStore{}, true)
-	m.process(t.Context(), autosyncJob{ref: &corev1.RecordRef{Cid: cid}, peer: peer.AddrInfo{ID: trusted}})
+	m.process(t.Context(), job{ref: &corev1.RecordRef{Cid: cid}, peer: peer.AddrInfo{ID: trusted}})
 
 	assert.Equal(t, 1, ing.importRecordCalls)
 	assert.Equal(t, 0, ing.importReferrerCalls, "referrer belonging to a different record must be rejected")
 }
 
 func TestVerifyReferrer(t *testing.T) {
-	m := &autosyncManager{}
+	m := &Manager{}
 	desc := rpc.ReferrerDescriptor{Cid: "ref1", Type: corev1.SignatureReferrerType}
 
 	tests := []struct {

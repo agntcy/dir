@@ -14,6 +14,7 @@ import (
 	corev1 "github.com/agntcy/dir/api/core/v1"
 	routingv1 "github.com/agntcy/dir/api/routing/v1"
 	"github.com/agntcy/dir/server/ingest"
+	"github.com/agntcy/dir/server/routing/autosync"
 	"github.com/agntcy/dir/server/routing/internal/p2p"
 	"github.com/agntcy/dir/server/routing/pubsub"
 	"github.com/agntcy/dir/server/routing/rpc"
@@ -99,9 +100,9 @@ func QueryAllNamespaces(ctx context.Context, dstore types.Datastore) ([]Namespac
 type routeRemote struct {
 	storeAPI types.StoreAPI
 
-	// autosync pulls+ingests records from trusted peers on DHT announcements.
+	// autosyncMgr pulls+ingests records from trusted peers on DHT announcements.
 	// It is nil when autosync is disabled (deny-by-default).
-	autosync *autosyncManager
+	autosyncMgr *autosync.Manager
 
 	server          *p2p.Server
 	service         *rpc.Service
@@ -260,9 +261,9 @@ func newRemote(parentCtx context.Context,
 	// ingests records/referrers announced by trusted peers, off the notification
 	// handler goroutine.
 	if autosyncCfg.Enabled {
-		routeAPI.autosync = newAutosyncManager(autosyncPeers, rpcService, serverPeerRouter{server: server}, ingestor, storeAPI, validator)
+		routeAPI.autosyncMgr = autosync.NewManager(autosyncPeers, rpcService, server, ingestor, storeAPI, validator)
 		//nolint:contextcheck // Intentionally passing routing context to worker goroutines for lifecycle management
-		routeAPI.autosync.start(routeAPI.ctx, &routeAPI.wg)
+		routeAPI.autosyncMgr.Start(routeAPI.ctx, &routeAPI.wg)
 
 		remoteLogger.Info("DHT autosync enabled", "trusted_peers", len(autosyncPeers))
 	}
@@ -742,8 +743,8 @@ func (r *routeRemote) handleCIDProviderNotification(ctx context.Context, notif *
 	// DHT autosync: if enabled and the announcing peer is trusted, schedule a
 	// pull+ingest of the record (and its referrers). Non-blocking and independent
 	// of the label-discovery logic below.
-	if r.autosync != nil {
-		r.autosync.maybeEnqueue(notif)
+	if r.autosyncMgr != nil {
+		r.autosyncMgr.MaybeEnqueue(notif.Ref, notif.Peer)
 	}
 
 	// Check if we already have labels cached (from GossipSub announcement)
