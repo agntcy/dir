@@ -54,13 +54,6 @@ enricher:
   #   oasf_url: https://schema.oasf.outshift.com
   #   asset_dir: ~/.agntcy/oasf-sdk/extractor
 
-scanner:
-  enabled: true
-  timeout: 5m
-  cli_path: /usr/local/bin/mcp-scanner
-  fail_on_error: true
-  fail_on_warning: false
-
 output_dir: ./import-out
 dry_run: false
 force: false

@@ -7,13 +7,11 @@ import (
 	"fmt"
 	"maps"
 	"os"
-	"time"
 
 	typesv1 "buf.build/gen/go/agntcy/oasf/protocolbuffers/go/agntcy/oasf/types/v1"
 	"github.com/agntcy/dir-importer/config"
 	enricherconfig "github.com/agntcy/dir-importer/enricher/config"
 	"github.com/agntcy/dir-importer/enricher/toolhost"
-	scannerconfig "github.com/agntcy/dir-importer/scanner/config"
 	internalextractor "github.com/agntcy/dir/cli/internal/extractor"
 	sdk "github.com/agntcy/oasf-sdk/pkg/extractor"
 	"github.com/spf13/pflag"
@@ -34,7 +32,6 @@ type importFileConfig struct {
 	Debug     bool               `yaml:"debug"`
 	Authors   []string           `yaml:"authors"`
 	Enricher  enricherFileConfig `yaml:"enricher"`
-	Scanner   scannerFileConfig  `yaml:"scanner"`
 }
 
 type enricherFileConfig struct {
@@ -75,31 +72,9 @@ type mcpServerFileConfig struct {
 	Env     map[string]any `yaml:"env"`
 }
 
-type scannerFileConfig struct {
-	Enabled       bool         `yaml:"enabled"`
-	Timeout       yamlDuration `yaml:"timeout"`
-	CLIPath       string       `yaml:"cli_path"`
-	FailOnError   bool         `yaml:"fail_on_error"`
-	FailOnWarning bool         `yaml:"fail_on_warning"`
-}
-
 type taxonomyEntry struct {
 	Name string `yaml:"name"`
 	ID   uint32 `yaml:"id"`
-}
-
-// yamlDuration allows duration strings ("5m", "30s") in YAML config files.
-type yamlDuration time.Duration
-
-func (d *yamlDuration) UnmarshalYAML(value *yaml.Node) error {
-	v, err := time.ParseDuration(value.Value)
-	if err != nil {
-		return fmt.Errorf("invalid duration %q: %w", value.Value, err)
-	}
-
-	*d = yamlDuration(v)
-
-	return nil
 }
 
 // loadConfig populates the importer config (o.Config) from the optional --config
@@ -107,8 +82,6 @@ func (d *yamlDuration) UnmarshalYAML(value *yaml.Node) error {
 //
 //nolint:nestif
 func (o *options) loadConfig(flags *pflag.FlagSet) error {
-	o.Scanner = defaultScannerConfig()
-
 	fileHasEnricher := false
 
 	if o.ConfigFile != "" {
@@ -186,12 +159,7 @@ func (o *options) loadConfig(flags *pflag.FlagSet) error {
 // parseConfigFile reads and decodes the YAML config file into importFileConfig.
 // Non-zero defaults are pre-seeded so unmentioned fields retain their defaults.
 func parseConfigFile(path string) (importFileConfig, error) {
-	fc := importFileConfig{
-		Scanner: scannerFileConfig{
-			Timeout: yamlDuration(scannerconfig.DefaultTimeout),
-			CLIPath: scannerconfig.DefaultCLIPath,
-		},
-	}
+	var fc importFileConfig
 
 	data, err := os.ReadFile(path)
 	if err != nil {
@@ -238,14 +206,6 @@ func applyFileConfig(fc importFileConfig, cfg *config.Config) {
 
 	if len(fc.Authors) > 0 {
 		cfg.Authors = fc.Authors
-	}
-
-	cfg.Scanner = scannerconfig.Config{
-		Enabled:       fc.Scanner.Enabled,
-		Timeout:       time.Duration(fc.Scanner.Timeout),
-		CLIPath:       fc.Scanner.CLIPath,
-		FailOnError:   fc.Scanner.FailOnError,
-		FailOnWarning: fc.Scanner.FailOnWarning,
 	}
 
 	if fc.Enricher.LLM != nil {
@@ -299,16 +259,6 @@ func toToolHostConfig(fc toolHostFileConfig) toolhost.Config {
 		Model:      fc.Model,
 		MaxSteps:   fc.MaxSteps,
 		MCPServers: servers,
-	}
-}
-
-func defaultScannerConfig() scannerconfig.Config {
-	return scannerconfig.Config{
-		Enabled:       scannerconfig.DefaultScannerEnabled,
-		Timeout:       scannerconfig.DefaultTimeout,
-		CLIPath:       scannerconfig.DefaultCLIPath,
-		FailOnError:   scannerconfig.DefaultFailOnError,
-		FailOnWarning: scannerconfig.DefaultFailOnWarning,
 	}
 }
 

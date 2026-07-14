@@ -200,6 +200,8 @@ github.com/agnivade/levenshtein v1.2.1 h1:EHBY3UOn1gwdy/VbFwgo4cxecRznFk7fKWN1KO
 github.com/agnivade/levenshtein v1.2.1/go.mod h1:QVVI16kDrtSuwcpd0p1+xMC6Z/VfhtCyDIjcwga4/DU=
 github.com/agntcy/dir-importer v1.4.2-0.20260714100437-8f334cfdc281 h1:x2ikF1DWCKjT7NCwQMP7PZ86Fx34WyGvM969/egC0yk=
 github.com/agntcy/dir-importer v1.4.2-0.20260714100437-8f334cfdc281/go.mod h1:+sNVLiYPRTfac7/pKJq4UtF8lYXYOhq8JFAp5F78Brw=
+github.com/agntcy/dir-importer v1.4.2-0.20260714104042-e546d560a400 h1:7ptXH8lLd7dGFxKDbHngm23Bj0DK+TGrJKhW4190ZiY=
+github.com/agntcy/dir-importer v1.4.2-0.20260714104042-e546d560a400/go.mod h1:NsyBBP2WAPI5ukJov1kWPd/LbzdH+RYCvclGiAAI810=
 github.com/agntcy/dir-mcp v1.3.2 h1:wZYJ/RiN+gAw2p0FLOgadCatKvubLpw7THO+ZOXNem0=
 github.com/agntcy/dir-mcp v1.3.2/go.mod h1:GPHHhPgbrfJwMxzjjchYHftZPaPSWVUM41UB4DDZsQA=
 github.com/agntcy/dir-runtime/discovery v1.3.2 h1:/flBeZSEUGzxGPeYHvfq0x9dv9S8gzb+ItRgYkz6GVs=

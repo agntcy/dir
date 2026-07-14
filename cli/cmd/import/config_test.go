@@ -7,10 +7,8 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
-	"time"
 
 	enricherconfig "github.com/agntcy/dir-importer/enricher/config"
-	scannerconfig "github.com/agntcy/dir-importer/scanner/config"
 	"github.com/spf13/pflag"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -68,8 +66,6 @@ func TestLoadConfigDefaultsWithoutFile(t *testing.T) {
 
 	require.NoError(t, o.loadConfig(flags))
 
-	assert.Equal(t, scannerconfig.DefaultTimeout, o.Scanner.Timeout)
-	assert.Equal(t, scannerconfig.DefaultScannerEnabled, o.Scanner.Enabled)
 	require.NotNil(t, o.Enricher.LLM)
 	assert.Equal(t, enricherconfig.DefaultRequestsPerMinute, o.Enricher.LLM.RequestsPerMinute)
 	assert.Equal(t, "azure:gpt-4o", o.Enricher.LLM.ToolHost.Model)
@@ -82,11 +78,6 @@ url: https://registry.example.com/v0.1
 filters:
   search: analytics
 limit: 100
-scanner:
-  enabled: true
-  timeout: 30s
-  cli_path: /usr/local/bin/mcp-scanner
-  fail_on_error: true
 enricher:
   llm:
     requests_per_minute: 7
@@ -108,10 +99,6 @@ enricher:
 	assert.Equal(t, "https://registry.example.com/v0.1", o.RegistryURL)
 	assert.Equal(t, map[string]string{"search": "analytics"}, o.Filters)
 	assert.Equal(t, 100, o.Limit)
-	assert.True(t, o.Scanner.Enabled)
-	assert.Equal(t, 30*time.Second, o.Scanner.Timeout)
-	assert.Equal(t, "/usr/local/bin/mcp-scanner", o.Scanner.CLIPath)
-	assert.True(t, o.Scanner.FailOnError)
 	require.NotNil(t, o.Enricher.LLM)
 	assert.Equal(t, 7, o.Enricher.LLM.RequestsPerMinute)
 	assert.Equal(t, 12, o.Enricher.LLM.ToolHost.MaxSteps)
