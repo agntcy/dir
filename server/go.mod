@@ -11,10 +11,10 @@ replace (
 
 // Replace external modules to address compatibility/security
 // Cosign does not updated the crypto11 owner
-replace github.com/ThalesIgnite/crypto11 => github.com/ThalesGroup/crypto11 v1.6.1
+replace github.com/ThalesIgnite/crypto11 => github.com/ThalesGroup/crypto11 v1.6.2
 
 require (
-	buf.build/gen/go/agntcy/oasf/protocolbuffers/go v1.36.11-20260602080720-2b66557c6456.1
+	buf.build/gen/go/agntcy/oasf/protocolbuffers/go v1.36.11-20260703134941-ebce38fee5a5.1
 	buf.build/go/protovalidate v1.2.0
 	github.com/agntcy/dir/api v1.5.0
 	github.com/agntcy/dir/utils v1.5.0
@@ -25,7 +25,7 @@ require (
 	github.com/grpc-ecosystem/go-grpc-prometheus v1.2.0
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.29.0
 	github.com/ipfs/go-datastore v0.9.2
-	github.com/lestrrat-go/jwx/v2 v2.1.6
+	github.com/lestrrat-go/jwx/v2 v2.1.7
 	github.com/libp2p/go-libp2p v0.48.0
 	github.com/libp2p/go-libp2p-gorpc v0.6.0
 	github.com/libp2p/go-libp2p-kad-dht v0.41.0
@@ -66,7 +66,7 @@ require (
 )
 
 require (
-	buf.build/gen/go/agntcy/oasf-sdk/protocolbuffers/go v1.36.11-20260612113157-d775d6ffb86b.1 // indirect
+	buf.build/gen/go/agntcy/oasf-sdk/protocolbuffers/go v1.36.11-20260703134920-dbfa1736bef5.1 // indirect
 	github.com/AndreasBriese/bbloom v0.0.0-20190825152654-46b345b51c96 // indirect
 	github.com/Microsoft/go-winio v0.6.2 // indirect
 	github.com/benbjohnson/clock v1.3.5 // indirect

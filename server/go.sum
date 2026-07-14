@@ -1,7 +1,7 @@
-buf.build/gen/go/agntcy/oasf-sdk/protocolbuffers/go v1.36.11-20260612113157-d775d6ffb86b.1 h1:0oFaHZoG7ULDHFyrtVGDJ6wV0aQJBzvdYZrLsSJ1rtw=
-buf.build/gen/go/agntcy/oasf-sdk/protocolbuffers/go v1.36.11-20260612113157-d775d6ffb86b.1/go.mod h1:EEQp9sY+88ieMjKf9W4Uf9t3X6qV1nHY0DcGOxsMlac=
-buf.build/gen/go/agntcy/oasf/protocolbuffers/go v1.36.11-20260602080720-2b66557c6456.1 h1:kb2zbK+m0Rvpj1c4rMTRlH0FC9JAcdVuGkGcKcLBCYs=
-buf.build/gen/go/agntcy/oasf/protocolbuffers/go v1.36.11-20260602080720-2b66557c6456.1/go.mod h1:y7UzNChPK2OBXQxpwimQg6fSgSFLC1jZXTk9Y7HFfNc=
+buf.build/gen/go/agntcy/oasf-sdk/protocolbuffers/go v1.36.11-20260703134920-dbfa1736bef5.1 h1:rHpSQqiZ/WGFRcye5ayIHreiWETaZeInxay31ZBO1KQ=
+buf.build/gen/go/agntcy/oasf-sdk/protocolbuffers/go v1.36.11-20260703134920-dbfa1736bef5.1/go.mod h1:EEQp9sY+88ieMjKf9W4Uf9t3X6qV1nHY0DcGOxsMlac=
+buf.build/gen/go/agntcy/oasf/protocolbuffers/go v1.36.11-20260703134941-ebce38fee5a5.1 h1:tQdplQtoZ+62Je6ORjvsowFIOSJESiKQNTGcOEMGoQA=
+buf.build/gen/go/agntcy/oasf/protocolbuffers/go v1.36.11-20260703134941-ebce38fee5a5.1/go.mod h1:y7UzNChPK2OBXQxpwimQg6fSgSFLC1jZXTk9Y7HFfNc=
 buf.build/gen/go/bufbuild/protovalidate/protocolbuffers/go v1.36.11-20260415201107-50325440f8f2.1 h1:s6hzCXtND/ICdGPTMGk7C+/BFlr2Jg5GyH0NKf4XGXg=
 buf.build/gen/go/bufbuild/protovalidate/protocolbuffers/go v1.36.11-20260415201107-50325440f8f2.1/go.mod h1:tvtbpgaVXZX4g6Pn+AnzFycuRK3MOz5HJfEGeEllXYM=
 buf.build/go/protovalidate v1.2.0 h1:DQVrUWkmGTBij+kOYv/x2LLxwcLaGKMdzShj1/6/3H0=
@@ -357,8 +357,8 @@ github.com/lestrrat-go/httprc v1.0.6 h1:qgmgIRhpvBqexMJjA/PmwSvhNk679oqD1RbovdCG
 github.com/lestrrat-go/httprc v1.0.6/go.mod h1:mwwz3JMTPBjHUkkDv/IGJ39aALInZLrhBp0X7KGUZlo=
 github.com/lestrrat-go/iter v1.0.2 h1:gMXo1q4c2pHmC3dn8LzRhJfP1ceCbgSiT9lUydIzltI=
 github.com/lestrrat-go/iter v1.0.2/go.mod h1:Momfcq3AnRlRjI5b5O8/G5/BvpzrhoFTZcn06fEOPt4=
-github.com/lestrrat-go/jwx/v2 v2.1.6 h1:hxM1gfDILk/l5ylers6BX/Eq1m/pnxe9NBwW6lVfecA=
-github.com/lestrrat-go/jwx/v2 v2.1.6/go.mod h1:Y722kU5r/8mV7fYDifjug0r8FK8mZdw0K0GpJw/l8pU=
+github.com/lestrrat-go/jwx/v2 v2.1.7 h1:bnYeET+S8IOyAw6W4LTc6SEeK7Xs58SKKZkR7scb3Ko=
+github.com/lestrrat-go/jwx/v2 v2.1.7/go.mod h1:exQ9ZBuN1cMLYmxwhTlHUru08ykONG0z+HbLEeDG9qo=
 github.com/lestrrat-go/option v1.0.1 h1:oAzP2fvZGQKWkvHa1/SAcFolBEca1oN+mQ7eooNBEYU=
 github.com/lestrrat-go/option v1.0.1/go.mod h1:5ZHFbivi4xwXxhxY9XHDe2FHo6/Z7WWmtT7T5nBBp3I=
 github.com/libp2p/go-buffer-pool v0.1.0 h1:oK4mSFcQz7cTQIfqbe4MIj9gLW+mnanjyFtc6cdF0Y8=
