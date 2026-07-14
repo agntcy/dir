@@ -80,7 +80,7 @@ Apply it:
    (comma-separated).
 3. **Restart the daemon** — config is read at startup only:
    `dirctl daemon stop`, then `dirctl daemon start --config <file>`
-   (background it; see setup reference).
+   (foreground until stopped — dedicate a terminal; see setup reference).
 4. **Confirm**: after the peer next announces (or republishes), synced
    records show up in local `dirctl search`; `dirctl daemon` logs report
    "Autosync ingested record" per CID.

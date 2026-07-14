@@ -65,8 +65,12 @@ dirctl daemon stop                   # graceful shutdown via PID file, waits, cl
 - State lives under `--data-dir` (default `~/.agntcy/dir/`;
   `%USERPROFILE%\.agntcy\dir\` on Windows): `dir.db` (SQLite), `store/`
   (OCI), `routing/` (DHT), `daemon.pid`.
-- `daemon start` blocks. In agent environments, start it in a background
-  terminal/async process and verify with `dirctl daemon status`.
+- **`daemon start` runs in the foreground until stopped** — it never
+  daemonizes itself. In agent environments, dedicate a terminal to it: launch
+  it as a persistent background/async process in its own terminal and leave
+  that terminal alone (run no other commands in it; its output is the daemon
+  log). Run all subsequent commands — starting with `dirctl daemon status` to
+  verify startup — from a different terminal.
 - Manage the lifecycle only through `daemon start`/`stop`/`status` — never
   kill the process by signal directly: semantics differ across platforms and
   `stop` also cleans up the PID file.
@@ -146,8 +150,8 @@ POSIX (bash/zsh):
 ```bash
 command -v dirctl || <install via brew/releases>
 dirctl init --yes            # optional, ~89 MB — ask first
-dirctl daemon start          # background it; blocks otherwise
-dirctl daemon status
+dirctl daemon start          # foreground until stopped — dedicate a terminal
+dirctl daemon status         # from another terminal
 dirctl doctor
 ```
 
@@ -156,7 +160,7 @@ Windows (PowerShell):
 ```powershell
 Get-Command dirctl           # else install from GitHub Releases (.exe)
 dirctl init --yes            # optional, ~89 MB — ask first
-dirctl daemon start          # background it; blocks otherwise
-dirctl daemon status
+dirctl daemon start          # foreground until stopped — dedicate a terminal
+dirctl daemon status         # from another terminal
 dirctl doctor
 ```
