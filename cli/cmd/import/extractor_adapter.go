@@ -18,7 +18,10 @@ type oasfExtractorAdapter struct {
 }
 
 func (a *oasfExtractorAdapter) Extract(ctx context.Context, text string) (enricherconfig.ExtractResult, error) {
-	result, err := a.ext.Extract(ctx, text)
+	// Latest() restricts results to classes present in the newest provisioned OASF version,
+	// preventing stale classes from older versions (e.g. 0.8.0) from being assigned to records
+	// that will be validated against the current schema.
+	result, err := a.ext.Extract(ctx, text, sdk.Latest())
 	if err != nil {
 		return enricherconfig.ExtractResult{}, fmt.Errorf("extract taxonomy: %w", err)
 	}
