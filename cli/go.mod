@@ -25,11 +25,11 @@ require (
 	github.com/agntcy/dir-runtime/discovery v1.3.2
 	github.com/agntcy/dir-runtime/server v1.3.2
 	github.com/agntcy/dir-runtime/store v1.3.2
-	github.com/agntcy/dir/api v1.5.0
-	github.com/agntcy/dir/client v1.5.0
+	github.com/agntcy/dir/api v1.6.0
+	github.com/agntcy/dir/client v1.6.0
 	github.com/agntcy/dir/reconciler v1.5.0
 	github.com/agntcy/dir/server v1.5.0
-	github.com/agntcy/dir/utils v1.5.0
+	github.com/agntcy/dir/utils v1.6.0
 	github.com/agntcy/oasf-sdk/pkg v1.0.6-0.20260702111004-a058446d13b7
 	github.com/briandowns/spinner v1.23.2
 	github.com/ipfs/go-cid v0.6.1
