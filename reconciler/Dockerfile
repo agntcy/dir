@@ -53,7 +53,8 @@ ENTRYPOINT ["/go/bin/dlv", "--listen=0.0.0.0:2345", "--headless=true", "--accept
 FROM busybox:1.38.0-musl@sha256:8635836765b0c4c43970660219739baa58b0883c2e429e4b8918f7dd1519455c
 
 # Create non-root user matching distroless nonroot
-RUN addgroup -g 55532 -S nonroot && adduser -u 55532 -S nonroot -G nonroot
+RUN addgroup -g 55532 -S nonroot && adduser -u 55532 -S nonroot -G nonroot \
+    && mkdir -p /home/nonroot && chown 55532:55532 /home/nonroot
 
 WORKDIR /
 
@@ -77,7 +78,8 @@ COPY --from=builder /usr/share/ca-certificates /usr/share/ca-certificates
 COPY --from=builder /bin/reconciler ./reconciler
 
 # Create a non-root user for coverage
-RUN addgroup -g 55532 -S nonroot && adduser -u 55532 -S nonroot -G nonroot
+RUN addgroup -g 55532 -S nonroot && adduser -u 55532 -S nonroot -G nonroot \
+    && mkdir -p /home/nonroot && chown 55532:55532 /home/nonroot
 
 # Create coverage directory with proper permissions
 RUN mkdir -p /tmp/coverage && chown -R 55532:55532 /tmp/coverage
@@ -88,7 +90,8 @@ ENTRYPOINT ["./reconciler"]
 
 FROM python:3.13-slim AS scanner
 
-RUN groupadd -g 55532 -r nonroot && useradd -u 55532 -r -g nonroot nonroot
+RUN groupadd -g 55532 -r nonroot && useradd -u 55532 -r -g nonroot nonroot \
+    && mkdir -p /home/nonroot && chown 55532:55532 /home/nonroot
 
 WORKDIR /
 
