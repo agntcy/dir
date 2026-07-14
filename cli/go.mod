@@ -35,7 +35,7 @@ require (
 	github.com/ipfs/go-cid v0.6.1
 	github.com/libp2p/go-libp2p v0.48.0
 	github.com/mitchellh/mapstructure v1.5.1-0.20231216201459-8508981c8b6c
-	github.com/rs/zerolog v1.31.0
+	github.com/rs/zerolog v1.35.1
 	github.com/sigstore/cosign/v3 v3.1.1
 	github.com/sigstore/sigstore v1.10.8
 	github.com/spf13/cobra v1.10.2
