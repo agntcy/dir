@@ -21,17 +21,18 @@ import (
 // importFileConfig mirrors the YAML config file with explicit yaml tags.
 // Fields intentionally absent: sign.* (CLI-only) and output_cids (CLI-only).
 type importFileConfig struct {
-	Type      string             `yaml:"type"`
-	URL       string             `yaml:"url"`
-	FilePath  string             `yaml:"file_path"`
-	Filters   map[string]string  `yaml:"filters"`
-	Limit     int                `yaml:"limit"`
-	DryRun    bool               `yaml:"dry_run"`
-	OutputDir string             `yaml:"output_dir"`
-	Force     bool               `yaml:"force"`
-	Debug     bool               `yaml:"debug"`
-	Authors   []string           `yaml:"authors"`
-	Enricher  enricherFileConfig `yaml:"enricher"`
+	Type          string             `yaml:"type"`
+	URL           string             `yaml:"url"`
+	FilePath      string             `yaml:"file_path"`
+	Filters       map[string]string  `yaml:"filters"`
+	Limit         int                `yaml:"limit"`
+	DryRun        bool               `yaml:"dry_run"`
+	OutputDir     string             `yaml:"output_dir"`
+	Force         bool               `yaml:"force"`
+	Debug         bool               `yaml:"debug"`
+	Authors       []string           `yaml:"authors"`
+	SchemaVersion string             `yaml:"schema_version"`
+	Enricher      enricherFileConfig `yaml:"enricher"`
 }
 
 type enricherFileConfig struct {
@@ -206,6 +207,10 @@ func applyFileConfig(fc importFileConfig, cfg *config.Config) {
 
 	if len(fc.Authors) > 0 {
 		cfg.Authors = fc.Authors
+	}
+
+	if fc.SchemaVersion != "" {
+		cfg.SchemaVersion = fc.SchemaVersion
 	}
 
 	if fc.Enricher.LLM != nil {
