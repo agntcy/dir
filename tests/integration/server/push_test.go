@@ -75,7 +75,7 @@ var _ = ginkgo.Describe("Push", func() {
 		gomega.Expect(annotations["org.agntcy.dir/cid"]).To(gomega.Equal(cid))
 		gomega.Expect(annotations["org.agntcy.dir/created-at"]).To(gomega.Equal(record.CreatedAt))
 		gomega.Expect(annotations["org.agntcy.dir/name"]).To(gomega.Equal(record.Name))
-		gomega.Expect(annotations["org.agntcy.dir/oasf-version"]).To(gomega.Equal("1.1.0"))
+		gomega.Expect(annotations["org.agntcy.dir/oasf-version"]).To(gomega.Equal("1.0.0"))
 		gomega.Expect(annotations["org.agntcy.dir/schema-version"]).To(gomega.Equal(record.SchemaVersion))
 		gomega.Expect(annotations["org.agntcy.dir/type"]).To(gomega.Equal("record"))
 		gomega.Expect(annotations["org.agntcy.dir/version"]).To(gomega.Equal(record.Version))
