@@ -68,6 +68,25 @@ func (fakeRouter) FindPeer(context.Context, peer.ID) (peer.AddrInfo, error) {
 	return peer.AddrInfo{}, errors.New("find peer not available in test")
 }
 
+// countingRouter records FindPeer calls and returns configurable addresses.
+type countingRouter struct {
+	findPeerCalls int
+	addrs         []ma.Multiaddr
+	findErr       error
+}
+
+func (r *countingRouter) AddAddrs(peer.ID, []ma.Multiaddr) {}
+
+func (r *countingRouter) FindPeer(context.Context, peer.ID) (peer.AddrInfo, error) {
+	r.findPeerCalls++
+
+	if r.findErr != nil {
+		return peer.AddrInfo{}, r.findErr
+	}
+
+	return peer.AddrInfo{Addrs: r.addrs}, nil
+}
+
 type fakeIngestor struct {
 	importRecordCalls   int
 	importReferrerCalls int
@@ -299,6 +318,23 @@ func TestPullRecord_RetriesThenSucceeds(t *testing.T) {
 
 	assert.Equal(t, 2, tr.pullCalls, "should retry after a transient failure")
 	assert.Equal(t, 1, ing.importRecordCalls, "record ingested after retry")
+}
+
+func TestPullRecord_ResolvesAddressesWhenNoneProvided(t *testing.T) {
+	trusted := randomPeerID(t)
+	rec := testRecord(t)
+	cid := rec.GetCid()
+
+	tr := &fakeTransport{pullRecord: rec}
+	ing := &fakeIngestor{}
+	router := &countingRouter{}
+
+	// GossipSub-triggered job: peer has an ID but no addresses.
+	m := newManager(map[peer.ID]struct{}{trusted: {}}, tr, router, ing, &fakeStore{}, fakeValidator{valid: true})
+	m.process(t.Context(), job{ref: &corev1.RecordRef{Cid: cid}, peer: peer.AddrInfo{ID: trusted}})
+
+	assert.GreaterOrEqual(t, router.findPeerCalls, 1, "must resolve addresses via FindPeer when none are provided")
+	assert.Equal(t, 1, ing.importRecordCalls, "record should still be ingested")
 }
 
 func TestComputeBackoff(t *testing.T) {

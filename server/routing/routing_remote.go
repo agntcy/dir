@@ -872,7 +872,8 @@ func (r *routeRemote) hasRemoteRecordCached(ctx context.Context, cid, peerID str
 //
 // Parameters:
 //   - ctx: Operation context
-//   - authenticatedPeerID: Cryptographically verified peer ID from msg.ReceivedFrom
+//   - authenticatedPeerID: Cryptographically verified author from the signed
+//     GossipSub message (msg.GetFrom) — the record publisher, not the forwarder
 //   - event: The announcement payload (CID, labels, timestamp)
 //
 // Flow:
@@ -891,6 +892,21 @@ func (r *routeRemote) handleRecordPublishEvent(ctx context.Context, authenticate
 	// Skip our own announcements (already cached during local Publish)
 	if authenticatedPeerID == r.server.Host().ID().String() {
 		return
+	}
+
+	// DHT autosync trigger via GossipSub. GossipSub reaches NAT'd subscribers
+	// reliably (mesh-forwarded) where the DHT provider notification often does
+	// not, so it is the primary cross-NAT trigger. The authenticated peer ID is
+	// the signed message author (the publisher); the worker resolves its
+	// addresses via FindPeer before pulling. Non-blocking and independent of the
+	// label caching below.
+	if r.autosyncMgr != nil {
+		if authorID, err := peer.Decode(authenticatedPeerID); err == nil {
+			r.autosyncMgr.MaybeEnqueue(&corev1.RecordRef{Cid: event.CID}, peer.AddrInfo{ID: authorID})
+		} else {
+			remoteLogger.Warn("Failed to decode authenticated peer ID for autosync",
+				"peer", authenticatedPeerID, "error", err)
+		}
 	}
 
 	remoteLogger.Info("Caching labels from GossipSub announcement",

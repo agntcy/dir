@@ -298,6 +298,10 @@ func (m *Manager) process(parentCtx context.Context, j job) {
 func (m *Manager) pullRecord(ctx context.Context, peerID peer.ID, ref *corev1.RecordRef, addrs []ma.Multiaddr) (*corev1.Record, error) {
 	if len(addrs) > 0 {
 		m.router.AddAddrs(peerID, addrs)
+	} else if addrInfo, err := m.router.FindPeer(ctx, peerID); err == nil && len(addrInfo.Addrs) > 0 {
+		// No addresses from the announcement (e.g. GossipSub-triggered): resolve
+		// the peer's current addresses via the DHT before the first attempt.
+		m.router.AddAddrs(peerID, addrInfo.Addrs)
 	}
 
 	var lastErr error
