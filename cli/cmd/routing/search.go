@@ -74,13 +74,14 @@ Usage examples:
 
 // Search command options.
 var searchOpts struct {
-	Skills   []string
-	Locators []string
-	Domains  []string
-	Modules  []string
-	Limit    uint32
-	MinScore uint32
-	Verbose  bool
+	Skills         []string
+	Locators       []string
+	Domains        []string
+	Modules        []string
+	SchemaVersions []string
+	Limit          uint32
+	MinScore       uint32
+	Verbose        bool
 }
 
 const (
@@ -97,6 +98,7 @@ func init() {
 	searchCmd.Flags().Uint32Var(&searchOpts.Limit, "limit", defaultSearchLimit, "Maximum number of results to return")
 	searchCmd.Flags().Uint32Var(&searchOpts.MinScore, "min-score", defaultMinScore, "Minimum match score (number of queries that must match)")
 	searchCmd.Flags().BoolVar(&searchOpts.Verbose, "verbose", false, "Print extracted signals and per-signal details to stderr")
+	searchCmd.Flags().StringArrayVar(&searchOpts.SchemaVersions, "schema-version", nil, "Restrict NL search to specific OASF schema version(s), e.g. --schema-version 1.0.0 (repeatable; default: all provisioned versions)")
 
 	presenter.AddOutputFlags(searchCmd)
 }

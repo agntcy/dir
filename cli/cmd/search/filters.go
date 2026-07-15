@@ -65,7 +65,7 @@ func registerFilterFlags(flags *pflag.FlagSet, f *Filters) {
 	flags.StringArrayVar(&f.Authors, "author", nil,
 		"Search for records with specific author (e.g., --author 'john*')")
 	flags.StringArrayVar(&f.SchemaVersions, "schema-version", nil,
-		"Search for records with specific schema version (e.g., --schema-version '0.8.*')")
+		"Filter records by OASF schema version (e.g., --schema-version '0.8.*'); in natural-language search mode, also restricts the extractor to that taxonomy version (repeatable)")
 	flags.StringArrayVar(&f.ModuleIDs, "module-id", nil,
 		"Search for records with specific module ID (e.g., --module-id '201')")
 	flags.BoolVar(&f.Verified, "verified", false,
