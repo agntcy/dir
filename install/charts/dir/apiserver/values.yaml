@@ -728,6 +728,17 @@ reconciler:
     # OASF schema URL for validation
     schema_url: "https://schema.oasf.outshift.com"
 
+    # Apiserver gRPC address — required by the metrics task to query provider counts
+    # from the routing layer. Typically the in-cluster apiserver service name + gRPC port.
+    server_address: ""
+
+    # Metrics task configuration
+    # Refreshes provider_count in record_usage_metrics by querying the DHT routing layer.
+    # Requires server_address to be set; skipped with a warning if left empty.
+    metrics:
+      enabled: true
+      interval: "15m"
+
     # Regsync task configuration
     regsync:
       enabled: true
