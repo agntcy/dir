@@ -62,6 +62,12 @@ server:
     #   proactively reserves a relay and advertises a circuit address (direct
     #   dials + hole punching are still preferred). Enable only on NAT'd nodes.
     force_reachability_private: false
+    # force_reachability_public: assume this node is publicly reachable. REQUIRED
+    #   on a relay node (relay_service: true) behind a cloud load balancer — the
+    #   circuit-relay v2 hop service only starts when reachability is Public, and
+    #   AutoNAT cannot self-confirm this behind an LB. Enable only on genuinely
+    #   public nodes. Mutually exclusive with force_reachability_private.
+    force_reachability_public: false
   database:
     type: "sqlite"
     sqlite:

@@ -34,6 +34,7 @@ type options struct {
 	RelayService             bool
 	StaticRelays             []peer.AddrInfo
 	ForceReachabilityPrivate bool
+	ForceReachabilityPublic  bool
 }
 
 type Option func(*options) error
@@ -199,6 +200,19 @@ func WithStaticRelays(addrs []string) Option {
 func WithForceReachabilityPrivate(force bool) Option {
 	return func(opts *options) error {
 		opts.ForceReachabilityPrivate = force
+
+		return nil
+	}
+}
+
+// WithForceReachabilityPublic forces the node to assume it is publicly
+// reachable. Required for a relay node behind a cloud load balancer: the
+// circuit-relay v2 hop service only starts when reachability is Public, and
+// AutoNAT cannot self-confirm reachability behind an LB. Enable only on
+// genuinely public nodes.
+func WithForceReachabilityPublic(force bool) Option {
+	return func(opts *options) error {
+		opts.ForceReachabilityPublic = force
 
 		return nil
 	}

@@ -534,6 +534,9 @@ func LoadConfig(opts ...ConfigOption) (*Config, error) {
 	_ = v.BindEnv("routing.force_reachability_private")
 	v.SetDefault("routing.force_reachability_private", routing.DefaultForceReachabilityPrivate)
 
+	_ = v.BindEnv("routing.force_reachability_public")
+	v.SetDefault("routing.force_reachability_public", routing.DefaultForceReachabilityPublic)
+
 	//
 	// Database configuration
 	//

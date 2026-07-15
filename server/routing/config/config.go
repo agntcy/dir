@@ -27,6 +27,9 @@ var (
 
 	// ForceReachabilityPrivate default (disabled; let AutoNAT decide reachability).
 	DefaultForceReachabilityPrivate = false
+
+	// ForceReachabilityPublic default (disabled; let AutoNAT decide reachability).
+	DefaultForceReachabilityPublic = false
 )
 
 type Config struct {
@@ -69,6 +72,15 @@ type Config struct {
 	// Enable only on nodes known to be behind NAT; leave false to let AutoNAT
 	// decide. Has no effect on genuinely public nodes if left false.
 	ForceReachabilityPrivate bool `json:"force_reachability_private,omitempty" mapstructure:"force_reachability_private"`
+
+	// ForceReachabilityPublic makes this node assume it is publicly reachable.
+	// This is REQUIRED for a relay node (RelayService: true) that sits behind a
+	// cloud load balancer: the circuit-relay v2 hop service only starts once the
+	// host's reachability is Public, and AutoNAT cannot self-confirm reachability
+	// behind an LB, so it would otherwise stay Unknown and never serve relay
+	// reservations. Enable only on genuinely public nodes. Mutually exclusive
+	// with ForceReachabilityPrivate.
+	ForceReachabilityPublic bool `json:"force_reachability_public,omitempty" mapstructure:"force_reachability_public"`
 
 	// GossipSub configuration for label announcements
 	GossipSub GossipSubConfig `json:"gossipsub" mapstructure:"gossipsub"`

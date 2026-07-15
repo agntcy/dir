@@ -47,7 +47,7 @@ func init() {
 }
 
 // newHost creates a new host libp2p host.
-func newHost(listenAddr, dirAPIAddr string, key crypto.PrivKey, enableRelayService, forceReachabilityPrivate bool) (host.Host, error) {
+func newHost(listenAddr, dirAPIAddr string, key crypto.PrivKey, enableRelayService, forceReachabilityPrivate, forceReachabilityPublic bool) (host.Host, error) {
 	// Create connection manager to limit and manage peer connections.
 	// This prevents resource exhaustion and enables smart peer pruning based on priority.
 	connMgr, err := connmgr.NewConnManager(
@@ -106,10 +106,24 @@ func newHost(listenAddr, dirAPIAddr string, key crypto.PrivKey, enableRelayServi
 		hostOpts = append(hostOpts, libp2p.EnableRelayService())
 	}
 
-	// Force private reachability so AutoRelay proactively reserves a relay and
-	// advertises a circuit address (for nodes known to be behind NAT). Direct
-	// dials and DCUtR hole punching are still preferred.
-	if forceReachabilityPrivate {
+	// Reachability overrides (mutually exclusive). Public wins if both are set.
+	//
+	// ForceReachabilityPublic is required for a relay node behind a cloud load
+	// balancer: the circuit-relay v2 hop service (EnableRelayService) only starts
+	// when the host's reachability is Public, and AutoNAT cannot self-confirm
+	// reachability behind an LB, so it would otherwise stay Unknown and never
+	// serve reservations.
+	//
+	// ForceReachabilityPrivate makes a NAT'd node proactively reserve a relay and
+	// advertise a circuit address (direct dials + DCUtR are still preferred).
+	switch {
+	case forceReachabilityPublic:
+		if forceReachabilityPrivate {
+			logger.Warn("Both force_reachability_public and force_reachability_private are set; using public")
+		}
+
+		hostOpts = append(hostOpts, libp2p.ForceReachabilityPublic())
+	case forceReachabilityPrivate:
 		hostOpts = append(hostOpts, libp2p.ForceReachabilityPrivate())
 	}
 
