@@ -99,6 +99,10 @@ COPY --from=builder /etc/ssl/certs /etc/ssl/certs
 COPY --from=builder /usr/share/ca-certificates /usr/share/ca-certificates
 COPY --from=builder /bin/reconciler ./reconciler
 
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends git \
+    && rm -rf /var/lib/apt/lists/*
+
 RUN pip install --no-cache-dir cisco-ai-mcp-scanner cisco-ai-skill-scanner
 
 USER 55532:55532
