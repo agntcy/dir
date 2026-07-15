@@ -36,7 +36,12 @@ func runNLRoutingSearch(cmd *cobra.Command, query string) error {
 		return fmt.Errorf("natural-language search requires the OASF extractor — run `dirctl init` to set it up: %w", err)
 	}
 
-	signals, err := nlsearch.DecomposeWithMinScore(cmd.Context(), query, ext, routingMinScore)
+	var queryOpts []sdk.QueryOption
+	if len(searchOpts.SchemaVersions) > 0 {
+		queryOpts = append(queryOpts, sdk.Versions(searchOpts.SchemaVersions...))
+	}
+
+	signals, err := nlsearch.DecomposeWithMinScore(cmd.Context(), query, ext, routingMinScore, queryOpts...)
 	if err != nil {
 		return fmt.Errorf("decompose query: %w", err)
 	}

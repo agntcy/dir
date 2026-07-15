@@ -16,6 +16,7 @@ import (
 	"github.com/agntcy/dir/cli/internal/nlsearch"
 	"github.com/agntcy/dir/cli/presenter"
 	"github.com/agntcy/dir/client"
+	sdk "github.com/agntcy/oasf-sdk/pkg/extractor"
 	"github.com/spf13/cobra"
 )
 
@@ -48,7 +49,12 @@ func runNLSearch(cmd *cobra.Command, query string, c *client.Client) error {
 		return fmt.Errorf("natural-language search requires the OASF extractor — run `dirctl init` to set it up: %w", err)
 	}
 
-	signals, err := nlsearch.Decompose(cmd.Context(), query, ext)
+	var queryOpts []sdk.QueryOption
+	if len(opts.Filters.SchemaVersions) > 0 {
+		queryOpts = append(queryOpts, sdk.Versions(opts.Filters.SchemaVersions...))
+	}
+
+	signals, err := nlsearch.Decompose(cmd.Context(), query, ext, queryOpts...)
 	if err != nil {
 		return fmt.Errorf("decompose query: %w", err)
 	}
