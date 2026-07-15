@@ -7,10 +7,8 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
-	"time"
 
 	enricherconfig "github.com/agntcy/dir-importer/enricher/config"
-	scannerconfig "github.com/agntcy/dir-importer/scanner/config"
 	"github.com/spf13/pflag"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -68,11 +66,9 @@ func TestLoadConfigDefaultsWithoutFile(t *testing.T) {
 
 	require.NoError(t, o.loadConfig(flags))
 
-	assert.Equal(t, scannerconfig.DefaultTimeout, o.Scanner.Timeout)
-	assert.Equal(t, scannerconfig.DefaultScannerEnabled, o.Scanner.Enabled)
-	assert.Equal(t, enricherconfig.DefaultRequestsPerMinute, o.Enricher.RequestsPerMinute)
-	// tool-host falls back to the embedded default enricher.json.
-	assert.Equal(t, "azure:gpt-4o", o.Enricher.ToolHost.Model)
+	require.NotNil(t, o.Enricher.LLM)
+	assert.Equal(t, enricherconfig.DefaultRequestsPerMinute, o.Enricher.LLM.RequestsPerMinute)
+	assert.Equal(t, "azure:gpt-4o", o.Enricher.LLM.ToolHost.Model)
 }
 
 func TestLoadConfigFromFile(t *testing.T) {
@@ -82,22 +78,18 @@ url: https://registry.example.com/v0.1
 filters:
   search: analytics
 limit: 100
-scanner:
-  enabled: true
-  timeout: 30s
-  cli_path: /usr/local/bin/mcp-scanner
-  fail_on_error: true
 enricher:
-  requests_per_minute: 7
-  tool_host:
-    model: azure:gpt-4o
-    max_steps: 12
-    mcp_servers:
-      dir-mcp-server:
-        command: dirctl
-        args: [mcp, serve]
-        env:
-          OASF_API_VALIDATION_SCHEMA_URL: https://schema.oasf.outshift.com
+  llm:
+    requests_per_minute: 7
+    tool_host:
+      model: azure:gpt-4o
+      max_steps: 12
+      mcp_servers:
+        dir-mcp-server:
+          command: dirctl
+          args: [mcp, serve]
+          env:
+            OASF_API_VALIDATION_SCHEMA_URL: https://schema.oasf.outshift.com
 `)
 
 	o, flags := newTestOptions(t, "--config", path)
@@ -107,12 +99,9 @@ enricher:
 	assert.Equal(t, "https://registry.example.com/v0.1", o.RegistryURL)
 	assert.Equal(t, map[string]string{"search": "analytics"}, o.Filters)
 	assert.Equal(t, 100, o.Limit)
-	assert.True(t, o.Scanner.Enabled)
-	assert.Equal(t, 30*time.Second, o.Scanner.Timeout)
-	assert.Equal(t, "/usr/local/bin/mcp-scanner", o.Scanner.CLIPath)
-	assert.True(t, o.Scanner.FailOnError)
-	assert.Equal(t, 7, o.Enricher.RequestsPerMinute)
-	assert.Equal(t, 12, o.Enricher.ToolHost.MaxSteps)
+	require.NotNil(t, o.Enricher.LLM)
+	assert.Equal(t, 7, o.Enricher.LLM.RequestsPerMinute)
+	assert.Equal(t, 12, o.Enricher.LLM.ToolHost.MaxSteps)
 }
 
 // TestSignIsFlagOnly verifies that signing is driven by flags and that a sign:
@@ -143,21 +132,23 @@ func TestToolHostEnvKeysPreserveCase(t *testing.T) {
 type: mcp-registry
 url: https://registry.example.com/v0.1
 enricher:
-  tool_host:
-    model: azure:gpt-4o
-    mcp_servers:
-      dir-mcp-server:
-        command: dirctl
-        args: [mcp, serve]
-        env:
-          OASF_API_VALIDATION_SCHEMA_URL: https://schema.oasf.outshift.com
-          DIRECTORY_CLIENT_AUTH_MODE: insecure
+  llm:
+    tool_host:
+      model: azure:gpt-4o
+      mcp_servers:
+        dir-mcp-server:
+          command: dirctl
+          args: [mcp, serve]
+          env:
+            OASF_API_VALIDATION_SCHEMA_URL: https://schema.oasf.outshift.com
+            DIRECTORY_CLIENT_AUTH_MODE: insecure
 `)
 
 	o, flags := newTestOptions(t, "--config", path)
 	require.NoError(t, o.loadConfig(flags))
 
-	server, ok := o.Enricher.ToolHost.MCPServers["dir-mcp-server"]
+	require.NotNil(t, o.Enricher.LLM)
+	server, ok := o.Enricher.LLM.ToolHost.MCPServers["dir-mcp-server"]
 	require.True(t, ok)
 	assert.Equal(t, "https://schema.oasf.outshift.com", server.Env["OASF_API_VALIDATION_SCHEMA_URL"])
 	assert.Equal(t, "insecure", server.Env["DIRECTORY_CLIENT_AUTH_MODE"])
@@ -191,32 +182,31 @@ filters:
 	assert.Equal(t, map[string]string{"search": "devtools"}, o.Filters)
 }
 
-func TestLoadConfigSkipEnricher(t *testing.T) {
+func TestLoadConfigStaticEnricher(t *testing.T) {
 	path := writeConfig(t, `
 type: mcp-registry
 url: https://registry.example.com/v0.1
 enricher:
-  skip_enricher: true
-  skills:
-    - name: natural_language_processing/text_completion
-      id: 10201
-  domains:
-    - name: technology
-      id: 1
+  static:
+    skills:
+      - name: natural_language_processing/text_completion
+        id: 10201
+    domains:
+      - name: technology
+        id: 1
 `)
 
 	o, flags := newTestOptions(t, "--config", path)
 	require.NoError(t, o.loadConfig(flags))
 
-	assert.True(t, o.Enricher.SkipEnricher)
-	require.Len(t, o.Enricher.Skills, 1)
-	assert.Equal(t, "natural_language_processing/text_completion", o.Enricher.Skills[0].GetName())
-	assert.Equal(t, uint32(10201), o.Enricher.Skills[0].GetId())
-	require.Len(t, o.Enricher.Domains, 1)
-	assert.Equal(t, "technology", o.Enricher.Domains[0].GetName())
-	assert.Equal(t, uint32(1), o.Enricher.Domains[0].GetId())
+	require.NotNil(t, o.Enricher.Static)
+	require.Len(t, o.Enricher.Static.Skills, 1)
+	assert.Equal(t, "natural_language_processing/text_completion", o.Enricher.Static.Skills[0].GetName())
+	assert.Equal(t, uint32(10201), o.Enricher.Static.Skills[0].GetId())
+	require.Len(t, o.Enricher.Static.Domains, 1)
+	assert.Equal(t, "technology", o.Enricher.Static.Domains[0].GetName())
+	assert.Equal(t, uint32(1), o.Enricher.Static.Domains[0].GetId())
 
-	// Skipping enrichment must not require a tool host, and the config must validate.
 	require.NoError(t, o.Enricher.Validate())
 }
 
@@ -226,9 +216,10 @@ func TestReferenceConfigIsValid(t *testing.T) {
 	require.NoError(t, o.loadConfig(flags))
 
 	assert.Equal(t, "mcp-registry", string(o.Type))
-	assert.Equal(t, "azure:gpt-4o", o.Enricher.ToolHost.Model)
+	require.NotNil(t, o.Enricher.LLM)
+	assert.Equal(t, "azure:gpt-4o", o.Enricher.LLM.ToolHost.Model)
 
-	server, ok := o.Enricher.ToolHost.MCPServers["dir-mcp-server"]
+	server, ok := o.Enricher.LLM.ToolHost.MCPServers["dir-mcp-server"]
 	require.True(t, ok)
 	assert.Equal(t, "https://schema.oasf.outshift.com", server.Env["OASF_API_VALIDATION_SCHEMA_URL"])
 }
