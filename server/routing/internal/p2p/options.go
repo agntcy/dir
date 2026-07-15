@@ -22,17 +22,18 @@ import (
 type APIRegistrer func(host.Host) error
 
 type options struct {
-	Key                 crypto.PrivKey
-	ListenAddress       string
-	DirectoryAPIAddress string
-	BootstrapPeers      []peer.AddrInfo
-	RefreshInterval     time.Duration
-	Randevous           string
-	APIRegistrer        APIRegistrer
-	ProviderStore       records.ProviderStore
-	DHTCustomOpts       func(host.Host) ([]dht.Option, error)
-	RelayService        bool
-	StaticRelays        []peer.AddrInfo
+	Key                      crypto.PrivKey
+	ListenAddress            string
+	DirectoryAPIAddress      string
+	BootstrapPeers           []peer.AddrInfo
+	RefreshInterval          time.Duration
+	Randevous                string
+	APIRegistrer             APIRegistrer
+	ProviderStore            records.ProviderStore
+	DHTCustomOpts            func(host.Host) ([]dht.Option, error)
+	RelayService             bool
+	StaticRelays             []peer.AddrInfo
+	ForceReachabilityPrivate bool
 }
 
 type Option func(*options) error
@@ -187,6 +188,17 @@ func WithStaticRelays(addrs []string) Option {
 		}
 
 		opts.StaticRelays = relays
+
+		return nil
+	}
+}
+
+// WithForceReachabilityPrivate forces the node to assume it is not publicly
+// reachable, so AutoRelay proactively reserves a relay and advertises a circuit
+// address. Enable only on nodes known to be behind NAT.
+func WithForceReachabilityPrivate(force bool) Option {
+	return func(opts *options) error {
+		opts.ForceReachabilityPrivate = force
 
 		return nil
 	}

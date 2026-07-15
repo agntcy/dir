@@ -47,7 +47,7 @@ func init() {
 }
 
 // newHost creates a new host libp2p host.
-func newHost(listenAddr, dirAPIAddr string, key crypto.PrivKey, enableRelayService bool) (host.Host, error) {
+func newHost(listenAddr, dirAPIAddr string, key crypto.PrivKey, enableRelayService, forceReachabilityPrivate bool) (host.Host, error) {
 	// Create connection manager to limit and manage peer connections.
 	// This prevents resource exhaustion and enables smart peer pruning based on priority.
 	connMgr, err := connmgr.NewConnManager(
@@ -104,6 +104,13 @@ func newHost(listenAddr, dirAPIAddr string, key crypto.PrivKey, enableRelayServi
 	// relay traffic for NAT'd peers (and let DCUtR coordinate hole punching).
 	if enableRelayService {
 		hostOpts = append(hostOpts, libp2p.EnableRelayService())
+	}
+
+	// Force private reachability so AutoRelay proactively reserves a relay and
+	// advertises a circuit address (for nodes known to be behind NAT). Direct
+	// dials and DCUtR hole punching are still preferred.
+	if forceReachabilityPrivate {
+		hostOpts = append(hostOpts, libp2p.ForceReachabilityPrivate())
 	}
 
 	host, err := libp2p.New(hostOpts...)

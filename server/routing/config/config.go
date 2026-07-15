@@ -24,6 +24,9 @@ var (
 
 	// RelayService default (disabled; enable only on publicly-reachable nodes).
 	DefaultRelayServiceEnabled = false
+
+	// ForceReachabilityPrivate default (disabled; let AutoNAT decide reachability).
+	DefaultForceReachabilityPrivate = false
 )
 
 type Config struct {
@@ -59,6 +62,13 @@ type Config struct {
 	// this node uses as AutoRelay static relays to obtain circuit addresses when
 	// it is behind NAT. Configured via config file/YAML only (list of strings).
 	StaticRelays []string `json:"static_relays,omitempty" mapstructure:"static_relays"`
+
+	// ForceReachabilityPrivate makes this node assume it is not publicly
+	// reachable, so AutoRelay proactively reserves a relay and advertises a
+	// circuit address (direct dials + DCUtR hole punching are still preferred).
+	// Enable only on nodes known to be behind NAT; leave false to let AutoNAT
+	// decide. Has no effect on genuinely public nodes if left false.
+	ForceReachabilityPrivate bool `json:"force_reachability_private,omitempty" mapstructure:"force_reachability_private"`
 
 	// GossipSub configuration for label announcements
 	GossipSub GossipSubConfig `json:"gossipsub" mapstructure:"gossipsub"`

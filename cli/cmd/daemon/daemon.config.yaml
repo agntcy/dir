@@ -58,6 +58,10 @@ server:
     relay_service: false
     # static_relays:
     #   - "/dns4/relay.example.com/tcp/8999/p2p/<relay-peer-id>"
+    # force_reachability_private: assume this node is behind NAT so AutoRelay
+    #   proactively reserves a relay and advertises a circuit address (direct
+    #   dials + hole punching are still preferred). Enable only on NAT'd nodes.
+    force_reachability_private: false
   database:
     type: "sqlite"
     sqlite:

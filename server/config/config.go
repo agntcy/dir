@@ -531,6 +531,9 @@ func LoadConfig(opts ...ConfigOption) (*Config, error) {
 	_ = v.BindEnv("routing.relay_service")
 	v.SetDefault("routing.relay_service", routing.DefaultRelayServiceEnabled)
 
+	_ = v.BindEnv("routing.force_reachability_private")
+	v.SetDefault("routing.force_reachability_private", routing.DefaultForceReachabilityPrivate)
+
 	//
 	// Database configuration
 	//
