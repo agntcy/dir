@@ -82,10 +82,18 @@ func (d *DB) GetCatalogEntries(opts ...types.FilterOption) ([]*catalogv1.Catalog
 	entries := make([]*catalogv1.CatalogEntry, 0, len(records))
 
 	for i := range records {
-		entry, err := catalogv1.RecordToCatalog(&records[i],
+		opts := []catalogv1.ConvertOption{
 			catalogv1.WithSignatures(convertSignatures(records[i].Signatures)),
 			catalogv1.WithScanReports(convertScanReports(records[i].ScanReports)),
-		)
+		}
+
+		if metrics, err := d.GetUsageMetrics(records[i].RecordCID); err == nil {
+			opts = append(opts, catalogv1.WithUsageMetrics(metrics))
+		} else {
+			logger.Debug("skipping usage metrics for record", "record_cid", records[i].RecordCID, "error", err)
+		}
+
+		entry, err := catalogv1.RecordToCatalog(&records[i], opts...)
 		if err != nil {
 			// Expected for records without a known catalog module.
 			logger.Debug("skipping record without catalog projection", "record_cid", records[i].RecordCID, "error", err)
