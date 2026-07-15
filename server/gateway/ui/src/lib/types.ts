@@ -19,6 +19,12 @@ export interface ScanManifest {
 	reports: ScanReportSummary[];
 }
 
+export interface UsageMetrics {
+	pullCount: number;
+	lookupCount: number;
+	providerCount: number;
+}
+
 export interface CatalogEntry {
 	identifier: string;
 	displayName: string;

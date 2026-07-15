@@ -75,9 +75,17 @@ type ScanReportSummary interface {
 	GetUpdatedAt() time.Time
 }
 
+// UsageMetricsData holds per-record usage counters for embedding in catalog metadata.
+type UsageMetricsData interface {
+	GetPullCount() uint64
+	GetLookupCount() uint64
+	GetProviderCount() uint32
+}
+
 type convertOptions struct {
-	signatures  []coretypes.ObjectSignature
-	scanReports []ScanReportSummary
+	signatures   []coretypes.ObjectSignature
+	scanReports  []ScanReportSummary
+	usageMetrics UsageMetricsData
 }
 
 type ConvertOption func(*convertOptions)
@@ -92,6 +100,13 @@ func WithSignatures(signatures []coretypes.ObjectSignature) ConvertOption {
 func WithScanReports(reports []ScanReportSummary) ConvertOption {
 	return func(opts *convertOptions) {
 		opts.scanReports = reports
+	}
+}
+
+// WithUsageMetrics embeds usage counters as metadata["agntcy.dir.usage.v1.Metrics"] in the entry.
+func WithUsageMetrics(metrics UsageMetricsData) ConvertOption {
+	return func(opts *convertOptions) {
+		opts.usageMetrics = metrics
 	}
 }
 
@@ -155,6 +170,7 @@ func RecordToCatalog(record coretypes.Record, opts ...ConvertOption) (*CatalogEn
 			TrustManifest: trustManifest,
 		}
 		injectScanManifest(result, options.scanReports)
+		injectUsageMetrics(result, options.usageMetrics)
 
 		return result, nil
 	}
@@ -203,6 +219,7 @@ func RecordToCatalog(record coretypes.Record, opts ...ConvertOption) (*CatalogEn
 		TrustManifest: trustManifest,
 	}
 	injectScanManifest(containerEntry, options.scanReports)
+	injectUsageMetrics(containerEntry, options.usageMetrics)
 
 	return containerEntry, nil
 }
@@ -413,6 +430,27 @@ func injectScanManifest(entry *CatalogEntry, reports []ScanReportSummary) {
 	}
 
 	entry.Metadata["agntcy.dir.security.v1.ScanResult"] = val
+}
+
+func injectUsageMetrics(entry *CatalogEntry, metrics UsageMetricsData) {
+	if metrics == nil {
+		return
+	}
+
+	val, err := structpb.NewValue(map[string]any{
+		"pullCount":     metrics.GetPullCount(),
+		"lookupCount":   metrics.GetLookupCount(),
+		"providerCount": metrics.GetProviderCount(),
+	})
+	if err != nil {
+		return
+	}
+
+	if entry.Metadata == nil {
+		entry.Metadata = make(map[string]*structpb.Value)
+	}
+
+	entry.Metadata["agntcy.dir.usage.v1.Metrics"] = val
 }
 
 func objectToStruct(goObj proto.Message) (*structpb.Struct, error) {
