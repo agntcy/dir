@@ -160,8 +160,13 @@ func start(ctx context.Context, opts *options) <-chan status {
 		// Enable AutoRelay with DHT as peer source for finding relay candidates.
 		// AutoRelay makes NAT'd peers reachable by establishing relay circuits.
 		// The DHT routing table is queried to find potential relay peers.
-		if err := setupAutoRelay(host, kdht, opts.StaticRelays); err != nil {
+		autoRelay, err := setupAutoRelay(host, kdht, opts.StaticRelays)
+		if err != nil {
 			logger.Warn("Failed to setup AutoRelay", "error", err)
+		}
+
+		if autoRelay != nil {
+			defer autoRelay.Close()
 		}
 
 		// Advertise to rendezvous for initial peer discovery.
@@ -229,7 +234,7 @@ func start(ctx context.Context, opts *options) <-chan status {
 // setupAutoRelay enables AutoRelay with DHT as the peer source for finding relay candidates.
 // AutoRelay provides guaranteed connectivity for NAT'd peers by establishing relay circuits.
 // The DHT routing table is used to discover potential relay peers (public nodes).
-func setupAutoRelay(h host.Host, kdht *dht.IpfsDHT, staticRelays []peer.AddrInfo) error {
+func setupAutoRelay(h host.Host, kdht *dht.IpfsDHT, staticRelays []peer.AddrInfo) (*autorelay.AutoRelay, error) {
 	// Create a peer source function that queries DHT for relay candidates
 	peerSource := func(ctx context.Context, numPeers int) <-chan peer.AddrInfo {
 		peerChan := make(chan peer.AddrInfo)
@@ -285,14 +290,19 @@ func setupAutoRelay(h host.Host, kdht *dht.IpfsDHT, staticRelays []peer.AddrInfo
 		relaySource = "dht"
 	}
 
-	_, err := autorelay.NewAutoRelay(h, autoRelayOpt)
+	autoRelay, err := autorelay.NewAutoRelay(h, autoRelayOpt)
 	if err != nil {
-		return fmt.Errorf("failed to enable AutoRelay: %w", err)
+		return nil, fmt.Errorf("failed to enable AutoRelay: %w", err)
 	}
+
+	// NewAutoRelay only constructs the instance; Start() launches the background
+	// goroutine that watches reachability and drives relay reservations. Without
+	// this call AutoRelay is a no-op and no circuit address is ever advertised.
+	autoRelay.Start()
 
 	logger.Info("AutoRelay enabled", "relay_source", relaySource, "static_relays", len(staticRelays))
 
-	return nil
+	return autoRelay, nil
 }
 
 // mdnsNotifee handles mDNS peer discovery events.
