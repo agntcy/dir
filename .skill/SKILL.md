@@ -1,9 +1,9 @@
 ---
 name: agntcy-dir
-description: "Use when the user wants to work with the AGNTCY Directory (dirctl): set up dirctl or a local directory daemon; author, validate, or import OASF agent records; push, sign, or publish records; discover, search, browse, suggest, or recommend agents, MCP servers, A2A agents, or agent skills; verify signatures, name ownership, or security scans; synchronize directories; or install/uninstall agents and agentic resources (MCP servers, agent skills, prompts) into coding agents like VS Code Copilot, Claude Code, or Cursor."
+description: Use when the user asks to discover, browse, search, suggest, recommend, or install agents and agentic resources. Author, validate, or import OASF records; push, sign, and publish records; discover, search, browse, suggest, or recommend agents like MCP servers, A2A agents, or agent skills; verify signatures, name ownership, or security scans; synchronize data between servers; or install/uninstall agents and agentic resources into coding agents like VS Code Copilot, Claude Code, or Cursor.
 metadata:
   author: AGNTCY Contributors
-  version: 2.0.0
+  version: 1.0.0
 ---
 
 # AGNTCY Directory (dirctl)
@@ -38,7 +38,7 @@ and publish" → authoring + publishing).
 - **Skill / Domain** — OASF taxonomy nodes describing what an agent does and where.
 - **Module** — typed payload on a record: `integration/mcp` (MCP server), `integration/a2a` (A2A card), `core/language_model/agentskills` (Agent Skill).
 - **Locator** — pointer to a runnable artifact (`docker-image`, `source_code`, `helm_chart`, …).
-- **Referrer** — OCI artifact attached to a record: signature, public key, security scan report.
+- **Referrer** — Artifact attached to a record: signature, public key, security scan report.
 
 ## Prerequisites
 
