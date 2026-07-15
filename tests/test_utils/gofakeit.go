@@ -24,7 +24,7 @@ var GofakeitGenericLookups = map[string]gofakeit.Info{
 
 func InitGofakeit() {
 	AddFuncLookups(GofakeitGenericLookups)
-	AddFuncLookups(GofakeitOASF110Lookups)
+	AddFuncLookups(GofakeitOASF100Lookups)
 }
 
 func AddFuncLookups(lookups map[string]gofakeit.Info) {
