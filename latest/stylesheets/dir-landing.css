@@ -27,6 +27,8 @@
   --dir-action-btn-bg-active: rgb(255, 255, 255);
   --dir-action-btn-color: var(--dir-text-strong);
   --dir-action-btn-border: var(--dir-border);
+  --dir-repobeats-bg: rgb(255, 255, 255);
+  --dir-repobeats-surface: rgb(245, 248, 253);
 
   /* Hero: fixed chrome clearance (header + tabs) vs. visible content inset. */
   --dir-hero-chrome-top: calc(var(--md-header-height) + 3rem);
@@ -61,6 +63,12 @@
   --dir-action-btn-bg-active: rgb(12, 31, 54);
   --dir-action-btn-color: rgb(227, 227, 227);
   --dir-action-btn-border: rgb(13, 39, 77);
+  --dir-repobeats-bg: var(--md-default-bg-color);
+  --dir-repobeats-surface: color-mix(
+    in srgb,
+    var(--md-default-bg-color) 88%,
+    var(--md-default-fg-color) 12%
+  );
 
   /* Interactive lifecycle graph (dark). */
   --dir-graph-node: var(--md-default-bg-color);
@@ -907,7 +915,7 @@ body:has(.dir-landing) .md-tabs__item--active .md-tabs__link {
   padding: 0.65rem;
   border-radius: 8px;
   border: 1px solid var(--dir-feature-card-border);
-  background: var(--md-default-bg-color);
+  background: var(--dir-repobeats-bg);
   min-height: 12rem;
 }
 
@@ -939,7 +947,7 @@ body:has(.dir-landing) .md-tabs__item--active .md-tabs__link {
   padding: 0.55rem 0.65rem;
   border: 1px solid var(--dir-feature-card-border);
   border-radius: 6px;
-  background: color-mix(in srgb, var(--md-default-bg-color) 88%, var(--md-default-fg-color) 12%);
+  background: var(--dir-repobeats-surface);
 }
 
 .dir-repobeats__row-head {
@@ -1008,7 +1016,7 @@ body:has(.dir-landing) .md-tabs__item--active .md-tabs__link {
   padding: 0.55rem 0.65rem;
   border: 1px solid var(--dir-feature-card-border);
   border-radius: 6px;
-  background: color-mix(in srgb, var(--md-default-bg-color) 88%, var(--md-default-fg-color) 12%);
+  background: var(--dir-repobeats-surface);
 }
 
 .dir-repobeats__card-label {
@@ -1032,7 +1040,7 @@ body:has(.dir-landing) .md-tabs__item--active .md-tabs__link {
   padding: 0.55rem 0.65rem 0.35rem;
   border: 1px solid var(--dir-feature-card-border);
   border-radius: 6px;
-  background: color-mix(in srgb, var(--md-default-bg-color) 88%, var(--md-default-fg-color) 12%);
+  background: var(--dir-repobeats-surface);
 }
 
 .dir-repobeats__contributors-label {

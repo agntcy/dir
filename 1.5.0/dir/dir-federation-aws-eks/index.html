@@ -2467,17 +2467,17 @@
 <tr>
 <td>Directory Helm chart</td>
 <td><code>oci://ghcr.io/agntcy/dir/helm-charts/dir</code></td>
-<td><code>v1.5.0</code></td>
+<td><code>v1.6.0</code></td>
 </tr>
 <tr>
 <td>Directory apiserver image</td>
 <td><code>ghcr.io/agntcy/dir-apiserver</code></td>
-<td><code>v1.5.0</code></td>
+<td><code>v1.6.0</code></td>
 </tr>
 <tr>
 <td>Directory reconciler image</td>
 <td><code>ghcr.io/agntcy/dir-reconciler</code></td>
-<td><code>v1.5.0</code></td>
+<td><code>v1.6.0</code></td>
 </tr>
 <tr>
 <td>SPIRE Helm chart</td>
@@ -2675,7 +2675,7 @@ dig<span class="w"> </span>+short<span class="w"> </span><span class="s2">&quot;
 <span class="s">apiserver:</span>
 <span class="s">  image:</span>
 <span class="s">    repository: ghcr.io/agntcy/dir-apiserver</span>
-<span class="s">    tag: v1.5.0</span>
+<span class="s">    tag: v1.6.0</span>
 <span class="s">    pullPolicy: IfNotPresent</span>
 
 <span class="s">  spire:</span>
@@ -2799,7 +2799,7 @@ dig<span class="w"> </span>+short<span class="w"> </span><span class="s2">&quot;
 <span class="s">    enabled: true</span>
 <span class="s">    image:</span>
 <span class="s">      repository: ghcr.io/agntcy/dir-reconciler</span>
-<span class="s">      tag: v1.5.0</span>
+<span class="s">      tag: v1.6.0</span>
 <span class="s">      pullPolicy: IfNotPresent</span>
 <span class="s">    config:</span>
 <span class="s">      database:</span>
@@ -2877,7 +2877,7 @@ dig<span class="w"> </span>+short<span class="w"> </span><span class="s2">&quot;
 <li>
 <p>Install Directory</p>
 <div class="highlight"><pre><span></span><code>helm<span class="w"> </span>upgrade<span class="w"> </span>--install<span class="w"> </span>dir<span class="w"> </span>oci://ghcr.io/agntcy/dir/helm-charts/dir<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--version<span class="w"> </span>v1.5.0<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--version<span class="w"> </span>v1.6.0<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--namespace<span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">DIR_NAMESPACE</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--create-namespace<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>-f<span class="w"> </span>dir-values.yaml<span class="w"> </span><span class="se">\</span>
