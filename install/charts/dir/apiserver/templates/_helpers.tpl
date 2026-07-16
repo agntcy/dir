@@ -178,6 +178,21 @@ Uses release name + "reconciler" (without the chart name "apiserver").
 {{- end -}}
 
 {{/*
+Get the apiserver gRPC address for use by the reconciler.
+Priority order:
+  1. Explicit user configuration (reconciler.config.server_address) - always respected
+  2. Auto-detected in-cluster apiserver Service (same namespace)
+*/}}
+{{- define "chart.apiserver.grpcAddress" -}}
+{{- if .Values.reconciler.config.server_address -}}
+{{- .Values.reconciler.config.server_address -}}
+{{- else -}}
+{{- $port := .Values.config.listen_address | default "0.0.0.0:8888" | splitList ":" | last -}}
+{{- printf "%s.%s.svc.cluster.local:%s" (include "chart.fullname" .) .Release.Namespace $port -}}
+{{- end -}}
+{{- end -}}
+
+{{/*
 Get OCI registry address.
 Priority order:
   1. Explicit user configuration (config.store.oci.registry_address) - always respected
