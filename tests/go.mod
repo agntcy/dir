@@ -16,7 +16,7 @@ replace (
 replace github.com/ThalesIgnite/crypto11 => github.com/ThalesGroup/crypto11 v1.6.0
 
 require (
-	github.com/agntcy/dir-importer v1.5.1-0.20260715144405-f5000b6658e5
+	github.com/agntcy/dir-importer v1.5.1
 	github.com/agntcy/dir/api v1.6.0
 	github.com/agntcy/dir/cli v1.5.0
 	github.com/agntcy/dir/client v1.6.0
@@ -102,11 +102,11 @@ require (
 	github.com/VividCortex/ewma v1.2.0 // indirect
 	github.com/agext/levenshtein v1.2.3 // indirect
 	github.com/agnivade/levenshtein v1.2.1 // indirect
-	github.com/agntcy/dir-mcp v1.3.2 // indirect
-	github.com/agntcy/dir-runtime/discovery v1.3.2 // indirect
-	github.com/agntcy/dir-runtime/server v1.3.2 // indirect
-	github.com/agntcy/dir-runtime/store v1.3.2 // indirect
-	github.com/agntcy/dir-runtime/utils v1.3.2 // indirect
+	github.com/agntcy/dir-mcp v1.3.3 // indirect
+	github.com/agntcy/dir-runtime/discovery v1.3.3 // indirect
+	github.com/agntcy/dir-runtime/server v1.3.3 // indirect
+	github.com/agntcy/dir-runtime/store v1.3.3 // indirect
+	github.com/agntcy/dir-runtime/utils v1.3.3 // indirect
 	github.com/agntcy/dir/reconciler v1.5.0 // indirect
 	github.com/agntcy/dir/server v1.5.0
 	github.com/agntcy/dir/utils v1.6.0 // indirect
@@ -405,8 +405,8 @@ require (
 	github.com/moby/buildkit v0.30.0 // indirect
 	github.com/moby/docker-image-spec v1.3.1 // indirect
 	github.com/moby/locker v1.0.1 // indirect
-	github.com/moby/moby/api v1.54.2 // indirect
-	github.com/moby/moby/client v0.4.1 // indirect
+	github.com/moby/moby/api v1.55.0 // indirect
+	github.com/moby/moby/client v0.5.0 // indirect
 	github.com/moby/sys/atomicwriter v0.1.0 // indirect
 	github.com/moby/sys/mountinfo v0.7.2 // indirect
 	github.com/moby/sys/sequential v0.6.0 // indirect

@@ -20,11 +20,11 @@ replace (
 
 require (
 	buf.build/gen/go/agntcy/oasf/protocolbuffers/go v1.36.11-20260703134941-ebce38fee5a5.1
-	github.com/agntcy/dir-importer v1.5.1-0.20260715144405-f5000b6658e5
-	github.com/agntcy/dir-mcp v1.3.2
-	github.com/agntcy/dir-runtime/discovery v1.3.2
-	github.com/agntcy/dir-runtime/server v1.3.2
-	github.com/agntcy/dir-runtime/store v1.3.2
+	github.com/agntcy/dir-importer v1.5.1
+	github.com/agntcy/dir-mcp v1.3.3
+	github.com/agntcy/dir-runtime/discovery v1.3.3
+	github.com/agntcy/dir-runtime/server v1.3.3
+	github.com/agntcy/dir-runtime/store v1.3.3
 	github.com/agntcy/dir/api v1.6.0
 	github.com/agntcy/dir/client v1.6.0
 	github.com/agntcy/dir/reconciler v1.5.0
@@ -374,7 +374,7 @@ require (
 	github.com/Masterminds/semver/v3 v3.5.0 // indirect
 	github.com/Microsoft/go-winio v0.6.3-0.20251027160822-ad3df93bed29 // indirect
 	github.com/ThalesIgnite/crypto11 v1.6.0 // indirect
-	github.com/agntcy/dir-runtime/utils v1.3.2 // indirect
+	github.com/agntcy/dir-runtime/utils v1.3.3 // indirect
 	github.com/antlr4-go/antlr/v4 v4.13.1 // indirect
 	github.com/asaskevich/govalidator v0.0.0-20230301143203-a9d515a09cc2 // indirect
 	github.com/aws/aws-sdk-go-v2/config v1.32.25 // indirect
@@ -518,8 +518,8 @@ require (
 	github.com/minio/sha256-simd v1.0.1 // indirect
 	github.com/mitchellh/go-homedir v1.1.0 // indirect
 	github.com/moby/docker-image-spec v1.3.1 // indirect
-	github.com/moby/moby/api v1.54.2 // indirect
-	github.com/moby/moby/client v0.4.1 // indirect
+	github.com/moby/moby/api v1.55.0 // indirect
+	github.com/moby/moby/client v0.5.0 // indirect
 	github.com/moby/term v0.5.2 // indirect
 	github.com/modelcontextprotocol/go-sdk v1.6.1 // indirect
 	github.com/modelcontextprotocol/registry v1.7.9 // indirect
