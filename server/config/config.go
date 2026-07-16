@@ -498,6 +498,9 @@ func LoadConfig(opts ...ConfigOption) (*Config, error) {
 	_ = v.BindEnv("routing.directory_api_address")
 	v.SetDefault("routing.directory_api_address", "")
 
+	_ = v.BindEnv("routing.directory_oci_address")
+	v.SetDefault("routing.directory_oci_address", "")
+
 	_ = v.BindEnv("routing.bootstrap_peers")
 	v.SetDefault("routing.bootstrap_peers", strings.Join(routing.DefaultBootstrapPeers, ","))
 

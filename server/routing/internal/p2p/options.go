@@ -25,6 +25,7 @@ type options struct {
 	Key                      crypto.PrivKey
 	ListenAddress            string
 	DirectoryAPIAddress      string
+	DirectoryOCIAddress      string
 	BootstrapPeers           []peer.AddrInfo
 	RefreshInterval          time.Duration
 	Randevous                string
@@ -104,6 +105,18 @@ func WithListenAddress(addr string) Option {
 func WithDirectoryAPIAddress(addr string) Option {
 	return func(opts *options) error {
 		opts.DirectoryAPIAddress = addr
+
+		return nil
+	}
+}
+
+// WithDirectoryOCIAddress sets the OCI registry endpoint this node advertises to
+// peers (as an "/oci/<addr>" host multiaddr), so remote peers can pull record
+// content directly from this node's registry. Optional; empty means not
+// advertised.
+func WithDirectoryOCIAddress(addr string) Option {
+	return func(opts *options) error {
+		opts.DirectoryOCIAddress = addr
 
 		return nil
 	}
