@@ -639,6 +639,15 @@ externalSecrets:
     usernameProperty: "postgres-username"
     passwordProperty: "postgres-password"
 
+  # Azure OpenAI API key (consumed by the reconciler scan task's LLM-backed scanners)
+  # When enabled, the key is synced from Vault into the chart secret under
+  # the "azure-openai-api-key" key and referenced by the reconciler deployment
+  # (see reconciler.azureOpenAI below).
+  azureOpenAI:
+    enabled: false
+    # Property name in the Vault secret holding the API key
+    apiKeyProperty: "azure-openai-api-key"
+
 # OASF server subchart configuration (OPTIONAL)
 # OASF is NOT installed by default. Set enabled: true to deploy an OASF schema server instance.
 oasf:
@@ -673,6 +682,26 @@ reconciler:
     repository: ghcr.io/agntcy/dir-reconciler
     tag: latest
     pullPolicy: IfNotPresent
+
+  # Azure OpenAI credentials for the scan task's LLM-backed scanners.
+  # These are injected as plain process environment variables into the
+  # reconciler container; the scanner subprocesses (mcp-scanner / skill-scanner)
+  # read AZURE_OPENAI_* directly. This is orthogonal to the RECONCILER_* config
+  # rendered into reconciler.config.yml.
+  azureOpenAI:
+    # Enable injection of AZURE_OPENAI_* env vars into the reconciler container.
+    enabled: false
+    # Azure OpenAI endpoint, e.g. "https://<resource>.openai.azure.com/"
+    baseURL: ""
+    # Azure OpenAI deployment/model name, e.g. "gpt-4o"
+    deployment: ""
+    # Azure OpenAI API version, e.g. "2024-08-01-preview"
+    apiVersion: ""
+    # Kubernetes Secret holding the API key (AZURE_OPENAI_API_KEY).
+    # Defaults to the chart secret populated by externalSecrets.azureOpenAI.
+    apiKey:
+      secretName: ""                     # empty => chart fullname secret
+      secretKey: "azure-openai-api-key"  # key within that secret
 
   # Reconciler configuration - all settings go here
   # This entire section is rendered directly to reconciler.config.yml

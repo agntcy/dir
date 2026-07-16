@@ -565,6 +565,15 @@ apiserver:
       usernameProperty: "postgres-username"
       passwordProperty: "postgres-password"
 
+    # Azure OpenAI API key (consumed by the reconciler scan task's LLM-backed scanners)
+    # When enabled, the key is synced from Vault into the chart secret under the
+    # "azure-openai-api-key" key and referenced by the reconciler deployment
+    # (see reconciler.azureOpenAI below).
+    azureOpenAI:
+      enabled: false
+      # Property name in the Vault secret holding the API key
+      apiKeyProperty: "azure-openai-api-key"
+
   # PostgreSQL subchart configuration
   # Deploys a local PostgreSQL instance via Bitnami subchart for development/testing.
   # Set enabled: false when using an external PostgreSQL instance.
@@ -612,6 +621,19 @@ apiserver:
       repository: ghcr.io/agntcy/dir-reconciler
       tag: latest
       pullPolicy: IfNotPresent
+
+    # Azure OpenAI credentials for the scan task's LLM-backed scanners.
+    # Injected as plain process env vars (AZURE_OPENAI_*) into the reconciler
+    # container; the scanner subprocesses (mcp-scanner / skill-scanner) read them
+    # directly. Orthogonal to the RECONCILER_* config below.
+    azureOpenAI:
+      enabled: false
+      baseURL: ""       # e.g. "https://<resource>.openai.azure.com/"
+      deployment: ""    # e.g. "gpt-4o"
+      apiVersion: ""    # e.g. "2024-08-01-preview"
+      apiKey:
+        secretName: ""                     # empty => chart fullname secret
+        secretKey: "azure-openai-api-key"  # key within that secret
 
     # Reconciler configuration - all settings go here
     # This entire section is rendered directly to reconciler.config.yml
