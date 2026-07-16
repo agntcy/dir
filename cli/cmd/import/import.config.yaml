@@ -42,10 +42,8 @@ enricher:
   # static:
   #   skills:
   #     - name: natural_language_processing/natural_language_generation/dialogue_generation
-  #       id: 10304
   #   domains:
   #     - name: technology/software_engineering/apis_integration
-  #       id: 10204
 
   # Or use "extractor:" for in-process, LLM-free enrichment using the local
   # OASF taxonomy model (requires `dirctl init` to have been run first).
