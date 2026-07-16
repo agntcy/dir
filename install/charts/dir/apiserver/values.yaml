@@ -639,6 +639,15 @@ externalSecrets:
     usernameProperty: "postgres-username"
     passwordProperty: "postgres-password"
 
+  # Extra arbitrary secrets to sync from Vault and inject as env vars in the reconciler.
+  # Each entry syncs one Vault property into the K8s Secret and exposes it as an env var.
+  # Example:
+  #   extraData:
+  #     - secretKey: azure-openai-api-key   # key name in the K8s Secret
+  #       property: azure-openai-api-key     # property name in Vault (defaults to secretKey)
+  #       envVar: AZURE_OPENAI_API_KEY       # env var name injected into the reconciler pod
+  extraData: []
+
 # OASF server subchart configuration (OPTIONAL)
 # OASF is NOT installed by default. Set enabled: true to deploy an OASF schema server instance.
 oasf:

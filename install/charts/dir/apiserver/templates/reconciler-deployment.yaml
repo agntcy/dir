@@ -59,6 +59,15 @@ spec:
                   name: {{ include "chart.fullname" . }}
                   key: oci-password
             {{- end }}
+            {{- range .Values.externalSecrets.extraData }}
+            {{- if .envVar }}
+            - name: {{ .envVar }}
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "chart.fullname" $ }}
+                  key: {{ .secretKey }}
+            {{- end }}
+            {{- end }}
             {{- with .Values.extraEnv }}
             {{- toYaml . | nindent 12 }}
             {{- end }}
