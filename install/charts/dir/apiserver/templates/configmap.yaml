@@ -57,4 +57,6 @@ data:
     {{- end }}
     {{- $_ := set $reconcilerConfig.database.postgres "host" (include "chart.postgres.host" .) }}
     {{- end }}
+    {{- /* Dynamically set apiserver gRPC address for the metrics task */ -}}
+    {{- $_ := set $reconcilerConfig "server_address" (include "chart.apiserver.grpcAddress" .) }}
     {{- $reconcilerConfig | toYaml | nindent 4 }}
