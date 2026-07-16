@@ -1,9 +1,8 @@
 <script lang="ts">
 	import type { CatalogEntry } from '$lib/types';
-	import { extractEntryTypes, extractShortTag, hasTrustManifest, getScanManifest, fakeStats, extractCid, exportFormatForType, extractEntryName, extractEntryVersion } from '$lib/utils';
+	import { extractEntryTypes, extractShortTag, hasTrustManifest, getScanManifest, getUsageMetrics, formatDownloads, extractCid, exportFormatForType, extractEntryName, extractEntryVersion } from '$lib/utils';
 	import MediaTypeBadge from './MediaTypeBadge.svelte';
 
-	import StarRating from './StarRating.svelte';
 	import VerifiedBadge from './VerifiedBadge.svelte';
 
 	interface Props {
@@ -13,7 +12,7 @@
 
 	let { aicard, onclose }: Props = $props();
 
-	let stats = $derived(fakeStats(aicard));
+	let metrics = $derived(getUsageMetrics(aicard));
 	let verified = $derived(hasTrustManifest(aicard));
 	let scanManifest = $derived(getScanManifest(aicard));
 	let tags = $derived(aicard.tags || []);
@@ -75,19 +74,13 @@
 					<p class="text-ink-strong mt-0.5 font-medium">{aicard.updatedAt ? new Date(aicard.updatedAt).toLocaleDateString() : 'N/A'}</p>
 				</div>
 				<div>
-					<span class="font-semibold text-ink-medium text-xs uppercase tracking-wide">Downloads</span>
-					<p class="text-ink-strong mt-0.5 font-medium">{stats.downloads.toLocaleString()}</p>
+					<span class="font-semibold text-ink-medium text-xs uppercase tracking-wide">Pulls</span>
+					<p class="text-ink-strong mt-0.5 font-medium">{metrics ? formatDownloads(metrics.pullCount) : '—'}</p>
 				</div>
 				<div>
 					<span class="font-semibold text-ink-medium text-xs uppercase tracking-wide">Providers</span>
-					<p class="text-ink-strong mt-0.5 font-medium">{stats.providers} node{stats.providers !== 1 ? 's' : ''}</p>
+					<p class="text-ink-strong mt-0.5 font-medium">{metrics ? `${metrics.providerCount} node${metrics.providerCount !== 1 ? 's' : ''}` : '—'}</p>
 				</div>
-			</div>
-
-			<div class="flex items-center gap-2 text-sm">
-				<span class="font-semibold text-ink-medium text-xs uppercase tracking-wide">Rating</span>
-				<StarRating rating={stats.rating} />
-				<span class="text-ink font-medium">{stats.rating.toFixed(1)}</span>
 			</div>
 
 			<!-- Entries table -->

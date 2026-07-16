@@ -41,11 +41,11 @@ enricher:
   # record with a fixed set of skills/domains (no LLM or local model needed).
   # static:
   #   skills:
-  #     - name: language_processing/language_generation/dialogue_generation
+  #     - name: natural_language_processing/natural_language_generation/dialogue_generation
   #       id: 10304
   #   domains:
-  #     - name: technology/software_engineering
-  #       id: 102
+  #     - name: technology/software_engineering/apis_integration
+  #       id: 10204
 
   # Or use "extractor:" for in-process, LLM-free enrichment using the local
   # OASF taxonomy model (requires `dirctl init` to have been run first).
@@ -53,6 +53,8 @@ enricher:
   # extractor:
   #   oasf_url: https://schema.oasf.outshift.com
   #   asset_dir: ~/.agntcy/oasf-sdk/extractor
+
+schema_version: "1.0.0"
 
 output_dir: ./import-out
 dry_run: false

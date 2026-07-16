@@ -251,7 +251,7 @@ Need a skill, MCP server, or A2A partner? Your agent searches the Directory, wir
     <div class="dir-community-contribute__metrics">
       <a
         class="dir-repobeats__link"
-        href="https://github.com/agntcy/dir/pulse"
+        href="https://github.com/agntcy/dir/pulse?period=monthly"
         target="_blank"
         rel="noopener noreferrer"
         data-dir-repobeats

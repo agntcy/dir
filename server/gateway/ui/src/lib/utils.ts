@@ -1,4 +1,4 @@
-import type { AICardFilterCriteria, CatalogEntry, ScanManifest, SubEntry, ExportFormat } from './types';
+import type { AICardFilterCriteria, CatalogEntry, ScanManifest, SubEntry, ExportFormat, UsageMetrics } from './types';
 
 export function hasActiveClientFilters(criteria: AICardFilterCriteria): boolean {
 	return (
@@ -94,16 +94,10 @@ export function hasTrustManifest(aicard: CatalogEntry): boolean {
 	return !!(aicard.trustManifest && aicard.trustManifest.signature);
 }
 
-export function fakeStats(aicard: CatalogEntry) {
-	let hash = 0;
-	const id = aicard.identifier || aicard.displayName || '';
-	for (let i = 0; i < id.length; i++) hash = ((hash << 5) - hash + id.charCodeAt(i)) | 0;
-	const seed = Math.abs(hash);
-	return {
-		downloads: 100 + (seed % 9900),
-		rating: 3 + (seed % 20) / 10,
-		providers: 1 + (seed % 12)
-	};
+export function getUsageMetrics(aicard: CatalogEntry): UsageMetrics | null {
+	const m = aicard.metadata?.['agntcy.dir.usage.v1.Metrics'] as UsageMetrics | undefined;
+	if (!m || typeof m.pullCount !== 'number') return null;
+	return m;
 }
 
 export function formatDownloads(n: number): string {

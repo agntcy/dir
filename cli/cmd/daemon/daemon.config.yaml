@@ -93,6 +93,9 @@ reconciler:
   regsync:
     enabled: true
     interval: 1m
+  metrics:
+    enabled: true
+    interval: 1m
   indexer:
     enabled: true
     interval: 1m

@@ -63,14 +63,16 @@ const DefaultMinTaxonomyScore = 0.3
 
 // Decompose extracts search signals from free-form text using the provisioned
 // OASF extractor, applying DefaultMinTaxonomyScore to filter weak matches.
-func Decompose(ctx context.Context, text string, ext *sdk.Extractor) ([]Signal, error) {
-	return DecomposeWithMinScore(ctx, text, ext, DefaultMinTaxonomyScore)
+// Optional sdk.QueryOption values (e.g. sdk.Versions("1.0.0")) are forwarded
+// to the extractor to restrict which OASF versions are searched.
+func Decompose(ctx context.Context, text string, ext *sdk.Extractor, queryOpts ...sdk.QueryOption) ([]Signal, error) {
+	return DecomposeWithMinScore(ctx, text, ext, DefaultMinTaxonomyScore, queryOpts...)
 }
 
 // DecomposeWithMinScore is like Decompose but uses the given minScore threshold
 // instead of DefaultMinTaxonomyScore.
-func DecomposeWithMinScore(ctx context.Context, text string, ext *sdk.Extractor, minScore float64) ([]Signal, error) {
-	res, err := ext.Extract(ctx, text)
+func DecomposeWithMinScore(ctx context.Context, text string, ext *sdk.Extractor, minScore float64, queryOpts ...sdk.QueryOption) ([]Signal, error) {
+	res, err := ext.Extract(ctx, text, queryOpts...)
 	if err != nil {
 		return nil, fmt.Errorf("extract signals from %q: %w", text, err)
 	}
