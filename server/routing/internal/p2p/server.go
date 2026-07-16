@@ -124,7 +124,7 @@ func start(ctx context.Context, opts *options) <-chan status {
 		defer cancel()
 
 		// Create host
-		host, err := newHost(opts.ListenAddress, opts.DirectoryAPIAddress, opts.Key, opts.RelayService, opts.ForceReachabilityPrivate, opts.ForceReachabilityPublic)
+		host, err := newHost(opts.ListenAddress, opts.DirectoryAPIAddress, opts.DirectoryOCIAddress, opts.Key, opts.RelayService, opts.ForceReachabilityPrivate, opts.ForceReachabilityPublic)
 		if err != nil {
 			statusCh <- status{Err: err}
 

@@ -17,16 +17,31 @@ import (
 const (
 	DirProtocol     = "dir"
 	DirProtocolCode = 65535
+	OciProtocol     = "oci"
+	OciProtocolCode = 65534
 )
 
-// Add dir protocol to the host.
-//
-//nolint:mnd
+// Register the custom /dir/ and /oci/ multiaddr protocols so a node's Directory
+// API and OCI registry endpoints can be carried as host multiaddrs and
+// propagated to other peers via libp2p identify.
 func init() {
+	if err := addStringProtocol(DirProtocol, DirProtocolCode); err != nil {
+		panic(err)
+	}
+
+	if err := addStringProtocol(OciProtocol, OciProtocolCode); err != nil {
+		panic(err)
+	}
+}
+
+// addStringProtocol registers a length-prefixed string multiaddr protocol,
+// letting an application-level address (e.g. host:port) ride along as a host
+// multiaddr component such as "/dir/<addr>" or "/oci/<addr>".
+func addStringProtocol(name string, code int) error {
 	err := ma.AddProtocol(ma.Protocol{
-		Name:  DirProtocol,
-		Code:  DirProtocolCode,
-		VCode: ma.CodeToVarint(DirProtocolCode),
+		Name:  name,
+		Code:  code,
+		VCode: ma.CodeToVarint(code),
 		Size:  ma.LengthPrefixedVarSize,
 		Transcoder: ma.NewTranscoderFromFunctions(
 			// String to bytes encoder
@@ -42,12 +57,14 @@ func init() {
 		),
 	})
 	if err != nil {
-		panic(fmt.Errorf("failed to add dir protocol: %w", err))
+		return fmt.Errorf("failed to add %q multiaddr protocol: %w", name, err)
 	}
+
+	return nil
 }
 
 // newHost creates a new host libp2p host.
-func newHost(listenAddr, dirAPIAddr string, key crypto.PrivKey, enableRelayService, forceReachabilityPrivate, forceReachabilityPublic bool) (host.Host, error) {
+func newHost(listenAddr, dirAPIAddr, ociAddr string, key crypto.PrivKey, enableRelayService, forceReachabilityPrivate, forceReachabilityPublic bool) (host.Host, error) {
 	// Create connection manager to limit and manage peer connections.
 	// This prevents resource exhaustion and enables smart peer pruning based on priority.
 	connMgr, err := connmgr.NewConnManager(
@@ -60,14 +77,21 @@ func newHost(listenAddr, dirAPIAddr string, key crypto.PrivKey, enableRelayServi
 	}
 
 	hostOpts := []libp2p.Option{
-		// Add directory API address to the host address factory
+		// Advertise the Directory API (/dir/) and OCI registry (/oci/) endpoints
+		// as host multiaddrs so peers learn them via identify. Each is optional;
+		// only non-empty values are appended.
 		libp2p.AddrsFactory(
 			func(addrs []ma.Multiaddr) []ma.Multiaddr {
-				// Only add the dir address if dirAPIAddr is not empty
 				if dirAPIAddr != "" {
-					dirAddr := ma.StringCast("/dir/" + dirAPIAddr)
+					if a, err := ma.NewMultiaddr("/" + DirProtocol + "/" + dirAPIAddr); err == nil {
+						addrs = append(addrs, a)
+					}
+				}
 
-					return append(addrs, dirAddr)
+				if ociAddr != "" {
+					if a, err := ma.NewMultiaddr("/" + OciProtocol + "/" + ociAddr); err == nil {
+						addrs = append(addrs, a)
+					}
 				}
 
 				return addrs

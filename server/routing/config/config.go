@@ -39,6 +39,13 @@ type Config struct {
 	// Address to use for sync operations
 	DirectoryAPIAddress string `json:"directory_api_address,omitempty" mapstructure:"directory_api_address"`
 
+	// DirectoryOCIAddress is this node's OCI registry endpoint advertised to
+	// peers (as an "/oci/<addr>" host multiaddr) so remote peers can pull record
+	// content directly from this node's registry. Optional; empty means not
+	// advertised. Independent of store.oci.registry_address — set the publicly
+	// reachable registry endpoint here.
+	DirectoryOCIAddress string `json:"directory_oci_address,omitempty" mapstructure:"directory_oci_address"`
+
 	// Peers to use for bootstrapping.
 	// We can choose between public and private peers.
 	BootstrapPeers []string `json:"bootstrap_peers,omitempty" mapstructure:"bootstrap_peers"`

@@ -180,6 +180,7 @@ func newRemote(parentCtx context.Context,
 	server, err := p2p.New(parentCtx,
 		p2p.WithListenAddress(opts.Config().Routing.ListenAddress),
 		p2p.WithDirectoryAPIAddress(opts.Config().Routing.DirectoryAPIAddress),
+		p2p.WithDirectoryOCIAddress(opts.Config().Routing.DirectoryOCIAddress),
 		p2p.WithBootstrapAddrs(opts.Config().Routing.BootstrapPeers),
 		p2p.WithRefreshInterval(refreshInterval),
 		p2p.WithRandevous(ProtocolRendezvous), // enable libp2p auto-discovery
@@ -514,20 +515,36 @@ func (r *routeRemote) getRemoteRecordLabels(ctx context.Context, cid, peerID str
 	return labelList
 }
 
-// createPeerInfo creates a Peer message from a PeerID string.
+// createPeerInfo creates a Peer message from a PeerID string, advertising the
+// peer's Directory API (/dir/) and OCI registry (/oci/) endpoints when known.
+// Addresses are returned in prefixed multiaddr form (e.g. "/dir/host:443",
+// "/oci/host:5000") so the consumer can tell them apart. Missing endpoints are
+// omitted (the slice may be empty).
 func (r *routeRemote) createPeerInfo(ctx context.Context, peerID string) *routingv1.Peer {
-	dirAPIAddr := r.getDirectoryAPIAddress(ctx, peerID)
+	addrs := make([]string, 0, 2) //nolint:mnd // dir + oci
+
+	if v := r.getPeerProtocolAddress(ctx, peerID, p2p.DirProtocolCode); v != "" {
+		addrs = append(addrs, "/"+p2p.DirProtocol+"/"+v)
+	}
+
+	if v := r.getPeerProtocolAddress(ctx, peerID, p2p.OciProtocolCode); v != "" {
+		addrs = append(addrs, "/"+p2p.OciProtocol+"/"+v)
+	}
 
 	return &routingv1.Peer{
 		Id:    peerID,
-		Addrs: []string{dirAPIAddr},
+		Addrs: addrs,
 	}
 }
 
-func (r *routeRemote) getDirectoryAPIAddress(ctx context.Context, peerID string) string {
+// getPeerProtocolAddress returns the value of the given custom multiaddr
+// protocol (e.g. DirProtocolCode, OciProtocolCode) advertised by the peer,
+// checking the datastore cache first and falling back to the live peerstore.
+// Returns "" if the peer advertises no such address.
+func (r *routeRemote) getPeerProtocolAddress(ctx context.Context, peerID string, code int) string {
 	// Try datastore cache first (fast path)
-	if dirAddr := r.getDirectoryAPIAddressFromDatastore(ctx, peerID); dirAddr != "" {
-		return dirAddr
+	if addr := r.getPeerProtocolAddressFromDatastore(ctx, peerID, code); addr != "" {
+		return addr
 	}
 
 	// Fallback: Try live peerstore (handles mDNS and DHT without addresses)
@@ -540,35 +557,19 @@ func (r *routeRemote) getDirectoryAPIAddress(ctx context.Context, peerID string)
 
 	peerstoreAddrs := r.server.Host().Peerstore().Addrs(pid)
 	if len(peerstoreAddrs) == 0 {
-		remoteLogger.Warn("No Directory API address found for peer",
-			"peerID", peerID,
-			"note", "Peer might be discovered via mDNS or DHT without /dir/ configuration")
-
 		return ""
 	}
 
-	remoteLogger.Debug("Trying peerstore addresses for /dir/ protocol",
-		"peerID", peerID,
-		"addrs", len(peerstoreAddrs))
-
-	if dirAddr := extractDirProtocol(peerstoreAddrs, peerID); dirAddr != "" {
-		return dirAddr
-	}
-
-	remoteLogger.Warn("No /dir/ protocol found in peerstore addresses",
-		"peerID", peerID)
-
-	return ""
+	return extractProtocolValue(peerstoreAddrs, code)
 }
 
-// getDirectoryAPIAddressFromDatastore checks datastore cache for peer addresses.
-func (r *routeRemote) getDirectoryAPIAddressFromDatastore(ctx context.Context, peerID string) string {
+// getPeerProtocolAddressFromDatastore checks the datastore cache for the peer's
+// advertised value of the given multiaddr protocol code.
+func (r *routeRemote) getPeerProtocolAddressFromDatastore(ctx context.Context, peerID string, code int) string {
 	key := datastore.NewKey("peer_addrs/" + peerID)
 
 	addresses, err := r.dstore.Get(ctx, key)
 	if err != nil {
-		remoteLogger.Debug("No cached peer addresses in datastore", "peerID", peerID)
-
 		return ""
 	}
 
@@ -579,7 +580,7 @@ func (r *routeRemote) getDirectoryAPIAddressFromDatastore(ctx context.Context, p
 		return ""
 	}
 
-	return extractDirProtocol(multiaddrs, peerID)
+	return extractProtocolValue(multiaddrs, code)
 }
 
 // storePeerAddresses stores peer addresses in datastore for later retrieval.
@@ -626,27 +627,12 @@ func (r *routeRemote) storePeerAddresses(ctx context.Context, peerIDStr string, 
 	remoteLogger.Debug("Stored peer addresses", "peerID", peerIDStr, "count", len(peerAddrs))
 }
 
-// extractDirProtocol extracts the /dir/ protocol value from a list of multiaddrs.
-// Returns empty string if no /dir/ protocol is found.
-func extractDirProtocol(multiaddrs []ma.Multiaddr, peerID string) string {
+// extractProtocolValue returns the value of the given multiaddr protocol code
+// from the first address that carries it, or "" if none do.
+func extractProtocolValue(multiaddrs []ma.Multiaddr, code int) string {
 	for _, addr := range multiaddrs {
-		protocols := addr.Protocols()
-		for _, protocol := range protocols {
-			if protocol.Code == p2p.DirProtocolCode {
-				value, err := addr.ValueForProtocol(p2p.DirProtocolCode)
-				if err != nil {
-					remoteLogger.Debug("Failed to extract /dir/ protocol value",
-						"peerID", peerID,
-						"addr", addr.String(),
-						"error", err)
-				} else {
-					remoteLogger.Debug("Found Directory API address",
-						"peerID", peerID,
-						"dirAddress", value)
-
-					return value
-				}
-			}
+		if value, err := addr.ValueForProtocol(code); err == nil && value != "" {
+			return value
 		}
 	}
 
