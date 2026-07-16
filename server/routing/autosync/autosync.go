@@ -43,6 +43,24 @@ const (
 
 	// jobTimeout bounds a single record's pull + ingest (record + referrers).
 	jobTimeout = 60 * time.Second
+
+	// maxPullAttempts is the total number of record-pull attempts (initial +
+	// retries) before giving up. A later re-announcement re-triggers autosync.
+	maxPullAttempts = 3
+
+	// pullBackoffBase / pullBackoffMax bound the exponential backoff between
+	// pull attempts (a NAT'd peer may need a hole-punch/relay handshake to
+	// settle before the next try).
+	pullBackoffBase = 1 * time.Second
+	pullBackoffMax  = 8 * time.Second
+
+	// pullAttemptTimeout bounds a single pull attempt so one slow attempt does
+	// not consume the whole job budget.
+	pullAttemptTimeout = 15 * time.Second
+
+	// firstRetryAttempt is the (1-based) attempt number of the first retry, used
+	// to compute the exponential backoff shift.
+	firstRetryAttempt = 2
 )
 
 // allowedReferrerTypes is the deny-by-default set of referrer types the autosync
@@ -272,31 +290,88 @@ func (m *Manager) process(parentCtx context.Context, j job) {
 	m.syncReferrers(ctx, peerID, j.ref)
 }
 
-// pullRecord pulls the record over libp2p RPC. Addresses from the announcement
-// are added to the peerstore first; on failure it re-resolves the peer via the
-// DHT (FindPeer) and retries once. Fuller backoff/relay handling is a follow-up.
+// pullRecord pulls the record over libp2p RPC with bounded retries. Addresses
+// from the announcement are added to the peerstore first. Between attempts it
+// backs off (exponential + jitter) and re-resolves the peer's current addresses
+// via the DHT (FindPeer) — recovering from stale addresses and giving NAT'd
+// peers time for a hole-punch/relay handshake to settle.
 func (m *Manager) pullRecord(ctx context.Context, peerID peer.ID, ref *corev1.RecordRef, addrs []ma.Multiaddr) (*corev1.Record, error) {
 	if len(addrs) > 0 {
 		m.router.AddAddrs(peerID, addrs)
-	}
-
-	record, err := m.transport.Pull(ctx, peerID, ref)
-	if err == nil {
-		return record, nil
-	}
-
-	logger.Debug("Autosync pull failed, re-resolving peer via DHT", "peer", peerID, "error", err)
-
-	addrInfo, findErr := m.router.FindPeer(ctx, peerID)
-	if findErr != nil {
-		return nil, fmt.Errorf("failed to pull record from peer %s: %w", peerID, err)
-	}
-
-	if len(addrInfo.Addrs) > 0 {
+	} else if addrInfo, err := m.router.FindPeer(ctx, peerID); err == nil && len(addrInfo.Addrs) > 0 {
+		// No addresses from the announcement (e.g. GossipSub-triggered): resolve
+		// the peer's current addresses via the DHT before the first attempt.
 		m.router.AddAddrs(peerID, addrInfo.Addrs)
 	}
 
-	return m.transport.Pull(ctx, peerID, ref) //nolint:wrapcheck
+	var lastErr error
+
+	for attempt := 1; attempt <= maxPullAttempts; attempt++ {
+		//nolint:nestif // retry prep (backoff + FindPeer re-resolution) reads clearly inline
+		if attempt > 1 {
+			// Back off before retrying, respecting the parent context.
+			if err := sleepWithBackoff(ctx, attempt); err != nil {
+				return nil, err
+			}
+
+			// Re-resolve the peer's current addresses via the DHT.
+			if addrInfo, err := m.router.FindPeer(ctx, peerID); err == nil {
+				if len(addrInfo.Addrs) > 0 {
+					m.router.AddAddrs(peerID, addrInfo.Addrs)
+				}
+			} else {
+				logger.Debug("Autosync FindPeer re-resolution failed",
+					"peer", peerID, "attempt", attempt, "error", err)
+			}
+		}
+
+		attemptCtx, cancel := context.WithTimeout(ctx, pullAttemptTimeout)
+		record, err := m.transport.Pull(attemptCtx, peerID, ref)
+
+		cancel()
+
+		if err == nil {
+			return record, nil
+		}
+
+		lastErr = err
+
+		logger.Debug("Autosync pull attempt failed",
+			"peer", peerID, "attempt", attempt, "max_attempts", maxPullAttempts, "error", err)
+	}
+
+	return nil, fmt.Errorf("failed to pull record from peer %s after %d attempts: %w", peerID, maxPullAttempts, lastErr)
+}
+
+// sleepWithBackoff waits for the backoff duration of the given attempt, or
+// returns early if the context is cancelled.
+func sleepWithBackoff(ctx context.Context, attempt int) error {
+	timer := time.NewTimer(computeBackoff(attempt))
+	defer timer.Stop()
+
+	select {
+	case <-ctx.Done():
+		return fmt.Errorf("autosync backoff interrupted: %w", ctx.Err())
+	case <-timer.C:
+		return nil
+	}
+}
+
+// computeBackoff returns an exponential backoff (capped at pullBackoffMax) plus
+// up to ~50% jitter to avoid synchronized retries. attempt is 1-based; the first
+// retry is attempt 2.
+func computeBackoff(attempt int) time.Duration {
+	shift := max(attempt-firstRetryAttempt, 0)
+
+	backoff := pullBackoffBase << shift
+	if backoff <= 0 || backoff > pullBackoffMax {
+		backoff = pullBackoffMax
+	}
+
+	// Pseudo-random jitter (non-crypto; timing quality is irrelevant here).
+	jitter := time.Duration(time.Now().UnixNano() % (int64(backoff)/2 + 1))
+
+	return backoff + jitter
 }
 
 // syncReferrers lists, pulls, verifies, and ingests the record's referrers.

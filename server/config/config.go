@@ -524,6 +524,20 @@ func LoadConfig(opts ...ConfigOption) (*Config, error) {
 	v.SetDefault("routing.autosync.enabled", routing.DefaultAutosyncEnabled)
 
 	//
+	// Routing relay configuration (circuit-relay v2 for NAT traversal).
+	// Note: routing.static_relays is a list and is configured via config
+	// file/YAML only (it cannot be bound to a single environment variable).
+	//
+	_ = v.BindEnv("routing.relay_service")
+	v.SetDefault("routing.relay_service", routing.DefaultRelayServiceEnabled)
+
+	_ = v.BindEnv("routing.force_reachability_private")
+	v.SetDefault("routing.force_reachability_private", routing.DefaultForceReachabilityPrivate)
+
+	_ = v.BindEnv("routing.force_reachability_public")
+	v.SetDefault("routing.force_reachability_public", routing.DefaultForceReachabilityPublic)
+
+	//
 	// Database configuration
 	//
 	_ = v.BindEnv("database.type")

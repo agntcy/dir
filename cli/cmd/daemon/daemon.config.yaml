@@ -51,6 +51,23 @@ server:
       # peerlist:
       #   - peer: "12D3KooW...peerID1"
       #   - peer: "12D3KooW...peerID2"
+    # Circuit-relay v2 for NAT traversal.
+    # relay_service: enable a relay service on this node (only on publicly
+    #   reachable nodes, e.g. bootstrap) so it can relay traffic for NAT'd peers.
+    # static_relays: relays this node uses to obtain a circuit address under NAT.
+    relay_service: false
+    # static_relays:
+    #   - "/dns4/relay.example.com/tcp/8999/p2p/<relay-peer-id>"
+    # force_reachability_private: assume this node is behind NAT so AutoRelay
+    #   proactively reserves a relay and advertises a circuit address (direct
+    #   dials + hole punching are still preferred). Enable only on NAT'd nodes.
+    force_reachability_private: false
+    # force_reachability_public: assume this node is publicly reachable. REQUIRED
+    #   on a relay node (relay_service: true) behind a cloud load balancer — the
+    #   circuit-relay v2 hop service only starts when reachability is Public, and
+    #   AutoNAT cannot self-confirm this behind an LB. Enable only on genuinely
+    #   public nodes. Mutually exclusive with force_reachability_private.
+    force_reachability_public: false
   database:
     type: "sqlite"
     sqlite:
