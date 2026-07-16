@@ -21,37 +21,38 @@ limit: 100                    # 0 = no limit
 #   - "ACME Corp"
 
 enricher:
-  tool_host:
-    model: azure:gpt-4o
-    max_steps: 10
-    mcp_servers:
-      dir-mcp-server:
-        command: dirctl
-        args: [mcp, serve]
-        env:
-          OASF_API_VALIDATION_SCHEMA_URL: https://schema.oasf.outshift.com
-          DIRECTORY_CLIENT_AUTH_MODE: insecure
-  # skills_prompt_template: ./prompts/skills.md
-  # domains_prompt_template: ./prompts/domains.md
-  requests_per_minute: 5
+  # Choose one of: llm (default) or static.
+  llm:
+    tool_host:
+      model: azure:gpt-4o
+      max_steps: 10
+      mcp_servers:
+        dir-mcp-server:
+          command: dirctl
+          args: [mcp, serve]
+          env:
+            OASF_API_VALIDATION_SCHEMA_URL: https://schema.oasf.outshift.com
+            DIRECTORY_CLIENT_AUTH_MODE: insecure
+    # skills_prompt_template: ./prompts/skills.md
+    # domains_prompt_template: ./prompts/domains.md
+    requests_per_minute: 5
 
-  # Skip LLM-based enrichment entirely and tag every imported record with the
-  # static skills/domains below (each entry needs a name and/or numeric id).
-  # When skip_enricher is true, the tool_host above is not required.
-  # skip_enricher: false
-  # skills:
-  #   - name: natural_language_processing/natural_language_generation/text_completion
-  #     id: 10201
-  # domains:
-  #   - name: technology
-  #     id: 1
+  # Replace the "llm:" block above with "static:" to stamp every imported
+  # record with a fixed set of skills/domains (no LLM or local model needed).
+  # static:
+  #   skills:
+  #     - name: natural_language_processing/natural_language_generation/dialogue_generation
+  #   domains:
+  #     - name: technology/software_engineering/apis_integration
 
-scanner:
-  enabled: true
-  timeout: 5m
-  cli_path: /usr/local/bin/mcp-scanner
-  fail_on_error: true
-  fail_on_warning: false
+  # Or use "extractor:" for in-process, LLM-free enrichment using the local
+  # OASF taxonomy model (requires `dirctl init` to have been run first).
+  # Both fields are optional — omit them to use the config saved by dirctl init.
+  # extractor:
+  #   oasf_url: https://schema.oasf.outshift.com
+  #   asset_dir: ~/.agntcy/oasf-sdk/extractor
+
+schema_version: "1.0.0"
 
 output_dir: ./import-out
 dry_run: false

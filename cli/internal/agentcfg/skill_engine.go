@@ -11,6 +11,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/agntcy/dir/api/exportfmt"
 	"github.com/agntcy/dir/cli/internal/agentcfg/fsutil"
 )
 
@@ -74,6 +75,51 @@ func InstallSkill(target *SkillTarget, env Env, slug, canonical string, dryRun b
 
 	if err := fsutil.WriteAtomic(path, desired, skillFilePerm); err != nil {
 		return failOutcome(outcome, fmt.Errorf("write skill %s: %w", path, err))
+	}
+
+	return outcome, nil
+}
+
+// InstallSkillBundle extracts a skill bundle archive into an agent's skill folder.
+// It is idempotent: identical on-disk content reports ActionUnchanged.
+func InstallSkillBundle(target *SkillTarget, env Env, slug string, archive []byte, dryRun bool) (Outcome, error) {
+	path, usedProject, err := resolveSkillTargetPath(target, env, slug)
+	if err != nil {
+		return Outcome{Artifact: "skill", Action: ActionFailed, Err: err}, err
+	}
+
+	destDir := filepath.Dir(path)
+
+	outcome := Outcome{Artifact: "skill", Path: destDir}
+	if usedProject {
+		outcome.Reason = "no global rules path for this agent — wrote a project rule in the current repo"
+	}
+
+	matches, err := exportfmt.SkillBundleMatchesDir(archive, destDir)
+	if err != nil {
+		return failOutcome(outcome, fmt.Errorf("compare skill bundle %s: %w", destDir, err))
+	}
+
+	if matches {
+		outcome.Action = ActionUnchanged
+
+		return outcome, nil
+	}
+
+	if _, err := os.Stat(path); err == nil {
+		outcome.Action = ActionUpdated
+	} else if os.IsNotExist(err) {
+		outcome.Action = ActionAdded
+	} else {
+		return failOutcome(outcome, fmt.Errorf("stat skill %s: %w", path, err))
+	}
+
+	if dryRun {
+		return outcome, nil
+	}
+
+	if err := exportfmt.ExtractSkillBundleArchive(archive, destDir); err != nil {
+		return failOutcome(outcome, fmt.Errorf("extract skill bundle %s: %w", destDir, err))
 	}
 
 	return outcome, nil

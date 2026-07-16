@@ -98,4 +98,8 @@ enum RecordQueryType {
   // "true"  → scanned AND no scanner flagged the record as unsafe.
   // "false" → at least one scanner reported is_safe = false.
   RECORD_QUERY_TYPE_SCAN_SAFE = 18;
+
+  // Query for a record description (free-text field).
+  // Supports wildcard patterns: "*fraud*", "*banking*", "real-time*"
+  RECORD_QUERY_TYPE_DESCRIPTION = 19;
 }

@@ -11,6 +11,7 @@ import (
 	"os"
 	"strings"
 
+	"github.com/agntcy/dir/cli/internal/agentcfg"
 	extractor "github.com/agntcy/dir/cli/internal/extractor"
 	"github.com/agntcy/dir/cli/presenter"
 	clientconfig "github.com/agntcy/dir/client/config"
@@ -35,7 +36,7 @@ of AI agent records described in OASF.
 This wizard sets up your local environment. Steps:
   1. Configure a local client context
   2. Provision the OASF taxonomy extractor
-  (more steps — MCP server & skills — coming soon)
+  3. Configure the Directory MCP server & skills in your AI agents
 `)
 }
 
@@ -51,7 +52,11 @@ func run(cmd *cobra.Command, opts *options) error {
 		return err
 	}
 
-	return runProvision(cmd, opts)
+	if err := runProvision(cmd, opts); err != nil {
+		return err
+	}
+
+	return runAgentSetup(cmd, opts)
 }
 
 // configFromOpts builds the engine config from flags, resolving defaults.
@@ -229,6 +234,10 @@ func runRemove(cmd *cobra.Command, opts *options) error {
 	}
 
 	presenter.Printf(cmd, "Removed extractor assets at %s and cleared saved config.\n", cfg.AssetDir)
+
+	if err := removeAgents(cmd, agentcfg.ResolveEnv(), opts); err != nil {
+		return err
+	}
 
 	return nil
 }

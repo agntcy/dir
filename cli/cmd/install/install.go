@@ -1,6 +1,7 @@
 // Copyright AGNTCY Contributors (https://github.com/agntcy)
 // SPDX-License-Identifier: Apache-2.0
 
+//nolint:wrapcheck
 package install
 
 import (
@@ -10,7 +11,9 @@ import (
 	"strings"
 
 	corev1 "github.com/agntcy/dir/api/core/v1"
+	"github.com/agntcy/dir/cli/cmd/search"
 	"github.com/agntcy/dir/cli/internal/agentcfg"
+	"github.com/agntcy/dir/cli/internal/agentinstall"
 	"github.com/agntcy/dir/cli/presenter"
 	ctxUtils "github.com/agntcy/dir/cli/util/context"
 	"github.com/agntcy/dir/cli/util/reference"
@@ -36,6 +39,16 @@ directly into the configuration of detected AI coding agents.
   dirctl install uninstall <cid-or-name>  remove what install added
   dirctl install list                     show detected agents and target paths
 
+Batch install from search filters (no positional argument):
+
+  dirctl install --module integration/mcp --name "web*" --agents all
+  dirctl install --skill "code*" --dry-run
+
+Batch uninstall from search filters:
+
+  dirctl install uninstall --module integration/mcp --name "web*"
+  dirctl uninstall --skill "code*" --dry-run
+
 Examples:
   dirctl install cisco.com/agent:v1.0.0
   dirctl install bafyrei... --dry-run
@@ -44,16 +57,28 @@ Examples:
 `,
 	Args: cobra.MaximumNArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		if len(args) == 0 {
-			return cmd.Help()
+		var input string
+		if len(args) > 0 {
+			input = args[0]
 		}
 
-		return runInstallCmd(cmd, args[0])
+		queries := search.BuildQueries(&opts.filters)
+		hasInput := input != ""
+		hasFilters := len(queries) > 0
+
+		return resolveBatchOrInput(
+			hasInput,
+			hasFilters,
+			func() error { return runBatchInstall(cmd) },
+			func() error { return runInstallCmd(cmd, input) },
+			func() error { return cmd.Help() },
+		)
 	},
 }
 
 func init() {
 	addSelectionFlags(Command, &opts)
+	addBatchFlags(Command, &opts)
 
 	Command.AddCommand(runCmd)
 	Command.AddCommand(uninstallCmd)
@@ -64,7 +89,7 @@ func init() {
 // agents to act on, printing a note for any explicitly-requested agent that is
 // not detected (never installed for undetected agents).
 func selectAgents(cmd *cobra.Command, env agentcfg.Env) ([]agentcfg.Agent, error) {
-	chosen, err := resolveChosen(opts.agents)
+	chosen, err := agentcfg.ParseSelection(opts.agents)
 	if err != nil {
 		return nil, err
 	}
@@ -79,23 +104,23 @@ func selectAgents(cmd *cobra.Command, env agentcfg.Env) ([]agentcfg.Agent, error
 }
 
 // pullAndDerive resolves the ref, pulls the record, and derives its artifacts.
-func pullAndDerive(cmd *cobra.Command, input string) (artifacts, error) {
+func pullAndDerive(cmd *cobra.Command, input string) (agentinstall.Artifacts, error) {
 	c, ok := ctxUtils.GetClientFromContext(cmd.Context())
 	if !ok {
-		return artifacts{}, errors.New("failed to get client from context")
+		return agentinstall.Artifacts{}, errors.New("failed to get client from context")
 	}
 
 	cid, err := reference.ResolveToCID(cmd.Context(), c, input)
 	if err != nil {
-		return artifacts{}, fmt.Errorf("resolve reference: %w", err)
+		return agentinstall.Artifacts{}, fmt.Errorf("resolve reference: %w", err)
 	}
 
 	record, err := c.Pull(cmd.Context(), &corev1.RecordRef{Cid: cid})
 	if err != nil {
-		return artifacts{}, fmt.Errorf("failed to pull record: %w", err)
+		return agentinstall.Artifacts{}, fmt.Errorf("failed to pull record: %w", err)
 	}
 
-	return deriveArtifacts(record)
+	return agentinstall.DeriveArtifacts(record)
 }
 
 // runInstallCmd is the shared body for the parent's bare-positional form and the
@@ -113,7 +138,7 @@ func runInstallCmd(cmd *cobra.Command, input string) error {
 		return err
 	}
 
-	plan := runInstall(env, arts, selected, true)
+	plan := agentinstall.Install(env, arts, selected, true)
 	presenter.Printf(cmd, "%s", agentcfg.FormatPlan(plan))
 
 	if len(plan) == 0 {
@@ -133,7 +158,7 @@ func runInstallCmd(cmd *cobra.Command, input string) error {
 		}
 	}
 
-	outcomes := runInstall(env, arts, selected, opts.dryRun)
+	outcomes := agentinstall.Install(env, arts, selected, opts.dryRun)
 	presenter.Printf(cmd, "%s", agentcfg.FormatSummary(outcomes, opts.dryRun))
 
 	return nil

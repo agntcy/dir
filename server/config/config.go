@@ -498,6 +498,9 @@ func LoadConfig(opts ...ConfigOption) (*Config, error) {
 	_ = v.BindEnv("routing.directory_api_address")
 	v.SetDefault("routing.directory_api_address", "")
 
+	_ = v.BindEnv("routing.directory_oci_address")
+	v.SetDefault("routing.directory_oci_address", "")
+
 	_ = v.BindEnv("routing.bootstrap_peers")
 	v.SetDefault("routing.bootstrap_peers", strings.Join(routing.DefaultBootstrapPeers, ","))
 
@@ -514,6 +517,28 @@ func LoadConfig(opts ...ConfigOption) (*Config, error) {
 	//
 	_ = v.BindEnv("routing.gossipsub.enabled")
 	v.SetDefault("routing.gossipsub.enabled", routing.DefaultGossipSubEnabled)
+
+	//
+	// Routing autosync configuration (DHT-based record + referrer sync).
+	// Note: routing.autosync.peerlist is a list of objects and is configured via
+	// config file/YAML only (it cannot be bound to a single environment variable).
+	//
+	_ = v.BindEnv("routing.autosync.enabled")
+	v.SetDefault("routing.autosync.enabled", routing.DefaultAutosyncEnabled)
+
+	//
+	// Routing relay configuration (circuit-relay v2 for NAT traversal).
+	// Note: routing.static_relays is a list and is configured via config
+	// file/YAML only (it cannot be bound to a single environment variable).
+	//
+	_ = v.BindEnv("routing.relay_service")
+	v.SetDefault("routing.relay_service", routing.DefaultRelayServiceEnabled)
+
+	_ = v.BindEnv("routing.force_reachability_private")
+	v.SetDefault("routing.force_reachability_private", routing.DefaultForceReachabilityPrivate)
+
+	_ = v.BindEnv("routing.force_reachability_public")
+	v.SetDefault("routing.force_reachability_public", routing.DefaultForceReachabilityPublic)
 
 	//
 	// Database configuration

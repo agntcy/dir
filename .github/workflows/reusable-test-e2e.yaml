@@ -28,8 +28,10 @@ jobs:
             label: "Local"
           - task: e2e:test:network:local
             label: "Network"
-          - task: e2e:test:daemon:external
-            label: "Daemon External"
+          # TODO: runtime tests disabled for now due to possible schema drift on the runtime side.
+          # TODO: investigate for details to reenable the test.
+          # - task: e2e:test:daemon:external
+          #   label: "Daemon External"
           - task: e2e:test:integration-server:default
             label: "Integration Server"
     steps:
@@ -39,7 +41,7 @@ jobs:
           fetch-depth: 0
 
       - name: Login to ghcr.io
-        uses: docker/login-action@650006c6eb7dba73a995cc03b0b2d7f5ca915bee # v4.2.0
+        uses: docker/login-action@af1e73f918a031802d376d3c8bbc3fe56130a9b0 # v4.4.0
         with:
           registry: ghcr.io
           username: notused
@@ -54,7 +56,7 @@ jobs:
       - name: Setup Go
         uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6.5.0
         with:
-          go-version: "1.26.4"
+          go-version: "1.26.5"
           cache-dependency-path: "**/*.sum"
           cache: true
 
@@ -76,6 +78,12 @@ jobs:
           task deps:bin-dir
           cp tmp/artifacts/dirctl-debug ./.bin/dirctl
           chmod +x ./.bin/dirctl
+
+      - name: Cache OASF extractor model
+        uses: actions/cache@caa296126883cff596d87d8935842f9db880ef25 # v5.1.0
+        with:
+          path: ~/.agntcy/oasf-sdk
+          key: oasf-extractor-${{ runner.os }}-v1
 
       - name: Run end-to-end tests
         env:

@@ -33,6 +33,7 @@ The --format flag selects the output format (required):
   a2a            A2A AgentCard JSON for Agent-to-Agent protocol interop
   mcp-ghcopilot  GitHub Copilot MCP configuration JSON
   mcp-claudecode Claude Code MCP configuration JSON (.mcp.json "mcpServers" shape)
+  mcp-cursor     Cursor IDE MCP configuration JSON (.cursor/mcp.json "mcpServers" shape)
 
 For raw OASF record JSON, use 'dirctl pull' (which supports --output-file,
 --output-dir, and search filters for batch retrieval).
@@ -43,6 +44,7 @@ Single-record examples:
   dirctl export my-agent:1.0 --format=agent-skill --output-file=./SKILL.md
   dirctl export my-agent:1.0 --format=agent-skill-bundle --output-file=./skill.gzip
   dirctl export my-mcp-server --format=mcp-claudecode --output-file=.mcp.json
+  dirctl export my-mcp-server --format=mcp-cursor --output-file=.cursor/mcp.json
 
 Batch export from search results:
 
@@ -51,6 +53,7 @@ Batch export from search results:
   dirctl export --output-dir=./exports/ --format=agent-skill-bundle --skill "code*"
   dirctl export --output-dir=./exports/ --format=mcp-ghcopilot --module "integration/mcp"
   dirctl export --output-dir=./claude-configs/ --format=mcp-claudecode --module "integration/mcp"
+  dirctl export --output-dir=./cursor-configs/ --format=mcp-cursor --module "integration/mcp"
 `,
 	Args: cobra.MaximumNArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
@@ -76,7 +79,7 @@ Batch export from search results:
 func validateExportFormat(format string) error {
 	switch format {
 	case "":
-		return errors.New("--format is required (agent-skill, a2a, mcp-ghcopilot, or mcp-claudecode); for raw OASF records use `dirctl pull`")
+		return errors.New("--format is required (agent-skill, a2a, mcp-ghcopilot, mcp-claudecode, or mcp-cursor); for raw OASF records use `dirctl pull`")
 	case exportfmt.FormatOASF:
 		return errors.New("raw OASF export has moved to `dirctl pull` (it supports --output-file, --output-dir, and search filters); `dirctl export` no longer supports --format=oasf")
 	default:

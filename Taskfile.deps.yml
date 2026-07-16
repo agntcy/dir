@@ -420,8 +420,18 @@ tasks:
       - cmd: >-
           {{.UV_BIN}} tool install --python 3.13 cisco-ai-skill-scanner
 
+  deps:a2a-scanner:
+    desc: Install a2a-scanner CLI via uv
+    deps:
+      - task: deps:uv
+    cmds:
+      - cmd: echo "Installing a2a-scanner"
+      - cmd: >-
+          {{.UV_BIN}} tool install --python 3.13 cisco-ai-a2a-scanner
+
   deps:scanners:
-    desc: Install all security scanner CLIs (mcp-scanner and skill-scanner) via uv
+    desc: Install all security scanner CLIs (mcp-scanner, skill-scanner, and a2a-scanner) via uv
     cmds:
       - task: deps:mcp-scanner
       - task: deps:skill-scanner
+      - task: deps:a2a-scanner

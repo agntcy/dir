@@ -259,8 +259,9 @@ func (m *Manager) handleMessages() {
 			continue
 		}
 
-		// Skip our own messages (we already cached labels locally)
-		if msg.ReceivedFrom == m.host.ID() {
+		// Skip our own messages (we already cached labels locally).
+		// Use the signed author (GetFrom), not the forwarder (ReceivedFrom).
+		if msg.GetFrom() == m.host.ID() {
 			continue
 		}
 
@@ -268,16 +269,18 @@ func (m *Manager) handleMessages() {
 		announcement, err := UnmarshalRecordPublishEvent(msg.Data)
 		if err != nil {
 			logger.Warn("Received invalid label announcement",
-				"from", msg.ReceivedFrom,
+				"from", msg.GetFrom(),
 				"error", err,
 				"size", len(msg.Data))
 
 			continue
 		}
 
-		// Extract authenticated peer ID from libp2p transport layer
-		// This is cryptographically verified and cannot be spoofed
-		authenticatedPeerID := msg.ReceivedFrom.String()
+		// Extract the authenticated ORIGINAL author from the signed message
+		// (GetFrom is verified via GossipSub message signing). This is the record
+		// publisher, not the mesh forwarder (ReceivedFrom) — important so that
+		// label attribution and autosync allow-list checks use the real origin.
+		authenticatedPeerID := msg.GetFrom().String()
 
 		logger.Debug("Received label announcement",
 			"from", authenticatedPeerID,

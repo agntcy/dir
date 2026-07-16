@@ -32,6 +32,10 @@ func TestConfig_Defaults(t *testing.T) {
 	if got := c.GetSkillCLIPath(); got != DefaultSkillCLIPath {
 		t.Errorf("GetSkillCLIPath() = %q, want %q", got, DefaultSkillCLIPath)
 	}
+
+	if got := c.GetA2ACLIPath(); got != DefaultA2ACLIPath {
+		t.Errorf("GetA2ACLIPath() = %q, want %q", got, DefaultA2ACLIPath)
+	}
 }
 
 func TestConfig_CustomValues(t *testing.T) {
@@ -43,6 +47,7 @@ func TestConfig_CustomValues(t *testing.T) {
 		RecordTimeout: 10 * time.Minute,
 		MCPCLIPath:    "/opt/mcp-scanner",
 		SkillCLIPath:  "/opt/skill-scanner",
+		A2ACLIPath:    "/opt/a2a-scanner",
 	}
 
 	if got := c.GetInterval(); got != 2*time.Hour {
@@ -63,5 +68,9 @@ func TestConfig_CustomValues(t *testing.T) {
 
 	if got := c.GetSkillCLIPath(); got != "/opt/skill-scanner" {
 		t.Errorf("GetSkillCLIPath() = %q", got)
+	}
+
+	if got := c.GetA2ACLIPath(); got != "/opt/a2a-scanner" {
+		t.Errorf("GetA2ACLIPath() = %q", got)
 	}
 }

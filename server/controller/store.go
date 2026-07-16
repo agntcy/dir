@@ -7,16 +7,13 @@ package controller
 import (
 	"context"
 	"errors"
-	"fmt"
 	"io"
-	"strings"
-	"time"
 
 	"buf.build/go/protovalidate"
 	corev1 "github.com/agntcy/dir/api/core/v1"
-	securityv1 "github.com/agntcy/dir/api/security/v1"
 	storev1 "github.com/agntcy/dir/api/store/v1"
 	"github.com/agntcy/dir/server/events"
+	"github.com/agntcy/dir/server/ingest"
 	"github.com/agntcy/dir/server/types"
 	"github.com/agntcy/dir/utils/logging"
 	"google.golang.org/grpc/codes"
@@ -30,15 +27,17 @@ type storeCtrl struct {
 	storev1.UnimplementedStoreServiceServer
 	store     types.StoreAPI
 	db        types.DatabaseAPI
+	ingestor  ingest.Ingestor
 	eventBus  *events.SafeEventBus
 	validator corev1.Validator
 }
 
-func NewStoreController(store types.StoreAPI, db types.DatabaseAPI, eventBus *events.SafeEventBus, validator corev1.Validator) storev1.StoreServiceServer {
+func NewStoreController(store types.StoreAPI, db types.DatabaseAPI, ingestor ingest.Ingestor, eventBus *events.SafeEventBus, validator corev1.Validator) storev1.StoreServiceServer {
 	return &storeCtrl{
 		UnimplementedStoreServiceServer: storev1.UnimplementedStoreServiceServer{},
 		store:                           store,
 		db:                              db,
+		ingestor:                        ingestor,
 		eventBus:                        eventBus,
 		validator:                       validator,
 	}
@@ -259,18 +258,6 @@ func (s storeCtrl) pushReferrer(ctx context.Context, request *storev1.PushReferr
 
 	recordCID := request.GetRecordRef().GetCid()
 
-	// Use ReferrerStoreAPI to push the referrer
-	// The store implementation handles type-specific logic
-	refStore, ok := s.store.(types.ReferrerStoreAPI)
-	if !ok {
-		errMsg := "referrer storage not supported by current store implementation"
-
-		return &storev1.PushReferrerResponse{
-			Success:      false,
-			ErrorMessage: &errMsg,
-		}
-	}
-
 	referrer := corev1.RecordReferrer{
 		Type:        request.GetType(),
 		RecordRef:   request.GetRecordRef(),
@@ -279,57 +266,16 @@ func (s storeCtrl) pushReferrer(ctx context.Context, request *storev1.PushReferr
 		Data:        request.GetData(),
 	}
 
-	referrerRef, err := refStore.PushReferrer(ctx, recordCID, &referrer)
+	// Delegate to the shared ingestion path (content store + referrer DB effects).
+	referrerRef, err := s.ingestor.ImportReferrer(ctx, recordCID, &referrer)
 	if err != nil {
-		errMsg := fmt.Sprintf("failed to push referrer for record %s: %v", recordCID, err)
+		errMsg := err.Error()
 
 		return &storev1.PushReferrerResponse{
 			Success:      false,
 			ErrorMessage: &errMsg,
 		}
 	}
-
-	// If this is a signature referrer, mark the record as signed
-	// This enables the name task to find records that need name verification
-	if request.GetType() == corev1.SignatureReferrerType {
-		if err := s.db.SetRecordSigned(recordCID); err != nil {
-			// Log error but don't fail the push - the referrer was already stored
-			storeLogger.Warn("Failed to mark record as signed", "error", err, "cid", recordCID)
-		} else {
-			storeLogger.Debug("Record marked as signed", "cid", recordCID)
-		}
-	}
-
-	// Invalidate cached signature verifications when a signature or public key is added
-	// so the reconciler will re-verify the record and pick up all signers (e.g. key signer after pub key is pushed)
-	if request.GetType() == corev1.SignatureReferrerType || request.GetType() == corev1.PublicKeyReferrerType {
-		if err := s.db.InvalidateSignatureVerificationsForRecord(recordCID); err != nil {
-			storeLogger.Warn("Failed to invalidate signature verification cache", "error", err, "cid", recordCID)
-		} else {
-			storeLogger.Debug("Signature verification cache invalidated for record", "cid", recordCID)
-		}
-	}
-
-	// When a ScanReport referrer is pushed, upsert the scan_reports summary row so
-	// the SCANNED and SCAN_SEVERITY search filters reflect the latest result immediately.
-	if request.GetType() == corev1.ScanReportReferrerType {
-		report := &securityv1.ScanReport{}
-		if err := report.UnmarshalReferrer(&corev1.RecordReferrer{
-			Type: request.GetType(),
-			Data: request.GetData(),
-		}); err != nil {
-			storeLogger.Warn("Failed to unmarshal scan report referrer for DB indexing", "error", err, "cid", recordCID)
-		} else if err := s.db.UpsertScanReport(&scanReportRow{
-			recordCID:   recordCID,
-			scannerType: scannerTypeShortName(report.GetScannerType()),
-			isSafe:      report.GetIsSafe(),
-			maxSeverity: severityShortName(report.GetMaxSeverity()),
-		}); err != nil {
-			storeLogger.Warn("Failed to upsert scan report summary", "error", err, "cid", recordCID)
-		}
-	}
-
-	storeLogger.Debug("Referrer pushed successfully", "cid", recordCID, "type", request.GetType())
 
 	return &storev1.PushReferrerResponse{
 		Success:     true,
@@ -401,33 +347,8 @@ func (s storeCtrl) PullReferrer(stream storev1.StoreService_PullReferrerServer) 
 
 // pushRecordToStore pushes a record to the store and adds it to the search index.
 func (s storeCtrl) pushRecordToStore(ctx context.Context, record *corev1.Record) (*corev1.RecordRef, error) {
-	// Push the record to store
-	pushedRef, err := s.store.Push(ctx, record)
-	if err != nil {
-		storeLogger.Error("Failed to push record to store", "error", err)
-
-		return nil, status.Errorf(codes.Internal, "failed to push record to store: %v", err)
-	}
-
-	storeLogger.Info("Record pushed to store successfully", "cid", pushedRef.GetCid())
-
-	// Add record to search index for discoverability
-	// Use the adapter pattern to convert corev1.Record to types.Record
-	recordData, err := record.Decode()
-	if err != nil {
-		storeLogger.Error("Failed to decode record for search index", "error", err, "cid", pushedRef.GetCid())
-
-		return pushedRef, nil // Don't fail the push if we can't index, but log the error
-	}
-
-	if err := s.db.AddRecord(recordData); err != nil {
-		// Log error but don't fail the push operation
-		storeLogger.Error("Failed to add record to search index", "error", err, "cid", pushedRef.GetCid())
-	} else {
-		storeLogger.Debug("Record added to search index successfully", "cid", pushedRef.GetCid())
-	}
-
-	return pushedRef, nil
+	// Delegate to the shared ingestion path (content store + search index).
+	return s.ingestor.ImportRecord(ctx, record)
 }
 
 // validateRecordRef validates a record reference.
@@ -457,40 +378,6 @@ func (s storeCtrl) pullRecordFromStore(ctx context.Context, recordRef *corev1.Re
 	}
 
 	return record, nil
-}
-
-// scanReportRow adapts inline scan report data to types.ScanReportObject for DB upsert.
-type scanReportRow struct {
-	recordCID   string
-	scannerType string
-	isSafe      bool
-	maxSeverity string
-}
-
-func (r *scanReportRow) GetRecordCID() string    { return r.recordCID }
-func (r *scanReportRow) GetScannerType() string  { return r.scannerType }
-func (r *scanReportRow) GetIsSafe() bool         { return r.isSafe }
-func (r *scanReportRow) GetMaxSeverity() string  { return r.maxSeverity }
-func (r *scanReportRow) GetUpdatedAt() time.Time { return time.Time{} }
-
-// scannerTypeShortName strips the "SCANNER_TYPE_" proto prefix to get the DB column value (e.g. "MCP").
-func scannerTypeShortName(t securityv1.ScannerType) string {
-	name := t.String()
-	if after, ok := strings.CutPrefix(name, "SCANNER_TYPE_"); ok {
-		return after
-	}
-
-	return name
-}
-
-// severityShortName strips the "SEVERITY_" proto prefix to get the DB column value (e.g. "HIGH").
-func severityShortName(s securityv1.Severity) string {
-	name := s.String()
-	if after, ok := strings.CutPrefix(name, "SEVERITY_"); ok {
-		return after
-	}
-
-	return name
 }
 
 // extractRecordInfo extracts name and version from a record for logging.

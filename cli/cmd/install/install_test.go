@@ -43,6 +43,8 @@ func TestTopLevelUninstallShorthand(t *testing.T) {
 	require.NotNil(t, UninstallCommand.PersistentFlags().Lookup("agents"))
 	require.NotNil(t, UninstallCommand.PersistentFlags().Lookup("dry-run"))
 	require.NotNil(t, UninstallCommand.PersistentFlags().Lookup("yes"))
+	require.NotNil(t, UninstallCommand.PersistentFlags().Lookup("limit"))
+	require.NotNil(t, UninstallCommand.PersistentFlags().Lookup("module"))
 }
 
 // --- confirm tests ---

@@ -13,6 +13,8 @@ import (
 	coretypes "github.com/agntcy/dir/api/core/types"
 	corev1 "github.com/agntcy/dir/api/core/v1"
 	routingv1 "github.com/agntcy/dir/api/routing/v1"
+	"github.com/agntcy/dir/server/ingest"
+	"github.com/agntcy/dir/server/routing/autosync"
 	"github.com/agntcy/dir/server/routing/internal/p2p"
 	"github.com/agntcy/dir/server/routing/pubsub"
 	"github.com/agntcy/dir/server/routing/rpc"
@@ -96,7 +98,12 @@ func QueryAllNamespaces(ctx context.Context, dstore types.Datastore) ([]Namespac
 // routeRemote handles routing across the network with hybrid label discovery.
 // It uses both GossipSub (efficient, wide propagation) and DHT+Pull (fallback).
 type routeRemote struct {
-	storeAPI        types.StoreAPI
+	storeAPI types.StoreAPI
+
+	// autosyncMgr pulls+ingests records from trusted peers on DHT announcements.
+	// It is nil when autosync is disabled (deny-by-default).
+	autosyncMgr *autosync.Manager
+
 	server          *p2p.Server
 	service         *rpc.Service
 	notifyCh        chan *handlerSync
@@ -114,6 +121,8 @@ type routeRemote struct {
 
 func newRemote(parentCtx context.Context,
 	storeAPI types.StoreAPI,
+	ingestor ingest.Ingestor,
+	validator corev1.Validator,
 	dstore types.Datastore,
 	opts types.APIOptions,
 ) (*routeRemote, error) {
@@ -122,6 +131,35 @@ func newRemote(parentCtx context.Context,
 
 	// Determine if this is a bootstrap node (no bootstrap peers configured)
 	isBootstrapNode := len(opts.Config().Routing.BootstrapPeers) == 0
+
+	// Resolve autosync policy up front so a bad peer ID fails fast at startup
+	// (deny-by-default: the allow-set is empty unless autosync is enabled).
+	autosyncCfg := opts.Config().Routing.Autosync
+
+	var autosyncPeers map[peer.ID]struct{}
+
+	if autosyncCfg.Enabled {
+		allowSet, err := autosyncCfg.AllowSet()
+		if err != nil {
+			cancel()
+
+			return nil, fmt.Errorf("invalid autosync configuration: %w", err)
+		}
+
+		if ingestor == nil {
+			cancel()
+
+			return nil, fmt.Errorf("autosync is enabled but no ingestion service was provided")
+		}
+
+		if validator == nil {
+			cancel()
+
+			return nil, fmt.Errorf("autosync is enabled but no record validator was provided")
+		}
+
+		autosyncPeers = allowSet
+	}
 
 	// Create routing
 	routeAPI := &routeRemote{
@@ -142,10 +180,15 @@ func newRemote(parentCtx context.Context,
 	server, err := p2p.New(parentCtx,
 		p2p.WithListenAddress(opts.Config().Routing.ListenAddress),
 		p2p.WithDirectoryAPIAddress(opts.Config().Routing.DirectoryAPIAddress),
+		p2p.WithDirectoryOCIAddress(opts.Config().Routing.DirectoryOCIAddress),
 		p2p.WithBootstrapAddrs(opts.Config().Routing.BootstrapPeers),
 		p2p.WithRefreshInterval(refreshInterval),
 		p2p.WithRandevous(ProtocolRendezvous), // enable libp2p auto-discovery
 		p2p.WithIdentityKeyPath(opts.Config().Routing.KeyPath),
+		p2p.WithRelayService(opts.Config().Routing.RelayService),
+		p2p.WithStaticRelays(opts.Config().Routing.StaticRelays),
+		p2p.WithForceReachabilityPrivate(opts.Config().Routing.ForceReachabilityPrivate),
+		p2p.WithForceReachabilityPublic(opts.Config().Routing.ForceReachabilityPublic),
 		p2p.WithCustomDHTOpts(
 			func(h host.Host) ([]dht.Option, error) {
 				providerMgr, err := records.NewProviderManager(parentCtx, h.ID(), h.Peerstore(), dstore)
@@ -218,6 +261,17 @@ func newRemote(parentCtx context.Context,
 	// Pass Publish as callback to avoid circular dependency
 	// The method value captures routeAPI's state (server, pubsubManager)
 	routeAPI.cleanupManager = NewCleanupManager(dstore, storeAPI, server, routeAPI.Publish)
+
+	// Initialize DHT autosync if enabled (deny-by-default). The manager pulls and
+	// ingests records/referrers announced by trusted peers, off the notification
+	// handler goroutine.
+	if autosyncCfg.Enabled {
+		routeAPI.autosyncMgr = autosync.NewManager(autosyncPeers, rpcService, server, ingestor, storeAPI, validator)
+		//nolint:contextcheck // Intentionally passing routing context to worker goroutines for lifecycle management
+		routeAPI.autosyncMgr.Start(routeAPI.ctx, &routeAPI.wg)
+
+		remoteLogger.Info("DHT autosync enabled", "trusted_peers", len(autosyncPeers))
+	}
 
 	// Start all background goroutines with routing context
 	routeAPI.wg.Add(1)
@@ -461,20 +515,36 @@ func (r *routeRemote) getRemoteRecordLabels(ctx context.Context, cid, peerID str
 	return labelList
 }
 
-// createPeerInfo creates a Peer message from a PeerID string.
+// createPeerInfo creates a Peer message from a PeerID string, advertising the
+// peer's Directory API (/dir/) and OCI registry (/oci/) endpoints when known.
+// Addresses are returned in prefixed multiaddr form (e.g. "/dir/host:443",
+// "/oci/host:5000") so the consumer can tell them apart. Missing endpoints are
+// omitted (the slice may be empty).
 func (r *routeRemote) createPeerInfo(ctx context.Context, peerID string) *routingv1.Peer {
-	dirAPIAddr := r.getDirectoryAPIAddress(ctx, peerID)
+	addrs := make([]string, 0, 2) //nolint:mnd // dir + oci
+
+	if v := r.getPeerProtocolAddress(ctx, peerID, p2p.DirProtocolCode); v != "" {
+		addrs = append(addrs, "/"+p2p.DirProtocol+"/"+v)
+	}
+
+	if v := r.getPeerProtocolAddress(ctx, peerID, p2p.OciProtocolCode); v != "" {
+		addrs = append(addrs, "/"+p2p.OciProtocol+"/"+v)
+	}
 
 	return &routingv1.Peer{
 		Id:    peerID,
-		Addrs: []string{dirAPIAddr},
+		Addrs: addrs,
 	}
 }
 
-func (r *routeRemote) getDirectoryAPIAddress(ctx context.Context, peerID string) string {
+// getPeerProtocolAddress returns the value of the given custom multiaddr
+// protocol (e.g. DirProtocolCode, OciProtocolCode) advertised by the peer,
+// checking the datastore cache first and falling back to the live peerstore.
+// Returns "" if the peer advertises no such address.
+func (r *routeRemote) getPeerProtocolAddress(ctx context.Context, peerID string, code int) string {
 	// Try datastore cache first (fast path)
-	if dirAddr := r.getDirectoryAPIAddressFromDatastore(ctx, peerID); dirAddr != "" {
-		return dirAddr
+	if addr := r.getPeerProtocolAddressFromDatastore(ctx, peerID, code); addr != "" {
+		return addr
 	}
 
 	// Fallback: Try live peerstore (handles mDNS and DHT without addresses)
@@ -487,35 +557,19 @@ func (r *routeRemote) getDirectoryAPIAddress(ctx context.Context, peerID string)
 
 	peerstoreAddrs := r.server.Host().Peerstore().Addrs(pid)
 	if len(peerstoreAddrs) == 0 {
-		remoteLogger.Warn("No Directory API address found for peer",
-			"peerID", peerID,
-			"note", "Peer might be discovered via mDNS or DHT without /dir/ configuration")
-
 		return ""
 	}
 
-	remoteLogger.Debug("Trying peerstore addresses for /dir/ protocol",
-		"peerID", peerID,
-		"addrs", len(peerstoreAddrs))
-
-	if dirAddr := extractDirProtocol(peerstoreAddrs, peerID); dirAddr != "" {
-		return dirAddr
-	}
-
-	remoteLogger.Warn("No /dir/ protocol found in peerstore addresses",
-		"peerID", peerID)
-
-	return ""
+	return extractProtocolValue(peerstoreAddrs, code)
 }
 
-// getDirectoryAPIAddressFromDatastore checks datastore cache for peer addresses.
-func (r *routeRemote) getDirectoryAPIAddressFromDatastore(ctx context.Context, peerID string) string {
+// getPeerProtocolAddressFromDatastore checks the datastore cache for the peer's
+// advertised value of the given multiaddr protocol code.
+func (r *routeRemote) getPeerProtocolAddressFromDatastore(ctx context.Context, peerID string, code int) string {
 	key := datastore.NewKey("peer_addrs/" + peerID)
 
 	addresses, err := r.dstore.Get(ctx, key)
 	if err != nil {
-		remoteLogger.Debug("No cached peer addresses in datastore", "peerID", peerID)
-
 		return ""
 	}
 
@@ -526,7 +580,7 @@ func (r *routeRemote) getDirectoryAPIAddressFromDatastore(ctx context.Context, p
 		return ""
 	}
 
-	return extractDirProtocol(multiaddrs, peerID)
+	return extractProtocolValue(multiaddrs, code)
 }
 
 // storePeerAddresses stores peer addresses in datastore for later retrieval.
@@ -573,27 +627,14 @@ func (r *routeRemote) storePeerAddresses(ctx context.Context, peerIDStr string, 
 	remoteLogger.Debug("Stored peer addresses", "peerID", peerIDStr, "count", len(peerAddrs))
 }
 
-// extractDirProtocol extracts the /dir/ protocol value from a list of multiaddrs.
-// Returns empty string if no /dir/ protocol is found.
-func extractDirProtocol(multiaddrs []ma.Multiaddr, peerID string) string {
+// extractProtocolValue returns the value of the given multiaddr protocol code
+// from the first address that carries it, or "" if none do. The stored value is
+// percent-encoded (see p2p.EncodeAppAddr), so it is decoded back to its original
+// URL form before returning.
+func extractProtocolValue(multiaddrs []ma.Multiaddr, code int) string {
 	for _, addr := range multiaddrs {
-		protocols := addr.Protocols()
-		for _, protocol := range protocols {
-			if protocol.Code == p2p.DirProtocolCode {
-				value, err := addr.ValueForProtocol(p2p.DirProtocolCode)
-				if err != nil {
-					remoteLogger.Debug("Failed to extract /dir/ protocol value",
-						"peerID", peerID,
-						"addr", addr.String(),
-						"error", err)
-				} else {
-					remoteLogger.Debug("Found Directory API address",
-						"peerID", peerID,
-						"dirAddress", value)
-
-					return value
-				}
-			}
+		if value, err := addr.ValueForProtocol(code); err == nil && value != "" {
+			return p2p.DecodeAppAddr(value)
 		}
 	}
 
@@ -690,6 +731,13 @@ func (r *routeRemote) handleCIDProviderNotification(ctx context.Context, notif *
 
 	// Store peer addresses for later use
 	r.storePeerAddresses(ctx, peerIDStr, notif.Peer.ID, notif.Peer.Addrs, notif.Ref.GetCid())
+
+	// DHT autosync: if enabled and the announcing peer is trusted, schedule a
+	// pull+ingest of the record (and its referrers). Non-blocking and independent
+	// of the label-discovery logic below.
+	if r.autosyncMgr != nil {
+		r.autosyncMgr.MaybeEnqueue(notif.Ref, notif.Peer)
+	}
 
 	// Check if we already have labels cached (from GossipSub announcement)
 	if r.hasRemoteRecordCached(ctx, notif.Ref.GetCid(), peerIDStr) {
@@ -814,7 +862,8 @@ func (r *routeRemote) hasRemoteRecordCached(ctx context.Context, cid, peerID str
 //
 // Parameters:
 //   - ctx: Operation context
-//   - authenticatedPeerID: Cryptographically verified peer ID from msg.ReceivedFrom
+//   - authenticatedPeerID: Cryptographically verified author from the signed
+//     GossipSub message (msg.GetFrom) — the record publisher, not the forwarder
 //   - event: The announcement payload (CID, labels, timestamp)
 //
 // Flow:
@@ -833,6 +882,21 @@ func (r *routeRemote) handleRecordPublishEvent(ctx context.Context, authenticate
 	// Skip our own announcements (already cached during local Publish)
 	if authenticatedPeerID == r.server.Host().ID().String() {
 		return
+	}
+
+	// DHT autosync trigger via GossipSub. GossipSub reaches NAT'd subscribers
+	// reliably (mesh-forwarded) where the DHT provider notification often does
+	// not, so it is the primary cross-NAT trigger. The authenticated peer ID is
+	// the signed message author (the publisher); the worker resolves its
+	// addresses via FindPeer before pulling. Non-blocking and independent of the
+	// label caching below.
+	if r.autosyncMgr != nil {
+		if authorID, err := peer.Decode(authenticatedPeerID); err == nil {
+			r.autosyncMgr.MaybeEnqueue(&corev1.RecordRef{Cid: event.CID}, peer.AddrInfo{ID: authorID})
+		} else {
+			remoteLogger.Warn("Failed to decode authenticated peer ID for autosync",
+				"peer", authenticatedPeerID, "error", err)
+		}
 	}
 
 	remoteLogger.Info("Caching labels from GossipSub announcement",

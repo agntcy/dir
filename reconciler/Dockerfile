@@ -3,7 +3,7 @@
 # xx is a helper for cross-compilation
 FROM --platform=$BUILDPLATFORM tonistiigi/xx:1.9.0@sha256:c64defb9ed5a91eacb37f96ccc3d4cd72521c4bd18d5442905b95e2226b0e707 AS xx
 
-FROM --platform=$BUILDPLATFORM golang:1.26.4-bookworm@sha256:5f68ec6805843bd3981a951ffada82a26a0bd2631045c8f7dba483fa868f5ec5 AS builder
+FROM --platform=$BUILDPLATFORM golang:1.26.5-bookworm@sha256:e60d708a92ad26a6d61901334510d3debd23ddcba125663ecd6008d42e8ec669 AS builder
 
 COPY --link --from=xx / /
 
@@ -53,7 +53,8 @@ ENTRYPOINT ["/go/bin/dlv", "--listen=0.0.0.0:2345", "--headless=true", "--accept
 FROM busybox:1.38.0-musl@sha256:8635836765b0c4c43970660219739baa58b0883c2e429e4b8918f7dd1519455c
 
 # Create non-root user matching distroless nonroot
-RUN addgroup -g 55532 -S nonroot && adduser -u 55532 -S nonroot -G nonroot
+RUN addgroup -g 55532 -S nonroot && adduser -u 55532 -S nonroot -G nonroot \
+    && mkdir -p /home/nonroot && chown 55532:55532 /home/nonroot
 
 WORKDIR /
 
@@ -77,10 +78,32 @@ COPY --from=builder /usr/share/ca-certificates /usr/share/ca-certificates
 COPY --from=builder /bin/reconciler ./reconciler
 
 # Create a non-root user for coverage
-RUN addgroup -g 55532 -S nonroot && adduser -u 55532 -S nonroot -G nonroot
+RUN addgroup -g 55532 -S nonroot && adduser -u 55532 -S nonroot -G nonroot \
+    && mkdir -p /home/nonroot && chown 55532:55532 /home/nonroot
 
 # Create coverage directory with proper permissions
 RUN mkdir -p /tmp/coverage && chown -R 55532:55532 /tmp/coverage
+
+USER 55532:55532
+
+ENTRYPOINT ["./reconciler"]
+
+FROM python:3.13-slim AS scanner
+
+RUN groupadd -g 55532 -r nonroot && useradd -u 55532 -r -g nonroot nonroot \
+    && mkdir -p /home/nonroot && chown 55532:55532 /home/nonroot
+
+WORKDIR /
+
+COPY --from=builder /etc/ssl/certs /etc/ssl/certs
+COPY --from=builder /usr/share/ca-certificates /usr/share/ca-certificates
+COPY --from=builder /bin/reconciler ./reconciler
+
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends git \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN pip install --no-cache-dir cisco-ai-mcp-scanner cisco-ai-skill-scanner
 
 USER 55532:55532
 

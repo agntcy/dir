@@ -28,7 +28,8 @@ services:
       retries: 60
       start_period: 10s
   oasf:
-    image: ghcr.io/agntcy/oasf-server:latest
+    # Pin to the released 1.0.0 schema image.
+    image: ghcr.io/agntcy/oasf-server:v1.0.4
     ports:
       - 8092:8080
     deploy:
