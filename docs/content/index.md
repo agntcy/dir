@@ -176,7 +176,7 @@ Need a skill, MCP server, or A2A partner? Your agent searches the Directory, wir
   <div class="dir-community-social">
     <a
       class="dir-community-card"
-      href="https://discord.gg/7dhMdJuc"
+      href="https://discord.gg/FbEnSHXD34"
       target="_blank"
       rel="noopener noreferrer"
     >
