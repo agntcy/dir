@@ -5,6 +5,7 @@ package p2p
 
 import (
 	"fmt"
+	"net/url"
 
 	"github.com/libp2p/go-libp2p"
 	"github.com/libp2p/go-libp2p/core/crypto"
@@ -13,6 +14,60 @@ import (
 	libp2ptls "github.com/libp2p/go-libp2p/p2p/security/tls"
 	ma "github.com/multiformats/go-multiaddr"
 )
+
+// EncodeAppAddr percent-encodes an application address (e.g. "ghcr.io/org/repo")
+// into a single multiaddr path segment, escaping "/" so it does not collide with
+// the multiaddr component separator. This mirrors the multiaddr /http-path
+// convention (RFC 3986 segment-nz encoding); the binary form is length-prefixed
+// so no encoding is needed there.
+func EncodeAppAddr(addr string) string {
+	return url.PathEscape(addr)
+}
+
+// DecodeAppAddr reverses EncodeAppAddr. On malformed input it returns the value
+// unchanged (best effort) so callers always get a usable string.
+func DecodeAppAddr(seg string) string {
+	decoded, err := url.PathUnescape(seg)
+	if err != nil {
+		return seg
+	}
+
+	return decoded
+}
+
+// buildAppAddrs constructs the advertised /dir/ and /oci/ host multiaddrs from
+// the configured (URL-form) addresses, skipping empty or invalid values.
+func buildAppAddrs(dirAPIAddr, ociAddr string) []ma.Multiaddr {
+	var out []ma.Multiaddr
+
+	if a := newAppAddr(DirProtocol, dirAPIAddr); a != nil {
+		out = append(out, a)
+	}
+
+	if a := newAppAddr(OciProtocol, ociAddr); a != nil {
+		out = append(out, a)
+	}
+
+	return out
+}
+
+// newAppAddr builds a "/<proto>/<percent-encoded addr>" multiaddr, or returns
+// nil (logging once) when the address is empty or cannot be represented.
+func newAppAddr(proto, addr string) ma.Multiaddr {
+	if addr == "" {
+		return nil
+	}
+
+	m, err := ma.NewMultiaddr("/" + proto + "/" + EncodeAppAddr(addr))
+	if err != nil {
+		logger.Warn("Ignoring invalid routing address; not advertised",
+			"protocol", proto, "value", addr, "error", err)
+
+		return nil
+	}
+
+	return m
+}
 
 const (
 	DirProtocol     = "dir"
@@ -76,25 +131,18 @@ func newHost(listenAddr, dirAPIAddr, ociAddr string, key crypto.PrivKey, enableR
 		return nil, fmt.Errorf("failed to create p2p host connection manager: %w", err)
 	}
 
+	// Precompute the advertised Directory API (/dir/) and OCI registry (/oci/)
+	// multiaddrs once; the AddrsFactory below runs on every address query. Values
+	// are percent-encoded so URL-form addresses (e.g. "ghcr.io/org/repo") survive
+	// the multiaddr separator. Invalid values are logged once and skipped.
+	appAddrs := buildAppAddrs(dirAPIAddr, ociAddr)
+
 	hostOpts := []libp2p.Option{
-		// Advertise the Directory API (/dir/) and OCI registry (/oci/) endpoints
-		// as host multiaddrs so peers learn them via identify. Each is optional;
-		// only non-empty values are appended.
+		// Advertise the app-level endpoints as host multiaddrs so peers learn
+		// them via identify.
 		libp2p.AddrsFactory(
 			func(addrs []ma.Multiaddr) []ma.Multiaddr {
-				if dirAPIAddr != "" {
-					if a, err := ma.NewMultiaddr("/" + DirProtocol + "/" + dirAPIAddr); err == nil {
-						addrs = append(addrs, a)
-					}
-				}
-
-				if ociAddr != "" {
-					if a, err := ma.NewMultiaddr("/" + OciProtocol + "/" + ociAddr); err == nil {
-						addrs = append(addrs, a)
-					}
-				}
-
-				return addrs
+				return append(addrs, appAddrs...)
 			},
 		),
 		// Use the keypair we generated

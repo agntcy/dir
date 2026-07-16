@@ -628,11 +628,13 @@ func (r *routeRemote) storePeerAddresses(ctx context.Context, peerIDStr string, 
 }
 
 // extractProtocolValue returns the value of the given multiaddr protocol code
-// from the first address that carries it, or "" if none do.
+// from the first address that carries it, or "" if none do. The stored value is
+// percent-encoded (see p2p.EncodeAppAddr), so it is decoded back to its original
+// URL form before returning.
 func extractProtocolValue(multiaddrs []ma.Multiaddr, code int) string {
 	for _, addr := range multiaddrs {
 		if value, err := addr.ValueForProtocol(code); err == nil && value != "" {
-			return value
+			return p2p.DecodeAppAddr(value)
 		}
 	}
 
