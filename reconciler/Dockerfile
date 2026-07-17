@@ -103,7 +103,13 @@ RUN apt-get update \
     && apt-get install -y --no-install-recommends git \
     && rm -rf /var/lib/apt/lists/*
 
-RUN pip install --no-cache-dir cisco-ai-mcp-scanner cisco-ai-skill-scanner
+ARG MCP_SCANNER_VERSION
+ARG SKILL_SCANNER_VERSION
+ARG A2A_SCANNER_VERSION
+RUN pip install --no-cache-dir \
+    cisco-ai-mcp-scanner==${MCP_SCANNER_VERSION} \
+    cisco-ai-skill-scanner==${SKILL_SCANNER_VERSION} \
+    cisco-ai-a2a-scanner==${A2A_SCANNER_VERSION}
 
 USER 55532:55532
 

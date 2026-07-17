@@ -137,7 +137,7 @@ func TestBuildClientConfigForRemote(t *testing.T) {
 			config:      "",
 			remote:      "http://localhost:8888",
 			authn:       authnconfig.Config{},
-			wantAddress: "http://localhost:8888",
+			wantAddress: "localhost:8888",
 			wantMode:    "insecure",
 		},
 		{
@@ -150,10 +150,23 @@ func TestBuildClientConfigForRemote(t *testing.T) {
 				SocketPath: "/run/spire/agent.sock",
 				Audiences:  []string{"directory"},
 			},
-			wantAddress: "http://localhost:8888",
+			wantAddress: "localhost:8888",
 			wantMode:    "jwt",
 			wantSocket:  "/run/spire/agent.sock",
 			wantAud:     "directory",
+		},
+		{
+			name:   "https url without context is normalized to host:port",
+			config: "",
+			remote: "https://ads.outshift.io",
+			authn: authnconfig.Config{
+				Enabled:    true,
+				Mode:       authnconfig.AuthModeX509,
+				SocketPath: "unix:///run/spire/agent-sockets/api.sock",
+			},
+			wantAddress: "ads.outshift.io:443",
+			wantMode:    "x509",
+			wantSocket:  "unix:///run/spire/agent-sockets/api.sock",
 		},
 		{
 			name: "matching context overrides authn config",

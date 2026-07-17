@@ -29,13 +29,18 @@ vars:
     - "ghcr.io/project-zot/zot:v{{.ZOT_VERSION}}"
     - "docker.io/bitnami/postgresql:{{.POSTGRESQL_VERSION}}"
 
+  ## Scanner versions
+  MCP_SCANNER_VERSION: "4.8.0"
+  SKILL_SCANNER_VERSION: "2.0.11"
+  A2A_SCANNER_VERSION: "1.0.1"
+
   ## Image config
   BUILD_LDFLAGS: "-s -w -extldflags -static {{.VERSION_LDFLAGS}}"
   IMAGE_REPO: '{{ .IMAGE_REPO | default "ghcr.io/agntcy" }}'
   IMAGE_TAG: "{{ .IMAGE_TAG | default .COMMIT_SHA }}"
   IMAGE_BAKE_ENV: "IMAGE_REPO={{.IMAGE_REPO}} IMAGE_TAG={{.IMAGE_TAG}}"
   IMAGE_BAKE_OPTS: '{{ .IMAGE_BAKE_OPTS | default "" }}'
-  BAKE_ENV: '{{ .IMAGE_BAKE_ENV }} BUILD_LDFLAGS="{{.BUILD_LDFLAGS}}"'
+  BAKE_ENV: '{{ .IMAGE_BAKE_ENV }} BUILD_LDFLAGS="{{.BUILD_LDFLAGS}}" MCP_SCANNER_VERSION={{.MCP_SCANNER_VERSION}} SKILL_SCANNER_VERSION={{.SKILL_SCANNER_VERSION}} A2A_SCANNER_VERSION={{.A2A_SCANNER_VERSION}}'
   COVERAGE: '{{ .COVERAGE | default "false" }}'
   COVERAGE_IMAGE_TAG: "{{ .IMAGE_TAG | default .COMMIT_SHA }}-coverage"
   COVERAGE_IMAGE_BAKE_ENV: "IMAGE_REPO={{.IMAGE_REPO}} IMAGE_TAG={{.COVERAGE_IMAGE_TAG}}"

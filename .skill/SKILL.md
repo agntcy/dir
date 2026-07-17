@@ -27,7 +27,7 @@ and publish" → authoring + publishing).
 | "push", "publish to the network", "sign my record", "prove name ownership"                                  | [references/publishing.md](references/publishing.md)     |
 | "find/search/suggest agents, MCP servers, skills", "browse the directory", "pull a record"                  | [references/discovery.md](references/discovery.md)       |
 | "is this record signed/safe/verified?", "check scan reports", "verify signature"                            | [references/verification.md](references/verification.md) |
-| "sync with another directory", "mirror records", "autosync from a peer"                                     | [references/sync.md](references/sync.md)                 |
+| "sync with another directory", "mirror records", "sync from a public registry/GHCR"                         | [references/sync.md](references/sync.md)                 |
 | "install <record> into my editor/agent", "uninstall", "export as mcp.json / SKILL.md / A2A card"            | [references/install.md](references/install.md)           |
 
 ## Vocabulary
