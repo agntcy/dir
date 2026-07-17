@@ -27,8 +27,8 @@ require (
 	github.com/agntcy/dir-runtime/store v1.3.3
 	github.com/agntcy/dir/api v1.6.0
 	github.com/agntcy/dir/client v1.6.0
-	github.com/agntcy/dir/reconciler v1.5.0
-	github.com/agntcy/dir/server v1.5.0
+	github.com/agntcy/dir/reconciler v1.6.0
+	github.com/agntcy/dir/server v1.6.0
 	github.com/agntcy/dir/utils v1.6.0
 	github.com/agntcy/oasf-sdk/pkg v1.1.0
 	github.com/briandowns/spinner v1.23.2

@@ -18,7 +18,7 @@ replace github.com/ThalesIgnite/crypto11 => github.com/ThalesGroup/crypto11 v1.6
 require (
 	buf.build/gen/go/agntcy/oasf/protocolbuffers/go v1.36.11-20260703134941-ebce38fee5a5.1
 	github.com/agntcy/dir/api v1.6.0
-	github.com/agntcy/dir/cli v0.0.0-00010101000000-000000000000
+	github.com/agntcy/dir/cli v1.6.0
 	github.com/agntcy/dir/client v1.6.0
 	github.com/opencontainers/go-digest v1.0.0
 	github.com/sigstore/cosign/v3 v3.1.1
@@ -79,8 +79,8 @@ require (
 	github.com/agntcy/dir-runtime/server v1.3.3 // indirect
 	github.com/agntcy/dir-runtime/store v1.3.3 // indirect
 	github.com/agntcy/dir-runtime/utils v1.3.3 // indirect
-	github.com/agntcy/dir/reconciler v1.5.0 // indirect
-	github.com/agntcy/dir/server v1.5.0 // indirect
+	github.com/agntcy/dir/reconciler v1.6.0 // indirect
+	github.com/agntcy/dir/server v1.6.0 // indirect
 	github.com/agntcy/dir/utils v1.6.0 // indirect
 	github.com/agntcy/oasf-sdk/pkg v1.1.0 // indirect
 	github.com/alecthomas/chroma v0.10.0 // indirect
