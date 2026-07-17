@@ -8,6 +8,9 @@ variable "IMAGE_REPO" { default = "ghcr.io/agntcy" }
 variable "IMAGE_TAG" { default = "v0.1.0-rc" }
 variable "BUILD_LDFLAGS" { default = "-s -w -extldflags -static" }
 variable "IMAGE_NAME_SUFFIX" { default = "" }
+variable "MCP_SCANNER_VERSION" { default = "4.7.5" }
+variable "SKILL_SCANNER_VERSION" { default = "2.0.11" }
+variable "A2A_SCANNER_VERSION" { default = "1.0.1" }
 
 function "get_tag" {
   params = [tags, name]
@@ -86,7 +89,11 @@ target "dir-reconciler" {
     "_common",
     "docker-metadata-action",
   ]
-  args = {}
+  args = {
+    MCP_SCANNER_VERSION   = "${MCP_SCANNER_VERSION}"
+    SKILL_SCANNER_VERSION = "${SKILL_SCANNER_VERSION}"
+    A2A_SCANNER_VERSION   = "${A2A_SCANNER_VERSION}"
+  }
   tags = get_tag(target.docker-metadata-action.tags, "${target.dir-reconciler.name}")
 }
 
