@@ -1,0 +1,5470 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+      
+      
+        <link rel="canonical" href="https://agntcy.github.io/dir/latest/dir/dir-cli-reference/">
+      
+      
+        <link rel="prev" href="../dir-sdk-javascript/">
+      
+      
+        <link rel="next" href="../dir-api-reference/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../assets/agntcy/favicon.ico">
+      <meta name="generator" content="mkdocs-ProperDocs 1.6.7, mkdocs-material-9.7.6">
+    
+    
+      
+        <title>CLI Reference - Agent Directory Service</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/main.484c7ddc.min.css">
+      
+        
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../../stylesheets/agntcy-docs.css">
+    
+      <link rel="stylesheet" href="../../stylesheets/dir-landing.css">
+    
+      <link rel="stylesheet" href="../../stylesheets/dirctl-terminal.css">
+    
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+  
+
+
+  
+  
+
+<script id="__analytics">function __md_analytics(){function e(){dataLayer.push(arguments)}window.dataLayer=window.dataLayer||[],e("js",new Date),e("config","G-H5NVFB80VS"),document.addEventListener("DOMContentLoaded",(function(){document.forms.search&&document.forms.search.query.addEventListener("blur",(function(){this.value&&e("event","search",{search_term:this.value})}));document$.subscribe((function(){var t=document.forms.feedback;if(void 0!==t)for(var a of t.querySelectorAll("[type=submit]"))a.addEventListener("click",(function(a){a.preventDefault();var n=document.location.pathname,d=this.getAttribute("data-md-value");e("event","feedback",{page:n,data:d}),t.firstElementChild.disabled=!0;var r=t.querySelector(".md-feedback__note [data-md-value='"+d+"']");r&&(r.hidden=!1)})),t.hidden=!1})),location$.subscribe((function(t){e("config","G-H5NVFB80VS",{page_path:t.pathname})}))}));var t=document.createElement("script");t.async=!0,t.src="https://www.googletagmanager.com/gtag/js?id=G-H5NVFB80VS",document.getElementById("__analytics").insertAdjacentElement("afterEnd",t)}</script>
+  
+    <script>if("undefined"!=typeof __md_analytics){var consent=__md_get("__consent");consent&&consent.analytics&&__md_analytics()}</script>
+  
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#directory-cli-command-reference" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+        <aside class="md-banner">
+          <div class="md-banner__inner md-grid md-typeset">
+            
+              <button class="md-banner__button md-icon" aria-label="Don't show this again">
+                
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+              </button>
+            
+            
+  Join the Federation Testbed! For more information,
+  <a
+    href="https://github.com/agntcy/dir/discussions/455"
+    target="_blank"
+    rel="noopener noreferrer"
+  >see here</a>.
+
+          </div>
+          
+            <script>var el=document.querySelector("[data-md-component=announce]");if(el){var content=el.querySelector(".md-typeset");__md_hash(content.innerHTML)===__md_get("__announce")&&(el.hidden=!0)}</script>
+          
+        </aside>
+      
+    </div>
+    
+      <div data-md-color-scheme="default" data-md-component="outdated" hidden>
+        
+      </div>
+    
+    
+      
+
+<header class="md-header" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../.." title="Agent Directory Service" class="md-header__button md-logo" aria-label="Agent Directory Service" data-md-component="logo">
+      <img src="../../assets/agntcy/img/logo-light.svg" alt="logo" class="logo-light" />
+<img src="../../assets/agntcy/img/logo-dark.svg" alt="logo" class="logo-dark" />
+<span class="md-logo__brand-name">Agent Directory Service</span>
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Agent Directory Service
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              CLI Reference
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme)" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3.9 12c0-1.71 1.39-3.1 3.1-3.1h4V7H7a5 5 0 0 0-5 5 5 5 0 0 0 5 5h4v-1.9H7c-1.71 0-3.1-1.39-3.1-3.1M8 13h8v-2H8zm9-6h-4v1.9h4c1.71 0 3.1 1.39 3.1 3.1s-1.39 3.1-3.1 3.1h-4V17h4a5 5 0 0 0 5-5 5 5 0 0 0-5-5"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_2" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M17 7H7a5 5 0 0 0-5 5 5 5 0 0 0 5 5h10a5 5 0 0 0 5-5 5 5 0 0 0-5-5m0 8a3 3 0 0 1-3-3 3 3 0 0 1 3-3 3 3 0 0 1 3 3 3 3 0 0 1-3 3"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="black" data-md-color-accent="indigo"  aria-label="Switch to system preference"  type="radio" name="__palette" id="__palette_2">
+    
+      <label class="md-header__button md-icon" title="Switch to system preference" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M17 7H7a5 5 0 0 0-5 5 5 5 0 0 0 5 5h10a5 5 0 0 0 5-5 5 5 0 0 0-5-5M7 15a3 3 0 0 1-3-3 3 3 0 0 1 3-3 3 3 0 0 1 3 3 3 3 0 0 1-3 3"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+          <a href="javascript:void(0)" class="md-search__icon md-icon" title="Share" aria-label="Share" data-clipboard data-clipboard-text="" data-md-component="search-share" tabindex="-1">
+            
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M18 16.08c-.76 0-1.44.3-1.96.77L8.91 12.7c.05-.23.09-.46.09-.7s-.04-.47-.09-.7l7.05-4.11c.54.5 1.25.81 2.04.81a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3c0 .24.04.47.09.7L8.04 9.81C7.5 9.31 6.79 9 6 9a3 3 0 0 0-3 3 3 3 0 0 0 3 3c.79 0 1.5-.31 2.04-.81l7.12 4.15c-.05.21-.08.43-.08.66 0 1.61 1.31 2.91 2.92 2.91s2.92-1.3 2.92-2.91A2.92 2.92 0 0 0 18 16.08"/></svg>
+          </a>
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/agntcy/dir" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    agntcy/dir
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+            
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../.." class="md-tabs__link">
+        
+  
+  
+    
+  
+  Home
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+    
+  
+  
+    
+    
+      
+  
+  
+  
+    
+  
+  
+    
+    
+      <li class="md-tabs__item md-tabs__item--active">
+        <a href="../dir-overview/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Documentation
+
+        </a>
+      </li>
+    
+  
+
+    
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../../community/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Community
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="https://datatracker.ietf.org/doc/draft-mp-agntcy-ads" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Specification
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="https://blogs.agntcy.org/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Blog
+
+      </a>
+    </li>
+  
+
+      
+    </ul>
+  </div>
+</nav>
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../.." title="Agent Directory Service" class="md-nav__button md-logo" aria-label="Agent Directory Service" data-md-component="logo">
+      <img src="../../assets/agntcy/img/logo-light.svg" alt="logo" class="logo-light" />
+<img src="../../assets/agntcy/img/logo-dark.svg" alt="logo" class="logo-dark" />
+<span class="md-logo__brand-name">Agent Directory Service</span>
+    </a>
+    Agent Directory Service
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/agntcy/dir" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    agntcy/dir
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+        
+        
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Documentation
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Documentation
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+          
+          
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_1" >
+        
+          
+          <label class="md-nav__link" for="__nav_2_1" id="__nav_2_1_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Get Started
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_1_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_1">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Get Started
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../dir-overview/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../dir-quickstart/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Quickstart
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../dir-features-scenarios/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Usage Guide
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+          
+          
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2_2" id="__nav_2_2_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Concepts
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Concepts
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../dir-architecture/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Architecture
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../dir-component-records-validation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Records
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../dir-component-store/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Store
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../dir-component-routing/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Routing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../dir-component-trust-model/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Trust Model
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_2_6" >
+        
+          
+          <label class="md-nav__link" for="__nav_2_2_6" id="__nav_2_2_6_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Extensions
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_2_2_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_2_6">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Extensions
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../dir-component-runtime-discovery/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Runtime Discovery
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../dir-component-mcp-server/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    MCP Server
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../dir-component-import/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Import and Export
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../dir-component-oidc-authentication/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    OIDC Authentication
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+          
+          
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_2_3" id="__nav_2_3_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Deploy
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Deploy
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../dir-deployment-local/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Local Deployment
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../dir-deployment-kubernetes/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Kubernetes Deployment
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../dir-prod-deployment/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Production Deployment
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_3_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_2_3_4" id="__nav_2_3_4_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Federation Deployment
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_2_3_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_3_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Federation Deployment
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../dir-federation-overview/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../dir-federation-aws-eks/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Federation on Amazon EKS
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../dir-federation-setup/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Running a Federated Directory Instance
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../dir-federation-profiles/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Profiles
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../dir-federation-troubleshooting/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Best Practices and Troubleshooting
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+          
+          
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_2_4" id="__nav_2_4_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    SDKs
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    SDKs
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../dir-sdk/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    SDK Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../dir-sdk-go/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Go SDK
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../dir-sdk-python/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Python SDK
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../dir-sdk-javascript/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    JavaScript / TypeScript SDK
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+          
+          
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_5" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_2_5" id="__nav_2_5_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Reference
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_5_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_2_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Reference
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    CLI Reference
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    CLI Reference
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#global-options" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Global options
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Global options">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#output-formats" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Output formats
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#server-connection" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Server connection
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#authentication" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Authentication
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#command-groups" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Command groups
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#getting-help" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Getting help
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#setup" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Setup
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Setup">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#dirctl-init-flags" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        dirctl init [flags]
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#diagnostics" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Diagnostics
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Diagnostics">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#dirctl-doctor-flags" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        dirctl doctor [flags]
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#dirctl-version" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        dirctl version
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#mcp-server" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        MCP Server
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="MCP Server">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#dirctl-mcp-serve" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        dirctl mcp serve
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#agent-install" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Agent Install
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Agent Install">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#dirctl-install-list" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        dirctl install list
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#dirctl-install-cid-or-name-dirctl-install-run-cid-or-name" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        dirctl install &lt;cid-or-name&gt; / dirctl install run &lt;cid-or-name&gt;
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#dirctl-install-uninstall-cid-or-name-flags" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        dirctl install uninstall &lt;cid-or-name&gt; [flags]
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#daemon-operations" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Daemon Operations
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Daemon Operations">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#dirctl-daemon-start" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        dirctl daemon start
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#dirctl-daemon-stop" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        dirctl daemon stop
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#dirctl-daemon-status" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        dirctl daemon status
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#context-operations" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Context Operations
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Context Operations">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#dirctl-context-list" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        dirctl context list
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#dirctl-context-current" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        dirctl context current
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#dirctl-context-set-name" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        dirctl context set &lt;name&gt;
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#dirctl-context-show-name" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        dirctl context show [name]
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#dirctl-context-validate-name" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        dirctl context validate [name]
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#storage-operations" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Storage Operations
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Storage Operations">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#dirctl-push-file" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        dirctl push &lt;file&gt;
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#dirctl-pull-reference" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        dirctl pull &lt;reference&gt;
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#dirctl-delete-cid" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        dirctl delete &lt;cid&gt;
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#dirctl-info-reference" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        dirctl info &lt;reference&gt;
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#import-operations" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Import Operations
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Import Operations">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#dirctl-import-flags" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        dirctl import [flags]
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#enrichment" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Enrichment
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#dry-run-output-directory" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Dry Run Output Directory
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#signing-records-during-import" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Signing Records During Import
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#export-operations" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Export Operations
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Export Operations">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#dirctl-export-cid-or-nameversiondigest-flags" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        dirctl export &lt;cid-or-name[:version][@digest]&gt; [flags]
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#routing-operations" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Routing Operations
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Routing Operations">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#dirctl-routing-publish-cid" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        dirctl routing publish &lt;cid&gt;
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#dirctl-routing-unpublish-cid" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        dirctl routing unpublish &lt;cid&gt;
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#dirctl-routing-list-flags" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        dirctl routing list [flags]
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#dirctl-routing-search-flags" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        dirctl routing search [flags]
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#dirctl-routing-info" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        dirctl routing info
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#search-discovery" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Search &amp; Discovery
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Search &amp; Discovery">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#dirctl-search-flags" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        dirctl search [flags]
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#security-verification" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Security &amp; Verification
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Security &amp; Verification">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#security-scanning" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Security Scanning
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#name-verification" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Name Verification
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#dirctl-sign-cid-flags" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        dirctl sign &lt;cid&gt; [flags]
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#dirctl-naming-verify-reference" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        dirctl naming verify &lt;reference&gt;
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#dirctl-verify-record-cid-flags" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        dirctl verify &lt;record-cid&gt; [flags]
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#dirctl-validate-file-flags" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        dirctl validate [&lt;file&gt;] [flags]
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#synchronization" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Synchronization
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Synchronization">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#dirctl-sync-create-url" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        dirctl sync create &lt;url&gt;
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#dirctl-sync-list" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        dirctl sync list
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#dirctl-sync-status-sync-id" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        dirctl sync status &lt;sync-id&gt;
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#dirctl-sync-delete-sync-id" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        dirctl sync delete &lt;sync-id&gt;
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../dir-api-reference/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    API Reference
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../community/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Community
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://datatracker.ietf.org/doc/draft-mp-agntcy-ads" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Specification
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://blogs.agntcy.org/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Blog
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#global-options" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Global options
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Global options">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#output-formats" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Output formats
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#server-connection" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Server connection
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#authentication" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Authentication
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#command-groups" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Command groups
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#getting-help" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Getting help
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#setup" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Setup
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Setup">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#dirctl-init-flags" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        dirctl init [flags]
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#diagnostics" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Diagnostics
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Diagnostics">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#dirctl-doctor-flags" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        dirctl doctor [flags]
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#dirctl-version" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        dirctl version
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#mcp-server" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        MCP Server
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="MCP Server">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#dirctl-mcp-serve" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        dirctl mcp serve
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#agent-install" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Agent Install
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Agent Install">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#dirctl-install-list" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        dirctl install list
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#dirctl-install-cid-or-name-dirctl-install-run-cid-or-name" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        dirctl install &lt;cid-or-name&gt; / dirctl install run &lt;cid-or-name&gt;
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#dirctl-install-uninstall-cid-or-name-flags" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        dirctl install uninstall &lt;cid-or-name&gt; [flags]
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#daemon-operations" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Daemon Operations
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Daemon Operations">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#dirctl-daemon-start" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        dirctl daemon start
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#dirctl-daemon-stop" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        dirctl daemon stop
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#dirctl-daemon-status" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        dirctl daemon status
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#context-operations" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Context Operations
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Context Operations">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#dirctl-context-list" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        dirctl context list
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#dirctl-context-current" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        dirctl context current
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#dirctl-context-set-name" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        dirctl context set &lt;name&gt;
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#dirctl-context-show-name" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        dirctl context show [name]
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#dirctl-context-validate-name" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        dirctl context validate [name]
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#storage-operations" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Storage Operations
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Storage Operations">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#dirctl-push-file" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        dirctl push &lt;file&gt;
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#dirctl-pull-reference" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        dirctl pull &lt;reference&gt;
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#dirctl-delete-cid" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        dirctl delete &lt;cid&gt;
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#dirctl-info-reference" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        dirctl info &lt;reference&gt;
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#import-operations" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Import Operations
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Import Operations">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#dirctl-import-flags" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        dirctl import [flags]
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#enrichment" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Enrichment
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#dry-run-output-directory" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Dry Run Output Directory
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#signing-records-during-import" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Signing Records During Import
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#export-operations" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Export Operations
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Export Operations">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#dirctl-export-cid-or-nameversiondigest-flags" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        dirctl export &lt;cid-or-name[:version][@digest]&gt; [flags]
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#routing-operations" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Routing Operations
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Routing Operations">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#dirctl-routing-publish-cid" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        dirctl routing publish &lt;cid&gt;
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#dirctl-routing-unpublish-cid" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        dirctl routing unpublish &lt;cid&gt;
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#dirctl-routing-list-flags" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        dirctl routing list [flags]
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#dirctl-routing-search-flags" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        dirctl routing search [flags]
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#dirctl-routing-info" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        dirctl routing info
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#search-discovery" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Search &amp; Discovery
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Search &amp; Discovery">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#dirctl-search-flags" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        dirctl search [flags]
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#security-verification" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Security &amp; Verification
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Security &amp; Verification">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#security-scanning" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Security Scanning
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#name-verification" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Name Verification
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#dirctl-sign-cid-flags" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        dirctl sign &lt;cid&gt; [flags]
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#dirctl-naming-verify-reference" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        dirctl naming verify &lt;reference&gt;
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#dirctl-verify-record-cid-flags" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        dirctl verify &lt;record-cid&gt; [flags]
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#dirctl-validate-file-flags" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        dirctl validate [&lt;file&gt;] [flags]
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#synchronization" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Synchronization
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Synchronization">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#dirctl-sync-create-url" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        dirctl sync create &lt;url&gt;
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#dirctl-sync-list" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        dirctl sync list
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#dirctl-sync-status-sync-id" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        dirctl sync status &lt;sync-id&gt;
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#dirctl-sync-delete-sync-id" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        dirctl sync delete &lt;sync-id&gt;
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+                
+
+
+
+  
+
+
+  <nav class="md-path" aria-label="Navigation" >
+    <ol class="md-path__list">
+      
+        
+  
+  
+    <li class="md-path__item">
+      <a href="../.." class="md-path__link">
+        
+  <span class="md-ellipsis">
+    Home
+  </span>
+
+      </a>
+    </li>
+  
+
+      
+      
+        
+  
+  
+    
+    
+      
+  
+  
+    
+    
+      <li class="md-path__item">
+        <a href="../dir-overview/" class="md-path__link">
+          
+  <span class="md-ellipsis">
+    Documentation
+  </span>
+
+        </a>
+      </li>
+    
+  
+
+    
+  
+
+      
+        
+  
+  
+    
+    
+      <li class="md-path__item">
+        <a href="./" class="md-path__link">
+          
+  <span class="md-ellipsis">
+    Reference
+  </span>
+
+        </a>
+      </li>
+    
+  
+
+      
+    </ol>
+  </nav>
+
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+    <a href="https://github.com/agntcy/dir/edit/main/docs/content/dir/dir-cli-reference.md" title="Edit this page" class="md-content__button md-icon" rel="edit">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M10 20H6V4h7v5h5v3.1l2-2V8l-6-6H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h4zm10.2-7c.1 0 .3.1.4.2l1.3 1.3c.2.2.2.6 0 .8l-1 1-2.1-2.1 1-1c.1-.1.2-.2.4-.2m0 3.9L14.1 23H12v-2.1l6.1-6.1z"/></svg>
+    </a>
+  
+  
+    
+      
+    
+    <a href="https://github.com/agntcy/dir/raw/main/docs/content/dir/dir-cli-reference.md" title="View source of this page" class="md-content__button md-icon">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M17 18c.56 0 1 .44 1 1s-.44 1-1 1-1-.44-1-1 .44-1 1-1m0-3c-2.73 0-5.06 1.66-6 4 .94 2.34 3.27 4 6 4s5.06-1.66 6-4c-.94-2.34-3.27-4-6-4m0 6.5a2.5 2.5 0 0 1-2.5-2.5 2.5 2.5 0 0 1 2.5-2.5 2.5 2.5 0 0 1 2.5 2.5 2.5 2.5 0 0 1-2.5 2.5M9.27 20H6V4h7v5h5v4.07c.7.08 1.36.25 2 .49V8l-6-6H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h4.5a8.2 8.2 0 0 1-1.23-2"/></svg>
+    </a>
+  
+
+
+<h1 id="directory-cli-command-reference">Directory CLI Command Reference</h1>
+<p>Command-line reference for <code>dirctl</code>. Install the CLI in the <a href="../dir-quickstart/">Quickstart</a>
+only; workflow examples live in <a href="../dir-features-scenarios/">Features and Usage Scenarios</a>.</p>
+<h2 id="global-options">Global options</h2>
+<h3 id="output-formats">Output formats</h3>
+<p>Most data-producing commands support <code>--output</code> / <code>-o</code>. Exceptions include <code>validate</code>, <code>context</code>, <code>auth</code>, <code>daemon</code>, <code>mcp serve</code>, and <code>version</code>.</p>
+<table>
+<thead>
+<tr>
+<th>Format</th>
+<th>Description</th>
+<th>Use case</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>human</code></td>
+<td>Formatted tables and colors (default)</td>
+<td>Interactive use</td>
+</tr>
+<tr>
+<td><code>json</code></td>
+<td>Pretty-printed JSON</td>
+<td>Debugging, single-record scripts</td>
+</tr>
+<tr>
+<td><code>jsonl</code></td>
+<td>One JSON object per line</td>
+<td>Streaming, batch processing</td>
+</tr>
+<tr>
+<td><code>raw</code></td>
+<td>Values only (CIDs, IDs)</td>
+<td>Shell pipelines</td>
+</tr>
+</tbody>
+</table>
+<p>Structured formats send data to <strong>stdout</strong> and messages to <strong>stderr</strong>, so piping to <code>jq</code>
+works cleanly.</p>
+<div class="highlight"><pre><span></span><code><span class="nv">CID</span><span class="o">=</span><span class="k">$(</span>dirctl<span class="w"> </span>push<span class="w"> </span>record.json<span class="w"> </span>-o<span class="w"> </span>raw<span class="k">)</span>
+dirctl<span class="w"> </span>routing<span class="w"> </span>search<span class="w"> </span>--skill<span class="w"> </span><span class="s2">&quot;AI&quot;</span><span class="w"> </span>-o<span class="w"> </span>json<span class="w"> </span><span class="p">|</span><span class="w"> </span>jq<span class="w"> </span><span class="s1">&#39;.[] | .record_ref.cid&#39;</span>
+dirctl<span class="w"> </span>events<span class="w"> </span>listen<span class="w"> </span>-o<span class="w"> </span>jsonl<span class="w"> </span><span class="p">|</span><span class="w"> </span>jq<span class="w"> </span>-c<span class="w"> </span><span class="s1">&#39;select(.type == &quot;EVENT_TYPE_RECORD_PUSHED&quot;)&#39;</span>
+</code></pre></div>
+<h3 id="server-connection">Server connection</h3>
+<div class="highlight"><pre><span></span><code>dirctl<span class="w"> </span>--server-addr<span class="w"> </span>localhost:8888<span class="w"> </span>routing<span class="w"> </span>list
+<span class="nb">export</span><span class="w"> </span><span class="nv">DIRECTORY_CLIENT_SERVER_ADDRESS</span><span class="o">=</span>localhost:8888
+dirctl<span class="w"> </span>--context<span class="w"> </span>dev<span class="w"> </span>routing<span class="w"> </span>list<span class="w">   </span><span class="c1"># see Context Operations below</span>
+</code></pre></div>
+<h3 id="authentication">Authentication</h3>
+<p>For remote servers, authenticate with OIDC before running commands. The full auth model,
+gateway endpoints, and SPIFFE/SPIRE integration are documented in
+<a href="../dir-component-oidc-authentication/">OIDC Authentication</a>.</p>
+<table>
+<thead>
+<tr>
+<th>Command</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>dirctl auth login</code></td>
+<td>OIDC login (PKCE, <code>--no-browser</code>, or <code>--device</code>)</td>
+</tr>
+<tr>
+<td><code>dirctl auth logout</code></td>
+<td>Clear cached credentials</td>
+</tr>
+<tr>
+<td><code>dirctl auth status</code></td>
+<td>Show current auth state</td>
+</tr>
+</tbody>
+</table>
+<div class="highlight"><pre><span></span><code>dirctl<span class="w"> </span>auth<span class="w"> </span>login<span class="w"> </span>--oidc-issuer<span class="w"> </span><span class="s2">&quot;https://idp.ads.outshift.io&quot;</span><span class="w"> </span>--oidc-client-id<span class="w"> </span><span class="s2">&quot;dirctl&quot;</span>
+dirctl<span class="w"> </span>--auth-mode<span class="o">=</span>oidc<span class="w"> </span>--server-addr<span class="w"> </span>ads.outshift.io:443<span class="w"> </span>search<span class="w"> </span>--skill<span class="w"> </span><span class="s2">&quot;AI&quot;</span>
+</code></pre></div>
+<p>Pre-issued tokens: <code>--auth-token</code> or <code>DIRECTORY_CLIENT_AUTH_TOKEN</code> for CI and automation.
+Other modes: <code>--auth-mode=x509</code>, <code>jwt</code>, <code>token</code>, <code>tls</code>, <code>oidc</code>, <code>insecure</code>, or <code>none</code>. When
+<code>--auth-mode</code> is empty, the client auto-detects OIDC (cached token, issuer, or client ID) and
+falls back to insecure for local development. SPIFFE modes (<code>x509</code>, <code>jwt</code>, <code>token</code>) require an
+explicit <code>--auth-mode</code>.</p>
+<h3 id="command-groups">Command groups</h3>
+<table>
+<thead>
+<tr>
+<th>Group</th>
+<th>Commands</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Setup</td>
+<td><code>init</code></td>
+</tr>
+<tr>
+<td>Daemon</td>
+<td><code>daemon start</code>, <code>stop</code>, <code>status</code></td>
+</tr>
+<tr>
+<td>Auth</td>
+<td><code>auth login</code>, <code>logout</code>, <code>status</code></td>
+</tr>
+<tr>
+<td>Context</td>
+<td><code>context list</code>, <code>current</code>, <code>set</code>, <code>show</code>, <code>validate</code></td>
+</tr>
+<tr>
+<td>Storage</td>
+<td><code>push</code>, <code>pull</code>, <code>delete</code>, <code>info</code></td>
+</tr>
+<tr>
+<td>Import / Export</td>
+<td><code>import</code>, <code>export</code></td>
+</tr>
+<tr>
+<td>Routing</td>
+<td><code>routing publish</code>, <code>unpublish</code>, <code>list</code>, <code>search</code>, <code>info</code></td>
+</tr>
+<tr>
+<td>Search</td>
+<td><code>search</code></td>
+</tr>
+<tr>
+<td>Security</td>
+<td><code>sign</code>, <code>verify</code>, <code>validate</code>, <code>naming verify</code></td>
+</tr>
+<tr>
+<td>Sync</td>
+<td><code>sync create</code>, <code>status</code>, <code>list</code>, <code>delete</code></td>
+</tr>
+<tr>
+<td>Events</td>
+<td><code>events listen</code></td>
+</tr>
+<tr>
+<td>MCP</td>
+<td><code>mcp serve</code></td>
+</tr>
+<tr>
+<td>Install</td>
+<td><code>install run</code>, <code>install uninstall</code> (or top-level <code>uninstall</code>), <code>install list</code></td>
+</tr>
+<tr>
+<td>Diagnostics</td>
+<td><code>doctor</code>, <code>version</code></td>
+</tr>
+</tbody>
+</table>
+<h3 id="getting-help">Getting help</h3>
+<div class="highlight"><pre><span></span><code>dirctl<span class="w"> </span>--help
+dirctl<span class="w"> </span>routing<span class="w"> </span>--help
+dirctl<span class="w"> </span>routing<span class="w"> </span>search<span class="w"> </span>--help
+</code></pre></div>
+<h2 id="setup">Setup</h2>
+<h3 id="dirctl-init-flags"><code>dirctl init [flags]</code></h3>
+<p>Guided first-run setup for a new environment — run it once after installing
+<code>dirctl</code>. It provisions the <strong>OASF taxonomy extractor</strong>: a small
+sentence-transformer model (<code>all-MiniLM-L6-v2</code>, ~89 MB) plus the OASF taxonomy,
+downloaded to a local asset directory. Those assets power local, <strong>LLM-free</strong>
+record enrichment (and, in future, free-text search) that runs in-process — no
+Python, no external inference service, no LLM API. The chosen OASF endpoint and
+asset directory are saved to the <code>dirctl</code> config so other commands load the
+provisioned assets automatically.</p>
+<p>Provisioning is <strong>opt-out</strong> in an interactive terminal — the prompt defaults to
+yes, so pressing Enter provisions. To avoid an unattended ~89 MB download, a
+<strong>non-interactive</strong> run (no TTY, e.g. CI or a pipe) skips unless you pass
+<code>--yes</code>. Re-running is idempotent: nothing is re-downloaded when the assets are
+present and current, and the taxonomy is re-embedded only when it changed.</p>
+<table>
+<thead>
+<tr>
+<th>Flag</th>
+<th>Description</th>
+<th>Default</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>--oasf-url</code></td>
+<td>OASF schema endpoint to pull the taxonomy from</td>
+<td><code>https://schema.oasf.outshift.com</code></td>
+</tr>
+<tr>
+<td><code>--asset-dir</code></td>
+<td>Local directory for the provisioned assets</td>
+<td><code>~/.agntcy/oasf-sdk/extractor</code></td>
+</tr>
+<tr>
+<td><code>--yes</code> / <code>-y</code></td>
+<td>Provision without prompting (required for non-interactive runs)</td>
+<td><code>false</code></td>
+</tr>
+<tr>
+<td><code>--remove</code></td>
+<td>Remove the provisioned assets and clear the saved config</td>
+<td><code>false</code></td>
+</tr>
+</tbody>
+</table>
+<div class="highlight"><pre><span></span><code><span class="c1"># Interactive setup (prompts; Enter accepts)</span>
+dirctl<span class="w"> </span>init
+
+<span class="c1"># Non-interactive (CI): provision with defaults</span>
+dirctl<span class="w"> </span>init<span class="w"> </span>--yes
+
+<span class="c1"># Provision from a local OASF instance</span>
+dirctl<span class="w"> </span>init<span class="w"> </span>--oasf-url<span class="w"> </span>http://localhost:8080<span class="w"> </span>--yes
+
+<span class="c1"># Tear down what init provisioned</span>
+dirctl<span class="w"> </span>init<span class="w"> </span>--remove<span class="w"> </span>--yes
+</code></pre></div>
+<h2 id="diagnostics">Diagnostics</h2>
+<h3 id="dirctl-doctor-flags"><code>dirctl doctor [flags]</code></h3>
+<p>Runs connectivity and configuration checks against the configured Directory server and routing layer.</p>
+<table>
+<thead>
+<tr>
+<th>Flag</th>
+<th>Description</th>
+<th>Default</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>--timeout</code></td>
+<td>Per-check timeout</td>
+<td><code>2s</code></td>
+</tr>
+<tr>
+<td><code>--bootstrap-peer</code></td>
+<td>Bootstrap peer multiaddr to validate (repeatable)</td>
+<td>-</td>
+</tr>
+</tbody>
+</table>
+<h3 id="dirctl-version"><code>dirctl version</code></h3>
+<p>Prints the <code>dirctl</code> build version.</p>
+<h2 id="mcp-server">MCP Server</h2>
+<h3 id="dirctl-mcp-serve"><code>dirctl mcp serve</code></h3>
+<p>Starts the built-in MCP server used by external AI tooling. Delegates to the
+<a href="https://github.com/agntcy/dir-mcp"><code>dir-mcp</code></a> module.</p>
+<h2 id="agent-install">Agent Install</h2>
+<p><code>dirctl install &lt;cid-or-name&gt;</code> pulls a record from the active Directory and
+installs its artifacts — an MCP server entry and/or an Agent Skill, derived from
+the record's OASF modules — directly into the configuration of detected AI coding
+agents.</p>
+<p>Which artifacts are installed is determined by the record's modules, not a flag:</p>
+<ul>
+<li><code>core/language_model/agentskills</code> → an Agent Skill (<code>SKILL.md</code>), rendered into
+  whatever persistent-instruction mechanism each agent supports (a native skill
+  folder, a per-tool rules file, or a managed block in a shared instruction file).</li>
+<li><code>integration/mcp</code> → an MCP server entry (<code>command</code>/<code>args</code>/<code>env</code>) placed under
+  each agent's MCP servers key.</li>
+<li><code>integration/a2a</code> → not installable into agent configs; the command errors and
+  points you to <code>dirctl export</code>.</li>
+</ul>
+<p>A multi-module record installs all applicable artifacts. The per-record identity
+is the sanitized record name, so re-running <code>install</code> with a newer version of the
+same-named record replaces the old artifacts cleanly, and different records
+coexist.</p>
+<p>Supported agents: Claude Code, Claude Desktop, Cursor, VS Code (Copilot),
+Windsurf, Cline, Roo Code, Gemini CLI, OpenCode, Zed, Continue, and Codex CLI.</p>
+<p>Writes are atomic and surgical: only our own MCP entry, skill file/folder, or
+delimited managed block is added/updated/removed — all of your existing
+configuration is preserved.</p>
+<h3 id="dirctl-install-list"><code>dirctl install list</code></h3>
+<p>Lists every supported agent, whether it is detected on this machine, and the
+config files that install would touch. Makes no changes and does not contact the
+Directory.</p>
+<h3 id="dirctl-install-cid-or-name-dirctl-install-run-cid-or-name"><code>dirctl install &lt;cid-or-name&gt;</code> / <code>dirctl install run &lt;cid-or-name&gt;</code></h3>
+<p>Pulls the record, derives its artifacts, prints the planned changes (per agent and
+artifact, marked add / updated / unchanged), asks for confirmation, then installs.
+<code>dirctl install &lt;cid-or-name&gt;</code> is shorthand for <code>dirctl install run &lt;cid-or-name&gt;</code>.
+By default it acts on all detected agents. Detection is always required — an agent
+is never installed into unless it is detected on this machine; an explicitly
+requested agent that is not detected is reported as skipped.</p>
+<p>The artifacts to install are determined entirely by the record's modules (above),
+not by flags. A record carrying neither an MCP nor an Agent Skill module has
+nothing installable: the command errors (making no changes) and, for an
+A2A-only record, points you to <code>dirctl export</code>.</p>
+<table>
+<thead>
+<tr>
+<th>Flag</th>
+<th>Description</th>
+<th>Default</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>--agents</code></td>
+<td>Agents to target: <code>all</code> (every detected agent) or a comma-separated list of agent IDs (e.g. <code>--agents claude-code,cursor</code>; repeatable)</td>
+<td><code>all</code></td>
+</tr>
+<tr>
+<td><code>--dry-run</code></td>
+<td>Preview the plan without writing</td>
+<td><code>false</code></td>
+</tr>
+<tr>
+<td><code>--yes</code> / <code>-y</code></td>
+<td>Skip the confirmation prompt</td>
+<td><code>false</code></td>
+</tr>
+</tbody>
+</table>
+<p>Valid agent IDs: <code>claude-code</code>, <code>claude-desktop</code>, <code>cursor</code>, <code>vscode</code>, <code>windsurf</code>,
+<code>cline</code>, <code>roo</code>, <code>gemini</code>, <code>opencode</code>, <code>zed</code>, <code>continue</code>, <code>codex</code> (see
+<code>dirctl install list</code>). After completion, a summary lists every location added,
+updated, removed, or skipped with its absolute path.</p>
+<div class="highlight"><pre><span></span><code><span class="c1"># Preview what installing a record would change</span>
+dirctl<span class="w"> </span>install<span class="w"> </span>cisco.com/agent:v1.0.0<span class="w"> </span>--dry-run
+
+<span class="c1"># Install a record&#39;s artifacts into all detected agents</span>
+dirctl<span class="w"> </span>install<span class="w"> </span>cisco.com/agent:v1.0.0<span class="w"> </span>--yes
+
+<span class="c1"># Install into specific agents only</span>
+dirctl<span class="w"> </span>install<span class="w"> </span>cisco.com/agent<span class="w"> </span>--agents<span class="w"> </span>claude-code,cursor
+</code></pre></div>
+<h3 id="dirctl-install-uninstall-cid-or-name-flags"><code>dirctl install uninstall &lt;cid-or-name&gt; [flags]</code></h3>
+<p>Removes what <code>install</code> added for that record — its MCP entry and/or skill —
+leaving all other content intact. Shares the same flags as install (<code>--agents</code>,
+<code>--dry-run</code>, <code>--yes</code>). Idempotent: an agent with nothing of ours installed is
+reported as unchanged, never an error.</p>
+<p><code>dirctl uninstall &lt;cid-or-name&gt;</code> is a top-level shorthand for
+<code>dirctl install uninstall &lt;cid-or-name&gt;</code> (same flags and behavior).</p>
+<div class="highlight"><pre><span></span><code>dirctl<span class="w"> </span>install<span class="w"> </span>uninstall<span class="w"> </span>cisco.com/agent<span class="w"> </span>--yes
+dirctl<span class="w"> </span>uninstall<span class="w"> </span>cisco.com/agent<span class="w"> </span>--agents<span class="w"> </span>cursor
+</code></pre></div>
+<h2 id="daemon-operations">Daemon Operations</h2>
+<p>The daemon commands run a self-contained local directory server that bundles the gRPC apiserver and reconciler into a single process with embedded SQLite and a filesystem OCI store. All state is stored under <code>~/.agntcy/dir/</code> by default.</p>
+<h3 id="dirctl-daemon-start"><code>dirctl daemon start</code></h3>
+<p>Starts the local directory daemon in the foreground. The process blocks until <code>SIGINT</code> or <code>SIGTERM</code> is received.</p>
+<p>The daemon starts a gRPC apiserver on <code>localhost:8888</code> and runs all reconciler tasks (regsync, indexer, name resolution, signature verification) in-process. It uses SQLite for persistence and a local persistent OCI store, so no external dependencies (PostgreSQL, container registry, etc.) are required.</p>
+<p>A PID file is written to the data directory to prevent multiple instances from running simultaneously.</p>
+<p>Without <code>--config</code>, built-in defaults are used. When <code>--config</code> is provided, the file is read as the complete configuration.</p>
+<table>
+<thead>
+<tr>
+<th>Flag</th>
+<th>Description</th>
+<th>Default</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>--data-dir</code></td>
+<td>Data directory for daemon state</td>
+<td><code>~/.agntcy/dir/</code></td>
+</tr>
+<tr>
+<td><code>--config</code></td>
+<td>Path to daemon config file</td>
+<td>Built-in embedded defaults</td>
+</tr>
+</tbody>
+</table>
+<details class="example">
+<summary>Example</summary>
+<div class="highlight"><pre><span></span><code><span class="c1"># Start the daemon (foreground, blocks until signal)</span>
+dirctl<span class="w"> </span>daemon<span class="w"> </span>start
+
+<span class="c1"># Start with a custom data directory</span>
+dirctl<span class="w"> </span>daemon<span class="w"> </span>start<span class="w"> </span>--data-dir<span class="w"> </span>/path/to/data
+
+<span class="c1"># Start with a custom config file</span>
+dirctl<span class="w"> </span>daemon<span class="w"> </span>start<span class="w"> </span>--config<span class="w"> </span>/path/to/config.yaml
+
+<span class="c1"># Run in the background using shell job control</span>
+dirctl<span class="w"> </span>daemon<span class="w"> </span>start<span class="w"> </span><span class="p">&amp;</span>
+</code></pre></div>
+</details>
+<p><strong>Data directory layout:</strong></p>
+<div class="highlight"><pre><span></span><code>~/.agntcy/dir/
+├── dir.db          # SQLite database
+├── store/          # Persistent OCI store
+├── routing/        # DHT routing datastore
+└── daemon.pid      # PID file for lifecycle management
+</code></pre></div>
+<p><strong>Configuration:</strong></p>
+<p>The daemon ships with sensible built-in defaults. To customize, pass a YAML config file via <code>--config</code>. Relative paths in the config (e.g. <code>store</code>, <code>dir.db</code>) are resolved against <code>--data-dir</code>. Credentials can be set via environment variables prefixed with <code>DIRECTORY_DAEMON_</code> (e.g. <code>DIRECTORY_DAEMON_SERVER_DATABASE_POSTGRES_PASSWORD</code>).</p>
+<details class="example">
+<summary>Reference config file</summary>
+<div class="highlight"><pre><span></span><code><span class="nt">server</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">listen_address</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;localhost:8888&quot;</span>
+<span class="w">  </span><span class="nt">oasf_api_validation</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">schema_url</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;https://schema.oasf.outshift.com&quot;</span>
+<span class="w">  </span><span class="nt">store</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">provider</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;oci&quot;</span>
+<span class="w">    </span><span class="nt">oci</span><span class="p">:</span>
+<span class="w">      </span><span class="nt">local_dir</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;store&quot;</span>
+<span class="w">      </span><span class="nt">registry_address</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;localhost:5555&quot;</span>
+<span class="w">      </span><span class="nt">repository_name</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;dir&quot;</span>
+<span class="w">      </span><span class="nt">auth_config</span><span class="p">:</span>
+<span class="w">        </span><span class="nt">insecure</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+<span class="w">    </span><span class="nt">verification</span><span class="p">:</span>
+<span class="w">      </span><span class="nt">enabled</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+<span class="w">  </span><span class="nt">routing</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">listen_address</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;/ip4/0.0.0.0/tcp/8999&quot;</span>
+<span class="w">    </span><span class="nt">datastore_dir</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;routing&quot;</span>
+<span class="w">    </span><span class="nt">gossipsub</span><span class="p">:</span>
+<span class="w">      </span><span class="nt">enabled</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+<span class="w">  </span><span class="nt">database</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;sqlite&quot;</span>
+<span class="w">    </span><span class="nt">sqlite</span><span class="p">:</span>
+<span class="w">      </span><span class="nt">path</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;dir.db&quot;</span>
+<span class="w">    </span><span class="nt">postgres</span><span class="p">:</span>
+<span class="w">      </span><span class="nt">host</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;localhost&quot;</span>
+<span class="w">      </span><span class="nt">port</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">5432</span>
+<span class="w">      </span><span class="nt">database</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;dir&quot;</span>
+<span class="w">      </span><span class="nt">ssl_mode</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;disable&quot;</span>
+<span class="w">  </span><span class="nt">publication</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">scheduler_interval</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">5m</span>
+<span class="w">    </span><span class="nt">worker_count</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">1</span>
+<span class="w">    </span><span class="nt">worker_timeout</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">30m</span>
+<span class="w">  </span><span class="nt">naming</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">ttl</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">168h</span>
+
+
+<span class="nt">reconciler</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">regsync</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">enabled</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+<span class="w">    </span><span class="nt">interval</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">1m</span>
+<span class="w">  </span><span class="nt">indexer</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">enabled</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+<span class="w">    </span><span class="nt">interval</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">1m</span>
+<span class="w">  </span><span class="nt">signature</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">enabled</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+<span class="w">    </span><span class="nt">interval</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">1m</span>
+<span class="w">    </span><span class="nt">ttl</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">168h</span>
+<span class="w">    </span><span class="nt">record_timeout</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">30s</span>
+<span class="w">  </span><span class="nt">name</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">enabled</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+<span class="w">    </span><span class="nt">interval</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">1m</span>
+<span class="w">    </span><span class="nt">ttl</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">168h</span>
+<span class="w">    </span><span class="nt">record_timeout</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">30s</span>
+<span class="w">  </span><span class="nt">local_registry</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">registry_address</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;localhost:5555&quot;</span>
+<span class="w">    </span><span class="nt">repository_name</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;dir&quot;</span>
+<span class="w">    </span><span class="nt">auth_config</span><span class="p">:</span>
+<span class="w">      </span><span class="nt">insecure</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+<span class="w">  </span><span class="nt">database</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;sqlite&quot;</span>
+<span class="w">    </span><span class="nt">sqlite</span><span class="p">:</span>
+<span class="w">      </span><span class="nt">path</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;dir.db&quot;</span>
+</code></pre></div>
+</details>
+<h3 id="dirctl-daemon-stop"><code>dirctl daemon stop</code></h3>
+<p>Stops a running daemon by sending <code>SIGTERM</code> to the process recorded in the PID file. The command waits for the process to exit gracefully and cleans up the PID file.</p>
+<table>
+<thead>
+<tr>
+<th>Flag</th>
+<th>Description</th>
+<th>Default</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>--data-dir</code></td>
+<td>Data directory for daemon state</td>
+<td><code>~/.agntcy/dir/</code></td>
+</tr>
+</tbody>
+</table>
+<details class="example">
+<summary>Example</summary>
+<div class="highlight"><pre><span></span><code><span class="c1"># Stop the running daemon</span>
+dirctl<span class="w"> </span>daemon<span class="w"> </span>stop
+
+<span class="c1"># Stop a daemon using a custom data directory</span>
+dirctl<span class="w"> </span>daemon<span class="w"> </span>stop<span class="w"> </span>--data-dir<span class="w"> </span>/path/to/data
+</code></pre></div>
+</details>
+<h3 id="dirctl-daemon-status"><code>dirctl daemon status</code></h3>
+<p>Checks whether the daemon is currently running by inspecting the PID file.</p>
+<table>
+<thead>
+<tr>
+<th>Flag</th>
+<th>Description</th>
+<th>Default</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>--data-dir</code></td>
+<td>Data directory for daemon state</td>
+<td><code>~/.agntcy/dir/</code></td>
+</tr>
+</tbody>
+</table>
+<details class="example">
+<summary>Example</summary>
+<div class="highlight"><pre><span></span><code><span class="c1"># Check daemon status</span>
+dirctl<span class="w"> </span>daemon<span class="w"> </span>status
+</code></pre></div>
+<p>Example output when running:</p>
+<div class="highlight"><pre><span></span><code>Daemon is running (PID 12345)
+</code></pre></div>
+<p>Example output when stopped:</p>
+<div class="highlight"><pre><span></span><code>Daemon is not running
+</code></pre></div>
+</details>
+<h2 id="context-operations">Context Operations</h2>
+<p>Starting with Directory v1.4.0, the context commands manage reusable <code>dirctl</code> client contexts. Contexts describe Directory endpoints and their client-side authentication, TLS, and SPIFFE settings.</p>
+<p>The default config file is <code>~/.config/dirctl/config.yaml</code>, or <code>$XDG_CONFIG_HOME/dirctl/config.yaml</code> when <code>XDG_CONFIG_HOME</code> is set.</p>
+<div class="highlight"><pre><span></span><code><span class="nt">current_context</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">prod</span>
+<span class="nt">contexts</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">prod</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">server_address</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">gateway.example.com:443</span>
+<span class="w">    </span><span class="nt">auth_mode</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">oidc</span>
+<span class="w">    </span><span class="nt">oidc_issuer</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">https://idp.example.com</span>
+<span class="w">    </span><span class="nt">oidc_client_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">dirctl</span>
+<span class="w">  </span><span class="nt">staging</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">server_address</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">staging.gateway.example.com:443</span>
+<span class="w">    </span><span class="nt">auth_mode</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">oidc</span>
+<span class="w">    </span><span class="nt">oidc_issuer</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">https://staging.idp.example.com</span>
+<span class="w">    </span><span class="nt">oidc_client_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">dirctl</span>
+</code></pre></div>
+<p>Regular <code>dirctl</code> commands select a context in this order:</p>
+<ol>
+<li><code>--context &lt;name&gt;</code></li>
+<li><code>DIRECTORY_CLIENT_CONTEXT</code></li>
+<li><code>current_context</code> from the config file</li>
+</ol>
+<p>After context selection, environment variables and explicit root flags such as <code>--server-addr</code>, <code>--auth-mode</code>, <code>--oidc-issuer</code>, and <code>--auth-token</code> override the selected context for that invocation.</p>
+<div class="admonition note">
+<p class="admonition-title">Sensitive values</p>
+<p><code>dirctl context show</code> redacts <code>auth_token</code> and <code>spiffe_token</code> values. Prefer environment variables or a secret manager for bearer tokens instead of storing long-lived tokens in <code>config.yaml</code>.</p>
+</div>
+<h3 id="dirctl-context-list"><code>dirctl context list</code></h3>
+<p>Lists configured contexts in sorted order and marks the persisted <code>current_context</code> with <code>*</code>. This command reads local config only; it does not contact a Directory server.</p>
+<details class="example">
+<summary>Example</summary>
+<div class="highlight"><pre><span></span><code>dirctl<span class="w"> </span>context<span class="w"> </span>list
+</code></pre></div>
+<p>Example output:</p>
+<div class="highlight"><pre><span></span><code>* prod
+  staging
+</code></pre></div>
+</details>
+<h3 id="dirctl-context-current"><code>dirctl context current</code></h3>
+<p>Prints the persisted <code>current_context</code> from the config file. It intentionally ignores one-off overrides such as <code>--context</code> and <code>DIRECTORY_CLIENT_CONTEXT</code>, so it matches the marker shown by <code>dirctl context list</code>.</p>
+<table>
+<thead>
+<tr>
+<th>Flag</th>
+<th>Description</th>
+<th>Default</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>--quiet</code></td>
+<td>Print only the context name; print nothing when no context is set</td>
+<td><code>false</code></td>
+</tr>
+<tr>
+<td><code>--json</code></td>
+<td>Print current context details as JSON</td>
+<td><code>false</code></td>
+</tr>
+</tbody>
+</table>
+<details class="example">
+<summary>Example</summary>
+<div class="highlight"><pre><span></span><code><span class="c1"># Print the current context with a trailing newline</span>
+dirctl<span class="w"> </span>context<span class="w"> </span>current
+
+<span class="c1"># Prompt-friendly output</span>
+dirctl<span class="w"> </span>context<span class="w"> </span>current<span class="w"> </span>--quiet
+
+<span class="c1"># Machine-readable output</span>
+dirctl<span class="w"> </span>context<span class="w"> </span>current<span class="w"> </span>--json
+</code></pre></div>
+<p>Example JSON output:</p>
+<div class="highlight"><pre><span></span><code><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;prod&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;source&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;current_context&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;path&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;/home/user/.config/dirctl/config.yaml&quot;</span>
+<span class="p">}</span>
+</code></pre></div>
+</details>
+<h3 id="dirctl-context-set-name"><code>dirctl context set &lt;name&gt;</code></h3>
+<p>Sets the persisted active context by updating <code>current_context</code> in the client config file. The target context must already exist.</p>
+<details class="example">
+<summary>Example</summary>
+<div class="highlight"><pre><span></span><code><span class="c1"># Persist prod as the active context</span>
+dirctl<span class="w"> </span>context<span class="w"> </span><span class="nb">set</span><span class="w"> </span>prod
+
+<span class="c1"># Run one command against staging without changing current_context</span>
+dirctl<span class="w"> </span>--context<span class="w"> </span>staging<span class="w"> </span>info<span class="w"> </span>&lt;record-cid&gt;
+</code></pre></div>
+</details>
+<h3 id="dirctl-context-show-name"><code>dirctl context show [name]</code></h3>
+<p>Shows the effective client configuration for a context with sensitive values redacted. If <code>[name]</code> is omitted, the command uses the same context selection rules as other <code>dirctl</code> commands. Environment variables and explicitly changed root flags are included in the effective output.</p>
+<details class="example">
+<summary>Example</summary>
+<div class="highlight"><pre><span></span><code><span class="c1"># Show the active effective context</span>
+dirctl<span class="w"> </span>context<span class="w"> </span>show
+
+<span class="c1"># Show a specific context</span>
+dirctl<span class="w"> </span>context<span class="w"> </span>show<span class="w"> </span>prod
+
+<span class="c1"># Preview a context with a one-off server override</span>
+dirctl<span class="w"> </span>--server-addr<span class="w"> </span>localhost:8888<span class="w"> </span>context<span class="w"> </span>show<span class="w"> </span>prod
+</code></pre></div>
+<p>Example output:</p>
+<div class="highlight"><pre><span></span><code><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">prod</span>
+<span class="nt">source</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">current_context</span>
+<span class="nt">path</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/home/user/.config/dirctl/config.yaml</span>
+<span class="nt">config</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">auth_mode</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">oidc</span>
+<span class="w">  </span><span class="nt">oidc_client_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">dirctl</span>
+<span class="w">  </span><span class="nt">oidc_issuer</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">https://idp.example.com</span>
+<span class="w">  </span><span class="nt">server_address</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">gateway.example.com:443</span>
+<span class="w">  </span><span class="nt">tls_skip_verify</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">false</span>
+</code></pre></div>
+</details>
+<h3 id="dirctl-context-validate-name"><code>dirctl context validate [name]</code></h3>
+<p>Validates stored context definitions without applying environment variable overrides. It catches missing required fields, unsupported auth modes, and auth-mode-specific configuration mistakes before a context is used.</p>
+<p>If <code>[name]</code> is provided, only that context is validated. If omitted, all configured contexts are validated in sorted order.</p>
+<details class="example">
+<summary>Example</summary>
+<div class="highlight"><pre><span></span><code><span class="c1"># Validate all contexts</span>
+dirctl<span class="w"> </span>context<span class="w"> </span>validate
+
+<span class="c1"># Validate one context</span>
+dirctl<span class="w"> </span>context<span class="w"> </span>validate<span class="w"> </span>prod
+</code></pre></div>
+<p>Example output:</p>
+<div class="highlight"><pre><span></span><code>prod: ok
+staging: ok
+</code></pre></div>
+</details>
+<h2 id="storage-operations">Storage Operations</h2>
+<h3 id="dirctl-push-file"><code>dirctl push &lt;file&gt;</code></h3>
+<p>Stores records in the content-addressable store. Has the following features:</p>
+<ul>
+<li>Supports OASF v1, v2, v3 record formats</li>
+<li>Content-addressable storage with CID generation</li>
+<li>Optional cryptographic signing</li>
+<li>Data integrity validation</li>
+</ul>
+<details class="example">
+<summary>Example</summary>
+<div class="highlight"><pre><span></span><code><span class="c1"># Push from file</span>
+dirctl<span class="w"> </span>push<span class="w"> </span>agent-model.json
+
+<span class="c1"># Push from stdin</span>
+cat<span class="w"> </span>agent-model.json<span class="w"> </span><span class="p">|</span><span class="w"> </span>dirctl<span class="w"> </span>push<span class="w"> </span>--stdin
+
+<span class="c1"># Push with signature</span>
+dirctl<span class="w"> </span>push<span class="w"> </span>agent-model.json<span class="w"> </span>--sign<span class="w"> </span>--key<span class="w"> </span>private.key
+</code></pre></div>
+</details>
+<h3 id="dirctl-pull-reference"><code>dirctl pull &lt;reference&gt;</code></h3>
+<p>Retrieves records by their Content Identifier (CID) or name reference.</p>
+<p><strong>Supported Reference Formats:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Format</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>&lt;cid&gt;</code></td>
+<td>Direct lookup by CID</td>
+</tr>
+<tr>
+<td><code>&lt;name&gt;</code></td>
+<td>Retrieves the latest version</td>
+</tr>
+<tr>
+<td><code>&lt;name&gt;:&lt;version&gt;</code></td>
+<td>Retrieves the specified version</td>
+</tr>
+<tr>
+<td><code>&lt;name&gt;@&lt;cid&gt;</code></td>
+<td>Hash-verified lookup (fails if resolved CID doesn't match)</td>
+</tr>
+<tr>
+<td><code>&lt;name&gt;:&lt;version&gt;@&lt;cid&gt;</code></td>
+<td>Hash-verified lookup for a specific version</td>
+</tr>
+</tbody>
+</table>
+<details class="example">
+<summary>Example</summary>
+<div class="highlight"><pre><span></span><code><span class="c1"># Pull by CID</span>
+dirctl<span class="w"> </span>pull<span class="w"> </span>baeareihdr6t7s6sr2q4zo456sza66eewqc7huzatyfgvoupaqyjw23ilvi
+
+<span class="c1"># Pull by name (latest version)</span>
+dirctl<span class="w"> </span>pull<span class="w"> </span>cisco.com/agent
+
+<span class="c1"># Pull by name with specific version</span>
+dirctl<span class="w"> </span>pull<span class="w"> </span>cisco.com/agent:v1.0.0
+
+<span class="c1"># Pull with hash verification</span>
+dirctl<span class="w"> </span>pull<span class="w"> </span>cisco.com/agent@bafyreib...
+dirctl<span class="w"> </span>pull<span class="w"> </span>cisco.com/agent:v1.0.0@bafyreib...
+
+<span class="c1"># Pull signature and public-key referrer artifacts from the server</span>
+dirctl<span class="w"> </span>pull<span class="w"> </span>&lt;cid&gt;<span class="w"> </span>--signature<span class="w"> </span>--public-key
+
+<span class="c1"># Pull security scan reports for the record</span>
+dirctl<span class="w"> </span>pull<span class="w"> </span>&lt;cid&gt;<span class="w"> </span>--scan-report
+</code></pre></div>
+</details>
+<p><strong>Output and batch retrieval:</strong></p>
+<p><code>pull</code> defaults to <code>--output json</code> (records are primarily machine-consumed); <code>-o human|jsonl|raw</code> are also available. Use <code>--output-file</code> to write a single record's JSON to a file, or <code>--output-dir</code> with search filters to pull many records at once (one <code>&lt;name&gt;.json</code> per record).</p>
+<p><strong>Referrer flags</strong> — these extend the output with OCI referrer artifacts attached to the record:</p>
+<table>
+<thead>
+<tr>
+<th>Flag</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>--public-key</code></td>
+<td>Include the public key referrer attached to the record</td>
+</tr>
+<tr>
+<td><code>--signature</code></td>
+<td>Include the signature referrer attached to the record</td>
+</tr>
+<tr>
+<td><code>--scan-report</code></td>
+<td>Include security scan reports for the record</td>
+</tr>
+</tbody>
+</table>
+<p>When any referrer flag is set, the response is a structured JSON object with a <code>record</code> key and one or more of <code>publicKeys</code>, <code>signatures</code>, <code>scanReports</code>.</p>
+<p><strong>Output and batch retrieval:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Flag</th>
+<th>Description</th>
+<th>Default</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>--output-file</code></td>
+<td>Write the record JSON to a file instead of stdout (single record)</td>
+<td>-</td>
+</tr>
+<tr>
+<td><code>--output-dir</code></td>
+<td>Directory for batch pull from search results (one JSON file per record)</td>
+<td>-</td>
+</tr>
+<tr>
+<td><code>--limit</code></td>
+<td>Maximum number of records to pull in batch mode</td>
+<td><code>100</code></td>
+</tr>
+<tr>
+<td><code>--all-versions</code></td>
+<td>Keep all versions in batch pull (default: latest per name wins)</td>
+<td><code>false</code></td>
+</tr>
+</tbody>
+</table>
+<p>When <code>--output-dir</code> is used, at least one search filter is required. All standard search filters are available (<code>--name</code>, <code>--version</code>, <code>--module</code>, <code>--skill</code>, <code>--author</code>, etc.). A positional reference and <code>--output-dir</code> are mutually exclusive.</p>
+<details class="example">
+<summary>Example</summary>
+<div class="highlight"><pre><span></span><code><span class="c1"># Single record JSON to stdout (default) or a file</span>
+dirctl<span class="w"> </span>pull<span class="w"> </span>cisco.com/agent
+dirctl<span class="w"> </span>pull<span class="w"> </span>cisco.com/agent<span class="w"> </span>--output-file<span class="o">=</span>./agent.json
+
+<span class="c1"># Batch: pull every matching record into a directory</span>
+dirctl<span class="w"> </span>pull<span class="w"> </span>--output-dir<span class="o">=</span>./records/<span class="w"> </span>--name<span class="w"> </span><span class="s2">&quot;web*&quot;</span>
+dirctl<span class="w"> </span>pull<span class="w"> </span>--output-dir<span class="o">=</span>./records/<span class="w"> </span>--module<span class="w"> </span><span class="s2">&quot;integration/mcp&quot;</span><span class="w"> </span>--all-versions
+</code></pre></div>
+</details>
+<p><strong>Hash Verification:</strong></p>
+<p>The <code>@&lt;cid&gt;</code> suffix enables hash verification. This command fails if the resolved CID doesn't match the expected digest:</p>
+<div class="highlight"><pre><span></span><code><span class="c1"># Succeeds if cisco.com/agent:v1.0.0 resolves to bafyreib...</span>
+dirctl<span class="w"> </span>pull<span class="w"> </span>cisco.com/agent:v1.0.0@bafyreib...
+
+<span class="c1"># Fails with error if CIDs don&#39;t match</span>
+dirctl<span class="w"> </span>pull<span class="w"> </span>cisco.com/agent@wrong-cid
+<span class="c1"># Error: hash verification failed: resolved CID &quot;bafyreib...&quot; does not match expected digest &quot;wrong-cid&quot;</span>
+</code></pre></div>
+<p><strong>Version Resolution:</strong></p>
+<p>When no version is specified, commands return the most recently created record (by record's <code>created_at</code> field). This allows non-semver tags like <code>latest</code>, <code>dev</code>, or <code>stable</code>.</p>
+<h3 id="dirctl-delete-cid"><code>dirctl delete &lt;cid&gt;</code></h3>
+<p>Removes records from storage.</p>
+<details class="example">
+<summary>Example</summary>
+<div class="highlight"><pre><span></span><code><span class="c1"># Delete a record</span>
+dirctl<span class="w"> </span>delete<span class="w"> </span>baeareihdr6t7s6sr2q4zo456sza66eewqc7huzatyfgvoupaqyjw23ilvi
+</code></pre></div>
+</details>
+<h3 id="dirctl-info-reference"><code>dirctl info &lt;reference&gt;</code></h3>
+<p>Displays metadata about stored records using CID or name reference.</p>
+<p><strong>Supported Reference Formats:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Format</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>&lt;cid&gt;</code></td>
+<td>Direct lookup by content address</td>
+</tr>
+<tr>
+<td><code>&lt;name&gt;</code></td>
+<td>Displays the most recently created version</td>
+</tr>
+<tr>
+<td><code>&lt;name&gt;:&lt;version&gt;</code></td>
+<td>Displays the specified version</td>
+</tr>
+<tr>
+<td><code>&lt;name&gt;@&lt;cid&gt;</code></td>
+<td>Hash-verified lookup</td>
+</tr>
+<tr>
+<td><code>&lt;name&gt;:&lt;version&gt;@&lt;cid&gt;</code></td>
+<td>Hash-verified lookup for a specific version</td>
+</tr>
+</tbody>
+</table>
+<details class="example">
+<summary>Example</summary>
+<div class="highlight"><pre><span></span><code><span class="c1"># Info by CID (existing)</span>
+dirctl<span class="w"> </span>info<span class="w"> </span>baeareihdr6t7s6sr2q4zo456sza66eewqc7huzatyfgvoupaqyjw23ilvi
+
+<span class="c1"># Info by name (latest version)</span>
+dirctl<span class="w"> </span>info<span class="w"> </span>cisco.com/agent<span class="w"> </span>--output<span class="w"> </span>json
+
+<span class="c1"># Info by name with specific version</span>
+dirctl<span class="w"> </span>info<span class="w"> </span>cisco.com/agent:v1.0.0<span class="w"> </span>--output<span class="w"> </span>json
+</code></pre></div>
+</details>
+<h2 id="import-operations">Import Operations</h2>
+<p>Import records from external registries or local files into DIR. Supports automated batch imports with optional LLM enrichment and security scanning.</p>
+<h3 id="dirctl-import-flags"><code>dirctl import [flags]</code></h3>
+<p>Fetch and import records from registries or local sources.</p>
+<p><strong>Import kinds (<code>--type</code>):</strong></p>
+<table>
+<thead>
+<tr>
+<th>Type</th>
+<th>Source</th>
+<th>Required flags</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>mcp-registry</code></td>
+<td>HTTP MCP registry (e.g. v0.1 list API)</td>
+<td><code>--url</code></td>
+</tr>
+<tr>
+<td><code>mcp</code></td>
+<td>Local JSON (one server or array)</td>
+<td><code>--file-path</code></td>
+</tr>
+<tr>
+<td><code>a2a</code></td>
+<td>Local A2A AgentCard JSON</td>
+<td><code>--file-path</code></td>
+</tr>
+<tr>
+<td><code>agent-skill</code></td>
+<td>Local Agent Skills directory with <code>SKILL.md</code></td>
+<td><code>--file-path</code></td>
+</tr>
+</tbody>
+</table>
+<p><strong>Configuration Options:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Flag</th>
+<th>Environment Variable</th>
+<th>Description</th>
+<th>Required</th>
+<th>Default</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>--config</code></td>
+<td>-</td>
+<td>Path to a YAML import config file (enricher, scanner, authors, and more); values are overridden by command-line flags</td>
+<td>No</td>
+<td>-</td>
+</tr>
+<tr>
+<td><code>--type</code></td>
+<td>-</td>
+<td>Import kind (<code>mcp-registry</code>, <code>mcp</code>, <code>a2a</code>, <code>agent-skill</code>)</td>
+<td>No</td>
+<td>-</td>
+</tr>
+<tr>
+<td><code>--url</code></td>
+<td>-</td>
+<td>Registry base URL (required when <code>--type=mcp-registry</code>)</td>
+<td>No</td>
+<td>-</td>
+</tr>
+<tr>
+<td><code>--file-path</code></td>
+<td>-</td>
+<td>Path to local JSON file or skill directory</td>
+<td>No</td>
+<td>-</td>
+</tr>
+<tr>
+<td><code>--output-cids</code></td>
+<td>-</td>
+<td>Write imported CIDs to a file (one per line)</td>
+<td>No</td>
+<td>-</td>
+</tr>
+<tr>
+<td><code>--filter</code></td>
+<td>-</td>
+<td>Registry-specific filters (key=value, repeatable)</td>
+<td>No</td>
+<td>-</td>
+</tr>
+<tr>
+<td><code>--limit</code></td>
+<td>-</td>
+<td>Maximum records to import (0 = no limit)</td>
+<td>No</td>
+<td>0</td>
+</tr>
+<tr>
+<td><code>--dry-run</code></td>
+<td>-</td>
+<td>Preview without importing; transformed records are written to <code>--output-dir</code> (one JSON file per record) so they can be reviewed and re-imported later via <code>dirctl push</code> or <code>dirctl import</code></td>
+<td>No</td>
+<td>false</td>
+</tr>
+<tr>
+<td><code>--output-dir</code></td>
+<td>-</td>
+<td>Directory to write per-record JSON files when <code>--dry-run</code> is set. Each record is written as <code>&lt;cid&gt;.record.json</code></td>
+<td>No</td>
+<td><code>./import-dry-run-&lt;timestamp&gt;</code> in the current working directory</td>
+</tr>
+<tr>
+<td><code>--debug</code></td>
+<td>-</td>
+<td>Enable debug output (shows MCP source and OASF record for failures)</td>
+<td>No</td>
+<td>false</td>
+</tr>
+<tr>
+<td><code>--force</code></td>
+<td>-</td>
+<td>Force reimport of existing records (skip deduplication)</td>
+<td>No</td>
+<td>false</td>
+</tr>
+<tr>
+<td><code>--sign</code></td>
+<td>-</td>
+<td>Sign records after pushing (uses OIDC by default)</td>
+<td>No</td>
+<td>false</td>
+</tr>
+<tr>
+<td><code>--key</code></td>
+<td>-</td>
+<td>Path to private key file for signing (requires <code>--sign</code>)</td>
+<td>No</td>
+<td>-</td>
+</tr>
+<tr>
+<td><code>--oidc-token</code></td>
+<td>-</td>
+<td>OIDC token for non-interactive signing (requires <code>--sign</code>)</td>
+<td>No</td>
+<td>-</td>
+</tr>
+<tr>
+<td><code>--fulcio-url</code></td>
+<td>-</td>
+<td>Sigstore Fulcio URL (requires <code>--sign</code>)</td>
+<td>No</td>
+<td><code>https://fulcio.sigstore.dev</code></td>
+</tr>
+<tr>
+<td><code>--rekor-url</code></td>
+<td>-</td>
+<td>Sigstore Rekor URL (requires <code>--sign</code>)</td>
+<td>No</td>
+<td><code>https://rekor.sigstore.dev</code></td>
+</tr>
+<tr>
+<td><code>--server-addr</code></td>
+<td>DIRECTORY_CLIENT_SERVER_ADDRESS</td>
+<td>DIR server address</td>
+<td>No</td>
+<td>localhost:8888</td>
+</tr>
+</tbody>
+</table>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>By default, the importer performs deduplication: it builds a cache of existing records (by name and version) and skips importing records that already exist. This prevents duplicate imports when running the import command multiple times. Use <code>--force</code> to bypass deduplication and reimport existing records. Use <code>--debug</code> to see detailed output including which records were skipped and why imports failed.</p>
+</div>
+<details class="example">
+<summary>Example</summary>
+<div class="highlight"><pre><span></span><code><span class="c1"># Import from MCP registry</span>
+dirctl<span class="w"> </span>import<span class="w"> </span>--type<span class="o">=</span>mcp-registry<span class="w"> </span>--url<span class="o">=</span>https://registry.modelcontextprotocol.io/v0.1
+
+<span class="c1"># Import with debug output (shows detailed diagnostics for failures)</span>
+dirctl<span class="w"> </span>import<span class="w"> </span>--type<span class="o">=</span>mcp-registry<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--url<span class="o">=</span>https://registry.modelcontextprotocol.io/v0.1<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--debug
+
+<span class="c1"># Force reimport of existing records (skips deduplication)</span>
+dirctl<span class="w"> </span>import<span class="w"> </span>--type<span class="o">=</span>mcp-registry<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--url<span class="o">=</span>https://registry.modelcontextprotocol.io/v0.1<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--force
+
+<span class="c1"># Import with time-based filter</span>
+dirctl<span class="w"> </span>import<span class="w"> </span>--type<span class="o">=</span>mcp-registry<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--url<span class="o">=</span>https://registry.modelcontextprotocol.io/v0.1<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--filter<span class="o">=</span><span class="nv">updated_since</span><span class="o">=</span><span class="m">2025</span>-08-07T13:15:04.280Z
+
+<span class="c1"># Combine multiple filters</span>
+dirctl<span class="w"> </span>import<span class="w"> </span>--type<span class="o">=</span>mcp-registry<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--url<span class="o">=</span>https://registry.modelcontextprotocol.io/v0.1<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--filter<span class="o">=</span><span class="nv">search</span><span class="o">=</span>github<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--filter<span class="o">=</span><span class="nv">version</span><span class="o">=</span>latest<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--filter<span class="o">=</span><span class="nv">updated_since</span><span class="o">=</span><span class="m">2025</span>-08-07T13:15:04.280Z
+
+<span class="c1"># Limit number of records</span>
+dirctl<span class="w"> </span>import<span class="w"> </span>--type<span class="o">=</span>mcp-registry<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--url<span class="o">=</span>https://registry.modelcontextprotocol.io/v0.1<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--limit<span class="o">=</span><span class="m">50</span>
+
+<span class="c1"># Preview without importing (dry run)</span>
+<span class="c1"># Records are written as &lt;cid&gt;.record.json into a timestamped directory</span>
+<span class="c1"># (default: ./import-dry-run-&lt;timestamp&gt;) so they can be reviewed and</span>
+<span class="c1"># re-imported later via `dirctl push` or `dirctl import`.</span>
+dirctl<span class="w"> </span>import<span class="w"> </span>--type<span class="o">=</span>mcp-registry<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--url<span class="o">=</span>https://registry.modelcontextprotocol.io/v0.1<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--dry-run
+
+<span class="c1"># Dry run with a custom output directory</span>
+dirctl<span class="w"> </span>import<span class="w"> </span>--type<span class="o">=</span>mcp-registry<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--url<span class="o">=</span>https://registry.modelcontextprotocol.io/v0.1<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--dry-run<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--output-dir<span class="o">=</span>./out
+
+<span class="c1"># Import and sign records with OIDC (opens browser for authentication)</span>
+dirctl<span class="w"> </span>import<span class="w"> </span>--type<span class="o">=</span>mcp-registry<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--url<span class="o">=</span>https://registry.modelcontextprotocol.io/v0.1<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--sign
+
+<span class="c1"># Import and sign records with a private key</span>
+dirctl<span class="w"> </span>import<span class="w"> </span>--type<span class="o">=</span>mcp-registry<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--url<span class="o">=</span>https://registry.modelcontextprotocol.io/v0.1<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--sign<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--key<span class="o">=</span>/path/to/cosign.key
+</code></pre></div>
+</details>
+<p><strong>MCP Registry Filters:</strong></p>
+<p>For the Model Context Protocol registry, available filters include:</p>
+<ul>
+<li><code>search</code> - Filter by server name (substring match)</li>
+<li><code>version</code> - Filter by version ('latest' for latest version, or an exact version like '1.2.3')</li>
+<li><code>updated_since</code> - Filter by updated time (RFC3339 datetime format, e.g., '2025-08-07T13:15:04.280Z')</li>
+</ul>
+<p>See the <a href="https://registry.modelcontextprotocol.io/docs#/operations/list-servers#Query-Parameters">MCP Registry API docs</a> for the complete list of supported filters.</p>
+<h3 id="enrichment">Enrichment</h3>
+<p>By default, the import command automatically enriches records using an LLM to map them to appropriate OASF skills and domains. The enrichment pipeline is built into <code>dirctl</code>: it runs an LLM with tool-calling support against the OASF schema tools exposed by <code>dirctl mcp serve</code>, so no external tooling is required. LLM enrichment can be skipped by specifying skills and domains explicitly in the config file (see <strong>Skip enrichment</strong> below).</p>
+<p><strong>Requirements:</strong></p>
+<ul>
+<li><code>dirctl</code> binary (includes the built-in MCP server with <code>agntcy_oasf_get_schema_skills</code> and <code>agntcy_oasf_get_schema_domains</code> tools)</li>
+<li>An LLM model with tool-calling support (GPT-4o, Claude, or compatible Ollama models)</li>
+</ul>
+<p><strong>How it works:</strong></p>
+<ol>
+<li>The enricher starts an MCP server using <code>dirctl mcp serve</code></li>
+<li>The LLM uses the <code>agntcy_oasf_get_schema_skills</code> tool to browse available OASF skills</li>
+<li>The LLM uses the <code>agntcy_oasf_get_schema_domains</code> tool to browse available OASF domains</li>
+<li>Based on the record description and capabilities, the LLM selects appropriate skills and domains</li>
+</ol>
+<p><strong>Configuration via <code>--config</code>:</strong></p>
+<p>Enrichment is configured under the <code>enricher</code> key in the <code>--config</code> YAML file. A built-in default (azure:gpt-4o, 2 RPM) is used when no config file is provided. The YAML below shows all available options:</p>
+<div class="highlight"><pre><span></span><code><span class="nt">enricher</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">requests_per_minute</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">5</span><span class="w">          </span><span class="c1"># LLM API calls per minute (rate limit)</span>
+<span class="w">  </span><span class="nt">tool_host</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">model</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">azure:gpt-4o</span>
+<span class="w">    </span><span class="nt">max_steps</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">10</span>
+<span class="w">    </span><span class="nt">mcp_servers</span><span class="p">:</span>
+<span class="w">      </span><span class="nt">dir-mcp-server</span><span class="p">:</span>
+<span class="w">        </span><span class="nt">command</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">dirctl</span>
+<span class="w">        </span><span class="nt">args</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">mcp</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">serve</span><span class="p p-Indicator">]</span>
+<span class="w">        </span><span class="nt">env</span><span class="p">:</span>
+<span class="w">          </span><span class="nt">OASF_API_VALIDATION_SCHEMA_URL</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">https://schema.oasf.outshift.com</span>
+<span class="w">          </span><span class="nt">DIRECTORY_CLIENT_AUTH_MODE</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">insecure</span>
+<span class="w">  </span><span class="nt">skills_prompt_template</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">./prompts/skills.md</span><span class="w">    </span><span class="c1"># optional custom prompt</span>
+<span class="w">  </span><span class="nt">domains_prompt_template</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">./prompts/domains.md</span><span class="w">  </span><span class="c1"># optional custom prompt</span>
+</code></pre></div>
+<p>See <code>cli/cmd/import/import.config.yaml</code> in the repository for a fully annotated reference configuration.</p>
+<p><strong>Skip enrichment</strong> (static taxonomy):</p>
+<p>To bypass LLM enrichment and tag every record with fixed skills and domains, set <code>skip_enricher: true</code> — no <code>tool_host</code> or LLM credentials are required:</p>
+<div class="highlight"><pre><span></span><code><span class="nt">enricher</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">skip_enricher</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+<span class="w">  </span><span class="nt">skills</span><span class="p">:</span>
+<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">natural_language_processing/text_completion</span>
+<span class="w">      </span><span class="nt">id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">10201</span>
+<span class="w">  </span><span class="nt">domains</span><span class="p">:</span>
+<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">technology</span>
+<span class="w">      </span><span class="nt">id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">1</span>
+</code></pre></div>
+<p><strong>Recommended LLM providers:</strong></p>
+<ul>
+<li><code>azure:gpt-4o</code> — Azure OpenAI GPT-4o (recommended for speed and accuracy)</li>
+<li><code>ollama:qwen3:8b</code> — Local Qwen3 via Ollama</li>
+</ul>
+<p><strong>Environment variables for LLM providers:</strong></p>
+<ul>
+<li>Azure OpenAI: <code>AZURE_OPENAI_API_KEY</code>, <code>AZURE_OPENAI_ENDPOINT</code>, <code>AZURE_OPENAI_DEPLOYMENT</code></li>
+</ul>
+<h3 id="dry-run-output-directory">Dry Run Output Directory</h3>
+<p>When <code>--dry-run</code> is set, the importer does <strong>not</strong> push records to the Directory node. Instead, every transformed record is written to disk as a separate JSON file, one per record. This produces a reviewable artifact set that is drop-in compatible with the existing import / push commands, so users who do not want the importer to push directly to a Directory node can review or modify the records first and upload them later.</p>
+<p><strong>Output layout:</strong></p>
+<ul>
+<li>Target directory: value of <code>--output-dir</code>, or — when not set — <code>./import-dry-run-&lt;timestamp&gt;/</code> in the current working directory.</li>
+<li>The directory is created if it does not exist.</li>
+<li>Each record is written as <code>&lt;cid&gt;.record.json</code>, where <code>&lt;cid&gt;</code> is the record's content identifier. The naming scheme is deterministic and filesystem-safe so files can be diffed, signed, or selectively re-imported.</li>
+</ul>
+<p><strong>Typical workflow:</strong></p>
+<div class="highlight"><pre><span></span><code><span class="c1"># 1. Dry run — write transformed records to ./out</span>
+dirctl<span class="w"> </span>import<span class="w"> </span>--type<span class="o">=</span>mcp-registry<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--url<span class="o">=</span>https://registry.modelcontextprotocol.io/v0.1<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--dry-run<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--output-dir<span class="o">=</span>./out
+
+<span class="c1"># 2. Review / diff / sign the per-record files on disk</span>
+ls<span class="w"> </span>./out
+<span class="c1"># bafkrei...record.json</span>
+<span class="c1"># bafkrei...record.json</span>
+<span class="c1"># ...</span>
+
+<span class="c1"># 3. Re-import the artifacts later via dirctl push (or another import flow)</span>
+<span class="k">for</span><span class="w"> </span>f<span class="w"> </span><span class="k">in</span><span class="w"> </span>./out/*.record.json<span class="p">;</span><span class="w"> </span><span class="k">do</span>
+<span class="w">  </span>dirctl<span class="w"> </span>push<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$f</span><span class="s2">&quot;</span>
+<span class="k">done</span>
+</code></pre></div>
+<h3 id="signing-records-during-import">Signing Records During Import</h3>
+<p>Records can be signed during import using the <code>--sign</code> flag. Signing options work the same as the standalone <code>dirctl sign</code> command (see <a href="#security-verification">Security &amp; Verification</a>).</p>
+<div class="highlight"><pre><span></span><code><span class="c1"># Sign with OIDC (opens browser)</span>
+dirctl<span class="w"> </span>import<span class="w"> </span>--type<span class="o">=</span>mcp-registry<span class="w"> </span>--url<span class="o">=</span>https://registry.modelcontextprotocol.io/v0.1<span class="w"> </span>--sign
+
+<span class="c1"># Sign with a private key</span>
+dirctl<span class="w"> </span>import<span class="w"> </span>--type<span class="o">=</span>mcp-registry<span class="w"> </span>--url<span class="o">=</span>https://registry.modelcontextprotocol.io/v0.1<span class="w"> </span>--sign<span class="w"> </span>--key<span class="o">=</span>/path/to/cosign.key
+</code></pre></div>
+<h2 id="export-operations">Export Operations</h2>
+<p>Export records from the Directory into formats consumable by external tools and agentic CLIs. Supports single-record export by CID/name and batch export from search results.</p>
+<h3 id="dirctl-export-cid-or-nameversiondigest-flags"><code>dirctl export &lt;cid-or-name[:version][@digest]&gt; [flags]</code></h3>
+<p>Pull a record and transform it to the requested format.</p>
+<p><strong>Supported Formats:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Format</th>
+<th>Output</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>a2a</code></td>
+<td><code>.json</code></td>
+<td>A2A AgentCard JSON for Agent-to-Agent protocol interop</td>
+</tr>
+<tr>
+<td><code>agent-skill</code></td>
+<td><code>.md</code></td>
+<td>SKILL.md artifact for agentic CLI consumption (Cursor, Claude Code, etc.)</td>
+</tr>
+<tr>
+<td><code>mcp-ghcopilot</code></td>
+<td><code>.json</code></td>
+<td>GitHub Copilot MCP configuration JSON</td>
+</tr>
+<tr>
+<td><code>mcp-claudecode</code></td>
+<td><code>.json</code></td>
+<td>Claude Code MCP configuration JSON (<code>.mcp.json</code> <code>mcpServers</code> shape)</td>
+</tr>
+<tr>
+<td><code>mcp-cursor</code></td>
+<td><code>.json</code></td>
+<td>Cursor IDE MCP configuration JSON (<code>.cursor/mcp.json</code> <code>mcpServers</code> shape)</td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p><strong>Note:</strong> For raw OASF record JSON, use <a href="#dirctl-pull-reference"><code>dirctl pull</code></a> — it supports <code>--output-file</code>, <code>--output-dir</code>, and search filters for batch retrieval. <code>dirctl export</code> no longer accepts <code>--format=oasf</code>.</p>
+</blockquote>
+<p><strong>Single-record Flags:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Flag</th>
+<th>Description</th>
+<th>Default</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>--format</code></td>
+<td>Export format (see table above); <strong>required</strong></td>
+<td>-</td>
+</tr>
+<tr>
+<td><code>--output-file</code></td>
+<td>File path to write the exported data (default: stdout)</td>
+<td>-</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Batch Export Flags:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Flag</th>
+<th>Description</th>
+<th>Default</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>--output-dir</code></td>
+<td>Directory for batch export from search results</td>
+<td>-</td>
+</tr>
+<tr>
+<td><code>--all-versions</code></td>
+<td>Keep all versions (default: only latest semver per name)</td>
+<td><code>false</code></td>
+</tr>
+<tr>
+<td><code>--limit</code></td>
+<td>Maximum number of records to export</td>
+<td><code>100</code></td>
+</tr>
+</tbody>
+</table>
+<p>When <code>--output-dir</code> is used, at least one search filter is required. All standard search filters are available (<code>--name</code>, <code>--version</code>, <code>--module</code>, <code>--skill</code>, <code>--author</code>, etc.).</p>
+<div class="admonition note">
+<p class="admonition-title">Batch behaviour varies by format</p>
+<p>For different export formats, the batch behaviour varies:</p>
+<ul>
+<li><strong>a2a / oasf</strong>: One file per record (<code>&lt;name&gt;.json</code>).</li>
+<li><strong>agent-skill</strong>: One subdirectory per skill (<code>&lt;name&gt;/SKILL.md</code>).</li>
+<li><strong>mcp-ghcopilot</strong>: All matched MCP servers are merged into a single <code>mcp.json</code> with combined <code>servers</code> and <code>inputs</code> maps.</li>
+<li><strong>mcp-claudecode</strong>: All matched MCP servers are merged into a single <code>mcp.json</code> with a combined <code>mcpServers</code> map.</li>
+<li><strong>mcp-cursor</strong>: All matched MCP servers are merged into a single <code>mcp.json</code> with a combined <code>mcpServers</code> map.</li>
+</ul>
+</div>
+<details class="example">
+<summary>Example</summary>
+<div class="highlight"><pre><span></span><code><span class="c1"># Export a single record as A2A AgentCard to stdout</span>
+dirctl<span class="w"> </span><span class="nb">export</span><span class="w"> </span>baeareihdr6t7s6...<span class="w"> </span>--format<span class="o">=</span>a2a
+
+<span class="c1"># Export to a file (auto-appends extension if omitted)</span>
+dirctl<span class="w"> </span><span class="nb">export</span><span class="w"> </span>my-agent:1.0<span class="w"> </span>--format<span class="o">=</span>a2a<span class="w"> </span>--output-file<span class="o">=</span>./agent-card.json
+dirctl<span class="w"> </span><span class="nb">export</span><span class="w"> </span>my-agent:1.0<span class="w"> </span>--format<span class="o">=</span>agent-skill<span class="w"> </span>--output-file<span class="o">=</span>./SKILL.md
+
+<span class="c1"># Batch export A2A records to a directory</span>
+dirctl<span class="w"> </span><span class="nb">export</span><span class="w"> </span>--output-dir<span class="o">=</span>./exports/<span class="w"> </span>--format<span class="o">=</span>a2a<span class="w"> </span>--module<span class="w"> </span><span class="s2">&quot;integration/a2a&quot;</span>
+
+<span class="c1"># Batch export skills (creates subdirectories with SKILL.md)</span>
+dirctl<span class="w"> </span><span class="nb">export</span><span class="w"> </span>--output-dir<span class="o">=</span>./exports/<span class="w"> </span>--format<span class="o">=</span>agent-skill<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--module<span class="w"> </span><span class="s2">&quot;core/language_model/agentskills&quot;</span>
+
+<span class="c1"># Batch export MCP servers (merged into a single config)</span>
+dirctl<span class="w"> </span><span class="nb">export</span><span class="w"> </span>--output-dir<span class="o">=</span>./exports/<span class="w"> </span>--format<span class="o">=</span>mcp-ghcopilot<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--module<span class="w"> </span><span class="s2">&quot;integration/mcp&quot;</span>
+
+<span class="c1"># Export a single record as a Claude Code .mcp.json</span>
+dirctl<span class="w"> </span><span class="nb">export</span><span class="w"> </span>my-mcp-server<span class="w"> </span>--format<span class="o">=</span>mcp-claudecode<span class="w"> </span>--output-file<span class="o">=</span>.mcp.json
+
+<span class="c1"># Export a single record as a Cursor IDE mcp.json</span>
+dirctl<span class="w"> </span><span class="nb">export</span><span class="w"> </span>my-mcp-server<span class="w"> </span>--format<span class="o">=</span>mcp-cursor<span class="w"> </span>--output-file<span class="o">=</span>.cursor/mcp.json
+
+<span class="c1"># Export all versions instead of only the latest</span>
+dirctl<span class="w"> </span><span class="nb">export</span><span class="w"> </span>--output-dir<span class="o">=</span>./exports/<span class="w"> </span>--format<span class="o">=</span>a2a<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--name<span class="w"> </span><span class="s2">&quot;my-agent&quot;</span><span class="w"> </span>--all-versions
+
+<span class="c1"># Combine multiple search filters</span>
+dirctl<span class="w"> </span><span class="nb">export</span><span class="w"> </span>--output-dir<span class="o">=</span>./exports/<span class="w"> </span>--format<span class="o">=</span>a2a<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--author<span class="w"> </span><span class="s2">&quot;acme&quot;</span><span class="w"> </span>--skill<span class="w"> </span><span class="s2">&quot;natural_language_processing&quot;</span>
+</code></pre></div>
+</details>
+<h2 id="routing-operations">Routing Operations</h2>
+<p>The routing commands manage record announcement and discovery across the peer-to-peer network.</p>
+<h3 id="dirctl-routing-publish-cid"><code>dirctl routing publish &lt;cid&gt;</code></h3>
+<p>Announces records to the network for discovery by other peers. The command does the following:</p>
+<ul>
+<li>Announces record to DHT network.</li>
+<li>Makes record discoverable by other peers.</li>
+<li>Stores routing metadata locally.</li>
+<li>Enables network-wide discovery.</li>
+</ul>
+<details class="example">
+<summary>Example</summary>
+<div class="highlight"><pre><span></span><code><span class="c1"># Publish a record to the network</span>
+dirctl<span class="w"> </span>routing<span class="w"> </span>publish<span class="w"> </span>baeareihdr6t7s6sr2q4zo456sza66eewqc7huzatyfgvoupaqyjw23ilvi
+</code></pre></div>
+</details>
+<h3 id="dirctl-routing-unpublish-cid"><code>dirctl routing unpublish &lt;cid&gt;</code></h3>
+<p>Removes records from network discovery while keeping them in local storage. The command does the following:</p>
+<ul>
+<li>Removes DHT announcements.</li>
+<li>Stops network discovery.</li>
+<li>Keeps record in local storage.</li>
+<li>Cleans up routing metadata.</li>
+</ul>
+<details class="example">
+<summary>Example</summary>
+<div class="highlight"><pre><span></span><code><span class="c1"># Remove from network discovery</span>
+dirctl<span class="w"> </span>routing<span class="w"> </span>unpublish<span class="w"> </span>baeareihdr6t7s6sr2q4zo456sza66eewqc7huzatyfgvoupaqyjw23ilvi
+</code></pre></div>
+</details>
+<h3 id="dirctl-routing-list-flags"><code>dirctl routing list [flags]</code></h3>
+<p>Queries local published records with optional filtering.</p>
+<p>The following flags are available:</p>
+<ul>
+<li><code>--skill &lt;skill&gt;</code> - Filter by skill (repeatable)</li>
+<li><code>--locator &lt;type&gt;</code> - Filter by locator type (repeatable)</li>
+<li><code>--domain &lt;domain&gt;</code> - Filter by domain (repeatable)</li>
+<li><code>--module &lt;module&gt;</code> - Filter by module name (repeatable)</li>
+<li><code>--cid &lt;cid&gt;</code> - List specific record by CID</li>
+<li><code>--limit &lt;number&gt;</code> - Limit number of results</li>
+</ul>
+<details class="example">
+<summary>Example</summary>
+<div class="highlight"><pre><span></span><code><span class="c1"># List all local published records</span>
+dirctl<span class="w"> </span>routing<span class="w"> </span>list
+
+<span class="c1"># List by skill</span>
+dirctl<span class="w"> </span>routing<span class="w"> </span>list<span class="w"> </span>--skill<span class="w"> </span><span class="s2">&quot;AI&quot;</span>
+dirctl<span class="w"> </span>routing<span class="w"> </span>list<span class="w"> </span>--skill<span class="w"> </span><span class="s2">&quot;Natural Language Processing&quot;</span>
+
+<span class="c1"># List by locator type</span>
+dirctl<span class="w"> </span>routing<span class="w"> </span>list<span class="w"> </span>--locator<span class="w"> </span><span class="s2">&quot;docker-image&quot;</span>
+
+<span class="c1"># List by module</span>
+dirctl<span class="w"> </span>routing<span class="w"> </span>list<span class="w"> </span>--module<span class="w"> </span><span class="s2">&quot;runtime/framework&quot;</span>
+
+<span class="c1"># Multiple criteria (AND logic)</span>
+dirctl<span class="w"> </span>routing<span class="w"> </span>list<span class="w"> </span>--skill<span class="w"> </span><span class="s2">&quot;AI&quot;</span><span class="w"> </span>--locator<span class="w"> </span><span class="s2">&quot;docker-image&quot;</span>
+dirctl<span class="w"> </span>routing<span class="w"> </span>list<span class="w"> </span>--domain<span class="w"> </span><span class="s2">&quot;healthcare&quot;</span><span class="w"> </span>--module<span class="w"> </span><span class="s2">&quot;runtime/language&quot;</span>
+
+<span class="c1"># Specific record by CID</span>
+dirctl<span class="w"> </span>routing<span class="w"> </span>list<span class="w"> </span>--cid<span class="w"> </span>baeareihdr6t7s6sr2q4zo456sza66eewqc7huzatyfgvoupaqyjw23ilvi
+
+<span class="c1"># Limit results</span>
+dirctl<span class="w"> </span>routing<span class="w"> </span>list<span class="w"> </span>--skill<span class="w"> </span><span class="s2">&quot;AI&quot;</span><span class="w"> </span>--limit<span class="w"> </span><span class="m">5</span>
+</code></pre></div>
+</details>
+<h3 id="dirctl-routing-search-flags"><code>dirctl routing search [flags]</code></h3>
+<p>Discovers records from other peers across the network.</p>
+<p>The following flags are available:</p>
+<ul>
+<li><code>--skill &lt;skill&gt;</code> - Search by skill (repeatable)</li>
+<li><code>--locator &lt;type&gt;</code> - Search by locator type (repeatable)</li>
+<li><code>--domain &lt;domain&gt;</code> - Search by domain (repeatable)</li>
+<li><code>--module &lt;module&gt;</code> - Search by module name (repeatable)</li>
+<li><code>--limit &lt;number&gt;</code> - Maximum results to return</li>
+<li><code>--min-score &lt;score&gt;</code> - Minimum match score threshold</li>
+</ul>
+<p>The output includes the following:</p>
+<ul>
+<li>Record CID and provider peer information</li>
+<li>Match score showing query relevance</li>
+<li>Specific queries that matched</li>
+<li>Peer connection details</li>
+</ul>
+<details class="example">
+<summary>Example</summary>
+<div class="highlight"><pre><span></span><code><span class="c1"># Search for AI records across the network</span>
+dirctl<span class="w"> </span>routing<span class="w"> </span>search<span class="w"> </span>--skill<span class="w"> </span><span class="s2">&quot;AI&quot;</span>
+
+<span class="c1"># Search with multiple criteria</span>
+dirctl<span class="w"> </span>routing<span class="w"> </span>search<span class="w"> </span>--skill<span class="w"> </span><span class="s2">&quot;AI&quot;</span><span class="w"> </span>--skill<span class="w"> </span><span class="s2">&quot;ML&quot;</span><span class="w"> </span>--min-score<span class="w"> </span><span class="m">2</span>
+
+<span class="c1"># Search by locator type</span>
+dirctl<span class="w"> </span>routing<span class="w"> </span>search<span class="w"> </span>--locator<span class="w"> </span><span class="s2">&quot;docker-image&quot;</span>
+
+<span class="c1"># Search by module</span>
+dirctl<span class="w"> </span>routing<span class="w"> </span>search<span class="w"> </span>--module<span class="w"> </span><span class="s2">&quot;runtime/framework&quot;</span>
+
+<span class="c1"># Advanced search with scoring</span>
+dirctl<span class="w"> </span>routing<span class="w"> </span>search<span class="w"> </span>--skill<span class="w"> </span><span class="s2">&quot;web-development&quot;</span><span class="w"> </span>--limit<span class="w"> </span><span class="m">10</span><span class="w"> </span>--min-score<span class="w"> </span><span class="m">1</span>
+dirctl<span class="w"> </span>routing<span class="w"> </span>search<span class="w"> </span>--domain<span class="w"> </span><span class="s2">&quot;finance&quot;</span><span class="w"> </span>--module<span class="w"> </span><span class="s2">&quot;validation&quot;</span><span class="w"> </span>--min-score<span class="w"> </span><span class="m">2</span>
+</code></pre></div>
+</details>
+<p><strong>Output includes:</strong></p>
+<h3 id="dirctl-routing-info"><code>dirctl routing info</code></h3>
+<p>Shows routing statistics and summary information.</p>
+<p>The output includes the following:</p>
+<ul>
+<li>Total published records count</li>
+<li>Skills distribution with counts</li>
+<li>Locators distribution with counts</li>
+<li>Helpful usage tips</li>
+</ul>
+<details class="example">
+<summary>Example</summary>
+<div class="highlight"><pre><span></span><code><span class="c1"># Show local routing statistics</span>
+dirctl<span class="w"> </span>routing<span class="w"> </span>info
+</code></pre></div>
+</details>
+<h2 id="search-discovery">Search &amp; Discovery</h2>
+<h3 id="dirctl-search-flags"><code>dirctl search [flags]</code></h3>
+<p>Search the local index using structured filter flags.</p>
+<p><strong>Filter flags</strong> (all repeatable):</p>
+<table>
+<thead>
+<tr>
+<th>Flag</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>--name</code></td>
+<td>Record name (supports wildcards, e.g. <code>web-*</code>)</td>
+</tr>
+<tr>
+<td><code>--version</code></td>
+<td>Record version (e.g. <code>v1.0.0</code>, <code>v1.*</code>)</td>
+</tr>
+<tr>
+<td><code>--skill-id</code></td>
+<td>Skill ID (e.g. <code>10201</code>)</td>
+</tr>
+<tr>
+<td><code>--skill</code></td>
+<td>Skill name (e.g. <code>natural_language_processing</code>)</td>
+</tr>
+<tr>
+<td><code>--locator</code></td>
+<td>Locator type (e.g. <code>docker-image</code>)</td>
+</tr>
+<tr>
+<td><code>--module</code></td>
+<td>Module path (e.g. <code>core/llm/model</code>)</td>
+</tr>
+<tr>
+<td><code>--domain-id</code></td>
+<td>Domain ID</td>
+</tr>
+<tr>
+<td><code>--domain</code></td>
+<td>Domain name</td>
+</tr>
+<tr>
+<td><code>--author</code></td>
+<td>Author name</td>
+</tr>
+<tr>
+<td><code>--schema-version</code></td>
+<td>OASF schema version</td>
+</tr>
+<tr>
+<td><code>--module-id</code></td>
+<td>Module ID</td>
+</tr>
+<tr>
+<td><code>--annotation</code></td>
+<td>Annotation key=value</td>
+</tr>
+<tr>
+<td><code>--verified</code></td>
+<td>Only verified records</td>
+</tr>
+<tr>
+<td><code>--trusted</code></td>
+<td>Only trusted records (signature verification passed)</td>
+</tr>
+<tr>
+<td><code>--safe</code></td>
+<td>Only records where all security scanners reported <code>is_safe=true</code></td>
+</tr>
+<tr>
+<td><code>--scan-severity</code></td>
+<td>Only records whose highest scan severity meets or exceeds a threshold (<code>NONE</code>, <code>INFO</code>, <code>LOW</code>, <code>MEDIUM</code>, <code>HIGH</code>, <code>CRITICAL</code>)</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Other flags:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Flag</th>
+<th>Description</th>
+<th>Default</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>--format</code></td>
+<td>Output format: <code>cid</code> or <code>record</code></td>
+<td><code>cid</code></td>
+</tr>
+<tr>
+<td><code>--limit</code></td>
+<td>Maximum results</td>
+<td><code>100</code></td>
+</tr>
+<tr>
+<td><code>--offset</code></td>
+<td>Pagination offset</td>
+<td><code>0</code></td>
+</tr>
+</tbody>
+</table>
+<details class="example">
+<summary>Example</summary>
+<div class="highlight"><pre><span></span><code><span class="c1"># Search by record name</span>
+dirctl<span class="w"> </span>search<span class="w"> </span>--name<span class="w"> </span>my-agent
+
+<span class="c1"># Search by version</span>
+dirctl<span class="w"> </span>search<span class="w"> </span>--version<span class="w"> </span>v1.0.0
+
+<span class="c1"># Search by skill ID</span>
+dirctl<span class="w"> </span>search<span class="w"> </span>--skill-id<span class="w"> </span><span class="m">10201</span>
+
+<span class="c1"># Complex search with multiple criteria</span>
+dirctl<span class="w"> </span>search<span class="w"> </span>--limit<span class="w"> </span><span class="m">10</span><span class="w"> </span>--offset<span class="w"> </span><span class="m">0</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--name<span class="w"> </span>my-agent<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--skill<span class="w"> </span><span class="s2">&quot;Text Completion&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--locator<span class="w"> </span>docker-image<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--format<span class="w"> </span>record
+
+<span class="c1"># Security scan filters</span>
+dirctl<span class="w"> </span>search<span class="w"> </span>--safe
+dirctl<span class="w"> </span>search<span class="w"> </span>--scan-severity<span class="w"> </span>HIGH
+dirctl<span class="w"> </span>search<span class="w"> </span>--safe<span class="w"> </span>--scan-severity<span class="w"> </span>MEDIUM
+</code></pre></div>
+</details>
+<h2 id="security-verification">Security &amp; Verification</h2>
+<h3 id="security-scanning">Security Scanning</h3>
+<p>The Directory reconciler automatically runs security scanners against records and stores the results as OCI referrers. Scan results are indexed in the local database so they can be queried as search filters. Two scanners are supported: <a href="https://cisco-ai-defense.github.io/docs/mcp-scanner">mcp-scanner</a> for MCP server source code and <a href="https://cisco-ai-defense.github.io/docs/skill-scanner">skill-scanner</a> for agent skill bundles.</p>
+<p><strong>Pull scan reports for a record:</strong></p>
+<div class="highlight"><pre><span></span><code>dirctl<span class="w"> </span>pull<span class="w"> </span>&lt;cid&gt;<span class="w"> </span>--scan-report
+</code></pre></div>
+<p>The response includes a <code>scanReports</code> array. Each entry covers one scanner type and contains:</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>scanner_type</code></td>
+<td>Scanner that produced this report (<code>SCANNER_TYPE_MCP</code>, <code>SCANNER_TYPE_SKILL</code>)</td>
+</tr>
+<tr>
+<td><code>scanner_version</code></td>
+<td>Version of the scanner binary</td>
+</tr>
+<tr>
+<td><code>scanned_at</code></td>
+<td>RFC 3339 timestamp of when the scan ran</td>
+</tr>
+<tr>
+<td><code>is_safe</code></td>
+<td><code>true</code> if the scanner found no security issues</td>
+</tr>
+<tr>
+<td><code>max_severity</code></td>
+<td>Highest severity across all findings (<code>SEVERITY_NONE</code>, <code>SEVERITY_INFO</code>, <code>SEVERITY_MEDIUM</code>, <code>SEVERITY_HIGH</code>, <code>SEVERITY_CRITICAL</code>)</td>
+</tr>
+<tr>
+<td><code>analyzers</code></td>
+<td>Analyzer modules that were invoked</td>
+</tr>
+<tr>
+<td><code>findings</code></td>
+<td>List of individual findings (rule ID, severity, message, location, remediation)</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Filter records by scan status:</strong></p>
+<div class="highlight"><pre><span></span><code><span class="c1"># Records where all scanners reported is_safe=true</span>
+dirctl<span class="w"> </span>search<span class="w"> </span>--safe
+
+<span class="c1"># Records whose highest severity meets or exceeds a threshold</span>
+dirctl<span class="w"> </span>search<span class="w"> </span>--scan-severity<span class="w"> </span>HIGH
+dirctl<span class="w"> </span>search<span class="w"> </span>--scan-severity<span class="w"> </span>MEDIUM
+
+<span class="c1"># Combine with other filters</span>
+dirctl<span class="w"> </span>search<span class="w"> </span>--name<span class="w"> </span><span class="s2">&quot;cisco.com/*&quot;</span><span class="w"> </span>--safe
+dirctl<span class="w"> </span>search<span class="w"> </span>--safe<span class="w"> </span>--scan-severity<span class="w"> </span>MEDIUM
+</code></pre></div>
+<p>A record appears in <code>--safe</code> results only when at least one scanner has run and no scanner has reported <code>is_safe=false</code>. Records where all scanners were skipped (no source repo, no skill bundle) are not included.</p>
+<h3 id="name-verification">Name Verification</h3>
+<p>Record name verification proves that the signing key is authorized by the domain claimed in the record's name field.</p>
+<p><strong>Requirements:</strong></p>
+<ul>
+<li>Record name must include a protocol prefix: <code>https://domain/path</code> or <code>http://domain/path</code></li>
+<li>A JWKS file must be hosted at <code>&lt;scheme&gt;://&lt;domain&gt;/.well-known/jwks.json</code></li>
+<li>The record must be signed with the private key corresponding to a public key present in that JWKS file</li>
+</ul>
+<p><strong>Workflow:</strong></p>
+<ol>
+<li>
+<p>Push a record with a verifiable name.</p>
+<div class="highlight"><pre><span></span><code>dirctl<span class="w"> </span>push<span class="w"> </span>record.json<span class="w"> </span>--output<span class="w"> </span>raw
+<span class="c1"># Returns: bafyreib...</span>
+</code></pre></div>
+</li>
+<li>
+<p>Sign the record (triggers automatic verification).</p>
+<div class="highlight"><pre><span></span><code>dirctl<span class="w"> </span>sign<span class="w"> </span>&lt;cid&gt;<span class="w"> </span>--key<span class="w"> </span>private.key
+</code></pre></div>
+</li>
+<li>
+<p>Check verification status using <a href="#dirctl-naming-verify-reference"><code>dirctl naming verify</code></a>.</p>
+</li>
+</ol>
+<h3 id="dirctl-sign-cid-flags"><code>dirctl sign &lt;cid&gt; [flags]</code></h3>
+<p>Signs records for integrity and authenticity. When signing a record with a verifiable name (e.g., <code>https://domain/path</code>), the system automatically attempts to verify domain authorization via JWKS. See <a href="#name-verification">Name Verification</a> for details.</p>
+<details class="example">
+<summary>Example</summary>
+<div class="highlight"><pre><span></span><code><span class="c1"># Sign with private key</span>
+dirctl<span class="w"> </span>sign<span class="w"> </span>&lt;cid&gt;<span class="w"> </span>--key<span class="w"> </span>private.key
+
+<span class="c1"># Sign with OIDC (keyless signing; default when --key is omitted)</span>
+dirctl<span class="w"> </span>sign<span class="w"> </span>&lt;cid&gt;<span class="w"> </span>--fulcio-url<span class="w"> </span>https://fulcio.example.com
+
+<span class="c1"># Sign with a pre-issued OIDC token (non-interactive)</span>
+dirctl<span class="w"> </span>sign<span class="w"> </span>&lt;cid&gt;<span class="w"> </span>--oidc-token<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$OIDC_TOKEN</span><span class="s2">&quot;</span>
+</code></pre></div>
+</details>
+<h3 id="dirctl-naming-verify-reference"><code>dirctl naming verify &lt;reference&gt;</code></h3>
+<p>Verifies that a record's signing key is authorized by the domain claimed in its name field. Checks if the signing key matches a public key in the domain's JWKS file hosted at <code>/.well-known/jwks.json</code>.</p>
+<p><strong>Supported Reference Formats:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Format</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>&lt;cid&gt;</code></td>
+<td>Verify by content address</td>
+</tr>
+<tr>
+<td><code>&lt;name&gt;</code></td>
+<td>Verify the most recently created version</td>
+</tr>
+<tr>
+<td><code>&lt;name&gt;:&lt;version&gt;</code></td>
+<td>Verify a specific version</td>
+</tr>
+</tbody>
+</table>
+<details class="example">
+<summary>Example</summary>
+<div class="highlight"><pre><span></span><code><span class="c1"># Verify by CID</span>
+dirctl<span class="w"> </span>naming<span class="w"> </span>verify<span class="w"> </span>bafyreib...<span class="w"> </span>--output<span class="w"> </span>json
+
+<span class="c1"># Verify by name (latest version)</span>
+dirctl<span class="w"> </span>naming<span class="w"> </span>verify<span class="w"> </span>cisco.com/agent<span class="w"> </span>--output<span class="w"> </span>json
+
+<span class="c1"># Verify by name with specific version</span>
+dirctl<span class="w"> </span>naming<span class="w"> </span>verify<span class="w"> </span>cisco.com/agent:v1.0.0<span class="w"> </span>--output<span class="w"> </span>json
+</code></pre></div>
+<p>Example verification response:</p>
+<div class="highlight"><pre><span></span><code><span class="p">{</span>
+<span class="nt">&quot;cid&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;bafyreib...&quot;</span><span class="p">,</span>
+<span class="nt">&quot;verified&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
+<span class="nt">&quot;domain&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;cisco.com&quot;</span><span class="p">,</span>
+<span class="nt">&quot;method&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;jwks&quot;</span><span class="p">,</span>
+<span class="nt">&quot;key_id&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;key-1&quot;</span><span class="p">,</span>
+<span class="nt">&quot;verified_at&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;2026-01-21T10:30:00Z&quot;</span>
+<span class="p">}</span>
+</code></pre></div>
+</details>
+<h3 id="dirctl-verify-record-cid-flags"><code>dirctl verify &lt;record-cid&gt; [flags]</code></h3>
+<p>Verifies a record signature. Signatures are fetched from the directory.</p>
+<table>
+<thead>
+<tr>
+<th>Flag</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>--key</code></td>
+<td>Public key file path, URL, or KMS URI</td>
+</tr>
+<tr>
+<td><code>--oidc-issuer</code></td>
+<td>OIDC issuer to match (supports regexp)</td>
+</tr>
+<tr>
+<td><code>--oidc-subject</code></td>
+<td>OIDC subject to match (supports regexp)</td>
+</tr>
+<tr>
+<td><code>--from-server</code></td>
+<td>Use the server's cached verification result</td>
+</tr>
+<tr>
+<td><code>--ignore-tlog</code></td>
+<td>Skip transparency log verification</td>
+</tr>
+</tbody>
+</table>
+<details class="example">
+<summary>Example</summary>
+<div class="highlight"><pre><span></span><code><span class="c1"># Verify any valid signature on the record</span>
+dirctl<span class="w"> </span>verify<span class="w"> </span>&lt;record-cid&gt;
+
+<span class="c1"># Verify against a specific public key</span>
+dirctl<span class="w"> </span>verify<span class="w"> </span>&lt;record-cid&gt;<span class="w"> </span>--key<span class="w"> </span>/path/to/cosign.pub
+
+<span class="c1"># Verify against an OIDC identity</span>
+dirctl<span class="w"> </span>verify<span class="w"> </span>&lt;record-cid&gt;<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--oidc-issuer<span class="w"> </span>https://github.com/login/oauth<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--oidc-subject<span class="w"> </span>user@example.com
+</code></pre></div>
+</details>
+<h3 id="dirctl-validate-file-flags"><code>dirctl validate [&lt;file&gt;] [flags]</code></h3>
+<p>Validates OASF record JSON from a file or stdin against the OASF schema. The JSON can be provided as a file path or piped from stdin (e.g., from <code>dirctl pull</code>). A schema URL must be provided via <code>--url</code> for API-based validation.</p>
+<table>
+<thead>
+<tr>
+<th>Flag</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>--url &lt;url&gt;</code></td>
+<td>OASF schema URL for API-based validation (required)</td>
+</tr>
+</tbody>
+</table>
+<details class="example">
+<summary>Example</summary>
+<div class="highlight"><pre><span></span><code><span class="c1"># Validate a file with API-based validation</span>
+dirctl<span class="w"> </span>validate<span class="w"> </span>record.json<span class="w"> </span>--url<span class="w"> </span>https://schema.oasf.outshift.com
+
+<span class="c1"># Validate JSON piped from stdin</span>
+cat<span class="w"> </span>record.json<span class="w"> </span><span class="p">|</span><span class="w"> </span>dirctl<span class="w"> </span>validate<span class="w"> </span>--url<span class="w"> </span>https://schema.oasf.outshift.com
+
+<span class="c1"># Validate a record pulled from directory</span>
+dirctl<span class="w"> </span>pull<span class="w"> </span>&lt;cid&gt;<span class="w"> </span>--output<span class="w"> </span>json<span class="w"> </span><span class="p">|</span><span class="w"> </span>dirctl<span class="w"> </span>validate<span class="w"> </span>--url<span class="w"> </span>https://schema.oasf.outshift.com
+
+<span class="c1"># Validate all records (using shell scripting)</span>
+<span class="k">for</span><span class="w"> </span>cid<span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="k">$(</span>dirctl<span class="w"> </span>search<span class="w"> </span>--output<span class="w"> </span>jsonl<span class="w"> </span><span class="p">|</span><span class="w"> </span>jq<span class="w"> </span>-r<span class="w"> </span><span class="s1">&#39;.record_cid&#39;</span><span class="k">)</span><span class="p">;</span><span class="w"> </span><span class="k">do</span>
+<span class="w">  </span>dirctl<span class="w"> </span>pull<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$cid</span><span class="s2">&quot;</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>dirctl<span class="w"> </span>validate<span class="w"> </span>--url<span class="w"> </span>https://schema.oasf.outshift.com
+<span class="k">done</span>
+</code></pre></div>
+</details>
+<h2 id="synchronization">Synchronization</h2>
+<h3 id="dirctl-sync-create-url"><code>dirctl sync create &lt;url&gt;</code></h3>
+<p>Creates peer-to-peer synchronization.</p>
+<details class="example">
+<summary>Example</summary>
+<div class="highlight"><pre><span></span><code><span class="c1"># Create sync with remote peer</span>
+dirctl<span class="w"> </span>sync<span class="w"> </span>create<span class="w"> </span>https://peer.example.com
+</code></pre></div>
+</details>
+<h3 id="dirctl-sync-list"><code>dirctl sync list</code></h3>
+<p>Lists active synchronizations.</p>
+<details class="example">
+<summary>Example</summary>
+<div class="highlight"><pre><span></span><code><span class="c1"># Show all active syncs</span>
+dirctl<span class="w"> </span>sync<span class="w"> </span>list
+</code></pre></div>
+</details>
+<h3 id="dirctl-sync-status-sync-id"><code>dirctl sync status &lt;sync-id&gt;</code></h3>
+<p>Checks synchronization status.</p>
+<details class="example">
+<summary>Example</summary>
+<div class="highlight"><pre><span></span><code><span class="c1"># Check specific sync status</span>
+dirctl<span class="w"> </span>sync<span class="w"> </span>status<span class="w"> </span>abc123-def456-ghi789
+</code></pre></div>
+</details>
+<h3 id="dirctl-sync-delete-sync-id"><code>dirctl sync delete &lt;sync-id&gt;</code></h3>
+<p>Removes synchronization.</p>
+<details class="example">
+<summary>Example</summary>
+<div class="highlight"><pre><span></span><code><span class="c1"># Delete a sync</span>
+dirctl<span class="w"> </span>sync<span class="w"> </span>delete<span class="w"> </span>abc123-def456-ghi789
+</code></pre></div>
+</details>
+
+
+
+
+
+
+
+
+
+  
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+  <script>var tabs=__md_get("__tabs");if(Array.isArray(tabs))e:for(var set of document.querySelectorAll(".tabbed-set")){var labels=set.querySelector(".tabbed-labels");for(var tab of tabs)for(var label of labels.getElementsByTagName("label"))if(label.innerText.trim()===tab){var input=document.getElementById(label.htmlFor);input.checked=!0;continue e}}</script>
+
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright md-copyright--centered">
+  <div class="md-copyright__highlight">
+    © 2026, Agntcy, a Series of LF Projects, LLC. All rights reserved.
+
+  </div>
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+      <div class="md-consent" data-md-component="consent" id="__consent" hidden>
+        <div class="md-consent__overlay"></div>
+        <aside class="md-consent__inner">
+          <form class="md-consent__form md-grid md-typeset" name="consent">
+            
+
+
+
+  
+
+<h4>Cookie consent</h4>
+<p>We use cookies to recognize your repeated visits and preferences, as well as to measure the effectiveness of our documentation and whether users find what they're searching for. With your consent, you're helping us to make our documentation better.</p>
+<input class="md-toggle" type="checkbox" id="__settings" checked>
+<div class="md-consent__settings">
+  <ul class="task-list">
+    
+    
+      
+        
+  
+  
+    
+    
+  
+  <li class="task-list-item">
+    <label class="task-list-control">
+      <input type="checkbox" name="analytics" checked>
+      <span class="task-list-indicator"></span>
+      Google Analytics
+    </label>
+  </li>
+
+      
+    
+    
+      
+        
+  
+  
+    
+    
+  
+  <li class="task-list-item">
+    <label class="task-list-control">
+      <input type="checkbox" name="github" checked>
+      <span class="task-list-indicator"></span>
+      GitHub
+    </label>
+  </li>
+
+      
+    
+    
+  </ul>
+</div>
+<div class="md-consent__controls">
+  
+    
+      <button class="md-button md-button--primary">Accept</button>
+    
+    
+    
+  
+    
+    
+      <button type="reset" class="md-button md-button--primary">Reject</button>
+    
+    
+  
+</div>
+          </form>
+        </aside>
+      </div>
+      <script>var consent=__md_get("__consent");if(consent)for(var input of document.forms.consent.elements)input.name&&(input.checked=consent[input.name]||!1);else"file:"!==location.protocol&&setTimeout((function(){document.querySelector("[data-md-component=consent]").hidden=!1}),250);var form=document.forms.consent;for(var action of["submit","reset"])form.addEventListener(action,(function(e){if(e.preventDefault(),"reset"===e.type)for(var n of document.forms.consent.elements)n.name&&(n.checked=!1);__md_set("__consent",Object.fromEntries(Array.from(new FormData(form).keys()).map((function(e){return[e,!0]})))),location.hash="",location.reload()}))</script>
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["announce.dismiss", "content.action.edit", "content.action.view", "content.code.annotate", "content.code.copy", "content.tabs.link", "content.tooltips", "navigation.indexes", "navigation.path", "navigation.sections", "navigation.tabs", "navigation.top", "navigation.tracking", "search.highlight", "search.share", "search.suggest", "toc.follow"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"provider": "mike"}}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.79ae519e.min.js"></script>
+      
+        <script src="../../javascripts/dirctl-demo-data.js"></script>
+      
+        <script src="../../javascripts/dirctl-terminal.js"></script>
+      
+        <script src="../../javascripts/dir-hero-flip.js"></script>
+      
+        <script src="../../javascripts/dir-graph.js"></script>
+      
+        <script src="../../javascripts/dir-repobeats-data.js"></script>
+      
+        <script src="../../javascripts/dir-repobeats.js"></script>
+      
+        <script src="../../javascripts/card-links.js"></script>
+      
+        <script src="../../javascripts/external-links.js"></script>
+      
+        <script src="../../javascripts/palette-tooltip-fix.js"></script>
+      
+    
+  </body>
+</html>
