@@ -10,6 +10,7 @@ variable "BUILD_LDFLAGS" { default = "-s -w -extldflags -static" }
 variable "IMAGE_NAME_SUFFIX" { default = "" }
 variable "MCP_SCANNER_VERSION" { default = "" }
 variable "SKILL_SCANNER_VERSION" { default = "" }
+variable "A2A_SCANNER_VERSION" { default = "" }
 
 function "get_tag" {
   params = [tags, name]
@@ -91,6 +92,7 @@ target "dir-reconciler" {
   args = {
     MCP_SCANNER_VERSION   = "${MCP_SCANNER_VERSION}"
     SKILL_SCANNER_VERSION = "${SKILL_SCANNER_VERSION}"
+    A2A_SCANNER_VERSION   = "${A2A_SCANNER_VERSION}"
   }
   tags = get_tag(target.docker-metadata-action.tags, "${target.dir-reconciler.name}")
 }
