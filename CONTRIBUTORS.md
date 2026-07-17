@@ -8,3 +8,10 @@ Copyright AGNTCY Contributors (https://github.com/agntcy)
 SPDX-License-Identifier: Apache-2.0
 
 1. Cisco Systems Inc.
+2. Red Hat Inc.
+3. Oracle Corp.
+4. Dell Inc.
+5. Amazon Web Services (AWS)
+6. SourceFuse
+7. Modular
+8. Neurelay
