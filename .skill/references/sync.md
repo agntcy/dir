@@ -33,7 +33,6 @@ manage the lifecycle of those syncs.
    dirctl sync list -o json               # all syncs with IDs and states
    dirctl sync status <sync-id>           # progress / health of one sync
    dirctl search "<known record>"         # confirm it arrived locally
-   dirctl sync delete <sync-id>           # stop/remove — confirm with user first
    ```
 
 Sync is asynchronous — poll `status`, don't busy-wait; warn the user before a
