@@ -9,3 +9,5 @@ SPDX-License-Identifier: Apache-2.0
 
 1. Cisco Systems Inc.
 2. Red Hat Inc.
+3. Modular
+4. Infosys
