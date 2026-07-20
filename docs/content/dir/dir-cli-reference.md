@@ -810,12 +810,51 @@ See the [MCP Registry API docs](https://registry.modelcontextprotocol.io/docs#/o
 
 ### Enrichment
 
-By default, the import command automatically enriches records using an LLM to map them to appropriate OASF skills and domains. The enrichment pipeline is built into `dirctl`: it runs an LLM with tool-calling support against the OASF schema tools exposed by `dirctl mcp serve`, so no external tooling is required. LLM enrichment can be skipped by specifying skills and domains explicitly in the config file (see **Skip enrichment** below).
+The import command enriches records by mapping them to OASF skills and domains. Three enrichment methods are available, configured under the `enricher` key in the `--config` YAML file. When no config file is provided, LLM enrichment is used by default (azure:gpt-4o, 2 RPM).
+
+#### Extractor enrichment (LLM-free, recommended)
+
+Uses the local OASF sentence-transformer model provisioned by `dirctl init` to classify records in-process — no API key, no external service, no LLM runtime. This is the fastest option and works offline.
+
+**Requires:** `dirctl init` to have been run at least once to provision the model assets.
+
+```yaml
+enricher:
+  extractor: {}           # uses assets provisioned by dirctl init
+```
+
+To override the default asset location:
+
+```yaml
+enricher:
+  extractor:
+    oasf_url: https://schema.oasf.outshift.com   # optional
+    asset_dir: /path/to/custom/assets             # optional
+```
+
+#### Static enrichment
+
+Assigns the same fixed skills and domains to every imported record. No LLM or model assets required.
+
+```yaml
+enricher:
+  static:
+    skills:
+      - name: natural_language_processing/text_completion
+        id: 10201
+    domains:
+      - name: technology
+        id: 1
+```
+
+#### LLM enrichment
+
+Runs an LLM with tool-calling support against the OASF schema tools exposed by `dirctl mcp serve`. Produces the most semantically accurate skill and domain assignments but requires LLM credentials or a local runtime.
 
 **Requirements:**
 
 - `dirctl` binary (includes the built-in MCP server with `agntcy_oasf_get_schema_skills` and `agntcy_oasf_get_schema_domains` tools)
-- An LLM model with tool-calling support (GPT-4o, Claude, or compatible Ollama models)
+- An LLM with tool-calling support (GPT-4o, Claude, or compatible Ollama models)
 
 **How it works:**
 
@@ -824,43 +863,25 @@ By default, the import command automatically enriches records using an LLM to ma
 3. The LLM uses the `agntcy_oasf_get_schema_domains` tool to browse available OASF domains
 4. Based on the record description and capabilities, the LLM selects appropriate skills and domains
 
-**Configuration via `--config`:**
-
-Enrichment is configured under the `enricher` key in the `--config` YAML file. A built-in default (azure:gpt-4o, 2 RPM) is used when no config file is provided. The YAML below shows all available options:
-
 ```yaml
 enricher:
-  requests_per_minute: 5          # LLM API calls per minute (rate limit)
-  tool_host:
-    model: azure:gpt-4o
-    max_steps: 10
-    mcp_servers:
-      dir-mcp-server:
-        command: dirctl
-        args: [mcp, serve]
-        env:
-          OASF_API_VALIDATION_SCHEMA_URL: https://schema.oasf.outshift.com
-          DIRECTORY_CLIENT_AUTH_MODE: insecure
-  skills_prompt_template: ./prompts/skills.md    # optional custom prompt
-  domains_prompt_template: ./prompts/domains.md  # optional custom prompt
+  llm:
+    requests_per_minute: 5
+    tool_host:
+      model: azure:gpt-4o
+      max_steps: 10
+      mcp_servers:
+        dir-mcp-server:
+          command: dirctl
+          args: [mcp, serve]
+          env:
+            OASF_API_VALIDATION_SCHEMA_URL: https://schema.oasf.outshift.com
+            DIRECTORY_CLIENT_AUTH_MODE: insecure
+    skills_prompt_template: ./prompts/skills.md    # optional custom prompt
+    domains_prompt_template: ./prompts/domains.md  # optional custom prompt
 ```
 
 See `cli/cmd/import/import.config.yaml` in the repository for a fully annotated reference configuration.
-
-**Skip enrichment** (static taxonomy):
-
-To bypass LLM enrichment and tag every record with fixed skills and domains, set `skip_enricher: true` — no `tool_host` or LLM credentials are required:
-
-```yaml
-enricher:
-  skip_enricher: true
-  skills:
-    - name: natural_language_processing/text_completion
-      id: 10201
-  domains:
-    - name: technology
-      id: 1
-```
 
 **Recommended LLM providers:**
 
