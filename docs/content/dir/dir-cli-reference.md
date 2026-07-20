@@ -1073,47 +1073,87 @@ The following flags are available:
     dirctl routing list --skill "AI" --limit 5
     ```
 
-### `dirctl routing search [flags]`
+### `dirctl routing search [query] [flags]`
 
-Discovers records from other peers across the network.
+Discovers records from other peers across the DHT network. Two modes are available:
 
-The following flags are available:
+| Mode | Invocation | Requires |
+|------|-----------|----------|
+| **Natural-language** | `dirctl routing search "free-text query"` | `dirctl init` (OASF extractor) |
+| **Structured** | `dirctl routing search --skill "..." --domain "..."` | None |
 
-- `--skill <skill>` - Search by skill (repeatable)
-- `--locator <type>` - Search by locator type (repeatable)
-- `--domain <domain>` - Search by domain (repeatable)
-- `--module <module>` - Search by module name (repeatable)
-- `--limit <number>` - Maximum results to return
-- `--min-score <score>` - Minimum match score threshold
+#### Natural-language routing search
 
-The output includes the following:
+Pass a free-text phrase as a positional argument. The OASF extractor decomposes the phrase into skill and domain signals. Keyword signals are dropped because the DHT only indexes skills, domains, locators, and modules — there is no name or description index at the routing layer.
 
-- Record CID and provider peer information
-- Match score showing query relevance
-- Specific queries that matched
-- Peer connection details
+Each signal is queried against the DHT independently; the discovered window of results is then reordered by match score, best-first. This is not a global top-N: only the records returned within `--limit` are reordered.
+
+```bash
+dirctl routing search "Github MCP server that manages issues"
+dirctl routing search "real-time fraud detection for banking"
+```
+
+Use `--schema-version` to restrict NL extraction to a specific OASF schema version:
+
+```bash
+dirctl routing search "code review agent" --schema-version 1.0.0
+```
+
+Use `--verbose` to print the extracted signals to stderr:
+
+```bash
+dirctl routing search "fraud detection for banking" --verbose
+# stderr output:
+# [nl-routing-search] signals extracted (2 usable of 3 total):
+#   RECORD_QUERY_TYPE_SKILL   fraud_detection
+#   RECORD_QUERY_TYPE_DOMAIN  finance
+# (keyword signal "banking" dropped — no DHT equivalent)
+```
+
+#### Structured routing search
+
+Omit the positional argument and use filter flags. All flags are repeatable and combined with OR logic: a record matches if it satisfies at least `--min-score` of the specified queries.
+
+**Flags:**
+
+| Flag | Description | Default |
+|------|-------------|---------|
+| `--skill` | Search by skill name (repeatable) | — |
+| `--domain` | Search by domain name (repeatable) | — |
+| `--locator` | Search by locator type (repeatable) | — |
+| `--module` | Search by module path (repeatable) | — |
+| `--limit` | Maximum results to return | `10` |
+| `--min-score` | Minimum number of queries that must match | `1` |
+| `--schema-version` | Restrict NL extraction to specific OASF schema version(s) (repeatable; NL mode only) | all versions |
+| `--verbose` | Print extracted NL signals and per-signal details to stderr (NL mode only) | `false` |
+
+**Output includes** record CID, provider peer information, match score, and the specific queries that matched.
 
 ??? example
 
     ```bash
-    # Search for AI records across the network
+    # Natural-language search across the network
+    dirctl routing search "Github MCP server that manages issues"
+
+    # Structured: search for AI records
     dirctl routing search --skill "AI"
 
-    # Search with multiple criteria
+    # Structured: search with multiple criteria (record must match at least 2)
     dirctl routing search --skill "AI" --skill "ML" --min-score 2
 
-    # Search by locator type
+    # Structured: search by locator type
     dirctl routing search --locator "docker-image"
 
-    # Search by module
+    # Structured: search by module
     dirctl routing search --module "runtime/framework"
 
-    # Advanced search with scoring
+    # Structured: combined filters
     dirctl routing search --skill "web-development" --limit 10 --min-score 1
     dirctl routing search --domain "finance" --module "validation" --min-score 2
-    ```
 
-**Output includes:**
+    # Pipe results into sync
+    dirctl routing search --skill "AI" --output json | dirctl sync create --stdin
+    ```
 
 ### `dirctl routing info`
 
@@ -1135,11 +1175,52 @@ The output includes the following:
 
 ## Search & Discovery
 
-### `dirctl search [flags]`
+### `dirctl search [query] [flags]`
 
-Search the local index using structured filter flags.
+Search for records in the local index. Two modes are available depending on whether a positional argument is provided:
 
-**Filter flags** (all repeatable):
+| Mode | Invocation | Requires |
+|------|-----------|----------|
+| **Natural-language** | `dirctl search "free-text query"` | `dirctl init` (OASF extractor) |
+| **Structured** | `dirctl search --name "..." --skill "..."` | None |
+
+#### Natural-language search
+
+Pass a free-text phrase as a positional argument. The OASF extractor (provisioned by [`dirctl init`](#dirctl-init-flags)) decomposes the phrase into typed signals — skill names, domain names, and keywords. Each signal is queried against the index independently and concurrently; results are ranked by how many signals matched, with the best-matching records returned first.
+
+```bash
+dirctl search "Github MCP server that manages issues"
+dirctl search "real-time fraud detection for banking" --format record
+dirctl search "code review assistant" --limit 5 --format record
+```
+
+If the extractor has not been provisioned, the command fails with a prompt to run `dirctl init`.
+
+Use `--verbose` to print signal decomposition and per-signal hit counts to stderr — useful for understanding why a query returns particular results:
+
+```bash
+dirctl search "fraud detection for banking" --verbose
+# stderr output:
+# [nl-search] signals extracted (3):
+#   skill     fraud_detection                                       score=0.91
+#   domain    finance                                               score=0.87
+#   keyword   banking                                               score=0.74
+# [nl-search] per-signal hits:
+#   skill     fraud_detection                                       → 12 CIDs
+#   domain    finance                                               → 31 CIDs
+#   keyword   banking                                               → 8 CIDs
+# [nl-search] ranked results (36 unique, 3 signals):
+#   sha256:abc...  hits=3/3  signals=[skill:fraud_detection, domain:finance, keyword:banking]
+#   ...
+```
+
+> **Note:** `--sort` is ignored in NL mode — results are always ranked by signal-hit-count.
+
+#### Structured search
+
+Omit the positional argument and use filter flags to query specific fields. All filter flags are repeatable and combinable.
+
+**Filter flags:**
 
 | Flag | Description |
 |------|-------------|
@@ -1160,13 +1241,15 @@ Search the local index using structured filter flags.
 | `--safe` | Only records where all security scanners reported `is_safe=true` |
 | `--scan-severity` | Only records whose highest scan severity meets or exceeds a threshold (`NONE`, `INFO`, `LOW`, `MEDIUM`, `HIGH`, `CRITICAL`) |
 
-**Other flags:**
+**Output and pagination flags:**
 
 | Flag | Description | Default |
 |------|-------------|---------|
 | `--format` | Output format: `cid` or `record` | `cid` |
+| `--sort` | Result ordering for structured search: `relevance`, `popularity`, or `recency` | `recency` |
 | `--limit` | Maximum results | `100` |
 | `--offset` | Pagination offset | `0` |
+| `--verbose` | Print NL signal decomposition and per-signal hit counts to stderr (NL mode only) | `false` |
 
 ??? example
 
@@ -1186,6 +1269,12 @@ Search the local index using structured filter flags.
       --skill "Text Completion" \
       --locator docker-image \
       --format record
+
+    # Sort by most recently published
+    dirctl search --skill "code-review" --sort recency
+
+    # Sort by most popular (pull frequency)
+    dirctl search --domain finance --sort popularity
 
     # Security scan filters
     dirctl search --safe
