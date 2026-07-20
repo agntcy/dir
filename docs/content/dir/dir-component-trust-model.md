@@ -94,7 +94,7 @@ vulnerabilities, policy violations, and malicious patterns before records are co
 
 ### How scanning works
 
-The Directory reconciler runs two scanner types against each record:
+The Directory reconciler runs three scanner types against each record:
 
 - **[MCP scanner](https://cisco-ai-defense.github.io/docs/mcp-scanner)** (`mcp-scanner behavioral`) — clones the source repository referenced in the
   record's `source_code` locator and runs behavioral analysis. Invoked automatically for
@@ -103,6 +103,9 @@ The Directory reconciler runs two scanner types against each record:
   agentskills bundle from the record's `integration/mcp` module artifact and runs static,
   bytecode, pipeline, behavioral, and trigger analyzers. Invoked automatically for records
   that include a skill bundle.
+- **[A2A scanner](https://github.com/cisco-ai-defense/a2a-scanner)** (`a2a-scanner scan-card`) — reads the A2A AgentCard stored in the record's
+  `a2a` module (`card_data` field) and scans it for policy violations and security issues.
+  Invoked automatically for records that include an A2A AgentCard.
 
 Scan results are persisted in two places:
 
@@ -140,7 +143,7 @@ Scanners are installed via `uv`:
 task deps:scanners
 ```
 
-This installs `mcp-scanner` and `skill-scanner` to `~/.local/bin/` (added to PATH automatically by `uv`). For CI environments, the task is also available as `task deps:mcp-scanner` and `task deps:skill-scanner` separately.
+This installs `mcp-scanner`, `skill-scanner`, and `a2a-scanner` to `~/.local/bin/` (added to PATH automatically by `uv`). For CI environments, the task is also available as `task deps:mcp-scanner`, `task deps:skill-scanner`, and `task deps:a2a-scanner` separately.
 
 ### Accessing scan results
 

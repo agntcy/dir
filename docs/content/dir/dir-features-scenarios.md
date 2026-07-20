@@ -219,9 +219,11 @@ dirctl pull example.com/agents/my-record:v1.0.0@$RECORD_CID
 
 The Directory reconciler automatically scans records for security issues using
 [`mcp-scanner`](https://cisco-ai-defense.github.io/docs/mcp-scanner)
-(for MCP server source code) and
+(for MCP server source code),
 [`skill-scanner`](https://cisco-ai-defense.github.io/docs/skill-scanner)
-(for agent skill bundles). Scan results are
+(for agent skill bundles), and
+[`a2a-scanner`](https://github.com/cisco-ai-defense/a2a-scanner)
+(for A2A AgentCards). Scan results are
 stored as OCI referrers and indexed in the local database so they can be surfaced through
 search filters and pulled alongside records.
 
@@ -255,7 +257,7 @@ dirctl search --module "integration/mcp" --scan-severity MEDIUM
 
 `--safe` requires that at least one scanner ran and that no scanner reported `is_safe=false`.
 Records where all scanners were skipped (no source repo locator for MCP, no skill bundle for
-skill-scanner) are excluded.
+skill-scanner, no A2A AgentCard for a2a-scanner) are excluded.
 
 `--scan-severity <threshold>` returns records whose highest recorded severity is at or above
 the threshold. Severity levels from lowest to highest: `NONE`, `INFO`, `LOW`, `MEDIUM`,

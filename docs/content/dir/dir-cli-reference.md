@@ -1286,7 +1286,7 @@ Omit the positional argument and use filter flags to query specific fields. All 
 
 ### Security Scanning
 
-The Directory reconciler automatically runs security scanners against records and stores the results as OCI referrers. Scan results are indexed in the local database so they can be queried as search filters. Two scanners are supported: [mcp-scanner](https://cisco-ai-defense.github.io/docs/mcp-scanner) for MCP server source code and [skill-scanner](https://cisco-ai-defense.github.io/docs/skill-scanner) for agent skill bundles.
+The Directory reconciler automatically runs security scanners against records and stores the results as OCI referrers. Scan results are indexed in the local database so they can be queried as search filters. Three scanners are supported: [mcp-scanner](https://cisco-ai-defense.github.io/docs/mcp-scanner) for MCP server source code, [skill-scanner](https://cisco-ai-defense.github.io/docs/skill-scanner) for agent skill bundles, and [a2a-scanner](https://github.com/cisco-ai-defense/a2a-scanner) for A2A AgentCards.
 
 **Pull scan reports for a record:**
 
@@ -1298,7 +1298,7 @@ The response includes a `scanReports` array. Each entry covers one scanner type 
 
 | Field | Description |
 |-------|-------------|
-| `scanner_type` | Scanner that produced this report (`SCANNER_TYPE_MCP`, `SCANNER_TYPE_SKILL`) |
+| `scanner_type` | Scanner that produced this report (`SCANNER_TYPE_MCP`, `SCANNER_TYPE_SKILL`, `SCANNER_TYPE_A2A`) |
 | `scanner_version` | Version of the scanner binary |
 | `scanned_at` | RFC 3339 timestamp of when the scan ran |
 | `is_safe` | `true` if the scanner found no security issues |
@@ -1321,7 +1321,7 @@ dirctl search --name "cisco.com/*" --safe
 dirctl search --safe --scan-severity MEDIUM
 ```
 
-A record appears in `--safe` results only when at least one scanner has run and no scanner has reported `is_safe=false`. Records where all scanners were skipped (no source repo, no skill bundle) are not included.
+A record appears in `--safe` results only when at least one scanner has run and no scanner has reported `is_safe=false`. Records where all scanners were skipped (no source repo, no skill bundle, no A2A AgentCard) are not included.
 
 ### Name Verification
 
