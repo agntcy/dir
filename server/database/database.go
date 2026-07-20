@@ -25,8 +25,9 @@ var logger = logging.Logger("database")
 type DB string
 
 const (
-	SQLite   DB = "sqlite"
-	Postgres DB = "postgres"
+	SQLite              DB = "sqlite"
+	Postgres            DB = "postgres"
+	defaultMaxIdleConns    = 10
 )
 
 func New(cfg config.Config) (types.DatabaseAPI, error) {
@@ -92,6 +93,10 @@ func newSQLite(cfg config.SQLiteConfig) (*gormdb.DB, error) {
 		return nil, fmt.Errorf("failed to connect to SQLite database: %w", err)
 	}
 
+	if err := configureSQLPool(db); err != nil {
+		return nil, fmt.Errorf("failed to configure SQLite connection pool: %w", err)
+	}
+
 	// SQLite does not enforce foreign keys by default; enable for CASCADE support.
 	if err := db.Exec("PRAGMA foreign_keys = ON").Error; err != nil {
 		return nil, fmt.Errorf("failed to enable SQLite foreign keys: %w", err)
@@ -144,7 +149,27 @@ func NewPostgresGormDb(cfg config.PostgresConfig) (*gorm.DB, error) {
 	dsn := fmt.Sprintf("host=%s port=%d user=%s password=%s dbname=%s sslmode=%s",
 		host, port, cfg.Username, cfg.Password, database, sslMode)
 
-	return gorm.Open(postgres.Open(dsn), &gorm.Config{ //nolint:wrapcheck
+	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{
 		Logger: newCustomLogger(),
 	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to open PostgreSQL database: %w", err)
+	}
+
+	if err := configureSQLPool(db); err != nil {
+		return nil, fmt.Errorf("failed to configure PostgreSQL connection pool: %w", err)
+	}
+
+	return db, nil
+}
+
+func configureSQLPool(db *gorm.DB) error {
+	sqlDB, err := db.DB()
+	if err != nil {
+		return fmt.Errorf("get sql.DB: %w", err)
+	}
+
+	sqlDB.SetMaxIdleConns(defaultMaxIdleConns)
+
+	return nil
 }
