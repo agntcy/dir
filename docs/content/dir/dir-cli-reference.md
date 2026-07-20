@@ -91,7 +91,7 @@ Guided first-run setup for a new environment — run it once after installing
 `dirctl`. It provisions the **OASF taxonomy extractor**: a small
 sentence-transformer model (`all-MiniLM-L6-v2`, ~89 MB) plus the OASF taxonomy,
 downloaded to a local asset directory. Those assets power local, **LLM-free**
-record enrichment (and, in future, free-text search) that runs in-process — no
+record enrichment and natural language search that runs in-process — no
 Python, no external inference service, no LLM API. The chosen OASF endpoint and
 asset directory are saved to the `dirctl` config so other commands load the
 provisioned assets automatically.
