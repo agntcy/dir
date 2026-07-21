@@ -447,10 +447,15 @@ dirctl install cisco.com/agent:v1.0.0 --yes
 # Install into specific agents only
 dirctl install cisco.com/agent --agents claude-code,cursor
 
+# Install into the current repo (project scope) instead of the global config
+dirctl install cisco.com/agent --project
+
 # Remove what install added (top-level shorthand for `install uninstall`)
 dirctl uninstall cisco.com/agent
 ```
 
 Detection is always required — an agent is never written to unless it is detected. Re-installing
 a newer version of the same record replaces the old artifacts cleanly. `dirctl install list`
-shows which agents are detected and the config files install would touch.
+shows which agents are detected and the config files install would touch. By default artifacts
+go into each agent's global config; `--project` writes them into the current repository instead
+(agents without a project-scope location for an artifact are skipped with a note).

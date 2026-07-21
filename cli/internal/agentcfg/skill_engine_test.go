@@ -25,7 +25,7 @@ func TestInstallSkillFolderWritesVerbatim(t *testing.T) {
 		Path:     func(Env, string) (string, error) { return skillPath, nil },
 	}
 
-	outcome, err := InstallSkill(target, Env{}, "test-skill", sampleDoc, false)
+	outcome, err := InstallSkill(target, Env{}, "test-skill", sampleDoc, Global, false)
 	require.NoError(t, err)
 	assert.Equal(t, ActionAdded, outcome.Action)
 
@@ -34,12 +34,12 @@ func TestInstallSkillFolderWritesVerbatim(t *testing.T) {
 	assert.Equal(t, sampleDoc, string(got))
 
 	// Idempotent.
-	again, err := InstallSkill(target, Env{}, "test-skill", sampleDoc, false)
+	again, err := InstallSkill(target, Env{}, "test-skill", sampleDoc, Global, false)
 	require.NoError(t, err)
 	assert.Equal(t, ActionUnchanged, again.Action)
 
 	// Remove deletes the test-skill folder.
-	rm, err := RemoveSkill(target, Env{}, "test-skill", false)
+	rm, err := RemoveSkill(target, Env{}, "test-skill", Global, false)
 	require.NoError(t, err)
 	assert.Equal(t, ActionRemoved, rm.Action)
 
@@ -57,14 +57,14 @@ func TestInstallSkillDedicatedFileRendersAndRemoves(t *testing.T) {
 		Render:   renderContinue,
 	}
 
-	outcome, err := InstallSkill(target, Env{}, "test-skill", sampleDoc, false)
+	outcome, err := InstallSkill(target, Env{}, "test-skill", sampleDoc, Global, false)
 	require.NoError(t, err)
 	assert.Equal(t, ActionAdded, outcome.Action)
 
 	got, _ := os.ReadFile(path)
 	assert.Contains(t, string(got), "alwaysApply: true")
 
-	rm, err := RemoveSkill(target, Env{}, "test-skill", false)
+	rm, err := RemoveSkill(target, Env{}, "test-skill", Global, false)
 	require.NoError(t, err)
 	assert.Equal(t, ActionRemoved, rm.Action)
 
@@ -83,7 +83,7 @@ func TestInstallSkillManagedBlockPreservesUserContent(t *testing.T) {
 		Render:   renderManagedInner,
 	}
 
-	outcome, err := InstallSkill(target, Env{}, "test-skill", sampleDoc, false)
+	outcome, err := InstallSkill(target, Env{}, "test-skill", sampleDoc, Global, false)
 	require.NoError(t, err)
 	assert.Equal(t, ActionAdded, outcome.Action)
 
@@ -92,12 +92,12 @@ func TestInstallSkillManagedBlockPreservesUserContent(t *testing.T) {
 	assert.Contains(t, string(got), blockBegin("test-skill"))
 
 	// Idempotent.
-	again, err := InstallSkill(target, Env{}, "test-skill", sampleDoc, false)
+	again, err := InstallSkill(target, Env{}, "test-skill", sampleDoc, Global, false)
 	require.NoError(t, err)
 	assert.Equal(t, ActionUnchanged, again.Action)
 
 	// Remove strips only our block.
-	rm, err := RemoveSkill(target, Env{}, "test-skill", false)
+	rm, err := RemoveSkill(target, Env{}, "test-skill", Global, false)
 	require.NoError(t, err)
 	assert.Equal(t, ActionRemoved, rm.Action)
 
@@ -106,24 +106,74 @@ func TestInstallSkillManagedBlockPreservesUserContent(t *testing.T) {
 	assert.NotContains(t, string(after), blockBegin("test-skill"))
 }
 
-func TestInstallSkillProjectFallback(t *testing.T) {
+func TestInstallSkillGlobalScopeSkipsWhenNoGlobalPath(t *testing.T) {
+	// Scope selection is now explicit (no automatic global->project fallback):
+	// a Global-scope install with no global Path resolver skips, even though a
+	// ProjectPath is available, and writes nothing.
 	root := t.TempDir()
 	projectPath := filepath.Join(root, "repo", ".cursor", "skills", "test-skill", "SKILL.md")
 
 	target := &SkillTarget{
 		Strategy:    SkillFolder,
-		Path:        func(Env, string) (string, error) { return "", ErrNoGlobalPath },
+		Path:        func(Env, string) (string, error) { return "", ErrNoScopePath },
 		ProjectPath: func(Env, string) (string, error) { return projectPath, nil },
 	}
 
-	outcome, err := InstallSkill(target, Env{}, "test-skill", sampleDoc, false)
+	outcome, err := InstallSkill(target, Env{}, "test-skill", sampleDoc, Global, false)
+	require.NoError(t, err)
+	assert.Equal(t, ActionSkipped, outcome.Action)
+	assert.NotEmpty(t, outcome.Reason, "scope skip should be explained")
+
+	_, statErr := os.Stat(projectPath)
+	assert.True(t, os.IsNotExist(statErr), "project path must not be written for a global-scope install")
+}
+
+func TestInstallSkillProjectScope(t *testing.T) {
+	home := t.TempDir()
+	cwd := t.TempDir()
+	env := Env{Home: home, Cwd: cwd}
+
+	homePath := filepath.Join(home, "skills", "test-skill", "SKILL.md")
+	projectPath := filepath.Join(cwd, "skills", "test-skill", "SKILL.md")
+
+	target := &SkillTarget{
+		Strategy: SkillFolder,
+		Path: func(e Env, slug string) (string, error) {
+			return filepath.Join(e.Home, "skills", slug, "SKILL.md"), nil
+		},
+		ProjectPath: func(e Env, slug string) (string, error) { return filepath.Join(e.Cwd, "skills", slug, "SKILL.md"), nil },
+	}
+
+	outcome, err := InstallSkill(target, env, "test-skill", sampleDoc, Project, false)
 	require.NoError(t, err)
 	assert.Equal(t, ActionAdded, outcome.Action)
 	assert.Equal(t, projectPath, outcome.Path)
-	assert.NotEmpty(t, outcome.Reason, "project fallback should be explained")
 
 	_, statErr := os.Stat(projectPath)
-	assert.NoError(t, statErr)
+	require.NoError(t, statErr, "project skill file must be written")
+
+	_, statErr = os.Stat(homePath)
+	assert.True(t, os.IsNotExist(statErr), "home skill file must not be written for a project-scope install")
+}
+
+func TestInstallSkillProjectScopeNoPathSkips(t *testing.T) {
+	home := t.TempDir()
+	env := Env{Home: home}
+
+	target := &SkillTarget{
+		Strategy: SkillFolder,
+		Path: func(e Env, slug string) (string, error) {
+			return filepath.Join(e.Home, "skills", slug, "SKILL.md"), nil
+		},
+		ProjectPath: nil,
+	}
+
+	outcome, err := InstallSkill(target, env, "test-skill", sampleDoc, Project, false)
+	require.NoError(t, err)
+	assert.Equal(t, ActionSkipped, outcome.Action)
+
+	_, statErr := os.Stat(filepath.Join(home, "skills", "test-skill", "SKILL.md"))
+	assert.True(t, os.IsNotExist(statErr), "no file should be written when the project path is unavailable")
 }
 
 func TestInstallSkillDryRunWritesNothing(t *testing.T) {
@@ -136,7 +186,7 @@ func TestInstallSkillDryRunWritesNothing(t *testing.T) {
 		Render:   renderRoo,
 	}
 
-	outcome, err := InstallSkill(target, Env{}, "test-skill", sampleDoc, true)
+	outcome, err := InstallSkill(target, Env{}, "test-skill", sampleDoc, Global, true)
 	require.NoError(t, err)
 	assert.Equal(t, ActionAdded, outcome.Action)
 
@@ -154,7 +204,7 @@ func TestRemoveSkillAbsentIsUnchanged(t *testing.T) {
 		Render:   renderRoo,
 	}
 
-	outcome, err := RemoveSkill(target, Env{}, "test-skill", false)
+	outcome, err := RemoveSkill(target, Env{}, "test-skill", Global, false)
 	require.NoError(t, err)
 	assert.Equal(t, ActionUnchanged, outcome.Action)
 }
@@ -173,12 +223,12 @@ func TestInstallSkillVersionReplace(t *testing.T) {
 	canonicalB := "# Version B\n\nThis is version B.\n"
 
 	// Install canonical A.
-	first, err := InstallSkill(target, Env{}, "rec", canonicalA, false)
+	first, err := InstallSkill(target, Env{}, "rec", canonicalA, Global, false)
 	require.NoError(t, err)
 	assert.Equal(t, ActionAdded, first.Action)
 
 	// Install canonical B — same slug, different content.
-	second, err := InstallSkill(target, Env{}, "rec", canonicalB, false)
+	second, err := InstallSkill(target, Env{}, "rec", canonicalB, Global, false)
 	require.NoError(t, err)
 	assert.Equal(t, ActionUpdated, second.Action, "second install of same slug should report ActionUpdated")
 
@@ -200,7 +250,7 @@ func TestInstallSkillBundleExtractsArchive(t *testing.T) {
 		Path:     func(Env, string) (string, error) { return skillPath, nil },
 	}
 
-	outcome, err := InstallSkillBundle(target, Env{}, "test-skill", archive, false)
+	outcome, err := InstallSkillBundle(target, Env{}, "test-skill", archive, Global, false)
 	require.NoError(t, err)
 	assert.Equal(t, ActionAdded, outcome.Action)
 
@@ -213,7 +263,7 @@ func TestInstallSkillBundleExtractsArchive(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, "#!/bin/sh\n", string(extra))
 
-	again, err := InstallSkillBundle(target, Env{}, "test-skill", archive, false)
+	again, err := InstallSkillBundle(target, Env{}, "test-skill", archive, Global, false)
 	require.NoError(t, err)
 	assert.Equal(t, ActionUnchanged, again.Action)
 }
@@ -256,13 +306,13 @@ func TestInstallSkillManagedBlockVersionReplace(t *testing.T) {
 	canonicalB := "---\nname: rec\n---\n\n# Version B\n\nThis is version B.\n"
 
 	// Install canonical A into a fresh file.
-	first, err := InstallSkill(target, Env{}, "rec", canonicalA, false)
+	first, err := InstallSkill(target, Env{}, "rec", canonicalA, Global, false)
 	require.NoError(t, err)
 	assert.Equal(t, ActionAdded, first.Action)
 
 	// Install the SAME slug with a DIFFERENT canonical: slug-scoped block
 	// detection must recognize our existing block and replace it in place.
-	second, err := InstallSkill(target, Env{}, "rec", canonicalB, false)
+	second, err := InstallSkill(target, Env{}, "rec", canonicalB, Global, false)
 	require.NoError(t, err)
 	assert.Equal(t, ActionUpdated, second.Action, "second install of same slug should report ActionUpdated")
 

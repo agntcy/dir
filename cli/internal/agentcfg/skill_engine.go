@@ -21,16 +21,17 @@ const skillFilePerm = 0o644
 // strategy. It is idempotent: identical content reports ActionUnchanged. When
 // the global path is unavailable it falls back to the project path and notes
 // this in the outcome reason.
-func InstallSkill(target *SkillTarget, env Env, slug, canonical string, dryRun bool) (Outcome, error) {
-	path, usedProject, err := resolveSkillTargetPath(target, env, slug)
+func InstallSkill(target *SkillTarget, env Env, slug, canonical string, scope Scope, dryRun bool) (Outcome, error) {
+	path, err := resolveSkillTargetPath(target, env, slug, scope)
+	if errors.Is(err, ErrNoScopePath) {
+		return skipScopeOutcome("skill", scope), nil
+	}
+
 	if err != nil {
 		return Outcome{Artifact: "skill", Action: ActionFailed, Err: err}, err
 	}
 
 	outcome := Outcome{Artifact: "skill", Path: path}
-	if usedProject {
-		outcome.Reason = "no global rules path for this agent — wrote a project rule in the current repo"
-	}
 
 	desired, err := renderForTarget(target, slug, canonical, path)
 	if err != nil {
@@ -82,8 +83,12 @@ func InstallSkill(target *SkillTarget, env Env, slug, canonical string, dryRun b
 
 // InstallSkillBundle extracts a skill bundle archive into an agent's skill folder.
 // It is idempotent: identical on-disk content reports ActionUnchanged.
-func InstallSkillBundle(target *SkillTarget, env Env, slug string, archive []byte, dryRun bool) (Outcome, error) {
-	path, usedProject, err := resolveSkillTargetPath(target, env, slug)
+func InstallSkillBundle(target *SkillTarget, env Env, slug string, archive []byte, scope Scope, dryRun bool) (Outcome, error) {
+	path, err := resolveSkillTargetPath(target, env, slug, scope)
+	if errors.Is(err, ErrNoScopePath) {
+		return skipScopeOutcome("skill", scope), nil
+	}
+
 	if err != nil {
 		return Outcome{Artifact: "skill", Action: ActionFailed, Err: err}, err
 	}
@@ -91,9 +96,6 @@ func InstallSkillBundle(target *SkillTarget, env Env, slug string, archive []byt
 	destDir := filepath.Dir(path)
 
 	outcome := Outcome{Artifact: "skill", Path: destDir}
-	if usedProject {
-		outcome.Reason = "no global rules path for this agent — wrote a project rule in the current repo"
-	}
 
 	matches, err := exportfmt.SkillBundleMatchesDir(archive, destDir)
 	if err != nil {
@@ -128,14 +130,17 @@ func InstallSkillBundle(target *SkillTarget, env Env, slug string, archive []byt
 // RemoveSkill removes the DIR skill/rules we installed for an agent, preserving
 // any surrounding user content for managed-block files. Absent artifacts report
 // ActionUnchanged so uninstall is idempotent.
-func RemoveSkill(target *SkillTarget, env Env, slug string, dryRun bool) (Outcome, error) {
-	path, usedProject, err := resolveSkillTargetPath(target, env, slug)
+func RemoveSkill(target *SkillTarget, env Env, slug string, scope Scope, dryRun bool) (Outcome, error) {
+	path, err := resolveSkillTargetPath(target, env, slug, scope)
+	if errors.Is(err, ErrNoScopePath) {
+		return skipScopeOutcome("skill", scope), nil
+	}
+
 	if err != nil {
 		return Outcome{Artifact: "skill", Action: ActionFailed, Err: err}, err
 	}
 
 	outcome := Outcome{Artifact: "skill", Path: path}
-	_ = usedProject
 
 	switch target.Strategy {
 	case SkillFolder:
@@ -262,37 +267,35 @@ func removeSkillBlock(outcome Outcome, path, slug string, dryRun bool) (Outcome,
 	return outcome, nil
 }
 
-// resolveSkillTargetPath resolves the global path, falling back to the project
-// path when the global resolver reports ErrNoGlobalPath. It reports whether the
-// project fallback was used.
-func resolveSkillTargetPath(target *SkillTarget, env Env, slug string) (string, bool, error) {
-	if target.Path != nil {
-		path, err := target.Path(env, slug)
-		if err == nil {
-			return path, false, nil
-		}
-
-		if !errors.Is(err, ErrNoGlobalPath) {
-			return "", false, err
-		}
+// resolveSkillTargetPath resolves the skill path for the requested scope: the
+// global Path for Global, the ProjectPath for Project. A nil resolver (or a
+// resolver reporting ErrNoScopePath) yields ErrNoScopePath so the caller can skip.
+func resolveSkillTargetPath(target *SkillTarget, env Env, slug string, scope Scope) (string, error) {
+	resolver := target.Path
+	if scope == Project {
+		resolver = target.ProjectPath
 	}
 
-	if target.ProjectPath != nil {
-		path, err := target.ProjectPath(env, slug)
-		if err != nil {
-			return "", false, err
-		}
-
-		return path, true, nil
+	if resolver == nil {
+		return "", ErrNoScopePath
 	}
 
-	return "", false, ErrNoGlobalPath
+	path, err := resolver(env, slug)
+	if err != nil {
+		if errors.Is(err, ErrNoScopePath) {
+			return "", ErrNoScopePath
+		}
+
+		return "", err
+	}
+
+	return path, nil
 }
 
 // ResolveSkillTargetPath is the exported wrapper around resolveSkillTargetPath,
 // used by the command layer for dedupe and display.
-func ResolveSkillTargetPath(target *SkillTarget, env Env, slug string) (string, bool, error) {
-	return resolveSkillTargetPath(target, env, slug)
+func ResolveSkillTargetPath(target *SkillTarget, env Env, slug string, scope Scope) (string, error) {
+	return resolveSkillTargetPath(target, env, slug, scope)
 }
 
 // readFileIfExists reads path and reports whether it exists. A missing file is

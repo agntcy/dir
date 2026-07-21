@@ -197,6 +197,7 @@ A2A-only record, points you to `dirctl export`.
 | Flag | Description | Default |
 |------|-------------|---------|
 | `--agents` | Agents to target: `all` (every detected agent) or a comma-separated list of agent IDs (e.g. `--agents claude-code,cursor`; repeatable) | `all` |
+| `--project` | Write into the current repo (project scope) instead of the user's global config | `false` |
 | `--dry-run` | Preview the plan without writing | `false` |
 | `--yes` / `-y` | Skip the confirmation prompt | `false` |
 
@@ -204,6 +205,13 @@ Valid agent IDs: `claude-code`, `claude-desktop`, `cursor`, `vscode`, `windsurf`
 `cline`, `roo`, `gemini`, `opencode`, `zed`, `continue`, `codex` (see
 `dirctl install list`). After completion, a summary lists every location added,
 updated, removed, or skipped with its absolute path.
+
+By default artifacts go into each agent's **global/user** config. With
+`--project`, they are written into the **current repository** instead (e.g.
+`.cursor/mcp.json`, `.vscode/mcp.json`, `.mcp.json`, `.cursor/skills/…`), so a
+record can be wired into the agents for just one project. Agents with no
+project-scope location for an artifact are skipped with a note; detection is
+unchanged (an undetected agent is still skipped).
 
 ```bash
 # Preview what installing a record would change
@@ -214,6 +222,9 @@ dirctl install cisco.com/agent:v1.0.0 --yes
 
 # Install into specific agents only
 dirctl install cisco.com/agent --agents claude-code,cursor
+
+# Install into the current repo instead of the global config
+dirctl install cisco.com/agent --project
 ```
 
 ### `dirctl install uninstall <cid-or-name> [flags]`

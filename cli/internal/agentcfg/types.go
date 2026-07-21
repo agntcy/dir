@@ -21,6 +21,25 @@ type Env struct {
 	Cwd  string
 }
 
+// Scope selects which configuration location an artifact is written to.
+type Scope int
+
+const (
+	// Global targets the user/global config (default).
+	Global Scope = iota
+	// Project targets the current repository (Env.Cwd).
+	Project
+)
+
+// String renders the scope for user-facing messages.
+func (s Scope) String() string {
+	if s == Project {
+		return "project"
+	}
+
+	return "global"
+}
+
 // EntryStyle selects how an MCP server entry value is shaped for a given agent.
 type EntryStyle int
 
@@ -35,6 +54,9 @@ const (
 type MCPTarget struct {
 	// ConfigPath resolves the global config file path for the given environment.
 	ConfigPath func(env Env) (string, error)
+	// ProjectConfigPath resolves the project (repo/cwd) config file path. Nil if
+	// the agent has no project-scope MCP location.
+	ProjectConfigPath func(env Env) (string, error)
 	// Format is the config file encoding.
 	Format codec.Format
 	// ServersKey is the nested key path to the servers map (e.g. ["mcpServers"]).
