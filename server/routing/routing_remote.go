@@ -260,7 +260,7 @@ func newRemote(parentCtx context.Context,
 
 	// Pass Publish as callback to avoid circular dependency
 	// The method value captures routeAPI's state (server, pubsubManager)
-	routeAPI.cleanupManager = NewCleanupManager(dstore, storeAPI, server, routeAPI.Publish)
+	routeAPI.cleanupManager = NewCleanupManager(dstore, storeAPI, server, routeAPI.Publish, opts.Config().Routing.RepublishInterval)
 
 	// Initialize DHT autosync if enabled (deny-by-default). The manager pulls and
 	// ingests records/referrers announced by trusted peers, off the notification

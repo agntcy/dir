@@ -48,10 +48,11 @@ func (f *remoteLabelFilter) Filter(e query.Entry) bool {
 // CleanupManager handles all background cleanup and republishing tasks for the routing system.
 // This includes CID provider republishing, GossipSub label republishing, stale remote label cleanup, and orphaned record cleanup.
 type CleanupManager struct {
-	dstore      types.Datastore
-	storeAPI    types.StoreAPI
-	server      *p2p.Server
-	publishFunc pubsub.PublishEventHandler // Publishing callback (captures routeRemote state)
+	dstore            types.Datastore
+	storeAPI          types.StoreAPI
+	server            *p2p.Server
+	publishFunc       pubsub.PublishEventHandler // Publishing callback (captures routeRemote state)
+	republishInterval time.Duration              // How often local CID providers are republished
 }
 
 // NewCleanupManager creates a new cleanup manager with the required dependencies.
@@ -63,17 +64,27 @@ type CleanupManager struct {
 //   - storeAPI: Store API for record operations
 //   - server: P2P server for DHT operations
 //   - publishFunc: Callback for publishing (from routeRemote.Publish, see pubsub.PublishEventHandler)
+//   - republishInterval: how often local CID providers are republished; if <= 0,
+//     the default RepublishInterval constant (36h) is used.
 func NewCleanupManager(
 	dstore types.Datastore,
 	storeAPI types.StoreAPI,
 	server *p2p.Server,
 	publishFunc pubsub.PublishEventHandler,
+	republishInterval time.Duration,
 ) *CleanupManager {
+	// Guard against zero/negative values: time.NewTicker panics on <= 0, and a
+	// missing config value should fall back to the default interval.
+	if republishInterval <= 0 {
+		republishInterval = RepublishInterval
+	}
+
 	return &CleanupManager{
-		dstore:      dstore,
-		storeAPI:    storeAPI,
-		server:      server,
-		publishFunc: publishFunc,
+		dstore:            dstore,
+		storeAPI:          storeAPI,
+		server:            server,
+		publishFunc:       publishFunc,
+		republishInterval: republishInterval,
 	}
 }
 
@@ -81,9 +92,9 @@ func NewCleanupManager(
 // CID provider announcements to keep content discoverable (provider records expire after ProviderRecordTTL).
 // The wg parameter is used to track this goroutine in the parent's WaitGroup.
 func (c *CleanupManager) StartLabelRepublishTask(ctx context.Context, wg *sync.WaitGroup) {
-	ticker := time.NewTicker(RepublishInterval)
+	ticker := time.NewTicker(c.republishInterval)
 
-	cleanupLogger.Info("Started CID provider republishing task", "interval", RepublishInterval)
+	cleanupLogger.Info("Started CID provider republishing task", "interval", c.republishInterval)
 
 	defer func() {
 		ticker.Stop()
