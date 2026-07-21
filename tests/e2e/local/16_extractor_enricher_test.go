@@ -5,13 +5,16 @@ package local
 
 import (
 	"encoding/json"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
 	"time"
 
+	clientconfig "github.com/agntcy/dir/client/config"
 	"github.com/agntcy/dir/tests/e2e/shared/testdata"
 	"github.com/agntcy/dir/tests/e2e/shared/utils"
+	sdk "github.com/agntcy/oasf-sdk/pkg/extractor"
 	"github.com/onsi/ginkgo/v2"
 	"github.com/onsi/gomega"
 )
@@ -30,17 +33,10 @@ var _ = ginkgo.Describe("Extractor enricher import", func() {
 		)
 
 		ginkgo.BeforeAll(func() {
-			// Check for the oasf-sdk extractor manifest written by `dirctl init`.
-			// This mirrors extractor.IsProvisioned without importing the internal package.
-			home, homeErr := os.UserHomeDir()
-			gomega.Expect(homeErr).NotTo(gomega.HaveOccurred())
-
-			manifest := filepath.Join(home, ".agntcy", "oasf-sdk", "extractor", "manifest.json")
-			if _, err := os.Stat(manifest); err != nil {
-				ginkgo.Skip("OASF extractor not provisioned — run `dirctl init` to enable extractor enricher tests")
+			schemaVersion, err := latestExtractorSchemaVersion()
+			if err != nil {
+				ginkgo.Skip("OASF extractor not provisioned — run `dirctl init` to enable extractor enricher tests: " + err.Error())
 			}
-
-			var err error
 
 			tempDir, err = os.MkdirTemp("", "extractor-enricher-e2e-*")
 			gomega.Expect(err).NotTo(gomega.HaveOccurred())
@@ -49,9 +45,14 @@ var _ = ginkgo.Describe("Extractor enricher import", func() {
 			gomega.Expect(os.WriteFile(cardPath, testdata.A2AAgentCard, 0o600)).To(gomega.Succeed())
 
 			// Empty extractor block uses the config saved by `dirctl init`
-			// (internalextractor.LoadConfigured).
+			// (internalextractor.LoadConfigured). schema_version must match the
+			// extractor enricher's sdk.Latest() taxonomy scope.
 			cfgPath = filepath.Join(tempDir, "import.config.yaml")
-			gomega.Expect(os.WriteFile(cfgPath, []byte("enricher:\n  extractor: {}\n"), 0o600)).To(gomega.Succeed())
+			cfgContent := fmt.Sprintf(`schema_version: %q
+enricher:
+  extractor: {}
+`, schemaVersion)
+			gomega.Expect(os.WriteFile(cfgPath, []byte(cfgContent), 0o600)).To(gomega.Succeed())
 		})
 
 		ginkgo.AfterAll(func() {
@@ -104,3 +105,31 @@ var _ = ginkgo.Describe("Extractor enricher import", func() {
 		})
 	})
 })
+
+// latestExtractorSchemaVersion returns the OASF version sdk.Latest() scopes to
+// for the provisioned extractor (see Extractor.LatestVersion in oasf-sdk).
+func latestExtractorSchemaVersion() (string, error) {
+	saved, err := clientconfig.LoadExtractor("")
+	if err != nil {
+		return "", fmt.Errorf("load extractor config: %w", err)
+	}
+
+	if saved == nil {
+		return "", fmt.Errorf("OASF extractor not configured")
+	}
+
+	ext, err := sdk.New(
+		sdk.WithOASFURL(saved.OASFURL),
+		sdk.WithAssetDir(saved.AssetDir),
+	)
+	if err != nil {
+		return "", fmt.Errorf("load provisioned extractor: %w", err)
+	}
+
+	version := ext.LatestVersion()
+	if version == "" {
+		return "", fmt.Errorf("provisioned extractor has no supported OASF versions")
+	}
+
+	return version, nil
+}
