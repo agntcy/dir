@@ -85,6 +85,12 @@ type taxonomyEntry struct {
 func (o *options) loadConfig(flags *pflag.FlagSet) error {
 	fileHasEnricher := false
 
+	// SchemaVersion is derived below (from the config file or the extractor's
+	// latest version); it is not flag-backed, so flag resets never clear it.
+	// Reset it up front so a prior in-process invocation — the e2e suite reuses
+	// this command's package-level options — cannot leak its value into this run.
+	o.SchemaVersion = ""
+
 	if o.ConfigFile != "" {
 		fc, err := parseConfigFile(o.ConfigFile)
 		if err != nil {
