@@ -113,6 +113,14 @@ func validateClientConfig(cfg *client.Config) error {
 		if cfg.JWTAudience == "" {
 			return errors.New("jwt_audience is required for jwt authentication")
 		}
+	case "jwt-tls":
+		if cfg.SpiffeSocketPath == "" {
+			return errors.New("spiffe_socket_path is required for jwt-tls authentication")
+		}
+
+		if cfg.JWTAudience == "" {
+			return errors.New("jwt_audience is required for jwt-tls authentication")
+		}
 	case "token":
 		if cfg.SpiffeToken == "" {
 			return errors.New("spiffe_token is required for token authentication")

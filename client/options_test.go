@@ -389,6 +389,13 @@ func TestWithAuth_AllAuthModes(t *testing.T) {
 			errorContains: "failed to create SPIFFE client",
 		},
 		{
+			name:          "jwt-tls mode without socket",
+			authMode:      "jwt-tls",
+			jwtAudience:   testJWTAudience,
+			expectError:   true,
+			errorContains: "failed to create SPIFFE client",
+		},
+		{
 			name:          "x509 mode without socket",
 			authMode:      "x509",
 			jwtAudience:   "",
