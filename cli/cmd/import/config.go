@@ -129,6 +129,17 @@ func (o *options) loadConfig(flags *pflag.FlagSet) error {
 				return fmt.Errorf("extractor enricher: %w", loadErr)
 			}
 
+			// The extractor classifies against its newest provisioned OASF version
+			// (oasfExtractorAdapter uses sdk.Latest()), so it assigns classes that
+			// only exist in that version. Records are validated against the schema of
+			// their own schema_version, so an unset version would fall back to the
+			// transformer default (an older release) and the server would reject the
+			// newer classes as unknown. Align the stamped version with the extractor
+			// unless the config pins one explicitly.
+			if o.SchemaVersion == "" {
+				o.SchemaVersion = sdkExt.LatestVersion()
+			}
+
 			o.Enricher = enricherconfig.Config{
 				Extractor: &enricherconfig.ExtractorConfig{
 					Extractor: &oasfExtractorAdapter{ext: sdkExt},

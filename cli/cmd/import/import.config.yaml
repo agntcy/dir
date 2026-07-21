@@ -52,7 +52,7 @@ enricher:
   #   oasf_url: https://schema.oasf.outshift.com
   #   asset_dir: ~/.agntcy/oasf-sdk/extractor
 
-schema_version: "1.0.0"
+schema_version: "1.1.0"
 
 output_dir: ./import-out
 dry_run: false
