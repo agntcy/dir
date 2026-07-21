@@ -558,6 +558,43 @@ contexts:
 		assert.Contains(t, err.Error(), `unsupported auth_mode "invalid"`)
 	})
 
+	t.Run("jwt requires audience", func(t *testing.T) {
+		resetClientEnv(t)
+		path := writeConfig(t, `
+contexts:
+  dev:
+    server_address: dev.gateway.example.com:443
+    auth_mode: jwt
+    spiffe_socket_path: /tmp/spire.sock
+`)
+
+		cfg, resolved, err := Resolve(ResolveOptions{Path: path, Context: "dev"})
+
+		require.Error(t, err)
+		assert.Nil(t, cfg)
+		assert.Nil(t, resolved)
+		assert.Contains(t, err.Error(), "jwt_audience is required")
+	})
+
+	t.Run("jwt-tls valid config", func(t *testing.T) {
+		resetClientEnv(t)
+		path := writeConfig(t, `
+contexts:
+  dev:
+    server_address: ads.outshift.io:443
+    auth_mode: jwt-tls
+    spiffe_socket_path: /run/spire/agent.sock
+    jwt_audience: dir
+`)
+
+		cfg, resolved, err := Resolve(ResolveOptions{Path: path, Context: "dev"})
+
+		require.NoError(t, err)
+		assert.Equal(t, "jwt-tls", cfg.AuthMode)
+		assert.Equal(t, "dir", cfg.JWTAudience)
+		assert.Equal(t, "dev", resolved.Name)
+	})
+
 	t.Run("oidc requires issuer without token", func(t *testing.T) {
 		resetClientEnv(t)
 		path := writeConfig(t, `

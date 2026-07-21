@@ -156,6 +156,21 @@ func TestBuildClientConfigForRemote(t *testing.T) {
 			wantAud:     "directory",
 		},
 		{
+			name:   "no matching context honours jwt-tls authn config",
+			config: "",
+			remote: "https://ads.outshift.io",
+			authn: authnconfig.Config{
+				Enabled:    true,
+				Mode:       authnconfig.AuthModeJWTTLS,
+				SocketPath: "/run/spire/agent.sock",
+				Audiences:  []string{"dir"},
+			},
+			wantAddress: "ads.outshift.io:443",
+			wantMode:    "jwt-tls",
+			wantSocket:  "/run/spire/agent.sock",
+			wantAud:     "dir",
+		},
+		{
 			name:   "https url without context is normalized to host:port",
 			config: "",
 			remote: "https://ads.outshift.io",

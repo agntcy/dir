@@ -71,6 +71,8 @@ func TestValidateClientConfigAuthModes(t *testing.T) {
 		{name: "x509 missing socket", cfg: &client.Config{ServerAddress: "localhost:8888", AuthMode: "x509"}, wantErr: "spiffe_socket_path"},
 		{name: "jwt missing socket", cfg: &client.Config{ServerAddress: "localhost:8888", AuthMode: "jwt", JWTAudience: "directory"}, wantErr: "spiffe_socket_path"},
 		{name: "jwt missing audience", cfg: &client.Config{ServerAddress: "localhost:8888", AuthMode: "jwt", SpiffeSocketPath: "/tmp/spire.sock"}, wantErr: "jwt_audience"},
+		{name: "jwt-tls missing socket", cfg: &client.Config{ServerAddress: "localhost:8888", AuthMode: "jwt-tls", JWTAudience: "dir"}, wantErr: "spiffe_socket_path"},
+		{name: "jwt-tls missing audience", cfg: &client.Config{ServerAddress: "localhost:8888", AuthMode: "jwt-tls", SpiffeSocketPath: "/tmp/spire.sock"}, wantErr: "jwt_audience"},
 		{name: "token missing token", cfg: &client.Config{ServerAddress: "localhost:8888", AuthMode: "token"}, wantErr: "spiffe_token"},
 		{name: "tls missing files", cfg: &client.Config{ServerAddress: "localhost:8888", AuthMode: "tls"}, wantErr: "tls_ca_file"},
 		{name: "oidc missing issuer", cfg: &client.Config{ServerAddress: "localhost:8888", AuthMode: "oidc"}, wantErr: "oidc_issuer"},
