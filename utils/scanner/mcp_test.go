@@ -4,10 +4,15 @@
 package scanner
 
 import (
+	"context"
+	"os"
+	"os/exec"
+	"path/filepath"
 	"slices"
 	"testing"
 
 	typesv1 "buf.build/gen/go/agntcy/oasf/protocolbuffers/go/agntcy/oasf/types/v1"
+	corev1 "github.com/agntcy/dir/api/core/v1"
 	"google.golang.org/protobuf/types/known/structpb"
 )
 
@@ -323,10 +328,8 @@ func TestExtractSubfolder_Found(t *testing.T) {
 	t.Parallel()
 
 	data, _ := structpb.NewStruct(map[string]any{
-		"mcp_data": map[string]any{
-			"repository": map[string]any{
-				"subfolder": "src/server",
-			},
+		"repository": map[string]any{
+			"subfolder": "src/server",
 		},
 	})
 	mods := []*typesv1.Module{{Data: data}}
@@ -362,6 +365,82 @@ func TestMCPRunner_Name(t *testing.T) {
 	r := NewMCPRunner(MCPConfig{})
 	if got := r.Name(); got != "mcp" {
 		t.Errorf("Name() = %q, want %q", got, "mcp")
+	}
+}
+
+// --- MCPRunner.Run (end to end: real `git clone` of a local repo + testdata/fakecli) ---
+
+// localGitRepo creates a throwaway git repository under t.TempDir() with a
+// single committed file, and returns its filesystem path. gitClone (git
+// clone --depth=1) accepts a plain local path as the repo URL, so this lets
+// MCPRunner.Run be exercised end to end without any network access.
+func localGitRepo(t *testing.T) string {
+	t.Helper()
+
+	dir := t.TempDir()
+
+	run := func(args ...string) {
+		t.Helper()
+
+		//nolint:noctx // test helper, no request-scoped context available
+		cmd := exec.Command("git", args...)
+		cmd.Dir = dir
+
+		if out, err := cmd.CombinedOutput(); err != nil {
+			t.Fatalf("git %v: %v: %s", args, err, out)
+		}
+	}
+
+	run("init", "--initial-branch=main")
+	run("config", "user.email", "test@example.com")
+	run("config", "user.name", "Test")
+
+	readme := filepath.Join(dir, "README.md")
+	if err := os.WriteFile(readme, []byte("# fixture repo\n"), 0o600); err != nil {
+		t.Fatalf("write fixture file: %v", err)
+	}
+
+	run("add", "README.md")
+	run("commit", "-m", "initial commit")
+
+	return dir
+}
+
+func TestMCPRunner_Run_Success(t *testing.T) {
+	t.Parallel()
+
+	repoDir := localGitRepo(t)
+
+	data, err := structpb.NewStruct(map[string]any{
+		"schema_version": "1.0.0",
+		"locators": []any{
+			map[string]any{"type": "source_code", "urls": []any{repoDir}},
+		},
+	})
+	if err != nil {
+		t.Fatalf("structpb.NewStruct: %v", err)
+	}
+
+	r := NewMCPRunner(MCPConfig{CLIPath: fakeCLIPath(t)})
+
+	got, err := r.Run(context.Background(), &corev1.Record{Data: data})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if got.Safe {
+		t.Error("want Safe=false: the fake CLI reports one unsafe finding")
+	}
+
+	if len(got.Findings) != 1 {
+		t.Fatalf("want 1 finding, got %d: %+v", len(got.Findings), got.Findings)
+	}
+
+	// yara and readiness are the zero-dependency analyzers that always run;
+	// this is the line the PR changed from the old hardcoded ["behavioral"].
+	wantAnalyzers := []string{"yara", "readiness"}
+	if !slices.Equal(got.Analyzers, wantAnalyzers) {
+		t.Errorf("want Analyzers=%v, got %v", wantAnalyzers, got.Analyzers)
 	}
 }
 

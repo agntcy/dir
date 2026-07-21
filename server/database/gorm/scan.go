@@ -15,7 +15,7 @@ import (
 // ScanReport stores one scanner-run result per (record_cid, scanner_type).
 type ScanReport struct {
 	RecordCID   string    `gorm:"column:record_cid;primaryKey;not null"`
-	ScannerType string    `gorm:"column:scanner_type;primaryKey;not null"` // "MCP", "SKILL", or "A2A"
+	ScannerType string    `gorm:"column:scanner_type;primaryKey;not null"` // "MCP", "REMOTE", "SKILL", or "A2A"
 	IsSafe      bool      `gorm:"column:is_safe;not null"`
 	MaxSeverity string    `gorm:"column:max_severity;not null"` // e.g. "HIGH", "NONE"
 	CreatedAt   time.Time `gorm:"column:created_at;not null"`

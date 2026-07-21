@@ -92,7 +92,10 @@ func (r *MCPRunner) Run(ctx context.Context, record *corev1.Record) (*ScanResult
 		return nil, err
 	}
 
-	result.Analyzers = []string{"behavioral"}
+	// yara and readiness are zero-dependency analyzers (no third-party credentials
+	// required) so they are always run. llm and api analyzers require third-party
+	// credentials and are opt-in only; wiring them up is left as follow-up work.
+	result.Analyzers = []string{"yara", "readiness"}
 
 	return result, nil
 }
@@ -128,10 +131,11 @@ func extractSourceCodeURL(locators []*typesv1.Locator) string {
 	return ""
 }
 
-// extractSubfolder walks modules[*].data.mcp_data.repository.subfolder.
+// extractSubfolder walks modules[*].data.repository.subfolder. A module's
+// data is itself the OASF mcp_data object, so repository sits directly under it.
 func extractSubfolder(modules []*typesv1.Module) string {
 	for _, mod := range modules {
-		sf := getNestedString(mod.GetData(), "mcp_data", "repository", "subfolder")
+		sf := getNestedString(mod.GetData(), "repository", "subfolder")
 		if sf != "" {
 			return sf
 		}
@@ -180,7 +184,9 @@ func gitClone(ctx context.Context, repoURL, dest string) error {
 func runMCPScanner(ctx context.Context, cliPath, scanDir string) ([]byte, error) {
 	var stdout, stderr bytes.Buffer
 
-	cmd := exec.CommandContext(ctx, cliPath, "behavioral", "--raw", scanDir)
+	// mcp-scanner requires global flags (--analyzers, --raw) to precede the
+	// subcommand; placing them after `behavioral` is rejected by the CLI.
+	cmd := exec.CommandContext(ctx, cliPath, "--analyzers", "yara,readiness", "--raw", "behavioral", scanDir)
 	cmd.Stdout = &stdout
 	cmd.Stderr = &stderr
 	cmd.Env = buildMCPScannerEnv()
