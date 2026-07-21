@@ -63,6 +63,13 @@ type Config struct {
 	// This is primarily used for testing with faster intervals.
 	RefreshInterval time.Duration `json:"refresh_interval,omitempty" mapstructure:"refresh_interval"`
 
+	// RepublishInterval controls how often local CID provider announcements are
+	// republished to keep content discoverable (DHT provider records + GossipSub
+	// labels). If not set or zero, uses the default RepublishInterval constant (36h).
+	// Lower values let newly joined nodes converge on existing content sooner, at
+	// the cost of more frequent announcement traffic.
+	RepublishInterval time.Duration `json:"republish_interval,omitempty" mapstructure:"republish_interval"`
+
 	// RelayService enables a circuit-relay v2 service on this node so it can
 	// relay traffic for NAT'd peers. Enable only on publicly-reachable nodes
 	// (e.g. bootstrap nodes); it consumes bandwidth on behalf of other peers.
