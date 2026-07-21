@@ -40,7 +40,7 @@ only page on the docs site with CLI installation instructions.
 
 Run the guided first-run setup once after installing. It provisions the OASF
 taxonomy extractor (a ~89 MB model plus the taxonomy) for local, LLM-free record
-enrichment and future free-text search:
+enrichment and natural language search:
 
 ```bash
 dirctl init

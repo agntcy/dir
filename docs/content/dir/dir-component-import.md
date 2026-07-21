@@ -24,27 +24,29 @@ LLM-powered skill and domain mapping to ensure consistency with the OASF schema.
 ### Translation and enrichment
 
 Records are transformed from external registry data into OASF-compliant format, which
-directly impacts how records are indexed and discovered across the network. Three methods are
+directly impacts how records are indexed and discovered across the network. Four methods are
 available:
 
 - **Basic translation** uses [OASF-SDK basic translation](https://docs.agntcy.org/oasf/translation/)
   with rule-based mapping. It is fast and deterministic but produces a record without any
   skills or domains, requiring manual or LLM-based enrichment afterwards.
-- **Static enrichment** assigns fixed skills and domains to every record by setting
-  `skip_enricher: true` in the `--config` file and listing the taxonomy entries explicitly.
-  No LLM or API credentials are required.
-- **Local LLM enrichment** runs an LLM locally for intelligent skill and domain mapping,
-  requiring a local LLM runtime.
-- **Remote LLM enrichment** uses external LLM services for skill and domain mapping,
-  requiring API credentials.
+- **Static enrichment** assigns fixed skills and domains to every record by listing the
+  taxonomy entries explicitly in the `--config` file. No LLM or API credentials are required.
+- **Extractor enrichment** uses the local OASF sentence-transformer model provisioned by
+  `dirctl init` to classify each record into OASF skills and domains automatically — no LLM,
+  no API key, no external service. This is the fastest and most accessible enrichment path for
+  users who have already run `dirctl init`. Enable it by setting `enricher.extractor: {}`
+  in the `--config` file.
+- **LLM enrichment** uses an LLM with tool-calling support (local via Ollama or remote via
+  Azure OpenAI and compatible providers) for intelligent skill and domain mapping. This is the
+  default when no `--config` file is provided (azure:gpt-4o, 2 RPM). Requires API credentials
+  or a running local LLM runtime.
 
-LLM enrichment runs automatically by default (azure:gpt-4o, 2 RPM) and can be customised or
-skipped entirely via the `--config` YAML file. Both LLM methods require access to an LLM with
-tool-calling support and the corresponding provider credentials (for example, Azure OpenAI, or
-a local model via Ollama). The enrichment pipeline is built into `dirctl` — it runs the OASF
-schema tools exposed by `dirctl mcp serve` against the model.
+The enrichment pipeline is built into `dirctl` — LLM enrichment runs the OASF schema tools
+exposed by `dirctl mcp serve` against the model, while extractor enrichment runs the
+provisioned model in-process with no external dependencies.
 See [CLI Reference — Enrichment](dir-cli-reference.md#enrichment)
-for provider setup and configuration details.
+for configuration details and YAML examples for each method.
 
 ### Supported import kinds
 
