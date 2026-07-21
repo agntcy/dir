@@ -5,15 +5,11 @@ server:
   oasf_api_validation:
     schema_url: "https://schema.oasf.outshift.com"
   store:
-    provider: "oci"
-    oci:
-      local_dir: "store"
-      registry_address: "localhost:18235"
-      repository_name: "dir"
-      auth_config:
-        insecure: true
-    verification:
-      enabled: true
+    local_dir: "store"
+    registry_address: "localhost:18235"
+    repository_name: "dir"
+    auth_config:
+      insecure: true
   routing:
     listen_address: "/ip4/127.0.0.1/tcp/0"
     gossipsub:
@@ -27,6 +23,7 @@ server:
     worker_count: 1
     worker_timeout: 30m
   naming:
+    enabled: true
     ttl: 168h
 
 reconciler:
