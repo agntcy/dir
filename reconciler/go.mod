@@ -14,10 +14,10 @@ replace (
 replace github.com/ThalesIgnite/crypto11 => github.com/ThalesGroup/crypto11 v1.6.2
 
 require (
-	github.com/agntcy/dir/api v1.6.0
-	github.com/agntcy/dir/client v1.6.0
+	github.com/agntcy/dir/api v1.6.1
+	github.com/agntcy/dir/client v1.6.1
 	github.com/agntcy/dir/server v1.6.0
-	github.com/agntcy/dir/utils v1.6.0
+	github.com/agntcy/dir/utils v1.6.1
 	github.com/agntcy/oasf-sdk/pkg v1.1.0
 	github.com/csirmazbendeguz/regclient v0.0.0-20260429082137-82ab6d426079
 	github.com/sigstore/sigstore v1.10.8
