@@ -6,13 +6,25 @@ package init
 
 import (
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/agntcy/dir/cli/internal/agentcfg"
 	"github.com/agntcy/dir/cli/internal/agentinstall"
 	"github.com/agntcy/dir/cli/presenter"
+	clientconfig "github.com/agntcy/dir/client/config"
 	"github.com/agntcy/dir/server/skill"
 	"github.com/spf13/cobra"
+)
+
+// `dirctl mcp serve` reads its Directory connection settings only from
+// DIRECTORY_CLIENT_* env — it consults neither the client config file nor
+// current_context. So the installed MCP entry must carry them. auth_mode is as
+// essential as the address: an empty mode makes the client attempt OIDC
+// auto-detection, which fails outright when multiple issuers are cached.
+const (
+	dirServerAddressEnv = "DIRECTORY_CLIENT_SERVER_ADDRESS"
+	dirAuthModeEnv      = "DIRECTORY_CLIENT_AUTH_MODE"
 )
 
 const agentStepIntro = `
@@ -49,6 +61,69 @@ func dirArtifacts() (agentinstall.Artifacts, error) {
 	return arts, nil
 }
 
+// mcpServerEnv builds the DIRECTORY_CLIENT_* env the spawned `dirctl mcp serve`
+// needs to reach the same node dirctl itself uses: the current client context's
+// connection settings, with DIRECTORY_CLIENT_* env overrides applied. Validation
+// is skipped and unknown fields tolerated so a partially-set or forward-compat
+// config still yields usable values; any read error degrades to the local
+// default (insecure daemon).
+//
+// Only non-secret fields are projected. The two secrets — auth_token and
+// spiffe_token — are deliberately excluded so a bearer token never lands in an
+// agent's config file; auth modes that need them still require the user to
+// supply the secret via their own environment.
+func mcpServerEnv() map[string]string {
+	cfg, _, err := clientconfig.Resolve(clientconfig.ResolveOptions{
+		SkipValidation:     true,
+		AllowUnknownFields: true,
+	})
+	if err != nil || cfg == nil {
+		// No resolvable context (e.g. the user declined Step 1): mirror the
+		// local default so the server dials the daemon insecurely rather than
+		// falling into OIDC auto-detection with an empty auth mode.
+		return map[string]string{
+			dirServerAddressEnv: localServerAddress,
+			dirAuthModeEnv:      localAuthMode,
+		}
+	}
+
+	addr := strings.TrimSpace(cfg.ServerAddress)
+	if addr == "" {
+		addr = localServerAddress
+	}
+
+	authMode := strings.TrimSpace(cfg.AuthMode)
+	if authMode == "" {
+		authMode = localAuthMode
+	}
+
+	env := map[string]string{
+		dirServerAddressEnv: addr,
+		dirAuthModeEnv:      authMode,
+	}
+
+	// Non-secret, mode-specific fields — projected only when set.
+	for k, v := range map[string]string{
+		"DIRECTORY_CLIENT_TLS_CERT_FILE":      cfg.TlsCertFile,
+		"DIRECTORY_CLIENT_TLS_KEY_FILE":       cfg.TlsKeyFile,
+		"DIRECTORY_CLIENT_TLS_CA_FILE":        cfg.TlsCAFile,
+		"DIRECTORY_CLIENT_SPIFFE_SOCKET_PATH": cfg.SpiffeSocketPath,
+		"DIRECTORY_CLIENT_JWT_AUDIENCE":       cfg.JWTAudience,
+		"DIRECTORY_CLIENT_OIDC_ISSUER":        cfg.OIDCIssuer,
+		"DIRECTORY_CLIENT_OIDC_CLIENT_ID":     cfg.OIDCClientID,
+	} {
+		if s := strings.TrimSpace(v); s != "" {
+			env[k] = s
+		}
+	}
+
+	if cfg.TlsSkipVerify {
+		env["DIRECTORY_CLIENT_TLS_SKIP_VERIFY"] = "true"
+	}
+
+	return env
+}
+
 // runAgentSetup runs Step 3 against the resolved ambient environment, using the
 // interactive checkbox prompt for per-agent selection.
 func runAgentSetup(cmd *cobra.Command, opts *options) error {
@@ -82,6 +157,12 @@ func installAgents(cmd *cobra.Command, env agentcfg.Env, opts *options, selectAg
 	if err != nil {
 		return err
 	}
+
+	// Point the built-in DIR MCP server at the resolved context. `dirctl mcp
+	// serve` takes its target only from DIRECTORY_CLIENT_* env, so without this
+	// the spawned server ignores the context just configured and falls back to
+	// the default address.
+	arts.SetMCPEnv(mcpServerEnv())
 
 	// Non-interactive: never prompt. With --yes, install both artifacts into
 	// every candidate; without it, skip rather than act unattended.

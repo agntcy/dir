@@ -167,6 +167,32 @@ func mcpEntry(srv translator.MCPServer) map[string]any {
 	}
 }
 
+// SetMCPEnv overlays the given environment variables onto every derived MCP
+// server entry, creating the "env" map when absent. `dirctl init` uses this to
+// point the built-in DIR MCP server at the resolved client context: the spawned
+// `dirctl mcp serve` reads its target only from DIRECTORY_CLIENT_* env vars, so
+// without this the server would ignore the configured context and dial the
+// default address instead.
+//
+// The receiver is by value to match the type's other methods (recvcheck): it
+// mutates the shared entry maps, which are reference types, so the caller sees
+// the change regardless.
+func (a Artifacts) SetMCPEnv(vars map[string]string) {
+	for i := range a.mcpServers {
+		entry := a.mcpServers[i].entry
+
+		env, ok := entry["env"].(map[string]any)
+		if !ok {
+			env = map[string]any{}
+			entry["env"] = env
+		}
+
+		for k, v := range vars {
+			env[k] = v
+		}
+	}
+}
+
 // moduleNames lists the module names present in the record data, for error text.
 func moduleNames(data *structpb.Struct) []string {
 	mods, ok := data.GetFields()["modules"]

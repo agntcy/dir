@@ -44,6 +44,10 @@ func TestInstallAgentsWritesMCPAndSkill(t *testing.T) {
 	require.NoError(t, err)
 	assert.Contains(t, string(raw), `"agntcy-dir"`, "MCP server should be keyed by the translator-normalized name")
 	assert.NotContains(t, string(raw), "agntcy-dir-mcp", "the -mcp suffix must be stripped by normalization")
+	assert.Contains(t, string(raw), dirServerAddressEnv,
+		"MCP entry must carry the server address env so `dirctl mcp serve` reaches the configured node")
+	assert.Contains(t, string(raw), dirAuthModeEnv,
+		"MCP entry must carry the auth mode env; an empty mode makes the server attempt OIDC auto-detection")
 
 	// Skill folder was created under ~/.claude/skills.
 	entries, err := os.ReadDir(filepath.Join(env.Home, ".claude", "skills"))

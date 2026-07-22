@@ -54,6 +54,30 @@ func TestDeriveMCPOnly(t *testing.T) {
 	require.True(t, isAnyMap, "env must be map[string]any")
 }
 
+func TestSetMCPEnvOverlaysOntoEntries(t *testing.T) {
+	arts, err := DeriveArtifacts(loadRecord(t, "mcp.json"))
+	require.NoError(t, err)
+	require.Len(t, arts.mcpServers, 1)
+
+	arts.SetMCPEnv(map[string]string{"DIRECTORY_CLIENT_SERVER_ADDRESS": "localhost:8888"})
+
+	env, ok := arts.mcpServers[0].entry["env"].(map[string]any)
+	require.True(t, ok, "env must remain map[string]any")
+	require.Equal(t, "localhost:8888", env["DIRECTORY_CLIENT_SERVER_ADDRESS"])
+}
+
+func TestSetMCPEnvCreatesEnvMapWhenAbsent(t *testing.T) {
+	arts := Artifacts{
+		mcpServers: []mcpServer{{name: "srv", entry: map[string]any{"command": "dirctl"}}},
+	}
+
+	arts.SetMCPEnv(map[string]string{"DIRECTORY_CLIENT_SERVER_ADDRESS": "example:9999"})
+
+	env, ok := arts.mcpServers[0].entry["env"].(map[string]any)
+	require.True(t, ok, "env map should be created when absent")
+	require.Equal(t, "example:9999", env["DIRECTORY_CLIENT_SERVER_ADDRESS"])
+}
+
 func TestDeriveMulti(t *testing.T) {
 	arts, err := DeriveArtifacts(loadRecord(t, "multi.json"))
 	require.NoError(t, err)
