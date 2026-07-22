@@ -61,7 +61,7 @@ explicit `--auth-mode`.
 | Group | Commands |
 |-------|----------|
 | Setup | `init` |
-| Daemon | `daemon start`, `stop`, `status` |
+| Daemon | `daemon start`, `stop`, `status`, `config init` |
 | Auth | `auth login`, `logout`, `status` |
 | Context | `context list`, `current`, `set`, `show`, `validate` |
 | Storage | `push`, `pull`, `delete`, `info` |
@@ -402,6 +402,32 @@ Checks whether the daemon is currently running by inspecting the PID file.
 
     ```
     Daemon is not running
+    ```
+
+### `dirctl daemon config init`
+
+Writes the daemon's built-in default configuration to disk, giving you a complete, valid file to start customizing instead of authoring one from scratch.
+
+Without `--output`, the file is written to the daemon's resolved config path: `<data-dir>/daemon.config.yaml` by default, or the path passed via `--config` on the `daemon` command if one is set. The write is atomic (temp file + rename) and, unless `--force` is given, refuses to overwrite a file that already exists. The dumped file is accepted unchanged by `dirctl daemon start --config <file>`.
+
+| Flag | Description | Default |
+|------|-------------|---------|
+| `--data-dir` | Data directory for daemon state | `~/.agntcy/dir/` |
+| `--config` | Path to daemon config file (used as the write target if set) | Built-in embedded defaults |
+| `--output`, `-o` | Path to write the default config to | Resolved daemon config path |
+| `--force` | Overwrite the file if it already exists | `false` |
+
+??? example
+
+    ```bash
+    # Write the default config to the default location
+    dirctl daemon config init
+
+    # Write the default config to a specific file
+    dirctl daemon config init --output /path/to/daemon.config.yaml
+
+    # Overwrite an existing config file
+    dirctl daemon config init --force
     ```
 
 ## Context Operations
