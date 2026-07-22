@@ -2906,9 +2906,11 @@ dirctl<span class="w"> </span>pull<span class="w"> </span>example.com/agents/my-
 <h2 id="security-scanning">Security Scanning</h2>
 <p>The Directory reconciler automatically scans records for security issues using
 <a href="https://cisco-ai-defense.github.io/docs/mcp-scanner"><code>mcp-scanner</code></a>
-(for MCP server source code) and
+(for MCP server source code),
 <a href="https://cisco-ai-defense.github.io/docs/skill-scanner"><code>skill-scanner</code></a>
-(for agent skill bundles). Scan results are
+(for agent skill bundles), and
+<a href="https://github.com/cisco-ai-defense/a2a-scanner"><code>a2a-scanner</code></a>
+(for A2A AgentCards). Scan results are
 stored as OCI referrers and indexed in the local database so they can be surfaced through
 search filters and pulled alongside records.</p>
 <h3 id="pull-scan-reports">Pull scan reports</h3>
@@ -2933,7 +2935,7 @@ dirctl<span class="w"> </span>search<span class="w"> </span>--module<span class=
 </code></pre></div>
 <p><code>--safe</code> requires that at least one scanner ran and that no scanner reported <code>is_safe=false</code>.
 Records where all scanners were skipped (no source repo locator for MCP, no skill bundle for
-skill-scanner) are excluded.</p>
+skill-scanner, no A2A AgentCard for a2a-scanner) are excluded.</p>
 <p><code>--scan-severity &lt;threshold&gt;</code> returns records whose highest recorded severity is at or above
 the threshold. Severity levels from lowest to highest: <code>NONE</code>, <code>INFO</code>, <code>LOW</code>, <code>MEDIUM</code>,
 <code>HIGH</code>, <code>CRITICAL</code>.</p>
