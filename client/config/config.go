@@ -5,10 +5,12 @@
 package config
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
+	"reflect"
 	"sort"
 	"strconv"
 	"strings"
@@ -35,6 +37,22 @@ type File struct {
 	CurrentContext string             `yaml:"current_context"`
 	Contexts       map[string]Context `yaml:"contexts"`
 	Extractor      *Extractor         `yaml:"extractor,omitempty"`
+
+	// unknown holds top-level YAML sections this binary does not recognize,
+	// captured verbatim during a tolerant load so they survive a save. It keeps
+	// the file forward-compatible: an older dirctl must not silently drop
+	// sections written by a newer one. It is populated only by the tolerant load
+	// path (see loadFile); the strict LoadFile still rejects unknown keys. The
+	// field is unexported so yaml marshal/unmarshal ignore it, and SaveFile
+	// re-injects the sections explicitly.
+	unknown []unknownSection
+}
+
+// unknownSection is a top-level key/value pair captured verbatim as YAML nodes so
+// its value, nesting, and any comments are preserved across a write.
+type unknownSection struct {
+	key   *yaml.Node
+	value *yaml.Node
 }
 
 // Extractor is the machine-wide OASF taxonomy extractor provisioning record,
@@ -142,13 +160,12 @@ func loadFile(path string, allowUnknownFields bool) (*File, error) {
 		path = defaultPath
 	}
 
-	f, err := os.Open(path)
+	data, err := os.ReadFile(path)
 	if err != nil {
 		return nil, fmt.Errorf("failed to open client config file %s: %w", path, err)
 	}
-	defer f.Close()
 
-	decoder := yaml.NewDecoder(f)
+	decoder := yaml.NewDecoder(bytes.NewReader(data))
 	decoder.KnownFields(!allowUnknownFields)
 
 	file := &File{}
@@ -160,11 +177,85 @@ func loadFile(path string, allowUnknownFields bool) (*File, error) {
 		file.Contexts = map[string]Context{}
 	}
 
+	// When unknown fields are tolerated, capture any top-level sections not
+	// represented on File so SaveFile can write them back untouched. The strict
+	// path never reaches here with unknown keys (Decode already errored), so its
+	// rejection behavior is unchanged.
+	if allowUnknownFields {
+		if err := captureUnknownSections(data, file); err != nil {
+			return nil, fmt.Errorf("failed to parse client config file %s: %w", path, err)
+		}
+	}
+
 	if err := validateContextNames(file); err != nil {
 		return nil, fmt.Errorf("invalid client config file %s: %w", path, err)
 	}
 
 	return file, nil
+}
+
+// captureUnknownSections records every top-level mapping key of data that is not
+// a recognized File field, storing the original YAML nodes so a later SaveFile
+// re-emits them verbatim. Scope is deliberately top-level only: nested unknown
+// keys inside recognized sections are out of scope for this preservation.
+func captureUnknownSections(data []byte, file *File) error {
+	var doc yaml.Node
+	if err := yaml.Unmarshal(data, &doc); err != nil {
+		return err
+	}
+
+	if len(doc.Content) == 0 {
+		return nil
+	}
+
+	root := doc.Content[0]
+	if root.Kind != yaml.MappingNode {
+		return nil
+	}
+
+	known := knownTopLevelKeys()
+
+	// Mapping content is a flat [key, value, key, value, ...] slice.
+	for i := 0; i+1 < len(root.Content); i += 2 {
+		keyNode := root.Content[i]
+		valueNode := root.Content[i+1]
+
+		if _, ok := known[keyNode.Value]; ok {
+			continue
+		}
+
+		file.unknown = append(file.unknown, unknownSection{key: keyNode, value: valueNode})
+	}
+
+	return nil
+}
+
+// knownTopLevelKeys returns the set of YAML keys represented on File, derived
+// from struct tags so it stays correct as recognized sections are added.
+func knownTopLevelKeys() map[string]struct{} {
+	fileType := reflect.TypeOf(File{})
+	keys := make(map[string]struct{}, fileType.NumField())
+
+	for i := range fileType.NumField() {
+		field := fileType.Field(i)
+		if field.PkgPath != "" { // unexported field, e.g. unknown
+			continue
+		}
+
+		tag := field.Tag.Get("yaml")
+		if tag == "" || tag == "-" {
+			continue
+		}
+
+		name := strings.Split(tag, ",")[0]
+		if name == "" {
+			continue
+		}
+
+		keys[name] = struct{}{}
+	}
+
+	return keys
 }
 
 // DefaultPath returns the default reusable client config file path.
@@ -365,7 +456,7 @@ func SaveFile(path string, file *File) error {
 		return fmt.Errorf("invalid client config file %s: %w", path, err)
 	}
 
-	data, err := yaml.Marshal(file)
+	data, err := marshalFile(file)
 	if err != nil {
 		return fmt.Errorf("failed to encode client config file %s: %w", path, err)
 	}
@@ -379,6 +470,26 @@ func SaveFile(path string, file *File) error {
 	}
 
 	return nil
+}
+
+// marshalFile encodes the recognized File fields and then re-appends any
+// unknown top-level sections captured on load, so a load→save cycle is lossless
+// for sections this binary does not model. Recognized sections keep their
+// declared order; preserved unknown sections follow them.
+func marshalFile(file *File) ([]byte, error) {
+	var root yaml.Node
+	if err := root.Encode(file); err != nil {
+		return nil, err
+	}
+
+	// root is a MappingNode; appending key/value node pairs preserves the
+	// original sections. Keys captured as unknown never collide with recognized
+	// keys (captureUnknownSections excludes them), so no duplicate keys arise.
+	for _, section := range file.unknown {
+		root.Content = append(root.Content, section.key, section.value)
+	}
+
+	return yaml.Marshal(&root)
 }
 
 // atomicWriteFile writes data to a temp file in the same directory and renames it

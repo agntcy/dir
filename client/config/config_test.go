@@ -11,6 +11,7 @@ import (
 	dirclient "github.com/agntcy/dir/client"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"go.yaml.in/yaml/v3"
 )
 
 func TestDefaultPath(t *testing.T) {
@@ -807,4 +808,147 @@ func resetClientEnv(t *testing.T) {
 			_ = os.Setenv(key, original[key]) //nolint:usetesting // Restoring process env after manual unset.
 		}
 	})
+}
+
+// readRawConfig parses the on-disk config into an untyped map, bypassing the
+// strict/tolerant typed decoders so tests can assert on unknown top-level keys
+// that LoadFile would reject.
+func readRawConfig(t *testing.T, path string) map[string]any {
+	t.Helper()
+
+	data, err := os.ReadFile(path)
+	require.NoError(t, err)
+
+	out := map[string]any{}
+	require.NoError(t, yaml.Unmarshal(data, &out))
+
+	return out
+}
+
+func TestSaveContextPreservesUnknownTopLevelSections(t *testing.T) {
+	path := writeConfig(t, `
+current_context: dev
+contexts:
+  dev:
+    server_address: dev.example.com:443
+experimental:
+  feature_flags:
+    - alpha
+    - beta
+telemetry:
+  enabled: true
+`)
+
+	// A write through the tolerant save path must not drop top-level sections
+	// this binary does not recognize.
+	require.NoError(t, SaveContext(path, "prod", Context{ServerAddress: "prod:443"}, false))
+
+	raw := readRawConfig(t, path)
+
+	// Known sections are updated as requested.
+	assert.Equal(t, "dev", raw["current_context"])
+	contexts, ok := raw["contexts"].(map[string]any)
+	require.True(t, ok, "contexts must remain a mapping")
+	assert.Contains(t, contexts, "dev")
+	assert.Contains(t, contexts, "prod")
+
+	// Unknown sections survive intact, values and nesting preserved.
+	experimental, ok := raw["experimental"].(map[string]any)
+	require.True(t, ok, "experimental section must survive the write")
+	assert.Equal(t, []any{"alpha", "beta"}, experimental["feature_flags"])
+
+	telemetry, ok := raw["telemetry"].(map[string]any)
+	require.True(t, ok, "telemetry section must survive the write")
+	assert.Equal(t, true, telemetry["enabled"])
+}
+
+func TestSaveExtractorPreservesUnknownTopLevelSections(t *testing.T) {
+	path := writeConfig(t, `
+current_context: dev
+contexts:
+  dev:
+    server_address: dev.example.com:443
+future_section:
+  some_key: some_value
+`)
+
+	require.NoError(t, SaveExtractor(path, &Extractor{OASFURL: "https://x", AssetDir: "/a"}))
+
+	raw := readRawConfig(t, path)
+	assert.Contains(t, raw, "extractor")
+	future, ok := raw["future_section"].(map[string]any)
+	require.True(t, ok, "future_section must survive the write")
+	assert.Equal(t, "some_value", future["some_key"])
+}
+
+func TestSetCurrentContextPreservesUnknownTopLevelSections(t *testing.T) {
+	path := writeConfig(t, `
+current_context: dev
+contexts:
+  dev:
+    server_address: dev.example.com:443
+  prod:
+    server_address: prod.example.com:443
+future_section:
+  some_key: some_value
+`)
+
+	_, err := SetCurrentContext(path, "prod")
+	require.NoError(t, err)
+
+	raw := readRawConfig(t, path)
+	assert.Equal(t, "prod", raw["current_context"])
+	future, ok := raw["future_section"].(map[string]any)
+	require.True(t, ok, "future_section must survive the write")
+	assert.Equal(t, "some_value", future["some_key"])
+}
+
+func TestSaveContextPreservesFileWithOnlyUnknownSections(t *testing.T) {
+	path := writeConfig(t, `
+future_section:
+  some_key: some_value
+`)
+
+	require.NoError(t, SaveContext(path, "local", Context{ServerAddress: "localhost:8888"}, true))
+
+	raw := readRawConfig(t, path)
+	assert.Equal(t, "local", raw["current_context"])
+	contexts, ok := raw["contexts"].(map[string]any)
+	require.True(t, ok, "contexts must be written")
+	assert.Contains(t, contexts, "local")
+	future, ok := raw["future_section"].(map[string]any)
+	require.True(t, ok, "future_section must survive the write")
+	assert.Equal(t, "some_value", future["some_key"])
+}
+
+func TestSaveContextNoUnknownSectionsIsClean(t *testing.T) {
+	path := writeConfig(t, `
+current_context: dev
+contexts:
+  dev:
+    server_address: dev.example.com:443
+`)
+
+	require.NoError(t, SaveContext(path, "prod", Context{ServerAddress: "prod:443"}, false))
+
+	// A file with no unknown sections round-trips through the strict loader,
+	// proving no stray keys were introduced by the preservation machinery.
+	file, err := LoadFile(path)
+	require.NoError(t, err)
+	assert.Equal(t, "dev", file.CurrentContext)
+	require.Contains(t, file.Contexts, "dev")
+	require.Contains(t, file.Contexts, "prod")
+}
+
+func TestSaveContextOnEmptyMappingFile(t *testing.T) {
+	// An empty YAML mapping has no sections to preserve; the save path must not
+	// choke on it and must produce a clean, strictly-loadable file.
+	path := writeConfig(t, "{}\n")
+
+	require.NoError(t, SaveContext(path, "local", Context{ServerAddress: "localhost:8888"}, true))
+
+	file, err := LoadFile(path)
+	require.NoError(t, err)
+	assert.Equal(t, "local", file.CurrentContext)
+	require.Contains(t, file.Contexts, "local")
 }
