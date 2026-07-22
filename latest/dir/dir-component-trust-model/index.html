@@ -2697,7 +2697,7 @@ human-readable references while maintaining security.</p>
 <p>Security scanning provides automated behavioral and static analysis of records to detect
 vulnerabilities, policy violations, and malicious patterns before records are consumed.</p>
 <h3 id="how-scanning-works">How scanning works</h3>
-<p>The Directory reconciler runs three scanner types against each record:</p>
+<p>The Directory reconciler runs two scanner types against each record:</p>
 <ul>
 <li><strong><a href="https://cisco-ai-defense.github.io/docs/mcp-scanner">MCP scanner</a></strong> (<code>mcp-scanner behavioral</code>) — clones the source repository referenced in the
   record's <code>source_code</code> locator and runs behavioral analysis. Invoked automatically for
@@ -2706,9 +2706,6 @@ vulnerabilities, policy violations, and malicious patterns before records are co
   agentskills bundle from the record's <code>integration/mcp</code> module artifact and runs static,
   bytecode, pipeline, behavioral, and trigger analyzers. Invoked automatically for records
   that include a skill bundle.</li>
-<li><strong><a href="https://github.com/cisco-ai-defense/a2a-scanner">A2A scanner</a></strong> (<code>a2a-scanner scan-card</code>) — reads the A2A AgentCard stored in the record's
-  <code>a2a</code> module (<code>card_data</code> field) and scans it for policy violations and security issues.
-  Invoked automatically for records that include an A2A AgentCard.</li>
 </ul>
 <p>Scan results are persisted in two places:</p>
 <ol>
@@ -2755,7 +2752,7 @@ considered safe and will not appear in <code>--safe</code> search results.</p>
 <p>Scanners are installed via <code>uv</code>:</p>
 <div class="highlight"><pre><span></span><code>task<span class="w"> </span>deps:scanners
 </code></pre></div>
-<p>This installs <code>mcp-scanner</code>, <code>skill-scanner</code>, and <code>a2a-scanner</code> to <code>~/.local/bin/</code> (added to PATH automatically by <code>uv</code>). For CI environments, the task is also available as <code>task deps:mcp-scanner</code>, <code>task deps:skill-scanner</code>, and <code>task deps:a2a-scanner</code> separately.</p>
+<p>This installs <code>mcp-scanner</code> and <code>skill-scanner</code> to <code>~/.local/bin/</code> (added to PATH automatically by <code>uv</code>). For CI environments, the task is also available as <code>task deps:mcp-scanner</code> and <code>task deps:skill-scanner</code> separately.</p>
 <h3 id="accessing-scan-results">Accessing scan results</h3>
 <div class="highlight"><pre><span></span><code><span class="c1"># Pull scan reports for a record</span>
 dirctl<span class="w"> </span>pull<span class="w"> </span>&lt;cid&gt;<span class="w"> </span>--scan-report
