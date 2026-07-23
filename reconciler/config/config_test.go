@@ -8,6 +8,7 @@ import (
 	"time"
 
 	dbconfig "github.com/agntcy/dir/server/database/config"
+	startupconfig "github.com/agntcy/dir/server/startup/config"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -28,6 +29,13 @@ func TestLoadConfig_NoFile_ReturnsDefaults(t *testing.T) {
 	assert.True(t, cfg.Regsync.Enabled)
 	assert.True(t, cfg.Indexer.Enabled)
 	assert.False(t, cfg.Name.Enabled)
+
+	// Startup defaults
+	assert.True(t, cfg.Startup.WaitPostgreSQL)
+	assert.True(t, cfg.Startup.WaitOCIRegistry)
+	assert.Equal(t, startupconfig.DefaultDependencyWaitTimeout, cfg.Startup.Timeout)
+	assert.Equal(t, startupconfig.DefaultInitialBackoff, cfg.Startup.InitialBackoff)
+	assert.Equal(t, startupconfig.DefaultMaxBackoff, cfg.Startup.MaxBackoff)
 }
 
 func TestLoadConfig_EnvOverrides(t *testing.T) {
