@@ -9,6 +9,7 @@ export const CATALOG_HYDRATION_PAGE_SIZE = 100;
 export interface AICardsPage {
 	results: CatalogEntry[];
 	nextPageToken: string;
+	totalCount: number;
 }
 
 export function buildAICardFilterQuery(
@@ -51,6 +52,7 @@ export async function fetchAICardsPage(
 	const data = await resp.json();
 	return {
 		results: data.results || [],
-		nextPageToken: data.nextPageToken || ''
+		nextPageToken: data.nextPageToken || '',
+		totalCount: data.totalCount ?? 0,
 	};
 }

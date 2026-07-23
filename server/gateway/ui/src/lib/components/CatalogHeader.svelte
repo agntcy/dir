@@ -32,7 +32,7 @@
 
 			{#if headerStatsState.stats}
 				<div class="text-sm text-ink-medium text-right">
-					<span class="font-semibold text-ink-strong">{headerStatsState.stats.count}</span>
+					<span class="font-semibold text-ink-strong">{headerStatsState.stats.totalCount}</span>
 					{#if headerStatsState.stats.catalogHydrating}
 						<span class="text-ink-weak">+</span>
 					{/if}

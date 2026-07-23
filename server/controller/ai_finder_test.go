@@ -27,7 +27,6 @@ var errNotImplemented = errors.New("not implemented")
 // was called with and returning canned results.
 type fakeCatalogDB struct {
 	entries    []*catalogv1.CatalogEntry
-	hasMore    bool
 	err        error
 	calls      int
 	gotFilters types.RecordFilters
@@ -43,7 +42,38 @@ func (f *fakeCatalogDB) GetCatalogEntries(opts ...types.FilterOption) ([]*catalo
 
 	f.gotFilters = cfg
 
-	return f.entries, f.hasMore, f.err
+	if f.err != nil {
+		return nil, false, f.err
+	}
+
+	entries := f.entries
+	if cfg.Offset > 0 {
+		if cfg.Offset >= len(entries) {
+			return nil, false, nil
+		}
+
+		entries = entries[cfg.Offset:]
+	}
+
+	limit := cfg.Limit
+	if limit <= 0 {
+		limit = 20
+	}
+
+	hasMore := len(entries) > limit
+	if hasMore {
+		entries = entries[:limit]
+	}
+
+	return entries, hasMore, nil
+}
+
+func (f *fakeCatalogDB) CountCatalogEntries(opts ...types.FilterOption) (uint32, error) {
+	if f.err != nil {
+		return 0, f.err
+	}
+
+	return uint32(len(f.entries)), nil //nolint:gosec
 }
 
 func entry(id string) *catalogv1.CatalogEntry {
@@ -57,6 +87,7 @@ func TestListAgents_DefaultsAndResults(t *testing.T) {
 	resp, err := ctrl.ListAgents(context.Background(), &catalogv1.ListAgentsRequest{})
 	require.NoError(t, err)
 	assert.Len(t, resp.GetResults(), 2)
+	assert.Equal(t, uint32(2), resp.GetTotalCount())
 	assert.Empty(t, resp.GetNextPageToken(), "no more results means no token")
 
 	// Defaults: page size 20, newest-first ordering.
@@ -67,12 +98,14 @@ func TestListAgents_DefaultsAndResults(t *testing.T) {
 }
 
 func TestListAgents_NextPageToken(t *testing.T) {
-	db := &fakeCatalogDB{entries: []*catalogv1.CatalogEntry{entry("a")}, hasMore: true}
+	db := &fakeCatalogDB{entries: []*catalogv1.CatalogEntry{entry("a"), entry("b"), entry("c"), entry("d"), entry("e"), entry("f")}}
 	ctrl := NewAIFinderController("hostId", db, config.HTTPGatewayConfig{}, nil)
 
 	resp, err := ctrl.ListAgents(context.Background(), &catalogv1.ListAgentsRequest{PageSize: 5})
 	require.NoError(t, err)
 	require.NotEmpty(t, resp.GetNextPageToken())
+	assert.Equal(t, uint32(6), resp.GetTotalCount())
+	assert.Len(t, resp.GetResults(), 5)
 
 	offset, err := decodePageToken(resp.GetNextPageToken())
 	require.NoError(t, err)
@@ -112,6 +145,7 @@ func TestListAgents_UnknownTypeYieldsZeroRows(t *testing.T) {
 	resp, err := ctrl.ListAgents(context.Background(), &catalogv1.ListAgentsRequest{Filter: "type=application/unknown+json"})
 	require.NoError(t, err)
 	assert.Empty(t, resp.GetResults())
+	assert.Zero(t, resp.GetTotalCount())
 	assert.Zero(t, db.calls, "unknown type short-circuits without hitting the DB")
 }
 
