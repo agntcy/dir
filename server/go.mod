@@ -14,7 +14,7 @@ replace (
 replace github.com/ThalesIgnite/crypto11 => github.com/ThalesGroup/crypto11 v1.6.2
 
 require (
-	buf.build/gen/go/agntcy/oasf/protocolbuffers/go v1.36.11-20260703134941-ebce38fee5a5.1
+	buf.build/gen/go/agntcy/oasf/protocolbuffers/go v1.36.11-20260714102339-046f2e5494e3.1
 	buf.build/go/protovalidate v1.2.0
 	github.com/agntcy/dir/api v1.6.1
 	github.com/agntcy/dir/utils v1.6.1
@@ -46,7 +46,7 @@ require (
 )
 
 require (
-	buf.build/gen/go/bufbuild/protovalidate/protocolbuffers/go v1.36.11-20260415201107-50325440f8f2.1 // indirect
+	buf.build/gen/go/bufbuild/protovalidate/protocolbuffers/go v1.36.11-20260709200747-435963d16310.1 // indirect
 	cel.dev/expr v0.25.1 // indirect
 	filippo.io/bigmod v0.1.1-0.20260103110540-f8a47775ebe5 // indirect
 	filippo.io/keygen v0.0.0-20260114151900-8e2790ea4c5b // indirect
@@ -66,7 +66,7 @@ require (
 )
 
 require (
-	buf.build/gen/go/agntcy/oasf-sdk/protocolbuffers/go v1.36.11-20260703134920-dbfa1736bef5.1 // indirect
+	buf.build/gen/go/agntcy/oasf-sdk/protocolbuffers/go v1.36.11-20260714100340-94ed518b08ce.1 // indirect
 	github.com/AndreasBriese/bbloom v0.0.0-20190825152654-46b345b51c96 // indirect
 	github.com/Microsoft/go-winio v0.6.2 // indirect
 	github.com/benbjohnson/clock v1.3.5 // indirect
@@ -99,7 +99,7 @@ require (
 	github.com/huin/goupnp v1.3.0 // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
 	github.com/ipfs/boxo v0.39.0 // indirect
-	github.com/ipfs/go-cid v0.6.1
+	github.com/ipfs/go-cid v0.6.2
 	github.com/ipfs/go-ds-badger v0.3.4
 	github.com/ipfs/go-log/v2 v2.9.2 // indirect
 	github.com/ipld/go-ipld-prime v0.23.0 // indirect
