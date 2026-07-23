@@ -18,6 +18,7 @@
 	let error = $state('');
 	let currentPage = $state(1);
 	let selectedAicard = $state<CatalogEntry | null>(null);
+	let totalCount = $state(0);
 
 	let latestCriteria = $state<AICardFilterCriteria | null>(null);
 	let loadedServerFilter = $state<string | null>(null);
@@ -109,6 +110,7 @@
 
 			aicards = firstPage.results;
 			catalogTags = collectSortedTags(firstPage.results);
+			totalCount = firstPage.totalCount;
 			loadedServerFilter = filter;
 			applyFilters(aicards, criteria);
 			loading = false;
@@ -129,6 +131,7 @@
 			aicards = [];
 			filteredAicards = [];
 			catalogTags = [];
+			totalCount = 0;
 		} finally {
 			if (requestId === loadRequestId) {
 				loading = false;
@@ -161,7 +164,7 @@
 
 	$effect(() => {
 		headerStatsState.set({
-			count: filteredAicards.length,
+			totalCount,
 			catalogHydrating,
 			hydrationError
 		});

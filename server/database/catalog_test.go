@@ -154,3 +154,31 @@ func TestGetCatalogEntries_NilOption(t *testing.T) {
 	_, _, err := db.GetCatalogEntries(nilOpt)
 	require.Error(t, err)
 }
+
+func TestCountCatalogEntries(t *testing.T) {
+	db := setupTestDB(t)
+	for _, r := range []coretypes.Record{a2aRecord, mcpRecord, containerRecord, unprojectableRecord} {
+		require.NoError(t, db.AddRecord(r))
+	}
+
+	count, err := db.CountCatalogEntries()
+	require.NoError(t, err)
+	assert.Equal(t, uint32(4), count)
+
+	count, err = db.CountCatalogEntries(types.WithModuleNames(translator.A2AModuleName))
+	require.NoError(t, err)
+	assert.Equal(t, uint32(2), count)
+
+	count, err = db.CountCatalogEntries(types.WithNames("*alpha*"))
+	require.NoError(t, err)
+	assert.Equal(t, uint32(1), count)
+}
+
+func TestCountCatalogEntries_NilOption(t *testing.T) {
+	db := setupTestDB(t)
+
+	var nilOpt types.FilterOption
+
+	_, err := db.CountCatalogEntries(nilOpt)
+	require.Error(t, err)
+}

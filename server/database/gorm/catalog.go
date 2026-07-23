@@ -5,6 +5,7 @@ package gorm
 
 import (
 	"fmt"
+	"math"
 
 	catalogv1 "github.com/agntcy/dir/api/catalog/v1"
 	"github.com/agntcy/dir/server/types"
@@ -25,18 +26,54 @@ var catalogSortColumns = map[string]string{
 	"record_cid":     "records.record_cid",
 }
 
-// GetCatalogEntries returns the AI Catalog entries matching the given record
-// filters, using peek-ahead pagination (Limit+1) to report hasMore. Records
-// with no AI Catalog projection are skipped rather than failing the page.
-func (d *DB) GetCatalogEntries(opts ...types.FilterOption) ([]*catalogv1.CatalogEntry, bool, error) {
+func parseOpts(opts ...types.FilterOption) (*types.RecordFilters, error) {
 	cfg := &types.RecordFilters{}
 
 	for _, opt := range opts {
 		if opt == nil {
-			return nil, false, fmt.Errorf("nil filter option provided")
+			return nil, fmt.Errorf("nil filter option provided")
 		}
 
 		opt(cfg)
+	}
+
+	return cfg, nil
+}
+
+// CountCatalogEntries returns the number of distinct records matching the
+// given filters. Limit and offset options are ignored.
+func (d *DB) CountCatalogEntries(opts ...types.FilterOption) (uint32, error) {
+	cfg, err := parseOpts(opts...)
+	if err != nil {
+		return 0, err
+	}
+
+	cfg.Limit = 0
+	cfg.Offset = 0
+
+	query := d.gormDB.Model(&Record{})
+	query = d.handleFilterOptions(query, cfg)
+	query = query.Distinct("records.record_cid")
+
+	var count int64
+	if err := query.Count(&count).Error; err != nil {
+		return 0, fmt.Errorf("count catalog records: %w", err)
+	}
+
+	if count < 0 || math.MaxUint32 < count {
+		return 0, fmt.Errorf("can't convert %d to uint32", count)
+	}
+
+	return uint32(count), nil
+}
+
+// GetCatalogEntries returns the AI Catalog entries matching the given record
+// filters, using peek-ahead pagination (Limit+1) to report hasMore. Records
+// with no AI Catalog projection are skipped rather than failing the page.
+func (d *DB) GetCatalogEntries(opts ...types.FilterOption) ([]*catalogv1.CatalogEntry, bool, error) {
+	cfg, err := parseOpts(opts...)
+	if err != nil {
+		return nil, false, err
 	}
 
 	pageSize := cfg.Limit
@@ -64,7 +101,7 @@ func (d *DB) GetCatalogEntries(opts ...types.FilterOption) ([]*catalogv1.Catalog
 
 	query = d.handleFilterOptions(query, cfg)
 
-	query, err := applyCatalogOrder(query, cfg)
+	query, err = applyCatalogOrder(query, cfg)
 	if err != nil {
 		return nil, false, err
 	}

@@ -123,6 +123,10 @@ type CatalogDatabaseAPI interface {
 	// GetCatalogEntries returns the AI Catalog entries matching the given
 	// record filters, along with whether more results exist beyond the page.
 	GetCatalogEntries(opts ...FilterOption) (entries []*catalogv1.CatalogEntry, hasMore bool, err error)
+
+	// CountCatalogEntries returns the number of distinct records matching the
+	// given filters. Limit and offset options are ignored.
+	CountCatalogEntries(opts ...FilterOption) (uint32, error)
 }
 
 type UsageMetricsDatabaseAPI interface {

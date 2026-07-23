@@ -72,6 +72,9 @@ message ListAgentsResponse {
 
   // Opaque continuation token. Empty when there are no more results.
   string next_page_token = 2;
+
+  // Total number of catalog entries matching the filter across all pages.
+  uint32 total_count = 3;
 }
 
 // GetAgentRequest carries the CID of the catalog entry to retrieve.

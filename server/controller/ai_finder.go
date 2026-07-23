@@ -97,6 +97,13 @@ func (c *aiFinderController) ListAgents(ctx context.Context, req *catalogv1.List
 		return &catalogv1.ListAgentsResponse{}, nil
 	}
 
+	totalCount, err := c.db.CountCatalogEntries(opts...)
+	if err != nil {
+		aiFinderLogger.Error("failed to count catalog entries", "error", err)
+
+		return nil, status.Error(codes.Internal, "failed to count catalog entries") //nolint:wrapcheck
+	}
+
 	entries, hasMore, err := c.db.GetCatalogEntries(opts...)
 	if err != nil {
 		aiFinderLogger.Error("failed to list catalog entries", "error", err)
@@ -118,6 +125,7 @@ func (c *aiFinderController) ListAgents(ctx context.Context, req *catalogv1.List
 	return &catalogv1.ListAgentsResponse{
 		Results:       entries,
 		NextPageToken: nextPageToken,
+		TotalCount:    totalCount,
 	}, nil
 }
 

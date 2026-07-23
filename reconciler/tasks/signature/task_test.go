@@ -207,6 +207,11 @@ func (f *fakeSignatureDB) GetRecords(opts ...types.FilterOption) ([]coretypes.Re
 func (f *fakeSignatureDB) GetCatalogEntries(opts ...types.FilterOption) ([]*catalogv1.CatalogEntry, bool, error) {
 	return nil, false, nil
 }
+
+func (f *fakeSignatureDB) CountCatalogEntries(opts ...types.FilterOption) (uint32, error) {
+	return 0, nil
+}
+
 func (f *fakeSignatureDB) RemoveRecord(cid string) error          { return nil }
 func (f *fakeSignatureDB) SetRecordSigned(recordCID string) error { return nil }
 func (f *fakeSignatureDB) CreateSync(remoteURL string, cids []string, remoteRegistryURL string, repositoryName string) (string, error) {
