@@ -27,6 +27,7 @@ var errNotImplemented = errors.New("not implemented")
 // was called with and returning canned results.
 type fakeCatalogDB struct {
 	entries    []*catalogv1.CatalogEntry
+	tags       []*catalogv1.CatalogTag
 	err        error
 	calls      int
 	gotFilters types.RecordFilters
@@ -74,6 +75,14 @@ func (f *fakeCatalogDB) CountCatalogEntries(opts ...types.FilterOption) (uint32,
 	}
 
 	return uint32(len(f.entries)), nil //nolint:gosec
+}
+
+func (f *fakeCatalogDB) ListCatalogTags() ([]*catalogv1.CatalogTag, error) {
+	if f.err != nil {
+		return nil, f.err
+	}
+
+	return f.tags, nil
 }
 
 func entry(id string) *catalogv1.CatalogEntry {
@@ -443,4 +452,34 @@ func TestFilterCatalogEntriesByMediaType(t *testing.T) {
 	})
 	require.Len(t, got, 1)
 	assert.Equal(t, catalogv1.ProtocolAgentSkillsBundleMediaType, got[0].GetMediaType())
+}
+
+func TestListTags_ReturnsSortedTags(t *testing.T) {
+	ctrl := NewAIFinderController("hostId", &fakeCatalogDB{
+		tags: []*catalogv1.CatalogTag{
+			{
+				Id:    catalogv1.SkillTag("0.5.0", "test_skill"),
+				Label: "Test Skill",
+			},
+			{Id: "owner=alice", Label: "owner=alice"},
+		},
+	}, config.HTTPGatewayConfig{}, nil)
+
+	resp, err := ctrl.ListTags(context.Background(), &catalogv1.ListTagsRequest{})
+	require.NoError(t, err)
+	require.Len(t, resp.GetTags(), 2)
+	assert.Equal(t, catalogv1.SkillTag("0.5.0", "test_skill"), resp.GetTags()[0].GetId())
+	assert.Equal(t, "Test Skill", resp.GetTags()[0].GetLabel())
+	assert.Equal(t, "owner=alice", resp.GetTags()[1].GetId())
+	assert.Equal(t, "owner=alice", resp.GetTags()[1].GetLabel())
+}
+
+func TestListTags_DatabaseError(t *testing.T) {
+	ctrl := NewAIFinderController("hostId", &fakeCatalogDB{
+		err: errors.New("db down"),
+	}, config.HTTPGatewayConfig{}, nil)
+
+	_, err := ctrl.ListTags(context.Background(), &catalogv1.ListTagsRequest{})
+	require.Error(t, err)
+	assert.Equal(t, codes.Internal, status.Code(err))
 }

@@ -182,3 +182,43 @@ func TestCountCatalogEntries_NilOption(t *testing.T) {
 	_, err := db.CountCatalogEntries(nilOpt)
 	require.Error(t, err)
 }
+
+func TestListCatalogTags(t *testing.T) {
+	db := setupTestDB(t)
+
+	taggedRecord := &testRecord{
+		cid:           "cid-tags",
+		name:          "tagged-agent",
+		version:       "1.0.0",
+		schemaVersion: "0.5.0",
+		createdAt:     "2024-01-01T00:00:00Z",
+		skills:        []coretypes.Skill{&testSkill{id: 1, name: "test_skill"}},
+		domains:       []coretypes.Domain{&testDomain{id: 301, name: "life_science/biotechnology"}},
+		modules: []coretypes.Module{
+			&catalogModuleFixture{id: 1, name: translator.A2AModuleName, data: map[string]any{"protocol_version": "1.0"}},
+		},
+		annotations: map[string]string{
+			"owner":    "alice",
+			"featured": "",
+		},
+	}
+
+	require.NoError(t, db.AddRecord(taggedRecord))
+	require.NoError(t, db.AddRecord(a2aRecord))
+
+	tags, err := db.ListCatalogTags()
+	require.NoError(t, err)
+
+	assert.Equal(t, []*catalogv1.CatalogTag{
+		{
+			Id:    catalogv1.DomainTag("0.5.0", "life_science/biotechnology"),
+			Label: "Biotechnology",
+		},
+		{
+			Id:    catalogv1.SkillTag("0.5.0", "test_skill"),
+			Label: "Test Skill",
+		},
+		{Id: "featured", Label: "featured"},
+		{Id: "owner=alice", Label: "owner=alice"},
+	}, tags)
+}

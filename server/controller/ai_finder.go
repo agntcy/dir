@@ -129,6 +129,25 @@ func (c *aiFinderController) ListAgents(ctx context.Context, req *catalogv1.List
 	}, nil
 }
 
+// ListTags returns distinct catalog tags derived from OASF skills, domains,
+// and record annotations.
+func (c *aiFinderController) ListTags(ctx context.Context, _ *catalogv1.ListTagsRequest) (*catalogv1.ListTagsResponse, error) {
+	if err := ctx.Err(); err != nil {
+		return nil, status.Errorf(codes.Canceled, "%v", err)
+	}
+
+	aiFinderLogger.Debug("ListTags called")
+
+	tags, err := c.db.ListCatalogTags()
+	if err != nil {
+		aiFinderLogger.Error("failed to list catalog tags", "error", err)
+
+		return nil, status.Error(codes.Internal, "failed to list catalog tags") //nolint:wrapcheck
+	}
+
+	return &catalogv1.ListTagsResponse{Tags: tags}, nil
+}
+
 // GetWellKnownCatalog returns a well-known catalog of agents. This is intended to be used
 // for delegated discovery and returns catalog collections rather than catalog entries since
 // there may be many entries.
