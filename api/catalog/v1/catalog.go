@@ -303,11 +303,11 @@ func catalogTags(rd coretypes.Record) []string {
 	out := make([]string, 0)
 
 	for _, skill := range rd.GetSkills() {
-		out = append(out, fmt.Sprintf("oasf:%s:skills:%s", rd.GetSchemaVersion(), skill.GetName()))
+		out = append(out, SkillTag(rd.GetSchemaVersion(), skill.GetName()))
 	}
 
 	for _, domain := range rd.GetDomains() {
-		out = append(out, fmt.Sprintf("oasf:%s:domains:%s", rd.GetSchemaVersion(), domain.GetName()))
+		out = append(out, DomainTag(rd.GetSchemaVersion(), domain.GetName()))
 	}
 
 	// Sort output before appending annotation tags
@@ -317,6 +317,59 @@ func catalogTags(rd coretypes.Record) []string {
 	out = append(out, getAnnotationTags(rd.GetAnnotations())...)
 
 	return out
+}
+
+// SkillTag formats an OASF skill as a catalog tag.
+func SkillTag(schemaVersion, skillName string) string {
+	return fmt.Sprintf("oasf:%s:skills:%s", schemaVersion, skillName)
+}
+
+// DomainTag formats an OASF domain as a catalog tag.
+func DomainTag(schemaVersion, domainName string) string {
+	return fmt.Sprintf("oasf:%s:domains:%s", schemaVersion, domainName)
+}
+
+// AnnotationTag formats a record annotation as a catalog tag.
+func AnnotationTag(key, value string) string {
+	if value == "" {
+		return key
+	}
+
+	return fmt.Sprintf("%s=%s", key, value)
+}
+
+// TagLabel formats an OASF skill or domain name for display.
+func TagLabel(name string) string {
+	if name == "" {
+		return ""
+	}
+
+	if i := strings.LastIndex(name, "/"); i >= 0 {
+		name = name[i+1:]
+	}
+
+	return formatLabel(name)
+}
+
+func AnnotationLabel(key, value string) string {
+	tag := AnnotationTag(key, value)
+	parts := strings.Split(tag, ":")
+	last := parts[len(parts)-1]
+
+	return strings.ReplaceAll(last, "_", " ")
+}
+
+func formatLabel(name string) string {
+	parts := strings.Split(name, "_")
+	for i, part := range parts {
+		if part == "" {
+			continue
+		}
+
+		parts[i] = strings.ToUpper(part[:1]) + part[1:]
+	}
+
+	return strings.Join(parts, " ")
 }
 
 // catalogURN builds "urn:ai:<host>:cid:<cid>" with an optional ":<suffix>"
@@ -471,11 +524,7 @@ func getAnnotationTags(annotations map[string]string) []string {
 	var annotationTags []string
 
 	for key, value := range annotations {
-		if value == "" {
-			annotationTags = append(annotationTags, key)
-		} else {
-			annotationTags = append(annotationTags, fmt.Sprintf("%s=%s", key, value))
-		}
+		annotationTags = append(annotationTags, AnnotationTag(key, value))
 	}
 
 	sort.Strings(annotationTags)
