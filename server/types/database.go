@@ -127,6 +127,10 @@ type CatalogDatabaseAPI interface {
 	// CountCatalogEntries returns the number of distinct records matching the
 	// given filters. Limit and offset options are ignored.
 	CountCatalogEntries(opts ...FilterOption) (uint32, error)
+
+	// ListCatalogTags returns distinct catalog tags derived from OASF skills,
+	// domains, and record annotations, sorted lexicographically by label.
+	ListCatalogTags() ([]*catalogv1.CatalogTag, error)
 }
 
 type UsageMetricsDatabaseAPI interface {

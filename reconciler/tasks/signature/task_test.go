@@ -212,6 +212,10 @@ func (f *fakeSignatureDB) CountCatalogEntries(opts ...types.FilterOption) (uint3
 	return 0, nil
 }
 
+func (f *fakeSignatureDB) ListCatalogTags() ([]*catalogv1.CatalogTag, error) {
+	return nil, nil
+}
+
 func (f *fakeSignatureDB) RemoveRecord(cid string) error          { return nil }
 func (f *fakeSignatureDB) SetRecordSigned(recordCID string) error { return nil }
 func (f *fakeSignatureDB) CreateSync(remoteURL string, cids []string, remoteRegistryURL string, repositoryName string) (string, error) {

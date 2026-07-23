@@ -269,3 +269,18 @@ func toStruct(t *testing.T, data map[string]any) *structpb.Struct {
 
 	return st
 }
+
+func TestTagLabel(t *testing.T) {
+	t.Parallel()
+
+	assert.Equal(t, "Test Skill", TagLabel("test_skill"))
+	assert.Equal(t, "Text Completion", TagLabel("natural_language_processing/natural_language_generation/text_completion"))
+	assert.Equal(t, "Biotechnology", TagLabel("life_science/biotechnology"))
+}
+
+func TestAnnotationLabel(t *testing.T) {
+	t.Parallel()
+
+	assert.Equal(t, "featured", AnnotationLabel("featured", ""))
+	assert.Equal(t, "owner=alice", AnnotationLabel("owner", "alice"))
+}
