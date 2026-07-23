@@ -55,7 +55,7 @@ func (d *DB) IncrementPullCount(cid string) error {
 	err := d.gormDB.Clauses(clause.OnConflict{
 		Columns: []clause.Column{{Name: "record_cid"}},
 		DoUpdates: clause.Assignments(map[string]any{
-			"pull_count":   gorm.Expr("pull_count + 1"),
+			"pull_count":   gorm.Expr("record_usage_metrics.pull_count + 1"),
 			"last_used_at": now,
 			"updated_at":   now,
 		}),
@@ -80,7 +80,7 @@ func (d *DB) IncrementLookupCount(cid string) error {
 	err := d.gormDB.Clauses(clause.OnConflict{
 		Columns: []clause.Column{{Name: "record_cid"}},
 		DoUpdates: clause.Assignments(map[string]any{
-			"lookup_count": gorm.Expr("lookup_count + 1"),
+			"lookup_count": gorm.Expr("record_usage_metrics.lookup_count + 1"),
 			"last_used_at": now,
 			"updated_at":   now,
 		}),
