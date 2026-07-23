@@ -6,7 +6,6 @@
 	import FilterSidebar from '$lib/components/FilterSidebar.svelte';
 	import DetailModal from '$lib/components/DetailModal.svelte';
 	import Pagination from '$lib/components/Pagination.svelte';
-	import DisclaimerBanner from '$lib/components/DisclaimerBanner.svelte';
 	import { headerStatsState } from '$lib/header-stats.svelte';
 	import { onMount } from 'svelte';
 
@@ -186,8 +185,6 @@
 		};
 	});
 </script>
-
-<DisclaimerBanner />
 
 <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
 	<div class="mb-6">
