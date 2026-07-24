@@ -230,10 +230,8 @@ config:
 
   # Startup dependency wait configuration
   startup:
-    # Wait for PostgreSQL to accept connections before continuing startup
-    wait_postgresql: true
-    # Wait for the remote OCI registry to become reachable before continuing startup
-    wait_oci_registry: true
+    # Wait for all applicable services to become ready before continuing startup
+    wait_services: true
     # Maximum time to wait for each dependency
     timeout: "3m"
     # Initial delay between readiness checks
@@ -783,8 +781,7 @@ reconciler:
 
     # Startup dependency wait configuration
     startup:
-      wait_postgresql: true
-      wait_oci_registry: true
+      wait_services: true
       timeout: "3m"
       initial_backoff: "500ms"
       max_backoff: "10s"

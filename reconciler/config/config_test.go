@@ -31,8 +31,7 @@ func TestLoadConfig_NoFile_ReturnsDefaults(t *testing.T) {
 	assert.False(t, cfg.Name.Enabled)
 
 	// Startup defaults
-	assert.True(t, cfg.Startup.WaitPostgreSQL)
-	assert.True(t, cfg.Startup.WaitOCIRegistry)
+	assert.True(t, cfg.Startup.WaitServices)
 	assert.Equal(t, startupconfig.DefaultDependencyWaitTimeout, cfg.Startup.Timeout)
 	assert.Equal(t, startupconfig.DefaultInitialBackoff, cfg.Startup.InitialBackoff)
 	assert.Equal(t, startupconfig.DefaultMaxBackoff, cfg.Startup.MaxBackoff)

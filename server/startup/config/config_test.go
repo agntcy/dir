@@ -15,8 +15,7 @@ func TestDefaultConfig(t *testing.T) {
 
 	cfg := DefaultConfig()
 
-	assert.True(t, cfg.WaitPostgreSQL)
-	assert.True(t, cfg.WaitOCIRegistry)
+	assert.True(t, cfg.WaitServices)
 	assert.Equal(t, DefaultDependencyWaitTimeout, cfg.Timeout)
 	assert.Equal(t, DefaultInitialBackoff, cfg.InitialBackoff)
 	assert.Equal(t, DefaultMaxBackoff, cfg.MaxBackoff)
@@ -26,11 +25,11 @@ func TestWithDefaultsFillsDurations(t *testing.T) {
 	t.Parallel()
 
 	cfg := Config{
-		WaitPostgreSQL: false,
-		Timeout:        30 * time.Second,
+		WaitServices: false,
+		Timeout:      30 * time.Second,
 	}.WithDefaults()
 
-	assert.False(t, cfg.WaitPostgreSQL)
+	assert.False(t, cfg.WaitServices)
 	assert.Equal(t, 30*time.Second, cfg.Timeout)
 	assert.Equal(t, DefaultInitialBackoff, cfg.InitialBackoff)
 	assert.Equal(t, DefaultMaxBackoff, cfg.MaxBackoff)

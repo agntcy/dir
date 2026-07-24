@@ -48,7 +48,7 @@ func WaitForDependencies(
 // No-op when waiting is disabled or the configured database type is not PostgreSQL.
 func WaitForPostgreSQL(ctx context.Context, startupCfg startupconfig.Config, cfg dbconfig.Config) error {
 	startupCfg = startupCfg.WithDefaults()
-	if !startupCfg.WaitPostgreSQL || !isPostgres(cfg) {
+	if !startupCfg.WaitServices || !isPostgres(cfg) {
 		return nil
 	}
 
@@ -80,7 +80,7 @@ func WaitForPostgreSQL(ctx context.Context, startupCfg startupconfig.Config, cfg
 // No-op when waiting is disabled or a local OCI directory is configured.
 func WaitForOCIRegistry(ctx context.Context, startupCfg startupconfig.Config, cfg ociconfig.Config) error {
 	startupCfg = startupCfg.WithDefaults()
-	if !startupCfg.WaitOCIRegistry || cfg.LocalDir != "" {
+	if !startupCfg.WaitServices || cfg.LocalDir != "" {
 		return nil
 	}
 

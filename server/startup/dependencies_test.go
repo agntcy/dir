@@ -17,11 +17,10 @@ import (
 
 func testStartupConfig(timeout time.Duration) startupconfig.Config {
 	return startupconfig.Config{
-		WaitPostgreSQL:  true,
-		WaitOCIRegistry: true,
-		Timeout:         timeout,
-		InitialBackoff:  startupconfig.DefaultInitialBackoff,
-		MaxBackoff:      startupconfig.DefaultMaxBackoff,
+		WaitServices:   true,
+		Timeout:        timeout,
+		InitialBackoff: startupconfig.DefaultInitialBackoff,
+		MaxBackoff:     startupconfig.DefaultMaxBackoff,
 	}
 }
 
@@ -45,7 +44,7 @@ func TestWaitForPostgreSQLSkipsWhenDisabled(t *testing.T) {
 			Database: "dir",
 		},
 	}
-	startupCfg := startupconfig.Config{WaitPostgreSQL: false}
+	startupCfg := startupconfig.Config{WaitServices: false}
 
 	err := WaitForPostgreSQL(context.Background(), startupCfg, cfg)
 	require.NoError(t, err)
@@ -70,7 +69,7 @@ func TestWaitForOCIRegistrySkipsWhenDisabled(t *testing.T) {
 			Insecure: true,
 		},
 	}
-	startupCfg := startupconfig.Config{WaitOCIRegistry: false}
+	startupCfg := startupconfig.Config{WaitServices: false}
 
 	err := WaitForOCIRegistry(context.Background(), startupCfg, cfg)
 	require.NoError(t, err)

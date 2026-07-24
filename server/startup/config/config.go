@@ -7,11 +7,8 @@ package config
 import "time"
 
 const (
-	// DefaultWaitPostgreSQL enables PostgreSQL readiness waits by default.
-	DefaultWaitPostgreSQL = true
-
-	// DefaultWaitOCIRegistry enables OCI registry readiness waits by default.
-	DefaultWaitOCIRegistry = true
+	// DefaultWaitServices enables service readiness waits by default.
+	DefaultWaitServices = true
 
 	// DefaultDependencyWaitTimeout is the maximum time to wait for dependencies at startup.
 	DefaultDependencyWaitTimeout = 3 * time.Minute
@@ -25,11 +22,8 @@ const (
 
 // Config controls optional dependency readiness waits during service boot.
 type Config struct {
-	// WaitPostgreSQL waits for PostgreSQL to accept connections before startup continues.
-	WaitPostgreSQL bool `json:"wait_postgresql" mapstructure:"wait_postgresql"`
-
-	// WaitOCIRegistry waits for the remote OCI registry to become reachable before startup continues.
-	WaitOCIRegistry bool `json:"wait_oci_registry" mapstructure:"wait_oci_registry"`
+	// WaitServices waits for all applicable services to become ready before startup continues.
+	WaitServices bool `json:"wait_services" mapstructure:"wait_services"`
 
 	// Timeout is the maximum time to wait for each dependency.
 	Timeout time.Duration `json:"timeout" mapstructure:"timeout"`
@@ -44,11 +38,10 @@ type Config struct {
 // DefaultConfig returns startup wait settings with package defaults applied.
 func DefaultConfig() Config {
 	return Config{
-		WaitPostgreSQL:  DefaultWaitPostgreSQL,
-		WaitOCIRegistry: DefaultWaitOCIRegistry,
-		Timeout:         DefaultDependencyWaitTimeout,
-		InitialBackoff:  DefaultInitialBackoff,
-		MaxBackoff:      DefaultMaxBackoff,
+		WaitServices:   DefaultWaitServices,
+		Timeout:        DefaultDependencyWaitTimeout,
+		InitialBackoff: DefaultInitialBackoff,
+		MaxBackoff:     DefaultMaxBackoff,
 	}
 }
 

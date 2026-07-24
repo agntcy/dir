@@ -656,11 +656,8 @@ func LoadConfig(opts ...ConfigOption) (*Config, error) {
 	//
 	// Startup dependency wait configuration
 	//
-	_ = v.BindEnv("startup.wait_postgresql")
-	v.SetDefault("startup.wait_postgresql", startupconfig.DefaultWaitPostgreSQL)
-
-	_ = v.BindEnv("startup.wait_oci_registry")
-	v.SetDefault("startup.wait_oci_registry", startupconfig.DefaultWaitOCIRegistry)
+	_ = v.BindEnv("startup.wait_services")
+	v.SetDefault("startup.wait_services", startupconfig.DefaultWaitServices)
 
 	_ = v.BindEnv("startup.timeout")
 	v.SetDefault("startup.timeout", startupconfig.DefaultDependencyWaitTimeout)
