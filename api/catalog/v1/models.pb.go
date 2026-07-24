@@ -985,6 +985,58 @@ func (x *ProvenanceLink) GetSignatureRef() string {
 	return ""
 }
 
+type CatalogTag struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	Label         string                 `protobuf:"bytes,2,opt,name=label,proto3" json:"label,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *CatalogTag) Reset() {
+	*x = CatalogTag{}
+	mi := &file_agntcy_dir_catalog_v1_models_proto_msgTypes[10]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CatalogTag) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CatalogTag) ProtoMessage() {}
+
+func (x *CatalogTag) ProtoReflect() protoreflect.Message {
+	mi := &file_agntcy_dir_catalog_v1_models_proto_msgTypes[10]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CatalogTag.ProtoReflect.Descriptor instead.
+func (*CatalogTag) Descriptor() ([]byte, []int) {
+	return file_agntcy_dir_catalog_v1_models_proto_rawDescGZIP(), []int{10}
+}
+
+func (x *CatalogTag) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+func (x *CatalogTag) GetLabel() string {
+	if x != nil {
+		return x.Label
+	}
+	return ""
+}
+
 var File_agntcy_dir_catalog_v1_models_proto protoreflect.FileDescriptor
 
 var file_agntcy_dir_catalog_v1_models_proto_rawDesc = string([]byte{
@@ -1241,20 +1293,25 @@ var file_agntcy_dir_catalog_v1_models_proto_rawDesc = string([]byte{
 	0x65, 0x5f, 0x64, 0x69, 0x67, 0x65, 0x73, 0x74, 0x42, 0x0f, 0x0a, 0x0d, 0x5f, 0x72, 0x65, 0x67,
 	0x69, 0x73, 0x74, 0x72, 0x79, 0x5f, 0x75, 0x72, 0x69, 0x42, 0x10, 0x0a, 0x0e, 0x5f, 0x73, 0x74,
 	0x61, 0x74, 0x65, 0x6d, 0x65, 0x6e, 0x74, 0x5f, 0x75, 0x72, 0x69, 0x42, 0x10, 0x0a, 0x0e, 0x5f,
-	0x73, 0x69, 0x67, 0x6e, 0x61, 0x74, 0x75, 0x72, 0x65, 0x5f, 0x72, 0x65, 0x66, 0x42, 0xc5, 0x01,
-	0x0a, 0x19, 0x63, 0x6f, 0x6d, 0x2e, 0x61, 0x67, 0x6e, 0x74, 0x63, 0x79, 0x2e, 0x64, 0x69, 0x72,
-	0x2e, 0x63, 0x61, 0x74, 0x61, 0x6c, 0x6f, 0x67, 0x2e, 0x76, 0x31, 0x42, 0x0b, 0x4d, 0x6f, 0x64,
-	0x65, 0x6c, 0x73, 0x50, 0x72, 0x6f, 0x74, 0x6f, 0x50, 0x01, 0x5a, 0x24, 0x67, 0x69, 0x74, 0x68,
-	0x75, 0x62, 0x2e, 0x63, 0x6f, 0x6d, 0x2f, 0x61, 0x67, 0x6e, 0x74, 0x63, 0x79, 0x2f, 0x64, 0x69,
-	0x72, 0x2f, 0x61, 0x70, 0x69, 0x2f, 0x63, 0x61, 0x74, 0x61, 0x6c, 0x6f, 0x67, 0x2f, 0x76, 0x31,
-	0xa2, 0x02, 0x03, 0x41, 0x44, 0x43, 0xaa, 0x02, 0x15, 0x41, 0x67, 0x6e, 0x74, 0x63, 0x79, 0x2e,
-	0x44, 0x69, 0x72, 0x2e, 0x43, 0x61, 0x74, 0x61, 0x6c, 0x6f, 0x67, 0x2e, 0x56, 0x31, 0xca, 0x02,
-	0x15, 0x41, 0x67, 0x6e, 0x74, 0x63, 0x79, 0x5c, 0x44, 0x69, 0x72, 0x5c, 0x43, 0x61, 0x74, 0x61,
-	0x6c, 0x6f, 0x67, 0x5c, 0x56, 0x31, 0xe2, 0x02, 0x21, 0x41, 0x67, 0x6e, 0x74, 0x63, 0x79, 0x5c,
-	0x44, 0x69, 0x72, 0x5c, 0x43, 0x61, 0x74, 0x61, 0x6c, 0x6f, 0x67, 0x5c, 0x56, 0x31, 0x5c, 0x47,
-	0x50, 0x42, 0x4d, 0x65, 0x74, 0x61, 0x64, 0x61, 0x74, 0x61, 0xea, 0x02, 0x18, 0x41, 0x67, 0x6e,
-	0x74, 0x63, 0x79, 0x3a, 0x3a, 0x44, 0x69, 0x72, 0x3a, 0x3a, 0x43, 0x61, 0x74, 0x61, 0x6c, 0x6f,
-	0x67, 0x3a, 0x3a, 0x56, 0x31, 0x62, 0x06, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x33,
+	0x73, 0x69, 0x67, 0x6e, 0x61, 0x74, 0x75, 0x72, 0x65, 0x5f, 0x72, 0x65, 0x66, 0x22, 0x42, 0x0a,
+	0x0a, 0x43, 0x61, 0x74, 0x61, 0x6c, 0x6f, 0x67, 0x54, 0x61, 0x67, 0x12, 0x16, 0x0a, 0x02, 0x69,
+	0x64, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x42, 0x06, 0xba, 0x48, 0x03, 0xc8, 0x01, 0x01, 0x52,
+	0x02, 0x69, 0x64, 0x12, 0x1c, 0x0a, 0x05, 0x6c, 0x61, 0x62, 0x65, 0x6c, 0x18, 0x02, 0x20, 0x01,
+	0x28, 0x09, 0x42, 0x06, 0xba, 0x48, 0x03, 0xc8, 0x01, 0x01, 0x52, 0x05, 0x6c, 0x61, 0x62, 0x65,
+	0x6c, 0x42, 0xc5, 0x01, 0x0a, 0x19, 0x63, 0x6f, 0x6d, 0x2e, 0x61, 0x67, 0x6e, 0x74, 0x63, 0x79,
+	0x2e, 0x64, 0x69, 0x72, 0x2e, 0x63, 0x61, 0x74, 0x61, 0x6c, 0x6f, 0x67, 0x2e, 0x76, 0x31, 0x42,
+	0x0b, 0x4d, 0x6f, 0x64, 0x65, 0x6c, 0x73, 0x50, 0x72, 0x6f, 0x74, 0x6f, 0x50, 0x01, 0x5a, 0x24,
+	0x67, 0x69, 0x74, 0x68, 0x75, 0x62, 0x2e, 0x63, 0x6f, 0x6d, 0x2f, 0x61, 0x67, 0x6e, 0x74, 0x63,
+	0x79, 0x2f, 0x64, 0x69, 0x72, 0x2f, 0x61, 0x70, 0x69, 0x2f, 0x63, 0x61, 0x74, 0x61, 0x6c, 0x6f,
+	0x67, 0x2f, 0x76, 0x31, 0xa2, 0x02, 0x03, 0x41, 0x44, 0x43, 0xaa, 0x02, 0x15, 0x41, 0x67, 0x6e,
+	0x74, 0x63, 0x79, 0x2e, 0x44, 0x69, 0x72, 0x2e, 0x43, 0x61, 0x74, 0x61, 0x6c, 0x6f, 0x67, 0x2e,
+	0x56, 0x31, 0xca, 0x02, 0x15, 0x41, 0x67, 0x6e, 0x74, 0x63, 0x79, 0x5c, 0x44, 0x69, 0x72, 0x5c,
+	0x43, 0x61, 0x74, 0x61, 0x6c, 0x6f, 0x67, 0x5c, 0x56, 0x31, 0xe2, 0x02, 0x21, 0x41, 0x67, 0x6e,
+	0x74, 0x63, 0x79, 0x5c, 0x44, 0x69, 0x72, 0x5c, 0x43, 0x61, 0x74, 0x61, 0x6c, 0x6f, 0x67, 0x5c,
+	0x56, 0x31, 0x5c, 0x47, 0x50, 0x42, 0x4d, 0x65, 0x74, 0x61, 0x64, 0x61, 0x74, 0x61, 0xea, 0x02,
+	0x18, 0x41, 0x67, 0x6e, 0x74, 0x63, 0x79, 0x3a, 0x3a, 0x44, 0x69, 0x72, 0x3a, 0x3a, 0x43, 0x61,
+	0x74, 0x61, 0x6c, 0x6f, 0x67, 0x3a, 0x3a, 0x56, 0x31, 0x62, 0x06, 0x70, 0x72, 0x6f, 0x74, 0x6f,
+	0x33,
 })
 
 var (
@@ -1269,7 +1326,7 @@ func file_agntcy_dir_catalog_v1_models_proto_rawDescGZIP() []byte {
 	return file_agntcy_dir_catalog_v1_models_proto_rawDescData
 }
 
-var file_agntcy_dir_catalog_v1_models_proto_msgTypes = make([]protoimpl.MessageInfo, 15)
+var file_agntcy_dir_catalog_v1_models_proto_msgTypes = make([]protoimpl.MessageInfo, 16)
 var file_agntcy_dir_catalog_v1_models_proto_goTypes = []any{
 	(*AICatalog)(nil),         // 0: agntcy.dir.catalog.v1.AICatalog
 	(*WellKnownCatalog)(nil),  // 1: agntcy.dir.catalog.v1.WellKnownCatalog
@@ -1281,36 +1338,37 @@ var file_agntcy_dir_catalog_v1_models_proto_goTypes = []any{
 	(*TrustSchema)(nil),       // 7: agntcy.dir.catalog.v1.TrustSchema
 	(*Attestation)(nil),       // 8: agntcy.dir.catalog.v1.Attestation
 	(*ProvenanceLink)(nil),    // 9: agntcy.dir.catalog.v1.ProvenanceLink
-	nil,                       // 10: agntcy.dir.catalog.v1.AICatalog.MetadataEntry
-	nil,                       // 11: agntcy.dir.catalog.v1.WellKnownCatalog.MetadataEntry
-	nil,                       // 12: agntcy.dir.catalog.v1.CatalogCollection.MetadataEntry
-	nil,                       // 13: agntcy.dir.catalog.v1.CatalogEntry.MetadataEntry
-	nil,                       // 14: agntcy.dir.catalog.v1.TrustManifest.MetadataEntry
-	(*structpb.Value)(nil),    // 15: google.protobuf.Value
+	(*CatalogTag)(nil),        // 10: agntcy.dir.catalog.v1.CatalogTag
+	nil,                       // 11: agntcy.dir.catalog.v1.AICatalog.MetadataEntry
+	nil,                       // 12: agntcy.dir.catalog.v1.WellKnownCatalog.MetadataEntry
+	nil,                       // 13: agntcy.dir.catalog.v1.CatalogCollection.MetadataEntry
+	nil,                       // 14: agntcy.dir.catalog.v1.CatalogEntry.MetadataEntry
+	nil,                       // 15: agntcy.dir.catalog.v1.TrustManifest.MetadataEntry
+	(*structpb.Value)(nil),    // 16: google.protobuf.Value
 }
 var file_agntcy_dir_catalog_v1_models_proto_depIdxs = []int32{
 	3,  // 0: agntcy.dir.catalog.v1.AICatalog.host:type_name -> agntcy.dir.catalog.v1.HostInfo
 	4,  // 1: agntcy.dir.catalog.v1.AICatalog.entries:type_name -> agntcy.dir.catalog.v1.CatalogEntry
-	10, // 2: agntcy.dir.catalog.v1.AICatalog.metadata:type_name -> agntcy.dir.catalog.v1.AICatalog.MetadataEntry
+	11, // 2: agntcy.dir.catalog.v1.AICatalog.metadata:type_name -> agntcy.dir.catalog.v1.AICatalog.MetadataEntry
 	3,  // 3: agntcy.dir.catalog.v1.WellKnownCatalog.host:type_name -> agntcy.dir.catalog.v1.HostInfo
 	4,  // 4: agntcy.dir.catalog.v1.WellKnownCatalog.entries:type_name -> agntcy.dir.catalog.v1.CatalogEntry
 	2,  // 5: agntcy.dir.catalog.v1.WellKnownCatalog.collections:type_name -> agntcy.dir.catalog.v1.CatalogCollection
-	11, // 6: agntcy.dir.catalog.v1.WellKnownCatalog.metadata:type_name -> agntcy.dir.catalog.v1.WellKnownCatalog.MetadataEntry
-	12, // 7: agntcy.dir.catalog.v1.CatalogCollection.metadata:type_name -> agntcy.dir.catalog.v1.CatalogCollection.MetadataEntry
+	12, // 6: agntcy.dir.catalog.v1.WellKnownCatalog.metadata:type_name -> agntcy.dir.catalog.v1.WellKnownCatalog.MetadataEntry
+	13, // 7: agntcy.dir.catalog.v1.CatalogCollection.metadata:type_name -> agntcy.dir.catalog.v1.CatalogCollection.MetadataEntry
 	6,  // 8: agntcy.dir.catalog.v1.HostInfo.trust_manifest:type_name -> agntcy.dir.catalog.v1.TrustManifest
-	15, // 9: agntcy.dir.catalog.v1.CatalogEntry.data:type_name -> google.protobuf.Value
+	16, // 9: agntcy.dir.catalog.v1.CatalogEntry.data:type_name -> google.protobuf.Value
 	5,  // 10: agntcy.dir.catalog.v1.CatalogEntry.publisher:type_name -> agntcy.dir.catalog.v1.Publisher
 	6,  // 11: agntcy.dir.catalog.v1.CatalogEntry.trust_manifest:type_name -> agntcy.dir.catalog.v1.TrustManifest
-	13, // 12: agntcy.dir.catalog.v1.CatalogEntry.metadata:type_name -> agntcy.dir.catalog.v1.CatalogEntry.MetadataEntry
+	14, // 12: agntcy.dir.catalog.v1.CatalogEntry.metadata:type_name -> agntcy.dir.catalog.v1.CatalogEntry.MetadataEntry
 	7,  // 13: agntcy.dir.catalog.v1.TrustManifest.trust_schema:type_name -> agntcy.dir.catalog.v1.TrustSchema
 	8,  // 14: agntcy.dir.catalog.v1.TrustManifest.attestations:type_name -> agntcy.dir.catalog.v1.Attestation
 	9,  // 15: agntcy.dir.catalog.v1.TrustManifest.provenance:type_name -> agntcy.dir.catalog.v1.ProvenanceLink
-	14, // 16: agntcy.dir.catalog.v1.TrustManifest.metadata:type_name -> agntcy.dir.catalog.v1.TrustManifest.MetadataEntry
-	15, // 17: agntcy.dir.catalog.v1.AICatalog.MetadataEntry.value:type_name -> google.protobuf.Value
-	15, // 18: agntcy.dir.catalog.v1.WellKnownCatalog.MetadataEntry.value:type_name -> google.protobuf.Value
-	15, // 19: agntcy.dir.catalog.v1.CatalogCollection.MetadataEntry.value:type_name -> google.protobuf.Value
-	15, // 20: agntcy.dir.catalog.v1.CatalogEntry.MetadataEntry.value:type_name -> google.protobuf.Value
-	15, // 21: agntcy.dir.catalog.v1.TrustManifest.MetadataEntry.value:type_name -> google.protobuf.Value
+	15, // 16: agntcy.dir.catalog.v1.TrustManifest.metadata:type_name -> agntcy.dir.catalog.v1.TrustManifest.MetadataEntry
+	16, // 17: agntcy.dir.catalog.v1.AICatalog.MetadataEntry.value:type_name -> google.protobuf.Value
+	16, // 18: agntcy.dir.catalog.v1.WellKnownCatalog.MetadataEntry.value:type_name -> google.protobuf.Value
+	16, // 19: agntcy.dir.catalog.v1.CatalogCollection.MetadataEntry.value:type_name -> google.protobuf.Value
+	16, // 20: agntcy.dir.catalog.v1.CatalogEntry.MetadataEntry.value:type_name -> google.protobuf.Value
+	16, // 21: agntcy.dir.catalog.v1.TrustManifest.MetadataEntry.value:type_name -> google.protobuf.Value
 	22, // [22:22] is the sub-list for method output_type
 	22, // [22:22] is the sub-list for method input_type
 	22, // [22:22] is the sub-list for extension type_name
@@ -1342,7 +1400,7 @@ func file_agntcy_dir_catalog_v1_models_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_agntcy_dir_catalog_v1_models_proto_rawDesc), len(file_agntcy_dir_catalog_v1_models_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   15,
+			NumMessages:   16,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

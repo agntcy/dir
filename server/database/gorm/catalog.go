@@ -6,6 +6,7 @@ package gorm
 import (
 	"fmt"
 	"math"
+	"sort"
 
 	catalogv1 "github.com/agntcy/dir/api/catalog/v1"
 	"github.com/agntcy/dir/server/types"
@@ -65,6 +66,69 @@ func (d *DB) CountCatalogEntries(opts ...types.FilterOption) (uint32, error) {
 	}
 
 	return uint32(count), nil
+}
+
+type annotationRow struct {
+	Key   string
+	Value string
+}
+
+// ListCatalogTags returns distinct catalog tags derived from OASF skills,
+// domains, and record annotations, sorted lexicographically by label.
+func (d *DB) ListCatalogTags() ([]*catalogv1.CatalogTag, error) {
+	var tags []*catalogv1.CatalogTag
+
+	var skillNames []string
+	if err := d.gormDB.
+		Model(&Skill{}).
+		Distinct().
+		Pluck("name", &skillNames).Error; err != nil {
+		return nil, fmt.Errorf("list skill tags: %w", err)
+	}
+
+	for _, skillName := range skillNames {
+		tags = append(tags, &catalogv1.CatalogTag{
+			Id:    catalogv1.SkillTag("*", skillName),
+			Label: catalogv1.TagLabel(skillName),
+		})
+	}
+
+	var domainNames []string
+	if err := d.gormDB.
+		Model(&Domain{}).
+		Distinct().
+		Pluck("name", &domainNames).Error; err != nil {
+		return nil, fmt.Errorf("list domain tags: %w", err)
+	}
+
+	for _, domainName := range domainNames {
+		tags = append(tags, &catalogv1.CatalogTag{
+			Id:    catalogv1.DomainTag("*", domainName),
+			Label: catalogv1.TagLabel(domainName),
+		})
+	}
+
+	var annotationRows []annotationRow
+	if err := d.gormDB.
+		Table("annotations").
+		Select("annotations.key, annotations.value").
+		Distinct().
+		Scan(&annotationRows).Error; err != nil {
+		return nil, fmt.Errorf("list annotation tags: %w", err)
+	}
+
+	for _, row := range annotationRows {
+		tags = append(tags, &catalogv1.CatalogTag{
+			Id:    catalogv1.AnnotationTag(row.Key, row.Value),
+			Label: catalogv1.AnnotationLabel(row.Key, row.Value),
+		})
+	}
+
+	sort.Slice(tags, func(i, j int) bool {
+		return tags[i].GetLabel() < tags[j].GetLabel()
+	})
+
+	return tags, nil
 }
 
 // GetCatalogEntries returns the AI Catalog entries matching the given record

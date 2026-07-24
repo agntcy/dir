@@ -45,6 +45,12 @@ service AIFinderService {
       response_body: "catalog"
     };
   }
+
+  // ListTags returns the distinct catalog tags derived from OASF skills, domains,
+  // and record annotations across the registry.
+  rpc ListTags(ListTagsRequest) returns (ListTagsResponse) {
+    option (google.api.http) = {get: "/v1/tags"};
+  }
 }
 
 // ListAgentsRequest carries the AI Finder browsing parameters. All fields are
@@ -124,4 +130,10 @@ message GetWellKnownCatalogRequest {}
 message GetWellKnownCatalogResponse {
   // The well-known AI Catalog document.
   WellKnownCatalog catalog = 1 [(buf.validate.field).required = true];
+}
+
+message ListTagsRequest {}
+
+message ListTagsResponse {
+  repeated CatalogTag tags = 1;
 }

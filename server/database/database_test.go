@@ -21,6 +21,7 @@ type testRecord struct {
 	locators                                                  []coretypes.Locator
 	modules                                                   []coretypes.Module
 	domains                                                   []coretypes.Domain
+	annotations                                               map[string]string
 }
 
 func (r *testRecord) GetCid() string                    { return r.cid }
@@ -34,7 +35,7 @@ func (r *testRecord) GetLocators() []coretypes.Locator  { return r.locators }
 func (r *testRecord) GetModules() []coretypes.Module    { return r.modules }
 func (r *testRecord) GetDomains() []coretypes.Domain    { return r.domains }
 func (r *testRecord) GetDescription() string            { return r.description }
-func (r *testRecord) GetAnnotations() map[string]string { return nil }
+func (r *testRecord) GetAnnotations() map[string]string { return r.annotations }
 func (r *testRecord) GetPreviousRecordCid() string      { return "" }
 
 type testSkill struct {
