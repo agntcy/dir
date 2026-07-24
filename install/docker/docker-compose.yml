@@ -29,6 +29,10 @@ services:
     build:
       context: ../../
       dockerfile: reconciler/Dockerfile
+      args:
+        MCP_SCANNER_VERSION: ${MCP_SCANNER_VERSION:-4.8.1}
+        SKILL_SCANNER_VERSION: ${SKILL_SCANNER_VERSION:-2.0.12}
+        A2A_SCANNER_VERSION: ${A2A_SCANNER_VERSION:-1.0.1}
     env_file:
       - ./reconciler.env
     depends_on:

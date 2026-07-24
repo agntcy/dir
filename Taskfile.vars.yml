@@ -30,8 +30,8 @@ vars:
     - "docker.io/bitnami/postgresql:{{.POSTGRESQL_VERSION}}"
 
   ## Scanner versions
-  MCP_SCANNER_VERSION: "4.8.0"
-  SKILL_SCANNER_VERSION: "2.0.11"
+  MCP_SCANNER_VERSION: "4.8.1"
+  SKILL_SCANNER_VERSION: "2.0.12"
   A2A_SCANNER_VERSION: "1.0.1"
 
   ## Image config
