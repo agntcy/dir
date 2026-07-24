@@ -39,6 +39,7 @@ import (
 	"github.com/agntcy/dir/server/publication"
 	"github.com/agntcy/dir/server/routing"
 	"github.com/agntcy/dir/server/skill"
+	"github.com/agntcy/dir/server/startup"
 	"github.com/agntcy/dir/server/store"
 	"github.com/agntcy/dir/server/types"
 	"github.com/agntcy/dir/utils/logging"
@@ -241,6 +242,14 @@ func New(ctx context.Context, cfg *config.Config, opts ...ServerOption) (*Server
 
 	// Add event bus to options for other services
 	options = options.WithEventBus(safeEventBus)
+
+	if err := startup.WaitForPostgreSQL(ctx, cfg.Startup, cfg.Database); err != nil {
+		return nil, fmt.Errorf("waiting for postgresql: %w", err)
+	}
+
+	if err := startup.WaitForOCIRegistry(ctx, cfg.Startup, cfg.Store.OCI); err != nil {
+		return nil, fmt.Errorf("waiting for oci registry: %w", err)
+	}
 
 	// Create APIs
 	storeAPI, err := store.New(options) //nolint:staticcheck
