@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"strings"
 
 	corev1 "github.com/agntcy/dir/api/core/v1"
 	signv1 "github.com/agntcy/dir/api/sign/v1"
@@ -38,7 +39,14 @@ with the default OIDC provider.
 Password for encrypted private keys:
 When using an encrypted private key, the password can be provided via:
   1. COSIGN_PASSWORD environment variable
-  2. Interactive terminal prompt (if running in a terminal)
+  2. --password-stdin to explicitly read it from standard input
+  3. Interactive terminal prompt (if running in a terminal)
+
+In a non-interactive environment, standard input is read only when
+--password-stdin is set. Otherwise, COSIGN_PASSWORD is used when present and an
+empty password is used when it is absent. Local and inline PEM keys must use the
+encrypted Cosign/Sigstore private-key format. Generate a compatible key pair
+with "cosign generate-key-pair".
 
 Usage examples:
 
@@ -54,7 +62,11 @@ Usage examples:
 
 	COSIGN_PASSWORD=mypassword dirctl sign <record-cid> --key cosign.key
 
-4. Output formats:
+4. Sign with password from standard input:
+
+	printf '%s' "$KEY_PASSWORD" | dirctl sign <record-cid> --key cosign.key --password-stdin
+
+5. Output formats:
 
 	# Get signing result as JSON
 	dirctl sign <record-cid> --output json
@@ -167,28 +179,72 @@ func Sign(ctx context.Context, c *client.Client, recordCID string) error {
 		Provider:  provider,
 	})
 	if err != nil {
+		if opts.Key != "" {
+			err = formatPrivateKeyError(err)
+		}
+
 		return fmt.Errorf("failed to sign record: %w", err)
 	}
 
 	return nil
 }
 
-func readPrivateKeyPassword() func() ([]byte, error) {
-	pw, ok := env.LookupEnv(env.VariablePassword)
+func formatPrivateKeyError(err error) error {
+	// cosign.LoadPrivateKey currently returns unsupported PEM types as an
+	// untyped error, so preserve the original error while adding actionable
+	// guidance for dirctl users.
+	if strings.Contains(err.Error(), "unsupported pem type") { //nolint:errorlint // cosign exposes no typed/sentinel error
+		return fmt.Errorf(
+			"unsupported private key format: expected an encrypted Cosign/Sigstore private key "+
+				"(run \"cosign generate-key-pair\"): %w",
+			err,
+		)
+	}
+
+	if strings.Contains(err.Error(), "decrypt:") { //nolint:errorlint // cosign exposes no typed/sentinel error
+		return fmt.Errorf(
+			"failed to decrypt private key: set COSIGN_PASSWORD or use --password-stdin: %w",
+			err,
+		)
+	}
+
+	return err
+}
+
+type privateKeyPasswordReader struct {
+	lookupPassword func() (string, bool)
+	passwordStdin  bool
+	stdin          io.Reader
+	isTerminal     func() bool
+	readTerminal   func(bool) ([]byte, error)
+}
+
+func (r privateKeyPasswordReader) read() ([]byte, error) {
+	pw, ok := r.lookupPassword()
 
 	switch {
 	case ok:
-		return func() ([]byte, error) {
-			return []byte(pw), nil
-		}
-	case cosign.IsTerminal():
-		return func() ([]byte, error) {
-			return cosign.GetPassFromTerm(true)
-		}
-	// Handle piped in passwords.
+		return []byte(pw), nil
+	case r.passwordStdin:
+		return io.ReadAll(r.stdin)
+	case r.isTerminal():
+		return r.readTerminal(true)
 	default:
-		return func() ([]byte, error) {
-			return io.ReadAll(os.Stdin)
-		}
+		// Match the previous EOF behavior without blocking indefinitely on an
+		// unrelated or permanently open stdin stream. This also allows passwordless
+		// local keys and key references that do not consume a password (for example KMS).
+		return []byte{}, nil
 	}
+}
+
+func readPrivateKeyPassword() func() ([]byte, error) {
+	return privateKeyPasswordReader{
+		lookupPassword: func() (string, bool) {
+			return env.LookupEnv(env.VariablePassword)
+		},
+		passwordStdin: opts.PasswordStdin,
+		stdin:         os.Stdin,
+		isTerminal:    cosign.IsTerminal,
+		readTerminal:  cosign.GetPassFromTerm,
+	}.read
 }

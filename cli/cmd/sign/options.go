@@ -13,7 +13,8 @@ var opts = &Options{}
 
 type Options struct {
 	// Key signing options
-	Key string
+	Key           string
+	PasswordStdin bool
 
 	// OIDC signing options
 	FulcioURL        string
@@ -28,7 +29,9 @@ type Options struct {
 
 func AddSigningFlags(flags *pflag.FlagSet) {
 	flags.StringVar(&opts.Key, "key", "",
-		`Private key for signing. Accepts PEM content, file path, URL, or KMS URI.
+		`Private key for signing. Local or inline PEM keys must use encrypted
+Cosign/Sigstore format (generate one with "cosign generate-key-pair").
+Also accepts file paths, URLs, and KMS URIs.
 Supported formats:
   - File path: /path/to/cosign.key
   - HTTP(S) URL: https://example.com/cosign.key
@@ -40,6 +43,8 @@ Supported formats:
   - Kubernetes secret: k8s://[NAMESPACE]/[SECRET_NAME]
   - PKCS11 token: pkcs11:token=...;slot-id=...;object=...
   - GitLab: gitlab://[PROJECT]`)
+	flags.BoolVar(&opts.PasswordStdin, "password-stdin", false,
+		"Read the private key password from standard input; do not combine with other stdin input flags")
 	flags.StringVar(&opts.FulcioURL, "fulcio-url", signv1.DefaultFulcioURL,
 		"Sigstore Fulcio URL")
 	flags.StringVar(&opts.RekorURL, "rekor-url", signv1.DefaultRekorURL,
