@@ -8,6 +8,7 @@ import (
 
 	"github.com/agntcy/dir/server/types"
 	"github.com/ipfs/go-datastore"
+	"github.com/ipfs/go-datastore/sync"
 	badger "github.com/ipfs/go-ds-badger"
 )
 
@@ -31,5 +32,5 @@ func New(opts ...Option) (types.Datastore, error) {
 	}
 
 	// create in-memory datastore
-	return datastore.NewMapDatastore(), nil
+	return sync.MutexWrap(datastore.NewMapDatastore()), nil
 }
