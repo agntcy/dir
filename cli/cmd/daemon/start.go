@@ -70,10 +70,10 @@ func runStart(cmd *cobra.Command, _ []string) error {
 
 	zotCtx := context.Background()
 
-	if cfg.Server.Store.OCI.LocalDir != "" {
-		zotCtx = runEmbeddedZot(ctx, cfg.Server.Store.OCI.RegistryAddress, cfg.Server.Store.OCI.LocalDir)
+	if cfg.Server.Store.LocalDir != "" {
+		zotCtx = runEmbeddedZot(ctx, cfg.Server.Store.RegistryAddress, cfg.Server.Store.LocalDir)
 
-		cfg.Server.Store.OCI.LocalDir = ""
+		cfg.Server.Store.LocalDir = ""
 	}
 
 	// Create API server
@@ -201,7 +201,7 @@ func ensureKeyFile(path string) error {
 // When a local OCI directory is configured, a local oci.Store is opened.
 // Otherwise a remote ORAS repository is created from the OCI config.
 func newTagLister(cfg *DaemonConfig) (registry.TagLister, error) {
-	if dir := cfg.Server.Store.OCI.LocalDir; dir != "" {
+	if dir := cfg.Server.Store.LocalDir; dir != "" {
 		repo, err := ocistore.New(dir)
 		if err != nil {
 			return nil, fmt.Errorf("failed to open local OCI store: %w", err)
@@ -210,7 +210,7 @@ func newTagLister(cfg *DaemonConfig) (registry.TagLister, error) {
 		return repo, nil
 	}
 
-	repo, err := ocilib.NewORASRepository(cfg.Server.Store.OCI)
+	repo, err := ocilib.NewORASRepository(cfg.Server.Store)
 	if err != nil {
 		return nil, fmt.Errorf("failed to connect to remote OCI registry: %w", err)
 	}

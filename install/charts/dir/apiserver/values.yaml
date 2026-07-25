@@ -55,34 +55,29 @@ config:
     # Path to the authorization policy file
     enforcer_policy_file_path: "/etc/agntcy/dir/authz_policies.csv"
 
-  # Store settings for the storage backend.
+  # Store settings for the OCI-backed storage backend (the only supported provider).
   store:
-    # Storage provider to use.
-    provider: "oci"
+    # Path to a local directory that will be to hold data instead of remote.
+    # If this is set to non-empty value, only local store will be used.
+    # local_dir: ""
 
-    # OCI-backed store
-    oci:
-      # Path to a local directory that will be to hold data instead of remote.
-      # If this is set to non-empty value, only local store will be used.
-      # local_dir: ""
+    # Cache directory to use for metadata.
+    # cache_dir: ""
 
-      # Cache directory to use for metadata.
-      # cache_dir: ""
+    # Registry address to connect to
+    registry_address: ""
 
-      # Registry address to connect to
-      registry_address: ""
+    # All data will be stored under this repo.
+    # Objects are pushed as tags, manifests, and blobs.
+    repository_name: ""
 
-      # All data will be stored under this repo.
-      # Objects are pushed as tags, manifests, and blobs.
-      repository_name: ""
-
-      # Auth credentials to use.
-      auth_config:
-        insecure: true
-        # username: ""
-        # password: ""
-        # access_token: ""
-        # refresh_token: ""
+    # Auth credentials to use.
+    auth_config:
+      insecure: true
+      # username: ""
+      # password: ""
+      # access_token: ""
+      # refresh_token: ""
 
   # Routing settings for the peer-to-peer network.
   routing:

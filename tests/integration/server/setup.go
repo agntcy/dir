@@ -116,7 +116,7 @@ var _ = ginkgo.AfterEach(func(ctx ginkgo.SpecContext) {
 })
 
 func newRepository(options types.APIOptions) *remote.Repository {
-	repository, err := oci.NewORASRepository(options.Config().Store.OCI)
+	repository, err := oci.NewORASRepository(options.Config().Store)
 	gomega.Expect(err).NotTo(gomega.HaveOccurred())
 
 	return repository
@@ -167,9 +167,9 @@ func bufDialer(listener *bufconn.Listener) func(context.Context, string) (net.Co
 // It's assumed the environment variables are already loaded at this stage.
 func getOptions() types.APIOptions {
 	c := conf
-	c.Store.OCI.RepositoryName = fmt.Sprintf(
+	c.Store.RepositoryName = fmt.Sprintf(
 		"%s-%d-%s",
-		c.Store.OCI.RepositoryName,
+		c.Store.RepositoryName,
 		ginkgo.GinkgoParallelProcess(),
 		getCurrentSpecID(),
 	)

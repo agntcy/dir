@@ -288,15 +288,11 @@ The daemon ships with sensible built-in defaults. To customize, pass a YAML conf
       oasf_api_validation:
         schema_url: "https://schema.oasf.outshift.com"
       store:
-        provider: "oci"
-        oci:
-          local_dir: "store"
-          registry_address: "localhost:5555"
-          repository_name: "dir"
-          auth_config:
-            insecure: true
-        verification:
-          enabled: true
+        local_dir: "store"
+        registry_address: "localhost:5555"
+        repository_name: "dir"
+        auth_config:
+          insecure: true
       routing:
         listen_address: "/ip4/0.0.0.0/tcp/8999"
         datastore_dir: "routing"

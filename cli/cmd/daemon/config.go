@@ -50,8 +50,8 @@ type RuntimeConfig struct {
 }
 
 func registerServerDefaults(v *viper.Viper) {
-	v.SetDefault("server.store.oci.registry_address", storeconfig.DefaultRegistryAddress)
-	v.SetDefault("server.store.oci.repository_name", storeconfig.DefaultRepositoryName)
+	v.SetDefault("server.store.registry_address", storeconfig.DefaultRegistryAddress)
+	v.SetDefault("server.store.repository_name", storeconfig.DefaultRepositoryName)
 }
 
 func registerReconcilerDefaults(v *viper.Viper) {
@@ -158,10 +158,10 @@ func bindCredentialEnvVars(v *viper.Viper) {
 
 	_ = v.BindEnv("server.routing.bootstrap_peers")
 
-	_ = v.BindEnv("server.store.oci.auth_config.username")
-	_ = v.BindEnv("server.store.oci.auth_config.password")
-	_ = v.BindEnv("server.store.oci.auth_config.access_token")
-	_ = v.BindEnv("server.store.oci.auth_config.refresh_token")
+	_ = v.BindEnv("server.store.auth_config.username")
+	_ = v.BindEnv("server.store.auth_config.password")
+	_ = v.BindEnv("server.store.auth_config.access_token")
+	_ = v.BindEnv("server.store.auth_config.refresh_token")
 
 	_ = v.BindEnv("server.sync.auth_config.username")
 	_ = v.BindEnv("server.sync.auth_config.password")
@@ -179,7 +179,7 @@ func resolveRelativePaths(cfg *DaemonConfig) {
 		return filepath.Join(opts.DataDir, p)
 	}
 
-	cfg.Server.Store.OCI.LocalDir = resolve(cfg.Server.Store.OCI.LocalDir)
+	cfg.Server.Store.LocalDir = resolve(cfg.Server.Store.LocalDir)
 	cfg.Server.Routing.KeyPath = resolve(cfg.Server.Routing.KeyPath)
 	cfg.Server.Routing.DatastoreDir = resolve(cfg.Server.Routing.DatastoreDir)
 	cfg.Server.Database.SQLite.Path = resolve(cfg.Server.Database.SQLite.Path)

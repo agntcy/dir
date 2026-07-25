@@ -113,13 +113,11 @@ The Agent Directory Service can be deployed using Helm or GitOps / Argo CD. Helm
             ratelimit:
               enabled: false
             store:
-              provider: "oci"
-              oci:
-                registry_address: "dir-zot.dir-dev-dir.svc.cluster.local:5000"
-                auth_config:
-                  insecure: "true"
-                  username: "admin"
-                  password: "admin"
+              registry_address: "dir-zot.dir-dev-dir.svc.cluster.local:5000"
+              auth_config:
+                insecure: "true"
+                username: "admin"
+                password: "admin"
             routing:
               listen_address: "/ip4/0.0.0.0/tcp/5555"
               datastore_dir: /etc/routing/datastore
