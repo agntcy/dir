@@ -19,7 +19,7 @@ import (
 //
 //	filter = clause { WS+ "AND" WS+ clause } ;
 //	clause = field "=" value ;
-//	field  = "displayName" | "type" | "publisherId" | "createdAfter" | "updatedAfter" | "verified" | "trusted" | "safe" ;
+//	field  = "displayName" | "type" | "publisherId" | "createdAfter" | "updatedAfter" | "verified" | "trusted" | "safe" | "tags" ;
 //	value  = token { "," token } ;
 //	token  = unquoted_token | quoted_string ;
 //
@@ -31,14 +31,18 @@ const filterMaxLen = 2048
 
 // agentFilter is the parsed representation of the ListAgents filter query.
 type agentFilter struct {
-	DisplayName  string
-	Types        []string
-	PublisherIDs []string
-	CreatedAfter time.Time
-	UpdatedAfter time.Time
-	Verified     *bool
-	Trusted      *bool
-	Safe         *bool
+	DisplayName    string
+	Types          []string
+	PublisherIDs   []string
+	CreatedAfter   time.Time
+	UpdatedAfter   time.Time
+	Verified       *bool
+	Trusted        *bool
+	Safe           *bool
+	SkillNames     []string
+	DomainNames    []string
+	Annotations    []types.Annotation
+	AnnotationKeys []string
 }
 
 // oasfModuleForMediaType maps a media type onto the OASF module name the
@@ -141,6 +145,8 @@ func parseAgentFilter(input string) (agentFilter, error) {
 // buildRecordFilterOptions translates a parsed filter, order, and paging into
 // FilterOptions for the catalog query layer. The bool is false when type= was
 // set but no requested media type maps to an indexed module (zero rows).
+//
+//nolint:cyclop
 func buildRecordFilterOptions(f agentFilter, order []orderByClause, pageSize, offset int) ([]types.FilterOption, bool) {
 	opts := []types.FilterOption{
 		types.WithLimit(pageSize),
@@ -187,6 +193,22 @@ func buildRecordFilterOptions(f agentFilter, order []orderByClause, pageSize, of
 
 	if f.Safe != nil {
 		opts = append(opts, types.WithScanSafe(*f.Safe))
+	}
+
+	if len(f.SkillNames) > 0 {
+		opts = append(opts, types.WithSkillNames(f.SkillNames...))
+	}
+
+	if len(f.DomainNames) > 0 {
+		opts = append(opts, types.WithDomainNames(f.DomainNames...))
+	}
+
+	if len(f.Annotations) > 0 {
+		opts = append(opts, types.WithAnnotations(f.Annotations...))
+	}
+
+	if len(f.AnnotationKeys) > 0 {
+		opts = append(opts, types.WithAnnotationKeys(f.AnnotationKeys...))
 	}
 
 	if len(order) > 0 {
@@ -449,8 +471,18 @@ func applyClause(out *agentFilter, field string, values []string) error {
 
 		return nil
 
+	case "tags":
+		skillNames, domainNames, annotations, annotationKeys := parseTags(values)
+
+		out.SkillNames = skillNames
+		out.DomainNames = domainNames
+		out.Annotations = annotations
+		out.AnnotationKeys = annotationKeys
+
+		return nil
+
 	default:
-		return fmt.Errorf("unknown filter field %q (allowed: displayName, type, publisherId, createdAfter, updatedAfter, verified, trusted, safe)", field)
+		return fmt.Errorf("unknown filter field %q (allowed: displayName, type, publisherId, createdAfter, updatedAfter, verified, trusted, safe, tags)", field)
 	}
 }
 
@@ -482,4 +514,64 @@ func singleTimestamp(field string, values []string) (time.Time, error) {
 	}
 
 	return ts.UTC(), nil
+}
+
+func parseTags(tags []string) ([]string, []string, []types.Annotation, []string) {
+	var (
+		skillNames     []string
+		domainNames    []string
+		annotations    []types.Annotation
+		annotationKeys []string
+	)
+
+	for _, tag := range tags {
+		switch {
+		case isSkillTag(tag):
+			skillNames = append(skillNames, parseSkillName(tag))
+		case isDomainTag(tag):
+			domainNames = append(domainNames, parseDomainName(tag))
+		case isAnnotationTag(tag):
+			annotations = append(annotations, parseAnnotation(tag))
+		default:
+			annotationKeys = append(annotationKeys, tag)
+		}
+	}
+
+	return skillNames, domainNames, annotations, annotationKeys
+}
+
+func isSkillTag(tag string) bool {
+	s := strings.Split(tag, ":")
+
+	return len(s) == 4 && s[0] == "oasf" && s[1] == "*" && s[2] == "skills" && s[3] != ""
+}
+
+func parseSkillName(tag string) string {
+	s := strings.Split(tag, ":")
+
+	return s[3]
+}
+
+func isDomainTag(tag string) bool {
+	s := strings.Split(tag, ":")
+
+	return len(s) == 4 && s[0] == "oasf" && s[1] == "*" && s[2] == "domains" && s[3] != ""
+}
+
+func parseDomainName(tag string) string {
+	s := strings.Split(tag, ":")
+
+	return s[3]
+}
+
+func isAnnotationTag(tag string) bool {
+	key, value, ok := strings.Cut(tag, "=")
+
+	return ok && key != "" && value != ""
+}
+
+func parseAnnotation(tag string) types.Annotation {
+	key, value, _ := strings.Cut(tag, "=")
+
+	return types.Annotation{Key: key, Value: value}
 }
