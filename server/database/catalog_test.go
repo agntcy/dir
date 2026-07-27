@@ -9,6 +9,7 @@ import (
 
 	catalogv1 "github.com/agntcy/dir/api/catalog/v1"
 	coretypes "github.com/agntcy/dir/api/core/types"
+	gormdb "github.com/agntcy/dir/server/database/gorm"
 	"github.com/agntcy/dir/server/types"
 	"github.com/agntcy/oasf-sdk/pkg/translator"
 	"github.com/stretchr/testify/assert"
@@ -221,4 +222,30 @@ func TestListCatalogTags(t *testing.T) {
 		{Id: "featured", Label: "featured"},
 		{Id: "owner=alice", Label: "owner=alice"},
 	}, tags)
+}
+
+func TestGetCatalogEntries_TrustStatusMetadata(t *testing.T) {
+	db := setupTestDB(t)
+	require.NoError(t, db.AddRecord(a2aRecord))
+
+	require.NoError(t, db.UpsertSignatureVerification(&gormdb.SignatureVerification{
+		RecordCID:   "cid-a2a",
+		SignerKey:   "signer-1",
+		Status:      gormdb.VerificationStatusVerified,
+		ContentType: "application/vnd.oci.image.manifest.v1+json",
+		Signature:   "sig-bytes",
+	}))
+	require.NoError(t, db.CreateNameVerification(&gormdb.NameVerification{
+		RecordCID: "cid-a2a",
+		Method:    "wellknown",
+		Status:    gormdb.VerificationStatusVerified,
+	}))
+
+	entries, _, err := db.GetCatalogEntries(types.WithCIDs("cid-a2a"))
+	require.NoError(t, err)
+	require.Len(t, entries, 1)
+
+	status := entries[0].GetMetadata()[catalogv1.TrustStatusMetadataKey].GetStructValue().AsMap()
+	assert.Equal(t, true, status["trusted"])
+	assert.Equal(t, true, status["verified"])
 }
