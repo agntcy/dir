@@ -18,9 +18,9 @@ import (
 const skillFilePerm = 0o644
 
 // InstallSkill renders and writes the DIR skill/rules for an agent using its
-// strategy. It is idempotent: identical content reports ActionUnchanged. When
-// the global path is unavailable it falls back to the project path and notes
-// this in the outcome reason.
+// strategy, at the requested scope (global or project). It is idempotent:
+// identical content reports ActionUnchanged. When the agent has no location for
+// the requested scope, it reports ActionSkipped with a reason.
 func InstallSkill(target *SkillTarget, env Env, slug, canonical string, scope Scope, dryRun bool) (Outcome, error) {
 	path, err := resolveSkillTargetPath(target, env, slug, scope)
 	if errors.Is(err, ErrNoScopePath) {

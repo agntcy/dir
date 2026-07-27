@@ -207,11 +207,12 @@ Valid agent IDs: `claude-code`, `claude-desktop`, `cursor`, `vscode`, `windsurf`
 updated, removed, or skipped with its absolute path.
 
 By default artifacts go into each agent's **global/user** config. With
-`--project`, they are written into the **current repository** instead (e.g.
-`.cursor/mcp.json`, `.vscode/mcp.json`, `.mcp.json`, `.cursor/skills/…`), so a
-record can be wired into the agents for just one project. Agents with no
-project-scope location for an artifact are skipped with a note; detection is
-unchanged (an undetected agent is still skipped).
+`--project`, they are written into the **current repository** instead — under
+each agent's project-local MCP config (e.g. `.cursor/mcp.json`, `.vscode/mcp.json`,
+`.mcp.json`) and its project skill folder — so a record can be wired into the
+agents for just one project. Run `dirctl install list --project` to see the exact
+paths per agent. Agents with no project-scope location for an artifact are skipped
+with a note; detection is unchanged (an undetected agent is still skipped).
 
 ```bash
 # Preview what installing a record would change
@@ -231,8 +232,8 @@ dirctl install cisco.com/agent --project
 
 Removes what `install` added for that record — its MCP entry and/or skill —
 leaving all other content intact. Shares the same flags as install (`--agents`,
-`--dry-run`, `--yes`). Idempotent: an agent with nothing of ours installed is
-reported as unchanged, never an error.
+`--project`, `--dry-run`, `--yes`). Idempotent: an agent with nothing of ours
+installed is reported as unchanged, never an error.
 
 `dirctl uninstall <cid-or-name>` is a top-level shorthand for
 `dirctl install uninstall <cid-or-name>` (same flags and behavior).
