@@ -12,6 +12,7 @@ import (
 	"github.com/agntcy/dir-importer/config"
 	enricherconfig "github.com/agntcy/dir-importer/enricher/config"
 	"github.com/agntcy/dir-importer/enricher/toolhost"
+	"github.com/agntcy/dir-importer/transformer"
 	internalextractor "github.com/agntcy/dir/cli/internal/extractor"
 	sdk "github.com/agntcy/oasf-sdk/pkg/extractor"
 	"github.com/spf13/pflag"
@@ -85,10 +86,10 @@ type taxonomyEntry struct {
 func (o *options) loadConfig(flags *pflag.FlagSet) error {
 	fileHasEnricher := false
 
-	// SchemaVersion is derived below (from the config file or the extractor's
-	// latest version); it is not flag-backed, so flag resets never clear it.
-	// Reset it up front so a prior in-process invocation — the e2e suite reuses
-	// this command's package-level options — cannot leak its value into this run.
+	// SchemaVersion comes only from the config file (below) and is not flag-backed,
+	// so flag resets never clear it. Reset it up front so a prior in-process
+	// invocation — the e2e suite reuses this command's package-level options —
+	// cannot leak its value into this run and stamp records with the wrong version.
 	o.SchemaVersion = ""
 
 	if o.ConfigFile != "" {
@@ -135,20 +136,17 @@ func (o *options) loadConfig(flags *pflag.FlagSet) error {
 				return fmt.Errorf("extractor enricher: %w", loadErr)
 			}
 
-			// The extractor classifies against its newest provisioned OASF version
-			// (oasfExtractorAdapter uses sdk.Latest()), so it assigns classes that
-			// only exist in that version. Records are validated against the schema of
-			// their own schema_version, so an unset version would fall back to the
-			// transformer default (an older release) and the server would reject the
-			// newer classes as unknown. Align the stamped version with the extractor
-			// unless the config pins one explicitly.
-			if o.SchemaVersion == "" {
-				o.SchemaVersion = sdkExt.LatestVersion()
+			// Scope the extractor to the same OASF version the transformer stamps on
+			// the record (its schema_version, defaulting to transformer.DefaultSchemaVersion
+			// when unset) so the assigned classes validate against the record's schema.
+			schemaVersion := o.SchemaVersion
+			if schemaVersion == "" {
+				schemaVersion = transformer.DefaultSchemaVersion
 			}
 
 			o.Enricher = enricherconfig.Config{
 				Extractor: &enricherconfig.ExtractorConfig{
-					Extractor: &oasfExtractorAdapter{ext: sdkExt},
+					Extractor: &oasfExtractorAdapter{ext: sdkExt, schemaVersion: schemaVersion},
 				},
 			}
 		}
