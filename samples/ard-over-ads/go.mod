@@ -73,7 +73,7 @@ require (
 	github.com/VividCortex/ewma v1.2.0 // indirect
 	github.com/agext/levenshtein v1.2.3 // indirect
 	github.com/agnivade/levenshtein v1.2.1 // indirect
-	github.com/agntcy/dir-importer v1.5.1 // indirect
+	github.com/agntcy/dir-importer v1.5.2-0.20260722103554-a0ac00e66182 // indirect
 	github.com/agntcy/dir-mcp v1.3.3 // indirect
 	github.com/agntcy/dir-runtime/discovery v1.3.3 // indirect
 	github.com/agntcy/dir-runtime/server v1.3.3 // indirect
