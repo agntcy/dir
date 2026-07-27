@@ -209,6 +209,34 @@ func TestParseAgentFilter(t *testing.T) {
 		assert.Equal(t, "hello, world", f.DisplayName)
 	})
 
+	t.Run("verified=true", func(t *testing.T) {
+		f, err := parseAgentFilter(`verified=true`)
+		require.NoError(t, err)
+		require.NotNil(t, f.Verified)
+		assert.True(t, *f.Verified)
+	})
+
+	t.Run("verified=false", func(t *testing.T) {
+		f, err := parseAgentFilter(`verified=FALSE`)
+		require.NoError(t, err)
+		require.NotNil(t, f.Verified)
+		assert.False(t, *f.Verified)
+	})
+
+	t.Run("trusted=true", func(t *testing.T) {
+		f, err := parseAgentFilter(`trusted=true`)
+		require.NoError(t, err)
+		require.NotNil(t, f.Trusted)
+		assert.True(t, *f.Trusted)
+	})
+
+	t.Run("safe=true", func(t *testing.T) {
+		f, err := parseAgentFilter(`safe=true`)
+		require.NoError(t, err)
+		require.NotNil(t, f.Safe)
+		assert.True(t, *f.Safe)
+	})
+
 	invalid := []struct {
 		name  string
 		input string
@@ -219,6 +247,10 @@ func TestParseAgentFilter(t *testing.T) {
 		{"empty value", "displayName="},
 		{"multi-value displayName", "displayName=a,b"},
 		{"bad timestamp", "createdAfter=not-a-date"},
+		{"bad verified value", "verified=maybe"},
+		{"multi-value verified", "verified=true,false"},
+		{"bad trusted value", "trusted=maybe"},
+		{"bad safe value", "safe=maybe"},
 		{"unterminated quote", `displayName="oops`},
 	}
 	for _, tc := range invalid {
@@ -227,6 +259,54 @@ func TestParseAgentFilter(t *testing.T) {
 			require.Error(t, err)
 		})
 	}
+}
+
+func TestBuildRecordFilterOptionsVerified(t *testing.T) {
+	verified := true
+	f := agentFilter{Verified: &verified}
+
+	opts, ok := buildRecordFilterOptions(f, nil, 20, 0)
+	require.True(t, ok)
+
+	var filters types.RecordFilters
+	for _, opt := range opts {
+		opt(&filters)
+	}
+
+	require.NotNil(t, filters.Verified)
+	assert.True(t, *filters.Verified)
+}
+
+func TestBuildRecordFilterOptionsTrusted(t *testing.T) {
+	trusted := true
+	f := agentFilter{Trusted: &trusted}
+
+	opts, ok := buildRecordFilterOptions(f, nil, 20, 0)
+	require.True(t, ok)
+
+	var filters types.RecordFilters
+	for _, opt := range opts {
+		opt(&filters)
+	}
+
+	require.NotNil(t, filters.Trusted)
+	assert.True(t, *filters.Trusted)
+}
+
+func TestBuildRecordFilterOptionsSafe(t *testing.T) {
+	safe := true
+	f := agentFilter{Safe: &safe}
+
+	opts, ok := buildRecordFilterOptions(f, nil, 20, 0)
+	require.True(t, ok)
+
+	var filters types.RecordFilters
+	for _, opt := range opts {
+		opt(&filters)
+	}
+
+	require.NotNil(t, filters.ScanSafe)
+	assert.True(t, *filters.ScanSafe)
 }
 
 func TestParseOrderBy(t *testing.T) {
