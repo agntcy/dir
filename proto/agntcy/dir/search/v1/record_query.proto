@@ -102,4 +102,8 @@ enum RecordQueryType {
   // Query for a record description (free-text field).
   // Supports wildcard patterns: "*fraud*", "*banking*", "real-time*"
   RECORD_QUERY_TYPE_DESCRIPTION = 19;
+
+  // Query for a record owner (SPIFFE ID or similar identity).
+  // Supports wildcard patterns: "spiffe://example.org/*", "*//trust-domain/*"
+  RECORD_QUERY_TYPE_OWNER = 20;
 }
