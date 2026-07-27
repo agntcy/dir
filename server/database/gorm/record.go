@@ -503,6 +503,13 @@ func (d *DB) handleFilterOptions(query *gorm.DB, cfg *types.RecordFilters) *gorm
 		}
 	}
 
+	if len(cfg.Annotations) > 0 {
+		condition, args := utils.BuildAnnotationExistsCondition(cfg.Annotations)
+		if condition != "" {
+			query = query.Where(condition, args...)
+		}
+	}
+
 	// Handle created_at filter with comparison operator support.
 	if len(cfg.CreatedAts) > 0 {
 		condition, args := utils.BuildComparisonConditions("records.oasf_created_at", cfg.CreatedAts)

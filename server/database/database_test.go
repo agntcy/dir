@@ -337,3 +337,65 @@ func TestGetRecordCIDs_NilOption(t *testing.T) {
 	_, err := db.GetRecordCIDs(nilOpt)
 	assert.Error(t, err)
 }
+
+func TestGetRecordCIDs_Annotations(t *testing.T) {
+	db := setupTestDB(t)
+
+	ownerAlice := &testRecord{
+		cid:           "bafybeigdyrztannotowneralice000000000000000000000000000000000001",
+		name:          "directory.agntcy.org/test/owner-alice",
+		version:       "1.0.0",
+		schemaVersion: "0.8.0",
+		createdAt:     "2024-01-15T10:30:00Z",
+		annotations: map[string]string{
+			"owner": "alice",
+			"env":   "prod",
+		},
+	}
+	envAlice := &testRecord{
+		cid:           "bafybeigdyrztannotenvalice000000000000000000000000000000000002",
+		name:          "directory.agntcy.org/test/env-alice",
+		version:       "1.0.0",
+		schemaVersion: "0.8.0",
+		createdAt:     "2024-01-15T10:30:00Z",
+		annotations: map[string]string{
+			"owner": "bob",
+			"env":   "alice",
+		},
+	}
+
+	require.NoError(t, db.AddRecord(ownerAlice))
+	require.NoError(t, db.AddRecord(envAlice))
+
+	t.Run("annotations match key and value on same row", func(t *testing.T) {
+		cids, err := db.GetRecordCIDs(types.WithAnnotations(types.Annotation{Key: "owner", Value: "alice"}))
+		require.NoError(t, err)
+		assert.Equal(t, []string{ownerAlice.GetCid()}, cids)
+	})
+
+	t.Run("annotations use exact case-sensitive matching", func(t *testing.T) {
+		cids, err := db.GetRecordCIDs(types.WithAnnotations(types.Annotation{Key: "Owner", Value: "alice"}))
+		require.NoError(t, err)
+		assert.Empty(t, cids)
+	})
+
+	t.Run("separate key and value filters can cross-match rows", func(t *testing.T) {
+		cids, err := db.GetRecordCIDs(
+			types.WithAnnotationKeys("owner", "env"),
+			types.WithAnnotationValues("alice"),
+		)
+		require.NoError(t, err)
+		assert.ElementsMatch(t, []string{ownerAlice.GetCid(), envAlice.GetCid()}, cids)
+	})
+
+	t.Run("multiple annotations are OR-combined", func(t *testing.T) {
+		cids, err := db.GetRecordCIDs(
+			types.WithAnnotations(
+				types.Annotation{Key: "owner", Value: "alice"},
+				types.Annotation{Key: "env", Value: "alice"},
+			),
+		)
+		require.NoError(t, err)
+		assert.ElementsMatch(t, []string{ownerAlice.GetCid(), envAlice.GetCid()}, cids)
+	})
+}
