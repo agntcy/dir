@@ -303,5 +303,8 @@ func (f *fakeSignatureDB) GetRecordsNeedingScan(time.Duration) ([]coretypes.Reco
 	return nil, nil
 }
 
+func (f *fakeSignatureDB) AddOwner(recordCID, ownerID, claimedAt string) error { return nil }
+func (f *fakeSignatureDB) RemoveOwners(recordCID string) error                 { return nil }
+
 func (f *fakeSignatureDB) Close() error                 { return nil }
 func (f *fakeSignatureDB) IsReady(context.Context) bool { return true }

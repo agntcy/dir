@@ -13,6 +13,7 @@ import (
 	storev1 "github.com/agntcy/dir/api/store/v1"
 )
 
+//nolint:interfacebloat
 type DatabaseAPI interface {
 	// SearchDatabaseAPI handles management of the search database.
 	SearchDatabaseAPI
@@ -37,6 +38,9 @@ type DatabaseAPI interface {
 
 	// UsageMetricsDatabaseAPI handles per-record usage counters for popularity ranking.
 	UsageMetricsDatabaseAPI
+
+	// OwnershipDatabaseAPI handles management of ownership claims.
+	OwnershipDatabaseAPI
 
 	// Close closes the database connection and releases any resources.
 	Close() error
@@ -150,6 +154,14 @@ type UsageMetricsDatabaseAPI interface {
 	// GetUsageMetrics returns the usage metrics for a record. Returns a zero-value
 	// result (not an error) if no usage has been recorded yet.
 	GetUsageMetrics(cid string) (UsageMetricsObject, error)
+}
+
+type OwnershipDatabaseAPI interface {
+	// AddOwner adds or updates an ownership claim for a record.
+	AddOwner(recordCID, ownerID, claimedAt string) error
+
+	// RemoveOwners removes all ownership claims for a record.
+	RemoveOwners(recordCID string) error
 }
 
 type SignatureVerificationDatabaseAPI interface {

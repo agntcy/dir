@@ -13,4 +13,8 @@ const (
 
 	// ScanReportReferrerType is the type for ScanReport referrers.
 	ScanReportReferrerType = "agntcy.dir.security.v1.ScanReport"
+
+	// OwnershipContentType is the content_type value used in a Signature referrer
+	// to mark it as a SPIFFE-based ownership claim.
+	OwnershipContentType = "agntcy.dir.ownership.v1"
 )

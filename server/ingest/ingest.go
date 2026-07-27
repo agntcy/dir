@@ -16,7 +16,9 @@ import (
 	"time"
 
 	corev1 "github.com/agntcy/dir/api/core/v1"
+	ownershipv1 "github.com/agntcy/dir/api/ownership/v1"
 	securityv1 "github.com/agntcy/dir/api/security/v1"
+	signv1 "github.com/agntcy/dir/api/sign/v1"
 	"github.com/agntcy/dir/server/types"
 	"github.com/agntcy/dir/utils/logging"
 	"google.golang.org/grpc/codes"
@@ -131,6 +133,12 @@ func (i *ingestor) applyReferrerDBEffects(recordCID string, referrer *corev1.Rec
 		}
 	}
 
+	// For Signature referrers that are ownership claims, eagerly index the owner
+	// so search reflects the new owner immediately without waiting for the reconciler.
+	if referrerType == corev1.SignatureReferrerType {
+		i.indexOwnershipClaim(recordCID, referrer)
+	}
+
 	// When a ScanReport referrer is pushed, upsert the scan_reports summary row
 	// so the SCANNED and SCAN_SEVERITY search filters reflect the latest result
 	// immediately.
@@ -178,6 +186,28 @@ func scannerTypeShortName(t securityv1.ScannerType) string {
 	}
 
 	return name
+}
+
+// indexOwnershipClaim eagerly writes an ownership Signature referrer to the owners search
+// index so the record is immediately searchable by owner without waiting for the reconciler.
+func (i *ingestor) indexOwnershipClaim(recordCID string, referrer *corev1.RecordReferrer) {
+	sig := &signv1.Signature{}
+	if err := sig.UnmarshalReferrer(referrer); err != nil || !ownershipv1.IsOwnershipClaim(sig) {
+		return
+	}
+
+	ownerDB, ok := i.db.(types.OwnershipDatabaseAPI)
+	if !ok {
+		return
+	}
+
+	ownerID := ownershipv1.GetOwnerID(sig)
+
+	if err := ownerDB.AddOwner(recordCID, ownerID, sig.GetSignedAt()); err != nil {
+		logger.Warn("Failed to eagerly index ownership claim", "error", err, "cid", recordCID)
+	} else {
+		logger.Debug("Ownership claim eagerly indexed", "cid", recordCID, "owner_id", ownerID)
+	}
 }
 
 // severityShortName strips the "SEVERITY_" proto prefix to get the DB column value (e.g. "HIGH").

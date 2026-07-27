@@ -98,6 +98,7 @@ func (c *CLI) Search() *SearchBuilder {
 		schemaVersions:   []string{},
 		moduleIDs:        []string{},
 		annotations:      []string{},
+		owners:           []string{},
 		outputFormatArgs: []string{},
 		limit:            0,
 		offset:           0,
@@ -121,10 +122,38 @@ func (c *CLI) SearchRecords() *SearchBuilder {
 		schemaVersions:   []string{},
 		moduleIDs:        []string{},
 		annotations:      []string{},
+		owners:           []string{},
 		outputFormatArgs: []string{},
 		limit:            0,
 		offset:           0,
 	}
+}
+
+// Ownership returns a helper for ownership subcommands.
+func (c *CLI) Ownership() *OwnershipCommands {
+	return &OwnershipCommands{cli: c}
+}
+
+// OwnershipCommands groups ownership CLI operations.
+type OwnershipCommands struct {
+	cli *CLI
+}
+
+// Claim pushes an ownership claim referrer for the given record CID and owner identity.
+func (o *OwnershipCommands) Claim(recordCID, ownerID string) *CommandBuilder {
+	return o.cli.Command("ownership").WithArgs("claim", "--record", recordCID, "--owner", ownerID)
+}
+
+// ClaimSigned pushes a signed ownership claim using the given PEM key and certificate files.
+// The SPIFFE ID in the certificate must match ownerID, otherwise the CLI will reject it.
+func (o *OwnershipCommands) ClaimSigned(recordCID, ownerID, keyPath, certPath string) *CommandBuilder {
+	return o.cli.Command("ownership").WithArgs(
+		"claim",
+		"--record", recordCID,
+		"--owner", ownerID,
+		"--key", keyPath,
+		"--cert", certPath,
+	)
 }
 
 func (c *CLI) Import(importType, filePath string) *CommandBuilder {
@@ -486,6 +515,7 @@ type SearchBuilder struct {
 	schemaVersions   []string
 	moduleIDs        []string
 	annotations      []string
+	owners           []string
 	outputFormatArgs []string
 	limit            int
 	offset           int
@@ -569,6 +599,12 @@ func (s *SearchBuilder) WithAnnotation(annotation string) *SearchBuilder {
 	return s
 }
 
+func (s *SearchBuilder) WithOwner(owner string) *SearchBuilder {
+	s.owners = append(s.owners, owner)
+
+	return s
+}
+
 func (s *SearchBuilder) WithLimit(limit int) *SearchBuilder {
 	s.limit = limit
 
@@ -610,6 +646,7 @@ func (s *SearchBuilder) Execute() (string, error) {
 	searchArgs = appendFlagValues(searchArgs, "--schema-version", s.schemaVersions)
 	searchArgs = appendFlagValues(searchArgs, "--module-id", s.moduleIDs)
 	searchArgs = appendFlagValues(searchArgs, "--annotation", s.annotations)
+	searchArgs = appendFlagValues(searchArgs, "--owner", s.owners)
 
 	if s.limit > 0 {
 		searchArgs = append(searchArgs, "--limit", strconv.Itoa(s.limit))

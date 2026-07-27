@@ -27,6 +27,7 @@ type RecordFilters struct {
 	AnnotationKeys   []string
 	AnnotationValues []string
 	Descriptions     []string // Match against record description field.
+	Owners           []string // Filter by owner ID patterns (SPIFFE or similar identity).
 
 	OrderBy []RecordOrderClause // Order by directives applied in sequence.
 }
@@ -204,5 +205,12 @@ func WithAnnotationValues(values ...string) FilterOption {
 func WithDescriptions(descriptions ...string) FilterOption {
 	return func(sc *RecordFilters) {
 		sc.Descriptions = append(sc.Descriptions, descriptions...)
+	}
+}
+
+// WithOwners filters records by owner ID patterns.
+func WithOwners(owners ...string) FilterOption {
+	return func(sc *RecordFilters) {
+		sc.Owners = append(sc.Owners, owners...)
 	}
 }
