@@ -18,28 +18,6 @@ export function hasScanManifest(aicard: CatalogEntry): boolean {
 	return getScanManifest(aicard) !== null;
 }
 
-export function collectSortedTags(aicards: CatalogEntry[]): string[] {
-	return Array.from(new Set(aicards.flatMap((aicard) => aicard.tags || []))).sort();
-}
-
-export function mergeSortedTags(existing: string[], newAicards: CatalogEntry[]): string[] {
-	if (newAicards.length === 0) return existing;
-
-	const seen = new Set(existing);
-	let added = false;
-
-	for (const aicard of newAicards) {
-		for (const tag of aicard.tags || []) {
-			if (!seen.has(tag)) {
-				seen.add(tag);
-				added = true;
-			}
-		}
-	}
-
-	return added ? Array.from(seen).sort() : existing;
-}
-
 export function applyClientFilters(
 	aicards: CatalogEntry[],
 	criteria: AICardFilterCriteria
@@ -47,14 +25,7 @@ export function applyClientFilters(
 	return aicards.filter((aicard) => {
 		if (criteria.activeTags.size > 0) {
 			const aicardTags = new Set(aicard.tags || []);
-			let hasAny = false;
-			for (const t of criteria.activeTags) {
-				if (aicardTags.has(t)) {
-					hasAny = true;
-					break;
-				}
-			}
-			if (!hasAny) return false;
+			if (!entryMatchesAnyActiveTag(aicardTags, criteria.activeTags)) return false;
 		}
 
 		if (criteria.statusFilters.size > 0) {
@@ -68,6 +39,32 @@ export function applyClientFilters(
 
 		return true;
 	});
+}
+
+function entryMatchesAnyActiveTag(entryTags: Set<string>, activeTags: Set<string>): boolean {
+	for (const filterTag of activeTags) {
+		if (entryTags.has(filterTag)) return true;
+
+		for (const entryTag of entryTags) {
+			if (catalogTagMatchesFilter(filterTag, entryTag)) return true;
+		}
+	}
+
+	return false;
+}
+
+export function catalogTagMatchesFilter(filterTag: string, entryTag: string): boolean {
+	const filterParts = filterTag.split(':');
+	const entryParts = entryTag.split(':');
+
+	if (filterParts.length !== entryParts.length) return false;
+
+	for (let i = 0; i < filterParts.length; i++) {
+		if (filterParts[i] === '*') continue;
+		if (filterParts[i] !== entryParts[i]) return false;
+	}
+
+	return true;
 }
 
 export function extractEntryTypes(aicard: CatalogEntry): string[] {

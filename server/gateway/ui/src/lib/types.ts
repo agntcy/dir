@@ -25,6 +25,11 @@ export interface UsageMetrics {
 	providerCount: number;
 }
 
+export interface CatalogTag {
+	id: string;
+	label: string;
+}
+
 export interface CatalogEntry {
 	identifier: string;
 	displayName: string;
