@@ -52,6 +52,17 @@ type catalogModuleProjection struct {
 	Label     string
 }
 
+func KnownCatalogModuleNames() []string {
+	names := make([]string, 0, len(catalogModules))
+	for name := range catalogModules {
+		names = append(names, name)
+	}
+
+	sort.Strings(names)
+
+	return names
+}
+
 // catalogModules maps OASF integration module names onto their AI Catalog
 // projection rules. A record is projectable only if it carries at least
 // one of these modules.

@@ -54,6 +54,7 @@ func (d *DB) CountCatalogEntries(opts ...types.FilterOption) (uint32, error) {
 
 	query := d.gormDB.Model(&Record{})
 	query = d.handleFilterOptions(query, cfg)
+	query = applyKnownCatalogModuleFilter(query)
 	query = query.Distinct("records.record_cid")
 
 	var count int64
@@ -165,6 +166,7 @@ func (d *DB) GetCatalogEntries(opts ...types.FilterOption) ([]*catalogv1.Catalog
 	}
 
 	query = d.handleFilterOptions(query, cfg)
+	query = applyKnownCatalogModuleFilter(query)
 
 	query, err = applyCatalogOrder(query, cfg)
 	if err != nil {
@@ -208,6 +210,21 @@ func (d *DB) GetCatalogEntries(opts ...types.FilterOption) ([]*catalogv1.Catalog
 	}
 
 	return entries, hasMore, nil
+}
+
+func applyKnownCatalogModuleFilter(query *gorm.DB) *gorm.DB {
+	const emptyJSONObject = "{}"
+
+	moduleNames := catalogv1.KnownCatalogModuleNames()
+
+	return query.Where(`
+EXISTS (
+	SELECT 1 FROM modules catalog_modules
+	WHERE catalog_modules.record_cid = records.record_cid
+	AND catalog_modules.name IN ?
+	AND catalog_modules.data IS NOT NULL
+	AND catalog_modules.data != ?
+)`, moduleNames, emptyJSONObject)
 }
 
 func convertScanReports(reports []ScanReport) []catalogv1.ScanReportSummary {

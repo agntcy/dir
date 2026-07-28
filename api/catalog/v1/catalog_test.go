@@ -285,6 +285,16 @@ func TestAnnotationLabel(t *testing.T) {
 	assert.Equal(t, "owner=alice", AnnotationLabel("owner", "alice"))
 }
 
+func TestKnownCatalogModuleNames(t *testing.T) {
+	t.Parallel()
+
+	assert.Equal(t, []string{
+		AgentSkillsModuleName,
+		"integration/a2a",
+		"integration/mcp",
+	}, KnownCatalogModuleNames())
+}
+
 func TestDeriveTrustStatus(t *testing.T) {
 	t.Parallel()
 
