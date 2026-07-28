@@ -4,16 +4,18 @@
 package adapters
 
 type module struct {
-	Annotations map[string]string
-	Name        string
-	ID          uint64
-	Data        map[string]any
+	Annotations       map[string]string
+	Name              string
+	ID                uint64
+	Data              map[string]any
+	ArtifactMediaType string
 }
 
 func (module *module) GetAnnotations() map[string]string { return module.Annotations }
 func (module *module) GetName() string                   { return module.Name }
 func (module *module) GetID() uint64                     { return module.ID }
 func (module *module) GetData() map[string]any           { return module.Data }
+func (module *module) GetArtifactMediaType() string      { return module.ArtifactMediaType }
 
 type skill struct {
 	Annotations map[string]string

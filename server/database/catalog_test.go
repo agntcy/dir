@@ -31,6 +31,7 @@ func (m *catalogModuleFixture) GetAnnotations() map[string]string { return nil }
 func (m *catalogModuleFixture) GetID() uint64                     { return m.id }
 func (m *catalogModuleFixture) GetName() string                   { return m.name }
 func (m *catalogModuleFixture) GetData() map[string]any           { return m.data }
+func (m *catalogModuleFixture) GetArtifactMediaType() string      { return "" }
 
 func catalogRecord(cid, name, createdAt string, modules []coretypes.Module) coretypes.Record {
 	return &testRecord{

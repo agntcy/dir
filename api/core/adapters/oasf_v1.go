@@ -74,11 +74,17 @@ func (v *v1Adapter) GetLocators() []coretypes.Locator {
 func (v *v1Adapter) GetModules() []coretypes.Module {
 	modules := make([]coretypes.Module, 0, len(v.record.GetModules()))
 	for _, m := range v.record.GetModules() {
+		artifactMediaType := ""
+		if artifact := m.GetArtifact(); artifact != nil {
+			artifactMediaType = artifact.GetMediaType()
+		}
+
 		modules = append(modules, &module{
-			Annotations: m.GetAnnotations(),
-			Name:        m.GetName(),
-			ID:          uint64(m.GetId()),
-			Data:        m.GetData().AsMap(),
+			Annotations:       m.GetAnnotations(),
+			Name:              m.GetName(),
+			ID:                uint64(m.GetId()),
+			Data:              m.GetData().AsMap(),
+			ArtifactMediaType: artifactMediaType,
 		})
 	}
 
