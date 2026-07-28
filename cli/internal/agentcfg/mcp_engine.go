@@ -4,6 +4,7 @@
 package agentcfg
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"reflect"
@@ -14,12 +15,32 @@ import (
 
 const configFilePerm = 0o600
 
+// mcpConfigPath resolves the MCP config path for the requested scope: the global
+// ConfigPath for Global, the ProjectConfigPath for Project. A nil resolver yields
+// ErrNoScopePath so the caller can skip.
+func mcpConfigPath(target *MCPTarget, env Env, scope Scope) (string, error) {
+	resolver := target.ConfigPath
+	if scope == Project {
+		resolver = target.ProjectConfigPath
+	}
+
+	if resolver == nil {
+		return "", ErrNoScopePath
+	}
+
+	return resolver(env)
+}
+
 // InstallMCP upserts the MCP server entry under serverName into the agent's
 // config file, preserving all sibling content. It is idempotent: re-running with
 // an identical entry reports ActionUnchanged and writes nothing. When dryRun is
 // set, it computes the action but does not write.
-func InstallMCP(target *MCPTarget, env Env, entry map[string]any, serverName string, dryRun bool) (Outcome, error) {
-	path, err := target.ConfigPath(env)
+func InstallMCP(target *MCPTarget, env Env, entry map[string]any, serverName string, scope Scope, dryRun bool) (Outcome, error) {
+	path, err := mcpConfigPath(target, env, scope)
+	if errors.Is(err, ErrNoScopePath) {
+		return skipScopeOutcome("mcp", scope), nil
+	}
+
 	if err != nil {
 		return failOutcome(Outcome{Artifact: "mcp"}, fmt.Errorf("resolve mcp config path: %w", err))
 	}
@@ -60,8 +81,12 @@ func InstallMCP(target *MCPTarget, env Env, entry map[string]any, serverName str
 // preserving all sibling servers. It never deletes the config file itself. An
 // absent entry (or missing file) reports ActionUnchanged, so uninstall is
 // idempotent. When dryRun is set, it computes the action but does not write.
-func RemoveMCP(target *MCPTarget, env Env, serverName string, dryRun bool) (Outcome, error) {
-	path, err := target.ConfigPath(env)
+func RemoveMCP(target *MCPTarget, env Env, serverName string, scope Scope, dryRun bool) (Outcome, error) {
+	path, err := mcpConfigPath(target, env, scope)
+	if errors.Is(err, ErrNoScopePath) {
+		return skipScopeOutcome("mcp", scope), nil
+	}
+
 	if err != nil {
 		return failOutcome(Outcome{Artifact: "mcp"}, fmt.Errorf("resolve mcp config path: %w", err))
 	}
@@ -116,9 +141,25 @@ func writeConfig(format codec.Format, path string, m map[string]any) error {
 	return nil
 }
 
-// MCPEntryPresent reports whether our server entry already exists in the config.
-func MCPEntryPresent(target *MCPTarget, env Env, serverName string) bool {
-	path, err := target.ConfigPath(env)
+// ResolveMCPPath resolves the MCP config path for the given scope, for display.
+// It never returns an error (display-only).
+func ResolveMCPPath(target *MCPTarget, env Env, scope Scope) string {
+	path, err := mcpConfigPath(target, env, scope)
+	if err != nil {
+		if errors.Is(err, ErrNoScopePath) {
+			return "(no " + scope.String() + " location for this agent)"
+		}
+
+		return "(path error: " + err.Error() + ")"
+	}
+
+	return path
+}
+
+// MCPEntryPresent reports whether our server entry already exists in the config
+// for the given scope.
+func MCPEntryPresent(target *MCPTarget, env Env, serverName string, scope Scope) bool {
+	path, err := mcpConfigPath(target, env, scope)
 	if err != nil {
 		return false
 	}

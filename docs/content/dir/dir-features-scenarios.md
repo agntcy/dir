@@ -162,6 +162,31 @@ dirctl push record.json --sign --key cosign.key
 dirctl verify $RECORD_CID
 ```
 
+### Method 4: KMS-Backed Keys
+
+This method keeps private key material in a cloud or Vault key management service.
+Configure the selected provider's credentials, then pass its key URI to `dirctl sign`.
+Directory supports the AWS KMS, Google Cloud KMS, Azure Key Vault, and HashiCorp Vault
+providers registered by Sigstore.
+
+```bash
+# AWS KMS
+dirctl sign "$RECORD_CID" --key 'awskms://[ENDPOINT]/[ID/ALIAS/ARN]'
+
+# Google Cloud KMS
+dirctl sign "$RECORD_CID" \
+  --key 'gcpkms://projects/[PROJECT]/locations/[LOC]/keyRings/[RING]/cryptoKeys/[KEY]'
+
+# Azure Key Vault
+dirctl sign "$RECORD_CID" --key 'azurekms://[VAULT_NAME][VAULT_URI]/[KEY]'
+
+# HashiCorp Vault
+dirctl sign "$RECORD_CID" --key 'hashivault://[KEY]'
+
+# Verify the signed record
+dirctl verify "$RECORD_CID"
+```
+
 ## Name Verification
 
 Name verification proves that the signing key is authorized by the domain claimed in the
@@ -458,10 +483,15 @@ dirctl install cisco.com/agent:v1.0.0 --yes
 # Install into specific agents only
 dirctl install cisco.com/agent --agents claude-code,cursor
 
+# Install into the current repo (project scope) instead of the global config
+dirctl install cisco.com/agent --project
+
 # Remove what install added (top-level shorthand for `install uninstall`)
 dirctl uninstall cisco.com/agent
 ```
 
 Detection is always required — an agent is never written to unless it is detected. Re-installing
 a newer version of the same record replaces the old artifacts cleanly. `dirctl install list`
-shows which agents are detected and the config files install would touch.
+shows which agents are detected and the config files install would touch. By default artifacts
+go into each agent's global config; `--project` writes them into the current repository instead
+(agents without a project-scope location for an artifact are skipped with a note).

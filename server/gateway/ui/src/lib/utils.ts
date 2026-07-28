@@ -1,4 +1,5 @@
-import type { AICardFilterCriteria, CatalogEntry, ScanManifest, SubEntry, ExportFormat, UsageMetrics } from './types';
+import type { AICardFilterCriteria, CatalogEntry, ScanManifest, SubEntry, ExportFormat, UsageMetrics, TrustStatus } from './types';
+import { TRUST_STATUS_METADATA_KEY } from './types';
 
 export function hasActiveClientFilters(criteria: AICardFilterCriteria): boolean {
 	return (
@@ -18,28 +19,6 @@ export function hasScanManifest(aicard: CatalogEntry): boolean {
 	return getScanManifest(aicard) !== null;
 }
 
-export function collectSortedTags(aicards: CatalogEntry[]): string[] {
-	return Array.from(new Set(aicards.flatMap((aicard) => aicard.tags || []))).sort();
-}
-
-export function mergeSortedTags(existing: string[], newAicards: CatalogEntry[]): string[] {
-	if (newAicards.length === 0) return existing;
-
-	const seen = new Set(existing);
-	let added = false;
-
-	for (const aicard of newAicards) {
-		for (const tag of aicard.tags || []) {
-			if (!seen.has(tag)) {
-				seen.add(tag);
-				added = true;
-			}
-		}
-	}
-
-	return added ? Array.from(seen).sort() : existing;
-}
-
 export function applyClientFilters(
 	aicards: CatalogEntry[],
 	criteria: AICardFilterCriteria
@@ -47,18 +26,15 @@ export function applyClientFilters(
 	return aicards.filter((aicard) => {
 		if (criteria.activeTags.size > 0) {
 			const aicardTags = new Set(aicard.tags || []);
-			let hasAny = false;
-			for (const t of criteria.activeTags) {
-				if (aicardTags.has(t)) {
-					hasAny = true;
-					break;
-				}
-			}
-			if (!hasAny) return false;
+			if (!entryMatchesAnyActiveTag(aicardTags, criteria.activeTags)) return false;
 		}
 
 		if (criteria.statusFilters.size > 0) {
-			if (!hasTrustManifest(aicard)) return false;
+			const trustStatus = getTrustStatus(aicard);
+			for (const filter of criteria.statusFilters) {
+				if (filter === 'trusted' && !trustStatus?.trusted) return false;
+				if (filter === 'verified' && !trustStatus?.verified) return false;
+			}
 		}
 
 		if (criteria.scanSafe) {
@@ -68,6 +44,32 @@ export function applyClientFilters(
 
 		return true;
 	});
+}
+
+function entryMatchesAnyActiveTag(entryTags: Set<string>, activeTags: Set<string>): boolean {
+	for (const filterTag of activeTags) {
+		if (entryTags.has(filterTag)) return true;
+
+		for (const entryTag of entryTags) {
+			if (catalogTagMatchesFilter(filterTag, entryTag)) return true;
+		}
+	}
+
+	return false;
+}
+
+export function catalogTagMatchesFilter(filterTag: string, entryTag: string): boolean {
+	const filterParts = filterTag.split(':');
+	const entryParts = entryTag.split(':');
+
+	if (filterParts.length !== entryParts.length) return false;
+
+	for (let i = 0; i < filterParts.length; i++) {
+		if (filterParts[i] === '*') continue;
+		if (filterParts[i] !== entryParts[i]) return false;
+	}
+
+	return true;
 }
 
 export function extractEntryTypes(aicard: CatalogEntry): string[] {
@@ -90,8 +92,13 @@ export function extractShortTag(tag: string): string {
 	return (parts[parts.length - 1] || '').replace(/_/g, ' ');
 }
 
-export function hasTrustManifest(aicard: CatalogEntry): boolean {
-	return !!(aicard.trustManifest && aicard.trustManifest.signature);
+export function getTrustStatus(aicard: CatalogEntry): TrustStatus | null {
+	const status = aicard.metadata?.[TRUST_STATUS_METADATA_KEY] as TrustStatus | undefined;
+	if (!status || typeof status.trusted !== 'boolean' || typeof status.verified !== 'boolean') {
+		return null;
+	}
+
+	return status;
 }
 
 export function getUsageMetrics(aicard: CatalogEntry): UsageMetrics | null {

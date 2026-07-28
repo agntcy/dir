@@ -1,4 +1,4 @@
-import type { AICardFilterCriteria, CatalogEntry } from './types';
+import type { AICardFilterCriteria, CatalogEntry, CatalogTag } from './types';
 
 /** Matches the 3-column grid layout (18 = 6 full rows). */
 export const CATALOG_PAGE_SIZE = 18;
@@ -30,6 +30,14 @@ export function buildAICardFilterQuery(
 	}
 
 	return clauses.join(' AND ');
+}
+
+export async function fetchCatalogTags(signal?: AbortSignal): Promise<CatalogTag[]> {
+	const resp = await fetch('/v1/tags', { signal });
+	if (!resp.ok) throw new Error(`HTTP ${resp.status}: ${resp.statusText}`);
+
+	const data = await resp.json();
+	return data.tags || [];
 }
 
 export async function fetchAICardsPage(

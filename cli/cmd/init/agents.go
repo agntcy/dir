@@ -206,7 +206,8 @@ func apply(cmd *cobra.Command, env agentcfg.Env, arts agentinstall.Artifacts, ag
 		return
 	}
 
-	outcomes := agentinstall.Install(env, arts, agents, false)
+	// `dirctl init` wires the user's global environment.
+	outcomes := agentinstall.Install(env, arts, agents, agentcfg.Global, false)
 	presenter.Printf(cmd, "%s", agentcfg.FormatSummary(outcomes, false))
 }
 
@@ -228,7 +229,7 @@ func removeAgents(cmd *cobra.Command, env agentcfg.Env, opts *options) error {
 		return err
 	}
 
-	plan := agentinstall.Uninstall(env, arts, selected, true)
+	plan := agentinstall.Uninstall(env, arts, selected, agentcfg.Global, true)
 	if len(plan) == 0 {
 		return nil
 	}
@@ -255,7 +256,7 @@ func removeAgents(cmd *cobra.Command, env agentcfg.Env, opts *options) error {
 		}
 	}
 
-	outcomes := agentinstall.Uninstall(env, arts, selected, false)
+	outcomes := agentinstall.Uninstall(env, arts, selected, agentcfg.Global, false)
 	presenter.Printf(cmd, "%s", agentcfg.FormatSummary(outcomes, false))
 
 	return nil

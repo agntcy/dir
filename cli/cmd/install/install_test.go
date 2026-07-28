@@ -104,6 +104,24 @@ func TestConfirmEOFWithEmptyLine(t *testing.T) {
 	assert.Contains(t, err.Error(), "read confirmation")
 }
 
+// --- scopeFromOpts tests ---
+
+func TestScopeFromOptsProject(t *testing.T) {
+	orig := opts
+
+	defer func() { opts = orig }()
+
+	require.NotNil(t, Command.PersistentFlags().Lookup("project"))
+
+	opts.project = false
+
+	assert.Equal(t, agentcfg.Global, scopeFromOpts())
+
+	opts.project = true
+
+	assert.Equal(t, agentcfg.Project, scopeFromOpts())
+}
+
 // --- selectAgents tests ---
 
 func TestSelectAgentsAllDetected(t *testing.T) {

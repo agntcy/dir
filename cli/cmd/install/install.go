@@ -124,21 +124,30 @@ func pullAndDerive(cmd *cobra.Command, input string) (agentinstall.Artifacts, er
 }
 
 // runInstallCmd is the shared body for the parent's bare-positional form and the
-// `run` subcommand: pull + derive, dry-run plan, confirm, apply, summary.
+// `run` subcommand.
 func runInstallCmd(cmd *cobra.Command, input string) error {
+	return runApplyCmd(cmd, input, agentinstall.Install, "\nProceed with these changes?")
+}
+
+// runApplyCmd is the single-record flow shared by install and uninstall: pull +
+// derive, dry-run plan, confirm, apply, summary. apply is Install or Uninstall.
+func runApplyCmd(cmd *cobra.Command, input string, apply recordApplyFn, confirmPrompt string) error {
 	arts, err := pullAndDerive(cmd, input)
 	if err != nil {
 		return err
 	}
 
 	env := agentcfg.ResolveEnv()
+	scope := scopeFromOpts()
 
 	selected, err := selectAgents(cmd, env)
 	if err != nil {
 		return err
 	}
 
-	plan := agentinstall.Install(env, arts, selected, true)
+	printScope(cmd)
+
+	plan := apply(env, arts, selected, scope, true)
 	presenter.Printf(cmd, "%s", agentcfg.FormatPlan(plan))
 
 	if len(plan) == 0 {
@@ -146,7 +155,7 @@ func runInstallCmd(cmd *cobra.Command, input string) error {
 	}
 
 	if !opts.yes && !opts.dryRun {
-		ok, err := confirm(cmd, "\nProceed with these changes?")
+		ok, err := confirm(cmd, confirmPrompt)
 		if err != nil {
 			return err
 		}
@@ -158,7 +167,7 @@ func runInstallCmd(cmd *cobra.Command, input string) error {
 		}
 	}
 
-	outcomes := agentinstall.Install(env, arts, selected, opts.dryRun)
+	outcomes := apply(env, arts, selected, scope, opts.dryRun)
 	presenter.Printf(cmd, "%s", agentcfg.FormatSummary(outcomes, opts.dryRun))
 
 	return nil

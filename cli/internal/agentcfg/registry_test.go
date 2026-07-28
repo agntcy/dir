@@ -69,7 +69,7 @@ func TestRegistrySkillTargetsResolve(t *testing.T) {
 			continue
 		}
 
-		path, _, err := resolveSkillTargetPath(a.Skill, env, "test-slug")
+		path, err := resolveSkillTargetPath(a.Skill, env, "test-slug", Global)
 		require.NoError(t, err, "agent %s skill path", a.ID)
 		assert.NotEmpty(t, path, "agent %s resolved empty skill path", a.ID)
 

@@ -25,6 +25,18 @@ export interface UsageMetrics {
 	providerCount: number;
 }
 
+export interface TrustStatus {
+	trusted: boolean;
+	verified: boolean;
+}
+
+export const TRUST_STATUS_METADATA_KEY = 'agntcy.dir.trust.v1.Status';
+
+export interface CatalogTag {
+	id: string;
+	label: string;
+}
+
 export interface CatalogEntry {
 	identifier: string;
 	displayName: string;

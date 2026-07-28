@@ -1,7 +1,7 @@
 <script lang="ts">
-	import type { AICardFilterCriteria, CatalogEntry } from '$lib/types';
-	import { buildAICardFilterQuery, CATALOG_HYDRATION_PAGE_SIZE, CATALOG_PAGE_SIZE, fetchAICardsPage } from '$lib/api';
-	import { applyClientFilters, collectSortedTags, hasActiveClientFilters, mergeSortedTags } from '$lib/utils';
+	import type { AICardFilterCriteria, CatalogEntry, CatalogTag } from '$lib/types';
+	import { buildAICardFilterQuery, CATALOG_HYDRATION_PAGE_SIZE, CATALOG_PAGE_SIZE, fetchAICardsPage, fetchCatalogTags } from '$lib/api';
+	import { applyClientFilters, hasActiveClientFilters } from '$lib/utils';
 	import AICard from '$lib/components/AICard.svelte';
 	import FilterSidebar from '$lib/components/FilterSidebar.svelte';
 	import DetailModal from '$lib/components/DetailModal.svelte';
@@ -11,7 +11,8 @@
 
 	let aicards = $state<CatalogEntry[]>([]);
 	let filteredAicards = $state<CatalogEntry[]>([]);
-	let catalogTags = $state<string[]>([]);
+	let catalogTags = $state<CatalogTag[]>([]);
+	let tagsLoading = $state(true);
 	let loading = $state(true);
 	let catalogHydrating = $state(false);
 	let hydrationError = $state('');
@@ -49,7 +50,6 @@
 		if (newAicards.length === 0) return;
 
 		aicards = aicards.concat(newAicards);
-		catalogTags = mergeSortedTags(catalogTags, newAicards);
 		if (hasActiveClientFilters(criteria)) {
 			filteredAicards = filteredAicards.concat(applyClientFilters(newAicards, criteria));
 		} else {
@@ -109,7 +109,6 @@
 			if (requestId !== loadRequestId) return;
 
 			aicards = firstPage.results;
-			catalogTags = collectSortedTags(firstPage.results);
 			totalCount = firstPage.totalCount;
 			loadedServerFilter = filter;
 			applyFilters(aicards, criteria);
@@ -130,7 +129,6 @@
 			error = e instanceof Error ? e.message : 'Unknown error';
 			aicards = [];
 			filteredAicards = [];
-			catalogTags = [];
 			totalCount = 0;
 		} finally {
 			if (requestId === loadRequestId) {
@@ -170,6 +168,18 @@
 		});
 	});
 
+	async function loadCatalogTags(signal: AbortSignal) {
+		tagsLoading = true;
+		try {
+			catalogTags = await fetchCatalogTags(signal);
+		} catch (e) {
+			if (signal.aborted) return;
+			catalogTags = [];
+		} finally {
+			if (!signal.aborted) tagsLoading = false;
+		}
+	}
+
 	onMount(() => {
 		const initial: AICardFilterCriteria = {
 			searchQuery: '',
@@ -179,9 +189,13 @@
 			scanSafe: false
 		};
 		latestCriteria = initial;
+
+		const tagsAbort = new AbortController();
+		loadCatalogTags(tagsAbort.signal);
 		loadAICards(initial);
 
 		return () => {
+			tagsAbort.abort();
 			backgroundAbort?.abort();
 			clearTimeout(searchDebounce);
 			headerStatsState.set(null);
@@ -199,7 +213,7 @@
 
 	<div class="flex flex-col lg:flex-row gap-6">
 		<aside class="lg:w-64 flex-shrink-0">
-			<FilterSidebar allTags={catalogTags} {catalogHydrating} onchange={handleCriteriaChange} />
+			<FilterSidebar {catalogTags} {tagsLoading} onchange={handleCriteriaChange} />
 		</aside>
 
 		<section class="flex-1 min-w-0">

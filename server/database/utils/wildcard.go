@@ -5,6 +5,8 @@ package utils
 
 import (
 	"strings"
+
+	"github.com/agntcy/dir/server/types"
 )
 
 // ContainsWildcards checks if a pattern contains wildcard characters (* or ?).
@@ -69,4 +71,27 @@ func convertGlobToLike(pattern string) string {
 	result = strings.ReplaceAll(result, "?", "_")
 
 	return result
+}
+
+// BuildAnnotationExistsCondition builds an EXISTS subquery that matches
+// annotations by key/value. Multiple annotations are OR-combined.
+func BuildAnnotationExistsCondition(annotations []types.Annotation) (string, []any) {
+	if len(annotations) == 0 {
+		return "", nil
+	}
+
+	conditions := make([]string, 0, len(annotations))
+	args := make([]any, 0, len(annotations)*2) //nolint:mnd
+
+	for _, annotation := range annotations {
+		conditions = append(conditions, "(a.key = ? AND a.value = ?)")
+		args = append(args, annotation.Key, annotation.Value)
+	}
+
+	condition := strings.Join(conditions, " OR ")
+	if len(conditions) > 1 {
+		condition = "(" + condition + ")"
+	}
+
+	return "EXISTS (SELECT 1 FROM annotations a WHERE a.record_cid = records.record_cid AND " + condition + ")", args
 }

@@ -15,13 +15,18 @@ import (
 // the import pipeline can use the local OASF extractor for in-process enrichment.
 type oasfExtractorAdapter struct {
 	ext *sdk.Extractor
+	// schemaVersion is the OASF version the enriched record is stamped with; the
+	// extractor is scoped to it so assigned classes match the schema the server
+	// validates the record against.
+	schemaVersion string
 }
 
 func (a *oasfExtractorAdapter) Extract(ctx context.Context, text string) (enricherconfig.ExtractResult, error) {
-	// Latest() restricts results to classes present in the newest provisioned OASF version,
-	// preventing stale classes from older versions (e.g. 0.8.0) from being assigned to records
-	// that will be validated against the current schema.
-	result, err := a.ext.Extract(ctx, text, sdk.Latest())
+	// Scope the extractor to the record's own schema version so it only assigns
+	// classes that exist in that version. Latest() would drift ahead of the record's
+	// stamped version (e.g. after an OASF release) and the server would reject the
+	// newer classes as unknown when validating against the record's schema.
+	result, err := a.ext.Extract(ctx, text, sdk.Versions(a.schemaVersion))
 	if err != nil {
 		return enricherconfig.ExtractResult{}, fmt.Errorf("extract taxonomy: %w", err)
 	}

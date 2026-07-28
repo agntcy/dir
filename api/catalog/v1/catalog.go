@@ -37,6 +37,10 @@ const (
 
 	// OASF module names.
 	AgentSkillsModuleName = "core/language_model/agentskills"
+
+	TrustStatusMetadataKey = "agntcy.dir.trust.v1.Status"
+
+	verificationStatusVerified = "verified"
 )
 
 // catalogModuleProjection captures the per-module projection rules: the
@@ -46,6 +50,17 @@ const (
 type catalogModuleProjection struct {
 	MediaType string
 	Label     string
+}
+
+func KnownCatalogModuleNames() []string {
+	names := make([]string, 0, len(catalogModules))
+	for name := range catalogModules {
+		names = append(names, name)
+	}
+
+	sort.Strings(names)
+
+	return names
 }
 
 // catalogModules maps OASF integration module names onto their AI Catalog
@@ -82,10 +97,16 @@ type UsageMetricsData interface {
 	GetProviderCount() uint32
 }
 
+type TrustStatus struct {
+	Trusted  bool
+	Verified bool
+}
+
 type convertOptions struct {
 	signatures   []coretypes.ObjectSignature
 	scanReports  []ScanReportSummary
 	usageMetrics UsageMetricsData
+	trustStatus  *TrustStatus
 }
 
 type ConvertOption func(*convertOptions)
@@ -108,6 +129,28 @@ func WithUsageMetrics(metrics UsageMetricsData) ConvertOption {
 	return func(opts *convertOptions) {
 		opts.usageMetrics = metrics
 	}
+}
+
+func WithTrustStatus(status TrustStatus) ConvertOption {
+	return func(opts *convertOptions) {
+		opts.trustStatus = &status
+	}
+}
+
+func DeriveTrustStatus(signatureStatuses []string, nameVerificationStatus string) TrustStatus {
+	status := TrustStatus{
+		Verified: strings.EqualFold(nameVerificationStatus, verificationStatusVerified),
+	}
+
+	for _, signatureStatus := range signatureStatuses {
+		if strings.EqualFold(signatureStatus, verificationStatusVerified) {
+			status.Trusted = true
+
+			break
+		}
+	}
+
+	return status
 }
 
 // RecordToCatalog projects an OASF record onto its AI Catalog entry
@@ -171,6 +214,7 @@ func RecordToCatalog(record coretypes.Record, opts ...ConvertOption) (*CatalogEn
 		}
 		injectScanManifest(result, options.scanReports)
 		injectUsageMetrics(result, options.usageMetrics)
+		injectTrustStatus(result, options.trustStatus)
 
 		return result, nil
 	}
@@ -220,6 +264,7 @@ func RecordToCatalog(record coretypes.Record, opts ...ConvertOption) (*CatalogEn
 	}
 	injectScanManifest(containerEntry, options.scanReports)
 	injectUsageMetrics(containerEntry, options.usageMetrics)
+	injectTrustStatus(containerEntry, options.trustStatus)
 
 	return containerEntry, nil
 }
@@ -504,6 +549,26 @@ func injectUsageMetrics(entry *CatalogEntry, metrics UsageMetricsData) {
 	}
 
 	entry.Metadata["agntcy.dir.usage.v1.Metrics"] = val
+}
+
+func injectTrustStatus(entry *CatalogEntry, status *TrustStatus) {
+	if status == nil {
+		return
+	}
+
+	val, err := structpb.NewValue(map[string]any{
+		"trusted":  status.Trusted,
+		"verified": status.Verified,
+	})
+	if err != nil {
+		return
+	}
+
+	if entry.Metadata == nil {
+		entry.Metadata = make(map[string]*structpb.Value)
+	}
+
+	entry.Metadata[TrustStatusMetadataKey] = val
 }
 
 func objectToStruct(goObj proto.Message) (*structpb.Struct, error) {

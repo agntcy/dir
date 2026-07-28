@@ -19,10 +19,11 @@ func Registry() []Agent {
 			Name:   "Claude Code",
 			Flag:   "claude-code",
 			Detect: detectByMarker(claudeCodeMarker),
-			MCP:    jsonMCP(claudeCodeMCPPath, "mcpServers"),
+			MCP:    jsonMCP(claudeCodeMCPPath, "mcpServers", claudeCodeProjectMCPPath),
 			Skill: &SkillTarget{
-				Strategy: SkillFolder,
-				Path:     claudeCodeSkillPath,
+				Strategy:    SkillFolder,
+				Path:        claudeCodeSkillPath,
+				ProjectPath: claudeCodeProjectSkillPath,
 			},
 		},
 		{
@@ -30,7 +31,7 @@ func Registry() []Agent {
 			Name:   "Claude Desktop",
 			Flag:   "claude-desktop",
 			Detect: detectByMarker(claudeDesktopMarker),
-			MCP:    jsonMCP(claudeDesktopMCPPath, "mcpServers"),
+			MCP:    jsonMCP(claudeDesktopMCPPath, "mcpServers", nil), // desktop app: no repo-scope config
 			Skill: &SkillTarget{
 				Strategy:   SkillFolder,
 				Path:       claudeCodeSkillPath, // shares Claude Code's skills folder
@@ -42,7 +43,7 @@ func Registry() []Agent {
 			Name:   "Cursor",
 			Flag:   "cursor",
 			Detect: detectByMarker(cursorMarker),
-			MCP:    jsonMCP(cursorMCPPath, "mcpServers"),
+			MCP:    jsonMCP(cursorMCPPath, "mcpServers", cursorProjectMCPPath),
 			Skill: &SkillTarget{
 				Strategy:    SkillFolder,
 				Path:        cursorUserSkillPath,
@@ -54,7 +55,7 @@ func Registry() []Agent {
 			Name:   "VS Code (Copilot)",
 			Flag:   "vscode",
 			Detect: detectByMarker(vscodeMarker),
-			MCP:    jsonMCP(vscodeMCPPath, "servers"),
+			MCP:    jsonMCP(vscodeMCPPath, "servers", vscodeProjectMCPPath),
 			Skill: &SkillTarget{
 				Strategy:    SkillFolder,
 				Path:        copilotUserSkillPath,
@@ -66,7 +67,7 @@ func Registry() []Agent {
 			Name:   "Windsurf",
 			Flag:   "windsurf",
 			Detect: detectByMarker(windsurfMarker),
-			MCP:    jsonMCP(windsurfMCPPath, "mcpServers"),
+			MCP:    jsonMCP(windsurfMCPPath, "mcpServers", nil), // no documented project MCP location
 			Skill: &SkillTarget{
 				Strategy:    SkillFolder,
 				Path:        windsurfUserSkillPath,
@@ -78,7 +79,7 @@ func Registry() []Agent {
 			Name:   "Cline",
 			Flag:   "cline",
 			Detect: detectByMarker(clineMarker),
-			MCP:    jsonMCP(clineMCPPath, "mcpServers"),
+			MCP:    jsonMCP(clineMCPPath, "mcpServers", nil), // MCP config is global only
 			Skill: &SkillTarget{
 				Strategy:    SkillFolder,
 				Path:        clineUserSkillPath,
@@ -90,7 +91,7 @@ func Registry() []Agent {
 			Name:   "Roo Code",
 			Flag:   "roo",
 			Detect: detectByMarker(rooMarker),
-			MCP:    jsonMCP(rooMCPPath, "mcpServers"),
+			MCP:    jsonMCP(rooMCPPath, "mcpServers", rooProjectMCPPath),
 			Skill: &SkillTarget{
 				Strategy:    SkillFolder,
 				Path:        rooUserSkillPath,
@@ -102,7 +103,7 @@ func Registry() []Agent {
 			Name:   "Gemini CLI",
 			Flag:   "gemini",
 			Detect: detectByMarker(geminiMarker),
-			MCP:    jsonMCP(geminiMCPPath, "mcpServers"),
+			MCP:    jsonMCP(geminiMCPPath, "mcpServers", geminiProjectMCPPath),
 			Skill: &SkillTarget{
 				Strategy:    SkillFolder,
 				Path:        geminiUserSkillPath,
@@ -114,7 +115,7 @@ func Registry() []Agent {
 			Name:   "OpenCode",
 			Flag:   "opencode",
 			Detect: detectByMarker(opencodeMarker),
-			MCP:    jsonMCP(opencodeMCPPath, "mcp"),
+			MCP:    jsonMCP(opencodeMCPPath, "mcp", opencodeProjectMCPPath),
 			Skill: &SkillTarget{
 				Strategy:    SkillFolder,
 				Path:        opencodeUserSkillPath,
@@ -127,10 +128,11 @@ func Registry() []Agent {
 			Flag:   "zed",
 			Detect: detectByMarker(zedMarker),
 			MCP: &MCPTarget{
-				ConfigPath: zedMCPPath,
-				Format:     codec.JSON,
-				ServersKey: []string{"context_servers"},
-				EntryStyle: ZedContextServer,
+				ConfigPath:        zedMCPPath,
+				ProjectConfigPath: zedProjectMCPPath,
+				Format:            codec.JSON,
+				ServersKey:        []string{"context_servers"},
+				EntryStyle:        ZedContextServer,
 			},
 			Skill: &SkillTarget{
 				Strategy:    SkillFolder,
@@ -144,15 +146,16 @@ func Registry() []Agent {
 			Flag:   "continue",
 			Detect: detectByMarker(continueMarker),
 			MCP: &MCPTarget{
-				ConfigPath: continueMCPPath,
+				ConfigPath: continueMCPPath, // no documented project MCP location
 				Format:     codec.YAML,
 				ServersKey: []string{"mcpServers"},
 				EntryStyle: CommandArgsEnv,
 			},
 			Skill: &SkillTarget{
-				Strategy: DedicatedFile,
-				Path:     continueSkillPath,
-				Render:   renderContinue,
+				Strategy:    DedicatedFile,
+				Path:        continueSkillPath,
+				ProjectPath: continueProjectSkillPath,
+				Render:      renderContinue,
 			},
 		},
 		{
@@ -161,7 +164,7 @@ func Registry() []Agent {
 			Flag:   "codex",
 			Detect: detectByMarker(codexMarker),
 			MCP: &MCPTarget{
-				ConfigPath: codexMCPPath,
+				ConfigPath: codexMCPPath, // MCP config is global only
 				Format:     codec.TOML,
 				ServersKey: []string{"mcp_servers"},
 				EntryStyle: CommandArgsEnv,
@@ -175,13 +178,15 @@ func Registry() []Agent {
 	}
 }
 
-// jsonMCP is a small constructor for the common JSON MCP target shape.
-func jsonMCP(configPath func(env Env) (string, error), serversKey string) *MCPTarget {
+// jsonMCP is a small constructor for the common JSON MCP target shape. projectPath
+// may be nil when the agent has no project-scope MCP location.
+func jsonMCP(configPath func(env Env) (string, error), serversKey string, projectPath func(env Env) (string, error)) *MCPTarget {
 	return &MCPTarget{
-		ConfigPath: configPath,
-		Format:     codec.JSON,
-		ServersKey: []string{serversKey},
-		EntryStyle: CommandArgsEnv,
+		ConfigPath:        configPath,
+		ProjectConfigPath: projectPath,
+		Format:            codec.JSON,
+		ServersKey:        []string{serversKey},
+		EntryStyle:        CommandArgsEnv,
 	}
 }
 

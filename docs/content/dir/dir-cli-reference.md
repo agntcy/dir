@@ -1383,6 +1383,18 @@ non-interactive process does not read standard input implicitly.
 Local and inline PEM keys must use the encrypted Cosign/Sigstore format produced by
 `cosign generate-key-pair`.
 
+The `--key` flag accepts PEM content, a local file, an HTTP(S) URL, an environment
+variable reference, or a KMS URI. The supported KMS URI formats are:
+
+| Provider | URI format |
+|----------|------------|
+| AWS KMS | `awskms://[ENDPOINT]/[ID/ALIAS/ARN]` |
+| Google Cloud KMS | `gcpkms://projects/[PROJECT]/locations/[LOC]/keyRings/[RING]/cryptoKeys/[KEY]` |
+| Azure Key Vault | `azurekms://[VAULT_NAME][VAULT_URI]/[KEY]` |
+| HashiCorp Vault | `hashivault://[KEY]` |
+
+Configure the selected provider's credentials before running `dirctl`.
+
 ??? example
 
     ```bash
@@ -1397,6 +1409,9 @@ Local and inline PEM keys must use the encrypted Cosign/Sigstore format produced
 
     # Explicitly read an encrypted private-key password from standard input
     printf '%s' "$KEY_PASSWORD" | dirctl sign <cid> --key cosign.key --password-stdin
+
+    # Sign with a key managed by Google Cloud KMS
+    dirctl sign <cid> --key "gcpkms://projects/PROJECT/locations/LOCATION/keyRings/RING/cryptoKeys/KEY"
     ```
 
 ### `dirctl naming verify <reference>`
