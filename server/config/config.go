@@ -510,6 +510,13 @@ func LoadConfig(opts ...ConfigOption) (*Config, error) {
 	_ = v.BindEnv("routing.datastore_dir")
 	v.SetDefault("routing.datastore_dir", "")
 
+	// Note: No defaults set for the intervals below. A zero value means the
+	// routing package falls back to its RefreshInterval/RepublishInterval
+	// constants.
+	_ = v.BindEnv("routing.refresh_interval")
+
+	_ = v.BindEnv("routing.republish_interval")
+
 	//
 	// Routing GossipSub configuration
 	// Note: Only enable/disable is configurable. Protocol parameters (topic, message size)
