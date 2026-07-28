@@ -45,44 +45,46 @@ type agentFilter struct {
 	AnnotationKeys []string
 }
 
-// oasfModuleForMediaType maps a media type onto the OASF module name the
-// registry indexes, or ("", false) for unknown types.
-func oasfModuleForMediaType(mediaType string) (string, bool) {
+func mediaTypeFilterForType(mediaType string) *types.MediaTypeFilter {
 	switch strings.ToLower(strings.TrimSpace(mediaType)) {
 	case catalogv1.ProtocolA2ACardJsonMediaType:
-		return translator.A2AModuleName, true
+		return &types.MediaTypeFilter{ModuleName: translator.A2AModuleName}
 	case catalogv1.ProtocolMCPCardJsonMediaType:
-		return translator.MCPModuleName, true
+		return &types.MediaTypeFilter{ModuleName: translator.MCPModuleName}
 	case catalogv1.ProtocolAgentSkillsMdMediaType:
-		return translator.AgentSkillsModuleName, true
+		return &types.MediaTypeFilter{
+			ModuleName:        translator.AgentSkillsModuleName,
+			ArtifactMediaType: catalogv1.ProtocolAgentSkillsMdMediaType,
+		}
 	case catalogv1.ProtocolAgentSkillsBundleMediaType:
-		return translator.AgentSkillsModuleName, true
+		return &types.MediaTypeFilter{
+			ModuleName:        translator.AgentSkillsModuleName,
+			ArtifactMediaType: catalogv1.ProtocolAgentSkillsBundleMediaType,
+		}
 	default:
-		return "", false
+		return nil
 	}
 }
 
-// filterCatalogEntriesByMediaType keeps entries whose media_type matches one of
-// the requested AI Catalog types. Required for Agent Skills because markdown
-// and bundle records share the same OASF module name in the DB index.
-func filterCatalogEntriesByMediaType(entries []*catalogv1.CatalogEntry, mediaTypes []string) []*catalogv1.CatalogEntry {
-	if len(mediaTypes) == 0 || len(entries) == 0 {
-		return entries
+// buildTypeFilterOptions maps parsed type= values to catalog media type filters.
+// Returns (nil, false) when type= was set but no value maps to a known type.
+func buildTypeFilterOptions(mediaTypes []string) ([]types.MediaTypeFilter, bool) {
+	if len(mediaTypes) == 0 {
+		return nil, true
 	}
 
-	allowed := make(map[string]struct{}, len(mediaTypes))
+	filters := make([]types.MediaTypeFilter, 0, len(mediaTypes))
 	for _, mediaType := range mediaTypes {
-		allowed[strings.ToLower(strings.TrimSpace(mediaType))] = struct{}{}
-	}
-
-	out := make([]*catalogv1.CatalogEntry, 0, len(entries))
-	for _, entry := range entries {
-		if _, ok := allowed[strings.ToLower(entry.GetMediaType())]; ok {
-			out = append(out, entry)
+		if filter := mediaTypeFilterForType(mediaType); filter != nil {
+			filters = append(filters, *filter)
 		}
 	}
 
-	return out
+	if len(filters) == 0 {
+		return nil, false
+	}
+
+	return filters, true
 }
 
 // (parentheses, OR keywords, unknown or duplicate fields, missing values) is
@@ -142,13 +144,13 @@ func parseAgentFilter(input string) (agentFilter, error) {
 	return out, nil
 }
 
-// buildRecordFilterOptions translates a parsed filter, order, and paging into
-// FilterOptions for the catalog query layer. The bool is false when type= was
-// set but no requested media type maps to an indexed module (zero rows).
+// buildCatalogFilterOptions translates a parsed filter, order, and paging into
+// catalog filter options. The bool is false when type= was set but no requested
+// media type maps to an indexed module (zero rows).
 //
 //nolint:cyclop
-func buildRecordFilterOptions(f agentFilter, order []orderByClause, pageSize, offset int) ([]types.FilterOption, bool) {
-	opts := []types.FilterOption{
+func buildCatalogFilterOptions(f agentFilter, order []orderByClause, pageSize, offset int) ([]types.CatalogQueryOption, bool) {
+	opts := []types.CatalogQueryOption{
 		types.WithLimit(pageSize),
 		types.WithOffset(offset),
 	}
@@ -158,19 +160,12 @@ func buildRecordFilterOptions(f agentFilter, order []orderByClause, pageSize, of
 	}
 
 	if len(f.Types) > 0 {
-		var modules []string
-
-		for _, mt := range f.Types {
-			if module, ok := oasfModuleForMediaType(mt); ok {
-				modules = append(modules, module)
-			}
-		}
-
-		if len(modules) == 0 {
+		typeFilters, ok := buildTypeFilterOptions(f.Types)
+		if !ok {
 			return nil, false
 		}
 
-		opts = append(opts, types.WithModuleNames(modules...))
+		opts = append(opts, types.WithMediaTypeFilters(typeFilters...))
 	}
 
 	// createdAfter / updatedAfter both resolve to a strict '>' comparison on
