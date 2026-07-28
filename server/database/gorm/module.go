@@ -17,6 +17,10 @@ type Module struct {
 	Name      string `gorm:"not null"`
 	ModuleID  uint64 `gorm:"column:module_id"`
 
+	// ArtifactMediaType is the OASF module.artifact.media_type value when present
+	// (e.g. application/agent-skills+gzip).
+	ArtifactMediaType string `gorm:"column:artifact_media_type;index"`
+
 	// Data is the module's structured payload (e.g. the A2A agent card or
 	// MCP server definition).
 	//
@@ -42,15 +46,20 @@ func (module *Module) GetAnnotations() map[string]string {
 	return nil
 }
 
+func (module *Module) GetArtifactMediaType() string {
+	return module.ArtifactMediaType
+}
+
 // convertModules transforms interface types to Database structs.
 func convertModules(modules []coretypes.Module, recordCID string) []Module {
 	result := make([]Module, len(modules))
 	for i, module := range modules {
 		result[i] = Module{
-			RecordCID: recordCID,
-			Name:      module.GetName(),
-			ModuleID:  module.GetID(),
-			Data:      module.GetData(),
+			RecordCID:         recordCID,
+			Name:              module.GetName(),
+			ModuleID:          module.GetID(),
+			Data:              module.GetData(),
+			ArtifactMediaType: module.GetArtifactMediaType(),
 		}
 	}
 
