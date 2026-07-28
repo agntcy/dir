@@ -151,6 +151,31 @@ dirctl push record.json --sign --key cosign.key
 dirctl verify $RECORD_CID
 ```
 
+### Method 4: KMS-Backed Keys
+
+This method keeps private key material in a cloud or Vault key management service.
+Configure the selected provider's credentials, then pass its key URI to `dirctl sign`.
+Directory supports the AWS KMS, Google Cloud KMS, Azure Key Vault, and HashiCorp Vault
+providers registered by Sigstore.
+
+```bash
+# AWS KMS
+dirctl sign "$RECORD_CID" --key 'awskms://[ENDPOINT]/[ID/ALIAS/ARN]'
+
+# Google Cloud KMS
+dirctl sign "$RECORD_CID" \
+  --key 'gcpkms://projects/[PROJECT]/locations/[LOC]/keyRings/[RING]/cryptoKeys/[KEY]'
+
+# Azure Key Vault
+dirctl sign "$RECORD_CID" --key 'azurekms://[VAULT_NAME][VAULT_URI]/[KEY]'
+
+# HashiCorp Vault
+dirctl sign "$RECORD_CID" --key 'hashivault://[KEY]'
+
+# Verify the signed record
+dirctl verify "$RECORD_CID"
+```
+
 ## Name Verification
 
 Name verification proves that the signing key is authorized by the domain claimed in the

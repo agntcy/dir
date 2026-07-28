@@ -65,6 +65,10 @@ Directory supports several signing flows depending on the environment:
 - **Self-managed keys** — uses a signing keypair (for example, generated with Cosign) where
   the private key signs the record. Suitable for CI/CD where browser-based authentication is
   not possible or desired.
+- **KMS-backed keys** — uses a key managed by AWS KMS, Google Cloud KMS, Azure Key Vault,
+  or HashiCorp Vault. The provider handles access credentials, and private key material
+  remains in the KMS. Suitable for automated environments that centralize key custody and
+  rotation.
 
 For CLI walkthroughs of each method, see
 [Usage Guide — Signing and Verification](dir-features-scenarios.md#signing-and-verification).

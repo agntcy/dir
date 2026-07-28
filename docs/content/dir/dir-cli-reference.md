@@ -1387,6 +1387,18 @@ Record name verification proves that the signing key is authorized by the domain
 
 Signs records for integrity and authenticity. When signing a record with a verifiable name (e.g., `https://domain/path`), the system automatically attempts to verify domain authorization via JWKS. See [Name Verification](#name-verification) for details.
 
+The `--key` flag accepts PEM content, a local file, an HTTP(S) URL, an environment
+variable reference, or a KMS URI. The supported KMS URI formats are:
+
+| Provider | URI format |
+|----------|------------|
+| AWS KMS | `awskms://[ENDPOINT]/[ID/ALIAS/ARN]` |
+| Google Cloud KMS | `gcpkms://projects/[PROJECT]/locations/[LOC]/keyRings/[RING]/cryptoKeys/[KEY]` |
+| Azure Key Vault | `azurekms://[VAULT_NAME][VAULT_URI]/[KEY]` |
+| HashiCorp Vault | `hashivault://[KEY]` |
+
+Configure the selected provider's credentials before running `dirctl`.
+
 ??? example
 
     ```bash
@@ -1398,6 +1410,9 @@ Signs records for integrity and authenticity. When signing a record with a verif
 
     # Sign with a pre-issued OIDC token (non-interactive)
     dirctl sign <cid> --oidc-token "$OIDC_TOKEN"
+
+    # Sign with a key managed by Google Cloud KMS
+    dirctl sign <cid> --key "gcpkms://projects/PROJECT/locations/LOCATION/keyRings/RING/cryptoKeys/KEY"
     ```
 
 ### `dirctl naming verify <reference>`
