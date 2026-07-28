@@ -5,6 +5,8 @@ package daemon
 
 import (
 	"context"
+	"os"
+	"path/filepath"
 	"testing"
 	"time"
 
@@ -46,6 +48,54 @@ func TestLoadConfigRepublishIntervalEnvOverride(t *testing.T) {
 	cfg, err = loadConfig()
 	require.NoError(t, err)
 	require.Equal(t, 10*time.Minute, cfg.Server.Routing.RepublishInterval)
+}
+
+// TestLoadConfigRoutingAddressEnvOverride asserts that the advertised routing
+// endpoints can be set by environment alone. They have no default and are absent
+// from the embedded daemon.config.yaml, so this depends on them being registered
+// in registerServerDefaults.
+func TestLoadConfigRoutingAddressEnvOverride(t *testing.T) {
+	originalOpts := opts
+	opts = &Options{DataDir: t.TempDir()}
+	t.Cleanup(func() {
+		opts = originalOpts
+	})
+
+	cfg, err := loadConfig()
+	require.NoError(t, err)
+	require.Empty(t, cfg.Server.Routing.DirectoryAPIAddress)
+	require.Empty(t, cfg.Server.Routing.DirectoryOCIAddress)
+
+	t.Setenv("DIRECTORY_DAEMON_SERVER_ROUTING_DIRECTORY_API_ADDRESS", "dir.example.com:8888")
+	t.Setenv("DIRECTORY_DAEMON_SERVER_ROUTING_DIRECTORY_OCI_ADDRESS", "ghcr.io/org/agents")
+
+	cfg, err = loadConfig()
+	require.NoError(t, err)
+	require.Equal(t, "dir.example.com:8888", cfg.Server.Routing.DirectoryAPIAddress)
+	require.Equal(t, "ghcr.io/org/agents", cfg.Server.Routing.DirectoryOCIAddress)
+}
+
+// TestLoadConfigRoutingAddressEnvOverrideWithUserConfig asserts the same holds
+// for a user-supplied config file that does not declare the keys, since --config
+// is read as-is without merging the embedded defaults.
+func TestLoadConfigRoutingAddressEnvOverrideWithUserConfig(t *testing.T) {
+	originalOpts := opts
+	dataDir := t.TempDir()
+
+	configPath := filepath.Join(dataDir, DefaultConfigFile)
+	require.NoError(t, os.WriteFile(configPath, []byte(defaultConfigYAML), 0o600))
+
+	opts = &Options{DataDir: dataDir, ConfigFile: configPath}
+
+	t.Cleanup(func() {
+		opts = originalOpts
+	})
+
+	t.Setenv("DIRECTORY_DAEMON_SERVER_ROUTING_DIRECTORY_OCI_ADDRESS", "ghcr.io/org/agents")
+
+	cfg, err := loadConfig()
+	require.NoError(t, err)
+	require.Equal(t, "ghcr.io/org/agents", cfg.Server.Routing.DirectoryOCIAddress)
 }
 
 // TestEmbeddedZot tests the embedded Zot server.

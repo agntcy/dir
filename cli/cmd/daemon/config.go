@@ -52,6 +52,15 @@ type RuntimeConfig struct {
 func registerServerDefaults(v *viper.Viper) {
 	v.SetDefault("server.store.oci.registry_address", storeconfig.DefaultRegistryAddress)
 	v.SetDefault("server.store.oci.repository_name", storeconfig.DefaultRepositoryName)
+
+	// The advertised routing endpoints have no default and are absent from
+	// daemon.config.yaml, so they must be registered here for AutomaticEnv to
+	// resolve them. Mirrors server/config.
+	_ = v.BindEnv("server.routing.directory_api_address")
+	v.SetDefault("server.routing.directory_api_address", "")
+
+	_ = v.BindEnv("server.routing.directory_oci_address")
+	v.SetDefault("server.routing.directory_oci_address", "")
 }
 
 func registerReconcilerDefaults(v *viper.Viper) {
