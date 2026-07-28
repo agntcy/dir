@@ -295,24 +295,10 @@ func moduleToCatalogEntry(module coretypes.Module) *CatalogEntry {
 
 func getModuleMediaType(module coretypes.Module, proj catalogModuleProjection) string {
 	if module.GetName() == AgentSkillsModuleName {
-		return getAgentSkillsMediaType(module)
+		return module.GetArtifactMediaType()
 	}
 
 	return proj.MediaType
-}
-
-func getAgentSkillsMediaType(module coretypes.Module) string {
-	if hasArtifacts(module.GetData()) {
-		return ProtocolAgentSkillsBundleMediaType
-	}
-
-	return ProtocolAgentSkillsMdMediaType
-}
-
-func hasArtifacts(data map[string]any) bool {
-	artifacts, ok := data["artifacts"].([]any)
-
-	return ok && len(artifacts) > 0
 }
 
 // knownCatalogModules returns the record's modules that have a catalog

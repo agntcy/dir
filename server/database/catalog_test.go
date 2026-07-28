@@ -21,9 +21,10 @@ var _ coretypes.Module = (*catalogModuleFixture)(nil)
 // catalogModuleFixture is a coretypes.Module carrying structured data, which the
 // shared testModule fixture does not.
 type catalogModuleFixture struct {
-	id   uint64
-	name string
-	data map[string]any
+	id                uint64
+	name              string
+	data              map[string]any
+	artifactMediaType string
 }
 
 // GetAnnotations implements [types.Module].
@@ -31,7 +32,7 @@ func (m *catalogModuleFixture) GetAnnotations() map[string]string { return nil }
 func (m *catalogModuleFixture) GetID() uint64                     { return m.id }
 func (m *catalogModuleFixture) GetName() string                   { return m.name }
 func (m *catalogModuleFixture) GetData() map[string]any           { return m.data }
-func (m *catalogModuleFixture) GetArtifactMediaType() string      { return "" }
+func (m *catalogModuleFixture) GetArtifactMediaType() string      { return m.artifactMediaType }
 
 func catalogRecord(cid, name, createdAt string, modules []coretypes.Module) coretypes.Record {
 	return &testRecord{
@@ -62,6 +63,30 @@ var (
 
 	unprojectableRecord = catalogRecord("cid-none", "delta", "2024-04-01T00:00:00Z", []coretypes.Module{
 		&catalogModuleFixture{id: 9, name: "integration/acp"},
+	})
+
+	agentSkillsMdRecord = catalogRecord("cid-skill-md", "skill-md", "2024-05-01T00:00:00Z", []coretypes.Module{
+		&catalogModuleFixture{
+			id:                10302,
+			name:              catalogv1.AgentSkillsModuleName,
+			artifactMediaType: catalogv1.ProtocolAgentSkillsMdMediaType,
+			data: map[string]any{
+				"skill_file":     "SKILL.md",
+				"skill_manifest": map[string]any{"name": "md-skill", "version": "1.0.0"},
+			},
+		},
+	})
+
+	agentSkillsBundleRecord = catalogRecord("cid-skill-gz", "skill-gz", "2024-05-02T00:00:00Z", []coretypes.Module{
+		&catalogModuleFixture{
+			id:                10302,
+			name:              catalogv1.AgentSkillsModuleName,
+			artifactMediaType: catalogv1.ProtocolAgentSkillsBundleMediaType,
+			data: map[string]any{
+				"skill_file":     "SKILL.md",
+				"skill_manifest": map[string]any{"name": "bundle-skill", "version": "1.0.0"},
+			},
+		},
 	})
 )
 
@@ -148,13 +173,32 @@ func TestGetCatalogEntries_UnsupportedSortColumn(t *testing.T) {
 	require.Error(t, err)
 }
 
-func TestGetCatalogEntries_NilOption(t *testing.T) {
+func TestCountCatalogEntries_AgentSkillsMediaType(t *testing.T) {
 	db := setupTestDB(t)
+	for _, r := range []coretypes.Record{agentSkillsMdRecord, agentSkillsBundleRecord} {
+		require.NoError(t, db.AddRecord(r))
+	}
 
-	var nilOpt types.FilterOption
+	count, err := db.CountCatalogEntries(types.WithMediaTypeFilters(types.MediaTypeFilter{
+		ModuleName:        catalogv1.AgentSkillsModuleName,
+		ArtifactMediaType: catalogv1.ProtocolAgentSkillsMdMediaType,
+	}))
+	require.NoError(t, err)
+	assert.Equal(t, uint32(1), count)
 
-	_, _, err := db.GetCatalogEntries(nilOpt)
-	require.Error(t, err)
+	count, err = db.CountCatalogEntries(types.WithMediaTypeFilters(types.MediaTypeFilter{
+		ModuleName:        catalogv1.AgentSkillsModuleName,
+		ArtifactMediaType: catalogv1.ProtocolAgentSkillsBundleMediaType,
+	}))
+	require.NoError(t, err)
+	assert.Equal(t, uint32(1), count)
+
+	count, err = db.CountCatalogEntries(types.WithMediaTypeFilters(
+		types.MediaTypeFilter{ModuleName: catalogv1.AgentSkillsModuleName, ArtifactMediaType: catalogv1.ProtocolAgentSkillsMdMediaType},
+		types.MediaTypeFilter{ModuleName: catalogv1.AgentSkillsModuleName, ArtifactMediaType: catalogv1.ProtocolAgentSkillsBundleMediaType},
+	))
+	require.NoError(t, err)
+	assert.Equal(t, uint32(2), count)
 }
 
 func TestCountCatalogEntries(t *testing.T) {
@@ -174,15 +218,6 @@ func TestCountCatalogEntries(t *testing.T) {
 	count, err = db.CountCatalogEntries(types.WithNames("*alpha*"))
 	require.NoError(t, err)
 	assert.Equal(t, uint32(1), count)
-}
-
-func TestCountCatalogEntries_NilOption(t *testing.T) {
-	db := setupTestDB(t)
-
-	var nilOpt types.FilterOption
-
-	_, err := db.CountCatalogEntries(nilOpt)
-	require.Error(t, err)
 }
 
 func TestListCatalogTags(t *testing.T) {

@@ -204,11 +204,11 @@ func (f *fakeSignatureDB) GetRecords(opts ...types.FilterOption) ([]coretypes.Re
 	return nil, nil
 }
 
-func (f *fakeSignatureDB) GetCatalogEntries(opts ...types.FilterOption) ([]*catalogv1.CatalogEntry, bool, error) {
+func (f *fakeSignatureDB) GetCatalogEntries(opts ...types.CatalogQueryOption) ([]*catalogv1.CatalogEntry, bool, error) {
 	return nil, false, nil
 }
 
-func (f *fakeSignatureDB) CountCatalogEntries(opts ...types.FilterOption) (uint32, error) {
+func (f *fakeSignatureDB) CountCatalogEntries(opts ...types.CatalogQueryOption) (uint32, error) {
 	return 0, nil
 }
 
