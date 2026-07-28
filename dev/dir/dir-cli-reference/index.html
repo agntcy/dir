@@ -5504,6 +5504,35 @@ dirctl<span class="w"> </span>search<span class="w"> </span>--safe<span class="w
 </ol>
 <h3 id="dirctl-sign-cid-flags"><code>dirctl sign &lt;cid&gt; [flags]</code></h3>
 <p>Signs records for integrity and authenticity. When signing a record with a verifiable name (e.g., <code>https://domain/path</code>), the system automatically attempts to verify domain authorization via JWKS. See <a href="#name-verification">Name Verification</a> for details.</p>
+<p>The <code>--key</code> flag accepts PEM content, a local file, an HTTP(S) URL, an environment
+variable reference, or a KMS URI. The supported KMS URI formats are:</p>
+<table>
+<thead>
+<tr>
+<th>Provider</th>
+<th>URI format</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>AWS KMS</td>
+<td><code>awskms://[ENDPOINT]/[ID/ALIAS/ARN]</code></td>
+</tr>
+<tr>
+<td>Google Cloud KMS</td>
+<td><code>gcpkms://projects/[PROJECT]/locations/[LOC]/keyRings/[RING]/cryptoKeys/[KEY]</code></td>
+</tr>
+<tr>
+<td>Azure Key Vault</td>
+<td><code>azurekms://[VAULT_NAME][VAULT_URI]/[KEY]</code></td>
+</tr>
+<tr>
+<td>HashiCorp Vault</td>
+<td><code>hashivault://[KEY]</code></td>
+</tr>
+</tbody>
+</table>
+<p>Configure the selected provider's credentials before running <code>dirctl</code>.</p>
 <details class="example">
 <summary>Example</summary>
 <div class="highlight"><pre><span></span><code><span class="c1"># Sign with private key</span>
@@ -5514,6 +5543,9 @@ dirctl<span class="w"> </span>sign<span class="w"> </span>&lt;cid&gt;<span class
 
 <span class="c1"># Sign with a pre-issued OIDC token (non-interactive)</span>
 dirctl<span class="w"> </span>sign<span class="w"> </span>&lt;cid&gt;<span class="w"> </span>--oidc-token<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$OIDC_TOKEN</span><span class="s2">&quot;</span>
+
+<span class="c1"># Sign with a key managed by Google Cloud KMS</span>
+dirctl<span class="w"> </span>sign<span class="w"> </span>&lt;cid&gt;<span class="w"> </span>--key<span class="w"> </span><span class="s2">&quot;gcpkms://projects/PROJECT/locations/LOCATION/keyRings/RING/cryptoKeys/KEY&quot;</span>
 </code></pre></div>
 </details>
 <h3 id="dirctl-naming-verify-reference"><code>dirctl naming verify &lt;reference&gt;</code></h3>

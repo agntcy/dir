@@ -2675,6 +2675,10 @@ by the underlying OCI registry infrastructure.</p>
 <li><strong>Self-managed keys</strong> — uses a signing keypair (for example, generated with Cosign) where
   the private key signs the record. Suitable for CI/CD where browser-based authentication is
   not possible or desired.</li>
+<li><strong>KMS-backed keys</strong> — uses a key managed by AWS KMS, Google Cloud KMS, Azure Key Vault,
+  or HashiCorp Vault. The provider handles access credentials, and private key material
+  remains in the KMS. Suitable for automated environments that centralize key custody and
+  rotation.</li>
 </ul>
 <p>For CLI walkthroughs of each method, see
 <a href="../dir-features-scenarios/#signing-and-verification">Usage Guide — Signing and Verification</a>.</p>

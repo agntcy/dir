@@ -807,6 +807,17 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#method-4-kms-backed-keys" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Method 4: KMS-Backed Keys
+      
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -2366,6 +2377,17 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#method-4-kms-backed-keys" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Method 4: KMS-Backed Keys
+      
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -2851,6 +2873,27 @@ dirctl<span class="w"> </span>push<span class="w"> </span>record.json<span class
 
 <span class="c1"># Verify the signed record</span>
 dirctl<span class="w"> </span>verify<span class="w"> </span><span class="nv">$RECORD_CID</span>
+</code></pre></div>
+<h3 id="method-4-kms-backed-keys">Method 4: KMS-Backed Keys</h3>
+<p>This method keeps private key material in a cloud or Vault key management service.
+Configure the selected provider's credentials, then pass its key URI to <code>dirctl sign</code>.
+Directory supports the AWS KMS, Google Cloud KMS, Azure Key Vault, and HashiCorp Vault
+providers registered by Sigstore.</p>
+<div class="highlight"><pre><span></span><code><span class="c1"># AWS KMS</span>
+dirctl<span class="w"> </span>sign<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$RECORD_CID</span><span class="s2">&quot;</span><span class="w"> </span>--key<span class="w"> </span><span class="s1">&#39;awskms://[ENDPOINT]/[ID/ALIAS/ARN]&#39;</span>
+
+<span class="c1"># Google Cloud KMS</span>
+dirctl<span class="w"> </span>sign<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$RECORD_CID</span><span class="s2">&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--key<span class="w"> </span><span class="s1">&#39;gcpkms://projects/[PROJECT]/locations/[LOC]/keyRings/[RING]/cryptoKeys/[KEY]&#39;</span>
+
+<span class="c1"># Azure Key Vault</span>
+dirctl<span class="w"> </span>sign<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$RECORD_CID</span><span class="s2">&quot;</span><span class="w"> </span>--key<span class="w"> </span><span class="s1">&#39;azurekms://[VAULT_NAME][VAULT_URI]/[KEY]&#39;</span>
+
+<span class="c1"># HashiCorp Vault</span>
+dirctl<span class="w"> </span>sign<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$RECORD_CID</span><span class="s2">&quot;</span><span class="w"> </span>--key<span class="w"> </span><span class="s1">&#39;hashivault://[KEY]&#39;</span>
+
+<span class="c1"># Verify the signed record</span>
+dirctl<span class="w"> </span>verify<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$RECORD_CID</span><span class="s2">&quot;</span>
 </code></pre></div>
 <h2 id="name-verification">Name Verification</h2>
 <p>Name verification proves that the signing key is authorized by the domain claimed in the
