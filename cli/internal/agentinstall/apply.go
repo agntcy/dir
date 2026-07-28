@@ -11,9 +11,9 @@ import (
 
 const skillBundleFolderOnlyReason = "skill bundle requires a multi-file skills directory; this agent only supports single instruction files"
 
-// Install applies the record's artifacts to the selected agents, one outcome
-// per touched artifact. Errors on one agent never abort the rest.
-func Install(env agentcfg.Env, arts Artifacts, agents []agentcfg.Agent, dryRun bool) []agentcfg.Outcome {
+// Install applies the record's artifacts to the selected agents at the given
+// scope, one outcome per touched artifact. Errors on one agent never abort the rest.
+func Install(env agentcfg.Env, arts Artifacts, agents []agentcfg.Agent, scope agentcfg.Scope, dryRun bool) []agentcfg.Outcome {
 	var outcomes []agentcfg.Outcome
 
 	seenSkill := map[string]bool{}
@@ -22,7 +22,7 @@ func Install(env agentcfg.Env, arts Artifacts, agents []agentcfg.Agent, dryRun b
 		if agent.MCP != nil {
 			for _, srv := range arts.mcpServers {
 				entry := styleEntry(srv.entry, agent.MCP.EntryStyle)
-				o, _ := agentcfg.InstallMCP(agent.MCP, env, entry, srv.name, dryRun)
+				o, _ := agentcfg.InstallMCP(agent.MCP, env, entry, srv.name, scope, dryRun)
 				o.Agent = agent.Name
 				outcomes = append(outcomes, o)
 			}
@@ -40,15 +40,15 @@ func Install(env agentcfg.Env, arts Artifacts, agents []agentcfg.Agent, dryRun b
 				continue
 			}
 
-			if dedupeSkill(seenSkill, agent.Skill, env, arts.slug) {
+			if dedupeSkill(seenSkill, agent.Skill, env, arts.slug, scope) {
 				continue
 			}
 
 			var o agentcfg.Outcome
 			if arts.hasSkillBundle() {
-				o, _ = agentcfg.InstallSkillBundle(agent.Skill, env, arts.slug, arts.skillBundle, dryRun)
+				o, _ = agentcfg.InstallSkillBundle(agent.Skill, env, arts.slug, arts.skillBundle, scope, dryRun)
 			} else {
-				o, _ = agentcfg.InstallSkill(agent.Skill, env, arts.slug, arts.skill, dryRun)
+				o, _ = agentcfg.InstallSkill(agent.Skill, env, arts.slug, arts.skill, scope, dryRun)
 			}
 
 			o.Agent = agent.Name
@@ -59,8 +59,8 @@ func Install(env agentcfg.Env, arts Artifacts, agents []agentcfg.Agent, dryRun b
 	return outcomes
 }
 
-// Uninstall removes the record's artifacts from the selected agents.
-func Uninstall(env agentcfg.Env, arts Artifacts, agents []agentcfg.Agent, dryRun bool) []agentcfg.Outcome {
+// Uninstall removes the record's artifacts from the selected agents at the given scope.
+func Uninstall(env agentcfg.Env, arts Artifacts, agents []agentcfg.Agent, scope agentcfg.Scope, dryRun bool) []agentcfg.Outcome {
 	var outcomes []agentcfg.Outcome
 
 	seenSkill := map[string]bool{}
@@ -68,7 +68,7 @@ func Uninstall(env agentcfg.Env, arts Artifacts, agents []agentcfg.Agent, dryRun
 	for _, agent := range agents {
 		if agent.MCP != nil {
 			for _, srv := range arts.mcpServers {
-				o, _ := agentcfg.RemoveMCP(agent.MCP, env, srv.name, dryRun)
+				o, _ := agentcfg.RemoveMCP(agent.MCP, env, srv.name, scope, dryRun)
 				o.Agent = agent.Name
 				outcomes = append(outcomes, o)
 			}
@@ -79,11 +79,11 @@ func Uninstall(env agentcfg.Env, arts Artifacts, agents []agentcfg.Agent, dryRun
 				continue
 			}
 
-			if dedupeSkill(seenSkill, agent.Skill, env, arts.slug) {
+			if dedupeSkill(seenSkill, agent.Skill, env, arts.slug, scope) {
 				continue
 			}
 
-			o, _ := agentcfg.RemoveSkill(agent.Skill, env, arts.slug, dryRun)
+			o, _ := agentcfg.RemoveSkill(agent.Skill, env, arts.slug, scope, dryRun)
 			o.Agent = agent.Name
 			outcomes = append(outcomes, o)
 		}
@@ -107,8 +107,8 @@ func styleEntry(base map[string]any, style agentcfg.EntryStyle) map[string]any {
 
 // dedupeSkill reports whether a skill target's resolved path was already acted on
 // this run (e.g. Claude Code and Claude Desktop share one skills folder).
-func dedupeSkill(seen map[string]bool, target *agentcfg.SkillTarget, env agentcfg.Env, slug string) bool {
-	path, _, err := agentcfg.ResolveSkillTargetPath(target, env, slug)
+func dedupeSkill(seen map[string]bool, target *agentcfg.SkillTarget, env agentcfg.Env, slug string, scope agentcfg.Scope) bool {
+	path, err := agentcfg.ResolveSkillTargetPath(target, env, slug, scope)
 	if err != nil || path == "" {
 		return false
 	}

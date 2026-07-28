@@ -19,6 +19,9 @@ and the config files that install would touch. Makes no changes and does not
 contact the Directory.`,
 	RunE: func(cmd *cobra.Command, _ []string) error {
 		env := agentcfg.ResolveEnv()
+		scope := scopeFromOpts()
+
+		printScope(cmd)
 
 		for _, agent := range agentcfg.Registry() {
 			status := "not detected"
@@ -29,18 +32,13 @@ contact the Directory.`,
 			presenter.Printf(cmd, "%s [%s]\n", agent.Name, status)
 
 			if agent.MCP != nil {
-				path, err := agent.MCP.ConfigPath(env)
-				if err != nil {
-					presenter.Printf(cmd, "  MCP   (path error: %v)\n", err)
-				} else {
-					presenter.Printf(cmd, "  MCP   %s\n", path)
-				}
+				presenter.Printf(cmd, "  MCP   %s\n", agentcfg.ResolveMCPPath(agent.MCP, env, scope))
 			}
 
 			if agent.Skill != nil {
 				// The real slug is the record name, known only at install time; show
 				// the generic target with a placeholder.
-				presenter.Printf(cmd, "  Skill %s\n", agentcfg.ResolveSkillPath(agent.Skill, env, "<record>"))
+				presenter.Printf(cmd, "  Skill %s\n", agentcfg.ResolveSkillPath(agent.Skill, env, "<record>", scope))
 			}
 		}
 

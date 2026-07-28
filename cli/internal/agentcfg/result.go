@@ -30,6 +30,17 @@ func failOutcome(outcome Outcome, err error) (Outcome, error) {
 	return outcome, err
 }
 
+// skipScopeOutcome builds a skipped outcome for an artifact that has no config
+// location for the requested scope, so a missing project/global path degrades
+// gracefully instead of failing the run.
+func skipScopeOutcome(artifact string, scope Scope) Outcome {
+	return Outcome{
+		Artifact: artifact,
+		Action:   ActionSkipped,
+		Reason:   "no " + scope.String() + " location for this agent's " + artifact,
+	}
+}
+
 // Outcome records what happened to one artifact (MCP or skill) for one agent.
 type Outcome struct {
 	Record   string // optional record label for batch install grouping
