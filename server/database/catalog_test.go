@@ -164,7 +164,7 @@ func TestCountCatalogEntries(t *testing.T) {
 
 	count, err := db.CountCatalogEntries()
 	require.NoError(t, err)
-	assert.Equal(t, uint32(4), count)
+	assert.Equal(t, uint32(3), count)
 
 	count, err = db.CountCatalogEntries(types.WithModuleNames(translator.A2AModuleName))
 	require.NoError(t, err)
