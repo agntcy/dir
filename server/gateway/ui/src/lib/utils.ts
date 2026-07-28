@@ -1,4 +1,5 @@
-import type { AICardFilterCriteria, CatalogEntry, ScanManifest, SubEntry, ExportFormat, UsageMetrics } from './types';
+import type { AICardFilterCriteria, CatalogEntry, ScanManifest, SubEntry, ExportFormat, UsageMetrics, TrustStatus } from './types';
+import { TRUST_STATUS_METADATA_KEY } from './types';
 
 export function hasActiveClientFilters(criteria: AICardFilterCriteria): boolean {
 	return (
@@ -29,7 +30,11 @@ export function applyClientFilters(
 		}
 
 		if (criteria.statusFilters.size > 0) {
-			if (!hasTrustManifest(aicard)) return false;
+			const trustStatus = getTrustStatus(aicard);
+			for (const filter of criteria.statusFilters) {
+				if (filter === 'trusted' && !trustStatus?.trusted) return false;
+				if (filter === 'verified' && !trustStatus?.verified) return false;
+			}
 		}
 
 		if (criteria.scanSafe) {
@@ -87,8 +92,13 @@ export function extractShortTag(tag: string): string {
 	return (parts[parts.length - 1] || '').replace(/_/g, ' ');
 }
 
-export function hasTrustManifest(aicard: CatalogEntry): boolean {
-	return !!(aicard.trustManifest && aicard.trustManifest.signature);
+export function getTrustStatus(aicard: CatalogEntry): TrustStatus | null {
+	const status = aicard.metadata?.[TRUST_STATUS_METADATA_KEY] as TrustStatus | undefined;
+	if (!status || typeof status.trusted !== 'boolean' || typeof status.verified !== 'boolean') {
+		return null;
+	}
+
+	return status;
 }
 
 export function getUsageMetrics(aicard: CatalogEntry): UsageMetrics | null {

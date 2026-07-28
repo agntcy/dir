@@ -156,6 +156,7 @@ func (d *DB) GetCatalogEntries(opts ...types.FilterOption) ([]*catalogv1.Catalog
 		Preload("Domains").
 		Preload("Annotations").
 		Preload("Signatures").
+		Preload("NameVerification").
 		Preload("ScanReports").
 		Limit(pageSize + 1)
 
@@ -186,6 +187,7 @@ func (d *DB) GetCatalogEntries(opts ...types.FilterOption) ([]*catalogv1.Catalog
 		opts := []catalogv1.ConvertOption{
 			catalogv1.WithSignatures(convertSignatures(records[i].Signatures)),
 			catalogv1.WithScanReports(convertScanReports(records[i].ScanReports)),
+			catalogv1.WithTrustStatus(deriveTrustStatus(&records[i])),
 		}
 
 		if metrics, err := d.GetUsageMetrics(records[i].RecordCID); err == nil {
@@ -215,6 +217,20 @@ func convertScanReports(reports []ScanReport) []catalogv1.ScanReportSummary {
 	}
 
 	return result
+}
+
+func deriveTrustStatus(record *Record) catalogv1.TrustStatus {
+	signatureStatuses := make([]string, len(record.Signatures))
+	for i := range record.Signatures {
+		signatureStatuses[i] = record.Signatures[i].Status
+	}
+
+	nameVerificationStatus := ""
+	if record.NameVerification != nil {
+		nameVerificationStatus = record.NameVerification.Status
+	}
+
+	return catalogv1.DeriveTrustStatus(signatureStatuses, nameVerificationStatus)
 }
 
 // applyCatalogOrder appends the allow-listed ORDER BY clauses plus a

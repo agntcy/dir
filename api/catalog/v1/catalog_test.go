@@ -284,3 +284,49 @@ func TestAnnotationLabel(t *testing.T) {
 	assert.Equal(t, "featured", AnnotationLabel("featured", ""))
 	assert.Equal(t, "owner=alice", AnnotationLabel("owner", "alice"))
 }
+
+func TestDeriveTrustStatus(t *testing.T) {
+	t.Parallel()
+
+	assert.Equal(t, TrustStatus{Trusted: true, Verified: true}, DeriveTrustStatus(
+		[]string{"verified"},
+		"verified",
+	))
+	assert.Equal(t, TrustStatus{Trusted: true, Verified: false}, DeriveTrustStatus(
+		[]string{"failed", "verified"},
+		"failed",
+	))
+	assert.Equal(t, TrustStatus{Trusted: false, Verified: false}, DeriveTrustStatus(nil, ""))
+}
+
+func TestRecordToCatalog_TrustStatusMetadata(t *testing.T) {
+	t.Parallel()
+
+	record := corev1.New(&oasftypesv1.Record{
+		SchemaVersion: "1.0.0",
+		Name:          "trusted-agent",
+		Version:       "1.0.0",
+		CreatedAt:     "2024-01-01T00:00:00Z",
+		Modules: []*oasftypesv1.Module{
+			{
+				Name: "integration/mcp",
+				Id:   123,
+				Data: &structpb.Struct{
+					Fields: map[string]*structpb.Value{
+						"key1": structpb.NewStringValue("value1"),
+					},
+				},
+			},
+		},
+	})
+
+	adapter, err := record.Decode()
+	require.NoError(t, err)
+
+	entry, err := RecordToCatalog(adapter, WithTrustStatus(TrustStatus{Trusted: true, Verified: false}))
+	require.NoError(t, err)
+
+	status := entry.GetMetadata()[TrustStatusMetadataKey].GetStructValue().AsMap()
+	assert.Equal(t, true, status["trusted"])
+	assert.Equal(t, false, status["verified"])
+}
