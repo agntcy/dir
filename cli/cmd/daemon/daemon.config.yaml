@@ -40,6 +40,12 @@ server:
     datastore_dir: "routing"
     # bootstrap_peers:
     #   - "/dns4/remote-dir.example.com/tcp/8999/p2p/<peer-id>"
+
+    # How often local CID provider announcements are republished. Lower values
+    # let newly joined nodes converge on existing content sooner, at the cost of
+    # more announcement traffic and more work for every subscriber.
+    republish_interval: "36h"
+
     gossipsub:
       enabled: true
     # DHT-based record + referrer autosync (deny-by-default; disabled unless set).
