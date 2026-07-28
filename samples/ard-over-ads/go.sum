@@ -198,8 +198,7 @@ github.com/agext/levenshtein v1.2.3 h1:YB2fHEn0UJagG8T1rrWknE3ZQzWM06O8AMAatNn7l
 github.com/agext/levenshtein v1.2.3/go.mod h1:JEDfjyjHDjOF/1e4FlBE/PkbqA9OfWu2ki2W0IB5558=
 github.com/agnivade/levenshtein v1.2.1 h1:EHBY3UOn1gwdy/VbFwgo4cxecRznFk7fKWN1KOX7eoM=
 github.com/agnivade/levenshtein v1.2.1/go.mod h1:QVVI16kDrtSuwcpd0p1+xMC6Z/VfhtCyDIjcwga4/DU=
-github.com/agntcy/dir-importer v1.5.1 h1:JkdGEHO6bn5C8igbO6J7/bEmNDqDlj1Qd51fuPV1fS4=
-github.com/agntcy/dir-importer v1.5.1/go.mod h1:sLTEgb3TVQCiHwpE41tPEZC9D99Xft+qz1THdFpE4bI=
+github.com/agntcy/dir-importer v1.5.2-0.20260722103554-a0ac00e66182 h1:7sJuArFBh7isJq1WEw/i5r//RHlwICVqy89DAd8v1lA=
 github.com/agntcy/dir-importer v1.5.2-0.20260722103554-a0ac00e66182/go.mod h1:sLTEgb3TVQCiHwpE41tPEZC9D99Xft+qz1THdFpE4bI=
 github.com/agntcy/dir-mcp v1.3.3 h1:jXKMAIPbRJbtp+YuqNqM77l4cBCGUkZ/D/SkokZ1EZw=
 github.com/agntcy/dir-mcp v1.3.3/go.mod h1:bHI1khnD0ni8gl9l3xxfJJNFD8qHqN6wPHN2kC3hdjs=
@@ -1084,8 +1083,8 @@ github.com/keybase/go-keychain v0.0.1 h1:way+bWYa6lDppZoZcgMbYsvC7GxljxrskdNInRt
 github.com/keybase/go-keychain v0.0.1/go.mod h1:PdEILRW3i9D8JcdM+FmY6RwkHGnhHxXwkPPMeUgOK1k=
 github.com/kisielk/errcheck v1.5.0/go.mod h1:pFxgyoBC7bSaBwPgfKdkLd5X25qrDl4LWUI2bnpBCr8=
 github.com/kisielk/gotool v1.0.0/go.mod h1:XhKaO+MFFWcvkIS/tQcRk01m1F5IRFswLeQ+oQHNcck=
-github.com/klauspost/compress v1.18.6 h1:2jupLlAwFm95+YDR+NwD2MEfFO9d4z4Prjl1XXDjuao=
-github.com/klauspost/compress v1.18.6/go.mod h1:cwPg85FWrGar70rWktvGQj8/hthj3wpl0PGDogxkrSQ=
+github.com/klauspost/compress v1.18.7 h1:aUyZsS4kH3QTKurYhAOwAHxllVPnOthb3vPfnF1Ehjw=
+github.com/klauspost/compress v1.18.7/go.mod h1:cwPg85FWrGar70rWktvGQj8/hthj3wpl0PGDogxkrSQ=
 github.com/klauspost/cpuid/v2 v2.3.0 h1:S4CRMLnYUhGeDFDqkGriYKdfoFlDnMtqTiI/sFzhA9Y=
 github.com/klauspost/cpuid/v2 v2.3.0/go.mod h1:hqwkgyIinND0mEev00jJYCxPNVRVXFQeu1XKlok6oO0=
 github.com/knqyf263/go-apk-version v0.0.0-20200609155635-041fdbb8563f h1:GvCU5GXhHq+7LeOzx/haG7HSIZokl3/0GkoUFzsRJjg=
