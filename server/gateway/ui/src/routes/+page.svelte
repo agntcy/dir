@@ -21,14 +21,22 @@
 	let error = $state('');
 	let currentPage = $state(1);
 	let selectedAicard = $state<CatalogEntry | null>(null);
-	let totalCount = $state(0);
+	let catalogTotalCount = $state<number | null>(null);
+	let filteredCount = $state<number | null>(null);
 
 	let latestCriteria = $state<AICardFilterCriteria | null>(null);
 	let loadRequestId = 0;
 	let searchDebounce: ReturnType<typeof setTimeout> | undefined;
 	let listAbort: AbortController | undefined;
 
-	let totalPages = $derived(Math.max(1, Math.ceil(totalCount / CATALOG_PAGE_SIZE)));
+	let totalPages = $derived(Math.max(1, Math.ceil((filteredCount ?? 0) / CATALOG_PAGE_SIZE)));
+	let resultsLabel = $derived(
+		filteredCount === null || filteredCount === 0
+			? ''
+			: filteredCount === 1
+				? '1 result'
+				: `${filteredCount} results`
+	);
 
 	async function loadAICards(criteria: AICardFilterCriteria, page = 1) {
 		const requestId = ++loadRequestId;
@@ -51,13 +59,13 @@
 			if (requestId !== loadRequestId) return;
 
 			aicards = result.results;
-			totalCount = result.totalCount;
+			filteredCount = result.totalCount;
 			currentPage = page;
 		} catch (e) {
 			if (signal.aborted || requestId !== loadRequestId) return;
 			error = e instanceof Error ? e.message : 'Unknown error';
 			aicards = [];
-			totalCount = 0;
+			filteredCount = 0;
 		} finally {
 			if (requestId === loadRequestId) {
 				loading = false;
@@ -82,8 +90,21 @@
 	}
 
 	$effect(() => {
-		headerStatsState.set({ totalCount });
+		if (catalogTotalCount !== null) {
+			headerStatsState.set({ totalCount: catalogTotalCount });
+		}
 	});
+
+	async function loadCatalogTotalCount(signal: AbortSignal) {
+		try {
+			const result = await fetchAICardsPage({ pageSize: 1, signal });
+			if (signal.aborted) return;
+			catalogTotalCount = result.totalCount;
+		} catch (e) {
+			if (signal.aborted) return;
+			catalogTotalCount = null;
+		}
+	}
 
 	async function loadCatalogTags(signal: AbortSignal) {
 		tagsLoading = true;
@@ -108,11 +129,14 @@
 		latestCriteria = initial;
 
 		const tagsAbort = new AbortController();
+		const statsAbort = new AbortController();
 		loadCatalogTags(tagsAbort.signal);
+		loadCatalogTotalCount(statsAbort.signal);
 		loadAICards(initial);
 
 		return () => {
 			tagsAbort.abort();
+			statsAbort.abort();
 			listAbort?.abort();
 			clearTimeout(searchDebounce);
 			headerStatsState.set(null);
@@ -134,6 +158,10 @@
 		</aside>
 
 		<section class="flex-1 min-w-0">
+			{#if resultsLabel}
+				<p class="text-sm text-ink-medium mb-4">{resultsLabel}</p>
+			{/if}
+
 			{#if loading}
 				<div class="flex items-center justify-center py-20">
 					<div class="animate-spin rounded-full h-8 w-8 border-b-2 border-brand-500"></div>
