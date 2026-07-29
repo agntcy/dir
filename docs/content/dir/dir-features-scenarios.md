@@ -144,6 +144,17 @@ cosign generate-key-pair
 # Set COSIGN_PASSWORD shell variable if you password-protected the private key
 export COSIGN_PASSWORD=your_password_here
 
+# Alternatively, explicitly read the password from standard input
+printf '%s' "$KEY_PASSWORD" | \
+  dirctl sign "$RECORD_CID" --key cosign.key --password-stdin
+```
+
+`COSIGN_PASSWORD` takes precedence over `--password-stdin`, including when the
+environment variable is explicitly empty. Without either source, an interactive
+terminal prompts for the password. A non-interactive process does not read standard
+input unless `--password-stdin` is set.
+
+```bash
 # Push record with signature 
 dirctl push record.json --sign --key cosign.key
 

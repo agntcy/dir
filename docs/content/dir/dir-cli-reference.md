@@ -1387,6 +1387,14 @@ Record name verification proves that the signing key is authorized by the domain
 
 Signs records for integrity and authenticity. When signing a record with a verifiable name (e.g., `https://domain/path`), the system automatically attempts to verify domain authorization via JWKS. See [Name Verification](#name-verification) for details.
 
+For encrypted private keys, `COSIGN_PASSWORD` is used when it is set, including when
+it is explicitly empty. Use `--password-stdin` to opt in to reading a password from
+standard input. Otherwise, an interactive terminal prompts for the password; a
+non-interactive process does not read standard input implicitly.
+
+Local and inline PEM keys must use the encrypted Cosign/Sigstore format produced by
+`cosign generate-key-pair`.
+
 The `--key` flag accepts PEM content, a local file, an HTTP(S) URL, an environment
 variable reference, or a KMS URI. The supported KMS URI formats are:
 
@@ -1410,6 +1418,9 @@ Configure the selected provider's credentials before running `dirctl`.
 
     # Sign with a pre-issued OIDC token (non-interactive)
     dirctl sign <cid> --oidc-token "$OIDC_TOKEN"
+
+    # Explicitly read an encrypted private-key password from standard input
+    printf '%s' "$KEY_PASSWORD" | dirctl sign <cid> --key cosign.key --password-stdin
 
     # Sign with a key managed by Google Cloud KMS
     dirctl sign <cid> --key "gcpkms://projects/PROJECT/locations/LOCATION/keyRings/RING/cryptoKeys/KEY"
