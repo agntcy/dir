@@ -19,12 +19,12 @@ replace (
 )
 
 require (
-	buf.build/gen/go/agntcy/oasf/protocolbuffers/go v1.36.11-20260703134941-ebce38fee5a5.1
-	github.com/agntcy/dir-importer v1.5.2-0.20260722103554-a0ac00e66182
-	github.com/agntcy/dir-mcp v1.3.3
-	github.com/agntcy/dir-runtime/discovery v1.3.3
-	github.com/agntcy/dir-runtime/server v1.3.3
-	github.com/agntcy/dir-runtime/store v1.3.3
+	buf.build/gen/go/agntcy/oasf/protocolbuffers/go v1.36.11-20260721113505-cf7db8888586.1
+	github.com/agntcy/dir-importer v1.5.2
+	github.com/agntcy/dir-mcp v1.3.4
+	github.com/agntcy/dir-runtime/discovery v1.3.4
+	github.com/agntcy/dir-runtime/server v1.3.4
+	github.com/agntcy/dir-runtime/store v1.3.4
 	github.com/agntcy/dir/api v1.6.2
 	github.com/agntcy/dir/client v1.6.2
 	github.com/agntcy/dir/reconciler v1.6.2
@@ -65,7 +65,7 @@ require (
 	dario.cat/mergo v1.0.2 // indirect
 	github.com/99designs/gqlgen v0.17.91 // indirect
 	github.com/Azure/azure-sdk-for-go/sdk/azcore v1.22.0 // indirect
-	github.com/Azure/azure-sdk-for-go/sdk/azidentity v1.13.1 // indirect
+	github.com/Azure/azure-sdk-for-go/sdk/azidentity v1.14.0 // indirect
 	github.com/Azure/azure-sdk-for-go/sdk/containers/azcontainerregistry v0.2.3 // indirect
 	github.com/Azure/azure-sdk-for-go/sdk/security/keyvault/azkeys v1.5.0 // indirect
 	github.com/Azure/azure-sdk-for-go/sdk/security/keyvault/internal v1.2.0 // indirect
@@ -393,7 +393,7 @@ require (
 	github.com/Masterminds/semver/v3 v3.5.0 // indirect
 	github.com/Microsoft/go-winio v0.6.3-0.20251027160822-ad3df93bed29 // indirect
 	github.com/ThalesIgnite/crypto11 v1.6.0 // indirect
-	github.com/agntcy/dir-runtime/utils v1.3.3 // indirect
+	github.com/agntcy/dir-runtime/utils v1.3.4 // indirect
 	github.com/antlr4-go/antlr/v4 v4.13.1 // indirect
 	github.com/asaskevich/govalidator v0.0.0-20230301143203-a9d515a09cc2 // indirect
 	github.com/aws/aws-sdk-go-v2/config v1.32.25 // indirect
@@ -408,7 +408,7 @@ require (
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
 	github.com/containerd/errdefs v1.0.0 // indirect
 	github.com/containerd/errdefs/pkg v0.3.0 // indirect
-	github.com/coreos/go-oidc/v3 v3.18.0 // indirect
+	github.com/coreos/go-oidc/v3 v3.20.0 // indirect
 	github.com/coreos/go-semver v0.3.1 // indirect
 	github.com/coreos/go-systemd/v22 v22.7.0 // indirect
 	github.com/csirmazbendeguz/regclient v0.0.0-20260429082137-82ab6d426079 // indirect
@@ -494,7 +494,7 @@ require (
 	github.com/ipld/go-ipld-prime v0.23.0 // indirect
 	github.com/jackc/pgpassfile v1.0.0 // indirect
 	github.com/jackc/pgservicefile v0.0.0-20240606120523-5a60cdf6a761 // indirect
-	github.com/jackc/pgx/v5 v5.9.2 // indirect
+	github.com/jackc/pgx/v5 v5.10.0 // indirect
 	github.com/jackc/puddle/v2 v2.2.2 // indirect
 	github.com/jackpal/go-nat-pmp v1.0.2 // indirect
 	github.com/jbenet/go-temp-err-catcher v0.1.0 // indirect
@@ -527,7 +527,7 @@ require (
 	github.com/libp2p/go-reuseport v0.4.0 // indirect
 	github.com/libp2p/go-yamux/v5 v5.1.0 // indirect
 	github.com/libp2p/zeroconf/v2 v2.2.0 // indirect
-	github.com/mark3labs/mcp-go v0.56.0 // indirect
+	github.com/mark3labs/mcp-go v0.57.0 // indirect
 	github.com/marten-seemann/tcp v0.0.0-20210406111302-dfbc87cc63fd // indirect
 	github.com/mattn/go-isatty v0.0.22 // indirect
 	github.com/miekg/dns v1.1.72 // indirect
@@ -541,7 +541,7 @@ require (
 	github.com/moby/moby/client v0.5.0 // indirect
 	github.com/moby/term v0.5.2 // indirect
 	github.com/modelcontextprotocol/go-sdk v1.6.1 // indirect
-	github.com/modelcontextprotocol/registry v1.7.9 // indirect
+	github.com/modelcontextprotocol/registry v1.8.0 // indirect
 	github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd // indirect
 	github.com/modern-go/reflect2 v1.0.3-0.20250322232337-35a7c28c31ee // indirect
 	github.com/mr-tron/base58 v1.3.0 // indirect
