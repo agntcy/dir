@@ -2868,7 +2868,15 @@ cosign<span class="w"> </span>generate-key-pair
 <span class="c1"># Set COSIGN_PASSWORD shell variable if you password-protected the private key</span>
 <span class="nb">export</span><span class="w"> </span><span class="nv">COSIGN_PASSWORD</span><span class="o">=</span>your_password_here
 
-<span class="c1"># Push record with signature </span>
+<span class="c1"># Alternatively, explicitly read the password from standard input</span>
+<span class="nb">printf</span><span class="w"> </span><span class="s1">&#39;%s&#39;</span><span class="w"> </span><span class="s2">&quot;</span><span class="nv">$KEY_PASSWORD</span><span class="s2">&quot;</span><span class="w"> </span><span class="p">|</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>dirctl<span class="w"> </span>sign<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$RECORD_CID</span><span class="s2">&quot;</span><span class="w"> </span>--key<span class="w"> </span>cosign.key<span class="w"> </span>--password-stdin
+</code></pre></div>
+<p><code>COSIGN_PASSWORD</code> takes precedence over <code>--password-stdin</code>, including when the
+environment variable is explicitly empty. Without either source, an interactive
+terminal prompts for the password. A non-interactive process does not read standard
+input unless <code>--password-stdin</code> is set.</p>
+<div class="highlight"><pre><span></span><code><span class="c1"># Push record with signature </span>
 dirctl<span class="w"> </span>push<span class="w"> </span>record.json<span class="w"> </span>--sign<span class="w"> </span>--key<span class="w"> </span>cosign.key
 
 <span class="c1"># Verify the signed record</span>
