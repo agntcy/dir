@@ -43,6 +43,10 @@ type File struct {
 type Extractor struct {
 	OASFURL  string `yaml:"oasf_url"`
 	AssetDir string `yaml:"asset_dir"`
+	// RemoteAddr is an optional gRPC OASF-SDK server address. When set,
+	// consumers resolve the remote extractor backend instead of loading the
+	// in-process assets under AssetDir.
+	RemoteAddr string `yaml:"remote_addr,omitempty"`
 }
 
 // Context is a named client configuration block.

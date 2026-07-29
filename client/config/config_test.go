@@ -666,6 +666,26 @@ func TestExtractorRoundTrip(t *testing.T) {
 	assert.Nil(t, got)
 }
 
+func TestSaveExtractorRoundTripsRemoteAddr(t *testing.T) {
+	t.Setenv("XDG_CONFIG_HOME", filepath.Join(t.TempDir(), "xdg"))
+
+	path, err := DefaultPath()
+	require.NoError(t, err)
+
+	// A remote OASF-SDK server address must survive a save/load round trip so
+	// consumers can resolve the remote extractor backend from persisted config.
+	require.NoError(t, SaveExtractor(path, &Extractor{
+		OASFURL:    "https://schema.oasf.outshift.com",
+		AssetDir:   "/home/u/.agntcy/oasf-sdk/extractor",
+		RemoteAddr: "oasf-sdk:31234",
+	}))
+
+	got, err := LoadExtractor(path)
+	require.NoError(t, err)
+	require.NotNil(t, got)
+	assert.Equal(t, "oasf-sdk:31234", got.RemoteAddr)
+}
+
 func TestLoadExtractorAbsentFile(t *testing.T) {
 	got, err := LoadExtractor(filepath.Join(t.TempDir(), "nope.yaml"))
 	require.NoError(t, err)
