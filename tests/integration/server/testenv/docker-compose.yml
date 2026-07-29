@@ -1,7 +1,7 @@
 name: dir-integration-tests-for-server
 services:
   zot:
-    image: ghcr.io/project-zot/zot:v2.1.15
+    image: ghcr.io/project-zot/zot:v2.1.18
     ports:
       - 5556:5000
     deploy:
@@ -10,7 +10,7 @@ services:
       restart_policy:
         condition: on-failure
   postgres:
-    image: docker.io/bitnami/postgresql@sha256:e8b68936d05ee665974430bb4765fedcdc5c9ba399e133e120e2deed77f54dbf
+    image: docker.io/bitnami/postgresql:latest@sha256:cc46b91332b9e931019b8657fd046d9abab343c45f7c7616121e19006e027163
     environment:
       POSTGRES_USER: ditfs_user
       POSTGRES_PASSWORD: ditfs_pass
