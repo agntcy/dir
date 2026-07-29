@@ -35,6 +35,16 @@ func (m *catalogModuleFixture) GetData() map[string]any           { return m.dat
 func (m *catalogModuleFixture) GetArtifactMediaType() string      { return m.artifactMediaType }
 
 func catalogRecord(cid, name, createdAt string, modules []coretypes.Module) coretypes.Record {
+	return catalogRecordWithTags(cid, name, createdAt, modules, []coretypes.Skill{&testSkill{id: 1, name: "test_skill"}}, nil, nil)
+}
+
+func catalogRecordWithTags(
+	cid, name, createdAt string,
+	modules []coretypes.Module,
+	skills []coretypes.Skill,
+	domains []coretypes.Domain,
+	annotations map[string]string,
+) coretypes.Record {
 	return &testRecord{
 		cid:           cid,
 		name:          name,
@@ -42,7 +52,9 @@ func catalogRecord(cid, name, createdAt string, modules []coretypes.Module) core
 		description:   "a " + name + " agent",
 		schemaVersion: "0.5.0",
 		createdAt:     createdAt,
-		skills:        []coretypes.Skill{&testSkill{id: 1, name: "test_skill"}},
+		skills:        skills,
+		domains:       domains,
+		annotations:   annotations,
 		modules:       modules,
 	}
 }
@@ -199,6 +211,51 @@ func TestCountCatalogEntries_AgentSkillsMediaType(t *testing.T) {
 	))
 	require.NoError(t, err)
 	assert.Equal(t, uint32(2), count)
+}
+
+func TestCountCatalogEntries_TagFilters(t *testing.T) {
+	db := setupTestDB(t)
+
+	a2aModule := []coretypes.Module{
+		&catalogModuleFixture{id: 1, name: translator.A2AModuleName, data: map[string]any{"protocol_version": "1.0"}},
+	}
+
+	skillTagged := catalogRecordWithTags(
+		"cid-tag-skill", "tag-skill", "2024-06-01T00:00:00Z", a2aModule,
+		[]coretypes.Skill{&testSkill{id: 11, name: "natural_language_processing/text_completion"}}, nil, nil,
+	)
+	domainTagged := catalogRecordWithTags(
+		"cid-tag-domain", "tag-domain", "2024-06-02T00:00:00Z", a2aModule,
+		nil, []coretypes.Domain{&testDomain{id: 21, name: "healthcare/clinical"}}, nil,
+	)
+	annotationTagged := catalogRecordWithTags(
+		"cid-tag-annotation", "tag-annotation", "2024-06-03T00:00:00Z", a2aModule,
+		nil, nil, map[string]string{"owner": "alice"},
+	)
+
+	for _, r := range []coretypes.Record{skillTagged, domainTagged, annotationTagged} {
+		require.NoError(t, db.AddRecord(r))
+	}
+
+	count, err := db.CountCatalogEntries(types.WithTagFilters(types.TagFilter{SkillName: "natural_language_processing/*"}))
+	require.NoError(t, err)
+	assert.Equal(t, uint32(1), count)
+
+	count, err = db.CountCatalogEntries(types.WithTagFilters(
+		types.TagFilter{SkillName: "natural_language_processing/*"},
+		types.TagFilter{DomainName: "healthcare/*"},
+	))
+	require.NoError(t, err)
+	assert.Equal(t, uint32(2), count)
+
+	count, err = db.CountCatalogEntries(types.WithTagFilters(
+		types.TagFilter{SkillName: "natural_language_processing/*"},
+		types.TagFilter{DomainName: "healthcare/*"},
+		types.TagFilter{Annotation: &types.Annotation{Key: "owner", Value: "alice"}},
+		types.TagFilter{AnnotationKey: "env"},
+	))
+	require.NoError(t, err)
+	assert.Equal(t, uint32(3), count)
 }
 
 func TestCountCatalogEntries(t *testing.T) {

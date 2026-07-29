@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	catalogv1 "github.com/agntcy/dir/api/catalog/v1"
+	"github.com/agntcy/dir/server/database/utils"
 	"github.com/agntcy/dir/server/types"
 	"gorm.io/gorm"
 )
@@ -46,6 +47,7 @@ func (d *DB) CountCatalogEntries(opts ...types.CatalogQueryOption) (uint32, erro
 	query = d.handleFilterOptions(query, &recordCfg)
 	query = applyKnownCatalogModuleFilter(query)
 	query = applyMediaTypeFilter(query, cfg.MediaTypeFilters)
+	query = applyTagFilter(query, cfg.TagFilters)
 	query = query.Distinct("records.record_cid")
 
 	var count int64
@@ -161,6 +163,7 @@ func (d *DB) GetCatalogEntries(opts ...types.CatalogQueryOption) ([]*catalogv1.C
 	query = d.handleFilterOptions(query, &recordCfg)
 	query = applyKnownCatalogModuleFilter(query)
 	query = applyMediaTypeFilter(query, cfg.MediaTypeFilters)
+	query = applyTagFilter(query, cfg.TagFilters)
 
 	query, err = applyCatalogOrder(query, &recordCfg)
 	if err != nil {
@@ -284,6 +287,84 @@ EXISTS (
 )`
 
 	return clause, args, nil
+}
+
+func applyTagFilter(query *gorm.DB, filters []types.TagFilter) *gorm.DB {
+	if len(filters) == 0 {
+		return query
+	}
+
+	conditions := make([]string, 0, len(filters))
+	args := make([]any, 0, len(filters))
+
+	for _, filter := range filters {
+		condition, filterArgs, err := tagExistsCondition(filter)
+		if err != nil {
+			logger.Error("unsupported tag filter", "error", err)
+
+			return query.Where("1 = 0")
+		}
+
+		if condition == "" {
+			continue
+		}
+
+		conditions = append(conditions, condition)
+		args = append(args, filterArgs...)
+	}
+
+	if len(conditions) == 0 {
+		return query
+	}
+
+	condition := strings.Join(conditions, " OR ")
+	if len(conditions) > 1 {
+		condition = "(" + condition + ")"
+	}
+
+	return query.Where(condition, args...)
+}
+
+func tagExistsCondition(filter types.TagFilter) (string, []any, error) {
+	switch {
+	case filter.SkillName != "":
+		condition, arg := utils.BuildSingleWildcardCondition("tag_skills.name", filter.SkillName)
+
+		return fmt.Sprintf(`
+EXISTS (
+	SELECT 1 FROM skills tag_skills
+	WHERE tag_skills.record_cid = records.record_cid
+	AND %s
+)`, condition), []any{arg}, nil
+	case filter.DomainName != "":
+		condition, arg := utils.BuildSingleWildcardCondition("tag_domains.name", filter.DomainName)
+
+		return fmt.Sprintf(`
+EXISTS (
+	SELECT 1 FROM domains tag_domains
+	WHERE tag_domains.record_cid = records.record_cid
+	AND %s
+)`, condition), []any{arg}, nil
+	case filter.Annotation != nil:
+		return `
+EXISTS (
+	SELECT 1 FROM annotations tag_annotations
+	WHERE tag_annotations.record_cid = records.record_cid
+	AND tag_annotations.key = ?
+	AND tag_annotations.value = ?
+)`, []any{filter.Annotation.Key, filter.Annotation.Value}, nil
+	case filter.AnnotationKey != "":
+		condition, arg := utils.BuildSingleWildcardCondition("tag_annotations.key", filter.AnnotationKey)
+
+		return fmt.Sprintf(`
+EXISTS (
+	SELECT 1 FROM annotations tag_annotations
+	WHERE tag_annotations.record_cid = records.record_cid
+	AND %s
+)`, condition), []any{arg}, nil
+	default:
+		return "", nil, fmt.Errorf("tag filter has no match criteria")
+	}
 }
 
 func convertScanReports(reports []ScanReport) []catalogv1.ScanReportSummary {

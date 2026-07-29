@@ -251,49 +251,53 @@ func TestParseAgentFilter(t *testing.T) {
 	t.Run("tags skill tag", func(t *testing.T) {
 		f, err := parseAgentFilter(`tags=oasf:*:skills:natural_language_processing/*`)
 		require.NoError(t, err)
-		assert.Equal(t, []string{"natural_language_processing/*"}, f.SkillNames)
-		assert.Empty(t, f.DomainNames)
+		assert.Equal(t, []types.TagFilter{{SkillName: "natural_language_processing/*"}}, f.TagFilters)
 	})
 
 	t.Run("tags comma-OR", func(t *testing.T) {
 		f, err := parseAgentFilter(`tags=oasf:*:skills:foo/*,oasf:*:skills:bar`)
 		require.NoError(t, err)
-		assert.Equal(t, []string{"foo/*", "bar"}, f.SkillNames)
-		assert.Empty(t, f.DomainNames)
+		assert.Equal(t, []types.TagFilter{
+			{SkillName: "foo/*"},
+			{SkillName: "bar"},
+		}, f.TagFilters)
 	})
 
 	t.Run("tags domain tag", func(t *testing.T) {
 		f, err := parseAgentFilter(`tags=oasf:*:domains:healthcare/*`)
 		require.NoError(t, err)
-		assert.Equal(t, []string{"healthcare/*"}, f.DomainNames)
-		assert.Empty(t, f.SkillNames)
+		assert.Equal(t, []types.TagFilter{{DomainName: "healthcare/*"}}, f.TagFilters)
 	})
 
 	t.Run("tags mixed skill and domain", func(t *testing.T) {
 		f, err := parseAgentFilter(`tags=oasf:*:skills:foo,oasf:*:domains:bar`)
 		require.NoError(t, err)
-		assert.Equal(t, []string{"foo"}, f.SkillNames)
-		assert.Equal(t, []string{"bar"}, f.DomainNames)
+		assert.Equal(t, []types.TagFilter{
+			{SkillName: "foo"},
+			{DomainName: "bar"},
+		}, f.TagFilters)
 	})
 
 	t.Run("tags annotation pair", func(t *testing.T) {
 		f, err := parseAgentFilter(`tags="owner=alice"`)
 		require.NoError(t, err)
-		assert.Equal(t, []types.Annotation{{Key: "owner", Value: "alice"}}, f.Annotations)
+		assert.Equal(t, []types.TagFilter{{Annotation: &types.Annotation{Key: "owner", Value: "alice"}}}, f.TagFilters)
 	})
 
 	t.Run("tags annotation key only", func(t *testing.T) {
 		f, err := parseAgentFilter(`tags=owner`)
 		require.NoError(t, err)
-		assert.Equal(t, []string{"owner"}, f.AnnotationKeys)
+		assert.Equal(t, []types.TagFilter{{AnnotationKey: "owner"}}, f.TagFilters)
 	})
 
 	t.Run("tags mixed catalog tag kinds", func(t *testing.T) {
 		f, err := parseAgentFilter(`tags=oasf:*:skills:foo,"owner=alice",env`)
 		require.NoError(t, err)
-		assert.Equal(t, []string{"foo"}, f.SkillNames)
-		assert.Equal(t, []types.Annotation{{Key: "owner", Value: "alice"}}, f.Annotations)
-		assert.Equal(t, []string{"env"}, f.AnnotationKeys)
+		assert.Equal(t, []types.TagFilter{
+			{SkillName: "foo"},
+			{Annotation: &types.Annotation{Key: "owner", Value: "alice"}},
+			{AnnotationKey: "env"},
+		}, f.TagFilters)
 	})
 
 	invalid := []struct {
@@ -371,10 +375,13 @@ func TestBuildCatalogFilterOptionsSafe(t *testing.T) {
 
 func TestBuildCatalogFilterOptionsTags(t *testing.T) {
 	f := agentFilter{
-		SkillNames:     []string{"natural_language_processing/*", "coding/*"},
-		DomainNames:    []string{"healthcare/*"},
-		Annotations:    []types.Annotation{{Key: "owner", Value: "alice"}},
-		AnnotationKeys: []string{"env"},
+		TagFilters: []types.TagFilter{
+			{SkillName: "natural_language_processing/*"},
+			{SkillName: "coding/*"},
+			{DomainName: "healthcare/*"},
+			{Annotation: &types.Annotation{Key: "owner", Value: "alice"}},
+			{AnnotationKey: "env"},
+		},
 	}
 
 	opts, ok := buildCatalogFilterOptions(f, nil, 20, 0)
@@ -385,23 +392,31 @@ func TestBuildCatalogFilterOptionsTags(t *testing.T) {
 		opt.ApplyCatalog(&cfg)
 	}
 
-	assert.Equal(t, []string{"natural_language_processing/*", "coding/*"}, cfg.SkillNames)
-	assert.Equal(t, []string{"healthcare/*"}, cfg.DomainNames)
-	assert.Equal(t, []types.Annotation{{Key: "owner", Value: "alice"}}, cfg.Annotations)
-	assert.Equal(t, []string{"env"}, cfg.AnnotationKeys)
+	assert.Equal(t, []types.TagFilter{
+		{SkillName: "natural_language_processing/*"},
+		{SkillName: "coding/*"},
+		{DomainName: "healthcare/*"},
+		{Annotation: &types.Annotation{Key: "owner", Value: "alice"}},
+		{AnnotationKey: "env"},
+	}, cfg.TagFilters)
 }
 
-func TestParseTags(t *testing.T) {
-	skillNames, domainNames, annotations, annotationKeys := parseTags([]string{
-		"oasf:*:skills:retrieval_augmented_generation/*",
-		"oasf:*:domains:healthcare/*",
-		"owner=alice",
-		"env",
-	})
-	assert.Equal(t, []string{"retrieval_augmented_generation/*"}, skillNames)
-	assert.Equal(t, []string{"healthcare/*"}, domainNames)
-	assert.Equal(t, []types.Annotation{{Key: "owner", Value: "alice"}}, annotations)
-	assert.Equal(t, []string{"env"}, annotationKeys)
+func TestTagFilterForTag(t *testing.T) {
+	filter := tagFilterForTag("oasf:*:skills:retrieval_augmented_generation/*")
+	require.NotNil(t, filter)
+	assert.Equal(t, "retrieval_augmented_generation/*", filter.SkillName)
+
+	filter = tagFilterForTag("oasf:*:domains:healthcare/*")
+	require.NotNil(t, filter)
+	assert.Equal(t, "healthcare/*", filter.DomainName)
+
+	filter = tagFilterForTag("owner=alice")
+	require.NotNil(t, filter)
+	assert.Equal(t, &types.Annotation{Key: "owner", Value: "alice"}, filter.Annotation)
+
+	filter = tagFilterForTag("env")
+	require.NotNil(t, filter)
+	assert.Equal(t, "env", filter.AnnotationKey)
 }
 
 func TestParseOrderBy(t *testing.T) {

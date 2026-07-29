@@ -8,11 +8,19 @@ import "fmt"
 type CatalogFilters struct {
 	RecordFilters
 	MediaTypeFilters []MediaTypeFilter
+	TagFilters       []TagFilter
 }
 
 type MediaTypeFilter struct {
 	ModuleName        string
 	ArtifactMediaType string
+}
+
+type TagFilter struct {
+	SkillName     string
+	DomainName    string
+	Annotation    *Annotation
+	AnnotationKey string
 }
 
 type CatalogQueryOption interface {
@@ -50,5 +58,11 @@ func CatalogFiltersFromOptions(opts ...CatalogQueryOption) (*CatalogFilters, err
 func WithMediaTypeFilters(filters ...MediaTypeFilter) CatalogFilterOption {
 	return func(cfg *CatalogFilters) {
 		cfg.MediaTypeFilters = append(cfg.MediaTypeFilters, filters...)
+	}
+}
+
+func WithTagFilters(filters ...TagFilter) CatalogFilterOption {
+	return func(cfg *CatalogFilters) {
+		cfg.TagFilters = append(cfg.TagFilters, filters...)
 	}
 }
