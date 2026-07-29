@@ -13,7 +13,7 @@ replace (
 
 replace (
 	// Cosign does not updated the crypto11 owner
-	github.com/ThalesIgnite/crypto11 => github.com/ThalesGroup/crypto11 v1.6.2
+	github.com/ThalesIgnite/crypto11 => github.com/ThalesGroup/crypto11 v1.6.5
 	// go-libp2p v0.47.0 incompatible with quic-go/webtransport in libp2p
 	github.com/libp2p/go-libp2p => github.com/libp2p/go-libp2p v0.48.0
 )
@@ -32,11 +32,11 @@ require (
 	github.com/agntcy/dir/utils v1.6.2
 	github.com/agntcy/oasf-sdk/pkg v1.1.0
 	github.com/briandowns/spinner v1.23.2
-	github.com/ipfs/go-cid v0.6.1
+	github.com/ipfs/go-cid v0.6.2
 	github.com/libp2p/go-libp2p v0.48.0
 	github.com/mitchellh/mapstructure v1.5.1-0.20231216201459-8508981c8b6c
 	github.com/rs/zerolog v1.35.1
-	github.com/sigstore/cosign/v3 v3.1.1
+	github.com/sigstore/cosign/v3 v3.1.2
 	github.com/sigstore/sigstore v1.10.8
 	github.com/sigstore/sigstore/pkg/signature/kms/aws v1.10.8
 	github.com/sigstore/sigstore/pkg/signature/kms/azure v1.10.8
