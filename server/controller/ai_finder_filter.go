@@ -31,18 +31,15 @@ const filterMaxLen = 2048
 
 // agentFilter is the parsed representation of the ListAgents filter query.
 type agentFilter struct {
-	DisplayName    string
-	Types          []string
-	PublisherIDs   []string
-	CreatedAfter   time.Time
-	UpdatedAfter   time.Time
-	Verified       *bool
-	Trusted        *bool
-	Safe           *bool
-	SkillNames     []string
-	DomainNames    []string
-	Annotations    []types.Annotation
-	AnnotationKeys []string
+	DisplayName  string
+	Types        []string
+	PublisherIDs []string
+	CreatedAfter time.Time
+	UpdatedAfter time.Time
+	Verified     *bool
+	Trusted      *bool
+	Safe         *bool
+	TagFilters   []types.TagFilter
 }
 
 func mediaTypeFilterForType(mediaType string) *types.MediaTypeFilter {
@@ -190,20 +187,8 @@ func buildCatalogFilterOptions(f agentFilter, order []orderByClause, pageSize, o
 		opts = append(opts, types.WithScanSafe(*f.Safe))
 	}
 
-	if len(f.SkillNames) > 0 {
-		opts = append(opts, types.WithSkillNames(f.SkillNames...))
-	}
-
-	if len(f.DomainNames) > 0 {
-		opts = append(opts, types.WithDomainNames(f.DomainNames...))
-	}
-
-	if len(f.Annotations) > 0 {
-		opts = append(opts, types.WithAnnotations(f.Annotations...))
-	}
-
-	if len(f.AnnotationKeys) > 0 {
-		opts = append(opts, types.WithAnnotationKeys(f.AnnotationKeys...))
+	if len(f.TagFilters) > 0 {
+		opts = append(opts, types.WithTagFilters(f.TagFilters...))
 	}
 
 	if len(order) > 0 {
@@ -467,12 +452,14 @@ func applyClause(out *agentFilter, field string, values []string) error {
 		return nil
 
 	case "tags":
-		skillNames, domainNames, annotations, annotationKeys := parseTags(values)
+		filters := make([]types.TagFilter, 0, len(values))
+		for _, tag := range values {
+			if filter := tagFilterForTag(tag); filter != nil {
+				filters = append(filters, *filter)
+			}
+		}
 
-		out.SkillNames = skillNames
-		out.DomainNames = domainNames
-		out.Annotations = annotations
-		out.AnnotationKeys = annotationKeys
+		out.TagFilters = filters
 
 		return nil
 
@@ -511,28 +498,19 @@ func singleTimestamp(field string, values []string) (time.Time, error) {
 	return ts.UTC(), nil
 }
 
-func parseTags(tags []string) ([]string, []string, []types.Annotation, []string) {
-	var (
-		skillNames     []string
-		domainNames    []string
-		annotations    []types.Annotation
-		annotationKeys []string
-	)
+func tagFilterForTag(tag string) *types.TagFilter {
+	switch {
+	case isSkillTag(tag):
+		return &types.TagFilter{SkillName: parseSkillName(tag)}
+	case isDomainTag(tag):
+		return &types.TagFilter{DomainName: parseDomainName(tag)}
+	case isAnnotationTag(tag):
+		annotation := parseAnnotation(tag)
 
-	for _, tag := range tags {
-		switch {
-		case isSkillTag(tag):
-			skillNames = append(skillNames, parseSkillName(tag))
-		case isDomainTag(tag):
-			domainNames = append(domainNames, parseDomainName(tag))
-		case isAnnotationTag(tag):
-			annotations = append(annotations, parseAnnotation(tag))
-		default:
-			annotationKeys = append(annotationKeys, tag)
-		}
+		return &types.TagFilter{Annotation: &annotation}
+	default:
+		return &types.TagFilter{AnnotationKey: tag}
 	}
-
-	return skillNames, domainNames, annotations, annotationKeys
 }
 
 func isSkillTag(tag string) bool {
