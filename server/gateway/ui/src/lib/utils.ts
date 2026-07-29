@@ -1,13 +1,5 @@
-import type { AICardFilterCriteria, CatalogEntry, ScanManifest, SubEntry, ExportFormat, UsageMetrics, TrustStatus } from './types';
+import type { CatalogEntry, ScanManifest, SubEntry, ExportFormat, UsageMetrics, TrustStatus } from './types';
 import { TRUST_STATUS_METADATA_KEY } from './types';
-
-export function hasActiveClientFilters(criteria: AICardFilterCriteria): boolean {
-	return (
-		criteria.activeTags.size > 0 ||
-		criteria.statusFilters.size > 0 ||
-		criteria.scanSafe
-	);
-}
 
 export function getScanManifest(aicard: CatalogEntry): ScanManifest | null {
 	const sm = aicard.metadata?.["agntcy.dir.security.v1.ScanResult"] as ScanManifest | undefined;
@@ -17,59 +9,6 @@ export function getScanManifest(aicard: CatalogEntry): ScanManifest | null {
 
 export function hasScanManifest(aicard: CatalogEntry): boolean {
 	return getScanManifest(aicard) !== null;
-}
-
-export function applyClientFilters(
-	aicards: CatalogEntry[],
-	criteria: AICardFilterCriteria
-): CatalogEntry[] {
-	return aicards.filter((aicard) => {
-		if (criteria.activeTags.size > 0) {
-			const aicardTags = new Set(aicard.tags || []);
-			if (!entryMatchesAnyActiveTag(aicardTags, criteria.activeTags)) return false;
-		}
-
-		if (criteria.statusFilters.size > 0) {
-			const trustStatus = getTrustStatus(aicard);
-			for (const filter of criteria.statusFilters) {
-				if (filter === 'trusted' && !trustStatus?.trusted) return false;
-				if (filter === 'verified' && !trustStatus?.verified) return false;
-			}
-		}
-
-		if (criteria.scanSafe) {
-			const sm = getScanManifest(aicard);
-			if (!sm || !sm.isSafe) return false;
-		}
-
-		return true;
-	});
-}
-
-function entryMatchesAnyActiveTag(entryTags: Set<string>, activeTags: Set<string>): boolean {
-	for (const filterTag of activeTags) {
-		if (entryTags.has(filterTag)) return true;
-
-		for (const entryTag of entryTags) {
-			if (catalogTagMatchesFilter(filterTag, entryTag)) return true;
-		}
-	}
-
-	return false;
-}
-
-export function catalogTagMatchesFilter(filterTag: string, entryTag: string): boolean {
-	const filterParts = filterTag.split(':');
-	const entryParts = entryTag.split(':');
-
-	if (filterParts.length !== entryParts.length) return false;
-
-	for (let i = 0; i < filterParts.length; i++) {
-		if (filterParts[i] === '*') continue;
-		if (filterParts[i] !== entryParts[i]) return false;
-	}
-
-	return true;
 }
 
 export function extractEntryTypes(aicard: CatalogEntry): string[] {

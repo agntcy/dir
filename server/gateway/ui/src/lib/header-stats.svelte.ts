@@ -1,7 +1,5 @@
 export type CatalogHeaderStats = {
   totalCount: number;
-  catalogHydrating: boolean;
-  hydrationError: string;
 };
 
 class HeaderStatsState {

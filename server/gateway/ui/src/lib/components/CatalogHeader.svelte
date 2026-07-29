@@ -33,17 +33,7 @@
 			{#if headerStatsState.stats}
 				<div class="text-sm text-ink-medium text-right">
 					<span class="font-semibold text-ink-strong">{headerStatsState.stats.totalCount}</span>
-					{#if headerStatsState.stats.catalogHydrating}
-						<span class="text-ink-weak">+</span>
-					{/if}
 					AI cards indexed
-					{#if headerStatsState.stats.catalogHydrating}
-						<p class="text-xs text-ink-weak mt-0.5">Loading full catalog…</p>
-					{:else if headerStatsState.stats.hydrationError}
-						<p class="text-xs text-amber-700 mt-0.5">
-							Partial catalog loaded ({headerStatsState.stats.hydrationError})
-						</p>
-					{/if}
 				</div>
 			{/if}
 		</div>

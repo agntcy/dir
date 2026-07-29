@@ -3,23 +3,42 @@ import type { AICardFilterCriteria, CatalogEntry, CatalogTag } from './types';
 /** Matches the 3-column grid layout (18 = 6 full rows). */
 export const CATALOG_PAGE_SIZE = 18;
 
-/** Backend max page size; used for background catalog hydration. */
-export const CATALOG_HYDRATION_PAGE_SIZE = 100;
-
 export interface AICardsPage {
 	results: CatalogEntry[];
 	nextPageToken: string;
 	totalCount: number;
 }
 
-export function buildAICardFilterQuery(
-	criteria: Pick<AICardFilterCriteria, 'searchQuery' | 'mediaTypes'>
-): string {
+/** Mirrors ListAgents page_token encoding (base64url of the decimal offset). */
+export function pageTokenForPage(page: number, pageSize = CATALOG_PAGE_SIZE): string {
+	const offset = (page - 1) * pageSize;
+	if (offset <= 0) {
+		return '';
+	}
+
+	const bytes = new TextEncoder().encode(String(offset));
+	let binary = '';
+	for (const byte of bytes) {
+		binary += String.fromCharCode(byte);
+	}
+
+	return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
+
+function formatFilterToken(value: string): string {
+	if (/[",=]/.test(value) || value.includes(',')) {
+		return `"${value.replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"`;
+	}
+
+	return value;
+}
+
+export function buildAICardFilterQuery(criteria: AICardFilterCriteria): string {
 	const clauses: string[] = [];
 
 	const search = criteria.searchQuery.trim();
 	if (search) {
-		clauses.push(`displayName=${search}`);
+		clauses.push(`displayName=${formatFilterToken(search)}`);
 	}
 
 	if (!criteria.mediaTypes.has('all')) {
@@ -27,6 +46,23 @@ export function buildAICardFilterQuery(
 		if (types.length > 0) {
 			clauses.push(`type=${types.join(',')}`);
 		}
+	}
+
+	if (criteria.statusFilters.has('verified')) {
+		clauses.push('verified=true');
+	}
+
+	if (criteria.statusFilters.has('trusted')) {
+		clauses.push('trusted=true');
+	}
+
+	if (criteria.scanSafe) {
+		clauses.push('safe=true');
+	}
+
+	if (criteria.activeTags.size > 0) {
+		const tags = [...criteria.activeTags].map(formatFilterToken).join(',');
+		clauses.push(`tags=${tags}`);
 	}
 
 	return clauses.join(' AND ');
