@@ -205,6 +205,9 @@ func TestRecordToCatalog_AgentSkillsMediaTypes(t *testing.T) {
 			module: &oasftypesv1.Module{
 				Name: AgentSkillsModuleName,
 				Id:   10302,
+				Artifact: &oasftypesv1.Descriptor{
+					MediaType: ProtocolAgentSkillsMdMediaType,
+				},
 				Data: toStruct(t, map[string]any{
 					"skill_file": "SKILL.md",
 					"skill_manifest": map[string]any{
@@ -221,18 +224,15 @@ func TestRecordToCatalog_AgentSkillsMediaTypes(t *testing.T) {
 			module: &oasftypesv1.Module{
 				Name: AgentSkillsModuleName,
 				Id:   10302,
+				Artifact: &oasftypesv1.Descriptor{
+					MediaType: ProtocolAgentSkillsBundleMediaType,
+				},
 				Data: toStruct(t, map[string]any{
 					"skill_file": "SKILL.md",
 					"skill_manifest": map[string]any{
 						"name":        "summarize-text",
 						"description": "Summarize documents.",
 						"version":     "1.0.0",
-					},
-					"artifacts": []any{
-						map[string]any{
-							"path": "references/style-guide.md",
-							"type": "file",
-						},
 					},
 				}),
 			},

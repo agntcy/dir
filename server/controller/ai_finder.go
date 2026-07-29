@@ -91,7 +91,7 @@ func (c *aiFinderController) ListAgents(ctx context.Context, req *catalogv1.List
 
 	pageSize := int(clampPageSize(req.GetPageSize()))
 
-	opts, ok := buildRecordFilterOptions(parsedFilter, order, pageSize, offset)
+	opts, ok := buildCatalogFilterOptions(parsedFilter, order, pageSize, offset)
 	if !ok {
 		// type= matched no indexed module: zero rows, not an error.
 		return &catalogv1.ListAgentsResponse{}, nil
@@ -109,10 +109,6 @@ func (c *aiFinderController) ListAgents(ctx context.Context, req *catalogv1.List
 		aiFinderLogger.Error("failed to list catalog entries", "error", err)
 
 		return nil, status.Error(codes.Internal, "failed to list catalog entries") //nolint:wrapcheck
-	}
-
-	if len(parsedFilter.Types) > 0 {
-		entries = filterCatalogEntriesByMediaType(entries, parsedFilter.Types)
 	}
 
 	var nextPageToken string
@@ -210,7 +206,10 @@ func (c *aiFinderController) GetAgent(ctx context.Context, req *catalogv1.GetAge
 		return nil, status.Errorf(codes.Canceled, "%v", err)
 	}
 
-	entries, _, err := c.db.GetCatalogEntries(types.WithCIDs(cid), types.WithLimit(1))
+	entries, _, err := c.db.GetCatalogEntries(
+		types.WithCIDs(cid),
+		types.WithLimit(1),
+	)
 	if err != nil {
 		aiFinderLogger.Error("failed to load catalog entry", "cid", cid, "error", err)
 

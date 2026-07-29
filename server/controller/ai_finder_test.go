@@ -13,6 +13,7 @@ import (
 	corev1 "github.com/agntcy/dir/api/core/v1"
 	"github.com/agntcy/dir/server/config"
 	"github.com/agntcy/dir/server/types"
+	"github.com/agntcy/oasf-sdk/pkg/translator"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc/codes"
@@ -30,33 +31,39 @@ type fakeCatalogDB struct {
 	tags       []*catalogv1.CatalogTag
 	err        error
 	calls      int
-	gotFilters types.RecordFilters
+	gotFilters types.CatalogFilters
 }
 
-func (f *fakeCatalogDB) GetCatalogEntries(opts ...types.FilterOption) ([]*catalogv1.CatalogEntry, bool, error) {
-	f.calls++
+func (f *fakeCatalogDB) captureFilters(opts ...types.CatalogQueryOption) {
+	cfg := types.CatalogFilters{}
 
-	cfg := types.RecordFilters{}
-	for _, o := range opts {
-		o(&cfg)
+	for _, opt := range opts {
+		if opt != nil {
+			opt.ApplyCatalog(&cfg)
+		}
 	}
 
 	f.gotFilters = cfg
+}
+
+func (f *fakeCatalogDB) GetCatalogEntries(opts ...types.CatalogQueryOption) ([]*catalogv1.CatalogEntry, bool, error) {
+	f.calls++
+	f.captureFilters(opts...)
 
 	if f.err != nil {
 		return nil, false, f.err
 	}
 
 	entries := f.entries
-	if cfg.Offset > 0 {
-		if cfg.Offset >= len(entries) {
+	if f.gotFilters.Offset > 0 {
+		if f.gotFilters.Offset >= len(entries) {
 			return nil, false, nil
 		}
 
-		entries = entries[cfg.Offset:]
+		entries = entries[f.gotFilters.Offset:]
 	}
 
-	limit := cfg.Limit
+	limit := f.gotFilters.Limit
 	if limit <= 0 {
 		limit = 20
 	}
@@ -69,7 +76,9 @@ func (f *fakeCatalogDB) GetCatalogEntries(opts ...types.FilterOption) ([]*catalo
 	return entries, hasMore, nil
 }
 
-func (f *fakeCatalogDB) CountCatalogEntries(opts ...types.FilterOption) (uint32, error) {
+func (f *fakeCatalogDB) CountCatalogEntries(opts ...types.CatalogQueryOption) (uint32, error) {
+	f.captureFilters(opts...)
+
 	if f.err != nil {
 		return 0, f.err
 	}
@@ -143,7 +152,9 @@ func TestListAgents_FilterTranslation(t *testing.T) {
 	})
 	require.NoError(t, err)
 	assert.Equal(t, []string{"*weather*"}, db.gotFilters.Names)
-	assert.Equal(t, []string{"integration/a2a"}, db.gotFilters.ModuleNames)
+	require.Len(t, db.gotFilters.MediaTypeFilters, 1)
+	assert.Equal(t, "integration/a2a", db.gotFilters.MediaTypeFilters[0].ModuleName)
+	assert.Empty(t, db.gotFilters.MediaTypeFilters[0].ArtifactMediaType)
 	assert.Equal(t, []string{">2024-01-01T00:00:00Z"}, db.gotFilters.CreatedAts)
 }
 
@@ -310,55 +321,55 @@ func TestParseAgentFilter(t *testing.T) {
 	}
 }
 
-func TestBuildRecordFilterOptionsVerified(t *testing.T) {
+func TestBuildCatalogFilterOptionsVerified(t *testing.T) {
 	verified := true
 	f := agentFilter{Verified: &verified}
 
-	opts, ok := buildRecordFilterOptions(f, nil, 20, 0)
+	opts, ok := buildCatalogFilterOptions(f, nil, 20, 0)
 	require.True(t, ok)
 
-	var filters types.RecordFilters
+	cfg := types.CatalogFilters{}
 	for _, opt := range opts {
-		opt(&filters)
+		opt.ApplyCatalog(&cfg)
 	}
 
-	require.NotNil(t, filters.Verified)
-	assert.True(t, *filters.Verified)
+	require.NotNil(t, cfg.Verified)
+	assert.True(t, *cfg.Verified)
 }
 
-func TestBuildRecordFilterOptionsTrusted(t *testing.T) {
+func TestBuildCatalogFilterOptionsTrusted(t *testing.T) {
 	trusted := true
 	f := agentFilter{Trusted: &trusted}
 
-	opts, ok := buildRecordFilterOptions(f, nil, 20, 0)
+	opts, ok := buildCatalogFilterOptions(f, nil, 20, 0)
 	require.True(t, ok)
 
-	var filters types.RecordFilters
+	cfg := types.CatalogFilters{}
 	for _, opt := range opts {
-		opt(&filters)
+		opt.ApplyCatalog(&cfg)
 	}
 
-	require.NotNil(t, filters.Trusted)
-	assert.True(t, *filters.Trusted)
+	require.NotNil(t, cfg.Trusted)
+	assert.True(t, *cfg.Trusted)
 }
 
-func TestBuildRecordFilterOptionsSafe(t *testing.T) {
+func TestBuildCatalogFilterOptionsSafe(t *testing.T) {
 	safe := true
 	f := agentFilter{Safe: &safe}
 
-	opts, ok := buildRecordFilterOptions(f, nil, 20, 0)
+	opts, ok := buildCatalogFilterOptions(f, nil, 20, 0)
 	require.True(t, ok)
 
-	var filters types.RecordFilters
+	cfg := types.CatalogFilters{}
 	for _, opt := range opts {
-		opt(&filters)
+		opt.ApplyCatalog(&cfg)
 	}
 
-	require.NotNil(t, filters.ScanSafe)
-	assert.True(t, *filters.ScanSafe)
+	require.NotNil(t, cfg.ScanSafe)
+	assert.True(t, *cfg.ScanSafe)
 }
 
-func TestBuildRecordFilterOptionsTags(t *testing.T) {
+func TestBuildCatalogFilterOptionsTags(t *testing.T) {
 	f := agentFilter{
 		SkillNames:     []string{"natural_language_processing/*", "coding/*"},
 		DomainNames:    []string{"healthcare/*"},
@@ -366,18 +377,18 @@ func TestBuildRecordFilterOptionsTags(t *testing.T) {
 		AnnotationKeys: []string{"env"},
 	}
 
-	opts, ok := buildRecordFilterOptions(f, nil, 20, 0)
+	opts, ok := buildCatalogFilterOptions(f, nil, 20, 0)
 	require.True(t, ok)
 
-	var filters types.RecordFilters
+	cfg := types.CatalogFilters{}
 	for _, opt := range opts {
-		opt(&filters)
+		opt.ApplyCatalog(&cfg)
 	}
 
-	assert.Equal(t, []string{"natural_language_processing/*", "coding/*"}, filters.SkillNames)
-	assert.Equal(t, []string{"healthcare/*"}, filters.DomainNames)
-	assert.Equal(t, []types.Annotation{{Key: "owner", Value: "alice"}}, filters.Annotations)
-	assert.Equal(t, []string{"env"}, filters.AnnotationKeys)
+	assert.Equal(t, []string{"natural_language_processing/*", "coding/*"}, cfg.SkillNames)
+	assert.Equal(t, []string{"healthcare/*"}, cfg.DomainNames)
+	assert.Equal(t, []types.Annotation{{Key: "owner", Value: "alice"}}, cfg.Annotations)
+	assert.Equal(t, []string{"env"}, cfg.AnnotationKeys)
 }
 
 func TestParseTags(t *testing.T) {
@@ -598,24 +609,26 @@ func TestExportAgent_NilData(t *testing.T) {
 	assert.Equal(t, codes.Internal, status.Code(err))
 }
 
-func TestOASFModuleForMediaType_AgentSkillBundle(t *testing.T) {
-	module, ok := oasfModuleForMediaType(catalogv1.ProtocolAgentSkillsBundleMediaType)
-	assert.True(t, ok)
-	assert.Equal(t, "core/language_model/agentskills", module)
-}
-
-func TestFilterCatalogEntriesByMediaType(t *testing.T) {
-	entries := []*catalogv1.CatalogEntry{
-		{MediaType: catalogv1.ProtocolAgentSkillsMdMediaType},
-		{MediaType: catalogv1.ProtocolAgentSkillsBundleMediaType},
-		{MediaType: catalogv1.ProtocolMCPCardJsonMediaType},
-	}
-
-	got := filterCatalogEntriesByMediaType(entries, []string{
-		catalogv1.ProtocolAgentSkillsBundleMediaType,
+func TestBuildTypeFilterOptions(t *testing.T) {
+	t.Run("agent skills markdown", func(t *testing.T) {
+		filters, ok := buildTypeFilterOptions([]string{catalogv1.ProtocolAgentSkillsMdMediaType})
+		require.True(t, ok)
+		require.Len(t, filters, 1)
+		assert.Equal(t, translator.AgentSkillsModuleName, filters[0].ModuleName)
+		assert.Equal(t, catalogv1.ProtocolAgentSkillsMdMediaType, filters[0].ArtifactMediaType)
 	})
-	require.Len(t, got, 1)
-	assert.Equal(t, catalogv1.ProtocolAgentSkillsBundleMediaType, got[0].GetMediaType())
+
+	t.Run("agent skills bundle", func(t *testing.T) {
+		filters, ok := buildTypeFilterOptions([]string{catalogv1.ProtocolAgentSkillsBundleMediaType})
+		require.True(t, ok)
+		require.Len(t, filters, 1)
+		assert.Equal(t, catalogv1.ProtocolAgentSkillsBundleMediaType, filters[0].ArtifactMediaType)
+	})
+
+	t.Run("unknown type", func(t *testing.T) {
+		_, ok := buildTypeFilterOptions([]string{"application/unknown"})
+		assert.False(t, ok)
+	})
 }
 
 func TestListTags_ReturnsSortedTags(t *testing.T) {
