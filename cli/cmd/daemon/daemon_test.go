@@ -98,6 +98,44 @@ func TestLoadConfigRoutingAddressEnvOverrideWithUserConfig(t *testing.T) {
 	require.Equal(t, "ghcr.io/org/agents", cfg.Server.Routing.DirectoryOCIAddress)
 }
 
+// TestLoadConfigLocalRegistryCredentialEnvOverride asserts that the reconciler
+// local registry credentials can be set by environment alone, including for a
+// user-supplied config file that does not declare them, so a token never has to
+// be written into the config.
+func TestLoadConfigLocalRegistryCredentialEnvOverride(t *testing.T) {
+	dataDir := t.TempDir()
+
+	configPath := filepath.Join(dataDir, DefaultConfigFile)
+	require.NoError(t, os.WriteFile(configPath, []byte(defaultConfigYAML), 0o600))
+
+	for name, configFile := range map[string]string{
+		"embedded config":    "",
+		"user-supplied file": configPath,
+	} {
+		t.Run(name, func(t *testing.T) {
+			originalOpts := opts
+			opts = &Options{DataDir: dataDir, ConfigFile: configFile}
+
+			t.Cleanup(func() {
+				opts = originalOpts
+			})
+
+			cfg, err := loadConfig()
+			require.NoError(t, err)
+			require.Empty(t, cfg.Reconciler.LocalRegistry.Username)
+			require.Empty(t, cfg.Reconciler.LocalRegistry.Password)
+
+			t.Setenv("DIRECTORY_DAEMON_RECONCILER_LOCAL_REGISTRY_AUTH_CONFIG_USERNAME", "registry-user")
+			t.Setenv("DIRECTORY_DAEMON_RECONCILER_LOCAL_REGISTRY_AUTH_CONFIG_PASSWORD", "registry-token")
+
+			cfg, err = loadConfig()
+			require.NoError(t, err)
+			require.Equal(t, "registry-user", cfg.Reconciler.LocalRegistry.Username)
+			require.Equal(t, "registry-token", cfg.Reconciler.LocalRegistry.Password)
+		})
+	}
+}
+
 // TestEmbeddedZot tests the embedded Zot server.
 func TestEmbeddedZot(t *testing.T) {
 	address := storeconfig.DefaultRegistryAddress
