@@ -4,10 +4,10 @@
 	interface Props {
 		catalogTags: CatalogTag[];
 		tagsLoading?: boolean;
-		onchange: (criteria: AICardFilterCriteria) => void;
+		onCriteriaChange: (criteria: AICardFilterCriteria) => void;
 	}
 
-	let { catalogTags, tagsLoading = false, onchange }: Props = $props();
+	let { catalogTags, tagsLoading = false, onCriteriaChange }: Props = $props();
 
 	let searchQuery = $state('');
 	let mediaTypes = $state<Set<string>>(new Set(['all']));
@@ -23,7 +23,13 @@
 	);
 
 	function notifyChange() {
-		onchange({ searchQuery, mediaTypes, statusFilters, scanSafe, activeTags });
+		onCriteriaChange({
+			searchQuery,
+			mediaTypes: new Set(mediaTypes),
+			statusFilters: new Set(statusFilters),
+			activeTags: new Set(activeTags),
+			scanSafe
+		});
 	}
 
 	function handleStatusFilter(value: string, checked: boolean) {
