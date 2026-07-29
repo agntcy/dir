@@ -6,9 +6,10 @@ version: "3"
 vars:
   ## Version
   RELEASE_VERSION:
-    # versions.yaml carries a version: key per module-set, so grep-all would
-    # concatenate them with a newline. Take the first (api) version and stop.
-    sh: awk '/version:/{print $2; exit}' versions.yaml
+    # versions.yaml carries a version: key per module-set; grep-all would
+    # concatenate them with a newline. Select the api module-set version
+    # explicitly (it stamps api/version.Version) rather than relying on order.
+    sh: awk '/^  api:/{f=1} f&&/version:/{print $2; exit}' versions.yaml
   RELEASE_VERSION_LDFLAG: "-X 'github.com/agntcy/dir/api/version.Version={{ .RELEASE_VERSION }}'"
   COMMIT_SHA:
     sh: git rev-parse --short HEAD
