@@ -12,9 +12,9 @@ import (
 	"strings"
 
 	"github.com/agntcy/dir/cli/internal/agentcfg"
-	extractor "github.com/agntcy/dir/cli/internal/extractor"
 	"github.com/agntcy/dir/cli/presenter"
 	clientconfig "github.com/agntcy/dir/client/config"
+	extractor "github.com/agntcy/dir/client/extractor"
 	"github.com/spf13/cobra"
 	"golang.org/x/term"
 )

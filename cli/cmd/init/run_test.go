@@ -9,8 +9,8 @@ import (
 	"strings"
 	"testing"
 
-	extractor "github.com/agntcy/dir/cli/internal/extractor"
 	clientconfig "github.com/agntcy/dir/client/config"
+	extractor "github.com/agntcy/dir/client/extractor"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

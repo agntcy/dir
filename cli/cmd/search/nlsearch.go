@@ -12,11 +12,10 @@ import (
 
 	corev1 "github.com/agntcy/dir/api/core/v1"
 	searchv1 "github.com/agntcy/dir/api/search/v1"
-	"github.com/agntcy/dir/cli/internal/extractor"
-	"github.com/agntcy/dir/cli/internal/nlsearch"
 	"github.com/agntcy/dir/cli/presenter"
 	"github.com/agntcy/dir/client"
-	sdk "github.com/agntcy/oasf-sdk/pkg/extractor"
+	"github.com/agntcy/dir/client/extractor"
+	"github.com/agntcy/dir/client/nlsearch"
 	"github.com/spf13/cobra"
 )
 
@@ -44,17 +43,12 @@ type sigHit struct {
 // extractor, fans out one SearchCIDs request per signal, then scores and
 // returns results ranked by the number of signals that matched each record.
 func runNLSearch(cmd *cobra.Command, query string, c *client.Client) error {
-	ext, err := extractor.LoadConfigured()
+	ext, err := extractor.ResolveConfigured()
 	if err != nil {
 		return fmt.Errorf("natural-language search requires the OASF extractor — run `dirctl init` to set it up: %w", err)
 	}
 
-	var queryOpts []sdk.QueryOption
-	if len(opts.Filters.SchemaVersions) > 0 {
-		queryOpts = append(queryOpts, sdk.Versions(opts.Filters.SchemaVersions...))
-	}
-
-	signals, err := nlsearch.Decompose(cmd.Context(), query, ext, queryOpts...)
+	signals, err := nlsearch.Decompose(cmd.Context(), query, ext, extractor.ExtractOptions{Versions: opts.Filters.SchemaVersions})
 	if err != nil {
 		return fmt.Errorf("decompose query: %w", err)
 	}

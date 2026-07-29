@@ -8,7 +8,7 @@ import (
 	"strings"
 
 	"github.com/agntcy/dir/cli/internal/agentcfg"
-	extractor "github.com/agntcy/dir/cli/internal/extractor"
+	extractor "github.com/agntcy/dir/client/extractor"
 	"github.com/spf13/cobra"
 )
 

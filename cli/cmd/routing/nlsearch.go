@@ -9,8 +9,8 @@ import (
 	"fmt"
 
 	routingv1 "github.com/agntcy/dir/api/routing/v1"
-	"github.com/agntcy/dir/cli/internal/extractor"
-	"github.com/agntcy/dir/cli/internal/nlsearch"
+	"github.com/agntcy/dir/client/extractor"
+	"github.com/agntcy/dir/client/nlsearch"
 	sdk "github.com/agntcy/oasf-sdk/pkg/extractor"
 	"github.com/spf13/cobra"
 )
@@ -27,7 +27,7 @@ func runNLRoutingSearch(cmd *cobra.Command, query string) error {
 
 	// Use semantic-only weights and a low SDK-level floor so the extractor
 	// returns enough candidates for our routingMinScore filter to work with.
-	ext, err := extractor.LoadConfigured(
+	ext, err := extractor.ResolveConfigured(
 		sdk.WithWeights(1, 0),
 		sdk.WithDomainWeights(1, 0),
 		sdk.WithDefaultMinScore(routingMinScore),
@@ -36,12 +36,7 @@ func runNLRoutingSearch(cmd *cobra.Command, query string) error {
 		return fmt.Errorf("natural-language search requires the OASF extractor — run `dirctl init` to set it up: %w", err)
 	}
 
-	var queryOpts []sdk.QueryOption
-	if len(searchOpts.SchemaVersions) > 0 {
-		queryOpts = append(queryOpts, sdk.Versions(searchOpts.SchemaVersions...))
-	}
-
-	signals, err := nlsearch.DecomposeWithMinScore(cmd.Context(), query, ext, routingMinScore, queryOpts...)
+	signals, err := nlsearch.DecomposeWithMinScore(cmd.Context(), query, ext, routingMinScore, extractor.ExtractOptions{Versions: searchOpts.SchemaVersions})
 	if err != nil {
 		return fmt.Errorf("decompose query: %w", err)
 	}
