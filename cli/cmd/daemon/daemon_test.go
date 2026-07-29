@@ -115,6 +115,7 @@ func TestLoadConfigLocalRegistryCredentialEnvOverride(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			originalOpts := opts
 			opts = &Options{DataDir: dataDir, ConfigFile: configFile}
+
 			t.Cleanup(func() {
 				opts = originalOpts
 			})
