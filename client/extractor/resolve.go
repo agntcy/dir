@@ -3,7 +3,14 @@
 
 package extractor
 
-import "fmt"
+import (
+	"fmt"
+
+	extractorv1grpc "buf.build/gen/go/agntcy/oasf-sdk/grpc/go/agntcy/oasfsdk/extractor/v1/extractorv1grpc"
+	sdk "github.com/agntcy/oasf-sdk/pkg/extractor"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
+)
 
 // backendKind identifies which extractor backend a Config resolves to.
 type backendKind int
@@ -30,4 +37,35 @@ func chooseBackend(cfg Config) (backendKind, error) {
 			"and no OASF-SDK server configured (set a remote address)",
 		cfg.Resolve().AssetDir,
 	)
+}
+
+// ResolveExtractor returns a ready Extractor for cfg: the remote gRPC backend
+// when RemoteAddr is set, otherwise the in-process local backend loaded from
+// provisioned assets. localOpts tune only the local backend (e.g. embedding
+// weights); they are ignored by the remote backend, whose weighting is fixed by
+// the server. It errors when neither backend is available.
+func ResolveExtractor(cfg Config, localOpts ...sdk.Option) (Extractor, error) {
+	kind, err := chooseBackend(cfg)
+	if err != nil {
+		return nil, err
+	}
+
+	switch kind {
+	case backendRemote:
+		conn, err := grpc.NewClient(cfg.RemoteAddr, grpc.WithTransportCredentials(insecure.NewCredentials()))
+		if err != nil {
+			return nil, fmt.Errorf("dial OASF-SDK server %q: %w", cfg.RemoteAddr, err)
+		}
+
+		return &remoteExtractor{client: extractorv1grpc.NewExtractorServiceClient(conn)}, nil
+	case backendLocal:
+		ext, err := Load(cfg, localOpts...)
+		if err != nil {
+			return nil, err
+		}
+
+		return &localExtractor{ext: ext}, nil
+	}
+
+	return nil, fmt.Errorf("unknown extractor backend %d", kind)
 }
