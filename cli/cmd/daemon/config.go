@@ -174,6 +174,9 @@ func bindCredentialEnvVars(v *viper.Viper) {
 
 	_ = v.BindEnv("server.sync.auth_config.username")
 	_ = v.BindEnv("server.sync.auth_config.password")
+
+	_ = v.BindEnv("reconciler.local_registry.auth_config.username")
+	_ = v.BindEnv("reconciler.local_registry.auth_config.password")
 }
 
 // resolveRelativePaths resolves non-empty path fields against opts.DataDir
