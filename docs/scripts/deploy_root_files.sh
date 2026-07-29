@@ -4,7 +4,7 @@
 #
 # Deploy root-level site files (404.html, robots.txt, llms.txt) to the root of
 # the gh-pages branch. mike publishes versioned docs into subdirectories
-# (/dir/latest/, /dir/<version>/), so these files must be placed at the branch
+# (/latest/, /<version>/ on the custom domain; /dir/latest/ on *.github.io), so these files must be placed at the branch
 # root separately. Designed to be called from CI after `mike deploy --push`.
 #
 # Arguments:
