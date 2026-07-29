@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"sync"
 
 	clientconfig "github.com/agntcy/dir/client/config"
 	sdk "github.com/agntcy/oasf-sdk/pkg/extractor"
@@ -19,11 +20,22 @@ import (
 // confirms a real extraction round-trip rather than an empty result.
 const smokeSampleText = "real-time fraud detection for banking transactions using natural language processing"
 
+// logMu serializes the temporary swap of the process-global zerolog logger in
+// Load. The oasf-sdk extractor logs through the global zerolog logger during
+// New() and offers no per-instance logging hook, so the only way to silence its
+// debug/info output is to swap the global logger for the duration of the build.
+// The mutex keeps that swap race-free now that Load lives in the shared client
+// module and could be called from multiple goroutines.
+var logMu sync.Mutex
+
 // localExtractor implements Extractor with an in-process SDK extractor loaded
 // from provisioned assets. It carries the ~89 MB model and taxonomy in memory.
 type localExtractor struct {
 	ext *sdk.Extractor
 }
+
+// Close satisfies Extractor. The in-process backend holds no closable resources.
+func (l *localExtractor) Close() error { return nil }
 
 // Extract runs the in-process extractor, translating the backend-agnostic
 // ExtractOptions into the SDK's per-query options.
@@ -60,10 +72,12 @@ func Load(cfg Config, opts ...sdk.Option) (*sdk.Extractor, error) {
 		sdk.WithAssetDir(cfg.AssetDir),
 	}
 
+	logMu.Lock()
 	prev := zlog.Logger
 	zlog.Logger = zerolog.New(io.Discard)
 	e, err := sdk.New(append(base, opts...)...)
 	zlog.Logger = prev
+	logMu.Unlock()
 
 	if err != nil {
 		return nil, fmt.Errorf("load provisioned extractor: %w", err)

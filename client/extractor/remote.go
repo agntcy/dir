@@ -10,13 +10,29 @@ import (
 	extractorv1grpc "buf.build/gen/go/agntcy/oasf-sdk/grpc/go/agntcy/oasfsdk/extractor/v1/extractorv1grpc"
 	extractorv1 "buf.build/gen/go/agntcy/oasf-sdk/protocolbuffers/go/agntcy/oasfsdk/extractor/v1"
 	sdk "github.com/agntcy/oasf-sdk/pkg/extractor"
+	"google.golang.org/grpc"
 )
 
 // remoteExtractor implements Extractor by calling a gRPC OASF-SDK server. The
 // heavy model and taxonomy live in the server, so this backend carries none of
 // the local assets.
 type remoteExtractor struct {
+	conn   *grpc.ClientConn
 	client extractorv1grpc.ExtractorServiceClient
+}
+
+// Close releases the underlying gRPC connection. It is a no-op when the client
+// was injected without an owned connection (e.g. in tests).
+func (r *remoteExtractor) Close() error {
+	if r.conn == nil {
+		return nil
+	}
+
+	if err := r.conn.Close(); err != nil {
+		return fmt.Errorf("close OASF-SDK connection: %w", err)
+	}
+
+	return nil
 }
 
 // Extract forwards the text and any version pins to the server and maps the

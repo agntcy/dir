@@ -57,6 +57,9 @@ func TestResolveExtractorRemoteReturnsRemoteBackend(t *testing.T) {
 
 	require.NoError(t, err)
 	require.NotNil(t, ext)
+
+	defer func() { _ = ext.Close() }()
+
 	_, ok := ext.(*remoteExtractor)
 	assert.True(t, ok, "expected a remote backend, got %T", ext)
 }

@@ -48,6 +48,8 @@ func runNLSearch(cmd *cobra.Command, query string, c *client.Client) error {
 		return fmt.Errorf("natural-language search requires the OASF extractor — run `dirctl init` to set it up: %w", err)
 	}
 
+	defer func() { _ = ext.Close() }()
+
 	signals, err := nlsearch.Decompose(cmd.Context(), query, ext, extractor.ExtractOptions{Versions: opts.Filters.SchemaVersions})
 	if err != nil {
 		return fmt.Errorf("decompose query: %w", err)

@@ -54,12 +54,16 @@ func ResolveExtractor(cfg Config, localOpts ...sdk.Option) (Extractor, error) {
 
 	switch kind {
 	case backendRemote:
+		// TODO: the remote dial uses insecure transport, which sends query
+		// text in plaintext. This is acceptable for a loopback/in-mesh server but
+		// must become configurable (TLS/mTLS, e.g. via SPIRE like the rest of dir)
+		// when the remote extractor is wired into real deployments.
 		conn, err := grpc.NewClient(cfg.RemoteAddr, grpc.WithTransportCredentials(insecure.NewCredentials()))
 		if err != nil {
 			return nil, fmt.Errorf("dial OASF-SDK server %q: %w", cfg.RemoteAddr, err)
 		}
 
-		return &remoteExtractor{client: extractorv1grpc.NewExtractorServiceClient(conn)}, nil
+		return &remoteExtractor{conn: conn, client: extractorv1grpc.NewExtractorServiceClient(conn)}, nil
 	case backendLocal:
 		ext, err := Load(cfg, localOpts...)
 		if err != nil {

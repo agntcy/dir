@@ -27,4 +27,9 @@ type ExtractOptions struct {
 // gRPC OASF-SDK backend, so callers depend only on this interface.
 type Extractor interface {
 	Extract(ctx context.Context, text string, opts ExtractOptions) (Result, error)
+	// Close releases resources held by the extractor, such as the remote
+	// backend's gRPC connection. Callers that resolve an extractor own its
+	// lifecycle and should Close it when done. The local backend holds no
+	// closable resources and returns nil.
+	Close() error
 }

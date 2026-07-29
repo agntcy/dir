@@ -27,6 +27,8 @@ func (f *fakeExtractor) Extract(_ context.Context, _ string, opts extractor.Extr
 	return f.res, nil
 }
 
+func (f *fakeExtractor) Close() error { return nil }
+
 func skill(name string, tier int, score float64) sdk.ScoredClass {
 	return sdk.ScoredClass{Class: sdk.Class{Name: name}, Kind: sdk.KindSkill, Tier: tier, Score: score}
 }
