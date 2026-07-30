@@ -46,7 +46,7 @@ func TestValidateEndpointURL_Rejected(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
-			if err := validateEndpointURL(tc.url, false); err == nil {
+			if err := validateEndpointURL(tc.url, false, false); err == nil {
 				t.Errorf("validateEndpointURL(%q) = nil, want rejection", tc.url)
 			}
 		})
@@ -67,7 +67,7 @@ func TestValidateEndpointURL_Accepted(t *testing.T) {
 		t.Run(u, func(t *testing.T) {
 			t.Parallel()
 
-			if err := validateEndpointURL(u, false); err != nil {
+			if err := validateEndpointURL(u, false, false); err != nil {
 				t.Errorf("validateEndpointURL(%q) = %v, want accepted", u, err)
 			}
 		})
@@ -91,7 +91,7 @@ func TestValidateEndpointURL_AllowPrivate(t *testing.T) {
 		t.Run(u, func(t *testing.T) {
 			t.Parallel()
 
-			if err := validateEndpointURL(u, true); err != nil {
+			if err := validateEndpointURL(u, true, true); err != nil {
 				t.Errorf("validateEndpointURL(%q, allowPrivate) = %v, want accepted", u, err)
 			}
 		})
@@ -105,7 +105,7 @@ func TestValidateEndpointURL_AllowPrivate_StillRejectsNonHTTPSchemes(t *testing.
 	t.Parallel()
 
 	for _, u := range []string{"file:///etc/passwd", "gopher://10.0.0.1/"} {
-		if err := validateEndpointURL(u, true); err == nil {
+		if err := validateEndpointURL(u, true, true); err == nil {
 			t.Errorf("validateEndpointURL(%q, allowPrivate) = nil, want rejection", u)
 		}
 	}
@@ -173,5 +173,102 @@ func TestRunEndpointScan_AllowPrivate_ScansPrivateEndpoint(t *testing.T) {
 
 	if len(got.Findings) == 0 {
 		t.Error("want findings from the private endpoint scan, got none")
+	}
+}
+
+// Every case here was accepted by an earlier revision of validateEndpointURL
+// and was found by an adversarial review of this PR. They are grouped
+// separately so a future refactor that reintroduces "if it does not parse as
+// an IP it must be a hostname" fails loudly and specifically.
+func TestValidateEndpointURL_RejectedBypasses(t *testing.T) {
+	t.Parallel()
+
+	cases := []struct {
+		name string
+		url  string
+		why  string
+	}{
+		{"decimal metadata address", "https://2852039166/", "resolves to 169.254.169.254"},
+		{"decimal loopback", "https://2130706433/", "resolves to 127.0.0.1"},
+		{"short-form loopback", "https://127.1/", "resolves to 127.0.0.1"},
+		{"octal loopback", "https://0177.0.0.1/", "resolves to 127.0.0.1"},
+		{"hex loopback", "https://0x7f000001/", "resolves to 127.0.0.1"},
+		{"zero-padded loopback", "https://127.000.000.001/", "resolves to 127.0.0.1"},
+		{"bare zero", "https://0/", "resolves to 0.0.0.0"},
+		{"trailing-dot loopback", "https://127.0.0.1./", "trailing dot must not skip the range check"},
+		{"trailing-dot metadata", "https://169.254.169.254./", "trailing dot must not skip the range check"},
+		{"trailing-dot private", "https://10.0.0.1./", "trailing dot must not skip the range check"},
+		{"trailing-dot dotted localhost", "https://foo.localhost./", "trailing dot must not skip the loopback name check"},
+		{"alibaba metadata", "https://100.100.100.200/", "cloud metadata service outside RFC 1918"},
+		{"cgnat", "https://100.64.0.1/", "RFC 6598, used as pod/node CIDR by managed Kubernetes"},
+		{"ietf protocol assignments", "https://192.0.0.1/", "reserved"},
+		{"benchmarking range", "https://198.18.0.1/", "RFC 2544"},
+		{"test-net-1", "https://192.0.2.5/", "reserved for documentation"},
+		{"test-net-3", "https://203.0.113.5/", "reserved for documentation"},
+		{"reserved class e", "https://240.0.0.1/", "reserved"},
+		{"broadcast", "https://255.255.255.255/", "limited broadcast"},
+		{"ipv4-compatible ipv6 loopback", "https://[::127.0.0.1]/", "embeds 127.0.0.1"},
+		{"nat64 loopback", "https://[64:ff9b::7f00:1]/", "NAT64 embedding 127.0.0.1"},
+		{"6to4 loopback", "https://[2002:7f00:1::]/", "6to4 embedding 127.0.0.1"},
+		{"zoned loopback", "https://[::1%25lo]/", "interface zone must not skip the range check"},
+		{"zoned link-local", "https://[fe80::1%25eth0]/", "interface zone must not skip the range check"},
+		{"zoned unique-local", "https://[fc00::1%25x]/", "interface zone must not skip the range check"},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			if err := validateEndpointURL(tc.url, false, false); err == nil {
+				t.Errorf("validateEndpointURL(%q) = nil, want rejection: %s", tc.url, tc.why)
+			}
+		})
+	}
+}
+
+// Hostnames that merely look numeric-adjacent must still work, or the
+// all-numeric rule would be over-broad and break real deployments.
+func TestValidateEndpointURL_AcceptsLegitimateHostnames(t *testing.T) {
+	t.Parallel()
+
+	cases := []string{
+		"https://mcp1.example.com/mcp",
+		"https://1mcp.example.com/mcp",
+		"https://v2.api.example.com/mcp",
+		"https://xn--80ak6aa92e.example.com/mcp",
+		"https://a-b-c.example.com/mcp",
+		"https://example.com./mcp",
+		"https://0x-not-hex.example.com/mcp",
+	}
+
+	for _, u := range cases {
+		t.Run(u, func(t *testing.T) {
+			t.Parallel()
+
+			if err := validateEndpointURL(u, false, false); err != nil {
+				t.Errorf("validateEndpointURL(%q) = %v, want accepted", u, err)
+			}
+		})
+	}
+}
+
+// AllowInsecureTransport is deliberately independent of AllowPrivateEndpoints:
+// needing to reach a private-range endpoint must not silently also permit
+// cleartext scans of public hosts.
+func TestValidateEndpointURL_InsecureTransportIsSeparateFromPrivate(t *testing.T) {
+	t.Parallel()
+
+	const publicHTTP = "http://mcp.example.com/mcp"
+
+	if err := validateEndpointURL(publicHTTP, true, false); err == nil {
+		t.Error("allowPrivate alone must not permit cleartext http to a public host")
+	}
+
+	if err := validateEndpointURL(publicHTTP, false, true); err != nil {
+		t.Errorf("allowInsecure should permit http: %v", err)
+	}
+
+	if err := validateEndpointURL("https://10.0.0.5/mcp", false, true); err == nil {
+		t.Error("allowInsecure alone must not permit a private-range endpoint")
 	}
 }

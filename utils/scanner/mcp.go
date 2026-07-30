@@ -36,11 +36,17 @@ type MCPConfig struct {
 	// data, and costs one mcp-scanner invocation per (endpoint, subcommand).
 	DisableEndpointScan bool
 
-	// AllowPrivateEndpoints permits endpoints that resolve to loopback,
-	// link-local, or private ranges. The zero value rejects them, so the safe
-	// posture is the default one. Self-hosted deployments where the directory
-	// and the MCP servers share a private network need this on.
+	// AllowPrivateEndpoints permits endpoints on loopback, link-local,
+	// private, and other reserved ranges. The zero value rejects them, so the
+	// safe posture is the default one. Self-hosted deployments where the
+	// directory and the MCP servers share a private network need this on.
 	AllowPrivateEndpoints bool
+
+	// AllowInsecureTransport permits plain http endpoints. It is separate from
+	// AllowPrivateEndpoints on purpose: an operator who needs to reach a
+	// private-range endpoint should not thereby also opt into cleartext scans
+	// of arbitrary public hosts.
+	AllowInsecureTransport bool
 }
 
 // MCPRunner invokes mcp-scanner against an MCP server in two phases: it clones
@@ -67,25 +73,6 @@ func NewMCPRunner(cfg MCPConfig) *MCPRunner {
 
 // Name returns the runner name.
 func (r *MCPRunner) Name() string { return "mcp" }
-
-// EndpointScanSettings describes how the live-endpoint phase is configured.
-type EndpointScanSettings struct {
-	// Disabled reports whether the phase is turned off entirely.
-	Disabled bool
-	// AllowPrivate reports whether endpoints on loopback, link-local, and
-	// private ranges are permitted.
-	AllowPrivate bool
-}
-
-// EndpointScanSettings reports how the live-endpoint phase is configured. It
-// exists so callers that wire the runner up can assert the configuration
-// actually arrived; the config fields themselves stay unexported.
-func (r *MCPRunner) EndpointScanSettings() EndpointScanSettings {
-	return EndpointScanSettings{
-		Disabled:     r.cfg.DisableEndpointScan,
-		AllowPrivate: r.cfg.AllowPrivateEndpoints,
-	}
-}
 
 // Run scans the record's MCP server in two phases and merges the results:
 // the source repository is cloned and scanned, then any live endpoints the

@@ -36,9 +36,10 @@ type Task struct {
 func NewTask(config Config, db types.DatabaseAPI, store types.StoreAPI, refStore types.ReferrerStoreAPI) (*Task, error) {
 	runners := []scanner.Runner{
 		scanner.NewMCPRunner(scanner.MCPConfig{
-			CLIPath:               config.GetMCPCLIPath(),
-			DisableEndpointScan:   config.DisableEndpointScan,
-			AllowPrivateEndpoints: config.AllowPrivateEndpoints,
+			CLIPath:                config.GetMCPCLIPath(),
+			DisableEndpointScan:    config.DisableEndpointScan,
+			AllowPrivateEndpoints:  config.AllowPrivateEndpoints,
+			AllowInsecureTransport: config.AllowInsecureTransport,
 		}),
 		scanner.NewSkillRunner(scanner.SkillConfig{CLIPath: config.GetSkillCLIPath()}),
 		scanner.NewA2ARunner(scanner.A2AConfig{CLIPath: config.GetA2ACLIPath()}),

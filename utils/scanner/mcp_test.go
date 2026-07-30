@@ -438,7 +438,12 @@ func TestMCPRunner_Run_Success(t *testing.T) {
 
 	// yara and readiness are the zero-dependency analyzers that always run;
 	// this is the line the PR changed from the old hardcoded ["behavioral"].
-	wantAnalyzers := []string{"yara", "readiness"}
+	//
+	// Sorted order, not source order: Run now merges the source and endpoint
+	// phases, and merge() sorts the analyzer union so the field is stable
+	// across runs (it is persisted to the DB and the OCI referrer). Asserting
+	// the sorted form is what pins that guarantee.
+	wantAnalyzers := []string{"readiness", "yara"}
 	if !slices.Equal(got.Analyzers, wantAnalyzers) {
 		t.Errorf("want Analyzers=%v, got %v", wantAnalyzers, got.Analyzers)
 	}

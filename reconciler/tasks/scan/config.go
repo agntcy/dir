@@ -56,11 +56,16 @@ type Config struct {
 	// outbound connections to the endpoints named in published records.
 	DisableEndpointScan bool `json:"disable_endpoint_scan,omitempty" mapstructure:"disable_endpoint_scan"`
 
-	// AllowPrivateEndpoints permits MCP endpoints on loopback, link-local, and
-	// private ranges, and permits plain http. Off by default so the safe
-	// posture ships out of the box; self-hosted deployments that run the
-	// directory and its MCP servers on one private network need it on.
+	// AllowPrivateEndpoints permits MCP endpoints on loopback, link-local,
+	// private, and other reserved ranges. Off by default so the safe posture
+	// ships out of the box; self-hosted deployments that run the directory and
+	// its MCP servers on one private network need it on.
 	AllowPrivateEndpoints bool `json:"allow_private_endpoints,omitempty" mapstructure:"allow_private_endpoints"`
+
+	// AllowInsecureTransport permits plain http MCP endpoints. Separate from
+	// AllowPrivateEndpoints so that reaching a private-range endpoint does not
+	// also opt into cleartext scans of arbitrary public hosts.
+	AllowInsecureTransport bool `json:"allow_insecure_transport,omitempty" mapstructure:"allow_insecure_transport"`
 }
 
 // GetInterval returns the interval with default fallback.

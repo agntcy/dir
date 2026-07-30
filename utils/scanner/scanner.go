@@ -9,6 +9,7 @@ package scanner
 import (
 	"context"
 	"os/exec"
+	"slices"
 	"strings"
 
 	corev1 "github.com/agntcy/dir/api/core/v1"
@@ -180,6 +181,12 @@ func merge(results []*ScanResult) *ScanResult {
 	for a := range analyzerSet {
 		merged.Analyzers = append(merged.Analyzers, a)
 	}
+
+	// Sorted, not map order. Analyzers is persisted to the DB and to the OCI
+	// referrer (reconciler/tasks/scan/task.go), so leaving it in Go's
+	// randomized map order would make byte-identical scans produce differing
+	// reports run to run, and makes any order-sensitive assertion flaky.
+	slices.Sort(merged.Analyzers)
 
 	if merged.Skipped {
 		merged.Safe = false

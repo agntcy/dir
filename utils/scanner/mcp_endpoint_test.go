@@ -43,45 +43,61 @@ func TestRunEndpointScan_NoConnections_Skipped(t *testing.T) {
 }
 
 // TestRun_DisableEndpointScan_SkipsEndpointPhase pins the toggle: with the
-// endpoint phase off, a record carrying endpoints but no source locator must
-// come back as the source phase's skip, untouched by endpoint results.
+// endpoint phase off, a record whose endpoints WOULD produce findings comes
+// back with none.
+//
+// The record has to be v1 and the CLI has to be the fake scanner, or the
+// assertions pass for the wrong reason: extractEndpoints bails early on a
+// non-v1 record, so the phase would find nothing to scan whether the toggle
+// worked or not. With this fixture, deleting the toggle produces 4 findings
+// and fails the test.
 func TestRun_DisableEndpointScan_SkipsEndpointPhase(t *testing.T) {
 	t.Parallel()
 
-	r := NewMCPRunner(MCPConfig{DisableEndpointScan: true})
+	r := NewMCPRunner(MCPConfig{CLIPath: fakeCLIPath(t), DisableEndpointScan: true})
+	rec := recordWithEndpoints(t, "https://ok.example.com/mcp")
 
-	data := map[string]any{
-		"schema_version": "0.7.0",
-		"name":           "example",
-		"version":        "v1",
-		"modules": []any{
-			map[string]any{
-				"name": "integration/mcp",
-				"data": map[string]any{
-					"connections": []any{
-						map[string]any{"type": "sse", "url": "https://mcp.example.com/sse"},
-					},
-				},
-			},
-		},
-	}
-
-	st, err := structpb.NewStruct(data)
-	if err != nil {
-		t.Fatalf("structpb.NewStruct: %v", err)
-	}
-
-	got, err := r.Run(context.Background(), &corev1.Record{Data: st})
+	got, err := r.Run(context.Background(), rec)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
+	if len(got.Findings) != 0 {
+		t.Errorf("endpoint phase is disabled, so there should be no findings, got %d: %+v", len(got.Findings), got.Findings)
+	}
+
+	if len(got.Analyzers) != 0 {
+		t.Errorf("endpoint phase is disabled, so no endpoint analyzers should be reported, got %v", got.Analyzers)
+	}
+
 	if !got.Skipped {
-		t.Fatalf("expected the source-phase skip, got %+v", got)
+		t.Fatalf("with no source locator and the endpoint phase off, the result should be skipped: %+v", got)
 	}
 
 	if !strings.Contains(got.SkippedReason, "no source-code locator") {
 		t.Errorf("expected the source-phase skip reason, got %q", got.SkippedReason)
+	}
+}
+
+// The counterpart: with the toggle off, the same record does produce endpoint
+// findings. Together these two fail if the toggle is deleted in either
+// direction.
+func TestRun_EndpointScanEnabled_ProducesFindings(t *testing.T) {
+	t.Parallel()
+
+	r := NewMCPRunner(MCPConfig{CLIPath: fakeCLIPath(t)})
+	rec := recordWithEndpoints(t, "https://ok.example.com/mcp")
+
+	got, err := r.Run(context.Background(), rec)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	// 1 endpoint x 4 subcommands, one finding each from the fake CLI.
+	const wantFindings = 4
+
+	if len(got.Findings) != wantFindings {
+		t.Errorf("want %d findings with the endpoint phase on, got %d: %+v", wantFindings, len(got.Findings), got.Findings)
 	}
 }
 

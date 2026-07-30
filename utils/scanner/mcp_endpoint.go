@@ -6,8 +6,9 @@ package scanner
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
-	"net"
+	"net/netip"
 	"net/url"
 	"os/exec"
 	"strings"
@@ -36,7 +37,7 @@ func (r *MCPRunner) runEndpointScan(ctx context.Context, record *corev1.Record) 
 	results := make([]*ScanResult, 0, len(endpoints)*len(endpointSubcommands))
 
 	for _, endpoint := range endpoints {
-		if err := validateEndpointURL(endpoint, r.cfg.AllowPrivateEndpoints); err != nil {
+		if err := validateEndpointURL(endpoint, r.cfg.AllowPrivateEndpoints, r.cfg.AllowInsecureTransport); err != nil {
 			mcpLogger.Warn("rejected MCP endpoint URL, skipping", "url", endpoint, "error", err)
 
 			results = append(results, &ScanResult{
@@ -120,84 +121,222 @@ func runMCPScannerEndpoint(ctx context.Context, cliPath, subcommand, serverURL s
 	return stdout.Bytes(), nil
 }
 
+// reservedPrefixes are the address ranges an endpoint must never resolve to.
+//
+// This is deliberately an explicit table rather than the net.IP predicates.
+// net.IP.IsPrivate covers only RFC 1918 and fc00::/7, which leaves live
+// metadata and internal-network ranges accepted: 100.100.100.200 is Alibaba
+// Cloud's instance metadata service, and 100.64.0.0/10 is the pod and node
+// CIDR on several managed Kubernetes offerings, which is exactly the
+// "reachable only from inside the cluster" case this check exists to stop.
+var reservedPrefixes = []netip.Prefix{
+	// IPv4.
+	netip.MustParsePrefix("0.0.0.0/8"),       // "this network"
+	netip.MustParsePrefix("10.0.0.0/8"),      // RFC 1918
+	netip.MustParsePrefix("100.64.0.0/10"),   // RFC 6598 CGNAT, incl. Alibaba metadata
+	netip.MustParsePrefix("127.0.0.0/8"),     // loopback
+	netip.MustParsePrefix("169.254.0.0/16"),  // link-local, incl. 169.254.169.254
+	netip.MustParsePrefix("172.16.0.0/12"),   // RFC 1918
+	netip.MustParsePrefix("192.0.0.0/24"),    // IETF protocol assignments
+	netip.MustParsePrefix("192.0.2.0/24"),    // TEST-NET-1
+	netip.MustParsePrefix("192.88.99.0/24"),  // 6to4 relay anycast
+	netip.MustParsePrefix("192.168.0.0/16"),  // RFC 1918
+	netip.MustParsePrefix("198.18.0.0/15"),   // RFC 2544 benchmarking
+	netip.MustParsePrefix("198.51.100.0/24"), // TEST-NET-2
+	netip.MustParsePrefix("203.0.113.0/24"),  // TEST-NET-3
+	netip.MustParsePrefix("224.0.0.0/4"),     // multicast
+	netip.MustParsePrefix("240.0.0.0/4"),     // reserved, incl. 255.255.255.255
+	// IPv6.
+	netip.MustParsePrefix("::/96"),         // unspecified + deprecated IPv4-compatible (::127.0.0.1)
+	netip.MustParsePrefix("::1/128"),       // loopback
+	netip.MustParsePrefix("64:ff9b::/96"),  // NAT64, can embed a v4 target
+	netip.MustParsePrefix("100::/64"),      // discard-only
+	netip.MustParsePrefix("2001::/32"),     // Teredo
+	netip.MustParsePrefix("2001:db8::/32"), // documentation
+	netip.MustParsePrefix("2002::/16"),     // 6to4, can embed a v4 target
+	netip.MustParsePrefix("fc00::/7"),      // unique local
+	netip.MustParsePrefix("fe80::/10"),     // link-local
+	netip.MustParsePrefix("ff00::/8"),      // multicast
+}
+
+// loopbackHostnames resolve to loopback on essentially every machine, so they
+// are refused without a lookup.
+var loopbackHostnames = map[string]struct{}{
+	"localhost":             {},
+	"localhost.localdomain": {},
+	"ip6-localhost":         {},
+	"ip6-loopback":          {},
+}
+
 // validateEndpointURL rejects endpoint URLs that should never be dialled from
 // the reconciler. Endpoint URLs arrive in externally published records, so an
 // unchecked value points the scanner wherever the publisher likes, including
 // cloud metadata services and hosts reachable only from inside the cluster.
 //
-// This is a mitigation and not a complete defence. dir validates the URL, but
-// the connection is opened by the mcp-scanner process, so a hostname that
-// resolves to a private address only at dial time still gets through. Closing
-// that gap needs control over the dialer, which lives in mcp-scanner.
-func validateEndpointURL(raw string, allowPrivate bool) error {
+// The host must be either a canonical IP literal outside reservedPrefixes or a
+// syntactically valid DNS name. Anything else is refused. That second rule is
+// load-bearing: the resolver accepts numeric host forms netip does not parse
+// (decimal 2852039166, octal 0177.0.0.1, hex 0x7f000001, short 127.1), and
+// treating a failed IP parse as "then it must be a hostname" waves every one
+// of them through to a loopback or metadata address.
+//
+// This remains a mitigation, not a complete defence. dir validates the URL,
+// but the connection is opened by the mcp-scanner process, so a DNS name that
+// resolves to a reserved address at dial time, or a redirect chain ending at
+// one, still gets through. Closing that needs control over the dialer, which
+// lives in mcp-scanner.
+func validateEndpointURL(raw string, allowPrivate, allowInsecure bool) error {
 	parsed, err := url.Parse(raw)
 	if err != nil {
 		return fmt.Errorf("unparsable URL: %w", err)
 	}
 
-	// https only by default. Plain http is allowed alongside private ranges,
-	// because the deployments that need one generally need the other.
 	switch parsed.Scheme {
 	case "https":
 	case "http":
-		if !allowPrivate {
-			return fmt.Errorf("scheme %q not allowed (https only)", parsed.Scheme)
+		if !allowInsecure {
+			return fmt.Errorf("scheme %q not allowed; enable allow_insecure_transport to permit it", parsed.Scheme)
 		}
 	default:
-		return fmt.Errorf("scheme %q not allowed (https only)", parsed.Scheme)
+		return fmt.Errorf("scheme %q not allowed (http and https only)", parsed.Scheme)
 	}
 
-	host := parsed.Hostname()
+	// Normalize the fully-qualified trailing dot once, up front. Applying it
+	// to only one of the two paths below is how "169.254.169.254." ends up
+	// taking a different branch from "169.254.169.254".
+	host := strings.ToLower(strings.TrimSuffix(parsed.Hostname(), "."))
 	if host == "" {
-		return fmt.Errorf("URL has no host")
+		return errors.New("URL has no host")
 	}
 
-	if allowPrivate {
+	if addr, parseErr := netip.ParseAddr(host); parseErr == nil {
+		// A zone (fe80::1%eth0) is meaningful only on the dialling host and is
+		// not representable in the prefix table, so refuse it rather than let
+		// it skip the range check.
+		if addr.Zone() != "" {
+			return fmt.Errorf("endpoint address %q carries an interface zone", host)
+		}
+
+		// ::ffff:127.0.0.1 has to be range-checked as 127.0.0.1.
+		addr = addr.Unmap()
+
+		if !allowPrivate && isReservedAddr(addr) {
+			return fmt.Errorf("endpoint address %s is not publicly routable", addr)
+		}
+
 		return nil
 	}
 
-	// A literal IP can be checked directly. A hostname is left to resolve at
-	// dial time; see the doc comment on the residual risk.
-	if ip := net.ParseIP(host); ip != nil && !isPublicIP(ip) {
-		return fmt.Errorf("endpoint address %s is not publicly routable", ip)
+	if !isValidDNSName(host) {
+		return fmt.Errorf("endpoint host %q is neither a valid IP address nor a valid DNS name", host)
 	}
 
-	if isLoopbackHostname(host) {
-		return fmt.Errorf("endpoint host %q is loopback", host)
+	if !allowPrivate {
+		if _, ok := loopbackHostnames[host]; ok {
+			return fmt.Errorf("endpoint host %q is loopback", host)
+		}
+
+		if strings.HasSuffix(host, ".localhost") {
+			return fmt.Errorf("endpoint host %q is loopback", host)
+		}
 	}
 
 	return nil
 }
 
-// isPublicIP reports whether ip is routable on the public internet. It rejects
-// loopback, link-local (which covers the 169.254.169.254 cloud metadata
-// address), private/unique-local, unspecified, and multicast addresses.
-func isPublicIP(ip net.IP) bool {
-	switch {
-	case ip.IsLoopback(),
-		ip.IsLinkLocalUnicast(),
-		ip.IsLinkLocalMulticast(),
-		ip.IsInterfaceLocalMulticast(),
-		ip.IsMulticast(),
-		ip.IsUnspecified(),
-		ip.IsPrivate():
+// isReservedAddr reports whether addr falls in a range an endpoint must not
+// resolve to.
+func isReservedAddr(addr netip.Addr) bool {
+	for _, p := range reservedPrefixes {
+		// Prefix.Contains is family-strict, so a v4 address never matches a v6
+		// prefix and no explicit family guard is needed.
+		if p.Contains(addr) {
+			return true
+		}
+	}
+
+	return false
+}
+
+// isValidDNSName reports whether host is a syntactically valid DNS name.
+//
+// The all-numeric rule is the load-bearing one: a label set that is entirely
+// digits is not a hostname, it is an integer the resolver reads as an IPv4
+// address (2852039166 is 169.254.169.254, 127.1 is 127.0.0.1). The 0x-prefixed
+// check covers the hex spelling of the same trick.
+func isValidDNSName(host string) bool {
+	const maxNameLen = 253
+
+	if len(host) > maxNameLen {
 		return false
 	}
 
-	return true
-}
+	allNumeric := true
 
-// isLoopbackHostname catches the names that resolve to loopback on every
-// machine without a lookup. Other hostnames are not resolved here: a DNS
-// lookup at validation time can disagree with the one at dial time, so it
-// would buy confidence the check cannot honour.
-func isLoopbackHostname(host string) bool {
-	switch strings.ToLower(strings.TrimSuffix(host, ".")) {
-	case "localhost", "localhost.localdomain", "ip6-localhost", "ip6-loopback":
-		return true
+	for label := range strings.SplitSeq(host, ".") {
+		numeric, ok := classifyDNSLabel(label)
+		if !ok {
+			return false
+		}
+
+		if !numeric {
+			allNumeric = false
+		}
 	}
 
-	return strings.HasSuffix(strings.ToLower(host), ".localhost")
+	return !allNumeric
+}
+
+// classifyDNSLabel reports whether label is a legal DNS label, and whether it
+// is entirely digits.
+func classifyDNSLabel(label string) (numeric, ok bool) { //nolint:nonamedreturns // the two bools are indistinguishable without names
+	const maxLabelLen = 63
+
+	if label == "" || len(label) > maxLabelLen {
+		return false, false
+	}
+
+	if label[0] == '-' || label[len(label)-1] == '-' {
+		return false, false
+	}
+
+	// The hex spelling of an integer address (0x7f000001) is a legal-looking
+	// label that the resolver reads as an IPv4 address.
+	if strings.HasPrefix(label, "0x") && isHexDigits(label[2:]) {
+		return false, false
+	}
+
+	numeric = true
+
+	for i := range len(label) {
+		c := label[i]
+
+		switch {
+		case c >= 'a' && c <= 'z', c >= 'A' && c <= 'Z', c == '-':
+			numeric = false
+		case c >= '0' && c <= '9':
+		default:
+			return false, false
+		}
+	}
+
+	return numeric, true
+}
+
+// isHexDigits reports whether s is a non-empty run of hex digits.
+func isHexDigits(s string) bool {
+	if s == "" {
+		return false
+	}
+
+	for i := range len(s) {
+		c := s[i]
+		if (c < '0' || c > '9') && (c < 'a' || c > 'f') && (c < 'A' || c > 'F') {
+			return false
+		}
+	}
+
+	return true
 }
 
 // extractEndpoints decodes the record and returns the URLs of every
@@ -247,8 +386,9 @@ func extractConnectionURLs(data *structpb.Struct) []string {
 			continue
 		}
 
-		if url := conn.GetFields()["url"].GetStringValue(); url != "" {
-			urls = append(urls, url)
+		// Named u, not url: this file imports net/url.
+		if u := conn.GetFields()["url"].GetStringValue(); u != "" {
+			urls = append(urls, u)
 		}
 	}
 
