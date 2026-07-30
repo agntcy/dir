@@ -445,7 +445,7 @@ func TestPageTokenRoundTrip(t *testing.T) {
 	assert.Empty(t, encodePageToken(0))
 
 	tok := encodePageToken(42)
-	require.NotEmpty(t, tok)
+	assert.Equal(t, "42", tok)
 
 	offset, err := decodePageToken(tok)
 	require.NoError(t, err)
