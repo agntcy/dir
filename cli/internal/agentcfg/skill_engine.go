@@ -12,7 +12,7 @@ import (
 	"strings"
 
 	"github.com/agntcy/dir/api/exportfmt"
-	"github.com/agntcy/dir/cli/internal/agentcfg/fsutil"
+	"github.com/agntcy/dir/cli/internal/fsutil"
 )
 
 const skillFilePerm = 0o644

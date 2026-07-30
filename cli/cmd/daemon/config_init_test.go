@@ -33,10 +33,7 @@ func withConfigInitState(t *testing.T, dataDir string) {
 	originalConfigInitOpts := configInitOpts
 
 	opts = &Options{DataDir: dataDir}
-	configInitOpts = &struct {
-		Output string
-		Force  bool
-	}{}
+	configInitOpts = &configInitOptions{}
 
 	t.Cleanup(func() {
 		opts = originalOpts
@@ -211,6 +208,59 @@ func TestRunConfigInitErrorsWhenDirCreationFails(t *testing.T) {
 	cmd, _ := newConfigInitTestCmd()
 	err := runConfigInit(cmd, nil)
 	require.ErrorContains(t, err, "create directory")
+	require.NoFileExists(t, target)
+}
+
+// --force takes a different write path (fsutil.WriteAtomic) from the default
+// one, so its failure mode needs its own cover: pointing --output at an
+// existing directory must surface an error rather than a panic or a silent
+// no-op, and must not leave the directory disturbed.
+func TestRunConfigInitForceErrorsWhenTargetIsDirectory(t *testing.T) {
+	dataDir := t.TempDir()
+	withConfigInitState(t, dataDir)
+
+	target := filepath.Join(t.TempDir(), "config-as-a-directory")
+	require.NoError(t, os.MkdirAll(target, 0o755))
+
+	configInitOpts.Output = target
+	configInitOpts.Force = true
+
+	cmd, _ := newConfigInitTestCmd()
+	err := runConfigInit(cmd, nil)
+	require.Error(t, err)
+	require.ErrorContains(t, err, "failed to write default config")
+
+	info, statErr := os.Stat(target)
+	require.NoError(t, statErr)
+	require.True(t, info.IsDir(), "the target directory should be left as a directory")
+}
+
+// A directory the process cannot write to fails at the temp-file stage rather
+// than at MkdirAll, which is a different branch from
+// TestRunConfigInitErrorsWhenDirCreationFails.
+func TestRunConfigInitErrorsWhenDirectoryIsNotWritable(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("POSIX permission bits do not gate directory writes on Windows")
+	}
+
+	if os.Geteuid() == 0 {
+		t.Skip("root ignores directory permission bits")
+	}
+
+	dataDir := t.TempDir()
+	withConfigInitState(t, dataDir)
+
+	readonly := filepath.Join(t.TempDir(), "readonly")
+	require.NoError(t, os.MkdirAll(readonly, 0o500))
+
+	t.Cleanup(func() { _ = os.Chmod(readonly, 0o700) })
+
+	target := filepath.Join(readonly, "config.yaml")
+	configInitOpts.Output = target
+
+	cmd, _ := newConfigInitTestCmd()
+	err := runConfigInit(cmd, nil)
+	require.ErrorContains(t, err, "create temp file")
 	require.NoFileExists(t, target)
 }
 

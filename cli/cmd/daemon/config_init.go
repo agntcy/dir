@@ -9,7 +9,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/agntcy/dir/cli/internal/agentcfg/fsutil"
+	"github.com/agntcy/dir/cli/internal/fsutil"
 	"github.com/agntcy/dir/cli/presenter"
 	"github.com/spf13/cobra"
 )
@@ -33,10 +33,18 @@ var configCmd = &cobra.Command{
 	Short: "Manage the daemon configuration file",
 }
 
-var configInitOpts = &struct {
+// configInitOptions holds the flags for `dirctl daemon config init`. The
+// package-level Options/opts pair is already taken by the daemon command
+// itself, so this one carries the subcommand's name.
+type configInitOptions struct {
+	// Output overrides the destination path. Empty means the daemon's
+	// resolved config path.
 	Output string
-	Force  bool
-}{}
+	// Force allows overwriting an existing file.
+	Force bool
+}
+
+var configInitOpts = &configInitOptions{}
 
 var configInitCmd = &cobra.Command{
 	Use:   "init",
@@ -134,7 +142,7 @@ func writeIfAbsent(path string, data []byte, perm os.FileMode) error {
 	tmpName := tmp.Name()
 
 	// Best-effort cleanup of the temp name. Once Link succeeds below, this
-	// only removes the extra directory entry — the target inode remains.
+	// only removes the extra directory entry - the target inode remains.
 	defer func() { _ = os.Remove(tmpName) }()
 
 	if _, err := tmp.Write(data); err != nil {
