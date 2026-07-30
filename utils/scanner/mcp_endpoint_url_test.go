@@ -5,6 +5,7 @@ package scanner
 
 import (
 	"context"
+	"fmt"
 	"strings"
 	"testing"
 )
@@ -155,6 +156,68 @@ func TestRunEndpointScan_AllURLsRejected_SkippedNotError(t *testing.T) {
 
 	if got.SkippedReason == "" {
 		t.Error("a skip caused by rejected URLs should carry a reason")
+	}
+}
+
+// Validating the destination bounds WHERE the reconciler connects but not HOW
+// MANY connections one record can cause. The endpoint list is
+// publisher-controlled and each entry costs four invocations, so without a cap
+// a single record turns the directory into an amplifier.
+func TestRunEndpointScan_CapsEndpointsPerRecord(t *testing.T) {
+	t.Parallel()
+
+	const declared = 20
+
+	urls := make([]string, 0, declared)
+	for i := range declared {
+		urls = append(urls, fmt.Sprintf("https://mcp%d.example.com/mcp", i))
+	}
+
+	r := NewMCPRunner(MCPConfig{CLIPath: fakeCLIPath(t), MaxEndpointsPerRecord: 3})
+	got := r.runEndpointScan(context.Background(), recordWithEndpoints(t, urls...))
+
+	// 3 endpoints x 4 subcommands, one finding each from the fake CLI.
+	const wantFindings = 3 * 4
+
+	if len(got.Findings) != wantFindings {
+		t.Errorf("cap not applied: want %d findings, got %d", wantFindings, len(got.Findings))
+	}
+
+	// Truncation has to be visible, or a report covering 3 of 20 endpoints
+	// reads the same as one covering everything the record declared.
+	if !strings.Contains(got.SkippedReason, "20") || !strings.Contains(got.SkippedReason, "3") {
+		t.Errorf("truncation should be recorded with both counts, got %q", got.SkippedReason)
+	}
+}
+
+func TestRunEndpointScan_DefaultCapApplies(t *testing.T) {
+	t.Parallel()
+
+	urls := make([]string, 0, DefaultMaxEndpointsPerRecord+5)
+	for i := range DefaultMaxEndpointsPerRecord + 5 {
+		urls = append(urls, fmt.Sprintf("https://mcp%d.example.com/mcp", i))
+	}
+
+	// No MaxEndpointsPerRecord set: the zero value must fall back to the
+	// default rather than meaning "no limit".
+	r := NewMCPRunner(MCPConfig{CLIPath: fakeCLIPath(t)})
+	got := r.runEndpointScan(context.Background(), recordWithEndpoints(t, urls...))
+
+	wantFindings := DefaultMaxEndpointsPerRecord * len(endpointSubcommands)
+	if len(got.Findings) != wantFindings {
+		t.Errorf("zero value should apply the default cap: want %d findings, got %d", wantFindings, len(got.Findings))
+	}
+}
+
+// A record within the cap must not be reported as truncated.
+func TestRunEndpointScan_UnderCapReportsNoTruncation(t *testing.T) {
+	t.Parallel()
+
+	r := NewMCPRunner(MCPConfig{CLIPath: fakeCLIPath(t)})
+	got := r.runEndpointScan(context.Background(), recordWithEndpoints(t, "https://a.example.com/mcp", "https://b.example.com/mcp"))
+
+	if strings.Contains(got.SkippedReason, "scanning the first") {
+		t.Errorf("two endpoints are under the cap, but truncation was reported: %q", got.SkippedReason)
 	}
 }
 

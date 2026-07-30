@@ -21,9 +21,22 @@ import (
 // every discovered endpoint.
 var endpointSubcommands = []string{"remote", "prompts", "resources", "instructions"}
 
-// runEndpointScan scans every live MCP endpoint the record declares, merging
+// DefaultMaxEndpointsPerRecord bounds how many endpoints one record can make
+// the reconciler dial.
+//
+// Validating the destination is not enough on its own: the endpoint list is
+// publisher-controlled and each entry costs len(endpointSubcommands)
+// invocations, so an unbounded loop lets one record turn the directory into an
+// amplifier. A record declaring 500 connections would fire 2000 outbound scans
+// at hosts of the publisher's choosing. Eight is well above what a real MCP
+// server declares (stdio plus one or two remote transports) and far below a
+// useful amplification factor.
+const DefaultMaxEndpointsPerRecord = 8
+
+// runEndpointScan scans the live MCP endpoints the record declares, merging
 // the findings into one result. Endpoint URLs come from publisher-controlled
-// record data, so each is validated before it reaches mcp-scanner.
+// record data, so the list is capped and each URL is validated before it
+// reaches mcp-scanner.
 //
 // This phase never returns an error: an unreachable endpoint, an auth failure,
 // or a rejected URL is recorded as a skipped sub-scan with a warning logged,
@@ -32,6 +45,23 @@ func (r *MCPRunner) runEndpointScan(ctx context.Context, record *corev1.Record) 
 	endpoints := extractEndpoints(record)
 	if len(endpoints) == 0 {
 		return &ScanResult{Skipped: true, SkippedReason: "no remote MCP endpoint found"}
+	}
+
+	maxEndpoints := r.cfg.MaxEndpointsPerRecord
+	if maxEndpoints <= 0 {
+		maxEndpoints = DefaultMaxEndpointsPerRecord
+	}
+
+	var truncated string
+
+	if len(endpoints) > maxEndpoints {
+		mcpLogger.Warn("record declares more MCP endpoints than the per-record cap, scanning the first N",
+			"declared", len(endpoints), "cap", maxEndpoints)
+
+		truncated = fmt.Sprintf("record declares %d endpoints, scanning the first %d",
+			len(endpoints), maxEndpoints)
+
+		endpoints = endpoints[:maxEndpoints]
 	}
 
 	results := make([]*ScanResult, 0, len(endpoints)*len(endpointSubcommands))
@@ -53,7 +83,22 @@ func (r *MCPRunner) runEndpointScan(ctx context.Context, record *corev1.Record) 
 		}
 	}
 
-	return merge(results)
+	result := merge(results)
+
+	// Surface the truncation on the merged result rather than adding it as
+	// another skipped sub-result. merge only carries SkippedReason through
+	// when EVERY input skipped, so a truncation notice added that way would
+	// vanish as soon as one endpoint scanned successfully - which is exactly
+	// the case where a reader most needs to know the coverage was partial.
+	if truncated != "" {
+		if result.SkippedReason == "" {
+			result.SkippedReason = truncated
+		} else {
+			result.SkippedReason = truncated + "; " + result.SkippedReason
+		}
+	}
+
+	return result
 }
 
 // runEndpointSubcommand invokes a single mcp-scanner live-server subcommand

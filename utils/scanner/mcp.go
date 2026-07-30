@@ -47,6 +47,13 @@ type MCPConfig struct {
 	// private-range endpoint should not thereby also opt into cleartext scans
 	// of arbitrary public hosts.
 	AllowInsecureTransport bool
+
+	// MaxEndpointsPerRecord bounds how many endpoints a single record can make
+	// the reconciler dial. Zero or negative means
+	// DefaultMaxEndpointsPerRecord. Validating where a scan may connect does
+	// not bound how many connections one record can cause, and the list is
+	// publisher-controlled.
+	MaxEndpointsPerRecord int
 }
 
 // MCPRunner invokes mcp-scanner against an MCP server in two phases: it clones
