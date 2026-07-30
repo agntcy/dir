@@ -13,15 +13,15 @@ replace (
 )
 
 // Cosign does not updated the crypto11 owner
-replace github.com/ThalesIgnite/crypto11 => github.com/ThalesGroup/crypto11 v1.6.2
+replace github.com/ThalesIgnite/crypto11 => github.com/eclipse-keypont/crypto11 v1.6.8
 
 require (
-	buf.build/gen/go/agntcy/oasf/protocolbuffers/go v1.36.11-20260703134941-ebce38fee5a5.1
+	buf.build/gen/go/agntcy/oasf/protocolbuffers/go v1.36.11-20260721113505-cf7db8888586.1
 	github.com/agntcy/dir/api v1.6.2
 	github.com/agntcy/dir/cli v1.6.2
 	github.com/agntcy/dir/client v1.6.2
 	github.com/opencontainers/go-digest v1.0.0
-	github.com/sigstore/cosign/v3 v3.1.1
+	github.com/sigstore/cosign/v3 v3.1.2
 	google.golang.org/protobuf v1.36.12-0.20260120151049-f2248ac996af
 )
 
