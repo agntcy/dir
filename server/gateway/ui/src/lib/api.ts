@@ -9,20 +9,10 @@ export interface AICardsPage {
 	totalCount: number;
 }
 
-/** Mirrors ListAgents page_token encoding (base64url of the decimal offset). */
+/** Returns the decimal offset expected by ListAgents page_token. */
 export function pageTokenForPage(page: number, pageSize = CATALOG_PAGE_SIZE): string {
 	const offset = (page - 1) * pageSize;
-	if (offset <= 0) {
-		return '';
-	}
-
-	const bytes = new TextEncoder().encode(String(offset));
-	let binary = '';
-	for (const byte of bytes) {
-		binary += String.fromCharCode(byte);
-	}
-
-	return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+	return offset > 0 ? String(offset) : '';
 }
 
 function formatFilterToken(value: string): string {

@@ -4,7 +4,6 @@
 package controller
 
 import (
-	"encoding/base64"
 	"errors"
 	"fmt"
 	"strconv"
@@ -127,18 +126,18 @@ func defaultAgentOrder() []orderByClause {
 	return []orderByClause{{Column: "created_at", Desc: true}}
 }
 
-// encodePageToken serialises a positive offset into an opaque continuation
-// token. A non-positive offset yields an empty token.
+// encodePageToken serialises a positive offset as a decimal continuation token.
+// A non-positive offset yields an empty token.
 func encodePageToken(offset int) string {
 	if offset <= 0 {
 		return ""
 	}
 
-	return base64.RawURLEncoding.EncodeToString([]byte(strconv.Itoa(offset)))
+	return strconv.Itoa(offset)
 }
 
-// decodePageToken parses a previously issued token. Empty input is valid and
-// yields offset 0; malformed tokens are rejected.
+// decodePageToken parses a decimal offset token. Empty input is valid and yields
+// offset 0; malformed tokens are rejected.
 func decodePageToken(s string) (int, error) {
 	if s == "" {
 		return 0, nil
@@ -148,14 +147,9 @@ func decodePageToken(s string) (int, error) {
 		return 0, fmt.Errorf("page_token too long (%d > %d)", len(s), agentPageTokenMaxLen)
 	}
 
-	raw, err := base64.RawURLEncoding.DecodeString(s)
+	offset, err := strconv.Atoi(s)
 	if err != nil {
-		return 0, fmt.Errorf("invalid page_token encoding: %w", err)
-	}
-
-	offset, err := strconv.Atoi(string(raw))
-	if err != nil {
-		return 0, fmt.Errorf("invalid page_token payload: %w", err)
+		return 0, fmt.Errorf("invalid page_token: %w", err)
 	}
 
 	if offset < 0 {
