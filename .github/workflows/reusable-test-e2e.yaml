@@ -28,10 +28,8 @@ jobs:
             label: "Local"
           - task: e2e:test:network:local
             label: "Network"
-          # TODO: runtime tests disabled for now due to possible schema drift on the runtime side.
-          # TODO: investigate for details to reenable the test.
-          # - task: e2e:test:daemon:external
-          #   label: "Daemon External"
+          - task: e2e:test:daemon:external
+            label: "Daemon External"
           - task: e2e:test:integration-server:default
             label: "Integration Server"
     steps:
