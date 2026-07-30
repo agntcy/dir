@@ -33,15 +33,19 @@ func newConfigInitTestCmd() (*cobra.Command, *bytes.Buffer) {
 func withConfigInitState(t *testing.T, dataDir string) {
 	t.Helper()
 
-	originalOpts := opts
-	originalConfigInitOpts := configInitOpts
+	originalOpts := *opts
+	originalConfigInitOpts := *configInitOpts
 
-	opts = &Options{DataDir: dataDir}
-	configInitOpts = &configInitOptions{}
+	// Restore the VALUES, not the pointers. cobra bound the real command's
+	// flags to these structs at init() time, so swapping the pointers would
+	// orphan those bindings and leave any test that drives the real command
+	// writing to a struct nobody reads.
+	*opts = Options{DataDir: dataDir}
+	*configInitOpts = configInitOptions{}
 
 	t.Cleanup(func() {
-		opts = originalOpts
-		configInitOpts = originalConfigInitOpts
+		*opts = originalOpts
+		*configInitOpts = originalConfigInitOpts
 	})
 }
 
@@ -84,8 +88,57 @@ func TestRunConfigInitCreatesDataDirWithRestrictivePerms(t *testing.T) {
 
 			info, err := os.Stat(dataDir)
 			require.NoError(t, err)
-			require.Equal(t, os.FileMode(0o700), info.Mode().Perm(),
-				"data directory must not be broader than the 0700 daemon start uses")
+			// Assert the invariant, not an exact mode: MkdirAll is subject to
+			// umask, so a restrictive umask legitimately yields 0500 and an
+			// equality check would fail on a machine that is strictly safer.
+			require.Zero(t, info.Mode().Perm()&0o077,
+				"data directory must not be group- or world-accessible, got %v", info.Mode().Perm())
+		})
+	}
+}
+
+// The 0700 reasoning is about the daemon's own data directory. A path the
+// caller named is an ordinary location, and creating its parents 0700 would
+// lock out the service account that has to read the config.
+func TestRunConfigInitOutputPathParentIsNotLockedDown(t *testing.T) {
+	if runtime.GOOS == osWindows {
+		t.Skip("POSIX permission bits are not meaningful on Windows")
+	}
+
+	dataDir := t.TempDir()
+	withConfigInitState(t, dataDir)
+
+	parent := filepath.Join(t.TempDir(), "etc-agntcy")
+	configInitOpts.Output = filepath.Join(parent, "daemon.config.yaml")
+
+	cmd, _ := newConfigInitTestCmd()
+	require.NoError(t, runConfigInit(cmd, nil))
+
+	info, err := os.Stat(parent)
+	require.NoError(t, err)
+	require.NotZero(t, info.Mode().Perm()&0o055,
+		"a caller-named parent should stay traversable, got %v", info.Mode().Perm())
+}
+
+// A directory at the target fails on both write paths, so the error must say
+// so rather than suggesting --force, which cannot overwrite one either.
+func TestRunConfigInitDirectoryTargetIsReportedOnBothPaths(t *testing.T) {
+	for _, force := range []bool{false, true} {
+		t.Run(fmt.Sprintf("force=%v", force), func(t *testing.T) {
+			dataDir := t.TempDir()
+			withConfigInitState(t, dataDir)
+
+			target := filepath.Join(t.TempDir(), "config-as-a-directory")
+			require.NoError(t, os.MkdirAll(target, 0o755))
+
+			configInitOpts.Output = target
+			configInitOpts.Force = force
+
+			cmd, _ := newConfigInitTestCmd()
+			err := runConfigInit(cmd, nil)
+			require.ErrorContains(t, err, "is a directory")
+			require.NotContains(t, err.Error(), "--force",
+				"--force cannot overwrite a directory, so recommending it is a dead end")
 		})
 	}
 }
@@ -93,27 +146,45 @@ func TestRunConfigInitCreatesDataDirWithRestrictivePerms(t *testing.T) {
 // Nothing else in this file goes through cobra: the other tests call
 // runConfigInit directly with a bare command. That leaves flag registration
 // untested, so a renamed flag, a wrong binding, or a shorthand collision would
-// not fail anything. This drives the real command with argv.
+// not fail anything.
+//
+// This drives configInitCmd itself, the command init() actually registered, so
+// renaming --output or binding --force to the wrong field fails here. An
+// earlier version of this test registered its own flags on a throwaway
+// cobra.Command, which only proved that cobra's StringVarP works.
 func TestConfigInitCommand_ParsesFlags(t *testing.T) {
 	dataDir := t.TempDir()
 	withConfigInitState(t, dataDir)
 
 	target := filepath.Join(t.TempDir(), "custom.config.yaml")
 
-	// Rebind the flags to the test's replacement opts struct, since init()
-	// bound them to the original one at package load.
-	cmd := &cobra.Command{Use: "init", RunE: runConfigInit}
-	cmd.Flags().StringVarP(&configInitOpts.Output, "output", "o", "", "")
-	cmd.Flags().BoolVar(&configInitOpts.Force, "force", false, "")
-	cmd.SetOut(&bytes.Buffer{})
-	cmd.SetArgs([]string{"--output", target})
+	t.Cleanup(func() {
+		// Flag values persist on the command between parses.
+		_ = configInitCmd.Flags().Set("output", "")
+		_ = configInitCmd.Flags().Set("force", "false")
+	})
 
-	require.NoError(t, cmd.Execute())
+	// ParseFlags rather than Execute: Execute on a child command delegates to
+	// the root, which would run the whole dirctl tree. Parsing against
+	// configInitCmd still exercises the real registration — the flag names,
+	// the -o shorthand, and the binding to the package-level opts struct —
+	// which is the part that was untested.
+	require.NoError(t, configInitCmd.ParseFlags([]string{"-o", target}))
+	require.Equal(t, target, configInitOpts.Output, "-o should bind to configInitOpts.Output")
+
+	cmd, _ := newConfigInitTestCmd()
+	require.NoError(t, runConfigInit(cmd, nil))
 	require.FileExists(t, target)
 
-	// And --force actually reaches the overwrite path.
-	cmd.SetArgs([]string{"--output", target, "--force"})
-	require.NoError(t, cmd.Execute())
+	// Seed different content so the --force assertion below cannot pass just
+	// because the first run already wrote the defaults.
+	require.NoError(t, os.WriteFile(target, []byte("stale: true\n"), 0o600))
+
+	require.NoError(t, configInitCmd.ParseFlags([]string{"--output", target, "--force"}))
+	require.True(t, configInitOpts.Force, "--force should bind to configInitOpts.Force")
+
+	cmd2, _ := newConfigInitTestCmd()
+	require.NoError(t, runConfigInit(cmd2, nil))
 
 	got, err := os.ReadFile(target)
 	require.NoError(t, err)
@@ -197,13 +268,13 @@ func TestWriteIfAbsentRejectsExistingFile(t *testing.T) {
 	dir := t.TempDir()
 	target := filepath.Join(dir, "config.yaml")
 
-	require.NoError(t, writeIfAbsent(target, []byte("first"), 0o600))
+	require.NoError(t, writeIfAbsent(target, []byte("first"), 0o600, 0o700))
 
 	entries, err := os.ReadDir(dir)
 	require.NoError(t, err)
 	require.Len(t, entries, 1, "no leftover temp file after a successful write")
 
-	err = writeIfAbsent(target, []byte("second"), 0o600)
+	err = writeIfAbsent(target, []byte("second"), 0o600, 0o700)
 	require.ErrorIs(t, err, errConfigExists)
 
 	got, readErr := os.ReadFile(target)
@@ -292,7 +363,7 @@ func TestRunConfigInitForceErrorsWhenTargetIsDirectory(t *testing.T) {
 	cmd, _ := newConfigInitTestCmd()
 	err := runConfigInit(cmd, nil)
 	require.Error(t, err)
-	require.ErrorContains(t, err, "failed to write default config")
+	require.ErrorContains(t, err, "is a directory")
 
 	info, statErr := os.Stat(target)
 	require.NoError(t, statErr)
