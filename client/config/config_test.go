@@ -14,6 +14,10 @@ import (
 	"go.yaml.in/yaml/v3"
 )
 
+// testProdAddress is shared by the several save-path tests that write a
+// second context, so the literal does not repeat across the file.
+const testProdAddress = "prod:443"
+
 func TestDefaultPath(t *testing.T) {
 	t.Setenv("XDG_CONFIG_HOME", filepath.Join(t.TempDir(), "xdg"))
 
@@ -698,7 +702,7 @@ func TestSaveContextPreservesOtherConfigAndHonorsSetCurrentFalse(t *testing.T) {
 
 	// Seed an extractor section and a pre-existing current_context.
 	require.NoError(t, SaveExtractor("", &Extractor{OASFURL: "https://x", AssetDir: "/a"}))
-	require.NoError(t, SaveContext("", "prod", Context{ServerAddress: "prod:443"}, true))
+	require.NoError(t, SaveContext("", "prod", Context{ServerAddress: testProdAddress}, true))
 
 	// Adding another context with setCurrent=false must not change current_context
 	// and must preserve the extractor section and the existing context.
@@ -841,7 +845,7 @@ telemetry:
 
 	// A write through the tolerant save path must not drop top-level sections
 	// this binary does not recognize.
-	require.NoError(t, SaveContext(path, "prod", Context{ServerAddress: "prod:443"}, false))
+	require.NoError(t, SaveContext(path, "prod", Context{ServerAddress: testProdAddress}, false))
 
 	raw := readRawConfig(t, path)
 
@@ -916,6 +920,7 @@ future_section:
 	contexts, ok := raw["contexts"].(map[string]any)
 	require.True(t, ok, "contexts must be written")
 	assert.Contains(t, contexts, "local")
+
 	future, ok := raw["future_section"].(map[string]any)
 	require.True(t, ok, "future_section must survive the write")
 	assert.Equal(t, "some_value", future["some_key"])
@@ -929,7 +934,7 @@ contexts:
     server_address: dev.example.com:443
 `)
 
-	require.NoError(t, SaveContext(path, "prod", Context{ServerAddress: "prod:443"}, false))
+	require.NoError(t, SaveContext(path, "prod", Context{ServerAddress: testProdAddress}, false))
 
 	// A file with no unknown sections round-trips through the strict loader,
 	// proving no stray keys were introduced by the preservation machinery.
@@ -938,6 +943,41 @@ contexts:
 	assert.Equal(t, "dev", file.CurrentContext)
 	require.Contains(t, file.Contexts, "dev")
 	require.Contains(t, file.Contexts, "prod")
+}
+
+func TestSaveContextInlinesAliasesIntoUnknownSections(t *testing.T) {
+	// The anchor lives in a recognized section, the alias in an unknown one.
+	// Recognized sections are re-encoded from the struct and emit no anchors,
+	// so preserving the alias verbatim writes a dangling reference and leaves
+	// a config that no longer loads at all.
+	path := writeConfig(t, `
+current_context: dev
+contexts:
+  dev: &devctx
+    server_address: dev.example.com:443
+future:
+  copied_from: *devctx
+`)
+
+	require.NoError(t, SaveContext(path, "prod", Context{ServerAddress: testProdAddress}, false))
+
+	// Before aliases were inlined this failed with
+	// `yaml: unknown anchor 'devctx' referenced`.
+	raw := readRawConfig(t, path)
+
+	future, ok := raw["future"].(map[string]any)
+	require.True(t, ok, "future section must survive the write")
+
+	// The alias resolves to the value it referred to rather than being dropped.
+	copied, ok := future["copied_from"].(map[string]any)
+	require.True(t, ok, "aliased value must be inlined as a mapping")
+	assert.Equal(t, "dev.example.com:443", copied["server_address"])
+
+	// The tolerant path is the one the writers use. Strict LoadFile would
+	// reject "future" by design, which is a separate contract.
+	reloaded, err := loadFile(path, true)
+	require.NoError(t, err, "written config must remain loadable")
+	assert.Contains(t, reloaded.Contexts, "prod")
 }
 
 func TestSaveContextOnEmptyMappingFile(t *testing.T) {

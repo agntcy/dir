@@ -201,7 +201,7 @@ func loadFile(path string, allowUnknownFields bool) (*File, error) {
 func captureUnknownSections(data []byte, file *File) error {
 	var doc yaml.Node
 	if err := yaml.Unmarshal(data, &doc); err != nil {
-		return err
+		return fmt.Errorf("parse yaml document: %w", err)
 	}
 
 	if len(doc.Content) == 0 {
@@ -224,32 +224,86 @@ func captureUnknownSections(data []byte, file *File) error {
 			continue
 		}
 
-		file.unknown = append(file.unknown, unknownSection{key: keyNode, value: valueNode})
+		file.unknown = append(file.unknown, unknownSection{
+			key:   inlineAliases(keyNode, make(map[*yaml.Node]struct{})),
+			value: inlineAliases(valueNode, make(map[*yaml.Node]struct{})),
+		})
 	}
 
 	return nil
 }
 
+// inlineAliases returns node with every alias replaced by a copy of what it
+// points at.
+//
+// Preserving an alias verbatim is not safe here. Recognized sections are
+// re-encoded from the typed struct on write, which emits no anchors, so an
+// alias in an unknown section whose anchor was defined inside a recognized one
+// would be written out dangling. The result is a config no version of the
+// binary can load, which is worse than the dropped section this preservation
+// exists to prevent. Inlining is value-preserving, since an alias means exactly
+// the node it references; only the indirection is lost.
+//
+// visiting guards against an anchor that contains a reference to itself, which
+// would otherwise recurse forever.
+func inlineAliases(node *yaml.Node, visiting map[*yaml.Node]struct{}) *yaml.Node {
+	if node == nil {
+		return nil
+	}
+
+	if _, cycle := visiting[node]; cycle {
+		return node
+	}
+
+	visiting[node] = struct{}{}
+	defer delete(visiting, node)
+
+	if node.Kind == yaml.AliasNode {
+		return inlineAliases(node.Alias, visiting)
+	}
+
+	clone := *node
+
+	// Anchors go too. Once aliases are inlined nothing refers to them, and a
+	// definition left behind would re-declare a name whose other uses, in the
+	// recognized sections, no longer exist.
+	clone.Anchor = ""
+
+	if len(node.Content) > 0 {
+		clone.Content = make([]*yaml.Node, len(node.Content))
+		for i, child := range node.Content {
+			clone.Content[i] = inlineAliases(child, visiting)
+		}
+	}
+
+	return &clone
+}
+
 // knownTopLevelKeys returns the set of YAML keys represented on File, derived
 // from struct tags so it stays correct as recognized sections are added.
+//
+// The derivation has to agree with what the yaml encoder actually emits, or a
+// key is both captured as unknown and written by the struct marshal, producing
+// a duplicate key that makes the file unloadable. That is why an untagged
+// field falls back to the lowercased field name, which is the encoder's own
+// default, rather than being skipped.
 func knownTopLevelKeys() map[string]struct{} {
-	fileType := reflect.TypeOf(File{})
+	fileType := reflect.TypeFor[File]()
 	keys := make(map[string]struct{}, fileType.NumField())
 
-	for i := range fileType.NumField() {
-		field := fileType.Field(i)
-		if field.PkgPath != "" { // unexported field, e.g. unknown
+	for field := range fileType.Fields() {
+		if !field.IsExported() { // e.g. unknown
 			continue
 		}
 
 		tag := field.Tag.Get("yaml")
-		if tag == "" || tag == "-" {
+		if tag == "-" {
 			continue
 		}
 
 		name := strings.Split(tag, ",")[0]
 		if name == "" {
-			continue
+			name = strings.ToLower(field.Name)
 		}
 
 		keys[name] = struct{}{}
@@ -438,6 +492,12 @@ func SetCurrentContext(path string, name string) (*ResolvedContext, error) {
 }
 
 // SaveFile writes a reusable client context config file.
+//
+// Preserving unrecognized top-level sections requires file to have come from
+// the tolerant load path, which is where they are captured; every writer in
+// this package does that. A File built by hand, or loaded through the strict
+// LoadFile, carries none, so saving it drops any section this binary does not
+// model. Only whole-document rewrites should do that deliberately.
 func SaveFile(path string, file *File) error {
 	if path == "" {
 		defaultPath, err := DefaultPath()
@@ -479,17 +539,24 @@ func SaveFile(path string, file *File) error {
 func marshalFile(file *File) ([]byte, error) {
 	var root yaml.Node
 	if err := root.Encode(file); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("encode config fields: %w", err)
 	}
 
 	// root is a MappingNode; appending key/value node pairs preserves the
-	// original sections. Keys captured as unknown never collide with recognized
-	// keys (captureUnknownSections excludes them), so no duplicate keys arise.
+	// original sections. A captured key never collides with a recognized one
+	// so long as knownTopLevelKeys agrees with what this Encode emits, which
+	// is the reason it falls back to the encoder's own default naming rather
+	// than skipping untagged fields.
 	for _, section := range file.unknown {
 		root.Content = append(root.Content, section.key, section.value)
 	}
 
-	return yaml.Marshal(&root)
+	data, err := yaml.Marshal(&root)
+	if err != nil {
+		return nil, fmt.Errorf("encode config file: %w", err)
+	}
+
+	return data, nil
 }
 
 // atomicWriteFile writes data to a temp file in the same directory and renames it
