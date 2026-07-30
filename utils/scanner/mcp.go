@@ -28,10 +28,30 @@ var mcpLogger = logging.Logger("utils/scanner/mcp")
 type MCPConfig struct {
 	// CLIPath is the path to the mcp-scanner binary. Defaults to DefaultMCPCLIPath.
 	CLIPath string
+
+	// DisableEndpointScan turns off the live-endpoint phase, leaving only the
+	// source-code scan. The zero value keeps the phase on. It is worth turning
+	// off where the reconciler must not make outbound connections at all: the
+	// phase dials third-party servers named in publisher-controlled record
+	// data, and costs one mcp-scanner invocation per (endpoint, subcommand).
+	DisableEndpointScan bool
+
+	// AllowPrivateEndpoints permits endpoints that resolve to loopback,
+	// link-local, or private ranges. The zero value rejects them, so the safe
+	// posture is the default one. Self-hosted deployments where the directory
+	// and the MCP servers share a private network need this on.
+	AllowPrivateEndpoints bool
 }
 
-// MCPRunner invokes mcp-scanner to scan MCP server source code.
-// It clones the source repository, runs `mcp-scanner behavioral --raw`, and maps the output.
+// MCPRunner invokes mcp-scanner against an MCP server in two phases: it clones
+// and scans the source repository, then scans any live endpoints the record
+// declares, and merges the findings.
+//
+// The two phases fail differently on purpose. The source scan fails hard,
+// because a scanner that cannot run at all is a scan we cannot vouch for. The
+// endpoint phase is skip-with-warning, because endpoints are third-party
+// servers that may be down, moved, or behind auth, and one unreachable
+// endpoint must not fail an otherwise-clean source scan.
 type MCPRunner struct {
 	cfg MCPConfig
 }
@@ -48,9 +68,51 @@ func NewMCPRunner(cfg MCPConfig) *MCPRunner {
 // Name returns the runner name.
 func (r *MCPRunner) Name() string { return "mcp" }
 
-// Run extracts the source-code URL from the record, clones the repository,
-// runs `mcp-scanner behavioral --raw`, and returns mapped findings.
+// EndpointScanSettings describes how the live-endpoint phase is configured.
+type EndpointScanSettings struct {
+	// Disabled reports whether the phase is turned off entirely.
+	Disabled bool
+	// AllowPrivate reports whether endpoints on loopback, link-local, and
+	// private ranges are permitted.
+	AllowPrivate bool
+}
+
+// EndpointScanSettings reports how the live-endpoint phase is configured. It
+// exists so callers that wire the runner up can assert the configuration
+// actually arrived; the config fields themselves stay unexported.
+func (r *MCPRunner) EndpointScanSettings() EndpointScanSettings {
+	return EndpointScanSettings{
+		Disabled:     r.cfg.DisableEndpointScan,
+		AllowPrivate: r.cfg.AllowPrivateEndpoints,
+	}
+}
+
+// Run scans the record's MCP server in two phases and merges the results:
+// the source repository is cloned and scanned, then any live endpoints the
+// record declares are scanned. Either phase may skip without the other doing
+// so, and a record with only one of the two still produces a usable result.
 func (r *MCPRunner) Run(ctx context.Context, record *corev1.Record) (*ScanResult, error) {
+	sourceResult, err := r.runSourceScan(ctx, record)
+	if err != nil {
+		// Hard failure: the scanner could not run, so we cannot vouch for the
+		// record. Returning the error discards any endpoint findings, which is
+		// the intended trade - a partial scan reported as a whole one is worse
+		// than no scan.
+		return nil, err
+	}
+
+	if r.cfg.DisableEndpointScan {
+		return sourceResult, nil
+	}
+
+	endpointResult := r.runEndpointScan(ctx, record)
+
+	return merge([]*ScanResult{sourceResult, endpointResult}), nil
+}
+
+// runSourceScan clones the record's source repository and runs the
+// source-code analyzers over it.
+func (r *MCPRunner) runSourceScan(ctx context.Context, record *corev1.Record) (*ScanResult, error) {
 	repoURL, subfolder := extractSourceInfo(record)
 	if repoURL == "" {
 		return &ScanResult{Skipped: true, SkippedReason: "no source-code locator found"}, nil

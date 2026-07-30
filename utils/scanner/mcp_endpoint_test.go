@@ -13,58 +13,60 @@ import (
 	"google.golang.org/protobuf/types/known/structpb"
 )
 
-// --- NewRemoteRunner / Name ---
+// --- endpoint phase / no endpoints ---
 
-func TestNewRemoteRunner_DefaultCLIPath(t *testing.T) {
+func TestRunEndpointScan_NilRecord_Skipped(t *testing.T) {
 	t.Parallel()
 
-	r := NewRemoteRunner(RemoteConfig{})
-	if r.cfg.CLIPath != DefaultMCPCLIPath {
-		t.Errorf("empty CLIPath should default to %q, got %q", DefaultMCPCLIPath, r.cfg.CLIPath)
-	}
-}
+	r := NewMCPRunner(MCPConfig{})
 
-func TestNewRemoteRunner_CustomCLIPath(t *testing.T) {
-	t.Parallel()
-
-	r := NewRemoteRunner(RemoteConfig{CLIPath: "/usr/local/bin/mcp-scanner"})
-	if r.cfg.CLIPath != "/usr/local/bin/mcp-scanner" {
-		t.Errorf("custom CLIPath should be preserved, got %q", r.cfg.CLIPath)
-	}
-}
-
-func TestRemoteRunner_Name(t *testing.T) {
-	t.Parallel()
-
-	r := NewRemoteRunner(RemoteConfig{})
-	if got := r.Name(); got != "remote" {
-		t.Errorf("Name() = %q, want %q", got, "remote")
-	}
-}
-
-// --- Run / no endpoints ---
-
-func TestRemoteRunner_Run_NilRecord_Skipped(t *testing.T) {
-	t.Parallel()
-
-	r := NewRemoteRunner(RemoteConfig{})
-
-	got, err := r.Run(context.Background(), nil)
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-
+	got := r.runEndpointScan(context.Background(), nil)
 	if !got.Skipped || got.SkippedReason == "" {
 		t.Errorf("nil record should be skipped with a reason: %+v", got)
 	}
 }
 
-func TestRemoteRunner_Run_NoConnections_Skipped(t *testing.T) {
+func TestRunEndpointScan_NoConnections_Skipped(t *testing.T) {
 	t.Parallel()
 
-	r := NewRemoteRunner(RemoteConfig{})
+	r := NewMCPRunner(MCPConfig{})
 
 	st, err := structpb.NewStruct(map[string]any{"schema_version": "1.0.0"})
+	if err != nil {
+		t.Fatalf("structpb.NewStruct: %v", err)
+	}
+
+	got := r.runEndpointScan(context.Background(), &corev1.Record{Data: st})
+	if !got.Skipped {
+		t.Error("record with no remote-capable connection should be skipped")
+	}
+}
+
+// TestRun_DisableEndpointScan_SkipsEndpointPhase pins the toggle: with the
+// endpoint phase off, a record carrying endpoints but no source locator must
+// come back as the source phase's skip, untouched by endpoint results.
+func TestRun_DisableEndpointScan_SkipsEndpointPhase(t *testing.T) {
+	t.Parallel()
+
+	r := NewMCPRunner(MCPConfig{DisableEndpointScan: true})
+
+	data := map[string]any{
+		"schema_version": "0.7.0",
+		"name":           "example",
+		"version":        "v1",
+		"modules": []any{
+			map[string]any{
+				"name": "integration/mcp",
+				"data": map[string]any{
+					"connections": []any{
+						map[string]any{"type": "sse", "url": "https://mcp.example.com/sse"},
+					},
+				},
+			},
+		},
+	}
+
+	st, err := structpb.NewStruct(data)
 	if err != nil {
 		t.Fatalf("structpb.NewStruct: %v", err)
 	}
@@ -75,7 +77,11 @@ func TestRemoteRunner_Run_NoConnections_Skipped(t *testing.T) {
 	}
 
 	if !got.Skipped {
-		t.Error("record with no remote-capable connection should be skipped")
+		t.Fatalf("expected the source-phase skip, got %+v", got)
+	}
+
+	if !strings.Contains(got.SkippedReason, "no source-code locator") {
+		t.Errorf("expected the source-phase skip reason, got %q", got.SkippedReason)
 	}
 }
 
@@ -270,7 +276,7 @@ func TestTagFindings_PreservesOrderAndCount(t *testing.T) {
 	}
 }
 
-// --- extractRemoteEndpoints ---
+// --- extractEndpoints ---
 //
 // The per-connection logic is unit tested directly above via
 // extractConnectionURLs against hand-built structpb.Struct values (mirroring
@@ -280,19 +286,19 @@ func TestTagFindings_PreservesOrderAndCount(t *testing.T) {
 // schema) and the module-walking loop, which none of the tests above touch
 // since they use records with no modules at all.
 
-func TestExtractRemoteEndpoints_NilRecord(t *testing.T) {
+func TestExtractEndpoints_NilRecord(t *testing.T) {
 	t.Parallel()
 
-	if got := extractRemoteEndpoints(nil); got != nil {
+	if got := extractEndpoints(nil); got != nil {
 		t.Errorf("nil record should return nil, got %v", got)
 	}
 }
 
-func TestExtractRemoteEndpoints_DecodeError_ReturnsNil(t *testing.T) {
+func TestExtractEndpoints_DecodeError_ReturnsNil(t *testing.T) {
 	t.Parallel()
 
 	// No "schema_version" field at all: record.Decode() fails inside
-	// decoder.GetRecordSchemaVersion, so extractRemoteEndpoints must hit its
+	// decoder.GetRecordSchemaVersion, so extractEndpoints must hit its
 	// `if err != nil { return nil }` branch rather than panicking or the
 	// nil-decoded-record propagating further.
 	data, err := structpb.NewStruct(map[string]any{"name": "no-schema-version"})
@@ -300,35 +306,35 @@ func TestExtractRemoteEndpoints_DecodeError_ReturnsNil(t *testing.T) {
 		t.Fatalf("structpb.NewStruct: %v", err)
 	}
 
-	got := extractRemoteEndpoints(&corev1.Record{Data: data})
+	got := extractEndpoints(&corev1.Record{Data: data})
 	if got != nil {
 		t.Errorf("record with undecodable data should return nil, got %v", got)
 	}
 }
 
-func TestExtractRemoteEndpoints_NonV1Schema_ReturnsNil(t *testing.T) {
+func TestExtractEndpoints_NonV1Schema_ReturnsNil(t *testing.T) {
 	t.Parallel()
 
 	// schema_version 0.7.x decodes successfully as OASF v1alpha1, so
-	// decoded.HasV1() is false and extractRemoteEndpoints must return nil
+	// decoded.HasV1() is false and extractEndpoints must return nil
 	// without attempting to read v1-shaped modules.
 	data, err := structpb.NewStruct(map[string]any{"schema_version": "0.7.0"})
 	if err != nil {
 		t.Fatalf("structpb.NewStruct: %v", err)
 	}
 
-	got := extractRemoteEndpoints(&corev1.Record{Data: data})
+	got := extractEndpoints(&corev1.Record{Data: data})
 	if got != nil {
 		t.Errorf("non-v1 record should return nil, got %v", got)
 	}
 }
 
-func TestExtractRemoteEndpoints_WalksModulesAndCollectsURLs(t *testing.T) {
+func TestExtractEndpoints_WalksModulesAndCollectsURLs(t *testing.T) {
 	t.Parallel()
 
 	// A real v1 record with two modules, only one of which carries a
 	// remote-capable MCP connection, so the loop body in
-	// extractRemoteEndpoints (append(urls, extractConnectionURLs(...)...))
+	// extractEndpoints (append(urls, extractConnectionURLs(...)...))
 	// actually runs across more than zero modules.
 	data, err := structpb.NewStruct(map[string]any{
 		"schema_version": "1.0.0",
@@ -351,23 +357,23 @@ func TestExtractRemoteEndpoints_WalksModulesAndCollectsURLs(t *testing.T) {
 		t.Fatalf("structpb.NewStruct: %v", err)
 	}
 
-	got := extractRemoteEndpoints(&corev1.Record{Data: data})
+	got := extractEndpoints(&corev1.Record{Data: data})
 	if len(got) != 1 || got[0] != "https://example.com/sse" {
 		t.Errorf("want [%q], got %v", "https://example.com/sse", got)
 	}
 }
 
-// --- runMCPScannerRemote ---
+// --- runMCPScannerEndpoint ---
 //
 // These exercise the real exec.CommandContext invocation using
 // testdata/fakecli as a stand-in mcp-scanner binary (see fakecli_test.go).
 
-func TestRunMCPScannerRemote_Success_ReturnsStdout(t *testing.T) {
+func TestRunMCPScannerEndpoint_Success_ReturnsStdout(t *testing.T) {
 	t.Parallel()
 
 	cli := fakeCLIPath(t)
 
-	out, err := runMCPScannerRemote(context.Background(), cli, "remote", "https://ok.example.com/mcp")
+	out, err := runMCPScannerEndpoint(context.Background(), cli, "remote", "https://ok.example.com/mcp")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -377,12 +383,12 @@ func TestRunMCPScannerRemote_Success_ReturnsStdout(t *testing.T) {
 	}
 }
 
-func TestRunMCPScannerRemote_ExecFailure_WrapsStderr(t *testing.T) {
+func TestRunMCPScannerEndpoint_ExecFailure_WrapsStderr(t *testing.T) {
 	t.Parallel()
 
 	cli := fakeCLIPath(t)
 
-	_, err := runMCPScannerRemote(context.Background(), cli, "remote", "https://fail-exec.example.com/mcp")
+	_, err := runMCPScannerEndpoint(context.Background(), cli, "remote", "https://fail-exec.example.com/mcp")
 	if err == nil {
 		t.Fatal("want an error when the mcp-scanner process exits non-zero")
 	}
@@ -396,14 +402,14 @@ func TestRunMCPScannerRemote_ExecFailure_WrapsStderr(t *testing.T) {
 	}
 }
 
-// --- RemoteRunner.runOne ---
+// --- MCPRunner endpoint subcommand ---
 
-func TestRemoteRunner_RunOne_Success_TagsAndSetsAnalyzer(t *testing.T) {
+func TestMCPRunner_EndpointSubcommand_Success_TagsAndSetsAnalyzer(t *testing.T) {
 	t.Parallel()
 
-	r := NewRemoteRunner(RemoteConfig{CLIPath: fakeCLIPath(t)})
+	r := NewMCPRunner(MCPConfig{CLIPath: fakeCLIPath(t)})
 
-	got := r.runOne(context.Background(), "prompts", "https://ok.example.com/mcp")
+	got := r.runEndpointSubcommand(context.Background(), "prompts", "https://ok.example.com/mcp")
 
 	if got.Skipped {
 		t.Fatalf("want a non-skipped result, got skipped: %s", got.SkippedReason)
@@ -423,12 +429,12 @@ func TestRemoteRunner_RunOne_Success_TagsAndSetsAnalyzer(t *testing.T) {
 	}
 }
 
-func TestRemoteRunner_RunOne_ExecFailure_SkippedNotError(t *testing.T) {
+func TestMCPRunner_EndpointSubcommand_ExecFailure_SkippedNotError(t *testing.T) {
 	t.Parallel()
 
-	r := NewRemoteRunner(RemoteConfig{CLIPath: fakeCLIPath(t)})
+	r := NewMCPRunner(MCPConfig{CLIPath: fakeCLIPath(t)})
 
-	got := r.runOne(context.Background(), "remote", "https://fail-exec.example.com/mcp")
+	got := r.runEndpointSubcommand(context.Background(), "remote", "https://fail-exec.example.com/mcp")
 
 	if !got.Skipped {
 		t.Fatal("an unreachable endpoint must be skipped, not surfaced as a hard error")
@@ -441,12 +447,12 @@ func TestRemoteRunner_RunOne_ExecFailure_SkippedNotError(t *testing.T) {
 	}
 }
 
-func TestRemoteRunner_RunOne_UnparsableOutput_SkippedNotError(t *testing.T) {
+func TestMCPRunner_EndpointSubcommand_UnparsableOutput_SkippedNotError(t *testing.T) {
 	t.Parallel()
 
-	r := NewRemoteRunner(RemoteConfig{CLIPath: fakeCLIPath(t)})
+	r := NewMCPRunner(MCPConfig{CLIPath: fakeCLIPath(t)})
 
-	got := r.runOne(context.Background(), "resources", "https://bad-json.example.com/mcp")
+	got := r.runEndpointSubcommand(context.Background(), "resources", "https://bad-json.example.com/mcp")
 
 	if !got.Skipped {
 		t.Fatal("unparsable mcp-scanner output must be skipped, not surfaced as a hard error")
@@ -457,12 +463,12 @@ func TestRemoteRunner_RunOne_UnparsableOutput_SkippedNotError(t *testing.T) {
 	}
 }
 
-func TestRemoteRunner_RunOne_EmptySafeOutput_NoFindings(t *testing.T) {
+func TestMCPRunner_EndpointSubcommand_EmptySafeOutput_NoFindings(t *testing.T) {
 	t.Parallel()
 
-	r := NewRemoteRunner(RemoteConfig{CLIPath: fakeCLIPath(t)})
+	r := NewMCPRunner(MCPConfig{CLIPath: fakeCLIPath(t)})
 
-	got := r.runOne(context.Background(), "instructions", "https://empty-safe.example.com/mcp")
+	got := r.runEndpointSubcommand(context.Background(), "instructions", "https://empty-safe.example.com/mcp")
 
 	if got.Skipped {
 		t.Fatalf("want a non-skipped, safe result, got skipped: %s", got.SkippedReason)
@@ -477,11 +483,11 @@ func TestRemoteRunner_RunOne_EmptySafeOutput_NoFindings(t *testing.T) {
 	}
 }
 
-// --- RemoteRunner.Run (end to end, via testdata/fakecli) ---
+// --- MCPRunner endpoint phase, end to end via testdata/fakecli ---
 
-// remoteRecordWithEndpoints builds a v1 record whose sole MCP module
+// recordWithEndpoints builds a v1 record whose sole MCP module
 // declares one remote-capable ("streamable-http") connection per URL given.
-func remoteRecordWithEndpoints(t *testing.T, urls ...string) *corev1.Record {
+func recordWithEndpoints(t *testing.T, urls ...string) *corev1.Record {
 	t.Helper()
 
 	conns := make([]any, 0, len(urls))
@@ -505,11 +511,11 @@ func remoteRecordWithEndpoints(t *testing.T, urls ...string) *corev1.Record {
 	return &corev1.Record{Data: data}
 }
 
-func TestRemoteRunner_Run_MergesFindingsAcrossEndpointsAndSubcommands(t *testing.T) {
+func TestMCPRunner_EndpointScan_MergesFindingsAcrossEndpointsAndSubcommands(t *testing.T) {
 	t.Parallel()
 
-	r := NewRemoteRunner(RemoteConfig{CLIPath: fakeCLIPath(t)})
-	rec := remoteRecordWithEndpoints(t, "https://a.example.com/mcp", "https://b.example.com/mcp")
+	r := NewMCPRunner(MCPConfig{CLIPath: fakeCLIPath(t)})
+	rec := recordWithEndpoints(t, "https://a.example.com/mcp", "https://b.example.com/mcp")
 
 	got, err := r.Run(context.Background(), rec)
 	if err != nil {
@@ -540,11 +546,11 @@ func TestRemoteRunner_Run_MergesFindingsAcrossEndpointsAndSubcommands(t *testing
 	}
 }
 
-func TestRemoteRunner_Run_AllEndpointsUnreachable_SkippedNotError(t *testing.T) {
+func TestMCPRunner_EndpointScan_AllEndpointsUnreachable_SkippedNotError(t *testing.T) {
 	t.Parallel()
 
-	r := NewRemoteRunner(RemoteConfig{CLIPath: fakeCLIPath(t)})
-	rec := remoteRecordWithEndpoints(t, "https://fail-exec.example.com/mcp")
+	r := NewMCPRunner(MCPConfig{CLIPath: fakeCLIPath(t)})
+	rec := recordWithEndpoints(t, "https://fail-exec.example.com/mcp")
 
 	got, err := r.Run(context.Background(), rec)
 	if err != nil {
@@ -560,11 +566,11 @@ func TestRemoteRunner_Run_AllEndpointsUnreachable_SkippedNotError(t *testing.T) 
 	}
 }
 
-func TestRemoteRunner_Run_MixedReachability_KeepsSuccessfulFindings(t *testing.T) {
+func TestMCPRunner_EndpointScan_MixedReachability_KeepsSuccessfulFindings(t *testing.T) {
 	t.Parallel()
 
-	r := NewRemoteRunner(RemoteConfig{CLIPath: fakeCLIPath(t)})
-	rec := remoteRecordWithEndpoints(t, "https://ok.example.com/mcp", "https://fail-exec.example.com/mcp")
+	r := NewMCPRunner(MCPConfig{CLIPath: fakeCLIPath(t)})
+	rec := recordWithEndpoints(t, "https://ok.example.com/mcp", "https://fail-exec.example.com/mcp")
 
 	got, err := r.Run(context.Background(), rec)
 	if err != nil {
@@ -583,11 +589,11 @@ func TestRemoteRunner_Run_MixedReachability_KeepsSuccessfulFindings(t *testing.T
 	}
 }
 
-func TestRemoteRunner_Run_UnparsableEndpoint_SkippedNotError(t *testing.T) {
+func TestMCPRunner_EndpointScan_UnparsableEndpoint_SkippedNotError(t *testing.T) {
 	t.Parallel()
 
-	r := NewRemoteRunner(RemoteConfig{CLIPath: fakeCLIPath(t)})
-	rec := remoteRecordWithEndpoints(t, "https://bad-json.example.com/mcp")
+	r := NewMCPRunner(MCPConfig{CLIPath: fakeCLIPath(t)})
+	rec := recordWithEndpoints(t, "https://bad-json.example.com/mcp")
 
 	got, err := r.Run(context.Background(), rec)
 	if err != nil {

@@ -50,6 +50,17 @@ type Config struct {
 
 	// A2ACLIPath is the path to the a2a-scanner binary.
 	A2ACLIPath string `json:"a2a_cli_path,omitempty" mapstructure:"a2a_cli_path"`
+
+	// DisableEndpointScan turns off the MCP live-endpoint scan phase, leaving
+	// only the source-code scan. Set it where the reconciler must not make
+	// outbound connections to the endpoints named in published records.
+	DisableEndpointScan bool `json:"disable_endpoint_scan,omitempty" mapstructure:"disable_endpoint_scan"`
+
+	// AllowPrivateEndpoints permits MCP endpoints on loopback, link-local, and
+	// private ranges, and permits plain http. Off by default so the safe
+	// posture ships out of the box; self-hosted deployments that run the
+	// directory and its MCP servers on one private network need it on.
+	AllowPrivateEndpoints bool `json:"allow_private_endpoints,omitempty" mapstructure:"allow_private_endpoints"`
 }
 
 // GetInterval returns the interval with default fallback.
