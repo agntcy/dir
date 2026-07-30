@@ -22,20 +22,20 @@ func FormatPlan(outcomes []Outcome) string {
 		return b.String()
 	}
 
-	for _, o := range outcomes {
-		path := o.Path
-		if path == "" {
-			path = "-"
+	if needsRecordGrouping(outcomes) {
+		for i, record := range recordOrder(outcomes) {
+			if i > 0 {
+				b.WriteString("\n")
+			}
+
+			fmt.Fprintf(&b, "Record: %s\n", record)
+			writeOutcomeLines(&b, outcomesForRecord(outcomes, record))
 		}
 
-		fmt.Fprintf(&b, "  %-9s %-5s %s  (%s)", o.Action, o.Artifact, path, o.Agent)
-
-		if o.Reason != "" {
-			fmt.Fprintf(&b, ": %s", o.Reason)
-		}
-
-		b.WriteString("\n")
+		return b.String()
 	}
+
+	writeOutcomeLines(&b, outcomes)
 
 	return b.String()
 }

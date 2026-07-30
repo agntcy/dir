@@ -43,6 +43,8 @@ func TestTopLevelUninstallShorthand(t *testing.T) {
 	require.NotNil(t, UninstallCommand.PersistentFlags().Lookup("agents"))
 	require.NotNil(t, UninstallCommand.PersistentFlags().Lookup("dry-run"))
 	require.NotNil(t, UninstallCommand.PersistentFlags().Lookup("yes"))
+	require.NotNil(t, UninstallCommand.PersistentFlags().Lookup("limit"))
+	require.NotNil(t, UninstallCommand.PersistentFlags().Lookup("module"))
 }
 
 // --- confirm tests ---
@@ -100,6 +102,24 @@ func TestConfirmEOFWithEmptyLine(t *testing.T) {
 	_, err := confirm(cmd, "Proceed?")
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "read confirmation")
+}
+
+// --- scopeFromOpts tests ---
+
+func TestScopeFromOptsProject(t *testing.T) {
+	orig := opts
+
+	defer func() { opts = orig }()
+
+	require.NotNil(t, Command.PersistentFlags().Lookup("project"))
+
+	opts.project = false
+
+	assert.Equal(t, agentcfg.Global, scopeFromOpts())
+
+	opts.project = true
+
+	assert.Equal(t, agentcfg.Project, scopeFromOpts())
 }
 
 // --- selectAgents tests ---

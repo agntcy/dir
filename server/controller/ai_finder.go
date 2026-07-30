@@ -91,10 +91,17 @@ func (c *aiFinderController) ListAgents(ctx context.Context, req *catalogv1.List
 
 	pageSize := int(clampPageSize(req.GetPageSize()))
 
-	opts, ok := buildRecordFilterOptions(parsedFilter, order, pageSize, offset)
+	opts, ok := buildCatalogFilterOptions(parsedFilter, order, pageSize, offset)
 	if !ok {
 		// type= matched no indexed module: zero rows, not an error.
 		return &catalogv1.ListAgentsResponse{}, nil
+	}
+
+	totalCount, err := c.db.CountCatalogEntries(opts...)
+	if err != nil {
+		aiFinderLogger.Error("failed to count catalog entries", "error", err)
+
+		return nil, status.Error(codes.Internal, "failed to count catalog entries") //nolint:wrapcheck
 	}
 
 	entries, hasMore, err := c.db.GetCatalogEntries(opts...)
@@ -102,10 +109,6 @@ func (c *aiFinderController) ListAgents(ctx context.Context, req *catalogv1.List
 		aiFinderLogger.Error("failed to list catalog entries", "error", err)
 
 		return nil, status.Error(codes.Internal, "failed to list catalog entries") //nolint:wrapcheck
-	}
-
-	if len(parsedFilter.Types) > 0 {
-		entries = filterCatalogEntriesByMediaType(entries, parsedFilter.Types)
 	}
 
 	var nextPageToken string
@@ -118,7 +121,27 @@ func (c *aiFinderController) ListAgents(ctx context.Context, req *catalogv1.List
 	return &catalogv1.ListAgentsResponse{
 		Results:       entries,
 		NextPageToken: nextPageToken,
+		TotalCount:    totalCount,
 	}, nil
+}
+
+// ListTags returns distinct catalog tags derived from OASF skills, domains,
+// and record annotations.
+func (c *aiFinderController) ListTags(ctx context.Context, _ *catalogv1.ListTagsRequest) (*catalogv1.ListTagsResponse, error) {
+	if err := ctx.Err(); err != nil {
+		return nil, status.Errorf(codes.Canceled, "%v", err)
+	}
+
+	aiFinderLogger.Debug("ListTags called")
+
+	tags, err := c.db.ListCatalogTags()
+	if err != nil {
+		aiFinderLogger.Error("failed to list catalog tags", "error", err)
+
+		return nil, status.Error(codes.Internal, "failed to list catalog tags") //nolint:wrapcheck
+	}
+
+	return &catalogv1.ListTagsResponse{Tags: tags}, nil
 }
 
 // GetWellKnownCatalog returns a well-known catalog of agents. This is intended to be used
@@ -183,7 +206,10 @@ func (c *aiFinderController) GetAgent(ctx context.Context, req *catalogv1.GetAge
 		return nil, status.Errorf(codes.Canceled, "%v", err)
 	}
 
-	entries, _, err := c.db.GetCatalogEntries(types.WithCIDs(cid), types.WithLimit(1))
+	entries, _, err := c.db.GetCatalogEntries(
+		types.WithCIDs(cid),
+		types.WithLimit(1),
+	)
 	if err != nil {
 		aiFinderLogger.Error("failed to load catalog entry", "cid", cid, "error", err)
 

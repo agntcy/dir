@@ -27,6 +27,7 @@ const (
 	AIFinderService_GetAgent_FullMethodName            = "/agntcy.dir.catalog.v1.AIFinderService/GetAgent"
 	AIFinderService_ExportAgent_FullMethodName         = "/agntcy.dir.catalog.v1.AIFinderService/ExportAgent"
 	AIFinderService_GetWellKnownCatalog_FullMethodName = "/agntcy.dir.catalog.v1.AIFinderService/GetWellKnownCatalog"
+	AIFinderService_ListTags_FullMethodName            = "/agntcy.dir.catalog.v1.AIFinderService/ListTags"
 )
 
 // AIFinderServiceClient is the client API for AIFinderService service.
@@ -51,6 +52,9 @@ type AIFinderServiceClient interface {
 	// GetWellKnownCatalog returns the AI Catalog well-known document (host
 	// descriptor, published entries, and dynamic collections) at the RFC 8615 URI.
 	GetWellKnownCatalog(ctx context.Context, in *GetWellKnownCatalogRequest, opts ...grpc.CallOption) (*GetWellKnownCatalogResponse, error)
+	// ListTags returns the distinct catalog tags derived from OASF skills, domains,
+	// and record annotations across the registry.
+	ListTags(ctx context.Context, in *ListTagsRequest, opts ...grpc.CallOption) (*ListTagsResponse, error)
 }
 
 type aIFinderServiceClient struct {
@@ -101,6 +105,16 @@ func (c *aIFinderServiceClient) GetWellKnownCatalog(ctx context.Context, in *Get
 	return out, nil
 }
 
+func (c *aIFinderServiceClient) ListTags(ctx context.Context, in *ListTagsRequest, opts ...grpc.CallOption) (*ListTagsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ListTagsResponse)
+	err := c.cc.Invoke(ctx, AIFinderService_ListTags_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // AIFinderServiceServer is the server API for AIFinderService service.
 // All implementations should embed UnimplementedAIFinderServiceServer
 // for forward compatibility.
@@ -123,6 +137,9 @@ type AIFinderServiceServer interface {
 	// GetWellKnownCatalog returns the AI Catalog well-known document (host
 	// descriptor, published entries, and dynamic collections) at the RFC 8615 URI.
 	GetWellKnownCatalog(context.Context, *GetWellKnownCatalogRequest) (*GetWellKnownCatalogResponse, error)
+	// ListTags returns the distinct catalog tags derived from OASF skills, domains,
+	// and record annotations across the registry.
+	ListTags(context.Context, *ListTagsRequest) (*ListTagsResponse, error)
 }
 
 // UnimplementedAIFinderServiceServer should be embedded to have
@@ -143,6 +160,9 @@ func (UnimplementedAIFinderServiceServer) ExportAgent(context.Context, *ExportAg
 }
 func (UnimplementedAIFinderServiceServer) GetWellKnownCatalog(context.Context, *GetWellKnownCatalogRequest) (*GetWellKnownCatalogResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetWellKnownCatalog not implemented")
+}
+func (UnimplementedAIFinderServiceServer) ListTags(context.Context, *ListTagsRequest) (*ListTagsResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ListTags not implemented")
 }
 func (UnimplementedAIFinderServiceServer) testEmbeddedByValue() {}
 
@@ -236,6 +256,24 @@ func _AIFinderService_GetWellKnownCatalog_Handler(srv interface{}, ctx context.C
 	return interceptor(ctx, in, info, handler)
 }
 
+func _AIFinderService_ListTags_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListTagsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AIFinderServiceServer).ListTags(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: AIFinderService_ListTags_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AIFinderServiceServer).ListTags(ctx, req.(*ListTagsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // AIFinderService_ServiceDesc is the grpc.ServiceDesc for AIFinderService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -258,6 +296,10 @@ var AIFinderService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetWellKnownCatalog",
 			Handler:    _AIFinderService_GetWellKnownCatalog_Handler,
+		},
+		{
+			MethodName: "ListTags",
+			Handler:    _AIFinderService_ListTags_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

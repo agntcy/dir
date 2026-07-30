@@ -3,7 +3,7 @@
 # xx is a helper for cross-compilation
 FROM --platform=$BUILDPLATFORM tonistiigi/xx:1.9.0@sha256:c64defb9ed5a91eacb37f96ccc3d4cd72521c4bd18d5442905b95e2226b0e707 AS xx
 
-FROM --platform=$BUILDPLATFORM golang:1.26.4-bookworm@sha256:5f68ec6805843bd3981a951ffada82a26a0bd2631045c8f7dba483fa868f5ec5 AS builder
+FROM --platform=$BUILDPLATFORM golang:1.26.5-bookworm@sha256:e60d708a92ad26a6d61901334510d3debd23ddcba125663ecd6008d42e8ec669 AS builder
 
 COPY --link --from=xx / /
 
@@ -45,7 +45,7 @@ FROM builder AS debug
 WORKDIR /
 
 COPY --from=builder /bin/apiserver ./apiserver
-COPY --from=ghcr.io/grpc-ecosystem/grpc-health-probe:v0.4.52 /ko-app/grpc-health-probe /bin/grpc-health-probe
+COPY --from=ghcr.io/grpc-ecosystem/grpc-health-probe:v0.4.53 /ko-app/grpc-health-probe /bin/grpc-health-probe
 
 RUN xx-go install github.com/go-delve/delve/cmd/dlv@v1.26.2
 
@@ -57,7 +57,7 @@ FROM gcr.io/distroless/static:nonroot@sha256:963fa6c544fe5ce420f1f54fb88b6fb0147
 WORKDIR /
 
 COPY --from=builder /bin/apiserver ./apiserver
-COPY --from=ghcr.io/grpc-ecosystem/grpc-health-probe:v0.4.52 /ko-app/grpc-health-probe /bin/grpc-health-probe
+COPY --from=ghcr.io/grpc-ecosystem/grpc-health-probe:v0.4.53 /ko-app/grpc-health-probe /bin/grpc-health-probe
 
 USER 65532:65532
 
@@ -72,7 +72,7 @@ COPY --from=builder /etc/ssl/certs /etc/ssl/certs
 COPY --from=builder /usr/share/ca-certificates /usr/share/ca-certificates
 
 COPY --from=builder /bin/apiserver ./apiserver
-COPY --from=ghcr.io/grpc-ecosystem/grpc-health-probe:v0.4.52 /ko-app/grpc-health-probe /bin/grpc-health-probe
+COPY --from=ghcr.io/grpc-ecosystem/grpc-health-probe:v0.4.53 /ko-app/grpc-health-probe /bin/grpc-health-probe
 
 # Create a non-root user for coverage
 RUN addgroup -g 55532 -S nonroot && adduser -u 55532 -S nonroot -G nonroot

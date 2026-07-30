@@ -19,6 +19,11 @@ const (
 	DefaultPostgresSSLMode  = "disable"
 )
 
+// TODO: these package-level vars call EnsureFilePath at init() time, creating filesystem
+// directories unconditionally on import regardless of which database backend is configured.
+// This causes a panic in containers running as a user without a writable home directory.
+// Fix by computing these lazily (on first use) rather than eagerly at package init.
+
 // DefaultDataDir is the persistent data directory (~/.dir).
 var DefaultDataDir = EnsureFilePath(filepath.Join(GetDataDir(), ".dir"))
 

@@ -117,7 +117,7 @@ func newA2ATestRecordWithVersion(t *testing.T, version string) *corev1.Record {
 	return &corev1.Record{Data: &data}
 }
 
-const testMCPGHCopilotRecordJSON = `{
+const testMCPRecordJSON = `{
   "schema_version": "1.0.0",
   "name": "io.example/code-review-server",
   "version": "1.0.0",
@@ -145,7 +145,7 @@ const testMCPGHCopilotRecordJSON = `{
   ]
 }`
 
-func newMCPGHCopilotTestRecord(t *testing.T, recordJSON string) *corev1.Record {
+func newMCPTestRecord(t *testing.T, recordJSON string) *corev1.Record {
 	t.Helper()
 
 	var data structpb.Struct
@@ -348,7 +348,7 @@ func TestMCPGHCopilotBatchFormatter(t *testing.T) {
 
 	t.Run("merges multiple records into single mcp.json", func(t *testing.T) {
 		dir := t.TempDir()
-		r1 := newMCPGHCopilotTestRecord(t, testMCPGHCopilotRecordJSON)
+		r1 := newMCPTestRecord(t, testMCPRecordJSON)
 		records := []*corev1.Record{r1}
 
 		n, err := bf.FormatBatch(records, dir, false)
@@ -376,6 +376,51 @@ func TestMCPGHCopilotBatchFormatter(t *testing.T) {
 		var parsed map[string]any
 		require.NoError(t, json.Unmarshal(data, &parsed))
 		assert.Empty(t, parsed["servers"])
+	})
+}
+
+func testMCPServersBatchFormatter(t *testing.T, formatName string) {
+	t.Helper()
+
+	bf := getBatchFormatter(formatName)
+	require.NotNil(t, bf, "%s should have a batch formatter", formatName)
+
+	t.Run("merges multiple records into single mcp.json", func(t *testing.T) {
+		dir := t.TempDir()
+		r1 := newMCPTestRecord(t, testMCPRecordJSON)
+		records := []*corev1.Record{r1}
+
+		n, err := bf.FormatBatch(records, dir, false)
+		require.NoError(t, err)
+		assert.Equal(t, 1, n)
+
+		data, err := os.ReadFile(filepath.Join(dir, "mcp.json"))
+		require.NoError(t, err)
+
+		var parsed map[string]any
+		require.NoError(t, json.Unmarshal(data, &parsed))
+
+		servers, ok := parsed["mcpServers"].(map[string]any)
+		require.True(t, ok, "output should contain an 'mcpServers' map")
+		assert.NotEmpty(t, servers)
+
+		server, ok := servers["io.example/code-review"].(map[string]any)
+		require.True(t, ok)
+		assert.Equal(t, "npx", server["command"])
+	})
+
+	t.Run("returns zero for empty slice", func(t *testing.T) {
+		dir := t.TempDir()
+		n, err := bf.FormatBatch(nil, dir, false)
+		require.NoError(t, err)
+		assert.Equal(t, 0, n)
+
+		data, err := os.ReadFile(filepath.Join(dir, "mcp.json"))
+		require.NoError(t, err)
+
+		var parsed map[string]any
+		require.NoError(t, json.Unmarshal(data, &parsed))
+		assert.Empty(t, parsed["mcpServers"])
 	})
 }
 

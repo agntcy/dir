@@ -12,6 +12,39 @@ import (
 	"google.golang.org/protobuf/types/known/structpb"
 )
 
+// --- mapScannerSeverity ---
+
+func TestMapScannerSeverity(t *testing.T) {
+	t.Parallel()
+
+	cases := []struct {
+		input string
+		want  FindingSeverity
+	}{
+		{"CRITICAL", SeverityError},
+		{"critical", SeverityError},
+		{"HIGH", SeverityError},
+		{"high", SeverityError},
+		{"MEDIUM", SeverityWarning},
+		{"medium", SeverityWarning},
+		{"LOW", SeverityInfo},
+		{"low", SeverityInfo},
+		{"INFO", SeverityInfo},
+		{"UNKNOWN", SeverityInfo},
+		{"", SeverityInfo},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.input, func(t *testing.T) {
+			t.Parallel()
+
+			if got := mapScannerSeverity(tc.input); got != tc.want {
+				t.Errorf("mapScannerSeverity(%q) = %q, want %q", tc.input, got, tc.want)
+			}
+		})
+	}
+}
+
 // --- merge ---
 
 func TestMerge_Empty(t *testing.T) {

@@ -50,7 +50,8 @@ func newTestServer(t *testing.T, ctx context.Context, bootPeers []string) *route
 	assert.NoError(t, err)
 
 	// create example server
-	r, err := New(ctx, s, opts)
+	// Autosync is disabled in these tests, so no ingestion service or validator is required.
+	r, err := New(ctx, s, nil, nil, opts)
 	assert.NoError(t, err)
 
 	// check the type assertion

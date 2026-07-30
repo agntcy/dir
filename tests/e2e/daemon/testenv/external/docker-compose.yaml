@@ -2,7 +2,7 @@ name: daemon-external
 
 services:
   zot:
-    image: ghcr.io/project-zot/zot:v2.1.16
+    image: ghcr.io/project-zot/zot:v2.1.18
     ports:
       - "25555:5000"
     deploy:
@@ -10,7 +10,7 @@ services:
         condition: on-failure
 
   postgres:
-    image: docker.io/bitnami/postgresql:latest@sha256:c30c796dcf96a67a405b905bf6aaf8d6c957d5c2fe729db6e67e2760e21fd9f8
+    image: docker.io/bitnami/postgresql:latest@sha256:cc46b91332b9e931019b8657fd046d9abab343c45f7c7616121e19006e027163
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres

@@ -1,14 +1,13 @@
 <script lang="ts">
-	import type { AICardFilterCriteria } from '$lib/types';
-	import { extractShortTag } from '$lib/utils';
+	import type { AICardFilterCriteria, CatalogTag } from '$lib/types';
 
 	interface Props {
-		allTags: string[];
-		catalogHydrating?: boolean;
-		onchange: (criteria: AICardFilterCriteria) => void;
+		catalogTags: CatalogTag[];
+		tagsLoading?: boolean;
+		onCriteriaChange: (criteria: AICardFilterCriteria) => void;
 	}
 
-	let { allTags, catalogHydrating = false, onchange }: Props = $props();
+	let { catalogTags, tagsLoading = false, onCriteriaChange }: Props = $props();
 
 	let searchQuery = $state('');
 	let mediaTypes = $state<Set<string>>(new Set(['all']));
@@ -18,11 +17,19 @@
 	let tagSearch = $state('');
 
 	let visibleTags = $derived(
-		tagSearch ? allTags.filter((t) => t.toLowerCase().includes(tagSearch.toLowerCase())) : allTags
+		tagSearch
+			? catalogTags.filter((t) => t.label.toLowerCase().includes(tagSearch.toLowerCase()))
+			: catalogTags
 	);
 
 	function notifyChange() {
-		onchange({ searchQuery, mediaTypes, statusFilters, scanSafe, activeTags });
+		onCriteriaChange({
+			searchQuery,
+			mediaTypes: new Set(mediaTypes),
+			statusFilters: new Set(statusFilters),
+			activeTags: new Set(activeTags),
+			scanSafe
+		});
 	}
 
 	function handleStatusFilter(value: string, checked: boolean) {
@@ -108,10 +115,10 @@
 		};
 	}
 
-	function handleTag(tag: string, checked: boolean) {
+	function handleTag(tagId: string, checked: boolean) {
 		const next = new Set(activeTags);
-		if (checked) next.add(tag);
-		else next.delete(tag);
+		if (checked) next.add(tagId);
+		else next.delete(tagId);
 		activeTags = next;
 		notifyChange();
 	}
@@ -233,7 +240,7 @@
 	<div class="flex-1 flex flex-col min-h-0">
 		<div class="flex items-center justify-between gap-2 mb-2 flex-shrink-0">
 			<span class="block text-xs font-semibold uppercase tracking-wide text-ink-medium">Tags</span>
-			{#if catalogHydrating}
+			{#if tagsLoading}
 				<span class="text-xs text-ink-weak">Loading…</span>
 			{/if}
 		</div>
@@ -244,15 +251,15 @@
 			bind:value={tagSearch}
 		/>
 		<div class="space-y-1.5 overflow-y-auto flex-1">
-			{#each visibleTags as tag}
+			{#each visibleTags as tag (tag.id)}
 				<label class="flex items-center gap-2 text-sm text-ink cursor-pointer">
 					<input
 						type="checkbox"
-						checked={activeTags.has(tag)}
-						onchange={(e) => handleTag(tag, (e.target as HTMLInputElement).checked)}
+						checked={activeTags.has(tag.id)}
+						onchange={(e) => handleTag(tag.id, (e.target as HTMLInputElement).checked)}
 						class="rounded border-line-strong text-brand-500 focus:ring-brand-500"
 					/>
-					<span class="truncate" title={tag}>{extractShortTag(tag)}</span>
+					<span class="truncate" title={tag.id}>{tag.label}</span>
 				</label>
 			{/each}
 		</div>

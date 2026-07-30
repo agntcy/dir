@@ -234,70 +234,113 @@ func TestClaudeCodeSkillPathEmptyHome(t *testing.T) {
 	assert.Error(t, err)
 }
 
-func TestZedSkillPath(t *testing.T) {
-	got, err := zedSkillPath(Env{Home: "/home/u"}, "my-skill")
+func TestZedUserSkillPath(t *testing.T) {
+	got, err := zedUserSkillPath(Env{Home: "/home/u"}, "my-skill")
 	require.NoError(t, err)
 	assert.Equal(t, filepath.Join("/home/u", ".agents", "skills", "my-skill", "SKILL.md"), got)
 }
 
-func TestZedSkillPathEmptyHome(t *testing.T) {
-	_, err := zedSkillPath(Env{Home: ""}, "slug")
+func TestZedUserSkillPathEmptyHome(t *testing.T) {
+	_, err := zedUserSkillPath(Env{Home: ""}, "slug")
 	assert.Error(t, err)
 }
 
-func TestCopilotSkillPath(t *testing.T) {
-	got, err := copilotSkillPath(Env{Home: "/home/u", GOOS: "linux"}, "my-skill")
+func TestZedProjectSkillPath(t *testing.T) {
+	got, err := zedProjectSkillPath(Env{Home: "/home/u", Cwd: "/repo"}, "my-skill")
 	require.NoError(t, err)
-	assert.Equal(t, filepath.Join("/home/u", ".config", "Code", "User", "prompts", "my-skill.instructions.md"), got)
+	assert.Equal(t, filepath.Join("/repo", ".agents", "skills", "my-skill", "SKILL.md"), got)
 }
 
-func TestCopilotSkillPathEmptyHome(t *testing.T) {
-	_, err := copilotSkillPath(Env{Home: ""}, "slug")
+func TestZedProjectSkillPathEmptyCwd(t *testing.T) {
+	_, err := zedProjectSkillPath(Env{Home: "/home/u", Cwd: ""}, "slug")
 	assert.Error(t, err)
 }
 
-func TestWindsurfSkillPath(t *testing.T) {
-	got, err := windsurfSkillPath(Env{Home: "/home/u"}, "any-slug")
+func TestCopilotUserSkillPath(t *testing.T) {
+	got, err := copilotUserSkillPath(Env{Home: "/home/u", GOOS: "linux"}, "my-skill")
 	require.NoError(t, err)
-	assert.Equal(t, filepath.Join("/home/u", ".codeium", "windsurf", "memories", "global_rules.md"), got)
+	assert.Equal(t, filepath.Join("/home/u", ".copilot", "skills", "my-skill", "SKILL.md"), got)
 }
 
-func TestWindsurfSkillPathEmptyHome(t *testing.T) {
-	_, err := windsurfSkillPath(Env{Home: ""}, "slug")
+func TestCopilotUserSkillPathEmptyHome(t *testing.T) {
+	_, err := copilotUserSkillPath(Env{Home: ""}, "slug")
 	assert.Error(t, err)
 }
 
-func TestClineSkillPathLinux(t *testing.T) {
-	got, err := clineSkillPath(Env{Home: "/home/u", GOOS: "linux"}, "my-skill")
+func TestCopilotProjectSkillPath(t *testing.T) {
+	got, err := copilotProjectSkillPath(Env{Home: "/home/u", Cwd: "/repo"}, "my-skill")
 	require.NoError(t, err)
-	assert.Equal(t, filepath.Join("/home/u", "Cline", "Rules", "my-skill.md"), got)
+	assert.Equal(t, filepath.Join("/repo", ".github", "skills", "my-skill", "SKILL.md"), got)
 }
 
-func TestClineSkillPathDarwin(t *testing.T) {
-	got, err := clineSkillPath(Env{Home: "/home/u", GOOS: "darwin"}, "my-skill")
-	require.NoError(t, err)
-	assert.Equal(t, filepath.Join("/home/u", "Documents", "Cline", "Rules", "my-skill.md"), got)
-}
-
-func TestClineSkillPathWindows(t *testing.T) {
-	got, err := clineSkillPath(Env{Home: "/home/u", GOOS: "windows"}, "my-skill")
-	require.NoError(t, err)
-	assert.Equal(t, filepath.Join("/home/u", "Documents", "Cline", "Rules", "my-skill.md"), got)
-}
-
-func TestClineSkillPathEmptyHome(t *testing.T) {
-	_, err := clineSkillPath(Env{Home: ""}, "slug")
+func TestCopilotProjectSkillPathEmptyCwd(t *testing.T) {
+	_, err := copilotProjectSkillPath(Env{Home: "/home/u", Cwd: ""}, "slug")
 	assert.Error(t, err)
 }
 
-func TestRooSkillPath(t *testing.T) {
-	got, err := rooSkillPath(Env{Home: "/home/u"}, "my-skill")
+func TestWindsurfUserSkillPath(t *testing.T) {
+	got, err := windsurfUserSkillPath(Env{Home: "/home/u"}, "my-skill")
 	require.NoError(t, err)
-	assert.Equal(t, filepath.Join("/home/u", ".roo", "rules", "my-skill.md"), got)
+	assert.Equal(t, filepath.Join("/home/u", ".codeium", "windsurf", "skills", "my-skill", "SKILL.md"), got)
 }
 
-func TestRooSkillPathEmptyHome(t *testing.T) {
-	_, err := rooSkillPath(Env{Home: ""}, "slug")
+func TestWindsurfUserSkillPathEmptyHome(t *testing.T) {
+	_, err := windsurfUserSkillPath(Env{Home: ""}, "slug")
+	assert.Error(t, err)
+}
+
+func TestWindsurfProjectSkillPath(t *testing.T) {
+	got, err := windsurfProjectSkillPath(Env{Home: "/home/u", Cwd: "/repo"}, "my-skill")
+	require.NoError(t, err)
+	assert.Equal(t, filepath.Join("/repo", ".windsurf", "skills", "my-skill", "SKILL.md"), got)
+}
+
+func TestWindsurfProjectSkillPathEmptyCwd(t *testing.T) {
+	_, err := windsurfProjectSkillPath(Env{Home: "/home/u", Cwd: ""}, "slug")
+	assert.Error(t, err)
+}
+
+func TestClineUserSkillPath(t *testing.T) {
+	got, err := clineUserSkillPath(Env{Home: "/home/u", GOOS: "linux"}, "my-skill")
+	require.NoError(t, err)
+	assert.Equal(t, filepath.Join("/home/u", ".cline", "skills", "my-skill", "SKILL.md"), got)
+}
+
+func TestClineUserSkillPathEmptyHome(t *testing.T) {
+	_, err := clineUserSkillPath(Env{Home: ""}, "slug")
+	assert.Error(t, err)
+}
+
+func TestClineProjectSkillPath(t *testing.T) {
+	got, err := clineProjectSkillPath(Env{Home: "/home/u", Cwd: "/repo"}, "my-skill")
+	require.NoError(t, err)
+	assert.Equal(t, filepath.Join("/repo", ".cline", "skills", "my-skill", "SKILL.md"), got)
+}
+
+func TestClineProjectSkillPathEmptyCwd(t *testing.T) {
+	_, err := clineProjectSkillPath(Env{Home: "/home/u", Cwd: ""}, "slug")
+	assert.Error(t, err)
+}
+
+func TestRooUserSkillPath(t *testing.T) {
+	got, err := rooUserSkillPath(Env{Home: "/home/u"}, "my-skill")
+	require.NoError(t, err)
+	assert.Equal(t, filepath.Join("/home/u", ".roo", "skills", "my-skill", "SKILL.md"), got)
+}
+
+func TestRooUserSkillPathEmptyHome(t *testing.T) {
+	_, err := rooUserSkillPath(Env{Home: ""}, "slug")
+	assert.Error(t, err)
+}
+
+func TestRooProjectSkillPath(t *testing.T) {
+	got, err := rooProjectSkillPath(Env{Home: "/home/u", Cwd: "/repo"}, "my-skill")
+	require.NoError(t, err)
+	assert.Equal(t, filepath.Join("/repo", ".roo", "skills", "my-skill", "SKILL.md"), got)
+}
+
+func TestRooProjectSkillPathEmptyCwd(t *testing.T) {
+	_, err := rooProjectSkillPath(Env{Home: "/home/u", Cwd: ""}, "slug")
 	assert.Error(t, err)
 }
 
@@ -312,50 +355,89 @@ func TestContinueSkillPathEmptyHome(t *testing.T) {
 	assert.Error(t, err)
 }
 
-func TestGeminiSkillPath(t *testing.T) {
-	got, err := geminiSkillPath(Env{Home: "/home/u"}, "any-slug")
+func TestGeminiUserSkillPath(t *testing.T) {
+	got, err := geminiUserSkillPath(Env{Home: "/home/u"}, "my-skill")
 	require.NoError(t, err)
-	assert.Equal(t, filepath.Join("/home/u", ".gemini", "GEMINI.md"), got)
+	assert.Equal(t, filepath.Join("/home/u", ".gemini", "skills", "my-skill", "SKILL.md"), got)
 }
 
-func TestGeminiSkillPathEmptyHome(t *testing.T) {
-	_, err := geminiSkillPath(Env{Home: ""}, "slug")
+func TestGeminiUserSkillPathEmptyHome(t *testing.T) {
+	_, err := geminiUserSkillPath(Env{Home: ""}, "slug")
 	assert.Error(t, err)
 }
 
-func TestCodexSkillPath(t *testing.T) {
-	got, err := codexSkillPath(Env{Home: "/home/u"}, "any-slug")
+func TestGeminiProjectSkillPath(t *testing.T) {
+	got, err := geminiProjectSkillPath(Env{Home: "/home/u", Cwd: "/repo"}, "my-skill")
 	require.NoError(t, err)
-	assert.Equal(t, filepath.Join("/home/u", ".codex", "AGENTS.md"), got)
+	assert.Equal(t, filepath.Join("/repo", ".gemini", "skills", "my-skill", "SKILL.md"), got)
 }
 
-func TestCodexSkillPathEmptyHome(t *testing.T) {
-	_, err := codexSkillPath(Env{Home: ""}, "slug")
+func TestGeminiProjectSkillPathEmptyCwd(t *testing.T) {
+	_, err := geminiProjectSkillPath(Env{Home: "/home/u", Cwd: ""}, "slug")
 	assert.Error(t, err)
 }
 
-func TestOpencodeSkillPath(t *testing.T) {
-	got, err := opencodeSkillPath(Env{Home: "/home/u"}, "any-slug")
+func TestCodexUserSkillPath(t *testing.T) {
+	got, err := codexUserSkillPath(Env{Home: "/home/u"}, "my-skill")
 	require.NoError(t, err)
-	assert.Equal(t, filepath.Join("/home/u", ".config", "opencode", "AGENTS.md"), got)
+	assert.Equal(t, filepath.Join("/home/u", ".agents", "skills", "my-skill", "SKILL.md"), got)
 }
 
-func TestOpencodeSkillPathEmptyHome(t *testing.T) {
-	_, err := opencodeSkillPath(Env{Home: ""}, "slug")
+func TestCodexUserSkillPathEmptyHome(t *testing.T) {
+	_, err := codexUserSkillPath(Env{Home: ""}, "slug")
 	assert.Error(t, err)
 }
 
-// --- cursorNoGlobalSkill and cursorProjectSkillPath ---
+func TestCodexProjectSkillPath(t *testing.T) {
+	got, err := codexProjectSkillPath(Env{Home: "/home/u", Cwd: "/repo"}, "my-skill")
+	require.NoError(t, err)
+	assert.Equal(t, filepath.Join("/repo", ".agents", "skills", "my-skill", "SKILL.md"), got)
+}
 
-func TestCursorNoGlobalSkillReturnsErrNoGlobalPath(t *testing.T) {
-	_, err := cursorNoGlobalSkill(Env{Home: "/home/u"}, "slug")
-	assert.ErrorIs(t, err, ErrNoGlobalPath)
+func TestCodexProjectSkillPathEmptyCwd(t *testing.T) {
+	_, err := codexProjectSkillPath(Env{Home: "/home/u", Cwd: ""}, "slug")
+	assert.Error(t, err)
+}
+
+func TestOpencodeUserSkillPath(t *testing.T) {
+	got, err := opencodeUserSkillPath(Env{Home: "/home/u"}, "my-skill")
+	require.NoError(t, err)
+	assert.Equal(t, filepath.Join("/home/u", ".config", "opencode", "skills", "my-skill", "SKILL.md"), got)
+}
+
+func TestOpencodeUserSkillPathEmptyHome(t *testing.T) {
+	_, err := opencodeUserSkillPath(Env{Home: ""}, "slug")
+	assert.Error(t, err)
+}
+
+func TestOpencodeProjectSkillPath(t *testing.T) {
+	got, err := opencodeProjectSkillPath(Env{Home: "/home/u", Cwd: "/repo"}, "my-skill")
+	require.NoError(t, err)
+	assert.Equal(t, filepath.Join("/repo", ".opencode", "skills", "my-skill", "SKILL.md"), got)
+}
+
+func TestOpencodeProjectSkillPathEmptyCwd(t *testing.T) {
+	_, err := opencodeProjectSkillPath(Env{Home: "/home/u", Cwd: ""}, "slug")
+	assert.Error(t, err)
+}
+
+// --- cursorUserSkillPath and cursorProjectSkillPath ---
+
+func TestCursorUserSkillPath(t *testing.T) {
+	got, err := cursorUserSkillPath(Env{Home: "/home/u"}, "my-skill")
+	require.NoError(t, err)
+	assert.Equal(t, filepath.Join("/home/u", ".cursor", "skills", "my-skill", "SKILL.md"), got)
+}
+
+func TestCursorUserSkillPathEmptyHome(t *testing.T) {
+	_, err := cursorUserSkillPath(Env{Home: ""}, "slug")
+	assert.Error(t, err)
 }
 
 func TestCursorProjectSkillPath(t *testing.T) {
 	got, err := cursorProjectSkillPath(Env{Home: "/home/u", Cwd: "/repo"}, "my-skill")
 	require.NoError(t, err)
-	assert.Equal(t, filepath.Join("/repo", ".cursor", "rules", "my-skill.mdc"), got)
+	assert.Equal(t, filepath.Join("/repo", ".cursor", "skills", "my-skill", "SKILL.md"), got)
 }
 
 func TestCursorProjectSkillPathEmptyCwd(t *testing.T) {

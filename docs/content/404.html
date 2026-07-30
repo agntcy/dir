@@ -4,7 +4,8 @@
   SPDX-License-Identifier: Apache-2.0
 
   GitHub Pages site-wide 404. Deployed to the gh-pages branch root by deploy_root_files.sh.
-  Unversioned doc URLs are redirected to /dir/latest/... before this page is shown.
+  Unversioned doc URLs are redirected to <base>/latest/... before this page is shown.
+  <base> is /dir/ on *.github.io project pages and / on the custom domain (dir.agntcy.org).
 -->
 <html lang="en">
 <head>
@@ -12,7 +13,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="robots" content="noindex">
   <title>Page not found — Agent Directory Service</title>
-  <link rel="icon" href="/dir/latest/assets/agntcy/favicon.ico">
+  <link rel="icon" id="dir-404-favicon" href="/latest/assets/agntcy/favicon.ico">
   <style>
     :root {
       color-scheme: light dark;
@@ -171,51 +172,72 @@
   </style>
   <script>
     (function () {
-      const basePath = "/dir/";
       const latestVersion = "latest";
-      const homeUrl = basePath + latestVersion + "/";
+      const versionSegment = "(?:latest|dev|v?\\d+\\.\\d+(?:\\.\\d+)?)";
+      const isGitHubProjectSite = window.location.hostname.endsWith(".github.io");
+      const basePath = isGitHubProjectSite ? "/dir/" : "/";
+      const latestPrefix = basePath + latestVersion + "/";
       const path = window.location.pathname;
-      const redirected = sessionStorage.getItem("redirected");
 
+      window.__DIR_404_PATHS__ = {
+        latestPrefix: latestPrefix,
+        homeUrl: latestPrefix,
+        isVersioned: isVersionedPath(path),
+        skipHomeRedirect: false,
+      };
+
+      function isVersionedPath(pathname) {
+        if (basePath === "/dir/") {
+          return new RegExp(`^/dir/${versionSegment}/`).test(pathname);
+        }
+        return new RegExp(`^/${versionSegment}/`).test(pathname);
+      }
+
+      function toLatestPath(pathname) {
+        let suffix = pathname;
+        if (basePath === "/dir/" && suffix.startsWith("/dir/")) {
+          suffix = suffix.slice("/dir/".length);
+        } else if (suffix.startsWith("/")) {
+          suffix = suffix.slice(1);
+        }
+        return latestPrefix + suffix;
+      }
+
+      const favicon = document.getElementById("dir-404-favicon");
+      if (favicon) {
+        favicon.href = latestPrefix + "assets/agntcy/favicon.ico";
+      }
+
+      const redirected = sessionStorage.getItem("redirected");
       if (redirected) {
         sessionStorage.removeItem("redirected");
+        window.__DIR_404_PATHS__.skipHomeRedirect = true;
         return;
       }
 
       const isAsset = path.includes("/assets/") || path.includes("/stylesheets/");
-      const isVersioned = new RegExp(
-        `${basePath}(v?(\\d+\\.\\d+(\\.\\d+)?)|${latestVersion})/`
-      ).test(path);
-
-      if (!isVersioned && !isAsset) {
-        const newPath = path.replace(basePath, basePath + latestVersion + "/");
+      if (!isVersionedPath(path) && !isAsset) {
         sessionStorage.setItem("redirected", "true");
-        window.location.replace(newPath + window.location.search + window.location.hash);
-        return;
+        window.location.replace(
+          toLatestPath(path) + window.location.search + window.location.hash
+        );
       }
-
-      const status = document.getElementById("redirect-status");
-      if (status) {
-        status.hidden = false;
-        status.textContent = "Redirecting to the documentation home…";
-      }
-      window.setTimeout(function () {
-        window.location.replace(homeUrl);
-      }, 1200);
     })();
   </script>
 </head>
 <body>
   <main class="agntcy-not-found">
-    <a href="/dir/latest/">
+    <a href="/latest/" data-dir-latest>
       <picture>
         <source
           media="(prefers-color-scheme: dark)"
-          srcset="/dir/latest/assets/agntcy/img/logo-dark.svg"
+          data-dir-latest="assets/agntcy/img/logo-dark.svg"
+          srcset="/latest/assets/agntcy/img/logo-dark.svg"
         >
         <img
           class="agntcy-not-found__logo"
-          src="/dir/latest/assets/agntcy/img/logo-light.svg"
+          data-dir-latest="assets/agntcy/img/logo-light.svg"
+          src="/latest/assets/agntcy/img/logo-light.svg"
           alt="Agent Directory Service"
           width="120"
           height="32"
@@ -229,12 +251,45 @@
       If you followed an old link, we will try to send you to the latest docs.
     </p>
     <div class="agntcy-not-found__actions">
-      <a class="agntcy-not-found__btn agntcy-not-found__btn--primary" href="/dir/latest/">
+      <a class="agntcy-not-found__btn agntcy-not-found__btn--primary" href="/latest/" data-dir-latest>
         Back to home
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg>
       </a>
     </div>
     <p id="redirect-status" class="agntcy-not-found__status" hidden></p>
   </main>
+  <script>
+    (function () {
+      const paths = window.__DIR_404_PATHS__;
+      if (!paths) {
+        return;
+      }
+
+      document.querySelectorAll("[data-dir-latest]").forEach(function (el) {
+        const asset = el.getAttribute("data-dir-latest");
+        const target = asset ? paths.latestPrefix + asset : paths.homeUrl;
+        if (el.tagName === "A") {
+          el.href = target;
+        } else if (el.tagName === "SOURCE") {
+          el.srcset = target;
+        } else if (el.tagName === "IMG") {
+          el.src = target;
+        }
+      });
+
+      if (paths.skipHomeRedirect || !paths.isVersioned) {
+        return;
+      }
+
+      const status = document.getElementById("redirect-status");
+      if (status) {
+        status.hidden = false;
+        status.textContent = "Redirecting to the documentation home…";
+      }
+      window.setTimeout(function () {
+        window.location.replace(paths.homeUrl);
+      }, 1200);
+    })();
+  </script>
 </body>
 </html>

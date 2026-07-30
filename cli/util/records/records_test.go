@@ -21,6 +21,14 @@ func TestSanitizeName(t *testing.T) {
 	assert.Equal(t, "a-b-c", SanitizeName("a:b c"))
 }
 
+func TestSanitizeSlug(t *testing.T) {
+	assert.Equal(t, "io.example-code-review-server", SanitizeSlug("io.example/code-review-server"))
+	assert.Equal(t, "my-agent", SanitizeSlug("my agent"))
+	assert.Empty(t, SanitizeSlug(".."))
+	assert.Empty(t, SanitizeSlug("."))
+	assert.Equal(t, "etc", SanitizeSlug("../../etc"))
+}
+
 func TestLatestByNameKeepsHighestSemver(t *testing.T) {
 	records := []*corev1.Record{
 		rec("agent-a", "1.0.0"),

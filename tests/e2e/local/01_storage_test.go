@@ -72,6 +72,21 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests using a local single no
 			expectedModule:  "integration/mcp",
 			shouldFailPush:  false,
 		},
+		// TODO: Revert when OASF 1.1.0 schema is available
+		// {
+		// 	name:              "OASF_1.1.0_Record",
+		// 	fileName:          "oasf_1.1.0_record_test.json",
+		// 	jsonData:          testdata.ExpectedRecordV110JSON,
+		// 	expectedAgentName: "code_review_agent",
+		// 	expectedSkillIDs:  []string{"10101", "10102"},
+		// 	expectedSkillNames: []string{
+		// 		"language_processing/language_understanding/contextual_comprehension",
+		// 		"language_processing/language_understanding/semantic_understanding",
+		// 	},
+		// 	expectedLocator: "container_image:https://ghcr.io/agntcy/code-review-agent",
+		// 	expectedModule:  "integration/mcp",
+		// 	shouldFailPush:  false,
+		// },
 	}
 
 	// Test each OASF version (V1, V2, V3) to identify JSON marshal/unmarshal issues

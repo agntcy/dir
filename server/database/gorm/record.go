@@ -30,6 +30,11 @@ var recordSortColumns = map[string]string{
 	"provider_count":   "COALESCE(rum.provider_count, 0)",
 }
 
+const (
+	sortASC  = "ASC"
+	sortDESC = "DESC"
+)
+
 // usageMetricsColumns is the subset of recordSortColumns that require a LEFT
 // JOIN on record_usage_metrics.
 var usageMetricsColumns = map[string]bool{
@@ -49,13 +54,14 @@ type Record struct {
 	Authors       []string `gorm:"column:authors;serializer:json"` // Stored as JSON array
 	Signed        bool     `gorm:"column:signed;default:false"`    // Whether at least one signature is attached
 
-	Skills      []Skill                 `gorm:"foreignKey:RecordCID;references:RecordCID;constraint:OnDelete:CASCADE"`
-	Locators    []Locator               `gorm:"foreignKey:RecordCID;references:RecordCID;constraint:OnDelete:CASCADE"`
-	Modules     []Module                `gorm:"foreignKey:RecordCID;references:RecordCID;constraint:OnDelete:CASCADE"`
-	Domains     []Domain                `gorm:"foreignKey:RecordCID;references:RecordCID;constraint:OnDelete:CASCADE"`
-	Annotations []Annotation            `gorm:"foreignKey:RecordCID;references:RecordCID;constraint:OnDelete:CASCADE"`
-	Signatures  []SignatureVerification `gorm:"foreignKey:RecordCID;references:RecordCID;constraint:OnDelete:CASCADE"`
-	ScanReports []ScanReport            `gorm:"foreignKey:RecordCID;references:RecordCID"`
+	Skills           []Skill                 `gorm:"foreignKey:RecordCID;references:RecordCID;constraint:OnDelete:CASCADE"`
+	Locators         []Locator               `gorm:"foreignKey:RecordCID;references:RecordCID;constraint:OnDelete:CASCADE"`
+	Modules          []Module                `gorm:"foreignKey:RecordCID;references:RecordCID;constraint:OnDelete:CASCADE"`
+	Domains          []Domain                `gorm:"foreignKey:RecordCID;references:RecordCID;constraint:OnDelete:CASCADE"`
+	Annotations      []Annotation            `gorm:"foreignKey:RecordCID;references:RecordCID;constraint:OnDelete:CASCADE"`
+	Signatures       []SignatureVerification `gorm:"foreignKey:RecordCID;references:RecordCID;constraint:OnDelete:CASCADE"`
+	NameVerification *NameVerification       `gorm:"foreignKey:RecordCID;references:RecordCID"`
+	ScanReports      []ScanReport            `gorm:"foreignKey:RecordCID;references:RecordCID"`
 }
 
 func (r *Record) GetCid() string {
@@ -244,6 +250,11 @@ func (d *DB) GetRecords(opts ...types.FilterOption) ([]coretypes.Record, error) 
 	return result, nil
 }
 
+// cidRecord is a minimal scan target for GetRecordCIDs.
+type cidRecord struct {
+	RecordCID string `gorm:"column:record_cid"`
+}
+
 // GetRecordCIDs retrieves only record CIDs based on the provided options.
 // This is optimized for cases where only CIDs are needed, avoiding expensive joins and preloads.
 func (d *DB) GetRecordCIDs(opts ...types.FilterOption) ([]string, error) {
@@ -259,8 +270,28 @@ func (d *DB) GetRecordCIDs(opts ...types.FilterOption) ([]string, error) {
 		opt(cfg)
 	}
 
-	// Start with the base query for records - only select CID for efficiency.
-	query := d.gormDB.Model(&Record{}).Select("records.record_cid").Distinct()
+	// Check whether usage-metrics columns are needed for ORDER BY before building SELECT.
+	needsUsageMetrics := false
+
+	for _, o := range cfg.OrderBy {
+		if usageMetricsColumns[o.Column] {
+			needsUsageMetrics = true
+
+			break
+		}
+	}
+
+	// PostgreSQL requires every ORDER BY expression to appear in the SELECT list when
+	// using SELECT DISTINCT. Include all columns that applyRecordOrder may reference.
+	// Since record_cid is the primary key, all records columns are functionally
+	// dependent on it, so DISTINCT still de-duplicates at the record level.
+	selectCols := "records.record_cid, records.created_at, records.name, records.version, records.schema_version"
+	if needsUsageMetrics {
+		selectCols += ", COALESCE(rum.pull_count, 0) + COALESCE(rum.lookup_count, 0)"
+		selectCols += ", COALESCE(rum.provider_count, 0)"
+	}
+
+	query := d.gormDB.Model(&Record{}).Select(selectCols).Distinct()
 
 	// Apply pagination.
 	if cfg.Limit > 0 {
@@ -282,12 +313,16 @@ func (d *DB) GetRecordCIDs(opts ...types.FilterOption) ([]string, error) {
 	}
 
 	// Execute the query to get only CIDs (no preloading needed).
-	var cids []string
-	if err := query.Pluck("record_cid", &cids).Error; err != nil {
+	var results []cidRecord
+	if err := query.Find(&results).Error; err != nil {
 		return nil, fmt.Errorf("failed to query record CIDs: %w", err)
 	}
 
-	// Return CIDs directly - no need for wrapper objects.
+	cids := make([]string, len(results))
+	for i, r := range results {
+		cids[i] = r.RecordCID
+	}
+
 	return cids, nil
 }
 
@@ -352,9 +387,9 @@ func applyRecordOrder(query *gorm.DB, cfg *types.RecordFilters) (*gorm.DB, error
 			return nil, fmt.Errorf("unsupported sort column %q", o.Column)
 		}
 
-		dir := "ASC"
+		dir := sortASC
 		if o.Desc {
-			dir = "DESC"
+			dir = sortDESC
 		}
 
 		query = query.Order(fmt.Sprintf("%s %s", col, dir))
@@ -469,6 +504,13 @@ func (d *DB) handleFilterOptions(query *gorm.DB, cfg *types.RecordFilters) *gorm
 		}
 	}
 
+	if len(cfg.Annotations) > 0 {
+		condition, args := utils.BuildAnnotationExistsCondition(cfg.Annotations)
+		if condition != "" {
+			query = query.Where(condition, args...)
+		}
+	}
+
 	// Handle created_at filter with comparison operator support.
 	if len(cfg.CreatedAts) > 0 {
 		condition, args := utils.BuildComparisonConditions("records.oasf_created_at", cfg.CreatedAts)
@@ -547,6 +589,14 @@ func (d *DB) handleFilterOptions(query *gorm.DB, cfg *types.RecordFilters) *gorm
 		} else {
 			// Unsafe: at least one scanner reported is_safe = false.
 			query = query.Where("EXISTS (SELECT 1 FROM scan_reports sr WHERE sr.record_cid = records.record_cid AND sr.is_safe = false)")
+		}
+	}
+
+	// Handle description filters with wildcard support.
+	if len(cfg.Descriptions) > 0 {
+		condition, args := utils.BuildWildcardCondition("records.description", cfg.Descriptions)
+		if condition != "" {
+			query = query.Where(condition, args...)
 		}
 	}
 

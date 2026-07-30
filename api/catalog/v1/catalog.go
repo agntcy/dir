@@ -37,6 +37,10 @@ const (
 
 	// OASF module names.
 	AgentSkillsModuleName = "core/language_model/agentskills"
+
+	TrustStatusMetadataKey = "agntcy.dir.trust.v1.Status"
+
+	verificationStatusVerified = "verified"
 )
 
 // catalogModuleProjection captures the per-module projection rules: the
@@ -46,6 +50,17 @@ const (
 type catalogModuleProjection struct {
 	MediaType string
 	Label     string
+}
+
+func KnownCatalogModuleNames() []string {
+	names := make([]string, 0, len(catalogModules))
+	for name := range catalogModules {
+		names = append(names, name)
+	}
+
+	sort.Strings(names)
+
+	return names
 }
 
 // catalogModules maps OASF integration module names onto their AI Catalog
@@ -75,9 +90,23 @@ type ScanReportSummary interface {
 	GetUpdatedAt() time.Time
 }
 
+// UsageMetricsData holds per-record usage counters for embedding in catalog metadata.
+type UsageMetricsData interface {
+	GetPullCount() uint64
+	GetLookupCount() uint64
+	GetProviderCount() uint32
+}
+
+type TrustStatus struct {
+	Trusted  bool
+	Verified bool
+}
+
 type convertOptions struct {
-	signatures  []coretypes.ObjectSignature
-	scanReports []ScanReportSummary
+	signatures   []coretypes.ObjectSignature
+	scanReports  []ScanReportSummary
+	usageMetrics UsageMetricsData
+	trustStatus  *TrustStatus
 }
 
 type ConvertOption func(*convertOptions)
@@ -93,6 +122,35 @@ func WithScanReports(reports []ScanReportSummary) ConvertOption {
 	return func(opts *convertOptions) {
 		opts.scanReports = reports
 	}
+}
+
+// WithUsageMetrics embeds usage counters as metadata["agntcy.dir.usage.v1.Metrics"] in the entry.
+func WithUsageMetrics(metrics UsageMetricsData) ConvertOption {
+	return func(opts *convertOptions) {
+		opts.usageMetrics = metrics
+	}
+}
+
+func WithTrustStatus(status TrustStatus) ConvertOption {
+	return func(opts *convertOptions) {
+		opts.trustStatus = &status
+	}
+}
+
+func DeriveTrustStatus(signatureStatuses []string, nameVerificationStatus string) TrustStatus {
+	status := TrustStatus{
+		Verified: strings.EqualFold(nameVerificationStatus, verificationStatusVerified),
+	}
+
+	for _, signatureStatus := range signatureStatuses {
+		if strings.EqualFold(signatureStatus, verificationStatusVerified) {
+			status.Trusted = true
+
+			break
+		}
+	}
+
+	return status
 }
 
 // RecordToCatalog projects an OASF record onto its AI Catalog entry
@@ -155,6 +213,8 @@ func RecordToCatalog(record coretypes.Record, opts ...ConvertOption) (*CatalogEn
 			TrustManifest: trustManifest,
 		}
 		injectScanManifest(result, options.scanReports)
+		injectUsageMetrics(result, options.usageMetrics)
+		injectTrustStatus(result, options.trustStatus)
 
 		return result, nil
 	}
@@ -203,6 +263,8 @@ func RecordToCatalog(record coretypes.Record, opts ...ConvertOption) (*CatalogEn
 		TrustManifest: trustManifest,
 	}
 	injectScanManifest(containerEntry, options.scanReports)
+	injectUsageMetrics(containerEntry, options.usageMetrics)
+	injectTrustStatus(containerEntry, options.trustStatus)
 
 	return containerEntry, nil
 }
@@ -233,24 +295,10 @@ func moduleToCatalogEntry(module coretypes.Module) *CatalogEntry {
 
 func getModuleMediaType(module coretypes.Module, proj catalogModuleProjection) string {
 	if module.GetName() == AgentSkillsModuleName {
-		return getAgentSkillsMediaType(module)
+		return module.GetArtifactMediaType()
 	}
 
 	return proj.MediaType
-}
-
-func getAgentSkillsMediaType(module coretypes.Module) string {
-	if hasArtifacts(module.GetData()) {
-		return ProtocolAgentSkillsBundleMediaType
-	}
-
-	return ProtocolAgentSkillsMdMediaType
-}
-
-func hasArtifacts(data map[string]any) bool {
-	artifacts, ok := data["artifacts"].([]any)
-
-	return ok && len(artifacts) > 0
 }
 
 // knownCatalogModules returns the record's modules that have a catalog
@@ -286,11 +334,11 @@ func catalogTags(rd coretypes.Record) []string {
 	out := make([]string, 0)
 
 	for _, skill := range rd.GetSkills() {
-		out = append(out, fmt.Sprintf("oasf:%s:skills:%s", rd.GetSchemaVersion(), skill.GetName()))
+		out = append(out, SkillTag(rd.GetSchemaVersion(), skill.GetName()))
 	}
 
 	for _, domain := range rd.GetDomains() {
-		out = append(out, fmt.Sprintf("oasf:%s:domains:%s", rd.GetSchemaVersion(), domain.GetName()))
+		out = append(out, DomainTag(rd.GetSchemaVersion(), domain.GetName()))
 	}
 
 	// Sort output before appending annotation tags
@@ -300,6 +348,59 @@ func catalogTags(rd coretypes.Record) []string {
 	out = append(out, getAnnotationTags(rd.GetAnnotations())...)
 
 	return out
+}
+
+// SkillTag formats an OASF skill as a catalog tag.
+func SkillTag(schemaVersion, skillName string) string {
+	return fmt.Sprintf("oasf:%s:skills:%s", schemaVersion, skillName)
+}
+
+// DomainTag formats an OASF domain as a catalog tag.
+func DomainTag(schemaVersion, domainName string) string {
+	return fmt.Sprintf("oasf:%s:domains:%s", schemaVersion, domainName)
+}
+
+// AnnotationTag formats a record annotation as a catalog tag.
+func AnnotationTag(key, value string) string {
+	if value == "" {
+		return key
+	}
+
+	return fmt.Sprintf("%s=%s", key, value)
+}
+
+// TagLabel formats an OASF skill or domain name for display.
+func TagLabel(name string) string {
+	if name == "" {
+		return ""
+	}
+
+	if i := strings.LastIndex(name, "/"); i >= 0 {
+		name = name[i+1:]
+	}
+
+	return formatLabel(name)
+}
+
+func AnnotationLabel(key, value string) string {
+	tag := AnnotationTag(key, value)
+	parts := strings.Split(tag, ":")
+	last := parts[len(parts)-1]
+
+	return strings.ReplaceAll(last, "_", " ")
+}
+
+func formatLabel(name string) string {
+	parts := strings.Split(name, "_")
+	for i, part := range parts {
+		if part == "" {
+			continue
+		}
+
+		parts[i] = strings.ToUpper(part[:1]) + part[1:]
+	}
+
+	return strings.Join(parts, " ")
 }
 
 // catalogURN builds "urn:ai:<host>:cid:<cid>" with an optional ":<suffix>"
@@ -415,6 +516,47 @@ func injectScanManifest(entry *CatalogEntry, reports []ScanReportSummary) {
 	entry.Metadata["agntcy.dir.security.v1.ScanResult"] = val
 }
 
+func injectUsageMetrics(entry *CatalogEntry, metrics UsageMetricsData) {
+	if metrics == nil {
+		return
+	}
+
+	val, err := structpb.NewValue(map[string]any{
+		"pullCount":     metrics.GetPullCount(),
+		"lookupCount":   metrics.GetLookupCount(),
+		"providerCount": metrics.GetProviderCount(),
+	})
+	if err != nil {
+		return
+	}
+
+	if entry.Metadata == nil {
+		entry.Metadata = make(map[string]*structpb.Value)
+	}
+
+	entry.Metadata["agntcy.dir.usage.v1.Metrics"] = val
+}
+
+func injectTrustStatus(entry *CatalogEntry, status *TrustStatus) {
+	if status == nil {
+		return
+	}
+
+	val, err := structpb.NewValue(map[string]any{
+		"trusted":  status.Trusted,
+		"verified": status.Verified,
+	})
+	if err != nil {
+		return
+	}
+
+	if entry.Metadata == nil {
+		entry.Metadata = make(map[string]*structpb.Value)
+	}
+
+	entry.Metadata[TrustStatusMetadataKey] = val
+}
+
 func objectToStruct(goObj proto.Message) (*structpb.Struct, error) {
 	data, err := protojson.Marshal(goObj)
 	if err != nil {
@@ -433,11 +575,7 @@ func getAnnotationTags(annotations map[string]string) []string {
 	var annotationTags []string
 
 	for key, value := range annotations {
-		if value == "" {
-			annotationTags = append(annotationTags, key)
-		} else {
-			annotationTags = append(annotationTags, fmt.Sprintf("%s=%s", key, value))
-		}
+		annotationTags = append(annotationTags, AnnotationTag(key, value))
 	}
 
 	sort.Strings(annotationTags)

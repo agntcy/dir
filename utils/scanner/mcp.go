@@ -258,7 +258,7 @@ func parseMCPOutput(raw []byte) (*ScanResult, error) {
 		}
 
 		for analyzerName, ar := range r.Findings {
-			severity := mapMCPSeverity(ar.Severity)
+			severity := mapScannerSeverity(ar.Severity)
 			msg := fmt.Sprintf("[%s] %s: %s", analyzerName, r.ToolName, ar.ThreatSummary)
 
 			if len(ar.ThreatNames) > 0 {
@@ -280,15 +280,4 @@ func trimToJSON(raw []byte) []byte {
 	}
 
 	return raw
-}
-
-func mapMCPSeverity(s string) FindingSeverity {
-	switch strings.ToUpper(s) {
-	case "CRITICAL", "HIGH":
-		return SeverityError
-	case "MEDIUM":
-		return SeverityWarning
-	default:
-		return SeverityInfo
-	}
 }

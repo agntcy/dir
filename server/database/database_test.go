@@ -21,6 +21,7 @@ type testRecord struct {
 	locators                                                  []coretypes.Locator
 	modules                                                   []coretypes.Module
 	domains                                                   []coretypes.Domain
+	annotations                                               map[string]string
 }
 
 func (r *testRecord) GetCid() string                    { return r.cid }
@@ -34,7 +35,7 @@ func (r *testRecord) GetLocators() []coretypes.Locator  { return r.locators }
 func (r *testRecord) GetModules() []coretypes.Module    { return r.modules }
 func (r *testRecord) GetDomains() []coretypes.Domain    { return r.domains }
 func (r *testRecord) GetDescription() string            { return r.description }
-func (r *testRecord) GetAnnotations() map[string]string { return nil }
+func (r *testRecord) GetAnnotations() map[string]string { return r.annotations }
 func (r *testRecord) GetPreviousRecordCid() string      { return "" }
 
 type testSkill struct {
@@ -55,14 +56,16 @@ func (l *testLocator) GetDigest() string                 { return "" }
 func (l *testLocator) GetAnnotations() map[string]string { return nil }
 
 type testModule struct {
-	id   uint64
-	name string
+	id                uint64
+	name              string
+	artifactMediaType string
 }
 
 func (m *testModule) GetID() uint64                     { return m.id }
 func (m *testModule) GetName() string                   { return m.name }
 func (m *testModule) GetData() map[string]any           { return nil }
 func (m *testModule) GetAnnotations() map[string]string { return nil }
+func (m *testModule) GetArtifactMediaType() string      { return m.artifactMediaType }
 
 type testDomain struct {
 	id   uint64
@@ -335,4 +338,66 @@ func TestGetRecordCIDs_NilOption(t *testing.T) {
 
 	_, err := db.GetRecordCIDs(nilOpt)
 	assert.Error(t, err)
+}
+
+func TestGetRecordCIDs_Annotations(t *testing.T) {
+	db := setupTestDB(t)
+
+	ownerAlice := &testRecord{
+		cid:           "bafybeigdyrztannotowneralice000000000000000000000000000000000001",
+		name:          "directory.agntcy.org/test/owner-alice",
+		version:       "1.0.0",
+		schemaVersion: "0.8.0",
+		createdAt:     "2024-01-15T10:30:00Z",
+		annotations: map[string]string{
+			"owner": "alice",
+			"env":   "prod",
+		},
+	}
+	envAlice := &testRecord{
+		cid:           "bafybeigdyrztannotenvalice000000000000000000000000000000000002",
+		name:          "directory.agntcy.org/test/env-alice",
+		version:       "1.0.0",
+		schemaVersion: "0.8.0",
+		createdAt:     "2024-01-15T10:30:00Z",
+		annotations: map[string]string{
+			"owner": "bob",
+			"env":   "alice",
+		},
+	}
+
+	require.NoError(t, db.AddRecord(ownerAlice))
+	require.NoError(t, db.AddRecord(envAlice))
+
+	t.Run("annotations match key and value on same row", func(t *testing.T) {
+		cids, err := db.GetRecordCIDs(types.WithAnnotations(types.Annotation{Key: "owner", Value: "alice"}))
+		require.NoError(t, err)
+		assert.Equal(t, []string{ownerAlice.GetCid()}, cids)
+	})
+
+	t.Run("annotations use exact case-sensitive matching", func(t *testing.T) {
+		cids, err := db.GetRecordCIDs(types.WithAnnotations(types.Annotation{Key: "Owner", Value: "alice"}))
+		require.NoError(t, err)
+		assert.Empty(t, cids)
+	})
+
+	t.Run("separate key and value filters can cross-match rows", func(t *testing.T) {
+		cids, err := db.GetRecordCIDs(
+			types.WithAnnotationKeys("owner", "env"),
+			types.WithAnnotationValues("alice"),
+		)
+		require.NoError(t, err)
+		assert.ElementsMatch(t, []string{ownerAlice.GetCid(), envAlice.GetCid()}, cids)
+	})
+
+	t.Run("multiple annotations are OR-combined", func(t *testing.T) {
+		cids, err := db.GetRecordCIDs(
+			types.WithAnnotations(
+				types.Annotation{Key: "owner", Value: "alice"},
+				types.Annotation{Key: "env", Value: "alice"},
+			),
+		)
+		require.NoError(t, err)
+		assert.ElementsMatch(t, []string{ownerAlice.GetCid(), envAlice.GetCid()}, cids)
+	})
 }

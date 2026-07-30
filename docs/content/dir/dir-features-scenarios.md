@@ -144,11 +144,47 @@ cosign generate-key-pair
 # Set COSIGN_PASSWORD shell variable if you password-protected the private key
 export COSIGN_PASSWORD=your_password_here
 
+# Alternatively, explicitly read the password from standard input
+printf '%s' "$KEY_PASSWORD" | \
+  dirctl sign "$RECORD_CID" --key cosign.key --password-stdin
+```
+
+`COSIGN_PASSWORD` takes precedence over `--password-stdin`, including when the
+environment variable is explicitly empty. Without either source, an interactive
+terminal prompts for the password. A non-interactive process does not read standard
+input unless `--password-stdin` is set.
+
+```bash
 # Push record with signature 
 dirctl push record.json --sign --key cosign.key
 
 # Verify the signed record
 dirctl verify $RECORD_CID
+```
+
+### Method 4: KMS-Backed Keys
+
+This method keeps private key material in a cloud or Vault key management service.
+Configure the selected provider's credentials, then pass its key URI to `dirctl sign`.
+Directory supports the AWS KMS, Google Cloud KMS, Azure Key Vault, and HashiCorp Vault
+providers registered by Sigstore.
+
+```bash
+# AWS KMS
+dirctl sign "$RECORD_CID" --key 'awskms://[ENDPOINT]/[ID/ALIAS/ARN]'
+
+# Google Cloud KMS
+dirctl sign "$RECORD_CID" \
+  --key 'gcpkms://projects/[PROJECT]/locations/[LOC]/keyRings/[RING]/cryptoKeys/[KEY]'
+
+# Azure Key Vault
+dirctl sign "$RECORD_CID" --key 'azurekms://[VAULT_NAME][VAULT_URI]/[KEY]'
+
+# HashiCorp Vault
+dirctl sign "$RECORD_CID" --key 'hashivault://[KEY]'
+
+# Verify the signed record
+dirctl verify "$RECORD_CID"
 ```
 
 ## Name Verification
@@ -219,9 +255,11 @@ dirctl pull example.com/agents/my-record:v1.0.0@$RECORD_CID
 
 The Directory reconciler automatically scans records for security issues using
 [`mcp-scanner`](https://cisco-ai-defense.github.io/docs/mcp-scanner)
-(for MCP server source code) and
+(for MCP server source code),
 [`skill-scanner`](https://cisco-ai-defense.github.io/docs/skill-scanner)
-(for agent skill bundles). Scan results are
+(for agent skill bundles), and
+[`a2a-scanner`](https://github.com/cisco-ai-defense/a2a-scanner)
+(for A2A AgentCards). Scan results are
 stored as OCI referrers and indexed in the local database so they can be surfaced through
 search filters and pulled alongside records.
 
@@ -255,7 +293,7 @@ dirctl search --module "integration/mcp" --scan-severity MEDIUM
 
 `--safe` requires that at least one scanner ran and that no scanner reported `is_safe=false`.
 Records where all scanners were skipped (no source repo locator for MCP, no skill bundle for
-skill-scanner) are excluded.
+skill-scanner, no A2A AgentCard for a2a-scanner) are excluded.
 
 `--scan-severity <threshold>` returns records whose highest recorded severity is at or above
 the threshold. Severity levels from lowest to highest: `NONE`, `INFO`, `LOW`, `MEDIUM`,
@@ -445,10 +483,15 @@ dirctl install cisco.com/agent:v1.0.0 --yes
 # Install into specific agents only
 dirctl install cisco.com/agent --agents claude-code,cursor
 
+# Install into the current repo (project scope) instead of the global config
+dirctl install cisco.com/agent --project
+
 # Remove what install added (top-level shorthand for `install uninstall`)
 dirctl uninstall cisco.com/agent
 ```
 
 Detection is always required — an agent is never written to unless it is detected. Re-installing
 a newer version of the same record replaces the old artifacts cleanly. `dirctl install list`
-shows which agents are detected and the config files install would touch.
+shows which agents are detected and the config files install would touch. By default artifacts
+go into each agent's global config; `--project` writes them into the current repository instead
+(agents without a project-scope location for an artifact are skipped with a note).

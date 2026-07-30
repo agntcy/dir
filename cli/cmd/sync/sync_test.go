@@ -155,7 +155,7 @@ func TestGroupResultsByAPIAddress_SingleResult(t *testing.T) {
 			RecordRef: &corev1.RecordRef{Cid: "cid1"},
 			Peer: &routingv1.Peer{
 				Id:    "peer1",
-				Addrs: []string{"http://api1.example.com"},
+				Addrs: []string{"/dir/http://api1.example.com"},
 			},
 		},
 	}
@@ -175,21 +175,21 @@ func TestGroupResultsByAPIAddress_MultipleSamePeer(t *testing.T) {
 			RecordRef: &corev1.RecordRef{Cid: "cid1"},
 			Peer: &routingv1.Peer{
 				Id:    "peer1",
-				Addrs: []string{"http://api1.example.com"},
+				Addrs: []string{"/dir/http://api1.example.com"},
 			},
 		},
 		{
 			RecordRef: &corev1.RecordRef{Cid: "cid2"},
 			Peer: &routingv1.Peer{
 				Id:    "peer1",
-				Addrs: []string{"http://api1.example.com"},
+				Addrs: []string{"/dir/http://api1.example.com"},
 			},
 		},
 		{
 			RecordRef: &corev1.RecordRef{Cid: "cid3"},
 			Peer: &routingv1.Peer{
 				Id:    "peer1",
-				Addrs: []string{"http://api1.example.com"},
+				Addrs: []string{"/dir/http://api1.example.com"},
 			},
 		},
 	}
@@ -209,21 +209,21 @@ func TestGroupResultsByAPIAddress_MultipleDifferentPeers(t *testing.T) {
 			RecordRef: &corev1.RecordRef{Cid: "cid1"},
 			Peer: &routingv1.Peer{
 				Id:    "peer1",
-				Addrs: []string{"http://api1.example.com"},
+				Addrs: []string{"/dir/http://api1.example.com"},
 			},
 		},
 		{
 			RecordRef: &corev1.RecordRef{Cid: "cid2"},
 			Peer: &routingv1.Peer{
 				Id:    "peer2",
-				Addrs: []string{"http://api2.example.com"},
+				Addrs: []string{"/dir/http://api2.example.com"},
 			},
 		},
 		{
 			RecordRef: &corev1.RecordRef{Cid: "cid3"},
 			Peer: &routingv1.Peer{
 				Id:    "peer1",
-				Addrs: []string{"http://api1.example.com"},
+				Addrs: []string{"/dir/http://api1.example.com"},
 			},
 		},
 	}
@@ -259,7 +259,7 @@ func TestGroupResultsByAPIAddress_NoPeerInfo(t *testing.T) {
 			RecordRef: &corev1.RecordRef{Cid: "cid3"},
 			Peer: &routingv1.Peer{
 				Id:    "peer2",
-				Addrs: []string{"http://api1.example.com"},
+				Addrs: []string{"/dir/http://api1.example.com"},
 			},
 		},
 	}
@@ -272,25 +272,27 @@ func TestGroupResultsByAPIAddress_NoPeerInfo(t *testing.T) {
 	assert.Equal(t, []string{"cid3"}, grouped["http://api1.example.com"].CIDs)
 }
 
-// TestGroupResultsByAPIAddress_MultipleAddresses tests using first address only.
+// TestGroupResultsByAPIAddress_MultipleAddresses tests address classification with /dir/ and /oci/ addrs.
 func TestGroupResultsByAPIAddress_MultipleAddresses(t *testing.T) {
 	results := []*routingv1.SearchResponse{
 		{
 			RecordRef: &corev1.RecordRef{Cid: "cid1"},
 			Peer: &routingv1.Peer{
 				Id:    "peer1",
-				Addrs: []string{"http://api1.example.com", "http://api2.example.com", "http://api3.example.com"},
+				Addrs: []string{"/dir/api1.example.com:443", "/oci/https://registry.example.com:5000/myrepo"},
 			},
 		},
 	}
 
 	grouped := groupResultsByAPIAddress(results)
 
-	// Should use the first address
+	// /dir/ address is preferred as the map key
 	assert.Len(t, grouped, 1)
-	assert.Contains(t, grouped, "http://api1.example.com")
-	assert.NotContains(t, grouped, "http://api2.example.com")
-	assert.NotContains(t, grouped, "http://api3.example.com")
+	assert.Contains(t, grouped, "api1.example.com:443")
+	info := grouped["api1.example.com:443"]
+	assert.Equal(t, "api1.example.com:443", info.APIAddress)
+	assert.Equal(t, "https://registry.example.com:5000", info.OCIRegistry)
+	assert.Equal(t, "myrepo", info.OCIRepository)
 }
 
 // TestGroupResultsByAPIAddress_MixedScenario tests complex real-world scenario.
@@ -301,14 +303,14 @@ func TestGroupResultsByAPIAddress_MixedScenario(t *testing.T) {
 			RecordRef: &corev1.RecordRef{Cid: "cid1"},
 			Peer: &routingv1.Peer{
 				Id:    "peer1",
-				Addrs: []string{"http://peer1.com"},
+				Addrs: []string{"/dir/http://peer1.com"},
 			},
 		},
 		{
 			RecordRef: &corev1.RecordRef{Cid: "cid2"},
 			Peer: &routingv1.Peer{
 				Id:    "peer1",
-				Addrs: []string{"http://peer1.com"},
+				Addrs: []string{"/dir/http://peer1.com"},
 			},
 		},
 		// Peer 2 - single CID
@@ -316,7 +318,7 @@ func TestGroupResultsByAPIAddress_MixedScenario(t *testing.T) {
 			RecordRef: &corev1.RecordRef{Cid: "cid3"},
 			Peer: &routingv1.Peer{
 				Id:    "peer2",
-				Addrs: []string{"http://peer2.com"},
+				Addrs: []string{"/dir/http://peer2.com"},
 			},
 		},
 		// No peer info - should be skipped
@@ -329,7 +331,7 @@ func TestGroupResultsByAPIAddress_MixedScenario(t *testing.T) {
 			RecordRef: &corev1.RecordRef{Cid: "cid5"},
 			Peer: &routingv1.Peer{
 				Id:    "peer3",
-				Addrs: []string{"http://peer3.com"},
+				Addrs: []string{"/dir/http://peer3.com"},
 			},
 		},
 	}
@@ -397,7 +399,7 @@ func TestGroupResultsByAPIAddress_LargeDataset(t *testing.T) {
 			RecordRef: &corev1.RecordRef{Cid: "cid" + strings.Repeat("a", i)},
 			Peer: &routingv1.Peer{
 				Id:    "peer" + strings.Repeat("a", peerNum),
-				Addrs: []string{"http://peer" + strings.Repeat("a", peerNum) + ".com"},
+				Addrs: []string{"/dir/http://peer" + strings.Repeat("a", peerNum) + ".com"},
 			},
 		}
 	}
@@ -579,7 +581,7 @@ func TestGroupResultsByAPIAddress_EdgeCases(t *testing.T) {
 				{
 					RecordRef: &corev1.RecordRef{Cid: ""},
 					Peer: &routingv1.Peer{
-						Addrs: []string{"http://api.example.com"},
+						Addrs: []string{"/dir/http://api.example.com"},
 					},
 				},
 			},
@@ -591,7 +593,7 @@ func TestGroupResultsByAPIAddress_EdgeCases(t *testing.T) {
 				{
 					RecordRef: nil,
 					Peer: &routingv1.Peer{
-						Addrs: []string{"http://api.example.com"},
+						Addrs: []string{"/dir/http://api.example.com"},
 					},
 				},
 			},

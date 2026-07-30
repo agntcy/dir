@@ -1,0 +1,57 @@
+{
+  "name": "code_review_agent",
+  "schema_version": "1.1.0",
+  "version": "1.0.0",
+  "description": "Agent that performs automated code reviews and provides feedback",
+  "authors": [
+    "Example Organization"
+  ],
+  "created_at": "2025-01-01T00:00:00Z",
+  "skills": [
+    {
+      "name": "language_processing/language_understanding/contextual_comprehension",
+      "id": 10101
+    },
+    {
+      "name": "language_processing/language_understanding/semantic_understanding",
+      "id": 10102
+    }
+  ],
+  "locators": [
+    {
+      "type": "container_image",
+      "urls": [
+        "https://ghcr.io/agntcy/code-review-agent"
+      ]
+    }
+  ],
+  "modules": [
+    {
+      "id": 202,
+      "name": "integration/mcp",
+      "data": {
+        "name": "code-review-mcp-server",
+        "connections": [
+          {
+            "type": "stdio",
+            "command": "docker",
+            "args": [
+              "run",
+              "-i",
+              "--rm",
+              "ghcr.io/agntcy/code-review-mcp-server"
+            ],
+            "env_vars": [
+              {
+                "name": "CODE_REVIEW_API_KEY",
+                "default_value": "",
+                "description": "API key for the code review service",
+                "required": true
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ]
+}

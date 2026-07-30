@@ -72,6 +72,9 @@ func withAuth(ctx context.Context) Option {
 		case "jwt":
 			// NOTE: jwt source must live for the entire client lifetime, not just the initialization phase
 			return o.setupJWTAuth(ctx) //nolint:contextcheck
+		case "jwt-tls":
+			// Standard web-PKI TLS transport with JWT-SVID bearer.
+			return o.setupJWTTLSAuth(ctx) //nolint:contextcheck
 		case "x509":
 			// NOTE: x509 source must live for the entire client lifetime, not just the initialization phase
 			return o.setupX509Auth(ctx) //nolint:contextcheck
@@ -86,7 +89,7 @@ func withAuth(ctx context.Context) Option {
 			return o.setupAutoDetectAuth(ctx)
 		default:
 			// Invalid auth mode specified - return error to prevent silent security issues
-			return fmt.Errorf("unsupported auth mode: %s (supported: 'jwt', 'x509', 'token', 'tls', 'oidc', 'insecure', 'none', or empty for auto-detect)", o.config.AuthMode)
+			return fmt.Errorf("unsupported auth mode: %s (supported: 'jwt', 'jwt-tls', 'x509', 'token', 'tls', 'oidc', 'insecure', 'none', or empty for auto-detect)", o.config.AuthMode)
 		}
 	}
 }
@@ -202,6 +205,75 @@ func (o *options) setupJWTAuth(ctx context.Context) error {
 	)
 
 	return nil
+}
+
+func (o *options) setupJWTTLSAuth(ctx context.Context) error {
+	if o.config.SpiffeSocketPath == "" {
+		return errors.New("spiffe socket path is required for jwt-tls authentication")
+	}
+
+	if o.config.JWTAudience == "" {
+		return errors.New("JWT audience is required for jwt-tls authentication")
+	}
+
+	client, err := workloadapi.New(ctx, workloadapi.WithAddr(o.config.SpiffeSocketPath))
+	if err != nil {
+		return fmt.Errorf("failed to create SPIFFE client: %w", err)
+	}
+
+	// Note: Use context.Background() because this source must live for the entire client lifetime,
+	// not just the initialization phase. It will be properly closed in client.Close().
+	jwtSource, err := workloadapi.NewJWTSource(context.Background(), workloadapi.WithClient(client)) //nolint:contextcheck
+	if err != nil {
+		_ = client.Close()
+
+		return fmt.Errorf("failed to create JWT source: %w", err)
+	}
+
+	tlsCfg, err := o.buildWebPKITLSConfig()
+	if err != nil {
+		_ = client.Close()
+		_ = jwtSource.Close()
+
+		return err
+	}
+
+	o.authClient = client
+	o.jwtSource = jwtSource
+	o.authOpts = append(o.authOpts,
+		grpc.WithTransportCredentials(credentials.NewTLS(tlsCfg)),
+		grpc.WithPerRPCCredentials(newJWTCredentials(jwtSource, o.config.JWTAudience)),
+	)
+
+	return nil
+}
+
+// buildWebPKITLSConfig returns a TLS config that verifies the server using the system
+// trust store, optionally augmented with TlsCAFile for private/non-public issuers.
+func (o *options) buildWebPKITLSConfig() (*tls.Config, error) {
+	tlsCfg := &tls.Config{
+		MinVersion:         tls.VersionTLS12,
+		ServerName:         serverNameFromAddr(o.config.ServerAddress),
+		InsecureSkipVerify: o.config.TlsSkipVerify, //nolint:gosec // user-controlled for dev/testing
+	}
+
+	if o.config.TlsCAFile == "" {
+		return tlsCfg, nil
+	}
+
+	caData, err := os.ReadFile(o.config.TlsCAFile)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read TLS CA file: %w", err)
+	}
+
+	capool := x509.NewCertPool()
+	if !capool.AppendCertsFromPEM(caData) {
+		return nil, errors.New("failed to append root CA certificate to CA pool")
+	}
+
+	tlsCfg.RootCAs = capool
+
+	return tlsCfg, nil
 }
 
 func (o *options) setupX509Auth(ctx context.Context) error {

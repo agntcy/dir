@@ -225,6 +225,9 @@ func LoadConfig() (*Config, error) {
 	_ = v.BindEnv("scan.skill_cli_path")
 	v.SetDefault("scan.skill_cli_path", scan.DefaultSkillCLIPath)
 
+	_ = v.BindEnv("scan.a2a_cli_path")
+	v.SetDefault("scan.a2a_cli_path", scan.DefaultA2ACLIPath)
+
 	//
 	// Providers task configuration (provider-count gauge)
 	//

@@ -29,6 +29,7 @@ import (
 	"github.com/agntcy/dir/server/events"
 	"github.com/agntcy/dir/server/gateway"
 	"github.com/agntcy/dir/server/healthcheck"
+	"github.com/agntcy/dir/server/ingest"
 	"github.com/agntcy/dir/server/metrics"
 	grpclogging "github.com/agntcy/dir/server/middleware/logging"
 	grpcratelimit "github.com/agntcy/dir/server/middleware/ratelimit"
@@ -247,17 +248,23 @@ func New(ctx context.Context, cfg *config.Config, opts ...ServerOption) (*Server
 		return nil, fmt.Errorf("failed to create store: %w", err)
 	}
 
-	routingAPI, err := routing.New(ctx, storeAPI, options)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create routing: %w", err)
-	}
-
+	// Database must be created before routing so the shared ingestion service
+	// (used by both the store controller and DHT autosync) can be wired in.
 	databaseAPI := o.database
 	if databaseAPI == nil {
 		databaseAPI, err = database.New(cfg.Database)
 		if err != nil {
 			return nil, fmt.Errorf("failed to create database API: %w", err)
 		}
+	}
+
+	// Shared ingestion service: single authoritative path for persisting
+	// records/referrers (content store + search index + referrer DB state).
+	ingestor := ingest.New(storeAPI, databaseAPI)
+
+	routingAPI, err := routing.New(ctx, storeAPI, ingestor, oasfValidator, options)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create routing: %w", err)
 	}
 
 	// Create authentication service if enabled
@@ -305,7 +312,7 @@ func New(ctx context.Context, cfg *config.Config, opts ...ServerOption) (*Server
 
 	// Register APIs
 	eventsv1.RegisterEventServiceServer(grpcServer, controller.NewEventsController(eventService))
-	storev1.RegisterStoreServiceServer(grpcServer, controller.NewStoreController(storeAPI, databaseAPI, options.EventBus(), oasfValidator))
+	storev1.RegisterStoreServiceServer(grpcServer, controller.NewStoreController(storeAPI, databaseAPI, ingestor, options.EventBus(), oasfValidator))
 	routingv1.RegisterRoutingServiceServer(grpcServer, controller.NewRoutingController(routingAPI, storeAPI, publicationService))
 	routingv1.RegisterPublicationServiceServer(grpcServer, controller.NewPublicationController(databaseAPI, options))
 	searchv1.RegisterSearchServiceServer(grpcServer, controller.NewSearchController(databaseAPI, storeAPI))

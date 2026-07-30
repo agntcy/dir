@@ -9,6 +9,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"strings"
 
 	routingv1 "github.com/agntcy/dir/api/routing/v1"
 	storev1 "github.com/agntcy/dir/api/store/v1"
@@ -334,36 +335,66 @@ func parseSearchOutput(input io.Reader) ([]*routingv1.SearchResponse, error) {
 	return searchResponses, nil
 }
 
-// PeerSyncInfo holds sync information for a peer (grouped by API address).
+// PeerSyncInfo holds sync information for a peer resolved from routing addresses.
 type PeerSyncInfo struct {
+	// APIAddress is the value of the /dir/ multiaddr (e.g. "host:443"), if present.
 	APIAddress string
-	CIDs       []string
+	// OCIRegistry is the registry host[:port] parsed from the /oci/ multiaddr.
+	OCIRegistry string
+	// OCIRepository is the repository path component of the /oci/ multiaddr, if any.
+	OCIRepository string
+	CIDs          []string
 }
 
+// groupResultsByAPIAddress groups search results by peer, parsing /dir/ and /oci/
+// multiaddrs so callers can choose the right sync strategy per peer.
 func groupResultsByAPIAddress(results []*routingv1.SearchResponse) map[string]PeerSyncInfo {
 	peerResults := make(map[string]PeerSyncInfo)
 
 	for _, result := range results {
-		// Get the first API address if available
-		var apiAddress string
-		if result.GetPeer() != nil && len(result.GetPeer().GetAddrs()) > 0 {
-			apiAddress = result.GetPeer().GetAddrs()[0]
+		peer := result.GetPeer()
+		if peer == nil {
+			continue
 		}
 
-		// Skip results without API address
-		if apiAddress == "" {
+		var dirAddr, ociRegistry, ociRepo string
+
+		for _, addr := range peer.GetAddrs() {
+			switch {
+			case strings.HasPrefix(addr, "/dir/"):
+				dirAddr = strings.TrimPrefix(addr, "/dir/")
+			case strings.HasPrefix(addr, "/oci/"):
+				raw := strings.TrimPrefix(addr, "/oci/")
+				if idx := strings.LastIndex(raw, "/"); idx != -1 {
+					ociRegistry = raw[:idx]
+					ociRepo = raw[idx+1:]
+				} else {
+					ociRegistry = raw
+				}
+			}
+		}
+
+		// Use dir address as key when present; fall back to oci registry.
+		key := dirAddr
+		if key == "" {
+			key = ociRegistry
+		}
+
+		if key == "" {
 			continue
 		}
 
 		cid := result.GetRecordRef().GetCid()
 
-		if existing, exists := peerResults[apiAddress]; exists {
+		if existing, exists := peerResults[key]; exists {
 			existing.CIDs = append(existing.CIDs, cid)
-			peerResults[apiAddress] = existing
+			peerResults[key] = existing
 		} else {
-			peerResults[apiAddress] = PeerSyncInfo{
-				APIAddress: apiAddress,
-				CIDs:       []string{cid},
+			peerResults[key] = PeerSyncInfo{
+				APIAddress:    dirAddr,
+				OCIRegistry:   ociRegistry,
+				OCIRepository: ociRepo,
+				CIDs:          []string{cid},
 			}
 		}
 	}
@@ -372,36 +403,42 @@ func groupResultsByAPIAddress(results []*routingv1.SearchResponse) map[string]Pe
 }
 
 func createSyncOperations(cmd *cobra.Command, peerResults map[string]PeerSyncInfo) error {
-	client, ok := ctxUtils.GetClientFromContext(cmd.Context())
+	dirClient, ok := ctxUtils.GetClientFromContext(cmd.Context())
 	if !ok {
 		return errors.New("failed to get client from context")
 	}
 
-	totalSyncs := 0
-	totalCIDs := 0
-
 	syncIDs := make([]any, 0, len(peerResults))
 
-	for apiAddress, syncInfo := range peerResults {
-		if syncInfo.APIAddress == "" {
-			presenter.PrintSmartf(cmd, "WARNING: No API address found for peer\n")
-			presenter.PrintSmartf(cmd, "Skipping sync for this peer\n")
+	for _, syncInfo := range peerResults {
+		var (
+			syncID string
+			err    error
+		)
+
+		switch {
+		case syncInfo.APIAddress != "":
+			// /dir/ available (possibly alongside /oci/): prefer credential negotiation.
+			syncID, err = dirClient.CreateSync(cmd.Context(), syncInfo.APIAddress, syncInfo.CIDs, nil)
+		case syncInfo.OCIRegistry != "":
+			// Only /oci/ available: direct OCI pull.
+			syncID, err = dirClient.CreateSync(cmd.Context(), "", syncInfo.CIDs, &client.CreateSyncOptions{
+				RemoteRegistryURL: syncInfo.OCIRegistry,
+				RepositoryName:    syncInfo.OCIRepository,
+			})
+		default:
+			presenter.PrintSmartf(cmd, "WARNING: No usable address found for peer, skipping\n")
 
 			continue
 		}
 
-		// Create sync operation
-		syncID, err := client.CreateSync(cmd.Context(), syncInfo.APIAddress, syncInfo.CIDs, nil)
 		if err != nil {
-			presenter.PrintSmartf(cmd, "ERROR: Failed to create sync for peer %s: %v\n", apiAddress, err)
+			presenter.PrintSmartf(cmd, "ERROR: Failed to create sync: %v\n", err)
 
 			continue
 		}
 
 		syncIDs = append(syncIDs, syncID)
-
-		totalSyncs++
-		totalCIDs += len(syncInfo.CIDs)
 	}
 
 	return presenter.PrintMessage(cmd, "sync IDs", "Sync IDs created", syncIDs)

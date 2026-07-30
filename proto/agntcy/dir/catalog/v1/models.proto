@@ -251,3 +251,8 @@ message ProvenanceLink {
   // Reference to the key used to sign the provenance statement.
   optional string signature_ref = 6;
 }
+
+message CatalogTag {
+  string id = 1 [(buf.validate.field).required = true];
+  string label = 2 [(buf.validate.field).required = true];
+}

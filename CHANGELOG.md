@@ -5,6 +5,106 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v1.6.2] - 2026-07-29
+
+### Added
+- **CLI**: `--project` scope flag for `dirctl install` and `dirctl uninstall` (#1894)
+- **Dir**: `ListTags` endpoint for listing record tags (#1877)
+- **Dir**: `TrustStatus` and Verified badge support (#1899)
+- **Dir**: trusted, verified, and safe record filters (#1896)
+- **Dir**: `Annotations` field in `RecordFilters` (#1898)
+- **Dir**: tags filter for `ListAgents` endpoint (#1897)
+- **UI**: Use `total_count` in `ListAgents` and AI Catalog UI (#1875)
+- **UI**: Use new `ListTags` API in UI (#1893)
+
+### Changed
+- **Reconciler**: Bump scanner versions (#1879)
+- **Deps**: Align and bump Zot and PostgreSQL across all environments (#1923)
+- **Deps**: Update Helm Zot chart to v0.1.122, GitHub Actions, `golang.org/x/mod`, `klauspost/compress` (security), `cel-go` (security), `quic-go/webtransport-go` (security), `golang.org/x/text` (security), SPIRE (#1827–#1900)
+
+### Fixed
+- **Dir**: Backfill `artifact_media_type` column for existing records (#1924)
+- **Dir**: Index `artifact.media_type` in database (#1911)
+- **Dir**: Fix `ListAgent`'s tags filter (#1916)
+- **Dir**: Fix type filter handling for skills (#1902)
+- **Dir**: Apply catalog module filter to SQL (#1901)
+- **Dir**: Fix `IsReady` errors (#1881)
+- **Dir**: Remove `DisclaimerBanner` (#1871)
+- **Routing**: Allow advertised routing addresses to be set via environment (#1913)
+- **Routing**: Allow republish interval override via environment (#1912)
+- **Datastore**: Synchronize in-memory routing datastore (#1890)
+- **Database**: Resolve ambiguous column reference in usage metrics upserts (#1873)
+- **Reconciler**: Allow local registry credentials to be set via environment (#1915)
+- **CLI**: Avoid blocking on non-interactive key passwords (#1891)
+- **CLI**: Register cloud KMS providers (#1892)
+- **CLI**: Fix import extractor schema version scope (#1870)
+- **Init**: Project client context connection env onto the DIR MCP entry (#1876)
+- **UI**: Fix 404 page (#1921)
+- **CI**: Stop concatenating per-module versions into `RELEASE_VERSION` (#1910)
+
+## [v1.6.1] - 2026-07-22
+
+### Added
+- **Dir**: JWT-TLS authentication mode (#1857)
+- **Routing**: Configurable republish interval with default (#1858)
+- **Docs**: Document NL search, a2a-scanner, and extractor enrichment (#1851)
+
+### Changed
+- **Deps**: Bump `golang.org/x/crypto` to v0.54.0 (#1830)
+
+### Fixed
+- **Import**: Reset `SchemaVersion` per `loadConfig` to avoid in-process leak (#1863)
+- **Import**: Align extractor-enriched record schema version with OASF latest (#1862)
+- **Dir**: Increase database connection pool size (#1850)
+
+### Tests
+- **E2E**: Add extractor enricher coverage for `dirctl import` (#1849)
+
+## [v1.6.0] - 2026-07-17
+
+### Added
+- **Security**: Automated security scanning with MCP, skill, and A2A scanners; `ScanReport` proto; scan search filters; pull support; and AI Finder UI surfacing (#1744, #1738, #1746, #1757, #1760, #1773, #1776)
+- **Reconciler**: Scan task with bundled Cisco scanners in the reconciler image and Azure OpenAI key binding (#1773, #1823)
+- **Search**: Natural-language query support in `dirctl search`, `SearchService`, and `dirctl routing search`; OASF extractor provisioning in `dirctl init` (#1756, #1770, #1783, #1813)
+- **Search**: Record usage metrics tracking and popularity sort modes (#1708)
+- **Routing**: DHT autosync manager, trigger, worker, and `routing.autosync` configuration; NAT hardening for autosync (#1797, #1798, #1800, #1802, #1808)
+- **API**: `ListReferrers` and `PullReferrer` RPCs; shared ingestion service (`Ingestor`); OCI address in discovery response (#1799, #1798, #1820)
+- **API**: Skill bundle support and extraction on batch export (#1706, #1741)
+- **CLI**: `dirctl init` to install Directory Agent Skill and MCP server; default local context seeding; `dirctl install`; batch install (#1764, #1745, #1763, #1787)
+- **CLI**: MCP Claude Code and Cursor export formats (#1766, #1767)
+- **CLI**: `--config` flag on `dirctl import` (#1715)
+- **Catalog**: Real usage metrics replacing placeholder stats (#1812)
+- **Helm**: Metrics reconciler task wiring (#1819)
+- **Workflows**: Integration-aware DIR agent skill (#1700)
+- **Docs**: Community section updates and Discord links (#1761, #1782, #1817, #1825, #1826)
+
+### Changed
+- **CLI**: Move raw OASF retrieval to `dirctl pull`; drop `--format=oasf` from export (#1707)
+- **CLI/Importer**: Bump dir-importer and upgrade to OASF 1.1.0 (#1806, #1821)
+- **CLI**: Bump dir-import, dir-mcp, and dir-runtime dependencies (#1821)
+- **Reconciler**: Pin Cisco scanner package versions (#1833, #1840)
+- **Reconciler**: Upgrade `grpc-health-probe` to v0.4.53 (#1837)
+- **Dir**: Rename Agent Skill media type (#1721)
+- **Docs/SDK**: Split and update SDK documentation (#1759)
+- **CI**: Refactor Renovate bot configuration (#1748)
+- **Deps**: Bump Go to 1.26.5 (#1805)
+- **Deps**: Update SPIRE, Zot, PostgreSQL, libp2p-kad-dht, gRPC, Helm Zot chart, GitHub Actions, cosign, regclient, oras-go, and other module dependencies (#1684–#1840, #1713–#1769, #1786, #1805)
+
+### Fixed
+- **Search**: PostgreSQL database search (#1807)
+- **Reconciler**: Add `git` to Dockerfile for MCP scanner clone support; create nonroot home directory in container images (#1810, #1816)
+- **Reconciler**: Downgrade mcp-scanner and skill-scanner versions for LiteLLM compatibility (#1836)
+- **CLI/Agent Skill**: Patch sync flow in agent skill (#1834)
+- **Client**: Populate `Signature` field correctly for key-based signatures (#1710)
+- **Helm**: Roll apiserver pods when ConfigMap changes (#1675)
+- **Build**: Correct `golang:1.26.5` image digest in Dockerfiles (#1809)
+- **Tests**: Revert OASF schema version from 1.1.0 back to 1.0.0 (#1815)
+- **Tests**: Update OASF test skill values (#1785)
+- **Dirctl**: Remove env var patch for v1.4 brew in v1.5 (#1679)
+
+### Security
+- **Dependencies**: Security updates for `oras.land/oras-go/v2`, `github.com/regclient/regclient`, and containerd (#1711, #1786, #1681, #1682)
+
 ## [v1.5.0] - 2026-06-17
 
 ### Added

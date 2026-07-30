@@ -59,6 +59,21 @@ spec:
                   name: {{ include "chart.fullname" . }}
                   key: oci-password
             {{- end }}
+            {{- if and .Values.reconciler.azureOpenAI .Values.reconciler.azureOpenAI.enabled }}
+            # Azure OpenAI credentials for the scan task's LLM-backed scanners
+            # (mcp-scanner / skill-scanner read these from the process environment).
+            - name: AZURE_OPENAI_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.reconciler.azureOpenAI.apiKey.secretName | default (include "chart.fullname" .) }}
+                  key: {{ .Values.reconciler.azureOpenAI.apiKey.secretKey | default "azure-openai-api-key" }}
+            - name: AZURE_OPENAI_BASE_URL
+              value: {{ .Values.reconciler.azureOpenAI.baseURL | quote }}
+            - name: AZURE_OPENAI_DEPLOYMENT
+              value: {{ .Values.reconciler.azureOpenAI.deployment | quote }}
+            - name: AZURE_OPENAI_API_VERSION
+              value: {{ .Values.reconciler.azureOpenAI.apiVersion | quote }}
+            {{- end }}
             {{- with .Values.extraEnv }}
             {{- toYaml . | nindent 12 }}
             {{- end }}

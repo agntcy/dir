@@ -70,6 +70,11 @@ func New(ctx context.Context, cfg config.Config) (*Service, error) {
 
 		logger.Info("X.509 authentication service initialized")
 
+	case config.AuthModeJWTTLS:
+		_ = client.Close()
+
+		return nil, fmt.Errorf("auth mode %q is client-only and cannot be used for server authentication", cfg.Mode)
+
 	default:
 		_ = client.Close()
 
@@ -240,6 +245,11 @@ func (s *Service) GetServerOptions() []grpc.ServerOption {
 			grpc.ChainStreamInterceptor(X509StreamInterceptor()),
 		}
 
+	case config.AuthModeJWTTLS:
+		logger.Error("jwt-tls is client-only and not supported for server authentication", "mode", s.mode)
+
+		return []grpc.ServerOption{}
+
 	default:
 		logger.Error("Unsupported auth mode", "mode", s.mode)
 
@@ -262,6 +272,13 @@ func (s *Service) GetClientOptions() []grpc.DialOption {
 			grpc.WithTransportCredentials(
 				grpccredentials.MTLSClientCredentials(s.x509Src, s.bundleSrc, tlsconfig.AuthorizeAny()),
 			),
+		}
+
+	case config.AuthModeJWTTLS:
+		logger.Error("jwt-tls is client-only; use dir/client with auth_mode jwt-tls", "mode", s.mode)
+
+		return []grpc.DialOption{
+			grpc.WithTransportCredentials(insecure.NewCredentials()),
 		}
 
 	default:

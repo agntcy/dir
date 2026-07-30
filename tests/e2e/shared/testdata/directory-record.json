@@ -1,0 +1,63 @@
+{
+  "authors":  [
+    "https://github.com/agntcy/dir"
+  ],
+  "created_at":  "2026-06-16T17:07:50Z",
+  "description":  "Self-describing usage guide for this AGNTCY Directory (DIR) instance: how an AI agent can publish, search, pull, sign, and verify OASF agent records.",
+  "domains":  [
+    {
+      "id":  10204,
+      "name":  "technology/software_engineering/apis_integration"
+    }
+  ],
+  "modules":  [
+    {
+      "artifact":  {
+        "data":  "LS0tCm5hbWU6IGFnbnRjeS1kaXIKZGVzY3JpcHRpb246IFVzZSB0aGlzIHNraWxsIHRvIGludGVyYWN0IHdpdGggYW4gQUdOVENZIERpcmVjdG9yeSAoRElSKSBpbnN0YW5jZS4gRElSIGlzIGEgZGlzdHJpYnV0ZWQgcGVlci10by1wZWVyIHJlZ2lzdHJ5IG9mIEFJIGFnZW50IHJlY29yZHMgZGVzY3JpYmVkIGluIE9BU0YuIFVzZSBpdCB0byBwdWJsaXNoIChwdXNoKSwgZGlzY292ZXIgKHNlYXJjaCksIHJldHJpZXZlIChwdWxsKSwgc2lnbiwgYW5kIHZlcmlmeSBhZ2VudCByZWNvcmRzLgptZXRhZGF0YToKICBhdXRob3I6IEFHTlRDWSBDb250cmlidXRvcnMKICB2ZXJzaW9uOiAxLjAuMAotLS0KCiMgQUdOVENZIERpcmVjdG9yeSAoRElSKQoKRElSIGlzIGEgZGlzdHJpYnV0ZWQgcmVnaXN0cnkgZm9yIEFJIGFnZW50IHJlY29yZHMuIFJlY29yZHMgZGVzY3JpYmUgYWdlbnRzIHVzaW5nCnRoZSBbT3BlbiBBZ2VudGljIFNjaGVtYSBGcmFtZXdvcmsgKE9BU0YpXShodHRwczovL2dpdGh1Yi5jb20vYWdudGN5L29hc2YpIGFuZAphcmUgY29udGVudC1hZGRyZXNzZWQgYnkgQ0lELgoKVGhpcyBza2lsbCBleHBsYWlucyBob3cgdG8gdGFsayB0byBhIHJ1bm5pbmcgRElSIG5vZGUuIFlvdSBjYW4gdXNlIHRoZSBNQ1Agc2VydmVyLAp0aGUgYGRpcmN0bGAgQ0xJLCB0aGUgbGFuZ3VhZ2UgU0RLcywgb3IgdGhlIHJhdyBnUlBDIEFQSSDigJQgcGljayB3aGljaGV2ZXIgY2hhbm5lbAp5b3VyIGVudmlyb25tZW50IHN1cHBvcnRzLgoKIyMgVm9jYWJ1bGFyeQoKLSAqKlJlY29yZCoqIOKAlCBhbiBPQVNGIEpTT04gZG9jdW1lbnQgZGVzY3JpYmluZyBvbmUgYWdlbnQgKG5hbWUsIHZlcnNpb24sIHNraWxscywgbG9jYXRvcnMsIG1vZHVsZXMsIHNpZ25hdHVyZXMpLgotICoqQ0lEKiog4oCUIENvbnRlbnQgSWRlbnRpZmllcjsgdGhlIFNIQS1iYXNlZCBoYXNoIHRoYXQgdW5pcXVlbHkgbmFtZXMgYSByZWNvcmQuIFB1c2hpbmcgdGhlIHNhbWUgcmVjb3JkIHR3aWNlIHlpZWxkcyB0aGUgc2FtZSBDSUQuCi0gKipTa2lsbCAvIERvbWFpbioqIOKAlCBPQVNGIHRheG9ub215IG5vZGVzIGRlc2NyaWJpbmcgd2hhdCBhbiBhZ2VudCBkb2VzIChlLmcuIGBuYXR1cmFsX2xhbmd1YWdlX3Byb2Nlc3NpbmcvdGV4dF9jb21wbGV0aW9uYCkgYW5kIHdoZXJlIGl0IG9wZXJhdGVzLgotICoqTW9kdWxlKiog4oCUIHR5cGVkIGV4dGVuc2lvbiBvbiBhIHJlY29yZCAoZS5nLiBgY29yZS9sYW5ndWFnZV9tb2RlbC9hZ2VudHNraWxsc2AsIGBpbnRlZ3JhdGlvbi9tY3BgLCBgaW50ZWdyYXRpb24vYTJhYCkuCi0gKipMb2NhdG9yKiog4oCUIHBvaW50ZXIgdG8gYSBydW5uYWJsZSBhcnRpZmFjdCBmb3IgdGhlIGFnZW50IChgY29udGFpbmVyX2ltYWdlYCwgYHNvdXJjZV9jb2RlYCwgYGhlbG1fY2hhcnRgLCBgcGFja2FnZWAsIGBiaW5hcnlgLCBgdXJsYCkuCgojIyBDaGFubmVscwoKfCBPcGVyYXRpb24gfCBNQ1AgdG9vbCB8IENMSSB8IEdvIFNESyB8CnwtLS18LS0tfC0tLXwtLS18CnwgUHVzaCBhIHJlY29yZCB8IGBhZ250Y3lfZGlyX3B1c2hfcmVjb3JkYCB8IGBkaXJjdGwgcHVzaCA8ZmlsZT5gIHwgYGNsaWVudC5QdXNoYCB8CnwgUHVsbCBieSBDSUQgfCBgYWdudGN5X2Rpcl9wdWxsX3JlY29yZGAgfCBgZGlyY3RsIHB1bGwgPGNpZD5gIHwgYGNsaWVudC5QdWxsYCB8CnwgU2VhcmNoIGxvY2FsIHwgYGFnbnRjeV9kaXJfc2VhcmNoX2xvY2FsYCB8IGBkaXJjdGwgc2VhcmNoYCB8IGBjbGllbnQuU2VhcmNoYCB8CnwgVmFsaWRhdGUgYWdhaW5zdCBPQVNGIHwgYGFnbnRjeV9vYXNmX3ZhbGlkYXRlX3JlY29yZGAgfCBgZGlyY3RsIHZhbGlkYXRlIDxmaWxlPmAgfCDigJQgfAp8IExpc3QgT0FTRiB2ZXJzaW9ucyB8IGBhZ250Y3lfb2FzZl9saXN0X3ZlcnNpb25zYCB8IOKAlCB8IOKAlCB8CnwgU2lnbiBhIHJlY29yZCB8IOKAlCB8IGBkaXJjdGwgc2lnbiAtLWtleT08Y29zaWduLmtleT4gPGNpZD5gIHwgYGNsaWVudC5TaWduYCB8CnwgVmVyaWZ5IGEgc2lnbmF0dXJlIHwgYGFnbnRjeV9kaXJfdmVyaWZ5X3JlY29yZGAgfCBgZGlyY3RsIHZlcmlmeSA8Y2lkPmAgfCBgY2xpZW50LlZlcmlmeWAgfAp8IFZlcmlmeSBuYW1lIG93bmVyc2hpcCB8IGBhZ250Y3lfZGlyX3ZlcmlmeV9uYW1lYCB8IGBkaXJjdGwgbmFtaW5nIHZlcmlmeSA8Y2lkPmAgfCDigJQgfAp8IEltcG9ydCBNQ1AgLyBBMkEgLyBTS0lMTC5tZCB8IGBhZ250Y3lfb2FzZl9pbXBvcnRfcmVjb3JkYCB8IGBkaXJjdGwgaW1wb3J0IC0tdHlwZT08bWNwXHxhMmFcfGFnZW50LXNraWxsPmAgfCDigJQgfAoKIyMgV29ya2Zsb3c6IHB1Ymxpc2ggYW4gYWdlbnQgcmVjb3JkCgoxLiBBdXRob3Igb3IgZ2VuZXJhdGUgYW4gT0FTRiByZWNvcmQgSlNPTi4gUmVxdWlyZWQgdG9wLWxldmVsIGZpZWxkcyBmb3IgdGhlCiAgIDEuMC4wIHNjaGVtYTogYG5hbWVgLCBgc2NoZW1hX3ZlcnNpb25gLCBgdmVyc2lvbmAsIGBkZXNjcmlwdGlvbmAsIGBhdXRob3JzYCwKICAgYGNyZWF0ZWRfYXRgIChSRkMzMzM5KSwgYHNraWxsc2AuIE9wdGlvbmFsOiBgZG9tYWluc2AsIGBsb2NhdG9yc2AsIGBtb2R1bGVzYCwKICAgYGFubm90YXRpb25zYC4KMi4gVmFsaWRhdGUgYWdhaW5zdCB0aGUgT0FTRiBzY2hlbWEgYmVmb3JlIHB1c2hpbmcg4oCUIHRoZSBzZXJ2ZXIgcmVqZWN0cwogICBtYWxmb3JtZWQgcmVjb3JkcyB3aXRoIGBJbnZhbGlkQXJndW1lbnRgLgozLiBQdXNoLiBUaGUgc2VydmVyIHJldHVybnMgdGhlIENJRC4gUHVzaGVzIGFyZSBpZGVtcG90ZW50OiBwdXNoaW5nIHRoZSBzYW1lCiAgIGJ5dGVzIGEgc2Vjb25kIHRpbWUgcmV0dXJucyB0aGUgc2FtZSBDSUQgd2l0aG91dCBjcmVhdGluZyBhIGR1cGxpY2F0ZS4KNC4gT3B0aW9uYWxseSBzaWduIHRoZSByZWNvcmQgd2l0aCBjb3NpZ24g4oCUIHByb2R1Y2VzIGEgc2lnbmF0dXJlICpyZWZlcnJlcioKICAgbGlua2VkIHRvIHRoZSBDSUQuIEFueW9uZSBjYW4gbGF0ZXIgdmVyaWZ5IHNpZ25hdHVyZSBhbmQgbmFtZSBvd25lcnNoaXAuCgpgYGBiYXNoCmRpcmN0bCB2YWxpZGF0ZSBhZ2VudC5qc29uCkNJRD0kKGRpcmN0bCBwdXNoIGFnZW50Lmpzb24gLS1vdXRwdXQ9cmF3KQpkaXJjdGwgc2lnbiAtLWtleT1jb3NpZ24ua2V5ICIkQ0lEIgpgYGAKCiMjIFdvcmtmbG93OiBkaXNjb3ZlciBhbmQgcHVsbCBhIHJlY29yZAoKMS4gU2VhcmNoIGJ5IHN0cnVjdHVyZWQgZmlsdGVycyAobmFtZXMsIHZlcnNpb25zLCBza2lsbHMsIGxvY2F0b3JzLCBhdXRob3JzLCDigKYpLgogICBGaWx0ZXJzIHVzZSB3aWxkY2FyZHM6IGAqYCAoYW55KSwgYD9gIChvbmUgY2hhciksIGBbYWJjXWAgKHNldCkuCjIuIFRoZSBzZWFyY2ggcmV0dXJucyBDSURzLiBQdWxsIGVhY2ggQ0lEIHRvIGdldCB0aGUgZnVsbCByZWNvcmQgSlNPTi4KCmBgYGJhc2gKZGlyY3RsIHNlYXJjaCAtLXNraWxsLW5hbWUgIip0ZXh0X2NvbXBsZXRpb24qIiAtLWxpbWl0IDIwCmRpcmN0bCBwdWxsIDxjaWQ+CmBgYAoKRm9yIG5hdHVyYWwtbGFuZ3VhZ2Ugc2VhcmNoZXMgdmlhIGFuIExMTSwgcHJlZmVyIHRoZSBgc2VhcmNoX3JlY29yZHNgIE1DUCBwcm9tcHQsCndoaWNoIHRyYW5zbGF0ZXMgYSBmcmVlLXRleHQgcXVlcnkgaW50byBzdHJ1Y3R1cmVkIGZpbHRlcnMgYXV0b21hdGljYWxseS4KCiMjIE9BU0YgZXNzZW50aWFscwoKLSBTY2hlbWEgdmVyc2lvbnMgaW4gYWN0aXZlIHVzZTogYDAuNy4wYCwgYDAuOC4wYCwgYDEuMC4wYC4gUGljayB0aGUgbGF0ZXN0IHlvdXIKICB0b29saW5nIHN1cHBvcnRzOyBgMS4wLjBgIGlzIHRoZSBjdXJyZW50IGRlZmF1bHQuCi0gTW9kdWxlIGVudW0gaXMgY2xvc2VkIGluIDEuMC4wIOKAlCBvbmx5IHRoZXNlIGBuYW1lYHMgdmFsaWRhdGU6CiAgYGxhbmd1YWdlX21vZGVsYCwgYHByb21wdGAsIGBjb3JlL2xhbmd1YWdlX21vZGVsL2FnZW50c2tpbGxzYCwgYGV2YWx1YXRpb25gLAogIGBvYnNlcnZhYmlsaXR5YCwgYGEyYWAsIGBhY3BgLCBgYWdlbnRzcGVjYCwgYG1jcGAuIEN1c3RvbSBwYXlsb2FkcyBiZWxvbmcgaW4KICB0aGUgdG9wLWxldmVsIGBhbm5vdGF0aW9uc2AgbWFwLgotIFNraWxscyBhbmQgZG9tYWlucyBhcmUgdGF4b25vbWllczsgcmVzb2x2ZSBgaWRgIOKGlCBgbmFtZWAgd2l0aCB0aGUKICBgYWdudGN5X29hc2ZfZ2V0X3NjaGVtYV9za2lsbHNgIGFuZCBgYWdudGN5X29hc2ZfZ2V0X3NjaGVtYV9kb21haW5zYCBNQ1AgdG9vbHMKICAob3IgZmV0Y2ggdGhlIHNjaGVtYSBKU09OIGRpcmVjdGx5KS4KCiMjIENvbW1vbiBwaXRmYWxscwoKLSBBIHJlY29yZCdzIENJRCBjb3ZlcnMgaXRzIGJ5dGVzIOKAlCBhbnkgY2hhbmdlICh3aGl0ZXNwYWNlLCBrZXkgb3JkZXIpIHlpZWxkcyBhCiAgbmV3IENJRC4gUmUtcHVzaCBvbmx5IHdoZW4gdGhlIHJlY29yZCBhY3R1YWxseSBjaGFuZ2VzLgotIE5hbWVzIGJlZ2lubmluZyB3aXRoIGBodHRwOi8vYCBvciBgaHR0cHM6Ly9gIG9wdCBpbnRvIGRvbWFpbi1iYXNlZCBuYW1lCiAgb3duZXJzaGlwIHZlcmlmaWNhdGlvbiAoYC8ud2VsbC1rbm93bi9qd2tzLmpzb25gIG9uIHRoZSBob3N0KS4gUGxhaW4gbmFtZXMKICBza2lwIHRoYXQgcGF0aC4KLSBTZWFyY2ggZGVmYXVsdHMgdG8gbG9jYWwtb25seS4gVG8gZmluZCByZWNvcmRzIG9uIHJlbW90ZSBwZWVycywgdXNlIHJvdXRpbmcKICBzZWFyY2ggKGBkaXJjdGwgcm91dGluZyBzZWFyY2gg4oCmYCAvIGBjbGllbnQuU2VhcmNoUm91dGluZ2ApLgotIFRoZSBzZXJ2ZXIgY2FwcyByZWNvcmRzIGF0IDQgTUIgYW5kIG1ldGFkYXRhIGF0IDEwMCBLQi4gS2VlcCBsYXJnZSBibG9icyBpbgogIGV4dGVybmFsIHN0b3JhZ2UgYW5kIHJlZmVyZW5jZSB0aGVtIHZpYSBsb2NhdG9ycy4KCiMjIFBvaW50ZXJzCgotIE9BU0Ygc2NoZW1hOiA8aHR0cHM6Ly9zY2hlbWEub2FzZi5vdXRzaGlmdC5jb20vMS4wLjA+Ci0gRElSIHJlcG8gJiBDTEkgcmVmZXJlbmNlOiA8aHR0cHM6Ly9naXRodWIuY29tL2FnbnRjeS9kaXI+Ci0gRElSIE1DUCBzZXJ2ZXI6IDxodHRwczovL2dpdGh1Yi5jb20vYWdudGN5L2Rpci1tY3A+Ci0gUXVpY2tzdGFydCBkb2NzOiA8aHR0cHM6Ly9kb2NzLmFnbnRjeS5vcmcvZGlyL2Rpci1xdWlja3N0YXJ0Lz4K",
+        "digest":  "sha256:d83cef79c3ea3bf272e910c5686e382b7564a8c5e04788b773bb62c80563bc04",
+        "media_type":  "application/agentskill+md",
+        "size":  5094
+      },
+      "data":  {
+        "skill_file":  "SKILL.md",
+        "skill_manifest":  {
+          "description":  "Use this skill to interact with an AGNTCY Directory (DIR) instance.",
+          "frontmatter_metadata":  {
+            "author":  "AGNTCY Contributors"
+          },
+          "name":  "agntcy-dir",
+          "version":  "0.0.0-dev"
+        }
+      },
+      "id":  10302,
+      "name":  "core/language_model/agentskills"
+    },
+    {
+      "data":  {
+        "connections":  [
+          {
+            "args":  [
+              "mcp",
+              "serve"
+            ],
+            "command":  "dirctl",
+            "type":  "stdio"
+          }
+        ],
+        "description":  "MCP server fronting this AGNTCY Directory instance.",
+        "name":  "agntcy-dir-mcp"
+      },
+      "id":  202,
+      "name":  "integration/mcp"
+    }
+  ],
+  "name":  "org.agntcy/directory",
+  "schema_version":  "1.0.0",
+  "skills":  [
+    {
+      "id":  10101,
+      "name":  "natural_language_processing/natural_language_understanding/contextual_comprehension"
+    }
+  ],
+  "version":  "0.0.0-dev"
+}

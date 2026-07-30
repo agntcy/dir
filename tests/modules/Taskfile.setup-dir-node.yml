@@ -29,12 +29,19 @@ tasks:
       # If GOCOVERDIR is set, ensure it's passed to the daemon process to
       # enable coverage collection.
       GOCOVERDIR: '{{ .GOCOVERDIR | default "" }}'
+
+      # Set to "false" to skip OASF extractor provisioning.
+      DIRCTL_PROVISION_EXTRACTOR: '{{ .DIRCTL_PROVISION_EXTRACTOR | default "true" }}'
     env:
       GOCOVERDIR: '{{ .GOCOVERDIR }}'
     cmds:
       - |
           # Ensure the coverage directory exists
           {{ if .GOCOVERDIR }}mkdir -p {{ .GOCOVERDIR }}{{end}}
+
+          # Provision the OASF extractor model for natural-language search tests.
+          # Skipped when DIRCTL_PROVISION_EXTRACTOR=false.
+          {{ if eq .DIRCTL_PROVISION_EXTRACTOR "true" }}{{ .DIRCTL_BIN }} init --yes{{end}}
 
           # Ensure the data directory exists
           mkdir -p {{ .DIRCTL_DATA_PATH }}

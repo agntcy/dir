@@ -29,6 +29,10 @@ services:
     build:
       context: ../../
       dockerfile: reconciler/Dockerfile
+      args:
+        MCP_SCANNER_VERSION: ${MCP_SCANNER_VERSION:-4.8.1}
+        SKILL_SCANNER_VERSION: ${SKILL_SCANNER_VERSION:-2.0.12}
+        A2A_SCANNER_VERSION: ${A2A_SCANNER_VERSION:-1.0.1}
     env_file:
       - ./reconciler.env
     depends_on:
@@ -41,7 +45,7 @@ services:
         condition: on-failure
 
   zot:
-    image: ghcr.io/project-zot/zot:v2.1.17
+    image: ghcr.io/project-zot/zot:v2.1.18
     ports:
       - 5555:5000
     deploy:
@@ -51,7 +55,7 @@ services:
         condition: on-failure
 
   postgres:
-    image: docker.io/bitnami/postgresql:latest@sha256:91a6c3f4b4d687546c1d07c1ef7c27a5e85e2a0ce8a192fe94cad5bbde0a1aba
+    image: docker.io/bitnami/postgresql:latest@sha256:cc46b91332b9e931019b8657fd046d9abab343c45f7c7616121e19006e027163
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres

@@ -23,6 +23,31 @@ func FormatSummary(outcomes []Outcome, dryRun bool) string {
 		return b.String()
 	}
 
+	if needsRecordGrouping(outcomes) {
+		for i, record := range recordOrder(outcomes) {
+			if i > 0 {
+				b.WriteString("\n")
+			}
+
+			fmt.Fprintf(&b, "Record: %s\n", record)
+			writeSummaryOutcomeLines(&b, outcomesForRecord(outcomes, record))
+		}
+	} else {
+		writeSummaryOutcomeLines(&b, outcomes)
+	}
+
+	b.WriteString("\n")
+	b.WriteString(formatTally(outcomes))
+	b.WriteString("\n")
+
+	if dryRun {
+		b.WriteString("\nNote: This was a dry run. No changes were written.\n")
+	}
+
+	return b.String()
+}
+
+func writeSummaryOutcomeLines(b *strings.Builder, outcomes []Outcome) {
 	for _, o := range outcomes {
 		path := o.Path
 		if path == "" {
@@ -37,16 +62,6 @@ func FormatSummary(outcomes []Outcome, dryRun bool) string {
 		b.WriteString(line)
 		b.WriteString("\n")
 	}
-
-	b.WriteString("\n")
-	b.WriteString(formatTally(outcomes))
-	b.WriteString("\n")
-
-	if dryRun {
-		b.WriteString("\nNote: This was a dry run. No changes were written.\n")
-	}
-
-	return b.String()
 }
 
 // formatTally counts outcomes by action in a stable order.

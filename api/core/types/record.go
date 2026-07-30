@@ -30,6 +30,7 @@ type Module interface {
 	GetName() string
 	GetID() uint64
 	GetData() map[string]any
+	GetArtifactMediaType() string
 }
 
 // Skill defines the necessary data for a skill.

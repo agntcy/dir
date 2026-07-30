@@ -1,6 +1,6 @@
 module github.com/agntcy/dir/server
 
-go 1.26.4
+go 1.26.5
 
 // Replace local modules
 replace (
@@ -11,21 +11,21 @@ replace (
 
 // Replace external modules to address compatibility/security
 // Cosign does not updated the crypto11 owner
-replace github.com/ThalesIgnite/crypto11 => github.com/ThalesGroup/crypto11 v1.6.1
+replace github.com/ThalesIgnite/crypto11 => github.com/eclipse-keypont/crypto11 v1.6.8
 
 require (
-	buf.build/gen/go/agntcy/oasf/protocolbuffers/go v1.36.11-20260602080720-2b66557c6456.1
+	buf.build/gen/go/agntcy/oasf/protocolbuffers/go v1.36.11-20260721113505-cf7db8888586.1
 	buf.build/go/protovalidate v1.2.0
-	github.com/agntcy/dir/api v1.5.0
-	github.com/agntcy/dir/utils v1.5.0
-	github.com/agntcy/oasf-sdk/pkg v1.0.6-0.20260629100853-cc016581c7f5
+	github.com/agntcy/dir/api v1.6.2
+	github.com/agntcy/dir/utils v1.6.2
+	github.com/agntcy/oasf-sdk/pkg v1.1.0
 	github.com/casbin/casbin/v2 v2.135.0
 	github.com/glebarez/sqlite v1.11.0
 	github.com/grpc-ecosystem/go-grpc-middleware/v2 v2.3.3
 	github.com/grpc-ecosystem/go-grpc-prometheus v1.2.0
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.29.0
 	github.com/ipfs/go-datastore v0.9.2
-	github.com/lestrrat-go/jwx/v2 v2.1.6
+	github.com/lestrrat-go/jwx/v2 v2.1.7
 	github.com/libp2p/go-libp2p v0.48.0
 	github.com/libp2p/go-libp2p-gorpc v0.6.0
 	github.com/libp2p/go-libp2p-kad-dht v0.41.0
@@ -38,15 +38,15 @@ require (
 	github.com/spiffe/go-spiffe/v2 v2.8.1
 	github.com/stretchr/testify v1.11.1
 	google.golang.org/genproto/googleapis/api v0.0.0-20260622175928-b703f567277d
-	google.golang.org/grpc v1.82.0
+	google.golang.org/grpc v1.82.1
 	google.golang.org/protobuf v1.36.12-0.20260120151049-f2248ac996af
 	gorm.io/driver/postgres v1.6.0
 	gorm.io/gorm v1.31.2
-	oras.land/oras-go/v2 v2.6.1
+	oras.land/oras-go/v2 v2.6.2
 )
 
 require (
-	buf.build/gen/go/bufbuild/protovalidate/protocolbuffers/go v1.36.11-20260415201107-50325440f8f2.1 // indirect
+	buf.build/gen/go/bufbuild/protovalidate/protocolbuffers/go v1.36.11-20260709200747-435963d16310.1 // indirect
 	cel.dev/expr v0.25.1 // indirect
 	filippo.io/bigmod v0.1.1-0.20260103110540-f8a47775ebe5 // indirect
 	filippo.io/keygen v0.0.0-20260114151900-8e2790ea4c5b // indirect
@@ -54,7 +54,7 @@ require (
 	github.com/antlr4-go/antlr/v4 v4.13.1 // indirect
 	github.com/glebarez/go-sqlite v1.22.0 // indirect
 	github.com/golang/mock v1.7.0-rc.1 // indirect
-	github.com/google/cel-go v0.28.0 // indirect
+	github.com/google/cel-go v0.29.0 // indirect
 	github.com/ncruces/go-strftime v1.0.0 // indirect
 	github.com/pion/turn/v5 v5.0.3 // indirect
 	github.com/remyoudompheng/bigfft v0.0.0-20230129092748-24d4a6f8daec // indirect
@@ -66,7 +66,7 @@ require (
 )
 
 require (
-	buf.build/gen/go/agntcy/oasf-sdk/protocolbuffers/go v1.36.11-20260612113157-d775d6ffb86b.1 // indirect
+	buf.build/gen/go/agntcy/oasf-sdk/protocolbuffers/go v1.36.11-20260714100340-94ed518b08ce.1 // indirect
 	github.com/AndreasBriese/bbloom v0.0.0-20190825152654-46b345b51c96 // indirect
 	github.com/Microsoft/go-winio v0.6.2 // indirect
 	github.com/benbjohnson/clock v1.3.5 // indirect
@@ -99,7 +99,7 @@ require (
 	github.com/huin/goupnp v1.3.0 // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
 	github.com/ipfs/boxo v0.39.0 // indirect
-	github.com/ipfs/go-cid v0.6.1
+	github.com/ipfs/go-cid v0.6.2
 	github.com/ipfs/go-ds-badger v0.3.4
 	github.com/ipfs/go-log/v2 v2.9.2 // indirect
 	github.com/ipld/go-ipld-prime v0.23.0 // indirect
@@ -111,7 +111,7 @@ require (
 	github.com/jbenet/go-temp-err-catcher v0.1.0 // indirect
 	github.com/jinzhu/inflection v1.0.0 // indirect
 	github.com/jinzhu/now v1.1.5 // indirect
-	github.com/klauspost/compress v1.18.4 // indirect
+	github.com/klauspost/compress v1.18.7 // indirect
 	github.com/klauspost/cpuid/v2 v2.3.0 // indirect
 	github.com/koron/go-ssdp v0.1.0 // indirect
 	github.com/lestrrat-go/blackmagic v1.0.4 // indirect
@@ -174,8 +174,8 @@ require (
 	github.com/prometheus/common v0.67.5 // indirect
 	github.com/prometheus/procfs v0.20.1 // indirect
 	github.com/quic-go/qpack v0.6.0 // indirect
-	github.com/quic-go/quic-go v0.59.1 // indirect
-	github.com/quic-go/webtransport-go v0.10.0 // indirect
+	github.com/quic-go/quic-go v0.60.0 // indirect
+	github.com/quic-go/webtransport-go v0.11.1 // indirect
 	github.com/sagikazarmark/locafero v0.12.0 // indirect
 	github.com/segmentio/asm v1.2.1 // indirect
 	github.com/spaolacci/murmur3 v1.1.0 // indirect
@@ -198,16 +198,16 @@ require (
 	go.uber.org/zap v1.28.0 // indirect
 	go.yaml.in/yaml/v2 v2.4.4 // indirect
 	go.yaml.in/yaml/v3 v3.0.4 // indirect
-	golang.org/x/crypto v0.53.0
+	golang.org/x/crypto v0.54.0
 	golang.org/x/exp v0.0.0-20260410095643-746e56fc9e2f // indirect
-	golang.org/x/mod v0.36.0 // indirect
-	golang.org/x/net v0.55.0 // indirect
-	golang.org/x/sync v0.21.0 // indirect
-	golang.org/x/sys v0.46.0 // indirect
-	golang.org/x/telemetry v0.0.0-20260508192327-42602be52be6 // indirect
-	golang.org/x/text v0.38.0 // indirect
+	golang.org/x/mod v0.37.0 // indirect
+	golang.org/x/net v0.56.0 // indirect
+	golang.org/x/sync v0.22.0 // indirect
+	golang.org/x/sys v0.47.0 // indirect
+	golang.org/x/telemetry v0.0.0-20260625142307-59b4966ccb57 // indirect
+	golang.org/x/text v0.40.0 // indirect
 	golang.org/x/time v0.15.0
-	golang.org/x/tools v0.45.0 // indirect
+	golang.org/x/tools v0.47.0 // indirect
 	gonum.org/v1/gonum v0.17.0 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20260618152121-87f3d3e198d3 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect

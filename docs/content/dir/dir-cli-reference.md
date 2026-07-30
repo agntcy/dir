@@ -91,7 +91,7 @@ Guided first-run setup for a new environment — run it once after installing
 `dirctl`. It provisions the **OASF taxonomy extractor**: a small
 sentence-transformer model (`all-MiniLM-L6-v2`, ~89 MB) plus the OASF taxonomy,
 downloaded to a local asset directory. Those assets power local, **LLM-free**
-record enrichment (and, in future, free-text search) that runs in-process — no
+record enrichment and natural language search that runs in-process — no
 Python, no external inference service, no LLM API. The chosen OASF endpoint and
 asset directory are saved to the `dirctl` config so other commands load the
 provisioned assets automatically.
@@ -197,6 +197,7 @@ A2A-only record, points you to `dirctl export`.
 | Flag | Description | Default |
 |------|-------------|---------|
 | `--agents` | Agents to target: `all` (every detected agent) or a comma-separated list of agent IDs (e.g. `--agents claude-code,cursor`; repeatable) | `all` |
+| `--project` | Write into the current repo (project scope) instead of the user's global config | `false` |
 | `--dry-run` | Preview the plan without writing | `false` |
 | `--yes` / `-y` | Skip the confirmation prompt | `false` |
 
@@ -204,6 +205,14 @@ Valid agent IDs: `claude-code`, `claude-desktop`, `cursor`, `vscode`, `windsurf`
 `cline`, `roo`, `gemini`, `opencode`, `zed`, `continue`, `codex` (see
 `dirctl install list`). After completion, a summary lists every location added,
 updated, removed, or skipped with its absolute path.
+
+By default artifacts go into each agent's **global/user** config. With
+`--project`, they are written into the **current repository** instead — under
+each agent's project-local MCP config (e.g. `.cursor/mcp.json`, `.vscode/mcp.json`,
+`.mcp.json`) and its project skill folder — so a record can be wired into the
+agents for just one project. Run `dirctl install list --project` to see the exact
+paths per agent. Agents with no project-scope location for an artifact are skipped
+with a note; detection is unchanged (an undetected agent is still skipped).
 
 ```bash
 # Preview what installing a record would change
@@ -214,14 +223,17 @@ dirctl install cisco.com/agent:v1.0.0 --yes
 
 # Install into specific agents only
 dirctl install cisco.com/agent --agents claude-code,cursor
+
+# Install into the current repo instead of the global config
+dirctl install cisco.com/agent --project
 ```
 
 ### `dirctl install uninstall <cid-or-name> [flags]`
 
 Removes what `install` added for that record — its MCP entry and/or skill —
 leaving all other content intact. Shares the same flags as install (`--agents`,
-`--dry-run`, `--yes`). Idempotent: an agent with nothing of ours installed is
-reported as unchanged, never an error.
+`--project`, `--dry-run`, `--yes`). Idempotent: an agent with nothing of ours
+installed is reported as unchanged, never an error.
 
 `dirctl uninstall <cid-or-name>` is a top-level shorthand for
 `dirctl install uninstall <cid-or-name>` (same flags and behavior).
@@ -810,12 +822,51 @@ See the [MCP Registry API docs](https://registry.modelcontextprotocol.io/docs#/o
 
 ### Enrichment
 
-By default, the import command automatically enriches records using an LLM to map them to appropriate OASF skills and domains. The enrichment pipeline is built into `dirctl`: it runs an LLM with tool-calling support against the OASF schema tools exposed by `dirctl mcp serve`, so no external tooling is required. LLM enrichment can be skipped by specifying skills and domains explicitly in the config file (see **Skip enrichment** below).
+The import command enriches records by mapping them to OASF skills and domains. Three enrichment methods are available, configured under the `enricher` key in the `--config` YAML file. When no config file is provided, LLM enrichment is used by default (azure:gpt-4o, 2 RPM).
+
+#### Extractor enrichment (LLM-free, recommended)
+
+Uses the local OASF sentence-transformer model provisioned by `dirctl init` to classify records in-process — no API key, no external service, no LLM runtime. This is the fastest option and works offline.
+
+**Requires:** `dirctl init` to have been run at least once to provision the model assets.
+
+```yaml
+enricher:
+  extractor: {}           # uses assets provisioned by dirctl init
+```
+
+To override the default asset location:
+
+```yaml
+enricher:
+  extractor:
+    oasf_url: https://schema.oasf.outshift.com   # optional
+    asset_dir: /path/to/custom/assets             # optional
+```
+
+#### Static enrichment
+
+Assigns the same fixed skills and domains to every imported record. No LLM or model assets required.
+
+```yaml
+enricher:
+  static:
+    skills:
+      - name: natural_language_processing/text_completion
+        id: 10201
+    domains:
+      - name: technology
+        id: 1
+```
+
+#### LLM enrichment
+
+Runs an LLM with tool-calling support against the OASF schema tools exposed by `dirctl mcp serve`. Produces the most semantically accurate skill and domain assignments but requires LLM credentials or a local runtime.
 
 **Requirements:**
 
 - `dirctl` binary (includes the built-in MCP server with `agntcy_oasf_get_schema_skills` and `agntcy_oasf_get_schema_domains` tools)
-- An LLM model with tool-calling support (GPT-4o, Claude, or compatible Ollama models)
+- An LLM with tool-calling support (GPT-4o, Claude, or compatible Ollama models)
 
 **How it works:**
 
@@ -824,43 +875,25 @@ By default, the import command automatically enriches records using an LLM to ma
 3. The LLM uses the `agntcy_oasf_get_schema_domains` tool to browse available OASF domains
 4. Based on the record description and capabilities, the LLM selects appropriate skills and domains
 
-**Configuration via `--config`:**
-
-Enrichment is configured under the `enricher` key in the `--config` YAML file. A built-in default (azure:gpt-4o, 2 RPM) is used when no config file is provided. The YAML below shows all available options:
-
 ```yaml
 enricher:
-  requests_per_minute: 5          # LLM API calls per minute (rate limit)
-  tool_host:
-    model: azure:gpt-4o
-    max_steps: 10
-    mcp_servers:
-      dir-mcp-server:
-        command: dirctl
-        args: [mcp, serve]
-        env:
-          OASF_API_VALIDATION_SCHEMA_URL: https://schema.oasf.outshift.com
-          DIRECTORY_CLIENT_AUTH_MODE: insecure
-  skills_prompt_template: ./prompts/skills.md    # optional custom prompt
-  domains_prompt_template: ./prompts/domains.md  # optional custom prompt
+  llm:
+    requests_per_minute: 5
+    tool_host:
+      model: azure:gpt-4o
+      max_steps: 10
+      mcp_servers:
+        dir-mcp-server:
+          command: dirctl
+          args: [mcp, serve]
+          env:
+            OASF_API_VALIDATION_SCHEMA_URL: https://schema.oasf.outshift.com
+            DIRECTORY_CLIENT_AUTH_MODE: insecure
+    skills_prompt_template: ./prompts/skills.md    # optional custom prompt
+    domains_prompt_template: ./prompts/domains.md  # optional custom prompt
 ```
 
 See `cli/cmd/import/import.config.yaml` in the repository for a fully annotated reference configuration.
-
-**Skip enrichment** (static taxonomy):
-
-To bypass LLM enrichment and tag every record with fixed skills and domains, set `skip_enricher: true` — no `tool_host` or LLM credentials are required:
-
-```yaml
-enricher:
-  skip_enricher: true
-  skills:
-    - name: natural_language_processing/text_completion
-      id: 10201
-  domains:
-    - name: technology
-      id: 1
-```
 
 **Recommended LLM providers:**
 
@@ -929,6 +962,8 @@ Pull a record and transform it to the requested format.
 | `a2a` | `.json` | A2A AgentCard JSON for Agent-to-Agent protocol interop |
 | `agent-skill` | `.md` | SKILL.md artifact for agentic CLI consumption (Cursor, Claude Code, etc.) |
 | `mcp-ghcopilot` | `.json` | GitHub Copilot MCP configuration JSON |
+| `mcp-claudecode` | `.json` | Claude Code MCP configuration JSON (`.mcp.json` `mcpServers` shape) |
+| `mcp-cursor` | `.json` | Cursor IDE MCP configuration JSON (`.cursor/mcp.json` `mcpServers` shape) |
 
 > **Note:** For raw OASF record JSON, use [`dirctl pull`](#dirctl-pull-reference) — it supports `--output-file`, `--output-dir`, and search filters for batch retrieval. `dirctl export` no longer accepts `--format=oasf`.
 
@@ -956,6 +991,8 @@ When `--output-dir` is used, at least one search filter is required. All standar
     - **a2a / oasf**: One file per record (`<name>.json`).
     - **agent-skill**: One subdirectory per skill (`<name>/SKILL.md`).
     - **mcp-ghcopilot**: All matched MCP servers are merged into a single `mcp.json` with combined `servers` and `inputs` maps.
+    - **mcp-claudecode**: All matched MCP servers are merged into a single `mcp.json` with a combined `mcpServers` map.
+    - **mcp-cursor**: All matched MCP servers are merged into a single `mcp.json` with a combined `mcpServers` map.
 
 ??? example
 
@@ -978,6 +1015,12 @@ When `--output-dir` is used, at least one search filter is required. All standar
     dirctl export --output-dir=./exports/ --format=mcp-ghcopilot \
       --module "integration/mcp"
 
+    # Export a single record as a Claude Code .mcp.json
+    dirctl export my-mcp-server --format=mcp-claudecode --output-file=.mcp.json
+
+    # Export a single record as a Cursor IDE mcp.json
+    dirctl export my-mcp-server --format=mcp-cursor --output-file=.cursor/mcp.json
+    
     # Export all versions instead of only the latest
     dirctl export --output-dir=./exports/ --format=a2a \
       --name "my-agent" --all-versions
@@ -1063,47 +1106,87 @@ The following flags are available:
     dirctl routing list --skill "AI" --limit 5
     ```
 
-### `dirctl routing search [flags]`
+### `dirctl routing search [query] [flags]`
 
-Discovers records from other peers across the network.
+Discovers records from other peers across the DHT network. Two modes are available:
 
-The following flags are available:
+| Mode | Invocation | Requires |
+|------|-----------|----------|
+| **Natural-language** | `dirctl routing search "free-text query"` | `dirctl init` (OASF extractor) |
+| **Structured** | `dirctl routing search --skill "..." --domain "..."` | None |
 
-- `--skill <skill>` - Search by skill (repeatable)
-- `--locator <type>` - Search by locator type (repeatable)
-- `--domain <domain>` - Search by domain (repeatable)
-- `--module <module>` - Search by module name (repeatable)
-- `--limit <number>` - Maximum results to return
-- `--min-score <score>` - Minimum match score threshold
+#### Natural-language routing search
 
-The output includes the following:
+Pass a free-text phrase as a positional argument. The OASF extractor decomposes the phrase into skill and domain signals. Keyword signals are dropped because the DHT only indexes skills, domains, locators, and modules — there is no name or description index at the routing layer.
 
-- Record CID and provider peer information
-- Match score showing query relevance
-- Specific queries that matched
-- Peer connection details
+Each signal is queried against the DHT independently; the discovered window of results is then reordered by match score, best-first. This is not a global top-N: only the records returned within `--limit` are reordered.
+
+```bash
+dirctl routing search "Github MCP server that manages issues"
+dirctl routing search "real-time fraud detection for banking"
+```
+
+Use `--schema-version` to restrict NL extraction to a specific OASF schema version:
+
+```bash
+dirctl routing search "code review agent" --schema-version 1.0.0
+```
+
+Use `--verbose` to print the extracted signals to stderr:
+
+```bash
+dirctl routing search "fraud detection for banking" --verbose
+# stderr output:
+# [nl-routing-search] signals extracted (2 usable of 3 total):
+#   RECORD_QUERY_TYPE_SKILL   fraud_detection
+#   RECORD_QUERY_TYPE_DOMAIN  finance
+# (keyword signal "banking" dropped — no DHT equivalent)
+```
+
+#### Structured routing search
+
+Omit the positional argument and use filter flags. All flags are repeatable and combined with OR logic: a record matches if it satisfies at least `--min-score` of the specified queries.
+
+**Flags:**
+
+| Flag | Description | Default |
+|------|-------------|---------|
+| `--skill` | Search by skill name (repeatable) | — |
+| `--domain` | Search by domain name (repeatable) | — |
+| `--locator` | Search by locator type (repeatable) | — |
+| `--module` | Search by module path (repeatable) | — |
+| `--limit` | Maximum results to return | `10` |
+| `--min-score` | Minimum number of queries that must match | `1` |
+| `--schema-version` | Restrict NL extraction to specific OASF schema version(s) (repeatable; NL mode only) | all versions |
+| `--verbose` | Print extracted NL signals and per-signal details to stderr (NL mode only) | `false` |
+
+**Output includes** record CID, provider peer information, match score, and the specific queries that matched.
 
 ??? example
 
     ```bash
-    # Search for AI records across the network
+    # Natural-language search across the network
+    dirctl routing search "Github MCP server that manages issues"
+
+    # Structured: search for AI records
     dirctl routing search --skill "AI"
 
-    # Search with multiple criteria
+    # Structured: search with multiple criteria (record must match at least 2)
     dirctl routing search --skill "AI" --skill "ML" --min-score 2
 
-    # Search by locator type
+    # Structured: search by locator type
     dirctl routing search --locator "docker-image"
 
-    # Search by module
+    # Structured: search by module
     dirctl routing search --module "runtime/framework"
 
-    # Advanced search with scoring
+    # Structured: combined filters
     dirctl routing search --skill "web-development" --limit 10 --min-score 1
     dirctl routing search --domain "finance" --module "validation" --min-score 2
-    ```
 
-**Output includes:**
+    # Pipe results into sync
+    dirctl routing search --skill "AI" --output json | dirctl sync create --stdin
+    ```
 
 ### `dirctl routing info`
 
@@ -1125,11 +1208,52 @@ The output includes the following:
 
 ## Search & Discovery
 
-### `dirctl search [flags]`
+### `dirctl search [query] [flags]`
 
-Search the local index using structured filter flags.
+Search for records in the local index. Two modes are available depending on whether a positional argument is provided:
 
-**Filter flags** (all repeatable):
+| Mode | Invocation | Requires |
+|------|-----------|----------|
+| **Natural-language** | `dirctl search "free-text query"` | `dirctl init` (OASF extractor) |
+| **Structured** | `dirctl search --name "..." --skill "..."` | None |
+
+#### Natural-language search
+
+Pass a free-text phrase as a positional argument. The OASF extractor (provisioned by [`dirctl init`](#dirctl-init-flags)) decomposes the phrase into typed signals — skill names, domain names, and keywords. Each signal is queried against the index independently and concurrently; results are ranked by how many signals matched, with the best-matching records returned first.
+
+```bash
+dirctl search "Github MCP server that manages issues"
+dirctl search "real-time fraud detection for banking" --format record
+dirctl search "code review assistant" --limit 5 --format record
+```
+
+If the extractor has not been provisioned, the command fails with a prompt to run `dirctl init`.
+
+Use `--verbose` to print signal decomposition and per-signal hit counts to stderr — useful for understanding why a query returns particular results:
+
+```bash
+dirctl search "fraud detection for banking" --verbose
+# stderr output:
+# [nl-search] signals extracted (3):
+#   skill     fraud_detection                                       score=0.91
+#   domain    finance                                               score=0.87
+#   keyword   banking                                               score=0.74
+# [nl-search] per-signal hits:
+#   skill     fraud_detection                                       → 12 CIDs
+#   domain    finance                                               → 31 CIDs
+#   keyword   banking                                               → 8 CIDs
+# [nl-search] ranked results (36 unique, 3 signals):
+#   sha256:abc...  hits=3/3  signals=[skill:fraud_detection, domain:finance, keyword:banking]
+#   ...
+```
+
+> **Note:** `--sort` is ignored in NL mode — results are always ranked by signal-hit-count.
+
+#### Structured search
+
+Omit the positional argument and use filter flags to query specific fields. All filter flags are repeatable and combinable.
+
+**Filter flags:**
 
 | Flag | Description |
 |------|-------------|
@@ -1150,13 +1274,15 @@ Search the local index using structured filter flags.
 | `--safe` | Only records where all security scanners reported `is_safe=true` |
 | `--scan-severity` | Only records whose highest scan severity meets or exceeds a threshold (`NONE`, `INFO`, `LOW`, `MEDIUM`, `HIGH`, `CRITICAL`) |
 
-**Other flags:**
+**Output and pagination flags:**
 
 | Flag | Description | Default |
 |------|-------------|---------|
 | `--format` | Output format: `cid` or `record` | `cid` |
+| `--sort` | Result ordering for structured search: `relevance`, `popularity`, or `recency` | `recency` |
 | `--limit` | Maximum results | `100` |
 | `--offset` | Pagination offset | `0` |
+| `--verbose` | Print NL signal decomposition and per-signal hit counts to stderr (NL mode only) | `false` |
 
 ??? example
 
@@ -1177,6 +1303,12 @@ Search the local index using structured filter flags.
       --locator docker-image \
       --format record
 
+    # Sort by most recently published
+    dirctl search --skill "code-review" --sort recency
+
+    # Sort by most popular (pull frequency)
+    dirctl search --domain finance --sort popularity
+
     # Security scan filters
     dirctl search --safe
     dirctl search --scan-severity HIGH
@@ -1187,7 +1319,7 @@ Search the local index using structured filter flags.
 
 ### Security Scanning
 
-The Directory reconciler automatically runs security scanners against records and stores the results as OCI referrers. Scan results are indexed in the local database so they can be queried as search filters. Two scanners are supported: [mcp-scanner](https://cisco-ai-defense.github.io/docs/mcp-scanner) for MCP server source code and [skill-scanner](https://cisco-ai-defense.github.io/docs/skill-scanner) for agent skill bundles.
+The Directory reconciler automatically runs security scanners against records and stores the results as OCI referrers. Scan results are indexed in the local database so they can be queried as search filters. Three scanners are supported: [mcp-scanner](https://cisco-ai-defense.github.io/docs/mcp-scanner) for MCP server source code, [skill-scanner](https://cisco-ai-defense.github.io/docs/skill-scanner) for agent skill bundles, and [a2a-scanner](https://github.com/cisco-ai-defense/a2a-scanner) for A2A AgentCards.
 
 **Pull scan reports for a record:**
 
@@ -1199,7 +1331,7 @@ The response includes a `scanReports` array. Each entry covers one scanner type 
 
 | Field | Description |
 |-------|-------------|
-| `scanner_type` | Scanner that produced this report (`SCANNER_TYPE_MCP`, `SCANNER_TYPE_SKILL`) |
+| `scanner_type` | Scanner that produced this report (`SCANNER_TYPE_MCP`, `SCANNER_TYPE_SKILL`, `SCANNER_TYPE_A2A`) |
 | `scanner_version` | Version of the scanner binary |
 | `scanned_at` | RFC 3339 timestamp of when the scan ran |
 | `is_safe` | `true` if the scanner found no security issues |
@@ -1222,7 +1354,7 @@ dirctl search --name "cisco.com/*" --safe
 dirctl search --safe --scan-severity MEDIUM
 ```
 
-A record appears in `--safe` results only when at least one scanner has run and no scanner has reported `is_safe=false`. Records where all scanners were skipped (no source repo, no skill bundle) are not included.
+A record appears in `--safe` results only when at least one scanner has run and no scanner has reported `is_safe=false`. Records where all scanners were skipped (no source repo, no skill bundle, no A2A AgentCard) are not included.
 
 ### Name Verification
 
@@ -1255,6 +1387,26 @@ Record name verification proves that the signing key is authorized by the domain
 
 Signs records for integrity and authenticity. When signing a record with a verifiable name (e.g., `https://domain/path`), the system automatically attempts to verify domain authorization via JWKS. See [Name Verification](#name-verification) for details.
 
+For encrypted private keys, `COSIGN_PASSWORD` is used when it is set, including when
+it is explicitly empty. Use `--password-stdin` to opt in to reading a password from
+standard input. Otherwise, an interactive terminal prompts for the password; a
+non-interactive process does not read standard input implicitly.
+
+Local and inline PEM keys must use the encrypted Cosign/Sigstore format produced by
+`cosign generate-key-pair`.
+
+The `--key` flag accepts PEM content, a local file, an HTTP(S) URL, an environment
+variable reference, or a KMS URI. The supported KMS URI formats are:
+
+| Provider | URI format |
+|----------|------------|
+| AWS KMS | `awskms://[ENDPOINT]/[ID/ALIAS/ARN]` |
+| Google Cloud KMS | `gcpkms://projects/[PROJECT]/locations/[LOC]/keyRings/[RING]/cryptoKeys/[KEY]` |
+| Azure Key Vault | `azurekms://[VAULT_NAME][VAULT_URI]/[KEY]` |
+| HashiCorp Vault | `hashivault://[KEY]` |
+
+Configure the selected provider's credentials before running `dirctl`.
+
 ??? example
 
     ```bash
@@ -1266,6 +1418,12 @@ Signs records for integrity and authenticity. When signing a record with a verif
 
     # Sign with a pre-issued OIDC token (non-interactive)
     dirctl sign <cid> --oidc-token "$OIDC_TOKEN"
+
+    # Explicitly read an encrypted private-key password from standard input
+    printf '%s' "$KEY_PASSWORD" | dirctl sign <cid> --key cosign.key --password-stdin
+
+    # Sign with a key managed by Google Cloud KMS
+    dirctl sign <cid> --key "gcpkms://projects/PROJECT/locations/LOCATION/keyRings/RING/cryptoKeys/KEY"
     ```
 
 ### `dirctl naming verify <reference>`

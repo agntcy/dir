@@ -22,15 +22,20 @@ import (
 type APIRegistrer func(host.Host) error
 
 type options struct {
-	Key                 crypto.PrivKey
-	ListenAddress       string
-	DirectoryAPIAddress string
-	BootstrapPeers      []peer.AddrInfo
-	RefreshInterval     time.Duration
-	Randevous           string
-	APIRegistrer        APIRegistrer
-	ProviderStore       records.ProviderStore
-	DHTCustomOpts       func(host.Host) ([]dht.Option, error)
+	Key                      crypto.PrivKey
+	ListenAddress            string
+	DirectoryAPIAddress      string
+	DirectoryOCIAddress      string
+	BootstrapPeers           []peer.AddrInfo
+	RefreshInterval          time.Duration
+	Randevous                string
+	APIRegistrer             APIRegistrer
+	ProviderStore            records.ProviderStore
+	DHTCustomOpts            func(host.Host) ([]dht.Option, error)
+	RelayService             bool
+	StaticRelays             []peer.AddrInfo
+	ForceReachabilityPrivate bool
+	ForceReachabilityPublic  bool
 }
 
 type Option func(*options) error
@@ -105,6 +110,18 @@ func WithDirectoryAPIAddress(addr string) Option {
 	}
 }
 
+// WithDirectoryOCIAddress sets the OCI registry endpoint this node advertises to
+// peers (as an "/oci/<addr>" host multiaddr), so remote peers can pull record
+// content directly from this node's registry. Optional; empty means not
+// advertised.
+func WithDirectoryOCIAddress(addr string) Option {
+	return func(opts *options) error {
+		opts.DirectoryOCIAddress = addr
+
+		return nil
+	}
+}
+
 func WithBootstrapAddrs(addrs []string) Option {
 	return func(opts *options) error {
 		peerInfos := make([]peer.AddrInfo, len(addrs))
@@ -154,6 +171,61 @@ func WithAPIRegistrer(reg APIRegistrer) Option {
 func WithCustomDHTOpts(dhtOptFactory func(host.Host) ([]dht.Option, error)) Option {
 	return func(opts *options) error {
 		opts.DHTCustomOpts = dhtOptFactory
+
+		return nil
+	}
+}
+
+// WithRelayService enables a circuit-relay v2 service on this node so it can
+// relay traffic for NAT'd peers. Enable only on publicly-reachable nodes.
+func WithRelayService(enabled bool) Option {
+	return func(opts *options) error {
+		opts.RelayService = enabled
+
+		return nil
+	}
+}
+
+// WithStaticRelays configures relay multiaddrs (each including /p2p/<peer-id>)
+// to use as AutoRelay static relays for obtaining circuit addresses under NAT.
+func WithStaticRelays(addrs []string) Option {
+	return func(opts *options) error {
+		relays := make([]peer.AddrInfo, 0, len(addrs))
+
+		for _, addr := range addrs {
+			peerinfo, err := peer.AddrInfoFromString(addr)
+			if err != nil {
+				return fmt.Errorf("invalid static relay addr %q: %w", addr, err)
+			}
+
+			relays = append(relays, *peerinfo)
+		}
+
+		opts.StaticRelays = relays
+
+		return nil
+	}
+}
+
+// WithForceReachabilityPrivate forces the node to assume it is not publicly
+// reachable, so AutoRelay proactively reserves a relay and advertises a circuit
+// address. Enable only on nodes known to be behind NAT.
+func WithForceReachabilityPrivate(force bool) Option {
+	return func(opts *options) error {
+		opts.ForceReachabilityPrivate = force
+
+		return nil
+	}
+}
+
+// WithForceReachabilityPublic forces the node to assume it is publicly
+// reachable. Required for a relay node behind a cloud load balancer: the
+// circuit-relay v2 hop service only starts when reachability is Public, and
+// AutoNAT cannot self-confirm reachability behind an LB. Enable only on
+// genuinely public nodes.
+func WithForceReachabilityPublic(force bool) Option {
+	return func(opts *options) error {
+		opts.ForceReachabilityPublic = force
 
 		return nil
 	}

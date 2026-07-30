@@ -6,9 +6,12 @@ package extractor
 import (
 	"errors"
 	"fmt"
+	"io"
 
 	clientconfig "github.com/agntcy/dir/client/config"
 	sdk "github.com/agntcy/oasf-sdk/pkg/extractor"
+	"github.com/rs/zerolog"
+	zlog "github.com/rs/zerolog/log"
 )
 
 // Load builds a ready-to-use extractor client from the assets a prior Provision
@@ -30,7 +33,11 @@ func Load(cfg Config, opts ...sdk.Option) (*sdk.Extractor, error) {
 		sdk.WithAssetDir(cfg.AssetDir),
 	}
 
+	prev := zlog.Logger
+	zlog.Logger = zerolog.New(io.Discard)
 	e, err := sdk.New(append(base, opts...)...)
+	zlog.Logger = prev
+
 	if err != nil {
 		return nil, fmt.Errorf("load provisioned extractor: %w", err)
 	}

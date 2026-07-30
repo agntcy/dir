@@ -225,39 +225,6 @@ func TestTrimToSkillJSON_NoJSON(t *testing.T) {
 	}
 }
 
-// --- mapSkillSeverity ---
-
-func TestMapSkillSeverity(t *testing.T) {
-	t.Parallel()
-
-	cases := []struct {
-		input string
-		want  FindingSeverity
-	}{
-		{"CRITICAL", SeverityError},
-		{"critical", SeverityError},
-		{"HIGH", SeverityError},
-		{"high", SeverityError},
-		{"MEDIUM", SeverityWarning},
-		{"medium", SeverityWarning},
-		{"LOW", SeverityInfo},
-		{"low", SeverityInfo},
-		{"INFO", SeverityInfo},
-		{"UNKNOWN", SeverityInfo},
-		{"", SeverityInfo},
-	}
-
-	for _, tc := range cases {
-		t.Run(tc.input, func(t *testing.T) {
-			t.Parallel()
-
-			if got := mapSkillSeverity(tc.input); got != tc.want {
-				t.Errorf("mapSkillSeverity(%q) = %q, want %q", tc.input, got, tc.want)
-			}
-		})
-	}
-}
-
 // --- skillArtifactBytes ---
 
 func TestSkillArtifactBytes_NilData(t *testing.T) {
@@ -416,19 +383,26 @@ func TestBuildSkillScannerEnv_ContainsParentEnv(t *testing.T) {
 }
 
 func TestBuildSkillScannerEnv_MapsAzureVars(t *testing.T) {
+	testAzureEnvDerivation(t, "SKILL_SCANNER", buildSkillScannerEnv)
+}
+
+// testAzureEnvDerivation verifies that build derives <prefix>_LLM_* values from
+// the AZURE_OPENAI_* environment when none are set explicitly. Shared by the
+// skill and a2a scanner env tests, which map the same variables.
+func testAzureEnvDerivation(t *testing.T, prefix string, build func() []string) {
+	t.Helper()
+
 	t.Setenv("AZURE_OPENAI_API_KEY", "test-key")
 	t.Setenv("AZURE_OPENAI_BASE_URL", "https://openai.example.com")
 	t.Setenv("AZURE_OPENAI_DEPLOYMENT", "gpt-4o")
 	t.Setenv("AZURE_OPENAI_API_VERSION", "2024-08-01")
 
-	// Ensure SKILL vars are absent so they get derived.
-	t.Setenv("SKILL_SCANNER_LLM_API_KEY", "")
-	t.Setenv("SKILL_SCANNER_LLM_BASE_URL", "")
-	t.Setenv("SKILL_SCANNER_LLM_MODEL", "")
-	t.Setenv("SKILL_SCANNER_LLM_API_VERSION", "")
-	t.Setenv("SKILL_SCANNER_LLM_PROVIDER", "")
+	// Ensure scanner vars are absent so they get derived.
+	for _, suffix := range []string{"API_KEY", "BASE_URL", "MODEL", "API_VERSION", "PROVIDER"} {
+		t.Setenv(prefix+"_LLM_"+suffix, "")
+	}
 
-	env := buildSkillScannerEnv()
+	env := build()
 	envMap := make(map[string]string)
 
 	for _, e := range env {
@@ -438,11 +412,11 @@ func TestBuildSkillScannerEnv_MapsAzureVars(t *testing.T) {
 	}
 
 	cases := map[string]string{
-		"SKILL_SCANNER_LLM_API_KEY":     "test-key",
-		"SKILL_SCANNER_LLM_BASE_URL":    "https://openai.example.com",
-		"SKILL_SCANNER_LLM_MODEL":       "azure/gpt-4o",
-		"SKILL_SCANNER_LLM_API_VERSION": "2024-08-01",
-		"SKILL_SCANNER_LLM_PROVIDER":    "openai-compatible",
+		prefix + "_LLM_API_KEY":     "test-key",
+		prefix + "_LLM_BASE_URL":    "https://openai.example.com",
+		prefix + "_LLM_MODEL":       "azure/gpt-4o",
+		prefix + "_LLM_API_VERSION": "2024-08-01",
+		prefix + "_LLM_PROVIDER":    "openai-compatible",
 	}
 
 	for k, want := range cases {

@@ -29,6 +29,20 @@ type Finding struct {
 	Message  string
 }
 
+// mapScannerSeverity converts a severity string reported by a scanner CLI to a
+// FindingSeverity. The mcp-scanner, skill-scanner, and a2a-scanner binaries all
+// use the same CRITICAL/HIGH/MEDIUM/LOW vocabulary.
+func mapScannerSeverity(s string) FindingSeverity {
+	switch strings.ToUpper(s) {
+	case "CRITICAL", "HIGH":
+		return SeverityError
+	case "MEDIUM":
+		return SeverityWarning
+	default:
+		return SeverityInfo
+	}
+}
+
 // ScanResult is the outcome of running a single runner against a record.
 type ScanResult struct {
 	Safe          bool

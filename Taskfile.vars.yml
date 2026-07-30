@@ -6,7 +6,10 @@ version: "3"
 vars:
   ## Version
   RELEASE_VERSION:
-    sh: grep 'version:' versions.yaml | awk '{print $2}'
+    # versions.yaml carries a version: key per module-set; grep-all would
+    # concatenate them with a newline. Select the api module-set version
+    # explicitly (it stamps api/version.Version) rather than relying on order.
+    sh: awk '/^  api:/{f=1} f&&/version:/{print $2; exit}' versions.yaml
   RELEASE_VERSION_LDFLAG: "-X 'github.com/agntcy/dir/api/version.Version={{ .RELEASE_VERSION }}'"
   COMMIT_SHA:
     sh: git rev-parse --short HEAD
@@ -17,9 +20,9 @@ vars:
   # renovate: datasource=go depName=github.com/project-zot/zot versioning=semver
   ZOT_VERSION: "2.1.18"
   # renovate: datasource=go depName=github.com/spiffe/spire versioning=semver
-  SPIRE_VERSION: "1.15.1"
+  SPIRE_VERSION: "1.15.2"
   # renovate: datasource=docker depName=docker.io/bitnami/postgresql
-  POSTGRESQL_VERSION: "latest@sha256:91a6c3f4b4d687546c1d07c1ef7c27a5e85e2a0ce8a192fe94cad5bbde0a1aba"
+  POSTGRESQL_VERSION: "latest@sha256:cc46b91332b9e931019b8657fd046d9abab343c45f7c7616121e19006e027163"
 
   ## Container images for vulnerability scanning
   VULN_SCAN_IMAGES:
@@ -29,13 +32,18 @@ vars:
     - "ghcr.io/project-zot/zot:v{{.ZOT_VERSION}}"
     - "docker.io/bitnami/postgresql:{{.POSTGRESQL_VERSION}}"
 
+  ## Scanner versions
+  MCP_SCANNER_VERSION: "4.8.1"
+  SKILL_SCANNER_VERSION: "2.0.12"
+  A2A_SCANNER_VERSION: "1.0.1"
+
   ## Image config
   BUILD_LDFLAGS: "-s -w -extldflags -static {{.VERSION_LDFLAGS}}"
   IMAGE_REPO: '{{ .IMAGE_REPO | default "ghcr.io/agntcy" }}'
   IMAGE_TAG: "{{ .IMAGE_TAG | default .COMMIT_SHA }}"
   IMAGE_BAKE_ENV: "IMAGE_REPO={{.IMAGE_REPO}} IMAGE_TAG={{.IMAGE_TAG}}"
   IMAGE_BAKE_OPTS: '{{ .IMAGE_BAKE_OPTS | default "" }}'
-  BAKE_ENV: '{{ .IMAGE_BAKE_ENV }} BUILD_LDFLAGS="{{.BUILD_LDFLAGS}}"'
+  BAKE_ENV: '{{ .IMAGE_BAKE_ENV }} BUILD_LDFLAGS="{{.BUILD_LDFLAGS}}" MCP_SCANNER_VERSION={{.MCP_SCANNER_VERSION}} SKILL_SCANNER_VERSION={{.SKILL_SCANNER_VERSION}} A2A_SCANNER_VERSION={{.A2A_SCANNER_VERSION}}'
   COVERAGE: '{{ .COVERAGE | default "false" }}'
   COVERAGE_IMAGE_TAG: "{{ .IMAGE_TAG | default .COMMIT_SHA }}-coverage"
   COVERAGE_IMAGE_BAKE_ENV: "IMAGE_REPO={{.IMAGE_REPO}} IMAGE_TAG={{.COVERAGE_IMAGE_TAG}}"
@@ -56,7 +64,7 @@ vars:
   PROTOC_BIN: "{{ .BIN_DIR }}/protoc-{{.PROTOC_VERSION}}"
   BUFBUILD_VERSION: "1.66.1"
   BUFBUILD_BIN: "{{ .BIN_DIR }}/bufbuild-{{.BUFBUILD_VERSION}}"
-  GO_VERSION: "1.26.4"
+  GO_VERSION: "1.26.5"
   MULTIMOD_VERSION: "0.29.0"
   MULTIMOD_BIN: "{{ .BIN_DIR }}/multimod-{{.MULTIMOD_VERSION}}"
   # renovate: datasource=go depName=github.com/mikefarah/yq/v4 versioning=semver

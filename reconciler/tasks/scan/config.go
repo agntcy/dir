@@ -23,6 +23,9 @@ const (
 
 	// DefaultSkillCLIPath is the default binary name for the skill scanner.
 	DefaultSkillCLIPath = "skill-scanner"
+
+	// DefaultA2ACLIPath is the default binary name for the A2A scanner.
+	DefaultA2ACLIPath = "a2a-scanner"
 )
 
 // Config holds configuration for the security scan reconciliation task.
@@ -44,6 +47,9 @@ type Config struct {
 
 	// SkillCLIPath is the path to the skill-scanner binary.
 	SkillCLIPath string `json:"skill_cli_path,omitempty" mapstructure:"skill_cli_path"`
+
+	// A2ACLIPath is the path to the a2a-scanner binary.
+	A2ACLIPath string `json:"a2a_cli_path,omitempty" mapstructure:"a2a_cli_path"`
 }
 
 // GetInterval returns the interval with default fallback.
@@ -89,4 +95,13 @@ func (c *Config) GetSkillCLIPath() string {
 	}
 
 	return c.SkillCLIPath
+}
+
+// GetA2ACLIPath returns the A2A scanner binary path with default fallback.
+func (c *Config) GetA2ACLIPath() string {
+	if c.A2ACLIPath == "" {
+		return DefaultA2ACLIPath
+	}
+
+	return c.A2ACLIPath
 }

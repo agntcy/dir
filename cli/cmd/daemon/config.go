@@ -52,6 +52,15 @@ type RuntimeConfig struct {
 func registerServerDefaults(v *viper.Viper) {
 	v.SetDefault("server.store.oci.registry_address", storeconfig.DefaultRegistryAddress)
 	v.SetDefault("server.store.oci.repository_name", storeconfig.DefaultRepositoryName)
+
+	// The advertised routing endpoints have no default and are absent from
+	// daemon.config.yaml, so they must be registered here for AutomaticEnv to
+	// resolve them. Mirrors server/config.
+	_ = v.BindEnv("server.routing.directory_api_address")
+	v.SetDefault("server.routing.directory_api_address", "")
+
+	_ = v.BindEnv("server.routing.directory_oci_address")
+	v.SetDefault("server.routing.directory_oci_address", "")
 }
 
 func registerReconcilerDefaults(v *viper.Viper) {
@@ -165,6 +174,9 @@ func bindCredentialEnvVars(v *viper.Viper) {
 
 	_ = v.BindEnv("server.sync.auth_config.username")
 	_ = v.BindEnv("server.sync.auth_config.password")
+
+	_ = v.BindEnv("reconciler.local_registry.auth_config.username")
+	_ = v.BindEnv("reconciler.local_registry.auth_config.password")
 }
 
 // resolveRelativePaths resolves non-empty path fields against opts.DataDir

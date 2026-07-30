@@ -295,3 +295,34 @@ The Agent Directory Service can be deployed using Helm or GitOps / Argo CD. Helm
 
     !!! important "Trust domain"
         This Quick Start uses `example.org` for local testing only. To federate with the public Directory network, you need a unique trust domain. See [Production Deployment](dir-prod-deployment.md) and [Running a Federated Directory Instance](dir-federation-setup.md).
+
+## Security Scanning
+
+The reconciler image includes [`mcp-scanner`](https://cisco-ai-defense.github.io/docs/mcp-scanner) and [`skill-scanner`](https://cisco-ai-defense.github.io/docs/skill-scanner) pre-installed. The scan task is enabled by default and requires Azure OpenAI credentials to perform LLM-backed analysis.
+
+Inject the credentials via `extraEnv` in your Helm values. Use a Kubernetes Secret to avoid storing keys in plaintext:
+
+```bash
+kubectl create secret generic azure-openai \
+  --namespace dir-dev-dir \
+  --from-literal=api-key=<your-key>
+```
+
+```yaml
+extraEnv:
+  - name: AZURE_OPENAI_API_KEY
+    valueFrom:
+      secretKeyRef:
+        name: azure-openai
+        key: api-key
+  - name: AZURE_OPENAI_BASE_URL
+    value: "https://your-instance.openai.azure.com/"
+  - name: AZURE_OPENAI_DEPLOYMENT
+    value: "gpt-4o"
+  - name: AZURE_OPENAI_API_VERSION
+    value: "2024-02-01"
+```
+
+To disable scanning, set `reconciler.config.scan.enabled: false` in your Helm values.
+
+See [Security Scanning](dir-features-scenarios.md#security-scanning) for how to pull and filter scan results.

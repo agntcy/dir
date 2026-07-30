@@ -6,6 +6,7 @@ package search
 import (
 	searchv1 "github.com/agntcy/dir/api/search/v1"
 	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
 )
 
 // Filters holds the values for all record-search filter flags.
@@ -33,8 +34,16 @@ type Filters struct {
 // RegisterFilterFlags binds the standard search-filter flags to cmd, storing
 // values in f. Call this from your command's init().
 func RegisterFilterFlags(cmd *cobra.Command, f *Filters) {
-	flags := cmd.Flags()
+	registerFilterFlags(cmd.Flags(), f)
+}
 
+// RegisterPersistentFilterFlags binds search-filter flags as persistent flags on
+// cmd so subcommands inherit them.
+func RegisterPersistentFilterFlags(cmd *cobra.Command, f *Filters) {
+	registerFilterFlags(cmd.PersistentFlags(), f)
+}
+
+func registerFilterFlags(flags *pflag.FlagSet, f *Filters) {
 	flags.StringArrayVar(&f.Names, "name", nil,
 		"Search for records with specific name (e.g., --name 'my-agent' --name 'web-*')")
 	flags.StringArrayVar(&f.Versions, "version", nil,
@@ -56,7 +65,7 @@ func RegisterFilterFlags(cmd *cobra.Command, f *Filters) {
 	flags.StringArrayVar(&f.Authors, "author", nil,
 		"Search for records with specific author (e.g., --author 'john*')")
 	flags.StringArrayVar(&f.SchemaVersions, "schema-version", nil,
-		"Search for records with specific schema version (e.g., --schema-version '0.8.*')")
+		"Filter records by OASF schema version (e.g., --schema-version '0.8.*'); in natural-language search mode, also restricts the extractor to that taxonomy version (repeatable)")
 	flags.StringArrayVar(&f.ModuleIDs, "module-id", nil,
 		"Search for records with specific module ID (e.g., --module-id '201')")
 	flags.BoolVar(&f.Verified, "verified", false,

@@ -13,7 +13,7 @@ import (
 func TestFormatSummaryListsEveryPathAndAction(t *testing.T) {
 	outcomes := []Outcome{
 		{Agent: "Claude Code", Artifact: "mcp", Path: "/home/u/.claude.json", Action: ActionAdded},
-		{Agent: "Cursor", Artifact: "skill", Path: "/repo/.cursor/rules/agntcy-dir.mdc", Action: ActionSkipped, Reason: "no global rules path"},
+		{Agent: "Cursor", Artifact: "skill", Path: "/repo/.cursor/skills/agntcy-dir", Action: ActionSkipped, Reason: "no global rules path"},
 		{Agent: "Gemini CLI", Artifact: "mcp", Path: "/home/u/.gemini/settings.json", Action: ActionFailed, Reason: "permission denied"},
 	}
 
@@ -21,7 +21,7 @@ func TestFormatSummaryListsEveryPathAndAction(t *testing.T) {
 
 	assert.Contains(t, out, "/home/u/.claude.json")
 	assert.Contains(t, out, string(ActionAdded))
-	assert.Contains(t, out, "/repo/.cursor/rules/agntcy-dir.mdc")
+	assert.Contains(t, out, "/repo/.cursor/skills/agntcy-dir")
 	assert.Contains(t, out, "no global rules path")
 	assert.Contains(t, out, "/home/u/.gemini/settings.json")
 	assert.Contains(t, out, "permission denied")

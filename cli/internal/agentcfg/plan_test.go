@@ -11,7 +11,7 @@ import (
 func TestFormatPlanShowsActionsPerArtifact(t *testing.T) {
 	out := FormatPlan([]Outcome{
 		{Agent: "Claude Code", Artifact: "mcp", Path: "/home/u/.claude.json", Action: ActionAdded},
-		{Agent: "Cursor", Artifact: "skill", Path: "/repo/.cursor/rules/rec.mdc", Action: ActionUpdated},
+		{Agent: "Cursor", Artifact: "skill", Path: "/repo/.cursor/skills/rec", Action: ActionUpdated},
 	})
 
 	for _, want := range []string{"added", "updated", "/home/u/.claude.json", "Cursor", "will be made"} {

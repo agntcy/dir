@@ -45,6 +45,12 @@ service AIFinderService {
       response_body: "catalog"
     };
   }
+
+  // ListTags returns the distinct catalog tags derived from OASF skills, domains,
+  // and record annotations across the registry.
+  rpc ListTags(ListTagsRequest) returns (ListTagsResponse) {
+    option (google.api.http) = {get: "/v1/tags"};
+  }
 }
 
 // ListAgentsRequest carries the AI Finder browsing parameters. All fields are
@@ -72,6 +78,9 @@ message ListAgentsResponse {
 
   // Opaque continuation token. Empty when there are no more results.
   string next_page_token = 2;
+
+  // Total number of catalog entries matching the filter across all pages.
+  uint32 total_count = 3;
 }
 
 // GetAgentRequest carries the CID of the catalog entry to retrieve.
@@ -121,4 +130,10 @@ message GetWellKnownCatalogRequest {}
 message GetWellKnownCatalogResponse {
   // The well-known AI Catalog document.
   WellKnownCatalog catalog = 1 [(buf.validate.field).required = true];
+}
+
+message ListTagsRequest {}
+
+message ListTagsResponse {
+  repeated CatalogTag tags = 1;
 }

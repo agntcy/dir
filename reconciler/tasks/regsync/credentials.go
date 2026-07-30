@@ -105,8 +105,11 @@ func buildClientConfigForRemote(remoteDirectoryURL string, authnConfig authnconf
 		return cfg, nil
 	}
 
+	// Normalize the URL into a gRPC dial target (host:port). grpc.NewClient
+	// cannot parse HTTP-style URLs like "https://ads.outshift.io"; passing one
+	// through produces "name resolver error: produced zero addresses".
 	cfg := &client.Config{
-		ServerAddress: remoteDirectoryURL,
+		ServerAddress: canonicalServerAddress(remoteDirectoryURL),
 		AuthMode:      "insecure",
 	}
 

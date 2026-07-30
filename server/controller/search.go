@@ -103,6 +103,8 @@ func sortModeToOrderBy(mode searchv1.SortMode) types.FilterOption {
 		return types.WithOrderBy(types.RecordOrderClause{Column: "popularity_score", Desc: true})
 	case searchv1.SortMode_SORT_MODE_PROVIDER_COUNT:
 		return types.WithOrderBy(types.RecordOrderClause{Column: "provider_count", Desc: true})
+	case searchv1.SortMode_SORT_MODE_RELEVANCE:
+		return types.WithOrderBy()
 	case searchv1.SortMode_SORT_MODE_UNSPECIFIED, searchv1.SortMode_SORT_MODE_RECENCY:
 		return types.WithOrderBy()
 	}
