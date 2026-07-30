@@ -43,13 +43,16 @@ func WriteAtomic(path string, data []byte, perm os.FileMode) error {
 		return fmt.Errorf("close temp file %s: %w", tmpName, err)
 	}
 
-	// The target path is a known agent config location resolved by the integrate
-	// descriptors, not untrusted input, so writing to it is intentional.
-	if err := os.Chmod(tmpName, perm); err != nil { //nolint:gosec // G703: path is a resolved agent config location
+	// Writing to a caller-supplied path is the entire purpose of this helper,
+	// so the variable path is intentional rather than an oversight. Callers
+	// own the decision of where to write: agentcfg resolves paths from the
+	// integrate descriptors, and dirctl daemon config init passes --output
+	// straight through, which is user-supplied by design.
+	if err := os.Chmod(tmpName, perm); err != nil { //nolint:gosec // G703: destination is caller-chosen by design
 		return fmt.Errorf("chmod temp file %s: %w", tmpName, err)
 	}
 
-	if err := os.Rename(tmpName, path); err != nil { //nolint:gosec // G703: path is a resolved agent config location
+	if err := os.Rename(tmpName, path); err != nil { //nolint:gosec // G703: destination is caller-chosen by design
 		return fmt.Errorf("rename %s to %s: %w", tmpName, path, err)
 	}
 

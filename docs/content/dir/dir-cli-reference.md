@@ -408,7 +408,7 @@ Checks whether the daemon is currently running by inspecting the PID file.
 
 Writes the daemon's built-in default configuration to disk, giving you a complete, valid file to start customizing instead of authoring one from scratch.
 
-Without `--output`, the file is written to the daemon's resolved config path: `<data-dir>/daemon.config.yaml` by default, or the path passed via `--config` on the `daemon` command if one is set. The write is atomic (temp file + rename) and, unless `--force` is given, refuses to overwrite a file that already exists. The dumped file is accepted unchanged by `dirctl daemon start --config <file>`.
+Without `--output`, the file is written to the daemon's resolved config path: `<data-dir>/daemon.config.yaml` by default, or the path passed via `--config` on the `daemon` command if one is set. Unless `--force` is given, the command refuses to overwrite a file that already exists, and it creates the file with a single exclusive open, so two concurrent runs cannot both believe they created it. With `--force`, the replacement goes through a temp file and a rename, so readers never see a half-written config. The parent directory is created with `0700` and the file with `0600`, matching what `daemon start` expects of the data directory. The dumped file is accepted unchanged by `dirctl daemon start --config <file>`.
 
 | Flag | Description | Default |
 |------|-------------|---------|

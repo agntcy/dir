@@ -5,6 +5,7 @@ package daemon
 
 import (
 	"bytes"
+	"fmt"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -13,6 +14,9 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/require"
 )
+
+// osWindows keeps the GOOS guards below from repeating the literal.
+const osWindows = "windows"
 
 func newConfigInitTestCmd() (*cobra.Command, *bytes.Buffer) {
 	cmd := &cobra.Command{}
@@ -54,6 +58,66 @@ func TestRunConfigInitWritesDefaultConfig(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, defaultConfigYAML, string(got)) //nolint:testifylint // byte-exact dump check; YAMLEq would ignore the comment and formatting fidelity the dump preserves
 	require.Contains(t, out.String(), target)
+}
+
+// The data directory this command creates is the one the daemon later fills
+// with its peer identity key, database, and object store. `daemon start`
+// creates it 0700, and MkdirAll is a no-op on an existing directory, so if
+// `config init` gets there first with a looser mode nothing ever repairs it.
+// Both write paths are checked because --force goes through
+// fsutil.WriteAtomic, which creates parents at its own 0755.
+func TestRunConfigInitCreatesDataDirWithRestrictivePerms(t *testing.T) {
+	if runtime.GOOS == osWindows {
+		t.Skip("POSIX permission bits are not meaningful on Windows")
+	}
+
+	for _, force := range []bool{false, true} {
+		t.Run(fmt.Sprintf("force=%v", force), func(t *testing.T) {
+			parent := t.TempDir()
+			dataDir := filepath.Join(parent, "agntcy-dir")
+			withConfigInitState(t, dataDir)
+
+			configInitOpts.Force = force
+
+			cmd, _ := newConfigInitTestCmd()
+			require.NoError(t, runConfigInit(cmd, nil))
+
+			info, err := os.Stat(dataDir)
+			require.NoError(t, err)
+			require.Equal(t, os.FileMode(0o700), info.Mode().Perm(),
+				"data directory must not be broader than the 0700 daemon start uses")
+		})
+	}
+}
+
+// Nothing else in this file goes through cobra: the other tests call
+// runConfigInit directly with a bare command. That leaves flag registration
+// untested, so a renamed flag, a wrong binding, or a shorthand collision would
+// not fail anything. This drives the real command with argv.
+func TestConfigInitCommand_ParsesFlags(t *testing.T) {
+	dataDir := t.TempDir()
+	withConfigInitState(t, dataDir)
+
+	target := filepath.Join(t.TempDir(), "custom.config.yaml")
+
+	// Rebind the flags to the test's replacement opts struct, since init()
+	// bound them to the original one at package load.
+	cmd := &cobra.Command{Use: "init", RunE: runConfigInit}
+	cmd.Flags().StringVarP(&configInitOpts.Output, "output", "o", "", "")
+	cmd.Flags().BoolVar(&configInitOpts.Force, "force", false, "")
+	cmd.SetOut(&bytes.Buffer{})
+	cmd.SetArgs([]string{"--output", target})
+
+	require.NoError(t, cmd.Execute())
+	require.FileExists(t, target)
+
+	// And --force actually reaches the overwrite path.
+	cmd.SetArgs([]string{"--output", target, "--force"})
+	require.NoError(t, cmd.Execute())
+
+	got, err := os.ReadFile(target)
+	require.NoError(t, err)
+	require.Equal(t, defaultConfigYAML, string(got)) //nolint:testifylint // byte-exact dump check
 }
 
 func TestRunConfigInitRefusesOverwriteWithoutForce(t *testing.T) {
@@ -154,7 +218,7 @@ func TestWriteIfAbsentRejectsExistingFile(t *testing.T) {
 // would be a real leak. POSIX-only: Windows does not honour Unix permission
 // bits.
 func TestRunConfigInitWritesRestrictivePerms(t *testing.T) {
-	if runtime.GOOS == "windows" {
+	if runtime.GOOS == osWindows {
 		t.Skip("Unix file permissions are not enforced on Windows")
 	}
 
@@ -239,7 +303,7 @@ func TestRunConfigInitForceErrorsWhenTargetIsDirectory(t *testing.T) {
 // than at MkdirAll, which is a different branch from
 // TestRunConfigInitErrorsWhenDirCreationFails.
 func TestRunConfigInitErrorsWhenDirectoryIsNotWritable(t *testing.T) {
-	if runtime.GOOS == "windows" {
+	if runtime.GOOS == osWindows {
 		t.Skip("POSIX permission bits do not gate directory writes on Windows")
 	}
 
@@ -260,7 +324,7 @@ func TestRunConfigInitErrorsWhenDirectoryIsNotWritable(t *testing.T) {
 
 	cmd, _ := newConfigInitTestCmd()
 	err := runConfigInit(cmd, nil)
-	require.ErrorContains(t, err, "create temp file")
+	require.ErrorContains(t, err, "create")
 	require.NoFileExists(t, target)
 }
 
@@ -277,9 +341,13 @@ func TestRunConfigInitDumpedFileLoadsUnchanged(t *testing.T) {
 	require.NoError(t, runConfigInit(cmd, nil))
 
 	// Point --config at the dumped file and confirm loadConfig produces the
-	// exact same configuration (mirrors what `dirctl daemon start --config
-	// <file>` would do). Full-struct equality, not just a spot-checked
-	// field, so any drift between the embedded and dumped config is caught.
+	// same configuration, mirroring `dirctl daemon start --config <file>`.
+	//
+	// This checks that the dumped file is loadable and round-trips through
+	// viper's file path to the same struct. It does NOT catch content drift:
+	// writeDefaultConfig writes defaultConfigYAML verbatim, so both loads
+	// parse the same bytes by construction, and a corrupted dump still passes
+	// here. TestRunConfigInitWritesDefaultConfig is the byte-exact check.
 	opts.ConfigFile = filepath.Join(dataDir, DefaultConfigFile)
 
 	gotCfg, err := loadConfig()

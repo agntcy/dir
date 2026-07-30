@@ -19,9 +19,16 @@ import (
 // the data directory (e.g. the generated peer identity key).
 const configFilePerm = 0o600
 
-// configDirPerm is the permission mode used when creating the parent
-// directory for a dumped config file.
-const configDirPerm = 0o755
+// configDirPerm is the permission mode used when creating the parent directory
+// for a dumped config file.
+//
+// 0700, matching the mode `daemon start` uses for the data directory. This
+// command is meant to be run BEFORE the daemon has ever started, so it is
+// usually what creates ~/.agntcy/dir. MkdirAll is a no-op on an existing
+// directory, so a looser mode set here would never be repaired by a later
+// `daemon start`, and the daemon goes on to write its peer identity key,
+// database, and object store beneath it.
+const configDirPerm = 0o700
 
 // errConfigExists is returned by writeIfAbsent when the target path already
 // exists.
@@ -54,8 +61,9 @@ customized and passed back in via --config.
 
 Without --output, the file is written to the daemon's config path
 (<data-dir>/` + DefaultConfigFile + ` by default, or the path passed via
---config on the daemon command). The write is atomic and refuses to
-overwrite an existing file unless --force is given.
+--config on the daemon command). It refuses to overwrite an existing file
+unless --force is given. The directory is created 0700 and the file 0600,
+matching what the daemon expects of its data directory.
 
 Usage examples:
 
@@ -98,9 +106,19 @@ func runConfigInit(cmd *cobra.Command, _ []string) error {
 }
 
 // writeDefaultConfig writes the embedded default config to target. With force,
-// it overwrites atomically; otherwise it refuses to clobber an existing file.
+// it replaces any existing file; otherwise it refuses to clobber one.
 func writeDefaultConfig(target string, force bool) error {
 	if force {
+		// Create the parent at configDirPerm first. fsutil.WriteAtomic creates
+		// missing parents at its own 0755, which would leave the daemon's data
+		// directory world-traversable when --force is what creates it. MkdirAll
+		// is a no-op if the directory already exists, so this never loosens an
+		// existing one either.
+		dir := filepath.Dir(target)
+		if err := os.MkdirAll(dir, configDirPerm); err != nil {
+			return fmt.Errorf("create directory %s: %w", dir, err)
+		}
+
 		if err := fsutil.WriteAtomic(target, []byte(defaultConfigYAML), configFilePerm); err != nil {
 			return fmt.Errorf("failed to write default config to %s: %w", target, err)
 		}
@@ -110,6 +128,13 @@ func writeDefaultConfig(target string, force bool) error {
 
 	err := writeIfAbsent(target, []byte(defaultConfigYAML), configFilePerm)
 	if errors.Is(err, errConfigExists) {
+		// A directory at the target also surfaces as "exists", but --force
+		// cannot overwrite one either, so pointing the user at it would send
+		// them down a dead end.
+		if info, statErr := os.Stat(target); statErr == nil && info.IsDir() {
+			return fmt.Errorf("%s is a directory, not a config file", target)
+		}
+
 		return fmt.Errorf("config file already exists at %s (use --force to overwrite)", target)
 	}
 
@@ -120,51 +145,55 @@ func writeDefaultConfig(target string, force bool) error {
 	return nil
 }
 
-// writeIfAbsent atomically creates path with data, failing with
-// errConfigExists if a file is already there. It stages data in a temp file
-// in the same directory first (like fsutil.WriteAtomic), then links the temp
-// file to path instead of renaming over it: os.Link fails with fs.ErrExist
-// if path already exists, so the existence check and the create happen as a
-// single filesystem operation. A separate os.Stat followed by a write would
-// leave a window where a file created between the two steps gets silently
-// clobbered.
+// writeIfAbsent creates path with data, failing with errConfigExists if a file
+// is already there.
+//
+// O_CREATE|O_EXCL makes the existence check and the create a single syscall,
+// so nothing can slip in between them the way it could with a Stat followed by
+// a write. It needs no hardlink or rename support, which matters because
+// --output can point anywhere: an earlier revision staged a temp file and used
+// os.Link to move it into place, which fails outright on exFAT, on SMB shares,
+// and in FUSE bind mounts, and failed there only on the default path while
+// --force kept working.
+//
+// This writes in place rather than staging, so a crash mid-write can leave a
+// truncated file. That is the accepted trade: the file is new by definition,
+// there is no previous version to lose, and a truncated YAML config fails
+// loudly when the daemon reads it. On any error after creation the partial
+// file is removed.
 func writeIfAbsent(path string, data []byte, perm os.FileMode) error {
 	dir := filepath.Dir(path)
 	if err := os.MkdirAll(dir, configDirPerm); err != nil {
 		return fmt.Errorf("create directory %s: %w", dir, err)
 	}
 
-	tmp, err := os.CreateTemp(dir, "."+filepath.Base(path)+".tmp-*")
+	f, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_EXCL, perm)
 	if err != nil {
-		return fmt.Errorf("create temp file in %s: %w", dir, err)
-	}
-
-	tmpName := tmp.Name()
-
-	// Best-effort cleanup of the temp name. Once Link succeeds below, this
-	// only removes the extra directory entry - the target inode remains.
-	defer func() { _ = os.Remove(tmpName) }()
-
-	if _, err := tmp.Write(data); err != nil {
-		_ = tmp.Close()
-
-		return fmt.Errorf("write temp file %s: %w", tmpName, err)
-	}
-
-	if err := tmp.Close(); err != nil {
-		return fmt.Errorf("close temp file %s: %w", tmpName, err)
-	}
-
-	if err := os.Chmod(tmpName, perm); err != nil {
-		return fmt.Errorf("chmod temp file %s: %w", tmpName, err)
-	}
-
-	if err := os.Link(tmpName, path); err != nil {
 		if errors.Is(err, os.ErrExist) {
 			return errConfigExists
 		}
 
-		return fmt.Errorf("link %s to %s: %w", tmpName, path, err)
+		return fmt.Errorf("create %s: %w", path, err)
+	}
+
+	if _, writeErr := f.Write(data); writeErr != nil {
+		_ = f.Close()
+		_ = os.Remove(path)
+
+		return fmt.Errorf("write %s: %w", path, writeErr)
+	}
+
+	if closeErr := f.Close(); closeErr != nil {
+		_ = os.Remove(path)
+
+		return fmt.Errorf("close %s: %w", path, closeErr)
+	}
+
+	// O_CREATE applies the umask, which can only clear bits, so the file is
+	// never looser than perm. This restores the intended mode when a
+	// restrictive umask (e.g. 0200) stripped the owner-write bit.
+	if err := os.Chmod(path, perm); err != nil {
+		return fmt.Errorf("chmod %s: %w", path, err)
 	}
 
 	return nil
