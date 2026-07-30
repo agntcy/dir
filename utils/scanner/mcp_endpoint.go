@@ -52,14 +52,14 @@ func (r *MCPRunner) runEndpointScan(ctx context.Context, record *corev1.Record) 
 		maxEndpoints = DefaultMaxEndpointsPerRecord
 	}
 
-	var truncated string
+	var notices []string
 
 	if len(endpoints) > maxEndpoints {
-		mcpLogger.Warn("record declares more MCP endpoints than the per-record cap, scanning the first N",
+		mcpLogger.Warn("record declares more MCP endpoints than the per-record cap, truncating",
 			"declared", len(endpoints), "cap", maxEndpoints)
 
-		truncated = fmt.Sprintf("record declares %d endpoints, scanning the first %d",
-			len(endpoints), maxEndpoints)
+		notices = append(notices, fmt.Sprintf("record declares %d endpoints, scanned the first %d",
+			len(endpoints), maxEndpoints))
 
 		endpoints = endpoints[:maxEndpoints]
 	}
@@ -85,18 +85,13 @@ func (r *MCPRunner) runEndpointScan(ctx context.Context, record *corev1.Record) 
 
 	result := merge(results)
 
-	// Surface the truncation on the merged result rather than adding it as
-	// another skipped sub-result. merge only carries SkippedReason through
-	// when EVERY input skipped, so a truncation notice added that way would
-	// vanish as soon as one endpoint scanned successfully - which is exactly
-	// the case where a reader most needs to know the coverage was partial.
-	if truncated != "" {
-		if result.SkippedReason == "" {
-			result.SkippedReason = truncated
-		} else {
-			result.SkippedReason = truncated + "; " + result.SkippedReason
-		}
-	}
+	// Notices, not SkippedReason. merge propagates SkippedReason only when
+	// every input skipped, so a truncation note written there vanishes as soon
+	// as one endpoint scans successfully - and again when Run merges this
+	// result with the source phase. Notices survive both merges. A Finding
+	// would be wrong for the opposite reason: any finding sets Safe=false, and
+	// reduced coverage is not a security defect.
+	result.Notices = append(result.Notices, notices...)
 
 	return result
 }
@@ -402,8 +397,23 @@ func extractEndpoints(record *corev1.Record) []string {
 
 	var urls []string
 
+	seen := make(map[string]struct{})
+
 	for _, mod := range decoded.GetV1().GetModules() {
-		urls = append(urls, extractConnectionURLs(mod.GetData())...)
+		for _, u := range extractConnectionURLs(mod.GetData()) {
+			// Deduplicate before the cap sees the list. Without this, a record
+			// declaring the same URL eight times stays under the cap and still
+			// produces four requests per copy at a single host, so the cap
+			// would bound list length without bounding what any one victim
+			// receives.
+			if _, dup := seen[u]; dup {
+				continue
+			}
+
+			seen[u] = struct{}{}
+
+			urls = append(urls, u)
+		}
 	}
 
 	return urls

@@ -147,6 +147,10 @@ reconciler:
     # that reaching a private endpoint does not also allow cleartext scans of
     # public hosts.
     allow_insecure_transport: false
+    # Bounds how many distinct endpoints one record can make the daemon dial.
+    # Each endpoint costs one scanner invocation per subcommand, so an
+    # unbounded list lets one published record fan out arbitrarily. 0 = default (8).
+    max_endpoints_per_record: 8
   local_registry:
     registry_address: "localhost:5555"
     repository_name: "dir"

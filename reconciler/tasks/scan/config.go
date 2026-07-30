@@ -66,6 +66,12 @@ type Config struct {
 	// AllowPrivateEndpoints so that reaching a private-range endpoint does not
 	// also opt into cleartext scans of arbitrary public hosts.
 	AllowInsecureTransport bool `json:"allow_insecure_transport,omitempty" mapstructure:"allow_insecure_transport"`
+
+	// MaxEndpointsPerRecord bounds how many distinct MCP endpoints a single
+	// record can make the reconciler dial. Zero applies the default. Raise it
+	// for aggregator records that legitimately bundle several MCP servers;
+	// note that each endpoint costs one scanner invocation per subcommand.
+	MaxEndpointsPerRecord int `json:"max_endpoints_per_record,omitempty" mapstructure:"max_endpoints_per_record"`
 }
 
 // GetInterval returns the interval with default fallback.

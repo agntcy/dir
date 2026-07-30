@@ -185,8 +185,8 @@ func TestRunEndpointScan_CapsEndpointsPerRecord(t *testing.T) {
 
 	// Truncation has to be visible, or a report covering 3 of 20 endpoints
 	// reads the same as one covering everything the record declared.
-	if !strings.Contains(got.SkippedReason, "20") || !strings.Contains(got.SkippedReason, "3") {
-		t.Errorf("truncation should be recorded with both counts, got %q", got.SkippedReason)
+	if len(got.Notices) != 1 || !strings.Contains(got.Notices[0], "20") || !strings.Contains(got.Notices[0], "3") {
+		t.Errorf("truncation should be recorded with both counts, got %v", got.Notices)
 	}
 }
 
@@ -209,15 +209,99 @@ func TestRunEndpointScan_DefaultCapApplies(t *testing.T) {
 	}
 }
 
-// A record within the cap must not be reported as truncated.
-func TestRunEndpointScan_UnderCapReportsNoTruncation(t *testing.T) {
+// Exactly at the cap is the boundary that matters: an off-by-one turns a
+// fully-scanned record into one that reports itself truncated. Testing well
+// under the cap leaves `>` vs `>=` undetected.
+func TestRunEndpointScan_ExactlyAtCapReportsNoTruncation(t *testing.T) {
 	t.Parallel()
 
-	r := NewMCPRunner(MCPConfig{CLIPath: fakeCLIPath(t)})
-	got := r.runEndpointScan(context.Background(), recordWithEndpoints(t, "https://a.example.com/mcp", "https://b.example.com/mcp"))
+	urls := make([]string, 0, DefaultMaxEndpointsPerRecord)
+	for i := range DefaultMaxEndpointsPerRecord {
+		urls = append(urls, fmt.Sprintf("https://mcp%d.example.com/mcp", i))
+	}
 
-	if strings.Contains(got.SkippedReason, "scanning the first") {
-		t.Errorf("two endpoints are under the cap, but truncation was reported: %q", got.SkippedReason)
+	r := NewMCPRunner(MCPConfig{CLIPath: fakeCLIPath(t)})
+	got := r.runEndpointScan(context.Background(), recordWithEndpoints(t, urls...))
+
+	if len(got.Notices) != 0 {
+		t.Errorf("a record exactly at the cap is fully scanned, so it must not report truncation: %v", got.Notices)
+	}
+
+	wantFindings := DefaultMaxEndpointsPerRecord * len(endpointSubcommands)
+	if len(got.Findings) != wantFindings {
+		t.Errorf("want %d findings at the cap, got %d", wantFindings, len(got.Findings))
+	}
+}
+
+// The cap only bounds amplification if its value stays small. Both sides of
+// the count assertions above are the constant itself, so nothing else here
+// would notice the default being raised to 500 - which is the exact number the
+// change exists to prevent. This pins the magnitude, so raising it has to be a
+// deliberate argument against the reasoning rather than a quiet edit.
+func TestDefaultMaxEndpointsPerRecord_StaysSmall(t *testing.T) {
+	t.Parallel()
+
+	const upperBound = 16
+
+	if DefaultMaxEndpointsPerRecord > upperBound {
+		t.Fatalf("default cap is %d, above the %d ceiling: each endpoint costs %d scanner invocations at a publisher-chosen host, so a large default reinstates the amplification this cap exists to stop",
+			DefaultMaxEndpointsPerRecord, upperBound, len(endpointSubcommands))
+	}
+}
+
+// Duplicate URLs must not consume cap budget or multiply requests to one host.
+func TestExtractEndpoints_DeduplicatesURLs(t *testing.T) {
+	t.Parallel()
+
+	const dupe = "https://victim.example.com/mcp"
+
+	r := NewMCPRunner(MCPConfig{CLIPath: fakeCLIPath(t)})
+	rec := recordWithEndpoints(t, dupe, dupe, dupe, dupe, dupe, dupe, dupe, dupe)
+
+	got := r.runEndpointScan(context.Background(), rec)
+
+	// One distinct endpoint x 4 subcommands. Without dedup this is 32
+	// requests at a single host, all under the cap and therefore silent.
+	const wantFindings = 4
+
+	if len(got.Findings) != wantFindings {
+		t.Errorf("eight copies of one URL should scan once: want %d findings, got %d", wantFindings, len(got.Findings))
+	}
+}
+
+// The notice has to survive the merge inside runEndpointScan AND the merge in
+// Run that combines the endpoint and source phases. The first implementation
+// wrote it to SkippedReason, which merge drops unless every input skipped, so
+// it vanished exactly when one endpoint scanned successfully.
+func TestRun_TruncationNoticeSurvivesBothMerges(t *testing.T) {
+	t.Parallel()
+
+	urls := make([]string, 0, DefaultMaxEndpointsPerRecord+4)
+	for i := range DefaultMaxEndpointsPerRecord + 4 {
+		urls = append(urls, fmt.Sprintf("https://mcp%d.example.com/mcp", i))
+	}
+
+	r := NewMCPRunner(MCPConfig{CLIPath: fakeCLIPath(t)})
+
+	got, err := r.Run(context.Background(), recordWithEndpoints(t, urls...))
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if len(got.Findings) == 0 {
+		t.Fatal("test invalid: endpoints must scan successfully, or the notice would survive for the wrong reason")
+	}
+
+	var found bool
+
+	for _, n := range got.Notices {
+		if strings.Contains(n, "scanned the first") {
+			found = true
+		}
+	}
+
+	if !found {
+		t.Errorf("truncation notice did not survive Run: %v", got.Notices)
 	}
 }
 

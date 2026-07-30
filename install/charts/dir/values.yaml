@@ -703,6 +703,9 @@ apiserver:
         allow_private_endpoints: false
         # Permit plain http endpoints, independently of the range policy.
         allow_insecure_transport: false
+        # Bounds endpoints dialed per record. Raise only for aggregator
+        # records that legitimately bundle several MCP servers.
+        max_endpoints_per_record: 8
 
       # Apiserver gRPC address — required by the metrics task to query provider counts.
       # Leave empty to auto-resolve to the in-cluster apiserver Service.

@@ -40,6 +40,7 @@ func NewTask(config Config, db types.DatabaseAPI, store types.StoreAPI, refStore
 			DisableEndpointScan:    config.DisableEndpointScan,
 			AllowPrivateEndpoints:  config.AllowPrivateEndpoints,
 			AllowInsecureTransport: config.AllowInsecureTransport,
+			MaxEndpointsPerRecord:  config.MaxEndpointsPerRecord,
 		}),
 		scanner.NewSkillRunner(scanner.SkillConfig{CLIPath: config.GetSkillCLIPath()}),
 		scanner.NewA2ARunner(scanner.A2AConfig{CLIPath: config.GetA2ACLIPath()}),
@@ -125,6 +126,15 @@ func (t *Task) scanRecord(ctx context.Context, recordCID string) error {
 			logger.Debug("Runner skipped record", "runner", r.Name(), "cid", recordCID, "reason", result.SkippedReason)
 
 			continue
+		}
+
+		// A scan that completed but covered less than the record declared is
+		// still recorded as a pass, so the reduced coverage has to be visible
+		// somewhere. The report proto has no field for it, so this is a log
+		// line rather than persisted state - see the endpoint cap in
+		// utils/scanner.
+		for _, notice := range result.Notices {
+			logger.Warn("Scan coverage reduced", "runner", r.Name(), "cid", recordCID, "notice", notice)
 		}
 
 		report := buildScanReport(r.Name(), result)

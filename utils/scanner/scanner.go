@@ -52,6 +52,13 @@ type ScanResult struct {
 	Findings      []Finding
 	Version       string   // scanner binary version, if detectable
 	Analyzers     []string // analyzer names that were invoked
+	// Notices carry information about the scan itself rather than about the
+	// record: coverage that was reduced, a phase that was skipped while
+	// others ran. They exist because neither of the alternatives works. A
+	// Finding would be wrong, since any finding sets Safe=false and a
+	// coverage note is not a security defect. SkippedReason would be lost,
+	// since merge only propagates it when every input skipped.
+	Notices []string
 }
 
 // getVersion runs cliPath with the given args and returns the last whitespace-separated
@@ -172,6 +179,7 @@ func merge(results []*ScanResult) *ScanResult {
 		}
 
 		merged.Findings = append(merged.Findings, r.Findings...)
+		merged.Notices = append(merged.Notices, r.Notices...)
 
 		for _, a := range r.Analyzers {
 			analyzerSet[a] = struct{}{}
