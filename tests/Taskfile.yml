@@ -123,6 +123,10 @@ tasks:
   e2e:test:*:*:
     desc: Run E2E test suite for a test environment (use SKIP_TESTENV=true to skip setup/teardown)
     silent: true
+    env:
+      # go-libp2p-pubsub and go.etcd.io/etcd/api/v3 both register a proto file
+      # named "rpc.proto", causing a panic on init. Downgrade to a warning.
+      GOLANG_PROTOBUF_REGISTRATION_CONFLICT: warn
     vars:
       # User input
       TEST_CASE: '{{index .MATCH 0}}'

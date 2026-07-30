@@ -279,6 +279,9 @@ tasks:
     aliases: [test]
     env:
       GOWORK: off
+      # go-libp2p-pubsub and go.etcd.io/etcd/api/v3 both register a proto file
+      # named "rpc.proto", causing a panic on init. Downgrade to a warning.
+      GOLANG_PROTOBUF_REGISTRATION_CONFLICT: warn
     vars:
       EXTRA_ARGS: '{{ .EXTRA_ARGS | default "" }}'
     cmds:
@@ -289,6 +292,10 @@ tasks:
 
   test:unit:coverage:
     desc: Run all unit tests with coverage
+    env:
+      # go-libp2p-pubsub and go.etcd.io/etcd/api/v3 both register a proto file
+      # named "rpc.proto", causing a panic on init. Downgrade to a warning.
+      GOLANG_PROTOBUF_REGISTRATION_CONFLICT: warn
     cmds:
       - cmd: |
           echo "Removing existing reports in {{.COVERAGE_DIR}}/unit"
