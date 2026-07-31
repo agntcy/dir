@@ -1,5 +1,6 @@
 daemon:
   run_runtime_discovery_tests: true
+  runtime_workload_compose_file: "testenv/external/docker-compose.yaml"
   client_options:
     server_address: "localhost:19234"
     auth_mode: "insecure"
