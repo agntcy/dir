@@ -78,12 +78,20 @@ func TestWritersApplyFileMode(t *testing.T) {
 func TestWritersApplyFileModeUnderRestrictiveUmask(t *testing.T) {
 	requirePOSIXPerms(t)
 
-	restore := setUmask(t, 0o277)
-	defer restore()
-
 	for _, w := range writers() {
 		t.Run(w.name, func(t *testing.T) {
-			path := filepath.Join(t.TempDir(), "file.txt")
+			// TempDir must be created BEFORE the umask is narrowed. MkdirTemp
+			// requests 0700, which 0o277 masks down to 0500 — no owner-write —
+			// and t.TempDir then creates a numbered subdirectory inside it,
+			// which fails with EACCES for any non-root user. Running as root
+			// hides this: root bypasses the permission check, so the test
+			// passes locally and fails on CI runners.
+			dir := t.TempDir()
+
+			restore := setUmask(t, 0o277)
+			defer restore()
+
+			path := filepath.Join(dir, "file.txt")
 
 			require.NoError(t, w.write(path, []byte("x"), WriteOptions{FileMode: 0o600}))
 
