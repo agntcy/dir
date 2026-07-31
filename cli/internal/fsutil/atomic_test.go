@@ -4,7 +4,6 @@
 package fsutil
 
 import (
-	"errors"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -230,6 +229,9 @@ func TestWriteAtomicOverwrites(t *testing.T) {
 	assert.Equal(t, "second", string(got))
 }
 
+// TestWriteNewRefusesExistingFile pins the contract callers depend on: the
+// refusal is matchable with errors.Is rather than by message text, and it does
+// not touch what is already there.
 func TestWriteNewRefusesExistingFile(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "file.txt")
 	require.NoError(t, os.WriteFile(path, []byte("original"), 0o600))
@@ -237,20 +239,9 @@ func TestWriteNewRefusesExistingFile(t *testing.T) {
 	err := WriteNew(path, []byte("replacement"), WriteOptions{})
 	require.ErrorIs(t, err, ErrExists)
 
-	// The refusal must not have touched the existing content.
 	got, readErr := os.ReadFile(path)
 	require.NoError(t, readErr)
 	assert.Equal(t, "original", string(got))
-}
-
-// TestWriteNewErrExistsIsMatchableNotStringMatched pins the contract callers
-// depend on: they branch on errors.Is, not on the message text.
-func TestWriteNewErrExistsIsMatchableNotStringMatched(t *testing.T) {
-	path := filepath.Join(t.TempDir(), "file.txt")
-	require.NoError(t, os.WriteFile(path, nil, 0o600))
-
-	err := WriteNew(path, []byte("x"), WriteOptions{})
-	require.True(t, errors.Is(err, ErrExists))
 }
 
 // TestWriteAtomicReplacesContentNotJustAppends guards the rename: a writer that
