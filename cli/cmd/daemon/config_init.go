@@ -7,7 +7,6 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"path/filepath"
 
 	"github.com/agntcy/dir/cli/internal/fsutil"
 	"github.com/agntcy/dir/cli/presenter"
@@ -35,10 +34,6 @@ const configDirPerm = 0o700
 // the daemon's private data directory, and creating them 0700 would lock out
 // the account that has to read the file.
 const userPathDirPerm = 0o755
-
-// errConfigExists is returned by writeIfAbsent when the target path already
-// exists.
-var errConfigExists = errors.New("config file already exists")
 
 // configCmd is the parent command for daemon config subcommands.
 var configCmd = &cobra.Command{
@@ -133,102 +128,33 @@ func dirPermFor(callerChosePath bool) os.FileMode {
 
 // writeDefaultConfig writes the embedded default config to target. With force,
 // it replaces any existing file; otherwise it refuses to clobber one.
+//
+// Everything mechanical — creating parents at the right mode, applying the file
+// mode through the descriptor, removing a partial file — lives in fsutil and is
+// tested there against both writers. What stays here is the policy (which mode
+// the parent gets, which writer --force selects) and the messaging.
 func writeDefaultConfig(target string, force, callerChosePath bool) error {
-	// Check for a directory before branching on force. Both paths fail on a
+	// Check for a directory before choosing a writer. Both writers fail on a
 	// directory target, so telling the user to retry with --force would send
-	// them down a dead end, and the force path's own error leaks the staging
+	// them down a dead end, and the atomic path's own error leaks the staging
 	// temp file's name.
 	if info, statErr := os.Stat(target); statErr == nil && info.IsDir() {
 		return fmt.Errorf("%s is a directory, not a config file", target)
 	}
 
-	dirPerm := dirPermFor(callerChosePath)
+	wo := fsutil.WriteOptions{FileMode: configFilePerm, DirMode: dirPermFor(callerChosePath)}
 
+	write := fsutil.WriteNew
 	if force {
-		// Create the parent first. fsutil.WriteAtomic creates missing parents
-		// at its own 0755, which would leave the daemon's data directory
-		// world-traversable when --force is what creates it. MkdirAll is a
-		// no-op if the directory already exists, so this never loosens an
-		// existing one either.
-		dir := filepath.Dir(target)
-		if err := os.MkdirAll(dir, dirPerm); err != nil {
-			return fmt.Errorf("create directory %s: %w", dir, err)
-		}
-
-		if err := fsutil.WriteAtomic(target, []byte(defaultConfigYAML), configFilePerm); err != nil {
-			return fmt.Errorf("failed to write default config to %s: %w", target, err)
-		}
-
-		return nil
+		write = fsutil.WriteAtomic
 	}
 
-	err := writeIfAbsent(target, []byte(defaultConfigYAML), configFilePerm, dirPerm)
-	if errors.Is(err, errConfigExists) {
-		return fmt.Errorf("config file already exists at %s (use --force to overwrite)", target)
-	}
+	if err := write(target, []byte(defaultConfigYAML), wo); err != nil {
+		if errors.Is(err, fsutil.ErrExists) {
+			return fmt.Errorf("config file already exists at %s (use --force to overwrite)", target)
+		}
 
-	if err != nil {
 		return fmt.Errorf("failed to write default config to %s: %w", target, err)
-	}
-
-	return nil
-}
-
-// writeIfAbsent creates path with data, failing with errConfigExists if a file
-// is already there.
-//
-// O_CREATE|O_EXCL makes the existence check and the create a single syscall,
-// so nothing can slip in between them the way it could with a Stat followed by
-// a write. It also needs no hardlink support, which matters because --output
-// can point anywhere: an earlier revision staged a temp file and used os.Link
-// to move it into place, and os.Link is unimplemented on some FUSE mounts.
-//
-// This writes in place rather than staging, so a machine crash mid-write can
-// leave a truncated file. A process crash cannot: the payload is a few KB and
-// goes out in a single write. The residual risk is real but narrow, and worth
-// stating precisely rather than hand-waving: a truncated config does NOT fail
-// loudly. loadConfig registers defaults before reading the file, so viper
-// backfills every missing key and the daemon starts on a silently partial
-// config. On any error after creation the partial file is removed.
-func writeIfAbsent(path string, data []byte, perm, dirPerm os.FileMode) error {
-	dir := filepath.Dir(path)
-	if err := os.MkdirAll(dir, dirPerm); err != nil {
-		return fmt.Errorf("create directory %s: %w", dir, err)
-	}
-
-	f, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_EXCL, perm)
-	if err != nil {
-		if errors.Is(err, os.ErrExist) {
-			return errConfigExists
-		}
-
-		return fmt.Errorf("create %s: %w", path, err)
-	}
-
-	// Chmod through the descriptor, not the path. O_CREATE applies the umask,
-	// which can only clear bits, so the file is never looser than perm; this
-	// restores the intended mode when a restrictive umask (e.g. 0200) stripped
-	// the owner-write bit. Doing it via f rather than os.Chmod(path) means it
-	// cannot follow a symlink or land on a file someone swapped in, and it
-	// happens before the content is written.
-	if chmodErr := f.Chmod(perm); chmodErr != nil {
-		_ = f.Close()
-		_ = os.Remove(path)
-
-		return fmt.Errorf("chmod %s: %w", path, chmodErr)
-	}
-
-	if _, writeErr := f.Write(data); writeErr != nil {
-		_ = f.Close()
-		_ = os.Remove(path)
-
-		return fmt.Errorf("write %s: %w", path, writeErr)
-	}
-
-	if closeErr := f.Close(); closeErr != nil {
-		_ = os.Remove(path)
-
-		return fmt.Errorf("close %s: %w", path, closeErr)
 	}
 
 	return nil

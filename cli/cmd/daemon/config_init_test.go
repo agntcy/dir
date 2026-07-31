@@ -260,34 +260,12 @@ func TestRunConfigInitRespectsConfigFileOverride(t *testing.T) {
 	require.Equal(t, defaultConfigYAML, string(got)) //nolint:testifylint // byte-exact dump check; YAMLEq would ignore the comment and formatting fidelity the dump preserves
 }
 
-// TestWriteIfAbsentRejectsExistingFile exercises writeIfAbsent directly:
-// a second write to the same path must fail with errConfigExists and leave
-// the first file's contents untouched, and must not leak the staging temp
-// file into the directory.
-func TestWriteIfAbsentRejectsExistingFile(t *testing.T) {
-	dir := t.TempDir()
-	target := filepath.Join(dir, "config.yaml")
-
-	require.NoError(t, writeIfAbsent(target, []byte("first"), 0o600, 0o700))
-
-	entries, err := os.ReadDir(dir)
-	require.NoError(t, err)
-	require.Len(t, entries, 1, "no leftover temp file after a successful write")
-
-	err = writeIfAbsent(target, []byte("second"), 0o600, 0o700)
-	require.ErrorIs(t, err, errConfigExists)
-
-	got, readErr := os.ReadFile(target)
-	require.NoError(t, readErr)
-	require.Equal(t, "first", string(got))
-}
-
 // TestRunConfigInitWritesRestrictivePerms confirms the dumped file lands with
-// mode 0600 on both write paths: the default (writeIfAbsent) path and the
-// --force (fsutil.WriteAtomic) path apply the chmod through different code, so
-// both are checked. The config can hold credentials, so a world-readable dump
-// would be a real leak. POSIX-only: Windows does not honour Unix permission
-// bits.
+// mode 0600 on both write paths. fsutil tests that the writers honour
+// WriteOptions.FileMode; this asserts the policy end to end -- that this
+// command asks for 0600 at all. The config can hold credentials, so a
+// world-readable dump would be a real leak. POSIX-only: Windows does not
+// honour Unix permission bits.
 func TestRunConfigInitWritesRestrictivePerms(t *testing.T) {
 	if runtime.GOOS == osWindows {
 		t.Skip("Unix file permissions are not enforced on Windows")
@@ -324,79 +302,6 @@ func TestRunConfigInitWritesRestrictivePerms(t *testing.T) {
 			require.Equal(t, os.FileMode(0o600), info.Mode().Perm())
 		})
 	}
-}
-
-// TestRunConfigInitErrorsWhenDirCreationFails confirms a failure to create the
-// parent directory is surfaced (not swallowed) and leaves nothing behind. The
-// parent path element is a regular file, so MkdirAll cannot create the
-// directory under it.
-func TestRunConfigInitErrorsWhenDirCreationFails(t *testing.T) {
-	dataDir := t.TempDir()
-	withConfigInitState(t, dataDir)
-
-	blocker := filepath.Join(t.TempDir(), "not-a-dir")
-	require.NoError(t, os.WriteFile(blocker, []byte("x"), 0o600))
-
-	target := filepath.Join(blocker, "config.yaml")
-	configInitOpts.Output = target
-
-	cmd, _ := newConfigInitTestCmd()
-	err := runConfigInit(cmd, nil)
-	require.ErrorContains(t, err, "create directory")
-	require.NoFileExists(t, target)
-}
-
-// --force takes a different write path (fsutil.WriteAtomic) from the default
-// one, so its failure mode needs its own cover: pointing --output at an
-// existing directory must surface an error rather than a panic or a silent
-// no-op, and must not leave the directory disturbed.
-func TestRunConfigInitForceErrorsWhenTargetIsDirectory(t *testing.T) {
-	dataDir := t.TempDir()
-	withConfigInitState(t, dataDir)
-
-	target := filepath.Join(t.TempDir(), "config-as-a-directory")
-	require.NoError(t, os.MkdirAll(target, 0o755))
-
-	configInitOpts.Output = target
-	configInitOpts.Force = true
-
-	cmd, _ := newConfigInitTestCmd()
-	err := runConfigInit(cmd, nil)
-	require.Error(t, err)
-	require.ErrorContains(t, err, "is a directory")
-
-	info, statErr := os.Stat(target)
-	require.NoError(t, statErr)
-	require.True(t, info.IsDir(), "the target directory should be left as a directory")
-}
-
-// A directory the process cannot write to fails at the temp-file stage rather
-// than at MkdirAll, which is a different branch from
-// TestRunConfigInitErrorsWhenDirCreationFails.
-func TestRunConfigInitErrorsWhenDirectoryIsNotWritable(t *testing.T) {
-	if runtime.GOOS == osWindows {
-		t.Skip("POSIX permission bits do not gate directory writes on Windows")
-	}
-
-	if os.Geteuid() == 0 {
-		t.Skip("root ignores directory permission bits")
-	}
-
-	dataDir := t.TempDir()
-	withConfigInitState(t, dataDir)
-
-	readonly := filepath.Join(t.TempDir(), "readonly")
-	require.NoError(t, os.MkdirAll(readonly, 0o500))
-
-	t.Cleanup(func() { _ = os.Chmod(readonly, 0o700) })
-
-	target := filepath.Join(readonly, "config.yaml")
-	configInitOpts.Output = target
-
-	cmd, _ := newConfigInitTestCmd()
-	err := runConfigInit(cmd, nil)
-	require.ErrorContains(t, err, "create")
-	require.NoFileExists(t, target)
 }
 
 func TestRunConfigInitDumpedFileLoadsUnchanged(t *testing.T) {
