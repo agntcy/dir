@@ -1,6 +1,10 @@
 // Copyright AGNTCY Contributors (https://github.com/agntcy)
 // SPDX-License-Identifier: Apache-2.0
 
+// Package nlsearch decomposes free-form text into structured search signals
+// (OASF skills, domains, and free-text keywords) using an extractor.Extractor.
+// It is backend-agnostic: the same decomposition runs whether the extractor is
+// the in-process local library or a remote gRPC OASF-SDK server.
 package nlsearch
 
 import (
@@ -8,7 +12,7 @@ import (
 	"fmt"
 
 	searchv1 "github.com/agntcy/dir/api/search/v1"
-	sdk "github.com/agntcy/oasf-sdk/pkg/extractor"
+	"github.com/agntcy/dir/client/extractor"
 )
 
 // SignalType identifies the kind of search signal extracted from free-form text.
@@ -61,18 +65,17 @@ func (s Signal) QueryType() searchv1.RecordQueryType {
 // search, where the DHT has exact taxonomy matches and recall matters more).
 const DefaultMinTaxonomyScore = 0.3
 
-// Decompose extracts search signals from free-form text using the provisioned
-// OASF extractor, applying DefaultMinTaxonomyScore to filter weak matches.
-// Optional sdk.QueryOption values (e.g. sdk.Versions("1.0.0")) are forwarded
-// to the extractor to restrict which OASF versions are searched.
-func Decompose(ctx context.Context, text string, ext *sdk.Extractor, queryOpts ...sdk.QueryOption) ([]Signal, error) {
-	return DecomposeWithMinScore(ctx, text, ext, DefaultMinTaxonomyScore, queryOpts...)
+// Decompose extracts search signals from free-form text using the given
+// extractor, applying DefaultMinTaxonomyScore to filter weak matches. opts
+// carries per-query options (e.g. Versions) forwarded to the extractor.
+func Decompose(ctx context.Context, text string, ext extractor.Extractor, opts extractor.ExtractOptions) ([]Signal, error) {
+	return DecomposeWithMinScore(ctx, text, ext, DefaultMinTaxonomyScore, opts)
 }
 
 // DecomposeWithMinScore is like Decompose but uses the given minScore threshold
 // instead of DefaultMinTaxonomyScore.
-func DecomposeWithMinScore(ctx context.Context, text string, ext *sdk.Extractor, minScore float64, queryOpts ...sdk.QueryOption) ([]Signal, error) {
-	res, err := ext.Extract(ctx, text, queryOpts...)
+func DecomposeWithMinScore(ctx context.Context, text string, ext extractor.Extractor, minScore float64, opts extractor.ExtractOptions) ([]Signal, error) {
+	res, err := ext.Extract(ctx, text, opts)
 	if err != nil {
 		return nil, fmt.Errorf("extract signals from %q: %w", text, err)
 	}
