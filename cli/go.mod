@@ -53,6 +53,7 @@ require (
 )
 
 require (
+	buf.build/gen/go/agntcy/oasf-sdk/grpc/go v1.6.2-20260714100340-94ed518b08ce.1 // indirect
 	cloud.google.com/go v0.123.0 // indirect
 	cloud.google.com/go/auth v0.20.0 // indirect
 	cloud.google.com/go/auth/oauth2adapt v0.2.8 // indirect

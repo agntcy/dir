@@ -9,6 +9,7 @@ package scanner
 import (
 	"context"
 	"os/exec"
+	"slices"
 	"strings"
 
 	corev1 "github.com/agntcy/dir/api/core/v1"
@@ -51,6 +52,13 @@ type ScanResult struct {
 	Findings      []Finding
 	Version       string   // scanner binary version, if detectable
 	Analyzers     []string // analyzer names that were invoked
+	// Notices carry information about the scan itself rather than about the
+	// record: coverage that was reduced, a phase that was skipped while
+	// others ran. They exist because neither of the alternatives works. A
+	// Finding would be wrong, since any finding sets Safe=false and a
+	// coverage note is not a security defect. SkippedReason would be lost,
+	// since merge only propagates it when every input skipped.
+	Notices []string
 }
 
 // getVersion runs cliPath with the given args and returns the last whitespace-separated
@@ -171,6 +179,7 @@ func merge(results []*ScanResult) *ScanResult {
 		}
 
 		merged.Findings = append(merged.Findings, r.Findings...)
+		merged.Notices = append(merged.Notices, r.Notices...)
 
 		for _, a := range r.Analyzers {
 			analyzerSet[a] = struct{}{}
@@ -180,6 +189,12 @@ func merge(results []*ScanResult) *ScanResult {
 	for a := range analyzerSet {
 		merged.Analyzers = append(merged.Analyzers, a)
 	}
+
+	// Sorted, not map order. Analyzers is persisted to the DB and to the OCI
+	// referrer (reconciler/tasks/scan/task.go), so leaving it in Go's
+	// randomized map order would make byte-identical scans produce differing
+	// reports run to run, and makes any order-sensitive assertion flaky.
+	slices.Sort(merged.Analyzers)
 
 	if merged.Skipped {
 		merged.Safe = false

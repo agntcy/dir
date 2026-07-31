@@ -60,8 +60,9 @@ type Record struct {
 	Domains          []Domain                `gorm:"foreignKey:RecordCID;references:RecordCID;constraint:OnDelete:CASCADE"`
 	Annotations      []Annotation            `gorm:"foreignKey:RecordCID;references:RecordCID;constraint:OnDelete:CASCADE"`
 	Signatures       []SignatureVerification `gorm:"foreignKey:RecordCID;references:RecordCID;constraint:OnDelete:CASCADE"`
-	NameVerification *NameVerification       `gorm:"foreignKey:RecordCID;references:RecordCID"`
-	ScanReports      []ScanReport            `gorm:"foreignKey:RecordCID;references:RecordCID"`
+	NameVerification *NameVerification       `gorm:"foreignKey:RecordCID;references:RecordCID;constraint:OnDelete:CASCADE"`
+	ScanReports      []ScanReport            `gorm:"foreignKey:RecordCID;references:RecordCID;constraint:OnDelete:CASCADE"`
+	UsageMetrics     *RecordUsageMetrics     `gorm:"foreignKey:RecordCID;references:RecordCID;constraint:OnDelete:CASCADE"`
 }
 
 func (r *Record) GetCid() string {
@@ -329,16 +330,6 @@ func (d *DB) GetRecordCIDs(opts ...types.FilterOption) ([]string, error) {
 // RemoveRecord removes a record from the search database by CID.
 // Uses CASCADE DELETE to automatically remove related Skills, Locators, and Modules.
 func (d *DB) RemoveRecord(cid string) error {
-	// Remove signature verifications first
-	if err := d.gormDB.Where("record_cid = ?", cid).Delete(&SignatureVerification{}).Error; err != nil {
-		return fmt.Errorf("failed to remove signature verifications: %w", err)
-	}
-
-	// Remove usage metrics
-	if err := d.gormDB.Where("record_cid = ?", cid).Delete(&RecordUsageMetrics{}).Error; err != nil {
-		return fmt.Errorf("failed to remove usage metrics: %w", err)
-	}
-
 	result := d.gormDB.Where("record_cid = ?", cid).Delete(&Record{})
 
 	if result.Error != nil {

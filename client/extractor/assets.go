@@ -31,7 +31,7 @@ func IsProvisioned(cfg Config) bool {
 // path, the filesystem root, or the user's home directory, so a misconfigured
 // asset dir can never wipe unrelated files. Removing an absent dir is a no-op.
 func Teardown(cfg Config) error {
-	// Guard the original value to catch misconfiguration before resolving defaults
+	// Guard the original value to catch misconfiguration before resolving defaults.
 	if err := guardAssetDir(strings.TrimSpace(cfg.AssetDir)); err != nil {
 		return err
 	}

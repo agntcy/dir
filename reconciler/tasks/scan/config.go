@@ -50,6 +50,28 @@ type Config struct {
 
 	// A2ACLIPath is the path to the a2a-scanner binary.
 	A2ACLIPath string `json:"a2a_cli_path,omitempty" mapstructure:"a2a_cli_path"`
+
+	// DisableEndpointScan turns off the MCP live-endpoint scan phase, leaving
+	// only the source-code scan. Set it where the reconciler must not make
+	// outbound connections to the endpoints named in published records.
+	DisableEndpointScan bool `json:"disable_endpoint_scan,omitempty" mapstructure:"disable_endpoint_scan"`
+
+	// AllowPrivateEndpoints permits MCP endpoints on loopback, link-local,
+	// private, and other reserved ranges. Off by default so the safe posture
+	// ships out of the box; self-hosted deployments that run the directory and
+	// its MCP servers on one private network need it on.
+	AllowPrivateEndpoints bool `json:"allow_private_endpoints,omitempty" mapstructure:"allow_private_endpoints"`
+
+	// AllowInsecureTransport permits plain http MCP endpoints. Separate from
+	// AllowPrivateEndpoints so that reaching a private-range endpoint does not
+	// also opt into cleartext scans of arbitrary public hosts.
+	AllowInsecureTransport bool `json:"allow_insecure_transport,omitempty" mapstructure:"allow_insecure_transport"`
+
+	// MaxEndpointsPerRecord bounds how many distinct MCP endpoints a single
+	// record can make the reconciler dial. Zero applies the default. Raise it
+	// for aggregator records that legitimately bundle several MCP servers;
+	// note that each endpoint costs one scanner invocation per subcommand.
+	MaxEndpointsPerRecord int `json:"max_endpoints_per_record,omitempty" mapstructure:"max_endpoints_per_record"`
 }
 
 // GetInterval returns the interval with default fallback.

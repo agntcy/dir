@@ -28,10 +28,43 @@ var mcpLogger = logging.Logger("utils/scanner/mcp")
 type MCPConfig struct {
 	// CLIPath is the path to the mcp-scanner binary. Defaults to DefaultMCPCLIPath.
 	CLIPath string
+
+	// DisableEndpointScan turns off the live-endpoint phase, leaving only the
+	// source-code scan. The zero value keeps the phase on. It is worth turning
+	// off where the reconciler must not make outbound connections at all: the
+	// phase dials third-party servers named in publisher-controlled record
+	// data, and costs one mcp-scanner invocation per (endpoint, subcommand).
+	DisableEndpointScan bool
+
+	// AllowPrivateEndpoints permits endpoints on loopback, link-local,
+	// private, and other reserved ranges. The zero value rejects them, so the
+	// safe posture is the default one. Self-hosted deployments where the
+	// directory and the MCP servers share a private network need this on.
+	AllowPrivateEndpoints bool
+
+	// AllowInsecureTransport permits plain http endpoints. It is separate from
+	// AllowPrivateEndpoints on purpose: an operator who needs to reach a
+	// private-range endpoint should not thereby also opt into cleartext scans
+	// of arbitrary public hosts.
+	AllowInsecureTransport bool
+
+	// MaxEndpointsPerRecord bounds how many endpoints a single record can make
+	// the reconciler dial. Zero or negative means
+	// DefaultMaxEndpointsPerRecord. Validating where a scan may connect does
+	// not bound how many connections one record can cause, and the list is
+	// publisher-controlled.
+	MaxEndpointsPerRecord int
 }
 
-// MCPRunner invokes mcp-scanner to scan MCP server source code.
-// It clones the source repository, runs `mcp-scanner behavioral --raw`, and maps the output.
+// MCPRunner invokes mcp-scanner against an MCP server in two phases: it clones
+// and scans the source repository, then scans any live endpoints the record
+// declares, and merges the findings.
+//
+// The two phases fail differently on purpose. The source scan fails hard,
+// because a scanner that cannot run at all is a scan we cannot vouch for. The
+// endpoint phase is skip-with-warning, because endpoints are third-party
+// servers that may be down, moved, or behind auth, and one unreachable
+// endpoint must not fail an otherwise-clean source scan.
 type MCPRunner struct {
 	cfg MCPConfig
 }
@@ -48,9 +81,32 @@ func NewMCPRunner(cfg MCPConfig) *MCPRunner {
 // Name returns the runner name.
 func (r *MCPRunner) Name() string { return "mcp" }
 
-// Run extracts the source-code URL from the record, clones the repository,
-// runs `mcp-scanner behavioral --raw`, and returns mapped findings.
+// Run scans the record's MCP server in two phases and merges the results:
+// the source repository is cloned and scanned, then any live endpoints the
+// record declares are scanned. Either phase may skip without the other doing
+// so, and a record with only one of the two still produces a usable result.
 func (r *MCPRunner) Run(ctx context.Context, record *corev1.Record) (*ScanResult, error) {
+	sourceResult, err := r.runSourceScan(ctx, record)
+	if err != nil {
+		// Hard failure: the scanner could not run, so we cannot vouch for the
+		// record. Returning the error discards any endpoint findings, which is
+		// the intended trade - a partial scan reported as a whole one is worse
+		// than no scan.
+		return nil, err
+	}
+
+	if r.cfg.DisableEndpointScan {
+		return sourceResult, nil
+	}
+
+	endpointResult := r.runEndpointScan(ctx, record)
+
+	return merge([]*ScanResult{sourceResult, endpointResult}), nil
+}
+
+// runSourceScan clones the record's source repository and runs the
+// source-code analyzers over it.
+func (r *MCPRunner) runSourceScan(ctx context.Context, record *corev1.Record) (*ScanResult, error) {
 	repoURL, subfolder := extractSourceInfo(record)
 	if repoURL == "" {
 		return &ScanResult{Skipped: true, SkippedReason: "no source-code locator found"}, nil
@@ -92,7 +148,10 @@ func (r *MCPRunner) Run(ctx context.Context, record *corev1.Record) (*ScanResult
 		return nil, err
 	}
 
-	result.Analyzers = []string{"behavioral"}
+	// yara and readiness are zero-dependency analyzers (no third-party credentials
+	// required) so they are always run. llm and api analyzers require third-party
+	// credentials and are opt-in only; wiring them up is left as follow-up work.
+	result.Analyzers = []string{"yara", "readiness"}
 
 	return result, nil
 }
@@ -128,10 +187,11 @@ func extractSourceCodeURL(locators []*typesv1.Locator) string {
 	return ""
 }
 
-// extractSubfolder walks modules[*].data.mcp_data.repository.subfolder.
+// extractSubfolder walks modules[*].data.repository.subfolder. A module's
+// data is itself the OASF mcp_data object, so repository sits directly under it.
 func extractSubfolder(modules []*typesv1.Module) string {
 	for _, mod := range modules {
-		sf := getNestedString(mod.GetData(), "mcp_data", "repository", "subfolder")
+		sf := getNestedString(mod.GetData(), "repository", "subfolder")
 		if sf != "" {
 			return sf
 		}
@@ -180,7 +240,9 @@ func gitClone(ctx context.Context, repoURL, dest string) error {
 func runMCPScanner(ctx context.Context, cliPath, scanDir string) ([]byte, error) {
 	var stdout, stderr bytes.Buffer
 
-	cmd := exec.CommandContext(ctx, cliPath, "behavioral", "--raw", scanDir)
+	// mcp-scanner requires global flags (--analyzers, --raw) to precede the
+	// subcommand; placing them after `behavioral` is rejected by the CLI.
+	cmd := exec.CommandContext(ctx, cliPath, "--analyzers", "yara,readiness", "--raw", "behavioral", scanDir)
 	cmd.Stdout = &stdout
 	cmd.Stderr = &stderr
 	cmd.Env = buildMCPScannerEnv()

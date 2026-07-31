@@ -17,11 +17,15 @@ tasks:
     vars:
       COMPOSE_PATH: "{{.ROOT_DIR}}/tests/e2e/daemon/testenv/external/docker-compose.yaml"
     cmds:
-      # Start the Docker Compose services
+      # Start the Docker Compose services.
+      #
+      # This deliberately does not start the discovery workload. It sits behind
+      # the "runtime-discovery" profile and is started by the suite itself,
+      # after its record has been pushed. See issue #1780.
       - |
         docker compose -f {{.COMPOSE_PATH}} up --wait -d
         sleep 10
-      
+
       # Start the directory node
       - task: setup-dir-node:up
 
@@ -32,6 +36,11 @@ tasks:
       # Stop the directory node
       - task: setup-dir-node:down
 
-      # Stop Docker Compose services
+      # Stop Docker Compose services.
+      #
+      # The profile is named so the discovery workload is torn down too,
+      # whether or not the suite got far enough to start it. Set through the
+      # environment rather than the top-level --profile flag, which Compose
+      # only grew in v2.24; this form works on every v2.
       - |
-        docker compose -f {{.COMPOSE_PATH}} down
+        COMPOSE_PROFILES=runtime-discovery docker compose -f {{.COMPOSE_PATH}} down
