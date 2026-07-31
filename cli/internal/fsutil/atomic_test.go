@@ -118,6 +118,14 @@ func TestWritersApplyDirMode(t *testing.T) {
 
 // TestWritersZeroOptionsUseDefaults pins the documented zero-value behaviour.
 // A zero FileMode must not be taken literally as mode 0000.
+//
+// The expectations are literals, not defaultFileMode/defaultDirMode. Asserting
+// the constants against themselves only proves the zero value ROUTES to them,
+// which is the cheap half: changing defaultFileMode to 0o644 -- making every
+// config file this package writes world-readable -- passed the suite. The
+// daemon tests do not catch it either, because config_init.go always passes
+// both modes explicitly. These are the modes the package documents, so they are
+// written out.
 func TestWritersZeroOptionsUseDefaults(t *testing.T) {
 	requirePOSIXPerms(t)
 
@@ -131,11 +139,11 @@ func TestWritersZeroOptionsUseDefaults(t *testing.T) {
 
 			file, err := os.Stat(path)
 			require.NoError(t, err)
-			assert.Equal(t, os.FileMode(defaultFileMode), file.Mode().Perm())
+			assert.Equal(t, os.FileMode(0o600), file.Mode().Perm(), "zero FileMode must mean 0600")
 
 			dir, err := os.Stat(parent)
 			require.NoError(t, err)
-			assert.Equal(t, os.FileMode(defaultDirMode), dir.Mode().Perm())
+			assert.Equal(t, os.FileMode(0o755), dir.Mode().Perm(), "zero DirMode must mean 0755")
 		})
 	}
 }
@@ -189,13 +197,26 @@ func TestWritersLeaveNothingBehindWhenParentIsUnwritable(t *testing.T) {
 
 // TestWritersRejectDirectoryTarget documents that neither writer will write
 // over a directory. Callers phrase their own message; both must fail.
+//
+// It also covers the one failure that happens AFTER the descriptor exists: the
+// atomic path gets as far as staging a temp file and then fails at the rename.
+// That is the only branch reaching the post-create cleanup, so without the
+// directory-listing assertion below, "the partial file is removed on any
+// failure" -- the behaviour this package advertises -- is asserted nowhere.
+// The other two leave-nothing-behind tests both fail before anything is
+// created, and one of them skips as root.
 func TestWritersRejectDirectoryTarget(t *testing.T) {
 	for _, w := range writers() {
 		t.Run(w.name, func(t *testing.T) {
-			target := filepath.Join(t.TempDir(), "adir")
+			parent := t.TempDir()
+			target := filepath.Join(parent, "adir")
 			require.NoError(t, os.Mkdir(target, 0o755))
 
 			require.Error(t, w.write(target, []byte("data"), WriteOptions{}))
+
+			entries, err := os.ReadDir(parent)
+			require.NoError(t, err)
+			require.Len(t, entries, 1, "no staging file may survive a failed rename")
 		})
 	}
 }
