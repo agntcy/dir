@@ -400,8 +400,12 @@ apiserver:
     # start otherwise:
     #   invalid database config, dedupe set to true with remote storage and
     #   database, but no remote database configured
-    # Garbage collection and the search extension do not need to be disabled on
-    # remote storage. See "Zot Storage Backend" in docs/content/dir/dir-prod-deployment.md.
+    # Remote storage also needs S3 credentials (an IAM role, or accesskey /
+    # secretkey inside storageDriver). Only "dedupe" is gated by config
+    # validation; garbage collection and the search extension do not block
+    # startup on remote storage.
+    # See "Zot Storage Backend":
+    # https://agntcy.github.io/dir/latest/dir/dir-prod-deployment/#zot-storage-backend
     configFiles:
       config.json: |-
         {

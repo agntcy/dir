@@ -172,25 +172,45 @@ Pick one of the following when moving Zot to S3.
 }
 ```
 
+Neither snippet sets S3 credentials. Zot resolves them the same way the AWS SDK
+does — in a cluster, prefer an IAM role (IRSA on EKS) attached to the Zot service
+account and set nothing in the config. To supply them explicitly instead, add
+`accesskey` and `secretkey` to the `storageDriver` block. For S3-compatible
+storage such as MinIO, also set `regionendpoint` (and `"secure": false` for a
+plaintext endpoint).
+
 Notes for either option:
 
+- Keys inside `storageDriver` are passed through to the underlying storage driver
+  and are **not** validated by Zot. A misspelled key — `accessKeyId` instead of
+  `accesskey`, for example — is silently ignored: `zot verify` still reports the
+  config as valid, and the problem only surfaces once Zot contacts S3 at startup.
+  Match the parameter names in the Zot storage documentation exactly.
 - Keep `storage.rootDirectory` set even when `storageDriver` is present. Zot
   exits at startup with `no storage config provided` if it is missing, and
   `zot verify` does **not** catch that — the config passes validation and the
   pod then crash-loops. The key prefix used inside the bucket comes from
   `storageDriver.rootdirectory`, not from `storage.rootDirectory`.
-- Garbage collection (`gc`) and the `search` extension do **not** have to be
-  disabled to run on S3; only `dedupe` is gated by config validation. Both run
-  with `dedupe: false` on S3.
+- Only `dedupe` is gated by config validation. Garbage collection (`gc`) and the
+  `search` extension do not block startup on S3 — a config with `dedupe: false`,
+  GC at its default, and search enabled passes `zot verify` and boots against
+  remote storage. That is a startup result, not a statement about how GC behaves
+  on remote storage over time: GC runs on an interval (`storage.gcInterval` and
+  `storage.gcDelay`, both one hour by default), so a clean boot does not exercise
+  it. If you see GC-related errors in the Zot logs after the first interval, set
+  `"gc": false` and open an issue.
 - Without a `cacheDriver`, Zot keeps its metadata database on local disk, so a
   remote-storage deployment is still effectively **single-replica**. Use Option B
   if you need to scale Zot horizontally.
 - Validate any config change before rolling it out. This catches the dedupe
-  error above, but not every startup failure (see the `rootDirectory` note):
+  error above, but not every startup failure (see the `rootDirectory` note).
+  Use the Zot version the chart actually deploys — the zot subchart pinned in
+  `install/charts/dir/apiserver/Chart.lock`, whose image tag is also tracked as
+  `ZOT_VERSION` in `Taskfile.vars.yml`:
 
   ```bash
   docker run --rm -v "$PWD:/cfg:ro" \
-    ghcr.io/project-zot/zot-linux-amd64:v2.1.16 verify /cfg/config.json
+    ghcr.io/project-zot/zot-linux-amd64:v2.1.18 verify /cfg/config.json
   ```
 
 See the [Zot storage documentation](https://zotregistry.dev/latest/admin-guide/admin-configuration/#storage)
