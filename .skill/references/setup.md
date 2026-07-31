@@ -48,7 +48,32 @@ Idempotent: re-running re-downloads nothing when assets are present and
 current. If `init` is not available in the installed version, skip it — it is
 not required for core operations.
 
-## 3. Local workspace: the daemon
+## 3. Security scanners (optional, required for security scans)
+
+**Security scan results are only attached to records if the scanners are
+installed.** Without them, records remain *unscanned* indefinitely and the
+daemon log shows `executable file not found in $PATH`. The reconciler retries
+on every tick, so scanners can be added later — but scans will not run until
+they are present.
+
+```bash
+command -v mcp-scanner && command -v skill-scanner   # POSIX — skip if already present
+Get-Command mcp-scanner; Get-Command skill-scanner   # PowerShell
+```
+
+Install if missing:
+
+```bash
+uv tool install cisco-ai-mcp-scanner    # installs mcp-scanner
+uv tool install cisco-ai-skill-scanner  # installs skill-scanner
+uvx install mcp-server-git              # required by mcp-scanner at scan time
+```
+
+If `uv` is unavailable: `pip install cisco-ai-mcp-scanner cisco-ai-skill-scanner`.
+
+See the verification reference for scan report details.
+
+## 4. Local workspace: the daemon
 
 The daemon is a self-contained local directory server (gRPC apiserver +
 reconciler, embedded SQLite, filesystem OCI store). No PostgreSQL, no
@@ -79,7 +104,7 @@ dirctl daemon stop                   # graceful shutdown via PID file, waits, cl
   `--config`, embedded defaults are used — see the sync reference for when a
   config file is required (e.g. P2P autosync).
 
-## 4. Remote directories: contexts
+## 5. Remote directories: contexts
 
 Contexts live in `~/.config/dirctl/config.yaml` (or
 `$XDG_CONFIG_HOME/dirctl/config.yaml`; on Windows under the user profile —
@@ -111,7 +136,7 @@ Selection order per invocation: `--context` flag → `DIRECTORY_CLIENT_CONTEXT`
 Do not store long-lived tokens in `config.yaml` — prefer
 `DIRECTORY_CLIENT_AUTH_TOKEN` or a secret manager.
 
-## 5. Authentication (remote only)
+## 6. Authentication (remote only)
 
 Local daemon needs none (auto-detect falls back to insecure for local
 development).
@@ -131,7 +156,7 @@ dirctl auth logout
 - On auth errors: show the raw error and ask the user which mechanism they
   use. Never guess flags.
 
-## 6. Verify the environment: `dirctl doctor`
+## 7. Verify the environment: `dirctl doctor`
 
 Always finish setup with:
 
@@ -150,6 +175,8 @@ POSIX (bash/zsh):
 ```bash
 command -v dirctl || <install via brew/releases>
 dirctl init --yes            # optional, ~89 MB — ask first
+command -v mcp-scanner   || uv tool install cisco-ai-mcp-scanner
+command -v skill-scanner || uv tool install cisco-ai-skill-scanner
 dirctl daemon start          # foreground until stopped — dedicate a terminal
 dirctl daemon status         # from another terminal
 dirctl doctor
@@ -160,6 +187,8 @@ Windows (PowerShell):
 ```powershell
 Get-Command dirctl           # else install from GitHub Releases (.exe)
 dirctl init --yes            # optional, ~89 MB — ask first
+if (-not (Get-Command mcp-scanner -ErrorAction SilentlyContinue))   { uv tool install cisco-ai-mcp-scanner }
+if (-not (Get-Command skill-scanner -ErrorAction SilentlyContinue)) { uv tool install cisco-ai-skill-scanner }
 dirctl daemon start          # foreground until stopped — dedicate a terminal
 dirctl daemon status         # from another terminal
 dirctl doctor
