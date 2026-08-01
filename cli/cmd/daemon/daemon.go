@@ -207,5 +207,6 @@ func init() {
 		startCmd,
 		stopCmd,
 		statusCmd,
+		configCmd,
 	)
 }
