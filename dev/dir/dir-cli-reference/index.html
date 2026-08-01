@@ -2024,6 +2024,17 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#dirctl-daemon-config-init" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        dirctl daemon config init
+      
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -3011,6 +3022,17 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#dirctl-daemon-config-init" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        dirctl daemon config init
+      
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -3781,7 +3803,7 @@ explicit <code>--auth-mode</code>.</p>
 </tr>
 <tr>
 <td>Daemon</td>
-<td><code>daemon start</code>, <code>stop</code>, <code>status</code></td>
+<td><code>daemon start</code>, <code>stop</code>, <code>status</code>, <code>config init</code></td>
 </tr>
 <tr>
 <td>Auth</td>
@@ -4202,6 +4224,52 @@ dirctl<span class="w"> </span>daemon<span class="w"> </span>status
 </code></pre></div>
 <p>Example output when stopped:</p>
 <div class="highlight"><pre><span></span><code>Daemon is not running
+</code></pre></div>
+</details>
+<h3 id="dirctl-daemon-config-init"><code>dirctl daemon config init</code></h3>
+<p>Writes the daemon's built-in default configuration to disk, giving you a complete, valid file to start customizing instead of authoring one from scratch.</p>
+<p>Without <code>--output</code>, the file is written to the daemon's resolved config path: <code>&lt;data-dir&gt;/daemon.config.yaml</code> by default, or the path passed via <code>--config</code> on the <code>daemon</code> command if one is set. Unless <code>--force</code> is given, the command refuses to overwrite a file that already exists. The file is created with mode <code>0600</code>. When the command creates the daemon's data directory it uses <code>0700</code>, matching <code>daemon start</code>; a directory that already exists keeps its current mode, and a parent created for a path you passed to <code>--output</code> uses <code>0755</code>, since that is an ordinary location rather than the daemon's private state. The dumped file is accepted unchanged by <code>dirctl daemon start --config &lt;file&gt;</code>.</p>
+<table>
+<thead>
+<tr>
+<th>Flag</th>
+<th>Description</th>
+<th>Default</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>--data-dir</code></td>
+<td>Data directory for daemon state</td>
+<td><code>~/.agntcy/dir/</code></td>
+</tr>
+<tr>
+<td><code>--config</code></td>
+<td>Path to daemon config file (used as the write target if set)</td>
+<td>Built-in embedded defaults</td>
+</tr>
+<tr>
+<td><code>--output</code>, <code>-o</code></td>
+<td>Path to write the default config to</td>
+<td>Resolved daemon config path</td>
+</tr>
+<tr>
+<td><code>--force</code></td>
+<td>Overwrite the file if it already exists</td>
+<td><code>false</code></td>
+</tr>
+</tbody>
+</table>
+<details class="example">
+<summary>Example</summary>
+<div class="highlight"><pre><span></span><code><span class="c1"># Write the default config to the default location</span>
+dirctl<span class="w"> </span>daemon<span class="w"> </span>config<span class="w"> </span>init
+
+<span class="c1"># Write the default config to a specific file</span>
+dirctl<span class="w"> </span>daemon<span class="w"> </span>config<span class="w"> </span>init<span class="w"> </span>--output<span class="w"> </span>/path/to/daemon.config.yaml
+
+<span class="c1"># Overwrite an existing config file</span>
+dirctl<span class="w"> </span>daemon<span class="w"> </span>config<span class="w"> </span>init<span class="w"> </span>--force
 </code></pre></div>
 </details>
 <h2 id="context-operations">Context Operations</h2>
