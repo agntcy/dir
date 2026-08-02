@@ -1,0 +1,288 @@
+// Copyright AGNTCY Contributors (https://github.com/agntcy)
+// SPDX-License-Identifier: Apache-2.0
+
+package fsutil
+
+import (
+	"os"
+	"path/filepath"
+	"runtime"
+	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+)
+
+const osWindows = "windows"
+
+// writer names one of the two exported writers so the mechanism tests below can
+// run over both. Everything they share — creating parents, applying modes,
+// leaving nothing behind on failure — is one implementation, so it is asserted
+// once here rather than once per caller package.
+type writer struct {
+	name  string
+	write func(string, []byte, WriteOptions) error
+}
+
+func writers() []writer {
+	return []writer{
+		{name: "WriteAtomic", write: WriteAtomic},
+		{name: "WriteNew", write: WriteNew},
+	}
+}
+
+// requirePOSIXPerms skips on Windows, which does not enforce Unix mode bits.
+func requirePOSIXPerms(t *testing.T) {
+	t.Helper()
+
+	if runtime.GOOS == osWindows {
+		t.Skip("POSIX permission bits are not meaningful on Windows")
+	}
+}
+
+func TestWritersCreateParentDirs(t *testing.T) {
+	for _, w := range writers() {
+		t.Run(w.name, func(t *testing.T) {
+			path := filepath.Join(t.TempDir(), "nested", "deep", "file.json")
+
+			require.NoError(t, w.write(path, []byte("hello"), WriteOptions{}))
+
+			got, err := os.ReadFile(path)
+			require.NoError(t, err)
+			assert.Equal(t, "hello", string(got))
+		})
+	}
+}
+
+func TestWritersApplyFileMode(t *testing.T) {
+	requirePOSIXPerms(t)
+
+	for _, w := range writers() {
+		t.Run(w.name, func(t *testing.T) {
+			path := filepath.Join(t.TempDir(), "file.txt")
+
+			require.NoError(t, w.write(path, []byte("x"), WriteOptions{FileMode: 0o640}))
+
+			info, err := os.Stat(path)
+			require.NoError(t, err)
+			assert.Equal(t, os.FileMode(0o640), info.Mode().Perm())
+		})
+	}
+}
+
+// TestWritersApplyFileModeUnderRestrictiveUmask is the reason the writers chmod
+// through the descriptor instead of trusting the open mode. O_CREATE and
+// CreateTemp both filter the requested mode through the umask, which can only
+// clear bits, so a umask of 0200 would otherwise strip owner-write and leave an
+// 0400 config the user cannot edit.
+func TestWritersApplyFileModeUnderRestrictiveUmask(t *testing.T) {
+	requirePOSIXPerms(t)
+
+	for _, w := range writers() {
+		t.Run(w.name, func(t *testing.T) {
+			// TempDir must be created BEFORE the umask is narrowed. MkdirTemp
+			// requests 0700, which 0o277 masks down to 0500 — no owner-write —
+			// and t.TempDir then creates a numbered subdirectory inside it,
+			// which fails with EACCES for any non-root user. Running as root
+			// hides this: root bypasses the permission check, so the test
+			// passes locally and fails on CI runners.
+			dir := t.TempDir()
+
+			restore := setUmask(t, 0o277)
+			defer restore()
+
+			path := filepath.Join(dir, "file.txt")
+
+			require.NoError(t, w.write(path, []byte("x"), WriteOptions{FileMode: 0o600}))
+
+			info, err := os.Stat(path)
+			require.NoError(t, err)
+			assert.Equal(t, os.FileMode(0o600), info.Mode().Perm(),
+				"umask must not survive into the written file")
+		})
+	}
+}
+
+// TestWritersApplyDirMode covers the case that motivated WriteOptions: the
+// daemon's data directory has to be created 0700, and a writer that hard-coded
+// 0755 for parents would leave it world-traversable.
+func TestWritersApplyDirMode(t *testing.T) {
+	requirePOSIXPerms(t)
+
+	for _, w := range writers() {
+		t.Run(w.name, func(t *testing.T) {
+			root := t.TempDir()
+			parent := filepath.Join(root, "private")
+
+			require.NoError(t, w.write(filepath.Join(parent, "f.txt"), []byte("x"),
+				WriteOptions{DirMode: 0o700}))
+
+			info, err := os.Stat(parent)
+			require.NoError(t, err)
+			assert.Equal(t, os.FileMode(0o700), info.Mode().Perm())
+		})
+	}
+}
+
+// TestWritersZeroOptionsUseDefaults pins the documented zero-value behaviour.
+// A zero FileMode must not be taken literally as mode 0000.
+//
+// The expectations are literals, not defaultFileMode/defaultDirMode. Asserting
+// the constants against themselves only proves the zero value ROUTES to them,
+// which is the cheap half: changing defaultFileMode to 0o644 -- making every
+// config file this package writes world-readable -- passed the suite. The
+// daemon tests do not catch it either, because config_init.go always passes
+// both modes explicitly. These are the modes the package documents, so they are
+// written out.
+func TestWritersZeroOptionsUseDefaults(t *testing.T) {
+	requirePOSIXPerms(t)
+
+	for _, w := range writers() {
+		t.Run(w.name, func(t *testing.T) {
+			root := t.TempDir()
+			parent := filepath.Join(root, "sub")
+			path := filepath.Join(parent, "f.txt")
+
+			require.NoError(t, w.write(path, []byte("x"), WriteOptions{}))
+
+			file, err := os.Stat(path)
+			require.NoError(t, err)
+			assert.Equal(t, os.FileMode(0o600), file.Mode().Perm(), "zero FileMode must mean 0600")
+
+			dir, err := os.Stat(parent)
+			require.NoError(t, err)
+			assert.Equal(t, os.FileMode(0o755), dir.Mode().Perm(), "zero DirMode must mean 0755")
+		})
+	}
+}
+
+// TestWritersLeaveNothingBehindWhenParentCannotBeCreated uses a regular file as
+// a path element, so MkdirAll cannot create the directory beneath it. The error
+// must surface rather than be swallowed, and nothing may be left on disk.
+func TestWritersLeaveNothingBehindWhenParentCannotBeCreated(t *testing.T) {
+	for _, w := range writers() {
+		t.Run(w.name, func(t *testing.T) {
+			root := t.TempDir()
+			blocker := filepath.Join(root, "not-a-dir")
+			require.NoError(t, os.WriteFile(blocker, []byte("x"), 0o600))
+
+			err := w.write(filepath.Join(blocker, "f.txt"), []byte("data"), WriteOptions{})
+			require.Error(t, err)
+
+			entries, readErr := os.ReadDir(root)
+			require.NoError(t, readErr)
+			assert.Len(t, entries, 1, "only the blocking file should remain")
+		})
+	}
+}
+
+// TestWritersLeaveNothingBehindWhenParentIsUnwritable covers the failure that
+// happens after the parent exists: the open itself is refused. Neither writer
+// may leave a partial or staging file.
+func TestWritersLeaveNothingBehindWhenParentIsUnwritable(t *testing.T) {
+	requirePOSIXPerms(t)
+
+	if os.Geteuid() == 0 {
+		t.Skip("root ignores directory permission bits")
+	}
+
+	for _, w := range writers() {
+		t.Run(w.name, func(t *testing.T) {
+			parent := filepath.Join(t.TempDir(), "ro")
+			require.NoError(t, os.Mkdir(parent, 0o500))
+
+			err := w.write(filepath.Join(parent, "f.txt"), []byte("data"), WriteOptions{})
+			require.Error(t, err)
+
+			// 0500 still permits reading the directory, so a leftover staging
+			// file would be visible here.
+			entries, readErr := os.ReadDir(parent)
+			require.NoError(t, readErr)
+			assert.Empty(t, entries, "no partial or staging file may survive a failed write")
+		})
+	}
+}
+
+// TestWritersRejectDirectoryTarget documents that neither writer will write
+// over a directory. Callers phrase their own message; both must fail.
+//
+// It also covers the one failure that happens AFTER the descriptor exists: the
+// atomic path gets as far as staging a temp file and then fails at the rename.
+// That is the only branch reaching the post-create cleanup, so without the
+// directory-listing assertion below, "the partial file is removed on any
+// failure" -- the behaviour this package advertises -- is asserted nowhere.
+// The other two leave-nothing-behind tests both fail before anything is
+// created, and one of them skips as root.
+func TestWritersRejectDirectoryTarget(t *testing.T) {
+	for _, w := range writers() {
+		t.Run(w.name, func(t *testing.T) {
+			parent := t.TempDir()
+			target := filepath.Join(parent, "adir")
+			require.NoError(t, os.Mkdir(target, 0o755))
+
+			require.Error(t, w.write(target, []byte("data"), WriteOptions{}))
+
+			entries, err := os.ReadDir(parent)
+			require.NoError(t, err)
+			require.Len(t, entries, 1, "no staging file may survive a failed rename")
+		})
+	}
+}
+
+func TestWritersLeaveNoTempFilesOnSuccess(t *testing.T) {
+	for _, w := range writers() {
+		t.Run(w.name, func(t *testing.T) {
+			dir := t.TempDir()
+			path := filepath.Join(dir, "file.txt")
+
+			require.NoError(t, w.write(path, []byte("data"), WriteOptions{}))
+
+			entries, err := os.ReadDir(dir)
+			require.NoError(t, err)
+			require.Len(t, entries, 1)
+			assert.Equal(t, "file.txt", entries[0].Name())
+		})
+	}
+}
+
+// ── behaviour that differs between the two writers ─────────────────────────
+
+func TestWriteAtomicOverwrites(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "file.txt")
+
+	require.NoError(t, WriteAtomic(path, []byte("first"), WriteOptions{}))
+	require.NoError(t, WriteAtomic(path, []byte("second"), WriteOptions{}))
+
+	got, err := os.ReadFile(path)
+	require.NoError(t, err)
+	assert.Equal(t, "second", string(got))
+}
+
+// TestWriteNewRefusesExistingFile pins the contract callers depend on: the
+// refusal is matchable with errors.Is rather than by message text, and it does
+// not touch what is already there.
+func TestWriteNewRefusesExistingFile(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "file.txt")
+	require.NoError(t, os.WriteFile(path, []byte("original"), 0o600))
+
+	err := WriteNew(path, []byte("replacement"), WriteOptions{})
+	require.ErrorIs(t, err, ErrExists)
+
+	got, readErr := os.ReadFile(path)
+	require.NoError(t, readErr)
+	assert.Equal(t, "original", string(got))
+}
+
+// TestWriteAtomicReplacesContentNotJustAppends guards the rename: a writer that
+// opened the target and wrote without truncating would leave a tail of the old
+// content behind when the new payload is shorter.
+func TestWriteAtomicReplacesContentNotJustAppends(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "file.txt")
+
+	require.NoError(t, WriteAtomic(path, []byte("a much longer original payload"), WriteOptions{}))
+	require.NoError(t, WriteAtomic(path, []byte("short"), WriteOptions{}))
+
+	got, err := os.ReadFile(path)
+	require.NoError(t, err)
+	assert.Equal(t, "short", string(got))
+}

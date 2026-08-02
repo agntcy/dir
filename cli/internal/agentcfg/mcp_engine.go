@@ -10,7 +10,7 @@ import (
 	"reflect"
 
 	"github.com/agntcy/dir/cli/internal/agentcfg/codec"
-	"github.com/agntcy/dir/cli/internal/agentcfg/fsutil"
+	"github.com/agntcy/dir/cli/internal/fsutil"
 )
 
 const configFilePerm = 0o600
@@ -134,7 +134,7 @@ func writeConfig(format codec.Format, path string, m map[string]any) error {
 		return fmt.Errorf("encode config %s: %w", path, err)
 	}
 
-	if err := fsutil.WriteAtomic(path, data, configFilePerm); err != nil {
+	if err := fsutil.WriteAtomic(path, data, fsutil.WriteOptions{FileMode: configFilePerm}); err != nil {
 		return fmt.Errorf("write config %s: %w", path, err)
 	}
 
