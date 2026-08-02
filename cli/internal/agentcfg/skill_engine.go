@@ -12,7 +12,7 @@ import (
 	"strings"
 
 	"github.com/agntcy/dir/api/exportfmt"
-	"github.com/agntcy/dir/cli/internal/agentcfg/fsutil"
+	"github.com/agntcy/dir/cli/internal/fsutil"
 )
 
 const skillFilePerm = 0o644
@@ -74,7 +74,7 @@ func InstallSkill(target *SkillTarget, env Env, slug, canonical string, scope Sc
 		return outcome, nil
 	}
 
-	if err := fsutil.WriteAtomic(path, desired, skillFilePerm); err != nil {
+	if err := fsutil.WriteAtomic(path, desired, fsutil.WriteOptions{FileMode: skillFilePerm}); err != nil {
 		return failOutcome(outcome, fmt.Errorf("write skill %s: %w", path, err))
 	}
 
@@ -260,7 +260,7 @@ func removeSkillBlock(outcome Outcome, path, slug string, dryRun bool) (Outcome,
 		return outcome, nil
 	}
 
-	if err := fsutil.WriteAtomic(path, []byte(stripped), skillFilePerm); err != nil {
+	if err := fsutil.WriteAtomic(path, []byte(stripped), fsutil.WriteOptions{FileMode: skillFilePerm}); err != nil {
 		return failOutcome(outcome, fmt.Errorf("write skill %s: %w", path, err))
 	}
 
