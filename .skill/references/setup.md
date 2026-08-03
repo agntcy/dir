@@ -66,10 +66,17 @@ Install if missing:
 ```bash
 uv tool install cisco-ai-mcp-scanner    # installs mcp-scanner
 uv tool install cisco-ai-skill-scanner  # installs skill-scanner
-uvx install mcp-server-git              # required by mcp-scanner at scan time
 ```
 
 If `uv` is unavailable: `pip install cisco-ai-mcp-scanner cisco-ai-skill-scanner`.
+
+**`mcp-scanner` requires LLM credentials** to run its behavioral alignment
+check — this is optional but skipping it means MCP records will remain
+*unscanned* even with `mcp-scanner` on `PATH`. `skill-scanner` has no such
+requirement. See the
+[mcp-scanner documentation](https://github.com/cisco-ai-defense/mcp-scanner)
+for supported providers and required environment variables, then set them in
+the daemon's environment before starting it.
 
 See the verification reference for scan report details.
 
