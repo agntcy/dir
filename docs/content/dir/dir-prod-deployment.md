@@ -105,7 +105,7 @@ Enabled via `spire.useCSIDriver: true` (v1.0.0-rc.4+):
 ### Zot Storage Backend
 
 The bundled Zot registry is configured through `apiserver.zot.configFiles."config.json"`
-in the chart values. The shipped default uses **local filesystem storage**
+in the chart values. The shipped default uses local filesystem storage
 (`storage.rootDirectory`) backed by a PVC, and leaves Zot's own defaults in place —
 including `dedupe`, which Zot defaults to `true`.
 
