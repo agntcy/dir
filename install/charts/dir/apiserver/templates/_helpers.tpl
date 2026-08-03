@@ -212,6 +212,25 @@ Note: Uses (get .Values.zot "enabled") for nil-safe access since zot may not be 
 {{- end -}}
 
 {{/*
+Resolve the OASF-SDK extractor gRPC address for the gateway's POST /v1/search.
+An explicit extractor.remoteAddr wins; otherwise, when the oasf-sdk subchart is
+enabled, point at its in-cluster service (reading the subchart's service port,
+defaulting to 31234). Empty when neither is set — the gateway then answers
+/v1/search with 503 until an extractor is configured.
+
+Note: the subchart name has a hyphen, so it is accessed via (index .Values
+"oasf-sdk") rather than dotted notation.
+*/}}
+{{- define "chart.extractor.remoteAddr" -}}
+{{- if .Values.extractor.remoteAddr -}}
+{{- .Values.extractor.remoteAddr -}}
+{{- else if and (index .Values "oasf-sdk") (get (index .Values "oasf-sdk") "enabled") -}}
+{{- $port := dig "service" "internalPort" 31234 (index .Values "oasf-sdk") -}}
+{{- printf "%s-oasf-sdk.%s.svc.cluster.local:%v" .Release.Name .Release.Namespace $port -}}
+{{- end -}}
+{{- end -}}
+
+{{/*
 Get OCI repository name.
 Returns user-configured value, or "dir" as default when using internal Zot.
 

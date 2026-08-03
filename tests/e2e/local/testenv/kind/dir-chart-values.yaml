@@ -33,3 +33,10 @@ apiserver:
     service:
       type: NodePort
       nodePort: 30889
+
+  # OASF-SDK extractor server: exercises the gateway's natural-language search
+  # (POST /v1/search) over the remote-extractor path. By design the oasf-sdk pod
+  # downloads the embedding model from HuggingFace at startup, so this env needs
+  # egress to huggingface.co and will not come up behind a TLS-intercepting proxy.
+  oasf-sdk:
+    enabled: true

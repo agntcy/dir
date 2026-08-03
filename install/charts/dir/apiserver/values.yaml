@@ -460,6 +460,13 @@ httpGateway:
     #    hosts:
     #      - chart-example.local
 
+# OASF taxonomy extractor for the gateway's natural-language search (POST /v1/search).
+# When oasf-sdk.enabled is true, the address auto-resolves to the in-cluster
+# oasf-sdk service, so remoteAddr can stay empty. Set remoteAddr to point at an
+# external OASF-SDK server instead. When neither is set, /v1/search returns 503.
+extractor:
+  remoteAddr: ""
+
 # OpenShift Route configuration (optional)
 # Creates an OpenShift Route to expose the gRPC API externally.
 # Only applicable on OpenShift clusters. Disabled by default.
@@ -652,6 +659,21 @@ externalSecrets:
 # OASF is NOT installed by default. Set enabled: true to deploy an OASF schema server instance.
 oasf:
   enabled: false
+
+# OASF-SDK extractor server subchart configuration (OPTIONAL)
+# NOT installed by default. Set enabled: true to deploy an in-cluster OASF-SDK
+# extractor server; the gateway's POST /v1/search then auto-wires to it (see the
+# extractor block above and Chart.yaml).
+oasf-sdk:
+  enabled: false
+  # OASF_SDK_EXTRACTOR_OASF_URL is the extractor's on/off switch: the server
+  # registers the ExtractorService gRPC only when it is set. Without it the pod
+  # runs but serves no extractor, so /v1/search returns 503.
+  # PREREQUISITE: the server provisions the embedding model at startup, so the
+  # oasf-sdk image must bake in the model (or have CA certs + network + a
+  # readiness gate); otherwise the pod crash-loops on a TLS/download error.
+  env:
+    OASF_SDK_EXTRACTOR_OASF_URL: "https://schema.oasf.outshift.com"
 
 # PostgreSQL subchart configuration
 # Deploys PostgreSQL alongside the apiserver for dev/production use.
