@@ -117,7 +117,7 @@ Two storage layouts are supported for a production node:
 | **Remote object storage (S3)** | `storageDriver` + either `dedupe: false` **or** a `cacheDriver` | Zot cannot dedupe on remote storage using its local cache. |
 
 !!! warning "S3 storage requires an explicit dedupe decision"
-    Zot does no start when `storage.storageDriver` points at remote object
+    Zot does not start when `storage.storageDriver` points at remote object
     storage and `dedupe` is left at its default of `true` with no remote cache
     configured. Startup fails config validation with:
 
