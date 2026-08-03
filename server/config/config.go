@@ -169,6 +169,11 @@ type Config struct {
 
 	// HTTPGateway exposes the gRPC services over HTTP/JSON via grpc-gateway.
 	HTTPGateway HTTPGatewayConfig `json:"http_gateway,omitzero" mapstructure:"http_gateway"`
+
+	// Extractor configures the OASF taxonomy extractor used by the gateway's
+	// POST /v1/search natural-language search. Only consulted when the HTTP
+	// gateway is enabled.
+	Extractor ExtractorConfig `json:"extractor,omitzero" mapstructure:"extractor"`
 }
 
 // HTTPGatewayConfig configures the in-process grpc-gateway sidecar.
@@ -204,6 +209,23 @@ func (c HTTPGatewayConfig) WithDefaults() HTTPGatewayConfig {
 	}
 
 	return out
+}
+
+// ExtractorConfig configures the OASF taxonomy extractor for the gateway's
+// natural-language search. When RemoteAddr is set the gateway dials that gRPC
+// OASF-SDK server; otherwise it loads locally-provisioned assets under AssetDir.
+type ExtractorConfig struct {
+	// RemoteAddr is a gRPC OASF-SDK server address (e.g. "oasf-sdk:5000").
+	// Empty selects the local in-process backend loaded from AssetDir.
+	RemoteAddr string `json:"remote_addr,omitempty" mapstructure:"remote_addr"`
+
+	// AssetDir is the local extractor asset directory. Empty uses the oasf-sdk
+	// default (~/.agntcy/oasf-sdk/extractor), the location dirctl init provisions.
+	AssetDir string `json:"asset_dir,omitempty" mapstructure:"asset_dir"`
+
+	// OASFURL is the OASF schema endpoint used when loading local assets. Empty
+	// uses the oasf-sdk default.
+	OASFURL string `json:"oasf_url,omitempty" mapstructure:"oasf_url"`
 }
 
 type SyncConfig struct {
@@ -655,6 +677,18 @@ func LoadConfig(opts ...ConfigOption) (*Config, error) {
 
 	_ = v.BindEnv("http_gateway.catalog_title")
 	v.SetDefault("http_gateway.catalog_title", DefaultHTTPGatewayCatalogTitle)
+
+	//
+	// Extractor configuration (gateway natural-language search)
+	//
+	_ = v.BindEnv("extractor.remote_addr")
+	v.SetDefault("extractor.remote_addr", "")
+
+	_ = v.BindEnv("extractor.asset_dir")
+	v.SetDefault("extractor.asset_dir", "")
+
+	_ = v.BindEnv("extractor.oasf_url")
+	v.SetDefault("extractor.oasf_url", "")
 
 	// Load configuration into struct
 	decodeHooks := mapstructure.ComposeDecodeHookFunc(
