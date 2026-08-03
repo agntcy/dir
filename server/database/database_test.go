@@ -224,6 +224,55 @@ func TestGetRecordCIDs_Pagination(t *testing.T) {
 	assert.Len(t, cids, 1)
 }
 
+func TestCountRecords(t *testing.T) {
+	db := setupTestDB(t)
+	seedDB(t, db)
+
+	tests := []struct {
+		name     string
+		opts     []types.FilterOption
+		expected uint32
+	}{
+		{name: "all records", expected: 3},
+		{
+			name:     "filters records",
+			opts:     []types.FilterOption{types.WithNames("*assistant*")},
+			expected: 2,
+		},
+		{
+			name: "ignores pagination and sorting",
+			opts: []types.FilterOption{
+				types.WithLimit(1),
+				types.WithOffset(2),
+				types.WithOrderBy(types.RecordOrderClause{Column: "name"}),
+			},
+			expected: 3,
+		},
+		{
+			name:     "counts distinct records across joined rows",
+			opts:     []types.FilterOption{types.WithSkillNames("natural_language_processing/*")},
+			expected: 2,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			count, err := db.CountRecords(tc.opts...)
+			require.NoError(t, err)
+			assert.Equal(t, tc.expected, count)
+		})
+	}
+}
+
+func TestCountRecords_NilOption(t *testing.T) {
+	db := setupTestDB(t)
+
+	var nilOpt types.FilterOption
+
+	_, err := db.CountRecords(nilOpt)
+	assert.Error(t, err)
+}
+
 func TestGetRecordCIDs_Wildcards(t *testing.T) {
 	db := setupTestDB(t)
 	seedDB(t, db)

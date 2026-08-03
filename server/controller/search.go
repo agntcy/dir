@@ -4,6 +4,7 @@
 package controller
 
 import (
+	"context"
 	"fmt"
 
 	corev1 "github.com/agntcy/dir/api/core/v1"
@@ -27,6 +28,22 @@ func NewSearchController(db types.DatabaseAPI, store types.StoreAPI) searchv1.Se
 		db:                               db,
 		store:                            store,
 	}
+}
+
+func (c *searchCtlr) CountRecords(_ context.Context, req *searchv1.CountRecordsRequest) (*searchv1.CountRecordsResponse, error) {
+	searchLogger.Debug("Called search controller's CountRecords method", "req", req)
+
+	filterOptions, err := databaseutils.QueryToFilters(req.GetQueries())
+	if err != nil {
+		return nil, fmt.Errorf("failed to create filter options: %w", err)
+	}
+
+	totalCount, err := c.db.CountRecords(filterOptions...)
+	if err != nil {
+		return nil, fmt.Errorf("failed to count records: %w", err)
+	}
+
+	return &searchv1.CountRecordsResponse{TotalCount: totalCount}, nil
 }
 
 func (c *searchCtlr) SearchCIDs(req *searchv1.SearchCIDsRequest, srv searchv1.SearchService_SearchCIDsServer) error {

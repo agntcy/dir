@@ -6,6 +6,7 @@ package gorm
 import (
 	"errors"
 	"fmt"
+	"math"
 	"strings"
 	"time"
 
@@ -254,6 +255,39 @@ func (d *DB) GetRecords(opts ...types.FilterOption) ([]coretypes.Record, error) 
 // cidRecord is a minimal scan target for GetRecordCIDs.
 type cidRecord struct {
 	RecordCID string `gorm:"column:record_cid"`
+}
+
+// CountRecords returns the number of distinct records matching the provided options.
+// Pagination and sorting options are ignored.
+func (d *DB) CountRecords(opts ...types.FilterOption) (uint32, error) {
+	cfg := &types.RecordFilters{}
+
+	for _, opt := range opts {
+		if opt == nil {
+			return 0, errors.New("nil option provided")
+		}
+
+		opt(cfg)
+	}
+
+	cfg.Limit = 0
+	cfg.Offset = 0
+	cfg.OrderBy = nil
+
+	query := d.gormDB.Model(&Record{})
+	query = d.handleFilterOptions(query, cfg)
+	query = query.Distinct("records.record_cid")
+
+	var count int64
+	if err := query.Count(&count).Error; err != nil {
+		return 0, fmt.Errorf("count records: %w", err)
+	}
+
+	if count < 0 || math.MaxUint32 < count {
+		return 0, fmt.Errorf("can't convert %d to uint32", count)
+	}
+
+	return uint32(count), nil
 }
 
 // GetRecordCIDs retrieves only record CIDs based on the provided options.
