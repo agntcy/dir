@@ -141,16 +141,16 @@ func parseAgentFilter(input string) (agentFilter, error) {
 	return out, nil
 }
 
-// buildCatalogFilterOptions translates a parsed filter, order, and paging into
-// catalog filter options. The bool is false when type= was set but no requested
-// media type maps to an indexed module (zero rows).
+// buildCatalogFacetOptions translates a parsed filter's facets (displayName,
+// type, created/updated, verified, trusted, safe, tags) into catalog filter
+// options, without any paging or ordering. The bool is false when type= was set
+// but no requested media type maps to an indexed module (zero rows). It is
+// shared by ListAgents (which adds paging/order) and SearchAgents (which applies
+// facets to a relevance-ranked CID set at hydration time).
 //
 //nolint:cyclop
-func buildCatalogFilterOptions(f agentFilter, order []orderByClause, pageSize, offset int) ([]types.CatalogQueryOption, bool) {
-	opts := []types.CatalogQueryOption{
-		types.WithLimit(pageSize),
-		types.WithOffset(offset),
-	}
+func buildCatalogFacetOptions(f agentFilter) ([]types.CatalogQueryOption, bool) {
+	var opts []types.CatalogQueryOption
 
 	if f.DisplayName != "" {
 		opts = append(opts, types.WithNames("*"+f.DisplayName+"*"))
@@ -190,6 +190,23 @@ func buildCatalogFilterOptions(f agentFilter, order []orderByClause, pageSize, o
 	if len(f.TagFilters) > 0 {
 		opts = append(opts, types.WithTagFilters(f.TagFilters...))
 	}
+
+	return opts, true
+}
+
+// buildCatalogFilterOptions translates a parsed filter, order, and paging into
+// catalog filter options. The bool is false when type= was set but no requested
+// media type maps to an indexed module (zero rows).
+func buildCatalogFilterOptions(f agentFilter, order []orderByClause, pageSize, offset int) ([]types.CatalogQueryOption, bool) {
+	facets, ok := buildCatalogFacetOptions(f)
+	if !ok {
+		return nil, false
+	}
+
+	opts := append([]types.CatalogQueryOption{
+		types.WithLimit(pageSize),
+		types.WithOffset(offset),
+	}, facets...)
 
 	if len(order) > 0 {
 		clauses := make([]types.RecordOrderClause, 0, len(order))
