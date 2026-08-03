@@ -44,6 +44,7 @@ extra_css:
   - stylesheets/agntcy-docs.css
   - stylesheets/dir-landing.css
   - stylesheets/dirctl-terminal.css
+  - stylesheets/dir-setup-chooser.css
 
 extra_javascript:
   - javascripts/dirctl-demo-data.js
@@ -55,6 +56,7 @@ extra_javascript:
   - javascripts/card-links.js
   - javascripts/external-links.js
   - javascripts/palette-tooltip-fix.js
+  - javascripts/dir-setup-chooser.js
 
 markdown_extensions:
   - admonition
@@ -114,6 +116,7 @@ nav:
   - Documentation:
       - Get Started:
           - Overview: dir/dir-overview.md
+          - Choosing a Setup: dir/dir-choosing-a-setup.md
           - Quickstart: dir/dir-quickstart.md
           - Usage Guide: dir/dir-features-scenarios.md
       - Concepts:

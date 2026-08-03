@@ -1,0 +1,170 @@
+/* Copyright AGNTCY Contributors (https://github.com/agntcy) */
+/* SPDX-License-Identifier: Apache-2.0 */
+
+/* Interactive setup chooser. Uses Material theme variables so it adapts to
+   light/dark automatically. */
+
+.setup-chooser {
+  margin: 1.2em 0 1.6em;
+}
+
+/* card */
+.setup-chooser .sc-card {
+  border: 1px solid var(--md-default-fg-color--lightest);
+  border-radius: 12px;
+  padding: 20px 22px;
+  background: var(--md-default-bg-color);
+  box-shadow: var(--md-shadow-z1);
+}
+.setup-chooser .sc-count {
+  font-size: 0.72rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--md-default-fg-color--light);
+  font-family: var(--md-code-font-family, monospace);
+}
+.setup-chooser .sc-title {
+  font-size: 1.15rem;
+  font-weight: 700;
+  margin: 4px 0 2px;
+}
+.setup-chooser .sc-hint {
+  color: var(--md-default-fg-color--light);
+  font-size: 0.8rem;
+  margin: 0 0 16px;
+}
+
+/* options */
+.setup-chooser .sc-options {
+  display: grid;
+  gap: 8px;
+}
+.setup-chooser .sc-opt {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  text-align: left;
+  width: 100%;
+  cursor: pointer;
+  border: 1.5px solid var(--md-default-fg-color--lightest);
+  border-radius: 9px;
+  padding: 12px 14px;
+  background: var(--md-default-bg-color);
+  color: var(--md-default-fg-color);
+  font: inherit;
+  transition: border-color 0.15s, background 0.15s;
+}
+.setup-chooser .sc-opt:hover {
+  border-color: var(--md-accent-fg-color);
+  background: var(--md-code-bg-color);
+}
+.setup-chooser .sc-opt:focus-visible {
+  outline: 2px solid var(--md-accent-fg-color);
+  outline-offset: 2px;
+}
+.setup-chooser .sc-opt[aria-pressed="true"] {
+  border-color: var(--md-accent-fg-color);
+  background: color-mix(in srgb, var(--md-accent-fg-color) 10%, transparent);
+}
+.setup-chooser .sc-tick {
+  flex: 0 0 auto;
+  width: 20px;
+  height: 20px;
+  border-radius: 6px;
+  border: 1.5px solid var(--md-default-fg-color--lighter);
+  display: grid;
+  place-items: center;
+  font-size: 0.7rem;
+  margin-top: 1px;
+}
+.setup-chooser .sc-opt[aria-pressed="true"] .sc-tick {
+  background: var(--md-accent-fg-color);
+  border-color: var(--md-accent-fg-color);
+  color: #fff;
+}
+.setup-chooser .sc-olabel {
+  display: block;
+  font-weight: 600;
+}
+.setup-chooser .sc-osub {
+  display: block;
+  color: var(--md-default-fg-color--light);
+  font-size: 0.8rem;
+  margin-top: 1px;
+}
+
+/* nav + buttons */
+.setup-chooser .sc-nav {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  margin-top: 18px;
+}
+.setup-chooser .sc-btn {
+  font: inherit;
+  font-weight: 600;
+  font-size: 0.8rem;
+  border-radius: 8px;
+  padding: 9px 15px;
+  cursor: pointer;
+  border: 1px solid var(--md-default-fg-color--lighter);
+  background: var(--md-default-bg-color);
+  color: var(--md-default-fg-color);
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.setup-chooser .sc-btn:hover {
+  background: var(--md-code-bg-color);
+}
+.setup-chooser .sc-btn:focus-visible {
+  outline: 2px solid var(--md-accent-fg-color);
+  outline-offset: 2px;
+}
+.setup-chooser .sc-btn[disabled] {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+.setup-chooser .sc-ghost {
+  border-color: transparent;
+  color: var(--md-default-fg-color--light);
+}
+.setup-chooser .sc-primary {
+  background: var(--md-accent-fg-color);
+  border-color: var(--md-accent-fg-color);
+  color: #fff;
+}
+.setup-chooser .sc-primary:hover {
+  background: var(--md-accent-fg-color);
+  filter: brightness(1.08);
+}
+
+/* result */
+.setup-chooser .sc-badge {
+  display: inline-block;
+  font-size: 0.68rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  font-weight: 700;
+  color: var(--md-accent-fg-color);
+  background: color-mix(in srgb, var(--md-accent-fg-color) 12%, transparent);
+  padding: 3px 9px;
+  border-radius: 99px;
+  margin-bottom: 8px;
+}
+.setup-chooser .sc-rec-name {
+  font-size: 1.3rem;
+  font-weight: 700;
+  margin-bottom: 4px;
+}
+.setup-chooser .sc-why {
+  color: var(--md-default-fg-color--light);
+  margin: 0 0 14px;
+}
+.setup-chooser .sc-cta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+}
