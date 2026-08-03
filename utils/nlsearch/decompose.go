@@ -12,7 +12,7 @@ import (
 	"fmt"
 
 	searchv1 "github.com/agntcy/dir/api/search/v1"
-	"github.com/agntcy/dir/client/extractor"
+	"github.com/agntcy/dir/utils/extractor"
 )
 
 // SignalType identifies the kind of search signal extracted from free-form text.

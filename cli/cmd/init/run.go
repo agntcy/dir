@@ -14,7 +14,7 @@ import (
 	"github.com/agntcy/dir/cli/internal/agentcfg"
 	"github.com/agntcy/dir/cli/presenter"
 	clientconfig "github.com/agntcy/dir/client/config"
-	extractor "github.com/agntcy/dir/client/extractor"
+	extractor "github.com/agntcy/dir/utils/extractor"
 	"github.com/spf13/cobra"
 	"golang.org/x/term"
 )

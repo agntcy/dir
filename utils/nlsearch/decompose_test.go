@@ -7,7 +7,7 @@ import (
 	"context"
 	"testing"
 
-	"github.com/agntcy/dir/client/extractor"
+	"github.com/agntcy/dir/utils/extractor"
 	sdk "github.com/agntcy/oasf-sdk/pkg/extractor"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
