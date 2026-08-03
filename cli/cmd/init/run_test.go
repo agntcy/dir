@@ -10,7 +10,7 @@ import (
 	"testing"
 
 	clientconfig "github.com/agntcy/dir/client/config"
-	extractor "github.com/agntcy/dir/client/extractor"
+	extractor "github.com/agntcy/dir/utils/extractor"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
