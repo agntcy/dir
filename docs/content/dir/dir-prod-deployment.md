@@ -116,7 +116,7 @@ Two storage layouts are supported for a production node:
 | **Local filesystem (default)** | `rootDirectory` only | Backed by a PVC. Dedupe and GC work with Zot's built-in local cache. Single writer. |
 | **Remote object storage (S3)** | `storageDriver` + either `dedupe: false` **or** a `cacheDriver` | Zot cannot dedupe on remote storage using its local cache. |
 
-!!! warning "S3 storage requires an explicit dedupe decision"
+!!! note "S3 storage requires an explicit dedupe decision"
     Zot does not start when `storage.storageDriver` points at remote object
     storage and `dedupe` is left at its default of `true` with no remote cache
     configured. Startup fails config validation with:
@@ -129,48 +129,11 @@ Two storage layouts are supported for a production node:
     Because the shipped `config.json` does not set `dedupe`, adding an S3
     `storageDriver` to it without also setting `dedupe` produces this failure.
 
-Pick one of the following when moving Zot to S3.
+Pick one of the following when moving Zot to S3:
 
-**Option A — disable dedupe (no extra AWS resources):**
+=== "Option A — disable dedupe (no extra AWS resources)"
 
-```json
-"storage": {
-  "rootDirectory": "/var/lib/registry",
-  "dedupe": false,
-  "storageDriver": {
-    "name": "s3",
-    "region": "us-east-1",
-    "bucket": "your-dir-bucket",
-    "rootdirectory": "/zot"
-  }
-}
-```
-
-**Option B — keep dedupe, add a DynamoDB cache:**
-
-```json
-"storage": {
-  "rootDirectory": "/var/lib/registry",
-  "dedupe": true,
-  "storageDriver": {
-    "name": "s3",
-    "region": "us-east-1",
-    "bucket": "your-dir-bucket",
-    "rootdirectory": "/zot"
-  },
-  "cacheDriver": {
-    "name": "dynamodb",
-    "region": "us-east-1",
-    "cacheTablename": "ZotBlobTable",
-    "repoMetaTablename": "ZotRepoMetadataTable",
-    "imageMetaTablename": "ZotImageMetaTable",
-    "repoBlobsInfoTablename": "ZotRepoBlobsInfoTable",
-    "userDataTablename": "ZotUserDataTable",
-    "apiKeyTablename": "ZotApiKeyTable",
-    "versionTablename": "ZotVersion"
-  }
-}
-```
+    
 
 Neither snippet sets S3 credentials. Zot resolves them the same way the AWS SDK
 does — in a cluster, prefer an IAM role (IRSA on EKS) attached to the Zot service
@@ -188,7 +151,7 @@ Notes for either option:
   Match the parameter names in the Zot storage documentation exactly.
 - Keep `storage.rootDirectory` set even when `storageDriver` is present. Zot
   exits at startup with `no storage config provided` if it is missing, and
-  `zot verify` does **not** catch that — the config passes validation and the
+  `zot verify` does not catch that — the config passes validation and the
   pod then crash-loops. The key prefix used inside the bucket comes from
   `storageDriver.rootdirectory`, not from `storage.rootDirectory`.
 - Only `dedupe` is gated by config validation. Garbage collection (`gc`) and the
