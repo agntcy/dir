@@ -14,11 +14,12 @@ import (
 
 // options holds the parsed flags for `dirctl init`.
 type options struct {
-	oasfURL  string
-	assetDir string
-	yes      bool
-	remove   bool
-	agents   []string
+	oasfURL    string
+	assetDir   string
+	remoteAddr string
+	yes        bool
+	remove     bool
+	agents     []string
 }
 
 // addFlags registers the `dirctl init` flags on cmd.
@@ -28,6 +29,8 @@ func addFlags(cmd *cobra.Command, opts *options) {
 		"OASF schema endpoint to pull the taxonomy from")
 	flags.StringVar(&opts.assetDir, "asset-dir", "",
 		"Local directory for provisioned extractor assets (default ~/.agntcy/oasf-sdk/extractor)")
+	flags.StringVar(&opts.remoteAddr, "extractor-remote-addr", "",
+		"gRPC OASF-SDK server address (e.g. localhost:5000); when set, uses that server instead of downloading local assets")
 	flags.BoolVarP(&opts.yes, "yes", "y", false,
 		"Skip prompts and proceed non-interactively (provisions ~89 MB unattended)")
 	flags.BoolVar(&opts.remove, "remove", false,

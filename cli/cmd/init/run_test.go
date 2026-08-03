@@ -4,6 +4,7 @@
 package init
 
 import (
+	"context"
 	"os"
 	"path/filepath"
 	"strings"
@@ -84,16 +85,56 @@ func TestPreferSavedConfigExplicitFlagWins(t *testing.T) {
 
 	// Flags explicitly set — even to the default value — must win over saved
 	// config, so a user can force-reset back to the default URL.
-	set, err := preferSavedConfig(base, true, true)
+	set, err := preferSavedConfig(base, true, true, true)
 	require.NoError(t, err)
 	assert.Equal(t, extractor.DefaultOASFURL, set.OASFURL)
 	assert.Equal(t, extractor.DefaultAssetDir(), set.AssetDir)
 
 	// Flags not set — the saved config is preferred.
-	unset, err := preferSavedConfig(base, false, false)
+	unset, err := preferSavedConfig(base, false, false, false)
 	require.NoError(t, err)
 	assert.Equal(t, "https://saved.example", unset.OASFURL)
 	assert.Equal(t, "/saved/dir", unset.AssetDir)
+}
+
+func TestConfigFromOptsIncludesRemoteAddr(t *testing.T) {
+	cfg := configFromOpts(&options{remoteAddr: "host:5000"})
+	assert.Equal(t, "host:5000", cfg.RemoteAddr)
+}
+
+func TestPreferSavedConfigPrefersRemoteAddr(t *testing.T) {
+	t.Setenv("XDG_CONFIG_HOME", filepath.Join(t.TempDir(), "xdg"))
+	require.NoError(t, clientconfig.SaveExtractor("", &clientconfig.Extractor{
+		RemoteAddr: "saved:5000",
+	}))
+
+	// addr flag not set — the saved remote address is preferred.
+	unset, err := preferSavedConfig(extractor.Config{}, false, false, false)
+	require.NoError(t, err)
+	assert.Equal(t, "saved:5000", unset.RemoteAddr)
+
+	// addr flag set — the explicit (here empty) value wins over saved.
+	set, err := preferSavedConfig(extractor.Config{}, false, false, true)
+	require.NoError(t, err)
+	assert.Empty(t, set.RemoteAddr)
+}
+
+func TestRunProvisionRemoteSavesAddressNonFatal(t *testing.T) {
+	t.Setenv("XDG_CONFIG_HOME", filepath.Join(t.TempDir(), "xdg"))
+
+	// An unreachable address: the connectivity check fails, but the address is
+	// persisted and the step is non-fatal (config-before-server-up is valid).
+	cmd, out := newTestCmd("")
+	cmd.SetContext(context.Background())
+
+	err := runProvision(cmd, &options{remoteAddr: "127.0.0.1:1"})
+	require.NoError(t, err)
+
+	saved, err := clientconfig.LoadExtractor("")
+	require.NoError(t, err)
+	require.NotNil(t, saved)
+	assert.Equal(t, "127.0.0.1:1", saved.RemoteAddr)
+	assert.Contains(t, out.String(), "remote")
 }
 
 func TestRunProvisionNonTTYWithoutYesIsNoOp(t *testing.T) {
