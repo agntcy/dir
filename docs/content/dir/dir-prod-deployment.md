@@ -133,7 +133,44 @@ Pick one of the following when moving Zot to S3:
 
 === "Option A — disable dedupe (no extra AWS resources)"
 
-    
+    ```json
+    "storage": {
+      "rootDirectory": "/var/lib/registry",
+      "dedupe": false,
+      "storageDriver": {
+        "name": "s3",
+        "region": "us-east-1",
+        "bucket": "your-dir-bucket",
+        "rootdirectory": "/zot"
+      }
+    }
+    ```
+
+=== "Option B — keep dedupe, add a DynamoDB cache"
+
+    ```json
+    "storage": {
+      "rootDirectory": "/var/lib/registry",
+      "dedupe": true,
+      "storageDriver": {
+        "name": "s3",
+        "region": "us-east-1",
+        "bucket": "your-dir-bucket",
+        "rootdirectory": "/zot"
+      },
+      "cacheDriver": {
+        "name": "dynamodb",
+        "region": "us-east-1",
+        "cacheTablename": "ZotBlobTable",
+        "repoMetaTablename": "ZotRepoMetadataTable",
+        "imageMetaTablename": "ZotImageMetaTable",
+        "repoBlobsInfoTablename": "ZotRepoBlobsInfoTable",
+        "userDataTablename": "ZotUserDataTable",
+        "apiKeyTablename": "ZotApiKeyTable",
+        "versionTablename": "ZotVersion"
+      }
+    }
+    ```
 
 Neither snippet sets S3 credentials. Zot resolves them the same way the AWS SDK
 does — in a cluster, prefer an IAM role (IRSA on EKS) attached to the Zot service
