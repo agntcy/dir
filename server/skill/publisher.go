@@ -48,8 +48,9 @@ func Publish(ctx context.Context, store types.StoreAPI, db types.DatabaseAPI, va
 		return fmt.Errorf("push skill record: %w", err)
 	}
 
-	// Update the search index in line with the gRPC store controller, so the
-	// record is discoverable without waiting for an external push.
+	// Index the record and mark it published. Records are unpublished by
+	// default, but this one describes the node itself, so being discoverable
+	// is its whole purpose.
 	decoded, decodeErr := record.Decode()
 	if decodeErr != nil {
 		logger.Warn("DIR skill record pushed but could not be decoded for search index",
@@ -60,6 +61,11 @@ func Publish(ctx context.Context, store types.StoreAPI, db types.DatabaseAPI, va
 		logger.Warn("DIR skill record pushed but search index update failed",
 			"cid", ref.GetCid(),
 			"error", addErr,
+		)
+	} else if pubErr := db.SetRecordPublished(ref.GetCid(), true); pubErr != nil {
+		logger.Warn("DIR skill record indexed but could not be marked published",
+			"cid", ref.GetCid(),
+			"error", pubErr,
 		)
 	}
 

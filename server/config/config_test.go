@@ -100,9 +100,6 @@ func TestConfig(t *testing.T) {
 					KeyPath:           "/path/to/key",
 					RefreshInterval:   5 * time.Second,
 					RepublishInterval: 10 * time.Minute,
-					GossipSub: routing.GossipSubConfig{
-						Enabled: true, // Default value
-					},
 				},
 				Database: dbconfig.Config{
 					Type: "postgres",
@@ -176,9 +173,6 @@ func TestConfig(t *testing.T) {
 				Routing: routing.Config{
 					ListenAddress:  routing.DefaultListenAddress,
 					BootstrapPeers: routing.DefaultBootstrapPeers,
-					GossipSub: routing.GossipSubConfig{
-						Enabled: routing.DefaultGossipSubEnabled,
-					},
 				},
 				Database: dbconfig.Config{
 					Type: dbconfig.DefaultType,

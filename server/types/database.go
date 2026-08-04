@@ -53,10 +53,23 @@ type SearchDatabaseAPI interface {
 	GetRecordCIDs(opts ...FilterOption) ([]string, error)
 
 	// GetRecords retrieves full records based on the provided filters.
+	//
+	// Associations (skills, domains, modules, locators) are not loaded. Use
+	// GetRecordLabels when you need them.
 	GetRecords(opts ...FilterOption) ([]coretypes.Record, error)
+
+	// GetRecordLabels returns the routing labels of each given record, keyed by
+	// CID. CIDs with no labels are absent from the result rather than mapped to
+	// an empty slice.
+	GetRecordLabels(cids []string) (map[string][]Label, error)
 
 	// RemoveRecord removes a record from the search database by CID.
 	RemoveRecord(cid string) error
+
+	// SetRecordPublished sets whether this node announces the record to the
+	// network. Records are unpublished when first indexed; only Publish sets
+	// the flag, and Unpublish clears it.
+	SetRecordPublished(recordCID string, published bool) error
 
 	// SetRecordSigned marks a record as signed (called when a signature is attached).
 	SetRecordSigned(recordCID string) error

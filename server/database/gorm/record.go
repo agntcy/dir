@@ -54,6 +54,14 @@ type Record struct {
 	Authors       []string `gorm:"column:authors;serializer:json"` // Stored as JSON array
 	Signed        bool     `gorm:"column:signed;default:false"`    // Whether at least one signature is attached
 
+	// Published is whether this node announces the record to the network.
+	//
+	// It defaults to false: holding a record makes it servable to anyone who
+	// knows its CID, but not discoverable. Only Publish sets it, so a record
+	// can be pushed, signed and scanned before anyone can find it, and a
+	// replica pulled in by sync stays private unless it is published here too.
+	Published bool `gorm:"column:published;default:false;not null"`
+
 	Skills           []Skill                 `gorm:"foreignKey:RecordCID;references:RecordCID;constraint:OnDelete:CASCADE"`
 	Locators         []Locator               `gorm:"foreignKey:RecordCID;references:RecordCID;constraint:OnDelete:CASCADE"`
 	Modules          []Module                `gorm:"foreignKey:RecordCID;references:RecordCID;constraint:OnDelete:CASCADE"`
@@ -583,6 +591,11 @@ func (d *DB) handleFilterOptions(query *gorm.DB, cfg *types.RecordFilters) *gorm
 		}
 	}
 
+	// Handle published filter (whether this node announces the record).
+	if cfg.Published != nil {
+		query = query.Where("records.published = ?", *cfg.Published)
+	}
+
 	// Handle description filters with wildcard support.
 	if len(cfg.Descriptions) > 0 {
 		condition, args := utils.BuildWildcardCondition("records.description", cfg.Descriptions)
@@ -626,6 +639,27 @@ func scanSeveritiesGTE(threshold string) []string {
 	}
 
 	return order[idx:]
+}
+
+// SetRecordPublished sets whether this node announces the record to the
+// network. It is what makes both Publish and Unpublish survive a restart: the
+// reprovide cycle enumerates published records only.
+func (d *DB) SetRecordPublished(recordCID string, published bool) error {
+	result := d.gormDB.Model(&Record{}).
+		Where("record_cid = ?", recordCID).
+		Update("published", published)
+
+	if result.Error != nil {
+		return fmt.Errorf("failed to set record published flag: %w", result.Error)
+	}
+
+	if result.RowsAffected == 0 {
+		return fmt.Errorf("record not found: %s", recordCID)
+	}
+
+	logger.Debug("Set record published flag", "record_cid", recordCID, "published", published)
+
+	return nil
 }
 
 // SetRecordSigned marks a record as signed.

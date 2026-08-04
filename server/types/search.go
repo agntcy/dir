@@ -20,6 +20,7 @@ type RecordFilters struct {
 	CreatedAts       []string
 	Authors          []string
 	SchemaVersions   []string
+	Published        *bool    // Filter by whether this node announces the record to the network
 	Verified         *bool    // Filter by verified status (name ownership verified via JWKS)
 	Trusted          *bool    // Filter by trusted status (signature verification passed)
 	ScanSafe         *bool    // Filter by is_safe: true = all scanners safe, false = at least one unsafe
@@ -161,6 +162,14 @@ func WithSchemaVersions(versions ...string) FilterOption {
 func WithModuleIDs(ids ...uint64) FilterOption {
 	return func(sc *RecordFilters) {
 		sc.ModuleIDs = append(sc.ModuleIDs, ids...)
+	}
+}
+
+// WithPublished filters records by whether this node announces them to the
+// network.
+func WithPublished(published bool) FilterOption {
+	return func(sc *RecordFilters) {
+		sc.Published = &published
 	}
 }
 

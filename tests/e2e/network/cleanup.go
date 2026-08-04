@@ -13,7 +13,6 @@ var (
 	deployTestCIDs         []string
 	syncTestCIDs           []string
 	remoteSearchTestCIDs   []string
-	gossipsubTestCIDs      []string
 	nameResolutionTestCIDs []string
 )
 
@@ -56,8 +55,6 @@ func RegisterCIDForCleanup(cid, testFile string) {
 		syncTestCIDs = append(syncTestCIDs, cid)
 	case "search":
 		remoteSearchTestCIDs = append(remoteSearchTestCIDs, cid)
-	case "gossipsub":
-		gossipsubTestCIDs = append(gossipsubTestCIDs, cid)
 	case "name_resolution":
 		nameResolutionTestCIDs = append(nameResolutionTestCIDs, cid)
 	default:
@@ -71,7 +68,6 @@ func CleanupAllNetworkTests(peers []*utils.CLI) {
 	allCIDs = append(allCIDs, deployTestCIDs...)
 	allCIDs = append(allCIDs, syncTestCIDs...)
 	allCIDs = append(allCIDs, remoteSearchTestCIDs...)
-	allCIDs = append(allCIDs, gossipsubTestCIDs...)
 	allCIDs = append(allCIDs, nameResolutionTestCIDs...)
 
 	CleanupNetworkRecords(allCIDs, "all network tests", peers)
