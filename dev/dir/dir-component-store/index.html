@@ -2266,6 +2266,14 @@ for details.</p>
 </code></pre></div>
 <p>See also <a href="../dir-deployment-local/">Local Deployment</a> and
 <a href="../dir-prod-deployment/">Production Deployment</a> for deployment-specific configuration.</p>
+<div class="admonition note">
+<p class="admonition-title">Running Zot on remote object storage</p>
+<p>The Helm chart configures the bundled Zot registry for local filesystem
+storage. Moving it to S3 or another remote object store requires setting
+<code>dedupe: false</code> or configuring a remote <code>cacheDriver</code> — Zot refuses to start
+otherwise. See
+<a href="../dir-prod-deployment/#zot-storage-backend">Zot Storage Backend</a>.</p>
+</div>
 <h2 id="storage-model">Storage model</h2>
 <p>ADS differs from block storage systems like <a href="https://ipfs.tech/">IPFS</a> in its approach to
 distributed object storage:</p>

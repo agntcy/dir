@@ -1386,6 +1386,17 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#zot-storage-backend" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Zot Storage Backend
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#secure-credential-management" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1523,6 +1534,28 @@
     <span class="md-ellipsis">
       
         Peer Discovery or Publication Fails Silently
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#zot-crashloopbackoff-dedupe-set-to-true-with-remote-storage" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Zot CrashLoopBackOff: "dedupe set to true with remote storage"
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#zot-crashloopbackoff-no-storage-config-provided" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Zot CrashLoopBackOff: "no storage config provided"
       
     </span>
   </a>
@@ -2327,6 +2360,17 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#zot-storage-backend" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Zot Storage Backend
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#secure-credential-management" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2464,6 +2508,28 @@
     <span class="md-ellipsis">
       
         Peer Discovery or Publication Fails Silently
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#zot-crashloopbackoff-dedupe-set-to-true-with-remote-storage" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Zot CrashLoopBackOff: "dedupe set to true with remote storage"
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#zot-crashloopbackoff-no-storage-config-provided" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Zot CrashLoopBackOff: "no storage config provided"
       
     </span>
   </a>
@@ -2737,6 +2803,126 @@
 <li>Use <code>strategy.type: Recreate</code> to prevent database lock conflicts</li>
 <li>Production example: 20Gi routing, 5Gi database, 100Gi Zot</li>
 </ul>
+<h3 id="zot-storage-backend">Zot Storage Backend</h3>
+<p>The bundled Zot registry is configured through <code>apiserver.zot.configFiles."config.json"</code>
+in the chart values. The shipped default uses local filesystem storage
+(<code>storage.rootDirectory</code>) backed by a PVC, and leaves Zot's own defaults in place —
+including <code>dedupe</code>, which Zot defaults to <code>true</code>.</p>
+<p>Two storage layouts are supported for a production node:</p>
+<table>
+<thead>
+<tr>
+<th>Layout</th>
+<th><code>storage</code> settings</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Local filesystem (default)</strong></td>
+<td><code>rootDirectory</code> only</td>
+<td>Backed by a PVC. Dedupe and GC work with Zot's built-in local cache. Single writer.</td>
+</tr>
+<tr>
+<td><strong>Remote object storage (S3)</strong></td>
+<td><code>storageDriver</code> + either <code>dedupe: false</code> <strong>or</strong> a <code>cacheDriver</code></td>
+<td>Zot cannot dedupe on remote storage using its local cache.</td>
+</tr>
+</tbody>
+</table>
+<div class="admonition note">
+<p class="admonition-title">S3 storage requires an explicit dedupe decision</p>
+<p>Zot does not start when <code>storage.storageDriver</code> points at remote object
+storage and <code>dedupe</code> is left at its default of <code>true</code> with no remote cache
+configured. Startup fails config validation with:</p>
+<div class="highlight"><pre><span></span><code>invalid database config, dedupe set to true with remote storage and database,
+but no remote database configured
+</code></pre></div>
+<p>Because the shipped <code>config.json</code> does not set <code>dedupe</code>, adding an S3
+<code>storageDriver</code> to it without also setting <code>dedupe</code> produces this failure.</p>
+</div>
+<p>Pick one of the following when moving Zot to S3:</p>
+<div class="tabbed-set tabbed-alternate" data-tabs="1:2"><input checked="checked" id="__tabbed_1_1" name="__tabbed_1" type="radio" /><input id="__tabbed_1_2" name="__tabbed_1" type="radio" /><div class="tabbed-labels"><label for="__tabbed_1_1">Option A — disable dedupe (no extra AWS resources)</label><label for="__tabbed_1_2">Option B — keep dedupe, add a DynamoDB cache</label></div>
+<div class="tabbed-content">
+<div class="tabbed-block">
+<div class="highlight"><pre><span></span><code><span class="nt">&quot;storage&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;rootDirectory&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;/var/lib/registry&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;dedupe&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;storageDriver&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nt">&quot;name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;s3&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;region&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;us-east-1&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;bucket&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;your-dir-bucket&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;rootdirectory&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;/zot&quot;</span>
+<span class="w">  </span><span class="p">}</span>
+<span class="p">}</span>
+</code></pre></div>
+</div>
+<div class="tabbed-block">
+<div class="highlight"><pre><span></span><code><span class="nt">&quot;storage&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;rootDirectory&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;/var/lib/registry&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;dedupe&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;storageDriver&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nt">&quot;name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;s3&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;region&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;us-east-1&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;bucket&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;your-dir-bucket&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;rootdirectory&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;/zot&quot;</span>
+<span class="w">  </span><span class="p">},</span>
+<span class="w">  </span><span class="nt">&quot;cacheDriver&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nt">&quot;name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;dynamodb&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;region&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;us-east-1&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;cacheTablename&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;ZotBlobTable&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;repoMetaTablename&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;ZotRepoMetadataTable&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;imageMetaTablename&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;ZotImageMetaTable&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;repoBlobsInfoTablename&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;ZotRepoBlobsInfoTable&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;userDataTablename&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;ZotUserDataTable&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;apiKeyTablename&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;ZotApiKeyTable&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;versionTablename&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;ZotVersion&quot;</span>
+<span class="w">  </span><span class="p">}</span>
+<span class="p">}</span>
+</code></pre></div>
+</div>
+</div>
+</div>
+<p>Neither snippet sets S3 credentials. Zot resolves them the same way the AWS SDK
+does — in a cluster, prefer an IAM role (IRSA on EKS) attached to the Zot service
+account and set nothing in the config. To supply them explicitly instead, add
+<code>accesskey</code> and <code>secretkey</code> to the <code>storageDriver</code> block. For S3-compatible
+storage such as MinIO, also set <code>regionendpoint</code> (and <code>"secure": false</code> for a
+plaintext endpoint).</p>
+<p>Notes for either option:</p>
+<ul>
+<li>Keys inside <code>storageDriver</code> are passed through to the underlying storage driver
+  and are <strong>not</strong> validated by Zot. A misspelled key — <code>accessKeyId</code> instead of
+  <code>accesskey</code>, for example — is silently ignored: <code>zot verify</code> still reports the
+  config as valid, and the problem only surfaces once Zot contacts S3 at startup.
+  Match the parameter names in the Zot storage documentation exactly.</li>
+<li>Keep <code>storage.rootDirectory</code> set even when <code>storageDriver</code> is present. Zot
+  exits at startup with <code>no storage config provided</code> if it is missing, and
+  <code>zot verify</code> does not catch that — the config passes validation and the
+  pod then crash-loops. The key prefix used inside the bucket comes from
+  <code>storageDriver.rootdirectory</code>, not from <code>storage.rootDirectory</code>.</li>
+<li>Only <code>dedupe</code> is gated by config validation. Garbage collection (<code>gc</code>) and the
+  <code>search</code> extension do not block startup on S3 — a config with <code>dedupe: false</code>,
+  GC at its default, and search enabled passes <code>zot verify</code> and boots against
+  remote storage. That is a startup result, not a statement about how GC behaves
+  on remote storage over time: GC runs on an interval (<code>storage.gcInterval</code> and
+  <code>storage.gcDelay</code>, both one hour by default), so a clean boot does not exercise
+  it. If you see GC-related errors in the Zot logs after the first interval, set
+  <code>"gc": false</code> and open an issue.</li>
+<li>Without a <code>cacheDriver</code>, Zot keeps its metadata database on local disk, so a
+  remote-storage deployment is still effectively <strong>single-replica</strong>. Use Option B
+  if you need to scale Zot horizontally.</li>
+<li>Validate any config change before rolling it out. This catches the dedupe
+  error above, but not every startup failure (see the <code>rootDirectory</code> note).
+  Use the Zot version the chart actually deploys — the zot subchart pinned in
+  <code>install/charts/dir/apiserver/Chart.lock</code>, whose image tag is also tracked as
+  <code>ZOT_VERSION</code> in <code>Taskfile.vars.yml</code>:</li>
+</ul>
+<div class="highlight"><pre><span></span><code>docker<span class="w"> </span>run<span class="w"> </span>--rm<span class="w"> </span>-v<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PWD</span><span class="s2">:/cfg:ro&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>ghcr.io/project-zot/zot-linux-amd64:v2.1.18<span class="w"> </span>verify<span class="w"> </span>/cfg/config.json
+</code></pre></div>
+<p>See the <a href="https://zotregistry.dev/latest/admin-guide/admin-configuration/#storage">Zot storage documentation</a>
+for the full set of storage and cache options.</p>
 <h3 id="secure-credential-management">Secure Credential Management</h3>
 <ul>
 <li>Use External Secrets Operator with Vault</li>
@@ -2847,6 +3033,18 @@ kubectl<span class="w"> </span>logs<span class="w"> </span>-n<span class="w"> </
 <li>Confirm ExternalDNS created the routing DNS record: <code>kubectl get svc -n &lt;your-dir-namespace&gt;</code> should show an <code>EXTERNAL-IP</code> for the routing <code>LoadBalancer</code> service</li>
 <li>Check apiserver logs for multiaddr registration errors</li>
 </ul>
+<h3 id="zot-crashloopbackoff-dedupe-set-to-true-with-remote-storage">Zot CrashLoopBackOff: "dedupe set to true with remote storage"</h3>
+<p>Full message:</p>
+<div class="highlight"><pre><span></span><code>invalid database config, dedupe set to true with remote storage and database,
+but no remote database configured
+</code></pre></div>
+<p>The Zot config points at remote object storage but leaves <code>dedupe</code> at its
+default of <code>true</code> without a remote <code>cacheDriver</code>. Set <code>dedupe: false</code> or add a
+<code>cacheDriver</code>. See <a href="#zot-storage-backend">Zot Storage Backend</a>.</p>
+<h3 id="zot-crashloopbackoff-no-storage-config-provided">Zot CrashLoopBackOff: "no storage config provided"</h3>
+<p><code>storage.rootDirectory</code> is missing. It is required even when
+<code>storage.storageDriver</code> is set. Note that <code>zot verify</code> reports this config as
+valid, so the failure only shows up in the pod logs.</p>
 <h3 id="configmap-changes-not-taking-effect">ConfigMap Changes Not Taking Effect</h3>
 <p>ConfigMaps are mounted at pod creation. Restart the deployment:</p>
 <div class="highlight"><pre><span></span><code>kubectl<span class="w"> </span>rollout<span class="w"> </span>restart<span class="w"> </span>deployment/&lt;your-apiserver-deployment&gt;<span class="w"> </span>-n<span class="w"> </span>&lt;your-dir-namespace&gt;
