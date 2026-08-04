@@ -44,6 +44,10 @@ func (l *localExtractor) Extract(ctx context.Context, text string, opts ExtractO
 		qopts = append(qopts, sdk.Versions(opts.Versions...))
 	}
 
+	if opts.Tiers > 0 {
+		qopts = append(qopts, sdk.Tiers(opts.Tiers))
+	}
+
 	res, err := l.ext.Extract(ctx, text, qopts...)
 	if err != nil {
 		return Result{}, fmt.Errorf("local extract: %w", err)

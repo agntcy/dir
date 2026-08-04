@@ -17,6 +17,11 @@ import (
 	"google.golang.org/grpc/status"
 )
 
+// searchExtractorTiers is how many score tiers of skills/domains the gateway
+// considers per query. 2 (the two closest groups) widens recall over the
+// extractor's default of 1, at the cost of some precision.
+const searchExtractorTiers = 2
+
 // SearchAgents answers a free-text natural-language query with relevance-ranked
 // catalog entries (extract-then-filter, v1):
 //
@@ -69,7 +74,7 @@ func (c *aiFinderController) SearchAgents(ctx context.Context, req *catalogv1.Se
 			"natural-language search is unavailable: no OASF extractor is configured on this gateway")
 	}
 
-	signals, err := nlsearch.Decompose(ctx, query, c.ext, extractor.ExtractOptions{})
+	signals, err := nlsearch.Decompose(ctx, query, c.ext, extractor.ExtractOptions{Tiers: searchExtractorTiers})
 	if err != nil {
 		aiFinderLogger.Error("failed to extract search signals", "query", query, "error", err)
 

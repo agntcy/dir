@@ -41,6 +41,7 @@ func (r *remoteExtractor) Extract(ctx context.Context, text string, opts Extract
 	resp, err := r.client.Extract(ctx, extractorv1.ExtractRequest_builder{
 		Text:     text,
 		Versions: opts.Versions,
+		Tiers:    uint32(max(0, opts.Tiers)), //nolint:gosec // small non-negative tier count; 0 => server default (1)
 	}.Build())
 	if err != nil {
 		return Result{}, fmt.Errorf("remote extract: %w", err)
