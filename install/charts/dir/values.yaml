@@ -389,6 +389,23 @@ apiserver:
     mountSecret: true
 
     # ZOT configuration file
+    #
+    # The default below uses local filesystem storage (storage.rootDirectory) and
+    # leaves Zot's own defaults in place, including "dedupe", which Zot defaults
+    # to true.
+    #
+    # WARNING: if you replace "storage" with a remote object storage backend
+    # (storage.storageDriver, e.g. s3), you MUST also set either
+    # "dedupe": false or a remote "cacheDriver" (e.g. dynamodb). Zot refuses to
+    # start otherwise:
+    #   invalid database config, dedupe set to true with remote storage and
+    #   database, but no remote database configured
+    # Remote storage also needs S3 credentials (an IAM role, or accesskey /
+    # secretkey inside storageDriver). Only "dedupe" is gated by config
+    # validation; garbage collection and the search extension do not block
+    # startup on remote storage.
+    # See "Zot Storage Backend":
+    # https://agntcy.github.io/dir/latest/dir/dir-prod-deployment/#zot-storage-backend
     configFiles:
       config.json: |-
         {
