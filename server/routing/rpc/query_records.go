@@ -184,6 +184,11 @@ func matchingCIDs(db types.DatabaseAPI, queries []RecordQuery, limit int) ([]str
 // Hierarchical namespaces match the value itself or any descendant, so a query
 // for "AI" finds "AI/ML" — the same prefix semantics the local matcher applies.
 // Locators are flat and match exactly.
+//
+// Only published records are served. A peer arrives here through any single
+// label this node advertised, so without the same filter that governs
+// advertising, one shared label would expose every other record the node holds
+// — including private pushes and ingested replicas.
 func queryFilters(query RecordQuery, limit int) ([]types.FilterOption, error) {
 	value := strings.TrimSpace(query.Value)
 	if value == "" {
@@ -191,16 +196,17 @@ func queryFilters(query RecordQuery, limit int) ([]types.FilterOption, error) {
 	}
 
 	descendants := value + "/*"
+	base := []types.FilterOption{types.WithPublished(true), types.WithLimit(limit)}
 
 	switch types.LabelType(query.Type) {
 	case types.LabelTypeSkill:
-		return []types.FilterOption{types.WithSkillNames(value, descendants), types.WithLimit(limit)}, nil
+		return append(base, types.WithSkillNames(value, descendants)), nil
 	case types.LabelTypeDomain:
-		return []types.FilterOption{types.WithDomainNames(value, descendants), types.WithLimit(limit)}, nil
+		return append(base, types.WithDomainNames(value, descendants)), nil
 	case types.LabelTypeModule:
-		return []types.FilterOption{types.WithModuleNames(value, descendants), types.WithLimit(limit)}, nil
+		return append(base, types.WithModuleNames(value, descendants)), nil
 	case types.LabelTypeLocator:
-		return []types.FilterOption{types.WithLocatorTypes(value), types.WithLimit(limit)}, nil
+		return append(base, types.WithLocatorTypes(value)), nil
 	case types.LabelTypeUnknown:
 		return nil, fmt.Errorf("unknown query type %q", query.Type)
 	default:

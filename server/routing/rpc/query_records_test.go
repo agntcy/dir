@@ -340,6 +340,45 @@ func TestQueryRecordsRejectsNilRequest(t *testing.T) {
 	assert.Equal(t, codes.InvalidArgument, status.Code(err))
 }
 
+// A peer reaches this handler through one advertised label, so anything the
+// node has not published must stay invisible to it — otherwise a single shared
+// skill would expose private pushes and ingested replicas.
+func TestQueryRecordsServesOnlyPublishedRecords(t *testing.T) {
+	t.Parallel()
+
+	published := map[string]bool{"published": true, "private": false}
+
+	db := &fakeQueryDB{
+		respond: func(filters *types.RecordFilters) ([]string, error) {
+			cids := make([]string, 0, len(published))
+
+			for cid, isPublished := range published {
+				if filters.Published != nil && *filters.Published != isPublished {
+					continue
+				}
+
+				cids = append(cids, cid)
+			}
+
+			return cids, nil
+		},
+		labels: map[string][]types.Label{
+			"published": {"/skills/AI"},
+			"private":   {"/skills/AI"},
+		},
+	}
+
+	client, serverID := newConnectedServices(t, db)
+
+	matches, err := collect(t, client, serverID, QueryRecordsRequest{
+		Queries: []RecordQuery{{Type: "skills", Value: "AI"}},
+	})
+	require.NoError(t, err)
+
+	require.Len(t, matches, 1)
+	assert.Equal(t, "published", matches[0].Cid)
+}
+
 func TestQueryFiltersExpandsHierarchicalNamespaces(t *testing.T) {
 	t.Parallel()
 
@@ -379,6 +418,8 @@ func TestQueryFiltersExpandsHierarchicalNamespaces(t *testing.T) {
 
 			assert.Equal(t, []string{"AI", "AI/*"}, tt.expected(filters))
 			assert.Equal(t, 10, filters.Limit)
+			require.NotNil(t, filters.Published)
+			assert.True(t, *filters.Published)
 		})
 	}
 }
@@ -397,6 +438,8 @@ func TestQueryFiltersMatchesLocatorsExactly(t *testing.T) {
 
 	assert.Equal(t, []string{"docker-image"}, filters.LocatorTypes)
 	assert.Empty(t, filters.SkillNames)
+	require.NotNil(t, filters.Published)
+	assert.True(t, *filters.Published)
 }
 
 func TestQueryFiltersRejectsBadQueries(t *testing.T) {
