@@ -5,16 +5,14 @@
 package routing
 
 import (
-	"bufio"
-	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
 	"strings"
 
 	corev1 "github.com/agntcy/dir/api/core/v1"
 	routingv1 "github.com/agntcy/dir/api/routing/v1"
 	"github.com/agntcy/dir/cli/presenter"
+	cidutil "github.com/agntcy/dir/cli/util/cids"
 	ctxUtils "github.com/agntcy/dir/cli/util/context"
 	"github.com/spf13/cobra"
 )
@@ -85,7 +83,7 @@ func runPublishCommand(cmd *cobra.Command, args []string) error {
 	cids := append([]string{}, args...)
 
 	if publishOpts.FromStdin {
-		stdinCIDs, err := readCIDsFromStdin(cmd.InOrStdin())
+		stdinCIDs, err := cidutil.ReadFrom(cmd.InOrStdin())
 		if err != nil {
 			return fmt.Errorf("failed to read CIDs from stdin: %w", err)
 		}
@@ -93,7 +91,7 @@ func runPublishCommand(cmd *cobra.Command, args []string) error {
 		cids = append(cids, stdinCIDs...)
 	}
 
-	cids = deduplicateCIDs(cids)
+	cids = cidutil.Deduplicate(cids)
 	if len(cids) == 0 {
 		return errors.New("at least one CID is required (pass arguments or use --stdin)")
 	}
@@ -137,64 +135,4 @@ func runPublishCommand(cmd *cobra.Command, args []string) error {
 	}
 
 	return presenter.PrintMessage(cmd, "Publish", "Successfully submitted publication request", result)
-}
-
-func readCIDsFromStdin(reader io.Reader) ([]string, error) {
-	data, err := io.ReadAll(reader)
-	if err != nil {
-		return nil, fmt.Errorf("failed to read stdin: %w", err)
-	}
-
-	input := strings.TrimSpace(string(data))
-	if input == "" {
-		return nil, nil
-	}
-
-	if strings.HasPrefix(input, "[") {
-		var cids []string
-		if err := json.Unmarshal([]byte(input), &cids); err != nil {
-			return nil, fmt.Errorf("failed to parse JSON array of CIDs: %w", err)
-		}
-
-		return cids, nil
-	}
-
-	cids := make([]string, 0)
-
-	scanner := bufio.NewScanner(strings.NewReader(input))
-	for scanner.Scan() {
-		cid := strings.TrimSpace(scanner.Text())
-		if cid == "" {
-			continue
-		}
-
-		cids = append(cids, cid)
-	}
-
-	if err := scanner.Err(); err != nil {
-		return nil, fmt.Errorf("failed to scan stdin: %w", err)
-	}
-
-	return cids, nil
-}
-
-func deduplicateCIDs(cids []string) []string {
-	seen := make(map[string]struct{}, len(cids))
-	out := make([]string, 0, len(cids))
-
-	for _, cid := range cids {
-		cid = strings.TrimSpace(cid)
-		if cid == "" {
-			continue
-		}
-
-		if _, exists := seen[cid]; exists {
-			continue
-		}
-
-		seen[cid] = struct{}{}
-		out = append(out, cid)
-	}
-
-	return out
 }

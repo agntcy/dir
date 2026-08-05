@@ -11,6 +11,7 @@ import (
 	corev1 "github.com/agntcy/dir/api/core/v1"
 	routingv1 "github.com/agntcy/dir/api/routing/v1"
 	"github.com/agntcy/dir/cli/presenter"
+	cidutil "github.com/agntcy/dir/cli/util/cids"
 	ctxUtils "github.com/agntcy/dir/cli/util/context"
 	"github.com/spf13/cobra"
 )
@@ -79,7 +80,7 @@ func runUnpublishCommand(cmd *cobra.Command, args []string) error {
 	cids := append([]string{}, args...)
 
 	if unpublishOpts.FromStdin {
-		stdinCIDs, err := readCIDsFromStdin(cmd.InOrStdin())
+		stdinCIDs, err := cidutil.ReadFrom(cmd.InOrStdin())
 		if err != nil {
 			return fmt.Errorf("failed to read CIDs from stdin: %w", err)
 		}
@@ -87,7 +88,7 @@ func runUnpublishCommand(cmd *cobra.Command, args []string) error {
 		cids = append(cids, stdinCIDs...)
 	}
 
-	cids = deduplicateCIDs(cids)
+	cids = cidutil.Deduplicate(cids)
 	if len(cids) == 0 {
 		return errors.New("at least one CID is required (pass arguments or use --stdin)")
 	}
