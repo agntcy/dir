@@ -11,6 +11,7 @@ import (
 	corev1 "github.com/agntcy/dir/api/core/v1"
 	routingv1 "github.com/agntcy/dir/api/routing/v1"
 	"github.com/agntcy/dir/cli/presenter"
+	cidsUtils "github.com/agntcy/dir/cli/util/cids"
 	ctxUtils "github.com/agntcy/dir/cli/util/context"
 	"github.com/spf13/cobra"
 )
@@ -48,15 +49,10 @@ Usage examples:
    # Unpublish with raw output for scripting
    dirctl routing unpublish <cid> --output raw
 
-Note: This only removes network announcements. Use 'dirctl delete' to remove the record entirely.
+Note: This only removes network announcements. The records stay in local storage; pipe the
+same CIDs into 'dirctl delete --stdin' to remove them entirely.
 `,
-	Args: func(cmd *cobra.Command, args []string) error {
-		if unpublishOpts.FromStdin {
-			return cobra.MaximumNArgs(0)(cmd, args)
-		}
-
-		return cobra.MinimumNArgs(1)(cmd, args)
-	},
+	Args: cidsUtils.Args(&unpublishOpts.FromStdin),
 	RunE: runUnpublishCommand,
 }
 
@@ -65,8 +61,7 @@ var unpublishOpts struct {
 }
 
 func init() {
-	unpublishCmd.Flags().BoolVar(&unpublishOpts.FromStdin, "stdin", false,
-		"Read CIDs from standard input. Supports JSON array output from 'dirctl search --output json' and line-delimited CIDs.")
+	unpublishCmd.Flags().BoolVar(&unpublishOpts.FromStdin, "stdin", false, cidsUtils.StdinFlagUsage)
 }
 
 func runUnpublishCommand(cmd *cobra.Command, args []string) error {
@@ -76,20 +71,9 @@ func runUnpublishCommand(cmd *cobra.Command, args []string) error {
 		return errors.New("failed to get client from context")
 	}
 
-	cids := append([]string{}, args...)
-
-	if unpublishOpts.FromStdin {
-		stdinCIDs, err := readCIDsFromStdin(cmd.InOrStdin())
-		if err != nil {
-			return fmt.Errorf("failed to read CIDs from stdin: %w", err)
-		}
-
-		cids = append(cids, stdinCIDs...)
-	}
-
-	cids = deduplicateCIDs(cids)
-	if len(cids) == 0 {
-		return errors.New("at least one CID is required (pass arguments or use --stdin)")
+	cids, err := cidsUtils.Collect(args, cmd.InOrStdin(), unpublishOpts.FromStdin)
+	if err != nil {
+		return err
 	}
 
 	recordRefs := make([]*corev1.RecordRef, 0, len(cids))
@@ -98,8 +82,7 @@ func runUnpublishCommand(cmd *cobra.Command, args []string) error {
 	}
 
 	// Lookup metadata to verify records exist
-	_, err := c.LookupBatch(cmd.Context(), recordRefs)
-	if err != nil {
+	if _, err := c.LookupBatch(cmd.Context(), recordRefs); err != nil {
 		return fmt.Errorf("failed to lookup: %w", err)
 	}
 
