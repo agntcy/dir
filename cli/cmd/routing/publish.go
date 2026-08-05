@@ -5,16 +5,14 @@
 package routing
 
 import (
-	"bufio"
-	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
 	"strings"
 
 	corev1 "github.com/agntcy/dir/api/core/v1"
 	routingv1 "github.com/agntcy/dir/api/routing/v1"
 	"github.com/agntcy/dir/cli/presenter"
+	cidsUtils "github.com/agntcy/dir/cli/util/cids"
 	ctxUtils "github.com/agntcy/dir/cli/util/context"
 	"github.com/spf13/cobra"
 )
@@ -56,13 +54,7 @@ Usage examples:
 
 Note: The record must already be pushed to storage before publishing.
 `,
-	Args: func(cmd *cobra.Command, args []string) error {
-		if publishOpts.FromStdin {
-			return cobra.MaximumNArgs(0)(cmd, args)
-		}
-
-		return cobra.MinimumNArgs(1)(cmd, args)
-	},
+	Args: cidsUtils.Args(&publishOpts.FromStdin),
 	RunE: runPublishCommand,
 }
 
@@ -71,8 +63,7 @@ var publishOpts struct {
 }
 
 func init() {
-	publishCmd.Flags().BoolVar(&publishOpts.FromStdin, "stdin", false,
-		"Read CIDs from standard input. Supports JSON array output from 'dirctl search --output json' and line-delimited CIDs.")
+	publishCmd.Flags().BoolVar(&publishOpts.FromStdin, "stdin", false, cidsUtils.StdinFlagUsage)
 }
 
 func runPublishCommand(cmd *cobra.Command, args []string) error {
@@ -82,20 +73,9 @@ func runPublishCommand(cmd *cobra.Command, args []string) error {
 		return errors.New("failed to get client from context")
 	}
 
-	cids := append([]string{}, args...)
-
-	if publishOpts.FromStdin {
-		stdinCIDs, err := readCIDsFromStdin(cmd.InOrStdin())
-		if err != nil {
-			return fmt.Errorf("failed to read CIDs from stdin: %w", err)
-		}
-
-		cids = append(cids, stdinCIDs...)
-	}
-
-	cids = deduplicateCIDs(cids)
-	if len(cids) == 0 {
-		return errors.New("at least one CID is required (pass arguments or use --stdin)")
+	cids, err := cidsUtils.Collect(args, cmd.InOrStdin(), publishOpts.FromStdin)
+	if err != nil {
+		return err
 	}
 
 	recordRefs := make([]*corev1.RecordRef, 0, len(cids))
@@ -104,8 +84,7 @@ func runPublishCommand(cmd *cobra.Command, args []string) error {
 	}
 
 	// Lookup metadata to verify records exist
-	_, err := c.LookupBatch(cmd.Context(), recordRefs)
-	if err != nil {
+	if _, err := c.LookupBatch(cmd.Context(), recordRefs); err != nil {
 		return fmt.Errorf("failed to lookup: %w", err)
 	}
 
@@ -137,64 +116,4 @@ func runPublishCommand(cmd *cobra.Command, args []string) error {
 	}
 
 	return presenter.PrintMessage(cmd, "Publish", "Successfully submitted publication request", result)
-}
-
-func readCIDsFromStdin(reader io.Reader) ([]string, error) {
-	data, err := io.ReadAll(reader)
-	if err != nil {
-		return nil, fmt.Errorf("failed to read stdin: %w", err)
-	}
-
-	input := strings.TrimSpace(string(data))
-	if input == "" {
-		return nil, nil
-	}
-
-	if strings.HasPrefix(input, "[") {
-		var cids []string
-		if err := json.Unmarshal([]byte(input), &cids); err != nil {
-			return nil, fmt.Errorf("failed to parse JSON array of CIDs: %w", err)
-		}
-
-		return cids, nil
-	}
-
-	cids := make([]string, 0)
-
-	scanner := bufio.NewScanner(strings.NewReader(input))
-	for scanner.Scan() {
-		cid := strings.TrimSpace(scanner.Text())
-		if cid == "" {
-			continue
-		}
-
-		cids = append(cids, cid)
-	}
-
-	if err := scanner.Err(); err != nil {
-		return nil, fmt.Errorf("failed to scan stdin: %w", err)
-	}
-
-	return cids, nil
-}
-
-func deduplicateCIDs(cids []string) []string {
-	seen := make(map[string]struct{}, len(cids))
-	out := make([]string, 0, len(cids))
-
-	for _, cid := range cids {
-		cid = strings.TrimSpace(cid)
-		if cid == "" {
-			continue
-		}
-
-		if _, exists := seen[cid]; exists {
-			continue
-		}
-
-		seen[cid] = struct{}{}
-		out = append(out, cid)
-	}
-
-	return out
 }
