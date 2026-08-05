@@ -102,6 +102,120 @@ Enabled via `spire.useCSIDriver: true` (v1.0.0-rc.4+):
 - Use `strategy.type: Recreate` to prevent database lock conflicts
 - Production example: 20Gi routing, 5Gi database, 100Gi Zot
 
+### Zot Storage Backend
+
+The bundled Zot registry is configured through `apiserver.zot.configFiles."config.json"`
+in the chart values. The shipped default uses local filesystem storage
+(`storage.rootDirectory`) backed by a PVC, and leaves Zot's own defaults in place —
+including `dedupe`, which Zot defaults to `true`.
+
+Two storage layouts are supported for a production node:
+
+| Layout | `storage` settings | Notes |
+|--------|-------------------|-------|
+| **Local filesystem (default)** | `rootDirectory` only | Backed by a PVC. Dedupe and GC work with Zot's built-in local cache. Single writer. |
+| **Remote object storage (S3)** | `storageDriver` + either `dedupe: false` **or** a `cacheDriver` | Zot cannot dedupe on remote storage using its local cache. |
+
+!!! note "S3 storage requires an explicit dedupe decision"
+    Zot does not start when `storage.storageDriver` points at remote object
+    storage and `dedupe` is left at its default of `true` with no remote cache
+    configured. Startup fails config validation with:
+
+    ```text
+    invalid database config, dedupe set to true with remote storage and database,
+    but no remote database configured
+    ```
+
+    Because the shipped `config.json` does not set `dedupe`, adding an S3
+    `storageDriver` to it without also setting `dedupe` produces this failure.
+
+Pick one of the following when moving Zot to S3:
+
+=== "Option A — disable dedupe (no extra AWS resources)"
+
+    ```json
+    "storage": {
+      "rootDirectory": "/var/lib/registry",
+      "dedupe": false,
+      "storageDriver": {
+        "name": "s3",
+        "region": "us-east-1",
+        "bucket": "your-dir-bucket",
+        "rootdirectory": "/zot"
+      }
+    }
+    ```
+
+=== "Option B — keep dedupe, add a DynamoDB cache"
+
+    ```json
+    "storage": {
+      "rootDirectory": "/var/lib/registry",
+      "dedupe": true,
+      "storageDriver": {
+        "name": "s3",
+        "region": "us-east-1",
+        "bucket": "your-dir-bucket",
+        "rootdirectory": "/zot"
+      },
+      "cacheDriver": {
+        "name": "dynamodb",
+        "region": "us-east-1",
+        "cacheTablename": "ZotBlobTable",
+        "repoMetaTablename": "ZotRepoMetadataTable",
+        "imageMetaTablename": "ZotImageMetaTable",
+        "repoBlobsInfoTablename": "ZotRepoBlobsInfoTable",
+        "userDataTablename": "ZotUserDataTable",
+        "apiKeyTablename": "ZotApiKeyTable",
+        "versionTablename": "ZotVersion"
+      }
+    }
+    ```
+
+Neither snippet sets S3 credentials. Zot resolves them the same way the AWS SDK
+does — in a cluster, prefer an IAM role (IRSA on EKS) attached to the Zot service
+account and set nothing in the config. To supply them explicitly instead, add
+`accesskey` and `secretkey` to the `storageDriver` block. For S3-compatible
+storage such as MinIO, also set `regionendpoint` (and `"secure": false` for a
+plaintext endpoint).
+
+Notes for either option:
+
+- Keys inside `storageDriver` are passed through to the underlying storage driver
+  and are **not** validated by Zot. A misspelled key — `accessKeyId` instead of
+  `accesskey`, for example — is silently ignored: `zot verify` still reports the
+  config as valid, and the problem only surfaces once Zot contacts S3 at startup.
+  Match the parameter names in the Zot storage documentation exactly.
+- Keep `storage.rootDirectory` set even when `storageDriver` is present. Zot
+  exits at startup with `no storage config provided` if it is missing, and
+  `zot verify` does not catch that — the config passes validation and the
+  pod then crash-loops. The key prefix used inside the bucket comes from
+  `storageDriver.rootdirectory`, not from `storage.rootDirectory`.
+- Only `dedupe` is gated by config validation. Garbage collection (`gc`) and the
+  `search` extension do not block startup on S3 — a config with `dedupe: false`,
+  GC at its default, and search enabled passes `zot verify` and boots against
+  remote storage. That is a startup result, not a statement about how GC behaves
+  on remote storage over time: GC runs on an interval (`storage.gcInterval` and
+  `storage.gcDelay`, both one hour by default), so a clean boot does not exercise
+  it. If you see GC-related errors in the Zot logs after the first interval, set
+  `"gc": false` and open an issue.
+- Without a `cacheDriver`, Zot keeps its metadata database on local disk, so a
+  remote-storage deployment is still effectively **single-replica**. Use Option B
+  if you need to scale Zot horizontally.
+- Validate any config change before rolling it out. This catches the dedupe
+  error above, but not every startup failure (see the `rootDirectory` note).
+  Use the Zot version the chart actually deploys — the zot subchart pinned in
+  `install/charts/dir/apiserver/Chart.lock`, whose image tag is also tracked as
+  `ZOT_VERSION` in `Taskfile.vars.yml`:
+
+  ```bash
+  docker run --rm -v "$PWD:/cfg:ro" \
+    ghcr.io/project-zot/zot-linux-amd64:v2.1.18 verify /cfg/config.json
+  ```
+
+See the [Zot storage documentation](https://zotregistry.dev/latest/admin-guide/admin-configuration/#storage)
+for the full set of storage and cache options.
+
 ### Secure Credential Management
 
 - Use External Secrets Operator with Vault
@@ -206,6 +320,25 @@ kubectl get pods -n <your-dir-admin-namespace> --sort-by=.metadata.creationTimes
 - Check that the security group for the routing NLB allows inbound TCP 5555
 - Confirm ExternalDNS created the routing DNS record: `kubectl get svc -n <your-dir-namespace>` should show an `EXTERNAL-IP` for the routing `LoadBalancer` service
 - Check apiserver logs for multiaddr registration errors
+
+### Zot CrashLoopBackOff: "dedupe set to true with remote storage"
+
+Full message:
+
+```text
+invalid database config, dedupe set to true with remote storage and database,
+but no remote database configured
+```
+
+The Zot config points at remote object storage but leaves `dedupe` at its
+default of `true` without a remote `cacheDriver`. Set `dedupe: false` or add a
+`cacheDriver`. See [Zot Storage Backend](#zot-storage-backend).
+
+### Zot CrashLoopBackOff: "no storage config provided"
+
+`storage.rootDirectory` is missing. It is required even when
+`storage.storageDriver` is set. Note that `zot verify` reports this config as
+valid, so the failure only shows up in the pod logs.
 
 ### ConfigMap Changes Not Taking Effect
 

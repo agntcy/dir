@@ -52,6 +52,9 @@ type SearchDatabaseAPI interface {
 	// GetRecordCIDs retrieves record CIDs based on the provided filters.
 	GetRecordCIDs(opts ...FilterOption) ([]string, error)
 
+	// CountRecords returns the number of distinct records matching the provided filters.
+	CountRecords(opts ...FilterOption) (uint32, error)
+
 	// GetRecords retrieves full records based on the provided filters.
 	//
 	// Associations (skills, domains, modules, locators) are not loaded. Use
