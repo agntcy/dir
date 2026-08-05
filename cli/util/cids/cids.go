@@ -20,7 +20,7 @@ import (
 
 // StdinFlagUsage is the help text for the --stdin flag of every command that
 // accepts a batch of CIDs.
-const StdinFlagUsage = "Read CIDs from standard input. Supports JSON array output from 'dirctl search --output json' and line-delimited CIDs."
+const StdinFlagUsage = "Read CIDs from standard input. Accepts a JSON array of CIDs, as produced by 'dirctl search --format cid --output json', or line-delimited CIDs."
 
 // Args validates positional arguments for a command that accepts CIDs either as
 // arguments or, when fromStdin points at a set --stdin flag, on stdin.

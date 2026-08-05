@@ -702,7 +702,7 @@ with `--stdin`, in which case they are deleted over a single stream.
 
 The following flags are available:
 
-- `--stdin` - Read CIDs from standard input, either as a JSON array produced by `dirctl search --output json` or as line-delimited CIDs
+- `--stdin` - Read CIDs from standard input, either as a JSON array produced by `dirctl search --format cid --output json` or as line-delimited CIDs
 
 ??? example
 
