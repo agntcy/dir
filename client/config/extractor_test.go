@@ -12,22 +12,22 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestLoadConfiguredNotConfiguredErrors(t *testing.T) {
+func TestResolveConfiguredNotConfiguredErrors(t *testing.T) {
 	t.Setenv("XDG_CONFIG_HOME", filepath.Join(t.TempDir(), "xdg"))
 
 	// No persisted extractor section: consumers get an actionable error, not a
 	// provisioning attempt.
-	_, err := LoadConfigured()
+	_, err := ResolveConfigured()
 
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "not configured")
 	assert.Contains(t, err.Error(), "dirctl init")
 }
 
-func TestLoadConfiguredUnprovisionedErrors(t *testing.T) {
+func TestResolveConfiguredUnprovisionedLocalErrors(t *testing.T) {
 	t.Setenv("XDG_CONFIG_HOME", filepath.Join(t.TempDir(), "xdg"))
 
-	// Config points at a dir that was never provisioned (no manifest on disk).
+	// Local config (no RemoteAddr) pointing at a dir that was never provisioned.
 	assetDir := filepath.Join(t.TempDir(), "assets")
 	require.NoError(t, os.MkdirAll(assetDir, 0o755))
 	require.NoError(t, SaveExtractor("", &Extractor{
@@ -35,22 +35,22 @@ func TestLoadConfiguredUnprovisionedErrors(t *testing.T) {
 		AssetDir: assetDir,
 	}))
 
-	_, err := LoadConfigured()
+	_, err := ResolveConfigured()
 
 	require.Error(t, err)
-	assert.Contains(t, err.Error(), "not provisioned")
+	assert.Contains(t, err.Error(), "provisioned")
 }
 
-func TestLoadConfiguredRejectsRemoteConfig(t *testing.T) {
+func TestResolveConfiguredRemoteSucceeds(t *testing.T) {
 	t.Setenv("XDG_CONFIG_HOME", filepath.Join(t.TempDir(), "xdg"))
 
-	// A remote-only config: LoadConfigured is local-only (returns *sdk.Extractor),
-	// so it must fail loudly rather than silently fall back to local assets.
+	// A persisted RemoteAddr resolves to the remote backend with no local assets
+	// (the gRPC connection is lazy, so resolution succeeds without a live server).
 	require.NoError(t, SaveExtractor("", &Extractor{RemoteAddr: "oasf-sdk:5000"}))
 
-	_, err := LoadConfigured()
+	ext, err := ResolveConfigured()
+	require.NoError(t, err)
+	require.NotNil(t, ext)
 
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), "remote OASF extractor")
-	assert.Contains(t, err.Error(), "oasf-sdk:5000")
+	assert.NoError(t, ext.Close())
 }
