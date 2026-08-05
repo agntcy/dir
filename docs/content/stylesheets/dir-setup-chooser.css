@@ -62,25 +62,36 @@
   outline: 2px solid var(--md-accent-fg-color);
   outline-offset: 2px;
 }
-.setup-chooser .sc-opt[aria-pressed="true"] {
+.setup-chooser .sc-opt[aria-checked="true"] {
   border-color: var(--md-accent-fg-color);
   background: color-mix(in srgb, var(--md-accent-fg-color) 10%, transparent);
 }
-.setup-chooser .sc-tick {
+.setup-chooser .sc-radio {
   flex: 0 0 auto;
   width: 20px;
   height: 20px;
-  border-radius: 6px;
+  border-radius: 50%;
   border: 1.5px solid var(--md-default-fg-color--lighter);
   display: grid;
   place-items: center;
-  font-size: 0.7rem;
   margin-top: 1px;
 }
-.setup-chooser .sc-opt[aria-pressed="true"] .sc-tick {
+.setup-chooser .sc-radio::after {
+  content: "";
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
   background: var(--md-accent-fg-color);
+  opacity: 0;
+  transform: scale(0.5);
+  transition: opacity 0.15s, transform 0.15s;
+}
+.setup-chooser .sc-opt[aria-checked="true"] .sc-radio {
   border-color: var(--md-accent-fg-color);
-  color: #fff;
+}
+.setup-chooser .sc-opt[aria-checked="true"] .sc-radio::after {
+  opacity: 1;
+  transform: scale(1);
 }
 .setup-chooser .sc-olabel {
   display: block;
@@ -167,4 +178,29 @@
   flex-wrap: wrap;
   gap: 10px;
   align-items: center;
+}
+
+/* Dark mode: --md-default-fg-color--lightest matches the page background in slate,
+   so card/option borders disappear unless overridden. */
+[data-md-color-scheme="slate"] .setup-chooser .sc-card {
+  border-color: rgba(227, 227, 227, 0.18);
+  background: var(--md-code-bg-color);
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.35);
+}
+
+[data-md-color-scheme="slate"] .setup-chooser .sc-opt {
+  border-color: rgba(227, 227, 227, 0.16);
+  background: var(--md-default-bg-color);
+}
+
+[data-md-color-scheme="slate"] .setup-chooser .sc-opt:hover {
+  background: rgb(12, 31, 54);
+}
+
+[data-md-color-scheme="slate"] .setup-chooser .sc-btn:not(.sc-primary):not(.sc-ghost) {
+  border-color: rgba(227, 227, 227, 0.22);
+}
+
+[data-md-color-scheme="slate"] .setup-chooser .sc-radio {
+  border-color: rgba(227, 227, 227, 0.35);
 }

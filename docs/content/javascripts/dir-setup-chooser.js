@@ -61,8 +61,8 @@ document$.subscribe(function () {
       .map(function (o) {
         var on = chosen === o.v;
         return (
-          '<button type="button" class="sc-opt" aria-pressed="' + on + '" data-v="' + esc(o.v) + '">' +
-          '<span class="sc-tick" aria-hidden="true">' + (on ? "✓" : "") + "</span>" +
+          '<button type="button" class="sc-opt" role="radio" aria-checked="' + on + '" data-v="' + esc(o.v) + '">' +
+          '<span class="sc-radio" aria-hidden="true"></span>' +
           '<span class="sc-otext"><span class="sc-olabel">' + esc(o.label) + "</span>" +
           '<span class="sc-osub">' + esc(o.sub) + "</span></span>" +
           "</button>"
@@ -75,9 +75,9 @@ document$.subscribe(function () {
     return (
       '<div class="sc-card">' +
       '<div class="sc-count">' + esc(count) + "</div>" +
-      '<div class="sc-title">' + esc(q.title) + "</div>" +
+      '<div class="sc-title" id="sc-title-' + esc(q.key) + '">' + esc(q.title) + "</div>" +
       '<p class="sc-hint">' + esc(q.hint) + "</p>" +
-      '<div class="sc-options">' + optionsHTML(q) + "</div>" +
+      '<div class="sc-options" role="radiogroup" aria-labelledby="sc-title-' + esc(q.key) + '">' + optionsHTML(q) + "</div>" +
       '<div class="sc-nav">' +
       '<button type="button" class="sc-btn sc-ghost" data-act="back"' + (canBack ? "" : " disabled") + ">← Back</button>" +
       '<button type="button" class="sc-btn sc-primary" data-act="next"' + (state[q.key] ? "" : " disabled") + ">" + esc(nextLabel) + "</button>" +
