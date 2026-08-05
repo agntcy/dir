@@ -24,6 +24,7 @@ const _ = grpc.SupportPackageIsVersion8
 const (
 	SearchService_SearchCIDs_FullMethodName    = "/agntcy.dir.search.v1.SearchService/SearchCIDs"
 	SearchService_SearchRecords_FullMethodName = "/agntcy.dir.search.v1.SearchService/SearchRecords"
+	SearchService_CountRecords_FullMethodName  = "/agntcy.dir.search.v1.SearchService/CountRecords"
 )
 
 // SearchServiceClient is the client API for SearchService service.
@@ -38,6 +39,9 @@ type SearchServiceClient interface {
 	// Returns complete record data including all metadata, skills, domains, etc.
 	// This operation does not interact with the network.
 	SearchRecords(ctx context.Context, in *SearchRecordsRequest, opts ...grpc.CallOption) (SearchService_SearchRecordsClient, error)
+	// Count records that match the given parameters.
+	// This operation does not interact with the network.
+	CountRecords(ctx context.Context, in *CountRecordsRequest, opts ...grpc.CallOption) (*CountRecordsResponse, error)
 }
 
 type searchServiceClient struct {
@@ -114,6 +118,16 @@ func (x *searchServiceSearchRecordsClient) Recv() (*SearchRecordsResponse, error
 	return m, nil
 }
 
+func (c *searchServiceClient) CountRecords(ctx context.Context, in *CountRecordsRequest, opts ...grpc.CallOption) (*CountRecordsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(CountRecordsResponse)
+	err := c.cc.Invoke(ctx, SearchService_CountRecords_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // SearchServiceServer is the server API for SearchService service.
 // All implementations should embed UnimplementedSearchServiceServer
 // for forward compatibility.
@@ -126,6 +140,9 @@ type SearchServiceServer interface {
 	// Returns complete record data including all metadata, skills, domains, etc.
 	// This operation does not interact with the network.
 	SearchRecords(*SearchRecordsRequest, SearchService_SearchRecordsServer) error
+	// Count records that match the given parameters.
+	// This operation does not interact with the network.
+	CountRecords(context.Context, *CountRecordsRequest) (*CountRecordsResponse, error)
 }
 
 // UnimplementedSearchServiceServer should be embedded to have
@@ -140,6 +157,9 @@ func (UnimplementedSearchServiceServer) SearchCIDs(*SearchCIDsRequest, SearchSer
 }
 func (UnimplementedSearchServiceServer) SearchRecords(*SearchRecordsRequest, SearchService_SearchRecordsServer) error {
 	return status.Errorf(codes.Unimplemented, "method SearchRecords not implemented")
+}
+func (UnimplementedSearchServiceServer) CountRecords(context.Context, *CountRecordsRequest) (*CountRecordsResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method CountRecords not implemented")
 }
 func (UnimplementedSearchServiceServer) testEmbeddedByValue() {}
 
@@ -203,13 +223,36 @@ func (x *searchServiceSearchRecordsServer) Send(m *SearchRecordsResponse) error 
 	return x.ServerStream.SendMsg(m)
 }
 
+func _SearchService_CountRecords_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(CountRecordsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(SearchServiceServer).CountRecords(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: SearchService_CountRecords_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(SearchServiceServer).CountRecords(ctx, req.(*CountRecordsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // SearchService_ServiceDesc is the grpc.ServiceDesc for SearchService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
 var SearchService_ServiceDesc = grpc.ServiceDesc{
 	ServiceName: "agntcy.dir.search.v1.SearchService",
 	HandlerType: (*SearchServiceServer)(nil),
-	Methods:     []grpc.MethodDesc{},
+	Methods: []grpc.MethodDesc{
+		{
+			MethodName: "CountRecords",
+			Handler:    _SearchService_CountRecords_Handler,
+		},
+	},
 	Streams: []grpc.StreamDesc{
 		{
 			StreamName:    "SearchCIDs",

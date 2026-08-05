@@ -200,6 +200,10 @@ func (f *fakeSignatureDB) GetRecordCIDs(opts ...types.FilterOption) ([]string, e
 	return nil, nil
 }
 
+func (f *fakeSignatureDB) CountRecords(opts ...types.FilterOption) (uint32, error) {
+	return 0, nil
+}
+
 func (f *fakeSignatureDB) GetRecords(opts ...types.FilterOption) ([]coretypes.Record, error) {
 	return nil, nil
 }
