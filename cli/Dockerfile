@@ -38,9 +38,18 @@ RUN --mount=type=cache,target=/go/pkg/mod \
 
 RUN xx-verify /bin/dirctl
 
-FROM gcr.io/distroless/static:nonroot@sha256:963fa6c544fe5ce420f1f54fb88b6fb01479f054c8056d0f74cc2c6000df5240
+# Runtime stage - Alpine rather than distroless so that documented workflows composing
+# multiple dirctl calls (pipes, `--output json` into jq) are runnable with this image.
+FROM alpine:3.23@sha256:fd791d74b68913cbb027c6546007b3f0d3bc45125f797758156952bc2d6daf40
+
+RUN apk add --no-cache ca-certificates jq \
+    && addgroup -g 65532 -S nonroot \
+    && adduser -u 65532 -S nonroot -G nonroot -h /home/nonroot \
+    && mkdir -p /home/nonroot && chown 65532:65532 /home/nonroot
+
 WORKDIR /
-COPY --from=builder /bin/dirctl ./dirctl
+
+COPY --from=builder /bin/dirctl /usr/local/bin/dirctl
 
 USER 65532:65532
-ENTRYPOINT ["./dirctl"]
+ENTRYPOINT ["/usr/local/bin/dirctl"]
