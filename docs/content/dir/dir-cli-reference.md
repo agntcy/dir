@@ -693,15 +693,26 @@ dirctl pull cisco.com/agent@wrong-cid
 
 When no version is specified, commands return the most recently created record (by record's `created_at` field). This allows non-semver tags like `latest`, `dev`, or `stable`.
 
-### `dirctl delete <cid>`
+### `dirctl delete <cid> [cid...]`
 
-Removes records from storage.
+Removes records from storage. Multiple CIDs can be passed as arguments or piped in
+with `--stdin`, in which case they are deleted over a single stream.
+
+The following flags are available:
+
+- `--stdin` - Read CIDs from standard input, either as a JSON array produced by `dirctl search --format cid --output json` or as line-delimited CIDs
 
 ??? example
 
     ```bash
     # Delete a record
     dirctl delete baeareihdr6t7s6sr2q4zo456sza66eewqc7huzatyfgvoupaqyjw23ilvi
+
+    # Delete several records in one request
+    dirctl delete baeareihdr6t7... baeareiabc123...
+
+    # Delete every record matching a search
+    dirctl search --format cid --limit 100 --output json | dirctl delete --stdin
     ```
 
 ### `dirctl info <reference>`
