@@ -48,9 +48,17 @@ spec:
             securityContext:
               {{- toYaml . | nindent 14 }}
             {{- end }}
-            args:
-            {{- range $cronjob.args }}
+            {{- with $cronjob.command }}
+            command:
+            {{- range . }}
             - {{ . | quote }}
+            {{- end }}
+            {{- end }}
+            {{- with $cronjob.args }}
+            args:
+            {{- range . }}
+            - {{ . | quote }}
+            {{- end }}
             {{- end }}
             env:
             {{- if eq $.Values.spire.enabled true }}
