@@ -2147,10 +2147,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#dirctl-delete-cid" class="md-nav__link">
+  <a href="#dirctl-delete-cid-cid" class="md-nav__link">
     <span class="md-ellipsis">
       
-        dirctl delete &lt;cid&gt;
+        dirctl delete &lt;cid&gt; [cid...]
       
     </span>
   </a>
@@ -3145,10 +3145,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#dirctl-delete-cid" class="md-nav__link">
+  <a href="#dirctl-delete-cid-cid" class="md-nav__link">
     <span class="md-ellipsis">
       
-        dirctl delete &lt;cid&gt;
+        dirctl delete &lt;cid&gt; [cid...]
       
     </span>
   </a>
@@ -4561,12 +4561,23 @@ dirctl<span class="w"> </span>pull<span class="w"> </span>cisco.com/agent@wrong-
 </code></pre></div>
 <p><strong>Version Resolution:</strong></p>
 <p>When no version is specified, commands return the most recently created record (by record's <code>created_at</code> field). This allows non-semver tags like <code>latest</code>, <code>dev</code>, or <code>stable</code>.</p>
-<h3 id="dirctl-delete-cid"><code>dirctl delete &lt;cid&gt;</code></h3>
-<p>Removes records from storage.</p>
+<h3 id="dirctl-delete-cid-cid"><code>dirctl delete &lt;cid&gt; [cid...]</code></h3>
+<p>Removes records from storage. Multiple CIDs can be passed as arguments or piped in
+with <code>--stdin</code>, in which case they are deleted over a single stream.</p>
+<p>The following flags are available:</p>
+<ul>
+<li><code>--stdin</code> - Read CIDs from standard input, either as a JSON array produced by <code>dirctl search --format cid --output json</code> or as line-delimited CIDs</li>
+</ul>
 <details class="example">
 <summary>Example</summary>
 <div class="highlight"><pre><span></span><code><span class="c1"># Delete a record</span>
 dirctl<span class="w"> </span>delete<span class="w"> </span>baeareihdr6t7s6sr2q4zo456sza66eewqc7huzatyfgvoupaqyjw23ilvi
+
+<span class="c1"># Delete several records in one request</span>
+dirctl<span class="w"> </span>delete<span class="w"> </span>baeareihdr6t7...<span class="w"> </span>baeareiabc123...
+
+<span class="c1"># Delete every record matching a search</span>
+dirctl<span class="w"> </span>search<span class="w"> </span>--format<span class="w"> </span>cid<span class="w"> </span>--limit<span class="w"> </span><span class="m">100</span><span class="w"> </span>--output<span class="w"> </span>json<span class="w"> </span><span class="p">|</span><span class="w"> </span>dirctl<span class="w"> </span>delete<span class="w"> </span>--stdin
 </code></pre></div>
 </details>
 <h3 id="dirctl-info-reference"><code>dirctl info &lt;reference&gt;</code></h3>
