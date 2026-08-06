@@ -7,11 +7,89 @@
    a 1-2 step conditional flow that maps 1:1 to the four configurations and
    deep-links to each section on the same page. Progressive enhancement:
    replaces the static fallback list inside #setup-chooser. */
-document$.subscribe(function () {
-  var mount = document.getElementById("setup-chooser");
-  if (!mount) {
-    return;
+(function () {
+  var SECTION_IDS = ["private-node", "public-store-node", "networked-node", "federated"];
+  var activeWrap = null;
+  var activeTimer = null;
+
+  function getSectionNodes(heading) {
+    var nodes = [heading];
+    var el = heading.nextElementSibling;
+    while (el && el.tagName !== "H3") {
+      nodes.push(el);
+      el = el.nextElementSibling;
+    }
+    return nodes;
   }
+
+  function unwrapSection(wrap) {
+    if (!wrap || !wrap.parentNode) {
+      return;
+    }
+    var parent = wrap.parentNode;
+    while (wrap.firstChild) {
+      parent.insertBefore(wrap.firstChild, wrap);
+    }
+    wrap.remove();
+  }
+
+  function clearSectionHighlight() {
+    if (activeTimer) {
+      clearTimeout(activeTimer);
+      activeTimer = null;
+    }
+    if (activeWrap) {
+      unwrapSection(activeWrap);
+      activeWrap = null;
+    }
+  }
+
+  function highlightSection(id) {
+    clearSectionHighlight();
+    var heading = document.getElementById(id);
+    if (!heading) {
+      return;
+    }
+
+    var nodes = getSectionNodes(heading);
+    var wrap = document.createElement("div");
+    wrap.className = "sc-section-target sc-section-flash";
+    heading.parentNode.insertBefore(wrap, heading);
+    nodes.forEach(function (node) {
+      wrap.appendChild(node);
+    });
+    activeWrap = wrap;
+
+    wrap.scrollIntoView({ behavior: "smooth", block: "start" });
+
+    activeTimer = setTimeout(function () {
+      wrap.classList.remove("sc-section-flash");
+      activeTimer = null;
+    }, 2600);
+  }
+
+  function flashFromHash() {
+    var id = location.hash.slice(1);
+    if (SECTION_IDS.indexOf(id) === -1) {
+      return;
+    }
+    requestAnimationFrame(function () {
+      highlightSection(id);
+    });
+  }
+
+  if (!window.__dirSetupSectionFlash) {
+    window.__dirSetupSectionFlash = true;
+    window.addEventListener("hashchange", flashFromHash);
+  }
+
+  document$.subscribe(function () {
+    flashFromHash();
+
+    var mount = document.getElementById("setup-chooser");
+    if (!mount) {
+      return;
+    }
 
   var DISCOVER = {
     key: "discover",
@@ -103,12 +181,24 @@ document$.subscribe(function () {
       '<div class="sc-rec-name">' + c.n + ". " + esc(c.name) + "</div>" +
       '<p class="sc-why">' + esc(c.why) + "</p>" +
       '<div class="sc-cta">' +
-      '<a class="sc-btn sc-primary sc-jump" href="' + c.href + '">Jump to configuration ' + c.n + " ↓</a>" +
+      '<a class="sc-btn sc-primary sc-jump" href="' + c.href + '">Jump to ' + esc(c.name) + " ↓</a>" +
       '<button type="button" class="sc-btn sc-ghost" data-act="restart">↺ Start over</button>' +
       "</div></div>";
   }
 
   mount.addEventListener("click", function (e) {
+    var jump = e.target.closest ? e.target.closest(".sc-jump") : null;
+    if (jump && mount.contains(jump)) {
+      e.preventDefault();
+      var href = jump.getAttribute("href") || "";
+      if (href.charAt(0) === "#") {
+        history.pushState(null, "", href);
+        highlightSection(href.slice(1));
+      }
+      jump.blur();
+      return;
+    }
+
     var opt = e.target.closest ? e.target.closest(".sc-opt") : null;
     if (opt && mount.contains(opt)) {
       var key = screen === "store" ? "store" : "discover";
@@ -130,6 +220,10 @@ document$.subscribe(function () {
     } else if (act === "back") {
       if (screen === "store") { screen = "discover"; render(); }
     } else if (act === "restart") {
+      clearSectionHighlight();
+      if (location.hash) {
+        history.replaceState(null, "", location.pathname + location.search);
+      }
       state = {};
       screen = "discover";
       render();
@@ -139,4 +233,5 @@ document$.subscribe(function () {
   state = {};
   screen = "discover";
   render();
-});
+  });
+})();

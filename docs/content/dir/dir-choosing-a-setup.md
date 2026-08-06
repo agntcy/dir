@@ -15,9 +15,9 @@ matching configuration — each shown as its own topology.
 The configurations below cover the useful combinations. In every diagram
 dashed lines mean discovery (only CIDs/labels move), solid lines mean retrieval (record bytes move).
 
-### Private node — keep records to yourself { #private-node }
+### Private node { #private-node }
 
-Local store, no network. 
+Keep records to yourself. Store locally, no network.
 
 You store, search, sign, and pull locally. You can still pull records
 inbound, both from a public registry and from a remote Directory node you authenticate to.
@@ -42,7 +42,9 @@ Choose when:
 
 See [Local Deployment](dir-deployment-local.md) for more details.
 
-### Public-store node — let others retrieve, without a network { #public-store-node }
+### Public-store node { #public-store-node }
+
+Let others retrieve, without a network.
 
 The store is a public registry (GHCR, Docker Hub). Anyone who knows the registry can pull
 records straight from it — a specific CID or all of them — with `dirctl sync create
@@ -65,7 +67,9 @@ Choose when:
 
 See [Local Deployment](dir-deployment-local.md) and [Store](dir-component-store.md) for more details.
 
-### Networked node — be discoverable { #networked-node }
+### Networked node { #networked-node }
+
+Be discoverable.
 
 A bootstrap connection puts the node on the DHT: it announces its records and can search
 for records held by other nodes.
@@ -104,7 +108,9 @@ flowchart TB
 
 See [Local Deployment](dir-deployment-local.md), [Connecting to a Remote Directory](dir-deployment-local.md#connecting-to-a-remote-directory), and [Routing](dir-component-routing.md) for more details.
 
-### Federated — exchange across organizations { #federated }
+### Federated { #federated }
+
+Exchange across organizations.
 
 Multiple production nodes peer under a shared trust root. Organizations discover each
 other's records over a shared DHT and retrieve them with authenticated, authorized access

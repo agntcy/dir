@@ -146,13 +146,30 @@
   border-color: var(--md-accent-fg-color);
   color: #fff;
 }
-/* Anchor primary buttons need explicit hover/focus colors — Material's
-   .md-typeset a:hover sets accent text color and hides white-on-accent labels. */
+/* Anchor primary buttons need explicit state colors — Material's
+   .md-typeset a:hover/:focus sets accent text color and hides white-on-accent labels. */
 .setup-chooser .sc-primary:hover,
 .setup-chooser .sc-primary:focus-visible {
   background: var(--md-accent-fg-color);
   filter: brightness(1.08);
   color: #fff;
+}
+.md-typeset .setup-chooser a.sc-primary,
+.md-typeset .setup-chooser a.sc-primary:hover,
+.md-typeset .setup-chooser a.sc-primary:focus,
+.md-typeset .setup-chooser a.sc-primary:focus-visible,
+.md-typeset .setup-chooser a.sc-primary:active,
+.md-typeset .setup-chooser a.sc-primary:visited {
+  background: var(--md-accent-fg-color);
+  border-color: var(--md-accent-fg-color);
+  color: #fff;
+  text-decoration: none;
+}
+.md-typeset .setup-chooser a.sc-primary:hover,
+.md-typeset .setup-chooser a.sc-primary:focus,
+.md-typeset .setup-chooser a.sc-primary:focus-visible,
+.md-typeset .setup-chooser a.sc-primary:active {
+  filter: brightness(1.08);
 }
 
 /* result */
@@ -213,4 +230,54 @@
 [data-md-color-scheme="slate"] .setup-chooser .sc-primary:hover,
 [data-md-color-scheme="slate"] .setup-chooser .sc-primary:focus-visible {
   color: rgb(3, 20, 43);
+}
+[data-md-color-scheme="slate"] .md-typeset .setup-chooser a.sc-primary,
+[data-md-color-scheme="slate"] .md-typeset .setup-chooser a.sc-primary:hover,
+[data-md-color-scheme="slate"] .md-typeset .setup-chooser a.sc-primary:focus,
+[data-md-color-scheme="slate"] .md-typeset .setup-chooser a.sc-primary:focus-visible,
+[data-md-color-scheme="slate"] .md-typeset .setup-chooser a.sc-primary:active,
+[data-md-color-scheme="slate"] .md-typeset .setup-chooser a.sc-primary:visited {
+  color: rgb(3, 20, 43);
+}
+
+/* Target configuration section: persistent frame after "Jump to …". */
+.md-typeset .sc-section-target {
+  scroll-margin-top: calc(var(--md-header-height, 4rem) + 0.75rem);
+  margin: 0 -16px 1.2em;
+  padding: 8px 16px 4px;
+  border-radius: 12px;
+  border: 1.5px solid var(--md-accent-fg-color);
+  box-shadow: inset 3px 0 0 var(--md-accent-fg-color);
+}
+
+.md-typeset .sc-section-target.sc-section-flash {
+  animation: sc-section-flash 2.4s ease-out forwards;
+}
+
+@keyframes sc-section-flash {
+  0%,
+  18% {
+    background: color-mix(in srgb, var(--md-accent-fg-color) 16%, transparent);
+  }
+  100% {
+    background: transparent;
+  }
+}
+
+[data-md-color-scheme="slate"] .md-typeset .sc-section-target {
+  border-color: color-mix(in srgb, var(--md-accent-fg-color) 75%, transparent);
+}
+
+[data-md-color-scheme="slate"] .md-typeset .sc-section-target.sc-section-flash {
+  animation-name: sc-section-flash-slate;
+}
+
+@keyframes sc-section-flash-slate {
+  0%,
+  18% {
+    background: color-mix(in srgb, var(--md-accent-fg-color) 22%, transparent);
+  }
+  100% {
+    background: transparent;
+  }
 }
