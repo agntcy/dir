@@ -450,3 +450,154 @@ func TestGetRecordCIDs_Annotations(t *testing.T) {
 		assert.ElementsMatch(t, []string{ownerAlice.GetCid(), envAlice.GetCid()}, cids)
 	})
 }
+
+func TestGetRecordCIDs_NegatedSkill(t *testing.T) {
+	db := setupTestDB(t)
+	seedDB(t, db)
+
+	// The issue's lead case: a record with skills [nlp, python]-equivalent
+	// must not be returned merely because it also has a different skill.
+	cids, err := db.GetRecordCIDs(types.WithoutSkillNames("natural_language_processing/*"))
+	require.NoError(t, err)
+	assert.NotContains(t, cids, marketingAgent.GetCid())
+	assert.NotContains(t, cids, healthcareAgent.GetCid())
+	assert.Contains(t, cids, codeAssistant.GetCid())
+}
+
+func TestGetRecordCIDs_NegatedScalarField(t *testing.T) {
+	db := setupTestDB(t)
+	seedDB(t, db)
+
+	cids, err := db.GetRecordCIDs(types.WithoutNames("*cisco*"))
+	require.NoError(t, err)
+	assert.NotContains(t, cids, marketingAgent.GetCid())
+	assert.Contains(t, cids, healthcareAgent.GetCid())
+	assert.Contains(t, cids, codeAssistant.GetCid())
+}
+
+func TestGetRecordCIDs_IncludeAndExcludeSameType(t *testing.T) {
+	db := setupTestDB(t)
+	seedDB(t, db)
+
+	// "has NLP skill AND does not have coding skill" — marketingAgent and
+	// healthcareAgent both have NLP; only marketingAgent lacks a coding skill.
+	cids, err := db.GetRecordCIDs(
+		types.WithSkillNames("natural_language_processing/*"),
+		types.WithoutSkillNames("*coding*"),
+	)
+	require.NoError(t, err)
+	assert.ElementsMatch(t, []string{marketingAgent.GetCid(), healthcareAgent.GetCid()}, cids)
+}
+
+func TestGetRecordCIDs_NegatedAnnotation(t *testing.T) {
+	db := setupTestDB(t)
+
+	ownerAlice := &testRecord{
+		cid:           "bafybeigdyrztnegannotowner00000000000000000000000000000001",
+		name:          "directory.agntcy.org/test/negowner-alice",
+		version:       "1.0.0",
+		schemaVersion: "0.8.0",
+		createdAt:     "2024-01-15T10:30:00Z",
+		annotations:   map[string]string{"owner": "alice"},
+	}
+	ownerBob := &testRecord{
+		cid:           "bafybeigdyrztnegannotowner00000000000000000000000000000002",
+		name:          "directory.agntcy.org/test/negowner-bob",
+		version:       "1.0.0",
+		schemaVersion: "0.8.0",
+		createdAt:     "2024-01-15T10:30:00Z",
+		annotations:   map[string]string{"owner": "bob"},
+	}
+
+	require.NoError(t, db.AddRecord(ownerAlice))
+	require.NoError(t, db.AddRecord(ownerBob))
+
+	t.Run("key-only exclusion excludes any record with that key", func(t *testing.T) {
+		cids, err := db.GetRecordCIDs(types.WithoutAnnotationKeys("owner"))
+		require.NoError(t, err)
+		assert.NotContains(t, cids, ownerAlice.GetCid())
+		assert.NotContains(t, cids, ownerBob.GetCid())
+	})
+
+	// Key+value exclusion compiles to a single NOT EXISTS with both
+	// conditions AND'd (the documented locator/annotation conflation
+	// limitation — see applyExcludedAnnotations), matching the include
+	// path's identical per-row conjunction. It only excludes the exact
+	// key+value pair, not every record carrying either half.
+	t.Run("key+value exclusion only excludes the exact pair", func(t *testing.T) {
+		cids, err := db.GetRecordCIDs(types.WithoutAnnotationKeys("owner"), types.WithoutAnnotationValues("alice"))
+		require.NoError(t, err)
+		assert.NotContains(t, cids, ownerAlice.GetCid())
+		assert.Contains(t, cids, ownerBob.GetCid())
+	})
+}
+
+func TestGetRecordCIDs_NegatedScanSeverity(t *testing.T) {
+	db := setupTestDB(t)
+	seedDB(t, db)
+
+	require.NoError(t, db.UpsertScanReport(&gormdb.ScanReport{
+		RecordCID:   marketingAgent.GetCid(),
+		ScannerType: "MCP",
+		IsSafe:      false,
+		MaxSeverity: "HIGH",
+	}))
+
+	cids, err := db.GetRecordCIDs(types.WithoutScanSeverities("HIGH"))
+	require.NoError(t, err)
+	assert.NotContains(t, cids, marketingAgent.GetCid())
+	assert.Contains(t, cids, healthcareAgent.GetCid())
+	assert.Contains(t, cids, codeAssistant.GetCid())
+}
+
+// TestGetRecordCIDs_NegatedAuthors_NullSurvives guards against the bug where
+// applyExcludedAuthors negated records.authors with nullable=false: gorm's JSON
+// serializer writes a genuine SQL NULL (not an empty-array literal) for a nil
+// Go slice, so NOT(NULL) silently dropped every author-less record instead of
+// retaining it. Unlike description, no test-only NULL forcing is needed here —
+// simply omitting `authors` on the testRecord literal already produces a nil
+// slice, which AddRecord persists as SQL NULL through the JSON serializer.
+func TestGetRecordCIDs_NegatedAuthors_NullSurvives(t *testing.T) {
+	db := setupTestDB(t)
+
+	withAuthor := &testRecord{
+		cid:           "bafybeigdyrztnegauth00000000000000000000000000000000001",
+		name:          "directory.agntcy.org/test/has-author",
+		version:       "1.0.0",
+		schemaVersion: "0.8.0",
+		createdAt:     "2024-01-15T10:30:00Z",
+		authors:       []string{"spam@example.com"},
+	}
+	noAuthors := &testRecord{
+		cid:           "bafybeigdyrztnegauth00000000000000000000000000000000002",
+		name:          "directory.agntcy.org/test/no-authors",
+		version:       "1.0.0",
+		schemaVersion: "0.8.0",
+		createdAt:     "2024-01-15T10:30:00Z",
+		// authors intentionally left nil -> records.authors is genuine SQL NULL.
+	}
+
+	require.NoError(t, db.AddRecord(withAuthor))
+	require.NoError(t, db.AddRecord(noAuthors))
+
+	cids, err := db.GetRecordCIDs(types.WithoutAuthors("spam"))
+	require.NoError(t, err)
+	assert.NotContains(t, cids, withAuthor.GetCid())
+	assert.Contains(t, cids, noAuthors.GetCid())
+}
+
+func TestCountRecords_AgreesWithGetRecordCIDs_UnderExclusion(t *testing.T) {
+	db := setupTestDB(t)
+	seedDB(t, db)
+
+	opts := []types.FilterOption{types.WithoutSkillNames("natural_language_processing/*")}
+
+	cids, err := db.GetRecordCIDs(opts...)
+	require.NoError(t, err)
+
+	count, err := db.CountRecords(opts...)
+	require.NoError(t, err)
+
+	//nolint:gosec // len(cids) is bounded by database size, no overflow risk
+	assert.Equal(t, uint32(len(cids)), count)
+}

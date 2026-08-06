@@ -21,6 +21,10 @@ message RecordQuery {
   //   '*' - matches zero or more characters
   //   '?' - matches exactly one character
   string value = 2;
+
+  // When true, exclude records matching this query instead of including them.
+  // Default false preserves current (inclusion) behavior.
+  bool negate = 3;
 }
 
 // Defines a list of supported record query types.
