@@ -464,6 +464,52 @@ func TestGetRecordCIDs_NegatedSkill(t *testing.T) {
 	assert.Contains(t, cids, codeAssistant.GetCid())
 }
 
+// TestGetRecordCIDs_NegatedSkillIDAndNameCombineWithOR guards against an
+// AND-vs-OR regression: excluded skill IDs and excluded skill names arrive
+// from independent RecordQuery entries (unlike locator's type:url or
+// annotation's key:value, which are one combined value from a single query —
+// see applyExcludedLocators), so a record matching either criterion via a
+// different skill row must still be excluded, not only a record whose single
+// row happens to satisfy both simultaneously.
+func TestGetRecordCIDs_NegatedSkillIDAndNameCombineWithOR(t *testing.T) {
+	db := setupTestDB(t)
+
+	crossMatch := &testRecord{
+		cid:           "bafybeigdyrztnegskillorcombine0000000000000000000000000001",
+		name:          "directory.agntcy.org/test/skill-or-combine",
+		version:       "1.0.0",
+		schemaVersion: "0.8.0",
+		createdAt:     "2024-01-15T10:30:00Z",
+		skills: []coretypes.Skill{
+			&testSkill{id: 90001, name: "totally_unrelated_skill"},
+			&testSkill{id: 90002, name: "natural_language_processing/foo"},
+		},
+	}
+	noMatch := &testRecord{
+		cid:           "bafybeigdyrztnegskillorcombine0000000000000000000000000002",
+		name:          "directory.agntcy.org/test/skill-or-combine-safe",
+		version:       "1.0.0",
+		schemaVersion: "0.8.0",
+		createdAt:     "2024-01-15T10:30:00Z",
+		skills: []coretypes.Skill{
+			&testSkill{id: 90003, name: "something_else"},
+		},
+	}
+
+	require.NoError(t, db.AddRecord(crossMatch))
+	require.NoError(t, db.AddRecord(noMatch))
+
+	// crossMatch matches the excluded ID via one skill row and the excluded
+	// name pattern via a different row — no single row satisfies both.
+	cids, err := db.GetRecordCIDs(
+		types.WithoutSkillIDs(90001),
+		types.WithoutSkillNames("natural_language_processing/*"),
+	)
+	require.NoError(t, err)
+	assert.NotContains(t, cids, crossMatch.GetCid())
+	assert.Contains(t, cids, noMatch.GetCid())
+}
+
 func TestGetRecordCIDs_NegatedScalarField(t *testing.T) {
 	db := setupTestDB(t)
 	seedDB(t, db)
@@ -480,7 +526,7 @@ func TestGetRecordCIDs_IncludeAndExcludeSameType(t *testing.T) {
 	seedDB(t, db)
 
 	// "has NLP skill AND does not have coding skill" — marketingAgent and
-	// healthcareAgent both have NLP; only marketingAgent lacks a coding skill.
+	// healthcareAgent both have NLP, and neither has a coding skill.
 	cids, err := db.GetRecordCIDs(
 		types.WithSkillNames("natural_language_processing/*"),
 		types.WithoutSkillNames("*coding*"),

@@ -124,73 +124,77 @@ func applyExcludedAuthors(query *gorm.DB, authors []string) *gorm.DB {
 // applyExcludedSkills excludes records that have any skill matching the given
 // names or IDs, via NOT EXISTS so a record with skills [nlp, python] excluded
 // on "nlp" is still excluded (not resurrected by the python row).
+//
+// ID and name conditions are OR'd, not AND'd: unlike locator's type:url or
+// annotation's key:value (one combined value from a single query, correctly
+// AND'd — see applyExcludedLocators), SkillIDs and SkillNames arrive from
+// independent RecordQuery entries with no pairing between them. Excluding
+// "skill ID 5" and "skill name nlp" must exclude a record matching either —
+// even via two different skill rows — not only a record with one row that
+// happens to satisfy both simultaneously.
 func applyExcludedSkills(query *gorm.DB, names []string, ids []uint64) *gorm.DB {
-	var conditions []string
+	var matchConditions []string
 
 	var args []any
 
-	conditions = append(conditions, "ex.record_cid = records.record_cid")
-
 	if len(ids) > 0 {
-		conditions = append(conditions, "ex.skill_id IN ?")
+		matchConditions = append(matchConditions, "ex.skill_id IN ?")
 		args = append(args, ids)
 	}
 
 	if len(names) > 0 {
 		nameCond, nameArgs := utils.BuildWildcardCondition("ex.name", names)
-		conditions = append(conditions, nameCond)
+		matchConditions = append(matchConditions, nameCond)
 		args = append(args, nameArgs...)
 	}
 
-	inner := strings.Join(conditions, " AND ")
+	inner := "ex.record_cid = records.record_cid AND (" + strings.Join(matchConditions, " OR ") + ")"
 
 	return query.Where(utils.BuildNotExistsCondition("skills", "ex", inner), args...)
 }
 
-// applyExcludedDomains mirrors applyExcludedSkills for the domains table.
+// applyExcludedDomains mirrors applyExcludedSkills for the domains table —
+// see applyExcludedSkills for why ID and name are OR'd, not AND'd.
 func applyExcludedDomains(query *gorm.DB, names []string, ids []uint64) *gorm.DB {
-	var conditions []string
+	var matchConditions []string
 
 	var args []any
 
-	conditions = append(conditions, "ex.record_cid = records.record_cid")
-
 	if len(ids) > 0 {
-		conditions = append(conditions, "ex.domain_id IN ?")
+		matchConditions = append(matchConditions, "ex.domain_id IN ?")
 		args = append(args, ids)
 	}
 
 	if len(names) > 0 {
 		nameCond, nameArgs := utils.BuildWildcardCondition("ex.name", names)
-		conditions = append(conditions, nameCond)
+		matchConditions = append(matchConditions, nameCond)
 		args = append(args, nameArgs...)
 	}
 
-	inner := strings.Join(conditions, " AND ")
+	inner := "ex.record_cid = records.record_cid AND (" + strings.Join(matchConditions, " OR ") + ")"
 
 	return query.Where(utils.BuildNotExistsCondition("domains", "ex", inner), args...)
 }
 
-// applyExcludedModules mirrors applyExcludedSkills for the modules table.
+// applyExcludedModules mirrors applyExcludedSkills for the modules table —
+// see applyExcludedSkills for why ID and name are OR'd, not AND'd.
 func applyExcludedModules(query *gorm.DB, names []string, ids []uint64) *gorm.DB {
-	var conditions []string
+	var matchConditions []string
 
 	var args []any
 
-	conditions = append(conditions, "ex.record_cid = records.record_cid")
-
 	if len(ids) > 0 {
-		conditions = append(conditions, "ex.module_id IN ?")
+		matchConditions = append(matchConditions, "ex.module_id IN ?")
 		args = append(args, ids)
 	}
 
 	if len(names) > 0 {
 		nameCond, nameArgs := utils.BuildWildcardCondition("ex.name", names)
-		conditions = append(conditions, nameCond)
+		matchConditions = append(matchConditions, nameCond)
 		args = append(args, nameArgs...)
 	}
 
-	inner := strings.Join(conditions, " AND ")
+	inner := "ex.record_cid = records.record_cid AND (" + strings.Join(matchConditions, " OR ") + ")"
 
 	return query.Where(utils.BuildNotExistsCondition("modules", "ex", inner), args...)
 }
