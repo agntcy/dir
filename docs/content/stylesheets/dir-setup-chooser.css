@@ -146,9 +146,13 @@
   border-color: var(--md-accent-fg-color);
   color: #fff;
 }
-.setup-chooser .sc-primary:hover {
+/* Anchor primary buttons need explicit hover/focus colors — Material's
+   .md-typeset a:hover sets accent text color and hides white-on-accent labels. */
+.setup-chooser .sc-primary:hover,
+.setup-chooser .sc-primary:focus-visible {
   background: var(--md-accent-fg-color);
   filter: brightness(1.08);
+  color: #fff;
 }
 
 /* result */
@@ -203,4 +207,10 @@
 
 [data-md-color-scheme="slate"] .setup-chooser .sc-radio {
   border-color: rgba(227, 227, 227, 0.35);
+}
+
+[data-md-color-scheme="slate"] .setup-chooser .sc-primary,
+[data-md-color-scheme="slate"] .setup-chooser .sc-primary:hover,
+[data-md-color-scheme="slate"] .setup-chooser .sc-primary:focus-visible {
+  color: rgb(3, 20, 43);
 }
