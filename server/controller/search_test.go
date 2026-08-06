@@ -72,3 +72,22 @@ func TestCountRecords_DatabaseError(t *testing.T) {
 	require.Error(t, err)
 	assert.ErrorContains(t, err, "failed to count records")
 }
+
+func TestCountRecords_NegatedQuery(t *testing.T) {
+	db := &fakeSearchDB{totalCount: 2}
+	ctrl := NewSearchController(db, nil)
+
+	resp, err := ctrl.CountRecords(context.Background(), &searchv1.CountRecordsRequest{
+		Queries: []*searchv1.RecordQuery{
+			{
+				Type:   searchv1.RecordQueryType_RECORD_QUERY_TYPE_SKILL_NAME,
+				Value:  "nlp",
+				Negate: true,
+			},
+		},
+	})
+	require.NoError(t, err)
+	assert.Equal(t, uint32(2), resp.GetTotalCount())
+	assert.Equal(t, []string{"nlp"}, db.gotFilters.Excluded.SkillNames)
+	assert.Empty(t, db.gotFilters.SkillNames)
+}

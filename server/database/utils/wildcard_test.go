@@ -473,3 +473,30 @@ func BenchmarkBuildWildcardCondition(b *testing.B) {
 		BuildWildcardCondition(field, patterns)
 	}
 }
+
+func TestBuildNotExistsCondition(t *testing.T) {
+	got := BuildNotExistsCondition("skills", "ex", "ex.record_cid = records.record_cid AND LOWER(ex.name) = ?")
+
+	want := "NOT EXISTS (SELECT 1 FROM skills ex WHERE ex.record_cid = records.record_cid AND LOWER(ex.name) = ?)"
+	if got != want {
+		t.Fatalf("got %q, want %q", got, want)
+	}
+}
+
+func TestBuildNegatedCondition_NonNullableColumn(t *testing.T) {
+	got := BuildNegatedCondition("records.name", "LOWER(records.name) = ?", false)
+
+	want := "NOT (LOWER(records.name) = ?)"
+	if got != want {
+		t.Fatalf("got %q, want %q", got, want)
+	}
+}
+
+func TestBuildNegatedCondition_NullableColumn(t *testing.T) {
+	got := BuildNegatedCondition("records.description", "LOWER(records.description) LIKE ? ESCAPE '\\'", true)
+
+	want := "(records.description IS NULL OR NOT (LOWER(records.description) LIKE ? ESCAPE '\\'))"
+	if got != want {
+		t.Fatalf("got %q, want %q", got, want)
+	}
+}
