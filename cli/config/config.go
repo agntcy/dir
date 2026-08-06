@@ -30,6 +30,7 @@ func ChangedClientConfigFields(cmd *cobra.Command) []string {
 		"tls-key-file":       "tls_key_file",
 		"oidc-issuer":        "oidc_issuer",
 		"oidc-client-id":     "oidc_client_id",
+		"oidc-scopes":        "oidc_scopes",
 		"auth-token":         "auth_token",
 	}
 

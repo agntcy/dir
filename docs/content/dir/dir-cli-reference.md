@@ -47,6 +47,8 @@ gateway endpoints, and SPIFFE/SPIRE integration are documented in
 
 ```bash
 dirctl auth login --oidc-issuer "https://idp.ads.outshift.io" --oidc-client-id "dirctl"
+
+Set `oidc_scopes` in the context (or `DIRECTORY_CLIENT_OIDC_SCOPES` / `--oidc-scopes`) to request extra claims. After changing scopes, run `dirctl auth login --force` so the cached token is re-minted.
 dirctl --auth-mode=oidc --server-addr ads.outshift.io:443 search --skill "AI"
 ```
 
@@ -444,6 +446,12 @@ contexts:
     auth_mode: oidc
     oidc_issuer: https://idp.example.com
     oidc_client_id: dirctl
+    oidc_scopes:
+      - openid
+      - email
+      - profile
+      - offline_access
+      - groups
   staging:
     server_address: staging.gateway.example.com:443
     auth_mode: oidc
