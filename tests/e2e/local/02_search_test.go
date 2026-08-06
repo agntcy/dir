@@ -147,6 +147,74 @@ var _ = ginkgo.Describe("Search functionality for OASF 0.8.0 records", func() {
 			})
 		})
 
+		// Exclude filters. These exercise the RecordQuery.negate path end to end:
+		// the CLI flag, the negated query, and the server's NOT EXISTS compilation.
+		ginkgo.Context("exclude filters", func() {
+			ginkgo.It("excludes record by a skill it has", func() {
+				output := testEnv.CLI.Search().
+					WithArgs("--exclude-skill-id", "10201").
+					ShouldSucceed()
+				gomega.Expect(output).NotTo(gomega.ContainSubstring(recordCID))
+			})
+
+			// A record with skills [10201, 10702] must not survive
+			// --exclude-skill-id 10201 via its other skill row.
+			ginkgo.It("excludes on a multi-valued field if any value matches", func() {
+				output := testEnv.CLI.Search().
+					WithSkillID("10702").
+					WithArgs("--exclude-skill-id", "10201").
+					ShouldSucceed()
+				gomega.Expect(output).NotTo(gomega.ContainSubstring(recordCID))
+			})
+
+			ginkgo.It("keeps record when the excluded value does not match", func() {
+				output := testEnv.CLI.Search().
+					WithName("*research-assistant*").
+					WithArgs("--exclude-skill-id", "99999").
+					ShouldSucceed()
+				gomega.Expect(output).To(gomega.ContainSubstring(recordCID))
+			})
+
+			ginkgo.It("combines an include and an exclude on the same field", func() {
+				output := testEnv.CLI.Search().
+					WithVersion("v4.0.0").
+					WithArgs("--exclude-version", "v1.0.0").
+					ShouldSucceed()
+				gomega.Expect(output).To(gomega.ContainSubstring(recordCID))
+			})
+
+			ginkgo.It("excludes by wildcard name", func() {
+				output := testEnv.CLI.Search().
+					WithArgs("--exclude-name", "*research-assistant*").
+					ShouldSucceed()
+				gomega.Expect(output).NotTo(gomega.ContainSubstring(recordCID))
+			})
+
+			ginkgo.It("excludes by author", func() {
+				output := testEnv.CLI.Search().
+					WithArgs("--exclude-author", "AGNTCY*").
+					ShouldSucceed()
+				gomega.Expect(output).NotTo(gomega.ContainSubstring(recordCID))
+			})
+
+			ginkgo.It("excludes by domain", func() {
+				output := testEnv.CLI.Search().
+					WithArgs("--exclude-domain", "life_science/*").
+					ShouldSucceed()
+				gomega.Expect(output).NotTo(gomega.ContainSubstring(recordCID))
+			})
+
+			// The record carries no scan report, so nothing is at or above the
+			// threshold and it survives the exclusion.
+			ginkgo.It("keeps a never-scanned record when excluding by scan severity", func() {
+				output := testEnv.CLI.Search().
+					WithName("*research-assistant*").
+					WithArgs("--exclude-scan-severity", "MEDIUM").
+					ShouldSucceed()
+				gomega.Expect(output).To(gomega.ContainSubstring(recordCID))
+			})
+		})
+
 		// Negative tests
 		ginkgo.Context("negative tests", func() {
 			ginkgo.It("returns no results for non-matching query", func() {
