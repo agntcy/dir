@@ -296,6 +296,94 @@ The Agent Directory Service can be deployed using Helm or GitOps / Argo CD. Helm
     !!! important "Trust domain"
         This Quick Start uses `example.org` for local testing only. To federate with the public Directory network, you need a unique trust domain. See [Production Deployment](dir-prod-deployment.md) and [Running a Federated Directory Instance](dir-federation-setup.md).
 
+## Content Policies
+
+A content policy runs a scheduled "search, then act on the matches" pipeline against your node. Policies are declared in the `dirctl` chart's values — no forked chart and no hand-written manifests. Each enabled policy renders a CronJob named `<release>-dirctl-policy-<key>`.
+
+```yaml
+policies:
+  sync-netsec:
+    enabled: true
+    schedule: "0 3 * * *"
+    action: sync
+    match:
+      domain: [network_security]
+
+  prune-untrusted:
+    enabled: true
+    schedule: "*/30 * * * *"
+    action: prune
+    match:
+      trusted: false
+      scan-severity: MEDIUM
+```
+
+`sync-netsec` pulls every record peers advertise in the `network_security` domain into this node, nightly. `prune-untrusted` deletes local records whose signature is not trusted and that scan at MEDIUM severity or worse, every 30 minutes.
+
+### Actions
+
+| Action | What it does | Underlying pipeline |
+| --- | --- | --- |
+| `sync` | Pull matching records from network peers into this node | `dirctl routing search` → `dirctl sync create --stdin` |
+| `prune` | Delete matching records from this node's store | `dirctl search` → `dirctl delete --stdin` |
+| `publish` | Announce matching local records to the routing network | `dirctl search` → `dirctl routing publish --stdin` |
+| `unpublish` | Withdraw matching local records from the routing network | `dirctl search` → `dirctl routing unpublish --stdin` |
+
+### Predicates
+
+`match` keys are `dirctl` flag names with the leading `--` removed, so every filter the CLI supports is available without a chart change:
+
+| Value kind | Example | Rendered flag |
+| --- | --- | --- |
+| List | `domain: [a, b]` | `--domain 'a' --domain 'b'` |
+| Boolean | `trusted: false` | `--trusted=false` |
+| Scalar | `scan-severity: MEDIUM` | `--scan-severity 'MEDIUM'` |
+
+Boolean filters are tri-state. Omitting `trusted` does not filter on trust at all; `trusted: true` matches records with a trusted signature; `trusted: false` matches records without one. The same holds for `verified` and `safe`.
+
+Because keys are passed through mechanically, the `exclude-` filters work too — carving an exception out of a policy needs no chart change:
+
+```yaml
+policies:
+  prune-untrusted-except-cisco:
+    enabled: true
+    schedule: "@daily"
+    action: prune
+    match:
+      trusted: false
+      exclude-name: ["cisco.com/*"]
+```
+
+`limit`, `format` and `output` are set by the chart and are rejected inside `match`. An unknown `action` and a value containing a single quote also fail at `helm template` time rather than at run time.
+
+!!! note "`sync` searches the network, not your store"
+    `sync` queries the routing index to find records held by other peers, so its `match` keys are limited to those `dirctl routing search` accepts: `skill`, `domain`, `locator`, `module` and `min-score`. The other three actions search the local store and accept the full `dirctl search` filter set.
+
+### Other Fields
+
+| Field | Default | Meaning |
+| --- | --- | --- |
+| `enabled` | `false` | Render the CronJob. |
+| `schedule` | required | Cron expression. |
+| `limit` | `100` | Maximum records processed per run. |
+| `dryRun` | `false` | Log the matches and exit without applying the action. |
+
+A run does not paginate: it processes at most `limit` records, and a policy converges over successive runs. `env`, `resources`, `volumes`, `volumeMounts`, `concurrencyPolicy`, `successfulJobsHistoryLimit` and `failedJobsHistoryLimit` may be set per policy and behave exactly as they do for a `cronjobs` entry.
+
+!!! important "Preview a destructive policy before enabling it"
+    `prune` deletes records and `unpublish` withdraws them from the network. Set `dryRun: true` for the first few runs and read the CronJob logs — every run logs the match count and dumps the matched records before acting:
+
+    ```text
+    [prune-untrusted] matched 12 record(s)
+    [
+      "baeareib...",
+      ...
+    ]
+    [prune-untrusted] dry run: not applying action 'prune'
+    ```
+
+Both example policies ship disabled in `values.yaml`. Adding a policy of your own is a values change only.
+
 ## Security Scanning
 
 The reconciler image includes [`mcp-scanner`](https://cisco-ai-defense.github.io/docs/mcp-scanner) and [`skill-scanner`](https://cisco-ai-defense.github.io/docs/skill-scanner) pre-installed. The scan task is enabled by default and requires Azure OpenAI credentials to perform LLM-backed analysis.
