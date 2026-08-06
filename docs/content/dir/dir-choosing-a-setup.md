@@ -103,7 +103,7 @@ flowchart TB
 
 *Choose when:*
 
-- Discovery = within your team or organization. 
+- Discovery = within your team or organization
 - Store = local or public
 
 See [Local Deployment](dir-deployment-local.md), [Connecting to a Remote Directory](dir-deployment-local.md#connecting-to-a-remote-directory), and [Routing](dir-component-routing.md) for more details.
@@ -134,6 +134,6 @@ flowchart LR
 
 Choose when:
 
-- Discovery = other organizations. 
+- Discovery = other organizations
 
 See [Federation](dir-federation-overview.md) and [Trust Model](dir-component-trust-model.md) for more details.
