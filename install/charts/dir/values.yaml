@@ -457,6 +457,23 @@ apiserver:
   # OASF is NOT installed by default. Set enabled: true to deploy an OASF schema server instance.
   # When enabled, deploys an OASF schema server instance alongside the directory server.
   # OASF server subchart configuration
+  # OASF taxonomy extractor for the gateway's natural-language search (POST /v1/search).
+  # When oasf-sdk.enabled is true the address auto-resolves to the in-cluster
+  # oasf-sdk service, so remoteAddr can stay empty. Set it for an external server.
+  extractor:
+    remoteAddr: ""
+
+  # OASF-SDK extractor server subchart (OPTIONAL) — serves POST /v1/search in cloud.
+  # NOT installed by default. Set enabled: true to deploy it; the gateway auto-wires.
+  # env.OASF_SDK_EXTRACTOR_OASF_URL is the extractor's on/off switch (the server
+  # registers ExtractorService only when it is set). PREREQUISITE: the oasf-sdk
+  # image must bake in the embedding model (or have CA certs + network), or the
+  # pod crash-loops provisioning it at startup.
+  oasf-sdk:
+    enabled: false
+    env:
+      OASF_SDK_EXTRACTOR_OASF_URL: "https://schema.oasf.outshift.com"
+
   oasf:
     enabled: false
     localDeploy: true # Creates IngressClass resource for ingress controller

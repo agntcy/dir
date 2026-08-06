@@ -41,6 +41,7 @@ import (
 	"github.com/agntcy/dir/server/skill"
 	"github.com/agntcy/dir/server/store"
 	"github.com/agntcy/dir/server/types"
+	"github.com/agntcy/dir/utils/extractor"
 	"github.com/agntcy/dir/utils/logging"
 	"github.com/agntcy/oasf-sdk/pkg/validator"
 	"google.golang.org/grpc"
@@ -72,6 +73,7 @@ type Server struct {
 	grpcServer         *grpc.Server
 	metricsServer      *metrics.Server
 	httpGateway        *gateway.Server
+	oasfExtractor      extractor.Extractor
 }
 
 // buildConnectionOptions creates gRPC server options for connection management.
@@ -169,6 +171,40 @@ func WithDatabase(database types.DatabaseAPI) ServerOption {
 	return func(opts *ServerOptions) {
 		opts.database = database
 	}
+}
+
+// resolveGatewayExtractor resolves the OASF extractor for the gateway's
+// POST /v1/search path when the HTTP gateway is enabled. It returns the
+// extractor (for the caller to Close on shutdown) and the AI Finder option that
+// injects it. When the gateway is disabled or resolution fails it returns
+// (nil, nil) — a non-fatal outcome that leaves SearchAgents answering
+// UNAVAILABLE (HTTP 503) until an extractor is configured. The resolved backend
+// is logged.
+func resolveGatewayExtractor(cfg *config.Config) (extractor.Extractor, []controller.AIFinderOption) {
+	if !cfg.HTTPGateway.Enabled {
+		return nil, nil
+	}
+
+	extCfg := extractor.Config{
+		OASFURL:    cfg.Extractor.OASFURL,
+		AssetDir:   cfg.Extractor.AssetDir,
+		RemoteAddr: cfg.Extractor.RemoteAddr,
+	}
+
+	ext, err := extractor.ResolveExtractor(extCfg)
+	if err != nil {
+		logger.Warn("OASF extractor unavailable; POST /v1/search returns 503 until configured", "error", err)
+
+		return nil, nil
+	}
+
+	if extCfg.RemoteAddr != "" {
+		logger.Info("OASF extractor resolved for gateway", "backend", "remote", "address", extCfg.RemoteAddr)
+	} else {
+		logger.Info("OASF extractor resolved for gateway", "backend", "local", "asset_dir", extCfg.Resolve().AssetDir)
+	}
+
+	return ext, []controller.AIFinderOption{controller.WithExtractor(ext)}
 }
 
 //nolint:cyclop // This function has been at the limit; refactoring is out of scope.
@@ -324,7 +360,10 @@ func New(ctx context.Context, cfg *config.Config, opts ...ServerOption) (*Server
 		namingProvider,
 		controller.WithVerificationTTL(options.Config().Naming.GetTTL()),
 	))
-	catalogv1.RegisterAIFinderServiceServer(grpcServer, controller.NewAIFinderController(routingAPI.GetPeerID(), databaseAPI, cfg.HTTPGateway, storeAPI))
+
+	gwExtractor, aiFinderOpts := resolveGatewayExtractor(cfg)
+
+	catalogv1.RegisterAIFinderServiceServer(grpcServer, controller.NewAIFinderController(routingAPI.GetPeerID(), databaseAPI, cfg.HTTPGateway, storeAPI, aiFinderOpts...))
 
 	// Register health service
 	healthChecker.Register(grpcServer)
@@ -380,6 +419,7 @@ func New(ctx context.Context, cfg *config.Config, opts ...ServerOption) (*Server
 		grpcServer:         grpcServer,
 		metricsServer:      metricsServer,
 		httpGateway:        httpGateway,
+		oasfExtractor:      gwExtractor,
 	}, nil
 }
 
@@ -465,6 +505,13 @@ func (s Server) Close(ctx context.Context) {
 
 		if err := s.httpGateway.Stop(stopCtx); err != nil {
 			logger.Error("Failed to stop HTTP gateway", "error", err)
+		}
+	}
+
+	// Release the OASF extractor (closes the remote gRPC connection, if any).
+	if s.oasfExtractor != nil {
+		if err := s.oasfExtractor.Close(); err != nil {
+			logger.Error("Failed to close OASF extractor", "error", err)
 		}
 	}
 

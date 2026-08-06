@@ -12,7 +12,7 @@ import (
 	"fmt"
 
 	searchv1 "github.com/agntcy/dir/api/search/v1"
-	"github.com/agntcy/dir/client/extractor"
+	"github.com/agntcy/dir/utils/extractor"
 )
 
 // SignalType identifies the kind of search signal extracted from free-form text.
@@ -82,8 +82,14 @@ func DecomposeWithMinScore(ctx context.Context, text string, ext extractor.Extra
 
 	var signals []Signal
 
+	// Keep results within the requested number of score tiers. The extractor
+	// already limits what it returns to opts.Tiers (via ExtractOptions), so this
+	// also guards backends that don't. maxTier 1 (the default) keeps only the
+	// closest group; higher values widen recall.
+	maxTier := max(opts.Tiers, 1)
+
 	for _, s := range res.Skills {
-		if s.Tier == 1 && s.Score >= minScore {
+		if s.Tier <= maxTier && s.Score >= minScore {
 			signals = append(signals, Signal{
 				Type:  SignalTypeSkillName,
 				Value: s.Name,
@@ -93,7 +99,7 @@ func DecomposeWithMinScore(ctx context.Context, text string, ext extractor.Extra
 	}
 
 	for _, d := range res.Domains {
-		if d.Tier == 1 && d.Score >= minScore {
+		if d.Tier <= maxTier && d.Score >= minScore {
 			signals = append(signals, Signal{
 				Type:  SignalTypeDomainName,
 				Value: d.Name,

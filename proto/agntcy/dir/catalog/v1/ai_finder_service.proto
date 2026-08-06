@@ -19,6 +19,19 @@ service AIFinderService {
     option (google.api.http) = {get: "/v1/agents"};
   }
 
+  // SearchAgents returns catalog entries relevance-ranked for a free-text
+  // query (e.g. "a skill for reviewing code"). The gateway extracts skills and
+  // domains from the query and runs a content search under the hood; the
+  // response reuses the same CatalogEntry shape as ListAgents so callers only
+  // swap data source. POST (not GET) because free text plus filters belong in
+  // a request body.
+  rpc SearchAgents(SearchAgentsRequest) returns (SearchAgentsResponse) {
+    option (google.api.http) = {
+      post: "/v1/search"
+      body: "*"
+    };
+  }
+
   // GetAgent returns a single CatalogEntry by CID. The response shape is the
   // same as one element in ListAgentsResponse.results[], providing a stable
   // detail URL for any agent discovered through listing.
@@ -81,6 +94,36 @@ message ListAgentsResponse {
 
   // Total number of catalog entries matching the filter across all pages.
   uint32 total_count = 3;
+}
+
+// SearchAgentsRequest carries a free-text natural-language query plus optional
+// structured facets and pagination.
+message SearchAgentsRequest {
+  // Free-text query, e.g. "a skill for reviewing code". Required.
+  string query = 1 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 1024
+  }];
+
+  // Maximum entries to return. Default 20, clamped to 100.
+  uint32 page_size = 2 [(buf.validate.field).uint32.lte = 100];
+
+  // Opaque continuation token from a previous call.
+  string page_token = 3 [(buf.validate.field).string.max_len = 1024];
+
+  // Optional facet filter, same "field=value" AND grammar as
+  // ListAgentsRequest.filter (type, verified, trusted, safe, tags, ...). These
+  // compose with the query, narrowing the relevance-ranked results.
+  string filter = 4 [(buf.validate.field).string.max_len = 2048];
+}
+
+// SearchAgentsResponse returns one page of relevance-ranked catalog entries.
+message SearchAgentsResponse {
+  // Catalog entries on this page, most relevant first.
+  repeated CatalogEntry results = 1;
+
+  // Opaque continuation token. Empty when there are no more results.
+  string next_page_token = 2;
 }
 
 // GetAgentRequest carries the CID of the catalog entry to retrieve.

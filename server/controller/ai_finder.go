@@ -15,6 +15,7 @@ import (
 	"github.com/agntcy/dir/api/exportfmt"
 	"github.com/agntcy/dir/server/config"
 	"github.com/agntcy/dir/server/types"
+	"github.com/agntcy/dir/utils/extractor"
 	"github.com/agntcy/dir/utils/logging"
 	httpbodypb "google.golang.org/genproto/googleapis/api/httpbody"
 	"google.golang.org/grpc/codes"
@@ -37,27 +38,57 @@ const (
 	wellKnownHostDisplayName = "AGNTCY Directory"
 )
 
+// aiFinderDatabaseAPI is the database surface the AI Finder controller needs:
+// the catalog query layer (browsing, hydration) plus the record-CID content
+// search used by SearchAgents. The concrete server database satisfies it; the
+// non-search RPCs only exercise the embedded catalog half.
+type aiFinderDatabaseAPI interface {
+	types.CatalogDatabaseAPI
+	GetRecordCIDs(opts ...types.FilterOption) ([]string, error)
+}
+
 // aiFinderController adapts the AI Finder query language to the catalog query
 // layer. GetWellKnownCatalog is served by the embedded Unimplemented server.
 type aiFinderController struct {
 	catalogv1.UnimplementedAIFinderServiceServer
 
 	hostId string
-	db     types.CatalogDatabaseAPI
+	db     aiFinderDatabaseAPI
 	store  types.StoreAPI
 	cfg    config.HTTPGatewayConfig
+	ext    extractor.Extractor
+}
+
+// AIFinderOption configures optional dependencies of the AI Finder controller.
+type AIFinderOption func(*aiFinderController)
+
+// WithExtractor wires an OASF extractor, enabling the SearchAgents RPC
+// (POST /v1/search). When no extractor is provided, SearchAgents returns
+// UNAVAILABLE (HTTP 503); all other RPCs remain functional.
+func WithExtractor(ext extractor.Extractor) AIFinderOption {
+	return func(c *aiFinderController) {
+		c.ext = ext
+	}
 }
 
 // NewAIFinderController returns an AIFinderServiceServer that serves the AI
 // Catalog AI Finder surface. store may be nil — when omitted the ExportAgent
-// RPC returns UNIMPLEMENTED (HTTP 501). All other RPCs remain functional.
-func NewAIFinderController(hostId string, db types.CatalogDatabaseAPI, cfg config.HTTPGatewayConfig, store types.StoreAPI) catalogv1.AIFinderServiceServer {
-	return &aiFinderController{
+// RPC returns UNIMPLEMENTED (HTTP 501). Pass WithExtractor to enable
+// SearchAgents; without it that RPC returns UNAVAILABLE (HTTP 503). All other
+// RPCs remain functional regardless.
+func NewAIFinderController(hostId string, db aiFinderDatabaseAPI, cfg config.HTTPGatewayConfig, store types.StoreAPI, opts ...AIFinderOption) catalogv1.AIFinderServiceServer {
+	c := &aiFinderController{
 		db:     db,
 		store:  store,
 		cfg:    cfg,
 		hostId: hostId,
 	}
+
+	for _, opt := range opts {
+		opt(c)
+	}
+
+	return c
 }
 
 // ListAgents parses the filter, order, and paging arguments, queries the

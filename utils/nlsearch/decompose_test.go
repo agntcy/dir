@@ -7,7 +7,7 @@ import (
 	"context"
 	"testing"
 
-	"github.com/agntcy/dir/client/extractor"
+	"github.com/agntcy/dir/utils/extractor"
 	sdk "github.com/agntcy/oasf-sdk/pkg/extractor"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -58,4 +58,26 @@ func TestDecomposeKeepsTierOneAboveThresholdAndWrapsKeywords(t *testing.T) {
 	assert.Contains(t, signals, Signal{Type: SignalTypeSkillName, Value: "skill_keep", Score: 0.9})
 	assert.Contains(t, signals, Signal{Type: SignalTypeDomainName, Value: "domain_keep", Score: 0.8})
 	assert.Contains(t, signals, Signal{Type: SignalTypeKeyword, Value: "*review*", Score: 2})
+}
+
+func TestDecomposeTiersWidensRecall(t *testing.T) {
+	fake := &fakeExtractor{res: sdk.Result{
+		Skills: []sdk.ScoredClass{
+			skill("skill_t1", 1, 0.9),
+			skill("skill_t2", 2, 0.8), // tier 2, above threshold
+			skill("skill_t3", 3, 0.9), // tier 3 -> still dropped at Tiers: 2
+		},
+	}}
+
+	signals, err := DecomposeWithMinScore(context.Background(), "q", fake, DefaultMinTaxonomyScore,
+		extractor.ExtractOptions{Tiers: 2})
+	require.NoError(t, err)
+
+	// The requested tier count is forwarded to the extractor.
+	assert.Equal(t, 2, fake.gotOpts.Tiers)
+
+	// Tiers 1 and 2 survive; tier 3 does not.
+	require.Len(t, signals, 2)
+	assert.Contains(t, signals, Signal{Type: SignalTypeSkillName, Value: "skill_t1", Score: 0.9})
+	assert.Contains(t, signals, Signal{Type: SignalTypeSkillName, Value: "skill_t2", Score: 0.8})
 }

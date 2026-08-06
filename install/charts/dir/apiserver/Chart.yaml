@@ -38,6 +38,14 @@ dependencies:
     version: v0.5.1
     repository: oci://ghcr.io/agntcy/oasf/helm-charts
     condition: oasf.enabled
+  # OASF-SDK extractor server subchart (OPTIONAL - opt-in only)
+  # Serves the gateway's natural-language search (POST /v1/search) in cloud,
+  # where the apiserver image ships no local extractor assets. Enable via:
+  # oasf-sdk.enabled: true. Default: disabled.
+  - name: oasf-sdk
+    version: v1.1.0
+    repository: oci://ghcr.io/agntcy/oasf-sdk/helm-charts
+    condition: oasf-sdk.enabled
   # PostgreSQL database (Bitnami subchart)
   # Disable when using SQLite or external PostgreSQL via: postgresql.enabled: false
   # Default: enabled (postgresql.enabled: true in values.yaml)

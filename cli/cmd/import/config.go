@@ -13,7 +13,8 @@ import (
 	enricherconfig "github.com/agntcy/dir-importer/enricher/config"
 	"github.com/agntcy/dir-importer/enricher/toolhost"
 	"github.com/agntcy/dir-importer/transformer"
-	"github.com/agntcy/dir/client/extractor"
+	clientconfig "github.com/agntcy/dir/client/config"
+	"github.com/agntcy/dir/utils/extractor"
 	sdk "github.com/agntcy/oasf-sdk/pkg/extractor"
 	"github.com/spf13/pflag"
 	"gopkg.in/yaml.v3"
@@ -287,7 +288,7 @@ func toToolHostConfig(fc toolHostFileConfig) toolhost.Config {
 // `dirctl init`; explicit values override the saved config.
 func loadExtractorFromConfig(fc *extractorEnricherFileConfig) (*sdk.Extractor, error) {
 	if fc.OASFUrl == "" && fc.AssetDir == "" {
-		ext, err := extractor.LoadConfigured()
+		ext, err := clientconfig.LoadConfigured()
 		if err != nil {
 			return nil, fmt.Errorf("load configured extractor: %w", err)
 		}

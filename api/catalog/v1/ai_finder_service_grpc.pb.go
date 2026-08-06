@@ -24,6 +24,7 @@ const _ = grpc.SupportPackageIsVersion8
 
 const (
 	AIFinderService_ListAgents_FullMethodName          = "/agntcy.dir.catalog.v1.AIFinderService/ListAgents"
+	AIFinderService_SearchAgents_FullMethodName        = "/agntcy.dir.catalog.v1.AIFinderService/SearchAgents"
 	AIFinderService_GetAgent_FullMethodName            = "/agntcy.dir.catalog.v1.AIFinderService/GetAgent"
 	AIFinderService_ExportAgent_FullMethodName         = "/agntcy.dir.catalog.v1.AIFinderService/ExportAgent"
 	AIFinderService_GetWellKnownCatalog_FullMethodName = "/agntcy.dir.catalog.v1.AIFinderService/GetWellKnownCatalog"
@@ -40,6 +41,13 @@ type AIFinderServiceClient interface {
 	// ListAgents returns catalog entries with deterministic, cacheable browsing
 	// semantics (database filtering, no relevance ranking).
 	ListAgents(ctx context.Context, in *ListAgentsRequest, opts ...grpc.CallOption) (*ListAgentsResponse, error)
+	// SearchAgents returns catalog entries relevance-ranked for a free-text
+	// query (e.g. "a skill for reviewing code"). The gateway extracts skills and
+	// domains from the query and runs a content search under the hood; the
+	// response reuses the same CatalogEntry shape as ListAgents so callers only
+	// swap data source. POST (not GET) because free text plus filters belong in
+	// a request body.
+	SearchAgents(ctx context.Context, in *SearchAgentsRequest, opts ...grpc.CallOption) (*SearchAgentsResponse, error)
 	// GetAgent returns a single CatalogEntry by CID. The response shape is the
 	// same as one element in ListAgentsResponse.results[], providing a stable
 	// detail URL for any agent discovered through listing.
@@ -69,6 +77,16 @@ func (c *aIFinderServiceClient) ListAgents(ctx context.Context, in *ListAgentsRe
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(ListAgentsResponse)
 	err := c.cc.Invoke(ctx, AIFinderService_ListAgents_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *aIFinderServiceClient) SearchAgents(ctx context.Context, in *SearchAgentsRequest, opts ...grpc.CallOption) (*SearchAgentsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(SearchAgentsResponse)
+	err := c.cc.Invoke(ctx, AIFinderService_SearchAgents_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -125,6 +143,13 @@ type AIFinderServiceServer interface {
 	// ListAgents returns catalog entries with deterministic, cacheable browsing
 	// semantics (database filtering, no relevance ranking).
 	ListAgents(context.Context, *ListAgentsRequest) (*ListAgentsResponse, error)
+	// SearchAgents returns catalog entries relevance-ranked for a free-text
+	// query (e.g. "a skill for reviewing code"). The gateway extracts skills and
+	// domains from the query and runs a content search under the hood; the
+	// response reuses the same CatalogEntry shape as ListAgents so callers only
+	// swap data source. POST (not GET) because free text plus filters belong in
+	// a request body.
+	SearchAgents(context.Context, *SearchAgentsRequest) (*SearchAgentsResponse, error)
 	// GetAgent returns a single CatalogEntry by CID. The response shape is the
 	// same as one element in ListAgentsResponse.results[], providing a stable
 	// detail URL for any agent discovered through listing.
@@ -151,6 +176,9 @@ type UnimplementedAIFinderServiceServer struct{}
 
 func (UnimplementedAIFinderServiceServer) ListAgents(context.Context, *ListAgentsRequest) (*ListAgentsResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ListAgents not implemented")
+}
+func (UnimplementedAIFinderServiceServer) SearchAgents(context.Context, *SearchAgentsRequest) (*SearchAgentsResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method SearchAgents not implemented")
 }
 func (UnimplementedAIFinderServiceServer) GetAgent(context.Context, *GetAgentRequest) (*GetAgentResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetAgent not implemented")
@@ -198,6 +226,24 @@ func _AIFinderService_ListAgents_Handler(srv interface{}, ctx context.Context, d
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(AIFinderServiceServer).ListAgents(ctx, req.(*ListAgentsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _AIFinderService_SearchAgents_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SearchAgentsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AIFinderServiceServer).SearchAgents(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: AIFinderService_SearchAgents_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AIFinderServiceServer).SearchAgents(ctx, req.(*SearchAgentsRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -284,6 +330,10 @@ var AIFinderService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "ListAgents",
 			Handler:    _AIFinderService_ListAgents_Handler,
+		},
+		{
+			MethodName: "SearchAgents",
+			Handler:    _AIFinderService_SearchAgents_Handler,
 		},
 		{
 			MethodName: "GetAgent",

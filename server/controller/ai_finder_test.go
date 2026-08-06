@@ -29,9 +29,12 @@ var errNotImplemented = errors.New("not implemented")
 type fakeCatalogDB struct {
 	entries    []*catalogv1.CatalogEntry
 	tags       []*catalogv1.CatalogTag
+	recordCIDs []string
 	err        error
 	calls      int
-	gotFilters types.CatalogFilters
+
+	gotFilters       types.CatalogFilters
+	gotRecordFilters types.RecordFilters
 }
 
 func (f *fakeCatalogDB) captureFilters(opts ...types.CatalogQueryOption) {
@@ -55,6 +58,26 @@ func (f *fakeCatalogDB) GetCatalogEntries(opts ...types.CatalogQueryOption) ([]*
 	}
 
 	entries := f.entries
+
+	// Honor WithCIDs so hydration tests (and GetAgent) see only requested
+	// records, mirroring the real catalog query.
+	if len(f.gotFilters.CIDs) > 0 {
+		want := make(map[string]struct{}, len(f.gotFilters.CIDs))
+		for _, cid := range f.gotFilters.CIDs {
+			want[cid] = struct{}{}
+		}
+
+		filtered := entries[:0:0]
+
+		for _, e := range entries {
+			if _, ok := want[catalogEntryCID(e)]; ok {
+				filtered = append(filtered, e)
+			}
+		}
+
+		entries = filtered
+	}
+
 	if f.gotFilters.Offset > 0 {
 		if f.gotFilters.Offset >= len(entries) {
 			return nil, false, nil
@@ -84,6 +107,37 @@ func (f *fakeCatalogDB) CountCatalogEntries(opts ...types.CatalogQueryOption) (u
 	}
 
 	return uint32(len(f.entries)), nil //nolint:gosec
+}
+
+func (f *fakeCatalogDB) GetRecordCIDs(opts ...types.FilterOption) ([]string, error) {
+	cfg := types.RecordFilters{}
+
+	for _, opt := range opts {
+		if opt != nil {
+			opt(&cfg)
+		}
+	}
+
+	f.gotRecordFilters = cfg
+
+	if f.err != nil {
+		return nil, f.err
+	}
+
+	cids := f.recordCIDs
+	if cfg.Offset > 0 {
+		if cfg.Offset >= len(cids) {
+			return nil, nil
+		}
+
+		cids = cids[cfg.Offset:]
+	}
+
+	if cfg.Limit > 0 && len(cids) > cfg.Limit {
+		cids = cids[:cfg.Limit]
+	}
+
+	return cids, nil
 }
 
 func (f *fakeCatalogDB) ListCatalogTags() ([]*catalogv1.CatalogTag, error) {

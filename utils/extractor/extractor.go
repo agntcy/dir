@@ -20,6 +20,11 @@ type Result = sdk.Result
 type ExtractOptions struct {
 	// Versions pins the OASF schema versions to consider. Empty means all.
 	Versions []string
+
+	// Tiers is the number of score tiers (score groups) to return per kind.
+	// 0 uses the extractor default (1 — the single closest group); higher values
+	// widen recall (2 = the two closest groups), which is useful for search.
+	Tiers int
 }
 
 // Extractor turns free-form text into OASF skills, domains, modules, and
