@@ -10,15 +10,18 @@ matching configuration — each shown as its own topology.
   </ol>
 </div>
 
-## The configurations
+## Recommended configurations
 
-The configurations below cover the useful combinations. In every diagram:
-**dashed = discovery** (only CIDs/labels move), **solid = retrieval** (record bytes move).
+The configurations below cover the useful combinations. In every diagram
+dashed lines mean discovery (only CIDs/labels move), solid lines mean retrieval (record bytes move).
 
-### 1. Private node — keep records to yourself { #private-node }
+### Private node — keep records to yourself { #private-node }
 
-Local store, no network. You store, search, sign, and pull locally. You can still pull records
-*inbound* — both from a public registry and from a remote Directory node you authenticate to.
+Local store, no network. 
+
+You store, search, sign, and pull locally. You can still pull records
+inbound, both from a public registry and from a remote Directory node you authenticate to.
+
 What stays true either way: nobody else can discover or retrieve **your** records.
 
 ```mermaid
@@ -32,11 +35,16 @@ flowchart LR
   peer["Remote Directory node"] -->|"sync create"| api
 ```
 
-*Choose when:* discovery = only you, store = bundled/local. → [Local Deployment](dir-deployment-local.md).
+Choose when:
 
-### 2. Public-store node — let others retrieve, without a network { #public-store-node }
+- Discovery = only you
+- Store = bundled/local
 
-The store is a **public registry** (GHCR, Docker Hub). Anyone who knows the registry can pull
+See [Local Deployment](dir-deployment-local.md) for more details.
+
+### Public-store node — let others retrieve, without a network { #public-store-node }
+
+The store is a public registry (GHCR, Docker Hub). Anyone who knows the registry can pull
 records straight from it — a specific CID or all of them — with `dirctl sync create
 --registry`; your node need not even be online. This still isn't network discovery: there's no
 DHT, so consumers point sync at your registry rather than finding you across a network.
@@ -50,27 +58,32 @@ flowchart LR
   other(["Another node"]) -->|"sync create --registry"| reg
 ```
 
-*Choose when:* discovery = only you, store = public registry. → [Local Deployment](dir-deployment-local.md), [Store](dir-component-store.md).
+Choose when:
 
-### 3. Networked node — be discoverable { #networked-node }
+- Discovery = only you
+- Store = public registry
 
-A **bootstrap** connection puts the node on the DHT: it announces its records and can search
+See [Local Deployment](dir-deployment-local.md) and [Store](dir-component-store.md) for more details.
+
+### Networked node — be discoverable { #networked-node }
+
+A bootstrap connection puts the node on the DHT: it announces its records and can search
 for records held by other nodes.
 
-Being networked also enables **autosync** — direct node-to-node transfer over libp2p. Autosync
-is **receiver-controlled**: each node automatically pulls only from the peers in *its own*
-trusted allow-list. So you autosync records from peers **you** list, and a peer that lists
-**you** autosyncs yours. It is opt-in and off by default.
+Being networked also enables autosync — direct node-to-node transfer over libp2p. Autosync
+is receiver-controlled: each node automatically pulls only from the peers in its own
+trusted allow-list. So you autosync records from peers you list, and a peer that lists
+you autosyncs yours. It is opt-in and off by default.
 
-Because it is receiver-controlled, your own autosync setting changes what **you** can pull in —
+Because it is receiver-controlled, your own autosync setting changes what you can pull in —
 not what others can take from you:
 
-| Your store | Your autosync | Can **others** retrieve your records? | Can **you** retrieve others' records? |
+| Your store | Your autosync | Can others retrieve your records? | Can you retrieve others' records? |
 |---|:--:|---|---|
-| Local | off | Only a peer that lists you in *its* allow-list, over libp2p | On-demand `sync create` only |
-| Local | on | Same — your autosync does not change this | Yes, from peers in *your* allow-list (+ on-demand) |
+| Local | off | Only a peer that lists you in its own allow-list, over libp2p | On-demand `sync create` only |
+| Local | on | Same — your autosync does not change this | Yes, from peers in your own allow-list (+ on-demand) |
 | Public | off | Yes — anyone pulls from the registry | On-demand `sync create` only |
-| Public | on | Yes — anyone pulls from the registry | Yes, from peers in *your* allow-list (+ on-demand) |
+| Public | on | Yes — anyone pulls from the registry | Yes, from peers in your own allow-list (+ on-demand) |
 
 ```mermaid
 flowchart TB
@@ -84,14 +97,19 @@ flowchart TB
   peer -->|"3 · autosync pulls record (direct, libp2p)"| api
 ```
 
-*Choose when:* discovery = within your team or organization. → [Local Deployment](dir-deployment-local.md), [Connecting to a Remote Directory](dir-deployment-local.md#connecting-to-a-remote-directory), [Routing](dir-component-routing.md).
+*Choose when:*
 
-### 4. Federated — exchange across organizations { #federated }
+- Discovery = within your team or organization. 
+- Store = local or public
 
-Multiple production nodes peer under a **shared trust root**. Organizations discover each
+See [Local Deployment](dir-deployment-local.md), [Connecting to a Remote Directory](dir-deployment-local.md#connecting-to-a-remote-directory), and [Routing](dir-component-routing.md) for more details.
+
+### Federated — exchange across organizations { #federated }
+
+Multiple production nodes peer under a shared trust root. Organizations discover each
 other's records over a shared DHT and retrieve them with authenticated, authorized access
 (SPIFFE mTLS + authorization policies). Establishing that shared trust root takes a one-time
-**SPIRE federation** step, where each organization's SPIRE server exchanges trust bundles with
+SPIRE federation step, where each organization's SPIRE server exchanges trust bundles with
 the others (see [Federation Bundle Profiles](dir-federation-profiles.md)).
 
 ```mermaid
@@ -108,4 +126,8 @@ flowchart LR
   a <-->|"retrieve · SPIFFE mTLS + authz"| b
 ```
 
-*Choose when:* discovery = other organizations. → [Federation](dir-federation-overview.md), [Trust Model](dir-component-trust-model.md).
+Choose when:
+
+- Discovery = other organizations. 
+
+See [Federation](dir-federation-overview.md) and [Trust Model](dir-component-trust-model.md) for more details.
