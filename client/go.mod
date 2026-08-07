@@ -13,8 +13,8 @@ replace github.com/ThalesIgnite/crypto11 => github.com/eclipse-keypont/crypto11 
 
 require (
 	buf.build/gen/go/agntcy/oasf-sdk/grpc/go v1.6.2-20260714100340-94ed518b08ce.1
-	github.com/agntcy/dir/api v1.6.2
-	github.com/agntcy/dir/utils v1.6.2
+	github.com/agntcy/dir/api v1.6.3
+	github.com/agntcy/dir/utils v1.6.3
 	github.com/mitchellh/mapstructure v1.5.1-0.20231216201459-8508981c8b6c
 	github.com/rs/zerolog v1.31.0
 	github.com/sigstore/cosign/v3 v3.1.2
