@@ -27,7 +27,7 @@ import (
 )
 
 // DefaultOIDCScopes are the OIDC scopes requested for interactive login.
-const DefaultOIDCScopes = "openid email profile offline_access"
+const DefaultOIDCScopes = "openid email profile offline_access groups"
 
 const (
 	serverShutdownTimeout          = 2 * time.Second
