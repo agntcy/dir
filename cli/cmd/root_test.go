@@ -250,8 +250,8 @@ func TestResolveClientConfigIgnoresDefaultClientConfigWithoutChangedFlags(t *tes
 // recordedValidResponse is what the live schema service returned for
 // validate/testdata/record_valid.json on 2026-07-31, byte-identical to the
 // schema_response_valid.json fixture #1953 adds under validate/testdata. It
-// is inlined because that fixture is not on main until #1953 lands, and
-// go:embed cannot reference a parent directory in any case.
+// is inlined because that fixture is not on main until #1953 lands, and go:embed
+// cannot reference a parent directory in any case.
 const recordedValidResponse = `{"warnings":[],"errors":[],"error_count":0,"warning_count":0}`
 
 // schemaURL returns the URL to hand the validate command's --url flag.
