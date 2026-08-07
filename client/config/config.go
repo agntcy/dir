@@ -69,19 +69,20 @@ type Extractor struct {
 
 // Context is a named client configuration block.
 type Context struct {
-	ServerAddress    string `yaml:"server_address"`
-	TlsSkipVerify    bool   `yaml:"tls_skip_verify"`
-	TlsCertFile      string `yaml:"tls_cert_file"`
-	TlsKeyFile       string `yaml:"tls_key_file"`
-	TlsCAFile        string `yaml:"tls_ca_file"`
-	SpiffeSocketPath string `yaml:"spiffe_socket_path"`
-	SpiffeToken      string `yaml:"spiffe_token"`
-	AuthMode         string `yaml:"auth_mode"`
-	JWTAudience      string `yaml:"jwt_audience"`
-	OIDCIssuer       string `yaml:"oidc_issuer"`
-	OIDCClientID     string `yaml:"oidc_client_id"`
-	AuthToken        string `yaml:"auth_token"`
-	Doctor           Doctor `yaml:"doctor"`
+	ServerAddress    string   `yaml:"server_address"`
+	TlsSkipVerify    bool     `yaml:"tls_skip_verify"`
+	TlsCertFile      string   `yaml:"tls_cert_file"`
+	TlsKeyFile       string   `yaml:"tls_key_file"`
+	TlsCAFile        string   `yaml:"tls_ca_file"`
+	SpiffeSocketPath string   `yaml:"spiffe_socket_path"`
+	SpiffeToken      string   `yaml:"spiffe_token"`
+	AuthMode         string   `yaml:"auth_mode"`
+	JWTAudience      string   `yaml:"jwt_audience"`
+	OIDCIssuer       string   `yaml:"oidc_issuer"`
+	OIDCClientID     string   `yaml:"oidc_client_id"`
+	OIDCScopes       []string `yaml:"oidc_scopes"`
+	AuthToken        string   `yaml:"auth_token"`
+	Doctor           Doctor   `yaml:"doctor"`
 }
 
 // Doctor holds diagnostic-only settings for dirctl doctor.
@@ -789,6 +790,10 @@ func applyEnv(cfg *dirclient.Config, prefix string) error {
 		"auth_token":         &cfg.AuthToken,
 	}
 
+	if value, ok := os.LookupEnv(envVarName(prefix, "oidc_scopes")); ok {
+		cfg.OIDCScopes = parseEnvScopeList(value)
+	}
+
 	for key, target := range stringEnv {
 		if value, ok := os.LookupEnv(envVarName(prefix, key)); ok {
 			*target = value
@@ -872,6 +877,10 @@ func applyNonZeroOverrides(cfg *dirclient.Config, overrides *dirclient.Config) {
 		cfg.OIDCClientID = overrides.OIDCClientID
 	}
 
+	if len(overrides.OIDCScopes) > 0 {
+		cfg.OIDCScopes = append([]string(nil), overrides.OIDCScopes...)
+	}
+
 	if overrides.AuthToken != "" {
 		cfg.AuthToken = overrides.AuthToken
 	}
@@ -901,6 +910,8 @@ func applyOverrideField(cfg *dirclient.Config, overrides *dirclient.Config, fiel
 		cfg.OIDCIssuer = overrides.OIDCIssuer
 	case "oidc_client_id":
 		cfg.OIDCClientID = overrides.OIDCClientID
+	case "oidc_scopes":
+		cfg.OIDCScopes = append([]string(nil), overrides.OIDCScopes...)
 	case "auth_token":
 		cfg.AuthToken = overrides.AuthToken
 	default:
@@ -984,6 +995,22 @@ func envVarName(prefix string, key string) string {
 	return prefix + "_" + strings.ToUpper(replaced)
 }
 
+func parseEnvScopeList(value string) []string {
+	value = strings.TrimSpace(value)
+	if value == "" {
+		return nil
+	}
+
+	out := make([]string, 0, strings.Count(value, ",")+1)
+	for part := range strings.SplitSeq(value, ",") {
+		if scope := strings.TrimSpace(part); scope != "" {
+			out = append(out, scope)
+		}
+	}
+
+	return out
+}
+
 func (c Context) toClientConfig() dirclient.Config {
 	return dirclient.Config{
 		ServerAddress:    c.ServerAddress,
@@ -997,6 +1024,7 @@ func (c Context) toClientConfig() dirclient.Config {
 		JWTAudience:      c.JWTAudience,
 		OIDCIssuer:       c.OIDCIssuer,
 		OIDCClientID:     c.OIDCClientID,
+		OIDCScopes:       append([]string(nil), c.OIDCScopes...),
 		AuthToken:        c.AuthToken,
 	}
 }

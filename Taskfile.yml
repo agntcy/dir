@@ -354,6 +354,13 @@ tasks:
           rm /tmp/total_report_results.txt
         if: '{{ eq .SHOW_TOTAL_ONLY "true" }}'
 
+  test:helm:
+    desc: Run Helm chart template tests
+    deps:
+      - task: deps:helm
+    cmds:
+      - cmd: HELM={{.HELM_BIN}} ./install/charts/dirctl/ci/test-policies.sh
+
 
   ##
   ## Linters

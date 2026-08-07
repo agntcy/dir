@@ -37,8 +37,9 @@ type Config struct {
 	JWTAudience      string `json:"jwt_audience,omitempty"       mapstructure:"jwt_audience"`
 
 	// OIDC configuration (for interactive login)
-	OIDCIssuer   string `json:"oidc_issuer,omitempty"    mapstructure:"oidc_issuer"`
-	OIDCClientID string `json:"oidc_client_id,omitempty" mapstructure:"oidc_client_id"`
+	OIDCIssuer   string   `json:"oidc_issuer,omitempty"    mapstructure:"oidc_issuer"`
+	OIDCClientID string   `json:"oidc_client_id,omitempty" mapstructure:"oidc_client_id"`
+	OIDCScopes   []string `json:"oidc_scopes,omitempty"    mapstructure:"oidc_scopes"`
 
 	// Pre-issued Bearer token for CI/scripts (skips interactive login)
 	AuthToken string `json:"auth_token,omitempty" mapstructure:"auth_token"`
@@ -77,6 +78,9 @@ func LoadConfig() (*Config, error) {
 
 	_ = v.BindEnv("oidc_client_id")
 	v.SetDefault("oidc_client_id", "")
+
+	_ = v.BindEnv("oidc_scopes")
+	v.SetDefault("oidc_scopes", []string{})
 
 	_ = v.BindEnv("auth_token")
 	v.SetDefault("auth_token", "")

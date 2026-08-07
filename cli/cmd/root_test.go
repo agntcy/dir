@@ -324,6 +324,7 @@ func resetClientConfig() {
 	config.Client.TlsKeyFile = ""
 	config.Client.OIDCIssuer = ""
 	config.Client.OIDCClientID = ""
+	config.Client.OIDCScopes = nil
 	config.Client.AuthToken = ""
 }
 
@@ -385,6 +386,7 @@ func newResolveTestCommand(t *testing.T) *cobra.Command {
 	flags.StringVar(&config.Client.TlsKeyFile, "tls-key-file", config.Client.TlsKeyFile, "Path to TLS key file")
 	flags.StringVar(&config.Client.OIDCIssuer, "oidc-issuer", config.Client.OIDCIssuer, "OIDC issuer URL")
 	flags.StringVar(&config.Client.OIDCClientID, "oidc-client-id", config.Client.OIDCClientID, "OIDC client ID")
+	flags.StringSliceVar(&config.Client.OIDCScopes, "oidc-scopes", config.Client.OIDCScopes, "OIDC scopes for login")
 	flags.StringVar(&config.Client.AuthToken, "auth-token", config.Client.AuthToken, "Pre-issued Bearer token")
 
 	return cmd

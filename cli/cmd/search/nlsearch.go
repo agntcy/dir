@@ -50,7 +50,9 @@ func runNLSearch(cmd *cobra.Command, query string, c *client.Client) error {
 
 	defer func() { _ = ext.Close() }()
 
-	signals, err := nlsearch.Decompose(cmd.Context(), query, ext, extractor.ExtractOptions{Versions: opts.Filters.SchemaVersions})
+	// Only the included schema versions restrict the extractor; --exclude-schema-version
+	// filters results and has no taxonomy to point the extractor at.
+	signals, err := nlsearch.Decompose(cmd.Context(), query, ext, extractor.ExtractOptions{Versions: opts.Filters.SchemaVersions.Include})
 	if err != nil {
 		return fmt.Errorf("decompose query: %w", err)
 	}
