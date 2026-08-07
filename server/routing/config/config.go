@@ -22,6 +22,9 @@ var (
 	// Autosync default (disabled by default; deny-by-default policy).
 	DefaultAutosyncEnabled = false
 
+	// AutoPublish default (disabled by default).
+	DefaultAutoPublishEnabled = false
+
 	// RelayService default (disabled; enable only on publicly-reachable nodes).
 	DefaultRelayServiceEnabled = false
 
@@ -95,6 +98,10 @@ type Config struct {
 	// reservations. Enable only on genuinely public nodes. Mutually exclusive
 	// with ForceReachabilityPrivate.
 	ForceReachabilityPublic bool `json:"force_reachability_public,omitempty" mapstructure:"force_reachability_public"`
+
+	// AutoPublish automatically enqueues successfully ingested records for
+	// asynchronous publication. Disabled by default.
+	AutoPublish bool `json:"auto_publish,omitempty" mapstructure:"auto_publish"`
 
 	// GossipSub configuration for label announcements
 	GossipSub GossipSubConfig `json:"gossipsub" mapstructure:"gossipsub"`

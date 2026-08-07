@@ -26,6 +26,13 @@ func newTestPeerID(t *testing.T) peer.ID {
 	return pid
 }
 
+func TestDefaultAutoPublishDisabled(t *testing.T) {
+	assert.False(t, DefaultAutoPublishEnabled)
+
+	var cfg Config
+	assert.False(t, cfg.AutoPublish)
+}
+
 func TestDefaultAutosyncDisabled(t *testing.T) {
 	// Deny-by-default: autosync must be off unless explicitly enabled.
 	assert.False(t, DefaultAutosyncEnabled)

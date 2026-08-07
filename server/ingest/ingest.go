@@ -46,14 +46,34 @@ type Ingestor interface {
 	ImportReferrer(ctx context.Context, recordCID string, referrer *corev1.RecordReferrer) (*corev1.ReferrerRef, error)
 }
 
+// AutoPublishFunc enqueues a successfully stored record for publication.
+type AutoPublishFunc func(context.Context, *corev1.RecordRef) error
+
+// Option configures an Ingestor.
+type Option func(*ingestor)
+
+// WithAutoPublish enables automatic publication after a successful record push.
+func WithAutoPublish(autoPublish AutoPublishFunc) Option {
+	return func(i *ingestor) {
+		i.autoPublish = autoPublish
+	}
+}
+
 type ingestor struct {
-	store types.StoreAPI
-	db    types.DatabaseAPI
+	store       types.StoreAPI
+	db          types.DatabaseAPI
+	autoPublish AutoPublishFunc
 }
 
 // New creates an Ingestor backed by the given content store and database.
-func New(store types.StoreAPI, db types.DatabaseAPI) Ingestor {
-	return &ingestor{store: store, db: db}
+func New(store types.StoreAPI, db types.DatabaseAPI, opts ...Option) Ingestor {
+	i := &ingestor{store: store, db: db}
+
+	for _, opt := range opts {
+		opt(i)
+	}
+
+	return i
 }
 
 func (i *ingestor) ImportRecord(ctx context.Context, record *corev1.Record) (*corev1.RecordRef, error) {
@@ -66,6 +86,19 @@ func (i *ingestor) ImportRecord(ctx context.Context, record *corev1.Record) (*co
 	}
 
 	logger.Info("Record pushed to store successfully", "cid", pushedRef.GetCid())
+
+	// Auto-publication is intentionally attempted before search indexing.
+	// The content store is the source of truth, so indexing failures must not
+	// prevent a successfully stored record from being published.
+	if i.autoPublish != nil {
+		if err := i.autoPublish(ctx, pushedRef); err != nil {
+			logger.Warn(
+				"Failed to enqueue automatic publication",
+				"error", err,
+				"cid", pushedRef.GetCid(),
+			)
+		}
+	}
 
 	// Add record to search index for discoverability.
 	// Indexing failures are logged but do not fail the import.

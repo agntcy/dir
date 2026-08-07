@@ -99,6 +99,10 @@ config:
     bootstrap_peers:
       - /dns4/routing.ads.outshift.io/tcp/5555/p2p/12D3KooWLf9p3cedc86xGQBaqak6rAFmQk1HxKAK1yh7umHE3amu
 
+    # Automatically publish each successfully ingested record.
+    # Publication enqueue failures do not fail record ingestion.
+    auto_publish: false
+
     # GossipSub configuration for efficient label announcements
     # When enabled, labels are propagated via GossipSub mesh to ALL subscribed peers
     # When disabled, falls back to DHT+Pull mechanism (higher bandwidth, limited reach)
