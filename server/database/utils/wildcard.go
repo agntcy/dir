@@ -95,3 +95,24 @@ func BuildAnnotationExistsCondition(annotations []types.Annotation) (string, []a
 
 	return "EXISTS (SELECT 1 FROM annotations a WHERE a.record_cid = records.record_cid AND " + condition + ")", args
 }
+
+// BuildNotExistsCondition wraps an inner WHERE condition (already correlated on
+// record_cid via the given alias) in a NOT EXISTS subquery against table.
+// Used to negate joined/multi-valued fields (skills, domains, modules,
+// locators, annotations) without negating the JOIN predicate itself — negating
+// the JOIN would match "has some other value" instead of "has no matching value".
+func BuildNotExistsCondition(table, alias, inner string) string {
+	return "NOT EXISTS (SELECT 1 FROM " + table + " " + alias + " WHERE " + inner + ")"
+}
+
+// BuildNegatedCondition NULL-safely negates a scalar-column condition.
+// When nullable is true, a NULL column value counts as "does not match" and
+// is retained, since SQL's NOT(NULL) evaluates to NULL (row dropped) rather
+// than true.
+func BuildNegatedCondition(column, cond string, nullable bool) string {
+	if nullable {
+		return "(" + column + " IS NULL OR NOT (" + cond + "))"
+	}
+
+	return "NOT (" + cond + ")"
+}

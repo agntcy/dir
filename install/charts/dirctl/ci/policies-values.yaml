@@ -1,0 +1,48 @@
+# Copyright AGNTCY Contributors (https://github.com/agntcy)
+# SPDX-License-Identifier: Apache-2.0
+
+# Values for ci/test-policies.sh. Exercises every action, every match value kind,
+# the dry-run path, and the disabled path.
+
+cronjobs: {}
+
+policies:
+  sync-netsec:
+    enabled: true
+    schedule: '0 3 * * *'
+    action: sync
+    match:
+      domain:
+        - network_security
+
+  prune-untrusted:
+    enabled: true
+    schedule: '*/30 * * * *'
+    action: prune
+    match:
+      trusted: false
+      scan-severity: MEDIUM
+
+  publish-signed:
+    enabled: true
+    schedule: '@hourly'
+    action: publish
+    limit: 25
+    match:
+      name:
+        - 'cisco.com/*'
+        - 'agntcy.org/*'
+      trusted: true
+
+  unpublish-stale:
+    enabled: true
+    schedule: '@daily'
+    action: unpublish
+    dryRun: true
+    match:
+      created-at: '<2025-01-01'
+
+  never-enabled:
+    enabled: false
+    schedule: '@daily'
+    action: prune

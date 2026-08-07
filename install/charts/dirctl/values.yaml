@@ -65,6 +65,51 @@ cronjobs:
       # - name: DIRECTORY_CLIENT_SERVER_ADDRESS
       #   value: dir-apiserver.dir-server.svc.cluster.local:8888
 
+# Content policies
+#
+# A policy runs a "search, then act on the matches" pipeline on a schedule. It
+# renders as a CronJob named <release>-dirctl-policy-<key>, and inherits the same
+# env, volumes, resources and SPIRE wiring as a `cronjobs` entry.
+#
+# action:  sync      pull matching records from network peers into this node
+#          prune     delete matching records from this node's store
+#          publish   announce matching local records to the routing network
+#          unpublish withdraw matching local records from the routing network
+#
+# match:   keys are `dirctl` flag names without the leading "--", so any filter
+#          the CLI supports works here with no chart change:
+#            list   -> the flag repeated per item, e.g. domain: [a, b]
+#            bool   -> --flag=true / --flag=false, e.g. trusted: false
+#            scalar -> --flag 'value', e.g. scan-severity: MEDIUM
+#          `limit`, `format` and `output` are set by the chart and rejected here.
+#          NOTE: `sync` searches the routing index rather than the local store,
+#          so it only accepts skill, domain, locator, module and min-score.
+#
+# limit:   maximum records processed per run (default 100). A run does not
+#          paginate; a policy converges over successive runs.
+#
+# dryRun:  log the matches and exit without applying the action.
+#
+# Both examples ship disabled. Enable them deliberately - `prune` deletes records.
+policies:
+  # Pull every record in the network_security domain from peers, nightly.
+  sync-netsec:
+    enabled: false
+    schedule: '0 3 * * *'
+    action: sync
+    match:
+      domain:
+        - network_security
+
+  # Drop records whose signature is not trusted and that scan at MEDIUM or worse.
+  prune-untrusted:
+    enabled: false
+    schedule: '*/30 * * * *'
+    action: prune
+    match:
+      trusted: false
+      scan-severity: MEDIUM
+
 # SPIRE configuration for workload identity
 spire:
   enabled: false
