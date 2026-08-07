@@ -77,14 +77,9 @@
 
 	function handleMediaType(value: string, checked: boolean) {
 		const next = new Set(mediaTypes);
-		if (value === 'all' && checked) {
-			next.clear();
-			next.add('all');
-		} else if (value !== 'all') {
-			next.delete('all');
-			if (checked) next.add(value);
-			else next.delete(value);
-		}
+		next.delete('all');
+		if (checked) next.add(value);
+		else next.delete(value);
 		mediaTypes = ensureMediaTypesSelection(next);
 		notifyChange();
 	}
@@ -141,7 +136,6 @@
 
 	/** Top-level media type filters; groups may nest further checkboxes under `children`. */
 	const MEDIA_TYPE_OPTIONS: MediaTypeOption[] = [
-		{ value: 'all', label: 'All' },
 		{ value: 'application/a2a-agent-card+json', label: 'A2A Agent' },
 		{ value: 'application/mcp-server-card+json', label: 'MCP Server' },
         {
