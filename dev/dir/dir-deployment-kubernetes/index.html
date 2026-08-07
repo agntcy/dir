@@ -1263,6 +1263,56 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#content-policies" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Content Policies
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Content Policies">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#actions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Actions
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#predicates" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Predicates
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#other-fields" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Other Fields
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#security-scanning" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1977,6 +2027,56 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#content-policies" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Content Policies
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Content Policies">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#actions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Actions
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#predicates" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Predicates
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#other-fields" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Other Fields
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#security-scanning" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2157,7 +2257,7 @@ kubectl<span class="w"> </span><span class="nb">wait</span><span class="w"> </sp
 <p>Deploy Directory (API server, Zot, PostgreSQL)</p>
 <p>The Directory chart includes the API server, Zot registry, and PostgreSQL. Pipe values from stdin using <code>-f -</code>:</p>
 <div class="highlight"><pre><span></span><code>helm<span class="w"> </span>install<span class="w"> </span>dir<span class="w"> </span>oci://ghcr.io/agntcy/dir/helm-charts/dir<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--version<span class="w"> </span>v1.6.2<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--version<span class="w"> </span>v1.6.3<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--namespace<span class="w"> </span>dir-dev-dir<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--create-namespace<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>-f<span class="w"> </span>-<span class="w"> </span><span class="s">&lt;&lt;&#39;EOF&#39;</span>
@@ -2166,7 +2266,7 @@ kubectl<span class="w"> </span><span class="nb">wait</span><span class="w"> </sp
 <span class="s">apiserver:</span>
 <span class="s">  image:</span>
 <span class="s">    repository: ghcr.io/agntcy/dir-apiserver</span>
-<span class="s">    tag: v1.6.2</span>
+<span class="s">    tag: v1.6.3</span>
 <span class="s">    pullPolicy: IfNotPresent</span>
 <span class="s">  service:</span>
 <span class="s">    type: NodePort</span>
@@ -2359,7 +2459,7 @@ kind<span class="w"> </span>delete<span class="w"> </span>cluster<span class="w"
 <tr>
 <td><strong>Directory</strong></td>
 <td><code>oci://ghcr.io/agntcy/dir/helm-charts/dir</code></td>
-<td>v1.6.2</td>
+<td>v1.6.3</td>
 </tr>
 </tbody>
 </table>
@@ -2393,6 +2493,173 @@ kubectl<span class="w"> </span><span class="nb">wait</span><span class="w"> </sp
 </div>
 </div>
 </div>
+<h2 id="content-policies">Content Policies</h2>
+<p>A content policy runs a scheduled "search, then act on the matches" pipeline against your node. Policies are declared in the <code>dirctl</code> chart's values — no forked chart and no hand-written manifests. Each enabled policy renders a CronJob named <code>&lt;release&gt;-dirctl-policy-&lt;key&gt;</code>.</p>
+<div class="highlight"><pre><span></span><code><span class="nt">policies</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">sync-netsec</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">enabled</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+<span class="w">    </span><span class="nt">schedule</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;0</span><span class="nv"> </span><span class="s">3</span><span class="nv"> </span><span class="s">*</span><span class="nv"> </span><span class="s">*</span><span class="nv"> </span><span class="s">*&quot;</span>
+<span class="w">    </span><span class="nt">action</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">sync</span>
+<span class="w">    </span><span class="nt">match</span><span class="p">:</span>
+<span class="w">      </span><span class="nt">domain</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">network_security</span><span class="p p-Indicator">]</span>
+
+<span class="w">  </span><span class="nt">prune-untrusted</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">enabled</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+<span class="w">    </span><span class="nt">schedule</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;*/30</span><span class="nv"> </span><span class="s">*</span><span class="nv"> </span><span class="s">*</span><span class="nv"> </span><span class="s">*</span><span class="nv"> </span><span class="s">*&quot;</span>
+<span class="w">    </span><span class="nt">action</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">prune</span>
+<span class="w">    </span><span class="nt">match</span><span class="p">:</span>
+<span class="w">      </span><span class="nt">trusted</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">false</span>
+<span class="w">      </span><span class="nt">scan-severity</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">MEDIUM</span>
+</code></pre></div>
+<p><code>sync-netsec</code> pulls every record peers advertise in the <code>network_security</code> domain into this node, nightly. <code>prune-untrusted</code> deletes local records whose signature is not trusted and that scan at MEDIUM severity or worse, every 30 minutes.</p>
+<h3 id="actions">Actions</h3>
+<table>
+<thead>
+<tr>
+<th>Action</th>
+<th>What it does</th>
+<th>Underlying pipeline</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>sync</code></td>
+<td>Pull matching records from network peers into this node</td>
+<td><code>dirctl routing search</code> → <code>dirctl sync create --stdin</code></td>
+</tr>
+<tr>
+<td><code>prune</code></td>
+<td>Delete matching records from this node's store</td>
+<td><code>dirctl search</code> → <code>dirctl delete --stdin</code></td>
+</tr>
+<tr>
+<td><code>publish</code></td>
+<td>Announce matching local records to the routing network</td>
+<td><code>dirctl search</code> → <code>dirctl routing publish --stdin</code></td>
+</tr>
+<tr>
+<td><code>unpublish</code></td>
+<td>Withdraw matching local records from the routing network</td>
+<td><code>dirctl search</code> → <code>dirctl routing unpublish --stdin</code></td>
+</tr>
+</tbody>
+</table>
+<h3 id="predicates">Predicates</h3>
+<p><code>match</code> keys are <code>dirctl</code> flag names with the leading <code>--</code> removed, so every filter the CLI supports is available without a chart change:</p>
+<table>
+<thead>
+<tr>
+<th>Value kind</th>
+<th>Example</th>
+<th>Rendered flag</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>List</td>
+<td><code>domain: [a, b]</code></td>
+<td><code>--domain 'a' --domain 'b'</code></td>
+</tr>
+<tr>
+<td>Boolean</td>
+<td><code>trusted: false</code></td>
+<td><code>--trusted=false</code></td>
+</tr>
+<tr>
+<td>Scalar</td>
+<td><code>scan-severity: MEDIUM</code></td>
+<td><code>--scan-severity 'MEDIUM'</code></td>
+</tr>
+</tbody>
+</table>
+<p>Boolean filters are tri-state. Omitting <code>trusted</code> does not filter on trust at all; <code>trusted: true</code> matches records with a trusted signature; <code>trusted: false</code> matches records without one. <code>verified</code> behaves the same way.</p>
+<div class="admonition warning">
+<p class="admonition-title"><code>safe: false</code> is not the complement of <code>safe: true</code></p>
+<p><code>safe: true</code> matches records where every scanner reported <code>is_safe=true</code>, and <code>safe: false</code> matches records where at least one scanner reported unsafe. A record that was <strong>never scanned</strong> matches neither. A <code>prune</code> policy keyed on <code>safe: false</code> therefore deletes only records with a failing scan report, and silently leaves unscanned records untouched — which is likely the opposite of the intent. To act on "not known to be safe", combine <code>safe: false</code> with a separate policy for unscanned records, or gate on <code>scan-severity</code> instead.</p>
+</div>
+<p>Because keys are passed through mechanically, the <code>exclude-</code> filters work too — carving an exception out of a policy needs no chart change:</p>
+<div class="highlight"><pre><span></span><code><span class="nt">policies</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">prune-untrusted-except-cisco</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">enabled</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+<span class="w">    </span><span class="nt">schedule</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;@daily&quot;</span>
+<span class="w">    </span><span class="nt">action</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">prune</span>
+<span class="w">    </span><span class="nt">match</span><span class="p">:</span>
+<span class="w">      </span><span class="nt">trusted</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">false</span>
+<span class="w">      </span><span class="nt">exclude-name</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="s">&quot;cisco.com/*&quot;</span><span class="p p-Indicator">]</span>
+</code></pre></div>
+<p><code>limit</code>, <code>format</code> and <code>output</code> are set by the chart and are rejected inside <code>match</code>. An unknown <code>action</code> and a value containing a single quote also fail at <code>helm template</code> time rather than at run time.</p>
+<div class="admonition note">
+<p class="admonition-title"><code>sync</code> searches the network, not your store</p>
+<p><code>sync</code> queries the routing index to find records held by other peers, so its <code>match</code> keys are limited to those <code>dirctl routing search</code> accepts: <code>skill</code>, <code>domain</code>, <code>locator</code>, <code>module</code> and <code>min-score</code>. The other three actions search the local store and accept the full <code>dirctl search</code> filter set.</p>
+</div>
+<h3 id="other-fields">Other Fields</h3>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Default</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>enabled</code></td>
+<td><code>false</code></td>
+<td>Render the CronJob.</td>
+</tr>
+<tr>
+<td><code>schedule</code></td>
+<td>required</td>
+<td>Cron expression.</td>
+</tr>
+<tr>
+<td><code>limit</code></td>
+<td><code>100</code></td>
+<td>Maximum records processed per run.</td>
+</tr>
+<tr>
+<td><code>dryRun</code></td>
+<td><code>false</code></td>
+<td>Log the matches and exit without applying the action.</td>
+</tr>
+</tbody>
+</table>
+<p><code>limit</code> is a page size, and how a run covers matches beyond it depends on the action:</p>
+<table>
+<thead>
+<tr>
+<th>Action</th>
+<th>Coverage</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>prune</code></td>
+<td>Deleting a record stops it matching, so the set shrinks and successive runs converge on the whole backlog.</td>
+</tr>
+<tr>
+<td><code>publish</code>, <code>unpublish</code></td>
+<td>The run pages through <code>--offset</code> until it sees a short page, so a single run covers every match.</td>
+</tr>
+<tr>
+<td><code>sync</code></td>
+<td>Processes only the first <code>limit</code> matches. <code>dirctl routing search</code> has no <code>--offset</code>, and syncing does not stop a peer advertising the record, so later matches are never reached — set <code>limit</code> above your expected match count.</td>
+</tr>
+</tbody>
+</table>
+<p><code>env</code>, <code>resources</code>, <code>volumes</code>, <code>volumeMounts</code>, <code>concurrencyPolicy</code>, <code>successfulJobsHistoryLimit</code> and <code>failedJobsHistoryLimit</code> may be set per policy and behave exactly as they do for a <code>cronjobs</code> entry.</p>
+<div class="admonition important">
+<p class="admonition-title">Preview a destructive policy before enabling it</p>
+<p><code>prune</code> deletes records and <code>unpublish</code> withdraws them from the network. Set <code>dryRun: true</code> for the first few runs and read the CronJob logs — every run logs the match count and dumps the matched records before acting:</p>
+<div class="highlight"><pre><span></span><code>[prune-untrusted] matched 12 record(s)
+[
+  &quot;baeareib...&quot;,
+  ...
+]
+[prune-untrusted] dry run: not applying action &#39;prune&#39;
+</code></pre></div>
+</div>
+<p>Both example policies ship disabled in <code>values.yaml</code>. Adding a policy of your own is a values change only.</p>
 <h2 id="security-scanning">Security Scanning</h2>
 <p>The reconciler image includes <a href="https://cisco-ai-defense.github.io/docs/mcp-scanner"><code>mcp-scanner</code></a> and <a href="https://cisco-ai-defense.github.io/docs/skill-scanner"><code>skill-scanner</code></a> pre-installed. The scan task is enabled by default and requires Azure OpenAI credentials to perform LLM-backed analysis.</p>
 <p>Inject the credentials via <code>extraEnv</code> in your Helm values. Use a Kubernetes Secret to avoid storing keys in plaintext:</p>
