@@ -339,7 +339,10 @@ policies:
 | Boolean | `trusted: false` | `--trusted=false` |
 | Scalar | `scan-severity: MEDIUM` | `--scan-severity 'MEDIUM'` |
 
-Boolean filters are tri-state. Omitting `trusted` does not filter on trust at all; `trusted: true` matches records with a trusted signature; `trusted: false` matches records without one. The same holds for `verified` and `safe`.
+Boolean filters are tri-state. Omitting `trusted` does not filter on trust at all; `trusted: true` matches records with a trusted signature; `trusted: false` matches records without one. `verified` behaves the same way.
+
+!!! warning "`safe: false` is not the complement of `safe: true`"
+    `safe: true` matches records where every scanner reported `is_safe=true`, and `safe: false` matches records where at least one scanner reported unsafe. A record that was **never scanned** matches neither. A `prune` policy keyed on `safe: false` therefore deletes only records with a failing scan report, and silently leaves unscanned records untouched — which is likely the opposite of the intent. To act on "not known to be safe", combine `safe: false` with a separate policy for unscanned records, or gate on `scan-severity` instead.
 
 Because keys are passed through mechanically, the `exclude-` filters work too — carving an exception out of a policy needs no chart change:
 
@@ -368,7 +371,15 @@ policies:
 | `limit` | `100` | Maximum records processed per run. |
 | `dryRun` | `false` | Log the matches and exit without applying the action. |
 
-A run does not paginate: it processes at most `limit` records, and a policy converges over successive runs. `env`, `resources`, `volumes`, `volumeMounts`, `concurrencyPolicy`, `successfulJobsHistoryLimit` and `failedJobsHistoryLimit` may be set per policy and behave exactly as they do for a `cronjobs` entry.
+`limit` is a page size, and how a run covers matches beyond it depends on the action:
+
+| Action | Coverage |
+| --- | --- |
+| `prune` | Deleting a record stops it matching, so the set shrinks and successive runs converge on the whole backlog. |
+| `publish`, `unpublish` | The run pages through `--offset` until it sees a short page, so a single run covers every match. |
+| `sync` | Processes only the first `limit` matches. `dirctl routing search` has no `--offset`, and syncing does not stop a peer advertising the record, so later matches are never reached — set `limit` above your expected match count. |
+
+`env`, `resources`, `volumes`, `volumeMounts`, `concurrencyPolicy`, `successfulJobsHistoryLimit` and `failedJobsHistoryLimit` may be set per policy and behave exactly as they do for a `cronjobs` entry.
 
 !!! important "Preview a destructive policy before enabling it"
     `prune` deletes records and `unpublish` withdraws them from the network. Set `dryRun: true` for the first few runs and read the CronJob logs — every run logs the match count and dumps the matched records before acting:

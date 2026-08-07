@@ -56,6 +56,16 @@ RENDERED="$("$HELM" template policy-test "$CHART" --values "$CHART/ci/policies-v
   exit 1
 }
 
+# policy_doc <policy name> prints just that policy's CronJob manifest, so a
+# per-policy assertion cannot accidentally match another policy's script.
+policy_doc() {
+  printf '%s' "$RENDERED" | awk -v want="  name: policy-test-dirctl-policy-$1" '
+    $0 == want { f = 1 }
+    f && /^---$/ { exit }
+    f { print }
+  '
+}
+
 assert_contains "$RENDERED" "name: policy-test-dirctl-policy-sync-netsec" \
   "sync policy renders a CronJob"
 assert_contains "$RENDERED" "dirctl routing search --output json --limit 100 --domain 'network_security'" \
@@ -68,10 +78,25 @@ assert_contains "$RENDERED" "dirctl search --format cid --output json --limit 10
 assert_contains "$RENDERED" "dirctl delete --stdin" \
   "prune pipes matches into delete"
 
-assert_contains "$RENDERED" "dirctl search --format cid --output json --limit 25 --name 'cisco.com/*' --name 'agntcy.org/*' --trusted=true" \
+assert_contains "$RENDERED" "dirctl search --format cid --output json --limit 25 --name 'cisco.com/*' --name 'agntcy.org/*' --trusted=true --offset \"\$offset\"" \
   "publish repeats a list match and honours the policy limit"
 assert_contains "$RENDERED" "dirctl routing publish --stdin" \
   "publish pipes matches into routing publish"
+
+# Pagination. publish/unpublish do not change whether a record matches, so they
+# must page; prune shrinks its own result set and sync cannot page at all
+# (dirctl routing search has no --offset).
+assert_contains "$RENDERED" 'offset=$((offset + 25))' \
+  "publish pages through offsets"
+assert_contains "$RENDERED" "processed \${total} record(s)" \
+  "publish reports a total across pages"
+assert_not_contains "$(policy_doc prune-untrusted)" "--offset" \
+  "prune does not paginate"
+assert_not_contains "$(policy_doc sync-netsec)" "--offset" \
+  "sync does not paginate"
+
+assert_contains "$RENDERED" 'if [ -z "$out" ]; then' \
+  "scripts fail loudly when the search prints nothing"
 
 assert_contains "$RENDERED" "dry run: not applying action 'unpublish'" \
   "dryRun replaces the sink with a log line"
@@ -103,6 +128,24 @@ assert_render_fails "is set by the chart" "a reserved match key fails the render
 assert_render_fails "cannot be safely shell-quoted" "a quote in a match value fails the render" \
   --set policies.bad.enabled=true --set policies.bad.schedule='@daily' \
   --set policies.bad.action=prune --set "policies.bad.match.name=o'brien"
+
+# Keys and limit are interpolated into the shell command unquoted, so both are
+# constrained at template time rather than trusted.
+assert_render_fails "is not a valid dirctl flag name" "a shell metacharacter in a match key fails the render" \
+  --set policies.bad.enabled=true --set policies.bad.schedule='@daily' \
+  --set policies.bad.action=prune --set 'policies.bad.match.name; echo pwned #=v'
+
+assert_render_fails "limit must be a positive integer" "a non-numeric limit fails the render" \
+  --set policies.bad.enabled=true --set policies.bad.schedule='@daily' \
+  --set policies.bad.action=prune --set-string 'policies.bad.limit=1; echo pwned'
+
+assert_render_fails "limit must be a positive integer" "a zero limit fails the render" \
+  --set policies.bad.enabled=true --set policies.bad.schedule='@daily' \
+  --set policies.bad.action=prune --set policies.bad.limit=0
+
+assert_render_fails "a sync policy needs at least one of" "a sync policy with no routing criterion fails the render" \
+  --set policies.bad.enabled=true --set policies.bad.schedule='@daily' \
+  --set policies.bad.action=sync --set policies.bad.match.trusted=false
 
 if [ "$FAILURES" -ne 0 ]; then
   echo
