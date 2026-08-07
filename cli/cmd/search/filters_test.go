@@ -4,10 +4,12 @@
 package search
 
 import (
+	"strings"
 	"testing"
 
 	searchv1 "github.com/agntcy/dir/api/search/v1"
 	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -59,6 +61,31 @@ var valueFilterFlags = []struct {
 	{"schema-version", searchv1.RecordQueryType_RECORD_QUERY_TYPE_SCHEMA_VERSION},
 	{"module-id", searchv1.RecordQueryType_RECORD_QUERY_TYPE_MODULE_ID},
 	{"annotation", searchv1.RecordQueryType_RECORD_QUERY_TYPE_ANNOTATION},
+}
+
+// Every value filter must register an --exclude- twin. This walks the real flag
+// set rather than the table above, so a filter added to valueFilters without its
+// exclude counterpart fails here even if nobody updates the test table.
+func TestEveryValueFilterHasAnExcludeTwin(t *testing.T) {
+	cmd := &cobra.Command{Use: "search"}
+	RegisterFilterFlags(cmd, &Filters{})
+
+	// Booleans are negated with the tri-state =false form, not an exclude flag.
+	triState := map[string]bool{"verified": true, "trusted": true, "safe": true, "help": true}
+
+	var missing []string
+
+	cmd.Flags().VisitAll(func(flag *pflag.Flag) {
+		if strings.HasPrefix(flag.Name, "exclude-") || triState[flag.Name] {
+			return
+		}
+
+		if cmd.Flags().Lookup("exclude-"+flag.Name) == nil {
+			missing = append(missing, flag.Name)
+		}
+	})
+
+	assert.Empty(t, missing, "value filters registered without an --exclude- twin")
 }
 
 func TestBuildQueriesIncludeFlags(t *testing.T) {

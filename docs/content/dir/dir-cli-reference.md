@@ -1310,6 +1310,7 @@ Omit the positional argument and use filter flags to query specific fields. All 
 | `--module` | Module path (e.g. `core/llm/model`) |
 | `--domain-id` | Domain ID |
 | `--domain` | Domain name |
+| `--created-at` | Record creation timestamp (e.g. `2024-*`, `>=2024-01-01`) |
 | `--author` | Author name |
 | `--schema-version` | OASF schema version |
 | `--module-id` | Module ID |
@@ -1326,10 +1327,10 @@ Omit the positional argument and use filter flags to query specific fields. All 
 Every filter above except the three booleans has an `--exclude-` twin —
 `--exclude-name`, `--exclude-version`, `--exclude-skill-id`, `--exclude-skill`,
 `--exclude-locator`, `--exclude-module`, `--exclude-domain-id`, `--exclude-domain`,
-`--exclude-author`, `--exclude-schema-version`, `--exclude-module-id`,
-`--exclude-annotation` and `--exclude-scan-severity`. Each is repeatable and takes
-the same values as the flag it mirrors; wildcards, comparison operators and `:`
-behave identically, and `!` is an ordinary character.
+`--exclude-created-at`, `--exclude-author`, `--exclude-schema-version`,
+`--exclude-module-id`, `--exclude-annotation` and `--exclude-scan-severity`. Each is
+repeatable and takes the same values as the flag it mirrors; wildcards, comparison
+operators and `:` behave identically, and `!` is an ordinary character.
 
 ```bash
 dirctl search --exclude-skill "natural_language_processing"
