@@ -4,15 +4,74 @@
 package server
 
 import (
+	"errors"
 	"testing"
 	"time"
 
+	corev1 "github.com/agntcy/dir/api/core/v1"
+	routingv1 "github.com/agntcy/dir/api/routing/v1"
 	"github.com/agntcy/dir/server/config"
+	"github.com/agntcy/dir/server/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/keepalive"
 )
+
+type autoPublishTestDB struct {
+	types.DatabaseAPI
+
+	request *routingv1.PublishRequest
+	err     error
+	calls   int
+}
+
+func (d *autoPublishTestDB) CreatePublication(
+	request *routingv1.PublishRequest,
+) (string, error) {
+	d.calls++
+	d.request = request
+
+	if d.err != nil {
+		return "", d.err
+	}
+
+	return "publication-id", nil
+}
+
+func TestAutoPublishRecord(t *testing.T) {
+	db := &autoPublishTestDB{}
+	ref := &corev1.RecordRef{Cid: "cid-1"}
+
+	err := autoPublishRecord(db)(t.Context(), ref)
+
+	require.NoError(t, err)
+	require.Equal(t, 1, db.calls)
+	require.NotNil(t, db.request)
+
+	recordRefsRequest, ok := db.request.GetRequest().(*routingv1.PublishRequest_RecordRefs)
+	require.True(t, ok)
+	require.NotNil(t, recordRefsRequest.RecordRefs)
+	require.Len(t, recordRefsRequest.RecordRefs.GetRefs(), 1)
+	assert.Equal(
+		t,
+		"cid-1",
+		recordRefsRequest.RecordRefs.GetRefs()[0].GetCid(),
+	)
+}
+
+func TestAutoPublishRecord_ReturnsCreatePublicationError(t *testing.T) {
+	wantErr := errors.New("publication queue unavailable")
+	db := &autoPublishTestDB{err: wantErr}
+
+	err := autoPublishRecord(db)(
+		t.Context(),
+		&corev1.RecordRef{Cid: "cid-1"},
+	)
+
+	require.ErrorIs(t, err, wantErr)
+	require.Equal(t, 1, db.calls)
+}
 
 // TestBuildConnectionOptions verifies that buildConnectionOptions creates
 // the correct gRPC server options from connection configuration.
