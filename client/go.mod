@@ -31,8 +31,7 @@ require (
 require (
 	github.com/gorilla/securecookie v1.1.2 // indirect
 	github.com/muhlemmer/gu v0.3.1 // indirect
-	github.com/zitadel/logging v0.7.0 // indirect
-	github.com/zitadel/oidc/v3 v3.47.9
+	github.com/zitadel/oidc/v3 v3.48.1
 	github.com/zitadel/schema v1.3.2 // indirect
 	golang.org/x/oauth2 v0.36.0 // indirect
 )
