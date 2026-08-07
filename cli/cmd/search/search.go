@@ -54,13 +54,15 @@ Examples:
    dirctl search --verified
    dirctl search --name "cisco.com/*" --verified
 
-7. Search for trusted records only (signature verification passed):
+7. Search by signature trust (each boolean filter also takes an explicit =false):
    dirctl search --trusted
    dirctl search --name "web*" --trusted
+   dirctl search --trusted=false            # records whose signature is not trusted
 
-8. Search for security-scanned records where all scanners reported safe:
+8. Search by security scan outcome:
    dirctl search --safe
    dirctl search --name "web*" --safe
+   dirctl search --safe=false               # at least one scanner reported unsafe
 
 9. Search for records whose highest scan severity meets or exceeds a threshold:
    dirctl search --scan-severity HIGH
@@ -70,6 +72,17 @@ Examples:
     dirctl search --annotation 'manager:alice'
     dirctl search --annotation 'team:*'
     dirctl search --annotation 'env:prod' --annotation 'region:us-*'
+
+11. Exclude matches with the --exclude-* form of any value filter:
+    dirctl search --exclude-skill 'natural_language_processing'
+    dirctl search --domain 'life_science/*' --exclude-author 'bot*'
+    dirctl search --exclude-scan-severity MEDIUM
+
+Every value filter has an --exclude- twin. Values of one filter are combined
+with OR, while every excluded value must not match, so
+"--skill python --exclude-skill nlp" means "has python and does not have nlp".
+Exclusion adds no syntax: wildcards, comparison operators and ':' behave
+exactly as they do on the including flag.
 
 Supported wildcards:
   * - matches zero or more characters

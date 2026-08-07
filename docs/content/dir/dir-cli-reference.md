@@ -1310,14 +1310,46 @@ Omit the positional argument and use filter flags to query specific fields. All 
 | `--module` | Module path (e.g. `core/llm/model`) |
 | `--domain-id` | Domain ID |
 | `--domain` | Domain name |
+| `--created-at` | Record creation timestamp (e.g. `2024-*`, `>=2024-01-01`) |
 | `--author` | Author name |
 | `--schema-version` | OASF schema version |
 | `--module-id` | Module ID |
 | `--annotation` | Annotation key=value |
-| `--verified` | Only verified records |
-| `--trusted` | Only trusted records (signature verification passed) |
-| `--safe` | Only records where all security scanners reported `is_safe=true` |
+| `--verified` | Only verified records; `--verified=false` for records without verified name ownership |
+| `--trusted` | Only trusted records (signature verification passed); `--trusted=false` for records without a trusted signature |
+| `--safe` | Only records where all security scanners reported `is_safe=true`; `--safe=false` for records where at least one scanner did not |
 | `--scan-severity` | Only records whose highest scan severity meets or exceeds a threshold (`NONE`, `INFO`, `LOW`, `MEDIUM`, `HIGH`, `CRITICAL`) |
+
+`--verified`, `--trusted` and `--safe` are tri-state: omitting the flag does not filter on that property at all, while an explicit `=false` filters for records that failed the check.
+
+**Exclude flags:**
+
+Every filter above except the three booleans has an `--exclude-` twin —
+`--exclude-name`, `--exclude-version`, `--exclude-skill-id`, `--exclude-skill`,
+`--exclude-locator`, `--exclude-module`, `--exclude-domain-id`, `--exclude-domain`,
+`--exclude-created-at`, `--exclude-author`, `--exclude-schema-version`,
+`--exclude-module-id`, `--exclude-annotation` and `--exclude-scan-severity`. Each is
+repeatable and takes the same values as the flag it mirrors; wildcards, comparison
+operators and `:` behave identically, and `!` is an ordinary character.
+
+```bash
+dirctl search --exclude-skill "natural_language_processing"
+dirctl search --domain "life_science/*" --exclude-author "bot*"
+dirctl search --skill python --exclude-skill nlp   # has python, does not have nlp
+```
+
+Values of one filter are combined with **OR**, while every excluded value must
+**not** match. Excluding a multi-valued field drops the record if *any* of its
+values match, so `--exclude-skill nlp` drops a record whose skills are
+`[nlp, python]`.
+
+To exclude on a boolean, use the tri-state `=false` form (`--trusted=false`) rather
+than an `--exclude-` flag.
+
+!!! note "`--exclude-scan-severity` also keeps never-scanned records"
+    It excludes records that have a scan report at or above the given threshold.
+    A record that was never scanned has no such report, so it is kept. Combine it
+    with `--safe` when you want scanned-and-clean only.
 
 **Output and pagination flags:**
 
