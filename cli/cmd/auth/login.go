@@ -32,6 +32,7 @@ Device flow: --device flag (no browser needed; authorize on any device).
 Configuration (flags or environment):
   --oidc-issuer, DIRECTORY_CLIENT_OIDC_ISSUER        OIDC issuer URL (e.g. https://dex.example.com)
   --oidc-client-id, DIRECTORY_CLIENT_OIDC_CLIENT_ID  OIDC client ID
+  --oidc-scopes, DIRECTORY_CLIENT_OIDC_SCOPES        OIDC scopes (comma-separated); include groups for IdP group claims
 
 Examples:
   # Interactive login (opens browser)
@@ -118,6 +119,7 @@ func runPKCELogin(cmd *cobra.Command, cfg *client.Config, cache *client.TokenCac
 	result, err := client.OIDC.RunPKCEFlow(ctx, &client.PKCEConfig{
 		Issuer:          cfg.OIDCIssuer,
 		ClientID:        cfg.OIDCClientID,
+		Scopes:          cfg.OIDCScopes,
 		RedirectURI:     redirectURI,
 		CallbackPort:    callbackPort,
 		SkipBrowserOpen: skipBrowserOpen,
@@ -141,6 +143,7 @@ func runDeviceLogin(cmd *cobra.Command, cfg *client.Config, cache *client.TokenC
 	result, err := client.OIDC.RunDeviceFlow(ctx, &client.DeviceFlowConfig{
 		Issuer:   cfg.OIDCIssuer,
 		ClientID: cfg.OIDCClientID,
+		Scopes:   cfg.OIDCScopes,
 		Timeout:  timeout,
 		Output:   cmd.OutOrStdout(),
 	})

@@ -117,6 +117,10 @@ func mcpServerEnv() map[string]string {
 		}
 	}
 
+	if len(cfg.OIDCScopes) > 0 {
+		env["DIRECTORY_CLIENT_OIDC_SCOPES"] = strings.Join(cfg.OIDCScopes, ",")
+	}
+
 	if cfg.TlsSkipVerify {
 		env["DIRECTORY_CLIENT_TLS_SKIP_VERIFY"] = "true"
 	}

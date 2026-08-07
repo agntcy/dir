@@ -338,6 +338,32 @@ contexts:
 		assert.Equal(t, path, resolved.Path)
 	})
 
+	t.Run("resolves oidc_scopes from context", func(t *testing.T) {
+		resetClientEnv(t)
+		path := writeConfig(t, `
+contexts:
+  dex:
+    server_address: gateway.example.com:443
+    auth_mode: oidc
+    oidc_issuer: https://dex.example.com
+    oidc_client_id: dirctl
+    oidc_scopes:
+      - openid
+      - email
+      - profile
+      - offline_access
+      - groups
+`)
+
+		cfg, _, err := Resolve(ResolveOptions{
+			Path:    path,
+			Context: "dex",
+		})
+
+		require.NoError(t, err)
+		assert.Equal(t, []string{"openid", "email", "profile", "offline_access", "groups"}, cfg.OIDCScopes)
+	})
+
 	t.Run("resolves current context", func(t *testing.T) {
 		resetClientEnv(t)
 		path := writeConfig(t, `
@@ -808,6 +834,7 @@ func resetClientEnv(t *testing.T) {
 		"DIRECTORY_CLIENT_JWT_AUDIENCE",
 		"DIRECTORY_CLIENT_OIDC_ISSUER",
 		"DIRECTORY_CLIENT_OIDC_CLIENT_ID",
+		"DIRECTORY_CLIENT_OIDC_SCOPES",
 		"DIRECTORY_CLIENT_AUTH_TOKEN",
 	}
 

@@ -637,6 +637,8 @@ func (d *DB) handleFilterOptions(query *gorm.DB, cfg *types.RecordFilters) *gorm
 		}
 	}
 
+	query = applyExclusionFilters(query, &cfg.Excluded)
+
 	return query
 }
 

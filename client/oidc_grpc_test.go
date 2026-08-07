@@ -94,9 +94,10 @@ func TestSetupOIDCAuth_ExpiredCachedTokenReturnsAuthError(t *testing.T) {
 	assert.Contains(t, err.Error(), "dirctl auth login")
 }
 
-func TestDefaultOIDCScopesIncludesOfflineAccess(t *testing.T) {
+func TestDefaultOIDCScopes(t *testing.T) {
 	scopes := resolveScopes(nil)
 	assert.Contains(t, scopes, "offline_access")
+	assert.Contains(t, scopes, "groups")
 }
 
 func TestSetupOIDCAuth_ExpiredCachedTokenRefreshSuccess(t *testing.T) {
