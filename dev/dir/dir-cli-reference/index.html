@@ -3781,6 +3781,8 @@ gateway endpoints, and SPIFFE/SPIRE integration are documented in
 </tbody>
 </table>
 <div class="highlight"><pre><span></span><code>dirctl<span class="w"> </span>auth<span class="w"> </span>login<span class="w"> </span>--oidc-issuer<span class="w"> </span><span class="s2">&quot;https://idp.ads.outshift.io&quot;</span><span class="w"> </span>--oidc-client-id<span class="w"> </span><span class="s2">&quot;dirctl&quot;</span>
+
+Set<span class="w"> </span><span class="sb">`</span>oidc_scopes<span class="sb">`</span><span class="w"> </span><span class="k">in</span><span class="w"> </span>the<span class="w"> </span>context<span class="w"> </span><span class="o">(</span>or<span class="w"> </span><span class="sb">`</span>DIRECTORY_CLIENT_OIDC_SCOPES<span class="sb">`</span><span class="w"> </span>/<span class="w"> </span><span class="sb">`</span>--oidc-scopes<span class="sb">`</span><span class="o">)</span><span class="w"> </span>to<span class="w"> </span>request<span class="w"> </span>extra<span class="w"> </span>claims.<span class="w"> </span>After<span class="w"> </span>changing<span class="w"> </span>scopes,<span class="w"> </span>run<span class="w"> </span><span class="sb">`</span>dirctl<span class="w"> </span>auth<span class="w"> </span>login<span class="w"> </span>--force<span class="sb">`</span><span class="w"> </span>so<span class="w"> </span>the<span class="w"> </span>cached<span class="w"> </span>token<span class="w"> </span>is<span class="w"> </span>re-minted.
 dirctl<span class="w"> </span>--auth-mode<span class="o">=</span>oidc<span class="w"> </span>--server-addr<span class="w"> </span>ads.outshift.io:443<span class="w"> </span>search<span class="w"> </span>--skill<span class="w"> </span><span class="s2">&quot;AI&quot;</span>
 </code></pre></div>
 <p>Pre-issued tokens: <code>--auth-token</code> or <code>DIRECTORY_CLIENT_AUTH_TOKEN</code> for CI and automation.
@@ -4282,6 +4284,12 @@ dirctl<span class="w"> </span>daemon<span class="w"> </span>config<span class="w
 <span class="w">    </span><span class="nt">auth_mode</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">oidc</span>
 <span class="w">    </span><span class="nt">oidc_issuer</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">https://idp.example.com</span>
 <span class="w">    </span><span class="nt">oidc_client_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">dirctl</span>
+<span class="w">    </span><span class="nt">oidc_scopes</span><span class="p">:</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">openid</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">email</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">profile</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">offline_access</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">groups</span>
 <span class="w">  </span><span class="nt">staging</span><span class="p">:</span>
 <span class="w">    </span><span class="nt">server_address</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">staging.gateway.example.com:443</span>
 <span class="w">    </span><span class="nt">auth_mode</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">oidc</span>
@@ -5398,6 +5406,10 @@ dirctl<span class="w"> </span>search<span class="w"> </span><span class="s2">&qu
 <td>Domain name</td>
 </tr>
 <tr>
+<td><code>--created-at</code></td>
+<td>Record creation timestamp (e.g. <code>2024-*</code>, <code>&gt;=2024-01-01</code>)</td>
+</tr>
+<tr>
 <td><code>--author</code></td>
 <td>Author name</td>
 </tr>
@@ -5415,15 +5427,15 @@ dirctl<span class="w"> </span>search<span class="w"> </span><span class="s2">&qu
 </tr>
 <tr>
 <td><code>--verified</code></td>
-<td>Only verified records</td>
+<td>Only verified records; <code>--verified=false</code> for records without verified name ownership</td>
 </tr>
 <tr>
 <td><code>--trusted</code></td>
-<td>Only trusted records (signature verification passed)</td>
+<td>Only trusted records (signature verification passed); <code>--trusted=false</code> for records without a trusted signature</td>
 </tr>
 <tr>
 <td><code>--safe</code></td>
-<td>Only records where all security scanners reported <code>is_safe=true</code></td>
+<td>Only records where all security scanners reported <code>is_safe=true</code>; <code>--safe=false</code> for records where at least one scanner did not</td>
 </tr>
 <tr>
 <td><code>--scan-severity</code></td>
@@ -5431,6 +5443,31 @@ dirctl<span class="w"> </span>search<span class="w"> </span><span class="s2">&qu
 </tr>
 </tbody>
 </table>
+<p><code>--verified</code>, <code>--trusted</code> and <code>--safe</code> are tri-state: omitting the flag does not filter on that property at all, while an explicit <code>=false</code> filters for records that failed the check.</p>
+<p><strong>Exclude flags:</strong></p>
+<p>Every filter above except the three booleans has an <code>--exclude-</code> twin —
+<code>--exclude-name</code>, <code>--exclude-version</code>, <code>--exclude-skill-id</code>, <code>--exclude-skill</code>,
+<code>--exclude-locator</code>, <code>--exclude-module</code>, <code>--exclude-domain-id</code>, <code>--exclude-domain</code>,
+<code>--exclude-created-at</code>, <code>--exclude-author</code>, <code>--exclude-schema-version</code>,
+<code>--exclude-module-id</code>, <code>--exclude-annotation</code> and <code>--exclude-scan-severity</code>. Each is
+repeatable and takes the same values as the flag it mirrors; wildcards, comparison
+operators and <code>:</code> behave identically, and <code>!</code> is an ordinary character.</p>
+<div class="highlight"><pre><span></span><code>dirctl<span class="w"> </span>search<span class="w"> </span>--exclude-skill<span class="w"> </span><span class="s2">&quot;natural_language_processing&quot;</span>
+dirctl<span class="w"> </span>search<span class="w"> </span>--domain<span class="w"> </span><span class="s2">&quot;life_science/*&quot;</span><span class="w"> </span>--exclude-author<span class="w"> </span><span class="s2">&quot;bot*&quot;</span>
+dirctl<span class="w"> </span>search<span class="w"> </span>--skill<span class="w"> </span>python<span class="w"> </span>--exclude-skill<span class="w"> </span>nlp<span class="w">   </span><span class="c1"># has python, does not have nlp</span>
+</code></pre></div>
+<p>Values of one filter are combined with <strong>OR</strong>, while every excluded value must
+<strong>not</strong> match. Excluding a multi-valued field drops the record if <em>any</em> of its
+values match, so <code>--exclude-skill nlp</code> drops a record whose skills are
+<code>[nlp, python]</code>.</p>
+<p>To exclude on a boolean, use the tri-state <code>=false</code> form (<code>--trusted=false</code>) rather
+than an <code>--exclude-</code> flag.</p>
+<div class="admonition note">
+<p class="admonition-title"><code>--exclude-scan-severity</code> also keeps never-scanned records</p>
+<p>It excludes records that have a scan report at or above the given threshold.
+A record that was never scanned has no such report, so it is kept. Combine it
+with <code>--safe</code> when you want scanned-and-clean only.</p>
+</div>
 <p><strong>Output and pagination flags:</strong></p>
 <table>
 <thead>
