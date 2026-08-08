@@ -19,19 +19,25 @@ var publicationLogger = logging.Logger("controller/publication")
 // publicationCtlr implements the PublicationService gRPC interface.
 type publicationCtlr struct {
 	routingv1.UnimplementedPublicationServiceServer
-	db   types.DatabaseAPI
-	opts types.APIOptions
+	db          types.DatabaseAPI
+	publication types.PublicationAPI
+	opts        types.APIOptions
 }
 
 // NewPublicationController creates a new publication controller.
-func NewPublicationController(db types.DatabaseAPI, opts types.APIOptions) routingv1.PublicationServiceServer {
+//
+// Creation goes through the publication service rather than the database so
+// that this path schedules work as promptly as RoutingService.Publish; reads
+// and deletes stay on the database.
+func NewPublicationController(db types.DatabaseAPI, publication types.PublicationAPI, opts types.APIOptions) routingv1.PublicationServiceServer {
 	return &publicationCtlr{
-		db:   db,
-		opts: opts,
+		db:          db,
+		publication: publication,
+		opts:        opts,
 	}
 }
 
-func (c *publicationCtlr) CreatePublication(_ context.Context, req *routingv1.PublishRequest) (*routingv1.CreatePublicationResponse, error) {
+func (c *publicationCtlr) CreatePublication(ctx context.Context, req *routingv1.PublishRequest) (*routingv1.CreatePublicationResponse, error) {
 	publicationLogger.Debug("Called publication controller's CreatePublication method")
 
 	// Validate the publish request
@@ -53,7 +59,7 @@ func (c *publicationCtlr) CreatePublication(_ context.Context, req *routingv1.Pu
 		return nil, status.Errorf(codes.InvalidArgument, "invalid publish request: must specify record_refs, queries, or all_records")
 	}
 
-	id, err := c.db.CreatePublication(req)
+	id, err := c.publication.CreatePublication(ctx, req)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create publication: %w", err)
 	}

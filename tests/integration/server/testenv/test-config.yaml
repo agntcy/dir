@@ -30,8 +30,6 @@ routing:
   bootstrap_peers:
   key_path:
   datastore_dir:
-  gossipsub:
-    enabled: true
 database:
   type: postgres
   postgres:

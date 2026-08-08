@@ -314,8 +314,6 @@ The daemon ships with sensible built-in defaults. To customize, pass a YAML conf
       routing:
         listen_address: "/ip4/0.0.0.0/tcp/8999"
         datastore_dir: "routing"
-        gossipsub:
-          enabled: true
       database:
         type: "sqlite"
         sqlite:

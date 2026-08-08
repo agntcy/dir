@@ -382,8 +382,6 @@ This guide does not try to provision the AWS infrastructure from zero in the mai
           key_path: /etc/routing/node.privkey
           datastore_dir: /etc/routing/datastore
           directory_api_address: "${DIR_API_HOST}:443"
-          gossipsub:
-            enabled: true
         sync:
           auth_config:
             username: "user"

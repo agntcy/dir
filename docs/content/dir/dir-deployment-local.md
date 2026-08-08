@@ -144,8 +144,6 @@ server:
     datastore_dir: "routing"
     bootstrap_peers:
       - "/dns4/remote-dir.example.com/tcp/8999/p2p/<remote-peer-id>"
-    gossipsub:
-      enabled: true
   database:
     type: "sqlite"
     sqlite:
