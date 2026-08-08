@@ -101,6 +101,13 @@ jobs:
         run: |
           task lint
 
+      # `helm lint` only checks that a chart renders. The policy CronJob
+      # templates encode behaviour (predicate translation, pagination, the
+      # template-time rejections) that only these assertions cover.
+      - name: Run Helm chart tests
+        run: |
+          task test:helm
+
   license:
     name: License
     needs: changes
