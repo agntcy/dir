@@ -80,3 +80,4 @@ CLAUDE.md
 
 # MkDocs GitHub metrics cache (generated at build time)
 docs/mkdocs/.cache/
+docs/content/javascripts/dir-repobeats-data.js
