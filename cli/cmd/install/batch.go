@@ -15,6 +15,7 @@ import (
 	"github.com/agntcy/dir/cli/internal/agentinstall"
 	"github.com/agntcy/dir/cli/presenter"
 	ctxUtils "github.com/agntcy/dir/cli/util/context"
+	"github.com/agntcy/dir/cli/util/prompt"
 	"github.com/agntcy/dir/cli/util/records"
 	"github.com/spf13/cobra"
 )
@@ -165,14 +166,14 @@ func printSkippedSummary(cmd *cobra.Command, skipped []skippedRecord) {
 	}
 }
 
-func confirmBatch(cmd *cobra.Command, prompt string) (bool, error) {
+func confirmBatch(cmd *cobra.Command, promptText string) (bool, error) {
 	if opts.yes || opts.dryRun {
 		return true, nil
 	}
 
-	ok, err := confirm(cmd, prompt)
+	ok, err := prompt.Confirm(cmd, promptText)
 	if err != nil {
-		return false, err
+		return false, fmt.Errorf("confirm batch changes: %w", err)
 	}
 
 	if !ok {

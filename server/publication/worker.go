@@ -145,6 +145,18 @@ func (w *Worker) getCIDsFromRequest(_ context.Context, request *routingv1.Publis
 		// Get CIDs using the filter options
 		return w.db.GetRecordCIDs(filterOpts...) //nolint:wrapcheck
 
+	case *routingv1.PublishRequest_AllRecords:
+		if !req.AllRecords {
+			return nil, errors.New("all_records must be true")
+		}
+
+		cids, err := w.db.GetRecordCIDs()
+		if err != nil {
+			return nil, fmt.Errorf("failed to list stored records: %w", err)
+		}
+
+		return cids, nil
+
 	default:
 		return nil, errors.New("unknown request type")
 	}
