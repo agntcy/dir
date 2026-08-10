@@ -170,7 +170,7 @@ func runPublishAllCommand(cmd *cobra.Command, c *client.Client) error {
 	}
 
 	if !confirmed {
-		presenter.Printf(cmd, "Aborted. No records were submitted for publication.\n")
+		presenter.PrintSmartf(cmd, "Aborted. No records were submitted for publication.\n")
 
 		return nil
 	}
@@ -206,7 +206,7 @@ func confirmPublishAllIfNeeded(cmd *cobra.Command) (bool, error) {
 }
 
 func confirmPublishAll(cmd *cobra.Command) (bool, error) {
-	presenter.Printf(cmd, "%s [y/N]: ", publishAllPrompt)
+	presenter.PrintSmartf(cmd, "%s [y/N]: ", publishAllPrompt)
 
 	reader := bufio.NewReader(cmd.InOrStdin())
 
