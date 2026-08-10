@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/agntcy/dir/cli/internal/agentcfg"
 	"github.com/agntcy/dir/cli/presenter"
@@ -215,6 +216,10 @@ machine; provisioned once, reused everywhere.
 // connectivity check confirms a real extraction, not just a reachable port.
 const remoteSmokeSample = "real-time fraud detection for banking transactions using natural language processing"
 
+// remoteSmokeTimeout bounds the best-effort remote connectivity check so a
+// blackholed or unresponsive server can't hang `dirctl init` indefinitely.
+const remoteSmokeTimeout = 10 * time.Second
+
 // provisionRemote configures dirctl to use a remote OASF-SDK extractor server
 // instead of downloading local assets. It persists the address, then runs a
 // best-effort connectivity check — non-fatal, because the server may not be up
@@ -234,7 +239,10 @@ enrichment and free-text search will call this server.
 		return fmt.Errorf("save extractor config: %w", err)
 	}
 
-	captured, err := runWithSpinner(cmd.Context(), os.Stdout, "Verifying remote extractor…", nil,
+	ctx, cancel := context.WithTimeout(cmd.Context(), remoteSmokeTimeout)
+	defer cancel()
+
+	captured, err := runWithSpinner(ctx, os.Stdout, "Verifying remote extractor…", nil,
 		func(ctx context.Context) error { return smokeCheckRemote(ctx, cfg) })
 	if err != nil {
 		// Config is saved; a down server is expected when configuring ahead of

@@ -40,3 +40,17 @@ func TestLoadConfiguredUnprovisionedErrors(t *testing.T) {
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "not provisioned")
 }
+
+func TestLoadConfiguredRejectsRemoteConfig(t *testing.T) {
+	t.Setenv("XDG_CONFIG_HOME", filepath.Join(t.TempDir(), "xdg"))
+
+	// A remote-only config: LoadConfigured is local-only (returns *sdk.Extractor),
+	// so it must fail loudly rather than silently fall back to local assets.
+	require.NoError(t, SaveExtractor("", &Extractor{RemoteAddr: "oasf-sdk:5000"}))
+
+	_, err := LoadConfigured()
+
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "remote OASF extractor")
+	assert.Contains(t, err.Error(), "oasf-sdk:5000")
+}

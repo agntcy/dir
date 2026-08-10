@@ -399,6 +399,12 @@ func New(ctx context.Context, cfg *config.Config, opts ...ServerOption) (*Server
 			},
 		})
 		if err != nil {
+			// The extractor's remote gRPC connection is not yet owned by a Server
+			// (Close won't run), so release it here to avoid leaking it.
+			if gwExtractor != nil {
+				_ = gwExtractor.Close()
+			}
+
 			return nil, fmt.Errorf("failed to create HTTP gateway: %w", err)
 		}
 
@@ -508,14 +514,16 @@ func (s Server) Close(ctx context.Context) {
 		}
 	}
 
-	// Release the OASF extractor (closes the remote gRPC connection, if any).
+	s.grpcServer.GracefulStop()
+
+	// Release the OASF extractor (closes the remote gRPC connection, if any) after
+	// GracefulStop has drained in-flight requests — a direct SearchAgents call may
+	// still be using it until then.
 	if s.oasfExtractor != nil {
 		if err := s.oasfExtractor.Close(); err != nil {
 			logger.Error("Failed to close OASF extractor", "error", err)
 		}
 	}
-
-	s.grpcServer.GracefulStop()
 }
 
 // Start launches the gRPC server, metrics, publication service, and health checks.
