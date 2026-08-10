@@ -11,7 +11,7 @@
         <link rel="canonical" href="https://agntcy.github.io/dir/latest/dir/dir-quickstart/">
       
       
-        <link rel="prev" href="../dir-overview/">
+        <link rel="prev" href="../dir-choosing-a-setup/">
       
       
         <link rel="next" href="../dir-features-scenarios/">
@@ -56,6 +56,8 @@
       <link rel="stylesheet" href="../../stylesheets/dir-landing.css">
     
       <link rel="stylesheet" href="../../stylesheets/dirctl-terminal.css">
+    
+      <link rel="stylesheet" href="../../stylesheets/dir-setup-chooser.css">
     
     <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
     
@@ -542,6 +544,8 @@
       
         
       
+        
+      
     
     
     
@@ -605,6 +609,34 @@
     
   
     Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../dir-choosing-a-setup/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Choosing a Setup
   
 
     
@@ -2242,7 +2274,7 @@
 <p>Get from zero to publishing and discovering an agent record in a few minutes. This is the
 only page on the docs site with CLI installation instructions.</p>
 <h2 id="install-the-cli">Install the CLI</h2>
-<div class="tabbed-set tabbed-alternate" data-tabs="1:4"><input checked="checked" id="__tabbed_1_1" name="__tabbed_1" type="radio" /><input id="__tabbed_1_2" name="__tabbed_1" type="radio" /><input id="__tabbed_1_3" name="__tabbed_1" type="radio" /><input id="__tabbed_1_4" name="__tabbed_1" type="radio" /><div class="tabbed-labels"><label for="__tabbed_1_1">Homebrew</label><label for="__tabbed_1_2">Release binaries</label><label for="__tabbed_1_3">Source</label><label for="__tabbed_1_4">Container</label></div>
+<div class="tabbed-set tabbed-alternate" data-tabs="1:4"><input checked="checked" id="homebrew" name="__tabbed_1" type="radio" /><input id="release-binaries" name="__tabbed_1" type="radio" /><input id="source" name="__tabbed_1" type="radio" /><input id="container" name="__tabbed_1" type="radio" /><div class="tabbed-labels"><label for="homebrew">Homebrew</label><label for="release-binaries">Release binaries</label><label for="source">Source</label><label for="container">Container</label></div>
 <div class="tabbed-content">
 <div class="tabbed-block">
 <div class="highlight"><pre><span></span><code>brew<span class="w"> </span>tap<span class="w"> </span>agntcy/dir<span class="w"> </span>https://github.com/agntcy/dir
@@ -2537,6 +2569,8 @@ local records; it returns nothing in a single-node setup.</p>
         <script src="../../javascripts/external-links.js"></script>
       
         <script src="../../javascripts/palette-tooltip-fix.js"></script>
+      
+        <script src="../../javascripts/dir-setup-chooser.js"></script>
       
     
   </body>

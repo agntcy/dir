@@ -57,6 +57,8 @@
     
       <link rel="stylesheet" href="../../stylesheets/dirctl-terminal.css">
     
+      <link rel="stylesheet" href="../../stylesheets/dir-setup-chooser.css">
+    
     <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
     
       
@@ -540,6 +542,8 @@
       
         
       
+        
+      
     
     
     
@@ -603,6 +607,34 @@
     
   
     Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../dir-choosing-a-setup/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Choosing a Setup
   
 
     
@@ -2842,7 +2874,7 @@ but no remote database configured
 <code>storageDriver</code> to it without also setting <code>dedupe</code> produces this failure.</p>
 </div>
 <p>Pick one of the following when moving Zot to S3:</p>
-<div class="tabbed-set tabbed-alternate" data-tabs="1:2"><input checked="checked" id="__tabbed_1_1" name="__tabbed_1" type="radio" /><input id="__tabbed_1_2" name="__tabbed_1" type="radio" /><div class="tabbed-labels"><label for="__tabbed_1_1">Option A — disable dedupe (no extra AWS resources)</label><label for="__tabbed_1_2">Option B — keep dedupe, add a DynamoDB cache</label></div>
+<div class="tabbed-set tabbed-alternate" data-tabs="1:2"><input checked="checked" id="option-a--disable-dedupe-no-extra-aws-resources" name="__tabbed_1" type="radio" /><input id="option-b--keep-dedupe-add-a-dynamodb-cache" name="__tabbed_1" type="radio" /><div class="tabbed-labels"><label for="option-a--disable-dedupe-no-extra-aws-resources">Option A — disable dedupe (no extra AWS resources)</label><label for="option-b--keep-dedupe-add-a-dynamodb-cache">Option B — keep dedupe, add a DynamoDB cache</label></div>
 <div class="tabbed-content">
 <div class="tabbed-block">
 <div class="highlight"><pre><span></span><code><span class="nt">&quot;storage&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
@@ -3209,6 +3241,8 @@ valid, so the failure only shows up in the pod logs.</p>
         <script src="../../javascripts/external-links.js"></script>
       
         <script src="../../javascripts/palette-tooltip-fix.js"></script>
+      
+        <script src="../../javascripts/dir-setup-chooser.js"></script>
       
     
   </body>

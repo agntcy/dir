@@ -57,6 +57,8 @@
     
       <link rel="stylesheet" href="../../stylesheets/dirctl-terminal.css">
     
+      <link rel="stylesheet" href="../../stylesheets/dir-setup-chooser.css">
+    
     <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
     
       
@@ -540,6 +542,8 @@
       
         
       
+        
+      
     
     
     
@@ -603,6 +607,34 @@
     
   
     Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../dir-choosing-a-setup/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Choosing a Setup
   
 
     
@@ -2212,7 +2244,7 @@
 </div>
 <h2 id="installation">Installation</h2>
 <p>The Agent Directory Service can be deployed using Helm or GitOps / Argo CD. Helm is the recommended method for development and testing.</p>
-<div class="tabbed-set tabbed-alternate" data-tabs="1:2"><input checked="checked" id="__tabbed_1_1" name="__tabbed_1" type="radio" /><input id="__tabbed_1_2" name="__tabbed_1" type="radio" /><div class="tabbed-labels"><label for="__tabbed_1_1">Helm</label><label for="__tabbed_1_2">GitOps / Argo CD</label></div>
+<div class="tabbed-set tabbed-alternate" data-tabs="1:2"><input checked="checked" id="helm" name="__tabbed_1" type="radio" /><input id="gitops--argo-cd" name="__tabbed_1" type="radio" /><div class="tabbed-labels"><label for="helm">Helm</label><label for="gitops--argo-cd">GitOps / Argo CD</label></div>
 <div class="tabbed-content">
 <div class="tabbed-block">
 <p>Deploy Directory using Helm only—no Argo CD. Uses the same charts and configuration patterns as <a href="https://github.com/agntcy/dir-staging">dir-staging</a>.</p>
@@ -2835,6 +2867,8 @@ kubectl<span class="w"> </span><span class="nb">wait</span><span class="w"> </sp
         <script src="../../javascripts/external-links.js"></script>
       
         <script src="../../javascripts/palette-tooltip-fix.js"></script>
+      
+        <script src="../../javascripts/dir-setup-chooser.js"></script>
       
     
   </body>

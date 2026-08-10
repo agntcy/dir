@@ -57,6 +57,8 @@
     
       <link rel="stylesheet" href="../../stylesheets/dirctl-terminal.css">
     
+      <link rel="stylesheet" href="../../stylesheets/dir-setup-chooser.css">
+    
     <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
     
       
@@ -540,6 +542,8 @@
       
         
       
+        
+      
     
     
     
@@ -603,6 +607,34 @@
     
   
     Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../dir-choosing-a-setup/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Choosing a Setup
   
 
     
@@ -2319,7 +2351,7 @@
 </tbody>
 </table>
 <p>The profiles are described in more detail below:</p>
-<div class="tabbed-set tabbed-alternate" data-tabs="1:2"><input checked="checked" id="__tabbed_1_1" name="__tabbed_1" type="radio" /><input id="__tabbed_1_2" name="__tabbed_1" type="radio" /><div class="tabbed-labels"><label for="__tabbed_1_1">https_web profile</label><label for="__tabbed_1_2">https_spiffe profile</label></div>
+<div class="tabbed-set tabbed-alternate" data-tabs="1:2"><input checked="checked" id="https_web-profile" name="__tabbed_1" type="radio" /><input id="https_spiffe-profile" name="__tabbed_1" type="radio" /><div class="tabbed-labels"><label for="https_web-profile">https_web profile</label><label for="https_spiffe-profile">https_spiffe profile</label></div>
 <div class="tabbed-content">
 <div class="tabbed-block">
 <p>Federation over standard HTTPS using CA-signed certificates. The SPIRE server presents a certificate validated through traditional DNS Subject Alternative Names (SANs) and CA certificate chain verification. This profile leverages existing PKI infrastructure and standard TLS implementations.</p>
@@ -2571,7 +2603,7 @@
 <li>
 <p>Extract Bundle from SPIRE Server</p>
 <p>There are three methods to extract the bootstrap bundle from the SPIRE server:</p>
-<div class="tabbed-set tabbed-alternate" data-tabs="2:3"><input checked="checked" id="__tabbed_2_1" name="__tabbed_2" type="radio" /><input id="__tabbed_2_2" name="__tabbed_2" type="radio" /><input id="__tabbed_2_3" name="__tabbed_2" type="radio" /><div class="tabbed-labels"><label for="__tabbed_2_1">Using kubectl exec (Recommended)</label><label for="__tabbed_2_2">Using spire-server CLI Locally</label><label for="__tabbed_2_3">Via Federation Endpoint</label></div>
+<div class="tabbed-set tabbed-alternate" data-tabs="2:3"><input checked="checked" id="using-kubectl-exec-recommended" name="__tabbed_2" type="radio" /><input id="using-spire-server-cli-locally" name="__tabbed_2" type="radio" /><input id="via-federation-endpoint" name="__tabbed_2" type="radio" /><div class="tabbed-labels"><label for="using-kubectl-exec-recommended">Using kubectl exec (Recommended)</label><label for="using-spire-server-cli-locally">Using spire-server CLI Locally</label><label for="via-federation-endpoint">Via Federation Endpoint</label></div>
 <div class="tabbed-content">
 <div class="tabbed-block">
 <p>Connect to the SPIRE server pod and extract the bundle:</p>
@@ -2834,6 +2866,8 @@ jq<span class="w"> </span>-r<span class="w"> </span><span class="s1">&#39;.keys[
         <script src="../../javascripts/external-links.js"></script>
       
         <script src="../../javascripts/palette-tooltip-fix.js"></script>
+      
+        <script src="../../javascripts/dir-setup-chooser.js"></script>
       
     
   </body>
