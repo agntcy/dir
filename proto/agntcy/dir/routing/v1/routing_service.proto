@@ -59,7 +59,7 @@ message PublishRequest {
     // Queries to match against the records to be published.
     RecordQueries queries = 2;
 
-    // Publish every stored record that this peer is not currently providing.
+    // Publish every stored record.
     bool all_records = 3;
   }
 }

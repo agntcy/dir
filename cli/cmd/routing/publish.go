@@ -8,6 +8,7 @@ import (
 	"bufio"
 	"errors"
 	"fmt"
+	"os"
 	"strings"
 
 	corev1 "github.com/agntcy/dir/api/core/v1"
@@ -17,9 +18,10 @@ import (
 	ctxUtils "github.com/agntcy/dir/cli/util/context"
 	"github.com/agntcy/dir/client"
 	"github.com/spf13/cobra"
+	"golang.org/x/term"
 )
 
-const publishAllPrompt = "This operation will publish every unpublished record. Would you like to proceed?"
+const publishAllPrompt = "This operation will publish every currently stored record. Would you like to proceed?"
 
 var publishCmd = &cobra.Command{
 	Use:   "publish [cid...]",
@@ -37,7 +39,7 @@ Key Features:
 - DHT announcement: Announces records and labels to the distributed network
 - Background retry: Failed announcements are retried automatically
 - Batch publication: Submit multiple CIDs in one request
-- Bulk publication: Publish every currently unpublished stored record
+- Bulk publication: Publish every currently stored record
 
 Usage examples:
 
@@ -50,7 +52,7 @@ Usage examples:
 3. Publish records from stdin (JSON array or line-delimited CIDs):
    dirctl search --format cid --limit 100 --output json | dirctl routing publish --stdin
 
-4. Publish every currently unpublished stored record:
+4. Publish every currently stored record:
    dirctl routing publish --all
 
 5. Publish all records without an interactive confirmation:
@@ -80,7 +82,7 @@ func init() {
 		&publishOpts.FromStdin, "stdin", false, cidsUtils.StdinFlagUsage)
 	publishCmd.Flags().BoolVar(
 		&publishOpts.All, "all", false,
-		"Publish every currently unpublished stored record")
+		"Publish every currently stored record")
 	publishCmd.Flags().BoolVarP(
 		&publishOpts.Yes, "yes", "y", false,
 		"Skip the confirmation prompt when using --all")
@@ -186,7 +188,7 @@ func runPublishAllCommand(cmd *cobra.Command, c *client.Client) error {
 	result := map[string]any{
 		"all_records": true,
 		"status":      "Successfully submitted publication request",
-		"message":     "Every currently unpublished stored record will be submitted for network publication",
+		"message":     "Every currently stored record will be submitted for network publication",
 	}
 
 	return presenter.PrintMessage(
@@ -200,6 +202,13 @@ func runPublishAllCommand(cmd *cobra.Command, c *client.Client) error {
 func confirmPublishAllIfNeeded(cmd *cobra.Command) (bool, error) {
 	if publishOpts.Yes {
 		return true, nil
+	}
+
+	in, ok := cmd.InOrStdin().(*os.File)
+	if !ok || !term.IsTerminal(int(in.Fd())) { //nolint:gosec // G115: a file descriptor fits in an int.
+		return false, errors.New(
+			"refusing to prompt for --all on non-terminal stdin; pass --yes to continue",
+		)
 	}
 
 	return confirmPublishAll(cmd)

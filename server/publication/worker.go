@@ -124,7 +124,7 @@ func (w *Worker) processPublication(ctx context.Context, workItem publypes.WorkI
 }
 
 // getCIDsFromRequest extracts CIDs from the publication request based on its type.
-func (w *Worker) getCIDsFromRequest(ctx context.Context, request *routingv1.PublishRequest) ([]string, error) {
+func (w *Worker) getCIDsFromRequest(_ context.Context, request *routingv1.PublishRequest) ([]string, error) {
 	switch req := request.GetRequest().(type) {
 	case *routingv1.PublishRequest_RecordRefs:
 		// Direct CID references
@@ -150,44 +150,16 @@ func (w *Worker) getCIDsFromRequest(ctx context.Context, request *routingv1.Publ
 			return nil, errors.New("all_records must be true")
 		}
 
-		return w.getUnpublishedCIDs(ctx)
+		cids, err := w.db.GetRecordCIDs()
+		if err != nil {
+			return nil, fmt.Errorf("failed to list stored records: %w", err)
+		}
+
+		return cids, nil
 
 	default:
 		return nil, errors.New("unknown request type")
 	}
-}
-
-// getUnpublishedCIDs returns stored records that this node is not currently
-// providing through the routing layer.
-func (w *Worker) getUnpublishedCIDs(ctx context.Context) ([]string, error) {
-	storedCIDs, err := w.db.GetRecordCIDs()
-	if err != nil {
-		return nil, fmt.Errorf("failed to list stored records: %w", err)
-	}
-
-	publishedResults, err := w.routing.List(ctx, &routingv1.ListRequest{})
-	if err != nil {
-		return nil, fmt.Errorf("failed to list published records: %w", err)
-	}
-
-	publishedCIDs := make(map[string]struct{})
-
-	for result := range publishedResults {
-		cid := result.GetRecordRef().GetCid()
-		if cid != "" {
-			publishedCIDs[cid] = struct{}{}
-		}
-	}
-
-	unpublishedCIDs := make([]string, 0, len(storedCIDs))
-
-	for _, cid := range storedCIDs {
-		if _, published := publishedCIDs[cid]; !published {
-			unpublishedCIDs = append(unpublishedCIDs, cid)
-		}
-	}
-
-	return unpublishedCIDs, nil
 }
 
 // announceToDHT announces a single CID to the DHT.

@@ -118,7 +118,7 @@ type PublishRequest_Queries struct {
 }
 
 type PublishRequest_AllRecords struct {
-	// Publish every stored record that this peer is not currently providing.
+	// Publish every stored record.
 	AllRecords bool `protobuf:"varint,3,opt,name=all_records,json=allRecords,proto3,oneof"`
 }
 

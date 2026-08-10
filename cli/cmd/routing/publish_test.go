@@ -109,6 +109,33 @@ func TestValidatePublishArgs(t *testing.T) {
 	}
 }
 
+func TestConfirmPublishAllIfNeeded(t *testing.T) {
+	t.Run("non-terminal requires yes", func(t *testing.T) {
+		setPublishOptionsForTest(t, false, true, false)
+
+		cmd := &cobra.Command{}
+		cmd.SetIn(strings.NewReader("y\n"))
+
+		confirmed, err := confirmPublishAllIfNeeded(cmd)
+
+		require.Error(t, err)
+		assert.False(t, confirmed)
+		require.ErrorContains(t, err, "pass --yes")
+	})
+
+	t.Run("yes skips prompt on non-terminal input", func(t *testing.T) {
+		setPublishOptionsForTest(t, false, true, true)
+
+		cmd := &cobra.Command{}
+		cmd.SetIn(strings.NewReader(""))
+
+		confirmed, err := confirmPublishAllIfNeeded(cmd)
+
+		require.NoError(t, err)
+		assert.True(t, confirmed)
+	})
+}
+
 func TestConfirmPublishAll(t *testing.T) {
 	tests := []struct {
 		name    string
