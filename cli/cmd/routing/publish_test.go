@@ -9,6 +9,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/agntcy/dir/cli/util/prompt"
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -178,7 +179,7 @@ func TestConfirmPublishAll(t *testing.T) {
 			var output bytes.Buffer
 			cmd.SetOut(&output)
 
-			confirmed, err := confirmPublishAll(cmd)
+			confirmed, err := prompt.Confirm(cmd, publishAllPrompt)
 
 			if test.wantErr {
 				require.Error(t, err)

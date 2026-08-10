@@ -5,7 +5,6 @@
 package routing
 
 import (
-	"bufio"
 	"errors"
 	"fmt"
 	"os"
@@ -16,6 +15,7 @@ import (
 	"github.com/agntcy/dir/cli/presenter"
 	cidsUtils "github.com/agntcy/dir/cli/util/cids"
 	ctxUtils "github.com/agntcy/dir/cli/util/context"
+	"github.com/agntcy/dir/cli/util/prompt"
 	"github.com/agntcy/dir/client"
 	"github.com/spf13/cobra"
 	"golang.org/x/term"
@@ -211,22 +211,7 @@ func confirmPublishAllIfNeeded(cmd *cobra.Command) (bool, error) {
 		)
 	}
 
-	return confirmPublishAll(cmd)
-}
-
-func confirmPublishAll(cmd *cobra.Command) (bool, error) {
-	presenter.PrintSmartf(cmd, "%s [y/N]: ", publishAllPrompt)
-
-	reader := bufio.NewReader(cmd.InOrStdin())
-
-	line, err := reader.ReadString('\n')
-	if err != nil && line == "" {
-		return false, fmt.Errorf("read confirmation: %w", err)
-	}
-
-	answer := strings.ToLower(strings.TrimSpace(line))
-
-	return answer == "y" || answer == "yes", nil
+	return prompt.Confirm(cmd, publishAllPrompt)
 }
 
 func normalizePublishError(err error) error {
