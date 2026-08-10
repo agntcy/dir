@@ -38,7 +38,7 @@
 				{#if trustStatus?.verified}
 					<VerifiedBadge />
 				{/if}
-				{#if scanManifest}
+				{#if scanManifest?.isSafe}
 					<ScanBadge scan={scanManifest} iconOnly />
 				{/if}
 			</div>
