@@ -15,6 +15,7 @@ import (
 	"github.com/agntcy/dir/api/exportfmt"
 	"github.com/agntcy/dir/server/config"
 	"github.com/agntcy/dir/server/types"
+	"github.com/agntcy/dir/utils/extractor"
 	"github.com/agntcy/dir/utils/logging"
 	httpbodypb "google.golang.org/genproto/googleapis/api/httpbody"
 	"google.golang.org/grpc/codes"
@@ -46,18 +47,38 @@ type aiFinderController struct {
 	db     types.CatalogDatabaseAPI
 	store  types.StoreAPI
 	cfg    config.HTTPGatewayConfig
+	//nolint:unused // consumed by the extractor-backed RPCs added on top of this wiring.
+	ext extractor.Extractor
+}
+
+// AIFinderOption configures optional dependencies of the AI Finder controller.
+type AIFinderOption func(*aiFinderController)
+
+// WithExtractor wires an OASF extractor resolved by the server. It is the
+// injection point for the extractor-backed RPCs; controllers built without it
+// simply have no extractor available.
+func WithExtractor(ext extractor.Extractor) AIFinderOption {
+	return func(c *aiFinderController) {
+		c.ext = ext
+	}
 }
 
 // NewAIFinderController returns an AIFinderServiceServer that serves the AI
 // Catalog AI Finder surface. store may be nil — when omitted the ExportAgent
 // RPC returns UNIMPLEMENTED (HTTP 501). All other RPCs remain functional.
-func NewAIFinderController(hostId string, db types.CatalogDatabaseAPI, cfg config.HTTPGatewayConfig, store types.StoreAPI) catalogv1.AIFinderServiceServer {
-	return &aiFinderController{
+func NewAIFinderController(hostId string, db types.CatalogDatabaseAPI, cfg config.HTTPGatewayConfig, store types.StoreAPI, opts ...AIFinderOption) catalogv1.AIFinderServiceServer {
+	c := &aiFinderController{
 		db:     db,
 		store:  store,
 		cfg:    cfg,
 		hostId: hostId,
 	}
+
+	for _, opt := range opts {
+		opt(c)
+	}
+
+	return c
 }
 
 // ListAgents parses the filter, order, and paging arguments, queries the

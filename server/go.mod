@@ -46,18 +46,27 @@ require (
 )
 
 require (
+	buf.build/gen/go/agntcy/oasf-sdk/grpc/go v1.6.2-20260714100340-94ed518b08ce.1 // indirect
 	buf.build/gen/go/bufbuild/protovalidate/protocolbuffers/go v1.36.11-20260709200747-435963d16310.1 // indirect
 	cel.dev/expr v0.25.1 // indirect
 	filippo.io/bigmod v0.1.1-0.20260103110540-f8a47775ebe5 // indirect
 	filippo.io/keygen v0.0.0-20260114151900-8e2790ea4c5b // indirect
 	github.com/Masterminds/semver/v3 v3.5.0 // indirect
 	github.com/antlr4-go/antlr/v4 v4.13.1 // indirect
+	github.com/dlclark/regexp2 v1.4.0 // indirect
 	github.com/glebarez/go-sqlite v1.22.0 // indirect
 	github.com/golang/mock v1.7.0-rc.1 // indirect
 	github.com/google/cel-go v0.29.0 // indirect
+	github.com/google/flatbuffers v23.5.26+incompatible // indirect
+	github.com/mattn/go-colorable v0.1.13 // indirect
 	github.com/ncruces/go-strftime v1.0.0 // indirect
+	github.com/nlpodyssey/cybertron v0.2.1 // indirect
+	github.com/nlpodyssey/gopickle v0.2.0 // indirect
+	github.com/nlpodyssey/gotokenizers v0.2.0 // indirect
+	github.com/nlpodyssey/spago v1.1.0 // indirect
 	github.com/pion/turn/v5 v5.0.3 // indirect
 	github.com/remyoudompheng/bigfft v0.0.0-20230129092748-24d4a6f8daec // indirect
+	github.com/rs/zerolog v1.31.0 // indirect
 	github.com/smarty/assertions v1.16.0 // indirect
 	modernc.org/libc v1.72.2 // indirect
 	modernc.org/mathutil v1.7.1 // indirect
