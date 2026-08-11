@@ -4907,17 +4907,24 @@ dirctl<span class="w"> </span>import<span class="w"> </span>--type<span class="o
 <h3 id="enrichment">Enrichment</h3>
 <p>The import command enriches records by mapping them to OASF skills and domains. Three enrichment methods are available, configured under the <code>enricher</code> key in the <code>--config</code> YAML file. When no config file is provided, LLM enrichment is used by default (azure:gpt-4o, 2 RPM).</p>
 <h4 id="extractor-enrichment-llm-free-recommended">Extractor enrichment (LLM-free, recommended)</h4>
-<p>Uses the local OASF sentence-transformer model provisioned by <code>dirctl init</code> to classify records in-process — no API key, no external service, no LLM runtime. This is the fastest option and works offline.</p>
-<p><strong>Requires:</strong> <code>dirctl init</code> to have been run at least once to provision the model assets.</p>
+<p>Uses the OASF sentence-transformer model to classify records — no API key and no LLM runtime. The model runs in-process from locally provisioned assets, or on a remote OASF-SDK server.</p>
+<p><strong>Requires:</strong> either <code>dirctl init</code> to have been run at least once to provision the model assets, or a reachable OASF-SDK server.</p>
 <div class="highlight"><pre><span></span><code><span class="nt">enricher</span><span class="p">:</span>
-<span class="w">  </span><span class="nt">extractor</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{}</span><span class="w">           </span><span class="c1"># uses assets provisioned by dirctl init</span>
+<span class="w">  </span><span class="nt">extractor</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{}</span><span class="w">           </span><span class="c1"># uses whatever dirctl init saved</span>
 </code></pre></div>
-<p>To override the default asset location:</p>
+<p>With no fields set, the extractor uses the configuration saved by <code>dirctl init</code> — including a remote server address, if one was configured there.</p>
+<p>To override the local asset location:</p>
 <div class="highlight"><pre><span></span><code><span class="nt">enricher</span><span class="p">:</span>
 <span class="w">  </span><span class="nt">extractor</span><span class="p">:</span>
 <span class="w">    </span><span class="nt">oasf_url</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">https://schema.oasf.outshift.com</span><span class="w">   </span><span class="c1"># optional</span>
 <span class="w">    </span><span class="nt">asset_dir</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/path/to/custom/assets</span><span class="w">             </span><span class="c1"># optional</span>
 </code></pre></div>
+<p>To enrich against a running OASF-SDK server instead of local assets:</p>
+<div class="highlight"><pre><span></span><code><span class="nt">enricher</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">extractor</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">remote_addr</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">oasf-sdk:31234</span><span class="w">    </span><span class="c1"># selects the remote backend</span>
+</code></pre></div>
+<p>Setting <code>remote_addr</code> selects the remote backend; leaving it empty uses the local in-process extractor. Each extraction call is bounded by a timeout, so an unreachable server fails the record rather than stalling the import.</p>
 <h4 id="static-enrichment">Static enrichment</h4>
 <p>Assigns the same fixed skills and domains to every imported record. No LLM or model assets required.</p>
 <div class="highlight"><pre><span></span><code><span class="nt">enricher</span><span class="p">:</span>
