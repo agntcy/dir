@@ -173,12 +173,12 @@ func WithDatabase(database types.DatabaseAPI) ServerOption {
 	}
 }
 
-// resolveGatewayExtractor resolves the OASF extractor for the gateway's
-// POST /v1/search path when the HTTP gateway is enabled. It returns the
-// extractor (for the caller to Close on shutdown) and the AI Finder option that
-// injects it. When the gateway is disabled or resolution fails it returns
-// (nil, nil) — a non-fatal outcome that leaves SearchAgents answering
-// UNAVAILABLE (HTTP 503) until an extractor is configured. The resolved backend
+// resolveGatewayExtractor resolves the OASF extractor for the gateway when the
+// HTTP gateway is enabled. It returns the extractor (for the caller to Close on
+// shutdown) and the AI Finder option that injects it. When the gateway is
+// disabled or resolution fails it returns (nil, nil) — a non-fatal outcome that
+// leaves the server running with no extractor, so extractor-backed
+// functionality stays unavailable until one is configured. The resolved backend
 // is logged.
 func resolveGatewayExtractor(cfg *config.Config) (extractor.Extractor, []controller.AIFinderOption) {
 	if !cfg.HTTPGateway.Enabled {
@@ -193,7 +193,7 @@ func resolveGatewayExtractor(cfg *config.Config) (extractor.Extractor, []control
 
 	ext, err := extractor.ResolveExtractor(extCfg)
 	if err != nil {
-		logger.Warn("OASF extractor unavailable; POST /v1/search returns 503 until configured", "error", err)
+		logger.Warn("OASF extractor unavailable; extractor-backed functionality is disabled until one is configured", "error", err)
 
 		return nil, nil
 	}
@@ -517,8 +517,8 @@ func (s Server) Close(ctx context.Context) {
 	s.grpcServer.GracefulStop()
 
 	// Release the OASF extractor (closes the remote gRPC connection, if any) after
-	// GracefulStop has drained in-flight requests — a direct SearchAgents call may
-	// still be using it until then.
+	// GracefulStop has drained in-flight requests — an in-flight call may still be
+	// using it until then.
 	if s.oasfExtractor != nil {
 		if err := s.oasfExtractor.Close(); err != nil {
 			logger.Error("Failed to close OASF extractor", "error", err)

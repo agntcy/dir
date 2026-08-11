@@ -98,6 +98,58 @@ func TestLoadConfigRoutingAddressEnvOverrideWithUserConfig(t *testing.T) {
 	require.Equal(t, "ghcr.io/org/agents", cfg.Server.Routing.DirectoryOCIAddress)
 }
 
+// TestLoadConfigExtractorEnvOverride asserts the extractor settings can be set
+// by environment alone. They have no defaults and are absent from the embedded
+// daemon.config.yaml, so this depends on them being registered in
+// registerServerDefaults — AutomaticEnv cannot discover keys Viper has never
+// seen.
+func TestLoadConfigExtractorEnvOverride(t *testing.T) {
+	originalOpts := opts
+	opts = &Options{DataDir: t.TempDir()}
+	t.Cleanup(func() {
+		opts = originalOpts
+	})
+
+	cfg, err := loadConfig()
+	require.NoError(t, err)
+	require.Empty(t, cfg.Server.Extractor.RemoteAddr)
+	require.Empty(t, cfg.Server.Extractor.AssetDir)
+	require.Empty(t, cfg.Server.Extractor.OASFURL)
+
+	t.Setenv("DIRECTORY_DAEMON_SERVER_EXTRACTOR_REMOTE_ADDR", "localhost:31234")
+	t.Setenv("DIRECTORY_DAEMON_SERVER_EXTRACTOR_ASSET_DIR", "/tmp/assets")
+	t.Setenv("DIRECTORY_DAEMON_SERVER_EXTRACTOR_OASF_URL", "https://schema.example.com")
+
+	cfg, err = loadConfig()
+	require.NoError(t, err)
+	require.Equal(t, "localhost:31234", cfg.Server.Extractor.RemoteAddr)
+	require.Equal(t, "/tmp/assets", cfg.Server.Extractor.AssetDir)
+	require.Equal(t, "https://schema.example.com", cfg.Server.Extractor.OASFURL)
+}
+
+// TestLoadConfigExtractorEnvOverrideWithUserConfig asserts the same holds for a
+// user-supplied config file that does not declare the keys, since --config is
+// read as-is without merging the embedded defaults.
+func TestLoadConfigExtractorEnvOverrideWithUserConfig(t *testing.T) {
+	originalOpts := opts
+	dataDir := t.TempDir()
+
+	configPath := filepath.Join(dataDir, DefaultConfigFile)
+	require.NoError(t, os.WriteFile(configPath, []byte(defaultConfigYAML), 0o600))
+
+	opts = &Options{DataDir: dataDir, ConfigFile: configPath}
+
+	t.Cleanup(func() {
+		opts = originalOpts
+	})
+
+	t.Setenv("DIRECTORY_DAEMON_SERVER_EXTRACTOR_REMOTE_ADDR", "oasf-sdk:31234")
+
+	cfg, err := loadConfig()
+	require.NoError(t, err)
+	require.Equal(t, "oasf-sdk:31234", cfg.Server.Extractor.RemoteAddr)
+}
+
 // TestLoadConfigLocalRegistryCredentialEnvOverride asserts that the reconciler
 // local registry credentials can be set by environment alone, including for a
 // user-supplied config file that does not declare them, so a token never has to

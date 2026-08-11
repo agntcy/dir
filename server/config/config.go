@@ -170,9 +170,8 @@ type Config struct {
 	// HTTPGateway exposes the gRPC services over HTTP/JSON via grpc-gateway.
 	HTTPGateway HTTPGatewayConfig `json:"http_gateway,omitzero" mapstructure:"http_gateway"`
 
-	// Extractor configures the OASF taxonomy extractor used by the gateway's
-	// POST /v1/search natural-language search. Only consulted when the HTTP
-	// gateway is enabled.
+	// Extractor configures the OASF taxonomy extractor available to the gateway.
+	// Only consulted when the HTTP gateway is enabled.
 	Extractor ExtractorConfig `json:"extractor,omitzero" mapstructure:"extractor"`
 }
 
