@@ -65,9 +65,10 @@ fix ERRORs before pushing.
 | `a2a` | Local A2A AgentCard JSON | `--file-path` |
 | `agent-skill` | Local directory containing `SKILL.md` | `--file-path` |
 
-Useful flags: `--limit N`, `--filter key=value` (registry: `search`,
-`version`, `updated_since`), `--output-cids <file>`, `--force` (skip
-name+version dedup), `--debug`, `--sign` (+ `--key` / `--oidc-token`).
+Useful flags: `--config <yaml>` (see config reference below), `--limit N`,
+`--filter key=value` (registry: `search`, `version`, `updated_since`),
+`--output-cids <file>`, `--force` (skip name+version dedup), `--debug`,
+`--sign` (+ `--key` / `--oidc-token`).
 
 ### Recommended workflow: dry-run → review → push
 
@@ -96,25 +97,90 @@ only when they explicitly ask for it.
 
 ### Enrichment
 
-By default import enriches records with OASF skills/domains using an LLM
-(tool-calling against `dirctl mcp serve`; built-in default `azure:gpt-4o`).
-This requires LLM credentials (e.g. `AZURE_OPENAI_API_KEY`). Two alternatives
-via `--config <yaml>`:
+Import assigns OASF skills/domains to every record it builds. Exactly one of
+three methods is used, selected by the `enricher:` block of `--config <yaml>`.
+**When no valid block is present, import falls back to the LLM enricher**,
+which needs credentials — so a malformed `enricher:` block fails as a missing
+API key, not as a config error.
+
+| Block                | Needs                                       | Use when                                     |
+| -------------------- | ------------------------------------------- | -------------------------------------------- |
+| `enricher.extractor` | `dirctl init` (local assets); no credentials | **Default choice** — per-record, LLM-free     |
+| `enricher.static`    | nothing                                      | Stamp one fixed skill/domain set on every record |
+| `enricher.llm`       | LLM credentials (e.g. `AZURE_OPENAI_API_KEY`) | An LLM is available and per-record quality matters |
 
 ```yaml
-# Static taxonomy — no LLM needed:
+# Local OASF taxonomy model — no LLM, no credentials. Requires `dirctl init`.
 enricher:
-  skip_enricher: true
-  skills:
-    - name: natural_language_processing/text_completion
-      id: 10201
-  domains:
-    - name: technology
-      id: 1
+  extractor:
+    oasf_url: https://schema.oasf.outshift.com
+    asset_dir: /absolute/path/to/.agntcy/oasf-sdk/extractor
 ```
 
-If an import fails on enrichment, offer `skip_enricher` with skills/domains
-derived from the artifact description as the no-credentials path.
+```yaml
+# Fixed taxonomy stamped on every imported record — no LLM, no init.
+enricher:
+  static:
+    skills:
+      - name: natural_language_processing/text_completion
+        id: 10201
+    domains:
+      - name: technology
+        id: 1
+```
+
+Two traps, both of which surface as the LLM credential error rather than as a
+complaint about the config:
+
+- **Unknown keys are silently ignored** (unlike the client config, the import
+  config parser is not strict). A misplaced key — `skills:` directly under
+  `enricher:`, or a `skip_enricher:` flag, which does not exist — leaves no
+  recognised enricher and triggers the LLM fallback.
+- **A bare `enricher.extractor:` with no fields parses as null**, which is also
+  no enricher. Write `extractor: {}` to inherit the endpoint and asset
+  directory saved by `dirctl init`, or set both fields explicitly.
+
+`asset_dir` must be an **absolute path** — `~` is not expanded.
+
+When an import fails with `AZURE_OPENAI_API_KEY is required`, do not go looking
+for credentials first: check the `enricher:` block spelling, then offer
+`extractor` (if `dirctl init` has been run) or `static` as the no-credentials
+path.
+
+### Config file reference
+
+Everything below can live in `--config <yaml>` instead of on the command line.
+**Flags override the file**, so one file can drive several runs:
+
+```yaml
+type: mcp-registry            # mcp | mcp-registry | a2a | agent-skill
+url: https://registry.modelcontextprotocol.io/v0.1   # required for mcp-registry
+# file_path: ./servers.json   # required for mcp | a2a | agent-skill
+
+filters:
+  search: github              # registry filters: search, version, updated_since
+limit: 100                    # 0 = no limit
+
+# authors:                    # overrides authors derived from the source
+#   - "Example Corp"
+
+enricher:                     # see above — extractor | static | llm
+  extractor: {}
+
+schema_version: "1.1.0"       # OASF version stamped on imported records
+
+output_dir: ./import-out      # where --dry-run writes <cid>.record.json
+dry_run: true
+force: false                  # true = skip name+version dedup
+debug: false
+```
+
+`dry_run: true` in the file means a bare `dirctl import --config <file>` is
+**already** a dry run — say so rather than implying records were pushed. Flip
+it with `--dry-run=false` when the user wants the real import.
+
+Note that `import` opens a client connection even for a dry run, so the
+selected context still has to resolve.
 
 ## Common pitfalls
 
