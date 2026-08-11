@@ -5,10 +5,8 @@
 package install
 
 import (
-	"bufio"
 	"errors"
 	"fmt"
-	"strings"
 
 	corev1 "github.com/agntcy/dir/api/core/v1"
 	"github.com/agntcy/dir/cli/cmd/search"
@@ -16,6 +14,7 @@ import (
 	"github.com/agntcy/dir/cli/internal/agentinstall"
 	"github.com/agntcy/dir/cli/presenter"
 	ctxUtils "github.com/agntcy/dir/cli/util/context"
+	"github.com/agntcy/dir/cli/util/prompt"
 	"github.com/agntcy/dir/cli/util/reference"
 	"github.com/spf13/cobra"
 )
@@ -155,7 +154,7 @@ func runApplyCmd(cmd *cobra.Command, input string, apply recordApplyFn, confirmP
 	}
 
 	if !opts.yes && !opts.dryRun {
-		ok, err := confirm(cmd, confirmPrompt)
+		ok, err := prompt.Confirm(cmd, confirmPrompt)
 		if err != nil {
 			return err
 		}
@@ -171,20 +170,4 @@ func runApplyCmd(cmd *cobra.Command, input string, apply recordApplyFn, confirmP
 	presenter.Printf(cmd, "%s", agentcfg.FormatSummary(outcomes, opts.dryRun))
 
 	return nil
-}
-
-// confirm prompts for a yes/no answer on the command's input stream.
-func confirm(cmd *cobra.Command, prompt string) (bool, error) {
-	presenter.Printf(cmd, "%s [y/N]: ", prompt)
-
-	reader := bufio.NewReader(cmd.InOrStdin())
-
-	line, err := reader.ReadString('\n')
-	if err != nil && line == "" {
-		return false, fmt.Errorf("read confirmation: %w", err)
-	}
-
-	answer := strings.ToLower(strings.TrimSpace(line))
-
-	return answer == "y" || answer == "yes", nil
 }

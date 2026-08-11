@@ -55,6 +55,10 @@ func (c *publicationCtlr) CreatePublication(ctx context.Context, req *routingv1.
 		if req.GetQueries() == nil || len(req.GetQueries().GetQueries()) == 0 {
 			return nil, status.Errorf(codes.InvalidArgument, "queries cannot be empty")
 		}
+	case *routingv1.PublishRequest_AllRecords:
+		if !req.GetAllRecords() {
+			return nil, status.Errorf(codes.InvalidArgument, "all_records must be true")
+		}
 	default:
 		return nil, status.Errorf(codes.InvalidArgument, "invalid publish request: must specify record_refs, queries, or all_records")
 	}

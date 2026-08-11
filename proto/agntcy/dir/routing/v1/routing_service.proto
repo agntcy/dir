@@ -59,8 +59,8 @@ message PublishRequest {
     // Queries to match against the records to be published.
     RecordQueries queries = 2;
 
-    // TODO: Future enhancement - Publish all stored records.
-    // bool all_records = 3;
+    // Publish every stored record.
+    bool all_records = 3;
   }
 }
 
