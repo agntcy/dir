@@ -7,7 +7,7 @@ import (
 	"context"
 	"testing"
 
-	"github.com/agntcy/dir/client/extractor"
+	"github.com/agntcy/dir/utils/extractor"
 	sdk "github.com/agntcy/oasf-sdk/pkg/extractor"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -33,12 +33,13 @@ func skill(name string, tier int, score float64) sdk.ScoredClass {
 	return sdk.ScoredClass{Class: sdk.Class{Name: name}, Kind: sdk.KindSkill, Tier: tier, Score: score}
 }
 
-func TestDecomposeKeepsTierOneAboveThresholdAndWrapsKeywords(t *testing.T) {
+func TestDecomposeDefaultKeepsTwoTiersAndWrapsKeywords(t *testing.T) {
 	fake := &fakeExtractor{res: sdk.Result{
 		Skills: []sdk.ScoredClass{
-			skill("skill_keep", 1, 0.9),     // tier 1, above threshold -> kept
+			skill("skill_t1", 1, 0.9),       // tier 1, above threshold -> kept
 			skill("skill_lowscore", 1, 0.1), // below DefaultMinTaxonomyScore -> dropped
-			skill("skill_tier2", 2, 0.9),    // not tier 1 -> dropped
+			skill("skill_t2", 2, 0.9),       // tier 2 -> kept at the default of two tiers
+			skill("skill_t3", 3, 0.9),       // tier 3 -> beyond the default -> dropped
 		},
 		Domains: []sdk.ScoredClass{
 			{Class: sdk.Class{Name: "domain_keep"}, Kind: sdk.KindDomain, Tier: 1, Score: 0.8},
@@ -52,10 +53,29 @@ func TestDecomposeKeepsTierOneAboveThresholdAndWrapsKeywords(t *testing.T) {
 	// Per-query options are forwarded to the extractor.
 	assert.Equal(t, []string{"1.0.0"}, fake.gotOpts.Versions)
 
-	// Only the tier-1, above-threshold skill survives; the domain is kept; the
-	// keyword is wrapped in wildcards for substring matching.
-	require.Len(t, signals, 3)
-	assert.Contains(t, signals, Signal{Type: SignalTypeSkillName, Value: "skill_keep", Score: 0.9})
+	// The two closest tiers survive (skill_t1, skill_t2) plus the domain; the
+	// low-score and tier-3 skills are dropped; the keyword is wildcard-wrapped.
+	require.Len(t, signals, 4)
+	assert.Contains(t, signals, Signal{Type: SignalTypeSkillName, Value: "skill_t1", Score: 0.9})
+	assert.Contains(t, signals, Signal{Type: SignalTypeSkillName, Value: "skill_t2", Score: 0.9})
 	assert.Contains(t, signals, Signal{Type: SignalTypeDomainName, Value: "domain_keep", Score: 0.8})
 	assert.Contains(t, signals, Signal{Type: SignalTypeKeyword, Value: "*review*", Score: 2})
+}
+
+func TestDecomposeTiersOverrideNarrows(t *testing.T) {
+	fake := &fakeExtractor{res: sdk.Result{
+		Skills: []sdk.ScoredClass{
+			skill("skill_t1", 1, 0.9),
+			skill("skill_t2", 2, 0.8), // beyond an explicit Tiers: 1 -> dropped
+		},
+	}}
+
+	signals, err := DecomposeWithMinScore(context.Background(), "q", fake, DefaultMinTaxonomyScore,
+		extractor.ExtractOptions{Tiers: 1})
+	require.NoError(t, err)
+
+	// An explicit tier count is forwarded and narrows below the default of two.
+	assert.Equal(t, 1, fake.gotOpts.Tiers)
+	require.Len(t, signals, 1)
+	assert.Contains(t, signals, Signal{Type: SignalTypeSkillName, Value: "skill_t1", Score: 0.9})
 }

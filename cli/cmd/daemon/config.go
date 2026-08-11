@@ -61,6 +61,21 @@ func registerServerDefaults(v *viper.Viper) {
 
 	_ = v.BindEnv("server.routing.directory_oci_address")
 	v.SetDefault("server.routing.directory_oci_address", "")
+
+	// Extractor config likewise has no defaults and is absent from
+	// daemon.config.yaml, so register it here for AutomaticEnv. Mirrors
+	// server/config. An empty remote_addr falls back to the locally provisioned
+	// in-process extractor; set it (e.g.
+	// DIRECTORY_DAEMON_SERVER_EXTRACTOR_REMOTE_ADDR=localhost:31234) to point the
+	// node at a running OASF-SDK server instead.
+	_ = v.BindEnv("server.extractor.remote_addr")
+	v.SetDefault("server.extractor.remote_addr", "")
+
+	_ = v.BindEnv("server.extractor.asset_dir")
+	v.SetDefault("server.extractor.asset_dir", "")
+
+	_ = v.BindEnv("server.extractor.oasf_url")
+	v.SetDefault("server.extractor.oasf_url", "")
 }
 
 func registerReconcilerDefaults(v *viper.Viper) {
