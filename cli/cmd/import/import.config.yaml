@@ -45,10 +45,14 @@ enricher:
   #   domains:
   #     - name: technology/software_engineering/apis_integration
 
-  # Or use "extractor:" for in-process, LLM-free enrichment using the local
-  # OASF taxonomy model (requires `dirctl init` to have been run first).
-  # Both fields are optional — omit them to use the config saved by dirctl init.
+  # Or use "extractor:" for LLM-free enrichment using the OASF taxonomy model,
+  # either in-process from local assets (requires `dirctl init` to have been run
+  # first) or against a running OASF-SDK server.
+  # All fields are optional — omit them all to use the config saved by dirctl
+  # init. Setting remote_addr selects the remote server; otherwise the local
+  # in-process extractor is used.
   # extractor:
+  #   remote_addr: localhost:31234
   #   oasf_url: https://schema.oasf.outshift.com
   #   asset_dir: ~/.agntcy/oasf-sdk/extractor
 

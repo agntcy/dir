@@ -13,8 +13,8 @@ import (
 	enricherconfig "github.com/agntcy/dir-importer/enricher/config"
 	"github.com/agntcy/dir-importer/enricher/toolhost"
 	"github.com/agntcy/dir-importer/transformer"
-	"github.com/agntcy/dir/client/extractor"
-	sdk "github.com/agntcy/oasf-sdk/pkg/extractor"
+	clientconfig "github.com/agntcy/dir/client/config"
+	"github.com/agntcy/dir/utils/extractor"
 	"github.com/spf13/pflag"
 	"gopkg.in/yaml.v3"
 )
@@ -46,8 +46,9 @@ type enricherFileConfig struct {
 // Both fields are optional: when absent the extractor uses the config saved by
 // `dirctl init`; explicit values override it.
 type extractorEnricherFileConfig struct {
-	OASFUrl  string `yaml:"oasf_url"`
-	AssetDir string `yaml:"asset_dir"`
+	OASFUrl    string `yaml:"oasf_url"`
+	AssetDir   string `yaml:"asset_dir"`
+	RemoteAddr string `yaml:"remote_addr"`
 }
 
 type llmEnricherFileConfig struct {
@@ -131,10 +132,14 @@ func (o *options) loadConfig(flags *pflag.FlagSet) error {
 		// Extractor enricher needs a live SDK instance; load it after all file
 		// config is applied and flags are restored.
 		if fc.Enricher.Extractor != nil {
-			sdkExt, loadErr := loadExtractorFromConfig(fc.Enricher.Extractor)
+			ext, loadErr := loadExtractorFromConfig(fc.Enricher.Extractor)
 			if loadErr != nil {
 				return fmt.Errorf("extractor enricher: %w", loadErr)
 			}
+
+			// The caller owns the resolved extractor; close it (releasing a remote
+			// gRPC connection, if any) when the import finishes.
+			o.extractorCloser = ext
 
 			// Scope the extractor to the same OASF version the transformer stamps on
 			// the record (its schema_version, defaulting to transformer.DefaultSchemaVersion
@@ -146,7 +151,7 @@ func (o *options) loadConfig(flags *pflag.FlagSet) error {
 
 			o.Enricher = enricherconfig.Config{
 				Extractor: &enricherconfig.ExtractorConfig{
-					Extractor: &oasfExtractorAdapter{ext: sdkExt, schemaVersion: schemaVersion},
+					Extractor: &oasfExtractorAdapter{ext: ext, schemaVersion: schemaVersion},
 				},
 			}
 		}
@@ -282,25 +287,28 @@ func toToolHostConfig(fc toolHostFileConfig) toolhost.Config {
 	}
 }
 
-// loadExtractorFromConfig loads the local OASF extractor for the extractor enricher.
-// When both OASFUrl and AssetDir are empty it defers to the config saved by
-// `dirctl init`; explicit values override the saved config.
-func loadExtractorFromConfig(fc *extractorEnricherFileConfig) (*sdk.Extractor, error) {
-	if fc.OASFUrl == "" && fc.AssetDir == "" {
-		ext, err := extractor.LoadConfigured()
+// loadExtractorFromConfig resolves the OASF extractor for the extractor enricher.
+// When the file config sets no fields it defers to the config saved by `dirctl
+// init` (honoring a persisted RemoteAddr); explicit values override it. It
+// resolves the remote backend when an address is set, otherwise the local
+// in-process extractor. The caller owns the returned extractor and must Close it.
+func loadExtractorFromConfig(fc *extractorEnricherFileConfig) (extractor.Extractor, error) {
+	if fc.OASFUrl == "" && fc.AssetDir == "" && fc.RemoteAddr == "" {
+		ext, err := clientconfig.ResolveConfigured()
 		if err != nil {
-			return nil, fmt.Errorf("load configured extractor: %w", err)
+			return nil, fmt.Errorf("resolve configured extractor: %w", err)
 		}
 
 		return ext, nil
 	}
 
-	ext, err := extractor.Load(extractor.Config{
-		OASFURL:  fc.OASFUrl,
-		AssetDir: fc.AssetDir,
+	ext, err := extractor.ResolveExtractor(extractor.Config{
+		OASFURL:    fc.OASFUrl,
+		AssetDir:   fc.AssetDir,
+		RemoteAddr: fc.RemoteAddr,
 	})
 	if err != nil {
-		return nil, fmt.Errorf("load extractor: %w", err)
+		return nil, fmt.Errorf("resolve extractor: %w", err)
 	}
 
 	return ext, nil

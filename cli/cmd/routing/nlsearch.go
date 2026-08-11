@@ -9,8 +9,9 @@ import (
 	"fmt"
 
 	routingv1 "github.com/agntcy/dir/api/routing/v1"
-	"github.com/agntcy/dir/client/extractor"
-	"github.com/agntcy/dir/client/nlsearch"
+	clientconfig "github.com/agntcy/dir/client/config"
+	"github.com/agntcy/dir/utils/extractor"
+	"github.com/agntcy/dir/utils/nlsearch"
 	sdk "github.com/agntcy/oasf-sdk/pkg/extractor"
 	"github.com/spf13/cobra"
 )
@@ -27,7 +28,7 @@ func runNLRoutingSearch(cmd *cobra.Command, query string) error {
 
 	// Use semantic-only weights and a low SDK-level floor so the extractor
 	// returns enough candidates for our routingMinScore filter to work with.
-	ext, err := extractor.ResolveConfigured(
+	ext, err := clientconfig.ResolveConfigured(
 		sdk.WithWeights(1, 0),
 		sdk.WithDomainWeights(1, 0),
 		sdk.WithDefaultMinScore(routingMinScore),

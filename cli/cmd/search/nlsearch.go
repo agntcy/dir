@@ -14,8 +14,9 @@ import (
 	searchv1 "github.com/agntcy/dir/api/search/v1"
 	"github.com/agntcy/dir/cli/presenter"
 	"github.com/agntcy/dir/client"
-	"github.com/agntcy/dir/client/extractor"
-	"github.com/agntcy/dir/client/nlsearch"
+	clientconfig "github.com/agntcy/dir/client/config"
+	"github.com/agntcy/dir/utils/extractor"
+	"github.com/agntcy/dir/utils/nlsearch"
 	"github.com/spf13/cobra"
 )
 
@@ -43,7 +44,7 @@ type sigHit struct {
 // extractor, fans out one SearchCIDs request per signal, then scores and
 // returns results ranked by the number of signals that matched each record.
 func runNLSearch(cmd *cobra.Command, query string, c *client.Client) error {
-	ext, err := extractor.ResolveConfigured()
+	ext, err := clientconfig.ResolveConfigured()
 	if err != nil {
 		return fmt.Errorf("natural-language search requires the OASF extractor — run `dirctl init` to set it up: %w", err)
 	}

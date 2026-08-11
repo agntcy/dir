@@ -23,6 +23,7 @@ and publish" → authoring + publishing).
 | User intent (examples)                                                                                      | Read first                                               |
 | ----------------------------------------------------------------------------------------------------------- | -------------------------------------------------------- |
 | "install dirctl", "set up a local directory", "start the daemon", "configure contexts", "connection issues" | [references/setup.md](references/setup.md)               |
+| "log in", "am I authenticated?", "switch to another directory node", "permission denied / forbidden"        | [references/setup.md](references/setup.md)               |
 | "create a record", "validate my record", "import MCP servers / A2A cards / skills into DIR"                 | [references/authoring.md](references/authoring.md)       |
 | "push", "publish to the network", "sign my record", "prove name ownership"                                  | [references/publishing.md](references/publishing.md)     |
 | "find/search/suggest agents, MCP servers, skills", "browse the directory", "pull a record"                  | [references/discovery.md](references/discovery.md)       |
@@ -68,6 +69,13 @@ daemon). Server selection order: `--context <name>` flag →
 - **Auth**: never invent auth flags. On an auth error, surface the raw error
   and ask the user how to authenticate (see setup reference: `auth login`,
   `--auth-mode`, `--auth-token`).
+- **Authentication is not authorization**: a valid token from `auth status`
+  says nothing about what the user may *do*. Gateways enforce per-method
+  access control, so `PermissionDenied` / `Forbidden` on `push`, `sign`,
+  `routing publish`, `delete`, or `sync` is an entitlement problem — logging in
+  again cannot fix it. Name the denied method, say it needs elevated rights on
+  that deployment, and stop; only `Unauthenticated` and expired-token errors
+  are login problems.
 - **Destructive ops** (`delete`, `uninstall`, `sync delete`, `--force`):
   always confirm with the user first.
 - **Never fabricate** CIDs, names, versions, scores, or scan results — every
