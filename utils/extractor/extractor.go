@@ -20,7 +20,18 @@ type Result = sdk.Result
 type ExtractOptions struct {
 	// Versions pins the OASF schema versions to consider. Empty means all.
 	Versions []string
+
+	// Tiers is the number of score tiers (score groups) to return per kind.
+	// 0 uses DefaultTiers; higher values widen recall (each tier is the next
+	// closest group of matches).
+	Tiers int
 }
+
+// DefaultTiers is the number of score tiers the extractor returns per kind when
+// a caller does not set ExtractOptions.Tiers. It is 2 (the two closest groups)
+// rather than the SDK's own default of 1, so search and enrichment favour recall
+// across the whole platform. Callers can still narrow (Tiers: 1) or widen it.
+const DefaultTiers = 2
 
 // Extractor turns free-form text into OASF skills, domains, modules, and
 // keywords. It is satisfied by both the in-process local backend and the remote

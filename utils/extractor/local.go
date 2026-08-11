@@ -39,7 +39,12 @@ func (l *localExtractor) Close() error { return nil }
 // Extract runs the in-process extractor, translating the backend-agnostic
 // ExtractOptions into the SDK's per-query options.
 func (l *localExtractor) Extract(ctx context.Context, text string, opts ExtractOptions) (Result, error) {
-	var qopts []sdk.QueryOption
+	tiers := opts.Tiers
+	if tiers < 1 {
+		tiers = DefaultTiers
+	}
+
+	qopts := []sdk.QueryOption{sdk.Tiers(tiers)}
 	if len(opts.Versions) > 0 {
 		qopts = append(qopts, sdk.Versions(opts.Versions...))
 	}
