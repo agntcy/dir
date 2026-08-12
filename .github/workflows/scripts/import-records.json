@@ -35,6 +35,9 @@
     },
     {
       "search": "com.postman/"
+    },
+    {
+      "search": "com.atlassian/"
     }
   ],
   "agent-skill": [
