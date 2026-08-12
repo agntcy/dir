@@ -17,6 +17,10 @@ import (
 	"google.golang.org/grpc/status"
 )
 
+// queryMaxLen mirrors the proto validator (max_len=1024) on
+// SearchAgentsRequest.query.
+const queryMaxLen = 1024
+
 // SearchAgents answers a free-text query with relevance-ranked catalog entries.
 //
 // It is the API equivalent of `dirctl search "<query>"`: the query is decomposed
@@ -31,6 +35,15 @@ import (
 func (c *aiFinderController) SearchAgents(ctx context.Context, req *catalogv1.SearchAgentsRequest) (*catalogv1.SearchAgentsResponse, error) {
 	if req == nil {
 		return nil, status.Error(codes.InvalidArgument, "request is required") //nolint:wrapcheck
+	}
+
+	// Enforce the proto's max_len in code: the service registers no protovalidate
+	// interceptor, so the declared constraint is not applied at runtime and an
+	// unbounded string would otherwise reach the extractor. Checked before
+	// trimming, so padding cannot smuggle a longer payload past it. Mirrors how
+	// ListAgents enforces filterMaxLen.
+	if len(req.GetQuery()) > queryMaxLen {
+		return nil, status.Errorf(codes.InvalidArgument, "query too long (%d > %d)", len(req.GetQuery()), queryMaxLen)
 	}
 
 	query := strings.TrimSpace(req.GetQuery())
@@ -122,7 +135,15 @@ func (s recordSearcher) SearchCIDs(_ context.Context, query *searchv1.RecordQuer
 
 	// Match the CLI's per-signal query: recency-ordered, capped. Relevance is
 	// decided by the scorer across signals, not by any single query's order.
+	//
+	// Restrict candidates to records carrying a known catalog module, mirroring
+	// the filter GetCatalogEntries applies when projecting entries. Without it the
+	// fan-out ranks records the catalog cannot represent: they consume page slots
+	// and inflate total_count, then silently vanish at hydration. The endpoint
+	// returns CatalogEntry, so a record that has no catalog projection is not a
+	// candidate in the first place.
 	filterOpts = append(filterOpts,
+		types.WithModuleNames(catalogv1.KnownCatalogModuleNames()...),
 		types.WithLimit(int(limit)), //nolint:gosec
 		sortModeToOrderBy(searchv1.SortMode_SORT_MODE_RECENCY),
 	)

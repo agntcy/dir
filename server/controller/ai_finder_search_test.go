@@ -6,6 +6,7 @@ package controller
 import (
 	"context"
 	"errors"
+	"strings"
 	"testing"
 
 	catalogv1 "github.com/agntcy/dir/api/catalog/v1"
@@ -166,6 +167,7 @@ func TestSearchAgents_InvalidRequests(t *testing.T) {
 	}{
 		{"blank query", &catalogv1.SearchAgentsRequest{Query: "  "}},
 		{"bad page token", &catalogv1.SearchAgentsRequest{Query: "q", PageToken: "!!!not-base64!!!"}},
+		{"query too long", &catalogv1.SearchAgentsRequest{Query: strings.Repeat("x", queryMaxLen+1)}},
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
@@ -174,6 +176,25 @@ func TestSearchAgents_InvalidRequests(t *testing.T) {
 			assert.Equal(t, codes.InvalidArgument, status.Code(err))
 		})
 	}
+}
+
+func TestSearchAgents_OnlyCatalogProjectableCandidates(t *testing.T) {
+	// GetCatalogEntries only projects records carrying a known catalog module,
+	// so the fan-out must apply the same restriction. Otherwise unprojectable
+	// records occupy page slots and inflate total_count, then vanish at
+	// hydration, leaving short pages.
+	db := &fakeCatalogDB{
+		entries:    []*catalogv1.CatalogEntry{entry("a")},
+		recordCIDs: map[string][]string{"": {"a"}},
+	}
+	ext := &fakeExtractor{result: resultWith([]string{"code_review"}, nil)}
+
+	_, err := searchCtrl(db, ext).SearchAgents(context.Background(), &catalogv1.SearchAgentsRequest{Query: "q"})
+	require.NoError(t, err)
+
+	require.NotEmpty(t, db.gotRecordQuery)
+	assert.ElementsMatch(t, catalogv1.KnownCatalogModuleNames(), db.gotRecordQuery[0].ModuleNames,
+		"fan-out candidates must be restricted to catalog-projectable records")
 }
 
 func TestSearchAgents_SearchFailureDegradesRatherThanFails(t *testing.T) {
