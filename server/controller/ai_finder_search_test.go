@@ -130,13 +130,16 @@ func TestSearchAgents_OffsetPastEndIsEmpty(t *testing.T) {
 	assert.Empty(t, resp.GetNextPageToken())
 }
 
-func TestSearchAgents_EmptyExtractionReturnsEmptyPage(t *testing.T) {
+func TestSearchAgents_EmptyExtractionIsRejected(t *testing.T) {
+	// An empty page would be indistinguishable from "the catalog holds no match",
+	// so an unusable query is rejected with advice instead, as the CLI does.
 	db := &fakeCatalogDB{entries: []*catalogv1.CatalogEntry{entry("a")}}
 	ext := &fakeExtractor{result: sdk.Result{}}
 
-	resp, err := searchCtrl(db, ext).SearchAgents(context.Background(), &catalogv1.SearchAgentsRequest{Query: "banana"})
-	require.NoError(t, err)
-	assert.Empty(t, resp.GetResults())
+	_, err := searchCtrl(db, ext).SearchAgents(context.Background(), &catalogv1.SearchAgentsRequest{Query: "banana"})
+	require.Error(t, err)
+	assert.Equal(t, codes.InvalidArgument, status.Code(err))
+	assert.Contains(t, status.Convert(err).Message(), "more descriptive")
 	assert.Zero(t, db.recordCallCount, "nothing to search on means no queries")
 }
 

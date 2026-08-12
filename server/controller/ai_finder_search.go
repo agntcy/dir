@@ -75,9 +75,12 @@ func (c *aiFinderController) SearchAgents(ctx context.Context, req *catalogv1.Se
 	}
 
 	if len(signals) == 0 {
-		// Nothing to search on. An empty page is the honest answer: unlike the
-		// CLI, which can tell the user to rephrase, this returns a normal result.
-		return &catalogv1.SearchAgentsResponse{}, nil
+		// Nothing to search on. Reject rather than return an empty page: a caller
+		// cannot distinguish "the catalog holds no match" from "the query could not
+		// be understood" by looking at zero results, and only the second is fixed
+		// by rephrasing. Mirrors what `dirctl search` tells the user.
+		return nil, status.Error(codes.InvalidArgument, //nolint:wrapcheck
+			"no search signals extracted from query; try a more descriptive phrase")
 	}
 
 	ranked := nlsearch.FanOutAndScore(ctx, signals, recordSearcher{db: c.db}, nlsearch.FanOutOptions{})
