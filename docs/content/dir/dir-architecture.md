@@ -1,3 +1,7 @@
+---
+icon: material/layers-triple
+---
+
 # Architecture
 
 The architecture of the Agent Directory Service (ADS) is designed to support a scalable, secure, and efficient way to manage and distribute agent directory records across a distributed network of servers.

@@ -1,3 +1,7 @@
+---
+icon: material/play-circle-outline
+---
+
 # Quickstart
 
 Get from zero to publishing and discovering an agent record in a few minutes. This is the

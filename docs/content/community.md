@@ -3,7 +3,7 @@ hide:
 
   - navigation
   - toc
-
+icon: material/account-group
 ---
 
 # DIR Community

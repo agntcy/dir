@@ -1,3 +1,7 @@
+---
+icon: material/book-open-page-variant
+---
+
 # Usage Guide
 
 This document defines a basic overview of main Directory features, components, and usage

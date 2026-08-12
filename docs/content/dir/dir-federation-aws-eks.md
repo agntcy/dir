@@ -1,3 +1,7 @@
+---
+icon: material/cloud
+---
+
 # Federation on Amazon EKS
 
 This guide is the opinionated AWS happy path for running your own AGNTCY Directory instance and federating it with the public Directory network.

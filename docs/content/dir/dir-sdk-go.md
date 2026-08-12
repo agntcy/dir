@@ -1,3 +1,7 @@
+---
+icon: material/language-go
+---
+
 # Go SDK
 
 The Directory Go SDK (`github.com/agntcy/dir/client`) provides a high-level client for

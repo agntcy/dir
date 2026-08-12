@@ -1,3 +1,7 @@
+---
+icon: material/console
+---
+
 # Directory CLI Command Reference
 
 Command-line reference for `dirctl`. Install the CLI in the [Quickstart](dir-quickstart.md)
