@@ -1,0 +1,60 @@
+# Copyright AGNTCY Contributors (https://github.com/agntcy)
+# SPDX-License-Identifier: Apache-2.0
+
+name: Init dirctl
+description: |
+  Run `dirctl init --yes` to download and verify the local OASF taxonomy extractor
+  (~89 MB model + taxonomy). Required before `dirctl import` with `enricher.extractor`.
+author: agntcy
+branding:
+  icon: package
+  color: green
+
+inputs:
+  dirctl_path:
+    description: Absolute path to the dirctl binary. Defaults to PATH lookup.
+    required: false
+    default: ""
+  oasf_url:
+    description: OASF schema endpoint used to embed the taxonomy
+    required: false
+    default: "https://schema.oasf.outshift.com"
+  asset_dir:
+    description: Directory for extractor assets. Defaults to ~/.agntcy/oasf-sdk/extractor
+    required: false
+    default: ""
+
+outputs:
+  asset_dir:
+    description: Absolute path to the provisioned extractor asset directory
+    value: ${{ steps.init.outputs.asset_dir }}
+
+runs:
+  using: "composite"
+  steps:
+    - name: Init dirctl
+      id: init
+      shell: bash
+      env:
+        DIRCTL_PATH: ${{ inputs.dirctl_path }}
+        OASF_URL: ${{ inputs.oasf_url }}
+        ASSET_DIR: ${{ inputs.asset_dir }}
+      run: |
+        set -euo pipefail
+
+        if [ -n "${DIRCTL_PATH}" ]; then
+          DIRCTL="${DIRCTL_PATH}"
+        else
+          DIRCTL="dirctl"
+        fi
+
+        if [ -z "${ASSET_DIR}" ]; then
+          ASSET_DIR="${HOME}/.agntcy/oasf-sdk/extractor"
+        fi
+
+        echo "Provisioning OASF extractor assets to ${ASSET_DIR}"
+        "${DIRCTL}" init --yes \
+          --oasf-url "${OASF_URL}" \
+          --asset-dir "${ASSET_DIR}"
+
+        echo "asset_dir=${ASSET_DIR}" >> "${GITHUB_OUTPUT}"
