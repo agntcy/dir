@@ -1,3 +1,7 @@
+---
+icon: material/shield-check
+---
+
 # Security Trust Model
 
 ## Overview

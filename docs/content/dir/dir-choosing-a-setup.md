@@ -1,3 +1,7 @@
+---
+icon: material/map-legend
+---
+
 # Choosing Your Directory Setup
 
 Not sure which Directory setup you need? Walk through the questions below, then find the

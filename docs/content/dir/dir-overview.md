@@ -1,3 +1,7 @@
+---
+icon: material/information-outline
+---
+
 # Overview
 
 The Agent Directory Service (ADS) is a distributed directory service designed to
