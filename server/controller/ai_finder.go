@@ -38,13 +38,22 @@ const (
 	wellKnownHostDisplayName = "AGNTCY Directory"
 )
 
+// aiFinderDatabaseAPI is the database surface the AI Finder controller needs:
+// the catalog query layer (browsing, hydration) plus the record-CID content
+// search that SearchAgents fans out over. The concrete server database
+// satisfies it; the non-search RPCs only exercise the catalog half.
+type aiFinderDatabaseAPI interface {
+	types.CatalogDatabaseAPI
+	GetRecordCIDs(opts ...types.FilterOption) ([]string, error)
+}
+
 // aiFinderController adapts the AI Finder query language to the catalog query
 // layer. GetWellKnownCatalog is served by the embedded Unimplemented server.
 type aiFinderController struct {
 	catalogv1.UnimplementedAIFinderServiceServer
 
 	hostId string
-	db     types.CatalogDatabaseAPI
+	db     aiFinderDatabaseAPI
 	store  types.StoreAPI
 	cfg    config.HTTPGatewayConfig
 	ext    extractor.Extractor
@@ -54,8 +63,8 @@ type aiFinderController struct {
 type AIFinderOption func(*aiFinderController)
 
 // WithExtractor wires an OASF extractor resolved by the server, enabling the
-// extractor-backed RPCs. Without it ExtractTaxonomy returns UNAVAILABLE
-// (HTTP 503); all other RPCs remain functional.
+// extractor-backed RPCs. Without it ExtractTaxonomy and SearchAgents return
+// UNAVAILABLE (HTTP 503); all other RPCs remain functional.
 func WithExtractor(ext extractor.Extractor) AIFinderOption {
 	return func(c *aiFinderController) {
 		c.ext = ext
@@ -65,7 +74,7 @@ func WithExtractor(ext extractor.Extractor) AIFinderOption {
 // NewAIFinderController returns an AIFinderServiceServer that serves the AI
 // Catalog AI Finder surface. store may be nil — when omitted the ExportAgent
 // RPC returns UNIMPLEMENTED (HTTP 501). All other RPCs remain functional.
-func NewAIFinderController(hostId string, db types.CatalogDatabaseAPI, cfg config.HTTPGatewayConfig, store types.StoreAPI, opts ...AIFinderOption) catalogv1.AIFinderServiceServer {
+func NewAIFinderController(hostId string, db aiFinderDatabaseAPI, cfg config.HTTPGatewayConfig, store types.StoreAPI, opts ...AIFinderOption) catalogv1.AIFinderServiceServer {
 	c := &aiFinderController{
 		db:     db,
 		store:  store,
