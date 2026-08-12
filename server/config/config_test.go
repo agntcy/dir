@@ -61,6 +61,9 @@ func TestConfig(t *testing.T) {
 				"DIRECTORY_SERVER_HTTP_GATEWAY_LISTEN_ADDRESS":         "address:123",
 				"DIRECTORY_SERVER_HTTP_GATEWAY_PUBLIC_URL":             "https://example.com",
 				"DIRECTORY_SERVER_HTTP_GATEWAY_CATALOG_TITLE":          "Cisco AI Catalog",
+				"DIRECTORY_SERVER_EXTRACTOR_REMOTE_ADDR":               "oasf-sdk:5000",
+				"DIRECTORY_SERVER_EXTRACTOR_ASSET_DIR":                 "/var/lib/oasf-extractor",
+				"DIRECTORY_SERVER_EXTRACTOR_OASF_URL":                  "https://schema.example.com",
 			},
 			ExpectedConfig: &Config{
 				ListenAddress: "example.com:8889",
@@ -143,6 +146,11 @@ func TestConfig(t *testing.T) {
 					ListenAddress: "address:123",
 					PublicURL:     "https://example.com",
 					CatalogTitle:  "Cisco AI Catalog",
+				},
+				Extractor: ExtractorConfig{
+					RemoteAddr: "oasf-sdk:5000",
+					AssetDir:   "/var/lib/oasf-extractor",
+					OASFURL:    "https://schema.example.com",
 				},
 			},
 		},

@@ -38,9 +38,15 @@ func (r *remoteExtractor) Close() error {
 // Extract forwards the text and any version pins to the server and maps the
 // response back into the SDK Result shape.
 func (r *remoteExtractor) Extract(ctx context.Context, text string, opts ExtractOptions) (Result, error) {
+	tiers := opts.Tiers
+	if tiers < 1 {
+		tiers = DefaultTiers
+	}
+
 	resp, err := r.client.Extract(ctx, extractorv1.ExtractRequest_builder{
 		Text:     text,
 		Versions: opts.Versions,
+		Tiers:    uint32(tiers), //nolint:gosec // small positive tier count
 	}.Build())
 	if err != nil {
 		return Result{}, fmt.Errorf("remote extract: %w", err)

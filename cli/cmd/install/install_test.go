@@ -7,7 +7,6 @@ import (
 	"bytes"
 	"os"
 	"path/filepath"
-	"strings"
 	"testing"
 
 	"github.com/agntcy/dir/cli/internal/agentcfg"
@@ -45,63 +44,6 @@ func TestTopLevelUninstallShorthand(t *testing.T) {
 	require.NotNil(t, UninstallCommand.PersistentFlags().Lookup("yes"))
 	require.NotNil(t, UninstallCommand.PersistentFlags().Lookup("limit"))
 	require.NotNil(t, UninstallCommand.PersistentFlags().Lookup("module"))
-}
-
-// --- confirm tests ---
-
-func runConfirm(t *testing.T, input string) (bool, error) {
-	t.Helper()
-
-	var out bytes.Buffer
-
-	cmd := Command
-	cmd.SetIn(strings.NewReader(input))
-	cmd.SetOut(&out)
-
-	return confirm(cmd, "Proceed?")
-}
-
-func TestConfirmYesLowercase(t *testing.T) {
-	ok, err := runConfirm(t, "y\n")
-	require.NoError(t, err)
-	assert.True(t, ok)
-}
-
-func TestConfirmYesFull(t *testing.T) {
-	ok, err := runConfirm(t, "yes\n")
-	require.NoError(t, err)
-	assert.True(t, ok)
-}
-
-func TestConfirmYesUppercase(t *testing.T) {
-	ok, err := runConfirm(t, "Y\n")
-	require.NoError(t, err)
-	assert.True(t, ok)
-}
-
-func TestConfirmNo(t *testing.T) {
-	ok, err := runConfirm(t, "n\n")
-	require.NoError(t, err)
-	assert.False(t, ok)
-}
-
-func TestConfirmEmptyInput(t *testing.T) {
-	ok, err := runConfirm(t, "\n")
-	require.NoError(t, err)
-	assert.False(t, ok)
-}
-
-func TestConfirmEOFWithEmptyLine(t *testing.T) {
-	// Empty reader → EOF immediately with no line content.
-	var out bytes.Buffer
-
-	cmd := Command
-	cmd.SetIn(strings.NewReader(""))
-	cmd.SetOut(&out)
-
-	_, err := confirm(cmd, "Proceed?")
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), "read confirmation")
 }
 
 // --- scopeFromOpts tests ---

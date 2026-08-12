@@ -56,6 +56,12 @@ func runImport(cmd *cobra.Command) error {
 		return fmt.Errorf("invalid configuration: %w", err)
 	}
 
+	// Release the OASF extractor (and its remote gRPC connection, if any) resolved
+	// for the extractor enricher when the import finishes.
+	if opts.extractorCloser != nil {
+		defer func() { _ = opts.extractorCloser.Close() }()
+	}
+
 	if opts.Sign {
 		opts.SignFunc = func(ctx context.Context, cid string) error {
 			return signcmd.Sign(ctx, c, cid)

@@ -4,6 +4,8 @@
 package importcmd
 
 import (
+	"io"
+
 	"github.com/agntcy/dir-importer/config"
 	signcmd "github.com/agntcy/dir/cli/cmd/sign"
 )
@@ -16,6 +18,11 @@ type options struct {
 	Sign          bool
 	OutputCIDFile string
 	ConfigFile    string
+
+	// extractorCloser holds the resolved OASF extractor (when the extractor
+	// enricher is used) so runImport can release it — importantly its remote gRPC
+	// connection — after the import finishes.
+	extractorCloser io.Closer
 }
 
 func init() {

@@ -1,3 +1,7 @@
+---
+icon: material/console
+---
+
 # Directory CLI Command Reference
 
 Command-line reference for `dirctl`. Install the CLI in the [Quickstart](dir-quickstart.md)
@@ -871,16 +875,18 @@ The import command enriches records by mapping them to OASF skills and domains. 
 
 #### Extractor enrichment (LLM-free, recommended)
 
-Uses the local OASF sentence-transformer model provisioned by `dirctl init` to classify records in-process — no API key, no external service, no LLM runtime. This is the fastest option and works offline.
+Uses the OASF sentence-transformer model to classify records — no API key and no LLM runtime. The model runs in-process from locally provisioned assets, or on a remote OASF-SDK server.
 
-**Requires:** `dirctl init` to have been run at least once to provision the model assets.
+**Requires:** either `dirctl init` to have been run at least once to provision the model assets, or a reachable OASF-SDK server.
 
 ```yaml
 enricher:
-  extractor: {}           # uses assets provisioned by dirctl init
+  extractor: {}           # uses whatever dirctl init saved
 ```
 
-To override the default asset location:
+With no fields set, the extractor uses the configuration saved by `dirctl init` — including a remote server address, if one was configured there.
+
+To override the local asset location:
 
 ```yaml
 enricher:
@@ -888,6 +894,16 @@ enricher:
     oasf_url: https://schema.oasf.outshift.com   # optional
     asset_dir: /path/to/custom/assets             # optional
 ```
+
+To enrich against a running OASF-SDK server instead of local assets:
+
+```yaml
+enricher:
+  extractor:
+    remote_addr: oasf-sdk:31234    # selects the remote backend
+```
+
+Setting `remote_addr` selects the remote backend; leaving it empty uses the local in-process extractor. Each extraction call is bounded by a timeout, so an unreachable server fails the record rather than stalling the import.
 
 #### Static enrichment
 

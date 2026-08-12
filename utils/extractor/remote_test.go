@@ -64,6 +64,9 @@ func TestRemoteExtractorMapsResponseToResult(t *testing.T) {
 	assert.Equal(t, "a skill for reviewing code", fake.gotReq.GetText())
 	assert.Equal(t, []string{"1.0.0"}, fake.gotReq.GetVersions())
 
+	// An unset Tiers is sent as DefaultTiers (not 0, which the server reads as 1).
+	assert.Equal(t, uint32(DefaultTiers), fake.gotReq.GetTiers())
+
 	// Skills map with kind, score, tier, and identity fields preserved.
 	require.Len(t, got.Skills, 1)
 	assert.Equal(t, "natural_language_processing/quality_assurance", got.Skills[0].Name)

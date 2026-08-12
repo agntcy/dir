@@ -10,7 +10,6 @@ import (
 	"io"
 	"sync"
 
-	clientconfig "github.com/agntcy/dir/client/config"
 	sdk "github.com/agntcy/oasf-sdk/pkg/extractor"
 	"github.com/rs/zerolog"
 	zlog "github.com/rs/zerolog/log"
@@ -24,7 +23,7 @@ const smokeSampleText = "real-time fraud detection for banking transactions usin
 // Load. The oasf-sdk extractor logs through the global zerolog logger during
 // New() and offers no per-instance logging hook, so the only way to silence its
 // debug/info output is to swap the global logger for the duration of the build.
-// The mutex keeps that swap race-free now that Load lives in the shared client
+// The mutex keeps that swap race-free now that Load lives in the shared utils
 // module and could be called from multiple goroutines.
 var logMu sync.Mutex
 
@@ -40,7 +39,12 @@ func (l *localExtractor) Close() error { return nil }
 // Extract runs the in-process extractor, translating the backend-agnostic
 // ExtractOptions into the SDK's per-query options.
 func (l *localExtractor) Extract(ctx context.Context, text string, opts ExtractOptions) (Result, error) {
-	var qopts []sdk.QueryOption
+	tiers := opts.Tiers
+	if tiers < 1 {
+		tiers = DefaultTiers
+	}
+
+	qopts := []sdk.QueryOption{sdk.Tiers(tiers)}
 	if len(opts.Versions) > 0 {
 		qopts = append(qopts, sdk.Versions(opts.Versions...))
 	}
@@ -84,23 +88,6 @@ func Load(cfg Config, opts ...sdk.Option) (*sdk.Extractor, error) {
 	}
 
 	return e, nil
-}
-
-// LoadConfigured loads the extractor using the OASF URL / asset dir persisted by
-// dirctl init, erroring clearly when init has not been run. This is the entry
-// point for read-path consumers (import enrichment, search): they get a ready
-// client or an actionable error, and never provision implicitly.
-func LoadConfigured(opts ...sdk.Option) (*sdk.Extractor, error) {
-	saved, err := clientconfig.LoadExtractor("")
-	if err != nil {
-		return nil, fmt.Errorf("load extractor config: %w", err)
-	}
-
-	if saved == nil {
-		return nil, errors.New("OASF extractor not configured; run `dirctl init` first")
-	}
-
-	return Load(Config{OASFURL: saved.OASFURL, AssetDir: saved.AssetDir}, opts...)
 }
 
 // Provision downloads and caches the extractor's assets (model + embedded OASF

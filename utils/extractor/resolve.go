@@ -4,11 +4,9 @@
 package extractor
 
 import (
-	"errors"
 	"fmt"
 
 	extractorv1grpc "buf.build/gen/go/agntcy/oasf-sdk/grpc/go/agntcy/oasfsdk/extractor/v1/extractorv1grpc"
-	clientconfig "github.com/agntcy/dir/client/config"
 	sdk "github.com/agntcy/oasf-sdk/pkg/extractor"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
@@ -74,25 +72,4 @@ func ResolveExtractor(cfg Config, localOpts ...sdk.Option) (Extractor, error) {
 	}
 
 	return nil, fmt.Errorf("unknown extractor backend %d", kind)
-}
-
-// ResolveConfigured resolves the extractor from the machine-wide config saved by
-// `dirctl init`, returning the Extractor interface. It honors a persisted
-// RemoteAddr (remote backend) and otherwise loads the provisioned local assets.
-// localOpts tune the local backend only. It errors clearly when init has not run.
-func ResolveConfigured(localOpts ...sdk.Option) (Extractor, error) {
-	saved, err := clientconfig.LoadExtractor("")
-	if err != nil {
-		return nil, fmt.Errorf("load extractor config: %w", err)
-	}
-
-	if saved == nil {
-		return nil, errors.New("OASF extractor not configured; run `dirctl init` first")
-	}
-
-	return ResolveExtractor(Config{
-		OASFURL:    saved.OASFURL,
-		AssetDir:   saved.AssetDir,
-		RemoteAddr: saved.RemoteAddr,
-	}, localOpts...)
 }

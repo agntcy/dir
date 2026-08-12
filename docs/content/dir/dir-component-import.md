@@ -1,3 +1,7 @@
+---
+icon: material/import
+---
+
 # Import and Export
 
 Import and export are complementary extensions that bridge Directory and external systems.

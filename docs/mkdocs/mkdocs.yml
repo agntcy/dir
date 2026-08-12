@@ -26,6 +26,9 @@ extra:
 
   copyright: >
     © 2026, Agntcy, a Series of LF Projects, LLC. All rights reserved.
+  nav_icons:
+    Extensions: material/puzzle-outline
+    Federation Deployment: material/earth
   analytics:
     provider: google
     property: G-H5NVFB80VS
@@ -44,6 +47,7 @@ extra_css:
   - stylesheets/agntcy-docs.css
   - stylesheets/dir-landing.css
   - stylesheets/dirctl-terminal.css
+  - stylesheets/dir-setup-chooser.css
 
 extra_javascript:
   - javascripts/dirctl-demo-data.js
@@ -55,6 +59,8 @@ extra_javascript:
   - javascripts/card-links.js
   - javascripts/external-links.js
   - javascripts/palette-tooltip-fix.js
+  - javascripts/dir-setup-chooser.js
+  - javascripts/dir-header-scroll.js
 
 markdown_extensions:
   - admonition
@@ -65,6 +71,9 @@ markdown_extensions:
   - pymdownx.superfences
   - pymdownx.tabbed:
       alternate_style: true
+      slugify: !!python/object/apply:pymdownx.slugs.slugify
+        kwds:
+          case: lower
   - pymdownx.emoji:
       emoji_index: !!python/name:material.extensions.emoji.twemoji
       emoji_generator: !!python/name:material.extensions.emoji.to_svg
@@ -114,6 +123,7 @@ nav:
   - Documentation:
       - Get Started:
           - Overview: dir/dir-overview.md
+          - Choosing a Setup: dir/dir-choosing-a-setup.md
           - Quickstart: dir/dir-quickstart.md
           - Usage Guide: dir/dir-features-scenarios.md
       - Concepts:
@@ -165,6 +175,7 @@ theme:
     - navigation.path
     - navigation.sections
     - navigation.tabs
+    - navigation.tabs.sticky
     - navigation.top
     - navigation.tracking
     - search.highlight

@@ -1,3 +1,7 @@
+---
+icon: material/login
+---
+
 # OIDC Authentication for Directory
 
 Directory supports an optional `oidc-gateway` authentication layer for users, automation, and workloads that access the API from outside the cluster. This keeps external access standards-based while preserving SPIFFE/SPIRE as the primary trust model for in-cluster workloads and service-to-service communication.
