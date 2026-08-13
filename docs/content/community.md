@@ -104,7 +104,7 @@ Stay up to date with announcements, tutorials, and technical deep dives from the
 
 We welcome contributions across the DIR ecosystem and the broader AGNTCY project:
 
-- Pick up a ["good first issue"](https://github.com/search?q=org%3Aagntcy+type%3Aissue+label%3A%22good-first-issue%22%2C%22good+first+issue%22&type=issues)
+- Pick up a ["good first issue"](https://github.com/search?q=repo%3Aagntcy%2Fdir+is%3Aopen+type%3Aissue+label%3A%22good-first-issue%22%2C%22good+first+issue%22&type=issues)
   across AGNTCY repositories
 - Report bugs or suggest enhancements on [agntcy/dir Issues](https://github.com/agntcy/dir/issues)
 - Review open pull requests on [agntcy/dir](https://github.com/agntcy/dir/pulls)

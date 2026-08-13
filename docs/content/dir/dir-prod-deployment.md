@@ -1,3 +1,7 @@
+---
+icon: material/rocket-launch
+---
+
 # Production Deployment
 
 This guide documents production deployment of Directory on AWS EKS. For a single opinionated AWS walkthrough that carries the deployment all the way into public federation, see [Federation on Amazon EKS](dir-federation-aws-eks.md). For local development and testing, see [Quickstart](dir-quickstart.md) and [Local Deployment](dir-deployment-local.md). For connecting to the public Directory network or federating your instance, see [Federation](dir-federation-overview.md) and [Running a Federated Directory Instance](dir-federation-setup.md).

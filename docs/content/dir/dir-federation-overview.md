@@ -1,3 +1,7 @@
+---
+icon: material/earth
+---
+
 # Federation
 
 **Federation** connects separate Directory deployments so agents published in one instance

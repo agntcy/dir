@@ -1,3 +1,7 @@
+---
+icon: material/laptop
+---
+
 # Local Deployment
 
 Run the Agent Directory on your own machine for development, testing, or as a standalone local instance. This page defines the supported deployment modes, platform support matrix, and prerequisites for local-first Directory usage.

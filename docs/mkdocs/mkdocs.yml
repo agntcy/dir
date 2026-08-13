@@ -26,6 +26,9 @@ extra:
 
   copyright: >
     © 2026, Agntcy, a Series of LF Projects, LLC. All rights reserved.
+  nav_icons:
+    Extensions: material/puzzle-outline
+    Federation Deployment: material/earth
   analytics:
     provider: google
     property: G-H5NVFB80VS
@@ -57,6 +60,7 @@ extra_javascript:
   - javascripts/external-links.js
   - javascripts/palette-tooltip-fix.js
   - javascripts/dir-setup-chooser.js
+  - javascripts/dir-header-scroll.js
 
 markdown_extensions:
   - admonition
@@ -171,6 +175,7 @@ theme:
     - navigation.path
     - navigation.sections
     - navigation.tabs
+    - navigation.tabs.sticky
     - navigation.top
     - navigation.tracking
     - search.highlight

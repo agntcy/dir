@@ -1,3 +1,7 @@
+---
+icon: material/kubernetes
+---
+
 # Kubernetes Deployment
 
 Deploy Directory with SPIRE in a Kind cluster for development and testing. Uses `example.org` as the trust domain (local only—cannot federate with the public network).

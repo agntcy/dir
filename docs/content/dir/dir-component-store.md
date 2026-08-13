@@ -1,3 +1,7 @@
+---
+icon: material/database
+---
+
 # Store
 
 The **Store** is a core Directory component that persists agent records as
