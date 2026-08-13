@@ -141,6 +141,92 @@ func TestImportRecord_Success(t *testing.T) {
 	assert.Equal(t, 1, db.addRecordCalls, "record should be added to the search index")
 }
 
+func TestImportRecord_AutoPublish(t *testing.T) {
+	store := &mockStore{pushRef: &corev1.RecordRef{Cid: "cid-1"}}
+	db := &mockDB{}
+
+	var publishedCID string
+
+	autoPublishCalls := 0
+
+	ref, err := New(
+		store,
+		db,
+		WithAutoPublish(func(_ context.Context, ref *corev1.RecordRef) error {
+			autoPublishCalls++
+			publishedCID = ref.GetCid()
+
+			return nil
+		}),
+	).ImportRecord(t.Context(), newTestRecord())
+
+	require.NoError(t, err)
+	require.NotNil(t, ref)
+	assert.Equal(t, "cid-1", ref.GetCid())
+	assert.Equal(t, 1, autoPublishCalls)
+	assert.Equal(t, "cid-1", publishedCID)
+}
+
+func TestImportRecord_AutoPublishErrorIsNonFatal(t *testing.T) {
+	store := &mockStore{pushRef: &corev1.RecordRef{Cid: "cid-1"}}
+	db := &mockDB{}
+
+	ref, err := New(
+		store,
+		db,
+		WithAutoPublish(func(context.Context, *corev1.RecordRef) error {
+			return errors.New("publication queue unavailable")
+		}),
+	).ImportRecord(t.Context(), newTestRecord())
+
+	require.NoError(t, err)
+	require.NotNil(t, ref)
+	assert.Equal(t, "cid-1", ref.GetCid())
+	assert.Equal(t, 1, db.addRecordCalls)
+}
+
+func TestImportRecord_AutoPublishRunsWhenIndexingFails(t *testing.T) {
+	store := &mockStore{pushRef: &corev1.RecordRef{Cid: "cid-1"}}
+	db := &mockDB{addRecordErr: errors.New("index boom")}
+
+	autoPublishCalls := 0
+
+	ref, err := New(
+		store,
+		db,
+		WithAutoPublish(func(context.Context, *corev1.RecordRef) error {
+			autoPublishCalls++
+
+			return nil
+		}),
+	).ImportRecord(t.Context(), newTestRecord())
+
+	require.NoError(t, err)
+	require.NotNil(t, ref)
+	assert.Equal(t, 1, autoPublishCalls)
+	assert.Equal(t, 1, db.addRecordCalls)
+}
+
+func TestImportRecord_AutoPublishNotCalledWhenPushFails(t *testing.T) {
+	store := &mockStore{pushErr: errors.New("push boom")}
+	db := &mockDB{}
+
+	autoPublishCalls := 0
+
+	_, err := New(
+		store,
+		db,
+		WithAutoPublish(func(context.Context, *corev1.RecordRef) error {
+			autoPublishCalls++
+
+			return nil
+		}),
+	).ImportRecord(t.Context(), newTestRecord())
+
+	require.Error(t, err)
+	assert.Zero(t, autoPublishCalls)
+}
+
 func TestImportRecord_PushError(t *testing.T) {
 	store := &mockStore{pushErr: errors.New("push boom")}
 	db := &mockDB{}

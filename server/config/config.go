@@ -538,6 +538,9 @@ func LoadConfig(opts ...ConfigOption) (*Config, error) {
 
 	_ = v.BindEnv("routing.republish_interval")
 
+	_ = v.BindEnv("routing.auto_publish")
+	v.SetDefault("routing.auto_publish", routing.DefaultAutoPublishEnabled)
+
 	//
 	// Routing GossipSub configuration
 	// Note: Only enable/disable is configurable. Protocol parameters (topic, message size)

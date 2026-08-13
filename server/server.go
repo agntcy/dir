@@ -167,6 +167,22 @@ type ServerOptions struct {
 
 type ServerOption func(*ServerOptions)
 
+func autoPublishRecord(db types.DatabaseAPI) ingest.AutoPublishFunc {
+	return func(_ context.Context, recordRef *corev1.RecordRef) error {
+		if _, err := db.CreatePublication(&routingv1.PublishRequest{
+			Request: &routingv1.PublishRequest_RecordRefs{
+				RecordRefs: &routingv1.RecordRefs{
+					Refs: []*corev1.RecordRef{recordRef},
+				},
+			},
+		}); err != nil {
+			return fmt.Errorf("failed to create publication: %w", err)
+		}
+
+		return nil
+	}
+}
+
 func WithDatabase(database types.DatabaseAPI) ServerOption {
 	return func(opts *ServerOptions) {
 		opts.database = database
@@ -296,7 +312,16 @@ func New(ctx context.Context, cfg *config.Config, opts ...ServerOption) (*Server
 
 	// Shared ingestion service: single authoritative path for persisting
 	// records/referrers (content store + search index + referrer DB state).
-	ingestor := ingest.New(storeAPI, databaseAPI)
+	ingestOpts := []ingest.Option{}
+
+	if cfg.Routing.AutoPublish {
+		ingestOpts = append(
+			ingestOpts,
+			ingest.WithAutoPublish(autoPublishRecord(databaseAPI)),
+		)
+	}
+
+	ingestor := ingest.New(storeAPI, databaseAPI, ingestOpts...)
 
 	routingAPI, err := routing.New(ctx, storeAPI, ingestor, oasfValidator, options)
 	if err != nil {

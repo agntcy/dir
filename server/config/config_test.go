@@ -45,6 +45,7 @@ func TestConfig(t *testing.T) {
 				"DIRECTORY_SERVER_ROUTING_KEY_PATH":                    "/path/to/key",
 				"DIRECTORY_SERVER_ROUTING_REFRESH_INTERVAL":            "5s",
 				"DIRECTORY_SERVER_ROUTING_REPUBLISH_INTERVAL":          "10m",
+				"DIRECTORY_SERVER_ROUTING_AUTO_PUBLISH":                "true",
 				"DIRECTORY_SERVER_DATABASE_TYPE":                       "postgres",
 				"DIRECTORY_SERVER_DATABASE_POSTGRES_HOST":              "localhost",
 				"DIRECTORY_SERVER_DATABASE_POSTGRES_PORT":              "5432",
@@ -103,6 +104,7 @@ func TestConfig(t *testing.T) {
 					KeyPath:           "/path/to/key",
 					RefreshInterval:   5 * time.Second,
 					RepublishInterval: 10 * time.Minute,
+					AutoPublish:       true,
 					GossipSub: routing.GossipSubConfig{
 						Enabled: true, // Default value
 					},
@@ -184,6 +186,7 @@ func TestConfig(t *testing.T) {
 				Routing: routing.Config{
 					ListenAddress:  routing.DefaultListenAddress,
 					BootstrapPeers: routing.DefaultBootstrapPeers,
+					AutoPublish:    routing.DefaultAutoPublishEnabled,
 					GossipSub: routing.GossipSubConfig{
 						Enabled: routing.DefaultGossipSubEnabled,
 					},
