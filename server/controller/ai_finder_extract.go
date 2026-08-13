@@ -6,6 +6,7 @@ package controller
 import (
 	"context"
 	"strings"
+	"unicode/utf8"
 
 	catalogv1 "github.com/agntcy/dir/api/catalog/v1"
 	"github.com/agntcy/dir/utils/extractor"
@@ -15,7 +16,9 @@ import (
 )
 
 // textMaxLen mirrors the proto validator (max_len=1024) on
-// ExtractTaxonomyRequest.text.
+// ExtractTaxonomyRequest.text. protovalidate counts max_len in Unicode code
+// points, "which may differ from the number of bytes in the string", so the
+// runtime check below counts runes rather than bytes.
 const textMaxLen = 1024
 
 // ExtractTaxonomy maps free-form text onto the OASF taxonomy.
@@ -37,10 +40,14 @@ func (c *aiFinderController) ExtractTaxonomy(ctx context.Context, req *catalogv1
 	// Enforce the proto's max_len in code: the service registers no protovalidate
 	// interceptor, so the declared constraint is not applied at runtime and an
 	// unbounded string would otherwise reach the extractor. Checked before
-	// trimming, so padding cannot smuggle a longer payload past it. Mirrors how
-	// ListAgents enforces filterMaxLen.
-	if len(req.GetText()) > textMaxLen {
-		return nil, status.Errorf(codes.InvalidArgument, "text too long (%d > %d)", len(req.GetText()), textMaxLen)
+	// trimming, so padding cannot smuggle a longer payload past it.
+	//
+	// Counted in runes, not bytes, to match what protovalidate would enforce.
+	// A byte count would reject a description well inside the declared limit
+	// whenever it is not ASCII — 1024 CJK characters are ~3 KiB — and free-form
+	// text is exactly where that shows up.
+	if n := utf8.RuneCountInString(req.GetText()); n > textMaxLen {
+		return nil, status.Errorf(codes.InvalidArgument, "text too long (%d > %d characters)", n, textMaxLen)
 	}
 
 	text := strings.TrimSpace(req.GetText())
@@ -59,6 +66,13 @@ func (c *aiFinderController) ExtractTaxonomy(ctx context.Context, req *catalogv1
 
 	res, err := c.ext.Extract(ctx, text, extractor.ExtractOptions{})
 	if err != nil {
+		// A caller that hung up or ran out of deadline is not a backend outage.
+		// Both extractor backends propagate the request context, so without this
+		// the caller's own cancellation comes back as a retryable UNAVAILABLE.
+		if ctxErr := ctx.Err(); ctxErr != nil {
+			return nil, status.FromContextError(ctxErr).Err() //nolint:wrapcheck
+		}
+
 		aiFinderLogger.Error("failed to extract taxonomy", "text_len", len(text), "error", err)
 
 		return nil, status.Error(codes.Unavailable, "taxonomy extraction is temporarily unavailable") //nolint:wrapcheck

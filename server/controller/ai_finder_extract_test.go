@@ -6,8 +6,10 @@ package controller
 import (
 	"context"
 	"errors"
+	"fmt"
 	"strings"
 	"testing"
+	"time"
 
 	catalogv1 "github.com/agntcy/dir/api/catalog/v1"
 	"github.com/agntcy/dir/server/config"
@@ -27,9 +29,14 @@ type fakeExtractor struct {
 	gotOpts extractor.ExtractOptions
 }
 
-func (f *fakeExtractor) Extract(_ context.Context, text string, opts extractor.ExtractOptions) (extractor.Result, error) {
+func (f *fakeExtractor) Extract(ctx context.Context, text string, opts extractor.ExtractOptions) (extractor.Result, error) {
 	f.gotText = text
 	f.gotOpts = opts
+
+	// Both real backends propagate the request context, so the fake does too.
+	if err := ctx.Err(); err != nil {
+		return extractor.Result{}, fmt.Errorf("fake extract: %w", err)
+	}
 
 	if f.err != nil {
 		return extractor.Result{}, f.err
@@ -144,6 +151,60 @@ func TestExtractTaxonomy_InvalidRequests(t *testing.T) {
 			require.Error(t, err)
 			assert.Equal(t, codes.InvalidArgument, status.Code(err))
 			assert.Empty(t, ext.gotText, "the extractor is not called for an invalid request")
+		})
+	}
+}
+
+func TestExtractTaxonomy_MaxLengthCountsRunesNotBytes(t *testing.T) {
+	// protovalidate's max_len is in Unicode code points, so a byte-counting check
+	// would reject non-ASCII text the contract allows — at two bytes per rune
+	// here, and three for CJK.
+	ext := &fakeExtractor{}
+	text := strings.Repeat("é", textMaxLen)
+	require.Greater(t, len(text), textMaxLen, "the fixture must be over the limit in bytes")
+
+	_, err := extractCtrl(ext).ExtractTaxonomy(context.Background(),
+		&catalogv1.ExtractTaxonomyRequest{Text: text})
+	require.NoError(t, err)
+	assert.Equal(t, text, ext.gotText)
+
+	// One rune over is still rejected.
+	_, err = extractCtrl(&fakeExtractor{}).ExtractTaxonomy(context.Background(),
+		&catalogv1.ExtractTaxonomyRequest{Text: text + "é"})
+	require.Error(t, err)
+	assert.Equal(t, codes.InvalidArgument, status.Code(err))
+}
+
+func TestExtractTaxonomy_PreservesContextStatus(t *testing.T) {
+	// A caller that hung up or ran out of deadline gets its own status back, not
+	// a retryable UNAVAILABLE that blames the backend.
+	tests := []struct {
+		name string
+		ctx  func() (context.Context, context.CancelFunc)
+		want codes.Code
+	}{
+		{"canceled", func() (context.Context, context.CancelFunc) {
+			ctx, cancel := context.WithCancel(context.Background())
+			cancel()
+
+			return ctx, func() {}
+		}, codes.Canceled},
+		{"deadline exceeded", func() (context.Context, context.CancelFunc) {
+			ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(-time.Second))
+
+			return ctx, cancel
+		}, codes.DeadlineExceeded},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ctx, cancel := tt.ctx()
+			defer cancel()
+
+			_, err := extractCtrl(&fakeExtractor{}).ExtractTaxonomy(ctx,
+				&catalogv1.ExtractTaxonomyRequest{Text: "anything"})
+			require.Error(t, err)
+			assert.Equal(t, tt.want, status.Code(err))
 		})
 	}
 }
