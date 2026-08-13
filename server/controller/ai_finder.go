@@ -47,16 +47,15 @@ type aiFinderController struct {
 	db     types.CatalogDatabaseAPI
 	store  types.StoreAPI
 	cfg    config.HTTPGatewayConfig
-	//nolint:unused // consumed by the extractor-backed RPCs added on top of this wiring.
-	ext extractor.Extractor
+	ext    extractor.Extractor
 }
 
 // AIFinderOption configures optional dependencies of the AI Finder controller.
 type AIFinderOption func(*aiFinderController)
 
-// WithExtractor wires an OASF extractor resolved by the server. It is the
-// injection point for the extractor-backed RPCs; controllers built without it
-// simply have no extractor available.
+// WithExtractor wires an OASF extractor resolved by the server, enabling the
+// extractor-backed RPCs. Without it ExtractTaxonomy returns UNAVAILABLE
+// (HTTP 503); all other RPCs remain functional.
 func WithExtractor(ext extractor.Extractor) AIFinderOption {
 	return func(c *aiFinderController) {
 		c.ext = ext
