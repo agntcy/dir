@@ -25,8 +25,27 @@ type Config struct {
 	// If empty, caching will not be used.
 	CacheDir string `json:"cache_dir,omitempty" mapstructure:"cache_dir"`
 
-	// Registry address to connect to
+	// Registry address this server dials for its own store operations.
+	// Prefer a private endpoint (e.g. an in-cluster registry service): this
+	// value is only handed to remote peers when AdvertisedRegistryAddress is
+	// empty.
 	RegistryAddress string `json:"registry_address,omitempty" mapstructure:"registry_address"`
+
+	// AdvertisedRegistryAddress is the registry address handed to remote peers
+	// via SyncService/RequestRegistryCredentials so they can pull record content
+	// from this node. Set it when RegistryAddress is not reachable from outside,
+	// which is the usual case for a .svc.cluster.local registry service fronted
+	// by a public ingress. Empty falls back to RegistryAddress, preserving the
+	// single-address behavior.
+	AdvertisedRegistryAddress string `json:"advertised_registry_address,omitempty" mapstructure:"advertised_registry_address"`
+
+	// AdvertisedInsecure is the TLS mode advertised alongside
+	// AdvertisedRegistryAddress: true tells peers to use plain HTTP. It is
+	// deliberately independent of AuthConfig.Insecure, because the dialed
+	// endpoint is commonly plain HTTP in-cluster while the advertised one is
+	// HTTPS behind an ingress. Ignored when AdvertisedRegistryAddress is empty,
+	// in which case AuthConfig.Insecure is advertised instead.
+	AdvertisedInsecure bool `json:"advertised_insecure,omitempty" mapstructure:"advertised_insecure"`
 
 	// Repository name to connect to
 	RepositoryName string `json:"repository_name,omitempty" mapstructure:"repository_name"`
@@ -35,18 +54,48 @@ type Config struct {
 	AuthConfig `json:"auth_config" mapstructure:"auth_config"`
 }
 
-// GetRegistryAddress returns the registry address with scheme and default applied.
-// If RegistryAddress is empty, DefaultRegistryAddress is used. When the address
-// has no scheme, http is used for insecure (e.g. E2E, internal) and https otherwise.
+// GetRegistryAddress returns the registry address this server dials, with scheme
+// and default applied. If RegistryAddress is empty, DefaultRegistryAddress is
+// used. When the address has no scheme, http is used for insecure (e.g. E2E,
+// internal) and https otherwise.
 func (c Config) GetRegistryAddress() (string, error) {
 	addr := c.RegistryAddress
 	if addr == "" {
 		addr = DefaultRegistryAddress
 	}
 
-	// Add explicit scheme when none is present
-	if !strings.HasPrefix(addr, "http://") && !strings.HasPrefix(addr, "https://") {
-		if c.Insecure {
+	return addressWithScheme(addr, c.Insecure)
+}
+
+// GetAdvertisedRegistryAddress returns the registry address to hand to remote
+// peers, with scheme applied. It falls back to GetRegistryAddress when no
+// advertised address is configured.
+func (c Config) GetAdvertisedRegistryAddress() (string, error) {
+	if c.AdvertisedRegistryAddress == "" {
+		return c.GetRegistryAddress()
+	}
+
+	return addressWithScheme(c.AdvertisedRegistryAddress, c.AdvertisedInsecure)
+}
+
+// GetAdvertisedInsecure reports the TLS mode that belongs with
+// GetAdvertisedRegistryAddress, so peers are told how to reach the advertised
+// endpoint rather than the dialed one.
+func (c Config) GetAdvertisedInsecure() bool {
+	if c.AdvertisedRegistryAddress == "" {
+		return c.Insecure
+	}
+
+	return c.AdvertisedInsecure
+}
+
+// addressWithScheme prefixes addr with an explicit scheme when it has none, and
+// rejects any scheme other than http or https. Presence of "://" is what marks
+// an address as already carrying a scheme, so that e.g. "ftp://host" is rejected
+// rather than turned into "https://ftp://host".
+func addressWithScheme(addr string, insecure bool) (string, error) {
+	if !strings.Contains(addr, "://") {
+		if insecure {
 			addr = "http://" + addr
 		} else {
 			addr = "https://" + addr
@@ -65,6 +114,15 @@ func (c Config) GetRegistryAddress() (string, error) {
 	return addr, nil
 }
 
+// GetRepositoryName returns RepositoryName, or DefaultRepositoryName when unset.
+func (c Config) GetRepositoryName() string {
+	if c.RepositoryName == "" {
+		return DefaultRepositoryName
+	}
+
+	return c.RepositoryName
+}
+
 // GetRepositoryURL returns the full repository URL (registry address + repository name).
 func (c Config) GetRepositoryURL() string {
 	address := c.RegistryAddress
@@ -74,6 +132,24 @@ func (c Config) GetRepositoryURL() string {
 	}
 
 	return address
+}
+
+// GetAdvertisedRepositoryURL returns the advertised registry address joined with
+// the repository name, in the scheme-less form routing publishes as an
+// "/oci/<addr>" multiaddr. Empty when no advertised address is configured.
+func (c Config) GetAdvertisedRepositoryURL() string {
+	if c.AdvertisedRegistryAddress == "" {
+		return ""
+	}
+
+	// The multiaddr carries a host form, so drop any configured scheme instead of
+	// letting path.Join collapse it into "https:/host".
+	addr := c.AdvertisedRegistryAddress
+	if _, rest, found := strings.Cut(addr, "://"); found {
+		addr = rest
+	}
+
+	return path.Join(addr, c.GetRepositoryName())
 }
 
 // AuthConfig represents the configuration for authentication.

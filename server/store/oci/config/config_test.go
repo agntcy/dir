@@ -19,3 +19,109 @@ func TestGetRegistryAddressUsesDefaultRegistryPort(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, "http://127.0.0.1:5555", address)
 }
+
+// The advertised address falls back to the dialed one, which is what keeps
+// single-address deployments (and any config written before the split) working.
+func TestGetAdvertisedRegistryAddressFallsBackToDialed(t *testing.T) {
+	cfg := Config{
+		RegistryAddress: "dir-zot.dir.svc.cluster.local:5000",
+		AuthConfig:      AuthConfig{Insecure: true},
+	}
+
+	address, err := cfg.GetAdvertisedRegistryAddress()
+
+	require.NoError(t, err)
+	require.Equal(t, "http://dir-zot.dir.svc.cluster.local:5000", address)
+	require.True(t, cfg.GetAdvertisedInsecure())
+}
+
+// The advertised endpoint carries its own TLS mode: in-cluster registries are
+// commonly plain HTTP while the public endpoint they are fronted by is HTTPS.
+func TestGetAdvertisedRegistryAddressUsesOwnTLSMode(t *testing.T) {
+	cfg := Config{
+		RegistryAddress:           "dir-zot.dir.svc.cluster.local:5000",
+		AdvertisedRegistryAddress: "store.example.com",
+		AuthConfig:                AuthConfig{Insecure: true},
+	}
+
+	dialed, err := cfg.GetRegistryAddress()
+	require.NoError(t, err)
+	require.Equal(t, "http://dir-zot.dir.svc.cluster.local:5000", dialed)
+
+	advertised, err := cfg.GetAdvertisedRegistryAddress()
+	require.NoError(t, err)
+	require.Equal(t, "https://store.example.com", advertised)
+	require.False(t, cfg.GetAdvertisedInsecure())
+}
+
+func TestGetAdvertisedRegistryAddressInsecure(t *testing.T) {
+	cfg := Config{
+		RegistryAddress:           "dir-zot.dir.svc.cluster.local:5000",
+		AdvertisedRegistryAddress: "store.example.com:5000",
+		AdvertisedInsecure:        true,
+	}
+
+	advertised, err := cfg.GetAdvertisedRegistryAddress()
+
+	require.NoError(t, err)
+	require.Equal(t, "http://store.example.com:5000", advertised)
+	require.True(t, cfg.GetAdvertisedInsecure())
+}
+
+func TestGetAdvertisedRegistryAddressKeepsExplicitScheme(t *testing.T) {
+	advertised, err := Config{
+		AdvertisedRegistryAddress: "https://store.example.com",
+		AdvertisedInsecure:        true,
+	}.GetAdvertisedRegistryAddress()
+
+	require.NoError(t, err)
+	require.Equal(t, "https://store.example.com", advertised)
+}
+
+func TestGetAdvertisedRegistryAddressRejectsBadScheme(t *testing.T) {
+	_, err := Config{
+		AdvertisedRegistryAddress: "ftp://store.example.com",
+	}.GetAdvertisedRegistryAddress()
+
+	require.Error(t, err)
+}
+
+func TestGetAdvertisedRepositoryURL(t *testing.T) {
+	tests := []struct {
+		name     string
+		cfg      Config
+		expected string
+	}{
+		{
+			name:     "empty when no advertised address",
+			cfg:      Config{RegistryAddress: "dir-zot.dir.svc.cluster.local:5000", RepositoryName: "dir"},
+			expected: "",
+		},
+		{
+			name:     "joins advertised address and repository",
+			cfg:      Config{AdvertisedRegistryAddress: "ghcr.io/org", RepositoryName: "agents"},
+			expected: "ghcr.io/org/agents",
+		},
+		{
+			name:     "applies default repository name",
+			cfg:      Config{AdvertisedRegistryAddress: "store.example.com"},
+			expected: "store.example.com/" + DefaultRepositoryName,
+		},
+		{
+			name:     "drops scheme so the host form stays intact",
+			cfg:      Config{AdvertisedRegistryAddress: "https://store.example.com", RepositoryName: "dir"},
+			expected: "store.example.com/dir",
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			require.Equal(t, test.expected, test.cfg.GetAdvertisedRepositoryURL())
+		})
+	}
+}
+
+func TestGetRepositoryName(t *testing.T) {
+	require.Equal(t, DefaultRepositoryName, Config{}.GetRepositoryName())
+	require.Equal(t, "custom", Config{RepositoryName: "custom"}.GetRepositoryName())
+}
