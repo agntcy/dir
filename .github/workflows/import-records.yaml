@@ -39,6 +39,13 @@ on:
         description: "Enable dirctl import debug output (dedup and validation details)"
         type: boolean
         default: false
+      enrichment:
+        description: "Record enrichment backend: extractor (local model) or llm (Azure OpenAI + MCP)"
+        type: choice
+        options:
+          - extractor
+          - llm
+        default: extractor
       sign_max_retries:
         description: "Per-CID signature attempts before deleting unsigned records"
         type: number
@@ -69,6 +76,7 @@ jobs:
       sign: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.sign || 'true' }}
       force: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.force || 'false' }}
       debug: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.debug || 'false' }}
+      enrichment: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.enrichment || 'extractor' }}
       sign_max_retries: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.sign_max_retries || '3' }}
       sign_cleanup_on_failure: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.sign_cleanup_on_failure || 'true' }}
     env:
@@ -162,6 +170,7 @@ jobs:
       SIGN: ${{ needs.setup-matrix.outputs.sign }}
       FORCE: ${{ needs.setup-matrix.outputs.force }}
       DEBUG: ${{ needs.setup-matrix.outputs.debug }}
+      ENRICHMENT: ${{ needs.setup-matrix.outputs.enrichment }}
       SIGN_MAX_RETRIES: ${{ needs.setup-matrix.outputs.sign_max_retries }}
       SIGN_CLEANUP_ON_FAILURE: ${{ needs.setup-matrix.outputs.sign_cleanup_on_failure }}
     steps:
@@ -181,11 +190,26 @@ jobs:
           echo "${GITHUB_WORKSPACE}/.bin" >> "${GITHUB_PATH}"
           echo "dirctl_path=${GITHUB_WORKSPACE}/.bin/dirctl" >> "${GITHUB_OUTPUT}"
 
+      - name: Init dirctl
+        if: ${{ env.ENRICHMENT == 'extractor' }}
+        uses: ./.github/actions/init-dirctl
+        with:
+          dirctl_path: ${{ steps.setup-dirctl.outputs.dirctl_path }}
+
       - name: Create Import Config
         env:
           DIRCTL_PATH: ${{ steps.setup-dirctl.outputs.dirctl_path }}
         run: |
-          cat > import_ci.yaml << EOF
+          if [[ "${ENRICHMENT}" == "extractor" ]]; then
+            cat > import_ci.yaml << EOF
+          type: mcp-registry
+          url: https://registry.modelcontextprotocol.io/v0.1
+
+          enricher:
+            extractor: {}
+          EOF
+          else
+            cat > import_ci.yaml << EOF
           type: mcp-registry
           url: https://registry.modelcontextprotocol.io/v0.1
 
@@ -203,6 +227,7 @@ jobs:
                       OASF_API_VALIDATION_SCHEMA_URL: https://schema.oasf.outshift.com
                       DIRECTORY_CLIENT_AUTH_MODE: insecure
           EOF
+          fi
 
       - name: Fetch Directory OIDC token
         id: oidc-dir-import
@@ -349,6 +374,7 @@ jobs:
       SIGN: ${{ needs.setup-matrix.outputs.sign }}
       FORCE: ${{ needs.setup-matrix.outputs.force }}
       DEBUG: ${{ needs.setup-matrix.outputs.debug }}
+      ENRICHMENT: ${{ needs.setup-matrix.outputs.enrichment }}
       SIGN_MAX_RETRIES: ${{ needs.setup-matrix.outputs.sign_max_retries }}
       SIGN_CLEANUP_ON_FAILURE: ${{ needs.setup-matrix.outputs.sign_cleanup_on_failure }}
     steps:
@@ -367,6 +393,12 @@ jobs:
           chmod +x .bin/dirctl
           echo "${GITHUB_WORKSPACE}/.bin" >> "${GITHUB_PATH}"
           echo "dirctl_path=${GITHUB_WORKSPACE}/.bin/dirctl" >> "${GITHUB_OUTPUT}"
+
+      - name: Init dirctl
+        if: ${{ env.ENRICHMENT == 'extractor' }}
+        uses: ./.github/actions/init-dirctl
+        with:
+          dirctl_path: ${{ steps.setup-dirctl.outputs.dirctl_path }}
 
       - name: Cache skill repo
         uses: actions/cache@caa296126883cff596d87d8935842f9db880ef25 # v5.1.0
@@ -403,7 +435,18 @@ jobs:
           AUTHORS_JSON: ${{ toJSON(matrix.entry.authors) }}
         run: |
           AUTHORS_YAML=$(echo "$AUTHORS_JSON" | jq -r '.[] | "- " + .')
-          cat > import_ci.yaml << EOF
+          if [[ "${ENRICHMENT}" == "extractor" ]]; then
+            cat > import_ci.yaml << EOF
+          type: agent-skill
+
+          authors:
+          ${AUTHORS_YAML}
+
+          enricher:
+            extractor: {}
+          EOF
+          else
+            cat > import_ci.yaml << EOF
           type: agent-skill
 
           authors:
@@ -423,6 +466,7 @@ jobs:
                       OASF_API_VALIDATION_SCHEMA_URL: https://schema.oasf.outshift.com
                       DIRECTORY_CLIENT_AUTH_MODE: insecure
           EOF
+          fi
 
       - name: Fetch Directory OIDC token
         id: oidc-dir-import
@@ -556,6 +600,7 @@ jobs:
       RUN_MCP_IMPORT: ${{ needs.setup-matrix.outputs.run_mcp_import }}
       RUN_AGENT_SKILLS_IMPORT: ${{ needs.setup-matrix.outputs.run_agent_skills_import }}
       DEBUG: ${{ needs.setup-matrix.outputs.debug }}
+      ENRICHMENT: ${{ needs.setup-matrix.outputs.enrichment }}
       SIGN_MAX_RETRIES: ${{ needs.setup-matrix.outputs.sign_max_retries }}
       SIGN_CLEANUP_ON_FAILURE: ${{ needs.setup-matrix.outputs.sign_cleanup_on_failure }}
       SETUP_MATRIX_RESULT: ${{ needs.setup-matrix.result }}
