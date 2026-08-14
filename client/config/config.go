@@ -81,6 +81,7 @@ type Context struct {
 	OIDCIssuer       string   `yaml:"oidc_issuer"`
 	OIDCClientID     string   `yaml:"oidc_client_id"`
 	OIDCScopes       []string `yaml:"oidc_scopes"`
+	OIDCAudience     string   `yaml:"oidc_audience"`
 	AuthToken        string   `yaml:"auth_token"`
 	Doctor           Doctor   `yaml:"doctor"`
 }
@@ -787,6 +788,7 @@ func applyEnv(cfg *dirclient.Config, prefix string) error {
 		"jwt_audience":       &cfg.JWTAudience,
 		"oidc_issuer":        &cfg.OIDCIssuer,
 		"oidc_client_id":     &cfg.OIDCClientID,
+		"oidc_audience":      &cfg.OIDCAudience,
 		"auth_token":         &cfg.AuthToken,
 	}
 
@@ -881,11 +883,16 @@ func applyNonZeroOverrides(cfg *dirclient.Config, overrides *dirclient.Config) {
 		cfg.OIDCScopes = append([]string(nil), overrides.OIDCScopes...)
 	}
 
+	if overrides.OIDCAudience != "" {
+		cfg.OIDCAudience = overrides.OIDCAudience
+	}
+
 	if overrides.AuthToken != "" {
 		cfg.AuthToken = overrides.AuthToken
 	}
 }
 
+//nolint:cyclop // Flat one-case-per-field dispatch; splitting it would only hide the mapping.
 func applyOverrideField(cfg *dirclient.Config, overrides *dirclient.Config, field string) error {
 	switch field {
 	case "server_address":
@@ -912,6 +919,8 @@ func applyOverrideField(cfg *dirclient.Config, overrides *dirclient.Config, fiel
 		cfg.OIDCClientID = overrides.OIDCClientID
 	case "oidc_scopes":
 		cfg.OIDCScopes = append([]string(nil), overrides.OIDCScopes...)
+	case "oidc_audience":
+		cfg.OIDCAudience = overrides.OIDCAudience
 	case "auth_token":
 		cfg.AuthToken = overrides.AuthToken
 	default:
@@ -1025,6 +1034,7 @@ func (c Context) toClientConfig() dirclient.Config {
 		OIDCIssuer:       c.OIDCIssuer,
 		OIDCClientID:     c.OIDCClientID,
 		OIDCScopes:       append([]string(nil), c.OIDCScopes...),
+		OIDCAudience:     c.OIDCAudience,
 		AuthToken:        c.AuthToken,
 	}
 }

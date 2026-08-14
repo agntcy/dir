@@ -57,6 +57,10 @@ dirctl --auth-mode=oidc --server-addr ads.outshift.io:443 search --skill "AI"
 ```
 
 Pre-issued tokens: `--auth-token` or `DIRECTORY_CLIENT_AUTH_TOKEN` for CI and automation.
+A pre-issued token cannot be renewed, so a command that runs longer than the token's lifetime
+fails partway through. Inside GitHub Actions, prefer `--oidc-audience` (with job permission
+`id-token: write`) and omit `--auth-token`: `dirctl` then mints its own tokens and renews them
+for as long as the command runs.
 Other modes: `--auth-mode=x509`, `jwt`, `token`, `tls`, `oidc`, `insecure`, or `none`. When
 `--auth-mode` is empty, the client auto-detects OIDC (cached token, issuer, or client ID) and
 falls back to insecure for local development. SPIFFE modes (`x509`, `jwt`, `token`) require an
