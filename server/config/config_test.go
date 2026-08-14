@@ -29,41 +29,43 @@ func TestConfig(t *testing.T) {
 		{
 			Name: "Custom config",
 			EnvVars: map[string]string{
-				"DIRECTORY_SERVER_LISTEN_ADDRESS":                      "example.com:8889",
-				"DIRECTORY_SERVER_OASF_API_VALIDATION_SCHEMA_URL":      "https://custom.schema.url",
-				"DIRECTORY_SERVER_STORE_PROVIDER":                      "provider",
-				"DIRECTORY_SERVER_STORE_OCI_LOCAL_DIR":                 "local-dir",
-				"DIRECTORY_SERVER_STORE_OCI_REGISTRY_ADDRESS":          "example.com:5001",
-				"DIRECTORY_SERVER_STORE_OCI_REPOSITORY_NAME":           "test-dir",
-				"DIRECTORY_SERVER_STORE_OCI_AUTH_CONFIG_INSECURE":      "true",
-				"DIRECTORY_SERVER_STORE_OCI_AUTH_CONFIG_USERNAME":      "username",
-				"DIRECTORY_SERVER_STORE_OCI_AUTH_CONFIG_PASSWORD":      "password",
-				"DIRECTORY_SERVER_STORE_OCI_AUTH_CONFIG_ACCESS_TOKEN":  "access-token",
-				"DIRECTORY_SERVER_STORE_OCI_AUTH_CONFIG_REFRESH_TOKEN": "refresh-token",
-				"DIRECTORY_SERVER_ROUTING_LISTEN_ADDRESS":              "/ip4/1.1.1.1/tcp/1",
-				"DIRECTORY_SERVER_ROUTING_BOOTSTRAP_PEERS":             "/ip4/1.1.1.1/tcp/1,/ip4/1.1.1.1/tcp/2",
-				"DIRECTORY_SERVER_ROUTING_KEY_PATH":                    "/path/to/key",
-				"DIRECTORY_SERVER_ROUTING_REFRESH_INTERVAL":            "5s",
-				"DIRECTORY_SERVER_ROUTING_REPUBLISH_INTERVAL":          "10m",
-				"DIRECTORY_SERVER_DATABASE_TYPE":                       "postgres",
-				"DIRECTORY_SERVER_DATABASE_POSTGRES_HOST":              "localhost",
-				"DIRECTORY_SERVER_DATABASE_POSTGRES_PORT":              "5432",
-				"DIRECTORY_SERVER_DATABASE_POSTGRES_DATABASE":          "dir",
-				"DIRECTORY_SERVER_DATABASE_POSTGRES_SSL_MODE":          "auto",
-				"DIRECTORY_SERVER_SYNC_AUTH_CONFIG_USERNAME":           "sync-user",
-				"DIRECTORY_SERVER_SYNC_AUTH_CONFIG_PASSWORD":           "sync-password",
-				"DIRECTORY_SERVER_AUTHZ_ENABLED":                       "true",
-				"DIRECTORY_SERVER_AUTHZ_ENFORCER_POLICY_FILE_PATH":     "/tmp/authz_policies.csv",
-				"DIRECTORY_SERVER_PUBLICATION_SCHEDULER_INTERVAL":      "10s",
-				"DIRECTORY_SERVER_PUBLICATION_WORKER_COUNT":            "1",
-				"DIRECTORY_SERVER_PUBLICATION_WORKER_TIMEOUT":          "10s",
-				"DIRECTORY_SERVER_HTTP_GATEWAY_ENABLED":                "true",
-				"DIRECTORY_SERVER_HTTP_GATEWAY_LISTEN_ADDRESS":         "address:123",
-				"DIRECTORY_SERVER_HTTP_GATEWAY_PUBLIC_URL":             "https://example.com",
-				"DIRECTORY_SERVER_HTTP_GATEWAY_CATALOG_TITLE":          "Cisco AI Catalog",
-				"DIRECTORY_SERVER_EXTRACTOR_REMOTE_ADDR":               "oasf-sdk:5000",
-				"DIRECTORY_SERVER_EXTRACTOR_ASSET_DIR":                 "/var/lib/oasf-extractor",
-				"DIRECTORY_SERVER_EXTRACTOR_OASF_URL":                  "https://schema.example.com",
+				"DIRECTORY_SERVER_LISTEN_ADDRESS":                        "example.com:8889",
+				"DIRECTORY_SERVER_OASF_API_VALIDATION_SCHEMA_URL":        "https://custom.schema.url",
+				"DIRECTORY_SERVER_STORE_PROVIDER":                        "provider",
+				"DIRECTORY_SERVER_STORE_OCI_LOCAL_DIR":                   "local-dir",
+				"DIRECTORY_SERVER_STORE_OCI_REGISTRY_ADDRESS":            "example.com:5001",
+				"DIRECTORY_SERVER_STORE_OCI_ADVERTISED_REGISTRY_ADDRESS": "public.example.com",
+				"DIRECTORY_SERVER_STORE_OCI_ADVERTISED_INSECURE":         "true",
+				"DIRECTORY_SERVER_STORE_OCI_REPOSITORY_NAME":             "test-dir",
+				"DIRECTORY_SERVER_STORE_OCI_AUTH_CONFIG_INSECURE":        "true",
+				"DIRECTORY_SERVER_STORE_OCI_AUTH_CONFIG_USERNAME":        "username",
+				"DIRECTORY_SERVER_STORE_OCI_AUTH_CONFIG_PASSWORD":        "password",
+				"DIRECTORY_SERVER_STORE_OCI_AUTH_CONFIG_ACCESS_TOKEN":    "access-token",
+				"DIRECTORY_SERVER_STORE_OCI_AUTH_CONFIG_REFRESH_TOKEN":   "refresh-token",
+				"DIRECTORY_SERVER_ROUTING_LISTEN_ADDRESS":                "/ip4/1.1.1.1/tcp/1",
+				"DIRECTORY_SERVER_ROUTING_BOOTSTRAP_PEERS":               "/ip4/1.1.1.1/tcp/1,/ip4/1.1.1.1/tcp/2",
+				"DIRECTORY_SERVER_ROUTING_KEY_PATH":                      "/path/to/key",
+				"DIRECTORY_SERVER_ROUTING_REFRESH_INTERVAL":              "5s",
+				"DIRECTORY_SERVER_ROUTING_REPUBLISH_INTERVAL":            "10m",
+				"DIRECTORY_SERVER_DATABASE_TYPE":                         "postgres",
+				"DIRECTORY_SERVER_DATABASE_POSTGRES_HOST":                "localhost",
+				"DIRECTORY_SERVER_DATABASE_POSTGRES_PORT":                "5432",
+				"DIRECTORY_SERVER_DATABASE_POSTGRES_DATABASE":            "dir",
+				"DIRECTORY_SERVER_DATABASE_POSTGRES_SSL_MODE":            "auto",
+				"DIRECTORY_SERVER_SYNC_AUTH_CONFIG_USERNAME":             "sync-user",
+				"DIRECTORY_SERVER_SYNC_AUTH_CONFIG_PASSWORD":             "sync-password",
+				"DIRECTORY_SERVER_AUTHZ_ENABLED":                         "true",
+				"DIRECTORY_SERVER_AUTHZ_ENFORCER_POLICY_FILE_PATH":       "/tmp/authz_policies.csv",
+				"DIRECTORY_SERVER_PUBLICATION_SCHEDULER_INTERVAL":        "10s",
+				"DIRECTORY_SERVER_PUBLICATION_WORKER_COUNT":              "1",
+				"DIRECTORY_SERVER_PUBLICATION_WORKER_TIMEOUT":            "10s",
+				"DIRECTORY_SERVER_HTTP_GATEWAY_ENABLED":                  "true",
+				"DIRECTORY_SERVER_HTTP_GATEWAY_LISTEN_ADDRESS":           "address:123",
+				"DIRECTORY_SERVER_HTTP_GATEWAY_PUBLIC_URL":               "https://example.com",
+				"DIRECTORY_SERVER_HTTP_GATEWAY_CATALOG_TITLE":            "Cisco AI Catalog",
+				"DIRECTORY_SERVER_EXTRACTOR_REMOTE_ADDR":                 "oasf-sdk:5000",
+				"DIRECTORY_SERVER_EXTRACTOR_ASSET_DIR":                   "/var/lib/oasf-extractor",
+				"DIRECTORY_SERVER_EXTRACTOR_OASF_URL":                    "https://schema.example.com",
 			},
 			ExpectedConfig: &Config{
 				ListenAddress: "example.com:8889",
@@ -79,9 +81,11 @@ func TestConfig(t *testing.T) {
 				Store: store.Config{
 					Provider: "provider",
 					OCI: oci.Config{
-						LocalDir:        "local-dir",
-						RegistryAddress: "example.com:5001",
-						RepositoryName:  "test-dir",
+						LocalDir:                  "local-dir",
+						RegistryAddress:           "example.com:5001",
+						AdvertisedRegistryAddress: "public.example.com",
+						AdvertisedInsecure:        true,
+						RepositoryName:            "test-dir",
 						AuthConfig: oci.AuthConfig{
 							Insecure:     true,
 							Username:     "username",
@@ -706,4 +710,44 @@ func TestConnectionConfig_MapstructureTags(t *testing.T) {
 	assert.NotZero(t, cfg.Keepalive.MaxConnectionIdle)
 	assert.NotZero(t, cfg.Keepalive.MaxConnectionAge)
 	assert.NotZero(t, cfg.Keepalive.Time)
+}
+
+// TestAdvertisedOCIAddress covers how the /oci/ multiaddr endpoint is resolved:
+// an explicit routing value wins, otherwise it is derived from the advertised
+// registry address so the public endpoint is configured in one place only.
+func TestAdvertisedOCIAddress(t *testing.T) {
+	tests := []struct {
+		name     string
+		config   Config
+		expected string
+	}{
+		{
+			name:     "empty when neither is set",
+			config:   Config{Store: store.Config{OCI: oci.Config{RegistryAddress: "dir-zot.dir.svc.cluster.local:5000", RepositoryName: "dir"}}},
+			expected: "",
+		},
+		{
+			name: "derived from advertised registry address",
+			config: Config{Store: store.Config{OCI: oci.Config{
+				RegistryAddress:           "dir-zot.dir.svc.cluster.local:5000",
+				AdvertisedRegistryAddress: "store.example.com",
+				RepositoryName:            "dir",
+			}}},
+			expected: "store.example.com/dir",
+		},
+		{
+			name: "explicit routing value wins",
+			config: Config{
+				Store:   store.Config{OCI: oci.Config{AdvertisedRegistryAddress: "store.example.com", RepositoryName: "dir"}},
+				Routing: routing.Config{DirectoryOCIAddress: "ghcr.io/org/agents"},
+			},
+			expected: "ghcr.io/org/agents",
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			assert.Equal(t, test.expected, test.config.AdvertisedOCIAddress())
+		})
+	}
 }

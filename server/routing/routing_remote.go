@@ -91,7 +91,7 @@ func newRemote(parentCtx context.Context,
 	server, err := p2p.New(parentCtx,
 		p2p.WithListenAddress(opts.Config().Routing.ListenAddress),
 		p2p.WithDirectoryAPIAddress(opts.Config().Routing.DirectoryAPIAddress),
-		p2p.WithDirectoryOCIAddress(opts.Config().Routing.DirectoryOCIAddress),
+		p2p.WithDirectoryOCIAddress(opts.Config().AdvertisedOCIAddress()),
 		p2p.WithBootstrapAddrs(opts.Config().Routing.BootstrapPeers),
 		p2p.WithRefreshInterval(refreshInterval),
 		p2p.WithRandevous(ProtocolRendezvous), // enable libp2p auto-discovery
