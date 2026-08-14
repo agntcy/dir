@@ -44,7 +44,8 @@ type Config struct {
 	// deliberately independent of AuthConfig.Insecure, because the dialed
 	// endpoint is commonly plain HTTP in-cluster while the advertised one is
 	// HTTPS behind an ingress. Ignored when AdvertisedRegistryAddress is empty,
-	// in which case AuthConfig.Insecure is advertised instead.
+	// in which case AuthConfig.Insecure is advertised instead, and when that
+	// address carries an explicit scheme, which takes precedence.
 	AdvertisedInsecure bool `json:"advertised_insecure,omitempty" mapstructure:"advertised_insecure"`
 
 	// Repository name to connect to
@@ -81,9 +82,18 @@ func (c Config) GetAdvertisedRegistryAddress() (string, error) {
 // GetAdvertisedInsecure reports the TLS mode that belongs with
 // GetAdvertisedRegistryAddress, so peers are told how to reach the advertised
 // endpoint rather than the dialed one.
+//
+// An explicit scheme on the advertised address wins over AdvertisedInsecure.
+// Peers act on this boolean alone - regsync strips the scheme off the address
+// before deriving its TLS mode from it - so letting the two disagree would
+// silently disable TLS against an https endpoint.
 func (c Config) GetAdvertisedInsecure() bool {
 	if c.AdvertisedRegistryAddress == "" {
 		return c.Insecure
+	}
+
+	if scheme, _, found := strings.Cut(c.AdvertisedRegistryAddress, "://"); found {
+		return scheme == "http"
 	}
 
 	return c.AdvertisedInsecure

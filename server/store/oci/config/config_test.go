@@ -69,13 +69,29 @@ func TestGetAdvertisedRegistryAddressInsecure(t *testing.T) {
 }
 
 func TestGetAdvertisedRegistryAddressKeepsExplicitScheme(t *testing.T) {
-	advertised, err := Config{
-		AdvertisedRegistryAddress: "https://store.example.com",
-		AdvertisedInsecure:        true,
-	}.GetAdvertisedRegistryAddress()
+	cfg := Config{AdvertisedRegistryAddress: "https://store.example.com"}
+
+	advertised, err := cfg.GetAdvertisedRegistryAddress()
 
 	require.NoError(t, err)
 	require.Equal(t, "https://store.example.com", advertised)
+	require.False(t, cfg.GetAdvertisedInsecure())
+}
+
+// Peers receive the address and the TLS mode as separate values and act on the
+// boolean, so the two must not be able to disagree: an explicit scheme decides.
+func TestGetAdvertisedInsecureFollowsExplicitScheme(t *testing.T) {
+	httpsAddr := Config{
+		AdvertisedRegistryAddress: "https://store.example.com",
+		AdvertisedInsecure:        true,
+	}
+	require.False(t, httpsAddr.GetAdvertisedInsecure())
+
+	httpAddr := Config{
+		AdvertisedRegistryAddress: "http://dir-zot.dir.svc.cluster.local:5000",
+		AdvertisedInsecure:        false,
+	}
+	require.True(t, httpAddr.GetAdvertisedInsecure())
 }
 
 func TestGetAdvertisedRegistryAddressRejectsBadScheme(t *testing.T) {

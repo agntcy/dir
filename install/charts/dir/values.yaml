@@ -190,7 +190,8 @@ apiserver:
         # TLS mode advertised with advertised_registry_address: true tells peers
         # to use plain HTTP. Independent of auth_config.insecure below, since the
         # in-cluster endpoint is typically HTTP while the public one is HTTPS.
-        # Ignored when advertised_registry_address is empty.
+        # Ignored when advertised_registry_address is empty, and when that
+        # address spells out an http:// or https:// scheme, which wins.
         advertised_insecure: false
 
         # OCI repository where records are stored as tags, manifests, and blobs.

@@ -80,7 +80,7 @@ config:
 
       # TLS mode advertised with advertised_registry_address (true = plain HTTP).
       # Independent of auth_config.insecure; ignored when the advertised address
-      # is empty.
+      # is empty or spells out an http:// or https:// scheme, which wins.
       advertised_insecure: false
 
       # All data will be stored under this repo.
