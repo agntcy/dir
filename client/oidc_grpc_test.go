@@ -87,6 +87,11 @@ func TestOIDCBearerCredentials_PropagatesTokenSourceError(t *testing.T) {
 func TestSetupOIDCAuth_NoTokenReturnsError(t *testing.T) {
 	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
 
+	// The error names the interactive login only outside a workflow that can
+	// mint ID tokens, and the job running these tests has that environment.
+	t.Setenv("ACTIONS_ID_TOKEN_REQUEST_URL", "")
+	t.Setenv("ACTIONS_ID_TOKEN_REQUEST_TOKEN", "")
+
 	opts := &options{
 		config: &Config{
 			ServerAddress: "gateway.example.com:443",
