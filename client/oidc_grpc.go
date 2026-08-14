@@ -63,7 +63,7 @@ func (o *options) resolveOIDCTokenSource(ctx context.Context) (tokenSourceFunc, 
 	cache, err := ResolveTokenCacheForIssuer(o.config.OIDCIssuer)
 	if err != nil {
 		if errors.Is(err, ErrNoCachedIssuer) {
-			return nil, errors.New("no OIDC access token: run 'dirctl auth login', or set DIRECTORY_CLIENT_AUTH_TOKEN")
+			return nil, errNoOIDCAccessToken()
 		}
 
 		return nil, err
@@ -152,7 +152,17 @@ func (s *cachedOIDCTokenSource) resolve(ctx context.Context) (string, time.Time,
 		return updatedToken.AccessToken, cachedTokenExpiry(updatedToken), nil
 	}
 
-	return "", time.Time{}, errors.New("no OIDC access token: run 'dirctl auth login', or set DIRECTORY_CLIENT_AUTH_TOKEN")
+	return "", time.Time{}, errNoOIDCAccessToken()
+}
+
+// errNoOIDCAccessToken names the option that applies: inside a workflow that can
+// mint ID tokens the missing piece is the audience, not an interactive login.
+func errNoOIDCAccessToken() error {
+	if inGitHubActionsOIDC() {
+		return errors.New("no OIDC access token: set --oidc-audience to mint GitHub Actions tokens, or set DIRECTORY_CLIENT_AUTH_TOKEN")
+	}
+
+	return errors.New("no OIDC access token: run 'dirctl auth login', or set DIRECTORY_CLIENT_AUTH_TOKEN")
 }
 
 // cachedTokenExpiry mirrors TokenCache.IsValid, which treats a token without an

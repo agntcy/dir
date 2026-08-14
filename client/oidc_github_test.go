@@ -191,11 +191,23 @@ func TestGitHubIDTokenSource_RejectsEmptyToken(t *testing.T) {
 	t.Setenv("ACTIONS_ID_TOKEN_REQUEST_URL", srv.URL+"/token")
 	t.Setenv("ACTIONS_ID_TOKEN_REQUEST_TOKEN", "request-token")
 
-	source := newGitHubIDTokenSource("")
+	source := newGitHubIDTokenSource("dir")
 	require.NotNil(t, source)
 	source.httpClient = srv.Client()
 
 	_, err := source.Token(context.Background())
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "no token")
+}
+
+// Minting is opt-in through the audience: GitHub's default audience is the
+// repository owner URL, which the gateway rejects, so an audience-less config
+// must fall through to the other token sources rather than mint unusable tokens.
+func TestNewGitHubIDTokenSource_RequiresAudience(t *testing.T) {
+	t.Setenv("ACTIONS_ID_TOKEN_REQUEST_URL", "https://actions.example.com/token")
+	t.Setenv("ACTIONS_ID_TOKEN_REQUEST_TOKEN", "request-token")
+
+	assert.Nil(t, newGitHubIDTokenSource(""))
+	assert.Nil(t, newGitHubIDTokenSource("   "), "a blank audience is not a configured audience")
+	assert.NotNil(t, newGitHubIDTokenSource("dir"))
 }

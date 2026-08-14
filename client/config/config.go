@@ -968,8 +968,12 @@ func validateClientConfig(cfg *dirclient.Config) error {
 			return errors.New("tls_ca_file, tls_cert_file, and tls_key_file are required for tls authentication")
 		}
 	case "oidc":
-		if cfg.AuthToken == "" && cfg.OIDCIssuer == "" {
-			return errors.New("oidc_issuer is required for oidc authentication unless auth_token is set")
+		// oidc_audience is the third way to obtain a token: the client mints its
+		// own from the GitHub Actions endpoint, which needs no issuer. Whether
+		// that endpoint is actually reachable is left to the client, so this
+		// verdict does not depend on the environment it is evaluated in.
+		if cfg.AuthToken == "" && cfg.OIDCIssuer == "" && cfg.OIDCAudience == "" {
+			return errors.New("oidc authentication requires one of oidc_issuer, auth_token, or oidc_audience")
 		}
 	default:
 		return fmt.Errorf("unsupported auth_mode %q", cfg.AuthMode)

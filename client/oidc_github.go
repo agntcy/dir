@@ -45,21 +45,29 @@ type githubIDTokenSource struct {
 }
 
 // newGitHubIDTokenSource returns nil when not running inside a workflow that can
-// mint ID tokens, so callers fall through to their other token sources.
+// mint ID tokens, or when no audience was configured, so callers fall through to
+// their other token sources. Minting is opt-in through the audience because
+// GitHub's default audience is the repository owner URL, which a Directory
+// gateway rejects.
 func newGitHubIDTokenSource(audience string) *githubIDTokenSource {
-	requestURL := strings.TrimSpace(os.Getenv("ACTIONS_ID_TOKEN_REQUEST_URL"))
-	requestToken := strings.TrimSpace(os.Getenv("ACTIONS_ID_TOKEN_REQUEST_TOKEN"))
-
-	if requestURL == "" || requestToken == "" {
+	audience = strings.TrimSpace(audience)
+	if audience == "" || !inGitHubActionsOIDC() {
 		return nil
 	}
 
 	return &githubIDTokenSource{
-		requestURL:   requestURL,
-		requestToken: requestToken,
-		audience:     strings.TrimSpace(audience),
+		requestURL:   strings.TrimSpace(os.Getenv("ACTIONS_ID_TOKEN_REQUEST_URL")),
+		requestToken: strings.TrimSpace(os.Getenv("ACTIONS_ID_TOKEN_REQUEST_TOKEN")),
+		audience:     audience,
 		httpClient:   &http.Client{Timeout: githubIDTokenRequestTimeout},
 	}
+}
+
+// inGitHubActionsOIDC reports whether the ID token endpoint is reachable, which
+// is the case only inside a workflow job granted `id-token: write`.
+func inGitHubActionsOIDC() bool {
+	return strings.TrimSpace(os.Getenv("ACTIONS_ID_TOKEN_REQUEST_URL")) != "" &&
+		strings.TrimSpace(os.Getenv("ACTIONS_ID_TOKEN_REQUEST_TOKEN")) != ""
 }
 
 func (s *githubIDTokenSource) Token(ctx context.Context) (string, error) {
