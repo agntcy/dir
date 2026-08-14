@@ -11,7 +11,6 @@ import (
 	"strings"
 
 	storev1 "github.com/agntcy/dir/api/store/v1"
-	ociconfig "github.com/agntcy/dir/server/store/oci/config"
 	"github.com/agntcy/dir/server/types"
 	"github.com/agntcy/dir/utils/logging"
 	"google.golang.org/grpc/codes"
@@ -145,28 +144,24 @@ func (c *syncCtlr) RequestRegistryCredentials(_ context.Context, req *storev1.Re
 	ociConfig := c.opts.Config().Store.OCI
 	syncConfig := c.opts.Config().Sync
 
-	registryAddress, err := ociConfig.GetRegistryAddress()
+	// Advertise the externally reachable endpoint, which falls back to the
+	// dialed address when no separate advertised address is configured.
+	registryAddress, err := ociConfig.GetAdvertisedRegistryAddress()
 	if err != nil {
 		return nil, status.Errorf(codes.InvalidArgument, "%v", err)
-	}
-
-	// Get repository name with default fallback
-	repositoryName := ociConfig.RepositoryName
-	if repositoryName == "" {
-		repositoryName = ociconfig.DefaultRepositoryName
 	}
 
 	return &storev1.RequestRegistryCredentialsResponse{
 		Success:         true,
 		RegistryAddress: registryAddress,
-		RepositoryName:  repositoryName,
+		RepositoryName:  ociConfig.GetRepositoryName(),
 		Credentials: &storev1.RequestRegistryCredentialsResponse_BasicAuth{
 			BasicAuth: &storev1.BasicAuthCredentials{
 				Username: syncConfig.AuthConfig.Username,
 				Password: syncConfig.AuthConfig.Password,
 			},
 		},
-		Insecure: ociConfig.Insecure,
+		Insecure: ociConfig.GetAdvertisedInsecure(),
 	}, nil
 }
 
