@@ -6,6 +6,7 @@ package controller
 import (
 	"context"
 	"strings"
+	"unicode/utf8"
 
 	catalogv1 "github.com/agntcy/dir/api/catalog/v1"
 	searchv1 "github.com/agntcy/dir/api/search/v1"
@@ -18,7 +19,9 @@ import (
 )
 
 // queryMaxLen mirrors the proto validator (max_len=1024) on
-// SearchAgentsRequest.query.
+// SearchAgentsRequest.query. Counted in characters rather than bytes, matching
+// how protovalidate interprets max_len and how ExtractTaxonomy enforces
+// textMaxLen.
 const queryMaxLen = 1024
 
 // SearchAgents answers a free-text query with relevance-ranked catalog entries.
@@ -42,8 +45,8 @@ func (c *aiFinderController) SearchAgents(ctx context.Context, req *catalogv1.Se
 	// unbounded string would otherwise reach the extractor. Checked before
 	// trimming, so padding cannot smuggle a longer payload past it. Mirrors how
 	// ListAgents enforces filterMaxLen.
-	if len(req.GetQuery()) > queryMaxLen {
-		return nil, status.Errorf(codes.InvalidArgument, "query too long (%d > %d)", len(req.GetQuery()), queryMaxLen)
+	if n := utf8.RuneCountInString(req.GetQuery()); n > queryMaxLen {
+		return nil, status.Errorf(codes.InvalidArgument, "query too long (%d > %d characters)", n, queryMaxLen)
 	}
 
 	query := strings.TrimSpace(req.GetQuery())

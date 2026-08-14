@@ -171,6 +171,9 @@ func TestSearchAgents_InvalidRequests(t *testing.T) {
 		{"blank query", &catalogv1.SearchAgentsRequest{Query: "  "}},
 		{"bad page token", &catalogv1.SearchAgentsRequest{Query: "q", PageToken: "!!!not-base64!!!"}},
 		{"query too long", &catalogv1.SearchAgentsRequest{Query: strings.Repeat("x", queryMaxLen+1)}},
+		// Multi-byte input: the limit counts characters, so this is under it
+		// despite being ~3x queryMaxLen in bytes. Guards against a len() regression.
+		{"blank after trim", &catalogv1.SearchAgentsRequest{Query: "   \t  "}},
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
@@ -198,6 +201,20 @@ func TestSearchAgents_OnlyCatalogProjectableCandidates(t *testing.T) {
 	require.NotEmpty(t, db.gotRecordQuery)
 	assert.ElementsMatch(t, catalogv1.KnownCatalogModuleNames(), db.gotRecordQuery[0].ModuleNames,
 		"fan-out candidates must be restricted to catalog-projectable records")
+}
+
+func TestSearchAgents_QueryLengthCountsRunesNotBytes(t *testing.T) {
+	// queryMaxLen is a character limit, matching protovalidate's max_len. A
+	// byte-based check would reject this multi-byte query at ~3x the byte count.
+	db := &fakeCatalogDB{
+		entries:    []*catalogv1.CatalogEntry{entry("a")},
+		recordCIDs: map[string][]string{"": {"a"}},
+	}
+	ext := &fakeExtractor{result: resultWith([]string{"code_review"}, nil)}
+
+	_, err := searchCtrl(db, ext).SearchAgents(context.Background(),
+		&catalogv1.SearchAgentsRequest{Query: strings.Repeat("é", queryMaxLen)})
+	require.NoError(t, err, "a query at the character limit must be accepted")
 }
 
 func TestSearchAgents_SearchFailureDegradesRatherThanFails(t *testing.T) {
