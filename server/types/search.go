@@ -57,6 +57,7 @@ type ExcludedRecordFilters struct {
 	AnnotationKeys   []string
 	AnnotationValues []string
 	ScanSeverities   []string
+	Owners           []string
 }
 
 type Annotation struct {
@@ -250,6 +251,13 @@ func WithDescriptions(descriptions ...string) FilterOption {
 func WithOwners(owners ...string) FilterOption {
 	return func(sc *RecordFilters) {
 		sc.Owners = append(sc.Owners, owners...)
+	}
+}
+
+// WithoutOwners excludes records whose owner ID matches any of the given patterns.
+func WithoutOwners(owners ...string) FilterOption {
+	return func(sc *RecordFilters) {
+		sc.Excluded.Owners = append(sc.Excluded.Owners, owners...)
 	}
 }
 

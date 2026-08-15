@@ -39,15 +39,12 @@ type Filters struct {
 	SchemaVersions FilterValues
 	ModuleIDs      FilterValues
 	Annotations    FilterValues
+	Owners         FilterValues
 
 	// ScanSeverity is a single threshold rather than a repeatable match, so it
 	// sits outside valueFilters.
 	ScanSeverity        string
 	ExcludeScanSeverity string
-
-	// Owners is include-only (no --exclude-owner): unlike the value filters
-	// above, RECORD_QUERY_TYPE_OWNER is not negate-aware server-side.
-	Owners []string
 
 	Verified bool
 	Trusted  bool
@@ -171,6 +168,13 @@ func (f *Filters) valueFilters() []valueFilter {
 			queryType:    searchv1.RecordQueryType_RECORD_QUERY_TYPE_ANNOTATION,
 			values:       &f.Annotations,
 		},
+		{
+			flag:         "owner",
+			usage:        "Search for records with specific owner identity (e.g., --owner 'spiffe://example.org/agent')",
+			excludeUsage: "Exclude records with specific owner identity (e.g., --exclude-owner 'spiffe://example.org/agent')",
+			queryType:    searchv1.RecordQueryType_RECORD_QUERY_TYPE_OWNER,
+			values:       &f.Owners,
+		},
 	}
 }
 
@@ -198,8 +202,6 @@ func registerFilterFlags(flags *pflag.FlagSet, f *Filters) {
 		"Filter for records whose highest scan severity meets or exceeds a threshold (NONE, INFO, LOW, MEDIUM, HIGH, CRITICAL)")
 	flags.StringVar(&f.ExcludeScanSeverity, "exclude-scan-severity", "",
 		"Exclude records with a scan report at or above a threshold (NONE, INFO, LOW, MEDIUM, HIGH, CRITICAL); never-scanned records are kept")
-	flags.StringArrayVar(&f.Owners, "owner", nil,
-		"Search for records with specific owner identity (e.g., --owner 'spiffe://example.org/agent')")
 
 	flags.BoolVar(&f.Verified, "verified", false,
 		"Filter for records with verified name ownership (--verified) or without it (--verified=false)")
@@ -274,14 +276,6 @@ func BuildQueries(f *Filters) []*searchv1.RecordQuery {
 		queries = append(queries, &searchv1.RecordQuery{
 			Type:  boolFilter.queryType,
 			Value: strconv.FormatBool(boolFilter.value),
-		})
-	}
-
-	// Add owner queries
-	for _, owner := range f.Owners {
-		queries = append(queries, &searchv1.RecordQuery{
-			Type:  searchv1.RecordQueryType_RECORD_QUERY_TYPE_OWNER,
-			Value: owner,
 		})
 	}
 

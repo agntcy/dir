@@ -249,7 +249,7 @@ func QueryToFilters(queries []*searchv1.RecordQuery) ([]types.FilterOption, erro
 			}
 
 		case searchv1.RecordQueryType_RECORD_QUERY_TYPE_OWNER:
-			options = append(options, types.WithOwners(query.GetValue()))
+			options = append(options, choose(query.GetNegate(), types.WithOwners, types.WithoutOwners)(query.GetValue()))
 
 		default:
 			logger.Warn("Unknown query type", "type", query.GetType())
