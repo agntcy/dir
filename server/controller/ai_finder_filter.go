@@ -19,7 +19,7 @@ import (
 //
 //	filter = clause { WS+ "AND" WS+ clause } ;
 //	clause = field "=" value ;
-//	field  = "displayName" | "type" | "publisherId" | "createdAfter" | "updatedAfter" ;
+//	field  = "displayName" | "type" | "publisherId" | "createdAfter" | "updatedAfter" | "verified" | "trusted" | "safe" | "tags" ;
 //	value  = token { "," token } ;
 //	token  = unquoted_token | quoted_string ;
 //
@@ -36,46 +36,52 @@ type agentFilter struct {
 	PublisherIDs []string
 	CreatedAfter time.Time
 	UpdatedAfter time.Time
+	Verified     *bool
+	Trusted      *bool
+	Safe         *bool
+	TagFilters   []types.TagFilter
 }
 
-// oasfModuleForMediaType maps a media type onto the OASF module name the
-// registry indexes, or ("", false) for unknown types.
-func oasfModuleForMediaType(mediaType string) (string, bool) {
+func mediaTypeFilterForType(mediaType string) *types.MediaTypeFilter {
 	switch strings.ToLower(strings.TrimSpace(mediaType)) {
 	case catalogv1.ProtocolA2ACardJsonMediaType:
-		return translator.A2AModuleName, true
+		return &types.MediaTypeFilter{ModuleName: translator.A2AModuleName}
 	case catalogv1.ProtocolMCPCardJsonMediaType:
-		return translator.MCPModuleName, true
+		return &types.MediaTypeFilter{ModuleName: translator.MCPModuleName}
 	case catalogv1.ProtocolAgentSkillsMdMediaType:
-		return translator.AgentSkillsModuleName, true
+		return &types.MediaTypeFilter{
+			ModuleName:        translator.AgentSkillsModuleName,
+			ArtifactMediaType: catalogv1.ProtocolAgentSkillsMdMediaType,
+		}
 	case catalogv1.ProtocolAgentSkillsBundleMediaType:
-		return translator.AgentSkillsModuleName, true
+		return &types.MediaTypeFilter{
+			ModuleName:        translator.AgentSkillsModuleName,
+			ArtifactMediaType: catalogv1.ProtocolAgentSkillsBundleMediaType,
+		}
 	default:
-		return "", false
+		return nil
 	}
 }
 
-// filterCatalogEntriesByMediaType keeps entries whose media_type matches one of
-// the requested AI Catalog types. Required for Agent Skills because markdown
-// and bundle records share the same OASF module name in the DB index.
-func filterCatalogEntriesByMediaType(entries []*catalogv1.CatalogEntry, mediaTypes []string) []*catalogv1.CatalogEntry {
-	if len(mediaTypes) == 0 || len(entries) == 0 {
-		return entries
+// buildTypeFilterOptions maps parsed type= values to catalog media type filters.
+// Returns (nil, false) when type= was set but no value maps to a known type.
+func buildTypeFilterOptions(mediaTypes []string) ([]types.MediaTypeFilter, bool) {
+	if len(mediaTypes) == 0 {
+		return nil, true
 	}
 
-	allowed := make(map[string]struct{}, len(mediaTypes))
+	filters := make([]types.MediaTypeFilter, 0, len(mediaTypes))
 	for _, mediaType := range mediaTypes {
-		allowed[strings.ToLower(strings.TrimSpace(mediaType))] = struct{}{}
-	}
-
-	out := make([]*catalogv1.CatalogEntry, 0, len(entries))
-	for _, entry := range entries {
-		if _, ok := allowed[strings.ToLower(entry.GetMediaType())]; ok {
-			out = append(out, entry)
+		if filter := mediaTypeFilterForType(mediaType); filter != nil {
+			filters = append(filters, *filter)
 		}
 	}
 
-	return out
+	if len(filters) == 0 {
+		return nil, false
+	}
+
+	return filters, true
 }
 
 // (parentheses, OR keywords, unknown or duplicate fields, missing values) is
@@ -135,11 +141,13 @@ func parseAgentFilter(input string) (agentFilter, error) {
 	return out, nil
 }
 
-// buildRecordFilterOptions translates a parsed filter, order, and paging into
-// FilterOptions for the catalog query layer. The bool is false when type= was
-// set but no requested media type maps to an indexed module (zero rows).
-func buildRecordFilterOptions(f agentFilter, order []orderByClause, pageSize, offset int) ([]types.FilterOption, bool) {
-	opts := []types.FilterOption{
+// buildCatalogFilterOptions translates a parsed filter, order, and paging into
+// catalog filter options. The bool is false when type= was set but no requested
+// media type maps to an indexed module (zero rows).
+//
+//nolint:cyclop
+func buildCatalogFilterOptions(f agentFilter, order []orderByClause, pageSize, offset int) ([]types.CatalogQueryOption, bool) {
+	opts := []types.CatalogQueryOption{
 		types.WithLimit(pageSize),
 		types.WithOffset(offset),
 	}
@@ -149,19 +157,12 @@ func buildRecordFilterOptions(f agentFilter, order []orderByClause, pageSize, of
 	}
 
 	if len(f.Types) > 0 {
-		var modules []string
-
-		for _, mt := range f.Types {
-			if module, ok := oasfModuleForMediaType(mt); ok {
-				modules = append(modules, module)
-			}
-		}
-
-		if len(modules) == 0 {
+		typeFilters, ok := buildTypeFilterOptions(f.Types)
+		if !ok {
 			return nil, false
 		}
 
-		opts = append(opts, types.WithModuleNames(modules...))
+		opts = append(opts, types.WithMediaTypeFilters(typeFilters...))
 	}
 
 	// createdAfter / updatedAfter both resolve to a strict '>' comparison on
@@ -172,6 +173,22 @@ func buildRecordFilterOptions(f agentFilter, order []orderByClause, pageSize, of
 
 	if !f.UpdatedAfter.IsZero() {
 		opts = append(opts, types.WithCreatedAts(">"+f.UpdatedAfter.UTC().Format(time.RFC3339)))
+	}
+
+	if f.Verified != nil {
+		opts = append(opts, types.WithVerified(*f.Verified))
+	}
+
+	if f.Trusted != nil {
+		opts = append(opts, types.WithTrusted(*f.Trusted))
+	}
+
+	if f.Safe != nil {
+		opts = append(opts, types.WithScanSafe(*f.Safe))
+	}
+
+	if len(f.TagFilters) > 0 {
+		opts = append(opts, types.WithTagFilters(f.TagFilters...))
 	}
 
 	if len(order) > 0 {
@@ -404,8 +421,66 @@ func applyClause(out *agentFilter, field string, values []string) error {
 
 		return nil
 
+	case "verified":
+		verified, err := singleBool(field, values)
+		if err != nil {
+			return err
+		}
+
+		out.Verified = &verified
+
+		return nil
+
+	case "trusted":
+		trusted, err := singleBool(field, values)
+		if err != nil {
+			return err
+		}
+
+		out.Trusted = &trusted
+
+		return nil
+
+	case "safe":
+		safe, err := singleBool(field, values)
+		if err != nil {
+			return err
+		}
+
+		out.Safe = &safe
+
+		return nil
+
+	case "tags":
+		filters := make([]types.TagFilter, 0, len(values))
+		for _, tag := range values {
+			if filter := tagFilterForTag(tag); filter != nil {
+				filters = append(filters, *filter)
+			}
+		}
+
+		out.TagFilters = filters
+
+		return nil
+
 	default:
-		return fmt.Errorf("unknown filter field %q (allowed: displayName, type, publisherId, createdAfter, updatedAfter)", field)
+		return fmt.Errorf("unknown filter field %q (allowed: displayName, type, publisherId, createdAfter, updatedAfter, verified, trusted, safe, tags)", field)
+	}
+}
+
+// singleBool validates a single-value boolean clause (true/false, case-insensitive).
+func singleBool(field string, values []string) (bool, error) {
+	if len(values) != 1 {
+		return false, fmt.Errorf("filter field %q accepts a single value, got %d", field, len(values))
+	}
+
+	switch strings.ToLower(strings.TrimSpace(values[0])) {
+	case "true":
+		return true, nil
+	case "false":
+		return false, nil
+	default:
+		return false, fmt.Errorf("filter field %q: invalid boolean %q (expected true or false)", field, values[0])
 	}
 }
 
@@ -421,4 +496,55 @@ func singleTimestamp(field string, values []string) (time.Time, error) {
 	}
 
 	return ts.UTC(), nil
+}
+
+func tagFilterForTag(tag string) *types.TagFilter {
+	switch {
+	case isSkillTag(tag):
+		return &types.TagFilter{SkillName: parseSkillName(tag)}
+	case isDomainTag(tag):
+		return &types.TagFilter{DomainName: parseDomainName(tag)}
+	case isAnnotationTag(tag):
+		annotation := parseAnnotation(tag)
+
+		return &types.TagFilter{Annotation: &annotation}
+	default:
+		return &types.TagFilter{AnnotationKey: tag}
+	}
+}
+
+func isSkillTag(tag string) bool {
+	s := strings.Split(tag, ":")
+
+	return len(s) == 4 && s[0] == "oasf" && s[1] == "*" && s[2] == "skills" && s[3] != ""
+}
+
+func parseSkillName(tag string) string {
+	s := strings.Split(tag, ":")
+
+	return s[3]
+}
+
+func isDomainTag(tag string) bool {
+	s := strings.Split(tag, ":")
+
+	return len(s) == 4 && s[0] == "oasf" && s[1] == "*" && s[2] == "domains" && s[3] != ""
+}
+
+func parseDomainName(tag string) string {
+	s := strings.Split(tag, ":")
+
+	return s[3]
+}
+
+func isAnnotationTag(tag string) bool {
+	key, value, ok := strings.Cut(tag, "=")
+
+	return ok && key != "" && value != ""
+}
+
+func parseAnnotation(tag string) types.Annotation {
+	key, value, _ := strings.Cut(tag, "=")
+
+	return types.Annotation{Key: key, Value: value}
 }

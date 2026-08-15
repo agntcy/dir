@@ -1,1 +1,5 @@
+---
+icon: material/tune
+---
+
 {% include "https://raw.githubusercontent.com/agntcy/dir-staging/refs/heads/main/docs/dir-federation-profiles.md" %}

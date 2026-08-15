@@ -1,3 +1,7 @@
+---
+icon: material/file-document-check-outline
+---
+
 # Records and Validation
 
 ## ADS Records

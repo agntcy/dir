@@ -1,3 +1,7 @@
+---
+icon: material/puzzle
+---
+
 # Directory SDK
 
 Libraries for interacting with Directory over gRPC: push records to the store, publish for

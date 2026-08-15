@@ -5,36 +5,41 @@
 package routing
 
 import (
-	"bufio"
-	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
+	"os"
 	"strings"
 
 	corev1 "github.com/agntcy/dir/api/core/v1"
 	routingv1 "github.com/agntcy/dir/api/routing/v1"
 	"github.com/agntcy/dir/cli/presenter"
+	cidsUtils "github.com/agntcy/dir/cli/util/cids"
 	ctxUtils "github.com/agntcy/dir/cli/util/context"
+	"github.com/agntcy/dir/cli/util/prompt"
+	"github.com/agntcy/dir/client"
 	"github.com/spf13/cobra"
+	"golang.org/x/term"
 )
 
-var publishCmd = &cobra.Command{
-	Use:   "publish <cid> [cid...]",
-	Short: "Publish record to the network for discovery",
-	Long: `Publish a record to the network to allow content discovery by other peers.
+const publishAllPrompt = "This operation will publish every currently stored record. Would you like to proceed?"
 
-This command announces a record that is already stored locally to the distributed
-network, making it discoverable by other peers through the DHT.
+var publishCmd = &cobra.Command{
+	Use:   "publish [cid...]",
+	Short: "Publish record to the network for discovery",
+	Long: `Publish records to the network to allow content discovery by other peers.
+
+This command announces records that are already stored locally to the distributed
+network, making them discoverable by other peers through the DHT.
 
 Records must already exist in local storage (use 'dirctl push' first if needed).
 
 Key Features:
-- Network announcement: Makes record discoverable by other peers
-- Local storage: Stores record in local routing index
-- DHT announcement: Announces record and labels to distributed network
+- Network announcement: Makes records discoverable by other peers
+- Local storage: Stores records in the local routing index
+- DHT announcement: Announces records and labels to the distributed network
 - Background retry: Failed announcements are retried automatically
 - Batch publication: Submit multiple CIDs in one request
+- Bulk publication: Publish every currently stored record
 
 Usage examples:
 
@@ -47,32 +52,60 @@ Usage examples:
 3. Publish records from stdin (JSON array or line-delimited CIDs):
    dirctl search --format cid --limit 100 --output json | dirctl routing publish --stdin
 
-4. Output formats:
+4. Publish every currently stored record:
+   dirctl routing publish --all
+
+5. Publish all records without an interactive confirmation:
+   dirctl routing publish --all --yes
+
+6. Output formats:
    # Publish with JSON confirmation
    dirctl routing publish <cid> --output json
-   
+
    # Publish with raw output for scripting
    dirctl routing publish <cid> --output raw
 
-Note: The record must already be pushed to storage before publishing.
+Note: Records must already be pushed to storage before publishing.
 `,
-	Args: func(cmd *cobra.Command, args []string) error {
-		if publishOpts.FromStdin {
-			return cobra.MaximumNArgs(0)(cmd, args)
-		}
-
-		return cobra.MinimumNArgs(1)(cmd, args)
-	},
+	Args: validatePublishArgs,
 	RunE: runPublishCommand,
 }
 
 var publishOpts struct {
 	FromStdin bool
+	All       bool
+	Yes       bool
 }
 
 func init() {
-	publishCmd.Flags().BoolVar(&publishOpts.FromStdin, "stdin", false,
-		"Read CIDs from standard input. Supports JSON array output from 'dirctl search --output json' and line-delimited CIDs.")
+	publishCmd.Flags().BoolVar(
+		&publishOpts.FromStdin, "stdin", false, cidsUtils.StdinFlagUsage)
+	publishCmd.Flags().BoolVar(
+		&publishOpts.All, "all", false,
+		"Publish every currently stored record")
+	publishCmd.Flags().BoolVarP(
+		&publishOpts.Yes, "yes", "y", false,
+		"Skip the confirmation prompt when using --all")
+}
+
+func validatePublishArgs(cmd *cobra.Command, args []string) error {
+	if publishOpts.Yes && !publishOpts.All {
+		return errors.New("--yes can only be used with --all")
+	}
+
+	if publishOpts.All {
+		if publishOpts.FromStdin {
+			return errors.New("--all cannot be used with --stdin")
+		}
+
+		if len(args) > 0 {
+			return errors.New("--all cannot be used with CID arguments")
+		}
+
+		return nil
+	}
+
+	return cidsUtils.Args(&publishOpts.FromStdin)(cmd, args)
 }
 
 func runPublishCommand(cmd *cobra.Command, args []string) error {
@@ -82,20 +115,13 @@ func runPublishCommand(cmd *cobra.Command, args []string) error {
 		return errors.New("failed to get client from context")
 	}
 
-	cids := append([]string{}, args...)
-
-	if publishOpts.FromStdin {
-		stdinCIDs, err := readCIDsFromStdin(cmd.InOrStdin())
-		if err != nil {
-			return fmt.Errorf("failed to read CIDs from stdin: %w", err)
-		}
-
-		cids = append(cids, stdinCIDs...)
+	if publishOpts.All {
+		return runPublishAllCommand(cmd, c)
 	}
 
-	cids = deduplicateCIDs(cids)
-	if len(cids) == 0 {
-		return errors.New("at least one CID is required (pass arguments or use --stdin)")
+	cids, err := cidsUtils.Collect(args, cmd.InOrStdin(), publishOpts.FromStdin)
+	if err != nil {
+		return err
 	}
 
 	recordRefs := make([]*corev1.RecordRef, 0, len(cids))
@@ -104,8 +130,7 @@ func runPublishCommand(cmd *cobra.Command, args []string) error {
 	}
 
 	// Lookup metadata to verify records exist
-	_, err := c.LookupBatch(cmd.Context(), recordRefs)
-	if err != nil {
+	if _, err := c.LookupBatch(cmd.Context(), recordRefs); err != nil {
 		return fmt.Errorf("failed to lookup: %w", err)
 	}
 
@@ -117,11 +142,7 @@ func runPublishCommand(cmd *cobra.Command, args []string) error {
 			},
 		},
 	}); err != nil {
-		if strings.Contains(err.Error(), "failed to announce object") {
-			return errors.New("failed to announce object, it will be retried in the background on the API server")
-		}
-
-		return fmt.Errorf("failed to publish: %w", err)
+		return normalizePublishError(err)
 	}
 
 	// Output in the appropriate format
@@ -136,65 +157,68 @@ func runPublishCommand(cmd *cobra.Command, args []string) error {
 		result["cid"] = cids[0]
 	}
 
-	return presenter.PrintMessage(cmd, "Publish", "Successfully submitted publication request", result)
+	return presenter.PrintMessage(
+		cmd,
+		"Publish",
+		"Successfully submitted publication request",
+		result,
+	)
 }
 
-func readCIDsFromStdin(reader io.Reader) ([]string, error) {
-	data, err := io.ReadAll(reader)
+func runPublishAllCommand(cmd *cobra.Command, c *client.Client) error {
+	confirmed, err := confirmPublishAllIfNeeded(cmd)
 	if err != nil {
-		return nil, fmt.Errorf("failed to read stdin: %w", err)
+		return err
 	}
 
-	input := strings.TrimSpace(string(data))
-	if input == "" {
-		return nil, nil
+	if !confirmed {
+		presenter.PrintSmartf(cmd, "Aborted. No records were submitted for publication.\n")
+
+		return nil
 	}
 
-	if strings.HasPrefix(input, "[") {
-		var cids []string
-		if err := json.Unmarshal([]byte(input), &cids); err != nil {
-			return nil, fmt.Errorf("failed to parse JSON array of CIDs: %w", err)
-		}
-
-		return cids, nil
+	if err := c.Publish(cmd.Context(), &routingv1.PublishRequest{
+		Request: &routingv1.PublishRequest_AllRecords{
+			AllRecords: true,
+		},
+	}); err != nil {
+		return normalizePublishError(err)
 	}
 
-	cids := make([]string, 0)
-
-	scanner := bufio.NewScanner(strings.NewReader(input))
-	for scanner.Scan() {
-		cid := strings.TrimSpace(scanner.Text())
-		if cid == "" {
-			continue
-		}
-
-		cids = append(cids, cid)
+	result := map[string]any{
+		"all_records": true,
+		"status":      "Successfully submitted publication request",
+		"message":     "Every currently stored record will be submitted for network publication",
 	}
 
-	if err := scanner.Err(); err != nil {
-		return nil, fmt.Errorf("failed to scan stdin: %w", err)
-	}
-
-	return cids, nil
+	return presenter.PrintMessage(
+		cmd,
+		"Publish",
+		"Successfully submitted publication request",
+		result,
+	)
 }
 
-func deduplicateCIDs(cids []string) []string {
-	seen := make(map[string]struct{}, len(cids))
-	out := make([]string, 0, len(cids))
-
-	for _, cid := range cids {
-		cid = strings.TrimSpace(cid)
-		if cid == "" {
-			continue
-		}
-
-		if _, exists := seen[cid]; exists {
-			continue
-		}
-
-		seen[cid] = struct{}{}
-		out = append(out, cid)
+func confirmPublishAllIfNeeded(cmd *cobra.Command) (bool, error) {
+	if publishOpts.Yes {
+		return true, nil
 	}
 
-	return out
+	in, ok := cmd.InOrStdin().(*os.File)
+	if !ok || !term.IsTerminal(int(in.Fd())) { //nolint:gosec // G115: a file descriptor fits in an int.
+		return false, errors.New(
+			"refusing to prompt for --all on non-terminal stdin; pass --yes to continue",
+		)
+	}
+
+	return prompt.Confirm(cmd, publishAllPrompt)
+}
+
+func normalizePublishError(err error) error {
+	if strings.Contains(err.Error(), "failed to announce object") {
+		return errors.New(
+			"failed to announce object, it will be retried in the background on the API server")
+	}
+
+	return fmt.Errorf("failed to publish: %w", err)
 }

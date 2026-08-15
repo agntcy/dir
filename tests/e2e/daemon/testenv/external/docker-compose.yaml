@@ -2,7 +2,7 @@ name: daemon-external
 
 services:
   zot:
-    image: ghcr.io/project-zot/zot:v2.1.16
+    image: ghcr.io/project-zot/zot:v2.1.18
     ports:
       - "25555:5000"
     deploy:
@@ -10,7 +10,7 @@ services:
         condition: on-failure
 
   postgres:
-    image: docker.io/bitnami/postgresql:latest@sha256:c30c796dcf96a67a405b905bf6aaf8d6c957d5c2fe729db6e67e2760e21fd9f8
+    image: docker.io/bitnami/postgresql:latest@sha256:a727ea9d5ceb64beb404afeb62a4b757fe3c33c2a09af86dc391a3a0dfed6049
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
@@ -26,8 +26,17 @@ services:
       retries: 30
       start_period: 5s
 
-  # Service used for runtime discovery
+  # Service used for runtime discovery.
+  #
+  # Held behind a profile so `docker compose up` does not start it with the
+  # rest of the stack. The daemon's OASF resolver gives each workload a bounded
+  # retry budget and never re-queues one whose budget ran out, so a workload
+  # that exists before its record does is unrecoverable. Starting this only
+  # after the record has been pushed makes the docker start event the trigger,
+  # with the record already in the store. Started by startRuntimeWorkload in
+  # tests/e2e/daemon/01_daemon_test.go. See issue #1780.
   service-a2a:
+    profiles: ["runtime-discovery"]
     image: nginx:latest@sha256:7f0adca1fc6c29c8dc49a2e90037a10ba20dc266baaed0988e9fb4d0d8b85ba0
     labels:
       - "test.org.agntcy/discover=true"

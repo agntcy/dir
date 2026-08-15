@@ -7,14 +7,18 @@ import (
 	"fmt"
 	"math"
 	"sort"
+	"strings"
 
 	catalogv1 "github.com/agntcy/dir/api/catalog/v1"
+	"github.com/agntcy/dir/server/database/utils"
 	"github.com/agntcy/dir/server/types"
 	"gorm.io/gorm"
 )
 
 // defaultCatalogPageSize is applied when the caller does not set a limit.
 const defaultCatalogPageSize = 20
+
+const emptyJSONObject = "{}"
 
 // catalogSortColumns allow-lists the columns a controller may sort by,
 // mapping the logical name to the qualified column so caller-supplied sort
@@ -27,33 +31,23 @@ var catalogSortColumns = map[string]string{
 	"record_cid":     "records.record_cid",
 }
 
-func parseOpts(opts ...types.FilterOption) (*types.RecordFilters, error) {
-	cfg := &types.RecordFilters{}
-
-	for _, opt := range opts {
-		if opt == nil {
-			return nil, fmt.Errorf("nil filter option provided")
-		}
-
-		opt(cfg)
-	}
-
-	return cfg, nil
-}
-
 // CountCatalogEntries returns the number of distinct records matching the
-// given filters. Limit and offset options are ignored.
-func (d *DB) CountCatalogEntries(opts ...types.FilterOption) (uint32, error) {
-	cfg, err := parseOpts(opts...)
+// given filters. Limit and offset are ignored.
+func (d *DB) CountCatalogEntries(opts ...types.CatalogQueryOption) (uint32, error) {
+	cfg, err := types.CatalogFiltersFromOptions(opts...)
 	if err != nil {
-		return 0, err
+		return 0, err //nolint:wrapcheck
 	}
 
-	cfg.Limit = 0
-	cfg.Offset = 0
+	recordCfg := cfg.RecordFilters
+	recordCfg.Limit = 0
+	recordCfg.Offset = 0
 
 	query := d.gormDB.Model(&Record{})
-	query = d.handleFilterOptions(query, cfg)
+	query = d.handleFilterOptions(query, &recordCfg)
+	query = applyKnownCatalogModuleFilter(query)
+	query = applyMediaTypeFilter(query, cfg.MediaTypeFilters)
+	query = applyTagFilter(query, cfg.TagFilters)
 	query = query.Distinct("records.record_cid")
 
 	var count int64
@@ -131,16 +125,18 @@ func (d *DB) ListCatalogTags() ([]*catalogv1.CatalogTag, error) {
 	return tags, nil
 }
 
-// GetCatalogEntries returns the AI Catalog entries matching the given record
-// filters, using peek-ahead pagination (Limit+1) to report hasMore. Records
-// with no AI Catalog projection are skipped rather than failing the page.
-func (d *DB) GetCatalogEntries(opts ...types.FilterOption) ([]*catalogv1.CatalogEntry, bool, error) {
-	cfg, err := parseOpts(opts...)
+// GetCatalogEntries returns the AI Catalog entries matching the given filters,
+// using peek-ahead pagination (Limit+1) to report hasMore. Records with no AI
+// Catalog projection are skipped rather than failing the page.
+func (d *DB) GetCatalogEntries(opts ...types.CatalogQueryOption) ([]*catalogv1.CatalogEntry, bool, error) {
+	cfg, err := types.CatalogFiltersFromOptions(opts...)
 	if err != nil {
-		return nil, false, err
+		return nil, false, err //nolint:wrapcheck
 	}
 
-	pageSize := cfg.Limit
+	recordCfg := cfg.RecordFilters
+
+	pageSize := recordCfg.Limit
 	if pageSize <= 0 {
 		pageSize = defaultCatalogPageSize
 	}
@@ -156,18 +152,22 @@ func (d *DB) GetCatalogEntries(opts ...types.FilterOption) ([]*catalogv1.Catalog
 		Preload("Domains").
 		Preload("Annotations").
 		Preload("Signatures").
+		Preload("NameVerification").
 		Preload("ScanReports").
 		Limit(pageSize + 1)
 
-	if cfg.Offset > 0 {
-		query = query.Offset(cfg.Offset)
+	if recordCfg.Offset > 0 {
+		query = query.Offset(recordCfg.Offset)
 	}
 
-	query = d.handleFilterOptions(query, cfg)
+	query = d.handleFilterOptions(query, &recordCfg)
+	query = applyKnownCatalogModuleFilter(query)
+	query = applyMediaTypeFilter(query, cfg.MediaTypeFilters)
+	query = applyTagFilter(query, cfg.TagFilters)
 
-	query, err = applyCatalogOrder(query, cfg)
+	query, err = applyCatalogOrder(query, &recordCfg)
 	if err != nil {
-		return nil, false, err
+		return nil, false, err //nolint:wrapcheck
 	}
 
 	var records []Record
@@ -186,6 +186,7 @@ func (d *DB) GetCatalogEntries(opts ...types.FilterOption) ([]*catalogv1.Catalog
 		opts := []catalogv1.ConvertOption{
 			catalogv1.WithSignatures(convertSignatures(records[i].Signatures)),
 			catalogv1.WithScanReports(convertScanReports(records[i].ScanReports)),
+			catalogv1.WithTrustStatus(deriveTrustStatus(&records[i])),
 		}
 
 		if metrics, err := d.GetUsageMetrics(records[i].RecordCID); err == nil {
@@ -208,6 +209,164 @@ func (d *DB) GetCatalogEntries(opts ...types.FilterOption) ([]*catalogv1.Catalog
 	return entries, hasMore, nil
 }
 
+func applyKnownCatalogModuleFilter(query *gorm.DB) *gorm.DB {
+	moduleNames := catalogv1.KnownCatalogModuleNames()
+
+	return query.Where(`
+EXISTS (
+	SELECT 1 FROM modules catalog_modules
+	WHERE catalog_modules.record_cid = records.record_cid
+	AND catalog_modules.name IN ?
+	AND catalog_modules.data IS NOT NULL
+	AND catalog_modules.data != ?
+)`, moduleNames, emptyJSONObject)
+}
+
+// applyMediaTypeFilter restricts the query to records matching one or more
+// catalog media types. Agent Skills markdown vs gzip is determined by the
+// indexed modules.artifact_media_type column.
+func applyMediaTypeFilter(query *gorm.DB, filters []types.MediaTypeFilter) *gorm.DB {
+	if len(filters) == 0 {
+		return query
+	}
+
+	conditions := make([]string, 0, len(filters))
+	args := make([]any, 0, len(filters))
+
+	for _, filter := range filters {
+		condition, filterArgs, err := mediaTypeExistsCondition(filter)
+		if err != nil {
+			logger.Error("unsupported media type filter", "error", err)
+
+			return query.Where("1 = 0")
+		}
+
+		if condition == "" {
+			continue
+		}
+
+		conditions = append(conditions, condition)
+		args = append(args, filterArgs...)
+	}
+
+	if len(conditions) == 0 {
+		return query
+	}
+
+	condition := strings.Join(conditions, " OR ")
+	if len(conditions) > 1 {
+		condition = "(" + condition + ")"
+	}
+
+	return query.Where(condition, args...)
+}
+
+func mediaTypeExistsCondition(filter types.MediaTypeFilter) (string, []any, error) {
+	if filter.ModuleName == "" {
+		return "", nil, fmt.Errorf("media type filter missing module name")
+	}
+
+	args := []any{filter.ModuleName, emptyJSONObject}
+
+	clause := `
+EXISTS (
+	SELECT 1 FROM modules media_type_modules
+	WHERE media_type_modules.record_cid = records.record_cid
+	AND media_type_modules.name = ?
+	AND media_type_modules.data IS NOT NULL
+	AND media_type_modules.data != ?`
+
+	if filter.ArtifactMediaType != "" {
+		clause += `
+	AND media_type_modules.artifact_media_type = ?`
+
+		args = append(args, filter.ArtifactMediaType)
+	}
+
+	clause += `
+)`
+
+	return clause, args, nil
+}
+
+func applyTagFilter(query *gorm.DB, filters []types.TagFilter) *gorm.DB {
+	if len(filters) == 0 {
+		return query
+	}
+
+	conditions := make([]string, 0, len(filters))
+	args := make([]any, 0, len(filters))
+
+	for _, filter := range filters {
+		condition, filterArgs, err := tagExistsCondition(filter)
+		if err != nil {
+			logger.Error("unsupported tag filter", "error", err)
+
+			return query.Where("1 = 0")
+		}
+
+		if condition == "" {
+			continue
+		}
+
+		conditions = append(conditions, condition)
+		args = append(args, filterArgs...)
+	}
+
+	if len(conditions) == 0 {
+		return query
+	}
+
+	condition := strings.Join(conditions, " OR ")
+	if len(conditions) > 1 {
+		condition = "(" + condition + ")"
+	}
+
+	return query.Where(condition, args...)
+}
+
+func tagExistsCondition(filter types.TagFilter) (string, []any, error) {
+	switch {
+	case filter.SkillName != "":
+		condition, arg := utils.BuildSingleWildcardCondition("tag_skills.name", filter.SkillName)
+
+		return fmt.Sprintf(`
+EXISTS (
+	SELECT 1 FROM skills tag_skills
+	WHERE tag_skills.record_cid = records.record_cid
+	AND %s
+)`, condition), []any{arg}, nil
+	case filter.DomainName != "":
+		condition, arg := utils.BuildSingleWildcardCondition("tag_domains.name", filter.DomainName)
+
+		return fmt.Sprintf(`
+EXISTS (
+	SELECT 1 FROM domains tag_domains
+	WHERE tag_domains.record_cid = records.record_cid
+	AND %s
+)`, condition), []any{arg}, nil
+	case filter.Annotation != nil:
+		return `
+EXISTS (
+	SELECT 1 FROM annotations tag_annotations
+	WHERE tag_annotations.record_cid = records.record_cid
+	AND tag_annotations.key = ?
+	AND tag_annotations.value = ?
+)`, []any{filter.Annotation.Key, filter.Annotation.Value}, nil
+	case filter.AnnotationKey != "":
+		condition, arg := utils.BuildSingleWildcardCondition("tag_annotations.key", filter.AnnotationKey)
+
+		return fmt.Sprintf(`
+EXISTS (
+	SELECT 1 FROM annotations tag_annotations
+	WHERE tag_annotations.record_cid = records.record_cid
+	AND %s
+)`, condition), []any{arg}, nil
+	default:
+		return "", nil, fmt.Errorf("tag filter has no match criteria")
+	}
+}
+
 func convertScanReports(reports []ScanReport) []catalogv1.ScanReportSummary {
 	result := make([]catalogv1.ScanReportSummary, len(reports))
 	for i := range reports {
@@ -215,6 +374,20 @@ func convertScanReports(reports []ScanReport) []catalogv1.ScanReportSummary {
 	}
 
 	return result
+}
+
+func deriveTrustStatus(record *Record) catalogv1.TrustStatus {
+	signatureStatuses := make([]string, len(record.Signatures))
+	for i := range record.Signatures {
+		signatureStatuses[i] = record.Signatures[i].Status
+	}
+
+	nameVerificationStatus := ""
+	if record.NameVerification != nil {
+		nameVerificationStatus = record.NameVerification.Status
+	}
+
+	return catalogv1.DeriveTrustStatus(signatureStatuses, nameVerificationStatus)
 }
 
 // applyCatalogOrder appends the allow-listed ORDER BY clauses plus a

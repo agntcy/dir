@@ -77,8 +77,15 @@ func (c *CLI) Info(cidOrName string) *CommandBuilder {
 	return c.Command("info").WithArgs(cidOrName)
 }
 
-func (c *CLI) Delete(cid string) *CommandBuilder {
-	return c.Command("delete").WithArgs(cid)
+func (c *CLI) Delete(cids ...string) *CommandBuilder {
+	return c.Command("delete").WithArgs(cids...)
+}
+
+func (c *CLI) DeleteFromStdin(input string) *StdinCommandBuilder {
+	return &StdinCommandBuilder{
+		CommandBuilder: c.Command("delete").WithArgs("--stdin"),
+		stdinInput:     input,
+	}
 }
 
 func (c *CLI) Search() *SearchBuilder {

@@ -1,8 +1,8 @@
 <script lang="ts">
 	import type { CatalogEntry } from '$lib/types';
-	import { extractEntryTypes, extractShortTag, hasTrustManifest, getScanManifest, getUsageMetrics, formatDownloads, extractCid, exportFormatForType, extractEntryName, extractEntryVersion } from '$lib/utils';
+	import { extractEntryTypes, extractShortTag, getTrustStatus, getScanManifest, getUsageMetrics, formatDownloads, extractCid, exportFormatForType, extractEntryName, extractEntryVersion } from '$lib/utils';
 	import MediaTypeBadge from './MediaTypeBadge.svelte';
-
+	import TrustedBadge from './TrustedBadge.svelte';
 	import VerifiedBadge from './VerifiedBadge.svelte';
 
 	interface Props {
@@ -13,7 +13,7 @@
 	let { aicard, onclose }: Props = $props();
 
 	let metrics = $derived(getUsageMetrics(aicard));
-	let verified = $derived(hasTrustManifest(aicard));
+	let trustStatus = $derived(getTrustStatus(aicard));
 	let scanManifest = $derived(getScanManifest(aicard));
 	let tags = $derived(aicard.tags || []);
 	let cid = $derived(extractCid(aicard.identifier));
@@ -48,7 +48,10 @@
 			<div class="min-w-0 flex-1 mr-4">
 				<div class="flex items-center gap-2">
 					<h2 class="text-lg font-semibold text-ink-strong truncate">{aicard.displayName || 'Unnamed AI card'}</h2>
-					{#if verified}
+					{#if trustStatus?.trusted}
+						<TrustedBadge />
+					{/if}
+					{#if trustStatus?.verified}
 						<VerifiedBadge />
 					{/if}
 				</div>

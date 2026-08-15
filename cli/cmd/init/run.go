@@ -7,14 +7,16 @@ package init
 import (
 	"bufio"
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/agntcy/dir/cli/internal/agentcfg"
-	extractor "github.com/agntcy/dir/cli/internal/extractor"
 	"github.com/agntcy/dir/cli/presenter"
 	clientconfig "github.com/agntcy/dir/client/config"
+	extractor "github.com/agntcy/dir/utils/extractor"
 	"github.com/spf13/cobra"
 	"golang.org/x/term"
 )
@@ -61,7 +63,11 @@ func run(cmd *cobra.Command, opts *options) error {
 
 // configFromOpts builds the engine config from flags, resolving defaults.
 func configFromOpts(opts *options) extractor.Config {
-	return extractor.Config{OASFURL: opts.oasfURL, AssetDir: opts.assetDir}.Resolve()
+	return extractor.Config{
+		OASFURL:    opts.oasfURL,
+		AssetDir:   opts.assetDir,
+		RemoteAddr: opts.remoteAddr,
+	}.Resolve()
 }
 
 // preferSavedConfig fills cfg's asset dir / OASF URL from the persisted config
@@ -71,7 +77,7 @@ func configFromOpts(opts *options) extractor.Config {
 // wins (including one set back to the default value). An absent config leaves cfg
 // untouched; a present-but-unreadable config is an error (so we fail fast rather
 // than provision against defaults and only trip over the bad file later).
-func preferSavedConfig(cfg extractor.Config, urlSet, dirSet bool) (extractor.Config, error) {
+func preferSavedConfig(cfg extractor.Config, urlSet, dirSet, addrSet bool) (extractor.Config, error) {
 	saved, err := clientconfig.LoadExtractor("")
 	if err != nil {
 		return cfg, fmt.Errorf("read extractor config: %w", err)
@@ -89,6 +95,10 @@ func preferSavedConfig(cfg extractor.Config, urlSet, dirSet bool) (extractor.Con
 		cfg.OASFURL = saved.OASFURL
 	}
 
+	if !addrSet && saved.RemoteAddr != "" {
+		cfg.RemoteAddr = saved.RemoteAddr
+	}
+
 	return cfg, nil
 }
 
@@ -99,12 +109,23 @@ func resolveConfig(cmd *cobra.Command, opts *options) (extractor.Config, error) 
 		configFromOpts(opts),
 		cmd.Flags().Changed("oasf-url"),
 		cmd.Flags().Changed("asset-dir"),
+		cmd.Flags().Changed("extractor-remote-addr"),
 	)
 }
 
 // runProvision provisions the extractor assets, persists the choice, and runs a
 // smoke check. It prompts for confirmation and the OASF URL unless --yes.
 func runProvision(cmd *cobra.Command, opts *options) error {
+	cfg, err := resolveConfig(cmd, opts)
+	if err != nil {
+		return err
+	}
+
+	// Remote extractor: use an OASF-SDK server instead of a local model download.
+	if cfg.RemoteAddr != "" {
+		return provisionRemote(cmd, cfg)
+	}
+
 	presenter.Printf(cmd, `
 Step 2 — OASF taxonomy extractor
 Maps free-form text onto the OASF taxonomy so dirctl can enrich records and
@@ -112,11 +133,6 @@ Maps free-form text onto the OASF taxonomy so dirctl can enrich records and
 calls. It needs a one-time ~89 MB model + the taxonomy downloaded to your
 machine; provisioned once, reused everywhere.
 `)
-
-	cfg, err := resolveConfig(cmd, opts)
-	if err != nil {
-		return err
-	}
 
 	if extractor.IsProvisioned(cfg) {
 		presenter.Printf(cmd, "Extractor already provisioned at %s (OASF URL %s).\n",
@@ -192,6 +208,74 @@ machine; provisioned once, reused everywhere.
 
 	presenter.Printf(cmd, "✔ Extractor ready.\n  asset dir: %s\n  OASF URL:  %s\nEnrichment and free-text search can now run locally.\n",
 		cfg.AssetDir, cfg.OASFURL)
+
+	return nil
+}
+
+// remoteSmokeSample exercises both skill and domain matching so the remote
+// connectivity check confirms a real extraction, not just a reachable port.
+const remoteSmokeSample = "real-time fraud detection for banking transactions using natural language processing"
+
+// remoteSmokeTimeout bounds the best-effort remote connectivity check so a
+// blackholed or unresponsive server can't hang `dirctl init` indefinitely.
+const remoteSmokeTimeout = 10 * time.Second
+
+// provisionRemote configures dirctl to use a remote OASF-SDK extractor server
+// instead of downloading local assets. It persists the address, then runs a
+// best-effort connectivity check — non-fatal, because the server may not be up
+// yet when the address is configured.
+func provisionRemote(cmd *cobra.Command, cfg extractor.Config) error {
+	presenter.Printf(cmd, `
+Step 2 — OASF taxonomy extractor (remote)
+Using the OASF-SDK server at %s; no local model is downloaded. dirctl record
+enrichment and free-text search will call this server.
+`, cfg.RemoteAddr)
+
+	if err := clientconfig.SaveExtractor("", &clientconfig.Extractor{
+		OASFURL:    cfg.OASFURL,
+		AssetDir:   cfg.AssetDir,
+		RemoteAddr: cfg.RemoteAddr,
+	}); err != nil {
+		return fmt.Errorf("save extractor config: %w", err)
+	}
+
+	ctx, cancel := context.WithTimeout(cmd.Context(), remoteSmokeTimeout)
+	defer cancel()
+
+	captured, err := runWithSpinner(ctx, os.Stdout, "Verifying remote extractor…", nil,
+		func(ctx context.Context) error { return smokeCheckRemote(ctx, cfg) })
+	if err != nil {
+		// Config is saved; a down server is expected when configuring ahead of
+		// deployment, so warn rather than fail.
+		presenter.Printf(cmd, "⚠ Saved remote extractor %s, but could not reach it (is the server running?).\n", cfg.RemoteAddr)
+		printDetails(cmd, captured)
+
+		return nil //nolint:nilerr // connectivity is best-effort; the address is saved regardless.
+	}
+
+	presenter.Printf(cmd, "✔ Remote extractor ready at %s.\nEnrichment and free-text search will use it.\n", cfg.RemoteAddr)
+
+	return nil
+}
+
+// smokeCheckRemote resolves the configured remote extractor and runs one
+// extraction to confirm the server is reachable and returns usable results.
+func smokeCheckRemote(ctx context.Context, cfg extractor.Config) error {
+	ext, err := extractor.ResolveExtractor(cfg)
+	if err != nil {
+		return err
+	}
+
+	defer func() { _ = ext.Close() }()
+
+	res, err := ext.Extract(ctx, remoteSmokeSample, extractor.ExtractOptions{})
+	if err != nil {
+		return fmt.Errorf("extract: %w", err)
+	}
+
+	if len(res.Skills) == 0 && len(res.Domains) == 0 {
+		return errors.New("remote extractor returned no skills or domains")
+	}
 
 	return nil
 }

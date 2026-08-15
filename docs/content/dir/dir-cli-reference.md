@@ -1,3 +1,7 @@
+---
+icon: material/console
+---
+
 # Directory CLI Command Reference
 
 Command-line reference for `dirctl`. Install the CLI in the [Quickstart](dir-quickstart.md)
@@ -47,6 +51,8 @@ gateway endpoints, and SPIFFE/SPIRE integration are documented in
 
 ```bash
 dirctl auth login --oidc-issuer "https://idp.ads.outshift.io" --oidc-client-id "dirctl"
+
+Set `oidc_scopes` in the context (or `DIRECTORY_CLIENT_OIDC_SCOPES` / `--oidc-scopes`) to request extra claims. After changing scopes, run `dirctl auth login --force` so the cached token is re-minted.
 dirctl --auth-mode=oidc --server-addr ads.outshift.io:443 search --skill "AI"
 ```
 
@@ -61,7 +67,7 @@ explicit `--auth-mode`.
 | Group | Commands |
 |-------|----------|
 | Setup | `init` |
-| Daemon | `daemon start`, `stop`, `status` |
+| Daemon | `daemon start`, `stop`, `status`, `config init` |
 | Auth | `auth login`, `logout`, `status` |
 | Context | `context list`, `current`, `set`, `show`, `validate` |
 | Storage | `push`, `pull`, `delete`, `info` |
@@ -197,6 +203,7 @@ A2A-only record, points you to `dirctl export`.
 | Flag | Description | Default |
 |------|-------------|---------|
 | `--agents` | Agents to target: `all` (every detected agent) or a comma-separated list of agent IDs (e.g. `--agents claude-code,cursor`; repeatable) | `all` |
+| `--project` | Write into the current repo (project scope) instead of the user's global config | `false` |
 | `--dry-run` | Preview the plan without writing | `false` |
 | `--yes` / `-y` | Skip the confirmation prompt | `false` |
 
@@ -204,6 +211,14 @@ Valid agent IDs: `claude-code`, `claude-desktop`, `cursor`, `vscode`, `windsurf`
 `cline`, `roo`, `gemini`, `opencode`, `zed`, `continue`, `codex` (see
 `dirctl install list`). After completion, a summary lists every location added,
 updated, removed, or skipped with its absolute path.
+
+By default artifacts go into each agent's **global/user** config. With
+`--project`, they are written into the **current repository** instead — under
+each agent's project-local MCP config (e.g. `.cursor/mcp.json`, `.vscode/mcp.json`,
+`.mcp.json`) and its project skill folder — so a record can be wired into the
+agents for just one project. Run `dirctl install list --project` to see the exact
+paths per agent. Agents with no project-scope location for an artifact are skipped
+with a note; detection is unchanged (an undetected agent is still skipped).
 
 ```bash
 # Preview what installing a record would change
@@ -214,14 +229,17 @@ dirctl install cisco.com/agent:v1.0.0 --yes
 
 # Install into specific agents only
 dirctl install cisco.com/agent --agents claude-code,cursor
+
+# Install into the current repo instead of the global config
+dirctl install cisco.com/agent --project
 ```
 
 ### `dirctl install uninstall <cid-or-name> [flags]`
 
 Removes what `install` added for that record — its MCP entry and/or skill —
 leaving all other content intact. Shares the same flags as install (`--agents`,
-`--dry-run`, `--yes`). Idempotent: an agent with nothing of ours installed is
-reported as unchanged, never an error.
+`--project`, `--dry-run`, `--yes`). Idempotent: an agent with nothing of ours
+installed is reported as unchanged, never an error.
 
 `dirctl uninstall <cid-or-name>` is a top-level shorthand for
 `dirctl install uninstall <cid-or-name>` (same flags and behavior).
@@ -392,6 +410,32 @@ Checks whether the daemon is currently running by inspecting the PID file.
     Daemon is not running
     ```
 
+### `dirctl daemon config init`
+
+Writes the daemon's built-in default configuration to disk, giving you a complete, valid file to start customizing instead of authoring one from scratch.
+
+Without `--output`, the file is written to the daemon's resolved config path: `<data-dir>/daemon.config.yaml` by default, or the path passed via `--config` on the `daemon` command if one is set. Unless `--force` is given, the command refuses to overwrite a file that already exists. The file is created with mode `0600`. When the command creates the daemon's data directory it uses `0700`, matching `daemon start`; a directory that already exists keeps its current mode, and a parent created for a path you passed to `--output` uses `0755`, since that is an ordinary location rather than the daemon's private state. The dumped file is accepted unchanged by `dirctl daemon start --config <file>`.
+
+| Flag | Description | Default |
+|------|-------------|---------|
+| `--data-dir` | Data directory for daemon state | `~/.agntcy/dir/` |
+| `--config` | Path to daemon config file (used as the write target if set) | Built-in embedded defaults |
+| `--output`, `-o` | Path to write the default config to | Resolved daemon config path |
+| `--force` | Overwrite the file if it already exists | `false` |
+
+??? example
+
+    ```bash
+    # Write the default config to the default location
+    dirctl daemon config init
+
+    # Write the default config to a specific file
+    dirctl daemon config init --output /path/to/daemon.config.yaml
+
+    # Overwrite an existing config file
+    dirctl daemon config init --force
+    ```
+
 ## Context Operations
 
 Starting with Directory v1.4.0, the context commands manage reusable `dirctl` client contexts. Contexts describe Directory endpoints and their client-side authentication, TLS, and SPIFFE settings.
@@ -406,6 +450,12 @@ contexts:
     auth_mode: oidc
     oidc_issuer: https://idp.example.com
     oidc_client_id: dirctl
+    oidc_scopes:
+      - openid
+      - email
+      - profile
+      - offline_access
+      - groups
   staging:
     server_address: staging.gateway.example.com:443
     auth_mode: oidc
@@ -657,15 +707,26 @@ dirctl pull cisco.com/agent@wrong-cid
 
 When no version is specified, commands return the most recently created record (by record's `created_at` field). This allows non-semver tags like `latest`, `dev`, or `stable`.
 
-### `dirctl delete <cid>`
+### `dirctl delete <cid> [cid...]`
 
-Removes records from storage.
+Removes records from storage. Multiple CIDs can be passed as arguments or piped in
+with `--stdin`, in which case they are deleted over a single stream.
+
+The following flags are available:
+
+- `--stdin` - Read CIDs from standard input, either as a JSON array produced by `dirctl search --format cid --output json` or as line-delimited CIDs
 
 ??? example
 
     ```bash
     # Delete a record
     dirctl delete baeareihdr6t7s6sr2q4zo456sza66eewqc7huzatyfgvoupaqyjw23ilvi
+
+    # Delete several records in one request
+    dirctl delete baeareihdr6t7... baeareiabc123...
+
+    # Delete every record matching a search
+    dirctl search --format cid --limit 100 --output json | dirctl delete --stdin
     ```
 
 ### `dirctl info <reference>`
@@ -814,16 +875,18 @@ The import command enriches records by mapping them to OASF skills and domains. 
 
 #### Extractor enrichment (LLM-free, recommended)
 
-Uses the local OASF sentence-transformer model provisioned by `dirctl init` to classify records in-process — no API key, no external service, no LLM runtime. This is the fastest option and works offline.
+Uses the OASF sentence-transformer model to classify records — no API key and no LLM runtime. The model runs in-process from locally provisioned assets, or on a remote OASF-SDK server.
 
-**Requires:** `dirctl init` to have been run at least once to provision the model assets.
+**Requires:** either `dirctl init` to have been run at least once to provision the model assets, or a reachable OASF-SDK server.
 
 ```yaml
 enricher:
-  extractor: {}           # uses assets provisioned by dirctl init
+  extractor: {}           # uses whatever dirctl init saved
 ```
 
-To override the default asset location:
+With no fields set, the extractor uses the configuration saved by `dirctl init` — including a remote server address, if one was configured there.
+
+To override the local asset location:
 
 ```yaml
 enricher:
@@ -831,6 +894,16 @@ enricher:
     oasf_url: https://schema.oasf.outshift.com   # optional
     asset_dir: /path/to/custom/assets             # optional
 ```
+
+To enrich against a running OASF-SDK server instead of local assets:
+
+```yaml
+enricher:
+  extractor:
+    remote_addr: oasf-sdk:31234    # selects the remote backend
+```
+
+Setting `remote_addr` selects the remote backend; leaving it empty uses the local in-process extractor. Each extraction call is bounded by a timeout, so an unreachable server fails the record rather than stalling the import.
 
 #### Static enrichment
 
@@ -1253,14 +1326,46 @@ Omit the positional argument and use filter flags to query specific fields. All 
 | `--module` | Module path (e.g. `core/llm/model`) |
 | `--domain-id` | Domain ID |
 | `--domain` | Domain name |
+| `--created-at` | Record creation timestamp (e.g. `2024-*`, `>=2024-01-01`) |
 | `--author` | Author name |
 | `--schema-version` | OASF schema version |
 | `--module-id` | Module ID |
 | `--annotation` | Annotation key=value |
-| `--verified` | Only verified records |
-| `--trusted` | Only trusted records (signature verification passed) |
-| `--safe` | Only records where all security scanners reported `is_safe=true` |
+| `--verified` | Only verified records; `--verified=false` for records without verified name ownership |
+| `--trusted` | Only trusted records (signature verification passed); `--trusted=false` for records without a trusted signature |
+| `--safe` | Only records where all security scanners reported `is_safe=true`; `--safe=false` for records where at least one scanner did not |
 | `--scan-severity` | Only records whose highest scan severity meets or exceeds a threshold (`NONE`, `INFO`, `LOW`, `MEDIUM`, `HIGH`, `CRITICAL`) |
+
+`--verified`, `--trusted` and `--safe` are tri-state: omitting the flag does not filter on that property at all, while an explicit `=false` filters for records that failed the check.
+
+**Exclude flags:**
+
+Every filter above except the three booleans has an `--exclude-` twin —
+`--exclude-name`, `--exclude-version`, `--exclude-skill-id`, `--exclude-skill`,
+`--exclude-locator`, `--exclude-module`, `--exclude-domain-id`, `--exclude-domain`,
+`--exclude-created-at`, `--exclude-author`, `--exclude-schema-version`,
+`--exclude-module-id`, `--exclude-annotation` and `--exclude-scan-severity`. Each is
+repeatable and takes the same values as the flag it mirrors; wildcards, comparison
+operators and `:` behave identically, and `!` is an ordinary character.
+
+```bash
+dirctl search --exclude-skill "natural_language_processing"
+dirctl search --domain "life_science/*" --exclude-author "bot*"
+dirctl search --skill python --exclude-skill nlp   # has python, does not have nlp
+```
+
+Values of one filter are combined with **OR**, while every excluded value must
+**not** match. Excluding a multi-valued field drops the record if *any* of its
+values match, so `--exclude-skill nlp` drops a record whose skills are
+`[nlp, python]`.
+
+To exclude on a boolean, use the tri-state `=false` form (`--trusted=false`) rather
+than an `--exclude-` flag.
+
+!!! note "`--exclude-scan-severity` also keeps never-scanned records"
+    It excludes records that have a scan report at or above the given threshold.
+    A record that was never scanned has no such report, so it is kept. Combine it
+    with `--safe` when you want scanned-and-clean only.
 
 **Output and pagination flags:**
 
@@ -1375,6 +1480,26 @@ Record name verification proves that the signing key is authorized by the domain
 
 Signs records for integrity and authenticity. When signing a record with a verifiable name (e.g., `https://domain/path`), the system automatically attempts to verify domain authorization via JWKS. See [Name Verification](#name-verification) for details.
 
+For encrypted private keys, `COSIGN_PASSWORD` is used when it is set, including when
+it is explicitly empty. Use `--password-stdin` to opt in to reading a password from
+standard input. Otherwise, an interactive terminal prompts for the password; a
+non-interactive process does not read standard input implicitly.
+
+Local and inline PEM keys must use the encrypted Cosign/Sigstore format produced by
+`cosign generate-key-pair`.
+
+The `--key` flag accepts PEM content, a local file, an HTTP(S) URL, an environment
+variable reference, or a KMS URI. The supported KMS URI formats are:
+
+| Provider | URI format |
+|----------|------------|
+| AWS KMS | `awskms://[ENDPOINT]/[ID/ALIAS/ARN]` |
+| Google Cloud KMS | `gcpkms://projects/[PROJECT]/locations/[LOC]/keyRings/[RING]/cryptoKeys/[KEY]` |
+| Azure Key Vault | `azurekms://[VAULT_NAME][VAULT_URI]/[KEY]` |
+| HashiCorp Vault | `hashivault://[KEY]` |
+
+Configure the selected provider's credentials before running `dirctl`.
+
 ??? example
 
     ```bash
@@ -1386,6 +1511,12 @@ Signs records for integrity and authenticity. When signing a record with a verif
 
     # Sign with a pre-issued OIDC token (non-interactive)
     dirctl sign <cid> --oidc-token "$OIDC_TOKEN"
+
+    # Explicitly read an encrypted private-key password from standard input
+    printf '%s' "$KEY_PASSWORD" | dirctl sign <cid> --key cosign.key --password-stdin
+
+    # Sign with a key managed by Google Cloud KMS
+    dirctl sign <cid> --key "gcpkms://projects/PROJECT/locations/LOCATION/keyRings/RING/cryptoKeys/KEY"
     ```
 
 ### `dirctl naming verify <reference>`

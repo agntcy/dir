@@ -9,6 +9,7 @@ import (
 
 	"github.com/agntcy/dir/cli/cmd/search"
 	"github.com/agntcy/dir/cli/internal/agentcfg"
+	"github.com/agntcy/dir/cli/presenter"
 	"github.com/spf13/cobra"
 )
 
@@ -21,8 +22,25 @@ func addSelectionFlags(cmd *cobra.Command, opts *options) {
 	flags.StringSliceVar(&opts.agents, "agents", []string{agentcfg.AllAgents},
 		fmt.Sprintf("Agents to target: %q (default, all detected) or a comma-separated list of agent IDs (%s)",
 			agentcfg.AllAgents, strings.Join(agentcfg.AgentIDs(), ", ")))
+	flags.BoolVar(&opts.project, "project", false, "Write into the current repo (project scope) instead of global config")
 	flags.BoolVar(&opts.dryRun, "dry-run", false, "Preview changes without writing")
 	flags.BoolVarP(&opts.yes, "yes", "y", false, "Skip the confirmation prompt")
+}
+
+// scopeFromOpts maps the --project flag to the placement scope.
+func scopeFromOpts() agentcfg.Scope {
+	if opts.project {
+		return agentcfg.Project
+	}
+
+	return agentcfg.Global
+}
+
+// printScope announces project scope so the user sees where files will land.
+func printScope(cmd *cobra.Command) {
+	if opts.project {
+		presenter.Printf(cmd, "Scope: project (current repo)\n")
+	}
 }
 
 func addBatchFlags(cmd *cobra.Command, opts *options) {

@@ -110,6 +110,7 @@ func resolvedConfigValues(cfg *client.Config) map[string]string {
 		"jwt_audience":       cfg.JWTAudience,
 		"oidc_client_id":     cfg.OIDCClientID,
 		"oidc_issuer":        cfg.OIDCIssuer,
+		"oidc_scopes":        strings.Join(cfg.OIDCScopes, " "),
 		"server_address":     cfg.ServerAddress,
 		"spiffe_socket_path": cfg.SpiffeSocketPath,
 		"spiffe_token":       redact(cfg.SpiffeToken),

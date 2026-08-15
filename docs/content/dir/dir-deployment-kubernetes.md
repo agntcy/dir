@@ -1,3 +1,7 @@
+---
+icon: material/kubernetes
+---
+
 # Kubernetes Deployment
 
 Deploy Directory with SPIRE in a Kind cluster for development and testing. Uses `example.org` as the trust domain (local only—cannot federate with the public network).
@@ -295,6 +299,105 @@ The Agent Directory Service can be deployed using Helm or GitOps / Argo CD. Helm
 
     !!! important "Trust domain"
         This Quick Start uses `example.org` for local testing only. To federate with the public Directory network, you need a unique trust domain. See [Production Deployment](dir-prod-deployment.md) and [Running a Federated Directory Instance](dir-federation-setup.md).
+
+## Content Policies
+
+A content policy runs a scheduled "search, then act on the matches" pipeline against your node. Policies are declared in the `dirctl` chart's values — no forked chart and no hand-written manifests. Each enabled policy renders a CronJob named `<release>-dirctl-policy-<key>`.
+
+```yaml
+policies:
+  sync-netsec:
+    enabled: true
+    schedule: "0 3 * * *"
+    action: sync
+    match:
+      domain: [network_security]
+
+  prune-untrusted:
+    enabled: true
+    schedule: "*/30 * * * *"
+    action: prune
+    match:
+      trusted: false
+      scan-severity: MEDIUM
+```
+
+`sync-netsec` pulls every record peers advertise in the `network_security` domain into this node, nightly. `prune-untrusted` deletes local records whose signature is not trusted and that scan at MEDIUM severity or worse, every 30 minutes.
+
+### Actions
+
+| Action | What it does | Underlying pipeline |
+| --- | --- | --- |
+| `sync` | Pull matching records from network peers into this node | `dirctl routing search` → `dirctl sync create --stdin` |
+| `prune` | Delete matching records from this node's store | `dirctl search` → `dirctl delete --stdin` |
+| `publish` | Announce matching local records to the routing network | `dirctl search` → `dirctl routing publish --stdin` |
+| `unpublish` | Withdraw matching local records from the routing network | `dirctl search` → `dirctl routing unpublish --stdin` |
+
+### Predicates
+
+`match` keys are `dirctl` flag names with the leading `--` removed, so every filter the CLI supports is available without a chart change:
+
+| Value kind | Example | Rendered flag |
+| --- | --- | --- |
+| List | `domain: [a, b]` | `--domain 'a' --domain 'b'` |
+| Boolean | `trusted: false` | `--trusted=false` |
+| Scalar | `scan-severity: MEDIUM` | `--scan-severity 'MEDIUM'` |
+
+Boolean filters are tri-state. Omitting `trusted` does not filter on trust at all; `trusted: true` matches records with a trusted signature; `trusted: false` matches records without one. `verified` behaves the same way.
+
+!!! warning "`safe: false` is not the complement of `safe: true`"
+    `safe: true` matches records where every scanner reported `is_safe=true`, and `safe: false` matches records where at least one scanner reported unsafe. A record that was **never scanned** matches neither. A `prune` policy keyed on `safe: false` therefore deletes only records with a failing scan report, and silently leaves unscanned records untouched — which is likely the opposite of the intent. To act on "not known to be safe", combine `safe: false` with a separate policy for unscanned records, or gate on `scan-severity` instead.
+
+Because keys are passed through mechanically, the `exclude-` filters work too — carving an exception out of a policy needs no chart change:
+
+```yaml
+policies:
+  prune-untrusted-except-cisco:
+    enabled: true
+    schedule: "@daily"
+    action: prune
+    match:
+      trusted: false
+      exclude-name: ["cisco.com/*"]
+```
+
+`limit`, `format` and `output` are set by the chart and are rejected inside `match`. An unknown `action` and a value containing a single quote also fail at `helm template` time rather than at run time.
+
+!!! note "`sync` searches the network, not your store"
+    `sync` queries the routing index to find records held by other peers, so its `match` keys are limited to those `dirctl routing search` accepts: `skill`, `domain`, `locator`, `module` and `min-score`. The other three actions search the local store and accept the full `dirctl search` filter set.
+
+### Other Fields
+
+| Field | Default | Meaning |
+| --- | --- | --- |
+| `enabled` | `false` | Render the CronJob. |
+| `schedule` | required | Cron expression. |
+| `limit` | `100` | Maximum records processed per run. |
+| `dryRun` | `false` | Log the matches and exit without applying the action. |
+
+`limit` is a page size, and how a run covers matches beyond it depends on the action:
+
+| Action | Coverage |
+| --- | --- |
+| `prune` | Deleting a record stops it matching, so the set shrinks and successive runs converge on the whole backlog. |
+| `publish`, `unpublish` | The run pages through `--offset` until it sees a short page, so a single run covers every match. |
+| `sync` | Processes only the first `limit` matches. `dirctl routing search` has no `--offset`, and syncing does not stop a peer advertising the record, so later matches are never reached — set `limit` above your expected match count. |
+
+`env`, `resources`, `volumes`, `volumeMounts`, `concurrencyPolicy`, `successfulJobsHistoryLimit` and `failedJobsHistoryLimit` may be set per policy and behave exactly as they do for a `cronjobs` entry.
+
+!!! important "Preview a destructive policy before enabling it"
+    `prune` deletes records and `unpublish` withdraws them from the network. Set `dryRun: true` for the first few runs and read the CronJob logs — every run logs the match count and dumps the matched records before acting:
+
+    ```text
+    [prune-untrusted] matched 12 record(s)
+    [
+      "baeareib...",
+      ...
+    ]
+    [prune-untrusted] dry run: not applying action 'prune'
+    ```
+
+Both example policies ship disabled in `values.yaml`. Adding a policy of your own is a values change only.
 
 ## Security Scanning
 

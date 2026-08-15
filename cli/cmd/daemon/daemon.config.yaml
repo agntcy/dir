@@ -12,10 +12,14 @@
 #   DIRECTORY_DAEMON_SERVER_LISTEN_ADDRESS
 #   DIRECTORY_DAEMON_SERVER_ROUTING_LISTEN_ADDRESS
 #   DIRECTORY_DAEMON_SERVER_ROUTING_BOOTSTRAP_PEERS  (comma-separated)
+#   DIRECTORY_DAEMON_SERVER_ROUTING_DIRECTORY_API_ADDRESS
+#   DIRECTORY_DAEMON_SERVER_ROUTING_DIRECTORY_OCI_ADDRESS
 #   DIRECTORY_DAEMON_SERVER_DATABASE_POSTGRES_USERNAME
 #   DIRECTORY_DAEMON_SERVER_DATABASE_POSTGRES_PASSWORD
 #   DIRECTORY_DAEMON_SERVER_STORE_OCI_AUTH_CONFIG_USERNAME
 #   DIRECTORY_DAEMON_SERVER_STORE_OCI_AUTH_CONFIG_PASSWORD
+#   DIRECTORY_DAEMON_RECONCILER_LOCAL_REGISTRY_AUTH_CONFIG_USERNAME
+#   DIRECTORY_DAEMON_RECONCILER_LOCAL_REGISTRY_AUTH_CONFIG_PASSWORD
 
 server:
   listen_address: "localhost:8888"
@@ -40,6 +44,19 @@ server:
     datastore_dir: "routing"
     # bootstrap_peers:
     #   - "/dns4/remote-dir.example.com/tcp/8999/p2p/<peer-id>"
+
+    # Endpoints advertised to peers so they can sync records from this node.
+    # Both are optional; empty means the endpoint is not advertised. Set the
+    # publicly reachable addresses here, which may differ from listen_address
+    # and store.oci.registry_address.
+    # directory_api_address: "dir.example.com:8888"
+    # directory_oci_address: "ghcr.io/org/agents"
+
+    # How often local CID provider announcements are republished. Lower values
+    # let newly joined nodes converge on existing content sooner, at the cost of
+    # more announcement traffic and more work for every subscriber.
+    republish_interval: "36h"
+
     gossipsub:
       enabled: true
     # DHT-based record + referrer autosync (deny-by-default; disabled unless set).
@@ -117,6 +134,23 @@ reconciler:
     mcp_cli_path: "mcp-scanner"
     skill_cli_path: "skill-scanner"
     a2a_cli_path: "a2a-scanner"
+    # The MCP scan has a second phase that connects to the live endpoints a
+    # record declares. Turn it off where the reconciler must not make outbound
+    # connections to third-party servers.
+    disable_endpoint_scan: false
+    # Endpoints on loopback, link-local, private, and other reserved ranges are
+    # refused by default, because endpoint URLs come from published records.
+    # Turn this on for self-hosted deployments where the directory and its MCP
+    # servers share a private network.
+    allow_private_endpoints: false
+    # Permit plain http endpoints. Separate from allow_private_endpoints so
+    # that reaching a private endpoint does not also allow cleartext scans of
+    # public hosts.
+    allow_insecure_transport: false
+    # Bounds how many distinct endpoints one record can make the daemon dial.
+    # Each endpoint costs one scanner invocation per subcommand, so an
+    # unbounded list lets one published record fan out arbitrarily. 0 = default (8).
+    max_endpoints_per_record: 8
   local_registry:
     registry_address: "localhost:5555"
     repository_name: "dir"

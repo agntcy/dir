@@ -13,6 +13,7 @@ import (
 	corev1 "github.com/agntcy/dir/api/core/v1"
 	"github.com/agntcy/dir/server/config"
 	"github.com/agntcy/dir/server/types"
+	"github.com/agntcy/oasf-sdk/pkg/translator"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc/codes"
@@ -30,33 +31,39 @@ type fakeCatalogDB struct {
 	tags       []*catalogv1.CatalogTag
 	err        error
 	calls      int
-	gotFilters types.RecordFilters
+	gotFilters types.CatalogFilters
 }
 
-func (f *fakeCatalogDB) GetCatalogEntries(opts ...types.FilterOption) ([]*catalogv1.CatalogEntry, bool, error) {
-	f.calls++
+func (f *fakeCatalogDB) captureFilters(opts ...types.CatalogQueryOption) {
+	cfg := types.CatalogFilters{}
 
-	cfg := types.RecordFilters{}
-	for _, o := range opts {
-		o(&cfg)
+	for _, opt := range opts {
+		if opt != nil {
+			opt.ApplyCatalog(&cfg)
+		}
 	}
 
 	f.gotFilters = cfg
+}
+
+func (f *fakeCatalogDB) GetCatalogEntries(opts ...types.CatalogQueryOption) ([]*catalogv1.CatalogEntry, bool, error) {
+	f.calls++
+	f.captureFilters(opts...)
 
 	if f.err != nil {
 		return nil, false, f.err
 	}
 
 	entries := f.entries
-	if cfg.Offset > 0 {
-		if cfg.Offset >= len(entries) {
+	if f.gotFilters.Offset > 0 {
+		if f.gotFilters.Offset >= len(entries) {
 			return nil, false, nil
 		}
 
-		entries = entries[cfg.Offset:]
+		entries = entries[f.gotFilters.Offset:]
 	}
 
-	limit := cfg.Limit
+	limit := f.gotFilters.Limit
 	if limit <= 0 {
 		limit = 20
 	}
@@ -69,7 +76,9 @@ func (f *fakeCatalogDB) GetCatalogEntries(opts ...types.FilterOption) ([]*catalo
 	return entries, hasMore, nil
 }
 
-func (f *fakeCatalogDB) CountCatalogEntries(opts ...types.FilterOption) (uint32, error) {
+func (f *fakeCatalogDB) CountCatalogEntries(opts ...types.CatalogQueryOption) (uint32, error) {
+	f.captureFilters(opts...)
+
 	if f.err != nil {
 		return 0, f.err
 	}
@@ -143,7 +152,9 @@ func TestListAgents_FilterTranslation(t *testing.T) {
 	})
 	require.NoError(t, err)
 	assert.Equal(t, []string{"*weather*"}, db.gotFilters.Names)
-	assert.Equal(t, []string{"integration/a2a"}, db.gotFilters.ModuleNames)
+	require.Len(t, db.gotFilters.MediaTypeFilters, 1)
+	assert.Equal(t, "integration/a2a", db.gotFilters.MediaTypeFilters[0].ModuleName)
+	assert.Empty(t, db.gotFilters.MediaTypeFilters[0].ArtifactMediaType)
 	assert.Equal(t, []string{">2024-01-01T00:00:00Z"}, db.gotFilters.CreatedAts)
 }
 
@@ -209,6 +220,86 @@ func TestParseAgentFilter(t *testing.T) {
 		assert.Equal(t, "hello, world", f.DisplayName)
 	})
 
+	t.Run("verified=true", func(t *testing.T) {
+		f, err := parseAgentFilter(`verified=true`)
+		require.NoError(t, err)
+		require.NotNil(t, f.Verified)
+		assert.True(t, *f.Verified)
+	})
+
+	t.Run("verified=false", func(t *testing.T) {
+		f, err := parseAgentFilter(`verified=FALSE`)
+		require.NoError(t, err)
+		require.NotNil(t, f.Verified)
+		assert.False(t, *f.Verified)
+	})
+
+	t.Run("trusted=true", func(t *testing.T) {
+		f, err := parseAgentFilter(`trusted=true`)
+		require.NoError(t, err)
+		require.NotNil(t, f.Trusted)
+		assert.True(t, *f.Trusted)
+	})
+
+	t.Run("safe=true", func(t *testing.T) {
+		f, err := parseAgentFilter(`safe=true`)
+		require.NoError(t, err)
+		require.NotNil(t, f.Safe)
+		assert.True(t, *f.Safe)
+	})
+
+	t.Run("tags skill tag", func(t *testing.T) {
+		f, err := parseAgentFilter(`tags=oasf:*:skills:natural_language_processing/*`)
+		require.NoError(t, err)
+		assert.Equal(t, []types.TagFilter{{SkillName: "natural_language_processing/*"}}, f.TagFilters)
+	})
+
+	t.Run("tags comma-OR", func(t *testing.T) {
+		f, err := parseAgentFilter(`tags=oasf:*:skills:foo/*,oasf:*:skills:bar`)
+		require.NoError(t, err)
+		assert.Equal(t, []types.TagFilter{
+			{SkillName: "foo/*"},
+			{SkillName: "bar"},
+		}, f.TagFilters)
+	})
+
+	t.Run("tags domain tag", func(t *testing.T) {
+		f, err := parseAgentFilter(`tags=oasf:*:domains:healthcare/*`)
+		require.NoError(t, err)
+		assert.Equal(t, []types.TagFilter{{DomainName: "healthcare/*"}}, f.TagFilters)
+	})
+
+	t.Run("tags mixed skill and domain", func(t *testing.T) {
+		f, err := parseAgentFilter(`tags=oasf:*:skills:foo,oasf:*:domains:bar`)
+		require.NoError(t, err)
+		assert.Equal(t, []types.TagFilter{
+			{SkillName: "foo"},
+			{DomainName: "bar"},
+		}, f.TagFilters)
+	})
+
+	t.Run("tags annotation pair", func(t *testing.T) {
+		f, err := parseAgentFilter(`tags="owner=alice"`)
+		require.NoError(t, err)
+		assert.Equal(t, []types.TagFilter{{Annotation: &types.Annotation{Key: "owner", Value: "alice"}}}, f.TagFilters)
+	})
+
+	t.Run("tags annotation key only", func(t *testing.T) {
+		f, err := parseAgentFilter(`tags=owner`)
+		require.NoError(t, err)
+		assert.Equal(t, []types.TagFilter{{AnnotationKey: "owner"}}, f.TagFilters)
+	})
+
+	t.Run("tags mixed catalog tag kinds", func(t *testing.T) {
+		f, err := parseAgentFilter(`tags=oasf:*:skills:foo,"owner=alice",env`)
+		require.NoError(t, err)
+		assert.Equal(t, []types.TagFilter{
+			{SkillName: "foo"},
+			{Annotation: &types.Annotation{Key: "owner", Value: "alice"}},
+			{AnnotationKey: "env"},
+		}, f.TagFilters)
+	})
+
 	invalid := []struct {
 		name  string
 		input string
@@ -219,6 +310,11 @@ func TestParseAgentFilter(t *testing.T) {
 		{"empty value", "displayName="},
 		{"multi-value displayName", "displayName=a,b"},
 		{"bad timestamp", "createdAfter=not-a-date"},
+		{"bad verified value", "verified=maybe"},
+		{"multi-value verified", "verified=true,false"},
+		{"bad trusted value", "trusted=maybe"},
+		{"bad safe value", "safe=maybe"},
+		{"empty annotation key", "tags==alice"},
 		{"unterminated quote", `displayName="oops`},
 	}
 	for _, tc := range invalid {
@@ -227,6 +323,100 @@ func TestParseAgentFilter(t *testing.T) {
 			require.Error(t, err)
 		})
 	}
+}
+
+func TestBuildCatalogFilterOptionsVerified(t *testing.T) {
+	verified := true
+	f := agentFilter{Verified: &verified}
+
+	opts, ok := buildCatalogFilterOptions(f, nil, 20, 0)
+	require.True(t, ok)
+
+	cfg := types.CatalogFilters{}
+	for _, opt := range opts {
+		opt.ApplyCatalog(&cfg)
+	}
+
+	require.NotNil(t, cfg.Verified)
+	assert.True(t, *cfg.Verified)
+}
+
+func TestBuildCatalogFilterOptionsTrusted(t *testing.T) {
+	trusted := true
+	f := agentFilter{Trusted: &trusted}
+
+	opts, ok := buildCatalogFilterOptions(f, nil, 20, 0)
+	require.True(t, ok)
+
+	cfg := types.CatalogFilters{}
+	for _, opt := range opts {
+		opt.ApplyCatalog(&cfg)
+	}
+
+	require.NotNil(t, cfg.Trusted)
+	assert.True(t, *cfg.Trusted)
+}
+
+func TestBuildCatalogFilterOptionsSafe(t *testing.T) {
+	safe := true
+	f := agentFilter{Safe: &safe}
+
+	opts, ok := buildCatalogFilterOptions(f, nil, 20, 0)
+	require.True(t, ok)
+
+	cfg := types.CatalogFilters{}
+	for _, opt := range opts {
+		opt.ApplyCatalog(&cfg)
+	}
+
+	require.NotNil(t, cfg.ScanSafe)
+	assert.True(t, *cfg.ScanSafe)
+}
+
+func TestBuildCatalogFilterOptionsTags(t *testing.T) {
+	f := agentFilter{
+		TagFilters: []types.TagFilter{
+			{SkillName: "natural_language_processing/*"},
+			{SkillName: "coding/*"},
+			{DomainName: "healthcare/*"},
+			{Annotation: &types.Annotation{Key: "owner", Value: "alice"}},
+			{AnnotationKey: "env"},
+		},
+	}
+
+	opts, ok := buildCatalogFilterOptions(f, nil, 20, 0)
+	require.True(t, ok)
+
+	cfg := types.CatalogFilters{}
+	for _, opt := range opts {
+		opt.ApplyCatalog(&cfg)
+	}
+
+	assert.Equal(t, []types.TagFilter{
+		{SkillName: "natural_language_processing/*"},
+		{SkillName: "coding/*"},
+		{DomainName: "healthcare/*"},
+		{Annotation: &types.Annotation{Key: "owner", Value: "alice"}},
+		{AnnotationKey: "env"},
+	}, cfg.TagFilters)
+}
+
+func TestTagFilterForTag(t *testing.T) {
+	filter := tagFilterForTag("oasf:*:skills:retrieval_augmented_generation/*")
+	require.NotNil(t, filter)
+	assert.Equal(t, "retrieval_augmented_generation/*", filter.SkillName)
+
+	filter = tagFilterForTag("oasf:*:domains:healthcare/*")
+	require.NotNil(t, filter)
+	assert.Equal(t, "healthcare/*", filter.DomainName)
+
+	filter = tagFilterForTag("owner=alice")
+	require.NotNil(t, filter)
+	assert.Equal(t, &types.Annotation{Key: "owner", Value: "alice"}, filter.Annotation)
+
+	filter = tagFilterForTag("env")
+	require.NotNil(t, filter)
+	assert.Equal(t, "env", filter.AnnotationKey)
 }
 
 func TestParseOrderBy(t *testing.T) {
@@ -255,7 +445,7 @@ func TestPageTokenRoundTrip(t *testing.T) {
 	assert.Empty(t, encodePageToken(0))
 
 	tok := encodePageToken(42)
-	require.NotEmpty(t, tok)
+	assert.Equal(t, "42", tok)
 
 	offset, err := decodePageToken(tok)
 	require.NoError(t, err)
@@ -434,24 +624,26 @@ func TestExportAgent_NilData(t *testing.T) {
 	assert.Equal(t, codes.Internal, status.Code(err))
 }
 
-func TestOASFModuleForMediaType_AgentSkillBundle(t *testing.T) {
-	module, ok := oasfModuleForMediaType(catalogv1.ProtocolAgentSkillsBundleMediaType)
-	assert.True(t, ok)
-	assert.Equal(t, "core/language_model/agentskills", module)
-}
-
-func TestFilterCatalogEntriesByMediaType(t *testing.T) {
-	entries := []*catalogv1.CatalogEntry{
-		{MediaType: catalogv1.ProtocolAgentSkillsMdMediaType},
-		{MediaType: catalogv1.ProtocolAgentSkillsBundleMediaType},
-		{MediaType: catalogv1.ProtocolMCPCardJsonMediaType},
-	}
-
-	got := filterCatalogEntriesByMediaType(entries, []string{
-		catalogv1.ProtocolAgentSkillsBundleMediaType,
+func TestBuildTypeFilterOptions(t *testing.T) {
+	t.Run("agent skills markdown", func(t *testing.T) {
+		filters, ok := buildTypeFilterOptions([]string{catalogv1.ProtocolAgentSkillsMdMediaType})
+		require.True(t, ok)
+		require.Len(t, filters, 1)
+		assert.Equal(t, translator.AgentSkillsModuleName, filters[0].ModuleName)
+		assert.Equal(t, catalogv1.ProtocolAgentSkillsMdMediaType, filters[0].ArtifactMediaType)
 	})
-	require.Len(t, got, 1)
-	assert.Equal(t, catalogv1.ProtocolAgentSkillsBundleMediaType, got[0].GetMediaType())
+
+	t.Run("agent skills bundle", func(t *testing.T) {
+		filters, ok := buildTypeFilterOptions([]string{catalogv1.ProtocolAgentSkillsBundleMediaType})
+		require.True(t, ok)
+		require.Len(t, filters, 1)
+		assert.Equal(t, catalogv1.ProtocolAgentSkillsBundleMediaType, filters[0].ArtifactMediaType)
+	})
+
+	t.Run("unknown type", func(t *testing.T) {
+		_, ok := buildTypeFilterOptions([]string{"application/unknown"})
+		assert.False(t, ok)
+	})
 }
 
 func TestListTags_ReturnsSortedTags(t *testing.T) {

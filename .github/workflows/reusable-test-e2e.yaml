@@ -28,15 +28,13 @@ jobs:
             label: "Local"
           - task: e2e:test:network:local
             label: "Network"
-          # TODO: runtime tests disabled for now due to possible schema drift on the runtime side.
-          # TODO: investigate for details to reenable the test.
-          # - task: e2e:test:daemon:external
-          #   label: "Daemon External"
+          - task: e2e:test:daemon:external
+            label: "Daemon External"
           - task: e2e:test:integration-server:default
             label: "Integration Server"
     steps:
       - name: Checkout code
-        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
         with:
           fetch-depth: 0
 

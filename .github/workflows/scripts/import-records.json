@@ -35,6 +35,45 @@
     },
     {
       "search": "com.postman/"
+    },
+    {
+      "search": "com.atlassian/"
+    },
+    {
+      "search": "com.gitlab/"
+    },
+    {
+      "search": "com.circleci/"
+    },
+    {
+      "search": "io.github.buildkite/"
+    },
+    {
+      "search": "io.github.SonarSource/"
+    },
+    {
+      "search": "io.snyk/"
+    },
+    {
+      "search": "io.github.snyk/"
+    },
+    {
+      "search": "io.github.jfrog/"
+    },
+    {
+      "search": "io.github.hashicorp/"
+    },
+    {
+      "search": "io.github.grafana/"
+    },
+    {
+      "search": "io.github.getsentry/"
+    },
+    {
+      "search": "com.newrelic/"
+    },
+    {
+      "search": "io.github.sourcegraph/"
     }
   ],
   "agent-skill": [

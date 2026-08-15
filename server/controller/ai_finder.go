@@ -15,6 +15,7 @@ import (
 	"github.com/agntcy/dir/api/exportfmt"
 	"github.com/agntcy/dir/server/config"
 	"github.com/agntcy/dir/server/types"
+	"github.com/agntcy/dir/utils/extractor"
 	"github.com/agntcy/dir/utils/logging"
 	httpbodypb "google.golang.org/genproto/googleapis/api/httpbody"
 	"google.golang.org/grpc/codes"
@@ -46,18 +47,37 @@ type aiFinderController struct {
 	db     types.CatalogDatabaseAPI
 	store  types.StoreAPI
 	cfg    config.HTTPGatewayConfig
+	ext    extractor.Extractor
+}
+
+// AIFinderOption configures optional dependencies of the AI Finder controller.
+type AIFinderOption func(*aiFinderController)
+
+// WithExtractor wires an OASF extractor resolved by the server, enabling the
+// extractor-backed RPCs. Without it ExtractTaxonomy returns UNAVAILABLE
+// (HTTP 503); all other RPCs remain functional.
+func WithExtractor(ext extractor.Extractor) AIFinderOption {
+	return func(c *aiFinderController) {
+		c.ext = ext
+	}
 }
 
 // NewAIFinderController returns an AIFinderServiceServer that serves the AI
 // Catalog AI Finder surface. store may be nil — when omitted the ExportAgent
 // RPC returns UNIMPLEMENTED (HTTP 501). All other RPCs remain functional.
-func NewAIFinderController(hostId string, db types.CatalogDatabaseAPI, cfg config.HTTPGatewayConfig, store types.StoreAPI) catalogv1.AIFinderServiceServer {
-	return &aiFinderController{
+func NewAIFinderController(hostId string, db types.CatalogDatabaseAPI, cfg config.HTTPGatewayConfig, store types.StoreAPI, opts ...AIFinderOption) catalogv1.AIFinderServiceServer {
+	c := &aiFinderController{
 		db:     db,
 		store:  store,
 		cfg:    cfg,
 		hostId: hostId,
 	}
+
+	for _, opt := range opts {
+		opt(c)
+	}
+
+	return c
 }
 
 // ListAgents parses the filter, order, and paging arguments, queries the
@@ -91,7 +111,7 @@ func (c *aiFinderController) ListAgents(ctx context.Context, req *catalogv1.List
 
 	pageSize := int(clampPageSize(req.GetPageSize()))
 
-	opts, ok := buildRecordFilterOptions(parsedFilter, order, pageSize, offset)
+	opts, ok := buildCatalogFilterOptions(parsedFilter, order, pageSize, offset)
 	if !ok {
 		// type= matched no indexed module: zero rows, not an error.
 		return &catalogv1.ListAgentsResponse{}, nil
@@ -109,10 +129,6 @@ func (c *aiFinderController) ListAgents(ctx context.Context, req *catalogv1.List
 		aiFinderLogger.Error("failed to list catalog entries", "error", err)
 
 		return nil, status.Error(codes.Internal, "failed to list catalog entries") //nolint:wrapcheck
-	}
-
-	if len(parsedFilter.Types) > 0 {
-		entries = filterCatalogEntriesByMediaType(entries, parsedFilter.Types)
 	}
 
 	var nextPageToken string
@@ -210,7 +226,10 @@ func (c *aiFinderController) GetAgent(ctx context.Context, req *catalogv1.GetAge
 		return nil, status.Errorf(codes.Canceled, "%v", err)
 	}
 
-	entries, _, err := c.db.GetCatalogEntries(types.WithCIDs(cid), types.WithLimit(1))
+	entries, _, err := c.db.GetCatalogEntries(
+		types.WithCIDs(cid),
+		types.WithLimit(1),
+	)
 	if err != nil {
 		aiFinderLogger.Error("failed to load catalog entry", "cid", cid, "error", err)
 

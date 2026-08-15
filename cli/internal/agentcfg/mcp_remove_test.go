@@ -18,7 +18,7 @@ func TestRemoveMCPDeletesOnlyOurKey(t *testing.T) {
 	require.NoError(t, os.WriteFile(path, []byte(
 		`{"mcpServers":{"agntcy-dir-mcp":{"command":"dirctl"},"other":{"command":"node"}}}`), 0o600))
 
-	outcome, err := RemoveMCP(testMCPTarget(path), Env{}, testServerName, false)
+	outcome, err := RemoveMCP(testMCPTarget(path), Env{}, testServerName, Global, false)
 	require.NoError(t, err)
 	assert.Equal(t, ActionRemoved, outcome.Action)
 
@@ -36,7 +36,7 @@ func TestRemoveMCPAbsentIsUnchanged(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "mcp.json")
 	require.NoError(t, os.WriteFile(path, []byte(`{"mcpServers":{"other":{}}}`), 0o600))
 
-	outcome, err := RemoveMCP(testMCPTarget(path), Env{}, testServerName, false)
+	outcome, err := RemoveMCP(testMCPTarget(path), Env{}, testServerName, Global, false)
 	require.NoError(t, err)
 	assert.Equal(t, ActionUnchanged, outcome.Action)
 }
@@ -44,7 +44,7 @@ func TestRemoveMCPAbsentIsUnchanged(t *testing.T) {
 func TestRemoveMCPMissingFileIsUnchanged(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "nope.json")
 
-	outcome, err := RemoveMCP(testMCPTarget(path), Env{}, testServerName, false)
+	outcome, err := RemoveMCP(testMCPTarget(path), Env{}, testServerName, Global, false)
 	require.NoError(t, err)
 	assert.Equal(t, ActionUnchanged, outcome.Action)
 }
@@ -54,7 +54,7 @@ func TestRemoveMCPDryRunNoWrite(t *testing.T) {
 	original := []byte(`{"mcpServers":{"agntcy-dir-mcp":{"command":"dirctl"}}}`)
 	require.NoError(t, os.WriteFile(path, original, 0o600))
 
-	outcome, err := RemoveMCP(testMCPTarget(path), Env{}, testServerName, true)
+	outcome, err := RemoveMCP(testMCPTarget(path), Env{}, testServerName, Global, true)
 	require.NoError(t, err)
 	assert.Equal(t, ActionRemoved, outcome.Action)
 

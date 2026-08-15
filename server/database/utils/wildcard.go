@@ -5,6 +5,8 @@ package utils
 
 import (
 	"strings"
+
+	"github.com/agntcy/dir/server/types"
 )
 
 // ContainsWildcards checks if a pattern contains wildcard characters (* or ?).
@@ -69,4 +71,48 @@ func convertGlobToLike(pattern string) string {
 	result = strings.ReplaceAll(result, "?", "_")
 
 	return result
+}
+
+// BuildAnnotationExistsCondition builds an EXISTS subquery that matches
+// annotations by key/value. Multiple annotations are OR-combined.
+func BuildAnnotationExistsCondition(annotations []types.Annotation) (string, []any) {
+	if len(annotations) == 0 {
+		return "", nil
+	}
+
+	conditions := make([]string, 0, len(annotations))
+	args := make([]any, 0, len(annotations)*2) //nolint:mnd
+
+	for _, annotation := range annotations {
+		conditions = append(conditions, "(a.key = ? AND a.value = ?)")
+		args = append(args, annotation.Key, annotation.Value)
+	}
+
+	condition := strings.Join(conditions, " OR ")
+	if len(conditions) > 1 {
+		condition = "(" + condition + ")"
+	}
+
+	return "EXISTS (SELECT 1 FROM annotations a WHERE a.record_cid = records.record_cid AND " + condition + ")", args
+}
+
+// BuildNotExistsCondition wraps an inner WHERE condition (already correlated on
+// record_cid via the given alias) in a NOT EXISTS subquery against table.
+// Used to negate joined/multi-valued fields (skills, domains, modules,
+// locators, annotations) without negating the JOIN predicate itself — negating
+// the JOIN would match "has some other value" instead of "has no matching value".
+func BuildNotExistsCondition(table, alias, inner string) string {
+	return "NOT EXISTS (SELECT 1 FROM " + table + " " + alias + " WHERE " + inner + ")"
+}
+
+// BuildNegatedCondition NULL-safely negates a scalar-column condition.
+// When nullable is true, a NULL column value counts as "does not match" and
+// is retained, since SQL's NOT(NULL) evaluates to NULL (row dropped) rather
+// than true.
+func BuildNegatedCondition(column, cond string, nullable bool) string {
+	if nullable {
+		return "(" + column + " IS NULL OR NOT (" + cond + "))"
+	}
+
+	return "NOT (" + cond + ")"
 }

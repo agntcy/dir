@@ -172,11 +172,27 @@ apiserver:
         # Cache directory to use for metadata.
         # cache_dir: ""
 
-        # Registry address to connect to.
+        # Registry address the apiserver dials for its own store operations.
         # Leave empty when zot.enabled=true (the default) to auto-resolve to the
-        # bundled Zot subchart. Set explicitly to use an external OCI registry
-        # (ECR, GCR, GHCR, Harbor, etc.).
+        # bundled Zot subchart's in-cluster service. Set explicitly to use an
+        # external OCI registry (ECR, GCR, GHCR, Harbor, etc.).
         registry_address: ""
+
+        # Registry address advertised to remote peers, both in the
+        # RequestRegistryCredentials response and as the routing /oci/ multiaddr.
+        # Set this to the publicly reachable endpoint (e.g. an ingress in front of
+        # Zot) so the apiserver can keep dialing the in-cluster service above
+        # instead of hairpinning through the public ingress.
+        # Empty means peers are given registry_address, which is the right
+        # behavior when the registry is already public (GHCR, ECR, ...).
+        advertised_registry_address: ""
+
+        # TLS mode advertised with advertised_registry_address: true tells peers
+        # to use plain HTTP. Independent of auth_config.insecure below, since the
+        # in-cluster endpoint is typically HTTP while the public one is HTTPS.
+        # Ignored when advertised_registry_address is empty, and when that
+        # address spells out an http:// or https:// scheme, which wins.
+        advertised_insecure: false
 
         # OCI repository where records are stored as tags, manifests, and blobs.
         # Defaults to "dir" when zot.enabled=true and this field is empty.
@@ -389,6 +405,23 @@ apiserver:
     mountSecret: true
 
     # ZOT configuration file
+    #
+    # The default below uses local filesystem storage (storage.rootDirectory) and
+    # leaves Zot's own defaults in place, including "dedupe", which Zot defaults
+    # to true.
+    #
+    # WARNING: if you replace "storage" with a remote object storage backend
+    # (storage.storageDriver, e.g. s3), you MUST also set either
+    # "dedupe": false or a remote "cacheDriver" (e.g. dynamodb). Zot refuses to
+    # start otherwise:
+    #   invalid database config, dedupe set to true with remote storage and
+    #   database, but no remote database configured
+    # Remote storage also needs S3 credentials (an IAM role, or accesskey /
+    # secretkey inside storageDriver). Only "dedupe" is gated by config
+    # validation; garbage collection and the search extension do not block
+    # startup on remote storage.
+    # See "Zot Storage Backend":
+    # https://agntcy.github.io/dir/latest/dir/dir-prod-deployment/#zot-storage-backend
     configFiles:
       config.json: |-
         {
@@ -591,7 +624,7 @@ apiserver:
       repository: bitnami/postgresql
       # renovate: datasource=docker depName=docker.io/bitnami/postgresql versioning=docker
       tag: latest
-      digest: "sha256:91a6c3f4b4d687546c1d07c1ef7c27a5e85e2a0ce8a192fe94cad5bbde0a1aba"
+      digest: "sha256:a727ea9d5ceb64beb404afeb62a4b757fe3c33c2a09af86dc391a3a0dfed6049"
     auth:
       username: "dir"
       password: "password"  # Default password for development
@@ -693,6 +726,19 @@ apiserver:
         interval: "1h"
         mcp_cli_path: "mcp-scanner"
         skill_cli_path: "skill-scanner"
+        # The MCP scan connects to the live endpoints a record declares. Set
+        # this to turn that phase off entirely.
+        disable_endpoint_scan: false
+        # Endpoints on loopback, link-local, private, and other reserved
+        # ranges are refused by default, since endpoint URLs come from
+        # published records. In-cluster MCP servers need this on, which
+        # includes the pod CIDR on clusters that use 100.64.0.0/10.
+        allow_private_endpoints: false
+        # Permit plain http endpoints, independently of the range policy.
+        allow_insecure_transport: false
+        # Bounds endpoints dialed per record. Raise only for aggregator
+        # records that legitimately bundle several MCP servers.
+        max_endpoints_per_record: 8
 
       # Apiserver gRPC address — required by the metrics task to query provider counts.
       # Leave empty to auto-resolve to the in-cluster apiserver Service.

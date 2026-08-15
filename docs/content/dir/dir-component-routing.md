@@ -1,3 +1,7 @@
+---
+icon: material/routes
+---
+
 # Routing
 
 **Routing** (content routing) is a core Directory component that maps agent **skills** to

@@ -53,6 +53,39 @@ type RuntimeConfig struct {
 func registerServerDefaults(v *viper.Viper) {
 	v.SetDefault("server.store.oci.registry_address", storeconfig.DefaultRegistryAddress)
 	v.SetDefault("server.store.oci.repository_name", storeconfig.DefaultRepositoryName)
+
+	// The advertised registry endpoint is absent from daemon.config.yaml, so it
+	// needs registering here for AutomaticEnv. Empty means peers are told to use
+	// the dialed registry address. Mirrors server/config.
+	_ = v.BindEnv("server.store.oci.advertised_registry_address")
+	v.SetDefault("server.store.oci.advertised_registry_address", "")
+
+	_ = v.BindEnv("server.store.oci.advertised_insecure")
+	v.SetDefault("server.store.oci.advertised_insecure", false)
+
+	// The advertised routing endpoints have no default and are absent from
+	// daemon.config.yaml, so they must be registered here for AutomaticEnv to
+	// resolve them. Mirrors server/config.
+	_ = v.BindEnv("server.routing.directory_api_address")
+	v.SetDefault("server.routing.directory_api_address", "")
+
+	_ = v.BindEnv("server.routing.directory_oci_address")
+	v.SetDefault("server.routing.directory_oci_address", "")
+
+	// Extractor config likewise has no defaults and is absent from
+	// daemon.config.yaml, so register it here for AutomaticEnv. Mirrors
+	// server/config. An empty remote_addr falls back to the locally provisioned
+	// in-process extractor; set it (e.g.
+	// DIRECTORY_DAEMON_SERVER_EXTRACTOR_REMOTE_ADDR=localhost:31234) to point the
+	// node at a running OASF-SDK server instead.
+	_ = v.BindEnv("server.extractor.remote_addr")
+	v.SetDefault("server.extractor.remote_addr", "")
+
+	_ = v.BindEnv("server.extractor.asset_dir")
+	v.SetDefault("server.extractor.asset_dir", "")
+
+	_ = v.BindEnv("server.extractor.oasf_url")
+	v.SetDefault("server.extractor.oasf_url", "")
 }
 
 func registerReconcilerDefaults(v *viper.Viper) {
@@ -168,6 +201,9 @@ func bindCredentialEnvVars(v *viper.Viper) {
 
 	_ = v.BindEnv("server.sync.auth_config.username")
 	_ = v.BindEnv("server.sync.auth_config.password")
+
+	_ = v.BindEnv("reconciler.local_registry.auth_config.username")
+	_ = v.BindEnv("reconciler.local_registry.auth_config.password")
 }
 
 // resolveRelativePaths resolves non-empty path fields against opts.DataDir

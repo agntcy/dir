@@ -5,9 +5,7 @@ package install
 
 import (
 	"github.com/agntcy/dir/cli/cmd/search"
-	"github.com/agntcy/dir/cli/internal/agentcfg"
 	"github.com/agntcy/dir/cli/internal/agentinstall"
-	"github.com/agntcy/dir/cli/presenter"
 	"github.com/spf13/cobra"
 )
 
@@ -84,40 +82,5 @@ func init() {
 // top-level `uninstall` shorthand: pull + derive, dry-run plan, confirm, remove,
 // summary.
 func runUninstallCmd(cmd *cobra.Command, input string) error {
-	arts, err := pullAndDerive(cmd, input)
-	if err != nil {
-		return err
-	}
-
-	env := agentcfg.ResolveEnv()
-
-	selected, err := selectAgents(cmd, env)
-	if err != nil {
-		return err
-	}
-
-	plan := agentinstall.Uninstall(env, arts, selected, true)
-	presenter.Printf(cmd, "%s", agentcfg.FormatPlan(plan))
-
-	if len(plan) == 0 {
-		return nil
-	}
-
-	if !opts.yes && !opts.dryRun {
-		ok, err := confirm(cmd, "\nRemove these artifacts?")
-		if err != nil {
-			return err
-		}
-
-		if !ok {
-			presenter.Printf(cmd, "Aborted. No changes made.\n")
-
-			return nil
-		}
-	}
-
-	outcomes := agentinstall.Uninstall(env, arts, selected, opts.dryRun)
-	presenter.Printf(cmd, "%s", agentcfg.FormatSummary(outcomes, opts.dryRun))
-
-	return nil
+	return runApplyCmd(cmd, input, agentinstall.Uninstall, "\nRemove these artifacts?")
 }

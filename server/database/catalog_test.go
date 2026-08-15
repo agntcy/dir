@@ -9,6 +9,7 @@ import (
 
 	catalogv1 "github.com/agntcy/dir/api/catalog/v1"
 	coretypes "github.com/agntcy/dir/api/core/types"
+	gormdb "github.com/agntcy/dir/server/database/gorm"
 	"github.com/agntcy/dir/server/types"
 	"github.com/agntcy/oasf-sdk/pkg/translator"
 	"github.com/stretchr/testify/assert"
@@ -20,9 +21,10 @@ var _ coretypes.Module = (*catalogModuleFixture)(nil)
 // catalogModuleFixture is a coretypes.Module carrying structured data, which the
 // shared testModule fixture does not.
 type catalogModuleFixture struct {
-	id   uint64
-	name string
-	data map[string]any
+	id                uint64
+	name              string
+	data              map[string]any
+	artifactMediaType string
 }
 
 // GetAnnotations implements [types.Module].
@@ -30,8 +32,19 @@ func (m *catalogModuleFixture) GetAnnotations() map[string]string { return nil }
 func (m *catalogModuleFixture) GetID() uint64                     { return m.id }
 func (m *catalogModuleFixture) GetName() string                   { return m.name }
 func (m *catalogModuleFixture) GetData() map[string]any           { return m.data }
+func (m *catalogModuleFixture) GetArtifactMediaType() string      { return m.artifactMediaType }
 
 func catalogRecord(cid, name, createdAt string, modules []coretypes.Module) coretypes.Record {
+	return catalogRecordWithTags(cid, name, createdAt, modules, []coretypes.Skill{&testSkill{id: 1, name: "test_skill"}}, nil, nil)
+}
+
+func catalogRecordWithTags(
+	cid, name, createdAt string,
+	modules []coretypes.Module,
+	skills []coretypes.Skill,
+	domains []coretypes.Domain,
+	annotations map[string]string,
+) coretypes.Record {
 	return &testRecord{
 		cid:           cid,
 		name:          name,
@@ -39,7 +52,9 @@ func catalogRecord(cid, name, createdAt string, modules []coretypes.Module) core
 		description:   "a " + name + " agent",
 		schemaVersion: "0.5.0",
 		createdAt:     createdAt,
-		skills:        []coretypes.Skill{&testSkill{id: 1, name: "test_skill"}},
+		skills:        skills,
+		domains:       domains,
+		annotations:   annotations,
 		modules:       modules,
 	}
 }
@@ -60,6 +75,30 @@ var (
 
 	unprojectableRecord = catalogRecord("cid-none", "delta", "2024-04-01T00:00:00Z", []coretypes.Module{
 		&catalogModuleFixture{id: 9, name: "integration/acp"},
+	})
+
+	agentSkillsMdRecord = catalogRecord("cid-skill-md", "skill-md", "2024-05-01T00:00:00Z", []coretypes.Module{
+		&catalogModuleFixture{
+			id:                10302,
+			name:              catalogv1.AgentSkillsModuleName,
+			artifactMediaType: catalogv1.ProtocolAgentSkillsMdMediaType,
+			data: map[string]any{
+				"skill_file":     "SKILL.md",
+				"skill_manifest": map[string]any{"name": "md-skill", "version": "1.0.0"},
+			},
+		},
+	})
+
+	agentSkillsBundleRecord = catalogRecord("cid-skill-gz", "skill-gz", "2024-05-02T00:00:00Z", []coretypes.Module{
+		&catalogModuleFixture{
+			id:                10302,
+			name:              catalogv1.AgentSkillsModuleName,
+			artifactMediaType: catalogv1.ProtocolAgentSkillsBundleMediaType,
+			data: map[string]any{
+				"skill_file":     "SKILL.md",
+				"skill_manifest": map[string]any{"name": "bundle-skill", "version": "1.0.0"},
+			},
+		},
 	})
 )
 
@@ -146,13 +185,77 @@ func TestGetCatalogEntries_UnsupportedSortColumn(t *testing.T) {
 	require.Error(t, err)
 }
 
-func TestGetCatalogEntries_NilOption(t *testing.T) {
+func TestCountCatalogEntries_AgentSkillsMediaType(t *testing.T) {
+	db := setupTestDB(t)
+	for _, r := range []coretypes.Record{agentSkillsMdRecord, agentSkillsBundleRecord} {
+		require.NoError(t, db.AddRecord(r))
+	}
+
+	count, err := db.CountCatalogEntries(types.WithMediaTypeFilters(types.MediaTypeFilter{
+		ModuleName:        catalogv1.AgentSkillsModuleName,
+		ArtifactMediaType: catalogv1.ProtocolAgentSkillsMdMediaType,
+	}))
+	require.NoError(t, err)
+	assert.Equal(t, uint32(1), count)
+
+	count, err = db.CountCatalogEntries(types.WithMediaTypeFilters(types.MediaTypeFilter{
+		ModuleName:        catalogv1.AgentSkillsModuleName,
+		ArtifactMediaType: catalogv1.ProtocolAgentSkillsBundleMediaType,
+	}))
+	require.NoError(t, err)
+	assert.Equal(t, uint32(1), count)
+
+	count, err = db.CountCatalogEntries(types.WithMediaTypeFilters(
+		types.MediaTypeFilter{ModuleName: catalogv1.AgentSkillsModuleName, ArtifactMediaType: catalogv1.ProtocolAgentSkillsMdMediaType},
+		types.MediaTypeFilter{ModuleName: catalogv1.AgentSkillsModuleName, ArtifactMediaType: catalogv1.ProtocolAgentSkillsBundleMediaType},
+	))
+	require.NoError(t, err)
+	assert.Equal(t, uint32(2), count)
+}
+
+func TestCountCatalogEntries_TagFilters(t *testing.T) {
 	db := setupTestDB(t)
 
-	var nilOpt types.FilterOption
+	a2aModule := []coretypes.Module{
+		&catalogModuleFixture{id: 1, name: translator.A2AModuleName, data: map[string]any{"protocol_version": "1.0"}},
+	}
 
-	_, _, err := db.GetCatalogEntries(nilOpt)
-	require.Error(t, err)
+	skillTagged := catalogRecordWithTags(
+		"cid-tag-skill", "tag-skill", "2024-06-01T00:00:00Z", a2aModule,
+		[]coretypes.Skill{&testSkill{id: 11, name: "natural_language_processing/text_completion"}}, nil, nil,
+	)
+	domainTagged := catalogRecordWithTags(
+		"cid-tag-domain", "tag-domain", "2024-06-02T00:00:00Z", a2aModule,
+		nil, []coretypes.Domain{&testDomain{id: 21, name: "healthcare/clinical"}}, nil,
+	)
+	annotationTagged := catalogRecordWithTags(
+		"cid-tag-annotation", "tag-annotation", "2024-06-03T00:00:00Z", a2aModule,
+		nil, nil, map[string]string{"owner": "alice"},
+	)
+
+	for _, r := range []coretypes.Record{skillTagged, domainTagged, annotationTagged} {
+		require.NoError(t, db.AddRecord(r))
+	}
+
+	count, err := db.CountCatalogEntries(types.WithTagFilters(types.TagFilter{SkillName: "natural_language_processing/*"}))
+	require.NoError(t, err)
+	assert.Equal(t, uint32(1), count)
+
+	count, err = db.CountCatalogEntries(types.WithTagFilters(
+		types.TagFilter{SkillName: "natural_language_processing/*"},
+		types.TagFilter{DomainName: "healthcare/*"},
+	))
+	require.NoError(t, err)
+	assert.Equal(t, uint32(2), count)
+
+	count, err = db.CountCatalogEntries(types.WithTagFilters(
+		types.TagFilter{SkillName: "natural_language_processing/*"},
+		types.TagFilter{DomainName: "healthcare/*"},
+		types.TagFilter{Annotation: &types.Annotation{Key: "owner", Value: "alice"}},
+		types.TagFilter{AnnotationKey: "env"},
+	))
+	require.NoError(t, err)
+	assert.Equal(t, uint32(3), count)
 }
 
 func TestCountCatalogEntries(t *testing.T) {
@@ -163,7 +266,7 @@ func TestCountCatalogEntries(t *testing.T) {
 
 	count, err := db.CountCatalogEntries()
 	require.NoError(t, err)
-	assert.Equal(t, uint32(4), count)
+	assert.Equal(t, uint32(3), count)
 
 	count, err = db.CountCatalogEntries(types.WithModuleNames(translator.A2AModuleName))
 	require.NoError(t, err)
@@ -172,15 +275,6 @@ func TestCountCatalogEntries(t *testing.T) {
 	count, err = db.CountCatalogEntries(types.WithNames("*alpha*"))
 	require.NoError(t, err)
 	assert.Equal(t, uint32(1), count)
-}
-
-func TestCountCatalogEntries_NilOption(t *testing.T) {
-	db := setupTestDB(t)
-
-	var nilOpt types.FilterOption
-
-	_, err := db.CountCatalogEntries(nilOpt)
-	require.Error(t, err)
 }
 
 func TestListCatalogTags(t *testing.T) {
@@ -221,4 +315,30 @@ func TestListCatalogTags(t *testing.T) {
 		{Id: "featured", Label: "featured"},
 		{Id: "owner=alice", Label: "owner=alice"},
 	}, tags)
+}
+
+func TestGetCatalogEntries_TrustStatusMetadata(t *testing.T) {
+	db := setupTestDB(t)
+	require.NoError(t, db.AddRecord(a2aRecord))
+
+	require.NoError(t, db.UpsertSignatureVerification(&gormdb.SignatureVerification{
+		RecordCID:   "cid-a2a",
+		SignerKey:   "signer-1",
+		Status:      gormdb.VerificationStatusVerified,
+		ContentType: "application/vnd.oci.image.manifest.v1+json",
+		Signature:   "sig-bytes",
+	}))
+	require.NoError(t, db.CreateNameVerification(&gormdb.NameVerification{
+		RecordCID: "cid-a2a",
+		Method:    "wellknown",
+		Status:    gormdb.VerificationStatusVerified,
+	}))
+
+	entries, _, err := db.GetCatalogEntries(types.WithCIDs("cid-a2a"))
+	require.NoError(t, err)
+	require.Len(t, entries, 1)
+
+	status := entries[0].GetMetadata()[catalogv1.TrustStatusMetadataKey].GetStructValue().AsMap()
+	assert.Equal(t, true, status["trusted"])
+	assert.Equal(t, true, status["verified"])
 }

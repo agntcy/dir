@@ -26,10 +26,42 @@ type RecordFilters struct {
 	ScanSeverities   []string // Filter by max scan severity >= threshold (e.g. "HIGH")
 	AnnotationKeys   []string
 	AnnotationValues []string
-	Descriptions     []string // Match against record description field.
-	Owners           []string // Filter by owner ID patterns (SPIFFE or similar identity).
+	Annotations      []Annotation
+	Descriptions     []string              // Match against record description field.
+	Owners           []string              // Filter by owner ID patterns (SPIFFE or similar identity).
+	Excluded         ExcludedRecordFilters // Negated (exclude) counterparts of the fields above.
 
 	OrderBy []RecordOrderClause // Order by directives applied in sequence.
+}
+
+// ExcludedRecordFilters mirrors the value-bearing fields of RecordFilters that
+// support negation. Populated from RecordQuery entries with negate=true.
+// Kept separate from RecordFilters rather than adding parallel Excluded*
+// fields directly, since negated values combine with AND while included
+// values combine with OR — the two cannot share one slice.
+type ExcludedRecordFilters struct {
+	Names            []string
+	Versions         []string
+	SchemaVersions   []string
+	Descriptions     []string
+	CreatedAts       []string
+	Authors          []string
+	SkillNames       []string
+	SkillIDs         []uint64
+	DomainNames      []string
+	DomainIDs        []uint64
+	ModuleNames      []string
+	ModuleIDs        []uint64
+	LocatorTypes     []string
+	LocatorURLs      []string
+	AnnotationKeys   []string
+	AnnotationValues []string
+	ScanSeverities   []string
+}
+
+type Annotation struct {
+	Key   string
+	Value string
 }
 
 // RecordOrderClause is a single ORDER BY directive.
@@ -201,6 +233,12 @@ func WithAnnotationValues(values ...string) FilterOption {
 	}
 }
 
+func WithAnnotations(annotations ...Annotation) FilterOption {
+	return func(sc *RecordFilters) {
+		sc.Annotations = append(sc.Annotations, annotations...)
+	}
+}
+
 // WithDescriptions filters records by description patterns.
 func WithDescriptions(descriptions ...string) FilterOption {
 	return func(sc *RecordFilters) {
@@ -212,5 +250,124 @@ func WithDescriptions(descriptions ...string) FilterOption {
 func WithOwners(owners ...string) FilterOption {
 	return func(sc *RecordFilters) {
 		sc.Owners = append(sc.Owners, owners...)
+	}
+}
+
+// WithoutNames excludes records whose name matches any of the given patterns.
+func WithoutNames(names ...string) FilterOption {
+	return func(sc *RecordFilters) {
+		sc.Excluded.Names = append(sc.Excluded.Names, names...)
+	}
+}
+
+// WithoutVersions excludes records whose version matches any of the given patterns.
+func WithoutVersions(versions ...string) FilterOption {
+	return func(sc *RecordFilters) {
+		sc.Excluded.Versions = append(sc.Excluded.Versions, versions...)
+	}
+}
+
+// WithoutSchemaVersions excludes records whose schema version matches any of the given patterns.
+func WithoutSchemaVersions(versions ...string) FilterOption {
+	return func(sc *RecordFilters) {
+		sc.Excluded.SchemaVersions = append(sc.Excluded.SchemaVersions, versions...)
+	}
+}
+
+// WithoutDescriptions excludes records whose description matches any of the given patterns.
+func WithoutDescriptions(descriptions ...string) FilterOption {
+	return func(sc *RecordFilters) {
+		sc.Excluded.Descriptions = append(sc.Excluded.Descriptions, descriptions...)
+	}
+}
+
+// WithoutCreatedAts excludes records whose created_at matches any of the given patterns.
+func WithoutCreatedAts(createdAts ...string) FilterOption {
+	return func(sc *RecordFilters) {
+		sc.Excluded.CreatedAts = append(sc.Excluded.CreatedAts, createdAts...)
+	}
+}
+
+// WithoutAuthors excludes records whose authors match any of the given patterns.
+func WithoutAuthors(names ...string) FilterOption {
+	return func(sc *RecordFilters) {
+		sc.Excluded.Authors = append(sc.Excluded.Authors, names...)
+	}
+}
+
+// WithoutSkillNames excludes records that have a skill matching any of the given patterns.
+func WithoutSkillNames(names ...string) FilterOption {
+	return func(sc *RecordFilters) {
+		sc.Excluded.SkillNames = append(sc.Excluded.SkillNames, names...)
+	}
+}
+
+// WithoutSkillIDs excludes records that have a skill with any of the given IDs.
+func WithoutSkillIDs(ids ...uint64) FilterOption {
+	return func(sc *RecordFilters) {
+		sc.Excluded.SkillIDs = append(sc.Excluded.SkillIDs, ids...)
+	}
+}
+
+// WithoutDomainNames excludes records that have a domain matching any of the given patterns.
+func WithoutDomainNames(names ...string) FilterOption {
+	return func(sc *RecordFilters) {
+		sc.Excluded.DomainNames = append(sc.Excluded.DomainNames, names...)
+	}
+}
+
+// WithoutDomainIDs excludes records that have a domain with any of the given IDs.
+func WithoutDomainIDs(ids ...uint64) FilterOption {
+	return func(sc *RecordFilters) {
+		sc.Excluded.DomainIDs = append(sc.Excluded.DomainIDs, ids...)
+	}
+}
+
+// WithoutModuleNames excludes records that have a module matching any of the given patterns.
+func WithoutModuleNames(names ...string) FilterOption {
+	return func(sc *RecordFilters) {
+		sc.Excluded.ModuleNames = append(sc.Excluded.ModuleNames, names...)
+	}
+}
+
+// WithoutModuleIDs excludes records that have a module with any of the given IDs.
+func WithoutModuleIDs(ids ...uint64) FilterOption {
+	return func(sc *RecordFilters) {
+		sc.Excluded.ModuleIDs = append(sc.Excluded.ModuleIDs, ids...)
+	}
+}
+
+// WithoutLocatorTypes excludes records that have a locator type matching any of the given patterns.
+func WithoutLocatorTypes(types ...string) FilterOption {
+	return func(sc *RecordFilters) {
+		sc.Excluded.LocatorTypes = append(sc.Excluded.LocatorTypes, types...)
+	}
+}
+
+// WithoutLocatorURLs excludes records that have a locator URL matching any of the given patterns.
+func WithoutLocatorURLs(urls ...string) FilterOption {
+	return func(sc *RecordFilters) {
+		sc.Excluded.LocatorURLs = append(sc.Excluded.LocatorURLs, urls...)
+	}
+}
+
+// WithoutAnnotationKeys excludes records that have an annotation key matching any of the given patterns.
+func WithoutAnnotationKeys(keys ...string) FilterOption {
+	return func(sc *RecordFilters) {
+		sc.Excluded.AnnotationKeys = append(sc.Excluded.AnnotationKeys, keys...)
+	}
+}
+
+// WithoutAnnotationValues excludes records that have an annotation value matching any of the given patterns.
+func WithoutAnnotationValues(values ...string) FilterOption {
+	return func(sc *RecordFilters) {
+		sc.Excluded.AnnotationValues = append(sc.Excluded.AnnotationValues, values...)
+	}
+}
+
+// WithoutScanSeverities excludes records whose highest scan severity meets or exceeds any of the given thresholds.
+func WithoutScanSeverities(severities ...string) FilterOption {
+	return func(sc *RecordFilters) {
+		sc.Excluded.ScanSeverities = append(sc.Excluded.ScanSeverities, severities...)
 	}
 }

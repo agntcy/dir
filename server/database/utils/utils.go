@@ -15,6 +15,17 @@ import (
 
 var logger = logging.Logger("database/utils")
 
+// choose returns with when negate is false and without when negate is true.
+// Lets each QueryToFilters case pick include-vs-exclude in one line without
+// adding a branch to a switch already carrying gocognit/cyclop/gocyclo nolints.
+func choose[T any](negate bool, with, without func(...T) types.FilterOption) func(...T) types.FilterOption {
+	if negate {
+		return without
+	}
+
+	return with
+}
+
 // ParseComparisonOperator parses a value that may have an operator prefix (>=, >, <=, <, =).
 // Returns the operator and the actual value. If no operator prefix, returns empty operator.
 func ParseComparisonOperator(value string) (string, string) {
@@ -105,10 +116,10 @@ func QueryToFilters(queries []*searchv1.RecordQuery) ([]types.FilterOption, erro
 			logger.Warn("Unspecified query type, skipping", "query", query)
 
 		case searchv1.RecordQueryType_RECORD_QUERY_TYPE_NAME:
-			options = append(options, types.WithNames(query.GetValue()))
+			options = append(options, choose(query.GetNegate(), types.WithNames, types.WithoutNames)(query.GetValue()))
 
 		case searchv1.RecordQueryType_RECORD_QUERY_TYPE_VERSION:
-			options = append(options, types.WithVersions(query.GetValue()))
+			options = append(options, choose(query.GetNegate(), types.WithVersions, types.WithoutVersions)(query.GetValue()))
 
 		case searchv1.RecordQueryType_RECORD_QUERY_TYPE_SKILL_ID:
 			u64, err := strconv.ParseUint(query.GetValue(), 10, 64)
@@ -116,24 +127,27 @@ func QueryToFilters(queries []*searchv1.RecordQuery) ([]types.FilterOption, erro
 				return nil, fmt.Errorf("failed to parse skill ID %q: %w", query.GetValue(), err)
 			}
 
-			options = append(options, types.WithSkillIDs(u64))
+			options = append(options, choose(query.GetNegate(), types.WithSkillIDs, types.WithoutSkillIDs)(u64))
 
 		case searchv1.RecordQueryType_RECORD_QUERY_TYPE_SKILL_NAME:
-			options = append(options, types.WithSkillNames(query.GetValue()))
+			options = append(options, choose(query.GetNegate(), types.WithSkillNames, types.WithoutSkillNames)(query.GetValue()))
 
 		case searchv1.RecordQueryType_RECORD_QUERY_TYPE_LOCATOR:
 			l := strings.SplitN(query.GetValue(), ":", 2) //nolint:mnd
 
+			locatorTypesFn := choose(query.GetNegate(), types.WithLocatorTypes, types.WithoutLocatorTypes)
+			locatorURLsFn := choose(query.GetNegate(), types.WithLocatorURLs, types.WithoutLocatorURLs)
+
 			// If the type starts with a wildcard, treat it as a URL pattern
 			// Example: "*marketing-strategy"
 			if len(l) == 1 && strings.HasPrefix(l[0], "*") {
-				options = append(options, types.WithLocatorURLs(l[0]))
+				options = append(options, locatorURLsFn(l[0]))
 
 				break
 			}
 
 			if len(l) == 1 && strings.TrimSpace(l[0]) != "" {
-				options = append(options, types.WithLocatorTypes(l[0]))
+				options = append(options, locatorTypesFn(l[0]))
 
 				break
 			}
@@ -143,24 +157,24 @@ func QueryToFilters(queries []*searchv1.RecordQuery) ([]types.FilterOption, erro
 			// If it's not a wildcard (like "docker-image"), treat as type:url format
 			// Example: "*://ghcr.io/agntcy/marketing-strategy" -> pure URL pattern
 			if len(l) == 2 && strings.HasPrefix(l[1], "//") && strings.HasPrefix(l[0], "*") {
-				options = append(options, types.WithLocatorURLs(query.GetValue()))
+				options = append(options, locatorURLsFn(query.GetValue()))
 
 				break
 			}
 
 			if len(l) == 2 { //nolint:mnd
 				if strings.TrimSpace(l[0]) != "" {
-					options = append(options, types.WithLocatorTypes(l[0]))
+					options = append(options, locatorTypesFn(l[0]))
 				}
 
 				if strings.TrimSpace(l[1]) != "" {
-					options = append(options, types.WithLocatorURLs(l[1]))
+					options = append(options, locatorURLsFn(l[1]))
 				}
 			}
 
 		case searchv1.RecordQueryType_RECORD_QUERY_TYPE_MODULE_NAME:
 			if strings.TrimSpace(query.GetValue()) != "" {
-				options = append(options, types.WithModuleNames(query.GetValue()))
+				options = append(options, choose(query.GetNegate(), types.WithModuleNames, types.WithoutModuleNames)(query.GetValue()))
 			}
 
 		case searchv1.RecordQueryType_RECORD_QUERY_TYPE_DOMAIN_ID:
@@ -169,19 +183,19 @@ func QueryToFilters(queries []*searchv1.RecordQuery) ([]types.FilterOption, erro
 				return nil, fmt.Errorf("failed to parse domain ID %q: %w", query.GetValue(), err)
 			}
 
-			options = append(options, types.WithDomainIDs(u64))
+			options = append(options, choose(query.GetNegate(), types.WithDomainIDs, types.WithoutDomainIDs)(u64))
 
 		case searchv1.RecordQueryType_RECORD_QUERY_TYPE_DOMAIN_NAME:
-			options = append(options, types.WithDomainNames(query.GetValue()))
+			options = append(options, choose(query.GetNegate(), types.WithDomainNames, types.WithoutDomainNames)(query.GetValue()))
 
 		case searchv1.RecordQueryType_RECORD_QUERY_TYPE_CREATED_AT:
-			options = append(options, types.WithCreatedAts(query.GetValue()))
+			options = append(options, choose(query.GetNegate(), types.WithCreatedAts, types.WithoutCreatedAts)(query.GetValue()))
 
 		case searchv1.RecordQueryType_RECORD_QUERY_TYPE_AUTHOR:
-			options = append(options, types.WithAuthors(query.GetValue()))
+			options = append(options, choose(query.GetNegate(), types.WithAuthors, types.WithoutAuthors)(query.GetValue()))
 
 		case searchv1.RecordQueryType_RECORD_QUERY_TYPE_SCHEMA_VERSION:
-			options = append(options, types.WithSchemaVersions(query.GetValue()))
+			options = append(options, choose(query.GetNegate(), types.WithSchemaVersions, types.WithoutSchemaVersions)(query.GetValue()))
 
 		case searchv1.RecordQueryType_RECORD_QUERY_TYPE_MODULE_ID:
 			u64, err := strconv.ParseUint(query.GetValue(), 10, 64)
@@ -189,21 +203,23 @@ func QueryToFilters(queries []*searchv1.RecordQuery) ([]types.FilterOption, erro
 				return nil, fmt.Errorf("failed to parse module ID %q: %w", query.GetValue(), err)
 			}
 
-			options = append(options, types.WithModuleIDs(u64))
+			options = append(options, choose(query.GetNegate(), types.WithModuleIDs, types.WithoutModuleIDs)(u64))
 
 		case searchv1.RecordQueryType_RECORD_QUERY_TYPE_VERIFIED:
-			verified := strings.EqualFold(query.GetValue(), "true")
-			options = append(options, types.WithVerified(verified))
+			options = append(options, types.WithVerified(strings.EqualFold(query.GetValue(), "true") != query.GetNegate()))
 
 		case searchv1.RecordQueryType_RECORD_QUERY_TYPE_TRUSTED:
-			trusted := strings.EqualFold(query.GetValue(), "true")
-			options = append(options, types.WithTrusted(trusted))
+			options = append(options, types.WithTrusted(strings.EqualFold(query.GetValue(), "true") != query.GetNegate()))
 
 		case searchv1.RecordQueryType_RECORD_QUERY_TYPE_ANNOTATION:
 			parts := strings.SplitN(query.GetValue(), ":", 2) //nolint:mnd
+
+			keysFn := choose(query.GetNegate(), types.WithAnnotationKeys, types.WithoutAnnotationKeys)
+			valuesFn := choose(query.GetNegate(), types.WithAnnotationValues, types.WithoutAnnotationValues)
+
 			if len(parts) == 1 {
 				// No colon — treat entire value as annotation key (match any value)
-				options = append(options, types.WithAnnotationKeys(parts[0]))
+				options = append(options, keysFn(parts[0]))
 			} else {
 				key := parts[0]
 				if key == "" {
@@ -212,25 +228,24 @@ func QueryToFilters(queries []*searchv1.RecordQuery) ([]types.FilterOption, erro
 					break
 				}
 
-				options = append(options, types.WithAnnotationKeys(key))
+				options = append(options, keysFn(key))
 
 				if parts[1] != "" {
-					options = append(options, types.WithAnnotationValues(parts[1]))
+					options = append(options, valuesFn(parts[1]))
 				}
 			}
 
 		case searchv1.RecordQueryType_RECORD_QUERY_TYPE_SCAN_SEVERITY:
 			if query.GetValue() != "" {
-				options = append(options, types.WithScanSeverities(strings.ToUpper(query.GetValue())))
+				options = append(options, choose(query.GetNegate(), types.WithScanSeverities, types.WithoutScanSeverities)(strings.ToUpper(query.GetValue())))
 			}
 
 		case searchv1.RecordQueryType_RECORD_QUERY_TYPE_SCAN_SAFE:
-			safe := strings.EqualFold(query.GetValue(), "true")
-			options = append(options, types.WithScanSafe(safe))
+			options = append(options, types.WithScanSafe(strings.EqualFold(query.GetValue(), "true") != query.GetNegate()))
 
 		case searchv1.RecordQueryType_RECORD_QUERY_TYPE_DESCRIPTION:
 			if strings.TrimSpace(query.GetValue()) != "" {
-				options = append(options, types.WithDescriptions(query.GetValue()))
+				options = append(options, choose(query.GetNegate(), types.WithDescriptions, types.WithoutDescriptions)(query.GetValue()))
 			}
 
 		case searchv1.RecordQueryType_RECORD_QUERY_TYPE_OWNER:

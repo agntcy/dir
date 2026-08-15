@@ -56,6 +56,9 @@ type SearchDatabaseAPI interface {
 	// GetRecordCIDs retrieves record CIDs based on the provided filters.
 	GetRecordCIDs(opts ...FilterOption) ([]string, error)
 
+	// CountRecords returns the number of distinct records matching the provided filters.
+	CountRecords(opts ...FilterOption) (uint32, error)
+
 	// GetRecords retrieves full records based on the provided filters.
 	GetRecords(opts ...FilterOption) ([]coretypes.Record, error)
 
@@ -125,12 +128,12 @@ type NameVerificationDatabaseAPI interface {
 // AI Finder GET /v1/agents endpoint.
 type CatalogDatabaseAPI interface {
 	// GetCatalogEntries returns the AI Catalog entries matching the given
-	// record filters, along with whether more results exist beyond the page.
-	GetCatalogEntries(opts ...FilterOption) (entries []*catalogv1.CatalogEntry, hasMore bool, err error)
+	// filters, along with whether more results exist beyond the page.
+	GetCatalogEntries(opts ...CatalogQueryOption) (entries []*catalogv1.CatalogEntry, hasMore bool, err error)
 
 	// CountCatalogEntries returns the number of distinct records matching the
 	// given filters. Limit and offset options are ignored.
-	CountCatalogEntries(opts ...FilterOption) (uint32, error)
+	CountCatalogEntries(opts ...CatalogQueryOption) (uint32, error)
 
 	// ListCatalogTags returns distinct catalog tags derived from OASF skills,
 	// domains, and record annotations, sorted lexicographically by label.

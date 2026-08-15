@@ -1,3 +1,7 @@
+---
+icon: material/api
+---
+
 # API Reference
 
 Directory exposes a **gRPC** API defined with Protocol Buffers. Generated clients and the

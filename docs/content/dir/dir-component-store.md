@@ -1,3 +1,7 @@
+---
+icon: material/database
+---
+
 # Store
 
 The **Store** is a core Directory component that persists agent records as
@@ -80,6 +84,13 @@ export DIRECTORY_SERVER_STORE_OCI_AUTH_CONFIG_INSECURE=false
 
 See also [Local Deployment](dir-deployment-local.md) and
 [Production Deployment](dir-prod-deployment.md) for deployment-specific configuration.
+
+!!! note "Running Zot on remote object storage"
+    The Helm chart configures the bundled Zot registry for local filesystem
+    storage. Moving it to S3 or another remote object store requires setting
+    `dedupe: false` or configuring a remote `cacheDriver` — Zot refuses to start
+    otherwise. See
+    [Zot Storage Backend](dir-prod-deployment.md#zot-storage-backend).
 
 ## Storage model
 

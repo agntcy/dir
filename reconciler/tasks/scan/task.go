@@ -35,7 +35,13 @@ type Task struct {
 // store must implement both types.StoreAPI and types.ReferrerStoreAPI.
 func NewTask(config Config, db types.DatabaseAPI, store types.StoreAPI, refStore types.ReferrerStoreAPI) (*Task, error) {
 	runners := []scanner.Runner{
-		scanner.NewMCPRunner(scanner.MCPConfig{CLIPath: config.GetMCPCLIPath()}),
+		scanner.NewMCPRunner(scanner.MCPConfig{
+			CLIPath:                config.GetMCPCLIPath(),
+			DisableEndpointScan:    config.DisableEndpointScan,
+			AllowPrivateEndpoints:  config.AllowPrivateEndpoints,
+			AllowInsecureTransport: config.AllowInsecureTransport,
+			MaxEndpointsPerRecord:  config.MaxEndpointsPerRecord,
+		}),
 		scanner.NewSkillRunner(scanner.SkillConfig{CLIPath: config.GetSkillCLIPath()}),
 		scanner.NewA2ARunner(scanner.A2AConfig{CLIPath: config.GetA2ACLIPath()}),
 	}
@@ -122,14 +128,23 @@ func (t *Task) scanRecord(ctx context.Context, recordCID string) error {
 			continue
 		}
 
+		// A scan that completed but covered less than the record declared is
+		// still recorded as a pass, so the reduced coverage has to be visible
+		// somewhere. The report proto has no field for it, so this is a log
+		// line rather than persisted state - see the endpoint cap in
+		// utils/scanner.
+		for _, notice := range result.Notices {
+			logger.Warn("Scan coverage reduced", "runner", r.Name(), "cid", recordCID, "notice", notice)
+		}
+
 		report := buildScanReport(r.Name(), result)
 
-		// Push as OCI referrer — failure is logged but does not block the gate.
+		// Push as OCI referrer - failure is logged but does not block the gate.
 		if pushErr := t.pushReferrer(ctx, recordCID, report); pushErr != nil {
 			logger.Warn("Failed to push scan referrer", "runner", r.Name(), "cid", recordCID, "error", pushErr)
 		}
 
-		// Upsert DB row — failure is also non-fatal.
+		// Upsert DB row - failure is also non-fatal.
 		row := &gormdb.ScanReport{
 			RecordCID:   recordCID,
 			ScannerType: strings.ToUpper(r.Name()),

@@ -35,7 +35,7 @@ func sampleEntry() map[string]any {
 func TestInstallMCPCreatesFileWithEntry(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "sub", "mcp.json")
 
-	outcome, err := InstallMCP(testMCPTarget(path), Env{}, sampleEntry(), testServerName, false)
+	outcome, err := InstallMCP(testMCPTarget(path), Env{}, sampleEntry(), testServerName, Global, false)
 	require.NoError(t, err)
 	assert.Equal(t, ActionAdded, outcome.Action)
 	assert.Equal(t, path, outcome.Path)
@@ -54,7 +54,7 @@ func TestInstallMCPPreservesForeignServers(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "mcp.json")
 	require.NoError(t, os.WriteFile(path, []byte(`{"mcpServers":{"other":{"command":"node"}}}`), 0o600))
 
-	_, err := InstallMCP(testMCPTarget(path), Env{}, sampleEntry(), testServerName, false)
+	_, err := InstallMCP(testMCPTarget(path), Env{}, sampleEntry(), testServerName, Global, false)
 	require.NoError(t, err)
 
 	data, _ := os.ReadFile(path)
@@ -73,13 +73,13 @@ func TestInstallMCPPreservesForeignServers(t *testing.T) {
 func TestInstallMCPIdempotentSecondRunUnchanged(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "mcp.json")
 
-	_, err := InstallMCP(testMCPTarget(path), Env{}, sampleEntry(), testServerName, false)
+	_, err := InstallMCP(testMCPTarget(path), Env{}, sampleEntry(), testServerName, Global, false)
 	require.NoError(t, err)
 
 	first, err := os.ReadFile(path)
 	require.NoError(t, err)
 
-	outcome, err := InstallMCP(testMCPTarget(path), Env{}, sampleEntry(), testServerName, false)
+	outcome, err := InstallMCP(testMCPTarget(path), Env{}, sampleEntry(), testServerName, Global, false)
 	require.NoError(t, err)
 	assert.Equal(t, ActionUnchanged, outcome.Action)
 
@@ -91,13 +91,13 @@ func TestInstallMCPIdempotentSecondRunUnchanged(t *testing.T) {
 func TestInstallMCPUpdatesChangedEntry(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "mcp.json")
 
-	_, err := InstallMCP(testMCPTarget(path), Env{}, sampleEntry(), testServerName, false)
+	_, err := InstallMCP(testMCPTarget(path), Env{}, sampleEntry(), testServerName, Global, false)
 	require.NoError(t, err)
 
 	changed := sampleEntry()
 	changed["env"] = map[string]any{"DIRECTORY_CLIENT_SERVER_ADDRESS": "h:2"}
 
-	outcome, err := InstallMCP(testMCPTarget(path), Env{}, changed, testServerName, false)
+	outcome, err := InstallMCP(testMCPTarget(path), Env{}, changed, testServerName, Global, false)
 	require.NoError(t, err)
 	assert.Equal(t, ActionUpdated, outcome.Action)
 }
@@ -105,7 +105,7 @@ func TestInstallMCPUpdatesChangedEntry(t *testing.T) {
 func TestInstallMCPDryRunWritesNothing(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "mcp.json")
 
-	outcome, err := InstallMCP(testMCPTarget(path), Env{}, sampleEntry(), testServerName, true)
+	outcome, err := InstallMCP(testMCPTarget(path), Env{}, sampleEntry(), testServerName, Global, true)
 	require.NoError(t, err)
 	assert.Equal(t, ActionAdded, outcome.Action)
 
@@ -127,7 +127,7 @@ func testYAMLMCPTarget(path string) *MCPTarget {
 func TestInstallMCPYAMLCreatesFileWithEntry(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "sub", "config.yaml")
 
-	outcome, err := InstallMCP(testYAMLMCPTarget(path), Env{}, sampleEntry(), testServerName, false)
+	outcome, err := InstallMCP(testYAMLMCPTarget(path), Env{}, sampleEntry(), testServerName, Global, false)
 	require.NoError(t, err)
 	assert.Equal(t, ActionAdded, outcome.Action)
 
@@ -146,7 +146,7 @@ func TestInstallMCPYAMLPreservesForeignServers(t *testing.T) {
 	require.NoError(t, os.WriteFile(path,
 		[]byte("mcpServers:\n  other:\n    command: node\n"), 0o600))
 
-	_, err := InstallMCP(testYAMLMCPTarget(path), Env{}, sampleEntry(), testServerName, false)
+	_, err := InstallMCP(testYAMLMCPTarget(path), Env{}, sampleEntry(), testServerName, Global, false)
 	require.NoError(t, err)
 
 	data, _ := os.ReadFile(path)
@@ -164,7 +164,7 @@ func TestRemoveMCPYAMLDeletesOnlyOurKey(t *testing.T) {
 	require.NoError(t, os.WriteFile(path,
 		[]byte("mcpServers:\n  agntcy-dir-mcp:\n    command: dirctl\n  other:\n    command: node\n"), 0o600))
 
-	outcome, err := RemoveMCP(testYAMLMCPTarget(path), Env{}, testServerName, false)
+	outcome, err := RemoveMCP(testYAMLMCPTarget(path), Env{}, testServerName, Global, false)
 	require.NoError(t, err)
 	assert.Equal(t, ActionRemoved, outcome.Action)
 
@@ -192,7 +192,7 @@ func testTOMLMCPTarget(path string) *MCPTarget {
 func TestInstallMCPTOMLCreatesFileWithEntry(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "sub", "config.toml")
 
-	outcome, err := InstallMCP(testTOMLMCPTarget(path), Env{}, sampleEntry(), testServerName, false)
+	outcome, err := InstallMCP(testTOMLMCPTarget(path), Env{}, sampleEntry(), testServerName, Global, false)
 	require.NoError(t, err)
 	assert.Equal(t, ActionAdded, outcome.Action)
 
@@ -211,7 +211,7 @@ func TestInstallMCPTOMLPreservesForeignServers(t *testing.T) {
 	require.NoError(t, os.WriteFile(path,
 		[]byte("[mcp_servers.other]\ncommand = \"node\"\n"), 0o600))
 
-	_, err := InstallMCP(testTOMLMCPTarget(path), Env{}, sampleEntry(), testServerName, false)
+	_, err := InstallMCP(testTOMLMCPTarget(path), Env{}, sampleEntry(), testServerName, Global, false)
 	require.NoError(t, err)
 
 	data, _ := os.ReadFile(path)
@@ -229,7 +229,7 @@ func TestRemoveMCPTOMLDeletesOnlyOurKey(t *testing.T) {
 	require.NoError(t, os.WriteFile(path,
 		[]byte("[mcp_servers.agntcy-dir-mcp]\ncommand = \"dirctl\"\n[mcp_servers.other]\ncommand = \"node\"\n"), 0o600))
 
-	outcome, err := RemoveMCP(testTOMLMCPTarget(path), Env{}, testServerName, false)
+	outcome, err := RemoveMCP(testTOMLMCPTarget(path), Env{}, testServerName, Global, false)
 	require.NoError(t, err)
 	assert.Equal(t, ActionRemoved, outcome.Action)
 
@@ -250,18 +250,69 @@ func TestMCPEntryPresentTrue(t *testing.T) {
 	require.NoError(t, os.WriteFile(path,
 		[]byte(`{"mcpServers":{"agntcy-dir-mcp":{"command":"dirctl"}}}`), 0o600))
 
-	assert.True(t, MCPEntryPresent(testMCPTarget(path), Env{}, testServerName))
+	assert.True(t, MCPEntryPresent(testMCPTarget(path), Env{}, testServerName, Global))
 }
 
 func TestMCPEntryPresentFalseWhenAbsent(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "mcp.json")
 	require.NoError(t, os.WriteFile(path, []byte(`{"mcpServers":{"other":{}}}`), 0o600))
 
-	assert.False(t, MCPEntryPresent(testMCPTarget(path), Env{}, testServerName))
+	assert.False(t, MCPEntryPresent(testMCPTarget(path), Env{}, testServerName, Global))
 }
 
 func TestMCPEntryPresentFalseWhenFileMissing(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "nonexistent.json")
 
-	assert.False(t, MCPEntryPresent(testMCPTarget(path), Env{}, testServerName))
+	assert.False(t, MCPEntryPresent(testMCPTarget(path), Env{}, testServerName, Global))
+}
+
+// --- Project scope ---
+
+func testProjectMCPTarget(homePath, projectPath string) *MCPTarget {
+	return &MCPTarget{
+		ConfigPath:        func(_ Env) (string, error) { return homePath, nil },
+		ProjectConfigPath: func(_ Env) (string, error) { return projectPath, nil },
+		Format:            codec.JSON,
+		ServersKey:        []string{"mcpServers"},
+	}
+}
+
+func TestInstallMCPProjectScope(t *testing.T) {
+	homePath := filepath.Join(t.TempDir(), "home", "mcp.json")
+	projectPath := filepath.Join(t.TempDir(), "project", "mcp.json")
+
+	outcome, err := InstallMCP(testProjectMCPTarget(homePath, projectPath), Env{}, sampleEntry(), testServerName, Project, false)
+	require.NoError(t, err)
+	assert.Equal(t, ActionAdded, outcome.Action)
+	assert.Equal(t, projectPath, outcome.Path)
+
+	data, err := os.ReadFile(projectPath)
+	require.NoError(t, err)
+
+	m, err := codec.Decode(codec.JSON, data)
+	require.NoError(t, err)
+
+	_, ok := codec.GetNested(m, "mcpServers", testServerName)
+	assert.True(t, ok)
+
+	_, statErr := os.Stat(homePath)
+	assert.True(t, os.IsNotExist(statErr), "home config must not be written for a project-scope install")
+}
+
+func TestInstallMCPProjectScopeNoPathSkips(t *testing.T) {
+	homePath := filepath.Join(t.TempDir(), "home", "mcp.json")
+
+	target := &MCPTarget{
+		ConfigPath:        func(_ Env) (string, error) { return homePath, nil },
+		ProjectConfigPath: nil,
+		Format:            codec.JSON,
+		ServersKey:        []string{"mcpServers"},
+	}
+
+	outcome, err := InstallMCP(target, Env{}, sampleEntry(), testServerName, Project, false)
+	require.NoError(t, err)
+	assert.Equal(t, ActionSkipped, outcome.Action)
+
+	_, statErr := os.Stat(homePath)
+	assert.True(t, os.IsNotExist(statErr), "no file should be written when the project path is unavailable")
 }

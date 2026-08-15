@@ -6,6 +6,7 @@ package gorm
 import (
 	"errors"
 	"fmt"
+	"math"
 	"strings"
 	"time"
 
@@ -54,14 +55,16 @@ type Record struct {
 	Authors       []string `gorm:"column:authors;serializer:json"` // Stored as JSON array
 	Signed        bool     `gorm:"column:signed;default:false"`    // Whether at least one signature is attached
 
-	Skills      []Skill                 `gorm:"foreignKey:RecordCID;references:RecordCID;constraint:OnDelete:CASCADE"`
-	Locators    []Locator               `gorm:"foreignKey:RecordCID;references:RecordCID;constraint:OnDelete:CASCADE"`
-	Modules     []Module                `gorm:"foreignKey:RecordCID;references:RecordCID;constraint:OnDelete:CASCADE"`
-	Domains     []Domain                `gorm:"foreignKey:RecordCID;references:RecordCID;constraint:OnDelete:CASCADE"`
-	Annotations []Annotation            `gorm:"foreignKey:RecordCID;references:RecordCID;constraint:OnDelete:CASCADE"`
-	Signatures  []SignatureVerification `gorm:"foreignKey:RecordCID;references:RecordCID;constraint:OnDelete:CASCADE"`
-	ScanReports []ScanReport            `gorm:"foreignKey:RecordCID;references:RecordCID"`
-	Owners      []Owner                 `gorm:"foreignKey:RecordCID;references:RecordCID;constraint:OnDelete:CASCADE"`
+	Skills           []Skill                 `gorm:"foreignKey:RecordCID;references:RecordCID;constraint:OnDelete:CASCADE"`
+	Locators         []Locator               `gorm:"foreignKey:RecordCID;references:RecordCID;constraint:OnDelete:CASCADE"`
+	Modules          []Module                `gorm:"foreignKey:RecordCID;references:RecordCID;constraint:OnDelete:CASCADE"`
+	Domains          []Domain                `gorm:"foreignKey:RecordCID;references:RecordCID;constraint:OnDelete:CASCADE"`
+	Annotations      []Annotation            `gorm:"foreignKey:RecordCID;references:RecordCID;constraint:OnDelete:CASCADE"`
+	Signatures       []SignatureVerification `gorm:"foreignKey:RecordCID;references:RecordCID;constraint:OnDelete:CASCADE"`
+	NameVerification *NameVerification       `gorm:"foreignKey:RecordCID;references:RecordCID;constraint:OnDelete:CASCADE"`
+	ScanReports      []ScanReport            `gorm:"foreignKey:RecordCID;references:RecordCID;constraint:OnDelete:CASCADE"`
+	UsageMetrics     *RecordUsageMetrics     `gorm:"foreignKey:RecordCID;references:RecordCID;constraint:OnDelete:CASCADE"`
+	Owners           []Owner                 `gorm:"foreignKey:RecordCID;references:RecordCID;constraint:OnDelete:CASCADE"`
 }
 
 func (r *Record) GetCid() string {
@@ -255,6 +258,39 @@ type cidRecord struct {
 	RecordCID string `gorm:"column:record_cid"`
 }
 
+// CountRecords returns the number of distinct records matching the provided options.
+// Pagination and sorting options are ignored.
+func (d *DB) CountRecords(opts ...types.FilterOption) (uint32, error) {
+	cfg := &types.RecordFilters{}
+
+	for _, opt := range opts {
+		if opt == nil {
+			return 0, errors.New("nil option provided")
+		}
+
+		opt(cfg)
+	}
+
+	cfg.Limit = 0
+	cfg.Offset = 0
+	cfg.OrderBy = nil
+
+	query := d.gormDB.Model(&Record{})
+	query = d.handleFilterOptions(query, cfg)
+	query = query.Distinct("records.record_cid")
+
+	var count int64
+	if err := query.Count(&count).Error; err != nil {
+		return 0, fmt.Errorf("count records: %w", err)
+	}
+
+	if count < 0 || math.MaxUint32 < count {
+		return 0, fmt.Errorf("can't convert %d to uint32", count)
+	}
+
+	return uint32(count), nil
+}
+
 // GetRecordCIDs retrieves only record CIDs based on the provided options.
 // This is optimized for cases where only CIDs are needed, avoiding expensive joins and preloads.
 func (d *DB) GetRecordCIDs(opts ...types.FilterOption) ([]string, error) {
@@ -329,16 +365,6 @@ func (d *DB) GetRecordCIDs(opts ...types.FilterOption) ([]string, error) {
 // RemoveRecord removes a record from the search database by CID.
 // Uses CASCADE DELETE to automatically remove related Skills, Locators, and Modules.
 func (d *DB) RemoveRecord(cid string) error {
-	// Remove signature verifications first
-	if err := d.gormDB.Where("record_cid = ?", cid).Delete(&SignatureVerification{}).Error; err != nil {
-		return fmt.Errorf("failed to remove signature verifications: %w", err)
-	}
-
-	// Remove usage metrics
-	if err := d.gormDB.Where("record_cid = ?", cid).Delete(&RecordUsageMetrics{}).Error; err != nil {
-		return fmt.Errorf("failed to remove usage metrics: %w", err)
-	}
-
 	result := d.gormDB.Where("record_cid = ?", cid).Delete(&Record{})
 
 	if result.Error != nil {
@@ -504,6 +530,13 @@ func (d *DB) handleFilterOptions(query *gorm.DB, cfg *types.RecordFilters) *gorm
 		}
 	}
 
+	if len(cfg.Annotations) > 0 {
+		condition, args := utils.BuildAnnotationExistsCondition(cfg.Annotations)
+		if condition != "" {
+			query = query.Where(condition, args...)
+		}
+	}
+
 	// Handle created_at filter with comparison operator support.
 	if len(cfg.CreatedAts) > 0 {
 		condition, args := utils.BuildComparisonConditions("records.oasf_created_at", cfg.CreatedAts)
@@ -614,6 +647,8 @@ func (d *DB) handleFilterOptions(query *gorm.DB, cfg *types.RecordFilters) *gorm
 			query = query.Where("EXISTS (SELECT 1 FROM scan_reports sr WHERE sr.record_cid = records.record_cid AND sr.max_severity IN ?)", severities)
 		}
 	}
+
+	query = applyExclusionFilters(query, &cfg.Excluded)
 
 	return query
 }

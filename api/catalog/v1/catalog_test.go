@@ -205,6 +205,9 @@ func TestRecordToCatalog_AgentSkillsMediaTypes(t *testing.T) {
 			module: &oasftypesv1.Module{
 				Name: AgentSkillsModuleName,
 				Id:   10302,
+				Artifact: &oasftypesv1.Descriptor{
+					MediaType: ProtocolAgentSkillsMdMediaType,
+				},
 				Data: toStruct(t, map[string]any{
 					"skill_file": "SKILL.md",
 					"skill_manifest": map[string]any{
@@ -221,18 +224,15 @@ func TestRecordToCatalog_AgentSkillsMediaTypes(t *testing.T) {
 			module: &oasftypesv1.Module{
 				Name: AgentSkillsModuleName,
 				Id:   10302,
+				Artifact: &oasftypesv1.Descriptor{
+					MediaType: ProtocolAgentSkillsBundleMediaType,
+				},
 				Data: toStruct(t, map[string]any{
 					"skill_file": "SKILL.md",
 					"skill_manifest": map[string]any{
 						"name":        "summarize-text",
 						"description": "Summarize documents.",
 						"version":     "1.0.0",
-					},
-					"artifacts": []any{
-						map[string]any{
-							"path": "references/style-guide.md",
-							"type": "file",
-						},
 					},
 				}),
 			},
@@ -283,4 +283,60 @@ func TestAnnotationLabel(t *testing.T) {
 
 	assert.Equal(t, "featured", AnnotationLabel("featured", ""))
 	assert.Equal(t, "owner=alice", AnnotationLabel("owner", "alice"))
+}
+
+func TestKnownCatalogModuleNames(t *testing.T) {
+	t.Parallel()
+
+	assert.Equal(t, []string{
+		AgentSkillsModuleName,
+		"integration/a2a",
+		"integration/mcp",
+	}, KnownCatalogModuleNames())
+}
+
+func TestDeriveTrustStatus(t *testing.T) {
+	t.Parallel()
+
+	assert.Equal(t, TrustStatus{Trusted: true, Verified: true}, DeriveTrustStatus(
+		[]string{"verified"},
+		"verified",
+	))
+	assert.Equal(t, TrustStatus{Trusted: true, Verified: false}, DeriveTrustStatus(
+		[]string{"failed", "verified"},
+		"failed",
+	))
+	assert.Equal(t, TrustStatus{Trusted: false, Verified: false}, DeriveTrustStatus(nil, ""))
+}
+
+func TestRecordToCatalog_TrustStatusMetadata(t *testing.T) {
+	t.Parallel()
+
+	record := corev1.New(&oasftypesv1.Record{
+		SchemaVersion: "1.0.0",
+		Name:          "trusted-agent",
+		Version:       "1.0.0",
+		CreatedAt:     "2024-01-01T00:00:00Z",
+		Modules: []*oasftypesv1.Module{
+			{
+				Name: "integration/mcp",
+				Id:   123,
+				Data: &structpb.Struct{
+					Fields: map[string]*structpb.Value{
+						"key1": structpb.NewStringValue("value1"),
+					},
+				},
+			},
+		},
+	})
+
+	adapter, err := record.Decode()
+	require.NoError(t, err)
+
+	entry, err := RecordToCatalog(adapter, WithTrustStatus(TrustStatus{Trusted: true, Verified: false}))
+	require.NoError(t, err)
+
+	status := entry.GetMetadata()[TrustStatusMetadataKey].GetStructValue().AsMap()
+	assert.Equal(t, true, status["trusted"])
+	assert.Equal(t, false, status["verified"])
 }

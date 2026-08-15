@@ -6,7 +6,10 @@ version: "3"
 vars:
   ## Version
   RELEASE_VERSION:
-    sh: grep 'version:' versions.yaml | awk '{print $2}'
+    # versions.yaml carries a version: key per module-set; grep-all would
+    # concatenate them with a newline. Select the api module-set version
+    # explicitly (it stamps api/version.Version) rather than relying on order.
+    sh: awk '/^  api:/{f=1} f&&/version:/{print $2; exit}' versions.yaml
   RELEASE_VERSION_LDFLAG: "-X 'github.com/agntcy/dir/api/version.Version={{ .RELEASE_VERSION }}'"
   COMMIT_SHA:
     sh: git rev-parse --short HEAD
@@ -17,9 +20,9 @@ vars:
   # renovate: datasource=go depName=github.com/project-zot/zot versioning=semver
   ZOT_VERSION: "2.1.18"
   # renovate: datasource=go depName=github.com/spiffe/spire versioning=semver
-  SPIRE_VERSION: "1.15.1"
+  SPIRE_VERSION: "1.15.2"
   # renovate: datasource=docker depName=docker.io/bitnami/postgresql
-  POSTGRESQL_VERSION: "latest@sha256:91a6c3f4b4d687546c1d07c1ef7c27a5e85e2a0ce8a192fe94cad5bbde0a1aba"
+  POSTGRESQL_VERSION: "latest@sha256:a727ea9d5ceb64beb404afeb62a4b757fe3c33c2a09af86dc391a3a0dfed6049"
 
   ## Container images for vulnerability scanning
   VULN_SCAN_IMAGES:

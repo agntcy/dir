@@ -240,7 +240,7 @@ Need a skill, MCP server, or A2A partner? Your agent searches the Directory, wir
         </a>
         <a
           class="dir-community-contribute__btn dir-community-contribute__btn--highlight"
-          href="https://github.com/search?q=org%3Aagntcy+type%3Aissue+label%3A%22good-first-issue%22%2C%22good+first+issue%22&type=issues"
+          href="https://github.com/search?q=repo%3Aagntcy%2Fdir+repo%3Aagntcy%2Foasf+is%3Aopen+type%3Aissue+label%3A%22good-first-issue%22%2C%22good+first+issue%22&type=issues"
           target="_blank"
           rel="noopener noreferrer"
         >

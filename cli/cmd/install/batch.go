@@ -15,6 +15,7 @@ import (
 	"github.com/agntcy/dir/cli/internal/agentinstall"
 	"github.com/agntcy/dir/cli/presenter"
 	ctxUtils "github.com/agntcy/dir/cli/util/context"
+	"github.com/agntcy/dir/cli/util/prompt"
 	"github.com/agntcy/dir/cli/util/records"
 	"github.com/spf13/cobra"
 )
@@ -102,19 +103,20 @@ type installTarget struct {
 	arts  agentinstall.Artifacts
 }
 
-type recordApplyFn func(env agentcfg.Env, arts agentinstall.Artifacts, agents []agentcfg.Agent, dryRun bool) []agentcfg.Outcome
+type recordApplyFn func(env agentcfg.Env, arts agentinstall.Artifacts, agents []agentcfg.Agent, scope agentcfg.Scope, dryRun bool) []agentcfg.Outcome
 
 func buildTaggedOutcomes(
 	env agentcfg.Env,
 	targets []installTarget,
 	selected []agentcfg.Agent,
+	scope agentcfg.Scope,
 	dryRun bool,
 	apply recordApplyFn,
 ) []agentcfg.Outcome {
 	var outcomes []agentcfg.Outcome
 
 	for _, target := range targets {
-		recordOutcomes := apply(env, target.arts, selected, dryRun)
+		recordOutcomes := apply(env, target.arts, selected, scope, dryRun)
 		tagOutcomes(recordOutcomes, target.label)
 		outcomes = append(outcomes, recordOutcomes...)
 	}
@@ -164,14 +166,14 @@ func printSkippedSummary(cmd *cobra.Command, skipped []skippedRecord) {
 	}
 }
 
-func confirmBatch(cmd *cobra.Command, prompt string) (bool, error) {
+func confirmBatch(cmd *cobra.Command, promptText string) (bool, error) {
 	if opts.yes || opts.dryRun {
 		return true, nil
 	}
 
-	ok, err := confirm(cmd, prompt)
+	ok, err := prompt.Confirm(cmd, promptText)
 	if err != nil {
-		return false, err
+		return false, fmt.Errorf("confirm batch changes: %w", err)
 	}
 
 	if !ok {
@@ -209,14 +211,17 @@ func runBatch(cmd *cobra.Command, apply recordApplyFn, confirmFn func(*cobra.Com
 	}
 
 	env := agentcfg.ResolveEnv()
+	scope := scopeFromOpts()
 
 	selected, err := selectAgents(cmd, env)
 	if err != nil {
 		return err
 	}
 
+	printScope(cmd)
+
 	targets, skipped := buildBatchTargets(cmd, selectRecords(recs))
-	plan := buildTaggedOutcomes(env, targets, selected, true, apply)
+	plan := buildTaggedOutcomes(env, targets, selected, scope, true, apply)
 
 	presenter.Printf(cmd, "%s", agentcfg.FormatPlan(plan))
 	printSkippedSummary(cmd, skipped)
@@ -234,7 +239,7 @@ func runBatch(cmd *cobra.Command, apply recordApplyFn, confirmFn func(*cobra.Com
 		return nil
 	}
 
-	outcomes := buildTaggedOutcomes(env, targets, selected, opts.dryRun, apply)
+	outcomes := buildTaggedOutcomes(env, targets, selected, scope, opts.dryRun, apply)
 	presenter.Printf(cmd, "%s", agentcfg.FormatSummary(outcomes, opts.dryRun))
 	printSkippedSummary(cmd, skipped)
 

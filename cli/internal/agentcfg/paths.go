@@ -151,6 +151,74 @@ func codexMCPPath(env Env) (string, error) {
 	return filepath.Join(env.Home, ".codex", "config.toml"), nil
 }
 
+// --- project (repo/cwd) MCP config paths ---
+// Only agents with a documented project-scope MCP location are listed here;
+// agents without one leave ProjectConfigPath nil and are skipped-with-note.
+
+func requireCwd(env Env, agent string) error {
+	if env.Cwd == "" {
+		return fmt.Errorf("cannot determine current directory for %s project config", agent)
+	}
+
+	return nil
+}
+
+func claudeCodeProjectMCPPath(env Env) (string, error) {
+	if err := requireCwd(env, "Claude Code"); err != nil {
+		return "", err
+	}
+
+	return filepath.Join(env.Cwd, ".mcp.json"), nil
+}
+
+func cursorProjectMCPPath(env Env) (string, error) {
+	if err := requireCwd(env, "Cursor"); err != nil {
+		return "", err
+	}
+
+	return filepath.Join(env.Cwd, ".cursor", "mcp.json"), nil
+}
+
+func vscodeProjectMCPPath(env Env) (string, error) {
+	if err := requireCwd(env, "VS Code"); err != nil {
+		return "", err
+	}
+
+	return filepath.Join(env.Cwd, ".vscode", "mcp.json"), nil
+}
+
+func rooProjectMCPPath(env Env) (string, error) {
+	if err := requireCwd(env, "Roo Code"); err != nil {
+		return "", err
+	}
+
+	return filepath.Join(env.Cwd, ".roo", "mcp.json"), nil
+}
+
+func geminiProjectMCPPath(env Env) (string, error) {
+	if err := requireCwd(env, "Gemini CLI"); err != nil {
+		return "", err
+	}
+
+	return filepath.Join(env.Cwd, ".gemini", "settings.json"), nil
+}
+
+func opencodeProjectMCPPath(env Env) (string, error) {
+	if err := requireCwd(env, "OpenCode"); err != nil {
+		return "", err
+	}
+
+	return filepath.Join(env.Cwd, "opencode.json"), nil
+}
+
+func zedProjectMCPPath(env Env) (string, error) {
+	if err := requireCwd(env, "Zed"); err != nil {
+		return "", err
+	}
+
+	return filepath.Join(env.Cwd, ".zed", "settings.json"), nil
+}
+
 // --- skill / rules paths ---
 
 func claudeCodeSkillPath(env Env, slug string) (string, error) {
@@ -159,6 +227,22 @@ func claudeCodeSkillPath(env Env, slug string) (string, error) {
 	}
 
 	return filepath.Join(env.Home, ".claude", "skills", slug, "SKILL.md"), nil
+}
+
+func claudeCodeProjectSkillPath(env Env, slug string) (string, error) {
+	if env.Cwd == "" {
+		return "", fmt.Errorf("cannot determine current directory for Claude Code project skill")
+	}
+
+	return filepath.Join(env.Cwd, ".claude", "skills", slug, "SKILL.md"), nil
+}
+
+func continueProjectSkillPath(env Env, slug string) (string, error) {
+	if env.Cwd == "" {
+		return "", fmt.Errorf("cannot determine current directory for Continue project skill")
+	}
+
+	return filepath.Join(env.Cwd, ".continue", "rules", slug+".md"), nil
 }
 
 func zedUserSkillPath(env Env, slug string) (string, error) {

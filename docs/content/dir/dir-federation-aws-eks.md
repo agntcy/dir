@@ -1,3 +1,7 @@
+---
+icon: material/cloud
+---
+
 # Federation on Amazon EKS
 
 This guide is the opinionated AWS happy path for running your own AGNTCY Directory instance and federating it with the public Directory network.
@@ -369,12 +373,21 @@ This guide does not try to provision the AWS infrastructure from zero in the mai
         store:
           provider: "oci"
           oci:
-            # Use the external address, not the internal .svc.cluster.local name.
-            # The apiserver shares this address with remote peers via the
-            # RequestRegistryCredentials RPC so they can pull records during sync.
-            registry_address: "${DIR_ZOT_HOST}"
+            # Address the apiserver dials for its own store operations. Keep it
+            # in-cluster so this traffic does not leave and re-enter through the
+            # public ingress.
+            registry_address: "dir-zot.${DIR_NAMESPACE}.svc.cluster.local:5000"
+            # Address handed to remote peers via the RequestRegistryCredentials
+            # RPC, and published as the routing /oci/ multiaddr, so they can pull
+            # records during sync. This one must be externally reachable.
+            advertised_registry_address: "${DIR_ZOT_HOST}"
             auth_config:
-              insecure: "false"
+              # TLS is terminated at the ingress fronting ${DIR_ZOT_HOST}, so the
+              # in-cluster service speaks plain HTTP. Peers still get HTTPS,
+              # because advertised_insecure defaults to false. If you need TLS on
+              # the in-cluster hop as well, enable it on Zot and set this to
+              # "false".
+              insecure: "true"
               username: "admin"
               password: "${DIR_OCI_ADMIN_PASSWORD}"
         routing:
@@ -461,10 +474,12 @@ This guide does not try to provision the AWS infrastructure from zero in the mai
               database: "dir"
               ssl_mode: "disable"
           local_registry:
-            registry_address: "${DIR_ZOT_HOST}"
+            # The reconciler only ever reads the local registry, so it dials the
+            # in-cluster service directly.
+            registry_address: "dir-zot.${DIR_NAMESPACE}.svc.cluster.local:5000"
             repository_name: ""
             auth_config:
-              insecure: false
+              insecure: true
           regsync:
             enabled: true
             interval: "1m"

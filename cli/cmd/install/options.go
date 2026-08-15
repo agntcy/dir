@@ -8,6 +8,7 @@ import "github.com/agntcy/dir/cli/cmd/search"
 // options holds the shared flags for the install subcommands.
 type options struct {
 	agents      []string
+	project     bool
 	dryRun      bool
 	yes         bool
 	limit       uint32

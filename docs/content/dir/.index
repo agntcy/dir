@@ -1,6 +1,7 @@
 nav:
   - Get Started:
     - Overview: dir-overview.md
+    - Choosing a Setup: dir-choosing-a-setup.md
     - Quickstart: dir-quickstart.md
     - Usage Guide: dir-features-scenarios.md
   - Concepts:
