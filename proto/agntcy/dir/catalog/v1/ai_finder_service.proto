@@ -70,6 +70,19 @@ service AIFinderService {
       body: "*"
     };
   }
+
+  // SearchAgents answers a free-text query with relevance-ranked catalog
+  // entries. It is the API equivalent of `dirctl search "<query>"` and returns
+  // the same records in the same order for the same query.
+  //
+  // POST rather than GET because the query is free-form user text that belongs
+  // in a body rather than a URL.
+  rpc SearchAgents(SearchAgentsRequest) returns (SearchAgentsResponse) {
+    option (google.api.http) = {
+      post: "/v1/search"
+      body: "*"
+    };
+  }
 }
 
 // ListAgentsRequest carries the AI Finder browsing parameters. All fields are
@@ -99,6 +112,39 @@ message ListAgentsResponse {
   string next_page_token = 2;
 
   // Total number of catalog entries matching the filter across all pages.
+  uint32 total_count = 3;
+}
+
+// SearchAgentsRequest carries a natural-language query and paging parameters.
+//
+// There is deliberately no filter field: `dirctl search` applies no facets to a
+// natural-language query, and accepting them here would make the two paths
+// disagree. Structured filtering belongs on ListAgents.
+message SearchAgentsRequest {
+  // Free-text query, e.g. "a skill for reviewing code". Required.
+  string query = 1 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 1024
+  }];
+
+  // Maximum entries to return. Default 20, clamped to 100.
+  uint32 page_size = 2 [(buf.validate.field).uint32.lte = 100];
+
+  // Opaque continuation token from a previous call.
+  string page_token = 3 [(buf.validate.field).string.max_len = 1024];
+}
+
+// SearchAgentsResponse returns one page of relevance-ranked catalog entries.
+message SearchAgentsResponse {
+  // Catalog entries on this page, most relevant first.
+  repeated CatalogEntry results = 1;
+
+  // Opaque continuation token. Empty when there are no more results.
+  string next_page_token = 2;
+
+  // Total number of matching records across all pages. Bounded by the
+  // per-signal fan-out cap, so it counts candidates found rather than the whole
+  // index.
   uint32 total_count = 3;
 }
 
