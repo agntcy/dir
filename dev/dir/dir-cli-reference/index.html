@@ -4020,6 +4020,10 @@ Set<span class="w"> </span><span class="sb">`</span>oidc_scopes<span class="sb">
 dirctl<span class="w"> </span>--auth-mode<span class="o">=</span>oidc<span class="w"> </span>--server-addr<span class="w"> </span>ads.outshift.io:443<span class="w"> </span>search<span class="w"> </span>--skill<span class="w"> </span><span class="s2">&quot;AI&quot;</span>
 </code></pre></div>
 <p>Pre-issued tokens: <code>--auth-token</code> or <code>DIRECTORY_CLIENT_AUTH_TOKEN</code> for CI and automation.
+A pre-issued token cannot be renewed, so a command that runs longer than the token's lifetime
+fails partway through. Inside GitHub Actions, prefer <code>--oidc-audience</code> (with job permission
+<code>id-token: write</code>) and omit <code>--auth-token</code>: <code>dirctl</code> then mints its own tokens and renews them
+for as long as the command runs.
 Other modes: <code>--auth-mode=x509</code>, <code>jwt</code>, <code>token</code>, <code>tls</code>, <code>oidc</code>, <code>insecure</code>, or <code>none</code>. When
 <code>--auth-mode</code> is empty, the client auto-detects OIDC (cached token, issuer, or client ID) and
 falls back to insecure for local development. SPIFFE modes (<code>x509</code>, <code>jwt</code>, <code>token</code>) require an

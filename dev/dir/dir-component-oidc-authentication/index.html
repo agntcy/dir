@@ -2746,6 +2746,13 @@
 <h3 id="github-actions-workload-identity">GitHub Actions Workload Identity</h3>
 <p>GitHub Actions can present short-lived OIDC workload identity tokens instead of long-lived static credentials. This lets Directory authorize specific workflows without requiring personal access tokens or other long-lived secrets.</p>
 <p>This should be treated as workload identity, not human login federation.</p>
+<p>Because these tokens are short-lived (roughly five minutes), a workflow step that hands <code>dirctl</code> a token fetched in an earlier step fails once the command outlives it. Give the job <code>id-token: write</code> and pass <code>--oidc-audience</code> instead of <code>--auth-token</code>, and <code>dirctl</code> mints its own tokens and renews them for as long as it runs:</p>
+<div class="highlight"><pre><span></span><code><span class="nt">permissions</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">id-token</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">write</span>
+
+<span class="nt">steps</span><span class="p">:</span>
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">run</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">dirctl search --server-addr gateway.example.com:443 --auth-mode=oidc --oidc-audience=dir</span>
+</code></pre></div>
 <h2 id="idp-agnostic-by-design">IdP-Agnostic by Design</h2>
 <p>Directory does not depend on a single identity provider. The OIDC layer is designed to work with standards-compliant providers as long as you configure trusted issuers, audiences, and claim mappings appropriately.</p>
 <p>Supported IdPs include the following:</p>
