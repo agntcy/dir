@@ -229,12 +229,8 @@ jobs:
           EOF
           fi
 
-      - name: Fetch Directory OIDC token
-        id: oidc-dir-import
-        uses: ./.github/actions/fetch-oidc-token
-        with:
-          audience: dir
-
+      # No token is fetched here: an import can run for longer than a GitHub ID
+      # token stays valid, so dirctl mints its own and renews them as it goes.
       - name: Import MCP Records
         id: import
         timeout-minutes: 360
@@ -244,13 +240,12 @@ jobs:
           AZURE_OPENAI_DEPLOYMENT: "gpt-4o"
           AZURE_OPENAI_API_VERSION: "2024-10-21"
           DIRCTL_PATH: dirctl
-          DIR_AUTH_TOKEN: ${{ steps.oidc-dir-import.outputs.token }}
         run: |
           echo "--- Processing MCP Entry $((${{ matrix.entry.index }} + 1)) ---"
 
           CIDS_FILE="imported-cids-${{ matrix.entry.index }}.txt"
           DRY_RUN_DIR="dry-run-output-mcp-${{ matrix.entry.index }}"
-          CMD=("${DIRCTL_PATH}" import --config=import_ci.yaml --server-addr="${{ env.SERVER_ADDRESS }}" --auth-mode=oidc "--auth-token=${DIR_AUTH_TOKEN}")
+          CMD=("${DIRCTL_PATH}" import --config=import_ci.yaml --server-addr="${{ env.SERVER_ADDRESS }}" --auth-mode=oidc --oidc-audience=dir)
 
           if [[ "${{ env.DRY_RUN }}" == "true" ]]; then
              CMD+=("--dry-run" "--output-dir=$DRY_RUN_DIR")
@@ -468,12 +463,8 @@ jobs:
           EOF
           fi
 
-      - name: Fetch Directory OIDC token
-        id: oidc-dir-import
-        uses: ./.github/actions/fetch-oidc-token
-        with:
-          audience: dir
-
+      # No token is fetched here: an import can run for longer than a GitHub ID
+      # token stays valid, so dirctl mints its own and renews them as it goes.
       - name: Import Agent Skills
         id: import
         timeout-minutes: 360
@@ -483,13 +474,12 @@ jobs:
           AZURE_OPENAI_DEPLOYMENT: "gpt-4o"
           AZURE_OPENAI_API_VERSION: "2024-10-21"
           DIRCTL_PATH: dirctl
-          DIR_AUTH_TOKEN: ${{ steps.oidc-dir-import.outputs.token }}
         run: |
           echo "--- Processing Agent Skill Repo $((${{ matrix.entry.index }} + 1)): ${{ matrix.entry.repo }} ---"
 
           CIDS_FILE="imported-cids-${{ matrix.entry.index }}.txt"
           DRY_RUN_DIR="dry-run-output-agent-skills-${{ matrix.entry.index }}"
-          CMD=("${DIRCTL_PATH}" import --config=import_ci.yaml --file-path="${{ steps.sync-repo.outputs.repo_dir }}" --server-addr="${{ env.SERVER_ADDRESS }}" --auth-mode=oidc "--auth-token=${DIR_AUTH_TOKEN}")
+          CMD=("${DIRCTL_PATH}" import --config=import_ci.yaml --file-path="${{ steps.sync-repo.outputs.repo_dir }}" --server-addr="${{ env.SERVER_ADDRESS }}" --auth-mode=oidc --oidc-audience=dir)
 
           if [[ "${{ env.DRY_RUN }}" == "true" ]]; then
              CMD+=("--dry-run" "--output-dir=$DRY_RUN_DIR")

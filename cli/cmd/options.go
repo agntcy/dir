@@ -29,5 +29,6 @@ func init() {
 	flags.StringVar(&config.Client.OIDCIssuer, "oidc-issuer", config.Client.OIDCIssuer, "OIDC issuer URL (e.g. https://dex.example.com) for interactive login")
 	flags.StringVar(&config.Client.OIDCClientID, "oidc-client-id", config.Client.OIDCClientID, "OIDC client ID for interactive login (PKCE)")
 	flags.StringSliceVar(&config.Client.OIDCScopes, "oidc-scopes", config.Client.OIDCScopes, "OIDC scopes for login (e.g. openid,email,groups); default when unset")
+	flags.StringVar(&config.Client.OIDCAudience, "oidc-audience", config.Client.OIDCAudience, "Audience for tokens minted on demand (GitHub Actions OIDC); renews the token for long-running commands")
 	flags.StringVar(&config.Client.AuthToken, "auth-token", config.Client.AuthToken, "Pre-issued Bearer token (JWT). Useful for CI and non-interactive workflows; no login needed")
 }
