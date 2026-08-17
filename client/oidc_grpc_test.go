@@ -5,8 +5,11 @@ package client
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -44,15 +47,50 @@ func TestWithAuth_OIDC_WithAuthToken(t *testing.T) {
 func TestOIDCBearerCredentials_GetRequestMetadata(t *testing.T) {
 	t.Parallel()
 
-	c := newOIDCBearerCredentials("mytoken")
+	c := newOIDCBearerCredentials(staticTokenSource("mytoken"))
 	md, err := c.GetRequestMetadata(context.Background())
 	require.NoError(t, err)
 	assert.Equal(t, "Bearer mytoken", md["authorization"])
 	assert.True(t, c.RequireTransportSecurity())
 }
 
+func TestOIDCBearerCredentials_ResolvesTokenPerRequest(t *testing.T) {
+	t.Parallel()
+
+	token := "first-token"
+	c := newOIDCBearerCredentials(func(context.Context) (string, error) { return token, nil })
+
+	md, err := c.GetRequestMetadata(context.Background())
+	require.NoError(t, err)
+	assert.Equal(t, "Bearer first-token", md["authorization"])
+
+	// A renewed token must reach the next RPC; the old design froze the first.
+	token = "renewed-token"
+
+	md, err = c.GetRequestMetadata(context.Background())
+	require.NoError(t, err)
+	assert.Equal(t, "Bearer renewed-token", md["authorization"])
+}
+
+func TestOIDCBearerCredentials_PropagatesTokenSourceError(t *testing.T) {
+	t.Parallel()
+
+	c := newOIDCBearerCredentials(func(context.Context) (string, error) {
+		return "", errors.New("mint failed")
+	})
+
+	_, err := c.GetRequestMetadata(context.Background())
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "mint failed")
+}
+
 func TestSetupOIDCAuth_NoTokenReturnsError(t *testing.T) {
 	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+
+	// The error names the interactive login only outside a workflow that can
+	// mint ID tokens, and the job running these tests has that environment.
+	t.Setenv("ACTIONS_ID_TOKEN_REQUEST_URL", "")
+	t.Setenv("ACTIONS_ID_TOKEN_REQUEST_TOKEN", "")
 
 	opts := &options{
 		config: &Config{
@@ -253,6 +291,147 @@ func TestSetupOIDCAuth_RefreshPreservesCachedRefreshTokenWhenMissingInResponse(t
 	require.NotNil(t, updatedToken)
 	assert.Equal(t, "new-access-token", updatedToken.AccessToken)
 	assert.Equal(t, "cached-refresh-token", updatedToken.RefreshToken)
+}
+
+func TestCachedOIDCTokenSource_RefreshesMidRun(t *testing.T) {
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+
+	var refreshes atomic.Int64
+
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		count := refreshes.Add(1)
+
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = fmt.Fprintf(w, `{"access_token":"refreshed-token-%d","token_type":"Bearer","expires_in":3600}`, count)
+	}))
+	defer srv.Close()
+
+	cache, err := NewTokenCacheForIssuer(srv.URL)
+	require.NoError(t, err)
+	//nolint:gosec // G101: test fixture token values, not real credentials
+	require.NoError(t, cache.Save(&CachedToken{
+		AccessToken:  "dial-time-token",
+		RefreshToken: "cached-refresh-token",
+		Issuer:       srv.URL,
+		Provider:     "oidc",
+		ExpiresAt:    time.Now().Add(time.Hour),
+		CreatedAt:    time.Now(),
+	}))
+
+	source := &cachedOIDCTokenSource{cache: cache, clientID: "test-client-id"}
+
+	token, err := source.Token(context.Background())
+	require.NoError(t, err)
+	assert.Equal(t, "dial-time-token", token)
+
+	// A token with time left is served from memory, without touching disk or IdP.
+	token, err = source.Token(context.Background())
+	require.NoError(t, err)
+	assert.Equal(t, "dial-time-token", token)
+	assert.Equal(t, int64(0), refreshes.Load())
+
+	// The cached token has now aged out mid-run, which is exactly the case that
+	// used to fail: the frozen dial-time token was sent until the command died.
+	//nolint:gosec // G101: test fixture token values, not real credentials
+	require.NoError(t, cache.Save(&CachedToken{
+		AccessToken:  "dial-time-token",
+		RefreshToken: "cached-refresh-token",
+		Issuer:       srv.URL,
+		Provider:     "oidc",
+		ExpiresAt:    time.Now().Add(-time.Minute),
+		CreatedAt:    time.Now().Add(-time.Hour),
+	}))
+
+	source.expiresAt = time.Now().Add(time.Minute)
+	source.lastRead = time.Now().Add(-minCachedTokenRecheck - time.Second)
+
+	token, err = source.Token(context.Background())
+	require.NoError(t, err)
+	assert.Equal(t, "refreshed-token-1", token)
+	assert.Equal(t, int64(1), refreshes.Load())
+}
+
+func TestCachedOIDCTokenSource_BoundsRecheckFrequency(t *testing.T) {
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+
+	cache, err := NewTokenCacheForIssuer("https://issuer.example.com")
+	require.NoError(t, err)
+	require.NoError(t, cache.Save(&CachedToken{
+		AccessToken: "short-lived-token",
+		Issuer:      "https://issuer.example.com",
+		Provider:    "oidc",
+		ExpiresAt:   time.Now().Add(time.Hour),
+		CreatedAt:   time.Now(),
+	}))
+
+	source := &cachedOIDCTokenSource{cache: cache}
+
+	_, err = source.Token(context.Background())
+	require.NoError(t, err)
+
+	// Expiry is inside the buffer, but the cache was just read. Re-reading on
+	// every RPC would turn a short-lived token into a refresh per call.
+	source.expiresAt = time.Now().Add(time.Second)
+
+	require.NoError(t, cache.Clear())
+
+	token, err := source.Token(context.Background())
+	require.NoError(t, err)
+	assert.Equal(t, "short-lived-token", token)
+}
+
+func TestResolveOIDCTokenSource_AuthTokenWinsOverActionsEnvironment(t *testing.T) {
+	t.Setenv("ACTIONS_ID_TOKEN_REQUEST_URL", "https://actions.example.com/token")
+	t.Setenv("ACTIONS_ID_TOKEN_REQUEST_TOKEN", "request-token")
+
+	opts := &options{
+		config: &Config{
+			ServerAddress: "gateway.example.com:443",
+			AuthMode:      "oidc",
+			AuthToken:     "explicit-token",
+			OIDCAudience:  "dir",
+		},
+	}
+
+	source, err := opts.resolveOIDCTokenSource(context.Background())
+	require.NoError(t, err)
+
+	token, err := source(context.Background())
+	require.NoError(t, err)
+	assert.Equal(t, "explicit-token", token)
+}
+
+func TestResolveOIDCTokenSource_PrefersActionsEnvironmentOverCache(t *testing.T) {
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+
+	cache, err := NewTokenCacheForIssuer("https://issuer.example.com")
+	require.NoError(t, err)
+	require.NoError(t, cache.Save(&CachedToken{
+		AccessToken: "cached-token",
+		Issuer:      "https://issuer.example.com",
+		Provider:    "oidc",
+		ExpiresAt:   time.Now().Add(time.Hour),
+		CreatedAt:   time.Now(),
+	}))
+
+	// Port 1 refuses immediately, so the error identifies which source ran
+	// without depending on name resolution.
+	t.Setenv("ACTIONS_ID_TOKEN_REQUEST_URL", "https://127.0.0.1:1/token")
+	t.Setenv("ACTIONS_ID_TOKEN_REQUEST_TOKEN", "request-token")
+
+	opts := &options{
+		config: &Config{
+			ServerAddress: "gateway.example.com:443",
+			AuthMode:      "oidc",
+			OIDCAudience:  "dir",
+		},
+	}
+
+	// Minting happens while dialing, so a broken environment fails before any
+	// RPC runs rather than silently falling back to a token that cannot renew.
+	_, err = opts.resolveOIDCTokenSource(context.Background())
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "failed to request GitHub OIDC token")
 }
 
 func TestSetupOIDCAuth_RequiresIssuerSelectionWhenMultipleCachesExist(t *testing.T) {

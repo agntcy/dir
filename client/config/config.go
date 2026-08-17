@@ -81,6 +81,7 @@ type Context struct {
 	OIDCIssuer       string   `yaml:"oidc_issuer"`
 	OIDCClientID     string   `yaml:"oidc_client_id"`
 	OIDCScopes       []string `yaml:"oidc_scopes"`
+	OIDCAudience     string   `yaml:"oidc_audience"`
 	AuthToken        string   `yaml:"auth_token"`
 	Doctor           Doctor   `yaml:"doctor"`
 }
@@ -787,6 +788,7 @@ func applyEnv(cfg *dirclient.Config, prefix string) error {
 		"jwt_audience":       &cfg.JWTAudience,
 		"oidc_issuer":        &cfg.OIDCIssuer,
 		"oidc_client_id":     &cfg.OIDCClientID,
+		"oidc_audience":      &cfg.OIDCAudience,
 		"auth_token":         &cfg.AuthToken,
 	}
 
@@ -881,11 +883,16 @@ func applyNonZeroOverrides(cfg *dirclient.Config, overrides *dirclient.Config) {
 		cfg.OIDCScopes = append([]string(nil), overrides.OIDCScopes...)
 	}
 
+	if overrides.OIDCAudience != "" {
+		cfg.OIDCAudience = overrides.OIDCAudience
+	}
+
 	if overrides.AuthToken != "" {
 		cfg.AuthToken = overrides.AuthToken
 	}
 }
 
+//nolint:cyclop // Flat one-case-per-field dispatch; splitting it would only hide the mapping.
 func applyOverrideField(cfg *dirclient.Config, overrides *dirclient.Config, field string) error {
 	switch field {
 	case "server_address":
@@ -912,6 +919,8 @@ func applyOverrideField(cfg *dirclient.Config, overrides *dirclient.Config, fiel
 		cfg.OIDCClientID = overrides.OIDCClientID
 	case "oidc_scopes":
 		cfg.OIDCScopes = append([]string(nil), overrides.OIDCScopes...)
+	case "oidc_audience":
+		cfg.OIDCAudience = overrides.OIDCAudience
 	case "auth_token":
 		cfg.AuthToken = overrides.AuthToken
 	default:
@@ -959,8 +968,12 @@ func validateClientConfig(cfg *dirclient.Config) error {
 			return errors.New("tls_ca_file, tls_cert_file, and tls_key_file are required for tls authentication")
 		}
 	case "oidc":
-		if cfg.AuthToken == "" && cfg.OIDCIssuer == "" {
-			return errors.New("oidc_issuer is required for oidc authentication unless auth_token is set")
+		// oidc_audience is the third way to obtain a token: the client mints its
+		// own from the GitHub Actions endpoint, which needs no issuer. Whether
+		// that endpoint is actually reachable is left to the client, so this
+		// verdict does not depend on the environment it is evaluated in.
+		if cfg.AuthToken == "" && cfg.OIDCIssuer == "" && cfg.OIDCAudience == "" {
+			return errors.New("oidc authentication requires one of oidc_issuer, auth_token, or oidc_audience")
 		}
 	default:
 		return fmt.Errorf("unsupported auth_mode %q", cfg.AuthMode)
@@ -1025,6 +1038,7 @@ func (c Context) toClientConfig() dirclient.Config {
 		OIDCIssuer:       c.OIDCIssuer,
 		OIDCClientID:     c.OIDCClientID,
 		OIDCScopes:       append([]string(nil), c.OIDCScopes...),
+		OIDCAudience:     c.OIDCAudience,
 		AuthToken:        c.AuthToken,
 	}
 }
