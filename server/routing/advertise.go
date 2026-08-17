@@ -25,6 +25,12 @@ func (r *routeRemote) startAdvertiseTask() {
 			return
 		}
 
+		// Anything that asked for a pass while we waited for a peer is about to
+		// get one. Dropping the request here rather than after the pass is
+		// deliberate: a request raised while the pass is already running has
+		// missed it, and must survive to be served by the loop below.
+		r.drainReadvertise()
+
 		r.advertisePublishedRecords(r.ctx)
 
 		ticker := time.NewTicker(r.reprovideInterval)
@@ -39,6 +45,9 @@ func (r *routeRemote) startAdvertiseTask() {
 
 				return
 			case <-ticker.C:
+				r.advertisePublishedRecords(r.ctx)
+			case <-r.readvertise:
+				remoteLogger.Debug("Re-advertising ahead of the next tick")
 				r.advertisePublishedRecords(r.ctx)
 			}
 		}

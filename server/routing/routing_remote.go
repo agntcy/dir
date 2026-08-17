@@ -47,6 +47,12 @@ type routeRemote struct {
 	// their DHT provider records do not expire.
 	reprovideInterval time.Duration
 
+	// readvertise asks for an extra advertise pass before the next tick, for
+	// when the set of published records changes underneath the loop. Buffered
+	// and sent to without blocking, so a request that arrives mid-pass is
+	// coalesced into the one already pending rather than dropped.
+	readvertise chan struct{}
+
 	// Lifecycle management
 	//nolint:containedctx // Context needed for managing lifecycle of long-running cleanup tasks
 	ctx    context.Context    // Routing subsystem context
@@ -80,6 +86,7 @@ func newRemote(parentCtx context.Context,
 		cancel:            cancel,
 		isBootstrapNode:   isBootstrapNode,
 		reprovideInterval: reprovideInterval,
+		readvertise:       make(chan struct{}, 1),
 	}
 
 	refreshInterval := RefreshInterval
@@ -128,6 +135,9 @@ func newRemote(parentCtx context.Context,
 
 	//nolint:contextcheck // Intentionally passing routing context to child goroutine for lifecycle management
 	routeAPI.startAdvertiseTask()
+
+	//nolint:contextcheck // Intentionally passing routing context to child goroutine for lifecycle management
+	routeAPI.startPublishedMigrationTask(opts.Config().Routing.DatastoreDir)
 
 	return routeAPI, nil
 }

@@ -53,9 +53,12 @@ func New(ctx context.Context, store types.StoreAPI, db types.DatabaseAPI, opts t
 
 	// Datastore for the DHT's own state: its routing table and the provider
 	// records it holds for other peers. Nothing else writes to it.
+	//
+	// It lives in a per-protocol subdirectory of the configured path so that a
+	// v1 datastore left in place by an upgrade stays separate and readable.
 	var dsOpts []datastore.Option
 	if dstoreDir := opts.Config().Routing.DatastoreDir; dstoreDir != "" {
-		dsOpts = append(dsOpts, datastore.WithFsProvider(dstoreDir))
+		dsOpts = append(dsOpts, datastore.WithFsProvider(datastoreVersionDir(dstoreDir)))
 	}
 
 	dstore, err := datastore.New(dsOpts...)
