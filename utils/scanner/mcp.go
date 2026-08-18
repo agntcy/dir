@@ -240,9 +240,10 @@ func gitClone(ctx context.Context, repoURL, dest string) error {
 func runMCPScanner(ctx context.Context, cliPath, scanDir string) ([]byte, error) {
 	var stdout, stderr bytes.Buffer
 
-	// mcp-scanner requires global flags (--analyzers, --raw) to precede the
-	// subcommand; placing them after `behavioral` is rejected by the CLI.
-	cmd := exec.CommandContext(ctx, cliPath, "--analyzers", "yara,readiness", "--raw", "behavioral", scanDir)
+	// The behavioral subparser declares its own --raw, whose default
+	// overwrites a global one, so --raw must follow the subcommand to get
+	// JSON rather than a human-readable summary.
+	cmd := exec.CommandContext(ctx, cliPath, "--analyzers", "yara,readiness", "behavioral", scanDir, "--raw")
 	cmd.Stdout = &stdout
 	cmd.Stderr = &stderr
 	cmd.Env = buildMCPScannerEnv()
