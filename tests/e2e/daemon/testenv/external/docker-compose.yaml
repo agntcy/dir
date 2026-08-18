@@ -2,7 +2,7 @@ name: daemon-external
 
 services:
   zot:
-    image: ghcr.io/project-zot/zot:v2.1.18
+    image: ghcr.io/project-zot/zot:v2.1.20
     ports:
       - "25555:5000"
     deploy:
