@@ -153,6 +153,8 @@ func runMCPScannerEndpoint(ctx context.Context, cliPath, subcommand, serverURL s
 	cmd := exec.CommandContext(ctx, cliPath, "--raw", subcommand, "--server-url", serverURL) //nolint:gosec
 	cmd.Stdout = &stdout
 	cmd.Stderr = &stderr
+	// Maps AZURE_OPENAI_* onto the MCP_SCANNER_LLM_* names the scanner reads.
+	cmd.Env = buildMCPScannerEnv()
 
 	if err := cmd.Run(); err != nil {
 		return nil, fmt.Errorf("mcp-scanner %s exited with error: %s: %w", subcommand, strings.TrimSpace(stderr.String()), err)
