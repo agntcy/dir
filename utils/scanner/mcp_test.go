@@ -86,6 +86,49 @@ func TestParseMCPOutput_UnsafeWithFindings(t *testing.T) {
 	}
 }
 
+// Shape emitted by the `instructions` subcommand: findings is an array whose
+// entries name their own analyzer, and the subject is a server, not a tool.
+func TestParseMCPOutput_ArrayFindings(t *testing.T) {
+	t.Parallel()
+
+	raw := `[{
+		"server_name": "DeepWiki",
+		"status": "completed",
+		"is_safe": false,
+		"findings": [
+			{"severity":"HIGH","summary":"Detected 1 threat: data exfiltration","analyzer":"YARA"}
+		]
+	}]`
+
+	got, err := parseMCPOutput([]byte(raw))
+	if err != nil {
+		t.Fatalf("array-shaped findings must parse, got error: %v", err)
+	}
+
+	if got.Safe {
+		t.Error("a result carrying findings must not be reported safe")
+	}
+
+	if len(got.Findings) != 1 {
+		t.Fatalf("want 1 finding, got %d: %+v", len(got.Findings), got.Findings)
+	}
+
+	want := "[YARA] DeepWiki: Detected 1 threat: data exfiltration"
+	if got.Findings[0].Message != want {
+		t.Errorf("want message %q, got %q", want, got.Findings[0].Message)
+	}
+}
+
+func TestParseMCPOutput_UnknownFindingsShape_Errors(t *testing.T) {
+	t.Parallel()
+
+	raw := `[{"tool_name":"exec","is_safe":false,"findings":"not-a-shape-we-know"}]`
+
+	if _, err := parseMCPOutput([]byte(raw)); err == nil {
+		t.Error("an unrecognized findings shape must error, not be silently dropped")
+	}
+}
+
 func TestParseMCPOutput_ThreatNamesAppended(t *testing.T) {
 	t.Parallel()
 

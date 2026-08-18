@@ -279,12 +279,14 @@ func appendEnvIfMissing(env []string, key, fallback string) []string {
 
 // --- output parsing ---
 
-// mcpScannerResult represents a single tool result from `mcp-scanner behavioral --raw`.
+// mcpScannerResult represents a single result from `mcp-scanner --raw`.
+// Findings stays raw because its shape varies; see analyzerFindings.
 type mcpScannerResult struct {
-	ToolName string                       `json:"tool_name"`
-	Status   string                       `json:"status"`
-	IsSafe   bool                         `json:"is_safe"`
-	Findings map[string]mcpAnalyzerResult `json:"findings"`
+	ToolName   string          `json:"tool_name"`
+	ServerName string          `json:"server_name"`
+	Status     string          `json:"status"`
+	IsSafe     bool            `json:"is_safe"`
+	Findings   json.RawMessage `json:"findings"`
 }
 
 // mcpAnalyzerResult represents the output of a single analyzer within mcp-scanner.
@@ -293,6 +295,71 @@ type mcpAnalyzerResult struct {
 	ThreatSummary string   `json:"threat_summary"`
 	ThreatNames   []string `json:"threat_names"`
 	TotalFindings int      `json:"total_findings"`
+}
+
+// mcpListedFinding is one entry of the array form of findings.
+type mcpListedFinding struct {
+	Severity string `json:"severity"`
+	Summary  string `json:"summary"`
+	Analyzer string `json:"analyzer"`
+}
+
+// mcpFinding is the shape-independent view of one analyzer's verdict.
+type mcpFinding struct {
+	analyzer string
+	severity string
+	summary  string
+	names    []string
+}
+
+// analyzerFindings normalizes the two shapes mcp-scanner uses for findings:
+// most subcommands return an object keyed by analyzer name, while
+// `instructions` returns an array of entries that name their own analyzer.
+func (r mcpScannerResult) analyzerFindings() ([]mcpFinding, error) {
+	if len(r.Findings) == 0 {
+		return nil, nil
+	}
+
+	var byAnalyzer map[string]mcpAnalyzerResult
+	if err := json.Unmarshal(r.Findings, &byAnalyzer); err == nil {
+		findings := make([]mcpFinding, 0, len(byAnalyzer))
+		for name, a := range byAnalyzer {
+			findings = append(findings, mcpFinding{
+				analyzer: name,
+				severity: a.Severity,
+				summary:  a.ThreatSummary,
+				names:    a.ThreatNames,
+			})
+		}
+
+		return findings, nil
+	}
+
+	var listed []mcpListedFinding
+	if err := json.Unmarshal(r.Findings, &listed); err != nil {
+		return nil, fmt.Errorf("parse mcp-scanner findings: %w", err)
+	}
+
+	findings := make([]mcpFinding, 0, len(listed))
+	for _, f := range listed {
+		findings = append(findings, mcpFinding{
+			analyzer: f.Analyzer,
+			severity: f.Severity,
+			summary:  f.Summary,
+		})
+	}
+
+	return findings, nil
+}
+
+// subject names what a result is about. `instructions` results describe a
+// server rather than a tool and so carry no tool_name.
+func (r mcpScannerResult) subject() string {
+	if r.ToolName != "" {
+		return r.ToolName
+	}
+
+	return r.ServerName
 }
 
 func parseMCPOutput(raw []byte) (*ScanResult, error) {
@@ -314,15 +381,19 @@ func parseMCPOutput(raw []byte) (*ScanResult, error) {
 			continue
 		}
 
-		for analyzerName, ar := range r.Findings {
-			severity := mapScannerSeverity(ar.Severity)
-			msg := fmt.Sprintf("[%s] %s: %s", analyzerName, r.ToolName, ar.ThreatSummary)
+		analyzerFindings, err := r.analyzerFindings()
+		if err != nil {
+			return nil, err
+		}
 
-			if len(ar.ThreatNames) > 0 {
-				msg += " (" + strings.Join(ar.ThreatNames, ", ") + ")"
+		for _, af := range analyzerFindings {
+			msg := fmt.Sprintf("[%s] %s: %s", af.analyzer, r.subject(), af.summary)
+
+			if len(af.names) > 0 {
+				msg += " (" + strings.Join(af.names, ", ") + ")"
 			}
 
-			findings = append(findings, Finding{Severity: severity, Message: msg})
+			findings = append(findings, Finding{Severity: mapScannerSeverity(af.severity), Message: msg})
 		}
 	}
 
