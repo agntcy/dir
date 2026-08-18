@@ -6,7 +6,7 @@ require (
 	buf.build/gen/go/agntcy/oasf-sdk/grpc/go v1.6.2-20260714100340-94ed518b08ce.1
 	buf.build/gen/go/agntcy/oasf-sdk/protocolbuffers/go v1.36.11-20260714100340-94ed518b08ce.1
 	buf.build/gen/go/agntcy/oasf/protocolbuffers/go v1.36.11-20260721113505-cf7db8888586.1
-	github.com/agntcy/dir/api v1.6.3
+	github.com/agntcy/dir/api v1.7.0
 	github.com/agntcy/oasf-sdk/pkg v1.1.0
 	github.com/mitchellh/mapstructure v1.5.1-0.20231216201459-8508981c8b6c
 	github.com/rs/zerolog v1.31.0
