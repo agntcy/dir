@@ -186,10 +186,15 @@
       "groupSlug": "zot",
       "matchPackageNames": [
         "github.com/project-zot/zot",
-        "ghcr.io/project-zot/zot",
+        "zotregistry.dev/zot{/,}**",
+        "ghcr.io/project-zot/**",
         "zot"
       ],
-      "description": ["Group zot version bumps into a single PR."]
+      "description": [
+        "Group zot version bumps into a single PR.",
+        "Covers the Taskfile pin, the zotregistry.dev/zot Go module, every",
+        "ghcr.io/project-zot image variant, and the zot Helm subchart."
+      ]
     },
     {
       "groupName": "postgresql",
