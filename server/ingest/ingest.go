@@ -5,8 +5,8 @@
 // records and referrers with full parity to a normal push:
 // content store + search index + referrer-derived database state.
 //
-// It is used by the gRPC store controller and by DHT-based autosync so that
-// content received from any source is stored and indexed identically.
+// It is the single path for incoming content, so that records received from
+// any source are stored and indexed identically.
 package ingest
 
 import (

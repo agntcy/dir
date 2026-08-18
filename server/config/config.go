@@ -559,22 +559,6 @@ func LoadConfig(opts ...ConfigOption) (*Config, error) {
 	_ = v.BindEnv("routing.republish_interval")
 
 	//
-	// Routing GossipSub configuration
-	// Note: Only enable/disable is configurable. Protocol parameters (topic, message size)
-	// are hardcoded in server/routing/pubsub/constants.go for network compatibility.
-	//
-	_ = v.BindEnv("routing.gossipsub.enabled")
-	v.SetDefault("routing.gossipsub.enabled", routing.DefaultGossipSubEnabled)
-
-	//
-	// Routing autosync configuration (DHT-based record + referrer sync).
-	// Note: routing.autosync.peerlist is a list of objects and is configured via
-	// config file/YAML only (it cannot be bound to a single environment variable).
-	//
-	_ = v.BindEnv("routing.autosync.enabled")
-	v.SetDefault("routing.autosync.enabled", routing.DefaultAutosyncEnabled)
-
-	//
 	// Routing relay configuration (circuit-relay v2 for NAT traversal).
 	// Note: routing.static_relays is a list and is configured via config
 	// file/YAML only (it cannot be bound to a single environment variable).

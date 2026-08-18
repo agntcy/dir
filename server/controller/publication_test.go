@@ -8,22 +8,20 @@ import (
 	"testing"
 
 	routingv1 "github.com/agntcy/dir/api/routing/v1"
-	"github.com/agntcy/dir/server/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
 
-type fakePublicationDatabase struct {
-	types.DatabaseAPI
-
+type fakePublicationService struct {
 	request *routingv1.PublishRequest
 	id      string
 	err     error
 }
 
-func (f *fakePublicationDatabase) CreatePublication(
+func (f *fakePublicationService) CreatePublication(
+	_ context.Context,
 	request *routingv1.PublishRequest,
 ) (string, error) {
 	f.request = request
@@ -32,8 +30,8 @@ func (f *fakePublicationDatabase) CreatePublication(
 }
 
 func TestCreatePublicationAcceptsAllRecords(t *testing.T) {
-	database := &fakePublicationDatabase{id: "publication-id"}
-	controller := NewPublicationController(database, nil)
+	publication := &fakePublicationService{id: "publication-id"}
+	controller := NewPublicationController(nil, publication, nil)
 
 	response, err := controller.CreatePublication(
 		context.Background(),
@@ -46,13 +44,13 @@ func TestCreatePublicationAcceptsAllRecords(t *testing.T) {
 
 	require.NoError(t, err)
 	assert.Equal(t, "publication-id", response.GetPublicationId())
-	require.NotNil(t, database.request)
-	assert.True(t, database.request.GetAllRecords())
+	require.NotNil(t, publication.request)
+	assert.True(t, publication.request.GetAllRecords())
 }
 
 func TestCreatePublicationRejectsFalseAllRecords(t *testing.T) {
-	database := &fakePublicationDatabase{}
-	controller := NewPublicationController(database, nil)
+	publication := &fakePublicationService{}
+	controller := NewPublicationController(nil, publication, nil)
 
 	_, err := controller.CreatePublication(
 		context.Background(),
@@ -66,5 +64,5 @@ func TestCreatePublicationRejectsFalseAllRecords(t *testing.T) {
 	require.Error(t, err)
 	assert.Equal(t, codes.InvalidArgument, status.Code(err))
 	require.ErrorContains(t, err, "all_records must be true")
-	assert.Nil(t, database.request)
+	assert.Nil(t, publication.request)
 }

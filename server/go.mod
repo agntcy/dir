@@ -29,8 +29,6 @@ require (
 	github.com/libp2p/go-libp2p v0.48.0
 	github.com/libp2p/go-libp2p-gorpc v0.6.0
 	github.com/libp2p/go-libp2p-kad-dht v0.41.0
-	github.com/libp2p/go-libp2p-pubsub v0.16.0
-	github.com/libp2p/go-libp2p-record v0.3.1
 	github.com/mitchellh/mapstructure v1.5.1-0.20231216201459-8508981c8b6c
 	github.com/opencontainers/image-spec v1.1.1
 	github.com/spf13/cobra v1.10.2
@@ -58,6 +56,7 @@ require (
 	github.com/golang/mock v1.7.0-rc.1 // indirect
 	github.com/google/cel-go v0.30.0 // indirect
 	github.com/google/flatbuffers v23.5.26+incompatible // indirect
+	github.com/libp2p/go-libp2p-record v0.3.1 // indirect
 	github.com/mattn/go-colorable v0.1.13 // indirect
 	github.com/ncruces/go-strftime v1.0.0 // indirect
 	github.com/nlpodyssey/cybertron v0.2.1 // indirect
@@ -98,13 +97,11 @@ require (
 	github.com/go-logr/stdr v1.2.2 // indirect
 	github.com/go-viper/mapstructure/v2 v2.5.0 // indirect
 	github.com/goccy/go-json v0.10.6 // indirect
-	github.com/gogo/protobuf v1.3.2 // indirect
 	github.com/golang/protobuf v1.5.4 // indirect
 	github.com/google/gopacket v1.1.19 // indirect
 	github.com/google/uuid v1.6.0
 	github.com/gorilla/websocket v1.5.4-0.20250319132907-e064f32e3674 // indirect
 	github.com/hashicorp/golang-lru v1.0.2 // indirect
-	github.com/hashicorp/golang-lru/v2 v2.0.7 // indirect
 	github.com/huin/goupnp v1.3.0 // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
 	github.com/ipfs/boxo v0.39.0 // indirect

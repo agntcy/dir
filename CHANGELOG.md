@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Changed
+- **Dir**: The routing datastore now opens a protocol-versioned subdirectory of `routing.datastore_dir` — `dir-2` for this release — rather than the configured path itself. The setting is unchanged; only the directory the database lives in moves one level down. This matters if you back up or bind-mount that path directly (#1967)
+
+### Fixed
+- **Dir**: Publish state recorded by v1 is migrated onto the record rows on first start, so upgrading no longer needs the routing volume deleted or records republished. A v1 datastore left in place is read once and then untouched, and can be removed at any time with the node running (#1967)
+
 ## [v1.6.2] - 2026-07-29
 
 ### Added

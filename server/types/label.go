@@ -4,13 +4,11 @@
 package types
 
 // Label types and operations for the routing system.
-// This file provides unified label types including Label, LabelType, and LabelMetadata,
+// This file provides unified label types including Label and LabelType,
 // along with utilities for label extraction and manipulation.
 
 import (
-	"errors"
 	"strings"
-	"time"
 
 	coretypes "github.com/agntcy/dir/api/core/types"
 )
@@ -128,52 +126,6 @@ func (l Label) Value() string {
 
 	return strings.TrimPrefix(string(l), namespace)
 }
-
-// LabelMetadata stores temporal information about a label announcement.
-// The label itself is stored in the datastore key structure: /skills/AI/CID123/Peer1
-// where the metadata tracks when the label was first announced and last seen.
-type LabelMetadata struct {
-	Timestamp time.Time `json:"timestamp"` // When label was first announced
-	LastSeen  time.Time `json:"last_seen"` // When label was last seen/refreshed
-}
-
-// Validate checks if the metadata is valid and all required fields are properly set.
-func (m *LabelMetadata) Validate() error {
-	if m.Timestamp.IsZero() {
-		return errors.New("timestamp cannot be zero")
-	}
-
-	if m.LastSeen.IsZero() {
-		return errors.New("last seen timestamp cannot be zero")
-	}
-
-	if m.LastSeen.Before(m.Timestamp) {
-		return errors.New("last seen cannot be before creation timestamp")
-	}
-
-	return nil
-}
-
-// IsStale checks if the label is older than the given maximum age duration.
-func (m *LabelMetadata) IsStale(maxAge time.Duration) bool {
-	return time.Since(m.LastSeen) > maxAge
-}
-
-// Age returns how long ago the label was last seen.
-func (m *LabelMetadata) Age() time.Duration {
-	return time.Since(m.LastSeen)
-}
-
-// Update refreshes the LastSeen timestamp to the current time.
-func (m *LabelMetadata) Update() {
-	m.LastSeen = time.Now()
-}
-
-// Constants for label validation and processing.
-const (
-	// Enhanced format: /type/label/CID/PeerID splits into ["", "type", "label", "CID", "PeerID"] = 5 parts.
-	MinLabelKeyParts = 5
-)
 
 // GetLabelsFromRecord extracts labels from a record.
 func GetLabelsFromRecord(record coretypes.Record) []Label {

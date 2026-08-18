@@ -57,17 +57,6 @@ server:
     # more announcement traffic and more work for every subscriber.
     republish_interval: "36h"
 
-    gossipsub:
-      enabled: true
-    # DHT-based record + referrer autosync (deny-by-default; disabled unless set).
-    # When enabled, records announced by an allow-listed peer are pulled and
-    # ingested locally over the libp2p/DHT transport.
-    autosync:
-      enabled: false
-      # peerlist is a list of trusted source peers (by libp2p peer ID).
-      # peerlist:
-      #   - peer: "12D3KooW...peerID1"
-      #   - peer: "12D3KooW...peerID2"
     # Circuit-relay v2 for NAT traversal.
     # relay_service: enable a relay service on this node (only on publicly
     #   reachable nodes, e.g. bootstrap) so it can relay traffic for NAT'd peers.

@@ -26,6 +26,11 @@ type Service struct {
 	scheduler *Scheduler
 	workers   []*Worker
 
+	// wakeCh is owned by the service rather than the scheduler so that it is
+	// usable before Start and never reassigned, letting CreatePublication
+	// signal without synchronising on the scheduler field.
+	wakeCh chan struct{}
+
 	stopCh chan struct{}
 	wg     sync.WaitGroup
 }
@@ -37,13 +42,33 @@ func New(db types.DatabaseAPI, store types.StoreAPI, routing types.RoutingAPI, o
 		store:   store,
 		routing: routing,
 		config:  opts.Config().Publication,
+		wakeCh:  make(chan struct{}, 1),
 		stopCh:  make(chan struct{}),
 	}, nil
 }
 
-// CreatePublication creates a new publication task to be processed.
+// CreatePublication creates a new publication task and wakes the scheduler to
+// pick it up, so a publish takes effect in the time it takes to reach the DHT
+// rather than by the next scheduler interval.
 func (s *Service) CreatePublication(_ context.Context, req *routingv1.PublishRequest) (string, error) {
-	return s.db.CreatePublication(req) //nolint:wrapcheck
+	id, err := s.db.CreatePublication(req)
+	if err != nil {
+		return "", err //nolint:wrapcheck
+	}
+
+	s.wake()
+
+	return id, nil
+}
+
+// wake asks the scheduler to sweep for pending publications. The signal is
+// dropped when one is already queued: a sweep that has not yet run will observe
+// every publication committed before it, so one pending wake covers a burst.
+func (s *Service) wake() {
+	select {
+	case s.wakeCh <- struct{}{}:
+	default:
+	}
 }
 
 // Start begins the publication service operations.
@@ -54,7 +79,7 @@ func (s *Service) Start(ctx context.Context) error {
 	workQueue := make(chan publypes.WorkItem, 100) //nolint:mnd
 
 	// Create and start scheduler
-	s.scheduler = NewScheduler(s.db, workQueue, s.config.SchedulerInterval)
+	s.scheduler = NewScheduler(s.db, workQueue, s.config.SchedulerInterval, s.wakeCh)
 
 	// Create and start workers
 	s.workers = make([]*Worker, s.config.WorkerCount)

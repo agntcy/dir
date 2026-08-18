@@ -128,8 +128,6 @@ The Agent Directory Service can be deployed using Helm or GitOps / Argo CD. Helm
               listen_address: "/ip4/0.0.0.0/tcp/5555"
               datastore_dir: /etc/routing/datastore
               directory_api_address: "dir-apiserver.dir-dev-dir.svc.cluster.local:8888"
-              gossipsub:
-                enabled: false
             sync:
               auth_config:
                 username: "user"
