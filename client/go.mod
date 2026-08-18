@@ -12,8 +12,8 @@ replace (
 replace github.com/ThalesIgnite/crypto11 => github.com/eclipse-keypont/crypto11 v1.6.8
 
 require (
-	github.com/agntcy/dir/api v1.6.3
-	github.com/agntcy/dir/utils v1.6.3
+	github.com/agntcy/dir/api v1.7.0
+	github.com/agntcy/dir/utils v1.7.0
 	github.com/mitchellh/mapstructure v1.5.1-0.20231216201459-8508981c8b6c
 	github.com/sigstore/cosign/v3 v3.1.2
 	github.com/sigstore/protobuf-specs v0.5.1
