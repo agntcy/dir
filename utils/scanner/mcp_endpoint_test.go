@@ -418,6 +418,75 @@ func TestRunMCPScannerEndpoint_ExecFailure_WrapsStderr(t *testing.T) {
 	}
 }
 
+// --- endpoint analyzer selection ---
+
+// clearAnalyzerCredentials makes the analyzer set independent of whichever
+// credentials the machine running the test happens to export.
+func clearAnalyzerCredentials(t *testing.T) {
+	t.Helper()
+
+	t.Setenv("MCP_SCANNER_LLM_API_KEY", "")
+	t.Setenv("AZURE_OPENAI_API_KEY", "")
+	t.Setenv("MCP_SCANNER_API_KEY", "")
+}
+
+func TestEndpointAnalyzers_NoCredentials_CredentialFreeOnly(t *testing.T) {
+	// Cannot run in parallel: uses t.Setenv.
+	clearAnalyzerCredentials(t)
+
+	want := []string{"yara", "readiness"}
+	if got := endpointAnalyzers(); !slices.Equal(got, want) {
+		t.Errorf("want %v with no credentials, got %v", want, got)
+	}
+}
+
+func TestEndpointAnalyzers_AzureKey_AddsLLM(t *testing.T) {
+	// Cannot run in parallel: uses t.Setenv.
+	clearAnalyzerCredentials(t)
+	t.Setenv("AZURE_OPENAI_API_KEY", "test-key")
+
+	want := []string{"yara", "readiness", "llm"}
+	if got := endpointAnalyzers(); !slices.Equal(got, want) {
+		t.Errorf("want %v when an Azure key is configured, got %v", want, got)
+	}
+}
+
+func TestEndpointAnalyzers_ScannerKey_AddsLLM(t *testing.T) {
+	// Cannot run in parallel: uses t.Setenv.
+	clearAnalyzerCredentials(t)
+	t.Setenv("MCP_SCANNER_LLM_API_KEY", "test-key")
+
+	want := []string{"yara", "readiness", "llm"}
+	if got := endpointAnalyzers(); !slices.Equal(got, want) {
+		t.Errorf("want %v when a scanner key is configured, got %v", want, got)
+	}
+}
+
+// The api analyzer is opt-in rather than excluded: an operator who configures
+// a Cisco AI Defense key gets it, which is what #1775 intended by "opt-in".
+func TestEndpointAnalyzers_APIKey_AddsAPI(t *testing.T) {
+	// Cannot run in parallel: uses t.Setenv.
+	clearAnalyzerCredentials(t)
+	t.Setenv("MCP_SCANNER_API_KEY", "test-key")
+
+	want := []string{"yara", "readiness", "api"}
+	if got := endpointAnalyzers(); !slices.Equal(got, want) {
+		t.Errorf("want %v when an api key is configured, got %v", want, got)
+	}
+}
+
+func TestEndpointAnalyzers_AllCredentials_RequestsEverything(t *testing.T) {
+	// Cannot run in parallel: uses t.Setenv.
+	clearAnalyzerCredentials(t)
+	t.Setenv("MCP_SCANNER_LLM_API_KEY", "test-key")
+	t.Setenv("MCP_SCANNER_API_KEY", "test-key")
+
+	want := []string{"yara", "readiness", "llm", "api"}
+	if got := endpointAnalyzers(); !slices.Equal(got, want) {
+		t.Errorf("want %v when every key is configured, got %v", want, got)
+	}
+}
+
 // --- MCPRunner endpoint subcommand ---
 
 func TestMCPRunner_EndpointSubcommand_Success_TagsAndSetsAnalyzer(t *testing.T) {

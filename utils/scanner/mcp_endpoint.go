@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"net/netip"
 	"net/url"
+	"os"
 	"os/exec"
 	"strings"
 
@@ -145,12 +146,36 @@ func tagFindings(subcommand, endpoint string, findings []Finding) []Finding {
 	return tagged
 }
 
+// endpointAnalyzers returns the analyzer set for the live-endpoint phase.
+// mcp-scanner aborts this path when a requested analyzer's credentials are
+// missing, so its "api,yara,llm" default fails every scan on a deployment
+// without a Cisco AI Defense key. yara and readiness need no credentials and
+// always run; llm and api stay opt-in until their key is configured.
+func endpointAnalyzers() []string {
+	analyzers := []string{"yara", "readiness"}
+
+	// buildMCPScannerEnv derives the llm key from the Azure one.
+	if os.Getenv("MCP_SCANNER_LLM_API_KEY") != "" || os.Getenv("AZURE_OPENAI_API_KEY") != "" {
+		analyzers = append(analyzers, "llm")
+	}
+
+	if os.Getenv("MCP_SCANNER_API_KEY") != "" {
+		analyzers = append(analyzers, "api")
+	}
+
+	return analyzers
+}
+
 func runMCPScannerEndpoint(ctx context.Context, cliPath, subcommand, serverURL string) ([]byte, error) {
 	var stdout, stderr bytes.Buffer
 
-	// mcp-scanner requires the global --raw flag to precede the subcommand;
-	// only subcommand-specific flags (--server-url) follow it.
-	cmd := exec.CommandContext(ctx, cliPath, "--raw", subcommand, "--server-url", serverURL) //nolint:gosec
+	// mcp-scanner requires global flags (--analyzers, --raw) to precede the
+	// subcommand; only subcommand-specific flags (--server-url) follow it.
+	cmd := exec.CommandContext(ctx, cliPath, //nolint:gosec
+		"--analyzers", strings.Join(endpointAnalyzers(), ","),
+		"--raw", subcommand,
+		"--server-url", serverURL,
+	)
 	cmd.Stdout = &stdout
 	cmd.Stderr = &stderr
 	// Maps AZURE_OPENAI_* onto the MCP_SCANNER_LLM_* names the scanner reads.
