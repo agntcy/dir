@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"net/netip"
 	"net/url"
+	"os"
 	"os/exec"
 	"strings"
 
@@ -121,7 +122,9 @@ func (r *MCPRunner) runEndpointSubcommand(ctx context.Context, subcommand, endpo
 	}
 
 	result.Findings = tagFindings(subcommand, endpoint, result.Findings)
-	result.Analyzers = []string{subcommand}
+	// The analyzers that ran, not the subcommand that ran them; the subcommand
+	// stays traceable through the finding tags.
+	result.Analyzers = endpointAnalyzers()
 
 	return result
 }
@@ -145,14 +148,49 @@ func tagFindings(subcommand, endpoint string, findings []Finding) []Finding {
 	return tagged
 }
 
+// endpointAnalyzers returns the analyzer set for the live-endpoint phase.
+// mcp-scanner aborts this path when a requested analyzer's credentials are
+// missing, so its "api,yara,llm" default fails every scan on a deployment
+// without a Cisco AI Defense key. yara and readiness need no credentials and
+// always run; llm and api stay opt-in until their key is configured.
+func endpointAnalyzers() []string {
+	analyzers := []string{"yara", "readiness"}
+
+	if llmConfigured() {
+		analyzers = append(analyzers, "llm")
+	}
+
+	if os.Getenv("MCP_SCANNER_API_KEY") != "" {
+		analyzers = append(analyzers, "api")
+	}
+
+	return analyzers
+}
+
+// mcpEndpointArgs builds the argv for one live-endpoint scan.
+//
+// --analyzers and --raw have to precede the subcommand. The live-server
+// subparsers do not redeclare either flag, so one placed after the subcommand
+// is not recognized at all. Only --server-url belongs to the subcommand. This
+// is the opposite of mcpSourceArgs, and deliberately so.
+func mcpEndpointArgs(subcommand, serverURL string, analyzers []string) []string {
+	return []string{
+		"--analyzers", strings.Join(analyzers, ","),
+		"--raw", subcommand,
+		"--server-url", serverURL,
+	}
+}
+
 func runMCPScannerEndpoint(ctx context.Context, cliPath, subcommand, serverURL string) ([]byte, error) {
 	var stdout, stderr bytes.Buffer
 
-	// mcp-scanner requires the global --raw flag to precede the subcommand;
-	// only subcommand-specific flags (--server-url) follow it.
-	cmd := exec.CommandContext(ctx, cliPath, "--raw", subcommand, "--server-url", serverURL) //nolint:gosec
+	cmd := exec.CommandContext(ctx, cliPath, //nolint:gosec
+		mcpEndpointArgs(subcommand, serverURL, endpointAnalyzers())...,
+	)
 	cmd.Stdout = &stdout
 	cmd.Stderr = &stderr
+	// Maps AZURE_OPENAI_* onto the MCP_SCANNER_LLM_* names the scanner reads.
+	cmd.Env = buildMCPScannerEnv()
 
 	if err := cmd.Run(); err != nil {
 		return nil, fmt.Errorf("mcp-scanner %s exited with error: %s: %w", subcommand, strings.TrimSpace(stderr.String()), err)
