@@ -58,7 +58,7 @@ require (
 	github.com/golang/mock v1.7.0-rc.1 // indirect
 	github.com/google/cel-go v0.30.0 // indirect
 	github.com/google/flatbuffers v23.5.26+incompatible // indirect
-	github.com/mattn/go-colorable v0.1.13 // indirect
+	github.com/mattn/go-colorable v0.1.14 // indirect
 	github.com/ncruces/go-strftime v1.0.0 // indirect
 	github.com/nlpodyssey/cybertron v0.2.1 // indirect
 	github.com/nlpodyssey/gopickle v0.2.0 // indirect
@@ -66,7 +66,7 @@ require (
 	github.com/nlpodyssey/spago v1.1.0 // indirect
 	github.com/pion/turn/v5 v5.0.3 // indirect
 	github.com/remyoudompheng/bigfft v0.0.0-20230129092748-24d4a6f8daec // indirect
-	github.com/rs/zerolog v1.31.0 // indirect
+	github.com/rs/zerolog v1.35.1 // indirect
 	github.com/smarty/assertions v1.16.0 // indirect
 	modernc.org/libc v1.72.2 // indirect
 	modernc.org/mathutil v1.7.1 // indirect
