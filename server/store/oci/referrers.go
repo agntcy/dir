@@ -105,15 +105,15 @@ func (s *store) pushReferrer(ctx context.Context, recordCID string, referrer *co
 
 	// Create annotations for the referrer manifest
 	annotations := make(map[string]string)
-	annotations["agntcy.dir.referrer.type"] = referrer.GetType()
+	annotations[corev1.ReferrerTypeAnnotationKey] = referrer.GetType()
 	annotations[ManifestKeyCid] = referrerCID
 
 	if referrer.GetCreatedAt() != "" {
-		annotations["agntcy.dir.referrer.created_at"] = referrer.GetCreatedAt()
+		annotations[corev1.ReferrerCreatedAtAnnotationKey] = referrer.GetCreatedAt()
 	}
 	// Add custom annotations from the referrer
 	for key, value := range referrer.GetAnnotations() {
-		annotations["agntcy.dir.referrer.annotation."+key] = value
+		annotations[corev1.ReferrerAnnotationPrefix+key] = value
 	}
 
 	// Create the referrer manifest with proper OCI subject field

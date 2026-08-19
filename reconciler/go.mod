@@ -20,6 +20,8 @@ require (
 	github.com/agntcy/dir/utils v1.7.0
 	github.com/agntcy/oasf-sdk/pkg v1.1.0
 	github.com/csirmazbendeguz/regclient v0.0.0-20260429082137-82ab6d426079
+	github.com/opencontainers/go-digest v1.0.0
+	github.com/opencontainers/image-spec v1.1.1
 	github.com/sigstore/sigstore v1.10.9
 	github.com/spf13/viper v1.21.0
 	github.com/stretchr/testify v1.12.0
@@ -152,8 +154,6 @@ require (
 	github.com/nlpodyssey/spago v1.1.0 // indirect
 	github.com/nozzle/throttler v0.0.0-20180817012639-2ea982251481 // indirect
 	github.com/oklog/ulid/v2 v2.1.1 // indirect
-	github.com/opencontainers/go-digest v1.0.0 // indirect
-	github.com/opencontainers/image-spec v1.1.1 // indirect
 	github.com/pelletier/go-toml/v2 v2.3.1 // indirect
 	github.com/pkg/browser v0.0.0-20240102092130-5ac0b6a4141c // indirect
 	github.com/pkg/errors v0.9.1 // indirect
