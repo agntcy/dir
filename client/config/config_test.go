@@ -640,7 +640,49 @@ contexts:
 		require.Error(t, err)
 		assert.Nil(t, cfg)
 		assert.Nil(t, resolved)
-		assert.Contains(t, err.Error(), "oidc_issuer is required")
+		assert.Contains(t, err.Error(), "oidc_issuer")
+	})
+
+	// The CI import runs `--auth-mode=oidc --oidc-audience=dir` with neither an
+	// issuer nor a token, because dirctl mints its own tokens. Validation has to
+	// accept that, or the command fails before it can mint anything.
+	t.Run("oidc accepts audience without issuer or token", func(t *testing.T) {
+		resetClientEnv(t)
+		path := writeConfig(t, `
+contexts:
+  dev:
+    server_address: dev.gateway.example.com:443
+    auth_mode: oidc
+    oidc_audience: dir
+`)
+
+		cfg, resolved, err := Resolve(ResolveOptions{Path: path, Context: "dev"})
+
+		require.NoError(t, err)
+		assert.Equal(t, "oidc", cfg.AuthMode)
+		assert.Equal(t, "dir", cfg.OIDCAudience)
+		assert.Empty(t, cfg.OIDCIssuer)
+		assert.Empty(t, cfg.AuthToken)
+		assert.Equal(t, "dev", resolved.Name)
+	})
+
+	// Same combination as the workflow, but arriving as CLI overrides rather than
+	// from a context file, which is how the import job actually invokes dirctl.
+	t.Run("oidc accepts audience from overrides without a context file", func(t *testing.T) {
+		resetClientEnv(t)
+
+		cfg, _, err := Resolve(ResolveOptions{
+			Path: writeConfig(t, "contexts: {}\n"),
+			Overrides: &dirclient.Config{
+				ServerAddress: "ads.outshift.io:443",
+				AuthMode:      "oidc",
+				OIDCAudience:  "dir",
+			},
+			OverrideFields: []string{"server_address", "auth_mode", "oidc_audience"},
+		})
+
+		require.NoError(t, err)
+		assert.Equal(t, "dir", cfg.OIDCAudience)
 	})
 
 	t.Run("oidc allows issuer without client id for cached token usage", func(t *testing.T) {

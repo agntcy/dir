@@ -193,13 +193,16 @@ Priority order:
 {{- end -}}
 
 {{/*
-Get OCI registry address.
+Get the OCI registry address the apiserver dials.
 Priority order:
   1. Explicit user configuration (config.store.oci.registry_address) - always respected
   2. Auto-detected internal Zot service (when zot.enabled=true and no explicit address)
 
-This allows users to deploy the Zot subchart for convenience while still using
-external ingress with TLS by explicitly setting registry_address.
+To expose the bundled Zot through a public ingress, leave registry_address empty
+(so internal traffic stays on the in-cluster service) and set
+config.store.oci.advertised_registry_address to the public endpoint. Setting
+registry_address to the public endpoint also works, but sends the apiserver's own
+storage traffic out through the ingress and back.
 
 Note: Uses (get .Values.zot "enabled") for nil-safe access since zot may not be defined.
 */}}

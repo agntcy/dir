@@ -7,10 +7,12 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"slices"
 	"strings"
 
 	typesv1 "buf.build/gen/go/agntcy/oasf/protocolbuffers/go/agntcy/oasf/types/v1"
@@ -60,8 +62,9 @@ type MCPConfig struct {
 // and scans the source repository, then scans any live endpoints the record
 // declares, and merges the findings.
 //
-// The two phases fail differently on purpose. The source scan fails hard,
-// because a scanner that cannot run at all is a scan we cannot vouch for. The
+// The two phases fail differently on purpose. The source scan fails hard when
+// the scanner cannot run, because that is a scan we cannot vouch for, though
+// an LLM that is simply not configured is a skip rather than a fault. The
 // endpoint phase is skip-with-warning, because endpoints are third-party
 // servers that may be down, moved, or behind auth, and one unreachable
 // endpoint must not fail an otherwise-clean source scan.
@@ -112,6 +115,17 @@ func (r *MCPRunner) runSourceScan(ctx context.Context, record *corev1.Record) (*
 		return &ScanResult{Skipped: true, SkippedReason: "no source-code locator found"}, nil
 	}
 
+	// behavioral runs an LLM alignment pass and exits non-zero without
+	// credentials for it, whatever --analyzers asks for, and it is the only
+	// subcommand that takes a source tree. Skipping keeps a deployment with no
+	// LLM configured from failing every record that declares source code.
+	if !llmConfigured() {
+		return &ScanResult{
+			Skipped:       true,
+			SkippedReason: "no LLM configured for the behavioral analyzer",
+		}, nil
+	}
+
 	tmpDir, err := os.MkdirTemp("", "mcp-scan-*")
 	if err != nil {
 		return nil, fmt.Errorf("create temp dir: %w", err)
@@ -130,7 +144,9 @@ func (r *MCPRunner) runSourceScan(ctx context.Context, record *corev1.Record) (*
 
 	scanDir := tmpDir
 	if subfolder != "" {
-		scanDir = filepath.Join(tmpDir, subfolder)
+		// The subfolder is publisher-controlled record data. Rooting the inner
+		// join at "/" collapses any leading .. so it cannot walk out of the clone.
+		scanDir = filepath.Join(tmpDir, filepath.Join("/", subfolder))
 	}
 
 	absDir, err := filepath.Abs(scanDir)
@@ -148,10 +164,9 @@ func (r *MCPRunner) runSourceScan(ctx context.Context, record *corev1.Record) (*
 		return nil, err
 	}
 
-	// yara and readiness are zero-dependency analyzers (no third-party credentials
-	// required) so they are always run. llm and api analyzers require third-party
-	// credentials and are opt-in only; wiring them up is left as follow-up work.
-	result.Analyzers = []string{"yara", "readiness"}
+	// The subcommand selects its own analyzer, so behavioral is the only one
+	// this phase runs.
+	result.Analyzers = []string{"behavioral"}
 
 	return result, nil
 }
@@ -237,13 +252,33 @@ func gitClone(ctx context.Context, repoURL, dest string) error {
 	return nil
 }
 
-func runMCPScanner(ctx context.Context, cliPath, scanDir string) ([]byte, error) {
-	var stdout, stderr bytes.Buffer
+// mcpSourceArgs builds the argv for the source-code scan.
+//
+// --output has to follow the subcommand. The behavioral subparser redeclares
+// it, and the subparser's default overwrites whatever a leading one set, so a
+// conventionally-placed flag leaves the results on stdout - where the
+// scanner's own logs and LiteLLM's banners already are.
+func mcpSourceArgs(scanDir, outputPath string) []string {
+	return []string{
+		"behavioral", scanDir,
+		"--output", outputPath,
+	}
+}
 
-	// mcp-scanner requires global flags (--analyzers, --raw) to precede the
-	// subcommand; placing them after `behavioral` is rejected by the CLI.
-	cmd := exec.CommandContext(ctx, cliPath, "--analyzers", "yara,readiness", "--raw", "behavioral", scanDir)
-	cmd.Stdout = &stdout
+func runMCPScanner(ctx context.Context, cliPath, scanDir string) ([]byte, error) {
+	outDir, err := os.MkdirTemp("", "mcp-scan-out-*")
+	if err != nil {
+		return nil, fmt.Errorf("create mcp-scanner output dir: %w", err)
+	}
+
+	defer os.RemoveAll(outDir)
+
+	outPath := filepath.Join(outDir, "scan-result.json")
+
+	var stderr bytes.Buffer
+
+	//nolint:gosec // G204: cliPath is operator config, and the argv is fixed - both paths are ours, under temp dirs.
+	cmd := exec.CommandContext(ctx, cliPath, mcpSourceArgs(scanDir, outPath)...)
 	cmd.Stderr = &stderr
 	cmd.Env = buildMCPScannerEnv()
 
@@ -253,7 +288,12 @@ func runMCPScanner(ctx context.Context, cliPath, scanDir string) ([]byte, error)
 		return nil, fmt.Errorf("mcp-scanner exited with error: %w", err)
 	}
 
-	return stdout.Bytes(), nil
+	out, err := os.ReadFile(outPath)
+	if err != nil {
+		return nil, fmt.Errorf("read mcp-scanner output: %w", err)
+	}
+
+	return out, nil
 }
 
 // buildMCPScannerEnv returns the parent env with MCP_SCANNER_LLM_* vars derived from
@@ -262,10 +302,35 @@ func buildMCPScannerEnv() []string {
 	env := os.Environ()
 	env = appendEnvIfMissing(env, "MCP_SCANNER_LLM_API_KEY", os.Getenv("AZURE_OPENAI_API_KEY"))
 	env = appendEnvIfMissing(env, "MCP_SCANNER_LLM_BASE_URL", os.Getenv("AZURE_OPENAI_BASE_URL"))
-	env = appendEnvIfMissing(env, "MCP_SCANNER_LLM_MODEL", "azure/"+os.Getenv("AZURE_OPENAI_DEPLOYMENT"))
+	env = appendEnvIfMissing(env, "MCP_SCANNER_LLM_MODEL", azureLLMModel())
 	env = appendEnvIfMissing(env, "MCP_SCANNER_LLM_API_VERSION", os.Getenv("AZURE_OPENAI_API_VERSION"))
 
 	return env
+}
+
+// azureLLMModel names the configured Azure deployment in the azure/<deployment>
+// form the scanner resolves, or "" when there is no deployment to name. A bare
+// "azure/" is not a model the scanner can resolve.
+func azureLLMModel() string {
+	deployment := os.Getenv("AZURE_OPENAI_DEPLOYMENT")
+	if deployment == "" {
+		return ""
+	}
+
+	return "azure/" + deployment
+}
+
+// llmConfigured reports whether an LLM is configured for the scanner, either
+// directly or through the AZURE_OPENAI_* vars buildMCPScannerEnv maps from.
+func llmConfigured() bool {
+	direct := os.Getenv("MCP_SCANNER_LLM_API_KEY") != "" &&
+		os.Getenv("MCP_SCANNER_LLM_MODEL") != ""
+
+	azure := os.Getenv("AZURE_OPENAI_API_KEY") != "" &&
+		os.Getenv("AZURE_OPENAI_BASE_URL") != "" &&
+		os.Getenv("AZURE_OPENAI_DEPLOYMENT") != ""
+
+	return direct || azure
 }
 
 func appendEnvIfMissing(env []string, key, fallback string) []string {
@@ -278,12 +343,14 @@ func appendEnvIfMissing(env []string, key, fallback string) []string {
 
 // --- output parsing ---
 
-// mcpScannerResult represents a single tool result from `mcp-scanner behavioral --raw`.
+// mcpScannerResult represents a single result from `mcp-scanner --raw`.
+// Findings stays raw because its shape varies; see analyzerFindings.
 type mcpScannerResult struct {
-	ToolName string                       `json:"tool_name"`
-	Status   string                       `json:"status"`
-	IsSafe   bool                         `json:"is_safe"`
-	Findings map[string]mcpAnalyzerResult `json:"findings"`
+	ToolName   string          `json:"tool_name"`
+	ServerName string          `json:"server_name"`
+	Status     string          `json:"status"`
+	IsSafe     bool            `json:"is_safe"`
+	Findings   json.RawMessage `json:"findings"`
 }
 
 // mcpAnalyzerResult represents the output of a single analyzer within mcp-scanner.
@@ -294,11 +361,80 @@ type mcpAnalyzerResult struct {
 	TotalFindings int      `json:"total_findings"`
 }
 
-func parseMCPOutput(raw []byte) (*ScanResult, error) {
-	raw = trimToJSON(raw)
+// mcpListedFinding is one entry of the array form of findings.
+type mcpListedFinding struct {
+	Severity string `json:"severity"`
+	Summary  string `json:"summary"`
+	Analyzer string `json:"analyzer"`
+}
 
-	var results []mcpScannerResult
-	if err := json.Unmarshal(raw, &results); err != nil {
+// mcpFinding is the shape-independent view of one analyzer's verdict.
+type mcpFinding struct {
+	analyzer string
+	severity string
+	summary  string
+	names    []string
+}
+
+// analyzerFindings normalizes the two shapes mcp-scanner uses for findings:
+// most subcommands return an object keyed by analyzer name, while
+// `instructions` returns an array of entries that name their own analyzer.
+func (r mcpScannerResult) analyzerFindings() ([]mcpFinding, error) {
+	if len(r.Findings) == 0 {
+		return nil, nil
+	}
+
+	var byAnalyzer map[string]mcpAnalyzerResult
+	if err := json.Unmarshal(r.Findings, &byAnalyzer); err == nil {
+		findings := make([]mcpFinding, 0, len(byAnalyzer))
+		for name, a := range byAnalyzer {
+			findings = append(findings, mcpFinding{
+				analyzer: name,
+				severity: a.Severity,
+				summary:  a.ThreatSummary,
+				names:    a.ThreatNames,
+			})
+		}
+
+		// Map iteration is randomized, so without this two scans of identical
+		// output produce reports that differ only in finding order.
+		slices.SortFunc(findings, func(a, b mcpFinding) int {
+			return strings.Compare(a.analyzer, b.analyzer)
+		})
+
+		return findings, nil
+	}
+
+	var listed []mcpListedFinding
+	if err := json.Unmarshal(r.Findings, &listed); err != nil {
+		return nil, fmt.Errorf("parse mcp-scanner findings: %w", err)
+	}
+
+	findings := make([]mcpFinding, 0, len(listed))
+	for _, f := range listed {
+		findings = append(findings, mcpFinding{
+			analyzer: f.Analyzer,
+			severity: f.Severity,
+			summary:  f.Summary,
+		})
+	}
+
+	return findings, nil
+}
+
+// subject names what a result is about. `instructions` results describe a
+// server rather than a tool and so carry no tool_name.
+func (r mcpScannerResult) subject() string {
+	if r.ToolName != "" {
+		return r.ToolName
+	}
+
+	return r.ServerName
+}
+
+func parseMCPOutput(raw []byte) (*ScanResult, error) {
+	results, err := decodeMCPResults(raw)
+	if err != nil {
 		return nil, fmt.Errorf("parse mcp-scanner output: %w", err)
 	}
 
@@ -313,27 +449,64 @@ func parseMCPOutput(raw []byte) (*ScanResult, error) {
 			continue
 		}
 
-		for analyzerName, ar := range r.Findings {
-			severity := mapScannerSeverity(ar.Severity)
-			msg := fmt.Sprintf("[%s] %s: %s", analyzerName, r.ToolName, ar.ThreatSummary)
+		analyzerFindings, err := r.analyzerFindings()
+		if err != nil {
+			return nil, err
+		}
 
-			if len(ar.ThreatNames) > 0 {
-				msg += " (" + strings.Join(ar.ThreatNames, ", ") + ")"
+		for _, af := range analyzerFindings {
+			msg := fmt.Sprintf("[%s] %s: %s", af.analyzer, r.subject(), af.summary)
+
+			if len(af.names) > 0 {
+				msg += " (" + strings.Join(af.names, ", ") + ")"
 			}
 
-			findings = append(findings, Finding{Severity: severity, Message: msg})
+			findings = append(findings, Finding{Severity: mapScannerSeverity(af.severity), Message: msg})
 		}
 	}
 
 	return &ScanResult{Safe: len(findings) == 0, Findings: findings}, nil
 }
 
-// trimToJSON strips any leading non-JSON content by finding the first '['.
-func trimToJSON(raw []byte) []byte {
-	idx := bytes.IndexByte(raw, '[')
-	if idx > 0 {
-		return raw[idx:]
+// decodeMCPResults extracts the results array from output that may carry log
+// lines either side of it: the live-server subcommands ignore --output, and an
+// ANSI colour escape (\x1b[1;31m) contains a '[' of its own. A non-empty array
+// wins outright so a bracket in a log line cannot pass an empty result off as
+// a clean scan.
+func decodeMCPResults(raw []byte) ([]mcpScannerResult, error) {
+	var (
+		empty      []mcpScannerResult
+		foundEmpty bool
+	)
+
+	for off := 0; off < len(raw); {
+		idx := bytes.IndexByte(raw[off:], '[')
+		if idx < 0 {
+			break
+		}
+
+		start := off + idx
+		off = start + 1
+
+		var results []mcpScannerResult
+
+		// Decoder, not Unmarshal: log lines may trail the array too.
+		if err := json.NewDecoder(bytes.NewReader(raw[start:])).Decode(&results); err != nil {
+			continue
+		}
+
+		if len(results) > 0 {
+			return results, nil
+		}
+
+		if !foundEmpty {
+			empty, foundEmpty = results, true
+		}
 	}
 
-	return raw
+	if foundEmpty {
+		return empty, nil
+	}
+
+	return nil, errors.New("no JSON results array found in output")
 }

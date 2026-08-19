@@ -172,11 +172,27 @@ apiserver:
         # Cache directory to use for metadata.
         # cache_dir: ""
 
-        # Registry address to connect to.
+        # Registry address the apiserver dials for its own store operations.
         # Leave empty when zot.enabled=true (the default) to auto-resolve to the
-        # bundled Zot subchart. Set explicitly to use an external OCI registry
-        # (ECR, GCR, GHCR, Harbor, etc.).
+        # bundled Zot subchart's in-cluster service. Set explicitly to use an
+        # external OCI registry (ECR, GCR, GHCR, Harbor, etc.).
         registry_address: ""
+
+        # Registry address advertised to remote peers, both in the
+        # RequestRegistryCredentials response and as the routing /oci/ multiaddr.
+        # Set this to the publicly reachable endpoint (e.g. an ingress in front of
+        # Zot) so the apiserver can keep dialing the in-cluster service above
+        # instead of hairpinning through the public ingress.
+        # Empty means peers are given registry_address, which is the right
+        # behavior when the registry is already public (GHCR, ECR, ...).
+        advertised_registry_address: ""
+
+        # TLS mode advertised with advertised_registry_address: true tells peers
+        # to use plain HTTP. Independent of auth_config.insecure below, since the
+        # in-cluster endpoint is typically HTTP while the public one is HTTPS.
+        # Ignored when advertised_registry_address is empty, and when that
+        # address spells out an http:// or https:// scheme, which wins.
+        advertised_insecure: false
 
         # OCI repository where records are stored as tags, manifests, and blobs.
         # Defaults to "dir" when zot.enabled=true and this field is empty.
@@ -608,7 +624,7 @@ apiserver:
       repository: bitnami/postgresql
       # renovate: datasource=docker depName=docker.io/bitnami/postgresql versioning=docker
       tag: latest
-      digest: "sha256:a727ea9d5ceb64beb404afeb62a4b757fe3c33c2a09af86dc391a3a0dfed6049"
+      digest: "sha256:d92a6bbf5184e327301856457e35cefcc32e19158e46a4012929e20daa9c178d"
     auth:
       username: "dir"
       password: "password"  # Default password for development

@@ -18,11 +18,11 @@ vars:
 
   ## External dependency versions
   # renovate: datasource=go depName=github.com/project-zot/zot versioning=semver
-  ZOT_VERSION: "2.1.18"
+  ZOT_VERSION: "2.1.20"
   # renovate: datasource=go depName=github.com/spiffe/spire versioning=semver
   SPIRE_VERSION: "1.15.2"
   # renovate: datasource=docker depName=docker.io/bitnami/postgresql
-  POSTGRESQL_VERSION: "latest@sha256:a727ea9d5ceb64beb404afeb62a4b757fe3c33c2a09af86dc391a3a0dfed6049"
+  POSTGRESQL_VERSION: "latest@sha256:d92a6bbf5184e327301856457e35cefcc32e19158e46a4012929e20daa9c178d"
 
   ## Container images for vulnerability scanning
   VULN_SCAN_IMAGES:

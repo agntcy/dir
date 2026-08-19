@@ -19,8 +19,18 @@ inputs:
     description: Optional Directory server address (host:port). Uses dirctl default if omitted.
     required: false
     default: ""
+  auth_audience:
+    description: |
+      Audience for Directory tokens minted per dirctl invocation. Preferred over
+      auth_token: signing a batch with retries can outlive a single GitHub ID
+      token, and each CID is signed by its own dirctl process, so each one can
+      mint a fresh token. Requires a dirctl that supports --oidc-audience.
+    required: false
+    default: ""
   auth_token:
-    description: Optional OIDC bearer token for Directory authentication
+    description: |
+      Pre-issued OIDC bearer token for Directory authentication. Ignored when
+      auth_audience is set. It cannot be renewed, so a long batch may outlive it.
     required: false
     default: ""
   oidc_client_id:
@@ -72,6 +82,7 @@ runs:
       env:
         CIDS: ${{ inputs.cids }}
         SERVER_ADDR: ${{ inputs.server_addr }}
+        AUTH_AUDIENCE: ${{ inputs.auth_audience }}
         AUTH_TOKEN: ${{ inputs.auth_token }}
         OIDC_CLIENT_ID: ${{ inputs.oidc_client_id }}
         DIRCTL_PATH: ${{ inputs.dirctl_path }}

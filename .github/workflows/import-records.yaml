@@ -39,6 +39,13 @@ on:
         description: "Enable dirctl import debug output (dedup and validation details)"
         type: boolean
         default: false
+      enrichment:
+        description: "Record enrichment backend: extractor (local model) or llm (Azure OpenAI + MCP)"
+        type: choice
+        options:
+          - extractor
+          - llm
+        default: extractor
       sign_max_retries:
         description: "Per-CID signature attempts before deleting unsigned records"
         type: number
@@ -69,6 +76,7 @@ jobs:
       sign: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.sign || 'true' }}
       force: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.force || 'false' }}
       debug: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.debug || 'false' }}
+      enrichment: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.enrichment || 'extractor' }}
       sign_max_retries: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.sign_max_retries || '3' }}
       sign_cleanup_on_failure: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.sign_cleanup_on_failure || 'true' }}
     env:
@@ -162,6 +170,7 @@ jobs:
       SIGN: ${{ needs.setup-matrix.outputs.sign }}
       FORCE: ${{ needs.setup-matrix.outputs.force }}
       DEBUG: ${{ needs.setup-matrix.outputs.debug }}
+      ENRICHMENT: ${{ needs.setup-matrix.outputs.enrichment }}
       SIGN_MAX_RETRIES: ${{ needs.setup-matrix.outputs.sign_max_retries }}
       SIGN_CLEANUP_ON_FAILURE: ${{ needs.setup-matrix.outputs.sign_cleanup_on_failure }}
     steps:
@@ -181,11 +190,26 @@ jobs:
           echo "${GITHUB_WORKSPACE}/.bin" >> "${GITHUB_PATH}"
           echo "dirctl_path=${GITHUB_WORKSPACE}/.bin/dirctl" >> "${GITHUB_OUTPUT}"
 
+      - name: Init dirctl
+        if: ${{ env.ENRICHMENT == 'extractor' }}
+        uses: ./.github/actions/init-dirctl
+        with:
+          dirctl_path: ${{ steps.setup-dirctl.outputs.dirctl_path }}
+
       - name: Create Import Config
         env:
           DIRCTL_PATH: ${{ steps.setup-dirctl.outputs.dirctl_path }}
         run: |
-          cat > import_ci.yaml << EOF
+          if [[ "${ENRICHMENT}" == "extractor" ]]; then
+            cat > import_ci.yaml << EOF
+          type: mcp-registry
+          url: https://registry.modelcontextprotocol.io/v0.1
+
+          enricher:
+            extractor: {}
+          EOF
+          else
+            cat > import_ci.yaml << EOF
           type: mcp-registry
           url: https://registry.modelcontextprotocol.io/v0.1
 
@@ -203,13 +227,10 @@ jobs:
                       OASF_API_VALIDATION_SCHEMA_URL: https://schema.oasf.outshift.com
                       DIRECTORY_CLIENT_AUTH_MODE: insecure
           EOF
+          fi
 
-      - name: Fetch Directory OIDC token
-        id: oidc-dir-import
-        uses: ./.github/actions/fetch-oidc-token
-        with:
-          audience: dir
-
+      # No token is fetched here: an import can run for longer than a GitHub ID
+      # token stays valid, so dirctl mints its own and renews them as it goes.
       - name: Import MCP Records
         id: import
         timeout-minutes: 360
@@ -219,13 +240,12 @@ jobs:
           AZURE_OPENAI_DEPLOYMENT: "gpt-4o"
           AZURE_OPENAI_API_VERSION: "2024-10-21"
           DIRCTL_PATH: dirctl
-          DIR_AUTH_TOKEN: ${{ steps.oidc-dir-import.outputs.token }}
         run: |
           echo "--- Processing MCP Entry $((${{ matrix.entry.index }} + 1)) ---"
 
           CIDS_FILE="imported-cids-${{ matrix.entry.index }}.txt"
           DRY_RUN_DIR="dry-run-output-mcp-${{ matrix.entry.index }}"
-          CMD=("${DIRCTL_PATH}" import --config=import_ci.yaml --server-addr="${{ env.SERVER_ADDRESS }}" --auth-mode=oidc "--auth-token=${DIR_AUTH_TOKEN}")
+          CMD=("${DIRCTL_PATH}" import --config=import_ci.yaml --server-addr="${{ env.SERVER_ADDRESS }}" --auth-mode=oidc --oidc-audience=dir)
 
           if [[ "${{ env.DRY_RUN }}" == "true" ]]; then
              CMD+=("--dry-run" "--output-dir=$DRY_RUN_DIR")
@@ -297,13 +317,9 @@ jobs:
             echo 'EOF'
           } >> "$GITHUB_OUTPUT"
 
-      - name: Fetch Directory OIDC token for signing
-        if: ${{ env.SIGN == 'true' && env.DRY_RUN == 'false' && steps.sign-cids.outputs.skip != 'true' }}
-        id: oidc-dir-sign
-        uses: ./.github/actions/fetch-oidc-token
-        with:
-          audience: dir
-
+      # No token is fetched here either: signing a batch with retries can outlive
+      # a GitHub ID token, and each CID is signed by its own dirctl process, so
+      # dirctl mints one per invocation from the audience.
       - name: Sign imported records
         if: ${{ env.SIGN == 'true' && env.DRY_RUN == 'false' && steps.sign-cids.outputs.skip != 'true' }}
         id: sign-records
@@ -312,7 +328,7 @@ jobs:
           cids: ${{ steps.sign-cids.outputs.cids }}
           oidc_client_id: https://github.com/${{ github.repository }}/.github/workflows/import-records.yaml@${{ github.ref }}
           server_addr: ${{ env.SERVER_ADDRESS }}
-          auth_token: ${{ steps.oidc-dir-sign.outputs.token }}
+          auth_audience: dir
           dirctl_path: ${{ steps.setup-dirctl.outputs.dirctl_path }}
           max_retries: ${{ env.SIGN_MAX_RETRIES }}
           cleanup_on_failure: ${{ env.SIGN_CLEANUP_ON_FAILURE }}
@@ -349,6 +365,7 @@ jobs:
       SIGN: ${{ needs.setup-matrix.outputs.sign }}
       FORCE: ${{ needs.setup-matrix.outputs.force }}
       DEBUG: ${{ needs.setup-matrix.outputs.debug }}
+      ENRICHMENT: ${{ needs.setup-matrix.outputs.enrichment }}
       SIGN_MAX_RETRIES: ${{ needs.setup-matrix.outputs.sign_max_retries }}
       SIGN_CLEANUP_ON_FAILURE: ${{ needs.setup-matrix.outputs.sign_cleanup_on_failure }}
     steps:
@@ -367,6 +384,12 @@ jobs:
           chmod +x .bin/dirctl
           echo "${GITHUB_WORKSPACE}/.bin" >> "${GITHUB_PATH}"
           echo "dirctl_path=${GITHUB_WORKSPACE}/.bin/dirctl" >> "${GITHUB_OUTPUT}"
+
+      - name: Init dirctl
+        if: ${{ env.ENRICHMENT == 'extractor' }}
+        uses: ./.github/actions/init-dirctl
+        with:
+          dirctl_path: ${{ steps.setup-dirctl.outputs.dirctl_path }}
 
       - name: Cache skill repo
         uses: actions/cache@caa296126883cff596d87d8935842f9db880ef25 # v5.1.0
@@ -403,7 +426,18 @@ jobs:
           AUTHORS_JSON: ${{ toJSON(matrix.entry.authors) }}
         run: |
           AUTHORS_YAML=$(echo "$AUTHORS_JSON" | jq -r '.[] | "- " + .')
-          cat > import_ci.yaml << EOF
+          if [[ "${ENRICHMENT}" == "extractor" ]]; then
+            cat > import_ci.yaml << EOF
+          type: agent-skill
+
+          authors:
+          ${AUTHORS_YAML}
+
+          enricher:
+            extractor: {}
+          EOF
+          else
+            cat > import_ci.yaml << EOF
           type: agent-skill
 
           authors:
@@ -423,13 +457,10 @@ jobs:
                       OASF_API_VALIDATION_SCHEMA_URL: https://schema.oasf.outshift.com
                       DIRECTORY_CLIENT_AUTH_MODE: insecure
           EOF
+          fi
 
-      - name: Fetch Directory OIDC token
-        id: oidc-dir-import
-        uses: ./.github/actions/fetch-oidc-token
-        with:
-          audience: dir
-
+      # No token is fetched here: an import can run for longer than a GitHub ID
+      # token stays valid, so dirctl mints its own and renews them as it goes.
       - name: Import Agent Skills
         id: import
         timeout-minutes: 360
@@ -439,13 +470,12 @@ jobs:
           AZURE_OPENAI_DEPLOYMENT: "gpt-4o"
           AZURE_OPENAI_API_VERSION: "2024-10-21"
           DIRCTL_PATH: dirctl
-          DIR_AUTH_TOKEN: ${{ steps.oidc-dir-import.outputs.token }}
         run: |
           echo "--- Processing Agent Skill Repo $((${{ matrix.entry.index }} + 1)): ${{ matrix.entry.repo }} ---"
 
           CIDS_FILE="imported-cids-${{ matrix.entry.index }}.txt"
           DRY_RUN_DIR="dry-run-output-agent-skills-${{ matrix.entry.index }}"
-          CMD=("${DIRCTL_PATH}" import --config=import_ci.yaml --file-path="${{ steps.sync-repo.outputs.repo_dir }}" --server-addr="${{ env.SERVER_ADDRESS }}" --auth-mode=oidc "--auth-token=${DIR_AUTH_TOKEN}")
+          CMD=("${DIRCTL_PATH}" import --config=import_ci.yaml --file-path="${{ steps.sync-repo.outputs.repo_dir }}" --server-addr="${{ env.SERVER_ADDRESS }}" --auth-mode=oidc --oidc-audience=dir)
 
           if [[ "${{ env.DRY_RUN }}" == "true" ]]; then
              CMD+=("--dry-run" "--output-dir=$DRY_RUN_DIR")
@@ -505,13 +535,9 @@ jobs:
             echo 'EOF'
           } >> "$GITHUB_OUTPUT"
 
-      - name: Fetch Directory OIDC token for signing
-        if: ${{ env.SIGN == 'true' && env.DRY_RUN == 'false' && steps.sign-cids.outputs.skip != 'true' }}
-        id: oidc-dir-sign
-        uses: ./.github/actions/fetch-oidc-token
-        with:
-          audience: dir
-
+      # No token is fetched here either: signing a batch with retries can outlive
+      # a GitHub ID token, and each CID is signed by its own dirctl process, so
+      # dirctl mints one per invocation from the audience.
       - name: Sign imported records
         if: ${{ env.SIGN == 'true' && env.DRY_RUN == 'false' && steps.sign-cids.outputs.skip != 'true' }}
         id: sign-records
@@ -520,7 +546,7 @@ jobs:
           cids: ${{ steps.sign-cids.outputs.cids }}
           oidc_client_id: https://github.com/${{ github.repository }}/.github/workflows/import-records.yaml@${{ github.ref }}
           server_addr: ${{ env.SERVER_ADDRESS }}
-          auth_token: ${{ steps.oidc-dir-sign.outputs.token }}
+          auth_audience: dir
           dirctl_path: ${{ steps.setup-dirctl.outputs.dirctl_path }}
           max_retries: ${{ env.SIGN_MAX_RETRIES }}
           cleanup_on_failure: ${{ env.SIGN_CLEANUP_ON_FAILURE }}
@@ -556,6 +582,7 @@ jobs:
       RUN_MCP_IMPORT: ${{ needs.setup-matrix.outputs.run_mcp_import }}
       RUN_AGENT_SKILLS_IMPORT: ${{ needs.setup-matrix.outputs.run_agent_skills_import }}
       DEBUG: ${{ needs.setup-matrix.outputs.debug }}
+      ENRICHMENT: ${{ needs.setup-matrix.outputs.enrichment }}
       SIGN_MAX_RETRIES: ${{ needs.setup-matrix.outputs.sign_max_retries }}
       SIGN_CLEANUP_ON_FAILURE: ${{ needs.setup-matrix.outputs.sign_cleanup_on_failure }}
       SETUP_MATRIX_RESULT: ${{ needs.setup-matrix.result }}

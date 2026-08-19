@@ -69,8 +69,19 @@ config:
       # Cache directory to use for metadata.
       # cache_dir: ""
 
-      # Registry address to connect to
+      # Registry address the apiserver dials for its own store operations.
       registry_address: ""
+
+      # Registry address advertised to remote peers (RequestRegistryCredentials
+      # response and routing /oci/ multiaddr). Set to the publicly reachable
+      # endpoint when registry_address is private; empty advertises
+      # registry_address as-is.
+      advertised_registry_address: ""
+
+      # TLS mode advertised with advertised_registry_address (true = plain HTTP).
+      # Independent of auth_config.insecure; ignored when the advertised address
+      # is empty or spells out an http:// or https:// scheme, which wins.
+      advertised_insecure: false
 
       # All data will be stored under this repo.
       # Objects are pushed as tags, manifests, and blobs.
@@ -666,7 +677,7 @@ postgresql:
     repository: bitnami/postgresql
     # renovate: datasource=docker depName=docker.io/bitnami/postgresql versioning=docker
     tag: latest
-    digest: "sha256:a727ea9d5ceb64beb404afeb62a4b757fe3c33c2a09af86dc391a3a0dfed6049"
+    digest: "sha256:d92a6bbf5184e327301856457e35cefcc32e19158e46a4012929e20daa9c178d"
   auth:
     username: "dir"
     password: "dirpassword"
