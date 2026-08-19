@@ -61,8 +61,9 @@ type MCPConfig struct {
 // and scans the source repository, then scans any live endpoints the record
 // declares, and merges the findings.
 //
-// The two phases fail differently on purpose. The source scan fails hard,
-// because a scanner that cannot run at all is a scan we cannot vouch for. The
+// The two phases fail differently on purpose. The source scan fails hard when
+// the scanner cannot run, because that is a scan we cannot vouch for, though
+// an LLM that is simply not configured is a skip rather than a fault. The
 // endpoint phase is skip-with-warning, because endpoints are third-party
 // servers that may be down, moved, or behind auth, and one unreachable
 // endpoint must not fail an otherwise-clean source scan.
@@ -111,6 +112,17 @@ func (r *MCPRunner) runSourceScan(ctx context.Context, record *corev1.Record) (*
 	repoURL, subfolder := extractSourceInfo(record)
 	if repoURL == "" {
 		return &ScanResult{Skipped: true, SkippedReason: "no source-code locator found"}, nil
+	}
+
+	// behavioral runs an LLM alignment pass and exits non-zero without
+	// credentials for it, whatever --analyzers asks for, and it is the only
+	// subcommand that takes a source tree. Skipping keeps a deployment with no
+	// LLM configured from failing every record that declares source code.
+	if !llmConfigured() {
+		return &ScanResult{
+			Skipped:       true,
+			SkippedReason: "no LLM configured for the behavioral analyzer",
+		}, nil
 	}
 
 	tmpDir, err := os.MkdirTemp("", "mcp-scan-*")
@@ -285,6 +297,19 @@ func buildMCPScannerEnv() []string {
 	env = appendEnvIfMissing(env, "MCP_SCANNER_LLM_API_VERSION", os.Getenv("AZURE_OPENAI_API_VERSION"))
 
 	return env
+}
+
+// llmConfigured reports whether an LLM is configured for the scanner, either
+// directly or through the AZURE_OPENAI_* vars buildMCPScannerEnv maps from.
+func llmConfigured() bool {
+	direct := os.Getenv("MCP_SCANNER_LLM_API_KEY") != "" &&
+		os.Getenv("MCP_SCANNER_LLM_MODEL") != ""
+
+	azure := os.Getenv("AZURE_OPENAI_API_KEY") != "" &&
+		os.Getenv("AZURE_OPENAI_BASE_URL") != "" &&
+		os.Getenv("AZURE_OPENAI_DEPLOYMENT") != ""
+
+	return direct || azure
 }
 
 func appendEnvIfMissing(env []string, key, fallback string) []string {

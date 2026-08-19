@@ -154,8 +154,7 @@ func tagFindings(subcommand, endpoint string, findings []Finding) []Finding {
 func endpointAnalyzers() []string {
 	analyzers := []string{"yara", "readiness"}
 
-	// buildMCPScannerEnv derives the llm key from the Azure one.
-	if os.Getenv("MCP_SCANNER_LLM_API_KEY") != "" || os.Getenv("AZURE_OPENAI_API_KEY") != "" {
+	if llmConfigured() {
 		analyzers = append(analyzers, "llm")
 	}
 

@@ -425,9 +425,26 @@ func TestRunMCPScannerEndpoint_ExecFailure_WrapsStderr(t *testing.T) {
 func clearAnalyzerCredentials(t *testing.T) {
 	t.Helper()
 
-	t.Setenv("MCP_SCANNER_LLM_API_KEY", "")
-	t.Setenv("AZURE_OPENAI_API_KEY", "")
-	t.Setenv("MCP_SCANNER_API_KEY", "")
+	for _, k := range []string{
+		"MCP_SCANNER_LLM_API_KEY",
+		"MCP_SCANNER_LLM_MODEL",
+		"AZURE_OPENAI_API_KEY",
+		"AZURE_OPENAI_BASE_URL",
+		"AZURE_OPENAI_DEPLOYMENT",
+		"MCP_SCANNER_API_KEY",
+	} {
+		t.Setenv(k, "")
+	}
+}
+
+// setAzureCredentials configures a complete LLM setup the way the chart and
+// the docker env file do, which is the only form any shipped deployment uses.
+func setAzureCredentials(t *testing.T) {
+	t.Helper()
+
+	t.Setenv("AZURE_OPENAI_API_KEY", "test-key")
+	t.Setenv("AZURE_OPENAI_BASE_URL", "https://example.openai.azure.com")
+	t.Setenv("AZURE_OPENAI_DEPLOYMENT", "gpt-4o")
 }
 
 func TestEndpointAnalyzers_NoCredentials_CredentialFreeOnly(t *testing.T) {
@@ -440,25 +457,41 @@ func TestEndpointAnalyzers_NoCredentials_CredentialFreeOnly(t *testing.T) {
 	}
 }
 
-func TestEndpointAnalyzers_AzureKey_AddsLLM(t *testing.T) {
+func TestEndpointAnalyzers_AzureConfig_AddsLLM(t *testing.T) {
+	// Cannot run in parallel: uses t.Setenv.
+	clearAnalyzerCredentials(t)
+	setAzureCredentials(t)
+
+	want := []string{"yara", "readiness", "llm"}
+	if got := endpointAnalyzers(); !slices.Equal(got, want) {
+		t.Errorf("want %v when Azure is fully configured, got %v", want, got)
+	}
+}
+
+// buildMCPScannerEnv lets a pre-set MCP_SCANNER_LLM_* value win over the
+// Azure-derived one, so the analyzer set has to recognise that form too.
+func TestEndpointAnalyzers_DirectConfig_AddsLLM(t *testing.T) {
+	// Cannot run in parallel: uses t.Setenv.
+	clearAnalyzerCredentials(t)
+	t.Setenv("MCP_SCANNER_LLM_API_KEY", "test-key")
+	t.Setenv("MCP_SCANNER_LLM_MODEL", "openai/test-model")
+
+	want := []string{"yara", "readiness", "llm"}
+	if got := endpointAnalyzers(); !slices.Equal(got, want) {
+		t.Errorf("want %v when the scanner LLM vars are set directly, got %v", want, got)
+	}
+}
+
+// A key with no model passes the scanner's own validation and then fails at
+// request time, so it must not count as a configured LLM.
+func TestEndpointAnalyzers_KeyWithoutModel_OmitsLLM(t *testing.T) {
 	// Cannot run in parallel: uses t.Setenv.
 	clearAnalyzerCredentials(t)
 	t.Setenv("AZURE_OPENAI_API_KEY", "test-key")
 
-	want := []string{"yara", "readiness", "llm"}
+	want := []string{"yara", "readiness"}
 	if got := endpointAnalyzers(); !slices.Equal(got, want) {
-		t.Errorf("want %v when an Azure key is configured, got %v", want, got)
-	}
-}
-
-func TestEndpointAnalyzers_ScannerKey_AddsLLM(t *testing.T) {
-	// Cannot run in parallel: uses t.Setenv.
-	clearAnalyzerCredentials(t)
-	t.Setenv("MCP_SCANNER_LLM_API_KEY", "test-key")
-
-	want := []string{"yara", "readiness", "llm"}
-	if got := endpointAnalyzers(); !slices.Equal(got, want) {
-		t.Errorf("want %v when a scanner key is configured, got %v", want, got)
+		t.Errorf("want %v when only a key is configured, got %v", want, got)
 	}
 }
 
@@ -478,7 +511,7 @@ func TestEndpointAnalyzers_APIKey_AddsAPI(t *testing.T) {
 func TestEndpointAnalyzers_AllCredentials_RequestsEverything(t *testing.T) {
 	// Cannot run in parallel: uses t.Setenv.
 	clearAnalyzerCredentials(t)
-	t.Setenv("MCP_SCANNER_LLM_API_KEY", "test-key")
+	setAzureCredentials(t)
 	t.Setenv("MCP_SCANNER_API_KEY", "test-key")
 
 	want := []string{"yara", "readiness", "llm", "api"}

@@ -9,6 +9,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"slices"
+	"strings"
 	"testing"
 
 	typesv1 "buf.build/gen/go/agntcy/oasf/protocolbuffers/go/agntcy/oasf/types/v1"
@@ -464,24 +465,51 @@ func localGitRepo(t *testing.T) string {
 	return dir
 }
 
-func TestMCPRunner_Run_Success(t *testing.T) {
-	t.Parallel()
+// sourceRecord builds a record whose source-code locator points at repoDir. A
+// subfolder becomes part of the scan path, which is how a test steers the fake
+// CLI, since the fake matches on argv.
+func sourceRecord(t *testing.T, repoDir, subfolder string, endpoints ...string) *corev1.Record {
+	t.Helper()
 
-	repoDir := localGitRepo(t)
+	moduleData := map[string]any{}
+
+	if subfolder != "" {
+		moduleData["repository"] = map[string]any{"subfolder": subfolder}
+	}
+
+	if len(endpoints) > 0 {
+		conns := make([]any, 0, len(endpoints))
+		for _, u := range endpoints {
+			conns = append(conns, map[string]any{"type": "streamable-http", "url": u})
+		}
+
+		moduleData["connections"] = conns
+	}
 
 	data, err := structpb.NewStruct(map[string]any{
 		"schema_version": "1.0.0",
 		"locators": []any{
 			map[string]any{"type": "source_code", "urls": []any{repoDir}},
 		},
+		"modules": []any{
+			map[string]any{"name": "core/mcp", "data": moduleData},
+		},
 	})
 	if err != nil {
 		t.Fatalf("structpb.NewStruct: %v", err)
 	}
 
+	return &corev1.Record{Data: data}
+}
+
+func TestMCPRunner_Run_Success(t *testing.T) {
+	// Cannot run in parallel: uses t.Setenv.
+	clearAnalyzerCredentials(t)
+	setAzureCredentials(t)
+
 	r := NewMCPRunner(MCPConfig{CLIPath: fakeCLIPath(t)})
 
-	got, err := r.Run(context.Background(), &corev1.Record{Data: data})
+	got, err := r.Run(context.Background(), sourceRecord(t, localGitRepo(t), ""))
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -502,6 +530,74 @@ func TestMCPRunner_Run_Success(t *testing.T) {
 	wantAnalyzers := []string{"readiness", "yara"}
 	if !slices.Equal(got.Analyzers, wantAnalyzers) {
 		t.Errorf("want Analyzers=%v, got %v", wantAnalyzers, got.Analyzers)
+	}
+}
+
+// behavioral is the only subcommand that takes a source tree and it exits
+// non-zero without LLM credentials, so an unconfigured deployment must skip
+// the phase rather than fail every record that declares source code.
+func TestMCPRunner_Run_NoLLMConfigured_SourceSkippedNotError(t *testing.T) {
+	// Cannot run in parallel: uses t.Setenv.
+	clearAnalyzerCredentials(t)
+
+	r := NewMCPRunner(MCPConfig{CLIPath: fakeCLIPath(t), DisableEndpointScan: true})
+
+	got, err := r.Run(context.Background(), sourceRecord(t, localGitRepo(t), ""))
+	if err != nil {
+		t.Fatalf("a missing LLM configuration must not fail the scan: %v", err)
+	}
+
+	if !got.Skipped {
+		t.Fatal("want the source phase skipped when no LLM is configured")
+	}
+
+	if !strings.Contains(got.SkippedReason, "LLM") {
+		t.Errorf("want a reason naming the missing LLM configuration, got %q", got.SkippedReason)
+	}
+}
+
+// A skipped source phase must not take the endpoint findings with it.
+func TestMCPRunner_Run_NoLLMConfigured_KeepsEndpointFindings(t *testing.T) {
+	// Cannot run in parallel: uses t.Setenv.
+	clearAnalyzerCredentials(t)
+
+	r := NewMCPRunner(MCPConfig{CLIPath: fakeCLIPath(t)})
+
+	got, err := r.Run(context.Background(), sourceRecord(t, localGitRepo(t), "", "https://ok.example.com/mcp"))
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if len(got.Findings) == 0 {
+		t.Fatal("want the endpoint findings to survive a skipped source phase")
+	}
+
+	// Every finding must carry an endpoint tag: one from the source phase
+	// would mean behavioral ran without an LLM configured for it.
+	for _, f := range got.Findings {
+		if !strings.Contains(f.Message, "ok.example.com") {
+			t.Errorf("want only endpoint findings, got %q", f.Message)
+		}
+	}
+}
+
+// A scanner that cannot run at all is still a hard failure: unlike a missing
+// credential, it leaves no basis for reporting on the record.
+func TestMCPRunner_Run_SourceExecFailure_IsError(t *testing.T) {
+	// Cannot run in parallel: uses t.Setenv.
+	clearAnalyzerCredentials(t)
+	setAzureCredentials(t)
+
+	r := NewMCPRunner(MCPConfig{CLIPath: fakeCLIPath(t), DisableEndpointScan: true})
+
+	// The subfolder lands in the scan path, which is what the fake CLI matches.
+	_, err := r.Run(context.Background(), sourceRecord(t, localGitRepo(t), "fail-exec"))
+	if err == nil {
+		t.Fatal("want an error when mcp-scanner cannot run")
+	}
+
+	if !strings.Contains(err.Error(), "exited with error") {
+		t.Errorf("want the scanner's exec failure, got %q", err)
 	}
 }
 
