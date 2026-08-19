@@ -167,15 +167,25 @@ func endpointAnalyzers() []string {
 	return analyzers
 }
 
+// mcpEndpointArgs builds the argv for one live-endpoint scan.
+//
+// --analyzers and --raw have to precede the subcommand. The live-server
+// subparsers do not redeclare either flag, so one placed after the subcommand
+// is not recognized at all. Only --server-url belongs to the subcommand. This
+// is the opposite of mcpSourceArgs, and deliberately so.
+func mcpEndpointArgs(subcommand, serverURL string, analyzers []string) []string {
+	return []string{
+		"--analyzers", strings.Join(analyzers, ","),
+		"--raw", subcommand,
+		"--server-url", serverURL,
+	}
+}
+
 func runMCPScannerEndpoint(ctx context.Context, cliPath, subcommand, serverURL string) ([]byte, error) {
 	var stdout, stderr bytes.Buffer
 
-	// mcp-scanner requires global flags (--analyzers, --raw) to precede the
-	// subcommand; only subcommand-specific flags (--server-url) follow it.
 	cmd := exec.CommandContext(ctx, cliPath, //nolint:gosec
-		"--analyzers", strings.Join(endpointAnalyzers(), ","),
-		"--raw", subcommand,
-		"--server-url", serverURL,
+		mcpEndpointArgs(subcommand, serverURL, endpointAnalyzers())...,
 	)
 	cmd.Stdout = &stdout
 	cmd.Stderr = &stderr

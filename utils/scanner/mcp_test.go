@@ -87,6 +87,48 @@ func TestParseMCPOutput_UnsafeWithFindings(t *testing.T) {
 	}
 }
 
+// Object-shaped findings arrive in a map, whose iteration order Go randomizes.
+// Two scans of identical output have to produce identical reports, or every
+// scan rewrites its stored result with the same findings in a new order.
+func TestParseMCPOutput_FindingOrderIsStable(t *testing.T) {
+	t.Parallel()
+
+	raw := `[{
+		"tool_name": "exec",
+		"status": "done",
+		"is_safe": false,
+		"findings": {
+			"gamma_analyzer": {"severity": "HIGH", "threat_summary": "g"},
+			"alpha_analyzer": {"severity": "HIGH", "threat_summary": "a"},
+			"beta_analyzer":  {"severity": "HIGH", "threat_summary": "b"}
+		}
+	}]`
+
+	want := []string{
+		"[alpha_analyzer] exec: a",
+		"[beta_analyzer] exec: b",
+		"[gamma_analyzer] exec: g",
+	}
+
+	// Repeated because an unsorted map would still land on the wanted order
+	// some of the time.
+	for range 10 {
+		got, err := parseMCPOutput([]byte(raw))
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+
+		msgs := make([]string, 0, len(got.Findings))
+		for _, f := range got.Findings {
+			msgs = append(msgs, f.Message)
+		}
+
+		if !slices.Equal(msgs, want) {
+			t.Fatalf("finding order = %q, want %q", msgs, want)
+		}
+	}
+}
+
 // Shape emitted by the `instructions` subcommand: findings is an array whose
 // entries name their own analyzer, and the subject is a server, not a tool.
 func TestParseMCPOutput_ArrayFindings(t *testing.T) {
@@ -598,6 +640,23 @@ func TestMCPRunner_Run_SourceExecFailure_IsError(t *testing.T) {
 	}
 }
 
+// --- mcpSourceArgs ---
+
+// The behavioral subparser redeclares --output, so a leading one is overwritten
+// by the subparser's default and the results never reach the file. Tidying
+// these into the conventional flags-first shape fails silently: the scan still
+// exits zero, having written nothing.
+func TestMCPSourceArgs_OutputFollowsSubcommand(t *testing.T) {
+	t.Parallel()
+
+	got := mcpSourceArgs("/src/server", "/out/scan-result.json")
+	want := []string{"behavioral", "/src/server", "--output", "/out/scan-result.json"}
+
+	if !slices.Equal(got, want) {
+		t.Errorf("mcpSourceArgs() = %q, want %q", got, want)
+	}
+}
+
 // --- buildMCPScannerEnv ---
 
 func TestBuildMCPScannerEnv_ContainsParentEnv(t *testing.T) {
@@ -646,6 +705,23 @@ func TestBuildMCPScannerEnv_MapsAzureVars(t *testing.T) {
 	for k, want := range cases {
 		if got := envMap[k]; got != want {
 			t.Errorf("env[%s] = %q, want %q", k, got, want)
+		}
+	}
+}
+
+// A deployment is the only part of the model name that varies, so without one
+// there is no model to name. Exporting the "azure/" prefix on its own hands the
+// scanner a model it cannot resolve.
+func TestBuildMCPScannerEnv_NoDeployment_OmitsModel(t *testing.T) {
+	// Cannot run in parallel: uses t.Setenv.
+	t.Setenv("AZURE_OPENAI_API_KEY", "test-key")
+	t.Setenv("AZURE_OPENAI_BASE_URL", "https://openai.example.com")
+	t.Setenv("AZURE_OPENAI_DEPLOYMENT", "")
+	t.Setenv("MCP_SCANNER_LLM_MODEL", "")
+
+	for _, e := range buildMCPScannerEnv() {
+		if k, v, ok := splitEnvEntry(e); ok && k == "MCP_SCANNER_LLM_MODEL" && v != "" {
+			t.Errorf("MCP_SCANNER_LLM_MODEL = %q, want it unset without a deployment", v)
 		}
 	}
 }

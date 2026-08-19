@@ -12,6 +12,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"slices"
 	"strings"
 
 	typesv1 "buf.build/gen/go/agntcy/oasf/protocolbuffers/go/agntcy/oasf/types/v1"
@@ -143,7 +144,9 @@ func (r *MCPRunner) runSourceScan(ctx context.Context, record *corev1.Record) (*
 
 	scanDir := tmpDir
 	if subfolder != "" {
-		scanDir = filepath.Join(tmpDir, subfolder)
+		// The subfolder is publisher-controlled record data. Rooting the inner
+		// join at "/" collapses any leading .. so it cannot walk out of the clone.
+		scanDir = filepath.Join(tmpDir, filepath.Join("/", subfolder))
 	}
 
 	absDir, err := filepath.Abs(scanDir)
@@ -249,10 +252,20 @@ func gitClone(ctx context.Context, repoURL, dest string) error {
 	return nil
 }
 
+// mcpSourceArgs builds the argv for the source-code scan.
+//
+// --output has to follow the subcommand. The behavioral subparser redeclares
+// it, and the subparser's default overwrites whatever a leading one set, so a
+// conventionally-placed flag leaves the results on stdout - where the
+// scanner's own logs and LiteLLM's banners already are.
+func mcpSourceArgs(scanDir, outputPath string) []string {
+	return []string{
+		"behavioral", scanDir,
+		"--output", outputPath,
+	}
+}
+
 func runMCPScanner(ctx context.Context, cliPath, scanDir string) ([]byte, error) {
-	// Results go to a file because stdout carries the scanner's own logs and
-	// LiteLLM's banners. --output is redeclared by the behavioral subparser,
-	// whose default clobbers a global one, so it must follow the subcommand.
 	outDir, err := os.MkdirTemp("", "mcp-scan-out-*")
 	if err != nil {
 		return nil, fmt.Errorf("create mcp-scanner output dir: %w", err)
@@ -264,10 +277,8 @@ func runMCPScanner(ctx context.Context, cliPath, scanDir string) ([]byte, error)
 
 	var stderr bytes.Buffer
 
-	cmd := exec.CommandContext(ctx, cliPath,
-		"behavioral", scanDir,
-		"--output", outPath,
-	)
+	//nolint:gosec // G204: cliPath is operator config, and the argv is fixed - both paths are ours, under temp dirs.
+	cmd := exec.CommandContext(ctx, cliPath, mcpSourceArgs(scanDir, outPath)...)
 	cmd.Stderr = &stderr
 	cmd.Env = buildMCPScannerEnv()
 
@@ -291,10 +302,22 @@ func buildMCPScannerEnv() []string {
 	env := os.Environ()
 	env = appendEnvIfMissing(env, "MCP_SCANNER_LLM_API_KEY", os.Getenv("AZURE_OPENAI_API_KEY"))
 	env = appendEnvIfMissing(env, "MCP_SCANNER_LLM_BASE_URL", os.Getenv("AZURE_OPENAI_BASE_URL"))
-	env = appendEnvIfMissing(env, "MCP_SCANNER_LLM_MODEL", "azure/"+os.Getenv("AZURE_OPENAI_DEPLOYMENT"))
+	env = appendEnvIfMissing(env, "MCP_SCANNER_LLM_MODEL", azureLLMModel())
 	env = appendEnvIfMissing(env, "MCP_SCANNER_LLM_API_VERSION", os.Getenv("AZURE_OPENAI_API_VERSION"))
 
 	return env
+}
+
+// azureLLMModel names the configured Azure deployment in the azure/<deployment>
+// form the scanner resolves, or "" when there is no deployment to name. A bare
+// "azure/" is not a model the scanner can resolve.
+func azureLLMModel() string {
+	deployment := os.Getenv("AZURE_OPENAI_DEPLOYMENT")
+	if deployment == "" {
+		return ""
+	}
+
+	return "azure/" + deployment
 }
 
 // llmConfigured reports whether an LLM is configured for the scanner, either
@@ -372,6 +395,12 @@ func (r mcpScannerResult) analyzerFindings() ([]mcpFinding, error) {
 				names:    a.ThreatNames,
 			})
 		}
+
+		// Map iteration is randomized, so without this two scans of identical
+		// output produce reports that differ only in finding order.
+		slices.SortFunc(findings, func(a, b mcpFinding) int {
+			return strings.Compare(a.analyzer, b.analyzer)
+		})
 
 		return findings, nil
 	}

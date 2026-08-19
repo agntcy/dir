@@ -520,6 +520,27 @@ func TestEndpointAnalyzers_AllCredentials_RequestsEverything(t *testing.T) {
 	}
 }
 
+// --- mcpEndpointArgs ---
+
+// The live-server subparsers do not redeclare --analyzers or --raw, so either
+// one placed after the subcommand is rejected as unrecognized. That is the
+// reverse of mcpSourceArgs, where --output has to trail the subcommand, and the
+// two orderings cannot be made to match.
+func TestMCPEndpointArgs_GlobalFlagsPrecedeSubcommand(t *testing.T) {
+	t.Parallel()
+
+	got := mcpEndpointArgs("prompts", "https://mcp.example.com/mcp", []string{"yara", "readiness"})
+	want := []string{
+		"--analyzers", "yara,readiness",
+		"--raw", "prompts",
+		"--server-url", "https://mcp.example.com/mcp",
+	}
+
+	if !slices.Equal(got, want) {
+		t.Errorf("mcpEndpointArgs() = %q, want %q", got, want)
+	}
+}
+
 // --- MCPRunner endpoint subcommand ---
 
 func TestMCPRunner_EndpointSubcommand_Success_TagsAndSetsAnalyzer(t *testing.T) {
