@@ -7,6 +7,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"os/exec"
@@ -238,13 +239,25 @@ func gitClone(ctx context.Context, repoURL, dest string) error {
 }
 
 func runMCPScanner(ctx context.Context, cliPath, scanDir string) ([]byte, error) {
-	var stdout, stderr bytes.Buffer
+	// Results go to a file because stdout carries the scanner's own logs and
+	// LiteLLM's banners. --output is redeclared by the behavioral subparser,
+	// whose default clobbers a global one, so it must follow the subcommand.
+	outDir, err := os.MkdirTemp("", "mcp-scan-out-*")
+	if err != nil {
+		return nil, fmt.Errorf("create mcp-scanner output dir: %w", err)
+	}
 
-	// The behavioral subparser declares its own --raw, whose default
-	// overwrites a global one, so --raw must follow the subcommand to get
-	// JSON rather than a human-readable summary.
-	cmd := exec.CommandContext(ctx, cliPath, "--analyzers", "yara,readiness", "behavioral", scanDir, "--raw")
-	cmd.Stdout = &stdout
+	defer os.RemoveAll(outDir)
+
+	outPath := filepath.Join(outDir, "scan-result.json")
+
+	var stderr bytes.Buffer
+
+	cmd := exec.CommandContext(ctx, cliPath,
+		"--analyzers", "yara,readiness",
+		"behavioral", scanDir,
+		"--output", outPath,
+	)
 	cmd.Stderr = &stderr
 	cmd.Env = buildMCPScannerEnv()
 
@@ -254,7 +267,12 @@ func runMCPScanner(ctx context.Context, cliPath, scanDir string) ([]byte, error)
 		return nil, fmt.Errorf("mcp-scanner exited with error: %w", err)
 	}
 
-	return stdout.Bytes(), nil
+	out, err := os.ReadFile(outPath)
+	if err != nil {
+		return nil, fmt.Errorf("read mcp-scanner output: %w", err)
+	}
+
+	return out, nil
 }
 
 // buildMCPScannerEnv returns the parent env with MCP_SCANNER_LLM_* vars derived from
@@ -363,10 +381,8 @@ func (r mcpScannerResult) subject() string {
 }
 
 func parseMCPOutput(raw []byte) (*ScanResult, error) {
-	raw = trimToJSON(raw)
-
-	var results []mcpScannerResult
-	if err := json.Unmarshal(raw, &results); err != nil {
+	results, err := decodeMCPResults(raw)
+	if err != nil {
 		return nil, fmt.Errorf("parse mcp-scanner output: %w", err)
 	}
 
@@ -400,12 +416,45 @@ func parseMCPOutput(raw []byte) (*ScanResult, error) {
 	return &ScanResult{Safe: len(findings) == 0, Findings: findings}, nil
 }
 
-// trimToJSON strips any leading non-JSON content by finding the first '['.
-func trimToJSON(raw []byte) []byte {
-	idx := bytes.IndexByte(raw, '[')
-	if idx > 0 {
-		return raw[idx:]
+// decodeMCPResults extracts the results array from output that may carry log
+// lines either side of it: the live-server subcommands ignore --output, and an
+// ANSI colour escape (\x1b[1;31m) contains a '[' of its own. A non-empty array
+// wins outright so a bracket in a log line cannot pass an empty result off as
+// a clean scan.
+func decodeMCPResults(raw []byte) ([]mcpScannerResult, error) {
+	var (
+		empty      []mcpScannerResult
+		foundEmpty bool
+	)
+
+	for off := 0; off < len(raw); {
+		idx := bytes.IndexByte(raw[off:], '[')
+		if idx < 0 {
+			break
+		}
+
+		start := off + idx
+		off = start + 1
+
+		var results []mcpScannerResult
+
+		// Decoder, not Unmarshal: log lines may trail the array too.
+		if err := json.NewDecoder(bytes.NewReader(raw[start:])).Decode(&results); err != nil {
+			continue
+		}
+
+		if len(results) > 0 {
+			return results, nil
+		}
+
+		if !foundEmpty {
+			empty, foundEmpty = results, true
+		}
 	}
 
-	return raw
+	if foundEmpty {
+		return empty, nil
+	}
+
+	return nil, errors.New("no JSON results array found in output")
 }

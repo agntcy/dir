@@ -16,7 +16,7 @@ import (
 	"google.golang.org/protobuf/types/known/structpb"
 )
 
-// --- parseMCPOutput / trimToJSON / mapMCPSeverity ---
+// --- parseMCPOutput / decodeMCPResults ---
 
 func TestParseMCPOutput_EmptyArray(t *testing.T) {
 	t.Parallel()
@@ -188,7 +188,7 @@ func TestParseMCPOutput_LeadingTextStripped(t *testing.T) {
 
 	got, err := parseMCPOutput([]byte(raw))
 	if err != nil {
-		t.Fatalf("trimToJSON should strip leading text: %v", err)
+		t.Fatalf("leading text should be stripped: %v", err)
 	}
 
 	if !got.Safe {
@@ -205,34 +205,49 @@ func TestParseMCPOutput_InvalidJSON(t *testing.T) {
 	}
 }
 
-// --- trimToJSON ---
+// --- decodeMCPResults ---
 
-func TestTrimToJSON_AlreadyJSON(t *testing.T) {
+// An ANSI colour escape puts a '[' ahead of the results.
+func TestDecodeMCPResults_ANSIBannerBeforeResults(t *testing.T) {
 	t.Parallel()
 
-	in := []byte(`[{"a":1}]`)
-	if got := string(trimToJSON(in)); got != string(in) {
-		t.Errorf("clean JSON should be returned unchanged, got %q", got)
+	raw := []byte("\x1b[1;31mGive Feedback / Get Help\x1b[0m\n" +
+		`[{"tool_name":"exec","is_safe":false,"findings":{"yara":{"severity":"HIGH","threat_summary":"s"}}}]`)
+
+	got, err := parseMCPOutput(raw)
+	if err != nil {
+		t.Fatalf("results preceded by an ANSI banner must still parse: %v", err)
+	}
+
+	if len(got.Findings) != 1 {
+		t.Fatalf("want 1 finding, got %d: %+v", len(got.Findings), got.Findings)
 	}
 }
 
-func TestTrimToJSON_WithPreamble(t *testing.T) {
+func TestDecodeMCPResults_TrailingLogLines(t *testing.T) {
 	t.Parallel()
 
-	in := []byte("warning: something\n[1,2,3]")
-	want := "[1,2,3]"
+	raw := []byte(`[{"tool_name":"exec","is_safe":true,"findings":{}}]` + "\nINFO scan complete\n")
 
-	if got := string(trimToJSON(in)); got != want {
-		t.Errorf("got %q, want %q", got, want)
+	if _, err := parseMCPOutput(raw); err != nil {
+		t.Fatalf("log lines after the results must not break parsing: %v", err)
 	}
 }
 
-func TestTrimToJSON_NoArray(t *testing.T) {
+// An empty array in a log line must not stand in for the real results.
+func TestDecodeMCPResults_EmptyArrayInLogPrefersRealResults(t *testing.T) {
 	t.Parallel()
 
-	in := []byte("no array here")
-	if got := string(trimToJSON(in)); got != string(in) {
-		t.Errorf("no '[' → should return input unchanged, got %q", got)
+	raw := []byte("INFO analyzers=[] starting\n" +
+		`[{"tool_name":"exec","is_safe":false,"findings":{"yara":{"severity":"HIGH","threat_summary":"s"}}}]`)
+
+	got, err := parseMCPOutput(raw)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if got.Safe {
+		t.Error("want Safe=false: the real results carry a finding")
 	}
 }
 
@@ -479,13 +494,11 @@ func TestMCPRunner_Run_Success(t *testing.T) {
 		t.Fatalf("want 1 finding, got %d: %+v", len(got.Findings), got.Findings)
 	}
 
-	// yara and readiness are the zero-dependency analyzers that always run;
-	// this is the line the PR changed from the old hardcoded ["behavioral"].
+	// yara and readiness are the zero-dependency analyzers that always run.
 	//
-	// Sorted order, not source order: Run now merges the source and endpoint
-	// phases, and merge() sorts the analyzer union so the field is stable
-	// across runs (it is persisted to the DB and the OCI referrer). Asserting
-	// the sorted form is what pins that guarantee.
+	// Sorted, not source order: merge() sorts the analyzer union so the field
+	// is stable across runs, since it is persisted to the DB and the OCI
+	// referrer. Asserting the sorted form is what pins that guarantee.
 	wantAnalyzers := []string{"readiness", "yara"}
 	if !slices.Equal(got.Analyzers, wantAnalyzers) {
 		t.Errorf("want Analyzers=%v, got %v", wantAnalyzers, got.Analyzers)

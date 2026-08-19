@@ -14,12 +14,15 @@
 //
 //	fail-exec  -> exits non-zero with a stderr message (simulates an
 //	              unreachable server / mcp-scanner invocation failure)
-//	bad-json   -> exits 0 but writes non-JSON stdout (simulates a corrupt
-//	              or unparsable mcp-scanner response)
-//	empty-safe -> exits 0 and writes "[]" (simulates a scan that found
+//	bad-json   -> exits 0 but emits non-JSON (simulates a corrupt or
+//	              unparsable mcp-scanner response)
+//	empty-safe -> exits 0 and emits "[]" (simulates a scan that found
 //	              nothing to report)
-//	(default)  -> exits 0 and writes a single well-formed, unsafe finding
+//	(default)  -> exits 0 and emits a single well-formed, unsafe finding
 //	              so callers can assert on parsed output.
+//
+// As in the real CLI, results go to the --output file when one is given and to
+// stdout otherwise.
 package main
 
 import (
@@ -36,9 +39,9 @@ func main() {
 		fmt.Fprintln(os.Stderr, "simulated exec failure: connection refused")
 		os.Exit(1)
 	case strings.Contains(args, "bad-json"):
-		fmt.Fprintln(os.Stdout, "not valid json output {{{")
+		emit("not valid json output {{{")
 	case strings.Contains(args, "empty-safe"):
-		fmt.Fprintln(os.Stdout, "[]")
+		emit("[]")
 	default:
 		tool := "default"
 
@@ -49,6 +52,30 @@ func main() {
 			}
 		}
 
-		fmt.Fprintf(os.Stdout, `[{"tool_name":%q,"status":"done","is_safe":false,"findings":{"test_analyzer":{"severity":"HIGH","threat_summary":"synthetic finding","threat_names":["synthetic"],"total_findings":1}}}]`, tool)
+		emit(fmt.Sprintf(`[{"tool_name":%q,"status":"done","is_safe":false,"findings":{"test_analyzer":{"severity":"HIGH","threat_summary":"synthetic finding","threat_names":["synthetic"],"total_findings":1}}}]`, tool))
 	}
+}
+
+func emit(payload string) {
+	path := outputPath()
+	if path == "" {
+		fmt.Fprintln(os.Stdout, payload)
+
+		return
+	}
+
+	if err := os.WriteFile(path, []byte(payload), 0o600); err != nil {
+		fmt.Fprintln(os.Stderr, "fakecli: write output file:", err)
+		os.Exit(1)
+	}
+}
+
+func outputPath() string {
+	for i, a := range os.Args[1:] {
+		if a == "--output" && i+2 < len(os.Args) {
+			return os.Args[i+2]
+		}
+	}
+
+	return ""
 }
