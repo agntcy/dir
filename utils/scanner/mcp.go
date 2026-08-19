@@ -161,10 +161,9 @@ func (r *MCPRunner) runSourceScan(ctx context.Context, record *corev1.Record) (*
 		return nil, err
 	}
 
-	// yara and readiness are zero-dependency analyzers (no third-party credentials
-	// required) so they are always run. llm and api analyzers require third-party
-	// credentials and are opt-in only; wiring them up is left as follow-up work.
-	result.Analyzers = []string{"yara", "readiness"}
+	// The subcommand selects its own analyzer, so behavioral is the only one
+	// this phase runs.
+	result.Analyzers = []string{"behavioral"}
 
 	return result, nil
 }
@@ -266,7 +265,6 @@ func runMCPScanner(ctx context.Context, cliPath, scanDir string) ([]byte, error)
 	var stderr bytes.Buffer
 
 	cmd := exec.CommandContext(ctx, cliPath,
-		"--analyzers", "yara,readiness",
 		"behavioral", scanDir,
 		"--output", outPath,
 	)

@@ -523,7 +523,8 @@ func TestEndpointAnalyzers_AllCredentials_RequestsEverything(t *testing.T) {
 // --- MCPRunner endpoint subcommand ---
 
 func TestMCPRunner_EndpointSubcommand_Success_TagsAndSetsAnalyzer(t *testing.T) {
-	t.Parallel()
+	// Cannot run in parallel: uses t.Setenv.
+	clearAnalyzerCredentials(t)
 
 	r := NewMCPRunner(MCPConfig{CLIPath: fakeCLIPath(t)})
 
@@ -542,8 +543,11 @@ func TestMCPRunner_EndpointSubcommand_Success_TagsAndSetsAnalyzer(t *testing.T) 
 		t.Errorf("finding message should be tagged with subcommand+url, want prefix %q, got %q", wantPrefix, got.Findings[0].Message)
 	}
 
-	if len(got.Analyzers) != 1 || got.Analyzers[0] != "prompts" {
-		t.Errorf("want Analyzers=[prompts], got %v", got.Analyzers)
+	// The analyzers that ran, not the subcommand: "prompts" is already carried
+	// by the finding tag asserted above.
+	wantAnalyzers := []string{"yara", "readiness"}
+	if !slices.Equal(got.Analyzers, wantAnalyzers) {
+		t.Errorf("want Analyzers=%v, got %v", wantAnalyzers, got.Analyzers)
 	}
 }
 
@@ -582,7 +586,8 @@ func TestMCPRunner_EndpointSubcommand_UnparsableOutput_SkippedNotError(t *testin
 }
 
 func TestMCPRunner_EndpointSubcommand_EmptySafeOutput_NoFindings(t *testing.T) {
-	t.Parallel()
+	// Cannot run in parallel: uses t.Setenv.
+	clearAnalyzerCredentials(t)
 
 	r := NewMCPRunner(MCPConfig{CLIPath: fakeCLIPath(t)})
 
@@ -596,8 +601,9 @@ func TestMCPRunner_EndpointSubcommand_EmptySafeOutput_NoFindings(t *testing.T) {
 		t.Errorf("empty mcp-scanner output should produce Safe=true with no findings: %+v", got)
 	}
 
-	if len(got.Analyzers) != 1 || got.Analyzers[0] != "instructions" {
-		t.Errorf("want Analyzers=[instructions], got %v", got.Analyzers)
+	wantAnalyzers := []string{"yara", "readiness"}
+	if !slices.Equal(got.Analyzers, wantAnalyzers) {
+		t.Errorf("want Analyzers=%v, got %v", wantAnalyzers, got.Analyzers)
 	}
 }
 
@@ -630,9 +636,11 @@ func recordWithEndpoints(t *testing.T, urls ...string) *corev1.Record {
 }
 
 func TestMCPRunner_EndpointScan_MergesFindingsAcrossEndpointsAndSubcommands(t *testing.T) {
-	t.Parallel()
+	// Cannot run in parallel: uses t.Setenv.
+	clearAnalyzerCredentials(t)
 
 	r := NewMCPRunner(MCPConfig{CLIPath: fakeCLIPath(t)})
+
 	rec := recordWithEndpoints(t, "https://a.example.com/mcp", "https://b.example.com/mcp")
 
 	got, err := r.Run(context.Background(), rec)
@@ -656,11 +664,12 @@ func TestMCPRunner_EndpointScan_MergesFindingsAcrossEndpointsAndSubcommands(t *t
 		t.Error("merged result should be Safe=false: every sub-scan reported an unsafe finding")
 	}
 
-	wantAnalyzers := []string{"remote", "prompts", "resources", "instructions"}
-	for _, a := range wantAnalyzers {
-		if !slices.Contains(got.Analyzers, a) {
-			t.Errorf("merged Analyzers missing %q, got %v", a, got.Analyzers)
-		}
+	// Every sub-scan runs the same analyzers, so the union is deduplicated and
+	// sorted rather than one entry per sub-scan. That all four subcommands ran
+	// is what the finding count above establishes.
+	wantAnalyzers := []string{"readiness", "yara"}
+	if !slices.Equal(got.Analyzers, wantAnalyzers) {
+		t.Errorf("want merged Analyzers=%v, got %v", wantAnalyzers, got.Analyzers)
 	}
 }
 

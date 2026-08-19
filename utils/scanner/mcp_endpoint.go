@@ -122,7 +122,9 @@ func (r *MCPRunner) runEndpointSubcommand(ctx context.Context, subcommand, endpo
 	}
 
 	result.Findings = tagFindings(subcommand, endpoint, result.Findings)
-	result.Analyzers = []string{subcommand}
+	// The analyzers that ran, not the subcommand that ran them; the subcommand
+	// stays traceable through the finding tags.
+	result.Analyzers = endpointAnalyzers()
 
 	return result
 }

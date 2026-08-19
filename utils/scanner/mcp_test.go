@@ -522,12 +522,9 @@ func TestMCPRunner_Run_Success(t *testing.T) {
 		t.Fatalf("want 1 finding, got %d: %+v", len(got.Findings), got.Findings)
 	}
 
-	// yara and readiness are the zero-dependency analyzers that always run.
-	//
-	// Sorted, not source order: merge() sorts the analyzer union so the field
-	// is stable across runs, since it is persisted to the DB and the OCI
-	// referrer. Asserting the sorted form is what pins that guarantee.
-	wantAnalyzers := []string{"readiness", "yara"}
+	// behavioral is what the source subcommand runs, and the record declares
+	// no endpoints, so nothing else joins the union.
+	wantAnalyzers := []string{"behavioral"}
 	if !slices.Equal(got.Analyzers, wantAnalyzers) {
 		t.Errorf("want Analyzers=%v, got %v", wantAnalyzers, got.Analyzers)
 	}
