@@ -6,6 +6,7 @@ package cmd
 import (
 	"bytes"
 	"context"
+	_ "embed"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -247,12 +248,11 @@ func TestResolveClientConfigIgnoresDefaultClientConfigWithoutChangedFlags(t *tes
 	require.Contains(t, err.Error(), "server_address is required")
 }
 
-// recordedValidResponse is what the live schema service returned for
-// validate/testdata/record_valid.json on 2026-07-31, byte-identical to the
-// schema_response_valid.json fixture #1953 adds under validate/testdata. It
-// is inlined because that fixture is not on main until #1953 lands, and go:embed
-// cannot reference a parent directory in any case.
-const recordedValidResponse = `{"warnings":[],"errors":[],"error_count":0,"warning_count":0}`
+// recordedValidResponse is the response fixture recorded from the live schema
+// service for validate/testdata/record_valid.json on 2026-07-31.
+//
+//go:embed validate/testdata/schema_response_valid.json
+var recordedValidResponse []byte
 
 // schemaURL returns the URL to hand the validate command's --url flag.
 //
@@ -271,7 +271,7 @@ func schemaURL(t *testing.T) string {
 
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		_, _ = w.Write([]byte(recordedValidResponse))
+		_, _ = w.Write(recordedValidResponse)
 	}))
 	t.Cleanup(srv.Close)
 
