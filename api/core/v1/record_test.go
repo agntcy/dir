@@ -6,6 +6,7 @@ package v1_test
 import (
 	"context"
 	"errors"
+	"os"
 	"testing"
 
 	oasfv1alpha1 "buf.build/gen/go/agntcy/oasf/protocolbuffers/go/agntcy/oasf/types/v1alpha1"
@@ -132,10 +133,18 @@ func TestRecord_GetCid_CrossVersion_Difference(t *testing.T) {
 }
 
 func TestRecord_Validate(t *testing.T) {
-	// Use the real OASF SDK validator against the live schema server. This test exercises
+	// Use the real OASF SDK validator against a live schema server. This test exercises
 	// the full validation path including network I/O and is the integration counterpart to
-	// the fake-based unit tests below.
-	v, err := validator.New("https://schema.oasf.outshift.com")
+	// the fake-based unit tests below. It only runs when OASF_SCHEMA_URL is set, so the
+	// default unit run stays off the network:
+	//
+	//	OASF_SCHEMA_URL=https://schema.oasf.outshift.com go test ./core/v1/...
+	schemaURL := os.Getenv("OASF_SCHEMA_URL")
+	if schemaURL == "" {
+		t.Skip("set OASF_SCHEMA_URL to run this live-validation integration test")
+	}
+
+	v, err := validator.New(schemaURL)
 	require.NoError(t, err, "failed to construct OASF validator")
 
 	tests := []struct {
