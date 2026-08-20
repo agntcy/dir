@@ -88,7 +88,7 @@ USER 55532:55532
 
 ENTRYPOINT ["./reconciler"]
 
-FROM python:3.13-slim AS scanner
+FROM python:3.13-slim@sha256:ffb752e139c0a19692a43af8d8523b274222dd68eebad5d583b45c2201c6e30a AS scanner
 
 RUN groupadd -g 55532 -r nonroot && useradd -u 55532 -r -g nonroot nonroot \
     && mkdir -p /home/nonroot && chown 55532:55532 /home/nonroot
@@ -99,17 +99,23 @@ COPY --from=builder /etc/ssl/certs /etc/ssl/certs
 COPY --from=builder /usr/share/ca-certificates /usr/share/ca-certificates
 COPY --from=builder /bin/reconciler ./reconciler
 
+# The base image lags behind Debian security updates.
 RUN apt-get update \
+    && apt-get upgrade -y --no-install-recommends \
     && apt-get install -y --no-install-recommends git \
     && rm -rf /var/lib/apt/lists/*
 
 ARG MCP_SCANNER_VERSION
 ARG SKILL_SCANNER_VERSION
 ARG A2A_SCANNER_VERSION
+# pip vendors CVE-carrying msgpack and setuptools copies and nothing needs it
+# at runtime, so drop it and its ensurepip wheel in the install layer.
 RUN pip install --no-cache-dir \
     cisco-ai-mcp-scanner==${MCP_SCANNER_VERSION} \
     cisco-ai-skill-scanner==${SKILL_SCANNER_VERSION} \
-    cisco-ai-a2a-scanner==${A2A_SCANNER_VERSION}
+    cisco-ai-a2a-scanner==${A2A_SCANNER_VERSION} \
+    && python -m pip uninstall -y pip \
+    && rm -rf /usr/local/lib/python3.*/ensurepip/_bundled
 
 USER 55532:55532
 
