@@ -49,9 +49,7 @@
   "enabled": true,
   "minimumReleaseAge": "7 days",
   "schedule": [
-    "before 8am on Monday",
-    "before 8am on Wednesday",
-    "before 8am on Friday"
+    "before 8am on Monday"
   ],
   "enabledManagers": [
     "custom.regex",
