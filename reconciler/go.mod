@@ -18,7 +18,7 @@ require (
 	github.com/agntcy/dir/client v1.7.0
 	github.com/agntcy/dir/server v1.7.0
 	github.com/agntcy/dir/utils v1.7.0
-	github.com/agntcy/oasf-sdk/pkg v1.1.0
+	github.com/agntcy/oasf-sdk/pkg v1.2.0
 	github.com/csirmazbendeguz/regclient v0.0.0-20260429082137-82ab6d426079
 	github.com/opencontainers/go-digest v1.0.0
 	github.com/opencontainers/image-spec v1.1.1
