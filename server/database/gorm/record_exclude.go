@@ -92,6 +92,10 @@ func applyExcludedJoinFilters(query *gorm.DB, ex *types.ExcludedRecordFilters) *
 		query = applyExcludedScanSeverities(query, ex.ScanSeverities)
 	}
 
+	if len(ex.Owners) > 0 {
+		query = applyExcludedOwners(query, ex.Owners)
+	}
+
 	return query
 }
 
@@ -257,6 +261,14 @@ func applyExcludedAnnotations(query *gorm.DB, keys []string, values []string) *g
 
 // applyExcludedScanSeverities excludes records that have any scan_reports row
 // at or above any of the given thresholds — "nothing at or above this severity".
+// applyExcludedOwners excludes records that have an ownership claim matching
+// any of the given owner ID patterns.
+func applyExcludedOwners(query *gorm.DB, owners []string) *gorm.DB {
+	inner, args := utils.BuildWildcardCondition("ex.owner_id", owners)
+
+	return query.Where(utils.BuildNotExistsCondition("owners", "ex", "ex.record_cid = records.record_cid AND ("+inner+")"), args...)
+}
+
 func applyExcludedScanSeverities(query *gorm.DB, thresholds []string) *gorm.DB {
 	var severities []string
 	for _, threshold := range thresholds {

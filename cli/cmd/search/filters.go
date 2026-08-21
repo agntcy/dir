@@ -39,6 +39,7 @@ type Filters struct {
 	SchemaVersions FilterValues
 	ModuleIDs      FilterValues
 	Annotations    FilterValues
+	Owners         FilterValues
 
 	// ScanSeverity is a single threshold rather than a repeatable match, so it
 	// sits outside valueFilters.
@@ -166,6 +167,13 @@ func (f *Filters) valueFilters() []valueFilter {
 			excludeUsage: "Exclude records with specific annotation in key:value format (e.g., --exclude-annotation 'env:test')",
 			queryType:    searchv1.RecordQueryType_RECORD_QUERY_TYPE_ANNOTATION,
 			values:       &f.Annotations,
+		},
+		{
+			flag:         "owner",
+			usage:        "Search for records with specific owner identity (e.g., --owner 'spiffe://example.org/agent')",
+			excludeUsage: "Exclude records with specific owner identity (e.g., --exclude-owner 'spiffe://example.org/agent')",
+			queryType:    searchv1.RecordQueryType_RECORD_QUERY_TYPE_OWNER,
+			values:       &f.Owners,
 		},
 	}
 }
