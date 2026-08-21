@@ -38,9 +38,6 @@ e2e/tmp/*
 # Coverage output
 .coverage/
 
-# Licensei
-.licensei.cache
-
 # Lychee link checker (local; do not commit stale failure cache)
 .lycheecache
 
