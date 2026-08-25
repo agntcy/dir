@@ -6,6 +6,7 @@ package oci
 import (
 	"context"
 	"encoding/json"
+	stdErrors "errors"
 	"fmt"
 	"io"
 	"strings"
@@ -16,6 +17,7 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"oras.land/oras-go/v2/content/oci"
+	"oras.land/oras-go/v2/errdef"
 	"oras.land/oras-go/v2/registry/remote"
 )
 
@@ -111,6 +113,11 @@ func (s *store) deleteFromOCIStore(ctx context.Context, cid string) error {
 
 	manifestDesc, err := s.repo.Resolve(ctx, cid)
 	if err != nil {
+		if stdErrors.Is(err, errdef.ErrNotFound) {
+			internalLogger.Info("Manifest not found (never existed or deleted already)", "cid", cid)
+
+			return nil
+		}
 		// Manifest might already be gone - this is not necessarily an error
 		internalLogger.Debug("Failed to resolve manifest during delete (may already be deleted)", "cid", cid, "error", err)
 		errors = append(errors, fmt.Sprintf("manifest resolve: %v", err))
@@ -175,6 +182,13 @@ func (s *store) deleteFromRemoteRepository(ctx context.Context, cid string) erro
 
 	manifestDesc, err := s.repo.Resolve(ctx, cid)
 	if err != nil {
+		// If manifest is completely missing (errdef.ErrNotFound), treat as successful deletion
+		if stdErrors.Is(err, errdef.ErrNotFound) {
+			internalLogger.Info("Manifest not found (never existed or deleted already)", "cid", cid)
+
+			return nil
+		}
+
 		// If manifest doesn't exist, consider it already deleted
 		if strings.Contains(err.Error(), "404") || strings.Contains(err.Error(), "NOT_FOUND") {
 			internalLogger.Info("Manifest not found (never existed or deleted already)", "cid", cid)
