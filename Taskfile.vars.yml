@@ -72,8 +72,9 @@ vars:
   YQ_BIN: "{{ .BIN_DIR }}/yq-{{.YQ_VERSION}}"
   GOLANGCI_LINT_VERSION: "2.11.3"
   GOLANGCI_LINT_BIN: "{{ .BIN_DIR }}/golangci-lint-{{.GOLANGCI_LINT_VERSION}}"
-  LICENSEI_VERSION: "0.9.0"
-  LICENSEI_BIN: "{{ .BIN_DIR }}/licensei-{{.LICENSEI_VERSION}}"
+  # renovate: datasource=go depName=github.com/google/go-licenses/v2 versioning=semver
+  GO_LICENSES_VERSION: "2.0.1"
+  GO_LICENSES_BIN: "{{ .BIN_DIR }}/go-licenses-{{.GO_LICENSES_VERSION}}"
   UV_VERSION: "0.10.11"
   UV_BIN: "{{ .BIN_DIR }}/uv-{{.UV_VERSION}}"
   COSIGN_VERSION: "3.0.5"

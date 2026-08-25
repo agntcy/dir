@@ -24,7 +24,7 @@ tasks:
       - task: deps:cosign
       - task: deps:trivy
       - task: deps:golangci-lint
-      - task: deps:licensei
+      - task: deps:go-licenses
       - task: deps:multimod-bin
       - task: deps:renovate
       - task: deps:yq
@@ -63,7 +63,7 @@ tasks:
       {{.MULTIMOD_BIN}}
       {{.YQ_BIN}}
       {{.GOLANGCI_LINT_BIN}}
-      {{.LICENSEI_BIN}}
+      {{.GO_LICENSES_BIN}}
       {{.UV_BIN}}
       {{.COSIGN_BIN}}
       {{.PRE_COMMIT_PYZ}}
@@ -189,17 +189,22 @@ tasks:
     status:
       - test -x {{.GOLANGCI_LINT_BIN}}
 
-  deps:licensei:
-    desc: Install licensei
+  deps:go-licenses:
+    desc: Install go-licenses
     internal: true
     deps:
       - deps:bin-dir
+    preconditions:
+      - which go
     cmds:
-      - curl -sfL https://raw.githubusercontent.com/goph/licensei/master/install.sh | sh -s -- -b {{.BIN_DIR}} v{{.LICENSEI_VERSION}}
-      - mv {{.BIN_DIR}}/licensei {{.LICENSEI_BIN}}
-      - chmod +x {{.LICENSEI_BIN}}
+      # go-licenses recognises the standard library by GOROOT path, so it must be
+      # built by the same toolchain that later runs `go list`. Pinning GOTOOLCHAIN
+      # keeps the two in step when the local Go differs from GO_VERSION.
+      - GOTOOLCHAIN=go{{.GO_VERSION}} GOBIN={{.BIN_DIR}} go install github.com/google/go-licenses/v2@v{{.GO_LICENSES_VERSION}}
+      - mv {{.BIN_DIR}}/go-licenses {{.GO_LICENSES_BIN}}
+      - chmod +x {{.GO_LICENSES_BIN}}
     status:
-      - test -x {{.LICENSEI_BIN}}
+      - test -x {{.GO_LICENSES_BIN}}
 
   deps:multimod-bin:
     desc: Build the multimod binary
@@ -385,18 +390,28 @@ tasks:
   license:
     desc: Check licenses
     deps:
-      - task: deps:licensei
+      - task: deps:go-licenses
+      - task: deps:yq
     cmds:
+      # Classification reads LICENSE files out of the module cache, so the
+      # dependencies have to be present locally first.
       - for: { var: GO_MODULES }
-        cmd: echo "Running licensei in {{.ITEM}}" && cd {{.ITEM}} && {{ .LICENSEI_BIN }} check --config {{.ROOT_DIR}}/.licensei.toml
-
-  license:cache:
-    desc: Check licenses
-    deps:
-      - task: deps:licensei
-    cmds:
+        cmd: go -C {{.ITEM}} mod download
+      # The policy is read inside the command rather than via a `vars` `sh:`
+      # entry, because those are evaluated before `deps` runs and would call yq
+      # before it is installed.
+      #
+      # Violations are written straight to stderr rather than through glog, so
+      # muting glog silences only the per-package "contains non-Go code" noise.
       - for: { var: GO_MODULES }
-        cmd: echo "Running licensei in {{.ITEM}}" && cd {{.ITEM}} && {{ .LICENSEI_BIN }} cache --config {{.ROOT_DIR}}/.licensei.toml
+        cmd: |
+          echo "Checking licenses in {{.ITEM}}"
+          allowed="$({{.YQ_BIN}} -r '.allowed | join(",")' {{.ROOT_DIR}}/.golicenses.yaml)"
+          ignored="$({{.YQ_BIN}} -r '.ignored | join(",")' {{.ROOT_DIR}}/.golicenses.yaml)"
+          cd {{.ITEM}} && {{.GO_LICENSES_BIN}} check ./... \
+            --allowed_licenses="${allowed}" \
+            --ignore="${ignored}" \
+            --logtostderr=false --stderrthreshold=FATAL --log_file=/dev/null
 
   ##
   ## Importer tools

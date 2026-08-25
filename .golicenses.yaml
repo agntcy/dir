@@ -1,0 +1,64 @@
+# License policy for the Directory Go modules, enforced by `task license`.
+#
+# Names are the SPDX identifiers reported by google/licenseclassifier, which
+# go-licenses uses to classify the LICENSE file found in each dependency's
+# module directory.
+
+allowed:
+  - 0BSD
+  - Apache-2.0
+  - BSD-2-Clause
+  - BSD-3-Clause
+  - CC0-1.0
+  - ISC
+  - MIT
+  - MIT-0
+  - MPL-2.0
+  - OpenSSL
+
+# Package path prefixes excluded from the check.
+#
+# Classification is offline and module-scoped, which produces two kinds of
+# unavoidable gap. A module whose license text is a short-form Apache-2.0
+# reference notice rather than the full license scores below the classifier's
+# confidence threshold, and a module published from a subdirectory of a
+# multi-module repository does not carry that repository's root license file in
+# its module zip. Both come back as `Unknown`.
+#
+# Every entry below was verified by reading the upstream license, recorded here
+# so the suppression can be re-checked on upgrade.
+ignored:
+  # Directory's own modules.
+  - github.com/agntcy/dir
+
+  # Apache-2.0 https://github.com/agntcy/oasf-sdk/blob/main/LICENSE.md
+  # pkg/ is a submodule, so the repository's root LICENSE.md is not in its zip.
+  - github.com/agntcy/oasf-sdk/pkg
+
+  # Apache-2.0 - generated protobuf/gRPC stubs published by buf for agntcy/oasf
+  # and agntcy/oasf-sdk. Generated code ships no license file.
+  - buf.build/gen/go/agntcy
+
+  # Apache-2.0 https://github.com/cyberphone/json-canonicalization/blob/master/LICENSE
+  - github.com/cyberphone/json-canonicalization
+
+  # Apache-2.0 https://github.com/in-toto/attestation/blob/main/LICENSE
+  - github.com/in-toto/attestation
+
+  # Apache-2.0 https://github.com/in-toto/in-toto-golang/blob/master/LICENSE
+  - github.com/in-toto/in-toto-golang
+
+  # Apache-2.0 https://github.com/jackpal/go-nat-pmp/blob/master/LICENSE
+  - github.com/jackpal/go-nat-pmp
+
+  # Apache-2.0 OR MIT https://github.com/multiformats/go-base36/blob/master/LICENSE.md
+  # Protocol Labs "Permissive License Stack" notice; both options are approved.
+  - github.com/multiformats/go-base36
+
+  # MIT-0 https://github.com/segmentio/asm/blob/main/LICENSE
+  - github.com/segmentio/asm
+
+  # Unlicense (public domain) https://github.com/muhlemmer/gu/blob/master/LICENSE
+  # Transitive dependency of zitadel/oidc. Public domain is acceptable here, but
+  # Unlicense is deliberately kept off the approved list.
+  - github.com/muhlemmer/gu
