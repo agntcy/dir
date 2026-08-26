@@ -147,3 +147,83 @@ func TestGetLabelsFromRecord(t *testing.T) {
 		assert.Nil(t, labels)
 	})
 }
+
+func TestLabelTypeNormalizeValue(t *testing.T) {
+	testCases := []struct {
+		name      string
+		labelType types.LabelType
+		value     string
+		expected  string
+	}{
+		{"bare", types.LabelTypeSkill, "cybersecurity/threat_intelligence", "cybersecurity/threat_intelligence"},
+		{"leading_slash", types.LabelTypeSkill, "/cybersecurity/threat_intelligence", "cybersecurity/threat_intelligence"},
+		{"fully_qualified", types.LabelTypeSkill, "/skills/cybersecurity/threat_intelligence", "cybersecurity/threat_intelligence"},
+		{"trailing_slash", types.LabelTypeSkill, "cybersecurity/threat_intelligence/", "cybersecurity/threat_intelligence"},
+		{"doubled_separators", types.LabelTypeSkill, "//skills//cybersecurity//threat_intelligence", "cybersecurity/threat_intelligence"},
+		{"surrounding_space", types.LabelTypeSkill, "  /skills/cybersecurity  ", "cybersecurity"},
+		{"single_segment", types.LabelTypeSkill, "/cybersecurity", "cybersecurity"},
+
+		// A taxonomy path may legitimately begin with a segment matching a namespace name,
+		// so only the fully-qualified (leading-slash) form is stripped.
+		{"bare_namespace_segment_preserved", types.LabelTypeSkill, "skills/foo", "skills/foo"},
+
+		// Cross-namespace values are left intact so they fail to match rather than
+		// resolving to a false positive in the wrong namespace.
+		{"cross_namespace_not_stripped", types.LabelTypeDomain, "/skills/foo", "skills/foo"},
+
+		{"domain", types.LabelTypeDomain, "/domains/research", "research"},
+		{"module", types.LabelTypeModule, "/modules/runtime/model", "runtime/model"},
+		{"locator", types.LabelTypeLocator, "/locators/docker-image", "docker-image"},
+
+		{"empty", types.LabelTypeSkill, "", ""},
+		{"only_slash", types.LabelTypeSkill, "/", ""},
+		{"only_namespace", types.LabelTypeSkill, "/skills/", ""},
+		{"unknown_type_passthrough", types.LabelTypeUnknown, "/skills/foo", "skills/foo"},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			assert.Equal(t, tc.expected, tc.labelType.NormalizeValue(tc.value))
+		})
+	}
+}
+
+func TestLabelTypeQueryTarget(t *testing.T) {
+	// Every accepted spelling must resolve to the same fully-qualified target.
+	for _, value := range []string{
+		"cybersecurity/threat_intelligence",
+		"/cybersecurity/threat_intelligence",
+		"/skills/cybersecurity/threat_intelligence",
+		"cybersecurity/threat_intelligence/",
+		"  /skills/cybersecurity/threat_intelligence  ",
+	} {
+		t.Run(value, func(t *testing.T) {
+			assert.Equal(t,
+				"/skills/cybersecurity/threat_intelligence",
+				types.LabelTypeSkill.QueryTarget(value),
+			)
+		})
+	}
+}
+
+func TestLabelKeyNormalizesValue(t *testing.T) {
+	// A stray slash in a record's skill name must not produce a doubled-separator key.
+	assert.Equal(t,
+		types.Label("/skills/cybersecurity/threat_intelligence"),
+		types.LabelTypeSkill.LabelKey("/cybersecurity/threat_intelligence"),
+	)
+	assert.Equal(t,
+		types.Label("/skills/cybersecurity/threat_intelligence"),
+		types.LabelTypeSkill.LabelKey("cybersecurity/threat_intelligence"),
+	)
+
+	// A key produced by LabelKey must be queryable by every accepted input form.
+	label := types.LabelTypeSkill.LabelKey("cybersecurity/threat_intelligence")
+	for _, value := range []string{
+		"cybersecurity/threat_intelligence",
+		"/cybersecurity/threat_intelligence",
+		"/skills/cybersecurity/threat_intelligence",
+	} {
+		assert.Equal(t, label.String(), types.LabelTypeSkill.QueryTarget(value))
+	}
+}

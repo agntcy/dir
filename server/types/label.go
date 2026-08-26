@@ -47,7 +47,43 @@ func (lt LabelType) LabelKey(key string) Label {
 		return Label(key) // No namespace, return as-is
 	}
 
-	return Label(lt.Prefix() + key)
+	return Label(lt.Prefix() + lt.NormalizeValue(key))
+}
+
+// NormalizeValue canonicalizes a caller-supplied label value into its bare form, so that
+// equivalent spellings resolve to the same value. For LabelTypeSkill, all of these yield
+// "cybersecurity/threat_intelligence":
+//
+//	cybersecurity/threat_intelligence
+//	/cybersecurity/threat_intelligence
+//	/skills/cybersecurity/threat_intelligence
+//
+// The fully-qualified form is accepted because labels are displayed namespaced, so it is the
+// spelling users get by copying output from one command into another. Only a leading,
+// fully-qualified namespace is stripped: a bare "skills/foo" is preserved, since a taxonomy
+// path is allowed to begin with a segment that happens to match a namespace name.
+func (lt LabelType) NormalizeValue(value string) string {
+	normalized := strings.TrimSpace(value)
+
+	// Collapse repeated separators before comparing prefixes, so that "//skills//foo"
+	// is recognised as the fully-qualified form.
+	for strings.Contains(normalized, "//") {
+		normalized = strings.ReplaceAll(normalized, "//", "/")
+	}
+
+	if lt != LabelTypeUnknown {
+		normalized = strings.TrimPrefix(normalized, lt.Prefix())
+	}
+
+	return strings.Trim(normalized, "/")
+}
+
+// QueryTarget returns the fully-qualified label string that a caller-supplied value should be
+// matched against, normalizing the value first. Callers should prefer this over concatenating
+// Prefix() with a raw value, which silently fails to match when the value carries its own
+// leading slash.
+func (lt LabelType) QueryTarget(value string) string {
+	return lt.Prefix() + lt.NormalizeValue(value)
 }
 
 // IsValid checks if the label type is one of the supported types.

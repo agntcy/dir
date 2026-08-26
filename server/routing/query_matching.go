@@ -65,7 +65,7 @@ func QueryMatchesLabels(query *routingv1.RecordQuery, labelList []types.Label) b
 	switch query.GetType() {
 	case routingv1.RecordQueryType_RECORD_QUERY_TYPE_SKILL:
 		// Check if any skill label matches the query
-		targetSkill := types.LabelTypeSkill.Prefix() + query.GetValue()
+		targetSkill := types.LabelTypeSkill.QueryTarget(query.GetValue())
 
 		for _, label := range labelList {
 			// Type-safe filtering: only check skill labels
@@ -88,7 +88,7 @@ func QueryMatchesLabels(query *routingv1.RecordQuery, labelList []types.Label) b
 
 	case routingv1.RecordQueryType_RECORD_QUERY_TYPE_LOCATOR:
 		// Unified locator handling - use proper namespace prefix (fixing remote implementation)
-		targetLocator := types.LabelTypeLocator.Prefix() + query.GetValue()
+		targetLocator := types.LabelTypeLocator.QueryTarget(query.GetValue())
 
 		for _, label := range labelList {
 			// Type-safe filtering: only check locator labels
@@ -106,7 +106,7 @@ func QueryMatchesLabels(query *routingv1.RecordQuery, labelList []types.Label) b
 
 	case routingv1.RecordQueryType_RECORD_QUERY_TYPE_DOMAIN:
 		// Check if any domain label matches the query
-		targetDomain := types.LabelTypeDomain.Prefix() + query.GetValue()
+		targetDomain := types.LabelTypeDomain.QueryTarget(query.GetValue())
 
 		for _, label := range labelList {
 			// Type-safe filtering: only check domain labels
@@ -129,7 +129,7 @@ func QueryMatchesLabels(query *routingv1.RecordQuery, labelList []types.Label) b
 
 	case routingv1.RecordQueryType_RECORD_QUERY_TYPE_MODULE:
 		// Check if any module label matches the query
-		targetModule := types.LabelTypeModule.Prefix() + query.GetValue()
+		targetModule := types.LabelTypeModule.QueryTarget(query.GetValue())
 
 		for _, label := range labelList {
 			// Type-safe filtering: only check module labels
