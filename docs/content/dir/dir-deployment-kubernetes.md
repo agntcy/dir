@@ -300,6 +300,40 @@ The Agent Directory Service can be deployed using Helm or GitOps / Argo CD. Helm
     !!! important "Trust domain"
         This Quick Start uses `example.org` for local testing only. To federate with the public Directory network, you need a unique trust domain. See [Production Deployment](dir-prod-deployment.md) and [Running a Federated Directory Instance](dir-federation-setup.md).
 
+## OASF Extractor Server
+
+Natural-language search on the HTTP gateway (`POST /v1/search` and `POST /v1/extract`) needs an OASF taxonomy extractor to turn free text into OASF skills, domains, modules, and keywords. Locally, `dirctl init` provisions the extractor assets on the machine that runs them. In a cluster there is nowhere to run `dirctl init`, so the chart can deploy an OASF-SDK gRPC server next to the API server instead and point the gateway at it.
+
+The subchart is opt-in and disabled by default:
+
+```yaml
+apiserver:
+  httpGateway:
+    enabled: true
+  oasf-sdk:
+    enabled: true
+```
+
+That renders a `<release>-oasf-sdk` Deployment and Service, and sets `extractor.remote_addr` in the API server's `server.config.yml` to the Service's cluster DNS name — for a release named `dir` in namespace `dir-dev-dir`, `dir-oasf-sdk.dir-dev-dir.svc.cluster.local:31234`.
+
+!!! note "The values key is `oasf-sdk`, not `oasfSdk`"
+    It is the upstream subchart name. The dependency is deliberately not aliased: Helm turns an alias into the subchart's `.Chart.Name`, and the upstream chart names its container after it, so a camelCase alias would render an invalid container name.
+
+A few things worth knowing:
+
+- **The server needs `OASF_SDK_EXTRACTOR_OASF_URL`, and the chart sets it.** That variable is the extractor's on/off switch: the OASF-SDK server registers `ExtractorService` only when it is set. Override it (`oasf-sdk.env`) to point at a different schema server, but do not unset it — without it the pod still starts and passes its health check, and every call fails with `unknown service agntcy.oasfsdk.extractor.v1.ExtractorService`.
+- **The Service is `ClusterIP` and stays that way.** The OASF-SDK server speaks plaintext gRPC with no authentication. The gateway reaches it over cluster DNS, so a node port buys nothing and would put free-text user queries on every node IP. Requires chart `v1.2.0` or newer — earlier versions defaulted to `NodePort` and always rendered `nodePort`, which Kubernetes rejects on a `ClusterIP` Service.
+- **The extractor is only consulted when `httpGateway.enabled` is true.** With the gateway off, nothing dials it.
+- **A missing extractor is not fatal.** If the server cannot reach one, it logs a warning and starts anyway; only extractor-backed endpoints stay unavailable.
+- **To use an extractor you deploy yourself** — a shared one in another namespace, say — leave `oasf-sdk.enabled` at `false` and set the address explicitly. An explicit value always wins over the derived one:
+
+    ```yaml
+    apiserver:
+      config:
+        extractor:
+          remote_addr: "oasf-sdk.shared.svc.cluster.local:31234"
+    ```
+
 ## Content Policies
 
 A content policy runs a scheduled "search, then act on the matches" pipeline against your node. Policies are declared in the `dirctl` chart's values — no forked chart and no hand-written manifests. Each enabled policy renders a CronJob named `<release>-dirctl-policy-<key>`.

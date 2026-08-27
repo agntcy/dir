@@ -5,8 +5,11 @@ dependencies:
 - name: oasf
   repository: oci://ghcr.io/agntcy/oasf/helm-charts
   version: v0.5.1
+- name: oasf-sdk
+  repository: oci://ghcr.io/agntcy/oasf-sdk/helm-charts
+  version: v1.2.0
 - name: postgresql
   repository: https://charts.bitnami.com/bitnami
   version: 18.8.11
-digest: sha256:3c298679487f78d6fb0164308447e3838032a2d79947fe28d7c3476043bda83e
-generated: "2026-08-18T13:37:08.563309+01:00"
+digest: sha256:eba9ab117ce7b5797f6feed2bb1ac4bc057267a237a6cf82ba533a239ab5425d
+generated: "2026-08-26T14:25:26.044559+02:00"
