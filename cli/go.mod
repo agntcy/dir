@@ -386,7 +386,7 @@ require (
 
 require (
 	buf.build/gen/go/agntcy/oasf-sdk/protocolbuffers/go v1.36.12-20260811133823-5281d0c487b5.1 // indirect
-	buf.build/gen/go/bufbuild/protovalidate/protocolbuffers/go v1.36.12-20260709200747-435963d16310.1 // indirect
+	buf.build/gen/go/bufbuild/protovalidate/protocolbuffers/go v1.36.12-20260825204119-511051f7f437.1 // indirect
 	buf.build/go/protovalidate v1.3.0 // indirect
 	cel.dev/expr v0.25.2 // indirect
 	filippo.io/bigmod v0.1.1-0.20260103110540-f8a47775ebe5 // indirect

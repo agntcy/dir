@@ -5,7 +5,7 @@ go 1.26.7
 require (
 	buf.build/gen/go/agntcy/oasf-sdk/protocolbuffers/go v1.36.12-20260811133823-5281d0c487b5.1
 	buf.build/gen/go/agntcy/oasf/protocolbuffers/go v1.36.12-20260721113505-cf7db8888586.1
-	buf.build/gen/go/bufbuild/protovalidate/protocolbuffers/go v1.36.12-20260709200747-435963d16310.1
+	buf.build/gen/go/bufbuild/protovalidate/protocolbuffers/go v1.36.12-20260825204119-511051f7f437.1
 	github.com/agntcy/oasf-sdk/pkg v1.1.0
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.30.0
 	github.com/multiformats/go-multihash v0.2.3

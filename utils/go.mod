@@ -18,7 +18,7 @@ require (
 )
 
 require (
-	buf.build/gen/go/bufbuild/protovalidate/protocolbuffers/go v1.36.12-20260709200747-435963d16310.1 // indirect
+	buf.build/gen/go/bufbuild/protovalidate/protocolbuffers/go v1.36.12-20260825204119-511051f7f437.1 // indirect
 	github.com/Masterminds/semver/v3 v3.5.0 // indirect
 	github.com/dlclark/regexp2 v1.4.0 // indirect
 	github.com/fsnotify/fsnotify v1.10.1 // indirect
