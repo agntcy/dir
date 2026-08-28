@@ -5,8 +5,10 @@ package oci
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
+	"net/http"
 	"strings"
 	"time"
 
@@ -21,7 +23,10 @@ import (
 	"google.golang.org/grpc/status"
 	"oras.land/oras-go/v2"
 	"oras.land/oras-go/v2/content/oci"
+	"oras.land/oras-go/v2/errdef"
+	"oras.land/oras-go/v2/registry"
 	"oras.land/oras-go/v2/registry/remote"
+	"oras.land/oras-go/v2/registry/remote/auth"
 )
 
 var logger = logging.Logger("store/oci")
@@ -420,16 +425,23 @@ func (s *store) IsReady(ctx context.Context) bool {
 		return true
 	}
 
-	// Check readiness based on registry type
-	// For supported OCI regisstries, try to list tags to verify connectivity.
-	// This is a lightweight operation that these registries support
-	err := remoteRepo.Tags(ctx, "", func(_ []string) error {
-		return nil // Just checking connectivity, don't need results
-	})
-	if err != nil {
-		// Check if it's a "repository not found" error - that's OK, registry is reachable
+	// Probe the OCI distribution base endpoint (GET /v2/) rather than listing
+	// tags. Tag listing is server-paginated, so on a repository with tens of
+	// thousands of tags it costs hundreds of round trips and cannot complete
+	// within a readiness probe timeout.
+	registryProbe := &remote.Registry{
+		RepositoryOptions: remote.RepositoryOptions{
+			Client:    withoutRetries(remoteRepo.Client),
+			Reference: registry.Reference{Registry: remoteRepo.Reference.Registry},
+			PlainHTTP: remoteRepo.PlainHTTP,
+		},
+	}
+
+	if err := registryProbe.Ping(ctx); err != nil {
+		// A 404 on /v2/ still proves the registry answered, and the repository
+		// itself is allowed to not exist yet.
 		errStr := err.Error()
-		if strings.Contains(errStr, "404") || strings.Contains(errStr, "NAME_UNKNOWN") {
+		if strings.Contains(errStr, "404") || strings.Contains(errStr, "NAME_UNKNOWN") || errors.Is(err, errdef.ErrNotFound) {
 			logger.Debug("Store ready: registry reachable, repository may not exist yet")
 
 			return true
@@ -443,4 +455,23 @@ func (s *store) IsReady(ctx context.Context) bool {
 	logger.Debug("Store ready")
 
 	return true
+}
+
+// withoutRetries returns a copy of the registry client with the retrying
+// transport removed, keeping its credentials.
+//
+// The shared client retries 5xx/429/408 up to five times with backoff, which on
+// a degraded registry costs several seconds. A readiness check must answer
+// within its probe timeout, and the probe's own failureThreshold already
+// provides the retry semantics.
+func withoutRetries(client remote.Client) remote.Client {
+	authClient, ok := client.(*auth.Client)
+	if !ok {
+		return client
+	}
+
+	probeClient := *authClient
+	probeClient.Client = &http.Client{}
+
+	return &probeClient
 }
