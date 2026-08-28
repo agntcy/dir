@@ -100,12 +100,20 @@ spec:
               port: health
             initialDelaySeconds: 10
             periodSeconds: 30
+            timeoutSeconds: 5
+            failureThreshold: 3
           readinessProbe:
             httpGet:
               path: /readyz
               port: health
             initialDelaySeconds: 5
             periodSeconds: 10
+            # /readyz pings PostgreSQL and the OCI registry, so it must allow
+            # more than the 1s kubelet default. Keep above the handler's own
+            # 5s budget so a slow dependency reports 503 instead of timing out.
+            timeoutSeconds: 6
+            successThreshold: 1
+            failureThreshold: 6
           resources:
             {{- toYaml .Values.reconciler.resources | nindent 12 }}
       volumes:
