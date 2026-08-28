@@ -160,7 +160,7 @@ jobs:
       id-token: write # Required for OIDC signing with Sigstore
     strategy:
       fail-fast: false
-      max-parallel: 1
+      max-parallel: 3
       matrix:
         entry: ${{ fromJson(needs.setup-matrix.outputs.mcp_matrix) }}
     env:
@@ -355,7 +355,7 @@ jobs:
       id-token: write # Required for OIDC signing with Sigstore
     strategy:
       fail-fast: false
-      max-parallel: 1
+      max-parallel: 3
       matrix:
         entry: ${{ fromJson(needs.setup-matrix.outputs.agent_skills_matrix) }}
     env:
