@@ -695,9 +695,11 @@ oasf-sdk:
   enabled: false
 
   # Pinned rather than inherited: the subchart's appVersion is "latest".
+  # v1.3.0 and newer ship the embedding model inside the image (~90 MB pull),
+  # so the server no longer downloads it from huggingface.co on startup.
   image:
     repository: ghcr.io/agntcy/oasf-sdk
-    tag: v1.2.0
+    tag: v1.3.0
     pullPolicy: IfNotPresent
 
   # The gRPC server serves plaintext with no authentication, so it must stay

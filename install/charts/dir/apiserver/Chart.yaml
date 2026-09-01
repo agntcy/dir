@@ -49,7 +49,7 @@ dependencies:
   # upstream chart names its container after it - an alias like "oasfSdk" would
   # render an invalid (non-lowercase) container name.
   - name: oasf-sdk
-    version: v1.2.0
+    version: v1.3.0
     repository: oci://ghcr.io/agntcy/oasf-sdk/helm-charts
     condition: oasf-sdk.enabled
   # PostgreSQL database (Bitnami subchart)
