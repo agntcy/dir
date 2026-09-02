@@ -587,7 +587,8 @@ func TestGetRecordCIDs_NegatedScanSeverity(t *testing.T) {
 		ScannerType: "MCP",
 		IsSafe:      false,
 		MaxSeverity: "HIGH",
-	}))
+		Status:      types.ScanStatusCompleted,
+	}, types.DefaultScanSchedule()))
 
 	cids, err := db.GetRecordCIDs(types.WithoutScanSeverities("HIGH"))
 	require.NoError(t, err)

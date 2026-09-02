@@ -119,20 +119,35 @@ func (t *Task) scanRecord(ctx context.Context, recordCID string) error {
 			logger.Warn("Runner failed", "runner", r.Name(), "cid", recordCID, "error", err)
 			anyErr = err
 
+			// Persisted, not just logged: an unrecorded failure matches
+			// GetRecordsNeedingScan on every pass, forever.
+			t.recordOutcome(recordCID, r.Name(), &scanner.ScanResult{
+				Skipped:       true,
+				SkippedReason: err.Error(),
+				FailureReason: scanner.ClassifyError(ctx, err),
+			}, nil)
+
 			continue
 		}
 
 		if result.Skipped {
-			logger.Debug("Runner skipped record", "runner", r.Name(), "cid", recordCID, "reason", result.SkippedReason)
+			if !result.FailureReason.IsFailure() {
+				// Nothing of this runner's type to scan. Recording it would
+				// mark every MCP-only record as failed for the skill and a2a
+				// runners.
+				logger.Debug("Runner not applicable to record", "runner", r.Name(), "cid", recordCID, "reason", result.SkippedReason)
+
+				continue
+			}
+
+			logger.Warn("Runner could not scan record", "runner", r.Name(), "cid", recordCID,
+				"reason", result.FailureReason, "detail", result.SkippedReason)
+
+			t.recordOutcome(recordCID, r.Name(), result, nil)
 
 			continue
 		}
 
-		// A scan that completed but covered less than the record declared is
-		// still recorded as a pass, so the reduced coverage has to be visible
-		// somewhere. The report proto has no field for it, so this is a log
-		// line rather than persisted state - see the endpoint cap in
-		// utils/scanner.
 		for _, notice := range result.Notices {
 			logger.Warn("Scan coverage reduced", "runner", r.Name(), "cid", recordCID, "notice", notice)
 		}
@@ -144,19 +159,52 @@ func (t *Task) scanRecord(ctx context.Context, recordCID string) error {
 			logger.Warn("Failed to push scan referrer", "runner", r.Name(), "cid", recordCID, "error", pushErr)
 		}
 
-		// Upsert DB row - failure is also non-fatal.
-		row := &gormdb.ScanReport{
-			RecordCID:   recordCID,
-			ScannerType: strings.ToUpper(r.Name()),
-			IsSafe:      result.Safe,
-			MaxSeverity: maxSeverityString(report.GetFindings()),
-		}
-		if upsertErr := t.db.UpsertScanReport(row); upsertErr != nil {
-			logger.Warn("Failed to upsert scan report", "runner", r.Name(), "cid", recordCID, "error", upsertErr)
-		}
+		t.recordOutcome(recordCID, r.Name(), result, report)
 	}
 
 	return anyErr
+}
+
+// recordOutcome upserts the scan_reports row for one runner. A write failure is
+// non-fatal.
+//
+// A row is written whether or not the scan reached a verdict, while the OCI
+// referrer is pushed only for verdicts. Referrers sync to peers, and "I could
+// not clone this repository" describes this node's network position rather than
+// the record.
+func (t *Task) recordOutcome(recordCID, runnerName string, result *scanner.ScanResult, report *scanv1.ScanReport) {
+	row := &gormdb.ScanReport{
+		RecordCID:   recordCID,
+		ScannerType: strings.ToUpper(runnerName),
+		// False for every failure, since Safe is false whenever nothing ran.
+		// The status gate in the safety filters is the real mechanism; this is
+		// the backstop for a query that forgets it.
+		IsSafe:        result.Safe,
+		MaxSeverity:   "NONE",
+		Status:        scanStatus(result),
+		FailureReason: string(result.FailureReason),
+		FailureDetail: result.SkippedReason,
+	}
+
+	if report != nil {
+		row.MaxSeverity = maxSeverityString(report.GetFindings())
+	}
+
+	if err := t.db.UpsertScanReport(row, t.config.ScanSchedule()); err != nil {
+		logger.Warn("Failed to upsert scan report", "runner", runnerName, "cid", recordCID, "error", err)
+	}
+}
+
+// scanStatus maps a ScanResult onto the persisted status.
+func scanStatus(result *scanner.ScanResult) string {
+	switch {
+	case result.Skipped:
+		return types.ScanStatusFailed
+	case result.Partial:
+		return types.ScanStatusPartial
+	default:
+		return types.ScanStatusCompleted
+	}
 }
 
 // pushReferrer marshals the ScanReport and stores it as an OCI referrer.
