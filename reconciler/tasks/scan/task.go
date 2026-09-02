@@ -207,18 +207,70 @@ func scanStatus(result *scanner.ScanResult) string {
 	}
 }
 
-// pushReferrer marshals the ScanReport and stores it as an OCI referrer.
+// pushReferrer marshals the ScanReport, stores it as an OCI referrer, and
+// prunes the reports the same scanner left behind on earlier runs.
 func (t *Task) pushReferrer(ctx context.Context, recordCID string, report *scanv1.ScanReport) error {
 	referrer, err := report.MarshalReferrer()
 	if err != nil {
 		return fmt.Errorf("marshal scan report: %w", err)
 	}
 
-	if _, err := t.refStore.PushReferrer(ctx, recordCID, referrer); err != nil {
+	ref, err := t.refStore.PushReferrer(ctx, recordCID, referrer)
+	if err != nil {
 		return fmt.Errorf("push referrer: %w", err)
 	}
 
+	// After the push, not before: a scan whose report is byte-identical to the
+	// previous one resolves to the same CID, and pruning first would delete the
+	// referrer this push just re-created.
+	t.pruneScanReferrers(ctx, recordCID, report.GetScannerType(), ref.GetCid())
+
 	return nil
+}
+
+// pruneScanReferrers deletes the scan report referrers left by earlier runs of
+// scannerType, keeping keepCID.
+func (t *Task) pruneScanReferrers(ctx context.Context, recordCID string, scannerType scanv1.ScannerType, keepCID string) {
+	var superseded []string
+
+	err := t.refStore.WalkReferrers(ctx, recordCID, corev1.ScanReportReferrerType, func(ref *corev1.RecordReferrer) error {
+		cid := ref.GetReferrerRef().GetCid()
+		if cid == "" || cid == keepCID {
+			return nil
+		}
+
+		// Scoped by scanner type, so the MCP runner never deletes the report
+		// the A2A runner wrote for the same record.
+		existing := &scanv1.ScanReport{}
+		if err := existing.UnmarshalReferrer(ref); err != nil {
+			logger.Debug("Skipping unparsable scan report referrer", "cid", recordCID, "referrer", cid, "error", err)
+
+			return nil
+		}
+
+		if existing.GetScannerType() == scannerType {
+			superseded = append(superseded, cid)
+		}
+
+		return nil
+	})
+	if err != nil {
+		logger.Warn("Failed to list scan report referrers for pruning", "cid", recordCID, "error", err)
+
+		return
+	}
+
+	for _, cid := range superseded {
+		if _, err := t.refStore.DeleteReferrer(ctx, recordCID, cid, corev1.ScanReportReferrerType); err != nil {
+			logger.Warn("Failed to delete superseded scan report referrer",
+				"cid", recordCID, "referrer", cid, "error", err)
+
+			continue
+		}
+
+		logger.Debug("Deleted superseded scan report referrer",
+			"cid", recordCID, "referrer", cid, "scanner", scannerType.String())
+	}
 }
 
 // buildScanReport converts a runner name + ScanResult into a scanv1.ScanReport proto.
