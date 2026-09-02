@@ -2,6 +2,7 @@
 	import type { CatalogEntry } from '$lib/types';
 	import { extractEntryTypes, extractShortTag, getTrustStatus, getScanManifest, getUsageMetrics, formatDownloads, extractCid, exportFormatForType, extractEntryName, extractEntryVersion } from '$lib/utils';
 	import MediaTypeBadge from './MediaTypeBadge.svelte';
+	import ScanBadge from './ScanBadge.svelte';
 	import TrustedBadge from './TrustedBadge.svelte';
 	import VerifiedBadge from './VerifiedBadge.svelte';
 
@@ -53,6 +54,9 @@
 					{/if}
 					{#if trustStatus?.verified}
 						<VerifiedBadge />
+					{/if}
+					{#if scanManifest}
+						<ScanBadge scan={scanManifest} />
 					{/if}
 				</div>
 				<p class="text-sm text-ink-weak mt-0.5 break-all select-all cursor-text">{aicard.identifier || ''}</p>

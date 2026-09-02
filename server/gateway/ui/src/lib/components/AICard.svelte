@@ -38,8 +38,8 @@
 				{#if trustStatus?.verified}
 					<VerifiedBadge />
 				{/if}
-				{#if scanManifest?.isSafe}
-					<ScanBadge scan={scanManifest} iconOnly />
+				{#if scanManifest}
+					<ScanBadge scan={scanManifest} />
 				{/if}
 			</div>
 			<p class="text-xs text-ink-medium mt-0.5">
