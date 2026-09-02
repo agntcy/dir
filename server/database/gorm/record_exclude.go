@@ -92,6 +92,16 @@ func applyExcludedJoinFilters(query *gorm.DB, ex *types.ExcludedRecordFilters) *
 		query = applyExcludedScanSeverities(query, ex.ScanSeverities)
 	}
 
+	if len(ex.ScanStatuses) > 0 {
+		query = applyExcludedScanColumn(query, "ex.status", "", ex.ScanStatuses)
+	}
+
+	if len(ex.ScanFailureReasons) > 0 {
+		// Guarded so excluding "*" means "anything that failed" rather than
+		// "anything scanned"; see the include path in record.go.
+		query = applyExcludedScanColumn(query, "ex.failure_reason", "ex.failure_reason != ''", ex.ScanFailureReasons)
+	}
+
 	return query
 }
 
@@ -271,4 +281,22 @@ func applyExcludedScanSeverities(query *gorm.DB, thresholds []string) *gorm.DB {
 		utils.BuildNotExistsCondition("scan_reports", "ex", "ex.record_cid = records.record_cid AND ex.max_severity IN ?"),
 		severities,
 	)
+}
+
+// applyExcludedScanColumn excludes records with a scan_reports row whose column
+// matches any of the patterns. Records with no scan report are kept, as with
+// every other NOT EXISTS exclusion. guard is an extra subquery predicate, or
+// empty for none.
+func applyExcludedScanColumn(query *gorm.DB, column, guard string, patterns []string) *gorm.DB {
+	condition, args := utils.BuildWildcardCondition(column, patterns)
+	if condition == "" {
+		return query
+	}
+
+	inner := "ex.record_cid = records.record_cid AND " + condition
+	if guard != "" {
+		inner = "ex.record_cid = records.record_cid AND " + guard + " AND " + condition
+	}
+
+	return query.Where(utils.BuildNotExistsCondition("scan_reports", "ex", inner), args...)
 }

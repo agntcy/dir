@@ -604,16 +604,26 @@ func (d *DB) handleFilterOptions(query *gorm.DB, cfg *types.RecordFilters) *gorm
 	}
 
 	// Handle scan safe filter (is_safe column across all scanner types).
+	//
+	// Both branches must gate on ScannedStatuses: a failed row populates the
+	// NOT NULL is_safe column, so without the gate an unscannable record would
+	// satisfy the "was scanned" EXISTS and report as safe.
 	if cfg.ScanSafe != nil {
+		scanned := types.ScannedStatuses()
+
 		if *cfg.ScanSafe {
-			// Safe: scanned AND no scanner flagged as unsafe.
+			// Safe: reached a verdict AND no scanner flagged as unsafe.
 			query = query.Where(
-				"EXISTS (SELECT 1 FROM scan_reports sr WHERE sr.record_cid = records.record_cid) AND " +
-					"NOT EXISTS (SELECT 1 FROM scan_reports sr WHERE sr.record_cid = records.record_cid AND sr.is_safe = false)",
+				"EXISTS (SELECT 1 FROM scan_reports sr WHERE sr.record_cid = records.record_cid AND sr.status IN ?) AND "+
+					"NOT EXISTS (SELECT 1 FROM scan_reports sr WHERE sr.record_cid = records.record_cid AND sr.status IN ? AND sr.is_safe = false)",
+				scanned, scanned,
 			)
 		} else {
-			// Unsafe: at least one scanner reported is_safe = false.
-			query = query.Where("EXISTS (SELECT 1 FROM scan_reports sr WHERE sr.record_cid = records.record_cid AND sr.is_safe = false)")
+			// Unsafe: at least one scanner reached a verdict of is_safe = false.
+			query = query.Where(
+				"EXISTS (SELECT 1 FROM scan_reports sr WHERE sr.record_cid = records.record_cid AND sr.status IN ? AND sr.is_safe = false)",
+				scanned,
+			)
 		}
 	}
 
@@ -633,7 +643,41 @@ func (d *DB) handleFilterOptions(query *gorm.DB, cfg *types.RecordFilters) *gorm
 		}
 
 		if len(severities) > 0 {
-			query = query.Where("EXISTS (SELECT 1 FROM scan_reports sr WHERE sr.record_cid = records.record_cid AND sr.max_severity IN ?)", severities)
+			// Gated like ScanSafe: max_severity on a failed row is a
+			// placeholder, not a finding.
+			query = query.Where(
+				"EXISTS (SELECT 1 FROM scan_reports sr WHERE sr.record_cid = records.record_cid AND sr.status IN ? AND sr.max_severity IN ?)",
+				types.ScannedStatuses(), severities,
+			)
+		}
+	}
+
+	// Handle scan status filter (how completely a scan ran). Uses the wildcard
+	// builder rather than an IN list to stay case-insensitive like every other
+	// string filter.
+	if len(cfg.ScanStatuses) > 0 {
+		condition, args := utils.BuildWildcardCondition("sr.status", cfg.ScanStatuses)
+		if condition != "" {
+			query = query.Where(
+				"EXISTS (SELECT 1 FROM scan_reports sr WHERE sr.record_cid = records.record_cid AND "+condition+")",
+				args...,
+			)
+		}
+	}
+
+	// Handle scan failure reason filter. Wildcards select a whole family at
+	// once, e.g. "scanner-*" for failures caused by this deployment.
+	//
+	// The non-empty guard keeps "*" meaning "any failure" rather than "any
+	// scan": a completed row stores an empty reason, which LIKE '%' matches.
+	if len(cfg.ScanFailureReasons) > 0 {
+		condition, args := utils.BuildWildcardCondition("sr.failure_reason", cfg.ScanFailureReasons)
+		if condition != "" {
+			query = query.Where(
+				"EXISTS (SELECT 1 FROM scan_reports sr WHERE sr.record_cid = records.record_cid"+
+					" AND sr.failure_reason != '' AND "+condition+")",
+				args...,
+			)
 		}
 	}
 
