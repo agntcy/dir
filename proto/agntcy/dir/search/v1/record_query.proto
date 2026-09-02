@@ -106,4 +106,16 @@ enum RecordQueryType {
   // Query for a record description (free-text field).
   // Supports wildcard patterns: "*fraud*", "*banking*", "real-time*"
   RECORD_QUERY_TYPE_DESCRIPTION = 19;
+
+  // Filter for records by how completely they were scanned.
+  // Value is a status name: "completed", "partial", or "failed".
+  // "completed" → every phase the record declared ran.
+  // "partial"   → some phases ran: findings are real, coverage is incomplete.
+  // "failed"    → no phase produced a result.
+  RECORD_QUERY_TYPE_SCAN_STATUS = 20;
+
+  // Filter for records by why a scan phase could not run.
+  // Value is a failure reason code, e.g. "source-unreachable",
+  // "endpoint-url-invalid", "scanner-timeout". Supports wildcards: "scanner-*".
+  RECORD_QUERY_TYPE_SCAN_FAILURE_REASON = 21;
 }
