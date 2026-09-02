@@ -38,6 +38,20 @@ dependencies:
     version: v0.5.1
     repository: oci://ghcr.io/agntcy/oasf/helm-charts
     condition: oasf.enabled
+  # OASF-SDK extractor server subchart (OPTIONAL - opt-in only)
+  # Serves the OASF taxonomy extractor over gRPC so the HTTP gateway can turn
+  # free-text queries into OASF skills/domains/modules without provisioning
+  # local model assets into the apiserver pod.
+  # Only installed when explicitly enabled via: oasf-sdk.enabled: true
+  # Default: disabled (oasf-sdk.enabled: false in values.yaml)
+  # NOTE: the values key is the hyphenated chart name, not a camelCase alias.
+  # Helm turns a dependency alias into the subchart's .Chart.Name, and the
+  # upstream chart names its container after it - an alias like "oasfSdk" would
+  # render an invalid (non-lowercase) container name.
+  - name: oasf-sdk
+    version: v1.3.0
+    repository: oci://ghcr.io/agntcy/oasf-sdk/helm-charts
+    condition: oasf-sdk.enabled
   # PostgreSQL database (Bitnami subchart)
   # Disable when using SQLite or external PostgreSQL via: postgresql.enabled: false
   # Default: enabled (postgresql.enabled: true in values.yaml)

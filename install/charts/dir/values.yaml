@@ -514,6 +514,48 @@ apiserver:
 
     resources: {}
 
+  # OASF-SDK extractor server configuration (subchart) - OPTIONAL
+  # The OASF-SDK server is NOT installed by default. It serves the OASF taxonomy
+  # extractor over gRPC, which the HTTP gateway uses for natural-language search
+  # (POST /v1/search, POST /v1/extract). Local setups instead rely on the
+  # extractor assets provisioned by `dirctl init`; cloud deployments enable this
+  # subchart so no model assets have to be baked into the apiserver pod.
+  #
+  # When enabled, apiserver.config.extractor.remote_addr is derived from the
+  # rendered Service unless you set it explicitly.
+  #
+  # The key is hyphenated because it is the subchart name - see the note in
+  # apiserver/Chart.yaml for why this dependency is not aliased.
+  oasf-sdk:
+    enabled: false
+
+    # v1.3.0 and newer ship the embedding model inside the image (~90 MB pull),
+    # so the server no longer downloads it from huggingface.co on startup.
+    image:
+      repository: ghcr.io/agntcy/oasf-sdk
+      tag: v1.3.0
+      pullPolicy: IfNotPresent
+
+    # The gRPC server serves plaintext with no authentication, so it must stay
+    # cluster-internal: the gateway reaches it over cluster DNS and a node port
+    # would expose free-text user queries on every node IP.
+    service:
+      type: ClusterIP
+      externalPort: 31234
+      internalPort: 31234
+
+    ingress:
+      enabled: false
+
+    # REQUIRED. The OASF URL is the extractor's on/off switch upstream: the
+    # OASF-SDK server registers ExtractorService only when it is set, and
+    # without it every Extract call fails with "unknown service
+    # agntcy.oasfsdk.extractor.v1.ExtractorService".
+    env:
+      OASF_SDK_EXTRACTOR_OASF_URL: "https://schema.oasf.outshift.com"
+
+    resources: {}
+
   # Secrets configuration
   # Choose ONE of two methods:
   # 1. Helm-managed secrets (secrets.*) - credentials in values.yaml

@@ -33,3 +33,6 @@ apiserver:
     service:
       type: NodePort
       nodePort: 30889
+
+  oasf-sdk:
+    enabled: true
