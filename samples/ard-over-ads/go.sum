@@ -6,8 +6,8 @@ buf.build/gen/go/agntcy/oasf-sdk/protocolbuffers/go v1.36.12-20260811133823-5281
 buf.build/gen/go/agntcy/oasf-sdk/protocolbuffers/go v1.36.12-20260811133823-5281d0c487b5.1/go.mod h1:eKi01nk7BnodFDdtQKpB8rK33wGb3eclmaAFGPJFwLI=
 buf.build/gen/go/agntcy/oasf/protocolbuffers/go v1.36.12-20260721113505-cf7db8888586.1 h1:Kgct/4Z/6nueblBepvpwo1UwV4+lxOfgEW4BoZEDjlM=
 buf.build/gen/go/agntcy/oasf/protocolbuffers/go v1.36.12-20260721113505-cf7db8888586.1/go.mod h1:fFU895SO7wQQGKQjtcNazRJgE8pigwfwTLmf4W2gRsk=
-buf.build/gen/go/bufbuild/protovalidate/protocolbuffers/go v1.36.12-20260709200747-435963d16310.1 h1:6nlcxMOui23ZRVAfJM451duu79P1npA5JRdZqMilrrQ=
-buf.build/gen/go/bufbuild/protovalidate/protocolbuffers/go v1.36.12-20260709200747-435963d16310.1/go.mod h1:TCt1lluMFnctISJXvkIQ4x3ABrPuUKCWKyjKdkJNBpw=
+buf.build/gen/go/bufbuild/protovalidate/protocolbuffers/go v1.36.12-20260825204119-511051f7f437.1 h1:Slv0uGxx219srASyiaI5C9cDlyG8kNDcXpTSYcuAeE4=
+buf.build/gen/go/bufbuild/protovalidate/protocolbuffers/go v1.36.12-20260825204119-511051f7f437.1/go.mod h1:TCt1lluMFnctISJXvkIQ4x3ABrPuUKCWKyjKdkJNBpw=
 buf.build/go/protovalidate v1.3.0 h1:8ITcnZGkAHx6TyhZvro+iET/AyqU8gEWQJK2WsT62ms=
 buf.build/go/protovalidate v1.3.0/go.mod h1:82s5g+rFRj1CZPiLv6OTA31jBu2fpq7mLXHwa9mZfEs=
 cel.dev/expr v0.25.2 h1:K6j46C81hXtZQfuX60cVWQFBJahKSE2gfRbNuvr5bFs=
@@ -198,8 +198,8 @@ github.com/agext/levenshtein v1.2.3 h1:YB2fHEn0UJagG8T1rrWknE3ZQzWM06O8AMAatNn7l
 github.com/agext/levenshtein v1.2.3/go.mod h1:JEDfjyjHDjOF/1e4FlBE/PkbqA9OfWu2ki2W0IB5558=
 github.com/agnivade/levenshtein v1.2.1 h1:EHBY3UOn1gwdy/VbFwgo4cxecRznFk7fKWN1KOX7eoM=
 github.com/agnivade/levenshtein v1.2.1/go.mod h1:QVVI16kDrtSuwcpd0p1+xMC6Z/VfhtCyDIjcwga4/DU=
-github.com/agntcy/dir-importer v1.5.4 h1:O316yt4CElr6cXuJ5ApEHJA4CO0FYPEvANLamoW+vo4=
-github.com/agntcy/dir-importer v1.5.4/go.mod h1:B9rrrEPfu/0d/vOo6wrtxGIFzGbatZmY68qcf2JBUFA=
+github.com/agntcy/dir-importer v1.5.5-0.20260819134321-525b42c65a49 h1:TABJ5nyLRXiZ5N/ziZOlrLen9Wjl+4H6VehBbIAllP8=
+github.com/agntcy/dir-importer v1.5.5-0.20260819134321-525b42c65a49/go.mod h1:B9rrrEPfu/0d/vOo6wrtxGIFzGbatZmY68qcf2JBUFA=
 github.com/agntcy/dir-mcp v1.3.5 h1:spUkmUBffT63ZHL+8BmHOFGuCA/cwuzzQdjCVXK/lOQ=
 github.com/agntcy/dir-mcp v1.3.5/go.mod h1:USikCAJujhZHnxb1SC77YjBeTAfR+ceoztQATw5bn5I=
 github.com/agntcy/dir-runtime/discovery v1.3.5 h1:QvR2cFNdorpMXtI6nLJGHthtygDfocpAwY8f8675++A=
@@ -2357,8 +2357,8 @@ google.golang.org/grpc v1.35.0/go.mod h1:qjiiYl8FncCW8feJPdyg3v6XW24KsRHe+dy9BAG
 google.golang.org/grpc v1.36.0/go.mod h1:qjiiYl8FncCW8feJPdyg3v6XW24KsRHe+dy9BAGRRjU=
 google.golang.org/grpc v1.36.1/go.mod h1:qjiiYl8FncCW8feJPdyg3v6XW24KsRHe+dy9BAGRRjU=
 google.golang.org/grpc v1.38.0/go.mod h1:NREThFqKR1f3iQ6oBuvc5LadQuXVGo9rkm5ZGrQdJfM=
-google.golang.org/grpc v1.83.0 h1:JeNZEKJFbQxArAMl+hiytHauacDNqJUllNfmIMmpqnQ=
-google.golang.org/grpc v1.83.0/go.mod h1:kDyl6SKsiHKt0uylY5gtn5cEjkrIOhQOGDgIc4JGwzQ=
+google.golang.org/grpc v1.83.1 h1:HIO0+BEtBP6soyqvqC8sNUjZ7bTs+0hFQuFF+RAy++Y=
+google.golang.org/grpc v1.83.1/go.mod h1:kDyl6SKsiHKt0uylY5gtn5cEjkrIOhQOGDgIc4JGwzQ=
 google.golang.org/grpc/examples v0.0.0-20250407062114-b368379ef8f6 h1:ExN12ndbJ608cboPYflpTny6mXSzPrDLh0iTaVrRrds=
 google.golang.org/grpc/examples v0.0.0-20250407062114-b368379ef8f6/go.mod h1:6ytKWczdvnpnO+m+JiG9NjEDzR1FJfsnmJdG7B8QVZ8=
 google.golang.org/protobuf v0.0.0-20200109180630-ec00e32a8dfd/go.mod h1:DFci5gLYBciE7Vtevhsrf46CRTquxDuWsQurQQe4oz8=
