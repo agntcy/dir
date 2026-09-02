@@ -12,6 +12,8 @@ import (
 	databaseutils "github.com/agntcy/dir/server/database/utils"
 	"github.com/agntcy/dir/server/types"
 	"github.com/agntcy/dir/utils/logging"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 )
 
 var searchLogger = logging.Logger("controller/search")
@@ -44,6 +46,34 @@ func (c *searchCtlr) CountRecords(_ context.Context, req *searchv1.CountRecordsR
 	}
 
 	return &searchv1.CountRecordsResponse{TotalCount: totalCount}, nil
+}
+
+func (c *searchCtlr) ListRecordValues(_ context.Context, req *searchv1.ListRecordValuesRequest) (*searchv1.ListRecordValuesResponse, error) {
+	searchLogger.Debug("Called search controller's ListRecordValues method", "req", req)
+
+	// Reject unsupported fields up front so a caller gets a precise error rather
+	// than a response that silently omits what it asked for.
+	for _, field := range req.GetFields() {
+		if !types.IsSupportedRecordValueField(field) {
+			return nil, status.Errorf(codes.InvalidArgument,
+				"unsupported field %s: supported fields are %v", field, types.SupportedRecordValueFields())
+		}
+	}
+
+	fieldValues, err := c.db.ListRecordValues(req.GetFields())
+	if err != nil {
+		return nil, fmt.Errorf("failed to list record values: %w", err)
+	}
+
+	fields := make([]*searchv1.ListRecordValuesResponse_FieldValues, 0, len(fieldValues))
+	for _, fieldValue := range fieldValues {
+		fields = append(fields, &searchv1.ListRecordValuesResponse_FieldValues{
+			Field:  fieldValue.Field,
+			Values: fieldValue.Values,
+		})
+	}
+
+	return &searchv1.ListRecordValuesResponse{Fields: fields}, nil
 }
 
 func (c *searchCtlr) SearchCIDs(req *searchv1.SearchCIDsRequest, srv searchv1.SearchService_SearchCIDsServer) error {

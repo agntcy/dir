@@ -10,6 +10,7 @@ import (
 	catalogv1 "github.com/agntcy/dir/api/catalog/v1"
 	coretypes "github.com/agntcy/dir/api/core/types"
 	routingv1 "github.com/agntcy/dir/api/routing/v1"
+	searchv1 "github.com/agntcy/dir/api/search/v1"
 	storev1 "github.com/agntcy/dir/api/store/v1"
 )
 
@@ -54,6 +55,11 @@ type SearchDatabaseAPI interface {
 
 	// CountRecords returns the number of distinct records matching the provided filters.
 	CountRecords(opts ...FilterOption) (uint32, error)
+
+	// ListRecordValues returns the distinct values present in the registry for each
+	// requested field, in the order requested. An empty fields slice returns every
+	// supported field in canonical order.
+	ListRecordValues(fields []searchv1.RecordQueryType) ([]RecordFieldValues, error)
 
 	// GetRecords retrieves full records based on the provided filters.
 	GetRecords(opts ...FilterOption) ([]coretypes.Record, error)

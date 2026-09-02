@@ -14,6 +14,7 @@ import (
 	coretypes "github.com/agntcy/dir/api/core/types"
 	corev1 "github.com/agntcy/dir/api/core/v1"
 	routingv1 "github.com/agntcy/dir/api/routing/v1"
+	searchv1 "github.com/agntcy/dir/api/search/v1"
 	signv1 "github.com/agntcy/dir/api/sign/v1"
 	storev1 "github.com/agntcy/dir/api/store/v1"
 	"github.com/agntcy/dir/client/utils/verify"
@@ -202,6 +203,10 @@ func (f *fakeSignatureDB) GetRecordCIDs(opts ...types.FilterOption) ([]string, e
 
 func (f *fakeSignatureDB) CountRecords(opts ...types.FilterOption) (uint32, error) {
 	return 0, nil
+}
+
+func (f *fakeSignatureDB) ListRecordValues(fields []searchv1.RecordQueryType) ([]types.RecordFieldValues, error) {
+	return nil, nil
 }
 
 func (f *fakeSignatureDB) GetRecords(opts ...types.FilterOption) ([]coretypes.Record, error) {

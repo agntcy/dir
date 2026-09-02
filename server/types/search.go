@@ -3,6 +3,42 @@
 
 package types
 
+import (
+	"slices"
+
+	searchv1 "github.com/agntcy/dir/api/search/v1"
+)
+
+// RecordFieldValues is the set of distinct values present in the registry for
+// one record field.
+type RecordFieldValues struct {
+	Field  searchv1.RecordQueryType
+	Values []string
+}
+
+// supportedRecordValueFields lists the fields ListRecordValues can enumerate,
+// in ascending RecordQueryType order. That order is also the canonical order in
+// which results are returned when a caller requests every field.
+var supportedRecordValueFields = []searchv1.RecordQueryType{
+	searchv1.RecordQueryType_RECORD_QUERY_TYPE_VERSION,
+	searchv1.RecordQueryType_RECORD_QUERY_TYPE_SKILL_NAME,
+	searchv1.RecordQueryType_RECORD_QUERY_TYPE_MODULE_NAME,
+	searchv1.RecordQueryType_RECORD_QUERY_TYPE_DOMAIN_NAME,
+	searchv1.RecordQueryType_RECORD_QUERY_TYPE_SCHEMA_VERSION,
+}
+
+// SupportedRecordValueFields returns the fields ListRecordValues can enumerate,
+// in canonical order.
+func SupportedRecordValueFields() []searchv1.RecordQueryType {
+	return slices.Clone(supportedRecordValueFields)
+}
+
+// IsSupportedRecordValueField reports whether ListRecordValues can enumerate
+// distinct values for the given field.
+func IsSupportedRecordValueField(field searchv1.RecordQueryType) bool {
+	return slices.Contains(supportedRecordValueFields, field)
+}
+
 type RecordFilters struct {
 	Limit              int
 	Offset             int

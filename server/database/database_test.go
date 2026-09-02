@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	coretypes "github.com/agntcy/dir/api/core/types"
+	searchv1 "github.com/agntcy/dir/api/search/v1"
 	dbconfig "github.com/agntcy/dir/server/database/config"
 	gormdb "github.com/agntcy/dir/server/database/gorm"
 	"github.com/agntcy/dir/server/types"
@@ -271,6 +272,76 @@ func TestCountRecords_NilOption(t *testing.T) {
 
 	_, err := db.CountRecords(nilOpt)
 	assert.Error(t, err)
+}
+
+func TestListRecordValues_RequestedFields(t *testing.T) {
+	db := setupTestDB(t)
+	seedDB(t, db)
+
+	got, err := db.ListRecordValues([]searchv1.RecordQueryType{
+		searchv1.RecordQueryType_RECORD_QUERY_TYPE_MODULE_NAME,
+		searchv1.RecordQueryType_RECORD_QUERY_TYPE_VERSION,
+	})
+	require.NoError(t, err)
+
+	// Values are deduplicated (1.0.0 appears on two records) and sorted, and
+	// the field order mirrors the request.
+	assert.Equal(t, []types.RecordFieldValues{
+		{
+			Field:  searchv1.RecordQueryType_RECORD_QUERY_TYPE_MODULE_NAME,
+			Values: []string{"core/llm/model", "integration/acp", "integration/mcp"},
+		},
+		{
+			Field:  searchv1.RecordQueryType_RECORD_QUERY_TYPE_VERSION,
+			Values: []string{"1.0.0", "2.0.0"},
+		},
+	}, got)
+}
+
+func TestListRecordValues_NoFieldsReturnsAllSupported(t *testing.T) {
+	db := setupTestDB(t)
+	seedDB(t, db)
+
+	got, err := db.ListRecordValues(nil)
+	require.NoError(t, err)
+
+	fields := make([]searchv1.RecordQueryType, 0, len(got))
+	for _, fieldValues := range got {
+		fields = append(fields, fieldValues.Field)
+	}
+
+	assert.Equal(t, []searchv1.RecordQueryType{
+		searchv1.RecordQueryType_RECORD_QUERY_TYPE_VERSION,
+		searchv1.RecordQueryType_RECORD_QUERY_TYPE_SKILL_NAME,
+		searchv1.RecordQueryType_RECORD_QUERY_TYPE_MODULE_NAME,
+		searchv1.RecordQueryType_RECORD_QUERY_TYPE_DOMAIN_NAME,
+		searchv1.RecordQueryType_RECORD_QUERY_TYPE_SCHEMA_VERSION,
+	}, fields)
+
+	assert.Equal(t, []string{"0.7.0", "0.8.0"}, got[4].Values)
+}
+
+func TestListRecordValues_UnsupportedField(t *testing.T) {
+	db := setupTestDB(t)
+	seedDB(t, db)
+
+	_, err := db.ListRecordValues([]searchv1.RecordQueryType{
+		searchv1.RecordQueryType_RECORD_QUERY_TYPE_AUTHOR,
+	})
+	require.ErrorContains(t, err, "unsupported record value field")
+}
+
+func TestListRecordValues_EmptyRegistry(t *testing.T) {
+	db := setupTestDB(t)
+
+	got, err := db.ListRecordValues([]searchv1.RecordQueryType{
+		searchv1.RecordQueryType_RECORD_QUERY_TYPE_SKILL_NAME,
+	})
+	require.NoError(t, err)
+
+	assert.Equal(t, []types.RecordFieldValues{
+		{Field: searchv1.RecordQueryType_RECORD_QUERY_TYPE_SKILL_NAME, Values: []string{}},
+	}, got)
 }
 
 func TestGetRecordCIDs_Wildcards(t *testing.T) {
