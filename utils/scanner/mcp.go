@@ -112,7 +112,11 @@ func (r *MCPRunner) Run(ctx context.Context, record *corev1.Record) (*ScanResult
 func (r *MCPRunner) runSourceScan(ctx context.Context, record *corev1.Record) (*ScanResult, error) {
 	repoURL, subfolder := extractSourceInfo(record)
 	if repoURL == "" {
-		return &ScanResult{Skipped: true, SkippedReason: "no source-code locator found"}, nil
+		return &ScanResult{
+			Skipped:       true,
+			SkippedReason: "no source-code locator found",
+			FailureReason: FailureSourceNotDeclared,
+		}, nil
 	}
 
 	// behavioral runs an LLM alignment pass and exits non-zero without
@@ -123,6 +127,7 @@ func (r *MCPRunner) runSourceScan(ctx context.Context, record *corev1.Record) (*
 		return &ScanResult{
 			Skipped:       true,
 			SkippedReason: "no LLM configured for the behavioral analyzer",
+			FailureReason: FailureLLMNotConfigured,
 		}, nil
 	}
 
@@ -136,9 +141,18 @@ func (r *MCPRunner) runSourceScan(ctx context.Context, record *corev1.Record) (*
 	if err := gitClone(ctx, repoURL, tmpDir); err != nil {
 		mcpLogger.Warn("repository not cloneable, skipping scan", "url", repoURL, "error", err)
 
+		// Not classified more finely: git hides private, deleted, renamed and
+		// rate-limited alike behind exit 128. Consumers use the
+		// consecutive-failure count to judge whether it is durable.
+		reason := FailureSourceUnreachable
+		if timeout := ClassifyError(ctx, err); timeout == FailureScannerTimeout {
+			reason = FailureScannerTimeout
+		}
+
 		return &ScanResult{
 			Skipped:       true,
-			SkippedReason: fmt.Sprintf("git clone failed: %s", repoURL),
+			SkippedReason: fmt.Sprintf("git clone failed: %s: %s", repoURL, err),
+			FailureReason: reason,
 		}, nil
 	}
 

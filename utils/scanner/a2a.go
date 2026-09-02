@@ -53,7 +53,11 @@ func (r *A2ARunner) Name() string { return "a2a" }
 func (r *A2ARunner) Run(ctx context.Context, record *corev1.Record) (*ScanResult, error) {
 	card, ok := extractA2ACard(record)
 	if !ok {
-		return &ScanResult{Skipped: true, SkippedReason: "no A2A agent card found"}, nil
+		return &ScanResult{
+			Skipped:       true,
+			SkippedReason: "no A2A agent card found",
+			FailureReason: FailureArtifactMissing,
+		}, nil
 	}
 
 	cardJSON, err := json.Marshal(card)
