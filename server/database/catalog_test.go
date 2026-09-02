@@ -303,6 +303,9 @@ func TestListCatalogTags(t *testing.T) {
 	tags, err := db.ListCatalogTags()
 	require.NoError(t, err)
 
+	// Only OASF skills and domains become tags. Record annotations are free-form
+	// per-deployment metadata with unbounded cardinality, so they are not offered
+	// as discovery tags even though they remain filterable.
 	assert.Equal(t, []*catalogv1.CatalogTag{
 		{
 			Id:    catalogv1.DomainTag("*", "life_science/biotechnology"),
@@ -312,8 +315,6 @@ func TestListCatalogTags(t *testing.T) {
 			Id:    catalogv1.SkillTag("*", "test_skill"),
 			Label: "Test Skill",
 		},
-		{Id: "featured", Label: "featured"},
-		{Id: "owner=alice", Label: "owner=alice"},
 	}, tags)
 }
 
