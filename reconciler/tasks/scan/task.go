@@ -190,9 +190,24 @@ func (t *Task) recordOutcome(recordCID, runnerName string, result *scanner.ScanR
 		row.MaxSeverity = maxSeverityString(report.GetFindings())
 	}
 
-	if err := t.db.UpsertScanReport(row, t.config.ScanSchedule()); err != nil {
+	if err := t.db.UpsertScanReport(row, t.scanSchedule(result.FailureReason)); err != nil {
 		logger.Warn("Failed to upsert scan report", "runner", runnerName, "cid", recordCID, "error", err)
 	}
+}
+
+// scanSchedule returns the retry schedule to write with an outcome.
+//
+// A record is immutable, so a failure it caused backs off to the TTL. Other
+// failures keep the shorter cap, so a misconfigured deployment recovers within
+// a day of the fix.
+func (t *Task) scanSchedule(reason scanner.FailureReason) types.ScanSchedule {
+	schedule := t.config.ScanSchedule()
+
+	if reason.IsPublisherFault() {
+		schedule.RetryMax = schedule.FreshFor
+	}
+
+	return schedule
 }
 
 // scanStatus maps a ScanResult onto the persisted status.
