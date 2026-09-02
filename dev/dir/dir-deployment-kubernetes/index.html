@@ -1409,6 +1409,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#oasf-extractor-server" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        OASF Extractor Server
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#content-policies" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2261,6 +2272,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#oasf-extractor-server" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        OASF Extractor Server
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#content-policies" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2727,6 +2749,36 @@ kubectl<span class="w"> </span><span class="nb">wait</span><span class="w"> </sp
 </div>
 </div>
 </div>
+<h2 id="oasf-extractor-server">OASF Extractor Server</h2>
+<p>Natural-language search on the HTTP gateway (<code>POST /v1/search</code> and <code>POST /v1/extract</code>) needs an OASF taxonomy extractor to turn free text into OASF skills, domains, modules, and keywords. Locally, <code>dirctl init</code> provisions the extractor assets on the machine that runs them. In a cluster there is nowhere to run <code>dirctl init</code>, so the chart can deploy an OASF-SDK gRPC server next to the API server instead and point the gateway at it.</p>
+<p>The subchart is opt-in and disabled by default:</p>
+<div class="highlight"><pre><span></span><code><span class="nt">apiserver</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">httpGateway</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">enabled</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+<span class="w">  </span><span class="nt">oasf-sdk</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">enabled</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+</code></pre></div>
+<p>That renders a <code>&lt;release&gt;-oasf-sdk</code> Deployment and Service, and sets <code>extractor.remote_addr</code> in the API server's <code>server.config.yml</code> to the Service's cluster DNS name — for a release named <code>dir</code> in namespace <code>dir-dev-dir</code>, <code>dir-oasf-sdk.dir-dev-dir.svc.cluster.local:31234</code>.</p>
+<div class="admonition note">
+<p class="admonition-title">The values key is <code>oasf-sdk</code>, not <code>oasfSdk</code></p>
+<p>It is the upstream subchart name. The dependency is deliberately not aliased: Helm turns an alias into the subchart's <code>.Chart.Name</code>, and the upstream chart names its container after it, so a camelCase alias would render an invalid container name.</p>
+</div>
+<p>A few things worth knowing:</p>
+<ul>
+<li><strong>The server needs <code>OASF_SDK_EXTRACTOR_OASF_URL</code>, and the chart sets it.</strong> That variable is the extractor's on/off switch: the OASF-SDK server registers <code>ExtractorService</code> only when it is set. Override it (<code>oasf-sdk.env</code>) to point at a different schema server, but do not unset it — without it the pod still starts and passes its health check, and every call fails with <code>unknown service agntcy.oasfsdk.extractor.v1.ExtractorService</code>.</li>
+<li><strong>The Service is <code>ClusterIP</code> and stays that way.</strong> The OASF-SDK server speaks plaintext gRPC with no authentication. The gateway reaches it over cluster DNS, so a node port buys nothing and would put free-text user queries on every node IP. Requires chart <code>v1.2.0</code> or newer — earlier versions defaulted to <code>NodePort</code> and always rendered <code>nodePort</code>, which Kubernetes rejects on a <code>ClusterIP</code> Service.</li>
+<li><strong>Startup takes about 40 seconds, and needs the OASF schema URL reachable.</strong> From image <code>v1.3.0</code> the embedding model ships inside the image, so nothing is fetched from <code>huggingface.co</code> — the pull is ~90 MB instead. On start the server converts the model, fetches the taxonomy from <code>OASF_SDK_EXTRACTOR_OASF_URL</code>, and embeds the catalog before going ready. A new OASF release is picked up by restarting the pod.</li>
+<li><strong>The extractor is only consulted when <code>httpGateway.enabled</code> is true.</strong> With the gateway off, nothing dials it.</li>
+<li><strong>A missing extractor is not fatal.</strong> If the server cannot reach one, it logs a warning and starts anyway; only extractor-backed endpoints stay unavailable.</li>
+<li>
+<p><strong>To use an extractor you deploy yourself</strong> — a shared one in another namespace, say — leave <code>oasf-sdk.enabled</code> at <code>false</code> and set the address explicitly. An explicit value always wins over the derived one:</p>
+<div class="highlight"><pre><span></span><code><span class="nt">apiserver</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">config</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">extractor</span><span class="p">:</span>
+<span class="w">      </span><span class="nt">remote_addr</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;oasf-sdk.shared.svc.cluster.local:31234&quot;</span>
+</code></pre></div>
+</li>
+</ul>
 <h2 id="content-policies">Content Policies</h2>
 <p>A content policy runs a scheduled "search, then act on the matches" pipeline against your node. Policies are declared in the <code>dirctl</code> chart's values — no forked chart and no hand-written manifests. Each enabled policy renders a CronJob named <code>&lt;release&gt;-dirctl-policy-&lt;key&gt;</code>.</p>
 <div class="highlight"><pre><span></span><code><span class="nt">policies</span><span class="p">:</span>
