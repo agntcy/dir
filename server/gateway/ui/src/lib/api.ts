@@ -1,4 +1,11 @@
-import type { AICardFilterCriteria, CatalogEntry, CatalogTag } from './types';
+import type {
+	AICardFilterCriteria,
+	CatalogEntry,
+	CatalogTag,
+	ExtractTaxonomyResponse,
+	ScoredClass,
+	SuggestedTag
+} from './types';
 
 /** Matches the 3-column grid layout (18 = 6 full rows). */
 export const CATALOG_PAGE_SIZE = 18;
@@ -64,6 +71,139 @@ export async function fetchCatalogTags(signal?: AbortSignal): Promise<CatalogTag
 
 	const data = await resp.json();
 	return data.tags || [];
+}
+
+/**
+ * Mirrors the max_len on ExtractTaxonomyRequest.text. Counted in code points,
+ * as the server counts runes.
+ */
+export const EXTRACT_TEXT_MAX_LEN = 1024;
+
+/**
+ * Raised when /v1/extract answers 503, which the gateway returns only when no
+ * OASF extractor is configured or the backend is down. Distinct from a plain
+ * error because the caller's response is to withdraw the action rather than to
+ * report a failure the user can do anything about.
+ */
+export class ExtractorUnavailableError extends Error {
+	constructor(message = 'taxonomy extraction is unavailable on this gateway') {
+		super(message);
+		this.name = 'ExtractorUnavailableError';
+	}
+}
+
+/**
+ * Maps free-form text onto the OASF taxonomy via POST /v1/extract.
+ *
+ * The returned classes are not checked against what any record here carries —
+ * that is what suggestTagsFromExtraction is for.
+ */
+export async function extractTaxonomy(
+	text: string,
+	signal?: AbortSignal
+): Promise<ExtractTaxonomyResponse> {
+	const trimmed = text.trim();
+	if (!trimmed) {
+		throw new Error('text is required');
+	}
+
+	// Spend no request on text the server will reject anyway. Code points, not
+	// `.length`: UTF-16 code units would over-count anything outside the BMP and
+	// reject text the server would have accepted.
+	const length = [...trimmed].length;
+	if (length > EXTRACT_TEXT_MAX_LEN) {
+		throw new Error(`text too long (${length} > ${EXTRACT_TEXT_MAX_LEN} characters)`);
+	}
+
+	const resp = await fetch('/v1/extract', {
+		method: 'POST',
+		headers: { 'content-type': 'application/json' },
+		body: JSON.stringify({ text: trimmed }),
+		signal
+	});
+
+	if (resp.status === 503) {
+		throw new ExtractorUnavailableError();
+	}
+
+	if (!resp.ok) throw new Error(`HTTP ${resp.status}: ${resp.statusText}`);
+
+	return await resp.json();
+}
+
+/** Kinds of OASF class that /v1/tags exposes as a tag. */
+type ClassKind = SuggestedTag['kind'];
+
+/**
+ * Captures the kind and class name out of an `oasf:<schema>:skills|domains:<name>`
+ * tag id. Ids of any other shape — record annotations, say — do not match.
+ */
+const OASF_TAG_ID = /^oasf:[^:]*:(skills|domains):(.+)$/;
+
+/**
+ * Indexes catalog tags by the OASF class they carry.
+ *
+ * Keyed on kind and class name rather than the whole tag id: ListCatalogTags
+ * writes "*" as the schema version today, and hard-coding that would make every
+ * suggestion silently vanish the day it emits a real version instead.
+ */
+function indexOASFTags(catalogTags: CatalogTag[]): Map<string, CatalogTag> {
+	const byClass = new Map<string, CatalogTag>();
+
+	for (const tag of catalogTags) {
+		const match = OASF_TAG_ID.exec(tag.id);
+		if (!match) continue;
+
+		const kind: ClassKind = match[1] === 'skills' ? 'skill' : 'domain';
+		const key = `${kind}:${match[2]}`;
+		if (!byClass.has(key)) byClass.set(key, tag);
+	}
+
+	return byClass;
+}
+
+/**
+ * Turns an extraction into selectable tags, keeping only the classes some record
+ * in this registry actually carries.
+ *
+ * A suggestion no record has is worse than no suggestion: the user takes our
+ * advice and lands on an empty catalog. Keywords are dropped here rather than in
+ * the UI — they have no OASF class behind them, so there is no tag to select.
+ *
+ * Order follows the extractor: skills before domains, descending score within
+ * each. Ties are not re-sorted, so equally scored classes keep the order the
+ * extractor ranked them in.
+ */
+export function suggestTagsFromExtraction(
+	extraction: ExtractTaxonomyResponse,
+	catalogTags: CatalogTag[]
+): SuggestedTag[] {
+	const byClass = indexOASFTags(catalogTags);
+	if (byClass.size === 0) return [];
+
+	const suggestions: SuggestedTag[] = [];
+	const seen = new Set<string>();
+
+	const collect = (classes: ScoredClass[] | undefined, kind: ClassKind) => {
+		for (const cl of classes ?? []) {
+			const tag = byClass.get(`${kind}:${cl.name}`);
+			if (!tag || seen.has(tag.id)) continue;
+
+			seen.add(tag.id);
+			suggestions.push({
+				id: tag.id,
+				label: tag.label,
+				name: cl.name,
+				kind,
+				score: cl.score
+			});
+		}
+	};
+
+	collect(extraction.skills, 'skill');
+	collect(extraction.domains, 'domain');
+
+	return suggestions;
 }
 
 export async function fetchAICardsPage(
