@@ -46,6 +46,16 @@ func NewTask(config Config, db types.DatabaseAPI, store types.StoreAPI, refStore
 		scanner.NewA2ARunner(scanner.A2AConfig{CLIPath: config.GetA2ACLIPath()}),
 	}
 
+	// SCANNER_TYPE_UNSPECIFIED is the bucket every third-party scanner lands
+	// in, so a runner missing from toProtoScannerType would publish reports
+	// indistinguishable from theirs. Fail at startup rather than let pruning
+	// silently skip that runner's reports for the life of the deployment.
+	for _, r := range runners {
+		if toProtoScannerType(r.Name()) == scanv1.ScannerType_SCANNER_TYPE_UNSPECIFIED {
+			return nil, fmt.Errorf("scan runner %q has no ScannerType enum value", r.Name())
+		}
+	}
+
 	return &Task{
 		config:   config,
 		db:       db,
@@ -246,6 +256,15 @@ func (t *Task) pushReferrer(ctx context.Context, recordCID string, report *scanv
 // pruneScanReferrers deletes the scan report referrers left by earlier runs of
 // scannerType, keeping keepCID.
 func (t *Task) pruneScanReferrers(ctx context.Context, recordCID string, scannerType scanv1.ScannerType, keepCID string) {
+	// UNSPECIFIED names the set of scanners this enum does not know rather than
+	// one scanner, so it cannot identify which reports an earlier run of the
+	// same producer left behind. Pruning on it would delete the reports of
+	// every third party that pushed one. NewTask rejects runners that map here,
+	// so this guards against a future caller rather than today's.
+	if scannerType == scanv1.ScannerType_SCANNER_TYPE_UNSPECIFIED {
+		return
+	}
+
 	var superseded []string
 
 	err := t.refStore.WalkReferrers(ctx, recordCID, corev1.ScanReportReferrerType, func(ref *corev1.RecordReferrer) error {

@@ -233,3 +233,76 @@ func TestPushReferrer_SkipsUnparsableReferrers(t *testing.T) {
 		t.Errorf("deleted = %v, want [old-mcp]", store.deleted)
 	}
 }
+
+// UNSPECIFIED is the bucket shared by every scanner this enum does not name, so
+// it cannot say which reports an earlier run of the same producer left. Pruning
+// on it would have each third party delete the others' reports.
+func TestPushReferrer_NeverPrunesUnspecifiedReports(t *testing.T) {
+	t.Parallel()
+
+	store := &fakeReferrerStore{
+		pushedCID: "new-vendor-a",
+		existing: []*corev1.RecordReferrer{
+			scanReferrer(t, "vendor-a", scanv1.ScannerType_SCANNER_TYPE_UNSPECIFIED),
+			scanReferrer(t, "vendor-b", scanv1.ScannerType_SCANNER_TYPE_UNSPECIFIED),
+		},
+	}
+
+	task := &Task{refStore: store}
+
+	if err := task.pushReferrer(t.Context(), testRecordCID, &scanv1.ScanReport{
+		ScannerType: scanv1.ScannerType_SCANNER_TYPE_UNSPECIFIED,
+		ScannedAt:   "2026-06-01T00:00:00Z",
+		IsSafe:      true,
+	}); err != nil {
+		t.Fatalf("pushReferrer: %v", err)
+	}
+
+	if len(store.deleted) != 0 {
+		t.Errorf("deleted %v, want nothing", store.deleted)
+	}
+}
+
+// The reverse direction: a third-party report is not an earlier run of a named
+// scanner, so a named scanner must leave it in place.
+func TestPushReferrer_LeavesThirdPartyReportsAlone(t *testing.T) {
+	t.Parallel()
+
+	store := &fakeReferrerStore{
+		pushedCID: "new-mcp",
+		existing: []*corev1.RecordReferrer{
+			scanReferrer(t, "old-mcp", scanv1.ScannerType_SCANNER_TYPE_MCP),
+			scanReferrer(t, "vendor-a", scanv1.ScannerType_SCANNER_TYPE_UNSPECIFIED),
+		},
+	}
+
+	task := &Task{refStore: store}
+
+	if err := task.pushReferrer(t.Context(), testRecordCID, mcpReport()); err != nil {
+		t.Fatalf("pushReferrer: %v", err)
+	}
+
+	if !slices.Equal(store.deleted, []string{"old-mcp"}) {
+		t.Errorf("deleted = %v, want [old-mcp]", store.deleted)
+	}
+}
+
+// A runner name absent from the switch falls into the UNSPECIFIED bucket, where
+// its reports would be indistinguishable from a third party's. NewTask refuses
+// to start with such a runner; this pins the fallthrough that check relies on.
+func TestToProtoScannerType_UnknownRunnerIsUnspecified(t *testing.T) {
+	t.Parallel()
+
+	for name, want := range map[string]scanv1.ScannerType{
+		"mcp":     scanv1.ScannerType_SCANNER_TYPE_MCP,
+		"skill":   scanv1.ScannerType_SCANNER_TYPE_SKILL,
+		"a2a":     scanv1.ScannerType_SCANNER_TYPE_A2A,
+		"llm":     scanv1.ScannerType_SCANNER_TYPE_UNSPECIFIED,
+		"MCP-v2":  scanv1.ScannerType_SCANNER_TYPE_UNSPECIFIED,
+		"unknown": scanv1.ScannerType_SCANNER_TYPE_UNSPECIFIED,
+	} {
+		if got := toProtoScannerType(name); got != want {
+			t.Errorf("toProtoScannerType(%q) = %v, want %v", name, got, want)
+		}
+	}
+}
