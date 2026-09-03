@@ -57,6 +57,9 @@ on:
   schedule:
     - cron: "0 0 * * *"
 
+permissions:
+  contents: read
+
 concurrency:
   group: import-records
   cancel-in-progress: false
