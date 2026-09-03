@@ -1,6 +1,6 @@
 # Directory
 
-![GitHub Release (latest by date)](https://img.shields.io/github/v/release/agntcy/dir)
+[![GitHub Release (latest by date)](https://img.shields.io/github/v/release/agntcy/dir)](https://github.com/agntcy/dir/releases/latest)
 [![CI](https://github.com/agntcy/dir/actions/workflows/ci.yaml/badge.svg?branch=main)](https://github.com/agntcy/dir/actions/workflows/ci.yaml)
 [![Coverage](https://codecov.io/gh/agntcy/dir/branch/main/graph/badge.svg)](https://codecov.io/gh/agntcy/dir)
 [![License](https://img.shields.io/github/license/agntcy/dir)](./LICENSE.md)
