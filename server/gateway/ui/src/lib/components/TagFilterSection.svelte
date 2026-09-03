@@ -32,6 +32,12 @@
 
 	let suggestAbort: AbortController | undefined;
 
+	/**
+	 * Identifies the newest suggest attempt, so a superseded one cannot clear the
+	 * loading state out from under its replacement.
+	 */
+	let suggestRun = 0;
+
 	let query = $derived(tagSearch.trim());
 
 	let visibleTags = $derived(
@@ -48,20 +54,23 @@
 		return suggestions.filter((s) => !shown.has(s.id));
 	});
 
-	let canSuggest = $derived(extractorAvailable && query.length > 0 && !suggesting);
+	/**
+	 * Requires the tag list, since suggestions are only ever the intersection with
+	 * it: extracting against an empty `catalogTags` would report "nothing matched"
+	 * when the truth is "nothing to match against yet", and that verdict would
+	 * stick once the tags arrived. Keyed on the list being non-empty rather than on
+	 * `tagsLoading`, so a failed tag load disables the action too.
+	 */
+	let canSuggest = $derived(
+		extractorAvailable && catalogTags.length > 0 && query.length > 0 && !suggesting
+	);
 
 	/**
 	 * The path most users find this feature through: they typed a phrase, so
 	 * substring matching found nothing.
 	 */
 	let promptForSuggestions = $derived(
-		extractorAvailable &&
-			query.length > 0 &&
-			visibleTags.length === 0 &&
-			!tagsLoading &&
-			!suggesting &&
-			!suggestedFor &&
-			!suggestError
+		canSuggest && visibleTags.length === 0 && !tagsLoading && !suggestedFor && !suggestError
 	);
 
 	/**
@@ -73,9 +82,14 @@
 		!suggesting && suggestedFor !== '' && suggestions.length === 0 && !suggestError
 	);
 
-	/** Stale suggestions describe text the user has since edited away. */
+	/**
+	 * Stale suggestions describe text the user has since edited away. Clears the
+	 * loading state as well: this abort starts no replacement request, so nothing
+	 * else would ever reset it.
+	 */
 	function clearSuggestions() {
 		suggestAbort?.abort();
+		suggesting = false;
 		suggestions = [];
 		suggestedFor = '';
 		suggestError = '';
@@ -87,6 +101,7 @@
 		suggestAbort?.abort();
 		suggestAbort = new AbortController();
 		const signal = suggestAbort.signal;
+		const runId = ++suggestRun;
 
 		suggesting = true;
 		suggestError = '';
@@ -114,7 +129,10 @@
 
 			suggestError = e instanceof Error ? e.message : 'Unknown error';
 		} finally {
-			if (!signal.aborted) suggesting = false;
+			// Only the newest attempt owns the flag. Guarding on `signal.aborted`
+			// instead would strand it at true whenever an abort has no successor,
+			// which is exactly what clearSuggestions does.
+			if (runId === suggestRun) suggesting = false;
 		}
 	}
 
