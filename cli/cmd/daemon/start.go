@@ -18,6 +18,7 @@ import (
 	networkinit "github.com/agntcy/dir/cli/cmd/network/init"
 	reconciler "github.com/agntcy/dir/reconciler/service"
 	"github.com/agntcy/dir/server"
+	"github.com/agntcy/dir/server/store"
 	ocilib "github.com/agntcy/dir/server/store/oci"
 	"github.com/agntcy/dir/utils/logging"
 	"github.com/spf13/cobra"
@@ -200,7 +201,15 @@ func ensureKeyFile(path string) error {
 // newTagLister returns a registry.TagLister for the reconciler's indexer.
 // When a local OCI directory is configured, a local oci.Store is opened.
 // Otherwise a remote ORAS repository is created from the OCI config.
+//
+// Tag listing is how the indexer discovers records, and it only exists for the
+// OCI store. Other providers index records as they are written, so they have no
+// lister and the reconciler skips the indexer task.
 func newTagLister(cfg *DaemonConfig) (registry.TagLister, error) {
+	if store.Provider(cfg.Server.Store.Provider) != store.OCI {
+		return nil, nil
+	}
+
 	if dir := cfg.Server.Store.OCI.LocalDir; dir != "" {
 		repo, err := ocistore.New(dir)
 		if err != nil {
