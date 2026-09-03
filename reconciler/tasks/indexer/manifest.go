@@ -29,10 +29,13 @@ type manifestReader interface {
 // isReferrerTag reports whether the manifest behind tag is a referrer artifact
 // (signature, public key, scan report, ...) instead of a record.
 //
-// Referrers are stored in the same repository as their subject record and are
-// tagged with their own CID, so a tag parsing as a CID does not make it a
-// record. Referrer manifests are identified by the OCI subject field that links
+// Referrers are stored in the same repository as their subject record. New ones are not tagged,
+// but those written earlier still carry a tag of their own CID, so a tag parsing as a CID does
+// not make it a record. Referrer manifests are identified by the OCI subject field that links
 // them to the record they describe, and by the Dir referrer type annotation.
+//
+// This check is therefore still needed, and stays needed until those legacy tags are stripped
+// from the registries.
 //
 // If the tag cannot be inspected, the error is returned and the caller decides
 // how to proceed; an unreadable manifest is not assumed to be a referrer.

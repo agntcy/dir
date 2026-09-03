@@ -21,11 +21,13 @@ type fakeReferrerStore struct {
 	pushedCID string
 	pushErr   error
 
-	existing []*corev1.RecordReferrer
-	walkErr  error
+	existing  []*corev1.RecordReferrer
+	walkErr   error
+	walkCalls int
 
-	deleteErr error
-	deleted   []string
+	deleteErr   error
+	deleted     []string
+	deleteCalls int
 }
 
 func (f *fakeReferrerStore) PushReferrer(_ context.Context, _ string, _ *corev1.RecordReferrer) (*corev1.ReferrerRef, error) {
@@ -37,12 +39,14 @@ func (f *fakeReferrerStore) PushReferrer(_ context.Context, _ string, _ *corev1.
 }
 
 func (f *fakeReferrerStore) WalkReferrers(_ context.Context, _ string, referrerType string, walkFn func(*corev1.RecordReferrer) error) error {
+	f.walkCalls++
+
 	if f.walkErr != nil {
 		return f.walkErr
 	}
 
 	for _, ref := range f.existing {
-		if referrerType != "" && ref.GetType() != referrerType {
+		if !sharesArtifactType(referrerType, ref.GetType()) {
 			continue
 		}
 
@@ -54,14 +58,42 @@ func (f *fakeReferrerStore) WalkReferrers(_ context.Context, _ string, referrerT
 	return nil
 }
 
+// sharesArtifactType reproduces the OCI store's type filter, which is coarser than it looks:
+// apiToOCIType maps every referrer type except signatures and public keys onto one shared media
+// type, so a walk filtered on scan reports also yields every other custom referrer. The fake
+// matches that, otherwise it would hide the task's need to check the type itself.
+func sharesArtifactType(want, got string) bool {
+	if want == "" || want == got {
+		return true
+	}
+
+	distinct := func(t string) bool {
+		return t == corev1.SignatureReferrerType || t == corev1.PublicKeyReferrerType
+	}
+
+	return !distinct(want) && !distinct(got)
+}
+
 func (f *fakeReferrerStore) DeleteReferrer(_ context.Context, _ string, referrerCID string, _ string) ([]string, error) {
 	if f.deleteErr != nil {
 		return nil, f.deleteErr
 	}
 
+	f.deleteCalls++
 	f.deleted = append(f.deleted, referrerCID)
 
 	return []string{referrerCID}, nil
+}
+
+func (f *fakeReferrerStore) DeleteReferrers(_ context.Context, _ string, referrerCIDs []string, _ string) ([]string, error) {
+	if f.deleteErr != nil {
+		return nil, f.deleteErr
+	}
+
+	f.deleteCalls++
+	f.deleted = append(f.deleted, referrerCIDs...)
+
+	return referrerCIDs, nil
 }
 
 // scanReferrer builds a stored scan report referrer as WalkReferrers would
@@ -122,6 +154,88 @@ func TestPushReferrer_PrunesOnlySameScannerReports(t *testing.T) {
 
 	if !slices.Equal(store.deleted, want) {
 		t.Errorf("deleted = %v, want %v", store.deleted, want)
+	}
+}
+
+// Pruning a backlog must cost one delete call, not one per report. A delete needs the referrer's
+// manifest descriptor, which only a walk supplies, so a loop of single deletes repeats the walk
+// once per report and the cost grows with the square of the backlog.
+func TestPushReferrer_PrunesInOneCall(t *testing.T) {
+	t.Parallel()
+
+	store := &fakeReferrerStore{pushedCID: "new-mcp"}
+
+	for _, cid := range []string{"old-1", "old-2", "old-3", "old-4", "old-5", "old-6", "old-7", "old-8"} {
+		store.existing = append(store.existing, scanReferrer(t, cid, scanv1.ScannerType_SCANNER_TYPE_MCP))
+	}
+
+	task := &Task{refStore: store}
+
+	if err := task.pushReferrer(t.Context(), testRecordCID, mcpReport()); err != nil {
+		t.Fatalf("pushReferrer: %v", err)
+	}
+
+	if len(store.deleted) != len(store.existing) {
+		t.Errorf("deleted %d referrers, want %d", len(store.deleted), len(store.existing))
+	}
+
+	if store.walkCalls != 1 {
+		t.Errorf("walkCalls = %d, want 1", store.walkCalls)
+	}
+
+	if store.deleteCalls != 1 {
+		t.Errorf("deleteCalls = %d, want 1", store.deleteCalls)
+	}
+}
+
+// The store's type filter passes every custom referrer type, so a walk for scan reports also
+// yields unrelated artifacts. Here one carries a payload that does parse as an MCP report, which
+// leaves the task's own type check as the only thing keeping it.
+func TestPushReferrer_LeavesOtherReferrerTypesAlone(t *testing.T) {
+	t.Parallel()
+
+	foreign := scanReferrer(t, "not-a-scan-report", scanv1.ScannerType_SCANNER_TYPE_MCP)
+	foreign.Type = "agntcy.dir.other.v1.Artifact"
+
+	store := &fakeReferrerStore{
+		pushedCID: "new-mcp",
+		existing: []*corev1.RecordReferrer{
+			foreign,
+			scanReferrer(t, "old-mcp", scanv1.ScannerType_SCANNER_TYPE_MCP),
+		},
+	}
+
+	task := &Task{refStore: store}
+
+	if err := task.pushReferrer(t.Context(), testRecordCID, mcpReport()); err != nil {
+		t.Fatalf("pushReferrer: %v", err)
+	}
+
+	if !slices.Equal(store.deleted, []string{"old-mcp"}) {
+		t.Errorf("deleted = %v, want [old-mcp]", store.deleted)
+	}
+}
+
+// Nothing superseded means no delete call at all. Reaching the store with an empty set would
+// depend on it reading that as "delete none" rather than "delete all of this type".
+func TestPushReferrer_NothingSupersededIssuesNoDelete(t *testing.T) {
+	t.Parallel()
+
+	store := &fakeReferrerStore{
+		pushedCID: "new-mcp",
+		existing: []*corev1.RecordReferrer{
+			scanReferrer(t, "old-a2a", scanv1.ScannerType_SCANNER_TYPE_A2A),
+		},
+	}
+
+	task := &Task{refStore: store}
+
+	if err := task.pushReferrer(t.Context(), testRecordCID, mcpReport()); err != nil {
+		t.Fatalf("pushReferrer: %v", err)
+	}
+
+	if store.deleteCalls != 0 {
+		t.Errorf("deleteCalls = %d, want 0", store.deleteCalls)
 	}
 }
 

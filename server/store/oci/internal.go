@@ -219,3 +219,59 @@ func (s *store) deleteFromRemoteRepository(ctx context.Context, cid string) erro
 
 	return nil
 }
+
+// deleteReferrerManifest deletes a referrer's manifest by descriptor, and its blob on local stores.
+//
+// It deliberately does not go through the record delete helpers above. Those resolve a CID as a
+// reference, which for a referrer only works while referrers carry a CID tag, and they report
+// success when resolution fails - so reusing them would make referrer deletion a silent no-op the
+// moment tagging stops.
+func (s *store) deleteReferrerManifest(ctx context.Context, referrerCID string, manifestDesc ocispec.Descriptor) error {
+	switch repo := s.repo.(type) {
+	case *oci.Store:
+		if err := repo.Delete(ctx, manifestDesc); err != nil && !stdErrors.Is(err, errdef.ErrNotFound) {
+			return status.Errorf(codes.Internal, "failed to delete referrer manifest %s: %v",
+				manifestDesc.Digest.String(), err)
+		}
+
+		// The blob is addressed by the referrer CID, so it needs no descriptor. A failure here
+		// leaves an unreferenced blob for GC rather than a visible referrer, so it only warns.
+		if err := s.deleteBlobForLocalStore(ctx, referrerCID, repo); err != nil {
+			internalLogger.Warn("Failed to delete referrer blob", "cid", referrerCID, "error", err)
+		}
+
+		internalLogger.Debug("Referrer deleted", "cid", referrerCID, "digest", manifestDesc.Digest.String())
+
+		return nil
+
+	case *remote.Repository:
+		if err := repo.Manifests().Delete(ctx, manifestDesc); err != nil {
+			errStr := err.Error()
+
+			if strings.Contains(errStr, "405") || strings.Contains(errStr, "unsupported") {
+				internalLogger.Warn("Registry does not support manifest deletion via OCI API",
+					"cid", referrerCID, "error", err)
+
+				return status.Errorf(codes.Unimplemented,
+					"registry does not support OCI delete API; use the registry's web UI or native API to delete packages")
+			}
+
+			if stdErrors.Is(err, errdef.ErrNotFound) ||
+				strings.Contains(errStr, "404") || strings.Contains(errStr, "NOT_FOUND") {
+				internalLogger.Info("Referrer manifest already deleted",
+					"cid", referrerCID, "digest", manifestDesc.Digest.String())
+
+				return nil
+			}
+
+			return status.Errorf(codes.Internal, "failed to delete referrer manifest: %v", err)
+		}
+
+		internalLogger.Debug("Referrer deleted", "cid", referrerCID, "digest", manifestDesc.Digest.String())
+
+		return nil
+
+	default:
+		return status.Errorf(codes.FailedPrecondition, "unsupported repo type: %T", s.repo)
+	}
+}
