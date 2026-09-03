@@ -60,15 +60,18 @@ func SignBlobWithOIDC(ctx context.Context, payload []byte, req *signv1.SignWithO
 		return nil, nil, fmt.Errorf("failed to marshal bundle to JSON: %w", err)
 	}
 
-	return &signv1.Signature{
-			Signature:     base64.StdEncoding.EncodeToString(sigBundle.GetMessageSignature().GetSignature()),
-			Certificate:   base64.StdEncoding.EncodeToString(sigBundle.GetVerificationMaterial().GetCertificate().GetRawBytes()),
-			ContentType:   sigBundle.GetMediaType(),
-			ContentBundle: string(sigBundleJSON),
-			SignedAt:      signingTime.UTC().Format(time.RFC3339),
-		}, &signv1.PublicKey{
-			Key: publicKeyPEM,
-		}, nil
+	signature := &signv1.Signature{
+		Signature:     base64.StdEncoding.EncodeToString(sigBundle.GetMessageSignature().GetSignature()),
+		Certificate:   base64.StdEncoding.EncodeToString(sigBundle.GetVerificationMaterial().GetCertificate().GetRawBytes()),
+		ContentType:   sigBundle.GetMediaType(),
+		ContentBundle: string(sigBundleJSON),
+		SignedAt:      signingTime.UTC().Format(time.RFC3339),
+	}
+	publicKey := &signv1.PublicKey{
+		Key: publicKeyPEM,
+	}
+
+	return signature, publicKey, nil
 }
 
 // SignBlobWithKey signs a blob using a private key.
@@ -108,13 +111,16 @@ func SignBlobWithKey(ctx context.Context, payload []byte, req *signv1.SignWithKe
 		return nil, nil, fmt.Errorf("getting public key: %w", err)
 	}
 
-	return &signv1.Signature{
-			SignedAt:  time.Now().UTC().Format(time.RFC3339),
-			Signature: base64.StdEncoding.EncodeToString(sig),
-			Algorithm: detectKeyAlgorithm(string(publicKeyPEM)),
-		}, &signv1.PublicKey{
-			Key: string(publicKeyPEM),
-		}, nil
+	signature := &signv1.Signature{
+		SignedAt:  time.Now().UTC().Format(time.RFC3339),
+		Signature: base64.StdEncoding.EncodeToString(sig),
+		Algorithm: detectKeyAlgorithm(string(publicKeyPEM)),
+	}
+	publicKey := &signv1.PublicKey{
+		Key: string(publicKeyPEM),
+	}
+
+	return signature, publicKey, nil
 }
 
 // getOIDCSigningOptions returns bundle options configured from SignOptionsOIDC.

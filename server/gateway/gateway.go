@@ -23,7 +23,6 @@ import (
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
-	"google.golang.org/protobuf/encoding/protojson"
 )
 
 //go:embed all:static
@@ -100,13 +99,9 @@ func New(ctx context.Context, opts Options) (*Server, error) {
 	// Field names use protojson's lowerCamelCase default (specVersion, mediaType)
 	// to match the AI Catalog spec.
 	jsonMarshaler := &runtime.JSONPb{
-		MarshalOptions: protojson.MarshalOptions{
-			UseProtoNames:   false,
-			EmitUnpopulated: true,
-		},
-		UnmarshalOptions: protojson.UnmarshalOptions{
-			DiscardUnknown: true,
-		},
+		UseProtoNames:   false,
+		EmitUnpopulated: true,
+		DiscardUnknown:  true,
 	}
 
 	// HTTPBodyMarshaler emits google.api.HttpBody payloads as raw bytes with the

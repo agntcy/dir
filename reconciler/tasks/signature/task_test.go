@@ -225,8 +225,11 @@ func (f *fakeSignatureDB) SetRecordSigned(recordCID string) error { return nil }
 func (f *fakeSignatureDB) CreateSync(remoteURL string, cids []string, remoteRegistryURL string, repositoryName string) (string, error) {
 	return "", nil
 }
-func (f *fakeSignatureDB) GetSyncByID(syncID string) (types.SyncObject, error)    { return nil, nil }
+
+func (f *fakeSignatureDB) GetSyncByID(syncID string) (types.SyncObject, error) { return nil, nil }
+
 func (f *fakeSignatureDB) GetSyncs(offset, limit int) ([]types.SyncObject, error) { return nil, nil }
+
 func (f *fakeSignatureDB) GetSyncsByStatus(status storev1.SyncStatus) ([]types.SyncObject, error) {
 	return nil, nil
 }

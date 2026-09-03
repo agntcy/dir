@@ -30,7 +30,7 @@ func (f *fakeExtractor) Extract(_ context.Context, _ string, opts extractor.Extr
 func (f *fakeExtractor) Close() error { return nil }
 
 func skill(name string, tier int, score float64) sdk.ScoredClass {
-	return sdk.ScoredClass{Class: sdk.Class{Name: name}, Kind: sdk.KindSkill, Tier: tier, Score: score}
+	return sdk.ScoredClass{Name: name, Kind: sdk.KindSkill, Tier: tier, Score: score}
 }
 
 func TestDecomposeDefaultKeepsTwoTiersAndWrapsKeywords(t *testing.T) {
@@ -42,7 +42,7 @@ func TestDecomposeDefaultKeepsTwoTiersAndWrapsKeywords(t *testing.T) {
 			skill("skill_t3", 3, 0.9),       // tier 3 -> beyond the default -> dropped
 		},
 		Domains: []sdk.ScoredClass{
-			{Class: sdk.Class{Name: "domain_keep"}, Kind: sdk.KindDomain, Tier: 1, Score: 0.8},
+			{Name: "domain_keep", Kind: sdk.KindDomain, Tier: 1, Score: 0.8},
 		},
 		Keywords: []sdk.Keyword{{Text: "review", Score: 2}},
 	}}

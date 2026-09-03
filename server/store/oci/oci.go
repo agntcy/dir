@@ -430,11 +430,9 @@ func (s *store) IsReady(ctx context.Context) bool {
 	// thousands of tags it costs hundreds of round trips and cannot complete
 	// within a readiness probe timeout.
 	registryProbe := &remote.Registry{
-		RepositoryOptions: remote.RepositoryOptions{
-			Client:    withoutRetries(remoteRepo.Client),
-			Reference: registry.Reference{Registry: remoteRepo.Reference.Registry},
-			PlainHTTP: remoteRepo.PlainHTTP,
-		},
+		Client:    withoutRetries(remoteRepo.Client),
+		Reference: registry.Reference{Registry: remoteRepo.Reference.Registry},
+		PlainHTTP: remoteRepo.PlainHTTP,
 	}
 
 	if err := registryProbe.Ping(ctx); err != nil {
