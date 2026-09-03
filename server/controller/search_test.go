@@ -113,7 +113,7 @@ func TestListRecordValues_UnsupportedFieldIsRejectedBeforeQuerying(t *testing.T)
 	ctrl := NewSearchController(db, nil)
 
 	_, err := ctrl.ListRecordValues(context.Background(), &searchv1.ListRecordValuesRequest{
-		Fields: []searchv1.RecordQueryType{searchv1.RecordQueryType_RECORD_QUERY_TYPE_AUTHOR},
+		Fields: []searchv1.RecordQueryType{searchv1.RecordQueryType_RECORD_QUERY_TYPE_ANNOTATION},
 	})
 	require.Error(t, err)
 	assert.Equal(t, codes.InvalidArgument, status.Code(err))

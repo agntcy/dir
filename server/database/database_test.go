@@ -315,10 +315,39 @@ func TestListRecordValues_NoFieldsReturnsAllSupported(t *testing.T) {
 		searchv1.RecordQueryType_RECORD_QUERY_TYPE_SKILL_NAME,
 		searchv1.RecordQueryType_RECORD_QUERY_TYPE_MODULE_NAME,
 		searchv1.RecordQueryType_RECORD_QUERY_TYPE_DOMAIN_NAME,
+		searchv1.RecordQueryType_RECORD_QUERY_TYPE_AUTHOR,
 		searchv1.RecordQueryType_RECORD_QUERY_TYPE_SCHEMA_VERSION,
 	}, fields)
 
-	assert.Equal(t, []string{"0.7.0", "0.8.0"}, got[4].Values)
+	assert.Equal(t, []string{"0.7.0", "0.8.0"}, got[5].Values)
+}
+
+func TestListRecordValues_Authors(t *testing.T) {
+	db := setupTestDB(t)
+	seedDB(t, db)
+
+	// A record carrying no authors must not contribute a blank value.
+	require.NoError(t, db.AddRecord(&testRecord{
+		cid:           "bafybeianonymousagentnoauthorsxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+		name:          "directory.agntcy.org/anon/anonymous-agent",
+		version:       "1.0.0",
+		schemaVersion: "0.8.0",
+		createdAt:     "2024-05-01T00:00:00Z",
+	}))
+
+	got, err := db.ListRecordValues([]searchv1.RecordQueryType{
+		searchv1.RecordQueryType_RECORD_QUERY_TYPE_AUTHOR,
+	})
+	require.NoError(t, err)
+
+	// Each record's JSON array is flattened, and alice (who authors two
+	// records) appears once.
+	assert.Equal(t, []types.RecordFieldValues{
+		{
+			Field:  searchv1.RecordQueryType_RECORD_QUERY_TYPE_AUTHOR,
+			Values: []string{"alice@cisco.com", "bob@cisco.com", "charlie@medtech.io"},
+		},
+	}, got)
 }
 
 func TestListRecordValues_UnsupportedField(t *testing.T) {
@@ -326,7 +355,7 @@ func TestListRecordValues_UnsupportedField(t *testing.T) {
 	seedDB(t, db)
 
 	_, err := db.ListRecordValues([]searchv1.RecordQueryType{
-		searchv1.RecordQueryType_RECORD_QUERY_TYPE_AUTHOR,
+		searchv1.RecordQueryType_RECORD_QUERY_TYPE_ANNOTATION,
 	})
 	require.ErrorContains(t, err, "unsupported record value field")
 }

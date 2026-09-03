@@ -419,10 +419,11 @@ type ListRecordValuesRequest struct {
 	// field.
 	//
 	// Supported fields are RECORD_QUERY_TYPE_VERSION, RECORD_QUERY_TYPE_SKILL_NAME,
-	// RECORD_QUERY_TYPE_MODULE_NAME, RECORD_QUERY_TYPE_DOMAIN_NAME, and
-	// RECORD_QUERY_TYPE_SCHEMA_VERSION. Requesting any other type fails the call
-	// rather than silently omitting it. The name variants are used instead of the
-	// numeric *_ID types so that every value is a human-meaningful string.
+	// RECORD_QUERY_TYPE_MODULE_NAME, RECORD_QUERY_TYPE_DOMAIN_NAME,
+	// RECORD_QUERY_TYPE_AUTHOR, and RECORD_QUERY_TYPE_SCHEMA_VERSION. Requesting
+	// any other type fails the call rather than silently omitting it. The name
+	// variants are used instead of the numeric *_ID types so that every value is
+	// a human-meaningful string.
 	Fields        []RecordQueryType `protobuf:"varint,1,rep,packed,name=fields,proto3,enum=agntcy.dir.search.v1.RecordQueryType" json:"fields,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache

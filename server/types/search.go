@@ -24,6 +24,7 @@ var supportedRecordValueFields = []searchv1.RecordQueryType{
 	searchv1.RecordQueryType_RECORD_QUERY_TYPE_SKILL_NAME,
 	searchv1.RecordQueryType_RECORD_QUERY_TYPE_MODULE_NAME,
 	searchv1.RecordQueryType_RECORD_QUERY_TYPE_DOMAIN_NAME,
+	searchv1.RecordQueryType_RECORD_QUERY_TYPE_AUTHOR,
 	searchv1.RecordQueryType_RECORD_QUERY_TYPE_SCHEMA_VERSION,
 }
 

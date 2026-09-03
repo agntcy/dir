@@ -4,6 +4,7 @@
 package gorm
 
 import (
+	"encoding/json"
 	"fmt"
 	"sort"
 
@@ -45,6 +46,8 @@ func (d *DB) distinctValuesForField(field searchv1.RecordQueryType) ([]string, e
 		return d.distinctColumn(&Domain{}, "name")
 	case searchv1.RecordQueryType_RECORD_QUERY_TYPE_MODULE_NAME:
 		return d.distinctColumn(&Module{}, "name")
+	case searchv1.RecordQueryType_RECORD_QUERY_TYPE_AUTHOR:
+		return d.distinctAuthors()
 	case searchv1.RecordQueryType_RECORD_QUERY_TYPE_VERSION:
 		return d.distinctColumn(&Record{}, "version")
 	case searchv1.RecordQueryType_RECORD_QUERY_TYPE_SCHEMA_VERSION:
@@ -52,6 +55,56 @@ func (d *DB) distinctValuesForField(field searchv1.RecordQueryType) ([]string, e
 	default:
 		return nil, fmt.Errorf("unsupported record value field: %s", field)
 	}
+}
+
+// distinctAuthors returns the distinct authors across all records, sorted
+// lexicographically.
+//
+// Unlike every other supported field, authors are not a column or a child table
+// but a JSON array serialized into records.authors, so they cannot be plucked
+// with a plain DISTINCT. The array is unnested in Go rather than with SQL JSON
+// functions, which keeps one code path across the SQLite and Postgres backends.
+// DISTINCT still does most of the work: only distinct JSON payloads are read,
+// so records sharing an author list are collapsed before they reach Go.
+func (d *DB) distinctAuthors() ([]string, error) {
+	var payloads []string
+
+	if err := d.gormDB.
+		Model(&Record{}).
+		Distinct().
+		Where("authors != ?", "").
+		Pluck("authors", &payloads).Error; err != nil {
+		return nil, fmt.Errorf("list distinct author payloads: %w", err)
+	}
+
+	seen := make(map[string]struct{})
+
+	for _, payload := range payloads {
+		var authors []string
+
+		// A record written before authors were populated, or one carrying a
+		// malformed payload, contributes nothing rather than failing the call.
+		if err := json.Unmarshal([]byte(payload), &authors); err != nil {
+			logger.Warn("skipping unparsable authors payload", "payload", payload, "error", err)
+
+			continue
+		}
+
+		for _, author := range authors {
+			if author != "" {
+				seen[author] = struct{}{}
+			}
+		}
+	}
+
+	values := make([]string, 0, len(seen))
+	for author := range seen {
+		values = append(values, author)
+	}
+
+	sort.Strings(values)
+
+	return values, nil
 }
 
 // distinctColumn plucks the distinct non-empty values of a column, sorted
