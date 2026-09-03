@@ -51,7 +51,7 @@ func (m *mockDB) InvalidateSignatureVerificationsForRecord(string) error {
 	return nil
 }
 
-func (m *mockDB) UpsertScanReport(r types.ScanReportObject) error {
+func (m *mockDB) UpsertScanReport(r types.ScanReportObject, _ types.ScanSchedule) error {
 	m.upsertCalls++
 	m.upsertReport = r
 

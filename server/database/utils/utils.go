@@ -107,7 +107,11 @@ func BuildComparisonConditions(column string, values []string) (string, []any) {
 	return strings.Join(allConditions, " OR "), allArgs
 }
 
-func QueryToFilters(queries []*searchv1.RecordQuery) ([]types.FilterOption, error) { //nolint:gocognit,cyclop,gocyclo
+// QueryToFilters translates search queries into database filter options.
+//
+// One self-contained case per query type reads better than the indirection
+// needed to satisfy the complexity linters, hence the suppressions.
+func QueryToFilters(queries []*searchv1.RecordQuery) ([]types.FilterOption, error) { //nolint:gocognit,cyclop,gocyclo,maintidx
 	var options []types.FilterOption
 
 	for _, query := range queries {
@@ -238,6 +242,18 @@ func QueryToFilters(queries []*searchv1.RecordQuery) ([]types.FilterOption, erro
 		case searchv1.RecordQueryType_RECORD_QUERY_TYPE_SCAN_SEVERITY:
 			if query.GetValue() != "" {
 				options = append(options, choose(query.GetNegate(), types.WithScanSeverities, types.WithoutScanSeverities)(strings.ToUpper(query.GetValue())))
+			}
+
+		case searchv1.RecordQueryType_RECORD_QUERY_TYPE_SCAN_STATUS:
+			// Stored lowercase-hyphen; matching is case-insensitive anyway, so
+			// this only normalises what reaches a log line.
+			if strings.TrimSpace(query.GetValue()) != "" {
+				options = append(options, choose(query.GetNegate(), types.WithScanStatuses, types.WithoutScanStatuses)(strings.ToLower(query.GetValue())))
+			}
+
+		case searchv1.RecordQueryType_RECORD_QUERY_TYPE_SCAN_FAILURE_REASON:
+			if strings.TrimSpace(query.GetValue()) != "" {
+				options = append(options, choose(query.GetNegate(), types.WithScanFailureReasons, types.WithoutScanFailureReasons)(strings.ToLower(query.GetValue())))
 			}
 
 		case searchv1.RecordQueryType_RECORD_QUERY_TYPE_SCAN_SAFE:

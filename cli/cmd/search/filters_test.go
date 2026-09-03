@@ -61,6 +61,8 @@ var valueFilterFlags = []struct {
 	{"schema-version", searchv1.RecordQueryType_RECORD_QUERY_TYPE_SCHEMA_VERSION},
 	{"module-id", searchv1.RecordQueryType_RECORD_QUERY_TYPE_MODULE_ID},
 	{"annotation", searchv1.RecordQueryType_RECORD_QUERY_TYPE_ANNOTATION},
+	{"scan-status", searchv1.RecordQueryType_RECORD_QUERY_TYPE_SCAN_STATUS},
+	{"scan-failure-reason", searchv1.RecordQueryType_RECORD_QUERY_TYPE_SCAN_FAILURE_REASON},
 }
 
 // Every value filter must register an --exclude- twin. This walks the real flag
@@ -186,6 +188,39 @@ func TestBuildQueriesScanSeverity(t *testing.T) {
 		assert.Equal(t, "MEDIUM", queries[0].GetValue())
 		assert.True(t, queries[0].GetNegate())
 	})
+}
+
+// "everything that could not be fully scanned" is one flag repeated, so the
+// two statuses have to arrive as two separate OR'd queries.
+func TestBuildQueriesScanStatusIsRepeatable(t *testing.T) {
+	queries := BuildQueries(parseFilters(t, "--scan-status", "failed", "--scan-status", "partial"))
+
+	require.Len(t, queries, 2)
+
+	for _, query := range queries {
+		assert.Equal(t, searchv1.RecordQueryType_RECORD_QUERY_TYPE_SCAN_STATUS, query.GetType())
+		assert.False(t, query.GetNegate())
+	}
+
+	assert.Equal(t, "failed", queries[0].GetValue())
+	assert.Equal(t, "partial", queries[1].GetValue())
+}
+
+// The documented way to ask for "clean, with no coverage gaps": --safe treats a
+// partial scan as scanned, so full coverage needs the status as well.
+func TestBuildQueriesCombinesSafeWithScanStatus(t *testing.T) {
+	queries := BuildQueries(parseFilters(t, "--safe", "--scan-status", "completed"))
+
+	assert.Equal(t, "true", queryValue(queries, searchv1.RecordQueryType_RECORD_QUERY_TYPE_SCAN_SAFE))
+	assert.Equal(t, "completed", queryValue(queries, searchv1.RecordQueryType_RECORD_QUERY_TYPE_SCAN_STATUS))
+}
+
+func TestBuildQueriesScanFailureReasonWildcard(t *testing.T) {
+	queries := BuildQueries(parseFilters(t, "--scan-failure-reason", "scanner-*"))
+
+	require.Len(t, queries, 1)
+	assert.Equal(t, searchv1.RecordQueryType_RECORD_QUERY_TYPE_SCAN_FAILURE_REASON, queries[0].GetType())
+	assert.Equal(t, "scanner-*", queries[0].GetValue())
 }
 
 func TestBuildQueriesOmitsUnsetBooleanFilters(t *testing.T) {

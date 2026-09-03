@@ -68,12 +68,30 @@ Examples:
    dirctl search --scan-severity HIGH
    dirctl search --safe --scan-severity MEDIUM
 
-10. Search by annotation key:value pairs:
+10. Search by how completely a record could be scanned:
+    dirctl search --scan-status failed        # nothing could be scanned
+    dirctl search --scan-status partial       # scanned, but not everything the record declares
+    dirctl search --safe --scan-status completed
+
+    --safe counts a partial scan as scanned, because the findings it did
+    produce are real. Add --scan-status completed when you need full coverage.
+
+11. Search by why a scan could not run:
+    dirctl search --scan-failure-reason source-unreachable
+    dirctl search --scan-failure-reason 'scanner-*'   # our infrastructure, not the record
+
+    Reasons attributable to the record: source-unreachable,
+    endpoint-url-invalid. Attributable to the endpoint it points at:
+    endpoint-unreachable. Attributable to this deployment: scanner-timeout,
+    scanner-crashed, scanner-unavailable, scanner-failed,
+    scanner-unparsable-output, llm-not-configured.
+
+12. Search by annotation key:value pairs:
     dirctl search --annotation 'manager:alice'
     dirctl search --annotation 'team:*'
     dirctl search --annotation 'env:prod' --annotation 'region:us-*'
 
-11. Exclude matches with the --exclude-* form of any value filter:
+13. Exclude matches with the --exclude-* form of any value filter:
     dirctl search --exclude-skill 'natural_language_processing'
     dirctl search --domain 'life_science/*' --exclude-author 'bot*'
     dirctl search --exclude-scan-severity MEDIUM

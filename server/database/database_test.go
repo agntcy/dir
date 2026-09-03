@@ -587,13 +587,167 @@ func TestGetRecordCIDs_NegatedScanSeverity(t *testing.T) {
 		ScannerType: "MCP",
 		IsSafe:      false,
 		MaxSeverity: "HIGH",
-	}))
+		Status:      types.ScanStatusCompleted,
+	}, types.DefaultScanSchedule()))
 
 	cids, err := db.GetRecordCIDs(types.WithoutScanSeverities("HIGH"))
 	require.NoError(t, err)
 	assert.NotContains(t, cids, marketingAgent.GetCid())
 	assert.Contains(t, cids, healthcareAgent.GetCid())
 	assert.Contains(t, cids, codeAssistant.GetCid())
+}
+
+// seedScanReport writes one scan_reports row for a record.
+func seedScanReport(t *testing.T, db *gormdb.DB, cid, status, reason string, safe bool, severity string) {
+	t.Helper()
+
+	require.NoError(t, db.UpsertScanReport(&gormdb.ScanReport{
+		RecordCID:     cid,
+		ScannerType:   "MCP",
+		IsSafe:        safe,
+		MaxSeverity:   severity,
+		Status:        status,
+		FailureReason: reason,
+	}, types.DefaultScanSchedule()))
+}
+
+// Regression guard for the status gate. A failed row populates the NOT NULL
+// is_safe column and so satisfies the "was scanned" EXISTS; without the gate
+// every unscannable record would report as safe.
+func TestGetRecordCIDs_ScanSafe_IgnoresFailedRows(t *testing.T) {
+	db := setupTestDB(t)
+	seedDB(t, db)
+
+	seedScanReport(t, db, marketingAgent.GetCid(), types.ScanStatusCompleted, "", true, "NONE")
+	seedScanReport(t, db, healthcareAgent.GetCid(), types.ScanStatusFailed, "source-unreachable", false, "NONE")
+
+	safe, err := db.GetRecordCIDs(types.WithScanSafe(true))
+	require.NoError(t, err)
+	assert.Contains(t, safe, marketingAgent.GetCid())
+	assert.NotContains(t, safe, healthcareAgent.GetCid(), "an unscannable record is not safe")
+
+	// Nor unsafe: is_safe=false on a failed row is a fail-closed placeholder,
+	// not a verdict.
+	unsafe, err := db.GetRecordCIDs(types.WithScanSafe(false))
+	require.NoError(t, err)
+	assert.NotContains(t, unsafe, healthcareAgent.GetCid())
+}
+
+// A partial scan counts as scanned: its findings are real. Full coverage is
+// asked for with --safe --scan-status completed.
+func TestGetRecordCIDs_ScanSafe_CountsPartialAsScanned(t *testing.T) {
+	db := setupTestDB(t)
+	seedDB(t, db)
+
+	seedScanReport(t, db, marketingAgent.GetCid(), types.ScanStatusPartial, "source-unreachable", true, "NONE")
+
+	safe, err := db.GetRecordCIDs(types.WithScanSafe(true))
+	require.NoError(t, err)
+	assert.Contains(t, safe, marketingAgent.GetCid())
+
+	full, err := db.GetRecordCIDs(types.WithScanSafe(true), types.WithScanStatuses(types.ScanStatusCompleted))
+	require.NoError(t, err)
+	assert.NotContains(t, full, marketingAgent.GetCid())
+}
+
+// max_severity is a placeholder on a failed row too, so it needs the same gate.
+func TestGetRecordCIDs_ScanSeverity_IgnoresFailedRows(t *testing.T) {
+	db := setupTestDB(t)
+	seedDB(t, db)
+
+	seedScanReport(t, db, marketingAgent.GetCid(), types.ScanStatusFailed, "scanner-crashed", false, "HIGH")
+
+	cids, err := db.GetRecordCIDs(types.WithScanSeverities("MEDIUM"))
+	require.NoError(t, err)
+	assert.NotContains(t, cids, marketingAgent.GetCid())
+}
+
+// The exclude path needs the gate for the same reason: excluding severity NONE
+// asks for records whose scan found something, not for records whose scan never
+// ran and left NONE behind.
+func TestGetRecordCIDs_NegatedScanSeverity_IgnoresFailedRows(t *testing.T) {
+	db := setupTestDB(t)
+	seedDB(t, db)
+
+	seedScanReport(t, db, marketingAgent.GetCid(), types.ScanStatusFailed, "source-unreachable", false, "NONE")
+	seedScanReport(t, db, healthcareAgent.GetCid(), types.ScanStatusCompleted, "", true, "NONE")
+
+	cids, err := db.GetRecordCIDs(types.WithoutScanSeverities("NONE"))
+	require.NoError(t, err)
+	assert.Contains(t, cids, marketingAgent.GetCid(), "a failed scan is not a finding of NONE")
+	assert.NotContains(t, cids, healthcareAgent.GetCid())
+}
+
+func TestGetRecordCIDs_ScanStatus(t *testing.T) {
+	db := setupTestDB(t)
+	seedDB(t, db)
+
+	seedScanReport(t, db, marketingAgent.GetCid(), types.ScanStatusFailed, "source-unreachable", false, "NONE")
+	seedScanReport(t, db, healthcareAgent.GetCid(), types.ScanStatusPartial, "endpoint-unreachable", true, "NONE")
+	seedScanReport(t, db, codeAssistant.GetCid(), types.ScanStatusCompleted, "", true, "NONE")
+
+	t.Run("single status", func(t *testing.T) {
+		cids, err := db.GetRecordCIDs(types.WithScanStatuses(types.ScanStatusFailed))
+		require.NoError(t, err)
+		assert.Contains(t, cids, marketingAgent.GetCid())
+		assert.NotContains(t, cids, healthcareAgent.GetCid())
+		assert.NotContains(t, cids, codeAssistant.GetCid())
+	})
+
+	t.Run("statuses are OR'd", func(t *testing.T) {
+		cids, err := db.GetRecordCIDs(types.WithScanStatuses(types.ScanStatusFailed, types.ScanStatusPartial))
+		require.NoError(t, err)
+		assert.Contains(t, cids, marketingAgent.GetCid())
+		assert.Contains(t, cids, healthcareAgent.GetCid())
+		assert.NotContains(t, cids, codeAssistant.GetCid())
+	})
+
+	t.Run("exclusion keeps never-scanned records", func(t *testing.T) {
+		cids, err := db.GetRecordCIDs(types.WithoutScanStatuses(types.ScanStatusFailed))
+		require.NoError(t, err)
+		assert.NotContains(t, cids, marketingAgent.GetCid())
+		assert.Contains(t, cids, codeAssistant.GetCid())
+	})
+}
+
+func TestGetRecordCIDs_ScanFailureReason(t *testing.T) {
+	db := setupTestDB(t)
+	seedDB(t, db)
+
+	seedScanReport(t, db, marketingAgent.GetCid(), types.ScanStatusFailed, "source-unreachable", false, "NONE")
+	seedScanReport(t, db, healthcareAgent.GetCid(), types.ScanStatusFailed, "scanner-crashed", false, "NONE")
+	seedScanReport(t, db, codeAssistant.GetCid(), types.ScanStatusCompleted, "", true, "NONE")
+
+	t.Run("exact reason", func(t *testing.T) {
+		cids, err := db.GetRecordCIDs(types.WithScanFailureReasons("source-unreachable"))
+		require.NoError(t, err)
+		assert.Contains(t, cids, marketingAgent.GetCid())
+		assert.NotContains(t, cids, healthcareAgent.GetCid())
+	})
+
+	// Wildcards select a whole fault class, separating our outages from record
+	// defects.
+	t.Run("wildcard matches a reason family", func(t *testing.T) {
+		cids, err := db.GetRecordCIDs(types.WithScanFailureReasons("scanner-*"))
+		require.NoError(t, err)
+		assert.Contains(t, cids, healthcareAgent.GetCid())
+		assert.NotContains(t, cids, marketingAgent.GetCid())
+	})
+
+	// A completed row stores an empty reason, so a failure wildcard must not
+	// pick it up.
+	t.Run("completed rows have no reason", func(t *testing.T) {
+		cids, err := db.GetRecordCIDs(types.WithScanFailureReasons("*"))
+		require.NoError(t, err)
+		assert.NotContains(t, cids, codeAssistant.GetCid())
+	})
+
+	t.Run("exclusion", func(t *testing.T) {
+		cids, err := db.GetRecordCIDs(types.WithoutScanFailureReasons("source-unreachable"))
+		require.NoError(t, err)
+		assert.NotContains(t, cids, marketingAgent.GetCid())
+		assert.Contains(t, cids, healthcareAgent.GetCid())
+	})
 }
 
 // TestGetRecordCIDs_NegatedAuthors_NullSurvives guards against the bug where

@@ -153,7 +153,9 @@ func (d *DB) GetCatalogEntries(opts ...types.CatalogQueryOption) ([]*catalogv1.C
 		Preload("Annotations").
 		Preload("Signatures").
 		Preload("NameVerification").
-		Preload("ScanReports").
+		// A failed row records why the scan could not run, not a verdict, so it
+		// is withheld from the projection to keep the badge a scan result.
+		Preload("ScanReports", "status IN ?", types.ScannedStatuses()).
 		Limit(pageSize + 1)
 
 	if recordCfg.Offset > 0 {

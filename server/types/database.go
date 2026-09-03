@@ -175,6 +175,29 @@ type SignatureVerificationDatabaseAPI interface {
 	InvalidateSignatureVerificationsForRecord(recordCID string) error
 }
 
+// Scan status values. A row is written for every attempt, so the status is what
+// separates "scanned and clean" from "could not be scanned".
+const (
+	// ScanStatusCompleted means every phase the record declared ran.
+	ScanStatusCompleted = "completed"
+
+	// ScanStatusPartial means some phases ran and some did not: the findings
+	// are real, the coverage is incomplete.
+	ScanStatusPartial = "partial"
+
+	// ScanStatusFailed means no phase produced a result.
+	ScanStatusFailed = "failed"
+)
+
+// ScannedStatuses are the statuses under which a scanner reached a verdict.
+//
+// Every safety filter must gate on these: a failed row stores is_safe = false
+// to satisfy the NOT NULL column and fail closed, and that false is a
+// placeholder, not a verdict.
+func ScannedStatuses() []string {
+	return []string{ScanStatusCompleted, ScanStatusPartial}
+}
+
 // ScanReportObject is a single scanner-run result row, keyed by (record_cid, scanner_type).
 type ScanReportObject interface {
 	GetRecordCID() string
@@ -182,13 +205,101 @@ type ScanReportObject interface {
 	GetIsSafe() bool
 	GetMaxSeverity() string // proto Severity name suffix, e.g. "HIGH", "NONE"
 	GetUpdatedAt() time.Time
+
+	// GetStatus is one of the ScanStatus* values. Empty is read as completed,
+	// so callers predating the field keep their previous meaning.
+	GetStatus() string
+
+	// GetFailureReason is a scanner.FailureReason, empty when completed.
+	GetFailureReason() string
+
+	// GetFailureDetail is human-readable context for the failure reason.
+	GetFailureDetail() string
+}
+
+// ScanSchedule controls when a scan result stops suppressing a rescan.
+//
+// Materialised into a timestamp at write time, because the exponential date
+// arithmetic has no portable spelling across the SQLite and PostgreSQL
+// backends. Changing these values therefore does not reschedule existing rows;
+// each adopts the new policy on its next attempt.
+type ScanSchedule struct {
+	// FreshFor is how long a result that reached a verdict stays fresh.
+	FreshFor time.Duration
+
+	// RetryBase is the delay after a first failure, doubled by each further
+	// consecutive failure. The reconciler passes its scan interval, so a first
+	// failure retries on the next pass and only repeated ones back off.
+	RetryBase time.Duration
+
+	// RetryMax caps the backoff. Deliberately shorter than FreshFor, so a
+	// deployment whose scanner was misconfigured recovers soon after the fix
+	// rather than waiting out the full TTL.
+	RetryMax time.Duration
+}
+
+const (
+	DefaultScanFreshFor  = 7 * 24 * time.Hour
+	DefaultScanRetryBase = time.Hour
+	DefaultScanRetryMax  = 24 * time.Hour
+)
+
+// DefaultScanSchedule returns the all-defaults schedule, for callers with no
+// configuration of their own.
+func DefaultScanSchedule() ScanSchedule {
+	return ScanSchedule{}.withDefaults()
+}
+
+// withDefaults fills fields left unset, or set to a nonsensical non-positive
+// duration that would otherwise schedule the next attempt in the past.
+func (s ScanSchedule) withDefaults() ScanSchedule {
+	if s.FreshFor <= 0 {
+		s.FreshFor = DefaultScanFreshFor
+	}
+
+	if s.RetryBase <= 0 {
+		s.RetryBase = DefaultScanRetryBase
+	}
+
+	if s.RetryMax <= 0 {
+		s.RetryMax = DefaultScanRetryMax
+	}
+
+	return s
+}
+
+// NextAttempt returns when a row should next be attempted. Zero
+// consecutiveFailures means the attempt reached a verdict.
+func (s ScanSchedule) NextAttempt(now time.Time, consecutiveFailures int) time.Time {
+	s = s.withDefaults()
+
+	if consecutiveFailures <= 0 {
+		return now.Add(s.FreshFor)
+	}
+
+	// Doubling stops at the cap, because a record failing for months would
+	// overflow the duration otherwise.
+	delay := s.RetryBase
+
+	for range consecutiveFailures - 1 {
+		if delay >= s.RetryMax {
+			break
+		}
+
+		delay *= 2
+	}
+
+	return now.Add(min(delay, s.RetryMax))
 }
 
 // ScanReportDatabaseAPI handles persistence and querying of security scan results.
 type ScanReportDatabaseAPI interface {
-	// UpsertScanReport inserts or updates a scan result row keyed by (record_cid, scanner_type).
-	UpsertScanReport(report ScanReportObject) error
+	// UpsertScanReport inserts or updates a scan result row keyed by
+	// (record_cid, scanner_type), maintaining the failure counter and retry
+	// schedule.
+	UpsertScanReport(report ScanReportObject, schedule ScanSchedule) error
 
-	// GetRecordsNeedingScan returns records that have no scan result newer than ttl.
+	// GetRecordsNeedingScan returns records with no scan result still
+	// suppressing a rescan, bounded by ttl.
 	GetRecordsNeedingScan(ttl time.Duration) ([]coretypes.Record, error)
 }

@@ -4,31 +4,33 @@
 package types
 
 type RecordFilters struct {
-	Limit            int
-	Offset           int
-	CIDs             []string
-	Names            []string
-	Versions         []string
-	SkillIDs         []uint64
-	SkillNames       []string
-	LocatorTypes     []string
-	LocatorURLs      []string
-	ModuleNames      []string
-	ModuleIDs        []uint64
-	DomainIDs        []uint64
-	DomainNames      []string
-	CreatedAts       []string
-	Authors          []string
-	SchemaVersions   []string
-	Verified         *bool    // Filter by verified status (name ownership verified via JWKS)
-	Trusted          *bool    // Filter by trusted status (signature verification passed)
-	ScanSafe         *bool    // Filter by is_safe: true = all scanners safe, false = at least one unsafe
-	ScanSeverities   []string // Filter by max scan severity >= threshold (e.g. "HIGH")
-	AnnotationKeys   []string
-	AnnotationValues []string
-	Annotations      []Annotation
-	Descriptions     []string              // Match against record description field.
-	Excluded         ExcludedRecordFilters // Negated (exclude) counterparts of the fields above.
+	Limit              int
+	Offset             int
+	CIDs               []string
+	Names              []string
+	Versions           []string
+	SkillIDs           []uint64
+	SkillNames         []string
+	LocatorTypes       []string
+	LocatorURLs        []string
+	ModuleNames        []string
+	ModuleIDs          []uint64
+	DomainIDs          []uint64
+	DomainNames        []string
+	CreatedAts         []string
+	Authors            []string
+	SchemaVersions     []string
+	Verified           *bool    // Filter by verified status (name ownership verified via JWKS)
+	Trusted            *bool    // Filter by trusted status (signature verification passed)
+	ScanSafe           *bool    // Filter by is_safe: true = all scanners safe, false = at least one unsafe
+	ScanSeverities     []string // Filter by max scan severity >= threshold (e.g. "HIGH")
+	ScanStatuses       []string // Filter by how completely a scan ran (e.g. "failed")
+	ScanFailureReasons []string // Filter by why a scan produced no result (e.g. "source-unreachable")
+	AnnotationKeys     []string
+	AnnotationValues   []string
+	Annotations        []Annotation
+	Descriptions       []string              // Match against record description field.
+	Excluded           ExcludedRecordFilters // Negated (exclude) counterparts of the fields above.
 
 	OrderBy []RecordOrderClause // Order by directives applied in sequence.
 }
@@ -39,23 +41,25 @@ type RecordFilters struct {
 // fields directly, since negated values combine with AND while included
 // values combine with OR — the two cannot share one slice.
 type ExcludedRecordFilters struct {
-	Names            []string
-	Versions         []string
-	SchemaVersions   []string
-	Descriptions     []string
-	CreatedAts       []string
-	Authors          []string
-	SkillNames       []string
-	SkillIDs         []uint64
-	DomainNames      []string
-	DomainIDs        []uint64
-	ModuleNames      []string
-	ModuleIDs        []uint64
-	LocatorTypes     []string
-	LocatorURLs      []string
-	AnnotationKeys   []string
-	AnnotationValues []string
-	ScanSeverities   []string
+	Names              []string
+	Versions           []string
+	SchemaVersions     []string
+	Descriptions       []string
+	CreatedAts         []string
+	Authors            []string
+	SkillNames         []string
+	SkillIDs           []uint64
+	DomainNames        []string
+	DomainIDs          []uint64
+	ModuleNames        []string
+	ModuleIDs          []uint64
+	LocatorTypes       []string
+	LocatorURLs        []string
+	AnnotationKeys     []string
+	AnnotationValues   []string
+	ScanSeverities     []string
+	ScanStatuses       []string
+	ScanFailureReasons []string
 }
 
 type Annotation struct {
@@ -361,5 +365,37 @@ func WithoutAnnotationValues(values ...string) FilterOption {
 func WithoutScanSeverities(severities ...string) FilterOption {
 	return func(sc *RecordFilters) {
 		sc.Excluded.ScanSeverities = append(sc.Excluded.ScanSeverities, severities...)
+	}
+}
+
+// WithScanStatuses filters records that have a scan result with any of the
+// given statuses ("completed", "partial", "failed").
+func WithScanStatuses(statuses ...string) FilterOption {
+	return func(sc *RecordFilters) {
+		sc.ScanStatuses = append(sc.ScanStatuses, statuses...)
+	}
+}
+
+// WithoutScanStatuses excludes records that have a scan result with any of the
+// given statuses.
+func WithoutScanStatuses(statuses ...string) FilterOption {
+	return func(sc *RecordFilters) {
+		sc.Excluded.ScanStatuses = append(sc.Excluded.ScanStatuses, statuses...)
+	}
+}
+
+// WithScanFailureReasons filters records that have a scan result whose failure
+// reason matches any of the given values.
+func WithScanFailureReasons(reasons ...string) FilterOption {
+	return func(sc *RecordFilters) {
+		sc.ScanFailureReasons = append(sc.ScanFailureReasons, reasons...)
+	}
+}
+
+// WithoutScanFailureReasons excludes records that have a scan result whose
+// failure reason matches any of the given values.
+func WithoutScanFailureReasons(reasons ...string) FilterOption {
+	return func(sc *RecordFilters) {
+		sc.Excluded.ScanFailureReasons = append(sc.Excluded.ScanFailureReasons, reasons...)
 	}
 }

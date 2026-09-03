@@ -45,7 +45,11 @@ const DefaultMaxEndpointsPerRecord = 8
 func (r *MCPRunner) runEndpointScan(ctx context.Context, record *corev1.Record) *ScanResult {
 	endpoints := extractEndpoints(record)
 	if len(endpoints) == 0 {
-		return &ScanResult{Skipped: true, SkippedReason: "no remote MCP endpoint found"}
+		return &ScanResult{
+			Skipped:       true,
+			SkippedReason: "no remote MCP endpoint found",
+			FailureReason: FailureEndpointNotDeclared,
+		}
 	}
 
 	maxEndpoints := r.cfg.MaxEndpointsPerRecord
@@ -74,6 +78,7 @@ func (r *MCPRunner) runEndpointScan(ctx context.Context, record *corev1.Record) 
 			results = append(results, &ScanResult{
 				Skipped:       true,
 				SkippedReason: fmt.Sprintf("%s: %s", endpoint, err),
+				FailureReason: FailureEndpointURLInvalid,
 			})
 
 			continue
@@ -108,6 +113,7 @@ func (r *MCPRunner) runEndpointSubcommand(ctx context.Context, subcommand, endpo
 		return &ScanResult{
 			Skipped:       true,
 			SkippedReason: fmt.Sprintf("%s %s: %s", subcommand, endpoint, err),
+			FailureReason: classifyEndpointError(ctx, err),
 		}
 	}
 
@@ -118,6 +124,7 @@ func (r *MCPRunner) runEndpointSubcommand(ctx context.Context, subcommand, endpo
 		return &ScanResult{
 			Skipped:       true,
 			SkippedReason: fmt.Sprintf("%s %s: unparsable output: %s", subcommand, endpoint, err),
+			FailureReason: FailureScannerUnparsable,
 		}
 	}
 
@@ -127,6 +134,19 @@ func (r *MCPRunner) runEndpointSubcommand(ctx context.Context, subcommand, endpo
 	result.Analyzers = endpointAnalyzers()
 
 	return result
+}
+
+// classifyEndpointError maps an endpoint scan error to a FailureReason.
+//
+// A clean non-zero exit means mcp-scanner ran and the endpoint did not
+// cooperate, so it is blamed on the endpoint. A dead process (timeout, signal)
+// stays blamed on the scanner. Finer attribution would mean parsing stderr.
+func classifyEndpointError(ctx context.Context, err error) FailureReason {
+	if reason := ClassifyError(ctx, err); reason != FailureScannerFailed {
+		return reason
+	}
+
+	return FailureEndpointUnreachable
 }
 
 // tagFindings prefixes each finding's message with the subcommand and endpoint

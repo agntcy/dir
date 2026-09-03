@@ -46,6 +46,16 @@ func NewTask(config Config, db types.DatabaseAPI, store types.StoreAPI, refStore
 		scanner.NewA2ARunner(scanner.A2AConfig{CLIPath: config.GetA2ACLIPath()}),
 	}
 
+	// SCANNER_TYPE_UNSPECIFIED is the bucket every third-party scanner lands
+	// in, so a runner missing from toProtoScannerType would publish reports
+	// indistinguishable from theirs. Fail at startup rather than let pruning
+	// silently skip that runner's reports for the life of the deployment.
+	for _, r := range runners {
+		if toProtoScannerType(r.Name()) == scanv1.ScannerType_SCANNER_TYPE_UNSPECIFIED {
+			return nil, fmt.Errorf("scan runner %q has no ScannerType enum value", r.Name())
+		}
+	}
+
 	return &Task{
 		config:   config,
 		db:       db,
@@ -119,20 +129,35 @@ func (t *Task) scanRecord(ctx context.Context, recordCID string) error {
 			logger.Warn("Runner failed", "runner", r.Name(), "cid", recordCID, "error", err)
 			anyErr = err
 
+			// Persisted, not just logged: an unrecorded failure matches
+			// GetRecordsNeedingScan on every pass, forever.
+			t.recordOutcome(recordCID, r.Name(), &scanner.ScanResult{
+				Skipped:       true,
+				SkippedReason: err.Error(),
+				FailureReason: scanner.ClassifyError(ctx, err),
+			}, nil)
+
 			continue
 		}
 
 		if result.Skipped {
-			logger.Debug("Runner skipped record", "runner", r.Name(), "cid", recordCID, "reason", result.SkippedReason)
+			if !result.FailureReason.IsFailure() {
+				// Nothing of this runner's type to scan. Recording it would
+				// mark every MCP-only record as failed for the skill and a2a
+				// runners.
+				logger.Debug("Runner not applicable to record", "runner", r.Name(), "cid", recordCID, "reason", result.SkippedReason)
+
+				continue
+			}
+
+			logger.Warn("Runner could not scan record", "runner", r.Name(), "cid", recordCID,
+				"reason", result.FailureReason, "detail", result.SkippedReason)
+
+			t.recordOutcome(recordCID, r.Name(), result, nil)
 
 			continue
 		}
 
-		// A scan that completed but covered less than the record declared is
-		// still recorded as a pass, so the reduced coverage has to be visible
-		// somewhere. The report proto has no field for it, so this is a log
-		// line rather than persisted state - see the endpoint cap in
-		// utils/scanner.
 		for _, notice := range result.Notices {
 			logger.Warn("Scan coverage reduced", "runner", r.Name(), "cid", recordCID, "notice", notice)
 		}
@@ -144,33 +169,142 @@ func (t *Task) scanRecord(ctx context.Context, recordCID string) error {
 			logger.Warn("Failed to push scan referrer", "runner", r.Name(), "cid", recordCID, "error", pushErr)
 		}
 
-		// Upsert DB row - failure is also non-fatal.
-		row := &gormdb.ScanReport{
-			RecordCID:   recordCID,
-			ScannerType: strings.ToUpper(r.Name()),
-			IsSafe:      result.Safe,
-			MaxSeverity: maxSeverityString(report.GetFindings()),
-		}
-		if upsertErr := t.db.UpsertScanReport(row); upsertErr != nil {
-			logger.Warn("Failed to upsert scan report", "runner", r.Name(), "cid", recordCID, "error", upsertErr)
-		}
+		t.recordOutcome(recordCID, r.Name(), result, report)
 	}
 
 	return anyErr
 }
 
-// pushReferrer marshals the ScanReport and stores it as an OCI referrer.
+// recordOutcome upserts the scan_reports row for one runner. A write failure is
+// non-fatal.
+//
+// A row is written whether or not the scan reached a verdict, while the OCI
+// referrer is pushed only for verdicts. Referrers sync to peers, and "I could
+// not clone this repository" describes this node's network position rather than
+// the record.
+func (t *Task) recordOutcome(recordCID, runnerName string, result *scanner.ScanResult, report *scanv1.ScanReport) {
+	row := &gormdb.ScanReport{
+		RecordCID:   recordCID,
+		ScannerType: strings.ToUpper(runnerName),
+		// False for every failure, since Safe is false whenever nothing ran.
+		// The status gate in the safety filters is the real mechanism; this is
+		// the backstop for a query that forgets it.
+		IsSafe:        result.Safe,
+		MaxSeverity:   "NONE",
+		Status:        scanStatus(result),
+		FailureReason: string(result.FailureReason),
+		FailureDetail: result.SkippedReason,
+	}
+
+	if report != nil {
+		row.MaxSeverity = maxSeverityString(report.GetFindings())
+	}
+
+	if err := t.db.UpsertScanReport(row, t.scanSchedule(result.FailureReason)); err != nil {
+		logger.Warn("Failed to upsert scan report", "runner", runnerName, "cid", recordCID, "error", err)
+	}
+}
+
+// scanSchedule returns the retry schedule to write with an outcome.
+//
+// A record is immutable, so a failure it caused backs off to the TTL. Other
+// failures keep the shorter cap, so a misconfigured deployment recovers within
+// a day of the fix.
+func (t *Task) scanSchedule(reason scanner.FailureReason) types.ScanSchedule {
+	schedule := t.config.ScanSchedule()
+
+	if reason.IsPublisherFault() {
+		schedule.RetryMax = schedule.FreshFor
+	}
+
+	return schedule
+}
+
+// scanStatus maps a ScanResult onto the persisted status.
+func scanStatus(result *scanner.ScanResult) string {
+	switch {
+	case result.Skipped:
+		return types.ScanStatusFailed
+	case result.Partial:
+		return types.ScanStatusPartial
+	default:
+		return types.ScanStatusCompleted
+	}
+}
+
+// pushReferrer marshals the ScanReport, stores it as an OCI referrer, and
+// prunes the reports the same scanner left behind on earlier runs.
 func (t *Task) pushReferrer(ctx context.Context, recordCID string, report *scanv1.ScanReport) error {
 	referrer, err := report.MarshalReferrer()
 	if err != nil {
 		return fmt.Errorf("marshal scan report: %w", err)
 	}
 
-	if _, err := t.refStore.PushReferrer(ctx, recordCID, referrer); err != nil {
+	ref, err := t.refStore.PushReferrer(ctx, recordCID, referrer)
+	if err != nil {
 		return fmt.Errorf("push referrer: %w", err)
 	}
 
+	// After the push, not before: a scan whose report is byte-identical to the
+	// previous one resolves to the same CID, and pruning first would delete the
+	// referrer this push just re-created.
+	t.pruneScanReferrers(ctx, recordCID, report.GetScannerType(), ref.GetCid())
+
 	return nil
+}
+
+// pruneScanReferrers deletes the scan report referrers left by earlier runs of
+// scannerType, keeping keepCID.
+func (t *Task) pruneScanReferrers(ctx context.Context, recordCID string, scannerType scanv1.ScannerType, keepCID string) {
+	// UNSPECIFIED names the set of scanners this enum does not know rather than
+	// one scanner, so it cannot identify which reports an earlier run of the
+	// same producer left behind. Pruning on it would delete the reports of
+	// every third party that pushed one. NewTask rejects runners that map here,
+	// so this guards against a future caller rather than today's.
+	if scannerType == scanv1.ScannerType_SCANNER_TYPE_UNSPECIFIED {
+		return
+	}
+
+	var superseded []string
+
+	err := t.refStore.WalkReferrers(ctx, recordCID, corev1.ScanReportReferrerType, func(ref *corev1.RecordReferrer) error {
+		cid := ref.GetReferrerRef().GetCid()
+		if cid == "" || cid == keepCID {
+			return nil
+		}
+
+		// Scoped by scanner type, so the MCP runner never deletes the report
+		// the A2A runner wrote for the same record.
+		existing := &scanv1.ScanReport{}
+		if err := existing.UnmarshalReferrer(ref); err != nil {
+			logger.Debug("Skipping unparsable scan report referrer", "cid", recordCID, "referrer", cid, "error", err)
+
+			return nil
+		}
+
+		if existing.GetScannerType() == scannerType {
+			superseded = append(superseded, cid)
+		}
+
+		return nil
+	})
+	if err != nil {
+		logger.Warn("Failed to list scan report referrers for pruning", "cid", recordCID, "error", err)
+
+		return
+	}
+
+	for _, cid := range superseded {
+		if _, err := t.refStore.DeleteReferrer(ctx, recordCID, cid, corev1.ScanReportReferrerType); err != nil {
+			logger.Warn("Failed to delete superseded scan report referrer",
+				"cid", recordCID, "referrer", cid, "error", err)
+
+			continue
+		}
+
+		logger.Debug("Deleted superseded scan report referrer",
+			"cid", recordCID, "referrer", cid, "scanner", scannerType.String())
+	}
 }
 
 // buildScanReport converts a runner name + ScanResult into a scanv1.ScanReport proto.
