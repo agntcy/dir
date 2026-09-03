@@ -17,15 +17,14 @@ const scanReportsTable = "scan_reports"
 // Declared here rather than reusing gorm.ScanReport, which will keep changing:
 // a migration must describe the schema as it was when written.
 type scanReportStatusRow struct {
-	RecordCID           string     `gorm:"column:record_cid;primaryKey"`
-	ScannerType         string     `gorm:"column:scanner_type;primaryKey"`
-	Status              string     `gorm:"column:status;not null;default:completed"`
-	FailureReason       string     `gorm:"column:failure_reason"`
-	FailureDetail       string     `gorm:"column:failure_detail"`
-	ConsecutiveFailures int        `gorm:"column:consecutive_failures;not null;default:0"`
-	NextAttemptAt       time.Time  `gorm:"column:next_attempt_at"`
-	LastSuccessAt       *time.Time `gorm:"column:last_success_at"`
-	UpdatedAt           time.Time  `gorm:"column:updated_at"`
+	RecordCID           string    `gorm:"column:record_cid;primaryKey"`
+	ScannerType         string    `gorm:"column:scanner_type;primaryKey"`
+	Status              string    `gorm:"column:status;not null;default:completed"`
+	FailureReason       string    `gorm:"column:failure_reason"`
+	FailureDetail       string    `gorm:"column:failure_detail"`
+	ConsecutiveFailures int       `gorm:"column:consecutive_failures;not null;default:0"`
+	NextAttemptAt       time.Time `gorm:"column:next_attempt_at"`
+	UpdatedAt           time.Time `gorm:"column:updated_at"`
 }
 
 func (scanReportStatusRow) TableName() string { return scanReportsTable }
@@ -37,7 +36,6 @@ var addedColumns = []string{
 	"FailureDetail",
 	"ConsecutiveFailures",
 	"NextAttemptAt",
-	"LastSuccessAt",
 }
 
 func init() {
@@ -87,7 +85,6 @@ func runScanReportStatus(db *gorm.DB) error {
 			"failure_reason":       "",
 			"failure_detail":       "",
 			"consecutive_failures": 0,
-			"last_success_at":      gorm.Expr("updated_at"),
 			"next_attempt_at":      time.Now().Add(types.DefaultScanFreshFor),
 		}).Error
 	if err != nil {

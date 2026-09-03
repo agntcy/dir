@@ -47,9 +47,9 @@ func TestScanSchedule_RetryCapDependsOnFault(t *testing.T) {
 	t.Parallel()
 
 	task := &Task{config: Config{
-		TTL:       7 * 24 * time.Hour,
-		RetryBase: 6 * time.Hour,
-		RetryMax:  24 * time.Hour,
+		TTL: 7 * 24 * time.Hour,
+		// The interval doubles as the backoff base.
+		Interval: 6 * time.Hour,
 	}}
 
 	for _, tc := range []struct {
@@ -79,7 +79,7 @@ func TestScanSchedule_RetryCapDependsOnFault(t *testing.T) {
 			}
 
 			if got.RetryBase != 6*time.Hour {
-				t.Errorf("RetryBase = %v, want 6h", got.RetryBase)
+				t.Errorf("RetryBase = %v, want the 6h interval", got.RetryBase)
 			}
 		})
 	}

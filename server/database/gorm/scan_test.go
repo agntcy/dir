@@ -122,7 +122,6 @@ func TestUpsertScanReport_CompletedRecordsSuccess(t *testing.T) {
 	assert.Equal(t, types.ScanStatusCompleted, row.Status)
 	assert.Equal(t, 0, row.ConsecutiveFailures)
 	assert.Empty(t, row.FailureReason)
-	require.NotNil(t, row.LastSuccessAt)
 	assert.WithinDuration(t, time.Now().Add(100*time.Hour), row.NextAttemptAt, time.Minute)
 }
 
@@ -153,9 +152,6 @@ func TestUpsertScanReport_SuccessToFailureIncrementsAndClassifies(t *testing.T) 
 		IsSafe: true, MaxSeverity: "NONE", Status: types.ScanStatusCompleted,
 	})
 
-	firstSuccess := loadReport(t, db).LastSuccessAt
-	require.NotNil(t, firstSuccess)
-
 	upsert(t, db, &ScanReport{
 		RecordCID: scanTestCID, ScannerType: "MCP",
 		IsSafe: false, MaxSeverity: "NONE",
@@ -171,11 +167,6 @@ func TestUpsertScanReport_SuccessToFailureIncrementsAndClassifies(t *testing.T) 
 	assert.Equal(t, "source-unreachable", row.FailureReason)
 	assert.Contains(t, row.FailureDetail, "128")
 	assert.False(t, row.IsSafe, "a failure row stores is_safe=false so queries fail closed")
-
-	// Retained, so a record that once scanned cleanly stays distinguishable
-	// from one that never did.
-	require.NotNil(t, row.LastSuccessAt)
-	assert.WithinDuration(t, *firstSuccess, *row.LastSuccessAt, time.Second)
 }
 
 func TestUpsertScanReport_RepeatedFailuresBackOff(t *testing.T) {
@@ -202,9 +193,6 @@ func TestUpsertScanReport_RepeatedFailuresBackOff(t *testing.T) {
 		assert.Equal(t, i+1, row.ConsecutiveFailures, "attempt %d", i+1)
 		assert.WithinDuration(t, time.Now().Add(want), row.NextAttemptAt, time.Minute, "attempt %d", i+1)
 	}
-
-	// Never scanned successfully, so there is no success timestamp to keep.
-	assert.Nil(t, loadReport(t, db).LastSuccessAt)
 }
 
 func TestUpsertScanReport_FailureToSuccessResets(t *testing.T) {
@@ -233,7 +221,6 @@ func TestUpsertScanReport_FailureToSuccessResets(t *testing.T) {
 	assert.Equal(t, 0, row.ConsecutiveFailures)
 	assert.Empty(t, row.FailureReason)
 	assert.Empty(t, row.FailureDetail)
-	require.NotNil(t, row.LastSuccessAt)
 }
 
 // A partial scan reached a verdict, so it resets the counter like a completed

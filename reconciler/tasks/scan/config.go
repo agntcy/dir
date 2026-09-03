@@ -20,11 +20,6 @@ const (
 	// DefaultRecordTimeout is the per-record timeout for the full scan (clone + scanner binary).
 	DefaultRecordTimeout = 5 * time.Minute
 
-	// DefaultRetryMax caps the failure backoff. Well below DefaultTTL, so a
-	// deployment whose scanner was misconfigured picks records up within a day
-	// of the fix rather than waiting out the full TTL.
-	DefaultRetryMax = 24 * time.Hour
-
 	// DefaultMCPCLIPath is the default binary name for the MCP scanner.
 	DefaultMCPCLIPath = "mcp-scanner"
 
@@ -79,47 +74,20 @@ type Config struct {
 	// for aggregator records that legitimately bundle several MCP servers;
 	// note that each endpoint costs one scanner invocation per subcommand.
 	MaxEndpointsPerRecord int `json:"max_endpoints_per_record,omitempty" mapstructure:"max_endpoints_per_record"`
-
-	// RetryBase is the delay before re-attempting a record whose scan failed,
-	// doubled by each further consecutive failure up to RetryMax. Zero
-	// defaults to Interval, so a first failure retries on the next pass and
-	// only repeated ones back off.
-	RetryBase time.Duration `json:"retry_base,omitempty" mapstructure:"retry_base"`
-
-	// RetryMax caps the failure backoff. Zero applies DefaultRetryMax.
-	//
-	// The schedule is materialised into each row as it is written, so changing
-	// this does not reschedule existing rows; they adopt it on their next
-	// attempt.
-	RetryMax time.Duration `json:"retry_max,omitempty" mapstructure:"retry_max"`
 }
 
 // ScanSchedule returns the retry schedule applied to scan result rows.
+//
+// The backoff base is the scan interval, so a first failure retries on the
+// next pass and only repeated ones back off. The schedule is materialised into
+// each row as it is written, so changing the interval does not reschedule
+// existing rows; they adopt it on their next attempt.
 func (c *Config) ScanSchedule() types.ScanSchedule {
 	return types.ScanSchedule{
 		FreshFor:  c.GetTTL(),
-		RetryBase: c.GetRetryBase(),
-		RetryMax:  c.GetRetryMax(),
+		RetryBase: c.GetInterval(),
+		RetryMax:  types.DefaultScanRetryMax,
 	}
-}
-
-// GetRetryBase returns the failure retry base delay, defaulting to the scan
-// interval.
-func (c *Config) GetRetryBase() time.Duration {
-	if c.RetryBase == 0 {
-		return c.GetInterval()
-	}
-
-	return c.RetryBase
-}
-
-// GetRetryMax returns the failure backoff cap with default fallback.
-func (c *Config) GetRetryMax() time.Duration {
-	if c.RetryMax == 0 {
-		return DefaultRetryMax
-	}
-
-	return c.RetryMax
 }
 
 // GetInterval returns the interval with default fallback.

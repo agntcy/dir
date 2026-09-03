@@ -228,7 +228,8 @@ type ScanSchedule struct {
 	FreshFor time.Duration
 
 	// RetryBase is the delay after a first failure, doubled by each further
-	// consecutive failure.
+	// consecutive failure. The reconciler passes its scan interval, so a first
+	// failure retries on the next pass and only repeated ones back off.
 	RetryBase time.Duration
 
 	// RetryMax caps the backoff. Deliberately shorter than FreshFor, so a
@@ -243,65 +244,52 @@ const (
 	DefaultScanRetryMax  = 24 * time.Hour
 )
 
-// DefaultScanSchedule returns the schedule for callers with no configuration of
-// their own, such as ingest recording a report pushed by a peer.
+// DefaultScanSchedule returns the all-defaults schedule, for callers with no
+// configuration of their own.
 func DefaultScanSchedule() ScanSchedule {
-	return ScanSchedule{
-		FreshFor:  DefaultScanFreshFor,
-		RetryBase: DefaultScanRetryBase,
-		RetryMax:  DefaultScanRetryMax,
+	return ScanSchedule{}.withDefaults()
+}
+
+// withDefaults fills fields left unset, or set to a nonsensical non-positive
+// duration that would otherwise schedule the next attempt in the past.
+func (s ScanSchedule) withDefaults() ScanSchedule {
+	if s.FreshFor <= 0 {
+		s.FreshFor = DefaultScanFreshFor
 	}
+
+	if s.RetryBase <= 0 {
+		s.RetryBase = DefaultScanRetryBase
+	}
+
+	if s.RetryMax <= 0 {
+		s.RetryMax = DefaultScanRetryMax
+	}
+
+	return s
 }
 
 // NextAttempt returns when a row should next be attempted. Zero
 // consecutiveFailures means the attempt reached a verdict.
 func (s ScanSchedule) NextAttempt(now time.Time, consecutiveFailures int) time.Time {
+	s = s.withDefaults()
+
 	if consecutiveFailures <= 0 {
-		return now.Add(s.freshFor())
+		return now.Add(s.FreshFor)
 	}
 
-	delay := s.retryBase()
-	maxDelay := s.retryMax()
+	// Doubling stops at the cap, because a record failing for months would
+	// overflow the duration otherwise.
+	delay := s.RetryBase
 
-	// Capped inside the loop: a record failing for months would overflow the
-	// duration otherwise.
 	for range consecutiveFailures - 1 {
-		if delay >= maxDelay {
+		if delay >= s.RetryMax {
 			break
 		}
 
 		delay *= 2
 	}
 
-	if delay > maxDelay {
-		delay = maxDelay
-	}
-
-	return now.Add(delay)
-}
-
-func (s ScanSchedule) freshFor() time.Duration {
-	if s.FreshFor <= 0 {
-		return DefaultScanFreshFor
-	}
-
-	return s.FreshFor
-}
-
-func (s ScanSchedule) retryBase() time.Duration {
-	if s.RetryBase <= 0 {
-		return DefaultScanRetryBase
-	}
-
-	return s.RetryBase
-}
-
-func (s ScanSchedule) retryMax() time.Duration {
-	if s.RetryMax <= 0 {
-		return DefaultScanRetryMax
-	}
-
-	return s.RetryMax
+	return now.Add(min(delay, s.RetryMax))
 }
 
 // ScanReportDatabaseAPI handles persistence and querying of security scan results.

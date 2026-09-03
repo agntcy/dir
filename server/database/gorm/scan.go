@@ -31,9 +31,8 @@ type ScanReport struct {
 	// use it rather than a single failure, because git and network errors
 	// conflate durable causes (a private repository) with transient ones
 	// (rate limiting, a DNS blip).
-	ConsecutiveFailures int        `gorm:"column:consecutive_failures;not null;default:0"`
-	NextAttemptAt       time.Time  `gorm:"column:next_attempt_at;not null;index"` // when this row stops suppressing a rescan
-	LastSuccessAt       *time.Time `gorm:"column:last_success_at"`                // survives later failures, so a record that once scanned cleanly stays distinguishable
+	ConsecutiveFailures int       `gorm:"column:consecutive_failures;not null;default:0"`
+	NextAttemptAt       time.Time `gorm:"column:next_attempt_at;not null;index"` // when this row stops suppressing a rescan
 
 	CreatedAt time.Time `gorm:"column:created_at;not null"`
 	UpdatedAt time.Time `gorm:"column:updated_at;not null"`
@@ -85,7 +84,6 @@ func (d *DB) UpsertScanReport(report types.ScanReportObject, schedule types.Scan
 			Status:        status,
 			FailureReason: report.GetFailureReason(),
 			FailureDetail: report.GetFailureDetail(),
-			LastSuccessAt: existing.LastSuccessAt,
 			CreatedAt:     now,
 			UpdatedAt:     now,
 		}
@@ -94,8 +92,6 @@ func (d *DB) UpsertScanReport(report types.ScanReportObject, schedule types.Scan
 			// existing is the zero value when there was no row, so a first
 			// failure counts as one.
 			row.ConsecutiveFailures = existing.ConsecutiveFailures + 1
-		} else {
-			row.LastSuccessAt = &now
 		}
 
 		row.NextAttemptAt = schedule.NextAttempt(now, row.ConsecutiveFailures)
@@ -110,7 +106,6 @@ func (d *DB) UpsertScanReport(report types.ScanReportObject, schedule types.Scan
 				"failure_detail",
 				"consecutive_failures",
 				"next_attempt_at",
-				"last_success_at",
 				"updated_at",
 			}),
 		}).Create(row).Error

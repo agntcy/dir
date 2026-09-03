@@ -662,6 +662,22 @@ func TestGetRecordCIDs_ScanSeverity_IgnoresFailedRows(t *testing.T) {
 	assert.NotContains(t, cids, marketingAgent.GetCid())
 }
 
+// The exclude path needs the gate for the same reason: excluding severity NONE
+// asks for records whose scan found something, not for records whose scan never
+// ran and left NONE behind.
+func TestGetRecordCIDs_NegatedScanSeverity_IgnoresFailedRows(t *testing.T) {
+	db := setupTestDB(t)
+	seedDB(t, db)
+
+	seedScanReport(t, db, marketingAgent.GetCid(), types.ScanStatusFailed, "source-unreachable", false, "NONE")
+	seedScanReport(t, db, healthcareAgent.GetCid(), types.ScanStatusCompleted, "", true, "NONE")
+
+	cids, err := db.GetRecordCIDs(types.WithoutScanSeverities("NONE"))
+	require.NoError(t, err)
+	assert.Contains(t, cids, marketingAgent.GetCid(), "a failed scan is not a finding of NONE")
+	assert.NotContains(t, cids, healthcareAgent.GetCid())
+}
+
 func TestGetRecordCIDs_ScanStatus(t *testing.T) {
 	db := setupTestDB(t)
 	seedDB(t, db)

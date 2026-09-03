@@ -277,9 +277,11 @@ func applyExcludedScanSeverities(query *gorm.DB, thresholds []string) *gorm.DB {
 		return query
 	}
 
+	// Status-gated like the include path: max_severity on a failed row is a
+	// placeholder, so without this a failed scan reads as a finding of NONE.
 	return query.Where(
-		utils.BuildNotExistsCondition("scan_reports", "ex", "ex.record_cid = records.record_cid AND ex.max_severity IN ?"),
-		severities,
+		utils.BuildNotExistsCondition("scan_reports", "ex", "ex.record_cid = records.record_cid AND ex.status IN ? AND ex.max_severity IN ?"),
+		types.ScannedStatuses(), severities,
 	)
 }
 
