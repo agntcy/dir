@@ -16,14 +16,6 @@ on:
         type: string
         description: "Version query for dirctl search"
         default: "v1.*"
-  push:
-    branches:
-      - feat/oidc-auth
-    paths:
-      - ".github/workflows/oidc-test.yml"
-      - "cli/**"
-      - "client/**"
-      - "auth/**"
 
 permissions:
   contents: read
