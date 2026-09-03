@@ -77,6 +77,29 @@ func sorted(cids ...string) []string {
 	return cids
 }
 
+// A referrer is reached through its subject's Referrers API, so it carries no tag of its own. A
+// tag would add nothing to discovery while listing every referrer alongside the records in the
+// registry's tag list and index.
+func TestPushReferrer_DoesNotTagTheReferrer(t *testing.T) {
+	s, recordCID := referrerStoreFixture(t)
+
+	cid := attachReferrer(t, s, recordCID, "untagged")
+
+	_, err := s.repo.Resolve(testCtx, cid)
+	require.Error(t, err, "referrer CID should not resolve as a tag")
+
+	_, err = s.repo.Resolve(testCtx, recordCID)
+	require.NoError(t, err, "the record itself stays tagged")
+
+	// Discovery and deletion go through the subject, so both still work untagged.
+	assert.Equal(t, []string{cid}, walkCIDs(t, s, recordCID))
+
+	deleted, err := s.DeleteReferrer(testCtx, recordCID, cid, corev1.ScanReportReferrerType)
+	require.NoError(t, err, "delete referrer")
+	assert.Equal(t, []string{cid}, deleted)
+	assert.Empty(t, walkCIDs(t, s, recordCID), "referrer should be gone")
+}
+
 func TestDeleteReferrer_RemovesTheReferrer(t *testing.T) {
 	s, recordCID := referrerStoreFixture(t)
 

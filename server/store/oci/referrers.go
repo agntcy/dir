@@ -128,12 +128,10 @@ func (s *store) pushReferrer(ctx context.Context, recordCID string, referrer *co
 		return nil, fmt.Errorf("failed to pack referrer manifest: %w", err)
 	}
 
-	// Create CID tag for content-addressable storage
-	err = s.tagWithRetry(ctx, manifestDesc.Digest.String(), referrerCID)
-	if err != nil {
-		return nil, status.Errorf(codes.Internal, "failed to create CID tag: %v", err)
-	}
-
+	// Deliberately not tagged. A referrer is reached through its subject's Referrers API, so a
+	// tag adds nothing to discovery while making every referrer a top-level entry in the
+	// registry's tag list and index - which is what made that index outgrow the records it
+	// describes. The CID stays available as a manifest annotation.
 	referrersLogger.Debug("Referrer pushed successfully", "digest", manifestDesc.Digest.String(), "type", referrer.GetType())
 
 	return &corev1.ReferrerRef{Cid: referrerCID}, nil
