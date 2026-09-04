@@ -18,7 +18,7 @@ require (
 	buf.build/go/protovalidate v1.3.0
 	github.com/agntcy/dir/api v1.7.0
 	github.com/agntcy/dir/utils v1.7.0
-	github.com/agntcy/oasf-sdk/pkg v1.1.0
+	github.com/agntcy/oasf-sdk/pkg v1.2.0
 	github.com/casbin/casbin/v2 v2.135.0
 	github.com/glebarez/sqlite v1.11.0
 	github.com/google/uuid v1.6.0

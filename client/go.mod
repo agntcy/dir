@@ -14,7 +14,7 @@ replace github.com/ThalesIgnite/crypto11 => github.com/eclipse-keypont/crypto11 
 require (
 	github.com/agntcy/dir/api v1.7.0
 	github.com/agntcy/dir/utils v1.7.0
-	github.com/agntcy/oasf-sdk/pkg v1.1.0
+	github.com/agntcy/oasf-sdk/pkg v1.2.0
 	github.com/google/uuid v1.6.0
 	github.com/mitchellh/mapstructure v1.5.1-0.20231216201459-8508981c8b6c
 	github.com/pkg/browser v0.0.0-20240102092130-5ac0b6a4141c
