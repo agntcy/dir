@@ -25,12 +25,12 @@ var _ = ginkgo.Describe("Natural-language search", func() {
 
 	ginkgo.Context("free-text query with OASF extractor", ginkgo.Ordered, func() {
 		ginkgo.BeforeAll(func() {
-			// Check for the oasf-sdk manifest written by `dirctl init`. This mirrors
-			// what extractor.IsProvisioned does without importing the internal package.
+			// Check for the oasf-sdk extractor manifest written by `dirctl init`.
+			// This mirrors extractor.IsProvisioned without importing the internal package.
 			home, homeErr := os.UserHomeDir()
 			gomega.Expect(homeErr).NotTo(gomega.HaveOccurred())
 
-			manifest := filepath.Join(home, ".agntcy", "oasf-sdk", "manifest.json")
+			manifest := filepath.Join(home, ".agntcy", "oasf-sdk", "extractor", "manifest.json")
 			if _, err := os.Stat(manifest); err != nil {
 				ginkgo.Skip("OASF extractor not provisioned — run `dirctl init` to enable natural-language search tests")
 			}
