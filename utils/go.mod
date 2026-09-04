@@ -7,7 +7,7 @@ require (
 	buf.build/gen/go/agntcy/oasf-sdk/protocolbuffers/go v1.36.12-20260811133823-5281d0c487b5.1
 	buf.build/gen/go/agntcy/oasf/protocolbuffers/go v1.36.12-20260721113505-cf7db8888586.1
 	github.com/agntcy/dir/api v1.7.0
-	github.com/agntcy/oasf-sdk/pkg v1.1.0
+	github.com/agntcy/oasf-sdk/pkg v1.2.0
 	github.com/mitchellh/mapstructure v1.5.1-0.20231216201459-8508981c8b6c
 	github.com/rs/zerolog v1.35.1
 	github.com/spf13/viper v1.21.0
