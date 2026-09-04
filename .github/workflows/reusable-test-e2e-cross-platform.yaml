@@ -6,6 +6,9 @@ name: Test E2E Cross-Platform
 on:
   workflow_call:
 
+permissions:
+  contents: read
+
 jobs:
   cross-platform:
     name: Cross-Platform Test ${{ matrix.label }}

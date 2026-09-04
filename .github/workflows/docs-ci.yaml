@@ -23,6 +23,8 @@ concurrency:
 
 jobs:
   ci:
+    permissions:
+      contents: write
     uses: ./.github/workflows/reusable-docs.yml
     with:
       mode: ci

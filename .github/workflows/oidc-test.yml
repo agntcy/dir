@@ -16,23 +16,17 @@ on:
         type: string
         description: "Version query for dirctl search"
         default: "v1.*"
-  push:
-    branches:
-      - feat/oidc-auth
-    paths:
-      - ".github/workflows/oidc-test.yml"
-      - "cli/**"
-      - "client/**"
-      - "auth/**"
 
 permissions:
-  id-token: write
   contents: read
 
 jobs:
   test-github-oidc:
     name: Test dirctl with GitHub OIDC
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
 
     steps:
       - name: Checkout code
