@@ -19,3 +19,10 @@ tasks:
     dir: ./server/gateway/ui
     cmds:
       - npm run dev
+
+  ui:test:
+    desc: Run the gateway UI unit tests
+    dir: ./server/gateway/ui
+    cmds:
+      - npm ci
+      - npm test
