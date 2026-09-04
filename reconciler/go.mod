@@ -24,8 +24,8 @@ require (
 	github.com/opencontainers/image-spec v1.1.1
 	github.com/sigstore/sigstore v1.10.9
 	github.com/spf13/viper v1.21.0
-	github.com/stretchr/testify v1.12.0
-	google.golang.org/grpc v1.83.1
+	github.com/stretchr/testify v1.12.1
+	google.golang.org/grpc v1.83.2
 	gopkg.in/yaml.v3 v3.0.1
 	oras.land/oras-go/v2 v2.6.2
 )
@@ -33,8 +33,8 @@ require (
 require (
 	buf.build/gen/go/agntcy/oasf-sdk/grpc/go v1.6.2-20260811133823-5281d0c487b5.1 // indirect
 	buf.build/gen/go/agntcy/oasf-sdk/protocolbuffers/go v1.36.12-20260811133823-5281d0c487b5.1 // indirect
-	buf.build/gen/go/agntcy/oasf/protocolbuffers/go v1.36.12-20260721113505-cf7db8888586.1 // indirect
-	buf.build/gen/go/bufbuild/protovalidate/protocolbuffers/go v1.36.12-20260825204119-511051f7f437.1 // indirect
+	buf.build/gen/go/agntcy/oasf/protocolbuffers/go v1.36.12-20260828094143-e699d1c609e4.1 // indirect
+	buf.build/gen/go/bufbuild/protovalidate/protocolbuffers/go v1.36.12-20260825204119-511051f7f437.2 // indirect
 	github.com/AndreasBriese/bbloom v0.0.0-20190825152654-46b345b51c96 // indirect
 	github.com/Azure/go-ansiterm v0.0.0-20250102033503-faa5f7b0171c // indirect
 	github.com/Masterminds/semver/v3 v3.5.0 // indirect
@@ -62,7 +62,7 @@ require (
 	github.com/fxamacker/cbor/v2 v2.9.2 // indirect
 	github.com/glebarez/go-sqlite v1.22.0 // indirect
 	github.com/glebarez/sqlite v1.11.0 // indirect
-	github.com/go-chi/chi/v5 v5.3.1 // indirect
+	github.com/go-chi/chi/v5 v5.3.2 // indirect
 	github.com/go-jose/go-jose/v4 v4.1.4 // indirect
 	github.com/go-logr/logr v1.4.4 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
@@ -166,7 +166,7 @@ require (
 	github.com/segmentio/asm v1.2.1 // indirect
 	github.com/shibumi/go-pathspec v1.3.0 // indirect
 	github.com/sigstore/cosign/v3 v3.1.3 // indirect
-	github.com/sigstore/protobuf-specs v0.5.1 // indirect
+	github.com/sigstore/protobuf-specs v0.5.2 // indirect
 	github.com/sigstore/rekor v1.5.3 // indirect
 	github.com/sigstore/rekor-tiles/v2 v2.3.0 // indirect
 	github.com/sigstore/sigstore-go v1.3.0 // indirect
@@ -188,7 +188,7 @@ require (
 	github.com/ulikunitz/xz v0.5.15 // indirect
 	github.com/x448/float16 v0.8.4 // indirect
 	github.com/youmark/pkcs8 v0.0.0-20240726163527-a2c0da244d78 // indirect
-	github.com/zitadel/oidc/v3 v3.49.2 // indirect
+	github.com/zitadel/oidc/v3 v3.49.4 // indirect
 	github.com/zitadel/schema v1.3.2 // indirect
 	gitlab.com/gitlab-org/api/client-go v1.46.0 // indirect
 	go.opentelemetry.io/auto/sdk v1.2.1 // indirect
