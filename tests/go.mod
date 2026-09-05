@@ -17,6 +17,7 @@ replace github.com/ThalesIgnite/crypto11 => github.com/eclipse-keypont/crypto11 
 
 require (
 	buf.build/gen/go/agntcy/oasf/protocolbuffers/go v1.36.12-20260721113505-cf7db8888586.1
+	github.com/agntcy/ai-catalog-go v0.2.0
 	github.com/agntcy/dir-importer v1.5.5-0.20260819134321-525b42c65a49
 	github.com/agntcy/dir/api v1.7.0
 	github.com/agntcy/dir/cli v1.7.0
