@@ -67,12 +67,16 @@ func (s *Service) registerTasks(cfg *config.Config, db servertypes.DatabaseAPI, 
 	}
 
 	if cfg.Indexer.Enabled {
-		t, err := indexer.NewTask(cfg.Indexer, cfg.LocalRegistry, store, repo, db, oasfValidator)
-		if err != nil {
-			return fmt.Errorf("failed to create indexer task: %w", err)
-		}
+		if repo == nil {
+			logger.Warn("No registry tag lister available, skipping indexer task")
+		} else {
+			t, err := indexer.NewTask(cfg.Indexer, cfg.LocalRegistry, store, repo, db, oasfValidator)
+			if err != nil {
+				return fmt.Errorf("failed to create indexer task: %w", err)
+			}
 
-		s.addTask(t)
+			s.addTask(t)
+		}
 	}
 
 	if cfg.Name.Enabled {

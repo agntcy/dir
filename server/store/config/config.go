@@ -3,7 +3,10 @@
 
 package config
 
-import oci "github.com/agntcy/dir/server/store/oci/config"
+import (
+	dbconfig "github.com/agntcy/dir/server/database/config"
+	oci "github.com/agntcy/dir/server/store/oci/config"
+)
 
 const (
 	DefaultProvider = "oci"
@@ -18,6 +21,9 @@ type Config struct {
 
 	// Config for OCI database.
 	OCI oci.Config `json:"oci" mapstructure:"oci"`
+
+	// Config for the SQL content store, used when Provider is "sql".
+	SQL dbconfig.Config `json:"sql" mapstructure:"sql"`
 
 	// Verification configures name ownership verification.
 	Verification VerificationConfig `json:"verification" mapstructure:"verification"`
