@@ -16,6 +16,7 @@ import (
 	"github.com/agntcy/dir/reconciler/tasks/indexer"
 	"github.com/agntcy/dir/reconciler/tasks/metrics"
 	"github.com/agntcy/dir/reconciler/tasks/name"
+	"github.com/agntcy/dir/reconciler/tasks/ownership"
 	"github.com/agntcy/dir/reconciler/tasks/regsync"
 	"github.com/agntcy/dir/reconciler/tasks/scan"
 	"github.com/agntcy/dir/reconciler/tasks/signature"
@@ -55,7 +56,7 @@ func New(cfg *config.Config, db servertypes.DatabaseAPI, store servertypes.Store
 	return svc, nil
 }
 
-//nolint:cyclop
+//nolint:cyclop,gocognit
 func (s *Service) registerTasks(cfg *config.Config, db servertypes.DatabaseAPI, store servertypes.StoreAPI, repo registry.TagLister, oasfValidator corev1.Validator, counters metrics.ProviderCounterAPI) error {
 	if cfg.Regsync.Enabled {
 		t, err := regsync.NewTask(cfg.Regsync, cfg.LocalRegistry, db)
@@ -123,6 +124,20 @@ func (s *Service) registerTasks(cfg *config.Config, db servertypes.DatabaseAPI, 
 			t, err := metrics.NewTask(cfg.Metrics, db, counters)
 			if err != nil {
 				return fmt.Errorf("failed to create metrics task: %w", err)
+			}
+
+			s.addTask(t)
+		}
+	}
+
+	if cfg.Ownership.Enabled {
+		refStore, ok := store.(servertypes.ReferrerStoreAPI)
+		if !ok {
+			logger.Warn("Store does not support referrers, skipping ownership task")
+		} else {
+			t, err := ownership.NewTask(cfg.Ownership, db, refStore, db)
+			if err != nil {
+				return fmt.Errorf("failed to create ownership task: %w", err)
 			}
 
 			s.addTask(t)
