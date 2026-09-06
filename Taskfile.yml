@@ -22,6 +22,11 @@ includes:
     flatten: true
     excludes: [default]
 
+  signlib:
+    taskfile: signlib/Taskfile.yml
+    flatten: true
+    excludes: [default]
+
   deps:
     taskfile: Taskfile.deps.yml
     dir: "{{.BIN_DIR}}"
