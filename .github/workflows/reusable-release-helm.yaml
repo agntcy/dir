@@ -31,6 +31,9 @@ on:
         description: "Chart path component (e.g., 'dir' or 'dir-dev'). Defaults to 'dir'."
         default: "dir"
 
+permissions:
+  contents: read
+
 jobs:
   chart:
     name: Helm chart
@@ -43,6 +46,7 @@ jobs:
           - chart: dirctl
             source_path: install/charts/dirctl
     permissions:
+      contents: read
       packages: write
     steps:
       - name: Checkout code

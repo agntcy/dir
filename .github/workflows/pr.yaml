@@ -12,17 +12,22 @@ on:
       - synchronize
 
 permissions:
-  pull-requests: write
   contents: read
 
 jobs:
   validate_pr_title:
     name: Validate PR Title
+    permissions:
+      contents: read
+      pull-requests: write
     uses: ./.github/workflows/lint-pr-title.yaml
 
   label:
     name: Label
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
     steps:
       - uses: codelytv/pr-size-labeler@095a41fca88b8764fd9e008ad269bcdb82bb38b9 # v1.10.4
         with:

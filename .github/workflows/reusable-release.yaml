@@ -15,9 +15,15 @@ on:
         type: string
         description: "Release tag for all components."
 
+permissions:
+  contents: read
+
 jobs:
   image:
     name: Image
+    permissions:
+      contents: read
+      packages: write
     uses: ./.github/workflows/reusable-build.yaml
     with:
       image_repo: ${{ inputs.image_repo }}
@@ -26,6 +32,9 @@ jobs:
 
   chart:
     name: Helm chart
+    permissions:
+      contents: read
+      packages: write
     uses: ./.github/workflows/reusable-release-helm.yaml
     with:
       image_repo: ${{ inputs.image_repo }}
@@ -71,6 +80,8 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+      id-token: write
+      attestations: write
     steps:
       - name: Create Release
         id: create_release
@@ -90,6 +101,8 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+      id-token: write
+      attestations: write
     strategy:
       matrix:
         os: [linux, darwin, windows]
