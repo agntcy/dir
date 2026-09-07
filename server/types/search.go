@@ -19,8 +19,11 @@ type RecordFieldValues struct {
 // supportedRecordValueFields lists the fields ListRecordValues can enumerate,
 // in ascending RecordQueryType order. That order is also the canonical order in
 // which results are returned when a caller requests every field.
+// A record's own version is deliberately absent: it is per-record identity
+// rather than a shared facet, so a registry-wide distinct list grows with the
+// registry and answers no useful question. It only becomes meaningful once a
+// query context exists to scope it to a single record.
 var supportedRecordValueFields = []searchv1.RecordQueryType{
-	searchv1.RecordQueryType_RECORD_QUERY_TYPE_VERSION,
 	searchv1.RecordQueryType_RECORD_QUERY_TYPE_SKILL_NAME,
 	searchv1.RecordQueryType_RECORD_QUERY_TYPE_MODULE_NAME,
 	searchv1.RecordQueryType_RECORD_QUERY_TYPE_DOMAIN_NAME,

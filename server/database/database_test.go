@@ -280,11 +280,11 @@ func TestListRecordValues_RequestedFields(t *testing.T) {
 
 	got, err := db.ListRecordValues([]searchv1.RecordQueryType{
 		searchv1.RecordQueryType_RECORD_QUERY_TYPE_MODULE_NAME,
-		searchv1.RecordQueryType_RECORD_QUERY_TYPE_VERSION,
+		searchv1.RecordQueryType_RECORD_QUERY_TYPE_SCHEMA_VERSION,
 	})
 	require.NoError(t, err)
 
-	// Values are deduplicated (1.0.0 appears on two records) and sorted, and
+	// Values are deduplicated (0.8.0 appears on two records) and sorted, and
 	// the field order mirrors the request.
 	assert.Equal(t, []types.RecordFieldValues{
 		{
@@ -292,8 +292,8 @@ func TestListRecordValues_RequestedFields(t *testing.T) {
 			Values: []string{"core/llm/model", "integration/acp", "integration/mcp"},
 		},
 		{
-			Field:  searchv1.RecordQueryType_RECORD_QUERY_TYPE_VERSION,
-			Values: []string{"1.0.0", "2.0.0"},
+			Field:  searchv1.RecordQueryType_RECORD_QUERY_TYPE_SCHEMA_VERSION,
+			Values: []string{"0.7.0", "0.8.0"},
 		},
 	}, got)
 }
@@ -311,7 +311,6 @@ func TestListRecordValues_NoFieldsReturnsAllSupported(t *testing.T) {
 	}
 
 	assert.Equal(t, []searchv1.RecordQueryType{
-		searchv1.RecordQueryType_RECORD_QUERY_TYPE_VERSION,
 		searchv1.RecordQueryType_RECORD_QUERY_TYPE_SKILL_NAME,
 		searchv1.RecordQueryType_RECORD_QUERY_TYPE_MODULE_NAME,
 		searchv1.RecordQueryType_RECORD_QUERY_TYPE_DOMAIN_NAME,
@@ -319,7 +318,19 @@ func TestListRecordValues_NoFieldsReturnsAllSupported(t *testing.T) {
 		searchv1.RecordQueryType_RECORD_QUERY_TYPE_SCHEMA_VERSION,
 	}, fields)
 
-	assert.Equal(t, []string{"0.7.0", "0.8.0"}, got[5].Values)
+	assert.Equal(t, []string{"0.7.0", "0.8.0"}, got[4].Values)
+}
+
+// A record's own version is per-record identity rather than a shared facet, so
+// it is not enumerable until contextual faceting exists to scope it.
+func TestListRecordValues_VersionIsNotSupported(t *testing.T) {
+	db := setupTestDB(t)
+	seedDB(t, db)
+
+	_, err := db.ListRecordValues([]searchv1.RecordQueryType{
+		searchv1.RecordQueryType_RECORD_QUERY_TYPE_VERSION,
+	})
+	require.ErrorContains(t, err, "unsupported record value field")
 }
 
 func TestListRecordValues_Authors(t *testing.T) {

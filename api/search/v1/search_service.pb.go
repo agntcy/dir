@@ -418,12 +418,18 @@ type ListRecordValuesRequest struct {
 	// Which fields to return distinct values for. Empty returns every supported
 	// field.
 	//
-	// Supported fields are RECORD_QUERY_TYPE_VERSION, RECORD_QUERY_TYPE_SKILL_NAME,
+	// Supported fields are RECORD_QUERY_TYPE_SKILL_NAME,
 	// RECORD_QUERY_TYPE_MODULE_NAME, RECORD_QUERY_TYPE_DOMAIN_NAME,
 	// RECORD_QUERY_TYPE_AUTHOR, and RECORD_QUERY_TYPE_SCHEMA_VERSION. Requesting
 	// any other type fails the call rather than silently omitting it. The name
 	// variants are used instead of the numeric *_ID types so that every value is
 	// a human-meaningful string.
+	//
+	// RECORD_QUERY_TYPE_VERSION is deliberately not supported: a record's own
+	// version is per-record identity rather than a shared facet, so a
+	// registry-wide distinct list of versions grows with the registry and answers
+	// no useful question. It becomes meaningful only with a query context that
+	// scopes it to a single record, which this RPC does not take.
 	Fields        []RecordQueryType `protobuf:"varint,1,rep,packed,name=fields,proto3,enum=agntcy.dir.search.v1.RecordQueryType" json:"fields,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache

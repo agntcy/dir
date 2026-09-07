@@ -48,8 +48,6 @@ func (d *DB) distinctValuesForField(field searchv1.RecordQueryType) ([]string, e
 		return d.distinctColumn(&Module{}, "name")
 	case searchv1.RecordQueryType_RECORD_QUERY_TYPE_AUTHOR:
 		return d.distinctAuthors()
-	case searchv1.RecordQueryType_RECORD_QUERY_TYPE_VERSION:
-		return d.distinctColumn(&Record{}, "version")
 	case searchv1.RecordQueryType_RECORD_QUERY_TYPE_SCHEMA_VERSION:
 		return d.distinctColumn(&Record{}, "schema_version")
 	default:
