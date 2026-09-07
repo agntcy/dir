@@ -37,6 +37,46 @@ export interface CatalogTag {
 	label: string;
 }
 
+/** One OASF class the extractor matched, with the score and tier that ranked it. */
+export interface ScoredClass {
+	id: number;
+	/** Hierarchical OASF name, e.g. "natural_language_processing/text_classification". */
+	name: string;
+	/** Combined relevance score in [0,1]; higher is closer. */
+	score: number;
+	/** 1-based score group; tier 1 is the closest cluster of matches. */
+	tier: number;
+}
+
+/**
+ * Response of POST /v1/extract. Lists are absent rather than empty when the
+ * extractor matched nothing, since protojson omits empty repeated fields.
+ */
+export interface ExtractTaxonomyResponse {
+	skills?: ScoredClass[];
+	domains?: ScoredClass[];
+	/**
+	 * Salient terms lifted from the text. They have no OASF class behind them and
+	 * therefore no catalog tag, so tag-oriented consumers must ignore them.
+	 */
+	keywords?: string[];
+}
+
+/**
+ * An extracted OASF class that some record in this registry actually carries,
+ * i.e. one that survived the intersect against /v1/tags.
+ */
+export interface SuggestedTag {
+	/** Catalog tag id, ready to hand to the same filter path as any other tag. */
+	id: string;
+	/** Display label, taken from the catalog tag so it reads like the rest of the list. */
+	label: string;
+	/** Full hierarchical OASF name, which the leaf-only label drops. */
+	name: string;
+	kind: 'skill' | 'domain';
+	score: number;
+}
+
 export interface CatalogEntry {
 	identifier: string;
 	displayName: string;
