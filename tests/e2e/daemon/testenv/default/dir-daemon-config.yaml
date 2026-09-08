@@ -4,6 +4,20 @@ server:
     enabled: false
   oasf_api_validation:
     schema_url: "https://schema.oasf.outshift.com"
+  # Gateway with no extractor behind it. This is the one environment that covers
+  # a node deployed without an OASF extractor: the gateway must still start and
+  # serve its other routes, while the extractor-backed endpoints answer 503.
+  http_gateway:
+    enabled: true
+    listen_address: "localhost:18236"
+    public_url: "http://localhost:18236"
+  extractor:
+    # Deliberately a path that does not exist, so resolution finds no
+    # provisioned assets and the gateway comes up with no extractor. Pointing at
+    # a missing directory rather than relying on an unprovisioned home keeps the
+    # result the same on a developer machine that has run `dirctl init`. Nothing
+    # creates or writes this path.
+    asset_dir: "/nonexistent-oasf-extractor-assets-e2e"
   store:
     provider: "oci"
     oci:
