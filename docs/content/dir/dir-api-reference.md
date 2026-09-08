@@ -15,7 +15,7 @@ canonical schema live on [buf.build/agntcy/dir](https://buf.build/agntcy/dir).
 | **Routing** | Publish and unpublish record label announcements (skills, domains, modules, locators), list local records, search the network |
 | **Search** | Structured queries over the local index |
 | **Security** | Signing and verification |
-| **Naming** | Domain-based name verification |
+| **Identity** | Record identity/ownership claim signing, verification status, and name resolution |
 | **Sync** | Peer synchronization between directory instances |
 | **Events** | Streaming directory events ([Events API](https://buf.build/agntcy/dir/docs/main:agntcy.dir.events.v1)) |
 | **Runtime** | Runtime discovery for containerized workloads |
