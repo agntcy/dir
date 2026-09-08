@@ -7,7 +7,6 @@
 [![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/agntcy/dir/badge)](https://scorecard.dev/viewer/?uri=github.com/agntcy/dir)
 
 [Buf Registry](https://buf.build/agntcy/dir) | 
-[MCP Server](https://github.com/agntcy/dir-mcp) | 
 [Go SDK](https://pkg.go.dev/github.com/agntcy/dir/client) | 
 [Python SDK](https://pypi.org/project/agntcy-dir/) | 
 [JavaScript SDK](https://www.npmjs.com/package/agntcy-dir) | 

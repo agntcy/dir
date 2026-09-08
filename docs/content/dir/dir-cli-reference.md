@@ -75,13 +75,13 @@ explicit `--auth-mode`.
 | Auth | `auth login`, `logout`, `status` |
 | Context | `context list`, `current`, `set`, `show`, `validate` |
 | Storage | `push`, `pull`, `delete`, `info` |
-| Import / Export | `import`, `export` |
+| Export | `export` |
 | Routing | `routing publish`, `unpublish`, `list`, `search`, `info` |
 | Search | `search` |
-| Security | `sign`, `verify`, `validate`, `naming verify` |
+| Security | `sign`, `verify`, `validate` |
+| Identity | `identity claim`, `status`, `resolve` |
 | Sync | `sync create`, `status`, `list`, `delete` |
 | Events | `events listen` |
-| MCP | `mcp serve` |
 | Install | `install run`, `install uninstall` (or top-level `uninstall`), `install list` |
 | Diagnostics | `doctor`, `version` |
 
@@ -147,13 +147,6 @@ Runs connectivity and configuration checks against the configured Directory serv
 ### `dirctl version`
 
 Prints the `dirctl` build version.
-
-## MCP Server
-
-### `dirctl mcp serve`
-
-Starts the built-in MCP server used by external AI tooling. Delegates to the
-[`dir-mcp`](https://github.com/agntcy/dir-mcp) module.
 
 ## Agent Install
 
@@ -760,258 +753,6 @@ Displays metadata about stored records using CID or name reference.
     dirctl info cisco.com/agent:v1.0.0 --output json
     ```
 
-## Import Operations
-
-Import records from external registries or local files into DIR. Supports automated batch imports with optional LLM enrichment and security scanning.
-
-### `dirctl import [flags]`
-
-Fetch and import records from registries or local sources.
-
-**Import kinds (`--type`):**
-
-| Type | Source | Required flags |
-|------|--------|----------------|
-| `mcp-registry` | HTTP MCP registry (e.g. v0.1 list API) | `--url` |
-| `mcp` | Local JSON (one server or array) | `--file-path` |
-| `a2a` | Local A2A AgentCard JSON | `--file-path` |
-| `agent-skill` | Local Agent Skills directory with `SKILL.md` | `--file-path` |
-
-**Configuration Options:**
-
-| Flag | Environment Variable | Description | Required | Default |
-|------|---------------------|-------------|----------|---------|
-| `--config` | - | Path to a YAML import config file (enricher, scanner, authors, and more); values are overridden by command-line flags | No | - |
-| `--type` | - | Import kind (`mcp-registry`, `mcp`, `a2a`, `agent-skill`) | No | - |
-| `--url` | - | Registry base URL (required when `--type=mcp-registry`) | No | - |
-| `--file-path` | - | Path to local JSON file or skill directory | No | - |
-| `--output-cids` | - | Write imported CIDs to a file (one per line) | No | - |
-| `--filter` | - | Registry-specific filters (key=value, repeatable) | No | - |
-| `--limit` | - | Maximum records to import (0 = no limit) | No | 0 |
-| `--dry-run` | - | Preview without importing; transformed records are written to `--output-dir` (one JSON file per record) so they can be reviewed and re-imported later via `dirctl push` or `dirctl import` | No | false |
-| `--output-dir` | - | Directory to write per-record JSON files when `--dry-run` is set. Each record is written as `<cid>.record.json` | No | `./import-dry-run-<timestamp>` in the current working directory |
-| `--debug` | - | Enable debug output (shows MCP source and OASF record for failures) | No | false |
-| `--force` | - | Force reimport of existing records (skip deduplication) | No | false |
-| `--sign` | - | Sign records after pushing (uses OIDC by default) | No | false |
-| `--key` | - | Path to private key file for signing (requires `--sign`) | No | - |
-| `--oidc-token` | - | OIDC token for non-interactive signing (requires `--sign`) | No | - |
-| `--fulcio-url` | - | Sigstore Fulcio URL (requires `--sign`) | No | `https://fulcio.sigstore.dev` |
-| `--rekor-url` | - | Sigstore Rekor URL (requires `--sign`) | No | `https://rekor.sigstore.dev` |
-| `--server-addr` | DIRECTORY_CLIENT_SERVER_ADDRESS | DIR server address | No | localhost:8888 |
-
-!!! note
-
-    By default, the importer performs deduplication: it builds a cache of existing records (by name and version) and skips importing records that already exist. This prevents duplicate imports when running the import command multiple times. Use `--force` to bypass deduplication and reimport existing records. Use `--debug` to see detailed output including which records were skipped and why imports failed.
-
-??? example
-
-    ```bash
-    # Import from MCP registry
-    dirctl import --type=mcp-registry --url=https://registry.modelcontextprotocol.io/v0.1
-
-    # Import with debug output (shows detailed diagnostics for failures)
-    dirctl import --type=mcp-registry \
-      --url=https://registry.modelcontextprotocol.io/v0.1 \
-      --debug
-
-    # Force reimport of existing records (skips deduplication)
-    dirctl import --type=mcp-registry \
-      --url=https://registry.modelcontextprotocol.io/v0.1 \
-      --force
-
-    # Import with time-based filter
-    dirctl import --type=mcp-registry \
-      --url=https://registry.modelcontextprotocol.io/v0.1 \
-      --filter=updated_since=2025-08-07T13:15:04.280Z
-
-    # Combine multiple filters
-    dirctl import --type=mcp-registry \
-      --url=https://registry.modelcontextprotocol.io/v0.1 \
-      --filter=search=github \
-      --filter=version=latest \
-      --filter=updated_since=2025-08-07T13:15:04.280Z
-
-    # Limit number of records
-    dirctl import --type=mcp-registry \
-      --url=https://registry.modelcontextprotocol.io/v0.1 \
-      --limit=50
-
-    # Preview without importing (dry run)
-    # Records are written as <cid>.record.json into a timestamped directory
-    # (default: ./import-dry-run-<timestamp>) so they can be reviewed and
-    # re-imported later via `dirctl push` or `dirctl import`.
-    dirctl import --type=mcp-registry \
-      --url=https://registry.modelcontextprotocol.io/v0.1 \
-      --dry-run
-
-    # Dry run with a custom output directory
-    dirctl import --type=mcp-registry \
-      --url=https://registry.modelcontextprotocol.io/v0.1 \
-      --dry-run \
-      --output-dir=./out
-
-    # Import and sign records with OIDC (opens browser for authentication)
-    dirctl import --type=mcp-registry \
-      --url=https://registry.modelcontextprotocol.io/v0.1 \
-      --sign
-
-    # Import and sign records with a private key
-    dirctl import --type=mcp-registry \
-      --url=https://registry.modelcontextprotocol.io/v0.1 \
-      --sign \
-      --key=/path/to/cosign.key
-
-    ```
-
-**MCP Registry Filters:**
-
-For the Model Context Protocol registry, available filters include:
-
-- `search` - Filter by server name (substring match)
-- `version` - Filter by version ('latest' for latest version, or an exact version like '1.2.3')
-- `updated_since` - Filter by updated time (RFC3339 datetime format, e.g., '2025-08-07T13:15:04.280Z')
-
-See the [MCP Registry API docs](https://registry.modelcontextprotocol.io/docs#/operations/list-servers#Query-Parameters) for the complete list of supported filters.
-
-### Enrichment
-
-The import command enriches records by mapping them to OASF skills and domains. Three enrichment methods are available, configured under the `enricher` key in the `--config` YAML file. When no config file is provided, LLM enrichment is used by default (azure:gpt-4o, 2 RPM).
-
-#### Extractor enrichment (LLM-free, recommended)
-
-Uses the OASF sentence-transformer model to classify records — no API key and no LLM runtime. The model runs in-process from locally provisioned assets, or on a remote OASF-SDK server.
-
-**Requires:** either `dirctl init` to have been run at least once to provision the model assets, or a reachable OASF-SDK server.
-
-```yaml
-enricher:
-  extractor: {}           # uses whatever dirctl init saved
-```
-
-With no fields set, the extractor uses the configuration saved by `dirctl init` — including a remote server address, if one was configured there.
-
-To override the local asset location:
-
-```yaml
-enricher:
-  extractor:
-    oasf_url: https://schema.oasf.outshift.com   # optional
-    asset_dir: /path/to/custom/assets             # optional
-```
-
-To enrich against a running OASF-SDK server instead of local assets:
-
-```yaml
-enricher:
-  extractor:
-    remote_addr: oasf-sdk:31234    # selects the remote backend
-```
-
-Setting `remote_addr` selects the remote backend; leaving it empty uses the local in-process extractor. Each extraction call is bounded by a timeout, so an unreachable server fails the record rather than stalling the import.
-
-#### Static enrichment
-
-Assigns the same fixed skills and domains to every imported record. No LLM or model assets required.
-
-```yaml
-enricher:
-  static:
-    skills:
-      - name: natural_language_processing/text_completion
-        id: 10201
-    domains:
-      - name: technology
-        id: 1
-```
-
-#### LLM enrichment
-
-Runs an LLM with tool-calling support against the OASF schema tools exposed by `dirctl mcp serve`. Produces the most semantically accurate skill and domain assignments but requires LLM credentials or a local runtime.
-
-**Requirements:**
-
-- `dirctl` binary (includes the built-in MCP server with `agntcy_oasf_get_schema_skills` and `agntcy_oasf_get_schema_domains` tools)
-- An LLM with tool-calling support (GPT-4o, Claude, or compatible Ollama models)
-
-**How it works:**
-
-1. The enricher starts an MCP server using `dirctl mcp serve`
-2. The LLM uses the `agntcy_oasf_get_schema_skills` tool to browse available OASF skills
-3. The LLM uses the `agntcy_oasf_get_schema_domains` tool to browse available OASF domains
-4. Based on the record description and capabilities, the LLM selects appropriate skills and domains
-
-```yaml
-enricher:
-  llm:
-    requests_per_minute: 5
-    tool_host:
-      model: azure:gpt-4o
-      max_steps: 10
-      mcp_servers:
-        dir-mcp-server:
-          command: dirctl
-          args: [mcp, serve]
-          env:
-            OASF_API_VALIDATION_SCHEMA_URL: https://schema.oasf.outshift.com
-            DIRECTORY_CLIENT_AUTH_MODE: insecure
-    skills_prompt_template: ./prompts/skills.md    # optional custom prompt
-    domains_prompt_template: ./prompts/domains.md  # optional custom prompt
-```
-
-See `cli/cmd/import/import.config.yaml` in the repository for a fully annotated reference configuration.
-
-**Recommended LLM providers:**
-
-- `azure:gpt-4o` — Azure OpenAI GPT-4o (recommended for speed and accuracy)
-- `ollama:qwen3:8b` — Local Qwen3 via Ollama
-
-**Environment variables for LLM providers:**
-
-- Azure OpenAI: `AZURE_OPENAI_API_KEY`, `AZURE_OPENAI_ENDPOINT`, `AZURE_OPENAI_DEPLOYMENT`
-
-### Dry Run Output Directory
-
-When `--dry-run` is set, the importer does **not** push records to the Directory node. Instead, every transformed record is written to disk as a separate JSON file, one per record. This produces a reviewable artifact set that is drop-in compatible with the existing import / push commands, so users who do not want the importer to push directly to a Directory node can review or modify the records first and upload them later.
-
-**Output layout:**
-
-- Target directory: value of `--output-dir`, or — when not set — `./import-dry-run-<timestamp>/` in the current working directory.
-- The directory is created if it does not exist.
-- Each record is written as `<cid>.record.json`, where `<cid>` is the record's content identifier. The naming scheme is deterministic and filesystem-safe so files can be diffed, signed, or selectively re-imported.
-
-**Typical workflow:**
-
-```bash
-# 1. Dry run — write transformed records to ./out
-dirctl import --type=mcp-registry \
-  --url=https://registry.modelcontextprotocol.io/v0.1 \
-  --dry-run \
-  --output-dir=./out
-
-# 2. Review / diff / sign the per-record files on disk
-ls ./out
-# bafkrei...record.json
-# bafkrei...record.json
-# ...
-
-# 3. Re-import the artifacts later via dirctl push (or another import flow)
-for f in ./out/*.record.json; do
-  dirctl push "$f"
-done
-```
-
-### Signing Records During Import
-
-Records can be signed during import using the `--sign` flag. Signing options work the same as the standalone `dirctl sign` command (see [Security & Verification](#security-verification)).
-
-```bash
-# Sign with OIDC (opens browser)
-dirctl import --type=mcp-registry --url=https://registry.modelcontextprotocol.io/v0.1 --sign
-
-# Sign with a private key
-dirctl import --type=mcp-registry --url=https://registry.modelcontextprotocol.io/v0.1 --sign --key=/path/to/cosign.key
-```
-
 ## Export Operations
 
 Export records from the Directory into formats consumable by external tools and agentic CLIs. Supports single-record export by CID/name and batch export from search results.
@@ -1453,36 +1194,36 @@ dirctl search --safe --scan-severity MEDIUM
 
 A record appears in `--safe` results only when at least one scanner has run and no scanner has reported `is_safe=false`. Records where all scanners were skipped (no source repo, no skill bundle, no A2A AgentCard) are not included.
 
-### Name Verification
+### Record Identity & Ownership
 
-Record name verification proves that the signing key is authorized by the domain claimed in the record's name field.
+A record can carry two verifiable claims, each bound to the record's CID so the claim cannot be replayed against a different record:
 
-**Requirements:**
+- **Identity claim** — asserts the record's own identity (e.g. `did:web:my-agent.example.com`, `spiffe://example.org/agent`).
+- **Ownership claim** — asserts that a subject (e.g. `did:web:acme.com`) owns/controls the record.
 
-- Record name must include a protocol prefix: `https://domain/path` or `http://domain/path`
-- A JWKS file must be hosted at `<scheme>://<domain>/.well-known/jwks.json`
-- The record must be signed with the private key corresponding to a public key present in that JWKS file
+Both claims are signed and pushed as record referrers via `dirctl identity claim`, verified eagerly at ingest and periodically re-verified by the reconciler, and their cached verification status is queryable via `dirctl identity status`.
 
 **Workflow:**
 
-1. Push a record with a verifiable name.
+1. Push a record.
 
     ```bash
     dirctl push record.json --output raw
     # Returns: bafyreib...
     ```
 
-2. Sign the record (triggers automatic verification).
+2. Claim identity and/or ownership.
 
     ```bash
-    dirctl sign <cid> --key private.key
+    dirctl identity claim --record <cid> --role identity --subject did:web:my-agent.example.com --key private.key
+    dirctl identity claim --record <cid> --role owner --subject did:web:acme.com --key private.key
     ```
 
-3. Check verification status using [`dirctl naming verify`](#dirctl-naming-verify-reference).
+3. Check verification status using [`dirctl identity status`](#dirctl-identity-status-reference).
 
 ### `dirctl sign <cid> [flags]`
 
-Signs records for integrity and authenticity. When signing a record with a verifiable name (e.g., `https://domain/path`), the system automatically attempts to verify domain authorization via JWKS. See [Name Verification](#name-verification) for details.
+Signs records for integrity and authenticity.
 
 For encrypted private keys, `COSIGN_PASSWORD` is used when it is set, including when
 it is explicitly empty. Use `--password-stdin` to opt in to reading a password from
@@ -1523,41 +1264,29 @@ Configure the selected provider's credentials before running `dirctl`.
     dirctl sign <cid> --key "gcpkms://projects/PROJECT/locations/LOCATION/keyRings/RING/cryptoKeys/KEY"
     ```
 
-### `dirctl naming verify <reference>`
+### `dirctl identity status <cid-or-name[:version]>`
 
-Verifies that a record's signing key is authorized by the domain claimed in its name field. Checks if the signing key matches a public key in the domain's JWKS file hosted at `/.well-known/jwks.json`.
-
-**Supported Reference Formats:**
-
-| Format | Description |
-|--------|-------------|
-| `<cid>` | Verify by content address |
-| `<name>` | Verify the most recently created version |
-| `<name>:<version>` | Verify a specific version |
+Retrieves the cached identity/ownership claim verification status for a record. Accepts either a CID or a name (with optional version).
 
 ??? example
 
     ```bash
-    # Verify by CID
-    dirctl naming verify bafyreib... --output json
+    # Status by CID
+    dirctl identity status bafyreib... --output json
 
-    # Verify by name (latest version)
-    dirctl naming verify cisco.com/agent --output json
+    # Status by name (latest version)
+    dirctl identity status cisco.com/agent --output json
 
-    # Verify by name with specific version
-    dirctl naming verify cisco.com/agent:v1.0.0 --output json
+    # Status by name with specific version
+    dirctl identity status cisco.com/agent:v1.0.0 --output json
     ```
 
-    Example verification response:
+    Example status response:
 
     ```json
     {
-    "cid": "bafyreib...",
-    "verified": true,
-    "domain": "cisco.com",
-    "method": "jwks",
-    "key_id": "key-1",
-    "verified_at": "2026-01-21T10:30:00Z"
+    "identity": {"verified": true, "subject": "did:web:my-agent.example.com"},
+    "owner": {"verified": true, "subject": "did:web:acme.com"}
     }
     ```
 

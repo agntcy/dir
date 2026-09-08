@@ -19,7 +19,6 @@ import (
 const (
 	skillRecordName       = "org.agntcy/directory"
 	skillModuleName       = "core/language_model/agentskills"
-	mcpModuleName         = "integration/mcp"
 	skillArtifactMediaTyp = "application/agent-skills+md"
 )
 
@@ -28,7 +27,7 @@ var _ = ginkgo.Describe("DIR self-published SKILL record", func() {
 		utils.ResetCLIState()
 	})
 
-	ginkgo.It("should be discoverable by name and carry the SKILL.md bytes plus an MCP module", func() {
+	ginkgo.It("should be discoverable by name and carry the SKILL.md bytes", func() {
 		var cid string
 
 		// Publish runs asynchronously after Start; poll for it.
@@ -76,7 +75,6 @@ var _ = ginkgo.Describe("DIR self-published SKILL record", func() {
 		}
 
 		gomega.Expect(moduleNames).To(gomega.ContainElement(skillModuleName))
-		gomega.Expect(moduleNames).To(gomega.ContainElement(mcpModuleName))
 
 		skillArtifact := struct {
 			MediaType string `json:"media_type"`

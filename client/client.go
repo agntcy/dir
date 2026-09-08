@@ -10,7 +10,6 @@ import (
 
 	eventsv1 "github.com/agntcy/dir/api/events/v1"
 	identityv1 "github.com/agntcy/dir/api/identity/v1"
-	namingv1 "github.com/agntcy/dir/api/naming/v1"
 	routingv1 "github.com/agntcy/dir/api/routing/v1"
 	runtimev1 "github.com/agntcy/dir/api/runtime/v1"
 	searchv1 "github.com/agntcy/dir/api/search/v1"
@@ -27,7 +26,6 @@ type Client struct {
 	storev1.SyncServiceClient
 	signv1.SignServiceClient
 	eventsv1.EventServiceClient
-	namingv1.NamingServiceClient
 	runtimev1.DiscoveryServiceClient
 
 	// identityClient is not embedded so that its methods (GetIdentityStatus)
@@ -70,7 +68,6 @@ func New(ctx context.Context, opts ...Option) (*Client, error) {
 		SyncServiceClient:      storev1.NewSyncServiceClient(conn),
 		SignServiceClient:      signv1.NewSignServiceClient(conn),
 		EventServiceClient:     eventsv1.NewEventServiceClient(conn),
-		NamingServiceClient:    namingv1.NewNamingServiceClient(conn),
 		DiscoveryServiceClient: runtimev1.NewDiscoveryServiceClient(conn),
 		identityClient:         identityv1.NewIdentityServiceClient(conn),
 		config:                 options.config,

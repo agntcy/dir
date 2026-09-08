@@ -2,64 +2,10 @@
 icon: material/import
 ---
 
-# Import and Export
+# Export
 
-Import and export are complementary extensions that bridge Directory and external systems.
-**Import** brings agent records *into* Directory from heterogeneous external sources —
-remote registries as well as local files (JSON A2A Cards, MCP server definitions, Agent
-Skills directories) — while **export** transforms stored records *out* into formats consumed
-by external tools and agentic CLIs.
-
-## Import
-
-**Import** extends Directory's synchronization capabilities beyond Directory-to-Directory
-[sync](dir-component-routing.md#synchronization) to support heterogeneous external sources.
-It aggregates agent records into the local Directory instance from remote registries as well
-as local files such as A2A AgentCards, MCP server definitions, and Agent Skills.
-
-### How import works
-
-The import system uses source-specific adapters to fetch records from external sources —
-remote registries or local files — and transform them into OASF-compliant records. Each
-source kind has its own import logic that handles authentication, pagination, filtering, and
-data transformation. Records are automatically deduplicated and can be enriched with
-LLM-powered skill and domain mapping to ensure consistency with the OASF schema.
-
-### Translation and enrichment
-
-Records are transformed from external registry data into OASF-compliant format, which
-directly impacts how records are indexed and discovered across the network. Four methods are
-available:
-
-- **Basic translation** uses [OASF-SDK basic translation](https://docs.agntcy.org/oasf/translation/)
-  with rule-based mapping. It is fast and deterministic but produces a record without any
-  skills or domains, requiring manual or LLM-based enrichment afterwards.
-- **Static enrichment** assigns fixed skills and domains to every record by listing the
-  taxonomy entries explicitly in the `--config` file. No LLM or API credentials are required.
-- **Extractor enrichment** uses the local OASF sentence-transformer model provisioned by
-  `dirctl init` to classify each record into OASF skills and domains automatically — no LLM,
-  no API key, no external service. This is the fastest and most accessible enrichment path for
-  users who have already run `dirctl init`. Enable it by setting `enricher.extractor: {}`
-  in the `--config` file.
-- **LLM enrichment** uses an LLM with tool-calling support (local via Ollama or remote via
-  Azure OpenAI and compatible providers) for intelligent skill and domain mapping. This is the
-  default when no `--config` file is provided (azure:gpt-4o, 2 RPM). Requires API credentials
-  or a running local LLM runtime.
-
-The enrichment pipeline is built into `dirctl` — LLM enrichment runs the OASF schema tools
-exposed by `dirctl mcp serve` against the model, while extractor enrichment runs the
-provisioned model in-process with no external dependencies.
-See [CLI Reference — Enrichment](dir-cli-reference.md#enrichment)
-for configuration details and YAML examples for each method.
-
-### Supported import kinds
-
-| Kind | Description | Required flag |
-|------|-------------|---------------|
-| `mcp-registry` | [Model Context Protocol registry v0.1](https://github.com/modelcontextprotocol/registry) | `--url` |
-| `mcp` | Local MCP server JSON | `--file-path` |
-| `a2a` | Local A2A AgentCard JSON | `--file-path` |
-| `agent-skill` | Local Agent Skills directory with `SKILL.md` | `--file-path` |
+**Export** transforms stored Directory records *out* into formats consumed by external tools
+and agentic CLIs — A2A AgentCards, `SKILL.md` artifacts, or MCP configuration.
 
 ## Export
 
@@ -93,9 +39,6 @@ merge all matched MCP servers into a single configuration file.
 
 ## Related documentation
 
-- [Sync](dir-component-routing.md#synchronization) — Directory-to-Directory replication
-- [Records](dir-component-records-validation.md) — the OASF record model that import and export target
-- [Usage Guide — Import](dir-features-scenarios.md#import) — import CLI walkthroughs
+- [Records](dir-component-records-validation.md) — the OASF record model that export targets
 - [Usage Guide — Export](dir-features-scenarios.md#export) — export CLI walkthroughs
-- [CLI Reference — Import Operations](dir-cli-reference.md#import-operations) — `dirctl import` flags
 - [CLI Reference — Export Operations](dir-cli-reference.md#export-operations) — `dirctl export` flags

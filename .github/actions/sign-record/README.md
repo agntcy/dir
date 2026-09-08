@@ -1,6 +1,6 @@
 # Sign OASF Records Action
 
-Sign record CIDs using GitHub OIDC (keyless). Use after **push-record** or **dirctl import**. Only supported in GitHub Actions; the job must have `permissions: id-token: write`.
+Sign record CIDs using GitHub OIDC (keyless). Use after **push-record**. Only supported in GitHub Actions; the job must have `permissions: id-token: write`.
 
 ## Usage
 

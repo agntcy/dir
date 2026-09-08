@@ -83,7 +83,7 @@ dirctl info $RECORD_CID
 ```
 
 Records with verifiable names can also be referenced using Docker-style formats
-(`name`, `name:version`, `name:version@cid`) with the `pull`, `info`, and `naming verify`
+(`name`, `name:version`, `name:version@cid`) with the `pull`, `info`, and `identity resolve`
 commands. For all storage flags and output options, see
 [CLI Reference — Storage Operations](dir-cli-reference.md#storage-operations).
 
@@ -91,7 +91,7 @@ commands. For all storage flags and output options, see
 
 Cryptographically signing records lets publishers prove authorship and ensures data
 integrity, while consumers can verify records before deploying or executing agent code. For
-how signing, server-side verification, and name verification work, see
+how signing and server-side verification work, see
 [Trust Model — Record Signing and Verification](dir-component-trust-model.md#record-signing-and-verification).
 
 ### Method 1: OIDC-based Interactive
@@ -191,60 +191,56 @@ dirctl sign "$RECORD_CID" --key 'hashivault://[KEY]'
 dirctl verify "$RECORD_CID"
 ```
 
-## Name Verification
+## Record Identity & Ownership
 
-Name verification proves that the signing key is authorized by the domain claimed in the
-record's name field, enabling human-readable references instead of CIDs. For the concept and
-requirements (protocol prefix, JWKS hosting, matching signing key), see
-[Trust Model — Name verification](dir-component-trust-model.md#name-verification).
+A record can carry a signed **identity claim** (asserting the record's own identity, e.g.
+`did:web:my-agent.example.com`) and a signed **ownership claim** (asserting that a subject,
+e.g. `did:web:acme.com`, owns/controls the record). Both claims are bound to the record's
+CID at signing time, so a claim cannot be replayed against a different record. For the
+supported identity schemes and verification methods, see
+[Trust Model — Record identity and ownership](dir-component-trust-model.md#record-identity-and-ownership).
 
 ### Workflow
 
 ```bash
-# 1. Create a record with a verifiable name (already done in Build section)
-# The record.json has: "name": "https://example.com/agents/my-record"
-
-# 2. Ensure your domain hosts a JWKS file
-# Example: https://example.com/.well-known/jwks.json
-# This file should contain the public key corresponding to your signing key
-
-# 3. Push the record
+# 1. Push the record
 RECORD_CID=$(dirctl push record.json --output raw)
 echo "Stored with CID: $RECORD_CID"
 
-# 4. Sign the record (triggers automatic verification)
-dirctl sign $RECORD_CID --key cosign.key
+# 2. Claim the record's own identity, signed with its private key
+dirctl identity claim --record $RECORD_CID --role identity \
+  --subject did:web:my-agent.example.com --key cosign.key
 
-# 5. Verify the name authorization
+# 3. Claim ownership, signed with the owner's private key
+dirctl identity claim --record $RECORD_CID --role owner \
+  --subject did:web:acme.com --key owner.key
+
+# 4. Check verification status
 # By CID
-dirctl naming verify $RECORD_CID --output json
+dirctl identity status $RECORD_CID --output json
 
 # By name (latest version)
-dirctl naming verify example.com/agents/my-record --output json
+dirctl identity status example.com/agents/my-record --output json
 
 # By name with specific version
-dirctl naming verify example.com/agents/my-record:v1.0.0 --output json
+dirctl identity status example.com/agents/my-record:v1.0.0 --output json
 ```
 
-### Verification Response
+### Status Response
 
-When verification succeeds, you'll receive a response like:
+When both claims are verified, you'll receive a response like:
 
 ```json
 {
-  "cid": "bafyreib...",
-  "verified": true,
-  "domain": "example.com",
-  "method": "jwks",
-  "key_id": "key-1",
-  "verified_at": "2026-01-21T10:30:00Z"
+  "identity": {"verified": true, "subject": "did:web:my-agent.example.com"},
+  "owner": {"verified": true, "subject": "did:web:acme.com"}
 }
 ```
 
-### Using Verified Names
+### Resolving Names
 
-Once verified, records can be referenced by name instead of CID across `pull`, `info`, and
-`naming verify`. When no version is specified, commands resolve to the most recently created
+Once claimed, records can still be referenced by name instead of CID across `pull`, `info`, and
+`identity resolve`. When no version is specified, commands resolve to the most recently created
 record (by `created_at`), so non-semver tags like `latest`, `dev`, or `stable` also work:
 
 ```bash
@@ -410,47 +406,11 @@ dirctl routing search --skill "Audio" --output json | dirctl sync create --stdin
 For all sync flags, see
 [CLI Reference — Synchronization](dir-cli-reference.md#synchronization).
 
-## Import
-
-The import feature aggregates agent records from heterogeneous external sources — remote
-registries as well as local files (A2A AgentCards, MCP server definitions, Agent Skills) —
-into your local Directory instance, with filtering, deduplication, and optional LLM-based
-enrichment. For how import works, the translation and enrichment methods, and the supported
-import kinds, see [Import and Export](dir-component-import.md#import).
-
-This example demonstrates how to import records into your local Directory instance.
-
-### Basic Usage
-
-```bash
-# Import from MCP registry
-dirctl import --type=mcp-registry --url=https://registry.modelcontextprotocol.io/v0.1
-```
-
-### Automated Imports
-
-For Kubernetes deployments, you can configure automated imports using the [Helm chart configuration](https://github.com/agntcy/dir/blob/2aea0d670ef9d537b9a9237928dd1af7b02de447/install/charts/dirctl/values.yaml#L55):
-
-```yaml
-cronjobs:
-  # Import cronjob - sync from MCP registry every 6 hours
-  import-mcp:
-    enabled: true
-    schedule: '0 */6 * * *'  # Every 6 hours
-    args:
-      - 'import'
-      - '--type=mcp-registry'
-      - '--url=https://registry.modelcontextprotocol.io/v0.1'
-```
-
-For filtering, limits, custom enrichment config, force reimport, and all other options, see
-[CLI Reference — Import Operations](dir-cli-reference.md#import-operations).
-
 ## Export
 
 Export records from Directory into formats for external tools and agentic CLIs (for how
 export works and the supported formats, see
-[Import and Export — Export](dir-component-import.md#export)):
+[Export](dir-component-import.md#export)):
 
 ```bash
 # Single record as A2A AgentCard

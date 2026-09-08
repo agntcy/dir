@@ -86,5 +86,5 @@ operations for each remote peer found, syncing only the CIDs that matched the se
 - [Usage Guide — Sync](dir-features-scenarios.md#sync) — sync CLI walkthroughs
 - [CLI Reference — Routing Operations](dir-cli-reference.md#routing-operations) — `routing publish`, `unpublish`, `list`, `search`, `info`
 - [CLI Reference — Synchronization](dir-cli-reference.md#synchronization) — `sync create`, `list`, `status`, `delete`
-- [Import](dir-component-import.md) — bringing records in from external (non-Directory) registries
+- [Export](dir-component-import.md) — transforming stored records for external tools
 - [Federation](dir-federation-overview.md) — multi-instance routing across federated directories

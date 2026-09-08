@@ -209,7 +209,7 @@ func runResolve(cmd *cobra.Command, input string) error {
 		name = input
 	}
 
-	resp, err := c.ResolveIdentity(cmd.Context(), name, ref.Version)
+	resp, err := c.Resolve(cmd.Context(), name, ref.Version)
 	if err != nil {
 		return fmt.Errorf("failed to resolve %q: %w", input, err)
 	}

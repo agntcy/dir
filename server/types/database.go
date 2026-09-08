@@ -23,9 +23,6 @@ type DatabaseAPI interface {
 	// PublicationDatabaseAPI handles management of the publication database.
 	PublicationDatabaseAPI
 
-	// NameVerificationDatabaseAPI handles management of name verifications.
-	NameVerificationDatabaseAPI
-
 	// SignatureVerificationDatabaseAPI handles management of signature verifications.
 	SignatureVerificationDatabaseAPI
 
@@ -106,21 +103,6 @@ type PublicationDatabaseAPI interface {
 
 	// DeletePublication deletes a publication object by its ID.
 	DeletePublication(publicationID string) error
-}
-
-type NameVerificationDatabaseAPI interface {
-	// CreateNameVerification creates a new name verification for a record.
-	CreateNameVerification(verification NameVerificationObject) error
-
-	// UpdateNameVerification updates an existing name verification for a record.
-	UpdateNameVerification(verification NameVerificationObject) error
-
-	// GetVerificationByCID retrieves the verification for a record.
-	GetVerificationByCID(cid string) (NameVerificationObject, error)
-
-	// GetRecordsNeedingVerification retrieves signed records with verifiable names
-	// that either don't have a verification or have an expired verification.
-	GetRecordsNeedingVerification(ttl time.Duration) ([]coretypes.Record, error)
 }
 
 // CatalogDatabaseAPI exposes the deterministic-browsing query backing the

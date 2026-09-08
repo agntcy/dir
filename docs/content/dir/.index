@@ -13,7 +13,7 @@ nav:
     - Extensions:
       - Runtime Discovery: dir-component-runtime-discovery.md
       - MCP Server: dir-component-mcp-server.md
-      - Import and Export: dir-component-import.md
+      - Export: dir-component-import.md
       - OIDC Authentication: dir-component-oidc-authentication.md
   - Deploy:
     - Local Deployment: dir-deployment-local.md

@@ -304,15 +304,5 @@ func (f *fakeSignatureDB) GetClaimByCID(string, string) (types.ClaimObject, erro
 	return nil, nil
 }
 
-func (f *fakeSignatureDB) CreateNameVerification(types.NameVerificationObject) error { return nil }
-func (f *fakeSignatureDB) UpdateNameVerification(types.NameVerificationObject) error { return nil }
-func (f *fakeSignatureDB) GetVerificationByCID(string) (types.NameVerificationObject, error) {
-	return nil, nil
-}
-
-func (f *fakeSignatureDB) GetRecordsNeedingVerification(time.Duration) ([]coretypes.Record, error) {
-	return nil, nil
-}
-
 func (f *fakeSignatureDB) Close() error                 { return nil }
 func (f *fakeSignatureDB) IsReady(context.Context) bool { return true }

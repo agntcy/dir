@@ -32,22 +32,12 @@ func selectAll(_ *cobra.Command, _ string, candidates []agentcfg.Agent) ([]agent
 	return candidates, nil
 }
 
-func TestInstallAgentsWritesMCPAndSkill(t *testing.T) {
+func TestInstallAgentsWritesSkill(t *testing.T) {
 	env := claudeEnv(t)
 	cmd, out := newTestCmd("")
 
 	err := installAgents(cmd, env, &options{agents: []string{agentcfg.AllAgents}, yes: true}, selectAll)
 	require.NoError(t, err)
-
-	// MCP entry landed in ~/.claude.json.
-	raw, err := os.ReadFile(filepath.Join(env.Home, ".claude.json"))
-	require.NoError(t, err)
-	assert.Contains(t, string(raw), `"agntcy-dir"`, "MCP server should be keyed by the translator-normalized name")
-	assert.NotContains(t, string(raw), "agntcy-dir-mcp", "the -mcp suffix must be stripped by normalization")
-	assert.Contains(t, string(raw), dirServerAddressEnv,
-		"MCP entry must carry the server address env so `dirctl mcp serve` reaches the configured node")
-	assert.Contains(t, string(raw), dirAuthModeEnv,
-		"MCP entry must carry the auth mode env; an empty mode makes the server attempt OIDC auto-detection")
 
 	// Skill folder was created under ~/.claude/skills.
 	entries, err := os.ReadDir(filepath.Join(env.Home, ".claude", "skills"))
@@ -78,7 +68,7 @@ func TestInstallAgentsNonInteractiveWithoutYesSkips(t *testing.T) {
 	assert.Contains(t, out.String(), "non-interactive")
 }
 
-func TestInstallAgentsInteractivePerArtifactSelection(t *testing.T) {
+func TestInstallAgentsInteractiveSelection(t *testing.T) {
 	env := claudeEnv(t)
 
 	// Drive the interactive branch without a real TTY.
@@ -87,27 +77,16 @@ func TestInstallAgentsInteractivePerArtifactSelection(t *testing.T) {
 
 	t.Cleanup(func() { interactiveCheck = prev })
 
-	// Skill goes to all detected agents; the MCP server goes to none — proving
-	// the two prompts select independently.
-	selector := func(_ *cobra.Command, title string, candidates []agentcfg.Agent) ([]agentcfg.Agent, error) {
-		if strings.Contains(title, "MCP") {
-			return nil, nil
-		}
-
-		return candidates, nil
+	// Deselecting everyone at the prompt must skip the install.
+	selector := func(_ *cobra.Command, _ string, _ []agentcfg.Agent) ([]agentcfg.Agent, error) {
+		return nil, nil
 	}
 
 	cmd, out := newTestCmd("")
 	require.NoError(t, installAgents(cmd, env, &options{agents: []string{agentcfg.AllAgents}}, selector))
 
-	// Skill folder created…
-	entries, err := os.ReadDir(filepath.Join(env.Home, ".claude", "skills"))
-	require.NoError(t, err)
-	assert.NotEmpty(t, entries)
-
-	// …but no MCP entry written, since the MCP prompt selected nothing.
-	_, statErr := os.Stat(filepath.Join(env.Home, ".claude.json"))
-	assert.True(t, os.IsNotExist(statErr), "MCP config must not be written when MCP deselected")
+	_, statErr := os.Stat(filepath.Join(env.Home, ".claude", "skills"))
+	assert.True(t, os.IsNotExist(statErr), "skill must not be written when deselected")
 
 	assert.Contains(t, out.String(), "no agents selected")
 }
@@ -154,28 +133,23 @@ func TestSelectState(t *testing.T) {
 	assert.Equal(t, []int{0}, s.checkedIndexes(), "toggled C off too")
 }
 
-func TestRemoveAgentsUninstallsMCPAndSkill(t *testing.T) {
+func TestRemoveAgentsUninstallsSkill(t *testing.T) {
 	env := claudeEnv(t)
 
 	// Install first so there is something to remove.
 	installCmd, _ := newTestCmd("")
 	require.NoError(t, installAgents(installCmd, env, &options{agents: []string{agentcfg.AllAgents}, yes: true}, selectAll))
 
-	before, err := os.ReadFile(filepath.Join(env.Home, ".claude.json"))
+	before, err := os.ReadDir(filepath.Join(env.Home, ".claude", "skills"))
 	require.NoError(t, err)
-	require.Contains(t, string(before), `"agntcy-dir"`, "MCP server should be present (normalized key) before removal")
+	require.NotEmpty(t, before, "skill should be present before removal")
 
 	// Now remove.
 	rmCmd, out := newTestCmd("")
 	require.NoError(t, removeAgents(rmCmd, env, &options{agents: []string{agentcfg.AllAgents}, yes: true}))
 
-	after, err := os.ReadFile(filepath.Join(env.Home, ".claude.json"))
+	after, err := os.ReadDir(filepath.Join(env.Home, ".claude", "skills"))
 	require.NoError(t, err)
-	// NOTE: the brief's literal assertion checks NotContains "agntcy-dir-mcp", but
-	// the written key is the normalized "agntcy-dir" (the "-mcp" suffix is stripped
-	// by the oasf-sdk translator; see TestInstallAgentsWritesMCPAndSkill). Asserting
-	// against "agntcy-dir-mcp" would trivially pass even if removal did nothing, so
-	// we assert against the actual key instead, proving the entry is truly gone.
-	assert.NotContains(t, string(after), `"agntcy-dir"`, "MCP server entry should be removed")
+	assert.Empty(t, after, "skill should be removed")
 	assert.Contains(t, out.String(), "removed")
 }
