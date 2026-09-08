@@ -49,6 +49,14 @@ var _ = ginkgo.Describe("Natural-language search", func() {
 		})
 
 		ginkgo.AfterAll(func() {
+			// Delete the pushed record so it does not leak into the shared daemon.
+			// The fixture is named "org.agntcy/directory", the same name the daemon
+			// self-publishes its skill record under, so a leaked copy would shadow
+			// it in name searches run by other suites (e.g. 14_skill_record_test).
+			// Mirrors the cleanup in 16_extractor_enricher_test.go.
+			if recordCID != "" {
+				_ = testEnv.CLI.Delete(recordCID).ShouldSucceed()
+			}
 			if tempDir != "" {
 				_ = os.RemoveAll(tempDir)
 			}
