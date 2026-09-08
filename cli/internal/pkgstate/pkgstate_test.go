@@ -219,6 +219,67 @@ func TestUpsertKeysOnNameAgentAndScope(t *testing.T) {
 	assert.Len(t, m.Entries, 3)
 }
 
+func TestWithCarriedArtifactsKeepsAServerThisInstallDidNotWrite(t *testing.T) {
+	// A partly successful reinstall: the skill was written, the agent's MCP
+	// config could not be read, so the new row names no server. The earlier
+	// key is still in that config and only the row knows about it.
+	prior := sampleEntry()
+
+	fresh := sampleEntry()
+	fresh.MCPServers = nil
+
+	merged := fresh.WithCarriedArtifacts(prior)
+	assert.Equal(t, []string{"agntcy-dir"}, merged.MCPServers)
+}
+
+func TestWithCarriedArtifactsUnionsRenamedServers(t *testing.T) {
+	// A new version renamed its server. Plain install removes nothing first,
+	// so both keys are on disk and the row must name both.
+	prior := sampleEntry()
+
+	fresh := sampleEntry()
+	fresh.MCPServers = []string{"agntcy-dir-v2"}
+
+	merged := fresh.WithCarriedArtifacts(prior)
+	assert.Equal(t, []string{"agntcy-dir-v2", "agntcy-dir"}, merged.MCPServers)
+}
+
+func TestWithCarriedArtifactsDoesNotDuplicateServers(t *testing.T) {
+	prior := sampleEntry()
+	merged := sampleEntry().WithCarriedArtifacts(prior)
+	assert.Equal(t, []string{"agntcy-dir"}, merged.MCPServers)
+}
+
+func TestWithCarriedArtifactsKeepsASkillThisInstallDidNotWrite(t *testing.T) {
+	prior := sampleEntry()
+
+	fresh := sampleEntry()
+	fresh.SkillPath = ""
+	fresh.SkillFiles = nil
+
+	merged := fresh.WithCarriedArtifacts(prior)
+	assert.Equal(t, prior.SkillPath, merged.SkillPath)
+	assert.Equal(t, prior.SkillFiles, merged.SkillFiles)
+}
+
+func TestWithCarriedArtifactsPrefersTheNewSkill(t *testing.T) {
+	prior := sampleEntry()
+
+	fresh := sampleEntry()
+	fresh.SkillPath = "/home/dev/.claude/skills/renamed"
+	fresh.SkillFiles = []string{"SKILL.md"}
+
+	merged := fresh.WithCarriedArtifacts(prior)
+	assert.Equal(t, "/home/dev/.claude/skills/renamed", merged.SkillPath)
+	assert.Equal(t, []string{"SKILL.md"}, merged.SkillFiles)
+}
+
+func TestWithCarriedArtifactsOnAFirstInstall(t *testing.T) {
+	// No prior row, so there is nothing to carry.
+	entry := sampleEntry()
+	assert.Equal(t, entry, entry.WithCarriedArtifacts(pkgstate.Entry{}))
+}
+
 func TestRemove(t *testing.T) {
 	m := &pkgstate.Manifest{}
 	entry := sampleEntry()

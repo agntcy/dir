@@ -65,6 +65,13 @@ func recordInstalls(cmd *cobra.Command, items []applied, agents []agentcfg.Agent
 				entry.Pinned = item.pinned
 				entry.InstalledAt = now
 
+				// Carry forward artifacts the previous row named and this
+				// install did not write, so a partly successful reinstall never
+				// drops the only record of something still on disk.
+				if prior, ok := m.Find(entry.Key()); ok {
+					entry = entry.WithCarriedArtifacts(prior)
+				}
+
 				m.Upsert(entry)
 
 				changed = true

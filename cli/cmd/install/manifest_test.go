@@ -103,6 +103,33 @@ func TestRecordInstallsReplacesTheRowOnReinstall(t *testing.T) {
 	assert.Equal(t, "2.0.0", m.Entries[0].Version)
 }
 
+func TestRecordInstallsCarriesArtifactsThroughAPartialReinstall(t *testing.T) {
+	path := isolateManifest(t)
+	cmd, _ := testCmd(t)
+
+	rec := testRecord("cisco.com/agent", "1.0.0")
+	agents := []agentcfg.Agent{claudeCode}
+
+	recordInstalls(cmd, []applied{{record: rec, outcomes: []agentcfg.Outcome{
+		{Agent: "Claude Code", Artifact: agentcfg.ArtifactSkill, Path: "/skills/agent", Action: agentcfg.ActionAdded},
+		{Agent: "Claude Code", Artifact: agentcfg.ArtifactMCP, Server: "agntcy-dir", Action: agentcfg.ActionAdded},
+	}}}, agents, agentcfg.Global)
+
+	// Reinstall where the MCP config could not be written. The key is still in
+	// that config, so the row must keep naming it.
+	recordInstalls(cmd, []applied{{record: testRecord("cisco.com/agent", "2.0.0"), outcomes: []agentcfg.Outcome{
+		{Agent: "Claude Code", Artifact: agentcfg.ArtifactSkill, Path: "/skills/agent", Action: agentcfg.ActionUpdated},
+		{Agent: "Claude Code", Artifact: agentcfg.ArtifactMCP, Server: "agntcy-dir", Action: agentcfg.ActionFailed},
+	}}}, agents, agentcfg.Global)
+
+	m, err := pkgstate.Load(path)
+	require.NoError(t, err)
+	require.Len(t, m.Entries, 1)
+	assert.Equal(t, "2.0.0", m.Entries[0].Version)
+	assert.Equal(t, "/skills/agent", m.Entries[0].SkillPath)
+	assert.Equal(t, []string{"agntcy-dir"}, m.Entries[0].MCPServers)
+}
+
 func TestRecordInstallsSkipsANamelessRecord(t *testing.T) {
 	path := isolateManifest(t)
 	cmd, _ := testCmd(t)

@@ -134,6 +134,27 @@ func TestCleared(t *testing.T) {
 	}))
 }
 
+func TestClearedFalseWhenOnlySkipped(t *testing.T) {
+	// The location could not be resolved, so nothing was removed and nothing
+	// was even looked at. Whatever the row recorded may still be on disk, and
+	// the row is the only note of what to clean up.
+	assert.False(t, Cleared(claudeCode, []agentcfg.Outcome{
+		{
+			Agent: "Claude Code", Artifact: agentcfg.ArtifactSkill,
+			Action: agentcfg.ActionSkipped, Reason: "no global location for this agent's skill",
+		},
+	}))
+}
+
+func TestClearedWhenASkipAccompaniesARealRemoval(t *testing.T) {
+	// An agent can hold an MCP entry at a scope where it has no skill location.
+	// Removing the entry still clears everything the row could name.
+	assert.True(t, Cleared(claudeCode, []agentcfg.Outcome{
+		{Agent: "Claude Code", Artifact: agentcfg.ArtifactMCP, Server: "srv", Action: agentcfg.ActionRemoved},
+		{Agent: "Claude Code", Artifact: agentcfg.ArtifactSkill, Action: agentcfg.ActionSkipped, Reason: "no global location"},
+	}))
+}
+
 func TestClearedFalseWhenSomethingFailed(t *testing.T) {
 	// The artifacts are still on disk, so the row has to stay.
 	assert.False(t, Cleared(claudeCode, []agentcfg.Outcome{

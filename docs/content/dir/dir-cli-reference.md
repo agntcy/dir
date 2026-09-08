@@ -198,6 +198,11 @@ record's modules imply, so a later uninstall removes exactly those without
 re-fetching a record that may since have been garbage-collected upstream. An
 agent that received nothing — skipped or failed — is not recorded.
 
+A row names every artifact `dirctl` wrote and has not since removed, so
+reinstalling carries forward anything the previous row named that the new
+install did not write. That covers a reinstall where one artifact failed, and a
+new version that renames its MCP server while the old key stays in the config.
+
 The manifest is bookkeeping, not the product: if it cannot be read or written,
 `dirctl` prints a warning and the install still succeeds. Project-scope
 (`--project`) installs are not recorded yet.
@@ -264,9 +269,12 @@ leaving all other content intact. Shares the same flags as install (`--agents`,
 `--project`, `--dry-run`, `--yes`). Idempotent: an agent with nothing of ours
 installed is reported as unchanged, never an error.
 
-The record's row is dropped from the install manifest for every agent it was
-removed from. An agent whose removal failed keeps its row, because its artifacts
-are still on disk.
+The record's row is dropped from the install manifest for every agent whose
+artifacts are confirmed gone, meaning at least one was removed or already
+absent and none failed. An agent keeps its row when a removal failed, and when
+every artifact was skipped because its location could not be resolved for that
+scope — in both cases something may still be on disk, and the row is the only
+note of what it is.
 
 `dirctl uninstall <cid-or-name>` is a top-level shorthand for
 `dirctl install uninstall <cid-or-name>` (same flags and behavior).

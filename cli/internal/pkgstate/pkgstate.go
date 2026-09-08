@@ -141,6 +141,45 @@ func (e Entry) Key() Key {
 	return Key{Name: e.Name, Agent: e.Agent, Scope: e.Scope}
 }
 
+// WithCarriedArtifacts returns e with the artifacts prior still records but
+// this install did not write, carried forward.
+//
+// A row names every artifact dirctl wrote and has not since removed, not only
+// the artifacts the newest install produced. Two cases make the difference
+// matter, and both leave files or config keys on disk that nothing else would
+// ever clean up:
+//
+//   - A partly successful reinstall. The skill is written but the agent's MCP
+//     config cannot be read, so the new row names only the skill while the
+//     earlier install's server key is still in that config.
+//   - A new version that renames its MCP server. Installing it adds the new
+//     key and leaves the old one in place, because plain install removes
+//     nothing first.
+//
+// Skill paths are carried only when the new row has none, since one row holds
+// one skill path and the slug is derived from the record name, so it does not
+// move between installs of the same package.
+func (e Entry) WithCarriedArtifacts(prior Entry) Entry {
+	if e.SkillPath == "" && prior.SkillPath != "" {
+		e.SkillPath = prior.SkillPath
+		e.SkillFiles = prior.SkillFiles
+	}
+
+	seen := make(map[string]bool, len(e.MCPServers))
+	for _, name := range e.MCPServers {
+		seen[name] = true
+	}
+
+	for _, name := range prior.MCPServers {
+		if !seen[name] {
+			e.MCPServers = append(e.MCPServers, name)
+			seen[name] = true
+		}
+	}
+
+	return e
+}
+
 // manifestFile is the on-disk shape. It is separate from Manifest so the
 // schema version is written from the constant on every save and never carried
 // around as a mutable field.

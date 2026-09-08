@@ -74,26 +74,37 @@ func BuildEntry(arts Artifacts, agent agentcfg.Agent, outcomes []agentcfg.Outcom
 	return entry, true
 }
 
-// Cleared reports whether an uninstall left this agent with nothing of ours:
-// it acted on at least one artifact and none of them failed. An agent whose
-// removal failed keeps its manifest row, because its artifacts are still on
-// disk and something still has to remove them.
+// Cleared reports whether an uninstall left this agent with nothing of ours.
+// It takes a confirmation and no contradiction: at least one artifact was
+// removed or found already absent, and none failed.
+//
+// A skip on its own is not a confirmation. It means the artifact's location
+// could not be resolved for this scope, so nothing was removed and nothing was
+// even looked at, while whatever the row recorded may well still be on disk.
+// Dropping the row there would throw away the only note of what to clean up.
+// A skip alongside a real removal is fine, and common: an agent can hold an
+// MCP entry at a scope where it has no skill location.
+//
+// An agent whose removal failed keeps its row too, since its artifacts are
+// still on disk and something has to remove them later.
 func Cleared(agent agentcfg.Agent, outcomes []agentcfg.Outcome) bool {
-	acted := false
+	confirmed := false
 
 	for _, o := range outcomes {
 		if o.Agent != agent.Name {
 			continue
 		}
 
-		if o.Action == agentcfg.ActionFailed {
+		switch o.Action {
+		case agentcfg.ActionFailed:
 			return false
+		case agentcfg.ActionRemoved, agentcfg.ActionUnchanged:
+			confirmed = true
+		case agentcfg.ActionAdded, agentcfg.ActionUpdated, agentcfg.ActionSkipped:
 		}
-
-		acted = true
 	}
 
-	return acted
+	return confirmed
 }
 
 // wrote reports whether an action left our artifact in place: added and updated
