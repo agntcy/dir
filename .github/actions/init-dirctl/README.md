@@ -1,7 +1,7 @@
 # Init dirctl
 
 Runs `dirctl init --yes` to download and verify the local OASF taxonomy extractor
-(~89 MB). Use before `dirctl import` with `enricher.extractor: {}`.
+(~89 MB). Required for natural-language search (`dirctl search`, `routing search`).
 
 ## Usage
 

@@ -38,7 +38,7 @@ of AI agent records described in OASF.
 This wizard sets up your local environment. Steps:
   1. Configure a local client context
   2. Provision the OASF taxonomy extractor
-  3. Configure the Directory MCP server & skills in your AI agents
+  3. Install the DIR skill in your AI agents
 `)
 }
 

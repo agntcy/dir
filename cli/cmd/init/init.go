@@ -3,8 +3,7 @@
 
 // Package init implements `dirctl init` — the onboarding step that provisions
 // the OASF taxonomy extractor's local assets and records the choice in the
-// dirctl config. Additional wizard steps (MCP server / skills) are layered on
-// by #1705.
+// dirctl config. Additional wizard steps (skills) are layered on by #1705.
 package init
 
 import (
