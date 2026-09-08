@@ -39,7 +39,6 @@ dirctl sign <cid> --key cosign.key     # private key
   itself is unchanged.
 - Signing enables the `--trusted` search filter and `dirctl verify` for
   consumers.
-- Import flows can sign in bulk: `dirctl import ... --sign [--key ...]`.
 - Non-interactive signing: `--oidc-token` (CI).
 
 ## 4. Announce to the network (routing)
@@ -57,27 +56,25 @@ Clarify intent with the user: **push** = store on the connected server;
 **routing publish** = make discoverable across the peer-to-peer network. A
 record can be pushed but unpublished (private to that directory).
 
-## Name ownership verification (optional, for `https://` names)
+## Record identity & ownership claims (optional)
 
-Proves the signing key is authorized by the domain in the record name.
-
-Requirements:
-
-1. Record `name` uses a protocol prefix: `https://example.com/my-agent`.
-2. The domain hosts a JWKS at `https://example.com/.well-known/jwks.json`.
-3. The record is signed with a private key whose public key is in that JWKS.
+Proves the record's own identity and/or who owns/controls it. Independent of
+the `name` field; the subject can use `did:web:`, `did:key:`, `https://`
+(JWKS), `dns:` (TXT record), or `spiffe://` (X.509-SVID).
 
 Workflow:
 
 ```bash
 CID=$(dirctl push record.json -o raw)
-dirctl sign "$CID" --key private.key      # triggers automatic domain verification
-dirctl naming verify "$CID"               # check verification status
+dirctl identity claim --record "$CID" --role identity --subject did:web:my-agent.example.com --key private.key
+dirctl identity claim --record "$CID" --role owner --subject did:web:acme.com --key owner.key
+dirctl identity status "$CID"             # check verification status
 ```
 
-Verified names light up the `--verified` search filter. If verification
-fails, check (in order): name has the scheme prefix, JWKS is reachable,
-signing key matches a JWKS entry.
+A verified ownership claim lights up the `--owner-verified` search filter. If
+verification fails, check (in order): subject scheme matches the signer's key
+material, the resolution endpoint (DID document / JWKS / TXT record) is
+reachable, the signing key matches what's published there.
 
 ## Maintenance
 

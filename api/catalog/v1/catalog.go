@@ -137,9 +137,11 @@ func WithTrustStatus(status TrustStatus) ConvertOption {
 	}
 }
 
-func DeriveTrustStatus(signatureStatuses []string, nameVerificationStatus string) TrustStatus {
+// DeriveTrustStatus derives a catalog entry's trust badge from signature and
+// ownership-claim verification statuses ("verified"/"failed"/"").
+func DeriveTrustStatus(signatureStatuses []string, ownerVerificationStatus string) TrustStatus {
 	status := TrustStatus{
-		Verified: strings.EqualFold(nameVerificationStatus, verificationStatusVerified),
+		Verified: strings.EqualFold(ownerVerificationStatus, verificationStatusVerified),
 	}
 
 	for _, signatureStatus := range signatureStatuses {

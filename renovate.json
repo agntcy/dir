@@ -48,9 +48,7 @@
   "dependencyDashboardOSVVulnerabilitySummary": "all",
   "enabled": true,
   "minimumReleaseAge": "7 days",
-  "schedule": [
-    "before 8am on Monday"
-  ],
+  "schedule": ["before 8am on Monday"],
   "enabledManagers": [
     "custom.regex",
     "docker-compose",
@@ -98,11 +96,7 @@
       "groupName": "DIR feature dependencies",
       "groupSlug": "dir-feat-deps",
       "matchDatasources": ["go"],
-      "matchPackageNames": [
-        "github.com/agntcy/dir-runtime{/,}**",
-        "github.com/agntcy/dir-importer",
-        "github.com/agntcy/dir-mcp"
-      ],
+      "matchPackageNames": ["github.com/agntcy/dir-runtime{/,}**"],
       "addLabels": ["agntcy", "release"],
       "automerge": false,
       "description": [
@@ -210,10 +204,7 @@
     {
       "groupName": "postgresql",
       "groupSlug": "postgresql",
-      "matchPackageNames": [
-        "docker.io/bitnami/postgresql",
-        "postgresql"
-      ],
+      "matchPackageNames": ["docker.io/bitnami/postgresql", "postgresql"],
       "pinDigests": true,
       "description": ["Group PostgreSQL version bumps into a single PR."]
     },

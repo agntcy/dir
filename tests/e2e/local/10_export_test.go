@@ -4,41 +4,16 @@
 package local
 
 import (
-	"context"
 	"encoding/json"
 	"os"
 	"path/filepath"
 	"strings"
-	"time"
 
-	typesv1 "buf.build/gen/go/agntcy/oasf/protocolbuffers/go/agntcy/oasf/types/v1"
-	importer "github.com/agntcy/dir-importer"
-	importerconfig "github.com/agntcy/dir-importer/config"
-	enricherconfig "github.com/agntcy/dir-importer/enricher/config"
-	"github.com/agntcy/dir-importer/factory"
-	"github.com/agntcy/dir-importer/types"
 	"github.com/agntcy/dir/tests/e2e/shared/testdata"
 	"github.com/agntcy/dir/tests/e2e/shared/utils"
 	"github.com/onsi/ginkgo/v2"
 	"github.com/onsi/gomega"
 )
-
-// importerWithStaticEnricher wraps importer.New, forcing the static enricher so
-// that e2e tests can import records without an LLM or local model.
-func importerWithStaticEnricher(ctx context.Context, client importerconfig.ClientInterface, cfg importerconfig.Config) (types.Importer, error) {
-	cfg.Enricher = enricherconfig.Config{
-		Static: &enricherconfig.StaticConfig{
-			Skills: []*typesv1.Skill{
-				{Name: "software_engineering/code_quality/code_review", Id: 60701},
-			},
-			Domains: []*typesv1.Domain{
-				{Name: "technology/artificial_intelligence/ai_agents", Id: 11107},
-			},
-		},
-	}
-
-	return importer.New(ctx, client, cfg) //nolint:wrapcheck
-}
 
 var _ = ginkgo.Describe("Running dirctl end-to-end tests for the export command", func() {
 	ginkgo.BeforeEach(func() {
@@ -193,28 +168,16 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests for the export command"
 		tempDir, err := os.MkdirTemp("", "export-a2a-e2e-*")
 		gomega.Expect(err).NotTo(gomega.HaveOccurred())
 
-		ginkgo.BeforeAll(func() {
-			factory.Replace(importerconfig.ImportTypeA2A, importerWithStaticEnricher)
-		})
-
 		ginkgo.AfterAll(func() {
 			os.RemoveAll(tempDir)
-			factory.Replace(importerconfig.ImportTypeA2A, importer.New)
 		})
 
-		ginkgo.It("should import an A2A agent card to set up test data", func() {
-			cardPath := filepath.Join(tempDir, "agent-card.json")
-			gomega.Expect(os.WriteFile(cardPath, testdata.A2AAgentCard, 0o600)).To(gomega.Succeed())
+		ginkgo.It("should push a record with an a2a module to set up test data", func() {
+			recordPath := filepath.Join(tempDir, "record.json")
+			gomega.Expect(os.WriteFile(recordPath, testdata.ExpectedRecordV100JSON, 0o600)).To(gomega.Succeed())
 
-			cidFile := filepath.Join(tempDir, "imported.cids")
-
-			testEnv.CLI.Import("a2a", cardPath).WithArgs("--force", "--output-cids="+cidFile).ShouldEventuallySucceed(60 * time.Second)
-
-			cidData, err := os.ReadFile(cidFile)
-			gomega.Expect(err).NotTo(gomega.HaveOccurred())
-
-			cid = strings.TrimSpace(string(cidData))
-			gomega.Expect(cid).NotTo(gomega.BeEmpty(), "imported CID should not be empty")
+			cid = testEnv.CLI.Push(recordPath).WithArgs("--output", "raw").ShouldSucceed()
+			gomega.Expect(cid).NotTo(gomega.BeEmpty())
 		})
 
 		ginkgo.It("should export the record as A2A AgentCard to stdout", func() {
@@ -225,11 +188,7 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests for the export command"
 
 			err := json.Unmarshal([]byte(output), &exported)
 			gomega.Expect(err).NotTo(gomega.HaveOccurred(), "stdout output should be valid JSON")
-
-			var original map[string]any
-			gomega.Expect(json.Unmarshal(testdata.A2AAgentCard, &original)).To(gomega.Succeed())
-
-			gomega.Expect(exported).To(gomega.Equal(original), "exported A2A card should match the original input")
+			gomega.Expect(exported["name"]).To(gomega.Equal("burger_seller_agent"))
 		})
 
 		ginkgo.It("should export the record as A2A AgentCard to a file", func() {
@@ -244,7 +203,7 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests for the export command"
 
 			err = json.Unmarshal(data, &parsed)
 			gomega.Expect(err).NotTo(gomega.HaveOccurred(), "file content should be valid JSON")
-			gomega.Expect(parsed["name"]).To(gomega.Equal("Code Review Agent"))
+			gomega.Expect(parsed["name"]).To(gomega.Equal("burger_seller_agent"))
 		})
 
 		ginkgo.It("should auto-append .json extension when omitted", func() {
@@ -277,28 +236,16 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests for the export command"
 		tempDir, err := os.MkdirTemp("", "export-mcp-ghcopilot-e2e-*")
 		gomega.Expect(err).NotTo(gomega.HaveOccurred())
 
-		ginkgo.BeforeAll(func() {
-			factory.Replace(importerconfig.ImportTypeMCP, importerWithStaticEnricher)
-		})
-
 		ginkgo.AfterAll(func() {
 			os.RemoveAll(tempDir)
-			factory.Replace(importerconfig.ImportTypeMCP, importer.New)
 		})
 
-		ginkgo.It("should import an MCP server descriptor to set up test data", func() {
-			serverPath := filepath.Join(tempDir, "mcp-server.json")
-			gomega.Expect(os.WriteFile(serverPath, testdata.MCPServer, 0o600)).To(gomega.Succeed())
+		ginkgo.It("should push a record with an mcp module to set up test data", func() {
+			recordPath := filepath.Join(tempDir, "record.json")
+			gomega.Expect(os.WriteFile(recordPath, testdata.ExpectedRecordV100JSON, 0o600)).To(gomega.Succeed())
 
-			cidFile := filepath.Join(tempDir, "imported.cids")
-
-			testEnv.CLI.Import("mcp", serverPath).WithArgs("--force", "--output-cids="+cidFile).ShouldEventuallySucceed(60 * time.Second)
-
-			cidData, err := os.ReadFile(cidFile)
-			gomega.Expect(err).NotTo(gomega.HaveOccurred())
-
-			cid = strings.TrimSpace(string(cidData))
-			gomega.Expect(cid).NotTo(gomega.BeEmpty(), "imported CID should not be empty")
+			cid = testEnv.CLI.Push(recordPath).WithArgs("--output", "raw").ShouldSucceed()
+			gomega.Expect(cid).NotTo(gomega.BeEmpty())
 		})
 
 		ginkgo.It("should export the record as GitHub Copilot MCP config to stdout", func() {
@@ -363,29 +310,16 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests for the export command"
 		tempDir, err := os.MkdirTemp("", "export-skill-e2e-*")
 		gomega.Expect(err).NotTo(gomega.HaveOccurred())
 
-		ginkgo.BeforeAll(func() {
-			factory.Replace(importerconfig.ImportTypeAgentSkill, importerWithStaticEnricher)
-		})
-
 		ginkgo.AfterAll(func() {
 			os.RemoveAll(tempDir)
-			factory.Replace(importerconfig.ImportTypeAgentSkill, importer.New)
 		})
 
-		ginkgo.It("should import a SKILL.md to set up test data", func() {
-			skillDir := filepath.Join(tempDir, "code-review")
-			gomega.Expect(os.MkdirAll(skillDir, 0o755)).To(gomega.Succeed())
-			gomega.Expect(os.WriteFile(filepath.Join(skillDir, "SKILL.md"), testdata.SkillMarkdown, 0o600)).To(gomega.Succeed())
+		ginkgo.It("should push a pre-built skill record to set up test data", func() {
+			skillPath := filepath.Join(tempDir, "skill-record.json")
+			gomega.Expect(os.WriteFile(skillPath, testdata.SkillRecordJSON, 0o600)).To(gomega.Succeed())
 
-			cidFile := filepath.Join(tempDir, "imported.cids")
-
-			testEnv.CLI.Import("agent-skill", skillDir).WithArgs("--force", "--output-cids="+cidFile).ShouldSucceed()
-
-			cidData, err := os.ReadFile(cidFile)
-			gomega.Expect(err).NotTo(gomega.HaveOccurred())
-
-			cid = strings.TrimSpace(string(cidData))
-			gomega.Expect(cid).NotTo(gomega.BeEmpty(), "imported CID should not be empty")
+			cid = testEnv.CLI.Push(skillPath).WithArgs("--output", "raw").ShouldSucceed()
+			gomega.Expect(cid).NotTo(gomega.BeEmpty())
 		})
 
 		ginkgo.It("should export the record as SKILL.md to stdout", func() {

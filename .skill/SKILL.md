@@ -1,6 +1,6 @@
 ---
 name: agntcy-dir
-description: Use when the user asks to discover, browse, search, suggest, recommend, or install agents and agentic resources. Author, validate, or import OASF records; push, sign, and publish records; discover, search, browse, suggest, or recommend agents like MCP servers, A2A agents, or agent skills; verify signatures, name ownership, or security scans; synchronize data between servers; or install/uninstall agents and agentic resources into coding agents like VS Code Copilot, Claude Code, or Cursor.
+description: Use when the user asks to discover, browse, search, suggest, recommend, or install agents and agentic resources. Author or validate OASF records; push, sign, and publish records; discover, search, browse, suggest, or recommend agents like MCP servers, A2A agents, or agent skills; verify signatures, name ownership, or security scans; synchronize data between servers; or install/uninstall agents and agentic resources into coding agents like VS Code Copilot, Claude Code, or Cursor.
 metadata:
   author: AGNTCY Contributors
   version: 1.0.0
@@ -15,7 +15,7 @@ Skills), locators, signatures, and security scan results.
 
 This skill turns natural-language requests into `dirctl` workflows. It is a
 **router**: read the matching reference file below _before_ acting on a
-workflow. Read more than one when the request spans workflows (e.g. "import
+workflow. Read more than one when the request spans workflows (e.g. "author
 and publish" → authoring + publishing).
 
 ## Dispatch
@@ -24,7 +24,7 @@ and publish" → authoring + publishing).
 | ----------------------------------------------------------------------------------------------------------- | -------------------------------------------------------- |
 | "install dirctl", "set up a local directory", "start the daemon", "configure contexts", "connection issues" | [references/setup.md](references/setup.md)               |
 | "log in", "am I authenticated?", "switch to another directory node", "permission denied / forbidden"        | [references/setup.md](references/setup.md)               |
-| "create a record", "validate my record", "import MCP servers / A2A cards / skills into DIR"                 | [references/authoring.md](references/authoring.md)       |
+| "create a record", "validate my record"                                                                     | [references/authoring.md](references/authoring.md)       |
 | "push", "publish to the network", "sign my record", "prove name ownership"                                  | [references/publishing.md](references/publishing.md)     |
 | "find/search/suggest agents, MCP servers, skills", "browse the directory", "pull a record"                  | [references/discovery.md](references/discovery.md)       |
 | "is this record signed/safe/verified?", "check scan reports", "verify signature"                            | [references/verification.md](references/verification.md) |
@@ -60,7 +60,7 @@ daemon). Server selection order: `--context <name>` flag →
 - **Parse, don't scrape**: request `-o json` (or `-o jsonl` for streams) when
   you need to read results; `-o raw` for CIDs in shell pipelines. Structured
   formats write data to stdout and messages to stderr, so piping to `jq` is
-  safe. `validate`, `context`, `auth`, `daemon`, `mcp serve`, and `version` do
+  safe. `validate`, `context`, `auth`, `daemon`, and `version` do
   not take `-o`.
 - **Quote every argument** — record names contain `/` and `:`.
 - **Capability probing**: command surface varies by version. Before relying on
@@ -70,7 +70,7 @@ daemon). Server selection order: `--context <name>` flag →
   and ask the user how to authenticate (see setup reference: `auth login`,
   `--auth-mode`, `--auth-token`).
 - **Authentication is not authorization**: a valid token from `auth status`
-  says nothing about what the user may *do*. Gateways enforce per-method
+  says nothing about what the user may _do_. Gateways enforce per-method
   access control, so `PermissionDenied` / `Forbidden` on `push`, `sign`,
   `routing publish`, `delete`, or `sync` is an entitlement problem — logging in
   again cannot fix it. Name the denied method, say it needs elevated rights on
@@ -132,9 +132,8 @@ Rules:
   Only fall back to free-text prompts when no such tool is available.
 - Never promise webviews, side panels, or native dialogs — chat surfaces
   render Markdown only.
-- Long operations (`init` downloads ~89 MB; imports and syncs can run
-  minutes): warn the user before starting and report progress from command
-  output.
+- Long operations (`init` downloads ~89 MB; syncs can run minutes): warn the
+  user before starting and report progress from command output.
 - When the user's host is itself an install target (e.g. VS Code → `vscode`,
   Claude Code → `claude-code`, Cursor → `cursor`), default installs to that
   host's agent ID (see install reference).
@@ -143,15 +142,6 @@ Rules:
   `DIRECTORY_CLIENT_AUTH_TOKEN` or `auth login --device` / `--no-browser`, and
   when a decision genuinely requires a human, fail fast with a clear message
   instead of waiting.
-
-## MCP-native alternative
-
-`dirctl mcp serve` starts a built-in MCP server exposing DIR and OASF
-operations as tools (push, pull, search, validate, taxonomy browsing). When a
-host is configured with this server, prefer its tools over shelling out to
-equivalent CLI commands. To wire it up, add a stdio server entry that runs
-`dirctl mcp serve` to the host's MCP config, following the merge-never-
-overwrite rules in [references/install.md](references/install.md).
 
 ## Pointers
 
