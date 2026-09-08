@@ -15,9 +15,15 @@ on:
         type: string
         description: "Release tag for all components."
 
+permissions:
+  contents: read
+
 jobs:
   image:
     name: Image
+    permissions:
+      contents: read
+      packages: write
     uses: ./.github/workflows/reusable-build.yaml
     with:
       image_repo: ${{ inputs.image_repo }}
@@ -26,6 +32,9 @@ jobs:
 
   chart:
     name: Helm chart
+    permissions:
+      contents: read
+      packages: write
     uses: ./.github/workflows/reusable-release-helm.yaml
     with:
       image_repo: ${{ inputs.image_repo }}
@@ -71,6 +80,8 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+      id-token: write
+      attestations: write
     steps:
       - name: Create Release
         id: create_release
@@ -90,6 +101,8 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+      id-token: write
+      attestations: write
     strategy:
       matrix:
         os: [linux, darwin, windows]
@@ -122,5 +135,45 @@ jobs:
         with:
           tag_name: ${{ inputs.release_tag }}
           files: .bin/dirctl-${{ matrix.os }}-${{ matrix.arch }}
+          append_body: true
+          draft: true
+
+  provenance:
+    name: Provenance
+    needs:
+      - upload
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      id-token: write
+      attestations: write
+    steps:
+      - name: Download CLI artifacts
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: cli-artifacts
+          path: .bin
+
+      - name: Attest build provenance
+        id: attest
+        uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
+        with:
+          subject-path: .bin/dirctl-*
+
+      # The attestation is queryable through GitHub's attestations API, but
+      # consumers and OpenSSF Scorecard look for a .intoto.jsonl release asset.
+      - name: Name the bundle for release
+        env:
+          BUNDLE_PATH: ${{ steps.attest.outputs.bundle-path }}
+          RELEASE_TAG: ${{ inputs.release_tag }}
+        run: cp "$BUNDLE_PATH" "dirctl-${RELEASE_TAG}.intoto.jsonl"
+
+      - name: Upload provenance Release Asset
+        uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65 # v2.6.2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ inputs.release_tag }}
+          files: dirctl-${{ inputs.release_tag }}.intoto.jsonl
           append_body: true
           draft: true

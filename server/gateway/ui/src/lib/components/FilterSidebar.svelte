@@ -1,5 +1,6 @@
 <script lang="ts">
 	import type { AICardFilterCriteria, CatalogTag } from '$lib/types';
+	import TagFilterSection from './TagFilterSection.svelte';
 
 	interface Props {
 		catalogTags: CatalogTag[];
@@ -14,13 +15,6 @@
 	let statusFilters = $state<Set<string>>(new Set());
 	let scanSafe = $state(false);
 	let activeTags = $state<Set<string>>(new Set());
-	let tagSearch = $state('');
-
-	let visibleTags = $derived(
-		tagSearch
-			? catalogTags.filter((t) => t.label.toLowerCase().includes(tagSearch.toLowerCase()))
-			: catalogTags
-	);
 
 	function notifyChange() {
 		onCriteriaChange({
@@ -231,31 +225,5 @@
 		</div>
 	</div>
 
-	<div class="flex-1 flex flex-col min-h-0">
-		<div class="flex items-center justify-between gap-2 mb-2 flex-shrink-0">
-			<span class="block text-xs font-semibold uppercase tracking-wide text-ink-medium">Tags</span>
-			{#if tagsLoading}
-				<span class="text-xs text-ink-weak">Loading…</span>
-			{/if}
-		</div>
-		<input
-			type="text"
-			placeholder="Filter tags..."
-			class="w-full rounded-control border-2 border-line bg-surface-light px-3 py-1.5 text-sm text-ink placeholder:text-ink-weak focus:outline-none focus:border-brand-500 mb-2 flex-shrink-0"
-			bind:value={tagSearch}
-		/>
-		<div class="space-y-1.5 overflow-y-auto flex-1">
-			{#each visibleTags as tag (tag.id)}
-				<label class="flex items-center gap-2 text-sm text-ink cursor-pointer">
-					<input
-						type="checkbox"
-						checked={activeTags.has(tag.id)}
-						onchange={(e) => handleTag(tag.id, (e.target as HTMLInputElement).checked)}
-						class="rounded border-line-strong text-brand-500 focus:ring-brand-500"
-					/>
-					<span class="truncate" title={tag.id}>{tag.label}</span>
-				</label>
-			{/each}
-		</div>
-	</div>
+	<TagFilterSection {catalogTags} {tagsLoading} {activeTags} onToggleTag={handleTag} />
 </div>

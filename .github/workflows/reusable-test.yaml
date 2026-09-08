@@ -15,9 +15,7 @@ on:
         type: string
         description: "Image tag to use."
 permissions:
-  id-token: write
   contents: read
-  pull-requests: write
 
 jobs:
   unit:

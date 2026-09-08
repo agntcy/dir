@@ -13,10 +13,7 @@ on:
   pull_request:
 
 permissions:
-  contents: write
-  packages: write
-  id-token: write
-  pull-requests: write
+  contents: read
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -180,6 +177,9 @@ jobs:
       - lint
       - license
       - verify
+    permissions:
+      contents: read
+      packages: write
     uses: ./.github/workflows/reusable-build.yaml
     with:
       image_repo: ghcr.io/agntcy
@@ -196,6 +196,9 @@ jobs:
       - lint
       - license
       - verify
+    permissions:
+      contents: read
+      packages: write
     uses: ./.github/workflows/reusable-build.yaml
     with:
       image_repo: ghcr.io/agntcy
@@ -207,6 +210,9 @@ jobs:
     if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
     needs:
       - push
+    permissions:
+      contents: read
+      packages: write
     uses: ./.github/workflows/reusable-release-helm.yaml
     with:
       image_repo: ghcr.io/agntcy
@@ -216,6 +222,8 @@ jobs:
     name: Test
     needs:
       - build
+    permissions:
+      contents: read
     uses: ./.github/workflows/reusable-test.yaml
     with:
       image_repo: ghcr.io/agntcy
@@ -225,6 +233,8 @@ jobs:
     name: Cross-Platform Test
     needs:
       - build
+    permissions:
+      contents: read
     uses: ./.github/workflows/reusable-test-e2e-cross-platform.yaml
 
   coverage:
@@ -260,6 +270,11 @@ jobs:
     if: ${{ startsWith(github.ref, 'refs/tags/v') && !contains(github.ref_name, '/') }}
     needs:
       - test
+    permissions:
+      contents: write
+      packages: write
+      id-token: write
+      attestations: write
     uses: ./.github/workflows/reusable-release.yaml
     with:
       image_repo: ghcr.io/agntcy
