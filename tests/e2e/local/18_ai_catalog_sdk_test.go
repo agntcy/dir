@@ -56,6 +56,7 @@ var _ = ginkgo.Describe("AI Catalog Go SDK conformance", func() {
 			}
 
 			var err error
+
 			tempDir, err = os.MkdirTemp("", "ai-catalog-sdk-e2e-*")
 			gomega.Expect(err).NotTo(gomega.HaveOccurred())
 
@@ -100,6 +101,7 @@ var _ = ginkgo.Describe("AI Catalog Go SDK conformance", func() {
 				"Agent Skill Bundles": "application/agent-skills+gzip",
 			}
 			seenCollections := make(map[string]struct{}, len(wire.GetCollections()))
+
 			for _, collection := range wire.GetCollections() {
 				mediaType, ok := expectedCollections[collection.GetDisplayName()]
 				gomega.Expect(ok).To(gomega.BeTrue(), "unexpected collection %q", collection.GetDisplayName())
@@ -113,6 +115,7 @@ var _ = ginkgo.Describe("AI Catalog Go SDK conformance", func() {
 				gomega.Expect(collectionURL.Path).To(gomega.Equal("/v1/agents"))
 				gomega.Expect(collectionURL.Query().Get("filter")).To(gomega.Equal("type=" + mediaType))
 			}
+
 			gomega.Expect(seenCollections).To(gomega.Equal(map[string]struct{}{
 				"A2A Agents":          {},
 				"MCP Servers":         {},
@@ -129,6 +132,7 @@ var _ = ginkgo.Describe("AI Catalog Go SDK conformance", func() {
 
 			rawSource, ok := source.(catalog.RawSource)
 			gomega.Expect(ok).To(gomega.BeTrue())
+
 			raw, err := rawSource.Raw(ctx)
 			gomega.Expect(err).NotTo(gomega.HaveOccurred())
 			gomega.Expect(json.Valid(raw)).To(gomega.BeTrue())
@@ -136,13 +140,18 @@ var _ = ginkgo.Describe("AI Catalog Go SDK conformance", func() {
 			trustManifest := wire.GetHost().GetTrustManifest()
 			gomega.Expect(trustManifest).NotTo(gomega.BeNil())
 
+			result := validate.Validate(doc)
+			gomega.Expect(result.IsValid).To(gomega.BeTrue(), "SDK validation errors: %+v", result.Errors)
+
 			trustReport := trust.AnalyzeCatalog(doc)
 			gomega.Expect(trustReport.Host).NotTo(gomega.BeNil())
 			gomega.Expect(trustReport.Host.Identity).To(gomega.Equal(trustManifest.GetIdentity()))
+			gomega.Expect(trustErrorFindings(trustReport)).To(gomega.BeEmpty())
 		})
 
 		ginkgo.It("validates MCP and A2A projections with the SDK", func(ctx ginkgo.SpecContext) {
 			var response catalogv1.ListAgentsResponse
+
 			gomega.Eventually(func(g gomega.Gomega) {
 				status, _, body := getCatalogHTTP(ctx, http.MethodGet, catalogEndpoint("/v1/agents"), nil)
 				g.Expect(status).To(gomega.Equal(http.StatusOK))
@@ -155,7 +164,7 @@ var _ = ginkgo.Describe("AI Catalog Go SDK conformance", func() {
 			gomega.Expect(wireEntry.GetData()).NotTo(gomega.BeNil())
 			gomega.Expect(wireEntry.GetTags()).NotTo(gomega.BeEmpty())
 
-			entry, err := adaptCatalogEntry(wireEntry, wireEntry.GetIdentifier())
+			entry, err := adaptCatalogEntry(wireEntry)
 			gomega.Expect(err).NotTo(gomega.HaveOccurred())
 
 			doc := &catalog.AICatalog{
@@ -176,7 +185,9 @@ var _ = ginkgo.Describe("AI Catalog Go SDK conformance", func() {
 
 		ginkgo.It("validates the Agent Skill projection with the SDK", func(ctx ginkgo.SpecContext) {
 			query := url.Values{"filter": {"displayName=code-review"}}.Encode()
+
 			var response catalogv1.ListAgentsResponse
+
 			gomega.Eventually(func(g gomega.Gomega) {
 				status, _, body := getCatalogHTTP(ctx, http.MethodGet, catalogEndpoint("/v1/agents?"+query), nil)
 				g.Expect(status).To(gomega.Equal(http.StatusOK))
@@ -188,14 +199,16 @@ var _ = ginkgo.Describe("AI Catalog Go SDK conformance", func() {
 			gomega.Expect(wireEntry.GetMediaType()).To(gomega.Equal(skillMediaType))
 			gomega.Expect(wireEntry.GetData()).NotTo(gomega.BeNil())
 
-			entry, err := adaptCatalogEntry(wireEntry, wireEntry.GetIdentifier())
+			entry, err := adaptCatalogEntry(wireEntry)
 			gomega.Expect(err).NotTo(gomega.HaveOccurred())
+
 			doc := &catalog.AICatalog{
 				SpecVersion: catalogSDKSpecVersion,
 				Entries:     []catalog.CatalogEntry{entry},
 			}
 			result := validate.Validate(doc)
 			gomega.Expect(result.IsValid).To(gomega.BeTrue(), "SDK validation errors: %+v", result.Errors)
+
 			gomega.Expect(doc.GetByType(skillMediaType)).To(gomega.HaveLen(1))
 		})
 
@@ -208,12 +221,14 @@ var _ = ginkgo.Describe("AI Catalog Go SDK conformance", func() {
 			gomega.Expect(protojson.Unmarshal(body, &wireEntry)).To(gomega.Succeed())
 			gomega.Expect(wireEntry.GetIdentifier()).To(gomega.ContainSubstring(recordCID))
 
-			entry, err := adaptCatalogEntry(&wireEntry, wireEntry.GetIdentifier())
+			entry, err := adaptCatalogEntry(&wireEntry)
 			gomega.Expect(err).NotTo(gomega.HaveOccurred())
+
 			result := validate.Validate(&catalog.AICatalog{
 				SpecVersion: catalogSDKSpecVersion,
 				Entries:     []catalog.CatalogEntry{entry},
 			})
+
 			gomega.Expect(result.IsValid).To(gomega.BeTrue(), "SDK validation errors: %+v", result.Errors)
 		})
 
@@ -226,7 +241,9 @@ var _ = ginkgo.Describe("AI Catalog Go SDK conformance", func() {
 			defer os.RemoveAll(paths.tempDir)
 
 			previousPassword, hadPassword := os.LookupEnv("COSIGN_PASSWORD")
+
 			gomega.Expect(os.Setenv("COSIGN_PASSWORD", "testpassword")).To(gomega.Succeed())
+
 			defer func() {
 				if hadPassword {
 					_ = os.Setenv("COSIGN_PASSWORD", previousPassword)
@@ -239,28 +256,50 @@ var _ = ginkgo.Describe("AI Catalog Go SDK conformance", func() {
 			testEnv.CLI.Sign(recordCID, paths.privateKey).ShouldSucceed()
 
 			var response catalogv1.ListAgentsResponse
+
 			gomega.Eventually(func(g gomega.Gomega) {
 				status, _, body := getCatalogHTTP(ctx, http.MethodGet, catalogEndpoint("/v1/agents"), nil)
 				g.Expect(status).To(gomega.Equal(http.StatusOK))
 				g.Expect(protojson.Unmarshal(body, &response)).To(gomega.Succeed())
 				entry := findCatalogEntry(response.GetResults(), recordCID)
 				g.Expect(entry).NotTo(gomega.BeNil())
-				g.Expect(entry.GetTrustManifest()).NotTo(gomega.BeNil())
-				g.Expect(entry.GetTrustManifest().GetIdentity()).NotTo(gomega.BeEmpty())
-				g.Expect(entry.GetTrustManifest().GetSignature()).NotTo(gomega.BeEmpty())
+				manifest := entry.GetTrustManifest()
+				g.Expect(manifest).NotTo(gomega.BeNil())
+				g.Expect(manifest.GetIdentity()).NotTo(gomega.BeEmpty())
+				g.Expect(manifest.GetSignature()).To(gomega.BeEmpty())
+				g.Expect(manifest.GetAttestations()).To(gomega.HaveLen(1))
+				attestation := manifest.GetAttestations()[0]
+				g.Expect(attestation.GetType()).To(gomega.Equal("publisher-identity"))
+				g.Expect(attestation.GetUri()).To(gomega.HavePrefix("data:"))
+				g.Expect(attestation.GetMediaType()).NotTo(gomega.BeEmpty())
+				g.Expect(attestation.GetDigest()).To(gomega.MatchRegexp(`^sha256:[0-9a-f]{64}$`))
+				g.Expect(attestation.GetSize()).To(gomega.BeNumerically(">", 0))
+				g.Expect(attestation.GetDescription()).NotTo(gomega.BeEmpty())
+				g.Expect(manifest.GetProvenance()).To(gomega.HaveLen(1))
+				provenance := manifest.GetProvenance()[0]
+				g.Expect(provenance.GetRelation()).To(gomega.Equal("derivedFrom"))
+				g.Expect(provenance.GetSourceId()).NotTo(gomega.BeEmpty())
+				g.Expect(provenance.GetSignatureRef()).To(gomega.Equal(attestation.GetDigest()))
 			}).WithContext(ctx).WithTimeout(45 * time.Second).WithPolling(2 * time.Second).Should(gomega.Succeed())
 
 			wireEntry := findCatalogEntry(response.GetResults(), recordCID)
-			entry, err := adaptCatalogEntry(wireEntry, wireEntry.GetIdentifier())
+			entry, err := adaptCatalogEntry(wireEntry)
 			gomega.Expect(err).NotTo(gomega.HaveOccurred())
+
 			doc := &catalog.AICatalog{
 				SpecVersion: catalogSDKSpecVersion,
 				Entries:     []catalog.CatalogEntry{entry},
 			}
+			result := validate.Validate(doc)
+			gomega.Expect(result.IsValid).To(gomega.BeTrue(), "SDK validation errors: %+v", result.Errors)
+
 			trustReport := trust.AnalyzeCatalog(doc)
 			gomega.Expect(trustReport.Entries).NotTo(gomega.BeEmpty())
-			gomega.Expect(trustReport.Entries[0].HasSignature).To(gomega.BeTrue())
+			gomega.Expect(trustReport.Entries[0].HasSignature).To(gomega.BeFalse())
+			gomega.Expect(trustReport.Entries[0].AttestationCount).To(gomega.BeNumerically(">", 0))
+			gomega.Expect(trustReport.Entries[0].ProvenanceCount).To(gomega.BeNumerically(">", 0))
 			gomega.Expect(trustReport.Entries[0].Identity).To(gomega.Equal(wireEntry.GetTrustManifest().GetIdentity()))
+			gomega.Expect(trustErrorFindings(trustReport)).To(gomega.BeEmpty())
 		})
 
 		ginkgo.It("parses natural-language search results with the SDK", func(ctx ginkgo.SpecContext) {
@@ -275,6 +314,7 @@ var _ = ginkgo.Describe("AI Catalog Go SDK conformance", func() {
 			gomega.Expect(err).NotTo(gomega.HaveOccurred())
 
 			var response catalogv1.SearchAgentsResponse
+
 			gomega.Eventually(func(g gomega.Gomega) {
 				status, _, body := getCatalogHTTP(ctx, http.MethodPost, catalogEndpoint("/v1/search"), requestBody)
 				g.Expect(status).To(gomega.Equal(http.StatusOK))
@@ -283,15 +323,23 @@ var _ = ginkgo.Describe("AI Catalog Go SDK conformance", func() {
 			}).WithContext(ctx).WithTimeout(45 * time.Second).WithPolling(2 * time.Second).Should(gomega.Succeed())
 
 			doc := &catalog.AICatalog{SpecVersion: catalogSDKSpecVersion}
+
 			for _, wireEntry := range response.GetResults() {
-				entry, err := adaptCatalogEntry(wireEntry, wireEntry.GetIdentifier())
+				entry, err := adaptCatalogEntry(wireEntry)
 				gomega.Expect(err).NotTo(gomega.HaveOccurred())
+
 				doc.Entries = append(doc.Entries, entry)
 			}
+
+			result := validate.Validate(doc)
+			gomega.Expect(result.IsValid).To(gomega.BeTrue(), "SDK validation errors: %+v", result.Errors)
+
 			directoryEntry := findCatalogEntry(response.GetResults(), directoryCID)
 			adaptedEntry, found := doc.GetByID(directoryEntry.GetIdentifier())
+
 			gomega.Expect(found).To(gomega.BeTrue())
 			gomega.Expect(adaptedEntry).NotTo(gomega.BeNil())
+
 			gomega.Expect(doc.Search("directory")).NotTo(gomega.BeEmpty())
 		})
 	})
@@ -311,18 +359,21 @@ func catalogEndpoint(path string) string {
 
 func getCatalogHTTP(ctx context.Context, method, endpoint string, body []byte) (int, http.Header, []byte) {
 	var reader io.Reader
+
 	if body != nil {
 		reader = strings.NewReader(string(body))
 	}
 
 	req, err := http.NewRequestWithContext(ctx, method, endpoint, reader)
 	gomega.Expect(err).NotTo(gomega.HaveOccurred())
+
 	if body != nil {
 		req.Header.Set("Content-Type", "application/json")
 	}
 
 	resp, err := http.DefaultClient.Do(req)
 	gomega.Expect(err).NotTo(gomega.HaveOccurred())
+
 	defer func() { _ = resp.Body.Close() }()
 
 	responseBody, err := io.ReadAll(resp.Body)
@@ -346,28 +397,37 @@ func extractorManifestExists() bool {
 	gomega.Expect(err).NotTo(gomega.HaveOccurred())
 
 	_, err = os.Stat(filepath.Join(home, ".agntcy", "oasf-sdk", "extractor", "manifest.json"))
+
 	return err == nil
 }
 
-func adaptCatalog(catalogWire *catalogv1.AICatalog, parentID string) (catalog.AICatalog, error) {
-	adapted := catalog.AICatalog{SpecVersion: catalogWire.GetSpecVersion()}
-	for index, wireEntry := range catalogWire.GetEntries() {
-		identifier := wireEntry.GetIdentifier()
-		if identifier == "" {
-			identifier = fmt.Sprintf("%s:entry-%d", parentID, index)
-		}
+func trustErrorFindings(report trust.CatalogTrustReport) []trust.Finding {
+	var findings []trust.Finding
 
-		entry, err := adaptCatalogEntry(wireEntry, identifier)
+	for _, finding := range report.Findings {
+		if finding.Severity == trust.SeverityError {
+			findings = append(findings, finding)
+		}
+	}
+
+	return findings
+}
+
+func adaptCatalog(catalogWire *catalogv1.AICatalog) (catalog.AICatalog, error) {
+	adapted := catalog.AICatalog{SpecVersion: catalogWire.GetSpecVersion()}
+	for _, wireEntry := range catalogWire.GetEntries() {
+		entry, err := adaptCatalogEntry(wireEntry)
 		if err != nil {
 			return catalog.AICatalog{}, err
 		}
+
 		adapted.Entries = append(adapted.Entries, entry)
 	}
 
 	return adapted, nil
 }
 
-func adaptCatalogEntry(wireEntry *catalogv1.CatalogEntry, fallbackID string) (catalog.CatalogEntry, error) {
+func adaptCatalogEntry(wireEntry *catalogv1.CatalogEntry) (catalog.CatalogEntry, error) {
 	if wireEntry == nil {
 		return catalog.CatalogEntry{}, fmt.Errorf("catalog entry is nil")
 	}
@@ -383,8 +443,9 @@ func adaptCatalogEntry(wireEntry *catalogv1.CatalogEntry, fallbackID string) (ca
 		TrustManifest: adaptTrustManifest(wireEntry.GetTrustManifest()),
 	}
 	if entry.Identifier == "" {
-		entry.Identifier = fallbackID
+		return catalog.CatalogEntry{}, fmt.Errorf("catalog entry %q has no identifier", entry.DisplayName)
 	}
+
 	if publisher := wireEntry.GetPublisher(); publisher != nil {
 		entry.Publisher = &catalog.Publisher{
 			Identifier:   publisher.GetIdentifier(),
@@ -395,8 +456,10 @@ func adaptCatalogEntry(wireEntry *catalogv1.CatalogEntry, fallbackID string) (ca
 
 	if wireEntry.GetUrl() != "" {
 		entry.URL = wireEntry.GetUrl()
+
 		return entry, nil
 	}
+
 	if wireEntry.GetData() == nil {
 		return entry, nil
 	}
@@ -405,8 +468,10 @@ func adaptCatalogEntry(wireEntry *catalogv1.CatalogEntry, fallbackID string) (ca
 	if err != nil {
 		return catalog.CatalogEntry{}, fmt.Errorf("marshal %q data: %w", entry.Identifier, err)
 	}
+
 	if entry.Type != catalog.MediaTypeCatalog {
 		entry.Data = data
+
 		return entry, nil
 	}
 
@@ -414,10 +479,12 @@ func adaptCatalogEntry(wireEntry *catalogv1.CatalogEntry, fallbackID string) (ca
 	if err := protojson.Unmarshal(data, &nestedWire); err != nil {
 		return catalog.CatalogEntry{}, fmt.Errorf("parse nested catalog %q: %w", entry.Identifier, err)
 	}
-	nested, err := adaptCatalog(&nestedWire, entry.Identifier)
+
+	nested, err := adaptCatalog(&nestedWire)
 	if err != nil {
 		return catalog.CatalogEntry{}, fmt.Errorf("adapt nested catalog %q: %w", entry.Identifier, err)
 	}
+
 	entry.Data, err = json.Marshal(nested)
 	if err != nil {
 		return catalog.CatalogEntry{}, fmt.Errorf("marshal nested catalog %q: %w", entry.Identifier, err)
@@ -432,9 +499,11 @@ func adaptTrustManifest(manifest *catalogv1.TrustManifest) *catalog.TrustManifes
 	}
 
 	adapted := &catalog.TrustManifest{
-		Identity:     manifest.GetIdentity(),
-		IdentityType: manifest.GetIdentityType(),
-		Signature:    manifest.GetSignature(),
+		Identity:          manifest.GetIdentity(),
+		IdentityType:      manifest.GetIdentityType(),
+		PrivacyPolicyURL:  manifest.GetPrivacyPolicyUrl(),
+		TermsOfServiceURL: manifest.GetTermsOfServiceUrl(),
+		Signature:         manifest.GetSignature(),
 	}
 	if schema := manifest.GetTrustSchema(); schema != nil {
 		adapted.TrustSchema = &catalog.TrustSchema{
@@ -444,6 +513,7 @@ func adaptTrustManifest(manifest *catalogv1.TrustManifest) *catalog.TrustManifes
 			VerificationMethods: append([]string(nil), schema.GetVerificationMethods()...),
 		}
 	}
+
 	for _, attestation := range manifest.GetAttestations() {
 		adapted.Attestations = append(adapted.Attestations, catalog.Attestation{
 			Type:        attestation.GetType(),
@@ -452,6 +522,7 @@ func adaptTrustManifest(manifest *catalogv1.TrustManifest) *catalog.TrustManifes
 			Description: attestation.GetDescription(),
 		})
 	}
+
 	for _, provenance := range manifest.GetProvenance() {
 		adapted.Provenance = append(adapted.Provenance, catalog.ProvenanceLink{
 			Relation:     provenance.GetRelation(),

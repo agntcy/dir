@@ -136,14 +136,16 @@ func TestRecordToCatalog(t *testing.T) {
 					"specVersion": "1.0",
 					"entries": [
 						{
-							"displayName": "Test Record 2 - A2A",
+							"identifier": "urn:ai:org.agntcy:cid:baeareifgarfb5mezccohu3h7ubfsdkn37edsmqvfv2q37k4qs6nzwqk4ve:a2a-0",
+								"displayName": "Test Record 2 - A2A",
 							"mediaType": "application/a2a-agent-card+json",
 							"data": {
 								"key2": "value2"
 							}
 						},
 						{
-							"displayName": "Test Record 2 - MCP",
+							"identifier": "urn:ai:org.agntcy:cid:baeareifgarfb5mezccohu3h7ubfsdkn37edsmqvfv2q37k4qs6nzwqk4ve:mcp-0",
+								"displayName": "Test Record 2 - MCP",
 							"mediaType": "application/mcp-server-card+json",
 							"data": {
 								"key1": "value1"
