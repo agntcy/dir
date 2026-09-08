@@ -115,6 +115,10 @@ message ListFilterValuesRequest {
   // variants are used instead of the numeric *_ID types so that every value is
   // a human-meaningful string.
   //
+  // Repeating a field also fails the call: it carries no meaning, and each
+  // repeat would cost another scan of the registry and another copy of that
+  // field's values in the response.
+  //
   // RECORD_QUERY_TYPE_VERSION is deliberately not supported: a record's own
   // version is per-record identity rather than a shared facet, so a
   // registry-wide distinct list of versions grows with the registry and answers

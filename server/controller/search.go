@@ -51,13 +51,24 @@ func (c *searchCtlr) CountRecords(_ context.Context, req *searchv1.CountRecordsR
 func (c *searchCtlr) ListFilterValues(_ context.Context, req *searchv1.ListFilterValuesRequest) (*searchv1.ListFilterValuesResponse, error) {
 	searchLogger.Debug("Called search controller's ListFilterValues method", "req", req)
 
-	// Reject unsupported fields up front so a caller gets a precise error rather
-	// than a response that silently omits what it asked for.
+	// Validate up front so a caller gets a precise error rather than a response
+	// that silently omits or duplicates what it asked for, and so a malformed
+	// request costs no database work.
+	seen := make(map[searchv1.RecordQueryType]struct{}, len(req.GetFields()))
+
 	for _, field := range req.GetFields() {
 		if !types.IsSupportedFilterValueField(field) {
 			return nil, status.Errorf(codes.InvalidArgument,
 				"unsupported field %s: supported fields are %v", field, types.SupportedFilterValueFields())
 		}
+
+		// Each repeat would cost another full scan and another copy of the
+		// field's values, and asking for the same field twice means nothing.
+		if _, duplicate := seen[field]; duplicate {
+			return nil, status.Errorf(codes.InvalidArgument, "duplicate field %s", field)
+		}
+
+		seen[field] = struct{}{}
 	}
 
 	fieldValues, err := c.db.ListFilterValues(req.GetFields())

@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"sort"
+	"strings"
 
 	searchv1 "github.com/agntcy/dir/api/search/v1"
 	"github.com/agntcy/dir/server/types"
@@ -103,6 +104,22 @@ func (d *DB) distinctAuthors() ([]string, error) {
 	sort.Strings(values)
 
 	return values, nil
+}
+
+// jsonStringBody returns how a Go string appears inside a serialized JSON
+// document, without the surrounding quotes: the escaping encoding/json applies,
+// and nothing else. It is the bridge between a decoded value a caller holds and
+// the raw JSON text a column stores.
+//
+// Marshalling a plain string cannot fail, so an encoding error falls back to the
+// input unchanged rather than dropping the filter.
+func jsonStringBody(s string) string {
+	encoded, err := json.Marshal(s)
+	if err != nil {
+		return s
+	}
+
+	return strings.Trim(string(encoded), `"`)
 }
 
 // distinctColumn plucks the distinct non-empty values of a column, sorted

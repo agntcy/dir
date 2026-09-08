@@ -545,6 +545,12 @@ func (d *DB) handleFilterOptions(query *gorm.DB, cfg *types.RecordFilters) *gorm
 	}
 
 	// Handle author filters with wildcard support (searching in JSON array).
+	//
+	// The pattern is JSON-encoded first because it is matched against the raw
+	// serialized array, where encoding/json has escaped quotes, backslashes and
+	// (by default) &, < and >. Comparing a decoded value against that text would
+	// never match an author such as `Jane "JJ" Doe` or `A & B Corp`. Wildcards
+	// survive the encoding untouched, so pattern semantics are unchanged.
 	if len(cfg.Authors) > 0 {
 		// Build OR conditions for each author pattern against the JSON string
 		var authorConditions []string
@@ -552,7 +558,7 @@ func (d *DB) handleFilterOptions(query *gorm.DB, cfg *types.RecordFilters) *gorm
 		var authorArgs []any
 
 		for _, author := range cfg.Authors {
-			condition, arg := utils.BuildSingleWildcardCondition("records.authors", "*"+author+"*")
+			condition, arg := utils.BuildSingleWildcardCondition("records.authors", "*"+jsonStringBody(author)+"*")
 			authorConditions = append(authorConditions, condition)
 			authorArgs = append(authorArgs, arg)
 		}

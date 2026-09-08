@@ -120,6 +120,23 @@ func TestListFilterValues_UnsupportedFieldIsRejectedBeforeQuerying(t *testing.T)
 	assert.Zero(t, db.fieldsCalls)
 }
 
+// Repeating a field has no useful meaning, and each occurrence would cost
+// another full scan and another copy of its values in the response.
+func TestListFilterValues_DuplicateFieldIsRejectedBeforeQuerying(t *testing.T) {
+	db := &fakeSearchDB{}
+	ctrl := NewSearchController(db, nil)
+
+	_, err := ctrl.ListFilterValues(context.Background(), &searchv1.ListFilterValuesRequest{
+		Fields: []searchv1.RecordQueryType{
+			searchv1.RecordQueryType_RECORD_QUERY_TYPE_SKILL_NAME,
+			searchv1.RecordQueryType_RECORD_QUERY_TYPE_SKILL_NAME,
+		},
+	})
+	require.Error(t, err)
+	assert.Equal(t, codes.InvalidArgument, status.Code(err))
+	assert.Zero(t, db.fieldsCalls)
+}
+
 func TestListFilterValues_DatabaseError(t *testing.T) {
 	ctrl := NewSearchController(&fakeSearchDB{err: assert.AnError}, nil)
 
