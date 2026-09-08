@@ -95,7 +95,7 @@ jobs:
 
       - name: Verify Kind has no host extractor assets
         if: matrix.task == 'e2e:test:local:kind'
-        run: test ! -e "$HOME/.agntcy/oasf-sdk/extractor/manifest.json"
+        run: test ! -e "$HOME/.agntcy/oasf-sdk"
 
       - name: Run end-to-end tests
         env:

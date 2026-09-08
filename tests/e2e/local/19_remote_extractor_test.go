@@ -63,7 +63,12 @@ var _ = ginkgo.Describe("Remote extractor HTTP API", ginkgo.Ordered, ginkgo.Labe
 
 	ginkgo.It("extracts relevant taxonomy through the deployed gateway", func(ctx ginkgo.SpecContext) {
 		var response catalogv1.ExtractTaxonomyResponse
-		postRemoteExtractor(ctx, "/v1/extract", &catalogv1.ExtractTaxonomyRequest{Text: query}, &response)
+
+		// Pod readiness can precede the gateway reconnecting to the extractor.
+		// Keep retries bounded so an enabled but broken deployment still fails.
+		gomega.Eventually(func(g gomega.Gomega) {
+			postRemoteExtractor(ctx, g, "/v1/extract", &catalogv1.ExtractTaxonomyRequest{Text: query}, &response)
+		}).WithContext(ctx).WithTimeout(90 * time.Second).WithPolling(2 * time.Second).Should(gomega.Succeed())
 
 		// Match a relevant taxonomy family rather than model-specific scores or
 		// ordering, which can change between extractor model versions.
@@ -78,46 +83,46 @@ var _ = ginkgo.Describe("Remote extractor HTTP API", ginkgo.Ordered, ginkgo.Labe
 	}, ginkgo.SpecTimeout(2*time.Minute))
 
 	ginkgo.It("finds the published directory record by natural language", func(ctx ginkgo.SpecContext) {
-		gomega.Eventually(func() []string {
+		gomega.Eventually(func(g gomega.Gomega) {
 			var response catalogv1.SearchAgentsResponse
-			postRemoteExtractor(ctx, "/v1/search", &catalogv1.SearchAgentsRequest{Query: query, PageSize: 100}, &response)
+			postRemoteExtractor(ctx, g, "/v1/search", &catalogv1.SearchAgentsRequest{Query: query, PageSize: 100}, &response)
 
 			var matches []string
 
 			for _, entry := range response.GetResults() {
 				if entry.GetDisplayName() == recordName {
 					_, cid, found := strings.Cut(entry.GetIdentifier(), ":cid:")
-					gomega.Expect(found).To(gomega.BeTrue())
+					g.Expect(found).To(gomega.BeTrue())
 
 					matches = append(matches, cid)
 				}
 			}
 
-			return matches
-		}).WithContext(ctx).WithTimeout(time.Minute).WithPolling(time.Second).Should(gomega.ContainElement(recordCID))
+			g.Expect(matches).To(gomega.ContainElement(recordCID))
+		}).WithContext(ctx).WithTimeout(time.Minute).WithPolling(time.Second).Should(gomega.Succeed())
 	}, ginkgo.SpecTimeout(2*time.Minute))
 })
 
 // Requests have a deadline even if the gateway or its remote extractor hangs.
 // An enabled but broken deployment fails rather than skipping these specs.
-func postRemoteExtractor(ctx context.Context, path string, request, response proto.Message) {
+func postRemoteExtractor(ctx context.Context, g gomega.Gomega, path string, request, response proto.Message) {
 	ginkgo.GinkgoHelper()
 
 	data, err := protojson.Marshal(request)
-	gomega.Expect(err).NotTo(gomega.HaveOccurred())
+	g.Expect(err).NotTo(gomega.HaveOccurred())
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost,
 		strings.TrimRight(testEnv.Config.GatewayAddress, "/")+path, bytes.NewReader(data))
-	gomega.Expect(err).NotTo(gomega.HaveOccurred())
+	g.Expect(err).NotTo(gomega.HaveOccurred())
 	req.Header.Set("Content-Type", "application/json")
 
 	client := &http.Client{Timeout: 30 * time.Second}
 	resp, err := client.Do(req)
-	gomega.Expect(err).NotTo(gomega.HaveOccurred())
+	g.Expect(err).NotTo(gomega.HaveOccurred())
 
 	defer func() { _ = resp.Body.Close() }()
 
 	body, err := io.ReadAll(resp.Body)
-	gomega.Expect(err).NotTo(gomega.HaveOccurred())
-	gomega.Expect(resp.StatusCode).To(gomega.Equal(http.StatusOK), "%s: %s", path, body)
-	gomega.Expect(protojson.Unmarshal(body, response)).To(gomega.Succeed())
+	g.Expect(err).NotTo(gomega.HaveOccurred())
+	g.Expect(resp.StatusCode).To(gomega.Equal(http.StatusOK), "%s: %s", path, body)
+	g.Expect(protojson.Unmarshal(body, response)).To(gomega.Succeed())
 }
