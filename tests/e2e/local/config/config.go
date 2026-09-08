@@ -15,6 +15,10 @@ type Config struct {
 	// this environment, in which case AI Finder HTTP tests are skipped.
 	GatewayAddress string `json:"gateway_address,omitempty" mapstructure:"gateway_address"`
 
+	// RemoteExtractorEnabled requires the gateway to use a deployed OASF extractor.
+	// Disabled environments skip the remote extractor HTTP tests.
+	RemoteExtractorEnabled bool `json:"remote_extractor_enabled,omitempty" mapstructure:"remote_extractor_enabled"`
+
 	// CliPath is the path to the CLI binary.
 	CliPath string `json:"cli_path,omitempty" mapstructure:"cli_path"`
 
