@@ -274,11 +274,11 @@ func TestCountRecords_NilOption(t *testing.T) {
 	assert.Error(t, err)
 }
 
-func TestListRecordValues_RequestedFields(t *testing.T) {
+func TestListFilterValues_RequestedFields(t *testing.T) {
 	db := setupTestDB(t)
 	seedDB(t, db)
 
-	got, err := db.ListRecordValues([]searchv1.RecordQueryType{
+	got, err := db.ListFilterValues([]searchv1.RecordQueryType{
 		searchv1.RecordQueryType_RECORD_QUERY_TYPE_MODULE_NAME,
 		searchv1.RecordQueryType_RECORD_QUERY_TYPE_SCHEMA_VERSION,
 	})
@@ -286,7 +286,7 @@ func TestListRecordValues_RequestedFields(t *testing.T) {
 
 	// Values are deduplicated (0.8.0 appears on two records) and sorted, and
 	// the field order mirrors the request.
-	assert.Equal(t, []types.RecordFieldValues{
+	assert.Equal(t, []types.FilterFieldValues{
 		{
 			Field:  searchv1.RecordQueryType_RECORD_QUERY_TYPE_MODULE_NAME,
 			Values: []string{"core/llm/model", "integration/acp", "integration/mcp"},
@@ -298,11 +298,11 @@ func TestListRecordValues_RequestedFields(t *testing.T) {
 	}, got)
 }
 
-func TestListRecordValues_NoFieldsReturnsAllSupported(t *testing.T) {
+func TestListFilterValues_NoFieldsReturnsAllSupported(t *testing.T) {
 	db := setupTestDB(t)
 	seedDB(t, db)
 
-	got, err := db.ListRecordValues(nil)
+	got, err := db.ListFilterValues(nil)
 	require.NoError(t, err)
 
 	fields := make([]searchv1.RecordQueryType, 0, len(got))
@@ -323,17 +323,17 @@ func TestListRecordValues_NoFieldsReturnsAllSupported(t *testing.T) {
 
 // A record's own version is per-record identity rather than a shared facet, so
 // it is not enumerable until contextual faceting exists to scope it.
-func TestListRecordValues_VersionIsNotSupported(t *testing.T) {
+func TestListFilterValues_VersionIsNotSupported(t *testing.T) {
 	db := setupTestDB(t)
 	seedDB(t, db)
 
-	_, err := db.ListRecordValues([]searchv1.RecordQueryType{
+	_, err := db.ListFilterValues([]searchv1.RecordQueryType{
 		searchv1.RecordQueryType_RECORD_QUERY_TYPE_VERSION,
 	})
-	require.ErrorContains(t, err, "unsupported record value field")
+	require.ErrorContains(t, err, "unsupported filter value field")
 }
 
-func TestListRecordValues_Authors(t *testing.T) {
+func TestListFilterValues_Authors(t *testing.T) {
 	db := setupTestDB(t)
 	seedDB(t, db)
 
@@ -346,14 +346,14 @@ func TestListRecordValues_Authors(t *testing.T) {
 		createdAt:     "2024-05-01T00:00:00Z",
 	}))
 
-	got, err := db.ListRecordValues([]searchv1.RecordQueryType{
+	got, err := db.ListFilterValues([]searchv1.RecordQueryType{
 		searchv1.RecordQueryType_RECORD_QUERY_TYPE_AUTHOR,
 	})
 	require.NoError(t, err)
 
 	// Each record's JSON array is flattened, and alice (who authors two
 	// records) appears once.
-	assert.Equal(t, []types.RecordFieldValues{
+	assert.Equal(t, []types.FilterFieldValues{
 		{
 			Field:  searchv1.RecordQueryType_RECORD_QUERY_TYPE_AUTHOR,
 			Values: []string{"alice@cisco.com", "bob@cisco.com", "charlie@medtech.io"},
@@ -361,25 +361,25 @@ func TestListRecordValues_Authors(t *testing.T) {
 	}, got)
 }
 
-func TestListRecordValues_UnsupportedField(t *testing.T) {
+func TestListFilterValues_UnsupportedField(t *testing.T) {
 	db := setupTestDB(t)
 	seedDB(t, db)
 
-	_, err := db.ListRecordValues([]searchv1.RecordQueryType{
+	_, err := db.ListFilterValues([]searchv1.RecordQueryType{
 		searchv1.RecordQueryType_RECORD_QUERY_TYPE_ANNOTATION,
 	})
-	require.ErrorContains(t, err, "unsupported record value field")
+	require.ErrorContains(t, err, "unsupported filter value field")
 }
 
-func TestListRecordValues_EmptyRegistry(t *testing.T) {
+func TestListFilterValues_EmptyRegistry(t *testing.T) {
 	db := setupTestDB(t)
 
-	got, err := db.ListRecordValues([]searchv1.RecordQueryType{
+	got, err := db.ListFilterValues([]searchv1.RecordQueryType{
 		searchv1.RecordQueryType_RECORD_QUERY_TYPE_SKILL_NAME,
 	})
 	require.NoError(t, err)
 
-	assert.Equal(t, []types.RecordFieldValues{
+	assert.Equal(t, []types.FilterFieldValues{
 		{Field: searchv1.RecordQueryType_RECORD_QUERY_TYPE_SKILL_NAME, Values: []string{}},
 	}, got)
 }

@@ -56,10 +56,10 @@ type SearchDatabaseAPI interface {
 	// CountRecords returns the number of distinct records matching the provided filters.
 	CountRecords(opts ...FilterOption) (uint32, error)
 
-	// ListRecordValues returns the distinct values present in the registry for each
+	// ListFilterValues returns the distinct values present in the registry for each
 	// requested field, in the order requested. An empty fields slice returns every
 	// supported field in canonical order.
-	ListRecordValues(fields []searchv1.RecordQueryType) ([]RecordFieldValues, error)
+	ListFilterValues(fields []searchv1.RecordQueryType) ([]FilterFieldValues, error)
 
 	// GetRecords retrieves full records based on the provided filters.
 	GetRecords(opts ...FilterOption) ([]coretypes.Record, error)

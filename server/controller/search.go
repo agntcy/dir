@@ -48,32 +48,32 @@ func (c *searchCtlr) CountRecords(_ context.Context, req *searchv1.CountRecordsR
 	return &searchv1.CountRecordsResponse{TotalCount: totalCount}, nil
 }
 
-func (c *searchCtlr) ListRecordValues(_ context.Context, req *searchv1.ListRecordValuesRequest) (*searchv1.ListRecordValuesResponse, error) {
-	searchLogger.Debug("Called search controller's ListRecordValues method", "req", req)
+func (c *searchCtlr) ListFilterValues(_ context.Context, req *searchv1.ListFilterValuesRequest) (*searchv1.ListFilterValuesResponse, error) {
+	searchLogger.Debug("Called search controller's ListFilterValues method", "req", req)
 
 	// Reject unsupported fields up front so a caller gets a precise error rather
 	// than a response that silently omits what it asked for.
 	for _, field := range req.GetFields() {
-		if !types.IsSupportedRecordValueField(field) {
+		if !types.IsSupportedFilterValueField(field) {
 			return nil, status.Errorf(codes.InvalidArgument,
-				"unsupported field %s: supported fields are %v", field, types.SupportedRecordValueFields())
+				"unsupported field %s: supported fields are %v", field, types.SupportedFilterValueFields())
 		}
 	}
 
-	fieldValues, err := c.db.ListRecordValues(req.GetFields())
+	fieldValues, err := c.db.ListFilterValues(req.GetFields())
 	if err != nil {
-		return nil, fmt.Errorf("failed to list record values: %w", err)
+		return nil, fmt.Errorf("failed to list filter values: %w", err)
 	}
 
-	fields := make([]*searchv1.ListRecordValuesResponse_FieldValues, 0, len(fieldValues))
+	fields := make([]*searchv1.ListFilterValuesResponse_FieldValues, 0, len(fieldValues))
 	for _, fieldValue := range fieldValues {
-		fields = append(fields, &searchv1.ListRecordValuesResponse_FieldValues{
+		fields = append(fields, &searchv1.ListFilterValuesResponse_FieldValues{
 			Field:  fieldValue.Field,
 			Values: fieldValue.Values,
 		})
 	}
 
-	return &searchv1.ListRecordValuesResponse{Fields: fields}, nil
+	return &searchv1.ListFilterValuesResponse{Fields: fields}, nil
 }
 
 func (c *searchCtlr) SearchCIDs(req *searchv1.SearchCIDsRequest, srv searchv1.SearchService_SearchCIDsServer) error {

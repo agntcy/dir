@@ -9,21 +9,21 @@ import (
 	searchv1 "github.com/agntcy/dir/api/search/v1"
 )
 
-// RecordFieldValues is the set of distinct values present in the registry for
+// FilterFieldValues is the set of distinct values present in the registry for
 // one record field.
-type RecordFieldValues struct {
+type FilterFieldValues struct {
 	Field  searchv1.RecordQueryType
 	Values []string
 }
 
-// supportedRecordValueFields lists the fields ListRecordValues can enumerate,
+// supportedFilterValueFields lists the fields ListFilterValues can enumerate,
 // in ascending RecordQueryType order. That order is also the canonical order in
 // which results are returned when a caller requests every field.
 // A record's own version is deliberately absent: it is per-record identity
 // rather than a shared facet, so a registry-wide distinct list grows with the
 // registry and answers no useful question. It only becomes meaningful once a
 // query context exists to scope it to a single record.
-var supportedRecordValueFields = []searchv1.RecordQueryType{
+var supportedFilterValueFields = []searchv1.RecordQueryType{
 	searchv1.RecordQueryType_RECORD_QUERY_TYPE_SKILL_NAME,
 	searchv1.RecordQueryType_RECORD_QUERY_TYPE_MODULE_NAME,
 	searchv1.RecordQueryType_RECORD_QUERY_TYPE_DOMAIN_NAME,
@@ -31,16 +31,16 @@ var supportedRecordValueFields = []searchv1.RecordQueryType{
 	searchv1.RecordQueryType_RECORD_QUERY_TYPE_SCHEMA_VERSION,
 }
 
-// SupportedRecordValueFields returns the fields ListRecordValues can enumerate,
+// SupportedFilterValueFields returns the fields ListFilterValues can enumerate,
 // in canonical order.
-func SupportedRecordValueFields() []searchv1.RecordQueryType {
-	return slices.Clone(supportedRecordValueFields)
+func SupportedFilterValueFields() []searchv1.RecordQueryType {
+	return slices.Clone(supportedFilterValueFields)
 }
 
-// IsSupportedRecordValueField reports whether ListRecordValues can enumerate
+// IsSupportedFilterValueField reports whether ListFilterValues can enumerate
 // distinct values for the given field.
-func IsSupportedRecordValueField(field searchv1.RecordQueryType) bool {
-	return slices.Contains(supportedRecordValueFields, field)
+func IsSupportedFilterValueField(field searchv1.RecordQueryType) bool {
+	return slices.Contains(supportedFilterValueFields, field)
 }
 
 type RecordFilters struct {

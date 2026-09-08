@@ -205,7 +205,7 @@ func (f *fakeSignatureDB) CountRecords(opts ...types.FilterOption) (uint32, erro
 	return 0, nil
 }
 
-func (f *fakeSignatureDB) ListRecordValues(fields []searchv1.RecordQueryType) ([]types.RecordFieldValues, error) {
+func (f *fakeSignatureDB) ListFilterValues(fields []searchv1.RecordQueryType) ([]types.FilterFieldValues, error) {
 	return nil, nil
 }
 

@@ -12,18 +12,18 @@ import (
 	"github.com/agntcy/dir/server/types"
 )
 
-// ListRecordValues returns the distinct values present in the registry for each
+// ListFilterValues returns the distinct values present in the registry for each
 // requested field, in the order requested. An empty fields slice returns every
 // supported field in canonical order.
 //
 // Values are registry-wide: no query context and no catalog module restriction
 // is applied, so the result is exactly the set of values some record carries.
-func (d *DB) ListRecordValues(fields []searchv1.RecordQueryType) ([]types.RecordFieldValues, error) {
+func (d *DB) ListFilterValues(fields []searchv1.RecordQueryType) ([]types.FilterFieldValues, error) {
 	if len(fields) == 0 {
-		fields = types.SupportedRecordValueFields()
+		fields = types.SupportedFilterValueFields()
 	}
 
-	result := make([]types.RecordFieldValues, 0, len(fields))
+	result := make([]types.FilterFieldValues, 0, len(fields))
 
 	for _, field := range fields {
 		values, err := d.distinctValuesForField(field)
@@ -31,7 +31,7 @@ func (d *DB) ListRecordValues(fields []searchv1.RecordQueryType) ([]types.Record
 			return nil, err
 		}
 
-		result = append(result, types.RecordFieldValues{Field: field, Values: values})
+		result = append(result, types.FilterFieldValues{Field: field, Values: values})
 	}
 
 	return result, nil
@@ -51,7 +51,7 @@ func (d *DB) distinctValuesForField(field searchv1.RecordQueryType) ([]string, e
 	case searchv1.RecordQueryType_RECORD_QUERY_TYPE_SCHEMA_VERSION:
 		return d.distinctColumn(&Record{}, "schema_version")
 	default:
-		return nil, fmt.Errorf("unsupported record value field: %s", field)
+		return nil, fmt.Errorf("unsupported filter value field: %s", field)
 	}
 }
 

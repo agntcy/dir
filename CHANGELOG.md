@@ -8,7 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
-- **Search**: `ListRecordValues` RPC for distinct filter values (#2012)
+- **Search**: `ListFilterValues` RPC for distinct filter values (#2012)
 
 ### Changed
 - **Catalog**: `GET /v1/tags` no longer returns record annotations as tags (#2012)

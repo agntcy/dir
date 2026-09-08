@@ -21,7 +21,7 @@ type fakeSearchDB struct {
 	err        error
 	gotFilters types.RecordFilters
 
-	fieldValues []types.RecordFieldValues
+	fieldValues []types.FilterFieldValues
 	gotFields   []searchv1.RecordQueryType
 	fieldsCalls int
 }
@@ -36,7 +36,7 @@ func (f *fakeSearchDB) CountRecords(opts ...types.FilterOption) (uint32, error) 
 	return f.totalCount, f.err
 }
 
-func (f *fakeSearchDB) ListRecordValues(fields []searchv1.RecordQueryType) ([]types.RecordFieldValues, error) {
+func (f *fakeSearchDB) ListFilterValues(fields []searchv1.RecordQueryType) ([]types.FilterFieldValues, error) {
 	f.gotFields = fields
 	f.fieldsCalls++
 
@@ -86,9 +86,9 @@ func TestCountRecords_DatabaseError(t *testing.T) {
 	assert.ErrorContains(t, err, "failed to count records")
 }
 
-func TestListRecordValues(t *testing.T) {
+func TestListFilterValues(t *testing.T) {
 	db := &fakeSearchDB{
-		fieldValues: []types.RecordFieldValues{
+		fieldValues: []types.FilterFieldValues{
 			{
 				Field:  searchv1.RecordQueryType_RECORD_QUERY_TYPE_SKILL_NAME,
 				Values: []string{"nlp/summarization", "nlp/translation"},
@@ -97,7 +97,7 @@ func TestListRecordValues(t *testing.T) {
 	}
 	ctrl := NewSearchController(db, nil)
 
-	resp, err := ctrl.ListRecordValues(context.Background(), &searchv1.ListRecordValuesRequest{
+	resp, err := ctrl.ListFilterValues(context.Background(), &searchv1.ListFilterValuesRequest{
 		Fields: []searchv1.RecordQueryType{searchv1.RecordQueryType_RECORD_QUERY_TYPE_SKILL_NAME},
 	})
 	require.NoError(t, err)
@@ -108,11 +108,11 @@ func TestListRecordValues(t *testing.T) {
 	assert.Equal(t, []string{"nlp/summarization", "nlp/translation"}, resp.GetFields()[0].GetValues())
 }
 
-func TestListRecordValues_UnsupportedFieldIsRejectedBeforeQuerying(t *testing.T) {
+func TestListFilterValues_UnsupportedFieldIsRejectedBeforeQuerying(t *testing.T) {
 	db := &fakeSearchDB{}
 	ctrl := NewSearchController(db, nil)
 
-	_, err := ctrl.ListRecordValues(context.Background(), &searchv1.ListRecordValuesRequest{
+	_, err := ctrl.ListFilterValues(context.Background(), &searchv1.ListFilterValuesRequest{
 		Fields: []searchv1.RecordQueryType{searchv1.RecordQueryType_RECORD_QUERY_TYPE_ANNOTATION},
 	})
 	require.Error(t, err)
@@ -120,12 +120,12 @@ func TestListRecordValues_UnsupportedFieldIsRejectedBeforeQuerying(t *testing.T)
 	assert.Zero(t, db.fieldsCalls)
 }
 
-func TestListRecordValues_DatabaseError(t *testing.T) {
+func TestListFilterValues_DatabaseError(t *testing.T) {
 	ctrl := NewSearchController(&fakeSearchDB{err: assert.AnError}, nil)
 
-	_, err := ctrl.ListRecordValues(context.Background(), &searchv1.ListRecordValuesRequest{})
+	_, err := ctrl.ListFilterValues(context.Background(), &searchv1.ListFilterValuesRequest{})
 	require.Error(t, err)
-	assert.ErrorContains(t, err, "failed to list record values")
+	assert.ErrorContains(t, err, "failed to list filter values")
 }
 
 func TestCountRecords_NegatedQuery(t *testing.T) {

@@ -413,7 +413,7 @@ func (x *CountRecordsResponse) GetTotalCount() uint32 {
 	return 0
 }
 
-type ListRecordValuesRequest struct {
+type ListFilterValuesRequest struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// Which fields to return distinct values for. Empty returns every supported
 	// field.
@@ -435,20 +435,20 @@ type ListRecordValuesRequest struct {
 	sizeCache     protoimpl.SizeCache
 }
 
-func (x *ListRecordValuesRequest) Reset() {
-	*x = ListRecordValuesRequest{}
+func (x *ListFilterValuesRequest) Reset() {
+	*x = ListFilterValuesRequest{}
 	mi := &file_agntcy_dir_search_v1_search_service_proto_msgTypes[6]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *ListRecordValuesRequest) String() string {
+func (x *ListFilterValuesRequest) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*ListRecordValuesRequest) ProtoMessage() {}
+func (*ListFilterValuesRequest) ProtoMessage() {}
 
-func (x *ListRecordValuesRequest) ProtoReflect() protoreflect.Message {
+func (x *ListFilterValuesRequest) ProtoReflect() protoreflect.Message {
 	mi := &file_agntcy_dir_search_v1_search_service_proto_msgTypes[6]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -460,42 +460,42 @@ func (x *ListRecordValuesRequest) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use ListRecordValuesRequest.ProtoReflect.Descriptor instead.
-func (*ListRecordValuesRequest) Descriptor() ([]byte, []int) {
+// Deprecated: Use ListFilterValuesRequest.ProtoReflect.Descriptor instead.
+func (*ListFilterValuesRequest) Descriptor() ([]byte, []int) {
 	return file_agntcy_dir_search_v1_search_service_proto_rawDescGZIP(), []int{6}
 }
 
-func (x *ListRecordValuesRequest) GetFields() []RecordQueryType {
+func (x *ListFilterValuesRequest) GetFields() []RecordQueryType {
 	if x != nil {
 		return x.Fields
 	}
 	return nil
 }
 
-type ListRecordValuesResponse struct {
+type ListFilterValuesResponse struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// One entry per requested field, in the order the fields were requested.
 	// When the request left fields empty, entries are ordered by ascending
 	// RecordQueryType number.
-	Fields        []*ListRecordValuesResponse_FieldValues `protobuf:"bytes,1,rep,name=fields,proto3" json:"fields,omitempty"`
+	Fields        []*ListFilterValuesResponse_FieldValues `protobuf:"bytes,1,rep,name=fields,proto3" json:"fields,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
-func (x *ListRecordValuesResponse) Reset() {
-	*x = ListRecordValuesResponse{}
+func (x *ListFilterValuesResponse) Reset() {
+	*x = ListFilterValuesResponse{}
 	mi := &file_agntcy_dir_search_v1_search_service_proto_msgTypes[7]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *ListRecordValuesResponse) String() string {
+func (x *ListFilterValuesResponse) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*ListRecordValuesResponse) ProtoMessage() {}
+func (*ListFilterValuesResponse) ProtoMessage() {}
 
-func (x *ListRecordValuesResponse) ProtoReflect() protoreflect.Message {
+func (x *ListFilterValuesResponse) ProtoReflect() protoreflect.Message {
 	mi := &file_agntcy_dir_search_v1_search_service_proto_msgTypes[7]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -507,12 +507,12 @@ func (x *ListRecordValuesResponse) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use ListRecordValuesResponse.ProtoReflect.Descriptor instead.
-func (*ListRecordValuesResponse) Descriptor() ([]byte, []int) {
+// Deprecated: Use ListFilterValuesResponse.ProtoReflect.Descriptor instead.
+func (*ListFilterValuesResponse) Descriptor() ([]byte, []int) {
 	return file_agntcy_dir_search_v1_search_service_proto_rawDescGZIP(), []int{7}
 }
 
-func (x *ListRecordValuesResponse) GetFields() []*ListRecordValuesResponse_FieldValues {
+func (x *ListFilterValuesResponse) GetFields() []*ListFilterValuesResponse_FieldValues {
 	if x != nil {
 		return x.Fields
 	}
@@ -520,7 +520,7 @@ func (x *ListRecordValuesResponse) GetFields() []*ListRecordValuesResponse_Field
 }
 
 // The distinct values present for a single record field.
-type ListRecordValuesResponse_FieldValues struct {
+type ListFilterValuesResponse_FieldValues struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// The field these values belong to.
 	Field RecordQueryType `protobuf:"varint,1,opt,name=field,proto3,enum=agntcy.dir.search.v1.RecordQueryType" json:"field,omitempty"`
@@ -531,20 +531,20 @@ type ListRecordValuesResponse_FieldValues struct {
 	sizeCache     protoimpl.SizeCache
 }
 
-func (x *ListRecordValuesResponse_FieldValues) Reset() {
-	*x = ListRecordValuesResponse_FieldValues{}
+func (x *ListFilterValuesResponse_FieldValues) Reset() {
+	*x = ListFilterValuesResponse_FieldValues{}
 	mi := &file_agntcy_dir_search_v1_search_service_proto_msgTypes[8]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *ListRecordValuesResponse_FieldValues) String() string {
+func (x *ListFilterValuesResponse_FieldValues) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*ListRecordValuesResponse_FieldValues) ProtoMessage() {}
+func (*ListFilterValuesResponse_FieldValues) ProtoMessage() {}
 
-func (x *ListRecordValuesResponse_FieldValues) ProtoReflect() protoreflect.Message {
+func (x *ListFilterValuesResponse_FieldValues) ProtoReflect() protoreflect.Message {
 	mi := &file_agntcy_dir_search_v1_search_service_proto_msgTypes[8]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -556,19 +556,19 @@ func (x *ListRecordValuesResponse_FieldValues) ProtoReflect() protoreflect.Messa
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use ListRecordValuesResponse_FieldValues.ProtoReflect.Descriptor instead.
-func (*ListRecordValuesResponse_FieldValues) Descriptor() ([]byte, []int) {
+// Deprecated: Use ListFilterValuesResponse_FieldValues.ProtoReflect.Descriptor instead.
+func (*ListFilterValuesResponse_FieldValues) Descriptor() ([]byte, []int) {
 	return file_agntcy_dir_search_v1_search_service_proto_rawDescGZIP(), []int{7, 0}
 }
 
-func (x *ListRecordValuesResponse_FieldValues) GetField() RecordQueryType {
+func (x *ListFilterValuesResponse_FieldValues) GetField() RecordQueryType {
 	if x != nil {
 		return x.Field
 	}
 	return RecordQueryType_RECORD_QUERY_TYPE_UNSPECIFIED
 }
 
-func (x *ListRecordValuesResponse_FieldValues) GetValues() []string {
+func (x *ListFilterValuesResponse_FieldValues) GetValues() []string {
 	if x != nil {
 		return x.Values
 	}
@@ -631,17 +631,17 @@ var file_agntcy_dir_search_v1_search_service_proto_rawDesc = string([]byte{
 	0x0a, 0x14, 0x43, 0x6f, 0x75, 0x6e, 0x74, 0x52, 0x65, 0x63, 0x6f, 0x72, 0x64, 0x73, 0x52, 0x65,
 	0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x12, 0x1f, 0x0a, 0x0b, 0x74, 0x6f, 0x74, 0x61, 0x6c, 0x5f,
 	0x63, 0x6f, 0x75, 0x6e, 0x74, 0x18, 0x01, 0x20, 0x01, 0x28, 0x0d, 0x52, 0x0a, 0x74, 0x6f, 0x74,
-	0x61, 0x6c, 0x43, 0x6f, 0x75, 0x6e, 0x74, 0x22, 0x58, 0x0a, 0x17, 0x4c, 0x69, 0x73, 0x74, 0x52,
-	0x65, 0x63, 0x6f, 0x72, 0x64, 0x56, 0x61, 0x6c, 0x75, 0x65, 0x73, 0x52, 0x65, 0x71, 0x75, 0x65,
+	0x61, 0x6c, 0x43, 0x6f, 0x75, 0x6e, 0x74, 0x22, 0x58, 0x0a, 0x17, 0x4c, 0x69, 0x73, 0x74, 0x46,
+	0x69, 0x6c, 0x74, 0x65, 0x72, 0x56, 0x61, 0x6c, 0x75, 0x65, 0x73, 0x52, 0x65, 0x71, 0x75, 0x65,
 	0x73, 0x74, 0x12, 0x3d, 0x0a, 0x06, 0x66, 0x69, 0x65, 0x6c, 0x64, 0x73, 0x18, 0x01, 0x20, 0x03,
 	0x28, 0x0e, 0x32, 0x25, 0x2e, 0x61, 0x67, 0x6e, 0x74, 0x63, 0x79, 0x2e, 0x64, 0x69, 0x72, 0x2e,
 	0x73, 0x65, 0x61, 0x72, 0x63, 0x68, 0x2e, 0x76, 0x31, 0x2e, 0x52, 0x65, 0x63, 0x6f, 0x72, 0x64,
 	0x51, 0x75, 0x65, 0x72, 0x79, 0x54, 0x79, 0x70, 0x65, 0x52, 0x06, 0x66, 0x69, 0x65, 0x6c, 0x64,
-	0x73, 0x22, 0xd2, 0x01, 0x0a, 0x18, 0x4c, 0x69, 0x73, 0x74, 0x52, 0x65, 0x63, 0x6f, 0x72, 0x64,
+	0x73, 0x22, 0xd2, 0x01, 0x0a, 0x18, 0x4c, 0x69, 0x73, 0x74, 0x46, 0x69, 0x6c, 0x74, 0x65, 0x72,
 	0x56, 0x61, 0x6c, 0x75, 0x65, 0x73, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x12, 0x52,
 	0x0a, 0x06, 0x66, 0x69, 0x65, 0x6c, 0x64, 0x73, 0x18, 0x01, 0x20, 0x03, 0x28, 0x0b, 0x32, 0x3a,
 	0x2e, 0x61, 0x67, 0x6e, 0x74, 0x63, 0x79, 0x2e, 0x64, 0x69, 0x72, 0x2e, 0x73, 0x65, 0x61, 0x72,
-	0x63, 0x68, 0x2e, 0x76, 0x31, 0x2e, 0x4c, 0x69, 0x73, 0x74, 0x52, 0x65, 0x63, 0x6f, 0x72, 0x64,
+	0x63, 0x68, 0x2e, 0x76, 0x31, 0x2e, 0x4c, 0x69, 0x73, 0x74, 0x46, 0x69, 0x6c, 0x74, 0x65, 0x72,
 	0x56, 0x61, 0x6c, 0x75, 0x65, 0x73, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x2e, 0x46,
 	0x69, 0x65, 0x6c, 0x64, 0x56, 0x61, 0x6c, 0x75, 0x65, 0x73, 0x52, 0x06, 0x66, 0x69, 0x65, 0x6c,
 	0x64, 0x73, 0x1a, 0x62, 0x0a, 0x0b, 0x46, 0x69, 0x65, 0x6c, 0x64, 0x56, 0x61, 0x6c, 0x75, 0x65,
@@ -680,13 +680,13 @@ var file_agntcy_dir_search_v1_search_service_proto_rawDesc = string([]byte{
 	0x73, 0x74, 0x1a, 0x2a, 0x2e, 0x61, 0x67, 0x6e, 0x74, 0x63, 0x79, 0x2e, 0x64, 0x69, 0x72, 0x2e,
 	0x73, 0x65, 0x61, 0x72, 0x63, 0x68, 0x2e, 0x76, 0x31, 0x2e, 0x43, 0x6f, 0x75, 0x6e, 0x74, 0x52,
 	0x65, 0x63, 0x6f, 0x72, 0x64, 0x73, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x12, 0x71,
-	0x0a, 0x10, 0x4c, 0x69, 0x73, 0x74, 0x52, 0x65, 0x63, 0x6f, 0x72, 0x64, 0x56, 0x61, 0x6c, 0x75,
+	0x0a, 0x10, 0x4c, 0x69, 0x73, 0x74, 0x46, 0x69, 0x6c, 0x74, 0x65, 0x72, 0x56, 0x61, 0x6c, 0x75,
 	0x65, 0x73, 0x12, 0x2d, 0x2e, 0x61, 0x67, 0x6e, 0x74, 0x63, 0x79, 0x2e, 0x64, 0x69, 0x72, 0x2e,
-	0x73, 0x65, 0x61, 0x72, 0x63, 0x68, 0x2e, 0x76, 0x31, 0x2e, 0x4c, 0x69, 0x73, 0x74, 0x52, 0x65,
-	0x63, 0x6f, 0x72, 0x64, 0x56, 0x61, 0x6c, 0x75, 0x65, 0x73, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73,
+	0x73, 0x65, 0x61, 0x72, 0x63, 0x68, 0x2e, 0x76, 0x31, 0x2e, 0x4c, 0x69, 0x73, 0x74, 0x46, 0x69,
+	0x6c, 0x74, 0x65, 0x72, 0x56, 0x61, 0x6c, 0x75, 0x65, 0x73, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73,
 	0x74, 0x1a, 0x2e, 0x2e, 0x61, 0x67, 0x6e, 0x74, 0x63, 0x79, 0x2e, 0x64, 0x69, 0x72, 0x2e, 0x73,
-	0x65, 0x61, 0x72, 0x63, 0x68, 0x2e, 0x76, 0x31, 0x2e, 0x4c, 0x69, 0x73, 0x74, 0x52, 0x65, 0x63,
-	0x6f, 0x72, 0x64, 0x56, 0x61, 0x6c, 0x75, 0x65, 0x73, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73,
+	0x65, 0x61, 0x72, 0x63, 0x68, 0x2e, 0x76, 0x31, 0x2e, 0x4c, 0x69, 0x73, 0x74, 0x46, 0x69, 0x6c,
+	0x74, 0x65, 0x72, 0x56, 0x61, 0x6c, 0x75, 0x65, 0x73, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73,
 	0x65, 0x42, 0xc6, 0x01, 0x0a, 0x18, 0x63, 0x6f, 0x6d, 0x2e, 0x61, 0x67, 0x6e, 0x74, 0x63, 0x79,
 	0x2e, 0x64, 0x69, 0x72, 0x2e, 0x73, 0x65, 0x61, 0x72, 0x63, 0x68, 0x2e, 0x76, 0x31, 0x42, 0x12,
 	0x53, 0x65, 0x61, 0x72, 0x63, 0x68, 0x53, 0x65, 0x72, 0x76, 0x69, 0x63, 0x65, 0x50, 0x72, 0x6f,
@@ -725,9 +725,9 @@ var file_agntcy_dir_search_v1_search_service_proto_goTypes = []any{
 	(*SearchCIDsResponse)(nil),                   // 4: agntcy.dir.search.v1.SearchCIDsResponse
 	(*SearchRecordsResponse)(nil),                // 5: agntcy.dir.search.v1.SearchRecordsResponse
 	(*CountRecordsResponse)(nil),                 // 6: agntcy.dir.search.v1.CountRecordsResponse
-	(*ListRecordValuesRequest)(nil),              // 7: agntcy.dir.search.v1.ListRecordValuesRequest
-	(*ListRecordValuesResponse)(nil),             // 8: agntcy.dir.search.v1.ListRecordValuesResponse
-	(*ListRecordValuesResponse_FieldValues)(nil), // 9: agntcy.dir.search.v1.ListRecordValuesResponse.FieldValues
+	(*ListFilterValuesRequest)(nil),              // 7: agntcy.dir.search.v1.ListFilterValuesRequest
+	(*ListFilterValuesResponse)(nil),             // 8: agntcy.dir.search.v1.ListFilterValuesResponse
+	(*ListFilterValuesResponse_FieldValues)(nil), // 9: agntcy.dir.search.v1.ListFilterValuesResponse.FieldValues
 	(*RecordQuery)(nil),                          // 10: agntcy.dir.search.v1.RecordQuery
 	(*v1.Record)(nil),                            // 11: agntcy.dir.core.v1.Record
 	(RecordQueryType)(0),                         // 12: agntcy.dir.search.v1.RecordQueryType
@@ -739,17 +739,17 @@ var file_agntcy_dir_search_v1_search_service_proto_depIdxs = []int32{
 	0,  // 3: agntcy.dir.search.v1.SearchRecordsRequest.sort_mode:type_name -> agntcy.dir.search.v1.SortMode
 	10, // 4: agntcy.dir.search.v1.CountRecordsRequest.queries:type_name -> agntcy.dir.search.v1.RecordQuery
 	11, // 5: agntcy.dir.search.v1.SearchRecordsResponse.record:type_name -> agntcy.dir.core.v1.Record
-	12, // 6: agntcy.dir.search.v1.ListRecordValuesRequest.fields:type_name -> agntcy.dir.search.v1.RecordQueryType
-	9,  // 7: agntcy.dir.search.v1.ListRecordValuesResponse.fields:type_name -> agntcy.dir.search.v1.ListRecordValuesResponse.FieldValues
-	12, // 8: agntcy.dir.search.v1.ListRecordValuesResponse.FieldValues.field:type_name -> agntcy.dir.search.v1.RecordQueryType
+	12, // 6: agntcy.dir.search.v1.ListFilterValuesRequest.fields:type_name -> agntcy.dir.search.v1.RecordQueryType
+	9,  // 7: agntcy.dir.search.v1.ListFilterValuesResponse.fields:type_name -> agntcy.dir.search.v1.ListFilterValuesResponse.FieldValues
+	12, // 8: agntcy.dir.search.v1.ListFilterValuesResponse.FieldValues.field:type_name -> agntcy.dir.search.v1.RecordQueryType
 	1,  // 9: agntcy.dir.search.v1.SearchService.SearchCIDs:input_type -> agntcy.dir.search.v1.SearchCIDsRequest
 	2,  // 10: agntcy.dir.search.v1.SearchService.SearchRecords:input_type -> agntcy.dir.search.v1.SearchRecordsRequest
 	3,  // 11: agntcy.dir.search.v1.SearchService.CountRecords:input_type -> agntcy.dir.search.v1.CountRecordsRequest
-	7,  // 12: agntcy.dir.search.v1.SearchService.ListRecordValues:input_type -> agntcy.dir.search.v1.ListRecordValuesRequest
+	7,  // 12: agntcy.dir.search.v1.SearchService.ListFilterValues:input_type -> agntcy.dir.search.v1.ListFilterValuesRequest
 	4,  // 13: agntcy.dir.search.v1.SearchService.SearchCIDs:output_type -> agntcy.dir.search.v1.SearchCIDsResponse
 	5,  // 14: agntcy.dir.search.v1.SearchService.SearchRecords:output_type -> agntcy.dir.search.v1.SearchRecordsResponse
 	6,  // 15: agntcy.dir.search.v1.SearchService.CountRecords:output_type -> agntcy.dir.search.v1.CountRecordsResponse
-	8,  // 16: agntcy.dir.search.v1.SearchService.ListRecordValues:output_type -> agntcy.dir.search.v1.ListRecordValuesResponse
+	8,  // 16: agntcy.dir.search.v1.SearchService.ListFilterValues:output_type -> agntcy.dir.search.v1.ListFilterValuesResponse
 	13, // [13:17] is the sub-list for method output_type
 	9,  // [9:13] is the sub-list for method input_type
 	9,  // [9:9] is the sub-list for extension type_name

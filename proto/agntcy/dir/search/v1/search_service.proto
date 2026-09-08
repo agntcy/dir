@@ -53,7 +53,7 @@ service SearchService {
   //
   // Values are registry-wide; no query context is applied.
   // This operation does not interact with the network.
-  rpc ListRecordValues(ListRecordValuesRequest) returns (ListRecordValuesResponse);
+  rpc ListFilterValues(ListFilterValuesRequest) returns (ListFilterValuesResponse);
 }
 
 message SearchCIDsRequest {
@@ -104,7 +104,7 @@ message CountRecordsResponse {
   uint32 total_count = 1;
 }
 
-message ListRecordValuesRequest {
+message ListFilterValuesRequest {
   // Which fields to return distinct values for. Empty returns every supported
   // field.
   //
@@ -123,7 +123,7 @@ message ListRecordValuesRequest {
   repeated RecordQueryType fields = 1;
 }
 
-message ListRecordValuesResponse {
+message ListFilterValuesResponse {
   // The distinct values present for a single record field.
   message FieldValues {
     // The field these values belong to.

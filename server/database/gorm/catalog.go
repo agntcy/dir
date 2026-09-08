@@ -66,7 +66,7 @@ func (d *DB) CountCatalogEntries(opts ...types.CatalogQueryOption) (uint32, erro
 // domains, sorted lexicographically by label.
 //
 // The distinct values come from the same helper backing SearchService's
-// ListRecordValues, so both surfaces agree on which values the registry holds;
+// ListFilterValues, so both surfaces agree on which values the registry holds;
 // this function only re-encodes them into the catalog's id/label vocabulary.
 //
 // Record annotations are deliberately not tags. They are free-form
