@@ -7,6 +7,7 @@ import (
 	"context"
 	"errors"
 	"os"
+	"strings"
 	"testing"
 
 	oasfv1alpha1 "buf.build/gen/go/agntcy/oasf/protocolbuffers/go/agntcy/oasf/types/v1alpha1"
@@ -88,6 +89,25 @@ func TestRecord_GetCid(t *testing.T) {
 			assert.Greater(t, len(cid), 10, "CID should be a reasonable length")
 		})
 	}
+}
+
+func TestRecord_GetDigest(t *testing.T) {
+	record := corev1.New(&oasfv1alpha1.Record{
+		Name:          "test-agent",
+		SchemaVersion: "0.7.0",
+		Description:   "A test agent",
+	})
+
+	digest := record.GetDigest()
+	require.NotEmpty(t, digest)
+	assert.True(t, strings.HasPrefix(digest, "sha256:"), "digest should be in \"algorithm:hex\" form, got %q", digest)
+
+	// Deterministic, and computed from the same content as GetCid (just a
+	// different encoding), so it must stay stable across calls.
+	assert.Equal(t, digest, record.GetDigest())
+
+	var nilRecord *corev1.Record
+	assert.Empty(t, nilRecord.GetDigest())
 }
 
 func TestRecord_GetCid_Consistency(t *testing.T) {

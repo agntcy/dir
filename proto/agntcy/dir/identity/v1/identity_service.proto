@@ -1,0 +1,84 @@
+// Copyright AGNTCY Contributors (https://github.com/agntcy)
+// SPDX-License-Identifier: Apache-2.0
+
+syntax = "proto3";
+
+package agntcy.dir.identity.v1;
+
+import "agntcy/dir/core/v1/record.proto";
+
+// IdentityService provides read-only status lookups for record identity and
+// ownership claims, plus name/version resolution.
+//
+// Verification itself is never performed on demand by this service: it
+// happens ahead of time, eagerly at ingest and periodically in the
+// reconciler (see reconciler/tasks/identity). GetIdentityStatus only reads
+// the resulting cached status.
+service IdentityService {
+  // GetIdentityStatus retrieves the cached identity/ownership claim
+  // verification status for a record.
+  rpc GetIdentityStatus(GetIdentityStatusRequest) returns (GetIdentityStatusResponse);
+
+  // Resolve resolves a record reference (name with optional version) to CIDs.
+  // Supports Docker-style references:
+  //   - "name" -> returns all versions (newest first)
+  //   - "name:version" -> returns the specific version
+  // Returns an error if no matching record is found.
+  rpc Resolve(ResolveRequest) returns (ResolveResponse);
+}
+
+// GetIdentityStatusRequest is the request for retrieving identity status.
+// Either cid OR name must be provided. If name is provided, it is resolved
+// to a CID first (using the latest version if version is not specified).
+message GetIdentityStatusRequest {
+  // The CID of the record to check.
+  // If provided, name and version are ignored.
+  optional string cid = 1;
+
+  // The name of the record to check (e.g., "cisco.com/agent").
+  // Used when cid is not provided.
+  optional string name = 2;
+
+  // Optional version when looking up by name (e.g., "v1.0.0").
+  // If not specified, the latest version is used.
+  optional string version = 3;
+}
+
+// ClaimStatus is the cached verification status of a single identity or
+// ownership claim.
+message ClaimStatus {
+  // Whether the claim's signature has been verified successfully.
+  bool verified = 1;
+
+  // The identity/owner URI the claim asserts.
+  string subject = 2;
+
+  // Explains why verification failed. Empty when verified is true.
+  string error_message = 3;
+}
+
+// GetIdentityStatusResponse is the response for retrieving identity status.
+message GetIdentityStatusResponse {
+  // The record's own identity claim status. Unset if no identity claim has
+  // been pushed for this record.
+  ClaimStatus identity = 1;
+
+  // The record's ownership claim status. Unset if no ownership claim has
+  // been pushed for this record.
+  ClaimStatus owner = 2;
+}
+
+// ResolveRequest is the request for resolving a record reference to CIDs.
+message ResolveRequest {
+  // The name of the record to resolve (e.g., "cisco.com/agent").
+  string name = 1;
+
+  // Optional version to resolve to (e.g., "v1.0.0").
+  optional string version = 2;
+}
+
+// ResolveResponse is the response containing the resolved records.
+message ResolveResponse {
+  // The resolved record references (newest first by created_at).
+  repeated agntcy.dir.core.v1.NamedRecordRef records = 1;
+}
