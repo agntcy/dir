@@ -324,14 +324,14 @@ func TestGetCatalogEntries_TrustStatusMetadata(t *testing.T) {
 	require.NoError(t, db.UpsertSignatureVerification(&gormdb.SignatureVerification{
 		RecordCID:   "cid-a2a",
 		SignerKey:   "signer-1",
-		Status:      gormdb.VerificationStatusVerified,
+		Status:      gormdb.ClaimStatusVerified,
 		ContentType: "application/vnd.oci.image.manifest.v1+json",
 		Signature:   "sig-bytes",
 	}))
-	require.NoError(t, db.CreateNameVerification(&gormdb.NameVerification{
+	require.NoError(t, db.UpsertClaim(types.ClaimRoleOwner, &gormdb.Claim{
 		RecordCID: "cid-a2a",
-		Method:    "wellknown",
-		Status:    gormdb.VerificationStatusVerified,
+		Subject:   "did:web:acme.com",
+		Status:    gormdb.ClaimStatusVerified,
 	}))
 
 	entries, _, err := db.GetCatalogEntries(types.WithCIDs("cid-a2a"))

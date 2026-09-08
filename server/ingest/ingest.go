@@ -11,12 +11,16 @@ package ingest
 
 import (
 	"context"
+	"crypto/x509"
 	"fmt"
 	"strings"
 	"time"
 
 	corev1 "github.com/agntcy/dir/api/core/v1"
+	identityv1 "github.com/agntcy/dir/api/identity/v1"
 	securityv1 "github.com/agntcy/dir/api/security/v1"
+	"github.com/agntcy/dir/server/identity"
+	"github.com/agntcy/dir/server/identity/spiffe"
 	"github.com/agntcy/dir/server/types"
 	"github.com/agntcy/dir/utils/logging"
 	"google.golang.org/grpc/codes"
@@ -47,13 +51,37 @@ type Ingestor interface {
 }
 
 type ingestor struct {
-	store types.StoreAPI
-	db    types.DatabaseAPI
+	store            types.StoreAPI
+	db               types.DatabaseAPI
+	identityRegistry *identity.Registry
+	spiffeBundles    *spiffe.Bundles
+}
+
+// Option configures optional Ingestor dependencies.
+type Option func(*ingestor)
+
+// WithIdentityRegistry sets the resolver registry used to verify dns/https/did
+// identity and ownership claims. Without it, such claims are indexed as failed
+// ("no resolver configured").
+func WithIdentityRegistry(r *identity.Registry) Option {
+	return func(i *ingestor) { i.identityRegistry = r }
+}
+
+// WithSpiffeBundles sets the per-trust-domain CA bundles used to verify SPIFFE
+// identity and ownership claims' certificate chains.
+func WithSpiffeBundles(b *spiffe.Bundles) Option {
+	return func(i *ingestor) { i.spiffeBundles = b }
 }
 
 // New creates an Ingestor backed by the given content store and database.
-func New(store types.StoreAPI, db types.DatabaseAPI) Ingestor {
-	return &ingestor{store: store, db: db}
+func New(store types.StoreAPI, db types.DatabaseAPI, opts ...Option) Ingestor {
+	i := &ingestor{store: store, db: db}
+
+	for _, opt := range opts {
+		opt(i)
+	}
+
+	return i
 }
 
 func (i *ingestor) ImportRecord(ctx context.Context, record *corev1.Record) (*corev1.RecordRef, error) {
@@ -97,7 +125,7 @@ func (i *ingestor) ImportReferrer(ctx context.Context, recordCID string, referre
 		return nil, fmt.Errorf("failed to push referrer for record %s: %w", recordCID, err)
 	}
 
-	i.applyReferrerDBEffects(recordCID, referrer)
+	i.applyReferrerDBEffects(ctx, recordCID, referrer)
 
 	logger.Debug("Referrer ingested successfully", "cid", recordCID, "type", referrer.GetType())
 
@@ -107,7 +135,7 @@ func (i *ingestor) ImportReferrer(ctx context.Context, recordCID string, referre
 // applyReferrerDBEffects updates referrer-derived database state based on the
 // referrer type. All failures are logged but non-fatal: the referrer has
 // already been stored, so the content store remains the source of truth.
-func (i *ingestor) applyReferrerDBEffects(recordCID string, referrer *corev1.RecordReferrer) {
+func (i *ingestor) applyReferrerDBEffects(ctx context.Context, recordCID string, referrer *corev1.RecordReferrer) {
 	referrerType := referrer.GetType()
 
 	// If this is a signature referrer, mark the record as signed so the name
@@ -154,6 +182,128 @@ func (i *ingestor) applyReferrerDBEffects(recordCID string, referrer *corev1.Rec
 			logger.Warn("Failed to upsert scan report summary", "error", err, "cid", recordCID)
 		}
 	}
+
+	// Eagerly verify and index identity/ownership claims so search reflects a
+	// newly pushed claim immediately, without waiting for the reconciler's
+	// periodic re-verification pass.
+	if referrerType == corev1.IdentityClaimReferrerType {
+		i.indexIdentityClaim(ctx, recordCID, referrer)
+	}
+
+	if referrerType == corev1.OwnershipClaimReferrerType {
+		i.indexOwnershipClaim(ctx, recordCID, referrer)
+	}
+}
+
+// indexIdentityClaim verifies an identity claim referrer and upserts the result.
+func (i *ingestor) indexIdentityClaim(ctx context.Context, recordCID string, referrer *corev1.RecordReferrer) {
+	var claim identityv1.IdentityClaim
+	if err := claim.UnmarshalReferrer(referrer); err != nil {
+		logger.Warn("Failed to unmarshal identity claim referrer", "error", err, "cid", recordCID)
+
+		return
+	}
+
+	expectedSubject, err := i.declaredSubject(ctx, recordCID, (*corev1.Record).GetIdentity)
+	if err != nil {
+		logger.Warn("Failed to load record for identity claim verification", "error", err, "cid", recordCID)
+
+		return
+	}
+
+	result := identityv1.VerifyIdentityClaim(ctx, &claim, recordCID, expectedSubject, i.resolver(), i.trustedCertsFor(claim.GetSubject()))
+
+	if err := i.db.UpsertClaim(types.ClaimRoleIdentity, claimResultRow{recordCID: recordCID, subject: claim.GetSubject(), result: result}); err != nil {
+		logger.Warn("Failed to index identity claim", "error", err, "cid", recordCID)
+	} else {
+		logger.Debug("Identity claim eagerly indexed", "cid", recordCID, "verified", result.Verified)
+	}
+}
+
+// indexOwnershipClaim verifies an ownership claim referrer and upserts the result.
+func (i *ingestor) indexOwnershipClaim(ctx context.Context, recordCID string, referrer *corev1.RecordReferrer) {
+	var claim identityv1.OwnershipClaim
+	if err := claim.UnmarshalReferrer(referrer); err != nil {
+		logger.Warn("Failed to unmarshal ownership claim referrer", "error", err, "cid", recordCID)
+
+		return
+	}
+
+	expectedSubject, err := i.declaredSubject(ctx, recordCID, (*corev1.Record).GetOwner)
+	if err != nil {
+		logger.Warn("Failed to load record for ownership claim verification", "error", err, "cid", recordCID)
+
+		return
+	}
+
+	result := identityv1.VerifyOwnershipClaim(ctx, &claim, recordCID, expectedSubject, i.resolver(), i.trustedCertsFor(claim.GetSubject()))
+
+	if err := i.db.UpsertClaim(types.ClaimRoleOwner, claimResultRow{recordCID: recordCID, subject: claim.GetSubject(), result: result}); err != nil {
+		logger.Warn("Failed to index ownership claim", "error", err, "cid", recordCID)
+	} else {
+		logger.Debug("Ownership claim eagerly indexed", "cid", recordCID, "verified", result.Verified)
+	}
+}
+
+// declaredSubject loads recordCID's content and returns the annotation value
+// (identity or owner) that a claim's subject must match, via get.
+func (i *ingestor) declaredSubject(ctx context.Context, recordCID string, get func(*corev1.Record) string) (string, error) {
+	record, err := i.store.Pull(ctx, &corev1.RecordRef{Cid: recordCID})
+	if err != nil {
+		return "", fmt.Errorf("pull record %s: %w", recordCID, err)
+	}
+
+	return get(record), nil
+}
+
+// trustedCertsFor returns the configured SPIFFE trust bundle certificates for
+// subject's trust domain, or nil if none are configured.
+func (i *ingestor) trustedCertsFor(subject string) []*x509.Certificate {
+	if i.spiffeBundles == nil {
+		return nil
+	}
+
+	return i.spiffeBundles.TrustedCerts(subject)
+}
+
+// resolver returns i.identityRegistry as a KeyResolver interface, or a true
+// nil interface (not a non-nil interface wrapping a nil pointer) when unset.
+func (i *ingestor) resolver() identityv1.KeyResolver {
+	if i.identityRegistry == nil {
+		return nil
+	}
+
+	return i.identityRegistry
+}
+
+// claimResultRow adapts an identityv1.Result to types.ClaimObject for DB upsert.
+type claimResultRow struct {
+	recordCID string
+	subject   string
+	result    *identityv1.Result
+}
+
+func (r claimResultRow) GetRecordCID() string { return r.recordCID }
+func (r claimResultRow) GetSubject() string   { return r.subject }
+
+func (r claimResultRow) GetStatus() string {
+	if r.result.Verified {
+		return "verified"
+	}
+
+	return "failed"
+}
+
+func (r claimResultRow) GetError() string { return r.result.Error }
+
+func (r claimResultRow) GetVerifiedAt() *time.Time {
+	if !r.result.Verified {
+		return nil
+	}
+
+	now := time.Now()
+
+	return &now
 }
 
 // scanReportRow adapts inline scan report data to types.ScanReportObject for DB upsert.

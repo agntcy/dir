@@ -264,6 +264,22 @@ func QueryToFilters(queries []*searchv1.RecordQuery) ([]types.FilterOption, erro
 				options = append(options, choose(query.GetNegate(), types.WithDescriptions, types.WithoutDescriptions)(query.GetValue()))
 			}
 
+		case searchv1.RecordQueryType_RECORD_QUERY_TYPE_IDENTITY:
+			if strings.TrimSpace(query.GetValue()) != "" {
+				options = append(options, choose(query.GetNegate(), types.WithIdentities, types.WithoutIdentities)(query.GetValue()))
+			}
+
+		case searchv1.RecordQueryType_RECORD_QUERY_TYPE_OWNER:
+			if strings.TrimSpace(query.GetValue()) != "" {
+				options = append(options, choose(query.GetNegate(), types.WithOwners, types.WithoutOwners)(query.GetValue()))
+			}
+
+		case searchv1.RecordQueryType_RECORD_QUERY_TYPE_IDENTITY_VERIFIED:
+			options = append(options, types.WithIdentityVerified(strings.EqualFold(query.GetValue(), "true") != query.GetNegate()))
+
+		case searchv1.RecordQueryType_RECORD_QUERY_TYPE_OWNER_VERIFIED:
+			options = append(options, types.WithOwnerVerified(strings.EqualFold(query.GetValue(), "true") != query.GetNegate()))
+
 		default:
 			logger.Warn("Unknown query type", "type", query.GetType())
 		}

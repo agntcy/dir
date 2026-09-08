@@ -88,10 +88,10 @@ func (db *DB) migrate() error {
 		Annotation{},
 		Sync{},
 		Publication{},
-		NameVerification{},
 		SignatureVerification{},
 		ScanReport{},
 		RecordUsageMetrics{},
+		Claim{},
 	); err != nil {
 		return fmt.Errorf("failed to migrate object schema: %w", err)
 	}
