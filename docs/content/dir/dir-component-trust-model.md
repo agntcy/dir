@@ -77,23 +77,30 @@ Directory supports several signing flows depending on the environment:
 For CLI walkthroughs of each method, see
 [Usage Guide — Signing and Verification](dir-features-scenarios.md#signing-and-verification).
 
-### Name verification
+### Record identity and ownership
 
-Name verification proves that the signing key is authorized by the domain claimed in the
-record's `name` field. This provides cryptographic proof of domain ownership and enables
-human-readable references while maintaining security.
+Beyond the `name` field, a record can carry two independently signed claims:
 
-A record qualifies for name verification when:
+- **Identity claim** — asserts the record's own identity, e.g. `did:web:my-agent.example.com`,
+  `spiffe://example.org/agent`, or `https://my-agent.example.com`.
+- **Ownership claim** — asserts that a subject (e.g. `did:web:acme.com`) owns/controls
+  the record.
 
-- The record name includes a protocol prefix: `https://domain/path` or `http://domain/path`.
-- A [JWKS (JSON Web Key Set)](https://datatracker.ietf.org/doc/html/rfc7517) file is hosted
-  at `<scheme>://<domain>/.well-known/jwks.json`.
-- The record is signed with the private key corresponding to a public key present in that
-  JWKS file.
+Each claim binds the record's CID, the claimed subject, and the signing timestamp before
+signing, so a claim cannot be replayed against a different record. Verification resolves
+the subject's signing key based on its scheme:
 
-Once a name is verified, records can be referenced using Docker-style name references
-(`name`, `name:version`, `name:version@cid`) instead of raw CIDs. See
-[Records](dir-component-records-validation.md) for the verifiable name model.
+| Scheme | Resolution |
+|--------|------------|
+| `did:web:` | Fetches the DID document from `https://<domain>/.well-known/did.json` (or path-based `did.json`) and checks `verificationMethod[].publicKeyJwk`. |
+| `did:key:` | Decodes the multibase-encoded public key embedded in the DID itself. |
+| `https://`/`http://` | Fetches a JWKS file from `<scheme>://<domain>/.well-known/jwks.json`. |
+| `dns:` | Reads a `_agntcy-key.<domain>` TXT record containing the base64-encoded public key. |
+| `spiffe://` | Validates the claim's embedded X.509-SVID certificate (optionally chained against a configured trust bundle) and verifies the signature against the certificate's key. |
+
+Claims are verified eagerly at ingest and periodically re-verified by the reconciler; the
+cached verification status is queryable via `dirctl identity status`. See
+[Records](dir-component-records-validation.md) for how claims relate to the `name` field.
 
 ## Security Scanning
 

@@ -27,15 +27,12 @@ func TestLoadConfig_NoFile_ReturnsDefaults(t *testing.T) {
 	// Task defaults
 	assert.True(t, cfg.Regsync.Enabled)
 	assert.True(t, cfg.Indexer.Enabled)
-	assert.False(t, cfg.Name.Enabled)
 }
 
 func TestLoadConfig_EnvOverrides(t *testing.T) {
 	t.Setenv("RECONCILER_REGSYNC_ENABLED", "false")
 	t.Setenv("RECONCILER_INDEXER_ENABLED", "false")
-	t.Setenv("RECONCILER_NAME_ENABLED", "true")
 	t.Setenv("RECONCILER_INDEXER_INTERVAL", "2h")
-	t.Setenv("RECONCILER_NAME_INTERVAL", "30m")
 
 	cfg, err := LoadConfig()
 	require.NoError(t, err)
@@ -43,7 +40,5 @@ func TestLoadConfig_EnvOverrides(t *testing.T) {
 
 	assert.False(t, cfg.Regsync.Enabled)
 	assert.False(t, cfg.Indexer.Enabled)
-	assert.True(t, cfg.Name.Enabled)
 	assert.Equal(t, 2*time.Hour, cfg.Indexer.Interval)
-	assert.Equal(t, 30*time.Minute, cfg.Name.Interval)
 }

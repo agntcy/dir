@@ -63,6 +63,8 @@ var valueFilterFlags = []struct {
 	{"annotation", searchv1.RecordQueryType_RECORD_QUERY_TYPE_ANNOTATION},
 	{"scan-status", searchv1.RecordQueryType_RECORD_QUERY_TYPE_SCAN_STATUS},
 	{"scan-failure-reason", searchv1.RecordQueryType_RECORD_QUERY_TYPE_SCAN_FAILURE_REASON},
+	{"identity", searchv1.RecordQueryType_RECORD_QUERY_TYPE_IDENTITY},
+	{"owner", searchv1.RecordQueryType_RECORD_QUERY_TYPE_OWNER},
 }
 
 // Every value filter must register an --exclude- twin. This walks the real flag
@@ -73,7 +75,7 @@ func TestEveryValueFilterHasAnExcludeTwin(t *testing.T) {
 	RegisterFilterFlags(cmd, &Filters{})
 
 	// Booleans are negated with the tri-state =false form, not an exclude flag.
-	triState := map[string]bool{"verified": true, "trusted": true, "safe": true, "help": true}
+	triState := map[string]bool{"verified": true, "trusted": true, "safe": true, "identity-verified": true, "owner-verified": true, "help": true}
 
 	var missing []string
 

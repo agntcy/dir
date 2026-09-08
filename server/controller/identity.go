@@ -93,7 +93,7 @@ func (c *identityCtrl) Resolve(_ context.Context, req *identityv1.ResolveRequest
 	}
 
 	filterOptions := []types.FilterOption{
-		types.WithNames(expandNameWithProtocols(req.GetName())...),
+		types.WithNames(expandIdentityNameWithProtocols(req.GetName())...),
 	}
 
 	if req.GetVersion() != "" {
@@ -126,10 +126,10 @@ func (c *identityCtrl) Resolve(_ context.Context, req *identityv1.ResolveRequest
 	return &identityv1.ResolveResponse{Records: refs}, nil
 }
 
-// expandNameWithProtocols expands a bare name into exact-match plus http(s)
+// expandIdentityNameWithProtocols expands a bare name into exact-match plus http(s)
 // variants, so records stored with a protocol-qualified name (e.g.
 // "https://my-agent.example.com") are still found by a bare-name lookup.
-func expandNameWithProtocols(name string) []string {
+func expandIdentityNameWithProtocols(name string) []string {
 	if strings.HasPrefix(name, "http://") || strings.HasPrefix(name, "https://") {
 		return []string{name}
 	}

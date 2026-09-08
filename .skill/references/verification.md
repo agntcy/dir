@@ -8,7 +8,7 @@ never a synthesized score.
 | Signal | Meaning | Command / filter |
 | --- | --- | --- |
 | **Trusted** | Signature verification passed | `dirctl verify <cid>`; search `--trusted` |
-| **Verified** | Signing key authorized by the domain in the record name (JWKS) | `dirctl naming verify <ref>`; search `--verified` |
+| **Verified** | Ownership claim verified (subject controls the record) | `dirctl identity status <ref>`; search `--owner-verified` |
 | **Safe** | All security scanners reported `is_safe=true` | `dirctl pull <cid> --scan-report`; search `--safe`, `--scan-severity` |
 
 Report them separately; they answer different questions (integrity, identity,
@@ -26,16 +26,18 @@ dirctl verify <cid> --from-server                     # use the server's cached 
 `--ignore-tlog` skips transparency-log verification — only when the user
 explicitly asks.
 
-## Verify name ownership
+## Check identity/ownership claims
 
 ```bash
-dirctl naming verify <cid>
-dirctl naming verify "https://example.com/agent:v1.0.0"
+dirctl identity status <cid>
+dirctl identity status "example.com/agent:v1.0.0"
 ```
 
-Checks the signing key against `https://<domain>/.well-known/jwks.json`. Only
-meaningful for records whose name has an `http(s)://` prefix; plain names are
-reported as not applicable, not as failures.
+Reports the cached verification status of the record's identity claim (its own
+asserted identity) and ownership claim (who owns/controls it), each resolved
+against the subject's scheme (`did:web:`, `did:key:`, `https://` JWKS, `dns:`
+TXT record, or `spiffe://` X.509-SVID). A record with no claims reports both
+as not present, not as failures.
 
 ## Security scan reports
 
@@ -65,7 +67,7 @@ reports is *unscanned* — say so explicitly rather than implying safety.
 ```bash
 dirctl search --safe                          # all scanners is_safe=true (unscanned records excluded)
 dirctl search --scan-severity HIGH            # highest finding ≥ HIGH
-dirctl search --trusted --verified            # signed + name-verified
+dirctl search --trusted --owner-verified       # signed + ownership-verified
 dirctl search "code review agent" --safe      # combine with NL query
 ```
 
@@ -75,7 +77,7 @@ Before installing a record the user picked:
 
 ```bash
 dirctl verify <cid> --from-server
-dirctl naming verify <cid>
+dirctl identity status <cid>
 dirctl pull <cid> --scan-report -o json
 ```
 

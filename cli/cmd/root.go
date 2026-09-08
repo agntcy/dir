@@ -14,12 +14,10 @@ import (
 	"github.com/agntcy/dir/cli/cmd/doctor"
 	"github.com/agntcy/dir/cli/cmd/events"
 	"github.com/agntcy/dir/cli/cmd/export"
-	importcmd "github.com/agntcy/dir/cli/cmd/import"
+	"github.com/agntcy/dir/cli/cmd/identity"
 	"github.com/agntcy/dir/cli/cmd/info"
 	initcmd "github.com/agntcy/dir/cli/cmd/init"
 	"github.com/agntcy/dir/cli/cmd/install"
-	"github.com/agntcy/dir/cli/cmd/mcp"
-	"github.com/agntcy/dir/cli/cmd/naming"
 	"github.com/agntcy/dir/cli/cmd/network"
 	"github.com/agntcy/dir/cli/cmd/pull"
 	"github.com/agntcy/dir/cli/cmd/push"
@@ -115,7 +113,6 @@ func init() {
 	network.Command.PersistentPreRunE = skipClientSetup
 	validate.Command.PersistentPreRunE = skipClientSetup
 	version.Command.PersistentPreRunE = skipClientSetup
-	mcp.Command.PersistentPreRunE = skipClientSetup
 	// `install list` makes no Directory calls, so it must not require a client;
 	// `install`/`install run`/`install uninstall` use the client from context.
 	install.ListCommand.PersistentPreRunE = skipClientSetup
@@ -139,21 +136,18 @@ func init() {
 		push.Command,
 		delete.Command,
 		// import/export commands
-		importcmd.Command,
 		export.Command,
 		// routing commands (all under routing subcommand)
 		routing.Command, // Contains: publish, unpublish, list, search
 		network.Command,
-		// naming commands (domain verification)
-		naming.Command, // Contains: verify, check, list
+		// identity commands (verifiable record identity/ownership claims)
+		identity.Command, // Contains: claim, status, resolve
 		// search commands
 		search.Command, // General search (searchv1)
 		// sync commands
 		sync.Command,
 		// events commands
 		events.Command, // Contains: listen
-		// mcp commands
-		mcp.Command, // Contains: serve
 		// install commands
 		install.Command,          // Contains: run, uninstall, list
 		install.UninstallCommand, // top-level `uninstall` shorthand for `install uninstall`

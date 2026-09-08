@@ -17,15 +17,16 @@ The content identifier of the record is a [Content IDentifier](https://github.co
 - Collision-resistant
 - Immutable
 
-### Verifiable Names
+### Record Identity & Ownership
 
-Records must include a `name` field with a domain-based identifier that enables name verification. When a record uses a verifiable name:
+Records can carry verifiable identity and ownership claims, independent of the `name` field:
 
-- The name must include a protocol prefix: `https://domain/path` or `http://domain/path`.
-- The domain must host a JWKS file at `<scheme>://<domain>/.well-known/jwks.json`.
-- Records signed with a private key associated with a public key present in that JWKS file can be verified as authorized by the domain.
+- An **identity claim** asserts the record's own identity (e.g. `did:web:...`, `spiffe://...`, `https://...`).
+- An **ownership claim** asserts that a subject owns/controls the record.
 
-See [Usage Guide — Name Verification](dir-features-scenarios.md#name-verification) and the [CLI Reference](dir-cli-reference.md#security-verification) for name verification workflows.
+Both claims are bound to the record's CID at signing time, so a claim cannot be replayed against a different record.
+
+See [Usage Guide — Record Identity & Ownership](dir-features-scenarios.md#record-identity--ownership) and the [CLI Reference](dir-cli-reference.md#record-identity--ownership) for the claim/status workflow.
 
 ### Example Email Agent
 

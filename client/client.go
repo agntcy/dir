@@ -9,6 +9,7 @@ import (
 	"io"
 
 	eventsv1 "github.com/agntcy/dir/api/events/v1"
+	identityv1 "github.com/agntcy/dir/api/identity/v1"
 	namingv1 "github.com/agntcy/dir/api/naming/v1"
 	routingv1 "github.com/agntcy/dir/api/routing/v1"
 	runtimev1 "github.com/agntcy/dir/api/runtime/v1"
@@ -28,6 +29,11 @@ type Client struct {
 	eventsv1.EventServiceClient
 	namingv1.NamingServiceClient
 	runtimev1.DiscoveryServiceClient
+
+	// identityClient is not embedded so that its methods (GetIdentityStatus)
+	// are exposed via explicit wrapper methods in client/identity.go, matching
+	// the pattern used for other higher-level helper methods in this package.
+	identityClient identityv1.IdentityServiceClient
 
 	config     *Config
 	authClient *workloadapi.Client
@@ -66,6 +72,7 @@ func New(ctx context.Context, opts ...Option) (*Client, error) {
 		EventServiceClient:     eventsv1.NewEventServiceClient(conn),
 		NamingServiceClient:    namingv1.NewNamingServiceClient(conn),
 		DiscoveryServiceClient: runtimev1.NewDiscoveryServiceClient(conn),
+		identityClient:         identityv1.NewIdentityServiceClient(conn),
 		config:                 options.config,
 		authClient:             options.authClient,
 		conn:                   conn,
