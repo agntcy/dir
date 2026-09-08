@@ -32,7 +32,7 @@ func Install(env agentcfg.Env, arts Artifacts, agents []agentcfg.Agent, scope ag
 			if arts.hasSkillBundle() && agent.Skill.Strategy != agentcfg.SkillFolder {
 				outcomes = append(outcomes, agentcfg.Outcome{
 					Agent:    agent.Name,
-					Artifact: "skill",
+					Artifact: agentcfg.ArtifactSkill,
 					Action:   agentcfg.ActionSkipped,
 					Reason:   skillBundleFolderOnlyReason,
 				})

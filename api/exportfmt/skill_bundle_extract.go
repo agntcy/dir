@@ -50,6 +50,52 @@ func SkillMarkdownFromArchive(archive []byte) (string, error) {
 	return "", fmt.Errorf("archive does not contain %q", skillManifestFile)
 }
 
+// SkillBundleFiles lists the regular files a skill artifact holds, as paths
+// relative to the directory ExtractSkillBundleArchive writes them into, in
+// archive order. A plain-text SKILL.md artifact reports the single file the
+// extractor creates for it, so both artifact shapes answer the same question.
+//
+// TarEntry's fields are unexported, so this is the one accessor callers outside
+// this package have for entry names. `dirctl install` records the list in its
+// install manifest, which is what lets a later uninstall or upgrade remove
+// exactly the files that were written without re-fetching a record that may
+// since have been garbage-collected upstream.
+func SkillBundleFiles(archive []byte) ([]string, error) {
+	if len(archive) == 0 {
+		return nil, fmt.Errorf("skill bundle archive is empty")
+	}
+
+	if !isGzipArchive(archive) {
+		return []string{skillManifestFile}, nil
+	}
+
+	iterator, err := NewTarIterator(archive, WithTypeflag(tar.TypeReg))
+	if err != nil {
+		return nil, fmt.Errorf("invalid gzip archive: %w", err)
+	}
+
+	var files []string
+
+	for entry, err := range iterator {
+		if err != nil {
+			return nil, fmt.Errorf("read tar entry: %w", err)
+		}
+
+		rel, err := localTarEntryPath(entry.header.Name)
+		if err != nil {
+			return nil, fmt.Errorf("invalid tar entry %q: %w", entry.header.Name, err)
+		}
+
+		files = append(files, rel)
+	}
+
+	if len(files) == 0 {
+		return nil, fmt.Errorf("archive contains no regular files")
+	}
+
+	return files, nil
+}
+
 // SkillBundleMatchesDir reports whether dir already contains the same files as archive.
 func SkillBundleMatchesDir(archive []byte, dir string) (bool, error) {
 	if len(archive) == 0 {
