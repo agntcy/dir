@@ -418,10 +418,134 @@ func TestRunMCPScannerEndpoint_ExecFailure_WrapsStderr(t *testing.T) {
 	}
 }
 
+// --- endpoint analyzer selection ---
+
+// clearAnalyzerCredentials makes the analyzer set independent of whichever
+// credentials the machine running the test happens to export.
+func clearAnalyzerCredentials(t *testing.T) {
+	t.Helper()
+
+	for _, k := range []string{
+		"MCP_SCANNER_LLM_API_KEY",
+		"MCP_SCANNER_LLM_MODEL",
+		"AZURE_OPENAI_API_KEY",
+		"AZURE_OPENAI_BASE_URL",
+		"AZURE_OPENAI_DEPLOYMENT",
+		"MCP_SCANNER_API_KEY",
+	} {
+		t.Setenv(k, "")
+	}
+}
+
+// setAzureCredentials configures a complete LLM setup the way the chart and
+// the docker env file do, which is the only form any shipped deployment uses.
+func setAzureCredentials(t *testing.T) {
+	t.Helper()
+
+	t.Setenv("AZURE_OPENAI_API_KEY", "test-key")
+	t.Setenv("AZURE_OPENAI_BASE_URL", "https://example.openai.azure.com")
+	t.Setenv("AZURE_OPENAI_DEPLOYMENT", "gpt-4o")
+}
+
+func TestEndpointAnalyzers_NoCredentials_CredentialFreeOnly(t *testing.T) {
+	// Cannot run in parallel: uses t.Setenv.
+	clearAnalyzerCredentials(t)
+
+	want := []string{"yara", "readiness"}
+	if got := endpointAnalyzers(); !slices.Equal(got, want) {
+		t.Errorf("want %v with no credentials, got %v", want, got)
+	}
+}
+
+func TestEndpointAnalyzers_AzureConfig_AddsLLM(t *testing.T) {
+	// Cannot run in parallel: uses t.Setenv.
+	clearAnalyzerCredentials(t)
+	setAzureCredentials(t)
+
+	want := []string{"yara", "readiness", "llm"}
+	if got := endpointAnalyzers(); !slices.Equal(got, want) {
+		t.Errorf("want %v when Azure is fully configured, got %v", want, got)
+	}
+}
+
+// buildMCPScannerEnv lets a pre-set MCP_SCANNER_LLM_* value win over the
+// Azure-derived one, so the analyzer set has to recognise that form too.
+func TestEndpointAnalyzers_DirectConfig_AddsLLM(t *testing.T) {
+	// Cannot run in parallel: uses t.Setenv.
+	clearAnalyzerCredentials(t)
+	t.Setenv("MCP_SCANNER_LLM_API_KEY", "test-key")
+	t.Setenv("MCP_SCANNER_LLM_MODEL", "openai/test-model")
+
+	want := []string{"yara", "readiness", "llm"}
+	if got := endpointAnalyzers(); !slices.Equal(got, want) {
+		t.Errorf("want %v when the scanner LLM vars are set directly, got %v", want, got)
+	}
+}
+
+// A key with no model passes the scanner's own validation and then fails at
+// request time, so it must not count as a configured LLM.
+func TestEndpointAnalyzers_KeyWithoutModel_OmitsLLM(t *testing.T) {
+	// Cannot run in parallel: uses t.Setenv.
+	clearAnalyzerCredentials(t)
+	t.Setenv("AZURE_OPENAI_API_KEY", "test-key")
+
+	want := []string{"yara", "readiness"}
+	if got := endpointAnalyzers(); !slices.Equal(got, want) {
+		t.Errorf("want %v when only a key is configured, got %v", want, got)
+	}
+}
+
+// The api analyzer is opt-in rather than excluded: an operator who configures
+// a Cisco AI Defense key gets it, which is what #1775 intended by "opt-in".
+func TestEndpointAnalyzers_APIKey_AddsAPI(t *testing.T) {
+	// Cannot run in parallel: uses t.Setenv.
+	clearAnalyzerCredentials(t)
+	t.Setenv("MCP_SCANNER_API_KEY", "test-key")
+
+	want := []string{"yara", "readiness", "api"}
+	if got := endpointAnalyzers(); !slices.Equal(got, want) {
+		t.Errorf("want %v when an api key is configured, got %v", want, got)
+	}
+}
+
+func TestEndpointAnalyzers_AllCredentials_RequestsEverything(t *testing.T) {
+	// Cannot run in parallel: uses t.Setenv.
+	clearAnalyzerCredentials(t)
+	setAzureCredentials(t)
+	t.Setenv("MCP_SCANNER_API_KEY", "test-key")
+
+	want := []string{"yara", "readiness", "llm", "api"}
+	if got := endpointAnalyzers(); !slices.Equal(got, want) {
+		t.Errorf("want %v when every key is configured, got %v", want, got)
+	}
+}
+
+// --- mcpEndpointArgs ---
+
+// The live-server subparsers do not redeclare --analyzers or --raw, so either
+// one placed after the subcommand is rejected as unrecognized. That is the
+// reverse of mcpSourceArgs, where --output has to trail the subcommand, and the
+// two orderings cannot be made to match.
+func TestMCPEndpointArgs_GlobalFlagsPrecedeSubcommand(t *testing.T) {
+	t.Parallel()
+
+	got := mcpEndpointArgs("prompts", "https://mcp.example.com/mcp", []string{"yara", "readiness"})
+	want := []string{
+		"--analyzers", "yara,readiness",
+		"--raw", "prompts",
+		"--server-url", "https://mcp.example.com/mcp",
+	}
+
+	if !slices.Equal(got, want) {
+		t.Errorf("mcpEndpointArgs() = %q, want %q", got, want)
+	}
+}
+
 // --- MCPRunner endpoint subcommand ---
 
 func TestMCPRunner_EndpointSubcommand_Success_TagsAndSetsAnalyzer(t *testing.T) {
-	t.Parallel()
+	// Cannot run in parallel: uses t.Setenv.
+	clearAnalyzerCredentials(t)
 
 	r := NewMCPRunner(MCPConfig{CLIPath: fakeCLIPath(t)})
 
@@ -440,8 +564,11 @@ func TestMCPRunner_EndpointSubcommand_Success_TagsAndSetsAnalyzer(t *testing.T) 
 		t.Errorf("finding message should be tagged with subcommand+url, want prefix %q, got %q", wantPrefix, got.Findings[0].Message)
 	}
 
-	if len(got.Analyzers) != 1 || got.Analyzers[0] != "prompts" {
-		t.Errorf("want Analyzers=[prompts], got %v", got.Analyzers)
+	// The analyzers that ran, not the subcommand: "prompts" is already carried
+	// by the finding tag asserted above.
+	wantAnalyzers := []string{"yara", "readiness"}
+	if !slices.Equal(got.Analyzers, wantAnalyzers) {
+		t.Errorf("want Analyzers=%v, got %v", wantAnalyzers, got.Analyzers)
 	}
 }
 
@@ -480,7 +607,8 @@ func TestMCPRunner_EndpointSubcommand_UnparsableOutput_SkippedNotError(t *testin
 }
 
 func TestMCPRunner_EndpointSubcommand_EmptySafeOutput_NoFindings(t *testing.T) {
-	t.Parallel()
+	// Cannot run in parallel: uses t.Setenv.
+	clearAnalyzerCredentials(t)
 
 	r := NewMCPRunner(MCPConfig{CLIPath: fakeCLIPath(t)})
 
@@ -494,8 +622,9 @@ func TestMCPRunner_EndpointSubcommand_EmptySafeOutput_NoFindings(t *testing.T) {
 		t.Errorf("empty mcp-scanner output should produce Safe=true with no findings: %+v", got)
 	}
 
-	if len(got.Analyzers) != 1 || got.Analyzers[0] != "instructions" {
-		t.Errorf("want Analyzers=[instructions], got %v", got.Analyzers)
+	wantAnalyzers := []string{"yara", "readiness"}
+	if !slices.Equal(got.Analyzers, wantAnalyzers) {
+		t.Errorf("want Analyzers=%v, got %v", wantAnalyzers, got.Analyzers)
 	}
 }
 
@@ -528,9 +657,11 @@ func recordWithEndpoints(t *testing.T, urls ...string) *corev1.Record {
 }
 
 func TestMCPRunner_EndpointScan_MergesFindingsAcrossEndpointsAndSubcommands(t *testing.T) {
-	t.Parallel()
+	// Cannot run in parallel: uses t.Setenv.
+	clearAnalyzerCredentials(t)
 
 	r := NewMCPRunner(MCPConfig{CLIPath: fakeCLIPath(t)})
+
 	rec := recordWithEndpoints(t, "https://a.example.com/mcp", "https://b.example.com/mcp")
 
 	got, err := r.Run(context.Background(), rec)
@@ -554,11 +685,12 @@ func TestMCPRunner_EndpointScan_MergesFindingsAcrossEndpointsAndSubcommands(t *t
 		t.Error("merged result should be Safe=false: every sub-scan reported an unsafe finding")
 	}
 
-	wantAnalyzers := []string{"remote", "prompts", "resources", "instructions"}
-	for _, a := range wantAnalyzers {
-		if !slices.Contains(got.Analyzers, a) {
-			t.Errorf("merged Analyzers missing %q, got %v", a, got.Analyzers)
-		}
+	// Every sub-scan runs the same analyzers, so the union is deduplicated and
+	// sorted rather than one entry per sub-scan. That all four subcommands ran
+	// is what the finding count above establishes.
+	wantAnalyzers := []string{"readiness", "yara"}
+	if !slices.Equal(got.Analyzers, wantAnalyzers) {
+		t.Errorf("want merged Analyzers=%v, got %v", wantAnalyzers, got.Analyzers)
 	}
 }
 

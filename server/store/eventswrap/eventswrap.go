@@ -22,6 +22,11 @@ type eventsStore struct {
 	eventBus *events.SafeEventBus
 }
 
+// Wrap returns a StoreAPI, but callers reach referrer operations by asserting this type to
+// ReferrerStoreAPI at runtime. Without this check, adding a method to that interface would turn
+// every referrer call into an Unimplemented error instead of a build failure.
+var _ types.ReferrerStoreAPI = (*eventsStore)(nil)
+
 // Wrap creates an event-emitting wrapper around a StoreAPI.
 // All successful operations will emit corresponding events.
 func Wrap(source types.StoreAPI, eventBus *events.SafeEventBus) types.StoreAPI {
@@ -147,4 +152,16 @@ func (s *eventsStore) DeleteReferrer(ctx context.Context, recordCID string, refe
 	// Delegate to source (no event emitted for referrer operations)
 	//nolint:wrapcheck
 	return referrerStore.DeleteReferrer(ctx, recordCID, referrerCID, referrerType)
+}
+
+func (s *eventsStore) DeleteReferrers(ctx context.Context, recordCID string, referrerCIDs []string, referrerType string) ([]string, error) {
+	// Check if source supports referrer operations
+	referrerStore, ok := s.source.(types.ReferrerStoreAPI)
+	if !ok {
+		return nil, status.Errorf(codes.Unimplemented, "source store does not support referrer operations")
+	}
+
+	// Delegate to source (no event emitted for referrer operations)
+	//nolint:wrapcheck
+	return referrerStore.DeleteReferrers(ctx, recordCID, referrerCIDs, referrerType)
 }

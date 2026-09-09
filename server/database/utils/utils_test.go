@@ -21,6 +21,57 @@ func applyOpts(opts []types.FilterOption) types.RecordFilters {
 	return cfg
 }
 
+func TestQueryToFilters_ScanOutcomeQueries(t *testing.T) {
+	tests := []struct {
+		name  string
+		query *searchv1.RecordQuery
+		check func(t *testing.T, cfg types.RecordFilters)
+	}{
+		{
+			name:  "status is lowercased onto the include path",
+			query: &searchv1.RecordQuery{Type: searchv1.RecordQueryType_RECORD_QUERY_TYPE_SCAN_STATUS, Value: "Partial"},
+			check: func(t *testing.T, cfg types.RecordFilters) {
+				t.Helper()
+				assert.Equal(t, []string{"partial"}, cfg.ScanStatuses)
+				assert.Empty(t, cfg.Excluded.ScanStatuses)
+			},
+		},
+		{
+			name:  "failure reason on the include path",
+			query: &searchv1.RecordQuery{Type: searchv1.RecordQueryType_RECORD_QUERY_TYPE_SCAN_FAILURE_REASON, Value: "scanner-*"},
+			check: func(t *testing.T, cfg types.RecordFilters) {
+				t.Helper()
+				assert.Equal(t, []string{"scanner-*"}, cfg.ScanFailureReasons)
+				assert.Empty(t, cfg.Excluded.ScanFailureReasons)
+			},
+		},
+		{
+			name:  "blank status is dropped",
+			query: &searchv1.RecordQuery{Type: searchv1.RecordQueryType_RECORD_QUERY_TYPE_SCAN_STATUS, Value: "  "},
+			check: func(t *testing.T, cfg types.RecordFilters) {
+				t.Helper()
+				assert.Empty(t, cfg.ScanStatuses)
+			},
+		},
+		{
+			name:  "blank failure reason is dropped",
+			query: &searchv1.RecordQuery{Type: searchv1.RecordQueryType_RECORD_QUERY_TYPE_SCAN_FAILURE_REASON, Value: ""},
+			check: func(t *testing.T, cfg types.RecordFilters) {
+				t.Helper()
+				assert.Empty(t, cfg.ScanFailureReasons)
+			},
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			opts, err := QueryToFilters([]*searchv1.RecordQuery{tc.query})
+			require.NoError(t, err)
+			tc.check(t, applyOpts(opts))
+		})
+	}
+}
+
 func TestQueryToFilters_NegateRoutesToExcluded(t *testing.T) {
 	tests := []struct {
 		name  string
@@ -165,6 +216,22 @@ func TestQueryToFilters_NegateRoutesToExcluded(t *testing.T) {
 				t.Helper()
 				assert.Equal(t, []string{"env"}, cfg.Excluded.AnnotationKeys)
 				assert.Empty(t, cfg.Excluded.AnnotationValues)
+			},
+		},
+		{
+			name:  "scan status",
+			query: &searchv1.RecordQuery{Type: searchv1.RecordQueryType_RECORD_QUERY_TYPE_SCAN_STATUS, Value: "FAILED", Negate: true},
+			check: func(t *testing.T, cfg types.RecordFilters) {
+				t.Helper()
+				assert.Equal(t, []string{"failed"}, cfg.Excluded.ScanStatuses)
+			},
+		},
+		{
+			name:  "scan failure reason",
+			query: &searchv1.RecordQuery{Type: searchv1.RecordQueryType_RECORD_QUERY_TYPE_SCAN_FAILURE_REASON, Value: "Source-Unreachable", Negate: true},
+			check: func(t *testing.T, cfg types.RecordFilters) {
+				t.Helper()
+				assert.Equal(t, []string{"source-unreachable"}, cfg.Excluded.ScanFailureReasons)
 			},
 		},
 	}

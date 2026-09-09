@@ -9,13 +9,15 @@ on:
   workflow_dispatch:
 
 permissions:
-  issues: write
-  pull-requests: write
+  contents: read
 
 jobs:
   sync-items:
     name: Sync items
     runs-on: ubuntu-latest
+    permissions:
+      issues: write
+      pull-requests: write
     steps:
       - name: Sync stale items
         uses: actions/stale@1e223db275d687790206a7acac4d1a11bd6fe629 # v10.4.0
@@ -51,6 +53,9 @@ jobs:
   sync-labels:
     name: Sync labels
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: write
     steps:
       - name: Checkout labels
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0

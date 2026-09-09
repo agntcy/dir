@@ -215,6 +215,48 @@ Note: Uses (get .Values.zot "enabled") for nil-safe access since zot may not be 
 {{- end -}}
 
 {{/*
+Reproduce the OASF-SDK subchart's fullname so we can build its Service DNS name.
+Mirrors the subchart's own oasf-sdk.fullname template, so the address handed to
+the gateway matches the Service that actually gets created.
+
+Note: the subchart values live under the hyphenated key .Values."oasf-sdk",
+which is why every lookup here goes through index/get instead of dot notation.
+*/}}
+{{- define "chart.oasfSdk.fullname" -}}
+{{- $values := (index .Values "oasf-sdk") | default dict -}}
+{{- if get $values "fullnameOverride" -}}
+{{- get $values "fullnameOverride" | trunc 63 | trimSuffix "-" -}}
+{{- else -}}
+{{- $name := get $values "nameOverride" | default "oasf-sdk" -}}
+{{- if contains $name .Release.Name -}}
+{{- .Release.Name | trunc 63 | trimSuffix "-" -}}
+{{- else -}}
+{{- printf "%s-%s" .Release.Name $name | trunc 63 | trimSuffix "-" -}}
+{{- end -}}
+{{- end -}}
+{{- end -}}
+
+{{/*
+Get the gRPC address of the OASF taxonomy extractor server.
+Priority order:
+  1. Explicit user configuration (config.extractor.remote_addr) - always respected
+  2. Auto-detected in-cluster OASF-SDK Service (when oasf-sdk.enabled=true)
+
+Empty output means no remote extractor: the server falls back to its in-process
+backend loaded from locally-provisioned assets.
+*/}}
+{{- define "chart.extractor.remoteAddr" -}}
+{{- $extractor := get .Values.config "extractor" | default dict -}}
+{{- $oasfSdk := (index .Values "oasf-sdk") | default dict -}}
+{{- if get $extractor "remote_addr" -}}
+{{- get $extractor "remote_addr" -}}
+{{- else if get $oasfSdk "enabled" -}}
+{{- $port := dig "service" "externalPort" 31234 $oasfSdk -}}
+{{- printf "%s.%s.svc.cluster.local:%v" (include "chart.oasfSdk.fullname" .) .Release.Namespace $port -}}
+{{- end -}}
+{{- end -}}
+
+{{/*
 Get OCI repository name.
 Returns user-configured value, or "dir" as default when using internal Zot.
 

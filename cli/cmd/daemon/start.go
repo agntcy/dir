@@ -41,6 +41,11 @@ The daemon blocks until SIGINT or SIGTERM is received.`,
 
 //nolint:cyclop
 func runStart(cmd *cobra.Command, _ []string) error {
+	// `daemon start` bundles the apiserver and reconciler in-process, so it
+	// keeps their stdout logging behavior rather than the stderr default
+	// cli.go sets for normal dirctl commands.
+	logging.SetDefaultOutput(os.Stdout)
+
 	running, pid, err := readPID()
 	if err != nil {
 		return err

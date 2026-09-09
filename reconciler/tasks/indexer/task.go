@@ -34,6 +34,10 @@ type Task struct {
 	repo      registry.TagLister
 	validator corev1.Validator
 
+	// manifests reads manifests behind tags to separate records from referrers.
+	// It is nil when repo does not support manifest reads.
+	manifests manifestReader
+
 	mu           sync.Mutex
 	lastSnapshot *registrySnapshot
 }
@@ -53,6 +57,11 @@ var emptySnapshot = &registrySnapshot{
 
 // NewTask creates a new indexer reconciliation task.
 func NewTask(config Config, localRegistry ociconfig.Config, store types.StoreAPI, repo registry.TagLister, db types.SearchDatabaseAPI, validator corev1.Validator) (*Task, error) {
+	manifests, ok := repo.(manifestReader)
+	if !ok && repo != nil {
+		logger.Warn("Registry cannot read manifests, referrer tags will be indexed as records", "type", fmt.Sprintf("%T", repo))
+	}
+
 	return &Task{
 		config:       config,
 		db:           db,
@@ -60,6 +69,7 @@ func NewTask(config Config, localRegistry ociconfig.Config, store types.StoreAPI
 		ociConfig:    localRegistry,
 		repo:         repo,
 		validator:    validator,
+		manifests:    manifests,
 		lastSnapshot: emptySnapshot,
 	}, nil
 }
@@ -102,12 +112,27 @@ func (t *Task) Run(ctx context.Context) error {
 		return nil
 	}
 
-	logger.Info("Found new records to index", "count", len(newTags))
+	logger.Info("Found new tags to process", "count", len(newTags))
 
 	// Process each new tag
-	var indexedCount, failedCount int
+	var indexedCount, skippedCount, failedCount int
 
 	for _, tag := range newTags {
+		// Referrers share the repository with records and are tagged with their
+		// own CID, so they must be filtered out before attempting to index them.
+		isReferrer, err := t.isReferrerTag(ctx, tag)
+		if err != nil {
+			logger.Warn("Failed to inspect manifest, handling tag as a record", "tag", tag, "error", err)
+		}
+
+		if isReferrer {
+			logger.Debug("Skipping referrer tag", "tag", tag)
+
+			skippedCount++
+
+			continue
+		}
+
 		if err := t.indexRecord(ctx, tag); err != nil {
 			logger.Error("Failed to index record", "tag", tag, "error", err)
 
@@ -119,7 +144,7 @@ func (t *Task) Run(ctx context.Context) error {
 		indexedCount++
 	}
 
-	logger.Info("Indexing complete", "indexed", indexedCount, "failed", failedCount)
+	logger.Info("Indexing complete", "indexed", indexedCount, "skipped", skippedCount, "failed", failedCount)
 
 	// Update last snapshot
 	t.lastSnapshot = snapshot

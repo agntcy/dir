@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	coretypes "github.com/agntcy/dir/api/core/types"
+	searchv1 "github.com/agntcy/dir/api/search/v1"
 	dbconfig "github.com/agntcy/dir/server/database/config"
 	gormdb "github.com/agntcy/dir/server/database/gorm"
 	"github.com/agntcy/dir/server/types"
@@ -271,6 +272,155 @@ func TestCountRecords_NilOption(t *testing.T) {
 
 	_, err := db.CountRecords(nilOpt)
 	assert.Error(t, err)
+}
+
+func TestListFilterValues_RequestedFields(t *testing.T) {
+	db := setupTestDB(t)
+	seedDB(t, db)
+
+	got, err := db.ListFilterValues([]searchv1.RecordQueryType{
+		searchv1.RecordQueryType_RECORD_QUERY_TYPE_MODULE_NAME,
+		searchv1.RecordQueryType_RECORD_QUERY_TYPE_SCHEMA_VERSION,
+	})
+	require.NoError(t, err)
+
+	// Values are deduplicated (0.8.0 appears on two records) and sorted, and
+	// the field order mirrors the request.
+	assert.Equal(t, []types.FilterFieldValues{
+		{
+			Field:  searchv1.RecordQueryType_RECORD_QUERY_TYPE_MODULE_NAME,
+			Values: []string{"core/llm/model", "integration/acp", "integration/mcp"},
+		},
+		{
+			Field:  searchv1.RecordQueryType_RECORD_QUERY_TYPE_SCHEMA_VERSION,
+			Values: []string{"0.7.0", "0.8.0"},
+		},
+	}, got)
+}
+
+func TestListFilterValues_NoFieldsReturnsAllSupported(t *testing.T) {
+	db := setupTestDB(t)
+	seedDB(t, db)
+
+	got, err := db.ListFilterValues(nil)
+	require.NoError(t, err)
+
+	fields := make([]searchv1.RecordQueryType, 0, len(got))
+	for _, fieldValues := range got {
+		fields = append(fields, fieldValues.Field)
+	}
+
+	assert.Equal(t, []searchv1.RecordQueryType{
+		searchv1.RecordQueryType_RECORD_QUERY_TYPE_SKILL_NAME,
+		searchv1.RecordQueryType_RECORD_QUERY_TYPE_MODULE_NAME,
+		searchv1.RecordQueryType_RECORD_QUERY_TYPE_DOMAIN_NAME,
+		searchv1.RecordQueryType_RECORD_QUERY_TYPE_AUTHOR,
+		searchv1.RecordQueryType_RECORD_QUERY_TYPE_SCHEMA_VERSION,
+	}, fields)
+
+	assert.Equal(t, []string{"0.7.0", "0.8.0"}, got[4].Values)
+}
+
+// A record's own version is per-record identity rather than a shared facet, so
+// it is not enumerable until contextual faceting exists to scope it.
+func TestListFilterValues_VersionIsNotSupported(t *testing.T) {
+	db := setupTestDB(t)
+	seedDB(t, db)
+
+	_, err := db.ListFilterValues([]searchv1.RecordQueryType{
+		searchv1.RecordQueryType_RECORD_QUERY_TYPE_VERSION,
+	})
+	require.ErrorContains(t, err, "unsupported filter value field")
+}
+
+func TestListFilterValues_Authors(t *testing.T) {
+	db := setupTestDB(t)
+	seedDB(t, db)
+
+	// A record carrying no authors must not contribute a blank value.
+	require.NoError(t, db.AddRecord(&testRecord{
+		cid:           "bafybeianonymousagentnoauthorsxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+		name:          "directory.agntcy.org/anon/anonymous-agent",
+		version:       "1.0.0",
+		schemaVersion: "0.8.0",
+		createdAt:     "2024-05-01T00:00:00Z",
+	}))
+
+	got, err := db.ListFilterValues([]searchv1.RecordQueryType{
+		searchv1.RecordQueryType_RECORD_QUERY_TYPE_AUTHOR,
+	})
+	require.NoError(t, err)
+
+	// Each record's JSON array is flattened, and alice (who authors two
+	// records) appears once.
+	assert.Equal(t, []types.FilterFieldValues{
+		{
+			Field:  searchv1.RecordQueryType_RECORD_QUERY_TYPE_AUTHOR,
+			Values: []string{"alice@cisco.com", "bob@cisco.com", "charlie@medtech.io"},
+		},
+	}, got)
+}
+
+// Every value ListFilterValues returns must be usable verbatim as a RecordQuery
+// value. Authors are stored JSON-encoded, so values containing characters that
+// encoding/json escapes are the case most likely to break that guarantee.
+func TestListFilterValues_AuthorsRoundTripIntoQueries(t *testing.T) {
+	db := setupTestDB(t)
+
+	require.NoError(t, db.AddRecord(&testRecord{
+		cid:           "bafybeiquotedauthorxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+		name:          "directory.agntcy.org/test/quoted",
+		version:       "1.0.0",
+		schemaVersion: "0.8.0",
+		createdAt:     "2024-01-01T00:00:00Z",
+		authors:       []string{`Jane "JJ" Doe`},
+	}))
+	require.NoError(t, db.AddRecord(&testRecord{
+		cid:           "bafybeiampersandauthorxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+		name:          "directory.agntcy.org/test/ampersand",
+		version:       "1.0.0",
+		schemaVersion: "0.8.0",
+		createdAt:     "2024-01-02T00:00:00Z",
+		authors:       []string{"A & B Corp"},
+	}))
+
+	got, err := db.ListFilterValues([]searchv1.RecordQueryType{
+		searchv1.RecordQueryType_RECORD_QUERY_TYPE_AUTHOR,
+	})
+	require.NoError(t, err)
+	require.Len(t, got, 1)
+	require.Len(t, got[0].Values, 2)
+
+	for _, author := range got[0].Values {
+		t.Run(author, func(t *testing.T) {
+			cids, err := db.GetRecordCIDs(types.WithAuthors(author))
+			require.NoError(t, err)
+			assert.NotEmpty(t, cids, "author %q was listed but matches no record", author)
+		})
+	}
+}
+
+func TestListFilterValues_UnsupportedField(t *testing.T) {
+	db := setupTestDB(t)
+	seedDB(t, db)
+
+	_, err := db.ListFilterValues([]searchv1.RecordQueryType{
+		searchv1.RecordQueryType_RECORD_QUERY_TYPE_ANNOTATION,
+	})
+	require.ErrorContains(t, err, "unsupported filter value field")
+}
+
+func TestListFilterValues_EmptyRegistry(t *testing.T) {
+	db := setupTestDB(t)
+
+	got, err := db.ListFilterValues([]searchv1.RecordQueryType{
+		searchv1.RecordQueryType_RECORD_QUERY_TYPE_SKILL_NAME,
+	})
+	require.NoError(t, err)
+
+	assert.Equal(t, []types.FilterFieldValues{
+		{Field: searchv1.RecordQueryType_RECORD_QUERY_TYPE_SKILL_NAME, Values: []string{}},
+	}, got)
 }
 
 func TestGetRecordCIDs_Wildcards(t *testing.T) {
@@ -587,13 +737,167 @@ func TestGetRecordCIDs_NegatedScanSeverity(t *testing.T) {
 		ScannerType: "MCP",
 		IsSafe:      false,
 		MaxSeverity: "HIGH",
-	}))
+		Status:      types.ScanStatusCompleted,
+	}, types.DefaultScanSchedule()))
 
 	cids, err := db.GetRecordCIDs(types.WithoutScanSeverities("HIGH"))
 	require.NoError(t, err)
 	assert.NotContains(t, cids, marketingAgent.GetCid())
 	assert.Contains(t, cids, healthcareAgent.GetCid())
 	assert.Contains(t, cids, codeAssistant.GetCid())
+}
+
+// seedScanReport writes one scan_reports row for a record.
+func seedScanReport(t *testing.T, db *gormdb.DB, cid, status, reason string, safe bool, severity string) {
+	t.Helper()
+
+	require.NoError(t, db.UpsertScanReport(&gormdb.ScanReport{
+		RecordCID:     cid,
+		ScannerType:   "MCP",
+		IsSafe:        safe,
+		MaxSeverity:   severity,
+		Status:        status,
+		FailureReason: reason,
+	}, types.DefaultScanSchedule()))
+}
+
+// Regression guard for the status gate. A failed row populates the NOT NULL
+// is_safe column and so satisfies the "was scanned" EXISTS; without the gate
+// every unscannable record would report as safe.
+func TestGetRecordCIDs_ScanSafe_IgnoresFailedRows(t *testing.T) {
+	db := setupTestDB(t)
+	seedDB(t, db)
+
+	seedScanReport(t, db, marketingAgent.GetCid(), types.ScanStatusCompleted, "", true, "NONE")
+	seedScanReport(t, db, healthcareAgent.GetCid(), types.ScanStatusFailed, "source-unreachable", false, "NONE")
+
+	safe, err := db.GetRecordCIDs(types.WithScanSafe(true))
+	require.NoError(t, err)
+	assert.Contains(t, safe, marketingAgent.GetCid())
+	assert.NotContains(t, safe, healthcareAgent.GetCid(), "an unscannable record is not safe")
+
+	// Nor unsafe: is_safe=false on a failed row is a fail-closed placeholder,
+	// not a verdict.
+	unsafe, err := db.GetRecordCIDs(types.WithScanSafe(false))
+	require.NoError(t, err)
+	assert.NotContains(t, unsafe, healthcareAgent.GetCid())
+}
+
+// A partial scan counts as scanned: its findings are real. Full coverage is
+// asked for with --safe --scan-status completed.
+func TestGetRecordCIDs_ScanSafe_CountsPartialAsScanned(t *testing.T) {
+	db := setupTestDB(t)
+	seedDB(t, db)
+
+	seedScanReport(t, db, marketingAgent.GetCid(), types.ScanStatusPartial, "source-unreachable", true, "NONE")
+
+	safe, err := db.GetRecordCIDs(types.WithScanSafe(true))
+	require.NoError(t, err)
+	assert.Contains(t, safe, marketingAgent.GetCid())
+
+	full, err := db.GetRecordCIDs(types.WithScanSafe(true), types.WithScanStatuses(types.ScanStatusCompleted))
+	require.NoError(t, err)
+	assert.NotContains(t, full, marketingAgent.GetCid())
+}
+
+// max_severity is a placeholder on a failed row too, so it needs the same gate.
+func TestGetRecordCIDs_ScanSeverity_IgnoresFailedRows(t *testing.T) {
+	db := setupTestDB(t)
+	seedDB(t, db)
+
+	seedScanReport(t, db, marketingAgent.GetCid(), types.ScanStatusFailed, "scanner-crashed", false, "HIGH")
+
+	cids, err := db.GetRecordCIDs(types.WithScanSeverities("MEDIUM"))
+	require.NoError(t, err)
+	assert.NotContains(t, cids, marketingAgent.GetCid())
+}
+
+// The exclude path needs the gate for the same reason: excluding severity NONE
+// asks for records whose scan found something, not for records whose scan never
+// ran and left NONE behind.
+func TestGetRecordCIDs_NegatedScanSeverity_IgnoresFailedRows(t *testing.T) {
+	db := setupTestDB(t)
+	seedDB(t, db)
+
+	seedScanReport(t, db, marketingAgent.GetCid(), types.ScanStatusFailed, "source-unreachable", false, "NONE")
+	seedScanReport(t, db, healthcareAgent.GetCid(), types.ScanStatusCompleted, "", true, "NONE")
+
+	cids, err := db.GetRecordCIDs(types.WithoutScanSeverities("NONE"))
+	require.NoError(t, err)
+	assert.Contains(t, cids, marketingAgent.GetCid(), "a failed scan is not a finding of NONE")
+	assert.NotContains(t, cids, healthcareAgent.GetCid())
+}
+
+func TestGetRecordCIDs_ScanStatus(t *testing.T) {
+	db := setupTestDB(t)
+	seedDB(t, db)
+
+	seedScanReport(t, db, marketingAgent.GetCid(), types.ScanStatusFailed, "source-unreachable", false, "NONE")
+	seedScanReport(t, db, healthcareAgent.GetCid(), types.ScanStatusPartial, "endpoint-unreachable", true, "NONE")
+	seedScanReport(t, db, codeAssistant.GetCid(), types.ScanStatusCompleted, "", true, "NONE")
+
+	t.Run("single status", func(t *testing.T) {
+		cids, err := db.GetRecordCIDs(types.WithScanStatuses(types.ScanStatusFailed))
+		require.NoError(t, err)
+		assert.Contains(t, cids, marketingAgent.GetCid())
+		assert.NotContains(t, cids, healthcareAgent.GetCid())
+		assert.NotContains(t, cids, codeAssistant.GetCid())
+	})
+
+	t.Run("statuses are OR'd", func(t *testing.T) {
+		cids, err := db.GetRecordCIDs(types.WithScanStatuses(types.ScanStatusFailed, types.ScanStatusPartial))
+		require.NoError(t, err)
+		assert.Contains(t, cids, marketingAgent.GetCid())
+		assert.Contains(t, cids, healthcareAgent.GetCid())
+		assert.NotContains(t, cids, codeAssistant.GetCid())
+	})
+
+	t.Run("exclusion keeps never-scanned records", func(t *testing.T) {
+		cids, err := db.GetRecordCIDs(types.WithoutScanStatuses(types.ScanStatusFailed))
+		require.NoError(t, err)
+		assert.NotContains(t, cids, marketingAgent.GetCid())
+		assert.Contains(t, cids, codeAssistant.GetCid())
+	})
+}
+
+func TestGetRecordCIDs_ScanFailureReason(t *testing.T) {
+	db := setupTestDB(t)
+	seedDB(t, db)
+
+	seedScanReport(t, db, marketingAgent.GetCid(), types.ScanStatusFailed, "source-unreachable", false, "NONE")
+	seedScanReport(t, db, healthcareAgent.GetCid(), types.ScanStatusFailed, "scanner-crashed", false, "NONE")
+	seedScanReport(t, db, codeAssistant.GetCid(), types.ScanStatusCompleted, "", true, "NONE")
+
+	t.Run("exact reason", func(t *testing.T) {
+		cids, err := db.GetRecordCIDs(types.WithScanFailureReasons("source-unreachable"))
+		require.NoError(t, err)
+		assert.Contains(t, cids, marketingAgent.GetCid())
+		assert.NotContains(t, cids, healthcareAgent.GetCid())
+	})
+
+	// Wildcards select a whole fault class, separating our outages from record
+	// defects.
+	t.Run("wildcard matches a reason family", func(t *testing.T) {
+		cids, err := db.GetRecordCIDs(types.WithScanFailureReasons("scanner-*"))
+		require.NoError(t, err)
+		assert.Contains(t, cids, healthcareAgent.GetCid())
+		assert.NotContains(t, cids, marketingAgent.GetCid())
+	})
+
+	// A completed row stores an empty reason, so a failure wildcard must not
+	// pick it up.
+	t.Run("completed rows have no reason", func(t *testing.T) {
+		cids, err := db.GetRecordCIDs(types.WithScanFailureReasons("*"))
+		require.NoError(t, err)
+		assert.NotContains(t, cids, codeAssistant.GetCid())
+	})
+
+	t.Run("exclusion", func(t *testing.T) {
+		cids, err := db.GetRecordCIDs(types.WithoutScanFailureReasons("source-unreachable"))
+		require.NoError(t, err)
+		assert.NotContains(t, cids, marketingAgent.GetCid())
+		assert.Contains(t, cids, healthcareAgent.GetCid())
+	})
 }
 
 // TestGetRecordCIDs_NegatedAuthors_NullSurvives guards against the bug where

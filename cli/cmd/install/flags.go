@@ -27,6 +27,19 @@ func addSelectionFlags(cmd *cobra.Command, opts *options) {
 	flags.BoolVarP(&opts.yes, "yes", "y", false, "Skip the confirmation prompt")
 }
 
+// addPinFlag registers --pin on an install entry point. It is a local flag, not
+// a persistent one, so it does not appear on `install uninstall`, where holding
+// a version has no meaning.
+//
+// The usage text carries no backquotes on purpose: pflag reads a backquoted
+// word as the flag's value-type name, so "`upgrade`" would render the boolean
+// as "--pin upgrade".
+func addPinFlag(cmd *cobra.Command, opts *options) {
+	cmd.Flags().BoolVar(&opts.pin, "pin", false,
+		"Hold this package at the installed version, so a bare upgrade skips it "+
+			"(implied when the reference names an explicit :version)")
+}
+
 // scopeFromOpts maps the --project flag to the placement scope.
 func scopeFromOpts() agentcfg.Scope {
 	if opts.project {

@@ -11,9 +11,7 @@ import (
 
 func TestGetRegistryAddressUsesDefaultRegistryPort(t *testing.T) {
 	address, err := Config{
-		AuthConfig: AuthConfig{
-			Insecure: true,
-		},
+		Insecure: true,
 	}.GetRegistryAddress()
 
 	require.NoError(t, err)
@@ -25,7 +23,7 @@ func TestGetRegistryAddressUsesDefaultRegistryPort(t *testing.T) {
 func TestGetAdvertisedRegistryAddressFallsBackToDialed(t *testing.T) {
 	cfg := Config{
 		RegistryAddress: "dir-zot.dir.svc.cluster.local:5000",
-		AuthConfig:      AuthConfig{Insecure: true},
+		Insecure:        true,
 	}
 
 	address, err := cfg.GetAdvertisedRegistryAddress()
@@ -41,7 +39,7 @@ func TestGetAdvertisedRegistryAddressUsesOwnTLSMode(t *testing.T) {
 	cfg := Config{
 		RegistryAddress:           "dir-zot.dir.svc.cluster.local:5000",
 		AdvertisedRegistryAddress: "store.example.com",
-		AuthConfig:                AuthConfig{Insecure: true},
+		Insecure:                  true,
 	}
 
 	dialed, err := cfg.GetRegistryAddress()

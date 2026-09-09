@@ -9,9 +9,6 @@ on:
 
 permissions:
   contents: read
-  security-events: write # for uploading SARIF
-  actions: read
-  issues: write # create issues for critical CVEs
 
 jobs:
   image-list:
@@ -24,7 +21,7 @@ jobs:
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
 
       - name: Install Task
-        uses: go-task/setup-task@01a4adf9db2d14c1de7a560f09170b6e0df736aa # v2.1.0
+        uses: go-task/setup-task@a00fbb05ce67b35648be3c78cbc9fd85354c757e # v2.2.0
 
       - name: Get image list from task
         id: matrix
@@ -41,6 +38,10 @@ jobs:
     name: Trivy Scan
     runs-on: ubuntu-latest
     needs: [image-list]
+    permissions:
+      contents: read
+      actions: read
+      security-events: write
     strategy:
       fail-fast: false
       matrix: ${{ fromJson(needs.image-list.outputs.matrix) }}
@@ -67,7 +68,7 @@ jobs:
         run: echo "${{ matrix.image }}" > trivy-${{ steps.image-name.outputs.name }}.meta
 
       - name: Upload SARIF
-        uses: github/codeql-action/upload-sarif@e4fba868fa4b1b91e1fdab776edc8cfbe6e9fb81 # v4.37.3
+        uses: github/codeql-action/upload-sarif@ff2f1c621b7f889edc0d3c761ac2e6a3f8cdb0dd # v4.37.7
         with:
           sarif_file: trivy-${{ steps.image-name.outputs.name }}.sarif
           category: trivy-${{ steps.image-name.outputs.name }}
@@ -86,6 +87,9 @@ jobs:
     needs: [trivy-scan]
     runs-on: ubuntu-latest
     if: always()
+    permissions:
+      contents: read
+      issues: write
     steps:
       - name: Checkout
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0

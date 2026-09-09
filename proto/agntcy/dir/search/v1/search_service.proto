@@ -43,6 +43,17 @@ service SearchService {
   // Count records that match the given parameters.
   // This operation does not interact with the network.
   rpc CountRecords(CountRecordsRequest) returns (CountRecordsResponse);
+
+  // List the distinct values present in the registry for the given record fields.
+  //
+  // Intended for populating filter panels: every returned value is one that some
+  // record actually carries, so a filter built from it can never yield an empty
+  // result. Values are returned verbatim in the form a RecordQuery accepts, so
+  // they can be fed straight back into SearchCIDs, SearchRecords, or CountRecords.
+  //
+  // Values are registry-wide; no query context is applied.
+  // This operation does not interact with the network.
+  rpc ListFilterValues(ListFilterValuesRequest) returns (ListFilterValuesResponse);
 }
 
 message SearchCIDsRequest {
@@ -91,4 +102,44 @@ message SearchRecordsResponse {
 message CountRecordsResponse {
   // Total number of distinct records that match the search criteria.
   uint32 total_count = 1;
+}
+
+message ListFilterValuesRequest {
+  // Which fields to return distinct values for. Empty returns every supported
+  // field.
+  //
+  // Supported fields are RECORD_QUERY_TYPE_SKILL_NAME,
+  // RECORD_QUERY_TYPE_MODULE_NAME, RECORD_QUERY_TYPE_DOMAIN_NAME,
+  // RECORD_QUERY_TYPE_AUTHOR, and RECORD_QUERY_TYPE_SCHEMA_VERSION. Requesting
+  // any other type fails the call rather than silently omitting it. The name
+  // variants are used instead of the numeric *_ID types so that every value is
+  // a human-meaningful string.
+  //
+  // Repeating a field also fails the call: it carries no meaning, and each
+  // repeat would cost another scan of the registry and another copy of that
+  // field's values in the response.
+  //
+  // RECORD_QUERY_TYPE_VERSION is deliberately not supported: a record's own
+  // version is per-record identity rather than a shared facet, so a
+  // registry-wide distinct list of versions grows with the registry and answers
+  // no useful question. It becomes meaningful only with a query context that
+  // scopes it to a single record, which this RPC does not take.
+  repeated RecordQueryType fields = 1;
+}
+
+message ListFilterValuesResponse {
+  // The distinct values present for a single record field.
+  message FieldValues {
+    // The field these values belong to.
+    RecordQueryType field = 1;
+
+    // Distinct values present in the registry, sorted lexicographically.
+    // Records that leave the field unset contribute no entry.
+    repeated string values = 2;
+  }
+
+  // One entry per requested field, in the order the fields were requested.
+  // When the request left fields empty, entries are ordered by ascending
+  // RecordQueryType number.
+  repeated FieldValues fields = 1;
 }

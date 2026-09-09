@@ -1,9 +1,10 @@
 # Directory
 
-![GitHub Release (latest by date)](https://img.shields.io/github/v/release/agntcy/dir)
+[![GitHub Release (latest by date)](https://img.shields.io/github/v/release/agntcy/dir)](https://github.com/agntcy/dir/releases/latest)
 [![CI](https://github.com/agntcy/dir/actions/workflows/ci.yaml/badge.svg?branch=main)](https://github.com/agntcy/dir/actions/workflows/ci.yaml)
 [![Coverage](https://codecov.io/gh/agntcy/dir/branch/main/graph/badge.svg)](https://codecov.io/gh/agntcy/dir)
 [![License](https://img.shields.io/github/license/agntcy/dir)](./LICENSE.md)
+[![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/agntcy/dir/badge)](https://scorecard.dev/viewer/?uri=github.com/agntcy/dir)
 
 [Buf Registry](https://buf.build/agntcy/dir) | 
 [MCP Server](https://github.com/agntcy/dir-mcp) | 
@@ -115,8 +116,8 @@ It is not advised to use artifacts with mismatched versions.
 All container images are distributed via [GitHub Packages](https://github.com/orgs/agntcy/packages?repo_name=dir).
 
 ```bash
-docker pull ghcr.io/agntcy/dir-ctl:v1.6.2
-docker pull ghcr.io/agntcy/dir-apiserver:v1.6.2
+docker pull ghcr.io/agntcy/dir-ctl:v1.7.0
+docker pull ghcr.io/agntcy/dir-apiserver:v1.7.0
 ```
 
 ### Helm charts
@@ -124,7 +125,7 @@ docker pull ghcr.io/agntcy/dir-apiserver:v1.6.2
 All helm charts are distributed as OCI artifacts via [GitHub Packages](https://github.com/agntcy/dir/pkgs/container/dir%2Fhelm-charts%2Fdir).
 
 ```bash
-helm pull oci://ghcr.io/agntcy/dir/helm-charts/dir --version v1.6.2
+helm pull oci://ghcr.io/agntcy/dir/helm-charts/dir --version v1.7.0
 ```
 
 ### Binaries
@@ -187,8 +188,8 @@ task server:start
 This will deploy Directory services into an existing Kubernetes cluster.
 
 ```bash
-helm pull oci://ghcr.io/agntcy/dir/helm-charts/dir --version v1.6.2
-helm upgrade --install dir oci://ghcr.io/agntcy/dir/helm-charts/dir --version v1.6.2
+helm pull oci://ghcr.io/agntcy/dir/helm-charts/dir --version v1.7.0
+helm upgrade --install dir oci://ghcr.io/agntcy/dir/helm-charts/dir --version v1.7.0
 ```
 
 ## Copyright Notice

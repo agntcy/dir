@@ -11,6 +11,16 @@ includes:
       DIRCTL_DATA_PATH: "/tmp/e2e-local-local-testenv"
       DIRCTL_CONFIG_PATH: "{{.ROOT_DIR}}/tests/e2e/local/testenv/local/dir-daemon-config.yaml"
       DIRCTL_LOGFILE_PATH:  "{{.ROOT_DIR}}/tests/e2e/local/testenv/local/logs.daemon.log"
+      # Pin the CLI to the same extractor this daemon resolves. The daemon reads
+      # its own from dir-daemon-config.yaml, which sets no extractor block and so
+      # takes the default asset dir and OASF URL. `dirctl init` fills any flag
+      # left unset from the machine-wide saved config — asset dir, OASF URL and
+      # remote address alike — so on a machine carrying custom saved values a
+      # bare init would provision and load a different extractor than the daemon
+      # uses. Passing all three empty resolves each back to its default, which is
+      # what the daemon has. The readiness gate and the search parity spec both
+      # depend on the two sides agreeing.
+      DIRCTL_INIT_ARGS: "--extractor-remote-addr= --asset-dir= --oasf-url="
 
 tasks:
   up:

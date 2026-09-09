@@ -40,6 +40,9 @@ type Filters struct {
 	ModuleIDs      FilterValues
 	Annotations    FilterValues
 
+	ScanStatuses       FilterValues
+	ScanFailureReasons FilterValues
+
 	// ScanSeverity is a single threshold rather than a repeatable match, so it
 	// sits outside valueFilters.
 	ScanSeverity        string
@@ -159,6 +162,20 @@ func (f *Filters) valueFilters() []valueFilter {
 			excludeUsage: "Exclude records with specific module ID (e.g., --exclude-module-id '201')",
 			queryType:    searchv1.RecordQueryType_RECORD_QUERY_TYPE_MODULE_ID,
 			values:       &f.ModuleIDs,
+		},
+		{
+			flag:         "scan-status",
+			usage:        "Search for records with a scan result of a given status: completed, partial, or failed (e.g., --scan-status failed)",
+			excludeUsage: "Exclude records with a scan result of a given status (e.g., --exclude-scan-status partial)",
+			queryType:    searchv1.RecordQueryType_RECORD_QUERY_TYPE_SCAN_STATUS,
+			values:       &f.ScanStatuses,
+		},
+		{
+			flag:         "scan-failure-reason",
+			usage:        "Search for records whose scan could not run for a given reason (e.g., --scan-failure-reason source-unreachable --scan-failure-reason 'scanner-*')",
+			excludeUsage: "Exclude records whose scan could not run for a given reason (e.g., --exclude-scan-failure-reason llm-not-configured)",
+			queryType:    searchv1.RecordQueryType_RECORD_QUERY_TYPE_SCAN_FAILURE_REASON,
+			values:       &f.ScanFailureReasons,
 		},
 		{
 			flag:         "annotation",

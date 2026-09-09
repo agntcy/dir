@@ -35,8 +35,12 @@ directly into the configuration of detected AI coding agents.
 
   dirctl install <cid-or-name>            detect agents, preview, confirm, install
   dirctl install run <cid-or-name>        same as above
+  dirctl install <cid-or-name> --pin      install and hold at this version
   dirctl install uninstall <cid-or-name>  remove what install added
   dirctl install list                     show detected agents and target paths
+
+Every install records what it wrote — record, version, agent, and the exact
+files and MCP server keys — in $XDG_CONFIG_HOME/dirctl/installed.json.
 
 Batch install from search filters (no positional argument):
 
@@ -78,6 +82,7 @@ Examples:
 func init() {
 	addSelectionFlags(Command, &opts)
 	addBatchFlags(Command, &opts)
+	addPinFlag(Command, &opts)
 
 	Command.AddCommand(runCmd)
 	Command.AddCommand(uninstallCmd)
@@ -103,35 +108,56 @@ func selectAgents(cmd *cobra.Command, env agentcfg.Env) ([]agentcfg.Agent, error
 }
 
 // pullAndDerive resolves the ref, pulls the record, and derives its artifacts.
-func pullAndDerive(cmd *cobra.Command, input string) (agentinstall.Artifacts, error) {
+// The record itself comes back too, because the manifest row needs the name,
+// version, and CID that Artifacts does not carry.
+func pullAndDerive(cmd *cobra.Command, input string) (applied, error) {
 	c, ok := ctxUtils.GetClientFromContext(cmd.Context())
 	if !ok {
-		return agentinstall.Artifacts{}, errors.New("failed to get client from context")
+		return applied{}, errors.New("failed to get client from context")
 	}
 
 	cid, err := reference.ResolveToCID(cmd.Context(), c, input)
 	if err != nil {
-		return agentinstall.Artifacts{}, fmt.Errorf("resolve reference: %w", err)
+		return applied{}, fmt.Errorf("resolve reference: %w", err)
 	}
 
-	record, err := c.Pull(cmd.Context(), &corev1.RecordRef{Cid: cid})
+	rec, err := c.Pull(cmd.Context(), &corev1.RecordRef{Cid: cid})
 	if err != nil {
-		return agentinstall.Artifacts{}, fmt.Errorf("failed to pull record: %w", err)
+		return applied{}, fmt.Errorf("failed to pull record: %w", err)
 	}
 
-	return agentinstall.DeriveArtifacts(record)
+	arts, err := agentinstall.DeriveArtifacts(rec)
+	if err != nil {
+		return applied{}, err
+	}
+
+	return applied{record: rec, arts: arts, pinned: pinRequested(input)}, nil
+}
+
+// pinRequested reports whether this install should hold the package at the
+// version it resolved to. An explicit `:version` in the reference is the same
+// statement as --pin made a different way, so it implies the pin.
+func pinRequested(input string) bool {
+	return opts.pin || reference.Parse(input).Version != ""
 }
 
 // runInstallCmd is the shared body for the parent's bare-positional form and the
 // `run` subcommand.
 func runInstallCmd(cmd *cobra.Command, input string) error {
-	return runApplyCmd(cmd, input, agentinstall.Install, "\nProceed with these changes?")
+	return runApplyCmd(cmd, input, agentinstall.Install, recordInstalls, "\nProceed with these changes?")
 }
 
 // runApplyCmd is the single-record flow shared by install and uninstall: pull +
-// derive, dry-run plan, confirm, apply, summary. apply is Install or Uninstall.
-func runApplyCmd(cmd *cobra.Command, input string, apply recordApplyFn, confirmPrompt string) error {
-	arts, err := pullAndDerive(cmd, input)
+// derive, dry-run plan, confirm, apply, summary, manifest. apply is Install or
+// Uninstall, and record is the matching manifest update.
+func runApplyCmd(
+	cmd *cobra.Command,
+	input string,
+	apply recordApplyFn,
+	record manifestRecordFn,
+	confirmPrompt string,
+) error {
+	item, err := pullAndDerive(cmd, input)
 	if err != nil {
 		return err
 	}
@@ -146,7 +172,7 @@ func runApplyCmd(cmd *cobra.Command, input string, apply recordApplyFn, confirmP
 
 	printScope(cmd)
 
-	plan := apply(env, arts, selected, scope, true)
+	plan := apply(env, item.arts, selected, scope, true)
 	presenter.Printf(cmd, "%s", agentcfg.FormatPlan(plan))
 
 	if len(plan) == 0 {
@@ -166,8 +192,15 @@ func runApplyCmd(cmd *cobra.Command, input string, apply recordApplyFn, confirmP
 		}
 	}
 
-	outcomes := apply(env, arts, selected, scope, opts.dryRun)
-	presenter.Printf(cmd, "%s", agentcfg.FormatSummary(outcomes, opts.dryRun))
+	item.outcomes = apply(env, item.arts, selected, scope, opts.dryRun)
+	presenter.Printf(cmd, "%s", agentcfg.FormatSummary(item.outcomes, opts.dryRun))
+
+	// A dry run touched nothing, so there is nothing to record.
+	if opts.dryRun {
+		return nil
+	}
+
+	record(cmd, []applied{item}, selected, scope)
 
 	return nil
 }

@@ -6,7 +6,10 @@ package cmd
 import (
 	"bytes"
 	"context"
+	_ "embed"
 	"fmt"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"strings"
@@ -58,7 +61,7 @@ func TestLocalCommandsDoNotRequireOIDCToken(t *testing.T) {
 		},
 		{
 			name: "validate",
-			args: []string{"validate", recordPath, "--url", "https://schema.oasf.outshift.com"},
+			args: []string{"validate", recordPath, "--url", schemaURL(t)},
 		},
 		{
 			name: "network init",
@@ -243,6 +246,36 @@ func TestResolveClientConfigIgnoresDefaultClientConfigWithoutChangedFlags(t *tes
 	require.Error(t, err)
 	require.Nil(t, cfg)
 	require.Contains(t, err.Error(), "server_address is required")
+}
+
+// recordedValidResponse is the response fixture recorded from the live schema
+// service for validate/testdata/record_valid.json on 2026-07-31.
+//
+//go:embed validate/testdata/schema_response_valid.json
+var recordedValidResponse []byte
+
+// schemaURL returns the URL to hand the validate command's --url flag.
+//
+// OASF_SCHEMA_URL wins when set — the live-service opt-in #1953 introduces
+// for the validate package's unit tests. Otherwise a local httptest server
+// replays the recorded response, so the default unit run stays off the
+// network. The server is deliberately body-blind: this test asserts on the
+// auth path (validate must not demand an OIDC token), not on validation
+// semantics, which #1953 covers with per-fixture recorded responses.
+func schemaURL(t *testing.T) string {
+	t.Helper()
+
+	if live := os.Getenv("OASF_SCHEMA_URL"); live != "" {
+		return live
+	}
+
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write(recordedValidResponse)
+	}))
+	t.Cleanup(srv.Close)
+
+	return srv.URL
 }
 
 func executeRootWithOIDCWithoutToken(t *testing.T, args ...string) error {

@@ -13,3 +13,7 @@ var runCmd = &cobra.Command{
 		return runInstallCmd(cmd, args[0])
 	},
 }
+
+func init() {
+	addPinFlag(runCmd, &opts)
+}

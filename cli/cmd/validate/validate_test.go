@@ -34,7 +34,7 @@ func TestValidateCommand_NoFileArgs(t *testing.T) {
 	opts.SchemaURL = ""
 
 	cmd := Command
-	cmd.SetArgs([]string{"--url", "https://schema.oasf.outshift.com"})
+	cmd.SetArgs([]string{"--url", schemaURL(t)})
 	cmd.SetContext(context.Background())
 
 	// Provide JSON via stdin (no file path argument)
@@ -62,7 +62,7 @@ func TestValidateCommand_TooManyArgs(t *testing.T) {
 	opts.SchemaURL = ""
 
 	cmd := Command
-	cmd.SetArgs([]string{"--url", "https://schema.oasf.outshift.com", "file1.json", "file2.json"})
+	cmd.SetArgs([]string{"--url", schemaURL(t), "file1.json", "file2.json"})
 	cmd.SetContext(context.Background())
 
 	var stderr bytes.Buffer
@@ -79,7 +79,7 @@ func TestValidateCommand_FileNotFound(t *testing.T) {
 	opts.SchemaURL = ""
 
 	cmd := Command
-	cmd.SetArgs([]string{"--url", "https://schema.oasf.outshift.com", "nonexistent.json"})
+	cmd.SetArgs([]string{"--url", schemaURL(t), "nonexistent.json"})
 	cmd.SetContext(context.Background())
 
 	var stderr bytes.Buffer
@@ -102,7 +102,7 @@ func TestValidateCommand_InvalidJSON(t *testing.T) {
 	opts.SchemaURL = ""
 
 	cmd := Command
-	cmd.SetArgs([]string{"--url", "https://schema.oasf.outshift.com", invalidJSONFile})
+	cmd.SetArgs([]string{"--url", schemaURL(t), invalidJSONFile})
 	cmd.SetContext(context.Background())
 
 	var stderr bytes.Buffer
@@ -159,7 +159,7 @@ func TestValidateCommand_Stdin(t *testing.T) {
 	opts.SchemaURL = ""
 
 	cmd := Command
-	cmd.SetArgs([]string{"--url", "https://schema.oasf.outshift.com"})
+	cmd.SetArgs([]string{"--url", schemaURL(t)})
 	cmd.SetContext(context.Background())
 
 	// Provide JSON via stdin - need to ensure the reader is positioned correctly
@@ -198,7 +198,7 @@ func TestRunCommand_InvalidRecordStructure(t *testing.T) {
 	opts.SchemaURL = ""
 
 	cmd := Command
-	cmd.SetArgs([]string{"--url", "https://schema.oasf.outshift.com", invalidJSONFile})
+	cmd.SetArgs([]string{"--url", schemaURL(t), invalidJSONFile})
 	cmd.SetContext(context.Background())
 
 	var stdout bytes.Buffer
@@ -273,7 +273,7 @@ func TestValidateCommand_RealFiles(t *testing.T) {
 			opts.SchemaURL = ""
 
 			cmd := Command
-			cmd.SetArgs([]string{"--url", "https://schema.oasf.outshift.com", filePath})
+			cmd.SetArgs([]string{"--url", schemaURL(t), filePath})
 			cmd.SetContext(context.Background())
 
 			// Verify flag is set before execution (cobra will parse it during Execute)

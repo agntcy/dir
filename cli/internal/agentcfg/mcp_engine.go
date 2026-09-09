@@ -38,14 +38,14 @@ func mcpConfigPath(target *MCPTarget, env Env, scope Scope) (string, error) {
 func InstallMCP(target *MCPTarget, env Env, entry map[string]any, serverName string, scope Scope, dryRun bool) (Outcome, error) {
 	path, err := mcpConfigPath(target, env, scope)
 	if errors.Is(err, ErrNoScopePath) {
-		return skipScopeOutcome("mcp", scope), nil
+		return skipScopeOutcome(ArtifactMCP, scope), nil
 	}
 
 	if err != nil {
-		return failOutcome(Outcome{Artifact: "mcp"}, fmt.Errorf("resolve mcp config path: %w", err))
+		return failOutcome(Outcome{Artifact: ArtifactMCP}, fmt.Errorf("resolve mcp config path: %w", err))
 	}
 
-	outcome := Outcome{Artifact: "mcp", Path: path}
+	outcome := Outcome{Artifact: ArtifactMCP, Path: path, Server: serverName}
 
 	m, err := loadConfig(target.Format, path)
 	if err != nil {
@@ -84,14 +84,14 @@ func InstallMCP(target *MCPTarget, env Env, entry map[string]any, serverName str
 func RemoveMCP(target *MCPTarget, env Env, serverName string, scope Scope, dryRun bool) (Outcome, error) {
 	path, err := mcpConfigPath(target, env, scope)
 	if errors.Is(err, ErrNoScopePath) {
-		return skipScopeOutcome("mcp", scope), nil
+		return skipScopeOutcome(ArtifactMCP, scope), nil
 	}
 
 	if err != nil {
-		return failOutcome(Outcome{Artifact: "mcp"}, fmt.Errorf("resolve mcp config path: %w", err))
+		return failOutcome(Outcome{Artifact: ArtifactMCP}, fmt.Errorf("resolve mcp config path: %w", err))
 	}
 
-	outcome := Outcome{Artifact: "mcp", Path: path}
+	outcome := Outcome{Artifact: ArtifactMCP, Path: path, Server: serverName}
 
 	if _, statErr := os.Stat(path); os.IsNotExist(statErr) {
 		outcome.Action = ActionUnchanged

@@ -307,7 +307,7 @@ func knownTopLevelKeys() map[string]struct{} {
 			continue
 		}
 
-		name := strings.Split(tag, ",")[0]
+		name, _, _ := strings.Cut(tag, ",")
 		if name == "" {
 			name = strings.ToLower(field.Name)
 		}

@@ -18,11 +18,11 @@ vars:
 
   ## External dependency versions
   # renovate: datasource=go depName=github.com/project-zot/zot versioning=semver
-  ZOT_VERSION: "2.1.18"
+  ZOT_VERSION: "2.1.21"
   # renovate: datasource=go depName=github.com/spiffe/spire versioning=semver
-  SPIRE_VERSION: "1.15.2"
+  SPIRE_VERSION: "1.15.3"
   # renovate: datasource=docker depName=docker.io/bitnami/postgresql
-  POSTGRESQL_VERSION: "latest@sha256:a727ea9d5ceb64beb404afeb62a4b757fe3c33c2a09af86dc391a3a0dfed6049"
+  POSTGRESQL_VERSION: "latest@sha256:7b9c5292a8e8b38e7172705cc6e49e34b9a8d9c297c4c7ae04130a3e6a28f3b0"
 
   ## Container images for vulnerability scanning
   VULN_SCAN_IMAGES:
@@ -64,16 +64,17 @@ vars:
   PROTOC_BIN: "{{ .BIN_DIR }}/protoc-{{.PROTOC_VERSION}}"
   BUFBUILD_VERSION: "1.66.1"
   BUFBUILD_BIN: "{{ .BIN_DIR }}/bufbuild-{{.BUFBUILD_VERSION}}"
-  GO_VERSION: "1.26.5"
+  GO_VERSION: "1.27.1"
   MULTIMOD_VERSION: "0.29.0"
   MULTIMOD_BIN: "{{ .BIN_DIR }}/multimod-{{.MULTIMOD_VERSION}}"
   # renovate: datasource=go depName=github.com/mikefarah/yq/v4 versioning=semver
-  YQ_VERSION: "4.53.3"
+  YQ_VERSION: "4.53.6"
   YQ_BIN: "{{ .BIN_DIR }}/yq-{{.YQ_VERSION}}"
-  GOLANGCI_LINT_VERSION: "2.11.3"
+  GOLANGCI_LINT_VERSION: "2.13.2"
   GOLANGCI_LINT_BIN: "{{ .BIN_DIR }}/golangci-lint-{{.GOLANGCI_LINT_VERSION}}"
-  LICENSEI_VERSION: "0.9.0"
-  LICENSEI_BIN: "{{ .BIN_DIR }}/licensei-{{.LICENSEI_VERSION}}"
+  # renovate: datasource=go depName=github.com/google/go-licenses/v2 versioning=semver
+  GO_LICENSES_VERSION: "2.0.1"
+  GO_LICENSES_BIN: "{{ .BIN_DIR }}/go-licenses-{{.GO_LICENSES_VERSION}}"
   UV_VERSION: "0.10.11"
   UV_BIN: "{{ .BIN_DIR }}/uv-{{.UV_VERSION}}"
   COSIGN_VERSION: "3.0.5"

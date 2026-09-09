@@ -45,7 +45,7 @@ services:
         condition: on-failure
 
   zot:
-    image: ghcr.io/project-zot/zot:v2.1.18
+    image: ghcr.io/project-zot/zot:v2.1.21
     ports:
       - 5555:5000
     deploy:
@@ -55,7 +55,7 @@ services:
         condition: on-failure
 
   postgres:
-    image: docker.io/bitnami/postgresql:latest@sha256:a727ea9d5ceb64beb404afeb62a4b757fe3c33c2a09af86dc391a3a0dfed6049
+    image: docker.io/bitnami/postgresql:latest@sha256:7b9c5292a8e8b38e7172705cc6e49e34b9a8d9c297c4c7ae04130a3e6a28f3b0
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres

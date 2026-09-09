@@ -51,7 +51,7 @@ func (m *mockDB) InvalidateSignatureVerificationsForRecord(string) error {
 	return nil
 }
 
-func (m *mockDB) UpsertScanReport(r types.ScanReportObject) error {
+func (m *mockDB) UpsertScanReport(r types.ScanReportObject, _ types.ScanSchedule) error {
 	m.upsertCalls++
 	m.upsertReport = r
 
@@ -113,6 +113,10 @@ func (m *mockStore) WalkReferrers(context.Context, string, string, func(*corev1.
 }
 
 func (m *mockStore) DeleteReferrer(context.Context, string, string, string) ([]string, error) {
+	return nil, nil
+}
+
+func (m *mockStore) DeleteReferrers(context.Context, string, []string, string) ([]string, error) {
 	return nil, nil
 }
 

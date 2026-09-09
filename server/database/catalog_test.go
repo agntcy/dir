@@ -303,6 +303,9 @@ func TestListCatalogTags(t *testing.T) {
 	tags, err := db.ListCatalogTags()
 	require.NoError(t, err)
 
+	// Only OASF skills and domains become tags. Record annotations are free-form
+	// per-deployment metadata with unbounded cardinality, so they are not offered
+	// as discovery tags even though they remain filterable.
 	assert.Equal(t, []*catalogv1.CatalogTag{
 		{
 			Id:    catalogv1.DomainTag("*", "life_science/biotechnology"),
@@ -312,8 +315,6 @@ func TestListCatalogTags(t *testing.T) {
 			Id:    catalogv1.SkillTag("*", "test_skill"),
 			Label: "Test Skill",
 		},
-		{Id: "featured", Label: "featured"},
-		{Id: "owner=alice", Label: "owner=alice"},
 	}, tags)
 }
 
@@ -341,4 +342,73 @@ func TestGetCatalogEntries_TrustStatusMetadata(t *testing.T) {
 	status := entries[0].GetMetadata()[catalogv1.TrustStatusMetadataKey].GetStructValue().AsMap()
 	assert.Equal(t, true, status["trusted"])
 	assert.Equal(t, true, status["verified"])
+}
+
+// The manifest drives a scan badge, so only a row carrying a verdict may reach
+// it. A failed row leaves the key absent, so the badge stays hidden as it did
+// before failures were persisted; an unsafe verdict must still be shown.
+func TestGetCatalogEntries_ScanManifestExcludesFailedReports(t *testing.T) {
+	const scanResultKey = "agntcy.dir.security.v1.ScanResult"
+
+	tests := []struct {
+		name        string
+		status      string
+		reason      string
+		safe        bool
+		severity    string
+		wantPresent bool
+		wantSafe    bool
+	}{
+		{
+			name:     "failed row is withheld",
+			status:   types.ScanStatusFailed,
+			reason:   "source-unreachable",
+			severity: "NONE",
+		},
+		{
+			name:        "completed clean row is projected",
+			status:      types.ScanStatusCompleted,
+			safe:        true,
+			severity:    "NONE",
+			wantPresent: true,
+			wantSafe:    true,
+		},
+		{
+			name:        "completed unsafe row is still projected",
+			status:      types.ScanStatusCompleted,
+			severity:    "HIGH",
+			wantPresent: true,
+		},
+		{
+			name:        "partial row is projected",
+			status:      types.ScanStatusPartial,
+			reason:      "endpoint-unreachable",
+			safe:        true,
+			severity:    "NONE",
+			wantPresent: true,
+			wantSafe:    true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			db := setupTestDB(t)
+			require.NoError(t, db.AddRecord(a2aRecord))
+			seedScanReport(t, db, a2aRecord.GetCid(), tt.status, tt.reason, tt.safe, tt.severity)
+
+			entries, _, err := db.GetCatalogEntries()
+			require.NoError(t, err)
+			require.Len(t, entries, 1)
+
+			manifest, ok := entries[0].GetMetadata()[scanResultKey]
+			if !tt.wantPresent {
+				assert.False(t, ok, "a failed scan must not render a badge")
+
+				return
+			}
+
+			require.True(t, ok, "a scan verdict must render a badge")
+			assert.Equal(t, tt.wantSafe, manifest.GetStructValue().GetFields()["isSafe"].GetBoolValue())
+		})
+	}
 }

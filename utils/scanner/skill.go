@@ -57,7 +57,11 @@ func (r *SkillRunner) Name() string { return "skill" }
 func (r *SkillRunner) Run(ctx context.Context, record *corev1.Record) (*ScanResult, error) {
 	raw := skillArtifactBytes(record)
 	if raw == nil {
-		return &ScanResult{Skipped: true, SkippedReason: "no agentskills module found"}, nil
+		return &ScanResult{
+			Skipped:       true,
+			SkippedReason: "no agentskills module found",
+			FailureReason: FailureArtifactMissing,
+		}, nil
 	}
 
 	tmpDir, err := os.MkdirTemp("", "skill-scan-*")

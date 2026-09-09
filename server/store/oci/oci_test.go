@@ -21,10 +21,10 @@ import (
 var (
 	// test config.
 	testConfig = ociconfig.Config{
-		LocalDir:        os.TempDir(),                         // used for local test/bench
-		RegistryAddress: ociconfig.DefaultRegistryAddress,     // used for remote test/bench
-		RepositoryName:  "test-store",                         // used for remote test/bench
-		AuthConfig:      ociconfig.AuthConfig{Insecure: true}, // used for remote test/bench
+		LocalDir:        os.TempDir(),                     // used for local test/bench
+		RegistryAddress: ociconfig.DefaultRegistryAddress, // used for remote test/bench
+		RepositoryName:  "test-store",                     // used for remote test/bench
+		Insecure:        true,                             // used for remote test/bench
 	}
 	runLocal = true
 	// TODO: this may blow quickly when doing rapid benchmarking if not tested against fresh OCI instance.

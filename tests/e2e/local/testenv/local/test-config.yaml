@@ -2,6 +2,10 @@ local:
   server_address: "localhost:19888"
   metrics_address: "http://localhost:19889/metrics"
   gateway_address: "http://localhost:19892"
+  # The daemon resolves the in-process extractor from the assets `dirctl init`
+  # provisions (the testenv runs it), and the CLI reads the same saved config,
+  # so both sides of the search parity spec share one backend.
+  extractor_mode: "local"
   # cli_path: "/path/to/cli"
   cli_extra_args:
   - "--server-addr=localhost:19888"

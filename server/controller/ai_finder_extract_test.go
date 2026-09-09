@@ -59,11 +59,11 @@ func extractCtrl(ext *fakeExtractor) catalogv1.AIFinderServiceServer {
 func TestExtractTaxonomy_MapsExtractorResult(t *testing.T) {
 	ext := &fakeExtractor{result: sdk.Result{
 		Skills: []sdk.ScoredClass{
-			{Class: sdk.Class{ID: 10304, Name: "natural_language_processing/text_classification"}, Score: 0.82, Tier: 1},
-			{Class: sdk.Class{ID: 10201, Name: "natural_language_processing/summarization"}, Score: 0.44, Tier: 2},
+			{ID: 10304, Name: "natural_language_processing/text_classification", Score: 0.82, Tier: 1},
+			{ID: 10201, Name: "natural_language_processing/summarization", Score: 0.44, Tier: 2},
 		},
 		Domains: []sdk.ScoredClass{
-			{Class: sdk.Class{ID: 901, Name: "customer_service"}, Score: 0.71, Tier: 1},
+			{ID: 901, Name: "customer_service", Score: 0.71, Tier: 1},
 		},
 		Keywords: []sdk.Keyword{
 			{Text: "support", Score: 0.6},
@@ -104,7 +104,7 @@ func TestExtractTaxonomy_NoMatchesIsEmptyNotError(t *testing.T) {
 
 func TestExtractTaxonomy_ModulesAreNotReturned(t *testing.T) {
 	ext := &fakeExtractor{result: sdk.Result{
-		Modules: []sdk.ScoredClass{{Class: sdk.Class{ID: 5, Name: "runtime/manifest"}, Score: 0.9, Tier: 1}},
+		Modules: []sdk.ScoredClass{{ID: 5, Name: "runtime/manifest", Score: 0.9, Tier: 1}},
 	}}
 
 	resp, err := extractCtrl(ext).ExtractTaxonomy(context.Background(),

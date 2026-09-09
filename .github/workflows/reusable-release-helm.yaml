@@ -31,6 +31,9 @@ on:
         description: "Chart path component (e.g., 'dir' or 'dir-dev'). Defaults to 'dir'."
         default: "dir"
 
+permissions:
+  contents: read
+
 jobs:
   chart:
     name: Helm chart
@@ -43,6 +46,7 @@ jobs:
           - chart: dirctl
             source_path: install/charts/dirctl
     permissions:
+      contents: read
       packages: write
     steps:
       - name: Checkout code
@@ -51,7 +55,7 @@ jobs:
           fetch-depth: 0
 
       - name: Log in to GitHub Container Registry
-        uses: docker/login-action@af1e73f918a031802d376d3c8bbc3fe56130a9b0 # v4.4.0
+        uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
         with:
           registry: ghcr.io
           username: notused

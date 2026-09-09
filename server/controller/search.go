@@ -12,6 +12,8 @@ import (
 	databaseutils "github.com/agntcy/dir/server/database/utils"
 	"github.com/agntcy/dir/server/types"
 	"github.com/agntcy/dir/utils/logging"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 )
 
 var searchLogger = logging.Logger("controller/search")
@@ -44,6 +46,45 @@ func (c *searchCtlr) CountRecords(_ context.Context, req *searchv1.CountRecordsR
 	}
 
 	return &searchv1.CountRecordsResponse{TotalCount: totalCount}, nil
+}
+
+func (c *searchCtlr) ListFilterValues(_ context.Context, req *searchv1.ListFilterValuesRequest) (*searchv1.ListFilterValuesResponse, error) {
+	searchLogger.Debug("Called search controller's ListFilterValues method", "req", req)
+
+	// Validate up front so a caller gets a precise error rather than a response
+	// that silently omits or duplicates what it asked for, and so a malformed
+	// request costs no database work.
+	seen := make(map[searchv1.RecordQueryType]struct{}, len(req.GetFields()))
+
+	for _, field := range req.GetFields() {
+		if !types.IsSupportedFilterValueField(field) {
+			return nil, status.Errorf(codes.InvalidArgument,
+				"unsupported field %s: supported fields are %v", field, types.SupportedFilterValueFields())
+		}
+
+		// Each repeat would cost another full scan and another copy of the
+		// field's values, and asking for the same field twice means nothing.
+		if _, duplicate := seen[field]; duplicate {
+			return nil, status.Errorf(codes.InvalidArgument, "duplicate field %s", field)
+		}
+
+		seen[field] = struct{}{}
+	}
+
+	fieldValues, err := c.db.ListFilterValues(req.GetFields())
+	if err != nil {
+		return nil, fmt.Errorf("failed to list filter values: %w", err)
+	}
+
+	fields := make([]*searchv1.ListFilterValuesResponse_FieldValues, 0, len(fieldValues))
+	for _, fieldValue := range fieldValues {
+		fields = append(fields, &searchv1.ListFilterValuesResponse_FieldValues{
+			Field:  fieldValue.Field,
+			Values: fieldValue.Values,
+		})
+	}
+
+	return &searchv1.ListFilterValuesResponse{Fields: fields}, nil
 }
 
 func (c *searchCtlr) SearchCIDs(req *searchv1.SearchCIDsRequest, srv searchv1.SearchService_SearchCIDsServer) error {

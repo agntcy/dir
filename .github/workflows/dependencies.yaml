@@ -5,6 +5,9 @@ on:
   schedule:
     - cron: "0 */6 * * *"
 
+permissions:
+  contents: read
+
 jobs:
   renovate:
     name: Renovate Sync
@@ -26,12 +29,12 @@ jobs:
           persist-credentials: false
 
       - name: Install Task
-        uses: go-task/setup-task@01a4adf9db2d14c1de7a560f09170b6e0df736aa # v2.1.0
+        uses: go-task/setup-task@a00fbb05ce67b35648be3c78cbc9fd85354c757e # v2.2.0
 
       - name: Set up Go
         uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6.5.0
         with:
-          go-version: "1.26.5"
+          go-version: "1.27.1"
           cache: true
           cache-dependency-path: "**/*.sum"
 
