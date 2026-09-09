@@ -33,9 +33,10 @@ func (a Artifacts) SkillFiles() []string { return a.skillFiles }
 
 // BuildEntry builds the install-manifest row for one agent out of the outcomes
 // an apply produced, recording the artifacts that actually landed rather than
-// the ones the record's modules imply. That distinction is the point: a later
-// uninstall or upgrade removes exactly these paths and server keys, without
-// re-fetching a record that may since have been garbage-collected upstream.
+// the ones the record's modules imply. That distinction is the point, though
+// nothing acts on it yet: it is what will let a manifest-driven uninstall or
+// upgrade remove exactly these paths and server keys, without re-fetching a
+// record that may since have been garbage-collected upstream.
 //
 // It reports false when nothing landed for this agent, because every outcome
 // was skipped or failed, so a listing never claims an install that did not

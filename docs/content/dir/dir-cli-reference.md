@@ -194,9 +194,15 @@ version and CID that were installed, the skill path and its file list, and the
 MCP server keys.
 
 The row lists the artifacts that were **actually written**, not the ones the
-record's modules imply, so a later uninstall removes exactly those without
-re-fetching a record that may since have been garbage-collected upstream. An
-agent that received nothing — skipped or failed — is not recorded.
+record's modules imply. An agent that received nothing — skipped or failed — is
+not recorded.
+
+Today the manifest is only bookkeeping: `uninstall` still resolves and pulls
+the record, derives its current artifacts, removes those, and then deletes the
+rows. It does not read `skillFiles` or `mcpServers` to decide what to remove.
+Recording them is what will let a future manifest-driven `uninstall` and
+`upgrade` remove exactly the artifacts that were written, without re-fetching a
+record that may since have been garbage-collected upstream.
 
 A row names every artifact `dirctl` wrote and has not since removed, so
 reinstalling carries forward anything the previous row named that the new

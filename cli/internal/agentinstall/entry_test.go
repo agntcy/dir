@@ -109,6 +109,30 @@ func TestBuildEntryIgnoresOtherAgentsOutcomes(t *testing.T) {
 	assert.Equal(t, "/claude/skills/x", entry.SkillPath)
 }
 
+func TestBuildEntryRecordsAnAgentServedByASharedSkill(t *testing.T) {
+	// Claude Code and Claude Desktop share one skills folder, so the file is
+	// written once. Both agents are served by it, so both get a row naming it.
+	claudeDesktop := agentcfg.Agent{ID: "claude-desktop", Name: "Claude Desktop"}
+
+	outcomes := []agentcfg.Outcome{
+		{Agent: "Claude Code", Artifact: agentcfg.ArtifactSkill, Path: "/skills/x", Action: agentcfg.ActionAdded},
+		{
+			Agent: "Claude Desktop", Artifact: agentcfg.ArtifactSkill, Path: "/skills/x",
+			Action: agentcfg.ActionUnchanged, Reason: sharedSkillReason,
+		},
+	}
+
+	first, ok := BuildEntry(Artifacts{}, claudeCode, outcomes)
+	require.True(t, ok)
+
+	second, ok := BuildEntry(Artifacts{}, claudeDesktop, outcomes)
+	require.True(t, ok)
+
+	assert.Equal(t, "/skills/x", first.SkillPath)
+	assert.Equal(t, "/skills/x", second.SkillPath)
+	assert.Equal(t, "claude-desktop", second.Agent)
+}
+
 func TestBuildEntryRecordsBundleFileList(t *testing.T) {
 	arts, err := DeriveArtifacts(newSkillBundleRecord(t))
 	require.NoError(t, err)

@@ -6,9 +6,10 @@
 //
 // Installed artifacts carry no provenance of their own — an Agent Skill is
 // marked only with its slug, with no version and no CID — so installed state
-// cannot be reconstructed from disk. This file is the only source of truth for
-// answering "what is installed, and is any of it stale?", and for removing
-// exactly what was written.
+// cannot be reconstructed from disk. This file is therefore the only place that
+// can answer "what is installed, and is any of it stale?", and the only place
+// that will be able to say what to remove once removal stops re-deriving
+// artifacts from the record.
 //
 // Two rules shape the API:
 //
@@ -92,9 +93,10 @@ type Key struct {
 // Entry is one installed package, for one agent, at one scope.
 //
 // The artifact fields record what was actually written, not what the record's
-// modules imply. That is what lets a later uninstall or upgrade remove exactly
-// those files and server keys without re-fetching a record that may since have
-// been garbage-collected upstream.
+// modules imply. Nothing reads them yet: today's uninstall re-derives artifacts
+// from the record and then deletes rows. They exist so that manifest-driven
+// uninstall and upgrade can remove exactly these files and server keys without
+// re-fetching a record that may since have been garbage-collected upstream.
 //
 // There is deliberately no artifact "type" field: one record can yield both a
 // skill and MCP servers, so the kind is derived from these fields for display.

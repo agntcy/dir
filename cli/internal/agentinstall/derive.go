@@ -132,8 +132,8 @@ func deriveSkillArtifacts(record *corev1.Record, arts *Artifacts) error {
 
 		// Listed once here, where a malformed bundle can still be reported as an
 		// error, so SkillFiles stays a plain accessor. The install manifest
-		// records the list, which is what lets a later uninstall or upgrade
-		// remove exactly these files.
+		// records the list so that a later manifest-driven uninstall or upgrade
+		// can remove exactly these files.
 		files, err := exportfmt.SkillBundleFiles(out)
 		if err != nil {
 			return fmt.Errorf("list skill bundle files: %w", err)

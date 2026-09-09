@@ -57,9 +57,9 @@ func SkillMarkdownFromArchive(archive []byte) (string, error) {
 //
 // TarEntry's fields are unexported, so this is the one accessor callers outside
 // this package have for entry names. `dirctl install` records the list in its
-// install manifest, which is what lets a later uninstall or upgrade remove
-// exactly the files that were written without re-fetching a record that may
-// since have been garbage-collected upstream.
+// install manifest, so that a later manifest-driven uninstall or upgrade can
+// remove exactly the files that were written without re-fetching a record that
+// may since have been garbage-collected upstream.
 func SkillBundleFiles(archive []byte) ([]string, error) {
 	if len(archive) == 0 {
 		return nil, fmt.Errorf("skill bundle archive is empty")
