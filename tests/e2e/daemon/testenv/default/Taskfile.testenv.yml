@@ -11,3 +11,7 @@ includes:
       DIRCTL_DATA_PATH: "/tmp/e2e-daemon-default-testenv"
       DIRCTL_CONFIG_PATH: "{{.ROOT_DIR}}/tests/e2e/daemon/testenv/default/dir-daemon-config.yaml"
       DIRCTL_LOGFILE_PATH:  "{{.ROOT_DIR}}/tests/e2e/daemon/testenv/default/logs.daemon.log"
+      # This suite exercises the gateway with no extractor, and nothing here uses
+      # the CLI's extractor, so skip the ~89 MB asset download. It runs on three
+      # runners in the cross-platform workflow, none of which cache the assets.
+      DIRCTL_PROVISION_EXTRACTOR: "false"

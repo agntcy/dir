@@ -15,9 +15,28 @@ type Config struct {
 	// this environment, in which case AI Finder HTTP tests are skipped.
 	GatewayAddress string `json:"gateway_address,omitempty" mapstructure:"gateway_address"`
 
-	// RemoteExtractorEnabled requires the gateway to use a deployed OASF extractor.
-	// Disabled environments skip the remote extractor HTTP tests.
-	RemoteExtractorEnabled bool `json:"remote_extractor_enabled,omitempty" mapstructure:"remote_extractor_enabled"`
+	// ExtractorMode names the OASF extractor backend the deployed gateway
+	// resolves in this environment: "local" for in-process assets provisioned
+	// by `dirctl init`, "remote" for a gRPC OASF-SDK server. Empty means the
+	// environment declares no extractor, so extractor-backed specs skip.
+	//
+	// The extractor-backed specs read this rather than probing the asset
+	// directory. Probing cannot tell the two apart: a developer machine that has
+	// run `dirctl init` has local assets on disk even when the gateway under
+	// test is wired to a remote server.
+	//
+	// It also decides whether the search parity spec can run. Comparing
+	// `dirctl search` against POST /v1/search only means something when both
+	// reach the same extractor, which is true in "local" mode and not under
+	// kind, where the OASF-SDK Service is ClusterIP-only and the CLI cannot
+	// reach the backend the gateway uses.
+	//
+	// This replaces the earlier remote_extractor_enabled boolean, which said
+	// only whether the backend was remote. Two fields for one fact let an
+	// environment set one and not the other, and the specs disagree about
+	// whether to skip; the mode also has to distinguish "local" from "no
+	// extractor", which a boolean cannot.
+	ExtractorMode string `json:"extractor_mode,omitempty" mapstructure:"extractor_mode"`
 
 	// CliPath is the path to the CLI binary.
 	CliPath string `json:"cli_path,omitempty" mapstructure:"cli_path"`
