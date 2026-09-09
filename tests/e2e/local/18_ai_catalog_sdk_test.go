@@ -16,10 +16,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/agntcy/ai-catalog-go/catalog"
-	"github.com/agntcy/ai-catalog-go/provider"
-	"github.com/agntcy/ai-catalog-go/trust"
-	"github.com/agntcy/ai-catalog-go/validate"
+	"github.com/Agent-Card/ai-catalog-go/catalog"
+	"github.com/Agent-Card/ai-catalog-go/provider"
+	"github.com/Agent-Card/ai-catalog-go/trust"
+	"github.com/Agent-Card/ai-catalog-go/validate"
 	catalogv1 "github.com/agntcy/dir/api/catalog/v1"
 	"github.com/agntcy/dir/tests/e2e/shared/testdata"
 	"github.com/agntcy/dir/tests/e2e/shared/utils"
@@ -28,12 +28,7 @@ import (
 	"google.golang.org/protobuf/encoding/protojson"
 )
 
-const (
-	catalogSDKSpecVersion = "1.0"
-	a2aMediaType          = "application/a2a-agent-card+json"
-	mcpMediaType          = "application/mcp-server-card+json"
-	skillMediaType        = "application/agent-skills+md"
-)
+const catalogSDKSpecVersion = "1.0"
 
 var _ = ginkgo.Describe("AI Catalog Go SDK conformance", func() {
 	ginkgo.BeforeEach(func() {
@@ -95,10 +90,10 @@ var _ = ginkgo.Describe("AI Catalog Go SDK conformance", func() {
 			gomega.Expect(wire.GetCollections()).To(gomega.HaveLen(4))
 
 			expectedCollections := map[string]string{
-				"A2A Agents":          a2aMediaType,
-				"MCP Servers":         mcpMediaType,
-				"Agent Skills":        skillMediaType,
-				"Agent Skill Bundles": "application/agent-skills+gzip",
+				"A2A Agents":          catalog.MediaTypeA2AAgentCard,
+				"MCP Servers":         catalog.MediaTypeMCPServerCard,
+				"Agent Skills":        catalog.MediaTypeAgentSkillsMarkdown,
+				"Agent Skill Bundles": catalog.MediaTypeAgentSkillsGzip,
 			}
 			seenCollections := make(map[string]struct{}, len(wire.GetCollections()))
 
@@ -179,8 +174,8 @@ var _ = ginkgo.Describe("AI Catalog Go SDK conformance", func() {
 			nested, err := catalog.Parse(entry.Data)
 			gomega.Expect(err).NotTo(gomega.HaveOccurred())
 			gomega.Expect(nested.Entries).To(gomega.HaveLen(2))
-			gomega.Expect(nested.GetByType(a2aMediaType)).To(gomega.HaveLen(1))
-			gomega.Expect(nested.GetByType(mcpMediaType)).To(gomega.HaveLen(1))
+			gomega.Expect(nested.GetByType(catalog.MediaTypeA2AAgentCard)).To(gomega.HaveLen(1))
+			gomega.Expect(nested.GetByType(catalog.MediaTypeMCPServerCard)).To(gomega.HaveLen(1))
 		})
 
 		ginkgo.It("validates the Agent Skill projection with the SDK", func(ctx ginkgo.SpecContext) {
@@ -196,7 +191,7 @@ var _ = ginkgo.Describe("AI Catalog Go SDK conformance", func() {
 			}).WithContext(ctx).WithTimeout(30 * time.Second).WithPolling(time.Second).Should(gomega.Succeed())
 
 			wireEntry := findCatalogEntry(response.GetResults(), skillCID)
-			gomega.Expect(wireEntry.GetMediaType()).To(gomega.Equal(skillMediaType))
+			gomega.Expect(wireEntry.GetMediaType()).To(gomega.Equal(catalog.MediaTypeAgentSkillsMarkdown))
 			gomega.Expect(wireEntry.GetData()).NotTo(gomega.BeNil())
 
 			entry, err := adaptCatalogEntry(wireEntry)
@@ -209,7 +204,7 @@ var _ = ginkgo.Describe("AI Catalog Go SDK conformance", func() {
 			result := validate.Validate(doc)
 			gomega.Expect(result.IsValid).To(gomega.BeTrue(), "SDK validation errors: %+v", result.Errors)
 
-			gomega.Expect(doc.GetByType(skillMediaType)).To(gomega.HaveLen(1))
+			gomega.Expect(doc.GetByType(catalog.MediaTypeAgentSkillsMarkdown)).To(gomega.HaveLen(1))
 		})
 
 		ginkgo.It("returns the same SDK-compatible entry from the detail endpoint", func(ctx ginkgo.SpecContext) {
