@@ -25,12 +25,12 @@ var _ = ginkgo.Describe("Natural-language search", func() {
 
 	ginkgo.Context("free-text query with OASF extractor", ginkgo.Ordered, func() {
 		ginkgo.BeforeAll(func() {
-			// Check for the oasf-sdk manifest written by `dirctl init`. This mirrors
-			// what extractor.IsProvisioned does without importing the internal package.
+			// Check for the oasf-sdk extractor manifest written by `dirctl init`.
+			// This mirrors extractor.IsProvisioned without importing the internal package.
 			home, homeErr := os.UserHomeDir()
 			gomega.Expect(homeErr).NotTo(gomega.HaveOccurred())
 
-			manifest := filepath.Join(home, ".agntcy", "oasf-sdk", "manifest.json")
+			manifest := filepath.Join(home, ".agntcy", "oasf-sdk", "extractor", "manifest.json")
 			if _, err := os.Stat(manifest); err != nil {
 				ginkgo.Skip("OASF extractor not provisioned — run `dirctl init` to enable natural-language search tests")
 			}
@@ -49,6 +49,14 @@ var _ = ginkgo.Describe("Natural-language search", func() {
 		})
 
 		ginkgo.AfterAll(func() {
+			// Delete the pushed record so it does not leak into the shared daemon.
+			// The fixture is named "org.agntcy/directory", the same name the daemon
+			// self-publishes its skill record under, so a leaked copy would shadow
+			// it in name searches run by other suites (e.g. 14_skill_record_test).
+			// Mirrors the cleanup in 16_extractor_enricher_test.go.
+			if recordCID != "" {
+				_ = testEnv.CLI.Delete(recordCID).ShouldSucceed()
+			}
 			if tempDir != "" {
 				_ = os.RemoveAll(tempDir)
 			}
