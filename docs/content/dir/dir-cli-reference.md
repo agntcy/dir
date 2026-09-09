@@ -184,6 +184,35 @@ Writes are atomic and surgical: only our own MCP entry, skill file/folder, or
 delimited managed block is added/updated/removed — all of your existing
 configuration is preserved.
 
+### The install manifest
+
+Installed artifacts carry no provenance of their own: an Agent Skill is marked
+only with its slug, with no version and no CID. So every global install records
+what it wrote in `$XDG_CONFIG_HOME/dirctl/installed.json` (`~/.config` when
+`XDG_CONFIG_HOME` is unset) — one row per record, agent, and scope, holding the
+version and CID that were installed, the skill path and its file list, and the
+MCP server keys.
+
+The row lists the artifacts that were **actually written**, not the ones the
+record's modules imply. An agent that received nothing — skipped or failed — is
+not recorded.
+
+Today the manifest is only bookkeeping: `uninstall` still resolves and pulls
+the record, derives its current artifacts, removes those, and then deletes the
+rows. It does not read `skillFiles` or `mcpServers` to decide what to remove.
+Recording them is what will let a future manifest-driven `uninstall` and
+`upgrade` remove exactly the artifacts that were written, without re-fetching a
+record that may since have been garbage-collected upstream.
+
+A row names every artifact `dirctl` wrote and has not since removed, so
+reinstalling carries forward anything the previous row named that the new
+install did not write. That covers a reinstall where one artifact failed, and a
+new version that renames its MCP server while the old key stays in the config.
+
+The manifest is bookkeeping, not the product: if it cannot be read or written,
+`dirctl` prints a warning and the install still succeeds. Project-scope
+(`--project`) installs are not recorded yet.
+
 ### `dirctl install list`
 
 Lists every supported agent, whether it is detected on this machine, and the
@@ -210,6 +239,7 @@ A2A-only record, points you to `dirctl export`.
 | `--project` | Write into the current repo (project scope) instead of the user's global config | `false` |
 | `--dry-run` | Preview the plan without writing | `false` |
 | `--yes` / `-y` | Skip the confirmation prompt | `false` |
+| `--pin` | Hold the package at the version that was installed. Implied when the reference names an explicit `:version` | `false` |
 
 Valid agent IDs: `claude-code`, `claude-desktop`, `cursor`, `vscode`, `windsurf`,
 `cline`, `roo`, `gemini`, `opencode`, `zed`, `continue`, `codex` (see
@@ -244,6 +274,13 @@ Removes what `install` added for that record — its MCP entry and/or skill —
 leaving all other content intact. Shares the same flags as install (`--agents`,
 `--project`, `--dry-run`, `--yes`). Idempotent: an agent with nothing of ours
 installed is reported as unchanged, never an error.
+
+The record's row is dropped from the install manifest for every agent whose
+artifacts are confirmed gone, meaning at least one was removed or already
+absent and none failed. An agent keeps its row when a removal failed, and when
+every artifact was skipped because its location could not be resolved for that
+scope — in both cases something may still be on disk, and the row is the only
+note of what it is.
 
 `dirctl uninstall <cid-or-name>` is a top-level shorthand for
 `dirctl install uninstall <cid-or-name>` (same flags and behavior).

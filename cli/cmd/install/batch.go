@@ -99,29 +99,45 @@ func formatSkippedSummary(skipped []skippedRecord) string {
 }
 
 type installTarget struct {
-	label string
-	arts  agentinstall.Artifacts
+	label  string
+	record *corev1.Record
+	arts   agentinstall.Artifacts
 }
 
 type recordApplyFn func(env agentcfg.Env, arts agentinstall.Artifacts, agents []agentcfg.Agent, scope agentcfg.Scope, dryRun bool) []agentcfg.Outcome
 
-func buildTaggedOutcomes(
+// applyTargets applies every target and returns the outcomes twice over: kept
+// per record, which is what a manifest row is built from, and flattened for the
+// plan and summary. Both views come from one pass, so what gets recorded is
+// exactly what the user was shown.
+func applyTargets(
 	env agentcfg.Env,
 	targets []installTarget,
 	selected []agentcfg.Agent,
 	scope agentcfg.Scope,
 	dryRun bool,
 	apply recordApplyFn,
-) []agentcfg.Outcome {
+) ([]applied, []agentcfg.Outcome) {
+	items := make([]applied, 0, len(targets))
+
 	var outcomes []agentcfg.Outcome
 
 	for _, target := range targets {
 		recordOutcomes := apply(env, target.arts, selected, scope, dryRun)
 		tagOutcomes(recordOutcomes, target.label)
+
+		items = append(items, applied{
+			record: target.record,
+			arts:   target.arts,
+			// Batch mode installs whatever the search matched, so there is no
+			// explicit :version to imply a pin; only --pin can ask for one.
+			pinned:   opts.pin,
+			outcomes: recordOutcomes,
+		})
 		outcomes = append(outcomes, recordOutcomes...)
 	}
 
-	return outcomes
+	return items, outcomes
 }
 
 func pullBatchRecords(cmd *cobra.Command, queries []*searchv1.RecordQuery) ([]*corev1.Record, error) {
@@ -154,7 +170,7 @@ func buildBatchTargets(cmd *cobra.Command, recs []*corev1.Record) ([]installTarg
 			continue
 		}
 
-		targets = append(targets, installTarget{label: label, arts: arts})
+		targets = append(targets, installTarget{label: label, record: record, arts: arts})
 	}
 
 	return targets, skipped
@@ -193,7 +209,12 @@ func confirmBatchUninstall(cmd *cobra.Command) (bool, error) {
 	return confirmBatch(cmd, "\nRemove these artifacts?")
 }
 
-func runBatch(cmd *cobra.Command, apply recordApplyFn, confirmFn func(*cobra.Command) (bool, error)) error {
+func runBatch(
+	cmd *cobra.Command,
+	apply recordApplyFn,
+	record manifestRecordFn,
+	confirmFn func(*cobra.Command) (bool, error),
+) error {
 	queries, err := requireBatchQueries()
 	if err != nil {
 		return err
@@ -221,7 +242,7 @@ func runBatch(cmd *cobra.Command, apply recordApplyFn, confirmFn func(*cobra.Com
 	printScope(cmd)
 
 	targets, skipped := buildBatchTargets(cmd, selectRecords(recs))
-	plan := buildTaggedOutcomes(env, targets, selected, scope, true, apply)
+	_, plan := applyTargets(env, targets, selected, scope, true, apply)
 
 	presenter.Printf(cmd, "%s", agentcfg.FormatPlan(plan))
 	printSkippedSummary(cmd, skipped)
@@ -239,19 +260,26 @@ func runBatch(cmd *cobra.Command, apply recordApplyFn, confirmFn func(*cobra.Com
 		return nil
 	}
 
-	outcomes := buildTaggedOutcomes(env, targets, selected, scope, opts.dryRun, apply)
+	items, outcomes := applyTargets(env, targets, selected, scope, opts.dryRun, apply)
 	presenter.Printf(cmd, "%s", agentcfg.FormatSummary(outcomes, opts.dryRun))
 	printSkippedSummary(cmd, skipped)
+
+	// A dry run touched nothing, so there is nothing to record.
+	if opts.dryRun {
+		return nil
+	}
+
+	record(cmd, items, selected, scope)
 
 	return nil
 }
 
 // runBatchInstall searches for records and installs each into the selected agents.
 func runBatchInstall(cmd *cobra.Command) error {
-	return runBatch(cmd, agentinstall.Install, confirmBatchChanges)
+	return runBatch(cmd, agentinstall.Install, recordInstalls, confirmBatchChanges)
 }
 
 // runBatchUninstall searches for records and removes each from the selected agents.
 func runBatchUninstall(cmd *cobra.Command) error {
-	return runBatch(cmd, agentinstall.Uninstall, confirmBatchUninstall)
+	return runBatch(cmd, agentinstall.Uninstall, recordUninstalls, confirmBatchUninstall)
 }

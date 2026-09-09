@@ -3,6 +3,14 @@
 
 package agentcfg
 
+// The artifact kinds reported in Outcome.Artifact.
+const (
+	// ArtifactMCP is an MCP server entry in an agent's config file.
+	ArtifactMCP = "mcp"
+	// ArtifactSkill is an Agent Skill file, folder, or managed block.
+	ArtifactSkill = "skill"
+)
+
 // Action is the outcome of touching a single artifact location.
 type Action string
 
@@ -45,9 +53,15 @@ func skipScopeOutcome(artifact string, scope Scope) Outcome {
 type Outcome struct {
 	Record   string // optional record label for batch install grouping
 	Agent    string // human-readable agent name
-	Artifact string // "mcp" or "skill"
+	Artifact string // ArtifactMCP or ArtifactSkill
 	Path     string // absolute path that was (or would be) touched
 	Action   Action
 	Reason   string // populated on skip/fail or notable fallbacks
 	Err      error
+
+	// Server is the config key an MCP server entry was stored under, empty for
+	// skills. One agent gets one outcome per server, all sharing a Path, so this
+	// is the only thing that tells them apart — which is what lets the install
+	// manifest record the server keys that were actually written.
+	Server string
 }

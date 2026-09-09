@@ -13,8 +13,8 @@ import (
 
 	corev1 "github.com/agntcy/dir/api/core/v1"
 	searchv1 "github.com/agntcy/dir/api/search/v1"
+	"github.com/agntcy/dir/cli/util/pkgver"
 	"github.com/agntcy/dir/client"
-	"golang.org/x/mod/semver"
 )
 
 // CollectCIDs runs a search and returns the matching record CIDs.
@@ -82,6 +82,11 @@ func SanitizeSlug(name string) string {
 
 // LatestByName deduplicates records by name, keeping the highest semver version
 // for each unique name while preserving first-seen order.
+//
+// Ordering goes through cli/util/pkgver, which is the single implementation of
+// "is this newer?" for the CLI. A version the library cannot order is treated
+// as no version at all, so it never displaces a comparable one and never wins
+// by accident.
 func LatestByName(records []*corev1.Record) []*corev1.Record {
 	type entry struct {
 		record  *corev1.Record
@@ -94,7 +99,7 @@ func LatestByName(records []*corev1.Record) []*corev1.Record {
 
 	for _, r := range records {
 		name := r.GetName()
-		ver := canonicalVersion(r.GetVersion())
+		ver := pkgver.Canonical(r.GetVersion())
 
 		existing, seen := best[name]
 		if !seen {
@@ -108,7 +113,7 @@ func LatestByName(records []*corev1.Record) []*corev1.Record {
 			continue
 		}
 
-		if existing.version == "" || semver.Compare(ver, existing.version) > 0 {
+		if existing.version == "" || pkgver.Compare(ver, existing.version) > 0 {
 			best[name] = &entry{record: r, version: ver}
 		}
 	}
@@ -148,17 +153,4 @@ func BatchFileName(record *corev1.Record, index int, seen map[string]int, allVer
 	}
 
 	return base
-}
-
-func canonicalVersion(raw string) string {
-	v := raw
-	if v != "" && v[0] != 'v' {
-		v = "v" + v
-	}
-
-	if semver.IsValid(v) {
-		return v
-	}
-
-	return ""
 }
