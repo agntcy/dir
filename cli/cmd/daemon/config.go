@@ -53,6 +53,15 @@ func registerServerDefaults(v *viper.Viper) {
 	v.SetDefault("server.store.oci.registry_address", storeconfig.DefaultRegistryAddress)
 	v.SetDefault("server.store.oci.repository_name", storeconfig.DefaultRepositoryName)
 
+	// The advertised registry endpoint is absent from daemon.config.yaml, so it
+	// needs registering here for AutomaticEnv. Empty means peers are told to use
+	// the dialed registry address. Mirrors server/config.
+	_ = v.BindEnv("server.store.oci.advertised_registry_address")
+	v.SetDefault("server.store.oci.advertised_registry_address", "")
+
+	_ = v.BindEnv("server.store.oci.advertised_insecure")
+	v.SetDefault("server.store.oci.advertised_insecure", false)
+
 	// The advertised routing endpoints have no default and are absent from
 	// daemon.config.yaml, so they must be registered here for AutomaticEnv to
 	// resolve them. Mirrors server/config.

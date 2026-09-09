@@ -49,11 +49,8 @@
   "enabled": true,
   "minimumReleaseAge": "7 days",
   "schedule": [
-    "before 8am on Monday",
-    "before 8am on Wednesday",
-    "before 8am on Friday"
+    "before 8am on Monday"
   ],
-  "prCreation": "not-pending",
   "enabledManagers": [
     "custom.regex",
     "docker-compose",
@@ -61,7 +58,9 @@
     "github-actions",
     "helm-values",
     "gomod",
-    "helmv3"
+    "helmv3",
+    "npm",
+    "pep621"
   ],
   "labels": ["dependencies"],
   "ignoreDeps": [
@@ -182,14 +181,31 @@
       ]
     },
     {
+      "groupName": "Gateway UI",
+      "groupSlug": "gateway-ui",
+      "matchManagers": ["npm"],
+      "description": ["Group gateway UI dependency updates in single PR."]
+    },
+    {
+      "groupName": "Docs toolchain",
+      "groupSlug": "docs-toolchain",
+      "matchManagers": ["pep621"],
+      "description": ["Group MkDocs toolchain updates in single PR."]
+    },
+    {
       "groupName": "zot",
       "groupSlug": "zot",
       "matchPackageNames": [
         "github.com/project-zot/zot",
-        "ghcr.io/project-zot/zot",
+        "zotregistry.dev/zot{/,}**",
+        "ghcr.io/project-zot/**",
         "zot"
       ],
-      "description": ["Group zot version bumps into a single PR."]
+      "description": [
+        "Group zot version bumps into a single PR.",
+        "Covers the Taskfile pin, the zotregistry.dev/zot Go module, every",
+        "ghcr.io/project-zot image variant, and the zot Helm subchart."
+      ]
     },
     {
       "groupName": "postgresql",

@@ -69,8 +69,19 @@ config:
       # Cache directory to use for metadata.
       # cache_dir: ""
 
-      # Registry address to connect to
+      # Registry address the apiserver dials for its own store operations.
       registry_address: ""
+
+      # Registry address advertised to remote peers (RequestRegistryCredentials
+      # response and routing /oci/ multiaddr). Set to the publicly reachable
+      # endpoint when registry_address is private; empty advertises
+      # registry_address as-is.
+      advertised_registry_address: ""
+
+      # TLS mode advertised with advertised_registry_address (true = plain HTTP).
+      # Independent of auth_config.insecure; ignored when the advertised address
+      # is empty or spells out an http:// or https:// scheme, which wins.
+      advertised_insecure: false
 
       # All data will be stored under this repo.
       # Objects are pushed as tags, manifests, and blobs.
@@ -237,6 +248,24 @@ config:
     # Disable OASF validation entirely (default: false)
     # Set to true to skip schema validation (useful for testing)
     disable: false
+
+  # OASF taxonomy extractor configuration (natural-language search on the HTTP
+  # gateway). The extractor turns free text into OASF skills, domains, modules,
+  # and keywords. It is reachable two ways:
+  #   - remote: a gRPC OASF-SDK server (deploy it with oasf-sdk.enabled: true)
+  #   - local:  in-process assets under asset_dir, provisioned by `dirctl init`
+  #
+  # Nothing is rendered into server.config.yml unless a remote address is
+  # resolved, so the default install keeps the server's own defaults (local
+  # assets). When oasf-sdk.enabled is true and remote_addr is left empty, the
+  # address is derived from the OASF-SDK subchart Service.
+  # extractor:
+  #   # gRPC OASF-SDK server address. Overrides the derived subchart address.
+  #   remote_addr: "oasf-sdk.other-namespace.svc.cluster.local:31234"
+  #   # Local asset directory (only used when remote_addr is empty).
+  #   asset_dir: ""
+  #   # OASF schema endpoint used when loading local assets.
+  #   oasf_url: ""
 
 # SPIRE configuration
 spire:
@@ -653,6 +682,42 @@ externalSecrets:
 oasf:
   enabled: false
 
+# OASF-SDK extractor server subchart configuration (OPTIONAL)
+# The OASF-SDK server is NOT installed by default; local deployments use the
+# extractor assets provisioned by `dirctl init` instead. Set enabled: true to
+# deploy an OASF-SDK gRPC server alongside the apiserver and point the HTTP
+# gateway's natural-language search at it (config.extractor.remote_addr is
+# derived from the Service below unless you set it explicitly).
+#
+# The key is hyphenated because it is the subchart name - see the note in
+# Chart.yaml for why this dependency is not aliased.
+oasf-sdk:
+  enabled: false
+
+  # Pinned rather than inherited: the subchart's appVersion is "latest".
+  # v1.3.0 and newer ship the embedding model inside the image (~90 MB pull),
+  # so the server no longer downloads it from huggingface.co on startup.
+  image:
+    repository: ghcr.io/agntcy/oasf-sdk
+    tag: v1.3.0
+    pullPolicy: IfNotPresent
+
+  # The gRPC server serves plaintext with no authentication, so it must stay
+  # inside the cluster: the gateway reaches it through cluster DNS and a node
+  # port would put free-text user queries on every node IP.
+  service:
+    type: ClusterIP
+    externalPort: 31234
+    internalPort: 31234
+
+  # REQUIRED. The OASF URL is the extractor's on/off switch upstream: the
+  # OASF-SDK server registers ExtractorService only when it is set, and without
+  # it every Extract call fails with "unknown service
+  # agntcy.oasfsdk.extractor.v1.ExtractorService". Kept in step with
+  # config.oasf_api_validation.schema_url above.
+  env:
+    OASF_SDK_EXTRACTOR_OASF_URL: "https://schema.oasf.outshift.com"
+
 # PostgreSQL subchart configuration
 # Deploys PostgreSQL alongside the apiserver for dev/production use.
 # Set enabled: false when using SQLite or external PostgreSQL.
@@ -666,7 +731,7 @@ postgresql:
     repository: bitnami/postgresql
     # renovate: datasource=docker depName=docker.io/bitnami/postgresql versioning=docker
     tag: latest
-    digest: "sha256:a727ea9d5ceb64beb404afeb62a4b757fe3c33c2a09af86dc391a3a0dfed6049"
+    digest: "sha256:7b9c5292a8e8b38e7172705cc6e49e34b9a8d9c297c4c7ae04130a3e6a28f3b0"
   auth:
     username: "dir"
     password: "dirpassword"

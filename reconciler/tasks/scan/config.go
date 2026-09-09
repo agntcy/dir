@@ -5,6 +5,8 @@ package scan
 
 import (
 	"time"
+
+	"github.com/agntcy/dir/server/types"
 )
 
 const (
@@ -72,6 +74,20 @@ type Config struct {
 	// for aggregator records that legitimately bundle several MCP servers;
 	// note that each endpoint costs one scanner invocation per subcommand.
 	MaxEndpointsPerRecord int `json:"max_endpoints_per_record,omitempty" mapstructure:"max_endpoints_per_record"`
+}
+
+// ScanSchedule returns the retry schedule applied to scan result rows.
+//
+// The backoff base is the scan interval, so a first failure retries on the
+// next pass and only repeated ones back off. The schedule is materialised into
+// each row as it is written, so changing the interval does not reschedule
+// existing rows; they adopt it on their next attempt.
+func (c *Config) ScanSchedule() types.ScanSchedule {
+	return types.ScanSchedule{
+		FreshFor:  c.GetTTL(),
+		RetryBase: c.GetInterval(),
+		RetryMax:  types.DefaultScanRetryMax,
+	}
 }
 
 // GetInterval returns the interval with default fallback.

@@ -108,6 +108,7 @@ func resolvedConfigValues(cfg *client.Config) map[string]string {
 		"auth_mode":          cfg.AuthMode,
 		"auth_token":         redact(cfg.AuthToken),
 		"jwt_audience":       cfg.JWTAudience,
+		"oidc_audience":      cfg.OIDCAudience,
 		"oidc_client_id":     cfg.OIDCClientID,
 		"oidc_issuer":        cfg.OIDCIssuer,
 		"oidc_scopes":        strings.Join(cfg.OIDCScopes, " "),

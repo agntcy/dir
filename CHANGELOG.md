@@ -5,6 +5,60 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v1.7.0] - 2026-08-18
+
+### Added
+- **Search**: POST `/v1/search` with `dirctl search` parity (#2005)
+- **Catalog**: POST `/v1/extract` for OASF taxonomy extraction (#2023)
+- **Dir**: extractor in import-records workflow (#2015)
+- **Routing**: `dirctl routing publish --all` support (#1988)
+- **Dir**: split Directory API and OCI addresses for routing advertisement (#2021)
+- **Client/CLI**: refresh OIDC token on the fly (#2026)
+- **Extractor**: move OASF extractor to utils and unify resolution for dirctl and gateway (#2002)
+- **Skill**: fix and update Directory skills (#2004)
+- **Docs**: guide for choosing a Directory setup (#1970)
+
+### Changed
+- **GitHub**: additional vendor prefixes for import records (#2013, #2007)
+- **Deps**: update `prometheus/client_golang`, `k8s.io/apimachinery`, `buf.build/go/protovalidate`, GitHub Actions, and `pymdown-extensions` (#1959, #1946, #2033, #1947, #1998)
+- **Docs**: sidebar and link updates (#2011)
+
+### Fixed
+- **GitHub**: renew Directory token while signing records (#2034)
+- **Dir**: upgrade dir-importer (#2020)
+- **UI**: distinguish catalog status icons (#1955)
+- **UI**: remove "all" media type filter (#1982)
+
+### Security
+- **Deps**: update `golang.org/x/mod` (#2024) and `github.com/go-git/go-git/v5` (#1997)
+
+## [v1.6.3] - 2026-08-07
+
+### Added
+- **CLI**: `dirctl daemon config init` command (#1931)
+- **CLI**: batch delete via variadic CIDs and `--stdin` (#1978)
+- **CLI**: expose `RecordQuery` negation as exclude filters (#1987)
+- **Search**: `CountRecords` RPC (#1962)
+- **Search**: support negating a `RecordQuery` for exclude filters (#1983)
+- **Dir**: configurable OIDC scopes (#1984)
+- **Dir**: expand MCP scanner coverage with YARA/readiness and remote runner (#1775)
+- **Dir**: separate filter counts and total counts on AI Catalog UI (#1927)
+- **Helm**: configurable policy CronJobs in the dirctl chart (#1994)
+- **Docs**: document Zot storage config for remote object storage (#1954)
+- **Docs/Skill**: add security scanner install step to setup reference (#1961)
+
+### Changed
+- **CLI**: switch dirctl image runtime to Alpine (#1979)
+- **CLI**: shared pluggable extractor (#1925)
+- **Deps**: update Go patches (#1811)
+- **Deps**: bump bitnami/postgresql digest (CVE-2026-40469), `pion/dtls/v3`, and `pion/stun/v3` (#1952, #1956, #1957)
+
+### Fixed
+- **Dir**: fix deleting from database (#1951)
+- **Config**: preserve unknown top-level config sections across writes (#1942)
+- **Catalog**: use decimal pagination tokens (#1936)
+- **Tests**: start discovery workload after its record exists (#1941)
+
 ## [v1.6.2] - 2026-07-29
 
 ### Added

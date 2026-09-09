@@ -621,6 +621,11 @@ func TestSetupAutoDetectAuth(t *testing.T) {
 	t.Run("should auto-detect OIDC when issuer/client config is present", func(t *testing.T) {
 		t.Setenv("XDG_CONFIG_HOME", t.TempDir())
 
+		// The error names the interactive login only outside a workflow that can
+		// mint ID tokens, and the job running these tests has that environment.
+		t.Setenv("ACTIONS_ID_TOKEN_REQUEST_URL", "")
+		t.Setenv("ACTIONS_ID_TOKEN_REQUEST_TOKEN", "")
+
 		opts := &options{
 			config: &Config{
 				ServerAddress: "gateway.example.com:443",

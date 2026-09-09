@@ -150,7 +150,7 @@ func (i *ingestor) applyReferrerDBEffects(recordCID string, referrer *corev1.Rec
 			scannerType: scannerTypeShortName(report.GetScannerType()),
 			isSafe:      report.GetIsSafe(),
 			maxSeverity: severityShortName(report.GetMaxSeverity()),
-		}); err != nil {
+		}, types.DefaultScanSchedule()); err != nil {
 			logger.Warn("Failed to upsert scan report summary", "error", err, "cid", recordCID)
 		}
 	}
@@ -169,6 +169,12 @@ func (r *scanReportRow) GetScannerType() string  { return r.scannerType }
 func (r *scanReportRow) GetIsSafe() bool         { return r.isSafe }
 func (r *scanReportRow) GetMaxSeverity() string  { return r.maxSeverity }
 func (r *scanReportRow) GetUpdatedAt() time.Time { return time.Time{} }
+
+// A pushed referrer only ever carries a verdict: the scan report proto has no
+// failure fields, since failures are node-local and must not travel to peers.
+func (r *scanReportRow) GetStatus() string        { return types.ScanStatusCompleted }
+func (r *scanReportRow) GetFailureReason() string { return "" }
+func (r *scanReportRow) GetFailureDetail() string { return "" }
 
 // scannerTypeShortName strips the "SCANNER_TYPE_" proto prefix to get the DB column value (e.g. "MCP").
 func scannerTypeShortName(t securityv1.ScannerType) string {

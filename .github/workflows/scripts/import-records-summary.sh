@@ -23,6 +23,7 @@ append_overview() {
     echo "| Debug | ${DEBUG} |"
     echo "| Sign max retries | ${SIGN_MAX_RETRIES} |"
     echo "| Sign cleanup on failure | ${SIGN_CLEANUP_ON_FAILURE} |"
+    echo "| Enrichment | ${ENRICHMENT:-extractor} |"
     echo "| MCP import enabled | ${RUN_MCP_IMPORT} |"
     echo "| Agent skills import enabled | ${RUN_AGENT_SKILLS_IMPORT} |"
     echo ""

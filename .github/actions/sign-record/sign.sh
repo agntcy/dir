@@ -7,6 +7,7 @@ set -euo pipefail
 : "${CIDS:?CIDS is required}"
 : "${OIDC_CLIENT_ID:?OIDC_CLIENT_ID is required}"
 SERVER_ADDR="${SERVER_ADDR:-}"
+AUTH_AUDIENCE="${AUTH_AUDIENCE:-}"
 AUTH_TOKEN="${AUTH_TOKEN:-}"
 MAX_RETRIES="${MAX_RETRIES:-3}"
 CLEANUP_ON_FAILURE="${CLEANUP_ON_FAILURE:-false}"
@@ -42,6 +43,7 @@ trap 'rm -f "$FAILED_CIDS_FILE" "$CLEANED_CIDS_FILE"' EXIT
 echo "=== Sign Records (OIDC) ==="
 echo "dirctl: ${DIRCTL_BIN}"
 echo "Server address: ${SERVER_ADDR:-"(dirctl default)"}"
+echo "Directory audience: ${AUTH_AUDIENCE:-"(dirctl config)"}"
 echo "Max retries per CID: ${MAX_RETRIES}"
 echo "Cleanup on failure: ${CLEANUP_ON_FAILURE}"
 echo ""
@@ -81,10 +83,19 @@ fetch_sigstore_oidc_token() {
   printf '%s' "$token"
 }
 
+# Each CID is signed by its own dirctl process, so an audience lets every
+# invocation mint a fresh token, while a token fetched once for the whole batch
+# expires partway through a long or retrying run and takes the cleanup deletes
+# down with it. The token remains for callers on a dirctl without the flag.
 append_dirctl_auth_args() {
   local -n cmd_ref=$1
   [ -n "$SERVER_ADDR" ] && cmd_ref+=(--server-addr "$SERVER_ADDR")
-  [ -n "$AUTH_TOKEN" ] && cmd_ref+=(--auth-mode=oidc "--auth-token=$AUTH_TOKEN")
+
+  if [ -n "$AUTH_AUDIENCE" ]; then
+    cmd_ref+=(--auth-mode=oidc "--oidc-audience=$AUTH_AUDIENCE")
+  elif [ -n "$AUTH_TOKEN" ]; then
+    cmd_ref+=(--auth-mode=oidc "--auth-token=$AUTH_TOKEN")
+  fi
 }
 
 sign_cid_once() {

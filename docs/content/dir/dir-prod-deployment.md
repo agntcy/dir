@@ -214,7 +214,7 @@ Notes for either option:
 
   ```bash
   docker run --rm -v "$PWD:/cfg:ro" \
-    ghcr.io/project-zot/zot-linux-amd64:v2.1.18 verify /cfg/config.json
+    ghcr.io/project-zot/zot-linux-amd64:v2.1.20 verify /cfg/config.json
   ```
 
 See the [Zot storage documentation](https://zotregistry.dev/latest/admin-guide/admin-configuration/#storage)

@@ -6,6 +6,7 @@ package controller
 import (
 	"context"
 	"errors"
+	"sync"
 	"testing"
 
 	oasfv1alpha1 "buf.build/gen/go/agntcy/oasf/protocolbuffers/go/agntcy/oasf/types/v1alpha1"
@@ -24,14 +25,52 @@ import (
 // exercised by these tests.
 var errNotImplemented = errors.New("not implemented")
 
-// fakeCatalogDB implements types.CatalogDatabaseAPI, capturing the filters it
-// was called with and returning canned results.
+// fakeCatalogDB implements the AI Finder database surface, capturing the
+// filters it was called with and returning canned results.
 type fakeCatalogDB struct {
-	entries    []*catalogv1.CatalogEntry
-	tags       []*catalogv1.CatalogTag
-	err        error
-	calls      int
+	entries []*catalogv1.CatalogEntry
+	tags    []*catalogv1.CatalogTag
+	err     error
+	calls   int
+	// recordCIDs is returned by GetRecordCIDs, keyed by the query value the
+	// search fan-out asked for. The "" key answers any unmatched query.
+	recordCIDs map[string][]string
 	gotFilters types.CatalogFilters
+
+	mu              sync.Mutex
+	gotRecordQuery  []types.RecordFilters
+	recordCallCount int
+}
+
+// GetRecordCIDs answers one fan-out signal query. The fan-out runs its signals
+// concurrently, so this records calls under a mutex.
+func (f *fakeCatalogDB) GetRecordCIDs(opts ...types.FilterOption) ([]string, error) {
+	cfg := types.RecordFilters{}
+
+	for _, opt := range opts {
+		if opt != nil {
+			opt(&cfg)
+		}
+	}
+
+	f.mu.Lock()
+	f.gotRecordQuery = append(f.gotRecordQuery, cfg)
+	f.recordCallCount++
+	f.mu.Unlock()
+
+	if f.err != nil {
+		return nil, f.err
+	}
+
+	for _, values := range [][]string{cfg.SkillNames, cfg.DomainNames, cfg.Names, cfg.Descriptions} {
+		for _, v := range values {
+			if cids, ok := f.recordCIDs[v]; ok {
+				return cids, nil
+			}
+		}
+	}
+
+	return f.recordCIDs[""], nil
 }
 
 func (f *fakeCatalogDB) captureFilters(opts ...types.CatalogQueryOption) {
@@ -55,6 +94,26 @@ func (f *fakeCatalogDB) GetCatalogEntries(opts ...types.CatalogQueryOption) ([]*
 	}
 
 	entries := f.entries
+
+	// Honor WithCIDs so hydration tests (and GetAgent) see only the requested
+	// records, mirroring the real catalog query.
+	if len(f.gotFilters.CIDs) > 0 {
+		want := make(map[string]struct{}, len(f.gotFilters.CIDs))
+		for _, cid := range f.gotFilters.CIDs {
+			want[cid] = struct{}{}
+		}
+
+		filtered := entries[:0:0]
+
+		for _, e := range entries {
+			if _, ok := want[catalogEntryCID(e)]; ok {
+				filtered = append(filtered, e)
+			}
+		}
+
+		entries = filtered
+	}
+
 	if f.gotFilters.Offset > 0 {
 		if f.gotFilters.Offset >= len(entries) {
 			return nil, false, nil

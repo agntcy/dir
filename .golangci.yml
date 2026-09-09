@@ -6,6 +6,7 @@ linters:
     - embeddedstructfieldcheck # Allow embedded fields in any position
     - err113
     - exhaustruct # Allow structures with uninitialized fields
+    - exhaustruct_v5 # Allow structures with uninitialized fields (v5 rename of exhaustruct)
     - funcorder # Allow flexible function ordering within structs
     - funlen # Allow long functions
     - godoclint # Allow flexible godoc comment styles
@@ -26,9 +27,13 @@ linters:
     - testpackage # Allow not having a test package
     - varnamelen # Allow short var names
     - wsl # Deprecated
+    - gomodguard # Deprecated
   settings:
     cyclop:
       max-complexity: 15
+    # golangci-lint 2.13 defaults to 3 repeats; 15 skips enum/JSON-key noise and flags only heavy duplication.
+    goconst:
+      min-occurrences: 15
     goheader:
       values:
         regexp:
@@ -50,6 +55,9 @@ linters:
       - linters:
           - dupl
         path: types/adapters/record_oasfv.*\.go
+      - linters:
+          - goconst
+        path: _test\.go$
     paths:
       - third_party$
       - builtin$

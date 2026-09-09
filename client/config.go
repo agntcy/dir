@@ -41,6 +41,10 @@ type Config struct {
 	OIDCClientID string   `json:"oidc_client_id,omitempty" mapstructure:"oidc_client_id"`
 	OIDCScopes   []string `json:"oidc_scopes,omitempty"    mapstructure:"oidc_scopes"`
 
+	// OIDCAudience is the audience requested when minting tokens on demand,
+	// currently from the GitHub Actions OIDC endpoint.
+	OIDCAudience string `json:"oidc_audience,omitempty" mapstructure:"oidc_audience"`
+
 	// Pre-issued Bearer token for CI/scripts (skips interactive login)
 	AuthToken string `json:"auth_token,omitempty" mapstructure:"auth_token"`
 }
@@ -81,6 +85,9 @@ func LoadConfig() (*Config, error) {
 
 	_ = v.BindEnv("oidc_scopes")
 	v.SetDefault("oidc_scopes", []string{})
+
+	_ = v.BindEnv("oidc_audience")
+	v.SetDefault("oidc_audience", "")
 
 	_ = v.BindEnv("auth_token")
 	v.SetDefault("auth_token", "")

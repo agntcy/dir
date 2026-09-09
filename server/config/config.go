@@ -175,6 +175,20 @@ type Config struct {
 	Extractor ExtractorConfig `json:"extractor,omitzero" mapstructure:"extractor"`
 }
 
+// AdvertisedOCIAddress returns the OCI endpoint this node advertises to peers
+// over routing, as the scheme-less registry/repository value carried in the
+// "/oci/<addr>" multiaddr. routing.directory_oci_address wins when set;
+// otherwise it is derived from store.oci.advertised_registry_address so the
+// public endpoint only has to be configured once. Empty means this node
+// advertises no OCI address.
+func (c *Config) AdvertisedOCIAddress() string {
+	if c.Routing.DirectoryOCIAddress != "" {
+		return c.Routing.DirectoryOCIAddress
+	}
+
+	return c.Store.OCI.GetAdvertisedRepositoryURL()
+}
+
 // HTTPGatewayConfig configures the in-process grpc-gateway sidecar.
 // It is disabled by default.
 type HTTPGatewayConfig struct {
@@ -492,6 +506,12 @@ func LoadConfig(opts ...ConfigOption) (*Config, error) {
 
 	_ = v.BindEnv("store.oci.registry_address")
 	v.SetDefault("store.oci.registry_address", oci.DefaultRegistryAddress)
+
+	_ = v.BindEnv("store.oci.advertised_registry_address")
+	v.SetDefault("store.oci.advertised_registry_address", "")
+
+	_ = v.BindEnv("store.oci.advertised_insecure")
+	v.SetDefault("store.oci.advertised_insecure", false)
 
 	_ = v.BindEnv("store.oci.repository_name")
 	v.SetDefault("store.oci.repository_name", oci.DefaultRepositoryName)

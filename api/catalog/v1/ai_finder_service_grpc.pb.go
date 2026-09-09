@@ -28,6 +28,8 @@ const (
 	AIFinderService_ExportAgent_FullMethodName         = "/agntcy.dir.catalog.v1.AIFinderService/ExportAgent"
 	AIFinderService_GetWellKnownCatalog_FullMethodName = "/agntcy.dir.catalog.v1.AIFinderService/GetWellKnownCatalog"
 	AIFinderService_ListTags_FullMethodName            = "/agntcy.dir.catalog.v1.AIFinderService/ListTags"
+	AIFinderService_ExtractTaxonomy_FullMethodName     = "/agntcy.dir.catalog.v1.AIFinderService/ExtractTaxonomy"
+	AIFinderService_SearchAgents_FullMethodName        = "/agntcy.dir.catalog.v1.AIFinderService/SearchAgents"
 )
 
 // AIFinderServiceClient is the client API for AIFinderService service.
@@ -55,6 +57,26 @@ type AIFinderServiceClient interface {
 	// ListTags returns the distinct catalog tags derived from OASF skills, domains,
 	// and record annotations across the registry.
 	ListTags(ctx context.Context, in *ListTagsRequest, opts ...grpc.CallOption) (*ListTagsResponse, error)
+	// ExtractTaxonomy maps free-form text onto the OASF taxonomy, returning the
+	// skills and domains the text is closest to. It is a passthrough over the
+	// OASF extractor with no catalog semantics attached: it does not search, rank
+	// records, or check that any record actually carries a returned class.
+	//
+	// Its purpose is to let callers turn a description of what a user wants
+	// ("analyzing customer support tickets") into taxonomy labels they can use as
+	// tag suggestions. Callers that need the suggestions to be actionable should
+	// intersect them against ListTags.
+	//
+	// POST rather than GET because the input is free-form user text that belongs
+	// in a body rather than a URL.
+	ExtractTaxonomy(ctx context.Context, in *ExtractTaxonomyRequest, opts ...grpc.CallOption) (*ExtractTaxonomyResponse, error)
+	// SearchAgents answers a free-text query with relevance-ranked catalog
+	// entries. It is the API equivalent of `dirctl search "<query>"` and returns
+	// the same records in the same order for the same query.
+	//
+	// POST rather than GET because the query is free-form user text that belongs
+	// in a body rather than a URL.
+	SearchAgents(ctx context.Context, in *SearchAgentsRequest, opts ...grpc.CallOption) (*SearchAgentsResponse, error)
 }
 
 type aIFinderServiceClient struct {
@@ -115,6 +137,26 @@ func (c *aIFinderServiceClient) ListTags(ctx context.Context, in *ListTagsReques
 	return out, nil
 }
 
+func (c *aIFinderServiceClient) ExtractTaxonomy(ctx context.Context, in *ExtractTaxonomyRequest, opts ...grpc.CallOption) (*ExtractTaxonomyResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ExtractTaxonomyResponse)
+	err := c.cc.Invoke(ctx, AIFinderService_ExtractTaxonomy_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *aIFinderServiceClient) SearchAgents(ctx context.Context, in *SearchAgentsRequest, opts ...grpc.CallOption) (*SearchAgentsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(SearchAgentsResponse)
+	err := c.cc.Invoke(ctx, AIFinderService_SearchAgents_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // AIFinderServiceServer is the server API for AIFinderService service.
 // All implementations should embed UnimplementedAIFinderServiceServer
 // for forward compatibility.
@@ -140,6 +182,26 @@ type AIFinderServiceServer interface {
 	// ListTags returns the distinct catalog tags derived from OASF skills, domains,
 	// and record annotations across the registry.
 	ListTags(context.Context, *ListTagsRequest) (*ListTagsResponse, error)
+	// ExtractTaxonomy maps free-form text onto the OASF taxonomy, returning the
+	// skills and domains the text is closest to. It is a passthrough over the
+	// OASF extractor with no catalog semantics attached: it does not search, rank
+	// records, or check that any record actually carries a returned class.
+	//
+	// Its purpose is to let callers turn a description of what a user wants
+	// ("analyzing customer support tickets") into taxonomy labels they can use as
+	// tag suggestions. Callers that need the suggestions to be actionable should
+	// intersect them against ListTags.
+	//
+	// POST rather than GET because the input is free-form user text that belongs
+	// in a body rather than a URL.
+	ExtractTaxonomy(context.Context, *ExtractTaxonomyRequest) (*ExtractTaxonomyResponse, error)
+	// SearchAgents answers a free-text query with relevance-ranked catalog
+	// entries. It is the API equivalent of `dirctl search "<query>"` and returns
+	// the same records in the same order for the same query.
+	//
+	// POST rather than GET because the query is free-form user text that belongs
+	// in a body rather than a URL.
+	SearchAgents(context.Context, *SearchAgentsRequest) (*SearchAgentsResponse, error)
 }
 
 // UnimplementedAIFinderServiceServer should be embedded to have
@@ -163,6 +225,12 @@ func (UnimplementedAIFinderServiceServer) GetWellKnownCatalog(context.Context, *
 }
 func (UnimplementedAIFinderServiceServer) ListTags(context.Context, *ListTagsRequest) (*ListTagsResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ListTags not implemented")
+}
+func (UnimplementedAIFinderServiceServer) ExtractTaxonomy(context.Context, *ExtractTaxonomyRequest) (*ExtractTaxonomyResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ExtractTaxonomy not implemented")
+}
+func (UnimplementedAIFinderServiceServer) SearchAgents(context.Context, *SearchAgentsRequest) (*SearchAgentsResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method SearchAgents not implemented")
 }
 func (UnimplementedAIFinderServiceServer) testEmbeddedByValue() {}
 
@@ -274,6 +342,42 @@ func _AIFinderService_ListTags_Handler(srv interface{}, ctx context.Context, dec
 	return interceptor(ctx, in, info, handler)
 }
 
+func _AIFinderService_ExtractTaxonomy_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ExtractTaxonomyRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AIFinderServiceServer).ExtractTaxonomy(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: AIFinderService_ExtractTaxonomy_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AIFinderServiceServer).ExtractTaxonomy(ctx, req.(*ExtractTaxonomyRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _AIFinderService_SearchAgents_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SearchAgentsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AIFinderServiceServer).SearchAgents(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: AIFinderService_SearchAgents_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AIFinderServiceServer).SearchAgents(ctx, req.(*SearchAgentsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // AIFinderService_ServiceDesc is the grpc.ServiceDesc for AIFinderService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -300,6 +404,14 @@ var AIFinderService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "ListTags",
 			Handler:    _AIFinderService_ListTags_Handler,
+		},
+		{
+			MethodName: "ExtractTaxonomy",
+			Handler:    _AIFinderService_ExtractTaxonomy_Handler,
+		},
+		{
+			MethodName: "SearchAgents",
+			Handler:    _AIFinderService_SearchAgents_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

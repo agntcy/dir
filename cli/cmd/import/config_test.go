@@ -182,6 +182,24 @@ filters:
 	assert.Equal(t, map[string]string{"search": "devtools"}, o.Filters)
 }
 
+func TestLoadConfigExtractorEnricherRequiresProvisionedAssets(t *testing.T) {
+	t.Parallel()
+
+	path := writeConfig(t, `
+type: mcp-registry
+url: https://registry.example.com/v0.1
+enricher:
+  extractor:
+    asset_dir: `+filepath.Join(t.TempDir(), "missing-extractor")+`
+`)
+
+	o, flags := newTestOptions(t, "--config", path)
+	err := o.loadConfig(flags)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "extractor enricher")
+	assert.Contains(t, err.Error(), "dirctl init")
+}
+
 func TestLoadConfigStaticEnricher(t *testing.T) {
 	path := writeConfig(t, `
 type: mcp-registry

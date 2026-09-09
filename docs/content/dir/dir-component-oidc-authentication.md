@@ -108,6 +108,16 @@ GitHub Actions can present short-lived OIDC workload identity tokens instead of 
 
 This should be treated as workload identity, not human login federation.
 
+Because these tokens are short-lived (roughly five minutes), a workflow step that hands `dirctl` a token fetched in an earlier step fails once the command outlives it. Give the job `id-token: write` and pass `--oidc-audience` instead of `--auth-token`, and `dirctl` mints its own tokens and renews them for as long as it runs:
+
+```yaml
+permissions:
+  id-token: write
+
+steps:
+  - run: dirctl search --server-addr gateway.example.com:443 --auth-mode=oidc --oidc-audience=dir
+```
+
 ## IdP-Agnostic by Design
 
 Directory does not depend on a single identity provider. The OIDC layer is designed to work with standards-compliant providers as long as you configure trusted issuers, audiences, and claim mappings appropriately.

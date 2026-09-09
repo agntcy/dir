@@ -193,13 +193,16 @@ Priority order:
 {{- end -}}
 
 {{/*
-Get OCI registry address.
+Get the OCI registry address the apiserver dials.
 Priority order:
   1. Explicit user configuration (config.store.oci.registry_address) - always respected
   2. Auto-detected internal Zot service (when zot.enabled=true and no explicit address)
 
-This allows users to deploy the Zot subchart for convenience while still using
-external ingress with TLS by explicitly setting registry_address.
+To expose the bundled Zot through a public ingress, leave registry_address empty
+(so internal traffic stays on the in-cluster service) and set
+config.store.oci.advertised_registry_address to the public endpoint. Setting
+registry_address to the public endpoint also works, but sends the apiserver's own
+storage traffic out through the ingress and back.
 
 Note: Uses (get .Values.zot "enabled") for nil-safe access since zot may not be defined.
 */}}
@@ -208,6 +211,48 @@ Note: Uses (get .Values.zot "enabled") for nil-safe access since zot may not be 
 {{- .Values.config.store.oci.registry_address -}}
 {{- else if and .Values.zot (get .Values.zot "enabled") -}}
 {{- printf "%s-zot.%s.svc.cluster.local:5000" .Release.Name .Release.Namespace -}}
+{{- end -}}
+{{- end -}}
+
+{{/*
+Reproduce the OASF-SDK subchart's fullname so we can build its Service DNS name.
+Mirrors the subchart's own oasf-sdk.fullname template, so the address handed to
+the gateway matches the Service that actually gets created.
+
+Note: the subchart values live under the hyphenated key .Values."oasf-sdk",
+which is why every lookup here goes through index/get instead of dot notation.
+*/}}
+{{- define "chart.oasfSdk.fullname" -}}
+{{- $values := (index .Values "oasf-sdk") | default dict -}}
+{{- if get $values "fullnameOverride" -}}
+{{- get $values "fullnameOverride" | trunc 63 | trimSuffix "-" -}}
+{{- else -}}
+{{- $name := get $values "nameOverride" | default "oasf-sdk" -}}
+{{- if contains $name .Release.Name -}}
+{{- .Release.Name | trunc 63 | trimSuffix "-" -}}
+{{- else -}}
+{{- printf "%s-%s" .Release.Name $name | trunc 63 | trimSuffix "-" -}}
+{{- end -}}
+{{- end -}}
+{{- end -}}
+
+{{/*
+Get the gRPC address of the OASF taxonomy extractor server.
+Priority order:
+  1. Explicit user configuration (config.extractor.remote_addr) - always respected
+  2. Auto-detected in-cluster OASF-SDK Service (when oasf-sdk.enabled=true)
+
+Empty output means no remote extractor: the server falls back to its in-process
+backend loaded from locally-provisioned assets.
+*/}}
+{{- define "chart.extractor.remoteAddr" -}}
+{{- $extractor := get .Values.config "extractor" | default dict -}}
+{{- $oasfSdk := (index .Values "oasf-sdk") | default dict -}}
+{{- if get $extractor "remote_addr" -}}
+{{- get $extractor "remote_addr" -}}
+{{- else if get $oasfSdk "enabled" -}}
+{{- $port := dig "service" "externalPort" 31234 $oasfSdk -}}
+{{- printf "%s.%s.svc.cluster.local:%v" (include "chart.oasfSdk.fullname" .) .Release.Namespace $port -}}
 {{- end -}}
 {{- end -}}
 

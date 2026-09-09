@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/agntcy/dir/server/types"
 	"github.com/glebarez/sqlite"
 	"github.com/stretchr/testify/require"
 	"gorm.io/gorm"
@@ -93,7 +94,8 @@ func seedRecord(t *testing.T, db *DB, cid, name, signerKey, keyID string, now ti
 		ScannerType: "MCP",
 		IsSafe:      true,
 		MaxSeverity: "NONE",
-	}))
+		Status:      types.ScanStatusCompleted,
+	}, types.DefaultScanSchedule()))
 	require.NoError(t, db.IncrementPullCount(cid))
 }
 

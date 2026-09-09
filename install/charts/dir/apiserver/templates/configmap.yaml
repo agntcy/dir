@@ -33,6 +33,13 @@ data:
     {{- $gwConfig := dict "enabled" .Values.httpGateway.enabled "listen_address" (printf "0.0.0.0:%d" (.Values.httpGateway.port | int)) "public_url" .Values.httpGateway.publicURL "catalog_title" (.Values.httpGateway.catalogTitle | default "AI Catalog") }}
     {{- $_ := set $config "http_gateway" $gwConfig }}
     {{- end }}
+    {{- /* Point the extractor at the OASF-SDK server when one is reachable */ -}}
+    {{- $extractorAddr := include "chart.extractor.remoteAddr" . }}
+    {{- if $extractorAddr }}
+    {{- $extractorConfig := deepCopy (get $config "extractor" | default dict) }}
+    {{- $_ := set $extractorConfig "remote_addr" $extractorAddr }}
+    {{- $_ := set $config "extractor" $extractorConfig }}
+    {{- end }}
     {{- $config | toYaml | nindent 4 }}
 
   authz_policies.csv: |

@@ -10,7 +10,7 @@ Sign record CIDs using GitHub OIDC (keyless). Use after **push-record** or **dir
   with:
     cids: ${{ steps.push.outputs.cids }}
     server_addr: ${{ vars.DIRECTORY_ADDRESS }}
-    auth_token: ${{ steps.oidc-dir.outputs.token }}
+    auth_audience: dir
     oidc_client_id: https://github.com/${{ github.repository }}/.github/workflows/my-workflow.yaml@${{ github.ref }}
     max_retries: 3
     cleanup_on_failure: true
@@ -22,7 +22,8 @@ Sign record CIDs using GitHub OIDC (keyless). Use after **push-record** or **dir
 |-------|-------------|----------|---------|
 | `cids` | JSON object (file→CID) from push-record, or newline-separated CIDs | Yes | - |
 | `server_addr` | Directory server address (host:port). Omit to use dirctl default. | No | `""` |
-| `auth_token` | Optional OIDC bearer token for Directory authentication | No | `""` |
+| `auth_audience` | Audience for Directory tokens minted per `dirctl` invocation. Preferred: each CID gets a fresh token, so a long batch cannot outlive it. | No | `""` |
+| `auth_token` | Pre-issued OIDC bearer token for Directory authentication. Ignored when `auth_audience` is set, and cannot be renewed. | No | `""` |
 | `oidc_client_id` | Workflow URL for keyless signing. Job must have `id-token: write`. | Yes | - |
 | `dirctl_path` | Optional absolute path to the dirctl binary | No | PATH lookup |
 | `max_retries` | Sign attempts per CID (fresh Sigstore OIDC token each attempt) | No | `3` |

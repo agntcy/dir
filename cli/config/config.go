@@ -31,6 +31,7 @@ func ChangedClientConfigFields(cmd *cobra.Command) []string {
 		"oidc-issuer":        "oidc_issuer",
 		"oidc-client-id":     "oidc_client_id",
 		"oidc-scopes":        "oidc_scopes",
+		"oidc-audience":      "oidc_audience",
 		"auth-token":         "auth_token",
 	}
 

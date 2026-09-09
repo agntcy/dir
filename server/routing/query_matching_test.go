@@ -534,3 +534,89 @@ func TestQueryMatchingIntegration(t *testing.T) {
 		assert.False(t, MatchesAllQueries(ctx, "mixed-record", queries, complexLabelRetriever)) // Only has /skills/AI, not AI/ML
 	})
 }
+
+// TestQueryMatchesLabels_ValueSpellings covers the regression where a leading slash on a query
+// value produced a doubled separator in the match target, so the query silently matched nothing.
+// See https://github.com/agntcy/dir/issues/2052.
+func TestQueryMatchesLabels_ValueSpellings(t *testing.T) {
+	cases := []struct {
+		name      string
+		queryType routingv1.RecordQueryType
+		label     types.Label
+		bare      string
+		namespace string
+	}{
+		{
+			name:      "skill",
+			queryType: routingv1.RecordQueryType_RECORD_QUERY_TYPE_SKILL,
+			label:     types.Label("/skills/cybersecurity/security_operations/threat_intelligence"),
+			bare:      "cybersecurity/security_operations/threat_intelligence",
+			namespace: "skills",
+		},
+		{
+			name:      "domain",
+			queryType: routingv1.RecordQueryType_RECORD_QUERY_TYPE_DOMAIN,
+			label:     types.Label("/domains/healthcare/medical_technology"),
+			bare:      "healthcare/medical_technology",
+			namespace: "domains",
+		},
+		{
+			name:      "module",
+			queryType: routingv1.RecordQueryType_RECORD_QUERY_TYPE_MODULE,
+			label:     types.Label("/modules/runtime/model"),
+			bare:      "runtime/model",
+			namespace: "modules",
+		},
+		{
+			name:      "locator",
+			queryType: routingv1.RecordQueryType_RECORD_QUERY_TYPE_LOCATOR,
+			label:     types.Label("/locators/docker-image"),
+			bare:      "docker-image",
+			namespace: "locators",
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			labels := []types.Label{tc.label}
+
+			for _, value := range []string{
+				tc.bare,
+				"/" + tc.bare,
+				"/" + tc.namespace + "/" + tc.bare,
+			} {
+				query := &routingv1.RecordQuery{Type: tc.queryType, Value: value}
+				assert.True(t, QueryMatchesLabels(query, labels), "value %q should match %s", value, tc.label)
+			}
+		})
+	}
+}
+
+// A value carrying another namespace must not match, so normalization cannot create a
+// false positive across label types.
+func TestQueryMatchesLabels_CrossNamespaceValueDoesNotMatch(t *testing.T) {
+	query := &routingv1.RecordQuery{
+		Type:  routingv1.RecordQueryType_RECORD_QUERY_TYPE_DOMAIN,
+		Value: "/skills/cybersecurity",
+	}
+
+	labels := []types.Label{
+		types.Label("/skills/cybersecurity"),
+		types.Label("/domains/research"),
+	}
+
+	assert.False(t, QueryMatchesLabels(query, labels))
+}
+
+// Prefix matching must survive normalization: a parent path still matches its children.
+func TestQueryMatchesLabels_PrefixMatchAfterNormalization(t *testing.T) {
+	labels := []types.Label{types.Label("/skills/cybersecurity/security_operations")}
+
+	for _, value := range []string{"cybersecurity", "/cybersecurity", "/skills/cybersecurity"} {
+		query := &routingv1.RecordQuery{
+			Type:  routingv1.RecordQueryType_RECORD_QUERY_TYPE_SKILL,
+			Value: value,
+		}
+		assert.True(t, QueryMatchesLabels(query, labels), "value %q should prefix-match", value)
+	}
+}

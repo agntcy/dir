@@ -201,7 +201,7 @@ func (s storeCtrl) Delete(stream storev1.StoreService_DeleteServer) error {
 
 		// Delete record from store
 		err = s.store.Delete(stream.Context(), recordRef)
-		if err != nil {
+		if err != nil && status.Code(err) != codes.NotFound {
 			st := status.Convert(err)
 
 			return status.Errorf(st.Code(), "failed to delete record: %s", st.Message())
