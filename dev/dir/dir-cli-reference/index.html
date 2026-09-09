@@ -2164,6 +2164,17 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
+  <a href="#the-install-manifest" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The install manifest
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#dirctl-install-list" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -3172,6 +3183,17 @@
   
     <nav class="md-nav" aria-label="Agent Install">
       <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#the-install-manifest" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The install manifest
+      
+    </span>
+  </a>
+  
+</li>
         
           <li class="md-nav__item">
   <a href="#dirctl-install-list" class="md-nav__link">
@@ -4212,6 +4234,29 @@ Windsurf, Cline, Roo Code, Gemini CLI, OpenCode, Zed, Continue, and Codex CLI.</
 <p>Writes are atomic and surgical: only our own MCP entry, skill file/folder, or
 delimited managed block is added/updated/removed — all of your existing
 configuration is preserved.</p>
+<h3 id="the-install-manifest">The install manifest</h3>
+<p>Installed artifacts carry no provenance of their own: an Agent Skill is marked
+only with its slug, with no version and no CID. So every global install records
+what it wrote in <code>$XDG_CONFIG_HOME/dirctl/installed.json</code> (<code>~/.config</code> when
+<code>XDG_CONFIG_HOME</code> is unset) — one row per record, agent, and scope, holding the
+version and CID that were installed, the skill path and its file list, and the
+MCP server keys.</p>
+<p>The row lists the artifacts that were <strong>actually written</strong>, not the ones the
+record's modules imply. An agent that received nothing — skipped or failed — is
+not recorded.</p>
+<p>Today the manifest is only bookkeeping: <code>uninstall</code> still resolves and pulls
+the record, derives its current artifacts, removes those, and then deletes the
+rows. It does not read <code>skillFiles</code> or <code>mcpServers</code> to decide what to remove.
+Recording them is what will let a future manifest-driven <code>uninstall</code> and
+<code>upgrade</code> remove exactly the artifacts that were written, without re-fetching a
+record that may since have been garbage-collected upstream.</p>
+<p>A row names every artifact <code>dirctl</code> wrote and has not since removed, so
+reinstalling carries forward anything the previous row named that the new
+install did not write. That covers a reinstall where one artifact failed, and a
+new version that renames its MCP server while the old key stays in the config.</p>
+<p>The manifest is bookkeeping, not the product: if it cannot be read or written,
+<code>dirctl</code> prints a warning and the install still succeeds. Project-scope
+(<code>--project</code>) installs are not recorded yet.</p>
 <h3 id="dirctl-install-list"><code>dirctl install list</code></h3>
 <p>Lists every supported agent, whether it is detected on this machine, and the
 config files that install would touch. Makes no changes and does not contact the
@@ -4256,6 +4301,11 @@ A2A-only record, points you to <code>dirctl export</code>.</p>
 <td>Skip the confirmation prompt</td>
 <td><code>false</code></td>
 </tr>
+<tr>
+<td><code>--pin</code></td>
+<td>Hold the package at the version that was installed. Implied when the reference names an explicit <code>:version</code></td>
+<td><code>false</code></td>
+</tr>
 </tbody>
 </table>
 <p>Valid agent IDs: <code>claude-code</code>, <code>claude-desktop</code>, <code>cursor</code>, <code>vscode</code>, <code>windsurf</code>,
@@ -4286,6 +4336,12 @@ dirctl<span class="w"> </span>install<span class="w"> </span>cisco.com/agent<spa
 leaving all other content intact. Shares the same flags as install (<code>--agents</code>,
 <code>--project</code>, <code>--dry-run</code>, <code>--yes</code>). Idempotent: an agent with nothing of ours
 installed is reported as unchanged, never an error.</p>
+<p>The record's row is dropped from the install manifest for every agent whose
+artifacts are confirmed gone, meaning at least one was removed or already
+absent and none failed. An agent keeps its row when a removal failed, and when
+every artifact was skipped because its location could not be resolved for that
+scope — in both cases something may still be on disk, and the row is the only
+note of what it is.</p>
 <p><code>dirctl uninstall &lt;cid-or-name&gt;</code> is a top-level shorthand for
 <code>dirctl install uninstall &lt;cid-or-name&gt;</code> (same flags and behavior).</p>
 <div class="highlight"><pre><span></span><code>dirctl<span class="w"> </span>install<span class="w"> </span>uninstall<span class="w"> </span>cisco.com/agent<span class="w"> </span>--yes
