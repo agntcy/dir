@@ -13,16 +13,20 @@ import (
 	corev1 "github.com/agntcy/dir/api/core/v1"
 	"github.com/agntcy/dir/reconciler/config"
 	"github.com/agntcy/dir/reconciler/tasks"
+	"github.com/agntcy/dir/reconciler/tasks/identity"
 	"github.com/agntcy/dir/reconciler/tasks/indexer"
 	"github.com/agntcy/dir/reconciler/tasks/metrics"
-	"github.com/agntcy/dir/reconciler/tasks/name"
 	"github.com/agntcy/dir/reconciler/tasks/regsync"
 	"github.com/agntcy/dir/reconciler/tasks/scan"
 	"github.com/agntcy/dir/reconciler/tasks/signature"
-	namingprovider "github.com/agntcy/dir/server/naming"
-	"github.com/agntcy/dir/server/naming/wellknown"
+	serveridentity "github.com/agntcy/dir/server/identity"
+	identitydid "github.com/agntcy/dir/server/identity/did"
+	identitydns "github.com/agntcy/dir/server/identity/dns"
+	"github.com/agntcy/dir/server/identity/spiffe"
+	identitywellknown "github.com/agntcy/dir/server/identity/wellknown"
 	servertypes "github.com/agntcy/dir/server/types"
 	"github.com/agntcy/dir/utils/logging"
+	"github.com/agntcy/dir/utils/safefetch"
 	"oras.land/oras-go/v2/registry"
 )
 
@@ -75,19 +79,6 @@ func (s *Service) registerTasks(cfg *config.Config, db servertypes.DatabaseAPI, 
 		s.addTask(t)
 	}
 
-	if cfg.Name.Enabled {
-		np := namingprovider.NewProvider(
-			namingprovider.WithWellKnownLookup(wellknown.NewFetcher()),
-		)
-
-		t, err := name.NewTask(cfg.Name, db, store, np)
-		if err != nil {
-			return fmt.Errorf("failed to create name task: %w", err)
-		}
-
-		s.addTask(t)
-	}
-
 	if cfg.Signature.Enabled {
 		refStore, ok := store.(servertypes.ReferrerStoreAPI)
 		if !ok {
@@ -96,6 +87,32 @@ func (s *Service) registerTasks(cfg *config.Config, db servertypes.DatabaseAPI, 
 			t, err := signature.NewTask(cfg.Signature, db, signature.NewStoreFetcher(refStore))
 			if err != nil {
 				return fmt.Errorf("failed to create signature task: %w", err)
+			}
+
+			s.addTask(t)
+		}
+	}
+
+	if cfg.Identity.Enabled {
+		refStore, ok := store.(servertypes.ReferrerStoreAPI)
+		if !ok {
+			logger.Warn("Store does not support referrers, skipping identity task")
+		} else {
+			bundles, err := spiffe.Load(spiffe.Config{TrustDomains: cfg.Identity.SpiffeTrustDomains})
+			if err != nil {
+				return fmt.Errorf("failed to load SPIFFE trust bundles for identity task: %w", err)
+			}
+
+			fetchClient := safefetch.New()
+			registry := serveridentity.NewRegistry(
+				identitywellknown.New(fetchClient),
+				identitydns.New(),
+				identitydid.New(fetchClient),
+			)
+
+			t, err := identity.NewTask(cfg.Identity, db, refStore, registry, bundles)
+			if err != nil {
+				return fmt.Errorf("failed to create identity task: %w", err)
 			}
 
 			s.addTask(t)

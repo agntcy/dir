@@ -152,7 +152,7 @@ func (d *DB) GetCatalogEntries(opts ...types.CatalogQueryOption) ([]*catalogv1.C
 		Preload("Domains").
 		Preload("Annotations").
 		Preload("Signatures").
-		Preload("NameVerification").
+		Preload("Owner", "role = ?", types.ClaimRoleOwner).
 		// A failed row records why the scan could not run, not a verdict, so it
 		// is withheld from the projection to keep the badge a scan result.
 		Preload("ScanReports", "status IN ?", types.ScannedStatuses()).
@@ -384,12 +384,12 @@ func deriveTrustStatus(record *Record) catalogv1.TrustStatus {
 		signatureStatuses[i] = record.Signatures[i].Status
 	}
 
-	nameVerificationStatus := ""
-	if record.NameVerification != nil {
-		nameVerificationStatus = record.NameVerification.Status
+	ownerVerificationStatus := ""
+	if record.Owner != nil {
+		ownerVerificationStatus = record.Owner.Status
 	}
 
-	return catalogv1.DeriveTrustStatus(signatureStatuses, nameVerificationStatus)
+	return catalogv1.DeriveTrustStatus(signatureStatuses, ownerVerificationStatus)
 }
 
 // applyCatalogOrder appends the allow-listed ORDER BY clauses plus a

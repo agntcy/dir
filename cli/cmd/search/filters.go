@@ -39,6 +39,8 @@ type Filters struct {
 	SchemaVersions FilterValues
 	ModuleIDs      FilterValues
 	Annotations    FilterValues
+	Identities     FilterValues
+	Owners         FilterValues
 
 	ScanStatuses       FilterValues
 	ScanFailureReasons FilterValues
@@ -48,9 +50,11 @@ type Filters struct {
 	ScanSeverity        string
 	ExcludeScanSeverity string
 
-	Verified bool
-	Trusted  bool
-	Safe     bool
+	Verified         bool
+	Trusted          bool
+	Safe             bool
+	IdentityVerified bool
+	OwnerVerified    bool
 
 	// flags is the flag set the filter flags were registered on. It tells
 	// "--trusted=false" (filter for records that failed the check) apart from
@@ -184,6 +188,20 @@ func (f *Filters) valueFilters() []valueFilter {
 			queryType:    searchv1.RecordQueryType_RECORD_QUERY_TYPE_ANNOTATION,
 			values:       &f.Annotations,
 		},
+		{
+			flag:         "identity",
+			usage:        "Search for records with a specific claimed identity (e.g., --identity 'did:web:acme.com:*')",
+			excludeUsage: "Exclude records with a specific claimed identity (e.g., --exclude-identity 'spiffe://other.org/*')",
+			queryType:    searchv1.RecordQueryType_RECORD_QUERY_TYPE_IDENTITY,
+			values:       &f.Identities,
+		},
+		{
+			flag:         "owner",
+			usage:        "Search for records with a specific owner identity (e.g., --owner 'did:web:acme.com')",
+			excludeUsage: "Exclude records with a specific owner identity (e.g., --exclude-owner 'spiffe://other.org/*')",
+			queryType:    searchv1.RecordQueryType_RECORD_QUERY_TYPE_OWNER,
+			values:       &f.Owners,
+		},
 	}
 }
 
@@ -218,6 +236,10 @@ func registerFilterFlags(flags *pflag.FlagSet, f *Filters) {
 		"Filter for records with a trusted signature (--trusted) or without one (--trusted=false)")
 	flags.BoolVar(&f.Safe, "safe", false,
 		"Filter for records where every security scanner reported is_safe=true (--safe), or where at least one did not (--safe=false)")
+	flags.BoolVar(&f.IdentityVerified, "identity-verified", false,
+		"Filter for records with a verified identity claim (--identity-verified) or without one (--identity-verified=false)")
+	flags.BoolVar(&f.OwnerVerified, "owner-verified", false,
+		"Filter for records with a verified ownership claim (--owner-verified) or without one (--owner-verified=false)")
 }
 
 // BuildQueries converts populated filter fields into API query objects.
@@ -275,6 +297,8 @@ func BuildQueries(f *Filters) []*searchv1.RecordQuery {
 		{"verified", f.Verified, searchv1.RecordQueryType_RECORD_QUERY_TYPE_VERIFIED},
 		{"trusted", f.Trusted, searchv1.RecordQueryType_RECORD_QUERY_TYPE_TRUSTED},
 		{"safe", f.Safe, searchv1.RecordQueryType_RECORD_QUERY_TYPE_SCAN_SAFE},
+		{"identity-verified", f.IdentityVerified, searchv1.RecordQueryType_RECORD_QUERY_TYPE_IDENTITY_VERIFIED},
+		{"owner-verified", f.OwnerVerified, searchv1.RecordQueryType_RECORD_QUERY_TYPE_OWNER_VERIFIED},
 	}
 
 	for _, boolFilter := range boolFilters {

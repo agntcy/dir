@@ -38,6 +38,9 @@ type DatabaseAPI interface {
 	// UsageMetricsDatabaseAPI handles per-record usage counters for popularity ranking.
 	UsageMetricsDatabaseAPI
 
+	// IdentityDatabaseAPI handles management of record identity/ownership claims.
+	IdentityDatabaseAPI
+
 	// Close closes the database connection and releases any resources.
 	Close() error
 

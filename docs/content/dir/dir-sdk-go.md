@@ -18,7 +18,7 @@ Package reference: [pkg.go.dev/github.com/agntcy/dir/client](https://pkg.go.dev/
 | **Store** | `Push`, `PushBatch`, `PushStream`, `Pull`, `PullBatch`, `PullStream`, `Lookup`, `LookupBatch`, `LookupStream`, `Delete`, `DeleteBatch`, `DeleteStream`, `PushReferrer`, `PullReferrer`, `DeleteReferrer` |
 | **Search** | `SearchRecords`, `SearchCIDs` (streaming via `StreamResult`) |
 | **Routing** | `Publish`, `Unpublish`, `List`, `SearchRouting` |
-| **Naming** | `Resolve`, `GetVerificationInfo`, `GetVerificationInfoByName` |
+| **Identity** | `Resolve`, `ClaimIdentity`, `ClaimOwnership`, `GetIdentityStatus`, `GetIdentityStatusByName` |
 | **Sync** | `CreateSync`, `GetSync`, `ListSyncs`, `DeleteSync` |
 | **Events** | `ListenStream` (server-streaming via `StreamResult`) |
 | **Signing** | `Sign` (local cosign — no `dirctl` required), `Verify`, `PullSignatures`, `PullPublicKeys` |
@@ -277,20 +277,24 @@ for {
 }
 ```
 
-### Naming — resolve and verify
+### Identity — resolve, claim, and check verification status
 
 ```go
 // Resolve a name (optionally versioned) to record references
 resp, err := c.Resolve(ctx, "my-agent", "1.0.0")
-for _, ref := range resp.Refs {
-    fmt.Println(ref.Cid)
+for _, rec := range resp.GetRecords() {
+    fmt.Println(rec.Cid)
 }
 
-// Get verification info by CID
-info, err := c.GetVerificationInfo(ctx, ref.Cid)
+// Claim the record's own identity and its owner (signs and pushes claim referrers)
+err = c.ClaimIdentity(ctx, ref.Cid, "did:web:my-agent.example.com", signer)
+err = c.ClaimOwnership(ctx, ref.Cid, "did:web:acme.com", signer)
 
-// Get verification info by name
-info, err = c.GetVerificationInfoByName(ctx, "my-agent", "1.0.0")
+// Get cached identity/ownership verification status by CID
+status, err := c.GetIdentityStatus(ctx, ref.Cid)
+
+// Get cached identity/ownership verification status by name
+status, err = c.GetIdentityStatusByName(ctx, "my-agent", "1.0.0")
 ```
 
 ### Events — real-time streaming

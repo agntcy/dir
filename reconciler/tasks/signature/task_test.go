@@ -258,21 +258,6 @@ func (f *fakeSignatureDB) UpdatePublicationStatus(publicationID string, status r
 	return nil
 }
 func (f *fakeSignatureDB) DeletePublication(publicationID string) error { return nil }
-func (f *fakeSignatureDB) CreateNameVerification(verification types.NameVerificationObject) error {
-	return nil
-}
-
-func (f *fakeSignatureDB) UpdateNameVerification(verification types.NameVerificationObject) error {
-	return nil
-}
-
-func (f *fakeSignatureDB) GetVerificationByCID(cid string) (types.NameVerificationObject, error) {
-	return nil, nil
-}
-
-func (f *fakeSignatureDB) GetRecordsNeedingVerification(ttl time.Duration) ([]coretypes.Record, error) {
-	return nil, nil
-}
 
 func (f *fakeSignatureDB) CreateSignatureVerification(verification types.SignatureVerificationObject) error {
 	return nil
@@ -310,6 +295,22 @@ func (f *fakeSignatureDB) UpsertScanReport(types.ScanReportObject, types.ScanSch
 }
 
 func (f *fakeSignatureDB) GetRecordsNeedingScan(time.Duration) ([]coretypes.Record, error) {
+	return nil, nil
+}
+
+func (f *fakeSignatureDB) UpsertClaim(string, types.ClaimObject) error { return nil }
+func (f *fakeSignatureDB) RemoveClaims(string) error                   { return nil }
+func (f *fakeSignatureDB) GetClaimByCID(string, string) (types.ClaimObject, error) {
+	return nil, nil
+}
+
+func (f *fakeSignatureDB) CreateNameVerification(types.NameVerificationObject) error { return nil }
+func (f *fakeSignatureDB) UpdateNameVerification(types.NameVerificationObject) error { return nil }
+func (f *fakeSignatureDB) GetVerificationByCID(string) (types.NameVerificationObject, error) {
+	return nil, nil
+}
+
+func (f *fakeSignatureDB) GetRecordsNeedingVerification(time.Duration) ([]coretypes.Record, error) {
 	return nil, nil
 }
 

@@ -13,8 +13,8 @@ import (
 	authz "github.com/agntcy/dir/server/authz/config"
 	dbconfig "github.com/agntcy/dir/server/database/config"
 	events "github.com/agntcy/dir/server/events/config"
+	identityconfig "github.com/agntcy/dir/server/identity/config"
 	ratelimitconfig "github.com/agntcy/dir/server/middleware/ratelimit/config"
-	naming "github.com/agntcy/dir/server/naming/config"
 	publication "github.com/agntcy/dir/server/publication/config"
 	routing "github.com/agntcy/dir/server/routing/config"
 	store "github.com/agntcy/dir/server/store/config"
@@ -164,8 +164,8 @@ type Config struct {
 	// Metrics configuration
 	Metrics MetricsConfig `json:"metrics" mapstructure:"metrics"`
 
-	// Naming holds name verification cache config (TTL for naming API; reconciler name task performs re-verification).
-	Naming naming.Config `json:"naming,omitzero" mapstructure:"naming"`
+	// Identity holds resolver configuration for record identity/ownership claim verification.
+	Identity identityconfig.Config `json:"identity,omitzero" mapstructure:"identity"`
 
 	// HTTPGateway exposes the gRPC services over HTTP/JSON via grpc-gateway.
 	HTTPGateway HTTPGatewayConfig `json:"http_gateway,omitzero" mapstructure:"http_gateway"`
@@ -654,12 +654,6 @@ func LoadConfig(opts ...ConfigOption) (*Config, error) {
 
 	_ = v.BindEnv("metrics.address")
 	v.SetDefault("metrics.address", DefaultMetricsAddress)
-
-	//
-	// Naming (name verification cache TTL for API responses; re-verification is done by the reconciler name task)
-	//
-	_ = v.BindEnv("naming.ttl")
-	v.SetDefault("naming.ttl", naming.DefaultTTL)
 
 	//
 	// Connection management configuration

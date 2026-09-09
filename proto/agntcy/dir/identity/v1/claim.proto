@@ -1,0 +1,70 @@
+// Copyright AGNTCY Contributors (https://github.com/agntcy)
+// SPDX-License-Identifier: Apache-2.0
+
+syntax = "proto3";
+
+package agntcy.dir.identity.v1;
+
+// IdentityClaim is a verifiable assertion of a Record's own identity.
+//
+// Storage and management of claims is provided via StoreService as a
+// RecordReferrer object.
+//
+// IdentityClaim can be encoded into RecordReferrer object as follows:
+//   type = "agntcy.dir.identity.v1.IdentityClaim"
+//   data = IdentityClaim message encoded as JSON
+message IdentityClaim {
+  // The identity URI being claimed (e.g. "did:web:acme.com:agents:finance",
+  // "spiffe://acme.com/agents/finance"). Must match the record's own
+  // "agntcy.dir/identity" annotation. The URI scheme (and, for "did:", the DID
+  // method segment) determines how subject is resolved/verified.
+  string subject = 1;
+
+  // Signing timestamp of the claim in the RFC3339 format. Part of the signed payload.
+  // Specs: https://www.rfc-editor.org/rfc/rfc3339.html
+  string signed_at = 2;
+
+  // Expiration timestamp in the RFC3339 format. Consumers must reject a claim
+  // whose expires_at is in the past.
+  optional string expires_at = 3;
+
+  // Detached JWS (RFC 7515) compact serialization, signed over the payload
+  // record_cid + "|" + subject + "|" + signed_at. The JWS "alg" header is not
+  // trusted for algorithm selection; a verifier derives the expected
+  // algorithm from the resolved key's own type (one of ES256, ES384, EdDSA,
+  // RS256) and rejects anything else.
+  string signature = 4;
+
+  // Base64-encoded DER X.509 certificate. Only set for a "spiffe://" subject,
+  // whose certificate's URI SAN must equal subject.
+  optional string certificate = 5;
+}
+
+// OwnershipClaim is a verifiable assertion of who controls/owns a Record.
+//
+// OwnershipClaim can be encoded into RecordReferrer object as follows:
+//   type = "agntcy.dir.identity.v1.OwnershipClaim"
+//   data = OwnershipClaim message encoded as JSON
+message OwnershipClaim {
+  // The owner identity URI being claimed (e.g. "did:web:acme.com", "dns:acme.com").
+  // Must match the record's own "agntcy.dir/owner" annotation.
+  string subject = 1;
+
+  // Signing timestamp of the claim in the RFC3339 format. Part of the signed payload.
+  string signed_at = 2;
+
+  // Expiration timestamp in the RFC3339 format. Consumers must reject a claim
+  // whose expires_at is in the past.
+  optional string expires_at = 3;
+
+  // Detached JWS (RFC 7515) compact serialization, signed over the payload
+  // record_cid + "|" + subject + "|" + signed_at. The JWS "alg" header is not
+  // trusted for algorithm selection; a verifier derives the expected
+  // algorithm from the resolved key's own type (one of ES256, ES384, EdDSA,
+  // RS256) and rejects anything else.
+  string signature = 4;
+
+  // Base64-encoded DER X.509 certificate. Only set for a "spiffe://" subject,
+  // whose certificate's URI SAN must equal subject.
+  optional string certificate = 5;
+}

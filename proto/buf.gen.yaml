@@ -26,9 +26,6 @@ managed:
     - path: agntcy/dir/events/v1
       file_option: go_package
       value: github.com/agntcy/dir/api/events/v1
-    - path: agntcy/dir/naming/v1
-      file_option: go_package
-      value: github.com/agntcy/dir/api/naming/v1
     - path: agntcy/dir/runtime/v1
       file_option: go_package
       value: github.com/agntcy/dir/api/runtime/v1
@@ -38,6 +35,9 @@ managed:
     - path: agntcy/dir/security/v1
       file_option: go_package
       value: github.com/agntcy/dir/api/security/v1
+    - path: agntcy/dir/identity/v1
+      file_option: go_package
+      value: github.com/agntcy/dir/api/identity/v1
 
 inputs:
   - directory: .

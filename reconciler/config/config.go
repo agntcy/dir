@@ -9,15 +9,14 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/agntcy/dir/reconciler/tasks/identity"
 	"github.com/agntcy/dir/reconciler/tasks/indexer"
 	"github.com/agntcy/dir/reconciler/tasks/metrics"
-	"github.com/agntcy/dir/reconciler/tasks/name"
 	"github.com/agntcy/dir/reconciler/tasks/regsync"
 	"github.com/agntcy/dir/reconciler/tasks/scan"
 	"github.com/agntcy/dir/reconciler/tasks/signature"
 	authnconfig "github.com/agntcy/dir/server/authn/config"
 	dbconfig "github.com/agntcy/dir/server/database/config"
-	namingconfig "github.com/agntcy/dir/server/naming/config"
 	ociconfig "github.com/agntcy/dir/server/store/oci/config"
 	"github.com/agntcy/dir/utils/logging"
 	"github.com/spf13/viper"
@@ -68,11 +67,11 @@ type Config struct {
 	// Indexer holds the indexer task configuration.
 	Indexer indexer.Config `json:"indexer" mapstructure:"indexer"`
 
-	// Name holds the name (name/DNS verification) task configuration.
-	Name name.Config `json:"name" mapstructure:"name"`
-
 	// Signature holds the signature verification task configuration.
 	Signature signature.Config `json:"signature" mapstructure:"signature"`
+
+	// Identity holds the identity/ownership claim verification task configuration.
+	Identity identity.Config `json:"identity" mapstructure:"identity"`
 
 	// Scan holds the security scan task configuration.
 	Scan scan.Config `json:"scan" mapstructure:"scan"`
@@ -173,21 +172,6 @@ func LoadConfig() (*Config, error) {
 
 	_ = v.BindEnv("indexer.interval")
 	v.SetDefault("indexer.interval", indexer.DefaultInterval)
-
-	//
-	// Name task configuration (name/DNS verification)
-	//
-	_ = v.BindEnv("name.enabled")
-	v.SetDefault("name.enabled", false)
-
-	_ = v.BindEnv("name.interval")
-	v.SetDefault("name.interval", name.DefaultInterval)
-
-	_ = v.BindEnv("name.ttl")
-	v.SetDefault("name.ttl", namingconfig.DefaultTTL)
-
-	_ = v.BindEnv("name.record_timeout")
-	v.SetDefault("name.record_timeout", name.DefaultRecordTimeout)
 
 	//
 	// Signature task configuration (signature verification cache)

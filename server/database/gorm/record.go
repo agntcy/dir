@@ -55,15 +55,16 @@ type Record struct {
 	Authors       []string `gorm:"column:authors;serializer:json"` // Stored as JSON array
 	Signed        bool     `gorm:"column:signed;default:false"`    // Whether at least one signature is attached
 
-	Skills           []Skill                 `gorm:"foreignKey:RecordCID;references:RecordCID;constraint:OnDelete:CASCADE"`
-	Locators         []Locator               `gorm:"foreignKey:RecordCID;references:RecordCID;constraint:OnDelete:CASCADE"`
-	Modules          []Module                `gorm:"foreignKey:RecordCID;references:RecordCID;constraint:OnDelete:CASCADE"`
-	Domains          []Domain                `gorm:"foreignKey:RecordCID;references:RecordCID;constraint:OnDelete:CASCADE"`
-	Annotations      []Annotation            `gorm:"foreignKey:RecordCID;references:RecordCID;constraint:OnDelete:CASCADE"`
-	Signatures       []SignatureVerification `gorm:"foreignKey:RecordCID;references:RecordCID;constraint:OnDelete:CASCADE"`
-	NameVerification *NameVerification       `gorm:"foreignKey:RecordCID;references:RecordCID;constraint:OnDelete:CASCADE"`
-	ScanReports      []ScanReport            `gorm:"foreignKey:RecordCID;references:RecordCID;constraint:OnDelete:CASCADE"`
-	UsageMetrics     *RecordUsageMetrics     `gorm:"foreignKey:RecordCID;references:RecordCID;constraint:OnDelete:CASCADE"`
+	Skills       []Skill                 `gorm:"foreignKey:RecordCID;references:RecordCID;constraint:OnDelete:CASCADE"`
+	Locators     []Locator               `gorm:"foreignKey:RecordCID;references:RecordCID;constraint:OnDelete:CASCADE"`
+	Modules      []Module                `gorm:"foreignKey:RecordCID;references:RecordCID;constraint:OnDelete:CASCADE"`
+	Domains      []Domain                `gorm:"foreignKey:RecordCID;references:RecordCID;constraint:OnDelete:CASCADE"`
+	Annotations  []Annotation            `gorm:"foreignKey:RecordCID;references:RecordCID;constraint:OnDelete:CASCADE"`
+	Signatures   []SignatureVerification `gorm:"foreignKey:RecordCID;references:RecordCID;constraint:OnDelete:CASCADE"`
+	ScanReports  []ScanReport            `gorm:"foreignKey:RecordCID;references:RecordCID;constraint:OnDelete:CASCADE"`
+	UsageMetrics *RecordUsageMetrics     `gorm:"foreignKey:RecordCID;references:RecordCID;constraint:OnDelete:CASCADE"`
+	Identity     *Claim                  `gorm:"foreignKey:RecordCID;references:RecordCID;constraint:OnDelete:CASCADE"`
+	Owner        *Claim                  `gorm:"foreignKey:RecordCID;references:RecordCID;constraint:OnDelete:CASCADE"`
 }
 
 func (r *Record) GetCid() string {
@@ -580,16 +581,13 @@ func (d *DB) handleFilterOptions(query *gorm.DB, cfg *types.RecordFilters) *gorm
 		query = query.Where("modules.module_id IN ?", cfg.ModuleIDs)
 	}
 
-	// Handle verified filter.
+	// Handle verified filter (ownership claim verified; name/domain verification
+	// was removed along with naming.v1, "verified" now reflects ownership).
 	if cfg.Verified != nil {
 		if *cfg.Verified {
-			// Filter for verified records only
-			query = query.Joins("JOIN name_verifications ON name_verifications.record_cid = records.record_cid").
-				Where("name_verifications.status = ?", VerificationStatusVerified)
+			query = query.Where("EXISTS (SELECT 1 FROM claims oc WHERE oc.record_cid = records.record_cid AND oc.role = ? AND oc.status = ?)", types.ClaimRoleOwner, ClaimStatusVerified)
 		} else {
-			// Filter for non-verified records (either no verification or failed)
-			query = query.Joins("LEFT JOIN name_verifications ON name_verifications.record_cid = records.record_cid").
-				Where("name_verifications.status IS NULL OR name_verifications.status != ?", VerificationStatusVerified)
+			query = query.Where("NOT EXISTS (SELECT 1 FROM claims oc WHERE oc.record_cid = records.record_cid AND oc.role = ? AND oc.status = ?)", types.ClaimRoleOwner, ClaimStatusVerified)
 		}
 	}
 
@@ -600,6 +598,44 @@ func (d *DB) handleFilterOptions(query *gorm.DB, cfg *types.RecordFilters) *gorm
 			query = query.Where("EXISTS (SELECT 1 FROM signature_verifications sv WHERE sv.record_cid = records.record_cid AND sv.status = ?)", verifiedStatus)
 		} else {
 			query = query.Where("NOT EXISTS (SELECT 1 FROM signature_verifications sv WHERE sv.record_cid = records.record_cid AND sv.status = ?)", verifiedStatus)
+		}
+	}
+
+	// Handle identity subject filter with wildcard support.
+	if len(cfg.Identities) > 0 {
+		query = query.Joins("JOIN claims ic ON ic.record_cid = records.record_cid AND ic.role = ?", types.ClaimRoleIdentity)
+
+		condition, args := utils.BuildWildcardCondition("ic.subject", cfg.Identities)
+		if condition != "" {
+			query = query.Where(condition, args...)
+		}
+	}
+
+	// Handle owner subject filter with wildcard support.
+	if len(cfg.Owners) > 0 {
+		query = query.Joins("JOIN claims oc ON oc.record_cid = records.record_cid AND oc.role = ?", types.ClaimRoleOwner)
+
+		condition, args := utils.BuildWildcardCondition("oc.subject", cfg.Owners)
+		if condition != "" {
+			query = query.Where(condition, args...)
+		}
+	}
+
+	// Handle identity claim verified filter.
+	if cfg.IdentityVerified != nil {
+		if *cfg.IdentityVerified {
+			query = query.Where("EXISTS (SELECT 1 FROM claims ic WHERE ic.record_cid = records.record_cid AND ic.role = ? AND ic.status = ?)", types.ClaimRoleIdentity, ClaimStatusVerified)
+		} else {
+			query = query.Where("NOT EXISTS (SELECT 1 FROM claims ic WHERE ic.record_cid = records.record_cid AND ic.role = ? AND ic.status = ?)", types.ClaimRoleIdentity, ClaimStatusVerified)
+		}
+	}
+
+	// Handle ownership claim verified filter.
+	if cfg.OwnerVerified != nil {
+		if *cfg.OwnerVerified {
+			query = query.Where("EXISTS (SELECT 1 FROM claims oc WHERE oc.record_cid = records.record_cid AND oc.role = ? AND oc.status = ?)", types.ClaimRoleOwner, ClaimStatusVerified)
+		} else {
+			query = query.Where("NOT EXISTS (SELECT 1 FROM claims oc WHERE oc.record_cid = records.record_cid AND oc.role = ? AND oc.status = ?)", types.ClaimRoleOwner, ClaimStatusVerified)
 		}
 	}
 

@@ -88,6 +88,14 @@ func applyExcludedJoinFilters(query *gorm.DB, ex *types.ExcludedRecordFilters) *
 		query = applyExcludedAnnotations(query, ex.AnnotationKeys, ex.AnnotationValues)
 	}
 
+	if len(ex.Identities) > 0 {
+		query = applyExcludedSubjectClaim(query, types.ClaimRoleIdentity, ex.Identities)
+	}
+
+	if len(ex.Owners) > 0 {
+		query = applyExcludedSubjectClaim(query, types.ClaimRoleOwner, ex.Owners)
+	}
+
 	if len(ex.ScanSeverities) > 0 {
 		query = applyExcludedScanSeverities(query, ex.ScanSeverities)
 	}
@@ -263,6 +271,16 @@ func applyExcludedAnnotations(query *gorm.DB, keys []string, values []string) *g
 	inner := strings.Join(conditions, " AND ")
 
 	return query.Where(utils.BuildNotExistsCondition("annotations", "ex", inner), args...)
+}
+
+// applyExcludedSubjectClaim excludes records that have a row in the shared
+// claims table, for the given role (identity or owner), whose subject
+// matches any of the given patterns.
+func applyExcludedSubjectClaim(query *gorm.DB, role string, subjects []string) *gorm.DB {
+	inner, args := utils.BuildWildcardCondition("ex.subject", subjects)
+	args = append([]any{role}, args...)
+
+	return query.Where(utils.BuildNotExistsCondition("claims", "ex", "ex.record_cid = records.record_cid AND ex.role = ? AND ("+inner+")"), args...)
 }
 
 // applyExcludedScanSeverities excludes records that have any scan_reports row

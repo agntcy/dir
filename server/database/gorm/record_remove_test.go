@@ -38,7 +38,7 @@ func TestRemoveRecord_CascadesForeignKeys(t *testing.T) {
 		&Domain{},
 		&Annotation{},
 		&SignatureVerification{},
-		&NameVerification{},
+		&Claim{},
 		&ScanReport{},
 		&RecordUsageMetrics{},
 	}
@@ -82,10 +82,11 @@ func seedRecord(t *testing.T, db *DB, cid, name, signerKey, keyID string, now ti
 				UpdatedAt:   now,
 			},
 		},
-		NameVerification: &NameVerification{
-			Method: "wellknown",
-			Status: VerificationStatusVerified,
-			KeyID:  keyID,
+		Owner: &Claim{
+			RecordCID: cid,
+			Role:      types.ClaimRoleOwner,
+			Subject:   "did:web:acme.com",
+			Status:    ClaimStatusVerified,
 		},
 	}).Error)
 

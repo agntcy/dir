@@ -12,7 +12,6 @@ import (
 	authz "github.com/agntcy/dir/server/authz/config"
 	dbconfig "github.com/agntcy/dir/server/database/config"
 	ratelimitconfig "github.com/agntcy/dir/server/middleware/ratelimit/config"
-	naming "github.com/agntcy/dir/server/naming/config"
 	publication "github.com/agntcy/dir/server/publication/config"
 	routing "github.com/agntcy/dir/server/routing/config"
 	store "github.com/agntcy/dir/server/store/config"
@@ -142,9 +141,6 @@ func TestConfig(t *testing.T) {
 					Enabled: true,
 					Address: ":9090",
 				},
-				Naming: naming.Config{
-					TTL: naming.DefaultTTL,
-				},
 				HTTPGateway: HTTPGatewayConfig{
 					Enabled:       true,
 					ListenAddress: "address:123",
@@ -219,9 +215,6 @@ func TestConfig(t *testing.T) {
 				Metrics: MetricsConfig{
 					Enabled: DefaultMetricsEnabled,
 					Address: DefaultMetricsAddress,
-				},
-				Naming: naming.Config{
-					TTL: naming.DefaultTTL,
 				},
 				HTTPGateway: HTTPGatewayConfig{
 					Enabled:       DefaultHTTPGatewayEnabled,

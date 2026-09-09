@@ -7,7 +7,7 @@ Command-line tools for the AGNTCY Directory.
 - **Routing** — Publish, unpublish, list, and search records across the network.
 - **Integrity** — Sign, verify, and validate artifacts.
 - **Import / Export** — Bulk-import from registries or local files; export to OASF, A2A, Agent Skills, and MCP formats.
-- **Naming** — Domain verification (`naming verify`).
+- **Identity** — Claim and check record identity/ownership (`identity claim/status/resolve`).
 - **Sync** — Sync records between nodes.
 - **Events** — Stream directory events (`events listen`).
 - **MCP** — Run an MCP server for AI/agent tooling (`mcp serve`).

@@ -15,7 +15,7 @@ import (
 	catalogv1 "github.com/agntcy/dir/api/catalog/v1"
 	corev1 "github.com/agntcy/dir/api/core/v1"
 	eventsv1 "github.com/agntcy/dir/api/events/v1"
-	namingv1 "github.com/agntcy/dir/api/naming/v1"
+	identityv1 "github.com/agntcy/dir/api/identity/v1"
 	routingv1 "github.com/agntcy/dir/api/routing/v1"
 	searchv1 "github.com/agntcy/dir/api/search/v1"
 	signv1 "github.com/agntcy/dir/api/sign/v1"
@@ -29,13 +29,16 @@ import (
 	"github.com/agntcy/dir/server/events"
 	"github.com/agntcy/dir/server/gateway"
 	"github.com/agntcy/dir/server/healthcheck"
+	"github.com/agntcy/dir/server/identity"
+	"github.com/agntcy/dir/server/identity/did"
+	"github.com/agntcy/dir/server/identity/dns"
+	"github.com/agntcy/dir/server/identity/spiffe"
+	identitywellknown "github.com/agntcy/dir/server/identity/wellknown"
 	"github.com/agntcy/dir/server/ingest"
 	"github.com/agntcy/dir/server/metrics"
 	grpclogging "github.com/agntcy/dir/server/middleware/logging"
 	grpcratelimit "github.com/agntcy/dir/server/middleware/ratelimit"
 	grpcrecovery "github.com/agntcy/dir/server/middleware/recovery"
-	"github.com/agntcy/dir/server/naming"
-	"github.com/agntcy/dir/server/naming/wellknown"
 	"github.com/agntcy/dir/server/publication"
 	"github.com/agntcy/dir/server/routing"
 	"github.com/agntcy/dir/server/skill"
@@ -43,6 +46,7 @@ import (
 	"github.com/agntcy/dir/server/types"
 	"github.com/agntcy/dir/utils/extractor"
 	"github.com/agntcy/dir/utils/logging"
+	"github.com/agntcy/dir/utils/safefetch"
 	"github.com/agntcy/oasf-sdk/pkg/validator"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/keepalive"
@@ -296,7 +300,22 @@ func New(ctx context.Context, cfg *config.Config, opts ...ServerOption) (*Server
 
 	// Shared ingestion service: single authoritative path for persisting
 	// records/referrers (content store + search index + referrer DB state).
-	ingestor := ingest.New(storeAPI, databaseAPI)
+	spiffeBundles, err := spiffe.Load(spiffe.Config{TrustDomains: cfg.Identity.SpiffeTrustDomains})
+	if err != nil {
+		return nil, fmt.Errorf("failed to load SPIFFE trust bundles: %w", err)
+	}
+
+	fetchClient := safefetch.New()
+	identityRegistry := identity.NewRegistry(
+		identitywellknown.New(fetchClient),
+		dns.New(),
+		did.New(fetchClient),
+	)
+
+	ingestor := ingest.New(storeAPI, databaseAPI,
+		ingest.WithIdentityRegistry(identityRegistry),
+		ingest.WithSpiffeBundles(spiffeBundles),
+	)
 
 	routingAPI, err := routing.New(ctx, storeAPI, ingestor, oasfValidator, options)
 	if err != nil {
@@ -339,13 +358,6 @@ func New(ctx context.Context, cfg *config.Config, opts ...ServerOption) (*Server
 	// Create health checker
 	healthChecker := healthcheck.New()
 
-	// Create naming provider for naming service
-	wellKnownFetcher := wellknown.NewFetcher()
-
-	namingProvider := naming.NewProvider(
-		naming.WithWellKnownLookup(wellKnownFetcher),
-	)
-
 	// Register APIs
 	eventsv1.RegisterEventServiceServer(grpcServer, controller.NewEventsController(eventService))
 	storev1.RegisterStoreServiceServer(grpcServer, controller.NewStoreController(storeAPI, databaseAPI, ingestor, options.EventBus(), oasfValidator))
@@ -354,12 +366,7 @@ func New(ctx context.Context, cfg *config.Config, opts ...ServerOption) (*Server
 	searchv1.RegisterSearchServiceServer(grpcServer, controller.NewSearchController(databaseAPI, storeAPI))
 	storev1.RegisterSyncServiceServer(grpcServer, controller.NewSyncController(databaseAPI, options))
 	signv1.RegisterSignServiceServer(grpcServer, controller.NewSignController(databaseAPI))
-	namingv1.RegisterNamingServiceServer(grpcServer, controller.NewNamingController(
-		storeAPI,
-		databaseAPI,
-		namingProvider,
-		controller.WithVerificationTTL(options.Config().Naming.GetTTL()),
-	))
+	identityv1.RegisterIdentityServiceServer(grpcServer, controller.NewIdentityController(databaseAPI))
 
 	gwExtractor, aiFinderOpts := resolveGatewayExtractor(cfg)
 

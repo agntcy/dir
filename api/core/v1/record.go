@@ -8,10 +8,12 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/agntcy/dir/api/core/adapters"
 	"github.com/agntcy/oasf-sdk/pkg/decoder"
+	ocidigest "github.com/opencontainers/go-digest"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/structpb"
 )
@@ -66,6 +68,78 @@ func (r *Record) GetVersion() string {
 	return ""
 }
 
+// getAnnotation extracts a value from the record's top-level "annotations" map field.
+func (r *Record) getAnnotation(key string) string {
+	if r == nil || r.GetData() == nil {
+		return ""
+	}
+
+	annotations, ok := r.GetData().GetFields()["annotations"]
+	if !ok {
+		return ""
+	}
+
+	if v, ok := annotations.GetStructValue().GetFields()[key]; ok {
+		return v.GetStringValue()
+	}
+
+	return ""
+}
+
+// GetIdentity extracts the record's own claimed identity URI from its annotations.
+func (r *Record) GetIdentity() string {
+	return r.getAnnotation(AnnotationKeyIdentity)
+}
+
+// GetIdentityType returns the record identity's URI scheme, using the explicit
+// annotation override when present, otherwise inferring it from the URI itself.
+func (r *Record) GetIdentityType() string {
+	if t := r.getAnnotation(AnnotationKeyIdentityType); t != "" {
+		return t
+	}
+
+	if identity := r.GetIdentity(); identity != "" {
+		return InferIdentityType(identity)
+	}
+
+	return ""
+}
+
+// GetOwner extracts the record's claimed owner identity URI from its annotations.
+func (r *Record) GetOwner() string {
+	return r.getAnnotation(AnnotationKeyOwner)
+}
+
+// GetOwnerType returns the owner identity's URI scheme, using the explicit
+// annotation override when present, otherwise inferring it from the URI itself.
+func (r *Record) GetOwnerType() string {
+	if t := r.getAnnotation(AnnotationKeyOwnerType); t != "" {
+		return t
+	}
+
+	if owner := r.GetOwner(); owner != "" {
+		return InferIdentityType(owner)
+	}
+
+	return ""
+}
+
+// InferIdentityType infers an identity URI's scheme from its prefix.
+// Returns "did", "spiffe", "https", or "dns" (the fallback for bare domains
+// and explicit "dns:" URIs).
+func InferIdentityType(uri string) string {
+	switch {
+	case strings.HasPrefix(uri, "did:"):
+		return "did"
+	case strings.HasPrefix(uri, "spiffe://"):
+		return "spiffe"
+	case strings.HasPrefix(uri, "https://"), strings.HasPrefix(uri, "http://"):
+		return "https"
+	default:
+		return "dns"
+	}
+}
+
 // GetCid calculates and returns the CID for this record.
 // The CID is calculated from the record's content using CIDv1, codec 1, SHA2-256.
 // Uses canonical JSON marshaling to ensure consistent, cross-language compatible results.
@@ -75,25 +149,48 @@ func (r *Record) GetCid() string {
 		return ""
 	}
 
-	// Use canonical marshaling for CID calculation
-	canonicalBytes, err := r.Marshal()
+	digest, err := r.contentDigest()
 	if err != nil {
 		return ""
 	}
 
-	// Calculate digest using local utilities
-	digest, err := CalculateDigest(canonicalBytes)
-	if err != nil {
-		return ""
-	}
-
-	// Convert digest to CID using local utilities
 	cid, err := ConvertDigestToCID(digest)
 	if err != nil {
 		return ""
 	}
 
 	return cid
+}
+
+// GetDigest returns the record's content digest in "algorithm:hex" form
+// (e.g. "sha256:9f86d0..."), matching common external conventions such as
+// OCI digests and the ai-catalog.io Trust Manifest's subject.digest field.
+// Computed from the same canonical bytes as GetCid, just a different
+// encoding of the same digest - this is purely an interop accessor and does
+// not change how records are addressed/stored internally.
+// Returns empty string if calculation fails.
+func (r *Record) GetDigest() string {
+	if r == nil || r.GetData() == nil {
+		return ""
+	}
+
+	digest, err := r.contentDigest()
+	if err != nil {
+		return ""
+	}
+
+	return digest.String()
+}
+
+// contentDigest returns the OCI-style digest of the record's canonical
+// bytes, shared by GetCid and GetDigest.
+func (r *Record) contentDigest() (ocidigest.Digest, error) {
+	canonicalBytes, err := r.Marshal()
+	if err != nil {
+		return "", err
+	}
+
+	return CalculateDigest(canonicalBytes)
 }
 
 func (r *Record) GetSchemaVersion() string {
