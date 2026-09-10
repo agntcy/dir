@@ -17,7 +17,7 @@ replace github.com/ThalesIgnite/crypto11 => github.com/eclipse-keypont/crypto11 
 
 require (
 	buf.build/gen/go/agntcy/oasf/protocolbuffers/go v1.36.12-20260831083722-3438c6a1c7eb.2
-	github.com/agntcy/dir-importer v1.5.5-0.20260819134321-525b42c65a49
+	github.com/agntcy/dir-importer v1.5.5-0.20260910095602-246b83e62c98
 	github.com/agntcy/dir/api v1.7.0
 	github.com/agntcy/dir/cli v1.7.0
 	github.com/agntcy/dir/client v1.7.0
@@ -98,7 +98,7 @@ require (
 	github.com/agntcy/dir-runtime/utils v1.3.5 // indirect
 	github.com/agntcy/dir/reconciler v1.7.0 // indirect
 	github.com/agntcy/dir/utils v1.7.0 // indirect
-	github.com/agntcy/oasf-sdk/pkg v1.1.0 // indirect
+	github.com/agntcy/oasf-sdk/pkg v1.3.1-0.20260910081500-f0c6172a010a // indirect
 	github.com/alecthomas/chroma v0.10.0 // indirect
 	github.com/anchore/go-struct-converter v0.1.0 // indirect
 	github.com/antlr4-go/antlr/v4 v4.13.1 // indirect

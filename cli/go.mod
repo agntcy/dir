@@ -20,7 +20,7 @@ replace (
 
 require (
 	buf.build/gen/go/agntcy/oasf/protocolbuffers/go v1.36.12-20260831083722-3438c6a1c7eb.2
-	github.com/agntcy/dir-importer v1.5.5-0.20260819134321-525b42c65a49
+	github.com/agntcy/dir-importer v1.5.5-0.20260910095602-246b83e62c98
 	github.com/agntcy/dir-mcp v1.3.6
 	github.com/agntcy/dir-runtime/discovery v1.3.5
 	github.com/agntcy/dir-runtime/server v1.3.5
@@ -30,7 +30,7 @@ require (
 	github.com/agntcy/dir/reconciler v1.7.0
 	github.com/agntcy/dir/server v1.7.0
 	github.com/agntcy/dir/utils v1.7.0
-	github.com/agntcy/oasf-sdk/pkg v1.1.0
+	github.com/agntcy/oasf-sdk/pkg v1.3.1-0.20260910081500-f0c6172a010a
 	github.com/briandowns/spinner v1.23.2
 	github.com/ipfs/go-cid v0.6.2
 	github.com/libp2p/go-libp2p v0.49.0
