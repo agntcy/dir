@@ -198,8 +198,8 @@ github.com/agext/levenshtein v1.2.3 h1:YB2fHEn0UJagG8T1rrWknE3ZQzWM06O8AMAatNn7l
 github.com/agext/levenshtein v1.2.3/go.mod h1:JEDfjyjHDjOF/1e4FlBE/PkbqA9OfWu2ki2W0IB5558=
 github.com/agnivade/levenshtein v1.2.1 h1:EHBY3UOn1gwdy/VbFwgo4cxecRznFk7fKWN1KOX7eoM=
 github.com/agnivade/levenshtein v1.2.1/go.mod h1:QVVI16kDrtSuwcpd0p1+xMC6Z/VfhtCyDIjcwga4/DU=
-github.com/agntcy/dir-importer v1.5.5-0.20260819134321-525b42c65a49 h1:TABJ5nyLRXiZ5N/ziZOlrLen9Wjl+4H6VehBbIAllP8=
-github.com/agntcy/dir-importer v1.5.5-0.20260819134321-525b42c65a49/go.mod h1:B9rrrEPfu/0d/vOo6wrtxGIFzGbatZmY68qcf2JBUFA=
+github.com/agntcy/dir-importer v1.5.5-0.20260910095602-246b83e62c98 h1:ZUoBnZLBEx/a7R5oBWjzYnt4HZCpsK11mm0Bs8mHsKU=
+github.com/agntcy/dir-importer v1.5.5-0.20260910095602-246b83e62c98/go.mod h1:zFUv26/siePpkuQMVFfvq7VX7jQaM3vSiq9AfrNSfFg=
 github.com/agntcy/dir-mcp v1.3.6 h1:g/wRQJk52DsH0GvEFFaPr8SGscZxTp4JIbvxVXbRc6E=
 github.com/agntcy/dir-mcp v1.3.6/go.mod h1:wbx6f97lXd8xrlF+yLHCH4b1ehsxRIXyXqN8lYCSc14=
 github.com/agntcy/dir-runtime/discovery v1.3.5 h1:QvR2cFNdorpMXtI6nLJGHthtygDfocpAwY8f8675++A=
@@ -210,8 +210,8 @@ github.com/agntcy/dir-runtime/store v1.3.5 h1:qjDOD6fG9GjhXmjVn9x4Rkuz/2NeaY1lJk
 github.com/agntcy/dir-runtime/store v1.3.5/go.mod h1:8ahb8JFW7J6Rfgwwg8ftcNWzgS5erXhCSLM/agIQ8RE=
 github.com/agntcy/dir-runtime/utils v1.3.5 h1:8ee/EfEy4XGpZeVSy6eGozfLvvMZ+kmxqfB5QRh3Y60=
 github.com/agntcy/dir-runtime/utils v1.3.5/go.mod h1:eLdjmPF56ZjkBpyo5xuS/j9d7t2ERSo+VBoWJYlAOiE=
-github.com/agntcy/oasf-sdk/pkg v1.1.0 h1:Z2CfQ+XIjoHvlw2P0jcTRs59nbgVpjdnSVGGxmJTIEo=
-github.com/agntcy/oasf-sdk/pkg v1.1.0/go.mod h1:MAWceG+fNkVjgWbfrQOp64h6f5dbJbd1InP93fiMEiQ=
+github.com/agntcy/oasf-sdk/pkg v1.3.1-0.20260910081500-f0c6172a010a h1:PmcWcS60Q3QBRiAFlWMyUKTMLpVd7BbLtJ3tyfpJgK4=
+github.com/agntcy/oasf-sdk/pkg v1.3.1-0.20260910081500-f0c6172a010a/go.mod h1:yKdXbsWbDhZ7lmc7zsd/VJSjYIbFsoSTWSnhTxdAOzU=
 github.com/alecthomas/chroma v0.10.0 h1:7XDcGkCQopCNKjZHfYrNLraA+M7e0fMiJ/Mfikbfjek=
 github.com/alecthomas/chroma v0.10.0/go.mod h1:jtJATyUxlIORhUOFNA9NZDWGAQ8wpxQQqNSB4rjA/1s=
 github.com/alecthomas/template v0.0.0-20160405071501-a0175ee3bccc/go.mod h1:LOuyumcjzFXgccqObfd/Ljyb9UuFJ6TxHnclSeseNhc=
