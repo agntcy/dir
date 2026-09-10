@@ -64,6 +64,37 @@ func TestScopeFromOptsProject(t *testing.T) {
 	assert.Equal(t, agentcfg.Project, scopeFromOpts())
 }
 
+// --- pin tests ---
+
+func TestPinFlagIsLocalToInstallEntryPoints(t *testing.T) {
+	// Local, not persistent, so it never shows up on `install uninstall`, where
+	// holding a version has no meaning.
+	require.NotNil(t, Command.Flags().Lookup("pin"))
+	require.NotNil(t, runCmd.Flags().Lookup("pin"))
+	require.Nil(t, Command.PersistentFlags().Lookup("pin"))
+	require.Nil(t, uninstallCmd.Flags().Lookup("pin"))
+}
+
+func TestPinRequested(t *testing.T) {
+	orig := opts
+
+	defer func() { opts = orig }()
+
+	opts.pin = false
+
+	// A bare name resolves to whatever is newest, so nothing is held.
+	assert.False(t, pinRequested("cisco.com/agent"))
+	assert.False(t, pinRequested("bafyreibsomecid"))
+
+	// An explicit :version is the same statement --pin makes.
+	assert.True(t, pinRequested("cisco.com/agent:1.0.0"))
+	assert.True(t, pinRequested("cisco.com/agent:v2.1.0@bafyreibsomecid"))
+
+	opts.pin = true
+
+	assert.True(t, pinRequested("cisco.com/agent"))
+}
+
 // --- selectAgents tests ---
 
 func TestSelectAgentsAllDetected(t *testing.T) {

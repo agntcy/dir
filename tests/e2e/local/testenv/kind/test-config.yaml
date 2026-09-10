@@ -1,8 +1,18 @@
 local:
   server_address: "localhost:18888"
   metrics_address: "http://localhost:18889/metrics"
+  # The chart deploys the gateway on nodePort 30889, which kind-cluster.yaml maps
+  # to host port 18892.
   gateway_address: "http://localhost:18892"
-  remote_extractor_enabled: true
+  # dir-chart-values.yaml sets oasf-sdk.enabled, and the chart auto-wires
+  # extractor.remote_addr to that Service, so the gateway resolves the remote
+  # backend.
+  # This is the only environment covering the remote backend. The search parity
+  # spec skips here: the OASF-SDK Service is ClusterIP-only, so the host CLI
+  # cannot reach the backend the gateway uses and the two rankings are not
+  # comparable. Parity is asserted in the "local" environment, where both sides
+  # load the same provisioned assets.
+  extractor_mode: "remote"
   # cli_path: "/path/to/cli"
   cli_extra_args:
   - "--server-addr=localhost:18888"

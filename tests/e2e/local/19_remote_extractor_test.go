@@ -32,12 +32,12 @@ var _ = ginkgo.Describe("Remote extractor HTTP API", ginkgo.Ordered, ginkgo.Labe
 	var recordCID string
 
 	ginkgo.BeforeAll(func() {
-		if !testEnv.Config.RemoteExtractorEnabled {
+		if testEnv.Config.ExtractorMode != "remote" {
 			ginkgo.Skip("remote extractor not enabled for this environment")
 		}
 
 		gomega.Expect(testEnv.Config.GatewayAddress).NotTo(gomega.BeEmpty(),
-			"remote_extractor_enabled requires gateway_address")
+			`extractor_mode: "remote" requires gateway_address`)
 		utils.ResetCLIState()
 
 		tempDir, err := os.MkdirTemp("", "remote-extractor-e2e-*")

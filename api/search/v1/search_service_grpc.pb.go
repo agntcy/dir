@@ -22,9 +22,10 @@ import (
 const _ = grpc.SupportPackageIsVersion8
 
 const (
-	SearchService_SearchCIDs_FullMethodName    = "/agntcy.dir.search.v1.SearchService/SearchCIDs"
-	SearchService_SearchRecords_FullMethodName = "/agntcy.dir.search.v1.SearchService/SearchRecords"
-	SearchService_CountRecords_FullMethodName  = "/agntcy.dir.search.v1.SearchService/CountRecords"
+	SearchService_SearchCIDs_FullMethodName       = "/agntcy.dir.search.v1.SearchService/SearchCIDs"
+	SearchService_SearchRecords_FullMethodName    = "/agntcy.dir.search.v1.SearchService/SearchRecords"
+	SearchService_CountRecords_FullMethodName     = "/agntcy.dir.search.v1.SearchService/CountRecords"
+	SearchService_ListFilterValues_FullMethodName = "/agntcy.dir.search.v1.SearchService/ListFilterValues"
 )
 
 // SearchServiceClient is the client API for SearchService service.
@@ -42,6 +43,16 @@ type SearchServiceClient interface {
 	// Count records that match the given parameters.
 	// This operation does not interact with the network.
 	CountRecords(ctx context.Context, in *CountRecordsRequest, opts ...grpc.CallOption) (*CountRecordsResponse, error)
+	// List the distinct values present in the registry for the given record fields.
+	//
+	// Intended for populating filter panels: every returned value is one that some
+	// record actually carries, so a filter built from it can never yield an empty
+	// result. Values are returned verbatim in the form a RecordQuery accepts, so
+	// they can be fed straight back into SearchCIDs, SearchRecords, or CountRecords.
+	//
+	// Values are registry-wide; no query context is applied.
+	// This operation does not interact with the network.
+	ListFilterValues(ctx context.Context, in *ListFilterValuesRequest, opts ...grpc.CallOption) (*ListFilterValuesResponse, error)
 }
 
 type searchServiceClient struct {
@@ -128,6 +139,16 @@ func (c *searchServiceClient) CountRecords(ctx context.Context, in *CountRecords
 	return out, nil
 }
 
+func (c *searchServiceClient) ListFilterValues(ctx context.Context, in *ListFilterValuesRequest, opts ...grpc.CallOption) (*ListFilterValuesResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ListFilterValuesResponse)
+	err := c.cc.Invoke(ctx, SearchService_ListFilterValues_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // SearchServiceServer is the server API for SearchService service.
 // All implementations should embed UnimplementedSearchServiceServer
 // for forward compatibility.
@@ -143,6 +164,16 @@ type SearchServiceServer interface {
 	// Count records that match the given parameters.
 	// This operation does not interact with the network.
 	CountRecords(context.Context, *CountRecordsRequest) (*CountRecordsResponse, error)
+	// List the distinct values present in the registry for the given record fields.
+	//
+	// Intended for populating filter panels: every returned value is one that some
+	// record actually carries, so a filter built from it can never yield an empty
+	// result. Values are returned verbatim in the form a RecordQuery accepts, so
+	// they can be fed straight back into SearchCIDs, SearchRecords, or CountRecords.
+	//
+	// Values are registry-wide; no query context is applied.
+	// This operation does not interact with the network.
+	ListFilterValues(context.Context, *ListFilterValuesRequest) (*ListFilterValuesResponse, error)
 }
 
 // UnimplementedSearchServiceServer should be embedded to have
@@ -160,6 +191,9 @@ func (UnimplementedSearchServiceServer) SearchRecords(*SearchRecordsRequest, Sea
 }
 func (UnimplementedSearchServiceServer) CountRecords(context.Context, *CountRecordsRequest) (*CountRecordsResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method CountRecords not implemented")
+}
+func (UnimplementedSearchServiceServer) ListFilterValues(context.Context, *ListFilterValuesRequest) (*ListFilterValuesResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ListFilterValues not implemented")
 }
 func (UnimplementedSearchServiceServer) testEmbeddedByValue() {}
 
@@ -241,6 +275,24 @@ func _SearchService_CountRecords_Handler(srv interface{}, ctx context.Context, d
 	return interceptor(ctx, in, info, handler)
 }
 
+func _SearchService_ListFilterValues_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListFilterValuesRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(SearchServiceServer).ListFilterValues(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: SearchService_ListFilterValues_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(SearchServiceServer).ListFilterValues(ctx, req.(*ListFilterValuesRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // SearchService_ServiceDesc is the grpc.ServiceDesc for SearchService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -251,6 +303,10 @@ var SearchService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "CountRecords",
 			Handler:    _SearchService_CountRecords_Handler,
+		},
+		{
+			MethodName: "ListFilterValues",
+			Handler:    _SearchService_ListFilterValues_Handler,
 		},
 	},
 	Streams: []grpc.StreamDesc{

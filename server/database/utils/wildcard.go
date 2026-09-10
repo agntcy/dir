@@ -62,8 +62,16 @@ func BuildSingleWildcardCondition(field, pattern string) (string, string) {
 // ? -> _
 // Also escapes existing % and _ characters in the pattern.
 func convertGlobToLike(pattern string) string {
-	// First escape existing LIKE special characters
-	result := strings.ReplaceAll(pattern, "%", "\\%")
+	// Escape literal backslashes first. The conditions built here declare
+	// ESCAPE '\', so an unescaped backslash in the pattern would be read as an
+	// escape character and silently swallow the byte after it — breaking any
+	// pattern that legitimately contains one, such as a JSON-encoded value.
+	// This must run before the % and _ escaping below, which introduces
+	// backslashes of its own that are meant to keep their escaping role.
+	result := strings.ReplaceAll(pattern, "\\", "\\\\")
+
+	// Then escape existing LIKE special characters
+	result = strings.ReplaceAll(result, "%", "\\%")
 	result = strings.ReplaceAll(result, "_", "\\_")
 
 	// Then convert glob wildcards to LIKE wildcards

@@ -18,9 +18,9 @@ vars:
 
   ## External dependency versions
   # renovate: datasource=go depName=github.com/project-zot/zot versioning=semver
-  ZOT_VERSION: "2.1.20"
+  ZOT_VERSION: "2.1.21"
   # renovate: datasource=go depName=github.com/spiffe/spire versioning=semver
-  SPIRE_VERSION: "1.15.2"
+  SPIRE_VERSION: "1.15.3"
   # renovate: datasource=docker depName=docker.io/bitnami/postgresql
   POSTGRESQL_VERSION: "latest@sha256:7b9c5292a8e8b38e7172705cc6e49e34b9a8d9c297c4c7ae04130a3e6a28f3b0"
 
@@ -68,7 +68,7 @@ vars:
   MULTIMOD_VERSION: "0.29.0"
   MULTIMOD_BIN: "{{ .BIN_DIR }}/multimod-{{.MULTIMOD_VERSION}}"
   # renovate: datasource=go depName=github.com/mikefarah/yq/v4 versioning=semver
-  YQ_VERSION: "4.53.3"
+  YQ_VERSION: "4.53.6"
   YQ_BIN: "{{ .BIN_DIR }}/yq-{{.YQ_VERSION}}"
   GOLANGCI_LINT_VERSION: "2.13.2"
   GOLANGCI_LINT_BIN: "{{ .BIN_DIR }}/golangci-lint-{{.GOLANGCI_LINT_VERSION}}"

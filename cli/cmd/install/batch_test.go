@@ -4,11 +4,14 @@
 package install
 
 import (
+	"fmt"
 	"testing"
 
 	oasfv1alpha1 "buf.build/gen/go/agntcy/oasf/protocolbuffers/go/agntcy/oasf/types/v1alpha1"
 	corev1 "github.com/agntcy/dir/api/core/v1"
+	"github.com/agntcy/dir/cli/internal/agentcfg"
 	"github.com/agntcy/dir/cli/internal/agentinstall"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -90,6 +93,69 @@ func TestFormatSkippedSummary(t *testing.T) {
 	require.Contains(t, out, "Skipped records")
 	require.Contains(t, out, "bare")
 	require.Contains(t, out, "no installable module")
+}
+
+func TestApplyTargetsKeepsOutcomesPerRecord(t *testing.T) {
+	orig := opts
+
+	defer func() { opts = orig }()
+
+	opts.pin = false
+
+	targets := []installTarget{
+		{label: "a:1.0.0", record: corev1.New(&oasfv1alpha1.Record{Name: "a", Version: "1.0.0"})},
+		{label: "b:1.0.0", record: corev1.New(&oasfv1alpha1.Record{Name: "b", Version: "1.0.0"})},
+	}
+
+	// A stub apply: one outcome per call, so each record's outcomes are
+	// distinguishable in the result.
+	calls := 0
+	apply := func(_ agentcfg.Env, _ agentinstall.Artifacts, _ []agentcfg.Agent, _ agentcfg.Scope, _ bool) []agentcfg.Outcome {
+		calls++
+
+		return []agentcfg.Outcome{{
+			Agent:    "Claude Code",
+			Artifact: agentcfg.ArtifactSkill,
+			Path:     fmt.Sprintf("/skills/%d", calls),
+			Action:   agentcfg.ActionAdded,
+		}}
+	}
+
+	items, outcomes := applyTargets(agentcfg.Env{}, targets, nil, agentcfg.Global, false, apply)
+
+	// Per record, so a manifest row is built from that record's own outcomes.
+	require.Len(t, items, 2)
+	require.Len(t, items[0].outcomes, 1)
+	assert.Equal(t, "a", items[0].record.GetName())
+	assert.Equal(t, "/skills/1", items[0].outcomes[0].Path)
+	assert.Equal(t, "/skills/2", items[1].outcomes[0].Path)
+
+	// Flattened and label-tagged, which is what the plan and summary group on.
+	require.Len(t, outcomes, 2)
+	assert.Equal(t, "a:1.0.0", outcomes[0].Record)
+	assert.Equal(t, "b:1.0.0", outcomes[1].Record)
+}
+
+func TestApplyTargetsPinsOnlyWhenAsked(t *testing.T) {
+	orig := opts
+
+	defer func() { opts = orig }()
+
+	targets := []installTarget{{label: "a", record: corev1.New(&oasfv1alpha1.Record{Name: "a"})}}
+	apply := func(_ agentcfg.Env, _ agentinstall.Artifacts, _ []agentcfg.Agent, _ agentcfg.Scope, _ bool) []agentcfg.Outcome {
+		return nil
+	}
+
+	// Batch mode has no explicit :version to imply a pin.
+	opts.pin = false
+	items, _ := applyTargets(agentcfg.Env{}, targets, nil, agentcfg.Global, false, apply)
+	require.Len(t, items, 1)
+	assert.False(t, items[0].pinned)
+
+	opts.pin = true
+	items, _ = applyTargets(agentcfg.Env{}, targets, nil, agentcfg.Global, false, apply)
+	require.Len(t, items, 1)
+	assert.True(t, items[0].pinned)
 }
 
 func TestBatchInstallSkipsUnsuitableRecords(t *testing.T) {

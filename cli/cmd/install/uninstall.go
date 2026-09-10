@@ -82,5 +82,5 @@ func init() {
 // top-level `uninstall` shorthand: pull + derive, dry-run plan, confirm, remove,
 // summary.
 func runUninstallCmd(cmd *cobra.Command, input string) error {
-	return runApplyCmd(cmd, input, agentinstall.Uninstall, "\nRemove these artifacts?")
+	return runApplyCmd(cmd, input, agentinstall.Uninstall, recordUninstalls, "\nRemove these artifacts?")
 }

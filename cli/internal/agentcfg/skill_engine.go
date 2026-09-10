@@ -24,14 +24,14 @@ const skillFilePerm = 0o644
 func InstallSkill(target *SkillTarget, env Env, slug, canonical string, scope Scope, dryRun bool) (Outcome, error) {
 	path, err := resolveSkillTargetPath(target, env, slug, scope)
 	if errors.Is(err, ErrNoScopePath) {
-		return skipScopeOutcome("skill", scope), nil
+		return skipScopeOutcome(ArtifactSkill, scope), nil
 	}
 
 	if err != nil {
-		return Outcome{Artifact: "skill", Action: ActionFailed, Err: err}, err
+		return Outcome{Artifact: ArtifactSkill, Action: ActionFailed, Err: err}, err
 	}
 
-	outcome := Outcome{Artifact: "skill", Path: path}
+	outcome := Outcome{Artifact: ArtifactSkill, Path: path}
 
 	desired, err := renderForTarget(target, slug, canonical, path)
 	if err != nil {
@@ -86,16 +86,16 @@ func InstallSkill(target *SkillTarget, env Env, slug, canonical string, scope Sc
 func InstallSkillBundle(target *SkillTarget, env Env, slug string, archive []byte, scope Scope, dryRun bool) (Outcome, error) {
 	path, err := resolveSkillTargetPath(target, env, slug, scope)
 	if errors.Is(err, ErrNoScopePath) {
-		return skipScopeOutcome("skill", scope), nil
+		return skipScopeOutcome(ArtifactSkill, scope), nil
 	}
 
 	if err != nil {
-		return Outcome{Artifact: "skill", Action: ActionFailed, Err: err}, err
+		return Outcome{Artifact: ArtifactSkill, Action: ActionFailed, Err: err}, err
 	}
 
 	destDir := filepath.Dir(path)
 
-	outcome := Outcome{Artifact: "skill", Path: destDir}
+	outcome := Outcome{Artifact: ArtifactSkill, Path: destDir}
 
 	matches, err := exportfmt.SkillBundleMatchesDir(archive, destDir)
 	if err != nil {
@@ -133,14 +133,14 @@ func InstallSkillBundle(target *SkillTarget, env Env, slug string, archive []byt
 func RemoveSkill(target *SkillTarget, env Env, slug string, scope Scope, dryRun bool) (Outcome, error) {
 	path, err := resolveSkillTargetPath(target, env, slug, scope)
 	if errors.Is(err, ErrNoScopePath) {
-		return skipScopeOutcome("skill", scope), nil
+		return skipScopeOutcome(ArtifactSkill, scope), nil
 	}
 
 	if err != nil {
-		return Outcome{Artifact: "skill", Action: ActionFailed, Err: err}, err
+		return Outcome{Artifact: ArtifactSkill, Action: ActionFailed, Err: err}, err
 	}
 
-	outcome := Outcome{Artifact: "skill", Path: path}
+	outcome := Outcome{Artifact: ArtifactSkill, Path: path}
 
 	switch target.Strategy {
 	case SkillFolder:
