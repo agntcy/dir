@@ -60,6 +60,12 @@ var SkillMarkdown []byte
 //go:embed skill_record.json
 var SkillRecordJSON []byte
 
+// CatalogSkillRecordJSON is an OASF record with an explicit Agent Skill artifact
+// media type for AI Catalog projection tests.
+//
+//go:embed catalog_skill_record.json
+var CatalogSkillRecordJSON []byte
+
 // DirectoryRecordJSON is an OASF record for the agntcy Directory service.
 //
 //go:embed directory-record.json
