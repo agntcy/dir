@@ -4,55 +4,22 @@
 package install
 
 import (
-	"errors"
 	"fmt"
 	"strings"
 
 	corev1 "github.com/agntcy/dir/api/core/v1"
-	searchv1 "github.com/agntcy/dir/api/search/v1"
-	"github.com/agntcy/dir/cli/cmd/search"
 	"github.com/agntcy/dir/cli/internal/agentcfg"
 	"github.com/agntcy/dir/cli/internal/agentinstall"
 	"github.com/agntcy/dir/cli/presenter"
 	ctxUtils "github.com/agntcy/dir/cli/util/context"
-	"github.com/agntcy/dir/cli/util/prompt"
 	"github.com/agntcy/dir/cli/util/records"
+	"github.com/agntcy/dir/cli/util/reference"
 	"github.com/spf13/cobra"
 )
 
 type skippedRecord struct {
 	label  string
 	reason string
-}
-
-var errBatchInputConflict = errors.New("positional argument and search filters are mutually exclusive")
-
-func resolveBatchOrInput(
-	hasInput bool,
-	hasFilters bool,
-	batchFn func() error,
-	singleFn func() error,
-	helpFn func() error,
-) error {
-	switch {
-	case hasInput && hasFilters:
-		return errBatchInputConflict
-	case !hasInput && hasFilters:
-		return batchFn()
-	case !hasInput && !hasFilters:
-		return helpFn()
-	default:
-		return singleFn()
-	}
-}
-
-func requireBatchQueries() ([]*searchv1.RecordQuery, error) {
-	queries := search.BuildQueries(&opts.filters)
-	if len(queries) == 0 {
-		return nil, errors.New("at least one search filter is required for batch mode (e.g. --name, --module)")
-	}
-
-	return queries, nil
 }
 
 func getRecordLabel(record *corev1.Record) string {
@@ -140,21 +107,45 @@ func applyTargets(
 	return items, outcomes
 }
 
-func pullBatchRecords(cmd *cobra.Command, queries []*searchv1.RecordQuery) ([]*corev1.Record, error) {
+// pullPipedRecords resolves and pulls every reference read from stdin.
+//
+// One bad reference does not abort the run: it is reported and skipped, the
+// way an unusable record already is, since a pipe from a broad search should
+// not be all-or-nothing.
+func pullPipedRecords(cmd *cobra.Command, refs []string) ([]*corev1.Record, []skippedRecord) {
 	c, ok := ctxUtils.GetClientFromContext(cmd.Context())
 	if !ok {
-		return nil, errors.New("failed to get client from context")
+		return nil, []skippedRecord{{label: "stdin", reason: "failed to get client from context"}}
 	}
 
-	recs, err := records.SearchAndPull(cmd.Context(), c, queries, opts.limit)
-	if err != nil {
-		return nil, fmt.Errorf("search records: %w", err)
+	recs := make([]*corev1.Record, 0, len(refs))
+
+	var skipped []skippedRecord
+
+	for _, ref := range refs {
+		cid, err := reference.ResolveToCID(cmd.Context(), c, ref)
+		if err != nil {
+			skipped = append(skipped, skippedRecord{label: ref, reason: err.Error()})
+			presenter.Printf(cmd, "Warning: skipping %s: %s\n", ref, err)
+
+			continue
+		}
+
+		rec, err := c.Pull(cmd.Context(), &corev1.RecordRef{Cid: cid})
+		if err != nil {
+			skipped = append(skipped, skippedRecord{label: ref, reason: err.Error()})
+			presenter.Printf(cmd, "Warning: skipping %s: %s\n", ref, err)
+
+			continue
+		}
+
+		recs = append(recs, rec)
 	}
 
-	return recs, nil
+	return recs, skipped
 }
 
-func buildBatchTargets(cmd *cobra.Command, recs []*corev1.Record) ([]installTarget, []skippedRecord) {
+func buildTargets(cmd *cobra.Command, recs []*corev1.Record) ([]installTarget, []skippedRecord) {
 	targets := make([]installTarget, 0, len(recs))
 
 	var skipped []skippedRecord
@@ -182,51 +173,38 @@ func printSkippedSummary(cmd *cobra.Command, skipped []skippedRecord) {
 	}
 }
 
-func confirmBatch(cmd *cobra.Command, promptText string) (bool, error) {
+// confirmPiped gates a multi-record run. It never prompts: stdin carries the
+// reference list, so a prompt would read the next CID as the answer.
+func confirmPiped() (bool, error) {
 	if opts.yes || opts.dryRun {
 		return true, nil
 	}
 
-	ok, err := prompt.Confirm(cmd, promptText)
-	if err != nil {
-		return false, fmt.Errorf("confirm batch changes: %w", err)
-	}
-
-	if !ok {
-		presenter.Printf(cmd, "Aborted. No changes made.\n")
-
-		return false, nil
-	}
-
-	return true, nil
+	return false, errPipedNeedsYes
 }
 
-func confirmBatchChanges(cmd *cobra.Command) (bool, error) {
-	return confirmBatch(cmd, "\nProceed with these changes?")
-}
-
-func confirmBatchUninstall(cmd *cobra.Command) (bool, error) {
-	return confirmBatch(cmd, "\nRemove these artifacts?")
-}
-
-func runBatch(
-	cmd *cobra.Command,
-	apply recordApplyFn,
-	record manifestRecordFn,
-	confirmFn func(*cobra.Command) (bool, error),
-) error {
-	queries, err := requireBatchQueries()
+// runPipedInstall installs every reference read from stdin.
+//
+// This is what `dirctl search | dirctl install` runs. Install used to carry
+// its own copy of search's filter flags and run the search itself; the filters
+// belong to `dirctl search`, and duplicating them was also the only reason
+// `uninstall` ever needed a Directory.
+func runPipedInstall(cmd *cobra.Command) error {
+	refs, err := readPipedRefs(cmd)
 	if err != nil {
 		return err
 	}
 
-	recs, err := pullBatchRecords(cmd, queries)
-	if err != nil {
-		return err
+	if len(refs) == 0 {
+		presenter.PrintSmartf(cmd, "No references on stdin\n")
+
+		return nil
 	}
 
+	recs, unresolved := pullPipedRecords(cmd, refs)
 	if len(recs) == 0 {
-		presenter.PrintSmartf(cmd, "No records matched the search criteria\n")
+		printSkippedSummary(cmd, unresolved)
+		presenter.PrintSmartf(cmd, "Nothing to install\n")
 
 		return nil
 	}
@@ -241,17 +219,23 @@ func runBatch(
 
 	printScope(cmd)
 
-	targets, skipped := buildBatchTargets(cmd, selectRecords(recs))
-	_, plan := applyTargets(env, targets, selected, scope, true, apply)
+	targets, undeliverable := buildTargets(cmd, selectRecords(recs))
+
+	skipped := make([]skippedRecord, 0, len(unresolved)+len(undeliverable))
+	skipped = append(skipped, unresolved...)
+	skipped = append(skipped, undeliverable...)
+
+	_, plan := applyTargets(env, targets, selected, scope, true, agentinstall.Install)
 
 	presenter.Printf(cmd, "%s", agentcfg.FormatPlan(plan))
 	printSkippedSummary(cmd, skipped)
 
-	if len(plan) == 0 {
+	// Nothing would move, so there is nothing worth confirming.
+	if !agentcfg.HasChanges(plan) {
 		return nil
 	}
 
-	proceed, err := confirmFn(cmd)
+	proceed, err := confirmPiped()
 	if err != nil {
 		return err
 	}
@@ -260,7 +244,7 @@ func runBatch(
 		return nil
 	}
 
-	items, outcomes := applyTargets(env, targets, selected, scope, opts.dryRun, apply)
+	items, outcomes := applyTargets(env, targets, selected, scope, opts.dryRun, agentinstall.Install)
 	presenter.Printf(cmd, "%s", agentcfg.FormatSummary(outcomes, opts.dryRun))
 	printSkippedSummary(cmd, skipped)
 
@@ -269,17 +253,7 @@ func runBatch(
 		return nil
 	}
 
-	record(cmd, items, selected, scope)
+	recordInstalls(cmd, items, selected, scope)
 
 	return nil
-}
-
-// runBatchInstall searches for records and installs each into the selected agents.
-func runBatchInstall(cmd *cobra.Command) error {
-	return runBatch(cmd, agentinstall.Install, recordInstalls, confirmBatchChanges)
-}
-
-// runBatchUninstall searches for records and removes each from the selected agents.
-func runBatchUninstall(cmd *cobra.Command) error {
-	return runBatch(cmd, agentinstall.Uninstall, recordUninstalls, confirmBatchUninstall)
 }

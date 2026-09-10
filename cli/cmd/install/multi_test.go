@@ -15,35 +15,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestResolveBatchOrInputMutuallyExclusive(t *testing.T) {
-	err := resolveBatchOrInput(true, true, nil, nil, nil)
-	require.ErrorIs(t, err, errBatchInputConflict)
-}
-
-func TestResolveBatchOrInputBatch(t *testing.T) {
-	called := false
-
-	err := resolveBatchOrInput(false, true, func() error {
-		called = true
-
-		return nil
-	}, nil, nil)
-	require.NoError(t, err)
-	require.True(t, called)
-}
-
-func TestResolveBatchOrInputSingle(t *testing.T) {
-	called := false
-
-	err := resolveBatchOrInput(true, false, nil, func() error {
-		called = true
-
-		return nil
-	}, nil)
-	require.NoError(t, err)
-	require.True(t, called)
-}
-
 func TestRecordLabel(t *testing.T) {
 	require.Equal(t, "agent-a:1.0.0", getRecordLabel(corev1.New(&oasfv1alpha1.Record{
 		Name:    "agent-a",
@@ -158,7 +129,7 @@ func TestApplyTargetsPinsOnlyWhenAsked(t *testing.T) {
 	assert.True(t, items[0].pinned)
 }
 
-func TestBatchInstallSkipsUnsuitableRecords(t *testing.T) {
+func TestUnsuitableRecordsAreRejectedBeforeInstall(t *testing.T) {
 	orig := opts
 
 	defer func() { opts = orig }()

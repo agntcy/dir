@@ -34,11 +34,8 @@ type manifestRecordFn func(cmd *cobra.Command, items []applied, agents []agentcf
 // received an artifact. Agents whose outcomes were all skipped or failed are
 // left out, so a later listing never claims an install that did not happen.
 func recordInstalls(cmd *cobra.Command, items []applied, agents []agentcfg.Agent, scope agentcfg.Scope) {
-	if !recordable(scope) {
-		return
-	}
-
 	now := time.Now().UTC()
+	rowScope := manifestScope(scope)
 
 	withManifest(cmd, func(m *pkgstate.Manifest) bool {
 		changed := false
@@ -60,7 +57,7 @@ func recordInstalls(cmd *cobra.Command, items []applied, agents []agentcfg.Agent
 				entry.Name = name
 				entry.Version = item.record.GetVersion()
 				entry.CID = item.record.GetCid()
-				entry.Scope = pkgstate.ScopeGlobal
+				entry.Scope = rowScope
 				entry.Origin = pkgstate.OriginDirectory
 				entry.Pinned = item.pinned
 				entry.InstalledAt = now
@@ -86,9 +83,7 @@ func recordInstalls(cmd *cobra.Command, items []applied, agents []agentcfg.Agent
 // artifacts were removed from. An agent whose removal failed keeps its row,
 // because its artifacts are still on disk.
 func recordUninstalls(cmd *cobra.Command, items []applied, agents []agentcfg.Agent, scope agentcfg.Scope) {
-	if !recordable(scope) {
-		return
-	}
+	rowScope := manifestScope(scope)
 
 	withManifest(cmd, func(m *pkgstate.Manifest) bool {
 		changed := false
@@ -104,7 +99,7 @@ func recordUninstalls(cmd *cobra.Command, items []applied, agents []agentcfg.Age
 					continue
 				}
 
-				if m.Remove(pkgstate.Key{Name: name, Agent: agent.ID, Scope: pkgstate.ScopeGlobal}) {
+				if m.Remove(pkgstate.Key{Name: name, Agent: agent.ID, Scope: rowScope}) {
 					changed = true
 				}
 			}
@@ -112,14 +107,6 @@ func recordUninstalls(cmd *cobra.Command, items []applied, agents []agentcfg.Age
 
 		return changed
 	})
-}
-
-// recordable reports whether artifacts written at this scope go into the
-// manifest. Only global installs are tracked for now; the row shape already
-// carries `scope`, so a committed per-project manifest is a later addition
-// rather than a rewrite.
-func recordable(scope agentcfg.Scope) bool {
-	return scope == agentcfg.Global
 }
 
 // withManifest loads the manifest, applies mutate, and saves it when mutate
@@ -155,6 +142,51 @@ func withManifest(cmd *cobra.Command, mutate func(*pkgstate.Manifest) bool) {
 	if err := m.Save(path); err != nil {
 		warnManifest(cmd, err)
 	}
+}
+
+// readManifest loads the manifest for a command whose whole job is to report
+// on it, or to edit it.
+//
+// Unlike withManifest, a failure here is an error rather than a warning. An
+// install that loses its bookkeeping still installed something; a command
+// whose only product is the manifest must not report a write that did not
+// happen.
+//
+//nolint:wrapcheck // pkgstate errors already name the manifest path and the operation.
+func readManifest() (*pkgstate.Manifest, error) {
+	path, err := pkgstate.DefaultPath()
+	if err != nil {
+		return nil, err
+	}
+
+	m, err := pkgstate.Load(path)
+	if err != nil {
+		return nil, err
+	}
+
+	return m, nil
+}
+
+// editManifest loads the manifest, applies mutate, and saves when mutate
+// reports a change. See readManifest for why errors surface.
+//
+//nolint:wrapcheck // pkgstate errors already name the manifest path and the operation.
+func editManifest(mutate func(*pkgstate.Manifest) bool) error {
+	path, err := pkgstate.DefaultPath()
+	if err != nil {
+		return err
+	}
+
+	m, err := pkgstate.Load(path)
+	if err != nil {
+		return err
+	}
+
+	if !mutate(m) {
+		return nil
+	}
+
+	return m.Save(path)
 }
 
 func warnManifest(cmd *cobra.Command, err error) {

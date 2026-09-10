@@ -9,8 +9,10 @@ import (
 )
 
 // FormatPlan renders prospective (dry-run) outcomes as a preview, one line per
-// artifact with the action that will be taken, so a replace of an existing
-// older artifact (ActionUpdated) is visible before the user confirms.
+// artifact that will actually be touched, so a replace of an existing older
+// artifact (ActionUpdated) is visible before the user confirms.
+//
+// Agents where nothing will happen are left out — see reportable.
 func FormatPlan(outcomes []Outcome) string {
 	var b strings.Builder
 
@@ -22,20 +24,27 @@ func FormatPlan(outcomes []Outcome) string {
 		return b.String()
 	}
 
-	if needsRecordGrouping(outcomes) {
-		for i, record := range recordOrder(outcomes) {
+	shown := reportable(outcomes)
+	if len(shown) == 0 {
+		b.WriteString("  Nothing to change; everything is already as it should be.\n")
+
+		return b.String()
+	}
+
+	if needsRecordGrouping(shown) {
+		for i, record := range recordOrder(shown) {
 			if i > 0 {
 				b.WriteString("\n")
 			}
 
 			fmt.Fprintf(&b, "Record: %s\n", record)
-			writeOutcomeLines(&b, outcomesForRecord(outcomes, record))
+			writeOutcomeLines(&b, outcomesForRecord(shown, record))
 		}
 
 		return b.String()
 	}
 
-	writeOutcomeLines(&b, outcomes)
+	writeOutcomeLines(&b, shown)
 
 	return b.String()
 }

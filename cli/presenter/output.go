@@ -85,7 +85,18 @@ func PrintMessage(cmd *cobra.Command, title, message string, value any) error {
 
 	switch opts.Format {
 	case FormatRaw:
-		// For raw format, output just the value
+		// One value per line, so a list can be piped into another command.
+		// Printing the slice itself would emit Go's `[a b]` debug form, which
+		// no consumer can split.
+		if isSliceOrArray(value) {
+			v := reflect.ValueOf(value)
+			for i := range v.Len() {
+				Printf(cmd, "%v\n", v.Index(i).Interface())
+			}
+
+			return nil
+		}
+
 		Print(cmd, fmt.Sprintf("%v", value))
 
 		return nil

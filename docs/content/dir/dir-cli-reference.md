@@ -82,7 +82,7 @@ explicit `--auth-mode`.
 | Sync | `sync create`, `status`, `list`, `delete` |
 | Events | `events listen` |
 | MCP | `mcp serve` |
-| Install | `install run`, `install uninstall` (or top-level `uninstall`), `install list` |
+| Install | `install run`, `install uninstall` (or top-level `uninstall`), `install list`, `install prune` |
 | Diagnostics | `doctor`, `version` |
 
 ### Getting help
@@ -184,25 +184,50 @@ Writes are atomic and surgical: only our own MCP entry, skill file/folder, or
 delimited managed block is added/updated/removed — all of your existing
 configuration is preserved.
 
+Plans and summaries name only the agents something actually happens to. An
+agent where nothing changes is left out of the per-agent lines, because listing
+its path next to the record's name reads as a claim that the package is
+installed there. Skips and failures are always shown, since each explains why
+an agent you asked for got nothing, and the closing tally still counts every
+outcome. A plan in which nothing would change is reported as such and asks for
+no confirmation.
+
 ### The install manifest
 
 Installed artifacts carry no provenance of their own: an Agent Skill is marked
-only with its slug, with no version and no CID. So every global install records
-what it wrote in `$XDG_CONFIG_HOME/dirctl/installed.json` (`~/.config` when
+only with its slug, with no version and no CID. So every install records what
+it wrote in `$XDG_CONFIG_HOME/dirctl/installed.json` (`~/.config` when
 `XDG_CONFIG_HOME` is unset) — one row per record, agent, and scope, holding the
 version and CID that were installed, the skill path and its file list, and the
 MCP server keys.
+
+`scope` is `global`, or the **absolute path of the repository** a `--project`
+install wrote into. Naming the repository is what lets one manifest hold every
+install on this machine: the row key is (name, agent, scope), so a bare
+"project" would make the same package installed into two repositories collide
+on one key. It also means a project install can be listed and removed from
+anywhere, since each row's paths resolve against the repository it names rather
+than the current directory.
+
+The manifest is a **local record of what happened**, never a file to commit —
+it is full of absolute paths. A committed file pinning what a team should have
+is a different, declarative thing, and not this one.
 
 The row lists the artifacts that were **actually written**, not the ones the
 record's modules imply. An agent that received nothing — skipped or failed — is
 not recorded.
 
-Today the manifest is only bookkeeping: `uninstall` still resolves and pulls
-the record, derives its current artifacts, removes those, and then deletes the
-rows. It does not read `skillFiles` or `mcpServers` to decide what to remove.
-Recording them is what will let a future manifest-driven `uninstall` and
-`upgrade` remove exactly the artifacts that were written, without re-fetching a
-record that may since have been garbage-collected upstream.
+The manifest is the single source of truth for what is installed, so
+`uninstall` reads it and contacts no Directory at all. That covers the case
+with no other answer: the record has been deleted upstream, or the server is
+simply down, and the artifacts are still on this machine. It also means only
+the agents that actually hold the package are touched, including one no longer
+detected here — the files it was given are still on disk.
+
+A reference with no row is therefore **not installed**, and says so. Asking a
+Directory about it would answer a different question — whether some record
+exists — and would fail for reasons that say nothing about what is on this
+machine.
 
 A row names every artifact `dirctl` wrote and has not since removed, so
 reinstalling carries forward anything the previous row named that the new
@@ -210,8 +235,7 @@ install did not write. That covers a reinstall where one artifact failed, and a
 new version that renames its MCP server while the old key stays in the config.
 
 The manifest is bookkeeping, not the product: if it cannot be read or written,
-`dirctl` prints a warning and the install still succeeds. Project-scope
-(`--project`) installs are not recorded yet.
+`dirctl` prints a warning and the install still succeeds.
 
 ### `dirctl install list`
 
@@ -268,19 +292,66 @@ dirctl install cisco.com/agent --agents claude-code,cursor
 dirctl install cisco.com/agent --project
 ```
 
+### Installing several records: pipe from `dirctl search`
+
+With no positional argument and something on stdin, `install` reads one
+reference per line. Blank lines and `#` comments are ignored.
+
+`dirctl search -o raw` is the format to pipe: one CID per line. `-o jsonl`
+works too, since its quotes are stripped. Names are accepted as well, so a
+hand-written list or `dirctl install list` output can be piped in.
+
+```bash
+dirctl search --module integration/mcp -o raw | dirctl install --agents all --yes
+dirctl search --skill "code*" -o raw | dirctl install --dry-run
+```
+
+Filtering belongs to [`dirctl search`](#dirctl-search), so `install` carries no
+copy of its flags. Two consequences worth knowing:
+
+- **A piped run cannot prompt**, because stdin is the reference list. It needs
+  `--yes`, or `--dry-run` to preview. Without either it errors, rather than
+  reading a CID as the answer to a confirmation.
+- **The highest version per name wins.** Search returns every matching version,
+  and installing all of them into one agent means repeated writes to the same
+  slug with the last one winning. Pass `--all-versions` to install each.
+
+A reference that cannot be resolved or pulled is reported and skipped, so one
+bad entry does not abort the run. At most 1000 references are accepted in one
+run.
+
+| Flag | Description | Default |
+|------|-------------|---------|
+| `--all-versions` | Install every piped version of a name, not just the highest | `false` |
+
 ### `dirctl install uninstall <cid-or-name> [flags]`
 
-Removes what `install` added for that record — its MCP entry and/or skill —
-leaving all other content intact. Shares the same flags as install (`--agents`,
-`--project`, `--dry-run`, `--yes`). Idempotent: an agent with nothing of ours
-installed is reported as unchanged, never an error.
+Removes what `install` recorded for that record — its MCP entry and/or skill —
+leaving all other content intact. Shares the selection flags with install
+(`--agents`, `--project`, `--dry-run`, `--yes`). Idempotent: removing something
+already gone is not an error.
 
-The record's row is dropped from the install manifest for every agent whose
-artifacts are confirmed gone, meaning at least one was removed or already
-absent and none failed. An agent keeps its row when a removal failed, and when
-every artifact was skipped because its location could not be resolved for that
-scope — in both cases something may still be on disk, and the row is the only
-note of what it is.
+What to remove comes from the install manifest, so no Directory is contacted
+and only the agents that actually hold the package appear in the plan. A row
+whose artifacts have already been deleted by hand is cleared from the manifest,
+so a package can never get stuck. `dirctl uninstall <name>:<version>` removes
+only rows at that version, and a bare CID matches the exact record installed.
+
+A reference with no matching row reports `"<name>" is not installed globally`,
+or `not installed in <repo>` under `--project`. When the package does exist at
+another scope the message says where, since a global uninstall does not touch a
+repository's rows and a `--project` one touches only the repository it runs in.
+
+The record's row is dropped for every agent whose artifacts are confirmed gone,
+meaning at least one was removed or already absent and none failed. An agent
+keeps its row when a removal failed, and when every artifact was skipped
+because its location could not be resolved — in both cases something may still
+be on disk, and the row is the only note of what it is.
+
+It takes **one** reference. Removing several is a loop over
+`dirctl install list`; the manifest is what lists them, and search filters
+would answer a different question — what exists upstream, rather than what you
+have.
 
 `dirctl uninstall <cid-or-name>` is a top-level shorthand for
 `dirctl install uninstall <cid-or-name>` (same flags and behavior).
@@ -288,6 +359,25 @@ note of what it is.
 ```bash
 dirctl install uninstall cisco.com/agent --yes
 dirctl uninstall cisco.com/agent --agents cursor
+```
+
+### `dirctl install prune [flags]`
+
+Drops manifest rows whose recorded artifacts are no longer on disk.
+
+Rows go stale whenever something changes outside `dirctl`: a skill folder
+deleted by hand, or a repository moved after a `--project` install. Pruning
+removes only the bookkeeping. Nothing on disk is touched, and a row is dropped
+only when **every** artifact it names is gone, since a package that lost one of
+two artifacts is still installed and an upgrade can put it right.
+
+| Flag | Description | Default |
+|------|-------------|---------|
+| `--dry-run` | List the rows that would be dropped, without writing | `false` |
+
+```bash
+dirctl install prune --dry-run
+dirctl install prune
 ```
 
 ## Daemon Operations
