@@ -145,6 +145,15 @@ type Entry struct {
 	// Origin is where to look for a newer version.
 	Origin Origin `json:"origin"`
 
+	// Context is the client context this package was installed from, which is
+	// what decides whether a later version check means anything: a row pulled
+	// from a colleague's Directory says nothing about the one configured now.
+	//
+	// Empty means "no claim". Rows written before this field existed have it,
+	// and so do installs made with no resolvable context, so an empty value has
+	// to match whatever context is active rather than be treated as a mismatch.
+	Context string `json:"context,omitempty"`
+
 	// Pinned holds the package at Version, so a bare upgrade skips it.
 	Pinned bool `json:"pinned,omitempty"`
 
@@ -166,6 +175,42 @@ type Entry struct {
 // Key returns the row's primary key.
 func (e Entry) Key() Key {
 	return Key{Name: e.Name, Agent: e.Agent, Scope: e.Scope}
+}
+
+// Kind names the artifacts this row installed, for display: "skill", "mcp", or
+// "skill+mcp". It is derived rather than stored, because one record can yield
+// both and the row already says which of them landed.
+//
+// A row that landed nothing is never written, so the empty case only arises for
+// a hand-edited manifest; it reports "none" rather than an empty column.
+func (e Entry) Kind() string {
+	switch {
+	case e.SkillPath != "" && len(e.MCPServers) > 0:
+		return "skill+mcp"
+	case e.SkillPath != "":
+		return "skill"
+	case len(e.MCPServers) > 0:
+		return "mcp"
+	default:
+		return "none"
+	}
+}
+
+// ContextMatches reports whether this row can be checked against the active
+// client context.
+//
+// An empty name on either side means "no claim", and matches anything. That
+// cuts both ways on purpose:
+//
+//   - A row with no recorded context — written by an earlier dirctl, or
+//     installed with no resolvable context — stays checkable rather than
+//     becoming permanently unassessable.
+//   - A dirctl run with no named context, pointed at a server through
+//     DIRECTORY_CLIENT_SERVER_ADDRESS alone, does not skip every row it has.
+//
+// Only two named contexts that differ are a real mismatch.
+func (e Entry) ContextMatches(active string) bool {
+	return e.Context == "" || active == "" || e.Context == active
 }
 
 // WithCarriedArtifacts returns e with the artifacts prior still records but

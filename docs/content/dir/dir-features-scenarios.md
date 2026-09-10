@@ -495,7 +495,8 @@ dirctl uninstall cisco.com/agent
 ```
 
 Detection is always required — an agent is never written to unless it is detected. Re-installing
-a newer version of the same record replaces the old artifacts cleanly. `dirctl install list`
-shows which agents are detected and the config files install would touch. By default artifacts
+a newer version of the same record replaces the old artifacts cleanly. `dirctl install agents`
+shows which agents are detected and the config files install would touch, and `dirctl install list`
+shows what is already installed. By default artifacts
 go into each agent's global config; `--project` writes them into the current repository instead
 (agents without a project-scope location for an artifact are skipped with a note).

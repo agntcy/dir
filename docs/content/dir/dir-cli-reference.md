@@ -82,7 +82,7 @@ explicit `--auth-mode`.
 | Sync | `sync create`, `status`, `list`, `delete` |
 | Events | `events listen` |
 | MCP | `mcp serve` |
-| Install | `install run`, `install uninstall` (or top-level `uninstall`), `install list`, `install prune` |
+| Install | `install run`, `install uninstall` (or top-level `uninstall`), `install list`, `install agents`, `install outdated`, `install pin`, `install unpin`, `install prune` |
 | Diagnostics | `doctor`, `version` |
 
 ### Getting help
@@ -198,8 +198,8 @@ Installed artifacts carry no provenance of their own: an Agent Skill is marked
 only with its slug, with no version and no CID. So every install records what
 it wrote in `$XDG_CONFIG_HOME/dirctl/installed.json` (`~/.config` when
 `XDG_CONFIG_HOME` is unset) — one row per record, agent, and scope, holding the
-version and CID that were installed, the skill path and its file list, and the
-MCP server keys.
+version and CID that were installed, the client context it came from, the skill
+path and its file list, and the MCP server keys.
 
 `scope` is `global`, or the **absolute path of the repository** a `--project`
 install wrote into. Naming the repository is what lets one manifest hold every
@@ -212,6 +212,13 @@ than the current directory.
 The manifest is a **local record of what happened**, never a file to commit —
 it is full of absolute paths. A committed file pinning what a team should have
 is a different, declarative thing, and not this one.
+
+The context is recorded because "is there a newer version?" is a question about
+one Directory. A row installed from a different context is reported as
+`skipped` rather than compared against the Directory configured now. An empty
+name on either side means "no claim" and matches anything: a row written by an
+older `dirctl` stays checkable, and a `dirctl` pointed at a server through
+`DIRECTORY_CLIENT_SERVER_ADDRESS` alone does not skip every row it has.
 
 The row lists the artifacts that were **actually written**, not the ones the
 record's modules imply. An agent that received nothing — skipped or failed — is
@@ -237,11 +244,124 @@ new version that renames its MCP server while the old key stays in the config.
 The manifest is bookkeeping, not the product: if it cannot be read or written,
 `dirctl` prints a warning and the install still succeeds.
 
-### `dirctl install list`
+### `dirctl install agents`
 
 Lists every supported agent, whether it is detected on this machine, and the
 config files that install would touch. Makes no changes and does not contact the
 Directory.
+
+!!! warning "Renamed in v1.8.0"
+    This view was `dirctl install list` up to v1.7.0. `dirctl install list` now
+    lists installed packages.
+
+### `dirctl install list [name] [flags]`
+
+Lists what `install` has put on this machine, read from the install manifest.
+Reads only local state and does not contact the Directory.
+
+With no argument it prints one row per installed package **and agent**: name,
+version, agent, artifact kind (`skill`, `mcp`, or `skill+mcp`), scope, and
+flags (`pinned`, `builtin`, `missing`).
+
+With a package name it prints that package's installed artifacts — the skill
+folder with each of its files, and each MCP server key with the config file it
+lives in — which answers "what did this actually put on my machine?", otherwise
+unanswerable without reading every agent config by hand.
+
+Every row is checked against disk, because the manifest is the only provenance
+an installed artifact has and a user can move or delete one behind `dirctl`'s
+back. An artifact the row names but disk does not have is marked `missing`.
+
+| Flag | Description | Default |
+|------|-------------|---------|
+| `--output` / `-o` | Output format: `human`, `json`, `jsonl` | `human` |
+
+```bash
+dirctl install list
+dirctl install list cisco.com/agent
+dirctl install list -o json
+```
+
+### `dirctl install outdated [name...] [flags]`
+
+Compares each installed package against the Directory it was installed from and
+reports what has moved on.
+
+By default only two groups are listed: packages that are **upgradable**, and
+packages that could **not be assessed at all**. The second group is there
+because its absence from the upgrade list needs explaining — a silently omitted
+`missing` or `not found` row reads as "fine". `--all` prints the full table.
+
+| Status | Meaning |
+|--------|---------|
+| `upgradable` | A higher version exists. Also covers the same version resolving to different content, shown as `content changed`: an author who re-pushes without bumping still needs the new content installed. |
+| `up to date` | Nothing newer. Includes an upstream that is *older* than what is installed — a downgrade is never offered, and the upstream version is shown in parentheses instead. |
+| `pinned` | Held at the installed version. The newer version is still shown, so you can see what you are missing. |
+| `missing` | The recorded artifacts are gone, so nothing can be upgraded. |
+| `not found` | No record under that name in the configured Directory. |
+| `non-semver` | The versions carry no ordering, so no claim is made. |
+| `skipped` | The row was installed from a different client context. |
+
+Version enumeration is one lightweight call per **distinct package name** — a
+package installed into three agents costs one call, not three — and pulls no
+record bodies. Packages with origin `builtin` are compared against this
+`dirctl` binary and make no call at all.
+
+| Flag | Description | Default |
+|------|-------------|---------|
+| `--all` | Show every installed package, not only the ones needing attention | `false` |
+| `--exit-code` | Exit 1 when any package is upgradable, for CI gating | `false` |
+| `--pre` | Consider prerelease versions | `false` |
+| `--include-pinned` | Check pinned packages too | `false` |
+| `--output` / `-o` | Output format: `human`, `json`, `jsonl` | `human` |
+
+`--exit-code` is gated on the unfiltered set, so `--all` cannot change the exit
+code, and on `upgradable` alone: a `missing` or `not found` row is real, but no
+upgrade would fix it, so failing CI on it would be a dead end.
+
+```bash
+dirctl install outdated
+dirctl install outdated cisco.com/agent --all
+dirctl install outdated --exit-code --include-pinned
+```
+
+### `dirctl install pin <name>` / `dirctl install unpin <name>`
+
+Holds a package at the version it is on, so a bare `upgrade` skips it, and
+releases that hold again. Unpinning does not move the installed version.
+
+The hold applies to **every agent** the package is installed into: one package
+is one package from your point of view. Both write only to the install manifest
+— no agent config is touched, and the Directory is not contacted.
+
+Install-time pinning alone is not enough for the common case: holding a version
+you *already* have, because you upgraded, something broke, and you want to sit
+still.
+
+```bash
+dirctl install pin cisco.com/agent
+dirctl install unpin cisco.com/agent
+```
+
+### `dirctl install prune [flags]`
+
+Drops manifest rows whose recorded artifacts are no longer on disk — the ones
+`dirctl install list` marks as `missing`.
+
+Rows go stale whenever something changes outside `dirctl`: a skill folder
+deleted by hand, or a repository moved after a `--project` install. Pruning
+removes only the bookkeeping. Nothing on disk is touched, and a row is dropped
+only when **every** artifact it names is gone, since a package that lost one of
+two artifacts is still installed and an upgrade can put it right.
+
+| Flag | Description | Default |
+|------|-------------|---------|
+| `--dry-run` | List the rows that would be dropped, without writing | `false` |
+
+```bash
+dirctl install prune --dry-run
+dirctl install prune
+```
 
 ### `dirctl install <cid-or-name>` / `dirctl install run <cid-or-name>`
 
@@ -267,14 +387,14 @@ A2A-only record, points you to `dirctl export`.
 
 Valid agent IDs: `claude-code`, `claude-desktop`, `cursor`, `vscode`, `windsurf`,
 `cline`, `roo`, `gemini`, `opencode`, `zed`, `continue`, `codex` (see
-`dirctl install list`). After completion, a summary lists every location added,
+`dirctl install agents`). After completion, a summary lists every location added,
 updated, removed, or skipped with its absolute path.
 
 By default artifacts go into each agent's **global/user** config. With
 `--project`, they are written into the **current repository** instead — under
 each agent's project-local MCP config (e.g. `.cursor/mcp.json`, `.vscode/mcp.json`,
 `.mcp.json`) and its project skill folder — so a record can be wired into the
-agents for just one project. Run `dirctl install list --project` to see the exact
+agents for just one project. Run `dirctl install agents --project` to see the exact
 paths per agent. Agents with no project-scope location for an artifact are skipped
 with a note; detection is unchanged (an undetected agent is still skipped).
 
@@ -357,25 +477,6 @@ have.
 ```bash
 dirctl install uninstall cisco.com/agent --yes
 dirctl uninstall cisco.com/agent --agents cursor
-```
-
-### `dirctl install prune [flags]`
-
-Drops manifest rows whose recorded artifacts are no longer on disk.
-
-Rows go stale whenever something changes outside `dirctl`: a skill folder
-deleted by hand, or a repository moved after a `--project` install. Pruning
-removes only the bookkeeping. Nothing on disk is touched, and a row is dropped
-only when **every** artifact it names is gone, since a package that lost one of
-two artifacts is still installed and an upgrade can put it right.
-
-| Flag | Description | Default |
-|------|-------------|---------|
-| `--dry-run` | List the rows that would be dropped, without writing | `false` |
-
-```bash
-dirctl install prune --dry-run
-dirctl install prune
 ```
 
 ## Daemon Operations
