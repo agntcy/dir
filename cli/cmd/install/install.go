@@ -9,7 +9,6 @@ import (
 	"fmt"
 
 	corev1 "github.com/agntcy/dir/api/core/v1"
-	"github.com/agntcy/dir/cli/cmd/search"
 	"github.com/agntcy/dir/cli/internal/agentcfg"
 	"github.com/agntcy/dir/cli/internal/agentinstall"
 	"github.com/agntcy/dir/cli/presenter"
@@ -38,19 +37,24 @@ directly into the configuration of detected AI coding agents.
   dirctl install <cid-or-name> --pin      install and hold at this version
   dirctl install uninstall <cid-or-name>  remove what install added
   dirctl install list                     show detected agents and target paths
+  dirctl install prune                    drop manifest rows whose artifacts are gone
 
-Every install records what it wrote — record, version, agent, and the exact
-files and MCP server keys — in $XDG_CONFIG_HOME/dirctl/installed.json.
+Every install records what it wrote — record, version, agent, scope, and the
+exact files and MCP server keys — in $XDG_CONFIG_HOME/dirctl/installed.json.
+A --project install records the repository it wrote into, so one manifest
+covers every repository on this machine.
 
-Batch install from search filters (no positional argument):
+Installing several records at once is a pipe. Filtering belongs to dirctl
+search, so install does not carry a second copy of its flags:
 
-  dirctl install --module integration/mcp --name "web*" --agents all
-  dirctl install --skill "code*" --dry-run
+  dirctl search --module integration/mcp -o raw | dirctl install --agents all --yes
+  dirctl search --skill "code*" -o raw | dirctl install --dry-run
 
-Batch uninstall from search filters:
-
-  dirctl install uninstall --module integration/mcp --name "web*"
-  dirctl uninstall --skill "code*" --dry-run
+References are read one per line, blanks and # comments ignored. Use
+search's -o raw, which is one CID per line; -o jsonl and plain names work
+too. The highest version per name wins unless --all-versions is passed. A
+piped run cannot prompt, because stdin is the list, so it needs --yes or
+--dry-run.
 
 Examples:
   dirctl install cisco.com/agent:v1.0.0
@@ -65,28 +69,37 @@ Examples:
 			input = args[0]
 		}
 
-		queries := search.BuildQueries(&opts.filters)
-		hasInput := input != ""
-		hasFilters := len(queries) > 0
-
-		return resolveBatchOrInput(
-			hasInput,
-			hasFilters,
-			func() error { return runBatchInstall(cmd) },
-			func() error { return runInstallCmd(cmd, input) },
-			func() error { return cmd.Help() },
-		)
+		switch {
+		case input != "":
+			return runInstallCmd(cmd, input)
+		case hasPipedInput(cmd):
+			return runPipedInstall(cmd)
+		default:
+			return cmd.Help()
+		}
 	},
 }
 
 func init() {
 	addSelectionFlags(Command, &opts)
-	addBatchFlags(Command, &opts)
 	addPinFlag(Command, &opts)
+	addAllVersionsFlag(Command, &opts)
 
 	Command.AddCommand(runCmd)
 	Command.AddCommand(uninstallCmd)
 	Command.AddCommand(ListCommand)
+	Command.AddCommand(PruneCommand)
+}
+
+// SkipClientSetup lists the commands root.go must not build a client for.
+// Requiring a reachable Directory — or even a configured one — to read local
+// state or to remove what the manifest records would be a needless failure.
+//
+// `uninstall` is here because it reads the manifest and nothing else. That is
+// only true now that batch uninstall is gone: expanding search filters was
+// the one thing it needed a Directory for.
+func SkipClientSetup() []*cobra.Command {
+	return []*cobra.Command{ListCommand, PruneCommand, uninstallCmd, UninstallCommand}
 }
 
 // selectAgents validates the --agents flag and resolves it to the detected

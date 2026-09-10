@@ -4,41 +4,27 @@
 package install
 
 import (
-	"github.com/agntcy/dir/cli/cmd/search"
-	"github.com/agntcy/dir/cli/internal/agentinstall"
 	"github.com/spf13/cobra"
 )
 
 // uninstallCmd is the `dirctl install uninstall` subcommand. It inherits the
-// selection and batch flags from the `install` parent's persistent flags.
+// selection flags from the `install` parent's persistent flags.
 var uninstallCmd = &cobra.Command{
 	Use:   "uninstall <cid-or-name[:version][@digest]>",
 	Short: "Remove a record's artifacts from detected agents",
-	Long: `Remove artifacts that install added for a record from detected agents.
+	Long: `Remove the artifacts install recorded for a record.
 
-  dirctl install uninstall <cid-or-name>   remove from detected agents
-  dirctl install uninstall --module integration/mcp --name "web*"  batch remove
+  dirctl install uninstall <cid-or-name>            remove from every agent that has it
+  dirctl install uninstall <cid-or-name> --agents cursor   just that agent
 
-Batch uninstall uses the same search filters as batch install (--name, --module,
---skill, etc.).`,
-	Args: cobra.MaximumNArgs(1),
+What to remove comes from the install manifest, so no Directory is contacted
+and only the agents that actually hold the package are touched — including one
+no longer detected here, since the files it was given are still on disk. An
+explicit :version narrows to rows at that version, and a bare CID matches the
+exact record that was installed.`,
+	Args: cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		var input string
-		if len(args) > 0 {
-			input = args[0]
-		}
-
-		queries := search.BuildQueries(&opts.filters)
-		hasInput := input != ""
-		hasFilters := len(queries) > 0
-
-		return resolveBatchOrInput(
-			hasInput,
-			hasFilters,
-			func() error { return runBatchUninstall(cmd) },
-			func() error { return runUninstallCmd(cmd, input) },
-			func() error { return cmd.Help() },
-		)
+		return runUninstallCmd(cmd, args[0])
 	},
 }
 
@@ -48,39 +34,26 @@ Batch uninstall uses the same search filters as batch install (--name, --module,
 var UninstallCommand = &cobra.Command{
 	Use:   "uninstall <cid-or-name[:version][@digest]>",
 	Short: "Remove a record's artifacts from detected agents (shorthand for 'install uninstall')",
-	Long: `Remove artifacts that install added for a record from detected agents.
-
-  dirctl uninstall <cid-or-name>              remove from detected agents
-  dirctl uninstall --module integration/mcp   batch remove matched records`,
-	Args: cobra.MaximumNArgs(1),
+	Long: `Remove the artifacts install recorded for a record. Reads the install
+manifest and contacts no Directory.`,
+	Args: cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		var input string
-		if len(args) > 0 {
-			input = args[0]
-		}
-
-		queries := search.BuildQueries(&opts.filters)
-		hasInput := input != ""
-		hasFilters := len(queries) > 0
-
-		return resolveBatchOrInput(
-			hasInput,
-			hasFilters,
-			func() error { return runBatchUninstall(cmd) },
-			func() error { return runUninstallCmd(cmd, input) },
-			func() error { return cmd.Help() },
-		)
+		return runUninstallCmd(cmd, args[0])
 	},
 }
 
 func init() {
 	addSelectionFlags(UninstallCommand, &opts)
-	addBatchFlags(UninstallCommand, &opts)
 }
 
 // runUninstallCmd is the shared body for both `install uninstall` and the
-// top-level `uninstall` shorthand: pull + derive, dry-run plan, confirm, remove,
-// summary.
+// top-level `uninstall` shorthand.
+//
+// Uninstall never contacts the Directory. The install manifest is the single
+// source of truth for what is installed, at either scope: it names the agents
+// that hold the package and the artifacts that were written, so a package can
+// be removed with the server down or after its record has been deleted
+// upstream, and a reference with no row is simply not installed.
 func runUninstallCmd(cmd *cobra.Command, input string) error {
-	return runApplyCmd(cmd, input, agentinstall.Uninstall, recordUninstalls, "\nRemove these artifacts?")
+	return runRecordedUninstall(cmd, input)
 }

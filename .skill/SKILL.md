@@ -50,7 +50,8 @@ missing, follow the install section of
 source.
 
 A reachable Directory server is required for everything except `context`,
-`validate`, `install list`, and `version`. Default is `localhost:8888` (local
+`validate`, `version`, and the local-state install commands (`install list`,
+`install prune`, `uninstall`). Default is `localhost:8888` (local
 daemon). Server selection order: `--context <name>` flag →
 `DIRECTORY_CLIENT_CONTEXT` → `current_context` in config → `--server-addr` /
 `DIRECTORY_CLIENT_SERVER_ADDRESS` overrides.

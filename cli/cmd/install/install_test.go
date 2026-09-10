@@ -29,9 +29,9 @@ func TestParentHasSubcommands(t *testing.T) {
 		names[c.Name()] = true
 	}
 
-	require.True(t, names["run"])
-	require.True(t, names["uninstall"])
-	require.True(t, names["list"])
+	for _, want := range []string{"run", "uninstall", "list", "prune"} {
+		require.True(t, names[want], want)
+	}
 }
 
 func TestTopLevelUninstallShorthand(t *testing.T) {
@@ -42,8 +42,28 @@ func TestTopLevelUninstallShorthand(t *testing.T) {
 	require.NotNil(t, UninstallCommand.PersistentFlags().Lookup("agents"))
 	require.NotNil(t, UninstallCommand.PersistentFlags().Lookup("dry-run"))
 	require.NotNil(t, UninstallCommand.PersistentFlags().Lookup("yes"))
-	require.NotNil(t, UninstallCommand.PersistentFlags().Lookup("limit"))
-	require.NotNil(t, UninstallCommand.PersistentFlags().Lookup("module"))
+}
+
+func TestUninstallCarriesNoSearchFilters(t *testing.T) {
+	// Filtering belongs to `dirctl search`. Uninstall takes one reference, and
+	// carrying a second copy of those flags is what used to make it need a
+	// Directory.
+	for _, gone := range []string{"limit", "module", "skill", "domain", "locator", "author"} {
+		require.Nil(t, UninstallCommand.PersistentFlags().Lookup(gone), gone)
+		require.Nil(t, Command.PersistentFlags().Lookup(gone), gone)
+	}
+}
+
+func TestCommandsThatDoNotNeedAClientAreExemptFromSetup(t *testing.T) {
+	// root.go reads this list to skip client setup.
+	exempt := map[string]bool{}
+	for _, c := range SkipClientSetup() {
+		exempt[c.Name()] = true
+	}
+
+	// Both spellings of uninstall, the subcommand and the top-level shorthand.
+	require.Equal(t, map[string]bool{"list": true, "prune": true, "uninstall": true}, exempt)
+	require.Len(t, SkipClientSetup(), 4)
 }
 
 // --- scopeFromOpts tests ---
