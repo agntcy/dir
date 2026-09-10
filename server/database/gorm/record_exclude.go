@@ -102,6 +102,10 @@ func applyExcludedJoinFilters(query *gorm.DB, ex *types.ExcludedRecordFilters) *
 		query = applyExcludedScanColumn(query, "ex.failure_reason", "ex.failure_reason != ''", ex.ScanFailureReasons)
 	}
 
+	if len(ex.Owners) > 0 {
+		query = applyExcludedOwners(query, ex.Owners)
+	}
+
 	return query
 }
 
@@ -263,6 +267,14 @@ func applyExcludedAnnotations(query *gorm.DB, keys []string, values []string) *g
 	inner := strings.Join(conditions, " AND ")
 
 	return query.Where(utils.BuildNotExistsCondition("annotations", "ex", inner), args...)
+}
+
+// applyExcludedOwners excludes records that have an ownership claim matching
+// any of the given owner ID patterns.
+func applyExcludedOwners(query *gorm.DB, owners []string) *gorm.DB {
+	inner, args := utils.BuildWildcardCondition("ex.owner_id", owners)
+
+	return query.Where(utils.BuildNotExistsCondition("owners", "ex", "ex.record_cid = records.record_cid AND ("+inner+")"), args...)
 }
 
 // applyExcludedScanSeverities excludes records that have any scan_reports row

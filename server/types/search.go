@@ -70,6 +70,7 @@ type RecordFilters struct {
 	AnnotationValues   []string
 	Annotations        []Annotation
 	Descriptions       []string              // Match against record description field.
+	Owners             []string              // Filter by owner ID patterns (SPIFFE or similar identity).
 	Excluded           ExcludedRecordFilters // Negated (exclude) counterparts of the fields above.
 
 	OrderBy []RecordOrderClause // Order by directives applied in sequence.
@@ -100,6 +101,7 @@ type ExcludedRecordFilters struct {
 	ScanSeverities     []string
 	ScanStatuses       []string
 	ScanFailureReasons []string
+	Owners             []string
 }
 
 type Annotation struct {
@@ -286,6 +288,20 @@ func WithAnnotations(annotations ...Annotation) FilterOption {
 func WithDescriptions(descriptions ...string) FilterOption {
 	return func(sc *RecordFilters) {
 		sc.Descriptions = append(sc.Descriptions, descriptions...)
+	}
+}
+
+// WithOwners filters records by owner ID patterns.
+func WithOwners(owners ...string) FilterOption {
+	return func(sc *RecordFilters) {
+		sc.Owners = append(sc.Owners, owners...)
+	}
+}
+
+// WithoutOwners excludes records whose owner ID matches any of the given patterns.
+func WithoutOwners(owners ...string) FilterOption {
+	return func(sc *RecordFilters) {
+		sc.Excluded.Owners = append(sc.Excluded.Owners, owners...)
 	}
 }
 

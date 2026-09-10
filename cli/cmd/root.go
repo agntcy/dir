@@ -21,6 +21,7 @@ import (
 	"github.com/agntcy/dir/cli/cmd/mcp"
 	"github.com/agntcy/dir/cli/cmd/naming"
 	"github.com/agntcy/dir/cli/cmd/network"
+	"github.com/agntcy/dir/cli/cmd/ownership"
 	"github.com/agntcy/dir/cli/cmd/pull"
 	"github.com/agntcy/dir/cli/cmd/push"
 	"github.com/agntcy/dir/cli/cmd/routing"
@@ -146,6 +147,8 @@ func init() {
 		network.Command,
 		// naming commands (domain verification)
 		naming.Command, // Contains: verify, check, list
+		// ownership commands
+		ownership.Command, // Contains: claim
 		// search commands
 		search.Command, // General search (searchv1)
 		// sync commands
