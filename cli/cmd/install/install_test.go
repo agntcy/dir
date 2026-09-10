@@ -14,12 +14,12 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestListRunsWithoutClient(t *testing.T) {
+func TestAgentsRunsWithoutClient(t *testing.T) {
 	var out bytes.Buffer
-	ListCommand.SetOut(&out)
-	ListCommand.SetErr(&out)
+	AgentsCommand.SetOut(&out)
+	AgentsCommand.SetErr(&out)
 
-	require.NoError(t, ListCommand.RunE(ListCommand, nil))
+	require.NoError(t, AgentsCommand.RunE(AgentsCommand, nil))
 	require.Contains(t, out.String(), "Claude Code")
 }
 
@@ -29,7 +29,7 @@ func TestParentHasSubcommands(t *testing.T) {
 		names[c.Name()] = true
 	}
 
-	for _, want := range []string{"run", "uninstall", "list", "prune"} {
+	for _, want := range []string{"run", "uninstall", "agents", "list", "outdated", "pin", "unpin", "prune"} {
 		require.True(t, names[want], want)
 	}
 }
@@ -62,8 +62,11 @@ func TestCommandsThatDoNotNeedAClientAreExemptFromSetup(t *testing.T) {
 	}
 
 	// Both spellings of uninstall, the subcommand and the top-level shorthand.
-	require.Equal(t, map[string]bool{"list": true, "prune": true, "uninstall": true}, exempt)
-	require.Len(t, SkipClientSetup(), 4)
+	// `outdated` must never appear: reaching the Directory is its whole point.
+	require.Equal(t, map[string]bool{
+		"agents": true, "list": true, "pin": true, "unpin": true, "prune": true, "uninstall": true,
+	}, exempt)
+	require.Len(t, SkipClientSetup(), 7)
 }
 
 // --- scopeFromOpts tests ---

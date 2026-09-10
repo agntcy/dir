@@ -35,6 +35,7 @@ type manifestRecordFn func(cmd *cobra.Command, items []applied, agents []agentcf
 // left out, so a later listing never claims an install that did not happen.
 func recordInstalls(cmd *cobra.Command, items []applied, agents []agentcfg.Agent, scope agentcfg.Scope) {
 	now := time.Now().UTC()
+	context := ActiveContextName()
 	rowScope := manifestScope(scope)
 
 	withManifest(cmd, func(m *pkgstate.Manifest) bool {
@@ -59,6 +60,7 @@ func recordInstalls(cmd *cobra.Command, items []applied, agents []agentcfg.Agent
 				entry.CID = item.record.GetCid()
 				entry.Scope = rowScope
 				entry.Origin = pkgstate.OriginDirectory
+				entry.Context = context
 				entry.Pinned = item.pinned
 				entry.InstalledAt = now
 
