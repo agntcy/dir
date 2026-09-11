@@ -188,7 +188,10 @@ func runApplyCmd(
 	plan := apply(env, item.arts, selected, scope, true)
 	presenter.Printf(cmd, "%s", agentcfg.FormatPlan(plan))
 
-	if len(plan) == 0 {
+	// Nothing would move, so there is nothing worth confirming. Stopping here
+	// also keeps a run whose every artifact is already correct from asking the
+	// user to approve a no-op.
+	if !agentcfg.HasChanges(plan) {
 		return nil
 	}
 

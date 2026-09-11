@@ -11,7 +11,7 @@ import (
 // selection flags from the `install` parent's persistent flags.
 var uninstallCmd = &cobra.Command{
 	Use:   "uninstall <cid-or-name[:version][@digest]>",
-	Short: "Remove a record's artifacts from detected agents",
+	Short: "Remove a record's recorded artifacts from the agents that have them",
 	Long: `Remove the artifacts install recorded for a record.
 
   dirctl install uninstall <cid-or-name>            remove from every agent that has it
@@ -33,7 +33,7 @@ exact record that was installed.`,
 // since it has no `install` parent to inherit them from.
 var UninstallCommand = &cobra.Command{
 	Use:   "uninstall <cid-or-name[:version][@digest]>",
-	Short: "Remove a record's artifacts from detected agents (shorthand for 'install uninstall')",
+	Short: "Remove a record's recorded artifacts (shorthand for 'install uninstall')",
 	Long: `Remove the artifacts install recorded for a record. Reads the install
 manifest and contacts no Directory.`,
 	Args: cobra.ExactArgs(1),

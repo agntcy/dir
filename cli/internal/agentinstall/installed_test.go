@@ -95,18 +95,22 @@ func TestARowNamingNoArtifactsIsNotCalledMissing(t *testing.T) {
 	assert.True(t, Present(pkgstate.Entry{Agent: "claude-code"}, agentcfg.Env{Home: t.TempDir()}))
 }
 
-func TestAnUnknownAgentLeavesItsMCPEntryUnchecked(t *testing.T) {
+func TestAnUnknownAgentIsNotLocated(t *testing.T) {
 	// A row can name an agent this binary no longer supports. Nothing was
 	// looked at, so nothing may be declared gone.
-	found := Inspect(pkgstate.Entry{
+	entry := pkgstate.Entry{
 		Agent:      "some-retired-agent",
 		Scope:      pkgstate.ScopeGlobal,
 		MCPServers: []string{"agent"},
-	}, agentcfg.Env{Home: t.TempDir()})
+	}
 
+	found := Inspect(entry, agentcfg.Env{Home: t.TempDir()})
 	require.Len(t, found, 1)
-	assert.True(t, found[0].Present)
+	assert.False(t, found[0].Present)
+	assert.True(t, found[0].Unchecked)
 	assert.Empty(t, found[0].Path)
+
+	assert.True(t, Present(entry, agentcfg.Env{Home: t.TempDir()}))
 }
 
 func TestAProjectRowResolvesAgainstItsOwnRepository(t *testing.T) {
@@ -133,4 +137,26 @@ func TestAProjectRowResolvesAgainstItsOwnRepository(t *testing.T) {
 	assert.True(t, found[0].Present)
 	assert.True(t, found[1].Present, "the MCP entry resolves against the row's repository")
 	assert.True(t, Present(entry, env))
+}
+
+func TestAnArtifactThatCannotBeCheckedIsNotCalledGone(t *testing.T) {
+	// A malformed agent config is not an absent entry: the entry may be
+	// sitting in it, unreadable. Prune deletes rows on the strength of
+	// absence, so doubt has to keep the row.
+	home := t.TempDir()
+	writeFile(t, filepath.Join(home, ".claude.json"), "{not json")
+
+	entry := pkgstate.Entry{
+		Agent:      "claude-code",
+		Scope:      pkgstate.ScopeGlobal,
+		MCPServers: []string{"agent"},
+	}
+
+	found := Inspect(entry, agentcfg.Env{Home: home})
+	require.Len(t, found, 1)
+	assert.False(t, found[0].Present)
+	assert.True(t, found[0].Unchecked)
+
+	assert.True(t, Present(entry, agentcfg.Env{Home: home}),
+		"an unreadable config must not make the row prunable")
 }

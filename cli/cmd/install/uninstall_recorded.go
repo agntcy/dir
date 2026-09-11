@@ -88,11 +88,16 @@ func runRecordedUninstall(cmd *cobra.Command, input string) error {
 
 	plan := agentinstall.UninstallRecorded(env, entries, true)
 
-	// The rows are real but their artifacts are already gone — a user deleted
+	// The rows are real but their artifacts are confirmed gone — a user deleted
 	// the skill folder by hand, say. There is nothing to remove, but the rows
 	// still have to go, or `install list` would report the package forever with
 	// no way to clear it.
-	if !agentcfg.HasChanges(plan) {
+	//
+	// This needs every outcome to be ActionUnchanged, not merely "no changes":
+	// a skipped or failed outcome also moves nothing, and reporting an
+	// unreadable config as "already gone" would suppress the failure and claim
+	// a row was cleared when it was not.
+	if allUnchanged(plan) {
 		forgetOnly(cmd, entries, plan)
 
 		return nil
@@ -124,6 +129,19 @@ func runRecordedUninstall(cmd *cobra.Command, input string) error {
 	forgetRemoved(cmd, entries, outcomes)
 
 	return nil
+}
+
+// allUnchanged reports that every artifact was looked at and found already
+// absent — the only state in which there is nothing to do and nothing to
+// explain.
+func allUnchanged(outcomes []agentcfg.Outcome) bool {
+	for _, o := range outcomes {
+		if o.Action != agentcfg.ActionUnchanged {
+			return false
+		}
+	}
+
+	return len(outcomes) > 0
 }
 
 // forgetOnly drops rows whose artifacts were already gone.
@@ -175,10 +193,12 @@ func recordedRows(manifest *pkgstate.Manifest, input string) ([]pkgstate.Entry, 
 	return rows, nil
 }
 
-// rowMatches reports whether a row is what the reference names. A bare CID
-// matches the exact record that was installed; a name with a version matches
-// only rows at that version, so `uninstall name:1.0.0` leaves a row on another
-// version alone.
+// rowMatches reports whether a row is what the reference names.
+//
+// Every part the reference carries has to agree. A bare CID matches the exact
+// record that was installed; `name:1.0.0` leaves a row on another version
+// alone; and `name@digest` leaves a row alone whose recorded CID is a
+// different digest, which is the whole point of writing the digest down.
 func rowMatches(entry pkgstate.Entry, ref reference.Ref) bool {
 	if ref.IsCID() {
 		return entry.CID == ref.Digest
@@ -188,7 +208,11 @@ func rowMatches(entry pkgstate.Entry, ref reference.Ref) bool {
 		return false
 	}
 
-	return ref.Version == "" || entry.Version == ref.Version
+	if ref.Version != "" && entry.Version != ref.Version {
+		return false
+	}
+
+	return ref.Digest == "" || entry.CID == ref.Digest
 }
 
 // forgetRemoved drops the row for every agent whose artifacts are confirmed

@@ -181,3 +181,13 @@ func TestCommandRunENoArgsReturnsNil(t *testing.T) {
 	// Help output should mention usage.
 	assert.NotEmpty(t, out.String())
 }
+
+func TestASingleInstallWithNothingToDoAsksNoConfirmation(t *testing.T) {
+	// The same gate the piped path uses. len(plan) == 0 was not it: an
+	// all-unchanged plan is not an empty one.
+	assert.False(t, agentcfg.HasChanges([]agentcfg.Outcome{
+		{Action: agentcfg.ActionUnchanged},
+		{Action: agentcfg.ActionSkipped},
+	}))
+	assert.True(t, agentcfg.HasChanges([]agentcfg.Outcome{{Action: agentcfg.ActionAdded}}))
+}

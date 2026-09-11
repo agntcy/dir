@@ -159,20 +159,35 @@ func ResolveMCPPath(target *MCPTarget, env Env, scope Scope) string {
 // MCPEntryPresent reports whether our server entry already exists in the config
 // for the given scope.
 func MCPEntryPresent(target *MCPTarget, env Env, serverName string, scope Scope) bool {
+	present, _ := MCPEntryChecked(target, env, serverName, scope)
+
+	return present
+}
+
+// MCPEntryChecked reports whether our server entry exists, and whether the
+// question could be answered at all.
+//
+// A config that cannot be resolved, read, or parsed is not an absent entry:
+// the entry may be sitting in it, unreadable. Callers that delete something on
+// the strength of an absence — pruning a manifest row, say — must not act on
+// a lookup that never completed.
+//
+// The second result is whether the lookup completed.
+func MCPEntryChecked(target *MCPTarget, env Env, serverName string, scope Scope) (bool, bool) {
 	path, err := mcpConfigPath(target, env, scope)
 	if err != nil {
-		return false
+		return false, false
 	}
 
 	m, err := loadConfig(target.Format, path)
 	if err != nil {
-		return false
+		return false, false
 	}
 
 	keyPath := append(append([]string{}, target.ServersKey...), serverName)
-	_, present := codec.GetNested(m, keyPath...)
+	_, found := codec.GetNested(m, keyPath...)
 
-	return present
+	return found, true
 }
 
 // loadConfig reads and decodes a config file, treating a missing file as empty.

@@ -83,3 +83,17 @@ func TestPruneSaysSoWhenEverythingIsStillThere(t *testing.T) {
 
 	assert.Contains(t, runPruneCmd(t, false), "Nothing to prune")
 }
+
+func TestPruneKeepsARowItCouldNotCheck(t *testing.T) {
+	// Pruning destroys the only provenance a package has. An unreadable agent
+	// config is doubt, not absence, so the row survives.
+	home := isolateHome(t)
+	require.NoError(t, os.WriteFile(filepath.Join(home, ".claude.json"), []byte("{not json"), 0o600))
+
+	unreadable := directoryEntry("cisco.com/unreadable", "v1.0.0", "claude-code")
+	unreadable.MCPServers = []string{"agent"}
+	seedManifest(t, unreadable)
+
+	assert.Contains(t, runPruneCmd(t, false), "Nothing to prune")
+	assert.Len(t, loadManifest(t).Entries, 1)
+}
