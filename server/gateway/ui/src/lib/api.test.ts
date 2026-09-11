@@ -5,10 +5,25 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
 	EXTRACT_TEXT_MAX_LEN,
 	ExtractorUnavailableError,
+	buildAICardFilterQuery,
 	extractTaxonomy,
 	suggestTagsFromExtraction
 } from './api';
 import type { CatalogTag, ExtractTaxonomyResponse } from './types';
+
+describe('buildAICardFilterQuery', () => {
+	it('keeps trusted and safe filters when given a legacy verified selection', () => {
+		expect(
+			buildAICardFilterQuery({
+				searchQuery: '',
+				mediaTypes: new Set(['all']),
+				statusFilters: new Set(['trusted', 'verified']),
+				activeTags: new Set(),
+				scanSafe: true
+			})
+		).toBe('trusted=true AND safe=true');
+	});
+});
 
 /** Mirrors the `oasf:<schema>:skills:<name>` ids ListCatalogTags emits. */
 function skillTag(name: string, schemaVersion = '*'): CatalogTag {

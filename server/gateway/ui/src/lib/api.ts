@@ -45,10 +45,6 @@ export function buildAICardFilterQuery(criteria: AICardFilterCriteria): string {
 		}
 	}
 
-	if (criteria.statusFilters.has('verified')) {
-		clauses.push('verified=true');
-	}
-
 	if (criteria.statusFilters.has('trusted')) {
 		clauses.push('trusted=true');
 	}
