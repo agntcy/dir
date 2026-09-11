@@ -55,17 +55,3 @@ func printScope(cmd *cobra.Command) {
 		presenter.Printf(cmd, "Scope: %s\n", manifestScope(agentcfg.Project))
 	}
 }
-
-// addAllVersionsFlag registers --all-versions on an install entry point.
-//
-// It is not a filter and did not go with them: a pipe from `dirctl search`
-// carries every matching version, and installing all of them into one agent
-// means three writes to the same slug with the last one winning. Install
-// keeps the highest version per name unless this says otherwise.
-//
-// Local rather than persistent, so it does not appear on `install uninstall`,
-// which takes one reference and has no versions to choose between.
-func addAllVersionsFlag(cmd *cobra.Command, opts *options) {
-	cmd.Flags().BoolVar(&opts.allVersions, "all-versions", false,
-		"Install every piped version of a name, not just the highest")
-}

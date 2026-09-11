@@ -312,17 +312,15 @@ copy of its flags. Two consequences worth knowing:
 - **A piped run cannot prompt**, because stdin is the reference list. It needs
   `--yes`, or `--dry-run` to preview. Without either it errors, rather than
   reading a CID as the answer to a confirmation.
-- **The highest version per name wins.** Search returns every matching version,
-  and installing all of them into one agent means repeated writes to the same
-  slug with the last one winning. Pass `--all-versions` to install each.
+- **Only the highest version of each name is installed.** Search returns every
+  matching version, and there is no flag to install them all: the skill slug
+  and the MCP server key both derive from the record name alone, so two
+  versions resolve to the same folder and the same config key. Only one
+  version of a package can be live and reachable by an agent.
 
 A reference that cannot be resolved or pulled is reported and skipped, so one
 bad entry does not abort the run. At most 1000 references are accepted in one
 run.
-
-| Flag | Description | Default |
-|------|-------------|---------|
-| `--all-versions` | Install every piped version of a name, not just the highest | `false` |
 
 ### `dirctl install uninstall <cid-or-name> [flags]`
 

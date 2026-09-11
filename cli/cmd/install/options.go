@@ -10,10 +10,9 @@ package install
 // keeps whatever the previous spec left in it and turns test failures
 // order-dependent.
 type options struct {
-	agents      []string
-	project     bool
-	dryRun      bool
-	yes         bool
-	pin         bool
-	allVersions bool
+	agents  []string
+	project bool
+	dryRun  bool
+	yes     bool
+	pin     bool
 }
