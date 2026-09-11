@@ -1,5 +1,5 @@
 <script lang="ts">
-	import VerifiedBadge from '$lib/components/VerifiedBadge.svelte';
+	import TrustedBadge from '$lib/components/TrustedBadge.svelte';
 	import { catalogTitleState } from '$lib/catalog-title.svelte';
 </script>
 
@@ -133,12 +133,11 @@
 		<section class="bg-surface-strong rounded-card border border-line p-6">
 			<h2 class="font-display text-lg font-semibold text-ink-strong">Trust badges</h2>
 			<p class="mt-3 text-sm text-ink leading-relaxed">
-				Records that include a signed trust manifest show a
-				<span class="inline-flex align-middle mx-0.5"><VerifiedBadge /></span>
-				<strong class="font-medium text-ink-strong">Verified</strong> badge on catalog cards and in the
-				detail view. Use the <strong class="font-medium text-ink-strong">Trusted</strong> or
-				<strong class="font-medium text-ink-strong">Verified</strong> status filters in the sidebar to
-				limit results to records with trust attestations.
+				Records whose signatures pass verification show a
+				<span class="inline-flex align-middle mx-0.5"><TrustedBadge /></span>
+				<strong class="font-medium text-ink-strong">Trusted</strong> badge on catalog cards and in the
+				detail view. Use the <strong class="font-medium text-ink-strong">Trusted</strong> status filter in
+				the sidebar to limit results to records with valid signatures.
 			</p>
 		</section>
 	</div>
