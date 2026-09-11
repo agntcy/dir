@@ -10,8 +10,11 @@ import (
 )
 
 // FormatSummary renders the per-artifact outcomes into a human-readable report
-// that lists every location touched (absolute path + action) and ends with a
-// tally. On dry runs it notes that nothing was written.
+// that lists every location actually touched (absolute path + action) and ends
+// with a tally. On dry runs it notes that nothing was written.
+//
+// Agents where nothing happened are left out of the lines but still counted in
+// the tally — see reportable.
 func FormatSummary(outcomes []Outcome, dryRun bool) string {
 	var b strings.Builder
 
@@ -23,17 +26,22 @@ func FormatSummary(outcomes []Outcome, dryRun bool) string {
 		return b.String()
 	}
 
-	if needsRecordGrouping(outcomes) {
-		for i, record := range recordOrder(outcomes) {
+	shown := reportable(outcomes)
+
+	switch {
+	case len(shown) == 0:
+		b.WriteString("Nothing changed; everything was already as it should be.\n")
+	case needsRecordGrouping(shown):
+		for i, record := range recordOrder(shown) {
 			if i > 0 {
 				b.WriteString("\n")
 			}
 
 			fmt.Fprintf(&b, "Record: %s\n", record)
-			writeSummaryOutcomeLines(&b, outcomesForRecord(outcomes, record))
+			writeSummaryOutcomeLines(&b, outcomesForRecord(shown, record))
 		}
-	} else {
-		writeSummaryOutcomeLines(&b, outcomes)
+	default:
+		writeSummaryOutcomeLines(&b, shown)
 	}
 
 	b.WriteString("\n")

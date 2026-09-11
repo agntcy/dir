@@ -44,10 +44,35 @@ Rules:
 5. Summarize the result: every path added/updated/removed/skipped, as
    clickable links where the host supports them.
 
+### Installing several records, and removing them
+
+Every install is recorded in `$XDG_CONFIG_HOME/dirctl/installed.json`. A
+`--project` install records the absolute path of the repository it wrote into,
+as its `scope`, so one manifest covers every repository on the machine. Never
+suggest committing this file: it is a local record full of absolute paths.
+
+```bash
+dirctl search --module integration/mcp -o raw | dirctl install --agents vscode --yes
+dirctl install prune --dry-run          # rows whose artifacts are gone
+```
+
+Install reads one reference per line from stdin when given no positional
+argument; `dirctl search -o raw` is the format to pipe. Filtering belongs to `dirctl search`, so install carries no copy of
+its flags. A piped run cannot prompt, because stdin is the list, so it needs
+`--yes` or `--dry-run`. Only the highest version of each name is installed:
+two versions share one skill folder and one MCP key, so only one can be live.
+
+Uninstall works from the manifest, not the Directory, so it succeeds with the
+server down or after the record has been deleted upstream, and it touches only
+the agents that actually hold the package. It takes one reference; removing
+several is a loop. A reference with no row is reported as not installed,
+naming the scope that was searched.
+
 Properties worth relying on: writes are atomic and surgical (only the
 record's own entry/managed block is touched); re-installing a newer version
 of the same-named record replaces the old artifacts cleanly; undetected
-agents are skipped, never created.
+agents are skipped, never created; plans and summaries name only the agents
+something happens to.
 
 ## Fallback path: `dirctl export`
 

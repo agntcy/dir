@@ -116,10 +116,14 @@ func init() {
 	validate.Command.PersistentPreRunE = skipClientSetup
 	version.Command.PersistentPreRunE = skipClientSetup
 	mcp.Command.PersistentPreRunE = skipClientSetup
-	// `install list` makes no Directory calls, so it must not require a client;
-	// `install`/`install run`/`install uninstall` use the client from context.
-	install.ListCommand.PersistentPreRunE = skipClientSetup
 	initcmd.Command.PersistentPreRunE = skipClientSetup
+
+	// Install subcommands that only read or edit local state, `uninstall`
+	// among them now that it works from the manifest. See
+	// install.SkipClientSetup.
+	for _, cmd := range install.SkipClientSetup() {
+		cmd.PersistentPreRunE = skipClientSetup
+	}
 
 	RootCmd.AddCommand(
 		// auth commands

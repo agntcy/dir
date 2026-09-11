@@ -146,11 +146,10 @@ func TestRecordInstallsSkipsANamelessRecord(t *testing.T) {
 	assert.True(t, os.IsNotExist(err), "nothing changed, so no manifest is written")
 }
 
-func TestRecordInstallsSkipsProjectScope(t *testing.T) {
+func TestRecordInstallsNamesTheRepositoryForAProjectInstall(t *testing.T) {
 	path := isolateManifest(t)
 	cmd, _ := testCmd(t)
 
-	// Only global installs are tracked in this iteration.
 	recordInstalls(cmd, []applied{{
 		record: testRecord("cisco.com/agent", "1.0.0"),
 		outcomes: []agentcfg.Outcome{
@@ -158,8 +157,15 @@ func TestRecordInstallsSkipsProjectScope(t *testing.T) {
 		},
 	}}, []agentcfg.Agent{claudeCode}, agentcfg.Project)
 
-	_, err := os.Stat(path)
-	assert.True(t, os.IsNotExist(err))
+	m, err := pkgstate.Load(path)
+	require.NoError(t, err)
+	require.Len(t, m.Entries, 1)
+
+	cwd, err := os.Getwd()
+	require.NoError(t, err)
+	// The repository, not the word "project": two repositories must not
+	// collide on one (name, agent, scope) key.
+	assert.Equal(t, pkgstate.ProjectScope(cwd), m.Entries[0].Scope)
 }
 
 func TestRecordUninstallsDropsTheRow(t *testing.T) {
@@ -235,7 +241,10 @@ func TestWithManifestLeavesANewerDirctlsFileAlone(t *testing.T) {
 	assert.Equal(t, future, onDisk)
 }
 
-func TestRecordable(t *testing.T) {
-	assert.True(t, recordable(agentcfg.Global))
-	assert.False(t, recordable(agentcfg.Project))
+func TestManifestScopeNamesTheRepositoryForAProjectInstall(t *testing.T) {
+	assert.Equal(t, pkgstate.ScopeGlobal, manifestScope(agentcfg.Global))
+
+	cwd, err := os.Getwd()
+	require.NoError(t, err)
+	assert.Equal(t, pkgstate.ProjectScope(cwd), manifestScope(agentcfg.Project))
 }
