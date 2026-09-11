@@ -35,11 +35,16 @@ func getRecordLabel(record *corev1.Record) string {
 	return name
 }
 
+// selectRecords keeps the highest version of each name.
+//
+// There is no flag to turn this off, because installing two versions of one
+// package is not a thing agents can hold. The skill slug and the MCP server
+// key both derive from the record name alone, so two versions resolve to the
+// same folder and the same config key: the second write simply overwrites the
+// first, and the manifest — keyed on (name, agent, scope) — ends up with one
+// row naming whichever landed last. Only one version of a package can be live
+// and reachable, so install picks it rather than pretending otherwise.
 func selectRecords(recs []*corev1.Record) []*corev1.Record {
-	if opts.allVersions {
-		return recs
-	}
-
 	return records.LatestByName(recs)
 }
 

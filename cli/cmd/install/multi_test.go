@@ -23,38 +23,22 @@ func TestRecordLabel(t *testing.T) {
 	require.Equal(t, "agent-b", getRecordLabel(corev1.New(&oasfv1alpha1.Record{Name: "agent-b"})))
 }
 
-func TestSelectRecordsLatestByName(t *testing.T) {
-	orig := opts
-
-	defer func() { opts = orig }()
-
-	opts.allVersions = false
-
+func TestOnlyTheHighestVersionOfANameIsInstalled(t *testing.T) {
+	// A pipe from search carries every matching version. Two versions of one
+	// package resolve to the same skill folder and the same MCP key, so
+	// installing both would just overwrite the first — there is no flag to ask
+	// for that.
 	recs := []*corev1.Record{
-		corev1.New(&oasfv1alpha1.Record{Name: "a", Version: "1.0.0"}),
-		corev1.New(&oasfv1alpha1.Record{Name: "a", Version: "2.0.0"}),
+		corev1.New(&oasfv1alpha1.Record{Name: "a", Version: "1.9.0"}),
+		corev1.New(&oasfv1alpha1.Record{Name: "a", Version: "1.10.0"}),
 		corev1.New(&oasfv1alpha1.Record{Name: "b", Version: "1.0.0"}),
 	}
 
 	selected := selectRecords(recs)
 	require.Len(t, selected, 2)
-	require.Equal(t, "2.0.0", selected[0].GetVersion())
+	// Lexically "1.10.0" sorts below "1.9.0"; only a semver comparison is right.
+	require.Equal(t, "1.10.0", selected[0].GetVersion())
 	require.Equal(t, "b", selected[1].GetName())
-}
-
-func TestSelectRecordsAllVersions(t *testing.T) {
-	orig := opts
-
-	defer func() { opts = orig }()
-
-	opts.allVersions = true
-
-	recs := []*corev1.Record{
-		corev1.New(&oasfv1alpha1.Record{Name: "a", Version: "1.0.0"}),
-		corev1.New(&oasfv1alpha1.Record{Name: "a", Version: "2.0.0"}),
-	}
-
-	require.Len(t, selectRecords(recs), 2)
 }
 
 func TestFormatSkippedSummary(t *testing.T) {

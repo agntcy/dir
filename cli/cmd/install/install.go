@@ -52,9 +52,10 @@ search, so install does not carry a second copy of its flags:
 
 References are read one per line, blanks and # comments ignored. Use
 search's -o raw, which is one CID per line; -o jsonl and plain names work
-too. The highest version per name wins unless --all-versions is passed. A
-piped run cannot prompt, because stdin is the list, so it needs --yes or
---dry-run.
+too. Only the highest version of each name is installed: two versions of one
+package resolve to the same skill folder and MCP key, so the second would
+just overwrite the first. A piped run cannot prompt, because stdin is the
+list, so it needs --yes or --dry-run.
 
 Examples:
   dirctl install cisco.com/agent:v1.0.0
@@ -83,7 +84,6 @@ Examples:
 func init() {
 	addSelectionFlags(Command, &opts)
 	addPinFlag(Command, &opts)
-	addAllVersionsFlag(Command, &opts)
 
 	Command.AddCommand(runCmd)
 	Command.AddCommand(uninstallCmd)
