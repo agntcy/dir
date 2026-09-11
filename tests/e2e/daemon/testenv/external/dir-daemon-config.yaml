@@ -16,8 +16,6 @@ server:
   routing:
     listen_address: "/ip4/127.0.0.1/tcp/0"
     datastore_dir: "routing"
-    gossipsub:
-      enabled: true
   database:
     type: "postgres"
     postgres:

@@ -4,7 +4,6 @@
 package routing
 
 import (
-	"context"
 	"strings"
 
 	routingv1 "github.com/agntcy/dir/api/routing/v1"
@@ -13,44 +12,6 @@ import (
 )
 
 var queryLogger = logging.Logger("routing/query")
-
-// LabelRetriever function type for injecting different label retrieval strategies.
-// This allows us to use the same query matching logic for both local and remote scenarios
-// while keeping the label retrieval implementation separate.
-type LabelRetriever func(ctx context.Context, cid string) []types.Label
-
-// MatchesAllQueries checks if a record matches ALL provided queries using injected label retrieval.
-// This implements AND logic - all queries must match for the record to be considered a match.
-//
-// Parameters:
-//   - ctx: Context for the operation
-//   - cid: The CID of the record to check
-//   - queries: List of queries that must ALL match (AND relationship)
-//   - labelRetriever: Function to retrieve labels for the given CID
-//
-// Returns true if all queries match, false otherwise.
-func MatchesAllQueries(
-	ctx context.Context,
-	cid string,
-	queries []*routingv1.RecordQuery,
-	labelRetriever LabelRetriever,
-) bool {
-	if len(queries) == 0 {
-		return true // No filters = match everything
-	}
-
-	// Use the injected label retrieval strategy
-	labels := labelRetriever(ctx, cid)
-
-	// ALL queries must match (AND relationship)
-	for _, query := range queries {
-		if !QueryMatchesLabels(query, labels) {
-			return false
-		}
-	}
-
-	return true
-}
 
 // QueryMatchesLabels checks if a single query matches against a list of labels.
 // This function contains the unified logic for all query types, resolving the
@@ -159,27 +120,4 @@ func QueryMatchesLabels(query *routingv1.RecordQuery, labelList []types.Label) b
 
 		return false
 	}
-}
-
-// GetMatchingQueries returns the queries that match against a specific label key.
-// This is used primarily for calculating match scores in Search operations.
-func GetMatchingQueries(labelKey string, queries []*routingv1.RecordQuery) []*routingv1.RecordQuery {
-	var matchingQueries []*routingv1.RecordQuery
-
-	// Extract label from the enhanced key
-	label, _, _, err := ParseEnhancedLabelKey(labelKey)
-	if err != nil {
-		queryLogger.Warn("Failed to parse enhanced label key for query matching", "key", labelKey, "error", err)
-
-		return matchingQueries
-	}
-
-	// Check which queries this label satisfies
-	for _, query := range queries {
-		if QueryMatchesLabels(query, []types.Label{label}) {
-			matchingQueries = append(matchingQueries, query)
-		}
-	}
-
-	return matchingQueries
 }

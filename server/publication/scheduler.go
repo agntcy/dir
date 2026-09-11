@@ -17,14 +17,20 @@ type Scheduler struct {
 	db        types.PublicationDatabaseAPI
 	workQueue chan<- publypes.WorkItem
 	interval  time.Duration
+	wakeCh    <-chan struct{}
 }
 
 // NewScheduler creates a new scheduler instance.
-func NewScheduler(db types.PublicationDatabaseAPI, workQueue chan<- publypes.WorkItem, interval time.Duration) *Scheduler {
+//
+// wakeCh lets a caller run a sweep ahead of the next tick. The ticker remains as
+// a backstop for publications a sweep left behind, such as those skipped while
+// the work queue was full.
+func NewScheduler(db types.PublicationDatabaseAPI, workQueue chan<- publypes.WorkItem, interval time.Duration, wakeCh <-chan struct{}) *Scheduler {
 	return &Scheduler{
 		db:        db,
 		workQueue: workQueue,
 		interval:  interval,
+		wakeCh:    wakeCh,
 	}
 }
 
@@ -36,7 +42,7 @@ func (s *Scheduler) Run(ctx context.Context, stopCh <-chan struct{}) {
 	defer ticker.Stop()
 
 	// Process immediately on start
-	s.processPendingPublications(ctx)
+	s.processPendingPublications(ctx, stopCh)
 
 	for {
 		select {
@@ -49,13 +55,20 @@ func (s *Scheduler) Run(ctx context.Context, stopCh <-chan struct{}) {
 
 			return
 		case <-ticker.C:
-			s.processPendingPublications(ctx)
+			s.processPendingPublications(ctx, stopCh)
+		case <-s.wakeCh:
+			s.processPendingPublications(ctx, stopCh)
 		}
 	}
 }
 
-// processPendingPublications finds pending publications and dispatches them to workers.
-func (s *Scheduler) processPendingPublications(ctx context.Context) {
+// processPendingPublications dispatches every pending publication to the workers.
+//
+// The send blocks when the queue is full, so the queue acts as backpressure and
+// a backlog larger than the queue drains at whatever rate the workers sustain.
+// Dropping the overflow instead would strand those publications in the pending
+// state until some later sweep, leaving idle workers alongside pending work.
+func (s *Scheduler) processPendingPublications(ctx context.Context, stopCh <-chan struct{}) {
 	logger.Debug("Processing pending publications")
 
 	publications, err := s.db.GetPublicationsByStatus(routingv1.PublicationStatus_PUBLICATION_STATUS_PENDING)
@@ -71,18 +84,16 @@ func (s *Scheduler) processPendingPublications(ctx context.Context) {
 			logger.Info("Stopping publication processing due to context cancellation")
 
 			return
-		default:
-			// Try to dispatch work item
-			select {
-			case s.workQueue <- publypes.WorkItem{PublicationID: publication.GetID()}:
-				logger.Debug("Dispatched publication to worker", "publication_id", publication.GetID())
+		case <-stopCh:
+			logger.Info("Stopping publication processing due to stop signal")
 
-				// Update status to in progress
-				if err := s.db.UpdatePublicationStatus(publication.GetID(), routingv1.PublicationStatus_PUBLICATION_STATUS_IN_PROGRESS); err != nil {
-					logger.Error("Failed to update publication status", "publication_id", publication.GetID(), "error", err)
-				}
-			default:
-				logger.Debug("Work queue is full, skipping publication", "publication_id", publication.GetID())
+			return
+		case s.workQueue <- publypes.WorkItem{PublicationID: publication.GetID()}:
+			logger.Debug("Dispatched publication to worker", "publication_id", publication.GetID())
+
+			// Update status to in progress
+			if err := s.db.UpdatePublicationStatus(publication.GetID(), routingv1.PublicationStatus_PUBLICATION_STATUS_IN_PROGRESS); err != nil {
+				logger.Error("Failed to update publication status", "publication_id", publication.GetID(), "error", err)
 			}
 		}
 	}

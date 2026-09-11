@@ -108,13 +108,12 @@ func TestBootstrapPeerValidationHelpers(t *testing.T) {
 func TestAddPeerProtocolDetails(t *testing.T) {
 	details := map[string]string{}
 
-	addPeerProtocolDetails(details, []protocol.ID{"/ipfs/kad/1.0.0", "/dir/rpc/0.1.0", "/meshsub/1.1.0"}, nil)
+	addPeerProtocolDetails(details, []protocol.ID{"/dir/2/kad/1.0.0", "/dir/rpc/2.0.0"}, nil)
 
-	assert.Equal(t, "3", details["protocol_count"])
+	assert.Equal(t, "2", details["protocol_count"])
 	assert.Equal(t, "true", details["has_kad_dht_protocol"])
 	assert.Equal(t, "true", details["has_dir_rpc_protocol"])
-	assert.Equal(t, "true", details["has_gossipsub_protocol"])
-	assert.True(t, hasProtocolPrefix([]string{"/dir/rpc/0.1.0"}, "/dir/rpc"))
+	assert.True(t, hasProtocolPrefix([]string{"/dir/rpc/2.0.0"}, "/dir/rpc"))
 	assert.False(t, hasProtocolPrefix([]string{"/other/1.0.0"}, "/dir/rpc"))
 }
 

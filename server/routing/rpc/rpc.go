@@ -29,9 +29,8 @@ var (
 // TODO: proper cleanup and implementation needed!
 
 const (
-	Protocol                    = protocol.ID("/dir/rpc/1.0.0")
+	Protocol                    = protocol.ID("/dir/rpc/2.0.0")
 	DirService                  = "RPCAPI"
-	DirServiceFuncLookup        = "Lookup"
 	DirServiceFuncPull          = "Pull"
 	DirServiceFuncListReferrers = "ListReferrers"
 	DirServiceFuncPullReferrer  = "PullReferrer"
@@ -296,9 +295,10 @@ type Service struct {
 	host      host.Host
 	store     types.StoreAPI
 	refStore  types.ReferrerStoreAPI
+	db        types.DatabaseAPI
 }
 
-func New(host host.Host, store types.StoreAPI) (*Service, error) {
+func New(host host.Host, store types.StoreAPI, db types.DatabaseAPI) (*Service, error) {
 	var refStore types.ReferrerStoreAPI
 	if rs, ok := store.(types.ReferrerStoreAPI); ok {
 		refStore = rs
@@ -309,6 +309,7 @@ func New(host host.Host, store types.StoreAPI) (*Service, error) {
 		host:      host,
 		store:     store,
 		refStore:  refStore,
+		db:        db,
 	}
 
 	// register api
@@ -323,21 +324,6 @@ func New(host host.Host, store types.StoreAPI) (*Service, error) {
 	service.rpcClient = rpc.NewClientWithServer(host, Protocol, service.rpcServer)
 
 	return service, nil
-}
-
-func (s *Service) Lookup(ctx context.Context, peer peer.ID, req *corev1.RecordRef) (*corev1.RecordRef, error) {
-	logger.Debug("P2p RPC: Executing Lookup request on remote peer", "peer", peer, "req", req)
-
-	var resp LookupResponse
-
-	err := s.rpcClient.CallContext(ctx, peer, DirService, DirServiceFuncLookup, req, &resp)
-	if err != nil {
-		return nil, status.Errorf(codes.Internal, "failed to call remote peer: %v", err)
-	}
-
-	return &corev1.RecordRef{
-		Cid: resp.Cid,
-	}, nil
 }
 
 func (s *Service) Pull(ctx context.Context, peer peer.ID, req *corev1.RecordRef) (*corev1.Record, error) {
@@ -400,6 +386,14 @@ func (s *Service) PullReferrer(
 	}
 
 	return resp.Referrer, nil
+}
+
+func (s *Service) getDatabase() (types.DatabaseAPI, error) {
+	if s.db == nil {
+		return nil, status.Error(codes.Unimplemented, "record queries are not supported by this node") //nolint:wrapcheck
+	}
+
+	return s.db, nil
 }
 
 func (s *Service) getReferrerStore() (types.ReferrerStoreAPI, error) {

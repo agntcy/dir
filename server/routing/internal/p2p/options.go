@@ -12,14 +12,11 @@ import (
 	"time"
 
 	dht "github.com/libp2p/go-libp2p-kad-dht"
-	"github.com/libp2p/go-libp2p-kad-dht/records"
 	"github.com/libp2p/go-libp2p/core/crypto"
 	"github.com/libp2p/go-libp2p/core/host"
 	"github.com/libp2p/go-libp2p/core/peer"
 	"golang.org/x/crypto/ssh"
 )
-
-type APIRegistrer func(host.Host) error
 
 type options struct {
 	Key                      crypto.PrivKey
@@ -29,8 +26,6 @@ type options struct {
 	BootstrapPeers           []peer.AddrInfo
 	RefreshInterval          time.Duration
 	Randevous                string
-	APIRegistrer             APIRegistrer
-	ProviderStore            records.ProviderStore
 	DHTCustomOpts            func(host.Host) ([]dht.Option, error)
 	RelayService             bool
 	StaticRelays             []peer.AddrInfo
@@ -152,15 +147,6 @@ func WithBootstrapPeers(peers []peer.AddrInfo) Option {
 func WithRefreshInterval(period time.Duration) Option {
 	return func(opts *options) error {
 		opts.RefreshInterval = period
-
-		return nil
-	}
-}
-
-// API can only be registreded for non-bootstrap nodes.
-func WithAPIRegistrer(reg APIRegistrer) Option {
-	return func(opts *options) error {
-		opts.APIRegistrer = reg
 
 		return nil
 	}

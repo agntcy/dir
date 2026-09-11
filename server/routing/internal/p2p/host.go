@@ -123,7 +123,7 @@ func newHost(listenAddr, dirAPIAddr, ociAddr string, key crypto.PrivKey, enableR
 	// Create connection manager to limit and manage peer connections.
 	// This prevents resource exhaustion and enables smart peer pruning based on priority.
 	connMgr, err := connmgr.NewConnManager(
-		ConnMgrLowWater,  // Minimum connections (DHT + GossipSub + buffer)
+		ConnMgrLowWater,  // Minimum connections (DHT + buffer)
 		ConnMgrHighWater, // Maximum connections (prevents resource exhaustion)
 		connmgr.WithGracePeriod(ConnMgrGracePeriod), // Protect new connections
 	)

@@ -48,8 +48,10 @@ func Publish(ctx context.Context, store types.StoreAPI, db types.DatabaseAPI, va
 		return fmt.Errorf("push skill record: %w", err)
 	}
 
-	// Update the search index in line with the gRPC store controller, so the
-	// record is discoverable without waiting for an external push.
+	// Index the record so it is locally searchable, in line with the gRPC store
+	// controller. It stays unpublished: announcing it would have every node in
+	// the network provide the same handful of label keys, which buries real
+	// records under one copy of this one per peer.
 	decoded, decodeErr := record.Decode()
 	if decodeErr != nil {
 		logger.Warn("DIR skill record pushed but could not be decoded for search index",
@@ -63,7 +65,7 @@ func Publish(ctx context.Context, store types.StoreAPI, db types.DatabaseAPI, va
 		)
 	}
 
-	logger.Info("DIR skill record published",
+	logger.Info("DIR skill record stored",
 		"cid", ref.GetCid(),
 		"name", RecordName,
 		"version", RecordVersion(),

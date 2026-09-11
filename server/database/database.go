@@ -75,6 +75,25 @@ func isMemoryDSN(path string) bool {
 	return path == ":memory:" || strings.HasPrefix(path, "file::memory:")
 }
 
+// withForeignKeys puts foreign key enforcement in the DSN so it applies to
+// every connection the pool opens.
+//
+// SQLite disables foreign keys per connection, so running the pragma as a
+// statement after Open only reaches whichever connection happened to serve it.
+// The rest of the pool keeps enforcement off, and the ON DELETE CASCADE
+// declared on Record's associations is silently skipped there, orphaning skill,
+// domain, module and locator rows.
+func withForeignKeys(path string) string {
+	const pragma = "_pragma=foreign_keys(1)"
+
+	separator := "?"
+	if strings.Contains(path, "?") {
+		separator = "&"
+	}
+
+	return path + separator + pragma
+}
+
 // newSQLite creates a new database connection using the pure-Go SQLite driver.
 func newSQLite(cfg config.SQLiteConfig) (*gormdb.DB, error) {
 	path := cfg.Path
@@ -86,7 +105,7 @@ func newSQLite(cfg config.SQLiteConfig) (*gormdb.DB, error) {
 		path = config.EnsureFilePath(path)
 	}
 
-	db, err := gorm.Open(sqlite.Open(path), &gorm.Config{
+	db, err := gorm.Open(sqlite.Open(withForeignKeys(path)), &gorm.Config{
 		Logger: newCustomLogger(),
 	})
 	if err != nil {
@@ -95,11 +114,6 @@ func newSQLite(cfg config.SQLiteConfig) (*gormdb.DB, error) {
 
 	if err := configureSQLPool(db); err != nil {
 		return nil, fmt.Errorf("failed to configure SQLite connection pool: %w", err)
-	}
-
-	// SQLite does not enforce foreign keys by default; enable for CASCADE support.
-	if err := db.Exec("PRAGMA foreign_keys = ON").Error; err != nil {
-		return nil, fmt.Errorf("failed to enable SQLite foreign keys: %w", err)
 	}
 
 	gdb, err := gormdb.New(db)
