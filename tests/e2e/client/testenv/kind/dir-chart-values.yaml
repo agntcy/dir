@@ -9,6 +9,10 @@ apiserver:
       scheduler_interval: "1s"
     routing:
       refresh_interval: "1s"
+      # This is a single-node testenv with no peers to be introduced by, so it
+      # acts as its own DHT bootstrap node. Inheriting the chart's default peer
+      # would leave the routing table empty, which routing reports as unhealthy.
+      bootstrap_peers: []
     ratelimit:
       enabled: "true"
       global_rps: "100"
