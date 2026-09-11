@@ -298,8 +298,8 @@ With no positional argument and something on stdin, `install` reads one
 reference per line. Blank lines and `#` comments are ignored.
 
 `dirctl search -o raw` is the format to pipe: one CID per line. `-o jsonl`
-works too, since its quotes are stripped. Names are accepted as well, so a
-hand-written list or `dirctl install list` output can be piped in.
+works too, since its quotes are stripped. Record names are accepted as well,
+so a hand-written list can be piped in.
 
 ```bash
 dirctl search --module integration/mcp -o raw | dirctl install --agents all --yes

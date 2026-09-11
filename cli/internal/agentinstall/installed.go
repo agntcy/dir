@@ -36,6 +36,13 @@ type Installed struct {
 
 	// Present is whether the artifact was found.
 	Present bool `json:"present"`
+
+	// Unchecked marks an artifact whose presence could not be established at
+	// all: an unreadable skill path, an agent config that cannot be read or
+	// parsed, or an agent this binary does not know. Such an artifact is
+	// neither present nor confirmed gone, and nothing may be deleted on the
+	// strength of it.
+	Unchecked bool `json:"unchecked,omitempty"`
 }
 
 // InstalledFile is one file of a skill bundle.
@@ -60,42 +67,43 @@ func Inspect(entry pkgstate.Entry, env agentcfg.Env) []Installed {
 	return found
 }
 
-// Present reports whether anything the row names is still installed.
+// Present reports whether the row still stands for something installed.
 //
-// One surviving artifact is enough. A record can yield both a skill and an MCP
-// entry, and a user who deletes only the skill folder still has half of the
-// package wired in — a state an upgrade can fix, so calling the row missing
-// would be wrong.
+// It is the negation of "confirmed gone", not "confirmed there", and the
+// difference matters because callers delete manifest rows on the strength of
+// it. A row counts as gone only when **every** artifact it names was looked at
+// and found absent. Three cases therefore keep it present:
 //
-// A row that names no artifacts is reported present: there is nothing to
-// contradict it, and claiming otherwise would strand the row.
+//   - One surviving artifact. A record can yield both a skill and an MCP
+//     entry, and a user who deleted only the skill folder still has half the
+//     package wired in — a state an upgrade can fix.
+//   - An artifact that could not be checked: an unreadable path, a malformed
+//     agent config, an agent this binary does not know. Dropping the row there
+//     would destroy the only provenance for something that may well exist.
+//   - A row that names no artifacts. There is nothing to contradict it.
 func Present(entry pkgstate.Entry, env agentcfg.Env) bool {
-	found := Inspect(entry, env)
-	if len(found) == 0 {
-		return true
-	}
-
-	for _, a := range found {
-		if a.Present {
+	for _, a := range Inspect(entry, env) {
+		if a.Present || a.Unchecked {
 			return true
 		}
 	}
 
-	return false
+	return len(Inspect(entry, env)) == 0
 }
 
 func inspectSkill(entry pkgstate.Entry) Installed {
+	present, checked := exists(entry.SkillPath)
+
 	skill := Installed{
-		Kind:    agentcfg.ArtifactSkill,
-		Path:    entry.SkillPath,
-		Present: exists(entry.SkillPath),
+		Kind:      agentcfg.ArtifactSkill,
+		Path:      entry.SkillPath,
+		Present:   present,
+		Unchecked: !checked,
 	}
 
 	for _, name := range entry.SkillFiles {
-		skill.Files = append(skill.Files, InstalledFile{
-			Name:    name,
-			Present: exists(filepath.Join(entry.SkillPath, name)),
-		})
+		filePresent, _ := exists(filepath.Join(entry.SkillPath, name))
+		skill.Files = append(skill.Files, InstalledFile{Name: name, Present: filePresent})
 	}
 
 	return skill
@@ -103,8 +111,8 @@ func inspectSkill(entry pkgstate.Entry) Installed {
 
 // inspectMCP checks each recorded server key against the agent's config file.
 // An agent this binary does not know, or one with no MCP location, leaves the
-// entry unlocated: it is reported present, because nothing was checked and a
-// row must not be called missing on the strength of a lookup that never ran.
+// entry unchecked rather than absent: nothing was looked at, and a row must
+// not be called gone on the strength of a lookup that never ran.
 func inspectMCP(entry pkgstate.Entry, env agentcfg.Env) []Installed {
 	agent, known := agentcfg.ByID(entry.Agent)
 	scope, env := placement(entry, env)
@@ -115,14 +123,17 @@ func inspectMCP(entry pkgstate.Entry, env agentcfg.Env) []Installed {
 		mcp := Installed{Kind: agentcfg.ArtifactMCP, Server: server}
 
 		if !known || agent.MCP == nil {
-			mcp.Present = true
+			mcp.Unchecked = true
 			servers = append(servers, mcp)
 
 			continue
 		}
 
 		mcp.Path = agentcfg.ResolveMCPPath(agent.MCP, env, scope)
-		mcp.Present = agentcfg.MCPEntryPresent(agent.MCP, env, server, scope)
+
+		present, checked := agentcfg.MCPEntryChecked(agent.MCP, env, server, scope)
+		mcp.Present = present
+		mcp.Unchecked = !checked
 
 		servers = append(servers, mcp)
 	}
@@ -149,8 +160,15 @@ func placement(entry pkgstate.Entry, env agentcfg.Env) (agentcfg.Scope, agentcfg
 	return agentcfg.Project, env
 }
 
-func exists(path string) bool {
-	_, err := os.Stat(path)
+// exists reports whether path is there, and — as its second result — whether
+// the question could be answered at all. A permission error or a broken mount
+// is not an absence.
+func exists(path string) (bool, bool) {
+	if _, err := os.Stat(path); err == nil {
+		return true, true
+	} else if os.IsNotExist(err) {
+		return false, true
+	}
 
-	return err == nil
+	return false, false
 }

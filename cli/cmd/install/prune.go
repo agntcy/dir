@@ -55,13 +55,16 @@ func runPrune(cmd *cobra.Command, _ []string) error {
 	var stale []pkgstate.Entry
 
 	for _, entry := range manifest.Entries {
+		// Present is the negation of "confirmed gone", so an artifact that
+		// could not be checked keeps its row. Pruning destroys the only
+		// provenance a package has; it may act on absence, never on doubt.
 		if !agentinstall.Present(entry, env) {
 			stale = append(stale, entry)
 		}
 	}
 
 	if len(stale) == 0 {
-		presenter.Printf(cmd, "Nothing to prune: every recorded artifact is still on disk.\n")
+		presenter.Printf(cmd, "Nothing to prune: every row still stands for something installed.\n")
 
 		return nil
 	}

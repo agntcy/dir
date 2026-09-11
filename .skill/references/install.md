@@ -57,7 +57,7 @@ dirctl install prune --dry-run          # rows whose artifacts are gone
 ```
 
 Install reads one reference per line from stdin when given no positional
-argument. Filtering belongs to `dirctl search`, so install carries no copy of
+argument; `dirctl search -o raw` is the format to pipe. Filtering belongs to `dirctl search`, so install carries no copy of
 its flags. A piped run cannot prompt, because stdin is the list, so it needs
 `--yes` or `--dry-run`. Only the highest version of each name is installed:
 two versions share one skill folder and one MCP key, so only one can be live.

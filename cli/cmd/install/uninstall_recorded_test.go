@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/agntcy/dir/cli/internal/agentcfg"
 	"github.com/agntcy/dir/cli/internal/pkgstate"
 	"github.com/agntcy/dir/cli/util/reference"
 	"github.com/spf13/cobra"
@@ -286,4 +287,54 @@ func TestAProjectUninstallTouchesOnlyTheRepositoryItRunsIn(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, rows, 1)
 	assert.Equal(t, "claude-code", rows[0].Agent)
+}
+
+func TestADigestOnANameMustAlsoMatch(t *testing.T) {
+	resetOpts(t)
+
+	const other = "bafyreibvjvcv745gig4mvqs4hctx4zfkono4rjejm2ta6gtyzkqxfjeily"
+
+	// The command advertises name@digest. Writing the digest down is a claim
+	// about which record, so a row holding a different one is not a match.
+	row := directoryEntry("cisco.com/agent", "1.0.0", "claude-code")
+	manifest := &pkgstate.Manifest{Entries: []pkgstate.Entry{row}}
+
+	rows, err := recordedRows(manifest, "cisco.com/agent@"+other)
+	require.NoError(t, err)
+	assert.Empty(t, rows)
+
+	rows, err = recordedRows(manifest, "cisco.com/agent@"+row.CID)
+	require.NoError(t, err)
+	assert.Len(t, rows, 1)
+}
+
+func TestAFailedRemovalIsNotReportedAsAlreadyGone(t *testing.T) {
+	// HasChanges is false for a failure too. Treating that as "already gone"
+	// would suppress the error and claim a row was cleared when it was not.
+	assert.True(t, allUnchanged([]agentcfg.Outcome{{Action: agentcfg.ActionUnchanged}}))
+	assert.False(t, allUnchanged([]agentcfg.Outcome{
+		{Action: agentcfg.ActionUnchanged},
+		{Action: agentcfg.ActionFailed},
+	}))
+	assert.False(t, allUnchanged([]agentcfg.Outcome{{Action: agentcfg.ActionSkipped}}))
+	assert.False(t, allUnchanged(nil))
+}
+
+func TestARowWhoseConfigCannotBeReadSurvivesUninstall(t *testing.T) {
+	resetOpts(t)
+
+	home := isolateHome(t)
+	require.NoError(t, os.WriteFile(filepath.Join(home, ".claude.json"), []byte("{not json"), 0o600))
+
+	entry := directoryEntry("cisco.com/agent", "1.0.0", "claude-code")
+	entry.MCPServers = []string{"agent"}
+	seedManifest(t, entry)
+
+	out, err := uninstallCmdOut(t, "cisco.com/agent")
+	require.NoError(t, err)
+
+	assert.NotContains(t, out, "already gone")
+	assert.Contains(t, out, "failed")
+	// The artifact may still be in that unreadable config, so the row stays.
+	assert.Len(t, loadManifest(t).Entries, 1)
 }
