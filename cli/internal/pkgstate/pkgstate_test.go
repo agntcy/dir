@@ -350,3 +350,38 @@ func TestDefaultPathFallsBackToHomeConfig(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, filepath.Join(home, ".config", "dirctl", "installed.json"), path)
 }
+
+func TestKindIsDerivedFromTheArtifactsThatLanded(t *testing.T) {
+	both := pkgstate.Entry{SkillPath: "/skills/agent", MCPServers: []string{"agent"}}
+	assert.Equal(t, "skill+mcp", both.Kind())
+
+	assert.Equal(t, "skill", pkgstate.Entry{SkillPath: "/skills/agent"}.Kind())
+	assert.Equal(t, "mcp", pkgstate.Entry{MCPServers: []string{"agent"}}.Kind())
+	// Only a hand-edited manifest can hold a row that landed nothing.
+	assert.Equal(t, "none", pkgstate.Entry{}.Kind())
+}
+
+func TestOnlyTwoNamedContextsThatDifferAreAMismatch(t *testing.T) {
+	// Rows written before the field existed carry no context, and must stay
+	// checkable rather than become permanently unassessable.
+	assert.True(t, pkgstate.Entry{}.ContextMatches("local"))
+	// A dirctl pointed at a server through DIRECTORY_CLIENT_SERVER_ADDRESS
+	// alone has no context name, and must not skip every row it has.
+	assert.True(t, pkgstate.Entry{Context: "staging"}.ContextMatches(""))
+	assert.True(t, pkgstate.Entry{Context: "local"}.ContextMatches("local"))
+	assert.False(t, pkgstate.Entry{Context: "staging"}.ContextMatches("local"))
+}
+
+func TestContextRoundTripsThroughTheFile(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "installed.json")
+
+	m := &pkgstate.Manifest{Entries: []pkgstate.Entry{{
+		Name: "cisco.com/agent", Agent: "claude-code", Scope: pkgstate.ScopeGlobal, Context: "staging",
+	}}}
+	require.NoError(t, m.Save(path))
+
+	loaded, err := pkgstate.Load(path)
+	require.NoError(t, err)
+	require.Len(t, loaded.Entries, 1)
+	assert.Equal(t, "staging", loaded.Entries[0].Context)
+}

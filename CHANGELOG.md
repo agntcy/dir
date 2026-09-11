@@ -11,6 +11,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Search**: `ListFilterValues` RPC for distinct filter values (#2012)
 - **CLI**: `dirctl install prune` drops manifest rows whose artifacts are gone, with `--dry-run`. Rows go stale when a skill folder is deleted by hand or a repository is moved after a `--project` install (#2133)
 - **CLI**: `dirctl search -o raw | dirctl install` installs every piped reference, one per line (#2133)
+- **CLI**: `dirctl install list` lists installed packages, and `dirctl install list <name>` one package's installed artifacts (#2029)
+- **CLI**: `dirctl install outdated` reports packages with a newer version, with `--all`, `--exit-code`, `--pre`, and `--include-pinned` (#2029)
+- **CLI**: `dirctl install pin` / `unpin` hold an installed package at its version and release the hold (#2029)
 - **CLI**: `-o raw` prints one value per line for list results, instead of Go's unsplittable `[a b]` form. Affects `search`, `delete`, and `routing list` (#2133)
 
 ### Changed
@@ -19,6 +22,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **CLI**: **BREAKING** — the install manifest is the single source of truth for what is installed. `dirctl uninstall` reads it and never contacts the Directory, so it works with the server down or after the record has been deleted upstream, touches only the agents that actually hold the package, and reports a reference with no row as not installed. Packages installed by v1.7.0 or earlier have no row and are invisible to it; re-install them to record one (#2133)
 - **CLI**: **BREAKING** — the manifest's `scope` is now `global` or a repository path, replacing the `project` literal, and `--project` installs are recorded. One manifest covers every repository on the machine. It is a local record and must not be committed: it holds absolute paths (#2133)
 - **CLI**: **BREAKING** — install and uninstall no longer print a line per unchanged agent. Skips and failures stay, and the tally still counts every outcome (#2133)
+- **CLI**: **BREAKING** — `dirctl install list` no longer shows detected agents. That view is now `dirctl install agents`; `install list` lists installed packages (#2029)
+- **CLI**: the install manifest records the client context each package was installed from, so a version check never compares a row against a Directory it did not come from (#2029)
 
 ## [v1.7.0] - 2026-08-18
 
