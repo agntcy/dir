@@ -249,6 +249,23 @@ config:
     # Set to true to skip schema validation (useful for testing)
     disable: false
 
+  # Identity claim verification at push time. The ans block verifies ans://
+  # identity claims through the Agent Name Service. Configure the same block
+  # under reconciler.config.identity.ans and enable the reconciler identity
+  # task, or revocations are never picked up. Root-key lines come from the
+  # log's GET /root-keys. A private log's CA is mounted through extraVolumes
+  # (apiserver) and reconciler.extraVolumes (reconciler) and named by ca_file.
+  # identity:
+  #   ans:
+  #     enabled: true
+  #     trusted_log_hosts:
+  #       - tl.ans.example.com
+  #     root_keys:
+  #       - "tl.ans.example.com+<kid>+<base64 public key>"
+  #     allow_unpinned_root_keys: false
+  #     timeout: 10s
+  #     # ca_file: /etc/agntcy/ans/log-ca.pem
+
   # OASF taxonomy extractor configuration (natural-language search on the HTTP
   # gateway). The extractor turns free text into OASF skills, domains, modules,
   # and keywords. It is reachable two ways:
@@ -853,5 +870,33 @@ reconciler:
     signature:
       enabled: true
       interval: "1h"
+
+    # Identity claim re-verification, off by default. Needed for ans://
+    # revocations to be picked up; keep the interval above 2m. The ans block
+    # must match config.identity.ans.
+    # identity:
+    #   enabled: true
+    #   interval: "5m"
+    #   ans:
+    #     enabled: true
+    #     trusted_log_hosts:
+    #       - tl.ans.example.com
+    #     root_keys:
+    #       - "tl.ans.example.com+<kid>+<base64 public key>"
+    #     allow_unpinned_root_keys: false
+    #     timeout: 10s
+    #     # ca_file: /etc/agntcy/ans/log-ca.pem
+
+  # Extra volumes for the reconciler container, for example a Secret holding
+  # the CA of a private ANS transparency log named by identity.ans.ca_file.
+  # A changed Secret does not restart the pod; roll it after a rotation.
+  extraVolumes: []
+    # - name: ans-log-ca
+    #   secret:
+    #     secretName: ans-log-ca
+  extraVolumeMounts: []
+    # - name: ans-log-ca
+    #   mountPath: /etc/agntcy/ans
+    #   readOnly: true
 
   resources: {}

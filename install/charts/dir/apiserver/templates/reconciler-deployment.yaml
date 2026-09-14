@@ -90,6 +90,9 @@ spec:
             - name: coverage-volume
               mountPath: /tmp/coverage
             {{- end }}
+            {{- with .Values.reconciler.extraVolumeMounts }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
           ports:
             - name: health
               containerPort: 8080
@@ -142,6 +145,9 @@ spec:
             path: /run/spire/agent-sockets
             type: Directory
           {{- end }}
+        {{- end }}
+        {{- with .Values.reconciler.extraVolumes }}
+        {{- toYaml . | nindent 8 }}
         {{- end }}
       {{- with .Values.nodeSelector }}
       nodeSelector:

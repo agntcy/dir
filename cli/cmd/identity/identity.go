@@ -7,6 +7,7 @@ package identity
 import (
 	"errors"
 	"fmt"
+	"time"
 
 	identityv1 "github.com/agntcy/dir/api/identity/v1"
 	"github.com/agntcy/dir/cli/presenter"
@@ -30,8 +31,8 @@ This command group provides:
 A record's own identity and owning entity are declared as annotations on the
 record itself ("agntcy.dir/identity", "agntcy.dir/owner") and are part of the
 record's content-addressed CID. A claim is the cryptographic proof that a
-specific identity (DNS, HTTPS, DID, or SPIFFE) legitimately signed for that
-subject, bound to this exact record via its CID.
+specific identity (DNS, HTTPS, DID, SPIFFE, or ANS) legitimately signed for
+that subject, bound to this exact record via its CID.
 
 Examples:
 
@@ -43,10 +44,16 @@ Examples:
    dirctl identity claim --record <cid> --role owner \
      --subject spiffe://acme.com/agents/finance --key ./svid.key --cert ./svid.crt
 
-3. Check claim verification status:
+3. Claim a record's identity with an Agent Name Service identity key and
+   certificate (the certificate travels with the claim; the claim verifies
+   while the certificate is valid, so push it again after a renewal):
+   dirctl identity claim --record <cid> --role identity \
+     --subject ans://v1.0.0.agent.example.com --key ./identity.key --cert ./identity.crt
+
+4. Check claim verification status:
    dirctl identity status <cid-or-name>
 
-4. Resolve a name to its CIDs:
+5. Resolve a name to its CIDs:
    dirctl identity resolve cisco.com/agent
 `,
 }
@@ -90,12 +97,12 @@ func init() {
 	claimCmd.Flags().StringVar(&claimRole, "role", "", "Claim role: \"identity\" or \"owner\" (required)")
 	claimCmd.Flags().StringVar(&claimSubject, "subject", "", "The identity/owner URI being claimed (required)")
 	claimCmd.Flags().StringVar(&claimKeyPath, "key", "", "Path to a PEM-encoded private key to sign with")
-	claimCmd.Flags().StringVar(&claimCert, "cert", "", "Path to a PEM-encoded X.509-SVID certificate (SPIFFE subjects only)")
+	claimCmd.Flags().StringVar(&claimCert, "cert", "", "Path to a PEM-encoded X.509 certificate for spiffe:// and ans:// subjects (requires --key)")
 
 	_ = claimCmd.MarkFlagRequired("record")
 	_ = claimCmd.MarkFlagRequired("role")
 	_ = claimCmd.MarkFlagRequired("subject")
-	claimCmd.MarkFlagsRequiredTogether("key", "cert")
+	_ = claimCmd.MarkFlagRequired("key")
 
 	presenter.AddOutputFlags(statusCmd)
 
@@ -133,20 +140,37 @@ func runClaim(cmd *cobra.Command) error {
 
 	cmd.Printf("Claim pushed successfully for record %s\n", cid)
 
+	if notice := expiryNotice(signer, time.Now()); notice != "" {
+		cmd.Println(notice)
+	}
+
 	return nil
 }
 
-// loadSigner builds an identityv1.Signer from the --key/--cert flags. A
-// SPIFFE signer is used when --cert is set, otherwise a plain key signer.
+// expiryNotice tells the publisher of a certificate-backed claim when it stops
+// verifying; a plain key has no expiry to report.
+func expiryNotice(signer identityv1.Signer, now time.Time) string {
+	expiring, ok := signer.(interface{ NotAfter() time.Time })
+	if !ok {
+		return ""
+	}
+
+	return fmt.Sprintf("Certificate valid until %s (%s from now); push the claim again after the certificate is renewed",
+		expiring.NotAfter().UTC().Format(time.RFC3339), expiring.NotAfter().Sub(now).Round(time.Hour))
+}
+
+// loadSigner builds an identityv1.Signer from the --key/--cert flags. With a
+// certificate the signer follows the certificate's URI SAN scheme (SPIFFE or
+// ANS); without one a plain key signer is used.
 func loadSigner(keyPath, certPath string) (identityv1.Signer, error) {
 	if keyPath == "" {
 		return nil, errors.New("--key is required to sign a claim")
 	}
 
 	if certPath != "" {
-		signer, err := identityv1.NewSpiffeSignerFromFile(keyPath, certPath)
+		signer, err := identityv1.NewCertificateSignerFromFile(keyPath, certPath)
 		if err != nil {
-			return nil, fmt.Errorf("failed to load SPIFFE signer: %w", err)
+			return nil, fmt.Errorf("failed to load certificate signer: %w", err)
 		}
 
 		return signer, nil

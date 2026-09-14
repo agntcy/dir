@@ -11,6 +11,7 @@ import (
 	"time"
 
 	storeconfig "github.com/agntcy/dir/server/store/oci/config"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -215,4 +216,72 @@ func TestEmbeddedZot(t *testing.T) {
 
 	require.NoError(t, err)
 	require.True(t, zotIsReady)
+}
+
+// TestLoadConfigIdentityAnsEnvOverride asserts that the identity task and its
+// ans block bind from the environment under both the server and the reconciler
+// prefixes, and that a relative ca_file resolves against the data directory.
+func TestLoadConfigIdentityAnsEnvOverride(t *testing.T) {
+	originalOpts := opts
+	dataDir := t.TempDir()
+	opts = &Options{DataDir: dataDir}
+
+	t.Cleanup(func() {
+		opts = originalOpts
+	})
+
+	t.Setenv("DIRECTORY_DAEMON_SERVER_IDENTITY_ANS_ENABLED", "true")
+	t.Setenv("DIRECTORY_DAEMON_SERVER_IDENTITY_ANS_TRUSTED_LOG_HOSTS", "log-a.example.com:8443,log-b.example.com")
+	t.Setenv("DIRECTORY_DAEMON_SERVER_IDENTITY_ANS_CA_FILE", "certs/ans-log-ca.pem")
+	t.Setenv("DIRECTORY_DAEMON_RECONCILER_IDENTITY_ENABLED", "true")
+	t.Setenv("DIRECTORY_DAEMON_RECONCILER_IDENTITY_INTERVAL", "2m")
+	t.Setenv("DIRECTORY_DAEMON_RECONCILER_IDENTITY_ANS_ENABLED", "true")
+	t.Setenv("DIRECTORY_DAEMON_RECONCILER_IDENTITY_ANS_TIMEOUT", "3s")
+	t.Setenv("DIRECTORY_DAEMON_RECONCILER_IDENTITY_ANS_CA_FILE", "/etc/agntcy/ans-log-ca.pem")
+
+	cfg, err := loadConfig()
+	require.NoError(t, err)
+
+	assert.True(t, cfg.Server.Identity.Ans.Enabled)
+	assert.Equal(t, []string{"log-a.example.com:8443", "log-b.example.com"}, cfg.Server.Identity.Ans.TrustedLogHosts)
+	assert.Equal(t, filepath.Join(dataDir, "certs", "ans-log-ca.pem"), cfg.Server.Identity.Ans.CAFile)
+	assert.True(t, cfg.Reconciler.Identity.Enabled)
+	assert.Equal(t, 2*time.Minute, cfg.Reconciler.Identity.Interval)
+	assert.True(t, cfg.Reconciler.Identity.Ans.Enabled)
+	assert.Equal(t, 3*time.Second, cfg.Reconciler.Identity.Ans.Timeout)
+	assert.Equal(t, "/etc/agntcy/ans-log-ca.pem", cfg.Reconciler.Identity.Ans.CAFile)
+}
+
+func TestIdentityDriftWarning(t *testing.T) {
+	tests := []struct {
+		name          string
+		serverAns     bool
+		reconcilerAns bool
+		task          bool
+		want          string
+	}{
+		{name: "ans off everywhere"},
+		{name: "ans on in both with the task running", serverAns: true, reconcilerAns: true, task: true},
+		{name: "ans on in the server only", serverAns: true, task: true, want: "only one of"},
+		{name: "ans on in the reconciler only", reconcilerAns: true, task: true, want: "only one of"},
+		{name: "ans on in both but the task is off", serverAns: true, reconcilerAns: true, want: "identity task is off"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			cfg := &DaemonConfig{}
+			cfg.Server.Identity.Ans.Enabled = tt.serverAns
+			cfg.Reconciler.Identity.Ans.Enabled = tt.reconcilerAns
+			cfg.Reconciler.Identity.Enabled = tt.task
+
+			got := identityDriftWarning(cfg)
+			if tt.want == "" {
+				assert.Empty(t, got)
+
+				return
+			}
+
+			assert.Contains(t, got, tt.want)
+		})
+	}
 }

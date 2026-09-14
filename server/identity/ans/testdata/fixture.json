@@ -1,0 +1,7 @@
+{
+  "agentId": "9b0a26fe-b09b-478b-a754-1618913d54e6",
+  "ansName": "ans://v1.0.0.dir-fixture.example.com",
+  "badgeUrl": "https://localhost:18081/v1/agents/9b0a26fe-b09b-478b-a754-1618913d54e6",
+  "capturedAtUnix": 1789163370,
+  "ansCommit": "ec93f913bb137a84b53556803ff0eb67ed0f5545"
+}

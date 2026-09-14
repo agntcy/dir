@@ -11,12 +11,14 @@ import (
 	authn "github.com/agntcy/dir/server/authn/config"
 	authz "github.com/agntcy/dir/server/authz/config"
 	dbconfig "github.com/agntcy/dir/server/database/config"
+	ansconfig "github.com/agntcy/dir/server/identity/ans/config"
 	ratelimitconfig "github.com/agntcy/dir/server/middleware/ratelimit/config"
 	publication "github.com/agntcy/dir/server/publication/config"
 	routing "github.com/agntcy/dir/server/routing/config"
 	store "github.com/agntcy/dir/server/store/config"
 	oci "github.com/agntcy/dir/server/store/oci/config"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestConfig(t *testing.T) {
@@ -747,6 +749,51 @@ func TestAdvertisedOCIAddress(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			assert.Equal(t, test.expected, test.config.AdvertisedOCIAddress())
+		})
+	}
+}
+
+// The identity.ans block is absent from most configuration files, so every
+// key must be bound for environment overrides to resolve.
+func TestConfig_IdentityAns(t *testing.T) {
+	tests := []struct {
+		name    string
+		envVars map[string]string
+		want    ansconfig.Config
+	}{
+		{name: "disabled by default"},
+		{
+			name: "every key binds from the environment",
+			envVars: map[string]string{
+				"DIRECTORY_SERVER_IDENTITY_ANS_ENABLED":                  "true",
+				"DIRECTORY_SERVER_IDENTITY_ANS_TRUSTED_LOG_HOSTS":        "log-a.example.com:8443,log-b.example.com",
+				"DIRECTORY_SERVER_IDENTITY_ANS_ROOT_KEYS":                "log-a.example.com+abcd1234+AAAA",
+				"DIRECTORY_SERVER_IDENTITY_ANS_ALLOW_UNPINNED_ROOT_KEYS": "true",
+				"DIRECTORY_SERVER_IDENTITY_ANS_TIMEOUT":                  "3s",
+				"DIRECTORY_SERVER_IDENTITY_ANS_DNS_SERVER":               "127.0.0.1:5353",
+				"DIRECTORY_SERVER_IDENTITY_ANS_CA_FILE":                  "/etc/agntcy/ans-log-ca.pem",
+			},
+			want: ansconfig.Config{
+				Enabled:               true,
+				TrustedLogHosts:       []string{"log-a.example.com:8443", "log-b.example.com"},
+				RootKeys:              []string{"log-a.example.com+abcd1234+AAAA"},
+				AllowUnpinnedRootKeys: true,
+				Timeout:               3 * time.Second,
+				DNSServer:             "127.0.0.1:5353",
+				CAFile:                "/etc/agntcy/ans-log-ca.pem",
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			for k, v := range tt.envVars {
+				t.Setenv(k, v)
+			}
+
+			config, err := LoadConfig()
+			require.NoError(t, err)
+			assert.Equal(t, tt.want, config.Identity.Ans)
 		})
 	}
 }

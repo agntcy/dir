@@ -52,6 +52,7 @@ func TestRecord_GetIdentityType_InferredFromScheme(t *testing.T) {
 		{name: "spiffe", identity: "spiffe://acme.com/agent", want: "spiffe"},
 		{name: "https", identity: "https://acme.com/agent", want: "https"},
 		{name: "http", identity: "http://acme.com/agent", want: "https"},
+		{name: "ans", identity: "ans://v1.0.0.agent.example.com", want: "ans"},
 		{name: "bare domain falls back to dns", identity: "acme.com", want: "dns"},
 		{name: "explicit dns prefix", identity: "dns:acme.com", want: "dns"},
 	}

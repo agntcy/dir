@@ -463,4 +463,15 @@ extraEnv:
 
 To disable scanning, set `reconciler.config.scan.enabled: false` in your Helm values.
 
+### Verifying `ans://` identity claims
+
+Enable the `identity.ans` block in both `config.identity` and `reconciler.config.identity`
+(commented examples are in `values.yaml`; the two blocks must match), and set
+`reconciler.config.identity.enabled: true` so revoked agents are picked up at the next
+re-verification. A private transparency log's CA goes into a Secret mounted through
+`reconciler.extraVolumes` and `reconciler.extraVolumeMounts` for the reconciler and
+`extraVolumes` and `extraVolumeMounts` for the API server, and is named by `ca_file`.
+Changing that Secret does not restart the pods; roll them after a rotation. See
+[Security Trust Model](dir-component-trust-model.md#ans-claims) for what the scheme verifies.
+
 See [Security Scanning](dir-features-scenarios.md#security-scanning) for how to pull and filter scan results.

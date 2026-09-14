@@ -37,16 +37,16 @@ func generateTestKeyPEM(t *testing.T) []byte {
 	return pem.EncodeToMemory(&pem.Block{Type: "EC PRIVATE KEY", Bytes: der})
 }
 
-// generateTestSpiffeKeyCert returns a PEM-encoded ECDSA key, a self-signed
+// generateTestKeyCert returns a PEM-encoded ECDSA key, a self-signed
 // certificate whose URI SAN is set to spiffeID, and the parsed certificate
 // (usable as its own trust anchor, since it's self-signed).
-func generateTestSpiffeKeyCert(t *testing.T, spiffeID string) (keyPEM, certPEM []byte, cert *x509.Certificate) {
+func generateTestKeyCert(t *testing.T, uri string) ([]byte, []byte, *x509.Certificate) {
 	t.Helper()
 
 	priv, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 	require.NoError(t, err)
 
-	spiffeURI, err := url.Parse(spiffeID)
+	spiffeURI, err := url.Parse(uri)
 	require.NoError(t, err)
 
 	tmpl := &x509.Certificate{
@@ -66,8 +66,8 @@ func generateTestSpiffeKeyCert(t *testing.T, spiffeID string) (keyPEM, certPEM [
 	privDER, err := x509.MarshalECPrivateKey(priv)
 	require.NoError(t, err)
 
-	keyPEM = pem.EncodeToMemory(&pem.Block{Type: "EC PRIVATE KEY", Bytes: privDER})
-	certPEM = pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: derBytes})
+	keyPEM := pem.EncodeToMemory(&pem.Block{Type: "EC PRIVATE KEY", Bytes: privDER})
+	certPEM := pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: derBytes})
 
 	return keyPEM, certPEM, parsedCert
 }
@@ -122,7 +122,7 @@ func TestSignVerifyIdentityClaim_KeySigner_Ed25519RoundTrip(t *testing.T) {
 }
 
 func TestSignVerifyOwnershipClaim_SpiffeSigner_RoundTrip(t *testing.T) {
-	keyPEM, certPEM, cert := generateTestSpiffeKeyCert(t, testSpiffeID)
+	keyPEM, certPEM, cert := generateTestKeyCert(t, testSpiffeID)
 	signer, err := identityv1.NewSpiffeSigner(keyPEM, certPEM)
 	require.NoError(t, err)
 
@@ -137,7 +137,7 @@ func TestSignVerifyOwnershipClaim_SpiffeSigner_RoundTrip(t *testing.T) {
 }
 
 func TestVerifyClaim_SpiffeFailsWithoutTrustBundle(t *testing.T) {
-	keyPEM, certPEM, _ := generateTestSpiffeKeyCert(t, testSpiffeID)
+	keyPEM, certPEM, _ := generateTestKeyCert(t, testSpiffeID)
 	signer, err := identityv1.NewSpiffeSigner(keyPEM, certPEM)
 	require.NoError(t, err)
 
@@ -153,7 +153,7 @@ func TestVerifyClaim_SpiffeFailsWithoutTrustBundle(t *testing.T) {
 }
 
 func TestVerifyClaim_FailsWhenRecordCIDChanges(t *testing.T) {
-	keyPEM, certPEM, cert := generateTestSpiffeKeyCert(t, testSpiffeID)
+	keyPEM, certPEM, cert := generateTestKeyCert(t, testSpiffeID)
 	signer, err := identityv1.NewSpiffeSigner(keyPEM, certPEM)
 	require.NoError(t, err)
 
@@ -167,7 +167,7 @@ func TestVerifyClaim_FailsWhenRecordCIDChanges(t *testing.T) {
 }
 
 func TestVerifyClaim_FailsWhenSubjectTampered(t *testing.T) {
-	keyPEM, certPEM, cert := generateTestSpiffeKeyCert(t, testSpiffeID)
+	keyPEM, certPEM, cert := generateTestKeyCert(t, testSpiffeID)
 	signer, err := identityv1.NewSpiffeSigner(keyPEM, certPEM)
 	require.NoError(t, err)
 
@@ -181,7 +181,7 @@ func TestVerifyClaim_FailsWhenSubjectTampered(t *testing.T) {
 }
 
 func TestVerifyClaim_FailsWhenSubjectDoesNotMatchRecordAnnotation(t *testing.T) {
-	keyPEM, certPEM, cert := generateTestSpiffeKeyCert(t, testSpiffeID)
+	keyPEM, certPEM, cert := generateTestKeyCert(t, testSpiffeID)
 	signer, err := identityv1.NewSpiffeSigner(keyPEM, certPEM)
 	require.NoError(t, err)
 
@@ -197,7 +197,7 @@ func TestVerifyClaim_FailsWhenSubjectDoesNotMatchRecordAnnotation(t *testing.T) 
 }
 
 func TestVerifyClaim_FailsWhenRecordHasNoDeclaredSubject(t *testing.T) {
-	keyPEM, certPEM, cert := generateTestSpiffeKeyCert(t, testSpiffeID)
+	keyPEM, certPEM, cert := generateTestKeyCert(t, testSpiffeID)
 	signer, err := identityv1.NewSpiffeSigner(keyPEM, certPEM)
 	require.NoError(t, err)
 
@@ -226,7 +226,7 @@ func TestVerifyClaim_FailsWhenExpired(t *testing.T) {
 }
 
 func TestSignOwnershipClaim_SpiffeSubjectMismatch(t *testing.T) {
-	keyPEM, certPEM, _ := generateTestSpiffeKeyCert(t, "spiffe://acme.com/agents/alice")
+	keyPEM, certPEM, _ := generateTestKeyCert(t, "spiffe://acme.com/agents/alice")
 	signer, err := identityv1.NewSpiffeSigner(keyPEM, certPEM)
 	require.NoError(t, err)
 

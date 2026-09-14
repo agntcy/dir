@@ -125,8 +125,8 @@ func (r *Record) GetOwnerType() string {
 }
 
 // InferIdentityType infers an identity URI's scheme from its prefix.
-// Returns "did", "spiffe", "https", or "dns" (the fallback for bare domains
-// and explicit "dns:" URIs).
+// Returns "did", "spiffe", "https", "ans", or "dns" (the fallback for bare
+// domains and explicit "dns:" URIs).
 func InferIdentityType(uri string) string {
 	switch {
 	case strings.HasPrefix(uri, "did:"):
@@ -135,6 +135,8 @@ func InferIdentityType(uri string) string {
 		return "spiffe"
 	case strings.HasPrefix(uri, "https://"), strings.HasPrefix(uri, "http://"):
 		return "https"
+	case strings.HasPrefix(uri, "ans://"):
+		return "ans"
 	default:
 		return "dns"
 	}

@@ -1,11 +1,13 @@
 // Copyright AGNTCY Contributors (https://github.com/agntcy)
 // SPDX-License-Identifier: Apache-2.0
 
-// Package identity resolves and verifies claim signatures for dns/https/did
+// Package identity resolves and verifies claim signatures for dns/https/did/ans
 // subjects by looking up the subject's public key from an external,
-// out-of-band source (a domain's JWKS well-known file, a DNS TXT record, or a
-// DID document). SPIFFE subjects are verified directly against an embedded
-// certificate (see api/identity/v1) and do not go through a Resolver here.
+// out-of-band source (a domain's JWKS well-known file, a DNS TXT record, a
+// DID document, or the Agent Name Service transparency log that attests an
+// ans:// identity certificate). SPIFFE subjects are verified directly against
+// an embedded certificate (see api/identity/v1) and do not go through a
+// Resolver here.
 package identity
 
 import (
@@ -14,11 +16,17 @@ import (
 
 	corev1 "github.com/agntcy/dir/api/core/v1"
 	identityv1 "github.com/agntcy/dir/api/identity/v1"
+	"github.com/agntcy/dir/server/identity/ans"
+	ansconfig "github.com/agntcy/dir/server/identity/ans/config"
+	"github.com/agntcy/dir/server/identity/did"
+	"github.com/agntcy/dir/server/identity/dns"
+	"github.com/agntcy/dir/server/identity/wellknown"
+	"github.com/agntcy/dir/utils/safefetch"
 )
 
 // Resolver verifies a claim signature for a specific identity URI scheme.
 type Resolver interface {
-	// Scheme returns the identity type this resolver handles: "dns", "https", or "did".
+	// Scheme returns the identity type this resolver handles: "dns", "https", "did", or "ans".
 	Scheme() string
 
 	// Verify resolves subject's public key(s) from an external source and
@@ -44,6 +52,30 @@ func NewRegistry(resolvers ...Resolver) *Registry {
 	return r
 }
 
+// NewDefaultRegistry builds the Registry the API server and the reconciler
+// verify claims with: the https, dns and did resolvers, and the ans resolver
+// when ansCfg.Enabled. A configuration the ans resolver rejects is returned
+// as an error so that startup stops on it.
+func NewDefaultRegistry(ansCfg ansconfig.Config, fetch *safefetch.Client) (*Registry, error) {
+	resolvers := []Resolver{
+		wellknown.New(fetch),
+		dns.New(),
+		did.New(fetch),
+	}
+
+	if ansCfg.Enabled {
+		resolver, err := ans.New(ansCfg)
+		if err != nil {
+			// The text already names the component and the configuration key.
+			return nil, fmt.Errorf("%w", err)
+		}
+
+		resolvers = append(resolvers, resolver)
+	}
+
+	return NewRegistry(resolvers...), nil
+}
+
 // Verify implements identityv1.KeyResolver.
 func (r *Registry) Verify(ctx context.Context, subject string, signature, payload []byte) (bool, error) {
 	scheme := corev1.InferIdentityType(subject)
@@ -53,7 +85,13 @@ func (r *Registry) Verify(ctx context.Context, subject string, signature, payloa
 		return false, fmt.Errorf("no resolver registered for subject scheme %q", scheme)
 	}
 
-	return resolver.Verify(ctx, subject, signature, payload)
+	ok, err := resolver.Verify(ctx, subject, signature, payload)
+	if err != nil {
+		// The text is stored in the claim row as is; wrapping must not change it.
+		return false, fmt.Errorf("%w", err)
+	}
+
+	return ok, nil
 }
 
 var _ identityv1.KeyResolver = (*Registry)(nil)

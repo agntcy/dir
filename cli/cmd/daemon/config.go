@@ -20,6 +20,7 @@ import (
 	reconcilerconfig "github.com/agntcy/dir/reconciler/config"
 	serverconfig "github.com/agntcy/dir/server/config"
 	dbconfig "github.com/agntcy/dir/server/database/config"
+	ansconfig "github.com/agntcy/dir/server/identity/ans/config"
 	storeconfig "github.com/agntcy/dir/server/store/oci/config"
 	"github.com/mitchellh/mapstructure"
 	"github.com/spf13/viper"
@@ -85,6 +86,10 @@ func registerServerDefaults(v *viper.Viper) {
 
 	_ = v.BindEnv("server.extractor.oasf_url")
 	v.SetDefault("server.extractor.oasf_url", "")
+
+	for _, key := range ansconfig.Keys() {
+		_ = v.BindEnv("server.identity.ans." + key)
+	}
 }
 
 func registerReconcilerDefaults(v *viper.Viper) {
@@ -93,6 +98,15 @@ func registerReconcilerDefaults(v *viper.Viper) {
 	v.SetDefault("reconciler.local_registry.auth_config.insecure", true)
 	v.SetDefault("reconciler.database.type", "sqlite")
 	v.SetDefault("reconciler.database.sqlite.path", dbconfig.DefaultSQLitePath)
+
+	_ = v.BindEnv("reconciler.identity.enabled")
+	v.SetDefault("reconciler.identity.enabled", false)
+
+	_ = v.BindEnv("reconciler.identity.interval")
+
+	for _, key := range ansconfig.Keys() {
+		_ = v.BindEnv("reconciler.identity.ans." + key)
+	}
 }
 
 func registerRuntimeDefaults(v *viper.Viper) {
@@ -219,4 +233,23 @@ func resolveRelativePaths(cfg *DaemonConfig) {
 	cfg.Server.Routing.KeyPath = resolve(cfg.Server.Routing.KeyPath)
 	cfg.Server.Routing.DatastoreDir = resolve(cfg.Server.Routing.DatastoreDir)
 	cfg.Server.Database.SQLite.Path = resolve(cfg.Server.Database.SQLite.Path)
+	cfg.Server.Identity.Ans.CAFile = resolve(cfg.Server.Identity.Ans.CAFile)
+	cfg.Reconciler.Identity.Ans.CAFile = resolve(cfg.Reconciler.Identity.Ans.CAFile)
+}
+
+// identityDriftWarning describes an identity.ans configuration under which the
+// server and the reconciler would disagree about ans:// claims: ingest verifies
+// a claim with the server's block, the identity task re-verifies it with the
+// reconciler's, and the last writer wins. Empty when the two agree.
+func identityDriftWarning(cfg *DaemonConfig) string {
+	server, reconciler := cfg.Server.Identity.Ans.Enabled, cfg.Reconciler.Identity.Ans.Enabled
+
+	switch {
+	case server != reconciler:
+		return fmt.Sprintf("identity.ans is enabled in only one of server (%t) and reconciler (%t); ans:// claims verified by one are failed by the other", server, reconciler)
+	case server && !cfg.Reconciler.Identity.Enabled:
+		return "identity.ans is enabled but the reconciler identity task is off; ans:// claims are verified at push and never re-verified, so revocations are not picked up"
+	default:
+		return ""
+	}
 }

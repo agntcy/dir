@@ -36,7 +36,8 @@ dirctl identity status "example.com/agent:v1.0.0"
 Reports the cached verification status of the record's identity claim (its own
 asserted identity) and ownership claim (who owns/controls it), each resolved
 against the subject's scheme (`did:web:`, `did:key:`, `https://` JWKS, `dns:`
-TXT record, or `spiffe://` X.509-SVID). A record with no claims reports both
+TXT record, `spiffe://` X.509-SVID, or `ans://` identity certificate attested by
+an Agent Name Service transparency log). A record with no claims reports both
 as not present, not as failures.
 
 ## Security scan reports

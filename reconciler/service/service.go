@@ -20,10 +20,7 @@ import (
 	"github.com/agntcy/dir/reconciler/tasks/scan"
 	"github.com/agntcy/dir/reconciler/tasks/signature"
 	serveridentity "github.com/agntcy/dir/server/identity"
-	identitydid "github.com/agntcy/dir/server/identity/did"
-	identitydns "github.com/agntcy/dir/server/identity/dns"
 	"github.com/agntcy/dir/server/identity/spiffe"
-	identitywellknown "github.com/agntcy/dir/server/identity/wellknown"
 	servertypes "github.com/agntcy/dir/server/types"
 	"github.com/agntcy/dir/utils/logging"
 	"github.com/agntcy/dir/utils/safefetch"
@@ -94,27 +91,12 @@ func (s *Service) registerTasks(cfg *config.Config, db servertypes.DatabaseAPI, 
 	}
 
 	if cfg.Identity.Enabled {
-		refStore, ok := store.(servertypes.ReferrerStoreAPI)
-		if !ok {
-			logger.Warn("Store does not support referrers, skipping identity task")
-		} else {
-			bundles, err := spiffe.Load(spiffe.Config{TrustDomains: cfg.Identity.SpiffeTrustDomains})
-			if err != nil {
-				return fmt.Errorf("failed to load SPIFFE trust bundles for identity task: %w", err)
-			}
+		t, ok, err := newIdentityTask(cfg.Identity, db, store)
+		if err != nil {
+			return err
+		}
 
-			fetchClient := safefetch.New()
-			registry := serveridentity.NewRegistry(
-				identitywellknown.New(fetchClient),
-				identitydns.New(),
-				identitydid.New(fetchClient),
-			)
-
-			t, err := identity.NewTask(cfg.Identity, db, refStore, registry, bundles)
-			if err != nil {
-				return fmt.Errorf("failed to create identity task: %w", err)
-			}
-
+		if ok {
 			s.addTask(t)
 		}
 	}
@@ -147,6 +129,35 @@ func (s *Service) registerTasks(cfg *config.Config, db servertypes.DatabaseAPI, 
 	}
 
 	return nil
+}
+
+// newIdentityTask builds the identity task with its resolver registry and
+// SPIFFE trust bundles. It reports false, without an error, when the store
+// does not support referrers and the task is therefore skipped.
+func newIdentityTask(cfg identity.Config, db servertypes.DatabaseAPI, store servertypes.StoreAPI) (tasks.Task, bool, error) {
+	refStore, ok := store.(servertypes.ReferrerStoreAPI)
+	if !ok {
+		logger.Warn("Store does not support referrers, skipping identity task")
+
+		return nil, false, nil
+	}
+
+	bundles, err := spiffe.Load(spiffe.Config{TrustDomains: cfg.SpiffeTrustDomains})
+	if err != nil {
+		return nil, false, fmt.Errorf("failed to load SPIFFE trust bundles for identity task: %w", err)
+	}
+
+	registry, err := serveridentity.NewDefaultRegistry(cfg.Ans, safefetch.New())
+	if err != nil {
+		return nil, false, fmt.Errorf("failed to build identity registry for identity task: %w", err)
+	}
+
+	t, err := identity.NewTask(cfg, db, refStore, registry, bundles)
+	if err != nil {
+		return nil, false, fmt.Errorf("failed to create identity task: %w", err)
+	}
+
+	return t, true, nil
 }
 
 func (s *Service) addTask(task tasks.Task) {

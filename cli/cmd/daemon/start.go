@@ -59,6 +59,10 @@ func runStart(cmd *cobra.Command, _ []string) error {
 		return fmt.Errorf("failed to load config: %w", err)
 	}
 
+	if warning := identityDriftWarning(cfg); warning != "" {
+		logger.Warn(warning)
+	}
+
 	if cfg.Server.Routing.KeyPath != "" {
 		if err := ensureKeyFile(cfg.Server.Routing.KeyPath); err != nil {
 			return fmt.Errorf("failed to ensure peer identity key: %w", err)

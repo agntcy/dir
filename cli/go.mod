@@ -111,6 +111,7 @@ require (
 	github.com/ProtonMail/go-crypto v1.4.1 // indirect
 	github.com/ThalesIgnite/crypto11 v1.6.0 // indirect
 	github.com/VividCortex/ewma v1.2.0 // indirect
+	github.com/agentnameservice/ans-sdk-go v0.1.17 // indirect
 	github.com/agext/levenshtein v1.2.3 // indirect
 	github.com/agnivade/levenshtein v1.2.1 // indirect
 	github.com/agntcy/dir-runtime/utils v1.3.5 // indirect

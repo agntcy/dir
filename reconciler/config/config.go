@@ -17,6 +17,7 @@ import (
 	"github.com/agntcy/dir/reconciler/tasks/signature"
 	authnconfig "github.com/agntcy/dir/server/authn/config"
 	dbconfig "github.com/agntcy/dir/server/database/config"
+	ansconfig "github.com/agntcy/dir/server/identity/ans/config"
 	ociconfig "github.com/agntcy/dir/server/store/oci/config"
 	"github.com/agntcy/dir/utils/logging"
 	"github.com/spf13/viper"
@@ -188,6 +189,8 @@ func LoadConfig() (*Config, error) {
 	_ = v.BindEnv("signature.record_timeout")
 	v.SetDefault("signature.record_timeout", signature.DefaultRecordTimeout)
 
+	bindIdentityEnv(v)
+
 	//
 	// Scan task configuration (security scanning)
 	//
@@ -250,4 +253,19 @@ func LoadConfig() (*Config, error) {
 	}
 
 	return config, nil
+}
+
+// bindIdentityEnv registers the identity task keys so environment overrides
+// resolve for a task most configuration files do not mention. The task stays
+// off by default.
+func bindIdentityEnv(v *viper.Viper) {
+	_ = v.BindEnv("identity.enabled")
+	v.SetDefault("identity.enabled", false)
+
+	_ = v.BindEnv("identity.interval")
+	v.SetDefault("identity.interval", identity.DefaultInterval)
+
+	for _, key := range ansconfig.Keys() {
+		_ = v.BindEnv("identity.ans." + key)
+	}
 }

@@ -13,6 +13,7 @@ import (
 	authz "github.com/agntcy/dir/server/authz/config"
 	dbconfig "github.com/agntcy/dir/server/database/config"
 	events "github.com/agntcy/dir/server/events/config"
+	ansconfig "github.com/agntcy/dir/server/identity/ans/config"
 	identityconfig "github.com/agntcy/dir/server/identity/config"
 	ratelimitconfig "github.com/agntcy/dir/server/middleware/ratelimit/config"
 	publication "github.com/agntcy/dir/server/publication/config"
@@ -491,6 +492,14 @@ func LoadConfig(opts ...ConfigOption) (*Config, error) {
 
 	_ = v.BindEnv("authz.enforcer_policy_file_path")
 	v.SetDefault("authz.enforcer_policy_file_path", DefaultConfigPath+"/authz_policies.csv")
+
+	//
+	// Identity configuration (ans:// claim verification; the block is absent
+	// from most files, so its keys are bound for environment overrides)
+	//
+	for _, key := range ansconfig.Keys() {
+		_ = v.BindEnv("identity.ans." + key)
+	}
 
 	//
 	// Store configuration
