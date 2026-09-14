@@ -5,19 +5,20 @@ package v1
 
 import (
 	"context"
+	"crypto/x509"
 	"encoding/base64"
 	"errors"
 	"fmt"
 	"time"
 
-	"crypto/x509"
 	corev1 "github.com/agntcy/dir/api/core/v1"
 )
 
 // KeyResolver verifies a claim's signature for a non-SPIFFE subject by
 // resolving the subject's public key from an external source (a DID
-// document, a domain's JWKS well-known file, or a DNS TXT record).
-// Implemented by server/identity.Registry.
+// document, a domain's JWKS well-known file, a DNS TXT record, or, for an
+// "ans://" subject, the agent's transparency log). Implemented by
+// server/identity.Registry.
 type KeyResolver interface {
 	Verify(ctx context.Context, subject string, jwsCompact, payload []byte) (bool, error)
 }
@@ -30,7 +31,7 @@ type Result struct {
 	// Subject is the identity/owner URI the claim asserts.
 	Subject string
 
-	// SubjectType is the inferred URI scheme: "dns", "https", "did", or "spiffe".
+	// SubjectType is the inferred URI scheme: "dns", "https", "did", "spiffe", or "ans".
 	SubjectType string
 
 	// Error explains why verification failed. Empty when Verified is true.
@@ -102,36 +103,39 @@ func verifyClaim(
 
 	payload := CanonicalBytes(recordCID, subject, signedAt)
 
-	if result.SubjectType == "spiffe" {
-		if err := verifySpiffe(certificateB64, subject, payload, jwsCompact, trustedCerts); err != nil {
-			result.Error = err.Error()
+	if err := verifyProof(ctx, result.SubjectType, subject, certificateB64, jwsCompact, payload, resolver, trustedCerts); err != nil {
+		result.Error = err.Error()
 
-			return result
-		}
-	} else {
-		if resolver == nil {
-			result.Error = "no key resolver configured for subject type " + result.SubjectType
-
-			return result
-		}
-
-		ok, err := resolver.Verify(ctx, subject, []byte(jwsCompact), payload)
-		if err != nil {
-			result.Error = err.Error()
-
-			return result
-		}
-
-		if !ok {
-			result.Error = "signature does not verify against any resolved key"
-
-			return result
-		}
+		return result
 	}
 
 	result.Verified = true
 
 	return result
+}
+
+// verifyProof checks the claim's signature: a SPIFFE subject against its
+// embedded certificate, any other subject through the resolver for its
+// scheme. The error text is what the claim row stores.
+func verifyProof(ctx context.Context, subjectType, subject, certificateB64, jwsCompact string, payload []byte, resolver KeyResolver, trustedCerts []*x509.Certificate) error {
+	if subjectType == "spiffe" {
+		return verifySpiffe(certificateB64, subject, payload, jwsCompact, trustedCerts)
+	}
+
+	if resolver == nil {
+		return errors.New("no key resolver configured for subject type " + subjectType)
+	}
+
+	ok, err := resolver.Verify(ctx, subject, []byte(jwsCompact), payload)
+	if err != nil {
+		return fmt.Errorf("%w", err)
+	}
+
+	if !ok {
+		return errors.New("signature does not verify against any resolved key")
+	}
+
+	return nil
 }
 
 // verifySpiffe verifies a SPIFFE claim's embedded certificate and, using its
