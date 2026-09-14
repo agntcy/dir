@@ -106,6 +106,22 @@ server:
   naming:
     ttl: 168h
 
+  # Verification of ans:// identity claims through the Agent Name Service.
+  # Configure the same block under reconciler.identity.ans and enable the
+  # reconciler identity task, or revocations are never picked up. Root-key
+  # lines come from the log's GET /root-keys.
+  # identity:
+  #   ans:
+  #     enabled: true
+  #     trusted_log_hosts:
+  #       - tl.ans.example.com
+  #     root_keys:
+  #       - "tl.ans.example.com+<kid>+<base64 public key>"
+  #     allow_unpinned_root_keys: false
+  #     timeout: 10s
+  #     # dns_server: 127.0.0.1:53
+  #     # ca_file: /etc/agntcy/ans/log-ca.pem
+
 reconciler:
   regsync:
     enabled: true
@@ -121,6 +137,22 @@ reconciler:
     interval: 1m
     ttl: 168h
     record_timeout: 30s
+  # Identity claim re-verification, off by default. Needed for ans://
+  # revocations to be picked up; keep the interval above 2m. The ans block
+  # must match server.identity.ans.
+  # identity:
+  #   enabled: true
+  #   interval: 5m
+  #   ans:
+  #     enabled: true
+  #     trusted_log_hosts:
+  #       - tl.ans.example.com
+  #     root_keys:
+  #       - "tl.ans.example.com+<kid>+<base64 public key>"
+  #     allow_unpinned_root_keys: false
+  #     timeout: 10s
+  #     # dns_server: 127.0.0.1:53
+  #     # ca_file: /etc/agntcy/ans/log-ca.pem
   name:
     enabled: true
     interval: 1m
