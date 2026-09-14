@@ -82,7 +82,7 @@ For CLI walkthroughs of each method, see
 Beyond the `name` field, a record can carry two independently signed claims:
 
 - **Identity claim** — asserts the record's own identity, e.g. `did:web:my-agent.example.com`,
-  `spiffe://example.org/agent`, or `https://my-agent.example.com`.
+  `spiffe://example.org/agent`, `https://my-agent.example.com`, or `ans://v1.0.0.my-agent.example.com`.
 - **Ownership claim** — asserts that a subject (e.g. `did:web:acme.com`) owns/controls
   the record.
 
@@ -97,10 +97,53 @@ the subject's signing key based on its scheme:
 | `https://`/`http://` | Fetches a JWKS file from `<scheme>://<domain>/.well-known/jwks.json`. |
 | `dns:` | Reads a `_agntcy-key.<domain>` TXT record containing the base64-encoded public key. |
 | `spiffe://` | Validates the claim's embedded X.509-SVID certificate (optionally chained against a configured trust bundle) and verifies the signature against the certificate's key. |
+| `ans://` | Takes the identity certificate from the claim's JWS `x5c` header, resolves the agent's `_ans-badge` DNS record to an allow-listed Agent Name Service transparency log, verifies the log's status token and receipt against pinned root keys, requires the certificate's fingerprint among the agent's attested identity certificates, then verifies the signature against the certificate's key. |
 
 Claims are verified eagerly at ingest and periodically re-verified by the reconciler; the
 cached verification status is queryable via `dirctl identity status`. See
 [Records](dir-component-records-validation.md) for how claims relate to the `name` field.
+
+#### `ans://` claims
+
+An `ans://v{MAJOR}.{MINOR}.{PATCH}.{agentHost}` identity comes from an Agent Name Service
+(ANS) registration, which proves control of the host and issues an identity certificate that
+names the identity in its URI SAN. Unlike `dns:` or `https://`, nothing is self-hosted: the
+transparency log attests which certificates are valid for the agent, revocation is a logged
+status, and the version in the name is bound by the log. The publisher signs with the identity
+key and attaches the certificate:
+
+```bash
+dirctl identity claim --record <cid> --role identity \
+  --subject ans://v1.0.0.my-agent.example.com --key identity.key --cert identity.crt
+```
+
+The certificate travels in the JWS `x5c` header and is trusted only once the log attests its
+fingerprint; the chain is not validated (a deliberate departure from RFC 7515 section 4.1.6).
+The claim verifies while that certificate is valid, so it is pushed again after the
+registration authority renews the certificate; the command prints the expiry.
+
+The scheme is off until configured, identically, in both binaries: `identity.ans` in the
+server (`enabled`, `trusted_log_hosts`, `root_keys`, `allow_unpinned_root_keys`, `timeout`,
+`dns_server`, `ca_file`) and under `identity.ans` in the reconciler. Re-verification and with it
+revocation pickup need `reconciler.identity.enabled: true`; the interval is the revocation
+latency, and it should stay above the resolver's two-minute circuit-breaker cooldown. Without
+the task a claim pushed while its log was unreachable stays `failed` until it is pushed again.
+`trusted_log_hosts` and `root_keys` form one trust set: any allow-listed log may attest any
+`ans://` identity. `allow_unpinned_root_keys` replaces pinned keys with the log's own
+`/root-keys` over TLS and downgrades trust to the TLS connection; keep it off outside
+development. `ca_file` adds a private log's CA to the system roots; give it an absolute path
+outside the daemon, and mount it into the reconciler pod through `reconciler.extraVolumes`.
+
+Operations: an invalid `ans` block stops the binary at startup, which on the API server means
+an outage under its `Recreate` strategy, so validate configuration before a rollout. To rotate a
+log's signing key, pin the old and the new key, roll the reconciler and then the API server,
+then drop the old key; the stored error `signed by unknown key id` is the signal that a
+rotation happened first. `root_keys` and `ca_file` are read once at startup, and a changed CA
+Secret does not restart a Helm pod, so roll it after a CA rotation. The receipt proves that the
+log signed the agent's registration event; its position in the log is not checked against a
+checkpoint. A binary without the scheme routes `ans://` claims to the `dns:` resolver and fails
+them with a TXT lookup error. Keys on the P-521 curve cannot sign claims; ES256, ES384, EdDSA
+and RS256 are supported.
 
 ## Security Scanning
 

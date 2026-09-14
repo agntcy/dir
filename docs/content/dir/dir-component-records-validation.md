@@ -21,7 +21,7 @@ The content identifier of the record is a [Content IDentifier](https://github.co
 
 Records can carry verifiable identity and ownership claims, independent of the `name` field:
 
-- An **identity claim** asserts the record's own identity (e.g. `did:web:...`, `spiffe://...`, `https://...`).
+- An **identity claim** asserts the record's own identity (e.g. `did:web:...`, `spiffe://...`, `https://...`, `ans://...`).
 - An **ownership claim** asserts that a subject owns/controls the record.
 
 Both claims are bound to the record's CID at signing time, so a claim cannot be replayed against a different record.
