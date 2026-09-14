@@ -35,7 +35,7 @@ One grammar rule: **`dirctl <verb> [noun] <args>`** — verbs act, `get`/`descri
 | `claim` | `dirctl claim ownership\|review\|score <ref> …` | Issuer is an identity URI |
 | `resolve` | `dirctl resolve <identity-uri>` | Dispatched to resolver plugins by scheme |
 | `announce` / `unannounce` | `dirctl announce <ref>` | Network publication |
-| `discover` / `listen` | `dirctl discover --type <ct> --key k=v` / `dirctl listen --type <ct>` | Streaming |
+| `discover` / `listen` | `dirctl discover [--remote] --type <ct> --key k=v` / `dirctl listen --type <ct>` | Streaming; `--remote` = live DHT walk instead of the local announcement cache |
 | `run` / `stop` / `deploy` | `dirctl run <ref>` / `dirctl deploy <ref> --spec <ref>` | Fail-open; verify-gated once a policy is bound |
 | `install` | `dirctl install <ref> --into <tool>` | Existing v1 machinery, retained |
 | `init` | `dirctl init [--server <url>]` | Progressive config |
@@ -135,7 +135,8 @@ Status: **local MCP and A2A discovery already implemented**; agent skills discov
 | I want to… | I run… | What I get |
 |---|---|---|
 | Announce my agent to the wider network | `dirctl announce team/summarizer` | Discoverable by content type + OASF keys on the DHT |
-| Find agents anywhere with a given capability | `dirctl discover --type oasf.record --key domain=finance` | Announcements from other orgs/peers, streamed |
+| Find agents anywhere with a given capability | `dirctl discover --type oasf.record --key domain=finance` | Announcements from my local cache of the network — instant, eventually consistent |
+| Ask the network *live* instead of my cache | `dirctl discover --remote --type oasf.record --key domain=finance` | True remote routing: live DHT provider lookup per selector + descriptor fetch from peers (seconds, network-wide, warms the cache) |
 | Watch for anything new of a type | `dirctl listen --type oasf.record` | Live feed — pipe it into automation |
 | Stop advertising | `dirctl unannounce team/summarizer` | Withdrawn from the network |
 | Check I'm connected | `dirctl get peers` | Peer/DHT health |

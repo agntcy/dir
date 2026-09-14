@@ -21,7 +21,7 @@ Six components, plus one cross-cutting trust utility. Each has its own gRPC serv
 |---|---|---|---|
 | Storage & distribution | `ArtifactService` | Push/pull/attach generic content-typed blobs + referrers | OCI 1.1 (manifests + Referrers API), existing OCI store |
 | Naming | `NamingService` | Tagging, namespacing, name→digest resolution | OCI tags + existing naming providers/index |
-| Search | `SearchService` | Local-only KV search over indexed artifacts | Embedded KV store, async indexers per content type |
+| Search | `SearchService` | Local-only KV search over indexed artifacts | Generic gorm-backed `KVIndex` (SQLite locally, PostgreSQL for teams); async indexers per content type. Routing's DHT + discovery cache keep their native ipfs `go-datastore` (Badger) |
 | Runtime discovery | `RuntimeService` | Discover things running/installed locally | **Existing** MCP + A2A local discovery (already implemented); agent skills scanner assumed, extended later |
 | Network discovery | `RoutingService` | Announce/discover by content type + OASF keys | Existing libp2p DHT plugin |
 | Identity & trust | `TrustService` | Sign, claim ownership, verify — expressed as referrer artifacts | Existing cosign signing; DID / SPIFFE / HTTPS well-known resolvers as first-party **identity-resolver plugins** (§5.2, §7) |
@@ -252,6 +252,12 @@ service RoutingService {
 message DiscoverRequest {
   string content_type = 1;
   repeated core.v2.KeyValue selectors = 2;   // keys restricted to the OASF key registry
+  DiscoverMode mode = 3;                     // CACHED (default) | REMOTE (live DHT walk)
+}
+enum DiscoverMode {
+  DISCOVER_MODE_UNSPECIFIED = 0;
+  DISCOVER_MODE_CACHED = 1;
+  DISCOVER_MODE_REMOTE = 2;
 }
 message ListenRequest { string content_type = 1; }
 message Announcement { core.v2.Descriptor descriptor = 1; string peer = 2; bytes payload = 3; }
@@ -374,9 +380,12 @@ The same flow with `--kind identity-resolver` scaffolds a resolver (`CanResolve`
 
 ## 8. Routing / Decentralized Discovery Semantics
 
-- Producer side: **announce by content type** — publish a specific object (hash, and optionally the full object) to the DHT. Nothing more; whatever consumers do with it is up to them.
-- Consumer side: `listen` on a content type (live feed of announcements) or `discover` by content type plus key selectors, where the allowed keys are a **predetermined set defined by the OASF registry**.
-- Reuses the existing libp2p DHT plugin; the change is generalizing announcements from record-specific labels to generic `content type + OASF keys`.
+- Producer side: **announce by content type** — publish provider records to the DHT: the object digest, plus **rendezvous keys** derived from the type and its announceable key/value pairs (`H("dir/v2/<content-type>")`, `H("dir/v2/<content-type>/<key>=<value>")`). Announceable keys are declared by the type's plugin (`RoutingKeys`) and restricted to the OASF key registry — the shared vocabulary is what turns exact-match DHT lookups into attribute discovery. Records carry a TTL and are republished on the existing schedule.
+- Consumer side: `listen` on a content type (live feed of announcements via gossipsub + DHT notifications) or `discover` by content type plus key selectors, in one of two modes:
+  - **Cached (default)**: queries the local store of previously seen announcements — instant, subjective, eventually consistent.
+  - **Remote (`--remote`)**: a live DHT walk — `FindProviders` per rendezvous key, client-side intersection of the selectors' peer sets, then descriptor fetch from providers over the p2p RPC; results stream back and also warm the local cache. Exact-match selectors only (DHT constraint); range/score filters apply after descriptor fetch. Latency is seconds by design.
+- Trust is unchanged in both modes: provider records are unauthenticated hints; `verify` after pull is the trust boundary.
+- Reuses the existing libp2p DHT plugin; the change is generalizing announcements from record-specific labels to generic `content type + OASF keys`, and adding the rendezvous-key records for live remote discovery.
 
 ## 9. Execution via Content Types (run/deploy — no new core service)
 

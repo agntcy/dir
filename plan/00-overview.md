@@ -59,7 +59,7 @@ accepts a name (digests are never required).
 | `claim` | `dirctl claim ownership\|review\|score <ref> …` | Issuer is an identity URI |
 | `resolve` | `dirctl resolve <identity-uri>` | Dispatched to resolver plugins by scheme |
 | `announce` / `unannounce` | `dirctl announce <ref>` | Network publication |
-| `discover` / `listen` | `dirctl discover --type <ct> --key k=v` / `dirctl listen --type <ct>` | Streaming |
+| `discover` / `listen` | `dirctl discover [--remote] --type <ct> --key k=v` / `dirctl listen --type <ct>` | Streaming; `--remote` queries the DHT live instead of the local cache |
 | `run` / `stop` / `deploy` | `dirctl run <ref>` / `dirctl deploy <ref> --spec <ref>` | Fail-open; verify-gated once a policy is bound |
 | `install` | `dirctl install <ref> --into <tool>` | Existing v1 machinery, retained |
 | `init` | `dirctl init [--server <url>]` | Progressive config |
@@ -139,7 +139,8 @@ Full walkthroughs in [02-cli-and-sdk-usage.md](./02-cli-and-sdk-usage.md) §4.
 | 22 | Web UI | grpc-gateway REST from the same protos; read-only explorer first; `dirctl serve` |
 | 23 | Tagging scope | Anything with a digest can be tagged, regardless of content type; only prefix ownership restricts placement |
 | 24 | CLI extensibility | Plugin-declared command manifests merged into `dirctl`; custom commands dispatch via a generic gRPC `Invoke` (no PATH-binary plugins) |
+| 25 | Search/cache storage | Each stack's native store: gorm `KVIndex` (SQLite local / PostgreSQL team) for the search index; ipfs `go-datastore`/Badger for DHT + discovery cache (DHT requires a go-datastore anyway); both seams swappable |
 
-**Deferred (explicitly non-blocking):** search KV store choice, routing payload size limits,
+**Deferred (explicitly non-blocking):** routing payload size limits,
 OASF key registry evolution, names-on-network announceability, claim schema upstreaming to
 OASF, AI Catalog conformance level default.

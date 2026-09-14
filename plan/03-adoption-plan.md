@@ -39,7 +39,7 @@ All reuse is **as libraries linked into the new v2-only server binary** — no v
 | `server/naming` + `cli/cmd/naming` | Naming component: name parsing, well-known providers, name→digest index | **High** — extend with name-on-push, movable-tag history, pin, prefix ownership |
 | Runtime discovery (MCP + A2A local) + daemon (`dirctl daemon`) | Runtime component: **already implemented**, formalized under `runtime/v2` | **Very high** — expose behind v2 interface, add skills scanner later |
 | `server/routing` (libp2p DHT, pubsub, label/query matching) | Routing: announce/listen/discover machinery | **Medium–High** — keep transport & DHT; replace record labels with generic content-type + OASF-key announcements |
-| `server/search` + `server/database` (gorm) | Search: query layer patterns | **Medium** — new generic KV index schema keyed by content type; reuse DB plumbing & pagination |
+| `server/search` + `server/database` (gorm) | Search: generic `KVIndex` datastore — connection/config/migration/pagination plumbing reused; record-typed tables replaced by generic EAV `index_entries` keyed by content type | **Medium–High** — plumbing reused, schema generalized. Routing keeps its own go-datastore/Badger (see routing row) |
 | `sign`/`verify` (cosign, OIDC), `client/sign.go`, `client/verify.go` | Trust: signature creation/verification | **High** — normalize signatures into a generic referrer content type |
 | `client/` (Go SDK: conn mgmt, streaming, auth/OIDC/JWT/SPIFFE) | v2 Go SDK skeleton | **High** — add v2 service wrappers, keep auth stack as-is |
 | `cli/` (cobra tree, config, output formatting, daemon cmds) | `dirctl` v2 verb-noun command tree | **High** — restructure commands, keep infra |
@@ -76,12 +76,12 @@ We don't chase their build/deploy surface; we match their ergonomics while keepi
 
 ## 6. Open Questions
 
-Status: **15 decided, 6 deferred (non-blocking)**. Decisions are consolidated in the [decision register](./00-overview.md#decision-register).
+Status: **16 decided, 5 deferred (non-blocking)**. Decisions are consolidated in the [decision register](./00-overview.md#decision-register).
 
 1. ~~**Content-type naming**~~ — **decided: OCI media-type style** (`application/vnd.agntcy.artifact.oasf.record.v1+json`) is canonical; the CLI offers short `--type` aliases resolved via a built-in table.
 2. ~~**v1 coexistence**~~ — **decided: separate v2-only server**; v1 components are reused as libraries only (see §3).
 3. ~~**Attach semantics**~~ — **decided: validate known types at attach** — referrer types with a registered Validator are validated at attach time; unknown types attach freely (attach stays generic).
-4. **Search KV store** *(deferred, non-blocking)*: keep the existing datastore/DB, or a purpose-built embedded KV since search is local-only?
+4. ~~**Search KV store**~~ — **decided: each stack keeps its native generic store** — the search index uses a generic gorm-backed `KVIndex` (EAV `index_entries` keyed by content type; SQLite locally, PostgreSQL for teams); the routing layer (DHT internals **and** discovery cache) stays on the ipfs `go-datastore` interface with Badger as the engine — the libp2p DHT requires a go-datastore anyway, so unifying on SQL would run both engines plus an adapter. Both seams are swappable (e.g. `go-ds-sql`) without proto changes.
 5. **Routing payloads** *(deferred, non-blocking)*: announce hash only (pull-on-demand) vs. hash + full object on the DHT — default and size limits?
 6. **OASF key registry** *(deferred, non-blocking)*: is the discoverable key set fixed per OASF version, or can extensions register new namespaced keys?
 7. ~~**Auto-tagging source**~~ — **decided: NamingHints-driven, name-or-derive-or-error** — push takes the name positionally; with no name the type's NamingHints derive one (auto-tag + print); if underivable, push fails with a suggestion. No anonymous artifacts at the CLI level.
