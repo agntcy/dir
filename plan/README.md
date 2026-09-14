@@ -18,7 +18,7 @@ These documents are **planning material only** — no implementation is included
 
 Directory v2 is organized into six components plus one cross-cutting trust utility:
 
-1. **Artifact** — generic content-typed storage & distribution over OCI 1.1 (manifests + Referrers API). Any object can be attached to any object, forming a decentralized, hashed, signable DAG.
+1. **Artifact** — generic content-typed storage & distribution over OCI 1.1 (manifests + Referrers API). Any object can be attached to any object, forming a decentralized, hashed, signable DAG. The basic data model defines two shapes: **Entry** (a single typed unit) and **Collection** (an ordered set of entry refs, itself an entry) — so `dirctl install myrepo/mycollection:v2` and `dirctl install myrepo/myagent:v1` are the same operation at different granularity. Two reserved types, `catalog.entry` and `catalog.collection`, implement the [AI Catalog spec](https://ai-catalog.io/spec/) on these shapes (trust manifests map to referrer claims).
 2. **Naming** — namespacing and tagging (`org/name:version`) as the primary human identifier; auto-tagging from artifact metadata; every API accepts a name or a digest interchangeably.
 3. **Search** — local-only key/value search over an index populated asynchronously after push, with per-content-type indexers.
 4. **Routing** — decentralized announce/discover by content type and OASF-defined keys over the existing libp2p/DHT layer.

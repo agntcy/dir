@@ -36,6 +36,56 @@ The daemon already exists (`dirctl daemon start|stop|status|…`) and hosts thes
 - v2 defines **common referrer types** as reserved content types: `signature`, `identity-claim`, `ownership-claim` (later e.g. `sbom`, `provenance`). Attachment remains fully generic: object C can carry a record, a signature, an ownership claim, or any arbitrary typed object.
 - Deliverable: a canonical **"Artifact DAG in Directory" design doc** — manifest construction, referrer attach/list/GC semantics, hashing/addressing rules, tag conventions. This is the contract everything else builds on and must be documented and well understood by everyone.
 
+### 3.1 Entry & Collection — the basic data model on top of OCI
+
+The most basic interface for generic data managed on top of OCI is defined by two structural concepts. These are *shapes*, not domain types — every content type is one of the two:
+
+**Entry** — a single addressable unit of typed content. Concretely: one OCI manifest whose config carries `{content type, annotations}` and whose layers carry the payload. This is what `Descriptor` already describes; the Entry interface makes the minimal contract explicit:
+
+```proto
+// core/v2/types.proto (addition)
+message Entry {
+  core.v2.Descriptor descriptor = 1;   // digest, content_type, size, annotations
+  bytes metadata = 2;                  // type-defined metadata document (inline)
+  string payload_url = 3;              // optional: payload by reference instead of inline layers
+}
+```
+
+**Collection** — an ordered set of entry references, itself an Entry (so collections are named, tagged, signed, attached, announced like anything else). Concretely: an OCI image index / manifest whose members are `Ref`s to entries (or nested collections):
+
+```proto
+message Collection {
+  core.v2.Descriptor descriptor = 1;    // the collection artifact itself
+  repeated CollectionMember members = 2;
+}
+message CollectionMember {
+  core.v2.Ref ref = 1;                  // entry or nested collection
+  string media_type = 2;
+  map<string, string> annotations = 3;  // member role, order, constraints
+}
+```
+
+Operational consequences (uniform across all commands):
+
+- Every `Ref`-taking operation accepts either shape; commands that act on content (`pull`, `install`, `verify`, `sign`, `announce`) apply **member-wise with a single subject** when given a collection. `dirctl install myrepo/mycollection:v2` installs all members; `dirctl install myrepo/myagent:v1` installs one entry — same command, same semantics.
+- `verify` on a collection = verify the collection artifact (its signature covers the pinned member digests — a collection is a signable lockfile) and, per policy, its members.
+- Membership is by `Ref`: digest-pinned members freeze the collection; name members (`team/x:v1`) re-resolve — mirroring the pin/follow tag semantics.
+
+### 3.2 Reserved types built on the AI Catalog spec (ai-catalog.io)
+
+Two content types are **reserved** and implemented on top of the [AI Catalog specification](https://ai-catalog.io/spec/), mapping the spec onto the Entry/Collection shapes:
+
+| Reserved type | Shape | Maps to (ai-catalog spec) |
+|---|---|---|
+| `catalog.entry` | Entry | **Catalog Entry**: `{id, mediaType, url or inline metadata, optional trustManifest}` — the entry's media type delegates interpretation to the artifact's own protocol spec (A2A card, MCP server, plugin, dataset, model card) |
+| `catalog.collection` | Collection | **Catalog** document (`application/ai-catalog+json`): `{specVersion, entries[], host?, extensions?}` — members are `catalog.entry` refs |
+
+Interop mapping:
+
+- **Trust Manifest ↔ referrer claims**: an entry's ai-catalog `trustManifest` (attestations, identities, provenance) is imported/exported to/from our signature and claim referrers — the spec keeps trust *beside* the artifact, exactly like our DAG does. Conformance levels map naturally: Level 1 (entries only) = plain collection; Level 2 (host identity) = ownership/identity claims on the collection; Level 3 (trusted) = signatures + trust claims on members.
+- **Ingest/serve**: `dirctl artifact push catalog.json --type catalog.collection` decomposes a catalog document into member entries + a collection artifact; conversely a collection can be rendered back out as a spec-conformant `application/ai-catalog+json` document — making any dir instance an AI Catalog publisher/consumer.
+- These two handlers are first-party (CliNoun: `dirctl catalog …`) and serve as the canonical demonstration of building content types on an external spec.
+
 ## 4. Naming / Namespacing Design
 
 - **Format**: `[org/]name:version` — OCI-reference-compatible so it maps straight onto OCI tags in the backing store.
@@ -240,7 +290,7 @@ Define a **ContentTypeHandler** contract (in-process Go interface first; out-of-
 9. **Executor** *(optional)* — how to materialize and launch/stop an instance of T (process, container, remote target). Powers `dirctl run`/`deploy` (see §9).
 10. **Fetcher** *(reserved slot — not implemented in v2)* — importing artifacts of type T from non-OCI sources (GitHub releases, PyPI, HTTP), normalizing them into content-typed artifacts with provenance annotations. The capability slot is reserved in the contract so this can be added later without changing the model.
 
-Registration: a small manifest (name, content type, capabilities) + a registry in the server config. Built-in types (`oasf.record`, `signature`, `identity-claim`, `ownership-claim`, `a2a.card`, `mcp.server`, `prompt`) ship as first-party handlers using the exact same interface — proving the extension path. Adding "content type X with custom KV keys and routing" = write one handler, register it, no core changes.
+Registration: a small manifest (name, content type, capabilities) + a registry in the server config. Built-in types (`oasf.record`, `signature`, `identity-claim`, `ownership-claim`, `a2a.card`, `mcp.server`, `prompt`, `catalog.entry`, `catalog.collection`) ship as first-party handlers using the exact same interface — proving the extension path. Adding "content type X with custom KV keys and routing" = write one handler, register it, no core changes.
 
 **Prompts as first-class citizens**: the `prompt` content type ships with the full capability set — CLI noun (`dirctl prompt push|pull|list|search`), Indexer (KV keys such as `model`, `task`, `variables`, tags), NamingHints (auto-tag `org/prompt-name:version` from prompt metadata), Renderer, ClaimPolicy, and install support (`dirctl install <prompt-ref> --into <tool>` writes into the target tool's prompt/skill location). Prompts participate in the DAG like everything else: versioned, signed, ownable, attachable (e.g. attach a prompt to the agent that uses it, or attach eval results to a prompt), searchable, announceable/discoverable on the network by content type + keys.
 
