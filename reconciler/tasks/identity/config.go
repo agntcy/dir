@@ -3,7 +3,11 @@
 
 package identity
 
-import "time"
+import (
+	"time"
+
+	ansconfig "github.com/agntcy/dir/server/identity/ans/config"
+)
 
 const (
 	// DefaultInterval is the default reconciliation interval for identity/ownership claim verification.
@@ -23,6 +27,11 @@ type Config struct {
 	// containing one or more PEM-encoded CA certificates, used to validate the
 	// certificate chain of SPIFFE identity/ownership claims for that domain.
 	SpiffeTrustDomains map[string]string `json:"spiffe_trust_domains,omitempty" mapstructure:"spiffe_trust_domains"`
+
+	// Ans configures verification of "ans://" subjects through the Agent Name
+	// Service. Off unless enabled; the same block must be configured for the
+	// API server.
+	Ans ansconfig.Config `json:"ans,omitzero" mapstructure:"ans"`
 }
 
 // GetInterval returns the interval with default fallback.
