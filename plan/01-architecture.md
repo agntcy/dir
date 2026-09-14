@@ -4,12 +4,13 @@
 
 ## 1. Design Principles
 
-- **Fresh start**: v2 is designed from scratch; existing components are reused only as implementation details behind new `v2` interfaces.
-- **Everything is a generic, content-typed artifact**: no first-class record types in the core. All behavior (indexing, discovery, runtime handling, verification) is attached to *content types*.
-- **CLI-first**: `dirctl` is the central place of usage. Language-specific tooling starts with the Go SDK (mirrors the CLI 1:1); other languages are generated from the v2 protos later.
-- **All interfaces defined in gRPC**, under a new `v2` proto tree that coexists with v1.
+- **Fresh start**: v2 ships as a **separate, v2-only server binary** — no v1 services run alongside it. Existing v1 components are reused strictly as libraries behind the new `v2` interfaces.
+- **Everything is a generic, content-typed artifact**: no first-class record types in the core. All behavior (indexing, discovery, runtime handling, verification) is attached to *content types*, whose logic lives in **out-of-process gRPC plugins from day one** — built-in types are first-party plugins over the same contract (see §7).
+- **CLI-first, verb-noun grammar**: `dirctl <verb> [noun]` is the central place of usage (see [02-cli-and-sdk-usage.md](./02-cli-and-sdk-usage.md) §0). The Go SDK mirrors it 1:1; other languages are generated from the v2 protos later. A generated JSON/HTTP gateway serves web UIs and scripts (§11).
+- **All interfaces defined in gRPC**, under a new `v2` proto tree (the proto tree coexists with v1; the running server is v2-only).
 - **OCI for storage and distribution**, with the OCI 1.1 Referrers API as the attachment mechanism.
-- **Names over digests**: `org/name:version` is the primary way to identify objects inside a user's own system; digests are plumbing.
+- **Digest-free UX guarantee**: every workflow is completable with names only. Names are OCI-reference paths of any depth with an optional tag defaulting to `:latest` (see §4). Digests appear only abbreviated in informational output, in opt-in pin forms, and inside machine-written `dir://` URIs — never as required input.
+- **Identities are URIs** (`did:`, `spiffe://`, `https://`, …) resolved by pluggable resolvers; fully-qualified artifact references serialize as `dir://` URIs (see §5.2).
 - **Sign/verify are first-class** and work on arbitrary objects, independent of content type.
 
 ## 2. Component Overview
@@ -23,11 +24,11 @@ Six components, plus one cross-cutting trust utility. Each has its own gRPC serv
 | Search | `SearchService` | Local-only KV search over indexed artifacts | Embedded KV store, async indexers per content type |
 | Runtime discovery | `RuntimeService` | Discover things running/installed locally | **Existing** MCP + A2A local discovery (already implemented); agent skills scanner assumed, extended later |
 | Network discovery | `RoutingService` | Announce/discover by content type + OASF keys | Existing libp2p DHT plugin |
-| Identity & trust | `TrustService` | Sign, claim ownership, verify — expressed as referrer artifacts | Existing cosign signing; DID / SPIFFE / HTTPS well-known resolvers |
+| Identity & trust | `TrustService` | Sign, claim ownership, verify — expressed as referrer artifacts | Existing cosign signing; DID / SPIFFE / HTTPS well-known resolvers as first-party **identity-resolver plugins** (§5.2, §7) |
 
 Data flow: `push → store (OCI) → event → index sync (search) → optional announce (routing)`. Verification and discovery read the same DAG.
 
-The daemon already exists (`dirctl daemon start|stop|status|…`) and hosts these services locally; the CLI works against the local daemon by default or a remote server via `dirctl init --server`.
+The daemon already exists (`dirctl daemon start|stop|status|…`) and hosts these services locally; the CLI works against the local daemon by default or a remote server via `dirctl init --server`. The same process can expose the generated JSON/HTTP gateway (`dirctl serve`, §11) for web UIs and scripts.
 
 ## 3. The Artifact DAG (core concept — documentation-first)
 
@@ -36,11 +37,9 @@ The daemon already exists (`dirctl daemon start|stop|status|…`) and hosts thes
 - v2 defines **common referrer types** as reserved content types: `signature`, `identity-claim`, `ownership-claim` (later e.g. `sbom`, `provenance`). Attachment remains fully generic: object C can carry a record, a signature, an ownership claim, or any arbitrary typed object.
 - Deliverable: a canonical **"Artifact DAG in Directory" design doc** — manifest construction, referrer attach/list/GC semantics, hashing/addressing rules, tag conventions. This is the contract everything else builds on and must be documented and well understood by everyone.
 
-### 3.1 Entry & Collection — the basic data model on top of OCI
+### 3.1 The Object — the single core shape (collections are a pattern, not a type)
 
-The most basic interface for generic data managed on top of OCI is defined by two structural concepts. These are *shapes*, not domain types — every content type is one of the two:
-
-**Entry** — a single addressable unit of typed content. Concretely: one OCI manifest whose config carries `{content type, annotations}` and whose layers carry the payload. This is what `Descriptor` already describes; the Entry interface makes the minimal contract explicit:
+The core data model defines exactly **one shape**: the **Object** (`Entry` in proto) — a single addressable unit of typed content. Concretely: one OCI manifest whose config carries `{content type, annotations}` and whose layers carry the payload. This is what `Descriptor` already describes; the Entry interface makes the minimal contract explicit:
 
 ```proto
 // core/v2/types.proto (addition)
@@ -51,15 +50,15 @@ message Entry {
 }
 ```
 
-**Collection** — an ordered set of entry references, itself an Entry (so collections are named, tagged, signed, attached, announced like anything else). Concretely: an OCI image index / manifest whose members are `Ref`s to entries (or nested collections):
+**There is no dedicated Collection type in the core.** A "collection" is a *pattern*: a content type whose payload is a list of member refs, declared through the **Members capability** of its plugin (§7). The conventional payload schema for such types:
 
 ```proto
-message Collection {
-  core.v2.Descriptor descriptor = 1;    // the collection artifact itself
-  repeated CollectionMember members = 2;
+// payload convention for types declaring the Members capability — not a core message
+message MemberList {
+  repeated Member members = 1;
 }
-message CollectionMember {
-  core.v2.Ref ref = 1;                  // entry or nested collection
+message Member {
+  core.v2.Ref ref = 1;                  // digest-pinned by default; a name if created with --follow
   string media_type = 2;
   map<string, string> annotations = 3;  // member role, order, constraints
 }
@@ -67,31 +66,35 @@ message CollectionMember {
 
 Operational consequences (uniform across all commands):
 
-- Every `Ref`-taking operation accepts either shape; commands that act on content (`pull`, `install`, `verify`, `sign`, `announce`) apply **member-wise with a single subject** when given a collection. `dirctl install myrepo/mycollection:v2` installs all members; `dirctl install myrepo/myagent:v1` installs one entry — same command, same semantics.
-- `verify` on a collection = verify the collection artifact (its signature covers the pinned member digests — a collection is a signable lockfile) and, per policy, its members.
-- Membership is by `Ref`: digest-pinned members freeze the collection; name members (`team/x:v1`) re-resolve — mirroring the pin/follow tag semantics.
+- Every `Ref`-taking operation takes any object; commands that act on content (`pull`, `install`, `verify`, `sign`, `announce`) apply **member-wise with a single subject** when the target's type declares Members. `dirctl install team/starter-kit` installs all members; `dirctl install team/summarizer:v1` installs one object — same command, same semantics.
+- `verify` on a collection-like object = verify the object itself (its signature covers the pinned member digests — a signable lockfile) and, per policy, its members.
+- Members are **pinned by digest by default at create time**; `--follow` opts a member into staying a name ref (`team/x:v1`) that re-resolves. Embedded member refs serialize as `dir://` URIs (§5.2).
+- `dirctl create collection` is CLI sugar for pushing an object of the reserved `catalog.collection` type (§3.2); any third-party type (e.g. `myorg.pipeline`) can declare Members and gets identical member-wise behavior.
 
 ### 3.2 Reserved types built on the AI Catalog spec (ai-catalog.io)
 
-Two content types are **reserved** and implemented on top of the [AI Catalog specification](https://ai-catalog.io/spec/), mapping the spec onto the Entry/Collection shapes:
+Two content types are **reserved** and implemented on top of the [AI Catalog specification](https://ai-catalog.io/spec/), mapping the spec onto the Object shape:
 
 | Reserved type | Shape | Maps to (ai-catalog spec) |
 |---|---|---|
-| `catalog.entry` | Entry | **Catalog Entry**: `{id, mediaType, url or inline metadata, optional trustManifest}` — the entry's media type delegates interpretation to the artifact's own protocol spec (A2A card, MCP server, plugin, dataset, model card) |
-| `catalog.collection` | Collection | **Catalog** document (`application/ai-catalog+json`): `{specVersion, entries[], host?, extensions?}` — members are `catalog.entry` refs |
+| `catalog.entry` | Object | **Catalog Entry**: `{id, mediaType, url or inline metadata, optional trustManifest}` — the entry's media type delegates interpretation to the artifact's own protocol spec (A2A card, MCP server, plugin, dataset, model card) |
+| `catalog.collection` | Object + Members capability | **Catalog** document (`application/ai-catalog+json`): `{specVersion, entries[], host?, extensions?}` — the payload is a `MemberList` of `catalog.entry` refs |
 
 Interop mapping:
 
 - **Trust Manifest ↔ referrer claims**: an entry's ai-catalog `trustManifest` (attestations, identities, provenance) is imported/exported to/from our signature and claim referrers — the spec keeps trust *beside* the artifact, exactly like our DAG does. Conformance levels map naturally: Level 1 (entries only) = plain collection; Level 2 (host identity) = ownership/identity claims on the collection; Level 3 (trusted) = signatures + trust claims on members.
-- **Ingest/serve**: `dirctl artifact push catalog.json --type catalog.collection` decomposes a catalog document into member entries + a collection artifact; conversely a collection can be rendered back out as a spec-conformant `application/ai-catalog+json` document — making any dir instance an AI Catalog publisher/consumer.
-- These two handlers are first-party (CliNoun: `dirctl catalog …`) and serve as the canonical demonstration of building content types on an external spec.
+- **Ingest/serve**: `dirctl push catalog.json --type catalog.collection` decomposes a catalog document into member entries + a collection artifact; conversely a collection can be rendered back out as a spec-conformant `application/ai-catalog+json` document — making any dir instance an AI Catalog publisher/consumer.
+- These two handlers are first-party (CliCommands: `dirctl catalog …`) and serve as the canonical demonstration of building content types on an external spec.
 
 ## 4. Naming / Namespacing Design
 
-- **Format**: `[org/]name:version` — OCI-reference-compatible so it maps straight onto OCI tags in the backing store.
-- **Auto-tagging**: `dirctl tag <cid>` with no reference derives `org/name:version` from the artifact's own metadata/annotations (handler-provided). Explicit references override; multiple tags per digest are allowed.
-- **Universal `Ref`**: every v2 RPC takes a `Ref` message — a oneof of digest and name. Names are resolved server-side, so *all* operations (pull, sign, verify, announce, attach, search-status, …) work on named refs.
-- **Storage**: tags are OCI tags plus a local name→digest index (reuse existing naming component + database); tag moves are recorded (a version can be retargeted, history retained — pending decision, see open questions).
+- **Format**: `path[:tag]` where the path is **any OCI-reference-compatible path (1..N segments)** — `summarizer`, `alex/summarizer`, `acme/nlp/summarizer` are all valid. `org/name` is documentation convention, not enforced grammar. The tag is optional and **defaults to `:latest`** on both push and pull, so names map straight onto OCI tags in the backing store.
+- **Name on push (digest-free)**: `dirctl push <file> [name[:tag]]` takes the name positionally. With no name, the content type's `NamingHints` capability derives one from the artifact's metadata/annotations (auto-tags and prints it); if nothing is derivable, push **fails with a suggestion** — no anonymous artifacts exist at the CLI level. Explicit names always override; multiple tags per digest are allowed.
+- **Tags are movable, with history**: retargeting a tag is allowed and every move is recorded (`NamingService.History`); `pin` freezes a tag to its current digest without the user ever typing one. The pinned machine form is `name:tag@digest` (output only).
+- **Anything can be tagged**: tags are type-independent name→digest mappings — agents, prompts, policies, collection-like objects, even signatures and claims (they are ordinary objects). The only restriction is authorization (prefix ownership below).
+- **Prefix-based namespace ownership — enforced from day one**: server config maps name prefixes to owner identities (`acme/* → spiffe://acme/ci`); only those identities may tag under the prefix. Unprefixed names are local/unrestricted. Config-based enforcement lands with team mode (P2, reusing the existing authn chassis) and is upgraded to a policy-driven admission rule at P3.
+- **Universal `Ref`**: every v2 RPC takes a `Ref` message — a oneof of digest and name. Names are resolved server-side, so *all* operations (pull, sign, verify, announce, attach, search-status, …) work on named refs. The fully-qualified serialization of a `Ref` is a `dir://` URI (§5.2).
+- **Storage**: tags are OCI tags plus a local name→digest index (reuse existing naming component + database) extended with a tag-event log for history.
 
 ### Compatibility note: remote registries (future direction, not committed)
 
@@ -103,7 +106,7 @@ Signing and verifying **arbitrary objects** are first-class citizens, exposed at
 
 - **Signature** artifact: reuse the current cosign/OCI signature format, normalized as a generic referrer content type.
 - **Ownership claim** artifact: `{subject_digest, owner_identity, signature by owner key}`.
-- **Identity claim** artifact: `{subject_digest, identity (DID | SPIFFE ID | https URL), proof}` — proof verified via DID doc resolution, SPIFFE trust bundle, or `https://<domain>/.well-known/agntcy-identity`.
+- **Identity claim** artifact: `{subject_digest, identity (DID | SPIFFE ID | https URL), proof}` — proof verified via DID doc resolution, SPIFFE trust bundle, or `https://<domain>/.well-known/agntcy-identity`, each implemented as an identity-resolver plugin (§5.2).
 - **Content-type ownership of claims**: whether an object *can* claim an identity, and what a valid claim looks like, is decided by its content type (handler). Trust only provides the generic sign/verify/resolve machinery.
 - `Verify` = walk the referrers of a digest → validate each signature/claim → aggregate into a verification report; optional policy (e.g., "must be signed by an owner whose identity resolves via DID").
 
@@ -126,7 +129,22 @@ Design points:
 - **Scoped authority**: policy binds authorities to namespaces — e.g. "claims from `spiffe://security-team` are authoritative for `team/*`". Prevents anyone's "approval" from mattering everywhere.
 - **Automated attestors**: CI bots are first-class claim issuers (a scanner signs a `score-claim` after each push), driven by the events/index-sync pipeline.
 - **Claim indexing**: claims are ordinary artifacts, so the search indexer indexes them — "list everything approved by security-team" is a KV query. No new component.
-- **UX**: `dirctl trust claim review <ref> --verdict approved`, `dirctl trust claims <ref>`, and badges (✓ approved, ⚠ deprecated) in `search`/`pull` output derived from the claim index; `verify --policy` gates on claims.
+- **UX**: `dirctl claim review <ref> --verdict approved`, `dirctl get claims <ref>`, and badges (✓ approved, ⚠ deprecated) in `search`/`pull`/`describe` output derived from the claim index — **shown by default** (informational, never blocking without a bound policy); `verify --policy` gates on claims.
+
+### 5.2 Identity & URI model
+
+One rule: **subjects are digests, issuers are URIs, references serialize as `dir://` URIs.**
+
+| Concept | Form | Example |
+|---|---|---|
+| Artifact ref (CLI, everyday) | `path[:tag]` or digest | `team/summarizer:v1` |
+| Pinned ref (output only) | `path:tag@digest` | `team/summarizer:v1@sha256:ab…` |
+| Canonical URI (links, embedded refs) | `dir://[host/]path[:tag][@digest]` | `dir://dir.team.internal/team/summarizer:v1@sha256:ab…` |
+| Identity (claim issuer, owner) | scheme-prefixed URI | `did:web:example.com`, `spiffe://team/ci`, `https://team.example` |
+
+- **Claim binding**: every claim carries *subject digest + issuer identity URI + typed payload + signature*. `Verify` resolves the issuer URI → keys → checks the signature → policy evaluates scoped authority (e.g. `spiffe://security-team/*` is authoritative for `team/*`).
+- **Identity resolution is plugin-dispatched by scheme**: `TrustService.Resolve(uri)` routes to the identity-resolver plugin registered for the URI scheme (`CanResolve(scheme)` / `Resolve(uri) → keys + metadata`). `did:`, `spiffe://`, and `https://` well-known ship as first-party resolver plugins; new schemes (org-internal PKI, etc.) are drop-in plugins with no core changes. Resolver plugins return trust roots, so they are registered exclusively via server config by the operator — never user-writable.
+- **`dir://` URIs** are the standard field format wherever a ref is *embedded inside* another artifact (collection members, deployment specs, claims) and in web-UI deep links. The host part is **informational for now** (provenance of where the ref was minted); resolution always targets the configured server — federation semantics stay deferred (§4 compatibility note). CLI users keep short refs; URIs are machine-written and machine-read.
 
 ## 6. gRPC v2 Interface Drafts
 
@@ -136,10 +154,10 @@ Tree: `proto/agntcy/dir/v2/{core,artifact,naming,search,routing,runtime,trust}/`
 // core/v2/types.proto
 package agntcy.dir.core.v2;
 
-message Ref {                      // universal identifier
+message Ref {                      // universal identifier; serializes as a dir:// URI when fully qualified
   oneof ref {
     string digest = 1;             // e.g. "sha256:abc..."
-    string name = 2;               // e.g. "myorg/myname:v1"
+    string name = 2;               // any OCI path, optional tag: "summarizer", "acme/nlp/summarizer:v1"
   }
 }
 
@@ -174,8 +192,9 @@ message PushHeader {
   string content_type = 1;
   map<string, string> annotations = 2;
   core.v2.Ref subject = 3;         // optional: push directly as referrer
-  repeated string tags = 4;        // optional: tag on push
+  repeated string tags = 4;        // names to tag on push; empty => NamingHints derivation or error (no anonymous artifacts)
 }
+// Referrer types with a registered Validator are validated at attach time; unknown types attach freely.
 message AttachRequest { core.v2.Ref subject = 1; PushHeader artifact = 2; bytes data = 3; }
 message ListReferrersRequest { core.v2.Ref subject = 1; string content_type = 2; }
 ```
@@ -184,18 +203,22 @@ message ListReferrersRequest { core.v2.Ref subject = 1; string content_type = 2;
 // naming/v2/naming.proto
 service NamingService {
   rpc Tag(TagRequest) returns (TagResponse);
+  rpc Untag(core.v2.Ref) returns (google.protobuf.Empty);
   rpc Resolve(core.v2.Ref) returns (core.v2.Descriptor);
   rpc List(ListRequest) returns (stream NameEntry);
-  rpc Untag(core.v2.Ref) returns (google.protobuf.Empty);
+  rpc History(core.v2.Ref) returns (stream TagEvent);     // movable tags: full audit trail
+  rpc Pin(PinRequest) returns (google.protobuf.Empty);    // freeze/unfreeze a tag at its current digest
 }
 
 message TagRequest {
-  string digest = 1;
-  repeated string names = 2;       // empty => auto-tag from artifact metadata
+  core.v2.Ref ref = 1;
+  repeated string names = 2;       // empty => NamingHints derivation or error
 }
 message TagResponse { repeated string names = 1; }
-message ListRequest { string prefix = 1; }                // "myorg/" or "myorg/myname"
-message NameEntry { string name = 1; string digest = 2; }
+message ListRequest { string prefix = 1; }                // any path prefix: "acme/" or "acme/nlp"
+message NameEntry { string name = 1; string digest = 2; bool pinned = 3; }
+message TagEvent { string name = 1; string digest = 2; google.protobuf.Timestamp at = 3; string actor = 4; }
+message PinRequest { string name = 1; bool unpin = 2; }
 ```
 
 ```proto
@@ -269,30 +292,85 @@ message SignRequest { core.v2.Ref ref = 1; oneof signer { string key_path = 2; O
 message VerifyRequest { core.v2.Ref ref = 1; bytes policy = 2; }
 message VerifyResponse { bool valid = 1; repeated CheckResult checks = 2; }
 message ClaimRequest { core.v2.Ref ref = 1; string owner_identity = 2; }
-message ResolveRequest { string identity = 1; }                // did: | spiffe:// | https://
+message ResolveRequest { string identity = 1; }                // dispatched by URI scheme to identity-resolver plugins (§5.2)
 message Identity { string id = 1; string kind = 2; repeated bytes public_keys = 3; map<string,string> metadata = 4; }
 ```
 
-## 7. Content-Type Extension Model
+## 7. Content-Type Extension Model (gRPC plugins)
 
 The key extension question: *"I want discovery, indexing, and runtime handling for a new content type — how?"*
 
-Define a **ContentTypeHandler** contract (in-process Go interface first; out-of-process gRPC plugin later) with optional capabilities:
+All extensions are **out-of-process gRPC plugins from day one**. There are two plugin *kinds* sharing one lifecycle: **content-type handlers** (this section) and **identity resolvers** (§5.2). Built-in types ship as first-party plugins over the exact same contract — there is no in-process special path.
+
+A **ContentTypeHandler** plugin implements optional capabilities:
 
 1. **Indexer** — given an artifact of type T, emit key/value pairs for the search KV store (invoked by the post-push index-sync worker).
 2. **Validator** — schema validation on push (optional).
 3. **RuntimeScanner** — how to find live/installed instances of T (network probe / process match / filesystem paths). The existing MCP and A2A scanners become the reference implementations of this capability.
 4. **RoutingKeys** — which keys of T are announceable/discoverable (must map onto the OASF key registry).
 5. **ClaimPolicy** — whether/how objects of type T can claim an identity (consumed by Trust).
-6. **NamingHints** — which annotations drive auto-tagging (`org/name:version` derivation).
-7. **Renderer** — pretty-print for `dirctl artifact info` / `tree`.
-8. **CliNoun** — a handler may register a CLI noun (e.g. `agent`, `mcp`, `skill`, `prompt`); `dirctl` generates typed sugar commands from it (`dirctl agent push|pull|list` ≙ `dirctl artifact … --type <ct>` with the type's default renderer). The core stays generic; the UX is typed.
+6. **NamingHints** — which annotations drive name derivation on push (any `path[:tag]`, §4).
+7. **Renderer** — pretty-print for `dirctl describe` / `tree`.
+8. **CliCommands** — a plugin declares a **command manifest**: a noun (e.g. `agent`, `mcp`, `prompt`, `reputation`) plus commands that are either *core-verb presets* (typed sugar: `dirctl get agents` ≙ the generic verbs with `--type <ct>` preset and the type's default renderer) or *custom commands* dispatched to the plugin via the generic `Invoke` RPC (§7.1) — e.g. `dirctl reputation score <ref>` calling the plugin, which in turn calls its own backend API. The core stays generic; the UX is typed and extensible.
 9. **Executor** *(optional)* — how to materialize and launch/stop an instance of T (process, container, remote target). Powers `dirctl run`/`deploy` (see §9).
-10. **Fetcher** *(reserved slot — not implemented in v2)* — importing artifacts of type T from non-OCI sources (GitHub releases, PyPI, HTTP), normalizing them into content-typed artifacts with provenance annotations. The capability slot is reserved in the contract so this can be added later without changing the model.
+10. **Members** — declares that T's payload is a `MemberList` of refs (the collection pattern, §3.1): unlocks member-wise `pull`/`install`/`sign`/`verify`/`announce` semantics and digest-pinning defaults.
+11. **Fetcher** *(reserved slot — not implemented in v2)* — importing artifacts of type T from non-OCI sources (GitHub releases, PyPI, HTTP), normalizing them into content-typed artifacts with provenance annotations. The capability slot is reserved in the contract so this can be added later without changing the model.
 
-Registration: a small manifest (name, content type, capabilities) + a registry in the server config. Built-in types (`oasf.record`, `signature`, `identity-claim`, `ownership-claim`, `a2a.card`, `mcp.server`, `prompt`, `catalog.entry`, `catalog.collection`) ship as first-party handlers using the exact same interface — proving the extension path. Adding "content type X with custom KV keys and routing" = write one handler, register it, no core changes.
+### 7.1 Plugin transport & lifecycle
 
-**Prompts as first-class citizens**: the `prompt` content type ships with the full capability set — CLI noun (`dirctl prompt push|pull|list|search`), Indexer (KV keys such as `model`, `task`, `variables`, tags), NamingHints (auto-tag `org/prompt-name:version` from prompt metadata), Renderer, ClaimPolicy, and install support (`dirctl install <prompt-ref> --into <tool>` writes into the target tool's prompt/skill location). Prompts participate in the DAG like everything else: versioned, signed, ownable, attachable (e.g. attach a prompt to the agent that uses it, or attach eval results to a prompt), searchable, announceable/discoverable on the network by content type + keys.
+- **Contract**: one gRPC service per plugin process. `Describe()` returns a manifest (plugin kind, content type(s) or URI scheme(s), implemented capabilities, protocol version, command manifest); capability RPCs are only called if declared. Unimplemented capabilities are simply absent from the manifest.
+- **Generic CLI dispatch**: `dirctl` merges the command manifests of all registered plugins into its command tree — registering a plugin on the team server makes its commands appear for every user. Custom commands route through a generic `Invoke` RPC:
+
+```proto
+// plugin/v2/plugin.proto (sketch)
+service Plugin {
+  rpc Describe(google.protobuf.Empty) returns (PluginManifest);
+  rpc Invoke(InvokeRequest) returns (stream InvokeResponse);   // custom CLI commands
+  // + capability RPCs (Index, Validate, Members, Resolve, …), called only if declared
+}
+
+message PluginManifest {
+  string name = 1;
+  string protocol_version = 2;
+  string kind = 3;                     // content-type | identity-resolver
+  repeated string content_types = 4;
+  repeated string uri_schemes = 5;
+  repeated string capabilities = 6;
+  repeated CommandSpec commands = 7;   // CliCommands capability
+}
+message CommandSpec {
+  string path = 1;                     // e.g. "reputation score"
+  string help = 2;
+  repeated FlagSpec flags = 3;
+  oneof handler {
+    CoreVerbPreset preset = 4;         // sugar: map onto a core verb with fixed type/flags
+    bool invoke = 5;                   // custom: dispatch via Invoke
+  }
+}
+message InvokeRequest { string path = 1; repeated string args = 2; map<string, string> flags = 3; bytes stdin = 4; }
+message InvokeResponse { oneof out { bytes stdout = 1; bytes stderr = 2; int32 exit_code = 3; } }
+```
+
+  Custom commands run with the plugin's server-side privileges; help output labels each command with its providing plugin. A plugin backing a separate service (e.g. reputation) implements `Invoke` by calling its own API — Directory's core surface stays fixed.
+- **Registration is static server config only**: each entry lists a binary path or endpoint. Plugins are **not** distributed as Directory artifacts (considered and rejected for now — keeps the trust boundary at the operator's config file, which matters especially for identity resolvers). The server launches/health-checks configured plugin processes and dispatches by content type or URI scheme.
+- **Versioning**: the plugin protocol carries an explicit version; the server refuses plugins with an incompatible major version.
+- Built-in types (`oasf.record`, `signature`, `identity-claim`, `ownership-claim`, `a2a.card`, `mcp.server`, `prompt`, `catalog.entry`, `catalog.collection`) and the three identity resolvers ship as first-party plugins using this exact mechanism — proving the extension path. Adding "content type X with custom KV keys and routing" = write one plugin, add one config entry, no core changes.
+
+### 7.2 Authoring experience (writing custom logic)
+
+Golden path — Go-first scaffold over a language-neutral wire protocol (any gRPC-capable language works):
+
+| Step | Command / action | Result |
+|---|---|---|
+| Scaffold | `dirctl plugin init my-dataset --kind content-type` | Go template implementing the plugin contract, capability stubs, fixture directory |
+| Pick capabilities | implement only what you need (e.g. Indexer + NamingHints + CliCommands) | Everything else stays absent from `Describe()` |
+| Dev loop | `dirctl plugin run ./my-dataset --dev` | Registers with the local daemon for live testing; `dirctl push data.json --type …` exercises it immediately |
+| Conformance | `dirctl plugin test ./my-dataset` | Runs the capability conformance suite against your fixtures |
+| Register | add a path/endpoint entry to server config; confirm with `dirctl get plugins` | Plugin active; its declared commands (if any) appear in `dirctl` |
+
+The same flow with `--kind identity-resolver` scaffolds a resolver (`CanResolve`/`Resolve`) for a custom identity scheme.
+
+**Prompts as first-class citizens**: the `prompt` content type ships with the full capability set — CliCommands (`dirctl push prompt …`, `dirctl get prompts`, `dirctl search --type prompt`), Indexer (KV keys such as `model`, `task`, `variables`, tags), NamingHints (derive `prompt-name[:tag]` from prompt metadata), Renderer, ClaimPolicy, and install support (`dirctl install <prompt-ref> --into <tool>` writes into the target tool's prompt/skill location). Prompts participate in the DAG like everything else: versioned, signed, ownable, attachable (e.g. attach a prompt to the agent that uses it, or attach eval results to a prompt), searchable, announceable/discoverable on the network by content type + keys.
 
 ## 8. Routing / Decentralized Discovery Semantics
 
@@ -306,7 +384,7 @@ Run/deploy features are supported **through content type objects**, composed ent
 
 - **Executor capability** (handler-provided, §7): for content type T, defines how to materialize and launch/stop an instance — a local process, a container, or a remote target. The core knows nothing about execution; it only dispatches to the handler.
 - **`dirctl run <ref>`** = resolve `Ref` (Naming) → optional policy gate `Verify` (Trust — "only run signed/approved artifacts") → `Pull` (Artifact) → delegate to the handler's Executor.
-- **Instance visibility**: launched instances register with the existing `RuntimeService`, so `dirctl runtime list` shows them alongside independently discovered MCP/A2A resources — one unified view of "what is running here".
+- **Instance visibility**: launched instances register with the existing `RuntimeService`, so `dirctl get instances` shows them alongside independently discovered MCP/A2A resources — one unified view of "what is running here".
 - **Deploy configuration is an artifact**: a `deployment.spec` content type (target, env, parameters) pushed and attached as a referrer to the subject (`ArtifactService.Attach`). Deploying = executing the subject with an attached spec: `dirctl deploy <ref> --spec <spec-ref>`.
 - **Deploy state is a claim**: after acting, the executor attaches a signed `deployment-record` claim (§5.1) back onto the subject. Deployments are therefore visible in `artifact tree`, searchable via the KV indexer ("what is deployed to prod?"), and attestable/auditable via Trust — with zero new gRPC services.
 
@@ -327,10 +405,10 @@ Policies are a **cross-cutting plugin layer**, not a per-component feature. One 
 
 Design:
 
-- **Engine as plugin**: a `PolicyEngine` plugin interface (evaluate(input document) → decision + reasons). OPA/Rego ships built-in; other engines (CEL, cedar, external OPA server) can be plugged without core changes. Policies are evaluated over structured input the PEPs assemble: artifact descriptor + annotations, referrer/claim graph, resolved identities, request context (principal, RPC, namespace).
-- **Policies are artifacts too**: policy bundles are stored as content-typed artifacts (`policy.rego` content type) — versioned, named (`team/policies:v3`), signable, and verifiable like everything else. Activation binds a policy artifact to an enforcement point + scope (namespace/content type) in server config.
-- **gRPC surface — minimal by design**: engines are in-process plugins and do *not* require gRPC. A thin optional `PolicyService` is exposed only for management and introspection: `List` (active bindings), `Eval` (dry-run a policy against a ref — powers `dirctl policy eval`), `Bind`/`Unbind` (activate a policy artifact at an enforcement point). Everything else flows through existing services.
-- **CLI**: `dirctl policy list`, `dirctl policy eval <policy-ref> --input <ref>` (dry-run), `dirctl policy bind <policy-ref> --at verify --scope 'team/*'`, `dirctl policy unbind …`. Policy authoring/distribution uses the normal artifact flow (`push`/`tag`/`sign`).
+- **Engine as plugin**: a `PolicyEngine` plugin interface (evaluate(input document) → decision + reasons). OPA/Rego ships built-in and is usable **both in-process (Go library) and against an external OPA server/sidecar — both modes supported from day one**; other engines (CEL, cedar) can be plugged without core changes. Policies are evaluated over structured input the PEPs assemble: artifact descriptor + annotations, referrer/claim graph, resolved identities, request context (principal, RPC, namespace).
+- **Policies are managed externally — not stored in the OCI store**: policy bundles live outside the artifact DAG, either as **files (loaded from the filesystem via CLI/SDK and uploaded at bind time)** or **behind an external policy API** (e.g. an OPA bundle server the engine fetches from). Bindings — policy source → enforcement point + scope (namespace/content type) — are operator-owned server state/config. Policies are not content-addressed, not taggable, and not part of the DAG; versioning/distribution is the concern of the external source (git, OPA bundles).
+- **gRPC surface — minimal by design**: engines are in-process plugins and do *not* require gRPC. A thin optional `PolicyService` is exposed only for management and introspection: `List` (active bindings), `Eval` (dry-run a policy against a ref — powers `dirctl policy eval`), `Bind`/`Unbind` (register a policy source — inline content or URL — at an enforcement point). Everything else flows through existing services.
+- **CLI**: `dirctl get policies`, `dirctl policy eval <file|url> --input <ref>` (dry-run), `dirctl policy bind <file|url> --at verify --scope 'team/*'`, `dirctl policy unbind …`. Policy authoring/versioning/distribution happens outside Directory (git, OPA bundle pipelines); Directory only binds and evaluates.
 
 ### 10.1 Garbage Collection Policies
 
@@ -338,6 +416,17 @@ Retention/cleanup is expressed with the same policy machinery, executed by a **G
 
 - A GC policy is a Rego rule over artifact metadata + claim graph selecting candidates for deletion, e.g.: *"delete artifacts with no `signature` referrer older than 10 days"*, *"keep only the last 5 versions per name"*, *"delete anything with a `revocation-claim` after 30 days"*, *"never delete artifacts with an approved `review-claim`"*.
 - Jobs run on a schedule (or on demand via `dirctl gc run`), always support `--dry-run`, and emit deletion reports as events; deletions respect the DAG rules (referrer handling per the deletion/GC open question).
-- CLI: `dirctl gc run [--dry-run]`, `dirctl gc status`, `dirctl gc policies` (which GC policies are bound). SDK: `c.Policy.*` and `c.GC.*` mirroring these.
+- CLI: `dirctl gc run [--dry-run]`, `dirctl gc status` (incl. which GC policies are bound). SDK: `c.Policy.*` and `c.GC.*` mirroring these.
 
-This keeps one mental model: **policies are versioned, signed artifacts; enforcement points are fixed; engines are plugins.**
+This keeps one mental model: **policies are external, operator-managed sources; enforcement points are fixed; engines are plugins.**
+
+Defaults across enforcement points (decided): without a bound policy the system **informs but never blocks** — badges (✓/⚠) in `pull`/`search`/`describe` output, `run`/`deploy` fail-open. Binding a policy flips the relevant gate to enforcing. Nothing is ever deleted without a bound GC policy.
+
+## 11. HTTP Gateway & Web UI
+
+A JSON/HTTP API is generated from the same v2 protos via `google.api.http` annotations (grpc-gateway) — no hand-written facade, and CI/scripts get a REST API for free.
+
+- **Read-only explorer endpoints first** (all GET): `/v2/artifacts`, `/v2/artifacts/{ref}`, `/v2/artifacts/{ref}/referrers`, `/v2/tags`, `/v2/tags/{name}/history`, `/v2/search`, `/v2/verify/{ref}`, `/v2/runtime/instances`. Every endpoint maps 1:1 to an existing v2 RPC — no gateway-only functionality.
+- **`dirctl serve [--addr]`** hosts the gateway on the daemon/server, with CORS config for a local web dev server (e.g. a Vite app using plain `fetch()`).
+- **Mutations stay gRPC/CLI-only** until a browser authn story is designed; server-streaming RPCs (`discover`, `listen`) are deferred from REST (SSE later).
+- Web-UI deep links use `dir://` URIs (§5.2) as the canonical ref serialization.
