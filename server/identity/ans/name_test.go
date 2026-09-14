@@ -56,11 +56,11 @@ func TestParseAgentName(t *testing.T) {
 }
 
 func TestParseAgentNameTruncatesTheHostItEchoes(t *testing.T) {
-	host := strings.Repeat("a", maxHostLength+50)
+	host := strings.Repeat("a", maxEchoLength+50)
 
 	_, err := parseAgentName(ansScheme + testVersion + "." + host)
 	require.Error(t, err)
-	assert.Contains(t, err.Error(), `host "`+host[:maxHostLength]+`"`)
+	assert.Contains(t, err.Error(), `host "`+host[:maxEchoLength]+`"`)
 	assert.NotContains(t, err.Error(), host)
 }
 

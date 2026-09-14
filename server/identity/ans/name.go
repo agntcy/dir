@@ -35,7 +35,7 @@ func parseAgentName(subject string) (agentName, error) {
 
 	fqdn, err := models.NewFqdn(parsed.Host)
 	if err != nil {
-		return agentName{}, failWith(stageName, err, fmt.Sprintf("host %q is not a valid DNS name", truncateHost(parsed.Host)))
+		return agentName{}, failWith(stageName, err, fmt.Sprintf("host %q is not a valid DNS name", truncate(parsed.Host)))
 	}
 
 	name := agentName{host: fqdn.String(), fqdn: fqdn, version: parsed.Version}

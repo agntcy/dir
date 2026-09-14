@@ -32,9 +32,10 @@ const (
 	// "/": the empty segment before the leading slash plus three.
 	badgePathSegments = 4
 
-	// maxHostLength bounds a host echoed in an error text: the longest name
-	// DNS carries, so a record anyone can publish cannot flood the stored error.
-	maxHostLength = 253
+	// maxEchoLength bounds a value taken from DNS or from a claim before an
+	// error or a log line echoes it: the longest name DNS carries, so a record
+	// anyone can publish cannot flood the stored error.
+	maxEchoLength = 253
 )
 
 // parseBadgeURL is the SSRF gate between a DNS record anyone can publish and
@@ -110,12 +111,12 @@ func badgeSourceName(source verify.BadgeRecordSource) string {
 	return "_ans-badge"
 }
 
-// truncateHost bounds a host taken from DNS or from a claim before an error
-// text echoes it.
-func truncateHost(host string) string {
-	if len(host) <= maxHostLength {
-		return host
+// truncate bounds text taken from DNS, a transparency log, or a claim before
+// an error or a log line echoes it.
+func truncate(text string) string {
+	if len(text) <= maxEchoLength {
+		return text
 	}
 
-	return host[:maxHostLength]
+	return text[:maxEchoLength]
 }

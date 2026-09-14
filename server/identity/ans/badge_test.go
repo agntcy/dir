@@ -76,22 +76,22 @@ func TestBadgeSourceName(t *testing.T) {
 }
 
 func TestTruncateHost(t *testing.T) {
-	long := strings.Repeat("a", maxHostLength+1)
+	long := strings.Repeat("a", maxEchoLength+1)
 
 	tests := []struct {
 		name string
 		host string
 		want string
 	}{
-		{name: "short host is kept", host: testLogHost, want: testLogHost},
-		{name: "host at the limit is kept", host: long[:maxHostLength], want: long[:maxHostLength]},
-		{name: "longer host is cut", host: long, want: long[:maxHostLength]},
+		{name: "short text is kept", host: testLogHost, want: testLogHost},
+		{name: "text at the limit is kept", host: long[:maxEchoLength], want: long[:maxEchoLength]},
+		{name: "longer text is cut", host: long, want: long[:maxEchoLength]},
 		{name: "empty", host: "", want: ""},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			assert.Equal(t, tt.want, truncateHost(tt.host))
+			assert.Equal(t, tt.want, truncate(tt.host))
 		})
 	}
 }
