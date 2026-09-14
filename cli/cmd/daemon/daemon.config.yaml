@@ -105,6 +105,9 @@ server:
     # catalog_title: "AI Catalog"
   naming:
     ttl: 168h
+  policy:
+    enabled: false
+    dir: policies
 
 reconciler:
   regsync:
