@@ -10,6 +10,8 @@ import (
 	"time"
 
 	"github.com/agntcy/dir/reconciler/tasks"
+	"github.com/agntcy/dir/reconciler/tasks/identity"
+	servertypes "github.com/agntcy/dir/server/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -138,3 +140,62 @@ func TestStart_ContextCancelStopsTaskLoop(t *testing.T) {
 
 // Ensure mockTask satisfies tasks.Task.
 var _ tasks.Task = (*mockTask)(nil)
+
+// plainStore is a store without referrer support.
+type plainStore struct {
+	servertypes.StoreAPI
+}
+
+// referrerStore is a store with referrer support; the task constructor only
+// keeps a reference to it.
+type referrerStore struct {
+	servertypes.FullStore
+}
+
+func TestNewIdentityTask(t *testing.T) {
+	tests := []struct {
+		name     string
+		cfg      identity.Config
+		store    servertypes.StoreAPI
+		wantTask bool
+		wantErr  string
+	}{
+		{
+			name:  "a store without referrers skips the task",
+			cfg:   identity.Config{Enabled: true},
+			store: plainStore{},
+		},
+		{
+			name:    "a SPIFFE bundle that cannot be loaded fails registration",
+			cfg:     identity.Config{Enabled: true, SpiffeTrustDomains: map[string]string{"acme.com": "/nonexistent/bundle.pem"}},
+			store:   referrerStore{},
+			wantErr: "SPIFFE trust bundles",
+		},
+		{
+			name:     "a referrer store yields the identity task",
+			cfg:      identity.Config{Enabled: true},
+			store:    referrerStore{},
+			wantTask: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			task, ok, err := newIdentityTask(tt.cfg, nil, tt.store)
+			if tt.wantErr != "" {
+				require.ErrorContains(t, err, tt.wantErr)
+
+				return
+			}
+
+			require.NoError(t, err)
+			assert.Equal(t, tt.wantTask, ok)
+
+			if tt.wantTask {
+				assert.Equal(t, "identity", task.Name())
+			} else {
+				assert.Nil(t, task)
+			}
+		})
+	}
+}
