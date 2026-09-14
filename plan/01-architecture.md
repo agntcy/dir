@@ -236,11 +236,13 @@ Define a **ContentTypeHandler** contract (in-process Go interface first; out-of-
 5. **ClaimPolicy** — whether/how objects of type T can claim an identity (consumed by Trust).
 6. **NamingHints** — which annotations drive auto-tagging (`org/name:version` derivation).
 7. **Renderer** — pretty-print for `dirctl artifact info` / `tree`.
-8. **CliNoun** — a handler may register a CLI noun (e.g. `agent`, `mcp`, `skill`); `dirctl` generates typed sugar commands from it (`dirctl agent push|pull|list` ≙ `dirctl artifact … --type <ct>` with the type's default renderer). The core stays generic; the UX is typed.
+8. **CliNoun** — a handler may register a CLI noun (e.g. `agent`, `mcp`, `skill`, `prompt`); `dirctl` generates typed sugar commands from it (`dirctl agent push|pull|list` ≙ `dirctl artifact … --type <ct>` with the type's default renderer). The core stays generic; the UX is typed.
 9. **Executor** *(optional)* — how to materialize and launch/stop an instance of T (process, container, remote target). Powers `dirctl run`/`deploy` (see §9).
 10. **Fetcher** *(reserved slot — not implemented in v2)* — importing artifacts of type T from non-OCI sources (GitHub releases, PyPI, HTTP), normalizing them into content-typed artifacts with provenance annotations. The capability slot is reserved in the contract so this can be added later without changing the model.
 
-Registration: a small manifest (name, content type, capabilities) + a registry in the server config. Built-in types (`oasf.record`, `signature`, `identity-claim`, `ownership-claim`, `a2a.card`, `mcp.server`) ship as first-party handlers using the exact same interface — proving the extension path. Adding "content type X with custom KV keys and routing" = write one handler, register it, no core changes.
+Registration: a small manifest (name, content type, capabilities) + a registry in the server config. Built-in types (`oasf.record`, `signature`, `identity-claim`, `ownership-claim`, `a2a.card`, `mcp.server`, `prompt`) ship as first-party handlers using the exact same interface — proving the extension path. Adding "content type X with custom KV keys and routing" = write one handler, register it, no core changes.
+
+**Prompts as first-class citizens**: the `prompt` content type ships with the full capability set — CLI noun (`dirctl prompt push|pull|list|search`), Indexer (KV keys such as `model`, `task`, `variables`, tags), NamingHints (auto-tag `org/prompt-name:version` from prompt metadata), Renderer, ClaimPolicy, and install support (`dirctl install <prompt-ref> --into <tool>` writes into the target tool's prompt/skill location). Prompts participate in the DAG like everything else: versioned, signed, ownable, attachable (e.g. attach a prompt to the agent that uses it, or attach eval results to a prompt), searchable, announceable/discoverable on the network by content type + keys.
 
 ## 8. Routing / Decentralized Discovery Semantics
 

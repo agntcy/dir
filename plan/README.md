@@ -27,7 +27,7 @@ Directory v2 is organized into six components plus one cross-cutting trust utili
 
 Additional consolidated decisions:
 
-- **Typed CLI sugar**: content-type handlers can register CLI nouns (`dirctl agent …`, `dirctl mcp …`) generated over the generic `artifact` core.
+- **Typed CLI sugar**: content-type handlers can register CLI nouns (`dirctl agent …`, `dirctl mcp …`, `dirctl prompt …`) generated over the generic `artifact` core. First-party nouns include agents, MCP servers, skills, and **prompts** — all first-class citizens with versioning, naming, signing, search, and install support.
 - **Execution via content types**: handlers may provide an optional **Executor** capability, enabling `dirctl run`/`deploy` composed purely from existing interfaces (verify → pull → execute → instance visible via Runtime; deploy specs and deployment records are ordinary artifacts/claims). Directory does not become an orchestrator.
 - **Install integration retained**: the existing `dirctl install` machinery (agent tooling configs, skill folders) carries forward, connected to v2 refs.
 - **Policy framework (Rego/OPA, plugin architecture)**: one pluggable policy engine enforced at fixed points — content admission, authz, verify, execution gates, and **garbage collection** (e.g. "delete everything unsigned older than 10 days"). Policies are themselves versioned, signed artifacts; a thin optional `PolicyService` covers management/dry-run only.

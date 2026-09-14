@@ -44,7 +44,8 @@ Status: **local MCP and A2A discovery already implemented**; agent skills discov
 | Store *anything* agent-adjacent (prompts, configs, datasets, evals) | `dirctl artifact push prompt.txt --type mytype.prompt` | Same workflow for any content type — one tool for all agentic assets |
 | Attach one object to another | `dirctl artifact attach alex/summarizer:v1 eval.json --type mytype.eval` | Generic referrer in the DAG |
 | See everything attached to my agent | `dirctl artifact tree alex/summarizer:v1` | The DAG: signatures, ownership, docs, whatever was attached |
-| Think in nouns, not content types | `dirctl agent push card.json`, `dirctl mcp list`, `dirctl skill pull team/x:v1` | Typed sugar generated from ContentTypeHandler CLI nouns — same generic core underneath |
+| Think in nouns, not content types | `dirctl agent push card.json`, `dirctl mcp list`, `dirctl skill pull team/x:v1`, `dirctl prompt push sum.md` | Typed sugar generated from ContentTypeHandler CLI nouns — same generic core underneath |
+| Version & share my prompts like any artifact | `dirctl prompt push summarize.md` + `dirctl tag <cid> team/summarize-prompt:v3` | Prompts are first-class: versioned, named, signed, searchable (`dirctl prompt search --key task=summarization`), attachable to the agents that use them |
 | Wire an artifact into my coding tools | `dirctl install <ref> --into claude-code\|claude-desktop\|…` | **Existing feature (v1 `dirctl install`), retained** — pulls the artifact and configures it into local agent tooling (MCP config, skill folders) |
 
 **Why Alex cares:** replaces "final_v2_REAL.json in a Slack thread" with versioned, addressable, named artifacts.
@@ -127,7 +128,7 @@ The Go SDK (`client` module) mirrors the CLI 1:1. Other language SDKs are genera
 | Inspect metadata | `dirctl artifact info <ref>` | `c.Artifact.Lookup(ctx, ref)` |
 | Render DAG | `dirctl artifact tree <ref>` | `c.Artifact.Walk(ctx, ref, fn)` |
 | Delete | `dirctl artifact rm <ref>` | `c.Artifact.Delete(ctx, ref)` |
-| Typed sugar (per registered CLI noun) | `dirctl agent push\|pull\|list`, `dirctl mcp list`, `dirctl skill pull …` | same SDK calls with the type preset (`c.Artifact.Push(ctx, req)` with `ContentType` fixed) |
+| Typed sugar (per registered CLI noun) | `dirctl agent push\|pull\|list`, `dirctl mcp list`, `dirctl skill pull …`, `dirctl prompt push\|pull\|list\|search` | same SDK calls with the type preset (`c.Artifact.Push(ctx, req)` with `ContentType` fixed) |
 | Run / deploy (types with Executor) | `dirctl run <ref>`, `dirctl deploy <ref> --spec <ref>` | `c.Artifact.Pull` + handler Executor dispatch; instances via `c.Runtime.List` |
 | Install into agent tooling (existing) | `dirctl install <ref> --into <tool>` | pull + local agent config apply (existing install machinery) |
 
