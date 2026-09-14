@@ -198,7 +198,7 @@ Installed artifacts carry no provenance of their own: an Agent Skill is marked
 only with its slug, with no version and no CID. So every install records what
 it wrote in `$XDG_CONFIG_HOME/dirctl/installed.json` (`~/.config` when
 `XDG_CONFIG_HOME` is unset) — one row per record, agent, and scope, holding the
-version and CID that were installed, the client context it came from, the skill
+version and CID that were installed, the Directory it came from, the skill
 path and its file list, and the MCP server keys.
 
 `scope` is `global`, or the **absolute path of the repository** a `--project`
@@ -213,12 +213,15 @@ The manifest is a **local record of what happened**, never a file to commit —
 it is full of absolute paths. A committed file pinning what a team should have
 is a different, declarative thing, and not this one.
 
-The context is recorded because "is there a newer version?" is a question about
-one Directory. A row installed from a different context is reported as
-`skipped` rather than compared against the Directory configured now. An empty
-name on either side means "no claim" and matches anything: a row written by an
-older `dirctl` stays checkable, and a `dirctl` pointed at a server through
-`DIRECTORY_CLIENT_SERVER_ADDRESS` alone does not skip every row it has.
+The Directory is recorded because "is there a newer version?" is a question
+about one Directory. A row installed from a different one is reported as
+`skipped` rather than compared against the Directory configured now.
+
+It is the **server address**, not the context name, because a name is not an
+identity: `--server-addr` and `DIRECTORY_CLIENT_SERVER_ADDRESS` both replace a
+context's endpoint while leaving its name in place, and two contexts can point
+at one Directory. An empty address on either side means "no claim" and matches
+anything, so a row written by an older `dirctl` stays checkable.
 
 The row lists the artifacts that were **actually written**, not the ones the
 record's modules imply. An agent that received nothing — skipped or failed — is
@@ -260,8 +263,9 @@ Lists what `install` has put on this machine, read from the install manifest.
 Reads only local state and does not contact the Directory.
 
 With no argument it prints one row per installed package **and agent**: name,
-version, agent, artifact kind (`skill`, `mcp`, or `skill+mcp`), scope, and
-flags (`pinned`, `builtin`, `missing`).
+agent, artifact kind (`skill`, `mcp`, or `skill+mcp`), scope, version, and
+flags (`pinned`, `builtin`, `missing`). The agent comes second, next to the
+name it qualifies, because one package occupies one row per agent.
 
 With a package name it prints that package's installed artifacts — the skill
 folder with each of its files, and each MCP server key with the config file it
@@ -300,7 +304,7 @@ because its absence from the upgrade list needs explaining — a silently omitte
 | `missing` | The recorded artifacts are gone, so nothing can be upgraded. |
 | `not found` | No record under that name in the configured Directory. |
 | `non-semver` | The versions carry no ordering, so no claim is made. |
-| `skipped` | The row was installed from a different client context. |
+| `skipped` | The row was installed from a different Directory. |
 
 Version enumeration is one lightweight call per **distinct package name** — a
 package installed into three agents costs one call, not three — and pulls no

@@ -61,7 +61,7 @@ Statuses:
   missing      the recorded artifacts are gone, so nothing can be upgraded
   not found    no record under that name in the configured Directory
   non-semver   the versions carry no ordering, so no claim is made
-  skipped      the row was installed from a different client context
+  skipped      the row was installed from a different Directory
 
 Version enumeration is one lightweight call per distinct package name — a
 package installed into three agents costs one call, not three. Built-in
@@ -107,7 +107,7 @@ func runOutdated(cmd *cobra.Command, args []string) error {
 		Resolve:        resolve,
 		Stat:           func(entry pkgstate.Entry) bool { return agentinstall.Present(entry, env) },
 		BuiltinVersion: skill.RecordVersion(),
-		Context:        ActiveContextName(),
+		Directory:      ActiveDirectory(),
 		Names:          args,
 		Prerelease:     outdatedFlags.pre,
 		IncludePinned:  outdatedFlags.includePinned,
@@ -234,14 +234,36 @@ func attentionOnly(rows []pkgupdate.Row) []pkgupdate.Row {
 	return kept
 }
 
-// nothingToShow distinguishes "no packages installed" from "everything checked
-// out fine", which are very different answers to the same command.
+// nothingToShow explains an empty table.
+//
+// "All packages are up to date" would be a lie when the only rows are pinned
+// ones holding a newer version back: the default view hides them, but they are
+// not current. The three cases are kept apart, and the held one says how to
+// see what it is hiding.
 func nothingToShow(rows []pkgupdate.Row) string {
 	if len(rows) == 0 {
 		return "No packages installed."
 	}
 
+	if held := count(rows, func(r pkgupdate.Row) bool { return r.Status == pkgupdate.StatusPinned }); held > 0 {
+		return fmt.Sprintf(
+			"Nothing to upgrade. %s held at a version with something newer; pass --all to see them.",
+			plural(held, "package is"))
+	}
+
 	return "All packages are up to date."
+}
+
+func count(rows []pkgupdate.Row, keep func(pkgupdate.Row) bool) int {
+	n := 0
+
+	for _, row := range rows {
+		if keep(row) {
+			n++
+		}
+	}
+
+	return n
 }
 
 // latestCell shows where upstream sits. An upstream that is behind the
@@ -268,7 +290,10 @@ func statusCell(row pkgupdate.Row) string {
 		return status + " (content changed)"
 	}
 
-	if row.Detail != "" && !row.Status.Assessed() {
+	// Shown for an assessed row too: "up to date" carries the reason when the
+	// only upstream candidates were prereleases, and without it the user
+	// cannot see why nothing was compared.
+	if row.Detail != "" {
 		return status + " (" + row.Detail + ")"
 	}
 

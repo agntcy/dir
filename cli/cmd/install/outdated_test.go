@@ -124,13 +124,14 @@ func TestStatusCellExplainsWhatVersionsAloneDoNot(t *testing.T) {
 	assert.Equal(t, "upgradable (content changed)", statusCell(changed))
 
 	skipped := checked("cisco.com/agent", "1.0.0", "", pkgupdate.StatusSkipped)
-	skipped.Detail = `installed from context "staging"`
-	assert.Equal(t, `skipped (installed from context "staging")`, statusCell(skipped))
+	skipped.Detail = "installed from staging:443"
+	assert.Equal(t, "skipped (installed from staging:443)", statusCell(skipped))
 
-	// A detail on an assessed row adds nothing the version pair does not say.
+	// An assessed row keeps its detail too: without it, nothing says why no
+	// candidate was compared.
 	hinted := checked("cisco.com/agent", "1.0.0", "", pkgupdate.StatusUpToDate)
 	hinted.Detail = "only prereleases published; pass --pre to consider them"
-	assert.Equal(t, "up to date", statusCell(hinted))
+	assert.Equal(t, "up to date (only prereleases published; pass --pre to consider them)", statusCell(hinted))
 }
 
 func TestExitCodeIsGatedOnUpgradableAlone(t *testing.T) {
@@ -190,4 +191,16 @@ func TestOutdatedJSONCarriesTheKind(t *testing.T) {
 	require.NoError(t, json.Unmarshal([]byte(reportCmd(t, []pkgupdate.Row{row}, true)), &rows))
 	require.Len(t, rows, 1)
 	assert.Equal(t, "mcp", rows[0].Kind)
+}
+
+func TestPinnedRowsAreNotCalledUpToDate(t *testing.T) {
+	// The default view hides a held row, but hiding it is not the same as it
+	// being current.
+	out := reportCmd(t, []pkgupdate.Row{
+		checked("cisco.com/held", "1.0.0", "2.0.0", pkgupdate.StatusPinned),
+	}, false)
+
+	assert.Contains(t, out, "Nothing to upgrade.")
+	assert.Contains(t, out, "1 package is held")
+	assert.NotContains(t, out, "All packages are up to date")
 }

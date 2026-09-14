@@ -145,14 +145,19 @@ type Entry struct {
 	// Origin is where to look for a newer version.
 	Origin Origin `json:"origin"`
 
-	// Context is the client context this package was installed from, which is
-	// what decides whether a later version check means anything: a row pulled
-	// from a colleague's Directory says nothing about the one configured now.
+	// Directory is the server address this package was installed from, which
+	// is what decides whether a later version check means anything: a row
+	// pulled from a colleague's Directory says nothing about the one
+	// configured now.
+	//
+	// The address rather than the context name, because a name is not an
+	// identity: an endpoint override replaces a context's server while leaving
+	// its name in place, and two contexts can point at one Directory.
 	//
 	// Empty means "no claim". Rows written before this field existed have it,
-	// and so do installs made with no resolvable context, so an empty value has
-	// to match whatever context is active rather than be treated as a mismatch.
-	Context string `json:"context,omitempty"`
+	// and so do installs made with no resolvable address, so an empty value
+	// has to match whatever Directory is active rather than be a mismatch.
+	Directory string `json:"directory,omitempty"`
 
 	// Pinned holds the package at Version, so a bare upgrade skips it.
 	Pinned bool `json:"pinned,omitempty"`
@@ -196,21 +201,21 @@ func (e Entry) Kind() string {
 	}
 }
 
-// ContextMatches reports whether this row can be checked against the active
-// client context.
+// DirectoryMatches reports whether this row can be checked against the active
+// Directory.
 //
-// An empty name on either side means "no claim", and matches anything. That
+// An empty address on either side means "no claim", and matches anything. That
 // cuts both ways on purpose:
 //
-//   - A row with no recorded context — written by an earlier dirctl, or
-//     installed with no resolvable context — stays checkable rather than
-//     becoming permanently unassessable.
-//   - A dirctl run with no named context, pointed at a server through
-//     DIRECTORY_CLIENT_SERVER_ADDRESS alone, does not skip every row it has.
+//   - A row with no recorded address — written by an earlier dirctl, or
+//     installed with none resolvable — stays checkable rather than becoming
+//     permanently unassessable.
+//   - A dirctl run that cannot resolve its own server address does not skip
+//     every row it has.
 //
-// Only two named contexts that differ are a real mismatch.
-func (e Entry) ContextMatches(active string) bool {
-	return e.Context == "" || active == "" || e.Context == active
+// Only two addresses that differ are a real mismatch.
+func (e Entry) DirectoryMatches(active string) bool {
+	return e.Directory == "" || active == "" || e.Directory == active
 }
 
 // WithCarriedArtifacts returns e with the artifacts prior still records but

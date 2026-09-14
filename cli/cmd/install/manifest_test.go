@@ -248,3 +248,25 @@ func TestManifestScopeNamesTheRepositoryForAProjectInstall(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, pkgstate.ProjectScope(cwd), manifestScope(agentcfg.Project))
 }
+
+func TestANoOpInstallStillRecordsTheRow(t *testing.T) {
+	// Reinstalling an already-correct package is how a row is backfilled for
+	// something installed before dirctl recorded installs, and how --pin takes
+	// hold without moving the version. All-unchanged outcomes must still be
+	// recorded.
+	path := isolateManifest(t)
+	cmd, _ := testCmd(t)
+
+	recordInstalls(cmd, []applied{{
+		record: testRecord("cisco.com/agent", "1.0.0"),
+		pinned: true,
+		outcomes: []agentcfg.Outcome{
+			{Agent: "Claude Code", Artifact: agentcfg.ArtifactSkill, Path: "/skills/x", Action: agentcfg.ActionUnchanged},
+		},
+	}}, []agentcfg.Agent{claudeCode}, agentcfg.Global)
+
+	m, err := pkgstate.Load(path)
+	require.NoError(t, err)
+	require.Len(t, m.Entries, 1)
+	assert.True(t, m.Entries[0].Pinned)
+}

@@ -55,8 +55,8 @@ const (
 	// can be made either way. Reported rather than guessed.
 	StatusNonSemver Status = "non-semver"
 
-	// StatusSkipped means the row was installed from a different client context,
-	// so checking it against the active one would report nonsense.
+	// StatusSkipped means the row was installed from a different Directory, so
+	// checking it against the active one would report nonsense.
 	StatusSkipped Status = "skipped"
 )
 
@@ -105,9 +105,9 @@ type Options struct {
 	// locally, which is the upstream for rows with origin "builtin".
 	BuiltinVersion string
 
-	// Context is the active client context name. A row recorded against a
+	// Directory is the active server address. A row recorded against a
 	// different one is skipped.
-	Context string
+	Directory string
 
 	// Names restricts the check to these package names. Empty checks every row.
 	Names []string
@@ -185,9 +185,9 @@ func check(ctx context.Context, entry pkgstate.Entry, opts Options, res *resolve
 
 	// A row from another Directory cannot be judged against this one. Built-in
 	// rows are exempt: their upstream is this binary, not any Directory.
-	if entry.Origin != pkgstate.OriginBuiltin && !entry.ContextMatches(opts.Context) {
+	if entry.Origin != pkgstate.OriginBuiltin && !entry.DirectoryMatches(opts.Directory) {
 		row.Status = StatusSkipped
-		row.Detail = fmt.Sprintf("installed from context %q", entry.Context)
+		row.Detail = fmt.Sprintf("installed from %s", entry.Directory)
 
 		return row
 	}
@@ -242,6 +242,17 @@ func directoryRow(row Row, upstream []Upstream, opts Options) Row {
 	if len(orderable) == 0 {
 		row.Status = StatusNonSemver
 		row.Detail = "no upstream version is orderable"
+
+		return row
+	}
+
+	// An installed version that carries no ordering is reported before any
+	// candidate is chosen. Otherwise the only-prerelease branch below could
+	// call such a row "up to date", and an unassessable row would vanish from
+	// the default view.
+	if pkgver.Canonical(row.Entry.Version) == "" {
+		row.Status = StatusNonSemver
+		row.Detail = fmt.Sprintf("installed version %q carries no ordering", row.Entry.Version)
 
 		return row
 	}

@@ -215,29 +215,29 @@ func TestUnorderableUpstreamVersionsAreIgnoredWhenOneIsOrderable(t *testing.T) {
 	assert.Equal(t, "2.0.0", rows[0].Latest)
 }
 
-func TestRowFromAnotherContextIsSkipped(t *testing.T) {
+func TestRowFromAnotherDirectoryIsSkipped(t *testing.T) {
 	other := entry("cisco.com/agent", "1.0.0", "cid")
-	other.Context = "staging"
+	other.Directory = "staging:443"
 
 	rows := Check(t.Context(), []pkgstate.Entry{other},
 		Options{
-			Context: "local",
-			Resolve: staticResolver([]Upstream{{Version: "2.0.0"}}, nil),
+			Directory: "localhost:8888",
+			Resolve:   staticResolver([]Upstream{{Version: "2.0.0"}}, nil),
 		},
 	)
 
 	require.Len(t, rows, 1)
 	assert.Equal(t, StatusSkipped, rows[0].Status)
-	assert.Contains(t, rows[0].Detail, "staging")
+	assert.Contains(t, rows[0].Detail, "staging:443")
 }
 
-func TestRowWithoutARecordedContextIsNeverSkipped(t *testing.T) {
-	// Rows written by an earlier dirctl carry no context and must stay checkable.
+func TestRowWithoutARecordedDirectoryIsNeverSkipped(t *testing.T) {
+	// Rows written by an earlier dirctl carry no address and stay checkable.
 	rows := Check(t.Context(),
 		[]pkgstate.Entry{entry("cisco.com/agent", "1.0.0", "cid")},
 		Options{
-			Context: "local",
-			Resolve: staticResolver([]Upstream{{Version: "2.0.0", CID: "cid-new"}}, nil),
+			Directory: "localhost:8888",
+			Resolve:   staticResolver([]Upstream{{Version: "2.0.0", CID: "cid-new"}}, nil),
 		},
 	)
 
@@ -245,11 +245,10 @@ func TestRowWithoutARecordedContextIsNeverSkipped(t *testing.T) {
 	assert.Equal(t, StatusUpgradable, rows[0].Status)
 }
 
-func TestAnUnnamedActiveContextSkipsNothing(t *testing.T) {
-	// dirctl pointed at a server through DIRECTORY_CLIENT_SERVER_ADDRESS alone
-	// has no context name, and must not skip every row it has.
+func TestAnUnknownActiveDirectorySkipsNothing(t *testing.T) {
+	// A run that cannot resolve its own server address must not skip every row.
 	other := entry("cisco.com/agent", "1.0.0", "cid")
-	other.Context = "staging"
+	other.Directory = "staging:443"
 
 	rows := Check(t.Context(), []pkgstate.Entry{other},
 		Options{Resolve: staticResolver([]Upstream{{Version: "2.0.0", CID: "cid-new"}}, nil)},
@@ -308,15 +307,15 @@ func TestARowAlreadyOnAPrereleaseComparesAgainstPrereleases(t *testing.T) {
 func TestBuiltinRowsResolveAgainstTheBinaryAndIssueNoRPC(t *testing.T) {
 	builtin := entry("org.agntcy/directory", "1.0.0", "cid-built-earlier")
 	builtin.Origin = pkgstate.OriginBuiltin
-	// A context mismatch must not skip a built-in row: its upstream is this
+	// A Directory mismatch must not skip a built-in row: its upstream is this
 	// binary, not any Directory.
-	builtin.Context = "staging"
+	builtin.Directory = "staging:443"
 
 	calls := 0
 	rows := Check(t.Context(), []pkgstate.Entry{builtin}, Options{
 		Resolve:        staticResolver([]Upstream{{Version: "9.9.9"}}, &calls),
 		BuiltinVersion: "1.1.0",
-		Context:        "local",
+		Directory:      "localhost:8888",
 	})
 
 	require.Len(t, rows, 1)
@@ -404,4 +403,17 @@ func TestAMissingResolverIsAPerRowStatusNotAPanic(t *testing.T) {
 
 	require.Len(t, rows, 1)
 	assert.Equal(t, StatusNotFound, rows[0].Status)
+}
+
+func TestAnUnorderableVersionIsReportedEvenWhenOnlyPrereleasesExist(t *testing.T) {
+	// The only-prerelease branch used to call this "up to date", which would
+	// drop an unassessable row out of the default view.
+	rows := Check(t.Context(),
+		[]pkgstate.Entry{entry("cisco.com/agent", "main", "cid")},
+		Options{Resolve: staticResolver([]Upstream{{Version: "2.0.0-rc.1"}}, nil)},
+	)
+
+	require.Len(t, rows, 1)
+	assert.Equal(t, StatusNonSemver, rows[0].Status)
+	assert.Contains(t, rows[0].Detail, "main")
 }

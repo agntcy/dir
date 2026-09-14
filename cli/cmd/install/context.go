@@ -4,32 +4,34 @@
 package install
 
 import (
+	"strings"
+
 	cliconfig "github.com/agntcy/dir/cli/config"
-	clientconfig "github.com/agntcy/dir/client/config"
 )
 
-// ActiveContextName returns the name of the client context this invocation
-// talks to, following the same precedence dirctl itself uses: the --context
-// flag, then DIRECTORY_CLIENT_CONTEXT, then current_context in the config file.
+// ActiveDirectory returns the server address this invocation talks to.
 //
 // It is recorded on every install and compared on every version check, because
 // "is there a newer version?" is a question about one Directory. A package
 // pulled from a colleague's Directory says nothing about the one configured
 // now, and checking it against that one would report nonsense.
 //
-// An unresolvable context is the empty string, not an error. Validation is
-// skipped and unknown fields tolerated, so a partially-set or forward-compat
-// config still yields the name. An empty value means "no claim", and a row
-// carrying one is checked against whatever context is active.
-func ActiveContextName() string {
-	_, resolved, err := clientconfig.Resolve(clientconfig.ResolveOptions{
-		Context:            cliconfig.Context,
-		SkipValidation:     true,
-		AllowUnknownFields: true,
-	})
-	if err != nil || resolved == nil {
+// The address rather than the context name, because a name is not an identity.
+// `DIRECTORY_CLIENT_SERVER_ADDRESS` and `--server-addr` both replace a
+// context's endpoint while leaving its name in place, so an install made
+// against an overridden endpoint would be recorded under the context it did
+// not actually use, and later compared against that context's original server.
+// Two contexts pointing at one Directory are also the same Directory, which
+// the address gets right and the name does not.
+//
+// This reads the config that root.go already resolved, so every override the
+// invocation applied is included. An address that could not be resolved is the
+// empty string, which means "no claim": such a row is checked against whatever
+// Directory is active rather than skipped forever.
+func ActiveDirectory() string {
+	if cliconfig.Client == nil {
 		return ""
 	}
 
-	return resolved.Name
+	return strings.TrimSpace(cliconfig.Client.ServerAddress)
 }

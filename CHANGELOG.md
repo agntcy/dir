@@ -23,7 +23,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **CLI**: **BREAKING** — the manifest's `scope` is now `global` or a repository path, replacing the `project` literal, and `--project` installs are recorded. One manifest covers every repository on the machine. It is a local record and must not be committed: it holds absolute paths (#2133)
 - **CLI**: **BREAKING** — install and uninstall no longer print a line per unchanged agent. Skips and failures stay, and the tally still counts every outcome (#2133)
 - **CLI**: **BREAKING** — `dirctl install list` no longer shows detected agents. That view is now `dirctl install agents`; `install list` lists installed packages (#2029)
-- **CLI**: the install manifest records the client context each package was installed from, so a version check never compares a row against a Directory it did not come from (#2029)
+- **CLI**: the install manifest records the server address each package was installed from, so a version check never compares a row against a Directory it did not come from. The address rather than the context name, since an endpoint override leaves the name in place (#2029)
 
 ## [v1.7.0] - 2026-08-18
 

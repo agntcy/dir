@@ -65,13 +65,13 @@ dirctl install prune --dry-run          # rows whose artifacts are gone
 `outdated` reports a `status` per row: `upgradable` (a higher version, or the
 same version with new content), `up to date`, `pinned`, `missing` (the recorded
 artifacts are gone), `not found`, `non-semver`, `skipped` (installed from a
-different client context). Only `upgradable` and the unassessable rows are
+different Directory). Only `upgradable` and the unassessable rows are
 listed by default. Never present a lower upstream version as an upgrade — it is
 reported as `up to date` with the upstream version in parentheses.
 
 Install reads one reference per line from stdin when given no positional
-argument; `dirctl search -o raw` is the format to pipe. Filtering belongs to `dirctl search`, so install carries no copy of
-its flags. A piped run cannot prompt, because stdin is the list, so it needs
+argument; `dirctl search -o raw` is the format to pipe. Filtering belongs to
+`dirctl search`, so install carries no copy of its flags. A piped run cannot prompt, because stdin is the list, so it needs
 `--yes` or `--dry-run`. Only the highest version of each name is installed:
 two versions share one skill folder and one MCP key, so only one can be live.
 

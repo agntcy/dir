@@ -361,27 +361,26 @@ func TestKindIsDerivedFromTheArtifactsThatLanded(t *testing.T) {
 	assert.Equal(t, "none", pkgstate.Entry{}.Kind())
 }
 
-func TestOnlyTwoNamedContextsThatDifferAreAMismatch(t *testing.T) {
-	// Rows written before the field existed carry no context, and must stay
+func TestOnlyTwoKnownDirectoriesThatDifferAreAMismatch(t *testing.T) {
+	// Rows written before the field existed carry no address, and must stay
 	// checkable rather than become permanently unassessable.
-	assert.True(t, pkgstate.Entry{}.ContextMatches("local"))
-	// A dirctl pointed at a server through DIRECTORY_CLIENT_SERVER_ADDRESS
-	// alone has no context name, and must not skip every row it has.
-	assert.True(t, pkgstate.Entry{Context: "staging"}.ContextMatches(""))
-	assert.True(t, pkgstate.Entry{Context: "local"}.ContextMatches("local"))
-	assert.False(t, pkgstate.Entry{Context: "staging"}.ContextMatches("local"))
+	assert.True(t, pkgstate.Entry{}.DirectoryMatches("localhost:8888"))
+	// A run that cannot resolve its own address must not skip every row.
+	assert.True(t, pkgstate.Entry{Directory: "staging:443"}.DirectoryMatches(""))
+	assert.True(t, pkgstate.Entry{Directory: "localhost:8888"}.DirectoryMatches("localhost:8888"))
+	assert.False(t, pkgstate.Entry{Directory: "staging:443"}.DirectoryMatches("localhost:8888"))
 }
 
-func TestContextRoundTripsThroughTheFile(t *testing.T) {
+func TestDirectoryRoundTripsThroughTheFile(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "installed.json")
 
 	m := &pkgstate.Manifest{Entries: []pkgstate.Entry{{
-		Name: "cisco.com/agent", Agent: "claude-code", Scope: pkgstate.ScopeGlobal, Context: "staging",
+		Name: "cisco.com/agent", Agent: "claude-code", Scope: pkgstate.ScopeGlobal, Directory: "staging:443",
 	}}}
 	require.NoError(t, m.Save(path))
 
 	loaded, err := pkgstate.Load(path)
 	require.NoError(t, err)
 	require.Len(t, loaded.Entries, 1)
-	assert.Equal(t, "staging", loaded.Entries[0].Context)
+	assert.Equal(t, "staging:443", loaded.Entries[0].Directory)
 }

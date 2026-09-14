@@ -206,10 +206,17 @@ func runApplyCmd(
 	plan := apply(env, item.arts, selected, scope, true)
 	presenter.Printf(cmd, "%s", agentcfg.FormatPlan(plan))
 
-	// Nothing would move, so there is nothing worth confirming. Stopping here
-	// also keeps a run whose every artifact is already correct from asking the
-	// user to approve a no-op.
+	// Nothing would move on disk, so there is nothing worth confirming. The
+	// manifest is a different matter: reinstalling an already-correct package
+	// is how a row is backfilled for something installed before dirctl
+	// recorded installs, and how `--pin` takes hold without moving the
+	// version. So the plan is recorded, and only the prompt is skipped.
 	if !agentcfg.HasChanges(plan) {
+		if !opts.dryRun {
+			item.outcomes = plan
+			record(cmd, []applied{item}, selected, scope)
+		}
+
 		return nil
 	}
 
