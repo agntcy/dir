@@ -12,6 +12,18 @@ load but log a warning and never match; auto-promote it to `kind: enforcement`.
 enforcement timing behind the operator's back, and warn-and-ignore produces a
 policy that looks active and isn't — the worst outcome for a security control.
 
+The same failure exists for `enforcement`. A policy on `verified: false` or
+`scan-severity` loads fine on a node where that task is disabled, then matches every
+record or none (`README.md` §6). With the code defaults that is common:
+`reconciler/config/config.go` leaves `name` and `scan` off (`:181`, `:211`), while
+the daemon, `reconciler.env` and the `dir` Helm chart turn them on (`README.md` §3).
+
+*Recommendation, extended to enforcement:* at load, check each policy's facts
+against the reconciler task config. Refuse to load a destructive policy whose
+producer is disabled, naming the task; for scan that means the local task, unless
+the policy opts into peer verdicts under Q4. Load a `report` policy, but set
+`dir_policy_fact_unavailable{policy,fact}`.
+
 ### Q2 — `match`-only, or explicit `allow`/`deny` blocks?
 
 `match` describes what to act on, so allow-listing requires `exclude-` inversion
@@ -66,7 +78,10 @@ foreign scan data as second-class.
 
 Quarantine needs a column plus honouring it in every search query path, and a
 way out. But `trusted: false` is exactly the case where being wrong is likely
-(key not yet propagated, task not yet run).
+(key not yet propagated, task not yet run). `README.md` §6 now keeps that key out
+of destructive policies; what quarantine still guards against is a present verdict
+that turns out wrong, such as a `failed` signature row during key rotation or a
+peer's scan verdict (Q4).
 
 *Recommendation: yes, and make it the default for trust-derived policies.*
 Cheaper than restoring deleted records from peers, and it makes report-only →
@@ -140,11 +155,13 @@ exact content is not. Full reasoning in `tombstones.md`.
 
 `tombstones.md` argues that only stable, content-intrinsic verdicts should, and
 that absence-of-fact conditions (`trusted: false`, not-yet-scanned) must not,
-because they resolve on their own and a tombstone would make a transient state
-permanent and invisible.
+because absence is not a verdict. If it resolves on its own, a tombstone makes a
+transient state permanent and invisible; if it never does (an unsigned record
+under `trusted: false`), a tombstone records "never evaluated" as a judgement.
 
 *Recommendation: make it a property of the reason code, not of the action, and
 default to no tombstone.* A policy author should not be able to request a
-permanent tombstone for a transient condition. Scan verdicts sit in between —
+tombstone of any kind for an absence-of-fact condition, which can't drive a
+destructive action at all (`README.md` §6). Scan verdicts sit in between —
 tombstone with a TTL, since scanner rules and CVE data change under fixed
 content.

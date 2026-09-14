@@ -92,9 +92,9 @@ and that is where the actual enforcement argument lives.
 A tombstone outlives the reason it was created, and that is where this design can
 do real damage.
 
-Concretely: Gate B tombstones CID X for `trusted: false`. Then the publisher's
-public key propagates, or we relax the policy, or the signature task simply
-catches up. X is now perfectly acceptable — and permanently blocked, on every
+Concretely: Gate B tombstones CID X for `trusted-status: failed`. Then the
+publisher's public key propagates, or we relax the policy, or the signature task
+simply catches up. X is now perfectly acceptable — and permanently blocked, on every
 node that ran the policy. Worse, the block is invisible: the record just never
 appears.
 
@@ -109,12 +109,13 @@ Four rules to contain this:
 | no skills declared / oversized | yes | same |
 | deleted by retention (superseded version) | yes | the ideal case — the record is genuinely unwanted forever, and republish thrash is guaranteed without it |
 | scan verdict says unsafe | with a TTL | scanner rules and CVE data change, so identical content can flip to safe |
-| `trusted: false` / `verified: false` / not scanned yet | **no** | transient. This is *absence of a fact*, not a negative verdict, and it resolves on its own |
+| signature or name verdict `failed` | with a TTL | a present verdict, but keys rotate and propagate, so identical content can verify later |
+| `trusted: false` / `verified: false` / not scanned yet | **no** | *absence of a fact*, not a negative verdict. It may resolve (task not yet run, key not yet propagated) or never (the signature task never selects an unsigned record); a tombstone is wrong either way |
 
-That last row is the one that matters: the policy in `policy-model.md` example 1
-must **not** produce tombstones. Pair this with the `minAge` grace period —
-together they mean "don't judge a record before the facts exist, and don't make
-the judgement permanent when the input can change".
+That last row is the one that matters. Absence-matching keys can't drive a
+destructive action (`README.md` §6), so they never produce tombstones, and `minAge`
+covers the transient case. Together: "don't judge a record before the facts exist,
+and don't make the judgement permanent when the input can change".
 
 **2. Record provenance and invalidate on policy change.** Each entry stores the
 policy name and a policy generation/hash. When a policy's definition changes or

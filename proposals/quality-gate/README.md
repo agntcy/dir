@@ -68,16 +68,16 @@ an audit trail.
 This table is the single most important input to the design. Everything else
 follows from it.
 
-| Fact | Available at record push? | Populated by | Default interval |
+| Fact | Available at record push? | Populated by | Never produced for |
 |---|---|---|---|
 | `name`, `version`, `schema_version`, `description`, `authors` | yes | `ingest.ImportRecord` → `db.AddRecord` | — |
 | skills, domains, modules, locators, annotations | yes | same | — |
 | `oasf_created_at`, record size, CID | yes | same | — |
 | source (peer ID / trust domain / RPC) | yes, from context | — | — |
-| `signed` | **no** — signature arrives as a *separate referrer push* after the record | `ingest.ImportReferrer` | — |
-| `trusted` (signature verified) | no | signature reconciler task | 1m |
-| `verified` (name ownership) | no | name reconciler task | 1h |
-| `safe`, `max_severity` (scan) | no¹ | scan reconciler task | 6h |
+| `signed` | **no** — signature arrives as a *separate referrer push* after the record | `ingest.ImportReferrer`, and the indexer task for records synced with referrers; Signature referrers only (`server/ingest/ingest.go:115-116`, `reconciler/tasks/indexer/task.go:257-273`) | records with no Signature referrer; a PublicKey referrer alone does not set it |
+| `trusted` (signature verified) | no | signature reconciler task | unsigned records, and signed records whose signatures never verify (§6) |
+| `verified` (name ownership) | no | name reconciler task | unsigned records, and signed records whose name doesn't start with `http://` or `https://` (`server/database/gorm/naming.go:139-141`) |
+| `safe`, `max_severity` (scan) | no¹ | scan reconciler task | records no runner applies to; a not-applicable runner writes no row (`reconciler/tasks/scan/task.go:143-151`) |
 | version count for a name | no (set property) | — | — |
 
 ¹ Exception: a `ScanReport` **referrer** received over sync is written straight
@@ -86,6 +86,25 @@ with a synced record. That's a peer's verdict, not ours — the policy model nee
 to be able to say whether a foreign verdict counts.
 
 Anything in the "no" rows is a Gate B rule. Full stop.
+
+Whether a producer runs depends on the deployment. The code defaults are the
+outlier:
+
+| Task | `reconciler/config/config.go` | `cli/cmd/daemon/daemon.config.yaml` | `install/docker/reconciler.env` | `install/charts/dir/values.yaml` |
+|---|---|---|---|---|
+| signature | on, 1m | on, 1m | on, 1m | on, 1h |
+| name | **off**, 1h | on, 1m | on, 1m | on, 1h |
+| scan | **off**, 6h | on, 1m | on, 1m | on, 1h |
+
+Sources: `reconciler/config/config.go:181,196,211` with the `DefaultInterval`
+constants in `reconciler/tasks/{signature,name,scan}/config.go`;
+`daemon.config.yaml:119-132`; `reconciler.env:53-68`; `values.yaml:756-768`. The
+apiserver subchart installed on its own has no `scan` block
+(`install/charts/dir/apiserver/values.yaml:848-855`), so scan is off there too.
+
+A fact whose producer is off is absent for every record, except scan facts carried
+in by a peer's `ScanReport` referrer (¹). With the producer on, it is still
+permanently absent for the records in the "Never produced for" column (§6).
 
 ---
 
@@ -165,14 +184,15 @@ neither** — use the filter vocabulary Directory already has.
 `name` (glob), `version`, `skill`, `domain`, `module`, `module-id`, `locator`,
 `author`, `schema-version`, `annotation` (`key:value`, glob), `created-at`
 (range), plus `trusted`, `verified`, `safe`, `scan-severity`, `scan-status`,
-`scan-failure-reason` — each with an `exclude-` counterpart. On the wire these
+`scan-failure-reason` — each with an `exclude-` counterpart except the booleans
+`trusted`, `verified` and `safe`, which are negated with `=false` instead
+(`cli/cmd/search/filters.go:207`, `:215-220`). On the wire these
 are `searchv1.RecordQuery` messages, and the DB-side translation already exists.
 
 So a Gate B policy is literally:
 
 ```yaml
 match:            # a []RecordQuery — same thing dirctl search sends
-  trusted: false
   scan-severity: MEDIUM
 action: delete
 ```
@@ -190,7 +210,10 @@ Why this beats a general-purpose engine as a starting point:
   enabling it. That is a genuinely large usability win and it needs no new code.
 - **The chart policies collapse into a client of this model.** Same `match`,
   same actions. `install/charts/dirctl/values.yaml` becomes a thin wrapper over
-  the server-side API instead of a parallel implementation.
+  the server-side API instead of a parallel implementation. One exception: its
+  shipped (disabled) `prune-untrusted` example matches `trusted: false` with
+  `prune` (`install/charts/dirctl/values.yaml:104-111`), which §6 limits to
+  `report`.
 
 The limitation is real and worth stating: `RecordQuery` is a flat conjunction of
 predicates. No `OR`, no arithmetic, no cross-field comparison, no "if the record
@@ -205,6 +228,12 @@ Gate A needs an in-memory evaluator over the record proto for the subset of
 predicates that are push-time knowable. Same `RecordQuery` types, different
 backend. Attempting a predicate that needs a derived fact must be a
 **configuration-load error**, not a silent pass — see `open-questions.md` Q1.
+
+The same goes for query types the server doesn't recognise. `QueryToFilters`
+drops an unknown `RecordQueryType` with a warning
+(`server/database/utils/utils.go:267-268`), so a policy sent over the API by a
+newer client loses that predicate and matches more records than written, or every
+record if it was the only one. The loader must reject unknown types.
 
 ---
 
@@ -233,20 +262,52 @@ path, whose tag filter is already a CID list.
 
 ### Quarantine vs delete
 
-Deleting is destructive and, for the "not trusted yet" case, often wrong: a
-record can be untrusted simply because the signature task hasn't run yet, or
-because a public key hasn't propagated. A policy that deletes on
-`trusted: false` will eat legitimate records in the window between record push
-and signature verification.
+Deleting is destructive and, for the "not trusted" case, often wrong. A record can
+be untrusted because the signature task hasn't reached it yet, or because it never
+will: the task selects `signed = true` only
+(`server/database/gorm/signature.go:212`), so an unsigned record never gets a
+`signature_verifications` row, and `trusted: false`
+(`NOT EXISTS (… sv.status = 'verified')`, `server/database/gorm/record.go:608`)
+matches it permanently. `verified: false` does the same for every record that is
+unsigned or whose name doesn't start with `http://`/`https://` (§3). A grace
+period delays a policy on those records; it doesn't resolve them.
 
-So the model needs:
+Scan keys fail the other way. `safe` and `scan-severity` are gated on
+`completed`/`partial` rows (`record.go:617-634`, `:645-658`), so they match *none*:
+a scan policy on a node with scan disabled reports `0 matched`, indistinguishable
+from a clean store.
 
-- **Grace/age condition** on Gate B policies: don't act on a record younger than
-  N, or one whose relevant fact is still absent as opposed to negative. The
-  distinction between *"scan says unsafe"* and *"not scanned yet"* must be
-  expressible. `scan-status` already distinguishes these (`completed`/`partial`
-  are verdicts; absence is not), so the vocabulary supports it — but the default
-  must be safe.
+So derived facts are three-valued: true, false, or unknown (no row, yet or ever).
+The model needs:
+
+- **Enforcement matches a verdict, never absence.** An `unpublish`, `quarantine` or
+  `delete` policy that uses a derived fact must match a verdict row for it. Keys
+  that match absence are allowed with `action: report` only, unless the same policy
+  also has a key that requires the row: `trusted: false`, `verified: false`, and any
+  `exclude-` key on a derived fact (a `NOT EXISTS` that keeps records with no row).
+  Retention and content predicates such as `name` are unaffected.
+- **Status filters for trust and name.** Only scan can express all three values
+  today, undocumented: `exclude-scan-status: '*'` selects records with no scan row,
+  but not `failed` ones, which are unknown too
+  (`server/database/gorm/record_exclude.go:95-96`, `:288-303`). `trusted` and
+  `verified` are booleans with no status counterpart
+  (`proto/agntcy/dir/search/v1/record_query.proto:83-89`), so "not verified" and
+  "never evaluated" are the same query. Add `trusted-status` and `verified-status`
+  (`RECORD_QUERY_TYPE_TRUSTED_STATUS` / `_VERIFIED_STATUS`) mirroring
+  `scan-status`, at the next free enum numbers (22 and 23; 16 is an unreserved
+  gap). Both tables already carry `status` with `verified`/`failed`.
+- **A negative trust verdict to match.** `verified-status` is usable as soon as it
+  exists; the name task already writes `failed` rows
+  (`reconciler/tasks/name/task.go:139-143`). `trusted-status` isn't yet: a
+  signature that fails verification writes nothing, because `VerifyWithFetcher`
+  skips it (`client/utils/verify/fetcher.go:101-103`), so a signed record whose
+  signatures never verify looks exactly like one the task hasn't reached. `failed`
+  is written only when a signer that previously verified stops verifying
+  (`reconciler/tasks/signature/task.go:169-189`). Until per-signature failures are
+  recorded, a destructive trust gate sees only those signers; a record that never
+  verified is reachable only through `trusted: false`, which is report-only.
+- **Grace/age condition** on Gate B policies, for the transient case: don't act on
+  a record younger than N.
 - **`quarantine` as the default destructive-ish action**: keep the bytes, drop it
   out of the routing index and mark it excluded from search results, so it is
   reversible. Needs a new column/table; cheaper than being wrong.
@@ -258,10 +319,11 @@ So the model needs:
 1. **Gate B, report-only, config-file policies.** New reconciler task, `match` +
    `action: report`, structured log lines and a Prometheus counter per policy.
    Delivers immediate value (tells us what our nodes are actually holding) with
-   zero blast radius. Validates the vocabulary against real data.
+   zero blast radius. Validates the vocabulary against real data, if the report
+   separates "0 matched" from "no record has the fact" (§6).
 2. **Gate B enforcing**, actions `unpublish` → `quarantine` → `delete`, with
-   tombstones and grace conditions. Retention (`keep: 2`) lands here as its own
-   policy kind.
+   tombstones, grace conditions, and the load-time checks from §5–6 and Q1.
+   Retention (`keep: 2`) lands here as its own policy kind.
 3. **Gate A**, in-memory subset, `enforcement: audit` first, then `enforce`.
    Ingestor decorator + denial errors surfaced through `dirctl push`.
 4. **`PolicyService` gRPC + DB-backed policies.** Follow the `SyncService`
@@ -279,3 +341,9 @@ So the model needs:
   store and DB directly, otherwise it is permanently outside Gate A.
 - `StoreService.Delete` leaving routing announcements behind is a pre-existing
   bug that the `delete` action would inherit.
+- `RECORD_QUERY_TYPE_TRUSTED_STATUS` and `_VERIFIED_STATUS`, wired through
+  `QueryToFilters`, the include and exclude query builders and the CLI filter table,
+  before any enforcement policy can match a trust or name verdict (§6).
+- The signature task writing a `failed` row for each signature that doesn't verify;
+  today `VerifyWithFetcher` skips them, so `trusted-status: failed` would match only
+  signers that once verified (§6).

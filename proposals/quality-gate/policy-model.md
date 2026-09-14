@@ -41,7 +41,9 @@ Value kinds follow the CLI's flag types:
 - bool → `trusted: false`
 - scalar → `scan-severity: MEDIUM`
 
-Distinct keys are AND-ed. Every key has an `exclude-` counterpart.
+Distinct keys are AND-ed. Every list and scalar key has an `exclude-` counterpart;
+the booleans `trusted`, `verified` and `safe` are negated with `=false` instead
+(`cli/cmd/search/filters.go:207`, `:215-220`).
 
 | key | Gate A (admission) | Gate B (enforcement/retention) |
 |---|---|---|
@@ -52,10 +54,11 @@ Distinct keys are AND-ed. Every key has an `exclude-` counterpart.
 | `skill`, `domain`, `module`, `module-id`, `locator` | yes | yes |
 | `annotation` (`key:value`, glob) | yes | yes |
 | `created-at` (range, e.g. `<2025-01-01`) | yes | yes |
-| `signed` | **no** — signature is a later referrer push | yes |
-| `trusted` | **no** | yes |
-| `verified` | **no** | yes |
-| `safe`, `scan-severity`, `scan-status`, `scan-failure-reason` | **no** | yes |
+| `signed` | **no** — signature is a later referrer push | no — not a `RecordQuery` type today (`records.signed` is written but not queryable) |
+| `trusted`, `verified` | **no** | `action: report` only; `false` also matches records with no verdict row |
+| `trusted-status`, `verified-status` (new; `verified` / `failed`) | **no** | yes; the `exclude-` form is a `NOT EXISTS` that matches records with no row, so a destructive policy needs a positive key alongside it |
+| `safe`, `scan-severity` | **no** | yes; already gated on a `completed`/`partial` verdict |
+| `scan-status`, `scan-failure-reason` | **no** | yes |
 | `source-peer`, `source-trust-domain` | yes (new; from context) | no |
 | `size` | yes (new) | not persisted today |
 
@@ -65,6 +68,10 @@ set by the engine.
 A policy whose `kind: admission` uses a Gate-B-only key must **fail to load**
 with a clear error naming the key. Silently passing such a rule is the worst
 possible outcome: it looks enforced and isn't.
+
+Enforcement policies also fail to load on an unrecognised key, or when a
+destructive action depends on an absence-matching key or a disabled producer
+(`README.md` §5–6, `open-questions.md` Q1).
 
 ## Actions
 
@@ -106,21 +113,36 @@ rejected by policy "require-cisco-namespace": name 'acme.com/foo' does not match
 
 ### 1. Trust gate — "only keep records whose scan says trusted"
 
-Cannot be `admission`; trust doesn't exist yet at push time.
+Cannot be `admission`; trust doesn't exist yet at push time. Nor can it be
+`trusted: false` with a destructive action: that matches every unsigned record
+permanently, so with `minAge: 24h` and `action: quarantine` it would quarantine
+each one a day after it arrived (`README.md` §6).
+
+Until the signature task records per-signature failures, the only trust gate that
+covers records whose signatures never verified is report-only:
 
 ```yaml
-  drop-untrusted:
+  report-untrusted:
+    enabled: true
+    kind: enforcement
+    match:
+      trusted: false
+    action: report
+```
+
+Once `trusted-status` exists, the destructive form matches the verdict:
+
+```yaml
+  quarantine-failed-signatures:
     enabled: true
     kind: enforcement
     enforcement: audit          # start here, flip to enforce once the log looks right
-    minAge: 24h                 # do not judge records the signature task hasn't reached
+    minAge: 24h                 # still useful while a signer rotates keys
     match:
-      trusted: false
+      trusted-status: failed
+      exclude-trusted-status: verified   # one good signer is enough, as with trusted: true today
     action: quarantine
 ```
-
-`minAge` is doing real work: without it this policy deletes every record in the
-window between its push and the signature task's next run.
 
 A stricter variant that acts on a *positive bad verdict* rather than the absence
 of a good one — safer, because it can't fire on a record that simply hasn't been
@@ -232,6 +254,8 @@ Non-negotiable, since Gate B deletes things:
 
 - `dir_policy_evaluations_total{policy,kind,verdict}`
 - `dir_policy_actions_total{policy,action,result}`
+- `dir_policy_fact_unavailable{policy,fact}`, a gauge set to 1 while a policy depends on
+  a fact whose producer is disabled
 - one structured log line per action with policy name, CID, record name/version
   and the matched predicate
 - an append-only `policy_actions` audit table — "why did my record vanish" must
