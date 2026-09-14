@@ -9,8 +9,10 @@ import (
 	"testing"
 	"time"
 
+	"github.com/agntcy/dir/reconciler/config"
 	"github.com/agntcy/dir/reconciler/tasks"
 	"github.com/agntcy/dir/reconciler/tasks/identity"
+	ansconfig "github.com/agntcy/dir/server/identity/ans/config"
 	servertypes "github.com/agntcy/dir/server/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -177,6 +179,18 @@ func TestNewIdentityTask(t *testing.T) {
 			store:    referrerStore{},
 			wantTask: true,
 		},
+		{
+			name:    "an ans block that fails validation stops registration",
+			cfg:     identity.Config{Enabled: true, Ans: ansconfig.Config{Enabled: true}},
+			store:   referrerStore{},
+			wantErr: "trusted_log_hosts",
+		},
+		{
+			name:     "an enabled ans block yields the identity task",
+			cfg:      identity.Config{Enabled: true, Ans: validAnsConfig()},
+			store:    referrerStore{},
+			wantTask: true,
+		},
 	}
 
 	for _, tt := range tests {
@@ -196,6 +210,53 @@ func TestNewIdentityTask(t *testing.T) {
 			} else {
 				assert.Nil(t, task)
 			}
+		})
+	}
+}
+
+// validAnsConfig is an ans block the resolver accepts without a network call.
+func validAnsConfig() ansconfig.Config {
+	return ansconfig.Config{
+		Enabled:               true,
+		TrustedLogHosts:       []string{"log.example.com"},
+		AllowUnpinnedRootKeys: true,
+	}
+}
+
+// New with only the identity task enabled: the ans block decides between a
+// registered task and a startup error.
+func TestNew_IdentityTask(t *testing.T) {
+	tests := []struct {
+		name      string
+		ans       ansconfig.Config
+		wantTasks []string
+		wantErr   string
+	}{
+		{name: "ans off registers the identity task", wantTasks: []string{"identity"}},
+		{name: "a valid ans block registers the identity task", ans: validAnsConfig(), wantTasks: []string{"identity"}},
+		{name: "an invalid ans block fails New", ans: ansconfig.Config{Enabled: true}, wantErr: "trusted_log_hosts"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			cfg := &config.Config{Identity: identity.Config{Enabled: true, Ans: tt.ans}}
+
+			svc, err := New(cfg, nil, referrerStore{}, nil, nil, nil)
+			if tt.wantErr != "" {
+				require.ErrorContains(t, err, tt.wantErr)
+				assert.Nil(t, svc)
+
+				return
+			}
+
+			require.NoError(t, err)
+
+			names := make([]string, 0, len(svc.tasks))
+			for _, task := range svc.tasks {
+				names = append(names, task.Name())
+			}
+
+			assert.Equal(t, tt.wantTasks, names)
 		})
 	}
 }

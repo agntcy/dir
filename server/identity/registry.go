@@ -16,6 +16,12 @@ import (
 
 	corev1 "github.com/agntcy/dir/api/core/v1"
 	identityv1 "github.com/agntcy/dir/api/identity/v1"
+	"github.com/agntcy/dir/server/identity/ans"
+	ansconfig "github.com/agntcy/dir/server/identity/ans/config"
+	"github.com/agntcy/dir/server/identity/did"
+	"github.com/agntcy/dir/server/identity/dns"
+	"github.com/agntcy/dir/server/identity/wellknown"
+	"github.com/agntcy/dir/utils/safefetch"
 )
 
 // Resolver verifies a claim signature for a specific identity URI scheme.
@@ -44,6 +50,30 @@ func NewRegistry(resolvers ...Resolver) *Registry {
 	}
 
 	return r
+}
+
+// NewDefaultRegistry builds the Registry the API server and the reconciler
+// verify claims with: the https, dns and did resolvers, and the ans resolver
+// when ansCfg.Enabled. A configuration the ans resolver rejects is returned
+// as an error so that startup stops on it.
+func NewDefaultRegistry(ansCfg ansconfig.Config, fetch *safefetch.Client) (*Registry, error) {
+	resolvers := []Resolver{
+		wellknown.New(fetch),
+		dns.New(),
+		did.New(fetch),
+	}
+
+	if ansCfg.Enabled {
+		resolver, err := ans.New(ansCfg)
+		if err != nil {
+			// The text already names the component and the configuration key.
+			return nil, fmt.Errorf("%w", err)
+		}
+
+		resolvers = append(resolvers, resolver)
+	}
+
+	return NewRegistry(resolvers...), nil
 }
 
 // Verify implements identityv1.KeyResolver.

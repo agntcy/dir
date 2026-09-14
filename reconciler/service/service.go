@@ -20,10 +20,7 @@ import (
 	"github.com/agntcy/dir/reconciler/tasks/scan"
 	"github.com/agntcy/dir/reconciler/tasks/signature"
 	serveridentity "github.com/agntcy/dir/server/identity"
-	identitydid "github.com/agntcy/dir/server/identity/did"
-	identitydns "github.com/agntcy/dir/server/identity/dns"
 	"github.com/agntcy/dir/server/identity/spiffe"
-	identitywellknown "github.com/agntcy/dir/server/identity/wellknown"
 	servertypes "github.com/agntcy/dir/server/types"
 	"github.com/agntcy/dir/utils/logging"
 	"github.com/agntcy/dir/utils/safefetch"
@@ -150,12 +147,10 @@ func newIdentityTask(cfg identity.Config, db servertypes.DatabaseAPI, store serv
 		return nil, false, fmt.Errorf("failed to load SPIFFE trust bundles for identity task: %w", err)
 	}
 
-	fetchClient := safefetch.New()
-	registry := serveridentity.NewRegistry(
-		identitywellknown.New(fetchClient),
-		identitydns.New(),
-		identitydid.New(fetchClient),
-	)
+	registry, err := serveridentity.NewDefaultRegistry(cfg.Ans, safefetch.New())
+	if err != nil {
+		return nil, false, fmt.Errorf("failed to build identity registry for identity task: %w", err)
+	}
 
 	t, err := identity.NewTask(cfg, db, refStore, registry, bundles)
 	if err != nil {

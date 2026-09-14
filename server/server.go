@@ -30,10 +30,7 @@ import (
 	"github.com/agntcy/dir/server/gateway"
 	"github.com/agntcy/dir/server/healthcheck"
 	"github.com/agntcy/dir/server/identity"
-	"github.com/agntcy/dir/server/identity/did"
-	"github.com/agntcy/dir/server/identity/dns"
 	"github.com/agntcy/dir/server/identity/spiffe"
-	identitywellknown "github.com/agntcy/dir/server/identity/wellknown"
 	"github.com/agntcy/dir/server/ingest"
 	"github.com/agntcy/dir/server/metrics"
 	grpclogging "github.com/agntcy/dir/server/middleware/logging"
@@ -595,12 +592,10 @@ func newIngestor(cfg *config.Config, storeAPI types.StoreAPI, databaseAPI types.
 		return nil, fmt.Errorf("failed to load SPIFFE trust bundles: %w", err)
 	}
 
-	fetchClient := safefetch.New()
-	identityRegistry := identity.NewRegistry(
-		identitywellknown.New(fetchClient),
-		dns.New(),
-		did.New(fetchClient),
-	)
+	identityRegistry, err := identity.NewDefaultRegistry(cfg.Identity.Ans, safefetch.New())
+	if err != nil {
+		return nil, fmt.Errorf("failed to build identity registry: %w", err)
+	}
 
 	return ingest.New(storeAPI, databaseAPI,
 		ingest.WithIdentityRegistry(identityRegistry),
