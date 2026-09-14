@@ -10,7 +10,7 @@ import "time"
 const (
 	// ConnMgrLowWater is the minimum number of connections to maintain.
 	// Below this, the connection manager will not prune any peers.
-	// Value accounts for: DHT routing table (~20) + GossipSub mesh (~10) + buffer (~20).
+	// Value accounts for: DHT routing table (~20) + buffer.
 	ConnMgrLowWater = 50
 
 	// ConnMgrHighWater is the maximum number of connections before pruning starts.
@@ -23,21 +23,10 @@ const (
 	ConnMgrGracePeriod = 2 * time.Minute
 )
 
-// Peer priority constants for Connection Manager tagging.
-// Higher values indicate higher priority and are less likely to be pruned.
-const (
-	// PeerPriorityBootstrap is the priority for bootstrap peers.
-	// Bootstrap peers are also protected (never pruned) in addition to this high priority.
-	PeerPriorityBootstrap = 100
-
-	// PeerPriorityGossipSubMesh is the priority for GossipSub mesh peers.
-	// Mesh peers are critical for fast label propagation and should be kept.
-	PeerPriorityGossipSubMesh = 50
-)
-
-// MeshPeerTaggingInterval defines how often GossipSub mesh peers are re-tagged
-// to protect them from Connection Manager pruning as mesh topology changes.
-const MeshPeerTaggingInterval = 30 * time.Second
+// PeerPriorityBootstrap is the Connection Manager priority for bootstrap peers.
+// Higher values are less likely to be pruned; bootstrap peers are also
+// protected outright.
+const PeerPriorityBootstrap = 100
 
 // mDNS service name for local network peer discovery.
 // This is used to identify DIR peers on the same LAN.

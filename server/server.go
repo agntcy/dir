@@ -284,8 +284,8 @@ func New(ctx context.Context, cfg *config.Config, opts ...ServerOption) (*Server
 		return nil, fmt.Errorf("failed to create store: %w", err)
 	}
 
-	// Database must be created before routing so the shared ingestion service
-	// (used by both the store controller and DHT autosync) can be wired in.
+	// Database must be created before routing, which queries it to decide what
+	// to advertise and to answer peer record queries.
 	databaseAPI := o.database
 	if databaseAPI == nil {
 		databaseAPI, err = database.New(cfg.Database)
@@ -298,7 +298,7 @@ func New(ctx context.Context, cfg *config.Config, opts ...ServerOption) (*Server
 	// records/referrers (content store + search index + referrer DB state).
 	ingestor := ingest.New(storeAPI, databaseAPI)
 
-	routingAPI, err := routing.New(ctx, storeAPI, ingestor, oasfValidator, options)
+	routingAPI, err := routing.New(ctx, storeAPI, databaseAPI, options)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create routing: %w", err)
 	}
@@ -350,7 +350,7 @@ func New(ctx context.Context, cfg *config.Config, opts ...ServerOption) (*Server
 	eventsv1.RegisterEventServiceServer(grpcServer, controller.NewEventsController(eventService))
 	storev1.RegisterStoreServiceServer(grpcServer, controller.NewStoreController(storeAPI, databaseAPI, ingestor, options.EventBus(), oasfValidator))
 	routingv1.RegisterRoutingServiceServer(grpcServer, controller.NewRoutingController(routingAPI, storeAPI, publicationService))
-	routingv1.RegisterPublicationServiceServer(grpcServer, controller.NewPublicationController(databaseAPI, options))
+	routingv1.RegisterPublicationServiceServer(grpcServer, controller.NewPublicationController(databaseAPI, publicationService, options))
 	searchv1.RegisterSearchServiceServer(grpcServer, controller.NewSearchController(databaseAPI, storeAPI))
 	storev1.RegisterSyncServiceServer(grpcServer, controller.NewSyncController(databaseAPI, options))
 	signv1.RegisterSignServiceServer(grpcServer, controller.NewSignController(databaseAPI))
@@ -476,7 +476,7 @@ func (s Server) Close(ctx context.Context) {
 		}
 	}
 
-	// Stop routing service (closes GossipSub, p2p server, DHT)
+	// Stop routing service (closes p2p server, DHT)
 	if s.routing != nil {
 		if err := s.routing.Stop(); err != nil {
 			logger.Error("Failed to stop routing service", "error", err)

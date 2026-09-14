@@ -17,8 +17,6 @@ server:
     listen_address: "/ip4/127.0.0.1/tcp/18300"
     key_path: "${BOOTSTRAP_KEY_PATH}"
     datastore_dir: "routing"
-    gossipsub:
-      enabled: true
   database:
     type: "sqlite"
     sqlite:

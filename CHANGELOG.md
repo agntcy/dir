@@ -12,6 +12,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 - **Catalog**: `GET /v1/tags` no longer returns record annotations as tags (#2012)
+- **Dir**: The routing datastore now opens a protocol-versioned subdirectory of `routing.datastore_dir` — `dir-2` for this release — rather than the configured path itself. The setting is unchanged; only the directory the database lives in moves one level down. This matters if you back up or bind-mount that path directly (#1967)
+
+### Fixed
+- **Dir**: Publish state recorded by v1 is migrated onto the record rows on first start, so upgrading no longer needs the routing volume deleted or records republished. A v1 datastore left in place is read once and then untouched, and can be removed at any time with the node running (#1967)
 
 ## [v1.7.0] - 2026-08-18
 
