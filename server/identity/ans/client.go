@@ -13,9 +13,9 @@ import (
 )
 
 // breakerClient is the scitt.Client the resolver reaches a transparency log
-// through. Every fetch runs under its own deadline, is reported to the host's
-// circuit breaker, and is logged with the identifiers needed to trace it when
-// it fails, so no fetch can bypass the breaker.
+// through. Every fetch runs under its own deadline, reports a connection-level
+// failure to the host's circuit breaker, and is logged with the identifiers
+// needed to trace it when it fails, so no fetch can bypass the breaker.
 type breakerClient struct {
 	inner   scitt.Client
 	host    string
@@ -40,8 +40,9 @@ func (c *breakerClient) FetchReceipt(ctx context.Context, agentID string) ([]byt
 	})
 }
 
-// observeFetch runs one log request under the per-fetch deadline and records
-// its outcome with the breaker.
+// observeFetch runs one log request under the per-fetch deadline and reports
+// a connection-level failure to the breaker. An answered request, whatever
+// its status, is neutral: only a completed verification clears strikes.
 func observeFetch[T any](ctx context.Context, c *breakerClient, stage, agentID string, do func(context.Context) (T, error)) (T, error) {
 	fetchCtx, cancel := context.WithTimeout(ctx, c.timeout)
 	defer cancel()
@@ -50,8 +51,6 @@ func observeFetch[T any](ctx context.Context, c *breakerClient, stage, agentID s
 
 	out, err := do(fetchCtx)
 	if err == nil {
-		c.breaker.observe(c.host, false, c.clock())
-
 		return out, nil
 	}
 
@@ -59,7 +58,11 @@ func observeFetch[T any](ctx context.Context, c *breakerClient, stage, agentID s
 
 	c.logFailure(stage, agentID, err, time.Since(started), strike)
 
-	if until, tripped := c.breaker.observe(c.host, strike, c.clock()); tripped {
+	if !strike {
+		return out, err
+	}
+
+	if until, tripped := c.breaker.strike(c.host, c.clock()); tripped {
 		logger.Warn("Transparency log circuit opened after consecutive connection failures",
 			"logHost", c.host,
 			"failures", breakerThreshold,

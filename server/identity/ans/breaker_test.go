@@ -12,17 +12,19 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestBreakerObserve(t *testing.T) {
+// TestBreakerStrikesAndResets drives the breaker with a sequence of strikes
+// ("s") and completed verifications ("r").
+func TestBreakerStrikesAndResets(t *testing.T) {
 	tests := []struct {
 		name     string
-		strikes  []bool
+		events   string
 		wantOpen bool
 	}{
-		{name: "below the threshold stays closed", strikes: []bool{true, true}},
-		{name: "the threshold opens the circuit", strikes: []bool{true, true, true}, wantOpen: true},
-		{name: "an answer resets the count", strikes: []bool{true, true, false, true, true}},
-		{name: "answers alone never open the circuit", strikes: []bool{false, false, false, false}},
-		{name: "strikes after a reset reach the threshold", strikes: []bool{true, false, true, true, true}, wantOpen: true},
+		{name: "below the threshold stays closed", events: "ss"},
+		{name: "the threshold opens the circuit", events: "sss", wantOpen: true},
+		{name: "a completed verification resets the count", events: "ssrss"},
+		{name: "completed verifications alone never open the circuit", events: "rrrr"},
+		{name: "strikes after a reset reach the threshold", events: "srsss", wantOpen: true},
 	}
 
 	for _, tt := range tests {
@@ -34,10 +36,16 @@ func TestBreakerObserve(t *testing.T) {
 				tripped bool
 			)
 
-			for i, strike := range tt.strikes {
-				until, tripped = b.observe(testLogHost, strike, testNow)
+			for i, event := range tt.events {
+				if event == 'r' {
+					b.reset(testLogHost)
+
+					continue
+				}
+
+				until, tripped = b.strike(testLogHost, testNow)
 				if tripped {
-					assert.Equal(t, len(tt.strikes), i+1, "the circuit opened before the last observation")
+					assert.Equal(t, len(tt.events), i+1, "the circuit opened before the last event")
 				}
 			}
 
@@ -60,7 +68,7 @@ func TestBreakerClosesAfterTheCooldown(t *testing.T) {
 	b := newBreaker()
 
 	for range breakerThreshold {
-		b.observe(testLogHost, true, testNow)
+		b.strike(testLogHost, testNow)
 	}
 
 	_, open := b.openUntil(testLogHost, testNow.Add(breakerCooldown-time.Second))
@@ -82,7 +90,7 @@ func TestBreakerIsolatesHosts(t *testing.T) {
 	b := newBreaker()
 
 	for range breakerThreshold {
-		b.observe(testLogHost, true, testNow)
+		b.strike(testLogHost, testNow)
 	}
 
 	_, open := b.openUntil(testLogHost, testNow)
@@ -91,7 +99,7 @@ func TestBreakerIsolatesHosts(t *testing.T) {
 	_, open = b.openUntil("other.example.com", testNow)
 	assert.False(t, open, "a strike against one host opened another host's circuit")
 
-	_, tripped := b.observe("other.example.com", true, testNow)
+	_, tripped := b.strike("other.example.com", testNow)
 	assert.False(t, tripped)
 }
 

@@ -212,10 +212,13 @@ type fakeLogClient struct {
 	tokenErr    error
 	receipt     []byte
 	receiptErr  error
-	block       bool
-	onCall      func()
-	calls       int
-	agentIDs    []string
+	// block holds every request open until its context ends; receiptBlock
+	// does so for receipt requests only.
+	block        bool
+	receiptBlock bool
+	onCall       func()
+	calls        int
+	agentIDs     []string
 }
 
 func (c *fakeLogClient) FetchRootKeys(ctx context.Context) ([]string, error) {
@@ -245,6 +248,12 @@ func (c *fakeLogClient) FetchStatusToken(ctx context.Context, agentID string) ([
 func (c *fakeLogClient) FetchReceipt(ctx context.Context, agentID string) ([]byte, error) {
 	if err := c.enter(ctx, agentID); err != nil {
 		return nil, err
+	}
+
+	if c.receiptBlock {
+		<-ctx.Done()
+
+		return nil, fmt.Errorf("fake log client: %w", ctx.Err())
 	}
 
 	if c.receiptErr != nil {
@@ -385,23 +394,31 @@ func TestBreakerClientObservesFailures(t *testing.T) {
 	}
 }
 
-func TestBreakerClientSuccessResetsStrikes(t *testing.T) {
+// TestBreakerClientSuccessKeepsStrikes checks that an answered fetch does not
+// clear the count: a log whose status-token endpoint answers while its
+// receipt endpoint fails must still reach the threshold.
+func TestBreakerClientSuccessKeepsStrikes(t *testing.T) {
 	connErr := &scitt.TransportError{Type: scitt.TransportErrHTTPError, Message: "request failed", Cause: errBoom}
-	inner := &fakeLogClient{tokenErr: connErr, receipt: []byte("receipt")}
+	inner := &fakeLogClient{token: []byte("token"), receiptErr: connErr}
 	b := newBreaker()
 	c := newBreakerClient(inner, b, time.Second)
 
 	for range breakerThreshold - 1 {
 		_, err := c.FetchStatusToken(t.Context(), testAgentID)
+		require.NoError(t, err)
+
+		_, err = c.FetchReceipt(t.Context(), testAgentID)
 		require.ErrorIs(t, err, connErr)
 	}
 
-	assert.Equal(t, breakerThreshold-1, b.failures[testLogHost])
+	assert.Equal(t, breakerThreshold-1, b.failures[testLogHost], "the answered fetches cleared the strikes")
 
-	_, err := c.FetchReceipt(t.Context(), testAgentID)
+	_, err := c.FetchStatusToken(t.Context(), testAgentID)
 	require.NoError(t, err)
-	assert.Empty(t, b.failures)
+
+	_, err = c.FetchReceipt(t.Context(), testAgentID)
+	require.ErrorIs(t, err, connErr)
 
 	_, open := b.openUntil(testLogHost, testNow)
-	assert.False(t, open)
+	assert.True(t, open, "the receipt failures did not open the circuit")
 }

@@ -1013,6 +1013,24 @@ func TestVerifyCircuitBreakerResetsOnSuccess(t *testing.T) {
 	assert.Equal(t, 2*(breakerThreshold-1)+2, f.client.callCount())
 }
 
+// TestVerifyCircuitBreakerCountsAcrossVerifications checks that a log whose
+// status-token endpoint answers while its receipt endpoint hangs opens the
+// circuit: the answered fetch must not clear the strike the receipt earns.
+func TestVerifyCircuitBreakerCountsAcrossVerifications(t *testing.T) {
+	f := newFixture(t)
+	f.cfg.Timeout = 100 * time.Millisecond
+	f.client.receiptBlock = true
+
+	for i := range breakerThreshold {
+		_, err := f.verify()
+		require.ErrorContains(t, err, "ans receipt: timed out", "verification %d", i+1)
+	}
+
+	_, err := f.verify()
+	require.ErrorContains(t, err, "circuit open", "the answered status-token fetches kept the circuit closed")
+	assert.Equal(t, 2*breakerThreshold, f.client.callCount(), "the open circuit must stop the requests")
+}
+
 // TestVerifyCircuitBreakerIsolatesHosts checks that strikes against one
 // transparency log leave claims anchored at another log unaffected.
 func TestVerifyCircuitBreakerIsolatesHosts(t *testing.T) {

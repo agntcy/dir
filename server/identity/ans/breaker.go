@@ -21,7 +21,10 @@ const (
 
 // breaker is a per-host circuit breaker over connection-level failures. It
 // keeps a black-holed transparency log from spending the caller's whole time
-// budget on every claim that points at it.
+// budget on every claim that points at it. Strikes accumulate across
+// verifications; only a verification that completed every fetch against the
+// host clears them, so a log with one dead endpoint trips the breaker as a
+// dead log does, however many of its other endpoints answer in between.
 type breaker struct {
 	mu        sync.Mutex
 	failures  map[string]int
@@ -57,20 +60,11 @@ func (b *breaker) openUntil(host string, now time.Time) (time.Time, bool) {
 	return until, true
 }
 
-// observe records the outcome of one request to host. A strike is a
-// connection-level failure that counts toward the threshold; any other
-// outcome, including an HTTP error response, proves the host reachable and
-// resets the count. It reports the cooldown end when this observation opened
-// the circuit.
-func (b *breaker) observe(host string, strike bool, now time.Time) (time.Time, bool) {
+// strike records one connection-level failure against host. It reports the
+// cooldown end when this strike opened the circuit.
+func (b *breaker) strike(host string, now time.Time) (time.Time, bool) {
 	b.mu.Lock()
 	defer b.mu.Unlock()
-
-	if !strike {
-		delete(b.failures, host)
-
-		return time.Time{}, false
-	}
 
 	b.failures[host]++
 	if b.failures[host] < breakerThreshold {
@@ -83,4 +77,13 @@ func (b *breaker) observe(host string, strike bool, now time.Time) (time.Time, b
 	b.downUntil[host] = until
 
 	return until, true
+}
+
+// reset clears host's strikes after a verification completed every fetch it
+// needed against the host.
+func (b *breaker) reset(host string) {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+
+	delete(b.failures, host)
 }

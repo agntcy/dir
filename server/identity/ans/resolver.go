@@ -214,7 +214,13 @@ func (r *Resolver) verifyAttestation(ctx context.Context, want agentName, cert *
 		return err
 	}
 
-	return r.verifyReceipt(ctx, client, target, want)
+	if err := r.verifyReceipt(ctx, client, target, want); err != nil {
+		return err
+	}
+
+	r.breaker.reset(target.LogHost)
+
+	return nil
 }
 
 // resolveTarget finds the agent's badge record in DNS and checks the URL it
