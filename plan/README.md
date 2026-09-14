@@ -23,7 +23,15 @@ Directory v2 is organized into six components plus one cross-cutting trust utili
 3. **Search** — local-only key/value search over an index populated asynchronously after push, with per-content-type indexers.
 4. **Routing** — decentralized announce/discover by content type and OASF-defined keys over the existing libp2p/DHT layer.
 5. **Runtime** — discovery of locally running/installed agentic resources. **Already implemented for MCP and A2A resources running locally**; agent skills discovery is assumed present and may be extended later.
-6. **Trust** (cross-cutting) — signing and verifying **arbitrary objects** as first-class operations, plus ownership claims and identity resolution (DID / SPIFFE / HTTPS well-known). Whether an object can *claim* an identity is decided by its content type; verification is generic.
+6. **Trust** (cross-cutting) — signing and verifying **arbitrary objects** as first-class operations, plus ownership claims, identity resolution (DID / SPIFFE / HTTPS well-known), and **curation claims** (review / score / deprecation / revocation) that provide decentralized, policy-gated governance. Whether an object can *claim* an identity is decided by its content type; verification is generic.
+
+Additional consolidated decisions:
+
+- **Typed CLI sugar**: content-type handlers can register CLI nouns (`dirctl agent …`, `dirctl mcp …`) generated over the generic `artifact` core.
+- **Execution via content types**: handlers may provide an optional **Executor** capability, enabling `dirctl run`/`deploy` composed purely from existing interfaces (verify → pull → execute → instance visible via Runtime; deploy specs and deployment records are ordinary artifacts/claims). Directory does not become an orchestrator.
+- **Install integration retained**: the existing `dirctl install` machinery (agent tooling configs, skill folders) carries forward, connected to v2 refs.
+- **Policy framework (Rego/OPA, plugin architecture)**: one pluggable policy engine enforced at fixed points — content admission, authz, verify, execution gates, and **garbage collection** (e.g. "delete everything unsigned older than 10 days"). Policies are themselves versioned, signed artifacts; a thin optional `PolicyService` covers management/dry-run only.
+- **Future directions (reserved, not committed)**: non-OCI importers (Fetcher capability slot) and federated remote-registry refs with Docker-style resolution semantics — representable in the design, deferred in scope.
 
 The daemon already exists (`dirctl daemon start|stop|…`) and is retained as-is; the v2 plan does not depend on new daemon work.
 

@@ -44,6 +44,8 @@ Status: **local MCP and A2A discovery already implemented**; agent skills discov
 | Store *anything* agent-adjacent (prompts, configs, datasets, evals) | `dirctl artifact push prompt.txt --type mytype.prompt` | Same workflow for any content type — one tool for all agentic assets |
 | Attach one object to another | `dirctl artifact attach alex/summarizer:v1 eval.json --type mytype.eval` | Generic referrer in the DAG |
 | See everything attached to my agent | `dirctl artifact tree alex/summarizer:v1` | The DAG: signatures, ownership, docs, whatever was attached |
+| Think in nouns, not content types | `dirctl agent push card.json`, `dirctl mcp list`, `dirctl skill pull team/x:v1` | Typed sugar generated from ContentTypeHandler CLI nouns — same generic core underneath |
+| Wire an artifact into my coding tools | `dirctl install <ref> --into claude-code\|claude-desktop\|…` | **Existing feature (v1 `dirctl install`), retained** — pulls the artifact and configures it into local agent tooling (MCP config, skill folders) |
 
 **Why Alex cares:** replaces "final_v2_REAL.json in a Slack thread" with versioned, addressable, named artifacts.
 
@@ -69,7 +71,12 @@ Status: **local MCP and A2A discovery already implemented**; agent skills discov
 | Verify something before I run it | `dirctl verify team/rag-helper:v2` | Valid/invalid + who signed it |
 | Mark it as mine/my team's | `dirctl trust claim ownership team/summarizer:v1 --owner https://team.example` | Ownership claim attached; resolvable via `.well-known` / DID / SPIFFE |
 | Check who owns an artifact | `dirctl trust verify-claim team/rag-helper:v2` | Verified ownership/identity report (claim semantics defined per content type) |
-| Enforce team policy ("only run signed agents") | `dirctl verify <ref> --policy team-policy.yaml` | Pass/fail — scriptable in CI and agent launchers |
+| Approve/review an artifact for my team | `dirctl trust claim review team/rag-helper:v2 --verdict approved` | Signed `review-claim` referrer; authority scoped by namespace policy |
+| See all claims on an artifact | `dirctl trust claims team/rag-helper:v2` | Table of review/score/deprecation claims with verified issuers; `search`/`pull` show badges (✓ approved, ⚠ deprecated) |
+| Enforce team policy ("only run signed agents") | `dirctl verify <ref> --policy team-policy.yaml` | Pass/fail — scriptable in CI and agent launchers; can also gate on claims ("approved by security-team, score ≥ N") |
+| Manage policies as artifacts (Rego/OPA) | `dirctl artifact push policy.rego --type policy.rego` + `dirctl policy bind team/policies:v3 --at verify --scope 'team/*'` | Versioned, signed policy bundles bound to enforcement points (admission, authz, verify, run, GC) |
+| Dry-run a policy | `dirctl policy eval team/policies:v3 --input team/rag-helper:v2` | Decision + reasons, before enforcement |
+| Automatic cleanup by policy | `dirctl gc run [--dry-run]` with a bound GC policy ("delete unsigned artifacts older than 10 days") | Scheduled, policy-driven garbage collection with dry-run and deletion reports |
 
 **Why Alex cares:** "I pulled an agent card off the network and executed it" is terrifying without this.
 
@@ -84,6 +91,19 @@ Status: **local MCP and A2A discovery already implemented**; agent skills discov
 | Check I'm connected | `dirctl routing status` | Peer/DHT health |
 
 **Why Alex cares:** the same commands scale from "my machine" → "my team" → "the ecosystem" with no new concepts.
+
+### Run & deploy (via content types — Executor capability)
+
+If an artifact's content type ships an **Executor** capability, run/deploy work through the same generic interfaces (verify → pull → execute → visible in runtime):
+
+| I want to… | I run… | What I get |
+|---|---|---|
+| Run an artifact locally | `dirctl run team/rag-helper:v2` | Policy-gated verify → pull → handler's Executor launches it; instance appears in `dirctl runtime list` |
+| Deploy with a config | `dirctl deploy team/summarizer:v1 --spec prod-spec` | Executes with an attached `deployment.spec` artifact; a signed `deployment-record` claim is attached back |
+| See what's deployed where | `dirctl search query --type deployment-record --key target=prod` | Deployment state is just claims — searchable, auditable, visible in `artifact tree` |
+| Stop an instance | `dirctl runtime stop <id>` | Delegated to the type's Executor |
+
+Directory stays a registry/discovery/trust layer — Executors integrate with real runners (process, Docker, k8s); orchestration is out of scope.
 
 ### Daemon (already exists — retained)
 
@@ -107,6 +127,9 @@ The Go SDK (`client` module) mirrors the CLI 1:1. Other language SDKs are genera
 | Inspect metadata | `dirctl artifact info <ref>` | `c.Artifact.Lookup(ctx, ref)` |
 | Render DAG | `dirctl artifact tree <ref>` | `c.Artifact.Walk(ctx, ref, fn)` |
 | Delete | `dirctl artifact rm <ref>` | `c.Artifact.Delete(ctx, ref)` |
+| Typed sugar (per registered CLI noun) | `dirctl agent push\|pull\|list`, `dirctl mcp list`, `dirctl skill pull …` | same SDK calls with the type preset (`c.Artifact.Push(ctx, req)` with `ContentType` fixed) |
+| Run / deploy (types with Executor) | `dirctl run <ref>`, `dirctl deploy <ref> --spec <ref>` | `c.Artifact.Pull` + handler Executor dispatch; instances via `c.Runtime.List` |
+| Install into agent tooling (existing) | `dirctl install <ref> --into <tool>` | pull + local agent config apply (existing install machinery) |
 
 ### 3.2 Naming (namespacing & tagging)
 
@@ -154,7 +177,20 @@ The Go SDK (`client` module) mirrors the CLI 1:1. Other language SDKs are genera
 | Verify **any** object | `dirctl verify <ref> [--policy f]` | `c.Trust.Verify(ctx, ref, policy)` |
 | Claim ownership | `dirctl trust claim ownership <ref> --owner <id>` | `c.Trust.ClaimOwnership(ctx, ref, id)` |
 | Verify identity claim (content-type-defined) | `dirctl trust verify-claim <ref>` | `c.Trust.VerifyClaims(ctx, ref)` |
+| Issue curation claims (review/score/deprecation) | `dirctl trust claim review <ref> --verdict approved` | `c.Trust.Claim(ctx, ref, claim)` |
+| List claims with verified issuers | `dirctl trust claims <ref>` | `c.Trust.ListClaims(ctx, ref)` |
 | Resolve identity (DID/SPIFFE/HTTPS) | `dirctl trust resolve <identity>` | `c.Trust.Resolve(ctx, id)` |
+
+### 3.7 Policy & GC (Rego/OPA plugin framework — cross-cutting)
+
+| Feature | CLI | Go SDK |
+|---|---|---|
+| List active policy bindings | `dirctl policy list` | `c.Policy.List(ctx)` |
+| Bind policy artifact to enforcement point | `dirctl policy bind <ref> --at admission\|authz\|verify\|run\|gc --scope <ns>` | `c.Policy.Bind(ctx, ref, point, scope)` |
+| Unbind | `dirctl policy unbind <binding-id>` | `c.Policy.Unbind(ctx, id)` |
+| Dry-run evaluate | `dirctl policy eval <policy-ref> --input <ref>` | `c.Policy.Eval(ctx, policyRef, input)` |
+| Run garbage collection | `dirctl gc run [--dry-run]` | `c.GC.Run(ctx, opts)` |
+| GC status / bound GC policies | `dirctl gc status` / `dirctl gc policies` | `c.GC.Status(ctx)` / `c.GC.Policies(ctx)` |
 
 ## 4. One end-to-end story (the demo/quickstart script)
 

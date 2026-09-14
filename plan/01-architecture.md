@@ -43,6 +43,10 @@ The daemon already exists (`dirctl daemon start|stop|status|…`) and hosts thes
 - **Universal `Ref`**: every v2 RPC takes a `Ref` message — a oneof of digest and name. Names are resolved server-side, so *all* operations (pull, sign, verify, announce, attach, search-status, …) work on named refs.
 - **Storage**: tags are OCI tags plus a local name→digest index (reuse existing naming component + database); tag moves are recorded (a version can be retargeted, history retained — pending decision, see open questions).
 
+### Compatibility note: remote registries (future direction, not committed)
+
+Because storage is plain OCI 1.1 and all objects are content-addressed, references to artifacts in **any** OCI registry (e.g. `ghcr.io/a/b:v1`) are *representable* in the `Ref` model, and Docker-style resolution semantics (local-first use, remote-first pull with incremental content-addressed transfer, `--pull=missing|always|never`) are a known, proven pattern the design does not preclude. The cross-component semantics (whether search indexes remote artifacts, whether routing may announce content you don't host, how locally-attached referrers overlay remote subjects in `verify`) are **intentionally unspecified** and left for a future design iteration. For v2, `Ref` carries digest and local name only; no `Import`/`Export` RPCs and no `--pull` flag are committed.
+
 ## 5. Trust Design (identity, ownership, signing — cross-cutting)
 
 Signing and verifying **arbitrary objects** are first-class citizens, exposed at the top level of the CLI and usable by every component:
@@ -52,6 +56,27 @@ Signing and verifying **arbitrary objects** are first-class citizens, exposed at
 - **Identity claim** artifact: `{subject_digest, identity (DID | SPIFFE ID | https URL), proof}` — proof verified via DID doc resolution, SPIFFE trust bundle, or `https://<domain>/.well-known/agntcy-identity`.
 - **Content-type ownership of claims**: whether an object *can* claim an identity, and what a valid claim looks like, is decided by its content type (handler). Trust only provides the generic sign/verify/resolve machinery.
 - `Verify` = walk the referrers of a digest → validate each signature/claim → aggregate into a verification report; optional policy (e.g., "must be signed by an owner whose identity resolves via DID").
+
+### 5.1 Curation via referrer claims
+
+Curation/governance (agentregistry-style approvals, scores, audits) is modeled with the same referrer machinery — attestation artifacts attached to a subject, signed by an authority identity, evaluated by `verify --policy`. No centralized approval workflow in the core.
+
+Standard claim vocabulary (reserved content types, minimal schemas):
+
+| Claim type | Payload (sketch) | Purpose |
+|---|---|---|
+| `review-claim` | subject, reviewer identity, verdict (approved / rejected / needs-changes), scope, comment, timestamp | Human/organizational approval |
+| `score-claim` | subject, scorer identity, dimension (security / quality / compat / license), numeric score, method/tool, evidence ref | Automated or manual scoring |
+| `deprecation-claim` | subject, optional successor ref, reason | Lets `pull`/`search` warn "deprecated, use team/x:v3" |
+| `revocation-claim` | subject, revoked claim digest, reason | Withdraws a prior approval; claims are content-addressed and immutable, so revocation is a new claim. `Verify` treats latest-by-authority as authoritative |
+| `deployment-record` | subject, target, executor identity, status, timestamp | Attested record of a run/deploy action (see §9) |
+
+Design points:
+
+- **Scoped authority**: policy binds authorities to namespaces — e.g. "claims from `spiffe://security-team` are authoritative for `team/*`". Prevents anyone's "approval" from mattering everywhere.
+- **Automated attestors**: CI bots are first-class claim issuers (a scanner signs a `score-claim` after each push), driven by the events/index-sync pipeline.
+- **Claim indexing**: claims are ordinary artifacts, so the search indexer indexes them — "list everything approved by security-team" is a KV query. No new component.
+- **UX**: `dirctl trust claim review <ref> --verdict approved`, `dirctl trust claims <ref>`, and badges (✓ approved, ⚠ deprecated) in `search`/`pull` output derived from the claim index; `verify --policy` gates on claims.
 
 ## 6. gRPC v2 Interface Drafts
 
@@ -211,6 +236,9 @@ Define a **ContentTypeHandler** contract (in-process Go interface first; out-of-
 5. **ClaimPolicy** — whether/how objects of type T can claim an identity (consumed by Trust).
 6. **NamingHints** — which annotations drive auto-tagging (`org/name:version` derivation).
 7. **Renderer** — pretty-print for `dirctl artifact info` / `tree`.
+8. **CliNoun** — a handler may register a CLI noun (e.g. `agent`, `mcp`, `skill`); `dirctl` generates typed sugar commands from it (`dirctl agent push|pull|list` ≙ `dirctl artifact … --type <ct>` with the type's default renderer). The core stays generic; the UX is typed.
+9. **Executor** *(optional)* — how to materialize and launch/stop an instance of T (process, container, remote target). Powers `dirctl run`/`deploy` (see §9).
+10. **Fetcher** *(reserved slot — not implemented in v2)* — importing artifacts of type T from non-OCI sources (GitHub releases, PyPI, HTTP), normalizing them into content-typed artifacts with provenance annotations. The capability slot is reserved in the contract so this can be added later without changing the model.
 
 Registration: a small manifest (name, content type, capabilities) + a registry in the server config. Built-in types (`oasf.record`, `signature`, `identity-claim`, `ownership-claim`, `a2a.card`, `mcp.server`) ship as first-party handlers using the exact same interface — proving the extension path. Adding "content type X with custom KV keys and routing" = write one handler, register it, no core changes.
 
@@ -219,3 +247,45 @@ Registration: a small manifest (name, content type, capabilities) + a registry i
 - Producer side: **announce by content type** — publish a specific object (hash, and optionally the full object) to the DHT. Nothing more; whatever consumers do with it is up to them.
 - Consumer side: `listen` on a content type (live feed of announcements) or `discover` by content type plus key selectors, where the allowed keys are a **predetermined set defined by the OASF registry**.
 - Reuses the existing libp2p DHT plugin; the change is generalizing announcements from record-specific labels to generic `content type + OASF keys`.
+
+## 9. Execution via Content Types (run/deploy — no new core service)
+
+Run/deploy features are supported **through content type objects**, composed entirely from the interfaces above:
+
+- **Executor capability** (handler-provided, §7): for content type T, defines how to materialize and launch/stop an instance — a local process, a container, or a remote target. The core knows nothing about execution; it only dispatches to the handler.
+- **`dirctl run <ref>`** = resolve `Ref` (Naming) → optional policy gate `Verify` (Trust — "only run signed/approved artifacts") → `Pull` (Artifact) → delegate to the handler's Executor.
+- **Instance visibility**: launched instances register with the existing `RuntimeService`, so `dirctl runtime list` shows them alongside independently discovered MCP/A2A resources — one unified view of "what is running here".
+- **Deploy configuration is an artifact**: a `deployment.spec` content type (target, env, parameters) pushed and attached as a referrer to the subject (`ArtifactService.Attach`). Deploying = executing the subject with an attached spec: `dirctl deploy <ref> --spec <spec-ref>`.
+- **Deploy state is a claim**: after acting, the executor attaches a signed `deployment-record` claim (§5.1) back onto the subject. Deployments are therefore visible in `artifact tree`, searchable via the KV indexer ("what is deployed to prod?"), and attestable/auditable via Trust — with zero new gRPC services.
+
+Boundary: Directory does not become an orchestrator. Executors are integration points to real runners (local process, Docker, k8s operators); scheduling, scaling, and drift management remain out of scope.
+
+## 10. Policy Framework (Rego/OPA, plugin architecture)
+
+Policies are a **cross-cutting plugin layer**, not a per-component feature. One policy engine abstraction, with **Rego/OPA as the first-party engine**, enforced at well-defined Policy Enforcement Points (PEPs) across the system:
+
+| Enforcement point | Example policy |
+|---|---|
+| **Content admission** (push/attach) | "reject artifacts of type `oasf.record` failing schema X", "only signed artifacts may be attached to `team/*` subjects" |
+| **Authz** (all RPCs) | "only members of org A may tag under `team/*`" — complements/reuses the existing authn/authz chassis |
+| **Verify** (Trust) | "valid = signed by owner AND has approved `review-claim` from security-team AND security score ≥ 7" — replaces the ad-hoc `--policy file` with Rego evaluated over the claim/referrer graph |
+| **Execution gate** (run/deploy) | "only run artifacts with a passing verify report" |
+| **Pull/resolution gate** (optional) | "warn or deny pulling deprecated artifacts" |
+| **Garbage collection** (see §10.1) | retention rules evaluated as policy |
+
+Design:
+
+- **Engine as plugin**: a `PolicyEngine` plugin interface (evaluate(input document) → decision + reasons). OPA/Rego ships built-in; other engines (CEL, cedar, external OPA server) can be plugged without core changes. Policies are evaluated over structured input the PEPs assemble: artifact descriptor + annotations, referrer/claim graph, resolved identities, request context (principal, RPC, namespace).
+- **Policies are artifacts too**: policy bundles are stored as content-typed artifacts (`policy.rego` content type) — versioned, named (`team/policies:v3`), signable, and verifiable like everything else. Activation binds a policy artifact to an enforcement point + scope (namespace/content type) in server config.
+- **gRPC surface — minimal by design**: engines are in-process plugins and do *not* require gRPC. A thin optional `PolicyService` is exposed only for management and introspection: `List` (active bindings), `Eval` (dry-run a policy against a ref — powers `dirctl policy eval`), `Bind`/`Unbind` (activate a policy artifact at an enforcement point). Everything else flows through existing services.
+- **CLI**: `dirctl policy list`, `dirctl policy eval <policy-ref> --input <ref>` (dry-run), `dirctl policy bind <policy-ref> --at verify --scope 'team/*'`, `dirctl policy unbind …`. Policy authoring/distribution uses the normal artifact flow (`push`/`tag`/`sign`).
+
+### 10.1 Garbage Collection Policies
+
+Retention/cleanup is expressed with the same policy machinery, executed by a **GC job runner** in the server (reuses the existing scheduled-task/cleanup infrastructure from the routing component):
+
+- A GC policy is a Rego rule over artifact metadata + claim graph selecting candidates for deletion, e.g.: *"delete artifacts with no `signature` referrer older than 10 days"*, *"keep only the last 5 versions per name"*, *"delete anything with a `revocation-claim` after 30 days"*, *"never delete artifacts with an approved `review-claim`"*.
+- Jobs run on a schedule (or on demand via `dirctl gc run`), always support `--dry-run`, and emit deletion reports as events; deletions respect the DAG rules (referrer handling per the deletion/GC open question).
+- CLI: `dirctl gc run [--dry-run]`, `dirctl gc status`, `dirctl gc policies` (which GC policies are bound). SDK: `c.Policy.*` and `c.GC.*` mirroring these.
+
+This keeps one mental model: **policies are versioned, signed artifacts; enforcement points are fixed; engines are plugins.**
