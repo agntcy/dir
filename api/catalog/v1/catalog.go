@@ -4,6 +4,7 @@
 package v1
 
 import (
+	"encoding/base64"
 	"errors"
 	"fmt"
 	"sort"
@@ -50,6 +51,7 @@ const (
 type catalogModuleProjection struct {
 	MediaType string
 	Label     string
+	Suffix    string
 }
 
 func KnownCatalogModuleNames() []string {
@@ -70,15 +72,14 @@ func KnownCatalogModuleNames() []string {
 // Mapped from OASF module names: https://schema.oasf.outshift.com/modules
 var catalogModules = map[string]catalogModuleProjection{
 	"integration/mcp": {
-		MediaType: ProtocolMCPCardJsonMediaType, Label: "MCP",
+		MediaType: ProtocolMCPCardJsonMediaType, Label: "MCP", Suffix: "mcp",
 	},
 	"integration/a2a": {
-		MediaType: ProtocolA2ACardJsonMediaType, Label: "A2A",
+		MediaType: ProtocolA2ACardJsonMediaType, Label: "A2A", Suffix: "a2a",
 	},
 	AgentSkillsModuleName: {
 		// Markdown vs bundle is resolved from module data in getModuleMediaType.
-		MediaType: ProtocolAgentSkillsMdMediaType,
-		Label:     "Skill",
+		MediaType: ProtocolAgentSkillsMdMediaType, Label: "Skill", Suffix: "skill",
 	},
 }
 
@@ -221,21 +222,27 @@ func RecordToCatalog(record coretypes.Record, opts ...ConvertOption) (*CatalogEn
 
 	// Multiple known modules — container entry on the parent URN with nested entries for each module.
 	entries := make([]*CatalogEntry, 0, len(modules))
+	moduleSuffixes := make(map[string]int)
 	for _, module := range modules {
 		entry := moduleToCatalogEntry(module)
 		if entry == nil {
 			return nil, fmt.Errorf("failed to project module %q to catalog entry", module.GetName())
 		}
 
+		projection := catalogModules[module.GetName()]
+		suffixIndex := moduleSuffixes[projection.Suffix]
+		moduleSuffixes[projection.Suffix] = suffixIndex + 1
+		suffix := fmt.Sprintf("%s-%d", projection.Suffix, suffixIndex)
 		entries = append(entries, &CatalogEntry{
-			DisplayName: fmt.Sprintf("%s - %s", recordName, catalogModules[module.GetName()].Label),
+			Identifier:  catalogURN(recordCid, suffix),
+			DisplayName: fmt.Sprintf("%s - %s", recordName, projection.Label),
 			MediaType:   entry.GetMediaType(),
 			Artifact:    entry.GetArtifact(),
 			Tags:        entry.GetTags(),
 		})
 	}
 
-	// Sort entries by URN suffix for deterministic output
+	// Sort entries by identifier for deterministic output
 	sort.Slice(entries, func(i, j int) bool {
 		return entries[i].GetIdentifier() < entries[j].GetIdentifier()
 	})
@@ -419,11 +426,9 @@ func GetCatalogUrnFor(values ...string) string {
 }
 
 func catalogSignatures(cid string, signatures []coretypes.ObjectSignature) *TrustManifest {
-	// convert signatures to provenance
 	var (
-		provenanceLinks  []*ProvenanceLink
-		attestations     []*Attestation
-		mergedSignatures []string
+		provenanceLinks []*ProvenanceLink
+		attestations    []*Attestation
 	)
 
 	for _, sig := range signatures {
@@ -431,8 +436,18 @@ func catalogSignatures(cid string, signatures []coretypes.ObjectSignature) *Trus
 			continue
 		}
 
-		sigDigest := ocidigest.FromString(sig.GetSignature()).String()
+		signatureBytes, err := base64.StdEncoding.DecodeString(sig.GetSignature())
+		if err != nil {
+			signatureBytes = []byte(sig.GetSignature())
+		}
+
+		sigDigest := ocidigest.FromBytes(signatureBytes).String()
 		signer := fmt.Sprintf("urn:ai:%s:signer:%s", CatalogHostURN, getSignatureIdentifier(sig))
+
+		mediaType := sig.GetContentType()
+		if mediaType == "" {
+			mediaType = "application/octet-stream"
+		}
 
 		provenanceLinks = append(provenanceLinks, &ProvenanceLink{
 			Relation:     "derivedFrom",
@@ -442,17 +457,15 @@ func catalogSignatures(cid string, signatures []coretypes.ObjectSignature) *Trus
 
 		attestations = append(attestations, &Attestation{
 			Type:        "publisher-identity",
-			Uri:         fmt.Sprintf("base64:%s", sig.GetSignature()),
-			MediaType:   sig.GetContentType(),
+			Uri:         fmt.Sprintf("data:%s;base64,%s", mediaType, base64.StdEncoding.EncodeToString(signatureBytes)),
+			MediaType:   mediaType,
 			Digest:      &sigDigest,
-			Size:        new(uint64(len(sig.GetSignature()))),
+			Size:        new(uint64(len(signatureBytes))),
 			Description: new(fmt.Sprintf("Verified signature by %s", signer)),
 		})
-
-		mergedSignatures = append(mergedSignatures, sig.GetSignature())
 	}
 
-	if len(mergedSignatures) == 0 {
+	if len(attestations) == 0 {
 		return nil
 	}
 
@@ -461,7 +474,6 @@ func catalogSignatures(cid string, signatures []coretypes.ObjectSignature) *Trus
 		IdentityType: new("did"),
 		Attestations: attestations,
 		Provenance:   provenanceLinks,
-		Signature:    new(strings.Join(mergedSignatures, ".")),
 	}
 }
 
