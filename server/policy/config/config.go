@@ -1,0 +1,29 @@
+// Copyright AGNTCY Contributors (https://github.com/agntcy)
+// SPDX-License-Identifier: Apache-2.0
+
+package config
+
+import "errors"
+
+// Config points the server at a directory of file-based content policies.
+// Policy evaluation is not implemented yet; this exists so Helm (and a local
+// daemon) can place .rego files on disk and the server can find them later.
+type Config struct {
+	// Enabled turns content-policy loading on. Disabled by default.
+	Enabled bool `json:"enabled,omitempty" mapstructure:"enabled"`
+
+	// Dir is the directory that holds policy files (one file per policy).
+	Dir string `json:"dir,omitempty" mapstructure:"dir"`
+}
+
+func (c *Config) Validate() error {
+	if !c.Enabled {
+		return nil
+	}
+
+	if c.Dir == "" {
+		return errors.New("policy directory is required")
+	}
+
+	return nil
+}
