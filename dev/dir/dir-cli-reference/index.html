@@ -2197,10 +2197,32 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#installing-several-records-pipe-from-dirctl-search" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Installing several records: pipe from dirctl search
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#dirctl-install-uninstall-cid-or-name-flags" class="md-nav__link">
     <span class="md-ellipsis">
       
         dirctl install uninstall &lt;cid-or-name&gt; [flags]
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#dirctl-install-prune-flags" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        dirctl install prune [flags]
       
     </span>
   </a>
@@ -3218,10 +3240,32 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#installing-several-records-pipe-from-dirctl-search" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Installing several records: pipe from dirctl search
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#dirctl-install-uninstall-cid-or-name-flags" class="md-nav__link">
     <span class="md-ellipsis">
       
         dirctl install uninstall &lt;cid-or-name&gt; [flags]
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#dirctl-install-prune-flags" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        dirctl install prune [flags]
       
     </span>
   </a>
@@ -4109,7 +4153,7 @@ explicit <code>--auth-mode</code>.</p>
 </tr>
 <tr>
 <td>Install</td>
-<td><code>install run</code>, <code>install uninstall</code> (or top-level <code>uninstall</code>), <code>install list</code></td>
+<td><code>install run</code>, <code>install uninstall</code> (or top-level <code>uninstall</code>), <code>install list</code>, <code>install prune</code></td>
 </tr>
 <tr>
 <td>Diagnostics</td>
@@ -4234,29 +4278,49 @@ Windsurf, Cline, Roo Code, Gemini CLI, OpenCode, Zed, Continue, and Codex CLI.</
 <p>Writes are atomic and surgical: only our own MCP entry, skill file/folder, or
 delimited managed block is added/updated/removed — all of your existing
 configuration is preserved.</p>
+<p>Plans and summaries name only the agents something actually happens to. An
+agent where nothing changes is left out of the per-agent lines, because listing
+its path next to the record's name reads as a claim that the package is
+installed there. Skips and failures are always shown, since each explains why
+an agent you asked for got nothing, and the closing tally still counts every
+outcome. A plan in which nothing would change is reported as such and asks for
+no confirmation.</p>
 <h3 id="the-install-manifest">The install manifest</h3>
 <p>Installed artifacts carry no provenance of their own: an Agent Skill is marked
-only with its slug, with no version and no CID. So every global install records
-what it wrote in <code>$XDG_CONFIG_HOME/dirctl/installed.json</code> (<code>~/.config</code> when
+only with its slug, with no version and no CID. So every install records what
+it wrote in <code>$XDG_CONFIG_HOME/dirctl/installed.json</code> (<code>~/.config</code> when
 <code>XDG_CONFIG_HOME</code> is unset) — one row per record, agent, and scope, holding the
 version and CID that were installed, the skill path and its file list, and the
 MCP server keys.</p>
+<p><code>scope</code> is <code>global</code>, or the <strong>absolute path of the repository</strong> a <code>--project</code>
+install wrote into. Naming the repository is what lets one manifest hold every
+install on this machine: the row key is (name, agent, scope), so a bare
+"project" would make the same package installed into two repositories collide
+on one key. It also means a project install can be listed and removed from
+anywhere, since each row's paths resolve against the repository it names rather
+than the current directory.</p>
+<p>The manifest is a <strong>local record of what happened</strong>, never a file to commit —
+it is full of absolute paths. A committed file pinning what a team should have
+is a different, declarative thing, and not this one.</p>
 <p>The row lists the artifacts that were <strong>actually written</strong>, not the ones the
 record's modules imply. An agent that received nothing — skipped or failed — is
 not recorded.</p>
-<p>Today the manifest is only bookkeeping: <code>uninstall</code> still resolves and pulls
-the record, derives its current artifacts, removes those, and then deletes the
-rows. It does not read <code>skillFiles</code> or <code>mcpServers</code> to decide what to remove.
-Recording them is what will let a future manifest-driven <code>uninstall</code> and
-<code>upgrade</code> remove exactly the artifacts that were written, without re-fetching a
-record that may since have been garbage-collected upstream.</p>
+<p>The manifest is the single source of truth for what is installed, so
+<code>uninstall</code> reads it and contacts no Directory at all. That covers the case
+with no other answer: the record has been deleted upstream, or the server is
+simply down, and the artifacts are still on this machine. It also means only
+the agents that actually hold the package are touched, including one no longer
+detected here — the files it was given are still on disk.</p>
+<p>A reference with no row is therefore <strong>not installed</strong>, and says so. Asking a
+Directory about it would answer a different question — whether some record
+exists — and would fail for reasons that say nothing about what is on this
+machine.</p>
 <p>A row names every artifact <code>dirctl</code> wrote and has not since removed, so
 reinstalling carries forward anything the previous row named that the new
 install did not write. That covers a reinstall where one artifact failed, and a
 new version that renames its MCP server while the old key stays in the config.</p>
 <p>The manifest is bookkeeping, not the product: if it cannot be read or written,
-<code>dirctl</code> prints a warning and the install still succeeds. Project-scope
-(<code>--project</code>) installs are not recorded yet.</p>
+<code>dirctl</code> prints a warning and the install still succeeds.</p>
 <h3 id="dirctl-install-list"><code>dirctl install list</code></h3>
 <p>Lists every supported agent, whether it is detected on this machine, and the
 config files that install would touch. Makes no changes and does not contact the
@@ -4331,21 +4395,83 @@ dirctl<span class="w"> </span>install<span class="w"> </span>cisco.com/agent<spa
 <span class="c1"># Install into the current repo instead of the global config</span>
 dirctl<span class="w"> </span>install<span class="w"> </span>cisco.com/agent<span class="w"> </span>--project
 </code></pre></div>
+<h3 id="installing-several-records-pipe-from-dirctl-search">Installing several records: pipe from <code>dirctl search</code></h3>
+<p>With no positional argument and something on stdin, <code>install</code> reads one
+reference per line. Blank lines and <code>#</code> comments are ignored.</p>
+<p><code>dirctl search -o raw</code> is the format to pipe: one CID per line. <code>-o jsonl</code>
+works too, since its quotes are stripped. Record names are accepted as well,
+so a hand-written list can be piped in.</p>
+<div class="highlight"><pre><span></span><code>dirctl<span class="w"> </span>search<span class="w"> </span>--module<span class="w"> </span>integration/mcp<span class="w"> </span>-o<span class="w"> </span>raw<span class="w"> </span><span class="p">|</span><span class="w"> </span>dirctl<span class="w"> </span>install<span class="w"> </span>--agents<span class="w"> </span>all<span class="w"> </span>--yes
+dirctl<span class="w"> </span>search<span class="w"> </span>--skill<span class="w"> </span><span class="s2">&quot;code*&quot;</span><span class="w"> </span>-o<span class="w"> </span>raw<span class="w"> </span><span class="p">|</span><span class="w"> </span>dirctl<span class="w"> </span>install<span class="w"> </span>--dry-run
+</code></pre></div>
+<p>Filtering belongs to <a href="#dirctl-search"><code>dirctl search</code></a>, so <code>install</code> carries no
+copy of its flags. Two consequences worth knowing:</p>
+<ul>
+<li><strong>A piped run cannot prompt</strong>, because stdin is the reference list. It needs
+  <code>--yes</code>, or <code>--dry-run</code> to preview. Without either it errors, rather than
+  reading a CID as the answer to a confirmation.</li>
+<li><strong>Only the highest version of each name is installed.</strong> Search returns every
+  matching version, and there is no flag to install them all: the skill slug
+  and the MCP server key both derive from the record name alone, so two
+  versions resolve to the same folder and the same config key. Only one
+  version of a package can be live and reachable by an agent.</li>
+</ul>
+<p>A reference that cannot be resolved or pulled is reported and skipped, so one
+bad entry does not abort the run. At most 1000 references are accepted in one
+run.</p>
 <h3 id="dirctl-install-uninstall-cid-or-name-flags"><code>dirctl install uninstall &lt;cid-or-name&gt; [flags]</code></h3>
-<p>Removes what <code>install</code> added for that record — its MCP entry and/or skill —
-leaving all other content intact. Shares the same flags as install (<code>--agents</code>,
-<code>--project</code>, <code>--dry-run</code>, <code>--yes</code>). Idempotent: an agent with nothing of ours
-installed is reported as unchanged, never an error.</p>
-<p>The record's row is dropped from the install manifest for every agent whose
-artifacts are confirmed gone, meaning at least one was removed or already
-absent and none failed. An agent keeps its row when a removal failed, and when
-every artifact was skipped because its location could not be resolved for that
-scope — in both cases something may still be on disk, and the row is the only
-note of what it is.</p>
+<p>Removes what <code>install</code> recorded for that record — its MCP entry and/or skill —
+leaving all other content intact. Shares the selection flags with install
+(<code>--agents</code>, <code>--project</code>, <code>--dry-run</code>, <code>--yes</code>). Idempotent: removing something
+already gone is not an error.</p>
+<p>What to remove comes from the install manifest, so no Directory is contacted
+and only the agents that actually hold the package appear in the plan. A row
+whose artifacts have already been deleted by hand is cleared from the manifest,
+so a package can never get stuck. <code>dirctl uninstall &lt;name&gt;:&lt;version&gt;</code> removes
+only rows at that version, and a bare CID matches the exact record installed.</p>
+<p>A reference with no matching row reports <code>"&lt;name&gt;" is not installed globally</code>,
+or <code>not installed in &lt;repo&gt;</code> under <code>--project</code>. When the package does exist at
+another scope the message says where, since a global uninstall does not touch a
+repository's rows and a <code>--project</code> one touches only the repository it runs in.</p>
+<p>The record's row is dropped for every agent whose artifacts are confirmed gone,
+meaning at least one was removed or already absent and none failed. An agent
+keeps its row when a removal failed, and when every artifact was skipped
+because its location could not be resolved — in both cases something may still
+be on disk, and the row is the only note of what it is.</p>
+<p>It takes <strong>one</strong> reference. Removing several is a loop over
+<code>dirctl install list</code>; the manifest is what lists them, and search filters
+would answer a different question — what exists upstream, rather than what you
+have.</p>
 <p><code>dirctl uninstall &lt;cid-or-name&gt;</code> is a top-level shorthand for
 <code>dirctl install uninstall &lt;cid-or-name&gt;</code> (same flags and behavior).</p>
 <div class="highlight"><pre><span></span><code>dirctl<span class="w"> </span>install<span class="w"> </span>uninstall<span class="w"> </span>cisco.com/agent<span class="w"> </span>--yes
 dirctl<span class="w"> </span>uninstall<span class="w"> </span>cisco.com/agent<span class="w"> </span>--agents<span class="w"> </span>cursor
+</code></pre></div>
+<h3 id="dirctl-install-prune-flags"><code>dirctl install prune [flags]</code></h3>
+<p>Drops manifest rows whose recorded artifacts are no longer on disk.</p>
+<p>Rows go stale whenever something changes outside <code>dirctl</code>: a skill folder
+deleted by hand, or a repository moved after a <code>--project</code> install. Pruning
+removes only the bookkeeping. Nothing on disk is touched, and a row is dropped
+only when <strong>every</strong> artifact it names is gone, since a package that lost one of
+two artifacts is still installed and an upgrade can put it right.</p>
+<table>
+<thead>
+<tr>
+<th>Flag</th>
+<th>Description</th>
+<th>Default</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>--dry-run</code></td>
+<td>List the rows that would be dropped, without writing</td>
+<td><code>false</code></td>
+</tr>
+</tbody>
+</table>
+<div class="highlight"><pre><span></span><code>dirctl<span class="w"> </span>install<span class="w"> </span>prune<span class="w"> </span>--dry-run
+dirctl<span class="w"> </span>install<span class="w"> </span>prune
 </code></pre></div>
 <h2 id="daemon-operations">Daemon Operations</h2>
 <p>The daemon commands run a self-contained local directory server that bundles the gRPC apiserver and reconciler into a single process with embedded SQLite and a filesystem OCI store. All state is stored under <code>~/.agntcy/dir/</code> by default.</p>
