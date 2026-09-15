@@ -210,13 +210,18 @@ func TestUpsertKeysOnNameAgentAndScope(t *testing.T) {
 	otherAgent.Agent = "cursor"
 	m.Upsert(otherAgent)
 
-	otherScope := base
-	otherScope.Scope = pkgstate.ScopeProject
-	m.Upsert(otherScope)
+	oneRepo := base
+	oneRepo.Scope = pkgstate.ProjectScope("/src/alpha")
+	m.Upsert(oneRepo)
 
-	// One package, three rows: the same name is installed for two agents and at
-	// two scopes, and none of them collides.
-	assert.Len(t, m.Entries, 3)
+	anotherRepo := base
+	anotherRepo.Scope = pkgstate.ProjectScope("/src/beta")
+	m.Upsert(anotherRepo)
+
+	// One package, four rows: two agents globally, plus one repository each.
+	// Naming the repository is what keeps the last two apart — a bare
+	// "project" would collide on one key.
+	assert.Len(t, m.Entries, 4)
 }
 
 func TestWithCarriedArtifactsKeepsAServerThisInstallDidNotWrite(t *testing.T) {

@@ -72,16 +72,41 @@ const (
 	OriginBuiltin Origin = "builtin"
 )
 
-// Scope says which configuration location a row's artifacts were written to.
+// Scope says where a row's artifacts were written: ScopeGlobal for the user's
+// global agent config, or the absolute path of the repository a `--project`
+// install wrote into.
+//
+// Naming the repository rather than saying "project" is what lets one manifest
+// hold every install on this machine. The row key is (name, agent, scope), so
+// with a bare "project" the same package installed into two repositories would
+// collide on one key and the second would overwrite the first.
+//
+// The manifest is a local record of what happened, never a file to commit — it
+// is full of absolute paths, and this field is one of them. A committed file
+// pinning what a team should have is a different, declarative thing, and not
+// this one.
 type Scope string
 
-const (
-	// ScopeGlobal is the user's global agent config.
-	ScopeGlobal Scope = "global"
+// ScopeGlobal is the user's global agent config.
+const ScopeGlobal Scope = "global"
 
-	// ScopeProject is the current repository.
-	ScopeProject Scope = "project"
-)
+// ProjectScope returns the scope for artifacts written into the repository at
+// dir.
+func ProjectScope(dir string) Scope { return Scope(dir) }
+
+// IsGlobal reports whether the scope is the user's global config rather than a
+// repository.
+func (s Scope) IsGlobal() bool { return s == ScopeGlobal }
+
+// Dir returns the repository path this scope names, or "" for the global
+// scope.
+func (s Scope) Dir() string {
+	if s.IsGlobal() {
+		return ""
+	}
+
+	return string(s)
+}
 
 // Key identifies one row: one package, for one agent, at one scope.
 type Key struct {

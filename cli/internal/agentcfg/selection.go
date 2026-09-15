@@ -24,6 +24,19 @@ func AgentIDs() []string {
 	return ids
 }
 
+// ByID returns the descriptor for an agent ID. It reports false for an ID this
+// binary does not know, which a manifest row can perfectly well name: the row
+// may have been written by a dirctl that supported an agent this one dropped.
+func ByID(id string) (Agent, bool) {
+	for _, a := range Registry() {
+		if a.ID == id {
+			return a, true
+		}
+	}
+
+	return Agent{}, false
+}
+
 // ParseSelection validates raw --agents values and returns the chosen agent-ID
 // set. An empty result means "all detected agents". It errors on an unknown ID
 // or on combining AllAgents with specific IDs.
