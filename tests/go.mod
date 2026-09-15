@@ -98,7 +98,7 @@ require (
 	github.com/agntcy/dir-runtime/utils v1.3.5 // indirect
 	github.com/agntcy/dir/reconciler v1.7.0 // indirect
 	github.com/agntcy/dir/utils v1.7.0 // indirect
-	github.com/agntcy/oasf-sdk/pkg v1.3.1-0.20260910081500-f0c6172a010a // indirect
+	github.com/agntcy/oasf-sdk/pkg v1.3.1-0.20260911081029-74efef404375 // indirect
 	github.com/alecthomas/chroma v0.10.0 // indirect
 	github.com/anchore/go-struct-converter v0.1.0 // indirect
 	github.com/antlr4-go/antlr/v4 v4.13.1 // indirect
