@@ -7,11 +7,13 @@ package init
 import (
 	"time"
 
+	cliconfig "github.com/agntcy/dir/cli/config"
 	"github.com/agntcy/dir/cli/internal/agentcfg"
 	"github.com/agntcy/dir/cli/internal/agentinstall"
 	"github.com/agntcy/dir/cli/internal/dirpkg"
 	"github.com/agntcy/dir/cli/internal/pkgstate"
 	"github.com/agntcy/dir/cli/presenter"
+	"github.com/agntcy/dir/client"
 	"github.com/spf13/cobra"
 )
 
@@ -32,6 +34,25 @@ type agentSelector func(cmd *cobra.Command, title string, candidates []agentcfg.
 // (defaulting to isInteractive) so tests can drive the interactive branch without
 // a real TTY.
 var interactiveCheck = isInteractive
+
+// dirConfig resolves the client config the built-in DIR package's MCP entry
+// should point at, honouring `--context` and the connection flags.
+//
+// It resolves here rather than at startup for two reasons. `dirctl init` skips
+// the root command's client setup, so nothing has resolved one yet; and Step 1
+// may have just created the context Step 3 has to read, which a config
+// resolved before the wizard ran could not know about.
+//
+// An unresolvable config is not an error — the user may have declined Step 1 —
+// so it degrades to nil and dirpkg mirrors the local default.
+func dirConfig(cmd *cobra.Command) *client.Config {
+	cfg, err := cliconfig.ResolveClientLenient(cmd)
+	if err != nil {
+		return nil
+	}
+
+	return cfg
+}
 
 // runAgentSetup runs Step 3 against the resolved ambient environment, using the
 // interactive checkbox prompt for per-agent selection.
@@ -65,7 +86,7 @@ func installAgents(cmd *cobra.Command, env agentcfg.Env, opts *options, selectAg
 	// Built locally, with the MCP entry pointed at the resolved context:
 	// `dirctl mcp serve` takes its target only from DIRECTORY_CLIENT_* env, so
 	// otherwise the spawned server would ignore the context just configured.
-	arts, err := dirpkg.Artifacts()
+	arts, err := dirpkg.Artifacts(dirConfig(cmd))
 	if err != nil {
 		return err
 	}
@@ -217,7 +238,7 @@ func removeAgents(cmd *cobra.Command, env agentcfg.Env, opts *options) error {
 		return nil
 	}
 
-	arts, err := dirpkg.Artifacts()
+	arts, err := dirpkg.Artifacts(dirConfig(cmd))
 	if err != nil {
 		return err
 	}

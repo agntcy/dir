@@ -118,8 +118,11 @@ Its last step wires this Directory into your AI coding agents: an MCP server
 entry so an agent can push, search, and pull records, plus the DIR skill as a
 usage guide. Both come from a record built into the `dirctl` binary —
 `org.agntcy/directory` — so no Directory connection is made, and the MCP entry
-carries the `DIRECTORY_CLIENT_*` environment for the context that was just
-configured, because `dirctl mcp serve` reads its target from nothing else.
+carries the `DIRECTORY_CLIENT_*` environment for the context this invocation
+resolved, because `dirctl mcp serve` reads its target from nothing else. That
+is the context `--context` names, or the one Step 1 has just configured; the
+two secrets, `auth_token` and `spiffe_token`, are never written into an agent's
+config file.
 
 That install is recorded in the [install manifest](#the-install-manifest) like
 any other package, with `origin: builtin`. It therefore shows up in
@@ -394,8 +397,9 @@ The built-in `org.agntcy/directory` package is rebuilt from this `dirctl` binary
 rather than pulled, even though a record of the same name is published. The
 published record's MCP module carries no environment, so installing it would
 silently repoint `dirctl mcp serve` at the default address; rebuilding also
-recomputes the `DIRECTORY_CLIENT_*` overlay from your *current* client context
-instead of replaying what it held when the package was installed.
+recomputes the `DIRECTORY_CLIENT_*` overlay from the context this invocation
+resolved — `--context` and the connection flags included — instead of replaying
+what it held when the package was installed.
 
 | Flag | Description | Default |
 |------|-------------|---------|

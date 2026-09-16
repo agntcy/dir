@@ -29,6 +29,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **CLI**: **BREAKING** — `dirctl install list` no longer shows detected agents. That view is now `dirctl install agents`; `install list` lists installed packages (#2029)
 - **CLI**: the install manifest records the server address each package was installed from, so a version check never compares a row against a Directory it did not come from. The address rather than the context name, since an endpoint override leaves the name in place (#2029)
 
+### Fixed
+- **CLI**: the MCP server entry installed for the built-in `org.agntcy/directory` package honours `--context` and the connection flags. It read `current_context` regardless, so `dirctl --context prod init` wrote an entry pointing `dirctl mcp serve` at a different Directory than the command itself used (#2030)
+
 ## [v1.7.0] - 2026-08-18
 
 ### Added

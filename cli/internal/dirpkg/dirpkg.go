@@ -28,7 +28,7 @@ import (
 	"time"
 
 	"github.com/agntcy/dir/cli/internal/agentinstall"
-	clientconfig "github.com/agntcy/dir/client/config"
+	"github.com/agntcy/dir/client"
 	"github.com/agntcy/dir/server/skill"
 )
 
@@ -58,9 +58,15 @@ func Name() string { return skill.RecordName }
 func Version() string { return skill.RecordVersion() }
 
 // Artifacts builds the built-in DIR record locally and derives its installable
-// artifacts — the skill and the MCP server entry — with the MCP environment
-// overlaid. No Directory round-trip.
-func Artifacts() (agentinstall.Artifacts, error) {
+// artifacts — the skill and the MCP server entry — with the MCP environment for
+// cfg overlaid. No Directory round-trip.
+//
+// The config is passed in rather than resolved here, because the two callers
+// resolve it at different moments and both are right to. `install upgrade`
+// hands over the one the root command already resolved for this invocation;
+// `dirctl init` resolves it in its own Step 3, since its Step 1 may have just
+// created the context that Step 3 has to read.
+func Artifacts(cfg *client.Config) (agentinstall.Artifacts, error) {
 	rec, err := skill.BuildRecord(time.Now().UTC())
 	if err != nil {
 		return agentinstall.Artifacts{}, fmt.Errorf("build DIR record: %w", err)
@@ -71,31 +77,31 @@ func Artifacts() (agentinstall.Artifacts, error) {
 		return agentinstall.Artifacts{}, fmt.Errorf("derive DIR artifacts: %w", err)
 	}
 
-	arts.SetMCPEnv(MCPServerEnv())
+	arts.SetMCPEnv(MCPServerEnv(cfg))
 
 	return arts, nil
 }
 
 // MCPServerEnv builds the DIRECTORY_CLIENT_* environment the spawned
-// `dirctl mcp serve` needs to reach the same node dirctl itself uses: the
-// current client context's connection settings, with DIRECTORY_CLIENT_*
-// overrides applied. Validation is skipped and unknown fields tolerated so a
-// partially-set or forward-compatible config still yields usable values; any
-// read error degrades to the local default.
+// `dirctl mcp serve` needs to reach the same node dirctl itself is talking to.
+//
+// It must be the *resolved* config for this invocation, so that `--context` and
+// `--server-addr` reach the installed entry. Reading current_context here
+// instead would point the MCP server somewhere the command never touched, which
+// is the same silent repointing that installing the Directory-published record
+// would cause.
+//
+// A nil or address-less config degrades to the local default. That is the
+// ordinary case when the user declines init's Step 1: mirroring the default
+// makes the server dial the daemon insecurely rather than fall into OIDC
+// auto-detection with an empty auth mode.
 //
 // Only non-secret fields are projected. The two secrets — auth_token and
 // spiffe_token — are deliberately excluded so a bearer token never lands in an
 // agent's config file; auth modes that need them still require the user to
 // supply the secret through their own environment.
-func MCPServerEnv() map[string]string {
-	cfg, _, err := clientconfig.Resolve(clientconfig.ResolveOptions{
-		SkipValidation:     true,
-		AllowUnknownFields: true,
-	})
-	if err != nil || cfg == nil {
-		// No resolvable context (e.g. the user declined init's Step 1): mirror
-		// the local default so the server dials the daemon insecurely rather
-		// than falling into OIDC auto-detection with an empty auth mode.
+func MCPServerEnv(cfg *client.Config) map[string]string {
+	if cfg == nil {
 		return map[string]string{
 			ServerAddressEnv: LocalServerAddress,
 			AuthModeEnv:      LocalAuthMode,
