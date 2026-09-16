@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - **Search**: `ListFilterValues` RPC for distinct filter values (#2012)
+- **CLI**: `dirctl install upgrade [name...]` moves installed packages to a newer version, with `--pre`, `--include-pinned`, `--agents`, `--project`, `--dry-run`, and `--yes`. Every replacement is fetched before anything is touched, so a record that cannot be pulled leaves the existing install alone; a server key the new version renamed is then stripped by name from the manifest row, since only the row knows what the old version wrote. Naming a package upgrades it even if pinned and releases the pin; one package failing does not strand the rest of the run (#2030)
 - **CLI**: `dirctl install prune` drops manifest rows whose artifacts are gone, with `--dry-run`. Rows go stale when a skill folder is deleted by hand or a repository is moved after a `--project` install (#2133)
 - **CLI**: `dirctl search -o raw | dirctl install` installs every piped reference, one per line (#2133)
 - **CLI**: `dirctl install list` lists installed packages, and `dirctl install list <name>` one package's installed artifacts (#2029)
@@ -18,6 +19,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 - **Catalog**: `GET /v1/tags` no longer returns record annotations as tags (#2012)
+- **CLI**: installing a skill replaces its folder's whole contents instead of writing one file into it, so a reference file the new version dropped is no longer orphaned. The folder is `dirctl`'s, named after the record: nothing you add inside it survives a reinstall, and the way to change an installed skill is to push a new version and upgrade. The bundle path already behaved this way; single-file skills now match it (#2030)
 - **CLI**: `dirctl init` records what its MCP server & skills step installs in the install manifest, with `origin: builtin`, so `org.agntcy/directory` shows up in `dirctl install list`, is version-checked against the `dirctl` binary by `install outdated`, and can be removed by `dirctl uninstall`. `dirctl init --remove` clears the rows too (#2030)
 - **CLI**: **BREAKING** — a bare name resolves to the highest semantic version rather than the most recently pushed record. Affects `dirctl pull`, `info`, `export`, `install`, and `naming verify`. Pushing v1.9.0 after v2.0.0 used to make `dirctl install cisco.com/agent` install v1.9.0 while `dirctl install outdated` called v2.0.0 the latest, so a package one version behind reported as up to date. Releases beat prereleases; versions semver cannot order still fall back to newest-pushed (#2030)
 - **CLI**: **BREAKING** — batch install and uninstall by search filters are removed. `--name`, `--module`, `--skill`, `--domain`, `--locator`, `--author`, `--version`, and `--limit` come off `dirctl install` and `dirctl uninstall`; filtering belongs to `dirctl search`, and `dirctl search | dirctl install` replaces the install half. `uninstall` takes one reference. `--all-versions` goes with them: two versions of one package share a skill folder and an MCP key, so only the highest is installed (#2133)

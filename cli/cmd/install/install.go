@@ -40,6 +40,7 @@ directly into the configuration of detected AI coding agents.
   dirctl install list [name]              what is installed, or one package's files
   dirctl install agents                   detected agents and target paths
   dirctl install outdated [name...]       what has a newer version
+  dirctl install upgrade [name...]        move to the newer version
   dirctl install pin <name>               hold at the installed version
   dirctl install unpin <name>             release the hold
   dirctl install prune                    drop rows whose artifacts are gone
@@ -47,9 +48,9 @@ directly into the configuration of detected AI coding agents.
 Every install records what it wrote — record, version, agent, scope, and the
 exact files and MCP server keys — in $XDG_CONFIG_HOME/dirctl/installed.json.
 That manifest is the source of truth for what is installed: list, outdated,
-pin, unpin, prune, and uninstall all read it, and only outdated contacts the
-Directory. A --project install records the repository it wrote into, so one
-manifest covers every repository on this machine.
+upgrade, pin, unpin, prune, and uninstall all read it, and only outdated and
+upgrade contact the Directory. A --project install records the repository it
+wrote into, so one manifest covers every repository on this machine.
 
 Installing several records at once is a pipe. Filtering belongs to dirctl
 search, so install does not carry a second copy of its flags:
@@ -97,6 +98,7 @@ func init() {
 	Command.AddCommand(AgentsCommand)
 	Command.AddCommand(ListCommand)
 	Command.AddCommand(outdatedCmd)
+	Command.AddCommand(upgradeCmd)
 	Command.AddCommand(PinCommand)
 	Command.AddCommand(UnpinCommand)
 	Command.AddCommand(PruneCommand)
@@ -110,9 +112,9 @@ func init() {
 // only true now that batch uninstall is gone: expanding search filters was
 // the one thing it needed a Directory for.
 //
-// `outdated` is deliberately absent: comparing against the Directory is the
-// whole point of it, so setting the client up eagerly costs nothing and fails
-// earlier.
+// `outdated` and `upgrade` are deliberately absent: reaching the Directory is
+// the whole point of them, so setting the client up eagerly costs nothing and
+// fails earlier.
 func SkipClientSetup() []*cobra.Command {
 	return []*cobra.Command{
 		AgentsCommand, ListCommand, PinCommand, UnpinCommand, PruneCommand,

@@ -135,6 +135,94 @@ func TestRecordBuiltinIdentity(t *testing.T) {
 	assert.Empty(t, m.Entries[0].Directory, "its upstream is this binary, not a Directory")
 }
 
+// TestReconcileDoesNotCarryForwardAPrunedServer is the difference between
+// Record and Reconcile: v1's key has just been taken out of the config, so the
+// new row must stop naming it.
+func TestReconcileDoesNotCarryForwardAPrunedServer(t *testing.T) {
+	m := &pkgstate.Manifest{}
+	m.Upsert(pkgstate.Entry{
+		Name:       "cisco.com/agent",
+		Agent:      "claude-code",
+		Scope:      pkgstate.ScopeGlobal,
+		MCPServers: []string{"old-key"},
+	})
+
+	removed := []agentcfg.Outcome{
+		{Agent: "Claude Code", Artifact: agentcfg.ArtifactMCP, Server: "old-key", Action: agentcfg.ActionRemoved},
+	}
+	installed := []agentcfg.Outcome{
+		{Agent: "Claude Code", Artifact: agentcfg.ArtifactMCP, Server: "new-key", Action: agentcfg.ActionAdded},
+	}
+
+	changed := Reconcile(m, Artifacts{}, []agentcfg.Agent{recordClaude}, removed, installed, directoryIdentity(), installedAt)
+
+	assert.True(t, changed)
+	require.Len(t, m.Entries, 1)
+	assert.Equal(t, []string{"new-key"}, m.Entries[0].MCPServers)
+}
+
+// TestReconcileStillCarriesForwardWhatThePruneLeftAlone: an artifact the prune
+// did not touch is still on disk, and the row is the only note of it.
+func TestReconcileStillCarriesForwardWhatThePruneLeftAlone(t *testing.T) {
+	m := &pkgstate.Manifest{}
+	m.Upsert(pkgstate.Entry{
+		Name:       "cisco.com/agent",
+		Agent:      "claude-code",
+		Scope:      pkgstate.ScopeGlobal,
+		SkillPath:  "/skills/a",
+		MCPServers: []string{"kept"},
+	})
+
+	// The MCP install failed, so nothing of it landed; the skill was rewritten.
+	installed := []agentcfg.Outcome{
+		{Agent: "Claude Code", Artifact: agentcfg.ArtifactSkill, Path: "/skills/a", Action: agentcfg.ActionUpdated},
+		{Agent: "Claude Code", Artifact: agentcfg.ArtifactMCP, Server: "kept", Action: agentcfg.ActionFailed},
+	}
+
+	Reconcile(m, Artifacts{}, []agentcfg.Agent{recordClaude}, nil, installed, directoryIdentity(), installedAt)
+
+	require.Len(t, m.Entries, 1)
+	assert.Equal(t, []string{"kept"}, m.Entries[0].MCPServers,
+		"the entry is still in the config, so the row must go on naming it")
+}
+
+// TestReconcileDropsARowLeftStandingForNothing: the skill was the only artifact
+// and the new version dropped it, so there is no package left to record.
+func TestReconcileDropsARowLeftStandingForNothing(t *testing.T) {
+	m := &pkgstate.Manifest{}
+	m.Upsert(pkgstate.Entry{
+		Name:      "cisco.com/agent",
+		Agent:     "claude-code",
+		Scope:     pkgstate.ScopeGlobal,
+		SkillPath: "/skills/a",
+	})
+
+	removed := []agentcfg.Outcome{
+		{Agent: "Claude Code", Artifact: agentcfg.ArtifactSkill, Action: agentcfg.ActionRemoved},
+	}
+
+	changed := Reconcile(m, Artifacts{}, []agentcfg.Agent{recordClaude}, removed, nil, directoryIdentity(), installedAt)
+
+	assert.True(t, changed)
+	assert.Empty(t, m.Entries)
+}
+
+// TestReconcileWithoutAPriorRow behaves as a plain Record: a row can go missing
+// between the check and the write, and nothing about that stops the install
+// from being recorded.
+func TestReconcileWithoutAPriorRow(t *testing.T) {
+	m := &pkgstate.Manifest{}
+
+	installed := []agentcfg.Outcome{
+		{Agent: "Claude Code", Artifact: agentcfg.ArtifactSkill, Path: "/skills/a", Action: agentcfg.ActionAdded},
+	}
+
+	assert.True(t, Reconcile(m, Artifacts{}, []agentcfg.Agent{recordClaude},
+		nil, installed, directoryIdentity(), installedAt))
+	require.Len(t, m.Entries, 1)
+	assert.Equal(t, "/skills/a", m.Entries[0].SkillPath)
+}
+
 func TestForgetDropsOnlyTheClearedAgents(t *testing.T) {
 	m := &pkgstate.Manifest{}
 	m.Upsert(pkgstate.Entry{Name: "cisco.com/agent", Agent: "claude-code", Scope: pkgstate.ScopeGlobal})

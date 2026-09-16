@@ -94,6 +94,54 @@ func Record(
 	return changed
 }
 
+// Reconcile rewrites the rows for a package whose version moved: it drops what
+// the orphan prune took away, then records what the install wrote.
+//
+// It is Record plus one subtraction, and the subtraction is the whole reason it
+// exists. Record carries forward artifacts the previous row named and the new
+// install did not write, because on a plain reinstall those are still on disk.
+// After an upgrade that only holds for the ones the prune left alone: v1's
+// renamed MCP key has just been taken out of the agent's config, so carrying it
+// onto the new row would leave the row claiming something gone, and send a
+// later uninstall hunting for it.
+func Reconcile(
+	m *pkgstate.Manifest,
+	arts Artifacts,
+	agents []agentcfg.Agent,
+	removed, installed []agentcfg.Outcome,
+	id Identity,
+	now time.Time,
+) bool {
+	changed := false
+
+	for _, agent := range agents {
+		skill, servers := Pruned(agent, removed)
+		if !skill && len(servers) == 0 {
+			continue
+		}
+
+		prior, ok := m.Find(pkgstate.Key{Name: id.Name, Agent: agent.ID, Scope: id.Scope})
+		if !ok {
+			continue
+		}
+
+		stripped := prior.WithoutArtifacts(skill, servers)
+		if stripped.SkillPath == "" && len(stripped.MCPServers) == 0 {
+			// Nothing of ours is left, so the row would stand for nothing. An
+			// install that then succeeds writes a fresh one below.
+			m.Remove(stripped.Key())
+		} else {
+			m.Upsert(stripped)
+		}
+
+		changed = true
+	}
+
+	// Ordered so the subtraction lands first: Record reads the row back to
+	// decide what to carry forward.
+	return Record(m, arts, agents, installed, id, now) || changed
+}
+
 // Forget drops the row for every agent left with nothing of ours, and reports
 // whether it changed anything.
 //

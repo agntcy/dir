@@ -82,7 +82,7 @@ explicit `--auth-mode`.
 | Sync | `sync create`, `status`, `list`, `delete` |
 | Events | `events listen` |
 | MCP | `mcp serve` |
-| Install | `install run`, `install uninstall` (or top-level `uninstall`), `install list`, `install agents`, `install outdated`, `install pin`, `install unpin`, `install prune` |
+| Install | `install run`, `install uninstall` (or top-level `uninstall`), `install list`, `install agents`, `install outdated`, `install upgrade`, `install pin`, `install unpin`, `install prune` |
 | Diagnostics | `doctor`, `version` |
 
 ### Getting help
@@ -260,6 +260,15 @@ A row names every artifact `dirctl` wrote and has not since removed, so
 reinstalling carries forward anything the previous row named that the new
 install did not write. That covers a reinstall where one artifact failed, and a
 new version that renames its MCP server while the old key stays in the config.
+[`dirctl install upgrade`](#dirctl-install-upgrade-name-flags) is the one thing
+that subtracts: a key it has just stripped from the config stops being named.
+
+A skill folder is `dirctl`'s, named after the record and owned outright, so
+installing a skill replaces the folder's whole contents rather than writing one
+file into it. That is what keeps a reference file dropped between versions from
+being orphaned, and it means nothing you add inside a skill folder survives a
+reinstall. To change an installed skill, push a new version of the record and
+upgrade to it.
 
 The manifest is bookkeeping, not the product: if it cannot be read or written,
 `dirctl` prints a warning and the install still succeeds.
@@ -344,6 +353,64 @@ upgrade would fix it, so failing CI on it would be a dead end.
 dirctl install outdated
 dirctl install outdated cisco.com/agent --all
 dirctl install outdated --exit-code --include-pinned
+```
+
+### `dirctl install upgrade [name...] [flags]`
+
+Installs the newer version of every package that has one, in place. What counts
+as upgradable is exactly what `dirctl install outdated` reports, decided the
+same way: the highest version published under the name, or the same version now
+resolving to different content. A downgrade is never offered, and a package
+whose versions carry no ordering is never moved.
+
+With no arguments it upgrades everything upgradable and skips pinned rows.
+Naming a package upgrades it **even if pinned, and releases the pin** — asking
+for it by name is a clearer statement than the hold it overrides.
+`--include-pinned` upgrades held packages without releasing anything, so the
+hold lands on the new version.
+
+**An upgrade is a reconcile, not an overwrite**, and the order is load-bearing:
+
+1. Every replacement is fetched and derived **first**, so a record that cannot
+   be pulled leaves every existing install exactly as it was. A working skill
+   is never deleted before its replacement is in hand.
+2. Artifacts the manifest row names and the new version does not are removed. A
+   skill folder is `dirctl`'s, so installing a skill replaces its whole
+   contents; an MCP entry sits in a config file shared with you and other
+   tools, so a server key that v2 renamed is stripped **by name from the row**.
+   Only the row knows what v1 wrote — deriving it from the new record would
+   leave v1's key behind.
+3. The new artifacts are installed and the row is rewritten, naming exactly
+   what is now on disk.
+
+One package failing does not strand the rest of the run: it is reported under
+**Skipped records** and the others go ahead.
+
+Every scope is upgraded — the same rows `outdated` checks, `--project`
+installs in other repositories included. Pass `--project` to narrow the run to
+the repository you are in.
+
+The built-in `org.agntcy/directory` package is rebuilt from this `dirctl` binary
+rather than pulled, even though a record of the same name is published. The
+published record's MCP module carries no environment, so installing it would
+silently repoint `dirctl mcp serve` at the default address; rebuilding also
+recomputes the `DIRECTORY_CLIENT_*` overlay from your *current* client context
+instead of replaying what it held when the package was installed.
+
+| Flag | Description | Default |
+|------|-------------|---------|
+| `--pre` | Consider prerelease versions | `false` |
+| `--include-pinned` | Upgrade pinned packages too, keeping their pins | `false` |
+| `--agents` | Agents to act on: `all` or a comma-separated list of agent IDs | `all` |
+| `--project` | Narrow the run to the repository you are in | `false` |
+| `--dry-run` | Show what would move, without writing | `false` |
+| `--yes` / `-y` | Skip the confirmation prompt | `false` |
+
+```bash
+dirctl install upgrade --dry-run
+dirctl install upgrade
+dirctl install upgrade cisco.com/agent
+dirctl install upgrade --include-pinned --yes
 ```
 
 ### `dirctl install pin <name>` / `dirctl install unpin <name>`
