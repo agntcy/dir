@@ -36,6 +36,7 @@ import (
 	grpcrecovery "github.com/agntcy/dir/server/middleware/recovery"
 	"github.com/agntcy/dir/server/naming"
 	"github.com/agntcy/dir/server/naming/wellknown"
+	"github.com/agntcy/dir/server/policy"
 	"github.com/agntcy/dir/server/publication"
 	"github.com/agntcy/dir/server/routing"
 	"github.com/agntcy/dir/server/skill"
@@ -294,9 +295,14 @@ func New(ctx context.Context, cfg *config.Config, opts ...ServerOption) (*Server
 		}
 	}
 
+	policyEval, err := policy.Load(ctx, cfg.Policy)
+	if err != nil {
+		return nil, fmt.Errorf("failed to load content policies: %w", err)
+	}
+
 	// Shared ingestion service: single authoritative path for persisting
 	// records/referrers (content store + search index + referrer DB state).
-	ingestor := ingest.New(storeAPI, databaseAPI)
+	ingestor := ingest.New(storeAPI, databaseAPI, ingest.WithEvaluator(policyEval))
 
 	routingAPI, err := routing.New(ctx, storeAPI, ingestor, oasfValidator, options)
 	if err != nil {
