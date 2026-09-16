@@ -144,8 +144,8 @@ type Config struct {
 	// Authz configuration
 	Authz authz.Config `json:"authz" mapstructure:"authz"`
 
-	// Policy is the file-based content-policy directory. Evaluation is not
-	// implemented yet; this only tells the server where policy files live.
+	// Policy is the file-based content-policy directory. Ingest-triggered
+	// policies are evaluated on StoreService.Push (including dirctl import).
 	Policy policy.Config `json:"policy" mapstructure:"policy"`
 
 	// Store configuration

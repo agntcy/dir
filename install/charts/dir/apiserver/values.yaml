@@ -30,12 +30,25 @@ authz_policies_csv: |
 # File-based content policies (OPA/Rego). Each key is a filename mounted at
 # config.policy.dir. Not part of the server config struct.
 #
+# Policies with an ingest trigger are evaluated on StoreService.Push
+# (including dirctl import) before the record is persisted. A deny returns
+# FailedPrecondition and names the policy.
+#
 # Example:
 #   content_policies:
 #     require-annotations.rego: |
-#       package dir.policy.require_annotations
+#       # METADATA
+#       # scope: package
+#       # title: require-owner
+#       # custom:
+#       #   triggers: ["ingest"]
+#       package dir.policy.require_owner
 #
-#       default allow := true
+#       default allow := false
+#
+#       allow if {
+#         input.record.annotations["org.agntcy/owner"]
+#       }
 content_policies: {}
 
 # Server configuration (maps directly to server config.go Config struct)
@@ -67,6 +80,7 @@ config:
     enforcer_policy_file_path: "/etc/agntcy/dir/authz_policies.csv"
 
   # File-based content policies. Files from content_policies are mounted here.
+  # Set enabled: true to evaluate them; mounting files alone does not enforce.
   policy:
     enabled: false
     dir: "/etc/agntcy/dir/policies"

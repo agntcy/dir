@@ -17,6 +17,7 @@ import (
 
 	corev1 "github.com/agntcy/dir/api/core/v1"
 	securityv1 "github.com/agntcy/dir/api/security/v1"
+	"github.com/agntcy/dir/server/policy"
 	"github.com/agntcy/dir/server/types"
 	"github.com/agntcy/dir/utils/logging"
 	"google.golang.org/grpc/codes"
@@ -47,16 +48,40 @@ type Ingestor interface {
 }
 
 type ingestor struct {
-	store types.StoreAPI
-	db    types.DatabaseAPI
+	store     types.StoreAPI
+	db        types.DatabaseAPI
+	evaluator policy.Evaluator
+}
+
+// Option configures an Ingestor.
+type Option func(*ingestor)
+
+// WithEvaluator runs ingest-triggered content policies on client push/import.
+func WithEvaluator(evaluator policy.Evaluator) Option {
+	return func(i *ingestor) {
+		i.evaluator = evaluator
+	}
 }
 
 // New creates an Ingestor backed by the given content store and database.
-func New(store types.StoreAPI, db types.DatabaseAPI) Ingestor {
-	return &ingestor{store: store, db: db}
+func New(store types.StoreAPI, db types.DatabaseAPI, opts ...Option) Ingestor {
+	i := &ingestor{
+		store: store,
+		db:    db,
+	}
+
+	for _, opt := range opts {
+		opt(i)
+	}
+
+	return i
 }
 
 func (i *ingestor) ImportRecord(ctx context.Context, record *corev1.Record) (*corev1.RecordRef, error) {
+	if err := i.evaluateIngest(ctx, record); err != nil {
+		return nil, err //nolint:wrapcheck // evaluateIngest returns a gRPC status the caller must keep.
+	}
+
 	// Push the record to the content store (source of truth).
 	pushedRef, err := i.store.Push(ctx, record)
 	if err != nil {
@@ -83,6 +108,23 @@ func (i *ingestor) ImportRecord(ctx context.Context, record *corev1.Record) (*co
 	}
 
 	return pushedRef, nil
+}
+
+func (i *ingestor) evaluateIngest(ctx context.Context, record *corev1.Record) error {
+	if i.evaluator == nil {
+		return nil
+	}
+
+	source := SourceFrom(ctx)
+	if source != SourcePush && source != SourceImport {
+		return nil
+	}
+
+	if err := i.evaluator.EvaluateIngest(ctx, source, record); err != nil {
+		return err //nolint:wrapcheck // Evaluator returns a gRPC status the caller must keep.
+	}
+
+	return nil
 }
 
 func (i *ingestor) ImportReferrer(ctx context.Context, recordCID string, referrer *corev1.RecordReferrer) (*corev1.ReferrerRef, error) {

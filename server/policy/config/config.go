@@ -6,8 +6,8 @@ package config
 import "errors"
 
 // Config points the server at a directory of file-based content policies.
-// Policy evaluation is not implemented yet; this exists so Helm (and a local
-// daemon) can place .rego files on disk and the server can find them later.
+// When Enabled, the server loads .rego files from Dir and evaluates
+// ingest-triggered policies before persisting a client push.
 type Config struct {
 	// Enabled turns content-policy loading on. Disabled by default.
 	Enabled bool `json:"enabled,omitempty" mapstructure:"enabled"`
