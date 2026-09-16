@@ -6,6 +6,7 @@ package install
 import (
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	corev1 "github.com/agntcy/dir/api/core/v1"
@@ -138,6 +139,8 @@ func runUpgrade(cmd *cobra.Command, args []string) error {
 		// The versions moved but nothing on disk would: the new record derives
 		// byte-identical artifacts. The rows still have to move, or `outdated`
 		// would keep reporting the upgrade forever.
+		reportVersionOnly(cmd, steps)
+
 		if !opts.dryRun {
 			results, _ := applyUpgrades(env, steps, true)
 			recordUpgrades(cmd, results, named)
@@ -171,6 +174,50 @@ func runUpgrade(cmd *cobra.Command, args []string) error {
 	recordUpgrades(cmd, results, named)
 
 	return nil
+}
+
+// reportVersionOnly explains an upgrade that moves no artifacts.
+//
+// A new version can derive byte-identical artifacts — the author bumped the
+// record's version, or changed only fields no artifact is built from. The plan
+// is then empty, but the row still moves, or `outdated` would go on offering
+// the same upgrade forever.
+//
+// Saying nothing here reads as "the command did nothing", which is exactly
+// wrong: the version did move, and the next `install list` will say so. So the
+// move is named, and the reason it touched no files with it.
+func reportVersionOnly(cmd *cobra.Command, steps []upgradeStep) {
+	verb := "recorded"
+	if opts.dryRun {
+		verb = "would record"
+	}
+
+	for _, step := range steps {
+		presenter.Printf(cmd, "%s: %s → %s (artifacts are already identical; %s the new version)\n",
+			step.target.name, installedVersions(step.target.rows), step.target.version, verb)
+	}
+}
+
+// installedVersions renders the versions a package's rows are on, which is
+// normally one. Two rows of one package can sit on different versions when they
+// were installed at different times, so they are listed rather than guessed at.
+func installedVersions(rows []pkgstate.Entry) string {
+	seen := map[string]bool{}
+
+	var versions []string
+
+	for _, row := range rows {
+		version := orDash(row.Version)
+		if seen[version] {
+			continue
+		}
+
+		seen[version] = true
+
+		versions = append(versions, version)
+	}
+
+	return strings.Join(versions, ", ")
 }
 
 // upgradeScope is the scope filter: every scope by default, so a bare upgrade

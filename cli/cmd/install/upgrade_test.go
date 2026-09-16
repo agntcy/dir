@@ -123,6 +123,20 @@ func TestGroupByScopeKeepsARowForAnUnknownAgentOutOfTheInstall(t *testing.T) {
 	assert.Len(t, groups[0].rows, 1)
 }
 
+// TestInstalledVersions: two rows of one package normally share a version, but
+// they can differ when they were installed at different times, so both show.
+func TestInstalledVersions(t *testing.T) {
+	assert.Equal(t, "1.0.0", installedVersions([]pkgstate.Entry{
+		{Version: "1.0.0"}, {Version: "1.0.0"},
+	}))
+
+	assert.Equal(t, "1.0.0, 0.9.0", installedVersions([]pkgstate.Entry{
+		{Version: "1.0.0"}, {Version: "0.9.0"},
+	}))
+
+	assert.Equal(t, "-", installedVersions([]pkgstate.Entry{{}}))
+}
+
 func TestUpgradeTargetLabel(t *testing.T) {
 	assert.Equal(t, "cisco.com/a:2.0.0", upgradeTarget{name: "cisco.com/a", version: "2.0.0"}.label())
 	assert.Equal(t, "cisco.com/a", upgradeTarget{name: "cisco.com/a"}.label())
