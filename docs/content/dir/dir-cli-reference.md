@@ -859,7 +859,7 @@ Retrieves records by their Content Identifier (CID) or name reference.
 | Format | Description |
 |--------|-------------|
 | `<cid>` | Direct lookup by CID |
-| `<name>` | Retrieves the latest version |
+| `<name>` | Retrieves the highest version (see **Version Resolution** below) |
 | `<name>:<version>` | Retrieves the specified version |
 | `<name>@<cid>` | Hash-verified lookup (fails if resolved CID doesn't match) |
 | `<name>:<version>@<cid>` | Hash-verified lookup for a specific version |
@@ -939,7 +939,24 @@ dirctl pull cisco.com/agent@wrong-cid
 
 **Version Resolution:**
 
-When no version is specified, commands return the most recently created record (by record's `created_at` field). This allows non-semver tags like `latest`, `dev`, or `stable`.
+When no version is specified, commands return the **highest semantic version**
+published under the name. A release beats a prerelease, so publishing
+`v2.0.0-rc.1` does not change what a bare name means; a name carrying nothing
+but prereleases resolves to the highest of those.
+
+Versions that semver cannot order — non-semver tags like `latest`, `dev`, or
+`stable` — fall back to the most recently created record (by the record's
+`created_at` field), which is what lets a name tagged that way keep working. In
+a mix of orderable and unorderable versions the highest orderable one wins,
+since an unordered tag cannot be shown to be newer than a real version.
+
+!!! warning "Changed in v1.8.0"
+
+    Bare names used to resolve to the most recently *created* record. Pushing
+    `v1.9.0` after `v2.0.0` therefore made `dirctl pull cisco.com/agent` return
+    `v1.9.0`, which also meant `dirctl install outdated` reported a package one
+    version behind as up to date. Pin an exact version with `<name>:<version>`
+    if you need the old record.
 
 ### `dirctl delete <cid> [cid...]`
 
@@ -972,7 +989,7 @@ Displays metadata about stored records using CID or name reference.
 | Format | Description |
 |--------|-------------|
 | `<cid>` | Direct lookup by content address |
-| `<name>` | Displays the most recently created version |
+| `<name>` | Displays the highest version (see **Version Resolution** under `dirctl pull`) |
 | `<name>:<version>` | Displays the specified version |
 | `<name>@<cid>` | Hash-verified lookup |
 | `<name>:<version>@<cid>` | Hash-verified lookup for a specific version |
@@ -1762,7 +1779,7 @@ Verifies that a record's signing key is authorized by the domain claimed in its 
 | Format | Description |
 |--------|-------------|
 | `<cid>` | Verify by content address |
-| `<name>` | Verify the most recently created version |
+| `<name>` | Verify the highest version (see **Version Resolution** under `dirctl pull`) |
 | `<name>:<version>` | Verify a specific version |
 
 ??? example
