@@ -42,7 +42,7 @@ func (r Ref) HasDigest() bool {
 // Parse parses an input string into a record reference.
 // Supports formats:
 //   - CID directly: "bafyreib..." -> Digest only (direct pull by content address)
-//   - Name only: "cisco.com/agent" -> Name (resolves to latest version)
+//   - Name only: "cisco.com/agent" -> Name (resolves to the highest version)
 //   - Name:version: "cisco.com/agent:v1.0.0" -> Name + Version (resolves to specific version)
 //   - Name@digest: "cisco.com/agent@bafyreib..." -> Name + Digest (hash-verified pull)
 //   - Name:version@digest: "cisco.com/agent:v1.0.0@bafyreib..." -> Name + Version + Digest
