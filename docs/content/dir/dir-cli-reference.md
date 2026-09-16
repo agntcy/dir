@@ -114,8 +114,25 @@ present and current, and the taxonomy is re-embedded only when it changed.
 
 | Flag | Description | Default |
 |------|-------------|---------|
+Its last step wires this Directory into your AI coding agents: an MCP server
+entry so an agent can push, search, and pull records, plus the DIR skill as a
+usage guide. Both come from a record built into the `dirctl` binary —
+`org.agntcy/directory` — so no Directory connection is made, and the MCP entry
+carries the `DIRECTORY_CLIENT_*` environment for the context that was just
+configured, because `dirctl mcp serve` reads its target from nothing else.
+
+That install is recorded in the [install manifest](#the-install-manifest) like
+any other package, with `origin: builtin`. It therefore shows up in
+`dirctl install list`, `dirctl install outdated` compares it against this
+binary rather than a Directory, and `dirctl uninstall org.agntcy/directory`
+removes it. `dirctl init --remove` clears both the artifacts and the rows.
+
+| Flag | Description | Default |
+|------|-------------|---------|
 | `--oasf-url` | OASF schema endpoint to pull the taxonomy from | `https://schema.oasf.outshift.com` |
 | `--asset-dir` | Local directory for the provisioned assets | `~/.agntcy/oasf-sdk/extractor` |
+| `--extractor-remote-addr` | gRPC OASF-SDK server to use instead of local assets | - |
+| `--agents` | Agents to configure in the MCP server & skills step | `all` |
 | `--yes` / `-y` | Provision without prompting (required for non-interactive runs) | `false` |
 | `--remove` | Remove the provisioned assets and clear the saved config | `false` |
 

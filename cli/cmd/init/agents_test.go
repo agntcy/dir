@@ -11,6 +11,8 @@ import (
 	"testing"
 
 	"github.com/agntcy/dir/cli/internal/agentcfg"
+	"github.com/agntcy/dir/cli/internal/dirpkg"
+	"github.com/agntcy/dir/cli/internal/pkgstate"
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -18,12 +20,29 @@ import (
 
 // claudeEnv builds a temp environment with a ~/.claude marker so the
 // claude-code agent is detected, and returns the matching agentcfg.Env.
+//
+// It also points the install manifest at a temp directory, because Step 3 now
+// records what it wrote and must never touch the developer's real manifest.
 func claudeEnv(t *testing.T) agentcfg.Env {
 	t.Helper()
 	home := t.TempDir()
 	require.NoError(t, os.MkdirAll(filepath.Join(home, ".claude"), 0o755))
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
 
 	return agentcfg.Env{Home: home, GOOS: "linux", Cwd: home}
+}
+
+// initManifest reads back the isolated install manifest.
+func initManifest(t *testing.T) *pkgstate.Manifest {
+	t.Helper()
+
+	path, err := pkgstate.DefaultPath()
+	require.NoError(t, err)
+
+	m, err := pkgstate.Load(path)
+	require.NoError(t, err)
+
+	return m
 }
 
 // selectAll is a fake agentSelector that keeps every candidate — the non-prompt
@@ -44,9 +63,9 @@ func TestInstallAgentsWritesMCPAndSkill(t *testing.T) {
 	require.NoError(t, err)
 	assert.Contains(t, string(raw), `"agntcy-dir"`, "MCP server should be keyed by the translator-normalized name")
 	assert.NotContains(t, string(raw), "agntcy-dir-mcp", "the -mcp suffix must be stripped by normalization")
-	assert.Contains(t, string(raw), dirServerAddressEnv,
+	assert.Contains(t, string(raw), dirpkg.ServerAddressEnv,
 		"MCP entry must carry the server address env so `dirctl mcp serve` reaches the configured node")
-	assert.Contains(t, string(raw), dirAuthModeEnv,
+	assert.Contains(t, string(raw), dirpkg.AuthModeEnv,
 		"MCP entry must carry the auth mode env; an empty mode makes the server attempt OIDC auto-detection")
 
 	// Skill folder was created under ~/.claude/skills.
@@ -55,6 +74,72 @@ func TestInstallAgentsWritesMCPAndSkill(t *testing.T) {
 	assert.NotEmpty(t, entries)
 
 	assert.Contains(t, out.String(), "Step 3")
+}
+
+// TestInstallAgentsRecordsABuiltinManifestRow: init is the only command that
+// installs a package without pulling one, and an untracked install is invisible
+// to `install list`, `outdated`, and `uninstall`, which all read the manifest.
+func TestInstallAgentsRecordsABuiltinManifestRow(t *testing.T) {
+	env := claudeEnv(t)
+	cmd, _ := newTestCmd("")
+
+	err := installAgents(cmd, env, &options{agents: []string{agentcfg.AllAgents}, yes: true}, selectAll)
+	require.NoError(t, err)
+
+	rows := initManifest(t).ByName(dirpkg.Name())
+	require.NotEmpty(t, rows, "the built-in package must be recorded")
+
+	row := rows[0]
+	assert.Equal(t, pkgstate.OriginBuiltin, row.Origin,
+		"a version check must ask this binary, not a Directory")
+	assert.Equal(t, dirpkg.Version(), row.Version)
+	assert.Equal(t, pkgstate.ScopeGlobal, row.Scope)
+	assert.Equal(t, "skill+mcp", row.Kind(), "init installs both artifacts")
+	assert.Empty(t, row.CID,
+		"the record is rebuilt with the current timestamp, so a recorded CID would differ on every build")
+	assert.Empty(t, row.Directory, "the built-in package comes from no Directory")
+	assert.False(t, row.Pinned)
+}
+
+// TestInstallAgentsRecordsOnlyWhatEachAgentGot: the two prompts select
+// independently, so a row must name the artifacts that agent actually received.
+func TestInstallAgentsRecordsOnlyWhatEachAgentGot(t *testing.T) {
+	env := claudeEnv(t)
+
+	prev := interactiveCheck
+	interactiveCheck = func(*cobra.Command) bool { return true }
+
+	t.Cleanup(func() { interactiveCheck = prev })
+
+	// Skill everywhere, MCP nowhere.
+	selector := func(_ *cobra.Command, title string, candidates []agentcfg.Agent) ([]agentcfg.Agent, error) {
+		if strings.Contains(title, "MCP") {
+			return nil, nil
+		}
+
+		return candidates, nil
+	}
+
+	cmd, _ := newTestCmd("")
+	require.NoError(t, installAgents(cmd, env, &options{agents: []string{agentcfg.AllAgents}}, selector))
+
+	rows := initManifest(t).ByName(dirpkg.Name())
+	require.NotEmpty(t, rows)
+
+	for _, row := range rows {
+		assert.Equal(t, "skill", row.Kind(), "no MCP entry was installed, so none may be recorded")
+		assert.Empty(t, row.MCPServers)
+	}
+}
+
+// TestInstallAgentsSkippedNonInteractivelyRecordsNothing: no row may claim an
+// install that did not happen.
+func TestInstallAgentsSkippedNonInteractivelyRecordsNothing(t *testing.T) {
+	env := claudeEnv(t)
+	cmd, _ := newTestCmd("")
+
+	require.NoError(t, installAgents(cmd, env, &options{agents: []string{agentcfg.AllAgents}}, selectAll))
+	assert.Empty(t, initManifest(t).Entries)
 }
 
 func TestInstallAgentsNoAgentsDetected(t *testing.T) {
@@ -178,4 +263,8 @@ func TestRemoveAgentsUninstallsMCPAndSkill(t *testing.T) {
 	// we assert against the actual key instead, proving the entry is truly gone.
 	assert.NotContains(t, string(after), `"agntcy-dir"`, "MCP server entry should be removed")
 	assert.Contains(t, out.String(), "removed")
+
+	// The rows go with the artifacts, or `install list` would report the
+	// package forever with nothing behind it.
+	assert.Empty(t, initManifest(t).ByName(dirpkg.Name()))
 }

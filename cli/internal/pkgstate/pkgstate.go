@@ -410,6 +410,44 @@ func (m *Manifest) ByName(name string) []Entry {
 	return found
 }
 
+// Update loads the manifest at DefaultPath, applies mutate, and saves it when
+// mutate reports something changed.
+//
+// It is the one convenience that reads the environment, for the commands whose
+// only manifest work is one mutation. Everything else takes a path, which is
+// what keeps the tests hermetic — and this does too, since DefaultPath honours
+// XDG_CONFIG_HOME.
+//
+// A load error is returned *and* mutate still runs against the empty manifest
+// it came back with: a corrupt file is already unreadable, so starting a fresh
+// one is better than refusing to record anything ever again. Callers that must
+// not lose the mutation therefore check the error after it, not instead of it.
+func Update(mutate func(*Manifest) bool) error {
+	path, err := DefaultPath()
+	if err != nil {
+		return err
+	}
+
+	m, loadErr := Load(path)
+
+	// A frozen manifest belongs to a newer dirctl, whose rows this binary
+	// cannot represent. Save would refuse anyway, so stop here and report the
+	// one reason rather than two.
+	if m.Frozen() {
+		return loadErr
+	}
+
+	if !mutate(m) {
+		return loadErr
+	}
+
+	if err := m.Save(path); err != nil {
+		return err
+	}
+
+	return loadErr
+}
+
 // DefaultPath returns the global manifest path,
 // $XDG_CONFIG_HOME/dirctl/installed.json, falling back to ~/.config when
 // XDG_CONFIG_HOME is unset — the same convention the reusable client config
