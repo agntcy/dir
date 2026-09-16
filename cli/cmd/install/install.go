@@ -36,13 +36,20 @@ directly into the configuration of detected AI coding agents.
   dirctl install run <cid-or-name>        same as above
   dirctl install <cid-or-name> --pin      install and hold at this version
   dirctl install uninstall <cid-or-name>  remove what install added
-  dirctl install list                     show detected agents and target paths
-  dirctl install prune                    drop manifest rows whose artifacts are gone
+
+  dirctl install list [name]              what is installed, or one package's files
+  dirctl install agents                   detected agents and target paths
+  dirctl install outdated [name...]       what has a newer version
+  dirctl install pin <name>               hold at the installed version
+  dirctl install unpin <name>             release the hold
+  dirctl install prune                    drop rows whose artifacts are gone
 
 Every install records what it wrote — record, version, agent, scope, and the
 exact files and MCP server keys — in $XDG_CONFIG_HOME/dirctl/installed.json.
-A --project install records the repository it wrote into, so one manifest
-covers every repository on this machine.
+That manifest is the source of truth for what is installed: list, outdated,
+pin, unpin, prune, and uninstall all read it, and only outdated contacts the
+Directory. A --project install records the repository it wrote into, so one
+manifest covers every repository on this machine.
 
 Installing several records at once is a pipe. Filtering belongs to dirctl
 search, so install does not carry a second copy of its flags:
@@ -87,7 +94,11 @@ func init() {
 
 	Command.AddCommand(runCmd)
 	Command.AddCommand(uninstallCmd)
+	Command.AddCommand(AgentsCommand)
 	Command.AddCommand(ListCommand)
+	Command.AddCommand(outdatedCmd)
+	Command.AddCommand(PinCommand)
+	Command.AddCommand(UnpinCommand)
 	Command.AddCommand(PruneCommand)
 }
 
@@ -98,8 +109,15 @@ func init() {
 // `uninstall` is here because it reads the manifest and nothing else. That is
 // only true now that batch uninstall is gone: expanding search filters was
 // the one thing it needed a Directory for.
+//
+// `outdated` is deliberately absent: comparing against the Directory is the
+// whole point of it, so setting the client up eagerly costs nothing and fails
+// earlier.
 func SkipClientSetup() []*cobra.Command {
-	return []*cobra.Command{ListCommand, PruneCommand, uninstallCmd, UninstallCommand}
+	return []*cobra.Command{
+		AgentsCommand, ListCommand, PinCommand, UnpinCommand, PruneCommand,
+		uninstallCmd, UninstallCommand,
+	}
 }
 
 // selectAgents validates the --agents flag and resolves it to the detected
@@ -188,10 +206,17 @@ func runApplyCmd(
 	plan := apply(env, item.arts, selected, scope, true)
 	presenter.Printf(cmd, "%s", agentcfg.FormatPlan(plan))
 
-	// Nothing would move, so there is nothing worth confirming. Stopping here
-	// also keeps a run whose every artifact is already correct from asking the
-	// user to approve a no-op.
+	// Nothing would move on disk, so there is nothing worth confirming. The
+	// manifest is a different matter: reinstalling an already-correct package
+	// is how a row is backfilled for something installed before dirctl
+	// recorded installs, and how `--pin` takes hold without moving the
+	// version. So the plan is recorded, and only the prompt is skipped.
 	if !agentcfg.HasChanges(plan) {
+		if !opts.dryRun {
+			item.outcomes = plan
+			record(cmd, []applied{item}, selected, scope)
+		}
+
 		return nil
 	}
 

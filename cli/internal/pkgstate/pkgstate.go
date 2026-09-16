@@ -145,6 +145,20 @@ type Entry struct {
 	// Origin is where to look for a newer version.
 	Origin Origin `json:"origin"`
 
+	// Directory is the server address this package was installed from, which
+	// is what decides whether a later version check means anything: a row
+	// pulled from a colleague's Directory says nothing about the one
+	// configured now.
+	//
+	// The address rather than the context name, because a name is not an
+	// identity: an endpoint override replaces a context's server while leaving
+	// its name in place, and two contexts can point at one Directory.
+	//
+	// Empty means "no claim". Rows written before this field existed have it,
+	// and so do installs made with no resolvable address, so an empty value
+	// has to match whatever Directory is active rather than be a mismatch.
+	Directory string `json:"directory,omitempty"`
+
 	// Pinned holds the package at Version, so a bare upgrade skips it.
 	Pinned bool `json:"pinned,omitempty"`
 
@@ -166,6 +180,42 @@ type Entry struct {
 // Key returns the row's primary key.
 func (e Entry) Key() Key {
 	return Key{Name: e.Name, Agent: e.Agent, Scope: e.Scope}
+}
+
+// Kind names the artifacts this row installed, for display: "skill", "mcp", or
+// "skill+mcp". It is derived rather than stored, because one record can yield
+// both and the row already says which of them landed.
+//
+// A row that landed nothing is never written, so the empty case only arises for
+// a hand-edited manifest; it reports "none" rather than an empty column.
+func (e Entry) Kind() string {
+	switch {
+	case e.SkillPath != "" && len(e.MCPServers) > 0:
+		return "skill+mcp"
+	case e.SkillPath != "":
+		return "skill"
+	case len(e.MCPServers) > 0:
+		return "mcp"
+	default:
+		return "none"
+	}
+}
+
+// DirectoryMatches reports whether this row can be checked against the active
+// Directory.
+//
+// An empty address on either side means "no claim", and matches anything. That
+// cuts both ways on purpose:
+//
+//   - A row with no recorded address — written by an earlier dirctl, or
+//     installed with none resolvable — stays checkable rather than becoming
+//     permanently unassessable.
+//   - A dirctl run that cannot resolve its own server address does not skip
+//     every row it has.
+//
+// Only two addresses that differ are a real mismatch.
+func (e Entry) DirectoryMatches(active string) bool {
+	return e.Directory == "" || active == "" || e.Directory == active
 }
 
 // WithCarriedArtifacts returns e with the artifacts prior still records but

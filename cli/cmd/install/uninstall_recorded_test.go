@@ -338,3 +338,49 @@ func TestARowWhoseConfigCannotBeReadSurvivesUninstall(t *testing.T) {
 	// The artifact may still be in that unreadable config, so the row stays.
 	assert.Len(t, loadManifest(t).Entries, 1)
 }
+
+func TestUninstallRefusesToSplitASharedSkillFolder(t *testing.T) {
+	resetOpts(t)
+	isolateHome(t)
+
+	// Claude Code and Claude Desktop share one skills folder. Removing it for
+	// one takes it from the other and strands that row.
+	shared := "/home/dev/.claude/skills/cisco.com-agent"
+
+	code := directoryEntry("cisco.com/agent", "1.0.0", "claude-code")
+	code.SkillPath = shared
+
+	desktop := directoryEntry("cisco.com/agent", "1.0.0", "claude-desktop")
+	desktop.SkillPath = shared
+
+	seedManifest(t, code, desktop)
+
+	opts.agents = []string{"claude-code"}
+
+	_, err := uninstallCmdOut(t, "cisco.com/agent")
+	require.ErrorContains(t, err, "shares its skill folder with claude-desktop")
+
+	// Nothing was removed, so both rows survive.
+	assert.Len(t, loadManifest(t).Entries, 2)
+}
+
+func TestUninstallingBothHalvesOfASharedFolderIsFine(t *testing.T) {
+	resetOpts(t)
+
+	home := isolateHome(t)
+	shared := filepath.Join(home, ".claude", "skills", "cisco.com-agent")
+	require.NoError(t, os.MkdirAll(shared, 0o755))
+
+	code := directoryEntry("cisco.com/agent", "1.0.0", "claude-code")
+	code.SkillPath = shared
+
+	desktop := directoryEntry("cisco.com/agent", "1.0.0", "claude-desktop")
+	desktop.SkillPath = shared
+
+	seedManifest(t, code, desktop)
+
+	_, err := uninstallCmdOut(t, "cisco.com/agent")
+	require.NoError(t, err)
+	assert.Empty(t, loadManifest(t).Entries)
+	assert.NoDirExists(t, shared)
+}

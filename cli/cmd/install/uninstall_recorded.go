@@ -84,6 +84,10 @@ func runRecordedUninstall(cmd *cobra.Command, input string) error {
 		return notInstalled(manifest, input, manifestScope(scopeFromOpts()))
 	}
 
+	if err := rejectSharedSkillSplit(manifest, input, entries); err != nil {
+		return err
+	}
+
 	env := agentcfg.ResolveEnv()
 
 	plan := agentinstall.UninstallRecorded(env, entries, true)
@@ -98,9 +102,7 @@ func runRecordedUninstall(cmd *cobra.Command, input string) error {
 	// unreadable config as "already gone" would suppress the failure and claim
 	// a row was cleared when it was not.
 	if allUnchanged(plan) {
-		forgetOnly(cmd, entries, plan)
-
-		return nil
+		return forgetOnly(cmd, entries, plan)
 	}
 
 	presenter.Printf(cmd, "%s", agentcfg.FormatPlan(plan))
@@ -126,9 +128,7 @@ func runRecordedUninstall(cmd *cobra.Command, input string) error {
 		return nil
 	}
 
-	forgetRemoved(cmd, entries, outcomes)
-
-	return nil
+	return forgetRemoved(entries, outcomes)
 }
 
 // allUnchanged reports that every artifact was looked at and found already
@@ -144,16 +144,68 @@ func allUnchanged(outcomes []agentcfg.Outcome) bool {
 	return len(outcomes) > 0
 }
 
+// rejectSharedSkillSplit refuses an --agents selection that would delete a
+// skill folder another row still claims.
+//
+// Claude Code and Claude Desktop share one skills folder, and so do Zed and
+// Codex CLI. Removal is by folder, so uninstalling for one of a pair takes the
+// artifact away from the other and leaves its row pointing at nothing. The
+// manifest can see that coming, which the old record-derived path could not,
+// so the command says which agents have to go together rather than quietly
+// breaking one of them.
+func rejectSharedSkillSplit(manifest *pkgstate.Manifest, input string, selected []pkgstate.Entry) error {
+	chosen := make(map[pkgstate.Key]bool, len(selected))
+	for _, entry := range selected {
+		chosen[entry.Key()] = true
+	}
+
+	paths := make(map[string]bool, len(selected))
+
+	for _, entry := range selected {
+		if entry.SkillPath != "" {
+			paths[entry.SkillPath] = true
+		}
+	}
+
+	scope := manifestScope(scopeFromOpts())
+	ref := reference.Parse(input)
+
+	var stranded []string
+
+	for _, entry := range manifest.Entries {
+		if chosen[entry.Key()] || entry.Scope != scope || !rowMatches(entry, ref) {
+			continue
+		}
+
+		if entry.SkillPath != "" && paths[entry.SkillPath] {
+			stranded = append(stranded, entry.Agent)
+		}
+	}
+
+	if len(stranded) == 0 {
+		return nil
+	}
+
+	return fmt.Errorf(
+		"%q shares its skill folder with %s, which --agents left out: removing it for one takes it from the other, so uninstall them together or drop --agents",
+		input, strings.Join(stranded, ", "))
+}
+
 // forgetOnly drops rows whose artifacts were already gone.
-func forgetOnly(cmd *cobra.Command, entries []pkgstate.Entry, plan []agentcfg.Outcome) {
+func forgetOnly(cmd *cobra.Command, entries []pkgstate.Entry, plan []agentcfg.Outcome) error {
 	presenter.Printf(cmd, "Nothing to remove: the recorded artifacts are already gone.\n")
 
 	if opts.dryRun {
-		return
+		return nil
 	}
 
-	forgetRemoved(cmd, entries, plan)
+	if err := forgetRemoved(entries, plan); err != nil {
+		return err
+	}
+
 	presenter.Printf(cmd, "Cleared %s from the install manifest.\n", plural(len(entries), "row"))
+
+	return nil
 }
 
 // recordedRows selects the manifest rows a reference asks for, narrowed by
@@ -218,8 +270,12 @@ func rowMatches(entry pkgstate.Entry, ref reference.Ref) bool {
 // forgetRemoved drops the row for every agent whose artifacts are confirmed
 // gone. An agent whose removal failed keeps its row, because something of ours
 // is still on disk and the row is the only note of what.
-func forgetRemoved(cmd *cobra.Command, entries []pkgstate.Entry, outcomes []agentcfg.Outcome) {
-	withManifest(cmd, func(m *pkgstate.Manifest) bool {
+//
+// A failure here is returned rather than warned about, unlike during an
+// install: dropping the row is what uninstall was asked to do, so a save that
+// did not happen must not be reported as done.
+func forgetRemoved(entries []pkgstate.Entry, outcomes []agentcfg.Outcome) error {
+	return editManifest(func(m *pkgstate.Manifest) bool {
 		changed := false
 
 		for _, entry := range entries {

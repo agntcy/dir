@@ -235,8 +235,15 @@ func runPipedInstall(cmd *cobra.Command) error {
 	presenter.Printf(cmd, "%s", agentcfg.FormatPlan(plan))
 	printSkippedSummary(cmd, skipped)
 
-	// Nothing would move, so there is nothing worth confirming.
+	// Nothing would move on disk, but the manifest still may: see the same
+	// branch in runApplyCmd. Reinstalling an already-correct package is how a
+	// row gets backfilled.
 	if !agentcfg.HasChanges(plan) {
+		if !opts.dryRun {
+			items, _ := applyTargets(env, targets, selected, scope, true, agentinstall.Install)
+			recordInstalls(cmd, items, selected, scope)
+		}
+
 		return nil
 	}
 
