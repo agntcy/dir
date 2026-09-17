@@ -132,6 +132,7 @@ func MCPServerEnv(cfg *client.Config) map[string]string {
 		"DIRECTORY_CLIENT_JWT_AUDIENCE":       cfg.JWTAudience,
 		"DIRECTORY_CLIENT_OIDC_ISSUER":        cfg.OIDCIssuer,
 		"DIRECTORY_CLIENT_OIDC_CLIENT_ID":     cfg.OIDCClientID,
+		"DIRECTORY_CLIENT_OIDC_AUDIENCE":      cfg.OIDCAudience,
 	} {
 		if s := strings.TrimSpace(v); s != "" {
 			env[k] = s

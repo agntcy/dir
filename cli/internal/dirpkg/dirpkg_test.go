@@ -81,12 +81,18 @@ func TestMCPServerEnvProjectsNonSecretFieldsOnlyWhenSet(t *testing.T) {
 		AuthMode:      "oidc",
 		TlsCAFile:     "/ca.pem",
 		OIDCIssuer:    "https://dex.example",
+		OIDCClientID:  "dirctl",
+		OIDCAudience:  "sts.amazonaws.com",
 		OIDCScopes:    []string{"openid", "groups"},
 		TlsSkipVerify: true,
 	})
 
 	assert.Equal(t, "/ca.pem", full["DIRECTORY_CLIENT_TLS_CA_FILE"])
 	assert.Equal(t, "https://dex.example", full["DIRECTORY_CLIENT_OIDC_ISSUER"])
+	assert.Equal(t, "dirctl", full["DIRECTORY_CLIENT_OIDC_CLIENT_ID"])
+	// Without the audience, a context minting GitHub Actions OIDC tokens on
+	// demand cannot follow the resolved config (client/oidc_grpc.go).
+	assert.Equal(t, "sts.amazonaws.com", full["DIRECTORY_CLIENT_OIDC_AUDIENCE"])
 	assert.Equal(t, "openid,groups", full["DIRECTORY_CLIENT_OIDC_SCOPES"])
 	assert.Equal(t, "true", full["DIRECTORY_CLIENT_TLS_SKIP_VERIFY"])
 	assert.NotContains(t, full, "DIRECTORY_CLIENT_TLS_CERT_FILE")
