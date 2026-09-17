@@ -537,8 +537,10 @@ The daemon ships with sensible built-in defaults. To customize, pass a YAML conf
     ```yaml
     server:
       listen_address: "localhost:8888"
-      oasf_api_validation:
-        schema_url: "https://schema.oasf.outshift.com"
+      validators:
+        - provider: oasf
+          schema_url: "https://schema.oasf.outshift.com"
+          op: ["push", "autosync", "index"]
       store:
         provider: "oci"
         oci:

@@ -2,8 +2,10 @@ server:
   listen_address: "localhost:18332"
   metrics:
     enabled: false
-  oasf_api_validation:
-    schema_url: "https://schema.oasf.outshift.com"
+  validators:
+    - provider: oasf
+      schema_url: "https://schema.oasf.outshift.com"
+      op: ["push", "autosync", "index"]
   store:
     provider: "oci"
     oci:

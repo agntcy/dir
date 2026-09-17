@@ -15,6 +15,8 @@ import (
 	"github.com/agntcy/dir/server/events"
 	"github.com/agntcy/dir/server/ingest"
 	"github.com/agntcy/dir/server/types"
+	"github.com/agntcy/dir/server/validators"
+	validatorsconfig "github.com/agntcy/dir/server/validators/config"
 	"github.com/agntcy/dir/utils/logging"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -25,21 +27,21 @@ var storeLogger = logging.Logger("controller/store")
 
 type storeCtrl struct {
 	storev1.UnimplementedStoreServiceServer
-	store     types.StoreAPI
-	db        types.DatabaseAPI
-	ingestor  ingest.Ingestor
-	eventBus  *events.SafeEventBus
-	validator corev1.Validator
+	store             types.StoreAPI
+	db                types.DatabaseAPI
+	ingestor          ingest.Ingestor
+	eventBus          *events.SafeEventBus
+	validatorRegistry *validators.Registry
 }
 
-func NewStoreController(store types.StoreAPI, db types.DatabaseAPI, ingestor ingest.Ingestor, eventBus *events.SafeEventBus, validator corev1.Validator) storev1.StoreServiceServer {
+func NewStoreController(store types.StoreAPI, db types.DatabaseAPI, ingestor ingest.Ingestor, eventBus *events.SafeEventBus, validatorRegistry *validators.Registry) storev1.StoreServiceServer {
 	return &storeCtrl{
 		UnimplementedStoreServiceServer: storev1.UnimplementedStoreServiceServer{},
 		store:                           store,
 		db:                              db,
 		ingestor:                        ingestor,
 		eventBus:                        eventBus,
-		validator:                       validator,
+		validatorRegistry:               validatorRegistry,
 	}
 }
 
@@ -61,7 +63,7 @@ func (s storeCtrl) Push(stream storev1.StoreService_PushServer) error {
 			return status.Errorf(codes.Internal, "failed to receive record: %v", err)
 		}
 
-		isValid, validationErrors, err := record.ValidateWith(ctx, s.validator)
+		isValid, validationErrors, err := s.validatorRegistry.Run(ctx, validatorsconfig.OpPush, record)
 		if err != nil {
 			return status.Errorf(codes.Internal, "failed to validate record: %v", err)
 		}
