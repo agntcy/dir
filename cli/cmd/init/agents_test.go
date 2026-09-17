@@ -268,3 +268,51 @@ func TestRemoveAgentsUninstallsMCPAndSkill(t *testing.T) {
 	// package forever with nothing behind it.
 	assert.Empty(t, initManifest(t).ByName(dirpkg.Name()))
 }
+
+// TestRemoveAgentsRemovesWhatTheRowRecordsNotWhatThisBinaryBuilds: removal is
+// manifest-driven because the row is the only record of what an *earlier*
+// binary wrote. Deriving the artifacts from this one would read a renamed MCP
+// key as already absent, forget the row as cleared, and strand the old key in
+// the agent's config with nothing left pointing at it.
+func TestRemoveAgentsRemovesWhatTheRowRecordsNotWhatThisBinaryBuilds(t *testing.T) {
+	env := claudeEnv(t)
+
+	// An older dirctl installed the server under a name this binary no longer
+	// produces.
+	config := filepath.Join(env.Home, ".claude.json")
+	require.NoError(t, os.WriteFile(config,
+		[]byte(`{"mcpServers":{"agntcy-dir-legacy":{"command":"dirctl"},"theirs":{"command":"other"}}}`), 0o600))
+
+	path, err := pkgstate.DefaultPath()
+	require.NoError(t, err)
+
+	m := &pkgstate.Manifest{Entries: []pkgstate.Entry{{
+		Name:       dirpkg.Name(),
+		Version:    "v1.0.0",
+		Agent:      "claude-code",
+		Scope:      pkgstate.ScopeGlobal,
+		Origin:     pkgstate.OriginBuiltin,
+		MCPServers: []string{"agntcy-dir-legacy"},
+	}}}
+	require.NoError(t, m.Save(path))
+
+	cmd, _ := newTestCmd("")
+	require.NoError(t, removeAgents(cmd, env, &options{agents: []string{agentcfg.AllAgents}, yes: true}))
+
+	data, err := os.ReadFile(config)
+	require.NoError(t, err)
+	assert.NotContains(t, string(data), "agntcy-dir-legacy", "the recorded key must go, whatever this binary builds")
+	assert.Contains(t, string(data), "theirs", "another tool's entry is never ours to remove")
+
+	assert.Empty(t, initManifest(t).ByName(dirpkg.Name()))
+}
+
+// TestRemoveAgentsWithNoRowsDoesNothing: nothing was recorded, so there is
+// nothing to remove — and nothing to guess at.
+func TestRemoveAgentsWithNoRowsDoesNothing(t *testing.T) {
+	env := claudeEnv(t)
+	cmd, out := newTestCmd("")
+
+	require.NoError(t, removeAgents(cmd, env, &options{agents: []string{agentcfg.AllAgents}, yes: true}))
+	assert.Empty(t, out.String())
+}

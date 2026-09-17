@@ -450,6 +450,22 @@ func (m *Manifest) ByName(name string) []Entry {
 	return found
 }
 
+// Read loads the manifest at DefaultPath.
+//
+// It is the read-only companion to Update, for a command whose product is the
+// manifest, or which has to act on exactly what a previous run recorded. Like
+// Update it honours XDG_CONFIG_HOME, so tests stay hermetic.
+//
+//nolint:wrapcheck // Load's error already names the path and the operation.
+func Read() (*Manifest, error) {
+	path, err := DefaultPath()
+	if err != nil {
+		return nil, err
+	}
+
+	return Load(path)
+}
+
 // Update loads the manifest at DefaultPath, applies mutate, and saves it when
 // mutate reports something changed.
 //

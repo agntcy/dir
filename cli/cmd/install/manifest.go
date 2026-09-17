@@ -98,17 +98,7 @@ func withManifest(cmd *cobra.Command, mutate func(*pkgstate.Manifest) bool) {
 //
 //nolint:wrapcheck // pkgstate errors already name the manifest path and the operation.
 func readManifest() (*pkgstate.Manifest, error) {
-	path, err := pkgstate.DefaultPath()
-	if err != nil {
-		return nil, err
-	}
-
-	m, err := pkgstate.Load(path)
-	if err != nil {
-		return nil, err
-	}
-
-	return m, nil
+	return pkgstate.Read()
 }
 
 // editManifest applies mutate to the manifest and saves when mutate reports a

@@ -233,17 +233,21 @@ func removeAgents(cmd *cobra.Command, env agentcfg.Env, opts *options) error {
 		return err
 	}
 
-	selected, _ := agentcfg.ResolveSelection(agentcfg.Registry(), env, chosen)
-	if len(selected) == 0 {
-		return nil
-	}
-
-	arts, err := dirpkg.Artifacts(dirConfig(cmd))
+	// The rows say what was written, which is what has to be removed. Deriving
+	// the artifacts from *this* binary instead would miss anything an earlier
+	// one wrote under a different name: a renamed MCP key would read as already
+	// absent, the row would be forgotten as cleared, and the old key would sit
+	// in the agent's config with nothing left to point at it.
+	rows, err := builtinRows(chosen)
 	if err != nil {
 		return err
 	}
 
-	plan := agentinstall.Uninstall(env, arts, selected, agentcfg.Global, true)
+	if len(rows) == 0 {
+		return nil
+	}
+
+	plan := agentinstall.UninstallRecorded(env, rows, true)
 	if len(plan) == 0 {
 		return nil
 	}
@@ -270,10 +274,57 @@ func removeAgents(cmd *cobra.Command, env agentcfg.Env, opts *options) error {
 		}
 	}
 
-	outcomes := agentinstall.Uninstall(env, arts, selected, agentcfg.Global, false)
+	outcomes := agentinstall.UninstallRecorded(env, rows, false)
 	presenter.Printf(cmd, "%s", agentcfg.FormatSummary(outcomes, false))
 
-	forgetBuiltin(cmd, selected, outcomes)
+	forgetBuiltin(cmd, rowAgents(rows), outcomes)
 
 	return nil
+}
+
+// builtinRows are the manifest rows for the built-in package at global scope,
+// narrowed by --agents.
+//
+// Detection is deliberately not consulted, unlike on the install side: an agent
+// no longer detected on this machine still holds the files it was given, and
+// leaving them because the agent has since been uninstalled would strand them
+// for good.
+//
+//nolint:wrapcheck // pkgstate's error already names the manifest and the operation.
+func builtinRows(chosen map[string]bool) ([]pkgstate.Entry, error) {
+	manifest, err := pkgstate.Read()
+	if err != nil {
+		return nil, err
+	}
+
+	var rows []pkgstate.Entry
+
+	for _, row := range manifest.ByName(dirpkg.Name()) {
+		if !row.Scope.IsGlobal() {
+			continue
+		}
+
+		if len(chosen) > 0 && !chosen[row.Agent] {
+			continue
+		}
+
+		rows = append(rows, row)
+	}
+
+	return rows, nil
+}
+
+// rowAgents resolves the rows' agents, dropping any this binary has no
+// descriptor for — Forget keys on the agent ID, which such a row still has, but
+// UninstallRecorded could not have removed anything for it either.
+func rowAgents(rows []pkgstate.Entry) []agentcfg.Agent {
+	agents := make([]agentcfg.Agent, 0, len(rows))
+
+	for _, row := range rows {
+		if agent, known := agentcfg.ByID(row.Agent); known {
+			agents = append(agents, agent)
+		}
+	}
+
+	return agents
 }
