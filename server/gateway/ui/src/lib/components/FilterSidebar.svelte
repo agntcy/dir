@@ -199,7 +199,7 @@
 	<div class="flex-shrink-0">
 		<span class="block text-xs font-semibold uppercase tracking-wide text-ink-medium mb-2">Status</span>
 		<div class="space-y-1.5">
-			{#each [['trusted', 'Trusted'], ['verified', 'Verified']] as [value, label]}
+			{#each [['trusted', 'Trusted']] as [value, label]}
 				<label class="flex items-center gap-2 text-sm text-ink cursor-pointer">
 					<input
 						type="checkbox"

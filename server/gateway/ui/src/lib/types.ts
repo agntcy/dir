@@ -1,7 +1,7 @@
 export interface AICardFilterCriteria {
 	searchQuery: string;
 	mediaTypes: Set<string>;
-	statusFilters: Set<string>; // 'trusted' | 'verified' — independently selectable
+	statusFilters: Set<string>; // 'trusted'
 	activeTags: Set<string>;
 	scanSafe: boolean; // true = show only records where all scanners report safe
 }

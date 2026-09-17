@@ -27,6 +27,17 @@ authz_policies_csv: |
   p,*,/agntcy.dir.store.v1.StoreService/Lookup
   p,*,/agntcy.dir.sync.v1.SyncService/RequestRegistryCredentials
 
+# File-based content policies (OPA/Rego). Each key is a filename mounted at
+# config.policy.dir. Not part of the server config struct.
+#
+# Example:
+#   content_policies:
+#     require-annotations.rego: |
+#       package dir.policy.require_annotations
+#
+#       default allow := true
+content_policies: {}
+
 # Server configuration (maps directly to server config.go Config struct)
 config:
   # listen_address: "0.0.0.0:8888"
@@ -54,6 +65,11 @@ config:
 
     # Path to the authorization policy file
     enforcer_policy_file_path: "/etc/agntcy/dir/authz_policies.csv"
+
+  # File-based content policies. Files from content_policies are mounted here.
+  policy:
+    enabled: false
+    dir: "/etc/agntcy/dir/policies"
 
   # Store settings for the storage backend.
   store:

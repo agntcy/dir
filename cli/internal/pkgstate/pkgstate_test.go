@@ -210,13 +210,18 @@ func TestUpsertKeysOnNameAgentAndScope(t *testing.T) {
 	otherAgent.Agent = "cursor"
 	m.Upsert(otherAgent)
 
-	otherScope := base
-	otherScope.Scope = pkgstate.ScopeProject
-	m.Upsert(otherScope)
+	oneRepo := base
+	oneRepo.Scope = pkgstate.ProjectScope("/src/alpha")
+	m.Upsert(oneRepo)
 
-	// One package, three rows: the same name is installed for two agents and at
-	// two scopes, and none of them collides.
-	assert.Len(t, m.Entries, 3)
+	anotherRepo := base
+	anotherRepo.Scope = pkgstate.ProjectScope("/src/beta")
+	m.Upsert(anotherRepo)
+
+	// One package, four rows: two agents globally, plus one repository each.
+	// Naming the repository is what keeps the last two apart — a bare
+	// "project" would collide on one key.
+	assert.Len(t, m.Entries, 4)
 }
 
 func TestWithCarriedArtifactsKeepsAServerThisInstallDidNotWrite(t *testing.T) {
@@ -344,4 +349,38 @@ func TestDefaultPathFallsBackToHomeConfig(t *testing.T) {
 	home, err := os.UserHomeDir()
 	require.NoError(t, err)
 	assert.Equal(t, filepath.Join(home, ".config", "dirctl", "installed.json"), path)
+}
+
+func TestKindIsDerivedFromTheArtifactsThatLanded(t *testing.T) {
+	both := pkgstate.Entry{SkillPath: "/skills/agent", MCPServers: []string{"agent"}}
+	assert.Equal(t, "skill+mcp", both.Kind())
+
+	assert.Equal(t, "skill", pkgstate.Entry{SkillPath: "/skills/agent"}.Kind())
+	assert.Equal(t, "mcp", pkgstate.Entry{MCPServers: []string{"agent"}}.Kind())
+	// Only a hand-edited manifest can hold a row that landed nothing.
+	assert.Equal(t, "none", pkgstate.Entry{}.Kind())
+}
+
+func TestOnlyTwoKnownDirectoriesThatDifferAreAMismatch(t *testing.T) {
+	// Rows written before the field existed carry no address, and must stay
+	// checkable rather than become permanently unassessable.
+	assert.True(t, pkgstate.Entry{}.DirectoryMatches("localhost:8888"))
+	// A run that cannot resolve its own address must not skip every row.
+	assert.True(t, pkgstate.Entry{Directory: "staging:443"}.DirectoryMatches(""))
+	assert.True(t, pkgstate.Entry{Directory: "localhost:8888"}.DirectoryMatches("localhost:8888"))
+	assert.False(t, pkgstate.Entry{Directory: "staging:443"}.DirectoryMatches("localhost:8888"))
+}
+
+func TestDirectoryRoundTripsThroughTheFile(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "installed.json")
+
+	m := &pkgstate.Manifest{Entries: []pkgstate.Entry{{
+		Name: "cisco.com/agent", Agent: "claude-code", Scope: pkgstate.ScopeGlobal, Directory: "staging:443",
+	}}}
+	require.NoError(t, m.Save(path))
+
+	loaded, err := pkgstate.Load(path)
+	require.NoError(t, err)
+	require.Len(t, loaded.Entries, 1)
+	assert.Equal(t, "staging:443", loaded.Entries[0].Directory)
 }

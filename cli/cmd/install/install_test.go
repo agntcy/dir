@@ -14,12 +14,12 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestListRunsWithoutClient(t *testing.T) {
+func TestAgentsRunsWithoutClient(t *testing.T) {
 	var out bytes.Buffer
-	ListCommand.SetOut(&out)
-	ListCommand.SetErr(&out)
+	AgentsCommand.SetOut(&out)
+	AgentsCommand.SetErr(&out)
 
-	require.NoError(t, ListCommand.RunE(ListCommand, nil))
+	require.NoError(t, AgentsCommand.RunE(AgentsCommand, nil))
 	require.Contains(t, out.String(), "Claude Code")
 }
 
@@ -29,9 +29,9 @@ func TestParentHasSubcommands(t *testing.T) {
 		names[c.Name()] = true
 	}
 
-	require.True(t, names["run"])
-	require.True(t, names["uninstall"])
-	require.True(t, names["list"])
+	for _, want := range []string{"run", "uninstall", "agents", "list", "outdated", "pin", "unpin", "prune"} {
+		require.True(t, names[want], want)
+	}
 }
 
 func TestTopLevelUninstallShorthand(t *testing.T) {
@@ -42,8 +42,31 @@ func TestTopLevelUninstallShorthand(t *testing.T) {
 	require.NotNil(t, UninstallCommand.PersistentFlags().Lookup("agents"))
 	require.NotNil(t, UninstallCommand.PersistentFlags().Lookup("dry-run"))
 	require.NotNil(t, UninstallCommand.PersistentFlags().Lookup("yes"))
-	require.NotNil(t, UninstallCommand.PersistentFlags().Lookup("limit"))
-	require.NotNil(t, UninstallCommand.PersistentFlags().Lookup("module"))
+}
+
+func TestUninstallCarriesNoSearchFilters(t *testing.T) {
+	// Filtering belongs to `dirctl search`. Uninstall takes one reference, and
+	// carrying a second copy of those flags is what used to make it need a
+	// Directory.
+	for _, gone := range []string{"limit", "module", "skill", "domain", "locator", "author"} {
+		require.Nil(t, UninstallCommand.PersistentFlags().Lookup(gone), gone)
+		require.Nil(t, Command.PersistentFlags().Lookup(gone), gone)
+	}
+}
+
+func TestCommandsThatDoNotNeedAClientAreExemptFromSetup(t *testing.T) {
+	// root.go reads this list to skip client setup.
+	exempt := map[string]bool{}
+	for _, c := range SkipClientSetup() {
+		exempt[c.Name()] = true
+	}
+
+	// Both spellings of uninstall, the subcommand and the top-level shorthand.
+	// `outdated` must never appear: reaching the Directory is its whole point.
+	require.Equal(t, map[string]bool{
+		"agents": true, "list": true, "pin": true, "unpin": true, "prune": true, "uninstall": true,
+	}, exempt)
+	require.Len(t, SkipClientSetup(), 7)
 }
 
 // --- scopeFromOpts tests ---
@@ -160,4 +183,14 @@ func TestCommandRunENoArgsReturnsNil(t *testing.T) {
 	require.NoError(t, err)
 	// Help output should mention usage.
 	assert.NotEmpty(t, out.String())
+}
+
+func TestASingleInstallWithNothingToDoAsksNoConfirmation(t *testing.T) {
+	// The same gate the piped path uses. len(plan) == 0 was not it: an
+	// all-unchanged plan is not an empty one.
+	assert.False(t, agentcfg.HasChanges([]agentcfg.Outcome{
+		{Action: agentcfg.ActionUnchanged},
+		{Action: agentcfg.ActionSkipped},
+	}))
+	assert.True(t, agentcfg.HasChanges([]agentcfg.Outcome{{Action: agentcfg.ActionAdded}}))
 }
