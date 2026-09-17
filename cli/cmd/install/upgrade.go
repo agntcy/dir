@@ -19,6 +19,7 @@ import (
 	"github.com/agntcy/dir/cli/presenter"
 	ctxUtils "github.com/agntcy/dir/cli/util/context"
 	"github.com/agntcy/dir/cli/util/prompt"
+	"github.com/agntcy/dir/cli/util/records"
 	"github.com/spf13/cobra"
 )
 
@@ -121,6 +122,10 @@ func runUpgrade(cmd *cobra.Command, args []string) error {
 		return nil
 	}
 
+	if err := rejectSharedSkillSplits(manifest, targets, env); err != nil {
+		return err
+	}
+
 	// Fetch and derive every replacement before anything is touched: never
 	// remove a working skill and only then discover the new one cannot be had.
 	steps, skipped := prepareUpgrades(cmd, targets)
@@ -136,30 +141,18 @@ func runUpgrade(cmd *cobra.Command, args []string) error {
 	printSkippedSummary(cmd, skipped)
 
 	if !agentcfg.HasChanges(plan) {
-		// The versions moved but nothing on disk would: the new record derives
-		// byte-identical artifacts. The rows still have to move, or `outdated`
-		// would keep reporting the upgrade forever.
-		reportVersionOnly(cmd, steps)
-
-		if !opts.dryRun {
-			results, _ := applyUpgrades(env, steps, true)
-			recordUpgrades(cmd, results, named)
-		}
-
-		return nil
+		return moveVersionsOnly(cmd, env, steps, named)
 	}
 
-	if !opts.yes && !opts.dryRun {
-		ok, err := prompt.Confirm(cmd, "\nProceed with these changes?")
-		if err != nil {
-			return err //nolint:wrapcheck // the prompt's error already reads as its own message.
-		}
+	proceed, err := confirmUpgrade(cmd)
+	if err != nil {
+		return err
+	}
 
-		if !ok {
-			presenter.Printf(cmd, "Aborted. No changes made.\n")
+	if !proceed {
+		presenter.Printf(cmd, "Aborted. No changes made.\n")
 
-			return nil
-		}
+		return nil
 	}
 
 	results, outcomes := applyUpgrades(env, steps, opts.dryRun)
@@ -176,6 +169,73 @@ func runUpgrade(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
+// confirmUpgrade gates the run, taking --yes and --dry-run as consent.
+//
+//nolint:wrapcheck // the prompt's error already reads as its own message.
+func confirmUpgrade(cmd *cobra.Command) (bool, error) {
+	if opts.yes || opts.dryRun {
+		return true, nil
+	}
+
+	return prompt.Confirm(cmd, "\nProceed with these changes?")
+}
+
+// moveVersionsOnly handles a plan that would move nothing on disk.
+//
+// Two very different things land here. Either the new records derive
+// byte-identical artifacts, in which case the rows still have to move or
+// `outdated` would keep reporting the upgrade forever; or every change was
+// skipped or failed, in which case nothing may be claimed and the rows must
+// keep the versions they have.
+func moveVersionsOnly(cmd *cobra.Command, env agentcfg.Env, steps []upgradeStep, named bool) error {
+	results, _ := applyUpgrades(env, steps, true)
+
+	moved := versionOnlyResults(results)
+	if len(moved) == 0 {
+		presenter.Printf(cmd,
+			"Nothing was upgraded: every change was skipped or failed, so the rows keep their versions.\n")
+
+		return nil
+	}
+
+	reportVersionOnly(cmd, moved)
+
+	if !opts.dryRun {
+		recordUpgrades(cmd, moved, named)
+	}
+
+	return nil
+}
+
+// versionOnlyResults keeps the scope groups whose every artifact was already
+// exactly right, dropping the rest.
+//
+// A group carrying a skip or a failure moved nothing *and* something of the
+// package may still be on its old version, so its rows must keep the version
+// they have. Recording the new one would report an upgrade that did not
+// happen, and `outdated` would then stay quiet about a package still needing
+// attention.
+func versionOnlyResults(results []upgradeResult) []upgradeResult {
+	kept := make([]upgradeResult, 0, len(results))
+
+	for _, result := range results {
+		writes := make([]upgradeWrite, 0, len(result.writes))
+
+		for _, write := range result.writes {
+			if write.versionOnly() {
+				writes = append(writes, write)
+			}
+		}
+
+		if len(writes) > 0 {
+			result.writes = writes
+			kept = append(kept, result)
+		}
+	}
+
+	return kept
+}
+
 // reportVersionOnly explains an upgrade that moves no artifacts.
 //
 // A new version can derive byte-identical artifacts — the author bumped the
@@ -186,15 +246,20 @@ func runUpgrade(cmd *cobra.Command, args []string) error {
 // Saying nothing here reads as "the command did nothing", which is exactly
 // wrong: the version did move, and the next `install list` will say so. So the
 // move is named, and the reason it touched no files with it.
-func reportVersionOnly(cmd *cobra.Command, steps []upgradeStep) {
+func reportVersionOnly(cmd *cobra.Command, results []upgradeResult) {
 	verb := "recorded"
 	if opts.dryRun {
 		verb = "would record"
 	}
 
-	for _, step := range steps {
+	for _, result := range results {
+		var rows []pkgstate.Entry
+		for _, write := range result.writes {
+			rows = append(rows, write.rows...)
+		}
+
 		presenter.Printf(cmd, "%s: %s → %s (artifacts are already identical; %s the new version)\n",
-			step.target.name, installedVersions(step.target.rows), step.target.version, verb)
+			result.step.target.name, installedVersions(rows), result.step.target.version, verb)
 	}
 }
 
@@ -233,14 +298,30 @@ func upgradeScope() pkgstate.Scope {
 	return ""
 }
 
-// upgradeTarget is one package the run will move, with every row it is
-// installed into.
-type upgradeTarget struct {
+// targetKey identifies one replacement: the exact thing that will be fetched
+// and installed.
+//
+// Rows sharing a name do not always share a target. Without --pre, a row on a
+// release follows the highest release while a row already on a prerelease
+// follows its own track, because otherwise nothing on that track would ever be
+// comparable — see pkgupdate.directoryRow. A name can also carry rows of both
+// origins, when a record of the built-in package's name has been published and
+// installed alongside it. Keying on the name alone would let the first row's
+// CID decide for every row, which installs a prerelease over a release track,
+// or rebuilds a Directory row from this binary.
+type targetKey struct {
 	name    string
 	version string
 	cid     string
 	origin  pkgstate.Origin
-	rows    []pkgstate.Entry
+}
+
+// upgradeTarget is one replacement the run will install, with every row it
+// applies to.
+type upgradeTarget struct {
+	targetKey
+
+	rows []pkgstate.Entry
 }
 
 // label identifies the target in the plan and summary, the way a batch install
@@ -265,17 +346,52 @@ type scopeGroup struct {
 	scope  pkgstate.Scope
 	rows   []pkgstate.Entry
 	agents []agentcfg.Agent
-	pinned bool
 }
 
-// upgradeWrite is what one scope group produced: the agents it covered, what
-// the orphan prune removed, and what the install wrote.
+// upgradeWrite is what one scope group produced: the agents it covered, the
+// rows behind them, what the orphan prune removed, and what the install wrote.
+//
+// The rows travel with it because a pin is per row. Installing with --pin for
+// one agent and without it for another leaves the same package held in one and
+// loose in the other, and an upgrade must not quietly level them.
 type upgradeWrite struct {
 	scope   pkgstate.Scope
 	agents  []agentcfg.Agent
+	rows    []pkgstate.Entry
 	removed []agentcfg.Outcome
 	written []agentcfg.Outcome
-	pinned  bool
+}
+
+// versionOnly reports that this write moved the version and nothing else: every
+// artifact it looked at was already exactly right.
+//
+// A write with no outcomes is not version-only — nothing was looked at — and
+// neither is one carrying a skip or a failure, where something of the package
+// may well still be on its old version.
+func (w upgradeWrite) versionOnly() bool {
+	outcomes := append(append([]agentcfg.Outcome{}, w.removed...), w.written...)
+	if len(outcomes) == 0 {
+		return false
+	}
+
+	for _, o := range outcomes {
+		if o.Action != agentcfg.ActionUnchanged {
+			return false
+		}
+	}
+
+	return true
+}
+
+// pinnedFor reports whether this agent's row holds the package at its version.
+func pinnedFor(rows []pkgstate.Entry, agentID string) bool {
+	for _, row := range rows {
+		if row.Agent == agentID {
+			return row.Pinned
+		}
+	}
+
+	return false
 }
 
 // upgradeResult is one package's writes, which is what its rows are rebuilt
@@ -285,16 +401,21 @@ type upgradeResult struct {
 	writes []upgradeWrite
 }
 
-// upgradeTargets groups the upgradable rows into one target per package,
-// dropping the agents --agents left out and the scopes --project excluded.
+// upgradeTargets groups the upgradable rows by the replacement they resolved
+// to, dropping the agents --agents left out and the scopes --project excluded.
+//
+// Grouping is by target rather than by name, so rows of one name that resolved
+// differently are upgraded to what each of them actually resolved to. See
+// targetKey. Rows that agree still share one fetch and one derive, which is
+// the point of grouping at all.
 //
 // pkgupdate has already resolved each name once and decided what is upgradable,
 // including the no-op of an equal version at an equal CID, which it reports as
 // up to date rather than as something to move.
 func upgradeTargets(rows []pkgupdate.Row, chosen map[string]bool, scope pkgstate.Scope) []upgradeTarget {
-	byName := map[string]*upgradeTarget{}
+	byTarget := map[targetKey]*upgradeTarget{}
 
-	var order []string
+	var order []targetKey
 
 	for _, row := range rows {
 		if !row.Upgradable() {
@@ -309,27 +430,103 @@ func upgradeTargets(rows []pkgupdate.Row, chosen map[string]bool, scope pkgstate
 			continue
 		}
 
-		target, ok := byName[row.Entry.Name]
+		key := targetKey{
+			name:    row.Entry.Name,
+			version: row.Latest,
+			cid:     row.LatestCID,
+			origin:  row.Entry.Origin,
+		}
+
+		target, ok := byTarget[key]
 		if !ok {
-			target = &upgradeTarget{
-				name:    row.Entry.Name,
-				version: row.Latest,
-				cid:     row.LatestCID,
-				origin:  row.Entry.Origin,
-			}
-			byName[row.Entry.Name] = target
-			order = append(order, row.Entry.Name)
+			target = &upgradeTarget{targetKey: key}
+			byTarget[key] = target
+			order = append(order, key)
 		}
 
 		target.rows = append(target.rows, row.Entry)
 	}
 
 	targets := make([]upgradeTarget, 0, len(order))
-	for _, name := range order {
-		targets = append(targets, *byName[name])
+	for _, key := range order {
+		targets = append(targets, *byTarget[key])
 	}
 
 	return targets
+}
+
+// rejectSharedSkillSplits refuses a run that would rewrite a skill folder some
+// row it is not upgrading still claims.
+//
+// Claude Code and Claude Desktop share one skills folder, and so do Zed and
+// Codex CLI. The folder is written — and, when the new version drops the skill,
+// removed — once for the pair, so upgrading one of them acts on the other's
+// artifact too while leaving its row on the old version. The worse half is the
+// removal: the unselected row ends up pointing at a folder that is gone.
+//
+// `uninstall` refuses the same split for the same reason; see
+// rejectSharedSkillSplit. Only --agents can produce it here, since every row of
+// a package is upgraded together otherwise.
+func rejectSharedSkillSplits(manifest *pkgstate.Manifest, targets []upgradeTarget, env agentcfg.Env) error {
+	upgrading := make(map[pkgstate.Key]bool)
+
+	for _, target := range targets {
+		for _, row := range target.rows {
+			upgrading[row.Key()] = true
+		}
+	}
+
+	for _, target := range targets {
+		paths := make(map[string]bool)
+
+		for _, row := range target.rows {
+			if path := sharedSkillPath(row, env); path != "" {
+				paths[path] = true
+			}
+		}
+
+		var stranded []string
+
+		for _, row := range manifest.Entries {
+			if upgrading[row.Key()] || row.Name != target.name {
+				continue
+			}
+
+			if path := sharedSkillPath(row, env); path != "" && paths[path] {
+				stranded = append(stranded, row.Agent)
+			}
+		}
+
+		if len(stranded) > 0 {
+			return fmt.Errorf(
+				"%q shares its skill folder with %s, which --agents left out: upgrading it for one rewrites the other's copy and leaves its row behind, so upgrade them together or drop --agents",
+				target.name, strings.Join(stranded, ", "))
+		}
+	}
+
+	return nil
+}
+
+// sharedSkillPath resolves the skill folder a row's agent would write to, or ""
+// when the row installed no skill or this binary cannot place one for it.
+func sharedSkillPath(row pkgstate.Entry, env agentcfg.Env) string {
+	if row.SkillPath == "" {
+		return ""
+	}
+
+	agent, known := agentcfg.ByID(row.Agent)
+	if !known || agent.Skill == nil {
+		return ""
+	}
+
+	scope, rowEnv := agentinstall.Placement(row, env)
+
+	path, err := agentcfg.ResolveSkillTargetPath(agent.Skill, rowEnv, records.SanitizeSlug(row.Name), scope)
+	if err != nil {
+		return ""
+	}
+
+	return path
 }
 
 // nothingToUpgrade explains an empty run.
@@ -432,9 +629,9 @@ func applyUpgrades(env agentcfg.Env, steps []upgradeStep, dryRun bool) ([]upgrad
 			result.writes = append(result.writes, upgradeWrite{
 				scope:   group.scope,
 				agents:  group.agents,
+				rows:    group.rows,
 				removed: removed,
 				written: written,
-				pinned:  group.pinned,
 			})
 
 			all = append(all, removed...)
@@ -467,7 +664,6 @@ func groupByScope(rows []pkgstate.Entry) []scopeGroup {
 		}
 
 		group.rows = append(group.rows, row)
-		group.pinned = group.pinned || row.Pinned
 
 		if agent, known := agentcfg.ByID(row.Agent); known {
 			group.agents = append(group.agents, agent)
@@ -500,9 +696,6 @@ func recordUpgrades(cmd *cobra.Command, results []upgradeResult, named bool) {
 					CID:     target.cid,
 					Scope:   write.scope,
 					Origin:  target.origin,
-					// Naming a package releases its pin; --include-pinned does
-					// not, so the hold lands on the new version.
-					Pinned: write.pinned && !named,
 				}
 
 				// A built-in package's upstream is this binary, so recording a
@@ -512,9 +705,19 @@ func recordUpgrades(cmd *cobra.Command, results []upgradeResult, named bool) {
 					id.Directory = directory
 				}
 
-				if agentinstall.Reconcile(m, result.step.arts, write.agents,
-					write.removed, write.written, id, now) {
-					changed = true
+				// One agent at a time, because the pin is the one part of the
+				// identity that is per row: two agents can hold the same
+				// package at different pin states, and levelling them would
+				// break --include-pinned's promise to preserve existing holds.
+				for _, agent := range write.agents {
+					// Naming a package releases its pin; --include-pinned does
+					// not, so the hold lands on the new version.
+					id.Pinned = pinnedFor(write.rows, agent.ID) && !named
+
+					if agentinstall.Reconcile(m, result.step.arts, []agentcfg.Agent{agent},
+						write.removed, write.written, id, now) {
+						changed = true
+					}
 				}
 			}
 		}
