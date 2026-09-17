@@ -112,8 +112,6 @@ yes, so pressing Enter provisions. To avoid an unattended ~89 MB download, a
 `--yes`. Re-running is idempotent: nothing is re-downloaded when the assets are
 present and current, and the taxonomy is re-embedded only when it changed.
 
-| Flag | Description | Default |
-|------|-------------|---------|
 Its last step wires this Directory into your AI coding agents: an MCP server
 entry so an agent can push, search, and pull records, plus the DIR skill as a
 usage guide. Both come from a record built into the `dirctl` binary —
