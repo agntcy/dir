@@ -12,6 +12,8 @@ import (
 	typesv1alpha1 "buf.build/gen/go/agntcy/oasf/protocolbuffers/go/agntcy/oasf/types/v1alpha1"
 	corev1 "github.com/agntcy/dir/api/core/v1"
 	"github.com/agntcy/dir/server/routing/rpc"
+	"github.com/agntcy/dir/server/validators"
+	validatorsconfig "github.com/agntcy/dir/server/validators/config"
 	"github.com/libp2p/go-libp2p/core/crypto"
 	"github.com/libp2p/go-libp2p/core/peer"
 	ma "github.com/multiformats/go-multiaddr"
@@ -165,7 +167,7 @@ func testRecord(t *testing.T) *corev1.Record {
 }
 
 func newTestManager(allow map[peer.ID]struct{}, tr *fakeTransport, ing *fakeIngestor, st *fakeStore, valid bool) *Manager {
-	return newManager(allow, tr, fakeRouter{}, ing, st, fakeValidator{valid: valid})
+	return newManager(allow, tr, fakeRouter{}, ing, st, validators.With(validatorsconfig.OpAutosync, fakeValidator{valid: valid}))
 }
 
 // --- tests ---
@@ -330,7 +332,7 @@ func TestPullRecord_ResolvesAddressesWhenNoneProvided(t *testing.T) {
 	router := &countingRouter{}
 
 	// GossipSub-triggered job: peer has an ID but no addresses.
-	m := newManager(map[peer.ID]struct{}{trusted: {}}, tr, router, ing, &fakeStore{}, fakeValidator{valid: true})
+	m := newManager(map[peer.ID]struct{}{trusted: {}}, tr, router, ing, &fakeStore{}, validators.With(validatorsconfig.OpAutosync, fakeValidator{valid: true}))
 	m.process(t.Context(), job{ref: &corev1.RecordRef{Cid: cid}, peer: peer.AddrInfo{ID: trusted}})
 
 	assert.GreaterOrEqual(t, router.findPeerCalls, 1, "must resolve addresses via FindPeer when none are provided")

@@ -38,6 +38,15 @@ authz_policies_csv: |
 #       default allow := true
 content_policies: {}
 
+# Record validators applied on push, autosync, and/or index.
+# Injected into both server.config.yml and reconciler.config.yml.
+# Omit an op (or this entire list) to skip validation on that path.
+validators:
+  - provider: oasf
+    op: ["push", "autosync", "index"]
+    config:
+      schema_url: "https://schema.oasf.outshift.com"
+
 # Server configuration (maps directly to server config.go Config struct)
 config:
   # listen_address: "0.0.0.0:8888"
@@ -254,16 +263,6 @@ config:
       # SSL mode for PostgreSQL connection
       # Options: disable, require, verify-ca, verify-full
       ssl_mode: "disable"
-
-  # OASF API validation configuration
-  oasf_api_validation:
-    # Schema URL for OASF validation
-    # Used by both the apiserver and reconciler for validating agent records
-    schema_url: "https://schema.oasf.outshift.com"
-
-    # Disable OASF validation entirely (default: false)
-    # Set to true to skip schema validation (useful for testing)
-    disable: false
 
   # OASF taxonomy extractor configuration (natural-language search on the HTTP
   # gateway). The extractor turns free text into OASF skills, domains, modules,
@@ -729,8 +728,8 @@ oasf-sdk:
   # REQUIRED. The OASF URL is the extractor's on/off switch upstream: the
   # OASF-SDK server registers ExtractorService only when it is set, and without
   # it every Extract call fails with "unknown service
-  # agntcy.oasfsdk.extractor.v1.ExtractorService". Kept in step with
-  # config.oasf_api_validation.schema_url above.
+  # agntcy.oasfsdk.extractor.v1.ExtractorService". Keep in step with the
+  # OASF validator config.schema_url in validators above.
   env:
     OASF_SDK_EXTRACTOR_OASF_URL: "https://schema.oasf.outshift.com"
 
@@ -834,9 +833,6 @@ reconciler:
         # password: ""
         # access_token: ""
         # refresh_token: ""
-
-    # OASF schema URL for validation
-    schema_url: "https://schema.oasf.outshift.com"
 
     # Apiserver gRPC address — required by the metrics task to query provider counts
     # from the routing layer. Typically the in-cluster apiserver service name + gRPC port.

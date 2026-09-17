@@ -357,10 +357,9 @@ This guide does not try to provision the AWS infrastructure from zero in the mai
         annotations:
           external-dns.alpha.kubernetes.io/hostname: "routing.${BASE_DOMAIN}"
 
+      validators: []
       config:
         listen_address: "0.0.0.0:8888"
-        oasf_api_validation:
-          disable: true
         authn:
           enabled: true
           mode: "x509"

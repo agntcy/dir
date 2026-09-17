@@ -11,6 +11,8 @@ import (
 
 	corev1 "github.com/agntcy/dir/api/core/v1"
 	"github.com/agntcy/dir/server/types"
+	"github.com/agntcy/dir/server/validators"
+	validatorsconfig "github.com/agntcy/dir/server/validators/config"
 	"github.com/agntcy/dir/utils/logging"
 )
 
@@ -19,7 +21,7 @@ var logger = logging.Logger("server/skill")
 // Publish pushes the embedded SKILL.md as an OASF record. Idempotent on
 // name+version. Callers must treat errors as non-fatal — DIR has to start
 // even if publishing fails.
-func Publish(ctx context.Context, store types.StoreAPI, db types.DatabaseAPI, validator corev1.Validator) error {
+func Publish(ctx context.Context, store types.StoreAPI, db types.DatabaseAPI, validatorRegistry *validators.Registry) error {
 	if store == nil || db == nil {
 		return errors.New("store and db must be provided")
 	}
@@ -39,7 +41,7 @@ func Publish(ctx context.Context, store types.StoreAPI, db types.DatabaseAPI, va
 		return fmt.Errorf("build skill record: %w", err)
 	}
 
-	if err := validateRecord(ctx, record, validator); err != nil {
+	if err := validateRecord(ctx, record, validatorRegistry); err != nil {
 		return err
 	}
 
@@ -73,18 +75,14 @@ func Publish(ctx context.Context, store types.StoreAPI, db types.DatabaseAPI, va
 	return nil
 }
 
-func validateRecord(ctx context.Context, record *corev1.Record, validator corev1.Validator) error {
-	if validator == nil {
-		return nil
-	}
-
-	ok, msgs, err := record.ValidateWith(ctx, validator)
+func validateRecord(ctx context.Context, record *corev1.Record, validatorRegistry *validators.Registry) error {
+	ok, msgs, err := validatorRegistry.Run(ctx, validatorsconfig.OpPush, record)
 	if err != nil {
 		return fmt.Errorf("validate skill record: %w", err)
 	}
 
 	if !ok {
-		return fmt.Errorf("skill record failed OASF validation: %v", msgs)
+		return fmt.Errorf("skill record failed validation: %v", msgs)
 	}
 
 	return nil

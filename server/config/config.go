@@ -20,6 +20,7 @@ import (
 	routing "github.com/agntcy/dir/server/routing/config"
 	store "github.com/agntcy/dir/server/store/config"
 	oci "github.com/agntcy/dir/server/store/oci/config"
+	validators "github.com/agntcy/dir/server/validators/config"
 	"github.com/agntcy/dir/utils/logging"
 	"github.com/mitchellh/mapstructure"
 	"github.com/spf13/viper"
@@ -36,8 +37,6 @@ const (
 	// API configuration.
 
 	DefaultListenAddress = "0.0.0.0:8888"
-
-	// OASF Validation configuration.
 
 	// Connection management configuration.
 	// These defaults are based on production gRPC best practices and provide
@@ -126,8 +125,9 @@ type Config struct {
 	// API configuration
 	ListenAddress string `json:"listen_address,omitempty" mapstructure:"listen_address"`
 
-	// OASF Validation configuration
-	OASFAPIValidation OASFAPIValidationConfig `json:"oasf_api_validation" mapstructure:"oasf_api_validation"`
+	// Validators is the ordered list of record validators (OASF, later others).
+	// YAML only — a list of objects cannot be bound to a single env var.
+	Validators validators.Config `json:"validators,omitempty" mapstructure:"validators"`
 
 	// Logging configuration
 	Logging LoggingConfig `json:"logging" mapstructure:"logging"`
@@ -249,14 +249,6 @@ type ExtractorConfig struct {
 type SyncConfig struct {
 	// AuthConfig holds authentication configuration for sync operations.
 	AuthConfig oci.AuthConfig `json:"auth_config" mapstructure:"auth_config"`
-}
-
-// OASFAPIValidationConfig defines OASF API validation configuration.
-type OASFAPIValidationConfig struct {
-	// SchemaURL is the OASF schema URL for API-based validation.
-	// This is required - records will be validated using the OASF API validator.
-	// The default value is set in the Helm chart values.yaml (apiserver.config.oasf_api_validation.schema_url).
-	SchemaURL string `json:"schema_url,omitempty" mapstructure:"schema_url"`
 }
 
 // LoggingConfig defines gRPC request/response logging configuration.
@@ -431,13 +423,6 @@ func LoadConfig(opts ...ConfigOption) (*Config, error) {
 	//
 	_ = v.BindEnv("listen_address")
 	v.SetDefault("listen_address", DefaultListenAddress)
-
-	//
-	// OASF Validation configuration
-	//
-	_ = v.BindEnv("oasf_api_validation.schema_url")
-	// Note: No default set here - default should come from Helm chart values.yaml
-	// Schema URL is required for OASF API validation
 
 	//
 	// Logging configuration (gRPC request/response logging)
