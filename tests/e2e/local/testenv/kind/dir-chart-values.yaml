@@ -30,6 +30,7 @@ apiserver:
   httpGateway:
     enabled: true
     port: 8889
+    publicURL: "http://localhost:18892"
     service:
       type: NodePort
       nodePort: 30889
