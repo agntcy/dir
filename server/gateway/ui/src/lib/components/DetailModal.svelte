@@ -19,7 +19,7 @@
 	let tags = $derived(aicard.tags || []);
 	let cid = $derived(extractCid(aicard.identifier));
 	let entries = $derived(aicard.data?.entries || []);
-	let isSingleModule = $derived(!entries.length && aicard.mediaType !== 'application/ai-catalog+json');
+	let isSingleModule = $derived(!entries.length && aicard.type !== 'application/ai-catalog+json');
 	let jsonStr = $derived(JSON.stringify(aicard, null, 2));
 
 	let copied = $state(false);
@@ -105,14 +105,14 @@
 						</thead>
 						<tbody>
 						{#each entries as entry}
-							{@const exp = exportFormatForType(entry.mediaType || '')}
+							{@const exp = exportFormatForType(entry.type || '')}
 							{@const name = extractEntryName(entry)}
 							{@const version = extractEntryVersion(entry)}
 							{@const filename = name.replace(/[^a-z0-9_-]/gi, '_') + '.' + exp.ext}
 							<tr class="border-t border-line/70">
 								<td class="py-2 pr-3 text-sm text-ink-strong">{name}</td>
 								<td class="py-2 pr-3 text-sm text-ink-medium">{version}</td>
-								<td class="py-2 pr-3"><MediaTypeBadge type={entry.mediaType || ''} /></td>
+								<td class="py-2 pr-3"><MediaTypeBadge type={entry.type || ''} /></td>
 									<td class="py-2 text-right">
 										<a href="/v1/agents/{encodeURIComponent(cid)}/export?format={exp.format}" download={filename}
 											class="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold text-brand-600 bg-brand-200 rounded hover:bg-brand-300 transition">
@@ -125,7 +125,7 @@
 						</tbody>
 					</table>
 			{:else if isSingleModule}
-				{@const exp = exportFormatForType(aicard.mediaType)}
+				{@const exp = exportFormatForType(aicard.type)}
 				{@const name = aicard.data?.skillManifest?.name || aicard.displayName || 'Unnamed'}
 				{@const version = aicard.data?.skillManifest?.version || aicard.version || '-'}
 				{@const filename = name.replace(/[^a-z0-9_-]/gi, '_') + '.' + exp.ext}
@@ -142,7 +142,7 @@
 							<tr class="border-t border-line/70">
 								<td class="py-2 pr-3 text-sm text-ink-strong">{name}</td>
 								<td class="py-2 pr-3 text-sm text-ink-medium">{version}</td>
-								<td class="py-2 pr-3"><MediaTypeBadge type={aicard.mediaType} /></td>
+								<td class="py-2 pr-3"><MediaTypeBadge type={aicard.type} /></td>
 								<td class="py-2 text-right">
 									<a href="/v1/agents/{encodeURIComponent(cid)}/export?format={exp.format}" download={filename}
 										class="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold text-brand-600 bg-brand-200 rounded hover:bg-brand-300 transition">

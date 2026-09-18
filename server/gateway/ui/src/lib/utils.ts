@@ -13,9 +13,9 @@ export function hasScanManifest(aicard: CatalogEntry): boolean {
 
 export function extractEntryTypes(aicard: CatalogEntry): string[] {
 	const entries = aicard.data?.entries || [];
-	if (entries.length > 0) return entries.map((e) => e.mediaType || '');
-	if (aicard.mediaType && aicard.mediaType !== 'application/ai-catalog+json')
-		return [aicard.mediaType];
+	if (entries.length > 0) return entries.map((e) => e.type || '');
+	if (aicard.type && aicard.type !== 'application/ai-catalog+json')
+		return [aicard.type];
 	return [];
 }
 
@@ -69,7 +69,7 @@ export function exportFormatForType(mediaType: string): ExportFormat {
 }
 
 export function extractEntryName(entry: SubEntry): string {
-	const mt = entry.mediaType || '';
+	const mt = entry.type || '';
 	const data = entry.data as Record<string, unknown> | undefined;
 	if (mt.includes('a2a')) {
 		const card = data?.card_data as Record<string, unknown> | undefined;
@@ -80,7 +80,7 @@ export function extractEntryName(entry: SubEntry): string {
 }
 
 export function extractEntryVersion(entry: SubEntry): string {
-	const mt = entry.mediaType || '';
+	const mt = entry.type || '';
 	const data = entry.data as Record<string, unknown> | undefined;
 	if (mt.includes('a2a')) {
 		const card = data?.card_data as Record<string, unknown> | undefined;

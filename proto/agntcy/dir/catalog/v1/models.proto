@@ -112,7 +112,10 @@ message CatalogEntry {
   // Media type of the artifact, e.g. "application/a2a-agent-card+json",
   // "application/mcp-server-card+json", or "application/ai-catalog+json"
   // for a nested catalog.
-  string media_type = 3 [(buf.validate.field).required = true];
+  string media_type = 3 [
+    json_name = "type",
+    (buf.validate.field).required = true
+  ];
 
   // Artifact content. Exactly one of url or data must be set.
   oneof artifact {
