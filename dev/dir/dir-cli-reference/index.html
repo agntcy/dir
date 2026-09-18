@@ -2208,6 +2208,17 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#dirctl-install-upgrade-name-flags" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        dirctl install upgrade [name...] [flags]
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#dirctl-install-pin-name-dirctl-install-unpin-name" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -3284,6 +3295,17 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#dirctl-install-upgrade-name-flags" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        dirctl install upgrade [name...] [flags]
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#dirctl-install-pin-name-dirctl-install-unpin-name" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -4219,7 +4241,7 @@ explicit <code>--auth-mode</code>.</p>
 </tr>
 <tr>
 <td>Install</td>
-<td><code>install run</code>, <code>install uninstall</code> (or top-level <code>uninstall</code>), <code>install list</code>, <code>install agents</code>, <code>install outdated</code>, <code>install pin</code>, <code>install unpin</code>, <code>install prune</code></td>
+<td><code>install run</code>, <code>install uninstall</code> (or top-level <code>uninstall</code>), <code>install list</code>, <code>install agents</code>, <code>install outdated</code>, <code>install upgrade</code>, <code>install pin</code>, <code>install unpin</code>, <code>install prune</code></td>
 </tr>
 <tr>
 <td>Diagnostics</td>
@@ -4247,6 +4269,20 @@ yes, so pressing Enter provisions. To avoid an unattended ~89 MB download, a
 <strong>non-interactive</strong> run (no TTY, e.g. CI or a pipe) skips unless you pass
 <code>--yes</code>. Re-running is idempotent: nothing is re-downloaded when the assets are
 present and current, and the taxonomy is re-embedded only when it changed.</p>
+<p>Its last step wires this Directory into your AI coding agents: an MCP server
+entry so an agent can push, search, and pull records, plus the DIR skill as a
+usage guide. Both come from a record built into the <code>dirctl</code> binary —
+<code>org.agntcy/directory</code> — so no Directory connection is made, and the MCP entry
+carries the <code>DIRECTORY_CLIENT_*</code> environment for the context this invocation
+resolved, because <code>dirctl mcp serve</code> reads its target from nothing else. That
+is the context <code>--context</code> names, or the one Step 1 has just configured; the
+two secrets, <code>auth_token</code> and <code>spiffe_token</code>, are never written into an agent's
+config file.</p>
+<p>That install is recorded in the <a href="#the-install-manifest">install manifest</a> like
+any other package, with <code>origin: builtin</code>. It therefore shows up in
+<code>dirctl install list</code>, <code>dirctl install outdated</code> compares it against this
+binary rather than a Directory, and <code>dirctl uninstall org.agntcy/directory</code>
+removes it. <code>dirctl init --remove</code> clears both the artifacts and the rows.</p>
 <table>
 <thead>
 <tr>
@@ -4265,6 +4301,16 @@ present and current, and the taxonomy is re-embedded only when it changed.</p>
 <td><code>--asset-dir</code></td>
 <td>Local directory for the provisioned assets</td>
 <td><code>~/.agntcy/oasf-sdk/extractor</code></td>
+</tr>
+<tr>
+<td><code>--extractor-remote-addr</code></td>
+<td>gRPC OASF-SDK server to use instead of local assets</td>
+<td>-</td>
+</tr>
+<tr>
+<td><code>--agents</code></td>
+<td>Agents to configure in the MCP server &amp; skills step</td>
+<td><code>all</code></td>
 </tr>
 <tr>
 <td><code>--yes</code> / <code>-y</code></td>
@@ -4392,7 +4438,15 @@ machine.</p>
 <p>A row names every artifact <code>dirctl</code> wrote and has not since removed, so
 reinstalling carries forward anything the previous row named that the new
 install did not write. That covers a reinstall where one artifact failed, and a
-new version that renames its MCP server while the old key stays in the config.</p>
+new version that renames its MCP server while the old key stays in the config.
+<a href="#dirctl-install-upgrade-name-flags"><code>dirctl install upgrade</code></a> is the one thing
+that subtracts: a key it has just stripped from the config stops being named.</p>
+<p>A skill folder is <code>dirctl</code>'s, named after the record and owned outright, so
+installing a skill replaces the folder's whole contents rather than writing one
+file into it. That is what keeps a reference file dropped between versions from
+being orphaned, and it means nothing you add inside a skill folder survives a
+reinstall. To change an installed skill, push a new version of the record and
+upgrade to it.</p>
 <p>The manifest is bookkeeping, not the product: if it cannot be read or written,
 <code>dirctl</code> prints a warning and the install still succeeds.</p>
 <h3 id="dirctl-install-agents"><code>dirctl install agents</code></h3>
@@ -4529,6 +4583,89 @@ upgrade would fix it, so failing CI on it would be a dead end.</p>
 <div class="highlight"><pre><span></span><code>dirctl<span class="w"> </span>install<span class="w"> </span>outdated
 dirctl<span class="w"> </span>install<span class="w"> </span>outdated<span class="w"> </span>cisco.com/agent<span class="w"> </span>--all
 dirctl<span class="w"> </span>install<span class="w"> </span>outdated<span class="w"> </span>--exit-code<span class="w"> </span>--include-pinned
+</code></pre></div>
+<h3 id="dirctl-install-upgrade-name-flags"><code>dirctl install upgrade [name...] [flags]</code></h3>
+<p>Installs the newer version of every package that has one, in place. What counts
+as upgradable is exactly what <code>dirctl install outdated</code> reports, decided the
+same way: the highest version published under the name, or the same version now
+resolving to different content. A downgrade is never offered, and a package
+whose versions carry no ordering is never moved.</p>
+<p>With no arguments it upgrades everything upgradable and skips pinned rows.
+Naming a package upgrades it <strong>even if pinned, and releases the pin</strong> — asking
+for it by name is a clearer statement than the hold it overrides.
+<code>--include-pinned</code> upgrades held packages without releasing anything, so the
+hold lands on the new version.</p>
+<p><strong>An upgrade is a reconcile, not an overwrite</strong>, and the order is load-bearing:</p>
+<ol>
+<li>Every replacement is fetched and derived <strong>first</strong>, so a record that cannot
+   be pulled leaves every existing install exactly as it was. A working skill
+   is never deleted before its replacement is in hand.</li>
+<li>Artifacts the manifest row names and the new version does not are removed. A
+   skill folder is <code>dirctl</code>'s, so installing a skill replaces its whole
+   contents; an MCP entry sits in a config file shared with you and other
+   tools, so a server key that v2 renamed is stripped <strong>by name from the row</strong>.
+   Only the row knows what v1 wrote — deriving it from the new record would
+   leave v1's key behind.</li>
+<li>The new artifacts are installed and the row is rewritten, naming exactly
+   what is now on disk.</li>
+</ol>
+<p>One package failing does not strand the rest of the run: it is reported under
+<strong>Skipped records</strong> and the others go ahead.</p>
+<p>Every scope is upgraded — the same rows <code>outdated</code> checks, <code>--project</code>
+installs in other repositories included. Pass <code>--project</code> to narrow the run to
+the repository you are in.</p>
+<p>The built-in <code>org.agntcy/directory</code> package is rebuilt from this <code>dirctl</code> binary
+rather than pulled, even though a record of the same name is published. The
+published record's MCP module carries no environment, so installing it would
+silently repoint <code>dirctl mcp serve</code> at the default address; rebuilding also
+recomputes the <code>DIRECTORY_CLIENT_*</code> overlay from the context this invocation
+resolved — <code>--context</code> and the connection flags included — instead of replaying
+what it held when the package was installed.</p>
+<table>
+<thead>
+<tr>
+<th>Flag</th>
+<th>Description</th>
+<th>Default</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>--pre</code></td>
+<td>Consider prerelease versions</td>
+<td><code>false</code></td>
+</tr>
+<tr>
+<td><code>--include-pinned</code></td>
+<td>Upgrade pinned packages too, keeping their pins</td>
+<td><code>false</code></td>
+</tr>
+<tr>
+<td><code>--agents</code></td>
+<td>Agents to act on: <code>all</code> or a comma-separated list of agent IDs</td>
+<td><code>all</code></td>
+</tr>
+<tr>
+<td><code>--project</code></td>
+<td>Narrow the run to the repository you are in</td>
+<td><code>false</code></td>
+</tr>
+<tr>
+<td><code>--dry-run</code></td>
+<td>Show what would move, without writing</td>
+<td><code>false</code></td>
+</tr>
+<tr>
+<td><code>--yes</code> / <code>-y</code></td>
+<td>Skip the confirmation prompt</td>
+<td><code>false</code></td>
+</tr>
+</tbody>
+</table>
+<div class="highlight"><pre><span></span><code>dirctl<span class="w"> </span>install<span class="w"> </span>upgrade<span class="w"> </span>--dry-run
+dirctl<span class="w"> </span>install<span class="w"> </span>upgrade
+dirctl<span class="w"> </span>install<span class="w"> </span>upgrade<span class="w"> </span>cisco.com/agent
+dirctl<span class="w"> </span>install<span class="w"> </span>upgrade<span class="w"> </span>--include-pinned<span class="w"> </span>--yes
 </code></pre></div>
 <h3 id="dirctl-install-pin-name-dirctl-install-unpin-name"><code>dirctl install pin &lt;name&gt;</code> / <code>dirctl install unpin &lt;name&gt;</code></h3>
 <p>Holds a package at the version it is on, so a bare <code>upgrade</code> skips it, and
@@ -5088,7 +5225,7 @@ dirctl<span class="w"> </span>push<span class="w"> </span>agent-model.json<span 
 </tr>
 <tr>
 <td><code>&lt;name&gt;</code></td>
-<td>Retrieves the latest version</td>
+<td>Retrieves the highest version (see <strong>Version Resolution</strong> below)</td>
 </tr>
 <tr>
 <td><code>&lt;name&gt;:&lt;version&gt;</code></td>
@@ -5206,7 +5343,23 @@ dirctl<span class="w"> </span>pull<span class="w"> </span>cisco.com/agent@wrong-
 <span class="c1"># Error: hash verification failed: resolved CID &quot;bafyreib...&quot; does not match expected digest &quot;wrong-cid&quot;</span>
 </code></pre></div>
 <p><strong>Version Resolution:</strong></p>
-<p>When no version is specified, commands return the most recently created record (by record's <code>created_at</code> field). This allows non-semver tags like <code>latest</code>, <code>dev</code>, or <code>stable</code>.</p>
+<p>When no version is specified, commands return the <strong>highest semantic version</strong>
+published under the name. A release beats a prerelease, so publishing
+<code>v2.0.0-rc.1</code> does not change what a bare name means; a name carrying nothing
+but prereleases resolves to the highest of those.</p>
+<p>Versions that semver cannot order — non-semver tags like <code>latest</code>, <code>dev</code>, or
+<code>stable</code> — fall back to the most recently created record (by the record's
+<code>created_at</code> field), which is what lets a name tagged that way keep working. In
+a mix of orderable and unorderable versions the highest orderable one wins,
+since an unordered tag cannot be shown to be newer than a real version.</p>
+<div class="admonition warning">
+<p class="admonition-title">Changed in v1.8.0</p>
+<p>Bare names used to resolve to the most recently <em>created</em> record. Pushing
+<code>v1.9.0</code> after <code>v2.0.0</code> therefore made <code>dirctl pull cisco.com/agent</code> return
+<code>v1.9.0</code>, which also meant <code>dirctl install outdated</code> reported a package one
+version behind as up to date. Pin an exact version with <code>&lt;name&gt;:&lt;version&gt;</code>
+if you need the old record.</p>
+</div>
 <h3 id="dirctl-delete-cid-cid"><code>dirctl delete &lt;cid&gt; [cid...]</code></h3>
 <p>Removes records from storage. Multiple CIDs can be passed as arguments or piped in
 with <code>--stdin</code>, in which case they are deleted over a single stream.</p>
@@ -5243,7 +5396,7 @@ dirctl<span class="w"> </span>search<span class="w"> </span>--format<span class=
 </tr>
 <tr>
 <td><code>&lt;name&gt;</code></td>
-<td>Displays the most recently created version</td>
+<td>Displays the highest version (see <strong>Version Resolution</strong> under <code>dirctl pull</code>)</td>
 </tr>
 <tr>
 <td><code>&lt;name&gt;:&lt;version&gt;</code></td>
@@ -6335,7 +6488,7 @@ dirctl<span class="w"> </span>sign<span class="w"> </span>&lt;cid&gt;<span class
 </tr>
 <tr>
 <td><code>&lt;name&gt;</code></td>
-<td>Verify the most recently created version</td>
+<td>Verify the highest version (see <strong>Version Resolution</strong> under <code>dirctl pull</code>)</td>
 </tr>
 <tr>
 <td><code>&lt;name&gt;:&lt;version&gt;</code></td>
