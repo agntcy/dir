@@ -223,6 +223,7 @@ func RecordToCatalog(record coretypes.Record, opts ...ConvertOption) (*CatalogEn
 	// Multiple known modules — container entry on the parent URN with nested entries for each module.
 	entries := make([]*CatalogEntry, 0, len(modules))
 	moduleSuffixes := make(map[string]int)
+
 	for _, module := range modules {
 		entry := moduleToCatalogEntry(module)
 		if entry == nil {
