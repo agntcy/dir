@@ -82,7 +82,7 @@ explicit `--auth-mode`.
 | Sync | `sync create`, `status`, `list`, `delete` |
 | Events | `events listen` |
 | MCP | `mcp serve` |
-| Install | `install run`, `install uninstall` (or top-level `uninstall`), `install list`, `install agents`, `install outdated`, `install pin`, `install unpin`, `install prune` |
+| Install | `install run`, `install uninstall` (or top-level `uninstall`), `install list`, `install agents`, `install outdated`, `install upgrade`, `install pin`, `install unpin`, `install prune` |
 | Diagnostics | `doctor`, `version` |
 
 ### Getting help
@@ -112,10 +112,28 @@ yes, so pressing Enter provisions. To avoid an unattended ~89 MB download, a
 `--yes`. Re-running is idempotent: nothing is re-downloaded when the assets are
 present and current, and the taxonomy is re-embedded only when it changed.
 
+Its last step wires this Directory into your AI coding agents: an MCP server
+entry so an agent can push, search, and pull records, plus the DIR skill as a
+usage guide. Both come from a record built into the `dirctl` binary —
+`org.agntcy/directory` — so no Directory connection is made, and the MCP entry
+carries the `DIRECTORY_CLIENT_*` environment for the context this invocation
+resolved, because `dirctl mcp serve` reads its target from nothing else. That
+is the context `--context` names, or the one Step 1 has just configured; the
+two secrets, `auth_token` and `spiffe_token`, are never written into an agent's
+config file.
+
+That install is recorded in the [install manifest](#the-install-manifest) like
+any other package, with `origin: builtin`. It therefore shows up in
+`dirctl install list`, `dirctl install outdated` compares it against this
+binary rather than a Directory, and `dirctl uninstall org.agntcy/directory`
+removes it. `dirctl init --remove` clears both the artifacts and the rows.
+
 | Flag | Description | Default |
 |------|-------------|---------|
 | `--oasf-url` | OASF schema endpoint to pull the taxonomy from | `https://schema.oasf.outshift.com` |
 | `--asset-dir` | Local directory for the provisioned assets | `~/.agntcy/oasf-sdk/extractor` |
+| `--extractor-remote-addr` | gRPC OASF-SDK server to use instead of local assets | - |
+| `--agents` | Agents to configure in the MCP server & skills step | `all` |
 | `--yes` / `-y` | Provision without prompting (required for non-interactive runs) | `false` |
 | `--remove` | Remove the provisioned assets and clear the saved config | `false` |
 
@@ -243,6 +261,15 @@ A row names every artifact `dirctl` wrote and has not since removed, so
 reinstalling carries forward anything the previous row named that the new
 install did not write. That covers a reinstall where one artifact failed, and a
 new version that renames its MCP server while the old key stays in the config.
+[`dirctl install upgrade`](#dirctl-install-upgrade-name-flags) is the one thing
+that subtracts: a key it has just stripped from the config stops being named.
+
+A skill folder is `dirctl`'s, named after the record and owned outright, so
+installing a skill replaces the folder's whole contents rather than writing one
+file into it. That is what keeps a reference file dropped between versions from
+being orphaned, and it means nothing you add inside a skill folder survives a
+reinstall. To change an installed skill, push a new version of the record and
+upgrade to it.
 
 The manifest is bookkeeping, not the product: if it cannot be read or written,
 `dirctl` prints a warning and the install still succeeds.
@@ -327,6 +354,65 @@ upgrade would fix it, so failing CI on it would be a dead end.
 dirctl install outdated
 dirctl install outdated cisco.com/agent --all
 dirctl install outdated --exit-code --include-pinned
+```
+
+### `dirctl install upgrade [name...] [flags]`
+
+Installs the newer version of every package that has one, in place. What counts
+as upgradable is exactly what `dirctl install outdated` reports, decided the
+same way: the highest version published under the name, or the same version now
+resolving to different content. A downgrade is never offered, and a package
+whose versions carry no ordering is never moved.
+
+With no arguments it upgrades everything upgradable and skips pinned rows.
+Naming a package upgrades it **even if pinned, and releases the pin** — asking
+for it by name is a clearer statement than the hold it overrides.
+`--include-pinned` upgrades held packages without releasing anything, so the
+hold lands on the new version.
+
+**An upgrade is a reconcile, not an overwrite**, and the order is load-bearing:
+
+1. Every replacement is fetched and derived **first**, so a record that cannot
+   be pulled leaves every existing install exactly as it was. A working skill
+   is never deleted before its replacement is in hand.
+2. Artifacts the manifest row names and the new version does not are removed. A
+   skill folder is `dirctl`'s, so installing a skill replaces its whole
+   contents; an MCP entry sits in a config file shared with you and other
+   tools, so a server key that v2 renamed is stripped **by name from the row**.
+   Only the row knows what v1 wrote — deriving it from the new record would
+   leave v1's key behind.
+3. The new artifacts are installed and the row is rewritten, naming exactly
+   what is now on disk.
+
+One package failing does not strand the rest of the run: it is reported under
+**Skipped records** and the others go ahead.
+
+Every scope is upgraded — the same rows `outdated` checks, `--project`
+installs in other repositories included. Pass `--project` to narrow the run to
+the repository you are in.
+
+The built-in `org.agntcy/directory` package is rebuilt from this `dirctl` binary
+rather than pulled, even though a record of the same name is published. The
+published record's MCP module carries no environment, so installing it would
+silently repoint `dirctl mcp serve` at the default address; rebuilding also
+recomputes the `DIRECTORY_CLIENT_*` overlay from the context this invocation
+resolved — `--context` and the connection flags included — instead of replaying
+what it held when the package was installed.
+
+| Flag | Description | Default |
+|------|-------------|---------|
+| `--pre` | Consider prerelease versions | `false` |
+| `--include-pinned` | Upgrade pinned packages too, keeping their pins | `false` |
+| `--agents` | Agents to act on: `all` or a comma-separated list of agent IDs | `all` |
+| `--project` | Narrow the run to the repository you are in | `false` |
+| `--dry-run` | Show what would move, without writing | `false` |
+| `--yes` / `-y` | Skip the confirmation prompt | `false` |
+
+```bash
+dirctl install upgrade --dry-run
+dirctl install upgrade
+dirctl install upgrade cisco.com/agent
+dirctl install upgrade --include-pinned --yes
 ```
 
 ### `dirctl install pin <name>` / `dirctl install unpin <name>`
@@ -859,7 +945,7 @@ Retrieves records by their Content Identifier (CID) or name reference.
 | Format | Description |
 |--------|-------------|
 | `<cid>` | Direct lookup by CID |
-| `<name>` | Retrieves the latest version |
+| `<name>` | Retrieves the highest version (see **Version Resolution** below) |
 | `<name>:<version>` | Retrieves the specified version |
 | `<name>@<cid>` | Hash-verified lookup (fails if resolved CID doesn't match) |
 | `<name>:<version>@<cid>` | Hash-verified lookup for a specific version |
@@ -939,7 +1025,24 @@ dirctl pull cisco.com/agent@wrong-cid
 
 **Version Resolution:**
 
-When no version is specified, commands return the most recently created record (by record's `created_at` field). This allows non-semver tags like `latest`, `dev`, or `stable`.
+When no version is specified, commands return the **highest semantic version**
+published under the name. A release beats a prerelease, so publishing
+`v2.0.0-rc.1` does not change what a bare name means; a name carrying nothing
+but prereleases resolves to the highest of those.
+
+Versions that semver cannot order — non-semver tags like `latest`, `dev`, or
+`stable` — fall back to the most recently created record (by the record's
+`created_at` field), which is what lets a name tagged that way keep working. In
+a mix of orderable and unorderable versions the highest orderable one wins,
+since an unordered tag cannot be shown to be newer than a real version.
+
+!!! warning "Changed in v1.8.0"
+
+    Bare names used to resolve to the most recently *created* record. Pushing
+    `v1.9.0` after `v2.0.0` therefore made `dirctl pull cisco.com/agent` return
+    `v1.9.0`, which also meant `dirctl install outdated` reported a package one
+    version behind as up to date. Pin an exact version with `<name>:<version>`
+    if you need the old record.
 
 ### `dirctl delete <cid> [cid...]`
 
@@ -972,7 +1075,7 @@ Displays metadata about stored records using CID or name reference.
 | Format | Description |
 |--------|-------------|
 | `<cid>` | Direct lookup by content address |
-| `<name>` | Displays the most recently created version |
+| `<name>` | Displays the highest version (see **Version Resolution** under `dirctl pull`) |
 | `<name>:<version>` | Displays the specified version |
 | `<name>@<cid>` | Hash-verified lookup |
 | `<name>:<version>@<cid>` | Hash-verified lookup for a specific version |
@@ -1762,7 +1865,7 @@ Verifies that a record's signing key is authorized by the domain claimed in its 
 | Format | Description |
 |--------|-------------|
 | `<cid>` | Verify by content address |
-| `<name>` | Verify the most recently created version |
+| `<name>` | Verify the highest version (see **Version Resolution** under `dirctl pull`) |
 | `<name>:<version>` | Verify a specific version |
 
 ??? example

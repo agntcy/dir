@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - **Search**: `ListFilterValues` RPC for distinct filter values (#2012)
+- **CLI**: `dirctl install upgrade [name...]` moves installed packages to a newer version, with `--pre`, `--include-pinned`, `--agents`, `--project`, `--dry-run`, and `--yes`. Every replacement is fetched before anything is touched, so a record that cannot be pulled leaves the existing install alone; a server key the new version renamed is then stripped by name from the manifest row, since only the row knows what the old version wrote. Naming a package upgrades it even if pinned and releases the pin; one package failing does not strand the rest of the run (#2030)
 - **CLI**: `dirctl install prune` drops manifest rows whose artifacts are gone, with `--dry-run`. Rows go stale when a skill folder is deleted by hand or a repository is moved after a `--project` install (#2133)
 - **CLI**: `dirctl search -o raw | dirctl install` installs every piped reference, one per line (#2133)
 - **CLI**: `dirctl install list` lists installed packages, and `dirctl install list <name>` one package's installed artifacts (#2029)
@@ -18,12 +19,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 - **Catalog**: `GET /v1/tags` no longer returns record annotations as tags (#2012)
+- **CLI**: installing a skill replaces its folder's whole contents instead of writing one file into it, so a reference file the new version dropped is no longer orphaned. The folder is `dirctl`'s, named after the record: nothing you add inside it survives a reinstall, and the way to change an installed skill is to push a new version and upgrade. The bundle path already behaved this way; single-file skills now match it (#2030)
+- **CLI**: `dirctl init` records what its MCP server & skills step installs in the install manifest, with `origin: builtin`, so `org.agntcy/directory` shows up in `dirctl install list`, is version-checked against the `dirctl` binary by `install outdated`, and can be removed by `dirctl uninstall`. `dirctl init --remove` clears the rows too (#2030)
+- **CLI**: **BREAKING** — a bare name resolves to the highest semantic version rather than the most recently pushed record. Affects `dirctl pull`, `info`, `export`, `install`, and `naming verify`. Pushing v1.9.0 after v2.0.0 used to make `dirctl install cisco.com/agent` install v1.9.0 while `dirctl install outdated` called v2.0.0 the latest, so a package one version behind reported as up to date. Releases beat prereleases; versions semver cannot order still fall back to newest-pushed (#2030)
 - **CLI**: **BREAKING** — batch install and uninstall by search filters are removed. `--name`, `--module`, `--skill`, `--domain`, `--locator`, `--author`, `--version`, and `--limit` come off `dirctl install` and `dirctl uninstall`; filtering belongs to `dirctl search`, and `dirctl search | dirctl install` replaces the install half. `uninstall` takes one reference. `--all-versions` goes with them: two versions of one package share a skill folder and an MCP key, so only the highest is installed (#2133)
 - **CLI**: **BREAKING** — the install manifest is the single source of truth for what is installed. `dirctl uninstall` reads it and never contacts the Directory, so it works with the server down or after the record has been deleted upstream, touches only the agents that actually hold the package, and reports a reference with no row as not installed. Packages installed by v1.7.0 or earlier have no row and are invisible to it; re-install them to record one (#2133)
 - **CLI**: **BREAKING** — the manifest's `scope` is now `global` or a repository path, replacing the `project` literal, and `--project` installs are recorded. One manifest covers every repository on the machine. It is a local record and must not be committed: it holds absolute paths (#2133)
 - **CLI**: **BREAKING** — install and uninstall no longer print a line per unchanged agent. Skips and failures stay, and the tally still counts every outcome (#2133)
 - **CLI**: **BREAKING** — `dirctl install list` no longer shows detected agents. That view is now `dirctl install agents`; `install list` lists installed packages (#2029)
 - **CLI**: the install manifest records the server address each package was installed from, so a version check never compares a row against a Directory it did not come from. The address rather than the context name, since an endpoint override leaves the name in place (#2029)
+
+### Fixed
+- **CLI**: the MCP server entry installed for the built-in `org.agntcy/directory` package honours `--context` and the connection flags. It read `current_context` regardless, so `dirctl --context prod init` wrote an entry pointing `dirctl mcp serve` at a different Directory than the command itself used (#2030)
 
 ## [v1.7.0] - 2026-08-18
 
