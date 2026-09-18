@@ -94,10 +94,6 @@ spec:
             - name: DIRECTORY_SERVER_AUTHZ_TRUST_DOMAIN
               value: {{ .Values.spire.trustDomain }}
             {{- end }}
-            {{- if and .Values.config.oasf_api_validation .Values.config.oasf_api_validation.schema_url }}
-            - name: DIRECTORY_SERVER_OASF_API_VALIDATION_SCHEMA_URL
-              value: {{ .Values.config.oasf_api_validation.schema_url | quote }}
-            {{- end }}
             {{- with .Values.extraEnv }}
             {{- toYaml . | nindent 12 }}
             {{- end }}

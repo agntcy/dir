@@ -13,7 +13,6 @@ import (
 	"time"
 
 	catalogv1 "github.com/agntcy/dir/api/catalog/v1"
-	corev1 "github.com/agntcy/dir/api/core/v1"
 	eventsv1 "github.com/agntcy/dir/api/events/v1"
 	namingv1 "github.com/agntcy/dir/api/naming/v1"
 	routingv1 "github.com/agntcy/dir/api/routing/v1"
@@ -41,9 +40,9 @@ import (
 	"github.com/agntcy/dir/server/skill"
 	"github.com/agntcy/dir/server/store"
 	"github.com/agntcy/dir/server/types"
+	"github.com/agntcy/dir/server/validators"
 	"github.com/agntcy/dir/utils/extractor"
 	"github.com/agntcy/dir/utils/logging"
-	"github.com/agntcy/oasf-sdk/pkg/validator"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/keepalive"
 	"google.golang.org/grpc/reflection"
@@ -64,7 +63,7 @@ type Server struct {
 	store              types.StoreAPI
 	routing            types.RoutingAPI
 	database           types.DatabaseAPI
-	oasfValidator      corev1.Validator
+	validatorRegistry  *validators.Registry
 	eventService       *events.Service
 	authnService       *authn.Service
 	authzService       *authz.Service
@@ -148,19 +147,6 @@ func Run(ctx context.Context, cfg *config.Config) error {
 	}
 }
 
-// newOASFValidator constructs the OASF record validator from the server configuration.
-func newOASFValidator(cfg *config.Config) (corev1.Validator, error) {
-	v, err := validator.New(cfg.OASFAPIValidation.SchemaURL)
-	if err != nil {
-		return nil, fmt.Errorf("failed to initialize OASF validator: %w", err)
-	}
-
-	logger.Info("OASF validator configured",
-		"schema_url", cfg.OASFAPIValidation.SchemaURL)
-
-	return v, nil
-}
-
 type ServerOptions struct {
 	database types.DatabaseAPI
 }
@@ -216,7 +202,7 @@ func New(ctx context.Context, cfg *config.Config, opts ...ServerOption) (*Server
 		opt(&o)
 	}
 
-	oasfValidator, err := newOASFValidator(cfg)
+	validatorRegistry, err := validators.NewRegistry(cfg.Validators)
 	if err != nil {
 		return nil, err
 	}
@@ -298,7 +284,7 @@ func New(ctx context.Context, cfg *config.Config, opts ...ServerOption) (*Server
 	// records/referrers (content store + search index + referrer DB state).
 	ingestor := ingest.New(storeAPI, databaseAPI)
 
-	routingAPI, err := routing.New(ctx, storeAPI, ingestor, oasfValidator, options)
+	routingAPI, err := routing.New(ctx, storeAPI, ingestor, validatorRegistry, options)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create routing: %w", err)
 	}
@@ -348,7 +334,7 @@ func New(ctx context.Context, cfg *config.Config, opts ...ServerOption) (*Server
 
 	// Register APIs
 	eventsv1.RegisterEventServiceServer(grpcServer, controller.NewEventsController(eventService))
-	storev1.RegisterStoreServiceServer(grpcServer, controller.NewStoreController(storeAPI, databaseAPI, ingestor, options.EventBus(), oasfValidator))
+	storev1.RegisterStoreServiceServer(grpcServer, controller.NewStoreController(storeAPI, databaseAPI, ingestor, options.EventBus(), validatorRegistry))
 	routingv1.RegisterRoutingServiceServer(grpcServer, controller.NewRoutingController(routingAPI, storeAPI, publicationService))
 	routingv1.RegisterPublicationServiceServer(grpcServer, controller.NewPublicationController(databaseAPI, options))
 	searchv1.RegisterSearchServiceServer(grpcServer, controller.NewSearchController(databaseAPI, storeAPI))
@@ -416,7 +402,7 @@ func New(ctx context.Context, cfg *config.Config, opts ...ServerOption) (*Server
 		store:              storeAPI,
 		routing:            routingAPI,
 		database:           databaseAPI,
-		oasfValidator:      oasfValidator,
+		validatorRegistry:  validatorRegistry,
 		eventService:       eventService,
 		authnService:       authnService,
 		authzService:       authzService,
@@ -431,10 +417,11 @@ func New(ctx context.Context, cfg *config.Config, opts ...ServerOption) (*Server
 
 func (s Server) GRPCServer() *grpc.Server { return s.grpcServer }
 
-// OASFValidator returns the OASF record validator constructed during server setup.
-// It is exposed so embedding processes (e.g. the daemon) can share a single validator
-// instance with co-located components like the reconciler.
-func (s Server) OASFValidator() corev1.Validator { return s.oasfValidator }
+// ValidatorRegistry returns the record-validator registry built at server setup.
+// Embedding processes (e.g. the daemon) share it with the reconciler.
+func (s Server) ValidatorRegistry() *validators.Registry {
+	return s.validatorRegistry
+}
 
 func (s Server) Options() types.APIOptions { return s.options }
 
@@ -583,7 +570,7 @@ func (s Server) Start(ctx context.Context) error {
 
 	// Best-effort, non-blocking: a failure here must not block startup.
 	go func() {
-		if err := skill.Publish(ctx, s.store, s.database, s.oasfValidator); err != nil {
+		if err := skill.Publish(ctx, s.store, s.database, s.validatorRegistry); err != nil {
 			logger.Warn("Failed to publish DIR skill record", "error", err)
 		}
 	}()

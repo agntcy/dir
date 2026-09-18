@@ -18,6 +18,8 @@ import (
 	corev1 "github.com/agntcy/dir/api/core/v1"
 	ociconfig "github.com/agntcy/dir/server/store/oci/config"
 	"github.com/agntcy/dir/server/types"
+	"github.com/agntcy/dir/server/validators"
+	validatorsconfig "github.com/agntcy/dir/server/validators/config"
 	"github.com/agntcy/dir/utils/logging"
 	"oras.land/oras-go/v2/registry"
 )
@@ -27,12 +29,12 @@ var logger = logging.Logger("reconciler/indexer")
 // Task implements the indexer reconciliation task.
 // It scans the local OCI registry for unindexed records and adds them to the database.
 type Task struct {
-	config    Config
-	db        types.SearchDatabaseAPI
-	store     types.StoreAPI
-	ociConfig ociconfig.Config
-	repo      registry.TagLister
-	validator corev1.Validator
+	config            Config
+	db                types.SearchDatabaseAPI
+	store             types.StoreAPI
+	ociConfig         ociconfig.Config
+	repo              registry.TagLister
+	validatorRegistry *validators.Registry
 
 	// manifests reads manifests behind tags to separate records from referrers.
 	// It is nil when repo does not support manifest reads.
@@ -56,21 +58,21 @@ var emptySnapshot = &registrySnapshot{
 }
 
 // NewTask creates a new indexer reconciliation task.
-func NewTask(config Config, localRegistry ociconfig.Config, store types.StoreAPI, repo registry.TagLister, db types.SearchDatabaseAPI, validator corev1.Validator) (*Task, error) {
+func NewTask(config Config, localRegistry ociconfig.Config, store types.StoreAPI, repo registry.TagLister, db types.SearchDatabaseAPI, validatorRegistry *validators.Registry) (*Task, error) {
 	manifests, ok := repo.(manifestReader)
 	if !ok && repo != nil {
 		logger.Warn("Registry cannot read manifests, referrer tags will be indexed as records", "type", fmt.Sprintf("%T", repo))
 	}
 
 	return &Task{
-		config:       config,
-		db:           db,
-		store:        store,
-		ociConfig:    localRegistry,
-		repo:         repo,
-		validator:    validator,
-		manifests:    manifests,
-		lastSnapshot: emptySnapshot,
+		config:            config,
+		db:                db,
+		store:             store,
+		ociConfig:         localRegistry,
+		repo:              repo,
+		validatorRegistry: validatorRegistry,
+		manifests:         manifests,
+		lastSnapshot:      emptySnapshot,
 	}, nil
 }
 
@@ -226,8 +228,7 @@ func (t *Task) indexRecord(ctx context.Context, tag string) error {
 		return fmt.Errorf("failed to pull record from local store: %w", err)
 	}
 
-	// Validate record
-	isValid, validationErrors, err := record.ValidateWith(ctx, t.validator)
+	isValid, validationErrors, err := t.validatorRegistry.Run(ctx, validatorsconfig.OpIndex, record)
 	if err != nil {
 		return fmt.Errorf("failed to validate record: %w", err)
 	}

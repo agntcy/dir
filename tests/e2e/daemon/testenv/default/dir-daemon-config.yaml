@@ -2,8 +2,10 @@ server:
   listen_address: "localhost:18234"
   metrics:
     enabled: false
-  oasf_api_validation:
-    schema_url: "https://schema.oasf.outshift.com"
+  validators:
+    - provider: oasf
+      schema_url: "https://schema.oasf.outshift.com"
+      op: ["push", "autosync", "index"]
   # Gateway with no extractor behind it. This is the one environment that covers
   # a node deployed without an OASF extractor: the gateway must still start and
   # serve its other routes, while the extractor-backed endpoints answer 503.

@@ -20,6 +20,7 @@ import (
 	"github.com/agntcy/dir/server/routing/rpc"
 	validators "github.com/agntcy/dir/server/routing/validators"
 	"github.com/agntcy/dir/server/types"
+	recordvalidators "github.com/agntcy/dir/server/validators"
 	"github.com/agntcy/dir/utils/logging"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
@@ -122,7 +123,7 @@ type routeRemote struct {
 func newRemote(parentCtx context.Context,
 	storeAPI types.StoreAPI,
 	ingestor ingest.Ingestor,
-	validator corev1.Validator,
+	validatorRegistry *recordvalidators.Registry,
 	dstore types.Datastore,
 	opts types.APIOptions,
 ) (*routeRemote, error) {
@@ -150,12 +151,6 @@ func newRemote(parentCtx context.Context,
 			cancel()
 
 			return nil, fmt.Errorf("autosync is enabled but no ingestion service was provided")
-		}
-
-		if validator == nil {
-			cancel()
-
-			return nil, fmt.Errorf("autosync is enabled but no record validator was provided")
 		}
 
 		autosyncPeers = allowSet
@@ -266,7 +261,7 @@ func newRemote(parentCtx context.Context,
 	// ingests records/referrers announced by trusted peers, off the notification
 	// handler goroutine.
 	if autosyncCfg.Enabled {
-		routeAPI.autosyncMgr = autosync.NewManager(autosyncPeers, rpcService, server, ingestor, storeAPI, validator)
+		routeAPI.autosyncMgr = autosync.NewManager(autosyncPeers, rpcService, server, ingestor, storeAPI, validatorRegistry)
 		//nolint:contextcheck // Intentionally passing routing context to worker goroutines for lifecycle management
 		routeAPI.autosyncMgr.Start(routeAPI.ctx, &routeAPI.wg)
 
