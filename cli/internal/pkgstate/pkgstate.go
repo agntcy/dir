@@ -257,6 +257,46 @@ func (e Entry) WithCarriedArtifacts(prior Entry) Entry {
 	return e
 }
 
+// WithoutArtifacts returns e with the skill and the named server keys dropped.
+//
+// It is the counterpart to WithCarriedArtifacts, for the one case where
+// carrying an artifact forward would be a lie: an upgrade has just removed
+// v1's renamed MCP key from the agent's config, so the row must stop naming it
+// or a later uninstall would go hunting for something that is gone.
+func (e Entry) WithoutArtifacts(skill bool, servers []string) Entry {
+	if skill {
+		e.SkillPath = ""
+		e.SkillFiles = nil
+	}
+
+	if len(servers) == 0 {
+		return e
+	}
+
+	dropped := make(map[string]bool, len(servers))
+	for _, name := range servers {
+		dropped[name] = true
+	}
+
+	kept := make([]string, 0, len(e.MCPServers))
+
+	for _, name := range e.MCPServers {
+		if !dropped[name] {
+			kept = append(kept, name)
+		}
+	}
+
+	// A row with no servers left reads as `"mcpServers"` absent rather than an
+	// empty list, matching a row that never had one.
+	if len(kept) == 0 {
+		kept = nil
+	}
+
+	e.MCPServers = kept
+
+	return e
+}
+
 // manifestFile is the on-disk shape. It is separate from Manifest so the
 // schema version is written from the constant on every save and never carried
 // around as a mutable field.
@@ -408,6 +448,60 @@ func (m *Manifest) ByName(name string) []Entry {
 	}
 
 	return found
+}
+
+// Read loads the manifest at DefaultPath.
+//
+// It is the read-only companion to Update, for a command whose product is the
+// manifest, or which has to act on exactly what a previous run recorded. Like
+// Update it honours XDG_CONFIG_HOME, so tests stay hermetic.
+//
+//nolint:wrapcheck // Load's error already names the path and the operation.
+func Read() (*Manifest, error) {
+	path, err := DefaultPath()
+	if err != nil {
+		return nil, err
+	}
+
+	return Load(path)
+}
+
+// Update loads the manifest at DefaultPath, applies mutate, and saves it when
+// mutate reports something changed.
+//
+// It is the one convenience that reads the environment, for the commands whose
+// only manifest work is one mutation. Everything else takes a path, which is
+// what keeps the tests hermetic — and this does too, since DefaultPath honours
+// XDG_CONFIG_HOME.
+//
+// A load error is returned *and* mutate still runs against the empty manifest
+// it came back with: a corrupt file is already unreadable, so starting a fresh
+// one is better than refusing to record anything ever again. Callers that must
+// not lose the mutation therefore check the error after it, not instead of it.
+func Update(mutate func(*Manifest) bool) error {
+	path, err := DefaultPath()
+	if err != nil {
+		return err
+	}
+
+	m, loadErr := Load(path)
+
+	// A frozen manifest belongs to a newer dirctl, whose rows this binary
+	// cannot represent. Save would refuse anyway, so stop here and report the
+	// one reason rather than two.
+	if m.Frozen() {
+		return loadErr
+	}
+
+	if !mutate(m) {
+		return loadErr
+	}
+
+	if err := m.Save(path); err != nil {
+		return err
+	}
+
+	return loadErr
 }
 
 // DefaultPath returns the global manifest path,

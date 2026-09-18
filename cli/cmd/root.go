@@ -33,7 +33,6 @@ import (
 	cliconfig "github.com/agntcy/dir/cli/config"
 	ctxUtils "github.com/agntcy/dir/cli/util/context"
 	"github.com/agntcy/dir/client"
-	clientconfig "github.com/agntcy/dir/client/config"
 	"github.com/spf13/cobra"
 )
 
@@ -85,22 +84,15 @@ func shouldSkipClientSetup(cmd *cobra.Command) bool {
 	return false
 }
 
+// resolveClientConfig resolves the invocation's client config and publishes it
+// as cliconfig.Client, which is what ActiveDirectory and anything else reading
+// the effective Directory address sees.
+//
+//nolint:wrapcheck // ResolveClient's error already names the step.
 func resolveClientConfig(cmd *cobra.Command) (*client.Config, error) {
-	fields := cliconfig.ChangedClientConfigFields(cmd)
-
-	var overrides *client.Config
-	if len(fields) > 0 {
-		overrides = cliconfig.Client
-	}
-
-	cfg, _, err := clientconfig.Resolve(clientconfig.ResolveOptions{
-		Context:            cliconfig.Context,
-		Overrides:          overrides,
-		OverrideFields:     fields,
-		AllowUnknownFields: true,
-	})
+	cfg, err := cliconfig.ResolveClient(cmd)
 	if err != nil {
-		return nil, fmt.Errorf("failed to resolve client config: %w", err)
+		return nil, err
 	}
 
 	// Keep the existing pointer so Cobra flag bindings remain valid across
