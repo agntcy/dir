@@ -74,6 +74,9 @@
     },
     {
       "search": "io.github.sourcegraph/"
+    },
+    {
+      "search": "net.zenitheye/"
     }
   ],
   "agent-skill": [
