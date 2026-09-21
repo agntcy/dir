@@ -54,7 +54,7 @@ var _ = ginkgo.Describe("AI Catalog Go SDK conformance", func() {
 			tempDir, err = os.MkdirTemp("", "ai-catalog-sdk-e2e-*")
 			gomega.Expect(err).NotTo(gomega.HaveOccurred())
 
-			recordCID = pushCatalogFixture(filepath.Join(tempDir, "record-100.json"), testdata.ExpectedRecordV100JSON)
+			recordCID = pushCatalogFixture(filepath.Join(tempDir, "ai-catalog-projection-record.json"), testdata.AICatalogProjectionRecordJSON)
 			skillCID = pushCatalogFixture(filepath.Join(tempDir, "skill-record.json"), testdata.CatalogSkillRecordJSON)
 
 			directoryCID = pushCatalogFixture(filepath.Join(tempDir, "directory-record.json"), testdata.DirectoryRecordJSON)
@@ -164,7 +164,8 @@ var _ = ginkgo.Describe("AI Catalog Go SDK conformance", func() {
 			result := validate.Validate(doc)
 			gomega.Expect(result.IsValid).To(gomega.BeTrue(), "SDK validation errors: %+v", result.Errors)
 			gomega.Expect(doc.GetByType(catalog.MediaTypeCatalog)).To(gomega.HaveLen(1))
-			gomega.Expect(doc.Search("burger_seller_agent")).To(gomega.HaveLen(1))
+			gomega.Expect(entry.Type).To(gomega.Equal(catalog.MediaTypeCatalog))
+			gomega.Expect(doc.Search("ai_catalog_sdk_projection_record")).To(gomega.HaveLen(1))
 
 			nested, err := catalog.Parse(entry.Data)
 			gomega.Expect(err).NotTo(gomega.HaveOccurred())

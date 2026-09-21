@@ -70,3 +70,9 @@ var CatalogSkillRecordJSON []byte
 //
 //go:embed directory-record.json
 var DirectoryRecordJSON []byte
+
+// AICatalogProjectionRecordJSON is a dedicated two-module record for AI Catalog
+// SDK projection tests. It must not be shared with other E2E suites.
+//
+//go:embed ai_catalog_projection_record.json
+var AICatalogProjectionRecordJSON []byte

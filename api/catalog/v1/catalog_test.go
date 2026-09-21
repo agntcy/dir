@@ -65,6 +65,7 @@ func TestRecordToCatalog(t *testing.T) {
 				"version": "1.0.0",
 				"description": "A test record with a single module.",
 				"updatedAt": "2024-01-01T00:00:00Z",
+				"mediaType": "application/mcp-server-card+json",
 				"type": "application/mcp-server-card+json",
 				"data": {
 					"key1": "value1",
@@ -131,6 +132,7 @@ func TestRecordToCatalog(t *testing.T) {
 				"version": "2.0.0",
 				"description": "A test record with multiple modules.",
 				"updatedAt": "2024-02-01T00:00:00Z",
+				"mediaType": "application/ai-catalog+json",
 				"type": "application/ai-catalog+json",
 				"data": {
 					"specVersion": "1.0",
@@ -138,7 +140,8 @@ func TestRecordToCatalog(t *testing.T) {
 						{
 							"identifier": "urn:ai:org.agntcy:cid:baeareifgarfb5mezccohu3h7ubfsdkn37edsmqvfv2q37k4qs6nzwqk4ve:a2a-0",
 								"displayName": "Test Record 2 - A2A",
-							"type": "application/a2a-agent-card+json",
+							"mediaType": "application/a2a-agent-card+json",
+								"type": "application/a2a-agent-card+json",
 							"data": {
 								"key2": "value2"
 							}
@@ -146,6 +149,7 @@ func TestRecordToCatalog(t *testing.T) {
 						{
 							"identifier": "urn:ai:org.agntcy:cid:baeareifgarfb5mezccohu3h7ubfsdkn37edsmqvfv2q37k4qs6nzwqk4ve:mcp-0",
 								"displayName": "Test Record 2 - MCP",
+							"mediaType": "application/mcp-server-card+json",
 							"type": "application/mcp-server-card+json",
 							"data": {
 								"key1": "value1"

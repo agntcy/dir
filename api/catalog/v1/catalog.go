@@ -209,6 +209,7 @@ func RecordToCatalog(record coretypes.Record, opts ...ConvertOption) (*CatalogEn
 			Description:   new(record.GetDescription()),
 			UpdatedAt:     new(record.GetCreatedAt()),
 			MediaType:     entry.GetMediaType(),
+			Type:          entry.GetMediaType(),
 			Artifact:      entry.GetArtifact(),
 			Tags:          append(catalogTags(record), entry.GetTags()...),
 			TrustManifest: trustManifest,
@@ -238,6 +239,7 @@ func RecordToCatalog(record coretypes.Record, opts ...ConvertOption) (*CatalogEn
 			Identifier:  catalogURN(recordCid, suffix),
 			DisplayName: fmt.Sprintf("%s - %s", recordName, projection.Label),
 			MediaType:   entry.GetMediaType(),
+			Type:        entry.GetMediaType(),
 			Artifact:    entry.GetArtifact(),
 			Tags:        entry.GetTags(),
 		})
@@ -264,6 +266,7 @@ func RecordToCatalog(record coretypes.Record, opts ...ConvertOption) (*CatalogEn
 		Version:     new(record.GetVersion()),
 		UpdatedAt:   new(record.GetCreatedAt()),
 		MediaType:   CatalogMediaType,
+		Type:        CatalogMediaType,
 		Tags:        catalogTags(record),
 		Artifact: &CatalogEntry_Data{
 			Data: structpb.NewStructValue(container),
@@ -294,6 +297,7 @@ func moduleToCatalogEntry(module coretypes.Module) *CatalogEntry {
 
 	return &CatalogEntry{
 		MediaType: getModuleMediaType(module, proj),
+		Type:      getModuleMediaType(module, proj),
 		Artifact: &CatalogEntry_Data{
 			Data: structpb.NewStructValue(data),
 		},
