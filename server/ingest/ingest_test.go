@@ -15,6 +15,8 @@ import (
 	"github.com/agntcy/dir/server/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 )
 
 // mockDB implements types.DatabaseAPI via embedding; only the methods the
@@ -234,6 +236,97 @@ func TestImportReferrer_UnsupportedStore(t *testing.T) {
 
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "referrer storage not supported")
+}
+
+func TestImportRecord_PolicyDenyDoesNotPersist(t *testing.T) {
+	store := &mockStore{pushRef: &corev1.RecordRef{Cid: "cid-1"}}
+	db := &mockDB{}
+	eval := &fakeEvaluator{err: status.Error(codes.FailedPrecondition, `record rejected by policy "require-owner"`)}
+
+	ref, err := New(store, db, WithEvaluator(eval)).ImportRecord(
+		WithSource(t.Context(), SourcePush),
+		newTestRecord(),
+	)
+
+	require.Error(t, err)
+	assert.Nil(t, ref)
+	assert.Equal(t, codes.FailedPrecondition, status.Code(err))
+	assert.Equal(t, 1, eval.calls)
+	assert.Equal(t, SourcePush, eval.source)
+	assert.Equal(t, 0, store.pushCalls, "store must not be written when policy denies")
+	assert.Equal(t, 0, db.addRecordCalls)
+}
+
+func TestImportRecord_PolicyAllowPersists(t *testing.T) {
+	store := &mockStore{pushRef: &corev1.RecordRef{Cid: "cid-1"}}
+	db := &mockDB{}
+	eval := &fakeEvaluator{}
+
+	ref, err := New(store, db, WithEvaluator(eval)).ImportRecord(
+		WithSource(t.Context(), SourcePush),
+		newTestRecord(),
+	)
+
+	require.NoError(t, err)
+	require.NotNil(t, ref)
+	assert.Equal(t, 1, eval.calls)
+	assert.Equal(t, 1, store.pushCalls)
+	assert.Equal(t, 1, db.addRecordCalls)
+}
+
+func TestImportRecord_PolicySkippedWithoutClientSource(t *testing.T) {
+	store := &mockStore{pushRef: &corev1.RecordRef{Cid: "cid-1"}}
+	db := &mockDB{}
+	eval := &fakeEvaluator{err: status.Error(codes.FailedPrecondition, "should not run")}
+
+	_, err := New(store, db, WithEvaluator(eval)).ImportRecord(t.Context(), newTestRecord())
+
+	require.NoError(t, err)
+	assert.Equal(t, 0, eval.calls, "autosync/sync ingest must not evaluate push policies")
+	assert.Equal(t, 1, store.pushCalls)
+}
+
+func TestImportRecord_PolicyRunsForImport(t *testing.T) {
+	store := &mockStore{pushRef: &corev1.RecordRef{Cid: "cid-1"}}
+	eval := &fakeEvaluator{err: status.Error(codes.FailedPrecondition, `record rejected by policy "require-owner"`)}
+
+	_, err := New(store, &mockDB{}, WithEvaluator(eval)).ImportRecord(
+		WithSource(t.Context(), SourceImport),
+		newTestRecord(),
+	)
+
+	require.Error(t, err)
+	assert.Equal(t, 1, eval.calls)
+	assert.Equal(t, SourceImport, eval.source)
+	assert.Equal(t, 0, store.pushCalls)
+}
+
+func TestImportRecord_PolicySkippedForAutosync(t *testing.T) {
+	store := &mockStore{pushRef: &corev1.RecordRef{Cid: "cid-1"}}
+	db := &mockDB{}
+	eval := &fakeEvaluator{err: status.Error(codes.FailedPrecondition, "should not run")}
+
+	_, err := New(store, db, WithEvaluator(eval)).ImportRecord(
+		WithSource(t.Context(), SourceAutosync),
+		newTestRecord(),
+	)
+
+	require.NoError(t, err)
+	assert.Equal(t, 0, eval.calls)
+	assert.Equal(t, 1, store.pushCalls)
+}
+
+type fakeEvaluator struct {
+	err    error
+	calls  int
+	source string
+}
+
+func (f *fakeEvaluator) EvaluateIngest(_ context.Context, source string, _ *corev1.Record) error {
+	f.calls++
+	f.source = source
+
+	return f.err
 }
 
 func TestImportReferrer_PushError(t *testing.T) {

@@ -79,7 +79,7 @@ func (s storeCtrl) Push(stream storev1.StoreService_PushServer) error {
 			return status.Errorf(codes.InvalidArgument, "record validation failed: %v", validationErrors)
 		}
 
-		pushedRef, err := s.pushRecordToStore(stream.Context(), record)
+		pushedRef, err := s.pushRecordToStore(ctx, record)
 		if err != nil {
 			return err
 		}
@@ -347,8 +347,8 @@ func (s storeCtrl) PullReferrer(stream storev1.StoreService_PullReferrerServer) 
 
 // pushRecordToStore pushes a record to the store and adds it to the search index.
 func (s storeCtrl) pushRecordToStore(ctx context.Context, record *corev1.Record) (*corev1.RecordRef, error) {
-	// Delegate to the shared ingestion path (content store + search index).
-	return s.ingestor.ImportRecord(ctx, record)
+	// Client Push (and dirctl import, which uses Push) is an ingest-policy gate.
+	return s.ingestor.ImportRecord(ingest.WithSource(ctx, ingest.SourcePush), record)
 }
 
 // validateRecordRef validates a record reference.
