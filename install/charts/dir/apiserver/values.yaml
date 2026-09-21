@@ -747,7 +747,7 @@ postgresql:
     repository: bitnami/postgresql
     # renovate: datasource=docker depName=docker.io/bitnami/postgresql versioning=docker
     tag: latest
-    digest: "sha256:7b9c5292a8e8b38e7172705cc6e49e34b9a8d9c297c4c7ae04130a3e6a28f3b0"
+    digest: "sha256:7d77a46bbf200709237318c27dec0eaeae2520e403dd18fdebde2be7a6b04993"
   auth:
     username: "dir"
     password: "dirpassword"
