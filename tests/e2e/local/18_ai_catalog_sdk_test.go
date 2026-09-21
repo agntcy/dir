@@ -13,6 +13,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 
@@ -417,8 +418,13 @@ func trustErrorFindings(report trust.CatalogTrustReport) []trust.Finding {
 }
 
 func parseCatalogEntry(raw []byte) (catalog.CatalogEntry, error) {
+	normalized, err := normalizeCatalogWireJSON(raw)
+	if err != nil {
+		return catalog.CatalogEntry{}, fmt.Errorf("normalize catalog entry: %w", err)
+	}
+
 	var entry catalog.CatalogEntry
-	if err := json.Unmarshal(raw, &entry); err != nil {
+	if err := json.Unmarshal(normalized, &entry); err != nil {
 		return catalog.CatalogEntry{}, fmt.Errorf("parse catalog entry: %w", err)
 	}
 
@@ -433,6 +439,91 @@ func parseCatalogEntry(raw []byte) (catalog.CatalogEntry, error) {
 	}
 
 	return entry, nil
+}
+
+func normalizeCatalogWireJSON(raw []byte) ([]byte, error) {
+	var value map[string]any
+	if err := json.Unmarshal(raw, &value); err != nil {
+		return nil, fmt.Errorf("decode wire JSON: %w", err)
+	}
+
+	if err := normalizeTrustManifestJSON(value["trustManifest"]); err != nil {
+		return nil, err
+	}
+
+	if nested, ok := value["data"].(map[string]any); ok {
+		if err := normalizeNestedCatalogJSON(nested); err != nil {
+			return nil, err
+		}
+	}
+
+	normalized, err := json.Marshal(value)
+	if err != nil {
+		return nil, fmt.Errorf("encode normalized wire JSON: %w", err)
+	}
+
+	return normalized, nil
+}
+
+func normalizeNestedCatalogJSON(value map[string]any) error {
+	entries, ok := value["entries"].([]any)
+	if !ok {
+		return nil
+	}
+
+	for _, item := range entries {
+		entry, ok := item.(map[string]any)
+		if !ok {
+			continue
+		}
+
+		if err := normalizeTrustManifestJSON(entry["trustManifest"]); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func normalizeTrustManifestJSON(manifest any) error {
+	value, ok := manifest.(map[string]any)
+	if !ok {
+		return nil
+	}
+
+	attestations, ok := value["attestations"].([]any)
+	if !ok {
+		return nil
+	}
+
+	for _, item := range attestations {
+		if err := normalizeAttestationJSON(item); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func normalizeAttestationJSON(value any) error {
+	attestation, ok := value.(map[string]any)
+	if !ok {
+		return nil
+	}
+
+	size, ok := attestation["size"].(string)
+	if !ok {
+		return nil
+	}
+
+	parsed, err := strconv.ParseUint(size, 10, 64)
+	if err != nil {
+		return fmt.Errorf("invalid attestation size %q: %w", size, err)
+	}
+
+	attestation["size"] = parsed
+
+	return nil
 }
 
 func parseCatalogEntriesFromListResponse(body []byte) ([]catalog.CatalogEntry, error) {
