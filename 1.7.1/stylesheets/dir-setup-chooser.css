@@ -1,0 +1,283 @@
+/* Copyright AGNTCY Contributors (https://github.com/agntcy) */
+/* SPDX-License-Identifier: Apache-2.0 */
+
+/* Interactive setup chooser. Uses Material theme variables so it adapts to
+   light/dark automatically. */
+
+.setup-chooser {
+  margin: 1.2em 0 1.6em;
+}
+
+/* card */
+.setup-chooser .sc-card {
+  border: 1px solid var(--md-default-fg-color--lightest);
+  border-radius: 12px;
+  padding: 20px 22px;
+  background: var(--md-default-bg-color);
+  box-shadow: var(--md-shadow-z1);
+}
+.setup-chooser .sc-count {
+  font-size: 0.72rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--md-default-fg-color--light);
+  font-family: var(--md-code-font-family, monospace);
+}
+.setup-chooser .sc-title {
+  font-size: 1.15rem;
+  font-weight: 700;
+  margin: 4px 0 2px;
+}
+.setup-chooser .sc-hint {
+  color: var(--md-default-fg-color--light);
+  font-size: 0.8rem;
+  margin: 0 0 16px;
+}
+
+/* options */
+.setup-chooser .sc-options {
+  display: grid;
+  gap: 8px;
+}
+.setup-chooser .sc-opt {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  text-align: left;
+  width: 100%;
+  cursor: pointer;
+  border: 1.5px solid var(--md-default-fg-color--lightest);
+  border-radius: 9px;
+  padding: 12px 14px;
+  background: var(--md-default-bg-color);
+  color: var(--md-default-fg-color);
+  font: inherit;
+  transition: border-color 0.15s, background 0.15s;
+}
+.setup-chooser .sc-opt:hover {
+  border-color: var(--md-accent-fg-color);
+  background: var(--md-code-bg-color);
+}
+.setup-chooser .sc-opt:focus-visible {
+  outline: 2px solid var(--md-accent-fg-color);
+  outline-offset: 2px;
+}
+.setup-chooser .sc-opt[aria-checked="true"] {
+  border-color: var(--md-accent-fg-color);
+  background: color-mix(in srgb, var(--md-accent-fg-color) 10%, transparent);
+}
+.setup-chooser .sc-radio {
+  flex: 0 0 auto;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: 1.5px solid var(--md-default-fg-color--lighter);
+  display: grid;
+  place-items: center;
+  margin-top: 1px;
+}
+.setup-chooser .sc-radio::after {
+  content: "";
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--md-accent-fg-color);
+  opacity: 0;
+  transform: scale(0.5);
+  transition: opacity 0.15s, transform 0.15s;
+}
+.setup-chooser .sc-opt[aria-checked="true"] .sc-radio {
+  border-color: var(--md-accent-fg-color);
+}
+.setup-chooser .sc-opt[aria-checked="true"] .sc-radio::after {
+  opacity: 1;
+  transform: scale(1);
+}
+.setup-chooser .sc-olabel {
+  display: block;
+  font-weight: 600;
+}
+.setup-chooser .sc-osub {
+  display: block;
+  color: var(--md-default-fg-color--light);
+  font-size: 0.8rem;
+  margin-top: 1px;
+}
+
+/* nav + buttons */
+.setup-chooser .sc-nav {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  margin-top: 18px;
+}
+.setup-chooser .sc-btn {
+  font: inherit;
+  font-weight: 600;
+  font-size: 0.8rem;
+  border-radius: 8px;
+  padding: 9px 15px;
+  cursor: pointer;
+  border: 1px solid var(--md-default-fg-color--lighter);
+  background: var(--md-default-bg-color);
+  color: var(--md-default-fg-color);
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.setup-chooser .sc-btn:hover {
+  background: var(--md-code-bg-color);
+}
+.setup-chooser .sc-btn:focus-visible {
+  outline: 2px solid var(--md-accent-fg-color);
+  outline-offset: 2px;
+}
+.setup-chooser .sc-btn[disabled] {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+.setup-chooser .sc-ghost {
+  border-color: transparent;
+  color: var(--md-default-fg-color--light);
+}
+.setup-chooser .sc-primary {
+  background: var(--md-accent-fg-color);
+  border-color: var(--md-accent-fg-color);
+  color: #fff;
+}
+/* Anchor primary buttons need explicit state colors — Material's
+   .md-typeset a:hover/:focus sets accent text color and hides white-on-accent labels. */
+.setup-chooser .sc-primary:hover,
+.setup-chooser .sc-primary:focus-visible {
+  background: var(--md-accent-fg-color);
+  filter: brightness(1.08);
+  color: #fff;
+}
+.md-typeset .setup-chooser a.sc-primary,
+.md-typeset .setup-chooser a.sc-primary:hover,
+.md-typeset .setup-chooser a.sc-primary:focus,
+.md-typeset .setup-chooser a.sc-primary:focus-visible,
+.md-typeset .setup-chooser a.sc-primary:active,
+.md-typeset .setup-chooser a.sc-primary:visited {
+  background: var(--md-accent-fg-color);
+  border-color: var(--md-accent-fg-color);
+  color: #fff;
+  text-decoration: none;
+}
+.md-typeset .setup-chooser a.sc-primary:hover,
+.md-typeset .setup-chooser a.sc-primary:focus,
+.md-typeset .setup-chooser a.sc-primary:focus-visible,
+.md-typeset .setup-chooser a.sc-primary:active {
+  filter: brightness(1.08);
+}
+
+/* result */
+.setup-chooser .sc-badge {
+  display: inline-block;
+  font-size: 0.68rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  font-weight: 700;
+  color: var(--md-accent-fg-color);
+  background: color-mix(in srgb, var(--md-accent-fg-color) 12%, transparent);
+  padding: 3px 9px;
+  border-radius: 99px;
+  margin-bottom: 8px;
+}
+.setup-chooser .sc-rec-name {
+  font-size: 1.3rem;
+  font-weight: 700;
+  margin-bottom: 4px;
+}
+.setup-chooser .sc-why {
+  color: var(--md-default-fg-color--light);
+  margin: 0 0 14px;
+}
+.setup-chooser .sc-cta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+}
+
+/* Dark mode: --md-default-fg-color--lightest matches the page background in slate,
+   so card/option borders disappear unless overridden. */
+[data-md-color-scheme="slate"] .setup-chooser .sc-card {
+  border-color: rgba(227, 227, 227, 0.18);
+  background: var(--md-code-bg-color);
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.35);
+}
+
+[data-md-color-scheme="slate"] .setup-chooser .sc-opt {
+  border-color: rgba(227, 227, 227, 0.16);
+  background: var(--md-default-bg-color);
+}
+
+[data-md-color-scheme="slate"] .setup-chooser .sc-opt:hover {
+  background: rgb(12, 31, 54);
+}
+
+[data-md-color-scheme="slate"] .setup-chooser .sc-btn:not(.sc-primary):not(.sc-ghost) {
+  border-color: rgba(227, 227, 227, 0.22);
+}
+
+[data-md-color-scheme="slate"] .setup-chooser .sc-radio {
+  border-color: rgba(227, 227, 227, 0.35);
+}
+
+[data-md-color-scheme="slate"] .setup-chooser .sc-primary,
+[data-md-color-scheme="slate"] .setup-chooser .sc-primary:hover,
+[data-md-color-scheme="slate"] .setup-chooser .sc-primary:focus-visible {
+  color: rgb(3, 20, 43);
+}
+[data-md-color-scheme="slate"] .md-typeset .setup-chooser a.sc-primary,
+[data-md-color-scheme="slate"] .md-typeset .setup-chooser a.sc-primary:hover,
+[data-md-color-scheme="slate"] .md-typeset .setup-chooser a.sc-primary:focus,
+[data-md-color-scheme="slate"] .md-typeset .setup-chooser a.sc-primary:focus-visible,
+[data-md-color-scheme="slate"] .md-typeset .setup-chooser a.sc-primary:active,
+[data-md-color-scheme="slate"] .md-typeset .setup-chooser a.sc-primary:visited {
+  color: rgb(3, 20, 43);
+}
+
+/* Target configuration section: persistent frame after "Jump to …". */
+.md-typeset .sc-section-target {
+  scroll-margin-top: calc(var(--md-header-height, 4rem) + 0.75rem);
+  margin: 0 -16px 1.2em;
+  padding: 8px 16px 4px;
+  border-radius: 12px;
+  border: 1.5px solid var(--md-accent-fg-color);
+  box-shadow: inset 3px 0 0 var(--md-accent-fg-color);
+}
+
+.md-typeset .sc-section-target.sc-section-flash {
+  animation: sc-section-flash 2.4s ease-out forwards;
+}
+
+@keyframes sc-section-flash {
+  0%,
+  18% {
+    background: color-mix(in srgb, var(--md-accent-fg-color) 16%, transparent);
+  }
+  100% {
+    background: transparent;
+  }
+}
+
+[data-md-color-scheme="slate"] .md-typeset .sc-section-target {
+  border-color: color-mix(in srgb, var(--md-accent-fg-color) 75%, transparent);
+}
+
+[data-md-color-scheme="slate"] .md-typeset .sc-section-target.sc-section-flash {
+  animation-name: sc-section-flash-slate;
+}
+
+@keyframes sc-section-flash-slate {
+  0%,
+  18% {
+    background: color-mix(in srgb, var(--md-accent-fg-color) 22%, transparent);
+  }
+  100% {
+    background: transparent;
+  }
+}
