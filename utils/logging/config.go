@@ -21,6 +21,10 @@ type Config struct {
 	LogFile   string `json:"log_file,omitempty"   mapstructure:"log_file"`
 	LogLevel  string `json:"log_level,omitempty"  mapstructure:"log_level"`
 	LogFormat string `json:"log_format,omitempty" mapstructure:"log_format"`
+	// LogStream explicitly selects "stdout" or "stderr". Left empty, it means
+	// "use the binary's default" - deliberately has no Viper default, since
+	// that default differs per binary (see SetDefaultOutput).
+	LogStream string `json:"log_stream,omitempty" mapstructure:"log_stream"`
 }
 
 func LoadConfig() (*Config, error) {
@@ -40,6 +44,10 @@ func LoadConfig() (*Config, error) {
 
 	_ = v.BindEnv("log_format")
 	v.SetDefault("log_format", DefaultLogFormat)
+
+	// No default: an unset log_stream means "use the binary's default",
+	// which InitLogger/SetDefaultOutput resolve per binary.
+	_ = v.BindEnv("log_stream")
 
 	// Load configuration into struct
 	decodeHooks := mapstructure.ComposeDecodeHookFunc(

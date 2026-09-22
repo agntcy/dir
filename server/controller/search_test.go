@@ -11,6 +11,8 @@ import (
 	"github.com/agntcy/dir/server/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 )
 
 type fakeSearchDB struct {
@@ -18,6 +20,10 @@ type fakeSearchDB struct {
 	totalCount uint32
 	err        error
 	gotFilters types.RecordFilters
+
+	fieldValues []types.FilterFieldValues
+	gotFields   []searchv1.RecordQueryType
+	fieldsCalls int
 }
 
 func (f *fakeSearchDB) CountRecords(opts ...types.FilterOption) (uint32, error) {
@@ -28,6 +34,13 @@ func (f *fakeSearchDB) CountRecords(opts ...types.FilterOption) (uint32, error) 
 	}
 
 	return f.totalCount, f.err
+}
+
+func (f *fakeSearchDB) ListFilterValues(fields []searchv1.RecordQueryType) ([]types.FilterFieldValues, error) {
+	f.gotFields = fields
+	f.fieldsCalls++
+
+	return f.fieldValues, f.err
 }
 
 func TestCountRecords(t *testing.T) {
@@ -71,6 +84,65 @@ func TestCountRecords_DatabaseError(t *testing.T) {
 	_, err := ctrl.CountRecords(context.Background(), &searchv1.CountRecordsRequest{})
 	require.Error(t, err)
 	assert.ErrorContains(t, err, "failed to count records")
+}
+
+func TestListFilterValues(t *testing.T) {
+	db := &fakeSearchDB{
+		fieldValues: []types.FilterFieldValues{
+			{
+				Field:  searchv1.RecordQueryType_RECORD_QUERY_TYPE_SKILL_NAME,
+				Values: []string{"nlp/summarization", "nlp/translation"},
+			},
+		},
+	}
+	ctrl := NewSearchController(db, nil)
+
+	resp, err := ctrl.ListFilterValues(context.Background(), &searchv1.ListFilterValuesRequest{
+		Fields: []searchv1.RecordQueryType{searchv1.RecordQueryType_RECORD_QUERY_TYPE_SKILL_NAME},
+	})
+	require.NoError(t, err)
+
+	assert.Equal(t, []searchv1.RecordQueryType{searchv1.RecordQueryType_RECORD_QUERY_TYPE_SKILL_NAME}, db.gotFields)
+	require.Len(t, resp.GetFields(), 1)
+	assert.Equal(t, searchv1.RecordQueryType_RECORD_QUERY_TYPE_SKILL_NAME, resp.GetFields()[0].GetField())
+	assert.Equal(t, []string{"nlp/summarization", "nlp/translation"}, resp.GetFields()[0].GetValues())
+}
+
+func TestListFilterValues_UnsupportedFieldIsRejectedBeforeQuerying(t *testing.T) {
+	db := &fakeSearchDB{}
+	ctrl := NewSearchController(db, nil)
+
+	_, err := ctrl.ListFilterValues(context.Background(), &searchv1.ListFilterValuesRequest{
+		Fields: []searchv1.RecordQueryType{searchv1.RecordQueryType_RECORD_QUERY_TYPE_ANNOTATION},
+	})
+	require.Error(t, err)
+	assert.Equal(t, codes.InvalidArgument, status.Code(err))
+	assert.Zero(t, db.fieldsCalls)
+}
+
+// Repeating a field has no useful meaning, and each occurrence would cost
+// another full scan and another copy of its values in the response.
+func TestListFilterValues_DuplicateFieldIsRejectedBeforeQuerying(t *testing.T) {
+	db := &fakeSearchDB{}
+	ctrl := NewSearchController(db, nil)
+
+	_, err := ctrl.ListFilterValues(context.Background(), &searchv1.ListFilterValuesRequest{
+		Fields: []searchv1.RecordQueryType{
+			searchv1.RecordQueryType_RECORD_QUERY_TYPE_SKILL_NAME,
+			searchv1.RecordQueryType_RECORD_QUERY_TYPE_SKILL_NAME,
+		},
+	})
+	require.Error(t, err)
+	assert.Equal(t, codes.InvalidArgument, status.Code(err))
+	assert.Zero(t, db.fieldsCalls)
+}
+
+func TestListFilterValues_DatabaseError(t *testing.T) {
+	ctrl := NewSearchController(&fakeSearchDB{err: assert.AnError}, nil)
+
+	_, err := ctrl.ListFilterValues(context.Background(), &searchv1.ListFilterValuesRequest{})
+	require.Error(t, err)
+	assert.ErrorContains(t, err, "failed to list filter values")
 }
 
 func TestCountRecords_NegatedQuery(t *testing.T) {

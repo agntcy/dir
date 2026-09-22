@@ -1,5 +1,7 @@
 daemon:
   run_runtime_discovery_tests: false
+  gateway_address: "http://localhost:18236"
+  expect_no_extractor: true
   client_options:
     server_address: "localhost:18234"
     auth_mode: "insecure"

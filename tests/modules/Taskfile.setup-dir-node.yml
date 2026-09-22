@@ -15,6 +15,13 @@ version: "3"
 #   DIRCTL_LOGFILE_PATH: (Optional) Path to a log file for the Directory daemon output (default: logs to stdout)
 #   GOCOVERDIR: (Optional) If set, this environment variable will be passed to the daemon process
 #               to enable Go test coverage collection.
+#   DIRCTL_PROVISION_EXTRACTOR: (Optional) Set to "false" to skip `dirctl init` entirely
+#               (default: "true").
+#   DIRCTL_INIT_ARGS: (Optional) Extra flags for `dirctl init`. Use this to pin the
+#               extractor explicitly, e.g. "--extractor-remote-addr= --asset-dir= --oasf-url="
+#               to force the defaults. Being explicit matters: `dirctl init` fills every
+#               extractor flag left unset from the machine-wide saved config, so a bare run
+#               inherits whatever that machine was last pointed at.
 #
 
 tasks:
@@ -32,6 +39,9 @@ tasks:
 
       # Set to "false" to skip OASF extractor provisioning.
       DIRCTL_PROVISION_EXTRACTOR: '{{ .DIRCTL_PROVISION_EXTRACTOR | default "true" }}'
+
+      # Extra flags for `dirctl init` (see header).
+      DIRCTL_INIT_ARGS: '{{ .DIRCTL_INIT_ARGS | default "" }}'
     env:
       GOCOVERDIR: '{{ .GOCOVERDIR }}'
     cmds:
@@ -39,9 +49,11 @@ tasks:
           # Ensure the coverage directory exists
           {{ if .GOCOVERDIR }}mkdir -p {{ .GOCOVERDIR }}{{end}}
 
-          # Provision the OASF extractor model for natural-language search tests.
-          # Skipped when DIRCTL_PROVISION_EXTRACTOR=false.
-          {{ if eq .DIRCTL_PROVISION_EXTRACTOR "true" }}{{ .DIRCTL_BIN }} init --yes{{end}}
+          # Configure the OASF extractor for natural-language search tests.
+          # Skipped when DIRCTL_PROVISION_EXTRACTOR=false. With
+          # --extractor-remote-addr in DIRCTL_INIT_ARGS this only saves the
+          # address and downloads nothing.
+          {{ if eq .DIRCTL_PROVISION_EXTRACTOR "true" }}{{ .DIRCTL_BIN }} init --yes {{ .DIRCTL_INIT_ARGS }}{{end}}
 
           # Ensure the data directory exists
           mkdir -p {{ .DIRCTL_DATA_PATH }}

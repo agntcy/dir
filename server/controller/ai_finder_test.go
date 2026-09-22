@@ -712,7 +712,10 @@ func TestListTags_ReturnsSortedTags(t *testing.T) {
 				Id:    catalogv1.SkillTag("*", "test_skill"),
 				Label: "Test Skill",
 			},
-			{Id: "owner=alice", Label: "owner=alice"},
+			{
+				Id:    catalogv1.DomainTag("*", "life_science/biotechnology"),
+				Label: "Biotechnology",
+			},
 		},
 	}, config.HTTPGatewayConfig{}, nil)
 
@@ -721,8 +724,8 @@ func TestListTags_ReturnsSortedTags(t *testing.T) {
 	require.Len(t, resp.GetTags(), 2)
 	assert.Equal(t, catalogv1.SkillTag("*", "test_skill"), resp.GetTags()[0].GetId())
 	assert.Equal(t, "Test Skill", resp.GetTags()[0].GetLabel())
-	assert.Equal(t, "owner=alice", resp.GetTags()[1].GetId())
-	assert.Equal(t, "owner=alice", resp.GetTags()[1].GetLabel())
+	assert.Equal(t, catalogv1.DomainTag("*", "life_science/biotechnology"), resp.GetTags()[1].GetId())
+	assert.Equal(t, "Biotechnology", resp.GetTags()[1].GetLabel())
 }
 
 func TestListTags_DatabaseError(t *testing.T) {

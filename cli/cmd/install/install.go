@@ -9,7 +9,6 @@ import (
 	"fmt"
 
 	corev1 "github.com/agntcy/dir/api/core/v1"
-	"github.com/agntcy/dir/cli/cmd/search"
 	"github.com/agntcy/dir/cli/internal/agentcfg"
 	"github.com/agntcy/dir/cli/internal/agentinstall"
 	"github.com/agntcy/dir/cli/presenter"
@@ -35,18 +34,36 @@ directly into the configuration of detected AI coding agents.
 
   dirctl install <cid-or-name>            detect agents, preview, confirm, install
   dirctl install run <cid-or-name>        same as above
+  dirctl install <cid-or-name> --pin      install and hold at this version
   dirctl install uninstall <cid-or-name>  remove what install added
-  dirctl install list                     show detected agents and target paths
 
-Batch install from search filters (no positional argument):
+  dirctl install list [name]              what is installed, or one package's files
+  dirctl install agents                   detected agents and target paths
+  dirctl install outdated [name...]       what has a newer version
+  dirctl install upgrade [name...]        move to the newer version
+  dirctl install pin <name>               hold at the installed version
+  dirctl install unpin <name>             release the hold
+  dirctl install prune                    drop rows whose artifacts are gone
 
-  dirctl install --module integration/mcp --name "web*" --agents all
-  dirctl install --skill "code*" --dry-run
+Every install records what it wrote — record, version, agent, scope, and the
+exact files and MCP server keys — in $XDG_CONFIG_HOME/dirctl/installed.json.
+That manifest is the source of truth for what is installed: list, outdated,
+upgrade, pin, unpin, prune, and uninstall all read it, and only outdated and
+upgrade contact the Directory. A --project install records the repository it
+wrote into, so one manifest covers every repository on this machine.
 
-Batch uninstall from search filters:
+Installing several records at once is a pipe. Filtering belongs to dirctl
+search, so install does not carry a second copy of its flags:
 
-  dirctl install uninstall --module integration/mcp --name "web*"
-  dirctl uninstall --skill "code*" --dry-run
+  dirctl search --module integration/mcp -o raw | dirctl install --agents all --yes
+  dirctl search --skill "code*" -o raw | dirctl install --dry-run
+
+References are read one per line, blanks and # comments ignored. Use
+search's -o raw, which is one CID per line; -o jsonl and plain names work
+too. Only the highest version of each name is installed: two versions of one
+package resolve to the same skill folder and MCP key, so the second would
+just overwrite the first. A piped run cannot prompt, because stdin is the
+list, so it needs --yes or --dry-run.
 
 Examples:
   dirctl install cisco.com/agent:v1.0.0
@@ -61,27 +78,48 @@ Examples:
 			input = args[0]
 		}
 
-		queries := search.BuildQueries(&opts.filters)
-		hasInput := input != ""
-		hasFilters := len(queries) > 0
-
-		return resolveBatchOrInput(
-			hasInput,
-			hasFilters,
-			func() error { return runBatchInstall(cmd) },
-			func() error { return runInstallCmd(cmd, input) },
-			func() error { return cmd.Help() },
-		)
+		switch {
+		case input != "":
+			return runInstallCmd(cmd, input)
+		case hasPipedInput(cmd):
+			return runPipedInstall(cmd)
+		default:
+			return cmd.Help()
+		}
 	},
 }
 
 func init() {
 	addSelectionFlags(Command, &opts)
-	addBatchFlags(Command, &opts)
+	addPinFlag(Command, &opts)
 
 	Command.AddCommand(runCmd)
 	Command.AddCommand(uninstallCmd)
+	Command.AddCommand(AgentsCommand)
 	Command.AddCommand(ListCommand)
+	Command.AddCommand(outdatedCmd)
+	Command.AddCommand(upgradeCmd)
+	Command.AddCommand(PinCommand)
+	Command.AddCommand(UnpinCommand)
+	Command.AddCommand(PruneCommand)
+}
+
+// SkipClientSetup lists the commands root.go must not build a client for.
+// Requiring a reachable Directory — or even a configured one — to read local
+// state or to remove what the manifest records would be a needless failure.
+//
+// `uninstall` is here because it reads the manifest and nothing else. That is
+// only true now that batch uninstall is gone: expanding search filters was
+// the one thing it needed a Directory for.
+//
+// `outdated` and `upgrade` are deliberately absent: reaching the Directory is
+// the whole point of them, so setting the client up eagerly costs nothing and
+// fails earlier.
+func SkipClientSetup() []*cobra.Command {
+	return []*cobra.Command{
+		AgentsCommand, ListCommand, PinCommand, UnpinCommand, PruneCommand,
+		uninstallCmd, UninstallCommand,
+	}
 }
 
 // selectAgents validates the --agents flag and resolves it to the detected
@@ -103,35 +141,56 @@ func selectAgents(cmd *cobra.Command, env agentcfg.Env) ([]agentcfg.Agent, error
 }
 
 // pullAndDerive resolves the ref, pulls the record, and derives its artifacts.
-func pullAndDerive(cmd *cobra.Command, input string) (agentinstall.Artifacts, error) {
+// The record itself comes back too, because the manifest row needs the name,
+// version, and CID that Artifacts does not carry.
+func pullAndDerive(cmd *cobra.Command, input string) (applied, error) {
 	c, ok := ctxUtils.GetClientFromContext(cmd.Context())
 	if !ok {
-		return agentinstall.Artifacts{}, errors.New("failed to get client from context")
+		return applied{}, errors.New("failed to get client from context")
 	}
 
 	cid, err := reference.ResolveToCID(cmd.Context(), c, input)
 	if err != nil {
-		return agentinstall.Artifacts{}, fmt.Errorf("resolve reference: %w", err)
+		return applied{}, fmt.Errorf("resolve reference: %w", err)
 	}
 
-	record, err := c.Pull(cmd.Context(), &corev1.RecordRef{Cid: cid})
+	rec, err := c.Pull(cmd.Context(), &corev1.RecordRef{Cid: cid})
 	if err != nil {
-		return agentinstall.Artifacts{}, fmt.Errorf("failed to pull record: %w", err)
+		return applied{}, fmt.Errorf("failed to pull record: %w", err)
 	}
 
-	return agentinstall.DeriveArtifacts(record)
+	arts, err := agentinstall.DeriveArtifacts(rec)
+	if err != nil {
+		return applied{}, err
+	}
+
+	return applied{record: rec, arts: arts, pinned: pinRequested(input)}, nil
+}
+
+// pinRequested reports whether this install should hold the package at the
+// version it resolved to. An explicit `:version` in the reference is the same
+// statement as --pin made a different way, so it implies the pin.
+func pinRequested(input string) bool {
+	return opts.pin || reference.Parse(input).Version != ""
 }
 
 // runInstallCmd is the shared body for the parent's bare-positional form and the
 // `run` subcommand.
 func runInstallCmd(cmd *cobra.Command, input string) error {
-	return runApplyCmd(cmd, input, agentinstall.Install, "\nProceed with these changes?")
+	return runApplyCmd(cmd, input, agentinstall.Install, recordInstalls, "\nProceed with these changes?")
 }
 
 // runApplyCmd is the single-record flow shared by install and uninstall: pull +
-// derive, dry-run plan, confirm, apply, summary. apply is Install or Uninstall.
-func runApplyCmd(cmd *cobra.Command, input string, apply recordApplyFn, confirmPrompt string) error {
-	arts, err := pullAndDerive(cmd, input)
+// derive, dry-run plan, confirm, apply, summary, manifest. apply is Install or
+// Uninstall, and record is the matching manifest update.
+func runApplyCmd(
+	cmd *cobra.Command,
+	input string,
+	apply recordApplyFn,
+	record manifestRecordFn,
+	confirmPrompt string,
+) error {
+	item, err := pullAndDerive(cmd, input)
 	if err != nil {
 		return err
 	}
@@ -146,10 +205,20 @@ func runApplyCmd(cmd *cobra.Command, input string, apply recordApplyFn, confirmP
 
 	printScope(cmd)
 
-	plan := apply(env, arts, selected, scope, true)
+	plan := apply(env, item.arts, selected, scope, true)
 	presenter.Printf(cmd, "%s", agentcfg.FormatPlan(plan))
 
-	if len(plan) == 0 {
+	// Nothing would move on disk, so there is nothing worth confirming. The
+	// manifest is a different matter: reinstalling an already-correct package
+	// is how a row is backfilled for something installed before dirctl
+	// recorded installs, and how `--pin` takes hold without moving the
+	// version. So the plan is recorded, and only the prompt is skipped.
+	if !agentcfg.HasChanges(plan) {
+		if !opts.dryRun {
+			item.outcomes = plan
+			record(cmd, []applied{item}, selected, scope)
+		}
+
 		return nil
 	}
 
@@ -166,8 +235,15 @@ func runApplyCmd(cmd *cobra.Command, input string, apply recordApplyFn, confirmP
 		}
 	}
 
-	outcomes := apply(env, arts, selected, scope, opts.dryRun)
-	presenter.Printf(cmd, "%s", agentcfg.FormatSummary(outcomes, opts.dryRun))
+	item.outcomes = apply(env, item.arts, selected, scope, opts.dryRun)
+	presenter.Printf(cmd, "%s", agentcfg.FormatSummary(item.outcomes, opts.dryRun))
+
+	// A dry run touched nothing, so there is nothing to record.
+	if opts.dryRun {
+		return nil
+	}
+
+	record(cmd, []applied{item}, selected, scope)
 
 	return nil
 }

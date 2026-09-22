@@ -44,6 +44,11 @@ type ReferrerStoreAPI interface {
 	WalkReferrers(ctx context.Context, recordCID string, referrerType string, walkFn func(*corev1.RecordReferrer) error) error
 
 	DeleteReferrer(ctx context.Context, recordCID string, referrerCID string, referrerType string) ([]string, error)
+
+	// DeleteReferrers deletes the named referrers in a single pass over the record's referrers.
+	// Prefer it to a loop of DeleteReferrer, which repeats that pass once per deletion.
+	// An empty referrerCIDs deletes nothing.
+	DeleteReferrers(ctx context.Context, recordCID string, referrerCIDs []string, referrerType string) ([]string, error)
 }
 
 // FullStore is the complete store interface with all optional capabilities.

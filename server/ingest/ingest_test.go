@@ -116,6 +116,10 @@ func (m *mockStore) DeleteReferrer(context.Context, string, string, string) ([]s
 	return nil, nil
 }
 
+func (m *mockStore) DeleteReferrers(context.Context, string, []string, string) ([]string, error) {
+	return nil, nil
+}
+
 // recordOnlyStore implements only types.StoreAPI (no referrer support).
 type recordOnlyStore struct {
 	types.StoreAPI

@@ -268,6 +268,13 @@ func (t *Task) pruneScanReferrers(ctx context.Context, recordCID string, scanner
 	var superseded []string
 
 	err := t.refStore.WalkReferrers(ctx, recordCID, corev1.ScanReportReferrerType, func(ref *corev1.RecordReferrer) error {
+		// The store's type filter maps every referrer type except signatures and public keys
+		// onto one shared media type, so the walk also yields other custom referrers. Check the
+		// type here instead of trusting the filter.
+		if ref.GetType() != corev1.ScanReportReferrerType {
+			return nil
+		}
+
 		cid := ref.GetReferrerRef().GetCid()
 		if cid == "" || cid == keepCID {
 			return nil
@@ -294,17 +301,22 @@ func (t *Task) pruneScanReferrers(ctx context.Context, recordCID string, scanner
 		return
 	}
 
-	for _, cid := range superseded {
-		if _, err := t.refStore.DeleteReferrer(ctx, recordCID, cid, corev1.ScanReportReferrerType); err != nil {
-			logger.Warn("Failed to delete superseded scan report referrer",
-				"cid", recordCID, "referrer", cid, "error", err)
-
-			continue
-		}
-
-		logger.Debug("Deleted superseded scan report referrer",
-			"cid", recordCID, "referrer", cid, "scanner", scannerType.String())
+	if len(superseded) == 0 {
+		return
 	}
+
+	// One call rather than one per report: a delete needs the referrer's manifest descriptor,
+	// which only a walk supplies, so DeleteReferrer repeats the whole walk every time.
+	deleted, err := t.refStore.DeleteReferrers(ctx, recordCID, superseded, corev1.ScanReportReferrerType)
+	if err != nil {
+		logger.Warn("Failed to delete superseded scan report referrers", "cid", recordCID,
+			"deleted", len(deleted), "superseded", len(superseded), "error", err)
+
+		return
+	}
+
+	logger.Debug("Deleted superseded scan report referrers",
+		"cid", recordCID, "count", len(deleted), "scanner", scannerType.String())
 }
 
 // buildScanReport converts a runner name + ScanResult into a scanv1.ScanReport proto.

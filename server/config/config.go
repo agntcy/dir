@@ -15,6 +15,7 @@ import (
 	events "github.com/agntcy/dir/server/events/config"
 	ratelimitconfig "github.com/agntcy/dir/server/middleware/ratelimit/config"
 	naming "github.com/agntcy/dir/server/naming/config"
+	policy "github.com/agntcy/dir/server/policy/config"
 	publication "github.com/agntcy/dir/server/publication/config"
 	routing "github.com/agntcy/dir/server/routing/config"
 	store "github.com/agntcy/dir/server/store/config"
@@ -142,6 +143,10 @@ type Config struct {
 
 	// Authz configuration
 	Authz authz.Config `json:"authz" mapstructure:"authz"`
+
+	// Policy is the file-based content-policy directory. Evaluation is not
+	// implemented yet; this only tells the server where policy files live.
+	Policy policy.Config `json:"policy" mapstructure:"policy"`
 
 	// Store configuration
 	Store store.Config `json:"store" mapstructure:"store"`
@@ -491,6 +496,15 @@ func LoadConfig(opts ...ConfigOption) (*Config, error) {
 
 	_ = v.BindEnv("authz.enforcer_policy_file_path")
 	v.SetDefault("authz.enforcer_policy_file_path", DefaultConfigPath+"/authz_policies.csv")
+
+	//
+	// Content policy configuration (file-based OPA/Rego policies)
+	//
+	_ = v.BindEnv("policy.enabled")
+	v.SetDefault("policy.enabled", "false")
+
+	_ = v.BindEnv("policy.dir")
+	v.SetDefault("policy.dir", DefaultConfigPath+"/policies")
 
 	//
 	// Store configuration

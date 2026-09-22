@@ -61,6 +61,26 @@ func TestLatestByNameHandlesVPrefixAndPrerelease(t *testing.T) {
 	assert.NotContains(t, pre[0].GetVersion(), "alpha")
 }
 
+func TestLatestByNameOrdersNumericallyNotAsText(t *testing.T) {
+	// The whole reason ordering goes through pkgver: as text, 1.9.0 sorts
+	// above 1.10.0.
+	out := LatestByName([]*corev1.Record{rec("x", "1.9.0"), rec("x", "1.10.0")})
+	require.Len(t, out, 1)
+	assert.Equal(t, "1.10.0", out[0].GetVersion())
+}
+
+func TestLatestByNameIgnoresUnorderableVersions(t *testing.T) {
+	// A version pkgver cannot order never displaces a comparable one.
+	out := LatestByName([]*corev1.Record{rec("x", "1.0.0"), rec("x", "main")})
+	require.Len(t, out, 1)
+	assert.Equal(t, "1.0.0", out[0].GetVersion())
+
+	// It is still kept when nothing comparable exists, so a name never vanishes.
+	only := LatestByName([]*corev1.Record{rec("x", "main")})
+	require.Len(t, only, 1)
+	assert.Equal(t, "main", only[0].GetVersion())
+}
+
 func TestLatestByNamePreservesFirstSeenOrderAndEmpty(t *testing.T) {
 	out := LatestByName([]*corev1.Record{rec("b", "1.0.0"), rec("a", "1.0.0"), rec("b", "1.0.0")})
 	require.Len(t, out, 2)

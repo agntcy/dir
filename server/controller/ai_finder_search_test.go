@@ -26,11 +26,11 @@ import (
 func resultWith(skills []string, domains []string) sdk.Result {
 	r := sdk.Result{}
 	for _, s := range skills {
-		r.Skills = append(r.Skills, sdk.ScoredClass{Class: sdk.Class{Name: s}, Score: 0.9, Tier: 1})
+		r.Skills = append(r.Skills, sdk.ScoredClass{Name: s, Score: 0.9, Tier: 1})
 	}
 
 	for _, d := range domains {
-		r.Domains = append(r.Domains, sdk.ScoredClass{Class: sdk.Class{Name: d}, Score: 0.9, Tier: 1})
+		r.Domains = append(r.Domains, sdk.ScoredClass{Name: d, Score: 0.9, Tier: 1})
 	}
 
 	return r

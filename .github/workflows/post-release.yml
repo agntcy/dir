@@ -7,7 +7,7 @@ on:
     types: [published]
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   prepare:
@@ -29,6 +29,8 @@ jobs:
     needs: prepare
     name: Create module tags
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     strategy:
       matrix:
         tags: ${{ fromJson(needs.prepare.outputs.modules) }}

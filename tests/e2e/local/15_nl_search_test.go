@@ -30,6 +30,19 @@ var _ = ginkgo.Describe("Natural-language search", func() {
 			home, homeErr := os.UserHomeDir()
 			gomega.Expect(homeErr).NotTo(gomega.HaveOccurred())
 
+			// NOTE: this path is missing the "extractor" subdirectory that
+			// extractor.DefaultAssetDir provisions into, so the check never
+			// finds the manifest and this spec always skips. Correcting it makes
+			// the spec run and push testdata/directory-record.json, which then
+			// contends with 14_skill_record_test.go: both use the record name
+			// "org.agntcy/directory", that testdata carries a stale
+			// "application/agentskill+md" artifact media type where the daemon
+			// now emits "application/agent-skills+md", and spec 14 resolves the
+			// name with --limit 1. Fixing this needs the testdata corrected and
+			// spec 14 taught to pick the record it means, so it is left alone
+			// here rather than half-done. The CLI free-text path is meanwhile
+			// covered by the parity spec in 18_ai_finder_search_test.go, which
+			// runs `dirctl search` against the same query as POST /v1/search.
 			manifest := filepath.Join(home, ".agntcy", "oasf-sdk", "manifest.json")
 			if _, err := os.Stat(manifest); err != nil {
 				ginkgo.Skip("OASF extractor not provisioned — run `dirctl init` to enable natural-language search tests")

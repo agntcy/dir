@@ -25,13 +25,15 @@ on:
         default: false
 
 permissions:
-  contents: write
-  pull-requests: write
+  contents: read
 
 jobs:
   formula-update:
     name: Update Formula
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
     env:
       # Required for `gh` CLI authentication
       GH_TOKEN: ${{ secrets.AGNTCY_BUILD_BOT_GH_TOKEN }}

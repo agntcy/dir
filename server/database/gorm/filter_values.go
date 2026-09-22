@@ -1,0 +1,142 @@
+// Copyright AGNTCY Contributors (https://github.com/agntcy)
+// SPDX-License-Identifier: Apache-2.0
+
+package gorm
+
+import (
+	"encoding/json"
+	"fmt"
+	"sort"
+	"strings"
+
+	searchv1 "github.com/agntcy/dir/api/search/v1"
+	"github.com/agntcy/dir/server/types"
+)
+
+// ListFilterValues returns the distinct values present in the registry for each
+// requested field, in the order requested. An empty fields slice returns every
+// supported field in canonical order.
+//
+// Values are registry-wide: no query context and no catalog module restriction
+// is applied, so the result is exactly the set of values some record carries.
+func (d *DB) ListFilterValues(fields []searchv1.RecordQueryType) ([]types.FilterFieldValues, error) {
+	if len(fields) == 0 {
+		fields = types.SupportedFilterValueFields()
+	}
+
+	result := make([]types.FilterFieldValues, 0, len(fields))
+
+	for _, field := range fields {
+		values, err := d.distinctValuesForField(field)
+		if err != nil {
+			return nil, err
+		}
+
+		result = append(result, types.FilterFieldValues{Field: field, Values: values})
+	}
+
+	return result, nil
+}
+
+// distinctValuesForField dispatches a field to the query that enumerates it.
+func (d *DB) distinctValuesForField(field searchv1.RecordQueryType) ([]string, error) {
+	switch field { //nolint:exhaustive // unsupported fields are rejected by the default branch
+	case searchv1.RecordQueryType_RECORD_QUERY_TYPE_SKILL_NAME:
+		return d.distinctColumn(&Skill{}, "name")
+	case searchv1.RecordQueryType_RECORD_QUERY_TYPE_DOMAIN_NAME:
+		return d.distinctColumn(&Domain{}, "name")
+	case searchv1.RecordQueryType_RECORD_QUERY_TYPE_MODULE_NAME:
+		return d.distinctColumn(&Module{}, "name")
+	case searchv1.RecordQueryType_RECORD_QUERY_TYPE_AUTHOR:
+		return d.distinctAuthors()
+	case searchv1.RecordQueryType_RECORD_QUERY_TYPE_SCHEMA_VERSION:
+		return d.distinctColumn(&Record{}, "schema_version")
+	default:
+		return nil, fmt.Errorf("unsupported filter value field: %s", field)
+	}
+}
+
+// distinctAuthors returns the distinct authors across all records, sorted
+// lexicographically.
+//
+// Unlike every other supported field, authors are not a column or a child table
+// but a JSON array serialized into records.authors, so they cannot be plucked
+// with a plain DISTINCT. The array is unnested in Go rather than with SQL JSON
+// functions, which keeps one code path across the SQLite and Postgres backends.
+// DISTINCT still does most of the work: only distinct JSON payloads are read,
+// so records sharing an author list are collapsed before they reach Go.
+func (d *DB) distinctAuthors() ([]string, error) {
+	var payloads []string
+
+	if err := d.gormDB.
+		Model(&Record{}).
+		Distinct().
+		Where("authors != ?", "").
+		Pluck("authors", &payloads).Error; err != nil {
+		return nil, fmt.Errorf("list distinct author payloads: %w", err)
+	}
+
+	seen := make(map[string]struct{})
+
+	for _, payload := range payloads {
+		var authors []string
+
+		// A record written before authors were populated, or one carrying a
+		// malformed payload, contributes nothing rather than failing the call.
+		if err := json.Unmarshal([]byte(payload), &authors); err != nil {
+			logger.Warn("skipping unparsable authors payload", "payload", payload, "error", err)
+
+			continue
+		}
+
+		for _, author := range authors {
+			if author != "" {
+				seen[author] = struct{}{}
+			}
+		}
+	}
+
+	values := make([]string, 0, len(seen))
+	for author := range seen {
+		values = append(values, author)
+	}
+
+	sort.Strings(values)
+
+	return values, nil
+}
+
+// jsonStringBody returns how a Go string appears inside a serialized JSON
+// document, without the surrounding quotes: the escaping encoding/json applies,
+// and nothing else. It is the bridge between a decoded value a caller holds and
+// the raw JSON text a column stores.
+//
+// Marshalling a plain string cannot fail, so an encoding error falls back to the
+// input unchanged rather than dropping the filter.
+func jsonStringBody(s string) string {
+	encoded, err := json.Marshal(s)
+	if err != nil {
+		return s
+	}
+
+	return strings.Trim(string(encoded), `"`)
+}
+
+// distinctColumn plucks the distinct non-empty values of a column, sorted
+// lexicographically. Empty values are dropped so that records missing an
+// optional field (an unset schema_version, say) do not contribute a blank entry.
+func (d *DB) distinctColumn(model any, column string) ([]string, error) {
+	var values []string
+
+	if err := d.gormDB.
+		Model(model).
+		Distinct().
+		Where(column+" != ?", "").
+		Pluck(column, &values).Error; err != nil {
+		return nil, fmt.Errorf("list distinct %s values: %w", column, err)
+	}
+
+	sort.Strings(values)
+
+	return values, nil
+}

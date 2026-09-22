@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	coretypes "github.com/agntcy/dir/api/core/types"
+	searchv1 "github.com/agntcy/dir/api/search/v1"
 	dbconfig "github.com/agntcy/dir/server/database/config"
 	gormdb "github.com/agntcy/dir/server/database/gorm"
 	"github.com/agntcy/dir/server/types"
@@ -271,6 +272,155 @@ func TestCountRecords_NilOption(t *testing.T) {
 
 	_, err := db.CountRecords(nilOpt)
 	assert.Error(t, err)
+}
+
+func TestListFilterValues_RequestedFields(t *testing.T) {
+	db := setupTestDB(t)
+	seedDB(t, db)
+
+	got, err := db.ListFilterValues([]searchv1.RecordQueryType{
+		searchv1.RecordQueryType_RECORD_QUERY_TYPE_MODULE_NAME,
+		searchv1.RecordQueryType_RECORD_QUERY_TYPE_SCHEMA_VERSION,
+	})
+	require.NoError(t, err)
+
+	// Values are deduplicated (0.8.0 appears on two records) and sorted, and
+	// the field order mirrors the request.
+	assert.Equal(t, []types.FilterFieldValues{
+		{
+			Field:  searchv1.RecordQueryType_RECORD_QUERY_TYPE_MODULE_NAME,
+			Values: []string{"core/llm/model", "integration/acp", "integration/mcp"},
+		},
+		{
+			Field:  searchv1.RecordQueryType_RECORD_QUERY_TYPE_SCHEMA_VERSION,
+			Values: []string{"0.7.0", "0.8.0"},
+		},
+	}, got)
+}
+
+func TestListFilterValues_NoFieldsReturnsAllSupported(t *testing.T) {
+	db := setupTestDB(t)
+	seedDB(t, db)
+
+	got, err := db.ListFilterValues(nil)
+	require.NoError(t, err)
+
+	fields := make([]searchv1.RecordQueryType, 0, len(got))
+	for _, fieldValues := range got {
+		fields = append(fields, fieldValues.Field)
+	}
+
+	assert.Equal(t, []searchv1.RecordQueryType{
+		searchv1.RecordQueryType_RECORD_QUERY_TYPE_SKILL_NAME,
+		searchv1.RecordQueryType_RECORD_QUERY_TYPE_MODULE_NAME,
+		searchv1.RecordQueryType_RECORD_QUERY_TYPE_DOMAIN_NAME,
+		searchv1.RecordQueryType_RECORD_QUERY_TYPE_AUTHOR,
+		searchv1.RecordQueryType_RECORD_QUERY_TYPE_SCHEMA_VERSION,
+	}, fields)
+
+	assert.Equal(t, []string{"0.7.0", "0.8.0"}, got[4].Values)
+}
+
+// A record's own version is per-record identity rather than a shared facet, so
+// it is not enumerable until contextual faceting exists to scope it.
+func TestListFilterValues_VersionIsNotSupported(t *testing.T) {
+	db := setupTestDB(t)
+	seedDB(t, db)
+
+	_, err := db.ListFilterValues([]searchv1.RecordQueryType{
+		searchv1.RecordQueryType_RECORD_QUERY_TYPE_VERSION,
+	})
+	require.ErrorContains(t, err, "unsupported filter value field")
+}
+
+func TestListFilterValues_Authors(t *testing.T) {
+	db := setupTestDB(t)
+	seedDB(t, db)
+
+	// A record carrying no authors must not contribute a blank value.
+	require.NoError(t, db.AddRecord(&testRecord{
+		cid:           "bafybeianonymousagentnoauthorsxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+		name:          "directory.agntcy.org/anon/anonymous-agent",
+		version:       "1.0.0",
+		schemaVersion: "0.8.0",
+		createdAt:     "2024-05-01T00:00:00Z",
+	}))
+
+	got, err := db.ListFilterValues([]searchv1.RecordQueryType{
+		searchv1.RecordQueryType_RECORD_QUERY_TYPE_AUTHOR,
+	})
+	require.NoError(t, err)
+
+	// Each record's JSON array is flattened, and alice (who authors two
+	// records) appears once.
+	assert.Equal(t, []types.FilterFieldValues{
+		{
+			Field:  searchv1.RecordQueryType_RECORD_QUERY_TYPE_AUTHOR,
+			Values: []string{"alice@cisco.com", "bob@cisco.com", "charlie@medtech.io"},
+		},
+	}, got)
+}
+
+// Every value ListFilterValues returns must be usable verbatim as a RecordQuery
+// value. Authors are stored JSON-encoded, so values containing characters that
+// encoding/json escapes are the case most likely to break that guarantee.
+func TestListFilterValues_AuthorsRoundTripIntoQueries(t *testing.T) {
+	db := setupTestDB(t)
+
+	require.NoError(t, db.AddRecord(&testRecord{
+		cid:           "bafybeiquotedauthorxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+		name:          "directory.agntcy.org/test/quoted",
+		version:       "1.0.0",
+		schemaVersion: "0.8.0",
+		createdAt:     "2024-01-01T00:00:00Z",
+		authors:       []string{`Jane "JJ" Doe`},
+	}))
+	require.NoError(t, db.AddRecord(&testRecord{
+		cid:           "bafybeiampersandauthorxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+		name:          "directory.agntcy.org/test/ampersand",
+		version:       "1.0.0",
+		schemaVersion: "0.8.0",
+		createdAt:     "2024-01-02T00:00:00Z",
+		authors:       []string{"A & B Corp"},
+	}))
+
+	got, err := db.ListFilterValues([]searchv1.RecordQueryType{
+		searchv1.RecordQueryType_RECORD_QUERY_TYPE_AUTHOR,
+	})
+	require.NoError(t, err)
+	require.Len(t, got, 1)
+	require.Len(t, got[0].Values, 2)
+
+	for _, author := range got[0].Values {
+		t.Run(author, func(t *testing.T) {
+			cids, err := db.GetRecordCIDs(types.WithAuthors(author))
+			require.NoError(t, err)
+			assert.NotEmpty(t, cids, "author %q was listed but matches no record", author)
+		})
+	}
+}
+
+func TestListFilterValues_UnsupportedField(t *testing.T) {
+	db := setupTestDB(t)
+	seedDB(t, db)
+
+	_, err := db.ListFilterValues([]searchv1.RecordQueryType{
+		searchv1.RecordQueryType_RECORD_QUERY_TYPE_ANNOTATION,
+	})
+	require.ErrorContains(t, err, "unsupported filter value field")
+}
+
+func TestListFilterValues_EmptyRegistry(t *testing.T) {
+	db := setupTestDB(t)
+
+	got, err := db.ListFilterValues([]searchv1.RecordQueryType{
+		searchv1.RecordQueryType_RECORD_QUERY_TYPE_SKILL_NAME,
+	})
+	require.NoError(t, err)
+
+	assert.Equal(t, []types.FilterFieldValues{
+		{Field: searchv1.RecordQueryType_RECORD_QUERY_TYPE_SKILL_NAME, Values: []string{}},
+	}, got)
 }
 
 func TestGetRecordCIDs_Wildcards(t *testing.T) {

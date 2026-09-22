@@ -58,7 +58,9 @@
     "github-actions",
     "helm-values",
     "gomod",
-    "helmv3"
+    "helmv3",
+    "npm",
+    "pep621"
   ],
   "labels": ["dependencies"],
   "ignoreDeps": [
@@ -177,6 +179,18 @@
         "Add ci label to PRs which are related to Github Actions.",
         "Group CI dependency updates in single PR."
       ]
+    },
+    {
+      "groupName": "Gateway UI",
+      "groupSlug": "gateway-ui",
+      "matchManagers": ["npm"],
+      "description": ["Group gateway UI dependency updates in single PR."]
+    },
+    {
+      "groupName": "Docs toolchain",
+      "groupSlug": "docs-toolchain",
+      "matchManagers": ["pep621"],
+      "description": ["Group MkDocs toolchain updates in single PR."]
     },
     {
       "groupName": "zot",

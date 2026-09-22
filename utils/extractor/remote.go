@@ -74,18 +74,16 @@ func scoredClasses(in []*extractorv1.ScoredClass) []sdk.ScoredClass {
 	out := make([]sdk.ScoredClass, 0, len(in))
 	for _, c := range in {
 		out = append(out, sdk.ScoredClass{
-			Class: sdk.Class{
-				ID:          c.GetId(),
-				Name:        c.GetName(),
-				Caption:     c.GetCaption(),
-				Description: c.GetDescription(),
-			},
-			Kind:     classKind(c.GetKind()),
-			Versions: c.GetVersions(),
-			Score:    c.GetScore(),
-			Semantic: c.GetSemantic(),
-			Lexical:  c.GetLexical(),
-			Tier:     int(c.GetTier()),
+			ID:          c.GetId(),
+			Name:        c.GetName(),
+			Caption:     c.GetCaption(),
+			Description: c.GetDescription(),
+			Kind:        classKind(c.GetKind()),
+			Versions:    c.GetVersions(),
+			Score:       c.GetScore(),
+			Semantic:    c.GetSemantic(),
+			Lexical:     c.GetLexical(),
+			Tier:        int(c.GetTier()),
 		})
 	}
 

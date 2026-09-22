@@ -15,8 +15,6 @@ import (
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/encoding/protojson"
 	"oras.land/oras-go/v2"
-	"oras.land/oras-go/v2/content/oci"
-	"oras.land/oras-go/v2/registry/remote"
 )
 
 var referrersLogger = logging.Logger("store/oci/referrers")
@@ -130,12 +128,10 @@ func (s *store) pushReferrer(ctx context.Context, recordCID string, referrer *co
 		return nil, fmt.Errorf("failed to pack referrer manifest: %w", err)
 	}
 
-	// Create CID tag for content-addressable storage
-	err = s.tagWithRetry(ctx, manifestDesc.Digest.String(), referrerCID)
-	if err != nil {
-		return nil, status.Errorf(codes.Internal, "failed to create CID tag: %v", err)
-	}
-
+	// Deliberately not tagged. A referrer is reached through its subject's Referrers API, so a
+	// tag adds nothing to discovery while making every referrer a top-level entry in the
+	// registry's tag list and index - which is what made that index outgrow the records it
+	// describes. The CID stays available as a manifest annotation.
 	referrersLogger.Debug("Referrer pushed successfully", "digest", manifestDesc.Digest.String(), "type", referrer.GetType())
 
 	return &corev1.ReferrerRef{Cid: referrerCID}, nil
@@ -144,6 +140,23 @@ func (s *store) pushReferrer(ctx context.Context, recordCID string, referrer *co
 // WalkReferrers walks through referrers for a given record CID, calling walkFn for each referrer.
 // If referrerType is empty, all referrers are walked, otherwise only referrers of the specified type.
 func (s *store) WalkReferrers(ctx context.Context, recordCID string, referrerType string, walkFn func(*corev1.RecordReferrer) error) error {
+	if walkFn == nil {
+		return status.Error(codes.InvalidArgument, "walkFn is required") //nolint:wrapcheck
+	}
+
+	return s.walkReferrers(ctx, recordCID, referrerType,
+		func(referrer *corev1.RecordReferrer, _ ocispec.Descriptor) error {
+			return walkFn(referrer)
+		},
+	)
+}
+
+// walkReferrers is WalkReferrers, additionally handing walkFn the referrer's manifest descriptor.
+//
+// Deletion needs that descriptor: a referrer CID addresses the referrer's blob, not its manifest,
+// so the manifest is reachable only by its own digest or by a tag - and the tag is what we are
+// removing.
+func (s *store) walkReferrers(ctx context.Context, recordCID string, referrerType string, walkFn func(*corev1.RecordReferrer, ocispec.Descriptor) error) error {
 	referrersLogger.Debug("Walking referrers from OCI store", "recordCID", recordCID, "type", referrerType)
 
 	if recordCID == "" {
@@ -195,7 +208,7 @@ func (s *store) WalkReferrers(ctx context.Context, recordCID string, referrerTyp
 			}
 
 			// Call the walk function
-			if err := walkFn(referrer); err != nil {
+			if err := walkFn(referrer, referrerDesc); err != nil {
 				walkErr = err
 
 				return err // Stop walking on error
@@ -221,7 +234,7 @@ func (s *store) WalkReferrers(ctx context.Context, recordCID string, referrerTyp
 }
 
 // walkReferrersViaPredecessors walks referrers using the graph Predecessors API.
-func (s *store) walkReferrersViaPredecessors(ctx context.Context, subjectDesc ocispec.Descriptor, recordCID string, matcher ReferrerMatcher, walkFn func(*corev1.RecordReferrer) error) error {
+func (s *store) walkReferrersViaPredecessors(ctx context.Context, subjectDesc ocispec.Descriptor, recordCID string, matcher ReferrerMatcher, walkFn func(*corev1.RecordReferrer, ocispec.Descriptor) error) error {
 	predecessors, err := s.repo.Predecessors(ctx, subjectDesc)
 	if err != nil {
 		return status.Errorf(codes.Internal, "failed to get predecessors for manifest %s: %v", subjectDesc.Digest.String(), err)
@@ -243,7 +256,7 @@ func (s *store) walkReferrersViaPredecessors(ctx context.Context, subjectDesc oc
 			continue
 		}
 
-		if err := walkFn(referrer); err != nil {
+		if err := walkFn(referrer, predDesc); err != nil {
 			return err
 		}
 
@@ -291,10 +304,18 @@ func (s *store) extractReferrerFromManifest(ctx context.Context, manifestDesc oc
 		referrer.Type = ociToAPIType(referrer.GetType())
 	}
 
+	// The CID addresses the referrer blob, so it can be recomputed when the annotation is
+	// absent. Referrers pushed before the annotation existed would otherwise carry no
+	// ReferrerRef, and an empty CID makes deletion and pull-by-CID skip them in silence.
 	referrerCID, ok := manifest.Annotations[ManifestKeyCid]
-	if ok {
-		referrer.ReferrerRef = &corev1.ReferrerRef{Cid: referrerCID}
+	if !ok {
+		referrerCID, err = corev1.ConvertDigestToCID(blobDesc.Digest)
+		if err != nil {
+			return nil, status.Errorf(codes.Internal, "failed to derive referrer CID for record %s: %v", recordCID, err)
+		}
 	}
+
+	referrer.ReferrerRef = &corev1.ReferrerRef{Cid: referrerCID}
 
 	return referrer, nil
 }
@@ -314,27 +335,76 @@ func (s *store) MediaTypeReferrerMatcher(expectedMediaType string) ReferrerMatch
 	}
 }
 
+// DeleteReferrer deletes the referrer identified by referrerCID, or every referrer of
+// referrerType when referrerCID is empty.
 func (s *store) DeleteReferrer(
 	ctx context.Context,
 	recordCID string,
 	referrerCID string,
 	referrerType string,
 ) ([]string, error) {
-	var err error
+	if referrerCID == "" {
+		return s.deleteReferrers(ctx, recordCID, referrerType, func(string) bool { return true })
+	}
 
-	cids := []string{}
+	return s.deleteReferrers(ctx, recordCID, referrerType, func(cid string) bool { return cid == referrerCID })
+}
 
-	err = s.WalkReferrers(
-		ctx,
-		recordCID,
-		referrerType,
-		func(referrer *corev1.RecordReferrer) error {
+// DeleteReferrers deletes the named referrers in a single pass over the record's referrers.
+//
+// Callers that already know which referrers to remove should prefer this to a loop of
+// DeleteReferrer. Every delete needs the referrer's manifest descriptor, which only a walk can
+// supply, so a loop re-walks the entire referrer set once per deletion.
+//
+// An empty referrerCIDs deletes nothing. Deleting every referrer of a type stays an explicit
+// request through DeleteReferrer with an empty CID, so a caller that computed an empty set cannot
+// clear the record by accident.
+func (s *store) DeleteReferrers(
+	ctx context.Context,
+	recordCID string,
+	referrerCIDs []string,
+	referrerType string,
+) ([]string, error) {
+	if len(referrerCIDs) == 0 {
+		return []string{}, nil
+	}
+
+	targets := make(map[string]struct{}, len(referrerCIDs))
+	for _, cid := range referrerCIDs {
+		targets[cid] = struct{}{}
+	}
+
+	return s.deleteReferrers(ctx, recordCID, referrerType, func(cid string) bool {
+		_, ok := targets[cid]
+
+		return ok
+	})
+}
+
+// deleteReferrers walks the record's referrers once and deletes the ones match selects.
+func (s *store) deleteReferrers(
+	ctx context.Context,
+	recordCID string,
+	referrerType string,
+	match func(referrerCID string) bool,
+) ([]string, error) {
+	type target struct {
+		cid  string
+		desc ocispec.Descriptor
+	}
+
+	// Collected during the walk and deleted after it, so deletion does not mutate the referrer
+	// set being iterated.
+	var targets []target
+
+	err := s.walkReferrers(ctx, recordCID, referrerType,
+		func(referrer *corev1.RecordReferrer, desc ocispec.Descriptor) error {
 			cid := referrer.GetReferrerRef().GetCid()
-			if referrerCID != "" && referrerCID != cid {
+			if cid == "" || !match(cid) {
 				return nil
 			}
 
-			cids = append(cids, cid)
+			targets = append(targets, target{cid: cid, desc: desc})
 
 			return nil
 		},
@@ -343,24 +413,15 @@ func (s *store) DeleteReferrer(
 		return nil, err //nolint:wrapcheck
 	}
 
-	result := []string{}
+	deleted := []string{}
 
-	for _, cid := range cids {
-		switch s.repo.(type) {
-		case *oci.Store:
-			err = s.deleteFromOCIStore(ctx, cid)
-		case *remote.Repository:
-			err = s.deleteFromRemoteRepository(ctx, cid)
-		default:
-			err = status.Errorf(codes.FailedPrecondition, "unsupported repo type: %T", s.repo)
+	for _, t := range targets {
+		if err := s.deleteReferrerManifest(ctx, t.cid, t.desc); err != nil {
+			return deleted, err
 		}
 
-		if err != nil {
-			return result, err //nolint:wrapcheck
-		}
-
-		result = append(result, cid)
+		deleted = append(deleted, t.cid)
 	}
 
-	return result, nil
+	return deleted, nil
 }

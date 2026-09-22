@@ -62,21 +62,22 @@ func (d *DB) CountCatalogEntries(opts ...types.CatalogQueryOption) (uint32, erro
 	return uint32(count), nil
 }
 
-type annotationRow struct {
-	Key   string
-	Value string
-}
-
-// ListCatalogTags returns distinct catalog tags derived from OASF skills,
-// domains, and record annotations, sorted lexicographically by label.
+// ListCatalogTags returns distinct catalog tags derived from OASF skills and
+// domains, sorted lexicographically by label.
+//
+// The distinct values come from the same helper backing SearchService's
+// ListFilterValues, so both surfaces agree on which values the registry holds;
+// this function only re-encodes them into the catalog's id/label vocabulary.
+//
+// Record annotations are deliberately not tags. They are free-form
+// per-deployment metadata with unbounded cardinality, which makes them noise in
+// a discovery panel. They remain filterable via tag filters for callers that
+// already know their own annotation keys.
 func (d *DB) ListCatalogTags() ([]*catalogv1.CatalogTag, error) {
 	var tags []*catalogv1.CatalogTag
 
-	var skillNames []string
-	if err := d.gormDB.
-		Model(&Skill{}).
-		Distinct().
-		Pluck("name", &skillNames).Error; err != nil {
+	skillNames, err := d.distinctColumn(&Skill{}, "name")
+	if err != nil {
 		return nil, fmt.Errorf("list skill tags: %w", err)
 	}
 
@@ -87,11 +88,8 @@ func (d *DB) ListCatalogTags() ([]*catalogv1.CatalogTag, error) {
 		})
 	}
 
-	var domainNames []string
-	if err := d.gormDB.
-		Model(&Domain{}).
-		Distinct().
-		Pluck("name", &domainNames).Error; err != nil {
+	domainNames, err := d.distinctColumn(&Domain{}, "name")
+	if err != nil {
 		return nil, fmt.Errorf("list domain tags: %w", err)
 	}
 
@@ -99,22 +97,6 @@ func (d *DB) ListCatalogTags() ([]*catalogv1.CatalogTag, error) {
 		tags = append(tags, &catalogv1.CatalogTag{
 			Id:    catalogv1.DomainTag("*", domainName),
 			Label: catalogv1.TagLabel(domainName),
-		})
-	}
-
-	var annotationRows []annotationRow
-	if err := d.gormDB.
-		Table("annotations").
-		Select("annotations.key, annotations.value").
-		Distinct().
-		Scan(&annotationRows).Error; err != nil {
-		return nil, fmt.Errorf("list annotation tags: %w", err)
-	}
-
-	for _, row := range annotationRows {
-		tags = append(tags, &catalogv1.CatalogTag{
-			Id:    catalogv1.AnnotationTag(row.Key, row.Value),
-			Label: catalogv1.AnnotationLabel(row.Key, row.Value),
 		})
 	}
 

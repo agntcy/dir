@@ -25,13 +25,18 @@ on:
         type: string
         default: ""
 
+permissions:
+  contents: read
+
 jobs:
   docs:
     name: Docs (${{ inputs.mode }})
     runs-on: ubuntu-latest
-    # GITHUB_TOKEN permissions are controlled by the caller:
-    #   docs-ci.yaml  -> contents: read (lint/build only)
-    #   docs-deploy.yml deploy job -> contents: write (mike --push, root files)
+    # Write is unused in mode=ci. Callers that deploy (docs-deploy.yml) must
+    # grant contents: write on the calling job; docs-ci.yaml also grants it so
+    # this job's declared permissions stay within the caller's allowance.
+    permissions:
+      contents: write
     steps:
       - name: Checkout code
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0

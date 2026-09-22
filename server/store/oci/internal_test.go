@@ -63,7 +63,7 @@ func TestIsReady_RemoteRegistry(t *testing.T) {
 			cfg := ociconfig.Config{
 				RegistryAddress: strings.TrimPrefix(srv.URL, "http://"),
 				RepositoryName:  "dir",
-				AuthConfig:      ociconfig.AuthConfig{Insecure: true},
+				Insecure:        true,
 			}
 
 			repo, err := NewORASRepository(cfg)

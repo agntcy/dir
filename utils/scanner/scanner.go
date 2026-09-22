@@ -134,8 +134,7 @@ func ClassifyError(ctx context.Context, err error) FailureReason {
 		return FailureScannerUnavailable
 	}
 
-	var exitErr *exec.ExitError
-	if errors.As(err, &exitErr) {
+	if exitErr, ok := errors.AsType[*exec.ExitError](err); ok {
 		// -1 means terminated by a signal. Preferred over syscall.WaitStatus,
 		// which is not portable.
 		if exitErr.ExitCode() == -1 {
@@ -147,8 +146,7 @@ func ClassifyError(ctx context.Context, err error) FailureReason {
 
 	// A binary that could not be started at all, beyond the ErrNotFound case
 	// handled above.
-	var startErr *exec.Error
-	if errors.As(err, &startErr) {
+	if _, ok := errors.AsType[*exec.Error](err); ok {
 		return FailureScannerUnavailable
 	}
 

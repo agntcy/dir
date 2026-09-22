@@ -26,9 +26,10 @@ type mcpServer struct {
 
 // Artifacts is the set of installable artifacts derived from a record's modules.
 type Artifacts struct {
-	slug        string // sanitized record name; skill folder/file + block marker id
-	skill       string // canonical SKILL.md content for single-file skill targets
-	skillBundle []byte // gzip skill bundle when the record stores application/agent-skills+gzip
+	slug        string   // sanitized record name; skill folder/file + block marker id
+	skill       string   // canonical SKILL.md content for single-file skill targets
+	skillBundle []byte   // gzip skill bundle when the record stores application/agent-skills+gzip
+	skillFiles  []string // bundle file list, relative to the installed skill folder
 	mcpServers  []mcpServer
 }
 
@@ -128,6 +129,17 @@ func deriveSkillArtifacts(record *corev1.Record, arts *Artifacts) error {
 		}
 
 		arts.skill = md
+
+		// Listed once here, where a malformed bundle can still be reported as an
+		// error, so SkillFiles stays a plain accessor. The install manifest
+		// records the list so that a later manifest-driven uninstall or upgrade
+		// can remove exactly these files.
+		files, err := exportfmt.SkillBundleFiles(out)
+		if err != nil {
+			return fmt.Errorf("list skill bundle files: %w", err)
+		}
+
+		arts.skillFiles = files
 
 		return nil
 	}

@@ -10,11 +10,17 @@ import (
 
 	enricherconfig "github.com/agntcy/dir-importer/enricher/config"
 	extractor "github.com/agntcy/dir/utils/extractor"
+	sdk "github.com/agntcy/oasf-sdk/pkg/extractor"
 )
 
 // extractTimeout bounds a single Extract call so a hung or unreachable remote
 // extractor server can't stall the import indefinitely.
 const extractTimeout = 30 * time.Second
+
+// enrichMaxClasses is the maximum number of skills and of domains written onto
+// an imported record. Typical imports already land in the 2–6 range; this is
+// the safety bound for a flat high-score plateau.
+const enrichMaxClasses = 10
 
 // oasfExtractorAdapter adapts a utils/extractor.Extractor to
 // enricherconfig.RecordExtractor so the import pipeline can enrich records with
@@ -40,15 +46,21 @@ func (a *oasfExtractorAdapter) Extract(ctx context.Context, text string) (enrich
 		return enricherconfig.ExtractResult{}, fmt.Errorf("extract taxonomy: %w", err)
 	}
 
-	skills := make([]enricherconfig.TaxonomyClass, len(result.Skills))
-	for i, s := range result.Skills {
-		skills[i] = enricherconfig.TaxonomyClass{ID: uint32(s.ID), Name: s.Name} //nolint:gosec
+	return enricherconfig.ExtractResult{
+		Skills:  toTaxonomyClasses(result.Skills),
+		Domains: toTaxonomyClasses(result.Domains),
+	}, nil
+}
+
+func toTaxonomyClasses(in []sdk.ScoredClass) []enricherconfig.TaxonomyClass {
+	if len(in) > enrichMaxClasses {
+		in = in[:enrichMaxClasses]
 	}
 
-	domains := make([]enricherconfig.TaxonomyClass, len(result.Domains))
-	for i, d := range result.Domains {
-		domains[i] = enricherconfig.TaxonomyClass{ID: uint32(d.ID), Name: d.Name} //nolint:gosec
+	out := make([]enricherconfig.TaxonomyClass, len(in))
+	for i, c := range in {
+		out[i] = enricherconfig.TaxonomyClass{ID: uint32(c.ID), Name: c.Name} //nolint:gosec
 	}
 
-	return enricherconfig.ExtractResult{Skills: skills, Domains: domains}, nil
+	return out
 }

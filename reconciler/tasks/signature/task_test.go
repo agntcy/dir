@@ -14,6 +14,7 @@ import (
 	coretypes "github.com/agntcy/dir/api/core/types"
 	corev1 "github.com/agntcy/dir/api/core/v1"
 	routingv1 "github.com/agntcy/dir/api/routing/v1"
+	searchv1 "github.com/agntcy/dir/api/search/v1"
 	signv1 "github.com/agntcy/dir/api/sign/v1"
 	storev1 "github.com/agntcy/dir/api/store/v1"
 	"github.com/agntcy/dir/client/utils/verify"
@@ -204,6 +205,10 @@ func (f *fakeSignatureDB) CountRecords(opts ...types.FilterOption) (uint32, erro
 	return 0, nil
 }
 
+func (f *fakeSignatureDB) ListFilterValues(fields []searchv1.RecordQueryType) ([]types.FilterFieldValues, error) {
+	return nil, nil
+}
+
 func (f *fakeSignatureDB) GetRecords(opts ...types.FilterOption) ([]coretypes.Record, error) {
 	return nil, nil
 }
@@ -225,8 +230,11 @@ func (f *fakeSignatureDB) SetRecordSigned(recordCID string) error { return nil }
 func (f *fakeSignatureDB) CreateSync(remoteURL string, cids []string, remoteRegistryURL string, repositoryName string) (string, error) {
 	return "", nil
 }
-func (f *fakeSignatureDB) GetSyncByID(syncID string) (types.SyncObject, error)    { return nil, nil }
+
+func (f *fakeSignatureDB) GetSyncByID(syncID string) (types.SyncObject, error) { return nil, nil }
+
 func (f *fakeSignatureDB) GetSyncs(offset, limit int) ([]types.SyncObject, error) { return nil, nil }
+
 func (f *fakeSignatureDB) GetSyncsByStatus(status storev1.SyncStatus) ([]types.SyncObject, error) {
 	return nil, nil
 }

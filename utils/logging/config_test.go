@@ -14,6 +14,7 @@ func TestLoadConfigWithDefaults(t *testing.T) {
 	os.Unsetenv("DIRECTORY_LOGGER_LOG_FILE")
 	os.Unsetenv("DIRECTORY_LOGGER_LOG_LEVEL")
 	os.Unsetenv("DIRECTORY_LOGGER_LOG_FORMAT")
+	os.Unsetenv("DIRECTORY_LOGGER_LOG_STREAM")
 
 	cfg, err := LoadConfig()
 	if err != nil {
@@ -32,6 +33,30 @@ func TestLoadConfigWithDefaults(t *testing.T) {
 	if cfg.LogFile != "" {
 		t.Errorf("Expected LogFile='', got: %s", cfg.LogFile)
 	}
+
+	if cfg.LogStream != "" {
+		t.Errorf("Expected LogStream='' (use binary default), got: %s", cfg.LogStream)
+	}
+}
+
+// TestLoadConfigLogStreamValues verifies DIRECTORY_LOGGER_LOG_STREAM loads through
+// unchanged for each supported value (unset stays empty - see TestLoadConfigWithDefaults
+// for why that matters).
+func TestLoadConfigLogStreamValues(t *testing.T) {
+	for _, stream := range []string{"stdout", "stderr"} {
+		t.Run(stream, func(t *testing.T) {
+			t.Setenv("DIRECTORY_LOGGER_LOG_STREAM", stream)
+
+			cfg, err := LoadConfig()
+			if err != nil {
+				t.Fatalf("LoadConfig() failed: %v", err)
+			}
+
+			if cfg.LogStream != stream {
+				t.Errorf("Expected LogStream=%s, got: %s", stream, cfg.LogStream)
+			}
+		})
+	}
 }
 
 // TestLoadConfigWithEnvVars verifies environment variable configuration.
@@ -40,6 +65,7 @@ func TestLoadConfigWithEnvVars(t *testing.T) {
 	t.Setenv("DIRECTORY_LOGGER_LOG_FILE", "/tmp/test.log")
 	t.Setenv("DIRECTORY_LOGGER_LOG_LEVEL", "DEBUG")
 	t.Setenv("DIRECTORY_LOGGER_LOG_FORMAT", "json")
+	t.Setenv("DIRECTORY_LOGGER_LOG_STREAM", "stderr")
 
 	cfg, err := LoadConfig()
 	if err != nil {
@@ -57,6 +83,10 @@ func TestLoadConfigWithEnvVars(t *testing.T) {
 
 	if cfg.LogFormat != "json" {
 		t.Errorf("Expected LogFormat='json', got: %s", cfg.LogFormat)
+	}
+
+	if cfg.LogStream != "stderr" {
+		t.Errorf("Expected LogStream='stderr', got: %s", cfg.LogStream)
 	}
 }
 
@@ -157,6 +187,7 @@ func TestConfigJSONMarshaling(t *testing.T) {
 		LogFile:   "/var/log/app.log",
 		LogLevel:  "INFO",
 		LogFormat: "json",
+		LogStream: "stdout",
 	}
 
 	// Just verify the struct is valid and fields are accessible
@@ -170,6 +201,10 @@ func TestConfigJSONMarshaling(t *testing.T) {
 
 	if cfg.LogFormat != "json" {
 		t.Errorf("LogFormat mismatch")
+	}
+
+	if cfg.LogStream != "stdout" {
+		t.Errorf("LogStream mismatch")
 	}
 }
 

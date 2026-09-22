@@ -5,7 +5,6 @@ package local
 
 import (
 	"context"
-	"io"
 	"net/http"
 	"net/url"
 	"os"
@@ -97,21 +96,7 @@ var _ = ginkgo.Describe("AI Finder ListAgents HTTP API", func() {
 // getAgents issues GET /v1/agents against the deployed HTTP gateway and
 // returns the status code and response body.
 func getAgents(ctx context.Context, rawQuery string) (int, string) {
-	target := testEnv.Config.GatewayAddress + "/v1/agents"
-	if rawQuery != "" {
-		target += "?" + rawQuery
-	}
+	ginkgo.GinkgoHelper()
 
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, target, nil)
-	gomega.Expect(err).NotTo(gomega.HaveOccurred())
-
-	resp, err := http.DefaultClient.Do(req)
-	gomega.Expect(err).NotTo(gomega.HaveOccurred())
-
-	defer func() { _ = resp.Body.Close() }()
-
-	body, err := io.ReadAll(resp.Body)
-	gomega.Expect(err).NotTo(gomega.HaveOccurred())
-
-	return resp.StatusCode, string(body)
+	return gatewayGet(ctx, "/v1/agents", rawQuery)
 }

@@ -434,6 +434,78 @@ func TestSkillMarkdownFromArchive(t *testing.T) {
 	assert.Equal(t, string(plain), md)
 }
 
+func TestSkillBundleFiles(t *testing.T) {
+	t.Run("lists a bundle's regular files in archive order", func(t *testing.T) {
+		var buf bytes.Buffer
+
+		gzw := gzip.NewWriter(&buf)
+		tw := tar.NewWriter(gzw)
+
+		require.NoError(t, tw.WriteHeader(&tar.Header{
+			Name: "references/", Mode: 0o755, Typeflag: tar.TypeDir,
+		}))
+
+		for _, name := range []string{"SKILL.md", "references/api.md"} {
+			content := []byte("body of " + name)
+			require.NoError(t, tw.WriteHeader(&tar.Header{
+				Name: name, Mode: 0o600, Size: int64(len(content)), Typeflag: tar.TypeReg,
+			}))
+			_, err := tw.Write(content)
+			require.NoError(t, err)
+		}
+
+		require.NoError(t, tw.Close())
+		require.NoError(t, gzw.Close())
+
+		files, err := exportfmt.SkillBundleFiles(buf.Bytes())
+		require.NoError(t, err)
+		// The directory entry is not a file, so it is not listed.
+		assert.Equal(t, []string{"SKILL.md", filepath.Join("references", "api.md")}, files)
+	})
+
+	t.Run("reports the one file a plain SKILL.md artifact extracts to", func(t *testing.T) {
+		files, err := exportfmt.SkillBundleFiles([]byte("---\nname: plain\n---\n"))
+		require.NoError(t, err)
+		assert.Equal(t, []string{"SKILL.md"}, files)
+	})
+
+	t.Run("rejects an empty archive", func(t *testing.T) {
+		_, err := exportfmt.SkillBundleFiles(nil)
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "empty")
+	})
+
+	t.Run("rejects a bundle with no regular files", func(t *testing.T) {
+		var buf bytes.Buffer
+
+		gzw := gzip.NewWriter(&buf)
+		tw := tar.NewWriter(gzw)
+		require.NoError(t, tw.WriteHeader(&tar.Header{Name: "refs/", Mode: 0o755, Typeflag: tar.TypeDir}))
+		require.NoError(t, tw.Close())
+		require.NoError(t, gzw.Close())
+
+		_, err := exportfmt.SkillBundleFiles(buf.Bytes())
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "no regular files")
+	})
+
+	t.Run("rejects a path that escapes the extraction directory", func(t *testing.T) {
+		var buf bytes.Buffer
+
+		gzw := gzip.NewWriter(&buf)
+		tw := tar.NewWriter(gzw)
+		require.NoError(t, tw.WriteHeader(&tar.Header{
+			Name: "../escape.txt", Mode: 0o600, Size: 0, Typeflag: tar.TypeReg,
+		}))
+		require.NoError(t, tw.Close())
+		require.NoError(t, gzw.Close())
+
+		_, err := exportfmt.SkillBundleFiles(buf.Bytes())
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "non-local")
+	})
+}
+
 func TestSkillBundleMatchesDir(t *testing.T) {
 	archive, err := base64.StdEncoding.DecodeString(skillBundleArchiveBase64(t))
 	require.NoError(t, err)

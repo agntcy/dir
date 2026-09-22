@@ -98,6 +98,14 @@ vars:
   GOCOVERDIR: "{{.COVERAGE_DIR}}/e2e/.gocover"
 
 tasks:
+  e2e:deps:kind:
+    desc: Install Kind test tools and build locked Helm dependencies
+    deps:
+      - deps:kind
+      - deps:kubectl
+    cmds:
+      - task: helm:dep:build
+
   e2e:testenv:*:*:up:
     desc: Create testenv for a test case
     silent: true

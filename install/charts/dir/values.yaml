@@ -130,6 +130,17 @@ apiserver:
     p,*,/agntcy.dir.store.v1.StoreService/Lookup
     p,*,/agntcy.dir.sync.v1.SyncService/RequestRegistryCredentials
 
+  # File-based content policies (OPA/Rego). Each key is a filename mounted at
+  # config.policy.dir. Not part of the server config struct.
+  #
+  # Example:
+  #   content_policies:
+  #     require-annotations.rego: |
+  #       package dir.policy.require_annotations
+  #
+  #       default allow := true
+  content_policies: {}
+
   # Server configuration (maps directly to server config.go Config struct)
   config:
     # listen_address: "0.0.0.0:8888"
@@ -157,6 +168,11 @@ apiserver:
 
       # Path to the authorization policy file
       enforcer_policy_file_path: "/etc/agntcy/dir/authz_policies.csv"
+
+    # File-based content policies. Files from content_policies are mounted here.
+    policy:
+      enabled: false
+      dir: "/etc/agntcy/dir/policies"
 
     # Store settings for the storage backend.
     store:
@@ -666,7 +682,7 @@ apiserver:
       repository: bitnami/postgresql
       # renovate: datasource=docker depName=docker.io/bitnami/postgresql versioning=docker
       tag: latest
-      digest: "sha256:7b9c5292a8e8b38e7172705cc6e49e34b9a8d9c297c4c7ae04130a3e6a28f3b0"
+      digest: "sha256:7d77a46bbf200709237318c27dec0eaeae2520e403dd18fdebde2be7a6b04993"
     auth:
       username: "dir"
       password: "password"  # Default password for development

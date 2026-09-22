@@ -254,10 +254,62 @@ func TestRunInstallDedupesSharedSkillPath(t *testing.T) {
 
 	outcomes := Install(env, arts, agents, agentcfg.Global, false)
 
-	// Both agents resolve to the same skills path, so dedupeSkill collapses the
-	// shared target to a single skill outcome.
-	require.Len(t, outcomes, 1)
-	require.Equal(t, "skill", outcomes[0].Artifact)
+	// Both agents resolve to the same skills path, so the skill is written once.
+	// The second agent is still served by it, so it reports an outcome naming
+	// the same path, which is what gives it a manifest row of its own.
+	require.Len(t, outcomes, 2)
+	require.Equal(t, agentcfg.ArtifactSkill, outcomes[0].Artifact)
+	require.Equal(t, agentcfg.ActionAdded, outcomes[0].Action)
+	require.Equal(t, "Claude Code", outcomes[0].Agent)
+
+	require.Equal(t, agentcfg.ArtifactSkill, outcomes[1].Artifact)
+	require.Equal(t, agentcfg.ActionUnchanged, outcomes[1].Action)
+	require.Equal(t, "Claude Desktop", outcomes[1].Agent)
+	require.Equal(t, outcomes[0].Path, outcomes[1].Path)
+	require.Contains(t, outcomes[1].Reason, "shared skill location")
+
+	// The file is written exactly once, not once per agent.
+	require.FileExists(t, outcomes[0].Path)
+}
+
+func TestRunUninstallReportsTheSharedSkillForBothAgents(t *testing.T) {
+	home := t.TempDir()
+	env := agentcfg.Env{Home: home, GOOS: "linux", Cwd: home}
+
+	var claudeCode, claudeDesktop *agentcfg.SkillTarget
+
+	for _, a := range agentcfg.Registry() {
+		switch a.ID {
+		case claudeCodeID:
+			claudeCode = a.Skill
+		case "claude-desktop":
+			claudeDesktop = a.Skill
+		}
+	}
+
+	require.NotNil(t, claudeCode)
+	require.NotNil(t, claudeDesktop)
+
+	arts := Artifacts{
+		slug:  "code-review",
+		skill: "---\nname: code-review\ndescription: x\n---\n\nbody\n",
+	}
+	agents := []agentcfg.Agent{
+		{Name: "Claude Code", Skill: claudeCode},
+		{Name: "Claude Desktop", Skill: claudeDesktop},
+	}
+
+	require.Len(t, Install(env, arts, agents, agentcfg.Global, false), 2)
+
+	outcomes := Uninstall(env, arts, agents, agentcfg.Global, false)
+
+	// Removed once, reported for both, so both rows can be cleared.
+	require.Len(t, outcomes, 2)
+	require.Equal(t, agentcfg.ActionRemoved, outcomes[0].Action)
+	require.Equal(t, agentcfg.ActionUnchanged, outcomes[1].Action)
+
+	require.True(t, Cleared(agentcfg.Agent{ID: claudeCodeID, Name: "Claude Code"}, outcomes))
+	require.True(t, Cleared(agentcfg.Agent{ID: "claude-desktop", Name: "Claude Desktop"}, outcomes))
 }
 
 func TestRunInstallWritesSkillBundle(t *testing.T) {

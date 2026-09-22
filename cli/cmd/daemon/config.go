@@ -86,6 +86,12 @@ func registerServerDefaults(v *viper.Viper) {
 
 	_ = v.BindEnv("server.extractor.oasf_url")
 	v.SetDefault("server.extractor.oasf_url", "")
+
+	_ = v.BindEnv("server.policy.enabled")
+	v.SetDefault("server.policy.enabled", false)
+
+	_ = v.BindEnv("server.policy.dir")
+	v.SetDefault("server.policy.dir", "policies")
 }
 
 func registerReconcilerDefaults(v *viper.Viper) {
@@ -222,4 +228,5 @@ func resolveRelativePaths(cfg *DaemonConfig) {
 	cfg.Server.Routing.KeyPath = resolve(cfg.Server.Routing.KeyPath)
 	cfg.Server.Routing.DatastoreDir = resolve(cfg.Server.Routing.DatastoreDir)
 	cfg.Server.Database.SQLite.Path = resolve(cfg.Server.Database.SQLite.Path)
+	cfg.Server.Policy.Dir = resolve(cfg.Server.Policy.Dir)
 }

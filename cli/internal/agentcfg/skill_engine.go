@@ -21,17 +21,20 @@ const skillFilePerm = 0o644
 // strategy, at the requested scope (global or project). It is idempotent:
 // identical content reports ActionUnchanged. When the agent has no location for
 // the requested scope, it reports ActionSkipped with a reason.
+//
+// Under the folder strategy the whole folder is the artifact, not the file
+// inside it — see installSkillFolder.
 func InstallSkill(target *SkillTarget, env Env, slug, canonical string, scope Scope, dryRun bool) (Outcome, error) {
 	path, err := resolveSkillTargetPath(target, env, slug, scope)
 	if errors.Is(err, ErrNoScopePath) {
-		return skipScopeOutcome("skill", scope), nil
+		return skipScopeOutcome(ArtifactSkill, scope), nil
 	}
 
 	if err != nil {
-		return Outcome{Artifact: "skill", Action: ActionFailed, Err: err}, err
+		return Outcome{Artifact: ArtifactSkill, Action: ActionFailed, Err: err}, err
 	}
 
-	outcome := Outcome{Artifact: "skill", Path: path}
+	outcome := Outcome{Artifact: ArtifactSkill, Path: path}
 
 	desired, err := renderForTarget(target, slug, canonical, path)
 	if err != nil {
@@ -60,6 +63,8 @@ func InstallSkill(target *SkillTarget, env Env, slug, canonical string, scope Sc
 		} else {
 			outcome.Action = ActionAdded
 		}
+	case target.Strategy == SkillFolder:
+		return installSkillFolder(outcome, path, desired, existing, existed, dryRun)
 	case !existed:
 		outcome.Action = ActionAdded
 	case bytes.Equal(existing, desired):
@@ -86,16 +91,16 @@ func InstallSkill(target *SkillTarget, env Env, slug, canonical string, scope Sc
 func InstallSkillBundle(target *SkillTarget, env Env, slug string, archive []byte, scope Scope, dryRun bool) (Outcome, error) {
 	path, err := resolveSkillTargetPath(target, env, slug, scope)
 	if errors.Is(err, ErrNoScopePath) {
-		return skipScopeOutcome("skill", scope), nil
+		return skipScopeOutcome(ArtifactSkill, scope), nil
 	}
 
 	if err != nil {
-		return Outcome{Artifact: "skill", Action: ActionFailed, Err: err}, err
+		return Outcome{Artifact: ArtifactSkill, Action: ActionFailed, Err: err}, err
 	}
 
 	destDir := filepath.Dir(path)
 
-	outcome := Outcome{Artifact: "skill", Path: destDir}
+	outcome := Outcome{Artifact: ArtifactSkill, Path: destDir}
 
 	matches, err := exportfmt.SkillBundleMatchesDir(archive, destDir)
 	if err != nil {
@@ -133,14 +138,14 @@ func InstallSkillBundle(target *SkillTarget, env Env, slug string, archive []byt
 func RemoveSkill(target *SkillTarget, env Env, slug string, scope Scope, dryRun bool) (Outcome, error) {
 	path, err := resolveSkillTargetPath(target, env, slug, scope)
 	if errors.Is(err, ErrNoScopePath) {
-		return skipScopeOutcome("skill", scope), nil
+		return skipScopeOutcome(ArtifactSkill, scope), nil
 	}
 
 	if err != nil {
-		return Outcome{Artifact: "skill", Action: ActionFailed, Err: err}, err
+		return Outcome{Artifact: ArtifactSkill, Action: ActionFailed, Err: err}, err
 	}
 
-	outcome := Outcome{Artifact: "skill", Path: path}
+	outcome := Outcome{Artifact: ArtifactSkill, Path: path}
 
 	switch target.Strategy {
 	case SkillFolder:
@@ -152,6 +157,73 @@ func RemoveSkill(target *SkillTarget, env Env, slug string, scope Scope, dryRun 
 	default:
 		return removeSkillFile(outcome, path, dryRun)
 	}
+}
+
+// installSkillFolder writes a single-file skill into the folder dirctl owns for
+// it, and leaves that folder holding nothing else.
+//
+// The folder is named after the record and is dirctl's alone, which is the same
+// rule InstallSkillBundle already follows by replacing the directory outright.
+// Writing only the one file would be too little: a record that shipped a bundle
+// in v1 and a plain SKILL.md in v2 would leave v1's references/ orphaned for
+// good, because nothing afterwards ever looks at the rest of the folder. For
+// the same reason an otherwise-identical SKILL.md is only "unchanged" when the
+// folder holds nothing beside it.
+func installSkillFolder(outcome Outcome, path string, desired, existing []byte, existed, dryRun bool) (Outcome, error) {
+	dir := filepath.Dir(path)
+
+	strays, err := holdsOtherFiles(dir, filepath.Base(path))
+	if err != nil {
+		return failOutcome(outcome, err)
+	}
+
+	switch {
+	case !existed:
+		outcome.Action = ActionAdded
+	case bytes.Equal(existing, desired) && !strays:
+		outcome.Action = ActionUnchanged
+
+		return outcome, nil
+	default:
+		outcome.Action = ActionUpdated
+	}
+
+	if dryRun {
+		return outcome, nil
+	}
+
+	// Replace the folder rather than the file, so nothing an earlier version of
+	// this package left in it survives.
+	if err := os.RemoveAll(dir); err != nil {
+		return failOutcome(outcome, fmt.Errorf("clear skill folder %s: %w", dir, err))
+	}
+
+	if err := fsutil.WriteAtomic(path, desired, fsutil.WriteOptions{FileMode: skillFilePerm}); err != nil {
+		return failOutcome(outcome, fmt.Errorf("write skill %s: %w", path, err))
+	}
+
+	return outcome, nil
+}
+
+// holdsOtherFiles reports whether dir contains anything but a plain file named
+// keep. A missing directory holds nothing.
+func holdsOtherFiles(dir, keep string) (bool, error) {
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return false, nil
+		}
+
+		return false, fmt.Errorf("read skill folder %s: %w", dir, err)
+	}
+
+	for _, entry := range entries {
+		if entry.IsDir() || entry.Name() != keep {
+			return true, nil
+		}
+	}
+
+	return false, nil
 }
 
 // renderForTarget produces the on-disk bytes for the target strategy.
