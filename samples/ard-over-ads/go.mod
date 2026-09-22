@@ -17,9 +17,9 @@ replace github.com/ThalesIgnite/crypto11 => github.com/eclipse-keypont/crypto11 
 
 require (
 	buf.build/gen/go/agntcy/oasf/protocolbuffers/go v1.36.12-20260831083722-3438c6a1c7eb.2
-	github.com/agntcy/dir/api v1.7.0
+	github.com/agntcy/dir/api v1.7.1
 	github.com/agntcy/dir/cli v1.7.0
-	github.com/agntcy/dir/client v1.7.0
+	github.com/agntcy/dir/client v1.7.1
 	github.com/opencontainers/go-digest v1.0.0
 	github.com/sigstore/cosign/v3 v3.1.3
 	google.golang.org/protobuf v1.36.12
@@ -86,7 +86,7 @@ require (
 	github.com/agntcy/dir-runtime/utils v1.3.5 // indirect
 	github.com/agntcy/dir/reconciler v1.7.0 // indirect
 	github.com/agntcy/dir/server v1.7.0 // indirect
-	github.com/agntcy/dir/utils v1.7.0 // indirect
+	github.com/agntcy/dir/utils v1.7.1 // indirect
 	github.com/agntcy/oasf-sdk/pkg v1.3.1-0.20260910081500-f0c6172a010a // indirect
 	github.com/alecthomas/chroma v0.10.0 // indirect
 	github.com/anchore/go-struct-converter v0.1.0 // indirect
@@ -591,24 +591,24 @@ require (
 	go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc v0.70.0 // indirect
 	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.70.0 // indirect
 	go.opentelemetry.io/otel v1.45.0 // indirect
-	go.opentelemetry.io/otel/exporters/otlp/otlplog/otlploggrpc v0.19.0 // indirect
-	go.opentelemetry.io/otel/exporters/otlp/otlplog/otlploghttp v0.19.0 // indirect
+	go.opentelemetry.io/otel/exporters/otlp/otlplog/otlploggrpc v0.21.0 // indirect
+	go.opentelemetry.io/otel/exporters/otlp/otlplog/otlploghttp v0.21.0 // indirect
 	go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetricgrpc v1.44.0 // indirect
 	go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetrichttp v1.44.0 // indirect
-	go.opentelemetry.io/otel/exporters/otlp/otlptrace v1.44.0 // indirect
-	go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc v1.44.0 // indirect
-	go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp v1.44.0 // indirect
+	go.opentelemetry.io/otel/exporters/otlp/otlptrace v1.45.0 // indirect
+	go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc v1.45.0 // indirect
+	go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp v1.45.0 // indirect
 	go.opentelemetry.io/otel/exporters/prometheus v0.66.0 // indirect
-	go.opentelemetry.io/otel/exporters/stdout/stdoutlog v0.19.0 // indirect
+	go.opentelemetry.io/otel/exporters/stdout/stdoutlog v0.21.0 // indirect
 	go.opentelemetry.io/otel/exporters/stdout/stdoutmetric v1.43.0 // indirect
 	go.opentelemetry.io/otel/exporters/stdout/stdouttrace v1.45.0 // indirect
-	go.opentelemetry.io/otel/log v0.19.0 // indirect
+	go.opentelemetry.io/otel/log v0.21.0 // indirect
 	go.opentelemetry.io/otel/metric v1.45.0 // indirect
 	go.opentelemetry.io/otel/sdk v1.45.0 // indirect
-	go.opentelemetry.io/otel/sdk/log v0.19.0 // indirect
+	go.opentelemetry.io/otel/sdk/log v0.21.0 // indirect
 	go.opentelemetry.io/otel/sdk/metric v1.45.0 // indirect
 	go.opentelemetry.io/otel/trace v1.45.0 // indirect
-	go.opentelemetry.io/proto/otlp v1.10.0 // indirect
+	go.opentelemetry.io/proto/otlp v1.11.0 // indirect
 	go.uber.org/atomic v1.11.0 // indirect
 	go.uber.org/dig v1.19.0 // indirect
 	go.uber.org/fx v1.24.0 // indirect
