@@ -80,7 +80,7 @@ export interface SuggestedTag {
 export interface CatalogEntry {
 	identifier: string;
 	displayName: string;
-	mediaType: string;
+	type: string;
 	data?: EntryData;
 	version?: string;
 	description?: string;
@@ -99,7 +99,7 @@ export interface EntryData {
 export interface SubEntry {
 	identifier?: string;
 	displayName?: string;
-	mediaType?: string;
+	type?: string;
 	version?: string;
 	data?: Record<string, unknown>;
 }

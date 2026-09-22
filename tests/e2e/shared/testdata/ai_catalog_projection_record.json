@@ -1,0 +1,91 @@
+{
+  "name": "ai_catalog_sdk_projection_record",
+  "schema_version": "1.0.0",
+  "version": "1.0.0",
+  "description": "A dedicated record for AI Catalog SDK projection tests",
+  "authors": [
+    "AI Catalog SDK E2E"
+  ],
+  "created_at": "2025-01-01T00:00:00Z",
+  "skills": [
+    {
+      "name": "natural_language_processing/natural_language_understanding/contextual_comprehension",
+      "id": 10101
+    }
+  ],
+  "locators": [
+    {
+      "type": "container_image",
+      "urls": [
+        "https://ghcr.io/agntcy/ai-catalog-sdk-projection-record"
+      ]
+    }
+  ],
+  "modules": [
+    {
+      "name": "integration/mcp",
+      "data": {
+        "name": "ai-catalog-sdk-mcp-server",
+        "connections": [
+          {
+            "type": "stdio",
+            "command": "docker",
+            "args": [
+              "run",
+              "-i",
+              "--rm",
+              "ai-catalog-sdk-mcp-server"
+            ],
+            "env_vars": []
+          }
+        ]
+      }
+    },
+    {
+      "name": "integration/a2a",
+      "data": {
+        "card_data": {
+          "protocolVersions": [
+            "0.2.6"
+          ],
+          "name": "ai_catalog_sdk_projection_record",
+          "description": "A dedicated AI Catalog SDK projection fixture",
+          "supportedInterfaces": [
+            {
+              "url": "https://ai-catalog-sdk-projection.example.com",
+              "protocolBinding": "HTTP+JSON"
+            }
+          ],
+          "provider": {
+            "url": "https://example.com",
+            "organization": "AI Catalog SDK E2E"
+          },
+          "version": "1.0.0",
+          "capabilities": {
+            "streaming": true
+          },
+          "defaultInputModes": [
+            "text"
+          ],
+          "defaultOutputModes": [
+            "text"
+          ],
+          "skills": [
+            {
+              "id": "catalog_projection_test",
+              "name": "Catalog Projection Test",
+              "description": "Tests AI Catalog SDK projection",
+              "tags": [
+                "ai-catalog-sdk"
+              ],
+              "examples": [
+                "Validate this AI Catalog projection"
+              ]
+            }
+          ]
+        },
+        "card_schema_version": "v1.0.0"
+      }
+    }
+  ]
+}
