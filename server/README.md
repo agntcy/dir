@@ -4,34 +4,22 @@
 
 The Directory server supports configuration via environment variables, YAML configuration files, or both. Environment variables follow the `DIRECTORY_SERVER_` prefix convention.
 
-### OASF Validation Configuration
+### Record validators
 
-The server validates all records server-side. Records are validated using the configured OASF schema URL.
-
-- **`oasf_api_validation.schema_url`** / **`DIRECTORY_SERVER_OASF_API_VALIDATION_SCHEMA_URL`** - OASF schema URL for API-based validation (required)
-  - **Default**: `https://schema.oasf.outshift.com`
-  - URL of the OASF server to use for validation
-  - This affects all record validation operations including push, sync, and import
-
-**Example with environment variables:**
-```bash
-# Use default OASF API validator
-./dirctl-apiserver
-
-# Use custom OASF server
-DIRECTORY_SERVER_OASF_API_VALIDATION_SCHEMA_URL=http://localhost:8080 ./dirctl-apiserver
-
-# Use custom OASF server
-DIRECTORY_SERVER_OASF_API_VALIDATION_SCHEMA_URL="http://localhost:8080" ./dirctl-apiserver
-```
+Record validation is configured as a YAML list. Each entry names a provider, the operations it runs on (`push`, `autosync`, `index`), and a provider-specific `config`. An empty list disables record validation. This list cannot be set via environment variables.
 
 **Example with YAML configuration:**
 ```yaml
 # server.config.yml
-oasf_api_validation:
-  schema_url: "https://schema.oasf.outshift.com"
+validators:
+  - provider: oasf
+    op: ["push", "autosync", "index"]
+    config:
+      schema_url: "https://schema.oasf.outshift.com"
 listen_address: "0.0.0.0:8888"
 ```
+
+The daemon nests the same list under `server.validators`. Helm exposes it as a top-level `apiserver.validators` value and injects it into both the apiserver and the reconciler.
 
 #### Testing with Local OASF Server
 
@@ -47,9 +35,11 @@ To test with a local OASF instance deployed alongside the directory server:
 2. **Set schema URL to use the deployed OASF instance** - In the same file, set:
    ```yaml
    apiserver:
-     config:
-       oasf_api_validation:
-         schema_url: "http://dir-ingress-controller.dir-server.svc.cluster.local"
+     validators:
+       - provider: oasf
+         op: ["push", "autosync", "index"]
+         config:
+           schema_url: "http://dir-ingress-controller.dir-server.svc.cluster.local"
    ```
    Replace `dir` with your Helm release name and `dir-server` with your namespace if different.
 

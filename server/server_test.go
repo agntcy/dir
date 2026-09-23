@@ -9,7 +9,6 @@ import (
 
 	"github.com/agntcy/dir/server/config"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/keepalive"
 )
@@ -217,129 +216,6 @@ func TestKeepaliveServerParameters_StructCreation(t *testing.T) {
 	assert.Equal(t, 5*time.Minute, params.MaxConnectionAgeGrace)
 	assert.Equal(t, 5*time.Minute, params.Time)
 	assert.Equal(t, 1*time.Minute, params.Timeout)
-}
-
-// TestServerInitialization_SchemaURL verifies that the server correctly
-// configures the OASF schema URL during initialization.
-func TestServerInitialization_SchemaURL(t *testing.T) {
-	tests := []struct {
-		name      string
-		schemaURL string
-	}{
-		{
-			name:      "default schema URL",
-			schemaURL: "https://schema.oasf.outshift.com", // Default from Helm chart
-		},
-		{
-			name:      "custom schema URL",
-			schemaURL: "https://custom.schema.url",
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			// Create a minimal config with the schema URL
-			cfg := &config.Config{
-				ListenAddress: config.DefaultListenAddress,
-				OASFAPIValidation: config.OASFAPIValidationConfig{
-					SchemaURL: tt.schemaURL,
-				},
-				Connection: config.DefaultConnectionConfig(),
-			}
-
-			// We can't fully test New() because it tries to start services,
-			// but we can verify that a config with SchemaURL doesn't panic
-			// during the initial setup phase
-			assert.NotNil(t, cfg)
-			assert.Equal(t, tt.schemaURL, cfg.OASFAPIValidation.SchemaURL)
-		})
-	}
-}
-
-// TestServerInitialization_OASFValidation verifies that the server correctly
-// configures OASF validation settings during initialization.
-func TestServerInitialization_OASFValidation(t *testing.T) {
-	tests := []struct {
-		name                 string
-		schemaURL            string
-		disableAPIValidation bool
-		strictValidation     bool
-	}{
-		{
-			name:                 "default configuration",
-			schemaURL:            "https://schema.oasf.outshift.com", // Default from Helm chart
-			disableAPIValidation: false,
-			strictValidation:     true,
-		},
-		{
-			name:                 "custom schema URL",
-			schemaURL:            "https://custom.schema.url",
-			disableAPIValidation: false,
-			strictValidation:     true,
-		},
-		{
-			name:                 "non-strict validation mode",
-			schemaURL:            "https://schema.oasf.outshift.com", // Default from Helm chart
-			disableAPIValidation: false,
-			strictValidation:     false,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			// Create a config with OASF validation settings
-			cfg := &config.Config{
-				ListenAddress: config.DefaultListenAddress,
-				OASFAPIValidation: config.OASFAPIValidationConfig{
-					SchemaURL: tt.schemaURL,
-				},
-				Connection: config.DefaultConnectionConfig(),
-			}
-
-			// Verify config values are set correctly
-			assert.NotNil(t, cfg)
-			assert.Equal(t, tt.schemaURL, cfg.OASFAPIValidation.SchemaURL)
-
-			// Note: We can't fully test New() because it tries to start services
-			// that require database connections, but we can verify that the config
-			// values are correctly set and would be used during server initialization
-		})
-	}
-}
-
-// TestServerInitialization_EmptySchemaURL verifies that the server fails to start
-// when the schema URL is empty or missing, since OASF schema URL is required.
-func TestServerInitialization_EmptySchemaURL(t *testing.T) {
-	tests := []struct {
-		name      string
-		schemaURL string
-	}{
-		{
-			name:      "empty schema URL",
-			schemaURL: "",
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			// Create a config with empty schema URL
-			cfg := &config.Config{
-				ListenAddress: config.DefaultListenAddress,
-				OASFAPIValidation: config.OASFAPIValidationConfig{
-					SchemaURL: tt.schemaURL,
-				},
-				Connection: config.DefaultConnectionConfig(),
-			}
-
-			// newOASFValidator must reject an empty schema URL so that misconfigured
-			// servers fail fast at startup instead of silently accepting records.
-			v, err := newOASFValidator(cfg)
-			require.Error(t, err, "newOASFValidator should fail with empty schema URL")
-			assert.Nil(t, v, "validator should be nil on error")
-			assert.Contains(t, err.Error(), "failed to initialize OASF validator",
-				"Error should mention validator initialization")
-		})
-	}
 }
 
 // TestKeepaliveEnforcementPolicy_StructCreation verifies that we can create

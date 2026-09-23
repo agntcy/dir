@@ -7,6 +7,8 @@ services:
       dockerfile: server/Dockerfile
     env_file:
       - ./apiserver.env
+    volumes:
+      - ./server.config.yml:/etc/agntcy/dir/server.config.yml:ro
     ports:
       - 8888:8888
     depends_on:
@@ -35,6 +37,8 @@ services:
         A2A_SCANNER_VERSION: ${A2A_SCANNER_VERSION:-1.0.1}
     env_file:
       - ./reconciler.env
+    volumes:
+      - ./reconciler.config.yml:/etc/agntcy/reconciler/reconciler.config.yml:ro
     depends_on:
       - zot
       - postgres

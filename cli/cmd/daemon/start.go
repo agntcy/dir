@@ -137,7 +137,7 @@ func runStart(cmd *cobra.Command, _ []string) error {
 		return fmt.Errorf("failed to create OCI tag lister for indexer: %w", err)
 	}
 
-	svc, err := reconciler.New(&cfg.Reconciler, srv.Database(), srv.Store(), tagLister, srv.OASFValidator(), srv.Routing())
+	svc, err := reconciler.New(&cfg.Reconciler, srv.Database(), srv.Store(), tagLister, srv.ValidatorRegistry(), srv.Routing())
 	if err != nil {
 		return fmt.Errorf("failed to create reconciler: %w", err)
 	}
