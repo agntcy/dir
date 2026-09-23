@@ -1,4 +1,4 @@
-class Dirctl < Formula
+class DirctlAT171 < Formula
   desc "Command-line interface for AGNTCY directory"
   homepage "https://github.com/agntcy/dir"
   version "v1.7.1"
