@@ -4884,8 +4884,11 @@ dirctl<span class="w"> </span>daemon<span class="w"> </span>start<span class="w"
 <summary>Reference config file</summary>
 <div class="highlight"><pre><span></span><code><span class="nt">server</span><span class="p">:</span>
 <span class="w">  </span><span class="nt">listen_address</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;localhost:8888&quot;</span>
-<span class="w">  </span><span class="nt">oasf_api_validation</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">schema_url</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;https://schema.oasf.outshift.com&quot;</span>
+<span class="w">  </span><span class="nt">validators</span><span class="p">:</span>
+<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">provider</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">oasf</span>
+<span class="w">      </span><span class="nt">op</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="s">&quot;push&quot;</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="s">&quot;autosync&quot;</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="s">&quot;index&quot;</span><span class="p p-Indicator">]</span>
+<span class="w">      </span><span class="nt">config</span><span class="p">:</span>
+<span class="w">        </span><span class="nt">schema_url</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;https://schema.oasf.outshift.com&quot;</span>
 <span class="w">  </span><span class="nt">store</span><span class="p">:</span>
 <span class="w">    </span><span class="nt">provider</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;oci&quot;</span>
 <span class="w">    </span><span class="nt">oci</span><span class="p">:</span>

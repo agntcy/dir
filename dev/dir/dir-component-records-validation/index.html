@@ -2706,25 +2706,20 @@
 <p>The Directory enforces validation on all records before accepting them.
 Validation is performed using the <a href="https://docs.agntcy.org/oasf/oasf-sdk/">OASF SDK</a>, which requires an OASF schema server URL for validation.</p>
 <h3 id="configuration">Configuration</h3>
-<p>The Directory server validates records using an OASF schema URL. By default, it uses <code>https://schema.oasf.outshift.com</code>, but you can configure a different OASF instance:</p>
-<p><strong>Using environment variables:</strong></p>
-<div class="highlight"><pre><span></span><code><span class="c1"># Use default OASF instance (https://schema.oasf.outshift.com)</span>
-task<span class="w"> </span>server:start
-
-<span class="c1"># Use custom OASF instance</span>
-<span class="nv">DIRECTORY_SERVER_OASF_API_VALIDATION_SCHEMA_URL</span><span class="o">=</span>https://your-custom-oasf.com<span class="w"> </span>task<span class="w"> </span>server:start
-</code></pre></div>
-<p><strong>Using YAML configuration:</strong></p>
+<p>The Directory server validates records using a <code>validators</code> list in YAML. Each entry selects a provider, the operations it applies to (<code>push</code>, <code>autosync</code>, <code>index</code>), and a provider-specific <code>config</code>. An empty list disables record validation. This list cannot be set via environment variables.</p>
 <div class="highlight"><pre><span></span><code><span class="c1"># server.config.yml</span>
-<span class="nt">oasf_api_validation</span><span class="p">:</span>
-<span class="w">  </span><span class="nt">schema_url</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;https://schema.oasf.outshift.com&quot;</span>
+<span class="nt">validators</span><span class="p">:</span>
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">provider</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">oasf</span>
+<span class="w">    </span><span class="nt">op</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="s">&quot;push&quot;</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="s">&quot;autosync&quot;</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="s">&quot;index&quot;</span><span class="p p-Indicator">]</span>
+<span class="w">    </span><span class="nt">config</span><span class="p">:</span>
+<span class="w">      </span><span class="nt">schema_url</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;https://schema.oasf.outshift.com&quot;</span>
 <span class="nt">listen_address</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;0.0.0.0:8888&quot;</span>
 </code></pre></div>
 <div class="admonition note">
 <p class="admonition-title">Note</p>
-<p>The Go server binary does not set a default schema URL in code; it must be configured via
-environment variable or YAML. Deployment tooling provides defaults: Docker Compose and the
-<code>dirctl</code> daemon use <code>https://schema.oasf.outshift.com</code>, and Helm charts set the same value
+<p>The Go server binary does not set a default validator list in code.
+Deployment tooling provides defaults: Docker Compose, the <code>dirctl</code> daemon,
+and Helm charts enable the official OASF schema URL on push, autosync, and index
 unless overridden.</p>
 </div>
 <h3 id="validation-behavior">Validation Behavior</h3>
@@ -2770,22 +2765,31 @@ The choice of OASF instance affects which records are accepted and how compatibl
 <p>Using the official OASF instance (<code>https://schema.oasf.outshift.com</code>) provides the baseline for the official network.
 Records validated here form the most strict, compatible set.</p>
 <p><strong>Configuration:</strong></p>
-<div class="highlight"><pre><span></span><code><span class="nt">oasf_api_validation</span><span class="p">:</span>
-<span class="w">  </span><span class="nt">schema_url</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;https://schema.oasf.outshift.com&quot;</span>
+<div class="highlight"><pre><span></span><code><span class="nt">validators</span><span class="p">:</span>
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">provider</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">oasf</span>
+<span class="w">    </span><span class="nt">op</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="s">&quot;push&quot;</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="s">&quot;autosync&quot;</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="s">&quot;index&quot;</span><span class="p p-Indicator">]</span>
+<span class="w">    </span><span class="nt">config</span><span class="p">:</span>
+<span class="w">      </span><span class="nt">schema_url</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;https://schema.oasf.outshift.com&quot;</span>
 </code></pre></div>
 <h4 id="custom-oasf-instance-additional-taxonomy">Custom OASF Instance (Additional Taxonomy)</h4>
 <p>Using a custom OASF instance with extensions that add to the taxonomy (with modules, skills, and domains that extend the official taxonomy but doesn't change or remove).</p>
 <p>Records using the extended taxonomy can only be pulled by nodes using the exact same extended taxonomy.</p>
 <p><strong>Configuration:</strong></p>
-<div class="highlight"><pre><span></span><code><span class="nt">oasf_api_validation</span><span class="p">:</span>
-<span class="w">  </span><span class="nt">schema_url</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;https://your-custom-oasf-instance.com&quot;</span>
+<div class="highlight"><pre><span></span><code><span class="nt">validators</span><span class="p">:</span>
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">provider</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">oasf</span>
+<span class="w">    </span><span class="nt">op</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="s">&quot;push&quot;</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="s">&quot;autosync&quot;</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="s">&quot;index&quot;</span><span class="p p-Indicator">]</span>
+<span class="w">    </span><span class="nt">config</span><span class="p">:</span>
+<span class="w">      </span><span class="nt">schema_url</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;https://your-custom-oasf-instance.com&quot;</span>
 </code></pre></div>
 <h4 id="custom-oasf-instance-changed-taxonomy">Custom OASF Instance (Changed Taxonomy)</h4>
 <p>Using a custom OASF instance with extensions that modify the taxonomy (with modules, skills, and domains that change or remove from the official taxonomy).</p>
 <p>This approach is completely incompatible with all other options, can only work with nodes using the exact same changed taxonomy.</p>
 <p><strong>Configuration:</strong></p>
-<div class="highlight"><pre><span></span><code><span class="nt">oasf_api_validation</span><span class="p">:</span>
-<span class="w">  </span><span class="nt">schema_url</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;https://your-custom-oasf-instance.com&quot;</span>
+<div class="highlight"><pre><span></span><code><span class="nt">validators</span><span class="p">:</span>
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">provider</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">oasf</span>
+<span class="w">    </span><span class="nt">op</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="s">&quot;push&quot;</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="s">&quot;autosync&quot;</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="s">&quot;index&quot;</span><span class="p p-Indicator">]</span>
+<span class="w">    </span><span class="nt">config</span><span class="p">:</span>
+<span class="w">      </span><span class="nt">schema_url</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;https://your-custom-oasf-instance.com&quot;</span>
 </code></pre></div>
 <h3 id="deploying-a-local-oasf-instance">Deploying a Local OASF Instance</h3>
 <p>You can deploy a local OASF instance alongside the Directory server for testing or development purposes.</p>
@@ -2804,9 +2808,11 @@ Records validated here form the most strict, compatible set.</p>
 <p>Set schema URL to use the deployed OASF instance</p>
 <p>In the same file, set the schema URL to use the deployed OASF instance:</p>
 <div class="highlight"><pre><span></span><code><span class="nt">apiserver</span><span class="p">:</span>
-<span class="w">  </span><span class="nt">config</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">oasf_api_validation</span><span class="p">:</span>
-<span class="w">      </span><span class="nt">schema_url</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;http://dir-ingress-controller.dir-server.svc.cluster.local&quot;</span>
+<span class="w">  </span><span class="nt">validators</span><span class="p">:</span>
+<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">provider</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">oasf</span>
+<span class="w">      </span><span class="nt">op</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="s">&quot;push&quot;</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="s">&quot;autosync&quot;</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="s">&quot;index&quot;</span><span class="p p-Indicator">]</span>
+<span class="w">      </span><span class="nt">config</span><span class="p">:</span>
+<span class="w">        </span><span class="nt">schema_url</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;http://dir-ingress-controller.dir-server.svc.cluster.local&quot;</span>
 </code></pre></div>
 <p>Replace <code>dir</code> with your Helm release name and <code>dir-server</code> with your namespace if different.</p>
 </li>
