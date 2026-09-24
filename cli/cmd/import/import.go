@@ -20,15 +20,20 @@ import (
 
 var Command = &cobra.Command{
 	Use:   "import",
-	Short: "Import MCP, A2A, or Agent Skill records into DIR from a registry, JSON file, or skill directory",
-	Long: `Import MCP server, A2A AgentCard, or Agent Skill records into DIR. Records are transformed, enriched, optionally
+	Short: "Import MCP, A2A, Agent Skill, or OASF records into DIR from a registry, file, or directory",
+	Long: `Import MCP server, A2A AgentCard, Agent Skill, or OASF records into DIR. Records are transformed, enriched, optionally
 scanned, then pushed. The same pipeline runs for every source.
 
 Import kinds (--type):
-  mcp            Local JSON: one MCP server object or a JSON array (--file-path)
+  mcp            Local JSON: one MCP server object or a JSON array, or a directory of such files (--file-path)
   mcp-registry   HTTP MCP registry, e.g. v0.1 list API (--url)
-  a2a            Local JSON: one A2A AgentCard or an array of cards (--file-path)
+  a2a            Local JSON: one A2A AgentCard or an array of cards, or a directory of such files (--file-path)
   agent-skill    Local directory: one Agent Skills folder containing SKILL.md (--file-path); see https://agentskills.io/specification
+  oasf           Local JSON: records already in OASF format, or a directory of such files (--file-path); re-imports --dry-run output
+
+For mcp, a2a and oasf, --file-path may be a directory, in which case every *.json
+file directly inside it is imported. The search is not recursive, and a file that
+fails to parse is reported without stopping the rest of the run.
 
 Examples:
   dirctl import --config import.config.yaml
@@ -37,6 +42,7 @@ Examples:
   dirctl import --type=mcp-registry --url=https://registry.modelcontextprotocol.io/v0.1
   dirctl import --type=mcp --file-path=./servers.json
   dirctl import --type=a2a --file-path=./agent.json
+  dirctl import --type=a2a --file-path=./agent-cards/
   dirctl import --type=agent-skill --file-path=./my-skill
 
   dirctl import --type=mcp-registry --url=https://registry.modelcontextprotocol.io/v0.1 --sign --key=./cosign.key
