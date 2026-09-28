@@ -19,6 +19,7 @@ import (
 	dbconfig "github.com/agntcy/dir/server/database/config"
 	namingconfig "github.com/agntcy/dir/server/naming/config"
 	ociconfig "github.com/agntcy/dir/server/store/oci/config"
+	validators "github.com/agntcy/dir/server/validators/config"
 	"github.com/agntcy/dir/utils/logging"
 	"github.com/spf13/viper"
 )
@@ -59,8 +60,9 @@ type Config struct {
 	// the apiserver.
 	ServerAuthn authnconfig.Config `json:"server_authn" mapstructure:"server_authn"`
 
-	// SchemaURL is the OASF schema URL for record validation.
-	SchemaURL string `json:"schema_url" mapstructure:"schema_url"`
+	// Validators is the same list the server uses. The indexer consults
+	// entries whose op includes "index". YAML only.
+	Validators validators.Config `json:"validators,omitempty" mapstructure:"validators"`
 
 	// Regsync holds the regsync task configuration.
 	Regsync regsync.Config `json:"regsync" mapstructure:"regsync"`
@@ -253,11 +255,6 @@ func LoadConfig() (*Config, error) {
 
 	_ = v.BindEnv("server_authn.socket_path")
 	_ = v.BindEnv("server_authn.audiences")
-
-	//
-	// OASF validation configuration
-	//
-	_ = v.BindEnv("schema_url")
 
 	// Unmarshal into config struct
 	config := &Config{}

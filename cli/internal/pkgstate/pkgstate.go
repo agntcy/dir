@@ -72,16 +72,41 @@ const (
 	OriginBuiltin Origin = "builtin"
 )
 
-// Scope says which configuration location a row's artifacts were written to.
+// Scope says where a row's artifacts were written: ScopeGlobal for the user's
+// global agent config, or the absolute path of the repository a `--project`
+// install wrote into.
+//
+// Naming the repository rather than saying "project" is what lets one manifest
+// hold every install on this machine. The row key is (name, agent, scope), so
+// with a bare "project" the same package installed into two repositories would
+// collide on one key and the second would overwrite the first.
+//
+// The manifest is a local record of what happened, never a file to commit — it
+// is full of absolute paths, and this field is one of them. A committed file
+// pinning what a team should have is a different, declarative thing, and not
+// this one.
 type Scope string
 
-const (
-	// ScopeGlobal is the user's global agent config.
-	ScopeGlobal Scope = "global"
+// ScopeGlobal is the user's global agent config.
+const ScopeGlobal Scope = "global"
 
-	// ScopeProject is the current repository.
-	ScopeProject Scope = "project"
-)
+// ProjectScope returns the scope for artifacts written into the repository at
+// dir.
+func ProjectScope(dir string) Scope { return Scope(dir) }
+
+// IsGlobal reports whether the scope is the user's global config rather than a
+// repository.
+func (s Scope) IsGlobal() bool { return s == ScopeGlobal }
+
+// Dir returns the repository path this scope names, or "" for the global
+// scope.
+func (s Scope) Dir() string {
+	if s.IsGlobal() {
+		return ""
+	}
+
+	return string(s)
+}
 
 // Key identifies one row: one package, for one agent, at one scope.
 type Key struct {
@@ -120,6 +145,20 @@ type Entry struct {
 	// Origin is where to look for a newer version.
 	Origin Origin `json:"origin"`
 
+	// Directory is the server address this package was installed from, which
+	// is what decides whether a later version check means anything: a row
+	// pulled from a colleague's Directory says nothing about the one
+	// configured now.
+	//
+	// The address rather than the context name, because a name is not an
+	// identity: an endpoint override replaces a context's server while leaving
+	// its name in place, and two contexts can point at one Directory.
+	//
+	// Empty means "no claim". Rows written before this field existed have it,
+	// and so do installs made with no resolvable address, so an empty value
+	// has to match whatever Directory is active rather than be a mismatch.
+	Directory string `json:"directory,omitempty"`
+
 	// Pinned holds the package at Version, so a bare upgrade skips it.
 	Pinned bool `json:"pinned,omitempty"`
 
@@ -141,6 +180,42 @@ type Entry struct {
 // Key returns the row's primary key.
 func (e Entry) Key() Key {
 	return Key{Name: e.Name, Agent: e.Agent, Scope: e.Scope}
+}
+
+// Kind names the artifacts this row installed, for display: "skill", "mcp", or
+// "skill+mcp". It is derived rather than stored, because one record can yield
+// both and the row already says which of them landed.
+//
+// A row that landed nothing is never written, so the empty case only arises for
+// a hand-edited manifest; it reports "none" rather than an empty column.
+func (e Entry) Kind() string {
+	switch {
+	case e.SkillPath != "" && len(e.MCPServers) > 0:
+		return "skill+mcp"
+	case e.SkillPath != "":
+		return "skill"
+	case len(e.MCPServers) > 0:
+		return "mcp"
+	default:
+		return "none"
+	}
+}
+
+// DirectoryMatches reports whether this row can be checked against the active
+// Directory.
+//
+// An empty address on either side means "no claim", and matches anything. That
+// cuts both ways on purpose:
+//
+//   - A row with no recorded address — written by an earlier dirctl, or
+//     installed with none resolvable — stays checkable rather than becoming
+//     permanently unassessable.
+//   - A dirctl run that cannot resolve its own server address does not skip
+//     every row it has.
+//
+// Only two addresses that differ are a real mismatch.
+func (e Entry) DirectoryMatches(active string) bool {
+	return e.Directory == "" || active == "" || e.Directory == active
 }
 
 // WithCarriedArtifacts returns e with the artifacts prior still records but
@@ -178,6 +253,46 @@ func (e Entry) WithCarriedArtifacts(prior Entry) Entry {
 			seen[name] = true
 		}
 	}
+
+	return e
+}
+
+// WithoutArtifacts returns e with the skill and the named server keys dropped.
+//
+// It is the counterpart to WithCarriedArtifacts, for the one case where
+// carrying an artifact forward would be a lie: an upgrade has just removed
+// v1's renamed MCP key from the agent's config, so the row must stop naming it
+// or a later uninstall would go hunting for something that is gone.
+func (e Entry) WithoutArtifacts(skill bool, servers []string) Entry {
+	if skill {
+		e.SkillPath = ""
+		e.SkillFiles = nil
+	}
+
+	if len(servers) == 0 {
+		return e
+	}
+
+	dropped := make(map[string]bool, len(servers))
+	for _, name := range servers {
+		dropped[name] = true
+	}
+
+	kept := make([]string, 0, len(e.MCPServers))
+
+	for _, name := range e.MCPServers {
+		if !dropped[name] {
+			kept = append(kept, name)
+		}
+	}
+
+	// A row with no servers left reads as `"mcpServers"` absent rather than an
+	// empty list, matching a row that never had one.
+	if len(kept) == 0 {
+		kept = nil
+	}
+
+	e.MCPServers = kept
 
 	return e
 }
@@ -333,6 +448,60 @@ func (m *Manifest) ByName(name string) []Entry {
 	}
 
 	return found
+}
+
+// Read loads the manifest at DefaultPath.
+//
+// It is the read-only companion to Update, for a command whose product is the
+// manifest, or which has to act on exactly what a previous run recorded. Like
+// Update it honours XDG_CONFIG_HOME, so tests stay hermetic.
+//
+//nolint:wrapcheck // Load's error already names the path and the operation.
+func Read() (*Manifest, error) {
+	path, err := DefaultPath()
+	if err != nil {
+		return nil, err
+	}
+
+	return Load(path)
+}
+
+// Update loads the manifest at DefaultPath, applies mutate, and saves it when
+// mutate reports something changed.
+//
+// It is the one convenience that reads the environment, for the commands whose
+// only manifest work is one mutation. Everything else takes a path, which is
+// what keeps the tests hermetic — and this does too, since DefaultPath honours
+// XDG_CONFIG_HOME.
+//
+// A load error is returned *and* mutate still runs against the empty manifest
+// it came back with: a corrupt file is already unreadable, so starting a fresh
+// one is better than refusing to record anything ever again. Callers that must
+// not lose the mutation therefore check the error after it, not instead of it.
+func Update(mutate func(*Manifest) bool) error {
+	path, err := DefaultPath()
+	if err != nil {
+		return err
+	}
+
+	m, loadErr := Load(path)
+
+	// A frozen manifest belongs to a newer dirctl, whose rows this binary
+	// cannot represent. Save would refuse anyway, so stop here and report the
+	// one reason rather than two.
+	if m.Frozen() {
+		return loadErr
+	}
+
+	if !mutate(m) {
+		return loadErr
+	}
+
+	if err := m.Save(path); err != nil {
+		return err
+	}
+
+	return loadErr
 }
 
 // DefaultPath returns the global manifest path,

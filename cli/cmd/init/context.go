@@ -6,15 +6,21 @@ package init
 import (
 	"fmt"
 
+	"github.com/agntcy/dir/cli/internal/dirpkg"
 	"github.com/agntcy/dir/cli/presenter"
 	clientconfig "github.com/agntcy/dir/client/config"
 	"github.com/spf13/cobra"
 )
 
+const localContextName = "local"
+
+// The address and auth mode come from dirpkg, which also uses them as the
+// fallback for the MCP server entry it installs in Step 3. One definition, so
+// the context this step seeds and the target that entry carries cannot
+// disagree about where a fresh environment points.
 const (
-	localContextName   = "local"
-	localServerAddress = "localhost:8888"
-	localAuthMode      = "insecure"
+	localServerAddress = dirpkg.LocalServerAddress
+	localAuthMode      = dirpkg.LocalAuthMode
 )
 
 // defaultLocalContext is the context seeded for a fresh environment: the local

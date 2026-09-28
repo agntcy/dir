@@ -1,0 +1,41 @@
+{
+  "authors": [
+    "AGNTCY Contributors"
+  ],
+  "created_at": "2026-04-17T11:09:15Z",
+  "description": "Toolkit for performing structured code reviews.",
+  "domains": [],
+  "modules": [
+    {
+      "artifact": {
+        "data": "IyBDb2RlIFJldmlldwo=",
+        "digest": "sha256:ddf68b0b231ead960e6d7bd9ee31cbc961c43435f25fb73958d6f4d3d3150159",
+        "media_type": "application/agent-skills+md",
+        "size": 14
+      },
+      "data": {
+        "skill_file": "SKILL.md",
+        "skill_manifest": {
+          "description": "Toolkit for performing structured code reviews.",
+          "frontmatter_metadata": {
+            "author": "AGNTCY Contributors",
+            "version": "1.0.0"
+          },
+          "name": "code-review",
+          "version": "1.0.0"
+        }
+      },
+      "id": 10302,
+      "name": "core/language_model/agentskills"
+    }
+  ],
+  "name": "code-review",
+  "schema_version": "1.0.0",
+  "skills": [
+    {
+      "name": "natural_language_processing/natural_language_understanding/contextual_comprehension",
+      "id": 10101
+    }
+  ],
+  "version": "1.0.0"
+}

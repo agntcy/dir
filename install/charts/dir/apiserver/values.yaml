@@ -27,6 +27,26 @@ authz_policies_csv: |
   p,*,/agntcy.dir.store.v1.StoreService/Lookup
   p,*,/agntcy.dir.sync.v1.SyncService/RequestRegistryCredentials
 
+# File-based content policies (OPA/Rego). Each key is a filename mounted at
+# config.policy.dir. Not part of the server config struct.
+#
+# Example:
+#   content_policies:
+#     require-annotations.rego: |
+#       package dir.policy.require_annotations
+#
+#       default allow := true
+content_policies: {}
+
+# Record validators applied on push, autosync, and/or index.
+# Injected into both server.config.yml and reconciler.config.yml.
+# Omit an op (or this entire list) to skip validation on that path.
+validators:
+  - provider: oasf
+    op: ["push", "autosync", "index"]
+    config:
+      schema_url: "https://schema.oasf.outshift.com"
+
 # Server configuration (maps directly to server config.go Config struct)
 config:
   # listen_address: "0.0.0.0:8888"
@@ -54,6 +74,11 @@ config:
 
     # Path to the authorization policy file
     enforcer_policy_file_path: "/etc/agntcy/dir/authz_policies.csv"
+
+  # File-based content policies. Files from content_policies are mounted here.
+  policy:
+    enabled: false
+    dir: "/etc/agntcy/dir/policies"
 
   # Store settings for the storage backend.
   store:
@@ -231,16 +256,6 @@ config:
       # SSL mode for PostgreSQL connection
       # Options: disable, require, verify-ca, verify-full
       ssl_mode: "disable"
-
-  # OASF API validation configuration
-  oasf_api_validation:
-    # Schema URL for OASF validation
-    # Used by both the apiserver and reconciler for validating agent records
-    schema_url: "https://schema.oasf.outshift.com"
-
-    # Disable OASF validation entirely (default: false)
-    # Set to true to skip schema validation (useful for testing)
-    disable: false
 
   # OASF taxonomy extractor configuration (natural-language search on the HTTP
   # gateway). The extractor turns free text into OASF skills, domains, modules,
@@ -706,8 +721,8 @@ oasf-sdk:
   # REQUIRED. The OASF URL is the extractor's on/off switch upstream: the
   # OASF-SDK server registers ExtractorService only when it is set, and without
   # it every Extract call fails with "unknown service
-  # agntcy.oasfsdk.extractor.v1.ExtractorService". Kept in step with
-  # config.oasf_api_validation.schema_url above.
+  # agntcy.oasfsdk.extractor.v1.ExtractorService". Keep in step with the
+  # OASF validator config.schema_url in validators above.
   env:
     OASF_SDK_EXTRACTOR_OASF_URL: "https://schema.oasf.outshift.com"
 
@@ -724,7 +739,7 @@ postgresql:
     repository: bitnami/postgresql
     # renovate: datasource=docker depName=docker.io/bitnami/postgresql versioning=docker
     tag: latest
-    digest: "sha256:7b9c5292a8e8b38e7172705cc6e49e34b9a8d9c297c4c7ae04130a3e6a28f3b0"
+    digest: "sha256:7d77a46bbf200709237318c27dec0eaeae2520e403dd18fdebde2be7a6b04993"
   auth:
     username: "dir"
     password: "dirpassword"
@@ -811,9 +826,6 @@ reconciler:
         # password: ""
         # access_token: ""
         # refresh_token: ""
-
-    # OASF schema URL for validation
-    schema_url: "https://schema.oasf.outshift.com"
 
     # Apiserver gRPC address — required by the metrics task to query provider counts
     # from the routing layer. Typically the in-cluster apiserver service name + gRPC port.

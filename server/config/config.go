@@ -15,10 +15,12 @@ import (
 	events "github.com/agntcy/dir/server/events/config"
 	ratelimitconfig "github.com/agntcy/dir/server/middleware/ratelimit/config"
 	naming "github.com/agntcy/dir/server/naming/config"
+	policy "github.com/agntcy/dir/server/policy/config"
 	publication "github.com/agntcy/dir/server/publication/config"
 	routing "github.com/agntcy/dir/server/routing/config"
 	store "github.com/agntcy/dir/server/store/config"
 	oci "github.com/agntcy/dir/server/store/oci/config"
+	validators "github.com/agntcy/dir/server/validators/config"
 	"github.com/agntcy/dir/utils/logging"
 	"github.com/mitchellh/mapstructure"
 	"github.com/spf13/viper"
@@ -35,8 +37,6 @@ const (
 	// API configuration.
 
 	DefaultListenAddress = "0.0.0.0:8888"
-
-	// OASF Validation configuration.
 
 	// Connection management configuration.
 	// These defaults are based on production gRPC best practices and provide
@@ -125,8 +125,9 @@ type Config struct {
 	// API configuration
 	ListenAddress string `json:"listen_address,omitempty" mapstructure:"listen_address"`
 
-	// OASF Validation configuration
-	OASFAPIValidation OASFAPIValidationConfig `json:"oasf_api_validation" mapstructure:"oasf_api_validation"`
+	// Validators is the ordered list of record validators (OASF, later others).
+	// YAML only — a list of objects cannot be bound to a single env var.
+	Validators validators.Config `json:"validators,omitempty" mapstructure:"validators"`
 
 	// Logging configuration
 	Logging LoggingConfig `json:"logging" mapstructure:"logging"`
@@ -142,6 +143,10 @@ type Config struct {
 
 	// Authz configuration
 	Authz authz.Config `json:"authz" mapstructure:"authz"`
+
+	// Policy is the file-based content-policy directory. Evaluation is not
+	// implemented yet; this only tells the server where policy files live.
+	Policy policy.Config `json:"policy" mapstructure:"policy"`
 
 	// Store configuration
 	Store store.Config `json:"store" mapstructure:"store"`
@@ -244,14 +249,6 @@ type ExtractorConfig struct {
 type SyncConfig struct {
 	// AuthConfig holds authentication configuration for sync operations.
 	AuthConfig oci.AuthConfig `json:"auth_config" mapstructure:"auth_config"`
-}
-
-// OASFAPIValidationConfig defines OASF API validation configuration.
-type OASFAPIValidationConfig struct {
-	// SchemaURL is the OASF schema URL for API-based validation.
-	// This is required - records will be validated using the OASF API validator.
-	// The default value is set in the Helm chart values.yaml (apiserver.config.oasf_api_validation.schema_url).
-	SchemaURL string `json:"schema_url,omitempty" mapstructure:"schema_url"`
 }
 
 // LoggingConfig defines gRPC request/response logging configuration.
@@ -428,13 +425,6 @@ func LoadConfig(opts ...ConfigOption) (*Config, error) {
 	v.SetDefault("listen_address", DefaultListenAddress)
 
 	//
-	// OASF Validation configuration
-	//
-	_ = v.BindEnv("oasf_api_validation.schema_url")
-	// Note: No default set here - default should come from Helm chart values.yaml
-	// Schema URL is required for OASF API validation
-
-	//
 	// Logging configuration (gRPC request/response logging)
 	//
 	_ = v.BindEnv("logging.verbose")
@@ -491,6 +481,15 @@ func LoadConfig(opts ...ConfigOption) (*Config, error) {
 
 	_ = v.BindEnv("authz.enforcer_policy_file_path")
 	v.SetDefault("authz.enforcer_policy_file_path", DefaultConfigPath+"/authz_policies.csv")
+
+	//
+	// Content policy configuration (file-based OPA/Rego policies)
+	//
+	_ = v.BindEnv("policy.enabled")
+	v.SetDefault("policy.enabled", "false")
+
+	_ = v.BindEnv("policy.dir")
+	v.SetDefault("policy.dir", DefaultConfigPath+"/policies")
 
 	//
 	// Store configuration

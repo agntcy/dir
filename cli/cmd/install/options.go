@@ -3,8 +3,6 @@
 
 package install
 
-import "github.com/agntcy/dir/cli/cmd/search"
-
 // options holds the shared flags for the install subcommands.
 //
 // Every field here must be bound to a flag. The local e2e suite runs dirctl
@@ -12,12 +10,9 @@ import "github.com/agntcy/dir/cli/cmd/search"
 // keeps whatever the previous spec left in it and turns test failures
 // order-dependent.
 type options struct {
-	agents      []string
-	project     bool
-	dryRun      bool
-	yes         bool
-	pin         bool
-	limit       uint32
-	allVersions bool
-	filters     search.Filters
+	agents  []string
+	project bool
+	dryRun  bool
+	yes     bool
+	pin     bool
 }

@@ -4,6 +4,7 @@
 package local
 
 import (
+	"bytes"
 	"encoding/json"
 	"os"
 	"path/filepath"
@@ -23,6 +24,8 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests for the pull command", 
 	ginkgo.Context("Pull output destinations", ginkgo.Ordered, ginkgo.Serial, func() {
 		var cid string
 
+		const recordName = "pull_output_agent"
+
 		tempDir, err := os.MkdirTemp("", "pull-e2e-*")
 		gomega.Expect(err).NotTo(gomega.HaveOccurred())
 
@@ -32,7 +35,14 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests for the pull command", 
 
 		ginkgo.It("should push a record to set up test data", func() {
 			pushPath := filepath.Join(tempDir, "push_record.json")
-			gomega.Expect(os.WriteFile(pushPath, testdata.ExpectedRecordV100JSON, 0o600)).To(gomega.Succeed())
+			recordJSON := bytes.Replace(
+				testdata.ExpectedRecordV100JSON,
+				[]byte(`"name": "burger_seller_agent"`),
+				[]byte(`"name": "`+recordName+`"`),
+				1,
+			)
+			gomega.Expect(recordJSON).NotTo(gomega.Equal(testdata.ExpectedRecordV100JSON))
+			gomega.Expect(os.WriteFile(pushPath, recordJSON, 0o600)).To(gomega.Succeed())
 
 			cid = testEnv.CLI.Push(pushPath).WithArgs("--output", "raw").ShouldSucceed()
 			gomega.Expect(cid).NotTo(gomega.BeEmpty())
@@ -71,6 +81,7 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests for the pull command", 
 			testEnv.CLI.Command("pull").WithArgs(
 				"--output-dir", outDir,
 				"--module", "integration/a2a",
+				"--name", recordName,
 			).ShouldSucceed()
 
 			entries, err := os.ReadDir(outDir)

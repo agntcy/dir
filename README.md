@@ -65,7 +65,7 @@ To build the project and work with the code, you will need the following install
 
 - [Taskfile](https://taskfile.dev/)
 - [Docker](https://www.docker.com/)
-- [Golang](https://go.dev/doc/devel/release#go1.26)
+- [Golang](https://go.dev/doc/devel/release#go1.27)
 
 Make sure Docker is installed with Buildx.
 
@@ -116,8 +116,8 @@ It is not advised to use artifacts with mismatched versions.
 All container images are distributed via [GitHub Packages](https://github.com/orgs/agntcy/packages?repo_name=dir).
 
 ```bash
-docker pull ghcr.io/agntcy/dir-ctl:v1.7.0
-docker pull ghcr.io/agntcy/dir-apiserver:v1.7.0
+docker pull ghcr.io/agntcy/dir-ctl:v1.7.1
+docker pull ghcr.io/agntcy/dir-apiserver:v1.7.1
 ```
 
 ### Helm charts
@@ -125,7 +125,7 @@ docker pull ghcr.io/agntcy/dir-apiserver:v1.7.0
 All helm charts are distributed as OCI artifacts via [GitHub Packages](https://github.com/agntcy/dir/pkgs/container/dir%2Fhelm-charts%2Fdir).
 
 ```bash
-helm pull oci://ghcr.io/agntcy/dir/helm-charts/dir --version v1.7.0
+helm pull oci://ghcr.io/agntcy/dir/helm-charts/dir --version v1.7.1
 ```
 
 ### Binaries
@@ -188,8 +188,8 @@ task server:start
 This will deploy Directory services into an existing Kubernetes cluster.
 
 ```bash
-helm pull oci://ghcr.io/agntcy/dir/helm-charts/dir --version v1.7.0
-helm upgrade --install dir oci://ghcr.io/agntcy/dir/helm-charts/dir --version v1.7.0
+helm pull oci://ghcr.io/agntcy/dir/helm-charts/dir --version v1.7.1
+helm upgrade --install dir oci://ghcr.io/agntcy/dir/helm-charts/dir --version v1.7.1
 ```
 
 ## Copyright Notice

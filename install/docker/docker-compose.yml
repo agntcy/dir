@@ -7,6 +7,8 @@ services:
       dockerfile: server/Dockerfile
     env_file:
       - ./apiserver.env
+    volumes:
+      - ./server.config.yml:/etc/agntcy/dir/server.config.yml:ro
     ports:
       - 8888:8888
     depends_on:
@@ -35,6 +37,8 @@ services:
         A2A_SCANNER_VERSION: ${A2A_SCANNER_VERSION:-1.0.1}
     env_file:
       - ./reconciler.env
+    volumes:
+      - ./reconciler.config.yml:/etc/agntcy/reconciler/reconciler.config.yml:ro
     depends_on:
       - zot
       - postgres
@@ -55,7 +59,7 @@ services:
         condition: on-failure
 
   postgres:
-    image: docker.io/bitnami/postgresql:latest@sha256:7b9c5292a8e8b38e7172705cc6e49e34b9a8d9c297c4c7ae04130a3e6a28f3b0
+    image: docker.io/bitnami/postgresql:latest@sha256:7d77a46bbf200709237318c27dec0eaeae2520e403dd18fdebde2be7a6b04993
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres

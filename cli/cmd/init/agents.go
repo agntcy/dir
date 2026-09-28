@@ -5,26 +5,16 @@
 package init
 
 import (
-	"fmt"
-	"strings"
 	"time"
 
+	cliconfig "github.com/agntcy/dir/cli/config"
 	"github.com/agntcy/dir/cli/internal/agentcfg"
 	"github.com/agntcy/dir/cli/internal/agentinstall"
+	"github.com/agntcy/dir/cli/internal/dirpkg"
+	"github.com/agntcy/dir/cli/internal/pkgstate"
 	"github.com/agntcy/dir/cli/presenter"
-	clientconfig "github.com/agntcy/dir/client/config"
-	"github.com/agntcy/dir/server/skill"
+	"github.com/agntcy/dir/client"
 	"github.com/spf13/cobra"
-)
-
-// `dirctl mcp serve` reads its Directory connection settings only from
-// DIRECTORY_CLIENT_* env — it consults neither the client config file nor
-// current_context. So the installed MCP entry must carry them. auth_mode is as
-// essential as the address: an empty mode makes the client attempt OIDC
-// auto-detection, which fails outright when multiple issuers are cached.
-const (
-	dirServerAddressEnv = "DIRECTORY_CLIENT_SERVER_ADDRESS"
-	dirAuthModeEnv      = "DIRECTORY_CLIENT_AUTH_MODE"
 )
 
 const agentStepIntro = `
@@ -45,87 +35,23 @@ type agentSelector func(cmd *cobra.Command, title string, candidates []agentcfg.
 // a real TTY.
 var interactiveCheck = isInteractive
 
-// dirArtifacts builds the built-in DIR record locally and derives its
-// installable artifacts (skill + MCP server). No Directory round-trip.
-func dirArtifacts() (agentinstall.Artifacts, error) {
-	rec, err := skill.BuildRecord(time.Now().UTC())
-	if err != nil {
-		return agentinstall.Artifacts{}, fmt.Errorf("build DIR record: %w", err)
-	}
-
-	arts, err := agentinstall.DeriveArtifacts(rec)
-	if err != nil {
-		return agentinstall.Artifacts{}, fmt.Errorf("derive DIR artifacts: %w", err)
-	}
-
-	return arts, nil
-}
-
-// mcpServerEnv builds the DIRECTORY_CLIENT_* env the spawned `dirctl mcp serve`
-// needs to reach the same node dirctl itself uses: the current client context's
-// connection settings, with DIRECTORY_CLIENT_* env overrides applied. Validation
-// is skipped and unknown fields tolerated so a partially-set or forward-compat
-// config still yields usable values; any read error degrades to the local
-// default (insecure daemon).
+// dirConfig resolves the client config the built-in DIR package's MCP entry
+// should point at, honouring `--context` and the connection flags.
 //
-// Only non-secret fields are projected. The two secrets — auth_token and
-// spiffe_token — are deliberately excluded so a bearer token never lands in an
-// agent's config file; auth modes that need them still require the user to
-// supply the secret via their own environment.
-func mcpServerEnv() map[string]string {
-	cfg, _, err := clientconfig.Resolve(clientconfig.ResolveOptions{
-		SkipValidation:     true,
-		AllowUnknownFields: true,
-	})
-	if err != nil || cfg == nil {
-		// No resolvable context (e.g. the user declined Step 1): mirror the
-		// local default so the server dials the daemon insecurely rather than
-		// falling into OIDC auto-detection with an empty auth mode.
-		return map[string]string{
-			dirServerAddressEnv: localServerAddress,
-			dirAuthModeEnv:      localAuthMode,
-		}
+// It resolves here rather than at startup for two reasons. `dirctl init` skips
+// the root command's client setup, so nothing has resolved one yet; and Step 1
+// may have just created the context Step 3 has to read, which a config
+// resolved before the wizard ran could not know about.
+//
+// An unresolvable config is not an error — the user may have declined Step 1 —
+// so it degrades to nil and dirpkg mirrors the local default.
+func dirConfig(cmd *cobra.Command) *client.Config {
+	cfg, err := cliconfig.ResolveClientLenient(cmd)
+	if err != nil {
+		return nil
 	}
 
-	addr := strings.TrimSpace(cfg.ServerAddress)
-	if addr == "" {
-		addr = localServerAddress
-	}
-
-	authMode := strings.TrimSpace(cfg.AuthMode)
-	if authMode == "" {
-		authMode = localAuthMode
-	}
-
-	env := map[string]string{
-		dirServerAddressEnv: addr,
-		dirAuthModeEnv:      authMode,
-	}
-
-	// Non-secret, mode-specific fields — projected only when set.
-	for k, v := range map[string]string{
-		"DIRECTORY_CLIENT_TLS_CERT_FILE":      cfg.TlsCertFile,
-		"DIRECTORY_CLIENT_TLS_KEY_FILE":       cfg.TlsKeyFile,
-		"DIRECTORY_CLIENT_TLS_CA_FILE":        cfg.TlsCAFile,
-		"DIRECTORY_CLIENT_SPIFFE_SOCKET_PATH": cfg.SpiffeSocketPath,
-		"DIRECTORY_CLIENT_JWT_AUDIENCE":       cfg.JWTAudience,
-		"DIRECTORY_CLIENT_OIDC_ISSUER":        cfg.OIDCIssuer,
-		"DIRECTORY_CLIENT_OIDC_CLIENT_ID":     cfg.OIDCClientID,
-	} {
-		if s := strings.TrimSpace(v); s != "" {
-			env[k] = s
-		}
-	}
-
-	if len(cfg.OIDCScopes) > 0 {
-		env["DIRECTORY_CLIENT_OIDC_SCOPES"] = strings.Join(cfg.OIDCScopes, ",")
-	}
-
-	if cfg.TlsSkipVerify {
-		env["DIRECTORY_CLIENT_TLS_SKIP_VERIFY"] = "true"
-	}
-
-	return env
+	return cfg
 }
 
 // runAgentSetup runs Step 3 against the resolved ambient environment, using the
@@ -157,16 +83,13 @@ func installAgents(cmd *cobra.Command, env agentcfg.Env, opts *options, selectAg
 		return nil
 	}
 
-	arts, err := dirArtifacts()
+	// Built locally, with the MCP entry pointed at the resolved context:
+	// `dirctl mcp serve` takes its target only from DIRECTORY_CLIENT_* env, so
+	// otherwise the spawned server would ignore the context just configured.
+	arts, err := dirpkg.Artifacts(dirConfig(cmd))
 	if err != nil {
 		return err
 	}
-
-	// Point the built-in DIR MCP server at the resolved context. `dirctl mcp
-	// serve` takes its target only from DIRECTORY_CLIENT_* env, so without this
-	// the spawned server ignores the context just configured and falls back to
-	// the default address.
-	arts.SetMCPEnv(mcpServerEnv())
 
 	// Non-interactive: never prompt. With --yes, install both artifacts into
 	// every candidate; without it, skip rather than act unattended.
@@ -177,8 +100,10 @@ func installAgents(cmd *cobra.Command, env agentcfg.Env, opts *options, selectAg
 			return nil
 		}
 
-		apply(cmd, env, arts.SkillOnly(), candidates, "DIR skill")
-		apply(cmd, env, arts.MCPOnly(), candidates, "DIR MCP server")
+		outcomes := apply(cmd, env, arts.SkillOnly(), candidates, "DIR skill")
+		outcomes = append(outcomes, apply(cmd, env, arts.MCPOnly(), candidates, "DIR MCP server")...)
+
+		recordBuiltin(cmd, arts, candidates, outcomes)
 
 		return nil
 	}
@@ -189,30 +114,115 @@ func installAgents(cmd *cobra.Command, env agentcfg.Env, opts *options, selectAg
 		return err
 	}
 
-	apply(cmd, env, arts.SkillOnly(), skillAgents, "DIR skill")
+	outcomes := apply(cmd, env, arts.SkillOnly(), skillAgents, "DIR skill")
 
 	mcpAgents, err := selectAgents(cmd, "Install the DIR MCP server into:", candidates)
 	if err != nil {
 		return err
 	}
 
-	apply(cmd, env, arts.MCPOnly(), mcpAgents, "DIR MCP server")
+	outcomes = append(outcomes, apply(cmd, env, arts.MCPOnly(), mcpAgents, "DIR MCP server")...)
+
+	// One row per agent, covering both artifacts: the two prompts select
+	// independently, and an agent that got only the skill or only the MCP entry
+	// still has a row naming what it got.
+	recordBuiltin(cmd, arts, unionAgents(skillAgents, mcpAgents), outcomes)
 
 	return nil
 }
 
-// apply installs one artifact set into the chosen agents and prints the summary.
-// An empty selection is a no-op with a short note (the user deselected everyone).
-func apply(cmd *cobra.Command, env agentcfg.Env, arts agentinstall.Artifacts, agents []agentcfg.Agent, label string) {
+// apply installs one artifact set into the chosen agents, prints the summary,
+// and returns the outcomes so the caller can record what landed. An empty
+// selection is a no-op with a short note (the user deselected everyone).
+func apply(
+	cmd *cobra.Command,
+	env agentcfg.Env,
+	arts agentinstall.Artifacts,
+	agents []agentcfg.Agent,
+	label string,
+) []agentcfg.Outcome {
 	if len(agents) == 0 {
 		presenter.Printf(cmd, "%s: no agents selected; skipping.\n", label)
 
-		return
+		return nil
 	}
 
 	// `dirctl init` wires the user's global environment.
 	outcomes := agentinstall.Install(env, arts, agents, agentcfg.Global, false)
 	presenter.Printf(cmd, "%s", agentcfg.FormatSummary(outcomes, false))
+
+	return outcomes
+}
+
+// unionAgents merges two selections, keeping first-seen order and no repeats.
+func unionAgents(selections ...[]agentcfg.Agent) []agentcfg.Agent {
+	seen := map[string]bool{}
+
+	var merged []agentcfg.Agent
+
+	for _, selection := range selections {
+		for _, agent := range selection {
+			if seen[agent.ID] {
+				continue
+			}
+
+			seen[agent.ID] = true
+
+			merged = append(merged, agent)
+		}
+	}
+
+	return merged
+}
+
+// recordBuiltin writes the install-manifest rows for the built-in DIR package.
+//
+// `init` is the only command that installs a package without pulling one, and
+// leaving it untracked made the manifest disagree with what is on disk:
+// `dirctl uninstall org.agntcy/directory` can already remove it and
+// `install outdated` can already compare it against this binary, and both read
+// the manifest, so an untracked install was invisible to exactly the commands
+// that act on it.
+//
+// The row carries origin "builtin", so a version check asks this binary rather
+// than any Directory, and no CID: the record is rebuilt on demand with the
+// current timestamp, so its content address differs on every build and
+// recording one would only ever look like a change.
+//
+// A failure is a warning, never an error. `init` has just wired the user's
+// agents; losing the note of it must not fail the wizard.
+func recordBuiltin(
+	cmd *cobra.Command,
+	arts agentinstall.Artifacts,
+	agents []agentcfg.Agent,
+	outcomes []agentcfg.Outcome,
+) {
+	if len(agents) == 0 {
+		return
+	}
+
+	err := pkgstate.Update(func(m *pkgstate.Manifest) bool {
+		return agentinstall.Record(m, arts, agents, outcomes, agentinstall.Identity{
+			Name:    dirpkg.Name(),
+			Version: dirpkg.Version(),
+			Scope:   pkgstate.ScopeGlobal,
+			Origin:  pkgstate.OriginBuiltin,
+		}, time.Now().UTC())
+	})
+	if err != nil {
+		presenter.Errorf(cmd, "Warning: install manifest: %s\n", err)
+	}
+}
+
+// forgetBuiltin drops the built-in package's rows for every agent it was
+// removed from. See recordBuiltin for why a failure only warns.
+func forgetBuiltin(cmd *cobra.Command, agents []agentcfg.Agent, outcomes []agentcfg.Outcome) {
+	err := pkgstate.Update(func(m *pkgstate.Manifest) bool {
+		return agentinstall.Forget(m, dirpkg.Name(), pkgstate.ScopeGlobal, agents, outcomes)
+	})
+	if err != nil {
+		presenter.Errorf(cmd, "Warning: install manifest: %s\n", err)
+	}
 }
 
 // removeAgents strips the built-in DIR MCP server & skill from detected agents.
@@ -223,17 +233,21 @@ func removeAgents(cmd *cobra.Command, env agentcfg.Env, opts *options) error {
 		return err
 	}
 
-	selected, _ := agentcfg.ResolveSelection(agentcfg.Registry(), env, chosen)
-	if len(selected) == 0 {
-		return nil
-	}
-
-	arts, err := dirArtifacts()
+	// The rows say what was written, which is what has to be removed. Deriving
+	// the artifacts from *this* binary instead would miss anything an earlier
+	// one wrote under a different name: a renamed MCP key would read as already
+	// absent, the row would be forgotten as cleared, and the old key would sit
+	// in the agent's config with nothing left to point at it.
+	rows, err := builtinRows(chosen)
 	if err != nil {
 		return err
 	}
 
-	plan := agentinstall.Uninstall(env, arts, selected, agentcfg.Global, true)
+	if len(rows) == 0 {
+		return nil
+	}
+
+	plan := agentinstall.UninstallRecorded(env, rows, true)
 	if len(plan) == 0 {
 		return nil
 	}
@@ -260,8 +274,57 @@ func removeAgents(cmd *cobra.Command, env agentcfg.Env, opts *options) error {
 		}
 	}
 
-	outcomes := agentinstall.Uninstall(env, arts, selected, agentcfg.Global, false)
+	outcomes := agentinstall.UninstallRecorded(env, rows, false)
 	presenter.Printf(cmd, "%s", agentcfg.FormatSummary(outcomes, false))
 
+	forgetBuiltin(cmd, rowAgents(rows), outcomes)
+
 	return nil
+}
+
+// builtinRows are the manifest rows for the built-in package at global scope,
+// narrowed by --agents.
+//
+// Detection is deliberately not consulted, unlike on the install side: an agent
+// no longer detected on this machine still holds the files it was given, and
+// leaving them because the agent has since been uninstalled would strand them
+// for good.
+//
+//nolint:wrapcheck // pkgstate's error already names the manifest and the operation.
+func builtinRows(chosen map[string]bool) ([]pkgstate.Entry, error) {
+	manifest, err := pkgstate.Read()
+	if err != nil {
+		return nil, err
+	}
+
+	var rows []pkgstate.Entry
+
+	for _, row := range manifest.ByName(dirpkg.Name()) {
+		if !row.Scope.IsGlobal() {
+			continue
+		}
+
+		if len(chosen) > 0 && !chosen[row.Agent] {
+			continue
+		}
+
+		rows = append(rows, row)
+	}
+
+	return rows, nil
+}
+
+// rowAgents resolves the rows' agents, dropping any this binary has no
+// descriptor for — Forget keys on the agent ID, which such a row still has, but
+// UninstallRecorded could not have removed anything for it either.
+func rowAgents(rows []pkgstate.Entry) []agentcfg.Agent {
+	agents := make([]agentcfg.Agent, 0, len(rows))
+
+	for _, row := range rows {
+		if agent, known := agentcfg.ByID(row.Agent); known {
+			agents = append(agents, agent)
+		}
+	}
+
+	return agents
 }

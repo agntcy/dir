@@ -26,7 +26,7 @@ during the signing process.
 
 You can specify the record by:
 - CID directly (e.g., "bafyreib...")
-- Name (e.g., "cisco.com/agent") - uses the latest version
+- Name (e.g., "cisco.com/agent") - uses the highest semantic version
 - Name with version (e.g., "cisco.com/agent:v1.0.0")
 
 Name verification proves that the signing key is authorized by the domain

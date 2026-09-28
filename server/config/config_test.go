@@ -13,10 +13,12 @@ import (
 	dbconfig "github.com/agntcy/dir/server/database/config"
 	ratelimitconfig "github.com/agntcy/dir/server/middleware/ratelimit/config"
 	naming "github.com/agntcy/dir/server/naming/config"
+	policy "github.com/agntcy/dir/server/policy/config"
 	publication "github.com/agntcy/dir/server/publication/config"
 	routing "github.com/agntcy/dir/server/routing/config"
 	store "github.com/agntcy/dir/server/store/config"
 	oci "github.com/agntcy/dir/server/store/oci/config"
+	validatorsconfig "github.com/agntcy/dir/server/validators/config"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -30,7 +32,6 @@ func TestConfig(t *testing.T) {
 			Name: "Custom config",
 			EnvVars: map[string]string{
 				"DIRECTORY_SERVER_LISTEN_ADDRESS":                        "example.com:8889",
-				"DIRECTORY_SERVER_OASF_API_VALIDATION_SCHEMA_URL":        "https://custom.schema.url",
 				"DIRECTORY_SERVER_STORE_PROVIDER":                        "provider",
 				"DIRECTORY_SERVER_STORE_OCI_LOCAL_DIR":                   "local-dir",
 				"DIRECTORY_SERVER_STORE_OCI_REGISTRY_ADDRESS":            "example.com:5001",
@@ -56,6 +57,8 @@ func TestConfig(t *testing.T) {
 				"DIRECTORY_SERVER_SYNC_AUTH_CONFIG_PASSWORD":             "sync-password",
 				"DIRECTORY_SERVER_AUTHZ_ENABLED":                         "true",
 				"DIRECTORY_SERVER_AUTHZ_ENFORCER_POLICY_FILE_PATH":       "/tmp/authz_policies.csv",
+				"DIRECTORY_SERVER_POLICY_ENABLED":                        "true",
+				"DIRECTORY_SERVER_POLICY_DIR":                            "/tmp/policies",
 				"DIRECTORY_SERVER_PUBLICATION_SCHEDULER_INTERVAL":        "10s",
 				"DIRECTORY_SERVER_PUBLICATION_WORKER_COUNT":              "1",
 				"DIRECTORY_SERVER_PUBLICATION_WORKER_TIMEOUT":            "10s",
@@ -69,10 +72,7 @@ func TestConfig(t *testing.T) {
 			},
 			ExpectedConfig: &Config{
 				ListenAddress: "example.com:8889",
-				OASFAPIValidation: OASFAPIValidationConfig{
-					SchemaURL: "https://custom.schema.url",
-				},
-				Connection: DefaultConnectionConfig(), // Connection defaults applied
+				Connection:    DefaultConnectionConfig(), // Connection defaults applied
 				Authn: authn.Config{
 					Enabled:   false,
 					Mode:      authn.AuthModeX509, // Default from config.go:109
@@ -130,6 +130,10 @@ func TestConfig(t *testing.T) {
 					Enabled:                true,
 					EnforcerPolicyFilePath: "/tmp/authz_policies.csv",
 				},
+				Policy: policy.Config{
+					Enabled: true,
+					Dir:     "/tmp/policies",
+				},
 				Publication: publication.Config{
 					SchedulerInterval: 10 * time.Second,
 					WorkerCount:       1,
@@ -160,10 +164,7 @@ func TestConfig(t *testing.T) {
 			EnvVars: map[string]string{},
 			ExpectedConfig: &Config{
 				ListenAddress: DefaultListenAddress,
-				OASFAPIValidation: OASFAPIValidationConfig{
-					SchemaURL: "", // Empty when not configured - default should come from Helm chart
-				},
-				Connection: DefaultConnectionConfig(), // Connection defaults applied
+				Connection:    DefaultConnectionConfig(), // Connection defaults applied
 				Authn: authn.Config{
 					Enabled:   false,
 					Mode:      authn.AuthModeX509, // Default from config.go:109
@@ -205,6 +206,10 @@ func TestConfig(t *testing.T) {
 					Enabled:                false,
 					EnforcerPolicyFilePath: DefaultConfigPath + "/authz_policies.csv",
 				},
+				Policy: policy.Config{
+					Enabled: false,
+					Dir:     DefaultConfigPath + "/policies",
+				},
 				Publication: publication.Config{
 					SchedulerInterval: publication.DefaultPublicationSchedulerInterval,
 					WorkerCount:       publication.DefaultPublicationWorkerCount,
@@ -240,49 +245,13 @@ func TestConfig(t *testing.T) {
 	}
 }
 
-// TestConfig_SchemaURL tests that OASF schema URL configuration is correctly parsed.
-func TestConfig_SchemaURL(t *testing.T) {
-	tests := []struct {
-		name              string
-		envVars           map[string]string
-		expectedSchemaURL string
-	}{
-		{
-			name:              "empty schema URL when not configured",
-			envVars:           map[string]string{},
-			expectedSchemaURL: "", // Empty when not configured - default should come from Helm chart
-		},
-		{
-			name: "custom schema URL",
-			envVars: map[string]string{
-				"DIRECTORY_SERVER_OASF_API_VALIDATION_SCHEMA_URL": "https://custom.schema.url",
-			},
-			expectedSchemaURL: "https://custom.schema.url",
-		},
-		{
-			name: "explicitly empty schema URL",
-			envVars: map[string]string{
-				"DIRECTORY_SERVER_OASF_API_VALIDATION_SCHEMA_URL": "",
-			},
-			expectedSchemaURL: "",
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			// Set environment variables
-			for k, v := range tt.envVars {
-				t.Setenv(k, v)
-			}
-
-			// Load config
-			cfg, err := LoadConfig()
-			assert.NoError(t, err)
-
-			// Verify schema URL configuration
-			assert.Equal(t, tt.expectedSchemaURL, cfg.OASFAPIValidation.SchemaURL)
-		})
-	}
+func TestLoadConfig_ValidatorsFromFile(t *testing.T) {
+	cfg, err := LoadConfig(WithFile("testdata/validators.yml"))
+	assert.NoError(t, err)
+	assert.Len(t, cfg.Validators, 1)
+	assert.Equal(t, "oasf", cfg.Validators[0].Provider)
+	assert.Equal(t, "https://custom.schema.url", cfg.Validators[0].ConfigString(validatorsconfig.ConfigKeySchemaURL))
+	assert.Equal(t, []string{"push", "index"}, cfg.Validators[0].Ops)
 }
 
 // TestConfig_RateLimiting tests that rate limiting configuration is correctly parsed.

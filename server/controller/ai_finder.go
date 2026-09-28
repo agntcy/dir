@@ -186,6 +186,10 @@ func (c *aiFinderController) GetWellKnownCatalog(ctx context.Context, _ *catalog
 				TrustManifest: &catalogv1.TrustManifest{
 					Identity:     catalogv1.GetCatalogUrnFor("host", c.hostId),
 					IdentityType: new("did"),
+					TrustSchema: &catalogv1.TrustSchema{
+						Identifier: "https://ai-catalog.io/spec/",
+						Version:    catalogv1.CatalogSpecVersion,
+					},
 				},
 			},
 			Collections: []*catalogv1.CatalogCollection{

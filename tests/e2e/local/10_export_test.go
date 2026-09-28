@@ -4,6 +4,7 @@
 package local
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"os"
@@ -92,6 +93,8 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests for the export command"
 		// recordCID covers both A2A and MCP (record_100.json has both modules).
 		var recordCID, skillCID string
 
+		const recordName = "export_batch_agent"
+
 		tempDir, err := os.MkdirTemp("", "export-batch-e2e-*")
 		gomega.Expect(err).NotTo(gomega.HaveOccurred())
 
@@ -102,7 +105,14 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests for the export command"
 		ginkgo.It("should push test records for batch export", func() {
 			// Push OASF record that contains both integration/a2a and integration/mcp modules.
 			recordPath := filepath.Join(tempDir, "record.json")
-			gomega.Expect(os.WriteFile(recordPath, testdata.ExpectedRecordV100JSON, 0o600)).To(gomega.Succeed())
+			recordJSON := bytes.Replace(
+				testdata.ExpectedRecordV100JSON,
+				[]byte(`"name": "burger_seller_agent"`),
+				[]byte(`"name": "`+recordName+`"`),
+				1,
+			)
+			gomega.Expect(recordJSON).NotTo(gomega.Equal(testdata.ExpectedRecordV100JSON))
+			gomega.Expect(os.WriteFile(recordPath, recordJSON, 0o600)).To(gomega.Succeed())
 
 			recordCID = testEnv.CLI.Push(recordPath).WithArgs("--output", "raw").ShouldSucceed()
 			gomega.Expect(recordCID).NotTo(gomega.BeEmpty())
@@ -120,6 +130,7 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests for the export command"
 
 			testEnv.CLI.ExportBatch(outDir, "a2a").WithArgs(
 				"--module", "integration/a2a",
+				"--name", recordName,
 			).ShouldSucceed()
 
 			entries, err := os.ReadDir(outDir)
@@ -132,6 +143,7 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests for the export command"
 
 			testEnv.CLI.ExportBatch(outDir, "agent-skill").WithArgs(
 				"--module", "core/language_model/agentskills",
+				"--name", "code-review",
 			).ShouldSucceed()
 
 			entries, err := os.ReadDir(outDir)
@@ -153,6 +165,7 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests for the export command"
 
 			testEnv.CLI.ExportBatch(outDir, "mcp-ghcopilot").WithArgs(
 				"--module", "integration/mcp",
+				"--name", recordName,
 			).ShouldSucceed()
 
 			mcpPath := filepath.Join(outDir, "mcp.json")

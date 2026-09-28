@@ -294,9 +294,11 @@ func TestPrintMessageRawFormat(t *testing.T) {
 			expected: "test-cid-123",
 		},
 		{
-			name:     "slice of strings",
-			value:    []string{"cid1", "cid2"},
-			expected: "[cid1 cid2]",
+			name:  "slice of strings",
+			value: []string{"cid1", "cid2"},
+			// One per line, so `dirctl search -o raw | dirctl install` can
+			// split it. Go's `[cid1 cid2]` debug form is unsplittable.
+			expected: "cid1\ncid2\n",
 		},
 		{
 			name:     "nil value",

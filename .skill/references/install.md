@@ -23,7 +23,7 @@ Supported agent IDs: `vscode`, `claude-code`, `claude-desktop`, `cursor`,
 ### Flow
 
 ```bash
-dirctl install list                                   # 1. detected agents + files install would touch (no changes)
+dirctl install agents                                 # 1. detected agents + files install would touch (no changes)
 dirctl install <cid-or-name> --dry-run                # 2. preview plan (per agent/artifact: add/updated/unchanged)
 dirctl install <cid-or-name> --agents vscode --yes    # 3. apply after user confirmation
 dirctl uninstall <cid-or-name> [--agents ...]         #    remove what install added (idempotent)
@@ -31,7 +31,7 @@ dirctl uninstall <cid-or-name> [--agents ...]         #    remove what install a
 
 Rules:
 
-1. Run `install list` and show detected agents as a table (agent | detected |
+1. Run `install agents` and show detected agents as a table (agent | detected |
    config paths).
 2. Always `--dry-run` first and render the plan as a table (agent | artifact
    | action | path).
@@ -44,10 +44,48 @@ Rules:
 5. Summarize the result: every path added/updated/removed/skipped, as
    clickable links where the host supports them.
 
+### Installing several records, and removing them
+
+Every install is recorded in `$XDG_CONFIG_HOME/dirctl/installed.json`. A
+`--project` install records the absolute path of the repository it wrote into,
+as its `scope`, so one manifest covers every repository on the machine. Never
+suggest committing this file: it is a local record full of absolute paths.
+
+```bash
+dirctl search --module integration/mcp -o raw | dirctl install --agents vscode --yes
+dirctl install list -o json             # installed packages: name, agent, kind, scope, version, flags
+dirctl install list <name> -o json      # that package's skill files and MCP server keys
+dirctl install outdated -o json         # what has a newer version (--all for the full table)
+dirctl install outdated --exit-code     # exit 1 when anything is upgradable (CI gating)
+dirctl install pin <name>               # hold at the installed version
+dirctl install unpin <name>             # release the hold
+dirctl install prune --dry-run          # rows whose artifacts are gone
+```
+
+`outdated` reports a `status` per row: `upgradable` (a higher version, or the
+same version with new content), `up to date`, `pinned`, `missing` (the recorded
+artifacts are gone), `not found`, `non-semver`, `skipped` (installed from a
+different Directory). Only `upgradable` and the unassessable rows are
+listed by default. Never present a lower upstream version as an upgrade — it is
+reported as `up to date` with the upstream version in parentheses.
+
+Install reads one reference per line from stdin when given no positional
+argument; `dirctl search -o raw` is the format to pipe. Filtering belongs to
+`dirctl search`, so install carries no copy of its flags. A piped run cannot prompt, because stdin is the list, so it needs
+`--yes` or `--dry-run`. Only the highest version of each name is installed:
+two versions share one skill folder and one MCP key, so only one can be live.
+
+Uninstall works from the manifest, not the Directory, so it succeeds with the
+server down or after the record has been deleted upstream, and it touches only
+the agents that actually hold the package. It takes one reference; removing
+several is a loop. A reference with no row is reported as not installed,
+naming the scope that was searched.
+
 Properties worth relying on: writes are atomic and surgical (only the
 record's own entry/managed block is touched); re-installing a newer version
 of the same-named record replaces the old artifacts cleanly; undetected
-agents are skipped, never created.
+agents are skipped, never created; plans and summaries name only the agents
+something happens to.
 
 ## Fallback path: `dirctl export`
 
@@ -101,7 +139,7 @@ Always end with the activation hint for the agents actually touched.
 - "Record has nothing installable" — record carries neither MCP nor Agent
   Skill module; for A2A-only records route to `export --format a2a`.
 - Requested agent skipped — it wasn't detected on this machine; show
-  `install list` output.
+  `install agents` output.
 - Version pinning: pass `name:version` (or `@cid` for hash-verified) to
   install exactly what the user selected in discovery; bare names resolve to
   the newest record.

@@ -30,7 +30,9 @@ You can pull by CID or by name. The command auto-detects whether the argument is
 - If it's a valid CID (e.g., bafyrei...), it pulls directly by CID
 - Otherwise, it resolves the name to a CID and pulls it
 
-When pulling by name without a version, the most recently created version is used.
+When pulling by name without a version, the highest semantic version is used. A
+release beats a prerelease; versions that semver cannot order fall back to the
+most recently created record.
 
 For hash-verified pulls, append @digest to verify the resolved record matches the expected CID:
 - name@digest  - verify latest version matches the digest
@@ -42,7 +44,7 @@ Usage examples:
 
 	dirctl pull bafyreib...
 
-2. Pull by name (latest version):
+2. Pull by name (highest version):
 
 	dirctl pull cisco.com/marketing-agent
 	dirctl pull https://cisco.com/marketing-agent

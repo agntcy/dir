@@ -81,32 +81,23 @@ Validation is performed using the [OASF SDK](https://docs.agntcy.org/oasf/oasf-
 
 ### Configuration
 
-The Directory server validates records using an OASF schema URL. By default, it uses `https://schema.oasf.outshift.com`, but you can configure a different OASF instance:
-
-**Using environment variables:**
-
-```bash
-# Use default OASF instance (https://schema.oasf.outshift.com)
-task server:start
-
-# Use custom OASF instance
-DIRECTORY_SERVER_OASF_API_VALIDATION_SCHEMA_URL=https://your-custom-oasf.com task server:start
-```
-
-**Using YAML configuration:**
+The Directory server validates records using a `validators` list in YAML. Each entry selects a provider, the operations it applies to (`push`, `autosync`, `index`), and a provider-specific `config`. An empty list disables record validation. This list cannot be set via environment variables.
 
 ```yaml
 # server.config.yml
-oasf_api_validation:
-  schema_url: "https://schema.oasf.outshift.com"
+validators:
+  - provider: oasf
+    op: ["push", "autosync", "index"]
+    config:
+      schema_url: "https://schema.oasf.outshift.com"
 listen_address: "0.0.0.0:8888"
 ```
 
 !!! note
   
-    The Go server binary does not set a default schema URL in code; it must be configured via
-    environment variable or YAML. Deployment tooling provides defaults: Docker Compose and the
-    `dirctl` daemon use `https://schema.oasf.outshift.com`, and Helm charts set the same value
+    The Go server binary does not set a default validator list in code.
+    Deployment tooling provides defaults: Docker Compose, the `dirctl` daemon,
+    and Helm charts enable the official OASF schema URL on push, autosync, and index
     unless overridden.
 
 ### Validation Behavior
@@ -140,8 +131,11 @@ Records validated here form the most strict, compatible set.
 **Configuration:**
 
 ```yaml
-oasf_api_validation:
-  schema_url: "https://schema.oasf.outshift.com"
+validators:
+  - provider: oasf
+    op: ["push", "autosync", "index"]
+    config:
+      schema_url: "https://schema.oasf.outshift.com"
 ```
 
 #### Custom OASF Instance (Additional Taxonomy)
@@ -153,8 +147,11 @@ Records using the extended taxonomy can only be pulled by nodes using the exact 
 **Configuration:**
 
 ```yaml
-oasf_api_validation:
-  schema_url: "https://your-custom-oasf-instance.com"
+validators:
+  - provider: oasf
+    op: ["push", "autosync", "index"]
+    config:
+      schema_url: "https://your-custom-oasf-instance.com"
 ```
 
 #### Custom OASF Instance (Changed Taxonomy)
@@ -166,8 +163,11 @@ This approach is completely incompatible with all other options, can only work w
 **Configuration:**
 
 ```yaml
-oasf_api_validation:
-  schema_url: "https://your-custom-oasf-instance.com"
+validators:
+  - provider: oasf
+    op: ["push", "autosync", "index"]
+    config:
+      schema_url: "https://your-custom-oasf-instance.com"
 ```
 
 ### Deploying a Local OASF Instance
@@ -194,9 +194,11 @@ To test with a local OASF instance deployed alongside the directory server:
 
     ```yaml
     apiserver:
-      config:
-        oasf_api_validation:
-          schema_url: "http://dir-ingress-controller.dir-server.svc.cluster.local"
+      validators:
+        - provider: oasf
+          op: ["push", "autosync", "index"]
+          config:
+            schema_url: "http://dir-ingress-controller.dir-server.svc.cluster.local"
     ```
 
     Replace `dir` with your Helm release name and `dir-server` with your namespace if different.

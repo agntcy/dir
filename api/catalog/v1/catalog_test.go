@@ -66,6 +66,7 @@ func TestRecordToCatalog(t *testing.T) {
 				"description": "A test record with a single module.",
 				"updatedAt": "2024-01-01T00:00:00Z",
 				"mediaType": "application/mcp-server-card+json",
+				"type": "application/mcp-server-card+json",
 				"data": {
 					"key1": "value1",
 					"key2": 42
@@ -132,19 +133,24 @@ func TestRecordToCatalog(t *testing.T) {
 				"description": "A test record with multiple modules.",
 				"updatedAt": "2024-02-01T00:00:00Z",
 				"mediaType": "application/ai-catalog+json",
+				"type": "application/ai-catalog+json",
 				"data": {
 					"specVersion": "1.0",
 					"entries": [
 						{
-							"displayName": "Test Record 2 - A2A",
+							"identifier": "urn:ai:org.agntcy:cid:baeareifgarfb5mezccohu3h7ubfsdkn37edsmqvfv2q37k4qs6nzwqk4ve:a2a-0",
+								"displayName": "Test Record 2 - A2A",
 							"mediaType": "application/a2a-agent-card+json",
+								"type": "application/a2a-agent-card+json",
 							"data": {
 								"key2": "value2"
 							}
 						},
 						{
-							"displayName": "Test Record 2 - MCP",
+							"identifier": "urn:ai:org.agntcy:cid:baeareifgarfb5mezccohu3h7ubfsdkn37edsmqvfv2q37k4qs6nzwqk4ve:mcp-0",
+								"displayName": "Test Record 2 - MCP",
 							"mediaType": "application/mcp-server-card+json",
+							"type": "application/mcp-server-card+json",
 							"data": {
 								"key1": "value1"
 							},

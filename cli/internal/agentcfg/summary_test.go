@@ -44,3 +44,25 @@ func TestFormatSummaryEmpty(t *testing.T) {
 	out := FormatSummary(nil, false)
 	assert.Contains(t, strings.ToLower(out), "nothing")
 }
+
+func TestFormatSummaryLeavesOutUnchangedLinesButStillCountsThem(t *testing.T) {
+	out := FormatSummary([]Outcome{
+		{Agent: "VS Code (Copilot)", Artifact: "skill", Path: "/home/u/.copilot/skills/rec", Action: ActionRemoved},
+		{Agent: "Claude Code", Artifact: "skill", Path: "/home/u/.claude/skills/rec", Action: ActionUnchanged},
+	}, false)
+
+	assert.Contains(t, out, "/home/u/.copilot/skills/rec")
+	assert.NotContains(t, out, "/home/u/.claude/skills/rec")
+	// The tally keeps the information the per-agent lines dropped.
+	assert.Contains(t, out, "1 removed")
+	assert.Contains(t, out, "1 unchanged")
+}
+
+func TestFormatSummarySaysSoWhenNothingChanged(t *testing.T) {
+	out := FormatSummary([]Outcome{
+		{Agent: "Claude Code", Artifact: "skill", Path: "/p", Action: ActionUnchanged},
+	}, false)
+
+	assert.Contains(t, out, "Nothing changed")
+	assert.Contains(t, out, "1 unchanged")
+}

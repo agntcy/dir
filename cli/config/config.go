@@ -4,7 +4,10 @@
 package config
 
 import (
+	"fmt"
+
 	"github.com/agntcy/dir/client"
+	clientconfig "github.com/agntcy/dir/client/config"
 	"github.com/spf13/cobra"
 )
 
@@ -14,6 +17,57 @@ var Client *client.Config = &client.DefaultConfig
 
 // Context is the per-command context override.
 var Context string
+
+// ResolveClient merges this invocation's client flags over the context it
+// names — `--context`, or current_context when the flag is unset — and returns
+// the result.
+//
+// It is a pure function: the package-level Client is left alone, so a caller
+// that only wants to read the resolved address does not change what the rest of
+// the run sees. Root assigns the result to Client itself, because the flag
+// bindings point at that value.
+//
+// Anything deriving a Directory address must come through here rather than
+// calling clientconfig.Resolve with an empty Context, or it silently reports
+// current_context while the invocation is talking to another Directory
+// entirely.
+func ResolveClient(cmd *cobra.Command) (*client.Config, error) {
+	return resolveClient(cmd, false)
+}
+
+// ResolveClientLenient is ResolveClient with validation skipped, for a caller
+// that only needs to read the effective connection settings and would rather
+// have a partially-set or forward-compatible config than none at all —
+// projecting the address into an installed MCP entry, say, where falling back
+// to a default would silently point it somewhere else.
+//
+// Never hand its result to client.New: nothing has checked that the settings
+// hang together.
+func ResolveClientLenient(cmd *cobra.Command) (*client.Config, error) {
+	return resolveClient(cmd, true)
+}
+
+func resolveClient(cmd *cobra.Command, skipValidation bool) (*client.Config, error) {
+	fields := ChangedClientConfigFields(cmd)
+
+	var overrides *client.Config
+	if len(fields) > 0 {
+		overrides = Client
+	}
+
+	cfg, _, err := clientconfig.Resolve(clientconfig.ResolveOptions{
+		Context:            Context,
+		Overrides:          overrides,
+		OverrideFields:     fields,
+		SkipValidation:     skipValidation,
+		AllowUnknownFields: true,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to resolve client config: %w", err)
+	}
+
+	return cfg, nil
+}
 
 // ChangedClientConfigFields returns schema field names for explicitly set client flags.
 func ChangedClientConfigFields(cmd *cobra.Command) []string {

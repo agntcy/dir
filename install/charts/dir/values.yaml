@@ -130,6 +130,28 @@ apiserver:
     p,*,/agntcy.dir.store.v1.StoreService/Lookup
     p,*,/agntcy.dir.sync.v1.SyncService/RequestRegistryCredentials
 
+  # File-based content policies (OPA/Rego). Each key is a filename mounted at
+  # config.policy.dir. Not part of the server config struct.
+  #
+  # Example:
+  #   content_policies:
+  #     require-annotations.rego: |
+  #       package dir.policy.require_annotations
+  #
+  #       default allow := true
+  content_policies: {}
+
+  # Record validators applied on push, autosync, and/or index.
+  # Injected into both server.config.yml and reconciler.config.yml.
+  # Omit an op (or this entire list) to skip validation on that path.
+  # To use the OASF instance deployed with this chart (apiserver.oasf.enabled: true):
+  #   config.schema_url: "http://<release-name>-ingress-controller.<namespace>.svc.cluster.local"
+  validators:
+    - provider: oasf
+      op: ["push", "autosync", "index"]
+      config:
+        schema_url: "https://schema.oasf.outshift.com"
+
   # Server configuration (maps directly to server config.go Config struct)
   config:
     # listen_address: "0.0.0.0:8888"
@@ -157,6 +179,11 @@ apiserver:
 
       # Path to the authorization policy file
       enforcer_policy_file_path: "/etc/agntcy/dir/authz_policies.csv"
+
+    # File-based content policies. Files from content_policies are mounted here.
+    policy:
+      enabled: false
+      dir: "/etc/agntcy/dir/policies"
 
     # Store settings for the storage backend.
     store:
@@ -329,20 +356,6 @@ apiserver:
         # SSL mode for PostgreSQL connection
         # Options: disable, require, verify-ca, verify-full
         ssl_mode: "disable"
-
-    # OASF API validation configuration
-    oasf_api_validation:
-      # Schema URL for API-based validation
-      # Default: https://schema.oasf.outshift.com (public OASF server)
-      # To use the OASF instance deployed with this chart (when apiserver.oasf.enabled: true):
-      #   schema_url: "http://<release-name>-ingress-controller.<namespace>.svc.cluster.local"
-      # Example: schema_url: "http://dir-ingress-controller.dir-server.svc.cluster.local"
-      schema_url: "https://schema.oasf.outshift.com"
-
-      # Disable API validation (use embedded schema validation instead)
-      # When true, uses embedded schemas for validation (no HTTP calls to OASF server)
-      # Default: false
-      disable: false
 
   # SPIRE configuration
   spire:
@@ -648,7 +661,7 @@ apiserver:
       repository: bitnami/postgresql
       # renovate: datasource=docker depName=docker.io/bitnami/postgresql versioning=docker
       tag: latest
-      digest: "sha256:7b9c5292a8e8b38e7172705cc6e49e34b9a8d9c297c4c7ae04130a3e6a28f3b0"
+      digest: "sha256:7d77a46bbf200709237318c27dec0eaeae2520e403dd18fdebde2be7a6b04993"
     auth:
       username: "dir"
       password: "password"  # Default password for development
@@ -719,9 +732,6 @@ apiserver:
         # Auth credentials to use for syncing from the local registry.
         auth_config:
           insecure: true
-
-      # OASF schema URL for validation
-      schema_url: "https://schema.oasf.outshift.com"
 
       # Regsync task configuration
       regsync:

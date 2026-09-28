@@ -114,6 +114,10 @@ message CatalogEntry {
   // for a nested catalog.
   string media_type = 3 [(buf.validate.field).required = true];
 
+  // Spec-compliant media type of the artifact. This is the preferred field for
+  // AI Catalog clients; media_type remains for wire compatibility.
+  string type = 13;
+
   // Artifact content. Exactly one of url or data must be set.
   oneof artifact {
     option (buf.validate.oneof).required = true;

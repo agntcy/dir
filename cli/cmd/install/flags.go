@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/agntcy/dir/cli/cmd/search"
 	"github.com/agntcy/dir/cli/internal/agentcfg"
 	"github.com/agntcy/dir/cli/presenter"
 	"github.com/spf13/cobra"
@@ -49,18 +48,10 @@ func scopeFromOpts() agentcfg.Scope {
 	return agentcfg.Global
 }
 
-// printScope announces project scope so the user sees where files will land.
+// printScope announces project scope so the user sees where files will land,
+// naming the repository that the manifest row will name too.
 func printScope(cmd *cobra.Command) {
 	if opts.project {
-		presenter.Printf(cmd, "Scope: project (current repo)\n")
+		presenter.Printf(cmd, "Scope: %s\n", manifestScope(agentcfg.Project))
 	}
-}
-
-func addBatchFlags(cmd *cobra.Command, opts *options) {
-	flags := cmd.PersistentFlags()
-
-	flags.Uint32Var(&opts.limit, "limit", 100, "Maximum number of records to process in batch mode") //nolint:mnd
-	flags.BoolVar(&opts.allVersions, "all-versions", false, "Process all matched versions (default: latest per name wins)")
-
-	search.RegisterPersistentFilterFlags(cmd, &opts.filters)
 }

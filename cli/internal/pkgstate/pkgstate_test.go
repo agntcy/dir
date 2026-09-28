@@ -210,13 +210,18 @@ func TestUpsertKeysOnNameAgentAndScope(t *testing.T) {
 	otherAgent.Agent = "cursor"
 	m.Upsert(otherAgent)
 
-	otherScope := base
-	otherScope.Scope = pkgstate.ScopeProject
-	m.Upsert(otherScope)
+	oneRepo := base
+	oneRepo.Scope = pkgstate.ProjectScope("/src/alpha")
+	m.Upsert(oneRepo)
 
-	// One package, three rows: the same name is installed for two agents and at
-	// two scopes, and none of them collides.
-	assert.Len(t, m.Entries, 3)
+	anotherRepo := base
+	anotherRepo.Scope = pkgstate.ProjectScope("/src/beta")
+	m.Upsert(anotherRepo)
+
+	// One package, four rows: two agents globally, plus one repository each.
+	// Naming the repository is what keeps the last two apart — a bare
+	// "project" would collide on one key.
+	assert.Len(t, m.Entries, 4)
 }
 
 func TestWithCarriedArtifactsKeepsAServerThisInstallDidNotWrite(t *testing.T) {
@@ -327,6 +332,84 @@ func TestByName(t *testing.T) {
 	assert.Empty(t, m.ByName("nothing-here"))
 }
 
+// isolatedManifestPath points DefaultPath at a temp directory and returns it.
+func isolatedManifestPath(t *testing.T) string {
+	t.Helper()
+
+	configHome := t.TempDir()
+	t.Setenv("XDG_CONFIG_HOME", configHome)
+
+	return filepath.Join(configHome, "dirctl", pkgstate.ManifestFileName)
+}
+
+func TestUpdateSavesWhenMutateReportsAChange(t *testing.T) {
+	path := isolatedManifestPath(t)
+
+	require.NoError(t, pkgstate.Update(func(m *pkgstate.Manifest) bool {
+		m.Upsert(sampleEntry())
+
+		return true
+	}))
+
+	loaded, err := pkgstate.Load(path)
+	require.NoError(t, err)
+	assert.Len(t, loaded.Entries, 1)
+}
+
+func TestUpdateWritesNothingWhenMutateReportsNoChange(t *testing.T) {
+	path := isolatedManifestPath(t)
+
+	require.NoError(t, pkgstate.Update(func(*pkgstate.Manifest) bool { return false }))
+
+	_, err := os.Stat(path)
+	assert.True(t, os.IsNotExist(err), "a no-op must not create the manifest")
+}
+
+// TestUpdateStillMutatesOverACorruptFile: the rows are already unreadable, so
+// starting a fresh manifest beats refusing to record anything ever again. The
+// error still surfaces, so a caller that must not lose the write can react.
+func TestUpdateStillMutatesOverACorruptFile(t *testing.T) {
+	path := isolatedManifestPath(t)
+	require.NoError(t, os.MkdirAll(filepath.Dir(path), 0o750))
+	require.NoError(t, os.WriteFile(path, []byte("{not json"), 0o600))
+
+	err := pkgstate.Update(func(m *pkgstate.Manifest) bool {
+		m.Upsert(sampleEntry())
+
+		return true
+	})
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "parse install manifest")
+
+	loaded, loadErr := pkgstate.Load(path)
+	require.NoError(t, loadErr)
+	assert.Len(t, loaded.Entries, 1)
+}
+
+// TestUpdateRefusesAFrozenManifest: a newer dirctl wrote it, so overwriting
+// would destroy rows this binary cannot represent. Mutate never runs.
+func TestUpdateRefusesAFrozenManifest(t *testing.T) {
+	path := isolatedManifestPath(t)
+	future := []byte(`{"schemaVersion": 99, "entries": []}`)
+
+	require.NoError(t, os.MkdirAll(filepath.Dir(path), 0o750))
+	require.NoError(t, os.WriteFile(path, future, 0o600))
+
+	called := false
+
+	err := pkgstate.Update(func(*pkgstate.Manifest) bool {
+		called = true
+
+		return true
+	})
+	require.ErrorIs(t, err, pkgstate.ErrFrozen)
+	assert.False(t, called)
+
+	onDisk, readErr := os.ReadFile(path)
+	require.NoError(t, readErr)
+	assert.Equal(t, future, onDisk)
+}
+
 func TestDefaultPathUsesXDGConfigHome(t *testing.T) {
 	t.Setenv("XDG_CONFIG_HOME", filepath.Join("/tmp", "xdg"))
 
@@ -344,4 +427,38 @@ func TestDefaultPathFallsBackToHomeConfig(t *testing.T) {
 	home, err := os.UserHomeDir()
 	require.NoError(t, err)
 	assert.Equal(t, filepath.Join(home, ".config", "dirctl", "installed.json"), path)
+}
+
+func TestKindIsDerivedFromTheArtifactsThatLanded(t *testing.T) {
+	both := pkgstate.Entry{SkillPath: "/skills/agent", MCPServers: []string{"agent"}}
+	assert.Equal(t, "skill+mcp", both.Kind())
+
+	assert.Equal(t, "skill", pkgstate.Entry{SkillPath: "/skills/agent"}.Kind())
+	assert.Equal(t, "mcp", pkgstate.Entry{MCPServers: []string{"agent"}}.Kind())
+	// Only a hand-edited manifest can hold a row that landed nothing.
+	assert.Equal(t, "none", pkgstate.Entry{}.Kind())
+}
+
+func TestOnlyTwoKnownDirectoriesThatDifferAreAMismatch(t *testing.T) {
+	// Rows written before the field existed carry no address, and must stay
+	// checkable rather than become permanently unassessable.
+	assert.True(t, pkgstate.Entry{}.DirectoryMatches("localhost:8888"))
+	// A run that cannot resolve its own address must not skip every row.
+	assert.True(t, pkgstate.Entry{Directory: "staging:443"}.DirectoryMatches(""))
+	assert.True(t, pkgstate.Entry{Directory: "localhost:8888"}.DirectoryMatches("localhost:8888"))
+	assert.False(t, pkgstate.Entry{Directory: "staging:443"}.DirectoryMatches("localhost:8888"))
+}
+
+func TestDirectoryRoundTripsThroughTheFile(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "installed.json")
+
+	m := &pkgstate.Manifest{Entries: []pkgstate.Entry{{
+		Name: "cisco.com/agent", Agent: "claude-code", Scope: pkgstate.ScopeGlobal, Directory: "staging:443",
+	}}}
+	require.NoError(t, m.Save(path))
+
+	loaded, err := pkgstate.Load(path)
+	require.NoError(t, err)
+	require.Len(t, loaded.Entries, 1)
+	assert.Equal(t, "staging:443", loaded.Entries[0].Directory)
 }

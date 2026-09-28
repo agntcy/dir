@@ -29,6 +29,56 @@ const (
 	ActionFailed Action = "failed"
 )
 
+// Changed reports whether the action altered anything on disk.
+func (a Action) Changed() bool {
+	switch a {
+	case ActionAdded, ActionUpdated, ActionRemoved:
+		return true
+	case ActionUnchanged, ActionSkipped, ActionFailed:
+		return false
+	default:
+		return false
+	}
+}
+
+// HasChanges reports whether applying these outcomes would alter anything.
+//
+// A plan in which nothing changes is a plan not worth confirming, so callers
+// use this to stop before the prompt rather than ask the user to approve a
+// no-op.
+func HasChanges(outcomes []Outcome) bool {
+	for _, o := range outcomes {
+		if o.Action.Changed() {
+			return true
+		}
+	}
+
+	return false
+}
+
+// reportable drops the outcomes a reader does not need to see.
+//
+// An unchanged outcome is one where nothing was written and nothing will be:
+// the artifact was already correct, or — far more often — the agent never had
+// it in the first place. Listing those alongside the real changes reads as a
+// claim that the package is installed in every agent named, which is exactly
+// backwards. Skips and failures stay, because each one explains why an agent
+// the user asked for got nothing.
+//
+// The tally still counts every outcome, so the unchanged ones are not hidden,
+// only kept out of the per-agent lines.
+func reportable(outcomes []Outcome) []Outcome {
+	var shown []Outcome
+
+	for _, o := range outcomes {
+		if o.Action != ActionUnchanged {
+			shown = append(shown, o)
+		}
+	}
+
+	return shown
+}
+
 // failOutcome marks an outcome as failed with err and returns both, so callers
 // can `return failOutcome(outcome, fmt.Errorf(...))` in one line.
 func failOutcome(outcome Outcome, err error) (Outcome, error) {

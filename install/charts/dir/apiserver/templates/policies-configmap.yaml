@@ -1,0 +1,17 @@
+# Copyright AGNTCY Contributors (https://github.com/agntcy)
+# SPDX-License-Identifier: Apache-2.0
+
+{{- include "chart.contentPolicies.validate" . }}
+{{- if eq (include "chart.contentPolicies.enabled" .) "true" }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "chart.fullname" . }}-policies
+  labels:
+    {{- include "chart.labels" . | nindent 4 }}
+data:
+  {{- range $name, $content := .Values.content_policies }}
+  {{ $name }}: |
+    {{- $content | nindent 4 }}
+  {{- end }}
+{{- end }}

@@ -10,7 +10,6 @@ import (
 	"sync"
 	"time"
 
-	corev1 "github.com/agntcy/dir/api/core/v1"
 	"github.com/agntcy/dir/reconciler/config"
 	"github.com/agntcy/dir/reconciler/tasks"
 	"github.com/agntcy/dir/reconciler/tasks/indexer"
@@ -22,6 +21,7 @@ import (
 	namingprovider "github.com/agntcy/dir/server/naming"
 	"github.com/agntcy/dir/server/naming/wellknown"
 	servertypes "github.com/agntcy/dir/server/types"
+	recordvalidators "github.com/agntcy/dir/server/validators"
 	"github.com/agntcy/dir/utils/logging"
 	"oras.land/oras-go/v2/registry"
 )
@@ -38,17 +38,17 @@ type Service struct {
 }
 
 // New creates a reconciler service with tasks registered according to cfg.
-// The caller supplies the database, store, provider counter, and OASF validator
-// so that an embedding process (e.g. the daemon) can share them with the
-// apiserver. counters may be nil; if so, the metrics task is skipped even when
-// cfg.Metrics.Enabled is true.
-func New(cfg *config.Config, db servertypes.DatabaseAPI, store servertypes.StoreAPI, repo registry.TagLister, oasfValidator corev1.Validator, counters metrics.ProviderCounterAPI) (*Service, error) {
+// The caller supplies the database, store, provider counter, and record
+// validators so that an embedding process (e.g. the daemon) can share them
+// with the apiserver. counters may be nil; if so, the metrics task is skipped
+// even when cfg.Metrics.Enabled is true.
+func New(cfg *config.Config, db servertypes.DatabaseAPI, store servertypes.StoreAPI, repo registry.TagLister, validatorRegistry *recordvalidators.Registry, counters metrics.ProviderCounterAPI) (*Service, error) {
 	svc := &Service{
 		tasks:  []tasks.Task{},
 		stopCh: make(chan struct{}),
 	}
 
-	if err := svc.registerTasks(cfg, db, store, repo, oasfValidator, counters); err != nil {
+	if err := svc.registerTasks(cfg, db, store, repo, validatorRegistry, counters); err != nil {
 		return nil, err
 	}
 
@@ -56,7 +56,7 @@ func New(cfg *config.Config, db servertypes.DatabaseAPI, store servertypes.Store
 }
 
 //nolint:cyclop
-func (s *Service) registerTasks(cfg *config.Config, db servertypes.DatabaseAPI, store servertypes.StoreAPI, repo registry.TagLister, oasfValidator corev1.Validator, counters metrics.ProviderCounterAPI) error {
+func (s *Service) registerTasks(cfg *config.Config, db servertypes.DatabaseAPI, store servertypes.StoreAPI, repo registry.TagLister, validatorRegistry *recordvalidators.Registry, counters metrics.ProviderCounterAPI) error {
 	if cfg.Regsync.Enabled {
 		t, err := regsync.NewTask(cfg.Regsync, cfg.LocalRegistry, db)
 		if err != nil {
@@ -67,7 +67,7 @@ func (s *Service) registerTasks(cfg *config.Config, db servertypes.DatabaseAPI, 
 	}
 
 	if cfg.Indexer.Enabled {
-		t, err := indexer.NewTask(cfg.Indexer, cfg.LocalRegistry, store, repo, db, oasfValidator)
+		t, err := indexer.NewTask(cfg.Indexer, cfg.LocalRegistry, store, repo, db, validatorRegistry)
 		if err != nil {
 			return fmt.Errorf("failed to create indexer task: %w", err)
 		}

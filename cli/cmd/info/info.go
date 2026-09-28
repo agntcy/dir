@@ -29,7 +29,9 @@ You can lookup by CID or by name. The command auto-detects whether the argument 
 - If it's a valid CID (e.g., bafyrei...), it looks up directly by CID
 - Otherwise, it resolves the name to a CID and looks it up
 
-When looking up by name without a version, the most recently created version is used.
+When looking up by name without a version, the highest semantic version is used.
+A release beats a prerelease; versions that semver cannot order fall back to the
+most recently created record.
 
 Usage examples:
 
@@ -37,7 +39,7 @@ Usage examples:
 
 	dirctl info bafyreib...
 
-2. Get info by name (latest version):
+2. Get info by name (highest version):
 
 	dirctl info cisco.com/marketing-agent
 

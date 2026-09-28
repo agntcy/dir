@@ -40,7 +40,7 @@ RUN xx-verify /bin/dirctl
 
 # Runtime stage - Alpine rather than distroless so that documented workflows composing
 # multiple dirctl calls (pipes, `--output json` into jq) are runnable with this image.
-FROM alpine:3.24@sha256:28bd5fe8b56d1bd048e5babf5b10710ebe0bae67db86916198a6eec434943f8b
+FROM alpine:3.24@sha256:294b683cb724975bec92580e1e685676bd4b50bda910ddb8c51d4cabeaec77e6
 
 RUN apk add --no-cache ca-certificates jq \
     && addgroup -g 65532 -S nonroot \
