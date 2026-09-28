@@ -5,6 +5,7 @@ package identity
 
 import (
 	"context"
+	"errors"
 	"testing"
 
 	coretypes "github.com/agntcy/dir/api/core/types"
@@ -31,7 +32,8 @@ func (f fakeRecord) GetAnnotations() map[string]string { return f.annotations }
 type fakeDB struct {
 	types.DatabaseAPI
 
-	records []coretypes.Record
+	records   []coretypes.Record
+	upsertErr error
 
 	upsertedIdentity  []types.ClaimObject
 	upsertedOwnership []types.ClaimObject
@@ -42,6 +44,10 @@ func (f *fakeDB) GetRecords(...types.FilterOption) ([]coretypes.Record, error) {
 }
 
 func (f *fakeDB) UpsertClaim(role string, c types.ClaimObject) error {
+	if f.upsertErr != nil {
+		return f.upsertErr
+	}
+
 	switch role {
 	case types.ClaimRoleIdentity:
 		f.upsertedIdentity = append(f.upsertedIdentity, c)
@@ -55,6 +61,7 @@ func (f *fakeDB) UpsertClaim(role string, c types.ClaimObject) error {
 // fakeReferrerStore serves a fixed set of referrers back per record CID.
 type fakeReferrerStore struct {
 	byRecordAndType map[string][]*corev1.RecordReferrer
+	walkErr         error
 }
 
 func (f *fakeReferrerStore) key(recordCID, referrerType string) string {
@@ -71,6 +78,10 @@ func (f *fakeReferrerStore) add(recordCID string, ref *corev1.RecordReferrer) {
 }
 
 func (f *fakeReferrerStore) WalkReferrers(_ context.Context, recordCID, referrerType string, walkFn func(*corev1.RecordReferrer) error) error {
+	if f.walkErr != nil {
+		return f.walkErr
+	}
+
 	for _, ref := range f.byRecordAndType[f.key(recordCID, referrerType)] {
 		if err := walkFn(ref); err != nil {
 			return err
@@ -143,4 +154,115 @@ func TestTask_Run_NoClaimReferrers_NoUpsert(t *testing.T) {
 func TestConfig_GetInterval_Default(t *testing.T) {
 	var cfg Config
 	assert.Equal(t, DefaultInterval, cfg.GetInterval())
+}
+
+func TestTask_ReconcileClaim(t *testing.T) {
+	const (
+		recordCID = "cid-1"
+		subject   = "did:web:acme.com:agents:finance"
+	)
+
+	identityRef, err := identityv1.NewIdentityClaim(subject).MarshalReferrer()
+	require.NoError(t, err)
+
+	ownershipRef, err := identityv1.NewOwnershipClaim(subject).MarshalReferrer()
+	require.NoError(t, err)
+
+	kinds := []struct {
+		name         string
+		reconcile    func(*Task, context.Context, string, string) (bool, error)
+		referrerType string
+		claimRef     *corev1.RecordReferrer
+		upserted     func(*fakeDB) []types.ClaimObject
+		untouched    func(*fakeDB) []types.ClaimObject
+	}{
+		{
+			name:         "identity",
+			reconcile:    (*Task).reconcileIdentity,
+			referrerType: corev1.IdentityClaimReferrerType,
+			claimRef:     identityRef,
+			upserted:     func(db *fakeDB) []types.ClaimObject { return db.upsertedIdentity },
+			untouched:    func(db *fakeDB) []types.ClaimObject { return db.upsertedOwnership },
+		},
+		{
+			name:         "ownership",
+			reconcile:    (*Task).reconcileOwnership,
+			referrerType: corev1.OwnershipClaimReferrerType,
+			claimRef:     ownershipRef,
+			upserted:     func(db *fakeDB) []types.ClaimObject { return db.upsertedOwnership },
+			untouched:    func(db *fakeDB) []types.ClaimObject { return db.upsertedIdentity },
+		},
+	}
+
+	for _, kind := range kinds {
+		t.Run(kind.name, func(t *testing.T) {
+			scenarios := []struct {
+				name       string
+				referrer   *corev1.RecordReferrer
+				walkErr    error
+				upsertErr  error
+				wantFound  bool
+				wantUpsert int
+				wantErr    string
+			}{
+				{
+					name:       "verifies the claim and records the result",
+					referrer:   kind.claimRef,
+					wantFound:  true,
+					wantUpsert: 1,
+				},
+				{
+					name:     "skips a referrer that does not decode",
+					referrer: &corev1.RecordReferrer{Type: kind.referrerType},
+				},
+				{
+					name:     "wraps a failed walk",
+					referrer: kind.claimRef,
+					walkErr:  errors.New("boom"),
+					wantErr:  "walk " + kind.name + " claim referrers: boom",
+				},
+				{
+					name:      "propagates a failed upsert",
+					referrer:  kind.claimRef,
+					upsertErr: errors.New("db down"),
+					wantFound: true,
+					wantErr:   "walk " + kind.name + " claim referrers: db down",
+				},
+			}
+
+			for _, sc := range scenarios {
+				t.Run(sc.name, func(t *testing.T) {
+					store := &fakeReferrerStore{walkErr: sc.walkErr}
+					store.add(recordCID, sc.referrer)
+
+					db := &fakeDB{upsertErr: sc.upsertErr}
+
+					task, err := NewTask(Config{Enabled: true}, db, store, nil, nil)
+					require.NoError(t, err)
+
+					found, err := kind.reconcile(task, t.Context(), recordCID, subject)
+					if sc.wantErr != "" {
+						require.EqualError(t, err, sc.wantErr)
+					} else {
+						require.NoError(t, err)
+					}
+
+					assert.Equal(t, sc.wantFound, found)
+					assert.Empty(t, kind.untouched(db))
+					require.Len(t, kind.upserted(db), sc.wantUpsert)
+
+					if sc.wantUpsert == 0 {
+						return
+					}
+
+					claim := kind.upserted(db)[0]
+					assert.Equal(t, recordCID, claim.GetRecordCID())
+					assert.Equal(t, subject, claim.GetSubject())
+					assert.Equal(t, "failed", claim.GetStatus())
+					assert.NotEmpty(t, claim.GetError())
+					assert.Nil(t, claim.GetVerifiedAt())
+				})
+			}
+		})
+	}
 }

@@ -298,24 +298,10 @@ func New(ctx context.Context, cfg *config.Config, opts ...ServerOption) (*Server
 		}
 	}
 
-	// Shared ingestion service: single authoritative path for persisting
-	// records/referrers (content store + search index + referrer DB state).
-	spiffeBundles, err := spiffe.Load(spiffe.Config{TrustDomains: cfg.Identity.SpiffeTrustDomains})
+	ingestor, err := newIngestor(cfg, storeAPI, databaseAPI)
 	if err != nil {
-		return nil, fmt.Errorf("failed to load SPIFFE trust bundles: %w", err)
+		return nil, err
 	}
-
-	fetchClient := safefetch.New()
-	identityRegistry := identity.NewRegistry(
-		identitywellknown.New(fetchClient),
-		dns.New(),
-		did.New(fetchClient),
-	)
-
-	ingestor := ingest.New(storeAPI, databaseAPI,
-		ingest.WithIdentityRegistry(identityRegistry),
-		ingest.WithSpiffeBundles(spiffeBundles),
-	)
 
 	routingAPI, err := routing.New(ctx, storeAPI, ingestor, oasfValidator, options)
 	if err != nil {
@@ -596,4 +582,28 @@ func (s Server) Start(ctx context.Context) error {
 	}()
 
 	return nil
+}
+
+// newIngestor builds the shared ingestion service, the single authoritative
+// path for persisting records and referrers (content store, search index,
+// referrer state), with the identity claim verification it performs at push
+// time: the resolver registry for dns, https and did subjects and the SPIFFE
+// trust bundles.
+func newIngestor(cfg *config.Config, storeAPI types.StoreAPI, databaseAPI types.DatabaseAPI) (ingest.Ingestor, error) {
+	spiffeBundles, err := spiffe.Load(spiffe.Config{TrustDomains: cfg.Identity.SpiffeTrustDomains})
+	if err != nil {
+		return nil, fmt.Errorf("failed to load SPIFFE trust bundles: %w", err)
+	}
+
+	fetchClient := safefetch.New()
+	identityRegistry := identity.NewRegistry(
+		identitywellknown.New(fetchClient),
+		dns.New(),
+		did.New(fetchClient),
+	)
+
+	return ingest.New(storeAPI, databaseAPI,
+		ingest.WithIdentityRegistry(identityRegistry),
+		ingest.WithSpiffeBundles(spiffeBundles),
+	), nil
 }

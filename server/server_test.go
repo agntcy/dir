@@ -4,10 +4,12 @@
 package server
 
 import (
+	"path/filepath"
 	"testing"
 	"time"
 
 	"github.com/agntcy/dir/server/config"
+	identityconfig "github.com/agntcy/dir/server/identity/config"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc"
@@ -358,4 +360,41 @@ func TestKeepaliveEnforcementPolicy_StructCreation(t *testing.T) {
 
 	assert.Equal(t, 1*time.Minute, policy.MinTime)
 	assert.True(t, policy.PermitWithoutStream)
+}
+
+func TestNewIngestor(t *testing.T) {
+	missingBundle := filepath.Join(t.TempDir(), "missing.pem")
+
+	tests := []struct {
+		name    string
+		cfg     *config.Config
+		wantErr string
+	}{
+		{
+			name: "an empty identity config yields an ingestor",
+			cfg:  &config.Config{},
+		},
+		{
+			name: "a SPIFFE bundle that cannot be loaded fails",
+			cfg: &config.Config{Identity: identityconfig.Config{
+				SpiffeTrustDomains: map[string]string{"acme.com": missingBundle},
+			}},
+			wantErr: "SPIFFE trust bundles",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ingestor, err := newIngestor(tt.cfg, nil, nil)
+			if tt.wantErr != "" {
+				require.ErrorContains(t, err, tt.wantErr)
+				assert.Nil(t, ingestor)
+
+				return
+			}
+
+			require.NoError(t, err)
+			assert.NotNil(t, ingestor)
+		})
+	}
 }
