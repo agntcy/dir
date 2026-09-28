@@ -18,6 +18,7 @@ import (
 	authnconfig "github.com/agntcy/dir/server/authn/config"
 	dbconfig "github.com/agntcy/dir/server/database/config"
 	namingconfig "github.com/agntcy/dir/server/naming/config"
+	policy "github.com/agntcy/dir/server/policy/config"
 	ociconfig "github.com/agntcy/dir/server/store/oci/config"
 	validators "github.com/agntcy/dir/server/validators/config"
 	"github.com/agntcy/dir/utils/logging"
@@ -63,6 +64,10 @@ type Config struct {
 	// Validators is the same list the server uses. The indexer consults
 	// entries whose op includes "index". YAML only.
 	Validators validators.Config `json:"validators,omitempty" mapstructure:"validators"`
+
+	// Policy is the directory named OPA policy files are loaded from.
+	// Same path the server uses (policy.dir).
+	Policy policy.Config `json:"policy" mapstructure:"policy"`
 
 	// Regsync holds the regsync task configuration.
 	Regsync regsync.Config `json:"regsync" mapstructure:"regsync"`
@@ -255,6 +260,12 @@ func LoadConfig() (*Config, error) {
 
 	_ = v.BindEnv("server_authn.socket_path")
 	_ = v.BindEnv("server_authn.audiences")
+
+	//
+	// Policy directory (named .rego files loaded by opa validators)
+	//
+	_ = v.BindEnv("policy.dir")
+	v.SetDefault("policy.dir", "/etc/agntcy/dir/policies")
 
 	// Unmarshal into config struct
 	config := &Config{}

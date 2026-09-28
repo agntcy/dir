@@ -5,6 +5,7 @@ package config
 
 import (
 	"fmt"
+	"path/filepath"
 	"slices"
 	"strings"
 )
@@ -15,6 +16,9 @@ const (
 
 	// ProviderCEL is the CEL expression validator.
 	ProviderCEL = "cel"
+
+	// ProviderOPA is the file-based OPA/Rego validator.
+	ProviderOPA = "opa"
 
 	// OpPush runs on StoreService.Push (including dirctl push/import).
 	OpPush = "push"
@@ -28,6 +32,9 @@ const (
 	// ConfigKeySchemaURL is the OASF config key for the schema endpoint.
 	ConfigKeySchemaURL = "schema_url"
 
+	// ConfigKeyFile is the OPA config key for the policy filename.
+	ConfigKeyFile = "file"
+
 	// ConfigKeyExpressions is the CEL config key for the inline expressions.
 	ConfigKeyExpressions = "expressions"
 )
@@ -37,16 +44,14 @@ type Config []Validator
 
 // Validator is one record-validation backend and the operations it applies to.
 type Validator struct {
-	// Provider selects the backend. Supported values: "oasf", "cel".
+	// Provider selects the backend. Supported values: oasf, opa, cel.
 	Provider string `json:"provider" mapstructure:"provider"`
 
 	// Ops is the set of operations this validator runs on.
 	// Known values: push, autosync, index.
 	Ops []string `json:"op,omitempty" mapstructure:"op"`
 
-	// Config is provider-specific. Keys vary by provider:
-	//   oasf: schema_url (required)
-	//   cel:  expressions (required list of CEL expressions; all must be true)
+	// Config is provider-specific.
 	Config map[string]any `json:"config,omitempty" mapstructure:"config"`
 }
 
@@ -99,6 +104,10 @@ func (v Validator) validateProviderConfig(index int) error {
 		if _, err := v.ConfigStrings(ConfigKeyExpressions); err != nil {
 			return fmt.Errorf("validators[%d]: config.expressions: %w", index, err)
 		}
+	case ProviderOPA:
+		if err := ValidatePolicyFile(v.ConfigString(ConfigKeyFile)); err != nil {
+			return fmt.Errorf("validators[%d]: %w", index, err)
+		}
 	default:
 		return fmt.Errorf("validators[%d]: unsupported provider %q", index, v.Provider)
 	}
@@ -109,6 +118,24 @@ func (v Validator) validateProviderConfig(index int) error {
 // HasOp reports whether this validator is configured for op.
 func (v Validator) HasOp(op string) bool {
 	return slices.Contains(v.Ops, op)
+}
+
+// ValidatePolicyFile checks that name is a bare .rego filename, not a path.
+func ValidatePolicyFile(name string) error {
+	name = strings.TrimSpace(name)
+	if name == "" {
+		return fmt.Errorf("config.file is required for provider %q", ProviderOPA)
+	}
+
+	if name != filepath.Base(name) || name == "." || name == ".." {
+		return fmt.Errorf("config.file %q must be a filename, not a path", name)
+	}
+
+	if !strings.HasSuffix(name, ".rego") {
+		return fmt.Errorf("config.file %q must have a .rego extension", name)
+	}
+
+	return nil
 }
 
 // ConfigString returns the string value of a config key, or "" if missing or not a string.

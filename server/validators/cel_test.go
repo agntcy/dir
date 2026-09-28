@@ -125,11 +125,11 @@ func TestCELValidator_CanceledContext(t *testing.T) {
 func TestNewRegistry_CEL(t *testing.T) {
 	t.Parallel()
 
-	reg, err := NewRegistry(validatorsconfig.Config{{
+	reg, err := NewRegistry(context.Background(), validatorsconfig.Config{{
 		Provider: validatorsconfig.ProviderCEL,
 		Ops:      []string{validatorsconfig.OpPush},
 		Config:   celConfig(`record.name != ""`),
-	}})
+	}}, "")
 	require.NoError(t, err)
 	require.Len(t, reg.For(validatorsconfig.OpPush), 1)
 

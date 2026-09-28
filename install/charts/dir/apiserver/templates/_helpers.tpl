@@ -264,7 +264,7 @@ True when one or more file-based policies are declared in values.
 {{- end -}}
 
 {{/*
-Directory on the apiserver pod where policy files are mounted.
+Directory on the apiserver and reconciler pods where policy files are mounted.
 */}}
 {{- define "chart.policies.dir" -}}
 {{- dig "policy" "dir" "/etc/agntcy/dir/policies" (.Values.config | default dict) -}}

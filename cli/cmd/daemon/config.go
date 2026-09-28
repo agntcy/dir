@@ -86,9 +86,6 @@ func registerServerDefaults(v *viper.Viper) {
 	_ = v.BindEnv("server.extractor.oasf_url")
 	v.SetDefault("server.extractor.oasf_url", "")
 
-	_ = v.BindEnv("server.policy.enabled")
-	v.SetDefault("server.policy.enabled", false)
-
 	_ = v.BindEnv("server.policy.dir")
 	v.SetDefault("server.policy.dir", "policies")
 }

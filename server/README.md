@@ -22,7 +22,13 @@ validators:
       expressions:
         - record.name != ""
         - record.version != ""
+  - provider: opa
+    op: ["push"]
+    config:
+      file: "require-annotations.rego"
 listen_address: "0.0.0.0:8888"
+policy:
+  dir: "/etc/agntcy/dir/policies"
 ```
 
 The `cel` provider compiles `config.expressions` at startup. The record's OASF fields are bound as the `record` variable, and each expression must evaluate to `bool`. Validation fails if any expression is false.

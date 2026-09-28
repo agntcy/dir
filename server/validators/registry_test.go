@@ -17,7 +17,7 @@ import (
 func TestNewRegistry_Empty(t *testing.T) {
 	t.Parallel()
 
-	reg, err := NewRegistry(nil)
+	reg, err := NewRegistry(context.Background(), nil, "")
 	require.NoError(t, err)
 	require.Empty(t, reg.For(validatorsconfig.OpPush))
 	require.Empty(t, reg.For(validatorsconfig.OpIndex))
@@ -26,10 +26,10 @@ func TestNewRegistry_Empty(t *testing.T) {
 func TestNewRegistry_RejectsUnknownProvider(t *testing.T) {
 	t.Parallel()
 
-	_, err := NewRegistry(validatorsconfig.Config{{
+	_, err := NewRegistry(context.Background(), validatorsconfig.Config{{
 		Provider: "unknown",
 		Ops:      []string{validatorsconfig.OpPush},
-	}})
+	}}, "")
 	require.Error(t, err)
 	require.Contains(t, err.Error(), `unsupported provider "unknown"`)
 }
@@ -37,10 +37,10 @@ func TestNewRegistry_RejectsUnknownProvider(t *testing.T) {
 func TestNewRegistry_RejectsEmptySchemaURL(t *testing.T) {
 	t.Parallel()
 
-	_, err := NewRegistry(validatorsconfig.Config{{
+	_, err := NewRegistry(context.Background(), validatorsconfig.Config{{
 		Provider: validatorsconfig.ProviderOASF,
 		Ops:      []string{validatorsconfig.OpPush},
-	}})
+	}}, "")
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "config.schema_url is required")
 }
@@ -48,7 +48,7 @@ func TestNewRegistry_RejectsEmptySchemaURL(t *testing.T) {
 func TestNewRegistry_MultiplePerOp(t *testing.T) {
 	t.Parallel()
 
-	reg, err := NewRegistry(validatorsconfig.Config{
+	reg, err := NewRegistry(context.Background(), validatorsconfig.Config{
 		{
 			Provider: validatorsconfig.ProviderOASF,
 			Ops:      []string{validatorsconfig.OpPush},
@@ -59,7 +59,7 @@ func TestNewRegistry_MultiplePerOp(t *testing.T) {
 			Ops:      []string{validatorsconfig.OpPush, validatorsconfig.OpIndex},
 			Config:   map[string]any{validatorsconfig.ConfigKeySchemaURL: "https://schema.example.com/b"},
 		},
-	})
+	}, "")
 	require.NoError(t, err)
 	require.Len(t, reg.For(validatorsconfig.OpPush), 2)
 	require.Len(t, reg.For(validatorsconfig.OpIndex), 1)
@@ -69,11 +69,11 @@ func TestNewRegistry_MultiplePerOp(t *testing.T) {
 func TestNewRegistry_SingleEntryMultipleOps(t *testing.T) {
 	t.Parallel()
 
-	reg, err := NewRegistry(validatorsconfig.Config{{
+	reg, err := NewRegistry(context.Background(), validatorsconfig.Config{{
 		Provider: validatorsconfig.ProviderOASF,
 		Ops:      []string{validatorsconfig.OpPush, validatorsconfig.OpIndex},
 		Config:   map[string]any{validatorsconfig.ConfigKeySchemaURL: "https://schema.oasf.outshift.com"},
-	}})
+	}}, "")
 	require.NoError(t, err)
 	require.Len(t, reg.For(validatorsconfig.OpPush), 1)
 	require.Len(t, reg.For(validatorsconfig.OpIndex), 1)

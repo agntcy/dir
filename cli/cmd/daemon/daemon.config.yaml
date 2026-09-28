@@ -117,7 +117,6 @@ server:
   naming:
     ttl: 168h
   policy:
-    enabled: false
     dir: policies
 
 reconciler:
