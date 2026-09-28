@@ -185,6 +185,110 @@ func TestRemoteSearchOverTheNetwork(t *testing.T) {
 	})
 }
 
+func TestRemoteSearchReachesPeersWithDisjointLabels(t *testing.T) {
+	// Queries are OR'd, so each one may be answerable only by a peer that holds
+	// nothing matching the others. Resolving a single query label would leave
+	// the rest of the peers undiscovered, and they report nothing because they
+	// are never asked — no error, no truncation, just missing results.
+	ctx := t.Context()
+
+	skills := &heldRecordsDB{labels: map[string][]types.Label{
+		"record-ml": {"/skills/AI/ML"},
+	}}
+	domains := &heldRecordsDB{labels: map[string][]types.Label{
+		"record-health": {"/domains/healthcare"},
+	}}
+
+	skillHolder := newTestServer(t, ctx, nil, skills)
+	bootstrap := skillHolder.remote.server.P2pAddrs()
+	domainHolder := newTestServer(t, ctx, bootstrap, domains)
+	searcher := newTestServer(t, ctx, bootstrap, nil)
+
+	for _, node := range []*route{skillHolder, domainHolder, searcher} {
+		<-node.remote.server.DHT().RefreshRoutingTable()
+	}
+
+	time.Sleep(1 * time.Second)
+
+	provideCtx, cancel := context.WithTimeout(ctx, 30*time.Second)
+	defer cancel()
+
+	require.Zero(t, skillHolder.remote.provideLabels(provideCtx, skills.advertised()))
+	require.Zero(t, domainHolder.remote.provideLabels(provideCtx, domains.advertised()))
+
+	responses := collectSearch(t, searcher, &routingv1.SearchRequest{
+		Queries: []*routingv1.RecordQuery{
+			skillQuery("AI/ML"),
+			{Type: routingv1.RecordQueryType_RECORD_QUERY_TYPE_DOMAIN, Value: "healthcare"},
+		},
+	})
+
+	assert.Equal(t, []string{"record-health", "record-ml"}, responseCIDs(responses))
+
+	// Each record matched one of the two queries, and each came from the peer
+	// that actually holds it.
+	holders := make(map[string]string, len(responses))
+
+	for _, response := range responses {
+		holders[response.GetRecordRef().GetCid()] = response.GetPeer().GetId()
+
+		assert.Equal(t, uint32(1), response.GetMatchScore())
+	}
+
+	assert.Equal(t, map[string]string{
+		"record-ml":     skillHolder.remote.server.Host().ID().String(),
+		"record-health": domainHolder.remote.server.Host().ID().String(),
+	}, holders)
+}
+
+func TestRemoteSearchReachesPeersUnderAQueriedAncestor(t *testing.T) {
+	// The same gap inside one namespace. A peer holding only /skills/AI/NLP
+	// satisfies the "AI" query and provides /skills/AI, but never provides
+	// /skills/AI/ML — so resolving the deepest queried label misses it.
+	ctx := t.Context()
+
+	ml := &heldRecordsDB{labels: map[string][]types.Label{
+		"record-ml": {"/skills/AI/ML"},
+	}}
+	nlp := &heldRecordsDB{labels: map[string][]types.Label{
+		"record-nlp": {"/skills/AI/NLP"},
+	}}
+
+	mlHolder := newTestServer(t, ctx, nil, ml)
+	bootstrap := mlHolder.remote.server.P2pAddrs()
+	nlpHolder := newTestServer(t, ctx, bootstrap, nlp)
+	searcher := newTestServer(t, ctx, bootstrap, nil)
+
+	for _, node := range []*route{mlHolder, nlpHolder, searcher} {
+		<-node.remote.server.DHT().RefreshRoutingTable()
+	}
+
+	time.Sleep(1 * time.Second)
+
+	provideCtx, cancel := context.WithTimeout(ctx, 30*time.Second)
+	defer cancel()
+
+	require.Zero(t, mlHolder.remote.provideLabels(provideCtx, ml.advertised()))
+	require.Zero(t, nlpHolder.remote.provideLabels(provideCtx, nlp.advertised()))
+
+	responses := collectSearch(t, searcher, &routingv1.SearchRequest{
+		Queries: []*routingv1.RecordQuery{
+			skillQuery("AI"),
+			skillQuery("AI/ML"),
+		},
+	})
+
+	assert.Equal(t, []string{"record-ml", "record-nlp"}, responseCIDs(responses))
+
+	scores := make(map[string]uint32, len(responses))
+	for _, response := range responses {
+		scores[response.GetRecordRef().GetCid()] = response.GetMatchScore()
+	}
+
+	// record-ml matches both queries, record-nlp only the ancestor.
+	assert.Equal(t, map[string]uint32{"record-ml": 2, "record-nlp": 1}, scores)
+}
+
 func TestRemoteSearchWhenTheProviderCannotAnswer(t *testing.T) {
 	// A node with no database rejects the query. The searcher has to finish
 	// cleanly rather than hang on a provider that discovery did find.

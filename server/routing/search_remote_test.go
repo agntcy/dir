@@ -81,23 +81,72 @@ func TestScoreMatchWithoutLabels(t *testing.T) {
 	assert.Equal(t, uint32(0), score)
 }
 
-func TestDiscoveryKeyPicksTheDeepestLabel(t *testing.T) {
+// discoveredLabels is what discoveryKeys decided to look up.
+func discoveredLabels(targets []discoveryTarget) []types.Label {
+	labels := make([]types.Label, len(targets))
+	for i, target := range targets {
+		labels[i] = target.label
+	}
+
+	return labels
+}
+
+func TestDiscoveryKeysCoverEveryQuery(t *testing.T) {
+	// Queries are OR'd, so the peers answering each one may be disjoint. One
+	// key per namespace here: none of these labels is an ancestor of another.
 	queries := []*routingv1.RecordQuery{
-		skillQuery("AI"),
+		skillQuery("AI/ML"),
+		{Type: routingv1.RecordQueryType_RECORD_QUERY_TYPE_DOMAIN, Value: "healthcare"},
+		{Type: routingv1.RecordQueryType_RECORD_QUERY_TYPE_LOCATOR, Value: "docker-image"},
+	}
+
+	assert.Equal(t, []types.Label{
+		"/skills/AI/ML",
+		"/domains/healthcare",
+		"/locators/docker-image",
+	}, discoveredLabels(discoveryKeys(queries)))
+}
+
+func TestDiscoveryKeysKeepTheShallowestOfAChain(t *testing.T) {
+	// A holder advertises every ancestor of what it holds, so the providers of
+	// /skills/AI already include every provider of the deeper two. Looking the
+	// descendants up as well would find nothing new.
+	queries := []*routingv1.RecordQuery{
 		skillQuery("AI/ML/Deep Learning"),
+		skillQuery("AI"),
 		skillQuery("AI/ML"),
 	}
 
-	key, label, ok := discoveryKey(queries)
-	require.True(t, ok)
-	assert.Equal(t, types.Label("/skills/AI/ML/Deep Learning"), label)
-
-	expected, err := labelKey(types.Label("/skills/AI/ML/Deep Learning"))
-	require.NoError(t, err)
-	assert.Equal(t, expected, key)
+	assert.Equal(t, []types.Label{"/skills/AI"}, discoveredLabels(discoveryKeys(queries)))
 }
 
-func TestDiscoveryKeyMatchesTheKeyThePublisherAdvertises(t *testing.T) {
+func TestDiscoveryKeysPruneOnlyWithinAChain(t *testing.T) {
+	// /skills/AI is not an ancestor of /skills/Robotics, and a same-named value
+	// in another namespace is a different chain entirely.
+	queries := []*routingv1.RecordQuery{
+		skillQuery("AI/ML"),
+		skillQuery("Robotics"),
+		{Type: routingv1.RecordQueryType_RECORD_QUERY_TYPE_DOMAIN, Value: "AI"},
+	}
+
+	assert.Equal(t, []types.Label{
+		"/skills/AI/ML",
+		"/skills/Robotics",
+		"/domains/AI",
+	}, discoveredLabels(discoveryKeys(queries)))
+}
+
+func TestDiscoveryKeysDedupeEquivalentSpellings(t *testing.T) {
+	queries := []*routingv1.RecordQuery{
+		skillQuery("AI/ML"),
+		skillQuery("AI/ML/"),
+		skillQuery("AI/ML"),
+	}
+
+	assert.Equal(t, []types.Label{"/skills/AI/ML"}, discoveredLabels(discoveryKeys(queries)))
+}
+
+func TestDiscoveryKeysMatchTheKeyThePublisherAdvertises(t *testing.T) {
 	// A record tagged /skills/AI/ML is only findable under /skills/AI because
 	// its holder advertises that ancestor too, so the searcher's key for "AI"
 	// has to be the same one expandLabel produces.
@@ -107,13 +156,13 @@ func TestDiscoveryKeyMatchesTheKeyThePublisherAdvertises(t *testing.T) {
 	published, err := labelKey(types.Label("/skills/AI"))
 	require.NoError(t, err)
 
-	searched, _, ok := discoveryKey([]*routingv1.RecordQuery{skillQuery("AI")})
-	require.True(t, ok)
+	targets := discoveryKeys([]*routingv1.RecordQuery{skillQuery("AI")})
+	require.Len(t, targets, 1)
 
-	assert.Equal(t, published, searched)
+	assert.Equal(t, published, targets[0].key)
 }
 
-func TestDiscoveryKeyRejectsQueriesWithNoLabel(t *testing.T) {
+func TestDiscoveryKeysRejectQueriesWithNoLabel(t *testing.T) {
 	tests := []struct {
 		name    string
 		queries []*routingv1.RecordQuery
@@ -124,25 +173,26 @@ func TestDiscoveryKeyRejectsQueriesWithNoLabel(t *testing.T) {
 			name:    "unspecified type matches everything and names nothing",
 			queries: []*routingv1.RecordQuery{{Type: routingv1.RecordQueryType_RECORD_QUERY_TYPE_UNSPECIFIED, Value: "AI"}},
 		},
+		{
+			name:    "a bare namespace selects nothing and is not a usable key",
+			queries: []*routingv1.RecordQuery{skillQuery("/")},
+		},
 	}
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			_, _, ok := discoveryKey(test.queries)
-			assert.False(t, ok)
+			assert.Empty(t, discoveryKeys(test.queries))
 		})
 	}
 }
 
-func TestDiscoveryKeySkipsUnusableQueries(t *testing.T) {
+func TestDiscoveryKeysSkipUnusableQueries(t *testing.T) {
 	queries := []*routingv1.RecordQuery{
 		{Type: routingv1.RecordQueryType_RECORD_QUERY_TYPE_UNSPECIFIED, Value: "anything"},
 		skillQuery("AI"),
 	}
 
-	_, label, ok := discoveryKey(queries)
-	require.True(t, ok)
-	assert.Equal(t, types.Label("/skills/AI"), label)
+	assert.Equal(t, []types.Label{"/skills/AI"}, discoveredLabels(discoveryKeys(queries)))
 }
 
 func TestPeerQueries(t *testing.T) {

@@ -70,6 +70,11 @@ const (
 	// of seconds on a synchronous publish.
 	advertiseConcurrency = 8
 
+	// searchDiscoveryWorkers bounds how many label lookups run at once. A search
+	// normally resolves one or two keys, but the query count is caller
+	// controlled and each key costs a full Kademlia walk.
+	searchDiscoveryWorkers = 4
+
 	// searchPeerWorkers bounds how many providers are queried at once.
 	searchPeerWorkers = 8
 
