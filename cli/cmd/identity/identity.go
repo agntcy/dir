@@ -90,12 +90,12 @@ func init() {
 	claimCmd.Flags().StringVar(&claimRole, "role", "", "Claim role: \"identity\" or \"owner\" (required)")
 	claimCmd.Flags().StringVar(&claimSubject, "subject", "", "The identity/owner URI being claimed (required)")
 	claimCmd.Flags().StringVar(&claimKeyPath, "key", "", "Path to a PEM-encoded private key to sign with")
-	claimCmd.Flags().StringVar(&claimCert, "cert", "", "Path to a PEM-encoded X.509-SVID certificate (SPIFFE subjects only)")
+	claimCmd.Flags().StringVar(&claimCert, "cert", "", "Path to a PEM-encoded X.509-SVID certificate for spiffe:// subjects (requires --key)")
 
 	_ = claimCmd.MarkFlagRequired("record")
 	_ = claimCmd.MarkFlagRequired("role")
 	_ = claimCmd.MarkFlagRequired("subject")
-	claimCmd.MarkFlagsRequiredTogether("key", "cert")
+	_ = claimCmd.MarkFlagRequired("key")
 
 	presenter.AddOutputFlags(statusCmd)
 
