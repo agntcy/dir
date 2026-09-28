@@ -7,6 +7,7 @@ package identity
 import (
 	"errors"
 	"fmt"
+	"time"
 
 	identityv1 "github.com/agntcy/dir/api/identity/v1"
 	"github.com/agntcy/dir/cli/presenter"
@@ -133,7 +134,23 @@ func runClaim(cmd *cobra.Command) error {
 
 	cmd.Printf("Claim pushed successfully for record %s\n", cid)
 
+	if notice := expiryNotice(signer, time.Now()); notice != "" {
+		cmd.Println(notice)
+	}
+
 	return nil
+}
+
+func expiryNotice(signer identityv1.Signer, now time.Time) string {
+	expiring, ok := signer.(identityv1.CertificateExpiry)
+	if !ok {
+		return ""
+	}
+
+	notAfter := expiring.NotAfter()
+
+	return fmt.Sprintf("Certificate valid until %s (%s from now); push the claim again after the certificate is renewed",
+		notAfter.UTC().Format(time.RFC3339), notAfter.Sub(now).Round(time.Minute))
 }
 
 // loadSigner builds an identityv1.Signer from the --key/--cert flags. A

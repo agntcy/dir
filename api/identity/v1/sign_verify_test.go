@@ -40,7 +40,7 @@ func generateTestKeyPEM(t *testing.T) []byte {
 // generateTestSpiffeKeyCert returns a PEM-encoded ECDSA key, a self-signed
 // certificate whose URI SAN is set to spiffeID, and the parsed certificate
 // (usable as its own trust anchor, since it's self-signed).
-func generateTestSpiffeKeyCert(t *testing.T, spiffeID string) (keyPEM, certPEM []byte, cert *x509.Certificate) {
+func generateTestSpiffeKeyCert(t *testing.T, spiffeID string) ([]byte, []byte, *x509.Certificate) {
 	t.Helper()
 
 	priv, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
@@ -66,8 +66,8 @@ func generateTestSpiffeKeyCert(t *testing.T, spiffeID string) (keyPEM, certPEM [
 	privDER, err := x509.MarshalECPrivateKey(priv)
 	require.NoError(t, err)
 
-	keyPEM = pem.EncodeToMemory(&pem.Block{Type: "EC PRIVATE KEY", Bytes: privDER})
-	certPEM = pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: derBytes})
+	keyPEM := pem.EncodeToMemory(&pem.Block{Type: "EC PRIVATE KEY", Bytes: privDER})
+	certPEM := pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: derBytes})
 
 	return keyPEM, certPEM, parsedCert
 }

@@ -5,12 +5,12 @@ package v1
 
 import (
 	"context"
+	"crypto/x509"
 	"encoding/base64"
 	"errors"
 	"fmt"
 	"time"
 
-	"crypto/x509"
 	corev1 "github.com/agntcy/dir/api/core/v1"
 )
 
@@ -148,9 +148,17 @@ func verifySpiffe(certificateB64, subject string, payload []byte, jwsCompact str
 		return errors.New("no SPIFFE trust bundle configured for this subject's trust domain")
 	}
 
+	if len(certificateB64) > base64.StdEncoding.EncodedLen(maxCertificateDERSize) {
+		return fmt.Errorf("certificate exceeds %d bytes", maxCertificateDERSize)
+	}
+
 	certDER, err := base64.StdEncoding.DecodeString(certificateB64)
 	if err != nil {
 		return fmt.Errorf("decode certificate: %w", err)
+	}
+
+	if len(certDER) > maxCertificateDERSize {
+		return fmt.Errorf("certificate is %d bytes; at most %d are accepted", len(certDER), maxCertificateDERSize)
 	}
 
 	cert, err := x509.ParseCertificate(certDER)
