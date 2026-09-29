@@ -52,10 +52,13 @@ func loadPolicyEval(t *testing.T, db *DB, recordCID, policyID string) *PolicyEva
 	return &row
 }
 
-func needsEvalCIDs(t *testing.T, db *DB, policyID, policyVersion string) []string {
+// needsEvalCIDs queries against a fixed policy ID: every test in this file
+// exercises "opa:require-annotation" and varies the version, the record's own
+// PolicyID, or the seeded data instead.
+func needsEvalCIDs(t *testing.T, db *DB, policyVersion string) []string {
 	t.Helper()
 
-	records, err := db.GetRecordsNeedingPolicyEvaluation(policyID, policyVersion)
+	records, err := db.GetRecordsNeedingPolicyEvaluation("opa:require-annotation", policyVersion)
 	require.NoError(t, err)
 
 	cids := make([]string, 0, len(records))
@@ -194,7 +197,7 @@ func TestGetRecordsNeedingPolicyEvaluation_NeverEvaluatedIsSelected(t *testing.T
 	db := setupPolicyEvalDB(t)
 	seedPolicyEvalRecord(t, db, policyTestCID)
 
-	assert.Contains(t, needsEvalCIDs(t, db, "opa:require-annotation", "v1"), policyTestCID)
+	assert.Contains(t, needsEvalCIDs(t, db, "v1"), policyTestCID)
 }
 
 func TestGetRecordsNeedingPolicyEvaluation_CurrentVersionSuppresses(t *testing.T) {
@@ -208,7 +211,7 @@ func TestGetRecordsNeedingPolicyEvaluation_CurrentVersionSuppresses(t *testing.T
 		PolicyVersion: "v1", Compliant: true, Status: types.PolicyEvalStatusEvaluated,
 	}))
 
-	assert.NotContains(t, needsEvalCIDs(t, db, "opa:require-annotation", "v1"), policyTestCID)
+	assert.NotContains(t, needsEvalCIDs(t, db, "v1"), policyTestCID)
 }
 
 // A policy version bump has to re-select every record evaluated under the
@@ -224,7 +227,7 @@ func TestGetRecordsNeedingPolicyEvaluation_SupersededVersionIsReselected(t *test
 		PolicyVersion: "v1", Compliant: true, Status: types.PolicyEvalStatusEvaluated,
 	}))
 
-	assert.Contains(t, needsEvalCIDs(t, db, "opa:require-annotation", "v2"), policyTestCID)
+	assert.Contains(t, needsEvalCIDs(t, db, "v2"), policyTestCID)
 }
 
 func TestGetRecordsNeedingPolicyEvaluation_OnlyTheStaleRecordIsSelected(t *testing.T) {
@@ -239,7 +242,7 @@ func TestGetRecordsNeedingPolicyEvaluation_OnlyTheStaleRecordIsSelected(t *testi
 		PolicyVersion: "v1", Compliant: true, Status: types.PolicyEvalStatusEvaluated,
 	}))
 
-	cids := needsEvalCIDs(t, db, "opa:require-annotation", "v1")
+	cids := needsEvalCIDs(t, db, "v1")
 	assert.NotContains(t, cids, policyTestCID)
 	assert.Contains(t, cids, policyTestOther)
 }
@@ -257,5 +260,5 @@ func TestGetRecordsNeedingPolicyEvaluation_UnrelatedPolicyDoesNotSuppress(t *tes
 		PolicyVersion: "v1", Compliant: true, Status: types.PolicyEvalStatusEvaluated,
 	}))
 
-	assert.Contains(t, needsEvalCIDs(t, db, "opa:require-annotation", "v1"), policyTestCID)
+	assert.Contains(t, needsEvalCIDs(t, db, "v1"), policyTestCID)
 }
