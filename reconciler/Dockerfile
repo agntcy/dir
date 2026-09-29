@@ -88,7 +88,7 @@ USER 55532:55532
 
 ENTRYPOINT ["./reconciler"]
 
-FROM python:3.13-slim@sha256:9d2e5553305c7c7b0097999bb17187c69b921ccd6bc9d40e4bb5ebe652c00285 AS scanner
+FROM python:3.13-slim@sha256:7c61056e61ac89e852de05f3dc6fa51a6dd2181797bceed46aa725dd7cb2cd3b AS scanner
 
 RUN groupadd -g 55532 -r nonroot && useradd -u 55532 -r -g nonroot nonroot \
     && mkdir -p /home/nonroot && chown 55532:55532 /home/nonroot
