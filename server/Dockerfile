@@ -64,7 +64,7 @@ USER 65532:65532
 ENTRYPOINT ["./apiserver", "run"]
 
 # Coverage image - includes tar for kubectl cp to work
-FROM busybox:1.38.0-musl@sha256:8635836765b0c4c43970660219739baa58b0883c2e429e4b8918f7dd1519455c AS coverage
+FROM busybox:1.38.0-musl@sha256:ea2b9914a16a4ac1981994af97b318f7c7d4db76b580c56177f08bf76f4a0be8 AS coverage
 
 WORKDIR /
 
