@@ -92,7 +92,7 @@ jobs:
 
       - name: Generate matrix
         id: generate
-        uses: docker/bake-action/subaction/matrix@d3418bd7d0e9324001bca92fa8ba175ea7e6dc9b # v7.3.0
+        uses: docker/bake-action/subaction/matrix@018cb6412ab401ebaa809aa5f85966b74628600f # v7.4.0
 
   image:
     name: Image
@@ -119,10 +119,10 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Setup QEMU
-        uses: docker/setup-qemu-action@1f40c72289eff860ee54a304f1438e3cff362e0a # v4.3.0
+        uses: docker/setup-qemu-action@99012661954931238ded8c8b007157a8430204e1 # v4.4.0
 
       - name: Setup Docker Buildx
-        uses: docker/setup-buildx-action@37fe631027851001ddb9b187196cc803df7f5f0e # v4.3.0
+        uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
 
       - name: Docker metadata
         id: metadata
@@ -140,7 +140,7 @@ jobs:
 
       - name: Build and push
         if: ${{ inputs.push }}
-        uses: docker/bake-action@d3418bd7d0e9324001bca92fa8ba175ea7e6dc9b # v7.3.0
+        uses: docker/bake-action@018cb6412ab401ebaa809aa5f85966b74628600f # v7.4.0
         with:
           push: true
           provenance: false
@@ -160,7 +160,7 @@ jobs:
 
       - name: Build and load
         if: ${{ !inputs.push }}
-        uses: docker/bake-action@d3418bd7d0e9324001bca92fa8ba175ea7e6dc9b # v7.3.0
+        uses: docker/bake-action@018cb6412ab401ebaa809aa5f85966b74628600f # v7.4.0
         with:
           provenance: false
           files: |
@@ -212,10 +212,10 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Setup QEMU
-        uses: docker/setup-qemu-action@1f40c72289eff860ee54a304f1438e3cff362e0a # v4.3.0
+        uses: docker/setup-qemu-action@99012661954931238ded8c8b007157a8430204e1 # v4.4.0
 
       - name: Setup Docker Buildx
-        uses: docker/setup-buildx-action@37fe631027851001ddb9b187196cc803df7f5f0e # v4.3.0
+        uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
 
       - name: Docker metadata for coverage image
         id: metadata-coverage
@@ -231,7 +231,7 @@ jobs:
           mkdir /tmp/artifacts
 
       - name: Build coverage image
-        uses: docker/bake-action@d3418bd7d0e9324001bca92fa8ba175ea7e6dc9b # v7.3.0
+        uses: docker/bake-action@018cb6412ab401ebaa809aa5f85966b74628600f # v7.4.0
         with:
           provenance: false
           files: |
