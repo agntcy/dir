@@ -374,8 +374,8 @@ type PolicyEvaluationDatabaseAPI interface {
 	// GetPolicyEvaluations retrieves every policy verdict recorded for a record.
 	GetPolicyEvaluations(recordCID string) ([]PolicyEvaluationObject, error)
 
-	// GetRecordsNeedingPolicyEvaluation returns records with no verdict row
-	// for policyID at policyVersion — never evaluated, or evaluated against
-	// a superseded policy version.
+	// GetRecordsNeedingPolicyEvaluation returns records with no evaluated
+	// verdict row for policyID at policyVersion — never evaluated, evaluated
+	// against a superseded policy version, or whose last evaluation failed.
 	GetRecordsNeedingPolicyEvaluation(policyID, policyVersion string) ([]coretypes.Record, error)
 }

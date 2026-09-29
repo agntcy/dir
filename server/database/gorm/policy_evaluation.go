@@ -98,9 +98,15 @@ func (d *DB) GetPolicyEvaluations(recordCID string) ([]types.PolicyEvaluationObj
 	return result, nil
 }
 
-// GetRecordsNeedingPolicyEvaluation returns records with no policy_evaluations
-// row for policyID at policyVersion: never evaluated against this policy, or
-// evaluated against a since-superseded version.
+// GetRecordsNeedingPolicyEvaluation returns records with no evaluated
+// policy_evaluations row for policyID at policyVersion: never evaluated
+// against this policy, evaluated against a since-superseded version, or whose
+// last evaluation failed.
+//
+// A failed row must not suppress re-selection. It reads as non-compliant
+// (fail closed), so if it also stopped the record being retried, one
+// transient evaluator error would exclude the record from every read until
+// the policy version changed.
 func (d *DB) GetRecordsNeedingPolicyEvaluation(policyID, policyVersion string) ([]coretypes.Record, error) {
 	var records []Record
 
@@ -110,7 +116,8 @@ func (d *DB) GetRecordsNeedingPolicyEvaluation(policyID, policyVersion string) (
 			WHERE pe.record_cid = records.record_cid
 			AND pe.policy_id = ?
 			AND pe.policy_version = ?
-		)`, policyID, policyVersion).
+			AND pe.status IN ?
+		)`, policyID, policyVersion, types.EvaluatedPolicyStatuses()).
 		Find(&records).Error
 	if err != nil {
 		return nil, fmt.Errorf("get records needing policy evaluation: %w", err)

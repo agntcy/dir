@@ -247,6 +247,41 @@ func TestGetRecordsNeedingPolicyEvaluation_OnlyTheStaleRecordIsSelected(t *testi
 	assert.Contains(t, cids, policyTestOther)
 }
 
+// A failed evaluation reads as non-compliant, so if it also suppressed
+// re-selection, one transient evaluator error would exclude the record until
+// the policy version changed. It has to be retried.
+func TestGetRecordsNeedingPolicyEvaluation_FailedEvaluationIsReselected(t *testing.T) {
+	t.Parallel()
+
+	db := setupPolicyEvalDB(t)
+	seedPolicyEvalRecord(t, db, policyTestCID)
+
+	require.NoError(t, db.UpsertPolicyEvaluation(&PolicyEvaluation{
+		RecordCID: policyTestCID, PolicyID: "opa:require-annotation",
+		PolicyVersion: "v1", Status: types.PolicyEvalStatusFailed,
+		Reason: "policy evaluator error",
+	}))
+
+	assert.Contains(t, needsEvalCIDs(t, db, "v1"), policyTestCID)
+}
+
+// A non-compliant verdict is still a verdict: re-evaluating it every interval
+// would just recompute the same answer.
+func TestGetRecordsNeedingPolicyEvaluation_NonCompliantVerdictSuppresses(t *testing.T) {
+	t.Parallel()
+
+	db := setupPolicyEvalDB(t)
+	seedPolicyEvalRecord(t, db, policyTestCID)
+
+	require.NoError(t, db.UpsertPolicyEvaluation(&PolicyEvaluation{
+		RecordCID: policyTestCID, PolicyID: "opa:require-annotation",
+		PolicyVersion: "v1", Compliant: false, Status: types.PolicyEvalStatusEvaluated,
+		Reason: "missing annotation",
+	}))
+
+	assert.NotContains(t, needsEvalCIDs(t, db, "v1"), policyTestCID)
+}
+
 // A different policy_id is a distinct axis: an unrelated policy's up-to-date
 // row must not suppress evaluation for this one.
 func TestGetRecordsNeedingPolicyEvaluation_UnrelatedPolicyDoesNotSuppress(t *testing.T) {
