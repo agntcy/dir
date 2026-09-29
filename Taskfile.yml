@@ -22,8 +22,8 @@ includes:
     flatten: true
     excludes: [default]
 
-  signlib:
-    taskfile: signlib/Taskfile.yml
+  wrapperlib:
+    taskfile: wrapperlib/Taskfile.yml
     flatten: true
     excludes: [default]
 
