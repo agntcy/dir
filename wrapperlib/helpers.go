@@ -40,32 +40,6 @@ func protoToRaw(msg proto.Message) (json.RawMessage, error) {
 	return json.RawMessage(b), nil
 }
 
-// unmarshalProtoSlice parses a slice of protojson-encoded messages into a
-// slice of newly allocated *T values. T is the proto message struct type
-// (e.g. corev1.RecordRef) and PT is its pointer type, which must implement
-// proto.Message -- this indirection is required because Go generics have no
-// "new T that implements interface I" shorthand.
-func unmarshalProtoSlice[T any, PT interface {
-	*T
-	proto.Message
-}](raws []json.RawMessage,
-) ([]PT, error) {
-	out := make([]PT, 0, len(raws))
-
-	for _, raw := range raws {
-		var v T
-
-		p := PT(&v)
-		if err := unmarshalProto(string(raw), p); err != nil {
-			return nil, err
-		}
-
-		out = append(out, p)
-	}
-
-	return out, nil
-}
-
 // marshalProtoSlice renders a slice of proto messages as a slice of
 // protojson-encoded json.RawMessage values, for splicing into an
 // arrayResponse-shaped envelope.

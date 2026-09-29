@@ -1,17 +1,28 @@
 // Copyright AGNTCY Contributors (https://github.com/agntcy)
 // SPDX-License-Identifier: Apache-2.0
 
-// Package main exposes the dir client SDK (github.com/agntcy/dir/client) as
-// a C-shared library, so non-Go SDKs (Python, JS/TS) can bind to it directly
-// instead of shelling out to the dirctl binary or a Docker image.
+// Package main exposes the dir client SDK's signing and verification logic
+// (github.com/agntcy/dir/client, github.com/agntcy/dir/client/utils/cosign)
+// as a C-shared library, so non-Go SDKs (Python, JS/TS) can bind to it
+// directly instead of shelling out to the dirctl binary or a Docker image.
 //
-// The surface covers the full dir/client.Client API -- store (push/pull/
-// lookup/delete, including referrers), routing (publish/unpublish/list/
-// search), search (CIDs/records), runtime discovery (workloads), events
-// (listen), naming (verification info/resolve), sync jobs, and signing/
-// verification -- plus the local Sigstore/cosign signing and verification
-// helpers from client/utils/cosign that do not require a live server
-// connection (SignWithKey, VerifyWithKey, SignWithOIDC, VerifyWithOIDC).
+// Every dir gRPC service (store, routing, search, runtime discovery, events,
+// naming, sync) already has a .proto definition that any language can
+// generate a native client stub from, so this library does not wrap those
+// 1:1 passthrough RPCs -- doing so would just be a second, redundant client
+// for the same wire call. What this library DOES provide is the logic that
+// is not just a single RPC:
+//
+//   - SignWithKey, SignWithOIDC, VerifyWithKey, VerifyWithOIDC: local
+//     Sigstore/cosign cryptography (key loading, ephemeral keypairs, bundle
+//     signing/verification) that only exists as Go code today and cannot be
+//     reproduced by calling a dir server RPC.
+//   - Sign, Verify: orchestrate local signing/verification with the store
+//     (pushing/looking up referrers, or dispatching to the server's cached
+//     verification) -- more than a single RPC.
+//   - PullSignatures, PullPublicKeys: fetch referrers and decode them by
+//     referrer type (signature vs. public key) out of the OCI-referrer
+//     envelope -- logic beyond a raw PullReferrer call.
 //
 // The C ABI is intentionally JSON-in/JSON-out: every exported function takes
 // one or two *C.char arguments (an optional client handle argument comes

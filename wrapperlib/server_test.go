@@ -14,11 +14,6 @@ import (
 	"testing"
 
 	corev1 "github.com/agntcy/dir/api/core/v1"
-	eventsv1 "github.com/agntcy/dir/api/events/v1"
-	namingv1 "github.com/agntcy/dir/api/naming/v1"
-	routingv1 "github.com/agntcy/dir/api/routing/v1"
-	runtimev1 "github.com/agntcy/dir/api/runtime/v1"
-	searchv1 "github.com/agntcy/dir/api/search/v1"
 	signv1 "github.com/agntcy/dir/api/sign/v1"
 	storev1 "github.com/agntcy/dir/api/store/v1"
 	"google.golang.org/grpc"
@@ -268,116 +263,6 @@ func (s *mockStoreServer) DeleteReferrer(stream storev1.StoreService_DeleteRefer
 	})
 }
 
-// --- mock storev1.SyncServiceServer ---
-
-type mockSyncServer struct {
-	storev1.UnimplementedSyncServiceServer
-}
-
-func (s *mockSyncServer) CreateSync(_ context.Context, _ *storev1.CreateSyncRequest) (*storev1.CreateSyncResponse, error) {
-	return &storev1.CreateSyncResponse{SyncId: "sync-123"}, nil
-}
-
-func (s *mockSyncServer) GetSync(_ context.Context, req *storev1.GetSyncRequest) (*storev1.GetSyncResponse, error) {
-	return &storev1.GetSyncResponse{
-		SyncId:             req.GetSyncId(),
-		Status:             storev1.SyncStatus_SYNC_STATUS_COMPLETED,
-		RemoteDirectoryUrl: "https://remote.example.com",
-		CreatedTime:        "2024-01-01T00:00:00Z",
-		LastUpdateTime:     "2024-01-01T00:05:00Z",
-	}, nil
-}
-
-func (s *mockSyncServer) DeleteSync(_ context.Context, _ *storev1.DeleteSyncRequest) (*storev1.DeleteSyncResponse, error) {
-	return &storev1.DeleteSyncResponse{}, nil
-}
-
-func (s *mockSyncServer) ListSyncs(_ *storev1.ListSyncsRequest, stream storev1.SyncService_ListSyncsServer) error {
-	items := []*storev1.ListSyncsItem{
-		{SyncId: "sync-1", Status: storev1.SyncStatus_SYNC_STATUS_COMPLETED, RemoteDirectoryUrl: "https://remote-1.example.com"},
-		{SyncId: "sync-2", Status: storev1.SyncStatus_SYNC_STATUS_IN_PROGRESS, RemoteDirectoryUrl: "https://remote-2.example.com"},
-	}
-
-	for _, item := range items {
-		if err := stream.Send(item); err != nil {
-			return err //nolint:wrapcheck
-		}
-	}
-
-	return nil
-}
-
-// --- mock routingv1.RoutingServiceServer ---
-
-type mockRoutingServer struct {
-	routingv1.UnimplementedRoutingServiceServer
-}
-
-func (s *mockRoutingServer) Publish(_ context.Context, _ *routingv1.PublishRequest) (*emptypb.Empty, error) {
-	return &emptypb.Empty{}, nil
-}
-
-func (s *mockRoutingServer) Unpublish(_ context.Context, _ *routingv1.UnpublishRequest) (*emptypb.Empty, error) {
-	return &emptypb.Empty{}, nil
-}
-
-func (s *mockRoutingServer) List(_ *routingv1.ListRequest, stream routingv1.RoutingService_ListServer) error {
-	items := []*routingv1.ListResponse{
-		{RecordRef: &corev1.RecordRef{Cid: "baecid-list-1"}, Labels: []string{"/skills/AI"}},
-		{RecordRef: &corev1.RecordRef{Cid: "baecid-list-2"}, Labels: []string{"/skills/NLP"}},
-	}
-
-	for _, item := range items {
-		if err := stream.Send(item); err != nil {
-			return err //nolint:wrapcheck
-		}
-	}
-
-	return nil
-}
-
-func (s *mockRoutingServer) Search(_ *routingv1.SearchRequest, stream routingv1.RoutingService_SearchServer) error {
-	items := []*routingv1.SearchResponse{
-		{RecordRef: &corev1.RecordRef{Cid: "baecid-search-1"}, MatchScore: 90}, //nolint:mnd
-		{RecordRef: &corev1.RecordRef{Cid: "baecid-search-2"}, MatchScore: 80}, //nolint:mnd
-	}
-
-	for _, item := range items {
-		if err := stream.Send(item); err != nil {
-			return err //nolint:wrapcheck
-		}
-	}
-
-	return nil
-}
-
-// --- mock searchv1.SearchServiceServer ---
-
-type mockSearchServer struct {
-	searchv1.UnimplementedSearchServiceServer
-}
-
-func (s *mockSearchServer) SearchCIDs(_ *searchv1.SearchCIDsRequest, stream searchv1.SearchService_SearchCIDsServer) error {
-	cids := []string{"baecid-scids-1", "baecid-scids-2"}
-	for _, cid := range cids {
-		if err := stream.Send(&searchv1.SearchCIDsResponse{RecordCid: cid}); err != nil {
-			return err //nolint:wrapcheck
-		}
-	}
-
-	return nil
-}
-
-func (s *mockSearchServer) SearchRecords(_ *searchv1.SearchRecordsRequest, stream searchv1.SearchService_SearchRecordsServer) error {
-	for range 2 {
-		if err := stream.Send(&searchv1.SearchRecordsResponse{Record: &corev1.Record{Data: cannedRecordData}}); err != nil {
-			return err //nolint:wrapcheck
-		}
-	}
-
-	return nil
-}
-
 // --- mock signv1.SignServiceServer ---
 
 type mockSignServer struct {
@@ -390,80 +275,6 @@ func (s *mockSignServer) Sign(_ context.Context, _ *signv1.SignRequest) (*signv1
 
 func (s *mockSignServer) Verify(_ context.Context, _ *signv1.VerifyRequest) (*signv1.VerifyResponse, error) {
 	return &signv1.VerifyResponse{Success: true}, nil
-}
-
-// --- mock eventsv1.EventServiceServer ---
-
-type mockEventsServer struct {
-	eventsv1.UnimplementedEventServiceServer
-}
-
-func (s *mockEventsServer) Listen(_ *eventsv1.ListenRequest, stream eventsv1.EventService_ListenServer) error {
-	events := []*eventsv1.Event{
-		{Id: "evt-1", Type: eventsv1.EventType_EVENT_TYPE_RECORD_PUSHED, ResourceId: "baecid-1"},
-		{Id: "evt-2", Type: eventsv1.EventType_EVENT_TYPE_RECORD_PULLED, ResourceId: "baecid-2"},
-	}
-
-	for _, event := range events {
-		if err := stream.Send(&eventsv1.ListenResponse{Event: event}); err != nil {
-			return err //nolint:wrapcheck
-		}
-	}
-
-	return nil
-}
-
-// --- mock namingv1.NamingServiceServer ---
-
-type mockNamingServer struct {
-	namingv1.UnimplementedNamingServiceServer
-}
-
-func (s *mockNamingServer) GetVerificationInfo(
-	_ context.Context, _ *namingv1.GetVerificationInfoRequest,
-) (*namingv1.GetVerificationInfoResponse, error) {
-	return &namingv1.GetVerificationInfoResponse{Verified: true}, nil
-}
-
-func (s *mockNamingServer) Resolve(_ context.Context, req *namingv1.ResolveRequest) (*namingv1.ResolveResponse, error) {
-	return &namingv1.ResolveResponse{
-		Records: []*corev1.NamedRecordRef{
-			{Name: req.GetName(), Version: "v1", Cid: "baecid-resolve-1"},
-		},
-	}, nil
-}
-
-// --- mock runtimev1.DiscoveryServiceServer ---
-
-type mockDiscoveryServer struct {
-	runtimev1.UnimplementedDiscoveryServiceServer
-}
-
-func (s *mockDiscoveryServer) GetWorkload(_ context.Context, req *runtimev1.GetWorkloadRequest) (*runtimev1.Workload, error) {
-	return &runtimev1.Workload{
-		Id:       req.GetId(),
-		Name:     "workload-1",
-		Hostname: "host-1",
-		Runtime:  "docker",
-		Type:     "container",
-	}, nil
-}
-
-func (s *mockDiscoveryServer) ListWorkloads(
-	_ *runtimev1.ListWorkloadsRequest, stream runtimev1.DiscoveryService_ListWorkloadsServer,
-) error {
-	workloads := []*runtimev1.Workload{
-		{Id: "workload-1", Name: "w1", Runtime: "docker", Type: "container"},
-		{Id: "workload-2", Name: "w2", Runtime: "docker", Type: "container"},
-	}
-
-	for _, w := range workloads {
-		if err := stream.Send(w); err != nil {
-			return err //nolint:wrapcheck
-		}
-	}
-
-	return nil
 }
 
 // --- test harness ---
@@ -481,13 +292,7 @@ func startTestServer(t *testing.T) (string, func()) {
 
 	grpcServer := grpc.NewServer()
 	storev1.RegisterStoreServiceServer(grpcServer, &mockStoreServer{})
-	storev1.RegisterSyncServiceServer(grpcServer, &mockSyncServer{})
-	routingv1.RegisterRoutingServiceServer(grpcServer, &mockRoutingServer{})
-	searchv1.RegisterSearchServiceServer(grpcServer, &mockSearchServer{})
 	signv1.RegisterSignServiceServer(grpcServer, &mockSignServer{})
-	eventsv1.RegisterEventServiceServer(grpcServer, &mockEventsServer{})
-	namingv1.RegisterNamingServiceServer(grpcServer, &mockNamingServer{})
-	runtimev1.RegisterDiscoveryServiceServer(grpcServer, &mockDiscoveryServer{})
 
 	go func() {
 		_ = grpcServer.Serve(lis)
