@@ -8,6 +8,7 @@ package name
 
 import (
 	"context"
+	"crypto/x509"
 	"encoding/base64"
 	"errors"
 	"fmt"
@@ -204,7 +205,7 @@ func (t *Task) getRecordPublicKeysForNameVerification(ctx context.Context, cid s
 			return nil
 		}
 
-		keyBytes, err := cryptoutils.MarshalPublicKeyToDER(parsedKey)
+		keyBytes, err := x509.MarshalPKIXPublicKey(parsedKey)
 		if err != nil {
 			logger.Debug("Failed to marshal public key to DER", "error", err)
 
