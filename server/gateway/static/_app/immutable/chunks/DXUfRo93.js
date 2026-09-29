@@ -1,0 +1,1 @@
+import{A as e,G as t,K as n}from"./Cel4C7WY.js";var r=new class{#e=n(null);get stats(){return e(this.#e)}set stats(e){t(this.#e,e,!0)}set(e){this.stats=e}};export{r as t};
