@@ -13,6 +13,14 @@ const (
 
 	// ScanReportReferrerType is the type for ScanReport referrers.
 	ScanReportReferrerType = "agntcy.dir.security.v1.ScanReport"
+
+	// IdentityClaimReferrerType is the type for identity.v1.Claim referrers
+	// asserting a record's own identity (CLAIM_ROLE_IDENTITY).
+	IdentityClaimReferrerType = "agntcy.dir.identity.v1.IdentityClaim"
+
+	// OwnershipClaimReferrerType is the type for identity.v1.Claim referrers
+	// asserting a record's owner (CLAIM_ROLE_OWNER).
+	OwnershipClaimReferrerType = "agntcy.dir.identity.v1.OwnershipClaim"
 )
 
 // Annotation keys written on referrer manifests by the storage layer.
