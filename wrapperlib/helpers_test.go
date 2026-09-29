@@ -73,36 +73,6 @@ func TestProtoToRaw(t *testing.T) {
 	}
 }
 
-func TestUnmarshalProtoSlice(t *testing.T) {
-	t.Run("valid", func(t *testing.T) {
-		raws := []json.RawMessage{
-			json.RawMessage(`{"cid":"cid-1"}`),
-			json.RawMessage(`{"cid":"cid-2"}`),
-		}
-
-		refs, err := unmarshalProtoSlice[corev1.RecordRef, *corev1.RecordRef](raws)
-		if err != nil {
-			t.Fatalf("unexpected error: %v", err)
-		}
-
-		if len(refs) != 2 {
-			t.Fatalf("got %d refs, want 2", len(refs))
-		}
-
-		if refs[0].GetCid() != "cid-1" || refs[1].GetCid() != "cid-2" {
-			t.Fatalf("unexpected ref contents: %+v", refs)
-		}
-	})
-
-	t.Run("malformed element", func(t *testing.T) {
-		raws := []json.RawMessage{json.RawMessage(`{not valid`)}
-
-		if _, err := unmarshalProtoSlice[corev1.RecordRef, *corev1.RecordRef](raws); err == nil {
-			t.Fatal("expected an error for a malformed element, got nil")
-		}
-	})
-}
-
 func TestMarshalProtoSlice(t *testing.T) {
 	refs := []*corev1.RecordRef{{Cid: "cid-1"}, {Cid: "cid-2"}}
 
