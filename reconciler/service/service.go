@@ -15,6 +15,7 @@ import (
 	"github.com/agntcy/dir/reconciler/tasks/identity"
 	"github.com/agntcy/dir/reconciler/tasks/indexer"
 	"github.com/agntcy/dir/reconciler/tasks/metrics"
+	"github.com/agntcy/dir/reconciler/tasks/pruneuntrusted"
 	"github.com/agntcy/dir/reconciler/tasks/regsync"
 	"github.com/agntcy/dir/reconciler/tasks/scan"
 	"github.com/agntcy/dir/reconciler/tasks/signature"
@@ -99,6 +100,15 @@ func (s *Service) registerTasks(cfg *config.Config, db servertypes.DatabaseAPI, 
 
 			s.addTask(t)
 		}
+	}
+
+	if cfg.PruneUntrusted.Enabled {
+		t, err := pruneuntrusted.NewTask(cfg.PruneUntrusted, db, store)
+		if err != nil {
+			return fmt.Errorf("failed to create prune-untrusted task: %w", err)
+		}
+
+		s.addTask(t)
 	}
 
 	if err := s.registerIdentityTask(cfg, db, store); err != nil {

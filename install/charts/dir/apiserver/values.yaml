@@ -763,6 +763,7 @@ postgresql:
 # The reconciler handles async operations including:
 # - regsync: syncs records from remote registries
 # - indexer: indexes synced records into the database for search
+# - prune_untrusted: deletes untrusted records at/above a scan-severity threshold
 # Shares the same database as the apiserver.
 reconciler:
   image:
@@ -867,5 +868,14 @@ reconciler:
     signature:
       enabled: true
       interval: "1h"
+
+    # Prune-untrusted task. Deletes records that are not signature-trusted
+    # and that scan at scan_severity or worse. Disabled by default — this
+    # deletes records. Same match as the dirctl prune-untrusted CronJob.
+    prune_untrusted:
+      enabled: false
+      interval: "30m"
+      record_timeout: "30s"
+      scan_severity: "MEDIUM"
 
   resources: {}

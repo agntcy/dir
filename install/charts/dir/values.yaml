@@ -710,6 +710,7 @@ apiserver:
   # The reconciler handles async operations including:
   # - regsync: syncs records from remote registries
   # - indexer: indexes synced records into the database for search
+  # - prune_untrusted: deletes untrusted records at/above a scan-severity threshold
   # Shares the same database as the apiserver.
   reconciler:
     image:
@@ -793,6 +794,15 @@ apiserver:
         # Bounds endpoints dialed per record. Raise only for aggregator
         # records that legitimately bundle several MCP servers.
         max_endpoints_per_record: 8
+
+      # Prune-untrusted task. Deletes records that are not signature-trusted
+      # and that scan at scan_severity or worse. Disabled by default — this
+      # deletes records. Same match as the dirctl prune-untrusted CronJob.
+      prune_untrusted:
+        enabled: false
+        interval: "30m"
+        record_timeout: "30s"
+        scan_severity: "MEDIUM"
 
       # Apiserver gRPC address — required by the metrics task to query provider counts.
       # Leave empty to auto-resolve to the in-cluster apiserver Service.
