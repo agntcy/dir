@@ -40,7 +40,7 @@ require (
 	github.com/pelletier/go-toml/v2 v2.4.3
 	github.com/rs/zerolog v1.35.1
 	github.com/sigstore/cosign/v3 v3.1.3
-	github.com/sigstore/sigstore v1.10.9
+	github.com/sigstore/sigstore v1.11.0
 	github.com/sigstore/sigstore/pkg/signature/kms/aws v1.11.0
 	github.com/sigstore/sigstore/pkg/signature/kms/azure v1.10.9
 	github.com/sigstore/sigstore/pkg/signature/kms/gcp v1.10.9
@@ -50,9 +50,9 @@ require (
 	github.com/spf13/viper v1.21.0
 	github.com/stretchr/testify v1.12.1
 	go.yaml.in/yaml/v3 v3.0.5
-	golang.org/x/crypto v0.56.0
+	golang.org/x/crypto v0.57.0
 	golang.org/x/mod v0.41.0
-	golang.org/x/term v0.45.0
+	golang.org/x/term v0.46.0
 	google.golang.org/grpc v1.84.0
 	google.golang.org/protobuf v1.36.12
 	gopkg.in/yaml.v3 v3.0.1
@@ -61,8 +61,8 @@ require (
 )
 
 require (
-	buf.build/gen/go/agntcy/oasf-sdk/grpc/go v1.6.2-20260811133823-5281d0c487b5.1 // indirect
-	buf.build/gen/go/agntcy/oasf-sdk/protocolbuffers/go v1.36.12-20260811133823-5281d0c487b5.1 // indirect
+	buf.build/gen/go/agntcy/oasf-sdk/grpc/go v1.6.2-20260911081041-07202faeff63.1 // indirect
+	buf.build/gen/go/agntcy/oasf-sdk/protocolbuffers/go v1.36.12-20260911081041-07202faeff63.2 // indirect
 	buf.build/gen/go/bufbuild/protovalidate/protocolbuffers/go v1.36.12-20260825204119-511051f7f437.2 // indirect
 	buf.build/go/protovalidate v1.4.0 // indirect
 	cel.dev/cel-go v0.32.0 // indirect
@@ -247,7 +247,7 @@ require (
 	github.com/go-git/go-billy/v5 v5.9.0 // indirect
 	github.com/go-git/go-git/v5 v5.19.2 // indirect
 	github.com/go-gorp/gorp/v3 v3.1.0 // indirect
-	github.com/go-jose/go-jose/v4 v4.1.4 // indirect
+	github.com/go-jose/go-jose/v4 v4.1.5 // indirect
 	github.com/go-ldap/ldap/v3 v3.4.14 // indirect
 	github.com/go-logr/logr v1.4.4 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
@@ -547,7 +547,7 @@ require (
 	github.com/spdx/tools-golang v0.5.7 // indirect
 	github.com/spf13/afero v1.15.0 // indirect
 	github.com/spf13/cast v1.10.0 // indirect
-	github.com/spiffe/go-spiffe/v2 v2.8.1 // indirect
+	github.com/spiffe/go-spiffe/v2 v2.8.2 // indirect
 	github.com/stretchr/objx v0.5.3 // indirect
 	github.com/subosito/gotenv v1.6.0 // indirect
 	github.com/swaggo/files v1.0.1 // indirect
@@ -630,10 +630,10 @@ require (
 	golang.org/x/exp v0.0.0-20260820142414-ca536658362e // indirect
 	golang.org/x/net v0.58.0 // indirect
 	golang.org/x/oauth2 v0.36.0 // indirect
-	golang.org/x/sync v0.22.0 // indirect
-	golang.org/x/sys v0.47.0 // indirect
+	golang.org/x/sync v0.23.0 // indirect
+	golang.org/x/sys v0.48.0 // indirect
 	golang.org/x/telemetry v0.0.0-20260811182544-a038080d80e5 // indirect
-	golang.org/x/text v0.41.0 // indirect
+	golang.org/x/text v0.42.0 // indirect
 	golang.org/x/time v0.16.0 // indirect
 	golang.org/x/tools v0.49.0 // indirect
 	golang.org/x/xerrors v0.0.0-20240903120638-7835f813f4da // indirect
@@ -646,7 +646,7 @@ require (
 	gopkg.in/inf.v0 v0.9.1 // indirect
 	gopkg.in/ini.v1 v1.67.3 // indirect
 	gopkg.in/warnings.v0 v0.1.2 // indirect
-	gorm.io/driver/postgres v1.6.2 // indirect
+	gorm.io/driver/postgres v1.6.3 // indirect
 	gorm.io/gorm v1.31.2 // indirect
 	helm.sh/helm/v4 v4.2.3 // indirect
 	k8s.io/api v0.36.3 // indirect
