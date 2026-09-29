@@ -5,6 +5,7 @@ package types
 
 import (
 	"slices"
+	"time"
 
 	searchv1 "github.com/agntcy/dir/api/search/v1"
 )
@@ -58,6 +59,7 @@ type RecordFilters struct {
 	DomainIDs          []uint64
 	DomainNames        []string
 	CreatedAts         []string
+	IndexedBefore      *time.Time
 	Authors            []string
 	SchemaVersions     []string
 	Verified           *bool    // Filter by verified status (the record has a verified ownership claim)
@@ -203,10 +205,19 @@ func WithDomainNames(names ...string) FilterOption {
 	}
 }
 
-// WithCreatedAts filters records by created_at timestamp patterns.
+// WithCreatedAts filters records by the record's self-declared OASF created_at
+// (records.oasf_created_at), using string comparison operators.
 func WithCreatedAts(createdAts ...string) FilterOption {
 	return func(sc *RecordFilters) {
 		sc.CreatedAts = append(sc.CreatedAts, createdAts...)
+	}
+}
+
+// WithIndexedBefore keeps records whose local first-seen timestamp
+// (records.created_at) is before t. Compared as a timestamp, not a string.
+func WithIndexedBefore(t time.Time) FilterOption {
+	return func(sc *RecordFilters) {
+		sc.IndexedBefore = &t
 	}
 }
 
