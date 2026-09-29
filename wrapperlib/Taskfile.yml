@@ -13,13 +13,13 @@ tasks:
   # the way it does for the pure-Go dirctl build -- each platform's artifact
   # must be built on/for that platform (e.g. one native runner per OS/ARCH in
   # CI), not cross-compiled from a single host.
-  signlib:compile:
-    desc: Compile the dirsign C-shared library for the host platform
-    dir: ./signlib
+  wrapperlib:compile:
+    desc: Compile the dir client-wrapper C-shared library for the host platform
+    dir: ./wrapperlib
     vars:
       GOOS: "{{ .GOOS | default OS }}"
       GOARCH: "{{ .GOARCH | default ARCH }}"
-      LIB_NAME: '{{ .LIB_NAME | default "libdirsign" }}'
+      LIB_NAME: '{{ .LIB_NAME | default "libdirwrapper" }}'
       LIB_EXT: '{{ if eq .GOOS "windows" }}dll{{ else if eq .GOOS "darwin" }}dylib{{ else }}so{{ end }}'
       OUT_DIR: '{{ .OUT_DIR | default (print .ROOT_DIR "/.bin") }}'
       OUT_LIB: "{{ .OUT_DIR }}/{{ .LIB_NAME }}-{{ .GOOS }}-{{ .GOARCH }}.{{ .LIB_EXT }}"
