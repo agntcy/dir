@@ -9,11 +9,8 @@ import (
 
 	corev1 "github.com/agntcy/dir/api/core/v1"
 	validatorsconfig "github.com/agntcy/dir/server/validators/config"
-	"github.com/agntcy/dir/utils/logging"
 	"github.com/agntcy/oasf-sdk/pkg/validator"
 )
-
-var logger = logging.Logger("validators")
 
 // Registry maps operations to the record validators that should run for them.
 type Registry struct {
@@ -38,11 +35,6 @@ func NewRegistry(entries validatorsconfig.Config) (*Registry, error) {
 		for _, op := range entry.Ops {
 			byOp[op] = append(byOp[op], v)
 		}
-
-		logger.Info("Record validator configured",
-			"provider", entry.Provider,
-			"schema_url", entry.ConfigString(validatorsconfig.ConfigKeySchemaURL),
-			"op", entry.Ops)
 	}
 
 	return &Registry{byOp: byOp}, nil
@@ -54,6 +46,13 @@ func validatorFor(entry validatorsconfig.Validator) (corev1.Validator, error) {
 		v, err := validator.New(entry.ConfigString(validatorsconfig.ConfigKeySchemaURL))
 		if err != nil {
 			return nil, fmt.Errorf("failed to initialize OASF validator: %w", err)
+		}
+
+		return v, nil
+	case validatorsconfig.ProviderCEL:
+		v, err := newCELValidator(entry)
+		if err != nil {
+			return nil, fmt.Errorf("failed to initialize CEL validator: %w", err)
 		}
 
 		return v, nil

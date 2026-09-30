@@ -16,8 +16,16 @@ validators:
     op: ["push", "autosync", "index"]
     config:
       schema_url: "https://schema.oasf.outshift.com"
+  - provider: cel
+    op: ["push"]
+    config:
+      expressions:
+        - record.name != ""
+        - record.version != ""
 listen_address: "0.0.0.0:8888"
 ```
+
+The `cel` provider compiles `config.expressions` at startup. The record's OASF fields are bound as the `record` variable, and each expression must evaluate to `bool`. Validation fails if any expression is false.
 
 The daemon nests the same list under `server.validators`. Helm exposes it as a top-level `apiserver.validators` value and injects it into both the apiserver and the reconciler.
 
