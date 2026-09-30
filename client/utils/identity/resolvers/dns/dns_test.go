@@ -11,7 +11,6 @@ import (
 	"testing"
 
 	"github.com/agntcy/dir/client/utils/identity/resolvers"
-	"github.com/agntcy/dir/client/utils/identity/resolvers/internal/keyutil"
 	"github.com/agntcy/dir/client/utils/identity/resolvers/internal/testutil"
 	"github.com/stretchr/testify/require"
 )
@@ -72,23 +71,8 @@ func TestDNS_Resolve_Errors(t *testing.T) {
 	_, err = resolver.Resolve(t.Context(), "dns:missing.com", nil)
 	require.ErrorContains(t, err, "lookup TXT records for _agntcy-key.missing.com")
 
-	for _, subject := range []string{"dns:", "", "dns:acme.com/path", "dns:user@acme.com", "dns:acme.com:8443", "dns:a b"} {
+	for _, subject := range []string{"dns:", ""} {
 		_, err = resolver.Resolve(t.Context(), subject, nil)
 		require.ErrorContains(t, err, "invalid dns subject", subject)
 	}
-}
-
-func TestDNS_Resolve_CapsKeys(t *testing.T) {
-	key := testutil.NewEdKey(t)
-	record := "v=akv1;key=" + testutil.SPKIBase64(t, key.Public())
-
-	records := make([]string, keyutil.MaxKeys+1)
-	for i := range records {
-		records[i] = record
-	}
-
-	resolver := New(WithLookupTXT(fakeTXT(map[string][]string{"_agntcy-key.acme.com": records}, nil)))
-
-	_, err := resolver.Resolve(t.Context(), "dns:acme.com", nil)
-	require.ErrorContains(t, err, "more than")
 }

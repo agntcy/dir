@@ -9,7 +9,7 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/agntcy/dir/client/utils/identity/resolvers/internal/keyutil"
+	"github.com/agntcy/dir/client/utils/jws"
 	"github.com/spiffe/go-spiffe/v2/bundle/x509bundle"
 	"github.com/spiffe/go-spiffe/v2/spiffeid"
 	"github.com/spiffe/go-spiffe/v2/svid/x509svid"
@@ -74,7 +74,7 @@ func (s *Resolver) Resolve(_ context.Context, subject string, certificate []byte
 		return nil, fmt.Errorf("SVID is for %s, not the claimed subject %s", certID, id)
 	}
 
-	pub, ok := keyutil.ToPublicKey(chains[0][0].PublicKey)
+	pub, ok := jws.ToPublicKey(chains[0][0].PublicKey)
 	if !ok {
 		return nil, fmt.Errorf("SVID for %s has an unsupported key type %T", subject, chains[0][0].PublicKey)
 	}

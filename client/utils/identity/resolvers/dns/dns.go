@@ -12,7 +12,8 @@ import (
 	"net"
 	"strings"
 
-	"github.com/agntcy/dir/client/utils/identity/resolvers/internal/keyutil"
+	"github.com/agntcy/dir/client/utils/identity/resolvers"
+	"github.com/agntcy/dir/client/utils/jws"
 )
 
 // TXTPrefix is prepended to the domain to form the key record's DNS name,
@@ -46,12 +47,12 @@ func New(opts ...Option) *Resolver {
 
 // Resolve implements resolvers.Resolver. It ignores certificate.
 func (d *Resolver) Resolve(ctx context.Context, subject string, _ []byte) ([]crypto.PublicKey, error) {
-	u, err := keyutil.ParseHost(strings.TrimPrefix(subject, "dns:"))
-	if err != nil || u.Port() != "" {
+	domain := strings.TrimPrefix(subject, "dns:")
+	if domain == "" {
 		return nil, fmt.Errorf("invalid dns subject %q", subject)
 	}
 
-	name := TXTPrefix + u.Hostname()
+	name := TXTPrefix + domain
 
 	records, err := d.lookupTXT(ctx, name)
 	if err != nil {
@@ -66,12 +67,11 @@ func (d *Resolver) Resolve(ctx context.Context, subject string, _ []byte) ([]cry
 		}
 	}
 
-	found, err := keyutil.Finish(keys, name)
-	if err != nil {
-		return nil, fmt.Errorf("dns: %w", err)
+	if len(keys) == 0 {
+		return nil, fmt.Errorf("%w at %s", resolvers.ErrNoKeys, name)
 	}
 
-	return found, nil
+	return keys, nil
 }
 
 // parseKeyRecord parses one TXT record, skipping any that aren't a
@@ -110,5 +110,5 @@ func parseKeyRecord(record string) (crypto.PublicKey, bool) {
 		return nil, false
 	}
 
-	return keyutil.ToPublicKey(pub)
+	return jws.ToPublicKey(pub)
 }

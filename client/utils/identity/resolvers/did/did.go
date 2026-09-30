@@ -18,7 +18,7 @@ import (
 	"strings"
 
 	"github.com/agntcy/dir/client/utils/identity/resolvers"
-	"github.com/agntcy/dir/client/utils/identity/resolvers/internal/keyutil"
+	"github.com/agntcy/dir/client/utils/jws"
 	"github.com/agntcy/dir/utils/safefetch"
 	"github.com/lestrrat-go/jwx/v2/jwk"
 	"github.com/multiformats/go-multibase"
@@ -109,17 +109,16 @@ func keysFromDIDDocument(body []byte, subject, source string) ([]crypto.PublicKe
 			continue
 		}
 
-		if pub, ok := keyutil.PublicKeyFromJWK(key); ok {
+		if pub, ok := jws.PublicKeyFromJWK(key); ok {
 			keys = append(keys, pub)
 		}
 	}
 
-	found, err := keyutil.Finish(keys, source)
-	if err != nil {
-		return nil, fmt.Errorf("did: %w", err)
+	if len(keys) == 0 {
+		return nil, fmt.Errorf("%w at %s", resolvers.ErrNoKeys, source)
 	}
 
-	return found, nil
+	return keys, nil
 }
 
 // didWebURL implements the did:web method
@@ -134,9 +133,11 @@ func didWebURL(subject string) (string, error) {
 		return "", fmt.Errorf("invalid did:web subject %q: %w", subject, err)
 	}
 
-	u, err := keyutil.ParseHost(host)
-	if err != nil {
-		return "", fmt.Errorf("invalid did:web subject %q: %w", subject, err)
+	// Reparsing must yield the same host, so userinfo, a path, a query or a
+	// fragment smuggled in through percent-encoding is refused.
+	u, err := url.Parse("https://" + host)
+	if err != nil || u.Host != host || u.Hostname() == "" {
+		return "", fmt.Errorf("invalid did:web subject %q: bad host %q", subject, host)
 	}
 
 	docPath := "/.well-known/did.json"

@@ -7,10 +7,10 @@ import (
 	"context"
 	"crypto"
 	"fmt"
-	"strings"
+	"net/url"
 
 	"github.com/agntcy/dir/client/utils/identity/resolvers"
-	"github.com/agntcy/dir/client/utils/identity/resolvers/internal/keyutil"
+	"github.com/agntcy/dir/client/utils/jws"
 	"github.com/agntcy/dir/utils/safefetch"
 	"github.com/lestrrat-go/jwx/v2/jwk"
 )
@@ -34,19 +34,13 @@ func New(fetch resolvers.Fetcher) *Resolver {
 
 // Resolve implements resolvers.Resolver. It ignores certificate.
 func (w *Resolver) Resolve(ctx context.Context, subject string, _ []byte) ([]crypto.PublicKey, error) {
-	rest, ok := strings.CutPrefix(subject, "https://")
-	if !ok {
+	u, err := url.Parse(subject)
+	// User must be refused: in "https://acme.com@evil.com" the host is evil.com.
+	if err != nil || u.Scheme != "https" || u.User != nil || u.Hostname() == "" {
 		return nil, fmt.Errorf("invalid https subject %q", subject)
 	}
 
-	hostPart, _, _ := strings.Cut(rest, "/")
-
-	u, err := keyutil.ParseHost(hostPart)
-	if err != nil {
-		return nil, fmt.Errorf("invalid https subject %q: %w", subject, err)
-	}
-
-	docURL := "https://" + u.Host + WellKnownPath
+	docURL := (&url.URL{Scheme: "https", Host: u.Host, Path: WellKnownPath}).String()
 
 	body, err := w.fetch.Get(ctx, docURL)
 	if err != nil {
@@ -66,15 +60,14 @@ func (w *Resolver) Resolve(ctx context.Context, subject string, _ []byte) ([]cry
 			continue
 		}
 
-		if pub, ok := keyutil.PublicKeyFromJWK(key); ok {
+		if pub, ok := jws.PublicKeyFromJWK(key); ok {
 			keys = append(keys, pub)
 		}
 	}
 
-	found, err := keyutil.Finish(keys, docURL)
-	if err != nil {
-		return nil, fmt.Errorf("wellknown: %w", err)
+	if len(keys) == 0 {
+		return nil, fmt.Errorf("%w at %s", resolvers.ErrNoKeys, docURL)
 	}
 
-	return found, nil
+	return keys, nil
 }
