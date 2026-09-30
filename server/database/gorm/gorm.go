@@ -17,30 +17,18 @@ var logger = logging.Logger("database/gorm")
 type DB struct {
 	gormDB *gorm.DB
 
-	// enforcedPolicies returns the policies every read must satisfy; see
-	// applyPolicyGate. Nil applies no gate.
-	enforcedPolicies func() []types.EnforcedPolicy
-}
+	// enforcement returns what reads must satisfy; see applyPolicyGate and
+	// IsRecordServable. Nil applies no policy.
+	enforcement func() types.PolicyEnforcement
 
-// Option configures a DB.
-type Option func(*DB)
-
-// WithEnforcedPolicies sets the policies a record must comply with to be
-// returned by any read. enforced is called per query, so the set may change
-// at runtime; an empty result applies no gate.
-func WithEnforcedPolicies(enforced func() []types.EnforcedPolicy) Option {
-	return func(d *DB) {
-		d.enforcedPolicies = enforced
-	}
+	// observer is told about fetches the policies exclude. Nil tells no one.
+	observer types.PolicyGateObserver
 }
 
 // New creates a new DB instance from a gorm.DB connection and runs migrations.
-func New(db *gorm.DB, opts ...Option) (*DB, error) {
+// Its reads apply no content policy; see Served.
+func New(db *gorm.DB) (*DB, error) {
 	database := &DB{gormDB: db}
-
-	for _, opt := range opts {
-		opt(database)
-	}
 
 	// Execute migrations
 	if err := database.migrate(); err != nil {
@@ -48,6 +36,14 @@ func New(db *gorm.DB, opts ...Option) (*DB, error) {
 	}
 
 	return database, nil
+}
+
+// Served returns a view of d, on the same connection, whose reads apply the
+// content policies enforcement returns. enforcement is called per read, so
+// what is enforced may change at runtime. d itself keeps applying none:
+// background tasks read through it and must see every record.
+func (d *DB) Served(enforcement func() types.PolicyEnforcement, observer types.PolicyGateObserver) *DB {
+	return &DB{gormDB: d.gormDB, enforcement: enforcement, observer: observer}
 }
 
 // IsReady checks if the database connection is ready to serve traffic.

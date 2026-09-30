@@ -6,14 +6,17 @@ package gorm
 import (
 	"fmt"
 
+	policyconfig "github.com/agntcy/dir/server/policy/config"
 	"github.com/agntcy/dir/server/types"
 	"gorm.io/gorm"
 )
 
 // applyPolicyGate keeps only rows whose record complies with every enforced
-// policy: for each, the record needs an evaluated, compliant verdict at the
-// version currently in force. cidColumn is the column holding the record's
-// CID in the queried table, e.g. "records.record_cid" or "skills.record_cid".
+// policy, when searches enforce them: for each, the record needs an
+// evaluated, compliant verdict at the version currently in force. cidColumn
+// is the column holding the record's CID in the queried table, e.g.
+// "records.record_cid" or "skills.record_cid". In shadow mode searches are not
+// filtered; CountRecordsExcluded tells what would be.
 //
 // The gate fails closed. It requires a positive verdict rather than
 // excluding negative ones, so a record with no verdict yet, a failed
@@ -21,22 +24,76 @@ import (
 // It is applied by the query builder itself, so no caller-supplied filter
 // can lift it.
 func (d *DB) applyPolicyGate(query *gorm.DB, cidColumn string) *gorm.DB {
-	return gatePolicies(query, cidColumn, d.currentEnforcedPolicies())
+	enforcement := d.currentEnforcement()
+	if enforcement.Search != policyconfig.ModeEnforce {
+		return query
+	}
+
+	return gatePolicies(query, cidColumn, enforcement.Policies)
 }
 
 // IsRecordServable reports whether the record with cid may be returned by a
-// read that fetches it directly rather than searching. With no policy
-// enforced every record may be, indexed or not. With policies enforced only
-// a record that passes the policy gate may be, so a record not yet indexed
-// may not.
+// read that fetches it directly rather than searching. Unless fetches check
+// the enforced policies every record may be, indexed or not. Otherwise only a
+// record that passes the policy gate may be, so a record not yet indexed may
+// not, and the observer is told of each one that may not. In shadow mode that
+// is all that happens: every record is still served, even when the check
+// fails.
 func (d *DB) IsRecordServable(cid string) (bool, error) {
-	// Read once: deciding "nothing is enforced" and then gating on a second
-	// read could see two different sets.
-	policies := d.currentEnforcedPolicies()
-	if len(policies) == 0 {
+	// Read once: deciding the mode and then gating on a second read could see
+	// two different settings.
+	enforcement := d.currentEnforcement()
+	if !enforcement.Fetch.Active() || len(enforcement.Policies) == 0 {
 		return true, nil
 	}
 
+	shadow := enforcement.Fetch == policyconfig.ModeShadow
+
+	compliant, err := d.recordComplies(cid, enforcement.Policies)
+	if err != nil {
+		if shadow {
+			logger.Warn("Shadow mode: could not check record against enforced policies", "cid", cid, "error", err)
+
+			return true, nil
+		}
+
+		return false, err
+	}
+
+	if compliant {
+		return true, nil
+	}
+
+	if d.observer != nil {
+		d.observer.FetchExcluded(enforcement.Fetch)
+	}
+
+	if shadow {
+		logger.Debug("Shadow mode: enforced policies would exclude record", "cid", cid)
+
+		return true, nil
+	}
+
+	return false, nil
+}
+
+// CountRecordsExcluded counts the indexed records that do not comply with
+// every one of policies: those an enforcing search excludes.
+func (d *DB) CountRecordsExcluded(policies []types.EnforcedPolicy) (int64, error) {
+	compliant := gatePolicies(d.gormDB.Model(&Record{}).Select("records.record_cid"), "records.record_cid", policies)
+
+	var count int64
+
+	if err := d.gormDB.Model(&Record{}).Where("records.record_cid NOT IN (?)", compliant).Count(&count).Error; err != nil {
+		return 0, fmt.Errorf("count records excluded by enforced policies: %w", err)
+	}
+
+	return count, nil
+}
+
+// recordComplies reports whether the record with cid is indexed and complies
+// with every one of policies.
+func (d *DB) recordComplies(cid string, policies []types.EnforcedPolicy) (bool, error) {
 	var count int64
 
 	query := d.gormDB.Model(&Record{}).Where("records.record_cid = ?", cid)
@@ -47,13 +104,13 @@ func (d *DB) IsRecordServable(cid string) (bool, error) {
 	return count > 0, nil
 }
 
-// currentEnforcedPolicies returns the enforced set for one query.
-func (d *DB) currentEnforcedPolicies() []types.EnforcedPolicy {
-	if d.enforcedPolicies == nil {
-		return nil
+// currentEnforcement returns what one read must satisfy.
+func (d *DB) currentEnforcement() types.PolicyEnforcement {
+	if d.enforcement == nil {
+		return types.PolicyEnforcement{}
 	}
 
-	return d.enforcedPolicies()
+	return d.enforcement()
 }
 
 // gatePolicies requires, for each policy, an evaluated, compliant verdict at

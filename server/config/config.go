@@ -484,6 +484,12 @@ func LoadConfig(opts ...ConfigOption) (*Config, error) {
 	_ = v.BindEnv("policy.dir")
 	v.SetDefault("policy.dir", DefaultConfigPath+"/policies")
 
+	_ = v.BindEnv("policy.enforcement.search")
+	v.SetDefault("policy.enforcement.search", string(policy.ModeOff))
+
+	_ = v.BindEnv("policy.enforcement.fetch")
+	v.SetDefault("policy.enforcement.fetch", string(policy.ModeOff))
+
 	//
 	// Store configuration
 	//

@@ -8,6 +8,7 @@ import (
 
 	catalogv1 "github.com/agntcy/dir/api/catalog/v1"
 	searchv1 "github.com/agntcy/dir/api/search/v1"
+	policyconfig "github.com/agntcy/dir/server/policy/config"
 	"github.com/agntcy/dir/server/types"
 	"github.com/glebarez/sqlite"
 	"github.com/stretchr/testify/assert"
@@ -28,22 +29,31 @@ var (
 	policyB = types.EnforcedPolicy{ID: "opa:b", Version: "v1"}
 )
 
-// setupGateDB opens a database whose reads enforce the policies enforced
-// returns at query time.
-func setupGateDB(t *testing.T, enforced func() []types.EnforcedPolicy) *DB {
+// setupGateDB opens a database whose reads apply what enforcement returns at
+// query time, or nothing when it is nil.
+func setupGateDB(t *testing.T, enforcement func() types.PolicyEnforcement) *DB {
 	t.Helper()
 
 	gdb, err := gorm.Open(sqlite.Open("file::memory:"), &gorm.Config{})
 	require.NoError(t, err)
 
-	db, err := New(gdb, WithEnforcedPolicies(enforced))
+	db, err := New(gdb)
 	require.NoError(t, err)
 
-	return db
+	if enforcement == nil {
+		return db
+	}
+
+	return db.Served(enforcement, nil)
 }
 
-func enforce(policies ...types.EnforcedPolicy) func() []types.EnforcedPolicy {
-	return func() []types.EnforcedPolicy { return policies }
+// enforcing enforces policies on every kind of read.
+func enforcing(policies ...types.EnforcedPolicy) types.PolicyEnforcement {
+	return types.PolicyEnforcement{Policies: policies, Search: policyconfig.ModeEnforce, Fetch: policyconfig.ModeEnforce}
+}
+
+func enforce(policies ...types.EnforcedPolicy) func() types.PolicyEnforcement {
+	return func() types.PolicyEnforcement { return enforcing(policies...) }
 }
 
 // seedGateRecord adds a record carrying skill, an author named after it, and
@@ -90,7 +100,7 @@ func TestPolicyGate_NothingEnforcedChangesNothing(t *testing.T) {
 
 	tests := []struct {
 		name     string
-		enforced func() []types.EnforcedPolicy
+		enforced func() types.PolicyEnforcement
 	}{
 		{"no gate configured", nil},
 		{"gate configured, no policy in force", enforce()},
@@ -188,7 +198,7 @@ func TestPolicyGate_EnforcedSetIsReadPerQuery(t *testing.T) {
 
 	var enforced []types.EnforcedPolicy
 
-	db := setupGateDB(t, func() []types.EnforcedPolicy { return enforced })
+	db := setupGateDB(t, func() types.PolicyEnforcement { return enforcing(enforced...) })
 
 	seedGateRecord(t, db, gateOK, "skill/ok")
 	seedGateRecord(t, db, gateNone, "skill/none")
@@ -276,7 +286,7 @@ func TestPolicyGate_AppliesToEveryRead(t *testing.T) {
 
 	var enforced []types.EnforcedPolicy
 
-	db := setupGateDB(t, func() []types.EnforcedPolicy { return enforced })
+	db := setupGateDB(t, func() types.PolicyEnforcement { return enforcing(enforced...) })
 
 	seedGateRecord(t, db, gateOK, "skill/ok")
 	seedGateRecord(t, db, gateBad, "skill/bad")
@@ -313,7 +323,7 @@ func TestIsRecordServable(t *testing.T) {
 
 	tests := []struct {
 		name     string
-		enforced func() []types.EnforcedPolicy
+		enforced func() types.PolicyEnforcement
 		indexed  bool
 		verdict  string // "", "pass" or "fail"
 		want     bool
