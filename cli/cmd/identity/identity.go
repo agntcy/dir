@@ -7,6 +7,7 @@ package identity
 import (
 	"errors"
 	"fmt"
+	"time"
 
 	identityv1 "github.com/agntcy/dir/api/identity/v1"
 	"github.com/agntcy/dir/cli/presenter"
@@ -90,12 +91,12 @@ func init() {
 	claimCmd.Flags().StringVar(&claimRole, "role", "", "Claim role: \"identity\" or \"owner\" (required)")
 	claimCmd.Flags().StringVar(&claimSubject, "subject", "", "The identity/owner URI being claimed (required)")
 	claimCmd.Flags().StringVar(&claimKeyPath, "key", "", "Path to a PEM-encoded private key to sign with")
-	claimCmd.Flags().StringVar(&claimCert, "cert", "", "Path to a PEM-encoded X.509-SVID certificate (SPIFFE subjects only)")
+	claimCmd.Flags().StringVar(&claimCert, "cert", "", "Path to a PEM-encoded X.509-SVID certificate for spiffe:// subjects (requires --key)")
 
 	_ = claimCmd.MarkFlagRequired("record")
 	_ = claimCmd.MarkFlagRequired("role")
 	_ = claimCmd.MarkFlagRequired("subject")
-	claimCmd.MarkFlagsRequiredTogether("key", "cert")
+	_ = claimCmd.MarkFlagRequired("key")
 
 	presenter.AddOutputFlags(statusCmd)
 
@@ -133,7 +134,23 @@ func runClaim(cmd *cobra.Command) error {
 
 	cmd.Printf("Claim pushed successfully for record %s\n", cid)
 
+	if notice := expiryNotice(signer, time.Now()); notice != "" {
+		cmd.Println(notice)
+	}
+
 	return nil
+}
+
+func expiryNotice(signer identityv1.Signer, now time.Time) string {
+	expiring, ok := signer.(identityv1.CertificateExpiry)
+	if !ok {
+		return ""
+	}
+
+	notAfter := expiring.NotAfter()
+
+	return fmt.Sprintf("Certificate valid until %s (%s from now); push the claim again after the certificate is renewed",
+		notAfter.UTC().Format(time.RFC3339), notAfter.Sub(now).Round(time.Minute))
 }
 
 // loadSigner builds an identityv1.Signer from the --key/--cert flags. A

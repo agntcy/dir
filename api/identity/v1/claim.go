@@ -23,7 +23,3 @@ func NewOwnershipClaim(subject string) *OwnershipClaim {
 func CanonicalBytes(recordCID, subject, signedAt string) []byte {
 	return []byte(recordCID + "|" + subject + "|" + signedAt)
 }
-
-func strPtr(s string) *string {
-	return &s
-}

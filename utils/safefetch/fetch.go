@@ -98,7 +98,7 @@ func (c *Client) Get(ctx context.Context, rawURL string) ([]byte, error) {
 		return nil, fmt.Errorf("build request: %w", err)
 	}
 
-	if req.URL.Scheme != "https" && !(c.allowHTTP && req.URL.Scheme == "http") {
+	if req.URL.Scheme != "https" && (!c.allowHTTP || req.URL.Scheme != "http") {
 		return nil, fmt.Errorf("scheme %q is not allowed", req.URL.Scheme)
 	}
 

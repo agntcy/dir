@@ -10,6 +10,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/agntcy/dir/reconciler/tasks/identity"
 	storeconfig "github.com/agntcy/dir/server/store/oci/config"
 	"github.com/stretchr/testify/require"
 )
@@ -184,6 +185,43 @@ func TestLoadConfigLocalRegistryCredentialEnvOverride(t *testing.T) {
 			require.NoError(t, err)
 			require.Equal(t, "registry-user", cfg.Reconciler.LocalRegistry.Username)
 			require.Equal(t, "registry-token", cfg.Reconciler.LocalRegistry.Password)
+		})
+	}
+}
+
+// TestLoadConfigIdentityEnvOverride asserts that the reconciler identity task
+// can be enabled and its interval set by environment alone, including for a
+// user-supplied config file that does not declare the keys.
+func TestLoadConfigIdentityEnvOverride(t *testing.T) {
+	dataDir := t.TempDir()
+
+	configPath := filepath.Join(dataDir, DefaultConfigFile)
+	require.NoError(t, os.WriteFile(configPath, []byte(defaultConfigYAML), 0o600))
+
+	for name, configFile := range map[string]string{
+		"embedded config":    "",
+		"user-supplied file": configPath,
+	} {
+		t.Run(name, func(t *testing.T) {
+			originalOpts := opts
+			opts = &Options{DataDir: dataDir, ConfigFile: configFile}
+
+			t.Cleanup(func() {
+				opts = originalOpts
+			})
+
+			cfg, err := loadConfig()
+			require.NoError(t, err)
+			require.False(t, cfg.Reconciler.Identity.Enabled)
+			require.Equal(t, identity.DefaultInterval, cfg.Reconciler.Identity.Interval)
+
+			t.Setenv("DIRECTORY_DAEMON_RECONCILER_IDENTITY_ENABLED", "true")
+			t.Setenv("DIRECTORY_DAEMON_RECONCILER_IDENTITY_INTERVAL", "2m")
+
+			cfg, err = loadConfig()
+			require.NoError(t, err)
+			require.True(t, cfg.Reconciler.Identity.Enabled)
+			require.Equal(t, 2*time.Minute, cfg.Reconciler.Identity.Interval)
 		})
 	}
 }

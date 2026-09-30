@@ -854,4 +854,10 @@ reconciler:
       enabled: true
       interval: "1h"
 
+    # Identity task configuration. Enable only after the identity task loads
+    # record annotations; until then every claim is recorded as failed.
+    identity:
+      enabled: false
+      interval: "5m"
+
   resources: {}

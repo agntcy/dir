@@ -88,51 +88,50 @@ func (t *Task) Run(ctx context.Context) error {
 	return nil
 }
 
+// claimPtr is a pointer to one of the claim proto messages; the pointer
+// constraint lets reconcileClaim allocate a fresh claim per referrer.
+type claimPtr[C any] interface {
+	*C
+	UnmarshalReferrer(*corev1.RecordReferrer) error
+	GetSubject() string
+}
+
+// verifyFunc is the shape shared by identityv1.VerifyIdentityClaim and
+// identityv1.VerifyOwnershipClaim.
+type verifyFunc[C any] func(ctx context.Context, c *C, recordCID, expectedSubject string, resolver identityv1.KeyResolver, trustedCerts []*x509.Certificate) *identityv1.Result
+
 // reconcileIdentity re-verifies recordCID's identity claim referrer, if any.
 func (t *Task) reconcileIdentity(ctx context.Context, recordCID, expectedSubject string) (bool, error) {
-	found := false
-
-	err := t.store.WalkReferrers(ctx, recordCID, corev1.IdentityClaimReferrerType, func(ref *corev1.RecordReferrer) error {
-		var claim identityv1.IdentityClaim
-		if err := claim.UnmarshalReferrer(ref); err != nil {
-			logger.Warn("Failed to unmarshal identity claim referrer", "cid", recordCID, "error", err)
-
-			return nil
-		}
-
-		found = true
-
-		result := identityv1.VerifyIdentityClaim(ctx, &claim, recordCID, expectedSubject, t.resolver(), t.trustedCertsFor(claim.GetSubject()))
-
-		return t.db.UpsertClaim(types.ClaimRoleIdentity, claimResult{recordCID: recordCID, subject: claim.GetSubject(), result: result})
-	})
-	if err != nil {
-		return found, fmt.Errorf("walk identity claim referrers: %w", err)
-	}
-
-	return found, nil
+	return reconcileClaim(ctx, t, recordCID, expectedSubject, "identity", corev1.IdentityClaimReferrerType, types.ClaimRoleIdentity, identityv1.VerifyIdentityClaim)
 }
 
 // reconcileOwnership re-verifies recordCID's ownership claim referrer, if any.
 func (t *Task) reconcileOwnership(ctx context.Context, recordCID, expectedSubject string) (bool, error) {
+	return reconcileClaim(ctx, t, recordCID, expectedSubject, "ownership", corev1.OwnershipClaimReferrerType, types.ClaimRoleOwner, identityv1.VerifyOwnershipClaim)
+}
+
+// reconcileClaim re-verifies recordCID's claim referrers of referrerType with
+// verify and upserts each result under role; kind names the claim in log and
+// error text. It reports whether any referrer decoded.
+func reconcileClaim[C any, PC claimPtr[C]](ctx context.Context, t *Task, recordCID, expectedSubject, kind, referrerType, role string, verify verifyFunc[C]) (bool, error) {
 	found := false
 
-	err := t.store.WalkReferrers(ctx, recordCID, corev1.OwnershipClaimReferrerType, func(ref *corev1.RecordReferrer) error {
-		var claim identityv1.OwnershipClaim
+	err := t.store.WalkReferrers(ctx, recordCID, referrerType, func(ref *corev1.RecordReferrer) error {
+		claim := PC(new(C))
 		if err := claim.UnmarshalReferrer(ref); err != nil {
-			logger.Warn("Failed to unmarshal ownership claim referrer", "cid", recordCID, "error", err)
+			logger.Warn("Failed to unmarshal "+kind+" claim referrer", "cid", recordCID, "error", err)
 
 			return nil
 		}
 
 		found = true
 
-		result := identityv1.VerifyOwnershipClaim(ctx, &claim, recordCID, expectedSubject, t.resolver(), t.trustedCertsFor(claim.GetSubject()))
+		result := verify(ctx, claim, recordCID, expectedSubject, t.resolver(), t.trustedCertsFor(claim.GetSubject()))
 
-		return t.db.UpsertClaim(types.ClaimRoleOwner, claimResult{recordCID: recordCID, subject: claim.GetSubject(), result: result})
+		return t.db.UpsertClaim(role, claimResult{recordCID: recordCID, subject: claim.GetSubject(), result: result})
 	})
 	if err != nil {
-		return found, fmt.Errorf("walk ownership claim referrers: %w", err)
+		return found, fmt.Errorf("walk %s claim referrers: %w", kind, err)
 	}
 
 	return found, nil

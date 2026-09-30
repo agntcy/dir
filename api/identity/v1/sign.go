@@ -36,6 +36,12 @@ type certificateProvider interface {
 	CertificateDER() []byte
 }
 
+// CertificateExpiry is implemented by signers backed by a certificate, so a
+// caller can tell the publisher when the claim stops verifying.
+type CertificateExpiry interface {
+	NotAfter() time.Time
+}
+
 // KeySigner signs with a plain PEM-encoded private key (EC, RSA, or
 // Ed25519). Used for dns/https/did subjects, whose public key is resolved
 // externally by a verifier — the key is never embedded in the claim.
@@ -49,6 +55,10 @@ func NewKeySigner(keyPEM []byte) (*KeySigner, error) {
 	signer, err := parsePrivateKey(keyPEM)
 	if err != nil {
 		return nil, fmt.Errorf("parse private key: %w", err)
+	}
+
+	if err := CheckSigningKey(signer.Public()); err != nil {
+		return nil, fmt.Errorf("unsupported signing key: %w", err)
 	}
 
 	return &KeySigner{signer: signer}, nil
@@ -75,19 +85,15 @@ type SpiffeSigner struct {
 	signer   crypto.Signer
 	certDER  []byte
 	spiffeID string
+	notAfter time.Time
 }
 
 // NewSpiffeSigner loads a PEM-encoded private key and X.509-SVID certificate.
 // The certificate must carry a "spiffe://" URI SAN.
 func NewSpiffeSigner(keyPEM, certPEM []byte) (*SpiffeSigner, error) {
-	signer, err := parsePrivateKey(keyPEM)
+	signer, cert, certDER, err := loadKeyAndCertificate(keyPEM, certPEM)
 	if err != nil {
-		return nil, fmt.Errorf("parse private key: %w", err)
-	}
-
-	cert, certDER, err := parseCertificate(certPEM)
-	if err != nil {
-		return nil, fmt.Errorf("parse certificate: %w", err)
+		return nil, err
 	}
 
 	spiffeID, err := certSpiffeID(cert)
@@ -95,7 +101,7 @@ func NewSpiffeSigner(keyPEM, certPEM []byte) (*SpiffeSigner, error) {
 		return nil, err
 	}
 
-	return &SpiffeSigner{signer: signer, certDER: certDER, spiffeID: spiffeID}, nil
+	return &SpiffeSigner{signer: signer, certDER: certDER, spiffeID: spiffeID, notAfter: cert.NotAfter}, nil
 }
 
 // NewSpiffeSignerFromFile loads a PEM-encoded private key and certificate from disk.
@@ -132,6 +138,13 @@ func (s *SpiffeSigner) SubjectMatchesCertificate(subject string) bool {
 
 var _ subjectChecker = (*SpiffeSigner)(nil)
 
+// NotAfter implements CertificateExpiry.
+func (s *SpiffeSigner) NotAfter() time.Time {
+	return s.notAfter
+}
+
+var _ CertificateExpiry = (*SpiffeSigner)(nil)
+
 // SignIdentityClaim signs c for recordCID using signer, setting SignedAt,
 // Signature, and (for SPIFFE signers) Certificate.
 func SignIdentityClaim(c *IdentityClaim, recordCID string, signer Signer) error {
@@ -148,7 +161,7 @@ func SignIdentityClaim(c *IdentityClaim, recordCID string, signer Signer) error 
 	c.Signature = jwsCompact
 
 	if certificateB64 != "" {
-		c.Certificate = strPtr(certificateB64)
+		c.Certificate = new(certificateB64)
 	}
 
 	return nil
@@ -170,14 +183,16 @@ func SignOwnershipClaim(c *OwnershipClaim, recordCID string, signer Signer) erro
 	c.Signature = jwsCompact
 
 	if certificateB64 != "" {
-		c.Certificate = strPtr(certificateB64)
+		c.Certificate = new(certificateB64)
 	}
 
 	return nil
 }
 
 // sign is the shared implementation behind SignIdentityClaim/SignOwnershipClaim.
-func sign(subject, recordCID string, signer Signer) (signedAt, jwsCompact, certificateB64 string, err error) {
+// It returns the signing time, the JWS, and the base64 certificate to embed in
+// the claim, empty unless the signer provides one.
+func sign(subject, recordCID string, signer Signer) (string, string, string, error) {
 	if subject == "" {
 		return "", "", "", errors.New("subject is required")
 	}
@@ -190,18 +205,55 @@ func sign(subject, recordCID string, signer Signer) (signedAt, jwsCompact, certi
 		return "", "", "", fmt.Errorf("signer certificate does not match claimed subject %q", subject)
 	}
 
-	signedAt = time.Now().UTC().Format(time.RFC3339)
+	signedAt := time.Now().UTC().Format(time.RFC3339)
 
-	jwsCompact, err = signer.Sign(CanonicalBytes(recordCID, subject, signedAt))
+	jwsCompact, err := signer.Sign(CanonicalBytes(recordCID, subject, signedAt))
 	if err != nil {
-		return "", "", "", err
+		return "", "", "", fmt.Errorf("sign claim: %w", err)
 	}
 
+	var certificateB64 string
 	if cp, ok := signer.(certificateProvider); ok {
 		certificateB64 = base64.StdEncoding.EncodeToString(cp.CertificateDER())
 	}
 
 	return signedAt, jwsCompact, certificateB64, nil
+}
+
+// loadKeyAndCertificate parses a private key and the certificate issued for
+// it, and checks what every certificate-backed signer needs: the certificate
+// fits the size verifiers accept, the key type can sign claims, the key
+// matches the certificate, and the certificate is valid now.
+func loadKeyAndCertificate(keyPEM, certPEM []byte) (crypto.Signer, *x509.Certificate, []byte, error) {
+	signer, err := parsePrivateKey(keyPEM)
+	if err != nil {
+		return nil, nil, nil, fmt.Errorf("parse private key: %w", err)
+	}
+
+	cert, certDER, err := parseCertificate(certPEM)
+	if err != nil {
+		return nil, nil, nil, err
+	}
+
+	if len(certDER) > maxCertificateDERSize {
+		return nil, nil, nil, fmt.Errorf("certificate is %d bytes of DER; at most %d are accepted", len(certDER), maxCertificateDERSize)
+	}
+
+	if err := CheckSigningKey(signer.Public()); err != nil {
+		return nil, nil, nil, fmt.Errorf("unsupported signing key: %w", err)
+	}
+
+	pub, ok := signer.Public().(interface{ Equal(crypto.PublicKey) bool })
+	if !ok || !pub.Equal(cert.PublicKey) {
+		return nil, nil, nil, errors.New("private key does not match the certificate's public key")
+	}
+
+	if now := time.Now(); now.Before(cert.NotBefore) || now.After(cert.NotAfter) {
+		return nil, nil, nil, fmt.Errorf("certificate is not valid now; it is valid from %s to %s",
+			cert.NotBefore.UTC().Format(time.RFC3339), cert.NotAfter.UTC().Format(time.RFC3339))
+	}
+
+	return signer, cert, certDER, nil
 }
 
 // parsePrivateKey decodes a PEM block and returns a crypto.Signer.

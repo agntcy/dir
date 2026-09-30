@@ -188,6 +188,8 @@ func LoadConfig() (*Config, error) {
 	_ = v.BindEnv("signature.record_timeout")
 	v.SetDefault("signature.record_timeout", signature.DefaultRecordTimeout)
 
+	bindIdentityEnv(v)
+
 	//
 	// Scan task configuration (security scanning)
 	//
@@ -250,4 +252,12 @@ func LoadConfig() (*Config, error) {
 	}
 
 	return config, nil
+}
+
+func bindIdentityEnv(v *viper.Viper) {
+	_ = v.BindEnv("identity.enabled")
+	v.SetDefault("identity.enabled", false)
+
+	_ = v.BindEnv("identity.interval")
+	v.SetDefault("identity.interval", identity.DefaultInterval)
 }

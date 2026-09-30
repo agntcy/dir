@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/agntcy/dir/reconciler/tasks/identity"
 	dbconfig "github.com/agntcy/dir/server/database/config"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -41,4 +42,38 @@ func TestLoadConfig_EnvOverrides(t *testing.T) {
 	assert.False(t, cfg.Regsync.Enabled)
 	assert.False(t, cfg.Indexer.Enabled)
 	assert.Equal(t, 2*time.Hour, cfg.Indexer.Interval)
+}
+
+func TestLoadConfig_Identity(t *testing.T) {
+	tests := []struct {
+		name string
+		env  map[string]string
+		want identity.Config
+	}{
+		{
+			name: "defaults leave the task off",
+			want: identity.Config{Interval: identity.DefaultInterval},
+		},
+		{
+			name: "environment enables the task and sets the interval",
+			env: map[string]string{
+				"RECONCILER_IDENTITY_ENABLED":  "true",
+				"RECONCILER_IDENTITY_INTERVAL": "2m",
+			},
+			want: identity.Config{Enabled: true, Interval: 2 * time.Minute},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			for key, value := range tt.env {
+				t.Setenv(key, value)
+			}
+
+			cfg, err := LoadConfig()
+			require.NoError(t, err)
+
+			assert.Equal(t, tt.want, cfg.Identity)
+		})
+	}
 }
