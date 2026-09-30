@@ -1,7 +1,7 @@
 // Copyright AGNTCY Contributors (https://github.com/agntcy)
 // SPDX-License-Identifier: Apache-2.0
 
-package resolvers
+package dnsresolver
 
 import (
 	"context"
@@ -11,26 +11,42 @@ import (
 	"fmt"
 	"net"
 	"strings"
+
+	"github.com/agntcy/dir/client/utils/identity/resolvers/internal/keyutil"
 )
 
 // TXTPrefix is prepended to the domain to form the key record's DNS name,
 // e.g. "_agntcy-key.acme.com".
 const TXTPrefix = "_agntcy-key."
 
-// DNS resolves "dns:" subjects (and bare domains) from TXT records of the
+// Resolver resolves "dns:" subjects (and bare domains) from TXT records of the
 // form "v=akv1;key=<base64 DER SubjectPublicKeyInfo>".
-type DNS struct {
+type Resolver struct {
 	lookupTXT func(ctx context.Context, name string) ([]string, error)
 }
 
-// NewDNS creates a DNS resolver backed by the system resolver.
-func NewDNS() *DNS {
-	return &DNS{lookupTXT: net.DefaultResolver.LookupTXT}
+// Option configures a Resolver.
+type Option func(*Resolver)
+
+// WithLookupTXT replaces the system DNS lookup, for tests.
+func WithLookupTXT(lookup func(ctx context.Context, name string) ([]string, error)) Option {
+	return func(r *Resolver) { r.lookupTXT = lookup }
 }
 
-// Resolve implements Resolver. It ignores certificate.
-func (d *DNS) Resolve(ctx context.Context, subject string, _ []byte) ([]crypto.PublicKey, error) {
-	u, err := parseHost(strings.TrimPrefix(subject, "dns:"))
+// New creates a Resolver backed by the system DNS resolver.
+func New(opts ...Option) *Resolver {
+	r := &Resolver{lookupTXT: net.DefaultResolver.LookupTXT}
+
+	for _, opt := range opts {
+		opt(r)
+	}
+
+	return r
+}
+
+// Resolve implements resolvers.Resolver. It ignores certificate.
+func (d *Resolver) Resolve(ctx context.Context, subject string, _ []byte) ([]crypto.PublicKey, error) {
+	u, err := keyutil.ParseHost(strings.TrimPrefix(subject, "dns:"))
 	if err != nil || u.Port() != "" {
 		return nil, fmt.Errorf("invalid dns subject %q", subject)
 	}
@@ -50,7 +66,12 @@ func (d *DNS) Resolve(ctx context.Context, subject string, _ []byte) ([]crypto.P
 		}
 	}
 
-	return finish(keys, name)
+	found, err := keyutil.Finish(keys, name)
+	if err != nil {
+		return nil, fmt.Errorf("dns: %w", err)
+	}
+
+	return found, nil
 }
 
 // parseKeyRecord parses one TXT record, skipping any that aren't a
@@ -89,5 +110,5 @@ func parseKeyRecord(record string) (crypto.PublicKey, bool) {
 		return nil, false
 	}
 
-	return toPublicKey(pub)
+	return keyutil.ToPublicKey(pub)
 }

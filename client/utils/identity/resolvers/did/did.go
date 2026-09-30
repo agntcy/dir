@@ -1,7 +1,7 @@
 // Copyright AGNTCY Contributors (https://github.com/agntcy)
 // SPDX-License-Identifier: Apache-2.0
 
-package resolvers
+package didresolver
 
 import (
 	"context"
@@ -17,6 +17,8 @@ import (
 	"net/url"
 	"strings"
 
+	"github.com/agntcy/dir/client/utils/identity/resolvers"
+	"github.com/agntcy/dir/client/utils/identity/resolvers/internal/keyutil"
 	"github.com/agntcy/dir/utils/safefetch"
 	"github.com/lestrrat-go/jwx/v2/jwk"
 	"github.com/multiformats/go-multibase"
@@ -31,24 +33,24 @@ const (
 	multicodecRSAPub     = 0x1205
 )
 
-// DID resolves did:web subjects from the DID document served over HTTPS, and
-// did:key subjects locally: a did:key embeds its own key, so it needs no
+// Resolver resolves did:web subjects from the DID document served over HTTPS,
+// and did:key subjects locally: a did:key embeds its own key, so it needs no
 // network access.
-type DID struct {
-	fetch Fetcher
+type Resolver struct {
+	fetch resolvers.Fetcher
 }
 
-// NewDID creates a DID resolver. A nil fetch uses a default safefetch.Client.
-func NewDID(fetch Fetcher) *DID {
+// New creates a Resolver. A nil fetch uses a default safefetch.Client.
+func New(fetch resolvers.Fetcher) *Resolver {
 	if fetch == nil {
 		fetch = safefetch.New()
 	}
 
-	return &DID{fetch: fetch}
+	return &Resolver{fetch: fetch}
 }
 
-// Resolve implements Resolver. It ignores certificate.
-func (d *DID) Resolve(ctx context.Context, subject string, _ []byte) ([]crypto.PublicKey, error) {
+// Resolve implements resolvers.Resolver. It ignores certificate.
+func (d *Resolver) Resolve(ctx context.Context, subject string, _ []byte) ([]crypto.PublicKey, error) {
 	switch {
 	case strings.HasPrefix(subject, "did:web:"):
 		return d.resolveWeb(ctx, subject)
@@ -59,7 +61,7 @@ func (d *DID) Resolve(ctx context.Context, subject string, _ []byte) ([]crypto.P
 	}
 }
 
-func (d *DID) resolveWeb(ctx context.Context, subject string) ([]crypto.PublicKey, error) {
+func (d *Resolver) resolveWeb(ctx context.Context, subject string) ([]crypto.PublicKey, error) {
 	docURL, err := didWebURL(subject)
 	if err != nil {
 		return nil, err
@@ -107,12 +109,17 @@ func keysFromDIDDocument(body []byte, subject, source string) ([]crypto.PublicKe
 			continue
 		}
 
-		if pub, ok := publicKeyFromJWK(key); ok {
+		if pub, ok := keyutil.PublicKeyFromJWK(key); ok {
 			keys = append(keys, pub)
 		}
 	}
 
-	return finish(keys, source)
+	found, err := keyutil.Finish(keys, source)
+	if err != nil {
+		return nil, fmt.Errorf("did: %w", err)
+	}
+
+	return found, nil
 }
 
 // didWebURL implements the did:web method
@@ -127,7 +134,7 @@ func didWebURL(subject string) (string, error) {
 		return "", fmt.Errorf("invalid did:web subject %q: %w", subject, err)
 	}
 
-	u, err := parseHost(host)
+	u, err := keyutil.ParseHost(host)
 	if err != nil {
 		return "", fmt.Errorf("invalid did:web subject %q: %w", subject, err)
 	}

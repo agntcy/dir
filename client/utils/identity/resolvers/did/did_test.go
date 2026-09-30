@@ -1,101 +1,66 @@
 // Copyright AGNTCY Contributors (https://github.com/agntcy)
 // SPDX-License-Identifier: Apache-2.0
 
-package resolvers
+package didresolver
 
 import (
 	"crypto"
 	"crypto/elliptic"
 	"crypto/x509"
-	"encoding/json"
 	"testing"
 
-	"github.com/multiformats/go-multibase"
+	"github.com/agntcy/dir/client/utils/identity/resolvers"
+	"github.com/agntcy/dir/client/utils/identity/resolvers/internal/testutil"
 	"github.com/stretchr/testify/require"
 )
 
-// didDoc builds a DID document for id holding the given keys.
-func didDoc(t *testing.T, id string, keys ...crypto.PublicKey) []byte {
-	t.Helper()
-
-	type vm struct {
-		ID           string          `json:"id"`
-		Type         string          `json:"type"`
-		Controller   string          `json:"controller"`
-		PublicKeyJWK json.RawMessage `json:"publicKeyJwk"`
-	}
-
-	doc := struct {
-		ID                 string `json:"id"`
-		VerificationMethod []vm   `json:"verificationMethod"`
-	}{ID: id}
-
-	for _, k := range keys {
-		set := jwksJSON(t, k)
-
-		var parsed struct {
-			Keys []json.RawMessage `json:"keys"`
-		}
-
-		require.NoError(t, json.Unmarshal(set, &parsed))
-		doc.VerificationMethod = append(doc.VerificationMethod, vm{
-			ID: id + "#key", Type: "JsonWebKey2020", Controller: id, PublicKeyJWK: parsed.Keys[0],
-		})
-	}
-
-	body, err := json.Marshal(doc)
-	require.NoError(t, err)
-
-	return body
-}
-
 func TestDID_ResolveWeb(t *testing.T) {
-	ec := newECKey(t, elliptic.P256())
-	ed := newEdKey(t)
+	ec := testutil.NewECKey(t, elliptic.P256())
+	ed := testutil.NewEdKey(t)
 
-	fetcher := &fakeFetcher{docs: map[string][]byte{
-		"https://acme.com/.well-known/did.json":      didDoc(t, "did:web:acme.com", &ec.PublicKey, ed.Public()),
-		"https://acme.com/agents/finance/did.json":   didDoc(t, "did:web:acme.com:agents:finance", &ec.PublicKey),
-		"https://acme.com:8443/.well-known/did.json": didDoc(t, "did:web:acme.com%3A8443", ed.Public()),
+	fetcher := &testutil.FakeFetcher{Docs: map[string][]byte{
+		"https://acme.com/.well-known/did.json":      testutil.DIDDocument(t, "did:web:acme.com", &ec.PublicKey, ed.Public()),
+		"https://acme.com/agents/finance/did.json":   testutil.DIDDocument(t, "did:web:acme.com:agents:finance", &ec.PublicKey),
+		"https://acme.com:8443/.well-known/did.json": testutil.DIDDocument(t, "did:web:acme.com%3A8443", ed.Public()),
 	}}
-	resolver := NewDID(fetcher)
+	resolver := New(fetcher)
 
 	keys, err := resolver.Resolve(t.Context(), "did:web:acme.com", nil)
 	require.NoError(t, err)
-	requireSameKeys(t, []crypto.PublicKey{&ec.PublicKey, ed.Public()}, keys)
+	testutil.RequireSameKeys(t, []crypto.PublicKey{&ec.PublicKey, ed.Public()}, keys)
 
 	keys, err = resolver.Resolve(t.Context(), "did:web:acme.com:agents:finance", nil)
 	require.NoError(t, err)
-	requireSameKeys(t, []crypto.PublicKey{&ec.PublicKey}, keys)
+	testutil.RequireSameKeys(t, []crypto.PublicKey{&ec.PublicKey}, keys)
 
 	keys, err = resolver.Resolve(t.Context(), "did:web:acme.com%3A8443", nil)
 	require.NoError(t, err)
-	requireSameKeys(t, []crypto.PublicKey{ed.Public()}, keys)
+	testutil.RequireSameKeys(t, []crypto.PublicKey{ed.Public()}, keys)
 }
 
 func TestDID_ResolveWeb_RejectsMismatchedDocumentID(t *testing.T) {
 	// A document that claims to be a different identity must not supply keys.
-	fetcher := &fakeFetcher{docs: map[string][]byte{
-		"https://acme.com/.well-known/did.json": didDoc(t, "did:web:other.com", newEdKey(t).Public()),
+	fetcher := &testutil.FakeFetcher{Docs: map[string][]byte{
+		"https://acme.com/.well-known/did.json": testutil.DIDDocument(t, "did:web:other.com", testutil.NewEdKey(t).Public()),
 	}}
 
-	_, err := NewDID(fetcher).Resolve(t.Context(), "did:web:acme.com", nil)
+	_, err := New(fetcher).Resolve(t.Context(), "did:web:acme.com", nil)
 	require.ErrorContains(t, err, "does not match subject")
 }
 
 func TestDID_ResolveWeb_Errors(t *testing.T) {
-	fetcher := &fakeFetcher{docs: map[string][]byte{
+	fetcher := &testutil.FakeFetcher{Docs: map[string][]byte{
 		"https://empty.com/.well-known/did.json":   []byte(`{"id":"did:web:empty.com","verificationMethod":[]}`),
 		"https://garbage.com/.well-known/did.json": []byte(`not json`),
 		"https://nojwk.com/.well-known/did.json":   []byte(`{"id":"did:web:nojwk.com","verificationMethod":[{"publicKeyMultibase":"z6Mk"}]}`),
 	}}
-	resolver := NewDID(fetcher)
+	resolver := New(fetcher)
 
 	_, err := resolver.Resolve(t.Context(), "did:web:empty.com", nil)
-	require.ErrorIs(t, err, ErrNoKeys)
+	require.ErrorIs(t, err, resolvers.ErrNoKeys)
 
 	_, err = resolver.Resolve(t.Context(), "did:web:nojwk.com", nil)
-	require.ErrorIs(t, err, ErrNoKeys)
+	require.ErrorIs(t, err, resolvers.ErrNoKeys)
 
 	_, err = resolver.Resolve(t.Context(), "did:web:garbage.com", nil)
 	require.ErrorContains(t, err, "parse DID document")
@@ -146,10 +111,10 @@ func TestDIDWebURL(t *testing.T) {
 }
 
 func TestDID_ResolveKey(t *testing.T) {
-	ed := newEdKey(t)
-	p256 := newECKey(t, elliptic.P256())
-	p384 := newECKey(t, elliptic.P384())
-	rsaKey := newRSAKey(t)
+	ed := testutil.NewEdKey(t)
+	p256 := testutil.NewECKey(t, elliptic.P256())
+	p384 := testutil.NewECKey(t, elliptic.P384())
+	rsaKey := testutil.NewRSAKey(t)
 
 	rsaDER := x509.MarshalPKCS1PublicKey(&rsaKey.PublicKey)
 
@@ -158,7 +123,7 @@ func TestDID_ResolveKey(t *testing.T) {
 		raw  []byte
 		want crypto.PublicKey
 	}{
-		"ed25519": {multicodecEd25519Pub, edPublic(t, ed), ed.Public()},
+		"ed25519": {multicodecEd25519Pub, testutil.EdPublic(t, ed), ed.Public()},
 		"p256":    {multicodecP256Pub, elliptic.MarshalCompressed(elliptic.P256(), p256.X, p256.Y), &p256.PublicKey}, //nolint:staticcheck // test needs the raw point
 		"p384":    {multicodecP384Pub, elliptic.MarshalCompressed(elliptic.P384(), p384.X, p384.Y), &p384.PublicKey}, //nolint:staticcheck // test needs the raw point
 		"rsa":     {multicodecRSAPub, rsaDER, &rsaKey.PublicKey},
@@ -166,61 +131,42 @@ func TestDID_ResolveKey(t *testing.T) {
 
 	for name, tc := range cases {
 		t.Run(name, func(t *testing.T) {
-			subject := "did:key:" + encodeDIDKey(t, tc.code, tc.raw)
+			subject := "did:key:" + testutil.EncodeDIDKey(t, tc.code, tc.raw)
 
-			keys, err := NewDID(&fakeFetcher{}).Resolve(t.Context(), subject, nil)
+			keys, err := New(&testutil.FakeFetcher{}).Resolve(t.Context(), subject, nil)
 			require.NoError(t, err)
-			requireSameKeys(t, []crypto.PublicKey{tc.want}, keys)
+			testutil.RequireSameKeys(t, []crypto.PublicKey{tc.want}, keys)
 		})
 	}
 }
 
 func TestDID_ResolveKey_DoesNotFetch(t *testing.T) {
-	fetcher := &fakeFetcher{}
-	subject := "did:key:" + encodeDIDKey(t, multicodecEd25519Pub, edPublic(t, newEdKey(t)))
+	fetcher := &testutil.FakeFetcher{}
+	subject := "did:key:" + testutil.EncodeDIDKey(t, multicodecEd25519Pub, testutil.EdPublic(t, testutil.NewEdKey(t)))
 
-	_, err := NewDID(fetcher).Resolve(t.Context(), subject, nil)
+	_, err := New(fetcher).Resolve(t.Context(), subject, nil)
 	require.NoError(t, err)
-	require.Empty(t, fetcher.requested)
+	require.Empty(t, fetcher.Requested)
 }
 
 func TestDID_ResolveKey_Errors(t *testing.T) {
-	resolver := NewDID(&fakeFetcher{})
+	resolver := New(&testutil.FakeFetcher{})
 
-	off := newECKey(t, elliptic.P256())
+	off := testutil.NewECKey(t, elliptic.P256())
 	badPoint := elliptic.MarshalCompressed(elliptic.P256(), off.X, off.Y) //nolint:staticcheck // test needs the raw point
 	badPoint[len(badPoint)-1] ^= 0xff                                     // corrupt so the point is (almost surely) off the curve
 
 	subjects := []string{
 		"did:key:",
 		"did:key:not-multibase",
-		"did:key:" + encodeDIDKey(t, 0x9999, []byte("x")),                        // unsupported codec
-		"did:key:" + encodeDIDKey(t, multicodecEd25519Pub, []byte("short")),      // wrong length
-		"did:key:" + encodeDIDKey(t, multicodecP256Pub, []byte{0x02, 0x01}),      // invalid point
-		"did:key:" + encodeDIDKey(t, multicodecRSAPub, []byte("not an rsa key")), // bad DER
+		"did:key:" + testutil.EncodeDIDKey(t, 0x9999, []byte("x")),                        // unsupported codec
+		"did:key:" + testutil.EncodeDIDKey(t, multicodecEd25519Pub, []byte("short")),      // wrong length
+		"did:key:" + testutil.EncodeDIDKey(t, multicodecP256Pub, []byte{0x02, 0x01}),      // invalid point
+		"did:key:" + testutil.EncodeDIDKey(t, multicodecRSAPub, []byte("not an rsa key")), // bad DER
 	}
 
 	for _, subject := range subjects {
 		_, err := resolver.Resolve(t.Context(), subject, nil)
 		require.Error(t, err, subject)
 	}
-}
-
-// encodeDIDKey encodes a multicodec-prefixed key as a base58btc multibase string.
-func encodeDIDKey(t *testing.T, code uint64, raw []byte) string {
-	t.Helper()
-
-	prefix := make([]byte, 0, 10)
-
-	for code >= 0x80 {
-		prefix = append(prefix, byte(code)|0x80)
-		code >>= 7
-	}
-
-	prefix = append(prefix, byte(code))
-
-	encoded, err := multibase.Encode(multibase.Base58BTC, append(prefix, raw...))
-	require.NoError(t, err)
-
-	return encoded
 }

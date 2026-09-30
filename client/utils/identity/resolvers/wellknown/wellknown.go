@@ -1,7 +1,7 @@
 // Copyright AGNTCY Contributors (https://github.com/agntcy)
 // SPDX-License-Identifier: Apache-2.0
 
-package resolvers
+package wellknownresolver
 
 import (
 	"context"
@@ -9,6 +9,8 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/agntcy/dir/client/utils/identity/resolvers"
+	"github.com/agntcy/dir/client/utils/identity/resolvers/internal/keyutil"
 	"github.com/agntcy/dir/utils/safefetch"
 	"github.com/lestrrat-go/jwx/v2/jwk"
 )
@@ -16,23 +18,22 @@ import (
 // WellKnownPath is where a domain publishes its JWKS (RFC 7517).
 const WellKnownPath = "/.well-known/jwks.json"
 
-// WellKnown resolves "https://" subjects from the domain's JWKS file.
-type WellKnown struct {
-	fetch Fetcher
+// Resolver resolves "https://" subjects from the domain's JWKS file.
+type Resolver struct {
+	fetch resolvers.Fetcher
 }
 
-// NewWellKnown creates a JWKS resolver. A nil fetch uses a default
-// safefetch.Client.
-func NewWellKnown(fetch Fetcher) *WellKnown {
+// New creates a Resolver. A nil fetch uses a default safefetch.Client.
+func New(fetch resolvers.Fetcher) *Resolver {
 	if fetch == nil {
 		fetch = safefetch.New()
 	}
 
-	return &WellKnown{fetch: fetch}
+	return &Resolver{fetch: fetch}
 }
 
-// Resolve implements Resolver. It ignores certificate.
-func (w *WellKnown) Resolve(ctx context.Context, subject string, _ []byte) ([]crypto.PublicKey, error) {
+// Resolve implements resolvers.Resolver. It ignores certificate.
+func (w *Resolver) Resolve(ctx context.Context, subject string, _ []byte) ([]crypto.PublicKey, error) {
 	rest, ok := strings.CutPrefix(subject, "https://")
 	if !ok {
 		return nil, fmt.Errorf("invalid https subject %q", subject)
@@ -40,7 +41,7 @@ func (w *WellKnown) Resolve(ctx context.Context, subject string, _ []byte) ([]cr
 
 	hostPart, _, _ := strings.Cut(rest, "/")
 
-	u, err := parseHost(hostPart)
+	u, err := keyutil.ParseHost(hostPart)
 	if err != nil {
 		return nil, fmt.Errorf("invalid https subject %q: %w", subject, err)
 	}
@@ -65,30 +66,15 @@ func (w *WellKnown) Resolve(ctx context.Context, subject string, _ []byte) ([]cr
 			continue
 		}
 
-		if pub, ok := publicKeyFromJWK(key); ok {
+		if pub, ok := keyutil.PublicKeyFromJWK(key); ok {
 			keys = append(keys, pub)
 		}
 	}
 
-	return finish(keys, docURL)
-}
-
-// publicKeyFromJWK returns the signature-verification public key of key,
-// skipping encryption keys and key types jws can't verify with.
-func publicKeyFromJWK(key jwk.Key) (crypto.PublicKey, bool) {
-	if key.KeyUsage() == string(jwk.ForEncryption) {
-		return nil, false
-	}
-
-	pub, err := jwk.PublicKeyOf(key)
+	found, err := keyutil.Finish(keys, docURL)
 	if err != nil {
-		return nil, false
+		return nil, fmt.Errorf("wellknown: %w", err)
 	}
 
-	var raw any
-	if err := pub.Raw(&raw); err != nil {
-		return nil, false
-	}
-
-	return toPublicKey(raw)
+	return found, nil
 }

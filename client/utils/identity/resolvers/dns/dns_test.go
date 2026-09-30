@@ -1,7 +1,7 @@
 // Copyright AGNTCY Contributors (https://github.com/agntcy)
 // SPDX-License-Identifier: Apache-2.0
 
-package resolvers
+package dnsresolver
 
 import (
 	"context"
@@ -10,6 +10,9 @@ import (
 	"errors"
 	"testing"
 
+	"github.com/agntcy/dir/client/utils/identity/resolvers"
+	"github.com/agntcy/dir/client/utils/identity/resolvers/internal/keyutil"
+	"github.com/agntcy/dir/client/utils/identity/resolvers/internal/testutil"
 	"github.com/stretchr/testify/require"
 )
 
@@ -29,42 +32,42 @@ func fakeTXT(records map[string][]string, queried *[]string) func(context.Contex
 }
 
 func TestDNS_Resolve(t *testing.T) {
-	first := newECKey(t, elliptic.P256())
-	second := newEdKey(t)
+	first := testutil.NewECKey(t, elliptic.P256())
+	second := testutil.NewEdKey(t)
 
 	var queried []string
 
-	resolver := &DNS{lookupTXT: fakeTXT(map[string][]string{
+	resolver := New(WithLookupTXT(fakeTXT(map[string][]string{
 		"_agntcy-key.acme.com": {
-			"v=akv1;key=" + spkiBase64(t, &first.PublicKey),
+			"v=akv1;key=" + testutil.SPKIBase64(t, &first.PublicKey),
 			"v=spf1 include:_spf.google.com ~all", // unrelated record
-			"v=akv1;key=" + spkiBase64(t, second.Public()),
-			"v=akv2;key=" + spkiBase64(t, &first.PublicKey), // wrong version
+			"v=akv1;key=" + testutil.SPKIBase64(t, second.Public()),
+			"v=akv2;key=" + testutil.SPKIBase64(t, &first.PublicKey), // wrong version
 			"v=akv1;key=not-base64!",
 			"v=akv1;key=", // empty key
 		},
-	}, &queried)}
+	}, &queried)))
 
 	for _, subject := range []string{"dns:acme.com", "acme.com"} {
 		keys, err := resolver.Resolve(t.Context(), subject, nil)
 		require.NoError(t, err, subject)
-		requireSameKeys(t, []crypto.PublicKey{&first.PublicKey, second.Public()}, keys)
+		testutil.RequireSameKeys(t, []crypto.PublicKey{&first.PublicKey, second.Public()}, keys)
 	}
 
 	require.Equal(t, []string{"_agntcy-key.acme.com", "_agntcy-key.acme.com"}, queried)
 }
 
 func TestDNS_Resolve_Errors(t *testing.T) {
-	resolver := &DNS{lookupTXT: fakeTXT(map[string][]string{
+	resolver := New(WithLookupTXT(fakeTXT(map[string][]string{
 		"_agntcy-key.empty.com":   {},
 		"_agntcy-key.garbage.com": {"hello", "v=akv1", "key=abc"},
-	}, nil)}
+	}, nil)))
 
 	_, err := resolver.Resolve(t.Context(), "dns:empty.com", nil)
-	require.ErrorIs(t, err, ErrNoKeys)
+	require.ErrorIs(t, err, resolvers.ErrNoKeys)
 
 	_, err = resolver.Resolve(t.Context(), "dns:garbage.com", nil)
-	require.ErrorIs(t, err, ErrNoKeys)
+	require.ErrorIs(t, err, resolvers.ErrNoKeys)
 
 	_, err = resolver.Resolve(t.Context(), "dns:missing.com", nil)
 	require.ErrorContains(t, err, "lookup TXT records for _agntcy-key.missing.com")
@@ -76,15 +79,15 @@ func TestDNS_Resolve_Errors(t *testing.T) {
 }
 
 func TestDNS_Resolve_CapsKeys(t *testing.T) {
-	key := newEdKey(t)
-	record := "v=akv1;key=" + spkiBase64(t, key.Public())
+	key := testutil.NewEdKey(t)
+	record := "v=akv1;key=" + testutil.SPKIBase64(t, key.Public())
 
-	records := make([]string, maxKeys+1)
+	records := make([]string, keyutil.MaxKeys+1)
 	for i := range records {
 		records[i] = record
 	}
 
-	resolver := &DNS{lookupTXT: fakeTXT(map[string][]string{"_agntcy-key.acme.com": records}, nil)}
+	resolver := New(WithLookupTXT(fakeTXT(map[string][]string{"_agntcy-key.acme.com": records}, nil)))
 
 	_, err := resolver.Resolve(t.Context(), "dns:acme.com", nil)
 	require.ErrorContains(t, err, "more than")
