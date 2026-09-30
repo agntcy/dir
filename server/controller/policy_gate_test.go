@@ -1,6 +1,10 @@
 // Copyright AGNTCY Contributors (https://github.com/agntcy)
 // SPDX-License-Identifier: Apache-2.0
 
+// The fakes return the store's statuses unwrapped and the helpers return RPC
+// errors as is: the tests compare codes and messages exactly.
+
+//nolint:wrapcheck
 package controller
 
 import (

@@ -28,7 +28,7 @@ func checkRecordServable(db recordServability, cid string) error {
 	if err != nil {
 		policyGateLogger.Error("Failed to check whether a record may be served", "cid", cid, "error", err)
 
-		return status.Error(codes.Internal, "failed to check record access")
+		return status.Error(codes.Internal, "failed to check record access") //nolint:wrapcheck // a gRPC status for the caller
 	}
 
 	if !ok {
