@@ -130,16 +130,16 @@ apiserver:
     p,*,/agntcy.dir.store.v1.StoreService/Lookup
     p,*,/agntcy.dir.sync.v1.SyncService/RequestRegistryCredentials
 
-  # File-based content policies (OPA/Rego). Each key is a filename mounted at
+  # File-based policies (OPA/Rego). Each key is a filename mounted at
   # config.policy.dir. Not part of the server config struct.
   #
   # Example:
-  #   content_policies:
+  #   policies:
   #     require-annotations.rego: |
   #       package dir.policy.require_annotations
   #
   #       default allow := true
-  content_policies: {}
+  policies: {}
 
   # Record validators applied on push, autosync, and/or index.
   # Injected into both server.config.yml and reconciler.config.yml.
@@ -180,7 +180,7 @@ apiserver:
       # Path to the authorization policy file
       enforcer_policy_file_path: "/etc/agntcy/dir/authz_policies.csv"
 
-    # File-based content policies. Files from content_policies are mounted here.
+    # File-based policies. Files from policies are mounted here.
     policy:
       enabled: false
       dir: "/etc/agntcy/dir/policies"
@@ -661,7 +661,7 @@ apiserver:
       repository: bitnami/postgresql
       # renovate: datasource=docker depName=docker.io/bitnami/postgresql versioning=docker
       tag: latest
-      digest: "sha256:7d77a46bbf200709237318c27dec0eaeae2520e403dd18fdebde2be7a6b04993"
+      digest: "sha256:720413b8e463ee8ae3bad7d3ac99a17eb66b7d448738c6256cba91e2388dcde8"
     auth:
       username: "dir"
       password: "password"  # Default password for development

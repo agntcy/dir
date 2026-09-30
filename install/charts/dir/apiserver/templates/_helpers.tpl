@@ -257,26 +257,26 @@ backend loaded from locally-provisioned assets.
 {{- end -}}
 
 {{/*
-True when one or more file-based content policies are declared in values.
+True when one or more file-based policies are declared in values.
 */}}
-{{- define "chart.contentPolicies.enabled" -}}
-{{- gt (len (.Values.content_policies | default dict)) 0 -}}
+{{- define "chart.policies.enabled" -}}
+{{- gt (len (.Values.policies | default dict)) 0 -}}
 {{- end -}}
 
 {{/*
-Directory on the apiserver pod where content policy files are mounted.
+Directory on the apiserver pod where policy files are mounted.
 */}}
-{{- define "chart.contentPolicies.dir" -}}
+{{- define "chart.policies.dir" -}}
 {{- dig "policy" "dir" "/etc/agntcy/dir/policies" (.Values.config | default dict) -}}
 {{- end -}}
 
 {{/*
-Reject content_policies keys that are not valid Kubernetes ConfigMap keys / filenames.
+Reject policies keys that are not valid Kubernetes ConfigMap keys / filenames.
 */}}
-{{- define "chart.contentPolicies.validate" -}}
-{{- range $name, $_ := (.Values.content_policies | default dict) }}
+{{- define "chart.policies.validate" -}}
+{{- range $name, $_ := (.Values.policies | default dict) }}
 {{- if not (regexMatch "^[-._a-zA-Z0-9]+$" $name) }}
-{{- fail (printf "content_policies key %q must be a filename matching [-._a-zA-Z0-9]+" $name) }}
+{{- fail (printf "policies key %q must be a filename matching [-._a-zA-Z0-9]+" $name) }}
 {{- end }}
 {{- end }}
 {{- end -}}

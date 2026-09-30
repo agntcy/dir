@@ -24,8 +24,8 @@ spec:
       annotations:
         # Roll pods when server/reconciler ConfigMap data changes (subPath mounts are not updated in-place).
         checksum/config: {{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum }}
-        {{- if eq (include "chart.contentPolicies.enabled" .) "true" }}
-        checksum/content-policies: {{ include (print $.Template.BasePath "/policies-configmap.yaml") . | sha256sum }}
+        {{- if eq (include "chart.policies.enabled" .) "true" }}
+        checksum/policies: {{ include (print $.Template.BasePath "/policies-configmap.yaml") . | sha256sum }}
         {{- end }}
         {{- with .Values.podAnnotations }}
         {{- toYaml . | nindent 8 }}
@@ -201,17 +201,17 @@ spec:
               mountPath: {{ .Values.config.authz.enforcer_policy_file_path | quote }}
               subPath: authz_policies.csv
             {{- end }}
-            {{- if eq (include "chart.contentPolicies.enabled" .) "true" }}
-            - name: content-policies
-              mountPath: {{ include "chart.contentPolicies.dir" . | quote }}
+            {{- if eq (include "chart.policies.enabled" .) "true" }}
+            - name: policies
+              mountPath: {{ include "chart.policies.dir" . | quote }}
               readOnly: true
             {{- end }}
       volumes:
         - name: config-volume
           configMap:
             name: {{ include "chart.fullname" . }}
-        {{- if eq (include "chart.contentPolicies.enabled" .) "true" }}
-        - name: content-policies
+        {{- if eq (include "chart.policies.enabled" .) "true" }}
+        - name: policies
           configMap:
             name: {{ include "chart.fullname" . }}-policies
         {{- end }}

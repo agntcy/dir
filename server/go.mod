@@ -14,7 +14,7 @@ replace (
 replace github.com/ThalesIgnite/crypto11 => github.com/eclipse-keypont/crypto11 v1.6.8
 
 require (
-	buf.build/gen/go/agntcy/oasf/protocolbuffers/go v1.36.12-20260831083722-3438c6a1c7eb.2
+	buf.build/gen/go/agntcy/oasf/protocolbuffers/go v1.36.12-20260908102259-bc6a98c20798.2
 	buf.build/go/protovalidate v1.4.0
 	github.com/agntcy/dir/api v1.7.1
 	github.com/agntcy/dir/utils v1.7.1
@@ -40,21 +40,21 @@ require (
 	github.com/prometheus/client_golang v1.24.1
 	github.com/spf13/cobra v1.10.2
 	github.com/spf13/viper v1.21.0
-	github.com/spiffe/go-spiffe/v2 v2.8.1
+	github.com/spiffe/go-spiffe/v2 v2.8.2
 	github.com/stretchr/testify v1.12.1
-	golang.org/x/crypto v0.56.0
+	golang.org/x/crypto v0.57.0
 	golang.org/x/time v0.16.0
 	google.golang.org/genproto/googleapis/api v0.0.0-20260819154853-08b0e4226688
 	google.golang.org/grpc v1.84.0
 	google.golang.org/protobuf v1.36.12
-	gorm.io/driver/postgres v1.6.2
+	gorm.io/driver/postgres v1.6.3
 	gorm.io/gorm v1.31.2
 	oras.land/oras-go/v2 v2.6.2
 )
 
 require (
-	buf.build/gen/go/agntcy/oasf-sdk/grpc/go v1.6.2-20260811133823-5281d0c487b5.1 // indirect
-	buf.build/gen/go/agntcy/oasf-sdk/protocolbuffers/go v1.36.12-20260811133823-5281d0c487b5.1 // indirect
+	buf.build/gen/go/agntcy/oasf-sdk/grpc/go v1.6.2-20260911081041-07202faeff63.1 // indirect
+	buf.build/gen/go/agntcy/oasf-sdk/protocolbuffers/go v1.36.12-20260911081041-07202faeff63.2 // indirect
 	buf.build/gen/go/bufbuild/protovalidate/protocolbuffers/go v1.36.12-20260825204119-511051f7f437.2 // indirect
 	cel.dev/cel-go v0.32.0 // indirect
 	cel.dev/expr v0.25.3 // indirect
@@ -80,7 +80,7 @@ require (
 	github.com/flynn/noise v1.1.0 // indirect
 	github.com/fsnotify/fsnotify v1.10.1 // indirect
 	github.com/glebarez/go-sqlite v1.22.0 // indirect
-	github.com/go-jose/go-jose/v4 v4.1.4 // indirect
+	github.com/go-jose/go-jose/v4 v4.1.5 // indirect
 	github.com/go-logr/logr v1.4.4 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
 	github.com/go-viper/mapstructure/v2 v2.5.0 // indirect
@@ -196,12 +196,12 @@ require (
 	go.uber.org/zap v1.28.0 // indirect
 	go.yaml.in/yaml/v3 v3.0.5 // indirect
 	golang.org/x/exp v0.0.0-20260820142414-ca536658362e // indirect
-	golang.org/x/mod v0.40.0 // indirect
+	golang.org/x/mod v0.41.0 // indirect
 	golang.org/x/net v0.58.0 // indirect
-	golang.org/x/sync v0.22.0 // indirect
-	golang.org/x/sys v0.47.0 // indirect
+	golang.org/x/sync v0.23.0 // indirect
+	golang.org/x/sys v0.48.0 // indirect
 	golang.org/x/telemetry v0.0.0-20260811182544-a038080d80e5 // indirect
-	golang.org/x/text v0.41.0 // indirect
+	golang.org/x/text v0.42.0 // indirect
 	golang.org/x/tools v0.49.0 // indirect
 	gonum.org/v1/gonum v0.17.0 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20260819154853-08b0e4226688 // indirect
