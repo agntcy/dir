@@ -6,11 +6,35 @@ package server
 import (
 	"fmt"
 
+	"github.com/agntcy/dir/server/config"
+	"github.com/agntcy/dir/server/database"
 	gormdb "github.com/agntcy/dir/server/database/gorm"
 	"github.com/agntcy/dir/server/metrics"
 	policyconfig "github.com/agntcy/dir/server/policy/config"
 	"github.com/agntcy/dir/server/types"
 )
+
+// openDatabase returns the database the server was given, or else the
+// configured one, and the view of it the server's APIs read through; see
+// servedDatabase.
+func openDatabase(cfg *config.Config, given types.DatabaseAPI, metricsServer *metrics.Server) (types.DatabaseAPI, types.DatabaseAPI, error) {
+	db := given
+	if db == nil {
+		var err error
+
+		db, err = database.New(cfg.Database)
+		if err != nil {
+			return nil, nil, fmt.Errorf("failed to create database API: %w", err)
+		}
+	}
+
+	served, err := servedDatabase(db, cfg.Policy.Enforcement, cfg.Authz.Enabled, metricsServer)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return db, served, nil
+}
 
 // servedDatabase returns the view of db the server's APIs read through, which
 // applies the enforced content policies. db itself applies none: ingestion

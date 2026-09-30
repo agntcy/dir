@@ -24,7 +24,6 @@ import (
 	"github.com/agntcy/dir/server/authz"
 	"github.com/agntcy/dir/server/config"
 	"github.com/agntcy/dir/server/controller"
-	"github.com/agntcy/dir/server/database"
 	"github.com/agntcy/dir/server/events"
 	"github.com/agntcy/dir/server/gateway"
 	"github.com/agntcy/dir/server/healthcheck"
@@ -270,18 +269,10 @@ func New(ctx context.Context, cfg *config.Config, opts ...ServerOption) (*Server
 
 	// Database must be created before routing so the shared ingestion service
 	// (used by both the store controller and DHT autosync) can be wired in.
-	databaseAPI := o.database
-	if databaseAPI == nil {
-		databaseAPI, err = database.New(cfg.Database)
-		if err != nil {
-			return nil, fmt.Errorf("failed to create database API: %w", err)
-		}
-	}
-
 	// The APIs read through servedDB, which applies the enforced content
 	// policies; ingestion and the reconciler use databaseAPI, which applies
 	// none.
-	servedDB, err := servedDatabase(databaseAPI, cfg.Policy.Enforcement, cfg.Authz.Enabled, metricsServer)
+	databaseAPI, servedDB, err := openDatabase(cfg, o.database, metricsServer)
 	if err != nil {
 		return nil, err
 	}
