@@ -281,7 +281,7 @@ func New(ctx context.Context, cfg *config.Config, opts ...ServerOption) (*Server
 	// The APIs read through servedDB, which applies the enforced content
 	// policies; ingestion and the reconciler use databaseAPI, which applies
 	// none.
-	servedDB, err := servedDatabase(databaseAPI, cfg.Policy.Enforcement, cfg.Authz.Enabled)
+	servedDB, err := servedDatabase(databaseAPI, cfg.Policy.Enforcement, cfg.Authz.Enabled, metricsServer)
 	if err != nil {
 		return nil, err
 	}

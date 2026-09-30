@@ -7,14 +7,16 @@ import (
 	"fmt"
 
 	gormdb "github.com/agntcy/dir/server/database/gorm"
+	"github.com/agntcy/dir/server/metrics"
 	policyconfig "github.com/agntcy/dir/server/policy/config"
 	"github.com/agntcy/dir/server/types"
 )
 
 // servedDatabase returns the view of db the server's APIs read through, which
 // applies the enforced content policies. db itself applies none: ingestion
-// and the reconciler read through it and must see every record.
-func servedDatabase(db types.DatabaseAPI, cfg policyconfig.EnforcementConfig, authzEnabled bool) (types.DatabaseAPI, error) {
+// and the reconciler read through it and must see every record. With a
+// metrics server, the gate reports what it excludes, or would.
+func servedDatabase(db types.DatabaseAPI, cfg policyconfig.EnforcementConfig, authzEnabled bool, metricsServer *metrics.Server) (types.DatabaseAPI, error) {
 	if err := cfg.Validate(); err != nil {
 		return nil, fmt.Errorf("invalid policy enforcement config: %w", err)
 	}
@@ -31,13 +33,24 @@ func servedDatabase(db types.DatabaseAPI, cfg policyconfig.EnforcementConfig, au
 	enforcement := policyEnforcement(cfg)
 	current := func() types.PolicyEnforcement { return enforcement }
 
+	var observer types.PolicyGateObserver
+
+	if metricsServer != nil {
+		gate := metrics.NewPolicyGate(current, gated)
+		if err := metricsServer.Registry().Register(gate); err != nil {
+			return nil, fmt.Errorf("register policy gate metrics: %w", err)
+		}
+
+		observer = gate
+	}
+
 	logger.Info("Content policy enforcement", "search", cfg.Search, "fetch", cfg.Fetch, "policies", enforcement.Policies)
 
 	if !authzEnabled {
 		logger.Warn("Content policies are checked but authorization is disabled: any caller can obtain registry credentials and read excluded records straight from the registry")
 	}
 
-	return gated.Served(current, nil), nil
+	return gated.Served(current, observer), nil
 }
 
 func policyEnforcement(cfg policyconfig.EnforcementConfig) types.PolicyEnforcement {

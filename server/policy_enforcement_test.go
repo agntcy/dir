@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	gormdb "github.com/agntcy/dir/server/database/gorm"
+	"github.com/agntcy/dir/server/metrics"
 	policyconfig "github.com/agntcy/dir/server/policy/config"
 	"github.com/agntcy/dir/server/types"
 	"github.com/glebarez/sqlite"
@@ -35,19 +36,20 @@ func TestServedDatabase_OffServesTheDatabaseItself(t *testing.T) {
 
 	db := newTestDatabase(t)
 
-	served, err := servedDatabase(db, policyconfig.EnforcementConfig{Policies: enforcedA}, true)
+	served, err := servedDatabase(db, policyconfig.EnforcementConfig{Policies: enforcedA}, true, nil)
 	require.NoError(t, err)
 	assert.Same(t, db, served)
 }
 
 // A checked mode serves a separate view, so the database the reconciler
-// reads stays unfiltered.
+// reads stays unfiltered, and the gate reports to the metrics server.
 func TestServedDatabase_CheckedModeServesAGatedView(t *testing.T) {
 	t.Parallel()
 
 	db := newTestDatabase(t)
+	metricsServer := metrics.New("127.0.0.1:0")
 
-	served, err := servedDatabase(db, policyconfig.EnforcementConfig{Fetch: policyconfig.ModeEnforce, Policies: enforcedA}, true)
+	served, err := servedDatabase(db, policyconfig.EnforcementConfig{Fetch: policyconfig.ModeEnforce, Policies: enforcedA}, true, metricsServer)
 	require.NoError(t, err)
 	assert.NotSame(t, db, served)
 
@@ -58,6 +60,16 @@ func TestServedDatabase_CheckedModeServesAGatedView(t *testing.T) {
 	ok, err = db.IsRecordServable("baeareigatenone000000000000000000000000000000000000000000000000")
 	require.NoError(t, err)
 	assert.True(t, ok, "the database itself does not")
+
+	families, err := metricsServer.Registry().Gather()
+	require.NoError(t, err)
+
+	names := make([]string, 0, len(families))
+	for _, family := range families {
+		names = append(names, family.GetName())
+	}
+
+	assert.Contains(t, names, "dir_policy_gate_fetches_excluded_total")
 }
 
 // The server refuses to start rather than serve records it was told to check
@@ -67,9 +79,9 @@ func TestServedDatabase_RefusesWhatItCannotEnforce(t *testing.T) {
 
 	var notGorm types.DatabaseAPI
 
-	_, err := servedDatabase(notGorm, policyconfig.EnforcementConfig{Search: policyconfig.ModeShadow, Policies: enforcedA}, true)
+	_, err := servedDatabase(notGorm, policyconfig.EnforcementConfig{Search: policyconfig.ModeShadow, Policies: enforcedA}, true, nil)
 	require.ErrorContains(t, err, "cannot enforce content policies")
 
-	_, err = servedDatabase(newTestDatabase(t), policyconfig.EnforcementConfig{Search: policyconfig.ModeEnforce}, true)
+	_, err = servedDatabase(newTestDatabase(t), policyconfig.EnforcementConfig{Search: policyconfig.ModeEnforce}, true, nil)
 	require.ErrorContains(t, err, "invalid policy enforcement config")
 }
