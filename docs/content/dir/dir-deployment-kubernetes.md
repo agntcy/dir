@@ -149,7 +149,9 @@ The Agent Directory Service can be deployed using Helm or GitOps / Argo CD. Helm
             p,*,/agntcy.dir.store.v1.StoreService/Pull
             p,*,/agntcy.dir.store.v1.StoreService/PullReferrer
             p,*,/agntcy.dir.store.v1.StoreService/Lookup
-            p,*,/agntcy.dir.store.v1.SyncService/RequestRegistryCredentials
+            # Registry credentials read every record straight from the registry, so only
+            # a rule naming a peer node's SPIFFE ID grants them, e.g.:
+            # p,spiffe://<peer-trust-domain>/ns/<namespace>/sa/<service-account>,/agntcy.dir.store.v1.SyncService/RequestRegistryCredentials
           secrets:
             ociAuth:
               username: "admin"
