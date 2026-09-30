@@ -1,0 +1,59 @@
+// Copyright AGNTCY Contributors (https://github.com/agntcy)
+// SPDX-License-Identifier: Apache-2.0
+
+syntax = "proto3";
+
+package agntcy.dir.identity.v1;
+
+// ClaimRole is what a Claim asserts about its subject.
+enum ClaimRole {
+  CLAIM_ROLE_UNSPECIFIED = 0;
+  // The subject is the record's own claimed identity.
+  CLAIM_ROLE_IDENTITY = 1;
+  // The subject is the record's claimed owning entity.
+  CLAIM_ROLE_OWNER = 2;
+}
+
+// Claim is a verifiable assertion of a record's identity or ownership.
+//
+// Storage and management of claims is provided via StoreService as a
+// RecordReferrer object:
+//   type = "agntcy.dir.identity.v1.IdentityClaim" (role = CLAIM_ROLE_IDENTITY)
+//        | "agntcy.dir.identity.v1.OwnershipClaim" (role = CLAIM_ROLE_OWNER)
+//   data = Claim message encoded as JSON
+//
+// One message covers both identity and ownership assertions, discriminated
+// by role, since they are otherwise identical in shape. role is part of
+// what is cryptographically signed (a separate, later concern) so a
+// signature made for one role can never be replayed as the other.
+message Claim {
+  // What this claim asserts: the record's own identity, or its owner.
+  ClaimRole role = 1;
+
+  // The CID of the record this claim is attached to. Part of the signed
+  // payload, so a claim cannot be replayed against a different record.
+  string record_cid = 2;
+
+  // The identity URI being claimed (e.g. "did:web:acme.com:agents:finance",
+  // "spiffe://acme.com/agents/finance"). Must match the record's own
+  // "agntcy.dir/identity" (role = CLAIM_ROLE_IDENTITY) or "agntcy.dir/owner"
+  // (role = CLAIM_ROLE_OWNER) annotation. The URI scheme determines how the
+  // subject is resolved/verified.
+  string subject = 3;
+
+  // Signing timestamp of the claim in the RFC3339 format. Part of the
+  // signed payload. Specs: https://www.rfc-editor.org/rfc/rfc3339.html
+  string signed_at = 4;
+
+  // Expiration timestamp in the RFC3339 format. Consumers must reject a
+  // claim whose expires_at is in the past.
+  optional string expires_at = 5;
+
+  // Detached JWS (RFC 7515) compact serialization. Signing/verification is
+  // a separate, later concern; empty until then.
+  string signature = 6;
+
+  // Base64-encoded DER X.509 certificate. Only set for a "spiffe://"
+  // subject, whose certificate's URI SAN must equal subject.
+  optional string certificate = 7;
+}

@@ -96,6 +96,24 @@ func (r *Record) GetCid() string {
 	return cid
 }
 
+// GetAnnotation extracts a single value from the record's "annotations" map.
+func (r *Record) GetAnnotation(key string) string {
+	if r == nil || r.GetData() == nil {
+		return ""
+	}
+
+	annotations, ok := r.GetData().GetFields()["annotations"]
+	if !ok {
+		return ""
+	}
+
+	if v, ok := annotations.GetStructValue().GetFields()[key]; ok {
+		return v.GetStringValue()
+	}
+
+	return ""
+}
+
 func (r *Record) GetSchemaVersion() string {
 	if r == nil || r.GetData() == nil {
 		return ""
