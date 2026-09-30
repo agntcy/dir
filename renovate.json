@@ -62,6 +62,26 @@
     "npm",
     "pep621"
   ],
+  "docker-compose": {
+    "ignorePaths": [
+      "**/node_modules/**",
+      "**/bower_components/**",
+      "**/vendor/**",
+      "**/examples/**",
+      "**/__tests__/**",
+      "**/__fixtures__/**"
+    ]
+  },
+  "helm-values": {
+    "ignorePaths": [
+      "**/node_modules/**",
+      "**/bower_components/**",
+      "**/vendor/**",
+      "**/examples/**",
+      "**/__tests__/**",
+      "**/__fixtures__/**"
+    ]
+  },
   "labels": ["dependencies"],
   "ignoreDeps": [
     "github.com/agntcy/dir/api",
