@@ -41,7 +41,9 @@ func Verify(claim *identityv1.Claim, recordCID, expectedSubject string, keys ...
 	}
 
 	if expiresAt := claim.GetExpiresAt(); expiresAt != "" {
-		if expiry, err := time.Parse(time.RFC3339, expiresAt); err == nil && time.Now().After(expiry) {
+		if expiry, err := time.Parse(time.RFC3339, expiresAt); err != nil {
+			return false, fmt.Errorf("invalid claim expiry: %w", err)
+		} else if time.Now().After(expiry) {
 			return false, fmt.Errorf("claim has expired")
 		}
 	}
