@@ -168,6 +168,13 @@ reconciler:
     # Each endpoint costs one scanner invocation per subcommand, so an
     # unbounded list lets one published record fan out arbitrarily. 0 = default (8).
     max_endpoints_per_record: 8
+  # Evaluates records against content policies and stores the verdicts read
+  # paths filter on. Off: no policy evaluator is implemented yet, so enabling
+  # it only logs that the task will not run.
+  policy:
+    enabled: false
+    interval: 1m
+    record_timeout: 30s
   local_registry:
     registry_address: "localhost:5555"
     repository_name: "dir"
