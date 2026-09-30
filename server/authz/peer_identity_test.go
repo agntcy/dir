@@ -20,14 +20,22 @@ type authorizeCase struct {
 	allow     bool
 }
 
-// assertAuthorized checks each case against the peer identity policies.
-func assertAuthorized(t *testing.T, cases []authorizeCase) {
+func newPeerIdentityAuthorizer(t *testing.T) *Authorizer {
 	t.Helper()
 
 	authorizer, err := NewAuthorizer(config.Config{
 		EnforcerPolicyFilePath: "./testdata/peer_identity_policies.csv",
 	})
 	require.NoError(t, err)
+
+	return authorizer
+}
+
+// assertAuthorized checks each case against the peer identity policies.
+func assertAuthorized(t *testing.T, cases []authorizeCase) {
+	t.Helper()
+
+	authorizer := newPeerIdentityAuthorizer(t)
 
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
