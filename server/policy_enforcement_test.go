@@ -4,8 +4,11 @@
 package server
 
 import (
+	"path/filepath"
 	"testing"
 
+	"github.com/agntcy/dir/server/config"
+	dbconfig "github.com/agntcy/dir/server/database/config"
 	gormdb "github.com/agntcy/dir/server/database/gorm"
 	"github.com/agntcy/dir/server/metrics"
 	policyconfig "github.com/agntcy/dir/server/policy/config"
@@ -84,4 +87,30 @@ func TestServedDatabase_RefusesWhatItCannotEnforce(t *testing.T) {
 
 	_, err = servedDatabase(newTestDatabase(t), policyconfig.EnforcementConfig{Search: policyconfig.ModeEnforce}, true, nil)
 	require.ErrorContains(t, err, "invalid policy enforcement config")
+}
+
+// Without a database handed in, the server opens the configured one, and its
+// APIs read through the view the enforcement config calls for.
+func TestOpenDatabase_OpensTheConfiguredDatabase(t *testing.T) {
+	t.Parallel()
+
+	cfg := &config.Config{}
+	cfg.Database = dbconfig.Config{Type: "sqlite", SQLite: dbconfig.SQLiteConfig{Path: filepath.Join(t.TempDir(), "dir.db")}}
+	cfg.Policy.Enforcement = policyconfig.EnforcementConfig{Fetch: policyconfig.ModeEnforce, Policies: enforcedA}
+
+	db, served, err := openDatabase(cfg, nil, nil)
+	require.NoError(t, err)
+	require.IsType(t, &gormdb.DB{}, db)
+	assert.NotSame(t, db, served)
+
+	given := newTestDatabase(t)
+
+	db, _, err = openDatabase(cfg, given, nil)
+	require.NoError(t, err)
+	assert.Same(t, given, db, "a database handed in is used as is")
+
+	cfg.Database.Type = "unknown"
+
+	_, _, err = openDatabase(cfg, nil, nil)
+	require.ErrorContains(t, err, "failed to create database API")
 }
