@@ -92,6 +92,7 @@ func (db *DB) migrate() error {
 		ScanReport{},
 		PolicyEvaluation{},
 		PolicyVersion{},
+		PolicyBackfill{},
 		RecordUsageMetrics{},
 		IdentityClaim{},
 	); err != nil {

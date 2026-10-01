@@ -110,7 +110,9 @@ config:
       # follows. Only a verdict under the current version counts, so after a
       # policy is edited a record stays hidden until it has been evaluated
       # under the new rule, and nothing the new rule rejects is served
-      # meanwhile.
+      # meanwhile. A policy added for the first time is the exception: it is
+      # enforced once its verdicts cover every record, so that adding it does
+      # not empty search while they are evaluated.
       policies: []
       # How often the server rechecks which version of each policy is in force.
       refresh_interval: 30s
