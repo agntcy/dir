@@ -30,6 +30,10 @@ const minRSAKeyBits = 2048
 func jwsAlgorithmFor(pub crypto.PublicKey) (jwa.SignatureAlgorithm, error) {
 	switch p := pub.(type) {
 	case *ecdsa.PublicKey:
+		if p == nil || p.Curve == nil {
+			return "", errors.New("malformed ECDSA public key")
+		}
+
 		switch p.Curve {
 		case elliptic.P256():
 			return jwa.ES256, nil
@@ -39,12 +43,20 @@ func jwsAlgorithmFor(pub crypto.PublicKey) (jwa.SignatureAlgorithm, error) {
 			return "", fmt.Errorf("unsupported ECDSA curve: %s", p.Curve.Params().Name)
 		}
 	case *rsa.PublicKey:
+		if p == nil || p.N == nil {
+			return "", errors.New("malformed RSA public key")
+		}
+
 		if bits := p.N.BitLen(); bits < minRSAKeyBits {
 			return "", fmt.Errorf("RSA key too small: %d bits, need at least %d", bits, minRSAKeyBits)
 		}
 
 		return jwa.RS256, nil
 	case ed25519.PublicKey:
+		if len(p) != ed25519.PublicKeySize {
+			return "", fmt.Errorf("malformed Ed25519 public key: %d bytes", len(p))
+		}
+
 		return jwa.EdDSA, nil
 	default:
 		return "", fmt.Errorf("unsupported public key type: %T", pub)
