@@ -10,6 +10,7 @@ import (
 	"crypto/rand"
 	"crypto/x509"
 	"crypto/x509/pkix"
+	"encoding/json"
 	"encoding/pem"
 	"math/big"
 	"net/url"
@@ -37,18 +38,48 @@ var _ = ginkgo.Describe("Identity claims", ginkgo.Ordered, ginkgo.Serial, func()
 
 	var (
 		recordCID string
+		spiffeCID string
 		key       *ecdsa.PrivateKey
 		signer    jws.Signer
 	)
 
-	ginkgo.BeforeAll(func(ctx context.Context) {
-		record, err := corev1.UnmarshalRecord(testdata.ExpectedRecordV070NameResolutionJSON)
+	// pushRecord pushes the record in raw with the given annotations, which
+	// declare the subjects a claim can then be made for.
+	pushRecord := func(ctx context.Context, raw []byte, name string, annotations map[string]string) string {
+		ginkgo.GinkgoHelper()
+
+		var fields map[string]any
+		gomega.Expect(json.Unmarshal(raw, &fields)).To(gomega.Succeed())
+
+		if name != "" {
+			fields["name"] = name
+		}
+
+		fields["annotations"] = annotations
+
+		data, err := json.Marshal(fields)
+		gomega.Expect(err).NotTo(gomega.HaveOccurred())
+
+		record, err := corev1.UnmarshalRecord(data)
 		gomega.Expect(err).NotTo(gomega.HaveOccurred())
 
 		ref, err := testEnv.Client.Push(ctx, record)
 		gomega.Expect(err).NotTo(gomega.HaveOccurred())
 
-		recordCID = ref.GetCid()
+		return ref.GetCid()
+	}
+
+	ginkgo.BeforeAll(func(ctx context.Context) {
+		recordCID = pushRecord(ctx, testdata.ExpectedRecordV070NameResolutionJSON, "", map[string]string{
+			corev1.AnnotationKeyIdentity: identitySubject,
+			corev1.AnnotationKeyOwner:    ownerSubject,
+		})
+
+		spiffeCID = pushRecord(ctx, testdata.ExpectedRecordV080V4JSON, "example.com/identity-e2e/spiffe", map[string]string{
+			corev1.AnnotationKeyIdentity: spiffeSubject,
+		})
+
+		var err error
 
 		key, err = ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 		gomega.Expect(err).NotTo(gomega.HaveOccurred())
@@ -61,11 +92,11 @@ var _ = ginkgo.Describe("Identity claims", ginkgo.Ordered, ginkgo.Serial, func()
 	})
 
 	// pushedClaims returns the claims stored on the record under a referrer type.
-	pushedClaims := func(ctx context.Context, referrerType string) []*identityv1.Claim {
+	pushedClaims := func(ctx context.Context, cid, referrerType string) []*identityv1.Claim {
 		ginkgo.GinkgoHelper()
 
 		responses, err := testEnv.Client.PullReferrer(ctx, &storev1.PullReferrerRequest{
-			RecordRef:    &corev1.RecordRef{Cid: recordCID},
+			RecordRef:    &corev1.RecordRef{Cid: cid},
 			ReferrerType: &referrerType,
 		})
 		gomega.Expect(err).NotTo(gomega.HaveOccurred())
@@ -85,11 +116,11 @@ var _ = ginkgo.Describe("Identity claims", ginkgo.Ordered, ginkgo.Serial, func()
 	// signedByTestKey returns the stored claims about subject that were signed by
 	// this run's key. The record may carry claims of earlier runs, signed by
 	// other keys, which this leaves out.
-	signedByTestKey := func(claims []*identityv1.Claim, subject string) []*identityv1.Claim {
+	signedByTestKey := func(cid string, claims []*identityv1.Claim, subject string) []*identityv1.Claim {
 		var mine []*identityv1.Claim
 
 		for _, claim := range claims {
-			if ok, _ := identity.Verify(claim, recordCID, subject, &key.PublicKey); ok {
+			if ok, _ := identity.Verify(claim, cid, subject, &key.PublicKey); ok {
 				mine = append(mine, claim)
 			}
 		}
@@ -98,21 +129,23 @@ var _ = ginkgo.Describe("Identity claims", ginkgo.Ordered, ginkgo.Serial, func()
 	}
 
 	ginkgo.It("should store an identity claim signed with a key alone", func(ctx context.Context) {
-		err := testEnv.Client.ClaimIdentity(ctx, recordCID, identitySubject, signer)
+		claim, err := testEnv.Client.ClaimIdentity(ctx, recordCID, signer)
 		gomega.Expect(err).NotTo(gomega.HaveOccurred())
+		gomega.Expect(claim.GetSubject()).To(gomega.Equal(identitySubject), "the subject is the one the record declares")
 
 		// What was stored is a genuine claim for this record, signed by this key.
-		claims := signedByTestKey(pushedClaims(ctx, corev1.IdentityClaimReferrerType), identitySubject)
+		claims := signedByTestKey(recordCID, pushedClaims(ctx, recordCID, corev1.IdentityClaimReferrerType), identitySubject)
 		gomega.Expect(claims).To(gomega.HaveLen(1))
 		gomega.Expect(claims[0].GetRole()).To(gomega.Equal(identityv1.ClaimRole_CLAIM_ROLE_IDENTITY))
 		gomega.Expect(claims[0].Certificate).To(gomega.BeNil())
 	})
 
 	ginkgo.It("should store an ownership claim", func(ctx context.Context) {
-		err := testEnv.Client.ClaimOwnership(ctx, recordCID, ownerSubject, signer)
+		claim, err := testEnv.Client.ClaimOwnership(ctx, recordCID, signer)
 		gomega.Expect(err).NotTo(gomega.HaveOccurred())
+		gomega.Expect(claim.GetSubject()).To(gomega.Equal(ownerSubject))
 
-		claims := signedByTestKey(pushedClaims(ctx, corev1.OwnershipClaimReferrerType), ownerSubject)
+		claims := signedByTestKey(recordCID, pushedClaims(ctx, recordCID, corev1.OwnershipClaimReferrerType), ownerSubject)
 		gomega.Expect(claims).To(gomega.HaveLen(1))
 		gomega.Expect(claims[0].GetRole()).To(gomega.Equal(identityv1.ClaimRole_CLAIM_ROLE_OWNER))
 	})
@@ -134,16 +167,24 @@ var _ = ginkgo.Describe("Identity claims", ginkgo.Ordered, ginkgo.Serial, func()
 
 		cert := pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: der})
 
-		err = testEnv.Client.ClaimIdentity(ctx, recordCID, spiffeSubject, signer, identity.WithCertificate(cert))
+		_, err = testEnv.Client.ClaimIdentity(ctx, spiffeCID, signer)
+		gomega.Expect(err).To(gomega.HaveOccurred(), "a spiffe:// subject needs its certificate")
+
+		_, err = testEnv.Client.ClaimIdentity(ctx, spiffeCID, signer, identity.WithCertificate(cert))
 		gomega.Expect(err).NotTo(gomega.HaveOccurred())
 
-		claims := signedByTestKey(pushedClaims(ctx, corev1.IdentityClaimReferrerType), spiffeSubject)
+		claims := signedByTestKey(spiffeCID, pushedClaims(ctx, spiffeCID, corev1.IdentityClaimReferrerType), spiffeSubject)
 		gomega.Expect(claims).To(gomega.HaveLen(1))
 		gomega.Expect(claims[0].GetCertificate()).NotTo(gomega.BeEmpty())
 	})
 
 	ginkgo.It("should refuse a claim for a record that does not exist", func(ctx context.Context) {
-		err := testEnv.Client.ClaimIdentity(ctx, "baeareiaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", identitySubject, signer)
+		_, err := testEnv.Client.ClaimIdentity(ctx, "baeareiaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", signer)
+		gomega.Expect(err).To(gomega.HaveOccurred())
+	})
+
+	ginkgo.It("should refuse a claim the record does not declare a subject for", func(ctx context.Context) {
+		_, err := testEnv.Client.ClaimOwnership(ctx, spiffeCID, signer)
 		gomega.Expect(err).To(gomega.HaveOccurred())
 	})
 

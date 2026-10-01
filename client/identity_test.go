@@ -12,11 +12,13 @@ import (
 	"crypto/x509/pkix"
 	"encoding/pem"
 	"errors"
+	"io"
 	"math/big"
 	"net/url"
 	"testing"
 	"time"
 
+	oasftypes "buf.build/gen/go/agntcy/oasf/protocolbuffers/go/agntcy/oasf/types/v1"
 	corev1 "github.com/agntcy/dir/api/core/v1"
 	identityv1 "github.com/agntcy/dir/api/identity/v1"
 	storev1 "github.com/agntcy/dir/api/store/v1"
@@ -50,9 +52,42 @@ func (s *fakePushReferrerStream) Recv() (*storev1.PushReferrerResponse, error) {
 	return s.resp, s.recvErr
 }
 
+// fakePullStream answers a Pull with record, then ends.
+type fakePullStream struct {
+	grpc.ClientStream
+	record *corev1.Record
+	asked  chan struct{}
+}
+
+func (s *fakePullStream) Send(*corev1.RecordRef) error {
+	close(s.asked)
+
+	return nil
+}
+
+func (s *fakePullStream) CloseSend() error { return nil }
+
+func (s *fakePullStream) Recv() (*corev1.Record, error) {
+	<-s.asked
+
+	record := s.record
+	s.record = nil
+
+	if record == nil {
+		return nil, io.EOF
+	}
+
+	return record, nil
+}
+
 type fakeStoreClient struct {
 	storev1.StoreServiceClient
 	stream *fakePushReferrerStream
+	record *corev1.Record
+}
+
+func (f *fakeStoreClient) Pull(context.Context, ...grpc.CallOption) (storev1.StoreService_PullClient, error) {
+	return &fakePullStream{record: f.record, asked: make(chan struct{})}, nil
 }
 
 func (f *fakeStoreClient) PushReferrer(context.Context, ...grpc.CallOption) (storev1.StoreService_PushReferrerClient, error) {
@@ -79,8 +114,12 @@ func (f *fakeIdentityClient) Resolve(_ context.Context, req *identityv1.ResolveR
 	return &identityv1.ResolveResponse{}, f.resolveErr
 }
 
-func newClaimTestClient(stream *fakePushReferrerStream) *Client {
-	return &Client{StoreServiceClient: &fakeStoreClient{stream: stream}}
+// newClaimTestClient returns a client whose store holds a record carrying the
+// given annotations.
+func newClaimTestClient(stream *fakePushReferrerStream, annotations map[string]string) *Client {
+	record := corev1.New(&oasftypes.Record{Name: "acme.com/agent", Version: "1.0.0", Annotations: annotations})
+
+	return &Client{StoreServiceClient: &fakeStoreClient{stream: stream, record: record}}
 }
 
 func newClaimKey(t *testing.T) (*ecdsa.PrivateKey, jws.Signer) {
@@ -136,14 +175,16 @@ func TestClaimIdentity_PushesVerifiableClaim(t *testing.T) {
 	key, signer := newClaimKey(t)
 	stream := &fakePushReferrerStream{resp: &storev1.PushReferrerResponse{Success: true}}
 
-	err := newClaimTestClient(stream).ClaimIdentity(t.Context(), identityTestCID, "did:web:acme.com:agent", signer)
+	claimed, err := newClaimTestClient(stream, map[string]string{corev1.AnnotationKeyIdentity: "did:web:acme.com:agent"}).
+		ClaimIdentity(t.Context(), identityTestCID, signer)
 	require.NoError(t, err)
 
 	req, claim := pushedClaim(t, stream)
 	assert.Equal(t, identityTestCID, req.GetRecordRef().GetCid())
 	assert.Equal(t, corev1.IdentityClaimReferrerType, req.GetType())
 	assert.Equal(t, identityv1.ClaimRole_CLAIM_ROLE_IDENTITY, claim.GetRole())
-	assert.Equal(t, "did:web:acme.com:agent", claim.GetSubject())
+	assert.Equal(t, "did:web:acme.com:agent", claim.GetSubject(), "subject comes from the record annotation")
+	assert.Equal(t, claim.GetSubject(), claimed.GetSubject())
 	assert.Nil(t, claim.Certificate, "no certificate unless asked for")
 
 	// The pushed claim is genuinely signed for this record, by this key.
@@ -156,12 +197,16 @@ func TestClaimOwnership_PushesOwnershipClaim(t *testing.T) {
 	key, signer := newClaimKey(t)
 	stream := &fakePushReferrerStream{resp: &storev1.PushReferrerResponse{Success: true}}
 
-	err := newClaimTestClient(stream).ClaimOwnership(t.Context(), identityTestCID, "dns:acme.com", signer)
+	// An identity annotation is not an owner.
+	annotations := map[string]string{corev1.AnnotationKeyOwner: "dns:acme.com", corev1.AnnotationKeyIdentity: "did:web:other.com"}
+
+	_, err := newClaimTestClient(stream, annotations).ClaimOwnership(t.Context(), identityTestCID, signer)
 	require.NoError(t, err)
 
 	req, claim := pushedClaim(t, stream)
 	assert.Equal(t, corev1.OwnershipClaimReferrerType, req.GetType())
 	assert.Equal(t, identityv1.ClaimRole_CLAIM_ROLE_OWNER, claim.GetRole())
+	assert.Equal(t, "dns:acme.com", claim.GetSubject())
 
 	ok, err := identity.Verify(claim, identityTestCID, "dns:acme.com", &key.PublicKey)
 	require.NoError(t, err)
@@ -174,8 +219,8 @@ func TestClaimIdentity_WithCertificate(t *testing.T) {
 
 	const subject = "spiffe://acme.com/agents/finance"
 
-	err := newClaimTestClient(stream).ClaimIdentity(t.Context(), identityTestCID, subject, signer,
-		identity.WithCertificate(claimTestCertPEM(t, key, subject)))
+	_, err := newClaimTestClient(stream, map[string]string{corev1.AnnotationKeyIdentity: subject}).
+		ClaimIdentity(t.Context(), identityTestCID, signer, identity.WithCertificate(claimTestCertPEM(t, key, subject)))
 	require.NoError(t, err)
 
 	_, claim := pushedClaim(t, stream)
@@ -184,21 +229,54 @@ func TestClaimIdentity_WithCertificate(t *testing.T) {
 
 func TestClaim_Errors(t *testing.T) {
 	key, signer := newClaimKey(t)
+	identityNote := map[string]string{corev1.AnnotationKeyIdentity: "dns:acme.com"}
 
 	t.Run("empty cid", func(t *testing.T) {
 		stream := &fakePushReferrerStream{resp: &storev1.PushReferrerResponse{Success: true}}
 
-		require.Error(t, newClaimTestClient(stream).ClaimIdentity(t.Context(), "", "dns:acme.com", signer))
+		_, err := newClaimTestClient(stream, identityNote).ClaimIdentity(t.Context(), "", signer)
+		require.Error(t, err)
+		assert.Empty(t, stream.sent)
+	})
+
+	t.Run("record without the annotation", func(t *testing.T) {
+		stream := &fakePushReferrerStream{resp: &storev1.PushReferrerResponse{Success: true}}
+
+		_, err := newClaimTestClient(stream, identityNote).ClaimOwnership(t.Context(), identityTestCID, signer)
+		require.ErrorContains(t, err, corev1.AnnotationKeyOwner)
+
+		_, err = newClaimTestClient(stream, nil).ClaimIdentity(t.Context(), identityTestCID, signer)
+		require.ErrorContains(t, err, corev1.AnnotationKeyIdentity)
+		assert.Empty(t, stream.sent)
+	})
+
+	t.Run("record that cannot be pulled", func(t *testing.T) {
+		stream := &fakePushReferrerStream{resp: &storev1.PushReferrerResponse{Success: true}}
+		c := &Client{StoreServiceClient: &fakeStoreClient{stream: stream}}
+
+		_, err := c.ClaimIdentity(t.Context(), identityTestCID, signer)
+		require.Error(t, err)
 		assert.Empty(t, stream.sent)
 	})
 
 	t.Run("claim that cannot be signed is not pushed", func(t *testing.T) {
 		stream := &fakePushReferrerStream{resp: &storev1.PushReferrerResponse{Success: true}}
 
-		require.Error(t, newClaimTestClient(stream).ClaimIdentity(t.Context(), identityTestCID, "", signer), "no subject")
-		require.Error(t, newClaimTestClient(stream).ClaimIdentity(t.Context(), identityTestCID, "dns:acme.com", nil), "no signer")
-		require.Error(t, newClaimTestClient(stream).ClaimIdentity(t.Context(), identityTestCID, "spiffe://acme.com/x", signer,
-			identity.WithCertificate(claimTestCertPEM(t, key, "spiffe://acme.com/other"))), "certificate for another subject")
+		_, err := newClaimTestClient(stream, identityNote).ClaimIdentity(t.Context(), identityTestCID, nil)
+		require.Error(t, err, "no signer")
+
+		spiffe := map[string]string{corev1.AnnotationKeyIdentity: "spiffe://acme.com/x"}
+
+		_, err = newClaimTestClient(stream, spiffe).ClaimIdentity(t.Context(), identityTestCID, signer,
+			identity.WithCertificate(claimTestCertPEM(t, key, "spiffe://acme.com/other")))
+		require.Error(t, err, "certificate for another subject")
+
+		_, err = newClaimTestClient(stream, spiffe).ClaimIdentity(t.Context(), identityTestCID, signer)
+		require.ErrorContains(t, err, "needs a certificate")
+
+		_, err = newClaimTestClient(stream, identityNote).ClaimIdentity(t.Context(), identityTestCID, signer,
+			identity.WithCertificate(claimTestCertPEM(t, key, "spiffe://acme.com/x")))
+		require.Error(t, err, "certificate for a subject that is not spiffe://")
 		assert.Empty(t, stream.sent)
 	})
 
@@ -206,14 +284,14 @@ func TestClaim_Errors(t *testing.T) {
 		msg := "record not found"
 		stream := &fakePushReferrerStream{resp: &storev1.PushReferrerResponse{Success: false, ErrorMessage: &msg}}
 
-		err := newClaimTestClient(stream).ClaimIdentity(t.Context(), identityTestCID, "dns:acme.com", signer)
+		_, err := newClaimTestClient(stream, identityNote).ClaimIdentity(t.Context(), identityTestCID, signer)
 		require.ErrorContains(t, err, "record not found")
 	})
 
 	t.Run("transport failure", func(t *testing.T) {
 		stream := &fakePushReferrerStream{recvErr: errors.New("connection reset")}
 
-		err := newClaimTestClient(stream).ClaimOwnership(t.Context(), identityTestCID, "dns:acme.com", signer)
+		_, err := newClaimTestClient(stream, identityNote).ClaimIdentity(t.Context(), identityTestCID, signer)
 		require.ErrorContains(t, err, "connection reset")
 	})
 }

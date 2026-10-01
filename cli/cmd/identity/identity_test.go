@@ -14,6 +14,7 @@ import (
 	"encoding/json"
 	"encoding/pem"
 	"errors"
+	"io"
 	"math/big"
 	"net/url"
 	"os"
@@ -22,6 +23,7 @@ import (
 	"testing"
 	"time"
 
+	oasftypes "buf.build/gen/go/agntcy/oasf/protocolbuffers/go/agntcy/oasf/types/v1"
 	corev1 "github.com/agntcy/dir/api/core/v1"
 	identityv1 "github.com/agntcy/dir/api/identity/v1"
 	storev1 "github.com/agntcy/dir/api/store/v1"
@@ -58,9 +60,42 @@ func (s *pushStream) Recv() (*storev1.PushReferrerResponse, error) {
 	return &storev1.PushReferrerResponse{Success: true}, nil
 }
 
+// pullStream answers a Pull with record, then ends.
+type pullStream struct {
+	grpc.ClientStream
+	record *corev1.Record
+	asked  chan struct{}
+}
+
+func (s *pullStream) Send(*corev1.RecordRef) error {
+	close(s.asked)
+
+	return nil
+}
+
+func (s *pullStream) CloseSend() error { return nil }
+
+func (s *pullStream) Recv() (*corev1.Record, error) {
+	<-s.asked
+
+	record := s.record
+	s.record = nil
+
+	if record == nil {
+		return nil, io.EOF
+	}
+
+	return record, nil
+}
+
 type fakeStore struct {
 	storev1.StoreServiceClient
 	stream *pushStream
+	record *corev1.Record
+}
+
+func (f *fakeStore) Pull(context.Context, ...grpc.CallOption) (storev1.StoreService_PullClient, error) {
+	return &pullStream{record: f.record, asked: make(chan struct{})}, nil
 }
 
 func (f *fakeStore) PushReferrer(context.Context, ...grpc.CallOption) (storev1.StoreService_PushReferrerClient, error) {
@@ -161,17 +196,16 @@ func newKey(t *testing.T) *ecdsa.PrivateKey {
 	return key
 }
 
-func setClaimOpts(t *testing.T, role, subject, key, cert string) {
+func setClaimOpts(t *testing.T, role, key, cert string) {
 	t.Helper()
 
-	claimOpts.Record, claimOpts.Role, claimOpts.Subject = testCID, role, subject
+	claimOpts.Record, claimOpts.Role = testCID, role
 	claimOpts.Key, claimOpts.Cert, claimOpts.PasswordStdin = key, cert, false
 
 	t.Cleanup(func() {
 		claimOpts = struct {
 			Record        string
 			Role          string
-			Subject       string
 			Key           string
 			PasswordStdin bool
 			Cert          string
@@ -181,11 +215,13 @@ func setClaimOpts(t *testing.T, role, subject, key, cert string) {
 
 // ---- claim ----
 
-func runClaimWith(t *testing.T) (*pushStream, *bytes.Buffer, error) {
+// runClaimWith runs the claim command against a record carrying annotations.
+func runClaimWith(t *testing.T, annotations map[string]string) (*pushStream, *bytes.Buffer, error) {
 	t.Helper()
 
 	stream := &pushStream{}
-	cmd, out := newCommand(t, &client.Client{StoreServiceClient: &fakeStore{stream: stream}})
+	record := corev1.New(&oasftypes.Record{Name: "acme.com/agent", Version: "1.0.0", Annotations: annotations})
+	cmd, out := newCommand(t, &client.Client{StoreServiceClient: &fakeStore{stream: stream, record: record}})
 
 	return stream, out, runClaim(cmd)
 }
@@ -206,9 +242,9 @@ func TestClaim_KeyOnlyForNonSPIFFESubjects(t *testing.T) {
 	for _, subject := range []string{"dns:acme.com", "acme.com", "https://acme.com/agents", "did:web:acme.com", "did:key:z6Mk"} {
 		t.Run(subject, func(t *testing.T) {
 			key := newKey(t)
-			setClaimOpts(t, roleIdentity, subject, writeKey(t, key, ""), "")
+			setClaimOpts(t, roleIdentity, writeKey(t, key, ""), "")
 
-			stream, _, err := runClaimWith(t)
+			stream, _, err := runClaimWith(t, map[string]string{corev1.AnnotationKeyIdentity: subject})
 			require.NoError(t, err)
 
 			req, claim := pushedClaim(t, stream)
@@ -225,9 +261,10 @@ func TestClaim_KeyOnlyForNonSPIFFESubjects(t *testing.T) {
 
 func TestClaim_OwnerRole(t *testing.T) {
 	key := newKey(t)
-	setClaimOpts(t, roleOwner, "dns:acme.com", writeKey(t, key, ""), "")
+	setClaimOpts(t, roleOwner, writeKey(t, key, ""), "")
 
-	stream, out, err := runClaimWith(t)
+	// The identity annotation is not the owner.
+	stream, out, err := runClaimWith(t, map[string]string{corev1.AnnotationKeyOwner: "dns:acme.com", corev1.AnnotationKeyIdentity: "did:web:other.com"})
 	require.NoError(t, err)
 
 	req, claim := pushedClaim(t, stream)
@@ -241,9 +278,9 @@ func TestClaim_SPIFFEWithCertificate(t *testing.T) {
 	const subject = "spiffe://acme.com/agents/finance"
 
 	key := newKey(t)
-	setClaimOpts(t, roleIdentity, subject, writeKey(t, key, ""), writeCert(t, key, subject))
+	setClaimOpts(t, roleIdentity, writeKey(t, key, ""), writeCert(t, key, subject))
 
-	stream, _, err := runClaimWith(t)
+	stream, _, err := runClaimWith(t, map[string]string{corev1.AnnotationKeyIdentity: subject})
 	require.NoError(t, err)
 
 	_, claim := pushedClaim(t, stream)
@@ -252,10 +289,10 @@ func TestClaim_SPIFFEWithCertificate(t *testing.T) {
 
 func TestClaim_EncryptedKey(t *testing.T) {
 	key := newKey(t)
-	setClaimOpts(t, roleIdentity, "dns:acme.com", writeKey(t, key, "s3cret"), "")
+	setClaimOpts(t, roleIdentity, writeKey(t, key, "s3cret"), "")
 	t.Setenv("COSIGN_PASSWORD", "s3cret")
 
-	stream, _, err := runClaimWith(t)
+	stream, _, err := runClaimWith(t, map[string]string{corev1.AnnotationKeyIdentity: "dns:acme.com"})
 	require.NoError(t, err)
 
 	_, claim := pushedClaim(t, stream)
@@ -276,18 +313,21 @@ func TestClaim_Rejects(t *testing.T) {
 		role, subject, key, cert, wantErr string
 	}{
 		"unknown role":                 {"admin", "dns:acme.com", keyPath, "", "invalid --role"},
-		"cert on a non-spiffe subject": {roleIdentity, "dns:acme.com", keyPath, certPath, "only applies to spiffe://"},
-		"spiffe subject without cert":  {roleIdentity, spiffeSubject, keyPath, "", "--cert is required"},
+		"cert on a non-spiffe subject": {roleIdentity, "dns:acme.com", keyPath, certPath, "does not cover"},
+		"spiffe subject without cert":  {roleIdentity, spiffeSubject, keyPath, "", "needs a certificate"},
 		"missing key file":             {roleIdentity, "dns:acme.com", filepath.Join(t.TempDir(), "nope"), "", "failed to read private key"},
 		"missing cert file":            {roleIdentity, spiffeSubject, keyPath, filepath.Join(t.TempDir(), "nope"), "failed to read certificate"},
 		"cert of another subject":      {roleIdentity, "spiffe://acme.com/agents/other", keyPath, certPath, "does not cover"},
+		"no annotation for the role":   {roleOwner, "", keyPath, "", "agntcy.dir/owner"},
 	}
 
 	for name, tt := range tests {
 		t.Run(name, func(t *testing.T) {
-			setClaimOpts(t, tt.role, tt.subject, tt.key, tt.cert)
+			setClaimOpts(t, tt.role, tt.key, tt.cert)
 
-			stream, _, err := runClaimWith(t)
+			annotations := map[string]string{corev1.AnnotationKeyIdentity: tt.subject}
+
+			stream, _, err := runClaimWith(t, annotations)
 			require.ErrorContains(t, err, tt.wantErr)
 			assert.Empty(t, stream.sent, "nothing is pushed for a rejected claim")
 		})
@@ -296,7 +336,7 @@ func TestClaim_Rejects(t *testing.T) {
 
 func TestClaim_EncryptedKeyNeedsPassword(t *testing.T) {
 	key := newKey(t)
-	setClaimOpts(t, roleIdentity, "dns:acme.com", writeKey(t, key, "s3cret"), "")
+	setClaimOpts(t, roleIdentity, writeKey(t, key, "s3cret"), "")
 
 	t.Run("no password source", func(t *testing.T) {
 		_, err := loadSigner(claimOpts.Key, false)

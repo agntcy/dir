@@ -37,13 +37,11 @@ Supported subjects:
 
 Examples:
 
-1. Claim an identity for a record:
-   dirctl identity claim --record <cid> --role identity \
-       --subject did:web:acme.com:agents:finance --key identity.key
+1. Claim an identity for a record (the subject is the record's agntcy.dir/identity annotation):
+   dirctl identity claim --record <cid> --role identity --key identity.key
 
-2. Claim ownership with a SPIFFE SVID:
-   dirctl identity claim --record <cid> --role owner \
-       --subject spiffe://acme.com/team --key svid.key --cert svid.pem
+2. Claim ownership with a SPIFFE SVID (the subject is the record's agntcy.dir/owner annotation):
+   dirctl identity claim --record <cid> --role owner --key svid.key --cert svid.pem
 
 3. Check the result:
    dirctl identity status <cid>

@@ -15,8 +15,10 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
+	corev1 "github.com/agntcy/dir/api/core/v1"
 	"github.com/agntcy/dir/tests/e2e/shared/testdata"
 	"github.com/agntcy/dir/tests/e2e/shared/utils"
 	"github.com/onsi/ginkgo/v2"
@@ -39,7 +41,7 @@ type identityResolveOutput struct {
 
 var _ = ginkgo.Describe("Identity claims", ginkgo.Ordered, func() {
 	const (
-		recordName = "http://dns-validation-http/example/research-assistant-v4"
+		recordName = "example.com/identity-e2e/research-assistant"
 
 		spiffeSubject = "spiffe://acme.com/agents/research-assistant"
 	)
@@ -49,7 +51,38 @@ var _ = ginkgo.Describe("Identity claims", ginkgo.Ordered, func() {
 		recordCID string
 		keyPath   string
 		certPath  string
+		pushed    []string
 	)
+
+	// pushRecord pushes the test record under name, declaring annotations, and
+	// returns its CID. An annotation declares the subject a claim is made for.
+	pushRecord := func(name string, annotations map[string]string) string {
+		ginkgo.GinkgoHelper()
+
+		var fields map[string]any
+		gomega.Expect(json.Unmarshal(testdata.ExpectedRecordV080V4JSON, &fields)).To(gomega.Succeed())
+
+		if name != "" {
+			fields["name"] = name
+		}
+
+		if annotations != nil {
+			fields["annotations"] = annotations
+		}
+
+		data, err := json.Marshal(fields)
+		gomega.Expect(err).NotTo(gomega.HaveOccurred())
+
+		path := filepath.Join(tempDir, strings.ReplaceAll(name, "/", "_")+".json")
+		gomega.Expect(os.WriteFile(path, data, 0o600)).To(gomega.Succeed())
+
+		cid := testEnv.CLI.Push(path).WithArgs("--output", "raw").ShouldSucceed()
+		gomega.Expect(cid).NotTo(gomega.BeEmpty())
+
+		pushed = append(pushed, cid)
+
+		return cid
+	}
 
 	ginkgo.BeforeAll(func() {
 		utils.ResetCLIState()
@@ -59,11 +92,11 @@ var _ = ginkgo.Describe("Identity claims", ginkgo.Ordered, func() {
 		tempDir, err = os.MkdirTemp("", "identity-test")
 		gomega.Expect(err).NotTo(gomega.HaveOccurred())
 
-		recordPath := filepath.Join(tempDir, "record.json")
-		gomega.Expect(os.WriteFile(recordPath, testdata.ExpectedRecordV080V4JSON, 0o600)).To(gomega.Succeed())
-
-		recordCID = testEnv.CLI.Push(recordPath).WithArgs("--output", "raw").ShouldSucceed()
-		gomega.Expect(recordCID).NotTo(gomega.BeEmpty())
+		// The test record declares a SPIFFE identity and a DNS owner.
+		recordCID = pushRecord(recordName, map[string]string{
+			corev1.AnnotationKeyIdentity: spiffeSubject,
+			corev1.AnnotationKeyOwner:    "dns:acme.com",
+		})
 
 		key, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 		gomega.Expect(err).NotTo(gomega.HaveOccurred())
@@ -97,8 +130,8 @@ var _ = ginkgo.Describe("Identity claims", ginkgo.Ordered, func() {
 	})
 
 	ginkgo.AfterAll(func() {
-		if recordCID != "" {
-			_, _ = testEnv.CLI.Delete(recordCID).Execute()
+		for _, cid := range pushed {
+			_, _ = testEnv.CLI.Delete(cid).Execute()
 		}
 
 		if tempDir != "" {
@@ -115,39 +148,53 @@ var _ = ginkgo.Describe("Identity claims", ginkgo.Ordered, func() {
 		// every subject that is not a SPIFFE ID.
 		for _, subject := range []string{"dns:acme.com", "https://acme.com/agents", "did:web:acme.com:agents:research-assistant"} {
 			ginkgo.It("should claim an identity with a key alone for "+subject, func() {
-				output := claim("--record", recordCID, "--role", "identity", "--subject", subject, "--key", keyPath).ShouldSucceed()
+				cid := pushRecord("example.com/identity-e2e/"+strings.NewReplacer(":", "-", "/", "-").Replace(subject),
+					map[string]string{corev1.AnnotationKeyIdentity: subject})
+
+				output := claim("--record", cid, "--role", "identity", "--key", keyPath).ShouldSucceed()
 				gomega.Expect(output).To(gomega.ContainSubstring(subject))
 			})
 		}
 
 		ginkgo.It("should claim ownership by record name", func() {
-			output := claim("--record", recordName, "--role", "owner", "--subject", "dns:acme.com", "--key", keyPath).
+			output := claim("--record", recordName, "--role", "owner", "--key", keyPath).
 				WithArgs("--output", "json").
 				ShouldSucceed()
 
 			gomega.Expect(output).To(gomega.ContainSubstring(recordCID))
+			gomega.Expect(output).To(gomega.ContainSubstring("dns:acme.com"))
 		})
 
 		ginkgo.It("should claim a SPIFFE identity with a certificate", func() {
-			_ = claim("--record", recordCID, "--role", "identity", "--subject", spiffeSubject, "--key", keyPath, "--cert", certPath).
+			_ = claim("--record", recordCID, "--role", "identity", "--key", keyPath, "--cert", certPath).
 				ShouldSucceed()
 		})
 
 		ginkgo.It("should require a certificate for a SPIFFE subject", func() {
-			_ = claim("--record", recordCID, "--role", "identity", "--subject", spiffeSubject, "--key", keyPath).ShouldFail()
+			_ = claim("--record", recordCID, "--role", "identity", "--key", keyPath).ShouldFail()
 		})
 
 		ginkgo.It("should refuse a certificate for any other subject", func() {
-			_ = claim("--record", recordCID, "--role", "identity", "--subject", "dns:acme.com", "--key", keyPath, "--cert", certPath).
+			_ = claim("--record", recordCID, "--role", "owner", "--key", keyPath, "--cert", certPath).
 				ShouldFail()
 		})
 
+		ginkgo.It("should refuse a role the record declares no subject for", func() {
+			cid := pushRecord("example.com/identity-e2e/no-owner", map[string]string{corev1.AnnotationKeyIdentity: "dns:acme.com"})
+
+			_ = claim("--record", cid, "--role", "owner", "--key", keyPath).ShouldFail()
+		})
+
+		ginkgo.It("should no longer take the subject as a flag", func() {
+			_ = claim("--record", recordCID, "--role", "owner", "--subject", "dns:acme.com", "--key", keyPath).ShouldFail()
+		})
+
 		ginkgo.It("should refuse an unknown role", func() {
-			_ = claim("--record", recordCID, "--role", "admin", "--subject", "dns:acme.com", "--key", keyPath).ShouldFail()
+			_ = claim("--record", recordCID, "--role", "admin", "--key", keyPath).ShouldFail()
 		})
 
 		ginkgo.It("should refuse a record that does not exist", func() {
-			_ = claim("--record", "nonexistent.example.com/agent", "--role", "owner", "--subject", "dns:acme.com", "--key", keyPath).
+			_ = claim("--record", "nonexistent.example.com/agent", "--role", "owner", "--key", keyPath).
 				ShouldFail()
 		})
 	})

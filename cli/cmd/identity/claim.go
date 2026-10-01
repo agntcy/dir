@@ -7,8 +7,8 @@ package identity
 import (
 	"errors"
 	"fmt"
-	"strings"
 
+	identityv1 "github.com/agntcy/dir/api/identity/v1"
 	"github.com/agntcy/dir/cli/presenter"
 	ctxUtils "github.com/agntcy/dir/cli/util/context"
 	"github.com/agntcy/dir/cli/util/reference"
@@ -19,14 +19,11 @@ import (
 const (
 	roleIdentity = "identity"
 	roleOwner    = "owner"
-
-	spiffeScheme = "spiffe://"
 )
 
 var claimOpts struct {
 	Record        string
 	Role          string
-	Subject       string
 	Key           string
 	PasswordStdin bool
 	Cert          string
@@ -37,8 +34,9 @@ var claimCmd = &cobra.Command{
 	Short: "Sign an identity or ownership claim and attach it to a record",
 	Long: `Sign an identity or ownership claim and attach it to a record.
 
-The claim asserts that --subject is the record's own identity (--role identity)
-or its owner (--role owner). It is signed with the private key in --key and
+The claim asserts that the record's own identity (--role identity) or its owner
+(--role owner) is the subject the record declares in its "agntcy.dir/identity" or
+"agntcy.dir/owner" annotation. It is signed with the private key in --key and
 stored on the record. It is stored unverified: the server verifies it later, and
 "dirctl identity status" shows the result.
 
@@ -55,21 +53,20 @@ or prompted for on a terminal.
 
 --cert is only for spiffe:// subjects, where the signer's X.509-SVID is the proof
 rather than a published key. It is a PEM or DER certificate for the key, whose URI
-SAN must be the subject. It is not used, and not accepted, for any other subject.
+SAN must be the declared subject. It is not used, and not accepted, for any other
+subject.
 
 Usage examples:
 
 1. Claim the identity of a record, with an unencrypted key:
-   dirctl identity claim --record <cid> --role identity \
-       --subject did:web:acme.com:agents:finance --key identity.key
+   dirctl identity claim --record <cid> --role identity --key identity.key
 
-2. Claim ownership by a domain, with an encrypted key:
+2. Claim ownership, with an encrypted key:
    COSIGN_PASSWORD=secret dirctl identity claim --record cisco.com/agent:v1.0.0 \
-       --role owner --subject dns:acme.com --key owner.key
+       --role owner --key owner.key
 
 3. Claim a SPIFFE identity:
-   dirctl identity claim --record <cid> --role identity \
-       --subject spiffe://acme.com/agents/finance --key svid.key --cert svid.pem
+   dirctl identity claim --record <cid> --role identity --key svid.key --cert svid.pem
 `,
 	Args: cobra.NoArgs,
 	RunE: func(cmd *cobra.Command, _ []string) error {
@@ -81,7 +78,6 @@ func init() {
 	flags := claimCmd.Flags()
 	flags.StringVar(&claimOpts.Record, "record", "", "Record to claim: CID, name or name:version (required)")
 	flags.StringVar(&claimOpts.Role, "role", "", "What the claim asserts: identity or owner (required)")
-	flags.StringVar(&claimOpts.Subject, "subject", "", "Identity URI being claimed, e.g. did:web:acme.com (required)")
 	flags.StringVar(&claimOpts.Key, "key", "", "Path to the PEM private key to sign with (required)")
 	flags.BoolVar(&claimOpts.PasswordStdin, "password-stdin", false,
 		"Read the private key password from standard input; do not combine with other stdin input flags")
@@ -90,20 +86,12 @@ func init() {
 
 	_ = claimCmd.MarkFlagRequired("record")
 	_ = claimCmd.MarkFlagRequired("role")
-	_ = claimCmd.MarkFlagRequired("subject")
 	_ = claimCmd.MarkFlagRequired("key")
 }
 
 func validateClaimFlags() error {
 	if claimOpts.Role != roleIdentity && claimOpts.Role != roleOwner {
 		return fmt.Errorf("invalid --role %q: must be %q or %q", claimOpts.Role, roleIdentity, roleOwner)
-	}
-
-	switch isSPIFFE := strings.HasPrefix(claimOpts.Subject, spiffeScheme); {
-	case isSPIFFE && claimOpts.Cert == "":
-		return errors.New("--cert is required for a spiffe:// subject: its X.509-SVID is the proof of the claim")
-	case !isSPIFFE && claimOpts.Cert != "":
-		return errors.New("--cert only applies to spiffe:// subjects")
 	}
 
 	return nil
@@ -140,10 +128,12 @@ func runClaim(cmd *cobra.Command) error {
 		return err
 	}
 
+	var claim *identityv1.Claim
+
 	if claimOpts.Role == roleIdentity {
-		err = c.ClaimIdentity(cmd.Context(), cid, claimOpts.Subject, signer, signOpts...)
+		claim, err = c.ClaimIdentity(cmd.Context(), cid, signer, signOpts...)
 	} else {
-		err = c.ClaimOwnership(cmd.Context(), cid, claimOpts.Subject, signer, signOpts...)
+		claim, err = c.ClaimOwnership(cmd.Context(), cid, signer, signOpts...)
 	}
 
 	if err != nil {
@@ -152,7 +142,7 @@ func runClaim(cmd *cobra.Command) error {
 
 	if presenter.GetOutputOptions(cmd).Format == presenter.FormatHuman {
 		presenter.Printf(cmd, "Pushed %s claim %s for %s\nIt is verified later: see \"dirctl identity status %s\"\n",
-			claimOpts.Role, claimOpts.Subject, cid, cid)
+			claimOpts.Role, claim.GetSubject(), cid, cid)
 
 		return nil
 	}
@@ -160,7 +150,7 @@ func runClaim(cmd *cobra.Command) error {
 	result := map[string]any{
 		"cid":     cid,
 		"role":    claimOpts.Role,
-		"subject": claimOpts.Subject,
+		"subject": claim.GetSubject(),
 		"status":  "pushed",
 	}
 

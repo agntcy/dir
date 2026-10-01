@@ -1904,35 +1904,32 @@ Verifies that a record's signing key is authorized by the domain claimed in its 
 
 ### `dirctl identity claim [flags]`
 
-Signs a claim that a subject is a record's own identity (`--role identity`) or its owner (`--role owner`), and attaches it to the record. The claim is stored unverified: the server checks it later, and [`dirctl identity status`](#dirctl-identity-status-reference) shows the outcome.
+Signs a claim that the subject a record declares in its `agntcy.dir/identity` annotation is its own identity (`--role identity`), or that the subject it declares in `agntcy.dir/owner` is its owner (`--role owner`), and attaches the claim to the record. The subject is read from the record, so the record must carry the annotation for the role. The claim is stored unverified: the server checks it later, and [`dirctl identity status`](#dirctl-identity-status-reference) shows the outcome.
 
 | Flag | Description |
 |------|-------------|
 | `--record` | Record to claim: CID, name or `name:version` (required) |
 | `--role` | `identity` or `owner` (required) |
-| `--subject` | Identity URI being claimed, e.g. `did:web:acme.com` (required) |
 | `--key` | Path to the PEM private key to sign with (required) |
 | `--password-stdin` | Read the key password from standard input |
 | `--cert` | PEM or DER certificate of the key; only for `spiffe://` subjects |
 
 The key is an EC, RSA or Ed25519 private key in PEM form, unencrypted or an encrypted PKCS#8 key (`ENCRYPTED PRIVATE KEY`). Its public half is what the subject publishes: a DNS TXT record for `dns:` subjects, `/.well-known/jwks.json` for `https://` subjects, the DID document for `did:web:`, or the DID itself for `did:key:`. For an encrypted key, the password is read from `COSIGN_PASSWORD`, from standard input with `--password-stdin` (a trailing line break is ignored), or prompted for on a terminal. A key that is not encrypted is never prompted for.
 
-`--cert` is independent of `--key` and is only for `spiffe://` subjects, whose proof is the signer's X.509-SVID rather than a published key. The certificate's URI SAN must be the subject. A `spiffe://` subject needs `--cert`, and no other subject accepts it.
+`--cert` is independent of `--key` and is only for `spiffe://` subjects, whose proof is the signer's X.509-SVID rather than a published key. The certificate's URI SAN must be the declared subject. A `spiffe://` subject needs `--cert`, and no other subject accepts it.
 
 ??? example
 
     ```bash
     # Claim a record's identity
-    dirctl identity claim --record <cid> --role identity \
-      --subject did:web:acme.com:agents:finance --key identity.key
+    dirctl identity claim --record <cid> --role identity --key identity.key
 
     # Claim ownership of the latest version of a name, with an encrypted key
     COSIGN_PASSWORD=secret dirctl identity claim --record cisco.com/agent \
-      --role owner --subject dns:acme.com --key owner.key
+      --role owner --key owner.key
 
     # Claim a SPIFFE identity
-    dirctl identity claim --record <cid> --role identity \
-      --subject spiffe://acme.com/agents/finance --key svid.key --cert svid.pem
+    dirctl identity claim --record <cid> --role identity --key svid.key --cert svid.pem
     ```
 
 ### `dirctl identity status <reference>`
