@@ -437,9 +437,10 @@ func (s *store) IsReady(ctx context.Context) bool {
 
 	if err := registryProbe.Ping(ctx); err != nil {
 		// A 404 on /v2/ still proves the registry answered, and the repository
-		// itself is allowed to not exist yet.
-		errStr := err.Error()
-		if strings.Contains(errStr, "404") || strings.Contains(errStr, "NAME_UNKNOWN") || errors.Is(err, errdef.ErrNotFound) {
+		// itself is allowed to not exist yet. Ping reports exactly that as
+		// errdef.ErrNotFound. The error text must not be matched instead: it
+		// carries the registry's address, which may itself contain "404".
+		if errors.Is(err, errdef.ErrNotFound) {
 			logger.Debug("Store ready: registry reachable, repository may not exist yet")
 
 			return true

@@ -5,6 +5,8 @@ package oci
 
 import (
 	"context"
+	"fmt"
+	"net"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -79,6 +81,68 @@ func TestIsReady_RemoteRegistry(t *testing.T) {
 			// Readiness must stay a single request: the base endpoint only,
 			// never the server-paginated tag list and never a retry storm.
 			assert.Equal(t, []string{"/v2/"}, paths)
+		})
+	}
+}
+
+// listenOnAddressContaining404 listens on a local port whose number contains
+// "404", so the registry's address appears in any error about it.
+func listenOnAddressContaining404(t *testing.T) net.Listener {
+	t.Helper()
+
+	var config net.ListenConfig
+
+	for port := 40400; port < 40500; port++ {
+		listener, err := config.Listen(t.Context(), "tcp", fmt.Sprintf("127.0.0.1:%d", port))
+		if err == nil {
+			return listener
+		}
+	}
+
+	t.Skip("no free local port containing 404")
+
+	return nil
+}
+
+// Only a 404 from the registry counts as reachable, not "404" anywhere in
+// the error text, which carries the registry's address.
+func TestIsReady_RegistryAddressContaining404(t *testing.T) {
+	tests := []struct {
+		name       string
+		baseStatus int
+		wantReady  bool
+	}{
+		{name: "registry available", baseStatus: http.StatusOK, wantReady: true},
+		{name: "repository absent", baseStatus: http.StatusNotFound, wantReady: true},
+		{name: "registry unavailable", baseStatus: http.StatusInternalServerError, wantReady: false},
+		{name: "credentials rejected", baseStatus: http.StatusUnauthorized, wantReady: false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			srv := httptest.NewUnstartedServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+				w.WriteHeader(tt.baseStatus)
+			}))
+			require.NoError(t, srv.Listener.Close())
+
+			srv.Listener = listenOnAddressContaining404(t)
+			srv.Start()
+
+			defer srv.Close()
+
+			cfg := ociconfig.Config{
+				RegistryAddress: strings.TrimPrefix(srv.URL, "http://"),
+				RepositoryName:  "dir",
+				Insecure:        true,
+			}
+			require.Contains(t, cfg.RegistryAddress, "404")
+
+			repo, err := NewORASRepository(cfg)
+			require.NoError(t, err)
+
+			s := &store{repo: repo, config: cfg}
+
+			assert.Equal(t, tt.wantReady, s.IsReady(t.Context()))
 		})
 	}
 }
