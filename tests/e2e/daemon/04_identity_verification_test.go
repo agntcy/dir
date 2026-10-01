@@ -130,7 +130,7 @@ var _ = ginkgo.Describe("Identity claim verification", ginkgo.Ordered, ginkgo.Se
 	ginkgo.It("should verify a claim signed with the key its subject publishes", func(ctx context.Context) {
 		verifiedCID = pushRecord(ctx, map[string]string{corev1.AnnotationKeyIdentity: goodSubject})
 
-		err := testEnv.Client.ClaimIdentity(ctx, verifiedCID, goodSubject, signerFor(goodKey))
+		_, err := testEnv.Client.ClaimIdentity(ctx, verifiedCID, signerFor(goodKey))
 		gomega.Expect(err).NotTo(gomega.HaveOccurred())
 
 		gomega.Eventually(func(g gomega.Gomega) {
@@ -149,7 +149,7 @@ var _ = ginkgo.Describe("Identity claim verification", ginkgo.Ordered, ginkgo.Se
 		// The record declares otherSubject, but the claim is signed by goodKey.
 		failedCID = pushRecord(ctx, map[string]string{corev1.AnnotationKeyOwner: otherSubject})
 
-		err := testEnv.Client.ClaimOwnership(ctx, failedCID, otherSubject, signerFor(goodKey))
+		_, err := testEnv.Client.ClaimOwnership(ctx, failedCID, signerFor(goodKey))
 		gomega.Expect(err).NotTo(gomega.HaveOccurred())
 
 		gomega.Eventually(func(g gomega.Gomega) {
@@ -173,25 +173,21 @@ var _ = ginkgo.Describe("Identity claim verification", ginkgo.Ordered, ginkgo.Se
 		})
 		gomega.Expect(bySubject).To(gomega.ConsistOf(verifiedCID))
 
-		failedOwners := searchByClaims(ctx,
+		// The owner claim failed, so the record has the subject but no verified owner.
+		byOwner := searchByClaims(ctx, &searchv1.RecordQuery{Type: searchv1.RecordQueryType_RECORD_QUERY_TYPE_OWNER, Value: otherSubject})
+		gomega.Expect(byOwner).To(gomega.ConsistOf(failedCID))
+
+		verifiedOwners := searchByClaims(ctx,
 			&searchv1.RecordQuery{Type: searchv1.RecordQueryType_RECORD_QUERY_TYPE_OWNER, Value: otherSubject},
-			&searchv1.RecordQuery{Type: searchv1.RecordQueryType_RECORD_QUERY_TYPE_OWNER_VERIFIED, Value: "false"},
+			&searchv1.RecordQuery{Type: searchv1.RecordQueryType_RECORD_QUERY_TYPE_OWNER_VERIFIED, Value: "true"},
 		)
-		gomega.Expect(failedOwners).To(gomega.ConsistOf(failedCID))
+		gomega.Expect(verifiedOwners).To(gomega.BeEmpty())
 	})
 
-	ginkgo.It("should not verify a claim for a subject the record does not declare", func(ctx context.Context) {
-		// The record declares no identity, so a claim cannot be about it.
+	ginkgo.It("should refuse a claim for a subject the record does not declare", func(ctx context.Context) {
 		cid := pushRecord(ctx, map[string]string{})
 
-		err := testEnv.Client.ClaimIdentity(ctx, cid, goodSubject, signerFor(goodKey))
-		gomega.Expect(err).NotTo(gomega.HaveOccurred())
-
-		gomega.Eventually(func(g gomega.Gomega) {
-			identity := statusOf(ctx, cid).GetIdentity()
-
-			g.Expect(identity).NotTo(gomega.BeNil(), "not verified yet")
-			g.Expect(identity.GetStatus()).To(gomega.Equal(identityv1.ClaimVerificationStatus_CLAIM_VERIFICATION_STATUS_FAILED))
-		}).WithContext(ctx).WithTimeout(claimVerificationTimeout).WithPolling(claimVerificationPoll).Should(gomega.Succeed())
+		_, err := testEnv.Client.ClaimIdentity(ctx, cid, signerFor(goodKey))
+		gomega.Expect(err).To(gomega.HaveOccurred())
 	})
 })
