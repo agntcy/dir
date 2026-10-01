@@ -12,14 +12,18 @@ import (
 	"gorm.io/gorm/clause"
 )
 
-// PolicyEvaluation stores one policy verdict per (record_cid, policy_id).
+// PolicyEvaluation stores one policy verdict per (record_cid, policy_id). The
+// verdict carries the version of the policy it was reached under, and a
+// re-evaluation under another version replaces it.
 //
 // This is storage only: no read path filters on it yet, and nothing computes
 // it yet. See #2207 (async computation, backfill) and #2208 (unconditional
 // exclusion on Search/Pull/Resolve).
 type PolicyEvaluation struct {
-	RecordCID     string `gorm:"column:record_cid;primaryKey;not null"`
-	PolicyID      string `gorm:"column:policy_id;primaryKey;not null"`
+	ID uint `gorm:"column:id;primaryKey;autoIncrement"`
+
+	RecordCID     string `gorm:"column:record_cid;not null;uniqueIndex:idx_policy_evaluations_record_policy,priority:1"`
+	PolicyID      string `gorm:"column:policy_id;not null;uniqueIndex:idx_policy_evaluations_record_policy,priority:2"`
 	PolicyVersion string `gorm:"column:policy_version;not null;index"`
 
 	// Compliant is a fail-closed placeholder (false) unless Status is
@@ -100,17 +104,21 @@ func (d *DB) GetPolicyEvaluations(recordCID string) ([]types.PolicyEvaluationObj
 
 // GetRecordsNeedingPolicyEvaluation returns records with no evaluated
 // policy_evaluations row for policyID at policyVersion: never evaluated
-// against this policy, evaluated against a since-superseded version, or whose
-// last evaluation failed.
+// against this version, or whose last evaluation failed.
 //
 // A failed row must not suppress re-selection. It reads as non-compliant
 // (fail closed), so if it also stopped the record being retried, one
 // transient evaluator error would exclude the record from every read until
 // the policy version changed.
-func (d *DB) GetRecordsNeedingPolicyEvaluation(policyID, policyVersion string) ([]coretypes.Record, error) {
+//
+// Records come in record_cid order, starting after afterCID, at most limit of
+// them; a limit of zero returns them all. Paging by the last record_cid seen,
+// rather than by offset, costs the same however far in the caller is, and
+// does not return a record whose evaluation failed again within one pass.
+func (d *DB) GetRecordsNeedingPolicyEvaluation(policyID, policyVersion, afterCID string, limit int) ([]coretypes.Record, error) {
 	var records []Record
 
-	err := d.gormDB.Table("records").
+	query := d.gormDB.Table("records").
 		Where(`NOT EXISTS (
 			SELECT 1 FROM policy_evaluations pe
 			WHERE pe.record_cid = records.record_cid
@@ -118,8 +126,14 @@ func (d *DB) GetRecordsNeedingPolicyEvaluation(policyID, policyVersion string) (
 			AND pe.policy_version = ?
 			AND pe.status IN ?
 		)`, policyID, policyVersion, types.EvaluatedPolicyStatuses()).
-		Find(&records).Error
-	if err != nil {
+		Where("records.record_cid > ?", afterCID).
+		Order("records.record_cid")
+
+	if limit > 0 {
+		query = query.Limit(limit)
+	}
+
+	if err := query.Find(&records).Error; err != nil {
 		return nil, fmt.Errorf("get records needing policy evaluation: %w", err)
 	}
 

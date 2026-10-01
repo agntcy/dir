@@ -371,11 +371,22 @@ type PolicyEvaluationDatabaseAPI interface {
 	// (record_cid, policy_id).
 	UpsertPolicyEvaluation(eval PolicyEvaluationObject) error
 
-	// GetPolicyEvaluations retrieves every policy verdict recorded for a record.
+	// GetPolicyEvaluations retrieves every policy verdict recorded for a
+	// record.
 	GetPolicyEvaluations(recordCID string) ([]PolicyEvaluationObject, error)
 
 	// GetRecordsNeedingPolicyEvaluation returns records with no evaluated
-	// verdict row for policyID at policyVersion — never evaluated, evaluated
-	// against a superseded policy version, or whose last evaluation failed.
-	GetRecordsNeedingPolicyEvaluation(policyID, policyVersion string) ([]coretypes.Record, error)
+	// verdict row for policyID at policyVersion — never evaluated against
+	// this version, or whose last evaluation failed. Records come in
+	// record_cid order after afterCID, at most limit of them; zero returns
+	// them all.
+	GetRecordsNeedingPolicyEvaluation(policyID, policyVersion, afterCID string, limit int) ([]coretypes.Record, error)
+
+	// RegisterPolicyVersion records that an evaluator is running version of
+	// policyID now, so the server can follow the policy's current version.
+	RegisterPolicyVersion(policyID, policyVersion string) error
+
+	// GetCurrentPolicyVersion returns the version of policyID an evaluator
+	// ran most recently, and whether any evaluator has registered it.
+	GetCurrentPolicyVersion(policyID string) (string, bool, error)
 }

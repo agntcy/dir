@@ -317,8 +317,14 @@ func (f *fakeSignatureDB) GetPolicyEvaluations(string) ([]types.PolicyEvaluation
 	return nil, nil
 }
 
-func (f *fakeSignatureDB) GetRecordsNeedingPolicyEvaluation(string, string) ([]coretypes.Record, error) {
+func (f *fakeSignatureDB) GetRecordsNeedingPolicyEvaluation(string, string, string, int) ([]coretypes.Record, error) {
 	return nil, nil
+}
+
+func (f *fakeSignatureDB) RegisterPolicyVersion(string, string) error { return nil }
+
+func (f *fakeSignatureDB) GetCurrentPolicyVersion(string) (string, bool, error) {
+	return "", false, nil
 }
 
 func (f *fakeSignatureDB) Close() error                 { return nil }

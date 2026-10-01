@@ -58,7 +58,7 @@ func loadPolicyEval(t *testing.T, db *DB, recordCID, policyID string) *PolicyEva
 func needsEvalCIDs(t *testing.T, db *DB, policyVersion string) []string {
 	t.Helper()
 
-	records, err := db.GetRecordsNeedingPolicyEvaluation("opa:require-annotation", policyVersion)
+	records, err := db.GetRecordsNeedingPolicyEvaluation("opa:require-annotation", policyVersion, "", 0)
 	require.NoError(t, err)
 
 	cids := make([]string, 0, len(records))
@@ -129,6 +129,10 @@ func TestUpsertPolicyEvaluation_ReevaluationReplacesThePriorVerdict(t *testing.T
 		RecordCID: policyTestCID, PolicyID: "opa:require-annotation",
 		PolicyVersion: "v2", Compliant: true, Status: types.PolicyEvalStatusEvaluated,
 	}))
+
+	rows, err := db.GetPolicyEvaluations(policyTestCID)
+	require.NoError(t, err)
+	require.Len(t, rows, 1)
 
 	row := loadPolicyEval(t, db, policyTestCID, "opa:require-annotation")
 
@@ -296,4 +300,80 @@ func TestGetRecordsNeedingPolicyEvaluation_UnrelatedPolicyDoesNotSuppress(t *tes
 	}))
 
 	assert.Contains(t, needsEvalCIDs(t, db, "v1"), policyTestCID)
+}
+
+// --- paging ---
+
+// Records come in record_cid order, a page at a time, each page starting after
+// the last record_cid of the one before. The pages together are exactly the
+// records a single unbounded call returns.
+func TestGetRecordsNeedingPolicyEvaluation_PagesInRecordOrder(t *testing.T) {
+	t.Parallel()
+
+	db := setupPolicyEvalDB(t)
+
+	cids := []string{
+		"baeareipage0000000000000000000000000000000000000000000000000a",
+		"baeareipage0000000000000000000000000000000000000000000000000b",
+		"baeareipage0000000000000000000000000000000000000000000000000c",
+		"baeareipage0000000000000000000000000000000000000000000000000d",
+		"baeareipage0000000000000000000000000000000000000000000000000e",
+	}
+
+	// Seeded out of order: the order of the result must not depend on it.
+	for _, i := range []int{3, 0, 4, 1, 2} {
+		seedPolicyEvalRecord(t, db, cids[i])
+	}
+
+	var paged []string
+
+	after := ""
+
+	for range cids {
+		page, err := db.GetRecordsNeedingPolicyEvaluation("opa:require-annotation", "v1", after, 2)
+		require.NoError(t, err)
+
+		if len(page) == 0 {
+			break
+		}
+
+		require.LessOrEqual(t, len(page), 2)
+
+		for _, r := range page {
+			paged = append(paged, r.GetCid())
+		}
+
+		after = page[len(page)-1].GetCid()
+	}
+
+	assert.Equal(t, cids, paged)
+	assert.Equal(t, cids, needsEvalCIDs(t, db, "v1"), "zero limit returns them all, in the same order")
+}
+
+// A record whose evaluation failed is selected again, but not again within a
+// pass that has moved beyond it: the next page starts after it.
+func TestGetRecordsNeedingPolicyEvaluation_FailedRecordIsNotRepeatedWithinAPass(t *testing.T) {
+	t.Parallel()
+
+	db := setupPolicyEvalDB(t)
+	seedPolicyEvalRecord(t, db, policyTestCID)
+	seedPolicyEvalRecord(t, db, policyTestOther)
+
+	require.NoError(t, db.gormDB.Create(&PolicyEvaluation{
+		RecordCID: policyTestCID, PolicyID: "opa:require-annotation", PolicyVersion: "v1",
+		Status: types.PolicyEvalStatusFailed,
+	}).Error)
+
+	first, err := db.GetRecordsNeedingPolicyEvaluation("opa:require-annotation", "v1", "", 1)
+	require.NoError(t, err)
+	require.Len(t, first, 1)
+
+	next, err := db.GetRecordsNeedingPolicyEvaluation("opa:require-annotation", "v1", first[0].GetCid(), 1)
+	require.NoError(t, err)
+	require.Len(t, next, 1)
+	assert.NotEqual(t, first[0].GetCid(), next[0].GetCid())
+
+	rest, err := db.GetRecordsNeedingPolicyEvaluation("opa:require-annotation", "v1", next[0].GetCid(), 1)
+	require.NoError(t, err)
+	assert.Empty(t, rest)
 }
