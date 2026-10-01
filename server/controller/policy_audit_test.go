@@ -45,12 +45,21 @@ type auditDB struct {
 	excluded  []string
 	err       error
 
+	// evaluationsErr and listErr fail only reading verdicts, or only
+	// listing.
+	evaluationsErr error
+	listErr        error
+
 	asked [][]types.EnforcedPolicy
 	limit int
 	skip  int
 }
 
 func (d *auditDB) GetPolicyEvaluations(string) ([]types.PolicyEvaluationObject, error) {
+	if d.evaluationsErr != nil {
+		return nil, d.evaluationsErr
+	}
+
 	return []types.PolicyEvaluationObject{auditVerdict{compliant: d.compliant}}, d.err
 }
 
@@ -63,6 +72,10 @@ func (d *auditDB) IsRecordCompliant(_ string, policies []types.EnforcedPolicy) (
 func (d *auditDB) ListRecordsExcluded(policies []types.EnforcedPolicy, limit, offset int) ([]string, error) {
 	d.asked = append(d.asked, policies)
 	d.limit, d.skip = limit, offset
+
+	if d.listErr != nil {
+		return nil, d.listErr
+	}
 
 	return d.excluded, d.err
 }
@@ -172,6 +185,7 @@ func TestPolicyAudit_GetRecordFailures(t *testing.T) {
 		{"invalid CID", "not-a-cid", &gatedStore{present: true}, &auditDB{}, codes.InvalidArgument},
 		{"record not held", gatedCID, &gatedStore{present: false}, &auditDB{}, codes.NotFound},
 		{"database error", gatedCID, &gatedStore{present: true}, &auditDB{err: errors.New("connection refused")}, codes.Internal},
+		{"verdicts unreadable", gatedCID, &gatedStore{present: true}, &auditDB{evaluationsErr: errors.New("connection refused")}, codes.Internal},
 	}
 
 	for _, tt := range tests {
@@ -283,4 +297,43 @@ func TestPolicyAudit_ListLogsWhatWasSentBeforeAFailure(t *testing.T) {
 	require.Len(t, lines, 1)
 	assert.Equal(t, "Policy audit listing failed", lines[0]["msg"])
 	assert.Equal(t, []string{"cid-a"}, lines[0]["cids"])
+}
+
+// A listing that cannot run, or cannot read a record's verdicts, fails
+// without leaking why, sends nothing, and is logged as failed.
+func TestPolicyAudit_ListFailures(t *testing.T) {
+	t.Parallel()
+
+	for _, tt := range []struct {
+		name string
+		db   *auditDB
+	}{
+		{"listing fails", &auditDB{listErr: errors.New("connection refused")}},
+		{"verdicts unreadable", &auditDB{excluded: []string{"cid-a"}, evaluationsErr: errors.New("connection refused")}},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			ctlr, log := newAuditController(tt.db, &gatedStore{}, auditPolicy)
+			stream := &auditStream{ctx: asAuditor(t)}
+
+			err := ctlr.ListExcludedRecords(&policyv1.ListExcludedRecordsRequest{}, stream)
+			require.Error(t, err)
+			assert.Equal(t, codes.Internal, status.Code(err))
+			assert.NotContains(t, err.Error(), "connection refused")
+			assert.Empty(t, stream.sent)
+
+			var listings []map[string]any
+
+			for _, line := range log.all() {
+				if line["method"] == "ListExcludedRecords" {
+					listings = append(listings, line)
+				}
+			}
+
+			require.Len(t, listings, 1)
+			assert.Equal(t, "Policy audit listing failed", listings[0]["msg"])
+			assert.Equal(t, auditor, listings[0]["caller"])
+		})
+	}
 }

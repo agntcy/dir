@@ -213,3 +213,25 @@ func TestServedDatabase_ReturnsWhatItEnforces(t *testing.T) {
 	require.NotNil(t, current)
 	assert.Equal(t, policyconfig.ModeShadow, current().Search)
 }
+
+// Database setup fails on an invalid enforcement config, and when the gate's
+// metrics cannot be registered.
+func TestOpenDatabase_Failures(t *testing.T) {
+	t.Parallel()
+
+	cfg := &config.Config{}
+	cfg.Policy.Enforcement = policyconfig.EnforcementConfig{Search: policyconfig.ModeEnforce}
+
+	_, _, current, err := openDatabase(cfg, newTestDatabase(t), nil)
+	require.ErrorContains(t, err, "invalid policy enforcement config")
+	assert.Nil(t, current)
+
+	metricsServer := metrics.New("127.0.0.1:0")
+	enforcing := policyconfig.EnforcementConfig{Search: policyconfig.ModeShadow, Policies: enforcedA}
+
+	_, _, err = servedDatabase(newTestDatabase(t), enforcing, true, metricsServer)
+	require.NoError(t, err)
+
+	_, _, err = servedDatabase(newTestDatabase(t), enforcing, true, metricsServer)
+	require.ErrorContains(t, err, "register policy gate metrics")
+}
