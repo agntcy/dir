@@ -13,7 +13,6 @@ import (
 	"testing"
 
 	"github.com/agntcy/dir/client/utils/identity/resolvers"
-	"github.com/agntcy/dir/client/utils/identity/resolvers/internal/claimtest"
 	"github.com/agntcy/dir/client/utils/internal/testutil"
 	"github.com/stretchr/testify/require"
 )
@@ -103,14 +102,14 @@ func TestEndToEnd(t *testing.T) {
 		return []string{"v=akv1;key=" + spkiBase64(t, &key.PublicKey)}, nil
 	}))
 
-	ok, err := claimtest.Verify(t, resolver, claimtest.SignedClaim(t, "dns:acme.com", key))
+	ok, err := testutil.VerifyClaim(t, resolver, testutil.SignedClaim(t, "dns:acme.com", key))
 	require.NoError(t, err)
 	require.True(t, ok)
 
 	// A claim signed by someone who doesn't hold the published key is rejected.
 	imposter := testutil.NewECKey(t, elliptic.P256())
 
-	ok, err = claimtest.Verify(t, resolver, claimtest.SignedClaim(t, "dns:acme.com", imposter))
+	ok, err = testutil.VerifyClaim(t, resolver, testutil.SignedClaim(t, "dns:acme.com", imposter))
 	require.Error(t, err)
 	require.False(t, ok)
 }

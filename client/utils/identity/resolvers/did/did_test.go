@@ -12,7 +12,6 @@ import (
 	"testing"
 
 	"github.com/agntcy/dir/client/utils/identity/resolvers"
-	"github.com/agntcy/dir/client/utils/identity/resolvers/internal/claimtest"
 	"github.com/agntcy/dir/client/utils/internal/testutil"
 	"github.com/multiformats/go-multibase"
 	"github.com/stretchr/testify/require"
@@ -238,7 +237,7 @@ func TestEndToEnd_Web(t *testing.T) {
 		"https://acme.com/.well-known/did.json": didDocumentFor(t, "did:web:acme.com", &key.PublicKey),
 	}})
 
-	ok, err := claimtest.Verify(t, resolver, claimtest.SignedClaim(t, "did:web:acme.com", key))
+	ok, err := testutil.VerifyClaim(t, resolver, testutil.SignedClaim(t, "did:web:acme.com", key))
 	require.NoError(t, err)
 	require.True(t, ok)
 }
@@ -247,7 +246,7 @@ func TestEndToEnd_Key(t *testing.T) {
 	key := testutil.NewEdKey(t)
 	subject := "did:key:" + encodeDIDKey(t, multicodecEd25519Pub, testutil.EdPublic(t, key))
 
-	ok, err := claimtest.Verify(t, New(&testutil.FakeFetcher{}), claimtest.SignedClaim(t, subject, key))
+	ok, err := testutil.VerifyClaim(t, New(&testutil.FakeFetcher{}), testutil.SignedClaim(t, subject, key))
 	require.NoError(t, err)
 	require.True(t, ok)
 }

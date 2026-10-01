@@ -1,7 +1,7 @@
 // Copyright AGNTCY Contributors (https://github.com/agntcy)
 // SPDX-License-Identifier: Apache-2.0
 
-package identity
+package identity_test
 
 import (
 	"crypto"
@@ -11,6 +11,7 @@ import (
 	"time"
 
 	identityv1 "github.com/agntcy/dir/api/identity/v1"
+	"github.com/agntcy/dir/client/utils/identity"
 	"github.com/agntcy/dir/client/utils/internal/testutil"
 	"github.com/agntcy/dir/client/utils/jws"
 	"github.com/stretchr/testify/require"
@@ -40,12 +41,12 @@ func TestSignVerify_RoundTrip(t *testing.T) {
 				key := testutil.NewKey(t, kind)
 
 				claim := &identityv1.Claim{Role: role, Subject: testSubjectDNS}
-				require.NoError(t, Sign(claim, testRecordCID, keySigner(t, key)))
+				require.NoError(t, identity.Sign(claim, testRecordCID, keySigner(t, key)))
 				require.NotEmpty(t, claim.GetSignature())
 				require.Equal(t, testRecordCID, claim.GetRecordCid())
 				require.Nil(t, claim.Certificate)
 
-				ok, err := Verify(claim, testRecordCID, testSubjectDNS, key.Public())
+				ok, err := identity.Verify(claim, testRecordCID, testSubjectDNS, key.Public())
 				require.NoError(t, err)
 				require.True(t, ok)
 			}
@@ -58,10 +59,10 @@ func TestSignVerify_WithCertificate(t *testing.T) {
 	cert := testutil.SelfSignedCertPEM(t, key, testSubjectSVID)
 
 	claim := &identityv1.Claim{Role: identityv1.ClaimRole_CLAIM_ROLE_IDENTITY, Subject: testSubjectSVID}
-	require.NoError(t, Sign(claim, testRecordCID, keySigner(t, key), WithCertificate(cert)))
+	require.NoError(t, identity.Sign(claim, testRecordCID, keySigner(t, key), identity.WithCertificate(cert)))
 	require.NotEmpty(t, claim.GetCertificate())
 
-	ok, err := Verify(claim, testRecordCID, testSubjectSVID, key.Public())
+	ok, err := identity.Verify(claim, testRecordCID, testSubjectSVID, key.Public())
 	require.NoError(t, err)
 	require.True(t, ok)
 
@@ -70,37 +71,37 @@ func TestSignVerify_WithCertificate(t *testing.T) {
 	require.NotNil(t, block)
 
 	claim = &identityv1.Claim{Role: identityv1.ClaimRole_CLAIM_ROLE_IDENTITY, Subject: testSubjectSVID}
-	require.NoError(t, Sign(claim, testRecordCID, keySigner(t, key), WithCertificate(block.Bytes)))
+	require.NoError(t, identity.Sign(claim, testRecordCID, keySigner(t, key), identity.WithCertificate(block.Bytes)))
 	require.NotEmpty(t, claim.GetCertificate())
 }
 
 func TestSign_RejectsInvalidInput(t *testing.T) {
 	signer := keySigner(t, testutil.NewKey(t, "ES256"))
 
-	require.Error(t, Sign(nil, testRecordCID, signer), "nil claim")
-	require.Error(t, Sign(&identityv1.Claim{Subject: testSubjectDNS}, testRecordCID, signer), "unspecified role")
-	require.Error(t, Sign(&identityv1.Claim{Role: identityv1.ClaimRole_CLAIM_ROLE_OWNER}, testRecordCID, signer), "empty subject")
-	require.Error(t, Sign(&identityv1.Claim{Role: identityv1.ClaimRole_CLAIM_ROLE_OWNER, Subject: testSubjectDNS}, testRecordCID, nil), "nil signer")
+	require.Error(t, identity.Sign(nil, testRecordCID, signer), "nil claim")
+	require.Error(t, identity.Sign(&identityv1.Claim{Subject: testSubjectDNS}, testRecordCID, signer), "unspecified role")
+	require.Error(t, identity.Sign(&identityv1.Claim{Role: identityv1.ClaimRole_CLAIM_ROLE_OWNER}, testRecordCID, signer), "empty subject")
+	require.Error(t, identity.Sign(&identityv1.Claim{Role: identityv1.ClaimRole_CLAIM_ROLE_OWNER, Subject: testSubjectDNS}, testRecordCID, nil), "nil signer")
 }
 
 func TestVerify_TamperedPayload(t *testing.T) {
 	key := testutil.NewKey(t, "ES256")
 
 	claim := &identityv1.Claim{Role: identityv1.ClaimRole_CLAIM_ROLE_IDENTITY, Subject: testSubjectDNS}
-	require.NoError(t, Sign(claim, testRecordCID, keySigner(t, key)))
+	require.NoError(t, identity.Sign(claim, testRecordCID, keySigner(t, key)))
 
 	claim.SignedAt = time.Now().Add(time.Hour).UTC().Format(time.RFC3339) // tamper after signing
 
-	ok, err := Verify(claim, testRecordCID, testSubjectDNS, key.Public())
+	ok, err := identity.Verify(claim, testRecordCID, testSubjectDNS, key.Public())
 	require.Error(t, err)
 	require.False(t, ok)
 }
 
 func TestVerify_WrongKey(t *testing.T) {
 	claim := &identityv1.Claim{Role: identityv1.ClaimRole_CLAIM_ROLE_IDENTITY, Subject: testSubjectDNS}
-	require.NoError(t, Sign(claim, testRecordCID, keySigner(t, testutil.NewKey(t, "ES256"))))
+	require.NoError(t, identity.Sign(claim, testRecordCID, keySigner(t, testutil.NewKey(t, "ES256"))))
 
-	ok, err := Verify(claim, testRecordCID, testSubjectDNS, testutil.NewKey(t, "ES256").Public())
+	ok, err := identity.Verify(claim, testRecordCID, testSubjectDNS, testutil.NewKey(t, "ES256").Public())
 	require.Error(t, err)
 	require.False(t, ok)
 }
@@ -109,13 +110,13 @@ func TestVerify_MultipleKeys(t *testing.T) {
 	key := testutil.NewKey(t, "ES256")
 
 	claim := &identityv1.Claim{Role: identityv1.ClaimRole_CLAIM_ROLE_IDENTITY, Subject: testSubjectDNS}
-	require.NoError(t, Sign(claim, testRecordCID, keySigner(t, key)))
+	require.NoError(t, identity.Sign(claim, testRecordCID, keySigner(t, key)))
 
-	ok, err := Verify(claim, testRecordCID, testSubjectDNS, testutil.NewKey(t, "EdDSA").Public(), key.Public())
+	ok, err := identity.Verify(claim, testRecordCID, testSubjectDNS, testutil.NewKey(t, "EdDSA").Public(), key.Public())
 	require.NoError(t, err)
 	require.True(t, ok)
 
-	ok, err = Verify(claim, testRecordCID, testSubjectDNS)
+	ok, err = identity.Verify(claim, testRecordCID, testSubjectDNS)
 	require.Error(t, err)
 	require.False(t, ok)
 }
@@ -124,9 +125,9 @@ func TestVerify_WrongSubject(t *testing.T) {
 	key := testutil.NewKey(t, "ES256")
 
 	claim := &identityv1.Claim{Role: identityv1.ClaimRole_CLAIM_ROLE_IDENTITY, Subject: testSubjectDNS}
-	require.NoError(t, Sign(claim, testRecordCID, keySigner(t, key)))
+	require.NoError(t, identity.Sign(claim, testRecordCID, keySigner(t, key)))
 
-	ok, err := Verify(claim, testRecordCID, testSubjectDID, key.Public())
+	ok, err := identity.Verify(claim, testRecordCID, testSubjectDID, key.Public())
 	require.False(t, ok)
 	require.ErrorContains(t, err, "does not match")
 }
@@ -135,12 +136,12 @@ func TestVerify_MismatchedRole(t *testing.T) {
 	key := testutil.NewKey(t, "ES256")
 
 	claim := &identityv1.Claim{Role: identityv1.ClaimRole_CLAIM_ROLE_IDENTITY, Subject: testSubjectDNS}
-	require.NoError(t, Sign(claim, testRecordCID, keySigner(t, key)))
+	require.NoError(t, identity.Sign(claim, testRecordCID, keySigner(t, key)))
 
 	// Replay the same claim, relabeled as an ownership claim for the same subject/record.
 	claim.Role = identityv1.ClaimRole_CLAIM_ROLE_OWNER
 
-	ok, err := Verify(claim, testRecordCID, testSubjectDNS, key.Public())
+	ok, err := identity.Verify(claim, testRecordCID, testSubjectDNS, key.Public())
 	require.Error(t, err)
 	require.False(t, ok)
 }
@@ -151,9 +152,9 @@ func TestVerify_Expired(t *testing.T) {
 	claim := &identityv1.Claim{Role: identityv1.ClaimRole_CLAIM_ROLE_IDENTITY, Subject: testSubjectDNS}
 	expired := time.Now().Add(-time.Hour).UTC().Format(time.RFC3339)
 	claim.ExpiresAt = &expired
-	require.NoError(t, Sign(claim, testRecordCID, keySigner(t, key)))
+	require.NoError(t, identity.Sign(claim, testRecordCID, keySigner(t, key)))
 
-	ok, err := Verify(claim, testRecordCID, testSubjectDNS, key.Public())
+	ok, err := identity.Verify(claim, testRecordCID, testSubjectDNS, key.Public())
 	require.False(t, ok)
 	require.ErrorContains(t, err, "expired")
 }
@@ -162,9 +163,9 @@ func TestVerify_WrongRecordCID(t *testing.T) {
 	key := testutil.NewKey(t, "ES256")
 
 	claim := &identityv1.Claim{Role: identityv1.ClaimRole_CLAIM_ROLE_IDENTITY, Subject: testSubjectDNS}
-	require.NoError(t, Sign(claim, testRecordCID, keySigner(t, key)))
+	require.NoError(t, identity.Sign(claim, testRecordCID, keySigner(t, key)))
 
-	ok, err := Verify(claim, otherRecordCID, testSubjectDNS, key.Public())
+	ok, err := identity.Verify(claim, otherRecordCID, testSubjectDNS, key.Public())
 	require.False(t, ok)
 	require.ErrorContains(t, err, "record_cid")
 }
@@ -193,7 +194,7 @@ func TestSign_FailureLeavesClaimUntouched(t *testing.T) {
 	tests := map[string]struct {
 		claim   *identityv1.Claim
 		signer  jws.Signer
-		opts    []SignOption
+		opts    []identity.SignOption
 		wantErr string
 	}{
 		"signer fails": {
@@ -204,38 +205,38 @@ func TestSign_FailureLeavesClaimUntouched(t *testing.T) {
 		"subject not covered": {
 			claim:   &identityv1.Claim{Role: identityv1.ClaimRole_CLAIM_ROLE_IDENTITY, Subject: "spiffe://acme.com/agents/other"},
 			signer:  signer,
-			opts:    []SignOption{WithCertificate(cert)},
+			opts:    []identity.SignOption{identity.WithCertificate(cert)},
 			wantErr: "does not cover",
 		},
 		"certificate of another key": {
 			claim:   &identityv1.Claim{Role: identityv1.ClaimRole_CLAIM_ROLE_IDENTITY, Subject: testSubjectSVID},
 			signer:  keySigner(t, testutil.NewKey(t, "ES256")),
-			opts:    []SignOption{WithCertificate(cert)},
+			opts:    []identity.SignOption{identity.WithCertificate(cert)},
 			wantErr: "does not match",
 		},
 		"certificate of another key type": {
 			claim:   &identityv1.Claim{Role: identityv1.ClaimRole_CLAIM_ROLE_IDENTITY, Subject: testSubjectSVID},
 			signer:  keySigner(t, testutil.NewKey(t, "EdDSA")),
-			opts:    []SignOption{WithCertificate(cert)},
+			opts:    []identity.SignOption{identity.WithCertificate(cert)},
 			wantErr: "does not match",
 		},
 		"empty certificate": {
 			claim:   &identityv1.Claim{Role: identityv1.ClaimRole_CLAIM_ROLE_IDENTITY, Subject: testSubjectSVID},
 			signer:  signer,
-			opts:    []SignOption{WithCertificate(nil)},
+			opts:    []identity.SignOption{identity.WithCertificate(nil)},
 			wantErr: "parse certificate",
 		},
 		"garbage certificate": {
 			claim:   &identityv1.Claim{Role: identityv1.ClaimRole_CLAIM_ROLE_IDENTITY, Subject: testSubjectSVID},
 			signer:  signer,
-			opts:    []SignOption{WithCertificate([]byte("not a certificate"))},
+			opts:    []identity.SignOption{identity.WithCertificate([]byte("not a certificate"))},
 			wantErr: "parse certificate",
 		},
 	}
 
 	for name, tt := range tests {
 		t.Run(name, func(t *testing.T) {
-			err := Sign(tt.claim, testRecordCID, tt.signer, tt.opts...)
+			err := identity.Sign(tt.claim, testRecordCID, tt.signer, tt.opts...)
 			require.ErrorContains(t, err, tt.wantErr)
 			requireUntouched(t, tt.claim)
 		})
@@ -247,11 +248,11 @@ func TestSign_ResigningReplacesStaleFields(t *testing.T) {
 	signer := keySigner(t, key)
 
 	claim := &identityv1.Claim{Role: identityv1.ClaimRole_CLAIM_ROLE_IDENTITY, Subject: testSubjectSVID}
-	require.NoError(t, Sign(claim, testRecordCID, signer, WithCertificate(testutil.SelfSignedCertPEM(t, key, testSubjectSVID))))
+	require.NoError(t, identity.Sign(claim, testRecordCID, signer, identity.WithCertificate(testutil.SelfSignedCertPEM(t, key, testSubjectSVID))))
 	require.NotEmpty(t, claim.GetCertificate())
 
 	// Signed again without a certificate, the old one must not linger.
-	require.NoError(t, Sign(claim, otherRecordCID, signer))
+	require.NoError(t, identity.Sign(claim, otherRecordCID, signer))
 	require.Equal(t, otherRecordCID, claim.GetRecordCid())
 	require.Nil(t, claim.Certificate)
 }
@@ -262,7 +263,7 @@ func TestVerify_RejectsInvalidInput(t *testing.T) {
 	signed := func(mutate func(*identityv1.Claim)) *identityv1.Claim {
 		claim := &identityv1.Claim{Role: identityv1.ClaimRole_CLAIM_ROLE_IDENTITY, Subject: testSubjectDNS}
 		mutate(claim)
-		require.NoError(t, Sign(claim, testRecordCID, keySigner(t, key)))
+		require.NoError(t, identity.Sign(claim, testRecordCID, keySigner(t, key)))
 
 		return claim
 	}
@@ -283,7 +284,7 @@ func TestVerify_RejectsInvalidInput(t *testing.T) {
 
 	for name, tt := range tests {
 		t.Run(name, func(t *testing.T) {
-			ok, err := Verify(tt.claim, testRecordCID, tt.expected, tt.keys...)
+			ok, err := identity.Verify(tt.claim, testRecordCID, tt.expected, tt.keys...)
 			require.False(t, ok)
 			require.ErrorContains(t, err, tt.wantErr)
 		})

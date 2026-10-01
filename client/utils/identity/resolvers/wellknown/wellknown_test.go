@@ -10,7 +10,6 @@ import (
 	"testing"
 
 	"github.com/agntcy/dir/client/utils/identity/resolvers"
-	"github.com/agntcy/dir/client/utils/identity/resolvers/internal/claimtest"
 	"github.com/agntcy/dir/client/utils/internal/testutil"
 	"github.com/lestrrat-go/jwx/v2/jwk"
 	"github.com/stretchr/testify/require"
@@ -113,7 +112,7 @@ func TestEndToEnd(t *testing.T) {
 		"https://acme.com/.well-known/jwks.json": testutil.JWKS(t, key.Public()),
 	}})
 
-	ok, err := claimtest.Verify(t, resolver, claimtest.SignedClaim(t, "https://acme.com/agents/finance", key))
+	ok, err := testutil.VerifyClaim(t, resolver, testutil.SignedClaim(t, "https://acme.com/agents/finance", key))
 	require.NoError(t, err)
 	require.True(t, ok)
 }

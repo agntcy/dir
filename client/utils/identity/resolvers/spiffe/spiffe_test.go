@@ -19,7 +19,6 @@ import (
 	"time"
 
 	"github.com/agntcy/dir/client/utils/identity/resolvers"
-	"github.com/agntcy/dir/client/utils/identity/resolvers/internal/claimtest"
 	"github.com/agntcy/dir/client/utils/internal/testutil"
 	"github.com/spiffe/go-spiffe/v2/bundle/x509bundle"
 	"github.com/spiffe/go-spiffe/v2/spiffeid"
@@ -275,14 +274,14 @@ func TestEndToEnd(t *testing.T) {
 
 	svid := testutil.CertificatePEM(ca.Issue(t, key, svidOptions{URIs: []string{svidSubject}}))
 
-	claim := claimtest.SignedCertClaim(t, svidSubject, key, svid)
+	claim := testutil.SignedCertClaim(t, svidSubject, key, svid)
 
-	ok, err := claimtest.Verify(t, New(bundleFor(t, "acme.com", ca)), claim)
+	ok, err := testutil.VerifyClaim(t, New(bundleFor(t, "acme.com", ca)), claim)
 	require.NoError(t, err)
 	require.True(t, ok)
 
 	// With no trust bundle for the subject's domain, the same claim fails closed.
-	ok, err = claimtest.Verify(t, New(bundleFor(t, "unrelated.org", ca)), claim)
+	ok, err = testutil.VerifyClaim(t, New(bundleFor(t, "unrelated.org", ca)), claim)
 	require.Error(t, err)
 	require.False(t, ok)
 }

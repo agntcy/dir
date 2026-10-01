@@ -1,7 +1,7 @@
 // Copyright AGNTCY Contributors (https://github.com/agntcy)
 // SPDX-License-Identifier: Apache-2.0
 
-package jws
+package jws_test
 
 import (
 	"crypto/ecdsa"
@@ -12,6 +12,7 @@ import (
 	"testing"
 
 	"github.com/agntcy/dir/client/utils/internal/testutil"
+	"github.com/agntcy/dir/client/utils/jws"
 	"github.com/lestrrat-go/jwx/v2/jwk"
 	"github.com/stretchr/testify/require"
 )
@@ -39,7 +40,7 @@ func TestToPublicKey(t *testing.T) {
 		"rsa value":     rsa2048.PublicKey,
 		"ed25519":       edPub,
 	} {
-		got, ok := ToPublicKey(key)
+		got, ok := jws.ToPublicKey(key)
 		require.True(t, ok, name)
 
 		_, isValue := got.(ecdsa.PublicKey)
@@ -64,7 +65,7 @@ func TestToPublicKey(t *testing.T) {
 		"rsa no modulus":    &rsa.PublicKey{},
 		"rsa value empty":   rsa.PublicKey{},
 	} {
-		_, ok := ToPublicKey(key)
+		_, ok := jws.ToPublicKey(key)
 		require.False(t, ok, name)
 	}
 }
@@ -85,12 +86,12 @@ func TestPublicKeyFromJWK(t *testing.T) {
 	}
 
 	for _, use := range []string{"", "sig"} {
-		got, ok := PublicKeyFromJWK(newKey(use))
+		got, ok := jws.PublicKeyFromJWK(newKey(use))
 		require.True(t, ok, "use=%q", use)
 		require.Equal(t, edPub, got)
 	}
 
-	_, ok = PublicKeyFromJWK(newKey("enc"))
+	_, ok = jws.PublicKeyFromJWK(newKey("enc"))
 	require.False(t, ok, "encryption keys are skipped")
 
 	// key_ops, when present, must allow verification.
@@ -105,7 +106,7 @@ func TestPublicKeyFromJWK(t *testing.T) {
 		"verify":          {jwk.KeyOpVerify},
 		"sign and verify": {jwk.KeyOpSign, jwk.KeyOpVerify},
 	} {
-		_, ok = PublicKeyFromJWK(withOps(ops...))
+		_, ok = jws.PublicKeyFromJWK(withOps(ops...))
 		require.True(t, ok, name)
 	}
 
@@ -114,7 +115,7 @@ func TestPublicKeyFromJWK(t *testing.T) {
 		"sign only":   {jwk.KeyOpSign},
 		"wrap/derive": {jwk.KeyOpWrapKey, jwk.KeyOpDeriveKey},
 	} {
-		_, ok = PublicKeyFromJWK(withOps(ops...))
+		_, ok = jws.PublicKeyFromJWK(withOps(ops...))
 		require.False(t, ok, name)
 	}
 
@@ -122,7 +123,7 @@ func TestPublicKeyFromJWK(t *testing.T) {
 	priv, err := jwk.FromRaw(testutil.NewKey(t, "ES256"))
 	require.NoError(t, err)
 
-	got, ok := PublicKeyFromJWK(priv)
+	got, ok := jws.PublicKeyFromJWK(priv)
 	require.True(t, ok)
 	require.IsType(t, &ecdsa.PublicKey{}, got)
 
@@ -130,6 +131,6 @@ func TestPublicKeyFromJWK(t *testing.T) {
 	oct, err := jwk.FromRaw([]byte("secret"))
 	require.NoError(t, err)
 
-	_, ok = PublicKeyFromJWK(oct)
+	_, ok = jws.PublicKeyFromJWK(oct)
 	require.False(t, ok)
 }

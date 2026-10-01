@@ -3,8 +3,8 @@
 
 // Package testutil holds test fixtures shared by the jws, identity and
 // resolver packages: key generators, PEM and certificate helpers, a fake
-// fetcher, and key assertions. It must not import those packages, or their
-// own tests would form an import cycle.
+// fetcher, key assertions, and the sign-resolve-verify claim flow. It imports
+// jws and identity, so their tests must be external (package jws_test).
 package testutil
 
 import (
@@ -17,6 +17,7 @@ import (
 	"crypto/rsa"
 	"crypto/x509"
 	"crypto/x509/pkix"
+	"encoding/base64"
 	"encoding/json"
 	"encoding/pem"
 	"fmt"
@@ -25,6 +26,10 @@ import (
 	"testing"
 	"time"
 
+	identityv1 "github.com/agntcy/dir/api/identity/v1"
+	"github.com/agntcy/dir/client/utils/identity"
+	"github.com/agntcy/dir/client/utils/identity/resolvers"
+	"github.com/agntcy/dir/client/utils/jws"
 	"github.com/lestrrat-go/jwx/v2/jwk"
 	"github.com/stretchr/testify/require"
 )
@@ -35,6 +40,9 @@ const (
 
 	// SVIDSubject is the SPIFFE ID the test certificates carry by default.
 	SVIDSubject = "spiffe://acme.com/agents/finance"
+
+	// RecordCID is the record every test claim is attached to.
+	RecordCID = "bafybeigdyrzt5sfp7udm7hu76uh7y26nf3efuylqabf3oclgtqy55fbzdi"
 )
 
 // FakeFetcher serves canned documents by URL and records what was requested.
@@ -199,4 +207,57 @@ func RequireSameKeys(t *testing.T, want, got []crypto.PublicKey) {
 
 		require.True(t, found, "key %T not found in result", w)
 	}
+}
+
+// SignedClaim signs a fresh identity claim for subject the way a publisher would.
+func SignedClaim(t *testing.T, subject string, key crypto.PrivateKey) *identityv1.Claim {
+	t.Helper()
+
+	signer, err := jws.NewKeySigner(PKCS8PEM(t, key), nil)
+	require.NoError(t, err)
+
+	claim := &identityv1.Claim{Role: identityv1.ClaimRole_CLAIM_ROLE_IDENTITY, Subject: subject}
+	require.NoError(t, identity.Sign(claim, RecordCID, signer))
+
+	return claim
+}
+
+// SignedCertClaim signs a claim for subject that carries certPEM, the certificate of key.
+func SignedCertClaim(t *testing.T, subject string, key crypto.PrivateKey, certPEM []byte) *identityv1.Claim {
+	t.Helper()
+
+	signer, err := jws.NewKeySigner(PKCS8PEM(t, key), nil)
+	require.NoError(t, err)
+
+	claim := &identityv1.Claim{Role: identityv1.ClaimRole_CLAIM_ROLE_IDENTITY, Subject: subject}
+	require.NoError(t, identity.Sign(claim, RecordCID, signer, identity.WithCertificate(certPEM)))
+
+	return claim
+}
+
+// VerifyClaim is the flow a real caller follows: resolve the subject's keys, then
+// verify the claim against all of them.
+func VerifyClaim(t *testing.T, r resolvers.Resolver, claim *identityv1.Claim) (bool, error) {
+	t.Helper()
+
+	var certificate []byte
+
+	if claim.Certificate != nil {
+		var err error
+
+		certificate, err = base64.StdEncoding.DecodeString(claim.GetCertificate())
+		require.NoError(t, err)
+	}
+
+	keys, err := r.Resolve(t.Context(), claim.GetSubject(), certificate)
+	if err != nil {
+		return false, fmt.Errorf("resolve: %w", err)
+	}
+
+	ok, err := identity.Verify(claim, RecordCID, claim.GetSubject(), keys...)
+	if err != nil {
+		return false, fmt.Errorf("verify: %w", err)
+	}
+
+	return ok, nil
 }
