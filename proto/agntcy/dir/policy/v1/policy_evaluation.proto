@@ -1,0 +1,30 @@
+// Copyright AGNTCY Contributors (https://github.com/agntcy)
+// SPDX-License-Identifier: Apache-2.0
+
+syntax = "proto3";
+
+package agntcy.dir.policy.v1;
+
+import "google/protobuf/timestamp.proto";
+
+// PolicyEvaluation is a record's verdict under one content policy.
+message PolicyEvaluation {
+  // The policy's identifier, as its evaluator reports it.
+  string policy_id = 1;
+
+  // The policy version the record was evaluated under.
+  string policy_version = 2;
+
+  // "evaluated", or "failed" when the evaluator could not decide.
+  string status = 3;
+
+  // Whether the record complies. Only meaningful when status is "evaluated":
+  // a failed evaluation is never compliant.
+  bool compliant = 4;
+
+  // Why the evaluator decided as it did, or why it failed.
+  string reason = 5;
+
+  // When the verdict was last written.
+  google.protobuf.Timestamp updated_at = 6;
+}
