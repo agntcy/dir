@@ -63,8 +63,13 @@ func runImport(cmd *cobra.Command) error {
 	}
 
 	if opts.Sign {
+		signOpts, err := signcmd.ResolveOptions(cmd)
+		if err != nil {
+			return fmt.Errorf("invalid configuration: %w", err)
+		}
+
 		opts.SignFunc = func(ctx context.Context, cid string) error {
-			return signcmd.Sign(ctx, c, cid)
+			return signcmd.Sign(ctx, c, cid, signOpts)
 		}
 	}
 
