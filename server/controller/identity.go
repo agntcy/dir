@@ -7,7 +7,10 @@ package controller
 import (
 	"context"
 	"errors"
+	"strings"
 
+	coretypes "github.com/agntcy/dir/api/core/types"
+	corev1 "github.com/agntcy/dir/api/core/v1"
 	identityv1 "github.com/agntcy/dir/api/identity/v1"
 	gormdb "github.com/agntcy/dir/server/database/gorm"
 	"github.com/agntcy/dir/server/types"
@@ -43,7 +46,7 @@ func (c *identityCtrl) GetIdentityStatus(_ context.Context, req *identityv1.GetI
 		}
 
 		// Records come back newest first, so the first is the latest version.
-		records, err := findRecordsByName(c.db, req.GetName(), req.GetVersion())
+		records, err := c.recordsByName(req.GetName(), req.GetVersion())
 		if err != nil {
 			return nil, err
 		}
@@ -74,12 +77,53 @@ func (c *identityCtrl) Resolve(_ context.Context, req *identityv1.ResolveRequest
 		return nil, status.Error(codes.InvalidArgument, "name is required")
 	}
 
-	records, err := findRecordsByName(c.db, req.GetName(), req.GetVersion())
+	records, err := c.recordsByName(req.GetName(), req.GetVersion())
 	if err != nil {
 		return nil, err
 	}
 
-	return &identityv1.ResolveResponse{Records: namedRecordRefs(records)}, nil
+	return &identityv1.ResolveResponse{Records: recordRefs(records)}, nil
+}
+
+// recordsByName returns the records matching name (and version, if given),
+// newest first, or a NotFound error if there are none. A name without an
+// http:// or https:// prefix also matches its prefixed forms, so verifiable
+// names such as "https://cisco.com/agent" are found by "cisco.com/agent".
+func (c *identityCtrl) recordsByName(name, version string) ([]coretypes.Record, error) {
+	names := []string{name}
+	if !strings.HasPrefix(name, "http://") && !strings.HasPrefix(name, "https://") {
+		names = append(names, "http://"+name, "https://"+name)
+	}
+
+	opts := []types.FilterOption{types.WithNames(names...)}
+	if version != "" {
+		opts = append(opts, types.WithVersions(version))
+	}
+
+	records, err := c.db.GetRecords(opts...)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to search records: %v", err)
+	}
+
+	if len(records) == 0 {
+		if version != "" {
+			return nil, status.Errorf(codes.NotFound, "no record found with name %q and version %q", name, version)
+		}
+
+		return nil, status.Errorf(codes.NotFound, "no record found with name %q", name)
+	}
+
+	return records, nil
+}
+
+func recordRefs(records []coretypes.Record) []*corev1.NamedRecordRef {
+	refs := make([]*corev1.NamedRecordRef, 0, len(records))
+
+	for _, r := range records {
+		refs = append(refs, &corev1.NamedRecordRef{Name: r.GetName(), Version: r.GetVersion(), Cid: r.GetCid()})
+	}
+
+	return refs
 }
 
 // claimVerification returns the stored result for a record's claim of role, or
