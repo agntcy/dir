@@ -90,41 +90,34 @@ func (d *DB) GetIdentityClaimByCID(cid, role string) (types.IdentityClaimObject,
 	return &row, nil
 }
 
-// applyIdentityFilters applies the claim subject and verification filters, and
-// their exclusions. Each is a correlated subquery on identity_claims rather than
-// a JOIN, so a record is never duplicated and a negation never matches "has some
-// other claim".
+// applyIdentityFilters applies the claim subject and verified filters. Each is a
+// correlated subquery on identity_claims rather than a JOIN, so a record is never
+// duplicated.
 func applyIdentityFilters(query *gormlib.DB, cfg *types.RecordFilters) *gormlib.DB {
 	roles := []struct {
 		role     string
 		subjects []string
-		excluded []string
-		verified *bool
+		verified bool
 	}{
-		{types.ClaimRoleIdentity, cfg.Identities, cfg.Excluded.Identities, cfg.IdentityVerified},
-		{types.ClaimRoleOwner, cfg.Owners, cfg.Excluded.Owners, cfg.OwnerVerified},
+		{types.ClaimRoleIdentity, cfg.Identities, cfg.IdentityVerified},
+		{types.ClaimRoleOwner, cfg.Owners, cfg.OwnerVerified},
 	}
 
 	for _, r := range roles {
 		if len(r.subjects) > 0 {
-			query = applyClaimSubjects(query, r.role, r.subjects, false)
+			query = applyClaimSubjects(query, r.role, r.subjects)
 		}
 
-		if len(r.excluded) > 0 {
-			query = applyClaimSubjects(query, r.role, r.excluded, true)
-		}
-
-		if r.verified != nil {
-			query = applyClaimVerified(query, r.role, *r.verified)
+		if r.verified {
+			query = applyClaimVerified(query, r.role)
 		}
 	}
 
 	return query
 }
 
-// applyClaimSubjects keeps records with a claim of role whose subject matches any
-// pattern, or, when negate is set, records with no such claim.
-func applyClaimSubjects(query *gormlib.DB, role string, patterns []string, negate bool) *gormlib.DB {
+// applyClaimSubjects keeps records with a claim of role whose subject matches any pattern.
+func applyClaimSubjects(query *gormlib.DB, role string, patterns []string) *gormlib.DB {
 	condition, args := utils.BuildWildcardCondition("ic.subject", patterns)
 	if condition == "" {
 		return query
@@ -132,23 +125,13 @@ func applyClaimSubjects(query *gormlib.DB, role string, patterns []string, negat
 
 	inner := "ic.record_cid = records.record_cid AND ic.role = ? AND (" + condition + ")"
 
-	args = append([]any{role}, args...)
-
-	if negate {
-		return query.Where(utils.BuildNotExistsCondition("identity_claims", "ic", inner), args...)
-	}
-
-	return query.Where("EXISTS (SELECT 1 FROM identity_claims ic WHERE "+inner+")", args...)
+	return query.Where("EXISTS (SELECT 1 FROM identity_claims ic WHERE "+inner+")", append([]any{role}, args...)...)
 }
 
-// applyClaimVerified keeps records whose claim of role has a verified result, or,
-// when verified is false, records without one (unverified, failed or absent).
-func applyClaimVerified(query *gormlib.DB, role string, verified bool) *gormlib.DB {
-	inner := "ic.record_cid = records.record_cid AND ic.role = ? AND ic.status = ?"
-
-	if verified {
-		return query.Where("EXISTS (SELECT 1 FROM identity_claims ic WHERE "+inner+")", role, types.ClaimStatusVerified)
-	}
-
-	return query.Where(utils.BuildNotExistsCondition("identity_claims", "ic", inner), role, types.ClaimStatusVerified)
+// applyClaimVerified keeps records whose claim of role has a verified result.
+func applyClaimVerified(query *gormlib.DB, role string) *gormlib.DB {
+	return query.Where(
+		"EXISTS (SELECT 1 FROM identity_claims ic WHERE ic.record_cid = records.record_cid AND ic.role = ? AND ic.status = ?)",
+		role, types.ClaimStatusVerified,
+	)
 }

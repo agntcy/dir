@@ -183,18 +183,16 @@ func (f *Filters) valueFilters() []valueFilter {
 			values:       &f.ScanFailureReasons,
 		},
 		{
-			flag:         "identity",
-			usage:        "Search for records by the subject of their identity claim (e.g., --identity 'did:web:acme.com:*')",
-			excludeUsage: "Exclude records by the subject of their identity claim (e.g., --exclude-identity 'spiffe://acme.com/*')",
-			queryType:    searchv1.RecordQueryType_RECORD_QUERY_TYPE_IDENTITY,
-			values:       &f.Identities,
+			flag:      "identity",
+			usage:     "Search for records by the subject of their identity claim (e.g., --identity 'did:web:acme.com:*')",
+			queryType: searchv1.RecordQueryType_RECORD_QUERY_TYPE_IDENTITY,
+			values:    &f.Identities,
 		},
 		{
-			flag:         "owner",
-			usage:        "Search for records by the subject of their ownership claim (e.g., --owner 'did:web:acme.com')",
-			excludeUsage: "Exclude records by the subject of their ownership claim (e.g., --exclude-owner 'dns:acme.com')",
-			queryType:    searchv1.RecordQueryType_RECORD_QUERY_TYPE_OWNER,
-			values:       &f.Owners,
+			flag:      "owner",
+			usage:     "Search for records by the subject of their ownership claim (e.g., --owner 'did:web:acme.com')",
+			queryType: searchv1.RecordQueryType_RECORD_QUERY_TYPE_OWNER,
+			values:    &f.Owners,
 		},
 		{
 			flag:         "annotation",
@@ -223,7 +221,10 @@ func registerFilterFlags(flags *pflag.FlagSet, f *Filters) {
 
 	for _, filter := range f.valueFilters() {
 		flags.StringArrayVar(&filter.values.Include, filter.flag, nil, filter.usage)
-		flags.StringArrayVar(&filter.values.Exclude, "exclude-"+filter.flag, nil, filter.excludeUsage)
+
+		if filter.excludeUsage != "" {
+			flags.StringArrayVar(&filter.values.Exclude, "exclude-"+filter.flag, nil, filter.excludeUsage)
+		}
 	}
 
 	flags.StringVar(&f.ScanSeverity, "scan-severity", "",
@@ -236,9 +237,9 @@ func registerFilterFlags(flags *pflag.FlagSet, f *Filters) {
 	flags.BoolVar(&f.Trusted, "trusted", false,
 		"Filter for records with a trusted signature (--trusted) or without one (--trusted=false)")
 	flags.BoolVar(&f.IdentityVerified, "identity-verified", false,
-		"Filter for records with a verified identity claim (--identity-verified) or without one (--identity-verified=false)")
+		"Filter for records with a verified identity claim")
 	flags.BoolVar(&f.OwnerVerified, "owner-verified", false,
-		"Filter for records with a verified ownership claim (--owner-verified) or without one (--owner-verified=false)")
+		"Filter for records with a verified ownership claim")
 	flags.BoolVar(&f.Safe, "safe", false,
 		"Filter for records where every security scanner reported is_safe=true (--safe), or where at least one did not (--safe=false)")
 }
@@ -294,16 +295,21 @@ func BuildQueries(f *Filters) []*searchv1.RecordQuery {
 		flag      string
 		value     bool
 		queryType searchv1.RecordQueryType
+		onlyTrue  bool // the false form is not a filter
 	}{
-		{"verified", f.Verified, searchv1.RecordQueryType_RECORD_QUERY_TYPE_VERIFIED},
-		{"trusted", f.Trusted, searchv1.RecordQueryType_RECORD_QUERY_TYPE_TRUSTED},
-		{"safe", f.Safe, searchv1.RecordQueryType_RECORD_QUERY_TYPE_SCAN_SAFE},
-		{"identity-verified", f.IdentityVerified, searchv1.RecordQueryType_RECORD_QUERY_TYPE_IDENTITY_VERIFIED},
-		{"owner-verified", f.OwnerVerified, searchv1.RecordQueryType_RECORD_QUERY_TYPE_OWNER_VERIFIED},
+		{"verified", f.Verified, searchv1.RecordQueryType_RECORD_QUERY_TYPE_VERIFIED, false},
+		{"trusted", f.Trusted, searchv1.RecordQueryType_RECORD_QUERY_TYPE_TRUSTED, false},
+		{"safe", f.Safe, searchv1.RecordQueryType_RECORD_QUERY_TYPE_SCAN_SAFE, false},
+		{"identity-verified", f.IdentityVerified, searchv1.RecordQueryType_RECORD_QUERY_TYPE_IDENTITY_VERIFIED, true},
+		{"owner-verified", f.OwnerVerified, searchv1.RecordQueryType_RECORD_QUERY_TYPE_OWNER_VERIFIED, true},
 	}
 
 	for _, boolFilter := range boolFilters {
-		if !boolFilter.value && !f.changed(boolFilter.flag) {
+		if boolFilter.onlyTrue {
+			if !boolFilter.value {
+				continue
+			}
+		} else if !boolFilter.value && !f.changed(boolFilter.flag) {
 			continue
 		}
 

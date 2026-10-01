@@ -96,14 +96,13 @@ Examples:
     dirctl search --owner 'did:web:acme.com'
     dirctl search --identity-verified          # identity claim was verified
     dirctl search --owner 'dns:acme.com' --owner-verified
-    dirctl search --owner-verified=false       # no verified ownership claim
 
 14. Exclude matches with the --exclude-* form of any value filter:
     dirctl search --exclude-skill 'natural_language_processing'
     dirctl search --domain 'life_science/*' --exclude-author 'bot*'
     dirctl search --exclude-scan-severity MEDIUM
 
-Every value filter has an --exclude- twin. Values of one filter are combined
+Every value filter except --identity and --owner has an --exclude- twin. Values of one filter are combined
 with OR, while every excluded value must not match, so
 "--skill python --exclude-skill nlp" means "has python and does not have nlp".
 Exclusion adds no syntax: wildcards, comparison operators and ':' behave

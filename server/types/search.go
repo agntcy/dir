@@ -72,8 +72,8 @@ type RecordFilters struct {
 	Descriptions       []string              // Match against record description field.
 	Identities         []string              // Match against the subject of the identity claim.
 	Owners             []string              // Match against the subject of the ownership claim.
-	IdentityVerified   *bool                 // Filter by whether the identity claim was verified.
-	OwnerVerified      *bool                 // Filter by whether the ownership claim was verified.
+	IdentityVerified   bool                  // Keep only records whose identity claim was verified.
+	OwnerVerified      bool                  // Keep only records whose ownership claim was verified.
 	Excluded           ExcludedRecordFilters // Negated (exclude) counterparts of the fields above.
 
 	OrderBy []RecordOrderClause // Order by directives applied in sequence.
@@ -104,7 +104,6 @@ type ExcludedRecordFilters struct {
 	ScanSeverities     []string
 	ScanStatuses       []string
 	ScanFailureReasons []string
-	Identities         []string
 	Owners             []string
 }
 
@@ -453,13 +452,6 @@ func WithIdentities(subjects ...string) FilterOption {
 	}
 }
 
-// WithoutIdentities excludes records whose identity claim subject matches any of the given patterns.
-func WithoutIdentities(subjects ...string) FilterOption {
-	return func(sc *RecordFilters) {
-		sc.Excluded.Identities = append(sc.Excluded.Identities, subjects...)
-	}
-}
-
 // WithOwners filters records by the subject of their ownership claim.
 func WithOwners(subjects ...string) FilterOption {
 	return func(sc *RecordFilters) {
@@ -467,23 +459,16 @@ func WithOwners(subjects ...string) FilterOption {
 	}
 }
 
-// WithoutOwners excludes records whose ownership claim subject matches any of the given patterns.
-func WithoutOwners(subjects ...string) FilterOption {
+// WithIdentityVerified keeps only records whose identity claim was verified.
+func WithIdentityVerified() FilterOption {
 	return func(sc *RecordFilters) {
-		sc.Excluded.Owners = append(sc.Excluded.Owners, subjects...)
+		sc.IdentityVerified = true
 	}
 }
 
-// WithIdentityVerified filters records by whether their identity claim was verified.
-func WithIdentityVerified(verified bool) FilterOption {
+// WithOwnerVerified keeps only records whose ownership claim was verified.
+func WithOwnerVerified() FilterOption {
 	return func(sc *RecordFilters) {
-		sc.IdentityVerified = &verified
-	}
-}
-
-// WithOwnerVerified filters records by whether their ownership claim was verified.
-func WithOwnerVerified(verified bool) FilterOption {
-	return func(sc *RecordFilters) {
-		sc.OwnerVerified = &verified
+		sc.OwnerVerified = true
 	}
 }

@@ -104,14 +104,10 @@ const (
 	// Supports wildcard patterns: "did:web:acme.com", "dns:*.com"
 	RecordQueryType_RECORD_QUERY_TYPE_OWNER RecordQueryType = 23
 	// Query for records whose identity claim was verified.
-	// Boolean field - use "true" or "false" as value.
-	// "true"  → the identity claim has a verified result.
-	// "false" → the identity claim has no verified result (unverified, failed or absent).
+	// Boolean field - only "true" is supported; negation is rejected.
 	RecordQueryType_RECORD_QUERY_TYPE_IDENTITY_VERIFIED RecordQueryType = 24
 	// Query for records whose ownership claim was verified.
-	// Boolean field - use "true" or "false" as value.
-	// "true"  → the ownership claim has a verified result.
-	// "false" → the ownership claim has no verified result (unverified, failed or absent).
+	// Boolean field - only "true" is supported; negation is rejected.
 	RecordQueryType_RECORD_QUERY_TYPE_OWNER_VERIFIED RecordQueryType = 25
 )
 

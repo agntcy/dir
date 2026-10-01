@@ -1677,10 +1677,10 @@ Omit the positional argument and use filter flags to query specific fields. All 
 | `--trusted` | Only trusted records (signature verification passed); `--trusted=false` for records without a trusted signature |
 | `--safe` | Only records where all security scanners reported `is_safe=true`; `--safe=false` for records where at least one scanner did not |
 | `--scan-severity` | Only records whose highest scan severity meets or exceeds a threshold (`NONE`, `INFO`, `LOW`, `MEDIUM`, `HIGH`, `CRITICAL`) |
-| `--identity-verified` | Only records whose identity claim was verified; `--identity-verified=false` for records without a verified identity claim |
-| `--owner-verified` | Only records whose ownership claim was verified; `--owner-verified=false` for records without a verified ownership claim |
+| `--identity-verified` | Only records whose identity claim was verified |
+| `--owner-verified` | Only records whose ownership claim was verified |
 
-`--verified`, `--trusted`, `--safe`, `--identity-verified` and `--owner-verified` are tri-state: omitting the flag does not filter on that property at all, while an explicit `=false` filters for records that failed the check.
+`--verified`, `--trusted` and `--safe` are tri-state: omitting the flag does not filter on that property at all, while an explicit `=false` filters for records that failed the check. `--identity-verified` and `--owner-verified` only filter when set; `=false` is not a filter.
 
 **Exclude flags:**
 
@@ -1688,8 +1688,7 @@ Every filter above except the booleans has an `--exclude-` twin —
 `--exclude-name`, `--exclude-version`, `--exclude-skill-id`, `--exclude-skill`,
 `--exclude-locator`, `--exclude-module`, `--exclude-domain-id`, `--exclude-domain`,
 `--exclude-created-at`, `--exclude-author`, `--exclude-schema-version`,
-`--exclude-module-id`, `--exclude-annotation`, `--exclude-identity`, `--exclude-owner`
-and `--exclude-scan-severity`. Each is
+`--exclude-module-id`, `--exclude-annotation` and `--exclude-scan-severity`. `--identity` and `--owner` have no exclude form. Each is
 repeatable and takes the same values as the flag it mirrors; wildcards, comparison
 operators and `:` behave identically, and `!` is an ordinary character.
 

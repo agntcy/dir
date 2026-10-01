@@ -145,7 +145,7 @@ func TestGetRecordCIDs_Identity(t *testing.T) {
 	seedDB(t, db)
 	seedClaims(t, db)
 
-	marketing, healthcare, code := marketingAgent.GetCid(), healthcareAgent.GetCid(), codeAssistant.GetCid()
+	marketing, healthcare := marketingAgent.GetCid(), healthcareAgent.GetCid()
 
 	tests := map[string]struct {
 		opts []types.FilterOption
@@ -157,9 +157,6 @@ func TestGetRecordCIDs_Identity(t *testing.T) {
 		"failed claim matches":             {[]types.FilterOption{types.WithIdentities("spiffe://hospital.org/*")}, []string{healthcare}},
 		"no match":                         {[]types.FilterOption{types.WithIdentities("did:web:other.com")}, nil},
 		"owner subject is not an identity": {[]types.FilterOption{types.WithIdentities("did:web:acme.com")}, nil},
-		"excluded":                         {[]types.FilterOption{types.WithoutIdentities("did:web:*")}, []string{healthcare, code}},
-		"excluded keeps unclaimed":         {[]types.FilterOption{types.WithoutIdentities("*")}, []string{code}},
-		"include and exclude":              {[]types.FilterOption{types.WithIdentities("*"), types.WithoutIdentities("spiffe://*")}, []string{marketing}},
 	}
 
 	for name, tt := range tests {
@@ -176,7 +173,7 @@ func TestGetRecordCIDs_Owner(t *testing.T) {
 	seedDB(t, db)
 	seedClaims(t, db)
 
-	marketing, healthcare, code := marketingAgent.GetCid(), healthcareAgent.GetCid(), codeAssistant.GetCid()
+	marketing, healthcare := marketingAgent.GetCid(), healthcareAgent.GetCid()
 
 	tests := map[string]struct {
 		opts []types.FilterOption
@@ -186,7 +183,6 @@ func TestGetRecordCIDs_Owner(t *testing.T) {
 		"wildcard subject":                 {[]types.FilterOption{types.WithOwners("*.org")}, []string{healthcare}},
 		"dns subject":                      {[]types.FilterOption{types.WithOwners("dns:*")}, []string{healthcare}},
 		"identity subject is not an owner": {[]types.FilterOption{types.WithOwners("did:web:acme.com:agents:marketing")}, nil},
-		"excluded":                         {[]types.FilterOption{types.WithoutOwners("did:web:acme.com")}, []string{healthcare, code}},
 	}
 
 	for name, tt := range tests {
@@ -203,19 +199,16 @@ func TestGetRecordCIDs_IdentityVerified(t *testing.T) {
 	seedDB(t, db)
 	seedClaims(t, db)
 
-	marketing, healthcare, code := marketingAgent.GetCid(), healthcareAgent.GetCid(), codeAssistant.GetCid()
+	marketing, healthcare := marketingAgent.GetCid(), healthcareAgent.GetCid()
 
 	tests := map[string]struct {
 		opts []types.FilterOption
 		want []string
 	}{
-		"identity verified":            {[]types.FilterOption{types.WithIdentityVerified(true)}, []string{marketing}},
-		"identity not verified":        {[]types.FilterOption{types.WithIdentityVerified(false)}, []string{healthcare, code}},
-		"owner verified":               {[]types.FilterOption{types.WithOwnerVerified(true)}, []string{marketing, healthcare}},
-		"owner not verified":           {[]types.FilterOption{types.WithOwnerVerified(false)}, []string{code}},
-		"both verified":                {[]types.FilterOption{types.WithIdentityVerified(true), types.WithOwnerVerified(true)}, []string{marketing}},
-		"owner verified, identity not": {[]types.FilterOption{types.WithOwnerVerified(true), types.WithIdentityVerified(false)}, []string{healthcare}},
-		"verified with subject":        {[]types.FilterOption{types.WithOwners("dns:*"), types.WithOwnerVerified(true)}, []string{healthcare}},
+		"identity verified":     {[]types.FilterOption{types.WithIdentityVerified()}, []string{marketing}},
+		"owner verified":        {[]types.FilterOption{types.WithOwnerVerified()}, []string{marketing, healthcare}},
+		"both verified":         {[]types.FilterOption{types.WithIdentityVerified(), types.WithOwnerVerified()}, []string{marketing}},
+		"verified with subject": {[]types.FilterOption{types.WithOwners("dns:*"), types.WithOwnerVerified()}, []string{healthcare}},
 	}
 
 	for name, tt := range tests {
@@ -233,7 +226,7 @@ func TestCountRecords_IdentityFiltersDoNotDuplicate(t *testing.T) {
 	seedDB(t, db)
 	seedClaims(t, db)
 
-	count, err := db.CountRecords(types.WithIdentities("*"), types.WithOwners("*"), types.WithOwnerVerified(true))
+	count, err := db.CountRecords(types.WithIdentities("*"), types.WithOwners("*"), types.WithOwnerVerified())
 	require.NoError(t, err)
 	assert.Equal(t, uint32(2), count)
 }
