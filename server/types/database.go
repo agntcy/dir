@@ -194,6 +194,10 @@ type IdentityClaimDatabaseAPI interface {
 	// GetIdentityClaimByCID returns the result for a record's claim of the given
 	// role. Returns an error wrapping gorm.ErrIdentityClaimNotFound if none exists.
 	GetIdentityClaimByCID(cid, role string) (IdentityClaimObject, error)
+
+	// DeleteIdentityClaim removes the result for a record's claim of the given
+	// role, e.g. once the claim itself is gone. Not an error if there is none.
+	DeleteIdentityClaim(cid, role string) error
 }
 
 // Scan status values. A row is written for every attempt, so the status is what

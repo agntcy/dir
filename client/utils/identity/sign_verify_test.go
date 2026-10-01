@@ -290,3 +290,32 @@ func TestVerify_RejectsInvalidInput(t *testing.T) {
 		})
 	}
 }
+
+func TestCheck(t *testing.T) {
+	key := testutil.NewKey(t, "ES256")
+
+	claim := &identityv1.Claim{Role: identityv1.ClaimRole_CLAIM_ROLE_IDENTITY, Subject: testSubjectDNS}
+	require.NoError(t, identity.Sign(claim, testRecordCID, keySigner(t, key)))
+
+	// It needs no key: a valid claim passes without any.
+	require.NoError(t, identity.Check(claim, testRecordCID, testSubjectDNS))
+
+	require.ErrorContains(t, identity.Check(nil, testRecordCID, testSubjectDNS), "claim is nil")
+	require.ErrorContains(t, identity.Check(claim, otherRecordCID, testSubjectDNS), "record_cid")
+	require.ErrorContains(t, identity.Check(claim, testRecordCID, testSubjectDID), "does not match")
+	require.ErrorContains(t, identity.Check(claim, testRecordCID, ""), "does not declare")
+
+	expired := time.Now().Add(-time.Hour).UTC().Format(time.RFC3339)
+	claim.ExpiresAt = &expired
+	require.ErrorContains(t, identity.Check(claim, testRecordCID, testSubjectDNS), "expired")
+
+	// It does not look at the signature: a tampered claim still passes Check, and
+	// only Verify rejects it.
+	claim.ExpiresAt = nil
+	claim.Signature = "tampered"
+	require.NoError(t, identity.Check(claim, testRecordCID, testSubjectDNS))
+
+	ok, err := identity.Verify(claim, testRecordCID, testSubjectDNS, key.Public())
+	require.Error(t, err)
+	require.False(t, ok)
+}

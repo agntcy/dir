@@ -9,7 +9,10 @@ import (
 	"testing"
 	"time"
 
+	"github.com/agntcy/dir/reconciler/config"
 	"github.com/agntcy/dir/reconciler/tasks"
+	"github.com/agntcy/dir/reconciler/tasks/identity"
+	servertypes "github.com/agntcy/dir/server/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -138,3 +141,61 @@ func TestStart_ContextCancelStopsTaskLoop(t *testing.T) {
 
 // Ensure mockTask satisfies tasks.Task.
 var _ tasks.Task = (*mockTask)(nil)
+
+// plainStore is a store with no referrer support.
+type plainStore struct{ servertypes.StoreAPI }
+
+// referrerStore is a store that also supports referrers.
+type referrerStore struct {
+	servertypes.StoreAPI
+	servertypes.ReferrerStoreAPI
+}
+
+func TestRegisterIdentityTask(t *testing.T) {
+	enabled := &config.Config{Identity: identity.Config{Enabled: true}}
+
+	t.Run("disabled registers nothing", func(t *testing.T) {
+		s := newTestService()
+		require.NoError(t, s.registerIdentityTask(&config.Config{}, nil, referrerStore{}))
+		assert.Empty(t, s.tasks)
+	})
+
+	t.Run("enabled registers the task", func(t *testing.T) {
+		s := newTestService()
+		require.NoError(t, s.registerIdentityTask(enabled, nil, referrerStore{}))
+
+		require.Len(t, s.tasks, 1)
+		assert.Equal(t, "identity", s.tasks[0].Name())
+		assert.True(t, s.tasks[0].IsEnabled())
+	})
+
+	t.Run("a store without referrers skips it", func(t *testing.T) {
+		s := newTestService()
+		require.NoError(t, s.registerIdentityTask(enabled, nil, plainStore{}))
+		assert.Empty(t, s.tasks)
+	})
+}
+
+// The task is only part of a service the configuration asks for it in.
+func TestRegisterTasks_IdentityIsOffByDefault(t *testing.T) {
+	cfg, err := config.LoadConfig()
+	require.NoError(t, err)
+
+	cfg.Regsync.Enabled, cfg.Indexer.Enabled, cfg.Signature.Enabled, cfg.Metrics.Enabled = false, false, false, false
+
+	s := newTestService()
+	require.NoError(t, s.registerTasks(cfg, nil, referrerStore{}, nil, nil, nil))
+	assert.Empty(t, s.tasks)
+
+	t.Setenv("RECONCILER_IDENTITY_ENABLED", "true")
+
+	cfg, err = config.LoadConfig()
+	require.NoError(t, err)
+
+	cfg.Regsync.Enabled, cfg.Indexer.Enabled, cfg.Signature.Enabled, cfg.Metrics.Enabled = false, false, false, false
+
+	s = newTestService()
+	require.NoError(t, s.registerTasks(cfg, nil, referrerStore{}, nil, nil, nil))
+	require.Len(t, s.tasks, 1)
+	assert.Equal(t, "identity", s.tasks[0].Name())
+}

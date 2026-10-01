@@ -22,30 +22,8 @@ import (
 // or SPIFFE trust-bundle validation of an embedded certificate) is a
 // separate concern, not this package's job.
 func Verify(claim *identityv1.Claim, recordCID, expectedSubject string, keys ...crypto.PublicKey) (bool, error) {
-	if claim == nil {
-		return false, fmt.Errorf("claim is nil")
-	}
-
-	if claim.GetRecordCid() != recordCID {
-		return false, fmt.Errorf("claim's record_cid does not match the record it's attached to")
-	}
-
-	subject := claim.GetSubject()
-
-	if expectedSubject == "" {
-		return false, fmt.Errorf("record does not declare an identity/owner annotation matching this claim")
-	}
-
-	if subject != expectedSubject {
-		return false, fmt.Errorf("claim subject %q does not match record's declared annotation %q", subject, expectedSubject)
-	}
-
-	if expiresAt := claim.GetExpiresAt(); expiresAt != "" {
-		if expiry, err := time.Parse(time.RFC3339, expiresAt); err != nil {
-			return false, fmt.Errorf("invalid claim expiry: %w", err)
-		} else if time.Now().After(expiry) {
-			return false, fmt.Errorf("claim has expired")
-		}
+	if err := Check(claim, recordCID, expectedSubject); err != nil {
+		return false, err
 	}
 
 	payload, err := claim.GetPayload()
@@ -58,4 +36,38 @@ func Verify(claim *identityv1.Claim, recordCID, expectedSubject string, keys ...
 	}
 
 	return true, nil
+}
+
+// Check runs the checks of Verify that need no key: that claim is for
+// recordCID, that its subject is expectedSubject, and that it has not expired.
+// A caller that must look keys up over the network can run it first, so a claim
+// that cannot verify is rejected before any lookup.
+func Check(claim *identityv1.Claim, recordCID, expectedSubject string) error {
+	if claim == nil {
+		return fmt.Errorf("claim is nil")
+	}
+
+	if claim.GetRecordCid() != recordCID {
+		return fmt.Errorf("claim's record_cid does not match the record it's attached to")
+	}
+
+	subject := claim.GetSubject()
+
+	if expectedSubject == "" {
+		return fmt.Errorf("record does not declare an identity/owner annotation matching this claim")
+	}
+
+	if subject != expectedSubject {
+		return fmt.Errorf("claim subject %q does not match record's declared annotation %q", subject, expectedSubject)
+	}
+
+	if expiresAt := claim.GetExpiresAt(); expiresAt != "" {
+		if expiry, err := time.Parse(time.RFC3339, expiresAt); err != nil {
+			return fmt.Errorf("invalid claim expiry: %w", err)
+		} else if time.Now().After(expiry) {
+			return fmt.Errorf("claim has expired")
+		}
+	}
+
+	return nil
 }

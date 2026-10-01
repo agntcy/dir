@@ -19,10 +19,13 @@ require (
 	github.com/agntcy/dir/server v1.7.1
 	github.com/agntcy/dir/utils v1.7.1
 	github.com/csirmazbendeguz/regclient v0.0.0-20260429082137-82ab6d426079
+	github.com/lestrrat-go/jwx/v2 v2.1.7
+	github.com/multiformats/go-multibase v0.3.0
 	github.com/opencontainers/go-digest v1.0.0
 	github.com/opencontainers/image-spec v1.1.1
 	github.com/sigstore/sigstore v1.11.0
 	github.com/spf13/viper v1.21.0
+	github.com/spiffe/go-spiffe/v2 v2.8.2
 	github.com/stretchr/testify v1.12.1
 	google.golang.org/grpc v1.84.0
 	gopkg.in/yaml.v3 v3.0.1
@@ -134,7 +137,6 @@ require (
 	github.com/lestrrat-go/httprc v1.0.6 // indirect
 	github.com/lestrrat-go/httprc/v3 v3.0.5 // indirect
 	github.com/lestrrat-go/iter v1.0.2 // indirect
-	github.com/lestrrat-go/jwx/v2 v2.1.7 // indirect
 	github.com/lestrrat-go/jwx/v3 v3.1.1 // indirect
 	github.com/lestrrat-go/option v1.0.1 // indirect
 	github.com/lestrrat-go/option/v2 v2.0.0 // indirect
@@ -153,7 +155,6 @@ require (
 	github.com/multiformats/go-base32 v0.1.0 // indirect
 	github.com/multiformats/go-base36 v0.2.0 // indirect
 	github.com/multiformats/go-multiaddr v0.16.1 // indirect
-	github.com/multiformats/go-multibase v0.3.0 // indirect
 	github.com/multiformats/go-multicodec v0.10.0 // indirect
 	github.com/multiformats/go-multihash v0.2.3 // indirect
 	github.com/multiformats/go-varint v0.1.0 // indirect
@@ -190,7 +191,6 @@ require (
 	github.com/spf13/cast v1.10.0 // indirect
 	github.com/spf13/cobra v1.10.2 // indirect
 	github.com/spf13/pflag v1.0.10 // indirect
-	github.com/spiffe/go-spiffe/v2 v2.8.2 // indirect
 	github.com/subosito/gotenv v1.6.0 // indirect
 	github.com/syndtr/goleveldb v1.0.1-0.20220721030215-126854af5e6d // indirect
 	github.com/tchap/go-patricia/v2 v2.3.3 // indirect

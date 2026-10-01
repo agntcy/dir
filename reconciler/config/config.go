@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/agntcy/dir/reconciler/tasks/identity"
 	"github.com/agntcy/dir/reconciler/tasks/indexer"
 	"github.com/agntcy/dir/reconciler/tasks/metrics"
 	"github.com/agntcy/dir/reconciler/tasks/name"
@@ -83,6 +84,9 @@ type Config struct {
 
 	// Scan holds the security scan task configuration.
 	Scan scan.Config `json:"scan" mapstructure:"scan"`
+
+	// Identity holds the identity claim verification task configuration.
+	Identity identity.Config `json:"identity" mapstructure:"identity"`
 
 	// Metrics holds the usage-metrics refresh task configuration.
 	Metrics metrics.Config `json:"metrics" mapstructure:"metrics"`
@@ -210,6 +214,20 @@ func LoadConfig() (*Config, error) {
 
 	_ = v.BindEnv("signature.record_timeout")
 	v.SetDefault("signature.record_timeout", signature.DefaultRecordTimeout)
+
+	//
+	// Identity task configuration (identity and ownership claim verification).
+	// The trust bundles for spiffe:// claims are a list, which has no
+	// environment variable form: set identity.spiffe_trust_bundles in YAML.
+	//
+	_ = v.BindEnv("identity.enabled")
+	v.SetDefault("identity.enabled", false)
+
+	_ = v.BindEnv("identity.interval")
+	v.SetDefault("identity.interval", identity.DefaultInterval)
+
+	_ = v.BindEnv("identity.record_timeout")
+	v.SetDefault("identity.record_timeout", identity.DefaultRecordTimeout)
 
 	//
 	// Scan task configuration (security scanning)

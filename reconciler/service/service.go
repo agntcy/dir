@@ -12,6 +12,7 @@ import (
 
 	"github.com/agntcy/dir/reconciler/config"
 	"github.com/agntcy/dir/reconciler/tasks"
+	"github.com/agntcy/dir/reconciler/tasks/identity"
 	"github.com/agntcy/dir/reconciler/tasks/indexer"
 	"github.com/agntcy/dir/reconciler/tasks/metrics"
 	"github.com/agntcy/dir/reconciler/tasks/name"
@@ -116,6 +117,10 @@ func (s *Service) registerTasks(cfg *config.Config, db servertypes.DatabaseAPI, 
 		}
 	}
 
+	if err := s.registerIdentityTask(cfg, db, store); err != nil {
+		return err
+	}
+
 	if cfg.Metrics.Enabled {
 		if counters == nil {
 			logger.Warn("Provider counter not available, skipping metrics task")
@@ -128,6 +133,29 @@ func (s *Service) registerTasks(cfg *config.Config, db servertypes.DatabaseAPI, 
 			s.addTask(t)
 		}
 	}
+
+	return nil
+}
+
+// registerIdentityTask registers the identity claim task when it is enabled.
+func (s *Service) registerIdentityTask(cfg *config.Config, db servertypes.DatabaseAPI, store servertypes.StoreAPI) error {
+	if !cfg.Identity.Enabled {
+		return nil
+	}
+
+	refStore, ok := store.(servertypes.ReferrerStoreAPI)
+	if !ok {
+		logger.Warn("Store does not support referrers, skipping identity task")
+
+		return nil
+	}
+
+	t, err := identity.NewTask(cfg.Identity, db, store, refStore)
+	if err != nil {
+		return fmt.Errorf("failed to create identity task: %w", err)
+	}
+
+	s.addTask(t)
 
 	return nil
 }

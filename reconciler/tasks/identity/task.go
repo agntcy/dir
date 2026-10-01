@@ -1,0 +1,338 @@
+// Copyright AGNTCY Contributors (https://github.com/agntcy)
+// SPDX-License-Identifier: Apache-2.0
+
+// Package identity implements the identity claim reconciler task. It is the only
+// place identity and ownership claims are verified: on every run it looks up the
+// current key material of each claim's subject, checks the claim's signature
+// against it, and stores the outcome for IdentityService and the search filters.
+// A rotated key, an expired certificate or a revoked trust bundle is therefore
+// caught on the next run.
+package identity
+
+import (
+	"context"
+	"encoding/base64"
+	"fmt"
+	"time"
+
+	corev1 "github.com/agntcy/dir/api/core/v1"
+	identityv1 "github.com/agntcy/dir/api/identity/v1"
+	clientidentity "github.com/agntcy/dir/client/utils/identity"
+	spifferesolver "github.com/agntcy/dir/client/utils/identity/resolvers/spiffe"
+	gormdb "github.com/agntcy/dir/server/database/gorm"
+	"github.com/agntcy/dir/server/types"
+	"github.com/agntcy/dir/utils/logging"
+	"github.com/spiffe/go-spiffe/v2/bundle/x509bundle"
+)
+
+var logger = logging.Logger("reconciler/identity")
+
+const (
+	// recordBatchSize is how many records are read from the database at a time.
+	recordBatchSize = 500
+
+	// maxErrorLength caps the failure reason stored with a result.
+	maxErrorLength = 1024
+)
+
+// claimKind is one of the two kinds of claim a record can carry.
+type claimKind struct {
+	role         string               // stored role
+	claimRole    identityv1.ClaimRole // role the claim itself must assert
+	referrerType string               // referrer type the claims are stored under
+	annotation   string               // record annotation declaring the expected subject
+}
+
+var claimKinds = []claimKind{
+	{types.ClaimRoleIdentity, identityv1.ClaimRole_CLAIM_ROLE_IDENTITY, corev1.IdentityClaimReferrerType, corev1.AnnotationKeyIdentity},
+	{types.ClaimRoleOwner, identityv1.ClaimRole_CLAIM_ROLE_OWNER, corev1.OwnershipClaimReferrerType, corev1.AnnotationKeyOwner},
+}
+
+// Task implements the identity claim verification task.
+type Task struct {
+	config   Config
+	db       types.DatabaseAPI
+	store    types.StoreAPI
+	refStore types.ReferrerStoreAPI
+	network  resolverSet
+
+	// batchSize is how many records are read from the database at a time.
+	batchSize int
+}
+
+// NewTask creates a new identity claim verification task.
+func NewTask(config Config, db types.DatabaseAPI, store types.StoreAPI, refStore types.ReferrerStoreAPI) (*Task, error) {
+	return &Task{
+		config:   config,
+		db:       db,
+		store:    store,
+		refStore: refStore,
+		network:  newNetworkResolvers(),
+
+		batchSize: recordBatchSize,
+	}, nil
+}
+
+// Name returns the task name.
+func (t *Task) Name() string {
+	return "identity"
+}
+
+// Interval returns how often this task should run.
+func (t *Task) Interval() time.Duration {
+	return t.config.GetInterval()
+}
+
+// IsEnabled returns whether this task is enabled.
+func (t *Task) IsEnabled() bool {
+	return t.config.Enabled
+}
+
+// Run verifies the claims of every record.
+func (t *Task) Run(ctx context.Context) error {
+	logger.Debug("Running identity claim verification")
+
+	resolvers := t.network
+	resolvers.spiffe = spifferesolver.New(t.loadTrustBundles())
+
+	var verified, failed int
+
+	for offset := 0; ; offset += t.batchSize {
+		records, err := t.db.GetRecords(types.WithLimit(t.batchSize), types.WithOffset(offset))
+		if err != nil {
+			return fmt.Errorf("get records: %w", err)
+		}
+
+		for _, r := range records {
+			if err := ctx.Err(); err != nil {
+				return fmt.Errorf("identity verification interrupted: %w", err)
+			}
+
+			v, f := t.reconcileRecord(ctx, resolvers, r.GetCid())
+			verified += v
+			failed += f
+		}
+
+		if len(records) < t.batchSize {
+			break
+		}
+	}
+
+	logger.Info("Identity claim verification complete", "verified", verified, "failed", failed)
+
+	return nil
+}
+
+// loadTrustBundles reads the configured SPIFFE trust bundles. One that cannot be
+// read is left out, so its trust domain fails closed, rather than failing the run.
+func (t *Task) loadTrustBundles() x509bundle.Source {
+	bundles, err := spifferesolver.LoadBundles(t.config.trustDomains())
+	if err != nil {
+		logger.Error("Failed to load SPIFFE trust bundles; spiffe:// claims will not verify", "error", err)
+
+		return x509bundle.NewSet()
+	}
+
+	return bundles
+}
+
+// reconcileRecord verifies the claims of one record and returns how many of its
+// results are verified and failed. A claim it cannot read leaves the stored
+// result as it was.
+func (t *Task) reconcileRecord(ctx context.Context, resolvers resolverSet, cid string) (int, int) {
+	ctx, cancel := context.WithTimeout(ctx, t.config.GetRecordTimeout())
+	defer cancel()
+
+	var verified, failed int
+
+	var annotations map[string]string
+
+	for _, kind := range claimKinds {
+		claims, err := t.claimsOf(ctx, cid, kind)
+		if err != nil {
+			logger.Warn("Failed to read claims", "cid", cid, "role", kind.role, "error", err)
+
+			continue
+		}
+
+		if len(claims) == 0 {
+			t.dropResult(cid, kind.role)
+
+			continue
+		}
+
+		// The record is only read once it is known to carry a claim.
+		if annotations == nil {
+			annotations, err = t.annotationsOf(ctx, cid)
+			if err != nil {
+				logger.Warn("Failed to read record annotations", "cid", cid, "error", err)
+
+				return verified, failed
+			}
+		}
+
+		result := t.verify(ctx, resolvers, cid, annotations[kind.annotation], claims)
+		result.Role = kind.role
+
+		if err := t.db.UpsertIdentityClaim(result); err != nil {
+			logger.Warn("Failed to store claim result", "cid", cid, "role", kind.role, "error", err)
+
+			continue
+		}
+
+		if result.Status == types.ClaimStatusVerified {
+			verified++
+
+			logger.Info("Claim verified", "cid", cid, "role", kind.role, "subject", result.Subject)
+		} else {
+			failed++
+
+			logger.Info("Claim failed verification", "cid", cid, "role", kind.role, "subject", result.Subject, "error", result.Error)
+		}
+	}
+
+	return verified, failed
+}
+
+// claimsOf returns the claims of one kind attached to a record.
+func (t *Task) claimsOf(ctx context.Context, cid string, kind claimKind) ([]*identityv1.Claim, error) {
+	var claims []*identityv1.Claim
+
+	err := t.refStore.WalkReferrers(ctx, cid, kind.referrerType, func(ref *corev1.RecordReferrer) error {
+		// The store's type filter does not narrow every referrer type down to its own, so
+		// the walk can yield other custom referrers too.
+		if ref.GetType() != kind.referrerType {
+			return nil
+		}
+
+		claim := &identityv1.Claim{}
+		if err := claim.UnmarshalReferrer(ref); err != nil {
+			logger.Debug("Skipping unparsable claim referrer", "cid", cid, "error", err)
+
+			return nil //nolint:nilerr // one bad referrer must not hide the others
+		}
+
+		// A claim signs the role it asserts. One stored under the other kind's
+		// referrer type would otherwise verify against that kind's annotation.
+		if claim.GetRole() != kind.claimRole {
+			logger.Debug("Skipping claim stored under the wrong referrer type", "cid", cid, "role", claim.GetRole())
+
+			return nil
+		}
+
+		claims = append(claims, claim)
+
+		return nil
+	})
+	if err != nil {
+		return nil, fmt.Errorf("walk %s referrers: %w", kind.referrerType, err)
+	}
+
+	return claims, nil
+}
+
+// annotationsOf returns the annotations of a record, read from the store because
+// the database does not hold them with the record.
+func (t *Task) annotationsOf(ctx context.Context, cid string) (map[string]string, error) {
+	record, err := t.store.Pull(ctx, &corev1.RecordRef{Cid: cid})
+	if err != nil {
+		return nil, fmt.Errorf("pull record: %w", err)
+	}
+
+	data, err := record.Decode()
+	if err != nil {
+		return nil, fmt.Errorf("decode record: %w", err)
+	}
+
+	annotations := data.GetAnnotations()
+	if annotations == nil {
+		annotations = map[string]string{}
+	}
+
+	return annotations, nil
+}
+
+// verify checks every claim of one kind against the subject the record declares,
+// and returns the result to store. A claim that verifies decides it, whoever else
+// attached claims to the record. Otherwise the newest claim's failure is the result.
+func (t *Task) verify(ctx context.Context, resolvers resolverSet, cid, expected string, claims []*identityv1.Claim) *gormdb.IdentityClaim {
+	var failure *gormdb.IdentityClaim
+
+	var failedAt string
+
+	for _, claim := range claims {
+		err := t.verifyClaim(ctx, resolvers, cid, expected, claim)
+		if err == nil {
+			return &gormdb.IdentityClaim{
+				RecordCID:  cid,
+				Subject:    claim.GetSubject(),
+				Status:     types.ClaimStatusVerified,
+				VerifiedAt: time.Now(),
+			}
+		}
+
+		if failure == nil || claim.GetSignedAt() > failedAt {
+			failedAt = claim.GetSignedAt()
+			failure = &gormdb.IdentityClaim{
+				RecordCID:  cid,
+				Subject:    claim.GetSubject(),
+				Status:     types.ClaimStatusFailed,
+				Error:      truncate(err.Error()),
+				VerifiedAt: time.Now(),
+			}
+		}
+	}
+
+	return failure
+}
+
+// verifyClaim looks up the current keys of the claim's subject and verifies the
+// claim against them. The checks that need no key come first, so a claim that
+// cannot verify costs no lookup.
+func (t *Task) verifyClaim(ctx context.Context, resolvers resolverSet, cid, expected string, claim *identityv1.Claim) error {
+	if err := clientidentity.Check(claim, cid, expected); err != nil {
+		return fmt.Errorf("check claim: %w", err)
+	}
+
+	resolver, err := resolvers.forSubject(claim.GetSubject())
+	if err != nil {
+		return err
+	}
+
+	var certificate []byte
+
+	if claim.Certificate != nil {
+		certificate, err = base64.StdEncoding.DecodeString(claim.GetCertificate())
+		if err != nil {
+			return fmt.Errorf("decode claim certificate: %w", err)
+		}
+	}
+
+	keys, err := resolver.Resolve(ctx, claim.GetSubject(), certificate)
+	if err != nil {
+		return fmt.Errorf("resolve keys of %s: %w", claim.GetSubject(), err)
+	}
+
+	if _, err := clientidentity.Verify(claim, cid, expected, keys...); err != nil {
+		return fmt.Errorf("verify claim: %w", err)
+	}
+
+	return nil
+}
+
+// dropResult removes the stored result of a claim that is no longer attached to
+// its record, so the record does not keep a verified status for a claim it no
+// longer has.
+func (t *Task) dropResult(cid, role string) {
+	if err := t.db.DeleteIdentityClaim(cid, role); err != nil {
+		logger.Warn("Failed to remove stale claim result", "cid", cid, "role", role, "error", err)
+	}
+}
+
+func truncate(msg string) string {
+	if len(msg) <= maxErrorLength {
+		return msg
+	}
+
+	return msg[:maxErrorLength]
+}

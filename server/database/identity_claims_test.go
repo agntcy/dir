@@ -125,6 +125,30 @@ func TestIdentityClaim_DefaultsVerifiedAt(t *testing.T) {
 	assert.True(t, got.GetVerifiedAt().After(before), "verified_at %v", got.GetVerifiedAt())
 }
 
+func TestIdentityClaim_Delete(t *testing.T) {
+	db := setupTestDB(t)
+	seedDB(t, db)
+	seedClaims(t, db)
+
+	cid := marketingAgent.GetCid()
+
+	require.NoError(t, db.DeleteIdentityClaim(cid, types.ClaimRoleIdentity))
+
+	_, err := db.GetIdentityClaimByCID(cid, types.ClaimRoleIdentity)
+	require.ErrorIs(t, err, gormdb.ErrIdentityClaimNotFound)
+
+	// Only that role of that record goes.
+	_, err = db.GetIdentityClaimByCID(cid, types.ClaimRoleOwner)
+	require.NoError(t, err)
+
+	_, err = db.GetIdentityClaimByCID(healthcareAgent.GetCid(), types.ClaimRoleIdentity)
+	require.NoError(t, err)
+
+	// A result that is not there is not an error.
+	require.NoError(t, db.DeleteIdentityClaim(cid, types.ClaimRoleIdentity))
+	require.NoError(t, db.DeleteIdentityClaim(codeAssistant.GetCid(), types.ClaimRoleOwner))
+}
+
 func TestIdentityClaim_RemovedWithRecord(t *testing.T) {
 	db := setupTestDB(t)
 	seedDB(t, db)

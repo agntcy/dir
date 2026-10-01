@@ -139,6 +139,19 @@ reconciler:
     interval: 1m
     ttl: 168h
     record_timeout: 30s
+  # Verifies the identity and ownership claims pushed with 'dirctl identity claim':
+  # on every run it looks up the current key material of each claim's subject, so a
+  # rotated key or a revoked trust bundle is caught on the next one. Off unless enabled.
+  identity:
+    enabled: true
+    interval: 1m
+    record_timeout: 1m
+    # A spiffe:// claim only verifies against the trust bundle of its trust domain
+    # configured here; with none, spiffe:// claims fail. The files are read on every
+    # run. YAML only.
+    # spiffe_trust_bundles:
+    #   - trust_domain: example.org
+    #     bundle_file: /etc/agntcy/spiffe/example.org.pem
   scan:
     enabled: true
     interval: 1m
