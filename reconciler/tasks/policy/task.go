@@ -105,33 +105,76 @@ func (t *Task) Run(ctx context.Context) error {
 	return errors.Join(errs...)
 }
 
-// runPolicy evaluates the records that need a verdict for one policy.
+// outcomes counts how the verdicts of a run came out.
+type outcomes struct {
+	compliant, nonCompliant, failed int
+}
+
+func (o *outcomes) total() int { return o.compliant + o.nonCompliant + o.failed }
+
+// runPolicy evaluates the records that need a verdict for one policy, a batch
+// at a time, until none is left.
 //
 // The policy version is read once, so every row written in a run carries the
 // version the records were selected under. If the evaluator reloads mid-run,
 // those rows are simply stale next run and re-selected.
+//
+// The version is registered first, so the server learns of a changed policy
+// while the first records are still being evaluated. Batches follow record_cid
+// order, each starting after the last record of the one before: a record whose
+// evaluation failed is selected again by the next run, not by the next batch
+// of this one.
 func (t *Task) runPolicy(ctx context.Context, ev Evaluator) error {
 	policyID, policyVersion := ev.PolicyID(), ev.PolicyVersion()
 
-	records, err := t.db.GetRecordsNeedingPolicyEvaluation(policyID, policyVersion)
-	if err != nil {
-		return fmt.Errorf("select records for policy %q: %w", policyID, err)
+	if err := t.db.RegisterPolicyVersion(policyID, policyVersion); err != nil {
+		return fmt.Errorf("register version of policy %q: %w", policyID, err)
 	}
 
-	if len(records) == 0 {
+	var (
+		out   outcomes
+		after string
+	)
+
+	for {
+		records, err := t.db.GetRecordsNeedingPolicyEvaluation(policyID, policyVersion, after, t.config.GetBatchSize())
+		if err != nil {
+			return fmt.Errorf("select records for policy %q: %w", policyID, err)
+		}
+
+		if len(records) == 0 {
+			break
+		}
+
+		logger.Debug("Evaluating a batch of records",
+			"policy_id", policyID, "policy_version", policyVersion, "batch", len(records), "after", after)
+
+		if err := t.evaluateBatch(ctx, ev, policyID, policyVersion, records, &out); err != nil {
+			return err
+		}
+
+		after = records[len(records)-1].GetCid()
+	}
+
+	if out.total() == 0 {
 		logger.Debug("No records need policy evaluation", "policy_id", policyID, "policy_version", policyVersion)
 
 		return nil
 	}
 
-	// The per-run count is the backfill progress signal: it falls to zero
-	// once every record has a verdict under the current version.
-	logger.Info("Processing records for policy evaluation",
-		"policy_id", policyID, "policy_version", policyVersion, "count", len(records))
+	// The per-run total is the backfill progress signal: a run that evaluates
+	// nothing means every record has a verdict under the current version.
+	logger.Info("Policy evaluation complete",
+		"policy_id", policyID, "policy_version", policyVersion,
+		"compliant", out.compliant, "non_compliant", out.nonCompliant, "failed", out.failed)
 
-	var compliant, nonCompliant, failed int
+	return nil
+}
 
-	for i, record := range records {
+// evaluateBatch evaluates and stores a verdict for each record of one batch,
+// counting how each came out in out.
+func (t *Task) evaluateBatch(ctx context.Context, ev Evaluator, policyID, policyVersion string, records []coretypes.Record, out *outcomes) error {
+	for _, record := range records {
 		row, evalErr := t.evaluateRecord(ctx, ev, policyID, policyVersion, record)
 
 		// On shutdown the evaluator reports the cancellation, which says
@@ -139,7 +182,7 @@ func (t *Task) runPolicy(ctx context.Context, ev Evaluator) error {
 		// next run.
 		if ctx.Err() != nil {
 			logger.Info("Policy evaluation interrupted",
-				"policy_id", policyID, "policy_version", policyVersion, "remaining", len(records)-i)
+				"policy_id", policyID, "policy_version", policyVersion, "evaluated", out.total())
 
 			return fmt.Errorf("policy %q evaluation interrupted: %w", policyID, ctx.Err())
 		}
@@ -151,24 +194,20 @@ func (t *Task) runPolicy(ctx context.Context, ev Evaluator) error {
 		if err := t.db.UpsertPolicyEvaluation(row); err != nil {
 			logger.Warn("Failed to store policy evaluation", "policy_id", policyID, "record_cid", row.RecordCID, "error", err)
 
-			failed++
+			out.failed++
 
 			continue
 		}
 
 		switch {
 		case row.Status == types.PolicyEvalStatusFailed:
-			failed++
+			out.failed++
 		case row.Compliant:
-			compliant++
+			out.compliant++
 		default:
-			nonCompliant++
+			out.nonCompliant++
 		}
 	}
-
-	logger.Info("Policy evaluation complete",
-		"policy_id", policyID, "policy_version", policyVersion,
-		"compliant", compliant, "non_compliant", nonCompliant, "failed", failed)
 
 	return nil
 }

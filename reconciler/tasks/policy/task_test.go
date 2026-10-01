@@ -6,6 +6,9 @@ package policy
 import (
 	"context"
 	"errors"
+	"fmt"
+	"slices"
+	"strings"
 	"testing"
 	"time"
 
@@ -30,26 +33,67 @@ func (r *fakeRecord) GetCid() string { return r.cid }
 type fakeDB struct {
 	types.DatabaseAPI
 
-	records   map[string][]coretypes.Record // keyed by policy ID
-	selectErr map[string]error              // keyed by policy ID
-	upsertErr func(*gormdb.PolicyEvaluation) error
+	records     map[string][]coretypes.Record // keyed by policy ID
+	selectErr   map[string]error              // keyed by policy ID
+	upsertErr   func(*gormdb.PolicyEvaluation) error
+	registerErr error
 
 	selectedVersions map[string]string
+	selections       []selection
+	registered       []string // "policyID@version", in order
 	stored           []*gormdb.PolicyEvaluation
 }
 
-func (f *fakeDB) GetRecordsNeedingPolicyEvaluation(policyID, policyVersion string) ([]coretypes.Record, error) {
+// selection is one call to GetRecordsNeedingPolicyEvaluation.
+type selection struct {
+	policyID, version, after string
+	limit                    int
+}
+
+// GetRecordsNeedingPolicyEvaluation pages like the real query: records in
+// record_cid order, after the one given, at most limit of them. Records stay
+// in the table once evaluated, as the fake knows nothing of verdicts, so a
+// task that ignores the cursor sees them again.
+func (f *fakeDB) GetRecordsNeedingPolicyEvaluation(policyID, policyVersion, after string, limit int) ([]coretypes.Record, error) {
 	if f.selectedVersions == nil {
 		f.selectedVersions = make(map[string]string)
 	}
 
 	f.selectedVersions[policyID] = policyVersion
+	f.selections = append(f.selections, selection{policyID: policyID, version: policyVersion, after: after, limit: limit})
 
 	if err := f.selectErr[policyID]; err != nil {
 		return nil, err
 	}
 
-	return f.records[policyID], nil
+	ordered := slices.Clone(f.records[policyID])
+	slices.SortFunc(ordered, func(a, b coretypes.Record) int { return strings.Compare(a.GetCid(), b.GetCid()) })
+
+	var page []coretypes.Record
+
+	for _, record := range ordered {
+		if record.GetCid() <= after {
+			continue
+		}
+
+		page = append(page, record)
+
+		if limit > 0 && len(page) == limit {
+			break
+		}
+	}
+
+	return page, nil
+}
+
+func (f *fakeDB) RegisterPolicyVersion(policyID, policyVersion string) error {
+	if f.registerErr != nil {
+		return f.registerErr
+	}
+
+	f.registered = append(f.registered, policyID+"@"+policyVersion)
+
+	return nil
 }
 
 func (f *fakeDB) UpsertPolicyEvaluation(eval types.PolicyEvaluationObject) error {
@@ -367,4 +411,128 @@ func TestRun_NoRecordsNeedEvaluation(t *testing.T) {
 
 	assert.Empty(t, db.stored)
 	assert.Zero(t, ev.calls)
+}
+
+func cidsFor(prefix string, n int) []string {
+	cids := make([]string, 0, n)
+	for i := range n {
+		cids = append(cids, fmt.Sprintf("%s-%03d", prefix, i))
+	}
+
+	return cids
+}
+
+func allVerdictsPass(context.Context, coretypes.Record) (bool, string, error) { return true, "", nil }
+
+// Records are fetched and evaluated a batch at a time, each batch starting
+// after the last record of the one before, until none is left: every record
+// gets exactly one verdict, however many batches that takes.
+func TestRun_EvaluatesInBatches(t *testing.T) {
+	t.Parallel()
+
+	cids := cidsFor("cid", 7)
+	db := &fakeDB{records: map[string][]coretypes.Record{"opa:a": records(cids...)}}
+	ev := &fakeEvaluator{id: "opa:a", version: "v1", evaluate: allVerdictsPass}
+
+	task, err := NewTask(Config{Enabled: true, BatchSize: 3}, db, ev)
+	require.NoError(t, err)
+	require.NoError(t, task.Run(t.Context()))
+
+	assert.Equal(t, 7, ev.calls)
+	require.Len(t, db.stored, 7)
+
+	assert.Equal(t, []selection{
+		{"opa:a", "v1", "", 3},
+		{"opa:a", "v1", "cid-002", 3},
+		{"opa:a", "v1", "cid-005", 3},
+		{"opa:a", "v1", "cid-006", 3},
+	}, db.selections)
+}
+
+// A record whose evaluation failed is selected again by the next run, not by
+// the next batch of this one: otherwise a record that keeps failing would
+// keep a run going for ever.
+func TestRun_AFailingRecordDoesNotKeepARunGoing(t *testing.T) {
+	t.Parallel()
+
+	db := &fakeDB{records: map[string][]coretypes.Record{"opa:a": records("cid-a", "cid-b", "cid-c")}}
+	ev := &fakeEvaluator{id: "opa:a", version: "v1", evaluate: func(context.Context, coretypes.Record) (bool, string, error) {
+		return false, "", errors.New("engine down")
+	}}
+
+	task, err := NewTask(Config{Enabled: true, BatchSize: 1}, db, ev)
+	require.NoError(t, err)
+	require.NoError(t, task.Run(t.Context()))
+
+	assert.Equal(t, 3, ev.calls, "each record is tried once in a run")
+}
+
+func TestRun_DefaultBatchSize(t *testing.T) {
+	t.Parallel()
+
+	db := &fakeDB{records: map[string][]coretypes.Record{"opa:a": records("cid-a")}}
+	ev := &fakeEvaluator{id: "opa:a", version: "v1", evaluate: allVerdictsPass}
+
+	task, err := NewTask(Config{Enabled: true}, db, ev)
+	require.NoError(t, err)
+	require.NoError(t, task.Run(t.Context()))
+
+	require.NotEmpty(t, db.selections)
+	assert.Equal(t, DefaultBatchSize, db.selections[0].limit)
+}
+
+// The server follows the version the evaluator registers, so it is registered
+// every run, before any record is evaluated, even when no record needs one.
+func TestRun_RegistersTheVersionFirst(t *testing.T) {
+	t.Parallel()
+
+	db := &fakeDB{}
+	ev := &fakeEvaluator{id: "opa:a", version: "v7", evaluate: allVerdictsPass}
+
+	task, err := NewTask(Config{Enabled: true}, db, ev)
+	require.NoError(t, err)
+	require.NoError(t, task.Run(t.Context()))
+
+	assert.Equal(t, []string{"opa:a@v7"}, db.registered)
+	assert.Zero(t, ev.calls)
+}
+
+// If the version cannot be registered the server cannot follow the policy, so
+// no record is evaluated under it.
+func TestRun_RegistrationFailureStopsThePolicy(t *testing.T) {
+	t.Parallel()
+
+	db := &fakeDB{registerErr: errors.New("database unavailable"), records: map[string][]coretypes.Record{"opa:a": records("cid-a")}}
+	ev := &fakeEvaluator{id: "opa:a", version: "v1", evaluate: allVerdictsPass}
+
+	task, err := NewTask(Config{Enabled: true}, db, ev)
+	require.NoError(t, err)
+	require.ErrorContains(t, task.Run(t.Context()), "register version of policy")
+
+	assert.Zero(t, ev.calls)
+	assert.Empty(t, db.stored)
+}
+
+// Shutting down between batches stores nothing for the batches not started.
+func TestRun_ShutdownBetweenBatches(t *testing.T) {
+	t.Parallel()
+
+	ctx, cancel := context.WithCancel(t.Context())
+	defer cancel()
+
+	db := &fakeDB{records: map[string][]coretypes.Record{"opa:a": records("cid-a", "cid-b", "cid-c", "cid-d")}}
+	ev := &fakeEvaluator{id: "opa:a", version: "v1"}
+	ev.evaluate = func(_ context.Context, r coretypes.Record) (bool, string, error) {
+		if r.GetCid() == "cid-c" {
+			cancel()
+		}
+
+		return true, "", nil
+	}
+
+	task, err := NewTask(Config{Enabled: true, BatchSize: 2}, db, ev)
+	require.NoError(t, err)
+	require.ErrorIs(t, task.Run(ctx), context.Canceled)
+
+	assert.Len(t, db.stored, 2, "only the first batch was stored")
 }

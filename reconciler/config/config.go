@@ -259,6 +259,9 @@ func LoadConfig() (*Config, error) {
 	_ = v.BindEnv("policy_evaluation.record_timeout")
 	v.SetDefault("policy_evaluation.record_timeout", policytask.DefaultRecordTimeout)
 
+	_ = v.BindEnv("policy_evaluation.batch_size")
+	v.SetDefault("policy_evaluation.batch_size", policytask.DefaultBatchSize)
+
 	//
 	// Server address (used by the metrics task in standalone mode)
 	//

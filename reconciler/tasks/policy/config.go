@@ -17,6 +17,12 @@ const (
 	// DefaultRecordTimeout is the default timeout for evaluating one record
 	// against one policy.
 	DefaultRecordTimeout = 30 * time.Second
+
+	// DefaultBatchSize is the default number of records fetched and
+	// evaluated at a time. It bounds what a run holds in memory, not how long
+	// a run lasts: a run continues, a batch after another, until no record
+	// needs a verdict.
+	DefaultBatchSize = 500
 )
 
 // Config holds the configuration for the policy evaluation reconciliation task.
@@ -29,6 +35,9 @@ type Config struct {
 
 	// RecordTimeout is the timeout for evaluating one record against one policy.
 	RecordTimeout time.Duration `json:"record_timeout,omitempty" mapstructure:"record_timeout"`
+
+	// BatchSize is how many records are fetched and evaluated at a time.
+	BatchSize int `json:"batch_size,omitempty" mapstructure:"batch_size"`
 }
 
 // GetInterval returns the interval with default fallback.
@@ -47,4 +56,13 @@ func (c *Config) GetRecordTimeout() time.Duration {
 	}
 
 	return c.RecordTimeout
+}
+
+// GetBatchSize returns the batch size with default fallback.
+func (c *Config) GetBatchSize() int {
+	if c.BatchSize <= 0 {
+		return DefaultBatchSize
+	}
+
+	return c.BatchSize
 }
