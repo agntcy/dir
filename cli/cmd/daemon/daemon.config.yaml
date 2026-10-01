@@ -171,7 +171,7 @@ reconciler:
   # Evaluates records against content policies and stores the verdicts read
   # paths filter on. Off: no policy evaluator is implemented yet, so enabling
   # it only logs that the task will not run.
-  policy:
+  policy_evaluation:
     enabled: false
     interval: 1m
     record_timeout: 30s

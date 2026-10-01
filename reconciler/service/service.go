@@ -119,12 +119,13 @@ func (s *Service) registerTasks(cfg *config.Config, db servertypes.DatabaseAPI, 
 		}
 	}
 
-	return s.registerPolicyTask(cfg.Policy, db)
+	return s.registerPolicyTask(cfg.PolicyEvaluation, db)
 }
 
 // registerPolicyTask adds the policy evaluation task when it is enabled. No
 // policy evaluator is implemented yet, so the task is registered disabled and
-// the reason logged, rather than policy.enabled being silently ignored.
+// the reason logged, rather than policy_evaluation.enabled being silently
+// ignored.
 func (s *Service) registerPolicyTask(cfg policy.Config, db servertypes.DatabaseAPI) error {
 	if !cfg.Enabled {
 		return nil

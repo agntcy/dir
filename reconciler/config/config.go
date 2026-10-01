@@ -12,7 +12,7 @@ import (
 	"github.com/agntcy/dir/reconciler/tasks/identity"
 	"github.com/agntcy/dir/reconciler/tasks/indexer"
 	"github.com/agntcy/dir/reconciler/tasks/metrics"
-	"github.com/agntcy/dir/reconciler/tasks/policy"
+	policytask "github.com/agntcy/dir/reconciler/tasks/policy"
 	"github.com/agntcy/dir/reconciler/tasks/regsync"
 	"github.com/agntcy/dir/reconciler/tasks/scan"
 	"github.com/agntcy/dir/reconciler/tasks/signature"
@@ -87,8 +87,9 @@ type Config struct {
 	// Metrics holds the usage-metrics refresh task configuration.
 	Metrics metrics.Config `json:"metrics" mapstructure:"metrics"`
 
-	// Policy holds the policy evaluation task configuration.
-	Policy policy.Config `json:"policy" mapstructure:"policy"`
+	// PolicyEvaluation holds the policy evaluation task configuration. It is
+	// not under policy, which is the policy directory the server uses too.
+	PolicyEvaluation policytask.Config `json:"policy_evaluation" mapstructure:"policy_evaluation"`
 }
 
 // LoadConfig loads the configuration from file and environment variables.
@@ -247,16 +248,16 @@ func LoadConfig() (*Config, error) {
 	v.SetDefault("metrics.interval", metrics.DefaultInterval)
 
 	//
-	// Policy task configuration (content-policy verdicts)
+	// Policy evaluation task configuration (content-policy verdicts)
 	//
-	_ = v.BindEnv("policy.enabled")
-	v.SetDefault("policy.enabled", false)
+	_ = v.BindEnv("policy_evaluation.enabled")
+	v.SetDefault("policy_evaluation.enabled", false)
 
-	_ = v.BindEnv("policy.interval")
-	v.SetDefault("policy.interval", policy.DefaultInterval)
+	_ = v.BindEnv("policy_evaluation.interval")
+	v.SetDefault("policy_evaluation.interval", policytask.DefaultInterval)
 
-	_ = v.BindEnv("policy.record_timeout")
-	v.SetDefault("policy.record_timeout", policy.DefaultRecordTimeout)
+	_ = v.BindEnv("policy_evaluation.record_timeout")
+	v.SetDefault("policy_evaluation.record_timeout", policytask.DefaultRecordTimeout)
 
 	//
 	// Server address (used by the metrics task in standalone mode)
