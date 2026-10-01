@@ -2713,8 +2713,15 @@ Validation is performed using the <a href="https://docs.agntcy.org/oasf/oasf-sdk
 <span class="w">    </span><span class="nt">op</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="s">&quot;push&quot;</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="s">&quot;autosync&quot;</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="s">&quot;index&quot;</span><span class="p p-Indicator">]</span>
 <span class="w">    </span><span class="nt">config</span><span class="p">:</span>
 <span class="w">      </span><span class="nt">schema_url</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;https://schema.oasf.outshift.com&quot;</span>
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">provider</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">opa</span>
+<span class="w">    </span><span class="nt">op</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="s">&quot;push&quot;</span><span class="p p-Indicator">]</span>
+<span class="w">    </span><span class="nt">config</span><span class="p">:</span>
+<span class="w">      </span><span class="nt">file</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;require-annotations.rego&quot;</span>
 <span class="nt">listen_address</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;0.0.0.0:8888&quot;</span>
+<span class="nt">policy</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">dir</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;/etc/agntcy/dir/policies&quot;</span>
 </code></pre></div>
+<p><code>opa</code> loads a single <code>.rego</code> file from <code>policy.dir</code>. Helm mounts those files from the top-level <code>policies</code> map. The query is <code>&lt;package&gt;.allow</code>; a deny rejects the record.</p>
 <div class="admonition note">
 <p class="admonition-title">Note</p>
 <p>The Go server binary does not set a default validator list in code.
