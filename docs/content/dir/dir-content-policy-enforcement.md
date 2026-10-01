@@ -6,7 +6,7 @@ icon: material/shield-check-outline
 
 A Directory node can refuse to return records that do not comply with its content policies. Each node enforces its own policies for its own users: what a peer shows its users is decided by the peer's policies.
 
-The reconciler's policy task evaluates every record against each policy and stores a verdict per record. The server applies those verdicts on reads. A record is returned only if it has a passing verdict, under the version in force, for every enforced policy. A record never evaluated, or whose evaluation failed, is not returned. A search leaves an excluded record out. A read of it by CID is refused with `PermissionDenied`, which tells the caller the node withholds the record under its content policy, without saying which policy or why; the [audit service](#auditing-excluded-records) has the detail. The gate answers from the index, so a CID the node does not hold is refused the same way, and the refusal does not say which CIDs the node holds.
+The reconciler's policy task evaluates every record against each policy and stores a verdict per record. The server applies those verdicts on reads. A record is returned only if it has a passing verdict, under the current version of the policy, for every enforced policy. A record never evaluated, or whose evaluation failed, is not returned. A search leaves an excluded record out. A read of it by CID is refused with `PermissionDenied`, which tells the caller the node withholds the record under its content policy, without saying which policy or why; the [audit service](#auditing-excluded-records) has the detail. The gate answers from the index, so a CID the node does not hold is refused the same way, and the refusal does not say which CIDs the node holds.
 
 !!! note
     The server side is complete, but no policy evaluator ships with Directory yet, so no verdicts are produced. Follow this guide once an evaluator is registered in the reconciler.
@@ -27,10 +27,11 @@ policy:
     search: "off"     # off | shadow | enforce
     fetch: "off"      # off | shadow | enforce
     policies:
-      - id: "opa:require-license"
-        version: "v1"
+      - "opa:require-license"
     refresh_interval: 30s
 ```
+
+`policies` lists policy IDs only. A policy's version comes from its content: the reconciler registers the version of each policy it runs, and the server follows it, rechecking every `refresh_interval`. Nobody states a version, so an edit to a policy needs no change to this configuration. The IDs can also be set from the environment, comma-separated.
 
 Each kind of read has its own mode, so enforcement can be rolled out one kind at a time:
 
@@ -45,13 +46,13 @@ Each kind of read has its own mode, so enforcement can be rolled out one kind at
 | `shadow` | Each read is checked and what it would exclude is reported, but nothing is excluded. |
 | `enforce` | Searches leave out records not complying with every policy, and reads of them by CID are refused with `PermissionDenied`. |
 
-The settings are read at startup: restart the server after changing them.
+The modes and the policy list are read at startup: restart the server after changing them.
 
 ## Metrics
 
 | Metric | Meaning |
 |---|---|
-| `dir_policy_gate_policy_backfilled{policy_id, version}` | 1 once the configured version has a verdict for every indexed record and is enforced, 0 until then. |
+| `dir_policy_gate_records_unevaluated{policy_id, version}` | Indexed records with no verdict yet under the policy's current version. Enforcing reads hide them. It is the size of the blackout after an edit, and what remains before a new policy is first enforced. |
 | `dir_policy_gate_search_records_excluded{outcome}` | Indexed records searches exclude, counted at each scrape. |
 | `dir_policy_gate_fetches_excluded_total{outcome}` | Reads by CID the policies refused. |
 
@@ -59,36 +60,28 @@ The settings are read at startup: restart the server after changing them.
 
 ## Turning Enforcement On
 
-1. Add the policy and set both modes to `shadow`.
-2. Wait for `dir_policy_gate_policy_backfilled` to reach 1 for the policy. Until every indexed record has a verdict under its version, the policy is not enforced, so turning it on does not hide the records not yet evaluated.
+1. Add the policy ID and set both modes to `shadow`.
+2. Wait for `dir_policy_gate_records_unevaluated` to reach 0 for the policy. A policy added for the first time is enforced only once every indexed record has a verdict, so adding it does not hide the records not yet evaluated. Until then it is reported as pending and reads are as they were.
 3. Read the `would_exclude` series. Use the [audit service](#auditing-excluded-records) to see which records would be excluded and why.
 4. Set `search` to `enforce` and watch the `excluded` series. Searches have the smaller blast radius: a record hidden by mistake can still be fetched by CID.
 5. Set `fetch` to `enforce`. A caller that fetches an excluded record by CID then gets `PermissionDenied`, and so does one that fetches a CID the node does not hold: the refusal does not say which CIDs it holds.
 
-## Bumping a Policy Version
+## Editing a Policy
 
-A record keeps one verdict per policy, and each re-evaluation replaces it. Follow this order:
+Edit the policy file and deploy it. The reconciler registers the new version and starts evaluating records under it, and the server enforces the new version as soon as it sees it, within `refresh_interval`.
 
-1. On the server, set the new `version` and move the old one to `previous_version`:
+A verdict reached under the previous version no longer counts. Every record is therefore hidden until it has been evaluated under the new rule, so nothing the new rule rejects is served while that happens. This is deliberate: content already delivered to users cannot be recalled, and a policy is usually tightened because something harmful was found. The cost is that records disappear for as long as the re-evaluation takes.
 
-    ```yaml
-    policies:
-      - id: "opa:require-license"
-        version: "v2"
-        previous_version: "v1"
-    ```
+- Watch `dir_policy_gate_records_unevaluated`: it is the number of records still hidden for want of a verdict, and falls to 0 when the re-evaluation is done.
+- Re-evaluation is not throttled: a run continues, a batch after another, until no record is left. `policy_evaluation.batch_size` bounds the memory of a run, not its length.
+- A record published meanwhile is hidden until it has a verdict too.
+- A policy that wrongly rejects records hides them until it is fixed and the records are evaluated again. Nothing is deleted. Review policies like code, and try a change on a node that does not serve users first.
 
-2. Upgrade the evaluator to the new version.
-3. Wait for `dir_policy_gate_policy_backfilled{version="v2"}` to reach 1. Meanwhile a verdict under either version counts: a record not yet re-evaluated keeps its `v1` verdict, and one re-evaluated is judged by `v2`.
-4. Remove `previous_version`.
-
-Do step 1 before step 2. If the evaluator starts on `v2` while the server only accepts `v1`, each re-evaluated record loses its `v1` verdict and disappears until the server is updated.
-
-Once a version's verdicts cover every record, the server records it and keeps enforcing that version. Records indexed later are excluded until evaluated, as any record without a verdict is.
+Switching the mode to `shadow` for the duration of an edit stops enforcing: the policy's whole effect, including records it should keep hidden, is lifted until you switch back.
 
 ## Rolling Back
 
-Set the affected mode back to `shadow` or `off` and restart the server. Verdicts are kept, so enforcing again later needs no re-evaluation.
+Set the affected mode back to `shadow` or `off` and restart the server. Verdicts are kept. Reverting a policy file is an edit like any other: its records are hidden until they are evaluated under the restored rule.
 
 ## Auditing Excluded Records
 
