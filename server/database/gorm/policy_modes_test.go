@@ -198,3 +198,51 @@ func TestCountRecordsExcluded_Empty(t *testing.T) {
 	require.NoError(t, err)
 	assert.Zero(t, excluded)
 }
+
+// ListRecordsExcluded pages through what CountRecordsExcluded counts, in CID
+// order.
+func TestListRecordsExcluded(t *testing.T) {
+	t.Parallel()
+
+	_, served := seedModeRecords(t, policyconfig.ModeEnforce, policyconfig.ModeEnforce, nil)
+	policies := []types.EnforcedPolicy{policyA}
+
+	// gateBad and gateNone, in CID order.
+	excluded := []string{gateBad, gateNone}
+
+	tests := []struct {
+		name          string
+		limit, offset int
+		want          []string
+	}{
+		{"all", 0, 0, excluded},
+		{"first page", 1, 0, excluded[:1]},
+		{"second page", 1, 1, excluded[1:]},
+		{"offset without limit", 0, 1, excluded[1:]},
+		{"past the end", 5, 2, []string{}},
+	}
+
+	// One connection: each new connection to an in-memory SQLite database
+	// opens an empty one, so the cases share this test rather than run as
+	// parallel subtests.
+	for _, tt := range tests {
+		cids, err := served.ListRecordsExcluded(policies, tt.limit, tt.offset)
+		require.NoError(t, err, tt.name)
+		assert.Equal(t, tt.want, cids, tt.name)
+	}
+}
+
+// IsRecordCompliant answers for the policies it is given, whatever the view
+// enforces, so an auditor can ask about a record a fetch would not return.
+func TestIsRecordCompliant(t *testing.T) {
+	t.Parallel()
+
+	_, served := seedModeRecords(t, policyconfig.ModeOff, policyconfig.ModeOff, nil)
+	policies := []types.EnforcedPolicy{policyA}
+
+	for cid, want := range map[string]bool{gateOK: true, gateBad: false, gateNone: false, gateStale: false} {
+		compliant, err := served.IsRecordCompliant(cid, policies)
+		require.NoError(t, err)
+		assert.Equal(t, want, compliant, cid)
+	}
+}

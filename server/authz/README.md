@@ -27,13 +27,21 @@ The authorization system evaluates policies using both `keyMatch` (for prefix pa
 
 A SPIFFE ID subject matches exactly, or by a prefix ending in `*` (`spiffe://partner.org/ns/dir/*`). It is never treated as a regular expression: an unanchored one would let `spiffe://partner.org/ns/dir/sa/dir` match `spiffe://partner.org/ns/dir/sa/dirctl` too.
 
-#### Registry Credentials
+#### Methods Granted Only by SPIFFE ID
 
-`/agntcy.dir.store.v1.SyncService/RequestRegistryCredentials` hands out the registry password, which reads every record straight from the registry without passing through the server. Only a rule whose subject is a SPIFFE ID grants it; a trust-domain rule, `*` included, never does. Name the peer nodes allowed to sync from this one:
+Some methods read records without passing through the server's content-policy gate. Only a rule whose subject is a SPIFFE ID grants them; a trust-domain rule, `*` included, never does:
 
-```
-p,spiffe://partner.org/ns/dir/sa/dir-apiserver,/agntcy.dir.store.v1.SyncService/RequestRegistryCredentials
-```
+- `/agntcy.dir.store.v1.SyncService/RequestRegistryCredentials` hands out the registry password, which reads every record straight from the registry. Name the peer nodes allowed to sync from this one:
+
+  ```
+  p,spiffe://partner.org/ns/dir/sa/dir-apiserver,/agntcy.dir.store.v1.SyncService/RequestRegistryCredentials
+  ```
+
+- `/agntcy.dir.policy.v1.PolicyAuditService/*` returns the records the enforced content policies exclude, and is audit-logged. Name the auditors:
+
+  ```
+  p,spiffe://example.org/ns/dir/sa/auditor,/agntcy.dir.policy.v1.PolicyAuditService/*
+  ```
 
 #### Common Policy Examples
 

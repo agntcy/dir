@@ -272,7 +272,7 @@ func New(ctx context.Context, cfg *config.Config, opts ...ServerOption) (*Server
 	// The APIs read through servedDB, which applies the enforced content
 	// policies; ingestion and the reconciler use databaseAPI, which applies
 	// none.
-	databaseAPI, servedDB, err := openDatabase(cfg, o.database, metricsServer)
+	databaseAPI, servedDB, enforced, err := openDatabase(cfg, o.database, metricsServer)
 	if err != nil {
 		return nil, err
 	}
@@ -335,6 +335,7 @@ func New(ctx context.Context, cfg *config.Config, opts ...ServerOption) (*Server
 	gwExtractor, aiFinderOpts := resolveGatewayExtractor(cfg)
 
 	catalogv1.RegisterAIFinderServiceServer(grpcServer, controller.NewAIFinderController(routingAPI.GetPeerID(), servedDB, cfg.HTTPGateway, storeAPI, aiFinderOpts...))
+	registerPolicyAudit(grpcServer, cfg.Authz.Enabled, databaseAPI, storeAPI, enforced)
 
 	// Register health service
 	healthChecker.Register(grpcServer)

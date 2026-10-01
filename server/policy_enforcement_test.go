@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	policyv1 "github.com/agntcy/dir/api/policy/v1"
 	"github.com/agntcy/dir/server/config"
 	dbconfig "github.com/agntcy/dir/server/database/config"
 	gormdb "github.com/agntcy/dir/server/database/gorm"
@@ -16,6 +17,7 @@ import (
 	"github.com/glebarez/sqlite"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/grpc"
 	"gorm.io/gorm"
 )
 
@@ -39,7 +41,7 @@ func TestServedDatabase_OffServesTheDatabaseItself(t *testing.T) {
 
 	db := newTestDatabase(t)
 
-	served, err := servedDatabase(db, policyconfig.EnforcementConfig{Policies: enforcedA}, true, nil)
+	served, _, err := servedDatabase(db, policyconfig.EnforcementConfig{Policies: enforcedA}, true, nil)
 	require.NoError(t, err)
 	assert.Same(t, db, served)
 }
@@ -54,7 +56,7 @@ func TestServedDatabase_CheckedModeServesAGatedView(t *testing.T) {
 
 	metricsServer := metrics.New("127.0.0.1:0")
 
-	served, err := servedDatabase(db, policyconfig.EnforcementConfig{Fetch: policyconfig.ModeEnforce, Policies: enforcedA}, true, metricsServer)
+	served, _, err := servedDatabase(db, policyconfig.EnforcementConfig{Fetch: policyconfig.ModeEnforce, Policies: enforcedA}, true, metricsServer)
 	require.NoError(t, err)
 	assert.NotSame(t, db, served)
 
@@ -84,10 +86,10 @@ func TestServedDatabase_RefusesWhatItCannotEnforce(t *testing.T) {
 
 	var notGorm types.DatabaseAPI
 
-	_, err := servedDatabase(notGorm, policyconfig.EnforcementConfig{Search: policyconfig.ModeShadow, Policies: enforcedA}, true, nil)
+	_, _, err := servedDatabase(notGorm, policyconfig.EnforcementConfig{Search: policyconfig.ModeShadow, Policies: enforcedA}, true, nil)
 	require.ErrorContains(t, err, "cannot enforce content policies")
 
-	_, err = servedDatabase(newTestDatabase(t), policyconfig.EnforcementConfig{Search: policyconfig.ModeEnforce}, true, nil)
+	_, _, err = servedDatabase(newTestDatabase(t), policyconfig.EnforcementConfig{Search: policyconfig.ModeEnforce}, true, nil)
 	require.ErrorContains(t, err, "invalid policy enforcement config")
 }
 
@@ -100,20 +102,20 @@ func TestOpenDatabase_OpensTheConfiguredDatabase(t *testing.T) {
 	cfg.Database = dbconfig.Config{Type: "sqlite", SQLite: dbconfig.SQLiteConfig{Path: filepath.Join(t.TempDir(), "dir.db")}}
 	cfg.Policy.Enforcement = policyconfig.EnforcementConfig{Fetch: policyconfig.ModeEnforce, Policies: enforcedA}
 
-	db, served, err := openDatabase(cfg, nil, nil)
+	db, served, _, err := openDatabase(cfg, nil, nil)
 	require.NoError(t, err)
 	require.IsType(t, &gormdb.DB{}, db)
 	assert.NotSame(t, db, served)
 
 	given := newTestDatabase(t)
 
-	db, _, err = openDatabase(cfg, given, nil)
+	db, _, _, err = openDatabase(cfg, given, nil)
 	require.NoError(t, err)
 	assert.Same(t, given, db, "a database handed in is used as is")
 
 	cfg.Database.Type = "unknown"
 
-	_, _, err = openDatabase(cfg, nil, nil)
+	_, _, _, err = openDatabase(cfg, nil, nil)
 	require.ErrorContains(t, err, "failed to create database API")
 }
 
@@ -124,7 +126,7 @@ func TestServedDatabase_UnregisteredPolicyIsNotEnforced(t *testing.T) {
 
 	db := newTestDatabase(t)
 
-	served, err := servedDatabase(db, policyconfig.EnforcementConfig{Fetch: policyconfig.ModeEnforce, Policies: enforcedA}, true, nil)
+	served, _, err := servedDatabase(db, policyconfig.EnforcementConfig{Fetch: policyconfig.ModeEnforce, Policies: enforcedA}, true, nil)
 	require.NoError(t, err)
 
 	ok, err := served.IsRecordServable("baeareigatenone000000000000000000000000000000000000000000000000")
@@ -147,6 +149,64 @@ func TestServedDatabase_FailsWhenVersionsCannotBeResolved(t *testing.T) {
 	require.NoError(t, err)
 	require.NoError(t, sqlDB.Close())
 
-	_, err = servedDatabase(db, policyconfig.EnforcementConfig{Fetch: policyconfig.ModeEnforce, Policies: enforcedA}, true, nil)
+	_, _, err = servedDatabase(db, policyconfig.EnforcementConfig{Fetch: policyconfig.ModeEnforce, Policies: enforcedA}, true, nil)
 	require.ErrorContains(t, err, "resolve enforced policy versions")
+}
+
+// registrations records the services registered on it.
+type registrations struct {
+	services []string
+}
+
+func (r *registrations) RegisterService(desc *grpc.ServiceDesc, _ any) {
+	r.services = append(r.services, desc.ServiceName)
+}
+
+// The audit service returns excluded records and is protected only by its
+// own permission, so it is offered only while policies are checked and
+// authorization is on.
+func TestRegisterPolicyAudit(t *testing.T) {
+	t.Parallel()
+
+	current := func() types.PolicyEnforcement { return types.PolicyEnforcement{} }
+
+	var notGorm types.DatabaseAPI
+
+	tests := []struct {
+		name         string
+		authzEnabled bool
+		db           types.DatabaseAPI
+		current      func() types.PolicyEnforcement
+		want         []string
+	}{
+		{"policies checked, authorization on", true, newTestDatabase(t), current, []string{policyv1.PolicyAuditService_ServiceDesc.ServiceName}},
+		{"authorization off", false, newTestDatabase(t), current, nil},
+		{"no policy checked", true, newTestDatabase(t), nil, nil},
+		{"database cannot list excluded records", true, notGorm, current, nil},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			registrar := &registrations{}
+			registerPolicyAudit(registrar, tt.authzEnabled, tt.db, nil, tt.current)
+
+			assert.Equal(t, tt.want, registrar.services)
+		})
+	}
+}
+
+// What the served view enforces is handed on only when a read checks it.
+func TestServedDatabase_ReturnsWhatItEnforces(t *testing.T) {
+	t.Parallel()
+
+	_, current, err := servedDatabase(newTestDatabase(t), policyconfig.EnforcementConfig{Policies: enforcedA}, true, nil)
+	require.NoError(t, err)
+	assert.Nil(t, current, "every mode off")
+
+	_, current, err = servedDatabase(newTestDatabase(t), policyconfig.EnforcementConfig{Search: policyconfig.ModeShadow, Policies: enforcedA}, true, nil)
+	require.NoError(t, err)
+	require.NotNil(t, current)
+	assert.Equal(t, policyconfig.ModeShadow, current().Search)
 }

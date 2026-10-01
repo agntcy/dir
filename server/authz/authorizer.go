@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"strings"
 
+	policyv1 "github.com/agntcy/dir/api/policy/v1"
 	storev1 "github.com/agntcy/dir/api/store/v1"
 	"github.com/agntcy/dir/server/authz/config"
 	"github.com/casbin/casbin/v2"
@@ -22,11 +23,14 @@ import (
 var modelConf string
 
 // identityOnlyMethods can be granted only by a rule naming the caller's SPIFFE
-// ID, never by a rule for a whole trust domain. RequestRegistryCredentials
-// hands out the registry password, which reads every record without passing
-// through this server's policy gate, so it is for peer nodes, not users.
+// ID, never by a rule for a whole trust domain. Each reads records without
+// passing through this server's policy gate: RequestRegistryCredentials hands
+// out the registry password, for peer nodes, and the policy audit service
+// returns excluded records, for auditors.
 var identityOnlyMethods = map[string]bool{
-	storev1.SyncService_RequestRegistryCredentials_FullMethodName: true,
+	storev1.SyncService_RequestRegistryCredentials_FullMethodName:  true,
+	policyv1.PolicyAuditService_GetRecord_FullMethodName:           true,
+	policyv1.PolicyAuditService_ListExcludedRecords_FullMethodName: true,
 }
 
 type Authorizer struct {

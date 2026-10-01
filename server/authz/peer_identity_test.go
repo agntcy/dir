@@ -6,6 +6,7 @@ package authz
 import (
 	"testing"
 
+	policyv1 "github.com/agntcy/dir/api/policy/v1"
 	storev1 "github.com/agntcy/dir/api/store/v1"
 	"github.com/agntcy/dir/server/authz/config"
 	"github.com/spiffe/go-spiffe/v2/spiffeid"
@@ -75,5 +76,22 @@ func TestAuthorize_TrustDomainRulesStillApply(t *testing.T) {
 		{"any trust domain, a method granted to all", "spiffe://other.org/ns/dir/sa/dir", storev1.StoreService_Pull_FullMethodName, true},
 		{"any trust domain, a method not granted", "spiffe://other.org/ns/dir/sa/dir", storev1.StoreService_Push_FullMethodName, false},
 		{"peer rule grants only its method", "spiffe://partner.org/ns/dir/sa/dir", storev1.StoreService_Push_FullMethodName, false},
+	})
+}
+
+// The policy audit service returns records the policies exclude, so only a
+// rule naming the auditor grants it, even to the node's own trust domain.
+func TestAuthorize_PolicyAuditNeedsAuditorIdentity(t *testing.T) {
+	t.Parallel()
+
+	getRecord := policyv1.PolicyAuditService_GetRecord_FullMethodName
+	listExcluded := policyv1.PolicyAuditService_ListExcludedRecords_FullMethodName
+
+	assertAuthorized(t, []authorizeCase{
+		{"user in the node's own trust domain, get", "spiffe://example.org/ns/dir/sa/dirctl", getRecord, false},
+		{"user in the node's own trust domain, list", "spiffe://example.org/ns/dir/sa/dirctl", listExcluded, false},
+		{"named auditor, get", "spiffe://example.org/ns/dir/sa/auditor", getRecord, true},
+		{"named auditor, list", "spiffe://example.org/ns/dir/sa/auditor", listExcluded, true},
+		{"peer node", "spiffe://partner.org/ns/dir/sa/dir", getRecord, false},
 	})
 }

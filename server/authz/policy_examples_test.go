@@ -15,6 +15,7 @@ import (
 	_ "github.com/agntcy/dir/api/catalog/v1"
 	_ "github.com/agntcy/dir/api/events/v1"
 	_ "github.com/agntcy/dir/api/naming/v1"
+	_ "github.com/agntcy/dir/api/policy/v1"
 	_ "github.com/agntcy/dir/api/routing/v1"
 	_ "github.com/agntcy/dir/api/runtime/v1"
 	_ "github.com/agntcy/dir/api/search/v1"

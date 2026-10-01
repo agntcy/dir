@@ -49,7 +49,7 @@ func (d *DB) IsRecordServable(cid string) (bool, error) {
 
 	shadow := enforcement.Fetch == policyconfig.ModeShadow
 
-	compliant, err := d.recordComplies(cid, enforcement.Policies)
+	compliant, err := d.IsRecordCompliant(cid, enforcement.Policies)
 	if err != nil {
 		if shadow {
 			logger.Warn("Shadow mode: could not check record against enforced policies", "cid", cid, "error", err)
@@ -80,20 +80,44 @@ func (d *DB) IsRecordServable(cid string) (bool, error) {
 // CountRecordsExcluded counts the indexed records that do not comply with
 // every one of policies: those an enforcing search excludes.
 func (d *DB) CountRecordsExcluded(policies []types.EnforcedPolicy) (int64, error) {
-	compliant := gatePolicies(d.gormDB.Model(&Record{}).Select("records.record_cid"), "records.record_cid", policies)
-
 	var count int64
 
-	if err := d.gormDB.Model(&Record{}).Where("records.record_cid NOT IN (?)", compliant).Count(&count).Error; err != nil {
+	if err := d.recordsExcluded(policies).Count(&count).Error; err != nil {
 		return 0, fmt.Errorf("count records excluded by enforced policies: %w", err)
 	}
 
 	return count, nil
 }
 
-// recordComplies reports whether the record with cid is indexed and complies
-// with every one of policies.
-func (d *DB) recordComplies(cid string, policies []types.EnforcedPolicy) (bool, error) {
+// ListRecordsExcluded returns the CIDs of the indexed records that do not
+// comply with every one of policies, in CID order, skipping offset and
+// returning at most limit of them; a limit of zero returns them all.
+func (d *DB) ListRecordsExcluded(policies []types.EnforcedPolicy, limit, offset int) ([]string, error) {
+	query := d.recordsExcluded(policies).Order("records.record_cid").Offset(offset)
+	if limit > 0 {
+		query = query.Limit(limit)
+	}
+
+	var cids []string
+
+	if err := query.Pluck("records.record_cid", &cids).Error; err != nil {
+		return nil, fmt.Errorf("list records excluded by enforced policies: %w", err)
+	}
+
+	return cids, nil
+}
+
+// recordsExcluded selects the indexed records that do not comply with every
+// one of policies.
+func (d *DB) recordsExcluded(policies []types.EnforcedPolicy) *gorm.DB {
+	compliant := gatePolicies(d.gormDB.Model(&Record{}).Select("records.record_cid"), "records.record_cid", policies)
+
+	return d.gormDB.Model(&Record{}).Where("records.record_cid NOT IN (?)", compliant)
+}
+
+// IsRecordCompliant reports whether the record with cid is indexed and
+// complies with every one of policies, whatever this view enforces.
+func (d *DB) IsRecordCompliant(cid string, policies []types.EnforcedPolicy) (bool, error) {
 	var count int64
 
 	query := d.gormDB.Model(&Record{}).Where("records.record_cid = ?", cid)
