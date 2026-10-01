@@ -23,6 +23,7 @@ import (
 	"github.com/sigstore/sigstore-go/pkg/tuf"
 	"github.com/sigstore/sigstore-go/pkg/verify"
 	"github.com/sigstore/sigstore/pkg/cryptoutils"
+	"github.com/sigstore/sigstore/pkg/signature"
 )
 
 // VerifySignatureWithOIDC verifies a Sigstore bundle using OIDC identity.
@@ -144,16 +145,30 @@ func verifySignatureWithKey(ctx context.Context, publicKey string, sig string, e
 		signatureBytes = []byte(sig)
 	}
 
-	// Verify signature against the expected payload
-	err = verifier.VerifySignature(bytes.NewReader(signatureBytes), bytes.NewReader(expectedPayload))
-	if err != nil {
-		return "", fmt.Errorf("signature verification failed: %w", err)
-	}
-
-	// Get the public key in PEM format
 	pubKey, err := verifier.PublicKey()
 	if err != nil {
 		return "", fmt.Errorf("failed to get public key: %w", err)
+	}
+
+	// Verify signature against the expected payload
+	err = verifier.VerifySignature(bytes.NewReader(signatureBytes), bytes.NewReader(expectedPayload))
+	if err != nil {
+		// SignBlobWithKey signs Ed25519 keys as Ed25519ph (cosign's default load
+		// options), which a pure Ed25519 verifier never accepts.
+		edPubKey, isEd25519 := pubKey.(ed25519.PublicKey)
+		if !isEd25519 {
+			return "", fmt.Errorf("signature verification failed: %w", err)
+		}
+
+		phVerifier, loadErr := signature.LoadED25519phVerifier(edPubKey)
+		if loadErr != nil {
+			return "", fmt.Errorf("failed to load Ed25519ph verifier: %w", loadErr)
+		}
+
+		err = phVerifier.VerifySignature(bytes.NewReader(signatureBytes), bytes.NewReader(expectedPayload))
+		if err != nil {
+			return "", fmt.Errorf("signature verification failed: %w", err)
+		}
 	}
 
 	pubKeyPEM, err := cryptoutils.MarshalPublicKeyToPEM(pubKey)

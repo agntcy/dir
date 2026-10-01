@@ -90,8 +90,16 @@ validators:
     op: ["push", "autosync", "index"]
     config:
       schema_url: "https://schema.oasf.outshift.com"
+  - provider: opa
+    op: ["push"]
+    config:
+      file: "require-annotations.rego"
 listen_address: "0.0.0.0:8888"
+policy:
+  dir: "/etc/agntcy/dir/policies"
 ```
+
+`opa` loads a single `.rego` file from `policy.dir`. Helm mounts those files from the top-level `policies` map. The query is `<package>.allow`; a deny rejects the record.
 
 !!! note
   

@@ -28,6 +28,14 @@ server:
       op: ["push", "autosync", "index"]
       config:
         schema_url: "https://schema.oasf.outshift.com"
+    # Inline CEL expressions. The record is bound as `record`; each
+    # expression must evaluate to bool. Validation fails if any is false.
+    # - provider: cel
+    #   op: ["push"]
+    #   config:
+    #     expressions:
+    #       - record.name != ""
+    #       - record.version != ""
   store:
     provider: "oci"
     oci:
@@ -98,7 +106,6 @@ server:
   naming:
     ttl: 168h
   policy:
-    enabled: false
     dir: policies
 
 reconciler:

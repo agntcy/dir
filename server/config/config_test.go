@@ -131,8 +131,7 @@ func TestConfig(t *testing.T) {
 					EnforcerPolicyFilePath: "/tmp/authz_policies.csv",
 				},
 				Policy: policy.Config{
-					Enabled: true,
-					Dir:     "/tmp/policies",
+					Dir: "/tmp/policies",
 				},
 				Publication: publication.Config{
 					SchedulerInterval: 10 * time.Second,
@@ -207,8 +206,7 @@ func TestConfig(t *testing.T) {
 					EnforcerPolicyFilePath: DefaultConfigPath + "/authz_policies.csv",
 				},
 				Policy: policy.Config{
-					Enabled: false,
-					Dir:     DefaultConfigPath + "/policies",
+					Dir: DefaultConfigPath + "/policies",
 				},
 				Publication: publication.Config{
 					SchedulerInterval: publication.DefaultPublicationSchedulerInterval,

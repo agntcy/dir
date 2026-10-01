@@ -202,7 +202,7 @@ func New(ctx context.Context, cfg *config.Config, opts ...ServerOption) (*Server
 		opt(&o)
 	}
 
-	validatorRegistry, err := validators.NewRegistry(cfg.Validators)
+	validatorRegistry, err := validators.NewRegistry(ctx, cfg.Validators, cfg.Policy.Dir)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create validator registry: %w", err)
 	}

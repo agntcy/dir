@@ -14,6 +14,8 @@ import (
 	"github.com/agntcy/dir/tests/e2e/shared/testdata"
 	"github.com/onsi/ginkgo/v2"
 	"github.com/onsi/gomega"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 )
 
 var _ = ginkgo.Describe("Event Streaming E2E Tests", ginkgo.Ordered, ginkgo.Serial, func() {
@@ -475,12 +477,15 @@ var _ = ginkgo.Describe("Event Streaming E2E Tests", ginkgo.Ordered, ginkgo.Seri
 			})
 			gomega.Expect(err).NotTo(gomega.HaveOccurred())
 
-			// Try to receive - should eventually timeout
+			// Try to receive - should eventually timeout.
+			// The error may arrive either as the bare context error or as a gRPC
+			// status, depending on whether the context or the stream observes the
+			// deadline first, so match on the status code rather than the message.
 			_, err = tryReceiveEvent(streamCtx, result)
 			gomega.Expect(err).To(gomega.Or(
-				gomega.Equal(context.DeadlineExceeded),
-				gomega.MatchError(gomega.ContainSubstring("deadline")),
-				gomega.MatchError(gomega.ContainSubstring("cancel")),
+				gomega.MatchError(context.DeadlineExceeded),
+				gomega.MatchError(context.Canceled),
+				gomega.WithTransform(status.Code, gomega.BeElementOf(codes.DeadlineExceeded, codes.Canceled)),
 			))
 		})
 	})

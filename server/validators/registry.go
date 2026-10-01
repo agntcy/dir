@@ -9,20 +9,18 @@ import (
 
 	corev1 "github.com/agntcy/dir/api/core/v1"
 	validatorsconfig "github.com/agntcy/dir/server/validators/config"
-	"github.com/agntcy/dir/utils/logging"
 	"github.com/agntcy/oasf-sdk/pkg/validator"
 )
-
-var logger = logging.Logger("validators")
 
 // Registry maps operations to the record validators that should run for them.
 type Registry struct {
 	byOp map[string][]corev1.Validator
 }
 
-// NewRegistry constructs validators from config. An empty list yields a
-// registry that returns no validators for every op.
-func NewRegistry(entries validatorsconfig.Config) (*Registry, error) {
+// NewRegistry constructs validators from config. policyDir is the directory
+// named .rego files are loaded from (server/reconciler policy.dir). An empty
+// list yields a registry that returns no validators for every op.
+func NewRegistry(ctx context.Context, entries validatorsconfig.Config, policyDir string) (*Registry, error) {
 	if err := entries.Validate(); err != nil {
 		return nil, fmt.Errorf("invalid validators config: %w", err)
 	}
@@ -30,7 +28,7 @@ func NewRegistry(entries validatorsconfig.Config) (*Registry, error) {
 	byOp := make(map[string][]corev1.Validator)
 
 	for i, entry := range entries {
-		v, err := validatorFor(entry)
+		v, err := validatorFor(ctx, entry, policyDir)
 		if err != nil {
 			return nil, fmt.Errorf("validators[%d]: %w", i, err)
 		}
@@ -38,22 +36,31 @@ func NewRegistry(entries validatorsconfig.Config) (*Registry, error) {
 		for _, op := range entry.Ops {
 			byOp[op] = append(byOp[op], v)
 		}
-
-		logger.Info("Record validator configured",
-			"provider", entry.Provider,
-			"schema_url", entry.ConfigString(validatorsconfig.ConfigKeySchemaURL),
-			"op", entry.Ops)
 	}
 
 	return &Registry{byOp: byOp}, nil
 }
 
-func validatorFor(entry validatorsconfig.Validator) (corev1.Validator, error) {
+func validatorFor(ctx context.Context, entry validatorsconfig.Validator, policyDir string) (corev1.Validator, error) {
 	switch entry.Provider {
 	case validatorsconfig.ProviderOASF:
 		v, err := validator.New(entry.ConfigString(validatorsconfig.ConfigKeySchemaURL))
 		if err != nil {
 			return nil, fmt.Errorf("failed to initialize OASF validator: %w", err)
+		}
+
+		return v, nil
+	case validatorsconfig.ProviderCEL:
+		v, err := newCELValidator(entry)
+		if err != nil {
+			return nil, fmt.Errorf("failed to initialize CEL validator: %w", err)
+		}
+
+		return v, nil
+	case validatorsconfig.ProviderOPA:
+		v, err := newOPAValidator(ctx, policyDir, entry.ConfigString(validatorsconfig.ConfigKeyFile))
+		if err != nil {
+			return nil, fmt.Errorf("failed to initialize OPA validator: %w", err)
 		}
 
 		return v, nil

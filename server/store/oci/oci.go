@@ -5,11 +5,9 @@ package oci
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"io"
 	"net/http"
-	"strings"
 	"time"
 
 	corev1 "github.com/agntcy/dir/api/core/v1"
@@ -23,7 +21,6 @@ import (
 	"google.golang.org/grpc/status"
 	"oras.land/oras-go/v2"
 	"oras.land/oras-go/v2/content/oci"
-	"oras.land/oras-go/v2/errdef"
 	"oras.land/oras-go/v2/registry"
 	"oras.land/oras-go/v2/registry/remote"
 	"oras.land/oras-go/v2/registry/remote/auth"
@@ -97,17 +94,6 @@ func New(cfg ociconfig.Config) (types.StoreAPI, error) {
 	return cache.Wrap(store, cacheDS), nil
 }
 
-// isNotFoundError checks if an error is a "not found" error from the registry.
-func isNotFoundError(err error) bool {
-	if err == nil {
-		return false
-	}
-
-	errMsg := err.Error()
-
-	return strings.Contains(errMsg, "not found") || strings.Contains(errMsg, "NOT_FOUND")
-}
-
 // tagWithRetry attempts to tag a manifest with exponential backoff retry logic.
 // This is necessary because under concurrent load, oras.PackManifest may push the manifest
 // to the registry, but it might not be immediately available when oras.Tag is called.
@@ -156,7 +142,7 @@ func (s *store) tagWithRetry(ctx context.Context, manifestDigest, tag string) er
 
 		// Only retry on "not found" errors (transient race condition)
 		// For other errors, fail immediately
-		if !isNotFoundError(err) {
+		if !IsNotFound(err) {
 			logger.Debug("Tag operation failed with non-retryable error",
 				"error", err,
 				"manifest_digest", manifestDigest,
@@ -438,8 +424,7 @@ func (s *store) IsReady(ctx context.Context) bool {
 	if err := registryProbe.Ping(ctx); err != nil {
 		// A 404 on /v2/ still proves the registry answered, and the repository
 		// itself is allowed to not exist yet.
-		errStr := err.Error()
-		if strings.Contains(errStr, "404") || strings.Contains(errStr, "NAME_UNKNOWN") || errors.Is(err, errdef.ErrNotFound) {
+		if IsNotFound(err) {
 			logger.Debug("Store ready: registry reachable, repository may not exist yet")
 
 			return true

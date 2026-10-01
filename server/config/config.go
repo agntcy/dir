@@ -144,8 +144,8 @@ type Config struct {
 	// Authz configuration
 	Authz authz.Config `json:"authz" mapstructure:"authz"`
 
-	// Policy is the file-based content-policy directory. Evaluation is not
-	// implemented yet; this only tells the server where policy files live.
+	// Policy is the directory named OPA policy files are loaded from.
+	// An opa validator's config.file is resolved against Dir.
 	Policy policy.Config `json:"policy" mapstructure:"policy"`
 
 	// Store configuration
@@ -483,11 +483,8 @@ func LoadConfig(opts ...ConfigOption) (*Config, error) {
 	v.SetDefault("authz.enforcer_policy_file_path", DefaultConfigPath+"/authz_policies.csv")
 
 	//
-	// Content policy configuration (file-based OPA/Rego policies)
+	// Policy directory (named .rego files loaded by opa validators)
 	//
-	_ = v.BindEnv("policy.enabled")
-	v.SetDefault("policy.enabled", "false")
-
 	_ = v.BindEnv("policy.dir")
 	v.SetDefault("policy.dir", DefaultConfigPath+"/policies")
 
