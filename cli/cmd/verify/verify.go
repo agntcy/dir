@@ -131,18 +131,17 @@ func runCommand(cmd *cobra.Command, recordRef string) error {
 		}
 
 	case opts.OIDCIssuer != "" || opts.OIDCSubject != "":
+		oidcOptions, err := resolveOIDCOptions(cmd)
+		if err != nil {
+			return err
+		}
+
 		provider = &signv1.VerifyRequestProvider{
 			Request: &signv1.VerifyRequestProvider_Oidc{
 				Oidc: &signv1.VerifyWithOIDC{
 					Issuer:  opts.OIDCIssuer,
 					Subject: opts.OIDCSubject,
-					Options: &signv1.VerifyOptionsOIDC{
-						TufMirrorUrl:    opts.TufMirrorUrl,
-						TrustedRootPath: opts.TrustedRootPath,
-						IgnoreTlog:      opts.IgnoreTlog,
-						IgnoreTsa:       opts.IgnoreTsa,
-						IgnoreSct:       opts.IgnoreSct,
-					},
+					Options: oidcOptions,
 				},
 			},
 		}
@@ -150,16 +149,15 @@ func runCommand(cmd *cobra.Command, recordRef string) error {
 	default:
 		// Use VerifyWithAny which will verify against any valid signature
 		// with optional OIDC verification options
+		oidcOptions, err := resolveOIDCOptions(cmd)
+		if err != nil {
+			return err
+		}
+
 		provider = &signv1.VerifyRequestProvider{
 			Request: &signv1.VerifyRequestProvider_Any{
 				Any: &signv1.VerifyWithAny{
-					OidcOptions: &signv1.VerifyOptionsOIDC{
-						TufMirrorUrl:    opts.TufMirrorUrl,
-						TrustedRootPath: opts.TrustedRootPath,
-						IgnoreTlog:      opts.IgnoreTlog,
-						IgnoreTsa:       opts.IgnoreTsa,
-						IgnoreSct:       opts.IgnoreSct,
-					},
+					OidcOptions: oidcOptions,
 				},
 			},
 		}
