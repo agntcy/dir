@@ -14,7 +14,7 @@ The reconciler's policy task evaluates every record against each policy and stor
 ## Before You Start
 
 - **Authorization is on**, with registry credentials restricted to peer nodes. Registry credentials read every record straight from the registry, bypassing every check described here. See [Methods Granted Only by SPIFFE ID](https://github.com/agntcy/dir/blob/main/server/authz/README.md). The server logs a warning when policies are checked while authorization is off.
-- **The reconciler's policy task is enabled**, with an evaluator for each policy you enforce (`reconciler.config.policy` in the apiserver Helm values).
+- **The reconciler's policy task is enabled**, with an evaluator for each policy you enforce (`reconciler.config.policy_evaluation` in the apiserver Helm values).
 - **Metrics are enabled** on the server (`config.metrics.enabled`), so you can watch the rollout.
 
 ## Settings
