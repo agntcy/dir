@@ -15,8 +15,6 @@ import (
 	"encoding/pem"
 	"math/big"
 	"net/url"
-	"os"
-	"path/filepath"
 	"testing"
 	"time"
 
@@ -278,39 +276,6 @@ func TestKeySigner_RejectsBadKeyMaterial(t *testing.T) {
 		_, err := NewKeySigner(in, nil)
 		require.Error(t, err, name)
 	}
-}
-
-func TestSigners_FromFile(t *testing.T) {
-	dir := t.TempDir()
-	key := generateKey(t, "ES256")
-
-	keyPath := filepath.Join(dir, "key.pem")
-	certPath := filepath.Join(dir, "cert.pem")
-
-	require.NoError(t, os.WriteFile(keyPath, keyPEM(t, key), 0o600))
-	require.NoError(t, os.WriteFile(certPath, selfSignedCertPEM(t, key), 0o600))
-
-	keySigner, err := NewKeySignerFromFile(keyPath, nil)
-	require.NoError(t, err)
-
-	sig, err := keySigner.Sign([]byte("payload"))
-	require.NoError(t, err)
-	require.NoError(t, Verify(sig, []byte("payload"), key.Public()))
-
-	certSigner, err := NewKeyCertSignerFromFile(keyPath, certPath, nil)
-	require.NoError(t, err)
-	require.True(t, certSigner.SubjectMatchesCertificate(spiffeID))
-
-	missing := filepath.Join(dir, "missing.pem")
-
-	_, err = NewKeySignerFromFile(missing, nil)
-	require.ErrorContains(t, err, "read key file")
-
-	_, err = NewKeyCertSignerFromFile(missing, certPath, nil)
-	require.ErrorContains(t, err, "read key file")
-
-	_, err = NewKeyCertSignerFromFile(keyPath, missing, nil)
-	require.ErrorContains(t, err, "read cert file")
 }
 
 func TestKeyCertSigner_AcceptsRawDERCertificate(t *testing.T) {

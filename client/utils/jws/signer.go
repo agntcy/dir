@@ -9,7 +9,6 @@ import (
 	"encoding/pem"
 	"errors"
 	"fmt"
-	"os"
 
 	"github.com/youmark/pkcs8"
 )
@@ -38,16 +37,6 @@ func NewKeySigner(keyPEM, password []byte) (*KeySigner, error) {
 	}
 
 	return &KeySigner{signer: signer}, nil
-}
-
-// NewKeySignerFromFile loads a PEM-encoded private key from disk, see NewKeySigner.
-func NewKeySignerFromFile(path string, password []byte) (*KeySigner, error) {
-	data, err := os.ReadFile(path)
-	if err != nil {
-		return nil, fmt.Errorf("read key file: %w", err)
-	}
-
-	return NewKeySigner(data, password)
 }
 
 func (s *KeySigner) Sign(payload []byte) (string, error) {
@@ -85,22 +74,6 @@ func NewKeyCertSigner(keyPEM, certPEM, password []byte) (*KeyCertSigner, error) 
 	}
 
 	return &KeyCertSigner{signer: signer, cert: cert, certDER: certDER}, nil
-}
-
-// NewKeyCertSignerFromFile loads a PEM-encoded private key and certificate
-// from disk.
-func NewKeyCertSignerFromFile(keyPath, certPath string, password []byte) (*KeyCertSigner, error) {
-	keyPEM, err := os.ReadFile(keyPath)
-	if err != nil {
-		return nil, fmt.Errorf("read key file: %w", err)
-	}
-
-	certPEM, err := os.ReadFile(certPath)
-	if err != nil {
-		return nil, fmt.Errorf("read cert file: %w", err)
-	}
-
-	return NewKeyCertSigner(keyPEM, certPEM, password)
 }
 
 func (s *KeyCertSigner) Sign(payload []byte) (string, error) {
