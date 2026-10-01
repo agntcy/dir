@@ -64,6 +64,9 @@ func TestToPublicKey(t *testing.T) {
 		"ecdsa value empty": ecdsa.PublicKey{},
 		"rsa no modulus":    &rsa.PublicKey{},
 		"rsa value empty":   rsa.PublicKey{},
+		"ed25519 nil":       ed25519.PublicKey(nil),
+		"ed25519 short":     ed25519.PublicKey("short"),
+		"ed25519 long":      make(ed25519.PublicKey, ed25519.PublicKeySize+1),
 	} {
 		_, ok := jws.ToPublicKey(key)
 		require.False(t, ok, name)

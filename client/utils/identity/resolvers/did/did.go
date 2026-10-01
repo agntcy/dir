@@ -75,16 +75,24 @@ func (d *Resolver) resolveWeb(ctx context.Context, subject string) ([]crypto.Pub
 	return keysFromDIDDocument(body, subject, docURL)
 }
 
-// didDocument is the subset of a W3C DID document used here.
-type didDocument struct {
-	ID                 string `json:"id"`
-	VerificationMethod []struct {
-		PublicKeyJWK json.RawMessage `json:"publicKeyJwk"`
-	} `json:"verificationMethod"`
+// verificationMethod is the subset of a DID verification method used here.
+type verificationMethod struct {
+	ID           string          `json:"id"`
+	PublicKeyJWK json.RawMessage `json:"publicKeyJwk"`
 }
 
-// keysFromDIDDocument extracts the verification keys from a DID document and
-// checks that the document is actually about subject.
+// didDocument is the subset of a W3C DID document used here.
+type didDocument struct {
+	ID                 string               `json:"id"`
+	VerificationMethod []verificationMethod `json:"verificationMethod"`
+	AssertionMethod    []json.RawMessage    `json:"assertionMethod"`
+}
+
+// keysFromDIDDocument extracts the keys the subject authorizes to make
+// assertions, and checks that the document is actually about subject. A key
+// listed under verificationMethod is only key material: the DID document
+// grants it a purpose through a verification relationship, and a claim is an
+// assertion, so only assertionMethod entries (by reference or embedded) count.
 func keysFromDIDDocument(body []byte, subject, source string) ([]crypto.PublicKey, error) {
 	var doc didDocument
 	if err := json.Unmarshal(body, &doc); err != nil {
@@ -97,10 +105,11 @@ func keysFromDIDDocument(body []byte, subject, source string) ([]crypto.PublicKe
 		return nil, fmt.Errorf("DID document id %q does not match subject %q", doc.ID, subject)
 	}
 
-	keys := make([]crypto.PublicKey, 0, len(doc.VerificationMethod))
+	keys := make([]crypto.PublicKey, 0, len(doc.AssertionMethod))
 
-	for _, vm := range doc.VerificationMethod {
-		if len(vm.PublicKeyJWK) == 0 {
+	for _, entry := range doc.AssertionMethod {
+		vm, ok := doc.assertionMethod(entry)
+		if !ok || len(vm.PublicKeyJWK) == 0 {
 			continue
 		}
 
@@ -119,6 +128,37 @@ func keysFromDIDDocument(body []byte, subject, source string) ([]crypto.PublicKe
 	}
 
 	return keys, nil
+}
+
+// assertionMethod returns the verification method an assertionMethod entry
+// stands for: an embedded method as is, a string as a reference to one of the
+// document's own methods.
+func (d *didDocument) assertionMethod(entry json.RawMessage) (verificationMethod, bool) {
+	var ref string
+	if json.Unmarshal(entry, &ref) != nil {
+		var embedded verificationMethod
+
+		return embedded, json.Unmarshal(entry, &embedded) == nil
+	}
+
+	want := d.absoluteID(ref)
+
+	for _, vm := range d.VerificationMethod {
+		if d.absoluteID(vm.ID) == want {
+			return vm, true
+		}
+	}
+
+	return verificationMethod{}, false
+}
+
+// absoluteID resolves a relative DID URL such as "#key-1" against the document.
+func (d *didDocument) absoluteID(id string) string {
+	if strings.HasPrefix(id, "#") {
+		return d.ID + id
+	}
+
+	return id
 }
 
 // didWebURL implements the did:web method

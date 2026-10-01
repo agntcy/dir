@@ -9,6 +9,7 @@ import (
 	"crypto/x509"
 	"encoding/binary"
 	"encoding/json"
+	"fmt"
 	"testing"
 
 	"github.com/agntcy/dir/client/utils/identity/resolvers"
@@ -56,11 +57,65 @@ func TestDID_ResolveWeb_RejectsMismatchedDocumentID(t *testing.T) {
 	require.ErrorContains(t, err, "does not match subject")
 }
 
+// jwkOf returns key's public JWK as JSON.
+func jwkOf(t *testing.T, key crypto.PublicKey) string {
+	t.Helper()
+
+	var parsed struct {
+		Keys []json.RawMessage `json:"keys"`
+	}
+
+	require.NoError(t, json.Unmarshal(testutil.JWKS(t, key), &parsed))
+
+	return string(parsed.Keys[0])
+}
+
+func TestDID_ResolveWeb_OnlyAssertionMethods(t *testing.T) {
+	ec := testutil.NewECKey(t, elliptic.P256())
+	ed := testutil.NewEdKey(t)
+	ecJWK, edJWK := jwkOf(t, &ec.PublicKey), jwkOf(t, ed.Public())
+
+	docs := map[string]string{
+		// Key material listed for another purpose only, or in no relationship at all.
+		"other.com": fmt.Sprintf(`{"id":"did:web:other.com","verificationMethod":[
+			{"id":"did:web:other.com#a","publicKeyJwk":%s},{"id":"did:web:other.com#b","publicKeyJwk":%s}],
+			"capabilityInvocation":["did:web:other.com#a"],"authentication":["#b"]}`, ecJWK, edJWK),
+		// A relative reference, an embedded method, and a method not authorized for assertions.
+		"mixed.com": fmt.Sprintf(`{"id":"did:web:mixed.com","verificationMethod":[
+			{"id":"#a","publicKeyJwk":%s},{"id":"#b","publicKeyJwk":%s}],
+			"assertionMethod":["#a"],"capabilityInvocation":["#b"]}`, ecJWK, edJWK),
+		"embedded.com": fmt.Sprintf(`{"id":"did:web:embedded.com","assertionMethod":[
+			{"id":"did:web:embedded.com#e","publicKeyJwk":%s}]}`, edJWK),
+		// A reference to a method the document doesn't define.
+		"dangling.com": `{"id":"did:web:dangling.com","assertionMethod":["#missing"]}`,
+	}
+
+	fetcher := &testutil.FakeFetcher{Docs: map[string][]byte{}}
+	for host, doc := range docs {
+		fetcher.Docs["https://"+host+"/.well-known/did.json"] = []byte(doc)
+	}
+
+	resolver := New(fetcher)
+
+	for _, host := range []string{"other.com", "dangling.com"} {
+		_, err := resolver.Resolve(t.Context(), "did:web:"+host, nil)
+		require.ErrorIs(t, err, resolvers.ErrNoKeys, host)
+	}
+
+	keys, err := resolver.Resolve(t.Context(), "did:web:mixed.com", nil)
+	require.NoError(t, err)
+	testutil.RequireSameKeys(t, []crypto.PublicKey{&ec.PublicKey}, keys)
+
+	keys, err = resolver.Resolve(t.Context(), "did:web:embedded.com", nil)
+	require.NoError(t, err)
+	testutil.RequireSameKeys(t, []crypto.PublicKey{ed.Public()}, keys)
+}
+
 func TestDID_ResolveWeb_Errors(t *testing.T) {
 	fetcher := &testutil.FakeFetcher{Docs: map[string][]byte{
 		"https://empty.com/.well-known/did.json":   []byte(`{"id":"did:web:empty.com","verificationMethod":[]}`),
 		"https://garbage.com/.well-known/did.json": []byte(`not json`),
-		"https://nojwk.com/.well-known/did.json":   []byte(`{"id":"did:web:nojwk.com","verificationMethod":[{"publicKeyMultibase":"z6Mk"}]}`),
+		"https://nojwk.com/.well-known/did.json":   []byte(`{"id":"did:web:nojwk.com","verificationMethod":[{"id":"#k","publicKeyMultibase":"z6Mk"}],"assertionMethod":["#k"]}`),
 	}}
 	resolver := New(fetcher)
 
@@ -196,17 +251,21 @@ func didDocumentFor(t *testing.T, id string, keys ...crypto.PublicKey) []byte {
 	doc := struct {
 		ID                 string               `json:"id"`
 		VerificationMethod []verificationMethod `json:"verificationMethod"`
+		AssertionMethod    []string             `json:"assertionMethod"`
 	}{ID: id}
 
-	for _, k := range keys {
+	for i, k := range keys {
 		var parsed struct {
 			Keys []json.RawMessage `json:"keys"`
 		}
 
 		require.NoError(t, json.Unmarshal(testutil.JWKS(t, k), &parsed))
+
+		keyID := fmt.Sprintf("%s#key-%d", id, i)
 		doc.VerificationMethod = append(doc.VerificationMethod, verificationMethod{
-			ID: id + "#key", Type: "JsonWebKey2020", Controller: id, PublicKeyJWK: parsed.Keys[0],
+			ID: keyID, Type: "JsonWebKey2020", Controller: id, PublicKeyJWK: parsed.Keys[0],
 		})
+		doc.AssertionMethod = append(doc.AssertionMethod, keyID)
 	}
 
 	body, err := json.Marshal(doc)

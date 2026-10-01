@@ -53,6 +53,10 @@ func jwsAlgorithmFor(pub crypto.PublicKey) (jwa.SignatureAlgorithm, error) {
 
 		return jwa.RS256, nil
 	case ed25519.PublicKey:
+		if len(p) != ed25519.PublicKeySize {
+			return "", fmt.Errorf("malformed Ed25519 public key: %d bytes", len(p))
+		}
+
 		return jwa.EdDSA, nil
 	default:
 		return "", fmt.Errorf("unsupported public key type: %T", pub)

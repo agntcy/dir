@@ -4,6 +4,7 @@
 package safefetch
 
 import (
+	"net"
 	"net/http"
 	"net/http/httptest"
 	"net/netip"
@@ -12,6 +13,25 @@ import (
 
 	"github.com/stretchr/testify/require"
 )
+
+func TestDialFirstReachable(t *testing.T) {
+	ln, err := (&net.ListenConfig{}).Listen(t.Context(), "tcp4", "127.0.0.1:0")
+	require.NoError(t, err)
+
+	t.Cleanup(func() { _ = ln.Close() })
+
+	_, port, err := net.SplitHostPort(ln.Addr().String())
+	require.NoError(t, err)
+
+	// Nothing listens on [::1]:port, so the first address fails and the second is used.
+	conn, err := dialFirstReachable(t.Context(), &net.Dialer{}, "tcp",
+		[]netip.Addr{netip.MustParseAddr("::1"), netip.MustParseAddr("127.0.0.1")}, port)
+	require.NoError(t, err)
+	require.NoError(t, conn.Close())
+
+	_, err = dialFirstReachable(t.Context(), &net.Dialer{}, "tcp", []netip.Addr{netip.MustParseAddr("::1")}, port)
+	require.Error(t, err)
+}
 
 func TestIsDisallowedAddr(t *testing.T) {
 	tests := []struct {
@@ -55,6 +75,7 @@ func TestIsDisallowedAddr(t *testing.T) {
 		{"2001:db8::1", true},
 		{"100::1", true},
 		{"::127.0.0.1", true}, // deprecated IPv4-compatible
+		{"fec0::1", true},     // deprecated site-local
 	}
 
 	for _, tt := range tests {

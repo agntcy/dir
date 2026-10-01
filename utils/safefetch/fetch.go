@@ -57,6 +57,7 @@ var reservedPrefixes = []netip.Prefix{
 	netip.MustParsePrefix("2001::/32"),      // Teredo
 	netip.MustParsePrefix("2001:db8::/32"),  // documentation
 	netip.MustParsePrefix("2002::/16"),      // 6to4
+	netip.MustParsePrefix("fec0::/10"),      // deprecated site-local
 }
 
 // Client performs SSRF-safe HTTP GET requests: https only unless
@@ -186,8 +187,25 @@ func safeDialContext(dialer *net.Dialer, blocked func(netip.Addr) bool) func(ctx
 			}
 		}
 
-		return dialer.DialContext(ctx, network, net.JoinHostPort(ips[0].Unmap().String(), port))
+		return dialFirstReachable(ctx, dialer, network, ips, port)
 	}
+}
+
+// dialFirstReachable tries the already-validated addresses in order, so a
+// down endpoint of a multi-address host doesn't make the whole host unreachable.
+func dialFirstReachable(ctx context.Context, dialer *net.Dialer, network string, ips []netip.Addr, port string) (net.Conn, error) {
+	var errs []error
+
+	for _, ip := range ips {
+		conn, err := dialer.DialContext(ctx, network, net.JoinHostPort(ip.Unmap().String(), port))
+		if err == nil {
+			return conn, nil
+		}
+
+		errs = append(errs, err)
+	}
+
+	return nil, fmt.Errorf("dial: %w", errors.Join(errs...))
 }
 
 // isDisallowedAddr reports whether addr is anything other than a public

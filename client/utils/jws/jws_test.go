@@ -6,6 +6,7 @@ package jws_test
 import (
 	"crypto"
 	"crypto/ecdsa"
+	"crypto/ed25519"
 	"crypto/rsa"
 	"crypto/x509"
 	"encoding/pem"
@@ -44,6 +45,8 @@ func TestVerify_Rejects(t *testing.T) {
 	require.Error(t, jws.Verify(sig, []byte("payload"), (*rsa.PublicKey)(nil)), "typed nil rsa key")
 	require.Error(t, jws.Verify(sig, []byte("payload"), &ecdsa.PublicKey{}), "ecdsa key without a curve")
 	require.Error(t, jws.Verify(sig, []byte("payload"), &rsa.PublicKey{}), "rsa key without a modulus")
+	require.Error(t, jws.Verify(sig, []byte("payload"), ed25519.PublicKey(nil)), "nil ed25519 key")
+	require.Error(t, jws.Verify(sig, []byte("payload"), ed25519.PublicKey("short")), "ed25519 key of the wrong length")
 }
 
 func TestVerify_MultipleKeys(t *testing.T) {
