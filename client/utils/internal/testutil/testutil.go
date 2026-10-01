@@ -35,11 +35,8 @@ import (
 )
 
 const (
-	rsaKeyBits        = 2048
-	smallRSAKeyBits   = 1024
-	smallRSAPrimeBits = smallRSAKeyBits / 2
-
-	rsaPublicExponent = 65537
+	rsaKeyBits      = 2048
+	smallRSAKeyBits = 1024
 
 	// SVIDSubject is the SPIFFE ID the test certificates carry by default.
 	SVIDSubject = "spiffe://acme.com/agents/finance"
@@ -126,41 +123,14 @@ func NewRSAKey(t *testing.T) *rsa.PrivateKey {
 	return key
 }
 
-// NewSmallRSAKey returns a 1024-bit RSA key, below the size jws accepts. It is
-// assembled from two random primes rather than generated, as it is deliberately
-// weak and only exists to test the size floor.
+// NewSmallRSAKey generates a 1024-bit RSA key, below the size jws accepts.
 func NewSmallRSAKey(t *testing.T) *rsa.PrivateKey {
 	t.Helper()
 
-	e := big.NewInt(rsaPublicExponent)
+	key, err := rsa.GenerateKey(rand.Reader, smallRSAKeyBits) //nolint:gosec // deliberately weak, to test the size floor
+	require.NoError(t, err)
 
-	for {
-		p, err := rand.Prime(rand.Reader, smallRSAPrimeBits)
-		require.NoError(t, err)
-
-		q, err := rand.Prime(rand.Reader, smallRSAPrimeBits)
-		require.NoError(t, err)
-
-		n := new(big.Int).Mul(p, q)
-		if p.Cmp(q) == 0 || n.BitLen() != smallRSAKeyBits {
-			continue
-		}
-
-		phi := new(big.Int).Mul(new(big.Int).Sub(p, big.NewInt(1)), new(big.Int).Sub(q, big.NewInt(1)))
-
-		d := new(big.Int).ModInverse(e, phi)
-		if d == nil {
-			continue
-		}
-
-		key := &rsa.PrivateKey{D: d, Primes: []*big.Int{p, q}}
-		key.N, key.E = n, rsaPublicExponent
-
-		require.NoError(t, key.Validate())
-		key.Precompute()
-
-		return key
-	}
+	return key
 }
 
 // PKCS8PEM encodes key as an unencrypted PKCS#8 PEM block.
