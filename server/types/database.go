@@ -355,6 +355,11 @@ type PolicyEnforcement struct {
 	Policies []EnforcedPolicy
 	Search   policyconfig.Mode
 	Fetch    policyconfig.Mode
+
+	// Pending are the configured policies not enforced yet because no
+	// evaluator has registered them: there is no version whose verdicts could
+	// be asked for.
+	Pending []EnforcedPolicy
 }
 
 // PolicyGateObserver is told about each record a read by CID excluded, or in

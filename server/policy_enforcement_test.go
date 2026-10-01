@@ -31,7 +31,7 @@ func newTestDatabase(t *testing.T) *gormdb.DB {
 	return db
 }
 
-var enforcedA = []policyconfig.EnforcedPolicy{{ID: "opa:a", Version: "v1"}}
+var enforcedA = []string{"opa:a"}
 
 // With every mode off the APIs read the database as it is.
 func TestServedDatabase_OffServesTheDatabaseItself(t *testing.T) {
@@ -50,6 +50,8 @@ func TestServedDatabase_CheckedModeServesAGatedView(t *testing.T) {
 	t.Parallel()
 
 	db := newTestDatabase(t)
+	require.NoError(t, db.RegisterPolicyVersion("opa:a", "v1"))
+
 	metricsServer := metrics.New("127.0.0.1:0")
 
 	served, err := servedDatabase(db, policyconfig.EnforcementConfig{Fetch: policyconfig.ModeEnforce, Policies: enforcedA}, true, metricsServer)
@@ -113,4 +115,38 @@ func TestOpenDatabase_OpensTheConfiguredDatabase(t *testing.T) {
 
 	_, _, err = openDatabase(cfg, nil, nil)
 	require.ErrorContains(t, err, "failed to create database API")
+}
+
+// A policy no evaluator has registered has no version whose verdicts could be
+// asked for, so it is not enforced yet.
+func TestServedDatabase_UnregisteredPolicyIsNotEnforced(t *testing.T) {
+	t.Parallel()
+
+	db := newTestDatabase(t)
+
+	served, err := servedDatabase(db, policyconfig.EnforcementConfig{Fetch: policyconfig.ModeEnforce, Policies: enforcedA}, true, nil)
+	require.NoError(t, err)
+
+	ok, err := served.IsRecordServable("baeareigatenone000000000000000000000000000000000000000000000000")
+	require.NoError(t, err)
+	assert.True(t, ok)
+}
+
+// The server does not start when it cannot tell which policy versions are in
+// force.
+func TestServedDatabase_FailsWhenVersionsCannotBeResolved(t *testing.T) {
+	t.Parallel()
+
+	gdb, err := gorm.Open(sqlite.Open("file::memory:"), &gorm.Config{})
+	require.NoError(t, err)
+
+	db, err := gormdb.New(gdb)
+	require.NoError(t, err)
+
+	sqlDB, err := gdb.DB()
+	require.NoError(t, err)
+	require.NoError(t, sqlDB.Close())
+
+	_, err = servedDatabase(db, policyconfig.EnforcementConfig{Fetch: policyconfig.ModeEnforce, Policies: enforcedA}, true, nil)
+	require.ErrorContains(t, err, "resolve enforced policy versions")
 }

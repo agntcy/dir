@@ -104,12 +104,16 @@ config:
     enforcement:
       search: "off"
       fetch: "off"
-      # Policies every served record must comply with, each at the version in
-      # force. Only a verdict under that version counts, e.g.:
-      # policies:
-      #   - id: "opa:require-license"
-      #     version: "v1"
+      # IDs of the policies every served record must comply with, e.g.
+      # ["opa:require-license"]. No version is given: a policy's version comes
+      # from its content, which the reconciler registers and the server
+      # follows. Only a verdict under the current version counts, so after a
+      # policy is edited a record stays hidden until it has been evaluated
+      # under the new rule, and nothing the new rule rejects is served
+      # meanwhile.
       policies: []
+      # How often the server rechecks which version of each policy is in force.
+      refresh_interval: 30s
 
   # Store settings for the storage backend.
   store:

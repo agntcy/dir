@@ -6,7 +6,12 @@ package config
 import (
 	"errors"
 	"fmt"
+	"time"
 )
+
+// DefaultRefreshInterval is how often the server rechecks which version of
+// each enforced policy is in force.
+const DefaultRefreshInterval = 30 * time.Second
 
 // Config points the server at a directory of file-based OPA policies.
 // Named .rego files are loaded by validators with provider "opa" via
@@ -63,20 +68,19 @@ type EnforcementConfig struct {
 	// lookups.
 	Fetch Mode `json:"fetch,omitempty" mapstructure:"fetch"`
 
-	// Policies are the policies a record must comply with, each at the
-	// version in force. YAML only: a list of objects cannot be bound to a
-	// single environment variable.
-	Policies []EnforcedPolicy `json:"policies,omitempty" mapstructure:"policies"`
-}
+	// Policies are the IDs of the policies a record must comply with, as
+	// their evaluators report them, e.g. "opa:require-license".
+	//
+	// No version is given. A policy's version comes from its content: the
+	// reconciler registers the version of each policy it runs, and the server
+	// follows it. A verdict reached under any other version does not count, so
+	// after a policy changes a record stays hidden until it is evaluated under
+	// the new rule, and nothing the new rule rejects is served meanwhile.
+	Policies []string `json:"policies,omitempty" mapstructure:"policies"`
 
-// EnforcedPolicy names a policy and the version of it in force. Only a
-// verdict under that version counts.
-type EnforcedPolicy struct {
-	// ID is the policy's identifier, as its evaluator reports it.
-	ID string `json:"id" mapstructure:"id"`
-
-	// Version is the policy version in force.
-	Version string `json:"version" mapstructure:"version"`
+	// RefreshInterval is how often the server rechecks which version of each
+	// policy is in force. Zero means DefaultRefreshInterval.
+	RefreshInterval time.Duration `json:"refresh_interval,omitempty" mapstructure:"refresh_interval"`
 }
 
 // Active reports whether any kind of read checks the enforced policies.
@@ -95,21 +99,35 @@ func (c *EnforcementConfig) Validate() error {
 
 	seen := make(map[string]bool, len(c.Policies))
 
-	for i, policy := range c.Policies {
-		if policy.ID == "" || policy.Version == "" {
-			return fmt.Errorf("policy %d: id and version are required", i)
+	for i, id := range c.Policies {
+		if id == "" {
+			return fmt.Errorf("policy %d: the id is required", i)
 		}
 
-		if seen[policy.ID] {
-			return fmt.Errorf("policy %q is listed more than once", policy.ID)
+		if seen[id] {
+			return fmt.Errorf("policy %q is listed more than once", id)
 		}
 
-		seen[policy.ID] = true
+		seen[id] = true
 	}
 
 	if c.Active() && len(c.Policies) == 0 {
 		return errors.New("a search or fetch mode is set but no policies are enforced")
 	}
 
+	if c.RefreshInterval < 0 {
+		return errors.New("refresh_interval must not be negative")
+	}
+
 	return nil
+}
+
+// GetRefreshInterval returns RefreshInterval, or DefaultRefreshInterval when
+// it is not set.
+func (c *EnforcementConfig) GetRefreshInterval() time.Duration {
+	if c.RefreshInterval == 0 {
+		return DefaultRefreshInterval
+	}
+
+	return c.RefreshInterval
 }

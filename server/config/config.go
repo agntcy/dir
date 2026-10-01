@@ -490,6 +490,12 @@ func LoadConfig(opts ...ConfigOption) (*Config, error) {
 	_ = v.BindEnv("policy.enforcement.fetch")
 	v.SetDefault("policy.enforcement.fetch", string(policy.ModeOff))
 
+	_ = v.BindEnv("policy.enforcement.policies")
+	v.SetDefault("policy.enforcement.policies", "")
+
+	_ = v.BindEnv("policy.enforcement.refresh_interval")
+	v.SetDefault("policy.enforcement.refresh_interval", policy.DefaultRefreshInterval)
+
 	//
 	// Store configuration
 	//

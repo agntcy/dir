@@ -200,6 +200,7 @@ apiserver:
         search: "off"
         fetch: "off"
         policies: []
+        refresh_interval: 30s
 
     # Store settings for the storage backend.
     store:
