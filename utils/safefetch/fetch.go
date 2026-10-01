@@ -35,13 +35,28 @@ const (
 var ErrDisallowedAddress = errors.New("target address is not allowed")
 
 // reservedPrefixes are non-public ranges that netip's own predicates don't
-// cover, including 100.64.0.0/10 which hosts some clouds' metadata endpoints.
+// cover. 100.64.0.0/10 hosts some clouds' metadata endpoints, and the IPv6
+// transition ranges (NAT64, 6to4, Teredo) can embed or translate to a blocked
+// IPv4 target, e.g. 64:ff9b::a9fe:a9fe reaches 169.254.169.254.
 var reservedPrefixes = []netip.Prefix{
+	// IPv4.
 	netip.MustParsePrefix("0.0.0.0/8"),
 	netip.MustParsePrefix("100.64.0.0/10"),
 	netip.MustParsePrefix("192.0.0.0/24"),
+	netip.MustParsePrefix("192.0.2.0/24"),
+	netip.MustParsePrefix("192.88.99.0/24"),
 	netip.MustParsePrefix("198.18.0.0/15"),
+	netip.MustParsePrefix("198.51.100.0/24"),
+	netip.MustParsePrefix("203.0.113.0/24"),
 	netip.MustParsePrefix("240.0.0.0/4"),
+	// IPv6.
+	netip.MustParsePrefix("::/96"),          // deprecated IPv4-compatible
+	netip.MustParsePrefix("64:ff9b::/96"),   // NAT64
+	netip.MustParsePrefix("64:ff9b:1::/48"), // local-use NAT64
+	netip.MustParsePrefix("100::/64"),       // discard-only
+	netip.MustParsePrefix("2001::/32"),      // Teredo
+	netip.MustParsePrefix("2001:db8::/32"),  // documentation
+	netip.MustParsePrefix("2002::/16"),      // 6to4
 }
 
 // Client performs SSRF-safe HTTP GET requests: https only unless

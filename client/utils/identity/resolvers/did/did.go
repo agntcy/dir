@@ -143,6 +143,8 @@ func didWebURL(subject string) (string, error) {
 	docPath := "/.well-known/did.json"
 
 	if len(segments) > 1 {
+		decodedSegments := make([]string, 0, len(segments)-1)
+
 		// A decoded segment must stay a single, plain path segment, so an
 		// escaped "/" or ".." can't redirect the request elsewhere on the host.
 		for _, seg := range segments[1:] {
@@ -150,9 +152,12 @@ func didWebURL(subject string) (string, error) {
 			if err != nil || decoded == "" || decoded == "." || decoded == ".." || strings.ContainsAny(decoded, `/\`) {
 				return "", fmt.Errorf("invalid did:web subject %q: bad path segment %q", subject, seg)
 			}
+
+			decodedSegments = append(decodedSegments, decoded)
 		}
 
-		docPath = "/" + strings.Join(segments[1:], "/") + "/did.json"
+		// URL.Path holds the decoded form; String() escapes it exactly once.
+		docPath = "/" + strings.Join(decodedSegments, "/") + "/did.json"
 	}
 
 	return (&url.URL{Scheme: "https", Host: u.Host, Path: docPath}).String(), nil
@@ -175,7 +180,12 @@ func resolveKey(subject string) ([]crypto.PublicKey, error) {
 		return nil, fmt.Errorf("decode did:key %q: %w", subject, err)
 	}
 
-	return []crypto.PublicKey{pub}, nil
+	usable, ok := jws.ToPublicKey(pub)
+	if !ok {
+		return nil, fmt.Errorf("decode did:key %q: %w", subject, resolvers.ErrNoKeys)
+	}
+
+	return []crypto.PublicKey{usable}, nil
 }
 
 func publicKeyFromMulticodec(code uint64, raw []byte) (crypto.PublicKey, error) {

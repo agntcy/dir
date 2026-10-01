@@ -56,6 +56,13 @@ func TestToPublicKey(t *testing.T) {
 		"string":            "not a key",
 		"symmetric":         []byte("secret"),
 		"nil":               nil,
+		// Malformed values must be refused, not crash key resolution.
+		"typed nil ecdsa":   (*ecdsa.PublicKey)(nil),
+		"typed nil rsa":     (*rsa.PublicKey)(nil),
+		"ecdsa no curve":    &ecdsa.PublicKey{},
+		"ecdsa value empty": ecdsa.PublicKey{},
+		"rsa no modulus":    &rsa.PublicKey{},
+		"rsa value empty":   rsa.PublicKey{},
 	} {
 		_, ok := ToPublicKey(key)
 		require.False(t, ok, name)
@@ -85,6 +92,31 @@ func TestPublicKeyFromJWK(t *testing.T) {
 
 	_, ok = PublicKeyFromJWK(newKey("enc"))
 	require.False(t, ok, "encryption keys are skipped")
+
+	// key_ops, when present, must allow verification.
+	withOps := func(ops ...jwk.KeyOperation) jwk.Key {
+		key := newKey("")
+		require.NoError(t, key.Set(jwk.KeyOpsKey, jwk.KeyOperationList(ops)))
+
+		return key
+	}
+
+	for name, ops := range map[string][]jwk.KeyOperation{
+		"verify":          {jwk.KeyOpVerify},
+		"sign and verify": {jwk.KeyOpSign, jwk.KeyOpVerify},
+	} {
+		_, ok = PublicKeyFromJWK(withOps(ops...))
+		require.True(t, ok, name)
+	}
+
+	for name, ops := range map[string][]jwk.KeyOperation{
+		"encrypt":     {jwk.KeyOpEncrypt},
+		"sign only":   {jwk.KeyOpSign},
+		"wrap/derive": {jwk.KeyOpWrapKey, jwk.KeyOpDeriveKey},
+	} {
+		_, ok = PublicKeyFromJWK(withOps(ops...))
+		require.False(t, ok, name)
+	}
 
 	// A private JWK yields its public half.
 	priv, err := jwk.FromRaw(testutil.NewKey(t, "ES256"))

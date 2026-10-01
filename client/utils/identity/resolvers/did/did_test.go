@@ -26,6 +26,7 @@ func TestDID_ResolveWeb(t *testing.T) {
 		"https://acme.com/.well-known/did.json":      didDocumentFor(t, "did:web:acme.com", &ec.PublicKey, ed.Public()),
 		"https://acme.com/agents/finance/did.json":   didDocumentFor(t, "did:web:acme.com:agents:finance", &ec.PublicKey),
 		"https://acme.com:8443/.well-known/did.json": didDocumentFor(t, "did:web:acme.com%3A8443", ed.Public()),
+		"https://acme.com/alice%20smith/did.json":    didDocumentFor(t, "did:web:acme.com:alice%20smith", ed.Public()),
 	}}
 	resolver := New(fetcher)
 
@@ -36,6 +37,10 @@ func TestDID_ResolveWeb(t *testing.T) {
 	keys, err = resolver.Resolve(t.Context(), "did:web:acme.com:agents:finance", nil)
 	require.NoError(t, err)
 	testutil.RequireSameKeys(t, []crypto.PublicKey{&ec.PublicKey}, keys)
+
+	keys, err = resolver.Resolve(t.Context(), "did:web:acme.com:alice%20smith", nil)
+	require.NoError(t, err)
+	testutil.RequireSameKeys(t, []crypto.PublicKey{ed.Public()}, keys)
 
 	keys, err = resolver.Resolve(t.Context(), "did:web:acme.com%3A8443", nil)
 	require.NoError(t, err)
@@ -82,6 +87,8 @@ func TestDIDWebURL(t *testing.T) {
 		"did:web:acme.com:agents:finance":     "https://acme.com/agents/finance/did.json",
 		"did:web:acme.com%3A8443":             "https://acme.com:8443/.well-known/did.json",
 		"did:web:acme.com%3A8443:agents:bots": "https://acme.com:8443/agents/bots/did.json",
+		"did:web:acme.com:alice%20smith":      "https://acme.com/alice%20smith/did.json", // escaped once, not twice
+		"did:web:acme.com:100%25":             "https://acme.com/100%25/did.json",
 	}
 
 	for subject, want := range valid {
@@ -163,10 +170,11 @@ func TestDID_ResolveKey_Errors(t *testing.T) {
 	subjects := []string{
 		"did:key:",
 		"did:key:not-multibase",
-		"did:key:" + encodeDIDKey(t, 0x9999, []byte("x")),                        // unsupported codec
-		"did:key:" + encodeDIDKey(t, multicodecEd25519Pub, []byte("short")),      // wrong length
-		"did:key:" + encodeDIDKey(t, multicodecP256Pub, []byte{0x02, 0x01}),      // invalid point
-		"did:key:" + encodeDIDKey(t, multicodecRSAPub, []byte("not an rsa key")), // bad DER
+		"did:key:" + encodeDIDKey(t, 0x9999, []byte("x")),                                                                 // unsupported codec
+		"did:key:" + encodeDIDKey(t, multicodecEd25519Pub, []byte("short")),                                               // wrong length
+		"did:key:" + encodeDIDKey(t, multicodecP256Pub, []byte{0x02, 0x01}),                                               // invalid point
+		"did:key:" + encodeDIDKey(t, multicodecRSAPub, []byte("not an rsa key")),                                          // bad DER
+		"did:key:" + encodeDIDKey(t, multicodecRSAPub, x509.MarshalPKCS1PublicKey(&testutil.NewSmallRSAKey(t).PublicKey)), // below the RSA floor
 	}
 
 	for _, subject := range subjects {

@@ -41,6 +41,20 @@ func TestIsDisallowedAddr(t *testing.T) {
 		{"::ffff:0.1.2.3", true},
 		{"::ffff:240.0.0.1", true},
 		{"::ffff:198.18.0.1", true},
+		// IPv4 documentation and relay ranges.
+		{"192.0.2.1", true},
+		{"198.51.100.1", true},
+		{"203.0.113.1", true},
+		{"192.88.99.1", true},
+		// IPv6 transition ranges that can reach a blocked IPv4 target.
+		{"64:ff9b::a9fe:a9fe", true}, // NAT64 to 169.254.169.254
+		{"64:ff9b::808:808", true},   // NAT64 to 8.8.8.8, still refused
+		{"64:ff9b:1::1", true},
+		{"2002:a9fe:a9fe::1", true},                    // 6to4 embedding 169.254.169.254
+		{"2001:0:4136:e378:8000:63bf:3fff:fdd2", true}, // Teredo
+		{"2001:db8::1", true},
+		{"100::1", true},
+		{"::127.0.0.1", true}, // deprecated IPv4-compatible
 	}
 
 	for _, tt := range tests {

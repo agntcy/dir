@@ -7,6 +7,7 @@ import (
 	"crypto"
 	"crypto/ecdsa"
 	"crypto/rsa"
+	"slices"
 
 	"github.com/lestrrat-go/jwx/v2/jwk"
 )
@@ -35,6 +36,11 @@ func ToPublicKey(v any) (crypto.PublicKey, bool) {
 // skipping encryption-only keys and keys ToPublicKey rejects.
 func PublicKeyFromJWK(key jwk.Key) (crypto.PublicKey, bool) {
 	if key.KeyUsage() == string(jwk.ForEncryption) {
+		return nil, false
+	}
+
+	// A key restricted to other operations (e.g. encrypt) must not verify.
+	if ops := key.KeyOps(); len(ops) > 0 && !slices.Contains(ops, jwk.KeyOpVerify) {
 		return nil, false
 	}
 

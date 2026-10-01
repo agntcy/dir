@@ -39,6 +39,10 @@ func TestVerify_Rejects(t *testing.T) {
 	require.Error(t, Verify(sig, []byte("payload"), testutil.NewKey(t, "ES256").Public()), "wrong key")
 	require.Error(t, Verify(sig, []byte("payload"), testutil.NewKey(t, "EdDSA").Public()), "wrong key type")
 	require.Error(t, Verify(sig, []byte("payload"), "not a key"), "unsupported key type")
+	require.Error(t, Verify(sig, []byte("payload"), (*ecdsa.PublicKey)(nil)), "typed nil ecdsa key")
+	require.Error(t, Verify(sig, []byte("payload"), (*rsa.PublicKey)(nil)), "typed nil rsa key")
+	require.Error(t, Verify(sig, []byte("payload"), &ecdsa.PublicKey{}), "ecdsa key without a curve")
+	require.Error(t, Verify(sig, []byte("payload"), &rsa.PublicKey{}), "rsa key without a modulus")
 }
 
 func TestVerify_MultipleKeys(t *testing.T) {
