@@ -14,7 +14,10 @@ apiserver:
       scheduler_interval: "1s"
     routing:
       # This peer acts as a DHT bootstrap peer for the other peers in the test,
-      # so it doesn't have any bootstrap peers configured.
+      # so it doesn't have any bootstrap peers configured. The empty list is
+      # required: without it the chart's default peer is inherited and this
+      # node stops being a bootstrap node.
+      bootstrap_peers: []
       refresh_interval: "1s"
       key_path: "/etc/agntcy/dir/node.privkey"
       listen_address: "/ip4/0.0.0.0/tcp/8999"

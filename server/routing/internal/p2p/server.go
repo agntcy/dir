@@ -173,7 +173,6 @@ func start(ctx context.Context, opts *options) <-chan status {
 		// Peer discovery is now handled automatically by:
 		//   - DHT: Bootstrap() connects to bootstrap peers at startup
 		//   - DHT: RoutingTableRefreshPeriod() maintains routing table (every 30s)
-		//   - GossipSub: Mesh maintenance with peer exchange (if enabled)
 		//   - Connection Manager: Maintains healthy connection count (50-200)
 		//
 		// The custom discover() polling loop has been removed as it was redundant
@@ -191,16 +190,6 @@ func start(ctx context.Context, opts *options) <-chan status {
 					"rendezvous", opts.Randevous)
 			}
 		}
-		// Register services. Only available on non-bootstrap nodes.
-		if opts.APIRegistrer != nil && len(opts.BootstrapPeers) > 0 {
-			err := opts.APIRegistrer(host)
-			if err != nil {
-				statusCh <- status{Err: err}
-
-				return
-			}
-		}
-
 		// Run until context expiry
 		logger.Debug("Host and DHT created, running routing services", "host", host.ID(), "addresses", host.Addrs())
 

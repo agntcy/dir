@@ -12,6 +12,7 @@ package metrics
 import (
 	"context"
 	"fmt"
+	"sync"
 	"time"
 
 	"github.com/agntcy/dir/server/types"
@@ -19,6 +20,26 @@ import (
 )
 
 var logger = logging.Logger("reconciler/metrics")
+
+// providerCountWorkers bounds how many provider lookups are in flight at once.
+const providerCountWorkers = 8
+
+// maxProviderCount is an upper bound for a stored provider count. A real DHT
+// lookup returns orders of magnitude fewer peers; the cap exists so the
+// conversion to the column's width cannot wrap.
+const maxProviderCount = 1 << 20
+
+func clampProviderCount(count int) uint32 {
+	if count < 0 {
+		return 0
+	}
+
+	if count > maxProviderCount {
+		return maxProviderCount
+	}
+
+	return uint32(count)
+}
 
 // ProviderCounterAPI is the minimal interface required by the metrics task to
 // query provider counts. It is satisfied by types.RoutingAPI (daemon mode, where
@@ -96,28 +117,21 @@ func (t *Task) refreshProviderCounts(ctx context.Context) error {
 
 	var updated, failed int
 
-	for _, cid := range cids {
-		select {
-		case <-ctx.Done():
-			return fmt.Errorf("context cancelled: %w", ctx.Err())
-		default:
-		}
-
-		count, err := t.counters.GetProviderCount(ctx, cid)
-		if err != nil {
-			logger.Warn("Failed to get provider count", "cid", cid, "error", err)
+	// Persist serially while the lookups run concurrently. The lookups are the
+	// slow part; the metrics table serialises writers regardless.
+	for res := range t.countProviders(ctx, cids) {
+		if res.err != nil {
+			logger.Warn("Failed to get provider count", "cid", res.cid, "error", res.err)
 
 			failed++
 
 			continue
 		}
 
-		if count < 0 {
-			count = 0
-		}
+		count := clampProviderCount(res.count)
 
-		if err := t.db.SetProviderCount(cid, uint32(count)); err != nil {
-			logger.Warn("Failed to set provider count", "cid", cid, "count", count, "error", err)
+		if err := t.db.SetProviderCount(res.cid, count); err != nil {
+			logger.Warn("Failed to set provider count", "cid", res.cid, "count", count, "error", err)
 
 			failed++
 
@@ -127,7 +141,62 @@ func (t *Task) refreshProviderCounts(ctx context.Context) error {
 		updated++
 	}
 
+	if err := ctx.Err(); err != nil {
+		return fmt.Errorf("context cancelled: %w", err)
+	}
+
 	logger.Info("Provider count refresh complete", "updated", updated, "failed", failed)
 
 	return nil
+}
+
+type providerCountResult struct {
+	cid   string
+	count int
+	err   error
+}
+
+// countProviders fans the CID list out over a bounded worker pool and streams
+// results back as they land. Each GetProviderCount is a DHT lookup, so running
+// one CID at a time would exceed the reconciliation interval on any sizeable
+// corpus.
+func (t *Task) countProviders(ctx context.Context, cids []string) <-chan providerCountResult {
+	jobs := make(chan string)
+	results := make(chan providerCountResult)
+	workers := min(providerCountWorkers, len(cids))
+
+	var wg sync.WaitGroup
+
+	for range workers {
+		wg.Go(func() {
+			for cid := range jobs {
+				count, err := t.counters.GetProviderCount(ctx, cid)
+
+				select {
+				case results <- providerCountResult{cid: cid, count: count, err: err}:
+				case <-ctx.Done():
+					return
+				}
+			}
+		})
+	}
+
+	go func() {
+		defer close(jobs)
+
+		for _, cid := range cids {
+			select {
+			case jobs <- cid:
+			case <-ctx.Done():
+				return
+			}
+		}
+	}()
+
+	go func() {
+		wg.Wait()
+		close(results)
+	}()
+
+	return results
 }

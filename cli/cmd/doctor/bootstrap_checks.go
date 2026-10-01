@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	serverrouting "github.com/agntcy/dir/server/routing"
 	"github.com/libp2p/go-libp2p"
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/libp2p/go-libp2p/core/protocol"
@@ -246,9 +247,8 @@ func addPeerProtocolDetails(details map[string]string, protocols []protocol.ID, 
 
 	details["protocol_count"] = fmt.Sprintf("%d", len(protocolStrings))
 	details["protocols"] = strings.Join(protocolStrings, ",")
-	details["has_kad_dht_protocol"] = fmt.Sprintf("%t", hasProtocolPrefix(protocolStrings, "/ipfs/kad") || hasProtocolPrefix(protocolStrings, "dir/kad"))
+	details["has_kad_dht_protocol"] = fmt.Sprintf("%t", hasProtocolPrefix(protocolStrings, "/ipfs/kad") || hasProtocolPrefix(protocolStrings, serverrouting.ProtocolPrefix+"/kad"))
 	details["has_dir_rpc_protocol"] = fmt.Sprintf("%t", hasProtocolPrefix(protocolStrings, "/dir/rpc"))
-	details["has_gossipsub_protocol"] = fmt.Sprintf("%t", hasProtocolPrefix(protocolStrings, "/meshsub") || hasProtocolPrefix(protocolStrings, "/floodsub"))
 }
 
 func hasProtocolPrefix(protocols []string, prefix string) bool {

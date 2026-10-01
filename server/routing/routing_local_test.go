@@ -5,99 +5,37 @@
 package routing
 
 import (
-	"context"
-	"errors"
-	"log/slog"
-	"os"
 	"strings"
 	"testing"
 	"time"
 
 	typesv1alpha1 "buf.build/gen/go/agntcy/oasf/protocolbuffers/go/agntcy/oasf/types/v1alpha1"
-	coretypes "github.com/agntcy/dir/api/core/types"
 	corev1 "github.com/agntcy/dir/api/core/v1"
 	routingv1 "github.com/agntcy/dir/api/routing/v1"
-	"github.com/agntcy/dir/server/datastore"
 	"github.com/agntcy/dir/server/types"
-	"github.com/agntcy/dir/utils/logging"
-	ipfsdatastore "github.com/ipfs/go-datastore"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
-const testPeerID = "test-peer-id"
+// publishRecord indexes a record and announces it, which is what a completed
+// push followed by a publish leaves behind.
+func publishRecord(t *testing.T, r *route, db types.DatabaseAPI, record *corev1.Record) {
+	t.Helper()
 
-func TestPublish_InvalidObject(t *testing.T) {
-	r := &routeLocal{localPeerID: testPeerID}
+	adapter, err := record.Decode()
+	require.NoError(t, err)
 
-	t.Run("nil record", func(t *testing.T) {
-		err := r.Publish(t.Context(), nil)
-
-		assert.Error(t, err)
-		assert.ErrorContains(t, err, "record is required")
-	})
-
-	t.Run("record with no CID", func(t *testing.T) {
-		err := r.Publish(t.Context(), &mockRecord{})
-		assert.Error(t, err)
-		assert.ErrorContains(t, err, "record has no CID")
-	})
+	require.NoError(t, db.AddRecord(adapter))
+	require.NoError(t, r.Publish(t.Context(), adapter))
 }
 
-type mockRecord struct {
-	coretypes.Record
-}
+func TestPublish_NilRecord(t *testing.T) {
+	r := &route{}
 
-func (mockRecord) GetCid() string {
-	return ""
-}
+	err := r.Publish(t.Context(), nil)
 
-type mockStore struct {
-	data map[string]*corev1.Record
-}
-
-func newMockStore() *mockStore {
-	return &mockStore{
-		data: make(map[string]*corev1.Record),
-	}
-}
-
-func (m *mockStore) Push(_ context.Context, record *corev1.Record) (*corev1.RecordRef, error) {
-	cid := record.GetCid()
-	if cid == "" {
-		return nil, errors.New("record CID is required")
-	}
-
-	m.data[cid] = record
-
-	return &corev1.RecordRef{Cid: cid}, nil
-}
-
-func (m *mockStore) Lookup(_ context.Context, ref *corev1.RecordRef) (*corev1.RecordMeta, error) {
-	if _, exists := m.data[ref.GetCid()]; exists {
-		return &corev1.RecordMeta{
-			Cid: ref.GetCid(),
-		}, nil
-	}
-
-	return nil, errors.New("test object not found")
-}
-
-func (m *mockStore) Pull(_ context.Context, ref *corev1.RecordRef) (*corev1.Record, error) {
-	if record, exists := m.data[ref.GetCid()]; exists {
-		return record, nil
-	}
-
-	return nil, errors.New("test object not found")
-}
-
-func (m *mockStore) Delete(_ context.Context, ref *corev1.RecordRef) error {
-	delete(m.data, ref.GetCid())
-
-	return nil
-}
-
-func (m *mockStore) IsReady(_ context.Context) bool {
-	return true
+	assert.Error(t, err)
+	assert.ErrorContains(t, err, "record is required")
 }
 
 func TestPublishList_ValidSingleSkillQuery(t *testing.T) {
@@ -135,34 +73,16 @@ func TestPublishList_ValidSingleSkillQuery(t *testing.T) {
 	)
 
 	// create demo network
-	mainNode := newTestServer(t, t.Context(), nil)
-	r := newTestServer(t, t.Context(), mainNode.remote.server.P2pAddrs())
+	db := newTestDatabase(t)
+	mainNode := newTestServer(t, t.Context(), nil, nil)
+	r := newTestServer(t, t.Context(), mainNode.remote.server.P2pAddrs(), db)
 
 	// wait for connection
 	<-mainNode.remote.server.DHT().RefreshRoutingTable()
 	time.Sleep(1 * time.Second)
 
-	// Mock store
-	mockstore := newMockStore()
-	r.local.store = mockstore
-
-	_, err := r.local.store.Push(t.Context(), testRecord)
-	assert.NoError(t, err)
-
-	_, err = r.local.store.Push(t.Context(), testRecord2)
-	assert.NoError(t, err)
-
-	// Publish first record
-	adapter, err := testRecord.Decode()
-	assert.NoError(t, err)
-	err = r.Publish(t.Context(), adapter)
-	assert.NoError(t, err)
-
-	// Publish second record
-	adapter2, err := testRecord2.Decode()
-	assert.NoError(t, err)
-	err = r.Publish(t.Context(), adapter2)
-	assert.NoError(t, err)
+	publishRecord(t, r, db, testRecord)
+	publishRecord(t, r, db, testRecord2)
 
 	for k, v := range validQueriesWithExpectedObjectRef {
 		t.Run("Valid query: "+k, func(t *testing.T) {
@@ -214,6 +134,7 @@ func TestPublishList_ValidSingleSkillQuery(t *testing.T) {
 	assert.NoError(t, err)
 	err = r.Unpublish(t.Context(), adapterUnpub)
 	assert.NoError(t, err)
+	assert.NoError(t, db.RemoveRecord(testRecord2.GetCid()))
 
 	// Try to list second record using RecordQuery
 	refsChan, err := r.List(t.Context(), &routingv1.ListRequest{
@@ -251,25 +172,15 @@ func TestPublishList_ValidMultiSkillQuery(t *testing.T) {
 	)
 
 	// create demo network
-	mainNode := newTestServer(t, t.Context(), nil)
-	r := newTestServer(t, t.Context(), mainNode.remote.server.P2pAddrs())
+	db := newTestDatabase(t)
+	mainNode := newTestServer(t, t.Context(), nil, nil)
+	r := newTestServer(t, t.Context(), mainNode.remote.server.P2pAddrs(), db)
 
 	// wait for connection
 	<-mainNode.remote.server.DHT().RefreshRoutingTable()
 	time.Sleep(1 * time.Second)
 
-	// Mock store
-	mockstore := newMockStore()
-	r.local.store = mockstore
-
-	_, err := r.local.store.Push(t.Context(), testRecord)
-	assert.NoError(t, err)
-
-	// Publish first record
-	adapter, err := testRecord.Decode()
-	assert.NoError(t, err)
-	err = r.Publish(t.Context(), adapter)
-	assert.NoError(t, err)
+	publishRecord(t, r, db, testRecord)
 
 	t.Run("Valid multi skill query", func(t *testing.T) {
 		// list with multiple RecordQueries (AND logic)
@@ -301,116 +212,84 @@ func TestPublishList_ValidMultiSkillQuery(t *testing.T) {
 	})
 }
 
-func newBadgerDatastore(b *testing.B) types.Datastore {
-	b.Helper()
-
-	dsOpts := []datastore.Option{
-		datastore.WithFsProvider("/tmp/test-datastore"), // Use a temporary directory
-	}
-
-	dstore, err := datastore.New(dsOpts...)
-	if err != nil {
-		b.Fatalf("failed to create badger datastore: %v", err)
-	}
-
-	b.Cleanup(func() {
-		_ = dstore.Close()
-		_ = os.RemoveAll("/tmp/test-datastore")
-	})
-
-	return dstore
-}
-
-func newInMemoryDatastore(b *testing.B) types.Datastore {
-	b.Helper()
-
-	dstore, err := datastore.New()
-	if err != nil {
-		b.Fatalf("failed to create in-memory datastore: %v", err)
-	}
-
-	return dstore
-}
-
-func Benchmark_RouteLocal(b *testing.B) {
-	store := newMockStore()
-	badgerDatastore := newBadgerDatastore(b)
-	inMemoryDatastore := newInMemoryDatastore(b)
-	localLogger = slog.New(slog.DiscardHandler)
-
-	badgerRouter := newLocal(store, badgerDatastore, testPeerID)
-	inMemoryRouter := newLocal(store, inMemoryDatastore, testPeerID)
-
-	record := corev1.New(&typesv1alpha1.Record{
-		Name:          "bench-agent",
+// TestLocalList covers the parts of List that are not about a single skill
+// filter: unfiltered listing, the limit, the returned label set, and the AND
+// across queries.
+func TestLocalList(t *testing.T) {
+	bothSkills := corev1.New(&typesv1alpha1.Record{
+		Name:          "both-skills",
 		SchemaVersion: "0.7.0",
 		Skills: []*typesv1alpha1.Skill{
 			{Name: "category1/class1"},
+			{Name: "category2/class2"},
 		},
 	})
-
-	_, err := store.Push(b.Context(), record)
-	assert.NoError(b, err)
-
-	b.Run("Badger DB Publish and Unpublish", func(b *testing.B) {
-		adapter, err := record.Decode()
-		assert.NoError(b, err)
-
-		for b.Loop() {
-			_ = badgerRouter.Publish(b.Context(), adapter)
-			err := badgerRouter.Unpublish(b.Context(), adapter)
-			assert.NoError(b, err)
-		}
+	oneSkill := corev1.New(&typesv1alpha1.Record{
+		Name:          "one-skill",
+		SchemaVersion: "0.7.0",
+		Skills:        []*typesv1alpha1.Skill{{Name: "category1/class1"}},
 	})
 
-	b.Run("Badger DB List", func(b *testing.B) {
-		adapter, err := record.Decode()
-		assert.NoError(b, err)
+	db := newTestDatabase(t)
+	node := newTestServer(t, t.Context(), nil, db)
 
-		_ = badgerRouter.Publish(b.Context(), adapter)
-		for b.Loop() {
-			_, err := badgerRouter.List(b.Context(), &routingv1.ListRequest{
-				Queries: []*routingv1.RecordQuery{
-					{
-						Type:  routingv1.RecordQueryType_RECORD_QUERY_TYPE_SKILL,
-						Value: "category1/class1",
-					},
-				},
-			})
-			assert.NoError(b, err)
+	publishRecord(t, node, db, bothSkills)
+	publishRecord(t, node, db, oneSkill)
+
+	list := func(t *testing.T, req *routingv1.ListRequest) []*routingv1.ListResponse {
+		t.Helper()
+
+		responses, err := node.List(t.Context(), req)
+		require.NoError(t, err)
+
+		var collected []*routingv1.ListResponse
+		for response := range responses {
+			collected = append(collected, response)
 		}
+
+		return collected
+	}
+
+	t.Run("no queries returns everything held", func(t *testing.T) {
+		assert.Len(t, list(t, &routingv1.ListRequest{}), 2)
 	})
 
-	b.Run("In memory DB Publish and Unpublish", func(b *testing.B) {
-		adapter, err := record.Decode()
-		assert.NoError(b, err)
-
-		for b.Loop() {
-			_ = inMemoryRouter.Publish(b.Context(), adapter)
-			err := inMemoryRouter.Unpublish(b.Context(), adapter)
-			assert.NoError(b, err)
-		}
+	t.Run("limit caps the results", func(t *testing.T) {
+		assert.Len(t, list(t, &routingv1.ListRequest{Limit: new(uint32(1))}), 1)
 	})
 
-	b.Run("In memory DB List", func(b *testing.B) {
-		adapter, err := record.Decode()
-		assert.NoError(b, err)
+	t.Run("queries AND rather than OR", func(t *testing.T) {
+		// oneSkill satisfies the first query only, so a union would wrongly
+		// return it alongside bothSkills.
+		responses := list(t, &routingv1.ListRequest{
+			Queries: []*routingv1.RecordQuery{
+				{Type: routingv1.RecordQueryType_RECORD_QUERY_TYPE_SKILL, Value: "category1/class1"},
+				{Type: routingv1.RecordQueryType_RECORD_QUERY_TYPE_SKILL, Value: "category2/class2"},
+			},
+		})
 
-		_ = inMemoryRouter.Publish(b.Context(), adapter)
-		for b.Loop() {
-			_, err := inMemoryRouter.List(b.Context(), &routingv1.ListRequest{
-				Queries: []*routingv1.RecordQuery{
-					{
-						Type:  routingv1.RecordQueryType_RECORD_QUERY_TYPE_SKILL,
-						Value: "category1/class1",
-					},
-				},
-			})
-			assert.NoError(b, err)
-		}
+		require.Len(t, responses, 1)
+		assert.Equal(t, bothSkills.GetCid(), responses[0].GetRecordRef().GetCid())
 	})
 
-	_ = badgerDatastore.Delete(b.Context(), ipfsdatastore.NewKey("/"))   // Delete all keys
-	_ = inMemoryDatastore.Delete(b.Context(), ipfsdatastore.NewKey("/")) // Delete all keys
-	localLogger = logging.Logger("routing/local")
+	t.Run("responses carry the full label set", func(t *testing.T) {
+		responses := list(t, &routingv1.ListRequest{
+			Queries: []*routingv1.RecordQuery{
+				{Type: routingv1.RecordQueryType_RECORD_QUERY_TYPE_SKILL, Value: "category2"},
+			},
+		})
+
+		require.Len(t, responses, 1)
+		assert.ElementsMatch(t,
+			[]string{"/skills/category1/class1", "/skills/category2/class2"},
+			responses[0].GetLabels())
+	})
+
+	t.Run("unmatched query returns nothing", func(t *testing.T) {
+		assert.Empty(t, list(t, &routingv1.ListRequest{
+			Queries: []*routingv1.RecordQuery{
+				{Type: routingv1.RecordQueryType_RECORD_QUERY_TYPE_SKILL, Value: "category3"},
+			},
+		}))
+	})
 }
