@@ -91,23 +91,3 @@ func TestIsDuplicateRecordError(t *testing.T) {
 		})
 	}
 }
-
-func TestIsRepositoryNotFoundError(t *testing.T) {
-	tests := []struct {
-		name string
-		err  error
-		want bool
-	}{
-		{"nil", nil, false},
-		{"404 name unknown", errors.New("404 name unknown"), true},
-		{"404 repository name not known", errors.New("404 repository name not known"), true},
-		{"404 not found", errors.New("404 not found"), true},
-		{"no 404", errors.New("500 internal error"), false},
-		{"404 without keyword", errors.New("404 something else"), false},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			assert.Equal(t, tt.want, isRepositoryNotFoundError(tt.err))
-		})
-	}
-}

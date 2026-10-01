@@ -9,7 +9,6 @@ import (
 	stdErrors "errors"
 	"fmt"
 	"io"
-	"strings"
 
 	corev1 "github.com/agntcy/dir/api/core/v1"
 	"github.com/agntcy/dir/utils/logging"
@@ -182,15 +181,8 @@ func (s *store) deleteFromRemoteRepository(ctx context.Context, cid string) erro
 
 	manifestDesc, err := s.repo.Resolve(ctx, cid)
 	if err != nil {
-		// If manifest is completely missing (errdef.ErrNotFound), treat as successful deletion
-		if stdErrors.Is(err, errdef.ErrNotFound) {
-			internalLogger.Info("Manifest not found (never existed or deleted already)", "cid", cid)
-
-			return nil
-		}
-
-		// If manifest doesn't exist, consider it already deleted
-		if strings.Contains(err.Error(), "404") || strings.Contains(err.Error(), "NOT_FOUND") {
+		// A manifest that does not exist is already deleted.
+		if IsNotFound(err) {
 			internalLogger.Info("Manifest not found (never existed or deleted already)", "cid", cid)
 
 			return nil
@@ -201,10 +193,9 @@ func (s *store) deleteFromRemoteRepository(ctx context.Context, cid string) erro
 	}
 
 	if err := repo.Manifests().Delete(ctx, manifestDesc); err != nil {
-		errStr := err.Error()
-
-		// Check for "operation not supported" errors (e.g., GHCR returns 405)
-		if strings.Contains(errStr, "405") || strings.Contains(errStr, "unsupported") {
+		// Some registries do not allow deleting through the OCI API (e.g.,
+		// GHCR returns 405).
+		if isDeleteUnsupported(err) {
 			internalLogger.Warn("Registry does not support manifest deletion via OCI API", "cid", cid, "error", err, "hint", "Delete the package through the registry's web UI or native API (e.g., GitHub Packages API for GHCR)")
 
 			return status.Errorf(codes.Unimplemented, "registry does not support OCI delete API; use the registry's web UI or native API to delete packages")
@@ -229,7 +220,7 @@ func (s *store) deleteFromRemoteRepository(ctx context.Context, cid string) erro
 func (s *store) deleteReferrerManifest(ctx context.Context, referrerCID string, manifestDesc ocispec.Descriptor) error {
 	switch repo := s.repo.(type) {
 	case *oci.Store:
-		if err := repo.Delete(ctx, manifestDesc); err != nil && !stdErrors.Is(err, errdef.ErrNotFound) {
+		if err := repo.Delete(ctx, manifestDesc); err != nil && !IsNotFound(err) {
 			return status.Errorf(codes.Internal, "failed to delete referrer manifest %s: %v",
 				manifestDesc.Digest.String(), err)
 		}
@@ -246,9 +237,7 @@ func (s *store) deleteReferrerManifest(ctx context.Context, referrerCID string, 
 
 	case *remote.Repository:
 		if err := repo.Manifests().Delete(ctx, manifestDesc); err != nil {
-			errStr := err.Error()
-
-			if strings.Contains(errStr, "405") || strings.Contains(errStr, "unsupported") {
+			if isDeleteUnsupported(err) {
 				internalLogger.Warn("Registry does not support manifest deletion via OCI API",
 					"cid", referrerCID, "error", err)
 
@@ -256,8 +245,7 @@ func (s *store) deleteReferrerManifest(ctx context.Context, referrerCID string, 
 					"registry does not support OCI delete API; use the registry's web UI or native API to delete packages")
 			}
 
-			if stdErrors.Is(err, errdef.ErrNotFound) ||
-				strings.Contains(errStr, "404") || strings.Contains(errStr, "NOT_FOUND") {
+			if IsNotFound(err) {
 				internalLogger.Info("Referrer manifest already deleted",
 					"cid", referrerCID, "digest", manifestDesc.Digest.String())
 

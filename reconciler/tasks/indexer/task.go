@@ -16,6 +16,7 @@ import (
 	"time"
 
 	corev1 "github.com/agntcy/dir/api/core/v1"
+	ocistore "github.com/agntcy/dir/server/store/oci"
 	ociconfig "github.com/agntcy/dir/server/store/oci/config"
 	"github.com/agntcy/dir/server/types"
 	"github.com/agntcy/dir/server/validators"
@@ -171,8 +172,8 @@ func (t *Task) createRegistrySnapshot(ctx context.Context) (*registrySnapshot, e
 		return nil
 	})
 	if err != nil {
-		// Check if this is a "repository not found" error (404)
-		if isRepositoryNotFoundError(err) {
+		// A repository not created yet has no records.
+		if ocistore.IsNotFound(err) {
 			logger.Debug("Repository not found yet, returning empty snapshot", "error", err)
 
 			return emptySnapshot, nil
@@ -291,20 +292,6 @@ func isDuplicateRecordError(err error) bool {
 		strings.Contains(errStr, "already exists") ||
 		strings.Contains(errStr, "unique constraint") ||
 		strings.Contains(errStr, "primary key")
-}
-
-// isRepositoryNotFoundError checks if the error is a "repository not found" (404) error.
-func isRepositoryNotFoundError(err error) bool {
-	if err == nil {
-		return false
-	}
-
-	errStr := err.Error()
-
-	return strings.Contains(errStr, "404") &&
-		(strings.Contains(errStr, "name unknown") ||
-			strings.Contains(errStr, "repository name not known") ||
-			strings.Contains(errStr, "not found"))
 }
 
 // createContentHash creates a hash of the tags for quick comparison.
