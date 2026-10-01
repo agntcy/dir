@@ -225,6 +225,12 @@ func (f *fakeSignatureDB) ListCatalogTags() ([]*catalogv1.CatalogTag, error) {
 	return nil, nil
 }
 
+func (f *fakeSignatureDB) UpsertIdentityClaim(claim types.IdentityClaimObject) error { return nil }
+
+func (f *fakeSignatureDB) GetIdentityClaimByCID(cid, role string) (types.IdentityClaimObject, error) {
+	return nil, nil //nolint:nilnil // unused by these tests
+}
+
 func (f *fakeSignatureDB) RemoveRecord(cid string) error          { return nil }
 func (f *fakeSignatureDB) SetRecordSigned(recordCID string) error { return nil }
 func (f *fakeSignatureDB) CreateSync(remoteURL string, cids []string, remoteRegistryURL string, repositoryName string) (string, error) {

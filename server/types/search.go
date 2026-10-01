@@ -70,6 +70,10 @@ type RecordFilters struct {
 	AnnotationValues   []string
 	Annotations        []Annotation
 	Descriptions       []string              // Match against record description field.
+	Identities         []string              // Match against the subject of the identity claim.
+	Owners             []string              // Match against the subject of the ownership claim.
+	IdentityVerified   *bool                 // Filter by whether the identity claim was verified.
+	OwnerVerified      *bool                 // Filter by whether the ownership claim was verified.
 	Excluded           ExcludedRecordFilters // Negated (exclude) counterparts of the fields above.
 
 	OrderBy []RecordOrderClause // Order by directives applied in sequence.
@@ -100,6 +104,8 @@ type ExcludedRecordFilters struct {
 	ScanSeverities     []string
 	ScanStatuses       []string
 	ScanFailureReasons []string
+	Identities         []string
+	Owners             []string
 }
 
 type Annotation struct {
@@ -437,5 +443,47 @@ func WithScanFailureReasons(reasons ...string) FilterOption {
 func WithoutScanFailureReasons(reasons ...string) FilterOption {
 	return func(sc *RecordFilters) {
 		sc.Excluded.ScanFailureReasons = append(sc.Excluded.ScanFailureReasons, reasons...)
+	}
+}
+
+// WithIdentities filters records by the subject of their identity claim.
+func WithIdentities(subjects ...string) FilterOption {
+	return func(sc *RecordFilters) {
+		sc.Identities = append(sc.Identities, subjects...)
+	}
+}
+
+// WithoutIdentities excludes records whose identity claim subject matches any of the given patterns.
+func WithoutIdentities(subjects ...string) FilterOption {
+	return func(sc *RecordFilters) {
+		sc.Excluded.Identities = append(sc.Excluded.Identities, subjects...)
+	}
+}
+
+// WithOwners filters records by the subject of their ownership claim.
+func WithOwners(subjects ...string) FilterOption {
+	return func(sc *RecordFilters) {
+		sc.Owners = append(sc.Owners, subjects...)
+	}
+}
+
+// WithoutOwners excludes records whose ownership claim subject matches any of the given patterns.
+func WithoutOwners(subjects ...string) FilterOption {
+	return func(sc *RecordFilters) {
+		sc.Excluded.Owners = append(sc.Excluded.Owners, subjects...)
+	}
+}
+
+// WithIdentityVerified filters records by whether their identity claim was verified.
+func WithIdentityVerified(verified bool) FilterOption {
+	return func(sc *RecordFilters) {
+		sc.IdentityVerified = &verified
+	}
+}
+
+// WithOwnerVerified filters records by whether their ownership claim was verified.
+func WithOwnerVerified(verified bool) FilterOption {
+	return func(sc *RecordFilters) {
+		sc.OwnerVerified = &verified
 	}
 }

@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	coretypes "github.com/agntcy/dir/api/core/types"
 	corev1 "github.com/agntcy/dir/api/core/v1"
 	namingv1 "github.com/agntcy/dir/api/naming/v1"
 	gormdb "github.com/agntcy/dir/server/database/gorm"
@@ -172,31 +173,46 @@ func (n *namingCtrl) Resolve(ctx context.Context, req *namingv1.ResolveRequest) 
 		return nil, status.Error(codes.InvalidArgument, "name is required")
 	}
 
-	// Build filter options: filter by name (with protocol variations if not specified)
+	records, err := findRecordsByName(n.db, req.GetName(), req.GetVersion())
+	if err != nil {
+		return nil, err
+	}
+
+	return &namingv1.ResolveResponse{
+		Records: namedRecordRefs(records),
+	}, nil
+}
+
+// findRecordsByName returns the records matching name (and version, if given),
+// newest first, or a gRPC NotFound error if there are none.
+func findRecordsByName(db types.DatabaseAPI, name, version string) ([]coretypes.Record, error) {
+	// Filter by name (with protocol variations if not specified).
 	filterOptions := []types.FilterOption{
-		types.WithNames(expandNameWithProtocols(req.GetName())...),
+		types.WithNames(expandNameWithProtocols(name)...),
 	}
 
-	// Add version filter if specified
-	if req.GetVersion() != "" {
-		filterOptions = append(filterOptions, types.WithVersions(req.GetVersion()))
+	if version != "" {
+		filterOptions = append(filterOptions, types.WithVersions(version))
 	}
 
-	// Get matching records
-	records, err := n.db.GetRecords(filterOptions...)
+	records, err := db.GetRecords(filterOptions...)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to search records: %v", err)
 	}
 
 	if len(records) == 0 {
-		if req.GetVersion() != "" {
-			return nil, status.Errorf(codes.NotFound, "no record found with name %q and version %q", req.GetName(), req.GetVersion())
+		if version != "" {
+			return nil, status.Errorf(codes.NotFound, "no record found with name %q and version %q", name, version)
 		}
 
-		return nil, status.Errorf(codes.NotFound, "no record found with name %q", req.GetName())
+		return nil, status.Errorf(codes.NotFound, "no record found with name %q", name)
 	}
 
-	// Convert to response format
+	return records, nil
+}
+
+// namedRecordRefs converts records to their response format.
+func namedRecordRefs(records []coretypes.Record) []*corev1.NamedRecordRef {
 	refs := make([]*corev1.NamedRecordRef, 0, len(records))
 
 	for _, r := range records {
@@ -207,9 +223,7 @@ func (n *namingCtrl) Resolve(ctx context.Context, req *namingv1.ResolveRequest) 
 		})
 	}
 
-	return &namingv1.ResolveResponse{
-		Records: refs,
-	}, nil
+	return refs
 }
 
 // expandNameWithProtocols returns name variations to search for.

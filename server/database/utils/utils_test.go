@@ -295,3 +295,102 @@ func TestQueryToFilters_NonNegatedUnaffected(t *testing.T) {
 	assert.Equal(t, []string{"nlp"}, cfg.SkillNames)
 	assert.Empty(t, cfg.Excluded.SkillNames)
 }
+
+func TestQueryToFilters_IdentityQueries(t *testing.T) {
+	tests := []struct {
+		name  string
+		query *searchv1.RecordQuery
+		check func(t *testing.T, cfg types.RecordFilters)
+	}{
+		{
+			name:  "identity subject",
+			query: &searchv1.RecordQuery{Type: searchv1.RecordQueryType_RECORD_QUERY_TYPE_IDENTITY, Value: "did:web:acme.com:*"},
+			check: func(t *testing.T, cfg types.RecordFilters) {
+				t.Helper()
+				assert.Equal(t, []string{"did:web:acme.com:*"}, cfg.Identities)
+				assert.Empty(t, cfg.Owners)
+				assert.Empty(t, cfg.Excluded.Identities)
+			},
+		},
+		{
+			name:  "negated identity subject",
+			query: &searchv1.RecordQuery{Type: searchv1.RecordQueryType_RECORD_QUERY_TYPE_IDENTITY, Value: "spiffe://*", Negate: true},
+			check: func(t *testing.T, cfg types.RecordFilters) {
+				t.Helper()
+				assert.Empty(t, cfg.Identities)
+				assert.Equal(t, []string{"spiffe://*"}, cfg.Excluded.Identities)
+			},
+		},
+		{
+			name:  "owner subject",
+			query: &searchv1.RecordQuery{Type: searchv1.RecordQueryType_RECORD_QUERY_TYPE_OWNER, Value: "dns:acme.com"},
+			check: func(t *testing.T, cfg types.RecordFilters) {
+				t.Helper()
+				assert.Equal(t, []string{"dns:acme.com"}, cfg.Owners)
+				assert.Empty(t, cfg.Identities)
+			},
+		},
+		{
+			name:  "negated owner subject",
+			query: &searchv1.RecordQuery{Type: searchv1.RecordQueryType_RECORD_QUERY_TYPE_OWNER, Value: "dns:*", Negate: true},
+			check: func(t *testing.T, cfg types.RecordFilters) {
+				t.Helper()
+				assert.Equal(t, []string{"dns:*"}, cfg.Excluded.Owners)
+			},
+		},
+		{
+			name:  "blank subjects are dropped",
+			query: &searchv1.RecordQuery{Type: searchv1.RecordQueryType_RECORD_QUERY_TYPE_IDENTITY, Value: "  "},
+			check: func(t *testing.T, cfg types.RecordFilters) {
+				t.Helper()
+				assert.Empty(t, cfg.Identities)
+			},
+		},
+		{
+			name:  "identity verified",
+			query: &searchv1.RecordQuery{Type: searchv1.RecordQueryType_RECORD_QUERY_TYPE_IDENTITY_VERIFIED, Value: "true"},
+			check: func(t *testing.T, cfg types.RecordFilters) {
+				t.Helper()
+				require.NotNil(t, cfg.IdentityVerified)
+				assert.True(t, *cfg.IdentityVerified)
+				assert.Nil(t, cfg.OwnerVerified)
+			},
+		},
+		{
+			name:  "identity not verified",
+			query: &searchv1.RecordQuery{Type: searchv1.RecordQueryType_RECORD_QUERY_TYPE_IDENTITY_VERIFIED, Value: "false"},
+			check: func(t *testing.T, cfg types.RecordFilters) {
+				t.Helper()
+				require.NotNil(t, cfg.IdentityVerified)
+				assert.False(t, *cfg.IdentityVerified)
+			},
+		},
+		{
+			name:  "owner verified",
+			query: &searchv1.RecordQuery{Type: searchv1.RecordQueryType_RECORD_QUERY_TYPE_OWNER_VERIFIED, Value: "true"},
+			check: func(t *testing.T, cfg types.RecordFilters) {
+				t.Helper()
+				require.NotNil(t, cfg.OwnerVerified)
+				assert.True(t, *cfg.OwnerVerified)
+				assert.Nil(t, cfg.IdentityVerified)
+			},
+		},
+		{
+			name:  "negated owner verified flips the value",
+			query: &searchv1.RecordQuery{Type: searchv1.RecordQueryType_RECORD_QUERY_TYPE_OWNER_VERIFIED, Value: "true", Negate: true},
+			check: func(t *testing.T, cfg types.RecordFilters) {
+				t.Helper()
+				require.NotNil(t, cfg.OwnerVerified)
+				assert.False(t, *cfg.OwnerVerified)
+			},
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			opts, err := QueryToFilters([]*searchv1.RecordQuery{tc.query})
+			require.NoError(t, err)
+			tc.check(t, applyOpts(opts))
+		})
+	}
+}

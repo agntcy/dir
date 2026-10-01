@@ -14,6 +14,7 @@ import (
 	storev1 "github.com/agntcy/dir/api/store/v1"
 )
 
+//nolint:interfacebloat // one embedded API per persisted concern.
 type DatabaseAPI interface {
 	// SearchDatabaseAPI handles management of the search database.
 	SearchDatabaseAPI
@@ -29,6 +30,9 @@ type DatabaseAPI interface {
 
 	// SignatureVerificationDatabaseAPI handles management of signature verifications.
 	SignatureVerificationDatabaseAPI
+
+	// IdentityClaimDatabaseAPI handles persistence of identity and ownership claim results.
+	IdentityClaimDatabaseAPI
 
 	// ScanReportDatabaseAPI handles persistence of security scan results.
 	ScanReportDatabaseAPI
@@ -179,6 +183,17 @@ type SignatureVerificationDatabaseAPI interface {
 
 	// InvalidateSignatureVerificationsForRecord removes all cached verification rows for a record so the reconciler will re-verify it (e.g. when a new signature or public key referrer is pushed).
 	InvalidateSignatureVerificationsForRecord(recordCID string) error
+}
+
+// IdentityClaimDatabaseAPI persists the last verification result of a record's
+// identity and ownership claims.
+type IdentityClaimDatabaseAPI interface {
+	// UpsertIdentityClaim inserts or updates the result keyed by (record CID, role).
+	UpsertIdentityClaim(claim IdentityClaimObject) error
+
+	// GetIdentityClaimByCID returns the result for a record's claim of the given
+	// role. Returns an error wrapping gorm.ErrIdentityClaimNotFound if none exists.
+	GetIdentityClaimByCID(cid, role string) (IdentityClaimObject, error)
 }
 
 // Scan status values. A row is written for every attempt, so the status is what

@@ -1,0 +1,98 @@
+// Copyright AGNTCY Contributors (https://github.com/agntcy)
+// SPDX-License-Identifier: Apache-2.0
+
+syntax = "proto3";
+
+package agntcy.dir.identity.v1;
+
+import "agntcy/dir/core/v1/record.proto";
+import "agntcy/dir/identity/v1/claim.proto";
+import "google/protobuf/timestamp.proto";
+
+// IdentityService exposes the verification status of a record's identity and
+// ownership claims, and resolves record names. It is read-only: claim
+// verification results are written by the reconciler.
+service IdentityService {
+  // GetIdentityStatus returns the last verification result of a record's
+  // identity and ownership claims. A claim that has not been verified yet is
+  // left unset in the response, which is not an error.
+  rpc GetIdentityStatus(GetIdentityStatusRequest) returns (GetIdentityStatusResponse);
+
+  // Resolve resolves a record reference (name with optional version) to CIDs.
+  //   - "name" -> returns all versions (newest first)
+  //   - "name" with version -> returns the specific version
+  // Returns an error if no matching record is found.
+  rpc Resolve(ResolveRequest) returns (ResolveResponse);
+}
+
+// ClaimVerificationStatus is the outcome of verifying a claim.
+enum ClaimVerificationStatus {
+  CLAIM_VERIFICATION_STATUS_UNSPECIFIED = 0;
+  // The claim's signature and subject were verified.
+  CLAIM_VERIFICATION_STATUS_VERIFIED = 1;
+  // Verification was attempted and failed; see ClaimVerification.error.
+  CLAIM_VERIFICATION_STATUS_FAILED = 2;
+}
+
+// ClaimVerification is the last verification result of one claim of a record.
+message ClaimVerification {
+  // The role the verified claim asserts.
+  ClaimRole role = 1;
+
+  // The identity URI the claim asserts.
+  string subject = 2;
+
+  // The outcome of the last verification.
+  ClaimVerificationStatus status = 3;
+
+  // Why verification failed. Only set when status is FAILED.
+  optional string error = 4;
+
+  // When the claim was last verified.
+  google.protobuf.Timestamp verified_at = 5;
+}
+
+// GetIdentityStatusRequest is the request for retrieving claim verification
+// status. Either cid OR name must be provided. If name is provided, it is
+// resolved to a CID first (using the latest version if version is not
+// specified).
+message GetIdentityStatusRequest {
+  // The CID of the record to check.
+  // If provided, name and version are ignored.
+  optional string cid = 1;
+
+  // The name of the record to check (e.g., "cisco.com/agent").
+  // Used when cid is not provided.
+  optional string name = 2;
+
+  // Optional version when looking up by name (e.g., "v1.0.0").
+  // If not specified, the latest version is used.
+  optional string version = 3;
+}
+
+// GetIdentityStatusResponse is the response for retrieving claim verification
+// status.
+message GetIdentityStatusResponse {
+  // The record's identity claim result. Unset if no identity claim has been
+  // verified.
+  optional ClaimVerification identity = 1;
+
+  // The record's ownership claim result. Unset if no ownership claim has been
+  // verified.
+  optional ClaimVerification owner = 2;
+}
+
+// ResolveRequest is the request for resolving a record reference to CIDs.
+message ResolveRequest {
+  // The name of the record to resolve (e.g., "cisco.com/agent").
+  string name = 1;
+
+  // Optional version to resolve to (e.g., "v1.0.0").
+  optional string version = 2;
+}
+
+// ResolveResponse is the response containing the resolved records.
+message ResolveResponse {
+  // The resolved record references (newest first by created_at).
+  repeated agntcy.dir.core.v1.NamedRecordRef records = 1;
+}

@@ -91,7 +91,14 @@ Examples:
     dirctl search --annotation 'team:*'
     dirctl search --annotation 'env:prod' --annotation 'region:us-*'
 
-13. Exclude matches with the --exclude-* form of any value filter:
+13. Search by identity or ownership claim:
+    dirctl search --identity 'did:web:acme.com:*'
+    dirctl search --owner 'did:web:acme.com'
+    dirctl search --identity-verified          # identity claim was verified
+    dirctl search --owner 'dns:acme.com' --owner-verified
+    dirctl search --owner-verified=false       # no verified ownership claim
+
+14. Exclude matches with the --exclude-* form of any value filter:
     dirctl search --exclude-skill 'natural_language_processing'
     dirctl search --domain 'life_science/*' --exclude-author 'bot*'
     dirctl search --exclude-scan-severity MEDIUM
