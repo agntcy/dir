@@ -20,6 +20,9 @@ spec:
     metadata:
       annotations:
         checksum/config: {{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum }}
+        {{- if eq (include "chart.policies.enabled" .) "true" }}
+        checksum/policies: {{ include (print $.Template.BasePath "/policies-configmap.yaml") . | sha256sum }}
+        {{- end }}
       labels:
         app.kubernetes.io/name: reconciler
         app.kubernetes.io/instance: {{ .Release.Name }}
@@ -81,6 +84,11 @@ spec:
             - name: reconciler-config
               mountPath: /etc/agntcy/reconciler/reconciler.config.yml
               subPath: reconciler.config.yml
+            {{- if eq (include "chart.policies.enabled" .) "true" }}
+            - name: policies
+              mountPath: {{ include "chart.policies.dir" . | quote }}
+              readOnly: true
+            {{- end }}
             {{- if eq .Values.spire.enabled true }}
             - name: spire-agent-socket
               mountPath: /run/spire/agent-sockets
@@ -123,6 +131,11 @@ spec:
             items:
               - key: reconciler.config.yml
                 path: reconciler.config.yml
+        {{- if eq (include "chart.policies.enabled" .) "true" }}
+        - name: policies
+          configMap:
+            name: {{ include "chart.fullname" . }}-policies
+        {{- end }}
         {{- if .Values.coverageVolume }}
         - name: coverage-volume
           emptyDir: {}

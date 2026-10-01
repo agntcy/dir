@@ -190,7 +190,6 @@ apiserver:
 
     # File-based policies. Files from policies are mounted here.
     policy:
-      enabled: false
       dir: "/etc/agntcy/dir/policies"
 
     # Store settings for the storage backend.

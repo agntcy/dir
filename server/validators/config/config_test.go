@@ -43,6 +43,21 @@ func TestConfigValidate(t *testing.T) {
 		Ops:      []string{"unknown"},
 		Config:   map[string]any{ConfigKeySchemaURL: "https://schema.oasf.outshift.com"},
 	}}).Validate(), `validators[0]: unsupported op "unknown"`)
+
+	require.NoError(t, (Config{{
+		Provider: ProviderOPA,
+		Ops:      []string{OpPush},
+		Config:   map[string]any{ConfigKeyFile: "policy.rego"},
+	}}).Validate())
+	require.EqualError(t, (Config{{Provider: ProviderOPA}}).Validate(), `validators[0]: config.file is required for provider "opa"`)
+	require.EqualError(t, (Config{{
+		Provider: ProviderOPA,
+		Config:   map[string]any{ConfigKeyFile: "../policy.rego"},
+	}}).Validate(), `validators[0]: config.file "../policy.rego" must be a filename, not a path`)
+	require.EqualError(t, (Config{{
+		Provider: ProviderOPA,
+		Config:   map[string]any{ConfigKeyFile: "policy.txt"},
+	}}).Validate(), `validators[0]: config.file "policy.txt" must have a .rego extension`)
 }
 
 func TestValidatorHasOp(t *testing.T) {
