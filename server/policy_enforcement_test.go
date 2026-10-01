@@ -115,8 +115,11 @@ func TestOpenDatabase_OpensTheConfiguredDatabase(t *testing.T) {
 
 	cfg.Database.Type = "unknown"
 
-	_, _, _, err = openDatabase(cfg, nil, nil)
+	db, served, current, err := openDatabase(cfg, nil, nil)
 	require.ErrorContains(t, err, "failed to create database API")
+	assert.Nil(t, db)
+	assert.Nil(t, served)
+	assert.Nil(t, current)
 }
 
 // A policy no evaluator has registered has no version whose verdicts could be
