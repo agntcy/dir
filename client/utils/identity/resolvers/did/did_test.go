@@ -7,10 +7,14 @@ import (
 	"crypto"
 	"crypto/elliptic"
 	"crypto/x509"
+	"encoding/binary"
+	"encoding/json"
 	"testing"
 
 	"github.com/agntcy/dir/client/utils/identity/resolvers"
-	"github.com/agntcy/dir/client/utils/identity/resolvers/internal/testutil"
+	"github.com/agntcy/dir/client/utils/identity/resolvers/internal/claimtest"
+	"github.com/agntcy/dir/client/utils/internal/testutil"
+	"github.com/multiformats/go-multibase"
 	"github.com/stretchr/testify/require"
 )
 
@@ -19,9 +23,9 @@ func TestDID_ResolveWeb(t *testing.T) {
 	ed := testutil.NewEdKey(t)
 
 	fetcher := &testutil.FakeFetcher{Docs: map[string][]byte{
-		"https://acme.com/.well-known/did.json":      testutil.DIDDocument(t, "did:web:acme.com", &ec.PublicKey, ed.Public()),
-		"https://acme.com/agents/finance/did.json":   testutil.DIDDocument(t, "did:web:acme.com:agents:finance", &ec.PublicKey),
-		"https://acme.com:8443/.well-known/did.json": testutil.DIDDocument(t, "did:web:acme.com%3A8443", ed.Public()),
+		"https://acme.com/.well-known/did.json":      didDocumentFor(t, "did:web:acme.com", &ec.PublicKey, ed.Public()),
+		"https://acme.com/agents/finance/did.json":   didDocumentFor(t, "did:web:acme.com:agents:finance", &ec.PublicKey),
+		"https://acme.com:8443/.well-known/did.json": didDocumentFor(t, "did:web:acme.com%3A8443", ed.Public()),
 	}}
 	resolver := New(fetcher)
 
@@ -41,7 +45,7 @@ func TestDID_ResolveWeb(t *testing.T) {
 func TestDID_ResolveWeb_RejectsMismatchedDocumentID(t *testing.T) {
 	// A document that claims to be a different identity must not supply keys.
 	fetcher := &testutil.FakeFetcher{Docs: map[string][]byte{
-		"https://acme.com/.well-known/did.json": testutil.DIDDocument(t, "did:web:other.com", testutil.NewEdKey(t).Public()),
+		"https://acme.com/.well-known/did.json": didDocumentFor(t, "did:web:other.com", testutil.NewEdKey(t).Public()),
 	}}
 
 	_, err := New(fetcher).Resolve(t.Context(), "did:web:acme.com", nil)
@@ -131,7 +135,7 @@ func TestDID_ResolveKey(t *testing.T) {
 
 	for name, tc := range cases {
 		t.Run(name, func(t *testing.T) {
-			subject := "did:key:" + testutil.EncodeDIDKey(t, tc.code, tc.raw)
+			subject := "did:key:" + encodeDIDKey(t, tc.code, tc.raw)
 
 			keys, err := New(&testutil.FakeFetcher{}).Resolve(t.Context(), subject, nil)
 			require.NoError(t, err)
@@ -142,7 +146,7 @@ func TestDID_ResolveKey(t *testing.T) {
 
 func TestDID_ResolveKey_DoesNotFetch(t *testing.T) {
 	fetcher := &testutil.FakeFetcher{}
-	subject := "did:key:" + testutil.EncodeDIDKey(t, multicodecEd25519Pub, testutil.EdPublic(t, testutil.NewEdKey(t)))
+	subject := "did:key:" + encodeDIDKey(t, multicodecEd25519Pub, testutil.EdPublic(t, testutil.NewEdKey(t)))
 
 	_, err := New(fetcher).Resolve(t.Context(), subject, nil)
 	require.NoError(t, err)
@@ -159,14 +163,83 @@ func TestDID_ResolveKey_Errors(t *testing.T) {
 	subjects := []string{
 		"did:key:",
 		"did:key:not-multibase",
-		"did:key:" + testutil.EncodeDIDKey(t, 0x9999, []byte("x")),                        // unsupported codec
-		"did:key:" + testutil.EncodeDIDKey(t, multicodecEd25519Pub, []byte("short")),      // wrong length
-		"did:key:" + testutil.EncodeDIDKey(t, multicodecP256Pub, []byte{0x02, 0x01}),      // invalid point
-		"did:key:" + testutil.EncodeDIDKey(t, multicodecRSAPub, []byte("not an rsa key")), // bad DER
+		"did:key:" + encodeDIDKey(t, 0x9999, []byte("x")),                        // unsupported codec
+		"did:key:" + encodeDIDKey(t, multicodecEd25519Pub, []byte("short")),      // wrong length
+		"did:key:" + encodeDIDKey(t, multicodecP256Pub, []byte{0x02, 0x01}),      // invalid point
+		"did:key:" + encodeDIDKey(t, multicodecRSAPub, []byte("not an rsa key")), // bad DER
 	}
 
 	for _, subject := range subjects {
 		_, err := resolver.Resolve(t.Context(), subject, nil)
 		require.Error(t, err, subject)
 	}
+}
+
+// didDocumentFor builds a DID document for id holding the given keys.
+func didDocumentFor(t *testing.T, id string, keys ...crypto.PublicKey) []byte {
+	t.Helper()
+
+	type verificationMethod struct {
+		ID           string          `json:"id"`
+		Type         string          `json:"type"`
+		Controller   string          `json:"controller"`
+		PublicKeyJWK json.RawMessage `json:"publicKeyJwk"`
+	}
+
+	doc := struct {
+		ID                 string               `json:"id"`
+		VerificationMethod []verificationMethod `json:"verificationMethod"`
+	}{ID: id}
+
+	for _, k := range keys {
+		var parsed struct {
+			Keys []json.RawMessage `json:"keys"`
+		}
+
+		require.NoError(t, json.Unmarshal(testutil.JWKS(t, k), &parsed))
+		doc.VerificationMethod = append(doc.VerificationMethod, verificationMethod{
+			ID: id + "#key", Type: "JsonWebKey2020", Controller: id, PublicKeyJWK: parsed.Keys[0],
+		})
+	}
+
+	body, err := json.Marshal(doc)
+	require.NoError(t, err)
+
+	return body
+}
+
+// encodeDIDKey encodes a multicodec-prefixed key as the base58btc multibase
+// string that follows "did:key:".
+func encodeDIDKey(t *testing.T, code uint64, raw []byte) string {
+	t.Helper()
+
+	encoded, err := multibase.Encode(multibase.Base58BTC, append(binary.AppendUvarint(nil, code), raw...))
+	require.NoError(t, err)
+
+	return encoded
+}
+
+func TestResolver_SatisfiesContract(t *testing.T) {
+	var _ resolvers.Resolver = New(nil)
+}
+
+func TestEndToEnd_Web(t *testing.T) {
+	key := testutil.NewRSAKey(t)
+
+	resolver := New(&testutil.FakeFetcher{Docs: map[string][]byte{
+		"https://acme.com/.well-known/did.json": didDocumentFor(t, "did:web:acme.com", &key.PublicKey),
+	}})
+
+	ok, err := claimtest.Verify(t, resolver, claimtest.SignedClaim(t, "did:web:acme.com", key))
+	require.NoError(t, err)
+	require.True(t, ok)
+}
+
+func TestEndToEnd_Key(t *testing.T) {
+	key := testutil.NewEdKey(t)
+	subject := "did:key:" + encodeDIDKey(t, multicodecEd25519Pub, testutil.EdPublic(t, key))
+
+	ok, err := claimtest.Verify(t, New(&testutil.FakeFetcher{}), claimtest.SignedClaim(t, subject, key))
+	require.NoError(t, err)
+	require.True(t, ok)
 }

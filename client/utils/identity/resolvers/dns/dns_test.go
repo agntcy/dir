@@ -7,11 +7,14 @@ import (
 	"context"
 	"crypto"
 	"crypto/elliptic"
+	"crypto/x509"
+	"encoding/base64"
 	"errors"
 	"testing"
 
 	"github.com/agntcy/dir/client/utils/identity/resolvers"
-	"github.com/agntcy/dir/client/utils/identity/resolvers/internal/testutil"
+	"github.com/agntcy/dir/client/utils/identity/resolvers/internal/claimtest"
+	"github.com/agntcy/dir/client/utils/internal/testutil"
 	"github.com/stretchr/testify/require"
 )
 
@@ -38,10 +41,10 @@ func TestDNS_Resolve(t *testing.T) {
 
 	resolver := New(WithLookupTXT(fakeTXT(map[string][]string{
 		"_agntcy-key.acme.com": {
-			"v=akv1;key=" + testutil.SPKIBase64(t, &first.PublicKey),
+			"v=akv1;key=" + spkiBase64(t, &first.PublicKey),
 			"v=spf1 include:_spf.google.com ~all", // unrelated record
-			"v=akv1;key=" + testutil.SPKIBase64(t, second.Public()),
-			"v=akv2;key=" + testutil.SPKIBase64(t, &first.PublicKey), // wrong version
+			"v=akv1;key=" + spkiBase64(t, second.Public()),
+			"v=akv2;key=" + spkiBase64(t, &first.PublicKey), // wrong version
 			"v=akv1;key=not-base64!",
 			"v=akv1;key=", // empty key
 		},
@@ -75,4 +78,39 @@ func TestDNS_Resolve_Errors(t *testing.T) {
 		_, err = resolver.Resolve(t.Context(), subject, nil)
 		require.ErrorContains(t, err, "invalid dns subject", subject)
 	}
+}
+
+// spkiBase64 encodes pub as base64 DER SubjectPublicKeyInfo, as published in a TXT record.
+func spkiBase64(t *testing.T, pub crypto.PublicKey) string {
+	t.Helper()
+
+	der, err := x509.MarshalPKIXPublicKey(pub)
+	require.NoError(t, err)
+
+	return base64.StdEncoding.EncodeToString(der)
+}
+
+func TestResolver_SatisfiesContract(t *testing.T) {
+	var _ resolvers.Resolver = New()
+}
+
+func TestEndToEnd(t *testing.T) {
+	key := testutil.NewECKey(t, elliptic.P256())
+
+	resolver := New(WithLookupTXT(func(_ context.Context, name string) ([]string, error) {
+		require.Equal(t, "_agntcy-key.acme.com", name)
+
+		return []string{"v=akv1;key=" + spkiBase64(t, &key.PublicKey)}, nil
+	}))
+
+	ok, err := claimtest.Verify(t, resolver, claimtest.SignedClaim(t, "dns:acme.com", key))
+	require.NoError(t, err)
+	require.True(t, ok)
+
+	// A claim signed by someone who doesn't hold the published key is rejected.
+	imposter := testutil.NewECKey(t, elliptic.P256())
+
+	ok, err = claimtest.Verify(t, resolver, claimtest.SignedClaim(t, "dns:acme.com", imposter))
+	require.Error(t, err)
+	require.False(t, ok)
 }

@@ -6,10 +6,13 @@ package wellknownresolver
 import (
 	"crypto"
 	"crypto/elliptic"
+	"encoding/json"
 	"testing"
 
 	"github.com/agntcy/dir/client/utils/identity/resolvers"
-	"github.com/agntcy/dir/client/utils/identity/resolvers/internal/testutil"
+	"github.com/agntcy/dir/client/utils/identity/resolvers/internal/claimtest"
+	"github.com/agntcy/dir/client/utils/internal/testutil"
+	"github.com/lestrrat-go/jwx/v2/jwk"
 	"github.com/stretchr/testify/require"
 )
 
@@ -44,8 +47,8 @@ func TestWellKnown_Resolve_SkipsEncryptionKeys(t *testing.T) {
 	enc := testutil.NewEdKey(t)
 
 	body := []byte(`{"keys":[` +
-		string(testutil.JWKEntry(t, sig, "sig")) + `,` +
-		string(testutil.JWKEntry(t, enc, "enc")) +
+		string(jwkEntry(t, sig, "sig")) + `,` +
+		string(jwkEntry(t, enc, "enc")) +
 		`]}`)
 
 	fetcher := &testutil.FakeFetcher{Docs: map[string][]byte{"https://acme.com/.well-known/jwks.json": body}}
@@ -83,4 +86,34 @@ func TestWellKnown_Resolve_Errors(t *testing.T) {
 	}
 
 	require.Len(t, fetcher.Requested, before, "malformed subjects must not trigger a fetch")
+}
+
+// jwkEntry serializes one public key as a JWK with the given "use".
+func jwkEntry(t *testing.T, key crypto.Signer, use string) []byte {
+	t.Helper()
+
+	pub, err := jwk.FromRaw(key.Public())
+	require.NoError(t, err)
+	require.NoError(t, pub.Set(jwk.KeyUsageKey, use))
+
+	body, err := json.Marshal(pub)
+	require.NoError(t, err)
+
+	return body
+}
+
+func TestResolver_SatisfiesContract(t *testing.T) {
+	var _ resolvers.Resolver = New(nil)
+}
+
+func TestEndToEnd(t *testing.T) {
+	key := testutil.NewEdKey(t)
+
+	resolver := New(&testutil.FakeFetcher{Docs: map[string][]byte{
+		"https://acme.com/.well-known/jwks.json": testutil.JWKS(t, key.Public()),
+	}})
+
+	ok, err := claimtest.Verify(t, resolver, claimtest.SignedClaim(t, "https://acme.com/agents/finance", key))
+	require.NoError(t, err)
+	require.True(t, ok)
 }

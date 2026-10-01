@@ -11,24 +11,24 @@ import (
 	"crypto/rsa"
 	"testing"
 
+	"github.com/agntcy/dir/client/utils/internal/testutil"
 	"github.com/lestrrat-go/jwx/v2/jwk"
 	"github.com/stretchr/testify/require"
 )
 
 func TestToPublicKey(t *testing.T) {
-	p256, ok := generateKey(t, "ES256").(*ecdsa.PrivateKey)
+	p256, ok := testutil.NewKey(t, "ES256").(*ecdsa.PrivateKey)
 	require.True(t, ok)
 
 	p521, err := ecdsa.GenerateKey(elliptic.P521(), rand.Reader)
 	require.NoError(t, err)
 
-	rsa2048, ok := generateKey(t, "RS256").(*rsa.PrivateKey)
+	rsa2048, ok := testutil.NewKey(t, "RS256").(*rsa.PrivateKey)
 	require.True(t, ok)
 
-	rsa1024, err := rsa.GenerateKey(rand.Reader, 1024) //nolint:gosec // deliberately below the minimum
-	require.NoError(t, err)
+	rsa1024 := testutil.NewSmallRSAKey(t)
 
-	edPub, ok := generateKey(t, "EdDSA").Public().(ed25519.PublicKey)
+	edPub, ok := testutil.NewKey(t, "EdDSA").Public().(ed25519.PublicKey)
 	require.True(t, ok)
 
 	// Supported keys come back usable, value types normalized to pointers.
@@ -63,7 +63,7 @@ func TestToPublicKey(t *testing.T) {
 }
 
 func TestPublicKeyFromJWK(t *testing.T) {
-	edPub, ok := generateKey(t, "EdDSA").Public().(ed25519.PublicKey)
+	edPub, ok := testutil.NewKey(t, "EdDSA").Public().(ed25519.PublicKey)
 	require.True(t, ok)
 
 	newKey := func(use string) jwk.Key {
@@ -87,7 +87,7 @@ func TestPublicKeyFromJWK(t *testing.T) {
 	require.False(t, ok, "encryption keys are skipped")
 
 	// A private JWK yields its public half.
-	priv, err := jwk.FromRaw(generateKey(t, "ES256"))
+	priv, err := jwk.FromRaw(testutil.NewKey(t, "ES256"))
 	require.NoError(t, err)
 
 	got, ok := PublicKeyFromJWK(priv)
