@@ -13,6 +13,7 @@ import (
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"encoding/pem"
+	"errors"
 	"math/big"
 	"net/url"
 	"testing"
@@ -74,18 +75,18 @@ func keySigner(t *testing.T, key crypto.Signer) *jws.KeySigner {
 	return signer
 }
 
-func keyCertSigner(t *testing.T, key crypto.Signer, uriSAN string) *jws.KeyCertSigner {
+func keyCertSigner(t *testing.T, key crypto.Signer) *jws.KeyCertSigner {
 	t.Helper()
 
 	keyDER, err := x509.MarshalPKCS8PrivateKey(key)
 	require.NoError(t, err)
 
-	uri, err := url.Parse(uriSAN)
+	uri, err := url.Parse(testSubjectSVID)
 	require.NoError(t, err)
 
 	template := &x509.Certificate{
 		SerialNumber: big.NewInt(1),
-		Subject:      pkix.Name{CommonName: uriSAN},
+		Subject:      pkix.Name{CommonName: testSubjectSVID},
 		NotBefore:    time.Now().Add(-time.Hour),
 		NotAfter:     time.Now().Add(time.Hour),
 		URIs:         []*url.URL{uri},
@@ -132,7 +133,7 @@ func TestSignVerify_KeyCertSigner(t *testing.T) {
 	key := generateKey(t, "ES256")
 
 	claim := &identityv1.Claim{Role: identityv1.ClaimRole_CLAIM_ROLE_IDENTITY, Subject: testSubjectSVID}
-	signer := keyCertSigner(t, key, testSubjectSVID)
+	signer := keyCertSigner(t, key)
 	require.NoError(t, Sign(claim, testRecordCID, signer, certOptions(signer)...))
 	require.NotEmpty(t, claim.GetCertificate())
 
@@ -145,12 +146,12 @@ func TestSign_RejectsMismatchedSubject(t *testing.T) {
 	key := generateKey(t, "ES256")
 
 	claim := &identityv1.Claim{Role: identityv1.ClaimRole_CLAIM_ROLE_IDENTITY, Subject: "spiffe://acme.com/agents/other"}
-	signer := keyCertSigner(t, key, testSubjectSVID)
+	signer := keyCertSigner(t, key)
 	require.Error(t, Sign(claim, testRecordCID, signer, certOptions(signer)...))
 }
 
 func TestSign_Options(t *testing.T) {
-	signer := keyCertSigner(t, generateKey(t, "ES256"), testSubjectSVID)
+	signer := keyCertSigner(t, generateKey(t, "ES256"))
 
 	// No options: neither the certificate is embedded nor the subject checked.
 	claim := &identityv1.Claim{Role: identityv1.ClaimRole_CLAIM_ROLE_IDENTITY, Subject: "spiffe://acme.com/agents/other"}
@@ -258,4 +259,104 @@ func TestVerify_WrongRecordCID(t *testing.T) {
 	ok, err := Verify(claim, otherRecordCID, testSubjectDNS, key.Public())
 	require.False(t, ok)
 	require.ErrorContains(t, err, "record_cid")
+}
+
+type failingSigner struct{}
+
+func (failingSigner) Sign([]byte) (string, error) { return "", errors.New("hsm unavailable") }
+
+// requireUntouched asserts Sign left every field it manages as it found it.
+func requireUntouched(t *testing.T, claim *identityv1.Claim) {
+	t.Helper()
+
+	require.Empty(t, claim.GetRecordCid())
+	require.Empty(t, claim.GetSignedAt())
+	require.Empty(t, claim.GetSignature())
+	require.Nil(t, claim.Certificate)
+}
+
+func TestSign_FailureLeavesClaimUntouched(t *testing.T) {
+	key := generateKey(t, "ES256")
+	svidSigner := keyCertSigner(t, key)
+
+	tests := map[string]struct {
+		claim   *identityv1.Claim
+		signer  jws.Signer
+		opts    []SignOption
+		wantErr string
+	}{
+		"signer fails": {
+			claim:   &identityv1.Claim{Role: identityv1.ClaimRole_CLAIM_ROLE_IDENTITY, Subject: testSubjectDNS},
+			signer:  failingSigner{},
+			wantErr: "hsm unavailable",
+		},
+		"subject not covered": {
+			claim:   &identityv1.Claim{Role: identityv1.ClaimRole_CLAIM_ROLE_IDENTITY, Subject: "spiffe://acme.com/agents/other"},
+			signer:  svidSigner,
+			opts:    certOptions(svidSigner),
+			wantErr: "does not cover",
+		},
+		"empty certificate": {
+			claim:   &identityv1.Claim{Role: identityv1.ClaimRole_CLAIM_ROLE_IDENTITY, Subject: testSubjectDNS},
+			signer:  keySigner(t, key),
+			opts:    []SignOption{WithCertificateProvider(func() []byte { return nil })},
+			wantErr: "no certificate",
+		},
+	}
+
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
+			err := Sign(tt.claim, testRecordCID, tt.signer, tt.opts...)
+			require.ErrorContains(t, err, tt.wantErr)
+			requireUntouched(t, tt.claim)
+		})
+	}
+}
+
+func TestSign_ResigningReplacesStaleFields(t *testing.T) {
+	key := generateKey(t, "ES256")
+	svidSigner := keyCertSigner(t, key)
+
+	claim := &identityv1.Claim{Role: identityv1.ClaimRole_CLAIM_ROLE_IDENTITY, Subject: testSubjectSVID}
+	require.NoError(t, Sign(claim, testRecordCID, svidSigner, certOptions(svidSigner)...))
+	require.NotEmpty(t, claim.GetCertificate())
+
+	// Signed again without a certificate, the old one must not linger.
+	require.NoError(t, Sign(claim, otherRecordCID, svidSigner))
+	require.Equal(t, otherRecordCID, claim.GetRecordCid())
+	require.Nil(t, claim.Certificate)
+}
+
+func TestVerify_RejectsInvalidInput(t *testing.T) {
+	key := generateKey(t, "ES256")
+
+	signed := func(mutate func(*identityv1.Claim)) *identityv1.Claim {
+		claim := &identityv1.Claim{Role: identityv1.ClaimRole_CLAIM_ROLE_IDENTITY, Subject: testSubjectDNS}
+		mutate(claim)
+		require.NoError(t, Sign(claim, testRecordCID, keySigner(t, key)))
+
+		return claim
+	}
+
+	malformed := "next tuesday"
+
+	tests := map[string]struct {
+		claim    *identityv1.Claim
+		expected string
+		keys     []crypto.PublicKey
+		wantErr  string
+	}{
+		"nil claim":           {nil, testSubjectDNS, []crypto.PublicKey{key.Public()}, "claim is nil"},
+		"no declared subject": {signed(func(*identityv1.Claim) {}), "", []crypto.PublicKey{key.Public()}, "does not declare"},
+		"no keys":             {signed(func(*identityv1.Claim) {}), testSubjectDNS, nil, "no public keys"},
+		"malformed expiry":    {signed(func(c *identityv1.Claim) { c.ExpiresAt = &malformed }), testSubjectDNS, []crypto.PublicKey{key.Public()}, "invalid claim expiry"},
+	}
+
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
+			ok, err := Verify(tt.claim, testRecordCID, tt.expected, tt.keys...)
+			require.False(t, ok)
+			require.ErrorContains(t, err, tt.wantErr)
+		})
+	}
 }

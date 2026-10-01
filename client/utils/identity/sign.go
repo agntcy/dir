@@ -64,10 +64,16 @@ func Sign(claim *identityv1.Claim, recordCID string, signer jws.Signer, opts ...
 		return fmt.Errorf("signer does not cover claimed subject %q", subject)
 	}
 
-	claim.RecordCid = recordCID
-	claim.SignedAt = time.Now().UTC().Format(time.RFC3339)
+	// Sign a copy so an error leaves the caller's claim untouched.
+	signed := &identityv1.Claim{
+		Role:      claim.GetRole(),
+		RecordCid: recordCID,
+		Subject:   subject,
+		SignedAt:  time.Now().UTC().Format(time.RFC3339),
+		ExpiresAt: claim.ExpiresAt,
+	}
 
-	payload, err := claim.GetPayload()
+	payload, err := signed.GetPayload()
 	if err != nil {
 		return fmt.Errorf("get claim payload: %w", err)
 	}
@@ -77,12 +83,22 @@ func Sign(claim *identityv1.Claim, recordCID string, signer jws.Signer, opts ...
 		return fmt.Errorf("sign claim: %w", err)
 	}
 
-	claim.Signature = sig
+	signed.Signature = sig
 
 	if o.certificateProvider != nil {
-		cert := base64.StdEncoding.EncodeToString(o.certificateProvider())
-		claim.Certificate = &cert
+		der := o.certificateProvider()
+		if len(der) == 0 {
+			return errors.New("certificate provider returned no certificate")
+		}
+
+		cert := base64.StdEncoding.EncodeToString(der)
+		signed.Certificate = &cert
 	}
+
+	claim.RecordCid = signed.GetRecordCid()
+	claim.SignedAt = signed.GetSignedAt()
+	claim.Signature = signed.GetSignature()
+	claim.Certificate = signed.Certificate
 
 	return nil
 }

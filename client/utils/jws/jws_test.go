@@ -15,12 +15,17 @@ import (
 	"encoding/pem"
 	"math/big"
 	"net/url"
+	"os"
+	"path/filepath"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/require"
 	"github.com/youmark/pkcs8"
 )
+
+// spiffeID is the URI SAN every test certificate carries.
+const spiffeID = "spiffe://acme.com/agents/finance"
 
 func generateKey(t *testing.T, kind string) crypto.Signer {
 	t.Helper()
@@ -62,15 +67,15 @@ func keyPEM(t *testing.T, key crypto.Signer) []byte {
 	return pem.EncodeToMemory(&pem.Block{Type: "PRIVATE KEY", Bytes: der})
 }
 
-func selfSignedCertPEM(t *testing.T, key crypto.Signer, uriSAN string) []byte {
+func selfSignedCertPEM(t *testing.T, key crypto.Signer) []byte {
 	t.Helper()
 
-	uri, err := url.Parse(uriSAN)
+	uri, err := url.Parse(spiffeID)
 	require.NoError(t, err)
 
 	template := &x509.Certificate{
 		SerialNumber: big.NewInt(1),
-		Subject:      pkix.Name{CommonName: uriSAN},
+		Subject:      pkix.Name{CommonName: spiffeID},
 		NotBefore:    time.Now().Add(-time.Hour),
 		NotAfter:     time.Now().Add(time.Hour),
 		URIs:         []*url.URL{uri},
@@ -141,11 +146,9 @@ func TestKeySigner(t *testing.T) {
 }
 
 func TestKeyCertSigner(t *testing.T) {
-	const spiffeID = "spiffe://acme.com/agents/finance"
-
 	key := generateKey(t, "ES256")
 
-	signer, err := NewKeyCertSigner(keyPEM(t, key), selfSignedCertPEM(t, key, spiffeID), nil)
+	signer, err := NewKeyCertSigner(keyPEM(t, key), selfSignedCertPEM(t, key), nil)
 	require.NoError(t, err)
 	require.NotEmpty(t, signer.CertificateDER())
 	require.True(t, signer.SubjectMatchesCertificate(spiffeID))
@@ -200,11 +203,9 @@ func TestKeySigner_PasswordIgnoredForUnencryptedKey(t *testing.T) {
 }
 
 func TestKeyCertSigner_EncryptedKey(t *testing.T) {
-	const spiffeID = "spiffe://acme.com/agents/finance"
-
 	key := generateKey(t, "ES256")
 
-	signer, err := NewKeyCertSigner(encryptedKeyPEM(t, key, "s3cret"), selfSignedCertPEM(t, key, spiffeID), []byte("s3cret"))
+	signer, err := NewKeyCertSigner(encryptedKeyPEM(t, key, "s3cret"), selfSignedCertPEM(t, key), []byte("s3cret"))
 	require.NoError(t, err)
 	require.True(t, signer.SubjectMatchesCertificate(spiffeID))
 }
@@ -217,4 +218,110 @@ func TestRSAMinimumKeySize(t *testing.T) {
 	require.ErrorContains(t, err, "too small")
 
 	require.ErrorContains(t, Verify("a.b.c", []byte("payload"), small.Public()), "too small")
+}
+
+func TestKeyCertSigner_RejectsMismatchedKey(t *testing.T) {
+	certKey := generateKey(t, "ES256")
+	cert := selfSignedCertPEM(t, certKey)
+
+	// A key from a different pair, or of a different type, must be refused.
+	for _, kind := range []string{"ES256", "EdDSA", "RS256"} {
+		_, err := NewKeyCertSigner(keyPEM(t, generateKey(t, kind)), cert, nil)
+		require.ErrorContains(t, err, "does not match", kind)
+	}
+
+	_, err := NewKeyCertSigner(keyPEM(t, certKey), cert, nil)
+	require.NoError(t, err)
+}
+
+func TestKeySigner_LegacyPEMFormats(t *testing.T) {
+	ec, ok := generateKey(t, "ES256").(*ecdsa.PrivateKey)
+	require.True(t, ok)
+
+	ecDER, err := x509.MarshalECPrivateKey(ec)
+	require.NoError(t, err)
+
+	rsaKey, ok := generateKey(t, "RS256").(*rsa.PrivateKey)
+	require.True(t, ok)
+
+	for name, tc := range map[string]struct {
+		pem  []byte
+		pub  crypto.PublicKey
+		sign crypto.Signer
+	}{
+		"EC PRIVATE KEY":  {pem.EncodeToMemory(&pem.Block{Type: "EC PRIVATE KEY", Bytes: ecDER}), ec.Public(), ec},
+		"RSA PRIVATE KEY": {pem.EncodeToMemory(&pem.Block{Type: "RSA PRIVATE KEY", Bytes: x509.MarshalPKCS1PrivateKey(rsaKey)}), rsaKey.Public(), rsaKey},
+	} {
+		t.Run(name, func(t *testing.T) {
+			signer, err := NewKeySigner(tc.pem, nil)
+			require.NoError(t, err)
+
+			sig, err := signer.Sign([]byte("payload"))
+			require.NoError(t, err)
+			require.NoError(t, Verify(sig, []byte("payload"), tc.pub))
+		})
+	}
+}
+
+func TestKeySigner_RejectsBadKeyMaterial(t *testing.T) {
+	garbage := func(blockType string) []byte {
+		return pem.EncodeToMemory(&pem.Block{Type: blockType, Bytes: []byte("garbage")})
+	}
+
+	for name, in := range map[string][]byte{
+		"not pem":          []byte("nope"),
+		"unsupported type": garbage("CERTIFICATE"),
+		"bad EC":           garbage("EC PRIVATE KEY"),
+		"bad RSA":          garbage("RSA PRIVATE KEY"),
+		"bad PKCS8":        garbage("PRIVATE KEY"),
+	} {
+		_, err := NewKeySigner(in, nil)
+		require.Error(t, err, name)
+	}
+}
+
+func TestSigners_FromFile(t *testing.T) {
+	dir := t.TempDir()
+	key := generateKey(t, "ES256")
+
+	keyPath := filepath.Join(dir, "key.pem")
+	certPath := filepath.Join(dir, "cert.pem")
+
+	require.NoError(t, os.WriteFile(keyPath, keyPEM(t, key), 0o600))
+	require.NoError(t, os.WriteFile(certPath, selfSignedCertPEM(t, key), 0o600))
+
+	keySigner, err := NewKeySignerFromFile(keyPath, nil)
+	require.NoError(t, err)
+
+	sig, err := keySigner.Sign([]byte("payload"))
+	require.NoError(t, err)
+	require.NoError(t, Verify(sig, []byte("payload"), key.Public()))
+
+	certSigner, err := NewKeyCertSignerFromFile(keyPath, certPath, nil)
+	require.NoError(t, err)
+	require.True(t, certSigner.SubjectMatchesCertificate(spiffeID))
+
+	missing := filepath.Join(dir, "missing.pem")
+
+	_, err = NewKeySignerFromFile(missing, nil)
+	require.ErrorContains(t, err, "read key file")
+
+	_, err = NewKeyCertSignerFromFile(missing, certPath, nil)
+	require.ErrorContains(t, err, "read key file")
+
+	_, err = NewKeyCertSignerFromFile(keyPath, missing, nil)
+	require.ErrorContains(t, err, "read cert file")
+}
+
+func TestKeyCertSigner_AcceptsRawDERCertificate(t *testing.T) {
+	key := generateKey(t, "ES256")
+	block, _ := pem.Decode(selfSignedCertPEM(t, key))
+	require.NotNil(t, block)
+
+	signer, err := NewKeyCertSigner(keyPEM(t, key), block.Bytes, nil)
+	require.NoError(t, err)
+	require.True(t, signer.SubjectMatchesCertificate(spiffeID))
+
+	_, err = NewKeyCertSigner(keyPEM(t, key), []byte("not a certificate"), nil)
+	require.ErrorContains(t, err, "parse certificate")
 }

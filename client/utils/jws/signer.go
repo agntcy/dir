@@ -61,23 +61,30 @@ func (s *KeySigner) Sign(payload []byte) (string, error) {
 // published key (SPIFFE X.509-SVIDs today).
 type KeyCertSigner struct {
 	signer  crypto.Signer
+	cert    *x509.Certificate
 	certDER []byte
 }
 
 // NewKeyCertSigner loads a PEM-encoded private key and X.509 certificate,
-// see NewKeySigner for the key formats and password handling.
+// see NewKeySigner for the key formats and password handling. The key must be
+// the one the certificate was issued for.
 func NewKeyCertSigner(keyPEM, certPEM, password []byte) (*KeyCertSigner, error) {
 	signer, err := parsePrivateKey(keyPEM, password)
 	if err != nil {
 		return nil, fmt.Errorf("parse private key: %w", err)
 	}
 
-	_, certDER, err := parseCertificate(certPEM)
+	cert, certDER, err := parseCertificate(certPEM)
 	if err != nil {
 		return nil, fmt.Errorf("parse certificate: %w", err)
 	}
 
-	return &KeyCertSigner{signer: signer, certDER: certDER}, nil
+	pub, ok := signer.Public().(interface{ Equal(crypto.PublicKey) bool })
+	if !ok || !pub.Equal(cert.PublicKey) {
+		return nil, errors.New("private key does not match the certificate's public key")
+	}
+
+	return &KeyCertSigner{signer: signer, cert: cert, certDER: certDER}, nil
 }
 
 // NewKeyCertSignerFromFile loads a PEM-encoded private key and certificate
@@ -108,12 +115,7 @@ func (s *KeyCertSigner) CertificateDER() []byte {
 // SubjectMatchesCertificate reports whether any URI SAN in the signer's
 // certificate equals subject.
 func (s *KeyCertSigner) SubjectMatchesCertificate(subject string) bool {
-	cert, err := x509.ParseCertificate(s.certDER)
-	if err != nil {
-		return false
-	}
-
-	for _, u := range cert.URIs {
+	for _, u := range s.cert.URIs {
 		if u.String() == subject {
 			return true
 		}
