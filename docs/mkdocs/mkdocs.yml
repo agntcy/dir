@@ -141,6 +141,7 @@ nav:
           - Local Deployment: dir/dir-deployment-local.md
           - Kubernetes Deployment: dir/dir-deployment-kubernetes.md
           - Production Deployment: dir/dir-prod-deployment.md
+          - Content Policy Enforcement: dir/dir-content-policy-enforcement.md
           - Federation Deployment:
               - Overview: dir/dir-federation-overview.md
               - Federation on Amazon EKS: dir/dir-federation-aws-eks.md
