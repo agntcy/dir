@@ -12,13 +12,13 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// ref builds one naming-service answer row. The CID is derived from the version
+// ref builds one identity-service answer row. The CID is derived from the version
 // so an assertion can name the version it expects rather than a digest.
 func ref(version string) *corev1.NamedRecordRef {
 	return &corev1.NamedRecordRef{Name: "cisco.com/agent", Version: version, Cid: "cid-" + version}
 }
 
-// TestHighestIgnoresPushOrder is the whole reason Highest exists: the naming
+// TestHighestIgnoresPushOrder is the whole reason Highest exists: the identity
 // service answers newest-pushed first, so a v1.9.0 pushed after v2.0.0 comes
 // back first and used to be what a bare name resolved to.
 func TestHighestIgnoresPushOrder(t *testing.T) {

@@ -11,6 +11,7 @@ import (
 
 	catalogv1 "github.com/agntcy/dir/api/catalog/v1"
 	adscorev1 "github.com/agntcy/dir/api/core/v1"
+	identityv1 "github.com/agntcy/dir/api/identity/v1"
 	adssignv1 "github.com/agntcy/dir/api/sign/v1"
 	adsclient "github.com/agntcy/dir/client"
 )
@@ -33,12 +34,12 @@ func Verify(ctx context.Context, client *adsclient.Client, e *catalogv1.CatalogE
 		return fmt.Errorf("provenance verification failed: %s", verified.GetErrorMessage())
 	}
 
-	// Verify naming
-	if verified, err := client.GetVerificationInfo(ctx, cid); err != nil {
-		return fmt.Errorf("failed to get verification info: %w", err)
-	} else if !verified.GetVerified() {
+	// Verify ownership claim
+	if status, err := client.GetIdentityStatus(ctx, cid); err != nil {
+		return fmt.Errorf("failed to get identity status: %w", err)
+	} else if status.GetOwner().GetStatus() != identityv1.ClaimVerificationStatus_CLAIM_VERIFICATION_STATUS_VERIFIED {
 		// we do not fail, just log as warning
-		fmt.Printf("Warning: identity verification failed for CID %s: %+v\n", e.Identifier, verified)
+		fmt.Printf("Warning: ownership verification failed for CID %s: %+v\n", e.Identifier, status.GetOwner())
 	}
 
 	return nil

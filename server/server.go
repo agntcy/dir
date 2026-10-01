@@ -15,7 +15,6 @@ import (
 	catalogv1 "github.com/agntcy/dir/api/catalog/v1"
 	eventsv1 "github.com/agntcy/dir/api/events/v1"
 	identityv1 "github.com/agntcy/dir/api/identity/v1"
-	namingv1 "github.com/agntcy/dir/api/naming/v1"
 	routingv1 "github.com/agntcy/dir/api/routing/v1"
 	searchv1 "github.com/agntcy/dir/api/search/v1"
 	signv1 "github.com/agntcy/dir/api/sign/v1"
@@ -34,8 +33,6 @@ import (
 	grpclogging "github.com/agntcy/dir/server/middleware/logging"
 	grpcratelimit "github.com/agntcy/dir/server/middleware/ratelimit"
 	grpcrecovery "github.com/agntcy/dir/server/middleware/recovery"
-	"github.com/agntcy/dir/server/naming"
-	"github.com/agntcy/dir/server/naming/wellknown"
 	"github.com/agntcy/dir/server/publication"
 	"github.com/agntcy/dir/server/routing"
 	"github.com/agntcy/dir/server/skill"
@@ -326,13 +323,6 @@ func New(ctx context.Context, cfg *config.Config, opts ...ServerOption) (*Server
 	// Create health checker
 	healthChecker := healthcheck.New()
 
-	// Create naming provider for naming service
-	wellKnownFetcher := wellknown.NewFetcher()
-
-	namingProvider := naming.NewProvider(
-		naming.WithWellKnownLookup(wellKnownFetcher),
-	)
-
 	// Register APIs
 	eventsv1.RegisterEventServiceServer(grpcServer, controller.NewEventsController(eventService))
 	storev1.RegisterStoreServiceServer(grpcServer, controller.NewStoreController(storeAPI, databaseAPI, ingestor, options.EventBus(), validatorRegistry))
@@ -341,13 +331,6 @@ func New(ctx context.Context, cfg *config.Config, opts ...ServerOption) (*Server
 	searchv1.RegisterSearchServiceServer(grpcServer, controller.NewSearchController(databaseAPI, storeAPI))
 	storev1.RegisterSyncServiceServer(grpcServer, controller.NewSyncController(databaseAPI, options))
 	signv1.RegisterSignServiceServer(grpcServer, controller.NewSignController(databaseAPI))
-	namingv1.RegisterNamingServiceServer(grpcServer, controller.NewNamingController(
-		storeAPI,
-		databaseAPI,
-		namingProvider,
-		controller.WithVerificationTTL(options.Config().Naming.GetTTL()),
-	))
-
 	identityv1.RegisterIdentityServiceServer(grpcServer, controller.NewIdentityController(databaseAPI))
 
 	gwExtractor, aiFinderOpts := resolveGatewayExtractor(cfg)

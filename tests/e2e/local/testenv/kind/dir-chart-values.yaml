@@ -22,8 +22,6 @@ apiserver:
         interval: "10s"
       indexer:
         interval: "10s"
-      name:
-        interval: "5s"
       signature:
         interval: "5s"
       identity:

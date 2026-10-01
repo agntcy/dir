@@ -223,16 +223,18 @@ func TestGetRecordCIDs_IdentityVerified(t *testing.T) {
 	seedDB(t, db)
 	seedClaims(t, db)
 
-	marketing, healthcare := marketingAgent.GetCid(), healthcareAgent.GetCid()
+	marketing, healthcare, code := marketingAgent.GetCid(), healthcareAgent.GetCid(), codeAssistant.GetCid()
 
 	tests := map[string]struct {
 		opts []types.FilterOption
 		want []string
 	}{
-		"identity verified":     {[]types.FilterOption{types.WithIdentityVerified()}, []string{marketing}},
-		"owner verified":        {[]types.FilterOption{types.WithOwnerVerified()}, []string{marketing, healthcare}},
-		"both verified":         {[]types.FilterOption{types.WithIdentityVerified(), types.WithOwnerVerified()}, []string{marketing}},
-		"verified with subject": {[]types.FilterOption{types.WithOwners("dns:*"), types.WithOwnerVerified()}, []string{healthcare}},
+		"identity verified":          {[]types.FilterOption{types.WithIdentityVerified()}, []string{marketing}},
+		"owner verified":             {[]types.FilterOption{types.WithOwnerVerified()}, []string{marketing, healthcare}},
+		"verified is owner verified": {[]types.FilterOption{types.WithVerified(true)}, []string{marketing, healthcare}},
+		"not verified is owner not":  {[]types.FilterOption{types.WithVerified(false)}, []string{code}},
+		"both verified":              {[]types.FilterOption{types.WithIdentityVerified(), types.WithOwnerVerified()}, []string{marketing}},
+		"verified with subject":      {[]types.FilterOption{types.WithOwners("dns:*"), types.WithOwnerVerified()}, []string{healthcare}},
 	}
 
 	for name, tt := range tests {

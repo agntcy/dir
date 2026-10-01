@@ -47,8 +47,6 @@ server:
       # To use a remote OCI registry, unset local_dir:
       #   registry_address: "ghcr.io"
       #   repository_name: "org/agents"
-    verification:
-      enabled: true
   routing:
     listen_address: "/ip4/0.0.0.0/tcp/8999"
     key_path: "node.key"
@@ -114,8 +112,6 @@ server:
     listen_address: ":8889"
     public_url: "http://localhost:8889"
     # catalog_title: "AI Catalog"
-  naming:
-    ttl: 168h
   policy:
     dir: policies
 
@@ -130,11 +126,6 @@ reconciler:
     enabled: true
     interval: 1m
   signature:
-    enabled: true
-    interval: 1m
-    ttl: 168h
-    record_timeout: 30s
-  name:
     enabled: true
     interval: 1m
     ttl: 168h

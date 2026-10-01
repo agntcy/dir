@@ -63,7 +63,7 @@ Parse the JSON and render a Markdown table with these columns:
 - **#** — 1-based row index (referenced by selection prompts).
 - **Artifacts** — from modules: `MCP` (`integration/mcp`), `Skill`
   (`core/language_model/agentskills`), `A2A` (`integration/a2a`); else `OASF`.
-- **Verified** — ✓ when name ownership is verified.
+- **Verified** — ✓ when the record has a verified ownership claim.
 - **Trusted** — ✓ when signature verification passed.
 - **Safe** — ✓ when all security scanners reported `is_safe=true`; blank when
   unscanned (do not conflate unscanned with unsafe).

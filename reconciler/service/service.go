@@ -15,12 +15,9 @@ import (
 	"github.com/agntcy/dir/reconciler/tasks/identity"
 	"github.com/agntcy/dir/reconciler/tasks/indexer"
 	"github.com/agntcy/dir/reconciler/tasks/metrics"
-	"github.com/agntcy/dir/reconciler/tasks/name"
 	"github.com/agntcy/dir/reconciler/tasks/regsync"
 	"github.com/agntcy/dir/reconciler/tasks/scan"
 	"github.com/agntcy/dir/reconciler/tasks/signature"
-	namingprovider "github.com/agntcy/dir/server/naming"
-	"github.com/agntcy/dir/server/naming/wellknown"
 	servertypes "github.com/agntcy/dir/server/types"
 	recordvalidators "github.com/agntcy/dir/server/validators"
 	"github.com/agntcy/dir/utils/logging"
@@ -71,19 +68,6 @@ func (s *Service) registerTasks(cfg *config.Config, db servertypes.DatabaseAPI, 
 		t, err := indexer.NewTask(cfg.Indexer, cfg.LocalRegistry, store, repo, db, validatorRegistry)
 		if err != nil {
 			return fmt.Errorf("failed to create indexer task: %w", err)
-		}
-
-		s.addTask(t)
-	}
-
-	if cfg.Name.Enabled {
-		np := namingprovider.NewProvider(
-			namingprovider.WithWellKnownLookup(wellknown.NewFetcher()),
-		)
-
-		t, err := name.NewTask(cfg.Name, db, store, np)
-		if err != nil {
-			return fmt.Errorf("failed to create name task: %w", err)
 		}
 
 		s.addTask(t)

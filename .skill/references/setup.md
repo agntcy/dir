@@ -125,7 +125,7 @@ dirctl daemon start --config ./daemon.config.yaml
 
 `config init` emits a fully commented file covering `server` (listen address,
 OASF validation URL, OCI store, routing/DHT, database, publication, HTTP
-gateway, naming), `reconciler` (regsync, metrics, indexer, signature, name,
+gateway), `reconciler` (regsync, metrics, indexer, signature, identity,
 scan — including scanner CLI paths and endpoint-scan safety toggles), and
 `runtime`.
 

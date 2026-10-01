@@ -202,18 +202,18 @@ var _ = ginkgo.Describe("Identity claims", ginkgo.Ordered, ginkgo.Serial, func()
 	})
 
 	ginkgo.It("should resolve the record by name", func(ctx context.Context) {
-		resp, err := testEnv.Client.ResolveIdentity(ctx, recordName, "")
+		resp, err := testEnv.Client.Resolve(ctx, recordName, "")
 		gomega.Expect(err).NotTo(gomega.HaveOccurred())
 		gomega.Expect(resp.GetRecords()).NotTo(gomega.BeEmpty())
 		gomega.Expect(resp.GetRecords()[0].GetCid()).To(gomega.Equal(recordCID))
 		gomega.Expect(resp.GetRecords()[0].GetName()).To(gomega.Equal(recordName))
 
-		resp, err = testEnv.Client.ResolveIdentity(ctx, recordName, recordVersion)
+		resp, err = testEnv.Client.Resolve(ctx, recordName, recordVersion)
 		gomega.Expect(err).NotTo(gomega.HaveOccurred())
 		gomega.Expect(resp.GetRecords()).To(gomega.HaveLen(1))
 		gomega.Expect(resp.GetRecords()[0].GetVersion()).To(gomega.Equal(recordVersion))
 
-		_, err = testEnv.Client.ResolveIdentity(ctx, recordName, "v99.0.0")
+		_, err = testEnv.Client.Resolve(ctx, recordName, "v99.0.0")
 		gomega.Expect(err).To(gomega.HaveOccurred())
 	})
 })

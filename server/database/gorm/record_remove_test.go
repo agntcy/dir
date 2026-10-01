@@ -25,8 +25,8 @@ func TestRemoveRecord_CascadesForeignKeys(t *testing.T) {
 	cid := "baeareitestcascade0000000000000000000000000000000000000000000000"
 	otherCID := "baeareitestcascadeother00000000000000000000000000000000000000"
 
-	seedRecord(t, db, cid, "cascade-test", "signer-1", "key-1", now)
-	seedRecord(t, db, otherCID, "other-record", "signer-2", "key-2", now)
+	seedRecord(t, db, cid, "cascade-test", "signer-1", now)
+	seedRecord(t, db, otherCID, "other-record", "signer-2", now)
 
 	require.NoError(t, db.RemoveRecord(cid))
 
@@ -38,7 +38,7 @@ func TestRemoveRecord_CascadesForeignKeys(t *testing.T) {
 		&Domain{},
 		&Annotation{},
 		&SignatureVerification{},
-		&NameVerification{},
+		&IdentityClaim{},
 		&ScanReport{},
 		&RecordUsageMetrics{},
 	}
@@ -49,7 +49,7 @@ func TestRemoveRecord_CascadesForeignKeys(t *testing.T) {
 	}
 }
 
-func seedRecord(t *testing.T, db *DB, cid, name, signerKey, keyID string, now time.Time) {
+func seedRecord(t *testing.T, db *DB, cid, name, signerKey string, now time.Time) {
 	t.Helper()
 
 	require.NoError(t, db.gormDB.Create(&Record{
@@ -82,10 +82,14 @@ func seedRecord(t *testing.T, db *DB, cid, name, signerKey, keyID string, now ti
 				UpdatedAt:   now,
 			},
 		},
-		NameVerification: &NameVerification{
-			Method: "wellknown",
-			Status: VerificationStatusVerified,
-			KeyID:  keyID,
+		IdentityClaims: []IdentityClaim{
+			{
+				RecordCID:  cid,
+				Role:       types.ClaimRoleOwner,
+				Subject:    "acme.com",
+				Status:     types.ClaimStatusVerified,
+				VerifiedAt: now,
+			},
 		},
 	}).Error)
 

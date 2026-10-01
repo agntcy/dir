@@ -88,7 +88,6 @@ func (db *DB) migrate() error {
 		Annotation{},
 		Sync{},
 		Publication{},
-		NameVerification{},
 		SignatureVerification{},
 		ScanReport{},
 		RecordUsageMetrics{},

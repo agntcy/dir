@@ -271,21 +271,6 @@ func (f *fakeSignatureDB) UpdatePublicationStatus(publicationID string, status r
 	return nil
 }
 func (f *fakeSignatureDB) DeletePublication(publicationID string) error { return nil }
-func (f *fakeSignatureDB) CreateNameVerification(verification types.NameVerificationObject) error {
-	return nil
-}
-
-func (f *fakeSignatureDB) UpdateNameVerification(verification types.NameVerificationObject) error {
-	return nil
-}
-
-func (f *fakeSignatureDB) GetVerificationByCID(cid string) (types.NameVerificationObject, error) {
-	return nil, nil
-}
-
-func (f *fakeSignatureDB) GetRecordsNeedingVerification(ttl time.Duration) ([]coretypes.Record, error) {
-	return nil, nil
-}
 
 func (f *fakeSignatureDB) CreateSignatureVerification(verification types.SignatureVerificationObject) error {
 	return nil

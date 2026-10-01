@@ -55,16 +55,15 @@ type Record struct {
 	Authors       []string `gorm:"column:authors;serializer:json"` // Stored as JSON array
 	Signed        bool     `gorm:"column:signed;default:false"`    // Whether at least one signature is attached
 
-	Skills           []Skill                 `gorm:"foreignKey:RecordCID;references:RecordCID;constraint:OnDelete:CASCADE"`
-	Locators         []Locator               `gorm:"foreignKey:RecordCID;references:RecordCID;constraint:OnDelete:CASCADE"`
-	Modules          []Module                `gorm:"foreignKey:RecordCID;references:RecordCID;constraint:OnDelete:CASCADE"`
-	Domains          []Domain                `gorm:"foreignKey:RecordCID;references:RecordCID;constraint:OnDelete:CASCADE"`
-	Annotations      []Annotation            `gorm:"foreignKey:RecordCID;references:RecordCID;constraint:OnDelete:CASCADE"`
-	Signatures       []SignatureVerification `gorm:"foreignKey:RecordCID;references:RecordCID;constraint:OnDelete:CASCADE"`
-	NameVerification *NameVerification       `gorm:"foreignKey:RecordCID;references:RecordCID;constraint:OnDelete:CASCADE"`
-	ScanReports      []ScanReport            `gorm:"foreignKey:RecordCID;references:RecordCID;constraint:OnDelete:CASCADE"`
-	IdentityClaims   []IdentityClaim         `gorm:"foreignKey:RecordCID;references:RecordCID;constraint:OnDelete:CASCADE"`
-	UsageMetrics     *RecordUsageMetrics     `gorm:"foreignKey:RecordCID;references:RecordCID;constraint:OnDelete:CASCADE"`
+	Skills         []Skill                 `gorm:"foreignKey:RecordCID;references:RecordCID;constraint:OnDelete:CASCADE"`
+	Locators       []Locator               `gorm:"foreignKey:RecordCID;references:RecordCID;constraint:OnDelete:CASCADE"`
+	Modules        []Module                `gorm:"foreignKey:RecordCID;references:RecordCID;constraint:OnDelete:CASCADE"`
+	Domains        []Domain                `gorm:"foreignKey:RecordCID;references:RecordCID;constraint:OnDelete:CASCADE"`
+	Annotations    []Annotation            `gorm:"foreignKey:RecordCID;references:RecordCID;constraint:OnDelete:CASCADE"`
+	Signatures     []SignatureVerification `gorm:"foreignKey:RecordCID;references:RecordCID;constraint:OnDelete:CASCADE"`
+	ScanReports    []ScanReport            `gorm:"foreignKey:RecordCID;references:RecordCID;constraint:OnDelete:CASCADE"`
+	IdentityClaims []IdentityClaim         `gorm:"foreignKey:RecordCID;references:RecordCID;constraint:OnDelete:CASCADE"`
+	UsageMetrics   *RecordUsageMetrics     `gorm:"foreignKey:RecordCID;references:RecordCID;constraint:OnDelete:CASCADE"`
 }
 
 func (r *Record) GetCid() string {
@@ -587,16 +586,15 @@ func (d *DB) handleFilterOptions(query *gorm.DB, cfg *types.RecordFilters) *gorm
 		query = query.Where("modules.module_id IN ?", cfg.ModuleIDs)
 	}
 
-	// Handle verified filter.
+	// Handle verified filter (the record has a verified ownership claim).
 	if cfg.Verified != nil {
 		if *cfg.Verified {
-			// Filter for verified records only
-			query = query.Joins("JOIN name_verifications ON name_verifications.record_cid = records.record_cid").
-				Where("name_verifications.status = ?", VerificationStatusVerified)
+			query = applyClaimVerified(query, types.ClaimRoleOwner)
 		} else {
-			// Filter for non-verified records (either no verification or failed)
-			query = query.Joins("LEFT JOIN name_verifications ON name_verifications.record_cid = records.record_cid").
-				Where("name_verifications.status IS NULL OR name_verifications.status != ?", VerificationStatusVerified)
+			query = query.Where(
+				utils.BuildNotExistsCondition("identity_claims", "ic", "ic.record_cid = records.record_cid AND ic.role = ? AND ic.status = ?"),
+				types.ClaimRoleOwner, types.ClaimStatusVerified,
+			)
 		}
 	}
 

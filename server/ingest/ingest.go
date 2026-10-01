@@ -110,8 +110,7 @@ func (i *ingestor) ImportReferrer(ctx context.Context, recordCID string, referre
 func (i *ingestor) applyReferrerDBEffects(recordCID string, referrer *corev1.RecordReferrer) {
 	referrerType := referrer.GetType()
 
-	// If this is a signature referrer, mark the record as signed so the name
-	// task can find records that need name verification.
+	// If this is a signature referrer, mark the record as signed.
 	if referrerType == corev1.SignatureReferrerType {
 		if err := i.db.SetRecordSigned(recordCID); err != nil {
 			logger.Warn("Failed to mark record as signed", "error", err, "cid", recordCID)
