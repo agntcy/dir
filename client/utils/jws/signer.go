@@ -17,11 +17,12 @@ import (
 // over payload, using key material supplied at construction time.
 type Signer interface {
 	Sign(payload []byte) (jwsCompact string, err error)
+	// Public returns the public key matching the signing key.
+	Public() crypto.PublicKey
 }
 
 // KeySigner signs with a PEM-encoded private key (EC, RSA, or Ed25519),
-// optionally password-protected. Used for subjects whose public key is
-// resolved externally by a verifier; the key is never embedded in the claim.
+// optionally password-protected.
 type KeySigner struct {
 	signer crypto.Signer
 }
@@ -43,58 +44,8 @@ func (s *KeySigner) Sign(payload []byte) (string, error) {
 	return Sign(s.signer, payload)
 }
 
-// KeyCertSigner signs with a private key and embeds its certificate (base64
-// DER) alongside the signature, so a verifier can validate the chain and
-// extract the public key without an external lookup. Not scheme-specific:
-// usable by any subject whose proof is a certificate rather than a
-// published key (SPIFFE X.509-SVIDs today).
-type KeyCertSigner struct {
-	signer  crypto.Signer
-	cert    *x509.Certificate
-	certDER []byte
-}
-
-// NewKeyCertSigner loads a PEM-encoded private key and X.509 certificate,
-// see NewKeySigner for the key formats and password handling. The key must be
-// the one the certificate was issued for.
-func NewKeyCertSigner(keyPEM, certPEM, password []byte) (*KeyCertSigner, error) {
-	signer, err := parsePrivateKey(keyPEM, password)
-	if err != nil {
-		return nil, fmt.Errorf("parse private key: %w", err)
-	}
-
-	cert, certDER, err := parseCertificate(certPEM)
-	if err != nil {
-		return nil, fmt.Errorf("parse certificate: %w", err)
-	}
-
-	pub, ok := signer.Public().(interface{ Equal(crypto.PublicKey) bool })
-	if !ok || !pub.Equal(cert.PublicKey) {
-		return nil, errors.New("private key does not match the certificate's public key")
-	}
-
-	return &KeyCertSigner{signer: signer, cert: cert, certDER: certDER}, nil
-}
-
-func (s *KeyCertSigner) Sign(payload []byte) (string, error) {
-	return Sign(s.signer, payload)
-}
-
-// CertificateDER returns the signer's certificate in DER form.
-func (s *KeyCertSigner) CertificateDER() []byte {
-	return s.certDER
-}
-
-// SubjectMatchesCertificate reports whether any URI SAN in the signer's
-// certificate equals subject.
-func (s *KeyCertSigner) SubjectMatchesCertificate(subject string) bool {
-	for _, u := range s.cert.URIs {
-		if u.String() == subject {
-			return true
-		}
-	}
-
-	return false
+func (s *KeySigner) Public() crypto.PublicKey {
+	return s.signer.Public()
 }
 
 // parsePrivateKey decodes a PEM block and returns a crypto.Signer. password
@@ -154,21 +105,4 @@ func asSigner(key any) (crypto.Signer, error) {
 	}
 
 	return signer, nil
-}
-
-// parseCertificate decodes a PEM or raw DER certificate and returns the
-// parsed *x509.Certificate and its DER bytes.
-func parseCertificate(data []byte) (*x509.Certificate, []byte, error) {
-	derBytes := data
-
-	if block, _ := pem.Decode(data); block != nil {
-		derBytes = block.Bytes
-	}
-
-	cert, err := x509.ParseCertificate(derBytes)
-	if err != nil {
-		return nil, nil, fmt.Errorf("parse certificate: %w", err)
-	}
-
-	return cert, derBytes, nil
 }

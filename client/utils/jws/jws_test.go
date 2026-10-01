@@ -11,19 +11,12 @@ import (
 	"crypto/rand"
 	"crypto/rsa"
 	"crypto/x509"
-	"crypto/x509/pkix"
 	"encoding/pem"
-	"math/big"
-	"net/url"
 	"testing"
-	"time"
 
 	"github.com/stretchr/testify/require"
 	"github.com/youmark/pkcs8"
 )
-
-// spiffeID is the URI SAN every test certificate carries.
-const spiffeID = "spiffe://acme.com/agents/finance"
 
 func generateKey(t *testing.T, kind string) crypto.Signer {
 	t.Helper()
@@ -63,26 +56,6 @@ func keyPEM(t *testing.T, key crypto.Signer) []byte {
 	require.NoError(t, err)
 
 	return pem.EncodeToMemory(&pem.Block{Type: "PRIVATE KEY", Bytes: der})
-}
-
-func selfSignedCertPEM(t *testing.T, key crypto.Signer) []byte {
-	t.Helper()
-
-	uri, err := url.Parse(spiffeID)
-	require.NoError(t, err)
-
-	template := &x509.Certificate{
-		SerialNumber: big.NewInt(1),
-		Subject:      pkix.Name{CommonName: spiffeID},
-		NotBefore:    time.Now().Add(-time.Hour),
-		NotAfter:     time.Now().Add(time.Hour),
-		URIs:         []*url.URL{uri},
-	}
-
-	der, err := x509.CreateCertificate(rand.Reader, template, template, key.Public(), key)
-	require.NoError(t, err)
-
-	return pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: der})
 }
 
 func TestSignVerify_RoundTrip(t *testing.T) {
@@ -133,6 +106,8 @@ func TestKeySigner(t *testing.T) {
 			signer, err := NewKeySigner(keyPEM(t, key), nil)
 			require.NoError(t, err)
 
+			require.Equal(t, key.Public(), signer.Public())
+
 			sig, err := signer.Sign([]byte("payload"))
 			require.NoError(t, err)
 			require.NoError(t, Verify(sig, []byte("payload"), key.Public()))
@@ -141,20 +116,6 @@ func TestKeySigner(t *testing.T) {
 
 	_, err := NewKeySigner([]byte("not pem"), nil)
 	require.Error(t, err)
-}
-
-func TestKeyCertSigner(t *testing.T) {
-	key := generateKey(t, "ES256")
-
-	signer, err := NewKeyCertSigner(keyPEM(t, key), selfSignedCertPEM(t, key), nil)
-	require.NoError(t, err)
-	require.NotEmpty(t, signer.CertificateDER())
-	require.True(t, signer.SubjectMatchesCertificate(spiffeID))
-	require.False(t, signer.SubjectMatchesCertificate("spiffe://acme.com/agents/other"))
-
-	sig, err := signer.Sign([]byte("payload"))
-	require.NoError(t, err)
-	require.NoError(t, Verify(sig, []byte("payload"), key.Public()))
 }
 
 func encryptedKeyPEM(t *testing.T, key crypto.Signer, password string) []byte {
@@ -200,14 +161,6 @@ func TestKeySigner_PasswordIgnoredForUnencryptedKey(t *testing.T) {
 	require.NoError(t, err)
 }
 
-func TestKeyCertSigner_EncryptedKey(t *testing.T) {
-	key := generateKey(t, "ES256")
-
-	signer, err := NewKeyCertSigner(encryptedKeyPEM(t, key, "s3cret"), selfSignedCertPEM(t, key), []byte("s3cret"))
-	require.NoError(t, err)
-	require.True(t, signer.SubjectMatchesCertificate(spiffeID))
-}
-
 func TestRSAMinimumKeySize(t *testing.T) {
 	small, err := rsa.GenerateKey(rand.Reader, 1024) //nolint:gosec // deliberately below the minimum to test the size floor
 	require.NoError(t, err)
@@ -216,20 +169,6 @@ func TestRSAMinimumKeySize(t *testing.T) {
 	require.ErrorContains(t, err, "too small")
 
 	require.ErrorContains(t, Verify("a.b.c", []byte("payload"), small.Public()), "too small")
-}
-
-func TestKeyCertSigner_RejectsMismatchedKey(t *testing.T) {
-	certKey := generateKey(t, "ES256")
-	cert := selfSignedCertPEM(t, certKey)
-
-	// A key from a different pair, or of a different type, must be refused.
-	for _, kind := range []string{"ES256", "EdDSA", "RS256"} {
-		_, err := NewKeyCertSigner(keyPEM(t, generateKey(t, kind)), cert, nil)
-		require.ErrorContains(t, err, "does not match", kind)
-	}
-
-	_, err := NewKeyCertSigner(keyPEM(t, certKey), cert, nil)
-	require.NoError(t, err)
 }
 
 func TestKeySigner_LegacyPEMFormats(t *testing.T) {
@@ -276,17 +215,4 @@ func TestKeySigner_RejectsBadKeyMaterial(t *testing.T) {
 		_, err := NewKeySigner(in, nil)
 		require.Error(t, err, name)
 	}
-}
-
-func TestKeyCertSigner_AcceptsRawDERCertificate(t *testing.T) {
-	key := generateKey(t, "ES256")
-	block, _ := pem.Decode(selfSignedCertPEM(t, key))
-	require.NotNil(t, block)
-
-	signer, err := NewKeyCertSigner(keyPEM(t, key), block.Bytes, nil)
-	require.NoError(t, err)
-	require.True(t, signer.SubjectMatchesCertificate(spiffeID))
-
-	_, err = NewKeyCertSigner(keyPEM(t, key), []byte("not a certificate"), nil)
-	require.ErrorContains(t, err, "parse certificate")
 }

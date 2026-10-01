@@ -6,9 +6,14 @@
 package identity
 
 import (
+	"crypto"
+	"crypto/x509"
 	"encoding/base64"
+	"encoding/pem"
 	"errors"
 	"fmt"
+	"net/url"
+	"slices"
 	"time"
 
 	identityv1 "github.com/agntcy/dir/api/identity/v1"
@@ -19,24 +24,22 @@ import (
 type SignOption func(*signOptions)
 
 type signOptions struct {
-	subjectChecker      func(subject string) bool
-	certificateProvider func() []byte
+	certificate    []byte
+	hasCertificate bool
 }
 
-// WithSubjectChecker makes Sign fail unless check accepts the claim's
-// subject, e.g. jws.KeyCertSigner.SubjectMatchesCertificate.
-func WithSubjectChecker(check func(subject string) bool) SignOption {
-	return func(o *signOptions) { o.subjectChecker = check }
-}
-
-// WithCertificateProvider makes Sign embed the DER certificate returned by
-// provider in the claim, e.g. jws.KeyCertSigner.CertificateDER.
-func WithCertificateProvider(provider func() []byte) SignOption {
-	return func(o *signOptions) { o.certificateProvider = provider }
+// WithCertificate embeds the signer's X.509 certificate (PEM or DER) in the
+// claim. Sign fails unless the certificate belongs to the signer's key and
+// carries the claim's subject as a URI SAN.
+func WithCertificate(cert []byte) SignOption {
+	return func(o *signOptions) {
+		o.certificate = cert
+		o.hasCertificate = true
+	}
 }
 
 // Sign signs claim for recordCID using signer, setting RecordCid, SignedAt
-// and Signature, plus Certificate when WithCertificateProvider is given.
+// and Signature, plus Certificate when WithCertificate is given.
 func Sign(claim *identityv1.Claim, recordCID string, signer jws.Signer, opts ...SignOption) error {
 	if claim == nil {
 		return errors.New("claim is nil")
@@ -60,8 +63,15 @@ func Sign(claim *identityv1.Claim, recordCID string, signer jws.Signer, opts ...
 		opt(&o)
 	}
 
-	if o.subjectChecker != nil && !o.subjectChecker(subject) {
-		return fmt.Errorf("signer does not cover claimed subject %q", subject)
+	var certDER []byte
+
+	if o.hasCertificate {
+		der, err := certificateFor(o.certificate, signer.Public(), subject)
+		if err != nil {
+			return err
+		}
+
+		certDER = der
 	}
 
 	// Sign a copy so an error leaves the caller's claim untouched.
@@ -85,13 +95,8 @@ func Sign(claim *identityv1.Claim, recordCID string, signer jws.Signer, opts ...
 
 	signed.Signature = sig
 
-	if o.certificateProvider != nil {
-		der := o.certificateProvider()
-		if len(der) == 0 {
-			return errors.New("certificate provider returned no certificate")
-		}
-
-		cert := base64.StdEncoding.EncodeToString(der)
+	if certDER != nil {
+		cert := base64.StdEncoding.EncodeToString(certDER)
 		signed.Certificate = &cert
 	}
 
@@ -101,4 +106,28 @@ func Sign(claim *identityv1.Claim, recordCID string, signer jws.Signer, opts ...
 	claim.Certificate = signed.Certificate
 
 	return nil
+}
+
+// certificateFor returns the DER form of data after checking that the
+// certificate belongs to pub and names subject as a URI SAN.
+func certificateFor(data []byte, pub crypto.PublicKey, subject string) ([]byte, error) {
+	der := data
+	if block, _ := pem.Decode(data); block != nil {
+		der = block.Bytes
+	}
+
+	cert, err := x509.ParseCertificate(der)
+	if err != nil {
+		return nil, fmt.Errorf("parse certificate: %w", err)
+	}
+
+	if eq, ok := pub.(interface{ Equal(crypto.PublicKey) bool }); !ok || !eq.Equal(cert.PublicKey) {
+		return nil, errors.New("signer key does not match the certificate's public key")
+	}
+
+	if !slices.ContainsFunc(cert.URIs, func(u *url.URL) bool { return u.String() == subject }) {
+		return nil, fmt.Errorf("certificate does not cover claimed subject %q", subject)
+	}
+
+	return der, nil
 }
