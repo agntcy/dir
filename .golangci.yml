@@ -34,6 +34,13 @@ linters:
     # golangci-lint 2.13 defaults to 3 repeats; 15 skips enum/JSON-key noise and flags only heavy duplication.
     goconst:
       min-occurrences: 15
+    # types.DatabaseAPI is a deliberate aggregate of one embedded interface per
+    # capability domain (search, sync, publication, verification, scan,
+    # policy evaluation, catalog, usage metrics), by design one embed larger
+    # every time a domain is added. The default cap of 10 fits a flat method
+    # list, not this composition pattern.
+    interfacebloat:
+      max: 15
     goheader:
       values:
         regexp:

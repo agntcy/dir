@@ -311,5 +311,21 @@ func (f *fakeSignatureDB) GetRecordsNeedingScan(time.Duration) ([]coretypes.Reco
 	return nil, nil
 }
 
+func (f *fakeSignatureDB) UpsertPolicyEvaluation(types.PolicyEvaluationObject) error { return nil }
+
+func (f *fakeSignatureDB) GetPolicyEvaluations(string) ([]types.PolicyEvaluationObject, error) {
+	return nil, nil
+}
+
+func (f *fakeSignatureDB) GetRecordsNeedingPolicyEvaluation(string, string, string, int) ([]coretypes.Record, error) {
+	return nil, nil
+}
+
+func (f *fakeSignatureDB) RegisterPolicyVersion(string, string) error { return nil }
+
+func (f *fakeSignatureDB) GetCurrentPolicyVersion(string) (string, bool, error) {
+	return "", false, nil
+}
+
 func (f *fakeSignatureDB) Close() error                 { return nil }
 func (f *fakeSignatureDB) IsReady(context.Context) bool { return true }

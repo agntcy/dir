@@ -34,6 +34,9 @@ type DatabaseAPI interface {
 	// ScanReportDatabaseAPI handles persistence of security scan results.
 	ScanReportDatabaseAPI
 
+	// PolicyEvaluationDatabaseAPI handles persistence of content-policy verdicts.
+	PolicyEvaluationDatabaseAPI
+
 	// CatalogDatabaseAPI handles deterministic browsing of AI Catalog entries.
 	CatalogDatabaseAPI
 
@@ -309,4 +312,81 @@ type ScanReportDatabaseAPI interface {
 	// GetRecordsNeedingScan returns records with no scan result still
 	// suppressing a rescan, bounded by ttl.
 	GetRecordsNeedingScan(ttl time.Duration) ([]coretypes.Record, error)
+}
+
+// Policy evaluation status values.
+const (
+	// PolicyEvalStatusEvaluated means the policy engine reached a verdict:
+	// Compliant is authoritative.
+	PolicyEvalStatusEvaluated = "evaluated"
+
+	// PolicyEvalStatusFailed means the policy engine errored before reaching
+	// a verdict.
+	PolicyEvalStatusFailed = "failed"
+)
+
+// EvaluatedPolicyStatuses are the statuses under which a policy evaluator
+// reached a verdict.
+//
+// Every read-path filter must gate on these: a failed row stores compliant =
+// false to satisfy the NOT NULL column and fail closed, and that false is a
+// placeholder, not a verdict. Mirrors ScannedStatuses for scan reports.
+func EvaluatedPolicyStatuses() []string {
+	return []string{PolicyEvalStatusEvaluated}
+}
+
+// PolicyEvaluationObject is a single policy verdict row, keyed by
+// (record_cid, policy_id).
+type PolicyEvaluationObject interface {
+	GetRecordCID() string
+
+	// GetPolicyID is a stable identifier of the policy that produced this
+	// verdict, e.g. "opa:require-annotation" or "oasf:schema".
+	GetPolicyID() string
+
+	// GetPolicyVersion is the content version (or hash) of the policy that
+	// produced this verdict. A row whose version no longer matches the
+	// policy's current version is stale and is due for re-evaluation, not
+	// reinterpreted under the new policy.
+	GetPolicyVersion() string
+
+	// GetCompliant is the verdict. Meaningful only when GetStatus is
+	// PolicyEvalStatusEvaluated; otherwise it is a fail-closed placeholder
+	// and must read as false.
+	GetCompliant() bool
+
+	// GetStatus is one of the PolicyEvalStatus* values.
+	GetStatus() string
+
+	// GetReason is a human-readable explanation, empty when compliant.
+	GetReason() string
+
+	GetUpdatedAt() time.Time
+}
+
+// PolicyEvaluationDatabaseAPI handles persistence and querying of
+// content-policy verdicts.
+type PolicyEvaluationDatabaseAPI interface {
+	// UpsertPolicyEvaluation inserts or updates the verdict row keyed by
+	// (record_cid, policy_id).
+	UpsertPolicyEvaluation(eval PolicyEvaluationObject) error
+
+	// GetPolicyEvaluations retrieves every policy verdict recorded for a
+	// record.
+	GetPolicyEvaluations(recordCID string) ([]PolicyEvaluationObject, error)
+
+	// GetRecordsNeedingPolicyEvaluation returns records with no evaluated
+	// verdict row for policyID at policyVersion — never evaluated against
+	// this version, or whose last evaluation failed. Records come in
+	// record_cid order after afterCID, at most limit of them; zero returns
+	// them all.
+	GetRecordsNeedingPolicyEvaluation(policyID, policyVersion, afterCID string, limit int) ([]coretypes.Record, error)
+
+	// RegisterPolicyVersion records that an evaluator is running version of
+	// policyID now, so the server can follow the policy's current version.
+	RegisterPolicyVersion(policyID, policyVersion string) error
+
+	// GetCurrentPolicyVersion returns the version of policyID an evaluator
+	// ran most recently, and whether any evaluator has registered it.
+	GetCurrentPolicyVersion(policyID string) (string, bool, error)
 }
