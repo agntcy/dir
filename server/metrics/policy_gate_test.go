@@ -5,6 +5,7 @@ package metrics
 
 import (
 	"errors"
+	"strings"
 	"testing"
 
 	policyconfig "github.com/agntcy/dir/server/policy/config"
@@ -14,14 +15,20 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// excludedRecords answers CountRecordsExcluded.
+// excludedRecords answers the counts: count records are excluded, and
+// unevaluated lack a verdict.
 type excludedRecords struct {
-	count int64
-	err   error
+	count       int64
+	unevaluated int64
+	err         error
 }
 
 func (r excludedRecords) CountRecordsExcluded([]types.EnforcedPolicy) (int64, error) {
 	return r.count, r.err
+}
+
+func (r excludedRecords) CountRecordsNeedingPolicyEvaluation(string, string) (int64, error) {
+	return r.unevaluated, r.err
 }
 
 func gateFor(search policyconfig.Mode, records excludedRecords) *PolicyGate {
@@ -34,7 +41,7 @@ func gateFor(search policyconfig.Mode, records excludedRecords) *PolicyGate {
 }
 
 // gather scrapes gate through a registry that checks its descriptions, and
-// returns each series of metric by outcome.
+// returns each series of metric by its label values, joined by "/".
 func gather(t *testing.T, gate *PolicyGate, metric string) map[string]float64 {
 	t.Helper()
 
@@ -52,8 +59,12 @@ func gather(t *testing.T, gate *PolicyGate, metric string) map[string]float64 {
 		}
 
 		for _, m := range family.GetMetric() {
-			value := m.GetGauge().GetValue() + m.GetCounter().GetValue()
-			series[m.GetLabel()[0].GetValue()] = value
+			labels := make([]string, 0, len(m.GetLabel()))
+			for _, label := range m.GetLabel() {
+				labels = append(labels, label.GetValue())
+			}
+
+			series[strings.Join(labels, "/")] = m.GetGauge().GetValue() + m.GetCounter().GetValue()
 		}
 	}
 
@@ -110,4 +121,33 @@ func TestPolicyGate_CountsExcludedFetchesByOutcome(t *testing.T) {
 
 	assert.Equal(t, map[string]float64{outcomeExcluded: 1, outcomeWouldExclude: 2},
 		gather(t, gate, "dir_policy_gate_fetches_excluded_total"))
+}
+
+// Each registered policy reports how many records have no verdict yet under
+// its current version: the size of the blackout after an edit. A policy no
+// evaluator registered has no version to count under.
+func TestPolicyGate_ReportsUnevaluatedRecordsPerPolicy(t *testing.T) {
+	t.Parallel()
+
+	gate := NewPolicyGate(func() types.PolicyEnforcement {
+		return types.PolicyEnforcement{
+			Policies: []types.EnforcedPolicy{{ID: "opa:done", Version: "v1"}},
+			Pending:  []types.EnforcedPolicy{{ID: "opa:new", Version: "v1"}, {ID: "opa:unregistered"}},
+		}
+	}, excludedRecords{unevaluated: 12})
+
+	assert.Equal(t, map[string]float64{"opa:done/v1": 12, "opa:new/v1": 12}, gather(t, gate, "dir_policy_gate_records_unevaluated"))
+}
+
+// A policy whose records cannot be counted is left out without failing the
+// scrape.
+func TestPolicyGate_UnevaluatedCountErrorDropsOnlyThatGauge(t *testing.T) {
+	t.Parallel()
+
+	gate := NewPolicyGate(func() types.PolicyEnforcement {
+		return types.PolicyEnforcement{Policies: []types.EnforcedPolicy{{ID: "opa:a", Version: "v1"}}}
+	}, excludedRecords{err: errors.New("database unavailable")})
+
+	assert.Empty(t, gather(t, gate, "dir_policy_gate_records_unevaluated"))
+	assert.Len(t, gather(t, gate, "dir_policy_gate_fetches_excluded_total"), 2)
 }

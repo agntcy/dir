@@ -9,6 +9,7 @@ import (
 
 	coretypes "github.com/agntcy/dir/api/core/types"
 	"github.com/agntcy/dir/server/types"
+	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 )
 
@@ -118,14 +119,7 @@ func (d *DB) GetPolicyEvaluations(recordCID string) ([]types.PolicyEvaluationObj
 func (d *DB) GetRecordsNeedingPolicyEvaluation(policyID, policyVersion, afterCID string, limit int) ([]coretypes.Record, error) {
 	var records []Record
 
-	query := d.gormDB.Table("records").
-		Where(`NOT EXISTS (
-			SELECT 1 FROM policy_evaluations pe
-			WHERE pe.record_cid = records.record_cid
-			AND pe.policy_id = ?
-			AND pe.policy_version = ?
-			AND pe.status IN ?
-		)`, policyID, policyVersion, types.EvaluatedPolicyStatuses()).
+	query := d.needingPolicyEvaluation(policyID, policyVersion).
 		Where("records.record_cid > ?", afterCID).
 		Order("records.record_cid")
 
@@ -143,4 +137,17 @@ func (d *DB) GetRecordsNeedingPolicyEvaluation(policyID, policyVersion, afterCID
 	}
 
 	return result, nil
+}
+
+// needingPolicyEvaluation selects the indexed records with no evaluated
+// verdict under policyVersion of policyID.
+func (d *DB) needingPolicyEvaluation(policyID, policyVersion string) *gorm.DB {
+	return d.gormDB.Table("records").
+		Where(`NOT EXISTS (
+			SELECT 1 FROM policy_evaluations pe
+			WHERE pe.record_cid = records.record_cid
+			AND pe.policy_id = ?
+			AND pe.policy_version = ?
+			AND pe.status IN ?
+		)`, policyID, policyVersion, types.EvaluatedPolicyStatuses())
 }

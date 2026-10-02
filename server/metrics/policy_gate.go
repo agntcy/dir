@@ -17,10 +17,12 @@ const (
 	outcomeWouldExclude = "would_exclude"
 )
 
-// ExcludedRecordCounter counts the indexed records an enforcing search
-// excludes under a set of policies.
-type ExcludedRecordCounter interface {
+// RecordCounter counts indexed records: those an enforcing search excludes
+// under a set of policies, and those with no verdict yet under a policy's
+// current version.
+type RecordCounter interface {
 	CountRecordsExcluded(policies []types.EnforcedPolicy) (int64, error)
+	CountRecordsNeedingPolicyEvaluation(policyID, policyVersion string) (int64, error)
 }
 
 // PolicyGate reports what the content-policy gate excludes and, in shadow
@@ -29,14 +31,15 @@ type ExcludedRecordCounter interface {
 // types.PolicyGateObserver.
 type PolicyGate struct {
 	enforcement func() types.PolicyEnforcement
-	records     ExcludedRecordCounter
+	records     RecordCounter
 
 	searchRecords *prometheus.Desc
+	unevaluated   *prometheus.Desc
 	fetches       *prometheus.CounterVec
 }
 
 // NewPolicyGate reports on the gate applying what enforcement returns.
-func NewPolicyGate(enforcement func() types.PolicyEnforcement, records ExcludedRecordCounter) *PolicyGate {
+func NewPolicyGate(enforcement func() types.PolicyEnforcement, records RecordCounter) *PolicyGate {
 	fetches := prometheus.NewCounterVec(prometheus.CounterOpts{
 		Name: "dir_policy_gate_fetches_excluded_total",
 		Help: `Reads of a record by CID the enforced content policies excluded (outcome="excluded") or, in shadow mode, would have (outcome="would_exclude").`,
@@ -55,6 +58,11 @@ func NewPolicyGate(enforcement func() types.PolicyEnforcement, records ExcludedR
 			`Indexed records searches exclude (outcome="excluded") or, in shadow mode, would (outcome="would_exclude"), for not complying with every enforced content policy.`,
 			[]string{"outcome"}, nil,
 		),
+		unevaluated: prometheus.NewDesc(
+			"dir_policy_gate_records_unevaluated",
+			"Indexed records with no verdict yet under the current version of a content policy. Enforcing reads hide them until the reconciler has evaluated them, so this is the size of the blackout after a policy is edited, and what remains before a newly added policy is first enforced.",
+			[]string{"policy_id", "version"}, nil,
+		),
 		fetches: fetches,
 	}
 }
@@ -71,6 +79,8 @@ func (g *PolicyGate) Describe(ch chan<- *prometheus.Desc) {
 	g.fetches.Describe(ch)
 
 	ch <- g.searchRecords
+
+	ch <- g.unevaluated
 }
 
 // Collect implements prometheus.Collector. The search gauge is left out while
@@ -80,6 +90,21 @@ func (g *PolicyGate) Collect(ch chan<- prometheus.Metric) {
 	g.fetches.Collect(ch)
 
 	enforcement := g.enforcement()
+
+	for _, policy := range append(append([]types.EnforcedPolicy(nil), enforcement.Policies...), enforcement.Pending...) {
+		if policy.Version == "" {
+			continue
+		}
+
+		remaining, err := g.records.CountRecordsNeedingPolicyEvaluation(policy.ID, policy.Version)
+		if err != nil {
+			logger.Warn("Could not count records without a verdict", "policy_id", policy.ID, "error", err)
+
+			continue
+		}
+
+		ch <- prometheus.MustNewConstMetric(g.unevaluated, prometheus.GaugeValue, float64(remaining), policy.ID, policy.Version)
+	}
 
 	outcome, ok := outcomeOf(enforcement.Search)
 	if !ok || len(enforcement.Policies) == 0 {

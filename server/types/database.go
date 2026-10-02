@@ -356,9 +356,9 @@ type PolicyEnforcement struct {
 	Search   policyconfig.Mode
 	Fetch    policyconfig.Mode
 
-	// Pending are the configured policies not enforced yet because no
-	// evaluator has registered them: there is no version whose verdicts could
-	// be asked for.
+	// Pending are the configured policies not enforced yet: no evaluator has
+	// registered them (Version is empty), or their verdicts do not yet cover
+	// the records and never did.
 	Pending []EnforcedPolicy
 }
 
