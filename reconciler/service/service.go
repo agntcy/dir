@@ -119,25 +119,39 @@ func (s *Service) registerTasks(cfg *config.Config, db servertypes.DatabaseAPI, 
 		}
 	}
 
-	return s.registerPolicyTask(cfg.PolicyEvaluation, db)
+	return s.registerPolicyTask(cfg.PolicyEvaluation, db, store, validatorRegistry)
 }
 
-// registerPolicyTask adds the policy evaluation task when it is enabled. No
-// policy evaluator is implemented yet, so the task is registered disabled and
-// the reason logged, rather than policy_evaluation.enabled being silently
-// ignored.
-func (s *Service) registerPolicyTask(cfg policy.Config, db servertypes.DatabaseAPI) error {
+// registerPolicyTask adds the policy evaluation task when it is enabled. It
+// evaluates one policy for each validator configured with op evaluate. With
+// none the task is registered disabled and the reason logged, rather than
+// policy_evaluation.enabled being silently ignored; and policies configured
+// while the task is disabled are reported too, since nothing then produces
+// their verdicts.
+func (s *Service) registerPolicyTask(cfg policy.Config, db servertypes.DatabaseAPI, store policy.RecordSource, validatorRegistry *recordvalidators.Registry) error {
+	policies := validatorRegistry.Policies()
+
 	if !cfg.Enabled {
+		if len(policies) > 0 {
+			logger.Warn("Policies are configured but the policy evaluation task is disabled; no verdicts will be produced",
+				"policies", len(policies), "setting", "policy_evaluation.enabled")
+		}
+
 		return nil
 	}
 
-	t, err := policy.NewTask(cfg, db)
+	evaluators := make([]policy.Evaluator, 0, len(policies))
+	for _, p := range policies {
+		evaluators = append(evaluators, policy.NewValidatorEvaluator(p.ID, p.Version, p.Validator, store))
+	}
+
+	t, err := policy.NewTask(cfg, db, evaluators...)
 	if err != nil {
 		return fmt.Errorf("failed to create policy task: %w", err)
 	}
 
 	if !t.IsEnabled() {
-		logger.Warn("Policy task is enabled but no policy evaluator is available; it will not run")
+		logger.Warn("Policy task is enabled but no policy is configured; it will not run: add a validator with op \"evaluate\"")
 	}
 
 	s.addTask(t)

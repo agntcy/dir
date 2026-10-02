@@ -40,7 +40,10 @@ authz_policies_csv: |
 #       default allow := true
 policies: {}
 
-# Record validators applied on push, autosync, and/or index.
+# Record validators applied on push, autosync, and/or index. A validator with
+# op "evaluate" (opa or cel only) defines a content policy instead: the
+# reconciler evaluates every record against it and the server can enforce the
+# verdicts (config.policy.enforcement).
 # Injected into both server.config.yml and reconciler.config.yml.
 # Omit an op (or this entire list) to skip validation on that path.
 validators:

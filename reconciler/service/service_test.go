@@ -14,6 +14,8 @@ import (
 	"github.com/agntcy/dir/reconciler/tasks/identity"
 	"github.com/agntcy/dir/reconciler/tasks/policy"
 	servertypes "github.com/agntcy/dir/server/types"
+	recordvalidators "github.com/agntcy/dir/server/validators"
+	validatorsconfig "github.com/agntcy/dir/server/validators/config"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -76,22 +78,53 @@ func TestAddTask_Multiple(t *testing.T) {
 	assert.Same(t, t2, s.tasks[1])
 }
 
+// policyRegistry builds a validator registry with one CEL policy, named name.
+func policyRegistry(t *testing.T, name string) *recordvalidators.Registry {
+	t.Helper()
+
+	registry, err := recordvalidators.NewRegistry(t.Context(), validatorsconfig.Config{{
+		Provider: validatorsconfig.ProviderCEL,
+		Ops:      []string{validatorsconfig.OpEvaluate},
+		Config: map[string]any{
+			validatorsconfig.ConfigKeyName:        name,
+			validatorsconfig.ConfigKeyExpressions: []string{`record.name != ""`},
+		},
+	}}, "")
+	require.NoError(t, err)
+
+	return registry
+}
+
 func TestRegisterPolicyTask_Disabled(t *testing.T) {
 	s := newTestService()
 
-	require.NoError(t, s.registerPolicyTask(policy.Config{}, nil))
+	require.NoError(t, s.registerPolicyTask(policy.Config{}, nil, nil, nil))
+	assert.Empty(t, s.tasks)
+
+	// Policies with nothing to evaluate them are reported, not registered.
+	require.NoError(t, s.registerPolicyTask(policy.Config{}, nil, nil, policyRegistry(t, "named")))
 	assert.Empty(t, s.tasks)
 }
 
-// No policy evaluator is implemented yet: enabling the task registers it
-// disabled, so policy.enabled has a visible effect instead of none.
-func TestRegisterPolicyTask_EnabledWithoutEvaluators(t *testing.T) {
+// With no policy configured, enabling the task registers it disabled, so
+// policy_evaluation.enabled has a visible effect instead of none.
+func TestRegisterPolicyTask_EnabledWithoutPolicies(t *testing.T) {
 	s := newTestService()
 
-	require.NoError(t, s.registerPolicyTask(policy.Config{Enabled: true}, nil))
+	require.NoError(t, s.registerPolicyTask(policy.Config{Enabled: true}, nil, nil, nil))
 	require.Len(t, s.tasks, 1)
 	assert.Equal(t, "policy", s.tasks[0].Name())
 	assert.False(t, s.tasks[0].IsEnabled())
+}
+
+// Each validator with op evaluate is a policy the task evaluates.
+func TestRegisterPolicyTask_EnabledWithPolicies(t *testing.T) {
+	s := newTestService()
+
+	require.NoError(t, s.registerPolicyTask(policy.Config{Enabled: true}, nil, nil, policyRegistry(t, "named")))
+	require.Len(t, s.tasks, 1)
+	assert.Equal(t, "policy", s.tasks[0].Name())
+	assert.True(t, s.tasks[0].IsEnabled())
 }
 
 func TestIsReady(t *testing.T) {
