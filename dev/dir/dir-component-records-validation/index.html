@@ -953,10 +953,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#verifiable-names" class="md-nav__link">
+  <a href="#names-and-ownership" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Verifiable Names
+        Names and Ownership
       
     </span>
   </a>
@@ -2368,10 +2368,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#verifiable-names" class="md-nav__link">
+  <a href="#names-and-ownership" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Verifiable Names
+        Names and Ownership
       
     </span>
   </a>
@@ -2651,14 +2651,9 @@
 <li>Collision-resistant</li>
 <li>Immutable</li>
 </ul>
-<h3 id="verifiable-names">Verifiable Names</h3>
-<p>Records must include a <code>name</code> field with a domain-based identifier that enables name verification. When a record uses a verifiable name:</p>
-<ul>
-<li>The name must include a protocol prefix: <code>https://domain/path</code> or <code>http://domain/path</code>.</li>
-<li>The domain must host a JWKS file at <code>&lt;scheme&gt;://&lt;domain&gt;/.well-known/jwks.json</code>.</li>
-<li>Records signed with a private key associated with a public key present in that JWKS file can be verified as authorized by the domain.</li>
-</ul>
-<p>See <a href="../dir-features-scenarios/#name-verification">Usage Guide — Name Verification</a> and the <a href="../dir-cli-reference/#security-verification">CLI Reference</a> for name verification workflows.</p>
+<h3 id="names-and-ownership">Names and Ownership</h3>
+<p>Records must include a <code>name</code> field. A name such as <code>example.com/agent</code> lets a record be referenced as <code>name</code>, <code>name:version</code> or <code>name:version@cid</code> instead of by CID. Ownership of a record is asserted separately, with a signed ownership claim that the reconciler verifies against the key material its subject publishes.</p>
+<p>See <a href="../dir-features-scenarios/#identity-and-ownership-claims">Usage Guide — Identity and Ownership Claims</a> and the <a href="../dir-cli-reference/#dirctl-identity-claim-flags">CLI Reference</a> for the claim workflow.</p>
 <h3 id="example-email-agent">Example Email Agent</h3>
 <p>You can generate your own example records using the <a href="https://schema.oasf.outshift.com/sample/objects/record">OASF Record Sample generator</a>. Below is an example OASF record for an email agent that is capable of sending and receiving emails.</p>
 <div class="highlight"><pre><span></span><code><span class="p">{</span>

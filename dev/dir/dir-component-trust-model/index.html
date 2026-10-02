@@ -1077,10 +1077,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#name-verification" class="md-nav__link">
+  <a href="#identity-and-ownership-claims" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Name verification
+        Identity and ownership claims
       
     </span>
   </a>
@@ -2496,10 +2496,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#name-verification" class="md-nav__link">
+  <a href="#identity-and-ownership-claims" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Name verification
+        Identity and ownership claims
       
     </span>
   </a>
@@ -2916,21 +2916,15 @@ by the underlying OCI registry infrastructure.</p>
 </ul>
 <p>For CLI walkthroughs of each method, see
 <a href="../dir-features-scenarios/#signing-and-verification">Usage Guide — Signing and Verification</a>.</p>
-<h3 id="name-verification">Name verification</h3>
-<p>Name verification proves that the signing key is authorized by the domain claimed in the
-record's <code>name</code> field. This provides cryptographic proof of domain ownership and enables
-human-readable references while maintaining security.</p>
-<p>A record qualifies for name verification when:</p>
-<ul>
-<li>The record name includes a protocol prefix: <code>https://domain/path</code> or <code>http://domain/path</code>.</li>
-<li>A <a href="https://datatracker.ietf.org/doc/html/rfc7517">JWKS (JSON Web Key Set)</a> file is hosted
-  at <code>&lt;scheme&gt;://&lt;domain&gt;/.well-known/jwks.json</code>.</li>
-<li>The record is signed with the private key corresponding to a public key present in that
-  JWKS file.</li>
-</ul>
-<p>Once a name is verified, records can be referenced using Docker-style name references
-(<code>name</code>, <code>name:version</code>, <code>name:version@cid</code>) instead of raw CIDs. See
-<a href="../dir-component-records-validation/">Records</a> for the verifiable name model.</p>
+<h3 id="identity-and-ownership-claims">Identity and ownership claims</h3>
+<p>A record can carry signed claims that a subject, such as <code>did:web:acme.com</code> or
+<code>dns:acme.com</code>, is the record's own identity or its owner. A claim is stored as an OCI
+referrer of the record. The reconciler verifies it against the key material the subject
+publishes (a DNS TXT record, a <code>/.well-known/jwks.json</code> file, a DID document, or a SPIFFE
+trust bundle) and records the outcome, which <code>dirctl identity status</code> reports and the
+<code>--identity-verified</code>, <code>--owner-verified</code> and <code>--verified</code> search filters match on.</p>
+<p>Records can also be referenced using Docker-style name references (<code>name</code>, <code>name:version</code>,
+<code>name:version@cid</code>) instead of raw CIDs.</p>
 <h2 id="security-scanning">Security Scanning</h2>
 <p>Security scanning provides automated behavioral and static analysis of records to detect
 vulnerabilities, policy violations, and malicious patterns before records are consumed.</p>

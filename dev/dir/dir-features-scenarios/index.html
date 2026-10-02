@@ -894,15 +894,15 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#name-verification" class="md-nav__link">
+  <a href="#identity-and-ownership-claims" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Name Verification
+        Identity and Ownership Claims
       
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Name Verification">
+    <nav class="md-nav" aria-label="Identity and Ownership Claims">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
@@ -917,21 +917,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#verification-response" class="md-nav__link">
+  <a href="#referencing-records-by-name" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Verification Response
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#using-verified-names" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Using Verified Names
+        Referencing records by name
       
     </span>
   </a>
@@ -2628,15 +2617,15 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#name-verification" class="md-nav__link">
+  <a href="#identity-and-ownership-claims" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Name Verification
+        Identity and Ownership Claims
       
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Name Verification">
+    <nav class="md-nav" aria-label="Identity and Ownership Claims">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
@@ -2651,21 +2640,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#verification-response" class="md-nav__link">
+  <a href="#referencing-records-by-name" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Verification Response
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#using-verified-names" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Using Verified Names
+        Referencing records by name
       
     </span>
   </a>
@@ -3050,14 +3028,14 @@ dirctl<span class="w"> </span>pull<span class="w"> </span><span class="nv">$RECO
 <span class="c1"># Look up basic metadata (annotations, creation timestamp, OASF schema version)</span>
 dirctl<span class="w"> </span>info<span class="w"> </span><span class="nv">$RECORD_CID</span>
 </code></pre></div>
-<p>Records with verifiable names can also be referenced using Docker-style formats
-(<code>name</code>, <code>name:version</code>, <code>name:version@cid</code>) with the <code>pull</code>, <code>info</code>, and <code>naming verify</code>
+<p>Records can also be referenced using Docker-style formats
+(<code>name</code>, <code>name:version</code>, <code>name:version@cid</code>) with the <code>pull</code>, <code>info</code>, and <code>identity</code>
 commands. For all storage flags and output options, see
 <a href="../dir-cli-reference/#storage-operations">CLI Reference — Storage Operations</a>.</p>
 <h2 id="signing-and-verification">Signing and Verification</h2>
 <p>Cryptographically signing records lets publishers prove authorship and ensures data
 integrity, while consumers can verify records before deploying or executing agent code. For
-how signing, server-side verification, and name verification work, see
+how signing and server-side verification work, see
 <a href="../dir-component-trust-model/#record-signing-and-verification">Trust Model — Record Signing and Verification</a>.</p>
 <h3 id="method-1-oidc-based-interactive">Method 1: OIDC-based Interactive</h3>
 <p>This process relies on creating and uploading to the OCI registry a signature for the record
@@ -3137,51 +3115,27 @@ dirctl<span class="w"> </span>sign<span class="w"> </span><span class="s2">&quot
 <span class="c1"># Verify the signed record</span>
 dirctl<span class="w"> </span>verify<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$RECORD_CID</span><span class="s2">&quot;</span>
 </code></pre></div>
-<h2 id="name-verification">Name Verification</h2>
-<p>Name verification proves that the signing key is authorized by the domain claimed in the
-record's name field, enabling human-readable references instead of CIDs. For the concept and
-requirements (protocol prefix, JWKS hosting, matching signing key), see
-<a href="../dir-component-trust-model/#name-verification">Trust Model — Name verification</a>.</p>
+<h2 id="identity-and-ownership-claims">Identity and Ownership Claims</h2>
+<p>A record can carry two signed claims: the identity of the record itself and the owner behind
+it. The record declares each subject, such as <code>did:web:acme.com</code> or <code>dns:acme.com</code>, in its
+<code>agntcy.dir/identity</code> and <code>agntcy.dir/owner</code> annotations. The claim is signed for that subject and
+checked against the key material it publishes. For the claim model, see
+<a href="../dir-cli-reference/#dirctl-identity-claim-flags">CLI Reference — Identity</a>.</p>
 <h3 id="workflow">Workflow</h3>
-<div class="highlight"><pre><span></span><code><span class="c1"># 1. Create a record with a verifiable name (already done in Build section)</span>
-<span class="c1"># The record.json has: &quot;name&quot;: &quot;https://example.com/agents/my-record&quot;</span>
-
-<span class="c1"># 2. Ensure your domain hosts a JWKS file</span>
-<span class="c1"># Example: https://example.com/.well-known/jwks.json</span>
-<span class="c1"># This file should contain the public key corresponding to your signing key</span>
-
-<span class="c1"># 3. Push the record</span>
+<div class="highlight"><pre><span></span><code><span class="c1"># 1. Declare the owner in the record: &quot;annotations&quot;: {&quot;agntcy.dir/owner&quot;: &quot;dns:example.com&quot;},</span>
+<span class="c1">#    then push the record</span>
 <span class="nv">RECORD_CID</span><span class="o">=</span><span class="k">$(</span>dirctl<span class="w"> </span>push<span class="w"> </span>record.json<span class="w"> </span>--output<span class="w"> </span>raw<span class="k">)</span>
-<span class="nb">echo</span><span class="w"> </span><span class="s2">&quot;Stored with CID: </span><span class="nv">$RECORD_CID</span><span class="s2">&quot;</span>
 
-<span class="c1"># 4. Sign the record (triggers automatic verification)</span>
-dirctl<span class="w"> </span>sign<span class="w"> </span><span class="nv">$RECORD_CID</span><span class="w"> </span>--key<span class="w"> </span>cosign.key
+<span class="c1"># 2. Claim ownership, signing with the key the owner publishes</span>
+dirctl<span class="w"> </span>identity<span class="w"> </span>claim<span class="w"> </span>--record<span class="w"> </span><span class="nv">$RECORD_CID</span><span class="w"> </span>--role<span class="w"> </span>owner<span class="w"> </span>--key<span class="w"> </span>owner.key
 
-<span class="c1"># 5. Verify the name authorization</span>
-<span class="c1"># By CID</span>
-dirctl<span class="w"> </span>naming<span class="w"> </span>verify<span class="w"> </span><span class="nv">$RECORD_CID</span><span class="w"> </span>--output<span class="w"> </span>json
-
-<span class="c1"># By name (latest version)</span>
-dirctl<span class="w"> </span>naming<span class="w"> </span>verify<span class="w"> </span>example.com/agents/my-record<span class="w"> </span>--output<span class="w"> </span>json
-
-<span class="c1"># By name with specific version</span>
-dirctl<span class="w"> </span>naming<span class="w"> </span>verify<span class="w"> </span>example.com/agents/my-record:v1.0.0<span class="w"> </span>--output<span class="w"> </span>json
+<span class="c1"># 3. Check the verification result (the reconciler verifies claims in the background)</span>
+dirctl<span class="w"> </span>identity<span class="w"> </span>status<span class="w"> </span><span class="nv">$RECORD_CID</span><span class="w"> </span>--output<span class="w"> </span>json
 </code></pre></div>
-<h3 id="verification-response">Verification Response</h3>
-<p>When verification succeeds, you'll receive a response like:</p>
-<div class="highlight"><pre><span></span><code><span class="p">{</span>
-<span class="w">  </span><span class="nt">&quot;cid&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;bafyreib...&quot;</span><span class="p">,</span>
-<span class="w">  </span><span class="nt">&quot;verified&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
-<span class="w">  </span><span class="nt">&quot;domain&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;example.com&quot;</span><span class="p">,</span>
-<span class="w">  </span><span class="nt">&quot;method&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;jwks&quot;</span><span class="p">,</span>
-<span class="w">  </span><span class="nt">&quot;key_id&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;key-1&quot;</span><span class="p">,</span>
-<span class="w">  </span><span class="nt">&quot;verified_at&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;2026-01-21T10:30:00Z&quot;</span>
-<span class="p">}</span>
-</code></pre></div>
-<h3 id="using-verified-names">Using Verified Names</h3>
-<p>Once verified, records can be referenced by name instead of CID across <code>pull</code>, <code>info</code>, and
-<code>naming verify</code>. When no version is specified, commands resolve to the most recently created
-record (by <code>created_at</code>), so non-semver tags like <code>latest</code>, <code>dev</code>, or <code>stable</code> also work:</p>
+<h3 id="referencing-records-by-name">Referencing records by name</h3>
+<p>Records can be referenced by name instead of CID across <code>pull</code>, <code>info</code>, and <code>identity</code>.
+When no version is specified, commands resolve to the highest version. Non-semver tags like
+<code>latest</code>, <code>dev</code>, or <code>stable</code> also work:</p>
 <div class="highlight"><pre><span></span><code><span class="c1"># Resolve the latest version by name</span>
 dirctl<span class="w"> </span>pull<span class="w"> </span>example.com/agents/my-record
 

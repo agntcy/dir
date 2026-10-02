@@ -2780,17 +2780,6 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#name-verification" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Name Verification
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
   <a href="#dirctl-sign-cid-flags" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2802,10 +2791,32 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#dirctl-naming-verify-reference" class="md-nav__link">
+  <a href="#dirctl-identity-claim-flags" class="md-nav__link">
     <span class="md-ellipsis">
       
-        dirctl naming verify &lt;reference&gt;
+        dirctl identity claim [flags]
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#dirctl-identity-status-reference" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        dirctl identity status &lt;reference&gt;
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#dirctl-identity-resolve-nameversion" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        dirctl identity resolve &lt;name[:version]&gt;
       
     </span>
   </a>
@@ -3867,17 +3878,6 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#name-verification" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Name Verification
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
   <a href="#dirctl-sign-cid-flags" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -3889,10 +3889,32 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#dirctl-naming-verify-reference" class="md-nav__link">
+  <a href="#dirctl-identity-claim-flags" class="md-nav__link">
     <span class="md-ellipsis">
       
-        dirctl naming verify &lt;reference&gt;
+        dirctl identity claim [flags]
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#dirctl-identity-status-reference" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        dirctl identity status &lt;reference&gt;
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#dirctl-identity-resolve-nameversion" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        dirctl identity resolve &lt;name[:version]&gt;
       
     </span>
   </a>
@@ -4225,7 +4247,11 @@ explicit <code>--auth-mode</code>.</p>
 </tr>
 <tr>
 <td>Security</td>
-<td><code>sign</code>, <code>verify</code>, <code>validate</code>, <code>naming verify</code></td>
+<td><code>sign</code>, <code>verify</code>, <code>validate</code></td>
+</tr>
+<tr>
+<td>Identity</td>
+<td><code>identity claim</code>, <code>status</code>, <code>resolve</code></td>
 </tr>
 <tr>
 <td>Sync</td>
@@ -4917,8 +4943,6 @@ dirctl<span class="w"> </span>daemon<span class="w"> </span>start<span class="w"
 <span class="w">    </span><span class="nt">scheduler_interval</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">5m</span>
 <span class="w">    </span><span class="nt">worker_count</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">1</span>
 <span class="w">    </span><span class="nt">worker_timeout</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">30m</span>
-<span class="w">  </span><span class="nt">naming</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">ttl</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">168h</span>
 
 
 <span class="nt">reconciler</span><span class="p">:</span>
@@ -4929,11 +4953,6 @@ dirctl<span class="w"> </span>daemon<span class="w"> </span>start<span class="w"
 <span class="w">    </span><span class="nt">enabled</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
 <span class="w">    </span><span class="nt">interval</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">1m</span>
 <span class="w">  </span><span class="nt">signature</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">enabled</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
-<span class="w">    </span><span class="nt">interval</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">1m</span>
-<span class="w">    </span><span class="nt">ttl</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">168h</span>
-<span class="w">    </span><span class="nt">record_timeout</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">30s</span>
-<span class="w">  </span><span class="nt">name</span><span class="p">:</span>
 <span class="w">    </span><span class="nt">enabled</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
 <span class="w">    </span><span class="nt">interval</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">1m</span>
 <span class="w">    </span><span class="nt">ttl</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">168h</span>
@@ -6227,8 +6246,16 @@ dirctl<span class="w"> </span>search<span class="w"> </span><span class="s2">&qu
 <td>Annotation key=value</td>
 </tr>
 <tr>
+<td><code>--identity</code></td>
+<td>Subject of the record's identity claim (wildcards, e.g. <code>did:web:acme.com:*</code>)</td>
+</tr>
+<tr>
+<td><code>--owner</code></td>
+<td>Subject of the record's ownership claim (wildcards, e.g. <code>did:web:acme.com</code>)</td>
+</tr>
+<tr>
 <td><code>--verified</code></td>
-<td>Only verified records; <code>--verified=false</code> for records without verified name ownership</td>
+<td>Only verified records; <code>--verified=false</code> for records without one. Same as <code>--owner-verified</code></td>
 </tr>
 <tr>
 <td><code>--trusted</code></td>
@@ -6242,15 +6269,23 @@ dirctl<span class="w"> </span>search<span class="w"> </span><span class="s2">&qu
 <td><code>--scan-severity</code></td>
 <td>Only records whose highest scan severity meets or exceeds a threshold (<code>NONE</code>, <code>INFO</code>, <code>LOW</code>, <code>MEDIUM</code>, <code>HIGH</code>, <code>CRITICAL</code>)</td>
 </tr>
+<tr>
+<td><code>--identity-verified</code></td>
+<td>Only records whose identity claim was verified</td>
+</tr>
+<tr>
+<td><code>--owner-verified</code></td>
+<td>Only records whose ownership claim was verified</td>
+</tr>
 </tbody>
 </table>
-<p><code>--verified</code>, <code>--trusted</code> and <code>--safe</code> are tri-state: omitting the flag does not filter on that property at all, while an explicit <code>=false</code> filters for records that failed the check.</p>
+<p><code>--verified</code>, <code>--trusted</code> and <code>--safe</code> are tri-state: omitting the flag does not filter on that property at all, while an explicit <code>=false</code> filters for records that failed the check. <code>--identity-verified</code> and <code>--owner-verified</code> only filter when set; <code>=false</code> is not a filter.</p>
 <p><strong>Exclude flags:</strong></p>
-<p>Every filter above except the three booleans has an <code>--exclude-</code> twin —
+<p>Every filter above except the booleans has an <code>--exclude-</code> twin —
 <code>--exclude-name</code>, <code>--exclude-version</code>, <code>--exclude-skill-id</code>, <code>--exclude-skill</code>,
 <code>--exclude-locator</code>, <code>--exclude-module</code>, <code>--exclude-domain-id</code>, <code>--exclude-domain</code>,
 <code>--exclude-created-at</code>, <code>--exclude-author</code>, <code>--exclude-schema-version</code>,
-<code>--exclude-module-id</code>, <code>--exclude-annotation</code> and <code>--exclude-scan-severity</code>. Each is
+<code>--exclude-module-id</code>, <code>--exclude-annotation</code> and <code>--exclude-scan-severity</code>. <code>--identity</code> and <code>--owner</code> have no exclude form. Each is
 repeatable and takes the same values as the flag it mirrors; wildcards, comparison
 operators and <code>:</code> behave identically, and <code>!</code> is an ordinary character.</p>
 <div class="highlight"><pre><span></span><code>dirctl<span class="w"> </span>search<span class="w"> </span>--exclude-skill<span class="w"> </span><span class="s2">&quot;natural_language_processing&quot;</span>
@@ -6394,33 +6429,8 @@ dirctl<span class="w"> </span>search<span class="w"> </span>--name<span class="w
 dirctl<span class="w"> </span>search<span class="w"> </span>--safe<span class="w"> </span>--scan-severity<span class="w"> </span>MEDIUM
 </code></pre></div>
 <p>A record appears in <code>--safe</code> results only when at least one scanner has run and no scanner has reported <code>is_safe=false</code>. Records where all scanners were skipped (no source repo, no skill bundle, no A2A AgentCard) are not included.</p>
-<h3 id="name-verification">Name Verification</h3>
-<p>Record name verification proves that the signing key is authorized by the domain claimed in the record's name field.</p>
-<p><strong>Requirements:</strong></p>
-<ul>
-<li>Record name must include a protocol prefix: <code>https://domain/path</code> or <code>http://domain/path</code></li>
-<li>A JWKS file must be hosted at <code>&lt;scheme&gt;://&lt;domain&gt;/.well-known/jwks.json</code></li>
-<li>The record must be signed with the private key corresponding to a public key present in that JWKS file</li>
-</ul>
-<p><strong>Workflow:</strong></p>
-<ol>
-<li>
-<p>Push a record with a verifiable name.</p>
-<div class="highlight"><pre><span></span><code>dirctl<span class="w"> </span>push<span class="w"> </span>record.json<span class="w"> </span>--output<span class="w"> </span>raw
-<span class="c1"># Returns: bafyreib...</span>
-</code></pre></div>
-</li>
-<li>
-<p>Sign the record (triggers automatic verification).</p>
-<div class="highlight"><pre><span></span><code>dirctl<span class="w"> </span>sign<span class="w"> </span>&lt;cid&gt;<span class="w"> </span>--key<span class="w"> </span>private.key
-</code></pre></div>
-</li>
-<li>
-<p>Check verification status using <a href="#dirctl-naming-verify-reference"><code>dirctl naming verify</code></a>.</p>
-</li>
-</ol>
 <h3 id="dirctl-sign-cid-flags"><code>dirctl sign &lt;cid&gt; [flags]</code></h3>
-<p>Signs records for integrity and authenticity. When signing a record with a verifiable name (e.g., <code>https://domain/path</code>), the system automatically attempts to verify domain authorization via JWKS. See <a href="#name-verification">Name Verification</a> for details.</p>
+<p>Signs records for integrity and authenticity.</p>
 <p>For encrypted private keys, <code>COSIGN_PASSWORD</code> is used when it is set, including when
 it is explicitly empty. Use <code>--password-stdin</code> to opt in to reading a password from
 standard input. Otherwise, an interactive terminal prompts for the password; a
@@ -6474,51 +6484,76 @@ dirctl<span class="w"> </span>sign<span class="w"> </span>&lt;cid&gt;<span class
 dirctl<span class="w"> </span>sign<span class="w"> </span>&lt;cid&gt;<span class="w"> </span>--key<span class="w"> </span><span class="s2">&quot;gcpkms://projects/PROJECT/locations/LOCATION/keyRings/RING/cryptoKeys/KEY&quot;</span>
 </code></pre></div>
 </details>
-<h3 id="dirctl-naming-verify-reference"><code>dirctl naming verify &lt;reference&gt;</code></h3>
-<p>Verifies that a record's signing key is authorized by the domain claimed in its name field. Checks if the signing key matches a public key in the domain's JWKS file hosted at <code>/.well-known/jwks.json</code>.</p>
-<p><strong>Supported Reference Formats:</strong></p>
+<h3 id="dirctl-identity-claim-flags"><code>dirctl identity claim [flags]</code></h3>
+<p>Signs a claim that the subject a record declares in its <code>agntcy.dir/identity</code> annotation is its own identity (<code>--role identity</code>), or that the subject it declares in <code>agntcy.dir/owner</code> is its owner (<code>--role owner</code>), and attaches the claim to the record. The subject is read from the record, so the record must carry the annotation for the role. The claim is stored unverified: the server checks it later, and <a href="#dirctl-identity-status-reference"><code>dirctl identity status</code></a> shows the outcome.</p>
 <table>
 <thead>
 <tr>
-<th>Format</th>
+<th>Flag</th>
 <th>Description</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td><code>&lt;cid&gt;</code></td>
-<td>Verify by content address</td>
+<td><code>--record</code></td>
+<td>Record to claim: CID, name or <code>name:version</code> (required)</td>
 </tr>
 <tr>
-<td><code>&lt;name&gt;</code></td>
-<td>Verify the highest version (see <strong>Version Resolution</strong> under <code>dirctl pull</code>)</td>
+<td><code>--role</code></td>
+<td><code>identity</code> or <code>owner</code> (required)</td>
 </tr>
 <tr>
-<td><code>&lt;name&gt;:&lt;version&gt;</code></td>
-<td>Verify a specific version</td>
+<td><code>--key</code></td>
+<td>Path to the PEM private key to sign with (required)</td>
+</tr>
+<tr>
+<td><code>--password-stdin</code></td>
+<td>Read the key password from standard input</td>
+</tr>
+<tr>
+<td><code>--cert</code></td>
+<td>PEM or DER certificate of the key; only for <code>spiffe://</code> subjects</td>
 </tr>
 </tbody>
 </table>
+<p>The key is an EC, RSA or Ed25519 private key in PEM form, unencrypted or an encrypted PKCS#8 key (<code>ENCRYPTED PRIVATE KEY</code>). Its public half is what the subject publishes: a DNS TXT record for <code>dns:</code> subjects, <code>/.well-known/jwks.json</code> for <code>https://</code> subjects, the DID document for <code>did:web:</code>, or the DID itself for <code>did:key:</code>. For an encrypted key, the password is read from <code>COSIGN_PASSWORD</code>, from standard input with <code>--password-stdin</code> (a trailing line break is ignored), or prompted for on a terminal. A key that is not encrypted is never prompted for.</p>
+<p><code>--cert</code> is independent of <code>--key</code> and is only for <code>spiffe://</code> subjects, whose proof is the signer's X.509-SVID rather than a published key. The certificate's URI SAN must be the declared subject. A <code>spiffe://</code> subject needs <code>--cert</code>, and no other subject accepts it.</p>
 <details class="example">
 <summary>Example</summary>
-<div class="highlight"><pre><span></span><code><span class="c1"># Verify by CID</span>
-dirctl<span class="w"> </span>naming<span class="w"> </span>verify<span class="w"> </span>bafyreib...<span class="w"> </span>--output<span class="w"> </span>json
+<div class="highlight"><pre><span></span><code><span class="c1"># Claim a record&#39;s identity</span>
+dirctl<span class="w"> </span>identity<span class="w"> </span>claim<span class="w"> </span>--record<span class="w"> </span>&lt;cid&gt;<span class="w"> </span>--role<span class="w"> </span>identity<span class="w"> </span>--key<span class="w"> </span>identity.key
 
-<span class="c1"># Verify by name (latest version)</span>
-dirctl<span class="w"> </span>naming<span class="w"> </span>verify<span class="w"> </span>cisco.com/agent<span class="w"> </span>--output<span class="w"> </span>json
+<span class="c1"># Claim ownership of the latest version of a name, with an encrypted key</span>
+<span class="nv">COSIGN_PASSWORD</span><span class="o">=</span>secret<span class="w"> </span>dirctl<span class="w"> </span>identity<span class="w"> </span>claim<span class="w"> </span>--record<span class="w"> </span>cisco.com/agent<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--role<span class="w"> </span>owner<span class="w"> </span>--key<span class="w"> </span>owner.key
 
-<span class="c1"># Verify by name with specific version</span>
-dirctl<span class="w"> </span>naming<span class="w"> </span>verify<span class="w"> </span>cisco.com/agent:v1.0.0<span class="w"> </span>--output<span class="w"> </span>json
+<span class="c1"># Claim a SPIFFE identity</span>
+dirctl<span class="w"> </span>identity<span class="w"> </span>claim<span class="w"> </span>--record<span class="w"> </span>&lt;cid&gt;<span class="w"> </span>--role<span class="w"> </span>identity<span class="w"> </span>--key<span class="w"> </span>svid.key<span class="w"> </span>--cert<span class="w"> </span>svid.pem
 </code></pre></div>
-<p>Example verification response:</p>
-<div class="highlight"><pre><span></span><code><span class="p">{</span>
-<span class="nt">&quot;cid&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;bafyreib...&quot;</span><span class="p">,</span>
-<span class="nt">&quot;verified&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
-<span class="nt">&quot;domain&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;cisco.com&quot;</span><span class="p">,</span>
-<span class="nt">&quot;method&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;jwks&quot;</span><span class="p">,</span>
-<span class="nt">&quot;key_id&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;key-1&quot;</span><span class="p">,</span>
-<span class="nt">&quot;verified_at&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;2026-01-21T10:30:00Z&quot;</span>
-<span class="p">}</span>
+</details>
+<h3 id="dirctl-identity-status-reference"><code>dirctl identity status &lt;reference&gt;</code></h3>
+<p>Shows the last verification result of a record's identity and ownership claims. Each is <code>verified</code>, <code>failed</code> (with the reason), or <code>no result</code> when it has not been verified yet. A record without claims is not an error. The reference is a CID, a name, or <code>name:version</code>.</p>
+<p>Claims are verified by the reconciler's <code>identity</code> task, which is off unless enabled (<code>reconciler.identity.enabled: true</code>, or <code>RECONCILER_IDENTITY_ENABLED=true</code> for a standalone reconciler; the daemon's default config enables it). On every run, at <code>reconciler.identity.interval</code> (default <code>1h</code>), it looks up the current key material of each claim's subject and checks the claim against it, so a rotated key or a revoked trust bundle shows up as <code>failed</code> on the next run. A claim only verifies when its subject is the one the record declares in its <code>agntcy.dir/identity</code> (identity claim) or <code>agntcy.dir/owner</code> (ownership claim) annotation. If a record carries several claims of one role, a verified one decides the result.</p>
+<p>A <code>spiffe://</code> claim is validated against the trust bundle of its trust domain, which has to be configured in YAML; with none, it fails:</p>
+<div class="highlight"><pre><span></span><code><span class="nt">reconciler</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">identity</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">enabled</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+<span class="w">    </span><span class="nt">spiffe_trust_bundles</span><span class="p">:</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">trust_domain</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">acme.com</span>
+<span class="w">        </span><span class="nt">bundle_file</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/etc/agntcy/spiffe/acme.com.pem</span>
+</code></pre></div>
+<details class="example">
+<summary>Example</summary>
+<div class="highlight"><pre><span></span><code>dirctl<span class="w"> </span>identity<span class="w"> </span>status<span class="w"> </span>&lt;cid&gt;
+dirctl<span class="w"> </span>identity<span class="w"> </span>status<span class="w"> </span>cisco.com/agent:v1.0.0<span class="w"> </span>--output<span class="w"> </span>json
+</code></pre></div>
+</details>
+<h3 id="dirctl-identity-resolve-nameversion"><code>dirctl identity resolve &lt;name[:version]&gt;</code></h3>
+<p>Resolves a record name to the CIDs of its versions, newest first. With a version, only that version. <code>--output raw</code> prints only the CIDs.</p>
+<details class="example">
+<summary>Example</summary>
+<div class="highlight"><pre><span></span><code>dirctl<span class="w"> </span>identity<span class="w"> </span>resolve<span class="w"> </span>cisco.com/agent
+dirctl<span class="w"> </span>identity<span class="w"> </span>resolve<span class="w"> </span>cisco.com/agent:v1.0.0<span class="w"> </span>--output<span class="w"> </span>json
 </code></pre></div>
 </details>
 <h3 id="dirctl-verify-record-cid-flags"><code>dirctl verify &lt;record-cid&gt; [flags]</code></h3>

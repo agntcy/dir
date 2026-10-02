@@ -2001,10 +2001,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#naming-resolve-and-verify" class="md-nav__link">
+  <a href="#identity-resolve-and-verify-claims" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Naming — resolve and verify
+        Identity — resolve and verify claims
       
     </span>
   </a>
@@ -2605,10 +2605,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#naming-resolve-and-verify" class="md-nav__link">
+  <a href="#identity-resolve-and-verify-claims" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Naming — resolve and verify
+        Identity — resolve and verify claims
       
     </span>
   </a>
@@ -2810,8 +2810,8 @@ Package reference: <a href="https://pkg.go.dev/github.com/agntcy/dir/client">pkg
 <td><code>Publish</code>, <code>Unpublish</code>, <code>List</code>, <code>SearchRouting</code></td>
 </tr>
 <tr>
-<td><strong>Naming</strong></td>
-<td><code>Resolve</code>, <code>GetVerificationInfo</code>, <code>GetVerificationInfoByName</code></td>
+<td><strong>Identity</strong></td>
+<td><code>Resolve</code>, <code>GetIdentityStatus</code>, <code>ClaimIdentity</code>, <code>ClaimOwnership</code></td>
 </tr>
 <tr>
 <td><strong>Sync</strong></td>
@@ -3074,18 +3074,16 @@ consumption:</p>
 <span class="w">    </span><span class="p">}</span>
 <span class="p">}</span>
 </code></pre></div>
-<h3 id="naming-resolve-and-verify">Naming — resolve and verify</h3>
+<h3 id="identity-resolve-and-verify-claims">Identity — resolve and verify claims</h3>
 <div class="highlight"><pre><span></span><code><span class="c1">// Resolve a name (optionally versioned) to record references</span>
 <span class="nx">resp</span><span class="p">,</span><span class="w"> </span><span class="nx">err</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">c</span><span class="p">.</span><span class="nx">Resolve</span><span class="p">(</span><span class="nx">ctx</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;my-agent&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;1.0.0&quot;</span><span class="p">)</span>
-<span class="k">for</span><span class="w"> </span><span class="nx">_</span><span class="p">,</span><span class="w"> </span><span class="nx">ref</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="k">range</span><span class="w"> </span><span class="nx">resp</span><span class="p">.</span><span class="nx">Refs</span><span class="w"> </span><span class="p">{</span>
-<span class="w">    </span><span class="nx">fmt</span><span class="p">.</span><span class="nx">Println</span><span class="p">(</span><span class="nx">ref</span><span class="p">.</span><span class="nx">Cid</span><span class="p">)</span>
+<span class="k">for</span><span class="w"> </span><span class="nx">_</span><span class="p">,</span><span class="w"> </span><span class="nx">ref</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="k">range</span><span class="w"> </span><span class="nx">resp</span><span class="p">.</span><span class="nx">GetRecords</span><span class="p">()</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nx">fmt</span><span class="p">.</span><span class="nx">Println</span><span class="p">(</span><span class="nx">ref</span><span class="p">.</span><span class="nx">GetCid</span><span class="p">())</span>
 <span class="p">}</span>
 
-<span class="c1">// Get verification info by CID</span>
-<span class="nx">info</span><span class="p">,</span><span class="w"> </span><span class="nx">err</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">c</span><span class="p">.</span><span class="nx">GetVerificationInfo</span><span class="p">(</span><span class="nx">ctx</span><span class="p">,</span><span class="w"> </span><span class="nx">ref</span><span class="p">.</span><span class="nx">Cid</span><span class="p">)</span>
-
-<span class="c1">// Get verification info by name</span>
-<span class="nx">info</span><span class="p">,</span><span class="w"> </span><span class="nx">err</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="nx">c</span><span class="p">.</span><span class="nx">GetVerificationInfoByName</span><span class="p">(</span><span class="nx">ctx</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;my-agent&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;1.0.0&quot;</span><span class="p">)</span>
+<span class="c1">// Get the verification result of a record&#39;s identity and ownership claims</span>
+<span class="nx">status</span><span class="p">,</span><span class="w"> </span><span class="nx">err</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">c</span><span class="p">.</span><span class="nx">GetIdentityStatus</span><span class="p">(</span><span class="nx">ctx</span><span class="p">,</span><span class="w"> </span><span class="nx">ref</span><span class="p">.</span><span class="nx">GetCid</span><span class="p">())</span>
+<span class="nx">fmt</span><span class="p">.</span><span class="nx">Println</span><span class="p">(</span><span class="nx">status</span><span class="p">.</span><span class="nx">GetOwner</span><span class="p">().</span><span class="nx">GetStatus</span><span class="p">())</span>
 </code></pre></div>
 <h3 id="events-real-time-streaming">Events — real-time streaming</h3>
 <div class="highlight"><pre><span></span><code><span class="kn">import</span><span class="w"> </span><span class="nx">eventsv1</span><span class="w"> </span><span class="s">&quot;github.com/agntcy/dir/api/events/v1&quot;</span>
