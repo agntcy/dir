@@ -35,6 +35,7 @@ func TestPolicyDryRunIsUnderDaemonPolicy(t *testing.T) {
 // as one the policy could not judge.
 func TestPolicyDryRunNeedsTheDaemonRunning(t *testing.T) {
 	originalOpts, originalDryRun := opts, dryRunOpts
+
 	t.Cleanup(func() {
 		opts, dryRunOpts = originalOpts, originalDryRun
 	})
@@ -79,12 +80,13 @@ server:
 	err := runPolicyDryRun(policyDryRunCmd, nil)
 
 	require.ErrorIs(t, err, dryrun.ErrStoreUnreachable)
-	assert.ErrorContains(t, err, "127.0.0.1:1", "it says where it looked")
-	assert.ErrorContains(t, err, "is the node running?")
+	require.ErrorContains(t, err, "127.0.0.1:1", "it says where it looked")
+	require.ErrorContains(t, err, "is the node running?")
 }
 
 func TestPolicyDryRunRefusesAFileWithNoPolicy(t *testing.T) {
 	originalOpts, originalDryRun := opts, dryRunOpts
+
 	t.Cleanup(func() {
 		opts, dryRunOpts = originalOpts, originalDryRun
 	})

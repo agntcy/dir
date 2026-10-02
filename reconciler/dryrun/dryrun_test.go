@@ -253,7 +253,7 @@ validators:
 
 	err := Run(t.Context(), Options{Candidate: candidate, Policy: "cel:c", Output: OutputHuman}, n.source(), &out)
 	require.ErrorIs(t, err, errNoPolicyNamed)
-	assert.ErrorContains(t, err, "cel:a, cel:b", "it says what the file does define")
+	require.ErrorContains(t, err, "cel:a, cel:b", "it says what the file does define")
 }
 
 func TestRun_BothPoliciesOfAFileAreReported(t *testing.T) {
@@ -419,7 +419,7 @@ func TestOpen_RefusesAStoreNothingAnswers(t *testing.T) {
 		policy.Config{})
 
 	require.ErrorIs(t, err, ErrStoreUnreachable)
-	assert.ErrorContains(t, err, "is the node running?")
+	require.ErrorContains(t, err, "is the node running?")
 }
 
 // The candidate is checked without a node, so that a mistake in it is found
