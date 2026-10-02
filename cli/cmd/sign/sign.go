@@ -96,7 +96,12 @@ func runCommand(cmd *cobra.Command, recordCID string) error {
 		return errors.New("failed to get client from context")
 	}
 
-	err := Sign(cmd.Context(), c, recordCID)
+	signOpts, err := ResolveOptions(cmd)
+	if err != nil {
+		return err
+	}
+
+	err = Sign(cmd.Context(), c, recordCID, signOpts)
 	if err != nil {
 		return fmt.Errorf("failed to sign record: %w", err)
 	}
@@ -105,14 +110,15 @@ func runCommand(cmd *cobra.Command, recordCID string) error {
 	return presenter.PrintMessage(cmd, "signature", "Record is", "signed")
 }
 
-func Sign(ctx context.Context, c *client.Client, recordCID string) error {
+// Sign signs the record with the given options, typically from ResolveOptions.
+func Sign(ctx context.Context, c *client.Client, recordCID string, opts *Options) error {
 	// Construct the sign request with the provided options
 	var provider *signv1.SignRequestProvider
 
 	switch {
 	case opts.Key != "":
 		// Read password from environment variable or terminal
-		pw, err := readPrivateKeyPassword()()
+		pw, err := readPrivateKeyPassword(opts.PasswordStdin)()
 		if err != nil {
 			return fmt.Errorf("failed to read password: %w", err)
 		}
@@ -237,12 +243,12 @@ func (r privateKeyPasswordReader) read() ([]byte, error) {
 	}
 }
 
-func readPrivateKeyPassword() func() ([]byte, error) {
+func readPrivateKeyPassword(passwordStdin bool) func() ([]byte, error) {
 	return privateKeyPasswordReader{
 		lookupPassword: func() (string, bool) {
 			return env.LookupEnv(env.VariablePassword)
 		},
-		passwordStdin: opts.PasswordStdin,
+		passwordStdin: passwordStdin,
 		stdin:         os.Stdin,
 		isTerminal:    cosign.IsTerminal,
 		readTerminal:  cosign.GetPassFromTerm,
