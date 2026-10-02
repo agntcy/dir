@@ -327,5 +327,7 @@ func (f *fakeSignatureDB) GetCurrentPolicyVersion(string) (string, bool, error) 
 	return "", false, nil
 }
 
+func (f *fakeSignatureDB) IsRecordServable(string) (bool, error) { return true, nil }
+
 func (f *fakeSignatureDB) Close() error                 { return nil }
 func (f *fakeSignatureDB) IsReady(context.Context) bool { return true }

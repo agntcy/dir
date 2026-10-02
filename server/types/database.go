@@ -401,4 +401,9 @@ type PolicyEvaluationDatabaseAPI interface {
 	// GetCurrentPolicyVersion returns the version of policyID an evaluator
 	// ran most recently, and whether any evaluator has registered it.
 	GetCurrentPolicyVersion(policyID string) (string, bool, error)
+
+	// IsRecordServable reports whether a record fetched directly by CID may
+	// be returned: always when no policy is enforced, otherwise only if it
+	// complies with every enforced policy.
+	IsRecordServable(cid string) (bool, error)
 }

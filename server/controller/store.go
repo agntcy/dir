@@ -152,8 +152,15 @@ func (s storeCtrl) Lookup(stream storev1.StoreService_LookupServer) error {
 			return status.Error(codes.InvalidArgument, "record cid is required")
 		}
 
-		// Lookup record metadata
-		recordMeta, err := s.store.Lookup(stream.Context(), recordRef)
+		// Lookup record metadata. A record the policy gate excludes fails
+		// with the status that says so.
+		var recordMeta *corev1.RecordMeta
+
+		err = checkRecordServable(s.db, recordRef.GetCid())
+		if err == nil {
+			recordMeta, err = s.store.Lookup(stream.Context(), recordRef)
+		}
+
 		if err != nil {
 			st := status.Convert(err)
 
@@ -310,6 +317,11 @@ func (s storeCtrl) PullReferrer(stream storev1.StoreService_PullReferrerServer) 
 		referrerType := request.GetReferrerType()
 		referrerCID := request.GetReferrerRef().GetCid()
 
+		// A record the policy gate excludes fails as it does for Pull and Lookup.
+		if err := checkRecordServable(s.db, recordCID); err != nil {
+			return err
+		}
+
 		// Try to use referrer storage if the store supports it
 		refStore, ok := s.store.(types.ReferrerStoreAPI)
 		if !ok {
@@ -362,10 +374,16 @@ func (s storeCtrl) validateRecordRef(recordRef *corev1.RecordRef) error {
 	return nil
 }
 
-// pullRecordFromStore pulls a record from the store with validation.
+// pullRecordFromStore pulls a record from the store with validation. A
+// record the policy gate excludes fails with the status that says so.
 func (s storeCtrl) pullRecordFromStore(ctx context.Context, recordRef *corev1.RecordRef) (*corev1.Record, error) {
-	// Pull record from store
-	record, err := s.store.Pull(ctx, recordRef)
+	var record *corev1.Record
+
+	err := checkRecordServable(s.db, recordRef.GetCid())
+	if err == nil {
+		record, err = s.store.Pull(ctx, recordRef)
+	}
+
 	if err != nil {
 		st := status.Convert(err)
 

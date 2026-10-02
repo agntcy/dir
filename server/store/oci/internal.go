@@ -11,6 +11,7 @@ import (
 	"io"
 
 	corev1 "github.com/agntcy/dir/api/core/v1"
+	"github.com/agntcy/dir/server/types"
 	"github.com/agntcy/dir/utils/logging"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"google.golang.org/grpc/codes"
@@ -44,7 +45,7 @@ func (s *store) fetchAndParseManifest(ctx context.Context, cid string) (*ocispec
 	if err != nil {
 		internalLogger.Debug("Failed to resolve manifest", "cid", cid, "error", err)
 
-		return nil, nil, status.Errorf(codes.NotFound, "record not found: %s", cid)
+		return nil, nil, types.RecordNotFoundError(cid) //nolint:wrapcheck // the not-found status callers match on, returned as is
 	}
 
 	internalLogger.Debug("Manifest resolved successfully", "cid", cid, "digest", manifestDesc.Digest.String())
