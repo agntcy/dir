@@ -15,6 +15,7 @@ import (
 	"strings"
 
 	corev1 "github.com/agntcy/dir/api/core/v1"
+	securityv1 "github.com/agntcy/dir/api/security/v1"
 )
 
 // FindingSeverity classifies a scanner finding for fail-on-error/warning gating.
@@ -37,9 +38,9 @@ type Finding struct {
 // use the same CRITICAL/HIGH/MEDIUM/LOW vocabulary.
 func mapScannerSeverity(s string) FindingSeverity {
 	switch strings.ToUpper(s) {
-	case "CRITICAL", "HIGH":
+	case securityv1.ScanSeverityCritical, securityv1.ScanSeverityHigh:
 		return SeverityError
-	case "MEDIUM":
+	case securityv1.ScanSeverityMedium:
 		return SeverityWarning
 	default:
 		return SeverityInfo

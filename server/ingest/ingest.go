@@ -148,7 +148,7 @@ func (i *ingestor) applyReferrerDBEffects(recordCID string, referrer *corev1.Rec
 			recordCID:   recordCID,
 			scannerType: scannerTypeShortName(report.GetScannerType()),
 			isSafe:      report.GetIsSafe(),
-			maxSeverity: severityShortName(report.GetMaxSeverity()),
+			maxSeverity: report.GetMaxSeverity().ShortName(),
 		}, types.DefaultScanSchedule()); err != nil {
 			logger.Warn("Failed to upsert scan report summary", "error", err, "cid", recordCID)
 		}
@@ -179,16 +179,6 @@ func (r *scanReportRow) GetFailureDetail() string { return "" }
 func scannerTypeShortName(t securityv1.ScannerType) string {
 	name := t.String()
 	if after, ok := strings.CutPrefix(name, "SCANNER_TYPE_"); ok {
-		return after
-	}
-
-	return name
-}
-
-// severityShortName strips the "SEVERITY_" proto prefix to get the DB column value (e.g. "HIGH").
-func severityShortName(s securityv1.Severity) string {
-	name := s.String()
-	if after, ok := strings.CutPrefix(name, "SEVERITY_"); ok {
 		return after
 	}
 
