@@ -77,7 +77,7 @@ Validation is performed using the [OASF SDK](https://docs.agntcy.org/oasf/oasf-
 
 ### Configuration
 
-The Directory server validates records using a `validators` list in YAML. Each entry selects a provider, the operations it applies to (`push`, `autosync`, `index`), and a provider-specific `config`. An empty list disables record validation. This list cannot be set via environment variables.
+The Directory server validates records using a `validators` list in YAML. Each entry selects a provider, the operations it applies to (`push`, `autosync`, `index`, `evaluate`), and a provider-specific `config`. An empty list disables record validation. This list cannot be set via environment variables.
 
 ```yaml
 # server.config.yml
@@ -96,6 +96,8 @@ policy:
 ```
 
 `opa` loads a single `.rego` file from `policy.dir`. Helm mounts those files from the top-level `policies` map. The query is `<package>.allow`; a deny rejects the record.
+
+The `evaluate` operation does not check records on their way in. It makes the validator a content policy: the reconciler evaluates every record against it, and the server can refuse to serve the records that fail. Only `opa` and `cel` support it. See [Content Policy Enforcement](dir-content-policy-enforcement.md).
 
 !!! note
   

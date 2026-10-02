@@ -24,7 +24,8 @@ type celRule struct {
 // The record is bound as the `record` variable (a map of the OASF fields).
 // Validation fails if any expression is false or errors.
 type celValidator struct {
-	rules []celRule
+	rules   []celRule
+	version string
 }
 
 func newCELValidator(entry validatorsconfig.Validator) (corev1.Validator, error) {
@@ -59,8 +60,11 @@ func newCELValidator(entry validatorsconfig.Validator) (corev1.Validator, error)
 		rules = append(rules, celRule{expr: expr, prg: prg})
 	}
 
-	return &celValidator{rules: rules}, nil
+	return &celValidator{rules: rules, version: contentVersion(exprs...)}, nil
 }
+
+// contentVersion is a hash of the expressions, in order.
+func (v *celValidator) contentVersion() string { return v.version }
 
 func (v *celValidator) ValidateRecord(ctx context.Context, data *structpb.Struct) (bool, []string, []string, error) {
 	if err := ctx.Err(); err != nil {

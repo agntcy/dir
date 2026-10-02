@@ -5,16 +5,60 @@ package validators
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"fmt"
+	"slices"
 
 	corev1 "github.com/agntcy/dir/api/core/v1"
 	validatorsconfig "github.com/agntcy/dir/server/validators/config"
 	"github.com/agntcy/oasf-sdk/pkg/validator"
 )
 
-// Registry maps operations to the record validators that should run for them.
+// versionLength is how many hex digits of the content hash make a policy
+// version: enough that two different policies do not share one, short enough to
+// read in a metric label.
+const versionLength = 16
+
+// Registry maps operations to the record validators that should run for them,
+// and holds the content policies the validators with op evaluate define.
 type Registry struct {
-	byOp map[string][]corev1.Validator
+	byOp     map[string][]corev1.Validator
+	policies []Policy
+}
+
+// Policy is a content policy: a validator with op evaluate. The reconciler
+// evaluates every record against it and stores the verdict, and the server
+// enforces the verdicts of the policies it is told to.
+type Policy struct {
+	// ID names the policy, such as "opa:require-license". It stays the same
+	// when the policy's content changes.
+	ID string
+
+	// Version identifies the policy's content: an edit gives a new one, and
+	// nothing else does. Records are evaluated again when it changes.
+	Version string
+
+	// Validator reaches a verdict on a record.
+	Validator corev1.Validator
+}
+
+// policyContent is implemented by the validators that can define a policy,
+// which are those that know a version of their own content.
+type policyContent interface {
+	contentVersion() string
+}
+
+// contentVersion is the version of a policy made of parts, in order. Each part
+// is length-prefixed so that moving a boundary between two parts changes it.
+func contentVersion(parts ...string) string {
+	h := sha256.New()
+
+	for _, part := range parts {
+		fmt.Fprintf(h, "%d:%s", len(part), part)
+	}
+
+	return hex.EncodeToString(h.Sum(nil))[:versionLength]
 }
 
 // NewRegistry constructs validators from config. policyDir is the directory
@@ -27,6 +71,8 @@ func NewRegistry(ctx context.Context, entries validatorsconfig.Config, policyDir
 
 	byOp := make(map[string][]corev1.Validator)
 
+	var policies []Policy
+
 	for i, entry := range entries {
 		v, err := validatorFor(ctx, entry, policyDir)
 		if err != nil {
@@ -36,9 +82,20 @@ func NewRegistry(ctx context.Context, entries validatorsconfig.Config, policyDir
 		for _, op := range entry.Ops {
 			byOp[op] = append(byOp[op], v)
 		}
+
+		if !entry.HasOp(validatorsconfig.OpEvaluate) {
+			continue
+		}
+
+		content, ok := v.(policyContent)
+		if !ok {
+			return nil, fmt.Errorf("validators[%d]: provider %q cannot define a policy", i, entry.Provider)
+		}
+
+		policies = append(policies, Policy{ID: entry.PolicyID(), Version: content.contentVersion(), Validator: v})
 	}
 
-	return &Registry{byOp: byOp}, nil
+	return &Registry{byOp: byOp, policies: policies}, nil
 }
 
 func validatorFor(ctx context.Context, entry validatorsconfig.Validator, policyDir string) (corev1.Validator, error) {
@@ -77,6 +134,16 @@ func (r *Registry) For(op string) []corev1.Validator {
 	}
 
 	return r.byOp[op]
+}
+
+// Policies returns the content policies, in config order. The slice is empty if
+// none are configured.
+func (r *Registry) Policies() []Policy {
+	if r == nil {
+		return nil
+	}
+
+	return slices.Clone(r.policies)
 }
 
 // Run applies every validator configured for op, in config order.
