@@ -72,3 +72,6 @@ reconciler:
     enabled: true
     interval: 10s
     record_timeout: 30s
+    spiffe_trust_bundles:
+      - trust_domain: e2e.test
+        bundle_file: /tmp/dir-e2e-identity/spiffe-bundle.pem

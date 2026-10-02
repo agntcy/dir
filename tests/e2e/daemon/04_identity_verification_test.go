@@ -5,17 +5,26 @@ package daemon
 
 import (
 	"context"
+	"crypto/ecdsa"
 	"crypto/ed25519"
+	"crypto/elliptic"
 	"crypto/rand"
 	"crypto/x509"
+	"crypto/x509/pkix"
 	"encoding/hex"
 	"encoding/json"
 	"encoding/pem"
+	"math/big"
+	"net/url"
+	"os"
+	"path/filepath"
 	"time"
 
 	corev1 "github.com/agntcy/dir/api/core/v1"
 	identityv1 "github.com/agntcy/dir/api/identity/v1"
 	searchv1 "github.com/agntcy/dir/api/search/v1"
+	storev1 "github.com/agntcy/dir/api/store/v1"
+	clientidentity "github.com/agntcy/dir/client/utils/identity"
 	"github.com/agntcy/dir/client/utils/jws"
 	"github.com/agntcy/dir/tests/e2e/shared/testdata"
 	"github.com/multiformats/go-multibase"
@@ -190,4 +199,188 @@ var _ = ginkgo.Describe("Identity claim verification", ginkgo.Ordered, ginkgo.Se
 		_, err := testEnv.Client.ClaimIdentity(ctx, cid, signerFor(goodKey))
 		gomega.Expect(err).To(gomega.HaveOccurred())
 	})
+
+	// A claim for a subject the record does not declare can only get in by being pushed
+	// by hand. It must fail under the record's own subject: the claim's is chosen by
+	// whoever attached it, and the subject filters would match it.
+	ginkgo.It("should not let a rejected claim put its subject in the search index", func(ctx context.Context) {
+		const spoofed = "dns:victim.example"
+
+		cid := pushRecord(ctx, map[string]string{})
+
+		claim := &identityv1.Claim{Role: identityv1.ClaimRole_CLAIM_ROLE_IDENTITY, Subject: spoofed}
+		gomega.Expect(clientidentity.Sign(claim, cid, signerFor(goodKey))).To(gomega.Succeed())
+
+		referrer, err := claim.MarshalReferrer()
+		gomega.Expect(err).NotTo(gomega.HaveOccurred())
+
+		resp, err := testEnv.Client.PushReferrer(ctx, &storev1.PushReferrerRequest{
+			RecordRef:   &corev1.RecordRef{Cid: cid},
+			Type:        referrer.GetType(),
+			Annotations: referrer.GetAnnotations(),
+			CreatedAt:   referrer.GetCreatedAt(),
+			Data:        referrer.GetData(),
+		})
+		gomega.Expect(err).NotTo(gomega.HaveOccurred())
+		gomega.Expect(resp.GetSuccess()).To(gomega.BeTrue())
+
+		gomega.Eventually(func(g gomega.Gomega) {
+			identity := statusOf(ctx, cid).GetIdentity()
+
+			g.Expect(identity).NotTo(gomega.BeNil(), "not verified yet")
+			g.Expect(identity.GetStatus()).To(gomega.Equal(identityv1.ClaimVerificationStatus_CLAIM_VERIFICATION_STATUS_FAILED))
+			g.Expect(identity.GetSubject()).To(gomega.BeEmpty(), "the record declares no subject")
+		}).WithContext(ctx).WithTimeout(claimVerificationTimeout).WithPolling(claimVerificationPoll).Should(gomega.Succeed())
+
+		bySubject := searchByClaims(ctx, &searchv1.RecordQuery{Type: searchv1.RecordQueryType_RECORD_QUERY_TYPE_IDENTITY, Value: spoofed})
+		gomega.Expect(bySubject).NotTo(gomega.ContainElement(cid))
+	})
+
+	ginkgo.It("should reject a negated claim query and a false claim verified query", func(ctx context.Context) {
+		for _, query := range []*searchv1.RecordQuery{
+			{Type: searchv1.RecordQueryType_RECORD_QUERY_TYPE_OWNER, Value: "dns:acme.com", Negate: true},
+			{Type: searchv1.RecordQueryType_RECORD_QUERY_TYPE_IDENTITY_VERIFIED, Value: "false"},
+		} {
+			result, err := testEnv.Client.SearchCIDs(ctx, &searchv1.SearchCIDsRequest{Queries: []*searchv1.RecordQuery{query}})
+			gomega.Expect(err).NotTo(gomega.HaveOccurred())
+
+			var failed bool
+
+			for done := false; !done; {
+				select {
+				case <-result.ResCh():
+				case err := <-result.ErrCh():
+					failed = failed || err != nil
+				case <-result.DoneCh():
+					done = true
+				}
+			}
+
+			gomega.Expect(failed).To(gomega.BeTrue(), query.String())
+		}
+	})
+
+	ginkgo.It("should drop a result when its claim is withdrawn, and stop finding a deleted record", func(ctx context.Context) {
+		referrerType := corev1.IdentityClaimReferrerType
+
+		_, err := testEnv.Client.DeleteReferrer(ctx, &storev1.DeleteReferrerRequest{
+			Record:       &corev1.RecordRef{Cid: verifiedCID},
+			ReferrerType: &referrerType,
+		})
+		gomega.Expect(err).NotTo(gomega.HaveOccurred())
+
+		gomega.Eventually(func(g gomega.Gomega) {
+			g.Expect(statusOf(ctx, verifiedCID).GetIdentity()).To(gomega.BeNil())
+		}).WithContext(ctx).WithTimeout(claimVerificationTimeout).WithPolling(claimVerificationPoll).Should(gomega.Succeed())
+
+		verified := searchByClaims(ctx, &searchv1.RecordQuery{Type: searchv1.RecordQueryType_RECORD_QUERY_TYPE_IDENTITY_VERIFIED, Value: "true"})
+		gomega.Expect(verified).NotTo(gomega.ContainElement(verifiedCID))
+
+		gomega.Expect(testEnv.Client.Delete(ctx, &corev1.RecordRef{Cid: failedCID})).To(gomega.Succeed())
+
+		byOwner := searchByClaims(ctx, &searchv1.RecordQuery{Type: searchv1.RecordQueryType_RECORD_QUERY_TYPE_OWNER, Value: otherSubject})
+		gomega.Expect(byOwner).To(gomega.BeEmpty())
+	})
+
+	// The bundle file is read on every run, so replacing it is how a trust domain
+	// rotates or revokes its CA. The daemon configs point at spiffeBundlePath.
+	ginkgo.It("should follow the SPIFFE trust bundle: verified, failed once it is replaced, verified once restored", func(ctx context.Context) {
+		const subject = "spiffe://e2e.test/agents/lifecycle"
+
+		trusted, other := newE2ECA("e2e trusted root"), newE2ECA("e2e other root")
+
+		key, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+		gomega.Expect(err).NotTo(gomega.HaveOccurred())
+
+		der, err := x509.MarshalPKCS8PrivateKey(key)
+		gomega.Expect(err).NotTo(gomega.HaveOccurred())
+
+		signer, err := jws.NewKeySigner(pem.EncodeToMemory(&pem.Block{Type: "PRIVATE KEY", Bytes: der}), nil)
+		gomega.Expect(err).NotTo(gomega.HaveOccurred())
+
+		trusted.writeBundle()
+
+		cid := pushRecord(ctx, map[string]string{corev1.AnnotationKeyIdentity: subject})
+
+		_, err = testEnv.Client.ClaimIdentity(ctx, cid, signer, clientidentity.WithCertificate(trusted.issue(key, subject)))
+		gomega.Expect(err).NotTo(gomega.HaveOccurred())
+
+		expectIdentityStatus := func(want identityv1.ClaimVerificationStatus) {
+			ginkgo.GinkgoHelper()
+
+			gomega.Eventually(func(g gomega.Gomega) {
+				identity := statusOf(ctx, cid).GetIdentity()
+
+				g.Expect(identity).NotTo(gomega.BeNil(), "not verified yet")
+				g.Expect(identity.GetStatus()).To(gomega.Equal(want))
+			}).WithContext(ctx).WithTimeout(claimVerificationTimeout).WithPolling(claimVerificationPoll).Should(gomega.Succeed())
+		}
+
+		expectIdentityStatus(identityv1.ClaimVerificationStatus_CLAIM_VERIFICATION_STATUS_VERIFIED)
+
+		other.writeBundle()
+		expectIdentityStatus(identityv1.ClaimVerificationStatus_CLAIM_VERIFICATION_STATUS_FAILED)
+
+		trusted.writeBundle()
+		expectIdentityStatus(identityv1.ClaimVerificationStatus_CLAIM_VERIFICATION_STATUS_VERIFIED)
+	})
 })
+
+// spiffeBundlePath is where the daemon configs read the e2e.test trust bundle from.
+const spiffeBundlePath = "/tmp/dir-e2e-identity/spiffe-bundle.pem"
+
+// e2eCA is a throwaway certificate authority for SPIFFE SVIDs.
+type e2eCA struct {
+	cert *x509.Certificate
+	key  *ecdsa.PrivateKey
+}
+
+func newE2ECA(name string) *e2eCA {
+	key, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+	gomega.Expect(err).NotTo(gomega.HaveOccurred())
+
+	template := &x509.Certificate{
+		SerialNumber:          big.NewInt(1),
+		Subject:               pkix.Name{CommonName: name},
+		NotBefore:             time.Now().Add(-time.Hour),
+		NotAfter:              time.Now().Add(time.Hour),
+		IsCA:                  true,
+		BasicConstraintsValid: true,
+		KeyUsage:              x509.KeyUsageCertSign | x509.KeyUsageCRLSign,
+	}
+
+	der, err := x509.CreateCertificate(rand.Reader, template, template, &key.PublicKey, key)
+	gomega.Expect(err).NotTo(gomega.HaveOccurred())
+
+	cert, err := x509.ParseCertificate(der)
+	gomega.Expect(err).NotTo(gomega.HaveOccurred())
+
+	return &e2eCA{cert: cert, key: key}
+}
+
+// writeBundle makes this CA the only one the daemon trusts for e2e.test.
+func (ca *e2eCA) writeBundle() {
+	gomega.Expect(os.MkdirAll(filepath.Dir(spiffeBundlePath), 0o755)).To(gomega.Succeed())
+
+	bundle := pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: ca.cert.Raw})
+	gomega.Expect(os.WriteFile(spiffeBundlePath, bundle, 0o600)).To(gomega.Succeed())
+}
+
+// issue returns an SVID for the SPIFFE ID over key's public half.
+func (ca *e2eCA) issue(key *ecdsa.PrivateKey, spiffeID string) []byte {
+	uri, err := url.Parse(spiffeID)
+	gomega.Expect(err).NotTo(gomega.HaveOccurred())
+
+	template := &x509.Certificate{
+		SerialNumber: big.NewInt(2),
+		NotBefore:    time.Now().Add(-time.Minute),
+		NotAfter:     time.Now().Add(time.Hour),
+		KeyUsage:     x509.KeyUsageDigitalSignature,
+		URIs:         []*url.URL{uri},
+	}
+
+	der, err := x509.CreateCertificate(rand.Reader, template, ca.cert, &key.PublicKey, ca.key)
+	gomega.Expect(err).NotTo(gomega.HaveOccurred())
+
+	return pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: der})
+}

@@ -5,6 +5,7 @@ package local
 
 import (
 	"crypto/ecdsa"
+	"crypto/ed25519"
 	"crypto/elliptic"
 	"crypto/rand"
 	"crypto/x509"
@@ -21,6 +22,7 @@ import (
 	corev1 "github.com/agntcy/dir/api/core/v1"
 	"github.com/agntcy/dir/tests/e2e/shared/testdata"
 	"github.com/agntcy/dir/tests/e2e/shared/utils"
+	"github.com/multiformats/go-multibase"
 	"github.com/onsi/ginkgo/v2"
 	"github.com/onsi/gomega"
 )
@@ -196,6 +198,115 @@ var _ = ginkgo.Describe("Identity claims", ginkgo.Ordered, func() {
 		ginkgo.It("should refuse a record that does not exist", func() {
 			_ = claim("--record", "nonexistent.example.com/agent", "--role", "owner", "--key", keyPath).
 				ShouldFail()
+		})
+	})
+
+	// The reconciler verifies claims in the background (every few seconds in this
+	// environment), so a claim goes from "no result" to its outcome by itself. A
+	// did:key subject carries its own key, which keeps the flow free of any network.
+	ginkgo.Context("verification", func() {
+		const verifyTimeout, verifyPoll = 90 * time.Second, 3 * time.Second
+
+		var (
+			goodSubject, otherSubject string
+			goodKeyPath               string
+			verifiedCID, failedCID    string
+			claimResult               = func(cid, role string) string {
+				var status identityStatusOutput
+
+				output := testEnv.CLI.Command("identity").WithArgs("status", cid, "--output", "json").ShouldSucceed()
+				gomega.Expect(json.Unmarshal([]byte(output), &status)).To(gomega.Succeed())
+
+				claim := status.Identity
+				if role == "owner" {
+					claim = status.Owner
+				}
+
+				if claim == nil {
+					return "no result"
+				}
+
+				result, _ := claim["status"].(string)
+
+				return result
+			}
+			searchCIDs = func(args ...string) string {
+				return testEnv.CLI.Command("search").WithArgs(append([]string{"--format", "cid"}, args...)...).ShouldSucceed()
+			}
+		)
+
+		// writeDIDKey writes a fresh Ed25519 key as PEM and returns its path and did:key.
+		writeDIDKey := func(name string) (string, string) {
+			pub, priv, err := ed25519.GenerateKey(rand.Reader)
+			gomega.Expect(err).NotTo(gomega.HaveOccurred())
+
+			der, err := x509.MarshalPKCS8PrivateKey(priv)
+			gomega.Expect(err).NotTo(gomega.HaveOccurred())
+
+			path := filepath.Join(tempDir, name+".key")
+			gomega.Expect(os.WriteFile(path, pem.EncodeToMemory(&pem.Block{Type: "PRIVATE KEY", Bytes: der}), 0o600)).To(gomega.Succeed())
+
+			encoded, err := multibase.Encode(multibase.Base58BTC, append([]byte{0xed, 0x01}, pub...))
+			gomega.Expect(err).NotTo(gomega.HaveOccurred())
+
+			return path, "did:key:" + encoded
+		}
+
+		ginkgo.It("should verify a claim signed with the key its subject carries", func() {
+			goodKeyPath, goodSubject = writeDIDKey("good")
+			_, otherSubject = writeDIDKey("other")
+
+			verifiedCID = pushRecord("example.com/identity-e2e/verified", map[string]string{
+				corev1.AnnotationKeyIdentity: goodSubject,
+				corev1.AnnotationKeyOwner:    goodSubject,
+			})
+
+			gomega.Expect(claimResult(verifiedCID, "identity")).To(gomega.Equal("no result"), "nothing is verified before a claim")
+
+			_ = claim("--record", verifiedCID, "--role", "identity", "--key", goodKeyPath).ShouldSucceed()
+			_ = claim("--record", verifiedCID, "--role", "owner", "--key", goodKeyPath).ShouldSucceed()
+
+			gomega.Eventually(func() []string {
+				return []string{claimResult(verifiedCID, "identity"), claimResult(verifiedCID, "owner")}
+			}).WithTimeout(verifyTimeout).WithPolling(verifyPoll).Should(gomega.Equal([]string{"verified", "verified"}))
+		})
+
+		ginkgo.It("should print the verified status for scripts", func() {
+			output := testEnv.CLI.Command("identity").WithArgs("status", verifiedCID, "--output", "raw").ShouldSucceed()
+
+			gomega.Expect(output).To(gomega.Equal("identity verified " + goodSubject + "\nowner verified " + goodSubject))
+		})
+
+		ginkgo.It("should fail a claim signed with a key its subject does not carry", func() {
+			failedCID = pushRecord("example.com/identity-e2e/failed", map[string]string{corev1.AnnotationKeyOwner: otherSubject})
+
+			// The record declares otherSubject, but the claim is signed with the other key.
+			_ = claim("--record", failedCID, "--role", "owner", "--key", goodKeyPath).ShouldSucceed()
+
+			gomega.Eventually(func() string { return claimResult(failedCID, "owner") }).
+				WithTimeout(verifyTimeout).WithPolling(verifyPoll).Should(gomega.Equal("failed"))
+
+			output := testEnv.CLI.Command("identity").WithArgs("status", failedCID, "--output", "raw").ShouldSucceed()
+			gomega.Expect(output).To(gomega.Equal("identity no-result\nowner failed " + otherSubject))
+		})
+
+		ginkgo.It("should find records by their claims", func() {
+			gomega.Expect(searchCIDs("--identity-verified")).To(gomega.ContainSubstring(verifiedCID))
+			gomega.Expect(searchCIDs("--owner-verified")).To(gomega.ContainSubstring(verifiedCID))
+			gomega.Expect(searchCIDs("--identity", goodSubject)).To(gomega.ContainSubstring(verifiedCID))
+			gomega.Expect(searchCIDs("--owner", goodSubject)).To(gomega.ContainSubstring(verifiedCID))
+
+			// A failed claim is not a verified one.
+			gomega.Expect(searchCIDs("--owner-verified")).NotTo(gomega.ContainSubstring(failedCID))
+			gomega.Expect(searchCIDs("--identity-verified", "--owner", goodSubject)).NotTo(gomega.ContainSubstring(failedCID))
+		})
+
+		ginkgo.It("should only search for what is there", func() {
+			_ = testEnv.CLI.Command("search").WithArgs("--exclude-owner", goodSubject).ShouldFail()
+			_ = testEnv.CLI.Command("search").WithArgs("--exclude-identity", goodSubject).ShouldFail()
+
+			// A false claim verified flag is accepted and is not a filter.
+			_ = searchCIDs("--owner-verified=false", "--owner", goodSubject)
 		})
 	})
 
