@@ -60,3 +60,7 @@ reconciler:
     interval: "5s"
     ttl: 168h
     record_timeout: 30s
+  identity:
+    enabled: true
+    interval: "5s"
+    record_timeout: 30s

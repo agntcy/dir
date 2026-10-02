@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/agntcy/dir/reconciler/tasks/identity"
 	dbconfig "github.com/agntcy/dir/server/database/config"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -28,6 +29,12 @@ func TestLoadConfig_NoFile_ReturnsDefaults(t *testing.T) {
 	assert.True(t, cfg.Regsync.Enabled)
 	assert.True(t, cfg.Indexer.Enabled)
 	assert.False(t, cfg.Name.Enabled)
+
+	// The identity task is off unless asked for.
+	assert.False(t, cfg.Identity.Enabled)
+	assert.Equal(t, identity.DefaultInterval, cfg.Identity.Interval)
+	assert.Equal(t, identity.DefaultRecordTimeout, cfg.Identity.RecordTimeout)
+	assert.Empty(t, cfg.Identity.SPIFFETrustBundles)
 }
 
 func TestLoadConfig_EnvOverrides(t *testing.T) {
@@ -46,4 +53,19 @@ func TestLoadConfig_EnvOverrides(t *testing.T) {
 	assert.True(t, cfg.Name.Enabled)
 	assert.Equal(t, 2*time.Hour, cfg.Indexer.Interval)
 	assert.Equal(t, 30*time.Minute, cfg.Name.Interval)
+}
+
+// The task must be switchable with environment variables alone, with no config
+// file present.
+func TestLoadConfig_IdentityFromEnv(t *testing.T) {
+	t.Setenv("RECONCILER_IDENTITY_ENABLED", "true")
+	t.Setenv("RECONCILER_IDENTITY_INTERVAL", "5m")
+	t.Setenv("RECONCILER_IDENTITY_RECORD_TIMEOUT", "10s")
+
+	cfg, err := LoadConfig()
+	require.NoError(t, err)
+
+	assert.True(t, cfg.Identity.Enabled)
+	assert.Equal(t, 5*time.Minute, cfg.Identity.Interval)
+	assert.Equal(t, 10*time.Second, cfg.Identity.RecordTimeout)
 }

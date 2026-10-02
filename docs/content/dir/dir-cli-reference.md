@@ -1936,6 +1936,19 @@ The key is an EC, RSA or Ed25519 private key in PEM form, unencrypted or an encr
 
 Shows the last verification result of a record's identity and ownership claims. Each is `verified`, `failed` (with the reason), or `no result` when it has not been verified yet. A record without claims is not an error. The reference is a CID, a name, or `name:version`.
 
+Claims are verified by the reconciler's `identity` task, which is off unless enabled (`reconciler.identity.enabled: true`, or `RECONCILER_IDENTITY_ENABLED=true` for a standalone reconciler; the daemon's default config enables it). On every run, at `reconciler.identity.interval` (default `1h`), it looks up the current key material of each claim's subject and checks the claim against it, so a rotated key or a revoked trust bundle shows up as `failed` on the next run. A claim only verifies when its subject is the one the record declares in its `agntcy.dir/identity` (identity claim) or `agntcy.dir/owner` (ownership claim) annotation. If a record carries several claims of one role, a verified one decides the result.
+
+A `spiffe://` claim is validated against the trust bundle of its trust domain, which has to be configured in YAML; with none, it fails:
+
+```yaml
+reconciler:
+  identity:
+    enabled: true
+    spiffe_trust_bundles:
+      - trust_domain: acme.com
+        bundle_file: /etc/agntcy/spiffe/acme.com.pem
+```
+
 ??? example
 
     ```bash

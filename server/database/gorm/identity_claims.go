@@ -90,6 +90,15 @@ func (d *DB) GetIdentityClaimByCID(cid, role string) (types.IdentityClaimObject,
 	return &row, nil
 }
 
+// DeleteIdentityClaim removes the result for a record's claim of the given role.
+func (d *DB) DeleteIdentityClaim(cid, role string) error {
+	if err := d.gormDB.Where("record_cid = ? AND role = ?", cid, role).Delete(&IdentityClaim{}).Error; err != nil {
+		return fmt.Errorf("failed to delete identity claim: %w", err)
+	}
+
+	return nil
+}
+
 // applyIdentityFilters applies the claim subject and verified filters. Each is a
 // correlated subquery on identity_claims rather than a JOIN, so a record is never
 // duplicated.

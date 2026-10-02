@@ -59,6 +59,13 @@ reconciler:
     interval: 10s
     ttl: 168h
     record_timeout: 30s
+  identity:
+    enabled: true
+    interval: 10s
+    record_timeout: 30s
+    spiffe_trust_bundles:
+      - trust_domain: e2e.test
+        bundle_file: /tmp/dir-e2e-identity/spiffe-bundle.pem
 
 # Override the default label key used for runtime discovery to match the label used in the test workload.
 # This ensures the tests do not interfere with other containers on the host that may have the default label key.
