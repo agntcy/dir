@@ -1,0 +1,15 @@
+# Copyright AGNTCY Contributors (https://github.com/agntcy)
+# SPDX-License-Identifier: Apache-2.0
+
+version: "3"
+
+includes:
+  setup-dir-node:
+    taskfile: "../../../../../tests/modules/Taskfile.setup-dir-node.yml"
+    flatten: true # Expose included tasks (up/down)
+    vars:
+      DIRCTL_DATA_PATH: "/tmp/e2e-policy-default-testenv"
+      DIRCTL_CONFIG_PATH: "{{.ROOT_DIR}}/tests/e2e/policy/testenv/default/dir-daemon-config.yaml"
+      DIRCTL_LOGFILE_PATH: "{{.ROOT_DIR}}/tests/e2e/policy/testenv/default/logs.daemon.log"
+      # Nothing here uses the CLI's extractor, so skip the asset download.
+      DIRCTL_PROVISION_EXTRACTOR: "false"

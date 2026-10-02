@@ -4,7 +4,7 @@ This directory contains comprehensive end-to-end tests for the Directory system,
 
 ## 🏗️ Test Suite Architecture
 
-**Structure**: 4 separate test suites (local, client, network, daemon) with 100+ test cases organized by deployment mode and API type.
+**Structure**: 5 separate test suites (local, client, network, daemon, policy) with 100+ test cases organized by deployment mode and API type.
 
 ```
 tests/e2e/
@@ -28,9 +28,12 @@ tests/e2e/
 │   ├── 01_deploy_test.go            # Multi-peer deployment
 │   ├── 02_sync_test.go              # Peer synchronization
 │   └── 03_search_test.go            # Remote routing search
-└── daemon/                          # package daemon - Daemon process tests (no cluster)
-    ├── daemon_suite_test.go        # TestDaemonE2E(t *testing.T)
-    └── 01_daemon_test.go           # Push, pull, sign, verify via Go client
+├── daemon/                          # package daemon - Daemon process tests (no cluster)
+│   ├── daemon_suite_test.go        # TestDaemonE2E(t *testing.T)
+│   └── 01_daemon_test.go           # Push, pull, sign, verify via Go client
+└── policy/                          # package policy - Content policy enforcement (daemon, no cluster)
+    ├── policy_suite_test.go        # TestPolicyE2E(t *testing.T)
+    └── 01_enforcement_test.go      # Records are served only once the policy passes them
 ```
 
 ## 📦 Test Packages
@@ -285,6 +288,25 @@ tests/e2e/
 - Connects via `client.WithEnvConfig()` (`DIRECTORY_CLIENT_SERVER_ADDRESS`, default `localhost:8888`)
 - Taskfile task compiles CLI, starts/stops daemon with isolated `--data-dir`
 - Cosign availability auto-detection; signature tests skipped gracefully when absent
+
+### 🛡️ **Policy Package** (`tests/e2e/policy/`)
+**Deployment**: Local daemon process that enforces a content policy
+**Focus**: A record is served only once the reconciler has evaluated it and the policy passed it
+**Suite**: `TestPolicyE2E(t *testing.T)`
+
+The suite has an environment of its own, not a second one of the daemon suite: a node that enforces a policy withholds every record until it is evaluated, so the daemon suite's specs, which push a record and read it straight back, could not run on it.
+
+#### **`01_enforcement_test.go`** - Enforcement end to end
+**Test Cases:**
+- `withholds a record until it has been evaluated` - A record just pushed is refused with `PermissionDenied`, though the policy would pass it
+- `serves a record once the policy passes it` - Pull, lookup and search return it after the reconciler's verdict
+- `keeps a record the policy rejects out of reach` - Pull and lookup are refused and search leaves it out, across further reconciler rounds
+- `does not say whether it holds a record it withholds` - A CID never pushed gets the same refusal
+
+**Key Features:**
+- The testenv defines a CEL policy (`cel:has-description`: a record needs a description) and enforces it on search and fetch, with short reconciler intervals
+- A refusal says the record is not available under the node's content policy, and never names the policy
+- The first spec waits for the policy to be enforced by pushing a record it rejects and waiting for it to be refused
 
 ## 🚀 **Test Execution Commands:**
 
