@@ -187,7 +187,9 @@ apiserver:
     p,*,/agntcy.dir.store.v1.StoreService/Lookup
     p,*,/agntcy.dir.search.v1.SearchService/SearchCIDs
     p,*,/agntcy.dir.search.v1.SearchService/SearchRecords
-    p,*,/agntcy.dir.sync.v1.SyncService/RequestRegistryCredentials
+    # Registry credentials read every record straight from the registry, so only
+    # a rule naming a peer node's SPIFFE ID grants them, e.g.:
+    # p,spiffe://<peer-trust-domain>/ns/<namespace>/sa/<service-account>,/agntcy.dir.store.v1.SyncService/RequestRegistryCredentials
 
   spire:
     trustDomain: <YOUR-TRUST-DOMAIN>
