@@ -87,7 +87,7 @@ func runResolve(cmd *cobra.Command, input string) error {
 		return nil
 	case presenter.FormatJSON, presenter.FormatJSONL:
 		return presenter.PrintMessage(cmd, "Records", "Records", records)
+	default:
+		return fmt.Errorf("unsupported output format %q", presenter.GetOutputOptions(cmd).Format)
 	}
-
-	return nil
 }

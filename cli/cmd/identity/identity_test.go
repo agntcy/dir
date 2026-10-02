@@ -455,6 +455,14 @@ func TestStatus(t *testing.T) {
 		assert.Equal(t, "failed", got.Owner.Status)
 		assert.Equal(t, "no key found", got.Owner.Error)
 	})
+
+	t.Run("raw", func(t *testing.T) {
+		cmd, out := newCommand(t, &client.Client{IdentityServiceClient: fake}, "--output", "raw")
+		require.NoError(t, runStatus(cmd, testCID))
+
+		assert.Equal(t, "identity verified did:web:acme.com:agent\nowner failed dns:acme.com\n", out.String())
+		assert.NotContains(t, out.String(), "0x", "raw output must not leak Go pointers")
+	})
 }
 
 func TestStatus_NoClaimIsNotAnError(t *testing.T) {
@@ -472,6 +480,10 @@ func TestStatus_NoClaimIsNotAnError(t *testing.T) {
 	assert.Contains(t, got, "identity")
 	assert.Nil(t, got["identity"])
 	assert.Nil(t, got["owner"])
+
+	cmd, out = newCommand(t, &client.Client{IdentityServiceClient: fake}, "--output", "raw")
+	require.NoError(t, runStatus(cmd, testCID))
+	assert.Equal(t, "identity no-result\nowner no-result\n", out.String())
 }
 
 // ---- resolve ----

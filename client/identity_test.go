@@ -277,6 +277,13 @@ func TestClaim_Errors(t *testing.T) {
 		_, err = newClaimTestClient(stream, identityNote).ClaimIdentity(t.Context(), identityTestCID, signer,
 			identity.WithCertificate(claimTestCertPEM(t, key, "spiffe://acme.com/x")))
 		require.Error(t, err, "certificate for a subject that is not spiffe://")
+
+		// Even one that names the subject itself.
+		const https = "https://acme.com/agents"
+
+		_, err = newClaimTestClient(stream, map[string]string{corev1.AnnotationKeyIdentity: https}).ClaimIdentity(t.Context(), identityTestCID, signer,
+			identity.WithCertificate(claimTestCertPEM(t, key, https)))
+		require.ErrorContains(t, err, "only used for a spiffe:// subject")
 		assert.Empty(t, stream.sent)
 	})
 

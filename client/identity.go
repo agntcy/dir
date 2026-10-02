@@ -58,9 +58,12 @@ func (c *Client) claim(ctx context.Context, role identityv1.ClaimRole, cid strin
 		return nil, fmt.Errorf("failed to sign claim: %w", err)
 	}
 
-	// A spiffe:// claim without its certificate can never verify.
-	if strings.HasPrefix(subject, "spiffe://") && len(claim.GetCertificate()) == 0 {
+	// The certificate is the proof of a spiffe:// subject and is never evaluated for another.
+	switch isSPIFFE, hasCertificate := strings.HasPrefix(subject, "spiffe://"), len(claim.GetCertificate()) > 0; {
+	case isSPIFFE && !hasCertificate:
 		return nil, errors.New("a spiffe:// subject needs a certificate: its X.509-SVID is the proof of the claim")
+	case !isSPIFFE && hasCertificate:
+		return nil, fmt.Errorf("a certificate is only used for a spiffe:// subject, not %q", subject)
 	}
 
 	referrer, err := claim.MarshalReferrer()

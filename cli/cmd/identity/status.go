@@ -87,13 +87,19 @@ func runStatus(cmd *cobra.Command, input string) error {
 		Owner:    toClaimResult(resp.GetOwner()),
 	}
 
-	if presenter.GetOutputOptions(cmd).Format == presenter.FormatHuman {
+	switch format := presenter.GetOutputOptions(cmd).Format; format {
+	case presenter.FormatHuman:
 		presenter.Printf(cmd, "%s", formatStatus(result))
 
 		return nil
+	case presenter.FormatRaw:
+		// A []string prints one value per line; a struct would print its claim pointers.
+		return presenter.PrintMessage(cmd, "Identity status", "Identity status", rawStatus(result))
+	case presenter.FormatJSON, presenter.FormatJSONL:
+		return presenter.PrintMessage(cmd, "Identity status", "Identity status", result)
+	default:
+		return fmt.Errorf("unsupported output format %q", format)
 	}
-
-	return presenter.PrintMessage(cmd, "Identity status", "Identity status", result)
 }
 
 func toClaimResult(v *identityv1.ClaimVerification) *claimResult {
@@ -136,4 +142,21 @@ func formatClaim(r *claimResult) string {
 	}
 
 	return line
+}
+
+// rawStatus renders one line per role. A claim with no result keeps its line,
+// so the roles stay in a stable position.
+func rawStatus(s statusResult) []string {
+	return []string{
+		rawClaim(roleIdentity, s.Identity),
+		rawClaim(roleOwner, s.Owner),
+	}
+}
+
+func rawClaim(role string, r *claimResult) string {
+	if r == nil {
+		return role + " no-result"
+	}
+
+	return fmt.Sprintf("%s %s %s", role, r.Status, r.Subject)
 }
