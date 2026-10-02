@@ -3,3 +3,4 @@ p,*,/agntcy.dir.store.v1.StoreService/Pull
 p,*,/agntcy.dir.store.v1.SyncService/RequestRegistryCredentials
 p,spiffe://partner.org/ns/dir/sa/dir,/agntcy.dir.store.v1.SyncService/RequestRegistryCredentials
 p,spiffe://example.org/ns/peers/*,/agntcy.dir.store.v1.SyncService/RequestRegistryCredentials
+p,spiffe://example.org/ns/dir/sa/auditor,/agntcy.dir.policy.v1.PolicyAuditService/*
