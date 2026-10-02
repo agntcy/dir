@@ -35,6 +35,7 @@ func TestLoadConfigUsesMacOSFriendlyLocalRegistryPort(t *testing.T) {
 // read as-is.
 func TestLoadConfigHearsOfPushesByDefault(t *testing.T) {
 	originalOpts := opts
+
 	t.Cleanup(func() {
 		opts = originalOpts
 	})
