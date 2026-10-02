@@ -30,7 +30,7 @@ type ValidatorEvaluator struct {
 }
 
 // NewValidatorEvaluator returns the evaluator for the policy id at version,
-// decided by validator on the records records returns.
+// decided by validator on the records the source returns.
 func NewValidatorEvaluator(id, version string, validator corev1.Validator, records RecordSource) *ValidatorEvaluator {
 	return &ValidatorEvaluator{id: id, version: version, validator: validator, records: records}
 }
