@@ -12,6 +12,7 @@ replace (
 replace github.com/ThalesIgnite/crypto11 => github.com/eclipse-keypont/crypto11 v1.6.8
 
 require (
+	buf.build/gen/go/agntcy/oasf/protocolbuffers/go v1.36.12-20260908102259-bc6a98c20798.2
 	github.com/agntcy/dir/api v1.7.1
 	github.com/agntcy/dir/utils v1.7.1
 	github.com/agntcy/oasf-sdk/pkg v1.1.0
@@ -37,7 +38,6 @@ require (
 require (
 	buf.build/gen/go/agntcy/oasf-sdk/grpc/go v1.6.2-20260911081041-07202faeff63.1 // indirect
 	buf.build/gen/go/agntcy/oasf-sdk/protocolbuffers/go v1.36.12-20260911081041-07202faeff63.2 // indirect
-	buf.build/gen/go/agntcy/oasf/protocolbuffers/go v1.36.12-20260908102259-bc6a98c20798.2 // indirect
 	buf.build/gen/go/bufbuild/protovalidate/protocolbuffers/go v1.36.12-20260825204119-511051f7f437.2 // indirect
 	github.com/Azure/go-ansiterm v0.0.0-20250102033503-faa5f7b0171c // indirect
 	github.com/Masterminds/semver/v3 v3.5.0 // indirect
