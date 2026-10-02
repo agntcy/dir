@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/agntcy/dir/reconciler/recordevents"
 	"github.com/agntcy/dir/reconciler/tasks/identity"
 	"github.com/agntcy/dir/reconciler/tasks/indexer"
 	"github.com/agntcy/dir/reconciler/tasks/metrics"
@@ -90,6 +91,11 @@ type Config struct {
 	// PolicyEvaluation holds the policy evaluation task configuration. It is
 	// not under policy, which is the policy directory the server uses too.
 	PolicyEvaluation policytask.Config `json:"policy_evaluation" mapstructure:"policy_evaluation"`
+
+	// RecordEvents holds how the reconciler reacts to records arriving on the
+	// server, so the indexer and the policy task run when there is something
+	// for them instead of at their next interval.
+	RecordEvents recordevents.Config `json:"record_events" mapstructure:"record_events"`
 }
 
 // LoadConfig loads the configuration from file and environment variables.
@@ -261,6 +267,18 @@ func LoadConfig() (*Config, error) {
 
 	_ = v.BindEnv("policy_evaluation.batch_size")
 	v.SetDefault("policy_evaluation.batch_size", policytask.DefaultBatchSize)
+
+	//
+	// Record events (waking the indexer when a record is pushed)
+	//
+	_ = v.BindEnv("record_events.enabled")
+	v.SetDefault("record_events.enabled", true)
+
+	_ = v.BindEnv("record_events.window")
+	v.SetDefault("record_events.window", recordevents.DefaultWindow)
+
+	_ = v.BindEnv("record_events.reconnect_delay")
+	v.SetDefault("record_events.reconnect_delay", recordevents.DefaultReconnectDelay)
 
 	//
 	// Server address (used by the metrics task in standalone mode)

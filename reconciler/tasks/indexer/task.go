@@ -41,6 +41,9 @@ type Task struct {
 	// It is nil when repo does not support manifest reads.
 	manifests manifestReader
 
+	// onIndexed is called after a run that indexed a record. It may be nil.
+	onIndexed func()
+
 	mu           sync.Mutex
 	lastSnapshot *registrySnapshot
 }
@@ -77,9 +80,21 @@ func NewTask(config Config, localRegistry ociconfig.Config, store types.StoreAPI
 	}, nil
 }
 
+// TaskName is the name the task runs under, which is what another task asks
+// the service to run it by.
+const TaskName = "indexer"
+
 // Name returns the task name.
 func (t *Task) Name() string {
-	return "indexer"
+	return TaskName
+}
+
+// OnIndexed sets a function the task calls after a run that indexed at least
+// one record, so that what depends on the index need not wait for its own
+// interval. It must be set before the task runs and must not block: it is
+// called with the task's lock held.
+func (t *Task) OnIndexed(f func()) {
+	t.onIndexed = f
 }
 
 // Interval returns how often this task should run.
@@ -151,6 +166,10 @@ func (t *Task) Run(ctx context.Context) error {
 
 	// Update last snapshot
 	t.lastSnapshot = snapshot
+
+	if indexedCount > 0 && t.onIndexed != nil {
+		t.onIndexed()
+	}
 
 	return nil
 }

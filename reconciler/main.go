@@ -16,6 +16,7 @@ import (
 
 	"github.com/agntcy/dir/client"
 	"github.com/agntcy/dir/reconciler/config"
+	"github.com/agntcy/dir/reconciler/recordevents"
 	"github.com/agntcy/dir/reconciler/service"
 	"github.com/agntcy/dir/reconciler/tasks/metrics"
 	"github.com/agntcy/dir/server/database"
@@ -81,6 +82,10 @@ func run() error {
 	// If no server address is configured the metrics task is skipped.
 	var counters metrics.ProviderCounterAPI
 
+	// The same connection tells the reconciler when a record is pushed, so the
+	// indexer need not wait for its interval.
+	var records recordevents.Source
+
 	if cfg.ServerAddress != "" { //nolint:nestif
 		// Build a client.Config from the server address and authn settings.
 		serverClientCfg := &client.Config{
@@ -105,6 +110,7 @@ func run() error {
 		defer dirClient.Close()
 
 		counters = metrics.NewGRPCProviderCounterFromClient(dirClient.RoutingServiceClient)
+		records = recordevents.NewClientSource(dirClient)
 
 		logger.Info("Provider counter connected to apiserver", "address", cfg.ServerAddress)
 	} else {
@@ -115,6 +121,8 @@ func run() error {
 	if err != nil {
 		return err
 	}
+
+	svc.WatchRecords(records)
 
 	// Create context that listens for signals
 	ctx, cancel := context.WithCancel(context.Background())

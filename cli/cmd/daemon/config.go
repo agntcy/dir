@@ -18,6 +18,7 @@ import (
 	runtimestore "github.com/agntcy/dir-runtime/store/config"
 	runtimestoresql "github.com/agntcy/dir-runtime/store/sql"
 	reconcilerconfig "github.com/agntcy/dir/reconciler/config"
+	"github.com/agntcy/dir/reconciler/recordevents"
 	serverconfig "github.com/agntcy/dir/server/config"
 	dbconfig "github.com/agntcy/dir/server/database/config"
 	storeconfig "github.com/agntcy/dir/server/store/oci/config"
@@ -96,6 +97,12 @@ func registerReconcilerDefaults(v *viper.Viper) {
 	v.SetDefault("reconciler.local_registry.auth_config.insecure", true)
 	v.SetDefault("reconciler.database.type", "sqlite")
 	v.SetDefault("reconciler.database.sqlite.path", dbconfig.DefaultSQLitePath)
+
+	// The daemon runs the server and the reconciler in one process, so the
+	// reconciler can hear of every push.
+	v.SetDefault("reconciler.record_events.enabled", true)
+	v.SetDefault("reconciler.record_events.window", recordevents.DefaultWindow)
+	v.SetDefault("reconciler.record_events.reconnect_delay", recordevents.DefaultReconnectDelay)
 }
 
 func registerRuntimeDefaults(v *viper.Viper) {

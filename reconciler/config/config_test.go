@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/agntcy/dir/reconciler/recordevents"
 	"github.com/agntcy/dir/reconciler/tasks/identity"
 	policytask "github.com/agntcy/dir/reconciler/tasks/policy"
 	dbconfig "github.com/agntcy/dir/server/database/config"
@@ -41,6 +42,24 @@ func TestLoadConfig_NoFile_ReturnsDefaults(t *testing.T) {
 	assert.Equal(t, policytask.DefaultInterval, cfg.PolicyEvaluation.Interval)
 	assert.Equal(t, policytask.DefaultRecordTimeout, cfg.PolicyEvaluation.RecordTimeout)
 	assert.Equal(t, policytask.DefaultBatchSize, cfg.PolicyEvaluation.BatchSize)
+
+	// Hearing of a push is on by default, with the package's own parameters.
+	assert.True(t, cfg.RecordEvents.Enabled)
+	assert.Equal(t, recordevents.DefaultWindow, cfg.RecordEvents.Window)
+	assert.Equal(t, recordevents.DefaultReconnectDelay, cfg.RecordEvents.ReconnectDelay)
+}
+
+func TestLoadConfig_RecordEventsEnvOverrides(t *testing.T) {
+	t.Setenv("RECONCILER_RECORD_EVENTS_ENABLED", "false")
+	t.Setenv("RECONCILER_RECORD_EVENTS_WINDOW", "7s")
+	t.Setenv("RECONCILER_RECORD_EVENTS_RECONNECT_DELAY", "20s")
+
+	cfg, err := LoadConfig()
+	require.NoError(t, err)
+
+	assert.False(t, cfg.RecordEvents.Enabled)
+	assert.Equal(t, 7*time.Second, cfg.RecordEvents.Window)
+	assert.Equal(t, 20*time.Second, cfg.RecordEvents.ReconnectDelay)
 }
 
 func TestLoadConfig_EnvOverrides(t *testing.T) {

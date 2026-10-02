@@ -1,10 +1,12 @@
 # A single node that enforces a content policy: a record is served only once
 # the reconciler has evaluated it and the policy passed it.
 #
-# The intervals are short so a record reaches its verdict within the suite's
-# patience; they are not what a deployment would use. The suite sets its
-# timeouts from them: the indexer and the policy task each run every 5s and
-# the server follows the policy registry every 2s.
+# The tasks' intervals are an hour, so the suite can only pass if a pushed
+# record is indexed and evaluated because the reconciler heard of the push, and
+# not because a task happened to come round. The window is long enough that a
+# record read straight after its push has not been evaluated yet, and short
+# enough for the suite to be quick; the server follows the policy registry every
+# 2s.
 server:
   listen_address: "localhost:18430"
   metrics:
@@ -52,7 +54,10 @@ reconciler:
       insecure: true
   indexer:
     enabled: true
-    interval: 5s
+    interval: 1h
   policy_evaluation:
     enabled: true
-    interval: 5s
+    interval: 1h
+  record_events:
+    enabled: true
+    window: 3s
