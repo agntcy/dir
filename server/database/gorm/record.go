@@ -11,6 +11,7 @@ import (
 	"time"
 
 	coretypes "github.com/agntcy/dir/api/core/types"
+	securityv1 "github.com/agntcy/dir/api/security/v1"
 	"github.com/agntcy/dir/server/database/utils"
 	"github.com/agntcy/dir/server/types"
 	"gorm.io/gorm"
@@ -648,7 +649,7 @@ func (d *DB) handleFilterOptions(query *gorm.DB, cfg *types.RecordFilters) *gorm
 	if len(cfg.ScanSeverities) > 0 {
 		var severities []string
 		for _, threshold := range cfg.ScanSeverities {
-			severities = append(severities, scanSeveritiesGTE(threshold)...)
+			severities = append(severities, securityv1.ScanSeveritiesGTE(threshold)...)
 		}
 
 		if len(severities) > 0 {
@@ -695,28 +696,6 @@ func (d *DB) handleFilterOptions(query *gorm.DB, cfg *types.RecordFilters) *gorm
 	query = applyExclusionFilters(query, &cfg.Excluded)
 
 	return query
-}
-
-// scanSeveritiesGTE returns all severity strings that are >= the given threshold.
-// Values are the short names stored in the max_severity column (e.g. "HIGH").
-func scanSeveritiesGTE(threshold string) []string {
-	order := []string{"NONE", "INFO", "LOW", "MEDIUM", "HIGH", "CRITICAL"}
-
-	idx := -1
-
-	for i, s := range order {
-		if strings.EqualFold(s, threshold) {
-			idx = i
-
-			break
-		}
-	}
-
-	if idx < 0 {
-		return nil
-	}
-
-	return order[idx:]
 }
 
 // SetRecordSigned marks a record as signed.

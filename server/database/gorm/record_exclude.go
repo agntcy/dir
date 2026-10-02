@@ -6,6 +6,7 @@ package gorm
 import (
 	"strings"
 
+	securityv1 "github.com/agntcy/dir/api/security/v1"
 	"github.com/agntcy/dir/server/database/utils"
 	"github.com/agntcy/dir/server/types"
 	"gorm.io/gorm"
@@ -270,7 +271,7 @@ func applyExcludedAnnotations(query *gorm.DB, keys []string, values []string) *g
 func applyExcludedScanSeverities(query *gorm.DB, thresholds []string) *gorm.DB {
 	var severities []string
 	for _, threshold := range thresholds {
-		severities = append(severities, scanSeveritiesGTE(threshold)...)
+		severities = append(severities, securityv1.ScanSeveritiesGTE(threshold)...)
 	}
 
 	if len(severities) == 0 {

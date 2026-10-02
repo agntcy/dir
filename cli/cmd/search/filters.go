@@ -5,8 +5,10 @@ package search
 
 import (
 	"strconv"
+	"strings"
 
 	searchv1 "github.com/agntcy/dir/api/search/v1"
+	securityv1 "github.com/agntcy/dir/api/security/v1"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 )
@@ -227,10 +229,12 @@ func registerFilterFlags(flags *pflag.FlagSet, f *Filters) {
 		}
 	}
 
+	severities := strings.Join(securityv1.ScanSeveritiesGTE(securityv1.ScanSeverityNone), ", ")
+
 	flags.StringVar(&f.ScanSeverity, "scan-severity", "",
-		"Filter for records whose highest scan severity meets or exceeds a threshold (NONE, INFO, LOW, MEDIUM, HIGH, CRITICAL)")
+		"Filter for records whose highest scan severity meets or exceeds a threshold ("+severities+")")
 	flags.StringVar(&f.ExcludeScanSeverity, "exclude-scan-severity", "",
-		"Exclude records with a scan report at or above a threshold (NONE, INFO, LOW, MEDIUM, HIGH, CRITICAL); never-scanned records are kept")
+		"Exclude records with a scan report at or above a threshold ("+severities+"); never-scanned records are kept")
 
 	flags.BoolVar(&f.Verified, "verified", false,
 		"Filter for records with a verified ownership claim (--verified) or without one (--verified=false)")
