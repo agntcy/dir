@@ -13,6 +13,6 @@ type Config struct {
 	// DaemonConfig is the daemon's configuration file, relative to the suite's
 	// directory, and DaemonDataDir its data directory. A dry run reads the
 	// node's records from them.
-	DaemonConfig  string `json:"daemon_config" mapstructure:"daemon_config"`
+	DaemonConfig  string `json:"daemon_config"   mapstructure:"daemon_config"`
 	DaemonDataDir string `json:"daemon_data_dir" mapstructure:"daemon_data_dir"`
 }
