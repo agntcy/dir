@@ -35,6 +35,8 @@ jobs:
             label: "Network"
           - task: e2e:test:daemon:external
             label: "Daemon External"
+          - task: e2e:test:policy:default
+            label: "Policy"
           - task: e2e:test:integration-server:default
             label: "Integration Server"
     steps:
