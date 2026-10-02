@@ -43,8 +43,6 @@ server:
     scheduler_interval: 1h
     worker_count: 1
     worker_timeout: 30m
-  naming:
-    ttl: 168h
 
 reconciler:
   local_registry:
@@ -59,11 +57,6 @@ reconciler:
     enabled: true
     interval: 10s
   signature:
-    enabled: true
-    interval: 10s
-    ttl: 168h
-    record_timeout: 30s
-  name:
     enabled: true
     interval: 10s
     ttl: 168h

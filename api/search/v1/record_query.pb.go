@@ -66,7 +66,7 @@ const (
 	// Query for a module ID.
 	// Numeric field - exact match only, no wildcard support.
 	RecordQueryType_RECORD_QUERY_TYPE_MODULE_ID RecordQueryType = 12
-	// Query for verified records (name ownership verified via JWKS).
+	// Query for records whose ownership claim was verified (alias of OWNER_VERIFIED).
 	// Boolean field - use "true" or "false" as value.
 	RecordQueryType_RECORD_QUERY_TYPE_VERIFIED RecordQueryType = 13
 	// Query for trusted records (signature verification passed).

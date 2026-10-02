@@ -138,9 +138,11 @@ func WithTrustStatus(status TrustStatus) ConvertOption {
 	}
 }
 
-func DeriveTrustStatus(signatureStatuses []string, nameVerificationStatus string) TrustStatus {
+// DeriveTrustStatus derives a record's trust status: Verified when its ownership
+// claim is verified, Trusted when any signature is verified.
+func DeriveTrustStatus(signatureStatuses []string, ownerClaimStatus string) TrustStatus {
 	status := TrustStatus{
-		Verified: strings.EqualFold(nameVerificationStatus, verificationStatusVerified),
+		Verified: strings.EqualFold(ownerClaimStatus, verificationStatusVerified),
 	}
 
 	for _, signatureStatus := range signatureStatuses {

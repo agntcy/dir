@@ -12,7 +12,6 @@ import (
 	authz "github.com/agntcy/dir/server/authz/config"
 	dbconfig "github.com/agntcy/dir/server/database/config"
 	ratelimitconfig "github.com/agntcy/dir/server/middleware/ratelimit/config"
-	naming "github.com/agntcy/dir/server/naming/config"
 	policy "github.com/agntcy/dir/server/policy/config"
 	publication "github.com/agntcy/dir/server/publication/config"
 	routing "github.com/agntcy/dir/server/routing/config"
@@ -94,9 +93,6 @@ func TestConfig(t *testing.T) {
 							AccessToken:  "access-token",
 						},
 					},
-					Verification: store.VerificationConfig{
-						Enabled: true,
-					},
 				},
 				Routing: routing.Config{
 					ListenAddress: "/ip4/1.1.1.1/tcp/1",
@@ -145,9 +141,6 @@ func TestConfig(t *testing.T) {
 					Enabled: true,
 					Address: ":9090",
 				},
-				Naming: naming.Config{
-					TTL: naming.DefaultTTL,
-				},
 				HTTPGateway: HTTPGatewayConfig{
 					Enabled:       true,
 					ListenAddress: "address:123",
@@ -180,9 +173,6 @@ func TestConfig(t *testing.T) {
 						AuthConfig: oci.AuthConfig{
 							Insecure: oci.DefaultAuthConfigInsecure,
 						},
-					},
-					Verification: store.VerificationConfig{
-						Enabled: store.DefaultVerificationEnabled,
 					},
 				},
 				Routing: routing.Config{
@@ -222,9 +212,6 @@ func TestConfig(t *testing.T) {
 				Metrics: MetricsConfig{
 					Enabled: DefaultMetricsEnabled,
 					Address: DefaultMetricsAddress,
-				},
-				Naming: naming.Config{
-					TTL: naming.DefaultTTL,
 				},
 				HTTPGateway: HTTPGatewayConfig{
 					Enabled:       DefaultHTTPGatewayEnabled,

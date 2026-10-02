@@ -5,12 +5,7 @@ package config
 
 import oci "github.com/agntcy/dir/server/store/oci/config"
 
-const (
-	DefaultProvider = "oci"
-
-	// DefaultVerificationEnabled controls whether name verification is enabled.
-	DefaultVerificationEnabled = true
-)
+const DefaultProvider = "oci"
 
 type Config struct {
 	// Provider is the type of the storage provider.
@@ -18,14 +13,4 @@ type Config struct {
 
 	// Config for OCI database.
 	OCI oci.Config `json:"oci" mapstructure:"oci"`
-
-	// Verification configures name ownership verification.
-	Verification VerificationConfig `json:"verification" mapstructure:"verification"`
-}
-
-// VerificationConfig defines name verification configuration.
-type VerificationConfig struct {
-	// Enabled controls whether name verification is performed.
-	// Default: true
-	Enabled bool `json:"enabled,omitempty" mapstructure:"enabled"`
 }

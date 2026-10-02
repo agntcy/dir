@@ -24,24 +24,11 @@ includes:
 
 tasks:
   up:
-    vars:
-      COMPOSE_PATH: "{{.ROOT_DIR}}/tests/e2e/local/testenv/local/docker-compose.yaml"
     cmds:
-      # Start the Docker Compose services
-      - |
-        docker compose -f {{.COMPOSE_PATH}} up --wait -d
-        sleep 10
-      
       # Start the directory node
       - task: setup-dir-node:up
 
   down:
-    vars:
-      COMPOSE_PATH: "{{.ROOT_DIR}}/tests/e2e/local/testenv/local/docker-compose.yaml"
     cmds:
       # Stop the directory node
       - task: setup-dir-node:down
-
-      # Stop the Docker Compose services
-      - |
-        docker compose -f {{.COMPOSE_PATH}} down

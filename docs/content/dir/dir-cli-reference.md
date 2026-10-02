@@ -78,7 +78,7 @@ explicit `--auth-mode`.
 | Import / Export | `import`, `export` |
 | Routing | `routing publish`, `unpublish`, `list`, `search`, `info` |
 | Search | `search` |
-| Security | `sign`, `verify`, `validate`, `naming verify` |
+| Security | `sign`, `verify`, `validate` |
 | Identity | `identity claim`, `status`, `resolve` |
 | Sync | `sync create`, `status`, `list`, `delete` |
 | Events | `events listen` |
@@ -657,8 +657,6 @@ The daemon ships with sensible built-in defaults. To customize, pass a YAML conf
         scheduler_interval: 5m
         worker_count: 1
         worker_timeout: 30m
-      naming:
-        ttl: 168h
 
 
     reconciler:
@@ -669,11 +667,6 @@ The daemon ships with sensible built-in defaults. To customize, pass a YAML conf
         enabled: true
         interval: 1m
       signature:
-        enabled: true
-        interval: 1m
-        ttl: 168h
-        record_timeout: 30s
-      name:
         enabled: true
         interval: 1m
         ttl: 168h
@@ -1674,7 +1667,7 @@ Omit the positional argument and use filter flags to query specific fields. All 
 | `--annotation` | Annotation key=value |
 | `--identity` | Subject of the record's identity claim (wildcards, e.g. `did:web:acme.com:*`) |
 | `--owner` | Subject of the record's ownership claim (wildcards, e.g. `did:web:acme.com`) |
-| `--verified` | Only verified records; `--verified=false` for records without verified name ownership |
+| `--verified` | Only verified records; `--verified=false` for records without one. Same as `--owner-verified` |
 | `--trusted` | Only trusted records (signature verification passed); `--trusted=false` for records without a trusted signature |
 | `--safe` | Only records where all security scanners reported `is_safe=true`; `--safe=false` for records where at least one scanner did not |
 | `--scan-severity` | Only records whose highest scan severity meets or exceeds a threshold (`NONE`, `INFO`, `LOW`, `MEDIUM`, `HIGH`, `CRITICAL`) |
@@ -1794,36 +1787,9 @@ dirctl search --safe --scan-severity MEDIUM
 
 A record appears in `--safe` results only when at least one scanner has run and no scanner has reported `is_safe=false`. Records where all scanners were skipped (no source repo, no skill bundle, no A2A AgentCard) are not included.
 
-### Name Verification
-
-Record name verification proves that the signing key is authorized by the domain claimed in the record's name field.
-
-**Requirements:**
-
-- Record name must include a protocol prefix: `https://domain/path` or `http://domain/path`
-- A JWKS file must be hosted at `<scheme>://<domain>/.well-known/jwks.json`
-- The record must be signed with the private key corresponding to a public key present in that JWKS file
-
-**Workflow:**
-
-1. Push a record with a verifiable name.
-
-    ```bash
-    dirctl push record.json --output raw
-    # Returns: bafyreib...
-    ```
-
-2. Sign the record (triggers automatic verification).
-
-    ```bash
-    dirctl sign <cid> --key private.key
-    ```
-
-3. Check verification status using [`dirctl naming verify`](#dirctl-naming-verify-reference).
-
 ### `dirctl sign <cid> [flags]`
 
-Signs records for integrity and authenticity. When signing a record with a verifiable name (e.g., `https://domain/path`), the system automatically attempts to verify domain authorization via JWKS. See [Name Verification](#name-verification) for details.
+Signs records for integrity and authenticity.
 
 For encrypted private keys, `COSIGN_PASSWORD` is used when it is set, including when
 it is explicitly empty. Use `--password-stdin` to opt in to reading a password from
@@ -1862,44 +1828,6 @@ Configure the selected provider's credentials before running `dirctl`.
 
     # Sign with a key managed by Google Cloud KMS
     dirctl sign <cid> --key "gcpkms://projects/PROJECT/locations/LOCATION/keyRings/RING/cryptoKeys/KEY"
-    ```
-
-### `dirctl naming verify <reference>`
-
-Verifies that a record's signing key is authorized by the domain claimed in its name field. Checks if the signing key matches a public key in the domain's JWKS file hosted at `/.well-known/jwks.json`.
-
-**Supported Reference Formats:**
-
-| Format | Description |
-|--------|-------------|
-| `<cid>` | Verify by content address |
-| `<name>` | Verify the highest version (see **Version Resolution** under `dirctl pull`) |
-| `<name>:<version>` | Verify a specific version |
-
-??? example
-
-    ```bash
-    # Verify by CID
-    dirctl naming verify bafyreib... --output json
-
-    # Verify by name (latest version)
-    dirctl naming verify cisco.com/agent --output json
-
-    # Verify by name with specific version
-    dirctl naming verify cisco.com/agent:v1.0.0 --output json
-    ```
-
-    Example verification response:
-
-    ```json
-    {
-    "cid": "bafyreib...",
-    "verified": true,
-    "domain": "cisco.com",
-    "method": "jwks",
-    "key_id": "key-1",
-    "verified_at": "2026-01-21T10:30:00Z"
-    }
     ```
 
 ### `dirctl identity claim [flags]`

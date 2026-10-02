@@ -60,7 +60,7 @@ type RecordFilters struct {
 	CreatedAts         []string
 	Authors            []string
 	SchemaVersions     []string
-	Verified           *bool    // Filter by verified status (name ownership verified via JWKS)
+	Verified           *bool    // Filter by verified status (the record has a verified ownership claim)
 	Trusted            *bool    // Filter by trusted status (signature verification passed)
 	ScanSafe           *bool    // Filter by is_safe: true = all scanners safe, false = at least one unsafe
 	ScanSeverities     []string // Filter by max scan severity >= threshold (e.g. "HIGH")
@@ -238,7 +238,7 @@ func WithModuleIDs(ids ...uint64) FilterOption {
 	}
 }
 
-// WithVerified filters records by verified status.
+// WithVerified filters records by whether they have a verified ownership claim.
 func WithVerified(verified bool) FilterOption {
 	return func(sc *RecordFilters) {
 		sc.Verified = &verified

@@ -320,20 +320,20 @@ func TestGetIdentityStatus(t *testing.T) {
 	require.Error(t, err)
 }
 
-func TestResolveIdentity(t *testing.T) {
+func TestResolve(t *testing.T) {
 	fake := &fakeIdentityClient{}
 	c := &Client{IdentityServiceClient: fake}
 
-	_, err := c.ResolveIdentity(t.Context(), "acme.com/agent", "")
+	_, err := c.Resolve(t.Context(), "acme.com/agent", "")
 	require.NoError(t, err)
 	assert.Equal(t, "acme.com/agent", fake.resolveReq.GetName())
 	assert.Nil(t, fake.resolveReq.Version, "no version means all versions")
 
-	_, err = c.ResolveIdentity(t.Context(), "acme.com/agent", "1.0.0")
+	_, err = c.Resolve(t.Context(), "acme.com/agent", "1.0.0")
 	require.NoError(t, err)
 	assert.Equal(t, "1.0.0", fake.resolveReq.GetVersion())
 
 	fake.resolveErr = errors.New("not found")
-	_, err = c.ResolveIdentity(t.Context(), "missing.com/agent", "")
+	_, err = c.Resolve(t.Context(), "missing.com/agent", "")
 	require.ErrorContains(t, err, "not found")
 }

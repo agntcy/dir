@@ -58,7 +58,7 @@ func runResolve(cmd *cobra.Command, input string) error {
 		return fmt.Errorf("%q is a CID: resolve takes a record name, optionally with a version", input)
 	}
 
-	resp, err := c.ResolveIdentity(cmd.Context(), ref.Name, ref.Version)
+	resp, err := c.Resolve(cmd.Context(), ref.Name, ref.Version)
 	if err != nil {
 		return err
 	}

@@ -20,7 +20,6 @@ import (
 	initcmd "github.com/agntcy/dir/cli/cmd/init"
 	"github.com/agntcy/dir/cli/cmd/install"
 	"github.com/agntcy/dir/cli/cmd/mcp"
-	"github.com/agntcy/dir/cli/cmd/naming"
 	"github.com/agntcy/dir/cli/cmd/network"
 	"github.com/agntcy/dir/cli/cmd/pull"
 	"github.com/agntcy/dir/cli/cmd/push"
@@ -143,8 +142,6 @@ func init() {
 		network.Command,
 		// identity commands (identity and ownership claims)
 		identitycmd.Command, // Contains: claim, status, resolve
-		// naming commands (domain verification)
-		naming.Command, // Contains: verify, check, list
 		// search commands
 		search.Command, // General search (searchv1)
 		// sync commands

@@ -233,7 +233,7 @@ func registerFilterFlags(flags *pflag.FlagSet, f *Filters) {
 		"Exclude records with a scan report at or above a threshold (NONE, INFO, LOW, MEDIUM, HIGH, CRITICAL); never-scanned records are kept")
 
 	flags.BoolVar(&f.Verified, "verified", false,
-		"Filter for records with verified name ownership (--verified) or without it (--verified=false)")
+		"Filter for records with a verified ownership claim (--verified) or without one (--verified=false)")
 	flags.BoolVar(&f.Trusted, "trusted", false,
 		"Filter for records with a trusted signature (--trusted) or without one (--trusted=false)")
 	flags.BoolVar(&f.IdentityVerified, "identity-verified", false,

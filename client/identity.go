@@ -105,9 +105,9 @@ func (c *Client) GetIdentityStatus(ctx context.Context, cid string) (*identityv1
 	return resp, nil
 }
 
-// ResolveIdentity resolves a record name, with an optional version, to CIDs.
+// Resolve resolves a record name, with an optional version, to CIDs.
 // Returns all matching records newest first; if version is empty, all versions.
-func (c *Client) ResolveIdentity(ctx context.Context, name, version string) (*identityv1.ResolveResponse, error) {
+func (c *Client) Resolve(ctx context.Context, name, version string) (*identityv1.ResolveResponse, error) {
 	req := &identityv1.ResolveRequest{Name: name}
 	if version != "" {
 		req.Version = &version

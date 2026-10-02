@@ -140,7 +140,7 @@ func requireInstalled(manifest *pkgstate.Manifest, names []string) error {
 }
 
 // directoryResolver adapts the Directory client to the comparison engine's
-// resolver. It enumerates versions through the naming service, which returns
+// resolver. It enumerates versions through the identity service, which returns
 // every {name, version, cid} for a name without pulling any record body.
 func directoryResolver(cmd *cobra.Command) (pkgupdate.Resolver, error) {
 	c, ok := ctxUtils.GetClientFromContext(cmd.Context())

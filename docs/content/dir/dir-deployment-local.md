@@ -161,11 +161,6 @@ reconciler:
     interval: 1m
     ttl: 168h
     record_timeout: 30s
-  name:
-    enabled: true
-    interval: 1h
-    ttl: 168h
-    record_timeout: 30s
 ```
 
 Replace the placeholder values before proceeding:

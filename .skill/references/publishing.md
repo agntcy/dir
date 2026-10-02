@@ -1,7 +1,7 @@
 # Publishing: push, sign, announce, prove ownership
 
 Goal: get a validated record stored, signed, discoverable, and (optionally)
-name-verified.
+ownership-verified.
 
 ## The pipeline
 
@@ -57,27 +57,25 @@ Clarify intent with the user: **push** = store on the connected server;
 **routing publish** = make discoverable across the peer-to-peer network. A
 record can be pushed but unpublished (private to that directory).
 
-## Name ownership verification (optional, for `https://` names)
+## Ownership claim (optional)
 
-Proves the signing key is authorized by the domain in the record name.
-
-Requirements:
-
-1. Record `name` uses a protocol prefix: `https://example.com/my-agent`.
-2. The domain hosts a JWKS at `https://example.com/.well-known/jwks.json`.
-3. The record is signed with a private key whose public key is in that JWKS.
-
-Workflow:
+Proves who owns the record: a signed claim that the owner the record declares
+is its owner, checked against the key material that owner publishes. The record
+declares it in its `agntcy.dir/owner` annotation (`agntcy.dir/identity` for the
+record's own identity), which must be set before the push.
 
 ```bash
+# record.json: "annotations": {"agntcy.dir/owner": "dns:example.com"}
 CID=$(dirctl push record.json -o raw)
-dirctl sign "$CID" --key private.key      # triggers automatic domain verification
-dirctl naming verify "$CID"               # check verification status
+dirctl identity claim --record "$CID" --role owner --key owner.key   # the owner publishes the public key (DNS TXT, JWKS, DID, SPIFFE)
+dirctl identity status "$CID"                                         # check the verification result
 ```
 
-Verified names light up the `--verified` search filter. If verification
-fails, check (in order): name has the scheme prefix, JWKS is reachable,
-signing key matches a JWKS entry.
+The reconciler verifies claims in the background, so a fresh claim reads
+`no result` until its next run. Verified owners light up the `--verified` and
+`--owner-verified` search filters. If verification fails, `identity status`
+shows the reason; check that the subject publishes the public half of the key.
+Use `--role identity` for a claim about the record's own identity.
 
 ## Maintenance
 
