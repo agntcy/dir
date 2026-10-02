@@ -102,8 +102,15 @@ var _ = ginkgo.Describe("Dry run of a candidate policy", ginkgo.Ordered, ginkgo.
 		compliantRef = push(ctx, newRecord("dry-run-compliant", described))
 		rejectedRef = push(ctx, newRecord("dry-run-rejected", ""))
 
-		// Wait until the node serves the one the policy passes: both have had
-		// their verdicts by then.
+		// Until the policy is enforced the node serves every record, so a served
+		// record says nothing yet. Wait for the one the policy rejects to be
+		// refused, then for the one it passes to be served: both have had their
+		// verdicts by then, whichever suite ran first.
+		gomega.Eventually(func() codes.Code { return pullCode(ctx, rejectedRef) }).
+			WithTimeout(settleTimeout).
+			WithPolling(pollInterval).
+			Should(gomega.Equal(codes.PermissionDenied), "the record the policy rejects was never refused")
+
 		gomega.Eventually(func() codes.Code { return pullCode(ctx, compliantRef) }).
 			WithTimeout(settleTimeout).
 			WithPolling(pollInterval).
