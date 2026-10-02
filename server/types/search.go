@@ -104,7 +104,6 @@ type ExcludedRecordFilters struct {
 	ScanSeverities     []string
 	ScanStatuses       []string
 	ScanFailureReasons []string
-	Owners             []string
 }
 
 type Annotation struct {

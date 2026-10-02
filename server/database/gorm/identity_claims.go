@@ -22,7 +22,7 @@ var ErrIdentityClaimNotFound = errors.New("identity claim not found")
 type IdentityClaim struct {
 	RecordCID  string    `gorm:"column:record_cid;primaryKey;not null"`
 	Role       string    `gorm:"column:role;primaryKey;not null"` // "identity" or "owner"
-	Subject    string    `gorm:"column:subject;not null;index"`
+	Subject    string    `gorm:"column:subject;not null"`
 	Status     string    `gorm:"column:status;not null;index"` // "verified" or "failed"
 	Error      string    `gorm:"column:error"`
 	VerifiedAt time.Time `gorm:"column:verified_at;not null"`

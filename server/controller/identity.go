@@ -64,6 +64,18 @@ func (c *identityCtrl) GetIdentityStatus(_ context.Context, req *identityv1.GetI
 		return nil, err
 	}
 
+	// No result is ambiguous: the record may be unverified so far, or not exist.
+	if identity == nil && owner == nil {
+		cids, err := c.db.GetRecordCIDs(types.WithCIDs(cid))
+		if err != nil {
+			return nil, status.Errorf(codes.Internal, "failed to look up record: %v", err)
+		}
+
+		if len(cids) == 0 {
+			return nil, status.Errorf(codes.NotFound, "no record found with cid %q", cid)
+		}
+	}
+
 	return &identityv1.GetIdentityStatusResponse{Identity: identity, Owner: owner}, nil
 }
 
@@ -145,7 +157,8 @@ func (c *identityCtrl) claimVerification(cid, role string) (*identityv1.ClaimVer
 		VerifiedAt: timestamppb.New(claim.GetVerifiedAt()),
 	}
 
-	if msg := claim.GetError(); msg != "" {
+	// Only a failed result carries a reason.
+	if msg := claim.GetError(); msg != "" && claim.GetStatus() == types.ClaimStatusFailed {
 		result.Error = &msg
 	}
 

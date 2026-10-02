@@ -37,6 +37,7 @@ type fakeIdentityDB struct {
 	records    []*fakeRecord // newest first
 	claims     map[string]*gormdb.IdentityClaim
 	claimErr   error
+	recordsErr error
 	gotFilters types.RecordFilters
 }
 
@@ -59,6 +60,27 @@ func (f *fakeIdentityDB) GetRecords(opts ...types.FilterOption) ([]coretypes.Rec
 	}
 
 	return out, nil
+}
+
+func (f *fakeIdentityDB) GetRecordCIDs(opts ...types.FilterOption) ([]string, error) {
+	if f.recordsErr != nil {
+		return nil, f.recordsErr
+	}
+
+	var filters types.RecordFilters
+	for _, opt := range opts {
+		opt(&filters)
+	}
+
+	var cids []string
+
+	for _, r := range f.records {
+		if slices.Contains(filters.CIDs, r.cid) {
+			cids = append(cids, r.cid)
+		}
+	}
+
+	return cids, nil
 }
 
 func (f *fakeIdentityDB) GetIdentityClaimByCID(cid, role string) (types.IdentityClaimObject, error) {
@@ -177,6 +199,10 @@ func TestIdentityGetIdentityStatus_Errors(t *testing.T) {
 	_, err = ctrl.GetIdentityStatus(context.Background(), &identityv1.GetIdentityStatusRequest{Name: new("missing.com/agent")})
 	assert.Equal(t, codes.NotFound, status.Code(err))
 
+	// A CID that is not a record is not "unverified".
+	_, err = ctrl.GetIdentityStatus(context.Background(), &identityv1.GetIdentityStatusRequest{Cid: new("cid-missing")})
+	assert.Equal(t, codes.NotFound, status.Code(err))
+
 	_, err = ctrl.GetIdentityStatus(context.Background(), &identityv1.GetIdentityStatusRequest{Name: new("acme.com/agent"), Version: new("9.9.9")})
 	assert.Equal(t, codes.NotFound, status.Code(err))
 
@@ -185,6 +211,24 @@ func TestIdentityGetIdentityStatus_Errors(t *testing.T) {
 
 	_, err = NewIdentityController(db).GetIdentityStatus(context.Background(), &identityv1.GetIdentityStatusRequest{Cid: new("cid-v1")})
 	assert.Equal(t, codes.Internal, status.Code(err))
+
+	db = newFakeIdentityDB()
+	db.recordsErr = errors.New("database is down")
+
+	_, err = NewIdentityController(db).GetIdentityStatus(context.Background(), &identityv1.GetIdentityStatusRequest{Cid: new("cid-v1")})
+	assert.Equal(t, codes.Internal, status.Code(err))
+}
+
+// The reason only describes a failure, whatever is stored with a verified result.
+func TestIdentityGetIdentityStatus_VerifiedResultHasNoError(t *testing.T) {
+	db := newFakeIdentityDB()
+	db.claims["cid-v1/"+types.ClaimRoleOwner] = &gormdb.IdentityClaim{
+		RecordCID: "cid-v1", Role: types.ClaimRoleOwner, Subject: "dns:acme.com", Status: types.ClaimStatusVerified, Error: "stale",
+	}
+
+	resp, err := NewIdentityController(db).GetIdentityStatus(context.Background(), &identityv1.GetIdentityStatusRequest{Cid: new("cid-v1")})
+	require.NoError(t, err)
+	assert.Nil(t, resp.GetOwner().Error)
 }
 
 func TestIdentityResolve(t *testing.T) {

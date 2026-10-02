@@ -97,5 +97,12 @@ func (db *DB) migrate() error {
 		return fmt.Errorf("failed to migrate object schema: %w", err)
 	}
 
+	// Subject filters match on LOWER(subject), which a plain index cannot serve.
+	if err := db.gormDB.Exec(
+		"CREATE INDEX IF NOT EXISTS idx_identity_claims_role_subject_lower ON identity_claims (role, LOWER(subject))",
+	).Error; err != nil {
+		return fmt.Errorf("failed to create identity claims subject index: %w", err)
+	}
+
 	return nil
 }
