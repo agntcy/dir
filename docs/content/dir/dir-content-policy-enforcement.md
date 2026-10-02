@@ -8,13 +8,36 @@ A Directory node can refuse to return records that do not comply with its conten
 
 The reconciler's policy task evaluates every record against each policy and stores a verdict per record. The server applies those verdicts on reads. A record is returned only if it has a passing verdict, under the current version of the policy, for every enforced policy. A record never evaluated, or whose evaluation failed, is not returned. A search leaves an excluded record out. A read of it by CID is refused with `PermissionDenied`, which tells the caller the node withholds the record under its content policy, without saying which policy or why; the [audit service](#auditing-excluded-records) has the detail. The gate answers from the index, so a CID the node does not hold is refused the same way, and the refusal does not say which CIDs the node holds.
 
-!!! note
-    The server side is complete, but no policy evaluator ships with Directory yet, so no verdicts are produced. Follow this guide once an evaluator is registered in the reconciler.
+## Defining a Policy
+
+A policy is a validator with the `evaluate` operation. Only `opa` and `cel` can define one:
+
+```yaml
+validators:
+  - provider: opa
+    op: ["evaluate"]
+    config:
+      file: require-license.rego    # in policy.dir
+  - provider: cel
+    op: ["evaluate"]
+    config:
+      name: has-description
+      expressions:
+        - 'record.description != ""'
+```
+
+The server and the reconciler both read this list: Helm injects it into both configurations, and the daemon shares `server.validators`. See [Records Validation](dir-component-records-validation.md) for how each provider decides.
+
+- **ID.** `provider:name`, so the entries above are `opa:require-license` and `cel:has-description`. `name` defaults to the OPA file's name without `.rego` and is required for CEL. Letters, digits, `.`, `_` and `-` only. The ID is what `policy.enforcement.policies` lists, and it stays the same when the policy changes.
+- **Version.** A hash of the policy's content: the `.rego` source, or the expressions. An edit is a new version and anything else is not, so nobody states one.
+- **Verdict.** The reconciler reads each record from the store and runs the validator on it. A record the policy rejects has what the validator reported as its reason, which the [audit service](#auditing-excluded-records) shows. A record that cannot be read, or that the validator cannot judge, counts as failed: it stays excluded and is tried again on the next run.
+
+A policy is loaded when the reconciler starts. Helm restarts both pods when a policy file or the list changes; otherwise restart the reconciler after an edit.
 
 ## Before You Start
 
 - **Authorization is on**, with registry credentials restricted to peer nodes. Registry credentials read every record straight from the registry, bypassing every check described here. See [Methods Granted Only by SPIFFE ID](https://github.com/agntcy/dir/blob/main/server/authz/README.md). The server logs a warning when policies are checked while authorization is off.
-- **The reconciler's policy task is enabled**, with an evaluator for each policy you enforce (`reconciler.config.policy_evaluation` in the apiserver Helm values).
+- **The reconciler's policy task is enabled** (`reconciler.config.policy_evaluation.enabled` in the apiserver Helm values), with a [policy defined](#defining-a-policy) for each one you enforce. The reconciler warns when policies are defined and the task is off, and when the task is on and none is defined.
 - **Metrics are enabled** on the server (`config.metrics.enabled`), so you can watch the rollout.
 
 ## Settings
@@ -68,7 +91,7 @@ The modes and the policy list are read at startup: restart the server after chan
 
 ## Editing a Policy
 
-Edit the policy file and deploy it. The reconciler registers the new version and starts evaluating records under it, and the server enforces the new version as soon as it sees it, within `refresh_interval`.
+Edit the policy file and deploy it; the reconciler loads it as it starts. The reconciler registers the new version and starts evaluating records under it, and the server enforces the new version as soon as it sees it, within `refresh_interval`.
 
 A verdict reached under the previous version no longer counts. Every record is therefore hidden until it has been evaluated under the new rule, so nothing the new rule rejects is served while that happens. This is deliberate: content already delivered to users cannot be recalled, and a policy is usually tightened because something harmful was found. The cost is that records disappear for as long as the re-evaluation takes.
 
