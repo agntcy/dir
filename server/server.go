@@ -24,7 +24,6 @@ import (
 	"github.com/agntcy/dir/server/authz"
 	"github.com/agntcy/dir/server/config"
 	"github.com/agntcy/dir/server/controller"
-	"github.com/agntcy/dir/server/database"
 	"github.com/agntcy/dir/server/events"
 	"github.com/agntcy/dir/server/gateway"
 	"github.com/agntcy/dir/server/healthcheck"
@@ -270,19 +269,19 @@ func New(ctx context.Context, cfg *config.Config, opts ...ServerOption) (*Server
 
 	// Database must be created before routing so the shared ingestion service
 	// (used by both the store controller and DHT autosync) can be wired in.
-	databaseAPI := o.database
-	if databaseAPI == nil {
-		databaseAPI, err = database.New(cfg.Database)
-		if err != nil {
-			return nil, fmt.Errorf("failed to create database API: %w", err)
-		}
+	// The APIs read through servedDB, which applies the enforced content
+	// policies; ingestion and the reconciler use databaseAPI, which applies
+	// none.
+	databaseAPI, servedDB, err := openDatabase(cfg, o.database, metricsServer)
+	if err != nil {
+		return nil, err
 	}
 
 	// Shared ingestion service: single authoritative path for persisting
 	// records/referrers (content store + search index + referrer DB state).
 	ingestor := ingest.New(storeAPI, databaseAPI)
 
-	routingAPI, err := routing.New(ctx, storeAPI, ingestor, validatorRegistry, databaseAPI, options)
+	routingAPI, err := routing.New(ctx, storeAPI, ingestor, validatorRegistry, servedDB, options)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create routing: %w", err)
 	}
@@ -312,7 +311,7 @@ func New(ctx context.Context, cfg *config.Config, opts ...ServerOption) (*Server
 	}
 
 	// Create publication service
-	publicationService, err := publication.New(databaseAPI, storeAPI, routingAPI, options)
+	publicationService, err := publication.New(servedDB, storeAPI, routingAPI, options)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create publication service: %w", err)
 	}
@@ -325,17 +324,17 @@ func New(ctx context.Context, cfg *config.Config, opts ...ServerOption) (*Server
 
 	// Register APIs
 	eventsv1.RegisterEventServiceServer(grpcServer, controller.NewEventsController(eventService))
-	storev1.RegisterStoreServiceServer(grpcServer, controller.NewStoreController(storeAPI, databaseAPI, ingestor, options.EventBus(), validatorRegistry))
+	storev1.RegisterStoreServiceServer(grpcServer, controller.NewStoreController(storeAPI, servedDB, ingestor, options.EventBus(), validatorRegistry))
 	routingv1.RegisterRoutingServiceServer(grpcServer, controller.NewRoutingController(routingAPI, storeAPI, publicationService))
-	routingv1.RegisterPublicationServiceServer(grpcServer, controller.NewPublicationController(databaseAPI, options))
-	searchv1.RegisterSearchServiceServer(grpcServer, controller.NewSearchController(databaseAPI, storeAPI))
-	storev1.RegisterSyncServiceServer(grpcServer, controller.NewSyncController(databaseAPI, options))
-	signv1.RegisterSignServiceServer(grpcServer, controller.NewSignController(databaseAPI))
-	identityv1.RegisterIdentityServiceServer(grpcServer, controller.NewIdentityController(databaseAPI))
+	routingv1.RegisterPublicationServiceServer(grpcServer, controller.NewPublicationController(servedDB, options))
+	searchv1.RegisterSearchServiceServer(grpcServer, controller.NewSearchController(servedDB, storeAPI))
+	storev1.RegisterSyncServiceServer(grpcServer, controller.NewSyncController(servedDB, options))
+	signv1.RegisterSignServiceServer(grpcServer, controller.NewSignController(servedDB))
+	identityv1.RegisterIdentityServiceServer(grpcServer, controller.NewIdentityController(servedDB))
 
 	gwExtractor, aiFinderOpts := resolveGatewayExtractor(cfg)
 
-	catalogv1.RegisterAIFinderServiceServer(grpcServer, controller.NewAIFinderController(routingAPI.GetPeerID(), databaseAPI, cfg.HTTPGateway, storeAPI, aiFinderOpts...))
+	catalogv1.RegisterAIFinderServiceServer(grpcServer, controller.NewAIFinderController(routingAPI.GetPeerID(), servedDB, cfg.HTTPGateway, storeAPI, aiFinderOpts...))
 
 	// Register health service
 	healthChecker.Register(grpcServer)

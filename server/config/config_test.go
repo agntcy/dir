@@ -58,6 +58,10 @@ func TestConfig(t *testing.T) {
 				"DIRECTORY_SERVER_AUTHZ_ENFORCER_POLICY_FILE_PATH":       "/tmp/authz_policies.csv",
 				"DIRECTORY_SERVER_POLICY_ENABLED":                        "true",
 				"DIRECTORY_SERVER_POLICY_DIR":                            "/tmp/policies",
+				"DIRECTORY_SERVER_POLICY_ENFORCEMENT_SEARCH":             "shadow",
+				"DIRECTORY_SERVER_POLICY_ENFORCEMENT_FETCH":              "enforce",
+				"DIRECTORY_SERVER_POLICY_ENFORCEMENT_POLICIES":           "opa:require-license,opa:require-owner",
+				"DIRECTORY_SERVER_POLICY_ENFORCEMENT_REFRESH_INTERVAL":   "2m",
 				"DIRECTORY_SERVER_PUBLICATION_SCHEDULER_INTERVAL":        "10s",
 				"DIRECTORY_SERVER_PUBLICATION_WORKER_COUNT":              "1",
 				"DIRECTORY_SERVER_PUBLICATION_WORKER_TIMEOUT":            "10s",
@@ -131,6 +135,12 @@ func TestConfig(t *testing.T) {
 				},
 				Policy: policy.Config{
 					Dir: "/tmp/policies",
+					Enforcement: policy.EnforcementConfig{
+						Search:          policy.ModeShadow,
+						Fetch:           policy.ModeEnforce,
+						Policies:        []string{"opa:require-license", "opa:require-owner"},
+						RefreshInterval: 2 * time.Minute,
+					},
 				},
 				Publication: publication.Config{
 					SchedulerInterval: 10 * time.Second,
@@ -203,6 +213,12 @@ func TestConfig(t *testing.T) {
 				},
 				Policy: policy.Config{
 					Dir: DefaultConfigPath + "/policies",
+					Enforcement: policy.EnforcementConfig{
+						Search:          policy.ModeOff,
+						Fetch:           policy.ModeOff,
+						Policies:        []string{},
+						RefreshInterval: policy.DefaultRefreshInterval,
+					},
 				},
 				Publication: publication.Config{
 					SchedulerInterval: publication.DefaultPublicationSchedulerInterval,

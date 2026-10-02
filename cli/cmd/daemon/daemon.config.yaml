@@ -114,6 +114,14 @@ server:
     # catalog_title: "AI Catalog"
   policy:
     dir: policies
+    # Content-policy enforcement on reads: off, shadow or enforce, per kind of
+    # read. Policies lists the IDs of the policies every served record must
+    # comply with; their versions come from the policies' content.
+    enforcement:
+      search: "off"
+      fetch: "off"
+      policies: []
+      refresh_interval: 30s
 
 reconciler:
   regsync:

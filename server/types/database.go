@@ -12,6 +12,7 @@ import (
 	routingv1 "github.com/agntcy/dir/api/routing/v1"
 	searchv1 "github.com/agntcy/dir/api/search/v1"
 	storev1 "github.com/agntcy/dir/api/store/v1"
+	policyconfig "github.com/agntcy/dir/server/policy/config"
 )
 
 //nolint:interfacebloat // one embedded API per persisted concern.
@@ -347,6 +348,26 @@ type EnforcedPolicy struct {
 	Version string
 }
 
+// PolicyEnforcement is what the server's reads must satisfy: the enforced
+// policies, and how each kind of read applies them. See
+// policyconfig.EnforcementConfig for which reads each mode covers.
+type PolicyEnforcement struct {
+	Policies []EnforcedPolicy
+	Search   policyconfig.Mode
+	Fetch    policyconfig.Mode
+
+	// Pending are the configured policies not enforced yet because no
+	// evaluator has registered them: there is no version whose verdicts could
+	// be asked for.
+	Pending []EnforcedPolicy
+}
+
+// PolicyGateObserver is told about each record a read by CID excluded, or in
+// shadow mode would have excluded.
+type PolicyGateObserver interface {
+	FetchExcluded(mode policyconfig.Mode)
+}
+
 // PolicyEvaluationObject is a single policy verdict row, keyed by
 // (record_cid, policy_id).
 type PolicyEvaluationObject interface {
@@ -410,7 +431,7 @@ type PolicyEvaluationDatabaseAPI interface {
 // rather than searching: the store and AI Finder APIs, and the peer RPC.
 type RecordServabilityAPI interface {
 	// IsRecordServable reports whether a record fetched directly by CID may
-	// be returned: always when no policy is enforced, otherwise only if it
-	// complies with every enforced policy.
+	// be returned: always unless fetches enforce the policies, otherwise only
+	// if it complies with every enforced policy.
 	IsRecordServable(cid string) (bool, error)
 }

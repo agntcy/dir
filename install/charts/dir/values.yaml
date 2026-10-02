@@ -194,6 +194,14 @@ apiserver:
     policy:
       dir: "/etc/agntcy/dir/policies"
 
+      # Content-policy enforcement on reads: off, shadow or enforce, per kind
+      # of read. See the apiserver chart's values for what each covers.
+      enforcement:
+        search: "off"
+        fetch: "off"
+        policies: []
+        refresh_interval: 30s
+
     # Store settings for the storage backend.
     store:
       # Storage provider to use.

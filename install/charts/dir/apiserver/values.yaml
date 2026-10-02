@@ -89,6 +89,32 @@ config:
   policy:
     dir: "/etc/agntcy/dir/policies"
 
+    # Content-policy enforcement on reads. Each kind of read has its own mode,
+    # so enforcement can be rolled out one kind at a time:
+    #   off     - no policy is checked
+    #   shadow  - each read is checked and what it would exclude is reported
+    #             (metrics dir_policy_gate_*, outcome="would_exclude"), but
+    #             nothing is excluded
+    #   enforce - records not complying with every policy below are left out
+    #             of searches and refused when fetched by CID
+    #             (outcome="excluded")
+    # search covers search, the catalog, filter values and query-based
+    # publication; fetch covers pull, lookup, referrers, export, the peer RPC,
+    # publication of explicit CIDs and identity status lookups.
+    enforcement:
+      search: "off"
+      fetch: "off"
+      # IDs of the policies every served record must comply with, e.g.
+      # ["opa:require-license"]. No version is given: a policy's version comes
+      # from its content, which the reconciler registers and the server
+      # follows. Only a verdict under the current version counts, so after a
+      # policy is edited a record stays hidden until it has been evaluated
+      # under the new rule, and nothing the new rule rejects is served
+      # meanwhile.
+      policies: []
+      # How often the server rechecks which version of each policy is in force.
+      refresh_interval: 30s
+
   # Store settings for the storage backend.
   store:
     # Storage provider to use.
