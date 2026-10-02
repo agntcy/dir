@@ -18,6 +18,7 @@ import (
 	"errors"
 	"fmt"
 	"math/big"
+	"net"
 	"net/url"
 	"os"
 	"path/filepath"
@@ -37,6 +38,7 @@ import (
 	dbconfig "github.com/agntcy/dir/server/database/config"
 	gormdb "github.com/agntcy/dir/server/database/gorm"
 	"github.com/agntcy/dir/server/types"
+	"github.com/agntcy/dir/utils/safefetch"
 	"github.com/lestrrat-go/jwx/v2/jwk"
 	"github.com/multiformats/go-multibase"
 	"github.com/stretchr/testify/assert"
@@ -591,6 +593,7 @@ func TestRun_ClaimThatCannotVerifyCostsNoLookup(t *testing.T) {
 			result := f.result(cid, types.ClaimRoleIdentity)
 			assert.Equal(t, types.ClaimStatusFailed, result.GetStatus())
 			assert.Contains(t, result.GetError(), tt.wantErr)
+			assert.Equal(t, tt.annotations[corev1.AnnotationKeyIdentity], result.GetSubject(), "the record's subject, not the claim's")
 		})
 	}
 
@@ -800,13 +803,14 @@ func TestRun_KeepsTheResultWhenTheStoreFails(t *testing.T) {
 	assert.Equal(t, types.ClaimStatusVerified, f.result(cid, types.ClaimRoleOwner).GetStatus())
 }
 
-func TestRun_ReadsEveryBatchOfRecords(t *testing.T) {
+func TestRun_ReadsEveryRecordAndLooksUpASharedSubjectOnce(t *testing.T) {
 	key, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 	require.NoError(t, err)
 
+	lookups := &countingResolver{keys: []crypto.PublicKey{&key.PublicKey}}
+
 	f := newFixture(t, Config{})
-	f.task.batchSize = 2
-	f.task.network = resolverSet{dns: &countingResolver{keys: []crypto.PublicKey{&key.PublicKey}}}
+	f.task.network = resolverSet{dns: lookups}
 
 	signer := newSigner(t, key)
 
@@ -823,6 +827,92 @@ func TestRun_ReadsEveryBatchOfRecords(t *testing.T) {
 
 	for _, cid := range cids {
 		assert.Equal(t, types.ClaimStatusVerified, f.result(cid, types.ClaimRoleOwner).GetStatus(), cid)
+	}
+
+	assert.Equal(t, 1, lookups.calls, "one lookup for the subject all five records share")
+}
+
+func TestRun_AnUnreachableSubjectKeepsTheLastResultForAWhile(t *testing.T) {
+	key, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+	require.NoError(t, err)
+
+	lookups := &countingResolver{keys: []crypto.PublicKey{&key.PublicKey}}
+
+	f := newFixture(t, Config{})
+	f.task.network = resolverSet{dns: lookups}
+
+	cid := f.addRecord("flaky-subject", map[string]string{corev1.AnnotationKeyOwner: "dns:acme.com"})
+	f.store.setReferrers(cid, signedReferrer(t, ownerRole, cid, "dns:acme.com", newSigner(t, key)))
+
+	f.run()
+	assert.Equal(t, types.ClaimStatusVerified, f.result(cid, types.ClaimRoleOwner).GetStatus())
+
+	// The subject cannot be reached: that says nothing about the claim.
+	lookups.keys, lookups.err = nil, &net.OpError{Op: "dial", Err: errors.New("connection refused")}
+
+	f.run()
+	assert.Equal(t, types.ClaimStatusVerified, f.result(cid, types.ClaimRoleOwner).GetStatus())
+
+	// An answer that says the subject publishes no key does.
+	lookups.err = resolvers.ErrNoKeys
+
+	f.run()
+	assert.Equal(t, types.ClaimStatusFailed, f.result(cid, types.ClaimRoleOwner).GetStatus())
+
+	// Unreachable for longer than the grace period stops being tolerated.
+	require.NoError(t, f.db.UpsertIdentityClaim(&gormdb.IdentityClaim{
+		RecordCID: cid, Role: types.ClaimRoleOwner, Subject: "dns:acme.com",
+		Status: types.ClaimStatusVerified, VerifiedAt: time.Now().Add(-staleGrace - time.Hour),
+	}))
+
+	lookups.err = context.DeadlineExceeded
+
+	f.run()
+	assert.Equal(t, types.ClaimStatusFailed, f.result(cid, types.ClaimRoleOwner).GetStatus())
+}
+
+func TestRun_OneUnreadableBundleDoesNotFailOtherTrustDomains(t *testing.T) {
+	key, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+	require.NoError(t, err)
+
+	ca := newCA(t, "acme root")
+
+	f := newFixture(t, Config{SPIFFETrustBundles: []TrustBundle{
+		{TrustDomain: "other.org", BundleFile: filepath.Join(t.TempDir(), "nope.pem")},
+		{TrustDomain: "acme.com", BundleFile: writeBundle(t, ca)},
+	}})
+
+	cid := f.addRecord("spiffe", map[string]string{corev1.AnnotationKeyIdentity: spiffeID})
+	f.store.setReferrers(cid, signedReferrer(t, identityRole, cid, spiffeID, newSigner(t, key),
+		clientidentity.WithCertificate(ca.issue(t, key, time.Now().Add(time.Hour)))))
+
+	f.run()
+
+	assert.Equal(t, types.ClaimStatusVerified, f.result(cid, types.ClaimRoleIdentity).GetStatus())
+}
+
+func TestIsTransient(t *testing.T) {
+	wrapped := func(err error) error { return fmt.Errorf("fetch JWKS: %w", err) }
+
+	for name, tt := range map[string]struct {
+		err  error
+		want bool
+	}{
+		"deadline":           {wrapped(context.DeadlineExceeded), true},
+		"connection refused": {wrapped(&net.OpError{Op: "dial", Err: errors.New("refused")}), true},
+		"dns timeout":        {wrapped(&net.DNSError{Err: "i/o timeout", IsTimeout: true}), true},
+		"dns server failure": {wrapped(&net.DNSError{Err: "server misbehaving"}), true},
+		"500":                {wrapped(&safefetch.StatusError{Code: 500}), true},
+		"429":                {wrapped(&safefetch.StatusError{Code: 429}), true},
+		"dns no such host":   {wrapped(&net.DNSError{Err: "no such host", IsNotFound: true}), false},
+		"404":                {wrapped(&safefetch.StatusError{Code: 404}), false},
+		"disallowed address": {wrapped(fmt.Errorf("%w: x", safefetch.ErrDisallowedAddress)), false},
+		"no keys":            {wrapped(resolvers.ErrNoKeys), false},
+		"anything else":      {errors.New("parse JWKS"), false},
+	} {
+		t.Run(name, func(t *testing.T) {
+			assert.Equal(t, tt.want, isTransient(tt.err))
+		})
 	}
 }
 

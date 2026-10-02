@@ -28,11 +28,12 @@ import (
 var logger = logging.Logger("reconciler/identity")
 
 const (
-	// recordBatchSize is how many records are read from the database at a time.
-	recordBatchSize = 500
-
 	// maxErrorLength caps the failure reason stored with a result.
 	maxErrorLength = 1024
+
+	// staleGrace is how long a result outlives lookups that keep failing for
+	// reasons that say nothing about the claim, such as a subject being unreachable.
+	staleGrace = 7 * 24 * time.Hour
 )
 
 // claimKind is one of the two kinds of claim a record can carry.
@@ -55,9 +56,6 @@ type Task struct {
 	store    types.StoreAPI
 	refStore types.ReferrerStoreAPI
 	network  resolverSet
-
-	// batchSize is how many records are read from the database at a time.
-	batchSize int
 }
 
 // NewTask creates a new identity claim verification task.
@@ -68,8 +66,6 @@ func NewTask(config Config, db types.DatabaseAPI, store types.StoreAPI, refStore
 		store:    store,
 		refStore: refStore,
 		network:  newNetworkResolvers(),
-
-		batchSize: recordBatchSize,
 	}, nil
 }
 
@@ -94,28 +90,24 @@ func (t *Task) Run(ctx context.Context) error {
 
 	resolvers := t.network
 	resolvers.spiffe = spifferesolver.New(t.loadTrustBundles())
+	resolvers = resolvers.cached()
+
+	// The CIDs alone are enough, and a fixed list does not shift under paging.
+	cids, err := t.db.GetRecordCIDs()
+	if err != nil {
+		return fmt.Errorf("get record CIDs: %w", err)
+	}
 
 	var verified, failed int
 
-	for offset := 0; ; offset += t.batchSize {
-		records, err := t.db.GetRecords(types.WithLimit(t.batchSize), types.WithOffset(offset))
-		if err != nil {
-			return fmt.Errorf("get records: %w", err)
+	for _, cid := range cids {
+		if err := ctx.Err(); err != nil {
+			return fmt.Errorf("identity verification interrupted: %w", err)
 		}
 
-		for _, r := range records {
-			if err := ctx.Err(); err != nil {
-				return fmt.Errorf("identity verification interrupted: %w", err)
-			}
-
-			v, f := t.reconcileRecord(ctx, resolvers, r.GetCid())
-			verified += v
-			failed += f
-		}
-
-		if len(records) < t.batchSize {
-			break
-		}
+		v, f := t.reconcileRecord(ctx, resolvers, cid)
+		verified += v
+		failed += f
 	}
 
 	logger.Info("Identity claim verification complete", "verified", verified, "failed", failed)
@@ -123,17 +115,23 @@ func (t *Task) Run(ctx context.Context) error {
 	return nil
 }
 
-// loadTrustBundles reads the configured SPIFFE trust bundles. One that cannot be
-// read is left out, so its trust domain fails closed, rather than failing the run.
+// loadTrustBundles reads the configured SPIFFE trust bundles. A trust domain whose
+// bundle cannot be read is left out, so only its claims fail closed.
 func (t *Task) loadTrustBundles() x509bundle.Source {
-	bundles, err := spifferesolver.LoadBundles(t.config.trustDomains())
-	if err != nil {
-		logger.Error("Failed to load SPIFFE trust bundles; spiffe:// claims will not verify", "error", err)
+	var loaded []*x509bundle.Bundle
 
-		return x509bundle.NewSet()
+	for domain, path := range t.config.trustDomains() {
+		set, err := spifferesolver.LoadBundles(map[string]string{domain: path})
+		if err != nil {
+			logger.Error("Failed to load SPIFFE trust bundle; its spiffe:// claims will not verify", "trust_domain", domain, "error", err)
+
+			continue
+		}
+
+		loaded = append(loaded, set.Bundles()...)
 	}
 
-	return bundles
+	return x509bundle.NewSet(loaded...)
 }
 
 // reconcileRecord verifies the claims of one record and returns how many of its
@@ -171,8 +169,15 @@ func (t *Task) reconcileRecord(ctx context.Context, resolvers resolverSet, cid s
 			}
 		}
 
-		result := t.verify(ctx, resolvers, cid, annotations[kind.annotation], claims)
+		result, transient := t.verify(ctx, resolvers, cid, annotations[kind.annotation], claims)
 		result.Role = kind.role
+
+		// An unreachable subject does not say the claim is wrong, so the last result stands for a while.
+		if transient && t.previous(cid, kind.role, staleGrace) != nil {
+			logger.Warn("Keeping the last claim result: the subject could not be looked up", "cid", cid, "role", kind.role, "error", result.Error)
+
+			continue
+		}
 
 		if err := t.db.UpsertIdentityClaim(result); err != nil {
 			logger.Warn("Failed to store claim result", "cid", cid, "role", kind.role, "error", err)
@@ -254,11 +259,18 @@ func (t *Task) annotationsOf(ctx context.Context, cid string) (map[string]string
 
 // verify checks every claim of one kind against the subject the record declares,
 // and returns the result to store. A claim that verifies decides it, whoever else
-// attached claims to the record. Otherwise the newest claim's failure is the result.
-func (t *Task) verify(ctx context.Context, resolvers resolverSet, cid, expected string, claims []*identityv1.Claim) *gormdb.IdentityClaim {
-	var failure *gormdb.IdentityClaim
-
-	var failedAt string
+// attached claims to the record. Otherwise the newest claim's failure is the result,
+// and transient says whether any claim failed only because its subject could not
+// be looked up.
+//
+// A failure is stored under the subject the record declares, never the claim's own,
+// which anyone who can attach a referrer chooses and the subject filters would match.
+func (t *Task) verify(ctx context.Context, resolvers resolverSet, cid, expected string, claims []*identityv1.Claim) (*gormdb.IdentityClaim, bool) {
+	var (
+		result    *gormdb.IdentityClaim
+		transient bool
+		failedAt  string
+	)
 
 	for _, claim := range claims {
 		err := t.verifyClaim(ctx, resolvers, cid, expected, claim)
@@ -268,14 +280,16 @@ func (t *Task) verify(ctx context.Context, resolvers resolverSet, cid, expected 
 				Subject:    claim.GetSubject(),
 				Status:     types.ClaimStatusVerified,
 				VerifiedAt: time.Now(),
-			}
+			}, false
 		}
 
-		if failure == nil || claim.GetSignedAt() > failedAt {
+		transient = transient || isTransient(err)
+
+		if result == nil || claim.GetSignedAt() > failedAt {
 			failedAt = claim.GetSignedAt()
-			failure = &gormdb.IdentityClaim{
+			result = &gormdb.IdentityClaim{
 				RecordCID:  cid,
-				Subject:    claim.GetSubject(),
+				Subject:    expected,
 				Status:     types.ClaimStatusFailed,
 				Error:      truncate(err.Error()),
 				VerifiedAt: time.Now(),
@@ -283,7 +297,7 @@ func (t *Task) verify(ctx context.Context, resolvers resolverSet, cid, expected 
 		}
 	}
 
-	return failure
+	return result, transient
 }
 
 // verifyClaim looks up the current keys of the claim's subject and verifies the
@@ -324,9 +338,25 @@ func (t *Task) verifyClaim(ctx context.Context, resolvers resolverSet, cid, expe
 // its record, so the record does not keep a verified status for a claim it no
 // longer has.
 func (t *Task) dropResult(cid, role string) {
+	// Most records have no claims, so check before writing.
+	if t.previous(cid, role, 0) == nil {
+		return
+	}
+
 	if err := t.db.DeleteIdentityClaim(cid, role); err != nil {
 		logger.Warn("Failed to remove stale claim result", "cid", cid, "role", role, "error", err)
 	}
+}
+
+// previous returns the stored result of a record's claim, or nil if there is none
+// or it was last checked more than maxAge ago (0 means any age).
+func (t *Task) previous(cid, role string, maxAge time.Duration) types.IdentityClaimObject {
+	prev, err := t.db.GetIdentityClaimByCID(cid, role)
+	if err != nil || (maxAge > 0 && time.Since(prev.GetVerifiedAt()) > maxAge) {
+		return nil
+	}
+
+	return prev
 }
 
 func truncate(msg string) string {
