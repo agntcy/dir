@@ -71,7 +71,7 @@ explicit `--auth-mode`.
 | Group | Commands |
 |-------|----------|
 | Setup | `init` |
-| Daemon | `daemon start`, `stop`, `status`, `config init` |
+| Daemon | `daemon start`, `stop`, `status`, `config init`, `policy dry-run` |
 | Auth | `auth login`, `logout`, `status` |
 | Context | `context list`, `current`, `set`, `show`, `validate` |
 | Storage | `push`, `pull`, `delete`, `info` |
@@ -751,6 +751,51 @@ Without `--output`, the file is written to the daemon's resolved config path: `<
 
     # Overwrite an existing config file
     dirctl daemon config init --force
+    ```
+
+### `dirctl daemon policy dry-run`
+
+Tries a candidate [content policy](dir-content-policy-enforcement.md) on the daemon's records without deploying it, and reports how many records it would exclude, a sample of them, and the reasons. Run it before putting a policy in the configuration: under strict enforcement a policy that rejects too much hides those records until it is fixed.
+
+Nothing is stored. No verdict is written and no policy version is registered, so what the daemon serves does not change. The records are read from the daemon's database and from its registry, so the daemon has to be running; the command refuses to start, and says so, when nothing answers. Run it with the same `dirctl` as the daemon, since opening the database applies the migrations it is missing.
+
+The candidate is a file with a `validators` list, as in the configuration, whose entries have `op: ["evaluate"]`. It is checked before the daemon is touched. A record the policy cannot judge, or that cannot be read, counts as excluded, as it would under enforcement.
+
+| Flag | Description | Default |
+|------|-------------|---------|
+| `--candidate` | File that defines the policy to try (required) | |
+| `--policy-dir` | Directory the candidate's OPA (`.rego`) files are read from | The daemon's policy directory |
+| `--policy` | Try only the policy with this ID, such as `opa:require-license` | Every policy in the file |
+| `--samples` | How many of the records a policy would exclude to list | `10` |
+| `--output`, `-o` | Format of the report: `human` or `json` | `human` |
+| `--data-dir` | Data directory for daemon state | `~/.agntcy/dir/` |
+| `--config` | Path to daemon config file | Built-in embedded defaults |
+
+??? example
+
+    ```bash
+    # Try a CEL policy kept in a scratch file
+    dirctl daemon policy dry-run --candidate ./candidate.yaml
+
+    # Try an OPA policy kept next to its candidate file, and list 25 of the records it would exclude
+    dirctl daemon policy dry-run --candidate ./candidate.yaml --policy-dir ./candidate-policies --samples 25
+
+    # The same, as JSON
+    dirctl daemon policy dry-run --candidate ./candidate.yaml --output json
+    ```
+
+    ```text
+    Policy cel:has-description, version 87ac6c3e1834af20
+      Evaluated:      1204 records
+      Would pass:     1190
+      Would exclude:  14 (12 rejected by the policy, 2 it could not evaluate)
+
+      Records it would exclude (first 10 of 14; --samples lists more):
+        baeareiaik2d74qrz...  ERROR: CEL expression evaluated to false: record.description != ""
+        ...
+
+    Nothing was stored: no verdict was written and no policy version registered,
+    so what this node serves is unchanged.
     ```
 
 ## Context Operations

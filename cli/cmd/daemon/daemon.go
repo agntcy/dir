@@ -185,7 +185,10 @@ Examples:
   dirctl daemon stop
 
   # Check daemon status
-  dirctl daemon status`,
+  dirctl daemon status
+
+  # Try a candidate content policy on the daemon's records without deploying it
+  dirctl daemon policy dry-run --candidate ./candidate.yaml`,
 	// Override root PersistentPreRunE: daemon IS the server, no client needed.
 	PersistentPreRunE: func(_ *cobra.Command, _ []string) error {
 		return nil
@@ -208,5 +211,6 @@ func init() {
 		stopCmd,
 		statusCmd,
 		configCmd,
+		policyCmd,
 	)
 }
