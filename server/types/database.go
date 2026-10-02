@@ -402,6 +402,13 @@ type PolicyEvaluationDatabaseAPI interface {
 	// ran most recently, and whether any evaluator has registered it.
 	GetCurrentPolicyVersion(policyID string) (string, bool, error)
 
+	// RecordServabilityAPI is the policy gate for reads that fetch by CID.
+	RecordServabilityAPI
+}
+
+// RecordServabilityAPI is the policy gate for reads that fetch a record by CID
+// rather than searching: the store and AI Finder APIs, and the peer RPC.
+type RecordServabilityAPI interface {
 	// IsRecordServable reports whether a record fetched directly by CID may
 	// be returned: always when no policy is enforced, otherwise only if it
 	// complies with every enforced policy.
