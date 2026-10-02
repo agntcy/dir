@@ -20,6 +20,11 @@ import (
 
 const testLocalPeerID = "local-peer"
 
+// servesEverything is the policy gate with no policy enforced.
+type servesEverything struct{}
+
+func (servesEverything) IsRecordServable(string) (bool, error) { return true, nil }
+
 //nolint:revive
 func newTestServer(t *testing.T, ctx context.Context, bootPeers []string) *route {
 	t.Helper()
@@ -51,7 +56,7 @@ func newTestServer(t *testing.T, ctx context.Context, bootPeers []string) *route
 
 	// create example server
 	// Autosync is disabled in these tests, so no ingestion service or validator is required.
-	r, err := New(ctx, s, nil, nil, opts)
+	r, err := New(ctx, s, nil, nil, servesEverything{}, opts)
 	assert.NoError(t, err)
 
 	// check the type assertion

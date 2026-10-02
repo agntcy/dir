@@ -282,7 +282,7 @@ func New(ctx context.Context, cfg *config.Config, opts ...ServerOption) (*Server
 	// records/referrers (content store + search index + referrer DB state).
 	ingestor := ingest.New(storeAPI, databaseAPI)
 
-	routingAPI, err := routing.New(ctx, storeAPI, ingestor, validatorRegistry, options)
+	routingAPI, err := routing.New(ctx, storeAPI, ingestor, validatorRegistry, databaseAPI, options)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create routing: %w", err)
 	}
