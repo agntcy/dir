@@ -169,6 +169,16 @@ func (w *Worker) announceToDHT(ctx context.Context, cid string) error {
 		Cid: cid,
 	}
 
+	// A record the policy gate excludes is not announced.
+	servable, err := w.db.IsRecordServable(cid)
+	if err != nil {
+		return fmt.Errorf("check record against enforced policies: %w", err)
+	}
+
+	if !servable {
+		return fmt.Errorf("record not announced: %w", types.RecordExcludedError(cid))
+	}
+
 	// Pull the record from the store
 	record, err := w.store.Pull(ctx, recordRef)
 	if err != nil {

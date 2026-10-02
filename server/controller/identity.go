@@ -54,6 +54,12 @@ func (c *identityCtrl) GetIdentityStatus(_ context.Context, req *identityv1.GetI
 		cid = records[0].GetCid()
 	}
 
+	// A record the policy gate excludes is refused as on every other read by
+	// CID: its claims are not disclosed either.
+	if err := checkRecordServable(c.db, cid); err != nil {
+		return nil, err
+	}
+
 	identity, err := c.claimVerification(cid, types.ClaimRoleIdentity)
 	if err != nil {
 		return nil, err

@@ -39,6 +39,19 @@ type fakeIdentityDB struct {
 	claimErr   error
 	recordsErr error
 	gotFilters types.RecordFilters
+
+	// withheld lists the CIDs the policy gate excludes, and gateErr is what it
+	// answers when it cannot decide.
+	withheld map[string]bool
+	gateErr  error
+}
+
+func (f *fakeIdentityDB) IsRecordServable(cid string) (bool, error) {
+	if f.gateErr != nil {
+		return false, f.gateErr
+	}
+
+	return !f.withheld[cid], nil
 }
 
 func (f *fakeIdentityDB) GetRecords(opts ...types.FilterOption) ([]coretypes.Record, error) {

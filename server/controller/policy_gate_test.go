@@ -12,11 +12,14 @@ import (
 	"errors"
 	"io"
 	"testing"
+	"time"
 
 	catalogv1 "github.com/agntcy/dir/api/catalog/v1"
 	corev1 "github.com/agntcy/dir/api/core/v1"
+	identityv1 "github.com/agntcy/dir/api/identity/v1"
 	storev1 "github.com/agntcy/dir/api/store/v1"
 	"github.com/agntcy/dir/server/config"
+	gormdb "github.com/agntcy/dir/server/database/gorm"
 	"github.com/agntcy/dir/server/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -293,4 +296,73 @@ func TestExportAgent_ExcludedRecordIsReportedAsExcluded(t *testing.T) {
 	assert.Equal(t, excludedMessage(""), status.Convert(exErr).Message(), "no policy or reason in it")
 	assert.Equal(t, codes.NotFound, status.Code(missErr))
 	assert.Zero(t, exStore.reads, "the store must not be read for an excluded record")
+}
+
+// --- GetIdentityStatus ---
+
+func withClaim(db *fakeIdentityDB, cid string) {
+	db.claims[cid+"/"+types.ClaimRoleIdentity] = &gormdb.IdentityClaim{
+		RecordCID: cid, Role: types.ClaimRoleIdentity, Subject: "did:web:acme.com:agent",
+		Status: types.ClaimStatusVerified, VerifiedAt: time.Now(),
+	}
+}
+
+// An excluded record's claims are not disclosed: the caller is told the record
+// is not available under the node's content policy.
+func TestGetIdentityStatus_ExcludedRecordIsReportedAsExcluded(t *testing.T) {
+	t.Parallel()
+
+	db := newFakeIdentityDB()
+	withClaim(db, "cid-v1")
+	db.withheld = map[string]bool{"cid-v1": true}
+
+	resp, err := NewIdentityController(db).GetIdentityStatus(t.Context(), &identityv1.GetIdentityStatusRequest{Cid: new("cid-v1")})
+
+	require.Error(t, err)
+	assert.Nil(t, resp)
+	assert.Equal(t, codes.PermissionDenied, status.Code(err))
+	assert.Equal(t, status.Convert(types.RecordExcludedError("cid-v1")).Message(), status.Convert(err).Message(), "no policy or reason in it")
+}
+
+// A name resolves to a CID, and the CID is checked like one given directly.
+func TestGetIdentityStatus_ExcludedRecordFoundByNameIsReportedAsExcluded(t *testing.T) {
+	t.Parallel()
+
+	db := newFakeIdentityDB()
+	withClaim(db, "cid-v2")
+	db.withheld = map[string]bool{"cid-v2": true}
+
+	_, err := NewIdentityController(db).GetIdentityStatus(t.Context(), &identityv1.GetIdentityStatusRequest{Name: new("acme.com/agent")})
+
+	require.Error(t, err)
+	assert.Equal(t, codes.PermissionDenied, status.Code(err))
+}
+
+func TestGetIdentityStatus_ServableRecordIsDisclosed(t *testing.T) {
+	t.Parallel()
+
+	db := newFakeIdentityDB()
+	withClaim(db, "cid-v1")
+	db.withheld = map[string]bool{"cid-v2": true}
+
+	resp, err := NewIdentityController(db).GetIdentityStatus(t.Context(), &identityv1.GetIdentityStatusRequest{Cid: new("cid-v1")})
+
+	require.NoError(t, err)
+	assert.NotNil(t, resp.GetIdentity())
+}
+
+// When the gate cannot decide, nothing is disclosed.
+func TestGetIdentityStatus_GateErrorFailsClosed(t *testing.T) {
+	t.Parallel()
+
+	db := newFakeIdentityDB()
+	withClaim(db, "cid-v1")
+	db.gateErr = errors.New("database unavailable")
+
+	resp, err := NewIdentityController(db).GetIdentityStatus(t.Context(), &identityv1.GetIdentityStatusRequest{Cid: new("cid-v1")})
+
+	require.Error(t, err)
+	assert.Nil(t, resp)
+	assert.Equal(t, codes.Internal, status.Code(err))
+	assert.NotContains(t, err.Error(), "database unavailable", "the cause stays in the log")
 }
