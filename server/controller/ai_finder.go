@@ -45,6 +45,7 @@ const (
 type aiFinderDatabaseAPI interface {
 	types.CatalogDatabaseAPI
 	GetRecordCIDs(opts ...types.FilterOption) ([]string, error)
+	IsRecordServable(cid string) (bool, error)
 }
 
 // aiFinderController adapts the AI Finder query language to the catalog query
@@ -289,7 +290,14 @@ func (c *aiFinderController) ExportAgent(ctx context.Context, req *catalogv1.Exp
 		return nil, status.Errorf(codes.Canceled, "%v", err)
 	}
 
-	record, err := c.store.Pull(ctx, &corev1.RecordRef{Cid: cid})
+	// A record the policy gate excludes fails with the status that says so.
+	var record *corev1.Record
+
+	err = checkRecordServable(c.db, cid)
+	if err == nil {
+		record, err = c.store.Pull(ctx, &corev1.RecordRef{Cid: cid})
+	}
+
 	if err != nil {
 		st := status.Convert(err)
 		if st.Code() == codes.Unknown {

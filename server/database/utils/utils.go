@@ -259,6 +259,31 @@ func QueryToFilters(queries []*searchv1.RecordQuery) ([]types.FilterOption, erro
 		case searchv1.RecordQueryType_RECORD_QUERY_TYPE_SCAN_SAFE:
 			options = append(options, types.WithScanSafe(strings.EqualFold(query.GetValue(), "true") != query.GetNegate()))
 
+		case searchv1.RecordQueryType_RECORD_QUERY_TYPE_IDENTITY, searchv1.RecordQueryType_RECORD_QUERY_TYPE_OWNER:
+			if query.GetNegate() {
+				return nil, fmt.Errorf("%s does not support negation", query.GetType())
+			}
+
+			if strings.TrimSpace(query.GetValue()) != "" {
+				withSubjects := types.WithIdentities
+				if query.GetType() == searchv1.RecordQueryType_RECORD_QUERY_TYPE_OWNER {
+					withSubjects = types.WithOwners
+				}
+
+				options = append(options, withSubjects(query.GetValue()))
+			}
+
+		case searchv1.RecordQueryType_RECORD_QUERY_TYPE_IDENTITY_VERIFIED, searchv1.RecordQueryType_RECORD_QUERY_TYPE_OWNER_VERIFIED:
+			if query.GetNegate() || !strings.EqualFold(query.GetValue(), "true") {
+				return nil, fmt.Errorf("%s only supports the value \"true\"", query.GetType())
+			}
+
+			if query.GetType() == searchv1.RecordQueryType_RECORD_QUERY_TYPE_IDENTITY_VERIFIED {
+				options = append(options, types.WithIdentityVerified())
+			} else {
+				options = append(options, types.WithOwnerVerified())
+			}
+
 		case searchv1.RecordQueryType_RECORD_QUERY_TYPE_DESCRIPTION:
 			if strings.TrimSpace(query.GetValue()) != "" {
 				options = append(options, choose(query.GetNegate(), types.WithDescriptions, types.WithoutDescriptions)(query.GetValue()))

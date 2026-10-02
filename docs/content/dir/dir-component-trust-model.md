@@ -77,23 +77,17 @@ Directory supports several signing flows depending on the environment:
 For CLI walkthroughs of each method, see
 [Usage Guide — Signing and Verification](dir-features-scenarios.md#signing-and-verification).
 
-### Name verification
+### Identity and ownership claims
 
-Name verification proves that the signing key is authorized by the domain claimed in the
-record's `name` field. This provides cryptographic proof of domain ownership and enables
-human-readable references while maintaining security.
+A record can carry signed claims that a subject, such as `did:web:acme.com` or
+`dns:acme.com`, is the record's own identity or its owner. A claim is stored as an OCI
+referrer of the record. The reconciler verifies it against the key material the subject
+publishes (a DNS TXT record, a `/.well-known/jwks.json` file, a DID document, or a SPIFFE
+trust bundle) and records the outcome, which `dirctl identity status` reports and the
+`--identity-verified`, `--owner-verified` and `--verified` search filters match on.
 
-A record qualifies for name verification when:
-
-- The record name includes a protocol prefix: `https://domain/path` or `http://domain/path`.
-- A [JWKS (JSON Web Key Set)](https://datatracker.ietf.org/doc/html/rfc7517) file is hosted
-  at `<scheme>://<domain>/.well-known/jwks.json`.
-- The record is signed with the private key corresponding to a public key present in that
-  JWKS file.
-
-Once a name is verified, records can be referenced using Docker-style name references
-(`name`, `name:version`, `name:version@cid`) instead of raw CIDs. See
-[Records](dir-component-records-validation.md) for the verifiable name model.
+Records can also be referenced using Docker-style name references (`name`, `name:version`,
+`name:version@cid`) instead of raw CIDs.
 
 ## Security Scanning
 

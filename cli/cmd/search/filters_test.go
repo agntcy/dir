@@ -65,6 +65,15 @@ var valueFilterFlags = []struct {
 	{"scan-failure-reason", searchv1.RecordQueryType_RECORD_QUERY_TYPE_SCAN_FAILURE_REASON},
 }
 
+// claimSubjectFlags are value filters with no --exclude- twin.
+var claimSubjectFlags = []struct {
+	flag      string
+	queryType searchv1.RecordQueryType
+}{
+	{"identity", searchv1.RecordQueryType_RECORD_QUERY_TYPE_IDENTITY},
+	{"owner", searchv1.RecordQueryType_RECORD_QUERY_TYPE_OWNER},
+}
+
 // Every value filter must register an --exclude- twin. This walks the real flag
 // set rather than the table above, so a filter added to valueFilters without its
 // exclude counterpart fails here even if nobody updates the test table.
@@ -73,7 +82,10 @@ func TestEveryValueFilterHasAnExcludeTwin(t *testing.T) {
 	RegisterFilterFlags(cmd, &Filters{})
 
 	// Booleans are negated with the tri-state =false form, not an exclude flag.
-	triState := map[string]bool{"verified": true, "trusted": true, "safe": true, "help": true}
+	triState := map[string]bool{
+		"verified": true, "trusted": true, "safe": true, "identity-verified": true, "owner-verified": true, "help": true,
+		"identity": true, "owner": true,
+	}
 
 	var missing []string
 
@@ -91,7 +103,7 @@ func TestEveryValueFilterHasAnExcludeTwin(t *testing.T) {
 }
 
 func TestBuildQueriesIncludeFlags(t *testing.T) {
-	for _, test := range valueFilterFlags {
+	for _, test := range append(valueFilterFlags, claimSubjectFlags...) {
 		t.Run(test.flag, func(t *testing.T) {
 			queries := BuildQueries(parseFilters(t, "--"+test.flag, "someValue"))
 
@@ -242,6 +254,8 @@ func TestBuildQueriesBooleanFiltersAreTriState(t *testing.T) {
 		{"trusted false", "--trusted=false", searchv1.RecordQueryType_RECORD_QUERY_TYPE_TRUSTED, "false"},
 		{"safe true", "--safe", searchv1.RecordQueryType_RECORD_QUERY_TYPE_SCAN_SAFE, "true"},
 		{"safe false", "--safe=false", searchv1.RecordQueryType_RECORD_QUERY_TYPE_SCAN_SAFE, "false"},
+		{"identity verified true", "--identity-verified", searchv1.RecordQueryType_RECORD_QUERY_TYPE_IDENTITY_VERIFIED, "true"},
+		{"owner verified true", "--owner-verified", searchv1.RecordQueryType_RECORD_QUERY_TYPE_OWNER_VERIFIED, "true"},
 	}
 
 	for _, test := range tests {
@@ -313,4 +327,14 @@ func TestBuildQueriesWithoutFlagSetEmitsOnlyTrueBooleans(t *testing.T) {
 
 	require.Len(t, queries, 1)
 	assert.Equal(t, "true", queryValue(queries, searchv1.RecordQueryType_RECORD_QUERY_TYPE_TRUSTED))
+}
+
+func TestClaimFiltersHaveNoExcludeOrFalseForm(t *testing.T) {
+	cmd := &cobra.Command{Use: "search"}
+	RegisterFilterFlags(cmd, &Filters{})
+
+	assert.Nil(t, cmd.Flags().Lookup("exclude-identity"))
+	assert.Nil(t, cmd.Flags().Lookup("exclude-owner"))
+
+	assert.Empty(t, BuildQueries(parseFilters(t, "--identity-verified=false", "--owner-verified=false")))
 }

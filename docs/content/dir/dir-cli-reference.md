@@ -78,7 +78,8 @@ explicit `--auth-mode`.
 | Import / Export | `import`, `export` |
 | Routing | `routing publish`, `unpublish`, `list`, `search`, `info` |
 | Search | `search` |
-| Security | `sign`, `verify`, `validate`, `naming verify` |
+| Security | `sign`, `verify`, `validate` |
+| Identity | `identity claim`, `status`, `resolve` |
 | Sync | `sync create`, `status`, `list`, `delete` |
 | Events | `events listen` |
 | MCP | `mcp serve` |
@@ -656,8 +657,6 @@ The daemon ships with sensible built-in defaults. To customize, pass a YAML conf
         scheduler_interval: 5m
         worker_count: 1
         worker_timeout: 30m
-      naming:
-        ttl: 168h
 
 
     reconciler:
@@ -668,11 +667,6 @@ The daemon ships with sensible built-in defaults. To customize, pass a YAML conf
         enabled: true
         interval: 1m
       signature:
-        enabled: true
-        interval: 1m
-        ttl: 168h
-        record_timeout: 30s
-      name:
         enabled: true
         interval: 1m
         ttl: 168h
@@ -1699,20 +1693,24 @@ Omit the positional argument and use filter flags to query specific fields. All 
 | `--schema-version` | OASF schema version |
 | `--module-id` | Module ID |
 | `--annotation` | Annotation key=value |
-| `--verified` | Only verified records; `--verified=false` for records without verified name ownership |
+| `--identity` | Subject of the record's identity claim (wildcards, e.g. `did:web:acme.com:*`) |
+| `--owner` | Subject of the record's ownership claim (wildcards, e.g. `did:web:acme.com`) |
+| `--verified` | Only verified records; `--verified=false` for records without one. Same as `--owner-verified` |
 | `--trusted` | Only trusted records (signature verification passed); `--trusted=false` for records without a trusted signature |
 | `--safe` | Only records where all security scanners reported `is_safe=true`; `--safe=false` for records where at least one scanner did not |
 | `--scan-severity` | Only records whose highest scan severity meets or exceeds a threshold (`NONE`, `INFO`, `LOW`, `MEDIUM`, `HIGH`, `CRITICAL`) |
+| `--identity-verified` | Only records whose identity claim was verified |
+| `--owner-verified` | Only records whose ownership claim was verified |
 
-`--verified`, `--trusted` and `--safe` are tri-state: omitting the flag does not filter on that property at all, while an explicit `=false` filters for records that failed the check.
+`--verified`, `--trusted` and `--safe` are tri-state: omitting the flag does not filter on that property at all, while an explicit `=false` filters for records that failed the check. `--identity-verified` and `--owner-verified` only filter when set; `=false` is not a filter.
 
 **Exclude flags:**
 
-Every filter above except the three booleans has an `--exclude-` twin —
+Every filter above except the booleans has an `--exclude-` twin —
 `--exclude-name`, `--exclude-version`, `--exclude-skill-id`, `--exclude-skill`,
 `--exclude-locator`, `--exclude-module`, `--exclude-domain-id`, `--exclude-domain`,
 `--exclude-created-at`, `--exclude-author`, `--exclude-schema-version`,
-`--exclude-module-id`, `--exclude-annotation` and `--exclude-scan-severity`. Each is
+`--exclude-module-id`, `--exclude-annotation` and `--exclude-scan-severity`. `--identity` and `--owner` have no exclude form. Each is
 repeatable and takes the same values as the flag it mirrors; wildcards, comparison
 operators and `:` behave identically, and `!` is an ordinary character.
 
@@ -1817,36 +1815,9 @@ dirctl search --safe --scan-severity MEDIUM
 
 A record appears in `--safe` results only when at least one scanner has run and no scanner has reported `is_safe=false`. Records where all scanners were skipped (no source repo, no skill bundle, no A2A AgentCard) are not included.
 
-### Name Verification
-
-Record name verification proves that the signing key is authorized by the domain claimed in the record's name field.
-
-**Requirements:**
-
-- Record name must include a protocol prefix: `https://domain/path` or `http://domain/path`
-- A JWKS file must be hosted at `<scheme>://<domain>/.well-known/jwks.json`
-- The record must be signed with the private key corresponding to a public key present in that JWKS file
-
-**Workflow:**
-
-1. Push a record with a verifiable name.
-
-    ```bash
-    dirctl push record.json --output raw
-    # Returns: bafyreib...
-    ```
-
-2. Sign the record (triggers automatic verification).
-
-    ```bash
-    dirctl sign <cid> --key private.key
-    ```
-
-3. Check verification status using [`dirctl naming verify`](#dirctl-naming-verify-reference).
-
 ### `dirctl sign <cid> [flags]`
 
-Signs records for integrity and authenticity. When signing a record with a verifiable name (e.g., `https://domain/path`), the system automatically attempts to verify domain authorization via JWKS. See [Name Verification](#name-verification) for details.
+Signs records for integrity and authenticity.
 
 For encrypted private keys, `COSIGN_PASSWORD` is used when it is set, including when
 it is explicitly empty. Use `--password-stdin` to opt in to reading a password from
@@ -1891,42 +1862,69 @@ Configure the selected provider's credentials before running `dirctl`.
     dirctl sign <cid> --key "gcpkms://projects/PROJECT/locations/LOCATION/keyRings/RING/cryptoKeys/KEY"
     ```
 
-### `dirctl naming verify <reference>`
+### `dirctl identity claim [flags]`
 
-Verifies that a record's signing key is authorized by the domain claimed in its name field. Checks if the signing key matches a public key in the domain's JWKS file hosted at `/.well-known/jwks.json`.
+Signs a claim that the subject a record declares in its `agntcy.dir/identity` annotation is its own identity (`--role identity`), or that the subject it declares in `agntcy.dir/owner` is its owner (`--role owner`), and attaches the claim to the record. The subject is read from the record, so the record must carry the annotation for the role. The claim is stored unverified: the server checks it later, and [`dirctl identity status`](#dirctl-identity-status-reference) shows the outcome.
 
-**Supported Reference Formats:**
+| Flag | Description |
+|------|-------------|
+| `--record` | Record to claim: CID, name or `name:version` (required) |
+| `--role` | `identity` or `owner` (required) |
+| `--key` | Path to the PEM private key to sign with (required) |
+| `--password-stdin` | Read the key password from standard input |
+| `--cert` | PEM or DER certificate of the key; only for `spiffe://` subjects |
 
-| Format | Description |
-|--------|-------------|
-| `<cid>` | Verify by content address |
-| `<name>` | Verify the highest version (see **Version Resolution** under `dirctl pull`) |
-| `<name>:<version>` | Verify a specific version |
+The key is an EC, RSA or Ed25519 private key in PEM form, unencrypted or an encrypted PKCS#8 key (`ENCRYPTED PRIVATE KEY`). Its public half is what the subject publishes: a DNS TXT record for `dns:` subjects, `/.well-known/jwks.json` for `https://` subjects, the DID document for `did:web:`, or the DID itself for `did:key:`. For an encrypted key, the password is read from `COSIGN_PASSWORD`, from standard input with `--password-stdin` (a trailing line break is ignored), or prompted for on a terminal. A key that is not encrypted is never prompted for.
+
+`--cert` is independent of `--key` and is only for `spiffe://` subjects, whose proof is the signer's X.509-SVID rather than a published key. The certificate's URI SAN must be the declared subject. A `spiffe://` subject needs `--cert`, and no other subject accepts it.
 
 ??? example
 
     ```bash
-    # Verify by CID
-    dirctl naming verify bafyreib... --output json
+    # Claim a record's identity
+    dirctl identity claim --record <cid> --role identity --key identity.key
 
-    # Verify by name (latest version)
-    dirctl naming verify cisco.com/agent --output json
+    # Claim ownership of the latest version of a name, with an encrypted key
+    COSIGN_PASSWORD=secret dirctl identity claim --record cisco.com/agent \
+      --role owner --key owner.key
 
-    # Verify by name with specific version
-    dirctl naming verify cisco.com/agent:v1.0.0 --output json
+    # Claim a SPIFFE identity
+    dirctl identity claim --record <cid> --role identity --key svid.key --cert svid.pem
     ```
 
-    Example verification response:
+### `dirctl identity status <reference>`
 
-    ```json
-    {
-    "cid": "bafyreib...",
-    "verified": true,
-    "domain": "cisco.com",
-    "method": "jwks",
-    "key_id": "key-1",
-    "verified_at": "2026-01-21T10:30:00Z"
-    }
+Shows the last verification result of a record's identity and ownership claims. Each is `verified`, `failed` (with the reason), or `no result` when it has not been verified yet. A record without claims is not an error. The reference is a CID, a name, or `name:version`.
+
+Claims are verified by the reconciler's `identity` task, which is off unless enabled (`reconciler.identity.enabled: true`, or `RECONCILER_IDENTITY_ENABLED=true` for a standalone reconciler; the daemon's default config enables it). On every run, at `reconciler.identity.interval` (default `1h`), it looks up the current key material of each claim's subject and checks the claim against it, so a rotated key or a revoked trust bundle shows up as `failed` on the next run. A claim only verifies when its subject is the one the record declares in its `agntcy.dir/identity` (identity claim) or `agntcy.dir/owner` (ownership claim) annotation. If a record carries several claims of one role, a verified one decides the result.
+
+A `spiffe://` claim is validated against the trust bundle of its trust domain, which has to be configured in YAML; with none, it fails:
+
+```yaml
+reconciler:
+  identity:
+    enabled: true
+    spiffe_trust_bundles:
+      - trust_domain: acme.com
+        bundle_file: /etc/agntcy/spiffe/acme.com.pem
+```
+
+??? example
+
+    ```bash
+    dirctl identity status <cid>
+    dirctl identity status cisco.com/agent:v1.0.0 --output json
+    ```
+
+### `dirctl identity resolve <name[:version]>`
+
+Resolves a record name to the CIDs of its versions, newest first. With a version, only that version. `--output raw` prints only the CIDs.
+
+??? example
+
+    ```bash
+    dirctl identity resolve cisco.com/agent
+    dirctl identity resolve cisco.com/agent:v1.0.0 --output json
     ```
 
 ### `dirctl verify <record-cid> [flags]`

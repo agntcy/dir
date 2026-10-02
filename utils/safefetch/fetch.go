@@ -34,6 +34,16 @@ const (
 // non-public address (private, loopback, link-local, and so on).
 var ErrDisallowedAddress = errors.New("target address is not allowed")
 
+// StatusError is returned for any response other than 200 OK.
+type StatusError struct {
+	URL  string
+	Code int
+}
+
+func (e *StatusError) Error() string {
+	return fmt.Sprintf("fetch %s: unexpected status %d", e.URL, e.Code)
+}
+
 // reservedPrefixes are non-public ranges that netip's own predicates don't
 // cover. 100.64.0.0/10 hosts some clouds' metadata endpoints, and the IPv6
 // transition ranges (NAT64, 6to4, Teredo) can embed or translate to a blocked
@@ -131,7 +141,7 @@ func (c *Client) Get(ctx context.Context, rawURL string) ([]byte, error) {
 	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("fetch %s: unexpected status %d", rawURL, resp.StatusCode)
+		return nil, &StatusError{URL: rawURL, Code: resp.StatusCode}
 	}
 
 	body, err := io.ReadAll(io.LimitReader(resp.Body, c.maxBytes+1))

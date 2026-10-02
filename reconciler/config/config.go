@@ -9,15 +9,16 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/agntcy/dir/reconciler/recordevents"
+	"github.com/agntcy/dir/reconciler/tasks/identity"
 	"github.com/agntcy/dir/reconciler/tasks/indexer"
 	"github.com/agntcy/dir/reconciler/tasks/metrics"
-	"github.com/agntcy/dir/reconciler/tasks/name"
+	policytask "github.com/agntcy/dir/reconciler/tasks/policy"
 	"github.com/agntcy/dir/reconciler/tasks/regsync"
 	"github.com/agntcy/dir/reconciler/tasks/scan"
 	"github.com/agntcy/dir/reconciler/tasks/signature"
 	authnconfig "github.com/agntcy/dir/server/authn/config"
 	dbconfig "github.com/agntcy/dir/server/database/config"
-	namingconfig "github.com/agntcy/dir/server/naming/config"
 	policy "github.com/agntcy/dir/server/policy/config"
 	ociconfig "github.com/agntcy/dir/server/store/oci/config"
 	validators "github.com/agntcy/dir/server/validators/config"
@@ -75,17 +76,26 @@ type Config struct {
 	// Indexer holds the indexer task configuration.
 	Indexer indexer.Config `json:"indexer" mapstructure:"indexer"`
 
-	// Name holds the name (name/DNS verification) task configuration.
-	Name name.Config `json:"name" mapstructure:"name"`
-
 	// Signature holds the signature verification task configuration.
 	Signature signature.Config `json:"signature" mapstructure:"signature"`
 
 	// Scan holds the security scan task configuration.
 	Scan scan.Config `json:"scan" mapstructure:"scan"`
 
+	// Identity holds the identity claim verification task configuration.
+	Identity identity.Config `json:"identity" mapstructure:"identity"`
+
 	// Metrics holds the usage-metrics refresh task configuration.
 	Metrics metrics.Config `json:"metrics" mapstructure:"metrics"`
+
+	// PolicyEvaluation holds the policy evaluation task configuration. It is
+	// not under policy, which is the policy directory the server uses too.
+	PolicyEvaluation policytask.Config `json:"policy_evaluation" mapstructure:"policy_evaluation"`
+
+	// RecordEvents holds how the reconciler reacts to records arriving on the
+	// server, so the indexer and the policy task run when there is something
+	// for them instead of at their next interval.
+	RecordEvents recordevents.Config `json:"record_events" mapstructure:"record_events"`
 }
 
 // LoadConfig loads the configuration from file and environment variables.
@@ -182,21 +192,6 @@ func LoadConfig() (*Config, error) {
 	v.SetDefault("indexer.interval", indexer.DefaultInterval)
 
 	//
-	// Name task configuration (name/DNS verification)
-	//
-	_ = v.BindEnv("name.enabled")
-	v.SetDefault("name.enabled", false)
-
-	_ = v.BindEnv("name.interval")
-	v.SetDefault("name.interval", name.DefaultInterval)
-
-	_ = v.BindEnv("name.ttl")
-	v.SetDefault("name.ttl", namingconfig.DefaultTTL)
-
-	_ = v.BindEnv("name.record_timeout")
-	v.SetDefault("name.record_timeout", name.DefaultRecordTimeout)
-
-	//
 	// Signature task configuration (signature verification cache)
 	//
 	_ = v.BindEnv("signature.enabled")
@@ -210,6 +205,20 @@ func LoadConfig() (*Config, error) {
 
 	_ = v.BindEnv("signature.record_timeout")
 	v.SetDefault("signature.record_timeout", signature.DefaultRecordTimeout)
+
+	//
+	// Identity task configuration (identity and ownership claim verification).
+	// The trust bundles for spiffe:// claims are a list, which has no
+	// environment variable form: set identity.spiffe_trust_bundles in YAML.
+	//
+	_ = v.BindEnv("identity.enabled")
+	v.SetDefault("identity.enabled", false)
+
+	_ = v.BindEnv("identity.interval")
+	v.SetDefault("identity.interval", identity.DefaultInterval)
+
+	_ = v.BindEnv("identity.record_timeout")
+	v.SetDefault("identity.record_timeout", identity.DefaultRecordTimeout)
 
 	//
 	// Scan task configuration (security scanning)
@@ -243,6 +252,33 @@ func LoadConfig() (*Config, error) {
 
 	_ = v.BindEnv("metrics.interval")
 	v.SetDefault("metrics.interval", metrics.DefaultInterval)
+
+	//
+	// Policy evaluation task configuration (content-policy verdicts)
+	//
+	_ = v.BindEnv("policy_evaluation.enabled")
+	v.SetDefault("policy_evaluation.enabled", false)
+
+	_ = v.BindEnv("policy_evaluation.interval")
+	v.SetDefault("policy_evaluation.interval", policytask.DefaultInterval)
+
+	_ = v.BindEnv("policy_evaluation.record_timeout")
+	v.SetDefault("policy_evaluation.record_timeout", policytask.DefaultRecordTimeout)
+
+	_ = v.BindEnv("policy_evaluation.batch_size")
+	v.SetDefault("policy_evaluation.batch_size", policytask.DefaultBatchSize)
+
+	//
+	// Record events (waking the indexer when a record is pushed)
+	//
+	_ = v.BindEnv("record_events.enabled")
+	v.SetDefault("record_events.enabled", true)
+
+	_ = v.BindEnv("record_events.window")
+	v.SetDefault("record_events.window", recordevents.DefaultWindow)
+
+	_ = v.BindEnv("record_events.reconnect_delay")
+	v.SetDefault("record_events.reconnect_delay", recordevents.DefaultReconnectDelay)
 
 	//
 	// Server address (used by the metrics task in standalone mode)

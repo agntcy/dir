@@ -35,6 +35,9 @@ type fakeCatalogDB struct {
 	// recordCIDs is returned by GetRecordCIDs, keyed by the query value the
 	// search fan-out asked for. The "" key answers any unmatched query.
 	recordCIDs map[string][]string
+	// excluded makes IsRecordServable report every record as excluded by
+	// the policy gate; the zero value serves everything.
+	excluded   bool
 	gotFilters types.CatalogFilters
 
 	mu              sync.Mutex
@@ -44,6 +47,8 @@ type fakeCatalogDB struct {
 
 // GetRecordCIDs answers one fan-out signal query. The fan-out runs its signals
 // concurrently, so this records calls under a mutex.
+func (f *fakeCatalogDB) IsRecordServable(string) (bool, error) { return !f.excluded, nil }
+
 func (f *fakeCatalogDB) GetRecordCIDs(opts ...types.FilterOption) ([]string, error) {
 	cfg := types.RecordFilters{}
 

@@ -1,6 +1,6 @@
 ---
 name: agntcy-dir
-description: Use when the user asks to discover, browse, search, suggest, recommend, or install agents and agentic resources. Author, validate, or import OASF records; push, sign, and publish records; discover, search, browse, suggest, or recommend agents like MCP servers, A2A agents, or agent skills; verify signatures, name ownership, or security scans; synchronize data between servers; or install/uninstall agents and agentic resources into coding agents like VS Code Copilot, Claude Code, or Cursor.
+description: Use when the user asks to discover, browse, search, suggest, recommend, or install agents and agentic resources. Author, validate, or import OASF records; push, sign, and publish records; discover, search, browse, suggest, or recommend agents like MCP servers, A2A agents, or agent skills; verify signatures, ownership claims, or security scans; synchronize data between servers; or install/uninstall agents and agentic resources into coding agents like VS Code Copilot, Claude Code, or Cursor.
 metadata:
   author: AGNTCY Contributors
   version: 1.0.0
@@ -25,7 +25,7 @@ and publish" → authoring + publishing).
 | "install dirctl", "set up a local directory", "start the daemon", "configure contexts", "connection issues" | [references/setup.md](references/setup.md)               |
 | "log in", "am I authenticated?", "switch to another directory node", "permission denied / forbidden"        | [references/setup.md](references/setup.md)               |
 | "create a record", "validate my record", "import MCP servers / A2A cards / skills into DIR"                 | [references/authoring.md](references/authoring.md)       |
-| "push", "publish to the network", "sign my record", "prove name ownership"                                  | [references/publishing.md](references/publishing.md)     |
+| "push", "publish to the network", "sign my record", "prove ownership"                                  | [references/publishing.md](references/publishing.md)     |
 | "find/search/suggest agents, MCP servers, skills", "browse the directory", "pull a record"                  | [references/discovery.md](references/discovery.md)       |
 | "is this record signed/safe/verified?", "check scan reports", "verify signature"                            | [references/verification.md](references/verification.md) |
 | "sync with another directory", "mirror records", "sync from a public registry/GHCR"                         | [references/sync.md](references/sync.md)                 |

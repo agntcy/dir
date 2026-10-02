@@ -6,6 +6,7 @@ package database
 import (
 	"strings"
 	"testing"
+	"time"
 
 	catalogv1 "github.com/agntcy/dir/api/catalog/v1"
 	coretypes "github.com/agntcy/dir/api/core/types"
@@ -325,14 +326,16 @@ func TestGetCatalogEntries_TrustStatusMetadata(t *testing.T) {
 	require.NoError(t, db.UpsertSignatureVerification(&gormdb.SignatureVerification{
 		RecordCID:   "cid-a2a",
 		SignerKey:   "signer-1",
-		Status:      gormdb.VerificationStatusVerified,
+		Status:      "verified",
 		ContentType: "application/vnd.oci.image.manifest.v1+json",
 		Signature:   "sig-bytes",
 	}))
-	require.NoError(t, db.CreateNameVerification(&gormdb.NameVerification{
-		RecordCID: "cid-a2a",
-		Method:    "wellknown",
-		Status:    gormdb.VerificationStatusVerified,
+	require.NoError(t, db.UpsertIdentityClaim(&gormdb.IdentityClaim{
+		RecordCID:  "cid-a2a",
+		Role:       types.ClaimRoleOwner,
+		Subject:    "acme.com",
+		Status:     types.ClaimStatusVerified,
+		VerifiedAt: time.Now(),
 	}))
 
 	entries, _, err := db.GetCatalogEntries(types.WithCIDs("cid-a2a"))

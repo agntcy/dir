@@ -5,8 +5,10 @@ package search
 
 import (
 	"strconv"
+	"strings"
 
 	searchv1 "github.com/agntcy/dir/api/search/v1"
+	securityv1 "github.com/agntcy/dir/api/security/v1"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 )
@@ -43,14 +45,19 @@ type Filters struct {
 	ScanStatuses       FilterValues
 	ScanFailureReasons FilterValues
 
+	Identities FilterValues
+	Owners     FilterValues
+
 	// ScanSeverity is a single threshold rather than a repeatable match, so it
 	// sits outside valueFilters.
 	ScanSeverity        string
 	ExcludeScanSeverity string
 
-	Verified bool
-	Trusted  bool
-	Safe     bool
+	Verified         bool
+	Trusted          bool
+	Safe             bool
+	IdentityVerified bool
+	OwnerVerified    bool
 
 	// flags is the flag set the filter flags were registered on. It tells
 	// "--trusted=false" (filter for records that failed the check) apart from
@@ -178,6 +185,18 @@ func (f *Filters) valueFilters() []valueFilter {
 			values:       &f.ScanFailureReasons,
 		},
 		{
+			flag:      "identity",
+			usage:     "Search for records by the subject of their identity claim (e.g., --identity 'did:web:acme.com:*')",
+			queryType: searchv1.RecordQueryType_RECORD_QUERY_TYPE_IDENTITY,
+			values:    &f.Identities,
+		},
+		{
+			flag:      "owner",
+			usage:     "Search for records by the subject of their ownership claim (e.g., --owner 'did:web:acme.com')",
+			queryType: searchv1.RecordQueryType_RECORD_QUERY_TYPE_OWNER,
+			values:    &f.Owners,
+		},
+		{
 			flag:         "annotation",
 			usage:        "Search for records with specific annotation in key:value format (e.g., --annotation 'manager:alice' --annotation 'team:*')",
 			excludeUsage: "Exclude records with specific annotation in key:value format (e.g., --exclude-annotation 'env:test')",
@@ -204,18 +223,27 @@ func registerFilterFlags(flags *pflag.FlagSet, f *Filters) {
 
 	for _, filter := range f.valueFilters() {
 		flags.StringArrayVar(&filter.values.Include, filter.flag, nil, filter.usage)
-		flags.StringArrayVar(&filter.values.Exclude, "exclude-"+filter.flag, nil, filter.excludeUsage)
+
+		if filter.excludeUsage != "" {
+			flags.StringArrayVar(&filter.values.Exclude, "exclude-"+filter.flag, nil, filter.excludeUsage)
+		}
 	}
 
+	severities := strings.Join(securityv1.ScanSeveritiesGTE(securityv1.ScanSeverityNone), ", ")
+
 	flags.StringVar(&f.ScanSeverity, "scan-severity", "",
-		"Filter for records whose highest scan severity meets or exceeds a threshold (NONE, INFO, LOW, MEDIUM, HIGH, CRITICAL)")
+		"Filter for records whose highest scan severity meets or exceeds a threshold ("+severities+")")
 	flags.StringVar(&f.ExcludeScanSeverity, "exclude-scan-severity", "",
-		"Exclude records with a scan report at or above a threshold (NONE, INFO, LOW, MEDIUM, HIGH, CRITICAL); never-scanned records are kept")
+		"Exclude records with a scan report at or above a threshold ("+severities+"); never-scanned records are kept")
 
 	flags.BoolVar(&f.Verified, "verified", false,
-		"Filter for records with verified name ownership (--verified) or without it (--verified=false)")
+		"Filter for records with a verified ownership claim (--verified) or without one (--verified=false)")
 	flags.BoolVar(&f.Trusted, "trusted", false,
 		"Filter for records with a trusted signature (--trusted) or without one (--trusted=false)")
+	flags.BoolVar(&f.IdentityVerified, "identity-verified", false,
+		"Filter for records with a verified identity claim")
+	flags.BoolVar(&f.OwnerVerified, "owner-verified", false,
+		"Filter for records with a verified ownership claim")
 	flags.BoolVar(&f.Safe, "safe", false,
 		"Filter for records where every security scanner reported is_safe=true (--safe), or where at least one did not (--safe=false)")
 }
@@ -271,14 +299,21 @@ func BuildQueries(f *Filters) []*searchv1.RecordQuery {
 		flag      string
 		value     bool
 		queryType searchv1.RecordQueryType
+		onlyTrue  bool // the false form is not a filter
 	}{
-		{"verified", f.Verified, searchv1.RecordQueryType_RECORD_QUERY_TYPE_VERIFIED},
-		{"trusted", f.Trusted, searchv1.RecordQueryType_RECORD_QUERY_TYPE_TRUSTED},
-		{"safe", f.Safe, searchv1.RecordQueryType_RECORD_QUERY_TYPE_SCAN_SAFE},
+		{"verified", f.Verified, searchv1.RecordQueryType_RECORD_QUERY_TYPE_VERIFIED, false},
+		{"trusted", f.Trusted, searchv1.RecordQueryType_RECORD_QUERY_TYPE_TRUSTED, false},
+		{"safe", f.Safe, searchv1.RecordQueryType_RECORD_QUERY_TYPE_SCAN_SAFE, false},
+		{"identity-verified", f.IdentityVerified, searchv1.RecordQueryType_RECORD_QUERY_TYPE_IDENTITY_VERIFIED, true},
+		{"owner-verified", f.OwnerVerified, searchv1.RecordQueryType_RECORD_QUERY_TYPE_OWNER_VERIFIED, true},
 	}
 
 	for _, boolFilter := range boolFilters {
-		if !boolFilter.value && !f.changed(boolFilter.flag) {
+		if boolFilter.onlyTrue {
+			if !boolFilter.value {
+				continue
+			}
+		} else if !boolFilter.value && !f.changed(boolFilter.flag) {
 			continue
 		}
 

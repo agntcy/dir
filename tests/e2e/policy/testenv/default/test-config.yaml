@@ -1,0 +1,4 @@
+policy:
+  client_options:
+    server_address: "localhost:18430"
+    auth_mode: "insecure"

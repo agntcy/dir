@@ -16,6 +16,8 @@ exclude = [
     'company\\.com',
     'w3\\.org',
     'gnu\\.org',
+    # Corporate homepage that routinely times out from CI runners
+    'okta\\.com',
     # Optional screen recording; not committed to keep the repo small
     "file://.*/dir-gui\\.mov",
 ]

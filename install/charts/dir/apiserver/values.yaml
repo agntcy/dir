@@ -25,7 +25,9 @@ authz_policies_csv: |
   p,*,/agntcy.dir.store.v1.StoreService/Pull
   p,*,/agntcy.dir.store.v1.StoreService/PullReferrer
   p,*,/agntcy.dir.store.v1.StoreService/Lookup
-  p,*,/agntcy.dir.sync.v1.SyncService/RequestRegistryCredentials
+  # Registry credentials read every record straight from the registry, so only
+  # a rule naming a peer node's SPIFFE ID grants them, e.g.:
+  # p,spiffe://<peer-trust-domain>/ns/<namespace>/sa/<service-account>,/agntcy.dir.store.v1.SyncService/RequestRegistryCredentials
 
 # File-based policies (OPA/Rego). Each key is a filename mounted at
 # config.policy.dir. Not part of the server config struct.
@@ -38,7 +40,10 @@ authz_policies_csv: |
 #       default allow := true
 policies: {}
 
-# Record validators applied on push, autosync, and/or index.
+# Record validators applied on push, autosync, and/or index. A validator with
+# op "evaluate" (opa or cel only) defines a content policy instead: the
+# reconciler evaluates every record against it and the server can enforce the
+# verdicts (config.policy.enforcement).
 # Injected into both server.config.yml and reconciler.config.yml.
 # Omit an op (or this entire list) to skip validation on that path.
 validators:
@@ -86,6 +91,34 @@ config:
   # File-based policies. Files from policies are mounted here.
   policy:
     dir: "/etc/agntcy/dir/policies"
+
+    # Content-policy enforcement on reads. Each kind of read has its own mode,
+    # so enforcement can be rolled out one kind at a time:
+    #   off     - no policy is checked
+    #   shadow  - each read is checked and what it would exclude is reported
+    #             (metrics dir_policy_gate_*, outcome="would_exclude"), but
+    #             nothing is excluded
+    #   enforce - records not complying with every policy below are left out
+    #             of searches and refused when fetched by CID
+    #             (outcome="excluded")
+    # search covers search, the catalog, filter values and query-based
+    # publication; fetch covers pull, lookup, referrers, export, the peer RPC,
+    # publication of explicit CIDs and identity status lookups.
+    enforcement:
+      search: "off"
+      fetch: "off"
+      # IDs of the policies every served record must comply with, e.g.
+      # ["opa:require-license"]. No version is given: a policy's version comes
+      # from its content, which the reconciler registers and the server
+      # follows. Only a verdict under the current version counts, so after a
+      # policy is edited a record stays hidden until it has been evaluated
+      # under the new rule, and nothing the new rule rejects is served
+      # meanwhile. A policy added for the first time is the exception: it is
+      # enforced once its verdicts cover every record, so that adding it does
+      # not empty search while they are evaluated.
+      policies: []
+      # How often the server rechecks which version of each policy is in force.
+      refresh_interval: 30s
 
   # Store settings for the storage backend.
   store:
@@ -863,14 +896,40 @@ reconciler:
       enabled: true
       interval: "1h"
 
-    # Name task configuration
-    name:
-      enabled: true
-      interval: "1h"
-
     # Signature task configuration
     signature:
       enabled: true
       interval: "1h"
+
+    # Policy evaluation task configuration
+    # Evaluates records against content policies (the validators with op
+    # "evaluate") and stores the verdicts read paths filter on. Off: enabling it
+    # with no such validator only logs that the task will not run. Not under
+    # policy: the chart fills the reconciler's policy section from
+    # config.policy.
+    policy_evaluation:
+      enabled: false
+      interval: "1m"
+      record_timeout: "30s"
+      # Records fetched and evaluated at a time. Bounds the memory of a run,
+      # not its length: a run continues until no record needs a verdict.
+      batch_size: 500
+
+    # Record events
+    # How the reconciler hears of a record being pushed, over the apiserver's
+    # events API, so that the indexer, and the policy task after it, run at once
+    # instead of at their next intervals. The intervals remain the backstop, and
+    # the only trigger for records copied in by registry sync. With authorization
+    # on, the reconciler's identity needs a rule that lets it call
+    # /agntcy.dir.events.v1.EventService/Listen; without one it logs that events
+    # are unavailable and the intervals apply.
+    record_events:
+      enabled: true
+      # Arrivals are gathered for this long before the indexer is woken, and it
+      # is not woken again until this long after its last run: a run lists every
+      # tag in the registry, so a stream of pushes must not keep it running.
+      window: "2s"
+      # How long to wait before listening again when the event stream ends.
+      reconnect_delay: "5s"
 
   resources: {}

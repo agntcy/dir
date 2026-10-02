@@ -16,6 +16,7 @@ import (
 	runtimeserver "github.com/agntcy/dir-runtime/server"
 	runtimestore "github.com/agntcy/dir-runtime/store"
 	networkinit "github.com/agntcy/dir/cli/cmd/network/init"
+	"github.com/agntcy/dir/reconciler/recordevents"
 	reconciler "github.com/agntcy/dir/reconciler/service"
 	"github.com/agntcy/dir/server"
 	ocilib "github.com/agntcy/dir/server/store/oci"
@@ -141,6 +142,11 @@ func runStart(cmd *cobra.Command, _ []string) error {
 	if err != nil {
 		return fmt.Errorf("failed to create reconciler: %w", err)
 	}
+
+	// The reconciler shares the server's process, so it hears of a push from
+	// the server's event bus and indexes the record without waiting for its
+	// interval.
+	svc.WatchRecords(recordevents.NewBusSource(srv.EventBus()))
 
 	if err := svc.Start(ctx); err != nil {
 		return fmt.Errorf("failed to start reconciler: %w", err)

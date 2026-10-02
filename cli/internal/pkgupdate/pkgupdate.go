@@ -82,7 +82,7 @@ type Upstream struct {
 }
 
 // Resolver lists every published version of name, newest-pushed first — the
-// order the naming service returns. Ties on version are broken by that order,
+// order the identity service returns. Ties on version are broken by that order,
 // so the newest push of a re-pushed version wins.
 type Resolver func(ctx context.Context, name string) ([]Upstream, error)
 

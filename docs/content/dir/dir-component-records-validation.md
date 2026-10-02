@@ -17,15 +17,11 @@ The content identifier of the record is a [Content IDentifier](https://github.co
 - Collision-resistant
 - Immutable
 
-### Verifiable Names
+### Names and Ownership
 
-Records must include a `name` field with a domain-based identifier that enables name verification. When a record uses a verifiable name:
+Records must include a `name` field. A name such as `example.com/agent` lets a record be referenced as `name`, `name:version` or `name:version@cid` instead of by CID. Ownership of a record is asserted separately, with a signed ownership claim that the reconciler verifies against the key material its subject publishes.
 
-- The name must include a protocol prefix: `https://domain/path` or `http://domain/path`.
-- The domain must host a JWKS file at `<scheme>://<domain>/.well-known/jwks.json`.
-- Records signed with a private key associated with a public key present in that JWKS file can be verified as authorized by the domain.
-
-See [Usage Guide — Name Verification](dir-features-scenarios.md#name-verification) and the [CLI Reference](dir-cli-reference.md#security-verification) for name verification workflows.
+See [Usage Guide — Identity and Ownership Claims](dir-features-scenarios.md#identity-and-ownership-claims) and the [CLI Reference](dir-cli-reference.md#dirctl-identity-claim-flags) for the claim workflow.
 
 ### Example Email Agent
 
@@ -81,7 +77,7 @@ Validation is performed using the [OASF SDK](https://docs.agntcy.org/oasf/oasf-
 
 ### Configuration
 
-The Directory server validates records using a `validators` list in YAML. Each entry selects a provider, the operations it applies to (`push`, `autosync`, `index`), and a provider-specific `config`. An empty list disables record validation. This list cannot be set via environment variables.
+The Directory server validates records using a `validators` list in YAML. Each entry selects a provider, the operations it applies to (`push`, `autosync`, `index`, `evaluate`), and a provider-specific `config`. An empty list disables record validation. This list cannot be set via environment variables.
 
 ```yaml
 # server.config.yml
@@ -100,6 +96,8 @@ policy:
 ```
 
 `opa` loads a single `.rego` file from `policy.dir`. Helm mounts those files from the top-level `policies` map. The query is `<package>.allow`; a deny rejects the record.
+
+The `evaluate` operation does not check records on their way in. It makes the validator a content policy: the reconciler evaluates every record against it, and the server can refuse to serve the records that fail. Only `opa` and `cel` support it. See [Content Policy Enforcement](dir-content-policy-enforcement.md).
 
 !!! note
   

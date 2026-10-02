@@ -225,6 +225,14 @@ func (f *fakeSignatureDB) ListCatalogTags() ([]*catalogv1.CatalogTag, error) {
 	return nil, nil
 }
 
+func (f *fakeSignatureDB) UpsertIdentityClaim(claim types.IdentityClaimObject) error { return nil }
+
+func (f *fakeSignatureDB) DeleteIdentityClaim(cid, role string) error { return nil }
+
+func (f *fakeSignatureDB) GetIdentityClaimByCID(cid, role string) (types.IdentityClaimObject, error) {
+	return nil, nil //nolint:nilnil // unused by these tests
+}
+
 func (f *fakeSignatureDB) RemoveRecord(cid string) error          { return nil }
 func (f *fakeSignatureDB) SetRecordSigned(recordCID string) error { return nil }
 func (f *fakeSignatureDB) CreateSync(remoteURL string, cids []string, remoteRegistryURL string, repositoryName string) (string, error) {
@@ -263,21 +271,6 @@ func (f *fakeSignatureDB) UpdatePublicationStatus(publicationID string, status r
 	return nil
 }
 func (f *fakeSignatureDB) DeletePublication(publicationID string) error { return nil }
-func (f *fakeSignatureDB) CreateNameVerification(verification types.NameVerificationObject) error {
-	return nil
-}
-
-func (f *fakeSignatureDB) UpdateNameVerification(verification types.NameVerificationObject) error {
-	return nil
-}
-
-func (f *fakeSignatureDB) GetVerificationByCID(cid string) (types.NameVerificationObject, error) {
-	return nil, nil
-}
-
-func (f *fakeSignatureDB) GetRecordsNeedingVerification(ttl time.Duration) ([]coretypes.Record, error) {
-	return nil, nil
-}
 
 func (f *fakeSignatureDB) CreateSignatureVerification(verification types.SignatureVerificationObject) error {
 	return nil
@@ -317,6 +310,24 @@ func (f *fakeSignatureDB) UpsertScanReport(types.ScanReportObject, types.ScanSch
 func (f *fakeSignatureDB) GetRecordsNeedingScan(time.Duration) ([]coretypes.Record, error) {
 	return nil, nil
 }
+
+func (f *fakeSignatureDB) UpsertPolicyEvaluation(types.PolicyEvaluationObject) error { return nil }
+
+func (f *fakeSignatureDB) GetPolicyEvaluations(string) ([]types.PolicyEvaluationObject, error) {
+	return nil, nil
+}
+
+func (f *fakeSignatureDB) GetRecordsNeedingPolicyEvaluation(string, string, string, int) ([]coretypes.Record, error) {
+	return nil, nil
+}
+
+func (f *fakeSignatureDB) RegisterPolicyVersion(string, string) error { return nil }
+
+func (f *fakeSignatureDB) GetCurrentPolicyVersion(string) (string, bool, error) {
+	return "", false, nil
+}
+
+func (f *fakeSignatureDB) IsRecordServable(string) (bool, error) { return true, nil }
 
 func (f *fakeSignatureDB) Close() error                 { return nil }
 func (f *fakeSignatureDB) IsReady(context.Context) bool { return true }

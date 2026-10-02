@@ -1,0 +1,61 @@
+// Copyright AGNTCY Contributors (https://github.com/agntcy)
+// SPDX-License-Identifier: Apache-2.0
+
+syntax = "proto3";
+
+package agntcy.dir.policy.v1;
+
+import "agntcy/dir/core/v1/record.proto";
+import "agntcy/dir/policy/v1/policy_evaluation.proto";
+
+// PolicyAuditService lets an auditor see records the enforced content
+// policies exclude from every other read. It is a separate service so that it
+// is authorized on its own: only a policy naming the caller's SPIFFE ID
+// grants it, never one for a whole trust domain, and the server offers it
+// only when authorization is enabled. Every call is audit-logged.
+service PolicyAuditService {
+  // GetRecord returns a record by CID whether or not the enforced policies
+  // exclude it, with its policy verdicts.
+  rpc GetRecord(GetRecordRequest) returns (GetRecordResponse);
+
+  // ListExcludedRecords lists the indexed records the enforced policies
+  // exclude, with their verdicts.
+  rpc ListExcludedRecords(ListExcludedRecordsRequest) returns (stream ListExcludedRecordsResponse);
+}
+
+// GetRecordRequest names the record to return.
+message GetRecordRequest {
+  // The record's CID.
+  string cid = 1;
+}
+
+// GetRecordResponse is the record and why it is or is not excluded.
+message GetRecordResponse {
+  // The record.
+  agntcy.dir.core.v1.Record record = 1;
+
+  // Whether the record fails an enforced policy at the version in force, so
+  // that reads enforcing the policies exclude it.
+  bool excluded = 2;
+
+  // Every verdict recorded for the record.
+  repeated PolicyEvaluation evaluations = 3;
+}
+
+// ListExcludedRecordsRequest pages through the excluded records.
+message ListExcludedRecordsRequest {
+  // At most this many records. Zero means no limit.
+  uint32 limit = 1;
+
+  // Skip this many records first.
+  uint32 offset = 2;
+}
+
+// ListExcludedRecordsResponse is one excluded record.
+message ListExcludedRecordsResponse {
+  // The record's CID.
+  string cid = 1;
+
+  // Every verdict recorded for the record.
+  repeated PolicyEvaluation evaluations = 2;
+}

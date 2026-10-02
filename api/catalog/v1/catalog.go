@@ -12,6 +12,7 @@ import (
 	"time"
 
 	coretypes "github.com/agntcy/dir/api/core/types"
+	securityv1 "github.com/agntcy/dir/api/security/v1"
 	ocidigest "github.com/opencontainers/go-digest"
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
@@ -138,9 +139,11 @@ func WithTrustStatus(status TrustStatus) ConvertOption {
 	}
 }
 
-func DeriveTrustStatus(signatureStatuses []string, nameVerificationStatus string) TrustStatus {
+// DeriveTrustStatus derives a record's trust status: Verified when its ownership
+// claim is verified, Trusted when any signature is verified.
+func DeriveTrustStatus(signatureStatuses []string, ownerClaimStatus string) TrustStatus {
 	status := TrustStatus{
-		Verified: strings.EqualFold(nameVerificationStatus, verificationStatusVerified),
+		Verified: strings.EqualFold(ownerClaimStatus, verificationStatusVerified),
 	}
 
 	for _, signatureStatus := range signatureStatuses {
@@ -482,14 +485,9 @@ func catalogSignatures(cid string, signatures []coretypes.ObjectSignature) *Trus
 	}
 }
 
-//nolint:mnd
-var scanSeverityOrder = map[string]int{
-	"NONE": 0, "INFO": 1, "LOW": 2, "MEDIUM": 3, "HIGH": 4, "CRITICAL": 5,
-}
-
 func buildScanManifestValue(reports []ScanReportSummary) (*structpb.Value, error) {
 	allSafe := true
-	maxSev := "NONE"
+	maxSev := securityv1.ScanSeverityNone
 	reportList := make([]any, 0, len(reports))
 
 	for _, r := range reports {
@@ -497,7 +495,7 @@ func buildScanManifestValue(reports []ScanReportSummary) (*structpb.Value, error
 			allSafe = false
 		}
 
-		if scanSeverityOrder[r.GetMaxSeverity()] > scanSeverityOrder[maxSev] {
+		if securityv1.ScanSeverityIndex(r.GetMaxSeverity()) > securityv1.ScanSeverityIndex(maxSev) {
 			maxSev = r.GetMaxSeverity()
 		}
 

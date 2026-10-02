@@ -14,7 +14,7 @@ import (
 
 	catalogv1 "github.com/agntcy/dir/api/catalog/v1"
 	eventsv1 "github.com/agntcy/dir/api/events/v1"
-	namingv1 "github.com/agntcy/dir/api/naming/v1"
+	identityv1 "github.com/agntcy/dir/api/identity/v1"
 	routingv1 "github.com/agntcy/dir/api/routing/v1"
 	searchv1 "github.com/agntcy/dir/api/search/v1"
 	signv1 "github.com/agntcy/dir/api/sign/v1"
@@ -24,7 +24,6 @@ import (
 	"github.com/agntcy/dir/server/authz"
 	"github.com/agntcy/dir/server/config"
 	"github.com/agntcy/dir/server/controller"
-	"github.com/agntcy/dir/server/database"
 	"github.com/agntcy/dir/server/events"
 	"github.com/agntcy/dir/server/gateway"
 	"github.com/agntcy/dir/server/healthcheck"
@@ -33,8 +32,6 @@ import (
 	grpclogging "github.com/agntcy/dir/server/middleware/logging"
 	grpcratelimit "github.com/agntcy/dir/server/middleware/ratelimit"
 	grpcrecovery "github.com/agntcy/dir/server/middleware/recovery"
-	"github.com/agntcy/dir/server/naming"
-	"github.com/agntcy/dir/server/naming/wellknown"
 	"github.com/agntcy/dir/server/publication"
 	"github.com/agntcy/dir/server/routing"
 	"github.com/agntcy/dir/server/skill"
@@ -272,19 +269,19 @@ func New(ctx context.Context, cfg *config.Config, opts ...ServerOption) (*Server
 
 	// Database must be created before routing so the shared ingestion service
 	// (used by both the store controller and DHT autosync) can be wired in.
-	databaseAPI := o.database
-	if databaseAPI == nil {
-		databaseAPI, err = database.New(cfg.Database)
-		if err != nil {
-			return nil, fmt.Errorf("failed to create database API: %w", err)
-		}
+	// The APIs read through servedDB, which applies the enforced content
+	// policies; ingestion and the reconciler use databaseAPI, which applies
+	// none.
+	databaseAPI, servedDB, enforced, err := openDatabase(cfg, o.database, metricsServer)
+	if err != nil {
+		return nil, err
 	}
 
 	// Shared ingestion service: single authoritative path for persisting
 	// records/referrers (content store + search index + referrer DB state).
 	ingestor := ingest.New(storeAPI, databaseAPI)
 
-	routingAPI, err := routing.New(ctx, storeAPI, ingestor, validatorRegistry, options)
+	routingAPI, err := routing.New(ctx, storeAPI, ingestor, validatorRegistry, servedDB, options)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create routing: %w", err)
 	}
@@ -314,7 +311,7 @@ func New(ctx context.Context, cfg *config.Config, opts ...ServerOption) (*Server
 	}
 
 	// Create publication service
-	publicationService, err := publication.New(databaseAPI, storeAPI, routingAPI, options)
+	publicationService, err := publication.New(servedDB, storeAPI, routingAPI, options)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create publication service: %w", err)
 	}
@@ -325,31 +322,20 @@ func New(ctx context.Context, cfg *config.Config, opts ...ServerOption) (*Server
 	// Create health checker
 	healthChecker := healthcheck.New()
 
-	// Create naming provider for naming service
-	wellKnownFetcher := wellknown.NewFetcher()
-
-	namingProvider := naming.NewProvider(
-		naming.WithWellKnownLookup(wellKnownFetcher),
-	)
-
 	// Register APIs
 	eventsv1.RegisterEventServiceServer(grpcServer, controller.NewEventsController(eventService))
-	storev1.RegisterStoreServiceServer(grpcServer, controller.NewStoreController(storeAPI, databaseAPI, ingestor, options.EventBus(), validatorRegistry))
+	storev1.RegisterStoreServiceServer(grpcServer, controller.NewStoreController(storeAPI, servedDB, ingestor, options.EventBus(), validatorRegistry))
 	routingv1.RegisterRoutingServiceServer(grpcServer, controller.NewRoutingController(routingAPI, storeAPI, publicationService))
-	routingv1.RegisterPublicationServiceServer(grpcServer, controller.NewPublicationController(databaseAPI, options))
-	searchv1.RegisterSearchServiceServer(grpcServer, controller.NewSearchController(databaseAPI, storeAPI))
-	storev1.RegisterSyncServiceServer(grpcServer, controller.NewSyncController(databaseAPI, options))
-	signv1.RegisterSignServiceServer(grpcServer, controller.NewSignController(databaseAPI))
-	namingv1.RegisterNamingServiceServer(grpcServer, controller.NewNamingController(
-		storeAPI,
-		databaseAPI,
-		namingProvider,
-		controller.WithVerificationTTL(options.Config().Naming.GetTTL()),
-	))
+	routingv1.RegisterPublicationServiceServer(grpcServer, controller.NewPublicationController(servedDB, options))
+	searchv1.RegisterSearchServiceServer(grpcServer, controller.NewSearchController(servedDB, storeAPI))
+	storev1.RegisterSyncServiceServer(grpcServer, controller.NewSyncController(servedDB, options))
+	signv1.RegisterSignServiceServer(grpcServer, controller.NewSignController(servedDB))
+	identityv1.RegisterIdentityServiceServer(grpcServer, controller.NewIdentityController(servedDB))
 
 	gwExtractor, aiFinderOpts := resolveGatewayExtractor(cfg)
 
-	catalogv1.RegisterAIFinderServiceServer(grpcServer, controller.NewAIFinderController(routingAPI.GetPeerID(), databaseAPI, cfg.HTTPGateway, storeAPI, aiFinderOpts...))
+	catalogv1.RegisterAIFinderServiceServer(grpcServer, controller.NewAIFinderController(routingAPI.GetPeerID(), servedDB, cfg.HTTPGateway, storeAPI, aiFinderOpts...))
+	registerPolicyAudit(grpcServer, cfg.Authz.Enabled, databaseAPI, storeAPI, enforced)
 
 	// Register health service
 	healthChecker.Register(grpcServer)
@@ -430,6 +416,11 @@ func (s Server) Store() types.StoreAPI { return s.store }
 func (s Server) Routing() types.RoutingAPI { return s.routing }
 
 func (s Server) Database() types.DatabaseAPI { return s.database }
+
+// EventBus returns the bus the server publishes its events on. Embedding
+// processes (e.g. the daemon) share it with the reconciler, which listens for
+// records being pushed.
+func (s Server) EventBus() *events.EventBus { return s.eventService.Bus() }
 
 // Close gracefully shuts down all server components.
 // Complexity is acceptable for cleanup functions with independent service shutdowns.

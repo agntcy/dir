@@ -13,6 +13,7 @@ import (
 	daemon "github.com/agntcy/dir/tests/e2e/daemon/config"
 	local "github.com/agntcy/dir/tests/e2e/local/config"
 	network "github.com/agntcy/dir/tests/e2e/network/config"
+	policy "github.com/agntcy/dir/tests/e2e/policy/config"
 	"github.com/go-viper/mapstructure/v2"
 	"github.com/spf13/viper"
 )
@@ -22,6 +23,7 @@ type Config struct {
 	Local   local.Config   `json:"local,omitzero"   mapstructure:"local"`
 	Network network.Config `json:"network,omitzero" mapstructure:"network"`
 	Daemon  daemon.Config  `json:"daemon,omitzero"  mapstructure:"daemon"`
+	Policy  policy.Config  `json:"policy,omitzero"  mapstructure:"policy"`
 }
 
 func init() {

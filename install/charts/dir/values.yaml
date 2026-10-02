@@ -128,7 +128,9 @@ apiserver:
     p,*,/agntcy.dir.store.v1.StoreService/Pull
     p,*,/agntcy.dir.store.v1.StoreService/PullReferrer
     p,*,/agntcy.dir.store.v1.StoreService/Lookup
-    p,*,/agntcy.dir.sync.v1.SyncService/RequestRegistryCredentials
+    # Registry credentials read every record straight from the registry, so only
+    # a rule naming a peer node's SPIFFE ID grants them, e.g.:
+    # p,spiffe://<peer-trust-domain>/ns/<namespace>/sa/<service-account>,/agntcy.dir.store.v1.SyncService/RequestRegistryCredentials
 
   # File-based policies (OPA/Rego). Each key is a filename mounted at
   # config.policy.dir. Not part of the server config struct.
@@ -141,7 +143,10 @@ apiserver:
   #       default allow := true
   policies: {}
 
-  # Record validators applied on push, autosync, and/or index.
+  # Record validators applied on push, autosync, and/or index. A validator with
+  # op "evaluate" (opa or cel only) defines a content policy instead: the
+  # reconciler evaluates every record against it and the server can enforce the
+  # verdicts (config.policy.enforcement).
   # Injected into both server.config.yml and reconciler.config.yml.
   # Omit an op (or this entire list) to skip validation on that path.
   # To use the OASF instance deployed with this chart (apiserver.oasf.enabled: true):
@@ -191,6 +196,14 @@ apiserver:
     # File-based policies. Files from policies are mounted here.
     policy:
       dir: "/etc/agntcy/dir/policies"
+
+      # Content-policy enforcement on reads: off, shadow or enforce, per kind
+      # of read. See the apiserver chart's values for what each covers.
+      enforcement:
+        search: "off"
+        fetch: "off"
+        policies: []
+        refresh_interval: 30s
 
     # Store settings for the storage backend.
     store:
@@ -766,11 +779,6 @@ apiserver:
 
       # Indexer task configuration
       indexer:
-        enabled: true
-        interval: "1h"
-
-      # Name task configuration
-      name:
         enabled: true
         interval: "1h"
 

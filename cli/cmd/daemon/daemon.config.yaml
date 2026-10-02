@@ -47,8 +47,6 @@ server:
       # To use a remote OCI registry, unset local_dir:
       #   registry_address: "ghcr.io"
       #   repository_name: "org/agents"
-    verification:
-      enabled: true
   routing:
     listen_address: "/ip4/0.0.0.0/tcp/8999"
     key_path: "node.key"
@@ -114,10 +112,16 @@ server:
     listen_address: ":8889"
     public_url: "http://localhost:8889"
     # catalog_title: "AI Catalog"
-  naming:
-    ttl: 168h
   policy:
     dir: policies
+    # Content-policy enforcement on reads: off, shadow or enforce, per kind of
+    # read. Policies lists the IDs of the policies every served record must
+    # comply with; their versions come from the policies' content.
+    enforcement:
+      search: "off"
+      fetch: "off"
+      policies: []
+      refresh_interval: 30s
 
 reconciler:
   regsync:
@@ -134,11 +138,19 @@ reconciler:
     interval: 1m
     ttl: 168h
     record_timeout: 30s
-  name:
+  # Verifies the identity and ownership claims pushed with 'dirctl identity claim':
+  # on every run it looks up the current key material of each claim's subject, so a
+  # rotated key or a revoked trust bundle is caught on the next one. Off unless enabled.
+  identity:
     enabled: true
     interval: 1m
-    ttl: 168h
-    record_timeout: 30s
+    record_timeout: 1m
+    # A spiffe:// claim only verifies against the trust bundle of its trust domain
+    # configured here; with none, spiffe:// claims fail. The files are read on every
+    # run. YAML only.
+    # spiffe_trust_bundles:
+    #   - trust_domain: example.org
+    #     bundle_file: /etc/agntcy/spiffe/example.org.pem
   scan:
     enabled: true
     interval: 1m
@@ -164,6 +176,27 @@ reconciler:
     # Each endpoint costs one scanner invocation per subcommand, so an
     # unbounded list lets one published record fan out arbitrarily. 0 = default (8).
     max_endpoints_per_record: 8
+  # Evaluates records against content policies (the validators with op
+  # "evaluate") and stores the verdicts read paths filter on. Off: enabling it
+  # with no such validator only logs that the task will not run.
+  policy_evaluation:
+    enabled: false
+    interval: 1m
+    record_timeout: 30s
+    # Records fetched and evaluated at a time.
+    batch_size: 500
+  # How the reconciler hears of a record being pushed, so that the indexer, and
+  # the policy task after it, run at once instead of at their next intervals.
+  # The intervals remain the backstop, and the only trigger for records copied
+  # in by registry sync.
+  record_events:
+    enabled: true
+    # Arrivals are gathered for this long before the indexer is woken, and it is
+    # not woken again until this long after its last run: a run lists every tag
+    # in the registry, so a stream of pushes must not keep it running.
+    window: 2s
+    # How long to wait before listening again when the event stream ends.
+    reconnect_delay: 5s
   local_registry:
     registry_address: "localhost:5555"
     repository_name: "dir"

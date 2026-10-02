@@ -69,7 +69,7 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests for name resolution acr
 		})
 
 		ginkgo.It("should resolve by name from peer 2 after sync", func() {
-			// Info by name should work - this tests the naming resolution
+			// Info by name should work - this tests the name resolution
 			output := testEnv.Peer2.Info(recordName).WithArgs("--output", "json").ShouldEventuallySucceed(120 * time.Second)
 
 			// Verify the output contains the expected CID

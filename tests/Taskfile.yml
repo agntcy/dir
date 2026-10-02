@@ -34,6 +34,10 @@ includes:
     taskfile: "./e2e/network/testenv/local/Taskfile.testenv.yml"
     internal: true
 
+  e2e:internal:testenv:policy:default:
+    taskfile: "./e2e/policy/testenv/default/Taskfile.testenv.yml"
+    internal: true
+
   e2e:internal:testenv:integration-server:default:
     taskfile: "./integration/server/testenv/Taskfile.testenv.yml"
     internal: true
@@ -86,6 +90,11 @@ vars:
         envs:
           kind: "{{.ROOT_DIR}}/tests/e2e/network/testenv/kind/test-config.yaml"
           local: "{{.ROOT_DIR}}/tests/e2e/network/testenv/local/test-config.yaml"
+
+      policy:
+        go_test_suite: "{{.ROOT_DIR}}/tests/e2e/policy"
+        envs:
+          default: "{{.ROOT_DIR}}/tests/e2e/policy/testenv/default/test-config.yaml"
 
       integration-server:
         go_test_suite: "{{.ROOT_DIR}}/tests/integration/server"

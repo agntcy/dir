@@ -110,8 +110,7 @@ func (i *ingestor) ImportReferrer(ctx context.Context, recordCID string, referre
 func (i *ingestor) applyReferrerDBEffects(recordCID string, referrer *corev1.RecordReferrer) {
 	referrerType := referrer.GetType()
 
-	// If this is a signature referrer, mark the record as signed so the name
-	// task can find records that need name verification.
+	// If this is a signature referrer, mark the record as signed.
 	if referrerType == corev1.SignatureReferrerType {
 		if err := i.db.SetRecordSigned(recordCID); err != nil {
 			logger.Warn("Failed to mark record as signed", "error", err, "cid", recordCID)
@@ -149,7 +148,7 @@ func (i *ingestor) applyReferrerDBEffects(recordCID string, referrer *corev1.Rec
 			recordCID:   recordCID,
 			scannerType: scannerTypeShortName(report.GetScannerType()),
 			isSafe:      report.GetIsSafe(),
-			maxSeverity: severityShortName(report.GetMaxSeverity()),
+			maxSeverity: report.GetMaxSeverity().ShortName(),
 		}, types.DefaultScanSchedule()); err != nil {
 			logger.Warn("Failed to upsert scan report summary", "error", err, "cid", recordCID)
 		}
@@ -180,16 +179,6 @@ func (r *scanReportRow) GetFailureDetail() string { return "" }
 func scannerTypeShortName(t securityv1.ScannerType) string {
 	name := t.String()
 	if after, ok := strings.CutPrefix(name, "SCANNER_TYPE_"); ok {
-		return after
-	}
-
-	return name
-}
-
-// severityShortName strips the "SEVERITY_" proto prefix to get the DB column value (e.g. "HIGH").
-func severityShortName(s securityv1.Severity) string {
-	name := s.String()
-	if after, ok := strings.CutPrefix(name, "SEVERITY_"); ok {
 		return after
 	}
 

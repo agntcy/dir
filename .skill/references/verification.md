@@ -1,4 +1,4 @@
-# Verification: signatures, name ownership, and security scans
+# Verification: signatures, ownership claims, and security scans
 
 Goal: answer "can I trust this record?" with concrete, verifiable signals —
 never a synthesized score.
@@ -8,7 +8,7 @@ never a synthesized score.
 | Signal | Meaning | Command / filter |
 | --- | --- | --- |
 | **Trusted** | Signature verification passed | `dirctl verify <cid>`; search `--trusted` |
-| **Verified** | Signing key authorized by the domain in the record name (JWKS) | `dirctl naming verify <ref>`; search `--verified` |
+| **Verified** | Ownership claim verified against the key material its subject publishes | `dirctl identity status <ref>`; search `--verified` |
 | **Safe** | All security scanners reported `is_safe=true` | `dirctl pull <cid> --scan-report`; search `--safe`, `--scan-severity` |
 
 Report them separately; they answer different questions (integrity, identity,
@@ -26,16 +26,16 @@ dirctl verify <cid> --from-server                     # use the server's cached 
 `--ignore-tlog` skips transparency-log verification — only when the user
 explicitly asks.
 
-## Verify name ownership
+## Verify ownership
 
 ```bash
-dirctl naming verify <cid>
-dirctl naming verify "https://example.com/agent:v1.0.0"
+dirctl identity status <cid>
+dirctl identity status "example.com/agent:v1.0.0"
 ```
 
-Checks the signing key against `https://<domain>/.well-known/jwks.json`. Only
-meaningful for records whose name has an `http(s)://` prefix; plain names are
-reported as not applicable, not as failures.
+Reports the last verification result of the record's identity and ownership
+claims: `verified`, `failed` (with the reason), or `no result`. A record without
+claims is reported as having none, not as a failure.
 
 ## Security scan reports
 
@@ -65,7 +65,7 @@ reports is *unscanned* — say so explicitly rather than implying safety.
 ```bash
 dirctl search --safe                          # all scanners is_safe=true (unscanned records excluded)
 dirctl search --scan-severity HIGH            # highest finding ≥ HIGH
-dirctl search --trusted --verified            # signed + name-verified
+dirctl search --trusted --verified            # signed + owner-verified
 dirctl search "code review agent" --safe      # combine with NL query
 ```
 
@@ -75,7 +75,7 @@ Before installing a record the user picked:
 
 ```bash
 dirctl verify <cid> --from-server
-dirctl naming verify <cid>
+dirctl identity status <cid>
 dirctl pull <cid> --scan-report -o json
 ```
 

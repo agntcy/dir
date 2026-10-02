@@ -80,7 +80,7 @@ enum RecordQueryType {
   // Numeric field - exact match only, no wildcard support.
   RECORD_QUERY_TYPE_MODULE_ID = 12;
 
-  // Query for verified records (name ownership verified via JWKS).
+  // Query for records whose ownership claim was verified (alias of OWNER_VERIFIED).
   // Boolean field - use "true" or "false" as value.
   RECORD_QUERY_TYPE_VERIFIED = 13;
 
@@ -118,4 +118,20 @@ enum RecordQueryType {
   // Value is a failure reason code, e.g. "source-unreachable",
   // "endpoint-url-invalid", "scanner-timeout". Supports wildcards: "scanner-*".
   RECORD_QUERY_TYPE_SCAN_FAILURE_REASON = 21;
+
+  // Query for the subject of a record's identity claim.
+  // Supports wildcard patterns: "did:web:acme.com:*", "spiffe://acme.com/*"
+  RECORD_QUERY_TYPE_IDENTITY = 22;
+
+  // Query for the subject of a record's ownership claim.
+  // Supports wildcard patterns: "did:web:acme.com", "dns:*.com"
+  RECORD_QUERY_TYPE_OWNER = 23;
+
+  // Query for records whose identity claim was verified.
+  // Boolean field - only "true" is supported; negation is rejected.
+  RECORD_QUERY_TYPE_IDENTITY_VERIFIED = 24;
+
+  // Query for records whose ownership claim was verified.
+  // Boolean field - only "true" is supported; negation is rejected.
+  RECORD_QUERY_TYPE_OWNER_VERIFIED = 25;
 }

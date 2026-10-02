@@ -1,0 +1,63 @@
+# A single node that enforces a content policy: a record is served only once
+# the reconciler has evaluated it and the policy passed it.
+#
+# The tasks' intervals are an hour, so the suite can only pass if a pushed
+# record is indexed and evaluated because the reconciler heard of the push, and
+# not because a task happened to come round. The window is long enough that a
+# record read straight after its push has not been evaluated yet, and short
+# enough for the suite to be quick; the server follows the policy registry every
+# 2s.
+server:
+  listen_address: "localhost:18430"
+  metrics:
+    enabled: false
+  # No OASF validator on push: this suite pushes records of its own making and
+  # does not need the OASF schema server.
+  validators:
+    - provider: cel
+      op: ["evaluate"]
+      config:
+        name: has-description
+        expressions:
+          - 'record.description != ""'
+  policy:
+    enforcement:
+      search: "enforce"
+      fetch: "enforce"
+      policies:
+        - "cel:has-description"
+      refresh_interval: 2s
+  store:
+    provider: "oci"
+    oci:
+      local_dir: "store"
+      registry_address: "localhost:18431"
+      repository_name: "dir"
+      auth_config:
+        insecure: true
+  routing:
+    listen_address: "/ip4/127.0.0.1/tcp/0"
+  database:
+    type: "sqlite"
+    sqlite:
+      path: "dir.db"
+  publication:
+    scheduler_interval: 1h
+    worker_count: 1
+    worker_timeout: 30m
+
+reconciler:
+  local_registry:
+    registry_address: "localhost:18431"
+    repository_name: "dir"
+    auth_config:
+      insecure: true
+  indexer:
+    enabled: true
+    interval: 1h
+  policy_evaluation:
+    enabled: true
+    interval: 1h
+  record_events:
+    enabled: true
+    window: 3s

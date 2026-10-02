@@ -7,7 +7,25 @@ import (
 	"context"
 
 	corev1 "github.com/agntcy/dir/api/core/v1"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 )
+
+// RecordNotFoundError is the error a store returns for a record it does not
+// hold.
+func RecordNotFoundError(cid string) error {
+	return status.Errorf(codes.NotFound, "record not found: %s", cid)
+}
+
+// RecordExcludedError is the error the API returns for a record, fetched by
+// CID, that the node's content policy keeps from being served. It tells the
+// caller that, and nothing more: neither which policy nor why, which stay with
+// the audit API. The gate answers from the index, so a record not yet
+// evaluated, and a CID the node does not hold, get it too: the refusal does
+// not say which CIDs the node holds.
+func RecordExcludedError(cid string) error {
+	return status.Errorf(codes.PermissionDenied, "record %s is not available under this node's content policy", cid)
+}
 
 // StoreAPI handles management of content-addressable object storage.
 type StoreAPI interface {

@@ -101,7 +101,7 @@ func IsCID(input string) bool {
 // Highest picks the record a name resolves to when the reference names no
 // version: the highest semantic version published under it.
 //
-// The naming service orders its answer by created_at descending, so the first
+// The identity service orders its answer by created_at descending, so the first
 // record is the newest *push*, which is not the newest version. Push v1.9.0
 // after v2.0.0 and the first record is v1.9.0 — so a bare `dirctl install
 // <name>` would install v1.9.0 while `dirctl install outdated` calls v2.0.0 the

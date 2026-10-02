@@ -32,14 +32,16 @@ The indexer task monitors the local OCI registry and indexes records into the se
 3. For each new tag, pulls the record from the local store and validates it
 4. Adds the record to the search database to enable search and filtering
 
-### Name Task
+### Identity Task
 
-The name task re-verifies DNS/name ownership of named records and caches results. It:
+The identity task verifies the identity and ownership claims attached to records. It is off unless `identity.enabled` is set. It:
 
-1. Queries the database for signed records with verifiable names that need verification (missing or expired)
-2. For each record, retrieves the record name and public keys attached to the record
-3. Verifies name ownership (e.g. via well-known JWKS at the record’s domain)
-4. Stores the verification result (verified or failed) in the database for efficient API filtering
+1. Lists the records in the database and the claim referrers attached to each in the store
+2. Looks up the current key material of each claim's subject (DNS TXT record, well-known JWKS, DID document, or SPIFFE trust bundle)
+3. Checks the claim's signature against that key material
+4. Stores the outcome (verified or failed) for `IdentityService` and the `--identity-verified`, `--owner-verified` and `--verified` search filters
+
+Because every run looks the key material up again, a rotated key or a revoked trust bundle is caught on the next run.
 
 ### Signature Task
 

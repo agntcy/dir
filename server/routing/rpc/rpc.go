@@ -78,15 +78,21 @@ type PullReferrerResponse struct {
 // and should not be part of peer-to-peer RPC communication
 
 func (r *RPCAPI) Lookup(ctx context.Context, in *corev1.RecordRef, out *LookupResponse) error {
-	logger.Debug("P2p RPC: Executing Lookup request on remote peer", "peer", r.service.host.ID())
+	logger.Debug("P2p RPC: Executing Lookup request on remote peer", "peer", r.service.localPeerID())
 
 	// validate request
 	if in == nil || out == nil {
 		return status.Error(codes.InvalidArgument, "invalid request: nil request/response") //nolint:wrapcheck
 	}
 
-	// handle lookup
-	meta, err := r.service.store.Lookup(ctx, in)
+	// handle lookup; a record the policy gate excludes fails with the status that says so
+	var meta *corev1.RecordMeta
+
+	err := r.service.checkServable(in.GetCid())
+	if err == nil {
+		meta, err = r.service.store.Lookup(ctx, in)
+	}
+
 	if err != nil {
 		st := status.Convert(err)
 
@@ -103,15 +109,21 @@ func (r *RPCAPI) Lookup(ctx context.Context, in *corev1.RecordRef, out *LookupRe
 }
 
 func (r *RPCAPI) Pull(ctx context.Context, in *corev1.RecordRef, out *PullResponse) error {
-	logger.Debug("P2p RPC: Executing Pull request on remote peer", "peer", r.service.host.ID())
+	logger.Debug("P2p RPC: Executing Pull request on remote peer", "peer", r.service.localPeerID())
 
 	// validate request
 	if in == nil || out == nil {
 		return status.Error(codes.InvalidArgument, "invalid request: nil request/response") //nolint:wrapcheck
 	}
 
-	// lookup
-	meta, err := r.service.store.Lookup(ctx, in)
+	// lookup; a record the policy gate excludes fails with the status that says so
+	var meta *corev1.RecordMeta
+
+	err := r.service.checkServable(in.GetCid())
+	if err == nil {
+		meta, err = r.service.store.Lookup(ctx, in)
+	}
+
 	if err != nil {
 		st := status.Convert(err)
 
@@ -183,7 +195,13 @@ func (r *RPCAPI) ListReferrers(ctx context.Context, in *corev1.RecordRef, out *L
 		return nil
 	}
 
-	if err := refStore.WalkReferrers(ctx, in.GetCid(), "", walkFn); err != nil && !errors.Is(err, errReferrerListCap) {
+	// A record the policy gate excludes fails with the status that says so.
+	err = r.service.checkServable(in.GetCid())
+	if err == nil {
+		err = refStore.WalkReferrers(ctx, in.GetCid(), "", walkFn)
+	}
+
+	if err != nil && !errors.Is(err, errReferrerListCap) {
 		st := status.Convert(err)
 
 		return status.Errorf(st.Code(), "failed to list referrers: %s", st.Message())
@@ -246,7 +264,12 @@ func (r *RPCAPI) PullReferrer(ctx context.Context, in *PullReferrerRequest, out 
 		return errReferrerFound
 	}
 
-	err = refStore.WalkReferrers(ctx, in.RecordRef.GetCid(), in.Referrer.Type, walkFn)
+	// A record the policy gate excludes fails with the status that says so.
+	err = r.service.checkServable(in.RecordRef.GetCid())
+	if err == nil {
+		err = refStore.WalkReferrers(ctx, in.RecordRef.GetCid(), in.Referrer.Type, walkFn)
+	}
+
 	if err != nil && !errors.Is(err, errReferrerFound) {
 		st := status.Convert(err)
 
@@ -291,24 +314,33 @@ func (r *RPCAPI) PullReferrer(ctx context.Context, in *PullReferrerRequest, out 
 // NOTE: List RPC method removed since List is a local-only operation
 
 type Service struct {
-	rpcServer *rpc.Server
-	rpcClient *rpc.Client
-	host      host.Host
-	store     types.StoreAPI
-	refStore  types.ReferrerStoreAPI
+	rpcServer   *rpc.Server
+	rpcClient   *rpc.Client
+	host        host.Host
+	store       types.StoreAPI
+	refStore    types.ReferrerStoreAPI
+	servability types.RecordServabilityAPI
 }
 
-func New(host host.Host, store types.StoreAPI) (*Service, error) {
+// New creates the peer RPC service. servability is the policy gate every
+// fetch a remote peer makes must pass; it is required, so that the service
+// cannot be built without it.
+func New(host host.Host, store types.StoreAPI, servability types.RecordServabilityAPI) (*Service, error) {
+	if servability == nil {
+		return nil, errors.New("rpc: a record servability check is required")
+	}
+
 	var refStore types.ReferrerStoreAPI
 	if rs, ok := store.(types.ReferrerStoreAPI); ok {
 		refStore = rs
 	}
 
 	service := &Service{
-		rpcServer: rpc.NewServer(host, Protocol),
-		host:      host,
-		store:     store,
-		refStore:  refStore,
+		rpcServer:   rpc.NewServer(host, Protocol),
+		host:        host,
+		store:       store,
+		refStore:    refStore,
+		servability: servability,
 	}
 
 	// register api
@@ -408,6 +440,30 @@ func (s *Service) getReferrerStore() (types.ReferrerStoreAPI, error) {
 	}
 
 	return s.refStore, nil
+}
+
+// checkServable is the policy gate for fetches a remote peer makes. It
+// returns nil when the record may be served. When the gate excludes it, it
+// returns types.RecordExcludedError, so a peer is told the record is not
+// available under this node's content policy, with no policy name and no
+// reason. The gate answers from the index, so a record this node does not
+// hold is refused the same way. When that cannot be determined it returns
+// Internal: the check fails closed.
+func (s *Service) checkServable(cid string) error {
+	ok, err := s.servability.IsRecordServable(cid)
+	if err != nil {
+		logger.Error("Failed to check whether a record may be served to a peer", "cid", cid, "error", err)
+
+		return status.Error(codes.Internal, "failed to check record access") //nolint:wrapcheck // a gRPC status for the peer
+	}
+
+	if !ok {
+		logger.Debug("Record excluded by content policy for a peer", "cid", cid)
+
+		return types.RecordExcludedError(cid) //nolint:wrapcheck // a gRPC status for the peer
+	}
+
+	return nil
 }
 
 func (s *Service) localPeerID() peer.ID {

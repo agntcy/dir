@@ -11,6 +11,7 @@ import (
 	"time"
 
 	coretypes "github.com/agntcy/dir/api/core/types"
+	securityv1 "github.com/agntcy/dir/api/security/v1"
 	"github.com/agntcy/dir/server/database/utils"
 	"github.com/agntcy/dir/server/types"
 	"gorm.io/gorm"
@@ -55,15 +56,15 @@ type Record struct {
 	Authors       []string `gorm:"column:authors;serializer:json"` // Stored as JSON array
 	Signed        bool     `gorm:"column:signed;default:false"`    // Whether at least one signature is attached
 
-	Skills           []Skill                 `gorm:"foreignKey:RecordCID;references:RecordCID;constraint:OnDelete:CASCADE"`
-	Locators         []Locator               `gorm:"foreignKey:RecordCID;references:RecordCID;constraint:OnDelete:CASCADE"`
-	Modules          []Module                `gorm:"foreignKey:RecordCID;references:RecordCID;constraint:OnDelete:CASCADE"`
-	Domains          []Domain                `gorm:"foreignKey:RecordCID;references:RecordCID;constraint:OnDelete:CASCADE"`
-	Annotations      []Annotation            `gorm:"foreignKey:RecordCID;references:RecordCID;constraint:OnDelete:CASCADE"`
-	Signatures       []SignatureVerification `gorm:"foreignKey:RecordCID;references:RecordCID;constraint:OnDelete:CASCADE"`
-	NameVerification *NameVerification       `gorm:"foreignKey:RecordCID;references:RecordCID;constraint:OnDelete:CASCADE"`
-	ScanReports      []ScanReport            `gorm:"foreignKey:RecordCID;references:RecordCID;constraint:OnDelete:CASCADE"`
-	UsageMetrics     *RecordUsageMetrics     `gorm:"foreignKey:RecordCID;references:RecordCID;constraint:OnDelete:CASCADE"`
+	Skills         []Skill                 `gorm:"foreignKey:RecordCID;references:RecordCID;constraint:OnDelete:CASCADE"`
+	Locators       []Locator               `gorm:"foreignKey:RecordCID;references:RecordCID;constraint:OnDelete:CASCADE"`
+	Modules        []Module                `gorm:"foreignKey:RecordCID;references:RecordCID;constraint:OnDelete:CASCADE"`
+	Domains        []Domain                `gorm:"foreignKey:RecordCID;references:RecordCID;constraint:OnDelete:CASCADE"`
+	Annotations    []Annotation            `gorm:"foreignKey:RecordCID;references:RecordCID;constraint:OnDelete:CASCADE"`
+	Signatures     []SignatureVerification `gorm:"foreignKey:RecordCID;references:RecordCID;constraint:OnDelete:CASCADE"`
+	ScanReports    []ScanReport            `gorm:"foreignKey:RecordCID;references:RecordCID;constraint:OnDelete:CASCADE"`
+	IdentityClaims []IdentityClaim         `gorm:"foreignKey:RecordCID;references:RecordCID;constraint:OnDelete:CASCADE"`
+	UsageMetrics   *RecordUsageMetrics     `gorm:"foreignKey:RecordCID;references:RecordCID;constraint:OnDelete:CASCADE"`
 }
 
 func (r *Record) GetCid() string {
@@ -427,6 +428,10 @@ func applyRecordOrder(query *gorm.DB, cfg *types.RecordFilters) (*gorm.DB, error
 //
 //nolint:gocognit,cyclop,nestif,gocyclo,maintidx
 func (d *DB) handleFilterOptions(query *gorm.DB, cfg *types.RecordFilters) *gorm.DB {
+	// Every search, catalog and resolve query passes through here, so the
+	// policy gate applies to all of them, whatever the caller asked for.
+	query = d.applyPolicyGate(query, "records.record_cid")
+
 	// Filter by CID (exact match on primary key).
 	if len(cfg.CIDs) > 0 {
 		query = query.Where("records.record_cid IN ?", cfg.CIDs)
@@ -586,16 +591,15 @@ func (d *DB) handleFilterOptions(query *gorm.DB, cfg *types.RecordFilters) *gorm
 		query = query.Where("modules.module_id IN ?", cfg.ModuleIDs)
 	}
 
-	// Handle verified filter.
+	// Handle verified filter (the record has a verified ownership claim).
 	if cfg.Verified != nil {
 		if *cfg.Verified {
-			// Filter for verified records only
-			query = query.Joins("JOIN name_verifications ON name_verifications.record_cid = records.record_cid").
-				Where("name_verifications.status = ?", VerificationStatusVerified)
+			query = applyClaimVerified(query, types.ClaimRoleOwner)
 		} else {
-			// Filter for non-verified records (either no verification or failed)
-			query = query.Joins("LEFT JOIN name_verifications ON name_verifications.record_cid = records.record_cid").
-				Where("name_verifications.status IS NULL OR name_verifications.status != ?", VerificationStatusVerified)
+			query = query.Where(
+				utils.BuildNotExistsCondition("identity_claims", "ic", "ic.record_cid = records.record_cid AND ic.role = ? AND ic.status = ?"),
+				types.ClaimRoleOwner, types.ClaimStatusVerified,
+			)
 		}
 	}
 
@@ -645,7 +649,7 @@ func (d *DB) handleFilterOptions(query *gorm.DB, cfg *types.RecordFilters) *gorm
 	if len(cfg.ScanSeverities) > 0 {
 		var severities []string
 		for _, threshold := range cfg.ScanSeverities {
-			severities = append(severities, scanSeveritiesGTE(threshold)...)
+			severities = append(severities, securityv1.ScanSeveritiesGTE(threshold)...)
 		}
 
 		if len(severities) > 0 {
@@ -687,31 +691,11 @@ func (d *DB) handleFilterOptions(query *gorm.DB, cfg *types.RecordFilters) *gorm
 		}
 	}
 
+	query = applyIdentityFilters(query, cfg)
+
 	query = applyExclusionFilters(query, &cfg.Excluded)
 
 	return query
-}
-
-// scanSeveritiesGTE returns all severity strings that are >= the given threshold.
-// Values are the short names stored in the max_severity column (e.g. "HIGH").
-func scanSeveritiesGTE(threshold string) []string {
-	order := []string{"NONE", "INFO", "LOW", "MEDIUM", "HIGH", "CRITICAL"}
-
-	idx := -1
-
-	for i, s := range order {
-		if strings.EqualFold(s, threshold) {
-			idx = i
-
-			break
-		}
-	}
-
-	if idx < 0 {
-		return nil
-	}
-
-	return order[idx:]
 }
 
 // SetRecordSigned marks a record as signed.

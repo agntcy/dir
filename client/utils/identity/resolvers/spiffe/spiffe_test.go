@@ -161,6 +161,14 @@ func TestLoadBundles(t *testing.T) {
 	_, err = LoadBundles(map[string]string{"not a domain!": bundlePath})
 	require.ErrorContains(t, err, "trust domain")
 
+	// A bundle that cannot be read leaves only its own domain out of the set.
+	partial, err := LoadBundles(map[string]string{"acme.com": bundlePath, "other.org": filepath.Join(dir, "missing.pem")})
+	require.ErrorContains(t, err, "other.org")
+
+	keys, err = New(partial).Resolve(t.Context(), svidSubject, ca.Issue(t, key, svidOptions{URIs: []string{svidSubject}}))
+	require.NoError(t, err)
+	require.Len(t, keys, 1)
+
 	empty, err := LoadBundles(nil)
 	require.NoError(t, err)
 

@@ -9,7 +9,7 @@ import (
 	"io"
 
 	eventsv1 "github.com/agntcy/dir/api/events/v1"
-	namingv1 "github.com/agntcy/dir/api/naming/v1"
+	identityv1 "github.com/agntcy/dir/api/identity/v1"
 	routingv1 "github.com/agntcy/dir/api/routing/v1"
 	runtimev1 "github.com/agntcy/dir/api/runtime/v1"
 	searchv1 "github.com/agntcy/dir/api/search/v1"
@@ -26,7 +26,7 @@ type Client struct {
 	storev1.SyncServiceClient
 	signv1.SignServiceClient
 	eventsv1.EventServiceClient
-	namingv1.NamingServiceClient
+	identityv1.IdentityServiceClient
 	runtimev1.DiscoveryServiceClient
 
 	config     *Config
@@ -52,7 +52,11 @@ func New(ctx context.Context, opts ...Option) (*Client, error) {
 	}
 
 	// Create gRPC client connection
-	conn, err := grpc.NewClient(options.config.ServerAddress, options.authOpts...)
+	dialOpts := make([]grpc.DialOption, 0, len(options.authOpts)+1)
+	dialOpts = append(dialOpts, options.authOpts...)
+	dialOpts = append(dialOpts, grpc.WithDisableServiceConfig())
+
+	conn, err := grpc.NewClient(options.config.ServerAddress, dialOpts...)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create gRPC client: %w", err)
 	}
@@ -64,7 +68,7 @@ func New(ctx context.Context, opts ...Option) (*Client, error) {
 		SyncServiceClient:      storev1.NewSyncServiceClient(conn),
 		SignServiceClient:      signv1.NewSignServiceClient(conn),
 		EventServiceClient:     eventsv1.NewEventServiceClient(conn),
-		NamingServiceClient:    namingv1.NewNamingServiceClient(conn),
+		IdentityServiceClient:  identityv1.NewIdentityServiceClient(conn),
 		DiscoveryServiceClient: runtimev1.NewDiscoveryServiceClient(conn),
 		config:                 options.config,
 		authClient:             options.authClient,

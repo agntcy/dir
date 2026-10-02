@@ -14,7 +14,6 @@ import (
 	dbconfig "github.com/agntcy/dir/server/database/config"
 	events "github.com/agntcy/dir/server/events/config"
 	ratelimitconfig "github.com/agntcy/dir/server/middleware/ratelimit/config"
-	naming "github.com/agntcy/dir/server/naming/config"
 	policy "github.com/agntcy/dir/server/policy/config"
 	publication "github.com/agntcy/dir/server/publication/config"
 	routing "github.com/agntcy/dir/server/routing/config"
@@ -168,9 +167,6 @@ type Config struct {
 
 	// Metrics configuration
 	Metrics MetricsConfig `json:"metrics" mapstructure:"metrics"`
-
-	// Naming holds name verification cache config (TTL for naming API; reconciler name task performs re-verification).
-	Naming naming.Config `json:"naming,omitzero" mapstructure:"naming"`
 
 	// HTTPGateway exposes the gRPC services over HTTP/JSON via grpc-gateway.
 	HTTPGateway HTTPGatewayConfig `json:"http_gateway,omitzero" mapstructure:"http_gateway"`
@@ -488,6 +484,18 @@ func LoadConfig(opts ...ConfigOption) (*Config, error) {
 	_ = v.BindEnv("policy.dir")
 	v.SetDefault("policy.dir", DefaultConfigPath+"/policies")
 
+	_ = v.BindEnv("policy.enforcement.search")
+	v.SetDefault("policy.enforcement.search", string(policy.ModeOff))
+
+	_ = v.BindEnv("policy.enforcement.fetch")
+	v.SetDefault("policy.enforcement.fetch", string(policy.ModeOff))
+
+	_ = v.BindEnv("policy.enforcement.policies")
+	v.SetDefault("policy.enforcement.policies", "")
+
+	_ = v.BindEnv("policy.enforcement.refresh_interval")
+	v.SetDefault("policy.enforcement.refresh_interval", policy.DefaultRefreshInterval)
+
 	//
 	// Store configuration
 	//
@@ -519,12 +527,6 @@ func LoadConfig(opts ...ConfigOption) (*Config, error) {
 	_ = v.BindEnv("store.oci.auth_config.password")
 	_ = v.BindEnv("store.oci.auth_config.access_token")
 	_ = v.BindEnv("store.oci.auth_config.refresh_token")
-
-	//
-	// Store verification configuration
-	//
-	_ = v.BindEnv("store.verification.enabled")
-	v.SetDefault("store.verification.enabled", store.DefaultVerificationEnabled)
 
 	//
 	// Routing configuration
@@ -650,12 +652,6 @@ func LoadConfig(opts ...ConfigOption) (*Config, error) {
 
 	_ = v.BindEnv("metrics.address")
 	v.SetDefault("metrics.address", DefaultMetricsAddress)
-
-	//
-	// Naming (name verification cache TTL for API responses; re-verification is done by the reconciler name task)
-	//
-	_ = v.BindEnv("naming.ttl")
-	v.SetDefault("naming.ttl", naming.DefaultTTL)
 
 	//
 	// Connection management configuration

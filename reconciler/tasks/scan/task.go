@@ -190,7 +190,7 @@ func (t *Task) recordOutcome(recordCID, runnerName string, result *scanner.ScanR
 		// The status gate in the safety filters is the real mechanism; this is
 		// the backstop for a query that forgets it.
 		IsSafe:        result.Safe,
-		MaxSeverity:   "NONE",
+		MaxSeverity:   scanv1.ScanSeverityNone,
 		Status:        scanStatus(result),
 		FailureReason: string(result.FailureReason),
 		FailureDetail: result.SkippedReason,
@@ -359,11 +359,10 @@ func maxSeverityString(findings []*scanv1.Finding) string {
 	}
 
 	if maxSev == scanv1.Severity_SEVERITY_UNSPECIFIED {
-		return "NONE"
+		return scanv1.ScanSeverityNone
 	}
 
-	// Strip "SEVERITY_" prefix from enum name.
-	return strings.TrimPrefix(maxSev.String(), "SEVERITY_")
+	return maxSev.ShortName()
 }
 
 // toProtoScannerType maps a runner name to the scanv1.ScannerType enum.

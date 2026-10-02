@@ -18,7 +18,8 @@ import (
 // supported field in canonical order.
 //
 // Values are registry-wide: no query context and no catalog module restriction
-// is applied, so the result is exactly the set of values some record carries.
+// is applied, so the result is exactly the set of values some record carries
+// among the records the policy gate lets through.
 func (d *DB) ListFilterValues(fields []searchv1.RecordQueryType) ([]types.FilterFieldValues, error) {
 	if len(fields) == 0 {
 		fields = types.SupportedFilterValueFields()
@@ -42,15 +43,15 @@ func (d *DB) ListFilterValues(fields []searchv1.RecordQueryType) ([]types.Filter
 func (d *DB) distinctValuesForField(field searchv1.RecordQueryType) ([]string, error) {
 	switch field { //nolint:exhaustive // unsupported fields are rejected by the default branch
 	case searchv1.RecordQueryType_RECORD_QUERY_TYPE_SKILL_NAME:
-		return d.distinctColumn(&Skill{}, "name")
+		return d.distinctColumn(&Skill{}, "skills", "name")
 	case searchv1.RecordQueryType_RECORD_QUERY_TYPE_DOMAIN_NAME:
-		return d.distinctColumn(&Domain{}, "name")
+		return d.distinctColumn(&Domain{}, "domains", "name")
 	case searchv1.RecordQueryType_RECORD_QUERY_TYPE_MODULE_NAME:
-		return d.distinctColumn(&Module{}, "name")
+		return d.distinctColumn(&Module{}, "modules", "name")
 	case searchv1.RecordQueryType_RECORD_QUERY_TYPE_AUTHOR:
 		return d.distinctAuthors()
 	case searchv1.RecordQueryType_RECORD_QUERY_TYPE_SCHEMA_VERSION:
-		return d.distinctColumn(&Record{}, "schema_version")
+		return d.distinctColumn(&Record{}, "records", "schema_version")
 	default:
 		return nil, fmt.Errorf("unsupported filter value field: %s", field)
 	}
@@ -68,10 +69,12 @@ func (d *DB) distinctValuesForField(field searchv1.RecordQueryType) ([]string, e
 func (d *DB) distinctAuthors() ([]string, error) {
 	var payloads []string
 
-	if err := d.gormDB.
+	query := d.gormDB.
 		Model(&Record{}).
 		Distinct().
-		Where("authors != ?", "").
+		Where("authors != ?", "")
+
+	if err := d.applyPolicyGate(query, "records.record_cid").
 		Pluck("authors", &payloads).Error; err != nil {
 		return nil, fmt.Errorf("list distinct author payloads: %w", err)
 	}
@@ -122,16 +125,20 @@ func jsonStringBody(s string) string {
 	return strings.Trim(string(encoded), `"`)
 }
 
-// distinctColumn plucks the distinct non-empty values of a column, sorted
-// lexicographically. Empty values are dropped so that records missing an
-// optional field (an unset schema_version, say) do not contribute a blank entry.
-func (d *DB) distinctColumn(model any, column string) ([]string, error) {
+// distinctColumn plucks the distinct non-empty values of a column of table,
+// the table model is stored in, sorted lexicographically. Empty values are
+// dropped so that records missing an optional field (an unset schema_version,
+// say) do not contribute a blank entry. Values carried only by records the
+// policy gate excludes are not listed.
+func (d *DB) distinctColumn(model any, table, column string) ([]string, error) {
 	var values []string
 
-	if err := d.gormDB.
+	query := d.gormDB.
 		Model(model).
 		Distinct().
-		Where(column+" != ?", "").
+		Where(column+" != ?", "")
+
+	if err := d.applyPolicyGate(query, table+".record_cid").
 		Pluck(column, &values).Error; err != nil {
 		return nil, fmt.Errorf("list distinct %s values: %w", column, err)
 	}

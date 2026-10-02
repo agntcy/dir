@@ -6,6 +6,7 @@ package config
 import (
 	"fmt"
 	"path/filepath"
+	"regexp"
 	"slices"
 	"strings"
 )
@@ -29,6 +30,11 @@ const (
 	// OpIndex runs on the reconciler indexer.
 	OpIndex = "index"
 
+	// OpEvaluate makes the validator a content policy: the reconciler's policy
+	// evaluation task runs it on every record and stores a verdict, which the
+	// server's read gate enforces. Only the opa and cel providers accept it.
+	OpEvaluate = "evaluate"
+
 	// ConfigKeySchemaURL is the OASF config key for the schema endpoint.
 	ConfigKeySchemaURL = "schema_url"
 
@@ -37,7 +43,17 @@ const (
 
 	// ConfigKeyExpressions is the CEL config key for the inline expressions.
 	ConfigKeyExpressions = "expressions"
+
+	// ConfigKeyName names the policy a validator with op evaluate defines. It
+	// is optional for OPA, where it defaults to the file name without .rego,
+	// and required for CEL.
+	ConfigKeyName = "name"
 )
+
+// policyNamePattern is what a policy name may contain. The name ends up in the
+// policy's ID, which is listed in a comma-separated setting and used as a
+// metric label.
+var policyNamePattern = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9._-]*$`)
 
 // Config is the ordered list of record validators.
 type Config []Validator
@@ -48,7 +64,7 @@ type Validator struct {
 	Provider string `json:"provider" mapstructure:"provider"`
 
 	// Ops is the set of operations this validator runs on.
-	// Known values: push, autosync, index.
+	// Known values: push, autosync, index, evaluate.
 	Ops []string `json:"op,omitempty" mapstructure:"op"`
 
 	// Config is provider-specific.
@@ -59,14 +75,29 @@ var knownOps = map[string]struct{}{
 	OpPush:     {},
 	OpAutosync: {},
 	OpIndex:    {},
+	OpEvaluate: {},
 }
 
-// Validate checks each entry. An empty list is valid (no record validation).
+// Validate checks each entry, and that no two entries define the same policy.
+// An empty list is valid (no record validation).
 func (c Config) Validate() error {
+	policies := make(map[string]int)
+
 	for i, v := range c {
 		if err := v.validate(i); err != nil {
 			return err
 		}
+
+		if !v.HasOp(OpEvaluate) {
+			continue
+		}
+
+		id := v.PolicyID()
+		if first, dup := policies[id]; dup {
+			return fmt.Errorf("validators[%d]: policy %q is already defined by validators[%d]", i, id, first)
+		}
+
+		policies[id] = i
 	}
 
 	return nil
@@ -91,6 +122,31 @@ func (v Validator) validate(index int) error {
 		}
 	}
 
+	if v.HasOp(OpEvaluate) {
+		return v.validatePolicy(index)
+	}
+
+	return nil
+}
+
+// validatePolicy checks what a validator needs to define a content policy: a
+// provider whose content is known when it is loaded, and a name the policy can
+// be listed by.
+func (v Validator) validatePolicy(index int) error {
+	if v.Provider != ProviderOPA && v.Provider != ProviderCEL {
+		return fmt.Errorf("validators[%d]: provider %q cannot define a policy: op %q supports only %q and %q",
+			index, v.Provider, OpEvaluate, ProviderOPA, ProviderCEL)
+	}
+
+	name := v.PolicyName()
+	if name == "" {
+		return fmt.Errorf("validators[%d]: config.name is required for provider %q with op %q", index, v.Provider, OpEvaluate)
+	}
+
+	if !policyNamePattern.MatchString(name) {
+		return fmt.Errorf("validators[%d]: policy name %q must start with a letter or digit and contain only letters, digits, '.', '_' and '-'", index, name)
+	}
+
 	return nil
 }
 
@@ -113,6 +169,28 @@ func (v Validator) validateProviderConfig(index int) error {
 	}
 
 	return nil
+}
+
+// PolicyName returns the name of the policy this validator defines: config.name,
+// or for OPA the policy file's name without .rego. It is empty when there is
+// none.
+func (v Validator) PolicyName() string {
+	if name := strings.TrimSpace(v.ConfigString(ConfigKeyName)); name != "" {
+		return name
+	}
+
+	if v.Provider == ProviderOPA {
+		return strings.TrimSuffix(strings.TrimSpace(v.ConfigString(ConfigKeyFile)), ".rego")
+	}
+
+	return ""
+}
+
+// PolicyID returns the ID of the policy this validator defines, such as
+// "opa:require-license". It is what the server's enforcement setting lists,
+// and stays the same when the policy's content changes.
+func (v Validator) PolicyID() string {
+	return v.Provider + ":" + v.PolicyName()
 }
 
 // HasOp reports whether this validator is configured for op.

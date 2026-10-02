@@ -82,8 +82,8 @@ dirctl pull $RECORD_CID
 dirctl info $RECORD_CID
 ```
 
-Records with verifiable names can also be referenced using Docker-style formats
-(`name`, `name:version`, `name:version@cid`) with the `pull`, `info`, and `naming verify`
+Records can also be referenced using Docker-style formats
+(`name`, `name:version`, `name:version@cid`) with the `pull`, `info`, and `identity`
 commands. For all storage flags and output options, see
 [CLI Reference — Storage Operations](dir-cli-reference.md#storage-operations).
 
@@ -91,7 +91,7 @@ commands. For all storage flags and output options, see
 
 Cryptographically signing records lets publishers prove authorship and ensures data
 integrity, while consumers can verify records before deploying or executing agent code. For
-how signing, server-side verification, and name verification work, see
+how signing and server-side verification work, see
 [Trust Model — Record Signing and Verification](dir-component-trust-model.md#record-signing-and-verification).
 
 ### Method 1: OIDC-based Interactive
@@ -191,61 +191,33 @@ dirctl sign "$RECORD_CID" --key 'hashivault://[KEY]'
 dirctl verify "$RECORD_CID"
 ```
 
-## Name Verification
+## Identity and Ownership Claims
 
-Name verification proves that the signing key is authorized by the domain claimed in the
-record's name field, enabling human-readable references instead of CIDs. For the concept and
-requirements (protocol prefix, JWKS hosting, matching signing key), see
-[Trust Model — Name verification](dir-component-trust-model.md#name-verification).
+A record can carry two signed claims: the identity of the record itself and the owner behind
+it. The record declares each subject, such as `did:web:acme.com` or `dns:acme.com`, in its
+`agntcy.dir/identity` and `agntcy.dir/owner` annotations. The claim is signed for that subject and
+checked against the key material it publishes. For the claim model, see
+[CLI Reference — Identity](dir-cli-reference.md#dirctl-identity-claim-flags).
 
 ### Workflow
 
 ```bash
-# 1. Create a record with a verifiable name (already done in Build section)
-# The record.json has: "name": "https://example.com/agents/my-record"
-
-# 2. Ensure your domain hosts a JWKS file
-# Example: https://example.com/.well-known/jwks.json
-# This file should contain the public key corresponding to your signing key
-
-# 3. Push the record
+# 1. Declare the owner in the record: "annotations": {"agntcy.dir/owner": "dns:example.com"},
+#    then push the record
 RECORD_CID=$(dirctl push record.json --output raw)
-echo "Stored with CID: $RECORD_CID"
 
-# 4. Sign the record (triggers automatic verification)
-dirctl sign $RECORD_CID --key cosign.key
+# 2. Claim ownership, signing with the key the owner publishes
+dirctl identity claim --record $RECORD_CID --role owner --key owner.key
 
-# 5. Verify the name authorization
-# By CID
-dirctl naming verify $RECORD_CID --output json
-
-# By name (latest version)
-dirctl naming verify example.com/agents/my-record --output json
-
-# By name with specific version
-dirctl naming verify example.com/agents/my-record:v1.0.0 --output json
+# 3. Check the verification result (the reconciler verifies claims in the background)
+dirctl identity status $RECORD_CID --output json
 ```
 
-### Verification Response
+### Referencing records by name
 
-When verification succeeds, you'll receive a response like:
-
-```json
-{
-  "cid": "bafyreib...",
-  "verified": true,
-  "domain": "example.com",
-  "method": "jwks",
-  "key_id": "key-1",
-  "verified_at": "2026-01-21T10:30:00Z"
-}
-```
-
-### Using Verified Names
-
-Once verified, records can be referenced by name instead of CID across `pull`, `info`, and
-`naming verify`. When no version is specified, commands resolve to the most recently created
-record (by `created_at`), so non-semver tags like `latest`, `dev`, or `stable` also work:
+Records can be referenced by name instead of CID across `pull`, `info`, and `identity`.
+When no version is specified, commands resolve to the highest version. Non-semver tags like
+`latest`, `dev`, or `stable` also work:
 
 ```bash
 # Resolve the latest version by name

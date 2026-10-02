@@ -12,8 +12,10 @@ import (
 	routingv1 "github.com/agntcy/dir/api/routing/v1"
 	searchv1 "github.com/agntcy/dir/api/search/v1"
 	storev1 "github.com/agntcy/dir/api/store/v1"
+	policyconfig "github.com/agntcy/dir/server/policy/config"
 )
 
+//nolint:interfacebloat // one embedded API per persisted concern.
 type DatabaseAPI interface {
 	// SearchDatabaseAPI handles management of the search database.
 	SearchDatabaseAPI
@@ -24,14 +26,17 @@ type DatabaseAPI interface {
 	// PublicationDatabaseAPI handles management of the publication database.
 	PublicationDatabaseAPI
 
-	// NameVerificationDatabaseAPI handles management of name verifications.
-	NameVerificationDatabaseAPI
-
 	// SignatureVerificationDatabaseAPI handles management of signature verifications.
 	SignatureVerificationDatabaseAPI
 
+	// IdentityClaimDatabaseAPI handles persistence of identity and ownership claim results.
+	IdentityClaimDatabaseAPI
+
 	// ScanReportDatabaseAPI handles persistence of security scan results.
 	ScanReportDatabaseAPI
+
+	// PolicyEvaluationDatabaseAPI handles persistence of content-policy verdicts.
+	PolicyEvaluationDatabaseAPI
 
 	// CatalogDatabaseAPI handles deterministic browsing of AI Catalog entries.
 	CatalogDatabaseAPI
@@ -111,21 +116,6 @@ type PublicationDatabaseAPI interface {
 	DeletePublication(publicationID string) error
 }
 
-type NameVerificationDatabaseAPI interface {
-	// CreateNameVerification creates a new name verification for a record.
-	CreateNameVerification(verification NameVerificationObject) error
-
-	// UpdateNameVerification updates an existing name verification for a record.
-	UpdateNameVerification(verification NameVerificationObject) error
-
-	// GetVerificationByCID retrieves the verification for a record.
-	GetVerificationByCID(cid string) (NameVerificationObject, error)
-
-	// GetRecordsNeedingVerification retrieves signed records with verifiable names
-	// that either don't have a verification or have an expired verification.
-	GetRecordsNeedingVerification(ttl time.Duration) ([]coretypes.Record, error)
-}
-
 // CatalogDatabaseAPI exposes the deterministic-browsing query backing the
 // AI Finder GET /v1/agents endpoint.
 type CatalogDatabaseAPI interface {
@@ -179,6 +169,21 @@ type SignatureVerificationDatabaseAPI interface {
 
 	// InvalidateSignatureVerificationsForRecord removes all cached verification rows for a record so the reconciler will re-verify it (e.g. when a new signature or public key referrer is pushed).
 	InvalidateSignatureVerificationsForRecord(recordCID string) error
+}
+
+// IdentityClaimDatabaseAPI persists the last verification result of a record's
+// identity and ownership claims.
+type IdentityClaimDatabaseAPI interface {
+	// UpsertIdentityClaim inserts or updates the result keyed by (record CID, role).
+	UpsertIdentityClaim(claim IdentityClaimObject) error
+
+	// GetIdentityClaimByCID returns the result for a record's claim of the given
+	// role. Returns an error wrapping gorm.ErrIdentityClaimNotFound if none exists.
+	GetIdentityClaimByCID(cid, role string) (IdentityClaimObject, error)
+
+	// DeleteIdentityClaim removes the result for a record's claim of the given
+	// role, e.g. once the claim itself is gone. Not an error if there is none.
+	DeleteIdentityClaim(cid, role string) error
 }
 
 // Scan status values. A row is written for every attempt, so the status is what
@@ -308,4 +313,125 @@ type ScanReportDatabaseAPI interface {
 	// GetRecordsNeedingScan returns records with no scan result still
 	// suppressing a rescan, bounded by ttl.
 	GetRecordsNeedingScan(ttl time.Duration) ([]coretypes.Record, error)
+}
+
+// Policy evaluation status values.
+const (
+	// PolicyEvalStatusEvaluated means the policy engine reached a verdict:
+	// Compliant is authoritative.
+	PolicyEvalStatusEvaluated = "evaluated"
+
+	// PolicyEvalStatusFailed means the policy engine errored before reaching
+	// a verdict.
+	PolicyEvalStatusFailed = "failed"
+)
+
+// EvaluatedPolicyStatuses are the statuses under which a policy evaluator
+// reached a verdict.
+//
+// Every read-path filter must gate on these: a failed row stores compliant =
+// false to satisfy the NOT NULL column and fail closed, and that false is a
+// placeholder, not a verdict. Mirrors ScannedStatuses for scan reports.
+func EvaluatedPolicyStatuses() []string {
+	return []string{PolicyEvalStatusEvaluated}
+}
+
+// EnforcedPolicy is a policy, at the version currently in force, that a
+// record must comply with to be returned by any read. A verdict under a
+// different version does not count: until the record is re-evaluated, it is
+// not known to comply with this one.
+type EnforcedPolicy struct {
+	// ID matches PolicyEvaluationObject.GetPolicyID.
+	ID string
+
+	// Version matches PolicyEvaluationObject.GetPolicyVersion.
+	Version string
+}
+
+// PolicyEnforcement is what the server's reads must satisfy: the enforced
+// policies, and how each kind of read applies them. See
+// policyconfig.EnforcementConfig for which reads each mode covers.
+type PolicyEnforcement struct {
+	Policies []EnforcedPolicy
+	Search   policyconfig.Mode
+	Fetch    policyconfig.Mode
+
+	// Pending are the configured policies not enforced yet: no evaluator has
+	// registered them (Version is empty), or their verdicts do not yet cover
+	// the records and never did.
+	Pending []EnforcedPolicy
+}
+
+// PolicyGateObserver is told about each record a read by CID excluded, or in
+// shadow mode would have excluded.
+type PolicyGateObserver interface {
+	FetchExcluded(mode policyconfig.Mode)
+}
+
+// PolicyEvaluationObject is a single policy verdict row, keyed by
+// (record_cid, policy_id).
+type PolicyEvaluationObject interface {
+	GetRecordCID() string
+
+	// GetPolicyID is a stable identifier of the policy that produced this
+	// verdict, e.g. "opa:require-annotation" or "oasf:schema".
+	GetPolicyID() string
+
+	// GetPolicyVersion is the content version (or hash) of the policy that
+	// produced this verdict. A row whose version no longer matches the
+	// policy's current version is stale and is due for re-evaluation, not
+	// reinterpreted under the new policy.
+	GetPolicyVersion() string
+
+	// GetCompliant is the verdict. Meaningful only when GetStatus is
+	// PolicyEvalStatusEvaluated; otherwise it is a fail-closed placeholder
+	// and must read as false.
+	GetCompliant() bool
+
+	// GetStatus is one of the PolicyEvalStatus* values.
+	GetStatus() string
+
+	// GetReason is a human-readable explanation, empty when compliant.
+	GetReason() string
+
+	GetUpdatedAt() time.Time
+}
+
+// PolicyEvaluationDatabaseAPI handles persistence and querying of
+// content-policy verdicts.
+type PolicyEvaluationDatabaseAPI interface {
+	// UpsertPolicyEvaluation inserts or updates the verdict row keyed by
+	// (record_cid, policy_id).
+	UpsertPolicyEvaluation(eval PolicyEvaluationObject) error
+
+	// GetPolicyEvaluations retrieves every policy verdict recorded for a
+	// record.
+	GetPolicyEvaluations(recordCID string) ([]PolicyEvaluationObject, error)
+
+	// GetRecordsNeedingPolicyEvaluation returns records with no evaluated
+	// verdict row for policyID at policyVersion — never evaluated against
+	// this version, or whose last evaluation failed. Records come in
+	// record_cid order after afterCID, at most limit of them; zero returns
+	// them all.
+	GetRecordsNeedingPolicyEvaluation(policyID, policyVersion, afterCID string, limit int) ([]coretypes.Record, error)
+
+	// RegisterPolicyVersion records that an evaluator is running version of
+	// policyID now, so the server can follow the policy's current version.
+	RegisterPolicyVersion(policyID, policyVersion string) error
+
+	// GetCurrentPolicyVersion returns the version of policyID an evaluator
+	// ran most recently, and whether any evaluator has registered it.
+	GetCurrentPolicyVersion(policyID string) (string, bool, error)
+
+	// RecordServabilityAPI is the policy gate for reads that fetch by CID.
+	RecordServabilityAPI
+}
+
+// RecordServabilityAPI is the policy gate for reads that fetch a record by CID
+// rather than searching: the store and AI Finder APIs, and the peer RPC.
+type RecordServabilityAPI interface {
+	// IsRecordServable reports whether a record fetched directly by CID may
+	// be returned: always unless fetches enforce the policies, otherwise only
+	// if it complies with every enforced policy.
+	IsRecordServable(cid string) (bool, error)
 }

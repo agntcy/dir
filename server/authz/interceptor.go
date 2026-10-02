@@ -33,7 +33,7 @@ func NewInterceptor(authorizer *Authorizer) InterceptorFn {
 		trustDomain := sid.TrustDomain().String()
 
 		// Perform authorization check
-		allowed, err := authorizer.Authorize(trustDomain, apiMethod)
+		allowed, err := authorizer.Authorize(sid, apiMethod)
 		if err != nil {
 			logger.Error("Authorization error",
 				"error", err,
