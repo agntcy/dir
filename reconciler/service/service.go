@@ -15,6 +15,7 @@ import (
 	"github.com/agntcy/dir/reconciler/tasks/identity"
 	"github.com/agntcy/dir/reconciler/tasks/indexer"
 	"github.com/agntcy/dir/reconciler/tasks/metrics"
+	"github.com/agntcy/dir/reconciler/tasks/policy"
 	"github.com/agntcy/dir/reconciler/tasks/regsync"
 	"github.com/agntcy/dir/reconciler/tasks/scan"
 	"github.com/agntcy/dir/reconciler/tasks/signature"
@@ -117,6 +118,29 @@ func (s *Service) registerTasks(cfg *config.Config, db servertypes.DatabaseAPI, 
 			s.addTask(t)
 		}
 	}
+
+	return s.registerPolicyTask(cfg.PolicyEvaluation, db)
+}
+
+// registerPolicyTask adds the policy evaluation task when it is enabled. No
+// policy evaluator is implemented yet, so the task is registered disabled and
+// the reason logged, rather than policy_evaluation.enabled being silently
+// ignored.
+func (s *Service) registerPolicyTask(cfg policy.Config, db servertypes.DatabaseAPI) error {
+	if !cfg.Enabled {
+		return nil
+	}
+
+	t, err := policy.NewTask(cfg, db)
+	if err != nil {
+		return fmt.Errorf("failed to create policy task: %w", err)
+	}
+
+	if !t.IsEnabled() {
+		logger.Warn("Policy task is enabled but no policy evaluator is available; it will not run")
+	}
+
+	s.addTask(t)
 
 	return nil
 }

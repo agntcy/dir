@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/agntcy/dir/reconciler/tasks/identity"
+	policytask "github.com/agntcy/dir/reconciler/tasks/policy"
 	dbconfig "github.com/agntcy/dir/server/database/config"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -34,12 +35,22 @@ func TestLoadConfig_NoFile_ReturnsDefaults(t *testing.T) {
 	assert.Equal(t, identity.DefaultInterval, cfg.Identity.Interval)
 	assert.Equal(t, identity.DefaultRecordTimeout, cfg.Identity.RecordTimeout)
 	assert.Empty(t, cfg.Identity.SPIFFETrustBundles)
+
+	// Policy parameters come from the task's own defaults, not a second copy.
+	assert.False(t, cfg.PolicyEvaluation.Enabled)
+	assert.Equal(t, policytask.DefaultInterval, cfg.PolicyEvaluation.Interval)
+	assert.Equal(t, policytask.DefaultRecordTimeout, cfg.PolicyEvaluation.RecordTimeout)
+	assert.Equal(t, policytask.DefaultBatchSize, cfg.PolicyEvaluation.BatchSize)
 }
 
 func TestLoadConfig_EnvOverrides(t *testing.T) {
 	t.Setenv("RECONCILER_REGSYNC_ENABLED", "false")
 	t.Setenv("RECONCILER_INDEXER_ENABLED", "false")
 	t.Setenv("RECONCILER_INDEXER_INTERVAL", "2h")
+	t.Setenv("RECONCILER_POLICY_EVALUATION_ENABLED", "true")
+	t.Setenv("RECONCILER_POLICY_EVALUATION_INTERVAL", "5m")
+	t.Setenv("RECONCILER_POLICY_EVALUATION_RECORD_TIMEOUT", "45s")
+	t.Setenv("RECONCILER_POLICY_EVALUATION_BATCH_SIZE", "250")
 
 	cfg, err := LoadConfig()
 	require.NoError(t, err)
@@ -48,6 +59,10 @@ func TestLoadConfig_EnvOverrides(t *testing.T) {
 	assert.False(t, cfg.Regsync.Enabled)
 	assert.False(t, cfg.Indexer.Enabled)
 	assert.Equal(t, 2*time.Hour, cfg.Indexer.Interval)
+	assert.True(t, cfg.PolicyEvaluation.Enabled)
+	assert.Equal(t, 5*time.Minute, cfg.PolicyEvaluation.Interval)
+	assert.Equal(t, 45*time.Second, cfg.PolicyEvaluation.RecordTimeout)
+	assert.Equal(t, 250, cfg.PolicyEvaluation.BatchSize)
 }
 
 // The task must be switchable with environment variables alone, with no config

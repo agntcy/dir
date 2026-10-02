@@ -868,4 +868,17 @@ reconciler:
       enabled: true
       interval: "1h"
 
+    # Policy evaluation task configuration
+    # Evaluates records against content policies and stores the verdicts read
+    # paths filter on. Off: no policy evaluator is implemented yet, so enabling
+    # it only logs that the task will not run. Not under policy: the chart
+    # fills the reconciler's policy section from config.policy.
+    policy_evaluation:
+      enabled: false
+      interval: "1m"
+      record_timeout: "30s"
+      # Records fetched and evaluated at a time. Bounds the memory of a run,
+      # not its length: a run continues until no record needs a verdict.
+      batch_size: 500
+
   resources: {}
