@@ -120,9 +120,33 @@ A verdict reached under the previous version no longer counts. Every record is t
 - Watch `dir_policy_gate_records_unevaluated`: it is the number of records still hidden for want of a verdict, and falls to 0 when the re-evaluation is done.
 - Re-evaluation is not throttled: a run continues, a batch after another, until no record is left. `policy_evaluation.batch_size` bounds the memory of a run, not its length.
 - A record published meanwhile is hidden until it has a verdict too.
-- A policy that wrongly rejects records hides them until it is fixed and the records are evaluated again. Nothing is deleted. Review policies like code, and try a change on a node that does not serve users first.
+- A policy that wrongly rejects records hides them until it is fixed and the records are evaluated again. Nothing is deleted. Review policies like code, and [try a change with a dry run](#trying-a-policy-before-you-deploy-it) before deploying it.
 
 Switching the mode to `shadow` for the duration of an edit stops enforcing: the policy's whole effect, including records it should keep hidden, is lifted until you switch back.
+
+## Trying a Policy Before You Deploy It
+
+A policy that rejects too much hides those records until it is fixed, so try a new or edited policy on the node's real records before deploying it. A dry run evaluates the candidate against every indexed record, as the policy task would, and reports how many it would exclude, a sample of them, and the reasons. It stores nothing: no verdict is written and no policy version is registered, so it changes nothing a read returns.
+
+The candidate is a file with a `validators` list, as in the configuration, whose entries have `op: ["evaluate"]`; the file can be pasted into the configuration once the policy is good. Only the entries with that op are tried.
+
+```yaml
+validators:
+  - provider: cel
+    op: ["evaluate"]
+    config:
+      name: has-description
+      expressions:
+        - 'record.description != ""'
+```
+
+- **Daemon.** `dirctl daemon policy dry-run --candidate candidate.yaml`. The daemon must be running, since the records are read through its registry. Files of OPA policies the candidate names are read from `--policy-dir`, the daemon's policy directory unless given.
+- **Kubernetes.** The reconciler pod has the database and the registry, so run the dry run in it, with the candidate on standard input: `kubectl exec -i deploy/<reconciler deployment> -- /reconciler dry-run --candidate /dev/stdin < candidate.yaml`. The deployment is the one labeled `app.kubernetes.io/name=reconciler`. An OPA candidate needs its `.rego` file where the node's policies are: add it to the chart's `policies` map without naming it in `validators`, which makes it a file on the pod and not a policy, then name it in the candidate.
+- **Reading the report.** *Would exclude* counts the records the policy rejects plus those it could not evaluate, since both stay hidden under enforcement. If the second number is large, look at the reasons before blaming the policy: a store that cannot be read gives the same result. Raise `--samples` to see more of the records.
+- **A dry run of the policy the node already enforces** reports the records the node withholds for that policy, which is a way to check what the report says against what you see.
+- **One policy at a time.** A record is served only if it passes every enforced policy. The report is for the candidate alone, so add its count to what the other policies already hide to judge the whole.
+
+Run it with the same version as the node: opening the database applies the migrations it is missing, as starting the node does.
 
 ## Rolling Back
 
