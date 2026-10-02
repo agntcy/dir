@@ -109,6 +109,7 @@ func TestDryRun_PagesThroughTheRecords(t *testing.T) {
 	assert.Equal(t, 5, report.Evaluated, "every record, whatever the batch size")
 
 	var afters []string
+
 	for _, s := range db.selections {
 		assert.Equal(t, 2, s.limit)
 

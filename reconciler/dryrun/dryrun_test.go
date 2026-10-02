@@ -410,9 +410,13 @@ func TestBindFlags(t *testing.T) {
 func TestOpen_RefusesAStoreNothingAnswers(t *testing.T) {
 	t.Parallel()
 
+	// A registry nothing listens at, reached without TLS.
+	unreachable := ociconfig.Config{RegistryAddress: "127.0.0.1:1", RepositoryName: "dir"}
+	unreachable.Insecure = true
+
 	_, _, err := Open(t.Context(),
 		dbconfig.Config{Type: "sqlite", SQLite: dbconfig.SQLiteConfig{Path: filepath.Join(t.TempDir(), "dir.db")}},
-		ociconfig.Config{RegistryAddress: "127.0.0.1:1", RepositoryName: "dir", AuthConfig: ociconfig.AuthConfig{Insecure: true}},
+		unreachable,
 		policy.Config{})
 
 	require.ErrorIs(t, err, ErrStoreUnreachable)
