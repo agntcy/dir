@@ -304,3 +304,45 @@ func TestPolicyGate_AppliesToEveryRead(t *testing.T) {
 	assert.Contains(t, gated.tagIDs, catalogv1.SkillTag("*", "skill/ok"), "ListCatalogTags")
 	assert.NotContains(t, gated.tagIDs, catalogv1.SkillTag("*", "skill/bad"), "ListCatalogTags")
 }
+
+// Direct fetches by CID (Pull, Lookup, PullReferrer) ask IsRecordServable.
+// With nothing enforced, a record the database has not indexed yet must stay
+// servable, as it is today; with policies enforced, it must not.
+func TestIsRecordServable(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name     string
+		enforced func() []types.EnforcedPolicy
+		indexed  bool
+		verdict  string // "", "pass" or "fail"
+		want     bool
+	}{
+		{"no gate, record not indexed", nil, false, "", true},
+		{"no policy in force, record not indexed", enforce(), false, "", true},
+		{"enforced, compliant", enforce(policyA), true, "pass", true},
+		{"enforced, non-compliant", enforce(policyA), true, "fail", false},
+		{"enforced, indexed but never evaluated", enforce(policyA), true, "", false},
+		{"enforced, not indexed", enforce(policyA), false, "", false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			db := setupGateDB(t, tt.enforced)
+
+			if tt.indexed {
+				seedGateRecord(t, db, gateOK, "skill/ok")
+			}
+
+			if tt.verdict != "" {
+				setVerdict(t, db, gateOK, policyA, tt.verdict == "pass")
+			}
+
+			got, err := db.IsRecordServable(gateOK)
+			require.NoError(t, err)
+			assert.Equal(t, tt.want, got)
+		})
+	}
+}
