@@ -295,3 +295,76 @@ func TestQueryToFilters_NonNegatedUnaffected(t *testing.T) {
 	assert.Equal(t, []string{"nlp"}, cfg.SkillNames)
 	assert.Empty(t, cfg.Excluded.SkillNames)
 }
+
+func TestQueryToFilters_IdentityQueries(t *testing.T) {
+	tests := []struct {
+		name  string
+		query *searchv1.RecordQuery
+		check func(t *testing.T, cfg types.RecordFilters)
+	}{
+		{
+			name:  "identity subject",
+			query: &searchv1.RecordQuery{Type: searchv1.RecordQueryType_RECORD_QUERY_TYPE_IDENTITY, Value: "did:web:acme.com:*"},
+			check: func(t *testing.T, cfg types.RecordFilters) {
+				t.Helper()
+				assert.Equal(t, []string{"did:web:acme.com:*"}, cfg.Identities)
+				assert.Empty(t, cfg.Owners)
+			},
+		},
+		{
+			name:  "owner subject",
+			query: &searchv1.RecordQuery{Type: searchv1.RecordQueryType_RECORD_QUERY_TYPE_OWNER, Value: "dns:acme.com"},
+			check: func(t *testing.T, cfg types.RecordFilters) {
+				t.Helper()
+				assert.Equal(t, []string{"dns:acme.com"}, cfg.Owners)
+				assert.Empty(t, cfg.Identities)
+			},
+		},
+		{
+			name:  "blank subjects are dropped",
+			query: &searchv1.RecordQuery{Type: searchv1.RecordQueryType_RECORD_QUERY_TYPE_IDENTITY, Value: "  "},
+			check: func(t *testing.T, cfg types.RecordFilters) {
+				t.Helper()
+				assert.Empty(t, cfg.Identities)
+			},
+		},
+		{
+			name:  "identity verified",
+			query: &searchv1.RecordQuery{Type: searchv1.RecordQueryType_RECORD_QUERY_TYPE_IDENTITY_VERIFIED, Value: "true"},
+			check: func(t *testing.T, cfg types.RecordFilters) {
+				t.Helper()
+				assert.True(t, cfg.IdentityVerified)
+				assert.False(t, cfg.OwnerVerified)
+			},
+		},
+		{
+			name:  "owner verified",
+			query: &searchv1.RecordQuery{Type: searchv1.RecordQueryType_RECORD_QUERY_TYPE_OWNER_VERIFIED, Value: "true"},
+			check: func(t *testing.T, cfg types.RecordFilters) {
+				t.Helper()
+				assert.True(t, cfg.OwnerVerified)
+				assert.False(t, cfg.IdentityVerified)
+			},
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			opts, err := QueryToFilters([]*searchv1.RecordQuery{tc.query})
+			require.NoError(t, err)
+			tc.check(t, applyOpts(opts))
+		})
+	}
+}
+
+func TestQueryToFilters_ClaimQueriesRejectUnsupportedForms(t *testing.T) {
+	for _, query := range []*searchv1.RecordQuery{
+		{Type: searchv1.RecordQueryType_RECORD_QUERY_TYPE_IDENTITY, Value: "spiffe://*", Negate: true},
+		{Type: searchv1.RecordQueryType_RECORD_QUERY_TYPE_OWNER, Value: "dns:*", Negate: true},
+		{Type: searchv1.RecordQueryType_RECORD_QUERY_TYPE_IDENTITY_VERIFIED, Value: "false"},
+		{Type: searchv1.RecordQueryType_RECORD_QUERY_TYPE_OWNER_VERIFIED, Value: "true", Negate: true},
+	} {
+		_, err := QueryToFilters([]*searchv1.RecordQuery{query})
+		require.Error(t, err, query.String())
+	}
+}

@@ -63,6 +63,7 @@ type Record struct {
 	Signatures       []SignatureVerification `gorm:"foreignKey:RecordCID;references:RecordCID;constraint:OnDelete:CASCADE"`
 	NameVerification *NameVerification       `gorm:"foreignKey:RecordCID;references:RecordCID;constraint:OnDelete:CASCADE"`
 	ScanReports      []ScanReport            `gorm:"foreignKey:RecordCID;references:RecordCID;constraint:OnDelete:CASCADE"`
+	IdentityClaims   []IdentityClaim         `gorm:"foreignKey:RecordCID;references:RecordCID;constraint:OnDelete:CASCADE"`
 	UsageMetrics     *RecordUsageMetrics     `gorm:"foreignKey:RecordCID;references:RecordCID;constraint:OnDelete:CASCADE"`
 }
 
@@ -686,6 +687,8 @@ func (d *DB) handleFilterOptions(query *gorm.DB, cfg *types.RecordFilters) *gorm
 			)
 		}
 	}
+
+	query = applyIdentityFilters(query, cfg)
 
 	query = applyExclusionFilters(query, &cfg.Excluded)
 

@@ -14,6 +14,7 @@ import (
 
 	catalogv1 "github.com/agntcy/dir/api/catalog/v1"
 	eventsv1 "github.com/agntcy/dir/api/events/v1"
+	identityv1 "github.com/agntcy/dir/api/identity/v1"
 	namingv1 "github.com/agntcy/dir/api/naming/v1"
 	routingv1 "github.com/agntcy/dir/api/routing/v1"
 	searchv1 "github.com/agntcy/dir/api/search/v1"
@@ -346,6 +347,8 @@ func New(ctx context.Context, cfg *config.Config, opts ...ServerOption) (*Server
 		namingProvider,
 		controller.WithVerificationTTL(options.Config().Naming.GetTTL()),
 	))
+
+	identityv1.RegisterIdentityServiceServer(grpcServer, controller.NewIdentityController(databaseAPI))
 
 	gwExtractor, aiFinderOpts := resolveGatewayExtractor(cfg)
 
