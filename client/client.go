@@ -52,7 +52,8 @@ func New(ctx context.Context, opts ...Option) (*Client, error) {
 	}
 
 	// Create gRPC client connection
-	conn, err := grpc.NewClient(options.config.ServerAddress, options.authOpts...)
+	dialOpts := append(options.authOpts, grpc.WithDisableServiceConfig())
+	conn, err := grpc.NewClient(options.config.ServerAddress, dialOpts...)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create gRPC client: %w", err)
 	}
