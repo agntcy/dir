@@ -66,9 +66,13 @@ func NewTask(config Config, db types.DatabaseAPI, evaluators ...Evaluator) (*Tas
 	}, nil
 }
 
+// TaskName is the name the task runs under, which is what another task asks
+// the service to run it by.
+const TaskName = "policy"
+
 // Name returns the task name.
 func (t *Task) Name() string {
-	return "policy"
+	return TaskName
 }
 
 // Interval returns how often this task should run.

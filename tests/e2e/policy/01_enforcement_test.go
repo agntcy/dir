@@ -21,18 +21,16 @@ import (
 )
 
 const (
-	// evaluationInterval is how often the testenv's indexer and policy task
-	// run (see testenv/default/dir-daemon-config.yaml).
-	evaluationInterval = 5 * time.Second
-
 	// settleTimeout is how long a record may take to reach its verdict and the
-	// server to act on it: an indexer run, then a policy run, then the server
-	// noticing the policy, with room for a slow runner.
+	// server to act on it. The testenv's tasks run once an hour, so a record is
+	// indexed and evaluated only because the reconciler heard of its push: after
+	// the 3s window, an indexer run and a policy run, then the server noticing
+	// the policy. The timeout leaves room for a slow runner.
 	settleTimeout = 2 * time.Minute
 
-	// rejectedWindow is how long a rejected record is watched: another round
-	// of the reconciler, not just the first.
-	rejectedWindow = 2 * evaluationInterval
+	// rejectedWindow is how long a rejected record is watched after it has had
+	// its verdict, to see that it is not served later.
+	rejectedWindow = 5 * time.Second
 
 	pollInterval = time.Second
 
@@ -149,7 +147,8 @@ var _ = ginkgo.Describe("Content policy enforcement", ginkgo.Ordered, ginkgo.Ser
 		rejectedRef = push(ctx, rejected)
 
 		// Just pushed: neither has a verdict yet, so neither is served, though
-		// the policy would pass the first.
+		// the policy would pass the first. The reconciler waits a few seconds
+		// after a push before it indexes, so this holds however fast the host.
 		_, err := testEnv.Client.Pull(ctx, compliantRef)
 		expectWithheld(err)
 
@@ -181,9 +180,8 @@ var _ = ginkgo.Describe("Content policy enforcement", ginkgo.Ordered, ginkgo.Ser
 	ginkgo.It("keeps a record the policy rejects out of reach", func(ctx context.Context) {
 		gomega.Expect(rejectedRef).NotTo(gomega.BeNil(), "the record must have been pushed")
 
-		// The rejected record was pushed with the compliant one, so by now it
-		// has had its verdict too. It stays withheld through another round of
-		// the reconciler.
+		// The rejected record was pushed with the compliant one and evaluated in
+		// the same run, so by now it has had its verdict too. It stays withheld.
 		gomega.Consistently(func() codes.Code { return pullCode(ctx, rejectedRef) }).
 			WithTimeout(rejectedWindow).
 			WithPolling(pollInterval).

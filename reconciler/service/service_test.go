@@ -5,13 +5,19 @@ package service
 
 import (
 	"context"
+	"fmt"
 	"sync"
 	"testing"
 	"time"
 
+	typesv1alpha1 "buf.build/gen/go/agntcy/oasf/protocolbuffers/go/agntcy/oasf/types/v1alpha1"
+	coretypes "github.com/agntcy/dir/api/core/types"
+	corev1 "github.com/agntcy/dir/api/core/v1"
 	"github.com/agntcy/dir/reconciler/config"
+	"github.com/agntcy/dir/reconciler/recordevents"
 	"github.com/agntcy/dir/reconciler/tasks"
 	"github.com/agntcy/dir/reconciler/tasks/identity"
+	"github.com/agntcy/dir/reconciler/tasks/indexer"
 	"github.com/agntcy/dir/reconciler/tasks/policy"
 	servertypes "github.com/agntcy/dir/server/types"
 	recordvalidators "github.com/agntcy/dir/server/validators"
@@ -28,23 +34,43 @@ type mockTask struct {
 	runErr   error
 	runCalls int
 	runMu    sync.Mutex
+
+	// block, when set, holds every run until it is closed or the run's context
+	// ends.
+	block chan struct{}
 }
 
 func (m *mockTask) Name() string            { return m.name }
 func (m *mockTask) Interval() time.Duration { return m.interval }
 func (m *mockTask) IsEnabled() bool         { return m.enabled }
-func (m *mockTask) Run(_ context.Context) error {
+func (m *mockTask) Run(ctx context.Context) error {
 	m.runMu.Lock()
 	m.runCalls++
 	m.runMu.Unlock()
 
+	if m.block != nil {
+		select {
+		case <-m.block:
+		case <-ctx.Done():
+		}
+	}
+
 	return m.runErr
+}
+
+func (m *mockTask) runs() int {
+	m.runMu.Lock()
+	defer m.runMu.Unlock()
+
+	return m.runCalls
 }
 
 func newTestService() *Service {
 	return &Service{
-		tasks:  []tasks.Task{},
-		stopCh: make(chan struct{}),
+		tasks:   []tasks.Task{},
+		wake:    make(map[string]chan struct{}),
+		spacing: make(map[string]time.Duration),
+		stopCh:  make(chan struct{}),
 	}
 }
 
@@ -250,4 +276,302 @@ func TestRegisterTasks_IdentityIsOffByDefault(t *testing.T) {
 	require.NoError(t, s.registerTasks(cfg, nil, referrerStore{}, nil, nil, nil))
 	require.Len(t, s.tasks, 1)
 	assert.Equal(t, "identity", s.tasks[0].Name())
+}
+
+// --- Trigger ---
+
+// stopWhenDone stops the service at the end of a test.
+func stopWhenDone(t *testing.T, s *Service) {
+	t.Helper()
+
+	t.Cleanup(func() { _ = s.Stop() })
+}
+
+func TestTrigger_RunsTheTaskNow(t *testing.T) {
+	s := newTestService()
+	task := &mockTask{name: "t", interval: time.Hour, enabled: true}
+	s.addTask(task)
+
+	require.NoError(t, s.Start(t.Context()))
+	stopWhenDone(t, s)
+
+	require.Eventually(t, func() bool { return task.runs() == 1 }, time.Second, time.Millisecond, "the task runs when it starts")
+
+	s.Trigger("t")
+
+	require.Eventually(t, func() bool { return task.runs() == 2 }, time.Second, time.Millisecond, "a trigger runs it without waiting for its interval")
+}
+
+func TestTrigger_IgnoresATaskThatIsNotRegistered(t *testing.T) {
+	s := newTestService()
+
+	assert.NotPanics(t, func() { s.Trigger("nobody") })
+}
+
+func TestTrigger_DoesNotRunADisabledTask(t *testing.T) {
+	s := newTestService()
+	task := &mockTask{name: "t", interval: time.Hour, enabled: false}
+	s.addTask(task)
+
+	require.NoError(t, s.Start(t.Context()))
+	stopWhenDone(t, s)
+
+	for range 5 {
+		s.Trigger("t")
+	}
+
+	time.Sleep(50 * time.Millisecond)
+	assert.Zero(t, task.runs())
+}
+
+// Asking again while the task is running is asking once: a burst of requests is
+// one run after the one under way, not one run each.
+func TestTrigger_CoalescesRequests(t *testing.T) {
+	s := newTestService()
+	task := &mockTask{name: "t", interval: time.Hour, enabled: true, block: make(chan struct{})}
+	s.addTask(task)
+
+	require.NoError(t, s.Start(t.Context()))
+	stopWhenDone(t, s)
+
+	require.Eventually(t, func() bool { return task.runs() == 1 }, time.Second, time.Millisecond)
+
+	for range 50 {
+		s.Trigger("t")
+	}
+
+	close(task.block)
+
+	require.Eventually(t, func() bool { return task.runs() == 2 }, time.Second, time.Millisecond, "the requests made during the run are one more run")
+	time.Sleep(100 * time.Millisecond)
+	assert.Equal(t, 2, task.runs(), "and no more than one")
+}
+
+// A task woken by events is not woken again until it has had a rest, so a
+// stream of them cannot keep it running back to back.
+func TestTrigger_SpacesTheRunsOfATaskWokenByEvents(t *testing.T) {
+	s := newTestService()
+	task := &mockTask{name: "t", interval: time.Hour, enabled: true}
+	s.addTask(task)
+
+	const spacing = 200 * time.Millisecond
+
+	s.spacing["t"] = spacing
+
+	require.NoError(t, s.Start(t.Context()))
+	stopWhenDone(t, s)
+
+	require.Eventually(t, func() bool { return task.runs() == 1 }, time.Second, time.Millisecond)
+
+	asked := time.Now()
+
+	s.Trigger("t")
+
+	require.Eventually(t, func() bool { return task.runs() == 2 }, 2*time.Second, time.Millisecond)
+	assert.GreaterOrEqual(t, time.Since(asked), spacing-50*time.Millisecond, "the run waited out the spacing since the last one ended")
+}
+
+func TestTrigger_StopEndsAWaitForTheSpacing(t *testing.T) {
+	s := newTestService()
+	task := &mockTask{name: "t", interval: time.Hour, enabled: true}
+	s.addTask(task)
+
+	s.spacing["t"] = time.Hour
+
+	require.NoError(t, s.Start(t.Context()))
+
+	require.Eventually(t, func() bool { return task.runs() == 1 }, time.Second, time.Millisecond)
+
+	s.Trigger("t")
+
+	stopped := make(chan struct{})
+
+	go func() {
+		defer close(stopped)
+
+		_ = s.Stop()
+	}()
+
+	select {
+	case <-stopped:
+	case <-time.After(2 * time.Second):
+		require.FailNow(t, "Stop waited for the spacing to pass")
+	}
+
+	assert.Equal(t, 1, task.runs(), "the run that was waiting did not happen")
+}
+
+// --- WatchRecords ---
+
+// fakeRecords reports the arrivals the test sends it, and one when it connects,
+// as a source does.
+type fakeRecords struct {
+	pings   chan struct{}
+	started chan struct{}
+}
+
+func newFakeRecords() *fakeRecords {
+	return &fakeRecords{pings: make(chan struct{}, 16), started: make(chan struct{}, 1)}
+}
+
+func (f *fakeRecords) Listen(ctx context.Context, arrived func()) error {
+	f.started <- struct{}{}
+
+	arrived()
+
+	for {
+		select {
+		case <-f.pings:
+			arrived()
+		case <-ctx.Done():
+			return fmt.Errorf("stop: %w", ctx.Err())
+		}
+	}
+}
+
+func watchedService(t *testing.T, enabled bool, source recordevents.Source) (*Service, *mockTask) {
+	t.Helper()
+
+	s := newTestService()
+	s.recordEvents = recordevents.Config{Enabled: enabled, Window: 30 * time.Millisecond}
+
+	indexerTask := &mockTask{name: indexer.TaskName, interval: time.Hour, enabled: true}
+	s.addTask(indexerTask)
+	s.WatchRecords(source)
+
+	return s, indexerTask
+}
+
+func TestWatchRecords_WakesTheIndexerWhenRecordsArrive(t *testing.T) {
+	source := newFakeRecords()
+	s, indexerTask := watchedService(t, true, source)
+
+	assert.Equal(t, 30*time.Millisecond, s.spacing[indexer.TaskName], "an indexer woken by events is spaced by the window")
+
+	require.NoError(t, s.Start(t.Context()))
+	stopWhenDone(t, s)
+
+	// It runs at the start, and again when the source connects, since records
+	// may have arrived while no one listened.
+	require.Eventually(t, func() bool { return indexerTask.runs() == 2 }, 2*time.Second, time.Millisecond)
+
+	source.pings <- struct{}{}
+
+	require.Eventually(t, func() bool { return indexerTask.runs() == 3 }, 2*time.Second, time.Millisecond, "a record arriving runs the indexer without waiting for its interval")
+}
+
+func TestWatchRecords_DoesNothingWhenEventsAreOff(t *testing.T) {
+	source := newFakeRecords()
+	s, indexerTask := watchedService(t, false, source)
+
+	require.NoError(t, s.Start(t.Context()))
+	stopWhenDone(t, s)
+
+	require.Eventually(t, func() bool { return indexerTask.runs() == 1 }, time.Second, time.Millisecond)
+
+	source.pings <- struct{}{}
+
+	time.Sleep(150 * time.Millisecond)
+
+	assert.Equal(t, 1, indexerTask.runs(), "the indexer runs at its interval only")
+	assert.Empty(t, source.started, "nothing listens")
+	assert.Empty(t, s.spacing, "and nothing is spaced")
+}
+
+func TestWatchRecords_WithoutASourceTheIndexerRunsAtItsInterval(t *testing.T) {
+	s, indexerTask := watchedService(t, true, nil)
+
+	require.NoError(t, s.Start(t.Context()))
+	stopWhenDone(t, s)
+
+	require.Eventually(t, func() bool { return indexerTask.runs() == 1 }, time.Second, time.Millisecond)
+	time.Sleep(100 * time.Millisecond)
+	assert.Equal(t, 1, indexerTask.runs())
+}
+
+func TestWatchRecords_StopEndsTheWatch(t *testing.T) {
+	source := newFakeRecords()
+	s, _ := watchedService(t, true, source)
+
+	require.NoError(t, s.Start(t.Context()))
+
+	<-source.started
+
+	stopped := make(chan struct{})
+
+	go func() {
+		defer close(stopped)
+
+		_ = s.Stop()
+	}()
+
+	select {
+	case <-stopped:
+	case <-time.After(2 * time.Second):
+		require.FailNow(t, "Stop waited for the watch, which only ends with its context")
+	}
+}
+
+// --- indexer to policy ---
+
+// indexStore serves a record for any CID, and indexDB accepts every record.
+type indexStore struct{ servertypes.StoreAPI }
+
+func (indexStore) Pull(context.Context, *corev1.RecordRef) (*corev1.Record, error) {
+	return corev1.New(&typesv1alpha1.Record{Name: "agent", SchemaVersion: "0.7.0"}), nil
+}
+
+type indexDB struct{ servertypes.DatabaseAPI }
+
+func (indexDB) AddRecord(coretypes.Record) error { return nil }
+
+type oneTag struct{}
+
+func (oneTag) Tags(_ context.Context, _ string, fn func([]string) error) error {
+	return fn([]string{"baeareidp4vt6jw7tirdvk6qlcuqndobz24yejxovcjgcuv3qnnhwzqz4mi"})
+}
+
+func taskNamed(t *testing.T, s *Service, name string) tasks.Task {
+	t.Helper()
+
+	for _, task := range s.tasks {
+		if task.Name() == name {
+			return task
+		}
+	}
+
+	require.FailNow(t, "task not registered", name)
+
+	return nil
+}
+
+// What the indexer adds is what the policy task evaluates, so the policy task
+// runs as soon as a run of the indexer has added something: not when its own
+// interval comes round.
+func TestRegisterTasks_IndexedRecordsWakeThePolicyTask(t *testing.T) {
+	s := newTestService()
+
+	cfg := &config.Config{
+		Indexer:          indexer.Config{Enabled: true},
+		PolicyEvaluation: policy.Config{Enabled: true},
+	}
+
+	require.NoError(t, s.registerTasks(cfg, indexDB{}, indexStore{}, oneTag{}, policyRegistry(t, "named"), nil))
+
+	idx := taskNamed(t, s, indexer.TaskName)
+	require.Empty(t, s.wake[policy.TaskName], "nothing has asked the policy task to run")
+
+	require.NoError(t, idx.Run(t.Context()))
+
+	assert.Len(t, s.wake[policy.TaskName], 1, "a run that indexed a record asks the policy task to run")
+	assert.Empty(t, s.wake[indexer.TaskName], "and does not ask itself")
+
+	// A run that finds nothing new asks for nothing.
+	select {
+	case <-s.wake[policy.TaskName]:
+	default:
+	}
+
+	require.NoError(t, idx.Run(t.Context()))
+	assert.Empty(t, s.wake[policy.TaskName])
 }

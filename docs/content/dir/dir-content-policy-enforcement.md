@@ -71,6 +71,28 @@ Each kind of read has its own mode, so enforcement can be rolled out one kind at
 
 The modes and the policy list are read at startup: restart the server after changing them.
 
+## When a New Record Is Served
+
+A record is withheld until it has been indexed and evaluated, and both happen as soon as it arrives, not at the tasks' next intervals:
+
+1. A pushed record is announced on the server's event stream. The reconciler listens for pushes and wakes the indexer once `window` has passed.
+2. The indexer adds the record to the index. When a run has indexed anything, the policy task runs at once.
+3. The policy task evaluates the record, and the server serves it once the verdict passes.
+
+A pushed record is therefore served about `window` after it arrives, plus the time to index and evaluate it. The tasks' intervals (`indexer.interval`, 1 hour by default, and `policy_evaluation.interval`) remain the backstop: they find whatever an event did not announce. A record copied in by registry sync is announced by no event, so it waits for the indexer's next interval; shorten `indexer.interval` on a node that syncs a lot.
+
+The reconciler's `record_events` settings (`RECONCILER_RECORD_EVENTS_*` in the environment):
+
+| Setting | Default | Meaning |
+|---|---|---|
+| `enabled` | `true` | Listen for pushes. Off, the indexer and the policy task run at their intervals only. |
+| `window` | `2s` | How long arrivals are gathered before the indexer is woken, and the least time between one event-woken run and the next. |
+| `reconnect_delay` | `5s` | How long to wait before listening again when the event stream ends. |
+
+- **Cost.** A run of the indexer lists every tag in the registry. However many records arrive, the indexer is not woken again until `window` after its last run ended, so a stream of pushes costs one run per `window` at most. On a large registry raise `window`: it trades the time to serve a record for fewer runs.
+- **Standalone reconciler.** It listens through the apiserver's events API, over the connection set by `server_address`. With authorization on, its identity needs a rule that lets it call `/agntcy.dir.events.v1.EventService/Listen`. Without one it logs once that events are unavailable and the intervals apply; it never gains access it was not given. The daemon listens in-process.
+- **Nothing is served sooner than it is evaluated.** An event only starts the work; a record is served when it has a passing verdict, as before.
+
 ## Metrics
 
 | Metric | Meaning |

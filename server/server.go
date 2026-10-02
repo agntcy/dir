@@ -417,6 +417,11 @@ func (s Server) Routing() types.RoutingAPI { return s.routing }
 
 func (s Server) Database() types.DatabaseAPI { return s.database }
 
+// EventBus returns the bus the server publishes its events on. Embedding
+// processes (e.g. the daemon) share it with the reconciler, which listens for
+// records being pushed.
+func (s Server) EventBus() *events.EventBus { return s.eventService.Bus() }
+
 // Close gracefully shuts down all server components.
 // Complexity is acceptable for cleanup functions with independent service shutdowns.
 //

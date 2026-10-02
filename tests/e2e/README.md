@@ -304,7 +304,7 @@ The suite has an environment of its own, not a second one of the daemon suite: a
 - `does not say whether it holds a record it withholds` - A CID never pushed gets the same refusal
 
 **Key Features:**
-- The testenv defines a CEL policy (`cel:has-description`: a record needs a description) and enforces it on search and fetch, with short reconciler intervals
+- The testenv defines a CEL policy (`cel:has-description`: a record needs a description) and enforces it on search and fetch. The indexer and the policy task run once an hour, so a record is served only because the reconciler heard of its push and woke them
 - A refusal says the record is not available under the node's content policy, and never names the policy
 - The first spec waits for the policy to be enforced by pushing a record it rejects and waiting for it to be refused
 

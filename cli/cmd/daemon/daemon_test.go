@@ -10,6 +10,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/agntcy/dir/reconciler/recordevents"
 	storeconfig "github.com/agntcy/dir/server/store/oci/config"
 	"github.com/stretchr/testify/require"
 )
@@ -26,6 +27,54 @@ func TestLoadConfigUsesMacOSFriendlyLocalRegistryPort(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, "localhost:5555", cfg.Server.Store.OCI.RegistryAddress)
 	require.Equal(t, "localhost:5555", cfg.Reconciler.LocalRegistry.RegistryAddress)
+}
+
+// TestLoadConfigHearsOfPushesByDefault asserts that the reconciler listens for
+// records being pushed whether the config is the embedded default or a file of
+// the user's that says nothing about it, since a file passed with --config is
+// read as-is.
+func TestLoadConfigHearsOfPushesByDefault(t *testing.T) {
+	originalOpts := opts
+	t.Cleanup(func() {
+		opts = originalOpts
+	})
+
+	t.Run("embedded default", func(t *testing.T) {
+		opts = &Options{DataDir: t.TempDir()}
+
+		cfg, err := loadConfig()
+
+		require.NoError(t, err)
+		require.True(t, cfg.Reconciler.RecordEvents.Enabled)
+		require.Equal(t, recordevents.DefaultWindow, cfg.Reconciler.RecordEvents.Window)
+		require.Equal(t, recordevents.DefaultReconnectDelay, cfg.Reconciler.RecordEvents.ReconnectDelay)
+	})
+
+	t.Run("a file that does not mention it", func(t *testing.T) {
+		file := filepath.Join(t.TempDir(), "daemon.yaml")
+		require.NoError(t, os.WriteFile(file, []byte("reconciler:\n  indexer:\n    enabled: true\n"), 0o600))
+
+		opts = &Options{DataDir: t.TempDir(), ConfigFile: file}
+
+		cfg, err := loadConfig()
+
+		require.NoError(t, err)
+		require.True(t, cfg.Reconciler.RecordEvents.Enabled)
+		require.Equal(t, recordevents.DefaultWindow, cfg.Reconciler.RecordEvents.Window)
+	})
+
+	t.Run("a file that turns it off and tunes it", func(t *testing.T) {
+		file := filepath.Join(t.TempDir(), "daemon.yaml")
+		require.NoError(t, os.WriteFile(file, []byte("reconciler:\n  record_events:\n    enabled: false\n    window: 9s\n"), 0o600))
+
+		opts = &Options{DataDir: t.TempDir(), ConfigFile: file}
+
+		cfg, err := loadConfig()
+
+		require.NoError(t, err)
+		require.False(t, cfg.Reconciler.RecordEvents.Enabled)
+		require.Equal(t, 9*time.Second, cfg.Reconciler.RecordEvents.Window)
+	})
 }
 
 // TestLoadConfigRepublishIntervalEnvOverride asserts that the routing republish
