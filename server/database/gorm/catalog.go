@@ -76,7 +76,7 @@ func (d *DB) CountCatalogEntries(opts ...types.CatalogQueryOption) (uint32, erro
 func (d *DB) ListCatalogTags() ([]*catalogv1.CatalogTag, error) {
 	var tags []*catalogv1.CatalogTag
 
-	skillNames, err := d.distinctColumn(&Skill{}, "name")
+	skillNames, err := d.distinctColumn(&Skill{}, "skills", "name")
 	if err != nil {
 		return nil, fmt.Errorf("list skill tags: %w", err)
 	}
@@ -88,7 +88,7 @@ func (d *DB) ListCatalogTags() ([]*catalogv1.CatalogTag, error) {
 		})
 	}
 
-	domainNames, err := d.distinctColumn(&Domain{}, "name")
+	domainNames, err := d.distinctColumn(&Domain{}, "domains", "name")
 	if err != nil {
 		return nil, fmt.Errorf("list domain tags: %w", err)
 	}

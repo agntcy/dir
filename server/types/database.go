@@ -335,6 +335,18 @@ func EvaluatedPolicyStatuses() []string {
 	return []string{PolicyEvalStatusEvaluated}
 }
 
+// EnforcedPolicy is a policy, at the version currently in force, that a
+// record must comply with to be returned by any read. A verdict under a
+// different version does not count: until the record is re-evaluated, it is
+// not known to comply with this one.
+type EnforcedPolicy struct {
+	// ID matches PolicyEvaluationObject.GetPolicyID.
+	ID string
+
+	// Version matches PolicyEvaluationObject.GetPolicyVersion.
+	Version string
+}
+
 // PolicyEvaluationObject is a single policy verdict row, keyed by
 // (record_cid, policy_id).
 type PolicyEvaluationObject interface {

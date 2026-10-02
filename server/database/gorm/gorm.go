@@ -7,6 +7,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/agntcy/dir/server/types"
 	"github.com/agntcy/dir/utils/logging"
 	"gorm.io/gorm"
 )
@@ -15,11 +16,31 @@ var logger = logging.Logger("database/gorm")
 
 type DB struct {
 	gormDB *gorm.DB
+
+	// enforcedPolicies returns the policies every read must satisfy; see
+	// applyPolicyGate. Nil applies no gate.
+	enforcedPolicies func() []types.EnforcedPolicy
+}
+
+// Option configures a DB.
+type Option func(*DB)
+
+// WithEnforcedPolicies sets the policies a record must comply with to be
+// returned by any read. enforced is called per query, so the set may change
+// at runtime; an empty result applies no gate.
+func WithEnforcedPolicies(enforced func() []types.EnforcedPolicy) Option {
+	return func(d *DB) {
+		d.enforcedPolicies = enforced
+	}
 }
 
 // New creates a new DB instance from a gorm.DB connection and runs migrations.
-func New(db *gorm.DB) (*DB, error) {
+func New(db *gorm.DB, opts ...Option) (*DB, error) {
 	database := &DB{gormDB: db}
+
+	for _, opt := range opts {
+		opt(database)
+	}
 
 	// Execute migrations
 	if err := database.migrate(); err != nil {

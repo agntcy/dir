@@ -427,6 +427,10 @@ func applyRecordOrder(query *gorm.DB, cfg *types.RecordFilters) (*gorm.DB, error
 //
 //nolint:gocognit,cyclop,nestif,gocyclo,maintidx
 func (d *DB) handleFilterOptions(query *gorm.DB, cfg *types.RecordFilters) *gorm.DB {
+	// Every search, catalog and resolve query passes through here, so the
+	// policy gate applies to all of them, whatever the caller asked for.
+	query = d.applyPolicyGate(query, "records.record_cid")
+
 	// Filter by CID (exact match on primary key).
 	if len(cfg.CIDs) > 0 {
 		query = query.Where("records.record_cid IN ?", cfg.CIDs)
