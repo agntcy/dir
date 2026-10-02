@@ -319,3 +319,38 @@ func TestCheck(t *testing.T) {
 	require.Error(t, err)
 	require.False(t, ok)
 }
+
+// A certificate belongs to a spiffe:// claim and to no other: it sits outside the
+// signed payload, so it could be grafted onto someone else's claim.
+func TestCheck_Certificate(t *testing.T) {
+	key := testutil.NewKey(t, "ES256")
+	cert := testutil.SelfSignedCertPEM(t, key, testSubjectSVID)
+
+	svid := &identityv1.Claim{Role: identityv1.ClaimRole_CLAIM_ROLE_IDENTITY, Subject: testSubjectSVID}
+	require.NoError(t, identity.Sign(svid, testRecordCID, keySigner(t, key), identity.WithCertificate(cert)))
+	require.NoError(t, identity.Check(svid, testRecordCID, testSubjectSVID))
+
+	bare := &identityv1.Claim{Role: identityv1.ClaimRole_CLAIM_ROLE_IDENTITY, Subject: testSubjectSVID}
+	require.NoError(t, identity.Sign(bare, testRecordCID, keySigner(t, key), identity.WithCertificate(cert)))
+	bare.Certificate = nil
+	require.ErrorContains(t, identity.Check(bare, testRecordCID, testSubjectSVID), "carries no certificate")
+
+	grafted := &identityv1.Claim{Role: identityv1.ClaimRole_CLAIM_ROLE_IDENTITY, Subject: testSubjectDNS}
+	require.NoError(t, identity.Sign(grafted, testRecordCID, keySigner(t, key)))
+	grafted.Certificate = svid.Certificate
+	require.ErrorContains(t, identity.Check(grafted, testRecordCID, testSubjectDNS), "carries a certificate")
+
+	empty := ""
+	grafted.Certificate = &empty
+	require.NoError(t, identity.Check(grafted, testRecordCID, testSubjectDNS), "an empty certificate is no certificate")
+}
+
+func TestCheck_MalformedSignedAt(t *testing.T) {
+	key := testutil.NewKey(t, "ES256")
+
+	claim := &identityv1.Claim{Role: identityv1.ClaimRole_CLAIM_ROLE_IDENTITY, Subject: testSubjectDNS}
+	require.NoError(t, identity.Sign(claim, testRecordCID, keySigner(t, key)))
+
+	claim.SignedAt = "next tuesday"
+	require.ErrorContains(t, identity.Check(claim, testRecordCID, testSubjectDNS), "invalid claim signed_at")
+}

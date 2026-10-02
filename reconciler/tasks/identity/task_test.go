@@ -564,7 +564,10 @@ func writeBundle(t *testing.T, ca *testCA) string {
 	return path
 }
 
-func TestRun_ClaimThatCannotVerifyCostsNoLookup(t *testing.T) {
+// A claim that names a subject the record does not declare says nothing about the
+// record: it costs no lookup and leaves no result, so it cannot put its own subject
+// in the search index or turn a record without a claim into a failed one.
+func TestRun_ClaimForAnotherSubjectLeavesNoResult(t *testing.T) {
 	key, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 	require.NoError(t, err)
 
@@ -573,11 +576,9 @@ func TestRun_ClaimThatCannotVerifyCostsNoLookup(t *testing.T) {
 
 	tests := map[string]struct {
 		annotations map[string]string
-		subject     string
-		wantErr     string
 	}{
-		"record declares no identity": {nil, "dns:acme.com", "does not declare"},
-		"record declares another one": {map[string]string{corev1.AnnotationKeyIdentity: "dns:other.com"}, "dns:acme.com", "does not match"},
+		"record declares no identity": {nil},
+		"record declares another one": {map[string]string{corev1.AnnotationKeyIdentity: "dns:other.com"}},
 	}
 
 	for name, tt := range tests {
@@ -586,18 +587,69 @@ func TestRun_ClaimThatCannotVerifyCostsNoLookup(t *testing.T) {
 			f.task.network = resolverSet{dns: lookups}
 
 			cid := f.addRecord("unmatched", tt.annotations)
-			f.store.setReferrers(cid, signedReferrer(t, identityRole, cid, tt.subject, signer))
+			f.store.setReferrers(cid, signedReferrer(t, identityRole, cid, "dns:acme.com", signer))
 
 			f.run()
 
-			result := f.result(cid, types.ClaimRoleIdentity)
-			assert.Equal(t, types.ClaimStatusFailed, result.GetStatus())
-			assert.Contains(t, result.GetError(), tt.wantErr)
-			assert.Equal(t, tt.annotations[corev1.AnnotationKeyIdentity], result.GetSubject(), "the record's subject, not the claim's")
+			f.noResult(cid, types.ClaimRoleIdentity)
 		})
 	}
 
-	assert.Zero(t, lookups.calls, "no key lookup for a claim that fails the key-free checks")
+	assert.Zero(t, lookups.calls, "no key lookup for a claim of another subject")
+}
+
+// A result left by a claim that no longer applies is removed with it.
+func TestRun_RemovesTheResultOfAClaimForAnotherSubject(t *testing.T) {
+	key, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+	require.NoError(t, err)
+
+	f := newFixture(t, Config{})
+	f.task.network = resolverSet{dns: &countingResolver{keys: []crypto.PublicKey{&key.PublicKey}}}
+
+	cid := f.addRecord("stale", map[string]string{corev1.AnnotationKeyIdentity: "dns:acme.com"})
+	f.store.setReferrers(cid, signedReferrer(t, identityRole, cid, "dns:other.com", newSigner(t, key)))
+
+	require.NoError(t, f.db.UpsertIdentityClaim(&gormdb.IdentityClaim{
+		RecordCID: cid, Role: types.ClaimRoleIdentity, Subject: "dns:other.com",
+		Status: types.ClaimStatusFailed, VerifiedAt: time.Now(),
+	}))
+
+	f.run()
+
+	f.noResult(cid, types.ClaimRoleIdentity)
+}
+
+// A certificate is no part of a claim for anything but a spiffe:// subject, so one
+// grafted onto such a claim fails it instead of decorating a verified result.
+func TestRun_CertificateOnANonSPIFFEClaimFails(t *testing.T) {
+	key, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+	require.NoError(t, err)
+
+	ca := newCA(t, "acme root")
+
+	f := newFixture(t, Config{})
+	f.task.network = resolverSet{dns: &countingResolver{keys: []crypto.PublicKey{&key.PublicKey}}}
+
+	cid := f.addRecord("grafted", map[string]string{corev1.AnnotationKeyOwner: "dns:acme.com"})
+
+	claim := &identityv1.Claim{Role: ownerRole, Subject: "dns:acme.com"}
+	require.NoError(t, clientidentity.Sign(claim, cid, newSigner(t, key)))
+
+	block, _ := pem.Decode(ca.issue(t, key, time.Now().Add(time.Hour)))
+	require.NotNil(t, block)
+
+	graft := base64.StdEncoding.EncodeToString(block.Bytes)
+	claim.Certificate = &graft
+
+	referrer, err := claim.MarshalReferrer()
+	require.NoError(t, err)
+
+	f.store.setReferrers(cid, referrer)
+	f.run()
+
+	result := f.result(cid, types.ClaimRoleOwner)
+	assert.Equal(t, types.ClaimStatusFailed, result.GetStatus())
+	assert.Contains(t, result.GetError(), "carries a certificate")
 }
 
 func TestRun_ClaimOfAnotherRecordFails(t *testing.T) {
@@ -702,6 +754,48 @@ func TestRun_ReportsTheNewestFailure(t *testing.T) {
 		assert.Equal(t, types.ClaimStatusFailed, result.GetStatus())
 		assert.Contains(t, result.GetError(), "lookup timed out")
 		assert.NotContains(t, result.GetError(), "expired")
+	}
+}
+
+// signed_at is written by whoever signs the claim, so a date in the future or one
+// that does not parse must not let a claim outrank an honest one.
+func TestRun_ForgedSignedAtDoesNotOutrankAnHonestFailure(t *testing.T) {
+	f := newFixture(t, Config{})
+	f.task.network = resolverSet{dns: &countingResolver{err: errors.New("lookup timed out")}}
+
+	cid := f.addRecord("forged-time", map[string]string{corev1.AnnotationKeyOwner: "dns:acme.com"})
+
+	expired := "2020-01-01T00:00:00Z"
+	claims := map[string]*identityv1.Claim{
+		"honest":     {Role: ownerRole, Subject: "dns:acme.com", SignedAt: "2026-01-01T00:00:00Z", ExpiresAt: &expired},
+		"future":     {Role: ownerRole, Subject: "dns:acme.com", SignedAt: "2999-01-01T00:00:00Z"},
+		"unparsable": {Role: ownerRole, Subject: "dns:acme.com", SignedAt: "next tuesday"},
+	}
+
+	referrers := map[string]*corev1.RecordReferrer{}
+
+	for name, claim := range claims {
+		claim.RecordCid = cid
+		claim.Signature = "unused"
+
+		ref, err := claim.MarshalReferrer()
+		require.NoError(t, err)
+
+		referrers[name] = ref
+	}
+
+	for _, order := range [][]string{{"honest", "future", "unparsable"}, {"unparsable", "future", "honest"}} {
+		var refs []*corev1.RecordReferrer
+		for _, name := range order {
+			refs = append(refs, referrers[name])
+		}
+
+		f.store.setReferrers(cid, refs...)
+		f.run()
+
+		result := f.result(cid, types.ClaimRoleOwner)
+		assert.Equal(t, types.ClaimStatusFailed, result.GetStatus())
+		assert.Contains(t, result.GetError(), "expired", order)
 	}
 }
 

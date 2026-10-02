@@ -115,23 +115,16 @@ func (t *Task) Run(ctx context.Context) error {
 	return nil
 }
 
-// loadTrustBundles reads the configured SPIFFE trust bundles. A trust domain whose
-// bundle cannot be read is left out, so only its claims fail closed.
+// loadTrustBundles reads the configured SPIFFE trust bundles. One that cannot be
+// read is left out, so only its own trust domain fails closed, not the others and
+// not the run.
 func (t *Task) loadTrustBundles() x509bundle.Source {
-	var loaded []*x509bundle.Bundle
-
-	for domain, path := range t.config.trustDomains() {
-		set, err := spifferesolver.LoadBundles(map[string]string{domain: path})
-		if err != nil {
-			logger.Error("Failed to load SPIFFE trust bundle; its spiffe:// claims will not verify", "trust_domain", domain, "error", err)
-
-			continue
-		}
-
-		loaded = append(loaded, set.Bundles()...)
+	bundles, err := spifferesolver.LoadBundles(t.config.trustDomains())
+	if err != nil {
+		logger.Error("Some SPIFFE trust bundles could not be loaded; their spiffe:// claims will not verify", "error", err)
 	}
 
-	return x509bundle.NewSet(loaded...)
+	return bundles
 }
 
 // reconcileRecord verifies the claims of one record and returns how many of its
@@ -141,35 +134,39 @@ func (t *Task) reconcileRecord(ctx context.Context, resolvers resolverSet, cid s
 	ctx, cancel := context.WithTimeout(ctx, t.config.GetRecordTimeout())
 	defer cancel()
 
-	var verified, failed int
+	claims, err := t.claims(ctx, cid)
+	if err != nil {
+		logger.Warn("Failed to read claims", "cid", cid, "error", err)
 
-	var annotations map[string]string
+		return 0, 0
+	}
 
-	for _, kind := range claimKinds {
-		claims, err := t.claimsOf(ctx, cid, kind)
-		if err != nil {
-			logger.Warn("Failed to read claims", "cid", cid, "role", kind.role, "error", err)
-
-			continue
+	if len(claims) == 0 {
+		for _, kind := range claimKinds {
+			t.dropResult(cid, kind.role)
 		}
 
-		if len(claims) == 0 {
+		return 0, 0
+	}
+
+	// The record is only read once it is known to carry a claim.
+	annotations, err := t.annotationsOf(ctx, cid)
+	if err != nil {
+		logger.Warn("Failed to read record annotations", "cid", cid, "error", err)
+
+		return 0, 0
+	}
+
+	var verified, failed int
+
+	for _, kind := range claimKinds {
+		result, transient := t.verify(ctx, resolvers, cid, annotations[kind.annotation], claims[kind.role])
+		if result == nil {
 			t.dropResult(cid, kind.role)
 
 			continue
 		}
 
-		// The record is only read once it is known to carry a claim.
-		if annotations == nil {
-			annotations, err = t.annotationsOf(ctx, cid)
-			if err != nil {
-				logger.Warn("Failed to read record annotations", "cid", cid, "error", err)
-
-				return verified, failed
-			}
-		}
-
-		result, transient := t.verify(ctx, resolvers, cid, annotations[kind.annotation], claims)
 		result.Role = kind.role
 
 		// An unreachable subject does not say the claim is wrong, so the last result stands for a while.
@@ -199,41 +196,44 @@ func (t *Task) reconcileRecord(ctx context.Context, resolvers resolverSet, cid s
 	return verified, failed
 }
 
-// claimsOf returns the claims of one kind attached to a record.
-func (t *Task) claimsOf(ctx context.Context, cid string, kind claimKind) ([]*identityv1.Claim, error) {
-	var claims []*identityv1.Claim
+// claims returns the claims of every kind attached to a record, by role, from
+// one walk. The store's type filter maps all custom types onto a single OCI media
+// type, so asking per kind would re-list and re-fetch the whole referrer set each
+// time; the type is checked here instead.
+func (t *Task) claims(ctx context.Context, cid string) (map[string][]*identityv1.Claim, error) {
+	byRole := make(map[string][]*identityv1.Claim, len(claimKinds))
 
-	err := t.refStore.WalkReferrers(ctx, cid, kind.referrerType, func(ref *corev1.RecordReferrer) error {
-		// The store's type filter does not narrow every referrer type down to its own, so
-		// the walk can yield other custom referrers too.
-		if ref.GetType() != kind.referrerType {
-			return nil
+	err := t.refStore.WalkReferrers(ctx, cid, "", func(ref *corev1.RecordReferrer) error {
+		for _, kind := range claimKinds {
+			if ref.GetType() != kind.referrerType {
+				continue
+			}
+
+			claim := &identityv1.Claim{}
+			if err := claim.UnmarshalReferrer(ref); err != nil {
+				logger.Debug("Skipping unparsable claim referrer", "cid", cid, "error", err)
+
+				return nil //nolint:nilerr // one bad referrer must not hide the others
+			}
+
+			// A claim signs the role it asserts. One stored under the other kind's
+			// referrer type would otherwise verify against that kind's annotation.
+			if claim.GetRole() != kind.claimRole {
+				logger.Debug("Skipping claim stored under the wrong referrer type", "cid", cid, "role", claim.GetRole())
+
+				return nil
+			}
+
+			byRole[kind.role] = append(byRole[kind.role], claim)
 		}
-
-		claim := &identityv1.Claim{}
-		if err := claim.UnmarshalReferrer(ref); err != nil {
-			logger.Debug("Skipping unparsable claim referrer", "cid", cid, "error", err)
-
-			return nil //nolint:nilerr // one bad referrer must not hide the others
-		}
-
-		// A claim signs the role it asserts. One stored under the other kind's
-		// referrer type would otherwise verify against that kind's annotation.
-		if claim.GetRole() != kind.claimRole {
-			logger.Debug("Skipping claim stored under the wrong referrer type", "cid", cid, "role", claim.GetRole())
-
-			return nil
-		}
-
-		claims = append(claims, claim)
 
 		return nil
 	})
 	if err != nil {
-		return nil, fmt.Errorf("walk %s referrers: %w", kind.referrerType, err)
+		return nil, fmt.Errorf("walk referrers: %w", err)
 	}
 
-	return claims, nil
+	return byRole, nil
 }
 
 // annotationsOf returns the annotations of a record, read from the store because
@@ -257,27 +257,31 @@ func (t *Task) annotationsOf(ctx context.Context, cid string) (map[string]string
 	return annotations, nil
 }
 
-// verify checks every claim of one kind against the subject the record declares,
-// and returns the result to store. A claim that verifies decides it, whoever else
-// attached claims to the record. Otherwise the newest claim's failure is the result,
-// and transient says whether any claim failed only because its subject could not
-// be looked up.
-//
-// A failure is stored under the subject the record declares, never the claim's own,
-// which anyone who can attach a referrer chooses and the subject filters would match.
+// verify checks the claims of one kind that name the subject the record declares,
+// and returns the result to store, or nil when none of them does. A claim that
+// verifies decides it, whoever else attached claims to the record. Otherwise the
+// newest claim's failure is the result, and transient says whether any claim failed
+// only because its subject could not be looked up.
 func (t *Task) verify(ctx context.Context, resolvers resolverSet, cid, expected string, claims []*identityv1.Claim) (*gormdb.IdentityClaim, bool) {
 	var (
 		result    *gormdb.IdentityClaim
 		transient bool
-		failedAt  string
+		failedAt  time.Time
 	)
 
 	for _, claim := range claims {
+		// Anyone can attach a claim to any record. One that names a subject the
+		// record does not declare says nothing about the record, so it leaves no
+		// result: its subject would otherwise be stored and matched by --identity/--owner.
+		if expected == "" || claim.GetSubject() != expected {
+			continue
+		}
+
 		err := t.verifyClaim(ctx, resolvers, cid, expected, claim)
 		if err == nil {
 			return &gormdb.IdentityClaim{
 				RecordCID:  cid,
-				Subject:    claim.GetSubject(),
+				Subject:    expected,
 				Status:     types.ClaimStatusVerified,
 				VerifiedAt: time.Now(),
 			}, false
@@ -285,8 +289,15 @@ func (t *Task) verify(ctx context.Context, resolvers resolverSet, cid, expected 
 
 		transient = transient || isTransient(err)
 
-		if result == nil || claim.GetSignedAt() > failedAt {
-			failedAt = claim.GetSignedAt()
+		// Whoever signs a claim writes its signed_at, so one that does not parse, or
+		// is dated in the future, must not outrank an honest claim.
+		signedAt, parseErr := time.Parse(time.RFC3339, claim.GetSignedAt())
+		if parseErr != nil || signedAt.After(time.Now()) {
+			signedAt = time.Time{}
+		}
+
+		if result == nil || signedAt.After(failedAt) {
+			failedAt = signedAt
 			result = &gormdb.IdentityClaim{
 				RecordCID:  cid,
 				Subject:    expected,
@@ -315,7 +326,7 @@ func (t *Task) verifyClaim(ctx context.Context, resolvers resolverSet, cid, expe
 
 	var certificate []byte
 
-	if claim.Certificate != nil {
+	if claim.GetCertificate() != "" {
 		certificate, err = base64.StdEncoding.DecodeString(claim.GetCertificate())
 		if err != nil {
 			return fmt.Errorf("decode claim certificate: %w", err)

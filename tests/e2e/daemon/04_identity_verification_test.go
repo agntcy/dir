@@ -201,12 +201,13 @@ var _ = ginkgo.Describe("Identity claim verification", ginkgo.Ordered, ginkgo.Se
 	})
 
 	// A claim for a subject the record does not declare can only get in by being pushed
-	// by hand. It must fail under the record's own subject: the claim's is chosen by
-	// whoever attached it, and the subject filters would match it.
-	ginkgo.It("should not let a rejected claim put its subject in the search index", func(ctx context.Context) {
+	// by hand. It leaves no result: its subject is chosen by whoever attached it, and
+	// the subject filters would match it. A legitimate claim on the same record is the
+	// marker that the task has been through the record.
+	ginkgo.It("should not let a claim for another subject leave a result or reach the search index", func(ctx context.Context) {
 		const spoofed = "dns:victim.example"
 
-		cid := pushRecord(ctx, map[string]string{})
+		cid := pushRecord(ctx, map[string]string{corev1.AnnotationKeyOwner: goodSubject})
 
 		claim := &identityv1.Claim{Role: identityv1.ClaimRole_CLAIM_ROLE_IDENTITY, Subject: spoofed}
 		gomega.Expect(clientidentity.Sign(claim, cid, signerFor(goodKey))).To(gomega.Succeed())
@@ -224,13 +225,17 @@ var _ = ginkgo.Describe("Identity claim verification", ginkgo.Ordered, ginkgo.Se
 		gomega.Expect(err).NotTo(gomega.HaveOccurred())
 		gomega.Expect(resp.GetSuccess()).To(gomega.BeTrue())
 
-		gomega.Eventually(func(g gomega.Gomega) {
-			identity := statusOf(ctx, cid).GetIdentity()
+		_, err = testEnv.Client.ClaimOwnership(ctx, cid, signerFor(goodKey))
+		gomega.Expect(err).NotTo(gomega.HaveOccurred())
 
-			g.Expect(identity).NotTo(gomega.BeNil(), "not verified yet")
-			g.Expect(identity.GetStatus()).To(gomega.Equal(identityv1.ClaimVerificationStatus_CLAIM_VERIFICATION_STATUS_FAILED))
-			g.Expect(identity.GetSubject()).To(gomega.BeEmpty(), "the record declares no subject")
+		gomega.Eventually(func(g gomega.Gomega) {
+			owner := statusOf(ctx, cid).GetOwner()
+
+			g.Expect(owner).NotTo(gomega.BeNil(), "not verified yet")
+			g.Expect(owner.GetStatus()).To(gomega.Equal(identityv1.ClaimVerificationStatus_CLAIM_VERIFICATION_STATUS_VERIFIED))
 		}).WithContext(ctx).WithTimeout(claimVerificationTimeout).WithPolling(claimVerificationPoll).Should(gomega.Succeed())
+
+		gomega.Expect(statusOf(ctx, cid).GetIdentity()).To(gomega.BeNil(), "the spoofed claim leaves no result")
 
 		bySubject := searchByClaims(ctx, &searchv1.RecordQuery{Type: searchv1.RecordQueryType_RECORD_QUERY_TYPE_IDENTITY, Value: spoofed})
 		gomega.Expect(bySubject).NotTo(gomega.ContainElement(cid))

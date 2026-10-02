@@ -6,6 +6,7 @@ package identity
 import (
 	"crypto"
 	"fmt"
+	"strings"
 	"time"
 
 	identityv1 "github.com/agntcy/dir/api/identity/v1"
@@ -59,6 +60,23 @@ func Check(claim *identityv1.Claim, recordCID, expectedSubject string) error {
 
 	if subject != expectedSubject {
 		return fmt.Errorf("claim subject %q does not match record's declared annotation %q", subject, expectedSubject)
+	}
+
+	// Only a spiffe:// claim's certificate is resolved, and it sits outside the
+	// signed payload, so one on any other claim could be grafted on from elsewhere.
+	isSVID, hasCert := strings.HasPrefix(subject, "spiffe://"), claim.GetCertificate() != ""
+	if isSVID && !hasCert {
+		return fmt.Errorf("spiffe:// claim carries no certificate")
+	}
+
+	if !isSVID && hasCert {
+		return fmt.Errorf("claim for non-spiffe:// subject %q carries a certificate", subject)
+	}
+
+	if signedAt := claim.GetSignedAt(); signedAt != "" {
+		if _, err := time.Parse(time.RFC3339, signedAt); err != nil {
+			return fmt.Errorf("invalid claim signed_at: %w", err)
+		}
 	}
 
 	if expiresAt := claim.GetExpiresAt(); expiresAt != "" {

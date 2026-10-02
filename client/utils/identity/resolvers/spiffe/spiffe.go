@@ -29,26 +29,34 @@ func New(bundles x509bundle.Source) *Resolver {
 	return &Resolver{bundles: bundles}
 }
 
-// LoadBundles reads one PEM trust bundle per trust domain, given as a
-// map of trust domain (e.g. "acme.com") to bundle file path.
+// LoadBundles reads one PEM trust bundle per trust domain, given as a map of
+// trust domain (e.g. "acme.com") to bundle file path. Trust domains are
+// independent: one that cannot be read is left out of the set, so only its own
+// claims fail. The set is always usable; the error names every domain left out.
 func LoadBundles(trustDomains map[string]string) (*x509bundle.Set, error) {
 	loaded := make([]*x509bundle.Bundle, 0, len(trustDomains))
+
+	var errs []error
 
 	for domain, path := range trustDomains {
 		td, err := spiffeid.TrustDomainFromString(domain)
 		if err != nil {
-			return nil, fmt.Errorf("trust domain %q: %w", domain, err)
+			errs = append(errs, fmt.Errorf("trust domain %q: %w", domain, err))
+
+			continue
 		}
 
 		bundle, err := x509bundle.Load(td, path)
 		if err != nil {
-			return nil, fmt.Errorf("load trust bundle for %q: %w", domain, err)
+			errs = append(errs, fmt.Errorf("load trust bundle for %q: %w", domain, err))
+
+			continue
 		}
 
 		loaded = append(loaded, bundle)
 	}
 
-	return x509bundle.NewSet(loaded...), nil
+	return x509bundle.NewSet(loaded...), errors.Join(errs...)
 }
 
 // Resolve implements resolvers.Resolver. certificate is the claim's DER-encoded
