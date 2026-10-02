@@ -17,6 +17,7 @@ import (
 	dnsresolver "github.com/agntcy/dir/client/utils/identity/resolvers/dns"
 	wellknownresolver "github.com/agntcy/dir/client/utils/identity/resolvers/wellknown"
 	"github.com/agntcy/dir/utils/safefetch"
+	"github.com/opencontainers/go-digest"
 )
 
 // resolverSet holds one key resolver per subject scheme.
@@ -46,7 +47,7 @@ func (s resolverSet) cached() resolverSet {
 			return nil
 		}
 
-		return &cachedResolver{next: r, seen: map[string]lookup{}}
+		return &cachedResolver{next: r, seen: map[digest.Digest]lookup{}}
 	}
 
 	return resolverSet{dns: wrap(s.dns), did: wrap(s.did), wellknown: wrap(s.wellknown), spiffe: wrap(s.spiffe)}
@@ -59,11 +60,20 @@ type lookup struct {
 
 type cachedResolver struct {
 	next resolvers.Resolver
-	seen map[string]lookup
+	seen map[digest.Digest]lookup
+}
+
+// cacheKey digests the subject and certificate.
+func cacheKey(subject string, certificate []byte) digest.Digest {
+	b := make([]byte, 0, len(subject)+len(certificate))
+	b = append(b, subject...)
+	b = append(b, certificate...)
+
+	return digest.FromBytes(b)
 }
 
 func (c *cachedResolver) Resolve(ctx context.Context, subject string, certificate []byte) ([]crypto.PublicKey, error) {
-	key := subject + "\x00" + string(certificate)
+	key := cacheKey(subject, certificate)
 	if l, ok := c.seen[key]; ok {
 		return l.keys, l.err
 	}
