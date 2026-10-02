@@ -13,12 +13,14 @@ import (
 	"encoding/json"
 	"encoding/pem"
 	"math/big"
+	"net/http"
 	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
 	"time"
 
+	catalogv1 "github.com/agntcy/dir/api/catalog/v1"
 	corev1 "github.com/agntcy/dir/api/core/v1"
 	"github.com/agntcy/dir/tests/e2e/shared/testdata"
 	"github.com/agntcy/dir/tests/e2e/shared/utils"
@@ -299,6 +301,72 @@ var _ = ginkgo.Describe("Identity claims", ginkgo.Ordered, func() {
 			// A failed claim is not a verified one.
 			gomega.Expect(searchCIDs("--owner-verified")).NotTo(gomega.ContainSubstring(failedCID))
 			gomega.Expect(searchCIDs("--identity-verified", "--owner", goodSubject)).NotTo(gomega.ContainSubstring(failedCID))
+		})
+
+		ginkgo.It("should find records with a verified owner by --verified", func() {
+			gomega.Expect(searchCIDs("--verified")).To(gomega.ContainSubstring(verifiedCID))
+			gomega.Expect(searchCIDs("--verified")).NotTo(gomega.ContainSubstring(failedCID))
+			gomega.Expect(searchCIDs("--verified=false")).To(gomega.ContainSubstring(failedCID))
+			gomega.Expect(searchCIDs("--verified=false")).NotTo(gomega.ContainSubstring(verifiedCID))
+		})
+
+		// The AI Finder reports a verified owner as the entry's trust status and
+		// filters on it. Only environments with an HTTP gateway run this.
+		ginkgo.It("should report a verified owner in the AI Finder", func(ctx ginkgo.SpecContext) {
+			if testEnv.Config.GatewayAddress == "" {
+				ginkgo.Skip("HTTP gateway address not configured for this environment")
+			}
+
+			// A record with an MCP module projects to an AI Catalog entry.
+			var fields map[string]any
+			gomega.Expect(json.Unmarshal(testdata.ExpectedRecordV100JSON, &fields)).To(gomega.Succeed())
+
+			fields["annotations"] = map[string]string{corev1.AnnotationKeyOwner: goodSubject}
+
+			data, err := json.Marshal(fields)
+			gomega.Expect(err).NotTo(gomega.HaveOccurred())
+
+			path := filepath.Join(tempDir, "catalog-owner.json")
+			gomega.Expect(os.WriteFile(path, data, 0o600)).To(gomega.Succeed())
+
+			catalogCID := testEnv.CLI.Push(path).WithArgs("--output", "raw").ShouldSucceed()
+			pushed = append(pushed, catalogCID)
+
+			_ = claim("--record", catalogCID, "--role", "owner", "--key", goodKeyPath).ShouldSucceed()
+
+			verified := url.Values{"filter": {"displayName=burger_seller_agent AND verified=true"}}.Encode()
+
+			gomega.Eventually(func(g gomega.Gomega) {
+				status, body := getAgents(ctx, verified)
+				g.Expect(status).To(gomega.Equal(http.StatusOK))
+
+				var response struct {
+					Results []struct {
+						Identifier string                    `json:"identifier"`
+						Metadata   map[string]map[string]any `json:"metadata"`
+					} `json:"results"`
+				}
+
+				g.Expect(json.Unmarshal([]byte(body), &response)).To(gomega.Succeed())
+
+				found := false
+
+				for _, entry := range response.Results {
+					if entryCID(entry.Identifier) == catalogCID {
+						found = true
+
+						g.Expect(entry.Metadata[catalogv1.TrustStatusMetadataKey]).To(gomega.HaveKeyWithValue("verified", true))
+					}
+				}
+
+				g.Expect(found).To(gomega.BeTrue(), "the verified owner is listed under verified=true")
+			}).WithContext(ctx).WithTimeout(verifyTimeout).WithPolling(verifyPoll).Should(gomega.Succeed())
+
+			unverified := url.Values{"filter": {"displayName=burger_seller_agent AND verified=false"}}.Encode()
+
+			status, body := getAgents(ctx, unverified)
+			gomega.Expect(status).To(gomega.Equal(http.StatusOK))
+			gomega.Expect(body).NotTo(gomega.ContainSubstring(catalogCID))
 		})
 
 		ginkgo.It("should only search for what is there", func() {
