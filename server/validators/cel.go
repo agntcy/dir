@@ -9,7 +9,6 @@ import (
 
 	"cel.dev/cel-go/cel"
 	"cel.dev/cel-go/common/types"
-	corev1 "github.com/agntcy/dir/api/core/v1"
 	validatorsconfig "github.com/agntcy/dir/server/validators/config"
 	"google.golang.org/protobuf/types/known/structpb"
 )
@@ -24,11 +23,13 @@ type celRule struct {
 // The record is bound as the `record` variable (a map of the OASF fields).
 // Validation fails if any expression is false or errors.
 type celValidator struct {
-	rules   []celRule
+	rules []celRule
+
+	// version is a hash of the expressions, in order.
 	version string
 }
 
-func newCELValidator(entry validatorsconfig.Validator) (corev1.Validator, error) {
+func newCELValidator(entry validatorsconfig.Validator) (*celValidator, error) {
 	exprs, err := entry.ConfigStrings(validatorsconfig.ConfigKeyExpressions)
 	if err != nil {
 		return nil, fmt.Errorf("config.expressions: %w", err)
@@ -62,9 +63,6 @@ func newCELValidator(entry validatorsconfig.Validator) (corev1.Validator, error)
 
 	return &celValidator{rules: rules, version: contentVersion(exprs...)}, nil
 }
-
-// contentVersion is a hash of the expressions, in order.
-func (v *celValidator) contentVersion() string { return v.version }
 
 func (v *celValidator) ValidateRecord(ctx context.Context, data *structpb.Struct) (bool, []string, []string, error) {
 	if err := ctx.Err(); err != nil {

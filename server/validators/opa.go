@@ -19,9 +19,11 @@ import (
 const allowQuerySfx = ".allow"
 
 type opaValidator struct {
-	name    string
+	name  string
+	query rego.PreparedEvalQuery
+
+	// version is a hash of the policy file as it was loaded.
 	version string
-	query   rego.PreparedEvalQuery
 }
 
 func newOPAValidator(ctx context.Context, policyDir, filename string) (*opaValidator, error) {
@@ -69,9 +71,6 @@ func newOPAValidator(ctx context.Context, policyDir, filename string) (*opaValid
 		query:   prepared,
 	}, nil
 }
-
-// contentVersion is a hash of the policy file as it was loaded.
-func (v *opaValidator) contentVersion() string { return v.version }
 
 func (v *opaValidator) ValidateRecord(ctx context.Context, data *structpb.Struct) (bool, []string, []string, error) {
 	if data == nil {

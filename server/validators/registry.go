@@ -43,10 +43,12 @@ type Policy struct {
 	Validator corev1.Validator
 }
 
-// policyContent is implemented by the validators that can define a policy,
-// which are those that know a version of their own content.
-type policyContent interface {
-	contentVersion() string
+// built is a validator made from its config, with the version of its content
+// when its provider can define a policy. Config validation lets only such
+// providers have op evaluate; the task refuses a policy with no version.
+type built struct {
+	validator corev1.Validator
+	version   string
 }
 
 // contentVersion is the version of a policy made of parts, in order. Each part
@@ -74,55 +76,48 @@ func NewRegistry(ctx context.Context, entries validatorsconfig.Config, policyDir
 	var policies []Policy
 
 	for i, entry := range entries {
-		v, err := validatorFor(ctx, entry, policyDir)
+		b, err := validatorFor(ctx, entry, policyDir)
 		if err != nil {
 			return nil, fmt.Errorf("validators[%d]: %w", i, err)
 		}
 
 		for _, op := range entry.Ops {
-			byOp[op] = append(byOp[op], v)
+			byOp[op] = append(byOp[op], b.validator)
 		}
 
-		if !entry.HasOp(validatorsconfig.OpEvaluate) {
-			continue
+		if entry.HasOp(validatorsconfig.OpEvaluate) {
+			policies = append(policies, Policy{ID: entry.PolicyID(), Version: b.version, Validator: b.validator})
 		}
-
-		content, ok := v.(policyContent)
-		if !ok {
-			return nil, fmt.Errorf("validators[%d]: provider %q cannot define a policy", i, entry.Provider)
-		}
-
-		policies = append(policies, Policy{ID: entry.PolicyID(), Version: content.contentVersion(), Validator: v})
 	}
 
 	return &Registry{byOp: byOp, policies: policies}, nil
 }
 
-func validatorFor(ctx context.Context, entry validatorsconfig.Validator, policyDir string) (corev1.Validator, error) {
+func validatorFor(ctx context.Context, entry validatorsconfig.Validator, policyDir string) (built, error) {
 	switch entry.Provider {
 	case validatorsconfig.ProviderOASF:
 		v, err := validator.New(entry.ConfigString(validatorsconfig.ConfigKeySchemaURL))
 		if err != nil {
-			return nil, fmt.Errorf("failed to initialize OASF validator: %w", err)
+			return built{}, fmt.Errorf("failed to initialize OASF validator: %w", err)
 		}
 
-		return v, nil
+		return built{validator: v}, nil
 	case validatorsconfig.ProviderCEL:
 		v, err := newCELValidator(entry)
 		if err != nil {
-			return nil, fmt.Errorf("failed to initialize CEL validator: %w", err)
+			return built{}, fmt.Errorf("failed to initialize CEL validator: %w", err)
 		}
 
-		return v, nil
+		return built{validator: v, version: v.version}, nil
 	case validatorsconfig.ProviderOPA:
 		v, err := newOPAValidator(ctx, policyDir, entry.ConfigString(validatorsconfig.ConfigKeyFile))
 		if err != nil {
-			return nil, fmt.Errorf("failed to initialize OPA validator: %w", err)
+			return built{}, fmt.Errorf("failed to initialize OPA validator: %w", err)
 		}
 
-		return v, nil
+		return built{validator: v, version: v.version}, nil
 	default:
-		return nil, fmt.Errorf("unsupported provider %q", entry.Provider)
+		return built{}, fmt.Errorf("unsupported provider %q", entry.Provider)
 	}
 }
 
