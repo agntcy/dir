@@ -24,6 +24,8 @@ import (
 	"github.com/agntcy/dir/tests/e2e/shared/testdata"
 	ginkgo "github.com/onsi/ginkgo/v2"
 	"github.com/onsi/gomega"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 )
 
 var _ = ginkgo.Describe("Identity claims", ginkgo.Ordered, ginkgo.Serial, func() {
@@ -192,6 +194,11 @@ var _ = ginkgo.Describe("Identity claims", ginkgo.Ordered, ginkgo.Serial, func()
 		resp, err := testEnv.Client.GetIdentityStatus(ctx, recordCID)
 		gomega.Expect(err).NotTo(gomega.HaveOccurred(), "an unverified claim is not an error")
 		gomega.Expect(resp).NotTo(gomega.BeNil())
+	})
+
+	ginkgo.It("should answer NotFound, not an empty status, for a CID that is not a record", func(ctx context.Context) {
+		_, err := testEnv.Client.GetIdentityStatus(ctx, "baeareiaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")
+		gomega.Expect(status.Code(err)).To(gomega.Equal(codes.NotFound))
 	})
 
 	ginkgo.It("should resolve the record by name", func(ctx context.Context) {
