@@ -292,11 +292,7 @@ func (s *Service) startRecordWatcher(ctx context.Context) {
 		return
 	}
 
-	s.wg.Add(1)
-
-	go func() {
-		defer s.wg.Done()
-
+	s.wg.Go(func() {
 		// Stop ends the watch as well as the context does.
 		watchCtx, cancel := context.WithCancel(ctx)
 		defer cancel()
@@ -310,7 +306,7 @@ func (s *Service) startRecordWatcher(ctx context.Context) {
 		}()
 
 		recordevents.Watch(watchCtx, s.records, s.recordEvents, func() { s.Trigger(indexer.TaskName) })
-	}()
+	})
 
 	logger.Info("Watching record events", "window", s.recordEvents.GetWindow())
 }

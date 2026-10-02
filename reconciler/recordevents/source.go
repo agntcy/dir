@@ -7,6 +7,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"slices"
 
 	eventsv1 "github.com/agntcy/dir/api/events/v1"
 	"github.com/agntcy/dir/client/streaming"
@@ -117,13 +118,16 @@ func (s *clientSource) Listen(ctx context.Context, arrived func()) error {
 	}
 }
 
+// refusals are the codes with which an apiserver refuses an identity the events
+// API for good, so that asking again would get the same answer.
+var refusals = []codes.Code{codes.PermissionDenied, codes.Unauthenticated, codes.Unimplemented}
+
 // classify marks an error as unavailable when the apiserver has refused this
 // identity the events API for good.
 func classify(err error) error {
-	switch status.Code(err) {
-	case codes.PermissionDenied, codes.Unauthenticated, codes.Unimplemented:
+	if slices.Contains(refusals, status.Code(err)) {
 		return fmt.Errorf("%w: %w", ErrUnavailable, err)
-	default:
-		return err
 	}
+
+	return err
 }
