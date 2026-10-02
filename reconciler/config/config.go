@@ -12,6 +12,7 @@ import (
 	"github.com/agntcy/dir/reconciler/tasks/identity"
 	"github.com/agntcy/dir/reconciler/tasks/indexer"
 	"github.com/agntcy/dir/reconciler/tasks/metrics"
+	"github.com/agntcy/dir/reconciler/tasks/pruneuntrusted"
 	"github.com/agntcy/dir/reconciler/tasks/regsync"
 	"github.com/agntcy/dir/reconciler/tasks/scan"
 	"github.com/agntcy/dir/reconciler/tasks/signature"
@@ -79,6 +80,11 @@ type Config struct {
 
 	// Scan holds the security scan task configuration.
 	Scan scan.Config `json:"scan" mapstructure:"scan"`
+
+	// PruneUntrusted holds the prune-untrusted task configuration.
+	// Deletes records that are not signature-trusted and scan at or above
+	// the configured severity. Disabled by default because it deletes records.
+	PruneUntrusted pruneuntrusted.Config `json:"prune_untrusted" mapstructure:"prune_untrusted"`
 
 	// Identity holds the identity claim verification task configuration.
 	Identity identity.Config `json:"identity" mapstructure:"identity"`
@@ -232,6 +238,21 @@ func LoadConfig() (*Config, error) {
 
 	_ = v.BindEnv("scan.a2a_cli_path")
 	v.SetDefault("scan.a2a_cli_path", scan.DefaultA2ACLIPath)
+
+	//
+	// Prune-untrusted task configuration
+	//
+	_ = v.BindEnv("prune_untrusted.enabled")
+	v.SetDefault("prune_untrusted.enabled", false)
+
+	_ = v.BindEnv("prune_untrusted.interval")
+	v.SetDefault("prune_untrusted.interval", pruneuntrusted.DefaultInterval)
+
+	_ = v.BindEnv("prune_untrusted.record_timeout")
+	v.SetDefault("prune_untrusted.record_timeout", pruneuntrusted.DefaultRecordTimeout)
+
+	_ = v.BindEnv("prune_untrusted.scan_severity")
+	v.SetDefault("prune_untrusted.scan_severity", pruneuntrusted.DefaultScanSeverity)
 
 	//
 	// Providers task configuration (provider-count gauge)
