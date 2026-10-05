@@ -19,9 +19,9 @@ The content identifier of the record is a [Content IDentifier](https://github.co
 
 ### Names and Ownership
 
-Records must include a `name` field. A name such as `example.com/agent` lets a record be referenced as `name`, `name:version` or `name:version@cid` instead of by CID. Ownership of a record is asserted separately, with a signed ownership claim that the reconciler verifies against the key material its subject publishes.
+Records must include a `name` field. A name such as `example.com/agent` lets a record be referenced as `name`, `name:version` or `name:version@cid` instead of by CID. A name is a label chosen by the publisher and is not verified. Who stands behind a record is asserted separately, with signed identity and ownership claims that the reconciler verifies against the key material their subject publishes.
 
-See [Usage Guide — Identity and Ownership Claims](dir-features-scenarios.md#identity-and-ownership-claims) and the [CLI Reference](dir-cli-reference.md#dirctl-identity-claim-flags) for the claim workflow.
+See [Identity and Ownership Claims](dir-component-identity.md) for the claim schema and verification, [Usage Guide — Identity and Ownership Claims](dir-features-scenarios.md#identity-and-ownership-claims) for the workflow and the [CLI Reference](dir-cli-reference.md#dirctl-identity-claim-flags) for the commands.
 
 ### Example Email Agent
 
@@ -30,11 +30,14 @@ You can generate your own example records using the [OASF Record Sample generato
 ```json
 {
   "schema_version": "1.0.0",
-  "name": "https://www.cisco.com/agents/email-agent",
+  "name": "cisco.com/agents/email-agent",
   "version": "v1.0.0",
   "authors": ["Cisco Systems Inc."],
   "description": "An agent that can send and receive emails.",
   "created_at": "2025-08-11T16:20:37.159072Z",
+  "annotations": {
+    "agntcy.dir/owner": "dns:cisco.com"
+  },
   "skills": [
     {
       "id": 10306,
@@ -68,7 +71,7 @@ You can generate your own example records using the [OASF Record Sample generato
 
 !!! note
 
-    The `name` field uses a verifiable domain-based format (`https://cisco.com/agents/email-agent`). When signed with a key authorized by the domain's JWKS file at `https://cisco.com/.well-known/jwks.json`, this record can be pulled using the convenient reference `cisco.com/agents/email-agent:v1.0.0` instead of its CID.
+    The record can be pulled with the reference `cisco.com/agents/email-agent:v1.0.0` instead of its CID. The `agntcy.dir/owner` annotation only *declares* the owner the record claims, `dns:cisco.com`. It counts as verified once a signed ownership claim for that subject checks out against the key published at `_agntcy-key.cisco.com`. See [Identity and Ownership Claims](dir-component-identity.md).
 
 ## Validation
 

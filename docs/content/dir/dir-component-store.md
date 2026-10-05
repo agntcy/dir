@@ -15,8 +15,9 @@ When a client pushes a record, the server:
 2. Writes the payload to the configured OCI registry.
 3. Derives a [content identifier (CID)](https://github.com/multiformats/cid) from the artifact digest for immutable, content-addressed lookup.
 
-Records can be retrieved by CID or, when configured with a verifiable name, by
-Docker-style name references (`name`, `name:version`, `name:version@cid`).
+Records can be retrieved by CID or by Docker-style name references (`name`, `name:version`,
+`name:version@cid`). A name is the record's own `name` field and is not verified; see
+[Identity and Ownership Claims](dir-component-identity.md) for how a record's owner is proven.
 
 ## Backends and configuration
 

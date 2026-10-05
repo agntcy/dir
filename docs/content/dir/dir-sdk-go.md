@@ -280,6 +280,21 @@ for {
 ### Identity — resolve and verify claims
 
 ```go
+import (
+    "github.com/agntcy/dir/client/utils/identity"
+    "github.com/agntcy/dir/client/utils/jws"
+)
+
+// Load the private key whose public half the subject publishes
+signer, err := jws.NewKeySigner(keyPEM, nil) // nil: the key is not encrypted
+
+// Claim ownership of a record. The subject is the one the record declares in its
+// agntcy.dir/owner annotation.
+claim, err := c.ClaimOwnership(ctx, ref.GetCid(), signer)
+
+// For a spiffe:// subject, pass the signer's X.509-SVID as well
+claim, err = c.ClaimIdentity(ctx, ref.GetCid(), signer, identity.WithCertificate(svidPEM))
+
 // Resolve a name (optionally versioned) to record references
 resp, err := c.Resolve(ctx, "my-agent", "1.0.0")
 for _, ref := range resp.GetRecords() {

@@ -196,7 +196,8 @@ dirctl verify "$RECORD_CID"
 A record can carry two signed claims: the identity of the record itself and the owner behind
 it. The record declares each subject, such as `did:web:acme.com` or `dns:acme.com`, in its
 `agntcy.dir/identity` and `agntcy.dir/owner` annotations. The claim is signed for that subject and
-checked against the key material it publishes. For the claim model, see
+checked against the key material it publishes. For the claim schema and verification rules, see
+[Identity and Ownership Claims](dir-component-identity.md); for the command reference, see
 [CLI Reference — Identity](dir-cli-reference.md#dirctl-identity-claim-flags).
 
 ### Workflow
