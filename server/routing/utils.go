@@ -5,24 +5,9 @@ package routing
 
 import (
 	"fmt"
-	"math"
 
 	routingv1 "github.com/agntcy/dir/api/routing/v1"
 )
-
-// safeIntToUint32 safely converts int to uint32, preventing integer overflow.
-// This function provides secure conversion with bounds checking for production use.
-func safeIntToUint32(val int) uint32 {
-	if val < 0 {
-		return 0
-	}
-
-	if val > math.MaxUint32 {
-		return math.MaxUint32
-	}
-
-	return uint32(val)
-}
 
 // deduplicateQueries removes duplicate queries to ensure consistent scoring.
 // Two queries are considered duplicates if they have the same Type and Value.

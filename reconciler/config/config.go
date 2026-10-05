@@ -19,11 +19,13 @@ import (
 	"github.com/agntcy/dir/reconciler/tasks/regsync"
 	"github.com/agntcy/dir/reconciler/tasks/scan"
 	"github.com/agntcy/dir/reconciler/tasks/signature"
+	synctask "github.com/agntcy/dir/reconciler/tasks/sync"
 	authnconfig "github.com/agntcy/dir/server/authn/config"
 	dbconfig "github.com/agntcy/dir/server/database/config"
 	policy "github.com/agntcy/dir/server/policy/config"
 	ociconfig "github.com/agntcy/dir/server/store/oci/config"
 	"github.com/agntcy/dir/utils/logging"
+	"github.com/go-viper/mapstructure/v2"
 	"github.com/spf13/viper"
 )
 
@@ -52,10 +54,10 @@ type Config struct {
 	LocalRegistry ociconfig.Config `json:"local_registry" mapstructure:"local_registry"`
 
 	// ServerAddress is the gRPC address of the apiserver (e.g. "localhost:8888").
-	// Required by the metrics task when the reconciler runs as a standalone process,
-	// because the routing layer (Badger datastore) is embedded in the server and
-	// cannot be shared across process boundaries. The metrics task calls
-	// RoutingService.GetProviderCount over gRPC instead.
+	// Required by the metrics and sync tasks when the reconciler runs as
+	// a standalone process, because the routing layer (Badger datastore) is
+	// embedded in the server and cannot be shared across process boundaries.
+	// Those tasks call RoutingService over gRPC instead.
 	// Leave empty in daemon mode — the in-process routing API is used directly.
 	ServerAddress string `json:"server_address" mapstructure:"server_address"`
 
@@ -85,6 +87,11 @@ type Config struct {
 	// deletes records.
 	Prune prune.Config `json:"prune" mapstructure:"prune"`
 
+	// Sync holds the sync task configuration.
+	// Searches routing for records matching Criteria and creates one sync
+	// per announcing peer. Disabled by default because it creates remote syncs.
+	Sync synctask.Config `json:"sync" mapstructure:"sync"`
+
 	// Identity holds the identity claim verification task configuration.
 	Identity identity.Config `json:"identity" mapstructure:"identity"`
 
@@ -102,6 +109,8 @@ type Config struct {
 }
 
 // LoadConfig loads the configuration from file and environment variables.
+//
+//nolint:maintidx
 func LoadConfig() (*Config, error) {
 	v := viper.NewWithOptions(
 		viper.KeyDelimiter("."),
@@ -116,7 +125,6 @@ func LoadConfig() (*Config, error) {
 	v.AllowEmptyEnv(true)
 	v.AutomaticEnv()
 
-	// Read the config file
 	if err := v.ReadInConfig(); err != nil {
 		fileNotFoundError := viper.ConfigFileNotFoundError{}
 		if errors.As(err, &fileNotFoundError) {
@@ -301,6 +309,24 @@ func LoadConfig() (*Config, error) {
 	v.SetDefault("prune.dry_run", true)
 
 	//
+	// Sync task configuration
+	//
+	_ = v.BindEnv("sync.enabled")
+	v.SetDefault("sync.enabled", false)
+
+	_ = v.BindEnv("sync.interval")
+	v.SetDefault("sync.interval", synctask.DefaultInterval)
+
+	_ = v.BindEnv("sync.criteria.domains")
+	v.SetDefault("sync.criteria.domains", []string{synctask.DefaultDomain})
+
+	_ = v.BindEnv("sync.limit")
+	v.SetDefault("sync.limit", synctask.DefaultLimit)
+
+	_ = v.BindEnv("sync.dry_run")
+	v.SetDefault("sync.dry_run", true)
+
+	//
 	// Providers task configuration (provider-count gauge)
 	//
 	_ = v.BindEnv("metrics.enabled")
@@ -337,7 +363,7 @@ func LoadConfig() (*Config, error) {
 	v.SetDefault("record_events.reconnect_delay", recordevents.DefaultReconnectDelay)
 
 	//
-	// Server address (used by the metrics task in standalone mode)
+	// Server address (used by the metrics and sync tasks in standalone mode)
 	//
 	_ = v.BindEnv("server_address")
 
@@ -359,9 +385,16 @@ func LoadConfig() (*Config, error) {
 	_ = v.BindEnv("policy.dir")
 	v.SetDefault("policy.dir", "/etc/agntcy/dir/policies")
 
-	// Unmarshal into config struct
+	// Unmarshal into config struct. StringToSlice lets a YAML scalar or a
+	// comma-separated env value fill []string fields such as sync.criteria.domains.
+	decodeHooks := mapstructure.ComposeDecodeHookFunc(
+		mapstructure.TextUnmarshallerHookFunc(),
+		mapstructure.StringToTimeDurationHookFunc(),
+		mapstructure.StringToSliceHookFunc(","),
+	)
+
 	config := &Config{}
-	if err := v.Unmarshal(config); err != nil {
+	if err := v.Unmarshal(config, viper.DecodeHook(decodeHooks)); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal configuration: %w", err)
 	}
 
