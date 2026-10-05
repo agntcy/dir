@@ -4,8 +4,8 @@ icon: material/account-check
 
 # Identity and Ownership Claims
 
-A record can carry two signed **claims**: one for the identity of the record itself and one
-for the **owner** behind it. A claim ties the record to a *subject* (a domain, a DID or a
+A record can carry two signed claims: one for the identity of the record itself and one
+for the owner behind it. A claim ties the record to a subject (a domain, a DID or a
 SPIFFE ID) and is proven with a signature that anyone can check against key material the
 subject publishes. The reconciler verifies every claim on a schedule and stores the outcome, so
 a rotated key or a revoked trust bundle shows up on the next run.
@@ -72,6 +72,12 @@ A record may declare one, both or neither. A claim for a role the record does no
 refused when it is created with `dirctl identity claim` or the SDK, and is ignored by the
 reconciler if it is pushed by hand.
 
+## Names
+
+A record's `name` field is how it is referenced as `name`, `name:version` or
+`name:version@cid`. A name is a label chosen by the publisher and is not verified. The
+claims on this page are what prove who stands behind a record.
+
 ## Claim schema
 
 A claim is the `agntcy.dir.identity.v1.Claim` message. It is stored as a
@@ -120,9 +126,8 @@ The `signature` and `certificate` fields are not part of the payload.
 
 !!! warning
 
-    The certificate is **not** covered by the signature. For that reason it is only accepted
-    on a `spiffe://` claim, where it is validated against a trust bundle on its own, and a
-    claim for any other subject that carries one fails.
+    The certificate is not covered by the signature. For that reason it is only accepted
+    on a `spiffe://` claim, where it is validated against a trust bundle on its own, and a claim for any other subject that carries one fails.
 
 ### Signing keys
 
@@ -138,7 +143,7 @@ cannot pick its own verification algorithm.
 
 ## Subjects and key publication
 
-The scheme of the subject decides how its keys are found. A claim verifies when **any one** of
+The scheme of the subject decides how its keys are found. A claim verifies when any one of
 the keys the subject currently publishes validates its signature.
 
 | Subject | Where the key comes from |
@@ -184,11 +189,11 @@ RSA keys are supported.
 ### SPIFFE
 
 A `spiffe://` claim carries the signer's X.509-SVID in `certificate`, and no key is published
-anywhere. The verifier accepts the claim only when the certificate:
+anywhere. The verifier accepts the claim only when the certificate fulfils the following conditions:
 
-- chains to the trust bundle configured for the subject's trust domain,
-- has a URI SAN equal to the subject, and
-- is within its validity period.
+- Chains to the trust bundle configured for the subject's trust domain.
+- Has a URI SAN equal to the subject.
+- Is within its validity period.
 
 The claim carries only the leaf certificate, so its issuer must be a root in the bundle. A
 trust domain with no configured bundle fails. See
@@ -204,18 +209,20 @@ accepts responses of at most 1 MiB within a 10 second timeout.
 ## Verification
 
 The `identity` task of the [reconciler](dir-architecture.md) checks claims on a fixed interval.
-For each record that carries claims, and for each role, it does the following.
+For each record that carries claims, and for each role, it does the following:
 
-1. **Selects the claims.** A claim whose `subject` is not the one the record declares for the
-   role is skipped. Anyone can attach a claim to any record, so such a claim says nothing about
-   the record, and it leaves no result behind.
-2. **Runs the checks that need no key:** the claim is for this record (`recordCid`), it is
-   not expired, `signedAt` parses, and the certificate rule holds (a certificate if and only
-   if the subject is `spiffe://`). A claim that fails these costs no network lookup.
-3. **Resolves the subject's current keys** for its scheme.
-4. **Verifies the signature** against those keys.
+- Selects the claims.
 
-If several claims of one role pass the selection, a **verified claim decides** the result,
+    A claim whose `subject` is not the one the record declares for the role is skipped. Anyone can attach a claim to any record, so such a claim says nothing about the record, and it leaves no result behind.
+
+- Runs the checks that need no key.
+
+    The claim is for this record (`recordCid`), it is not expired, `signedAt` parses, and the certificate rule holds (a certificate if and only if the subject is `spiffe://`). A claim that fails these costs no network lookup.
+
+- Resolves the subject's current keys for its scheme.
+- Verifies the signature against those keys.
+
+If several claims of one role pass the selection, a verified claim decides the result,
 whoever else attached claims. Otherwise the failure of the claim with the newest `signedAt` is
 reported. A `signedAt` in the future, or one that does not parse, counts as the oldest, so a
 forged date cannot outrank an honest claim.
@@ -230,13 +237,13 @@ Within one run a lookup is made once per subject, however many records share it.
 | `verified` | A claim for the declared subject verified against the keys the subject publishes |
 | `failed` | Every claim for the declared subject failed; the reason is kept (up to 1,024 characters) |
 
-A failed result always names the subject the **record** declares, never one a claim chose.
+A failed result always names the subject the record declares, never one a claim chose.
 If a claim is withdrawn, or no claim applies any more, its stored result is removed. If a
 record's claims cannot be read at all, the stored results are left as they were.
 
 ### Unreachable subjects
 
-A failed *lookup* is not the same as a wrong claim. If the subject cannot be reached, because
+A failed lookup is not the same as a wrong claim. If the subject cannot be reached, because
 of a timeout, a refused connection, a DNS failure other than "no such name", or a 5xx, 408 or
 429 response, a result that is already stored is left as it is, and nothing is written for
 that run. The result's age is counted from when it was last written, so the grace lasts seven
@@ -246,10 +253,9 @@ lookup error.
 
 Two cases get no grace:
 
-- A claim that has no stored result yet fails at once if its subject is unreachable on the
-  first run, and verifies on the first run that reaches it.
+- A claim that has no stored result yet fails at once if its subject is unreachable on the first run, and verifies on the first run that reaches it.
 - An answer that says the subject publishes no usable key, a `404`, a "no such host" or a
-  blocked address is **not** transient, so it fails the claim immediately.
+  blocked address is not transient, so it fails the claim immediately.
 
 ### Stored result
 
@@ -318,7 +324,7 @@ subject the record declares. See
 
 ## Configuration
 
-Claim verification is a reconciler task and is **off unless enabled**. The `dirctl daemon`
+Claim verification is a reconciler task and is disabled by default. The `dirctl daemon`
 default configuration enables it.
 
 ```yaml
@@ -358,9 +364,3 @@ domain; the other domains and the run are not affected. With no bundle, `spiffe:
 - Claims are verified again on every run, so key rotation, DNS changes, a revoked trust bundle
   and expiry take effect on the next one.
 - Keys are fetched with an SSRF-safe client, because the URLs come from record data.
-
-## Names
-
-A record's `name` field is how it is referenced as `name`, `name:version` or
-`name:version@cid`. A name is a label chosen by the publisher and is **not** verified. The
-claims on this page are what prove who stands behind a record.
