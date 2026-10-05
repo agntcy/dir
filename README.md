@@ -5,6 +5,7 @@
 [![Coverage](https://codecov.io/gh/agntcy/dir/branch/main/graph/badge.svg)](https://codecov.io/gh/agntcy/dir)
 [![License](https://img.shields.io/github/license/agntcy/dir)](./LICENSE.md)
 [![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/agntcy/dir/badge)](https://scorecard.dev/viewer/?uri=github.com/agntcy/dir)
+[![OpenSSF Best Practices](https://www.bestpractices.dev/projects/14438/badge)](https://www.bestpractices.dev/projects/14438)
 
 [Buf Registry](https://buf.build/agntcy/dir) | 
 [MCP Server](https://github.com/agntcy/dir-mcp) | 
