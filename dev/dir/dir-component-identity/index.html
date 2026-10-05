@@ -8,13 +8,13 @@
       
       
       
-        <link rel="canonical" href="https://agntcy.github.io/dir/latest/dir/dir-component-runtime-discovery/">
+        <link rel="canonical" href="https://agntcy.github.io/dir/latest/dir/dir-component-identity/">
       
       
-        <link rel="prev" href="../dir-component-identity/">
+        <link rel="prev" href="../dir-component-trust-model/">
       
       
-        <link rel="next" href="../dir-component-mcp-server/">
+        <link rel="next" href="../dir-component-runtime-discovery/">
       
       
         
@@ -25,7 +25,7 @@
     
     
       
-        <title>Runtime Discovery - Agent Directory Service</title>
+        <title>Identity and Ownership - Agent Directory Service</title>
       
     
     
@@ -94,7 +94,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#runtime-discovery" class="md-skip">
+        <a href="#identity-and-ownership-claims" class="md-skip">
           Skip to content
         </a>
       
@@ -155,7 +155,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Runtime Discovery
+              Identity and Ownership
             
           </span>
         </div>
@@ -993,10 +993,43 @@
                 
   
   
+    
   
   
-    <li class="md-nav__item">
-      <a href="../dir-component-identity/" class="md-nav__link">
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  
+    
+  
+  
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="m21.1 12.5 1.4 1.41-6.53 6.59L12.5 17l1.4-1.41 2.07 2.08zM10 17l3 3H3v-2c0-2.21 3.58-4 8-4l1.89.11zm1-13a4 4 0 0 1 4 4 4 4 0 0 1-4 4 4 4 0 0 1-4-4 4 4 0 0 1 4-4"/></svg>
+  
+  <span class="md-ellipsis">
+    
+  
+    Identity and Ownership
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
         
   
   
@@ -1018,6 +1051,292 @@
   
 
       </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#how-it-works" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        How it works
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#declaring-the-subject" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Declaring the subject
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#names" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Names
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#claim-schema" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Claim schema
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Claim schema">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#what-is-signed" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What is signed
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#signing-keys" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Signing keys
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#subjects-and-key-publication" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Subjects and key publication
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Subjects and key publication">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#dns" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        DNS
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#https-and-jwks" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        HTTPS and JWKS
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#did" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        DID
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#spiffe" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        SPIFFE
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#fetch-limits" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Fetch limits
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#verification" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Verification
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Verification">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#results" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Results
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#unreachable-subjects" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Unreachable subjects
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#stored-result" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Stored result
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#reading-the-results" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Reading the results
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Reading the results">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#identityservice" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        IdentityService
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#cli-and-sdk" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        CLI and SDK
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#search" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Search
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#configuration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Configuration
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#security-properties" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Security properties
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
     </li>
   
 
@@ -1027,10 +1346,8 @@
                 
   
   
-    
   
   
-  
     
     
       
@@ -1051,11 +1368,11 @@
       
     
     
-    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_2_7" checked>
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_2_7" >
         
           
           <label class="md-nav__link" for="__nav_2_2_7" id="__nav_2_2_7_label" tabindex="0">
@@ -1082,7 +1399,7 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_2_2_7_label" aria-expanded="true">
+        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_2_2_7_label" aria-expanded="false">
           <label class="md-nav__title" for="__nav_2_2_7">
             <span class="md-nav__icon md-icon"></span>
             
@@ -1097,43 +1414,10 @@
                 
   
   
-    
   
   
-  
-    <li class="md-nav__item md-nav__item--active">
-      
-      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
-      
-      
-        
-      
-      
-        <label class="md-nav__link md-nav__link--active" for="__toc">
-          
-  
-  
-  
-    
-  
-  
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="m19.07 4.93-1.41 1.41A8.01 8.01 0 0 1 20 12a8 8 0 0 1-8 8 8 8 0 0 1-8-8c0-4.08 3.05-7.44 7-7.93v2.02C8.16 6.57 6 9.03 6 12a6 6 0 0 0 6 6 6 6 0 0 0 6-6c0-1.66-.67-3.16-1.76-4.24l-1.41 1.41C15.55 9.9 16 10.9 16 12a4 4 0 0 1-4 4 4 4 0 0 1-4-4c0-1.86 1.28-3.41 3-3.86v2.14c-.6.35-1 .98-1 1.72a2 2 0 0 0 2 2 2 2 0 0 0 2-2c0-.74-.4-1.38-1-1.72V2h-1A10 10 0 0 0 2 12a10 10 0 0 0 10 10 10 10 0 0 0 10-10c0-2.76-1.12-5.26-2.93-7.07"/></svg>
-  
-  <span class="md-ellipsis">
-    
-  
-    Runtime Discovery
-  
-
-    
-  </span>
-  
-  
-
-          <span class="md-nav__icon md-icon"></span>
-        </label>
-      
-      <a href="./" class="md-nav__link md-nav__link--active">
+    <li class="md-nav__item">
+      <a href="../dir-component-runtime-discovery/" class="md-nav__link">
         
   
   
@@ -1155,332 +1439,6 @@
   
 
       </a>
-      
-        
-
-<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
-  
-  
-  
-    
-  
-  
-    <label class="md-nav__title" for="__toc">
-      <span class="md-nav__icon md-icon"></span>
-      Table of contents
-    </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#architecture" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Architecture
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#components" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Components
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Components">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#discovery-discovery" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Discovery (discovery/)
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#server-server" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Server (server/)
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#example-setup" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Example Setup
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Example Setup">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#build-container-images" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Build Container Images
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#docker-compose" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Docker Compose
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#kubernetes" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Kubernetes
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Kubernetes">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#setup-kind-cluster" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Setup KIND Cluster
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#deploy-example-workloads" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Deploy Example Workloads
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#deploy-with-crd-storage" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Deploy with CRD Storage
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#deploy-with-etcd-storage" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Deploy with etcd Storage
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#cleanup" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Cleanup
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#workload-labels" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Workload Labels
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Workload Labels">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#discovery-labels" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Discovery Labels
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#resolver-labels" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Resolver Labels
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#workload-services" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Workload Services
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#configuration" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Configuration
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Configuration">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#discovery-component" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Discovery Component
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Discovery Component">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#discovery-oasf-resolver" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Discovery OASF Resolver
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#server-component" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Server Component
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#grpc-api" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        gRPC API
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="gRPC API">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#getworkload" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        GetWorkload
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#listworkloads" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        ListWorkloads
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-    </ul>
-  
-</nav>
-      
     </li>
   
 
@@ -2536,10 +2494,10 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#architecture" class="md-nav__link">
+  <a href="#how-it-works" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Architecture
+        How it works
       
     </span>
   </a>
@@ -2547,22 +2505,44 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#components" class="md-nav__link">
+  <a href="#declaring-the-subject" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Components
+        Declaring the subject
       
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Components">
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#names" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Names
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#claim-schema" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Claim schema
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Claim schema">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#discovery-discovery" class="md-nav__link">
+  <a href="#what-is-signed" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Discovery (discovery/)
+        What is signed
       
     </span>
   </a>
@@ -2570,10 +2550,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#server-server" class="md-nav__link">
+  <a href="#signing-keys" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Server (server/)
+        Signing keys
       
     </span>
   </a>
@@ -2586,22 +2566,22 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#example-setup" class="md-nav__link">
+  <a href="#subjects-and-key-publication" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Example Setup
+        Subjects and key publication
       
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Example Setup">
+    <nav class="md-nav" aria-label="Subjects and key publication">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#build-container-images" class="md-nav__link">
+  <a href="#dns" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Build Container Images
+        DNS
       
     </span>
   </a>
@@ -2609,10 +2589,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#docker-compose" class="md-nav__link">
+  <a href="#https-and-jwks" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Docker Compose
+        HTTPS and JWKS
       
     </span>
   </a>
@@ -2620,22 +2600,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#kubernetes" class="md-nav__link">
+  <a href="#did" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Kubernetes
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Kubernetes">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#setup-kind-cluster" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Setup KIND Cluster
+        DID
       
     </span>
   </a>
@@ -2643,10 +2611,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#deploy-example-workloads" class="md-nav__link">
+  <a href="#spiffe" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Deploy Example Workloads
+        SPIFFE
       
     </span>
   </a>
@@ -2654,40 +2622,13 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#deploy-with-crd-storage" class="md-nav__link">
+  <a href="#fetch-limits" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Deploy with CRD Storage
+        Fetch limits
       
     </span>
   </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#deploy-with-etcd-storage" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Deploy with etcd Storage
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#cleanup" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Cleanup
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
   
 </li>
         
@@ -2697,22 +2638,22 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#workload-labels" class="md-nav__link">
+  <a href="#verification" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Workload Labels
+        Verification
       
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Workload Labels">
+    <nav class="md-nav" aria-label="Verification">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#discovery-labels" class="md-nav__link">
+  <a href="#results" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Discovery Labels
+        Results
       
     </span>
   </a>
@@ -2720,10 +2661,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#resolver-labels" class="md-nav__link">
+  <a href="#unreachable-subjects" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Resolver Labels
+        Unreachable subjects
       
     </span>
   </a>
@@ -2731,10 +2672,60 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#workload-services" class="md-nav__link">
+  <a href="#stored-result" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Workload Services
+        Stored result
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#reading-the-results" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Reading the results
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Reading the results">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#identityservice" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        IdentityService
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#cli-and-sdk" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        CLI and SDK
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#search" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Search
       
     </span>
   </a>
@@ -2755,89 +2746,16 @@
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Configuration">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#discovery-component" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Discovery Component
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Discovery Component">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#discovery-oasf-resolver" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Discovery OASF Resolver
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#server-component" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Server Component
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
 </li>
       
         <li class="md-nav__item">
-  <a href="#grpc-api" class="md-nav__link">
+  <a href="#security-properties" class="md-nav__link">
     <span class="md-ellipsis">
       
-        gRPC API
+        Security properties
       
     </span>
   </a>
-  
-    <nav class="md-nav" aria-label="gRPC API">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#getworkload" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        GetWorkload
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#listworkloads" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        ListWorkloads
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
   
 </li>
       
@@ -2922,24 +2840,6 @@
   
 
       
-        
-  
-  
-    
-    
-      <li class="md-path__item">
-        <a href="./" class="md-path__link">
-          
-  <span class="md-ellipsis">
-    Extensions
-  </span>
-
-        </a>
-      </li>
-    
-  
-
-      
     </ol>
   </nav>
 
@@ -2950,7 +2850,7 @@
 
 
   
-    <a href="https://github.com/agntcy/dir/edit/main/docs/content/dir/dir-component-runtime-discovery.md" title="Edit this page" class="md-content__button md-icon" rel="edit">
+    <a href="https://github.com/agntcy/dir/edit/main/docs/content/dir/dir-component-identity.md" title="Edit this page" class="md-content__button md-icon" rel="edit">
       
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M10 20H6V4h7v5h5v3.1l2-2V8l-6-6H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h4zm10.2-7c.1 0 .3.1.4.2l1.3 1.3c.2.2.2.6 0 .8l-1 1-2.1-2.1 1-1c.1-.1.2-.2.4-.2m0 3.9L14.1 23H12v-2.1l6.1-6.1z"/></svg>
     </a>
@@ -2959,469 +2859,502 @@
     
       
     
-    <a href="https://github.com/agntcy/dir/raw/main/docs/content/dir/dir-component-runtime-discovery.md" title="View source of this page" class="md-content__button md-icon">
+    <a href="https://github.com/agntcy/dir/raw/main/docs/content/dir/dir-component-identity.md" title="View source of this page" class="md-content__button md-icon">
       
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M17 18c.56 0 1 .44 1 1s-.44 1-1 1-1-.44-1-1 .44-1 1-1m0-3c-2.73 0-5.06 1.66-6 4 .94 2.34 3.27 4 6 4s5.06-1.66 6-4c-.94-2.34-3.27-4-6-4m0 6.5a2.5 2.5 0 0 1-2.5-2.5 2.5 2.5 0 0 1 2.5-2.5 2.5 2.5 0 0 1 2.5 2.5 2.5 2.5 0 0 1-2.5 2.5M9.27 20H6V4h7v5h5v4.07c.7.08 1.36.25 2 .49V8l-6-6H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h4.5a8.2 8.2 0 0 1-1.23-2"/></svg>
     </a>
   
 
 
-<h1 id="runtime-discovery">Runtime Discovery</h1>
-<p>Runtime Discovery is a service that watches container runtimes (Docker, Kubernetes) for workloads and provides a gRPC API for querying them.
-In addition, it also resolves workloads using various resolvers (A2A, OASF) to extract and provide details about the workload's capabilities.</p>
-<h2 id="architecture">Architecture</h2>
-<p>The system is split into two independent components:</p>
-<pre class="mermaid"><code>flowchart LR
- subgraph Discovery["Discovery (discovery/)"]
-        RA["Runtime Adapters&lt;br&gt;• Docker&lt;br&gt;• Kubernetes"]
-        RES["Resolvers&lt;br&gt;• A2A&lt;br&gt;• OASF"]
-        SW["Store Writer"]
-  end
- subgraph Server["Server (server/)"]
-        SPACE[" "]
-        API["gRPC API&lt;br&gt;/ListWorkloads"]
-  end
-    RA --&gt; RES
-    RES --&gt; SW
-    SPACE ~~~ API
-    Discovery ~~~ Server
-    SW -- write/manage --&gt; SB["Storage Backend&lt;br&gt;• etcd (distributed)&lt;br&gt;• Kubernetes CRDs (native)"]
-    SB -- read/watch --&gt; API
+<h1 id="identity-and-ownership-claims">Identity and Ownership Claims</h1>
+<p>A record can carry two signed claims: one for the identity of the record itself and one
+for the owner behind it. A claim ties the record to a subject (a domain, a DID or a
+SPIFFE ID) and is proven with a signature that anyone can check against key material the
+subject publishes. The reconciler verifies every claim on a schedule and stores the outcome, so
+a rotated key or a revoked trust bundle shows up on the next run.</p>
+<p>This page describes the claim schema, how each kind of subject is verified, and how to read
+the results. For the commands, see <a href="../dir-cli-reference/#dirctl-identity-claim-flags">CLI Reference — Identity</a>;
+for a walkthrough, see <a href="../dir-features-scenarios/#identity-and-ownership-claims">Usage Guide — Identity and Ownership Claims</a>.</p>
+<h2 id="how-it-works">How it works</h2>
+<pre class="mermaid"><code>sequenceDiagram
+    participant P as Publisher
+    participant S as Directory server
+    participant R as Reconciler (identity task)
+    participant K as Subject (DNS, HTTPS, DID, SPIFFE bundle)
+    participant D as Clients (CLI, SDK, search)
 
-    style SPACE fill:none,stroke:none</code></pre>
-<h2 id="components">Components</h2>
-<h3 id="discovery-discovery">Discovery (<code>discovery/</code>)</h3>
-<p>The discovery component is responsible for:</p>
-<ul>
-<li>
-<p>Watching runtimes for workloads with the <code>org.agntcy/discover=true</code> label. Supported runtimes:</p>
-<ul>
-<li>Docker: Watches Docker daemon for labeled containers.</li>
-<li>Kubernetes: Watches Kubernetes API for labeled pods/services.</li>
-<li>Extensible architecture allows adding more runtimes in the future.</li>
-</ul>
-</li>
-<li>
-<p>Resolving workload metadata using configurable resolvers:</p>
-<ul>
-<li>A2A resolver: Extracts A2A agent card from workloads with <code>org.agntcy/agent-type=a2a</code> label.</li>
-<li>OASF resolver: Resolves OASF records from Directory for workloads with <code>org.agntcy/agent-record=&lt;fqdn&gt;</code> label.</li>
-<li>Extensible architecture allows adding more resolvers in the future.</li>
-</ul>
-</li>
-<li>
-<p>Writing workloads to the storage backend (etcd or CRDs).</p>
-</li>
-</ul>
-<p>The storage backend can be used to expose discovered workloads to other components (e.g., clients/servers) without coupling them directly and to reduce attack surface.</p>
-<p>In non-Kubernetes environments, <a href="https://etcd.io/">etcd</a> is recommended as the storage backend for better portability.
-In Kubernetes environments, CRDs can be used for a more native experience to ensure clients can query workloads via both gRPC and the Kubernetes API.</p>
-<pre class="mermaid"><code>flowchart LR
-    n1["Runtime Discovery"] --&gt; n3["Runtime Server (for querying workloads via gRPC)"] &amp; n4["CRD (for querying workloads via Kubernetes API)"]
-
-    n1@{ shape: rect}</code></pre>
-<h3 id="server-server">Server (<code>server/</code>)</h3>
-<p>The server component provides a gRPC API for querying discovered workloads.</p>
-<h2 id="example-setup">Example Setup</h2>
-<h3 id="build-container-images">Build Container Images</h3>
-<div class="highlight"><pre><span></span><code><span class="nv">IMAGE_TAG</span><span class="o">=</span>latest<span class="w"> </span>task<span class="w"> </span>build
-</code></pre></div>
-<h3 id="docker-compose">Docker Compose</h3>
-<div class="highlight"><pre><span></span><code><span class="c1"># Deploy the stack</span>
-docker<span class="w"> </span>compose<span class="w"> </span>-f<span class="w"> </span>install/docker/docker-compose.yml<span class="w"> </span>up<span class="w"> </span>-d
-
-<span class="c1"># Deploy example workloads</span>
-docker<span class="w"> </span>compose<span class="w"> </span>-f<span class="w"> </span>install/examples/docker-compose.yml<span class="w"> </span>up<span class="w"> </span>-d
-
-<span class="c1"># Add discovery to all networks (required for resolvers to work)</span>
-docker<span class="w"> </span>network<span class="w"> </span>connect<span class="w"> </span>examples_team-a<span class="w"> </span>runtime-discovery
-docker<span class="w"> </span>network<span class="w"> </span>connect<span class="w"> </span>examples_team-b<span class="w"> </span>runtime-discovery
-docker<span class="w"> </span>restart<span class="w"> </span>runtime-discovery
-
-<span class="c1"># Query the API</span>
-grpcurl<span class="w"> </span>-plaintext<span class="w"> </span>localhost:8080<span class="w"> </span>agntcy.dir.runtime.v1.DiscoveryService/ListWorkloads
-
-<span class="c1"># Cleanup</span>
-docker<span class="w"> </span>compose<span class="w"> </span>-f<span class="w"> </span>install/docker/docker-compose.yml<span class="w"> </span>down
-docker<span class="w"> </span>compose<span class="w"> </span>-f<span class="w"> </span>install/examples/docker-compose.yml<span class="w"> </span>down
-</code></pre></div>
-<h3 id="kubernetes">Kubernetes</h3>
-<p>The Helm chart supports both CRD and etcd storage backends.</p>
-<h4 id="setup-kind-cluster">Setup KIND Cluster</h4>
-<div class="highlight"><pre><span></span><code><span class="c1"># Create cluster</span>
-kind<span class="w"> </span>create<span class="w"> </span>cluster<span class="w"> </span>--name<span class="w"> </span>runtime
-
-<span class="c1"># Load images into KIND</span>
-kind<span class="w"> </span>load<span class="w"> </span>docker-image<span class="w"> </span>ghcr.io/agntcy/dir-runtime-discovery:latest<span class="w"> </span>--name<span class="w"> </span>runtime
-kind<span class="w"> </span>load<span class="w"> </span>docker-image<span class="w"> </span>ghcr.io/agntcy/dir-runtime-server:latest<span class="w"> </span>--name<span class="w"> </span>runtime
-</code></pre></div>
-<h4 id="deploy-example-workloads">Deploy Example Workloads</h4>
-<div class="highlight"><pre><span></span><code>kubectl<span class="w"> </span>apply<span class="w"> </span>-f<span class="w"> </span>install/examples/k8s.workloads.yaml
-</code></pre></div>
-<h4 id="deploy-with-crd-storage">Deploy with CRD Storage</h4>
-<div class="highlight"><pre><span></span><code><span class="c1"># Install the chart with CRD storage (default)</span>
-helm<span class="w"> </span>install<span class="w"> </span>runtime<span class="w"> </span>install/chart/
-
-<span class="c1"># Wait for pods</span>
-kubectl<span class="w"> </span><span class="nb">wait</span><span class="w"> </span>--for<span class="o">=</span><span class="nv">condition</span><span class="o">=</span>ready<span class="w"> </span>pod<span class="w"> </span>-l<span class="w"> </span>app.kubernetes.io/component<span class="o">=</span>discovery<span class="w"> </span>--timeout<span class="o">=</span>60s
-kubectl<span class="w"> </span><span class="nb">wait</span><span class="w"> </span>--for<span class="o">=</span><span class="nv">condition</span><span class="o">=</span>ready<span class="w"> </span>pod<span class="w"> </span>-l<span class="w"> </span>app.kubernetes.io/component<span class="o">=</span>server<span class="w"> </span>--timeout<span class="o">=</span>60s
-
-<span class="c1"># Query the gRPC API</span>
-kubectl<span class="w"> </span>port-forward<span class="w"> </span>svc/runtime-server<span class="w"> </span><span class="m">8080</span>:8080<span class="w"> </span><span class="p">&amp;</span>
-grpcurl<span class="w"> </span>-plaintext<span class="w"> </span>localhost:8080<span class="w"> </span>agntcy.dir.runtime.v1.DiscoveryService/ListWorkloads
-
-<span class="c1"># Query the Kubernetes API to see discovered workloads</span>
-kubectl<span class="w"> </span>get<span class="w"> </span>dw
-</code></pre></div>
-<h4 id="deploy-with-etcd-storage">Deploy with etcd Storage</h4>
-<div class="highlight"><pre><span></span><code><span class="c1"># Install the chart with etcd storage</span>
-helm<span class="w"> </span>install<span class="w"> </span>runtime<span class="w"> </span>install/chart/<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--set<span class="w"> </span>etcd.enabled<span class="o">=</span><span class="nb">true</span><span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--set<span class="w"> </span>discovery.config.store.type<span class="o">=</span>etcd<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--set<span class="w"> </span>server.config.store.type<span class="o">=</span>etcd
-
-<span class="c1"># Wait for pods</span>
-kubectl<span class="w"> </span><span class="nb">wait</span><span class="w"> </span>--for<span class="o">=</span><span class="nv">condition</span><span class="o">=</span>ready<span class="w"> </span>pod<span class="w"> </span>-l<span class="w"> </span>app.kubernetes.io/component<span class="o">=</span>etcd<span class="w"> </span>--timeout<span class="o">=</span>60s
-kubectl<span class="w"> </span><span class="nb">wait</span><span class="w"> </span>--for<span class="o">=</span><span class="nv">condition</span><span class="o">=</span>ready<span class="w"> </span>pod<span class="w"> </span>-l<span class="w"> </span>app.kubernetes.io/component<span class="o">=</span>discovery<span class="w"> </span>--timeout<span class="o">=</span>60s
-kubectl<span class="w"> </span><span class="nb">wait</span><span class="w"> </span>--for<span class="o">=</span><span class="nv">condition</span><span class="o">=</span>ready<span class="w"> </span>pod<span class="w"> </span>-l<span class="w"> </span>app.kubernetes.io/component<span class="o">=</span>server<span class="w"> </span>--timeout<span class="o">=</span>60s
-
-<span class="c1"># Query the gRPC API</span>
-kubectl<span class="w"> </span>port-forward<span class="w"> </span>svc/runtime-server<span class="w"> </span><span class="m">8080</span>:8080<span class="w"> </span><span class="p">&amp;</span>
-grpcurl<span class="w"> </span>-plaintext<span class="w"> </span>localhost:8080<span class="w"> </span>agntcy.dir.runtime.v1.DiscoveryService/ListWorkloads
-</code></pre></div>
-<h4 id="cleanup">Cleanup</h4>
-<div class="highlight"><pre><span></span><code>kind<span class="w"> </span>delete<span class="w"> </span>cluster<span class="w"> </span>--name<span class="w"> </span>runtime
-</code></pre></div>
-<h2 id="workload-labels">Workload Labels</h2>
-<p>Workloads are discovered based on labels. The discovery component watches for workloads with specific labels and processes their metadata.</p>
-<h3 id="discovery-labels">Discovery Labels</h3>
+    P-&gt;&gt;S: Push record declaring agntcy.dir/owner
+    P-&gt;&gt;S: Push signed claim as a record referrer
+    loop every reconciler.identity.interval
+        R-&gt;&gt;S: Read the record's claims
+        R-&gt;&gt;K: Look up the subject's current public keys
+        R-&gt;&gt;R: Check the claim and its signature
+        R-&gt;&gt;S: Store verified or failed
+    end
+    D-&gt;&gt;S: GetIdentityStatus, or search --owner-verified</code></pre>
+<ol>
+<li>The record declares the subject it claims in its <code>agntcy.dir/identity</code> and
+   <code>agntcy.dir/owner</code> annotations.</li>
+<li>The publisher signs a claim for that subject with a private key whose public half the
+   subject publishes, and attaches it to the record as an OCI referrer.</li>
+<li>The reconciler's <code>identity</code> task verifies the claim: it resolves the subject's current
+   keys and checks the signature against them. The result is stored in the server database.</li>
+<li>The server reports the result through the <code>IdentityService</code> API, <code>dirctl identity status</code>
+   and the search filters.</li>
+</ol>
+<p>A claim is never verified at the time it is pushed. Until the task has run, the claim has
+<code>no result</code>.</p>
+<h2 id="declaring-the-subject">Declaring the subject</h2>
+<p>A claim is only evaluated against the subject its record declares. The declaration is part of
+the record, so it is covered by the record's CID and cannot be changed afterwards.</p>
 <table>
 <thead>
 <tr>
-<th>Label</th>
-<th>Runtime</th>
-<th>Description</th>
+<th>Annotation</th>
+<th>Role</th>
+<th>Meaning</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td><code>org.agntcy/discover=true</code></td>
-<td>Kubernetes</td>
-<td>Marks a pod/service for discovery</td>
+<td><code>agntcy.dir/identity</code></td>
+<td><code>identity</code></td>
+<td>The record's own claimed identity</td>
 </tr>
 <tr>
-<td><code>org.agntcy/discover=true</code></td>
-<td>Docker</td>
-<td>Marks a container for discovery</td>
+<td><code>agntcy.dir/owner</code></td>
+<td><code>owner</code></td>
+<td>The entity that owns the record</td>
 </tr>
 </tbody>
 </table>
-<h3 id="resolver-labels">Resolver Labels</h3>
-<p>Resolvers extract metadata from discovered workloads based on their labels.
-They provide additional information about the workload's capabilities.</p>
-<table>
-<thead>
-<tr>
-<th>Label/Annotation</th>
-<th>Description</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><code>org.agntcy/agent-type=a2a</code></td>
-<td>Enables A2A resolver - fetches A2A agent card from workload</td>
-</tr>
-<tr>
-<td><code>org.agntcy/agent-record=&lt;fqdn&gt;</code></td>
-<td>Enables OASF resolver - resolves record from Directory (e.g., <code>my-agent:v1.0.0</code>)</td>
-</tr>
-</tbody>
-</table>
-<p>To configure OASF resolver, the Directory client must be set up using environment variables (e.g., <code>DIRECTORY_CLIENT_SERVER_ADDRESS</code>, <code>DIRECTORY_CLIENT_AUTH_MODE</code>).</p>
-<h3 id="workload-services">Workload Services</h3>
-<p>Discovered workloads have a <code>services</code> field that holds metadata extracted by resolvers:</p>
 <div class="highlight"><pre><span></span><code><span class="p">{</span>
-<span class="w">  </span><span class="nt">&quot;id&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;4467371c-84fd-4683-ab30-93895d78bab7&quot;</span><span class="p">,</span>
-<span class="w">  </span><span class="nt">&quot;name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;service-a2a&quot;</span><span class="p">,</span>
-<span class="w">  </span><span class="nt">&quot;hostname&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;service-a2a&quot;</span><span class="p">,</span>
-<span class="w">  </span><span class="nt">&quot;runtime&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;kubernetes&quot;</span><span class="p">,</span>
-<span class="w">  </span><span class="nt">&quot;type&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;pod&quot;</span><span class="p">,</span>
-<span class="w">  </span><span class="nt">&quot;labels&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
-<span class="w">    </span><span class="nt">&quot;app&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;service-a2a&quot;</span><span class="p">,</span>
-<span class="w">    </span><span class="nt">&quot;org.agntcy/discover&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;true&quot;</span><span class="p">,</span>
-<span class="w">    </span><span class="nt">&quot;org.agntcy/agent-type&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;a2a&quot;</span><span class="p">,</span>
-<span class="w">    </span><span class="nt">&quot;org.agntcy/agent-record&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;my-agent:1.0.0&quot;</span>
-<span class="w">  </span><span class="p">},</span>
-<span class="w">  </span><span class="nt">&quot;addresses&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
-<span class="w">    </span><span class="s2">&quot;10-244-0-9.team-a.pod&quot;</span>
-<span class="w">  </span><span class="p">],</span>
-<span class="w">  </span><span class="nt">&quot;ports&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
-<span class="w">    </span><span class="s2">&quot;8080&quot;</span><span class="p">,</span>
-<span class="w">    </span><span class="s2">&quot;9999&quot;</span>
-<span class="w">  </span><span class="p">],</span>
-<span class="w">  </span><span class="nt">&quot;isolationGroups&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
-<span class="w">    </span><span class="s2">&quot;team-a&quot;</span>
-<span class="w">  </span><span class="p">],</span>
-<span class="w">  </span><span class="nt">&quot;services&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
-<span class="w">    </span><span class="nt">&quot;a2a&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
-<span class="w">      </span><span class="nt">&quot;name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;My Agent&quot;</span><span class="p">,</span>
-<span class="w">      </span><span class="nt">&quot;description&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;...&quot;</span><span class="p">,</span>
-<span class="w">      </span><span class="nt">&quot;capabilities&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="err">...</span><span class="p">]</span>
-<span class="w">    </span><span class="p">},</span>
-<span class="w">    </span><span class="nt">&quot;oasf&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
-<span class="w">      </span><span class="nt">&quot;cid&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;baf123&quot;</span><span class="p">,</span>
-<span class="w">      </span><span class="nt">&quot;name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;my-agent:1.0.0&quot;</span><span class="p">,</span>
-<span class="w">      </span><span class="nt">&quot;record&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
-<span class="w">        </span><span class="nt">&quot;name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;my-agent&quot;</span><span class="p">,</span>
-<span class="w">        </span><span class="nt">&quot;version&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;1.0.0&quot;</span><span class="p">,</span>
-<span class="w">        </span><span class="nt">&quot;skills&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="err">...</span><span class="p">]</span>
-<span class="w">      </span><span class="p">}</span>
-<span class="w">    </span><span class="p">}</span>
+<span class="w">  </span><span class="nt">&quot;name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;example.com/agents/research-assistant&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;version&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;v1.0.0&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;annotations&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nt">&quot;agntcy.dir/identity&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;did:web:example.com:agents:research-assistant&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;agntcy.dir/owner&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;dns:example.com&quot;</span>
 <span class="w">  </span><span class="p">}</span>
 <span class="p">}</span>
 </code></pre></div>
-<h2 id="configuration">Configuration</h2>
-<h3 id="discovery-component">Discovery Component</h3>
+<p>A record may declare one, both or neither. A claim for a role the record does not declare is
+refused when it is created with <code>dirctl identity claim</code> or the SDK, and is ignored by the
+reconciler if it is pushed by hand.</p>
+<h2 id="names">Names</h2>
+<p>A record's <code>name</code> field is how it is referenced as <code>name</code>, <code>name:version</code> or
+<code>name:version@cid</code>. A name is a label chosen by the publisher and is not verified. The
+claims on this page are what prove who stands behind a record.</p>
+<h2 id="claim-schema">Claim schema</h2>
+<p>A claim is the <code>agntcy.dir.identity.v1.Claim</code> message. It is stored as a
+<a href="../dir-component-store/">record referrer</a> of the record it is about, with the message encoded
+as JSON in the referrer's data.</p>
 <table>
 <thead>
 <tr>
-<th>Environment Variable</th>
+<th>Field</th>
+<th>Type</th>
 <th>Description</th>
-<th>Default</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td><code>DISCOVERY_WORKERS</code></td>
-<td>Number of resolver workers</td>
-<td><code>16</code></td>
+<td><code>role</code></td>
+<td><code>ClaimRole</code></td>
+<td><code>CLAIM_ROLE_IDENTITY</code> or <code>CLAIM_ROLE_OWNER</code></td>
 </tr>
 <tr>
-<td><code>DISCOVERY_STORE_TYPE</code></td>
-<td>Storage type (<code>etcd</code>, <code>crd</code>)</td>
-<td><code>etcd</code></td>
+<td><code>recordCid</code></td>
+<td>string</td>
+<td>CID of the record the claim is attached to</td>
 </tr>
 <tr>
-<td><code>DISCOVERY_STORE_ETCD_HOST</code></td>
-<td>etcd server hostname</td>
-<td><code>localhost</code></td>
+<td><code>subject</code></td>
+<td>string</td>
+<td>The identity URI being claimed; must equal the record's annotation for the role</td>
 </tr>
 <tr>
-<td><code>DISCOVERY_STORE_ETCD_PORT</code></td>
-<td>etcd server port</td>
-<td><code>2379</code></td>
+<td><code>signedAt</code></td>
+<td>string</td>
+<td>RFC 3339 signing time</td>
 </tr>
 <tr>
-<td><code>DISCOVERY_STORE_ETCD_USERNAME</code></td>
-<td>etcd username for authentication</td>
-<td>``</td>
+<td><code>expiresAt</code></td>
+<td>string, optional</td>
+<td>RFC 3339 expiry; an expired claim fails</td>
 </tr>
 <tr>
-<td><code>DISCOVERY_STORE_ETCD_PASSWORD</code></td>
-<td>etcd password for authentication</td>
-<td>``</td>
+<td><code>signature</code></td>
+<td>string</td>
+<td>Detached JWS (RFC 7515) in compact serialization</td>
 </tr>
 <tr>
-<td><code>DISCOVERY_STORE_ETCD_DIAL_TIMEOUT</code></td>
-<td>Timeout for connecting to etcd</td>
-<td><code>5s</code></td>
-</tr>
-<tr>
-<td><code>DISCOVERY_STORE_ETCD_WORKLOADS_PREFIX</code></td>
-<td>etcd key prefix for workloads</td>
-<td><code>/discovery/workloads/</code></td>
-</tr>
-<tr>
-<td><code>DISCOVERY_STORE_CRD_NAMESPACE</code></td>
-<td>Namespace to store workloads in</td>
-<td><code>default</code></td>
-</tr>
-<tr>
-<td><code>DISCOVERY_STORE_CRD_KUBECONFIG</code></td>
-<td>Path to kubeconfig file (empty for in-cluster)</td>
-<td>``</td>
-</tr>
-<tr>
-<td><code>DISCOVERY_STORE_CRD_RESYNC_PERIOD</code></td>
-<td>How often to resync the cache from the API server</td>
-<td><code>30s</code></td>
-</tr>
-<tr>
-<td><code>DISCOVERY_RUNTIME_TYPE</code></td>
-<td>Runtime type (<code>docker</code>, <code>kubernetes</code>)</td>
-<td><code>docker</code></td>
-</tr>
-<tr>
-<td><code>DISCOVERY_RUNTIME_DOCKER_HOST</code></td>
-<td>Docker daemon socket path</td>
-<td><code>unix:///var/run/docker.sock</code></td>
-</tr>
-<tr>
-<td><code>DISCOVERY_RUNTIME_DOCKER_LABEL_KEY</code></td>
-<td>Label key to filter containers</td>
-<td><code>org.agntcy/discover</code></td>
-</tr>
-<tr>
-<td><code>DISCOVERY_RUNTIME_DOCKER_LABEL_VALUE</code></td>
-<td>Label value to filter containers</td>
-<td><code>true</code></td>
-</tr>
-<tr>
-<td><code>DISCOVERY_RUNTIME_KUBERNETES_KUBECONFIG</code></td>
-<td>Path to kubeconfig file (empty for in-cluster)</td>
-<td>``</td>
-</tr>
-<tr>
-<td><code>DISCOVERY_RUNTIME_KUBERNETES_NAMESPACE</code></td>
-<td>Namespace to watch (empty for all namespaces)</td>
-<td>``</td>
-</tr>
-<tr>
-<td><code>DISCOVERY_RUNTIME_KUBERNETES_LABEL_KEY</code></td>
-<td>Label key to filter pods</td>
-<td><code>org.agntcy/discover</code></td>
-</tr>
-<tr>
-<td><code>DISCOVERY_RUNTIME_KUBERNETES_LABEL_VALUE</code></td>
-<td>Label value to filter pods</td>
-<td><code>true</code></td>
-</tr>
-<tr>
-<td><code>DISCOVERY_RESOLVER_A2A_ENABLED</code></td>
-<td>Enable A2A resolver</td>
-<td><code>true</code></td>
-</tr>
-<tr>
-<td><code>DISCOVERY_RESOLVER_A2A_TIMEOUT</code></td>
-<td>Timeout for A2A discovery</td>
-<td><code>5s</code></td>
-</tr>
-<tr>
-<td><code>DISCOVERY_RESOLVER_A2A_PATHS</code></td>
-<td>Comma-separated list of paths to probe for A2A discovery</td>
-<td><code>/.well-known/agent-card.json,/.well-known/card.json</code></td>
-</tr>
-<tr>
-<td><code>DISCOVERY_RESOLVER_A2A_LABEL_KEY</code></td>
-<td>Label key to identify A2A workloads</td>
-<td><code>org.agntcy/agent-type</code></td>
-</tr>
-<tr>
-<td><code>DISCOVERY_RESOLVER_A2A_LABEL_VALUE</code></td>
-<td>Label value to identify A2A workloads</td>
-<td><code>a2a</code></td>
-</tr>
-<tr>
-<td><code>DISCOVERY_RESOLVER_OASF_ENABLED</code></td>
-<td>Enable OASF resolver</td>
-<td><code>true</code></td>
-</tr>
-<tr>
-<td><code>DISCOVERY_RESOLVER_OASF_TIMEOUT</code></td>
-<td>Timeout for OASF resolution</td>
-<td><code>5s</code></td>
-</tr>
-<tr>
-<td><code>DISCOVERY_RESOLVER_OASF_LABEL_KEY</code></td>
-<td>Label key to identify OASF workloads</td>
-<td><code>org.agntcy/agent-record</code></td>
+<td><code>certificate</code></td>
+<td>string, optional</td>
+<td>Base64 DER X.509 certificate; only for <code>spiffe://</code> subjects</td>
 </tr>
 </tbody>
 </table>
-<h4 id="discovery-oasf-resolver">Discovery OASF Resolver</h4>
-<p>The OASF resolver requires Directory client configuration via environment variables.
-These are the same as those used by the Directory client library, e.g. <code>DIRECTORY_CLIENT_SERVER_ADDRESS</code>.
-Refer to the <a href="https://github.com/agntcy/dir/tree/main/client">Directory Client documentation</a> for all available options.</p>
-<p>When a workload has the configured OASF resolver label, the resolver attempts to fetch the corresponding record from Directory and validate its signature before attaching it to the workload.</p>
-<h3 id="server-component">Server Component</h3>
+<p>The referrer type follows the role:</p>
 <table>
 <thead>
 <tr>
-<th>Environment Variable</th>
-<th>Description</th>
-<th>Default</th>
+<th>Role</th>
+<th>Referrer type</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td><code>SERVER_HOST</code></td>
-<td>Server bind address</td>
-<td><code>0.0.0.0</code></td>
+<td><code>identity</code></td>
+<td><code>agntcy.dir.identity.v1.IdentityClaim</code></td>
 </tr>
 <tr>
-<td><code>SERVER_PORT</code></td>
-<td>Server listen port</td>
-<td><code>8080</code></td>
-</tr>
-<tr>
-<td><code>SERVER_STORE_TYPE</code></td>
-<td>Storage type (<code>etcd</code>, <code>crd</code>)</td>
-<td><code>etcd</code></td>
-</tr>
-<tr>
-<td><code>SERVER_STORE_ETCD_HOST</code></td>
-<td>etcd server hostname</td>
-<td><code>localhost</code></td>
-</tr>
-<tr>
-<td><code>SERVER_STORE_ETCD_PORT</code></td>
-<td>etcd server port</td>
-<td><code>2379</code></td>
-</tr>
-<tr>
-<td><code>SERVER_STORE_ETCD_USERNAME</code></td>
-<td>etcd username for authentication</td>
-<td>``</td>
-</tr>
-<tr>
-<td><code>SERVER_STORE_ETCD_PASSWORD</code></td>
-<td>etcd password for authentication</td>
-<td>``</td>
-</tr>
-<tr>
-<td><code>SERVER_STORE_ETCD_DIAL_TIMEOUT</code></td>
-<td>Timeout for connecting to etcd</td>
-<td><code>5s</code></td>
-</tr>
-<tr>
-<td><code>SERVER_STORE_ETCD_WORKLOADS_PREFIX</code></td>
-<td>etcd key prefix for workloads</td>
-<td><code>/discovery/workloads/</code></td>
-</tr>
-<tr>
-<td><code>SERVER_STORE_CRD_NAMESPACE</code></td>
-<td>Namespace to read workloads from</td>
-<td><code>default</code></td>
-</tr>
-<tr>
-<td><code>SERVER_STORE_CRD_KUBECONFIG</code></td>
-<td>Path to kubeconfig file (empty for in-cluster)</td>
-<td>``</td>
-</tr>
-<tr>
-<td><code>SERVER_STORE_CRD_RESYNC_PERIOD</code></td>
-<td>How often to resync the cache from the API server</td>
-<td><code>30s</code></td>
+<td><code>owner</code></td>
+<td><code>agntcy.dir.identity.v1.OwnershipClaim</code></td>
 </tr>
 </tbody>
 </table>
-<h2 id="grpc-api">gRPC API</h2>
-<p>The server exposes a gRPC API defined in <code>proto/agntcy/dir/runtime/v1/discovery_service.proto</code>.</p>
-<h3 id="getworkload">GetWorkload</h3>
-<p>Get a specific workload by ID, name, or hostname.</p>
-<div class="highlight"><pre><span></span><code>grpcurl<span class="w"> </span>-plaintext<span class="w"> </span>-d<span class="w"> </span><span class="s1">&#39;{&quot;id&quot;: &quot;my-service&quot;}&#39;</span><span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>localhost:8080<span class="w"> </span>agntcy.dir.runtime.v1.DiscoveryService/GetWorkload
+<div class="highlight"><pre><span></span><code><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;role&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;CLAIM_ROLE_OWNER&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;recordCid&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;baeareie...&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;subject&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;dns:example.com&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;signedAt&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;2026-10-02T10:15:00Z&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;expiresAt&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;2027-10-02T10:15:00Z&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;signature&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;eyJhbGciOiJFUzI1NiJ9..&lt;signature&gt;&quot;</span>
+<span class="p">}</span>
 </code></pre></div>
-<h3 id="listworkloads">ListWorkloads</h3>
-<p>Stream all workloads with optional label filters. Labels support regex patterns.</p>
-<div class="highlight"><pre><span></span><code><span class="c1"># List all workloads</span>
-grpcurl<span class="w"> </span>-plaintext<span class="w"> </span>-d<span class="w"> </span><span class="s1">&#39;{}&#39;</span><span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>localhost:8080<span class="w"> </span>agntcy.dir.runtime.v1.DiscoveryService/ListWorkloads
+<h3 id="what-is-signed">What is signed</h3>
+<p>The signature covers a canonical JSON payload of five fields, in this order:</p>
+<div class="highlight"><pre><span></span><code><span class="p">{</span><span class="nt">&quot;record_cid&quot;</span><span class="p">:</span><span class="s2">&quot;...&quot;</span><span class="p">,</span><span class="nt">&quot;role&quot;</span><span class="p">:</span><span class="s2">&quot;CLAIM_ROLE_OWNER&quot;</span><span class="p">,</span><span class="nt">&quot;subject&quot;</span><span class="p">:</span><span class="s2">&quot;dns:example.com&quot;</span><span class="p">,</span><span class="nt">&quot;signed_at&quot;</span><span class="p">:</span><span class="s2">&quot;...&quot;</span><span class="p">,</span><span class="nt">&quot;expires_at&quot;</span><span class="p">:</span><span class="s2">&quot;...&quot;</span><span class="p">}</span>
+</code></pre></div>
+<p><code>expires_at</code> is the empty string when the claim does not expire. Because the CID and the role
+are signed, a claim cannot be replayed against another record or presented as the other role.
+The <code>signature</code> and <code>certificate</code> fields are not part of the payload.</p>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p>The certificate is not covered by the signature. For that reason it is only accepted
+on a <code>spiffe://</code> claim, where it is validated against a trust bundle on its own, and a claim for any other subject that carries one fails.</p>
+</div>
+<h3 id="signing-keys">Signing keys</h3>
+<p>The signature algorithm is chosen from the public key, never from the JWS header, so a claim
+cannot pick its own verification algorithm.</p>
+<table>
+<thead>
+<tr>
+<th>Key</th>
+<th>JWS algorithm</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>ECDSA P-256</td>
+<td><code>ES256</code></td>
+</tr>
+<tr>
+<td>ECDSA P-384</td>
+<td><code>ES384</code></td>
+</tr>
+<tr>
+<td>Ed25519</td>
+<td><code>EdDSA</code></td>
+</tr>
+<tr>
+<td>RSA, 2048 bits or more</td>
+<td><code>RS256</code></td>
+</tr>
+</tbody>
+</table>
+<h2 id="subjects-and-key-publication">Subjects and key publication</h2>
+<p>The scheme of the subject decides how its keys are found. A claim verifies when any one of
+the keys the subject currently publishes validates its signature.</p>
+<table>
+<thead>
+<tr>
+<th>Subject</th>
+<th>Where the key comes from</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>dns:example.com</code>, or a bare <code>example.com</code></td>
+<td>TXT record at <code>_agntcy-key.example.com</code></td>
+</tr>
+<tr>
+<td><code>https://example.com</code></td>
+<td><code>https://example.com/.well-known/jwks.json</code></td>
+</tr>
+<tr>
+<td><code>did:web:example.com</code></td>
+<td><code>https://example.com/.well-known/did.json</code></td>
+</tr>
+<tr>
+<td><code>did:web:example.com:agents:finance</code></td>
+<td><code>https://example.com/agents/finance/did.json</code></td>
+</tr>
+<tr>
+<td><code>did:key:z...</code></td>
+<td>The key encoded in the DID itself; no network access</td>
+</tr>
+<tr>
+<td><code>spiffe://example.com/agents/finance</code></td>
+<td>The SVID in the claim, validated against a configured trust bundle</td>
+</tr>
+</tbody>
+</table>
+<p>Any other scheme, such as <code>http://</code> or <code>mailto:</code>, is not supported and fails the claim.</p>
+<h3 id="dns">DNS</h3>
+<p>Publish one TXT record per key at <code>_agntcy-key.&lt;domain&gt;</code>:</p>
+<div class="highlight"><pre><span></span><code>_agntcy-key.example.com.  300  IN  TXT  &quot;v=akv1;key=&lt;base64 DER SubjectPublicKeyInfo&gt;&quot;
+</code></pre></div>
+<p>The value is the standard base64 of the key's DER <code>SubjectPublicKeyInfo</code>, which is what
+<code>openssl pkey -pubout -outform DER</code> produces. Records that are not a well-formed <code>akv1</code> record
+are skipped.</p>
+<h3 id="https-and-jwks">HTTPS and JWKS</h3>
+<p>For an <code>https://</code> subject the verifier fetches <code>/.well-known/jwks.json</code> from the subject's
+host, over HTTPS only, and uses every key in the <a href="https://www.rfc-editor.org/rfc/rfc7517">JWK set</a>.
+A subject with a user-info part, such as <code>https://example.com@evil.example</code>, is refused.</p>
+<h3 id="did">DID</h3>
+<p>For <code>did:web</code> the document is fetched from the location the <a href="https://w3c-ccg.github.io/did-method-web/">did:web method</a>
+defines. A document is only accepted when its <code>id</code> equals the subject. Only keys listed under
+<code>assertionMethod</code> count, whether embedded or referenced from <code>verificationMethod</code>; a key that
+the document lists only as key material is not authorized to make assertions. Keys are read from
+<code>publicKeyJwk</code>.</p>
+<p>A <code>did:key</code> subject carries its key, so it needs no network access. P-256, P-384, Ed25519 and
+RSA keys are supported.</p>
+<h3 id="spiffe">SPIFFE</h3>
+<p>A <code>spiffe://</code> claim carries the signer's X.509-SVID in <code>certificate</code>, and no key is published
+anywhere. The verifier accepts the claim only when the certificate fulfils the following conditions:</p>
+<ul>
+<li>Chains to the trust bundle configured for the subject's trust domain.</li>
+<li>Has a URI SAN equal to the subject.</li>
+<li>Is within its validity period.</li>
+</ul>
+<p>The claim carries only the leaf certificate, so its issuer must be a root in the bundle. A
+trust domain with no configured bundle fails. See
+<a href="#configuration">Configuration</a> for how to provide the bundles.</p>
+<h3 id="fetch-limits">Fetch limits</h3>
+<p>Documents are fetched with an SSRF-safe client, because the URL comes from untrusted record
+data. It speaks HTTPS only, refuses to connect to private, loopback, link-local and other
+non-public addresses (checked after DNS resolution), follows at most three redirects, and
+accepts responses of at most 1 MiB within a 10 second timeout.</p>
+<h2 id="verification">Verification</h2>
+<p>The <code>identity</code> task of the <a href="../dir-architecture/">reconciler</a> checks claims on a fixed interval.
+For each record that carries claims, and for each role, it does the following:</p>
+<ul>
+<li>
+<p>Selects the claims.</p>
+<p>A claim whose <code>subject</code> is not the one the record declares for the role is skipped. Anyone can attach a claim to any record, so such a claim says nothing about the record, and it leaves no result behind.</p>
+</li>
+<li>
+<p>Runs the checks that need no key.</p>
+<p>The claim is for this record (<code>recordCid</code>), it is not expired, <code>signedAt</code> parses, and the certificate rule holds (a certificate if and only if the subject is <code>spiffe://</code>). A claim that fails these costs no network lookup.</p>
+</li>
+<li>
+<p>Resolves the subject's current keys for its scheme.</p>
+</li>
+<li>Verifies the signature against those keys.</li>
+</ul>
+<p>If several claims of one role pass the selection, a verified claim decides the result,
+whoever else attached claims. Otherwise the failure of the claim with the newest <code>signedAt</code> is
+reported. A <code>signedAt</code> in the future, or one that does not parse, counts as the oldest, so a
+forged date cannot outrank an honest claim.</p>
+<p>Within one run a lookup is made once per subject, however many records share it.</p>
+<h3 id="results">Results</h3>
+<table>
+<thead>
+<tr>
+<th>State</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>no result</code></td>
+<td>No claim of this role has been verified yet, or the claim no longer applies</td>
+</tr>
+<tr>
+<td><code>verified</code></td>
+<td>A claim for the declared subject verified against the keys the subject publishes</td>
+</tr>
+<tr>
+<td><code>failed</code></td>
+<td>Every claim for the declared subject failed; the reason is kept (up to 1,024 characters)</td>
+</tr>
+</tbody>
+</table>
+<p>A failed result always names the subject the record declares, never one a claim chose.
+If a claim is withdrawn, or no claim applies any more, its stored result is removed. If a
+record's claims cannot be read at all, the stored results are left as they were.</p>
+<h3 id="unreachable-subjects">Unreachable subjects</h3>
+<p>A failed lookup is not the same as a wrong claim. If the subject cannot be reached, because
+of a timeout, a refused connection, a DNS failure other than "no such name", or a 5xx, 408 or
+429 response, a result that is already stored is left as it is, and nothing is written for
+that run. The result's age is counted from when it was last written, so the grace lasts seven
+days from the last run that reached the subject. The period is fixed and cannot be configured.
+After that, the next run that still cannot reach the subject stores a <code>failed</code> result with the
+lookup error.</p>
+<p>Two cases get no grace:</p>
+<ul>
+<li>A claim that has no stored result yet fails at once if its subject is unreachable on the first run, and verifies on the first run that reaches it.</li>
+<li>An answer that says the subject publishes no usable key, a <code>404</code>, a "no such host" or a
+  blocked address is not transient, so it fails the claim immediately.</li>
+</ul>
+<h3 id="stored-result">Stored result</h3>
+<p>Each result is one row per record and role in the server database.</p>
+<table>
+<thead>
+<tr>
+<th>Column</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>record_cid</code></td>
+<td>Record the claim is about (primary key with <code>role</code>)</td>
+</tr>
+<tr>
+<td><code>role</code></td>
+<td><code>identity</code> or <code>owner</code></td>
+</tr>
+<tr>
+<td><code>subject</code></td>
+<td>The subject the record declares</td>
+</tr>
+<tr>
+<td><code>status</code></td>
+<td><code>verified</code> or <code>failed</code></td>
+</tr>
+<tr>
+<td><code>error</code></td>
+<td>Reason for a failure</td>
+</tr>
+<tr>
+<td><code>verified_at</code></td>
+<td>When the claim was last checked</td>
+</tr>
+</tbody>
+</table>
+<h2 id="reading-the-results">Reading the results</h2>
+<h3 id="identityservice"><code>IdentityService</code></h3>
+<p><code>GetIdentityStatus</code> returns the last result of a record's claims. A claim that has not been
+verified is left unset, which is not an error. An unknown record is <code>NotFound</code>.</p>
+<table>
+<thead>
+<tr>
+<th>Message</th>
+<th>Fields</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>GetIdentityStatusRequest</code></td>
+<td><code>cid</code>, or <code>name</code> with an optional <code>version</code></td>
+</tr>
+<tr>
+<td><code>GetIdentityStatusResponse</code></td>
+<td><code>identity</code>, <code>owner</code> (each an optional <code>ClaimVerification</code>)</td>
+</tr>
+<tr>
+<td><code>ClaimVerification</code></td>
+<td><code>role</code>, <code>subject</code>, <code>status</code>, <code>error</code> (only when failed), <code>verified_at</code></td>
+</tr>
+</tbody>
+</table>
+<p><code>ClaimVerificationStatus</code> is <code>CLAIM_VERIFICATION_STATUS_VERIFIED</code> or
+<code>CLAIM_VERIFICATION_STATUS_FAILED</code>.</p>
+<p><code>Resolve</code> turns a record name, with an optional version, into the CIDs of the matching
+records, newest first. It is read-only like the rest of the service: results are only written
+by the reconciler.</p>
+<h3 id="cli-and-sdk">CLI and SDK</h3>
+<div class="highlight"><pre><span></span><code><span class="c1"># Create the claim, then read the result</span>
+dirctl<span class="w"> </span>identity<span class="w"> </span>claim<span class="w"> </span>--record<span class="w"> </span>&lt;cid&gt;<span class="w"> </span>--role<span class="w"> </span>owner<span class="w"> </span>--key<span class="w"> </span>owner.key
+dirctl<span class="w"> </span>identity<span class="w"> </span>status<span class="w"> </span>&lt;cid&gt;<span class="w"> </span>--output<span class="w"> </span>json
 
-<span class="c1"># Filter by labels (supports regex)</span>
-grpcurl<span class="w"> </span>-plaintext<span class="w"> </span>-d<span class="w"> </span><span class="s1">&#39;{&quot;labels&quot;: {&quot;org.agntcy/agent-type&quot;: &quot;a2a&quot;}}&#39;</span><span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>localhost:8080<span class="w"> </span>agntcy.dir.runtime.v1.DiscoveryService/ListWorkloads
+<span class="c1"># Resolve a name</span>
+dirctl<span class="w"> </span>identity<span class="w"> </span>resolve<span class="w"> </span>example.com/agents/research-assistant
 </code></pre></div>
+<p>In Go, <code>ClaimIdentity</code> and <code>ClaimOwnership</code> create claims, and <code>GetIdentityStatus</code> and
+<code>Resolve</code> read results; see the <a href="../dir-sdk-go/#identity-resolve-and-verify-claims">Go SDK</a>.</p>
+<h3 id="search">Search</h3>
+<p>Records can be searched by the subject of their claims and by whether a claim verified:</p>
+<div class="highlight"><pre><span></span><code>dirctl<span class="w"> </span>search<span class="w"> </span>--owner<span class="w"> </span><span class="s1">&#39;dns:example.com&#39;</span><span class="w">        </span><span class="c1"># by subject (wildcards allowed)</span>
+dirctl<span class="w"> </span>search<span class="w"> </span>--identity<span class="w"> </span><span class="s1">&#39;did:web:example.com:*&#39;</span>
+dirctl<span class="w"> </span>search<span class="w"> </span>--owner-verified<span class="w">                 </span><span class="c1"># owner claim verified</span>
+dirctl<span class="w"> </span>search<span class="w"> </span>--identity-verified<span class="w">              </span><span class="c1"># identity claim verified</span>
+dirctl<span class="w"> </span>search<span class="w"> </span>--verified<span class="w">                       </span><span class="c1"># same as --owner-verified</span>
+dirctl<span class="w"> </span>search<span class="w"> </span>--trusted<span class="w"> </span>--verified<span class="w">             </span><span class="c1"># signed and owner-verified</span>
+</code></pre></div>
+<p><code>--identity-verified</code> and <code>--owner-verified</code> only filter when set. <code>--verified</code> is tri-state:
+<code>--verified=false</code> matches records without a verified owner. A subject filter matches the
+subject the record declares. See
+<a href="../dir-cli-reference/#dirctl-search-query-flags">CLI Reference — Search</a> for all flags.</p>
+<h2 id="configuration">Configuration</h2>
+<p>Claim verification is a reconciler task and is disabled by default. The <code>dirctl daemon</code>
+default configuration enables it.</p>
+<div class="highlight"><pre><span></span><code><span class="nt">reconciler</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">identity</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">enabled</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+<span class="w">    </span><span class="nt">interval</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">1h</span><span class="w">          </span><span class="c1"># how often every claim is verified again</span>
+<span class="w">    </span><span class="nt">record_timeout</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">1m</span><span class="w">    </span><span class="c1"># time allowed for all the claims of one record</span>
+<span class="w">    </span><span class="nt">spiffe_trust_bundles</span><span class="p">:</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">trust_domain</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">example.org</span>
+<span class="w">        </span><span class="nt">bundle_file</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/etc/agntcy/spiffe/example.org.pem</span>
+</code></pre></div>
+<table>
+<thead>
+<tr>
+<th>Key</th>
+<th>Environment variable</th>
+<th>Default</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>enabled</code></td>
+<td><code>RECONCILER_IDENTITY_ENABLED</code></td>
+<td><code>false</code></td>
+<td>Run the task</td>
+</tr>
+<tr>
+<td><code>interval</code></td>
+<td><code>RECONCILER_IDENTITY_INTERVAL</code></td>
+<td><code>1h</code></td>
+<td>Time between runs</td>
+</tr>
+<tr>
+<td><code>record_timeout</code></td>
+<td><code>RECONCILER_IDENTITY_RECORD_TIMEOUT</code></td>
+<td><code>1m</code></td>
+<td>Time allowed for one record</td>
+</tr>
+<tr>
+<td><code>spiffe_trust_bundles</code></td>
+<td>none, YAML only</td>
+<td>empty</td>
+<td>Trust bundle per SPIFFE trust domain</td>
+</tr>
+</tbody>
+</table>
+<p>Each <code>spiffe_trust_bundles</code> entry has a <code>trust_domain</code> and a <code>bundle_file</code> holding the trust
+domain's PEM root certificates. The files are read on every run, so a rotated or revoked bundle
+applies on the next one. A bundle that cannot be read only fails the claims of its own trust
+domain; the other domains and the run are not affected. With no bundle, <code>spiffe://</code> claims fail.</p>
+<h2 id="security-properties">Security properties</h2>
+<ul>
+<li>Anyone who can push a referrer can attach a claim to any record, so a result only comes from
+  a claim that names the declared subject and verifies against that subject's own keys.</li>
+<li>The declared subject is part of the content-addressed record, so a claim cannot change who
+  the record says it is about.</li>
+<li>The record CID and the role are signed, so a claim cannot be replayed against another record
+  or as the other role.</li>
+<li>The signature algorithm is derived from the key, not from the claim, and RSA keys below 2048
+  bits are rejected.</li>
+<li>A verified claim decides the result, whatever else is attached to the record.</li>
+<li>Claims are verified again on every run, so key rotation, DNS changes, a revoked trust bundle
+  and expiry take effect on the next one.</li>
+<li>Keys are fetched with an SSRF-safe client, because the URLs come from record data.</li>
+</ul>
 
 
 

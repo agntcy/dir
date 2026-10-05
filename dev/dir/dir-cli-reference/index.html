@@ -765,6 +765,8 @@
       
         
       
+        
+      
     
     
     
@@ -991,6 +993,40 @@
   
   
   
+    <li class="md-nav__item">
+      <a href="../dir-component-identity/" class="md-nav__link">
+        
+  
+  
+  
+    
+  
+  
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="m21.1 12.5 1.4 1.41-6.53 6.59L12.5 17l1.4-1.41 2.07 2.08zM10 17l3 3H3v-2c0-2.21 3.58-4 8-4l1.89.11zm1-13a4 4 0 0 1 4 4 4 4 0 0 1-4 4 4 4 0 0 1-4-4 4 4 0 0 1 4-4"/></svg>
+  
+  <span class="md-ellipsis">
+    
+  
+    Identity and Ownership
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
     
     
       
@@ -1015,10 +1051,10 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_2_6" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_2_7" >
         
           
-          <label class="md-nav__link" for="__nav_2_2_6" id="__nav_2_2_6_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_2_2_7" id="__nav_2_2_7_label" tabindex="0">
             
   
   
@@ -1042,8 +1078,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_2_2_6_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_2_2_6">
+        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_2_2_7_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_2_7">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -6521,7 +6557,7 @@ dirctl<span class="w"> </span>sign<span class="w"> </span>&lt;cid&gt;<span class
 </code></pre></div>
 </details>
 <h3 id="dirctl-identity-claim-flags"><code>dirctl identity claim [flags]</code></h3>
-<p>Signs a claim that the subject a record declares in its <code>agntcy.dir/identity</code> annotation is its own identity (<code>--role identity</code>), or that the subject it declares in <code>agntcy.dir/owner</code> is its owner (<code>--role owner</code>), and attaches the claim to the record. The subject is read from the record, so the record must carry the annotation for the role. The claim is stored unverified: the server checks it later, and <a href="#dirctl-identity-status-reference"><code>dirctl identity status</code></a> shows the outcome.</p>
+<p>Signs a claim that the subject a record declares in its <code>agntcy.dir/identity</code> annotation is its own identity (<code>--role identity</code>), or that the subject it declares in <code>agntcy.dir/owner</code> is its owner (<code>--role owner</code>), and attaches the claim to the record. The subject is read from the record, so the record must carry the annotation for the role. The claim is stored unverified: the server checks it later, and <a href="#dirctl-identity-status-reference"><code>dirctl identity status</code></a> shows the outcome. For the claim schema, the supported subjects and the verification rules, see <a href="../dir-component-identity/">Identity and Ownership Claims</a>.</p>
 <table>
 <thead>
 <tr>

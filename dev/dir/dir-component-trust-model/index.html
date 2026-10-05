@@ -14,7 +14,7 @@
         <link rel="prev" href="../dir-component-routing/">
       
       
-        <link rel="next" href="../dir-component-runtime-discovery/">
+        <link rel="next" href="../dir-component-identity/">
       
       
         
@@ -767,6 +767,8 @@
       
         
       
+        
+      
     
     
     
@@ -1341,6 +1343,40 @@
   
   
   
+    <li class="md-nav__item">
+      <a href="../dir-component-identity/" class="md-nav__link">
+        
+  
+  
+  
+    
+  
+  
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="m21.1 12.5 1.4 1.41-6.53 6.59L12.5 17l1.4-1.41 2.07 2.08zM10 17l3 3H3v-2c0-2.21 3.58-4 8-4l1.89.11zm1-13a4 4 0 0 1 4 4 4 4 0 0 1-4 4 4 4 0 0 1-4-4 4 4 0 0 1 4-4"/></svg>
+  
+  <span class="md-ellipsis">
+    
+  
+    Identity and Ownership
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
     
     
       
@@ -1365,10 +1401,10 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_2_6" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_2_7" >
         
           
-          <label class="md-nav__link" for="__nav_2_2_6" id="__nav_2_2_6_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_2_2_7" id="__nav_2_2_7_label" tabindex="0">
             
   
   
@@ -1392,8 +1428,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_2_2_6_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_2_2_6">
+        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_2_2_7_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_2_7">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -2959,8 +2995,12 @@ referrer of the record. The reconciler verifies it against the key material the 
 publishes (a DNS TXT record, a <code>/.well-known/jwks.json</code> file, a DID document, or a SPIFFE
 trust bundle) and records the outcome, which <code>dirctl identity status</code> reports and the
 <code>--identity-verified</code>, <code>--owner-verified</code> and <code>--verified</code> search filters match on.</p>
+<p>Claims are re-verified on every reconciler run, so a rotated key or a revoked trust bundle is
+caught on the next one. For the claim schema, the supported subjects and the verification
+rules, see <a href="../dir-component-identity/">Identity and Ownership Claims</a>.</p>
 <p>Records can also be referenced using Docker-style name references (<code>name</code>, <code>name:version</code>,
-<code>name:version@cid</code>) instead of raw CIDs.</p>
+<code>name:version@cid</code>) instead of raw CIDs. A name is not verified: it is a label chosen by the
+publisher, and the claims above are what prove who stands behind a record.</p>
 <h2 id="security-scanning">Security Scanning</h2>
 <p>Security scanning provides automated behavioral and static analysis of records to detect
 vulnerabilities, policy violations, and malicious patterns before records are consumed.</p>
