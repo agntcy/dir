@@ -724,6 +724,7 @@ apiserver:
   # - regsync: syncs records from remote registries
   # - indexer: indexes synced records into the database for search
   # - prune: deletes records matching configured criteria
+  # - sync: creates syncs for remote records matching criteria
   # Shares the same database as the apiserver.
   reconciler:
     image:
@@ -823,7 +824,20 @@ apiserver:
         limit: 100
         dry_run: true
 
-      # Apiserver gRPC address — required by the metrics task to query provider counts.
+      # Sync task configuration
+      # Searches the routing network for records matching criteria and creates
+      # one sync per announcing peer. Off: this creates remote syncs. A run
+      # does not paginate; later intervals pick up more. Dry-run logs peers
+      # and skips CreateSync. Config loading defaults dry_run to true.
+      sync:
+        enabled: false
+        interval: "24h"
+        criteria:
+          domain: "network_security"
+        limit: 100
+        dry_run: true
+
+      # Apiserver gRPC address — required by the metrics and sync tasks.
       # Leave empty to auto-resolve to the in-cluster apiserver Service.
       server_address: ""
 

@@ -5,7 +5,9 @@ package metrics
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"io"
 
 	routingv1 "github.com/agntcy/dir/api/routing/v1"
 	"google.golang.org/grpc"
@@ -57,6 +59,44 @@ func (g *GRPCProviderCounter) GetProviderCount(ctx context.Context, cid string) 
 	}
 
 	return int(resp.GetCount()), nil
+}
+
+// Search streams RoutingService.Search results. Used by the sync task
+// in standalone mode, which reaches the same apiserver routing client.
+func (g *GRPCProviderCounter) Search(ctx context.Context, req *routingv1.SearchRequest) (<-chan *routingv1.SearchResponse, error) {
+	stream, err := g.client.Search(ctx, req)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create search stream: %w", err)
+	}
+
+	resCh := make(chan *routingv1.SearchResponse, 100) //nolint:mnd
+
+	go func() {
+		defer close(resCh)
+
+		for {
+			obj, err := stream.Recv()
+			if errors.Is(err, io.EOF) {
+				break
+			}
+
+			if err != nil {
+				logger.Error("error receiving search result", "error", err)
+
+				return
+			}
+
+			select {
+			case resCh <- obj:
+			case <-ctx.Done():
+				logger.Error("context cancelled while receiving search response", "error", ctx.Err())
+
+				return
+			}
+		}
+	}()
+
+	return resCh, nil
 }
 
 // Close releases the underlying gRPC connection. It is a no-op when the

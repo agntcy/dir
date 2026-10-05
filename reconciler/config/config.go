@@ -18,6 +18,7 @@ import (
 	"github.com/agntcy/dir/reconciler/tasks/regsync"
 	"github.com/agntcy/dir/reconciler/tasks/scan"
 	"github.com/agntcy/dir/reconciler/tasks/signature"
+	synctask "github.com/agntcy/dir/reconciler/tasks/sync"
 	authnconfig "github.com/agntcy/dir/server/authn/config"
 	dbconfig "github.com/agntcy/dir/server/database/config"
 	policy "github.com/agntcy/dir/server/policy/config"
@@ -52,10 +53,10 @@ type Config struct {
 	LocalRegistry ociconfig.Config `json:"local_registry" mapstructure:"local_registry"`
 
 	// ServerAddress is the gRPC address of the apiserver (e.g. "localhost:8888").
-	// Required by the metrics task when the reconciler runs as a standalone process,
-	// because the routing layer (Badger datastore) is embedded in the server and
-	// cannot be shared across process boundaries. The metrics task calls
-	// RoutingService.GetProviderCount over gRPC instead.
+	// Required by the metrics and sync tasks when the reconciler runs as
+	// a standalone process, because the routing layer (Badger datastore) is
+	// embedded in the server and cannot be shared across process boundaries.
+	// Those tasks call RoutingService over gRPC instead.
 	// Leave empty in daemon mode — the in-process routing API is used directly.
 	ServerAddress string `json:"server_address" mapstructure:"server_address"`
 
@@ -87,6 +88,11 @@ type Config struct {
 	// Deletes records that match Criteria. Disabled by default because it
 	// deletes records.
 	Prune prune.Config `json:"prune" mapstructure:"prune"`
+
+	// Sync holds the sync task configuration.
+	// Searches routing for records matching Criteria and creates one sync
+	// per announcing peer. Disabled by default because it creates remote syncs.
+	Sync synctask.Config `json:"sync" mapstructure:"sync"`
 
 	// Identity holds the identity claim verification task configuration.
 	Identity identity.Config `json:"identity" mapstructure:"identity"`
@@ -278,6 +284,24 @@ func LoadConfig() (*Config, error) {
 	v.SetDefault("prune.dry_run", true)
 
 	//
+	// Sync task configuration
+	//
+	_ = v.BindEnv("sync.enabled")
+	v.SetDefault("sync.enabled", false)
+
+	_ = v.BindEnv("sync.interval")
+	v.SetDefault("sync.interval", synctask.DefaultInterval)
+
+	_ = v.BindEnv("sync.criteria.domain")
+	v.SetDefault("sync.criteria.domain", synctask.DefaultDomain)
+
+	_ = v.BindEnv("sync.limit")
+	v.SetDefault("sync.limit", synctask.DefaultLimit)
+
+	_ = v.BindEnv("sync.dry_run")
+	v.SetDefault("sync.dry_run", true)
+
+	//
 	// Providers task configuration (provider-count gauge)
 	//
 	_ = v.BindEnv("metrics.enabled")
@@ -314,7 +338,7 @@ func LoadConfig() (*Config, error) {
 	v.SetDefault("record_events.reconnect_delay", recordevents.DefaultReconnectDelay)
 
 	//
-	// Server address (used by the metrics task in standalone mode)
+	// Server address (used by the metrics and sync tasks in standalone mode)
 	//
 	_ = v.BindEnv("server_address")
 

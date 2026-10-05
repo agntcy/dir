@@ -797,6 +797,7 @@ postgresql:
 # - regsync: syncs records from remote registries
 # - indexer: indexes synced records into the database for search
 # - prune: deletes records matching configured criteria
+# - sync: creates syncs for remote records matching criteria
 # Shares the same database as the apiserver.
 reconciler:
   image:
@@ -875,8 +876,9 @@ reconciler:
         # access_token: ""
         # refresh_token: ""
 
-    # Apiserver gRPC address — required by the metrics task to query provider counts
-    # from the routing layer. Typically the in-cluster apiserver service name + gRPC port.
+    # Apiserver gRPC address — required by the metrics and sync tasks
+    # to reach the routing layer. Typically the in-cluster apiserver service
+    # name + gRPC port.
     server_address: ""
 
     # Metrics task configuration
@@ -885,6 +887,20 @@ reconciler:
     metrics:
       enabled: true
       interval: "15m"
+
+    # Sync task configuration
+    # Searches the routing network for records matching criteria and creates
+    # one sync per announcing peer. Off: this creates remote syncs. A run
+    # does not paginate; later intervals pick up more. Dry-run logs peers
+    # and skips CreateSync. Config loading defaults dry_run to true.
+    # Requires server_address in standalone mode.
+    sync:
+      enabled: false
+      interval: "24h"
+      criteria:
+        domain: "network_security"
+      limit: 100
+      dry_run: true
 
     # Regsync task configuration
     regsync:

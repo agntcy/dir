@@ -87,10 +87,11 @@ func run() error {
 		return err
 	}
 
-	// Create provider counter. In standalone mode the routing layer (Badger
-	// datastore) lives inside the server process and cannot be shared across
-	// process boundaries, so we connect to the server over gRPC instead.
-	// If no server address is configured the metrics task is skipped.
+	// Create the gRPC routing client. In standalone mode the routing layer
+	// (Badger datastore) lives inside the server process and cannot be shared
+	// across process boundaries, so we connect to the server over gRPC instead.
+	// If no server address is configured the metrics and sync tasks
+	// are skipped.
 	var counters metrics.ProviderCounterAPI
 
 	// The same connection tells the reconciler when a record is pushed, so the
@@ -125,7 +126,7 @@ func run() error {
 
 		logger.Info("Provider counter connected to apiserver", "address", cfg.ServerAddress)
 	} else {
-		logger.Warn("server_address not configured; metrics task (provider counts) will be skipped")
+		logger.Warn("server_address not configured; metrics and sync tasks will be skipped")
 	}
 
 	svc, err := service.New(cfg, db, store, repo, validatorRegistry, counters)

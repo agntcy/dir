@@ -21,6 +21,7 @@ import (
 	"github.com/agntcy/dir/reconciler/tasks/regsync"
 	"github.com/agntcy/dir/reconciler/tasks/scan"
 	"github.com/agntcy/dir/reconciler/tasks/signature"
+	synctask "github.com/agntcy/dir/reconciler/tasks/sync"
 	servertypes "github.com/agntcy/dir/server/types"
 	recordvalidators "github.com/agntcy/dir/server/validators"
 	"github.com/agntcy/dir/utils/logging"
@@ -28,6 +29,8 @@ import (
 )
 
 var logger = logging.Logger("reconciler/service")
+
+var _ synctask.Searcher = (*metrics.GRPCProviderCounter)(nil)
 
 // Service orchestrates reconciliation tasks.
 // It manages the lifecycle of registered tasks and runs them at their configured intervals.
@@ -57,8 +60,9 @@ type Service struct {
 // New creates a reconciler service with tasks registered according to cfg.
 // The caller supplies the database, store, provider counter, and record
 // validators so that an embedding process (e.g. the daemon) can share them
-// with the apiserver. counters may be nil; if so, the metrics task is skipped
-// even when cfg.Metrics.Enabled is true.
+// with the apiserver. counters may be nil; if so, the metrics and sync
+// tasks are skipped even when enabled. When counters also implements
+// synctask.Searcher (RoutingAPI, GRPCProviderCounter), sync uses it.
 func New(cfg *config.Config, db servertypes.DatabaseAPI, store servertypes.StoreAPI, repo registry.TagLister, validatorRegistry *recordvalidators.Registry, counters metrics.ProviderCounterAPI) (*Service, error) {
 	svc := &Service{
 		tasks:        []tasks.Task{},
@@ -140,6 +144,10 @@ func (s *Service) registerTasks(cfg *config.Config, db servertypes.DatabaseAPI, 
 		return err
 	}
 
+	if err := s.registerSyncTask(cfg, db, counters); err != nil {
+		return err
+	}
+
 	if cfg.Metrics.Enabled {
 		if counters == nil {
 			logger.Warn("Provider counter not available, skipping metrics task")
@@ -154,6 +162,32 @@ func (s *Service) registerTasks(cfg *config.Config, db servertypes.DatabaseAPI, 
 	}
 
 	return s.registerPolicyTask(cfg.PolicyEvaluation, db, store, validatorRegistry)
+}
+
+// registerSyncTask adds the sync task when it is enabled. The searcher is
+// the same routing surface the metrics task uses: RoutingAPI in the daemon,
+// GRPCProviderCounter in standalone. Without one the task is skipped, same
+// as metrics when counters is nil.
+func (s *Service) registerSyncTask(cfg *config.Config, db servertypes.DatabaseAPI, counters metrics.ProviderCounterAPI) error {
+	if !cfg.Sync.Enabled {
+		return nil
+	}
+
+	searcher, ok := counters.(synctask.Searcher)
+	if !ok || searcher == nil {
+		logger.Warn("Routing search is not available, skipping sync task")
+
+		return nil
+	}
+
+	t, err := synctask.NewTask(cfg.Sync, searcher, db)
+	if err != nil {
+		return fmt.Errorf("failed to create sync task: %w", err)
+	}
+
+	s.addTask(t)
+
+	return nil
 }
 
 // registerPolicyTask adds the policy evaluation task when it is enabled. It
