@@ -42,7 +42,8 @@ Internet Draft.
 - Metadata for AI agents and multi-agent systems, modeled with OASF.
 - Each record must declare skills from the [OASF skill taxonomy](https://schema.oasf.outshift.com/skill_categories).
 - Records are content-addressed with [CIDs](https://github.com/multiformats/cid) for global uniqueness and integrity.
-- Optional verifiable domain-based names support human-readable references with cryptographic verification.
+- Records can carry signed identity and ownership claims, verified against the key material their subject (a domain, DID or SPIFFE ID) publishes.
+- Records can be referenced by name (`name`, `name:version`) as well as by CID.
 
 ### Content routing and discovery
 

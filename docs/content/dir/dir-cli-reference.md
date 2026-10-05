@@ -1832,7 +1832,7 @@ Configure the selected provider's credentials before running `dirctl`.
 
 ### `dirctl identity claim [flags]`
 
-Signs a claim that the subject a record declares in its `agntcy.dir/identity` annotation is its own identity (`--role identity`), or that the subject it declares in `agntcy.dir/owner` is its owner (`--role owner`), and attaches the claim to the record. The subject is read from the record, so the record must carry the annotation for the role. The claim is stored unverified: the server checks it later, and [`dirctl identity status`](#dirctl-identity-status-reference) shows the outcome.
+Signs a claim that the subject a record declares in its `agntcy.dir/identity` annotation is its own identity (`--role identity`), or that the subject it declares in `agntcy.dir/owner` is its owner (`--role owner`), and attaches the claim to the record. The subject is read from the record, so the record must carry the annotation for the role. The claim is stored unverified: the server checks it later, and [`dirctl identity status`](#dirctl-identity-status-reference) shows the outcome. For the claim schema, the supported subjects and the verification rules, see [Identity and Ownership Claims](dir-component-identity.md).
 
 | Flag | Description |
 |------|-------------|
