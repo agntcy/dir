@@ -4,6 +4,7 @@
 package sign
 
 import (
+	"context"
 	"os"
 	"path/filepath"
 	"testing"
@@ -155,4 +156,49 @@ func TestResolveOptionsRejectsInvalidEnvironment(t *testing.T) {
 	_, err := ResolveOptions(newSignCommand(t))
 
 	require.ErrorContains(t, err, "DIRECTORY_CLIENT_SIGSTORE_SKIP_TLOG")
+}
+
+// recordingSigner captures the sign request instead of sending it.
+type recordingSigner struct {
+	req *signv1.SignRequest
+}
+
+func (r *recordingSigner) Sign(_ context.Context, req *signv1.SignRequest) (*signv1.SignResponse, error) {
+	r.req = req
+
+	return &signv1.SignResponse{}, nil
+}
+
+func TestNewSignerSendsResolvedSigstoreOptions(t *testing.T) {
+	setupSigstoreConfig(t)
+
+	signer := &recordingSigner{}
+
+	signRecord, err := NewSigner(newSignCommand(t, "--oidc-token", "id-token"), signer)
+	require.NoError(t, err)
+	require.NoError(t, signRecord(t.Context(), "bafytest"))
+
+	assert.Equal(t, "bafytest", signer.req.GetRecordRef().GetCid())
+
+	oidc := signer.req.GetProvider().GetOidc()
+	assert.Equal(t, "id-token", oidc.GetIdToken())
+	assert.Equal(t, "https://fulcio.corp.example", oidc.GetOptions().GetFulcioUrl())
+	assert.Equal(t, "https://tsa.corp.example/api/v1/timestamp", oidc.GetOptions().GetTimestampUrl())
+	assert.True(t, oidc.GetOptions().GetSkipTlog())
+}
+
+func TestNewSignerUsesKeyWithoutSigstore(t *testing.T) {
+	setupSigstoreConfig(t)
+	t.Setenv("COSIGN_PASSWORD", "secret")
+
+	signer := &recordingSigner{}
+
+	signRecord, err := NewSigner(newSignCommand(t, "--key", "cosign.key"), signer)
+	require.NoError(t, err)
+	require.NoError(t, signRecord(t.Context(), "bafytest"))
+
+	key := signer.req.GetProvider().GetKey()
+	assert.Equal(t, "cosign.key", key.GetPrivateKey())
+	assert.Equal(t, []byte("secret"), key.GetPassword())
+	assert.Nil(t, signer.req.GetProvider().GetOidc())
 }

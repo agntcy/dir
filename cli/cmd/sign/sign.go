@@ -16,7 +16,6 @@ import (
 	signv1 "github.com/agntcy/dir/api/sign/v1"
 	"github.com/agntcy/dir/cli/presenter"
 	ctxUtils "github.com/agntcy/dir/cli/util/context"
-	"github.com/agntcy/dir/client"
 	"github.com/sigstore/cosign/v3/pkg/cosign"
 	"github.com/sigstore/cosign/v3/pkg/cosign/env"
 	"github.com/sigstore/sigstore/pkg/oauthflow"
@@ -96,13 +95,12 @@ func runCommand(cmd *cobra.Command, recordCID string) error {
 		return errors.New("failed to get client from context")
 	}
 
-	signOpts, err := ResolveOptions(cmd)
+	signRecord, err := NewSigner(cmd, c)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to sign record: %w", err)
 	}
 
-	err = Sign(cmd.Context(), c, recordCID, signOpts)
-	if err != nil {
+	if err := signRecord(cmd.Context(), recordCID); err != nil {
 		return fmt.Errorf("failed to sign record: %w", err)
 	}
 
@@ -110,8 +108,28 @@ func runCommand(cmd *cobra.Command, recordCID string) error {
 	return presenter.PrintMessage(cmd, "signature", "Record is", "signed")
 }
 
+// Signer sends a sign request to a Directory; *client.Client implements it.
+type Signer interface {
+	Sign(ctx context.Context, req *signv1.SignRequest) (*signv1.SignResponse, error)
+}
+
+// NewSigner resolves the signing options for cmd once (see ResolveOptions) and
+// returns a function that signs a record with them. Every command that signs —
+// sign, push --sign, import --sign — goes through it, so none can bypass the
+// configured Sigstore settings.
+func NewSigner(cmd *cobra.Command, c Signer) (func(ctx context.Context, recordCID string) error, error) {
+	signOpts, err := ResolveOptions(cmd)
+	if err != nil {
+		return nil, err
+	}
+
+	return func(ctx context.Context, recordCID string) error {
+		return Sign(ctx, c, recordCID, signOpts)
+	}, nil
+}
+
 // Sign signs the record with the given options, typically from ResolveOptions.
-func Sign(ctx context.Context, c *client.Client, recordCID string, opts *Options) error {
+func Sign(ctx context.Context, c Signer, recordCID string, opts *Options) error {
 	// Construct the sign request with the provided options
 	var provider *signv1.SignRequestProvider
 
@@ -140,15 +158,7 @@ func Sign(ctx context.Context, c *client.Client, recordCID string, opts *Options
 			Request: &signv1.SignRequestProvider_Oidc{
 				Oidc: &signv1.SignWithOIDC{
 					IdToken: opts.OIDCToken,
-					Options: &signv1.SignOptionsOIDC{
-						FulcioUrl:        opts.FulcioURL,
-						RekorUrl:         opts.RekorURL,
-						TimestampUrl:     opts.TimestampURL,
-						OidcProviderUrl:  opts.OIDCProviderURL,
-						OidcClientId:     opts.OIDCClientID,
-						OidcClientSecret: opts.OIDCClientSecret,
-						SkipTlog:         opts.SkipTlog,
-					},
+					Options: opts.oidcSignOptions(),
 				},
 			},
 		}
@@ -165,15 +175,7 @@ func Sign(ctx context.Context, c *client.Client, recordCID string, opts *Options
 			Request: &signv1.SignRequestProvider_Oidc{
 				Oidc: &signv1.SignWithOIDC{
 					IdToken: token.RawString,
-					Options: &signv1.SignOptionsOIDC{
-						FulcioUrl:        opts.FulcioURL,
-						RekorUrl:         opts.RekorURL,
-						TimestampUrl:     opts.TimestampURL,
-						OidcProviderUrl:  opts.OIDCProviderURL,
-						OidcClientId:     opts.OIDCClientID,
-						OidcClientSecret: opts.OIDCClientSecret,
-						SkipTlog:         opts.SkipTlog,
-					},
+					Options: opts.oidcSignOptions(),
 				},
 			},
 		}
@@ -193,6 +195,19 @@ func Sign(ctx context.Context, c *client.Client, recordCID string, opts *Options
 	}
 
 	return nil
+}
+
+// oidcSignOptions returns the Sigstore options of a keyless sign request.
+func (o *Options) oidcSignOptions() *signv1.SignOptionsOIDC {
+	return &signv1.SignOptionsOIDC{
+		FulcioUrl:        o.FulcioURL,
+		RekorUrl:         o.RekorURL,
+		TimestampUrl:     o.TimestampURL,
+		OidcProviderUrl:  o.OIDCProviderURL,
+		OidcClientId:     o.OIDCClientID,
+		OidcClientSecret: o.OIDCClientSecret,
+		SkipTlog:         o.SkipTlog,
+	}
 }
 
 func formatPrivateKeyError(err error) error {

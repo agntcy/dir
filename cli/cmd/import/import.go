@@ -4,7 +4,6 @@
 package importcmd
 
 import (
-	"context"
 	"errors"
 	"fmt"
 	"os"
@@ -62,15 +61,8 @@ func runImport(cmd *cobra.Command) error {
 		defer func() { _ = opts.extractorCloser.Close() }()
 	}
 
-	if opts.Sign {
-		signOpts, err := signcmd.ResolveOptions(cmd)
-		if err != nil {
-			return fmt.Errorf("invalid configuration: %w", err)
-		}
-
-		opts.SignFunc = func(ctx context.Context, cid string) error {
-			return signcmd.Sign(ctx, c, cid, signOpts)
-		}
+	if err := configureSigning(cmd, c); err != nil {
+		return fmt.Errorf("failed to sign record: %w", err)
 	}
 
 	if err := opts.Validate(); err != nil {
@@ -136,4 +128,21 @@ func printSummary(cmd *cobra.Command, result *types.ImportResult) {
 			presenter.Printf(cmd, "Each record is written as <cid>.record.json and can be re-imported via dirctl push.\n")
 		}
 	}
+}
+
+// configureSigning sets opts.SignFunc when --sign is set, with the signing
+// options resolved once for the whole import.
+func configureSigning(cmd *cobra.Command, c signcmd.Signer) error {
+	if !opts.Sign {
+		return nil
+	}
+
+	signRecord, err := signcmd.NewSigner(cmd, c)
+	if err != nil {
+		return err //nolint:wrapcheck // Wrapped by the caller.
+	}
+
+	opts.SignFunc = signRecord
+
+	return nil
 }

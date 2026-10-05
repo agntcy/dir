@@ -6,6 +6,7 @@ package context
 import (
 	"errors"
 	"fmt"
+	"maps"
 	"sort"
 	"strings"
 
@@ -72,7 +73,15 @@ func runShow(cmd *cobra.Command, args []string) error {
 		return errors.New("no context selected")
 	}
 
-	printResolvedConfig(cmd, resolved, cfg)
+	sigstore, _, err := clientconfig.ResolveSigstore(clientconfig.ResolveOptions{
+		Context:            contextName,
+		AllowUnknownFields: true,
+	})
+	if err != nil {
+		return fmt.Errorf("failed to show context: %w", err)
+	}
+
+	printResolvedConfig(cmd, resolved, cfg, &sigstore.Sigstore)
 
 	return nil
 }
@@ -85,13 +94,15 @@ func selectedShowContext(args []string) string {
 	return config.Context
 }
 
-func printResolvedConfig(cmd *cobra.Command, resolved *clientconfig.ResolvedContext, cfg *client.Config) {
+func printResolvedConfig(cmd *cobra.Command, resolved *clientconfig.ResolvedContext, cfg *client.Config, sigstore *clientconfig.Sigstore) {
 	cmd.Printf("name: %s\n", resolved.Name)
 	cmd.Printf("source: %s\n", resolved.Source)
 	cmd.Printf("path: %s\n", resolved.Path)
 	cmd.Println("config:")
 
 	values := resolvedConfigValues(cfg)
+	maps.Copy(values, resolvedSigstoreValues(sigstore))
+
 	keys := sortedValueKeys(values)
 
 	for _, key := range keys {
@@ -119,6 +130,33 @@ func resolvedConfigValues(cfg *client.Config) map[string]string {
 		"tls_cert_file":      cfg.TlsCertFile,
 		"tls_key_file":       cfg.TlsKeyFile,
 		"tls_skip_verify":    fmt.Sprintf("%t", cfg.TlsSkipVerify),
+	}
+}
+
+// resolvedSigstoreValues returns the sigstore settings keyed as sigstore.<key>.
+// Unset settings map to "" and are not printed, since they keep the built-in
+// defaults. None of them are secret.
+func resolvedSigstoreValues(cfg *clientconfig.Sigstore) map[string]string {
+	setBool := func(value bool) string {
+		if value {
+			return "true"
+		}
+
+		return ""
+	}
+
+	return map[string]string{
+		"sigstore.fulcio_url":        cfg.FulcioURL,
+		"sigstore.rekor_url":         cfg.RekorURL,
+		"sigstore.timestamp_url":     cfg.TimestampURL,
+		"sigstore.skip_tlog":         setBool(cfg.SkipTlog),
+		"sigstore.oidc_provider_url": cfg.OIDCProviderURL,
+		"sigstore.oidc_client_id":    cfg.OIDCClientID,
+		"sigstore.tuf_mirror_url":    cfg.TufMirrorURL,
+		"sigstore.trusted_root_path": cfg.TrustedRootPath,
+		"sigstore.ignore_tlog":       setBool(cfg.IgnoreTlog),
+		"sigstore.ignore_tsa":        setBool(cfg.IgnoreTsa),
+		"sigstore.ignore_sct":        setBool(cfg.IgnoreSct),
 	}
 }
 

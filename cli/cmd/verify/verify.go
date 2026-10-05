@@ -115,52 +115,9 @@ func runCommand(cmd *cobra.Command, recordRef string) error {
 		return errors.New("failed to get client from context")
 	}
 
-	// Construct the verification request
-	var provider *signv1.VerifyRequestProvider
-
-	switch {
-	case opts.Key != "":
-		// Verify using the provided key reference
-		// The key can be a file path, URL, KMS URI, etc.
-		provider = &signv1.VerifyRequestProvider{
-			Request: &signv1.VerifyRequestProvider_Key{
-				Key: &signv1.VerifyWithKey{
-					PublicKey: opts.Key,
-				},
-			},
-		}
-
-	case opts.OIDCIssuer != "" || opts.OIDCSubject != "":
-		oidcOptions, err := resolveOIDCOptions(cmd)
-		if err != nil {
-			return err
-		}
-
-		provider = &signv1.VerifyRequestProvider{
-			Request: &signv1.VerifyRequestProvider_Oidc{
-				Oidc: &signv1.VerifyWithOIDC{
-					Issuer:  opts.OIDCIssuer,
-					Subject: opts.OIDCSubject,
-					Options: oidcOptions,
-				},
-			},
-		}
-
-	default:
-		// Use VerifyWithAny which will verify against any valid signature
-		// with optional OIDC verification options
-		oidcOptions, err := resolveOIDCOptions(cmd)
-		if err != nil {
-			return err
-		}
-
-		provider = &signv1.VerifyRequestProvider{
-			Request: &signv1.VerifyRequestProvider_Any{
-				Any: &signv1.VerifyWithAny{
-					OidcOptions: oidcOptions,
-				},
-			},
-		}
+	provider, err := buildProvider(cmd)
+	if err != nil {
+		return fmt.Errorf("failed to verify record: %w", err)
 	}
 
 	// Perform verification
@@ -217,4 +174,58 @@ func runCommand(cmd *cobra.Command, recordRef string) error {
 
 	// For structured output formats, print the full response as JSON
 	return presenter.PrintMessage(cmd, "", "", response)
+}
+
+// buildProvider builds the verification provider for this invocation: the
+// public key when --key is set, otherwise OIDC verification with the resolved
+// trust options (see resolveOIDCOptions).
+func buildProvider(cmd *cobra.Command) (*signv1.VerifyRequestProvider, error) {
+	var provider *signv1.VerifyRequestProvider
+
+	switch {
+	case opts.Key != "":
+		// Verify using the provided key reference
+		// The key can be a file path, URL, KMS URI, etc.
+		provider = &signv1.VerifyRequestProvider{
+			Request: &signv1.VerifyRequestProvider_Key{
+				Key: &signv1.VerifyWithKey{
+					PublicKey: opts.Key,
+				},
+			},
+		}
+
+	case opts.OIDCIssuer != "" || opts.OIDCSubject != "":
+		oidcOptions, err := resolveOIDCOptions(cmd)
+		if err != nil {
+			return nil, err
+		}
+
+		provider = &signv1.VerifyRequestProvider{
+			Request: &signv1.VerifyRequestProvider_Oidc{
+				Oidc: &signv1.VerifyWithOIDC{
+					Issuer:  opts.OIDCIssuer,
+					Subject: opts.OIDCSubject,
+					Options: oidcOptions,
+				},
+			},
+		}
+
+	default:
+		// Use VerifyWithAny which will verify against any valid signature
+		// with optional OIDC verification options
+		oidcOptions, err := resolveOIDCOptions(cmd)
+		if err != nil {
+			return nil, err
+		}
+
+		provider = &signv1.VerifyRequestProvider{
+			Request: &signv1.VerifyRequestProvider_Any{
+				Any: &signv1.VerifyWithAny{
+					OidcOptions: oidcOptions,
+				},
+			},
+		}
+	}
+
+	return provider, nil
 }

@@ -4,6 +4,8 @@
 package verify
 
 import (
+	"bytes"
+	"io"
 	"os"
 	"path/filepath"
 	"testing"
@@ -71,6 +73,7 @@ func newVerifyCommand(t *testing.T, args ...string) *cobra.Command {
 	t.Cleanup(func() { opts = original })
 
 	cmd := &cobra.Command{Use: "verify"}
+	cmd.SetErr(io.Discard)
 	addOIDCOptionFlags(cmd.Flags())
 	require.NoError(t, cmd.Flags().Parse(args))
 
@@ -119,7 +122,86 @@ func TestResolveOIDCOptionsPrecedence(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, "/env/trusted_root.json", resolved.GetTrustedRootPath(), "env overrides config")
 	assert.Equal(t, "https://tuf.flag.example", resolved.GetTufMirrorUrl(), "flag overrides env")
-	assert.False(t, resolved.GetIgnoreTsa(), "an env false overrides config")
+	assert.False(t, resolved.GetIgnoreTsa(), "env false overrides the context's true")
 	assert.False(t, resolved.GetIgnoreSct(), "an explicit false flag overrides config")
 	assert.True(t, resolved.GetIgnoreTlog(), "config overrides default")
+}
+
+func TestResolveOIDCOptionsWarnsAboutWeakeningSettingsNotFromFlags(t *testing.T) {
+	setupSigstoreConfig(t)
+	t.Setenv("DIRECTORY_CLIENT_SIGSTORE_IGNORE_TSA", "false")
+	t.Setenv("DIRECTORY_CLIENT_SIGSTORE_TRUSTED_ROOT_PATH", "/env/trusted_root.json")
+
+	cmd := newVerifyCommand(t, "--ignore-sct")
+
+	var stderr bytes.Buffer
+	cmd.SetErr(&stderr)
+
+	_, err := resolveOIDCOptions(cmd)
+
+	require.NoError(t, err)
+	assert.Equal(t, `Warning: sigstore.tuf_mirror_url=https://tuf.corp.example from context "corp" replaces the public-good TUF repository
+Warning: sigstore.trusted_root_path=/env/trusted_root.json from DIRECTORY_CLIENT_SIGSTORE_TRUSTED_ROOT_PATH replaces the public-good trusted root
+Warning: sigstore.ignore_tlog=true from context "corp" skips transparency log (Rekor) verification
+`, stderr.String(), "ignore_tsa is unset by env and ignore_sct came from a flag, so neither warns")
+}
+
+func TestResolveOIDCOptionsDoesNotWarnForDefaults(t *testing.T) {
+	setupSigstoreConfig(t)
+	t.Setenv("DIRECTORY_CLIENT_SIGSTORE_TUF_MIRROR_URL", signv1.DefaultVerifyOptionsOIDC.GetTufMirrorUrl())
+
+	cliconfig.Context = "public"
+	cmd := newVerifyCommand(t)
+
+	var stderr bytes.Buffer
+	cmd.SetErr(&stderr)
+
+	_, err := resolveOIDCOptions(cmd)
+
+	require.NoError(t, err)
+	assert.Empty(t, stderr.String())
+}
+
+func TestBuildProviderSendsResolvedOIDCOptions(t *testing.T) {
+	t.Run("any signature", func(t *testing.T) {
+		setupSigstoreConfig(t)
+
+		provider, err := buildProvider(newVerifyCommand(t))
+
+		require.NoError(t, err)
+
+		oidcOptions := provider.GetAny().GetOidcOptions()
+		assert.Equal(t, "/etc/dirctl/trusted_root.json", oidcOptions.GetTrustedRootPath())
+		assert.True(t, oidcOptions.GetIgnoreTlog())
+	})
+
+	t.Run("OIDC identity", func(t *testing.T) {
+		setupSigstoreConfig(t)
+
+		cmd := newVerifyCommand(t)
+		opts.OIDCIssuer = "https://idp.corp.example"
+
+		provider, err := buildProvider(cmd)
+
+		require.NoError(t, err)
+		assert.Equal(t, "https://idp.corp.example", provider.GetOidc().GetIssuer())
+		assert.Equal(t, "/etc/dirctl/trusted_root.json", provider.GetOidc().GetOptions().GetTrustedRootPath())
+		assert.True(t, provider.GetOidc().GetOptions().GetIgnoreSct())
+	})
+
+	t.Run("public key ignores sigstore settings", func(t *testing.T) {
+		setupSigstoreConfig(t)
+
+		cmd := newVerifyCommand(t)
+		opts.Key = "cosign.pub"
+
+		var stderr bytes.Buffer
+		cmd.SetErr(&stderr)
+
+		provider, err := buildProvider(cmd)
+
+		require.NoError(t, err)
+		assert.Equal(t, "cosign.pub", provider.GetKey().GetPublicKey())
+		assert.Empty(t, stderr.String())
+	})
 }

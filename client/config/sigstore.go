@@ -14,8 +14,15 @@ import (
 const sigstoreEnvKey = "sigstore_"
 
 // Sigstore holds the keyless (OIDC) signing and verification settings used by
-// dirctl sign and dirctl verify. Empty fields leave the built-in public-good
-// Sigstore defaults in place.
+// dirctl sign and dirctl verify.
+//
+// A zero value means "unset" and leaves the built-in public-good default in
+// place. Two consequences follow. A boolean can only be turned on from config,
+// never forced to false; that is safe because every boolean default is false
+// today, but flipping a default to true would make a configured false a silent
+// no-op. And a string cannot be set to empty from config or the environment
+// (for example to drop the timestamp authority); only an explicitly passed flag
+// such as --timestamp-url "" can do that.
 //
 // Secrets (the OIDC client secret and ID token) are deliberately absent: they
 // are accepted only as flags so they never land in the config file.
@@ -39,11 +46,56 @@ type Sigstore struct {
 	IgnoreSct       bool   `yaml:"ignore_sct,omitempty"`
 }
 
+// ResolvedSigstore is the effective Sigstore settings with the origin of each
+// setting that is set.
+type ResolvedSigstore struct {
+	Sigstore
+
+	// Sources maps the key of every set setting (for example "ignore_tlog") to
+	// where its value came from: `context "corp"`, or the name of the
+	// environment variable. Unset settings have no entry.
+	Sources map[string]string
+}
+
+type sigstoreStringField struct {
+	key    string
+	target *string
+}
+
+type sigstoreBoolField struct {
+	key    string
+	target *bool
+}
+
+// The field lists are ordered so that resolution, and with it the error
+// reported for an invalid value, is deterministic.
+func (s *Sigstore) stringFields() []sigstoreStringField {
+	return []sigstoreStringField{
+		{"fulcio_url", &s.FulcioURL},
+		{"rekor_url", &s.RekorURL},
+		{"timestamp_url", &s.TimestampURL},
+		{"oidc_provider_url", &s.OIDCProviderURL},
+		{"oidc_client_id", &s.OIDCClientID},
+		{"tuf_mirror_url", &s.TufMirrorURL},
+		{"trusted_root_path", &s.TrustedRootPath},
+	}
+}
+
+func (s *Sigstore) boolFields() []sigstoreBoolField {
+	return []sigstoreBoolField{
+		{"skip_tlog", &s.SkipTlog},
+		{"ignore_tlog", &s.IgnoreTlog},
+		{"ignore_tsa", &s.IgnoreTsa},
+		{"ignore_sct", &s.IgnoreSct},
+	}
+}
+
 // ResolveSigstore resolves the Sigstore settings for the selected context, with
 // DIRECTORY_CLIENT_SIGSTORE_* environment variables applied over the context's
-// sigstore section. Flag precedence is left to the caller, which knows which
-// flags were set explicitly.
-func ResolveSigstore(opts ResolveOptions) (*Sigstore, *ResolvedContext, error) {
+// sigstore section. An environment variable set to an empty string counts as
+// unset. Flag precedence is left to the caller, which knows which flags were
+// set explicitly.
+func ResolveSigstore(opts ResolveOptions) (*ResolvedSigstore, *ResolvedContext, error) {
 	path, explicitPath, err := resolvePath(opts.Path)
 	if err != nil {
 		return nil, nil, err
@@ -55,7 +107,7 @@ func ResolveSigstore(opts ResolveOptions) (*Sigstore, *ResolvedContext, error) {
 	}
 
 	contextName, source := selectedContextName(opts, file)
-	cfg := &Sigstore{}
+	cfg := &ResolvedSigstore{Sources: map[string]string{}}
 
 	if contextName != "" {
 		contextConfig, ok := file.Contexts[contextName]
@@ -63,10 +115,11 @@ func ResolveSigstore(opts ResolveOptions) (*Sigstore, *ResolvedContext, error) {
 			return nil, nil, fmt.Errorf("unknown client context %q in %s", contextName, path)
 		}
 
-		*cfg = contextConfig.Sigstore
+		cfg.Sigstore = contextConfig.Sigstore
+		cfg.recordContextSources(fmt.Sprintf("context %q", contextName))
 	}
 
-	if err := applySigstoreEnv(cfg, envPrefix(opts.EnvPrefix)); err != nil {
+	if err := cfg.applyEnv(envPrefix(opts.EnvPrefix)); err != nil {
 		return nil, nil, err
 	}
 
@@ -77,35 +130,34 @@ func ResolveSigstore(opts ResolveOptions) (*Sigstore, *ResolvedContext, error) {
 	}, nil
 }
 
-func applySigstoreEnv(cfg *Sigstore, prefix string) error {
-	stringEnv := map[string]*string{
-		"fulcio_url":        &cfg.FulcioURL,
-		"rekor_url":         &cfg.RekorURL,
-		"timestamp_url":     &cfg.TimestampURL,
-		"oidc_provider_url": &cfg.OIDCProviderURL,
-		"oidc_client_id":    &cfg.OIDCClientID,
-		"tuf_mirror_url":    &cfg.TufMirrorURL,
-		"trusted_root_path": &cfg.TrustedRootPath,
-	}
-
-	for key, target := range stringEnv {
-		if value, ok := os.LookupEnv(envVarName(prefix, sigstoreEnvKey+key)); ok {
-			*target = value
+func (r *ResolvedSigstore) recordContextSources(source string) {
+	for _, field := range r.stringFields() {
+		if *field.target != "" {
+			r.Sources[field.key] = source
 		}
 	}
 
-	boolEnv := map[string]*bool{
-		"skip_tlog":   &cfg.SkipTlog,
-		"ignore_tlog": &cfg.IgnoreTlog,
-		"ignore_tsa":  &cfg.IgnoreTsa,
-		"ignore_sct":  &cfg.IgnoreSct,
+	for _, field := range r.boolFields() {
+		if *field.target {
+			r.Sources[field.key] = source
+		}
+	}
+}
+
+func (r *ResolvedSigstore) applyEnv(prefix string) error {
+	for _, field := range r.stringFields() {
+		name := envVarName(prefix, sigstoreEnvKey+field.key)
+		if value := os.Getenv(name); value != "" {
+			*field.target = value
+			r.Sources[field.key] = name
+		}
 	}
 
-	for key, target := range boolEnv {
-		name := envVarName(prefix, sigstoreEnvKey+key)
+	for _, field := range r.boolFields() {
+		name := envVarName(prefix, sigstoreEnvKey+field.key)
 
-		value, ok := os.LookupEnv(name)
-		if !ok {
+		value := os.Getenv(name)
+		if value == "" {
 			continue
 		}
 
@@ -114,7 +166,13 @@ func applySigstoreEnv(cfg *Sigstore, prefix string) error {
 			return fmt.Errorf("invalid %s value %q: %w", name, value, err)
 		}
 
-		*target = parsed
+		*field.target = parsed
+
+		if parsed {
+			r.Sources[field.key] = name
+		} else {
+			delete(r.Sources, field.key)
+		}
 	}
 
 	return nil

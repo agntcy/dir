@@ -91,6 +91,11 @@ func addOIDCOptionFlags(flags *pflag.FlagSet) {
 // Each setting comes from, highest first: a flag set explicitly on cmd, a
 // DIRECTORY_CLIENT_SIGSTORE_* environment variable, the selected context's
 // sigstore section, then the flag's default.
+//
+// Before this config existed, weakening verification always took an explicit
+// flag. A context or a stray environment variable now can, so every weakening
+// setting that did not come from a flag is reported on stderr, keeping
+// structured output on stdout parseable.
 func resolveOIDCOptions(cmd *cobra.Command) (*signv1.VerifyOptionsOIDC, error) {
 	cfg, err := cliconfig.ResolveSigstore()
 	if err != nil {
@@ -98,13 +103,32 @@ func resolveOIDCOptions(cmd *cobra.Command) (*signv1.VerifyOptionsOIDC, error) {
 	}
 
 	resolved := opts
-
 	flags := cmd.Flags()
-	cliconfig.ApplyUnlessChanged(flags, "tuf-mirror-url", &resolved.TufMirrorUrl, cfg.TufMirrorURL)
-	cliconfig.ApplyUnlessChanged(flags, "trusted-root-path", &resolved.TrustedRootPath, cfg.TrustedRootPath)
-	cliconfig.ApplyUnlessChanged(flags, "ignore-tlog", &resolved.IgnoreTlog, cfg.IgnoreTlog)
-	cliconfig.ApplyUnlessChanged(flags, "ignore-tsa", &resolved.IgnoreTsa, cfg.IgnoreTsa)
-	cliconfig.ApplyUnlessChanged(flags, "ignore-sct", &resolved.IgnoreSct, cfg.IgnoreSct)
+
+	warn := func(key string, value any, effect string) {
+		presenter.Errorf(cmd, "Warning: sigstore.%s=%v from %s %s\n", key, value, cfg.Sources[key], effect)
+	}
+
+	if cliconfig.ApplyUnlessChanged(flags, "tuf-mirror-url", &resolved.TufMirrorUrl, cfg.TufMirrorURL) &&
+		resolved.TufMirrorUrl != signv1.DefaultVerifyOptionsOIDC.GetTufMirrorUrl() {
+		warn("tuf_mirror_url", resolved.TufMirrorUrl, "replaces the public-good TUF repository")
+	}
+
+	if cliconfig.ApplyUnlessChanged(flags, "trusted-root-path", &resolved.TrustedRootPath, cfg.TrustedRootPath) {
+		warn("trusted_root_path", resolved.TrustedRootPath, "replaces the public-good trusted root")
+	}
+
+	if cliconfig.ApplyUnlessChanged(flags, "ignore-tlog", &resolved.IgnoreTlog, cfg.IgnoreTlog) {
+		warn("ignore_tlog", true, "skips transparency log (Rekor) verification")
+	}
+
+	if cliconfig.ApplyUnlessChanged(flags, "ignore-tsa", &resolved.IgnoreTsa, cfg.IgnoreTsa) {
+		warn("ignore_tsa", true, "skips timestamp authority (TSA) verification")
+	}
+
+	if cliconfig.ApplyUnlessChanged(flags, "ignore-sct", &resolved.IgnoreSct, cfg.IgnoreSct) {
+		warn("ignore_sct", true, "skips Signed Certificate Timestamp (SCT) verification")
+	}
 
 	return &signv1.VerifyOptionsOIDC{
 		TufMirrorUrl:    resolved.TufMirrorUrl,

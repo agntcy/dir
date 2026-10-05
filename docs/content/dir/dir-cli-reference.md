@@ -801,18 +801,24 @@ contexts:
       fulcio_url: https://fulcio.corp.example
       rekor_url: https://rekor.corp.example
       timestamp_url: https://tsa.corp.example/api/v1/timestamp
+      # Only for a deployment without a Rekor transparency log.
       skip_tlog: true
       oidc_provider_url: https://idp.corp.example
       oidc_client_id: sigstore
       # Verification
       tuf_mirror_url: https://tuf.corp.example
       trusted_root_path: /etc/dirctl/corp-trusted-root.json
+      # These lower the verification guarantees. Set them only for a Sigstore
+      # deployment that has no Rekor transparency log or no CT log for SCTs.
       ignore_tlog: true
-      ignore_tsa: false
       ignore_sct: true
 ```
 
 Each key matches the `dirctl sign` or `dirctl verify` flag of the same name (`fulcio_url` is `--fulcio-url`, and so on), and can also be set with a `DIRECTORY_CLIENT_SIGSTORE_<KEY>` environment variable, for example `DIRECTORY_CLIENT_SIGSTORE_FULCIO_URL`. For each setting, an explicitly passed flag wins, then the environment variable, then the context's `sigstore` section, then the built-in default.
+
+An unset or empty value keeps the built-in default, so config can turn a boolean on but not force it off, and cannot set a URL to empty; pass the flag explicitly for that (for example `--skip-tlog=false`). An environment variable set to an empty string counts as unset. `dirctl context show` prints the effective `sigstore.*` values, including environment overrides.
+
+Settings that weaken or replace the default verification trust (`ignore_tlog`, `ignore_tsa`, `ignore_sct`, `trusted_root_path`, and a non-default `tuf_mirror_url`) print a warning on stderr when `dirctl verify` takes them from a context or an environment variable rather than from a flag, naming where each one came from. Structured output on stdout is unaffected.
 
 `sigstore.oidc_client_id` is the OIDC client used to obtain a Fulcio signing certificate. It is separate from the context's top-level `oidc_client_id`, which `dirctl auth login` uses. The OIDC client secret and ID token are not read from the config file; pass them with `--oidc-client-secret` and `--oidc-token`.
 

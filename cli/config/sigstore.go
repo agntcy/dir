@@ -14,7 +14,7 @@ import (
 // names — `--context`, or current_context when the flag is unset — with
 // DIRECTORY_CLIENT_SIGSTORE_* environment variables applied on top. Commands
 // layer their explicitly set flags over the result with ApplyUnlessChanged.
-func ResolveSigstore() (*clientconfig.Sigstore, error) {
+func ResolveSigstore() (*clientconfig.ResolvedSigstore, error) {
 	cfg, _, err := clientconfig.ResolveSigstore(clientconfig.ResolveOptions{
 		Context:            Context,
 		AllowUnknownFields: true,
@@ -28,12 +28,20 @@ func ResolveSigstore() (*clientconfig.Sigstore, error) {
 
 // ApplyUnlessChanged sets target to value when value is non-zero and the named
 // flag was not set explicitly, so a configured value replaces the flag's
-// built-in default but never a value the user passed.
-func ApplyUnlessChanged[T comparable](flags *pflag.FlagSet, name string, target *T, value T) {
+// built-in default but never a value the user passed. It reports whether it
+// applied value.
+//
+// The zero value stands for "unset" (see clientconfig.Sigstore): config can turn
+// a boolean on but never force it to false, and cannot set a string to empty.
+// Both are safe while every boolean default is false; a default that flips to
+// true needs a pointer-typed field here instead.
+func ApplyUnlessChanged[T comparable](flags *pflag.FlagSet, name string, target *T, value T) bool {
 	var zero T
 	if value == zero || flags.Changed(name) {
-		return
+		return false
 	}
 
 	*target = value
+
+	return true
 }

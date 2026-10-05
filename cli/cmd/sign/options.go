@@ -4,8 +4,6 @@
 package sign
 
 import (
-	"fmt"
-
 	signv1 "github.com/agntcy/dir/api/sign/v1"
 	cliconfig "github.com/agntcy/dir/cli/config"
 	"github.com/agntcy/dir/cli/presenter"
@@ -84,7 +82,7 @@ func ResolveOptions(cmd *cobra.Command) (*Options, error) {
 
 	cfg, err := cliconfig.ResolveSigstore()
 	if err != nil {
-		return nil, fmt.Errorf("failed to resolve signing options: %w", err)
+		return nil, err //nolint:wrapcheck // Already wrapped by cliconfig.ResolveSigstore.
 	}
 
 	flags := cmd.Flags()

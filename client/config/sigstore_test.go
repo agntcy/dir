@@ -53,7 +53,9 @@ func TestResolveSigstore(t *testing.T) {
 			IgnoreTlog:      true,
 			IgnoreTsa:       true,
 			IgnoreSct:       true,
-		}, *cfg)
+		}, cfg.Sigstore)
+		assert.Equal(t, `context "corp"`, cfg.Sources["fulcio_url"])
+		assert.Equal(t, `context "corp"`, cfg.Sources["ignore_tlog"])
 	})
 
 	t.Run("returns empty settings for a context without a sigstore section", func(t *testing.T) {
@@ -63,7 +65,8 @@ func TestResolveSigstore(t *testing.T) {
 		cfg, _, err := ResolveSigstore(ResolveOptions{Path: path, Context: "public"})
 
 		require.NoError(t, err)
-		assert.Equal(t, Sigstore{}, *cfg)
+		assert.Equal(t, Sigstore{}, cfg.Sigstore)
+		assert.Empty(t, cfg.Sources)
 	})
 
 	t.Run("returns empty settings without a selected context", func(t *testing.T) {
@@ -74,7 +77,8 @@ func TestResolveSigstore(t *testing.T) {
 
 		require.NoError(t, err)
 		assert.Equal(t, "none", resolved.Source)
-		assert.Equal(t, Sigstore{}, *cfg)
+		assert.Equal(t, Sigstore{}, cfg.Sigstore)
+		assert.Empty(t, cfg.Sources)
 	})
 
 	t.Run("environment overrides the context section", func(t *testing.T) {
@@ -94,6 +98,36 @@ func TestResolveSigstore(t *testing.T) {
 		assert.False(t, cfg.IgnoreSct)
 		assert.Equal(t, "https://rekor.corp.example", cfg.RekorURL)
 		assert.True(t, cfg.IgnoreTlog)
+
+		assert.Equal(t, "DIRECTORY_CLIENT_SIGSTORE_FULCIO_URL", cfg.Sources["fulcio_url"])
+		assert.Equal(t, `context "corp"`, cfg.Sources["rekor_url"])
+		assert.NotContains(t, cfg.Sources, "skip_tlog", "an env false unsets the setting")
+	})
+
+	t.Run("empty environment variables count as unset", func(t *testing.T) {
+		resetClientEnv(t)
+		path := writeConfig(t, sigstoreTestConfig)
+		t.Setenv("DIRECTORY_CLIENT_SIGSTORE_FULCIO_URL", "")
+		t.Setenv("DIRECTORY_CLIENT_SIGSTORE_IGNORE_TLOG", "")
+
+		cfg, _, err := ResolveSigstore(ResolveOptions{Path: path})
+
+		require.NoError(t, err)
+		assert.Equal(t, "https://fulcio.corp.example", cfg.FulcioURL)
+		assert.True(t, cfg.IgnoreTlog)
+		assert.Equal(t, `context "corp"`, cfg.Sources["fulcio_url"])
+	})
+
+	t.Run("reports the first invalid boolean deterministically", func(t *testing.T) {
+		resetClientEnv(t)
+		path := writeConfig(t, sigstoreTestConfig)
+		t.Setenv("DIRECTORY_CLIENT_SIGSTORE_IGNORE_SCT", "maybe")
+		t.Setenv("DIRECTORY_CLIENT_SIGSTORE_SKIP_TLOG", "maybe")
+
+		for range 20 {
+			_, _, err := ResolveSigstore(ResolveOptions{Path: path})
+			require.ErrorContains(t, err, "DIRECTORY_CLIENT_SIGSTORE_SKIP_TLOG")
+		}
 	})
 
 	t.Run("rejects an invalid boolean in the environment", func(t *testing.T) {
