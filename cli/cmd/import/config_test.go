@@ -86,8 +86,7 @@ enricher:
       max_steps: 12
       mcp_servers:
         dir-mcp-server:
-          command: dirctl
-          args: [mcp, serve]
+          command: dir-mcp
           env:
             OASF_API_VALIDATION_SCHEMA_URL: https://schema.oasf.outshift.com
 `)
@@ -137,8 +136,7 @@ enricher:
       model: azure:gpt-4o
       mcp_servers:
         dir-mcp-server:
-          command: dirctl
-          args: [mcp, serve]
+          command: dir-mcp
           env:
             OASF_API_VALIDATION_SCHEMA_URL: https://schema.oasf.outshift.com
             DIRECTORY_CLIENT_AUTH_MODE: insecure

@@ -1319,16 +1319,16 @@ enricher:
 
 #### LLM enrichment
 
-Runs an LLM with tool-calling support against the OASF schema tools exposed by `dirctl mcp serve`. Produces the most semantically accurate skill and domain assignments but requires LLM credentials or a local runtime.
+Runs an LLM with tool-calling support against the OASF schema tools exposed by the [`dir-mcp`](https://github.com/agntcy/dir-mcp) server. Produces the most semantically accurate skill and domain assignments but requires LLM credentials or a local runtime.
 
 **Requirements:**
 
-- `dirctl` binary (includes the built-in MCP server with `agntcy_oasf_get_schema_skills` and `agntcy_oasf_get_schema_domains` tools)
+- The `dir-mcp` binary on your `PATH` (provides the `agntcy_oasf_get_schema_skills` and `agntcy_oasf_get_schema_domains` tools). Download `mcp-server-<os>-<arch>` from the [dir-mcp releases](https://github.com/agntcy/dir-mcp/releases/latest), make it executable, and install it as `dir-mcp`. `dirctl import` checks for it and prints these steps when it is missing.
 - An LLM with tool-calling support (GPT-4o, Claude, or compatible Ollama models)
 
 **How it works:**
 
-1. The enricher starts an MCP server using `dirctl mcp serve`
+1. The enricher starts the `dir-mcp` server
 2. The LLM uses the `agntcy_oasf_get_schema_skills` tool to browse available OASF skills
 3. The LLM uses the `agntcy_oasf_get_schema_domains` tool to browse available OASF domains
 4. Based on the record description and capabilities, the LLM selects appropriate skills and domains
@@ -1342,8 +1342,7 @@ enricher:
       max_steps: 10
       mcp_servers:
         dir-mcp-server:
-          command: dirctl
-          args: [mcp, serve]
+          command: dir-mcp
           env:
             OASF_API_VALIDATION_SCHEMA_URL: https://schema.oasf.outshift.com
             DIRECTORY_CLIENT_AUTH_MODE: insecure

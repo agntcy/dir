@@ -69,6 +69,10 @@ func runImport(cmd *cobra.Command) error {
 		return fmt.Errorf("invalid configuration: %w", err)
 	}
 
+	if err := checkMCPServerInstalled(opts.Enricher); err != nil {
+		return err
+	}
+
 	importer, err := factory.Create(cmd.Context(), c, opts.Config)
 	if err != nil {
 		return fmt.Errorf("failed to create importer: %w", err)

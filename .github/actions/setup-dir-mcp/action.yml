@@ -1,0 +1,54 @@
+# Copyright AGNTCY Contributors (https://github.com/agntcy)
+# SPDX-License-Identifier: Apache-2.0
+
+name: Setup dir-mcp
+description: Download the dir-mcp server binary from its GitHub release. The LLM enricher launches it as its MCP tool server.
+
+inputs:
+  version:
+    description: dir-mcp release tag to download
+    required: false
+    # renovate: datasource=github-releases depName=agntcy/dir-mcp
+    default: v1.3.8
+  token:
+    description: GitHub token used to download the release asset
+    required: false
+    default: ${{ github.token }}
+
+outputs:
+  dir_mcp_path:
+    description: Absolute path to the dir-mcp binary
+    value: ${{ steps.download.outputs.dir_mcp_path }}
+
+runs:
+  using: composite
+  steps:
+    - name: Download dir-mcp
+      id: download
+      shell: bash
+      env:
+        GH_TOKEN: ${{ inputs.token }}
+        VERSION: ${{ inputs.version }}
+      run: |
+        set -euo pipefail
+
+        case "$(uname -m)" in
+          x86_64) arch=amd64 ;;
+          aarch64|arm64) arch=arm64 ;;
+          *) echo "unsupported architecture: $(uname -m)" >&2; exit 1 ;;
+        esac
+
+        asset="mcp-server-linux-${arch}"
+        bin_dir="${RUNNER_TEMP}/dir-mcp"
+        mkdir -p "${bin_dir}"
+
+        gh release download "${VERSION}" \
+          --repo agntcy/dir-mcp \
+          --pattern "${asset}" \
+          --dir "${bin_dir}" \
+          --clobber
+
+        mv "${bin_dir}/${asset}" "${bin_dir}/dir-mcp"
+        chmod +x "${bin_dir}/dir-mcp"
+
+        echo "dir_mcp_path=${bin_dir}/dir-mcp" >> "${GITHUB_OUTPUT}"
