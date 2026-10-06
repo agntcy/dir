@@ -34,6 +34,8 @@ Supported subjects:
 - did:web:<domain>[:path]       key in the DID document
 - did:key:<key>                 key embedded in the DID itself
 - spiffe://<domain>/<path>      key in an X.509-SVID passed with --cert
+- ans://v<x>.<y>.<z>.<host>     key in the agent's identity certificate passed with --cert,
+                                attested by its transparency log
 
 Examples:
 

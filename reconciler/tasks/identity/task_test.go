@@ -619,8 +619,9 @@ func TestRun_RemovesTheResultOfAClaimForAnotherSubject(t *testing.T) {
 	f.noResult(cid, types.ClaimRoleIdentity)
 }
 
-// A certificate is no part of a claim for anything but a spiffe:// subject, so one
-// grafted onto such a claim fails it instead of decorating a verified result.
+// A certificate is no part of a claim for anything but a spiffe:// or ans://
+// subject, so one grafted onto such a claim fails it instead of decorating a
+// verified result.
 func TestRun_CertificateOnANonSPIFFEClaimFails(t *testing.T) {
 	key, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 	require.NoError(t, err)
@@ -649,7 +650,7 @@ func TestRun_CertificateOnANonSPIFFEClaimFails(t *testing.T) {
 
 	result := f.result(cid, types.ClaimRoleOwner)
 	assert.Equal(t, types.ClaimStatusFailed, result.GetStatus())
-	assert.Contains(t, result.GetError(), "carries a certificate")
+	assert.Contains(t, result.GetError(), "only used for spiffe:// and ans:// subjects")
 }
 
 func TestRun_ClaimOfAnotherRecordFails(t *testing.T) {

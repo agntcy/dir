@@ -51,10 +51,11 @@ published for the subject. For an encrypted key, the password is read from the
 COSIGN_PASSWORD environment variable, from standard input with --password-stdin,
 or prompted for on a terminal.
 
---cert is only for spiffe:// subjects, where the signer's X.509-SVID is the proof
-rather than a published key. It is a PEM or DER certificate for the key, whose URI
-SAN must be the declared subject. It is not used, and not accepted, for any other
-subject.
+--cert is for spiffe:// and ans:// subjects, whose proof is a certificate rather
+than a published key: the signer's X.509-SVID for spiffe://, the identity
+certificate the agent's transparency log attests for ans://. It is a PEM or DER
+certificate for the key, whose URI SAN must be the declared subject. It is not
+accepted for any other subject.
 
 Usage examples:
 
@@ -67,6 +68,9 @@ Usage examples:
 
 3. Claim a SPIFFE identity:
    dirctl identity claim --record <cid> --role identity --key svid.key --cert svid.pem
+
+4. Claim an ANS identity, with the agent's identity certificate:
+   dirctl identity claim --record <cid> --role identity --key agent.key --cert agent.pem
 `,
 	Args: cobra.NoArgs,
 	RunE: func(cmd *cobra.Command, _ []string) error {
@@ -82,7 +86,7 @@ func init() {
 	flags.BoolVar(&claimOpts.PasswordStdin, "password-stdin", false,
 		"Read the private key password from standard input; do not combine with other stdin input flags")
 	flags.StringVar(&claimOpts.Cert, "cert", "",
-		"Path to the PEM or DER X.509 certificate of the key (only for spiffe:// subjects)")
+		"Path to the PEM or DER X.509 certificate of the key (spiffe:// and ans:// subjects only)")
 
 	_ = claimCmd.MarkFlagRequired("record")
 	_ = claimCmd.MarkFlagRequired("role")

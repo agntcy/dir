@@ -20,7 +20,7 @@ import (
 // keys are the already-resolved candidate public keys for claim's subject
 // (e.g. a DNS TXT record set or a JWKS); the claim verifies if any one of
 // them validates its signature. Resolving those keys (a DNS/DID/JWKS lookup,
-// or SPIFFE trust-bundle validation of an embedded certificate) is a
+// or the validation of an embedded certificate for spiffe:// and ans://) is a
 // separate concern, not this package's job.
 func Verify(claim *identityv1.Claim, recordCID, expectedSubject string, keys ...crypto.PublicKey) (bool, error) {
 	if err := Check(claim, recordCID, expectedSubject); err != nil {
@@ -62,15 +62,16 @@ func Check(claim *identityv1.Claim, recordCID, expectedSubject string) error {
 		return fmt.Errorf("claim subject %q does not match record's declared annotation %q", subject, expectedSubject)
 	}
 
-	// Only a spiffe:// claim's certificate is resolved, and it sits outside the
-	// signed payload, so one on any other claim could be grafted on from elsewhere.
-	isSVID, hasCert := strings.HasPrefix(subject, "spiffe://"), claim.GetCertificate() != ""
-	if isSVID && !hasCert {
-		return fmt.Errorf("spiffe:// claim carries no certificate")
+	// The certificate sits outside the signed payload and is only resolved for
+	// the subjects NeedsCertificate names, so one on any other claim could be
+	// grafted on from elsewhere.
+	needs, hasCert := NeedsCertificate(subject), claim.GetCertificate() != ""
+	if needs && !hasCert {
+		return fmt.Errorf("a claim for %q needs a certificate", subject)
 	}
 
-	if !isSVID && hasCert {
-		return fmt.Errorf("claim for non-spiffe:// subject %q carries a certificate", subject)
+	if !needs && hasCert {
+		return fmt.Errorf("a certificate is only used for spiffe:// and ans:// subjects, not %q", subject)
 	}
 
 	if signedAt := claim.GetSignedAt(); signedAt != "" {
@@ -88,4 +89,12 @@ func Check(claim *identityv1.Claim, recordCID, expectedSubject string) error {
 	}
 
 	return nil
+}
+
+// NeedsCertificate reports whether a claim for subject must carry a
+// certificate. A spiffe:// or ans:// subject is proven by one (the X.509-SVID,
+// or the identity certificate the agent's transparency log attests); every
+// other subject publishes its key and must not carry one.
+func NeedsCertificate(subject string) bool {
+	return strings.HasPrefix(subject, "spiffe://") || strings.HasPrefix(subject, "ans://")
 }

@@ -214,17 +214,19 @@ func TestClaimOwnership_PushesOwnershipClaim(t *testing.T) {
 }
 
 func TestClaimIdentity_WithCertificate(t *testing.T) {
-	key, signer := newClaimKey(t)
-	stream := &fakePushReferrerStream{resp: &storev1.PushReferrerResponse{Success: true}}
+	for _, subject := range []string{"spiffe://acme.com/agents/finance", "ans://v1.0.0.agent.acme.com"} {
+		t.Run(subject, func(t *testing.T) {
+			key, signer := newClaimKey(t)
+			stream := &fakePushReferrerStream{resp: &storev1.PushReferrerResponse{Success: true}}
 
-	const subject = "spiffe://acme.com/agents/finance"
+			_, err := newClaimTestClient(stream, map[string]string{corev1.AnnotationKeyIdentity: subject}).
+				ClaimIdentity(t.Context(), identityTestCID, signer, identity.WithCertificate(claimTestCertPEM(t, key, subject)))
+			require.NoError(t, err)
 
-	_, err := newClaimTestClient(stream, map[string]string{corev1.AnnotationKeyIdentity: subject}).
-		ClaimIdentity(t.Context(), identityTestCID, signer, identity.WithCertificate(claimTestCertPEM(t, key, subject)))
-	require.NoError(t, err)
-
-	_, claim := pushedClaim(t, stream)
-	assert.NotEmpty(t, claim.GetCertificate())
+			_, claim := pushedClaim(t, stream)
+			assert.NotEmpty(t, claim.GetCertificate())
+		})
+	}
 }
 
 func TestClaim_Errors(t *testing.T) {
@@ -274,6 +276,11 @@ func TestClaim_Errors(t *testing.T) {
 		_, err = newClaimTestClient(stream, spiffe).ClaimIdentity(t.Context(), identityTestCID, signer)
 		require.ErrorContains(t, err, "needs a certificate")
 
+		ans := map[string]string{corev1.AnnotationKeyIdentity: "ans://v1.0.0.agent.acme.com"}
+
+		_, err = newClaimTestClient(stream, ans).ClaimIdentity(t.Context(), identityTestCID, signer)
+		require.ErrorContains(t, err, "needs a certificate")
+
 		_, err = newClaimTestClient(stream, identityNote).ClaimIdentity(t.Context(), identityTestCID, signer,
 			identity.WithCertificate(claimTestCertPEM(t, key, "spiffe://acme.com/x")))
 		require.Error(t, err, "certificate for a subject that is not spiffe://")
@@ -283,7 +290,7 @@ func TestClaim_Errors(t *testing.T) {
 
 		_, err = newClaimTestClient(stream, map[string]string{corev1.AnnotationKeyIdentity: https}).ClaimIdentity(t.Context(), identityTestCID, signer,
 			identity.WithCertificate(claimTestCertPEM(t, key, https)))
-		require.ErrorContains(t, err, "only used for a spiffe:// subject")
+		require.ErrorContains(t, err, "only used for spiffe:// and ans:// subjects")
 		assert.Empty(t, stream.sent)
 	})
 
