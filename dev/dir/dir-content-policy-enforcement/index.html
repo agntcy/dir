@@ -1570,6 +1570,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#trying-a-policy-before-you-deploy-it" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Trying a Policy Before You Deploy It
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#rolling-back" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2404,6 +2415,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#trying-a-policy-before-you-deploy-it" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Trying a Policy Before You Deploy It
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#rolling-back" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2694,9 +2716,28 @@
 <li>Watch <code>dir_policy_gate_records_unevaluated</code>: it is the number of records still hidden for want of a verdict, and falls to 0 when the re-evaluation is done.</li>
 <li>Re-evaluation is not throttled: a run continues, a batch after another, until no record is left. <code>policy_evaluation.batch_size</code> bounds the memory of a run, not its length.</li>
 <li>A record published meanwhile is hidden until it has a verdict too.</li>
-<li>A policy that wrongly rejects records hides them until it is fixed and the records are evaluated again. Nothing is deleted. Review policies like code, and try a change on a node that does not serve users first.</li>
+<li>A policy that wrongly rejects records hides them until it is fixed and the records are evaluated again. Nothing is deleted. Review policies like code, and <a href="#trying-a-policy-before-you-deploy-it">try a change with a dry run</a> before deploying it.</li>
 </ul>
 <p>Switching the mode to <code>shadow</code> for the duration of an edit stops enforcing: the policy's whole effect, including records it should keep hidden, is lifted until you switch back.</p>
+<h2 id="trying-a-policy-before-you-deploy-it">Trying a Policy Before You Deploy It</h2>
+<p>A policy that rejects too much hides those records until it is fixed, so try a new or edited policy on the node's real records before deploying it. A dry run evaluates the candidate against every indexed record, as the policy task would, and reports how many it would exclude, a sample of them, and the reasons. It stores nothing: no verdict is written and no policy version is registered, so it changes nothing a read returns.</p>
+<p>The candidate is a file with a <code>validators</code> list, as in the configuration, whose entries have <code>op: ["evaluate"]</code>; the file can be pasted into the configuration once the policy is good. Only the entries with that op are tried.</p>
+<div class="highlight"><pre><span></span><code><span class="nt">validators</span><span class="p">:</span>
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">provider</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">cel</span>
+<span class="w">    </span><span class="nt">op</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="s">&quot;evaluate&quot;</span><span class="p p-Indicator">]</span>
+<span class="w">    </span><span class="nt">config</span><span class="p">:</span>
+<span class="w">      </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">has-description</span>
+<span class="w">      </span><span class="nt">expressions</span><span class="p">:</span>
+<span class="w">        </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="s">&#39;record.description</span><span class="nv"> </span><span class="s">!=</span><span class="nv"> </span><span class="s">&quot;&quot;&#39;</span>
+</code></pre></div>
+<ul>
+<li><strong>Daemon.</strong> <code>dirctl daemon policy dry-run --candidate candidate.yaml</code>. The daemon must be running, since the records are read through its registry. Files of OPA policies the candidate names are read from <code>--policy-dir</code>, the daemon's policy directory unless given.</li>
+<li><strong>Kubernetes.</strong> The reconciler pod has the database and the registry, so run the dry run in it, with the candidate on standard input: <code>kubectl exec -i deploy/&lt;reconciler deployment&gt; -- /reconciler dry-run --candidate /dev/stdin &lt; candidate.yaml</code>. The deployment is the one labeled <code>app.kubernetes.io/name=reconciler</code>. An OPA candidate needs its <code>.rego</code> file where the node's policies are: add it to the chart's <code>policies</code> map without naming it in <code>validators</code>, which makes it a file on the pod and not a policy, then name it in the candidate.</li>
+<li><strong>Reading the report.</strong> <em>Would exclude</em> counts the records the policy rejects plus those it could not evaluate, since both stay hidden under enforcement. If the second number is large, look at the reasons before blaming the policy: a store that cannot be read gives the same result. Raise <code>--samples</code> to see more of the records.</li>
+<li><strong>A dry run of the policy the node already enforces</strong> reports the records the node withholds for that policy, which is a way to check what the report says against what you see.</li>
+<li><strong>One policy at a time.</strong> A record is served only if it passes every enforced policy. The report is for the candidate alone, so add its count to what the other policies already hide to judge the whole.</li>
+</ul>
+<p>Run it with the same version as the node: opening the database applies the migrations it is missing, as starting the node does.</p>
 <h2 id="rolling-back">Rolling Back</h2>
 <p>Set the affected mode back to <code>shadow</code> or <code>off</code> and restart the server. Verdicts are kept. Reverting a policy file is an edit like any other: its records are hidden until they are evaluated under the restored rule.</p>
 <h2 id="auditing-excluded-records">Auditing Excluded Records</h2>

@@ -2406,6 +2406,17 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#dirctl-daemon-policy-dry-run" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        dirctl daemon policy dry-run
+      
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -3504,6 +3515,17 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#dirctl-daemon-policy-dry-run" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        dirctl daemon policy dry-run
+      
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -4291,7 +4313,7 @@ explicit <code>--auth-mode</code>.</p>
 </tr>
 <tr>
 <td>Daemon</td>
-<td><code>daemon start</code>, <code>stop</code>, <code>status</code>, <code>config init</code></td>
+<td><code>daemon start</code>, <code>stop</code>, <code>status</code>, <code>config init</code>, <code>policy dry-run</code></td>
 </tr>
 <tr>
 <td>Auth</td>
@@ -5141,6 +5163,80 @@ dirctl<span class="w"> </span>daemon<span class="w"> </span>config<span class="w
 
 <span class="c1"># Overwrite an existing config file</span>
 dirctl<span class="w"> </span>daemon<span class="w"> </span>config<span class="w"> </span>init<span class="w"> </span>--force
+</code></pre></div>
+</details>
+<h3 id="dirctl-daemon-policy-dry-run"><code>dirctl daemon policy dry-run</code></h3>
+<p>Tries a candidate <a href="../dir-content-policy-enforcement/">content policy</a> on the daemon's records without deploying it, and reports how many records it would exclude, a sample of them, and the reasons. Run it before putting a policy in the configuration: under strict enforcement a policy that rejects too much hides those records until it is fixed.</p>
+<p>Nothing is stored. No verdict is written and no policy version is registered, so what the daemon serves does not change. The records are read from the daemon's database and from its registry, so the daemon has to be running; the command refuses to start, and says so, when nothing answers. Run it with the same <code>dirctl</code> as the daemon, since opening the database applies the migrations it is missing.</p>
+<p>The candidate is a file with a <code>validators</code> list, as in the configuration, whose entries have <code>op: ["evaluate"]</code>. It is checked before the daemon is touched. A record the policy cannot judge, or that cannot be read, counts as excluded, as it would under enforcement.</p>
+<table>
+<thead>
+<tr>
+<th>Flag</th>
+<th>Description</th>
+<th>Default</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>--candidate</code></td>
+<td>File that defines the policy to try (required)</td>
+<td></td>
+</tr>
+<tr>
+<td><code>--policy-dir</code></td>
+<td>Directory the candidate's OPA (<code>.rego</code>) files are read from</td>
+<td>The daemon's policy directory</td>
+</tr>
+<tr>
+<td><code>--policy</code></td>
+<td>Try only the policy with this ID, such as <code>opa:require-license</code></td>
+<td>Every policy in the file</td>
+</tr>
+<tr>
+<td><code>--samples</code></td>
+<td>How many of the records a policy would exclude to list</td>
+<td><code>10</code></td>
+</tr>
+<tr>
+<td><code>--output</code>, <code>-o</code></td>
+<td>Format of the report: <code>human</code> or <code>json</code></td>
+<td><code>human</code></td>
+</tr>
+<tr>
+<td><code>--data-dir</code></td>
+<td>Data directory for daemon state</td>
+<td><code>~/.agntcy/dir/</code></td>
+</tr>
+<tr>
+<td><code>--config</code></td>
+<td>Path to daemon config file</td>
+<td>Built-in embedded defaults</td>
+</tr>
+</tbody>
+</table>
+<details class="example">
+<summary>Example</summary>
+<div class="highlight"><pre><span></span><code><span class="c1"># Try a CEL policy kept in a scratch file</span>
+dirctl<span class="w"> </span>daemon<span class="w"> </span>policy<span class="w"> </span>dry-run<span class="w"> </span>--candidate<span class="w"> </span>./candidate.yaml
+
+<span class="c1"># Try an OPA policy kept next to its candidate file, and list 25 of the records it would exclude</span>
+dirctl<span class="w"> </span>daemon<span class="w"> </span>policy<span class="w"> </span>dry-run<span class="w"> </span>--candidate<span class="w"> </span>./candidate.yaml<span class="w"> </span>--policy-dir<span class="w"> </span>./candidate-policies<span class="w"> </span>--samples<span class="w"> </span><span class="m">25</span>
+
+<span class="c1"># The same, as JSON</span>
+dirctl<span class="w"> </span>daemon<span class="w"> </span>policy<span class="w"> </span>dry-run<span class="w"> </span>--candidate<span class="w"> </span>./candidate.yaml<span class="w"> </span>--output<span class="w"> </span>json
+</code></pre></div>
+<div class="highlight"><pre><span></span><code>Policy cel:has-description, version 87ac6c3e1834af20
+  Evaluated:      1204 records
+  Would pass:     1190
+  Would exclude:  14 (12 rejected by the policy, 2 it could not evaluate)
+
+  Records it would exclude (first 10 of 14; --samples lists more):
+    baeareiaik2d74qrz...  ERROR: CEL expression evaluated to false: record.description != &quot;&quot;
+    ...
+
+Nothing was stored: no verdict was written and no policy version registered,
+so what this node serves is unchanged.
 </code></pre></div>
 </details>
 <h2 id="context-operations">Context Operations</h2>
