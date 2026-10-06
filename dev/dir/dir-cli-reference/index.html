@@ -2435,6 +2435,17 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
+  <a href="#sigstore-settings" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Sigstore settings
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#dirctl-context-list" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -3542,6 +3553,17 @@
   
     <nav class="md-nav" aria-label="Context Operations">
       <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#sigstore-settings" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Sigstore settings
+      
+    </span>
+  </a>
+  
+</li>
         
           <li class="md-nav__item">
   <a href="#dirctl-context-list" class="md-nav__link">
@@ -5268,6 +5290,32 @@ so what this node serves is unchanged.
 <li><code>current_context</code> from the config file</li>
 </ol>
 <p>After context selection, environment variables and explicit root flags such as <code>--server-addr</code>, <code>--auth-mode</code>, <code>--oidc-issuer</code>, and <code>--auth-token</code> override the selected context for that invocation.</p>
+<h3 id="sigstore-settings">Sigstore settings</h3>
+<p>A context can carry a <code>sigstore</code> section with the keyless (OIDC) signing and verification settings used by <code>dirctl sign</code>, <code>dirctl push --sign</code>, <code>dirctl import --sign</code>, and <code>dirctl verify</code>. Use it to point a context at a self-hosted Sigstore stack instead of the public-good instance. Fields left unset keep the public-good defaults, and contexts without the section behave as before.</p>
+<div class="highlight"><pre><span></span><code><span class="nt">contexts</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">corp</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">server_address</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">dir.corp.example:443</span>
+<span class="w">    </span><span class="nt">sigstore</span><span class="p">:</span>
+<span class="w">      </span><span class="c1"># Signing</span>
+<span class="w">      </span><span class="nt">fulcio_url</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">https://fulcio.corp.example</span>
+<span class="w">      </span><span class="nt">rekor_url</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">https://rekor.corp.example</span>
+<span class="w">      </span><span class="nt">timestamp_url</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">https://tsa.corp.example/api/v1/timestamp</span>
+<span class="w">      </span><span class="c1"># Only for a deployment without a Rekor transparency log.</span>
+<span class="w">      </span><span class="nt">skip_tlog</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+<span class="w">      </span><span class="nt">oidc_provider_url</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">https://idp.corp.example</span>
+<span class="w">      </span><span class="nt">oidc_client_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">sigstore</span>
+<span class="w">      </span><span class="c1"># Verification</span>
+<span class="w">      </span><span class="nt">tuf_mirror_url</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">https://tuf.corp.example</span>
+<span class="w">      </span><span class="nt">trusted_root_path</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/etc/dirctl/corp-trusted-root.json</span>
+<span class="w">      </span><span class="c1"># These lower the verification guarantees. Set them only for a Sigstore</span>
+<span class="w">      </span><span class="c1"># deployment that has no Rekor transparency log or no CT log for SCTs.</span>
+<span class="w">      </span><span class="nt">ignore_tlog</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+<span class="w">      </span><span class="nt">ignore_sct</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+</code></pre></div>
+<p>Each key matches the <code>dirctl sign</code> or <code>dirctl verify</code> flag of the same name (<code>fulcio_url</code> is <code>--fulcio-url</code>, and so on), and can also be set with a <code>DIRECTORY_CLIENT_SIGSTORE_&lt;KEY&gt;</code> environment variable, for example <code>DIRECTORY_CLIENT_SIGSTORE_FULCIO_URL</code>. For each setting, an explicitly passed flag wins, then the environment variable, then the context's <code>sigstore</code> section, then the built-in default.</p>
+<p>An unset or empty value keeps the built-in default, so config can turn a boolean on but not force it off, and cannot set a URL to empty; pass the flag explicitly for that (for example <code>--skip-tlog=false</code>). An environment variable set to an empty string counts as unset. <code>dirctl context show</code> prints the effective <code>sigstore.*</code> values, including environment overrides.</p>
+<p>Settings that weaken or replace the default verification trust (<code>ignore_tlog</code>, <code>ignore_tsa</code>, <code>ignore_sct</code>, <code>trusted_root_path</code>, and a non-default <code>tuf_mirror_url</code>) print a warning on stderr when <code>dirctl verify</code> takes them from a context or an environment variable rather than from a flag, naming where each one came from. Structured output on stdout is unaffected.</p>
+<p><code>sigstore.oidc_client_id</code> is the OIDC client used to obtain a Fulcio signing certificate. It is separate from the context's top-level <code>oidc_client_id</code>, which <code>dirctl auth login</code> uses. The OIDC client secret and ID token are not read from the config file; pass them with <code>--oidc-client-secret</code> and <code>--oidc-token</code>.</p>
 <div class="admonition note">
 <p class="admonition-title">Sensitive values</p>
 <p><code>dirctl context show</code> redacts <code>auth_token</code> and <code>spiffe_token</code> values. Prefer environment variables or a secret manager for bearer tokens instead of storing long-lived tokens in <code>config.yaml</code>.</p>
@@ -6605,6 +6653,9 @@ standard input. Otherwise, an interactive terminal prompts for the password; a
 non-interactive process does not read standard input implicitly.</p>
 <p>Local and inline PEM keys must use the encrypted Cosign/Sigstore format produced by
 <code>cosign generate-key-pair</code>.</p>
+<p>The Sigstore endpoints for keyless signing (<code>--fulcio-url</code>, <code>--rekor-url</code>,
+<code>--timestamp-url</code>, <code>--skip-tlog</code>, <code>--oidc-provider-url</code>, <code>--oidc-client-id</code>) can
+also come from the selected context. See <a href="#sigstore-settings">Sigstore settings</a>.</p>
 <p>The <code>--key</code> flag accepts PEM content, a local file, an HTTP(S) URL, an environment
 variable reference, or a KMS URI. The supported KMS URI formats are:</p>
 <table>
@@ -6756,6 +6807,7 @@ dirctl<span class="w"> </span>identity<span class="w"> </span>resolve<span class
 </tr>
 </tbody>
 </table>
+<p>The OIDC trust settings (<code>--tuf-mirror-url</code>, <code>--trusted-root-path</code>, <code>--ignore-tlog</code>, <code>--ignore-tsa</code>, <code>--ignore-sct</code>) can also come from the selected context. See <a href="#sigstore-settings">Sigstore settings</a>.</p>
 <details class="example">
 <summary>Example</summary>
 <div class="highlight"><pre><span></span><code><span class="c1"># Verify any valid signature on the record</span>
