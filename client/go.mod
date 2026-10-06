@@ -13,9 +13,11 @@ replace github.com/ThalesIgnite/crypto11 => github.com/eclipse-keypont/crypto11 
 
 require (
 	buf.build/gen/go/agntcy/oasf/protocolbuffers/go v1.36.12-20260928171943-6220fce8636b.2
+	github.com/agentnameservice/ans-sdk-go v0.1.19
 	github.com/agntcy/dir/api v1.7.1
 	github.com/agntcy/dir/utils v1.7.1
 	github.com/agntcy/oasf-sdk/pkg v1.1.0
+	github.com/fxamacker/cbor/v2 v2.9.4
 	github.com/google/uuid v1.6.0
 	github.com/lestrrat-go/jwx/v2 v2.1.7
 	github.com/mitchellh/mapstructure v1.5.1-0.20231216201459-8508981c8b6c
@@ -60,7 +62,6 @@ require (
 	github.com/dustin/go-humanize v1.0.1 // indirect
 	github.com/emicklei/go-restful/v3 v3.13.0 // indirect
 	github.com/fsnotify/fsnotify v1.10.1 // indirect
-	github.com/fxamacker/cbor/v2 v2.9.2 // indirect
 	github.com/go-chi/chi/v5 v5.3.2 // indirect
 	github.com/go-jose/go-jose/v4 v4.1.5 // indirect
 	github.com/go-logr/logr v1.4.4 // indirect
