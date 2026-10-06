@@ -73,11 +73,13 @@ var reservedPrefixes = []netip.Prefix{
 // Client performs SSRF-safe HTTP GET requests: https only unless
 // WithAllowHTTP is set, no connections to non-public addresses (checked at
 // dial time, after DNS resolution, so DNS rebinding can't bypass it), a
-// bounded redirect chain that keeps the scheme rule, and a response size cap.
+// bounded redirect chain that keeps the scheme rule (or none at all with
+// WithoutRedirects), and a response size cap.
 type Client struct {
-	httpClient *http.Client
-	maxBytes   int64
-	allowHTTP  bool
+	httpClient  *http.Client
+	maxBytes    int64
+	allowHTTP   bool
+	noRedirects bool
 }
 
 // Option configures a Client.
@@ -96,6 +98,13 @@ func WithMaxBytes(maxBytes int64) Option {
 // WithAllowHTTP permits plain http:// requests (for local testing only).
 func WithAllowHTTP() Option {
 	return func(c *Client) { c.allowHTTP = true }
+}
+
+// WithoutRedirects refuses to follow redirects: a 3xx answer is returned to
+// the caller as a *StatusError, so a request never leaves the host it was
+// sent to.
+func WithoutRedirects() Option {
+	return func(c *Client) { c.noRedirects = true }
 }
 
 // New creates a Client that refuses to connect to non-public addresses.
@@ -165,6 +174,10 @@ func (c *Client) checkScheme(u *url.URL) error {
 }
 
 func (c *Client) checkRedirect(req *http.Request, via []*http.Request) error {
+	if c.noRedirects {
+		return http.ErrUseLastResponse
+	}
+
 	if len(via) >= maxRedirects {
 		return errors.New("too many redirects")
 	}

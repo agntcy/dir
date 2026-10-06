@@ -156,6 +156,55 @@ func TestGet(t *testing.T) {
 	require.ErrorContains(t, err, "too many redirects")
 }
 
+// WithoutRedirects hands a 3xx back to the caller as the response status
+// instead of following it, so the request never leaves the host it was sent to.
+func TestGet_WithoutRedirects(t *testing.T) {
+	srv := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/ok":
+			_, _ = w.Write([]byte("hello"))
+		case "/redirect":
+			http.Redirect(w, r, "/ok", http.StatusFound)
+		}
+	}))
+	defer srv.Close()
+
+	tests := []struct {
+		name     string
+		opts     []Option
+		wantBody string
+		wantCode int
+	}{
+		{name: "redirects are followed by default", wantBody: "hello"},
+		{name: "redirects are refused when asked", opts: []Option{WithoutRedirects()}, wantCode: http.StatusFound},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			client := newTestClient(t, srv, tt.opts...)
+
+			body, err := client.Get(t.Context(), srv.URL+"/redirect")
+			if tt.wantCode == 0 {
+				require.NoError(t, err)
+				require.Equal(t, tt.wantBody, string(body))
+
+				return
+			}
+
+			var statusErr *StatusError
+
+			require.ErrorAs(t, err, &statusErr)
+			require.Equal(t, tt.wantCode, statusErr.Code)
+			require.Equal(t, srv.URL+"/redirect", statusErr.URL)
+
+			// A direct request still works: only redirects are refused.
+			body, err = client.Get(t.Context(), srv.URL+"/ok")
+			require.NoError(t, err)
+			require.Equal(t, "hello", string(body))
+		})
+	}
+}
+
 func TestGet_SchemeRules(t *testing.T) {
 	plain := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		_, _ = w.Write([]byte("plain"))
