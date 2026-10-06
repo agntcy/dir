@@ -204,8 +204,6 @@ github.com/agnivade/levenshtein v1.2.1 h1:EHBY3UOn1gwdy/VbFwgo4cxecRznFk7fKWN1KO
 github.com/agnivade/levenshtein v1.2.1/go.mod h1:QVVI16kDrtSuwcpd0p1+xMC6Z/VfhtCyDIjcwga4/DU=
 github.com/agntcy/dir-importer v1.5.5 h1:sBNJsZCUDEQ2FPl8XihUAJ+geqblyjU4RfElR/Y/0kc=
 github.com/agntcy/dir-importer v1.5.5/go.mod h1:1DtTbPNpJ0h4L21LY3vsBcji0xGx+YckleoeSItUHDo=
-github.com/agntcy/dir-mcp v1.3.8 h1:0Ek3QbhXED7n7EGVoZYG1EgQMwk8KcBEi/6Zjhz62GA=
-github.com/agntcy/dir-mcp v1.3.8/go.mod h1:ESJdHiBej1VyAsBXLZVo56x2GEUxR04LyCg1n2cp7Sw=
 github.com/agntcy/dir-runtime/discovery v1.3.6 h1:fTd6ORkz/YMgiPWoiPa+wN4kED6wvFBGOs1PqMWif4g=
 github.com/agntcy/dir-runtime/discovery v1.3.6/go.mod h1:xN1CmvLjXFAU46N5lTqNa3kfP4i6k6JGUq38uVYVWqs=
 github.com/agntcy/dir-runtime/server v1.3.6 h1:gHZmtLUpm55Hs1/t0QPH+mXMa6fhExQcnPJvuO6cr2w=
@@ -1299,8 +1297,6 @@ github.com/moby/sys/userns v0.1.0 h1:tVLXkFOxVu9A64/yh59slHVv9ahO9UIev4JZusOLG/g
 github.com/moby/sys/userns v0.1.0/go.mod h1:IHUYgu/kao6N8YZlp9Cf444ySSvCmDlmzUcYfDHOl28=
 github.com/moby/term v0.5.2 h1:6qk3FJAFDs6i/q3W/pQ97SX192qKfZgGjCQqfCJkgzQ=
 github.com/moby/term v0.5.2/go.mod h1:d3djjFCrjnB+fl8NJux+EJzu0msscUP+f8it8hPkFLc=
-github.com/modelcontextprotocol/go-sdk v1.6.1 h1:0zOSupjKUxPKSocPT1Wtago+mUHU2/uZ4xSOY0FGReU=
-github.com/modelcontextprotocol/go-sdk v1.6.1/go.mod h1:kzm3kzFL1/+AziGOE0nUs3gvPoNxMCvkxokMkuFapXQ=
 github.com/modelcontextprotocol/registry v1.8.1 h1:baHVpbY9xc/lyCi/Wemcy7idVBNKROJZbSgzosCEuEo=
 github.com/modelcontextprotocol/registry v1.8.1/go.mod h1:W26bRO/fiGMqCfDFNFz8DWZbFSpGj87JsqwrTbvLIWU=
 github.com/modern-go/concurrent v0.0.0-20180228061459-e0a39a4cb421/go.mod h1:6dJC0mAP4ikYIbvyc7fijjWJddQyLn8Ig3JB5CqoB9Q=
@@ -1612,8 +1608,6 @@ github.com/secure-systems-lab/go-securesystemslib v0.11.1 h1:ayahDPjfSIqKegyt5YV
 github.com/secure-systems-lab/go-securesystemslib v0.11.1/go.mod h1:UyOjhoZLi76ir63u1ptubEevVe6dlNPmNxwgVvKqFFY=
 github.com/segmentio/asm v1.2.1 h1:DTNbBqs57ioxAD4PrArqftgypG4/qNpXoJx8TVXxPR0=
 github.com/segmentio/asm v1.2.1/go.mod h1:BqMnlJP91P8d+4ibuonYZw9mfnzI9HfxselHZr5aAcs=
-github.com/segmentio/encoding v0.5.4 h1:OW1VRern8Nw6ITAtwSZ7Idrl3MXCFwXHPgqESYfvNt0=
-github.com/segmentio/encoding v0.5.4/go.mod h1:HS1ZKa3kSN32ZHVZ7ZLPLXWvOVIiZtyJnO1gPH1sKt0=
 github.com/sergi/go-diff v1.1.0/go.mod h1:STckp+ISIX8hZLjrqAeVduY0gWCT9IjLuqbuNXdaHfM=
 github.com/sergi/go-diff v1.4.0 h1:n/SP9D5ad1fORl+llWyN+D6qoUETXNZARKjyY2/KVCw=
 github.com/sergi/go-diff v1.4.0/go.mod h1:A0bzQcvG0E7Rwjx0REVgAGH58e96+X0MeOfepqsbeW4=

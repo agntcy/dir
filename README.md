@@ -8,7 +8,6 @@
 [![OpenSSF Best Practices](https://www.bestpractices.dev/projects/14438/badge)](https://www.bestpractices.dev/projects/14438)
 
 [Buf Registry](https://buf.build/agntcy/dir) | 
-[MCP Server](https://github.com/agntcy/dir-mcp) | 
 [Go SDK](https://pkg.go.dev/github.com/agntcy/dir/client) | 
 [Python SDK](https://pypi.org/project/agntcy-dir/) | 
 [JavaScript SDK](https://www.npmjs.com/package/agntcy-dir) | 

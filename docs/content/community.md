@@ -72,10 +72,6 @@ Stay up to date with announcements, tutorials, and technical deep dives from the
 
     Runtime discovery — watch container runtimes and expose agent metadata.
 
-- :fontawesome-brands-github:{ .lg .middle } **[agntcy/dir-mcp](https://github.com/agntcy/dir-mcp)**
-
-    MCP server — Model Context Protocol integration for Directory.
-
 - :fontawesome-brands-github:{ .lg .middle } **[agntcy/dir-staging](https://github.com/agntcy/dir-staging)**
 
     Deployment examples — GitOps and staging configurations.

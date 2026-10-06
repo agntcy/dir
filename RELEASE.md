@@ -51,7 +51,6 @@ After the API module tags are pushed, you can update API consumers with the new 
 
 Released API consumers:
 
-- [`dir-mcp`](https://github.com/agntcy/dir-mcp)
 - [`dir-importer`](https://github.com/agntcy/dir-importer)
 - [`dir-runtime`](https://github.com/agntcy/dir-runtime)
 
@@ -74,7 +73,6 @@ This prepares only the `server` module set:
 
 If optional API consumer releases were created in step 2a, update the corresponding dependencies as well:
 
-- `github.com/agntcy/dir-mcp`
 - `github.com/agntcy/dir-importer`
 - `github.com/agntcy/dir-runtime`
 

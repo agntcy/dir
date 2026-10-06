@@ -50,9 +50,6 @@ tmp/
 go.work
 go.work.sum
 
-# MCP server binary
-mcp/mcp-server
-
 # Local Build output
 build/
 mcp/debug/

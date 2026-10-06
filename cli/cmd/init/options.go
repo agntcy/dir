@@ -36,6 +36,6 @@ func addFlags(cmd *cobra.Command, opts *options) {
 	flags.BoolVar(&opts.remove, "remove", false,
 		"Remove the provisioned extractor assets and clear the saved config")
 	flags.StringSliceVar(&opts.agents, "agents", []string{agentcfg.AllAgents},
-		fmt.Sprintf("Agents to configure in the MCP server & skills step: %q (default, all detected) or a comma-separated list (%s)",
+		fmt.Sprintf("Agents to configure in the skills step: %q (default, all detected) or a comma-separated list (%s)",
 			agentcfg.AllAgents, strings.Join(agentcfg.AgentIDs(), ", ")))
 }

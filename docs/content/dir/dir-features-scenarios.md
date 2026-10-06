@@ -11,8 +11,6 @@ scenarios. All code snippets below are tested against the Directory `v1.0.0` rel
     Although the following example is shown for a CLI-based usage scenario, the same
     functionality can be performed using language-specific SDKs.
 
-The Agent Directory Service is also accessible through the Directory MCP Server. It provides a standardized interface for AI assistants and tools to interact with the Directory system and work with OASF agent records. See the [MCP Server documentation](dir-component-mcp-server.md) for more information.
-
 ## Prerequisites
 
 The following prerequisites are required to follow the examples below:

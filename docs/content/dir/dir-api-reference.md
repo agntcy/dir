@@ -41,7 +41,6 @@ Server APIs return standard gRPC status codes:
 
 - **CLI** — [Directory CLI Reference](dir-cli-reference.md) (`dirctl`)
 - **SDKs** — [Go, Python, and JavaScript](dir-sdk.md) libraries
-- **MCP** — [MCP Server](dir-component-mcp-server.md) for tool-based access
 
 For HTTP/gateway access patterns and OIDC, see
 [OIDC Authentication](dir-component-oidc-authentication.md).

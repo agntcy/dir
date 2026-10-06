@@ -25,15 +25,12 @@ const (
 	RecordName    = "org.agntcy/directory"
 	SchemaVersion = "1.0.0"
 
-	MCPModuleName         = "integration/mcp"
 	AgentSkillsModuleName = "core/language_model/agentskills"
-	MCPServerName         = "agntcy-dir-mcp"
 
 	// OASF taxonomy IDs (verified against the 1.0.0 JSON schema). Mismatching
 	// these is a hard validation error, missing them is only a warning.
 	skillContextualComprehensionID uint32 = 10101
 	agentSkillsModuleID            uint32 = 10302
-	mcpModuleID                    uint32 = 202
 	domainAPIsIntegrationID        uint32 = 10204
 
 	// Used when the binary lacks an ldflags-stamped version (e.g. `go run`).
@@ -72,11 +69,6 @@ func BuildRecord(now time.Time) (*corev1.Record, error) {
 		return nil, err
 	}
 
-	mcpModule, err := buildMCPModule()
-	if err != nil {
-		return nil, err
-	}
-
 	return corev1.New(&typesv1.Record{
 		Name:          RecordName,
 		SchemaVersion: SchemaVersion,
@@ -90,7 +82,7 @@ func BuildRecord(now time.Time) (*corev1.Record, error) {
 		Domains: []*typesv1.Domain{
 			{Name: domainAPIsIntegrationName, Id: domainAPIsIntegrationID},
 		},
-		Modules: []*typesv1.Module{skillModule, mcpModule},
+		Modules: []*typesv1.Module{skillModule},
 	}), nil
 }
 
@@ -128,35 +120,5 @@ func buildAgentSkillsModule(recordVer string, skillBytes []byte) (*typesv1.Modul
 			Digest:    ocidigest.FromBytes(skillBytes).String(),
 			Data:      skillBytes,
 		},
-	}, nil
-}
-
-func buildMCPModule() (*typesv1.Module, error) {
-	// `dirctl mcp serve` is the embedded MCP server that fronts this Directory.
-	connection, err := structpb.NewStruct(map[string]any{
-		"type":    "stdio",
-		"command": "dirctl",
-		"args":    []any{"mcp", "serve"},
-	})
-	if err != nil {
-		return nil, fmt.Errorf("build mcp connection struct: %w", err)
-	}
-
-	data, err := structpb.NewStruct(map[string]any{
-		"name":        MCPServerName,
-		"description": "MCP server fronting this AGNTCY Directory instance.",
-	})
-	if err != nil {
-		return nil, fmt.Errorf("build mcp data struct: %w", err)
-	}
-
-	data.GetFields()["connections"] = structpb.NewListValue(&structpb.ListValue{
-		Values: []*structpb.Value{structpb.NewStructValue(connection)},
-	})
-
-	return &typesv1.Module{
-		Name: MCPModuleName,
-		Id:   mcpModuleID,
-		Data: data,
 	}, nil
 }

@@ -14,7 +14,7 @@ Publish and discover agent records in a few commands. Install the real CLI from 
 Use `dirctl --help` to see available commands. See the [CLI Reference](dir/dir-cli-reference.md) for more details.
 {: .dirctl-terminal-intro data-intro-level="try" hidden}
 
-Need a skill, MCP server, or A2A partner? Your agent searches the Directory, wires it in, and uses it right away. See the [MCP server](dir/dir-component-mcp-server.md) for more details.
+Need a skill, MCP server, or A2A partner? Your agent searches the Directory, wires it in, and uses it right away.
 {: .dirctl-terminal-intro data-intro-level="agent"}
 
 </div>

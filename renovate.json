@@ -120,8 +120,7 @@
       "matchDatasources": ["go"],
       "matchPackageNames": [
         "github.com/agntcy/dir-runtime{/,}**",
-        "github.com/agntcy/dir-importer",
-        "github.com/agntcy/dir-mcp"
+        "github.com/agntcy/dir-importer"
       ],
       "addLabels": ["agntcy", "release"],
       "automerge": false,

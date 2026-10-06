@@ -11,7 +11,7 @@ only; workflow examples live in [Features and Usage Scenarios](dir-features-scen
 
 ### Output formats
 
-Most data-producing commands support `--output` / `-o`. Exceptions include `validate`, `context`, `auth`, `daemon`, `mcp serve`, and `version`.
+Most data-producing commands support `--output` / `-o`. Exceptions include `validate`, `context`, `auth`, `daemon`, and `version`.
 
 | Format | Description | Use case |
 |--------|-------------|----------|
@@ -82,7 +82,6 @@ explicit `--auth-mode`.
 | Identity | `identity claim`, `status`, `resolve` |
 | Sync | `sync create`, `status`, `list`, `delete` |
 | Events | `events listen` |
-| MCP | `mcp serve` |
 | Install | `install run`, `install uninstall` (or top-level `uninstall`), `install list`, `install agents`, `install outdated`, `install upgrade`, `install pin`, `install unpin`, `install prune` |
 | Diagnostics | `doctor`, `version` |
 
@@ -113,15 +112,10 @@ yes, so pressing Enter provisions. To avoid an unattended ~89 MB download, a
 `--yes`. Re-running is idempotent: nothing is re-downloaded when the assets are
 present and current, and the taxonomy is re-embedded only when it changed.
 
-Its last step wires this Directory into your AI coding agents: an MCP server
-entry so an agent can push, search, and pull records, plus the DIR skill as a
-usage guide. Both come from a record built into the `dirctl` binary —
-`org.agntcy/directory` — so no Directory connection is made, and the MCP entry
-carries the `DIRECTORY_CLIENT_*` environment for the context this invocation
-resolved, because `dirctl mcp serve` reads its target from nothing else. That
-is the context `--context` names, or the one Step 1 has just configured; the
-two secrets, `auth_token` and `spiffe_token`, are never written into an agent's
-config file.
+Its last step wires this Directory into your AI coding agents with the DIR
+skill, a usage guide for pushing, searching, and pulling records. It comes from
+a record built into the `dirctl` binary — `org.agntcy/directory` — so no
+Directory connection is made.
 
 That install is recorded in the [install manifest](#the-install-manifest) like
 any other package, with `origin: builtin`. It therefore shows up in
@@ -134,7 +128,7 @@ removes it. `dirctl init --remove` clears both the artifacts and the rows.
 | `--oasf-url` | OASF schema endpoint to pull the taxonomy from | `https://schema.oasf.outshift.com` |
 | `--asset-dir` | Local directory for the provisioned assets | `~/.agntcy/oasf-sdk/extractor` |
 | `--extractor-remote-addr` | gRPC OASF-SDK server to use instead of local assets | - |
-| `--agents` | Agents to configure in the MCP server & skills step | `all` |
+| `--agents` | Agents to configure in the skills step | `all` |
 | `--yes` / `-y` | Provision without prompting (required for non-interactive runs) | `false` |
 | `--remove` | Remove the provisioned assets and clear the saved config | `false` |
 
@@ -166,13 +160,6 @@ Runs connectivity and configuration checks against the configured Directory serv
 ### `dirctl version`
 
 Prints the `dirctl` build version.
-
-## MCP Server
-
-### `dirctl mcp serve`
-
-Starts the built-in MCP server used by external AI tooling. Delegates to the
-[`dir-mcp`](https://github.com/agntcy/dir-mcp) module.
 
 ## Agent Install
 
@@ -393,12 +380,9 @@ installs in other repositories included. Pass `--project` to narrow the run to
 the repository you are in.
 
 The built-in `org.agntcy/directory` package is rebuilt from this `dirctl` binary
-rather than pulled, even though a record of the same name is published. The
-published record's MCP module carries no environment, so installing it would
-silently repoint `dirctl mcp serve` at the default address; rebuilding also
-recomputes the `DIRECTORY_CLIENT_*` overlay from the context this invocation
-resolved — `--context` and the connection flags included — instead of replaying
-what it held when the package was installed.
+rather than pulled, even though a record of the same name is published, so an
+upgrade never offers a downgrade when this binary leads the server's published
+build.
 
 | Flag | Description | Default |
 |------|-------------|---------|

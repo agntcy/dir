@@ -19,7 +19,6 @@ import (
 	"github.com/agntcy/dir/cli/cmd/info"
 	initcmd "github.com/agntcy/dir/cli/cmd/init"
 	"github.com/agntcy/dir/cli/cmd/install"
-	"github.com/agntcy/dir/cli/cmd/mcp"
 	"github.com/agntcy/dir/cli/cmd/network"
 	"github.com/agntcy/dir/cli/cmd/pull"
 	"github.com/agntcy/dir/cli/cmd/push"
@@ -107,7 +106,6 @@ func init() {
 	network.Command.PersistentPreRunE = skipClientSetup
 	validate.Command.PersistentPreRunE = skipClientSetup
 	version.Command.PersistentPreRunE = skipClientSetup
-	mcp.Command.PersistentPreRunE = skipClientSetup
 	initcmd.Command.PersistentPreRunE = skipClientSetup
 
 	// Install subcommands that only read or edit local state, `uninstall`
@@ -148,8 +146,6 @@ func init() {
 		sync.Command,
 		// events commands
 		events.Command, // Contains: listen
-		// mcp commands
-		mcp.Command, // Contains: serve
 		// install commands
 		install.Command,          // Contains: run, uninstall, list
 		install.UninstallCommand, // top-level `uninstall` shorthand for `install uninstall`

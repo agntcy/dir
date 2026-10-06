@@ -104,7 +104,7 @@ plugins:
       'dir/runtime.md': 'dir/dir-component-runtime-discovery.md'
       'dir/events.md': 'dir/dir-architecture.md'
       'dir/dir-component-event-streaming.md': 'dir/dir-architecture.md'
-      'dir/directory-mcp.md': 'dir/dir-component-mcp-server.md'
+      'dir/directory-mcp.md': 'dir/dir-architecture.md'
       'dir/directory-gui.md': 'dir/dir-architecture.md'
       'dir/dir-component-gui.md': 'dir/dir-architecture.md'
       'dir/trust-model.md': 'dir/dir-component-trust-model.md'
@@ -135,7 +135,6 @@ nav:
           - Identity and Ownership: dir/dir-component-identity.md
           - Extensions:
               - Runtime Discovery: dir/dir-component-runtime-discovery.md
-              - MCP Server: dir/dir-component-mcp-server.md
               - Import and Export: dir/dir-component-import.md
               - OIDC Authentication: dir/dir-component-oidc-authentication.md
       - Deploy:
