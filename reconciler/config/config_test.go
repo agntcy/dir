@@ -30,6 +30,13 @@ func TestLoadConfig_NoFile_ReturnsDefaults(t *testing.T) {
 	// Task defaults
 	assert.True(t, cfg.Regsync.Enabled)
 	assert.True(t, cfg.Indexer.Enabled)
+	assert.False(t, cfg.Prune.Enabled)
+	assert.Equal(t, 30*time.Minute, cfg.Prune.Interval)
+	assert.False(t, cfg.Prune.Criteria.Trusted)
+	assert.Equal(t, "MEDIUM", cfg.Prune.Criteria.MinSeverity)
+	assert.Equal(t, 168*time.Hour, cfg.Prune.Criteria.OlderThan)
+	assert.Equal(t, 100, cfg.Prune.Limit)
+	assert.True(t, cfg.Prune.DryRun)
 
 	// The identity task is off unless asked for.
 	assert.False(t, cfg.Identity.Enabled)
@@ -70,6 +77,13 @@ func TestLoadConfig_EnvOverrides(t *testing.T) {
 	t.Setenv("RECONCILER_POLICY_EVALUATION_INTERVAL", "5m")
 	t.Setenv("RECONCILER_POLICY_EVALUATION_RECORD_TIMEOUT", "45s")
 	t.Setenv("RECONCILER_POLICY_EVALUATION_BATCH_SIZE", "250")
+	t.Setenv("RECONCILER_PRUNE_ENABLED", "true")
+	t.Setenv("RECONCILER_PRUNE_INTERVAL", "15m")
+	t.Setenv("RECONCILER_PRUNE_CRITERIA_TRUSTED", "true")
+	t.Setenv("RECONCILER_PRUNE_CRITERIA_MIN_SEVERITY", "HIGH")
+	t.Setenv("RECONCILER_PRUNE_CRITERIA_OLDER_THAN", "48h")
+	t.Setenv("RECONCILER_PRUNE_LIMIT", "25")
+	t.Setenv("RECONCILER_PRUNE_DRY_RUN", "false")
 
 	cfg, err := LoadConfig()
 	require.NoError(t, err)
@@ -82,6 +96,13 @@ func TestLoadConfig_EnvOverrides(t *testing.T) {
 	assert.Equal(t, 5*time.Minute, cfg.PolicyEvaluation.Interval)
 	assert.Equal(t, 45*time.Second, cfg.PolicyEvaluation.RecordTimeout)
 	assert.Equal(t, 250, cfg.PolicyEvaluation.BatchSize)
+	assert.True(t, cfg.Prune.Enabled)
+	assert.Equal(t, 15*time.Minute, cfg.Prune.Interval)
+	assert.True(t, cfg.Prune.Criteria.Trusted)
+	assert.Equal(t, "HIGH", cfg.Prune.Criteria.MinSeverity)
+	assert.Equal(t, 48*time.Hour, cfg.Prune.Criteria.OlderThan)
+	assert.Equal(t, 25, cfg.Prune.Limit)
+	assert.False(t, cfg.Prune.DryRun)
 }
 
 // The task must be switchable with environment variables alone, with no config

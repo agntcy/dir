@@ -723,6 +723,7 @@ apiserver:
   # The reconciler handles async operations including:
   # - regsync: syncs records from remote registries
   # - indexer: indexes synced records into the database for search
+  # - prune: deletes records matching configured criteria
   # Shares the same database as the apiserver.
   reconciler:
     image:
@@ -806,6 +807,21 @@ apiserver:
         # Bounds endpoints dialed per record. Raise only for aggregator
         # records that legitimately bundle several MCP servers.
         max_endpoints_per_record: 8
+
+      # Prune task. Deletes records that match criteria (trusted, min_severity,
+      # older_than). Disabled by default — this deletes records. dry_run
+      # defaults to true so enabling the task only logs matches until you
+      # set it to false.
+      prune:
+        enabled: false
+        interval: "30m"
+        record_timeout: "30s"
+        criteria:
+          trusted: false
+          min_severity: "MEDIUM"
+          older_than: "168h"
+        limit: 100
+        dry_run: true
 
       # Apiserver gRPC address — required by the metrics task to query provider counts.
       # Leave empty to auto-resolve to the in-cluster apiserver Service.

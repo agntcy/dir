@@ -17,6 +17,7 @@ import (
 	"github.com/agntcy/dir/reconciler/tasks/indexer"
 	"github.com/agntcy/dir/reconciler/tasks/metrics"
 	"github.com/agntcy/dir/reconciler/tasks/policy"
+	"github.com/agntcy/dir/reconciler/tasks/prune"
 	"github.com/agntcy/dir/reconciler/tasks/regsync"
 	"github.com/agntcy/dir/reconciler/tasks/scan"
 	"github.com/agntcy/dir/reconciler/tasks/signature"
@@ -124,6 +125,15 @@ func (s *Service) registerTasks(cfg *config.Config, db servertypes.DatabaseAPI, 
 
 			s.addTask(t)
 		}
+	}
+
+	if cfg.Prune.Enabled {
+		t, err := prune.NewTask(cfg.Prune, db, store)
+		if err != nil {
+			return fmt.Errorf("failed to create prune task: %w", err)
+		}
+
+		s.addTask(t)
 	}
 
 	if err := s.registerIdentityTask(cfg, db, store); err != nil {
