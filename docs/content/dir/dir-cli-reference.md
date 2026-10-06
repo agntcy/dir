@@ -833,6 +833,40 @@ Regular `dirctl` commands select a context in this order:
 
 After context selection, environment variables and explicit root flags such as `--server-addr`, `--auth-mode`, `--oidc-issuer`, and `--auth-token` override the selected context for that invocation.
 
+### Sigstore settings
+
+A context can carry a `sigstore` section with the keyless (OIDC) signing and verification settings used by `dirctl sign`, `dirctl push --sign`, `dirctl import --sign`, and `dirctl verify`. Use it to point a context at a self-hosted Sigstore stack instead of the public-good instance. Fields left unset keep the public-good defaults, and contexts without the section behave as before.
+
+```yaml
+contexts:
+  corp:
+    server_address: dir.corp.example:443
+    sigstore:
+      # Signing
+      fulcio_url: https://fulcio.corp.example
+      rekor_url: https://rekor.corp.example
+      timestamp_url: https://tsa.corp.example/api/v1/timestamp
+      # Only for a deployment without a Rekor transparency log.
+      skip_tlog: true
+      oidc_provider_url: https://idp.corp.example
+      oidc_client_id: sigstore
+      # Verification
+      tuf_mirror_url: https://tuf.corp.example
+      trusted_root_path: /etc/dirctl/corp-trusted-root.json
+      # These lower the verification guarantees. Set them only for a Sigstore
+      # deployment that has no Rekor transparency log or no CT log for SCTs.
+      ignore_tlog: true
+      ignore_sct: true
+```
+
+Each key matches the `dirctl sign` or `dirctl verify` flag of the same name (`fulcio_url` is `--fulcio-url`, and so on), and can also be set with a `DIRECTORY_CLIENT_SIGSTORE_<KEY>` environment variable, for example `DIRECTORY_CLIENT_SIGSTORE_FULCIO_URL`. For each setting, an explicitly passed flag wins, then the environment variable, then the context's `sigstore` section, then the built-in default.
+
+An unset or empty value keeps the built-in default, so config can turn a boolean on but not force it off, and cannot set a URL to empty; pass the flag explicitly for that (for example `--skip-tlog=false`). An environment variable set to an empty string counts as unset. `dirctl context show` prints the effective `sigstore.*` values, including environment overrides.
+
+Settings that weaken or replace the default verification trust (`ignore_tlog`, `ignore_tsa`, `ignore_sct`, `trusted_root_path`, and a non-default `tuf_mirror_url`) print a warning on stderr when `dirctl verify` takes them from a context or an environment variable rather than from a flag, naming where each one came from. Structured output on stdout is unaffected.
+
+`sigstore.oidc_client_id` is the OIDC client used to obtain a Fulcio signing certificate. It is separate from the context's top-level `oidc_client_id`, which `dirctl auth login` uses. The OIDC client secret and ID token are not read from the config file; pass them with `--oidc-client-secret` and `--oidc-token`.
+
 !!! note "Sensitive values"
 
     `dirctl context show` redacts `auth_token` and `spiffe_token` values. Prefer environment variables or a secret manager for bearer tokens instead of storing long-lived tokens in `config.yaml`.
@@ -1844,6 +1878,10 @@ non-interactive process does not read standard input implicitly.
 Local and inline PEM keys must use the encrypted Cosign/Sigstore format produced by
 `cosign generate-key-pair`.
 
+The Sigstore endpoints for keyless signing (`--fulcio-url`, `--rekor-url`,
+`--timestamp-url`, `--skip-tlog`, `--oidc-provider-url`, `--oidc-client-id`) can
+also come from the selected context. See [Sigstore settings](#sigstore-settings).
+
 The `--key` flag accepts PEM content, a local file, an HTTP(S) URL, an environment
 variable reference, or a KMS URI. The supported KMS URI formats are:
 
@@ -1951,6 +1989,8 @@ Verifies a record signature. Signatures are fetched from the directory.
 | `--oidc-subject` | OIDC subject to match (supports regexp) |
 | `--from-server` | Use the server's cached verification result |
 | `--ignore-tlog` | Skip transparency log verification |
+
+The OIDC trust settings (`--tuf-mirror-url`, `--trusted-root-path`, `--ignore-tlog`, `--ignore-tsa`, `--ignore-sct`) can also come from the selected context. See [Sigstore settings](#sigstore-settings).
 
 ??? example
 

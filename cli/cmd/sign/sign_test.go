@@ -166,16 +166,9 @@ func TestPrivateKeyPasswordReaderUsesTerminal(t *testing.T) {
 }
 
 func TestReadPrivateKeyPasswordUsesEnvironment(t *testing.T) {
-	original := opts.PasswordStdin
-
-	t.Cleanup(func() {
-		opts.PasswordStdin = original
-	})
 	t.Setenv("COSIGN_PASSWORD", "secret")
 
-	opts.PasswordStdin = false
-
-	password, err := readPrivateKeyPassword()()
+	password, err := readPrivateKeyPassword(false)()
 	if err != nil {
 		t.Fatalf("read password: %v", err)
 	}

@@ -84,6 +84,7 @@ type Context struct {
 	OIDCAudience     string   `yaml:"oidc_audience"`
 	AuthToken        string   `yaml:"auth_token"`
 	Doctor           Doctor   `yaml:"doctor"`
+	Sigstore         Sigstore `yaml:"sigstore,omitempty"`
 }
 
 // Doctor holds diagnostic-only settings for dirctl doctor.
