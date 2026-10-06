@@ -13,6 +13,7 @@ import (
 	"context"
 	"crypto"
 	"errors"
+	"time"
 )
 
 // ErrNoKeys is returned when a subject publishes no usable public key.
@@ -24,6 +25,12 @@ type Resolver interface {
 	// claim's DER-encoded X.509 certificate, empty when the claim has none;
 	// only SPIFFE resolution reads it.
 	Resolve(ctx context.Context, subject string, certificate []byte) ([]crypto.PublicKey, error)
+}
+
+// ExpiringResolver bounds the use of an authenticated key-resolution answer.
+// A zero deadline leaves the existing resolver behavior unchanged.
+type ExpiringResolver interface {
+	ResolutionValidUntil(subject string, certificate []byte) time.Time
 }
 
 // Fetcher retrieves a document over HTTPS. safefetch.Client implements it.

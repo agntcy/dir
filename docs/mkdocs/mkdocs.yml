@@ -133,6 +133,7 @@ nav:
           - Routing: dir/dir-component-routing.md
           - Trust Model: dir/dir-component-trust-model.md
           - Identity and Ownership: dir/dir-component-identity.md
+          - AGNTCY Identity Claims: dir/dir-component-identity-agntcy.md
           - Extensions:
               - Runtime Discovery: dir/dir-component-runtime-discovery.md
               - MCP Server: dir/dir-component-mcp-server.md

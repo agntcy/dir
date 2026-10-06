@@ -3,7 +3,11 @@
 
 package identity
 
-import "time"
+import (
+	"time"
+
+	agntcyresolver "github.com/agntcy/dir/client/utils/identity/resolvers/agntcy"
+)
 
 const (
 	// DefaultInterval is the default reconciliation interval for claim verification.
@@ -38,6 +42,10 @@ type Config struct {
 	// are read on every run, so a rotated or revoked bundle applies on the next one.
 	// YAML only: a list does not map onto environment variables.
 	SPIFFETrustBundles []TrustBundle `json:"spiffe_trust_bundles,omitempty" mapstructure:"spiffe_trust_bundles"`
+
+	// AGNTCY configures the accepted external AGNTCY authority. Trust keys and
+	// authentication files are reloaded on each run for operator-managed rotation.
+	AGNTCY agntcyresolver.Config `json:"agntcy,omitzero" mapstructure:"agntcy"`
 }
 
 // GetInterval returns the interval with default fallback.

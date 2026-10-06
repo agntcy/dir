@@ -20,23 +20,44 @@ var ErrIdentityClaimNotFound = errors.New("identity claim not found")
 // IdentityClaim stores the last verification result of one claim of a record.
 // There is one row per (record_cid, role).
 type IdentityClaim struct {
-	RecordCID  string    `gorm:"column:record_cid;primaryKey;not null"`
-	Role       string    `gorm:"column:role;primaryKey;not null"` // "identity" or "owner"
-	Subject    string    `gorm:"column:subject;not null;index"`
-	Status     string    `gorm:"column:status;not null;index"` // "verified" or "failed"
-	Error      string    `gorm:"column:error"`
-	VerifiedAt time.Time `gorm:"column:verified_at;not null"`
+	RecordCID  string     `gorm:"column:record_cid;primaryKey;not null"`
+	Role       string     `gorm:"column:role;primaryKey;not null"` // "identity" or "owner"
+	Subject    string     `gorm:"column:subject;not null;index"`
+	Status     string     `gorm:"column:status;not null;index"` // "verified" or "failed"
+	Error      string     `gorm:"column:error"`
+	VerifiedAt time.Time  `gorm:"column:verified_at;not null"`
+	ValidUntil *time.Time `gorm:"column:valid_until;index"`
 }
 
 // Ensure IdentityClaim implements types.IdentityClaimObject.
 var _ types.IdentityClaimObject = (*IdentityClaim)(nil)
 
-func (c *IdentityClaim) GetRecordCID() string     { return c.RecordCID }
-func (c *IdentityClaim) GetRole() string          { return c.Role }
-func (c *IdentityClaim) GetSubject() string       { return c.Subject }
-func (c *IdentityClaim) GetStatus() string        { return c.Status }
-func (c *IdentityClaim) GetError() string         { return c.Error }
+func (c *IdentityClaim) GetRecordCID() string { return c.RecordCID }
+func (c *IdentityClaim) GetRole() string      { return c.Role }
+func (c *IdentityClaim) GetSubject() string   { return c.Subject }
+func (c *IdentityClaim) GetStatus() string {
+	if c.Status == types.ClaimStatusVerified && types.IdentityClaimExpired(c, time.Now()) {
+		return types.ClaimStatusFailed
+	}
+
+	return c.Status
+}
+
+func (c *IdentityClaim) GetError() string {
+	if c.Status == types.ClaimStatusVerified && types.IdentityClaimExpired(c, time.Now()) {
+		return "identity verification result has expired; reconciliation is required"
+	}
+
+	return c.Error
+}
 func (c *IdentityClaim) GetVerifiedAt() time.Time { return c.VerifiedAt }
+func (c *IdentityClaim) GetValidUntil() time.Time {
+	if c.ValidUntil != nil {
+		return *c.ValidUntil
+	}
+
+	return time.Time{}
+}
 
 // UpsertIdentityClaim inserts or updates the result keyed by (record_cid, role).
 func (d *DB) UpsertIdentityClaim(claim types.IdentityClaimObject) error {
@@ -61,10 +82,15 @@ func (d *DB) UpsertIdentityClaim(claim types.IdentityClaimObject) error {
 		Error:      claim.GetError(),
 		VerifiedAt: verifiedAt,
 	}
+	if expiring, ok := claim.(types.IdentityClaimValidity); ok {
+		if until := expiring.GetValidUntil(); !until.IsZero() {
+			row.ValidUntil = &until
+		}
+	}
 
 	err := d.gormDB.Clauses(clause.OnConflict{
 		Columns:   []clause.Column{{Name: "record_cid"}, {Name: "role"}},
-		DoUpdates: clause.AssignmentColumns([]string{"subject", "status", "error", "verified_at"}),
+		DoUpdates: clause.AssignmentColumns([]string{"subject", "status", "error", "verified_at", "valid_until"}),
 	}).Create(row).Error
 	if err != nil {
 		return fmt.Errorf("upsert identity claim: %w", err)
@@ -140,7 +166,7 @@ func applyClaimSubjects(query *gormlib.DB, role string, patterns []string) *gorm
 // applyClaimVerified keeps records whose claim of role has a verified result.
 func applyClaimVerified(query *gormlib.DB, role string) *gormlib.DB {
 	return query.Where(
-		"EXISTS (SELECT 1 FROM identity_claims ic WHERE ic.record_cid = records.record_cid AND ic.role = ? AND ic.status = ?)",
-		role, types.ClaimStatusVerified,
+		"EXISTS (SELECT 1 FROM identity_claims ic WHERE ic.record_cid = records.record_cid AND ic.role = ? AND ic.status = ? AND (ic.valid_until IS NULL OR ic.valid_until > ?))",
+		role, types.ClaimStatusVerified, time.Now(),
 	)
 }

@@ -4,8 +4,8 @@ icon: material/account-check
 
 # Identity and Ownership Claims
 
-A record can carry two signed claims: one for the identity of the record itself and one
-for the owner behind it. A claim ties the record to a subject (a domain, a DID or a
+A record can carry signed claims for two roles: the identity of the record itself and
+the owner behind it. Each role may have multiple claims. A claim ties the record to a subject (a domain, a DID or a
 SPIFFE ID) and is proven with a signature that anyone can check against key material the
 subject publishes. The reconciler verifies every claim on a schedule and stores the outcome, so
 a rotated key or a revoked trust bundle shows up on the next run.
@@ -154,8 +154,16 @@ the keys the subject currently publishes validates its signature.
 | `did:web:example.com:agents:finance` | `https://example.com/agents/finance/did.json` |
 | `did:key:z...` | The key encoded in the DID itself; no network access |
 | `spiffe://example.com/agents/finance` | The SVID in the claim, validated against a configured trust bundle |
+| `agntcy://Agent-One` | Agent keys from a configured AGNTCY verification service; required badge evidence is checked separately |
 
 Any other scheme, such as `http://` or `mailto:`, is not supported and fails the claim.
+
+### AGNTCY
+
+AGNTCY claims use a configured authority for authenticated key resolution and,
+by default, a record-specific Agent Badge check. See
+[AGNTCY Identity Claims](dir-component-identity-agntcy.md) for the experimental
+protocol, trust policy, configuration, and verification limits.
 
 ### DNS
 
@@ -206,6 +214,10 @@ data. It speaks HTTPS only, refuses to connect to private, loopback, link-local 
 non-public addresses (checked after DNS resolution), follows at most three redirects, and
 accepts responses of at most 1 MiB within a 10 second timeout.
 
+AGNTCY endpoints are selected by the operator and may be private. Its resolver
+uses configured HTTPS CA trust and disables redirects; record data cannot choose
+the endpoint. See the AGNTCY configuration for its response and time limits.
+
 ## Verification
 
 The `identity` task of the [reconciler](dir-architecture.md) checks claims on a fixed interval.
@@ -227,7 +239,9 @@ whoever else attached claims. Otherwise the failure of the claim with the newest
 reported. A `signedAt` in the future, or one that does not parse, counts as the oldest, so a
 forged date cannot outrank an honest claim.
 
-Within one run a lookup is made once per subject, however many records share it.
+Within one run a lookup is cached per subject, however many records share it.
+An expiring key result is renewed after its deadline. Required AGNTCY badge
+evidence is checked separately for each candidate claim.
 
 ### Results
 
@@ -251,6 +265,10 @@ days from the last run that reached the subject. The period is fixed and cannot 
 After that, the next run that still cannot reach the subject stores a `failed` result with the
 lookup error.
 
+A stored validity deadline also bounds grace: an expired observation cannot be
+preserved as verified. AGNTCY results always have such a deadline; other claims
+may have one from their signed expiry.
+
 Two cases get no grace:
 
 - A claim that has no stored result yet fails at once if its subject is unreachable on the first run, and verifies on the first run that reaches it.
@@ -269,6 +287,7 @@ Each result is one row per record and role in the server database.
 | `status` | `verified` or `failed` |
 | `error` | Reason for a failure |
 | `verified_at` | When the claim was last checked |
+| `valid_until` | Optional deadline; expired results are reported as failed and excluded from verified search |
 
 ## Reading the results
 
