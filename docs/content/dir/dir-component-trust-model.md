@@ -86,8 +86,13 @@ publishes (a DNS TXT record, a `/.well-known/jwks.json` file, a DID document, or
 trust bundle) and records the outcome, which `dirctl identity status` reports and the
 `--identity-verified`, `--owner-verified` and `--verified` search filters match on.
 
+Claims are re-verified on every reconciler run, so a rotated key or a revoked trust bundle is
+caught on the next one. For the claim schema, the supported subjects and the verification
+rules, see [Identity and Ownership Claims](dir-component-identity.md).
+
 Records can also be referenced using Docker-style name references (`name`, `name:version`,
-`name:version@cid`) instead of raw CIDs.
+`name:version@cid`) instead of raw CIDs. A name is not verified: it is a label chosen by the
+publisher, and the claims above are what prove who stands behind a record.
 
 ## Security Scanning
 
