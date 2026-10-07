@@ -34,15 +34,9 @@ import (
 	"github.com/agntcy/dir/utils/safefetch"
 )
 
-const (
-	// maxResponseBytes bounds a transparency log answer: a status token is a
-	// few hundred bytes and a root-keys set a few lines.
-	maxResponseBytes = 64 << 10
-
-	// minStatusCacheTTL keeps an attestation reusable across the claims of one
-	// record even when the configured lifetime is shorter.
-	minStatusCacheTTL = 5 * time.Second
-)
+// maxResponseBytes bounds a transparency log answer: a status token is a few
+// hundred bytes and a root-keys set a few lines.
+const maxResponseBytes = 64 << 10
 
 // Resolver resolves "ans://" subjects. It is safe for concurrent use.
 type Resolver struct {
@@ -287,7 +281,7 @@ func (r *Resolver) recall(subject string) (attestation, bool) {
 		return attestation{}, false
 	}
 
-	if att.status != nil && !att.status.ExpiresAt.IsZero() && now.After(att.status.ExpiresAt.Add(r.cfg.GetClockSkew())) {
+	if att.status != nil && now.After(att.status.ExpiresAt.Add(r.cfg.GetClockSkew())) {
 		return attestation{}, false
 	}
 
@@ -297,7 +291,7 @@ func (r *Resolver) recall(subject string) (attestation, bool) {
 // remember keeps att for subject and drops every expired entry on the way.
 func (r *Resolver) remember(subject string, att attestation) {
 	now := r.clock()
-	att.expires = now.Add(max(r.cfg.GetStatusCacheTTL(), minStatusCacheTTL))
+	att.expires = now.Add(r.cfg.GetStatusCacheTTL())
 
 	r.mu.Lock()
 	defer r.mu.Unlock()

@@ -51,8 +51,8 @@ type Status struct {
 	// State is the agent's lifecycle status.
 	State State
 
-	// ExpiresAt is when the statement stops being valid; zero means it does
-	// not expire.
+	// ExpiresAt is when the statement stops being valid. The log's tokens
+	// always carry one, so a zero value counts as already expired.
 	ExpiresAt time.Time
 
 	// IdentityCertificates are the SHA-256 fingerprints of the agent's valid

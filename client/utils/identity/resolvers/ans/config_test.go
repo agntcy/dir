@@ -47,7 +47,7 @@ func TestConfigValidate(t *testing.T) {
 		},
 		{
 			name:   "durations at their bounds",
-			config: Config{TrustedLogHosts: []string{testLogHost}, RootKeys: []string{testRootKeyLine}, ClockSkew: scitt.MaxClockSkew},
+			config: Config{TrustedLogHosts: []string{testLogHost}, RootKeys: []string{testRootKeyLine}, StatusCacheTTL: MinStatusCacheTTL, ClockSkew: scitt.MaxClockSkew},
 		},
 		{
 			name:    "no hosts",
@@ -98,6 +98,11 @@ func TestConfigValidate(t *testing.T) {
 			name:    "negative status cache ttl",
 			config:  Config{TrustedLogHosts: []string{testLogHost}, RootKeys: []string{testRootKeyLine}, StatusCacheTTL: -time.Second},
 			wantErr: "status_cache_ttl must not be negative",
+		},
+		{
+			name:    "status cache ttl below the minimum",
+			config:  Config{TrustedLogHosts: []string{testLogHost}, RootKeys: []string{testRootKeyLine}, StatusCacheTTL: MinStatusCacheTTL - time.Second},
+			wantErr: "status_cache_ttl must be at least 5s, got 4s",
 		},
 		{
 			name:    "negative clock skew",

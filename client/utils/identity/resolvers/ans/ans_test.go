@@ -465,9 +465,9 @@ func TestResolveMemoExpires(t *testing.T) {
 			advance: func(f *resolveFixture) { f.clock.advance(DefaultStatusCacheTTL) },
 		},
 		{
-			name:    "a short lifetime is floored",
-			setup:   func(f *resolveFixture) { f.cfg.StatusCacheTTL = time.Second },
-			advance: func(f *resolveFixture) { f.clock.advance(minStatusCacheTTL) },
+			name:    "after a configured lifetime",
+			setup:   func(f *resolveFixture) { f.cfg.StatusCacheTTL = MinStatusCacheTTL },
+			advance: func(f *resolveFixture) { f.clock.advance(MinStatusCacheTTL) },
 		},
 		{
 			name: "when the log's statement expires before the lifetime does",
@@ -493,14 +493,6 @@ func TestResolveMemoExpires(t *testing.T) {
 
 			assert.Equal(t, int64(1), f.log.calls.Load(), "reused before expiry")
 
-			if f.cfg.StatusCacheTTL == time.Second {
-				f.clock.advance(time.Second)
-
-				_, err := f.resolve()
-				require.NoError(t, err)
-				assert.Equal(t, int64(1), f.log.calls.Load(), "the floor keeps the attestation past a 1s lifetime")
-			}
-
 			tt.advance(f)
 
 			_, err := f.resolve()
@@ -508,6 +500,21 @@ func TestResolveMemoExpires(t *testing.T) {
 			assert.Equal(t, int64(2), f.log.calls.Load(), "fetched again after expiry")
 		})
 	}
+}
+
+// The log's tokens always carry an expiry, so a statement without one comes
+// from another client and is never reused.
+func TestResolveDoesNotReuseAStatementWithoutExpiry(t *testing.T) {
+	f := newResolveFixture(t)
+	f.log.status.ExpiresAt = time.Time{}
+
+	for range 2 {
+		keys, err := f.resolve()
+		require.NoError(t, err)
+		f.requireCertificateKey(keys)
+	}
+
+	assert.Equal(t, int64(2), f.log.calls.Load())
 }
 
 func TestResolveMemoizesErrorsAndEvictsExpiredEntries(t *testing.T) {

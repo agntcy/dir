@@ -27,6 +27,11 @@ const (
 	// revocation can be delayed on top of the verification interval.
 	DefaultStatusCacheTTL = 30 * time.Second
 
+	// MinStatusCacheTTL is the shortest StatusCacheTTL accepted. The memo is
+	// what keeps the claims of one subject at one lookup however many a
+	// record carries, so it has to outlive the verification of one record.
+	MinStatusCacheTTL = 5 * time.Second
+
 	// DefaultClockSkew is the tolerance applied to a status token's expiry.
 	DefaultClockSkew = 30 * time.Second
 
@@ -58,8 +63,8 @@ type Config struct {
 	RootKeysTTL time.Duration `json:"root_keys_ttl,omitempty" mapstructure:"root_keys_ttl"`
 
 	// StatusCacheTTL is how long a subject's attestation is reused across
-	// claims. Defaults to DefaultStatusCacheTTL; keep it below the
-	// verification interval.
+	// claims. Defaults to DefaultStatusCacheTTL; at least MinStatusCacheTTL,
+	// and keep it below the verification interval.
 	StatusCacheTTL time.Duration `json:"status_cache_ttl,omitempty" mapstructure:"status_cache_ttl"`
 
 	// Timeout is the time allowed for each network stage of one lookup.
@@ -109,8 +114,9 @@ func (c Config) GetClockSkew() time.Duration {
 
 // Validate reports the first problem with the configuration: no trusted log
 // host or a malformed one, neither pinned keys nor the unpinned opt-in (or
-// both), a negative duration, or a clock skew above what the token verifier
-// honours. It opens no file and parses no key; New does that.
+// both), a negative duration, a status cache lifetime below
+// MinStatusCacheTTL, or a clock skew above what the token verifier honours.
+// It opens no file and parses no key; New does that.
 func (c Config) Validate() error {
 	if _, err := c.trustedSet(); err != nil {
 		return err
@@ -161,6 +167,10 @@ func (c Config) validateTrust() error {
 		if d.value < 0 {
 			return fmt.Errorf("ans: %s must not be negative, got %s", d.name, d.value)
 		}
+	}
+
+	if c.StatusCacheTTL != 0 && c.StatusCacheTTL < MinStatusCacheTTL {
+		return fmt.Errorf("ans: status_cache_ttl must be at least %s, got %s", MinStatusCacheTTL, c.StatusCacheTTL)
 	}
 
 	if c.ClockSkew > scitt.MaxClockSkew {
