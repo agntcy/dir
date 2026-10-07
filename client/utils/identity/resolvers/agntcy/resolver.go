@@ -319,7 +319,7 @@ func (r *Resolver) call(ctx context.Context, path string, input any, subject, ci
 }
 
 func (r *Resolver) validate(result VerificationResult, digest, subject, cid, kind, profile string, now time.Time) (time.Time, error) {
-	if result.Version != ProtocolVersion || result.Kind != kind || result.Profile != profile || result.PolicyVersion != SubjectKeyPolicy || result.Verifier != r.config.VerifierID {
+	if result.Version != ProtocolVersion || result.Kind != kind || result.Profile != profile || result.PolicyVersion != BadgePolicyVersion || result.Verifier != r.config.VerifierID {
 		return time.Time{}, errors.New("unexpected verifier identity, protocol, profile or policy")
 	}
 

@@ -33,7 +33,7 @@ func TestWireContract(t *testing.T) {
 	require.Equal(t, bytes.TrimSpace(resultJSON), encodedResult)
 	require.Equal(t, ProtocolVersion, result.Version)
 	require.Equal(t, Profile, result.Profile)
-	require.Equal(t, SubjectKeyPolicy, result.PolicyVersion)
+	require.Equal(t, BadgePolicyVersion, result.PolicyVersion)
 	require.Equal(t, DigestRequest(encoded), result.RequestDigest)
 	require.True(t, result.Checks.Identity && result.Checks.Badge)
 }

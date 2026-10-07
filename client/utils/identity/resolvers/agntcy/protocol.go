@@ -18,9 +18,9 @@ const (
 	ProtocolVersion = "agntcy.identity-verification.v2"
 	Profile         = "agntcy-agent-badge.v1"
 	KeyProfile      = "agntcy-agent-control.v1"
-	// SubjectKeyPolicy explicitly describes the reference Identity Node's
+	// BadgePolicyVersion explicitly describes the reference Identity Node's
 	// subject-key-backed badges; it does not imply independent issuer trust.
-	SubjectKeyPolicy = "subject-key-badge.v1"
+	BadgePolicyVersion = "subject-key-badge.v1"
 )
 
 type ResolutionRequest struct {

@@ -67,7 +67,7 @@ func authority(t *testing.T, mutate func(*VerificationResult)) (*Resolver, *iden
 			return
 		}
 
-		result := VerificationResult{Version: ProtocolVersion, Kind: "verify", Verifier: "agntcy-identity-verifier", Profile: Profile, PolicyVersion: SubjectKeyPolicy, Verified: true, Subject: claim.GetSubject(), RecordCID: claim.GetRecordCid(), RequestDigest: DigestRequest(input), CheckedAt: time.Now().UTC().Format(time.RFC3339), ExpiresAt: time.Now().Add(20 * time.Minute).UTC().Format(time.RFC3339)}
+		result := VerificationResult{Version: ProtocolVersion, Kind: "verify", Verifier: "agntcy-identity-verifier", Profile: Profile, PolicyVersion: BadgePolicyVersion, Verified: true, Subject: claim.GetSubject(), RecordCID: claim.GetRecordCid(), RequestDigest: DigestRequest(input), CheckedAt: time.Now().UTC().Format(time.RFC3339), ExpiresAt: time.Now().Add(20 * time.Minute).UTC().Format(time.RFC3339)}
 		result.PublicKeys = []json.RawMessage{keyJSON}
 		result.Checks = VerificationChecks{Identity: true, Badge: true}
 
