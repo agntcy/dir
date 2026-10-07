@@ -158,8 +158,9 @@ reconciler:
 The trust bundle is a public JWKS (multiple keys permit rotation) or one PEM
 SubjectPublicKeyInfo public key. It authenticates service results and is separate
 from the agent keys and HTTPS CA trust. Trust and token files are reloaded at the
-start of each reconciliation run. Invalid configuration fails AGNTCY verification
-without blocking other schemes. `require_agent_badge` defaults to `true`; disabling
+start of each reconciliation run. Invalid initial configuration is rejected.
+A later reload failure fails AGNTCY verification closed while other configured
+schemes continue reconciling. `require_agent_badge` defaults to `true`; disabling
 it establishes only control of the declared identity. The pinned service ID
 defaults to `agntcy-identity-verifier`.
 
