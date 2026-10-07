@@ -163,7 +163,7 @@ without blocking other schemes. `require_agent_badge` defaults to `true`; disabl
 it establishes only control of the declared identity. The pinned service ID
 defaults to `agntcy-identity-verifier`.
 
-The included service requires bearer authentication. The resolver can instead use
+The companion service requires bearer authentication. The resolver can instead use
 an injected authenticated HTTP client when embedded by an operator; daemon
 configuration should provide `bearer_token_file` for this service. HTTPS CA trust
 uses Go's system roots; private deployments can provide `SSL_CERT_FILE` or
@@ -175,8 +175,9 @@ The verifier belongs to the AGNTCY Identity deployment. Directory contains the
 client adapter and reconciliation wiring. Configure its URL, response-signing
 trust bundle, authentication, profile and time limits as shown above.
 
-The companion module in `agntcy/identity`, `integrations/directory-verifier`,
-contains the service, Dockerfile and deployment instructions. It uses the Node's
+The [companion verifier PR](https://github.com/agntcy/identity/pull/182) provides
+the service, Dockerfile and deployment instructions in the Identity repository's
+`integrations/directory-verifier` module. It uses the Node's
 `/v1alpha1/id/resolve`, `/v1alpha1/vc/<agent-id>/.well-known/vcs.json`, and
 `/v1alpha1/vc/verify` APIs. Only keys referenced by `assertionMethod` are accepted.
 

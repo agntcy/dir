@@ -97,6 +97,7 @@ func (config Config) withDefaults() Config {
 	if config.Profile == "" {
 		config.Profile = config.claimProfile()
 	}
+
 	if config.VerifierID == "" {
 		config.VerifierID = "agntcy-identity-verifier"
 	}
@@ -187,13 +188,16 @@ func resultKeys(result VerificationResult) ([]crypto.PublicKey, error) {
 		if err != nil {
 			continue
 		}
+
 		if pub, ok := jws.PublicKeyFromJWK(key); ok {
 			keys = append(keys, pub)
 		}
 	}
+
 	if len(keys) == 0 {
 		return nil, resolvers.ErrNoKeys
 	}
+
 	return keys, nil
 }
 
@@ -210,6 +214,7 @@ func (r *Resolver) ResolveClaim(ctx context.Context, claim *identityv1.Claim) (c
 	if claim == nil {
 		return empty, errors.New("claim is nil")
 	}
+
 	if _, err := AgentID(claim.GetSubject()); err != nil {
 		return empty, err
 	}
@@ -217,10 +222,12 @@ func (r *Resolver) ResolveClaim(ctx context.Context, claim *identityv1.Claim) (c
 	if err := clientidentity.Check(claim, claim.GetRecordCid(), claim.GetSubject()); err != nil {
 		return empty, fmt.Errorf("check AGNTCY claim: %w", err)
 	}
+
 	payload, err := claim.GetPayload()
 	if err != nil {
 		return empty, fmt.Errorf("canonical claim payload: %w", err)
 	}
+
 	nonce, err := newNonce()
 	if err != nil {
 		return empty, err

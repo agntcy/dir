@@ -58,6 +58,7 @@ func authority(t *testing.T, mutate func(*VerificationResult)) (*Resolver, *iden
 	calls := &atomic.Int32{}
 	srv := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
 		calls.Add(1)
+
 		var input json.RawMessage
 		if err := json.NewDecoder(req.Body).Decode(&input); err != nil {
 			t.Error(err)
@@ -82,6 +83,7 @@ func authority(t *testing.T, mutate func(*VerificationResult)) (*Resolver, *iden
 			result.Profile = request.Profile
 			result.Checks.Badge = request.Profile == Profile
 		}
+
 		if req.URL.Path == "/v1/resolve" {
 			result.Kind = "resolve"
 			result.Profile = KeyProfile
@@ -118,6 +120,7 @@ func TestResolveClaimUsesOneRequest(t *testing.T) {
 
 	other, ok := proto.Clone(claim).(*identityv1.Claim)
 	require.True(t, ok)
+
 	other.RecordCid = "record-two"
 	_, err = r.ResolveClaim(context.Background(), other)
 	require.ErrorContains(t, err, "bound")

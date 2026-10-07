@@ -370,43 +370,61 @@ func (t *Task) verifyClaim(ctx context.Context, resolvers resolverSet, cid, expe
 	}
 
 	if strings.HasPrefix(claim.GetSubject(), "agntcy://") {
-		if t.claimResolver == nil {
-			return time.Time{}, fmt.Errorf("AGNTCY claim resolver is not registered")
-		}
-
-		resolution, err := t.claimResolver.ResolveClaim(ctx, claim)
-		if err != nil {
-			return time.Time{}, fmt.Errorf("resolve AGNTCY claim: %w", err)
-		}
-
-		if resolution.ValidUntil.IsZero() {
-			return time.Time{}, fmt.Errorf("AGNTCY claim resolution returned no validity deadline")
-		}
-
-		if _, err := clientidentity.Verify(claim, cid, expected, resolution.PublicKeys...); err != nil {
-			return time.Time{}, fmt.Errorf("verify claim: %w", err)
-		}
-
-		until = earlierDeadline(until, resolution.ValidUntil)
+		until, err = t.verifyAGNTCYClaim(ctx, cid, expected, claim, until)
 	} else {
-		keys, err := resolver.Resolve(ctx, claim.GetSubject(), certificate)
-		if err != nil {
-			return time.Time{}, fmt.Errorf("resolve keys of %s: %w", claim.GetSubject(), err)
-		}
+		until, err = verifyResolvedClaim(ctx, resolver, cid, expected, claim, certificate, until)
+	}
 
-		if _, err := clientidentity.Verify(claim, cid, expected, keys...); err != nil {
-			return time.Time{}, fmt.Errorf("verify claim: %w", err)
-		}
-
-		if expiring, ok := resolver.(keyresolvers.ExpiringResolver); ok {
-			until = earlierDeadline(until, expiring.ResolutionValidUntil(claim.GetSubject(), certificate))
-		}
+	if err != nil {
+		return time.Time{}, err
 	}
 
 	if !until.IsZero() && !until.After(time.Now()) {
 		return time.Time{}, fmt.Errorf("identity verification expired during reconciliation")
 	}
+
 	return until, nil
+}
+
+// verifyResolvedClaim retains standard resolver verification for other schemes.
+func verifyResolvedClaim(ctx context.Context, resolver keyresolvers.Resolver, cid, expected string, claim *identityv1.Claim, certificate []byte, until time.Time) (time.Time, error) {
+	keys, err := resolver.Resolve(ctx, claim.GetSubject(), certificate)
+	if err != nil {
+		return time.Time{}, fmt.Errorf("resolve keys of %s: %w", claim.GetSubject(), err)
+	}
+
+	if _, err := clientidentity.Verify(claim, cid, expected, keys...); err != nil {
+		return time.Time{}, fmt.Errorf("verify claim: %w", err)
+	}
+
+	if expiring, ok := resolver.(keyresolvers.ExpiringResolver); ok {
+		until = earlierDeadline(until, expiring.ResolutionValidUntil(claim.GetSubject(), certificate))
+	}
+
+	return until, nil
+}
+
+// verifyAGNTCYClaim obtains record-specific evidence and independently verifies
+// the native claim against its authenticated assertion keys.
+func (t *Task) verifyAGNTCYClaim(ctx context.Context, cid, expected string, claim *identityv1.Claim, until time.Time) (time.Time, error) {
+	if t.claimResolver == nil {
+		return time.Time{}, fmt.Errorf("AGNTCY claim resolver is not registered")
+	}
+
+	resolution, err := t.claimResolver.ResolveClaim(ctx, claim)
+	if err != nil {
+		return time.Time{}, fmt.Errorf("resolve AGNTCY claim: %w", err)
+	}
+
+	if resolution.ValidUntil.IsZero() {
+		return time.Time{}, fmt.Errorf("AGNTCY claim resolution returned no validity deadline")
+	}
+
+	if _, err := clientidentity.Verify(claim, cid, expected, resolution.PublicKeys...); err != nil {
+		return time.Time{}, fmt.Errorf("verify claim: %w", err)
+	}
+
+	return earlierDeadline(until, resolution.ValidUntil), nil
 }
 
 func earlierDeadline(a, b time.Time) time.Time {
