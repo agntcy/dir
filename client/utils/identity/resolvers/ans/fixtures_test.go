@@ -135,12 +135,14 @@ func (f *fakeTXT) set(name string, records ...string) {
 }
 
 // fakeLog scripts a trusted log's statement and counts calls. It can block
-// until the context ends, and it records the budget the caller gave it.
+// until the context ends, or hold its answer behind a gate until release is
+// called, and it records the budget the caller gave it.
 type fakeLog struct {
 	mu        sync.Mutex
 	status    *Status
 	err       error
 	block     bool
+	gate      chan struct{}
 	calls     atomic.Int64
 	remaining time.Duration
 	target    TrustedLog
@@ -156,7 +158,7 @@ func (f *fakeLog) Status(ctx context.Context, log TrustedLog) (*Status, error) {
 		f.remaining = time.Until(deadline)
 	}
 
-	status, err, block := f.status, f.err, f.block
+	status, err, block, gate := f.status, f.err, f.block, f.gate
 
 	f.mu.Unlock()
 
@@ -164,6 +166,14 @@ func (f *fakeLog) Status(ctx context.Context, log TrustedLog) (*Status, error) {
 		<-ctx.Done()
 
 		return nil, fmt.Errorf("ans log: fetch status token: %w", ctx.Err())
+	}
+
+	if gate != nil {
+		select {
+		case <-gate:
+		case <-ctx.Done():
+			return nil, fmt.Errorf("ans log: fetch status token: %w", ctx.Err())
+		}
 	}
 
 	if err != nil {
@@ -174,6 +184,25 @@ func (f *fakeLog) Status(ctx context.Context, log TrustedLog) (*Status, error) {
 	copied.IdentityCertificates = append([][32]byte(nil), status.IdentityCertificates...)
 
 	return &copied, nil
+}
+
+// hold makes every answer wait until release.
+func (f *fakeLog) hold() {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+
+	f.gate = make(chan struct{})
+}
+
+// release lets the held answers through and stops holding new ones.
+func (f *fakeLog) release() {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+
+	if f.gate != nil {
+		close(f.gate)
+		f.gate = nil
+	}
 }
 
 func (f *fakeLog) seen() (TrustedLog, time.Duration) {

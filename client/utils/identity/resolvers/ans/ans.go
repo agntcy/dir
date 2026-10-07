@@ -48,9 +48,12 @@ type Resolver struct {
 	log       TrustedLogClient
 	clock     func() time.Time
 
-	// mu guards memo and is never held across a network call.
-	mu   sync.Mutex
-	memo map[string]attestation
+	// mu guards memo, inflight and sweepAt, and is never held across a
+	// network call.
+	mu       sync.Mutex
+	memo     map[string]attestation
+	inflight map[string]*lookup
+	sweepAt  time.Time
 }
 
 // PinnedKey identifies one configured root key, for an operator-facing log line.
@@ -70,6 +73,16 @@ type attestation struct {
 	status  *Status
 	err     error
 	expires time.Time
+}
+
+// lookup is an attestation in progress. The claims of a subject that arrive
+// while one runs wait for its result instead of starting their own, each
+// under its own context. kept says whether the result was remembered, which
+// it is not when the leading caller had given up before it came.
+type lookup struct {
+	done chan struct{}
+	att  attestation
+	kept bool
 }
 
 // Option configures a Resolver.
@@ -122,6 +135,7 @@ func New(cfg Config, opts ...Option) (*Resolver, error) {
 		fetch:     safefetch.New(safefetch.WithTimeout(cfg.GetTimeout()), safefetch.WithMaxBytes(maxResponseBytes), safefetch.WithoutRedirects()),
 		clock:     time.Now,
 		memo:      make(map[string]attestation),
+		inflight:  make(map[string]*lookup),
 	}
 
 	for _, opt := range opts {
@@ -208,24 +222,75 @@ func (r *Resolver) Resolve(ctx context.Context, subject string, certificate []by
 // attest returns what the network stages say about name, reusing a recent
 // answer, a failure included: anyone can attach claims to a record, and a
 // claim's certificate only matters at the fingerprint check, so the claims of
-// one subject cost one DNS lookup and one log fetch between them, and a log
-// that is down is not asked again for the same subject within the lifetime.
-// An answer obtained after the caller gave up is returned but not kept, since
-// it says nothing about the subject.
+// one subject cost one DNS lookup and one log fetch between them, whether
+// they arrive in turn or at once, and a log that is down is not asked again
+// for the same subject within the lifetime. An answer obtained after the
+// caller gave up is returned but not kept, since it says nothing about the
+// subject.
 func (r *Resolver) attest(ctx context.Context, name agentName) attestation {
 	subject := name.String()
 
-	if att, ok := r.recall(subject); ok {
-		return att
+	for {
+		att, call, leads := r.join(subject)
+		if call == nil {
+			return att
+		}
+
+		if leads {
+			att = r.attestUncached(ctx, name)
+			r.finish(subject, call, att, ctx.Err() == nil)
+
+			return att
+		}
+
+		select {
+		case <-call.done:
+			// A lookup its own caller gave up on answers nothing; a caller still
+			// waiting runs its own.
+			if call.kept || ctx.Err() != nil {
+				return call.att
+			}
+		case <-ctx.Done():
+			return attestation{err: fmt.Errorf("ans: waiting for the lookup of %s: %w", subject, ctx.Err())}
+		}
+	}
+}
+
+// join returns the kept attestation of subject, or the lookup in progress to
+// wait for, or a new lookup the caller leads.
+func (r *Resolver) join(subject string) (attestation, *lookup, bool) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	if att, ok := r.recallLocked(subject); ok {
+		return att, nil, false
 	}
 
-	att := r.attestUncached(ctx, name)
-
-	if ctx.Err() == nil {
-		r.remember(subject, att)
+	if call, ok := r.inflight[subject]; ok {
+		return attestation{}, call, false
 	}
 
-	return att
+	call := &lookup{done: make(chan struct{})}
+	r.inflight[subject] = call
+
+	return attestation{}, call, true
+}
+
+// finish hands the result of a lookup to its waiters and, when the leading
+// caller was still waiting for it, remembers it.
+func (r *Resolver) finish(subject string, call *lookup, att attestation, live bool) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	delete(r.inflight, subject)
+
+	if live {
+		r.rememberLocked(subject, att)
+	}
+
+	call.att, call.kept = att, live
+
+	close(call.done)
 }
 
 // attestUncached runs the two network stages, each under its own budget
@@ -265,41 +330,41 @@ func (r *Resolver) attestUncached(ctx context.Context, name agentName) attestati
 	return attestation{status: status}
 }
 
-// recall returns the kept attestation of subject while it is fresh and, for
-// a statement, while the statement itself has not expired.
-func (r *Resolver) recall(subject string) (attestation, bool) {
-	r.mu.Lock()
-	defer r.mu.Unlock()
-
+// recallLocked returns the kept attestation of subject while it is fresh and,
+// for a statement, while the statement itself has not expired. One that has
+// is dropped. The caller holds mu.
+func (r *Resolver) recallLocked(subject string) (attestation, bool) {
 	att, ok := r.memo[subject]
 	if !ok {
 		return attestation{}, false
 	}
 
 	now := r.clock()
-	if !now.Before(att.expires) {
-		return attestation{}, false
-	}
+	if !now.Before(att.expires) || (att.status != nil && now.After(att.status.ExpiresAt.Add(r.cfg.GetClockSkew()))) {
+		delete(r.memo, subject)
 
-	if att.status != nil && now.After(att.status.ExpiresAt.Add(r.cfg.GetClockSkew())) {
 		return attestation{}, false
 	}
 
 	return att, true
 }
 
-// remember keeps att for subject and drops every expired entry on the way.
-func (r *Resolver) remember(subject string, att attestation) {
+// rememberLocked keeps att for subject for the lifetime and, once per
+// lifetime, drops every entry whose lifetime has passed, so the memo stays
+// bounded without a scan on every claim. The caller holds mu.
+func (r *Resolver) rememberLocked(subject string, att attestation) {
 	now := r.clock()
-	att.expires = now.Add(r.cfg.GetStatusCacheTTL())
+	lifetime := r.cfg.GetStatusCacheTTL()
+	att.expires = now.Add(lifetime)
 
-	r.mu.Lock()
-	defer r.mu.Unlock()
-
-	for key, entry := range r.memo {
-		if !now.Before(entry.expires) {
-			delete(r.memo, key)
+	if !now.Before(r.sweepAt) {
+		for key, entry := range r.memo {
+			if !now.Before(entry.expires) {
+				delete(r.memo, key)
+			}
 		}
+
+		r.sweepAt = now.Add(lifetime)
 	}
 
 	r.memo[subject] = att

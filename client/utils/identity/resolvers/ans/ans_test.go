@@ -390,8 +390,8 @@ func TestResolveMemoizesALogOutage(t *testing.T) {
 	assert.Equal(t, int64(1), f.log.calls.Load())
 }
 
-// Resolve is safe for concurrent use: concurrent claims for one subject share
-// the memo without racing.
+// Resolve is safe for concurrent use, and concurrent claims for one subject
+// cost one lookup: they wait for the one in flight or read the memo.
 func TestResolveConcurrently(t *testing.T) {
 	f := newResolveFixture(t)
 	r := f.build()
@@ -420,7 +420,120 @@ func TestResolveConcurrently(t *testing.T) {
 		require.NoError(t, err)
 	}
 
-	assert.GreaterOrEqual(t, f.log.calls.Load(), int64(1))
+	assert.Equal(t, int64(1), f.dns.calls.Load())
+	assert.Equal(t, int64(1), f.log.calls.Load())
+}
+
+// Claims that arrive while the subject's lookup is running wait for it rather
+// than each asking DNS and the log.
+func TestResolveSharesTheLookupInFlight(t *testing.T) {
+	f := newResolveFixture(t)
+	f.log.hold()
+	r := f.build()
+
+	const callers = 16
+
+	results := make(chan error, callers)
+
+	var wg sync.WaitGroup
+
+	for range callers {
+		wg.Go(func() {
+			keys, err := r.Resolve(f.ctx, testAnsName, f.certificate)
+			if err == nil && len(keys) != 1 {
+				err = fmt.Errorf("got %d keys, want 1", len(keys))
+			}
+
+			results <- err
+		})
+	}
+
+	require.Eventually(t, func() bool { return f.log.calls.Load() == 1 }, time.Second, time.Millisecond, "no lookup reached the log")
+	f.log.release()
+	wg.Wait()
+	close(results)
+
+	for err := range results {
+		require.NoError(t, err)
+	}
+
+	assert.Equal(t, int64(1), f.dns.calls.Load())
+	assert.Equal(t, int64(1), f.log.calls.Load())
+}
+
+// A waiter gives up on its own deadline, not the leader's, without starting a
+// lookup of its own, and the leader's answer still serves the next claim.
+func TestResolveWaiterHonoursItsOwnContext(t *testing.T) {
+	f := newResolveFixture(t)
+	f.log.hold()
+	r := f.build()
+
+	leader := make(chan error, 1)
+
+	go func() {
+		_, err := r.Resolve(f.ctx, testAnsName, f.certificate)
+		leader <- err
+	}()
+
+	require.Eventually(t, func() bool { return f.log.calls.Load() == 1 }, time.Second, time.Millisecond, "the leader did not reach the log")
+
+	ctx, cancel := context.WithTimeout(t.Context(), 50*time.Millisecond)
+	defer cancel()
+
+	_, err := r.Resolve(ctx, testAnsName, f.certificate)
+	require.ErrorIs(t, err, context.DeadlineExceeded)
+	require.ErrorContains(t, err, "ans: waiting for the lookup of "+testAnsName+": ")
+	requireLive(t, err)
+	assert.Equal(t, int64(1), f.log.calls.Load(), "the waiter started a lookup of its own")
+
+	f.log.release()
+	require.NoError(t, <-leader)
+
+	keys, err := r.Resolve(f.ctx, testAnsName, f.certificate)
+	require.NoError(t, err)
+	f.requireCertificateKey(keys)
+	assert.Equal(t, int64(1), f.log.calls.Load(), "the leader's answer was not kept")
+}
+
+// When the leading caller gives up, its answer is not kept, and a waiter still
+// waiting looks the subject up itself.
+func TestResolveWaiterTakesOverWhenTheLeaderGivesUp(t *testing.T) {
+	f := newResolveFixture(t)
+	f.log.hold()
+	r := f.build()
+
+	leaderCtx, cancelLeader := context.WithCancel(t.Context())
+	defer cancelLeader()
+
+	leader := make(chan error, 1)
+
+	go func() {
+		_, err := r.Resolve(leaderCtx, testAnsName, f.certificate)
+		leader <- err
+	}()
+
+	require.Eventually(t, func() bool { return f.log.calls.Load() == 1 }, time.Second, time.Millisecond, "the leader did not reach the log")
+
+	waiter := make(chan error, 1)
+
+	go func() {
+		keys, err := r.Resolve(f.ctx, testAnsName, f.certificate)
+		if err == nil && len(keys) != 1 {
+			err = fmt.Errorf("got %d keys, want 1", len(keys))
+		}
+
+		waiter <- err
+	}()
+
+	cancelLeader()
+
+	err := <-leader
+	require.ErrorIs(t, err, context.Canceled)
+	requireLive(t, err)
+
+	require.Eventually(t, func() bool { return f.log.calls.Load() == 2 }, time.Second, time.Millisecond, "the waiter did not look the subject up itself")
+	f.log.release()
+	require.NoError(t, <-waiter)
 }
 
 // The claims of one subject cost one DNS lookup and one log fetch between
@@ -515,6 +628,41 @@ func TestResolveDoesNotReuseAStatementWithoutExpiry(t *testing.T) {
 	}
 
 	assert.Equal(t, int64(2), f.log.calls.Load())
+}
+
+// Expired entries are swept once per lifetime, not on every claim, and an
+// expired entry a claim asks for is dropped on the spot.
+func TestResolveSweepsTheMemoOncePerLifetime(t *testing.T) {
+	f := newResolveFixture(t)
+	r := f.build()
+
+	resolve := func(host string) {
+		name := ansScheme + testVersion + "." + host
+		f.dns.set(badgeRecordPrefix+host, badgeTXT(testVersion, testBadgeURL))
+
+		_, _ = r.Resolve(f.ctx, name, mintIdentityCert(t, name, testNow.Add(-time.Hour), testNow.Add(time.Hour)).der)
+	}
+
+	resolve("a.example.com")
+	f.clock.advance(time.Second)
+	resolve("b.example.com")
+	assert.Len(t, r.memo, 2)
+
+	f.clock.advance(DefaultStatusCacheTTL - time.Second)
+	resolve("c.example.com")
+	assert.Len(t, r.memo, 2, "the sweep due with this claim dropped the expired entry")
+	assert.NotContains(t, r.memo, ansScheme+testVersion+".a.example.com")
+
+	f.clock.advance(2 * time.Second)
+	resolve("d.example.com")
+	assert.Len(t, r.memo, 3, "no sweep is due, so the expired entry stays")
+	assert.Contains(t, r.memo, ansScheme+testVersion+".b.example.com")
+
+	calls := f.dns.calls.Load()
+
+	resolve("b.example.com")
+	assert.Equal(t, calls+1, f.dns.calls.Load(), "the expired entry was not reused")
+	assert.Len(t, r.memo, 3, "the expired entry was replaced, not kept beside the new one")
 }
 
 func TestResolveMemoizesErrorsAndEvictsExpiredEntries(t *testing.T) {
