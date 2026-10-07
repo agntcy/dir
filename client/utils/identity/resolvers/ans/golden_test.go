@@ -19,12 +19,16 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// The files under testdata/ were captured from the Agent Name Service
-// reference implementation (github.com/agentnameservice/ans, commit recorded
-// in fixture.json) running its demo stack. The transparency log listens on
-// plain HTTP at 127.0.0.1:18081 while the badge URLs it publishes use the
-// configured public base https://localhost:18081, which is what fixture.json
-// records. Capture commands, run from the ans checkout:
+// The files under testdata/ are a snapshot taken on 2026-09-11 from a local
+// build of the Agent Name Service reference implementation
+// (github.com/agentnameservice/ans) running its demo stack. The snapshot
+// stands on its own: the test pins its clock to the capture time, so the
+// token verifies against the captured root key and certificate whatever the
+// demo stack produces today, and mint_test.go mints equivalent material for
+// every other test. In that stack the transparency log listens on plain HTTP
+// at 127.0.0.1:18081 while the badge URLs it publishes use the configured
+// public base https://localhost:18081, which is what fixture.json records.
+// Capture commands, run from the ans checkout:
 //
 //	scripts/demo/start.sh --with-dns
 //	scripts/demo/run-lifecycle.sh dir-fixture.example.com 1.0.0

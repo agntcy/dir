@@ -45,7 +45,9 @@ const (
 type Config struct {
 	// TrustedLogHosts lists the transparency-log hosts (host or host:port) a
 	// badge record may point at. Any other host is refused before a request
-	// is made.
+	// is made. Requests go through utils/safefetch, which dials public
+	// addresses only: a log on a private, loopback or link-local address is
+	// refused.
 	TrustedLogHosts []string `json:"trusted_log_hosts,omitempty" mapstructure:"trusted_log_hosts"`
 
 	// RootKeys pins the logs' signing keys as the lines their /root-keys
