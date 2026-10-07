@@ -156,6 +156,14 @@ func TestResolve(t *testing.T) {
 			wantNoLog: true,
 		},
 		{
+			name: "badge name does not exist",
+			setup: func(f *resolveFixture) {
+				f.dns.err = &net.DNSError{Err: "no such host", Name: testBadgeName, IsNotFound: true}
+			},
+			wantErr:   "ans badge: lookup _ans-badge.agent.example.com: ",
+			wantNoLog: true,
+		},
+		{
 			name: "dns server failure is left to the caller",
 			setup: func(f *resolveFixture) {
 				f.dns.err = &net.DNSError{Err: "server misbehaving", Name: testBadgeName, IsTemporary: true}

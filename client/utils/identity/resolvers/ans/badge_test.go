@@ -123,23 +123,26 @@ func TestParseBadgeURLDoesNotEchoTheWholeScheme(t *testing.T) {
 func TestLookupBadge(t *testing.T) {
 	other := "https://log.example.com/v1/agents/" + otherAgentID
 
+	// wantFinal says the failure is a verdict about what the zone says; the
+	// rest is a lookup that got no answer, left for the caller to classify.
 	tests := []struct {
-		name    string
-		records []string
-		dnsErr  error
-		want    TrustedLog
-		wantErr string
+		name      string
+		records   []string
+		dnsErr    error
+		want      TrustedLog
+		wantErr   string
+		wantFinal bool
 	}{
 		{name: "exact version", records: []string{badgeTXT("v1.0.0", testBadgeURL)}, want: TrustedLog{Origin: testLogOrigin, AgentID: testAgentID}},
 		{name: "exact version wins over versionless", records: []string{badgeTXT("v2.0.0", other), "v=ans-badge1; url=" + other, badgeTXT("v1.0.0", testBadgeURL)}, want: TrustedLog{Origin: testLogOrigin, AgentID: testAgentID}},
 		{name: "versionless fallback", records: []string{badgeTXT("v2.0.0", other), "v=ans-badge1; url=" + testBadgeURL}, want: TrustedLog{Origin: testLogOrigin, AgentID: testAgentID}},
 		{name: "unrelated records are skipped", records: []string{"v=spf1 -all", badgeTXT("v1.0.0", testBadgeURL)}, want: TrustedLog{Origin: testLogOrigin, AgentID: testAgentID}},
-		{name: "no record", records: []string{"v=spf1 -all"}, wantErr: "ans badge: no _ans-badge.agent.example.com record names version v1.0.0"},
-		{name: "other version only", records: []string{badgeTXT("v2.0.0", testBadgeURL)}, wantErr: "no _ans-badge.agent.example.com record names version v1.0.0"},
-		{name: "two exact matches", records: []string{badgeTXT("v1.0.0", testBadgeURL), badgeTXT("v1.0.0", other)}, wantErr: "ans badge: 2 _ans-badge.agent.example.com records name version v1.0.0; expected one"},
-		{name: "two versionless records", records: []string{"v=ans-badge1; url=" + testBadgeURL, "v=ans-badge1; url=" + other}, wantErr: "2 _ans-badge.agent.example.com records name version v1.0.0; expected one"},
-		{name: "untrusted log", records: []string{badgeTXT("v1.0.0", "https://other.example.com/v1/agents/"+testAgentID)}, wantErr: "is not a trusted transparency log"},
-		{name: "name does not exist", dnsErr: &net.DNSError{Err: "no such host", Name: testBadgeName, IsNotFound: true}, wantErr: "ans badge: lookup _ans-badge.agent.example.com: lookup _ans-badge.agent.example.com: no such host"},
+		{name: "no record", records: []string{"v=spf1 -all"}, wantErr: "ans badge: no _ans-badge.agent.example.com record names version v1.0.0", wantFinal: true},
+		{name: "other version only", records: []string{badgeTXT("v2.0.0", testBadgeURL)}, wantErr: "no _ans-badge.agent.example.com record names version v1.0.0", wantFinal: true},
+		{name: "two exact matches", records: []string{badgeTXT("v1.0.0", testBadgeURL), badgeTXT("v1.0.0", other)}, wantErr: "ans badge: 2 _ans-badge.agent.example.com records name version v1.0.0; expected one", wantFinal: true},
+		{name: "two versionless records", records: []string{"v=ans-badge1; url=" + testBadgeURL, "v=ans-badge1; url=" + other}, wantErr: "2 _ans-badge.agent.example.com records name version v1.0.0; expected one", wantFinal: true},
+		{name: "untrusted log", records: []string{badgeTXT("v1.0.0", "https://other.example.com/v1/agents/"+testAgentID)}, wantErr: "is not a trusted transparency log", wantFinal: true},
+		{name: "name does not exist", dnsErr: &net.DNSError{Err: "no such host", Name: testBadgeName, IsNotFound: true}, wantErr: "ans badge: lookup _ans-badge.agent.example.com: lookup _ans-badge.agent.example.com: no such host", wantFinal: true},
 		{name: "server failure", dnsErr: &net.DNSError{Err: "server misbehaving", Name: testBadgeName}, wantErr: "ans badge: lookup _ans-badge.agent.example.com: "},
 		{name: "timeout", dnsErr: dnsError(testBadgeName, context.DeadlineExceeded), wantErr: "ans badge: lookup _ans-badge.agent.example.com: "},
 	}
@@ -156,17 +159,16 @@ func TestLookupBadge(t *testing.T) {
 			if tt.wantErr != "" {
 				require.ErrorContains(t, err, tt.wantErr)
 
-				if tt.dnsErr != nil {
-					// A lookup that fails is left for the caller to classify, and its
-					// cause stays readable.
+				if tt.wantFinal {
+					require.ErrorIs(t, err, resolvers.ErrFinal)
+				} else {
 					require.NotErrorIs(t, err, resolvers.ErrFinal)
+				}
 
+				if tt.dnsErr != nil {
 					var dnsErr *net.DNSError
 
-					require.ErrorAs(t, err, &dnsErr)
-				} else {
-					// What the zone says is the publisher's doing: a verdict.
-					require.ErrorIs(t, err, resolvers.ErrFinal)
+					require.ErrorAs(t, err, &dnsErr, "the cause must stay readable")
 				}
 
 				return

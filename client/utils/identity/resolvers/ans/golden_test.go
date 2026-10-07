@@ -126,18 +126,18 @@ func TestGolden(t *testing.T) {
 	g := loadGolden(t)
 
 	tests := []struct {
-		name          string
-		cfg           Config
-		wantRootKeyGs int
+		name               string
+		cfg                Config
+		wantRootKeyFetches int
 	}{
 		{
 			name: "pinned root keys",
 			cfg:  Config{TrustedLogHosts: []string{g.logHost}, RootKeys: g.rootKeys},
 		},
 		{
-			name:          "fetched root keys",
-			cfg:           Config{TrustedLogHosts: []string{g.logHost}, AllowUnpinnedRootKeys: true},
-			wantRootKeyGs: 1,
+			name:               "fetched root keys",
+			cfg:                Config{TrustedLogHosts: []string{g.logHost}, AllowUnpinnedRootKeys: true},
+			wantRootKeyFetches: 1,
 		},
 	}
 
@@ -156,7 +156,7 @@ func TestGolden(t *testing.T) {
 
 			assert.Equal(t, int64(1), g.dns.calls.Load())
 			assert.Equal(t, 1, g.fetcher.count(g.fixture.BadgeURL+"/status-token"))
-			assert.Equal(t, tt.wantRootKeyGs, g.fetcher.count(strings.TrimSuffix(g.fixture.BadgeURL, "/v1/agents/"+g.fixture.AgentID)+"/root-keys"))
+			assert.Equal(t, tt.wantRootKeyFetches, g.fetcher.count(strings.TrimSuffix(g.fixture.BadgeURL, "/v1/agents/"+g.fixture.AgentID)+"/root-keys"))
 		})
 	}
 }
