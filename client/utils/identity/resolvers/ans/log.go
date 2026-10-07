@@ -51,7 +51,8 @@ type Status struct {
 	State State
 
 	// ExpiresAt is when the statement stops being valid. The log's tokens
-	// always carry one, so a zero value counts as already expired.
+	// always carry one, so a zero value counts as already expired: the
+	// statement serves the claim that fetched it and is never reused.
 	ExpiresAt time.Time
 
 	// IdentityCertificates are the SHA-256 fingerprints of the agent's valid

@@ -38,7 +38,8 @@ import (
 // hundred bytes and a root-keys set a few lines.
 const maxResponseBytes = 64 << 10
 
-// Resolver resolves "ans://" subjects. It is safe for concurrent use.
+// Resolver resolves "ans://" subjects. It is safe for concurrent use, and
+// concurrent claims for one subject share one lookup; see attest.
 type Resolver struct {
 	cfg       Config
 	trusted   map[string]struct{}
@@ -245,13 +246,17 @@ func (r *Resolver) attest(ctx context.Context, name agentName) attestation {
 
 		select {
 		case <-call.done:
-			// A lookup its own caller gave up on answers nothing; a caller still
-			// waiting runs its own.
-			if call.kept || ctx.Err() != nil {
+			if call.kept {
 				return call.att
 			}
 		case <-ctx.Done():
-			return attestation{err: fmt.Errorf("ans: waiting for the lookup of %s: %w", subject, ctx.Err())}
+		}
+
+		// The lookup ended without an answer to keep, or this caller's own
+		// context did: a caller still waiting runs its own lookup, one that
+		// gave up reports its own cause.
+		if err := ctx.Err(); err != nil {
+			return attestation{err: fmt.Errorf("ans: waiting for the lookup of %s: %w", subject, err)}
 		}
 	}
 }
@@ -276,19 +281,19 @@ func (r *Resolver) join(subject string) (attestation, *lookup, bool) {
 	return attestation{}, call, true
 }
 
-// finish hands the result of a lookup to its waiters and, when the leading
-// caller was still waiting for it, remembers it.
-func (r *Resolver) finish(subject string, call *lookup, att attestation, live bool) {
+// finish hands the result of a lookup to its waiters and, when keep says the
+// leading caller was still waiting for it, remembers it.
+func (r *Resolver) finish(subject string, call *lookup, att attestation, keep bool) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
 	delete(r.inflight, subject)
 
-	if live {
+	if keep {
 		r.rememberLocked(subject, att)
 	}
 
-	call.att, call.kept = att, live
+	call.att, call.kept = att, keep
 
 	close(call.done)
 }

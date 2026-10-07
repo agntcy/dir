@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"sync"
 	"testing"
+	"testing/synctest"
 	"time"
 
 	"github.com/agntcy/dir/client/utils/identity/resolvers"
@@ -298,28 +299,32 @@ func requireLive(t *testing.T, err error) {
 // ended it: the caller sees the cause and keeps its stored result or not.
 func TestResolveLeavesNetworkFailuresToTheCaller(t *testing.T) {
 	t.Run("log budget expiry", func(t *testing.T) {
-		f := newResolveFixture(t)
-		f.cfg.Timeout = 50 * time.Millisecond
-		f.log.block = true
+		synctest.Test(t, func(t *testing.T) {
+			f := newResolveFixture(t)
+			f.cfg.Timeout = 50 * time.Millisecond
+			f.log.block = true
 
-		_, err := f.resolve()
-		require.ErrorIs(t, err, context.DeadlineExceeded)
-		requireLive(t, err)
+			_, err := f.resolve()
+			require.ErrorIs(t, err, context.DeadlineExceeded)
+			requireLive(t, err)
+		})
 	})
 
 	t.Run("caller gives up during the log stage", func(t *testing.T) {
-		f := newResolveFixture(t)
-		f.log.block = true
+		synctest.Test(t, func(t *testing.T) {
+			f := newResolveFixture(t)
+			f.log.block = true
 
-		ctx, cancel := context.WithTimeout(t.Context(), 50*time.Millisecond)
-		defer cancel()
+			ctx, cancel := context.WithTimeout(t.Context(), 50*time.Millisecond)
+			defer cancel()
 
-		f.ctx = ctx
+			f.ctx = ctx
 
-		_, err := f.resolve()
-		require.ErrorContains(t, err, "ans log: fetch status token: ")
-		require.ErrorIs(t, err, context.DeadlineExceeded)
-		requireLive(t, err)
+			_, err := f.resolve()
+			require.ErrorContains(t, err, "ans log: fetch status token: ")
+			require.ErrorIs(t, err, context.DeadlineExceeded)
+			requireLive(t, err)
+		})
 	})
 
 	t.Run("caller already gave up", func(t *testing.T) {
@@ -355,18 +360,22 @@ func TestResolveLeavesNetworkFailuresToTheCaller(t *testing.T) {
 	})
 }
 
+// Each stage gets the whole timeout from the caller's context, so slow DNS
+// does not eat into the log's budget.
 func TestResolveGivesTheLogItsOwnBudget(t *testing.T) {
-	f := newResolveFixture(t)
-	f.cfg.Timeout = 200 * time.Millisecond
-	f.dns.delay = 120 * time.Millisecond
-	f.log.status.State = State("REVOKED")
+	synctest.Test(t, func(t *testing.T) {
+		f := newResolveFixture(t)
+		f.cfg.Timeout = 200 * time.Millisecond
+		f.dns.delay = 120 * time.Millisecond
+		f.log.status.State = State("REVOKED")
 
-	_, err := f.resolve()
-	require.ErrorContains(t, err, "ans log: agent status \"REVOKED\" does not allow use")
-	requireFinal(t, err)
+		_, err := f.resolve()
+		require.ErrorContains(t, err, "ans log: agent status \"REVOKED\" does not allow use")
+		requireFinal(t, err)
 
-	_, remaining := f.log.seen()
-	assert.Greater(t, remaining, 150*time.Millisecond, "slow DNS ate into the log's budget")
+		_, remaining := f.log.seen()
+		assert.Equal(t, 200*time.Millisecond, remaining, "slow DNS ate into the log's budget")
+	})
 }
 
 func TestResolvePassesTheGatedTarget(t *testing.T) {
@@ -433,115 +442,161 @@ func TestResolveConcurrently(t *testing.T) {
 }
 
 // Claims that arrive while the subject's lookup is running wait for it rather
-// than each asking DNS and the log.
+// than each asking DNS and the log, and every one of them gets the leader's
+// answer, a verdict included. The bubble parks every caller before the log
+// answers, so the sharing itself is what the counts prove.
 func TestResolveSharesTheLookupInFlight(t *testing.T) {
-	f := newResolveFixture(t)
-	f.log.hold()
-	r := f.build()
+	tests := []struct {
+		name    string
+		setup   func(f *resolveFixture)
+		wantErr string
+	}{
+		{name: "attested certificate"},
+		{
+			name:    "revoked agent",
+			setup:   func(f *resolveFixture) { f.log.status.State = State("REVOKED") },
+			wantErr: "ans log: agent status \"REVOKED\" does not allow use",
+		},
+	}
 
-	const callers = 16
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			synctest.Test(t, func(t *testing.T) {
+				f := newResolveFixture(t)
+				if tt.setup != nil {
+					tt.setup(f)
+				}
 
-	results := make(chan error, callers)
+				f.log.hold()
+				r := f.build()
 
-	var wg sync.WaitGroup
+				const callers = 16
 
-	for range callers {
-		wg.Go(func() {
-			keys, err := r.Resolve(f.ctx, testAnsName, f.certificate)
-			if err == nil && len(keys) != 1 {
-				err = fmt.Errorf("got %d keys, want 1", len(keys))
-			}
+				results := make(chan error, callers)
 
-			results <- err
+				var wg sync.WaitGroup
+
+				for range callers {
+					wg.Go(func() {
+						keys, err := r.Resolve(f.ctx, testAnsName, f.certificate)
+						if err == nil && len(keys) != 1 {
+							err = fmt.Errorf("got %d keys, want 1", len(keys))
+						}
+
+						results <- err
+					})
+				}
+
+				// Every caller is parked: the leader on the log, the rest on its answer.
+				synctest.Wait()
+				require.Equal(t, int64(1), f.log.calls.Load(), "more than one lookup reached the log")
+
+				f.log.release()
+				wg.Wait()
+				close(results)
+
+				for err := range results {
+					if tt.wantErr == "" {
+						require.NoError(t, err)
+
+						continue
+					}
+
+					require.ErrorContains(t, err, tt.wantErr)
+					requireFinal(t, err)
+				}
+
+				assert.Equal(t, int64(1), f.dns.calls.Load())
+				assert.Equal(t, int64(1), f.log.calls.Load())
+			})
 		})
 	}
-
-	require.Eventually(t, func() bool { return f.log.calls.Load() == 1 }, time.Second, time.Millisecond, "no lookup reached the log")
-	f.log.release()
-	wg.Wait()
-	close(results)
-
-	for err := range results {
-		require.NoError(t, err)
-	}
-
-	assert.Equal(t, int64(1), f.dns.calls.Load())
-	assert.Equal(t, int64(1), f.log.calls.Load())
 }
 
 // A waiter gives up on its own deadline, not the leader's, without starting a
 // lookup of its own, and the leader's answer still serves the next claim.
 func TestResolveWaiterHonoursItsOwnContext(t *testing.T) {
-	f := newResolveFixture(t)
-	f.log.hold()
-	r := f.build()
+	synctest.Test(t, func(t *testing.T) {
+		f := newResolveFixture(t)
+		f.log.hold()
+		r := f.build()
 
-	leader := make(chan error, 1)
+		leader := make(chan error, 1)
 
-	go func() {
-		_, err := r.Resolve(f.ctx, testAnsName, f.certificate)
-		leader <- err
-	}()
+		go func() {
+			_, err := r.Resolve(f.ctx, testAnsName, f.certificate)
+			leader <- err
+		}()
 
-	require.Eventually(t, func() bool { return f.log.calls.Load() == 1 }, time.Second, time.Millisecond, "the leader did not reach the log")
+		synctest.Wait()
+		require.Equal(t, int64(1), f.log.calls.Load(), "the leader did not reach the log")
 
-	ctx, cancel := context.WithTimeout(t.Context(), 50*time.Millisecond)
-	defer cancel()
+		ctx, cancel := context.WithTimeout(t.Context(), 50*time.Millisecond)
+		defer cancel()
 
-	_, err := r.Resolve(ctx, testAnsName, f.certificate)
-	require.ErrorIs(t, err, context.DeadlineExceeded)
-	require.ErrorContains(t, err, "ans: waiting for the lookup of "+testAnsName+": ")
-	requireLive(t, err)
-	assert.Equal(t, int64(1), f.log.calls.Load(), "the waiter started a lookup of its own")
+		_, err := r.Resolve(ctx, testAnsName, f.certificate)
+		require.ErrorIs(t, err, context.DeadlineExceeded)
+		require.ErrorContains(t, err, "ans: waiting for the lookup of "+testAnsName+": ")
+		requireLive(t, err)
+		assert.Equal(t, int64(1), f.log.calls.Load(), "the waiter started a lookup of its own")
 
-	f.log.release()
-	require.NoError(t, <-leader)
+		f.log.release()
+		require.NoError(t, <-leader)
 
-	keys, err := r.Resolve(f.ctx, testAnsName, f.certificate)
-	require.NoError(t, err)
-	f.requireCertificateKey(keys)
-	assert.Equal(t, int64(1), f.log.calls.Load(), "the leader's answer was not kept")
+		keys, err := r.Resolve(f.ctx, testAnsName, f.certificate)
+		require.NoError(t, err)
+		f.requireCertificateKey(keys)
+		assert.Equal(t, int64(1), f.log.calls.Load(), "the leader's answer was not kept")
+	})
 }
 
 // When the leading caller gives up, its answer is not kept, and a waiter still
-// waiting looks the subject up itself.
+// waiting runs the lookup itself.
 func TestResolveWaiterTakesOverWhenTheLeaderGivesUp(t *testing.T) {
-	f := newResolveFixture(t)
-	f.log.hold()
-	r := f.build()
+	synctest.Test(t, func(t *testing.T) {
+		f := newResolveFixture(t)
+		f.log.hold()
+		r := f.build()
 
-	leaderCtx, cancelLeader := context.WithCancel(t.Context())
-	defer cancelLeader()
+		leaderCtx, cancelLeader := context.WithCancel(t.Context())
+		defer cancelLeader()
 
-	leader := make(chan error, 1)
+		leader := make(chan error, 1)
 
-	go func() {
-		_, err := r.Resolve(leaderCtx, testAnsName, f.certificate)
-		leader <- err
-	}()
+		go func() {
+			_, err := r.Resolve(leaderCtx, testAnsName, f.certificate)
+			leader <- err
+		}()
 
-	require.Eventually(t, func() bool { return f.log.calls.Load() == 1 }, time.Second, time.Millisecond, "the leader did not reach the log")
+		synctest.Wait()
+		require.Equal(t, int64(1), f.log.calls.Load(), "the leader did not reach the log")
 
-	waiter := make(chan error, 1)
+		waiter := make(chan error, 1)
 
-	go func() {
-		keys, err := r.Resolve(f.ctx, testAnsName, f.certificate)
-		if err == nil && len(keys) != 1 {
-			err = fmt.Errorf("got %d keys, want 1", len(keys))
-		}
+		go func() {
+			keys, err := r.Resolve(f.ctx, testAnsName, f.certificate)
+			if err == nil && len(keys) != 1 {
+				err = fmt.Errorf("got %d keys, want 1", len(keys))
+			}
 
-		waiter <- err
-	}()
+			waiter <- err
+		}()
 
-	cancelLeader()
+		// The waiter is parked on the leader's answer when the leader gives up.
+		synctest.Wait()
+		cancelLeader()
 
-	err := <-leader
-	require.ErrorIs(t, err, context.Canceled)
-	requireLive(t, err)
+		err := <-leader
+		require.ErrorIs(t, err, context.Canceled)
+		requireLive(t, err)
 
-	require.Eventually(t, func() bool { return f.log.calls.Load() == 2 }, time.Second, time.Millisecond, "the waiter did not look the subject up itself")
-	f.log.release()
-	require.NoError(t, <-waiter)
+		// The waiter ran its own lookup and is parked on the log in turn.
+		synctest.Wait()
+		assert.Equal(t, int64(2), f.log.calls.Load(), "the waiter did not look the subject up itself")
+
+		f.log.release()
+		require.NoError(t, <-waiter)
+	})
 }
 
 // The claims of one subject cost one DNS lookup and one log fetch between
