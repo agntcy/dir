@@ -158,6 +158,36 @@ func TestGet(t *testing.T) {
 
 // WithoutRedirects hands a 3xx back to the caller as the response status
 // instead of following it, so the request never leaves the host it was sent to.
+func TestStatusError_Transient(t *testing.T) {
+	tests := []struct {
+		code int
+		want bool
+	}{
+		{http.StatusInternalServerError, true},
+		{http.StatusBadGateway, true},
+		{http.StatusServiceUnavailable, true},
+		{http.StatusRequestTimeout, true},
+		{http.StatusTooManyRequests, true},
+		{http.StatusMovedPermanently, true},
+		{http.StatusFound, true},
+		{http.StatusTemporaryRedirect, true},
+		{http.StatusNoContent, false},
+		{http.StatusBadRequest, false},
+		{http.StatusUnauthorized, false},
+		{http.StatusForbidden, false},
+		{http.StatusNotFound, false},
+		{http.StatusGone, false},
+		{http.StatusTeapot, false},
+	}
+
+	for _, tt := range tests {
+		t.Run(http.StatusText(tt.code), func(t *testing.T) {
+			err := &StatusError{URL: "https://example.com/x", Code: tt.code}
+			require.Equal(t, tt.want, err.Transient())
+		})
+	}
+}
+
 func TestGet_WithoutRedirects(t *testing.T) {
 	srv := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {

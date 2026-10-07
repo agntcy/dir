@@ -8,7 +8,6 @@ import (
 	"crypto/subtle"
 	"errors"
 	"fmt"
-	"net/http"
 	"strings"
 	"sync"
 	"time"
@@ -247,20 +246,11 @@ func fetchError(what string, err error) error {
 	err = fmt.Errorf("ans log: fetch %s: %w", what, err)
 
 	var statusErr *safefetch.StatusError
-	if errors.As(err, &statusErr) && !retryLater(statusErr.Code) {
+	if errors.As(err, &statusErr) && !statusErr.Transient() {
 		return final(err)
 	}
 
 	return err
-}
-
-// retryLater reports whether an HTTP status says nothing about the resource
-// itself: a server-side failure, a timeout, rate limiting, or a redirect.
-func retryLater(code int) bool {
-	return code >= http.StatusInternalServerError ||
-		code == http.StatusRequestTimeout ||
-		code == http.StatusTooManyRequests ||
-		(code >= http.StatusMultipleChoices && code < http.StatusBadRequest)
 }
 
 // unknownKeyID reports whether err says the token was signed by a key the key

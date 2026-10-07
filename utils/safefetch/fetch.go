@@ -44,6 +44,16 @@ func (e *StatusError) Error() string {
 	return fmt.Sprintf("fetch %s: unexpected status %d", e.URL, e.Code)
 }
 
+// Transient reports whether the status says nothing about the resource itself,
+// so that another request may be answered differently: a server-side failure,
+// a request timeout, rate limiting, or a redirect the client did not follow.
+func (e *StatusError) Transient() bool {
+	return e.Code >= http.StatusInternalServerError ||
+		e.Code == http.StatusRequestTimeout ||
+		e.Code == http.StatusTooManyRequests ||
+		(e.Code >= http.StatusMultipleChoices && e.Code < http.StatusBadRequest)
+}
+
 // reservedPrefixes are non-public ranges that netip's own predicates don't
 // cover. 100.64.0.0/10 hosts some clouds' metadata endpoints, and the IPv6
 // transition ranges (NAT64, 6to4, Teredo) can embed or translate to a blocked
