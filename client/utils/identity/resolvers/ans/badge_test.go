@@ -156,14 +156,17 @@ func TestLookupBadge(t *testing.T) {
 			if tt.wantErr != "" {
 				require.ErrorContains(t, err, tt.wantErr)
 
-				// The zone is the publisher's: every failure is final whatever its cause,
-				// and the cause stays readable.
-				require.ErrorIs(t, err, resolvers.ErrFinal)
-
 				if tt.dnsErr != nil {
+					// A lookup that fails is left for the caller to classify, and its
+					// cause stays readable.
+					require.NotErrorIs(t, err, resolvers.ErrFinal)
+
 					var dnsErr *net.DNSError
 
 					require.ErrorAs(t, err, &dnsErr)
+				} else {
+					// What the zone says is the publisher's doing: a verdict.
+					require.ErrorIs(t, err, resolvers.ErrFinal)
 				}
 
 				return
@@ -189,7 +192,8 @@ func TestLookupBadgeUnderADoneContext(t *testing.T) {
 
 	_, err = r.lookupBadge(ctx, name)
 	require.ErrorContains(t, err, "ans badge: lookup")
-	require.ErrorIs(t, err, resolvers.ErrFinal)
+	require.ErrorIs(t, err, context.DeadlineExceeded)
+	require.NotErrorIs(t, err, resolvers.ErrFinal)
 }
 
 func TestTruncate(t *testing.T) {

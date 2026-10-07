@@ -8,12 +8,14 @@ import (
 	"crypto/subtle"
 	"errors"
 	"fmt"
+	"net/http"
 	"strings"
 	"sync"
 	"time"
 
 	"github.com/agentnameservice/ans-sdk-go/verify/scitt"
 	"github.com/agntcy/dir/client/utils/identity/resolvers"
+	"github.com/agntcy/dir/utils/safefetch"
 )
 
 // State is an agent's lifecycle status as its transparency log reports it.
@@ -126,7 +128,7 @@ func newScittLogClient(fetch resolvers.Fetcher, pinned *scitt.KeyStore, ttl, ske
 func (c *scittLogClient) Status(ctx context.Context, log TrustedLog) (*Status, error) {
 	body, err := c.fetch.Get(ctx, log.Origin+"/v1/agents/"+log.AgentID+"/status-token")
 	if err != nil {
-		return nil, fmt.Errorf("ans log: fetch status token: %w", err)
+		return nil, fetchError("status token", err)
 	}
 
 	keys, err := c.keysFor(ctx, log.Origin)
@@ -213,7 +215,7 @@ func (c *scittLogClient) refreshKeys(ctx context.Context, origin string) (*scitt
 func (c *scittLogClient) fetchKeys(ctx context.Context, origin string) (*scitt.KeyStore, error) {
 	body, err := c.fetch.Get(ctx, origin+"/root-keys")
 	if err != nil {
-		return nil, fmt.Errorf("ans log: fetch root keys: %w", err)
+		return nil, fetchError("root keys", err)
 	}
 
 	lines := trimmed(strings.Split(string(body), "\n"))
@@ -234,6 +236,31 @@ func (c *scittLogClient) store(origin string, keys *scitt.KeyStore, forced bool)
 	defer c.mu.Unlock()
 
 	c.cache[origin] = cachedKeys{keys: keys, expires: c.clock().Add(c.ttl), forced: forced}
+}
+
+// fetchError wraps a failure to fetch what from a trusted log. An answer that
+// refuses the request or says the resource is not there is a verdict. An
+// answer that asks for another try later, a redirect the client does not
+// follow, or no answer at all is left for the caller to classify by its
+// cause, as for every other scheme.
+func fetchError(what string, err error) error {
+	err = fmt.Errorf("ans log: fetch %s: %w", what, err)
+
+	var statusErr *safefetch.StatusError
+	if errors.As(err, &statusErr) && !retryLater(statusErr.Code) {
+		return final(err)
+	}
+
+	return err
+}
+
+// retryLater reports whether an HTTP status says nothing about the resource
+// itself: a server-side failure, a timeout, rate limiting, or a redirect.
+func retryLater(code int) bool {
+	return code >= http.StatusInternalServerError ||
+		code == http.StatusRequestTimeout ||
+		code == http.StatusTooManyRequests ||
+		(code >= http.StatusMultipleChoices && code < http.StatusBadRequest)
 }
 
 // unknownKeyID reports whether err says the token was signed by a key the key

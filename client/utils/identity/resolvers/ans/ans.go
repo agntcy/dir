@@ -7,12 +7,12 @@
 // record and checked against an allow-list, attests the certificate's
 // fingerprint for the agent the subject names.
 //
-// Every error Resolve returns is marked with resolvers.Final, a verdict about
-// the claim whatever its cause, with one exception: a failure to fetch from a
-// trusted log while the caller is still waiting is left for the caller to
-// classify by its cause, so a log outage can be treated as transient. Failures
-// the publisher controls (the subject, the certificate, the DNS record) and
-// failures observed after the caller gave up are therefore never transient.
+// An error Resolve returns is marked with resolvers.Final when it is a
+// verdict about the claim: the subject, the certificate, what the badge
+// record says, and what the transparency log states or refuses to state. A
+// failure to reach the publisher's DNS or the trusted log, the caller's own
+// deadline included, is left unmarked for the caller to classify by its
+// cause, as for every other scheme.
 package ansresolver
 
 import (
@@ -253,11 +253,6 @@ func (r *Resolver) attestUncached(ctx context.Context, name agentName) attestati
 	cancelLog()
 
 	if err != nil {
-		// Once the caller has given up, the failure is the caller's, not the log's.
-		if ctx.Err() != nil {
-			err = final(err)
-		}
-
 		return attestation{err: err}
 	}
 

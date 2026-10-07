@@ -4,6 +4,8 @@
 package ansresolver
 
 import (
+	"context"
+	"errors"
 	"net/http"
 	"testing"
 	"time"
@@ -107,30 +109,58 @@ func TestLogClientStatusFailures(t *testing.T) {
 		setup        func(f *logFixture)
 		wantErr      string
 		wantStatus   int
+		wantFinal    bool
 		wantRootKeys int
 	}{
 		{
-			name:   "status token 503 keeps its cause",
+			name:   "status token 503 is left to the caller",
 			pinned: true,
 			setup: func(f *logFixture) {
 				f.fetcher.fail(tokenURL, &safefetch.StatusError{URL: tokenURL, Code: http.StatusServiceUnavailable})
 			},
-			wantErr:      "ans log: fetch status token: ",
-			wantStatus:   http.StatusServiceUnavailable,
-			wantRootKeys: 0,
+			wantErr:    "ans log: fetch status token: ",
+			wantStatus: http.StatusServiceUnavailable,
 		},
 		{
-			name:   "status token 404 keeps its cause",
+			name:   "status token 429 is left to the caller",
+			pinned: true,
+			setup: func(f *logFixture) {
+				f.fetcher.fail(tokenURL, &safefetch.StatusError{URL: tokenURL, Code: http.StatusTooManyRequests})
+			},
+			wantErr:    "ans log: fetch status token: ",
+			wantStatus: http.StatusTooManyRequests,
+		},
+		{
+			name:   "status token 301 is left to the caller",
+			pinned: true,
+			setup: func(f *logFixture) {
+				f.fetcher.fail(tokenURL, &safefetch.StatusError{URL: tokenURL, Code: http.StatusMovedPermanently})
+			},
+			wantErr:    "ans log: fetch status token: ",
+			wantStatus: http.StatusMovedPermanently,
+		},
+		{
+			name:   "status token 404 is a verdict",
 			pinned: true,
 			setup: func(f *logFixture) {
 				f.fetcher.fail(tokenURL, &safefetch.StatusError{URL: tokenURL, Code: http.StatusNotFound})
 			},
-			wantErr:      "ans log: fetch status token: ",
-			wantStatus:   http.StatusNotFound,
-			wantRootKeys: 0,
+			wantErr:    "ans log: fetch status token: ",
+			wantStatus: http.StatusNotFound,
+			wantFinal:  true,
 		},
 		{
-			name: "root keys 500 keeps its cause",
+			name:   "status token 403 is a verdict",
+			pinned: true,
+			setup: func(f *logFixture) {
+				f.fetcher.fail(tokenURL, &safefetch.StatusError{URL: tokenURL, Code: http.StatusForbidden})
+			},
+			wantErr:    "ans log: fetch status token: ",
+			wantStatus: http.StatusForbidden,
+			wantFinal:  true,
+		},
+		{
+			name: "root keys 500 is left to the caller",
 			setup: func(f *logFixture) {
 				f.fetcher.fail(rootKeysURL, &safefetch.StatusError{URL: rootKeysURL, Code: http.StatusInternalServerError})
 			},
@@ -139,23 +169,35 @@ func TestLogClientStatusFailures(t *testing.T) {
 			wantRootKeys: 1,
 		},
 		{
+			name: "root keys 404 is a verdict",
+			setup: func(f *logFixture) {
+				f.fetcher.fail(rootKeysURL, &safefetch.StatusError{URL: rootKeysURL, Code: http.StatusNotFound})
+			},
+			wantErr:      "ans log: fetch root keys: ",
+			wantStatus:   http.StatusNotFound,
+			wantFinal:    true,
+			wantRootKeys: 1,
+		},
+		{
 			name:         "empty root keys",
 			setup:        func(f *logFixture) { f.fetcher.serve(rootKeysURL, []byte("\n  \n")) },
 			wantErr:      "ans log: transparency log served no root keys",
+			wantFinal:    true,
 			wantRootKeys: 1,
 		},
 		{
 			name:         "malformed root keys",
 			setup:        func(f *logFixture) { f.fetcher.serve(rootKeysURL, []byte("not-a-root-key\n")) },
 			wantErr:      "ans log: transparency log served malformed root keys",
+			wantFinal:    true,
 			wantRootKeys: 1,
 		},
 		{
-			name:         "pinned keys reject a token signed by another log",
-			pinned:       true,
-			setup:        func(f *logFixture) { f.fetcher.serve(tokenURL, mintLog(f.t).statusToken(f.t, f.log.claims(f.cert))) },
-			wantErr:      "ans log: status token signed by key id ",
-			wantRootKeys: 0,
+			name:      "pinned keys reject a token signed by another log",
+			pinned:    true,
+			setup:     func(f *logFixture) { f.fetcher.serve(tokenURL, mintLog(f.t).statusToken(f.t, f.log.claims(f.cert))) },
+			wantErr:   "ans log: status token signed by key id ",
+			wantFinal: true,
 		},
 		{
 			name:   "expired token",
@@ -165,7 +207,8 @@ func TestLogClientStatusFailures(t *testing.T) {
 				claims.exp = testNow.Unix() - 120
 				f.serveToken(claims)
 			},
-			wantErr: "ans log: status token did not verify: token expired",
+			wantErr:   "ans log: status token did not verify: token expired",
+			wantFinal: true,
 		},
 		{
 			name:   "revoked agent",
@@ -175,13 +218,15 @@ func TestLogClientStatusFailures(t *testing.T) {
 				claims.status = "REVOKED"
 				f.serveToken(claims)
 			},
-			wantErr: "ans log: status token did not verify: terminal status [REVOKED]",
+			wantErr:   "ans log: status token did not verify: terminal status [REVOKED]",
+			wantFinal: true,
 		},
 		{
-			name:    "token that is not COSE",
-			pinned:  true,
-			setup:   func(f *logFixture) { f.fetcher.serve(tokenURL, []byte("nope")) },
-			wantErr: "ans log: status token did not verify: ",
+			name:      "token that is not COSE",
+			pinned:    true,
+			setup:     func(f *logFixture) { f.fetcher.serve(tokenURL, []byte("nope")) },
+			wantErr:   "ans log: status token did not verify: ",
+			wantFinal: true,
 		},
 		{
 			name:   "forged signature under the trusted key id",
@@ -191,7 +236,8 @@ func TestLogClientStatusFailures(t *testing.T) {
 				token[len(token)-1] ^= 0x01
 				f.fetcher.serve(tokenURL, token)
 			},
-			wantErr: "ans log: status token did not verify: ",
+			wantErr:   "ans log: status token did not verify: ",
+			wantFinal: true,
 		},
 	}
 
@@ -208,15 +254,52 @@ func TestLogClientStatusFailures(t *testing.T) {
 			var statusErr *safefetch.StatusError
 
 			if tt.wantStatus != 0 {
-				// A fetch failure is left for the caller to classify by its cause.
+				// The cause of a fetch failure stays readable, verdict or not.
 				require.ErrorAs(t, err, &statusErr)
 				assert.Equal(t, tt.wantStatus, statusErr.Code)
-				require.NotErrorIs(t, err, resolvers.ErrFinal)
 			} else {
-				// A verdict about the token or the keys is final whatever it wraps.
-				require.ErrorIs(t, err, resolvers.ErrFinal)
-				assert.NotErrorAs(t, err, &statusErr, "a verdict must not carry a fetch error")
+				assert.NotErrorAs(t, err, &statusErr, "a verdict about the token or the keys must not carry a fetch error")
 			}
+
+			if tt.wantFinal {
+				require.ErrorIs(t, err, resolvers.ErrFinal)
+			} else {
+				require.NotErrorIs(t, err, resolvers.ErrFinal)
+			}
+		})
+	}
+}
+
+// An answer about the resource is a verdict; no answer, a server-side failure,
+// rate limiting or a redirect is left for the caller.
+func TestFetchError(t *testing.T) {
+	tests := []struct {
+		name      string
+		err       error
+		wantFinal bool
+	}{
+		{name: "connection failure", err: errors.New("dial tcp: connection refused")},
+		{name: "deadline", err: context.DeadlineExceeded},
+		{name: "500", err: &safefetch.StatusError{URL: tokenURL, Code: http.StatusInternalServerError}},
+		{name: "503", err: &safefetch.StatusError{URL: tokenURL, Code: http.StatusServiceUnavailable}},
+		{name: "408", err: &safefetch.StatusError{URL: tokenURL, Code: http.StatusRequestTimeout}},
+		{name: "429", err: &safefetch.StatusError{URL: tokenURL, Code: http.StatusTooManyRequests}},
+		{name: "301", err: &safefetch.StatusError{URL: tokenURL, Code: http.StatusMovedPermanently}},
+		{name: "307", err: &safefetch.StatusError{URL: tokenURL, Code: http.StatusTemporaryRedirect}},
+		{name: "204", err: &safefetch.StatusError{URL: tokenURL, Code: http.StatusNoContent}, wantFinal: true},
+		{name: "400", err: &safefetch.StatusError{URL: tokenURL, Code: http.StatusBadRequest}, wantFinal: true},
+		{name: "401", err: &safefetch.StatusError{URL: tokenURL, Code: http.StatusUnauthorized}, wantFinal: true},
+		{name: "403", err: &safefetch.StatusError{URL: tokenURL, Code: http.StatusForbidden}, wantFinal: true},
+		{name: "404", err: &safefetch.StatusError{URL: tokenURL, Code: http.StatusNotFound}, wantFinal: true},
+		{name: "410", err: &safefetch.StatusError{URL: tokenURL, Code: http.StatusGone}, wantFinal: true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := fetchError("status token", tt.err)
+			require.ErrorIs(t, err, tt.err)
+			assert.Equal(t, "ans log: fetch status token: "+tt.err.Error(), err.Error())
+			assert.Equal(t, tt.wantFinal, errors.Is(err, resolvers.ErrFinal))
 		})
 	}
 }

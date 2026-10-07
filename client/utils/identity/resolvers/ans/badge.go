@@ -90,15 +90,17 @@ func parseBadgeRecord(txt string) (badgeRecord, bool) {
 }
 
 // lookupBadge finds the one badge record for the agent's version, an exact
-// match or else a record without a version, and gates its URL. The zone is
-// the publisher's, so every failure here is final whatever its cause: a
-// publisher who breaks their own DNS must not keep an earlier result alive.
+// match or else a record without a version, and gates its URL. What the zone
+// says is the publisher's doing, so a missing, ambiguous or misdirected
+// record is a verdict. A lookup that fails is left for the caller to classify
+// by its cause: the resolver cannot tell the publisher's zone from its own
+// DNS being down.
 func (r *Resolver) lookupBadge(ctx context.Context, name agentName) (TrustedLog, error) {
 	recordName := badgeRecordPrefix + name.host
 
 	txts, err := r.lookupTXT(ctx, recordName)
 	if err != nil {
-		return TrustedLog{}, final(fmt.Errorf("ans badge: lookup %s: %w", recordName, err))
+		return TrustedLog{}, fmt.Errorf("ans badge: lookup %s: %w", recordName, err)
 	}
 
 	var exact, versionless []string

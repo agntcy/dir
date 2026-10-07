@@ -156,21 +156,23 @@ func TestResolve(t *testing.T) {
 			wantNoLog: true,
 		},
 		{
-			name: "dns server failure is final",
+			name: "dns server failure is left to the caller",
 			setup: func(f *resolveFixture) {
 				f.dns.err = &net.DNSError{Err: "server misbehaving", Name: testBadgeName, IsTemporary: true}
 			},
 			wantErr:   "ans badge: lookup _ans-badge.agent.example.com: ",
 			wantNoLog: true,
+			wantLive:  true,
 		},
 		{
-			name: "dns hang is final after one timeout",
+			name: "dns hang ends after one timeout and is left to the caller",
 			setup: func(f *resolveFixture) {
 				f.cfg.Timeout = 50 * time.Millisecond
 				f.dns.block = true
 			},
 			wantErr:   "ans badge: lookup _ans-badge.agent.example.com: ",
 			wantNoLog: true,
+			wantLive:  true,
 		},
 		{
 			name: "badge points at an untrusted log",
@@ -277,14 +279,16 @@ func requireFinal(t *testing.T, err error) {
 }
 
 // requireLive asserts err is left for the caller to classify by its cause: a
-// failure of the trusted log while the caller was still waiting.
+// failure to reach the publisher's DNS or the trusted log.
 func requireLive(t *testing.T, err error) {
 	t.Helper()
 
 	require.NotErrorIs(t, err, resolvers.ErrFinal, "marked final: %v", err)
 }
 
-func TestResolveLogOutageIsTransientOnlyWhileTheCallerWaits(t *testing.T) {
+// A failure to reach the network is never a verdict, whichever side's deadline
+// ended it: the caller sees the cause and keeps its stored result or not.
+func TestResolveLeavesNetworkFailuresToTheCaller(t *testing.T) {
 	t.Run("log budget expiry", func(t *testing.T) {
 		f := newResolveFixture(t)
 		f.cfg.Timeout = 50 * time.Millisecond
@@ -306,7 +310,8 @@ func TestResolveLogOutageIsTransientOnlyWhileTheCallerWaits(t *testing.T) {
 
 		_, err := f.resolve()
 		require.ErrorContains(t, err, "ans log: fetch status token: ")
-		requireFinal(t, err)
+		require.ErrorIs(t, err, context.DeadlineExceeded)
+		requireLive(t, err)
 	})
 
 	t.Run("caller already gave up", func(t *testing.T) {
@@ -334,7 +339,8 @@ func TestResolveLogOutageIsTransientOnlyWhileTheCallerWaits(t *testing.T) {
 
 				_, err := f.resolve()
 				require.ErrorContains(t, err, "ans badge: lookup")
-				requireFinal(t, err)
+				require.ErrorIs(t, err, ctx.Err())
+				requireLive(t, err)
 				assert.Zero(t, f.log.calls.Load(), "the log was called")
 			})
 		}
