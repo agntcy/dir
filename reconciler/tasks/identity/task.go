@@ -33,6 +33,7 @@ const (
 
 	// staleGrace is how long a result outlives lookups that keep failing for
 	// reasons that say nothing about the claim, such as a subject being unreachable.
+	// ans:// claims have their own, configurable grace; see resolverSet.graceFor.
 	staleGrace = 7 * 24 * time.Hour
 )
 
@@ -58,14 +59,24 @@ type Task struct {
 	network  resolverSet
 }
 
-// NewTask creates a new identity claim verification task.
+// NewTask creates a new identity claim verification task. An ans block that
+// does not fit the task's own settings, or does not parse, is an error.
 func NewTask(config Config, db types.DatabaseAPI, store types.StoreAPI, refStore types.ReferrerStoreAPI) (*Task, error) {
+	if err := config.validateANS(); err != nil {
+		return nil, err
+	}
+
+	network, err := newNetworkResolvers(config)
+	if err != nil {
+		return nil, err
+	}
+
 	return &Task{
 		config:   config,
 		db:       db,
 		store:    store,
 		refStore: refStore,
-		network:  newNetworkResolvers(),
+		network:  network,
 	}, nil
 }
 
@@ -88,6 +99,8 @@ func (t *Task) IsEnabled() bool {
 func (t *Task) Run(ctx context.Context) error {
 	logger.Debug("Running identity claim verification")
 
+	started := time.Now()
+
 	resolvers := t.network
 	resolvers.spiffe = spifferesolver.New(t.loadTrustBundles())
 	resolvers = resolvers.cached()
@@ -98,19 +111,24 @@ func (t *Task) Run(ctx context.Context) error {
 		return fmt.Errorf("get record CIDs: %w", err)
 	}
 
-	var verified, failed int
+	var verified, failed, kept int
 
 	for _, cid := range cids {
 		if err := ctx.Err(); err != nil {
 			return fmt.Errorf("identity verification interrupted: %w", err)
 		}
 
-		v, f := t.reconcileRecord(ctx, resolvers, cid)
+		v, f, k := t.reconcileRecord(ctx, resolvers, cid)
 		verified += v
 		failed += f
+		kept += k
 	}
 
-	logger.Info("Identity claim verification complete", "verified", verified, "failed", failed)
+	if err := ctx.Err(); err != nil {
+		return fmt.Errorf("identity verification interrupted: %w", err)
+	}
+
+	logger.Info("Identity claim verification complete", "verified", verified, "failed", failed, "kept", kept, "duration", time.Since(started))
 
 	return nil
 }
@@ -128,17 +146,18 @@ func (t *Task) loadTrustBundles() x509bundle.Source {
 }
 
 // reconcileRecord verifies the claims of one record and returns how many of its
-// results are verified and failed. A claim it cannot read leaves the stored
+// results are verified, failed, and kept from an earlier run because the
+// subject could not be looked up. A claim it cannot read leaves the stored
 // result as it was.
-func (t *Task) reconcileRecord(ctx context.Context, resolvers resolverSet, cid string) (int, int) {
-	ctx, cancel := context.WithTimeout(ctx, t.config.GetRecordTimeout())
+func (t *Task) reconcileRecord(run context.Context, resolvers resolverSet, cid string) (int, int, int) {
+	ctx, cancel := context.WithTimeout(run, t.config.GetRecordTimeout())
 	defer cancel()
 
 	claims, err := t.claims(ctx, cid)
 	if err != nil {
 		logger.Warn("Failed to read claims", "cid", cid, "error", err)
 
-		return 0, 0
+		return 0, 0, 0
 	}
 
 	if len(claims) == 0 {
@@ -146,7 +165,7 @@ func (t *Task) reconcileRecord(ctx context.Context, resolvers resolverSet, cid s
 			t.dropResult(cid, kind.role)
 		}
 
-		return 0, 0
+		return 0, 0, 0
 	}
 
 	// The record is only read once it is known to carry a claim.
@@ -154,10 +173,10 @@ func (t *Task) reconcileRecord(ctx context.Context, resolvers resolverSet, cid s
 	if err != nil {
 		logger.Warn("Failed to read record annotations", "cid", cid, "error", err)
 
-		return 0, 0
+		return 0, 0, 0
 	}
 
-	var verified, failed int
+	var verified, failed, kept int
 
 	for _, kind := range claimKinds {
 		result, transient := t.verify(ctx, resolvers, cid, annotations[kind.annotation], claims[kind.role])
@@ -169,9 +188,20 @@ func (t *Task) reconcileRecord(ctx context.Context, resolvers resolverSet, cid s
 
 		result.Role = kind.role
 
+		// A failure reached under a run that was stopped may be the stop itself,
+		// a lookup cut short, so it is not stored: the next run starts over from
+		// the stored result.
+		if run.Err() != nil && result.Status == types.ClaimStatusFailed {
+			logger.Warn("Not storing a failure from an interrupted run", "cid", cid, "role", kind.role, "error", result.Error)
+
+			continue
+		}
+
 		// An unreachable subject does not say the claim is wrong, so the last result stands for a while.
-		if transient && t.previous(cid, kind.role, staleGrace) != nil {
+		if transient && t.previous(cid, kind.role, resolvers.graceFor(result.Subject)) != nil {
 			logger.Warn("Keeping the last claim result: the subject could not be looked up", "cid", cid, "role", kind.role, "error", result.Error)
+
+			kept++
 
 			continue
 		}
@@ -193,7 +223,7 @@ func (t *Task) reconcileRecord(ctx context.Context, resolvers resolverSet, cid s
 		}
 	}
 
-	return verified, failed
+	return verified, failed, kept
 }
 
 // claims returns the claims of every kind attached to a record, by role, from

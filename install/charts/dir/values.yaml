@@ -788,6 +788,37 @@ apiserver:
         enabled: true
         interval: "1h"
 
+      # Identity task configuration
+      # Verifies the identity and ownership claims attached to records against
+      # the key material their subjects publish. Off by default.
+      identity:
+        enabled: false
+        interval: "1h"
+        record_timeout: "1m"
+        # Trust bundles for spiffe:// claims, one per trust domain; the files
+        # have to be present in the reconciler container.
+        # spiffe_trust_bundles:
+        #   - trust_domain: example.org
+        #     bundle_file: /etc/agntcy/spiffe/example.org.pem
+        # The ans:// scheme: a claim's certificate is trusted once a transparency
+        # log on trusted_log_hosts attests it for the agent. A log on a private
+        # address is refused at lookup time. root_keys are the lines the log's
+        # /root-keys endpoint serves; set allow_unpinned_root_keys instead to
+        # fetch them (one or the other), and trust then rests on TLS to the
+        # trusted hosts alone. The reconciler refuses to start on a
+        # block that does not fit identity.record_timeout or identity.interval;
+        # see the identity documentation.
+        ans:
+          enabled: false
+          trusted_log_hosts: []
+          root_keys: []
+          allow_unpinned_root_keys: false
+          root_keys_ttl: "10m"
+          timeout: "10s"
+          status_cache_ttl: "30s"
+          stale_grace: "24h"
+          clock_skew: "30s"
+
       # Scan task configuration
       scan:
         enabled: true
