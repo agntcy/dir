@@ -33,13 +33,12 @@ flowchart LR
     C -->|OCI manifest subject| O
     O --> R[Identity reconciler]
     C --> R
-    R --> K[AGNTCY key resolver]
-    K --> V[Configured verification service]
+    R --> K[AGNTCY claim resolver]
+    K -->|One full-claim request| V[External AGNTCY Identity Verifier]
     V --> N[Identity Node]
+    V -->|Signed keys and badge evidence| K
     K --> S[Native claim signature check]
-    S --> E[Record-specific badge check]
-    E --> V
-    E --> DB[Verification database]
+    S --> DB[Verification database]
     DB --> Q[Status and search]
 ```
 
@@ -73,37 +72,50 @@ against those keys using its native signature verifier. No certificate is allowe
 on an AGNTCY claim. The canonical payload signs `record_cid`, `role`, `subject`,
 `signed_at`, and `expires_at`, in that order; an absent expiry is an empty string.
 
-`Resolve` has no record CID parameter. A separate `ClaimEvidenceVerifier` runs
-after signature verification and receives the entire claim. Key lookup can be
-cached by subject; badge verification runs for each candidate claim. A result for
-one CID cannot verify another record sharing the Agent ID.
+`Resolve` keeps the standard resolver interface for key-only callers. It is not
+called during AGNTCY claim reconciliation. An optional record-aware extension
+returns the authorized keys and a deadline together:
+
+```go
+ResolveClaim(ctx context.Context, claim *identityv1.Claim) (identity.ClaimResolution, error)
+```
+
+The reconciler invokes this extension once for each candidate AGNTCY claim,
+authenticates its signed response, then verifies the native claim locally against
+the returned keys. DID and SPIFFE continue using `Resolve`. Combined evidence is
+never cached by subject: a result for one CID cannot verify another record sharing
+the Agent ID.
 
 ```mermaid
 sequenceDiagram
-    participant R as Reconciler
-    participant V as Verification service
+    participant R as Directory reconciler
+    participant V as External AGNTCY Identity Verifier
     participant N as Identity Node
-    participant D as Database
+    participant D as Directory database
     R->>R: Check CID, declared subject, role and expiry
-    R->>V: POST /v1/resolve (subject, nonce)
-    V->>N: POST /v1alpha1/id/resolve
-    V-->>R: Signed authorized-key result
-    R->>R: Authenticate result and verify agent signature
-    R->>V: POST /v1/verify (subject, signature, payload, nonce)
-    V->>N: Resolve keys and fetch signed badges
-    V->>N: POST /v1alpha1/vc/verify (exact badge)
-    V->>V: Check subject and embedded definition CID
-    V-->>R: Signed evidence result with expiry
-    R->>R: Authenticate result, bindings and validity
-    R->>D: Persist verified result and earliest deadline
+    R->>V: POST /v1/verify (profile, subject, signature, payload, nonce)
+    V->>N: Resolve assertion keys
+    V->>V: Verify native claim signature
+    V->>N: Fetch signed badges and verify candidate badge
+    V->>V: Check badge subject, definition CID and validity
+    V-->>R: Signed keys, identity/badge outcomes and deadline
+    R->>R: Authenticate response, bindings and selected policy
+    R->>R: Verify claim signature locally against returned keys
+    R->>D: Persist result and earliest deadline
 ```
 
-The experimental HTTP protocol is `agntcy.identity-verification.v1`. The two
-endpoints return `{ "resultJws": "<compact embedded JWS>" }`. Signed results carry
-the operation kind, verifier ID, profile, policy version, outcome, subject, record
-CID, SHA-256 digest of the request JSON, check time, and expiry. Resolution results
-also carry public JWKs. Each request includes a fresh random nonce, covered by the
-digest. The evidence digest covers the canonical payload and agent signature.
+The experimental HTTP protocol is `agntcy.identity-verification.v2`.
+`POST /v1/verify` returns `{ "resultJws": "<compact embedded JWS>" }`.
+The signed result includes operation kind, verifier ID, profile, policy version,
+`checks.identity`, `checks.badge`, aggregate outcome, authorized public JWKs,
+subject, exact record CID, SHA-256 digest of the compact request JSON, check time,
+and expiry. Each request includes a fresh random nonce covered by the digest.
+The digest also covers the requested profile, canonical claim payload and agent
+signature. Directory rejects v1 responses and incomplete v2 evidence.
+
+The service may expose `/v1/resolve` for key-only callers; Directory's AGNTCY
+reconciler uses only the combined `/v1/verify` operation. One Directory request can
+require multiple internal Identity Node API calls.
 
 Directory pins the service's response-signing keys, checks every binding, rejects
 stale or expired results, and derives signature algorithms from the trusted keys.
@@ -111,7 +123,7 @@ HTTP success alone cannot establish verification. Redirects are disabled.
 
 ### Badge policy and implementation limits
 
-The included service uses profile `agntcy-agent-badge.v1` and policy
+The companion Identity verifier uses profile `agntcy-agent-badge.v1` and policy
 `subject-key-badge.v1`. It delegates credential verification to the configured
 Identity Node, then requires `AgentBadge` type, exact `credentialSubject.id`, and
 an embedded `credentialSubject.badge` whose Directory CID matches the claim.
@@ -157,36 +169,29 @@ configuration should provide `bearer_token_file` for this service. HTTPS CA trus
 uses Go's system roots; private deployments can provide `SSL_CERT_FILE` or
 `SSL_CERT_DIR` in the process environment.
 
-### Running the verification service
+### Deploying the external verifier
 
-Build from the repository root:
+The verifier belongs to the AGNTCY Identity deployment. Directory contains the
+client adapter and reconciliation wiring. Configure its URL, response-signing
+trust bundle, authentication, profile and time limits as shown above.
 
-```bash
-go -C server build -o /tmp/agntcy-identity-verifier ./cmd/agntcy-identity-verifier
-```
+The companion module in `agntcy/identity`, `integrations/directory-verifier`,
+contains the service, Dockerfile and deployment instructions. It uses the Node's
+`/v1alpha1/id/resolve`, `/v1alpha1/vc/<agent-id>/.well-known/vcs.json`, and
+`/v1alpha1/vc/verify` APIs. Only keys referenced by `assertionMethod` are accepted.
 
-| Environment variable | Meaning |
-|---|---|
-| `IDENTITY_NODE_URL` | Required operator-selected HTTPS Identity Node URL |
-| `RESULT_SIGNING_KEY_PATH` | Required RSA private-key PEM, at least 2048 bits |
-| `VERIFIER_BEARER_TOKEN_FILE` | Required file containing the shared bearer token |
-| `TLS_CERT_FILE`, `TLS_KEY_FILE` | Required HTTPS server certificate and key |
-| `LISTEN_ADDRESS` | Default `:8443` |
-| `VERIFIER_ID` | Default `agntcy-identity-verifier` |
-| `RESULT_TTL` | Default `30m`; positive and at most `1h` |
-
-The service uses `/v1alpha1/id/resolve`,
-`/v1alpha1/vc/<agent-id>/.well-known/vcs.json`, and `/v1alpha1/vc/verify` on the
-configured Node. `/healthz` is unauthenticated. The deployment must provision keys,
-certificates, tokens, and compatible Node access; no deployment chart or Node
-authentication adapter is included in this draft.
+The feature is optional: without `agntcy.verifier_url`, AGNTCY claims fail closed
+and other resolver schemes keep their existing behavior. Badge verification is
+required by default. Explicitly setting `require_agent_badge: false` selects the
+`agntcy-agent-control.v1` profile, which establishes identity control only and does
+not fetch badges. A mismatched configured profile is rejected.
 
 ## Freshness and search
 
 Each verified result has an optional `valid_until` database column. The AGNTCY
-deadline is the earliest of claim expiry, key-result expiry, badge-result expiry,
-and the configured maximum verification age. Badge-result expiry is also bounded
-by the matching badge's expiry. Every accepted AGNTCY result must have a deadline.
+deadline is the earliest of claim expiry, combined-result expiry, and the configured maximum
+verification age. Combined-result expiry is also bounded by the matching badge's
+expiry. Every accepted AGNTCY result must have a deadline.
 Schedule reconciliation frequently enough to renew before it.
 
 An outage may preserve the previous observation only until its deadline and the

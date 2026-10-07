@@ -15,7 +15,7 @@ import (
 )
 
 const (
-	ProtocolVersion = "agntcy.identity-verification.v1"
+	ProtocolVersion = "agntcy.identity-verification.v2"
 	Profile         = "agntcy-agent-badge.v1"
 	KeyProfile      = "agntcy-agent-control.v1"
 	// SubjectKeyPolicy explicitly describes the reference Identity Node's
@@ -29,6 +29,7 @@ type ResolutionRequest struct {
 }
 
 type VerificationRequest struct {
+	Profile   string `json:"profile"`
 	Subject   string `json:"subject"`
 	Signature string `json:"signature"`
 	Payload   string `json:"payload"`
@@ -39,22 +40,30 @@ type VerificationResponse struct {
 	ResultJWS string `json:"resultJws"`
 }
 
+// VerificationChecks reports the checks under the selected profile. Badge is
+// required only by the badge profile; Identity is required by both profiles.
+type VerificationChecks struct {
+	Identity bool `json:"identity"`
+	Badge    bool `json:"badge"`
+}
+
 // VerificationResult is the signed response. Kind separates key resolution
 // from evidence verification; RequestDigest binds every request field.
 type VerificationResult struct {
-	Version       string            `json:"version"`
-	Kind          string            `json:"kind"`
-	Verifier      string            `json:"verifier"`
-	Profile       string            `json:"profile"`
-	PolicyVersion string            `json:"policyVersion"`
-	Verified      bool              `json:"verified"`
-	Subject       string            `json:"subject"`
-	RecordCID     string            `json:"recordCid"`
-	RequestDigest string            `json:"requestDigest"`
-	CheckedAt     string            `json:"checkedAt"`
-	ExpiresAt     string            `json:"expiresAt"`
-	PublicKeys    []json.RawMessage `json:"publicKeys,omitempty"`
-	Error         string            `json:"error,omitempty"`
+	Version       string             `json:"version"`
+	Kind          string             `json:"kind"`
+	Verifier      string             `json:"verifier"`
+	Profile       string             `json:"profile"`
+	PolicyVersion string             `json:"policyVersion"`
+	Checks        VerificationChecks `json:"checks"`
+	Verified      bool               `json:"verified"`
+	Subject       string             `json:"subject"`
+	RecordCID     string             `json:"recordCid"`
+	RequestDigest string             `json:"requestDigest"`
+	CheckedAt     string             `json:"checkedAt"`
+	ExpiresAt     string             `json:"expiresAt"`
+	PublicKeys    []json.RawMessage  `json:"publicKeys,omitempty"`
+	Error         string             `json:"error,omitempty"`
 }
 
 func DigestRequest(encoded []byte) string {

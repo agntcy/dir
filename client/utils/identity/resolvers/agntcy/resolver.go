@@ -52,8 +52,8 @@ type Config struct {
 
 func (c Config) RequiresBadge() bool { return c.RequireAgentBadge == nil || *c.RequireAgentBadge }
 
-// Resolver implements the existing public-key contract. Badge verification is
-// a separate interface so caching Resolve cannot suppress record-specific work.
+// Resolver implements key resolution and the optional record-aware contract.
+// Reconciliation uses ResolveClaim once and verifies the signature locally.
 // Instances are used sequentially for one reconciliation run.
 type Resolver struct {
 	config     Config
@@ -64,8 +64,8 @@ type Resolver struct {
 }
 
 var (
-	_ resolvers.Resolver                   = (*Resolver)(nil)
-	_ clientidentity.ClaimEvidenceVerifier = (*Resolver)(nil)
+	_ resolvers.Resolver           = (*Resolver)(nil)
+	_ clientidentity.ClaimResolver = (*Resolver)(nil)
 )
 
 func (config Config) validate() error {
@@ -74,7 +74,7 @@ func (config Config) validate() error {
 		return errors.New("AGNTCY verifier must be an administrator-configured HTTPS URL")
 	}
 
-	if config.Profile != "" && config.Profile != Profile {
+	if config.Profile != config.claimProfile() {
 		return errors.New("unsupported AGNTCY verification profile")
 	}
 
@@ -85,7 +85,18 @@ func (config Config) validate() error {
 	return nil
 }
 
+func (config Config) claimProfile() string {
+	if config.RequiresBadge() {
+		return Profile
+	}
+
+	return KeyProfile
+}
+
 func (config Config) withDefaults() Config {
+	if config.Profile == "" {
+		config.Profile = config.claimProfile()
+	}
 	if config.VerifierID == "" {
 		config.VerifierID = "agntcy-identity-verifier"
 	}
@@ -159,24 +170,30 @@ func (r *Resolver) Resolve(ctx context.Context, subject string, certificate []by
 		return nil, err
 	}
 
+	keys, err := resultKeys(result)
+	if err != nil {
+		return nil, err
+	}
+
+	r.deadlines[subject] = until
+
+	return keys, nil
+}
+
+func resultKeys(result VerificationResult) ([]crypto.PublicKey, error) {
 	keys := make([]crypto.PublicKey, 0, len(result.PublicKeys))
 	for _, raw := range result.PublicKeys {
 		key, err := jwk.ParseKey(raw)
 		if err != nil {
 			continue
 		}
-
 		if pub, ok := jws.PublicKeyFromJWK(key); ok {
 			keys = append(keys, pub)
 		}
 	}
-
 	if len(keys) == 0 {
 		return nil, resolvers.ErrNoKeys
 	}
-
-	r.deadlines[subject] = until
-
 	return keys, nil
 }
 
@@ -186,33 +203,46 @@ func (r *Resolver) ResolutionValidUntil(subject string, _ []byte) time.Time {
 	return r.deadlines[subject]
 }
 
-func (r *Resolver) VerifyEvidence(ctx context.Context, claim *identityv1.Claim) (time.Time, error) {
+// ResolveClaim obtains keys and evidence for one exact signed claim. No
+// preliminary Resolve call or subject-level evidence cache is used.
+func (r *Resolver) ResolveClaim(ctx context.Context, claim *identityv1.Claim) (clientidentity.ClaimResolution, error) {
+	empty := clientidentity.ClaimResolution{}
 	if claim == nil {
-		return time.Time{}, errors.New("claim is nil")
+		return empty, errors.New("claim is nil")
 	}
-
 	if _, err := AgentID(claim.GetSubject()); err != nil {
-		return time.Time{}, err
+		return empty, err
 	}
 
-	if !r.config.RequiresBadge() {
-		return r.deadlines[claim.GetSubject()], nil
+	if err := clientidentity.Check(claim, claim.GetRecordCid(), claim.GetSubject()); err != nil {
+		return empty, fmt.Errorf("check AGNTCY claim: %w", err)
 	}
-
 	payload, err := claim.GetPayload()
 	if err != nil {
-		return time.Time{}, fmt.Errorf("canonical claim payload: %w", err)
+		return empty, fmt.Errorf("canonical claim payload: %w", err)
 	}
-
 	nonce, err := newNonce()
 	if err != nil {
-		return time.Time{}, err
+		return empty, err
 	}
 
-	request := VerificationRequest{Subject: claim.GetSubject(), Signature: claim.GetSignature(), Payload: base64.RawURLEncoding.EncodeToString(payload), Nonce: nonce}
-	_, until, err := r.call(ctx, "/v1/verify", request, claim.GetSubject(), claim.GetRecordCid(), "verify", Profile)
+	request := VerificationRequest{Profile: r.config.claimProfile(), Subject: claim.GetSubject(), Signature: claim.GetSignature(), Payload: base64.RawURLEncoding.EncodeToString(payload), Nonce: nonce}
 
-	return until, err
+	result, until, err := r.call(ctx, "/v1/verify", request, claim.GetSubject(), claim.GetRecordCid(), "verify", request.Profile)
+	if err != nil {
+		return empty, err
+	}
+
+	if !result.Checks.Identity || r.config.RequiresBadge() && !result.Checks.Badge {
+		return empty, errors.New("required AGNTCY verification check failed")
+	}
+
+	keys, err := resultKeys(result)
+	if err != nil {
+		return empty, err
+	}
+
+	return clientidentity.ClaimResolution{PublicKeys: keys, ValidUntil: until}, nil
 }
 
 func (r *Resolver) call(ctx context.Context, path string, input any, subject, cid, kind, profile string) (VerificationResult, time.Time, error) {

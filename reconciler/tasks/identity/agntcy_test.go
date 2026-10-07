@@ -13,6 +13,7 @@ import (
 
 	corev1 "github.com/agntcy/dir/api/core/v1"
 	identityv1 "github.com/agntcy/dir/api/identity/v1"
+	clientidentity "github.com/agntcy/dir/client/utils/identity"
 	gormdb "github.com/agntcy/dir/server/database/gorm"
 	"github.com/agntcy/dir/server/types"
 	"github.com/stretchr/testify/assert"
@@ -33,16 +34,17 @@ func (r *expiringAgentResolver) Resolve(context.Context, string, []byte) ([]cryp
 }
 func (r *expiringAgentResolver) ResolutionValidUntil(string, []byte) time.Time { return r.until }
 
-type badgeEvidence struct {
+type claimAuthority struct {
+	keys  []crypto.PublicKey
 	until time.Time
 	cids  []string
 	err   error
 }
 
-func (e *badgeEvidence) VerifyEvidence(_ context.Context, claim *identityv1.Claim) (time.Time, error) {
+func (e *claimAuthority) ResolveClaim(_ context.Context, claim *identityv1.Claim) (clientidentity.ClaimResolution, error) {
 	e.cids = append(e.cids, claim.GetRecordCid())
 
-	return e.until, e.err
+	return clientidentity.ClaimResolution{PublicKeys: e.keys, ValidUntil: e.until}, e.err
 }
 
 func TestAGNTCYReconciliationAndSearch(t *testing.T) {
@@ -56,9 +58,9 @@ func TestAGNTCYReconciliationAndSearch(t *testing.T) {
 	keyDeadline := time.Now().Add(time.Hour)
 	badgeDeadline := time.Now().Add(10 * time.Minute)
 	resolver := &expiringAgentResolver{keys: []crypto.PublicKey{pub}, until: keyDeadline}
-	evidence := &badgeEvidence{until: badgeDeadline}
+	authority := &claimAuthority{keys: []crypto.PublicKey{pub}, until: badgeDeadline}
 	f.task.network = resolverSet{agntcy: resolver}
-	f.task.evidence = evidence
+	f.task.claimResolver = authority
 	first := f.addRecord("agntcy-first", map[string]string{corev1.AnnotationKeyIdentity: subject})
 	second := f.addRecord("agntcy-second", map[string]string{corev1.AnnotationKeyIdentity: subject})
 	valid := signedReferrer(t, identityv1.ClaimRole_CLAIM_ROLE_IDENTITY, first, subject, newSigner(t, key))
@@ -69,8 +71,8 @@ func TestAGNTCYReconciliationAndSearch(t *testing.T) {
 	f.run()
 	assert.Equal(t, types.ClaimStatusVerified, f.result(first, types.ClaimRoleIdentity).GetStatus())
 	assert.Equal(t, types.ClaimStatusFailed, f.result(second, types.ClaimRoleIdentity).GetStatus())
-	assert.Equal(t, 1, resolver.calls, "keys may be cached across records")
-	assert.Equal(t, []string{first}, evidence.cids, "only native signature success reaches evidence verification")
+	assert.Equal(t, 0, resolver.calls, "combined path must not make a preliminary key lookup")
+	assert.Equal(t, []string{first, first}, authority.cids, "invalid and valid candidate claims each obtain evidence; Directory rejects the invalid signature locally")
 	observation, ok := f.result(first, types.ClaimRoleIdentity).(types.IdentityClaimValidity)
 	require.True(t, ok)
 
@@ -83,7 +85,7 @@ func TestAGNTCYReconciliationAndSearch(t *testing.T) {
 
 	// A temporary failure preserves the result only within its effective deadline.
 	verifiedAt := f.result(first, types.ClaimRoleIdentity).GetVerifiedAt()
-	resolver.err = context.DeadlineExceeded
+	authority.err = context.DeadlineExceeded
 
 	f.run()
 	assert.True(t, f.result(first, types.ClaimRoleIdentity).GetVerifiedAt().Equal(verifiedAt))
@@ -100,7 +102,7 @@ func TestAGNTCYReconciliationAndSearch(t *testing.T) {
 	f.noResult(first, types.ClaimRoleIdentity)
 }
 
-func TestAGNTCYRequiresRegisteredEvidence(t *testing.T) {
+func TestAGNTCYRequiresRegisteredClaimResolver(t *testing.T) {
 	f := newFixture(t, Config{Enabled: true})
 	pub, key, err := ed25519.GenerateKey(rand.Reader)
 	require.NoError(t, err)

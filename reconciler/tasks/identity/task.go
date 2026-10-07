@@ -54,12 +54,12 @@ var claimKinds = []claimKind{
 
 // Task implements the identity claim verification task.
 type Task struct {
-	config   Config
-	db       types.DatabaseAPI
-	store    types.StoreAPI
-	refStore types.ReferrerStoreAPI
-	network  resolverSet
-	evidence clientidentity.ClaimEvidenceVerifier
+	config        Config
+	db            types.DatabaseAPI
+	store         types.StoreAPI
+	refStore      types.ReferrerStoreAPI
+	network       resolverSet
+	claimResolver clientidentity.ClaimResolver
 }
 
 // NewTask creates a new identity claim verification task.
@@ -77,7 +77,7 @@ func NewTask(config Config, db types.DatabaseAPI, store types.StoreAPI, refStore
 			return nil, fmt.Errorf("configure AGNTCY authority: %w", err)
 		}
 
-		task.network.agntcy, task.evidence = authority, authority
+		task.network.agntcy, task.claimResolver = authority, authority
 	} else if config.AGNTCY.VerifierTrustBundleFile != "" {
 		return nil, fmt.Errorf("AGNTCY verifier_url is required with a trust bundle")
 	}
@@ -110,9 +110,9 @@ func (t *Task) Run(ctx context.Context) error {
 		if err != nil {
 			logger.Error("AGNTCY authority configuration could not be reloaded", "error", err)
 			resolvers.agntcy = failedResolver{err: err}
-			t.evidence = nil
+			t.claimResolver = nil
 		} else {
-			resolvers.agntcy, t.evidence = authority, authority
+			resolvers.agntcy, t.claimResolver = authority, authority
 		}
 	}
 	resolvers.spiffe = spifferesolver.New(t.loadTrustBundles())
@@ -364,60 +364,48 @@ func (t *Task) verifyClaim(ctx context.Context, resolvers resolverSet, cid, expe
 		}
 	}
 
-	keys, err := resolver.Resolve(ctx, claim.GetSubject(), certificate)
-	if err != nil {
-		return time.Time{}, fmt.Errorf("resolve keys of %s: %w", claim.GetSubject(), err)
-	}
-
-	if _, err := clientidentity.Verify(claim, cid, expected, keys...); err != nil {
-		return time.Time{}, fmt.Errorf("verify claim: %w", err)
-	}
-
 	var until time.Time
 	if expiry := claim.GetExpiresAt(); expiry != "" {
 		until, _ = time.Parse(time.RFC3339, expiry)
 	}
 
-	if expiring, ok := resolver.(keyresolvers.ExpiringResolver); ok {
-		until = earlierDeadline(until, expiring.ResolutionValidUntil(claim.GetSubject(), certificate))
-	}
-
 	if strings.HasPrefix(claim.GetSubject(), "agntcy://") {
-		until, err = t.verifyAGNTCYEvidence(ctx, claim, until)
+		if t.claimResolver == nil {
+			return time.Time{}, fmt.Errorf("AGNTCY claim resolver is not registered")
+		}
+
+		resolution, err := t.claimResolver.ResolveClaim(ctx, claim)
 		if err != nil {
-			return time.Time{}, err
+			return time.Time{}, fmt.Errorf("resolve AGNTCY claim: %w", err)
+		}
+
+		if resolution.ValidUntil.IsZero() {
+			return time.Time{}, fmt.Errorf("AGNTCY claim resolution returned no validity deadline")
+		}
+
+		if _, err := clientidentity.Verify(claim, cid, expected, resolution.PublicKeys...); err != nil {
+			return time.Time{}, fmt.Errorf("verify claim: %w", err)
+		}
+
+		until = earlierDeadline(until, resolution.ValidUntil)
+	} else {
+		keys, err := resolver.Resolve(ctx, claim.GetSubject(), certificate)
+		if err != nil {
+			return time.Time{}, fmt.Errorf("resolve keys of %s: %w", claim.GetSubject(), err)
+		}
+
+		if _, err := clientidentity.Verify(claim, cid, expected, keys...); err != nil {
+			return time.Time{}, fmt.Errorf("verify claim: %w", err)
+		}
+
+		if expiring, ok := resolver.(keyresolvers.ExpiringResolver); ok {
+			until = earlierDeadline(until, expiring.ResolutionValidUntil(claim.GetSubject(), certificate))
 		}
 	}
 
 	if !until.IsZero() && !until.After(time.Now()) {
 		return time.Time{}, fmt.Errorf("identity verification expired during reconciliation")
 	}
-
-	return until, nil
-}
-
-func (t *Task) verifyAGNTCYEvidence(ctx context.Context, claim *identityv1.Claim, until time.Time) (time.Time, error) {
-	if t.evidence == nil {
-		if t.config.AGNTCY.RequiresBadge() {
-			return time.Time{}, fmt.Errorf("required AGNTCY badge verifier is not registered")
-		}
-	} else {
-		evidenceUntil, err := t.evidence.VerifyEvidence(ctx, claim)
-		if err != nil {
-			return time.Time{}, fmt.Errorf("verify AGNTCY evidence: %w", err)
-		}
-
-		if evidenceUntil.IsZero() {
-			return time.Time{}, fmt.Errorf("AGNTCY evidence returned no validity deadline")
-		}
-
-		until = earlierDeadline(until, evidenceUntil)
-	}
-
-	if until.IsZero() {
-		return time.Time{}, fmt.Errorf("AGNTCY key resolution returned no validity deadline")
-	}
-
 	return until, nil
 }
 

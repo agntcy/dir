@@ -17,6 +17,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -41,7 +42,7 @@ func embeddedResult(t *testing.T, signer crypto.Signer, result VerificationResul
 	return parts[0] + "." + base64.RawURLEncoding.EncodeToString(payload) + "." + parts[2]
 }
 
-func authority(t *testing.T, mutate func(*VerificationResult)) (*Resolver, *identityv1.Claim) {
+func authority(t *testing.T, mutate func(*VerificationResult)) (*Resolver, *identityv1.Claim, *atomic.Int32) {
 	t.Helper()
 
 	pub, signer, err := ed25519.GenerateKey(rand.Reader)
@@ -54,7 +55,9 @@ func authority(t *testing.T, mutate func(*VerificationResult)) (*Resolver, *iden
 	require.NoError(t, err)
 
 	claim := &identityv1.Claim{Role: identityv1.ClaimRole_CLAIM_ROLE_IDENTITY, RecordCid: "record-one", Subject: "agntcy://Agent-One", SignedAt: time.Now().UTC().Format(time.RFC3339), Signature: "claim-signature"}
+	calls := &atomic.Int32{}
 	srv := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+		calls.Add(1)
 		var input json.RawMessage
 		if err := json.NewDecoder(req.Body).Decode(&input); err != nil {
 			t.Error(err)
@@ -64,6 +67,21 @@ func authority(t *testing.T, mutate func(*VerificationResult)) (*Resolver, *iden
 		}
 
 		result := VerificationResult{Version: ProtocolVersion, Kind: "verify", Verifier: "agntcy-identity-verifier", Profile: Profile, PolicyVersion: SubjectKeyPolicy, Verified: true, Subject: claim.GetSubject(), RecordCID: claim.GetRecordCid(), RequestDigest: DigestRequest(input), CheckedAt: time.Now().UTC().Format(time.RFC3339), ExpiresAt: time.Now().Add(20 * time.Minute).UTC().Format(time.RFC3339)}
+		result.PublicKeys = []json.RawMessage{keyJSON}
+		result.Checks = VerificationChecks{Identity: true, Badge: true}
+
+		if req.URL.Path == "/v1/verify" {
+			var request VerificationRequest
+			if err := json.Unmarshal(input, &request); err != nil {
+				t.Error(err)
+				http.Error(w, "invalid request", http.StatusBadRequest)
+
+				return
+			}
+
+			result.Profile = request.Profile
+			result.Checks.Badge = request.Profile == Profile
+		}
 		if req.URL.Path == "/v1/resolve" {
 			result.Kind = "resolve"
 			result.Profile = KeyProfile
@@ -86,53 +104,55 @@ func authority(t *testing.T, mutate func(*VerificationResult)) (*Resolver, *iden
 	r, err := New(Config{VerifierURL: srv.URL, VerifierTrustBundleFile: path}, srv.Client())
 	require.NoError(t, err)
 
-	return r, claim
+	return r, claim, calls
 }
 
-func TestResolveAndRecordEvidence(t *testing.T) {
-	r, claim := authority(t, nil)
-	keys, err := r.Resolve(context.Background(), claim.GetSubject(), nil)
+func TestResolveClaimUsesOneRequest(t *testing.T) {
+	r, claim, calls := authority(t, nil)
+	resolution, err := r.ResolveClaim(context.Background(), claim)
 	require.NoError(t, err)
-	require.Len(t, keys, 1)
-	assert.IsType(t, ed25519.PublicKey{}, keys[0])
-	assert.True(t, r.ResolutionValidUntil(claim.GetSubject(), nil).After(time.Now()))
-	until, err := r.VerifyEvidence(context.Background(), claim)
-	require.NoError(t, err)
-	assert.True(t, until.After(time.Now()))
+	require.Len(t, resolution.PublicKeys, 1)
+	assert.IsType(t, ed25519.PublicKey{}, resolution.PublicKeys[0])
+	assert.True(t, resolution.ValidUntil.After(time.Now()))
+	assert.EqualValues(t, 1, calls.Load(), "combined operation must not call /resolve first")
 
 	other, ok := proto.Clone(claim).(*identityv1.Claim)
 	require.True(t, ok)
-
 	other.RecordCid = "record-two"
-	_, err = r.VerifyEvidence(context.Background(), other)
+	_, err = r.ResolveClaim(context.Background(), other)
 	require.ErrorContains(t, err, "bound")
+	assert.EqualValues(t, 2, calls.Load(), "another CID must make its own request")
 }
 
 func TestRejectsSignedButInvalidResults(t *testing.T) {
 	tests := map[string]func(*VerificationResult){
-		"subject":  func(r *VerificationResult) { r.Subject = "agntcy://Other" },
-		"cid":      func(r *VerificationResult) { r.RecordCID = "other-cid" },
-		"digest":   func(r *VerificationResult) { r.RequestDigest = "sha256:other" },
-		"profile":  func(r *VerificationResult) { r.Profile = KeyProfile },
-		"policy":   func(r *VerificationResult) { r.PolicyVersion = "unaccepted" },
-		"verifier": func(r *VerificationResult) { r.Verifier = "unaccepted" },
-		"kind":     func(r *VerificationResult) { r.Kind = "resolve" },
-		"expired":  func(r *VerificationResult) { r.ExpiresAt = time.Now().Add(-time.Minute).UTC().Format(time.RFC3339) },
-		"stale":    func(r *VerificationResult) { r.CheckedAt = time.Now().Add(-time.Hour).UTC().Format(time.RFC3339) },
-		"future":   func(r *VerificationResult) { r.CheckedAt = time.Now().Add(time.Hour).UTC().Format(time.RFC3339) },
-		"rejected": func(r *VerificationResult) { r.Verified = false },
+		"old protocol":   func(r *VerificationResult) { r.Version = "agntcy.identity-verification.v1" },
+		"subject":        func(r *VerificationResult) { r.Subject = "agntcy://Other" },
+		"cid":            func(r *VerificationResult) { r.RecordCID = "other-cid" },
+		"digest":         func(r *VerificationResult) { r.RequestDigest = "sha256:other" },
+		"profile":        func(r *VerificationResult) { r.Profile = KeyProfile },
+		"policy":         func(r *VerificationResult) { r.PolicyVersion = "unaccepted" },
+		"verifier":       func(r *VerificationResult) { r.Verifier = "unaccepted" },
+		"kind":           func(r *VerificationResult) { r.Kind = "resolve" },
+		"expired":        func(r *VerificationResult) { r.ExpiresAt = time.Now().Add(-time.Minute).UTC().Format(time.RFC3339) },
+		"stale":          func(r *VerificationResult) { r.CheckedAt = time.Now().Add(-time.Hour).UTC().Format(time.RFC3339) },
+		"future":         func(r *VerificationResult) { r.CheckedAt = time.Now().Add(time.Hour).UTC().Format(time.RFC3339) },
+		"rejected":       func(r *VerificationResult) { r.Verified = false },
+		"identity check": func(r *VerificationResult) { r.Checks.Identity = false },
+		"badge check":    func(r *VerificationResult) { r.Checks.Badge = false },
+		"missing keys":   func(r *VerificationResult) { r.PublicKeys = nil },
 	}
 	for name, mutate := range tests {
 		t.Run(name, func(t *testing.T) {
-			r, claim := authority(t, mutate)
-			_, err := r.VerifyEvidence(context.Background(), claim)
+			r, claim, _ := authority(t, mutate)
+			_, err := r.ResolveClaim(context.Background(), claim)
 			require.Error(t, err)
 		})
 	}
 }
 
 func TestKeyResponseMustBeAccepted(t *testing.T) {
-	r, claim := authority(t, func(r *VerificationResult) { r.PublicKeys = nil })
+	r, claim, _ := authority(t, func(r *VerificationResult) { r.PublicKeys = nil })
 	_, err := r.Resolve(context.Background(), claim.GetSubject(), nil)
 	require.Error(t, err)
 	_, err = r.Resolve(context.Background(), claim.GetSubject(), []byte("grafted-certificate"))
@@ -140,36 +160,34 @@ func TestKeyResponseMustBeAccepted(t *testing.T) {
 }
 
 func TestControlOnlyProfileStillHasDeadline(t *testing.T) {
-	r, claim := authority(t, func(result *VerificationResult) {
-		if result.Kind == "verify" {
-			t.Error("control-only configuration must not request badge verification")
-		}
+	r, claim, calls := authority(t, func(result *VerificationResult) {
+		assert.Equal(t, KeyProfile, result.Profile)
+		assert.False(t, result.Checks.Badge)
 	})
 	r.config.RequireAgentBadge = new(false)
-	_, err := r.Resolve(context.Background(), claim.GetSubject(), nil)
+	r.config.Profile = KeyProfile
+	resolution, err := r.ResolveClaim(context.Background(), claim)
 	require.NoError(t, err)
-	until, err := r.VerifyEvidence(context.Background(), claim)
-	require.NoError(t, err)
-	assert.True(t, until.After(time.Now()))
-	assert.True(t, until.Equal(r.ResolutionValidUntil(claim.GetSubject(), nil)))
+	assert.True(t, resolution.ValidUntil.After(time.Now()))
+	assert.EqualValues(t, 1, calls.Load())
 }
 
 func TestSignatureMustUsePinnedAuthority(t *testing.T) {
-	r, claim := authority(t, nil)
+	r, claim, _ := authority(t, nil)
 	other, _, err := ed25519.GenerateKey(rand.Reader)
 	require.NoError(t, err)
 
 	r.publicKeys = []crypto.PublicKey{other}
-	_, err = r.VerifyEvidence(context.Background(), claim)
+	_, err = r.ResolveClaim(context.Background(), claim)
 	require.ErrorContains(t, err, "signature")
 }
 
 func TestMaximumAgeCapsResult(t *testing.T) {
-	r, claim := authority(t, func(r *VerificationResult) { r.ExpiresAt = time.Now().Add(24 * time.Hour).UTC().Format(time.RFC3339) })
+	r, claim, _ := authority(t, func(r *VerificationResult) { r.ExpiresAt = time.Now().Add(24 * time.Hour).UTC().Format(time.RFC3339) })
 	r.config.MaxVerificationAge = time.Minute
-	until, err := r.VerifyEvidence(context.Background(), claim)
+	resolution, err := r.ResolveClaim(context.Background(), claim)
 	require.NoError(t, err)
-	assert.WithinDuration(t, time.Now().Add(time.Minute), until, 2*time.Second)
+	assert.WithinDuration(t, time.Now().Add(time.Minute), resolution.ValidUntil, 2*time.Second)
 }
 
 func TestAgentIDCanonicalSyntax(t *testing.T) {
