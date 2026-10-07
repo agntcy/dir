@@ -152,6 +152,7 @@ def main():
         if not binary.is_file():
             parser.error(f"Missing binary: {binary}")
     args.artifacts.mkdir(parents=True, exist_ok=True)
+    (args.artifacts / "results.json").unlink(missing_ok=True)
     prefix = "dir-agntcy-e2e-" + os.urandom(4).hex()
     containers = []
     proxy = None
