@@ -37,11 +37,11 @@ The indexer task monitors the local OCI registry and indexes records into the se
 The identity task verifies the identity and ownership claims attached to records. It is off unless `identity.enabled` is set. It:
 
 1. Lists the records in the database and the claim referrers attached to each in the store
-2. Looks up the current key material of each claim's subject (DNS TXT record, well-known JWKS, DID document, or SPIFFE trust bundle)
+2. Looks up the current key material of each claim's subject (DNS TXT record, well-known JWKS, DID document, SPIFFE trust bundle, or ANS transparency log)
 3. Checks the claim's signature against that key material
 4. Stores the outcome (verified or failed) for `IdentityService` and the `--identity-verified`, `--owner-verified` and `--verified` search filters
 
-Because every run looks the key material up again, a rotated key or a revoked trust bundle is caught on the next run.
+Because every run looks the key material up again, a rotated key, a revoked trust bundle or a revoked ANS agent is caught on the next run.
 
 ### Signature Task
 
