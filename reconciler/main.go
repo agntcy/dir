@@ -36,6 +36,17 @@ const (
 var logger = logging.Logger("reconciler")
 
 func main() {
+	// "dry-run" tries a candidate policy against the node's records and exits;
+	// anything else starts the reconciler.
+	if len(os.Args) > 1 && os.Args[1] == dryRunCommand {
+		if err := runDryRun(os.Args[2:]); err != nil {
+			logger.Error("Dry run failed", "error", err)
+			os.Exit(1)
+		}
+
+		return
+	}
+
 	if err := run(); err != nil {
 		logger.Error("Reconciler failed", "error", err)
 		os.Exit(1)

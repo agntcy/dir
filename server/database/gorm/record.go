@@ -549,6 +549,11 @@ func (d *DB) handleFilterOptions(query *gorm.DB, cfg *types.RecordFilters) *gorm
 		}
 	}
 
+	// Local first-seen time (GORM created_at), not the record's OASF created_at.
+	if cfg.IndexedBefore != nil {
+		query = query.Where("records.created_at < ?", *cfg.IndexedBefore)
+	}
+
 	// Handle author filters with wildcard support (searching in JSON array).
 	//
 	// The pattern is JSON-encoded first because it is matched against the raw

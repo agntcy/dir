@@ -71,7 +71,7 @@ explicit `--auth-mode`.
 | Group | Commands |
 |-------|----------|
 | Setup | `init` |
-| Daemon | `daemon start`, `stop`, `status`, `config init` |
+| Daemon | `daemon start`, `stop`, `status`, `config init`, `policy dry-run` |
 | Auth | `auth login`, `logout`, `status` |
 | Context | `context list`, `current`, `set`, `show`, `validate` |
 | Storage | `push`, `pull`, `delete`, `info` |
@@ -753,6 +753,51 @@ Without `--output`, the file is written to the daemon's resolved config path: `<
     dirctl daemon config init --force
     ```
 
+### `dirctl daemon policy dry-run`
+
+Tries a candidate [content policy](dir-content-policy-enforcement.md) on the daemon's records without deploying it, and reports how many records it would exclude, a sample of them, and the reasons. Run it before putting a policy in the configuration: under strict enforcement a policy that rejects too much hides those records until it is fixed.
+
+Nothing is stored. No verdict is written and no policy version is registered, so what the daemon serves does not change. The records are read from the daemon's database and from its registry, so the daemon has to be running; the command refuses to start, and says so, when nothing answers. Run it with the same `dirctl` as the daemon, since opening the database applies the migrations it is missing.
+
+The candidate is a file with a `validators` list, as in the configuration, whose entries have `op: ["evaluate"]`. It is checked before the daemon is touched. A record the policy cannot judge, or that cannot be read, counts as excluded, as it would under enforcement.
+
+| Flag | Description | Default |
+|------|-------------|---------|
+| `--candidate` | File that defines the policy to try (required) | |
+| `--policy-dir` | Directory the candidate's OPA (`.rego`) files are read from | The daemon's policy directory |
+| `--policy` | Try only the policy with this ID, such as `opa:require-license` | Every policy in the file |
+| `--samples` | How many of the records a policy would exclude to list | `10` |
+| `--output`, `-o` | Format of the report: `human` or `json` | `human` |
+| `--data-dir` | Data directory for daemon state | `~/.agntcy/dir/` |
+| `--config` | Path to daemon config file | Built-in embedded defaults |
+
+??? example
+
+    ```bash
+    # Try a CEL policy kept in a scratch file
+    dirctl daemon policy dry-run --candidate ./candidate.yaml
+
+    # Try an OPA policy kept next to its candidate file, and list 25 of the records it would exclude
+    dirctl daemon policy dry-run --candidate ./candidate.yaml --policy-dir ./candidate-policies --samples 25
+
+    # The same, as JSON
+    dirctl daemon policy dry-run --candidate ./candidate.yaml --output json
+    ```
+
+    ```text
+    Policy cel:has-description, version 87ac6c3e1834af20
+      Evaluated:      1204 records
+      Would pass:     1190
+      Would exclude:  14 (12 rejected by the policy, 2 it could not evaluate)
+
+      Records it would exclude (first 10 of 14; --samples lists more):
+        baeareiaik2d74qrz...  ERROR: CEL expression evaluated to false: record.description != ""
+        ...
+
+    Nothing was stored: no verdict was written and no policy version registered,
+    so what this node serves is unchanged.
+    ```
+
 ## Context Operations
 
 Starting with Directory v1.4.0, the context commands manage reusable `dirctl` client contexts. Contexts describe Directory endpoints and their client-side authentication, TLS, and SPIFFE settings.
@@ -787,6 +832,40 @@ Regular `dirctl` commands select a context in this order:
 3. `current_context` from the config file
 
 After context selection, environment variables and explicit root flags such as `--server-addr`, `--auth-mode`, `--oidc-issuer`, and `--auth-token` override the selected context for that invocation.
+
+### Sigstore settings
+
+A context can carry a `sigstore` section with the keyless (OIDC) signing and verification settings used by `dirctl sign`, `dirctl push --sign`, `dirctl import --sign`, and `dirctl verify`. Use it to point a context at a self-hosted Sigstore stack instead of the public-good instance. Fields left unset keep the public-good defaults, and contexts without the section behave as before.
+
+```yaml
+contexts:
+  corp:
+    server_address: dir.corp.example:443
+    sigstore:
+      # Signing
+      fulcio_url: https://fulcio.corp.example
+      rekor_url: https://rekor.corp.example
+      timestamp_url: https://tsa.corp.example/api/v1/timestamp
+      # Only for a deployment without a Rekor transparency log.
+      skip_tlog: true
+      oidc_provider_url: https://idp.corp.example
+      oidc_client_id: sigstore
+      # Verification
+      tuf_mirror_url: https://tuf.corp.example
+      trusted_root_path: /etc/dirctl/corp-trusted-root.json
+      # These lower the verification guarantees. Set them only for a Sigstore
+      # deployment that has no Rekor transparency log or no CT log for SCTs.
+      ignore_tlog: true
+      ignore_sct: true
+```
+
+Each key matches the `dirctl sign` or `dirctl verify` flag of the same name (`fulcio_url` is `--fulcio-url`, and so on), and can also be set with a `DIRECTORY_CLIENT_SIGSTORE_<KEY>` environment variable, for example `DIRECTORY_CLIENT_SIGSTORE_FULCIO_URL`. For each setting, an explicitly passed flag wins, then the environment variable, then the context's `sigstore` section, then the built-in default.
+
+An unset or empty value keeps the built-in default, so config can turn a boolean on but not force it off, and cannot set a URL to empty; pass the flag explicitly for that (for example `--skip-tlog=false`). An environment variable set to an empty string counts as unset. `dirctl context show` prints the effective `sigstore.*` values, including environment overrides.
+
+Settings that weaken or replace the default verification trust (`ignore_tlog`, `ignore_tsa`, `ignore_sct`, `trusted_root_path`, and a non-default `tuf_mirror_url`) print a warning on stderr when `dirctl verify` takes them from a context or an environment variable rather than from a flag, naming where each one came from. Structured output on stdout is unaffected.
+
+`sigstore.oidc_client_id` is the OIDC client used to obtain a Fulcio signing certificate. It is separate from the context's top-level `oidc_client_id`, which `dirctl auth login` uses. The OIDC client secret and ID token are not read from the config file; pass them with `--oidc-client-secret` and `--oidc-token`.
 
 !!! note "Sensitive values"
 
@@ -1799,6 +1878,10 @@ non-interactive process does not read standard input implicitly.
 Local and inline PEM keys must use the encrypted Cosign/Sigstore format produced by
 `cosign generate-key-pair`.
 
+The Sigstore endpoints for keyless signing (`--fulcio-url`, `--rekor-url`,
+`--timestamp-url`, `--skip-tlog`, `--oidc-provider-url`, `--oidc-client-id`) can
+also come from the selected context. See [Sigstore settings](#sigstore-settings).
+
 The `--key` flag accepts PEM content, a local file, an HTTP(S) URL, an environment
 variable reference, or a KMS URI. The supported KMS URI formats are:
 
@@ -1906,6 +1989,8 @@ Verifies a record signature. Signatures are fetched from the directory.
 | `--oidc-subject` | OIDC subject to match (supports regexp) |
 | `--from-server` | Use the server's cached verification result |
 | `--ignore-tlog` | Skip transparency log verification |
+
+The OIDC trust settings (`--tuf-mirror-url`, `--trusted-root-path`, `--ignore-tlog`, `--ignore-tsa`, `--ignore-sct`) can also come from the selected context. See [Sigstore settings](#sigstore-settings).
 
 ??? example
 

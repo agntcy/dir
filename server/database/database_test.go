@@ -5,6 +5,7 @@ package database
 
 import (
 	"testing"
+	"time"
 
 	coretypes "github.com/agntcy/dir/api/core/types"
 	searchv1 "github.com/agntcy/dir/api/search/v1"
@@ -468,6 +469,21 @@ func TestGetRecordCIDs_ComparisonOperators(t *testing.T) {
 			assert.Len(t, cids, tc.expected)
 		})
 	}
+}
+
+func TestGetRecordCIDs_IndexedBefore(t *testing.T) {
+	db := setupTestDB(t)
+	seedDB(t, db)
+
+	// Seeded records were just indexed. OASF created_at is 2024, so a string
+	// filter on oasf_created_at before now-1h would still match them.
+	cids, err := db.GetRecordCIDs(types.WithIndexedBefore(time.Now().Add(-time.Hour)))
+	require.NoError(t, err)
+	assert.Empty(t, cids)
+
+	cids, err = db.GetRecordCIDs(types.WithIndexedBefore(time.Now().Add(time.Hour)))
+	require.NoError(t, err)
+	assert.Len(t, cids, 3)
 }
 
 func TestGetRecordCIDs_Authors(t *testing.T) {

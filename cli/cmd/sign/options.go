@@ -5,7 +5,9 @@ package sign
 
 import (
 	signv1 "github.com/agntcy/dir/api/sign/v1"
+	cliconfig "github.com/agntcy/dir/cli/config"
 	"github.com/agntcy/dir/cli/presenter"
+	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 )
 
@@ -61,6 +63,37 @@ Supported formats:
 		"OIDC Client Secret (required for confidential OIDC clients)")
 	flags.StringVar(&opts.OIDCToken, "oidc-token", "",
 		"OIDC Token for non-interactive signing")
+}
+
+// ResolveOptions returns the signing options for this invocation. Each Sigstore
+// setting comes from, highest first: a flag set explicitly on cmd, a
+// DIRECTORY_CLIENT_SIGSTORE_* environment variable, the selected context's
+// sigstore section, then the flag's public-good default.
+//
+// The package-level opts stay untouched, so a configured value cannot leak into
+// a later invocation that runs in the same process.
+func ResolveOptions(cmd *cobra.Command) (*Options, error) {
+	resolved := *opts
+
+	// Key-based signing talks to no Sigstore service.
+	if resolved.Key != "" {
+		return &resolved, nil
+	}
+
+	cfg, err := cliconfig.ResolveSigstore()
+	if err != nil {
+		return nil, err //nolint:wrapcheck // Already wrapped by cliconfig.ResolveSigstore.
+	}
+
+	flags := cmd.Flags()
+	cliconfig.ApplyUnlessChanged(flags, "fulcio-url", &resolved.FulcioURL, cfg.FulcioURL)
+	cliconfig.ApplyUnlessChanged(flags, "rekor-url", &resolved.RekorURL, cfg.RekorURL)
+	cliconfig.ApplyUnlessChanged(flags, "timestamp-url", &resolved.TimestampURL, cfg.TimestampURL)
+	cliconfig.ApplyUnlessChanged(flags, "skip-tlog", &resolved.SkipTlog, cfg.SkipTlog)
+	cliconfig.ApplyUnlessChanged(flags, "oidc-provider-url", &resolved.OIDCProviderURL, cfg.OIDCProviderURL)
+	cliconfig.ApplyUnlessChanged(flags, "oidc-client-id", &resolved.OIDCClientID, cfg.OIDCClientID)
+
+	return &resolved, nil
 }
 
 func init() {

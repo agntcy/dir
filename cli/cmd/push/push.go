@@ -5,6 +5,7 @@
 package push
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"io"
@@ -86,6 +87,13 @@ func runCommand(cmd *cobra.Command, source io.Reader) error {
 		return errors.New("failed to get client from context")
 	}
 
+	// Resolve signing before pushing, so a bad Sigstore config fails without
+	// leaving an unsigned record behind.
+	signRecord, err := recordSigner(cmd, c)
+	if err != nil {
+		return fmt.Errorf("failed to sign record: %w", err)
+	}
+
 	// Read and close the source
 	sourceData, err := io.ReadAll(source)
 	if err != nil {
@@ -106,13 +114,22 @@ func runCommand(cmd *cobra.Command, source io.Reader) error {
 		return fmt.Errorf("failed to push data: %w", err)
 	}
 
-	if opts.Sign {
-		err = signcmd.Sign(cmd.Context(), c, recordRef.GetCid())
-		if err != nil {
+	if signRecord != nil {
+		if err := signRecord(cmd.Context(), recordRef.GetCid()); err != nil {
 			return fmt.Errorf("failed to sign record: %w", err)
 		}
 	}
 
 	// Output in the appropriate format
 	return presenter.PrintMessage(cmd, "record", "Pushed record with CID", recordRef.GetCid())
+}
+
+// recordSigner returns the function that signs the pushed record, or nil when
+// --sign is not set.
+func recordSigner(cmd *cobra.Command, c signcmd.Signer) (func(context.Context, string) error, error) {
+	if !opts.Sign {
+		return nil, nil //nolint:nilnil // nil signer means signing is disabled.
+	}
+
+	return signcmd.NewSigner(cmd, c)
 }

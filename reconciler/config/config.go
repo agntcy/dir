@@ -14,6 +14,7 @@ import (
 	"github.com/agntcy/dir/reconciler/tasks/indexer"
 	"github.com/agntcy/dir/reconciler/tasks/metrics"
 	policytask "github.com/agntcy/dir/reconciler/tasks/policy"
+	"github.com/agntcy/dir/reconciler/tasks/prune"
 	"github.com/agntcy/dir/reconciler/tasks/regsync"
 	"github.com/agntcy/dir/reconciler/tasks/scan"
 	"github.com/agntcy/dir/reconciler/tasks/signature"
@@ -81,6 +82,11 @@ type Config struct {
 
 	// Scan holds the security scan task configuration.
 	Scan scan.Config `json:"scan" mapstructure:"scan"`
+
+	// Prune holds the prune task configuration.
+	// Deletes records that match Criteria. Disabled by default because it
+	// deletes records.
+	Prune prune.Config `json:"prune" mapstructure:"prune"`
 
 	// Identity holds the identity claim verification task configuration.
 	Identity identity.Config `json:"identity" mapstructure:"identity"`
@@ -243,6 +249,33 @@ func LoadConfig() (*Config, error) {
 
 	_ = v.BindEnv("scan.a2a_cli_path")
 	v.SetDefault("scan.a2a_cli_path", scan.DefaultA2ACLIPath)
+
+	//
+	// Prune task configuration
+	//
+	_ = v.BindEnv("prune.enabled")
+	v.SetDefault("prune.enabled", false)
+
+	_ = v.BindEnv("prune.interval")
+	v.SetDefault("prune.interval", prune.DefaultInterval)
+
+	_ = v.BindEnv("prune.record_timeout")
+	v.SetDefault("prune.record_timeout", prune.DefaultRecordTimeout)
+
+	_ = v.BindEnv("prune.criteria.trusted")
+	v.SetDefault("prune.criteria.trusted", false)
+
+	_ = v.BindEnv("prune.criteria.min_severity")
+	v.SetDefault("prune.criteria.min_severity", prune.DefaultMinSeverity)
+
+	_ = v.BindEnv("prune.criteria.older_than")
+	v.SetDefault("prune.criteria.older_than", prune.DefaultOlderThan)
+
+	_ = v.BindEnv("prune.limit")
+	v.SetDefault("prune.limit", prune.DefaultLimit)
+
+	_ = v.BindEnv("prune.dry_run")
+	v.SetDefault("prune.dry_run", true)
 
 	//
 	// Providers task configuration (provider-count gauge)

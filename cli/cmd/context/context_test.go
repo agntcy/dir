@@ -185,6 +185,34 @@ contexts:
 	require.NotContains(t, output, "secret-spiffe-token")
 }
 
+func TestContextShowPrintsResolvedSigstoreSettings(t *testing.T) {
+	resetContextTestEnv(t)
+	configHome := t.TempDir()
+	t.Setenv("XDG_CONFIG_HOME", configHome)
+	t.Setenv("DIRECTORY_CLIENT_SIGSTORE_FULCIO_URL", "https://fulcio.env.example")
+	t.Setenv("DIRECTORY_CLIENT_SIGSTORE_IGNORE_TSA", "")
+	writeContextTestConfig(t, configHome, `
+current_context: corp
+contexts:
+  corp:
+    server_address: corp.gateway.example.com:443
+    auth_mode: insecure
+    sigstore:
+      fulcio_url: https://fulcio.corp.example
+      trusted_root_path: /etc/dirctl/trusted_root.json
+      ignore_tlog: true
+`)
+
+	output, err := executeShowCommand(t)
+
+	require.NoError(t, err)
+	require.Contains(t, output, "  sigstore.fulcio_url: https://fulcio.env.example\n")
+	require.Contains(t, output, "  sigstore.trusted_root_path: /etc/dirctl/trusted_root.json\n")
+	require.Contains(t, output, "  sigstore.ignore_tlog: true\n")
+	require.NotContains(t, output, "sigstore.ignore_tsa", "unset settings are not printed")
+	require.NotContains(t, output, "sigstore.rekor_url", "unset settings are not printed")
+}
+
 func TestContextValidate(t *testing.T) {
 	resetContextTestEnv(t)
 	configHome := t.TempDir()
