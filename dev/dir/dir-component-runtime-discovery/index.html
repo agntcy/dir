@@ -1325,6 +1325,78 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#process-host" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Process (Host)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Process (Host)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#descriptor-format" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Descriptor Format
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#locators" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Locators
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#trust" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Trust
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#run-locally" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Run Locally
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#sharing-a-store" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Sharing a Store
+      
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -2655,6 +2727,78 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#process-host" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Process (Host)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Process (Host)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#descriptor-format" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Descriptor Format
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#locators" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Locators
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#trust" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Trust
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#run-locally" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Run Locally
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#sharing-a-store" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Sharing a Store
+      
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -2937,7 +3081,7 @@ In addition, it also resolves workloads using various resolvers (A2A, OASF) to e
 <p>The system is split into two independent components:</p>
 <pre class="mermaid"><code>flowchart LR
  subgraph Discovery["Discovery (discovery/)"]
-        RA["Runtime Adapters&lt;br&gt;• Docker&lt;br&gt;• Kubernetes"]
+        RA["Runtime Adapters&lt;br&gt;• Docker&lt;br&gt;• Kubernetes&lt;br&gt;• Process"]
         RES["Resolvers&lt;br&gt;• A2A&lt;br&gt;• OASF"]
         SW["Store Writer"]
   end
@@ -2962,6 +3106,7 @@ In addition, it also resolves workloads using various resolvers (A2A, OASF) to e
 <ul>
 <li>Docker: Watches Docker daemon for labeled containers.</li>
 <li>Kubernetes: Watches Kubernetes API for labeled pods/services.</li>
+<li>Process: Watches a directory of workload descriptor files written by processes running directly on the host.</li>
 <li>Extensible architecture allows adding more runtimes in the future.</li>
 </ul>
 </li>
@@ -2978,8 +3123,12 @@ In addition, it also resolves workloads using various resolvers (A2A, OASF) to e
 </li>
 </ul>
 <p>The storage backend can be used to expose discovered workloads to other components (e.g., clients/servers) without coupling them directly and to reduce attack surface.</p>
-<p>In non-Kubernetes environments, <a href="https://etcd.io/">etcd</a> is recommended as the storage backend for better portability.
-In Kubernetes environments, CRDs can be used for a more native experience to ensure clients can query workloads via both gRPC and the Kubernetes API.</p>
+<p>Choose the storage backend based on where the components run:</p>
+<ul>
+<li><strong><a href="https://etcd.io/">etcd</a></strong> is recommended in non-Kubernetes environments where discovery and server run as separate services (e.g. Docker Compose or across hosts), since both only need network access to etcd.</li>
+<li><strong>CRDs</strong> can be used in Kubernetes environments for a more native experience, so clients can query workloads via both gRPC and the Kubernetes API.</li>
+<li><strong>SQLite</strong> (<code>sqlite</code>) suits a single host where discovery and server run as local binaries, e.g. a developer machine. They share a database file instead of requiring an etcd instance, so both must be configured with the same path. The file is opened in WAL mode, so several processes can use it at once: readers don't block the writer, and writes are serialized (one writer at a time, others wait up to 5s). This only works for processes on the same host using a local filesystem; don't put the file on a network filesystem (e.g. NFS) or share it between containers through Docker Desktop bind mounts, where file locking is unreliable. Use etcd in those cases.</li>
+</ul>
 <pre class="mermaid"><code>flowchart LR
     n1["Runtime Discovery"] --&gt; n3["Runtime Server (for querying workloads via gRPC)"] &amp; n4["CRD (for querying workloads via Kubernetes API)"]
 
@@ -3056,6 +3205,99 @@ grpcurl<span class="w"> </span>-plaintext<span class="w"> </span>localhost:8080<
 <h4 id="cleanup">Cleanup</h4>
 <div class="highlight"><pre><span></span><code>kind<span class="w"> </span>delete<span class="w"> </span>cluster<span class="w"> </span>--name<span class="w"> </span>runtime
 </code></pre></div>
+<h3 id="process-host">Process (Host)</h3>
+<p>The process runtime discovers agents running directly on a host. Each process announces itself by writing a JSON descriptor file to a watched directory, and is removed when the file is deleted or the process exits. Discovery runs as a host binary, since it must see host PIDs (this does not work from a container on Docker Desktop).</p>
+<h4 id="descriptor-format">Descriptor Format</h4>
+<p>One file per process at <code>&lt;dir&gt;/&lt;id&gt;.json</code>; the file name without <code>.json</code> is the workload ID. Descriptors must be regular files of at most 64 KiB; symlinks and other file types are ignored. See <a href="../install/examples/process/hello-agent.json"><code>install/examples/process/hello-agent.json</code></a>.</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Required</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>name</code></td>
+<td>yes</td>
+<td>Workload name</td>
+</tr>
+<tr>
+<td><code>pid</code></td>
+<td>yes</td>
+<td>Process ID; the workload is listed only while this process is alive</td>
+</tr>
+<tr>
+<td><code>ports</code></td>
+<td>no</td>
+<td>Ports the process listens on (strings or numbers); the A2A resolver only probes workloads with ports</td>
+</tr>
+<tr>
+<td><code>labels</code></td>
+<td>no</td>
+<td>Must include <code>org.agntcy/discover=true</code>; resolver labels work as for containers</td>
+</tr>
+<tr>
+<td><code>annotations</code></td>
+<td>no</td>
+<td>E.g. <code>org.agntcy/agent-record</code>, <code>org.agntcy/locator</code></td>
+</tr>
+<tr>
+<td><code>addresses</code></td>
+<td>no</td>
+<td>Defaults to <code>["127.0.0.1"]</code></td>
+</tr>
+</tbody>
+</table>
+<p>Discovery sets <code>runtime</code> and <code>type</code> to <code>process</code>, <code>hostname</code> to the host name, and <code>isolationGroups</code> to <code>["host"]</code>.</p>
+<h4 id="locators">Locators</h4>
+<p>An agent that is not reachable over an HTTP address and port (for example one served over SLIM) can omit <code>ports</code> and publish its protocol endpoint in the <code>org.agntcy/locator</code> annotation, e.g. <code>"org.agntcy/locator": "slim://org/namespace/agent"</code>. Discovery passes annotations through unchanged; the A2A resolver skips workloads without ports, while the OASF resolver still resolves <code>org.agntcy/agent-record</code>.</p>
+<h4 id="trust">Trust</h4>
+<p>A descriptor is an unauthenticated claim: discovery checks that the PID is alive, not that the process is the agent its descriptor or record names. Anyone who can write to the directory can register a workload, so keep it private to the user (discovery creates it with mode <code>0700</code>). Consumers that need to know an instance is genuine must verify it themselves, e.g. by probing the agent and checking a reply signed with the key its record names (see <a href="https://github.com/agntcy/dir-runtime/issues/94">#94</a>).</p>
+<p>Write descriptors atomically (write a dotfile or <code>&lt;id&gt;.json.tmp</code>, then rename it to <code>&lt;id&gt;.json</code>) and delete them on clean shutdown. Discovery never modifies or removes descriptor files.</p>
+<h4 id="run-locally">Run Locally</h4>
+<div class="highlight"><pre><span></span><code><span class="c1"># Start a toy A2A agent serving an agent card on port 9999</span>
+mkdir<span class="w"> </span>-p<span class="w"> </span>/tmp/hello-agent/.well-known
+<span class="nb">echo</span><span class="w"> </span><span class="s1">&#39;{&quot;name&quot;: &quot;Hello Agent&quot;, &quot;description&quot;: &quot;Example agent&quot;}&#39;</span><span class="w"> </span>&gt;<span class="w"> </span>/tmp/hello-agent/.well-known/agent-card.json
+python3<span class="w"> </span>-m<span class="w"> </span>http.server<span class="w"> </span><span class="m">9999</span><span class="w"> </span>--directory<span class="w"> </span>/tmp/hello-agent<span class="w"> </span><span class="p">&amp;</span>
+<span class="nv">AGENT_PID</span><span class="o">=</span><span class="nv">$!</span>
+
+<span class="c1"># Create the descriptor directory, private to the user (discovery also creates it on start)</span>
+mkdir<span class="w"> </span>-p<span class="w"> </span>-m<span class="w"> </span><span class="m">700</span><span class="w"> </span>~/.agntcy/dir-runtime/workloads.d
+
+<span class="c1"># Start discovery and server, sharing a SQLite store</span>
+<span class="nv">DISCOVERY_RUNTIME_TYPE</span><span class="o">=</span>process<span class="w"> </span><span class="nv">DISCOVERY_STORE_TYPE</span><span class="o">=</span>sqlite<span class="w"> </span><span class="nv">DISCOVERY_RESOLVER_OASF_ENABLED</span><span class="o">=</span><span class="nb">false</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>go<span class="w"> </span>-C<span class="w"> </span>discovery<span class="w"> </span>run<span class="w"> </span>./cmd<span class="w"> </span><span class="p">&amp;</span>
+<span class="nv">SERVER_HOST</span><span class="o">=</span><span class="m">127</span>.0.0.1<span class="w"> </span><span class="nv">SERVER_STORE_TYPE</span><span class="o">=</span>sqlite<span class="w"> </span>go<span class="w"> </span>-C<span class="w"> </span>server<span class="w"> </span>run<span class="w"> </span>./cmd<span class="w"> </span><span class="p">&amp;</span>
+
+<span class="c1"># Announce the agent</span>
+cat<span class="w"> </span>&gt;<span class="w"> </span>~/.agntcy/dir-runtime/workloads.d/hello-agent.json<span class="w"> </span><span class="s">&lt;&lt;EOF</span>
+<span class="s">{</span>
+<span class="s">  &quot;name&quot;: &quot;hello-agent&quot;,</span>
+<span class="s">  &quot;pid&quot;: $AGENT_PID,</span>
+<span class="s">  &quot;labels&quot;: {&quot;org.agntcy/discover&quot;: &quot;true&quot;, &quot;org.agntcy/agent-type&quot;: &quot;a2a&quot;},</span>
+<span class="s">  &quot;ports&quot;: [&quot;9999&quot;]</span>
+<span class="s">}</span>
+<span class="s">EOF</span>
+
+<span class="c1"># Query the API (services.a2a holds the agent card)</span>
+grpcurl<span class="w"> </span>-plaintext<span class="w"> </span>localhost:8080<span class="w"> </span>agntcy.dir.runtime.v1.DiscoveryService/ListWorkloads
+
+<span class="c1"># Stop the agent; the workload disappears within the poll interval</span>
+<span class="nb">kill</span><span class="w"> </span><span class="nv">$AGENT_PID</span>
+</code></pre></div>
+<p>To resolve OASF records from a local Directory (<code>dirctl daemon start</code>), drop <code>DISCOVERY_RESOLVER_OASF_ENABLED=false</code>, set <code>DIRECTORY_CLIENT_SERVER_ADDRESS=localhost:8888</code> and <code>DIRECTORY_CLIENT_AUTH_MODE=insecure</code>, and add <code>"org.agntcy/agent-record": "&lt;cid or name:version&gt;"</code> to the descriptor's labels or annotations.</p>
+<p>The server is bound to <code>127.0.0.1</code> here because it has no authentication: with the default <code>SERVER_HOST=0.0.0.0</code> anyone who can reach the machine can list its workloads. To share workloads with other machines, put transport security and access control in front of the server, and list addresses or locators in the descriptors that those machines can reach (the <code>127.0.0.1</code> default is only reachable locally).</p>
+<p>The walkthrough uses SQLite so no extra service is needed; etcd works the same way by running etcd and setting <code>DISCOVERY_STORE_TYPE=etcd</code> and <code>SERVER_STORE_TYPE=etcd</code>.</p>
+<p>Docker and process discovery on the same machine can share one store and one server: on startup each instance only removes stale workloads of its own runtime. See <a href="#sharing-a-store">Sharing a Store</a> for several instances of the same runtime.</p>
+<h3 id="sharing-a-store">Sharing a Store</h3>
+<p>Several discovery instances can write to the same store, and one server then lists all their workloads. On startup, discovery removes stored workloads its runtime no longer reports, but only those it owns: workloads of the same runtime type and the same instance ID.</p>
+<ul>
+<li><strong>Different runtimes</strong> (e.g. Docker and process discovery on one machine) need no configuration.</li>
+<li><strong>Several instances of the same runtime</strong> (e.g. Docker discovery on two hosts writing to one etcd) must each set a unique, stable <code>DISCOVERY_INSTANCE_ID</code>. Discovery records it on every workload it writes in the <code>org.agntcy/discovery-instance</code> annotation. The annotation is reserved: a value supplied by the workload itself (e.g. in a process descriptor or pod annotations) is replaced, or removed when no instance ID is set. Do not derive it from a container or pod hostname, since those change when the container is recreated and the new instance would no longer clean up the old one's workloads.</li>
+</ul>
+<p>Workload IDs must be unique across all instances sharing a store; an instance that reports an existing ID overwrites that workload. Container IDs and pod UIDs are unique in practice; for the process runtime, use descriptor file names that are unique across hosts (e.g. a UUID or <code>&lt;host&gt;-&lt;agent&gt;</code>).</p>
 <h2 id="workload-labels">Workload Labels</h2>
 <p>Workloads are discovered based on labels. The discovery component watches for workloads with specific labels and processes their metadata.</p>
 <h3 id="discovery-labels">Discovery Labels</h3>
@@ -3077,6 +3319,11 @@ grpcurl<span class="w"> </span>-plaintext<span class="w"> </span>localhost:8080<
 <td><code>org.agntcy/discover=true</code></td>
 <td>Docker</td>
 <td>Marks a container for discovery</td>
+</tr>
+<tr>
+<td><code>org.agntcy/discover=true</code></td>
+<td>Process</td>
+<td>Marks a process descriptor for discovery</td>
 </tr>
 </tbody>
 </table>
@@ -3161,8 +3408,13 @@ They provide additional information about the workload's capabilities.</p>
 <td><code>16</code></td>
 </tr>
 <tr>
+<td><code>DISCOVERY_INSTANCE_ID</code></td>
+<td>Instance ID that scopes workload cleanup when several instances of the same runtime share a store (see <a href="#sharing-a-store">Sharing a Store</a>)</td>
+<td>``</td>
+</tr>
+<tr>
 <td><code>DISCOVERY_STORE_TYPE</code></td>
-<td>Storage type (<code>etcd</code>, <code>crd</code>)</td>
+<td>Storage type (<code>etcd</code>, <code>crd</code>, <code>sqlite</code>)</td>
 <td><code>etcd</code></td>
 </tr>
 <tr>
@@ -3211,8 +3463,13 @@ They provide additional information about the workload's capabilities.</p>
 <td><code>30s</code></td>
 </tr>
 <tr>
+<td><code>DISCOVERY_STORE_SQLITE_PATH</code></td>
+<td>SQLite database file shared with the server (<code>~</code> expands to home)</td>
+<td><code>~/.agntcy/dir-runtime/workloads.db</code></td>
+</tr>
+<tr>
 <td><code>DISCOVERY_RUNTIME_TYPE</code></td>
-<td>Runtime type (<code>docker</code>, <code>kubernetes</code>)</td>
+<td>Runtime type (<code>docker</code>, <code>kubernetes</code>, <code>process</code>)</td>
 <td><code>docker</code></td>
 </tr>
 <tr>
@@ -3248,6 +3505,26 @@ They provide additional information about the workload's capabilities.</p>
 <tr>
 <td><code>DISCOVERY_RUNTIME_KUBERNETES_LABEL_VALUE</code></td>
 <td>Label value to filter pods</td>
+<td><code>true</code></td>
+</tr>
+<tr>
+<td><code>DISCOVERY_RUNTIME_PROCESS_DIR</code></td>
+<td>Directory containing workload descriptor files (<code>~</code> expands to home)</td>
+<td><code>~/.agntcy/dir-runtime/workloads.d</code></td>
+</tr>
+<tr>
+<td><code>DISCOVERY_RUNTIME_PROCESS_POLL_INTERVAL</code></td>
+<td>How often to rescan the descriptor directory</td>
+<td><code>2s</code></td>
+</tr>
+<tr>
+<td><code>DISCOVERY_RUNTIME_PROCESS_LABEL_KEY</code></td>
+<td>Label key to filter process descriptors</td>
+<td><code>org.agntcy/discover</code></td>
+</tr>
+<tr>
+<td><code>DISCOVERY_RUNTIME_PROCESS_LABEL_VALUE</code></td>
+<td>Label value to filter process descriptors</td>
 <td><code>true</code></td>
 </tr>
 <tr>
@@ -3319,7 +3596,7 @@ Refer to the <a href="https://github.com/agntcy/dir/tree/main/client">Directory 
 </tr>
 <tr>
 <td><code>SERVER_STORE_TYPE</code></td>
-<td>Storage type (<code>etcd</code>, <code>crd</code>)</td>
+<td>Storage type (<code>etcd</code>, <code>crd</code>, <code>sqlite</code>)</td>
 <td><code>etcd</code></td>
 </tr>
 <tr>
@@ -3366,6 +3643,11 @@ Refer to the <a href="https://github.com/agntcy/dir/tree/main/client">Directory 
 <td><code>SERVER_STORE_CRD_RESYNC_PERIOD</code></td>
 <td>How often to resync the cache from the API server</td>
 <td><code>30s</code></td>
+</tr>
+<tr>
+<td><code>SERVER_STORE_SQLITE_PATH</code></td>
+<td>SQLite database file shared with discovery (<code>~</code> expands to home)</td>
+<td><code>~/.agntcy/dir-runtime/workloads.db</code></td>
 </tr>
 </tbody>
 </table>
