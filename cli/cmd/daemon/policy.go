@@ -30,9 +30,9 @@ so what the daemon serves does not change. Run it before putting a policy in
 the configuration, since under strict enforcement a policy that rejects too
 much hides those records until it is fixed.
 
-The candidate file is a validators list, as in the configuration, whose entries
-have op "evaluate". Files of OPA policies it names are read from --policy-dir,
-which is the daemon's policy directory unless given.
+The candidate file is a policy.validators list, as in the configuration, whose
+entries have op "evaluate". Files of OPA policies it names are read from
+--policy-dir, which is the daemon's policy directory unless given.
 
 Run it with the same dirctl as the daemon: opening the database applies the
 migrations it is missing, as starting the daemon does.

@@ -1,5 +1,6 @@
-validators:
-  - provider: oasf
-    op: ["push", "index"]
-    config:
-      schema_url: "https://custom.schema.url"
+policy:
+  validators:
+    - provider: oasf
+      op: ["push", "index"]
+      config:
+        schema_url: "https://custom.schema.url"

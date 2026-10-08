@@ -13,20 +13,21 @@ The reconciler's policy task evaluates every record against each policy and stor
 A policy is a validator with the `evaluate` operation. Only `opa` and `cel` can define one:
 
 ```yaml
-validators:
-  - provider: opa
-    op: ["evaluate"]
-    config:
-      file: require-license.rego    # in policy.dir
-  - provider: cel
-    op: ["evaluate"]
-    config:
-      name: has-description
-      expressions:
-        - 'record.description != ""'
+policy:
+  validators:
+    - provider: opa
+      op: ["evaluate"]
+      config:
+        file: require-license.rego    # in policy.dir
+    - provider: cel
+      op: ["evaluate"]
+      config:
+        name: has-description
+        expressions:
+          - 'record.description != ""'
 ```
 
-The server and the reconciler both read this list: Helm injects it into both configurations, and the daemon shares `server.validators`. See [Records Validation](dir-component-records-validation.md) for how each provider decides.
+The server and the reconciler both read `policy.validators`: Helm copies `config.policy` into both configurations, and the daemon uses `server.policy`. See [Records Validation](dir-component-records-validation.md) for how each provider decides.
 
 - **ID.** `provider:name`, so the entries above are `opa:require-license` and `cel:has-description`. `name` defaults to the OPA file's name without `.rego` and is required for CEL. Letters, digits, `.`, `_` and `-` only. The ID is what `policy.enforcement.policies` lists, and it stays the same when the policy changes.
 - **Version.** A hash of the policy's content: the `.rego` source, or the expressions. An edit is a new version and anything else is not, so nobody states one.
@@ -128,20 +129,21 @@ Switching the mode to `shadow` for the duration of an edit stops enforcing: the 
 
 A policy that rejects too much hides those records until it is fixed, so try a new or edited policy on the node's real records before deploying it. A dry run evaluates the candidate against every indexed record, as the policy task would, and reports how many it would exclude, a sample of them, and the reasons. It stores nothing: no verdict is written and no policy version is registered, so it changes nothing a read returns.
 
-The candidate is a file with a `validators` list, as in the configuration, whose entries have `op: ["evaluate"]`; the file can be pasted into the configuration once the policy is good. Only the entries with that op are tried.
+The candidate is a file with a `policy.validators` list, as in the configuration, whose entries have `op: ["evaluate"]`; the file can be pasted into the configuration once the policy is good. Only the entries with that op are tried.
 
 ```yaml
-validators:
-  - provider: cel
-    op: ["evaluate"]
-    config:
-      name: has-description
-      expressions:
-        - 'record.description != ""'
+policy:
+  validators:
+    - provider: cel
+      op: ["evaluate"]
+      config:
+        name: has-description
+        expressions:
+          - 'record.description != ""'
 ```
 
 - **Daemon.** `dirctl daemon policy dry-run --candidate candidate.yaml`. The daemon must be running, since the records are read through its registry. Files of OPA policies the candidate names are read from `--policy-dir`, the daemon's policy directory unless given.
-- **Kubernetes.** The reconciler pod has the database and the registry, so run the dry run in it, with the candidate on standard input: `kubectl exec -i deploy/<reconciler deployment> -- /reconciler dry-run --candidate /dev/stdin < candidate.yaml`. The deployment is the one labeled `app.kubernetes.io/name=reconciler`. An OPA candidate needs its `.rego` file where the node's policies are: add it to the chart's `policies` map without naming it in `validators`, which makes it a file on the pod and not a policy, then name it in the candidate.
+- **Kubernetes.** The reconciler pod has the database and the registry, so run the dry run in it, with the candidate on standard input: `kubectl exec -i deploy/<reconciler deployment> -- /reconciler dry-run --candidate /dev/stdin < candidate.yaml`. The deployment is the one labeled `app.kubernetes.io/name=reconciler`. An OPA candidate needs its `.rego` file where the node's policies are: add it to the chart's `policies` map without naming it in `policy.validators`, which makes it a file on the pod and not a policy, then name it in the candidate.
 - **Reading the report.** *Would exclude* counts the records the policy rejects plus those it could not evaluate, since both stay hidden under enforcement. If the second number is large, look at the reasons before blaming the policy: a store that cannot be read gives the same result. Raise `--samples` to see more of the records.
 - **A dry run of the policy the node already enforces** reports the records the node withholds for that policy, which is a way to check what the report says against what you see.
 - **One policy at a time.** A record is served only if it passes every enforced policy. The report is for the candidate alone, so add its count to what the other policies already hide to judge the whole.

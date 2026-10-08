@@ -23,19 +23,6 @@
 
 server:
   listen_address: "localhost:8888"
-  validators:
-    - provider: oasf
-      op: ["push", "autosync", "index"]
-      config:
-        schema_url: "https://schema.oasf.outshift.com"
-    # Inline CEL expressions. The record is bound as `record`; each
-    # expression must evaluate to bool. Validation fails if any is false.
-    # - provider: cel
-    #   op: ["push"]
-    #   config:
-    #     expressions:
-    #       - record.name != ""
-    #       - record.version != ""
   store:
     provider: "oci"
     oci:
@@ -114,6 +101,19 @@ server:
     # catalog_title: "AI Catalog"
   policy:
     dir: policies
+    validators:
+      - provider: oasf
+        op: ["push", "autosync", "index"]
+        config:
+          schema_url: "https://schema.oasf.outshift.com"
+      # Inline CEL expressions. The record is bound as `record`; each
+      # expression must evaluate to bool. Validation fails if any is false.
+      # - provider: cel
+      #   op: ["push"]
+      #   config:
+      #     expressions:
+      #       - record.name != ""
+      #       - record.version != ""
     # Content-policy enforcement on reads: off, shadow or enforce, per kind of
     # read. Policies lists the IDs of the policies every served record must
     # comply with; their versions come from the policies' content.

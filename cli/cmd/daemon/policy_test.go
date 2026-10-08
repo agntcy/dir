@@ -45,13 +45,14 @@ func TestPolicyDryRunNeedsTheDaemonRunning(t *testing.T) {
 	config := filepath.Join(dir, "daemon.yaml")
 
 	require.NoError(t, os.WriteFile(candidate, []byte(`
-validators:
-  - provider: cel
-    op: ["evaluate"]
-    config:
-      name: has-description
-      expressions:
-        - 'record.description != ""'
+policy:
+  validators:
+    - provider: cel
+      op: ["evaluate"]
+      config:
+        name: has-description
+        expressions:
+          - 'record.description != ""'
 `), 0o600))
 
 	// A registry nothing listens at.
@@ -92,7 +93,7 @@ func TestPolicyDryRunRefusesAFileWithNoPolicy(t *testing.T) {
 	})
 
 	candidate := filepath.Join(t.TempDir(), "none.yaml")
-	require.NoError(t, os.WriteFile(candidate, []byte("validators: []\n"), 0o600))
+	require.NoError(t, os.WriteFile(candidate, []byte("policy:\n  validators: []\n"), 0o600))
 
 	opts = &Options{DataDir: t.TempDir()}
 	dryRunOpts = dryrun.Options{Candidate: candidate, Samples: 5, Output: dryrun.OutputHuman}

@@ -13,14 +13,14 @@ server:
     enabled: false
   # No OASF validator on push: this suite pushes records of its own making and
   # does not need the OASF schema server.
-  validators:
-    - provider: cel
-      op: ["evaluate"]
-      config:
-        name: has-description
-        expressions:
-          - 'record.description != ""'
   policy:
+    validators:
+      - provider: cel
+        op: ["evaluate"]
+        config:
+          name: has-description
+          expressions:
+            - 'record.description != ""'
     enforcement:
       search: "enforce"
       fetch: "enforce"
