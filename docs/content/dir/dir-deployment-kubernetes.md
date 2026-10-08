@@ -101,8 +101,9 @@ The Agent Directory Service can be deployed using Helm or GitOps / Argo CD. Helm
             className: dir-spire
             trustDomain: example.org
             useCSIDriver: true
-          validators: []
           config:
+            policy:
+              validators: []
             listen_address: "0.0.0.0:8888"
             authn:
               enabled: true

@@ -15,10 +15,11 @@ import (
 	"github.com/spf13/viper"
 )
 
-// LoadCandidate reads the policies in a candidate file: the same validators
-// list the server and the reconciler take, so that a policy that is good can be
-// pasted into their configuration as it is. Only the entries with op evaluate
-// define a policy; any others in the file are ignored.
+// LoadCandidate reads the policies in a candidate file: the same
+// policy.validators list the server and the reconciler take, so that a
+// policy that is good can be pasted into their configuration as it is.
+// Only the entries with op evaluate define a policy; any others in the
+// file are ignored.
 func LoadCandidate(path string) (validatorsconfig.Config, error) {
 	v := viper.New()
 	v.SetConfigFile(path)
@@ -32,7 +33,7 @@ func LoadCandidate(path string) (validatorsconfig.Config, error) {
 	}
 
 	var all validatorsconfig.Config
-	if err := v.UnmarshalKey("validators", &all); err != nil {
+	if err := v.UnmarshalKey("policy.validators", &all); err != nil {
 		return nil, fmt.Errorf("read the validators in %s: %w", path, err)
 	}
 
@@ -45,7 +46,7 @@ func LoadCandidate(path string) (validatorsconfig.Config, error) {
 	}
 
 	if len(policies) == 0 {
-		return nil, fmt.Errorf("%s defines no policy: a validators entry needs op: [%q]", path, validatorsconfig.OpEvaluate)
+		return nil, fmt.Errorf("%s defines no policy: a policy.validators entry needs op: [%q]", path, validatorsconfig.OpEvaluate)
 	}
 
 	if err := policies.Validate(); err != nil {

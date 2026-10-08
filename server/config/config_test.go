@@ -255,10 +255,10 @@ func TestConfig(t *testing.T) {
 func TestLoadConfig_ValidatorsFromFile(t *testing.T) {
 	cfg, err := LoadConfig(WithFile("testdata/validators.yml"))
 	assert.NoError(t, err)
-	assert.Len(t, cfg.Validators, 1)
-	assert.Equal(t, "oasf", cfg.Validators[0].Provider)
-	assert.Equal(t, "https://custom.schema.url", cfg.Validators[0].ConfigString(validatorsconfig.ConfigKeySchemaURL))
-	assert.Equal(t, []string{"push", "index"}, cfg.Validators[0].Ops)
+	assert.Len(t, cfg.Policy.Validators, 1)
+	assert.Equal(t, "oasf", cfg.Policy.Validators[0].Provider)
+	assert.Equal(t, "https://custom.schema.url", cfg.Policy.Validators[0].ConfigString(validatorsconfig.ConfigKeySchemaURL))
+	assert.Equal(t, []string{"push", "index"}, cfg.Policy.Validators[0].Ops)
 }
 
 // TestConfig_RateLimiting tests that rate limiting configuration is correctly parsed.

@@ -1,10 +1,11 @@
 server:
   listen_address: "localhost:19888"
-  validators:
-    - provider: oasf
-      op: ["push", "autosync", "index"]
-      config:
-        schema_url: "https://schema.oasf.outshift.com"
+  policy:
+    validators:
+      - provider: oasf
+        op: ["push", "autosync", "index"]
+        config:
+          schema_url: "https://schema.oasf.outshift.com"
   store:
     provider: "oci"
     oci:

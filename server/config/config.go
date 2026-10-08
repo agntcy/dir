@@ -19,7 +19,6 @@ import (
 	routing "github.com/agntcy/dir/server/routing/config"
 	store "github.com/agntcy/dir/server/store/config"
 	oci "github.com/agntcy/dir/server/store/oci/config"
-	validators "github.com/agntcy/dir/server/validators/config"
 	"github.com/agntcy/dir/utils/logging"
 	"github.com/mitchellh/mapstructure"
 	"github.com/spf13/viper"
@@ -124,10 +123,6 @@ type Config struct {
 	// API configuration
 	ListenAddress string `json:"listen_address,omitempty" mapstructure:"listen_address"`
 
-	// Validators is the ordered list of record validators (OASF, later others).
-	// YAML only — a list of objects cannot be bound to a single env var.
-	Validators validators.Config `json:"validators,omitempty" mapstructure:"validators"`
-
 	// Logging configuration
 	Logging LoggingConfig `json:"logging" mapstructure:"logging"`
 
@@ -143,8 +138,8 @@ type Config struct {
 	// Authz configuration
 	Authz authz.Config `json:"authz" mapstructure:"authz"`
 
-	// Policy is the directory named OPA policy files are loaded from.
-	// An opa validator's config.file is resolved against Dir.
+	// Policy holds the record validators, the directory named OPA files
+	// are loaded from, and how reads enforce content policies.
 	Policy policy.Config `json:"policy" mapstructure:"policy"`
 
 	// Store configuration

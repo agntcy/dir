@@ -40,7 +40,6 @@ data:
     {{- $_ := set $extractorConfig "remote_addr" $extractorAddr }}
     {{- $_ := set $config "extractor" $extractorConfig }}
     {{- end }}
-    {{- $_ := set $config "validators" (.Values.validators | default list) }}
     {{- $config | toYaml | nindent 4 }}
 
   authz_policies.csv: |
@@ -67,7 +66,6 @@ data:
     {{- end }}
     {{- /* Dynamically set apiserver gRPC address for the metrics task */ -}}
     {{- $_ := set $reconcilerConfig "server_address" (include "chart.apiserver.grpcAddress" .) }}
-    {{- $_ := set $reconcilerConfig "validators" (.Values.validators | default list) }}
     {{- if .Values.config.policy }}
     {{- $_ := set $reconcilerConfig "policy" .Values.config.policy }}
     {{- end }}

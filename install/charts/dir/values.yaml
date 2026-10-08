@@ -143,28 +143,6 @@ apiserver:
   #       default allow := true
   policies: {}
 
-  # Record validators applied on push, autosync, and/or index. A validator with
-  # op "evaluate" (opa or cel only) defines a content policy instead: the
-  # reconciler evaluates every record against it and the server can enforce the
-  # verdicts (config.policy.enforcement).
-  # Injected into both server.config.yml and reconciler.config.yml.
-  # Omit an op (or this entire list) to skip validation on that path.
-  # To use the OASF instance deployed with this chart (apiserver.oasf.enabled: true):
-  #   config.schema_url: "http://<release-name>-ingress-controller.<namespace>.svc.cluster.local"
-  validators:
-    - provider: oasf
-      op: ["push", "autosync", "index"]
-      config:
-        schema_url: "https://schema.oasf.outshift.com"
-    # Inline CEL expressions. The record is bound as `record`; each
-    # expression must evaluate to bool. Validation fails if any is false.
-    # - provider: cel
-    #   op: ["push"]
-    #   config:
-    #     expressions:
-    #       - record.name != ""
-    #       - record.version != ""
-
   # Server configuration (maps directly to server config.go Config struct)
   config:
     # listen_address: "0.0.0.0:8888"
@@ -196,6 +174,25 @@ apiserver:
     # File-based policies. Files from policies are mounted here.
     policy:
       dir: "/etc/agntcy/dir/policies"
+
+      # Record validators applied on push, autosync, and/or index. A validator
+      # with op "evaluate" (opa or cel only) defines a content policy instead.
+      # Copied into the reconciler config. To use the OASF instance deployed
+      # with this chart (apiserver.oasf.enabled: true):
+      #   schema_url: "http://<release-name>-ingress-controller.<namespace>.svc.cluster.local"
+      validators:
+        - provider: oasf
+          op: ["push", "autosync", "index"]
+          config:
+            schema_url: "https://schema.oasf.outshift.com"
+        # Inline CEL expressions. The record is bound as `record`; each
+        # expression must evaluate to bool. Validation fails if any is false.
+        # - provider: cel
+        #   op: ["push"]
+        #   config:
+        #     expressions:
+        #       - record.name != ""
+        #       - record.version != ""
 
       # Content-policy enforcement on reads: off, shadow or enforce, per kind
       # of read. See the apiserver chart's values for what each covers.

@@ -12,8 +12,9 @@
 #       - log.example.com
 #     root_keys:
 #       - "example-log+1a2b3c4d+AjBZ..."
-validators:
-  - provider: oasf
-    op: ["index"]
-    config:
-      schema_url: "https://schema.oasf.outshift.com"
+policy:
+  validators:
+    - provider: oasf
+      op: ["index"]
+      config:
+        schema_url: "https://schema.oasf.outshift.com"
