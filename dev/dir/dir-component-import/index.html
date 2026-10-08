@@ -11,7 +11,7 @@
         <link rel="canonical" href="https://agntcy.github.io/dir/latest/dir/dir-component-import/">
       
       
-        <link rel="prev" href="../dir-component-mcp-server/">
+        <link rel="prev" href="../dir-component-runtime-discovery/">
       
       
         <link rel="next" href="../dir-component-oidc-authentication/">
@@ -1040,8 +1040,6 @@
       
         
       
-        
-      
     
     
     
@@ -1114,40 +1112,6 @@
     
   
     Runtime Discovery
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../dir-component-mcp-server/" class="md-nav__link">
-        
-  
-  
-  
-    
-  
-  
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M4 1h16a1 1 0 0 1 1 1v4a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1m0 8h16a1 1 0 0 1 1 1v4a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1v-4a1 1 0 0 1 1-1m0 8h16a1 1 0 0 1 1 1v4a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1v-4a1 1 0 0 1 1-1M9 5h1V3H9zm0 8h1v-2H9zm0 8h1v-2H9zM5 3v2h2V3zm0 8v2h2v-2zm0 8v2h2v-2z"/></svg>
-  
-  <span class="md-ellipsis">
-    
-  
-    MCP Server
   
 
     
@@ -2592,7 +2556,7 @@ available:</p>
   or a running local LLM runtime.</li>
 </ul>
 <p>The enrichment pipeline is built into <code>dirctl</code> — LLM enrichment runs the OASF schema tools
-exposed by <code>dirctl mcp serve</code> against the model, while extractor enrichment runs the
+exposed by the separately installed <code>dir-mcp</code> server against the model, while extractor enrichment runs the
 provisioned model in-process with no external dependencies.
 See <a href="../dir-cli-reference/#enrichment">CLI Reference — Enrichment</a>
 for configuration details and YAML examples for each method.</p>

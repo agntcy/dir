@@ -1036,8 +1036,6 @@
       
         
       
-        
-      
     
     
     
@@ -1110,40 +1108,6 @@
     
   
     Runtime Discovery
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../dir-component-mcp-server/" class="md-nav__link">
-        
-  
-  
-  
-    
-  
-  
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M4 1h16a1 1 0 0 1 1 1v4a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1m0 8h16a1 1 0 0 1 1 1v4a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1v-4a1 1 0 0 1 1-1m0 8h16a1 1 0 0 1 1 1v4a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1v-4a1 1 0 0 1 1-1M9 5h1V3H9zm0 8h1v-2H9zm0 8h1v-2H9zM5 3v2h2V3zm0 8v2h2v-2zm0 8v2h2v-2z"/></svg>
-  
-  <span class="md-ellipsis">
-    
-  
-    MCP Server
   
 
     
@@ -2184,34 +2148,6 @@
     <span class="md-ellipsis">
       
         dirctl version
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#mcp-server" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        MCP Server
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="MCP Server">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#dirctl-mcp-serve" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        dirctl mcp serve
       
     </span>
   </a>
@@ -3316,34 +3252,6 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#mcp-server" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        MCP Server
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="MCP Server">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#dirctl-mcp-serve" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        dirctl mcp serve
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
   <a href="#agent-install" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -4237,7 +4145,7 @@
 only; workflow examples live in <a href="../dir-features-scenarios/">Features and Usage Scenarios</a>.</p>
 <h2 id="global-options">Global options</h2>
 <h3 id="output-formats">Output formats</h3>
-<p>Most data-producing commands support <code>--output</code> / <code>-o</code>. Exceptions include <code>validate</code>, <code>context</code>, <code>auth</code>, <code>daemon</code>, <code>mcp serve</code>, and <code>version</code>.</p>
+<p>Most data-producing commands support <code>--output</code> / <code>-o</code>. Exceptions include <code>validate</code>, <code>context</code>, <code>auth</code>, <code>daemon</code>, and <code>version</code>.</p>
 <table>
 <thead>
 <tr>
@@ -4378,10 +4286,6 @@ explicit <code>--auth-mode</code>.</p>
 <td><code>events listen</code></td>
 </tr>
 <tr>
-<td>MCP</td>
-<td><code>mcp serve</code></td>
-</tr>
-<tr>
 <td>Install</td>
 <td><code>install run</code>, <code>install uninstall</code> (or top-level <code>uninstall</code>), <code>install list</code>, <code>install agents</code>, <code>install outdated</code>, <code>install upgrade</code>, <code>install pin</code>, <code>install unpin</code>, <code>install prune</code></td>
 </tr>
@@ -4411,15 +4315,10 @@ yes, so pressing Enter provisions. To avoid an unattended ~89 MB download, a
 <strong>non-interactive</strong> run (no TTY, e.g. CI or a pipe) skips unless you pass
 <code>--yes</code>. Re-running is idempotent: nothing is re-downloaded when the assets are
 present and current, and the taxonomy is re-embedded only when it changed.</p>
-<p>Its last step wires this Directory into your AI coding agents: an MCP server
-entry so an agent can push, search, and pull records, plus the DIR skill as a
-usage guide. Both come from a record built into the <code>dirctl</code> binary —
-<code>org.agntcy/directory</code> — so no Directory connection is made, and the MCP entry
-carries the <code>DIRECTORY_CLIENT_*</code> environment for the context this invocation
-resolved, because <code>dirctl mcp serve</code> reads its target from nothing else. That
-is the context <code>--context</code> names, or the one Step 1 has just configured; the
-two secrets, <code>auth_token</code> and <code>spiffe_token</code>, are never written into an agent's
-config file.</p>
+<p>Its last step wires this Directory into your AI coding agents with the DIR
+skill, a usage guide for pushing, searching, and pulling records. It comes from
+a record built into the <code>dirctl</code> binary — <code>org.agntcy/directory</code> — so no
+Directory connection is made.</p>
 <p>That install is recorded in the <a href="#the-install-manifest">install manifest</a> like
 any other package, with <code>origin: builtin</code>. It therefore shows up in
 <code>dirctl install list</code>, <code>dirctl install outdated</code> compares it against this
@@ -4451,7 +4350,7 @@ removes it. <code>dirctl init --remove</code> clears both the artifacts and the 
 </tr>
 <tr>
 <td><code>--agents</code></td>
-<td>Agents to configure in the MCP server &amp; skills step</td>
+<td>Agents to configure in the skills step</td>
 <td><code>all</code></td>
 </tr>
 <tr>
@@ -4504,10 +4403,6 @@ dirctl<span class="w"> </span>init<span class="w"> </span>--remove<span class="w
 </table>
 <h3 id="dirctl-version"><code>dirctl version</code></h3>
 <p>Prints the <code>dirctl</code> build version.</p>
-<h2 id="mcp-server">MCP Server</h2>
-<h3 id="dirctl-mcp-serve"><code>dirctl mcp serve</code></h3>
-<p>Starts the built-in MCP server used by external AI tooling. Delegates to the
-<a href="https://github.com/agntcy/dir-mcp"><code>dir-mcp</code></a> module.</p>
 <h2 id="agent-install">Agent Install</h2>
 <p><code>dirctl install &lt;cid-or-name&gt;</code> pulls a record from the active Directory and
 installs its artifacts — an MCP server entry and/or an Agent Skill, derived from
@@ -4757,12 +4652,9 @@ hold lands on the new version.</p>
 installs in other repositories included. Pass <code>--project</code> to narrow the run to
 the repository you are in.</p>
 <p>The built-in <code>org.agntcy/directory</code> package is rebuilt from this <code>dirctl</code> binary
-rather than pulled, even though a record of the same name is published. The
-published record's MCP module carries no environment, so installing it would
-silently repoint <code>dirctl mcp serve</code> at the default address; rebuilding also
-recomputes the <code>DIRECTORY_CLIENT_*</code> overlay from the context this invocation
-resolved — <code>--context</code> and the connection flags included — instead of replaying
-what it held when the package was installed.</p>
+rather than pulled, even though a record of the same name is published, so an
+upgrade never offers a downgrade when this binary leads the server's published
+build.</p>
 <table>
 <thead>
 <tr>
@@ -5934,15 +5826,15 @@ dirctl<span class="w"> </span>import<span class="w"> </span>--type<span class="o
 <span class="w">        </span><span class="nt">id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">1</span>
 </code></pre></div>
 <h4 id="llm-enrichment">LLM enrichment</h4>
-<p>Runs an LLM with tool-calling support against the OASF schema tools exposed by <code>dirctl mcp serve</code>. Produces the most semantically accurate skill and domain assignments but requires LLM credentials or a local runtime.</p>
+<p>Runs an LLM with tool-calling support against the OASF schema tools exposed by the <a href="https://github.com/agntcy/dir-mcp"><code>dir-mcp</code></a> server. Produces the most semantically accurate skill and domain assignments but requires LLM credentials or a local runtime.</p>
 <p><strong>Requirements:</strong></p>
 <ul>
-<li><code>dirctl</code> binary (includes the built-in MCP server with <code>agntcy_oasf_get_schema_skills</code> and <code>agntcy_oasf_get_schema_domains</code> tools)</li>
+<li>The <code>dir-mcp</code> binary on your <code>PATH</code> (provides the <code>agntcy_oasf_get_schema_skills</code> and <code>agntcy_oasf_get_schema_domains</code> tools). Download <code>mcp-server-&lt;os&gt;-&lt;arch&gt;</code> from the <a href="https://github.com/agntcy/dir-mcp/releases/latest">dir-mcp releases</a>, make it executable, and install it as <code>dir-mcp</code>. <code>dirctl import</code> checks for it and prints these steps when it is missing.</li>
 <li>An LLM with tool-calling support (GPT-4o, Claude, or compatible Ollama models)</li>
 </ul>
 <p><strong>How it works:</strong></p>
 <ol>
-<li>The enricher starts an MCP server using <code>dirctl mcp serve</code></li>
+<li>The enricher starts the <code>dir-mcp</code> server</li>
 <li>The LLM uses the <code>agntcy_oasf_get_schema_skills</code> tool to browse available OASF skills</li>
 <li>The LLM uses the <code>agntcy_oasf_get_schema_domains</code> tool to browse available OASF domains</li>
 <li>Based on the record description and capabilities, the LLM selects appropriate skills and domains</li>
@@ -5955,8 +5847,7 @@ dirctl<span class="w"> </span>import<span class="w"> </span>--type<span class="o
 <span class="w">      </span><span class="nt">max_steps</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">10</span>
 <span class="w">      </span><span class="nt">mcp_servers</span><span class="p">:</span>
 <span class="w">        </span><span class="nt">dir-mcp-server</span><span class="p">:</span>
-<span class="w">          </span><span class="nt">command</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">dirctl</span>
-<span class="w">          </span><span class="nt">args</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">mcp</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">serve</span><span class="p p-Indicator">]</span>
+<span class="w">          </span><span class="nt">command</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">dir-mcp</span>
 <span class="w">          </span><span class="nt">env</span><span class="p">:</span>
 <span class="w">            </span><span class="nt">OASF_API_VALIDATION_SCHEMA_URL</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">https://schema.oasf.outshift.com</span>
 <span class="w">            </span><span class="nt">DIRECTORY_CLIENT_AUTH_MODE</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">insecure</span>
