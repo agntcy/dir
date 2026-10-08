@@ -1,7 +1,8 @@
 # Mounted at /etc/agntcy/dir/server.config.yml.
 # Other settings come from apiserver.env.
-validators:
-  - provider: oasf
-    op: ["push", "autosync", "index"]
-    config:
-      schema_url: "https://schema.oasf.outshift.com"
+policy:
+  validators:
+    - provider: oasf
+      op: ["push", "autosync", "index"]
+      config:
+        schema_url: "https://schema.oasf.outshift.com"

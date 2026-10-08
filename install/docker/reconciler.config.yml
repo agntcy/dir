@@ -1,7 +1,8 @@
 # Mounted at /etc/agntcy/reconciler/reconciler.config.yml.
 # Other settings come from reconciler.env.
-validators:
-  - provider: oasf
-    op: ["index"]
-    config:
-      schema_url: "https://schema.oasf.outshift.com"
+policy:
+  validators:
+    - provider: oasf
+      op: ["index"]
+      config:
+        schema_url: "https://schema.oasf.outshift.com"

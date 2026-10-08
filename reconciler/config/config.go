@@ -22,7 +22,6 @@ import (
 	dbconfig "github.com/agntcy/dir/server/database/config"
 	policy "github.com/agntcy/dir/server/policy/config"
 	ociconfig "github.com/agntcy/dir/server/store/oci/config"
-	validators "github.com/agntcy/dir/server/validators/config"
 	"github.com/agntcy/dir/utils/logging"
 	"github.com/spf13/viper"
 )
@@ -63,12 +62,9 @@ type Config struct {
 	// the apiserver.
 	ServerAuthn authnconfig.Config `json:"server_authn" mapstructure:"server_authn"`
 
-	// Validators is the same list the server uses. The indexer consults
-	// entries whose op includes "index". YAML only.
-	Validators validators.Config `json:"validators,omitempty" mapstructure:"validators"`
-
-	// Policy is the directory named OPA policy files are loaded from.
-	// Same path the server uses (policy.dir).
+	// Policy is the same block the server uses: the validator list (the
+	// indexer consults entries whose op includes "index") and the directory
+	// named OPA files are loaded from.
 	Policy policy.Config `json:"policy" mapstructure:"policy"`
 
 	// Regsync holds the regsync task configuration.

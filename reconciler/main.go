@@ -63,7 +63,7 @@ func run() error {
 		return err
 	}
 
-	validatorRegistry, err := validators.NewRegistry(context.Background(), cfg.Validators, cfg.Policy.Dir)
+	validatorRegistry, err := validators.NewRegistry(context.Background(), cfg.Policy.Validators, cfg.Policy.Dir)
 	if err != nil {
 		return err
 	}

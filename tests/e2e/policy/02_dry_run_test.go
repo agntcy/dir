@@ -18,26 +18,28 @@ import (
 
 // deployedPolicy is the policy the testenv enforces, as a candidate file.
 const deployedPolicy = `
-validators:
-  - provider: cel
-    op: ["evaluate"]
-    config:
-      name: has-description
-      expressions:
-        - 'record.description != ""'
+policy:
+  validators:
+    - provider: cel
+      op: ["evaluate"]
+      config:
+        name: has-description
+        expressions:
+          - 'record.description != ""'
 `
 
 // invertedPolicy rejects what the deployed policy passes, and passes what it
 // rejects. A record pushed without a description has no description key at all,
 // so the expression asks for the key first.
 const invertedPolicy = `
-validators:
-  - provider: cel
-    op: ["evaluate"]
-    config:
-      name: no-description
-      expressions:
-        - '!has(record.description) || record.description == ""'
+policy:
+  validators:
+    - provider: cel
+      op: ["evaluate"]
+      config:
+        name: no-description
+        expressions:
+          - '!has(record.description) || record.description == ""'
 `
 
 // dryRunReport is what `dirctl daemon policy dry-run --output json` writes for

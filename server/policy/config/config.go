@@ -7,18 +7,25 @@ import (
 	"errors"
 	"fmt"
 	"time"
+
+	validatorsconfig "github.com/agntcy/dir/server/validators/config"
 )
 
 // DefaultRefreshInterval is how often the server rechecks which version of
 // each enforced policy is in force.
 const DefaultRefreshInterval = 30 * time.Second
 
-// Config points the server at a directory of file-based OPA policies.
-// Named .rego files are loaded by validators with provider "opa" via
-// config.file.
+// Config is the node's record checks: the validators that run on ingest and
+// as content policies, the directory named OPA files are loaded from, and
+// how reads enforce those policies.
 type Config struct {
 	// Dir is the directory that holds policy files (one file per policy).
+	// An opa validator's config.file is resolved against it.
 	Dir string `json:"dir,omitempty" mapstructure:"dir"`
+
+	// Validators is the ordered list of record validators (OASF, OPA, CEL).
+	// YAML only — a list of objects cannot be bound to a single env var.
+	Validators validatorsconfig.Config `json:"validators,omitempty" mapstructure:"validators"`
 
 	// Enforcement decides which policies the records this server returns
 	// must comply with, and how each kind of read applies them.

@@ -80,22 +80,22 @@ Validation is performed using the [OASF SDK](https://docs.agntcy.org/oasf/oasf-
 
 ### Configuration
 
-The Directory server validates records using a `validators` list in YAML. Each entry selects a provider, the operations it applies to (`push`, `autosync`, `index`, `evaluate`), and a provider-specific `config`. An empty list disables record validation. This list cannot be set via environment variables.
+The Directory server validates records using `policy.validators` in YAML. Each entry selects a provider, the operations it applies to (`push`, `autosync`, `index`, `evaluate`), and a provider-specific `config`. An empty list disables record validation. This list cannot be set via environment variables.
 
 ```yaml
 # server.config.yml
-validators:
-  - provider: oasf
-    op: ["push", "autosync", "index"]
-    config:
-      schema_url: "https://schema.oasf.outshift.com"
-  - provider: opa
-    op: ["push"]
-    config:
-      file: "require-annotations.rego"
 listen_address: "0.0.0.0:8888"
 policy:
   dir: "/etc/agntcy/dir/policies"
+  validators:
+    - provider: oasf
+      op: ["push", "autosync", "index"]
+      config:
+        schema_url: "https://schema.oasf.outshift.com"
+    - provider: opa
+      op: ["push"]
+      config:
+        file: "require-annotations.rego"
 ```
 
 `opa` loads a single `.rego` file from `policy.dir`. Helm mounts those files from the top-level `policies` map. The query is `<package>.allow`; a deny rejects the record.
@@ -140,11 +140,12 @@ Records validated here form the most strict, compatible set.
 **Configuration:**
 
 ```yaml
-validators:
-  - provider: oasf
-    op: ["push", "autosync", "index"]
-    config:
-      schema_url: "https://schema.oasf.outshift.com"
+policy:
+  validators:
+    - provider: oasf
+      op: ["push", "autosync", "index"]
+      config:
+        schema_url: "https://schema.oasf.outshift.com"
 ```
 
 #### Custom OASF Instance (Additional Taxonomy)
@@ -156,11 +157,12 @@ Records using the extended taxonomy can only be pulled by nodes using the exact 
 **Configuration:**
 
 ```yaml
-validators:
-  - provider: oasf
-    op: ["push", "autosync", "index"]
-    config:
-      schema_url: "https://your-custom-oasf-instance.com"
+policy:
+  validators:
+    - provider: oasf
+      op: ["push", "autosync", "index"]
+      config:
+        schema_url: "https://your-custom-oasf-instance.com"
 ```
 
 #### Custom OASF Instance (Changed Taxonomy)
@@ -172,11 +174,12 @@ This approach is completely incompatible with all other options, can only work w
 **Configuration:**
 
 ```yaml
-validators:
-  - provider: oasf
-    op: ["push", "autosync", "index"]
-    config:
-      schema_url: "https://your-custom-oasf-instance.com"
+policy:
+  validators:
+    - provider: oasf
+      op: ["push", "autosync", "index"]
+      config:
+        schema_url: "https://your-custom-oasf-instance.com"
 ```
 
 ### Deploying a Local OASF Instance
@@ -203,11 +206,13 @@ To test with a local OASF instance deployed alongside the directory server:
 
     ```yaml
     apiserver:
-      validators:
-        - provider: oasf
-          op: ["push", "autosync", "index"]
-          config:
-            schema_url: "http://dir-ingress-controller.dir-server.svc.cluster.local"
+      config:
+        policy:
+          validators:
+            - provider: oasf
+              op: ["push", "autosync", "index"]
+              config:
+                schema_url: "http://dir-ingress-controller.dir-server.svc.cluster.local"
     ```
 
     Replace `dir` with your Helm release name and `dir-server` with your namespace if different.
