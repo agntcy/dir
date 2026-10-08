@@ -28,8 +28,7 @@ enricher:
       max_steps: 10
       mcp_servers:
         dir-mcp-server:
-          command: dirctl
-          args: [mcp, serve]
+          command: dir-mcp   # https://github.com/agntcy/dir-mcp/releases
           env:
             OASF_API_VALIDATION_SCHEMA_URL: https://schema.oasf.outshift.com
             DIRECTORY_CLIENT_AUTH_MODE: insecure

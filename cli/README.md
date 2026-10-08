@@ -10,7 +10,6 @@ Command-line tools for the AGNTCY Directory.
 - **Identity** — Identity and ownership claims (`identity claim`, `status`, `resolve`).
 - **Sync** — Sync records between nodes.
 - **Events** — Stream directory events (`events listen`).
-- **MCP** — Run an MCP server for AI/agent tooling (`mcp serve`).
 - **Auth** — Login, logout, and check status (for federation nodes).
 - **Daemon** — Run a local Directory instance (`daemon start/stop/status`).
 - **Diagnostics** — Connectivity checks (`doctor`) and version info.

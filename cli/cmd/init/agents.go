@@ -7,21 +7,19 @@ package init
 import (
 	"time"
 
-	cliconfig "github.com/agntcy/dir/cli/config"
 	"github.com/agntcy/dir/cli/internal/agentcfg"
 	"github.com/agntcy/dir/cli/internal/agentinstall"
 	"github.com/agntcy/dir/cli/internal/dirpkg"
 	"github.com/agntcy/dir/cli/internal/pkgstate"
 	"github.com/agntcy/dir/cli/presenter"
-	"github.com/agntcy/dir/client"
 	"github.com/spf13/cobra"
 )
 
 const agentStepIntro = `
-Step 3 — Directory MCP server & skills
-Wire this Directory into your AI coding agents: an MCP server entry (so an agent
-can push, search, and pull records) plus the DIR skill (a usage guide). Content
-is built in — no Directory connection is made. Writes are idempotent and atomic.
+Step 3 — Directory skill
+Wire this Directory into your AI coding agents with the DIR skill (a usage
+guide). Content is built in — no Directory connection is made. Writes are
+idempotent and atomic.
 `
 
 // agentSelector picks a subset of the candidate agents for one artifact. It is
@@ -35,25 +33,6 @@ type agentSelector func(cmd *cobra.Command, title string, candidates []agentcfg.
 // a real TTY.
 var interactiveCheck = isInteractive
 
-// dirConfig resolves the client config the built-in DIR package's MCP entry
-// should point at, honouring `--context` and the connection flags.
-//
-// It resolves here rather than at startup for two reasons. `dirctl init` skips
-// the root command's client setup, so nothing has resolved one yet; and Step 1
-// may have just created the context Step 3 has to read, which a config
-// resolved before the wizard ran could not know about.
-//
-// An unresolvable config is not an error — the user may have declined Step 1 —
-// so it degrades to nil and dirpkg mirrors the local default.
-func dirConfig(cmd *cobra.Command) *client.Config {
-	cfg, err := cliconfig.ResolveClientLenient(cmd)
-	if err != nil {
-		return nil
-	}
-
-	return cfg
-}
-
 // runAgentSetup runs Step 3 against the resolved ambient environment, using the
 // interactive checkbox prompt for per-agent selection.
 func runAgentSetup(cmd *cobra.Command, opts *options) error {
@@ -61,9 +40,8 @@ func runAgentSetup(cmd *cobra.Command, opts *options) error {
 }
 
 // installAgents is the testable core of Step 3: detect the candidate agents,
-// then (interactively) ask which of them get the DIR skill and, separately,
-// which get the DIR MCP server — installing each artifact via the shared
-// agentinstall engine. selectAgents is the per-artifact chooser (injected).
+// then (interactively) ask which of them get the DIR skill, installing it via
+// the shared agentinstall engine. selectAgents is the agent chooser (injected).
 func installAgents(cmd *cobra.Command, env agentcfg.Env, opts *options, selectAgents agentSelector) error {
 	presenter.Printf(cmd, "%s", agentStepIntro)
 
@@ -83,32 +61,27 @@ func installAgents(cmd *cobra.Command, env agentcfg.Env, opts *options, selectAg
 		return nil
 	}
 
-	// Built locally, with the MCP entry pointed at the resolved context:
-	// `dirctl mcp serve` takes its target only from DIRECTORY_CLIENT_* env, so
-	// otherwise the spawned server would ignore the context just configured.
-	arts, err := dirpkg.Artifacts(dirConfig(cmd))
+	arts, err := dirpkg.Artifacts()
 	if err != nil {
 		return err
 	}
 
-	// Non-interactive: never prompt. With --yes, install both artifacts into
-	// every candidate; without it, skip rather than act unattended.
+	// Non-interactive: never prompt. With --yes, install into every candidate;
+	// without it, skip rather than act unattended.
 	if opts.yes || !interactiveCheck(cmd) {
 		if !opts.yes {
-			presenter.Printf(cmd, "Skipping MCP server & skill setup (non-interactive). Pass --yes to install.\n")
+			presenter.Printf(cmd, "Skipping skill setup (non-interactive). Pass --yes to install.\n")
 
 			return nil
 		}
 
 		outcomes := apply(cmd, env, arts.SkillOnly(), candidates, "DIR skill")
-		outcomes = append(outcomes, apply(cmd, env, arts.MCPOnly(), candidates, "DIR MCP server")...)
 
 		recordBuiltin(cmd, arts, candidates, outcomes)
 
 		return nil
 	}
 
-	// Interactive: one prompt per artifact, each pre-selecting all candidates.
 	skillAgents, err := selectAgents(cmd, "Install the DIR skill into:", candidates)
 	if err != nil {
 		return err
@@ -116,17 +89,7 @@ func installAgents(cmd *cobra.Command, env agentcfg.Env, opts *options, selectAg
 
 	outcomes := apply(cmd, env, arts.SkillOnly(), skillAgents, "DIR skill")
 
-	mcpAgents, err := selectAgents(cmd, "Install the DIR MCP server into:", candidates)
-	if err != nil {
-		return err
-	}
-
-	outcomes = append(outcomes, apply(cmd, env, arts.MCPOnly(), mcpAgents, "DIR MCP server")...)
-
-	// One row per agent, covering both artifacts: the two prompts select
-	// independently, and an agent that got only the skill or only the MCP entry
-	// still has a row naming what it got.
-	recordBuiltin(cmd, arts, unionAgents(skillAgents, mcpAgents), outcomes)
+	recordBuiltin(cmd, arts, skillAgents, outcomes)
 
 	return nil
 }
@@ -152,27 +115,6 @@ func apply(
 	presenter.Printf(cmd, "%s", agentcfg.FormatSummary(outcomes, false))
 
 	return outcomes
-}
-
-// unionAgents merges two selections, keeping first-seen order and no repeats.
-func unionAgents(selections ...[]agentcfg.Agent) []agentcfg.Agent {
-	seen := map[string]bool{}
-
-	var merged []agentcfg.Agent
-
-	for _, selection := range selections {
-		for _, agent := range selection {
-			if seen[agent.ID] {
-				continue
-			}
-
-			seen[agent.ID] = true
-
-			merged = append(merged, agent)
-		}
-	}
-
-	return merged
 }
 
 // recordBuiltin writes the install-manifest rows for the built-in DIR package.
@@ -225,7 +167,7 @@ func forgetBuiltin(cmd *cobra.Command, agents []agentcfg.Agent, outcomes []agent
 	}
 }
 
-// removeAgents strips the built-in DIR MCP server & skill from detected agents.
+// removeAgents strips the built-in DIR skill from detected agents.
 // It mirrors installAgents' selection and TTY/--yes gating.
 func removeAgents(cmd *cobra.Command, env agentcfg.Env, opts *options) error {
 	chosen, err := agentcfg.ParseSelection(opts.agents)
@@ -235,7 +177,7 @@ func removeAgents(cmd *cobra.Command, env agentcfg.Env, opts *options) error {
 
 	// The rows say what was written, which is what has to be removed. Deriving
 	// the artifacts from *this* binary instead would miss anything an earlier
-	// one wrote under a different name: a renamed MCP key would read as already
+	// one wrote under a different name: a renamed key would read as already
 	// absent, the row would be forgotten as cleared, and the old key would sit
 	// in the agent's config with nothing left to point at it.
 	rows, err := builtinRows(chosen)
@@ -252,7 +194,7 @@ func removeAgents(cmd *cobra.Command, env agentcfg.Env, opts *options) error {
 		return nil
 	}
 
-	presenter.Printf(cmd, "\nThe DIR MCP server & skill will be removed from:\n")
+	presenter.Printf(cmd, "\nThe DIR skill will be removed from:\n")
 	presenter.Printf(cmd, "%s", agentcfg.FormatPlan(plan))
 
 	if !opts.yes {
@@ -264,7 +206,7 @@ func removeAgents(cmd *cobra.Command, env agentcfg.Env, opts *options) error {
 			return nil
 		}
 
-		ok, err := confirm(cmd, "Remove the DIR MCP server & skill from these agents?", false)
+		ok, err := confirm(cmd, "Remove the DIR skill from these agents?", false)
 		if err != nil {
 			return err
 		}

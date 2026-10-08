@@ -193,6 +193,11 @@ jobs:
           echo "${GITHUB_WORKSPACE}/.bin" >> "${GITHUB_PATH}"
           echo "dirctl_path=${GITHUB_WORKSPACE}/.bin/dirctl" >> "${GITHUB_OUTPUT}"
 
+      - name: Setup dir-mcp
+        id: setup-dir-mcp
+        if: ${{ env.ENRICHMENT != 'extractor' }}
+        uses: ./.github/actions/setup-dir-mcp
+
       - name: Init dirctl
         if: ${{ env.ENRICHMENT == 'extractor' }}
         uses: ./.github/actions/init-dirctl
@@ -201,7 +206,7 @@ jobs:
 
       - name: Create Import Config
         env:
-          DIRCTL_PATH: ${{ steps.setup-dirctl.outputs.dirctl_path }}
+          DIR_MCP_PATH: ${{ steps.setup-dir-mcp.outputs.dir_mcp_path }}
         run: |
           if [[ "${ENRICHMENT}" == "extractor" ]]; then
             cat > import_ci.yaml << EOF
@@ -224,8 +229,7 @@ jobs:
                 max_steps: 10
                 mcp_servers:
                   dir-mcp-server:
-                    command: ${DIRCTL_PATH}
-                    args: [mcp, serve]
+                    command: ${DIR_MCP_PATH}
                     env:
                       OASF_API_VALIDATION_SCHEMA_URL: https://schema.oasf.outshift.com
                       DIRECTORY_CLIENT_AUTH_MODE: insecure
@@ -388,6 +392,11 @@ jobs:
           echo "${GITHUB_WORKSPACE}/.bin" >> "${GITHUB_PATH}"
           echo "dirctl_path=${GITHUB_WORKSPACE}/.bin/dirctl" >> "${GITHUB_OUTPUT}"
 
+      - name: Setup dir-mcp
+        id: setup-dir-mcp
+        if: ${{ env.ENRICHMENT != 'extractor' }}
+        uses: ./.github/actions/setup-dir-mcp
+
       - name: Init dirctl
         if: ${{ env.ENRICHMENT == 'extractor' }}
         uses: ./.github/actions/init-dirctl
@@ -424,8 +433,7 @@ jobs:
           echo "repo_dir=$REPO_DIR" >> $GITHUB_OUTPUT
 
       - name: Create Import Config
-        env:
-          DIRCTL_PATH: ${{ steps.setup-dirctl.outputs.dirctl_path }}
+          DIR_MCP_PATH: ${{ steps.setup-dir-mcp.outputs.dir_mcp_path }}
           AUTHORS_JSON: ${{ toJSON(matrix.entry.authors) }}
         run: |
           AUTHORS_YAML=$(echo "$AUTHORS_JSON" | jq -r '.[] | "- " + .')
@@ -454,8 +462,7 @@ jobs:
                 max_steps: 10
                 mcp_servers:
                   dir-mcp-server:
-                    command: ${DIRCTL_PATH}
-                    args: [mcp, serve]
+                    command: ${DIR_MCP_PATH}
                     env:
                       OASF_API_VALIDATION_SCHEMA_URL: https://schema.oasf.outshift.com
                       DIRECTORY_CLIENT_AUTH_MODE: insecure

@@ -61,7 +61,7 @@ daemon). Server selection order: `--context <name>` flag →
 - **Parse, don't scrape**: request `-o json` (or `-o jsonl` for streams) when
   you need to read results; `-o raw` for CIDs in shell pipelines. Structured
   formats write data to stdout and messages to stderr, so piping to `jq` is
-  safe. `validate`, `context`, `auth`, `daemon`, `mcp serve`, and `version` do
+  safe. `validate`, `context`, `auth`, `daemon`, and `version` do
   not take `-o`.
 - **Quote every argument** — record names contain `/` and `:`.
 - **Capability probing**: command surface varies by version. Before relying on
@@ -144,15 +144,6 @@ Rules:
   `DIRECTORY_CLIENT_AUTH_TOKEN` or `auth login --device` / `--no-browser`, and
   when a decision genuinely requires a human, fail fast with a clear message
   instead of waiting.
-
-## MCP-native alternative
-
-`dirctl mcp serve` starts a built-in MCP server exposing DIR and OASF
-operations as tools (push, pull, search, validate, taxonomy browsing). When a
-host is configured with this server, prefer its tools over shelling out to
-equivalent CLI commands. To wire it up, add a stdio server entry that runs
-`dirctl mcp serve` to the host's MCP config, following the merge-never-
-overwrite rules in [references/install.md](references/install.md).
 
 ## Pointers
 

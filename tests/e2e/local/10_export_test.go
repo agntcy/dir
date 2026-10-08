@@ -41,6 +41,17 @@ func importerWithStaticEnricher(ctx context.Context, client importerconfig.Clien
 	return importer.New(ctx, client, cfg) //nolint:wrapcheck
 }
 
+// writeStaticEnricherConfig writes an import config selecting the static
+// enricher, so the import never needs the external dir-mcp server that LLM
+// enrichment (the default) launches.
+func writeStaticEnricherConfig(dir string) string {
+	path := filepath.Join(dir, "import-static.yaml")
+	cfg := "enricher:\n  static:\n    skills:\n      - name: software_engineering/code_quality/code_review\n        id: 60701\n    domains:\n      - name: technology/artificial_intelligence/ai_agents\n        id: 11107\n"
+	gomega.Expect(os.WriteFile(path, []byte(cfg), 0o600)).To(gomega.Succeed())
+
+	return path
+}
+
 var _ = ginkgo.Describe("Running dirctl end-to-end tests for the export command", func() {
 	ginkgo.BeforeEach(func() {
 		utils.ResetCLIState()
@@ -221,7 +232,7 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests for the export command"
 
 			cidFile := filepath.Join(tempDir, "imported.cids")
 
-			testEnv.CLI.Import("a2a", cardPath).WithArgs("--force", "--output-cids="+cidFile).ShouldEventuallySucceed(60 * time.Second)
+			testEnv.CLI.Import("a2a", cardPath).WithArgs("--force", "--config="+writeStaticEnricherConfig(tempDir), "--output-cids="+cidFile).ShouldEventuallySucceed(60 * time.Second)
 
 			cidData, err := os.ReadFile(cidFile)
 			gomega.Expect(err).NotTo(gomega.HaveOccurred())
@@ -305,7 +316,7 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests for the export command"
 
 			cidFile := filepath.Join(tempDir, "imported.cids")
 
-			testEnv.CLI.Import("mcp", serverPath).WithArgs("--force", "--output-cids="+cidFile).ShouldEventuallySucceed(60 * time.Second)
+			testEnv.CLI.Import("mcp", serverPath).WithArgs("--force", "--config="+writeStaticEnricherConfig(tempDir), "--output-cids="+cidFile).ShouldEventuallySucceed(60 * time.Second)
 
 			cidData, err := os.ReadFile(cidFile)
 			gomega.Expect(err).NotTo(gomega.HaveOccurred())
@@ -392,7 +403,7 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests for the export command"
 
 			cidFile := filepath.Join(tempDir, "imported.cids")
 
-			testEnv.CLI.Import("agent-skill", skillDir).WithArgs("--force", "--output-cids="+cidFile).ShouldSucceed()
+			testEnv.CLI.Import("agent-skill", skillDir).WithArgs("--force", "--config="+writeStaticEnricherConfig(tempDir), "--output-cids="+cidFile).ShouldSucceed()
 
 			cidData, err := os.ReadFile(cidFile)
 			gomega.Expect(err).NotTo(gomega.HaveOccurred())

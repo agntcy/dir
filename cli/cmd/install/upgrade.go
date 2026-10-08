@@ -10,7 +10,6 @@ import (
 	"time"
 
 	corev1 "github.com/agntcy/dir/api/core/v1"
-	cliconfig "github.com/agntcy/dir/cli/config"
 	"github.com/agntcy/dir/cli/internal/agentcfg"
 	"github.com/agntcy/dir/cli/internal/agentinstall"
 	"github.com/agntcy/dir/cli/internal/dirpkg"
@@ -580,14 +579,10 @@ func prepareUpgrades(cmd *cobra.Command, targets []upgradeTarget) ([]upgradeStep
 // nothing installed.
 //
 // A built-in package is rebuilt from this binary rather than pulled, even
-// though a record of the same name is published; see internal/dirpkg for why
-// that distinction is load-bearing.
+// though a record of the same name is published; see internal/dirpkg.
 func deriveUpgrade(cmd *cobra.Command, target upgradeTarget) (agentinstall.Artifacts, error) {
 	if target.origin == pkgstate.OriginBuiltin {
-		// The config the root command resolved for this invocation, so
-		// `--context` and `--server-addr` reach the MCP entry rather than
-		// current_context silently taking their place.
-		return dirpkg.Artifacts(cliconfig.Client) //nolint:wrapcheck // dirpkg names the record and the step.
+		return dirpkg.Artifacts() //nolint:wrapcheck // dirpkg names the record and the step.
 	}
 
 	c, ok := ctxUtils.GetClientFromContext(cmd.Context())

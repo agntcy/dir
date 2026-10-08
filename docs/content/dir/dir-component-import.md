@@ -47,7 +47,7 @@ available:
   or a running local LLM runtime.
 
 The enrichment pipeline is built into `dirctl` — LLM enrichment runs the OASF schema tools
-exposed by `dirctl mcp serve` against the model, while extractor enrichment runs the
+exposed by the separately installed `dir-mcp` server against the model, while extractor enrichment runs the
 provisioned model in-process with no external dependencies.
 See [CLI Reference — Enrichment](dir-cli-reference.md#enrichment)
 for configuration details and YAML examples for each method.

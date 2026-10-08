@@ -322,8 +322,7 @@ func defaultToolHostConfig() toolhost.Config {
 		MaxSteps: 10, //nolint:mnd
 		MCPServers: map[string]toolhost.MCPServerConfig{
 			"dir-mcp-server": {
-				Command: "dirctl",
-				Args:    []string{"mcp", "serve"},
+				Command: dirMCPBinary,
 				Env: map[string]any{
 					"OASF_API_VALIDATION_SCHEMA_URL": "https://schema.oasf.outshift.com",
 					"DIRECTORY_CLIENT_AUTH_MODE":     "insecure",
