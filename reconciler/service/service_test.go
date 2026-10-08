@@ -13,12 +13,15 @@ import (
 	typesv1alpha1 "buf.build/gen/go/agntcy/oasf/protocolbuffers/go/agntcy/oasf/types/v1alpha1"
 	coretypes "github.com/agntcy/dir/api/core/types"
 	corev1 "github.com/agntcy/dir/api/core/v1"
+	routingv1 "github.com/agntcy/dir/api/routing/v1"
 	"github.com/agntcy/dir/reconciler/config"
 	"github.com/agntcy/dir/reconciler/recordevents"
+	"github.com/agntcy/dir/reconciler/routing"
 	"github.com/agntcy/dir/reconciler/tasks"
 	"github.com/agntcy/dir/reconciler/tasks/identity"
 	"github.com/agntcy/dir/reconciler/tasks/indexer"
 	"github.com/agntcy/dir/reconciler/tasks/policy"
+	synctask "github.com/agntcy/dir/reconciler/tasks/sync"
 	servertypes "github.com/agntcy/dir/server/types"
 	recordvalidators "github.com/agntcy/dir/server/validators"
 	validatorsconfig "github.com/agntcy/dir/server/validators/config"
@@ -276,6 +279,53 @@ func TestRegisterTasks_IdentityIsOffByDefault(t *testing.T) {
 	require.NoError(t, s.registerTasks(cfg, nil, referrerStore{}, nil, nil, nil))
 	require.Len(t, s.tasks, 1)
 	assert.Equal(t, "identity", s.tasks[0].Name())
+}
+
+// Both routing implementations carry what the tasks need: the daemon shares
+// the server's routing in-process, the standalone reconciler reaches the same
+// routing over gRPC.
+var (
+	_ RoutingAPI = servertypes.RoutingAPI(nil)
+	_ RoutingAPI = (*routing.Client)(nil)
+)
+
+// fakeRouting is a RoutingAPI that answers nothing. The registration tests
+// care that a routing is present, not what it returns.
+type fakeRouting struct{}
+
+func (fakeRouting) GetProviderCount(context.Context, string) (int, error) { return 0, nil }
+
+func (fakeRouting) Search(context.Context, *routingv1.SearchRequest) (<-chan *routingv1.SearchResponse, error) {
+	ch := make(chan *routingv1.SearchResponse)
+	close(ch)
+
+	return ch, nil
+}
+
+func TestRegisterSyncTask(t *testing.T) {
+	enabled := &config.Config{Sync: synctask.Config{Enabled: true}}
+
+	t.Run("disabled registers nothing", func(t *testing.T) {
+		s := newTestService()
+		require.NoError(t, s.registerSyncTask(&config.Config{}, nil, fakeRouting{}))
+		assert.Empty(t, s.tasks)
+	})
+
+	t.Run("enabled registers the task", func(t *testing.T) {
+		s := newTestService()
+		require.NoError(t, s.registerSyncTask(enabled, nil, fakeRouting{}))
+
+		require.Len(t, s.tasks, 1)
+		assert.Equal(t, "sync", s.tasks[0].Name())
+		assert.True(t, s.tasks[0].IsEnabled())
+	})
+
+	// Routing is absent when the standalone reconciler has no server address.
+	t.Run("without routing it is skipped", func(t *testing.T) {
+		s := newTestService()
+		require.NoError(t, s.registerSyncTask(enabled, nil, nil))
+		assert.Empty(t, s.tasks)
+	})
 }
 
 // --- Trigger ---

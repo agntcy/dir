@@ -21,7 +21,8 @@ var logger = logging.Logger("reconciler/sync")
 var errNoPeerAddress = errors.New("peer has no /dir/ or /oci/ address")
 
 // Searcher looks up remote records on the routing network.
-// Satisfied by types.RoutingAPI (daemon) and GRPCProviderCounter (standalone).
+// Satisfied by types.RoutingAPI (daemon) and reconciler/routing.Client
+// (standalone).
 type Searcher interface {
 	Search(ctx context.Context, req *routingv1.SearchRequest) (<-chan *routingv1.SearchResponse, error)
 }
