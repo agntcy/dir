@@ -13,6 +13,7 @@ import (
 	"strings"
 
 	"github.com/agentnameservice/ans-sdk-go/models"
+	"github.com/agntcy/dir/client/utils/identity/resolvers"
 )
 
 // TrustedLog is the transparency log a badge record points at, once the
@@ -105,7 +106,7 @@ func (r *Resolver) lookupBadge(ctx context.Context, name agentName) (TrustedLog,
 
 		var dnsErr *net.DNSError
 		if errors.As(err, &dnsErr) && dnsErr.IsNotFound {
-			return TrustedLog{}, final(err)
+			return TrustedLog{}, resolvers.Final(err)
 		}
 
 		return TrustedLog{}, err
@@ -132,16 +133,16 @@ func (r *Resolver) lookupBadge(ctx context.Context, name agentName) (TrustedLog,
 
 	switch len(candidates) {
 	case 0:
-		return TrustedLog{}, final(fmt.Errorf("ans badge: no %s record names version %s", recordName, name.version))
+		return TrustedLog{}, resolvers.Final(fmt.Errorf("ans badge: no %s record names version %s", recordName, name.version))
 	case 1:
 		target, err := parseBadgeURL(candidates[0], r.trusted)
 		if err != nil {
-			return TrustedLog{}, final(err)
+			return TrustedLog{}, resolvers.Final(err)
 		}
 
 		return target, nil
 	default:
-		return TrustedLog{}, final(fmt.Errorf("ans badge: %d %s records name version %s; expected one", len(candidates), recordName, name.version))
+		return TrustedLog{}, resolvers.Final(fmt.Errorf("ans badge: %d %s records name version %s; expected one", len(candidates), recordName, name.version))
 	}
 }
 

@@ -51,6 +51,11 @@ linters:
     gomoddirectives:
       replace-allow-list: []
       replace-local: true
+    # resolvers.Final wraps an error to mark it as a verdict: the wrapping is
+    # the point, so wrapcheck must not ask for another one around it.
+    wrapcheck:
+      extra-ignore-sigs:
+        - resolvers.Final(
   exclusions:
     generated: lax
     presets:

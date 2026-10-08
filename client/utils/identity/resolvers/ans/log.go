@@ -140,7 +140,7 @@ func (c *scittLogClient) Status(ctx context.Context, log TrustedLog) (*Status, e
 
 	if kid, unknown := unknownKeyID(err); unknown {
 		if c.pinned != nil {
-			return nil, final(fmt.Errorf("ans log: status token signed by key id %x, which is not in root_keys: %w", kid, err))
+			return nil, resolvers.Final(fmt.Errorf("ans log: status token signed by key id %x, which is not in root_keys: %w", kid, err))
 		}
 
 		fresh, refreshed, refreshErr := c.refreshKeys(ctx, log.Origin)
@@ -153,12 +153,12 @@ func (c *scittLogClient) Status(ctx context.Context, log TrustedLog) (*Status, e
 		}
 
 		if _, stillUnknown := unknownKeyID(err); stillUnknown {
-			return nil, final(fmt.Errorf("ans log: status token signed by key id %x, which the log's root keys do not list: %w", kid, err))
+			return nil, resolvers.Final(fmt.Errorf("ans log: status token signed by key id %x, which the log's root keys do not list: %w", kid, err))
 		}
 	}
 
 	if err != nil {
-		return nil, final(fmt.Errorf("ans log: status token did not verify: %w", err))
+		return nil, resolvers.Final(fmt.Errorf("ans log: status token did not verify: %w", err))
 	}
 
 	return statusFrom(token), nil
@@ -220,12 +220,12 @@ func (c *scittLogClient) fetchKeys(ctx context.Context, origin string) (*scitt.K
 
 	lines := trimmed(strings.Split(string(body), "\n"))
 	if len(lines) == 0 {
-		return nil, final(errors.New("ans log: transparency log served no root keys"))
+		return nil, resolvers.Final(errors.New("ans log: transparency log served no root keys"))
 	}
 
 	keys, err := scitt.NewKeyStore(lines)
 	if err != nil {
-		return nil, final(fmt.Errorf("ans log: transparency log served malformed root keys: %w", err))
+		return nil, resolvers.Final(fmt.Errorf("ans log: transparency log served malformed root keys: %w", err))
 	}
 
 	return keys, nil
@@ -248,7 +248,7 @@ func fetchError(what string, err error) error {
 
 	var statusErr *safefetch.StatusError
 	if errors.As(err, &statusErr) && !statusErr.Transient() {
-		return final(err)
+		return resolvers.Final(err)
 	}
 
 	return err

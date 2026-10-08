@@ -63,11 +63,6 @@ type PinnedKey struct {
 	KeyID string
 }
 
-// final marks err as a verdict about the claim; see resolvers.Final.
-func final(err error) error {
-	return resolvers.Final(err) //nolint:wrapcheck // the mark is the wrapping
-}
-
 // attestation is what the network stages said about one subject: the log's
 // statement, or the classified error, kept until expires.
 type attestation struct {
@@ -191,21 +186,21 @@ func (r *Resolver) PinnedKeys() []PinnedKey {
 func (r *Resolver) Resolve(ctx context.Context, subject string, certificate []byte) ([]crypto.PublicKey, error) {
 	name, err := parseAgentName(subject)
 	if err != nil {
-		return nil, final(err)
+		return nil, resolvers.Final(err)
 	}
 
 	if len(certificate) == 0 {
-		return nil, final(errors.New("ans certificate: claim carries no certificate"))
+		return nil, resolvers.Final(errors.New("ans certificate: claim carries no certificate"))
 	}
 
 	cert, err := x509.ParseCertificate(certificate)
 	if err != nil {
-		return nil, final(fmt.Errorf("ans certificate: parse certificate: %w", err))
+		return nil, resolvers.Final(fmt.Errorf("ans certificate: parse certificate: %w", err))
 	}
 
 	key, err := checkCertificate(cert, subject, r.clock())
 	if err != nil {
-		return nil, final(err)
+		return nil, resolvers.Final(err)
 	}
 
 	att := r.attest(ctx, name)
@@ -214,7 +209,7 @@ func (r *Resolver) Resolve(ctx context.Context, subject string, certificate []by
 	}
 
 	if !att.status.attests(sha256.Sum256(certificate)) {
-		return nil, final(errors.New("ans log: the certificate is not among the agent's valid identity certificates"))
+		return nil, resolvers.Final(errors.New("ans log: the certificate is not among the agent's valid identity certificates"))
 	}
 
 	return []crypto.PublicKey{key}, nil
@@ -303,33 +298,31 @@ func (r *Resolver) finish(subject string, call *lookup, att attestation, keep bo
 // window, and a DNS hang ends after one timeout.
 func (r *Resolver) attestUncached(ctx context.Context, name agentName) attestation {
 	dnsCtx, cancelDNS := context.WithTimeout(ctx, r.cfg.GetTimeout())
+	defer cancelDNS()
+
 	target, err := r.lookupBadge(dnsCtx, name)
-
-	cancelDNS()
-
 	if err != nil {
 		return attestation{err: err}
 	}
 
 	logCtx, cancelLog := context.WithTimeout(ctx, r.cfg.GetTimeout())
+	defer cancelLog()
+
 	status, err := r.log.Status(logCtx, target)
-
-	cancelLog()
-
 	if err != nil {
 		return attestation{err: err}
 	}
 
 	if !strings.EqualFold(status.AgentID, target.AgentID) {
-		return attestation{err: final(fmt.Errorf("ans log: status token names agent %q, expected %q", truncate(status.AgentID), target.AgentID))}
+		return attestation{err: resolvers.Final(fmt.Errorf("ans log: status token names agent %q, expected %q", truncate(status.AgentID), target.AgentID))}
 	}
 
 	if !name.matches(status.Name) {
-		return attestation{err: final(fmt.Errorf("ans log: status token names %q, expected %q", truncate(status.Name), name.String()))}
+		return attestation{err: resolvers.Final(fmt.Errorf("ans log: status token names %q, expected %q", truncate(status.Name), name.String()))}
 	}
 
 	if !status.State.allowsUse() {
-		return attestation{err: final(fmt.Errorf("ans log: agent status %q does not allow use", truncate(string(status.State))))}
+		return attestation{err: resolvers.Final(fmt.Errorf("ans log: agent status %q does not allow use", truncate(string(status.State))))}
 	}
 
 	return attestation{status: status}
