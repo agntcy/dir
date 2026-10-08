@@ -919,6 +919,30 @@ func TestRun_KeepsTheResultWhenTheStoreFails(t *testing.T) {
 	assert.Equal(t, types.ClaimStatusVerified, f.result(cid, types.ClaimRoleOwner).GetStatus())
 }
 
+// A record whose annotations cannot be read leaves its stored results as they
+// were, like one whose claims cannot be read.
+func TestRun_KeepsTheResultWhenTheRecordCannotBeRead(t *testing.T) {
+	key, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+	require.NoError(t, err)
+
+	f := newFixture(t, Config{})
+	f.task.network = resolverSet{dns: &countingResolver{keys: []crypto.PublicKey{&key.PublicKey}}}
+
+	cid := f.addRecord("unreadable", map[string]string{corev1.AnnotationKeyOwner: "dns:acme.com"})
+	f.store.setReferrers(cid, signedReferrer(t, ownerRole, cid, "dns:acme.com", newSigner(t, key)))
+
+	f.run()
+	assert.Equal(t, types.ClaimStatusVerified, f.result(cid, types.ClaimRoleOwner).GetStatus())
+
+	f.store.mu.Lock()
+	delete(f.store.records, cid)
+	f.store.mu.Unlock()
+
+	f.run()
+
+	assert.Equal(t, types.ClaimStatusVerified, f.result(cid, types.ClaimRoleOwner).GetStatus())
+}
+
 func TestRun_ReadsEveryRecordAndLooksUpASharedSubjectOnce(t *testing.T) {
 	key, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 	require.NoError(t, err)
