@@ -34,8 +34,9 @@ type DiscoveredWorkloadStatus struct {
 // +kubebuilder:printcolumn:name="Runtime",type=string,JSONPath=`.spec.runtime`
 // +kubebuilder:printcolumn:name="Name",type=string,JSONPath=`.spec.name`
 // +kubebuilder:printcolumn:name="Type",type=string,JSONPath=`.spec.workload_type`
-// +kubebuilder:printcolumn:name="Addresses",type=string,JSONPath=`.spec.addresses`
-// +kubebuilder:printcolumn:name="Ports",type=string,JSONPath=`.spec.ports`
+// +kubebuilder:printcolumn:name="Locators",type=string,JSONPath=`.spec.locators[*].url`
+// +kubebuilder:printcolumn:name="Addresses",type=string,JSONPath=`.spec.addresses`,priority=1
+// +kubebuilder:printcolumn:name="Ports",type=string,JSONPath=`.spec.ports`,priority=1
 // +kubebuilder:printcolumn:name="Age",type=date,JSONPath=`.metadata.creationTimestamp`
 
 // DiscoveredWorkload is the Schema for the discoveredworkloads API.
