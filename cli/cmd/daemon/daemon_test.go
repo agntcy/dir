@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/agntcy/dir/reconciler/recordevents"
+	synctask "github.com/agntcy/dir/reconciler/tasks/sync"
 	storeconfig "github.com/agntcy/dir/server/store/oci/config"
 	"github.com/stretchr/testify/require"
 )
@@ -75,6 +76,67 @@ func TestLoadConfigHearsOfPushesByDefault(t *testing.T) {
 		require.NoError(t, err)
 		require.False(t, cfg.Reconciler.RecordEvents.Enabled)
 		require.Equal(t, 9*time.Second, cfg.Reconciler.RecordEvents.Window)
+	})
+}
+
+// TestLoadConfigKeepsSyncInDryRunByDefault asserts that sync stays in dry run
+// unless the config says otherwise. Sync creates syncs against peers found on
+// the routing network, and a file passed with --config is read as-is, so a file
+// that enables sync without mentioning dry_run must not get live syncs.
+func TestLoadConfigKeepsSyncInDryRunByDefault(t *testing.T) {
+	originalOpts := opts
+
+	t.Cleanup(func() {
+		opts = originalOpts
+	})
+
+	t.Run("embedded default", func(t *testing.T) {
+		opts = &Options{DataDir: t.TempDir()}
+
+		cfg, err := loadConfig()
+
+		require.NoError(t, err)
+		require.False(t, cfg.Reconciler.Sync.Enabled)
+		require.True(t, cfg.Reconciler.Sync.DryRun)
+	})
+
+	t.Run("a file that enables it and says nothing else", func(t *testing.T) {
+		file := filepath.Join(t.TempDir(), "daemon.yaml")
+		require.NoError(t, os.WriteFile(file, []byte("reconciler:\n  sync:\n    enabled: true\n"), 0o600))
+
+		opts = &Options{DataDir: t.TempDir(), ConfigFile: file}
+
+		cfg, err := loadConfig()
+
+		require.NoError(t, err)
+		require.True(t, cfg.Reconciler.Sync.Enabled)
+		require.True(t, cfg.Reconciler.Sync.DryRun)
+		require.Equal(t, synctask.DefaultInterval, cfg.Reconciler.Sync.Interval)
+		require.Equal(t, synctask.DefaultLimit, cfg.Reconciler.Sync.Limit)
+		require.Equal(t, synctask.DefaultDomain, cfg.Reconciler.Sync.Criteria.Domain)
+	})
+
+	t.Run("a file that asks for live syncs", func(t *testing.T) {
+		file := filepath.Join(t.TempDir(), "daemon.yaml")
+		require.NoError(t, os.WriteFile(file, []byte("reconciler:\n  sync:\n    enabled: true\n    dry_run: false\n"), 0o600))
+
+		opts = &Options{DataDir: t.TempDir(), ConfigFile: file}
+
+		cfg, err := loadConfig()
+
+		require.NoError(t, err)
+		require.False(t, cfg.Reconciler.Sync.DryRun)
+	})
+
+	t.Run("an env override asking for live syncs", func(t *testing.T) {
+		t.Setenv("DIRECTORY_DAEMON_RECONCILER_SYNC_DRY_RUN", "false")
+
+		opts = &Options{DataDir: t.TempDir()}
+
+		cfg, err := loadConfig()
+
+		require.NoError(t, err)
+		require.False(t, cfg.Reconciler.Sync.DryRun)
 	})
 }
 
