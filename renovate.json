@@ -262,6 +262,16 @@
       "description": [
         "Always allow vulnerability/security fixes, even when other rules disable majors or specific dependencies."
       ]
+    },
+    {
+      "groupName": "ANS SDK",
+      "groupSlug": "ans-sdk",
+      "matchDatasources": ["go"],
+      "matchPackageNames": ["github.com/agentnameservice/**"],
+      "description": [
+        "Group Agent Name Service SDK bumps into a single PR.",
+        "The SDK verifies ans:// identity claims, so a bump is reviewed as a trust-path change."
+      ]
     }
   ],
   "postUpdateOptions": [
