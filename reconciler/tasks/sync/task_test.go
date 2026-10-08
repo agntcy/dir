@@ -164,7 +164,8 @@ func TestTask_Run_CreatesDirSyncPerPeer(t *testing.T) {
 		cids:      []string{"cid-1", "cid-2"},
 	}, db.created[0])
 	assert.Equal(t, createdSync{
-		remoteRegistryURL: "registry.example/dir",
+		remoteRegistryURL: "registry.example",
+		repositoryName:    "dir",
 		cids:              []string{"cid-3"},
 	}, db.created[1])
 }
@@ -213,6 +214,28 @@ func TestGroupByPeer_PrefersDirAndDedupsCIDs(t *testing.T) {
 	require.Len(t, peers, 1)
 	assert.Equal(t, "peer-a", peers[0].id)
 	assert.Equal(t, "a.example:8888", peers[0].dirAddr)
-	assert.Equal(t, "ignored", peers[0].ociAddr)
+	assert.Equal(t, "ignored", peers[0].ociRegistry)
 	assert.Equal(t, []string{"cid-1", "cid-2"}, peers[0].cids)
+}
+
+// The sync worker takes the registry and the repository as separate fields, so
+// an advertised /oci/ address has to be split the same way dirctl splits it.
+func TestSplitOCIAddr(t *testing.T) {
+	t.Parallel()
+
+	for _, tc := range []struct {
+		addr       string
+		registry   string
+		repository string
+	}{
+		{addr: "ghcr.io/org", registry: "ghcr.io", repository: "org"},
+		{addr: "registry.example:5000/dir", registry: "registry.example:5000", repository: "dir"},
+		{addr: "ghcr.io", registry: "ghcr.io", repository: ""},
+		{addr: "", registry: "", repository: ""},
+	} {
+		registry, repository := splitOCIAddr(tc.addr)
+
+		assert.Equal(t, tc.registry, registry, tc.addr)
+		assert.Equal(t, tc.repository, repository, tc.addr)
+	}
 }

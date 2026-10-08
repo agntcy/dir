@@ -104,7 +104,8 @@ func (t *Task) Run(ctx context.Context) error {
 			logger.Info("Dry run: not creating sync",
 				"peer", peer.id,
 				"dir", peer.dirAddr,
-				"oci", peer.ociAddr,
+				"oci_registry", peer.ociRegistry,
+				"oci_repository", peer.ociRepo,
 				"cids", peer.cids,
 			)
 		}
@@ -146,13 +147,19 @@ func (t *Task) createPeerSync(peer *peerGroup) error {
 		}
 
 		logger.Info("Sync created", "peer", peer.id, "remote", peer.dirAddr, "cids", len(peer.cids), "sync_id", id)
-	case peer.ociAddr != "":
-		id, err := t.db.CreateSync("", peer.cids, peer.ociAddr, "")
+	case peer.ociRegistry != "":
+		id, err := t.db.CreateSync("", peer.cids, peer.ociRegistry, peer.ociRepo)
 		if err != nil {
 			return fmt.Errorf("create oci sync: %w", err)
 		}
 
-		logger.Info("Sync created", "peer", peer.id, "registry", peer.ociAddr, "cids", len(peer.cids), "sync_id", id)
+		logger.Info("Sync created",
+			"peer", peer.id,
+			"registry", peer.ociRegistry,
+			"repository", peer.ociRepo,
+			"cids", len(peer.cids),
+			"sync_id", id,
+		)
 	default:
 		return errNoPeerAddress
 	}

@@ -18,10 +18,11 @@ const (
 // peerGroup is the CIDs announced by one peer, plus the first /dir/ and /oci/
 // addresses seen for that peer. Matches dirctl sync create --stdin.
 type peerGroup struct {
-	id      string
-	dirAddr string
-	ociAddr string
-	cids    []string
+	id          string
+	dirAddr     string
+	ociRegistry string
+	ociRepo     string
+	cids        []string
 }
 
 func groupByPeer(results []*routingv1.SearchResponse) []*peerGroup {
@@ -54,8 +55,8 @@ func groupByPeer(results []*routingv1.SearchResponse) []*peerGroup {
 			switch {
 			case strings.HasPrefix(addr, dirPrefix) && group.dirAddr == "":
 				group.dirAddr = strings.TrimPrefix(addr, dirPrefix)
-			case strings.HasPrefix(addr, ociPrefix) && group.ociAddr == "":
-				group.ociAddr = strings.TrimPrefix(addr, ociPrefix)
+			case strings.HasPrefix(addr, ociPrefix) && group.ociRegistry == "":
+				group.ociRegistry, group.ociRepo = splitOCIAddr(strings.TrimPrefix(addr, ociPrefix))
 			}
 		}
 	}
@@ -66,6 +67,18 @@ func groupByPeer(results []*routingv1.SearchResponse) []*peerGroup {
 	}
 
 	return out
+}
+
+// splitOCIAddr splits an advertised OCI address such as "ghcr.io/org" into the
+// registry and the repository that the sync worker needs as separate fields.
+// The split is on the last "/" to match dirctl sync create --stdin; an address
+// with no "/" is a bare registry.
+func splitOCIAddr(addr string) (string, string) {
+	if idx := strings.LastIndex(addr, "/"); idx != -1 {
+		return addr[:idx], addr[idx+1:]
+	}
+
+	return addr, ""
 }
 
 func appendUnique(cids []string, cid string) []string {
