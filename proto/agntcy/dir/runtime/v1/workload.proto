@@ -31,11 +31,13 @@ message Workload {
   map<string, string> annotations = 7;
 
   // Addresses are the network addresses of the workload.
-  repeated string addresses = 8;
+  // Deprecated: use locators, which embed the address in each endpoint URL.
+  repeated string addresses = 8 [deprecated = true];
 
   // Ports are the exposed ports.
   // Specified as strings to accommodate various formats (e.g., "80/tcp", "443").
-  repeated string ports = 9;
+  // Deprecated: use locators, which embed the port in each endpoint URL.
+  repeated string ports = 9 [deprecated = true];
 
   // IsolationGroups are the network/namespace isolation groups.
   repeated string isolation_groups = 10;
@@ -44,6 +46,20 @@ message Workload {
   // These values can be used by discovery resolvers
   // to enrich the discovery information about the workload.
   WorkloadServices services = 11;
+
+  // Locators are the endpoints the workload can be reached at,
+  // one per protocol endpoint (e.g., an HTTP URL per network address, a SLIM name).
+  repeated WorkloadLocator locators = 12;
+}
+
+// WorkloadLocator is an endpoint a workload can be reached at.
+message WorkloadLocator {
+  // Protocol is the transport or protocol of the endpoint (e.g., http, grpc, slim).
+  string protocol = 1;
+
+  // URL is the full endpoint, including scheme
+  // (e.g., "http://10.244.0.9:9999", "slim://org/namespace/agent").
+  string url = 2;
 }
 
 // WorkloadServices holds service-specific metadata

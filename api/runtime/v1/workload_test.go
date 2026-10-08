@@ -52,7 +52,7 @@ func TestWorkload_DeepCopy(t *testing.T) {
 			Id:        "test-id",
 			Name:      "test-name",
 			Labels:    map[string]string{"key": "value"},
-			Addresses: []string{"addr1", "addr2"},
+			Locators:  []*WorkloadLocator{{Protocol: "http", Url: "http://10.0.0.1:8080"}},
 		}
 
 		copied := original.DeepCopy()
@@ -61,7 +61,7 @@ func TestWorkload_DeepCopy(t *testing.T) {
 		copied.Id = "modified-id"
 		copied.Labels["key"] = "modified"
 		copied.Labels["new"] = "newvalue"
-		copied.Addresses[0] = "modified-addr"
+		copied.Locators[0].Url = "http://modified:8080"
 
 		// Original should be unchanged
 		if original.Id != "test-id" {
@@ -73,25 +73,29 @@ func TestWorkload_DeepCopy(t *testing.T) {
 		if _, exists := original.Labels["new"]; exists {
 			t.Error("Original Labels has new key that shouldn't exist")
 		}
-		if original.Addresses[0] != "addr1" {
-			t.Errorf("Original Addresses was modified: %v", original.Addresses)
+		if original.Locators[0].GetUrl() != "http://10.0.0.1:8080" {
+			t.Errorf("Original Locators was modified: %v", original.Locators)
 		}
 	})
 
 	t.Run("copies slices", func(t *testing.T) {
 		original := &Workload{
-			Addresses:       []string{"addr1", "addr2"},
-			Ports:           []string{"8080", "443"},
+			Locators: []*WorkloadLocator{
+				{Protocol: "http", Url: "http://10.0.0.1:8080"},
+				{Protocol: "slim", Url: "slim://org/namespace/agent"},
+			},
 			IsolationGroups: []string{"network1"},
 		}
 
 		copied := original.DeepCopy()
 
-		if len(copied.Addresses) != len(original.Addresses) {
-			t.Errorf("Addresses length = %d, want %d", len(copied.Addresses), len(original.Addresses))
+		if len(copied.Locators) != len(original.Locators) {
+			t.Errorf("Locators length = %d, want %d", len(copied.Locators), len(original.Locators))
 		}
-		if len(copied.Ports) != len(original.Ports) {
-			t.Errorf("Ports length = %d, want %d", len(copied.Ports), len(original.Ports))
+		for i, locator := range copied.Locators {
+			if locator.GetProtocol() != original.Locators[i].GetProtocol() || locator.GetUrl() != original.Locators[i].GetUrl() {
+				t.Errorf("Locators[%d] = %v, want %v", i, locator, original.Locators[i])
+			}
 		}
 		if len(copied.IsolationGroups) != len(original.IsolationGroups) {
 			t.Errorf("IsolationGroups length = %d, want %d", len(copied.IsolationGroups), len(original.IsolationGroups))
