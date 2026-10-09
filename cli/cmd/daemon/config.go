@@ -19,6 +19,7 @@ import (
 	runtimestoresql "github.com/agntcy/dir-runtime/store/sql"
 	reconcilerconfig "github.com/agntcy/dir/reconciler/config"
 	"github.com/agntcy/dir/reconciler/recordevents"
+	synctask "github.com/agntcy/dir/reconciler/tasks/sync"
 	serverconfig "github.com/agntcy/dir/server/config"
 	dbconfig "github.com/agntcy/dir/server/database/config"
 	storeconfig "github.com/agntcy/dir/server/store/oci/config"
@@ -103,6 +104,15 @@ func registerReconcilerDefaults(v *viper.Viper) {
 	v.SetDefault("reconciler.record_events.enabled", true)
 	v.SetDefault("reconciler.record_events.window", recordevents.DefaultWindow)
 	v.SetDefault("reconciler.record_events.reconnect_delay", recordevents.DefaultReconnectDelay)
+
+	// Sync creates syncs against peers found on the routing network, so a
+	// config file that enables it without mentioning dry_run must not fall
+	// through to the zero value. Mirrors reconciler/config.
+	v.SetDefault("reconciler.sync.enabled", false)
+	v.SetDefault("reconciler.sync.interval", synctask.DefaultInterval)
+	v.SetDefault("reconciler.sync.criteria.domain", synctask.DefaultDomain)
+	v.SetDefault("reconciler.sync.limit", synctask.DefaultLimit)
+	v.SetDefault("reconciler.sync.dry_run", true)
 }
 
 func registerRuntimeDefaults(v *viper.Viper) {

@@ -10,6 +10,7 @@ import (
 	"github.com/agntcy/dir/reconciler/recordevents"
 	"github.com/agntcy/dir/reconciler/tasks/identity"
 	policytask "github.com/agntcy/dir/reconciler/tasks/policy"
+	synctask "github.com/agntcy/dir/reconciler/tasks/sync"
 	dbconfig "github.com/agntcy/dir/server/database/config"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -37,6 +38,13 @@ func TestLoadConfig_NoFile_ReturnsDefaults(t *testing.T) {
 	assert.Equal(t, 168*time.Hour, cfg.Prune.Criteria.OlderThan)
 	assert.Equal(t, 100, cfg.Prune.Limit)
 	assert.True(t, cfg.Prune.DryRun)
+
+	// Sync is off unless asked for; dry-run defaults on.
+	assert.False(t, cfg.Sync.Enabled)
+	assert.Equal(t, synctask.DefaultInterval, cfg.Sync.Interval)
+	assert.Equal(t, synctask.DefaultDomain, cfg.Sync.Criteria.Domain)
+	assert.Equal(t, synctask.DefaultLimit, cfg.Sync.Limit)
+	assert.True(t, cfg.Sync.DryRun)
 
 	// The identity task is off unless asked for.
 	assert.False(t, cfg.Identity.Enabled)
@@ -118,4 +126,21 @@ func TestLoadConfig_IdentityFromEnv(t *testing.T) {
 	assert.True(t, cfg.Identity.Enabled)
 	assert.Equal(t, 5*time.Minute, cfg.Identity.Interval)
 	assert.Equal(t, 10*time.Second, cfg.Identity.RecordTimeout)
+}
+
+func TestLoadConfig_SyncFromEnv(t *testing.T) {
+	t.Setenv("RECONCILER_SYNC_ENABLED", "true")
+	t.Setenv("RECONCILER_SYNC_INTERVAL", "6h")
+	t.Setenv("RECONCILER_SYNC_CRITERIA_DOMAIN", "research")
+	t.Setenv("RECONCILER_SYNC_LIMIT", "25")
+	t.Setenv("RECONCILER_SYNC_DRY_RUN", "false")
+
+	cfg, err := LoadConfig()
+	require.NoError(t, err)
+
+	assert.True(t, cfg.Sync.Enabled)
+	assert.Equal(t, 6*time.Hour, cfg.Sync.Interval)
+	assert.Equal(t, "research", cfg.Sync.Criteria.Domain)
+	assert.Equal(t, 25, cfg.Sync.Limit)
+	assert.False(t, cfg.Sync.DryRun)
 }

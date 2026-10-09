@@ -185,6 +185,16 @@ reconciler:
     record_timeout: 30s
     # Records fetched and evaluated at a time.
     batch_size: 500
+  # Searches the routing network for records matching criteria and creates
+  # one sync per announcing peer. Off: this creates remote syncs. A run
+  # does not paginate; later intervals pick up more.
+  sync:
+    enabled: false
+    interval: 24h
+    criteria:
+      domain: network_security
+    limit: 100
+    dry_run: true
   # How the reconciler hears of a record being pushed, so that the indexer, and
   # the policy task after it, run at once instead of at their next intervals.
   # The intervals remain the backstop, and the only trigger for records copied
