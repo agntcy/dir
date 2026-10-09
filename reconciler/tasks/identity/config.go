@@ -25,9 +25,10 @@ const (
 	// verify within its budget: an identity claim and an ownership claim.
 	ansClaimsPerRecord = 2
 
-	// DefaultANSStaleGrace is how long an ans:// result outlives lookups that
-	// get no answer. Shorter than the task's grace for the other schemes, since
-	// the publisher's own DNS is among the lookups that may get none.
+	// DefaultANSStaleGrace is the grace the configuration loaders give an
+	// ans:// result unless the operator sets one. Shorter than the task's grace
+	// for the other schemes, since the publisher's own DNS is among the lookups
+	// that may get no answer.
 	DefaultANSStaleGrace = 24 * time.Hour
 )
 
@@ -72,22 +73,12 @@ type ANSConfig struct {
 
 	// StaleGrace is how long a stored result outlives lookups that get no
 	// answer: the publisher's DNS not answering, the trusted log unreachable.
-	// It replaces the task's seven days for ans:// claims. Zero, which an
-	// unset key leaves, means DefaultANSStaleGrace; a positive value below
-	// Interval keeps nothing.
+	// It replaces the task's seven days for ans:// claims. Zero keeps nothing;
+	// the configuration loaders set DefaultANSStaleGrace unless the operator
+	// sets a value.
 	StaleGrace time.Duration `json:"stale_grace,omitempty" mapstructure:"stale_grace"`
 
 	ansresolver.Config `mapstructure:",squash"`
-}
-
-// GetStaleGrace returns the grace with default fallback: zero means the
-// default, not no grace.
-func (c *ANSConfig) GetStaleGrace() time.Duration {
-	if c.StaleGrace == 0 {
-		return DefaultANSStaleGrace
-	}
-
-	return c.StaleGrace
 }
 
 // GetInterval returns the interval with default fallback.

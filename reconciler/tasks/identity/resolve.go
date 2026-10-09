@@ -66,13 +66,13 @@ func newNetworkResolvers(cfg Config) (resolverSet, error) {
 		"pinnedRootKeys", keys,
 		"timeout", cfg.ANS.GetTimeout(),
 		"statusCacheTTL", cfg.ANS.GetStatusCacheTTL(),
-		"staleGrace", cfg.ANS.GetStaleGrace())
+		"staleGrace", cfg.ANS.StaleGrace)
 
 	if cfg.ANS.AllowUnpinnedRootKeys {
 		logger.Warn("ans root keys are not pinned: trust in the transparency logs rests on TLS to the trusted hosts alone")
 	}
 
-	set[clientidentity.SchemeANS] = schemeResolver{resolver: ans, grace: cfg.ANS.GetStaleGrace()}
+	set[clientidentity.SchemeANS] = schemeResolver{resolver: ans, grace: cfg.ANS.StaleGrace}
 
 	return set, nil
 }

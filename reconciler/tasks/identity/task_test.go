@@ -1203,7 +1203,6 @@ func TestConfig(t *testing.T) {
 	cfg := Config{}
 	assert.Equal(t, DefaultInterval, cfg.GetInterval())
 	assert.Equal(t, DefaultRecordTimeout, cfg.GetRecordTimeout())
-	assert.Equal(t, DefaultANSStaleGrace, cfg.ANS.GetStaleGrace())
 	assert.Empty(t, cfg.trustDomains())
 
 	cfg = Config{
@@ -1213,11 +1212,9 @@ func TestConfig(t *testing.T) {
 			{TrustDomain: "acme.com", BundleFile: "/a.pem"},
 			{TrustDomain: "other.org", BundleFile: "/b.pem"},
 		},
-		ANS: ANSConfig{StaleGrace: time.Hour},
 	}
 	assert.Equal(t, time.Minute, cfg.GetInterval())
 	assert.Equal(t, time.Second, cfg.GetRecordTimeout())
-	assert.Equal(t, time.Hour, cfg.ANS.GetStaleGrace())
 	assert.Equal(t, map[string]string{"acme.com": "/a.pem", "other.org": "/b.pem"}, cfg.trustDomains())
 }
 
@@ -1476,6 +1473,25 @@ func TestRun_ANSClaimVerifiesThenFailsAfterRevocation(t *testing.T) {
 	assert.Equal(t, types.ClaimStatusVerified, f.result(cid, types.ClaimRoleIdentity).GetStatus(), "restored")
 }
 
+// With no grace, a lookup that gets no answer fails the claim at once: the
+// fail-closed setting.
+func TestRun_ANSZeroGraceKeepsNothing(t *testing.T) {
+	f := newANSFixture(t, Config{})
+
+	cid := f.addRecord("ans-no-grace", map[string]string{corev1.AnnotationKeyIdentity: ansSubject})
+	f.store.setReferrers(cid, f.claim(t, cid))
+
+	f.run()
+	assert.Equal(t, types.ClaimStatusVerified, f.result(cid, types.ClaimRoleIdentity).GetStatus())
+
+	f.log.err = fmt.Errorf("ans log: fetch status token: %w", &safefetch.StatusError{URL: ansBadgeURL + "/status-token", Code: 503})
+	f.run()
+
+	result := f.result(cid, types.ClaimRoleIdentity)
+	assert.Equal(t, types.ClaimStatusFailed, result.GetStatus(), "kept without a grace")
+	assert.Contains(t, result.GetError(), "ans log: fetch status token")
+}
+
 // The ans grace is the operator's: a shorter one drops the result sooner than
 // the default would.
 func TestRun_ANSGraceIsConfigurable(t *testing.T) {
@@ -1508,7 +1524,7 @@ func TestRun_ANSGraceIsConfigurable(t *testing.T) {
 // A trusted log that is down keeps the last result, as for every other scheme,
 // and the result is dropped only once the grace runs out.
 func TestRun_ANSLogOutageKeepsTheLastResult(t *testing.T) {
-	f := newANSFixture(t, Config{})
+	f := newANSFixture(t, Config{ANS: ANSConfig{StaleGrace: DefaultANSStaleGrace}})
 
 	cid := f.addRecord("ans", map[string]string{corev1.AnnotationKeyIdentity: ansSubject})
 	f.store.setReferrers(cid, f.claim(t, cid))
@@ -1603,7 +1619,7 @@ func TestRun_ANSStackedClaimsCostOneLookup(t *testing.T) {
 // A publisher whose DNS hangs costs one timeout per subject, however many
 // claims the record carries, and the stored result stands for the ans grace.
 func TestRun_ANSHangingDNSKeepsTheLastResultWithinTheGrace(t *testing.T) {
-	f := newANSFixture(t, Config{RecordTimeout: 2 * time.Second, ANS: ANSConfig{Config: ansresolver.Config{Timeout: 500 * time.Millisecond}}})
+	f := newANSFixture(t, Config{RecordTimeout: 2 * time.Second, ANS: ANSConfig{StaleGrace: DefaultANSStaleGrace, Config: ansresolver.Config{Timeout: 500 * time.Millisecond}}})
 
 	cid := f.addRecord("hang", map[string]string{corev1.AnnotationKeyIdentity: ansSubject})
 	f.store.setReferrers(cid, f.claim(t, cid))

@@ -197,8 +197,9 @@ func (t *Task) reconcileRecord(run context.Context, resolvers resolverSet, cid s
 			continue
 		}
 
-		// An unreachable subject does not say the claim is wrong, so the last result stands for a while.
-		if transient && t.previous(cid, kind.role, resolvers.graceFor(result.Subject)) != nil {
+		// An unreachable subject does not say the claim is wrong, so the last result
+		// stands for the scheme's grace; a scheme with none keeps nothing.
+		if grace := resolvers.graceFor(result.Subject); transient && grace > 0 && t.previous(cid, kind.role, grace) != nil {
 			logger.Warn("Keeping the last claim result: the subject could not be looked up", "cid", cid, "role", kind.role, "error", result.Error)
 
 			kept++

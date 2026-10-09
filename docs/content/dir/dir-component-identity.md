@@ -238,7 +238,7 @@ run starts. A lookup that gets no answer keeps the stored result for
 `ans.stale_grace` (default 24 hours) from the last run that reached the subject, as described
 under [Unreachable subjects](#unreachable-subjects): a publisher who makes their own
 `_ans-badge` lookup fail can delay the effect of a revocation by that long, so an operator who
-wants to fail closed sets `ans.stale_grace` to a positive value below `interval`. A claim also
+wants to fail closed sets `ans.stale_grace` to `0`. A claim also
 stops verifying when its certificate expires, whatever the log says, so the publisher has to
 push a new claim after each certificate renewal.
 
@@ -342,9 +342,9 @@ Two cases get no grace:
 
 The seven days are fixed for every scheme but `ans://`, whose grace is `ans.stale_grace`
 (default 24 hours; see [ANS](#ans)): the publisher's own DNS is among the lookups that may get
-no answer, so a shorter window bounds how long a failing zone can hide a revocation, and a
-positive value below `interval` keeps nothing. A run that is stopped mid-lookup stores no
-failure for any scheme; the next run starts over from the stored result.
+no answer, so a shorter window bounds how long a failing zone can hide a revocation, and `0`
+keeps nothing. A run that is stopped mid-lookup stores no failure for any scheme; the next
+run starts over from the stored result.
 
 ### Stored result
 
@@ -448,7 +448,7 @@ reconciler:
 | `ans.allow_unpinned_root_keys` | `RECONCILER_IDENTITY_ANS_ALLOW_UNPINNED_ROOT_KEYS` | `false` | Fetch each log's keys from `/root-keys` instead; cannot be combined with `root_keys` |
 | `ans.root_keys_ttl` | `RECONCILER_IDENTITY_ANS_ROOT_KEYS_TTL` | `10m` | How long fetched keys are used before they are fetched again |
 | `ans.status_cache_ttl` | `RECONCILER_IDENTITY_ANS_STATUS_CACHE_TTL` | `30s` | How long a subject's attestation is reused within a run; at least `5s` |
-| `ans.stale_grace` | `RECONCILER_IDENTITY_ANS_STALE_GRACE` | `24h` | How long a stored result survives lookups that get no answer; unset or `0` means `24h`, and a positive value below `interval`, such as `1s`, keeps nothing |
+| `ans.stale_grace` | `RECONCILER_IDENTITY_ANS_STALE_GRACE` | `24h` | How long a stored result survives lookups that get no answer; `0` keeps nothing |
 | `ans.timeout` | `RECONCILER_IDENTITY_ANS_TIMEOUT` | `10s` | Time allowed for the DNS record, and again for the log; `record_timeout` must be at least four times this |
 | `ans.clock_skew` | `RECONCILER_IDENTITY_ANS_CLOCK_SKEW` | `30s` | Tolerance on the status token's expiry, at most `10m` |
 
@@ -479,5 +479,5 @@ or a negative `stale_grace` stops the reconciler from starting, and under
   a revoked ANS agent and expiry take effect on the next run that reaches the subject. A lookup
   that gets no answer keeps the stored result for the grace under
   [Unreachable subjects](#unreachable-subjects): seven days, or `ans.stale_grace` for `ans://`,
-  which an operator sets below `interval` to fail closed.
+  which an operator sets to `0` to fail closed.
 - Keys are fetched with an SSRF-safe client, because the URLs come from record data.
