@@ -1558,6 +1558,29 @@ func TestRun_ANSMemoDoesNotOutliveARun(t *testing.T) {
 	assert.Equal(t, 2, f.log.callCount(), "the log was not asked again")
 }
 
+// A log signing with a key root_keys does not hold fails its claims, and the
+// operator is told once per run, not once per claim.
+func TestRun_ANSUnpinnedRootKeyIsReportedOncePerRun(t *testing.T) {
+	f := newANSFixture(t, Config{})
+
+	cid := f.addRecord("rotated", map[string]string{corev1.AnnotationKeyIdentity: ansSubject})
+	f.store.setReferrers(cid, f.claim(t, cid), f.strangerClaim(t, cid))
+
+	f.log.err = resolvers.Final(fmt.Errorf("ans log: %w: key id 01020304", ansresolver.ErrUnpinnedRootKey))
+	f.run()
+
+	result := f.result(cid, types.ClaimRoleIdentity)
+	assert.Equal(t, types.ClaimStatusFailed, result.GetStatus())
+	assert.Contains(t, result.GetError(), "not in root_keys")
+	assert.True(t, f.task.unpinnedKeyWarned, "the operator was not told")
+
+	f.log.err = nil
+	f.run()
+
+	assert.Equal(t, types.ClaimStatusVerified, f.result(cid, types.ClaimRoleIdentity).GetStatus(), "the next run starts over")
+	assert.False(t, f.task.unpinnedKeyWarned, "the warning is per run")
+}
+
 // Both claim kinds of a record may be ans:// claims.
 func TestRun_ANSOwnershipClaim(t *testing.T) {
 	f := newANSFixture(t, Config{})

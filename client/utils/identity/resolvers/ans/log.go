@@ -38,6 +38,12 @@ func (s State) allowsUse() bool {
 	}
 }
 
+// ErrUnpinnedRootKey is the cause of the verdict a pinned configuration gives
+// a status token signed by a key root_keys does not hold: the log rotated its
+// key, or the wrong key is pinned. errors.Is finds it through the Final mark,
+// so a caller can tell the operator to pin the new key.
+var ErrUnpinnedRootKey = errors.New("status token signed by a key that is not in root_keys")
+
 // Status is what a transparency log states about an agent in a status token
 // it signed.
 type Status struct {
@@ -140,7 +146,7 @@ func (c *scittLogClient) Status(ctx context.Context, log TrustedLog) (*Status, e
 
 	if kid, unknown := unknownKeyID(err); unknown {
 		if c.pinned != nil {
-			return nil, resolvers.Final(fmt.Errorf("ans log: status token signed by key id %x, which is not in root_keys: %w", kid, err))
+			return nil, resolvers.Final(fmt.Errorf("ans log: %w: key id %x: %w", ErrUnpinnedRootKey, kid, err))
 		}
 
 		fresh, refreshed, refreshErr := c.refreshKeys(ctx, log.Origin)

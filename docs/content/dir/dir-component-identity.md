@@ -257,8 +257,10 @@ failed, `ans name`, `ans certificate`, `ans badge` or `ans log`, after the recon
 of the same subject was under way stores `ans: waiting for the lookup of <subject>`.
 
 **The log's keys.** `root_keys` pins the logs' signing keys as the lines their `/root-keys`
-endpoint serves. They are read at startup: when a log rotates its key, every `ans://` claim
-fails, with the key id in the stored error, until `root_keys` is updated and the reconciler
+endpoint serves, and may list several: pin a log's next key beside its current one before
+the log signs with it, and the rotation has no gap. The keys are read at startup. A token
+signed by a key that is not pinned fails the claim, fail closed: the stored error names the
+key id, and the reconciler warns once per run until `root_keys` is updated and the reconciler
 restarted. Alternatively `allow_unpinned_root_keys` fetches each log's keys from
 `/root-keys`, refreshed every `root_keys_ttl` and on a rotation, and trust then rests on TLS
 to the trusted hosts. The two settings cannot be combined. A malformed `/root-keys` answer
@@ -278,8 +280,9 @@ next run.
 
 At startup the reconciler logs the trusted logs and the pinned key ids; during a run a kept
 result is logged at `WARN` (`Keeping the last claim result`) and counted as `kept` in the
-run summary, so a log outage shows up as kept results, and a key rotation the configuration
-has not followed as `failed` results naming the key id.
+run summary, so a log outage shows up as kept results. A key rotation the configuration has
+not followed shows up as `failed` results naming the key id and one `WARN` per run (`A trusted
+transparency log signs with a key that identity.ans.root_keys does not hold`).
 
 ### Fetch limits
 

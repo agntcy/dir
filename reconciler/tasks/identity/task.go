@@ -12,12 +12,14 @@ package identity
 import (
 	"context"
 	"encoding/base64"
+	"errors"
 	"fmt"
 	"time"
 
 	corev1 "github.com/agntcy/dir/api/core/v1"
 	identityv1 "github.com/agntcy/dir/api/identity/v1"
 	clientidentity "github.com/agntcy/dir/client/utils/identity"
+	ansresolver "github.com/agntcy/dir/client/utils/identity/resolvers/ans"
 	spifferesolver "github.com/agntcy/dir/client/utils/identity/resolvers/spiffe"
 	gormdb "github.com/agntcy/dir/server/database/gorm"
 	"github.com/agntcy/dir/server/types"
@@ -57,6 +59,10 @@ type Task struct {
 	store    types.StoreAPI
 	refStore types.ReferrerStoreAPI
 	network  resolverSet
+
+	// unpinnedKeyWarned says the run has already told the operator that a
+	// trusted log signs with a key root_keys does not hold.
+	unpinnedKeyWarned bool
 }
 
 // NewTask creates a new identity claim verification task. An ans block that
@@ -101,6 +107,7 @@ func (t *Task) Run(ctx context.Context) error {
 
 	started := time.Now()
 
+	t.unpinnedKeyWarned = false
 	t.network.forget()
 
 	resolvers := t.network.with(clientidentity.SchemeSPIFFE, spifferesolver.New(t.loadTrustBundles()), staleGrace).cached()
@@ -320,6 +327,10 @@ func (t *Task) verify(ctx context.Context, resolvers resolverSet, cid, expected 
 
 		transient = transient || isTransient(err)
 
+		if errors.Is(err, ansresolver.ErrUnpinnedRootKey) {
+			t.warnUnpinnedRootKey(err)
+		}
+
 		// Whoever signs a claim writes its signed_at, so one that does not parse, or
 		// is dated in the future, must not outrank an honest claim.
 		signedAt, parseErr := time.Parse(time.RFC3339, claim.GetSignedAt())
@@ -340,6 +351,19 @@ func (t *Task) verify(ctx context.Context, resolvers resolverSet, cid, expected 
 	}
 
 	return result, transient
+}
+
+// warnUnpinnedRootKey tells the operator, once per run, that a trusted log
+// signs with a key identity.ans.root_keys does not hold: every ans:// claim it
+// attests fails until that key is pinned beside the current one.
+func (t *Task) warnUnpinnedRootKey(err error) {
+	if t.unpinnedKeyWarned {
+		return
+	}
+
+	t.unpinnedKeyWarned = true
+
+	logger.Warn("A trusted transparency log signs with a key that identity.ans.root_keys does not hold; its ans:// claims fail until that key is pinned beside the current one", "error", err)
 }
 
 // verifyClaim looks up the current keys of the claim's subject and verifies the
