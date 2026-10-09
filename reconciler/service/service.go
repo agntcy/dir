@@ -196,6 +196,10 @@ func (s *Service) registerPolicyTask(cfg policy.Config, db servertypes.DatabaseA
 // registerIdentityTask registers the identity claim task when it is enabled.
 func (s *Service) registerIdentityTask(cfg *config.Config, db servertypes.DatabaseAPI, store servertypes.StoreAPI) error {
 	if !cfg.Identity.Enabled {
+		if cfg.Identity.ANS.Enabled {
+			logger.Warn("identity.ans is enabled but the identity task is off; no claim is verified")
+		}
+
 		return nil
 	}
 

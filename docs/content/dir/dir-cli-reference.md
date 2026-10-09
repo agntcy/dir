@@ -1907,11 +1907,11 @@ Signs a claim that the subject a record declares in its `agntcy.dir/identity` an
 | `--role` | `identity` or `owner` (required) |
 | `--key` | Path to the PEM private key to sign with (required) |
 | `--password-stdin` | Read the key password from standard input |
-| `--cert` | PEM or DER certificate of the key; only for `spiffe://` subjects |
+| `--cert` | PEM or DER certificate of the key; for `spiffe://` and `ans://` subjects |
 
 The key is an EC, RSA or Ed25519 private key in PEM form, unencrypted or an encrypted PKCS#8 key (`ENCRYPTED PRIVATE KEY`). Its public half is what the subject publishes: a DNS TXT record for `dns:` subjects, `/.well-known/jwks.json` for `https://` subjects, the DID document for `did:web:`, or the DID itself for `did:key:`. For an encrypted key, the password is read from `COSIGN_PASSWORD`, from standard input with `--password-stdin` (a trailing line break is ignored), or prompted for on a terminal. A key that is not encrypted is never prompted for.
 
-`--cert` is independent of `--key` and is only for `spiffe://` subjects, whose proof is the signer's X.509-SVID rather than a published key. The certificate's URI SAN must be the declared subject. A `spiffe://` subject needs `--cert`, and no other subject accepts it.
+`--cert` is independent of `--key` and is for `spiffe://` and `ans://` subjects, whose proof is a certificate rather than a published key: the signer's X.509-SVID, or the identity certificate the agent's transparency log attests. The certificate's URI SAN must be the declared subject. These subjects need `--cert`, and no other subject accepts it.
 
 ??? example
 
@@ -1925,6 +1925,9 @@ The key is an EC, RSA or Ed25519 private key in PEM form, unencrypted or an encr
 
     # Claim a SPIFFE identity
     dirctl identity claim --record <cid> --role identity --key svid.key --cert svid.pem
+
+    # Claim an ANS identity, with the agent's identity certificate
+    dirctl identity claim --record <cid> --role identity --key agent.key --cert agent.pem
     ```
 
 ### `dirctl identity status <reference>`
@@ -1943,6 +1946,9 @@ reconciler:
       - trust_domain: acme.com
         bundle_file: /etc/agntcy/spiffe/acme.com.pem
 ```
+
+An `ans://` claim is verified against the transparency logs configured under
+`reconciler.identity.ans`; see [Identity and Ownership Claims](dir-component-identity.md#ans).
 
 ??? example
 

@@ -274,17 +274,20 @@ func TestClaim_OwnerRole(t *testing.T) {
 	assert.Contains(t, out.String(), "dirctl identity status "+testCID)
 }
 
-func TestClaim_SPIFFEWithCertificate(t *testing.T) {
-	const subject = "spiffe://acme.com/agents/finance"
+// Subjects proven by a certificate take --cert and push it with the claim.
+func TestClaim_CertificateSubjects(t *testing.T) {
+	for _, subject := range []string{"spiffe://acme.com/agents/finance", "ans://v1.0.0.agent.acme.com"} {
+		t.Run(subject, func(t *testing.T) {
+			key := newKey(t)
+			setClaimOpts(t, roleIdentity, writeKey(t, key, ""), writeCert(t, key, subject))
 
-	key := newKey(t)
-	setClaimOpts(t, roleIdentity, writeKey(t, key, ""), writeCert(t, key, subject))
+			stream, _, err := runClaimWith(t, map[string]string{corev1.AnnotationKeyIdentity: subject})
+			require.NoError(t, err)
 
-	stream, _, err := runClaimWith(t, map[string]string{corev1.AnnotationKeyIdentity: subject})
-	require.NoError(t, err)
-
-	_, claim := pushedClaim(t, stream)
-	assert.NotEmpty(t, claim.GetCertificate())
+			_, claim := pushedClaim(t, stream)
+			assert.NotEmpty(t, claim.GetCertificate())
+		})
+	}
 }
 
 func TestClaim_EncryptedKey(t *testing.T) {
@@ -315,6 +318,8 @@ func TestClaim_Rejects(t *testing.T) {
 		"unknown role":                 {"admin", "dns:acme.com", keyPath, "", "invalid --role"},
 		"cert on a non-spiffe subject": {roleIdentity, "dns:acme.com", keyPath, certPath, "does not cover"},
 		"spiffe subject without cert":  {roleIdentity, spiffeSubject, keyPath, "", "needs a certificate"},
+		"ans subject without cert":     {roleIdentity, "ans://v1.0.0.agent.acme.com", keyPath, "", "needs a certificate"},
+		"cert on an https subject":     {roleIdentity, "https://acme.com", keyPath, writeCert(t, key, "https://acme.com"), "only used for spiffe:// and ans:// subjects"},
 		"missing key file":             {roleIdentity, "dns:acme.com", filepath.Join(t.TempDir(), "nope"), "", "failed to read private key"},
 		"missing cert file":            {roleIdentity, spiffeSubject, keyPath, filepath.Join(t.TempDir(), "nope"), "failed to read certificate"},
 		"cert of another subject":      {roleIdentity, "spiffe://acme.com/agents/other", keyPath, certPath, "does not cover"},

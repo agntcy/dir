@@ -10,9 +10,11 @@ import (
 	"crypto/ed25519"
 	"crypto/elliptic"
 	"crypto/rand"
+	"crypto/sha256"
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"encoding/base64"
+	"encoding/hex"
 	"encoding/json"
 	"encoding/pem"
 	"errors"
@@ -30,6 +32,7 @@ import (
 	identityv1 "github.com/agntcy/dir/api/identity/v1"
 	clientidentity "github.com/agntcy/dir/client/utils/identity"
 	"github.com/agntcy/dir/client/utils/identity/resolvers"
+	ansresolver "github.com/agntcy/dir/client/utils/identity/resolvers/ans"
 	didresolver "github.com/agntcy/dir/client/utils/identity/resolvers/did"
 	dnsresolver "github.com/agntcy/dir/client/utils/identity/resolvers/dns"
 	wellknownresolver "github.com/agntcy/dir/client/utils/identity/resolvers/wellknown"
@@ -174,11 +177,27 @@ func (f *fixture) result(cid, role string) types.IdentityClaimObject {
 	return result
 }
 
+// backdate rewrites the stored verified result of cid and role as if a run age
+// ago had written it, so a grace measured from it has passed or not.
+func (f *fixture) backdate(cid, role, subject string, age time.Duration) {
+	f.t.Helper()
+
+	require.NoError(f.t, f.db.UpsertIdentityClaim(&gormdb.IdentityClaim{
+		RecordCID: cid, Role: role, Subject: subject,
+		Status: types.ClaimStatusVerified, VerifiedAt: time.Now().Add(-age),
+	}))
+}
+
 func (f *fixture) noResult(cid, role string) {
 	f.t.Helper()
 
 	_, err := f.db.GetIdentityClaimByCID(cid, role)
 	require.ErrorIs(f.t, err, gormdb.ErrIdentityClaimNotFound)
+}
+
+// dnsOnly is a set that serves dns: subjects with r under the task's usual grace.
+func dnsOnly(r resolvers.Resolver) resolverSet {
+	return resolverSet{clientidentity.SchemeDNS: {resolver: r, grace: staleGrace}}
 }
 
 func newSigner(t *testing.T, key crypto.PrivateKey) jws.Signer {
@@ -325,7 +344,14 @@ func (ca *testCA) bundlePEM() []byte {
 func (ca *testCA) issue(t *testing.T, key *ecdsa.PrivateKey, notAfter time.Time) []byte {
 	t.Helper()
 
-	uri, err := url.Parse(spiffeID)
+	return ca.issueFor(t, key, spiffeID, notAfter)
+}
+
+// issueFor returns a certificate carrying uriSAN over key's public half, signed by the CA.
+func (ca *testCA) issueFor(t *testing.T, key *ecdsa.PrivateKey, uriSAN string, notAfter time.Time) []byte {
+	t.Helper()
+
+	uri, err := url.Parse(uriSAN)
 	require.NoError(t, err)
 
 	template := &x509.Certificate{
@@ -406,13 +432,13 @@ func TestRun_VerifiesAClaimOfEveryScheme(t *testing.T) {
 			t.Run(name+"/"+role.stored, func(t *testing.T) {
 				f := newFixture(t, Config{SPIFFETrustBundles: []TrustBundle{{TrustDomain: "acme.com", BundleFile: bundleFile}}})
 				f.task.network = resolverSet{
-					dns: dnsresolver.New(dnsresolver.WithLookupTXT(func(_ context.Context, host string) ([]string, error) {
+					clientidentity.SchemeDNS: {resolver: dnsresolver.New(dnsresolver.WithLookupTXT(func(_ context.Context, host string) ([]string, error) {
 						require.Equal(t, "_agntcy-key.acme.com", host)
 
 						return []string{"v=akv1;key=" + spkiBase64(t, &ecKey.PublicKey)}, nil
-					})),
-					did:       didresolver.New(fetcher),
-					wellknown: wellknownresolver.New(fetcher),
+					})), grace: staleGrace},
+					clientidentity.SchemeDID:       {resolver: didresolver.New(fetcher), grace: staleGrace},
+					clientidentity.SchemeWellKnown: {resolver: wellknownresolver.New(fetcher), grace: staleGrace},
 				}
 
 				cid := f.addRecord(name+role.stored, map[string]string{role.annotation: tt.subject})
@@ -455,7 +481,7 @@ func TestRun_RotatedKeyFlipsTheResult(t *testing.T) {
 	published := &countingResolver{keys: []crypto.PublicKey{&key.PublicKey}}
 
 	f := newFixture(t, Config{})
-	f.task.network = resolverSet{dns: published}
+	f.task.network = dnsOnly(published)
 
 	cid := f.addRecord("rotated", map[string]string{corev1.AnnotationKeyOwner: "dns:acme.com"})
 	f.store.setReferrers(cid, signedReferrer(t, ownerRole, cid, "dns:acme.com", newSigner(t, key)))
@@ -584,7 +610,7 @@ func TestRun_ClaimForAnotherSubjectLeavesNoResult(t *testing.T) {
 	for name, tt := range tests {
 		t.Run(name, func(t *testing.T) {
 			f := newFixture(t, Config{})
-			f.task.network = resolverSet{dns: lookups}
+			f.task.network = dnsOnly(lookups)
 
 			cid := f.addRecord("unmatched", tt.annotations)
 			f.store.setReferrers(cid, signedReferrer(t, identityRole, cid, "dns:acme.com", signer))
@@ -604,7 +630,7 @@ func TestRun_RemovesTheResultOfAClaimForAnotherSubject(t *testing.T) {
 	require.NoError(t, err)
 
 	f := newFixture(t, Config{})
-	f.task.network = resolverSet{dns: &countingResolver{keys: []crypto.PublicKey{&key.PublicKey}}}
+	f.task.network = dnsOnly(&countingResolver{keys: []crypto.PublicKey{&key.PublicKey}})
 
 	cid := f.addRecord("stale", map[string]string{corev1.AnnotationKeyIdentity: "dns:acme.com"})
 	f.store.setReferrers(cid, signedReferrer(t, identityRole, cid, "dns:other.com", newSigner(t, key)))
@@ -619,8 +645,9 @@ func TestRun_RemovesTheResultOfAClaimForAnotherSubject(t *testing.T) {
 	f.noResult(cid, types.ClaimRoleIdentity)
 }
 
-// A certificate is no part of a claim for anything but a spiffe:// subject, so one
-// grafted onto such a claim fails it instead of decorating a verified result.
+// A certificate is no part of a claim for anything but a spiffe:// or ans://
+// subject, so one grafted onto such a claim fails it instead of decorating a
+// verified result.
 func TestRun_CertificateOnANonSPIFFEClaimFails(t *testing.T) {
 	key, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 	require.NoError(t, err)
@@ -628,7 +655,7 @@ func TestRun_CertificateOnANonSPIFFEClaimFails(t *testing.T) {
 	ca := newCA(t, "acme root")
 
 	f := newFixture(t, Config{})
-	f.task.network = resolverSet{dns: &countingResolver{keys: []crypto.PublicKey{&key.PublicKey}}}
+	f.task.network = dnsOnly(&countingResolver{keys: []crypto.PublicKey{&key.PublicKey}})
 
 	cid := f.addRecord("grafted", map[string]string{corev1.AnnotationKeyOwner: "dns:acme.com"})
 
@@ -649,7 +676,7 @@ func TestRun_CertificateOnANonSPIFFEClaimFails(t *testing.T) {
 
 	result := f.result(cid, types.ClaimRoleOwner)
 	assert.Equal(t, types.ClaimStatusFailed, result.GetStatus())
-	assert.Contains(t, result.GetError(), "carries a certificate")
+	assert.Contains(t, result.GetError(), "only used for spiffe:// and ans:// subjects")
 }
 
 func TestRun_ClaimOfAnotherRecordFails(t *testing.T) {
@@ -657,7 +684,7 @@ func TestRun_ClaimOfAnotherRecordFails(t *testing.T) {
 	require.NoError(t, err)
 
 	f := newFixture(t, Config{})
-	f.task.network = resolverSet{dns: &countingResolver{keys: []crypto.PublicKey{&key.PublicKey}}}
+	f.task.network = dnsOnly(&countingResolver{keys: []crypto.PublicKey{&key.PublicKey}})
 
 	other := f.addRecord("other", map[string]string{corev1.AnnotationKeyIdentity: "dns:acme.com"})
 	cid := f.addRecord("victim", map[string]string{corev1.AnnotationKeyIdentity: "dns:acme.com"})
@@ -702,7 +729,7 @@ func TestRun_AVerifiedClaimWinsOverOthers(t *testing.T) {
 	require.NoError(t, err)
 
 	f := newFixture(t, Config{})
-	f.task.network = resolverSet{dns: &countingResolver{keys: []crypto.PublicKey{&good.PublicKey}}}
+	f.task.network = dnsOnly(&countingResolver{keys: []crypto.PublicKey{&good.PublicKey}})
 
 	cid := f.addRecord("contested", map[string]string{corev1.AnnotationKeyOwner: "dns:acme.com"})
 	forged := signedReferrer(t, ownerRole, cid, "dns:acme.com", newSigner(t, attacker))
@@ -725,7 +752,7 @@ func TestRun_AVerifiedClaimWinsOverOthers(t *testing.T) {
 
 func TestRun_ReportsTheNewestFailure(t *testing.T) {
 	f := newFixture(t, Config{})
-	f.task.network = resolverSet{dns: &countingResolver{err: errors.New("lookup timed out")}}
+	f.task.network = dnsOnly(&countingResolver{err: errors.New("lookup timed out")})
 
 	cid := f.addRecord("failing", map[string]string{corev1.AnnotationKeyOwner: "dns:acme.com"})
 
@@ -761,7 +788,7 @@ func TestRun_ReportsTheNewestFailure(t *testing.T) {
 // that does not parse must not let a claim outrank an honest one.
 func TestRun_ForgedSignedAtDoesNotOutrankAnHonestFailure(t *testing.T) {
 	f := newFixture(t, Config{})
-	f.task.network = resolverSet{dns: &countingResolver{err: errors.New("lookup timed out")}}
+	f.task.network = dnsOnly(&countingResolver{err: errors.New("lookup timed out")})
 
 	cid := f.addRecord("forged-time", map[string]string{corev1.AnnotationKeyOwner: "dns:acme.com"})
 
@@ -807,7 +834,7 @@ func TestRun_IgnoresReferrersThatAreNotClaimsOfTheRole(t *testing.T) {
 	lookups := &countingResolver{keys: []crypto.PublicKey{&key.PublicKey}}
 
 	f := newFixture(t, Config{})
-	f.task.network = resolverSet{dns: lookups}
+	f.task.network = dnsOnly(lookups)
 
 	cid := f.addRecord("mixed", map[string]string{
 		corev1.AnnotationKeyIdentity: "dns:acme.com",
@@ -853,7 +880,7 @@ func TestRun_RemovesTheResultOfAClaimThatIsGone(t *testing.T) {
 	require.NoError(t, err)
 
 	f := newFixture(t, Config{})
-	f.task.network = resolverSet{dns: &countingResolver{keys: []crypto.PublicKey{&key.PublicKey}}}
+	f.task.network = dnsOnly(&countingResolver{keys: []crypto.PublicKey{&key.PublicKey}})
 
 	cid := f.addRecord("withdrawn", map[string]string{
 		corev1.AnnotationKeyIdentity: "dns:acme.com",
@@ -883,7 +910,7 @@ func TestRun_KeepsTheResultWhenTheStoreFails(t *testing.T) {
 	require.NoError(t, err)
 
 	f := newFixture(t, Config{})
-	f.task.network = resolverSet{dns: &countingResolver{keys: []crypto.PublicKey{&key.PublicKey}}}
+	f.task.network = dnsOnly(&countingResolver{keys: []crypto.PublicKey{&key.PublicKey}})
 
 	cid := f.addRecord("flaky", map[string]string{corev1.AnnotationKeyOwner: "dns:acme.com"})
 	f.store.setReferrers(cid, signedReferrer(t, ownerRole, cid, "dns:acme.com", newSigner(t, key)))
@@ -897,6 +924,30 @@ func TestRun_KeepsTheResultWhenTheStoreFails(t *testing.T) {
 	assert.Equal(t, types.ClaimStatusVerified, f.result(cid, types.ClaimRoleOwner).GetStatus())
 }
 
+// A record whose annotations cannot be read leaves its stored results as they
+// were, like one whose claims cannot be read.
+func TestRun_KeepsTheResultWhenTheRecordCannotBeRead(t *testing.T) {
+	key, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+	require.NoError(t, err)
+
+	f := newFixture(t, Config{})
+	f.task.network = dnsOnly(&countingResolver{keys: []crypto.PublicKey{&key.PublicKey}})
+
+	cid := f.addRecord("unreadable", map[string]string{corev1.AnnotationKeyOwner: "dns:acme.com"})
+	f.store.setReferrers(cid, signedReferrer(t, ownerRole, cid, "dns:acme.com", newSigner(t, key)))
+
+	f.run()
+	assert.Equal(t, types.ClaimStatusVerified, f.result(cid, types.ClaimRoleOwner).GetStatus())
+
+	f.store.mu.Lock()
+	delete(f.store.records, cid)
+	f.store.mu.Unlock()
+
+	f.run()
+
+	assert.Equal(t, types.ClaimStatusVerified, f.result(cid, types.ClaimRoleOwner).GetStatus())
+}
+
 func TestRun_ReadsEveryRecordAndLooksUpASharedSubjectOnce(t *testing.T) {
 	key, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 	require.NoError(t, err)
@@ -904,7 +955,7 @@ func TestRun_ReadsEveryRecordAndLooksUpASharedSubjectOnce(t *testing.T) {
 	lookups := &countingResolver{keys: []crypto.PublicKey{&key.PublicKey}}
 
 	f := newFixture(t, Config{})
-	f.task.network = resolverSet{dns: lookups}
+	f.task.network = dnsOnly(lookups)
 
 	signer := newSigner(t, key)
 
@@ -933,7 +984,7 @@ func TestRun_AnUnreachableSubjectKeepsTheLastResultForAWhile(t *testing.T) {
 	lookups := &countingResolver{keys: []crypto.PublicKey{&key.PublicKey}}
 
 	f := newFixture(t, Config{})
-	f.task.network = resolverSet{dns: lookups}
+	f.task.network = dnsOnly(lookups)
 
 	cid := f.addRecord("flaky-subject", map[string]string{corev1.AnnotationKeyOwner: "dns:acme.com"})
 	f.store.setReferrers(cid, signedReferrer(t, ownerRole, cid, "dns:acme.com", newSigner(t, key)))
@@ -954,10 +1005,7 @@ func TestRun_AnUnreachableSubjectKeepsTheLastResultForAWhile(t *testing.T) {
 	assert.Equal(t, types.ClaimStatusFailed, f.result(cid, types.ClaimRoleOwner).GetStatus())
 
 	// Unreachable for longer than the grace period stops being tolerated.
-	require.NoError(t, f.db.UpsertIdentityClaim(&gormdb.IdentityClaim{
-		RecordCID: cid, Role: types.ClaimRoleOwner, Subject: "dns:acme.com",
-		Status: types.ClaimStatusVerified, VerifiedAt: time.Now().Add(-staleGrace - time.Hour),
-	}))
+	f.backdate(cid, types.ClaimRoleOwner, "dns:acme.com", staleGrace+time.Hour)
 
 	lookups.err = context.DeadlineExceeded
 
@@ -998,6 +1046,12 @@ func TestIsTransient(t *testing.T) {
 		"dns server failure": {wrapped(&net.DNSError{Err: "server misbehaving"}), true},
 		"500":                {wrapped(&safefetch.StatusError{Code: 500}), true},
 		"429":                {wrapped(&safefetch.StatusError{Code: 429}), true},
+		"302":                {wrapped(&safefetch.StatusError{Code: 302}), true},
+		"308":                {wrapped(&safefetch.StatusError{Code: 308}), true},
+		"403":                {wrapped(&safefetch.StatusError{Code: 403}), false},
+		"final dns failure":  {resolvers.Final(wrapped(&net.DNSError{Err: "server misbehaving"})), false},
+		"final deadline":     {resolvers.Final(wrapped(context.DeadlineExceeded)), false},
+		"final 503":          {resolvers.Final(wrapped(&safefetch.StatusError{Code: 503})), false},
 		"dns no such host":   {wrapped(&net.DNSError{Err: "no such host", IsNotFound: true}), false},
 		"404":                {wrapped(&safefetch.StatusError{Code: 404}), false},
 		"disallowed address": {wrapped(fmt.Errorf("%w: x", safefetch.ErrDisallowedAddress)), false},
@@ -1008,6 +1062,42 @@ func TestIsTransient(t *testing.T) {
 			assert.Equal(t, tt.want, isTransient(tt.err))
 		})
 	}
+}
+
+// interruptingResolver stops the run it is called from, as a shutdown would,
+// and fails the way a lookup under a cancelled context does.
+type interruptingResolver struct {
+	cancel context.CancelFunc
+}
+
+func (r *interruptingResolver) Resolve(context.Context, string, []byte) ([]crypto.PublicKey, error) {
+	r.cancel()
+
+	return nil, fmt.Errorf("lookup: %w", context.Canceled)
+}
+
+// A run stopped while a claim is being looked up stores no failure for it: the
+// next run starts over from the stored result.
+func TestRun_InterruptedRunStoresNoFailure(t *testing.T) {
+	key, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+	require.NoError(t, err)
+
+	f := newFixture(t, Config{})
+	f.task.network = dnsOnly(&countingResolver{keys: []crypto.PublicKey{&key.PublicKey}})
+
+	cid := f.addRecord("interrupted", map[string]string{corev1.AnnotationKeyOwner: "dns:acme.com"})
+	f.store.setReferrers(cid, signedReferrer(t, ownerRole, cid, "dns:acme.com", newSigner(t, key)))
+
+	f.run()
+	assert.Equal(t, types.ClaimStatusVerified, f.result(cid, types.ClaimRoleOwner).GetStatus())
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	f.task.network = dnsOnly(&interruptingResolver{cancel: cancel})
+
+	require.ErrorIs(t, f.task.Run(ctx), context.Canceled)
+	assert.Equal(t, types.ClaimStatusVerified, f.result(cid, types.ClaimRoleOwner).GetStatus(), "the interrupted lookup stored a failure")
 }
 
 func TestRun_StopsWhenCancelled(t *testing.T) {
@@ -1025,7 +1115,7 @@ func TestRun_TruncatesLongFailureReasons(t *testing.T) {
 	require.NoError(t, err)
 
 	f := newFixture(t, Config{})
-	f.task.network = resolverSet{dns: &countingResolver{err: errors.New(string(make([]byte, 5000)))}}
+	f.task.network = dnsOnly(&countingResolver{err: errors.New(string(make([]byte, 5000)))})
 
 	cid := f.addRecord("verbose", map[string]string{corev1.AnnotationKeyOwner: "dns:acme.com"})
 	f.store.setReferrers(cid, signedReferrer(t, ownerRole, cid, "dns:acme.com", newSigner(t, key)))
@@ -1036,24 +1126,23 @@ func TestRun_TruncatesLongFailureReasons(t *testing.T) {
 }
 
 func TestForSubject(t *testing.T) {
-	set := resolverSet{
-		dns:       &countingResolver{},
-		did:       &countingResolver{},
-		wellknown: &countingResolver{},
-		spiffe:    &countingResolver{},
+	set := resolverSet{}
+	for _, scheme := range clientidentity.Schemes() {
+		set[scheme] = schemeResolver{resolver: &countingResolver{}}
 	}
 
-	for subject, want := range map[string]resolvers.Resolver{
-		"dns:acme.com":                     set.dns,
-		"acme.com":                         set.dns,
-		"did:web:acme.com":                 set.did,
-		"did:key:z6Mk":                     set.did,
-		"https://acme.com/agents":          set.wellknown,
-		"spiffe://acme.com/agents/finance": set.spiffe,
+	for subject, want := range map[string]clientidentity.Scheme{
+		"dns:acme.com":                     clientidentity.SchemeDNS,
+		"acme.com":                         clientidentity.SchemeDNS,
+		"did:web:acme.com":                 clientidentity.SchemeDID,
+		"did:key:z6Mk":                     clientidentity.SchemeDID,
+		"https://acme.com/agents":          clientidentity.SchemeWellKnown,
+		"spiffe://acme.com/agents/finance": clientidentity.SchemeSPIFFE,
+		ansSubject:                         clientidentity.SchemeANS,
 	} {
 		got, err := set.forSubject(subject)
 		require.NoError(t, err, subject)
-		assert.Same(t, want, got, subject)
+		assert.Same(t, set[want].resolver, got, subject)
 	}
 
 	for _, subject := range []string{"http://acme.com", "ftp://acme.com", "mailto:a@b.c", "acme.com:8080", ""} {
@@ -1067,6 +1156,31 @@ func TestForSubject(t *testing.T) {
 		}
 
 		require.ErrorContains(t, err, "unsupported subject scheme", subject)
+	}
+
+	// With the ans block off there is no ans entry, and the scheme is unsupported.
+	delete(set, clientidentity.SchemeANS)
+
+	_, err := set.forSubject(ansSubject)
+	require.ErrorContains(t, err, "unsupported subject scheme")
+}
+
+// The task serves every scheme the client package names, so a scheme added
+// there cannot be left without a resolver here unnoticed.
+func TestNetworkResolversServeEveryScheme(t *testing.T) {
+	set, err := newNetworkResolvers(Config{ANS: ANSConfig{Enabled: true, StaleGrace: time.Hour, Config: ansresolver.Config{TrustedLogHosts: []string{ansLogHost}, AllowUnpinnedRootKeys: true}}})
+	require.NoError(t, err)
+
+	set = set.with(clientidentity.SchemeSPIFFE, &countingResolver{}, staleGrace)
+
+	for _, scheme := range clientidentity.Schemes() {
+		assert.NotNil(t, set[scheme].resolver, scheme)
+		assert.Positive(t, set[scheme].grace, scheme)
+	}
+
+	cached := set.cached()
+	for _, scheme := range clientidentity.Schemes() {
+		assert.IsType(t, &cachedResolver{}, cached[scheme].resolver, scheme)
 	}
 }
 
@@ -1102,4 +1216,527 @@ func TestConfig(t *testing.T) {
 	assert.Equal(t, time.Minute, cfg.GetInterval())
 	assert.Equal(t, time.Second, cfg.GetRecordTimeout())
 	assert.Equal(t, map[string]string{"acme.com": "/a.pem", "other.org": "/b.pem"}, cfg.trustDomains())
+}
+
+func TestOneLine(t *testing.T) {
+	tests := map[string]string{
+		"ans log: key id 01020304": "ans log: key id 01020304",
+		"first\nsecond":            "first second",
+		"first\r\nsecond\rthird":   "first  second third",
+		"":                         "",
+	}
+
+	for text, want := range tests {
+		t.Run(text, func(t *testing.T) {
+			assert.Equal(t, want, oneLine(text))
+		})
+	}
+}
+
+func TestGraceFor(t *testing.T) {
+	set := resolverSet{
+		clientidentity.SchemeDNS: {grace: staleGrace},
+		clientidentity.SchemeANS: {grace: 2 * time.Hour},
+	}
+
+	tests := map[string]time.Duration{
+		"ans://v1.0.0.agent.acme.com": 2 * time.Hour,
+		"dns:acme.com":                staleGrace,
+		"acme.com":                    staleGrace,
+		"spiffe://acme.com/agent":     0,
+		"ftp://acme.com":              0,
+	}
+
+	for subject, want := range tests {
+		t.Run(subject, func(t *testing.T) {
+			assert.Equal(t, want, set.graceFor(subject))
+		})
+	}
+}
+
+// ---- ANS fixtures ----
+
+const (
+	ansSubject  = "ans://v1.0.0.agent.acme.com"
+	ansLogHost  = "log.acme.com"
+	ansAgentID  = "5b1b6cc4-4b3e-4d4e-9a7d-2c1e7a6f9a10"
+	ansBadgeURL = "https://" + ansLogHost + "/v1/agents/" + ansAgentID
+	ansBadgeTXT = "v=ans-badge1; version=v1.0.0; url=" + ansBadgeURL
+)
+
+// ansLog scripts what the trusted transparency log states about the agent,
+// or how reaching it fails.
+type ansLog struct {
+	mu     sync.Mutex
+	status ansresolver.Status
+	err    error
+	delay  time.Duration
+	calls  int
+}
+
+func (l *ansLog) Status(ctx context.Context, _ ansresolver.TrustedLog) (*ansresolver.Status, error) {
+	l.mu.Lock()
+	l.calls++
+	status, err, delay := l.status, l.err, l.delay
+	l.mu.Unlock()
+
+	if err != nil {
+		return nil, err
+	}
+
+	if delay > 0 {
+		select {
+		case <-time.After(delay):
+		case <-ctx.Done():
+			return nil, fmt.Errorf("ans log: fetch status token: %w", ctx.Err())
+		}
+	}
+
+	status.IdentityCertificates = append([][32]byte(nil), status.IdentityCertificates...)
+
+	return &status, nil
+}
+
+// set makes the log attest the given DER certificates for an agent in state.
+func (l *ansLog) set(state ansresolver.State, certificates ...[]byte) {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+
+	fingerprints := make([][32]byte, 0, len(certificates))
+	for _, der := range certificates {
+		fingerprints = append(fingerprints, sha256.Sum256(der))
+	}
+
+	// A real token always carries an expiry; without one the resolver reuses nothing.
+	l.status = ansresolver.Status{AgentID: ansAgentID, Name: ansSubject, State: state, ExpiresAt: time.Now().Add(24 * time.Hour), IdentityCertificates: fingerprints}
+}
+
+func (l *ansLog) callCount() int {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+
+	return l.calls
+}
+
+// ansRootKeyLine renders a fresh P-256 key as the line a transparency log's
+// /root-keys endpoint serves: name+hex(kid)+base64(0x02 || SPKI DER), where kid
+// is the first four bytes of SHA-256(SPKI).
+func ansRootKeyLine(t *testing.T) string {
+	t.Helper()
+
+	key, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+	require.NoError(t, err)
+
+	spki, err := x509.MarshalPKIXPublicKey(&key.PublicKey)
+	require.NoError(t, err)
+
+	sum := sha256.Sum256(spki)
+
+	return "example-log+" + hex.EncodeToString(sum[:4]) + "+" + base64.StdEncoding.EncodeToString(append([]byte{0x02}, spki...))
+}
+
+// ansDNS answers the agent's badge lookup, slowly or never when asked.
+type ansDNS struct {
+	mu    sync.Mutex
+	err   error
+	delay time.Duration
+	block bool
+	calls int
+}
+
+func (d *ansDNS) lookup(ctx context.Context, name string) ([]string, error) {
+	d.mu.Lock()
+	d.calls++
+	err, delay, block := d.err, d.delay, d.block
+	d.mu.Unlock()
+
+	if block {
+		<-ctx.Done()
+
+		return nil, &net.DNSError{Err: ctx.Err().Error(), Name: name, IsTimeout: true}
+	}
+
+	if delay > 0 {
+		select {
+		case <-time.After(delay):
+		case <-ctx.Done():
+			return nil, &net.DNSError{Err: ctx.Err().Error(), Name: name, IsTimeout: true}
+		}
+	}
+
+	if err != nil {
+		return nil, err
+	}
+
+	return []string{ansBadgeTXT}, nil
+}
+
+func (d *ansDNS) callCount() int {
+	d.mu.Lock()
+	defer d.mu.Unlock()
+
+	return d.calls
+}
+
+// ansFixture is a task whose ans resolver talks to a scripted log and DNS,
+// with a clock the test can move between runs.
+type ansFixture struct {
+	*fixture
+
+	ca      *testCA
+	dns     *ansDNS
+	log     *ansLog
+	key     *ecdsa.PrivateKey
+	certPEM []byte
+	certDER []byte
+
+	mu     sync.Mutex
+	offset time.Duration
+}
+
+func newANSFixture(t *testing.T, cfg Config) *ansFixture {
+	t.Helper()
+
+	cfg.ANS.Enabled = true
+	cfg.ANS.TrustedLogHosts = []string{ansLogHost}
+	cfg.ANS.AllowUnpinnedRootKeys = true
+
+	key, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+	require.NoError(t, err)
+
+	af := &ansFixture{fixture: newFixture(t, cfg), ca: newCA(t, "ans root"), dns: &ansDNS{}, log: &ansLog{}, key: key}
+	af.certPEM = af.ca.issueFor(t, key, ansSubject, time.Now().Add(time.Hour))
+
+	block, _ := pem.Decode(af.certPEM)
+	require.NotNil(t, block)
+
+	af.certDER = block.Bytes
+	af.log.set(ansresolver.StateActive, af.certDER)
+
+	resolver, err := ansresolver.New(cfg.ANS.Config,
+		ansresolver.WithLookupTXT(af.dns.lookup),
+		ansresolver.WithLogClient(af.log),
+		ansresolver.WithClock(af.now))
+	require.NoError(t, err)
+
+	entry := af.task.network[clientidentity.SchemeANS]
+	entry.resolver = resolver
+	af.task.network[clientidentity.SchemeANS] = entry
+
+	return af
+}
+
+func (af *ansFixture) now() time.Time {
+	af.mu.Lock()
+	defer af.mu.Unlock()
+
+	return time.Now().Add(af.offset)
+}
+
+// nextRun moves the clock on, as the interval does between two real runs.
+func (af *ansFixture) nextRun() {
+	af.mu.Lock()
+	defer af.mu.Unlock()
+
+	af.offset += af.task.config.ANS.GetStatusCacheTTL() + time.Second
+}
+
+// claim signs an identity claim for ansSubject carrying the attested
+// certificate, the way the agent's publisher would.
+func (af *ansFixture) claim(t *testing.T, cid string) *corev1.RecordReferrer {
+	t.Helper()
+
+	return signedReferrer(t, identityRole, cid, ansSubject, newSigner(t, af.key), clientidentity.WithCertificate(af.certPEM))
+}
+
+// strangerClaim signs a claim for ansSubject with a fresh key and a
+// self-issued certificate the log does not attest, as anyone could.
+func (af *ansFixture) strangerClaim(t *testing.T, cid string) *corev1.RecordReferrer {
+	t.Helper()
+
+	key, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+	require.NoError(t, err)
+
+	return signedReferrer(t, identityRole, cid, ansSubject, newSigner(t, key),
+		clientidentity.WithCertificate(af.ca.issueFor(t, key, ansSubject, time.Now().Add(time.Hour))))
+}
+
+// ---- ANS tests ----
+
+// An ans:// claim verifies through the log, fails once the agent is revoked,
+// and verifies again once the log restores the agent.
+func TestRun_ANSClaimVerifiesThenFailsAfterRevocation(t *testing.T) {
+	f := newANSFixture(t, Config{})
+
+	cid := f.addRecord("ans", map[string]string{corev1.AnnotationKeyIdentity: ansSubject})
+	f.store.setReferrers(cid, f.claim(t, cid))
+
+	f.run()
+	assert.Equal(t, types.ClaimStatusVerified, f.result(cid, types.ClaimRoleIdentity).GetStatus())
+
+	f.log.set(ansresolver.State("REVOKED"), f.certDER)
+	f.nextRun()
+	f.run()
+
+	result := f.result(cid, types.ClaimRoleIdentity)
+	assert.Equal(t, types.ClaimStatusFailed, result.GetStatus())
+	assert.Contains(t, result.GetError(), `ans log: agent status "REVOKED" does not allow use`)
+
+	f.log.set(ansresolver.StateActive, f.certDER)
+	f.nextRun()
+	f.run()
+	assert.Equal(t, types.ClaimStatusVerified, f.result(cid, types.ClaimRoleIdentity).GetStatus(), "restored")
+}
+
+// With no grace, a lookup that gets no answer fails the claim at once: the
+// fail-closed setting.
+func TestRun_ANSZeroGraceKeepsNothing(t *testing.T) {
+	f := newANSFixture(t, Config{})
+
+	cid := f.addRecord("ans-no-grace", map[string]string{corev1.AnnotationKeyIdentity: ansSubject})
+	f.store.setReferrers(cid, f.claim(t, cid))
+
+	f.run()
+	assert.Equal(t, types.ClaimStatusVerified, f.result(cid, types.ClaimRoleIdentity).GetStatus())
+
+	f.log.err = fmt.Errorf("ans log: fetch status token: %w", &safefetch.StatusError{URL: ansBadgeURL + "/status-token", Code: 503})
+	f.run()
+
+	result := f.result(cid, types.ClaimRoleIdentity)
+	assert.Equal(t, types.ClaimStatusFailed, result.GetStatus(), "kept without a grace")
+	assert.Contains(t, result.GetError(), "ans log: fetch status token")
+}
+
+// The ans grace is the operator's: a shorter one drops the result sooner than
+// the default would.
+func TestRun_ANSGraceIsConfigurable(t *testing.T) {
+	f := newANSFixture(t, Config{ANS: ANSConfig{StaleGrace: 2 * time.Hour}})
+
+	cid := f.addRecord("ans-grace", map[string]string{corev1.AnnotationKeyIdentity: ansSubject})
+	f.store.setReferrers(cid, f.claim(t, cid))
+
+	f.run()
+	assert.Equal(t, types.ClaimStatusVerified, f.result(cid, types.ClaimRoleIdentity).GetStatus())
+
+	// The publisher's DNS stops answering: the result stands, and standing does
+	// not renew it.
+	verifiedAt := f.result(cid, types.ClaimRoleIdentity).GetVerifiedAt()
+	f.dns.err = &net.DNSError{Err: "server misbehaving", Name: "_ans-badge.agent.acme.com"}
+	f.nextRun()
+	f.run()
+
+	kept := f.result(cid, types.ClaimRoleIdentity)
+	assert.Equal(t, types.ClaimStatusVerified, kept.GetStatus(), "kept within the configured grace")
+	assert.True(t, kept.GetVerifiedAt().Equal(verifiedAt), "a kept result must not look fresher")
+
+	f.backdate(cid, types.ClaimRoleIdentity, ansSubject, 3*time.Hour)
+	f.nextRun()
+	f.run()
+
+	assert.Equal(t, types.ClaimStatusFailed, f.result(cid, types.ClaimRoleIdentity).GetStatus(), "older than the configured grace")
+}
+
+// A trusted log that is down keeps the last result, as for every other scheme,
+// and the result is dropped only once the grace runs out.
+func TestRun_ANSLogOutageKeepsTheLastResult(t *testing.T) {
+	f := newANSFixture(t, Config{ANS: ANSConfig{StaleGrace: DefaultANSStaleGrace}})
+
+	cid := f.addRecord("ans", map[string]string{corev1.AnnotationKeyIdentity: ansSubject})
+	f.store.setReferrers(cid, f.claim(t, cid))
+
+	f.run()
+	assert.Equal(t, types.ClaimStatusVerified, f.result(cid, types.ClaimRoleIdentity).GetStatus())
+
+	f.log.err = fmt.Errorf("ans log: fetch status token: %w", &safefetch.StatusError{URL: ansBadgeURL + "/status-token", Code: 503})
+	f.nextRun()
+	f.run()
+
+	assert.Equal(t, types.ClaimStatusVerified, f.result(cid, types.ClaimRoleIdentity).GetStatus(), "kept through the outage")
+	assert.Equal(t, 2, f.log.callCount(), "the log was asked again")
+}
+
+// The resolver's memo is dropped when a run starts, so a revocation is seen on
+// the next run however much lifetime the memo had left.
+func TestRun_ANSMemoDoesNotOutliveARun(t *testing.T) {
+	f := newANSFixture(t, Config{})
+
+	cid := f.addRecord("memo", map[string]string{corev1.AnnotationKeyIdentity: ansSubject})
+	f.store.setReferrers(cid, f.claim(t, cid))
+
+	f.run()
+	assert.Equal(t, types.ClaimStatusVerified, f.result(cid, types.ClaimRoleIdentity).GetStatus())
+
+	f.log.set(ansresolver.State("REVOKED"), f.certDER)
+	f.run()
+
+	assert.Equal(t, types.ClaimStatusFailed, f.result(cid, types.ClaimRoleIdentity).GetStatus())
+	assert.Equal(t, 2, f.log.callCount(), "the log was not asked again")
+}
+
+// A log signing with a key root_keys does not hold fails its claims, and the
+// operator is told once per run, not once per claim.
+func TestRun_ANSUnpinnedRootKeyIsReportedOncePerRun(t *testing.T) {
+	f := newANSFixture(t, Config{})
+
+	cid := f.addRecord("rotated", map[string]string{corev1.AnnotationKeyIdentity: ansSubject})
+	f.store.setReferrers(cid, f.claim(t, cid), f.strangerClaim(t, cid))
+
+	f.log.err = resolvers.Final(fmt.Errorf("ans log: %w: key id 01020304", ansresolver.ErrUnpinnedRootKey))
+	f.run()
+
+	result := f.result(cid, types.ClaimRoleIdentity)
+	assert.Equal(t, types.ClaimStatusFailed, result.GetStatus())
+	assert.Contains(t, result.GetError(), "not in root_keys")
+	assert.True(t, f.task.unpinnedKeyWarned, "the operator was not told")
+
+	f.log.err = nil
+	f.run()
+
+	assert.Equal(t, types.ClaimStatusVerified, f.result(cid, types.ClaimRoleIdentity).GetStatus(), "the next run starts over")
+	assert.False(t, f.task.unpinnedKeyWarned, "the warning is per run")
+}
+
+// Both claim kinds of a record may be ans:// claims.
+func TestRun_ANSOwnershipClaim(t *testing.T) {
+	f := newANSFixture(t, Config{})
+
+	cid := f.addRecord("ans-owner", map[string]string{corev1.AnnotationKeyOwner: ansSubject})
+	f.store.setReferrers(cid, signedReferrer(t, ownerRole, cid, ansSubject, newSigner(t, f.key), clientidentity.WithCertificate(f.certPEM)))
+
+	f.run()
+
+	assert.Equal(t, types.ClaimStatusVerified, f.result(cid, types.ClaimRoleOwner).GetStatus())
+	f.noResult(cid, types.ClaimRoleIdentity)
+}
+
+// With the ans block off, an ans:// claim fails as an unsupported scheme.
+func TestRun_ANSClaimFailsAsUnsupportedWhileOff(t *testing.T) {
+	key, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+	require.NoError(t, err)
+
+	ca := newCA(t, "ans root")
+
+	f := newFixture(t, Config{})
+	require.Nil(t, f.task.network[clientidentity.SchemeANS].resolver)
+
+	cid := f.addRecord("ans-off", map[string]string{corev1.AnnotationKeyIdentity: ansSubject})
+	f.store.setReferrers(cid, signedReferrer(t, identityRole, cid, ansSubject, newSigner(t, key),
+		clientidentity.WithCertificate(ca.issueFor(t, key, ansSubject, time.Now().Add(time.Hour)))))
+
+	f.run()
+
+	result := f.result(cid, types.ClaimRoleIdentity)
+	assert.Equal(t, types.ClaimStatusFailed, result.GetStatus())
+	assert.Contains(t, result.GetError(), "unsupported subject scheme")
+}
+
+// Anyone can attach claims to a record. A stack of them for one subject costs
+// one DNS lookup and one log fetch, so the honest claim behind them is still
+// reached within the record's budget.
+func TestRun_ANSStackedClaimsCostOneLookup(t *testing.T) {
+	f := newANSFixture(t, Config{RecordTimeout: 2 * time.Second, ANS: ANSConfig{Config: ansresolver.Config{Timeout: 500 * time.Millisecond}}})
+	f.dns.delay, f.log.delay = 50*time.Millisecond, 50*time.Millisecond
+
+	cid := f.addRecord("stacked", map[string]string{corev1.AnnotationKeyIdentity: ansSubject})
+
+	referrers := make([]*corev1.RecordReferrer, 0, 101)
+	for range 100 {
+		referrers = append(referrers, f.strangerClaim(t, cid))
+	}
+
+	referrers = append(referrers, f.claim(t, cid))
+	f.store.setReferrers(cid, referrers...)
+
+	f.run()
+
+	assert.Equal(t, types.ClaimStatusVerified, f.result(cid, types.ClaimRoleIdentity).GetStatus())
+	assert.Equal(t, 1, f.dns.callCount())
+	assert.Equal(t, 1, f.log.callCount())
+}
+
+// A publisher whose DNS hangs costs one timeout per subject, however many
+// claims the record carries, and the stored result stands for the ans grace.
+func TestRun_ANSHangingDNSKeepsTheLastResultWithinTheGrace(t *testing.T) {
+	f := newANSFixture(t, Config{RecordTimeout: 2 * time.Second, ANS: ANSConfig{StaleGrace: DefaultANSStaleGrace, Config: ansresolver.Config{Timeout: 500 * time.Millisecond}}})
+
+	cid := f.addRecord("hang", map[string]string{corev1.AnnotationKeyIdentity: ansSubject})
+	f.store.setReferrers(cid, f.claim(t, cid))
+
+	f.run()
+	assert.Equal(t, types.ClaimStatusVerified, f.result(cid, types.ClaimRoleIdentity).GetStatus())
+
+	f.dns.block = true
+	f.store.setReferrers(cid, f.strangerClaim(t, cid), f.strangerClaim(t, cid), f.claim(t, cid))
+	f.nextRun()
+
+	lookups := f.dns.callCount()
+
+	f.run()
+
+	assert.Equal(t, types.ClaimStatusVerified, f.result(cid, types.ClaimRoleIdentity).GetStatus(), "kept within the grace")
+	assert.Equal(t, lookups+1, f.dns.callCount(), "the hanging lookup was made once and its failure reused")
+
+	f.backdate(cid, types.ClaimRoleIdentity, ansSubject, DefaultANSStaleGrace+time.Hour)
+	f.nextRun()
+	f.run()
+
+	result := f.result(cid, types.ClaimRoleIdentity)
+	assert.Equal(t, types.ClaimStatusFailed, result.GetStatus(), "the grace has passed")
+	assert.Contains(t, result.GetError(), "ans badge: lookup _ans-badge.agent.acme.com")
+}
+
+func TestNewTask_ANS(t *testing.T) {
+	valid := ansresolver.Config{TrustedLogHosts: []string{ansLogHost}, AllowUnpinnedRootKeys: true}
+	pinned := ansresolver.Config{TrustedLogHosts: []string{ansLogHost}, RootKeys: []string{ansRootKeyLine(t)}}
+
+	tests := []struct {
+		name    string
+		config  Config
+		wantErr string
+		wantANS bool
+	}{
+		{name: "off", config: Config{}},
+		{name: "off ignores the block", config: Config{ANS: ANSConfig{Config: ansresolver.Config{Timeout: -time.Second}}}},
+		{name: "on, unpinned", config: Config{ANS: ANSConfig{Enabled: true, Config: valid}}, wantANS: true},
+		{name: "on, pinned", config: Config{ANS: ANSConfig{Enabled: true, Config: pinned}}, wantANS: true},
+		{
+			name:    "invalid block",
+			config:  Config{ANS: ANSConfig{Enabled: true, Config: ansresolver.Config{AllowUnpinnedRootKeys: true}}},
+			wantErr: "configure the ans resolver: ans: trusted_log_hosts",
+		},
+		{
+			name:    "timeout does not fit the record budget",
+			config:  Config{RecordTimeout: 39 * time.Second, ANS: ANSConfig{Enabled: true, Config: valid}},
+			wantErr: "identity.ans.timeout 10s needs identity.record_timeout of at least 40s, got 39s",
+		},
+		{
+			name:    "timeout exactly fits the record budget",
+			config:  Config{RecordTimeout: 40 * time.Second, ANS: ANSConfig{Enabled: true, Config: valid}},
+			wantANS: true,
+		},
+		{
+			name:    "negative grace",
+			config:  Config{ANS: ANSConfig{Enabled: true, StaleGrace: -time.Second, Config: valid}},
+			wantErr: "identity.ans.stale_grace must not be negative, got -1s",
+		},
+		{
+			name:    "grace below the interval keeps nothing but is allowed",
+			config:  Config{ANS: ANSConfig{Enabled: true, StaleGrace: time.Second, Config: valid}},
+			wantANS: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			task, err := NewTask(tt.config, nil, nil, nil)
+			if tt.wantErr != "" {
+				require.ErrorContains(t, err, tt.wantErr)
+
+				return
+			}
+
+			require.NoError(t, err)
+			assert.Equal(t, tt.wantANS, task.network[clientidentity.SchemeANS].resolver != nil)
+		})
+	}
 }

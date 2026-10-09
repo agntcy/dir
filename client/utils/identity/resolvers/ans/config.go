@@ -23,8 +23,9 @@ const (
 	DefaultRootKeysTTL = 10 * time.Minute
 
 	// DefaultStatusCacheTTL is how long a subject's attestation (its badge
-	// record and the log's answer) is reused across claims. It is the most a
-	// revocation can be delayed on top of the verification interval.
+	// record and the log's answer) is reused across claims within one round of
+	// verification; a caller drops the memo between rounds with
+	// Resolver.Forget.
 	DefaultStatusCacheTTL = 30 * time.Second
 
 	// MinStatusCacheTTL is the shortest StatusCacheTTL accepted. The memo is
@@ -65,8 +66,7 @@ type Config struct {
 	RootKeysTTL time.Duration `json:"root_keys_ttl,omitempty" mapstructure:"root_keys_ttl"`
 
 	// StatusCacheTTL is how long a subject's attestation is reused across
-	// claims. Defaults to DefaultStatusCacheTTL; at least MinStatusCacheTTL,
-	// and keep it below the verification interval.
+	// claims. Defaults to DefaultStatusCacheTTL; at least MinStatusCacheTTL.
 	StatusCacheTTL time.Duration `json:"status_cache_ttl,omitempty" mapstructure:"status_cache_ttl"`
 
 	// Timeout is the time allowed for each network stage of one lookup.

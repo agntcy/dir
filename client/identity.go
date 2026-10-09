@@ -7,7 +7,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"strings"
 
 	corev1 "github.com/agntcy/dir/api/core/v1"
 	identityv1 "github.com/agntcy/dir/api/identity/v1"
@@ -19,7 +18,8 @@ import (
 // ClaimIdentity signs a claim that the record with the given CID has the
 // identity declared in its "agntcy.dir/identity" annotation, and pushes it to the
 // record as a referrer. It returns the claim that was pushed. Pass
-// identity.WithCertificate for a spiffe:// subject, whose proof is a certificate.
+// identity.WithCertificate for a spiffe:// or ans:// subject, whose proof is a
+// certificate.
 //
 // The claim is stored unverified: it is checked later by the reconciler, and
 // GetIdentityStatus reports the outcome.
@@ -58,12 +58,10 @@ func (c *Client) claim(ctx context.Context, role identityv1.ClaimRole, cid strin
 		return nil, fmt.Errorf("failed to sign claim: %w", err)
 	}
 
-	// The certificate is the proof of a spiffe:// subject and is never evaluated for another.
-	switch isSPIFFE, hasCertificate := strings.HasPrefix(subject, "spiffe://"), len(claim.GetCertificate()) > 0; {
-	case isSPIFFE && !hasCertificate:
-		return nil, errors.New("a spiffe:// subject needs a certificate: its X.509-SVID is the proof of the claim")
-	case !isSPIFFE && hasCertificate:
-		return nil, fmt.Errorf("a certificate is only used for a spiffe:// subject, not %q", subject)
+	// The checks the reconciler runs before any lookup, so a claim it would
+	// refuse is never pushed.
+	if err := identity.Check(claim, cid, subject); err != nil {
+		return nil, fmt.Errorf("claim would not verify: %w", err)
 	}
 
 	referrer, err := claim.MarshalReferrer()
