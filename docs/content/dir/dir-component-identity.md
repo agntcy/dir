@@ -342,6 +342,8 @@ Two cases get no grace:
 - A claim that has no stored result yet fails at once if its subject is unreachable on the first run, and verifies on the first run that reaches it.
 - An answer that says the subject publishes no usable key, a `404`, a "no such host" or a
   blocked address is not transient, so it fails the claim immediately.
+- A subject in a scheme the task does not serve, an `ans://` subject with `ans.enabled` off,
+  fails at once: a scheme the task cannot verify does not keep its results.
 
 The seven days are fixed for every scheme but `ans://`, whose grace is `ans.stale_grace`
 (default 24 hours; see [ANS](#ans)): the publisher's own DNS is among the lookups that may get
@@ -351,7 +353,11 @@ run starts over from the stored result.
 
 ### Stored result
 
-Each result is one row per record and role in the server database.
+Each result is one row per record and role in the server database. A result is about the
+record's declared subject, not about one claim: the task only considers claims whose subject
+is the record's, whichever of them verifies decides the result, and a result kept through the
+grace stands whatever claims are attached meanwhile, so a claim re-pushed for the same
+subject, after a certificate renewal for instance, inherits it.
 
 | Column | Description |
 |--------|-------------|
@@ -466,6 +472,10 @@ an identity and an ownership claim, each taking two timeouts), a `status_cache_t
 or a negative `stale_grace` stops the reconciler from starting, and under
 `dirctl daemon` the API server with it. Under `dirctl daemon` the same keys take the
 `DIRECTORY_DAEMON_RECONCILER_IDENTITY_ANS_` prefix.
+
+Turning `ans.enabled` off is a rollback, not a pause: on the next run every `ans://` claim
+fails as an unsupported scheme, with no grace, and the next run after the block is turned back
+on verifies them again. `stale_grace` unset means the default `24h`; `0` keeps nothing.
 
 ## Security properties
 
