@@ -101,6 +101,8 @@ func (t *Task) Run(ctx context.Context) error {
 
 	started := time.Now()
 
+	t.network.forget()
+
 	resolvers := t.network.with(clientidentity.SchemeSPIFFE, spifferesolver.New(t.loadTrustBundles()), staleGrace).cached()
 
 	// The CIDs alone are enough, and a fixed list does not shift under paging.

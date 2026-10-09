@@ -232,8 +232,9 @@ fetched over TLS from the trusted host, so the proof reduces to TLS plus the log
 statement.
 
 **Revocation and renewal.** Every run asks the log again, so a revoked or expired agent, or
-a certificate the log no longer lists, fails on the next run that reaches the log, at most
-`status_cache_ttl` later. A lookup that gets no answer keeps the stored result for
+a certificate the log no longer lists, fails on the next run that reaches the log: the log's
+answer about a subject is reused for `status_cache_ttl` within a run and dropped when the next
+run starts. A lookup that gets no answer keeps the stored result for
 `ans.stale_grace` (default 24 hours) from the last run that reached the subject, as described
 under [Unreachable subjects](#unreachable-subjects): a publisher who makes their own
 `_ans-badge` lookup fail can delay the effect of a revocation by that long, so an operator who
@@ -267,7 +268,8 @@ fails the claims of that log for one run.
 one `ans://` claim takes at most twice `timeout`, and `record_timeout` must allow for that.
 The log's answer about a subject is reused for `status_cache_ttl` across the claims of that
 subject, whatever certificates they carry, so a stack of claims attached to a record by
-anyone costs one lookup. `status_cache_ttl` must be below `interval`.
+anyone costs one lookup. The memo is dropped when a run starts, so nothing carries over into
+the next run.
 
 The log is reached through the same SSRF-safe client as the other schemes, so a log on a
 private address is refused at lookup time. Turning `ans.enabled` off, or running a
@@ -445,7 +447,7 @@ reconciler:
 | `ans.root_keys` | `RECONCILER_IDENTITY_ANS_ROOT_KEYS`, comma-separated | empty | The logs' signing keys, as the lines their `/root-keys` endpoint serves; required unless unpinned |
 | `ans.allow_unpinned_root_keys` | `RECONCILER_IDENTITY_ANS_ALLOW_UNPINNED_ROOT_KEYS` | `false` | Fetch each log's keys from `/root-keys` instead; cannot be combined with `root_keys` |
 | `ans.root_keys_ttl` | `RECONCILER_IDENTITY_ANS_ROOT_KEYS_TTL` | `10m` | How long fetched keys are used before they are fetched again |
-| `ans.status_cache_ttl` | `RECONCILER_IDENTITY_ANS_STATUS_CACHE_TTL` | `30s` | How long a subject's attestation is reused; at least `5s`, below `interval` |
+| `ans.status_cache_ttl` | `RECONCILER_IDENTITY_ANS_STATUS_CACHE_TTL` | `30s` | How long a subject's attestation is reused within a run; at least `5s` |
 | `ans.stale_grace` | `RECONCILER_IDENTITY_ANS_STALE_GRACE` | `24h` | How long a stored result survives lookups that get no answer; unset or `0` means `24h`, and a positive value below `interval`, such as `1s`, keeps nothing |
 | `ans.timeout` | `RECONCILER_IDENTITY_ANS_TIMEOUT` | `10s` | Time allowed for the DNS record, and again for the log; `record_timeout` must be at least four times this |
 | `ans.clock_skew` | `RECONCILER_IDENTITY_ANS_CLOCK_SKEW` | `30s` | Tolerance on the status token's expiry, at most `10m` |
@@ -457,8 +459,8 @@ domain; the other domains and the run are not affected. With no bundle, `spiffe:
 
 The `ans` block is checked at startup: a malformed host or root-key line, both `root_keys` and
 `allow_unpinned_root_keys`, a `timeout` that does not fit `record_timeout` (a record may carry
-an identity and an ownership claim, each taking two timeouts), a `status_cache_ttl` below `5s`
-or not below `interval`, or a negative `stale_grace` stops the reconciler from starting, and under
+an identity and an ownership claim, each taking two timeouts), a `status_cache_ttl` below `5s`,
+or a negative `stale_grace` stops the reconciler from starting, and under
 `dirctl daemon` the API server with it. Under `dirctl daemon` the same keys take the
 `DIRECTORY_DAEMON_RECONCILER_IDENTITY_ANS_` prefix.
 

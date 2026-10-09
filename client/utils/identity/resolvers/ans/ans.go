@@ -177,6 +177,18 @@ func (r *Resolver) PinnedKeys() []PinnedKey {
 	return slices.Clone(r.pinned)
 }
 
+// Forget drops every kept attestation, so the next claim of each subject asks
+// DNS and the log again. A caller that verifies in rounds calls it when a round
+// starts, so a revocation is seen in that round whatever lifetime the memo had
+// left.
+func (r *Resolver) Forget() {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	clear(r.memo)
+	r.sweepAt = time.Time{}
+}
+
 // Resolve implements resolvers.Resolver. certificate is the claim's
 // DER-encoded identity certificate, which must name exactly subject as a URI
 // SAN and be valid now; its public key is the result once the agent's

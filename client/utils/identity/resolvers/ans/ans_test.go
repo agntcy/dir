@@ -728,6 +728,27 @@ func TestResolveSweepsTheMemoOncePerLifetime(t *testing.T) {
 	assert.Len(t, r.memo, 3, "the expired entry was replaced, not kept beside the new one")
 }
 
+// Forget starts the memo over, so the next claim asks DNS and the log again
+// however much lifetime the kept answer had left.
+func TestResolveForgetDropsTheMemo(t *testing.T) {
+	f := newResolveFixture(t)
+
+	for range 2 {
+		_, err := f.resolve()
+		require.NoError(t, err)
+	}
+
+	assert.Equal(t, int64(1), f.log.calls.Load())
+
+	f.build().Forget()
+
+	_, err := f.resolve()
+	require.NoError(t, err)
+	assert.Equal(t, int64(2), f.dns.calls.Load())
+	assert.Equal(t, int64(2), f.log.calls.Load())
+	assert.Len(t, f.resolver.memo, 1)
+}
+
 func TestResolveMemoizesErrorsAndEvictsExpiredEntries(t *testing.T) {
 	f := newResolveFixture(t)
 	f.dns.set(testBadgeName)

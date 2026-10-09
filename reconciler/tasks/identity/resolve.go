@@ -77,6 +77,21 @@ func newNetworkResolvers(cfg Config) (resolverSet, error) {
 	return set, nil
 }
 
+// forgetter is a resolver that keeps answers across calls and can be told that
+// a run starts, so nothing carries over from the last one.
+type forgetter interface {
+	Forget()
+}
+
+// forget tells every resolver that keeps answers across calls that a run starts.
+func (s resolverSet) forget() {
+	for _, entry := range s {
+		if f, ok := entry.resolver.(forgetter); ok {
+			f.Forget()
+		}
+	}
+}
+
 // with returns a copy of the set in which scheme is served by resolver.
 func (s resolverSet) with(scheme clientidentity.Scheme, resolver resolvers.Resolver, grace time.Duration) resolverSet {
 	out := make(resolverSet, len(s)+1)

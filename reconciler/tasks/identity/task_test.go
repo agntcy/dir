@@ -1367,7 +1367,7 @@ func (d *ansDNS) callCount() int {
 }
 
 // ansFixture is a task whose ans resolver talks to a scripted log and DNS,
-// with a clock the test moves so the resolver's memo expires between runs.
+// with a clock the test can move between runs.
 type ansFixture struct {
 	*fixture
 
@@ -1421,8 +1421,7 @@ func (af *ansFixture) now() time.Time {
 	return time.Now().Add(af.offset)
 }
 
-// nextRun moves the clock past the resolver's memo, as the interval does
-// between two real runs.
+// nextRun moves the clock on, as the interval does between two real runs.
 func (af *ansFixture) nextRun() {
 	af.mu.Lock()
 	defer af.mu.Unlock()
@@ -1523,6 +1522,24 @@ func TestRun_ANSLogOutageKeepsTheLastResult(t *testing.T) {
 
 	assert.Equal(t, types.ClaimStatusVerified, f.result(cid, types.ClaimRoleIdentity).GetStatus(), "kept through the outage")
 	assert.Equal(t, 2, f.log.callCount(), "the log was asked again")
+}
+
+// The resolver's memo is dropped when a run starts, so a revocation is seen on
+// the next run however much lifetime the memo had left.
+func TestRun_ANSMemoDoesNotOutliveARun(t *testing.T) {
+	f := newANSFixture(t, Config{})
+
+	cid := f.addRecord("memo", map[string]string{corev1.AnnotationKeyIdentity: ansSubject})
+	f.store.setReferrers(cid, f.claim(t, cid))
+
+	f.run()
+	assert.Equal(t, types.ClaimStatusVerified, f.result(cid, types.ClaimRoleIdentity).GetStatus())
+
+	f.log.set(ansresolver.State("REVOKED"), f.certDER)
+	f.run()
+
+	assert.Equal(t, types.ClaimStatusFailed, f.result(cid, types.ClaimRoleIdentity).GetStatus())
+	assert.Equal(t, 2, f.log.callCount(), "the log was not asked again")
 }
 
 // Both claim kinds of a record may be ans:// claims.
@@ -1641,21 +1658,6 @@ func TestNewTask_ANS(t *testing.T) {
 		{
 			name:    "timeout exactly fits the record budget",
 			config:  Config{RecordTimeout: 40 * time.Second, ANS: ANSConfig{Enabled: true, Config: valid}},
-			wantANS: true,
-		},
-		{
-			name:    "memo outlives the interval",
-			config:  Config{Interval: 20 * time.Second, ANS: ANSConfig{Enabled: true, Config: valid}},
-			wantErr: "identity.ans.status_cache_ttl 30s must be below identity.interval 20s",
-		},
-		{
-			name:    "memo as long as the interval",
-			config:  Config{Interval: 30 * time.Second, ANS: ANSConfig{Enabled: true, Config: valid}},
-			wantErr: "identity.ans.status_cache_ttl 30s must be below identity.interval 30s",
-		},
-		{
-			name:    "memo just below the interval",
-			config:  Config{Interval: 31 * time.Second, ANS: ANSConfig{Enabled: true, Config: valid}},
 			wantANS: true,
 		},
 		{

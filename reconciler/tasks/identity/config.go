@@ -111,9 +111,7 @@ func (c *Config) GetRecordTimeout() time.Duration {
 // validateANS checks the ans block against the task's own settings: a record
 // may carry an ans:// identity claim and an ans:// ownership claim, each taking
 // up to two of the resolver's timeouts, and all of that has to fit the record
-// budget; the resolver's memo of a subject's attestation must expire between
-// runs, or a revocation would wait for the run after next; and the grace must
-// not be negative.
+// budget; and the grace must not be negative.
 func (c *Config) validateANS() error {
 	if !c.ANS.Enabled {
 		return nil
@@ -121,10 +119,6 @@ func (c *Config) validateANS() error {
 
 	if needed := ansClaimsPerRecord * ansStagesPerClaim * c.ANS.GetTimeout(); needed > c.GetRecordTimeout() {
 		return fmt.Errorf("identity.ans.timeout %s needs identity.record_timeout of at least %s, got %s", c.ANS.GetTimeout(), needed, c.GetRecordTimeout())
-	}
-
-	if ttl := c.ANS.GetStatusCacheTTL(); ttl >= c.GetInterval() {
-		return fmt.Errorf("identity.ans.status_cache_ttl %s must be below identity.interval %s", ttl, c.GetInterval())
 	}
 
 	if c.ANS.StaleGrace < 0 {
