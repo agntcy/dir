@@ -30,3 +30,19 @@ type IdentityClaimObject interface {
 	GetError() string
 	GetVerifiedAt() time.Time
 }
+
+// IdentityClaimValidity is optional for existing database implementations.
+// Zero means the result has no separately recorded deadline.
+type IdentityClaimValidity interface {
+	GetValidUntil() time.Time
+}
+
+func IdentityClaimExpired(claim IdentityClaimObject, now time.Time) bool {
+	if expiring, ok := claim.(IdentityClaimValidity); ok {
+		until := expiring.GetValidUntil()
+
+		return !until.IsZero() && !until.After(now)
+	}
+
+	return false
+}
