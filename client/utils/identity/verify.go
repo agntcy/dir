@@ -6,7 +6,6 @@ package identity
 import (
 	"crypto"
 	"fmt"
-	"strings"
 	"time"
 
 	identityv1 "github.com/agntcy/dir/api/identity/v1"
@@ -71,7 +70,7 @@ func Check(claim *identityv1.Claim, recordCID, expectedSubject string) error {
 	}
 
 	if !needs && hasCert {
-		return fmt.Errorf("a certificate is only used for spiffe:// and ans:// subjects, not %q", subject)
+		return fmt.Errorf("a certificate is only used for %s subjects, not %q", certificateSchemes(), subject)
 	}
 
 	if signedAt := claim.GetSignedAt(); signedAt != "" {
@@ -92,9 +91,10 @@ func Check(claim *identityv1.Claim, recordCID, expectedSubject string) error {
 }
 
 // NeedsCertificate reports whether a claim for subject must carry a
-// certificate. A spiffe:// or ans:// subject is proven by one (the X.509-SVID,
-// or the identity certificate the agent's transparency log attests); every
-// other subject publishes its key and must not carry one.
+// certificate: see Scheme.NeedsCertificate. A subject in no known scheme needs
+// none; the resolver refuses it anyway.
 func NeedsCertificate(subject string) bool {
-	return strings.HasPrefix(subject, "spiffe://") || strings.HasPrefix(subject, "ans://")
+	scheme, ok := SchemeOf(subject)
+
+	return ok && scheme.NeedsCertificate()
 }

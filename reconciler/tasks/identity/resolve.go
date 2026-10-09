@@ -8,10 +8,11 @@ import (
 	"crypto"
 	"errors"
 	"fmt"
+	"maps"
 	"net"
-	"strings"
 	"time"
 
+	clientidentity "github.com/agntcy/dir/client/utils/identity"
 	"github.com/agntcy/dir/client/utils/identity/resolvers"
 	ansresolver "github.com/agntcy/dir/client/utils/identity/resolvers/ans"
 	didresolver "github.com/agntcy/dir/client/utils/identity/resolvers/did"
@@ -21,23 +22,17 @@ import (
 	"github.com/opencontainers/go-digest"
 )
 
-// ansScheme prefixes the subjects the ans resolver serves.
-const ansScheme = "ans://"
-
-// resolverSet holds one key resolver per subject scheme, and what the task
-// knows about a scheme beyond its resolver. A nil resolver means the scheme is
-// not supported.
-type resolverSet struct {
-	dns       resolvers.Resolver
-	did       resolvers.Resolver
-	wellknown resolvers.Resolver
-	spiffe    resolvers.Resolver
-	ans       resolvers.Resolver
-
-	// ansGrace is how long a stored ans:// result survives lookups that get no
-	// answer; the other schemes use staleGrace. See graceFor.
-	ansGrace time.Duration
+// schemeResolver is what the task knows about one subject scheme: the resolver
+// that finds its keys, and how long a stored result survives lookups that get
+// no answer.
+type schemeResolver struct {
+	resolver resolvers.Resolver
+	grace    time.Duration
 }
+
+// resolverSet holds one entry per subject scheme the task serves; the schemes
+// themselves are the client package's (clientidentity.SchemeOf).
+type resolverSet map[clientidentity.Scheme]schemeResolver
 
 // newNetworkResolvers returns the resolvers that need no per-run state. A nil
 // fetcher makes the DID and well-known resolvers use an SSRF-guarded client.
@@ -45,10 +40,9 @@ type resolverSet struct {
 // is an error, so a mistake fails startup rather than every ans:// claim.
 func newNetworkResolvers(cfg Config) (resolverSet, error) {
 	set := resolverSet{
-		dns:       dnsresolver.New(),
-		did:       didresolver.New(nil),
-		wellknown: wellknownresolver.New(nil),
-		ansGrace:  cfg.ANS.GetStaleGrace(),
+		clientidentity.SchemeDNS:       {resolver: dnsresolver.New(), grace: staleGrace},
+		clientidentity.SchemeDID:       {resolver: didresolver.New(nil), grace: staleGrace},
+		clientidentity.SchemeWellKnown: {resolver: wellknownresolver.New(nil), grace: staleGrace},
 	}
 
 	if !cfg.ANS.Enabled {
@@ -78,24 +72,35 @@ func newNetworkResolvers(cfg Config) (resolverSet, error) {
 		logger.Warn("ans root keys are not pinned: trust in the transparency logs rests on TLS to the trusted hosts alone")
 	}
 
-	set.ans = ans
+	set[clientidentity.SchemeANS] = schemeResolver{resolver: ans, grace: cfg.ANS.GetStaleGrace()}
 
 	return set, nil
+}
+
+// with returns a copy of the set in which scheme is served by resolver.
+func (s resolverSet) with(scheme clientidentity.Scheme, resolver resolvers.Resolver, grace time.Duration) resolverSet {
+	out := make(resolverSet, len(s)+1)
+	maps.Copy(out, s)
+	out[scheme] = schemeResolver{resolver: resolver, grace: grace}
+
+	return out
 }
 
 // cached returns the set with every resolver remembering its answers, so a
 // subject shared by many records is looked up once per run. Not safe for
 // concurrent use: a run is sequential.
 func (s resolverSet) cached() resolverSet {
-	wrap := func(r resolvers.Resolver) resolvers.Resolver {
-		if r == nil {
-			return nil
+	out := make(resolverSet, len(s))
+
+	for scheme, entry := range s {
+		if entry.resolver != nil {
+			entry.resolver = &cachedResolver{next: entry.resolver, seen: map[digest.Digest]lookup{}}
 		}
 
-		return &cachedResolver{next: r, seen: map[digest.Digest]lookup{}}
+		out[scheme] = entry
 	}
 
-	return resolverSet{dns: wrap(s.dns), did: wrap(s.did), wellknown: wrap(s.wellknown), spiffe: wrap(s.spiffe), ans: wrap(s.ans), ansGrace: s.ansGrace}
+	return out
 }
 
 type lookup struct {
@@ -162,43 +167,23 @@ func isTransient(err error) bool {
 	return false
 }
 
-// graceFor returns how long a stored result survives lookups of subject that
-// get no answer. An ans:// subject has its own, configurable grace, since the
-// publisher's own DNS is among the lookups that may get none.
+// graceFor returns how long a stored result for subject survives lookups that
+// get no answer; a scheme the set does not serve has none.
 func (s resolverSet) graceFor(subject string) time.Duration {
-	if strings.HasPrefix(subject, ansScheme) {
-		return s.ansGrace
-	}
+	scheme, _ := clientidentity.SchemeOf(subject)
 
-	return staleGrace
+	return s[scheme].grace
 }
 
-// forSubject picks the resolver for a claim's subject by its scheme:
-//
-//	did:web:..., did:key:...   did
-//	spiffe://...               spiffe
-//	ans://...                  ans (when configured)
-//	https://...                wellknown
-//	dns:acme.com, acme.com     dns
+// forSubject picks the resolver for a claim's subject by its scheme. A scheme
+// the set does not serve, the ans block being off for one, is unsupported.
 func (s resolverSet) forSubject(subject string) (resolvers.Resolver, error) {
-	var r resolvers.Resolver
+	scheme, ok := clientidentity.SchemeOf(subject)
 
-	switch {
-	case strings.HasPrefix(subject, "did:"):
-		r = s.did
-	case strings.HasPrefix(subject, "spiffe://"):
-		r = s.spiffe
-	case strings.HasPrefix(subject, ansScheme):
-		r = s.ans
-	case strings.HasPrefix(subject, "https://"):
-		r = s.wellknown
-	case strings.HasPrefix(subject, "dns:"), !strings.Contains(subject, ":"):
-		r = s.dns
-	}
-
-	if r == nil {
+	entry := s[scheme]
+	if !ok || entry.resolver == nil {
 		return nil, fmt.Errorf("unsupported subject scheme in %q", subject)
 	}
 
-	return r, nil
+	return entry.resolver, nil
 }

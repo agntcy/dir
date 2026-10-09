@@ -195,6 +195,11 @@ func (f *fixture) noResult(cid, role string) {
 	require.ErrorIs(f.t, err, gormdb.ErrIdentityClaimNotFound)
 }
 
+// dnsOnly is a set that serves dns: subjects with r under the task's usual grace.
+func dnsOnly(r resolvers.Resolver) resolverSet {
+	return resolverSet{clientidentity.SchemeDNS: {resolver: r, grace: staleGrace}}
+}
+
 func newSigner(t *testing.T, key crypto.PrivateKey) jws.Signer {
 	t.Helper()
 
@@ -427,13 +432,13 @@ func TestRun_VerifiesAClaimOfEveryScheme(t *testing.T) {
 			t.Run(name+"/"+role.stored, func(t *testing.T) {
 				f := newFixture(t, Config{SPIFFETrustBundles: []TrustBundle{{TrustDomain: "acme.com", BundleFile: bundleFile}}})
 				f.task.network = resolverSet{
-					dns: dnsresolver.New(dnsresolver.WithLookupTXT(func(_ context.Context, host string) ([]string, error) {
+					clientidentity.SchemeDNS: {resolver: dnsresolver.New(dnsresolver.WithLookupTXT(func(_ context.Context, host string) ([]string, error) {
 						require.Equal(t, "_agntcy-key.acme.com", host)
 
 						return []string{"v=akv1;key=" + spkiBase64(t, &ecKey.PublicKey)}, nil
-					})),
-					did:       didresolver.New(fetcher),
-					wellknown: wellknownresolver.New(fetcher),
+					})), grace: staleGrace},
+					clientidentity.SchemeDID:       {resolver: didresolver.New(fetcher), grace: staleGrace},
+					clientidentity.SchemeWellKnown: {resolver: wellknownresolver.New(fetcher), grace: staleGrace},
 				}
 
 				cid := f.addRecord(name+role.stored, map[string]string{role.annotation: tt.subject})
@@ -476,7 +481,7 @@ func TestRun_RotatedKeyFlipsTheResult(t *testing.T) {
 	published := &countingResolver{keys: []crypto.PublicKey{&key.PublicKey}}
 
 	f := newFixture(t, Config{})
-	f.task.network = resolverSet{dns: published}
+	f.task.network = dnsOnly(published)
 
 	cid := f.addRecord("rotated", map[string]string{corev1.AnnotationKeyOwner: "dns:acme.com"})
 	f.store.setReferrers(cid, signedReferrer(t, ownerRole, cid, "dns:acme.com", newSigner(t, key)))
@@ -605,7 +610,7 @@ func TestRun_ClaimForAnotherSubjectLeavesNoResult(t *testing.T) {
 	for name, tt := range tests {
 		t.Run(name, func(t *testing.T) {
 			f := newFixture(t, Config{})
-			f.task.network = resolverSet{dns: lookups}
+			f.task.network = dnsOnly(lookups)
 
 			cid := f.addRecord("unmatched", tt.annotations)
 			f.store.setReferrers(cid, signedReferrer(t, identityRole, cid, "dns:acme.com", signer))
@@ -625,7 +630,7 @@ func TestRun_RemovesTheResultOfAClaimForAnotherSubject(t *testing.T) {
 	require.NoError(t, err)
 
 	f := newFixture(t, Config{})
-	f.task.network = resolverSet{dns: &countingResolver{keys: []crypto.PublicKey{&key.PublicKey}}}
+	f.task.network = dnsOnly(&countingResolver{keys: []crypto.PublicKey{&key.PublicKey}})
 
 	cid := f.addRecord("stale", map[string]string{corev1.AnnotationKeyIdentity: "dns:acme.com"})
 	f.store.setReferrers(cid, signedReferrer(t, identityRole, cid, "dns:other.com", newSigner(t, key)))
@@ -650,7 +655,7 @@ func TestRun_CertificateOnANonSPIFFEClaimFails(t *testing.T) {
 	ca := newCA(t, "acme root")
 
 	f := newFixture(t, Config{})
-	f.task.network = resolverSet{dns: &countingResolver{keys: []crypto.PublicKey{&key.PublicKey}}}
+	f.task.network = dnsOnly(&countingResolver{keys: []crypto.PublicKey{&key.PublicKey}})
 
 	cid := f.addRecord("grafted", map[string]string{corev1.AnnotationKeyOwner: "dns:acme.com"})
 
@@ -679,7 +684,7 @@ func TestRun_ClaimOfAnotherRecordFails(t *testing.T) {
 	require.NoError(t, err)
 
 	f := newFixture(t, Config{})
-	f.task.network = resolverSet{dns: &countingResolver{keys: []crypto.PublicKey{&key.PublicKey}}}
+	f.task.network = dnsOnly(&countingResolver{keys: []crypto.PublicKey{&key.PublicKey}})
 
 	other := f.addRecord("other", map[string]string{corev1.AnnotationKeyIdentity: "dns:acme.com"})
 	cid := f.addRecord("victim", map[string]string{corev1.AnnotationKeyIdentity: "dns:acme.com"})
@@ -724,7 +729,7 @@ func TestRun_AVerifiedClaimWinsOverOthers(t *testing.T) {
 	require.NoError(t, err)
 
 	f := newFixture(t, Config{})
-	f.task.network = resolverSet{dns: &countingResolver{keys: []crypto.PublicKey{&good.PublicKey}}}
+	f.task.network = dnsOnly(&countingResolver{keys: []crypto.PublicKey{&good.PublicKey}})
 
 	cid := f.addRecord("contested", map[string]string{corev1.AnnotationKeyOwner: "dns:acme.com"})
 	forged := signedReferrer(t, ownerRole, cid, "dns:acme.com", newSigner(t, attacker))
@@ -747,7 +752,7 @@ func TestRun_AVerifiedClaimWinsOverOthers(t *testing.T) {
 
 func TestRun_ReportsTheNewestFailure(t *testing.T) {
 	f := newFixture(t, Config{})
-	f.task.network = resolverSet{dns: &countingResolver{err: errors.New("lookup timed out")}}
+	f.task.network = dnsOnly(&countingResolver{err: errors.New("lookup timed out")})
 
 	cid := f.addRecord("failing", map[string]string{corev1.AnnotationKeyOwner: "dns:acme.com"})
 
@@ -783,7 +788,7 @@ func TestRun_ReportsTheNewestFailure(t *testing.T) {
 // that does not parse must not let a claim outrank an honest one.
 func TestRun_ForgedSignedAtDoesNotOutrankAnHonestFailure(t *testing.T) {
 	f := newFixture(t, Config{})
-	f.task.network = resolverSet{dns: &countingResolver{err: errors.New("lookup timed out")}}
+	f.task.network = dnsOnly(&countingResolver{err: errors.New("lookup timed out")})
 
 	cid := f.addRecord("forged-time", map[string]string{corev1.AnnotationKeyOwner: "dns:acme.com"})
 
@@ -829,7 +834,7 @@ func TestRun_IgnoresReferrersThatAreNotClaimsOfTheRole(t *testing.T) {
 	lookups := &countingResolver{keys: []crypto.PublicKey{&key.PublicKey}}
 
 	f := newFixture(t, Config{})
-	f.task.network = resolverSet{dns: lookups}
+	f.task.network = dnsOnly(lookups)
 
 	cid := f.addRecord("mixed", map[string]string{
 		corev1.AnnotationKeyIdentity: "dns:acme.com",
@@ -875,7 +880,7 @@ func TestRun_RemovesTheResultOfAClaimThatIsGone(t *testing.T) {
 	require.NoError(t, err)
 
 	f := newFixture(t, Config{})
-	f.task.network = resolverSet{dns: &countingResolver{keys: []crypto.PublicKey{&key.PublicKey}}}
+	f.task.network = dnsOnly(&countingResolver{keys: []crypto.PublicKey{&key.PublicKey}})
 
 	cid := f.addRecord("withdrawn", map[string]string{
 		corev1.AnnotationKeyIdentity: "dns:acme.com",
@@ -905,7 +910,7 @@ func TestRun_KeepsTheResultWhenTheStoreFails(t *testing.T) {
 	require.NoError(t, err)
 
 	f := newFixture(t, Config{})
-	f.task.network = resolverSet{dns: &countingResolver{keys: []crypto.PublicKey{&key.PublicKey}}}
+	f.task.network = dnsOnly(&countingResolver{keys: []crypto.PublicKey{&key.PublicKey}})
 
 	cid := f.addRecord("flaky", map[string]string{corev1.AnnotationKeyOwner: "dns:acme.com"})
 	f.store.setReferrers(cid, signedReferrer(t, ownerRole, cid, "dns:acme.com", newSigner(t, key)))
@@ -926,7 +931,7 @@ func TestRun_KeepsTheResultWhenTheRecordCannotBeRead(t *testing.T) {
 	require.NoError(t, err)
 
 	f := newFixture(t, Config{})
-	f.task.network = resolverSet{dns: &countingResolver{keys: []crypto.PublicKey{&key.PublicKey}}}
+	f.task.network = dnsOnly(&countingResolver{keys: []crypto.PublicKey{&key.PublicKey}})
 
 	cid := f.addRecord("unreadable", map[string]string{corev1.AnnotationKeyOwner: "dns:acme.com"})
 	f.store.setReferrers(cid, signedReferrer(t, ownerRole, cid, "dns:acme.com", newSigner(t, key)))
@@ -950,7 +955,7 @@ func TestRun_ReadsEveryRecordAndLooksUpASharedSubjectOnce(t *testing.T) {
 	lookups := &countingResolver{keys: []crypto.PublicKey{&key.PublicKey}}
 
 	f := newFixture(t, Config{})
-	f.task.network = resolverSet{dns: lookups}
+	f.task.network = dnsOnly(lookups)
 
 	signer := newSigner(t, key)
 
@@ -979,7 +984,7 @@ func TestRun_AnUnreachableSubjectKeepsTheLastResultForAWhile(t *testing.T) {
 	lookups := &countingResolver{keys: []crypto.PublicKey{&key.PublicKey}}
 
 	f := newFixture(t, Config{})
-	f.task.network = resolverSet{dns: lookups}
+	f.task.network = dnsOnly(lookups)
 
 	cid := f.addRecord("flaky-subject", map[string]string{corev1.AnnotationKeyOwner: "dns:acme.com"})
 	f.store.setReferrers(cid, signedReferrer(t, ownerRole, cid, "dns:acme.com", newSigner(t, key)))
@@ -1078,7 +1083,7 @@ func TestRun_InterruptedRunStoresNoFailure(t *testing.T) {
 	require.NoError(t, err)
 
 	f := newFixture(t, Config{})
-	f.task.network = resolverSet{dns: &countingResolver{keys: []crypto.PublicKey{&key.PublicKey}}}
+	f.task.network = dnsOnly(&countingResolver{keys: []crypto.PublicKey{&key.PublicKey}})
 
 	cid := f.addRecord("interrupted", map[string]string{corev1.AnnotationKeyOwner: "dns:acme.com"})
 	f.store.setReferrers(cid, signedReferrer(t, ownerRole, cid, "dns:acme.com", newSigner(t, key)))
@@ -1089,7 +1094,7 @@ func TestRun_InterruptedRunStoresNoFailure(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	f.task.network = resolverSet{dns: &interruptingResolver{cancel: cancel}}
+	f.task.network = dnsOnly(&interruptingResolver{cancel: cancel})
 
 	require.ErrorIs(t, f.task.Run(ctx), context.Canceled)
 	assert.Equal(t, types.ClaimStatusVerified, f.result(cid, types.ClaimRoleOwner).GetStatus(), "the interrupted lookup stored a failure")
@@ -1110,7 +1115,7 @@ func TestRun_TruncatesLongFailureReasons(t *testing.T) {
 	require.NoError(t, err)
 
 	f := newFixture(t, Config{})
-	f.task.network = resolverSet{dns: &countingResolver{err: errors.New(string(make([]byte, 5000)))}}
+	f.task.network = dnsOnly(&countingResolver{err: errors.New(string(make([]byte, 5000)))})
 
 	cid := f.addRecord("verbose", map[string]string{corev1.AnnotationKeyOwner: "dns:acme.com"})
 	f.store.setReferrers(cid, signedReferrer(t, ownerRole, cid, "dns:acme.com", newSigner(t, key)))
@@ -1121,26 +1126,23 @@ func TestRun_TruncatesLongFailureReasons(t *testing.T) {
 }
 
 func TestForSubject(t *testing.T) {
-	set := resolverSet{
-		dns:       &countingResolver{},
-		did:       &countingResolver{},
-		wellknown: &countingResolver{},
-		spiffe:    &countingResolver{},
-		ans:       &countingResolver{},
+	set := resolverSet{}
+	for _, scheme := range clientidentity.Schemes() {
+		set[scheme] = schemeResolver{resolver: &countingResolver{}}
 	}
 
-	for subject, want := range map[string]resolvers.Resolver{
-		"dns:acme.com":                     set.dns,
-		"acme.com":                         set.dns,
-		"did:web:acme.com":                 set.did,
-		"did:key:z6Mk":                     set.did,
-		"https://acme.com/agents":          set.wellknown,
-		"spiffe://acme.com/agents/finance": set.spiffe,
-		ansSubject:                         set.ans,
+	for subject, want := range map[string]clientidentity.Scheme{
+		"dns:acme.com":                     clientidentity.SchemeDNS,
+		"acme.com":                         clientidentity.SchemeDNS,
+		"did:web:acme.com":                 clientidentity.SchemeDID,
+		"did:key:z6Mk":                     clientidentity.SchemeDID,
+		"https://acme.com/agents":          clientidentity.SchemeWellKnown,
+		"spiffe://acme.com/agents/finance": clientidentity.SchemeSPIFFE,
+		ansSubject:                         clientidentity.SchemeANS,
 	} {
 		got, err := set.forSubject(subject)
 		require.NoError(t, err, subject)
-		assert.Same(t, want, got, subject)
+		assert.Same(t, set[want].resolver, got, subject)
 	}
 
 	for _, subject := range []string{"http://acme.com", "ftp://acme.com", "mailto:a@b.c", "acme.com:8080", ""} {
@@ -1156,30 +1158,29 @@ func TestForSubject(t *testing.T) {
 		require.ErrorContains(t, err, "unsupported subject scheme", subject)
 	}
 
-	// With the ans block off there is no ans resolver, and the scheme is unsupported.
-	set.ans = nil
+	// With the ans block off there is no ans entry, and the scheme is unsupported.
+	delete(set, clientidentity.SchemeANS)
 
 	_, err := set.forSubject(ansSubject)
 	require.ErrorContains(t, err, "unsupported subject scheme")
 }
 
-// The subjects routed to a certificate-reading resolver are exactly the ones
-// whose claims must carry a certificate.
-func TestForSubjectAgreesWithNeedsCertificate(t *testing.T) {
-	set := resolverSet{
-		dns:       &countingResolver{},
-		did:       &countingResolver{},
-		wellknown: &countingResolver{},
-		spiffe:    &countingResolver{},
-		ans:       &countingResolver{},
+// The task serves every scheme the client package names, so a scheme added
+// there cannot be left without a resolver here unnoticed.
+func TestNetworkResolversServeEveryScheme(t *testing.T) {
+	set, err := newNetworkResolvers(Config{ANS: ANSConfig{Enabled: true, StaleGrace: time.Hour, Config: ansresolver.Config{TrustedLogHosts: []string{ansLogHost}, AllowUnpinnedRootKeys: true}}})
+	require.NoError(t, err)
+
+	set = set.with(clientidentity.SchemeSPIFFE, &countingResolver{}, staleGrace)
+
+	for _, scheme := range clientidentity.Schemes() {
+		assert.NotNil(t, set[scheme].resolver, scheme)
+		assert.Positive(t, set[scheme].grace, scheme)
 	}
 
-	for _, subject := range []string{"dns:acme.com", "acme.com", "did:web:acme.com", "https://acme.com", spiffeID, ansSubject} {
-		got, err := set.forSubject(subject)
-		require.NoError(t, err, subject)
-
-		readsCertificate := got == set.spiffe || got == set.ans
-		assert.Equal(t, clientidentity.NeedsCertificate(subject), readsCertificate, subject)
+	cached := set.cached()
+	for _, scheme := range clientidentity.Schemes() {
+		assert.IsType(t, &cachedResolver{}, cached[scheme].resolver, scheme)
 	}
 }
 
@@ -1221,15 +1222,17 @@ func TestConfig(t *testing.T) {
 }
 
 func TestGraceFor(t *testing.T) {
-	set := resolverSet{ansGrace: 2 * time.Hour}
+	set := resolverSet{
+		clientidentity.SchemeDNS: {grace: staleGrace},
+		clientidentity.SchemeANS: {grace: 2 * time.Hour},
+	}
 
 	tests := map[string]time.Duration{
 		"ans://v1.0.0.agent.acme.com": 2 * time.Hour,
 		"dns:acme.com":                staleGrace,
 		"acme.com":                    staleGrace,
-		"spiffe://acme.com/agent":     staleGrace,
-		"did:web:acme.com":            staleGrace,
-		"https://acme.com":            staleGrace,
+		"spiffe://acme.com/agent":     0,
+		"ftp://acme.com":              0,
 	}
 
 	for subject, want := range tests {
@@ -1404,7 +1407,9 @@ func newANSFixture(t *testing.T, cfg Config) *ansFixture {
 		ansresolver.WithClock(af.now))
 	require.NoError(t, err)
 
-	af.task.network.ans = resolver
+	entry := af.task.network[clientidentity.SchemeANS]
+	entry.resolver = resolver
+	af.task.network[clientidentity.SchemeANS] = entry
 
 	return af
 }
@@ -1541,7 +1546,7 @@ func TestRun_ANSClaimFailsAsUnsupportedWhileOff(t *testing.T) {
 	ca := newCA(t, "ans root")
 
 	f := newFixture(t, Config{})
-	require.Nil(t, f.task.network.ans)
+	require.Nil(t, f.task.network[clientidentity.SchemeANS].resolver)
 
 	cid := f.addRecord("ans-off", map[string]string{corev1.AnnotationKeyIdentity: ansSubject})
 	f.store.setReferrers(cid, signedReferrer(t, identityRole, cid, ansSubject, newSigner(t, key),
@@ -1675,7 +1680,7 @@ func TestNewTask_ANS(t *testing.T) {
 			}
 
 			require.NoError(t, err)
-			assert.Equal(t, tt.wantANS, task.network.ans != nil)
+			assert.Equal(t, tt.wantANS, task.network[clientidentity.SchemeANS].resolver != nil)
 		})
 	}
 }
