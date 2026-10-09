@@ -1218,6 +1218,21 @@ func TestConfig(t *testing.T) {
 	assert.Equal(t, map[string]string{"acme.com": "/a.pem", "other.org": "/b.pem"}, cfg.trustDomains())
 }
 
+func TestOneLine(t *testing.T) {
+	tests := map[string]string{
+		"ans log: key id 01020304": "ans log: key id 01020304",
+		"first\nsecond":            "first second",
+		"first\r\nsecond\rthird":   "first  second third",
+		"":                         "",
+	}
+
+	for text, want := range tests {
+		t.Run(text, func(t *testing.T) {
+			assert.Equal(t, want, oneLine(text))
+		})
+	}
+}
+
 func TestGraceFor(t *testing.T) {
 	set := resolverSet{
 		clientidentity.SchemeDNS: {grace: staleGrace},

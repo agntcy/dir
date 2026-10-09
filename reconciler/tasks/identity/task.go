@@ -14,6 +14,7 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	corev1 "github.com/agntcy/dir/api/core/v1"
@@ -363,7 +364,13 @@ func (t *Task) warnUnpinnedRootKey(err error) {
 
 	t.unpinnedKeyWarned = true
 
-	logger.Warn("A trusted transparency log signs with a key that identity.ans.root_keys does not hold; its ans:// claims fail until that key is pinned beside the current one", "error", err)
+	logger.Warn("A trusted transparency log signs with a key that identity.ans.root_keys does not hold; its ans:// claims fail until that key is pinned beside the current one", "error", oneLine(err.Error()))
+}
+
+// oneLine keeps text a resolver echoed from DNS or a transparency log on one
+// line, so what a remote party served cannot forge a log entry.
+func oneLine(text string) string {
+	return strings.ReplaceAll(strings.ReplaceAll(text, "\r", " "), "\n", " ")
 }
 
 // verifyClaim looks up the current keys of the claim's subject and verifies the
