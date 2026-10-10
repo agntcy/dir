@@ -5,26 +5,27 @@
 		CATALOG_PAGE_SIZE,
 		fetchAICardsPage,
 		fetchCatalogTags,
-		pageTokenForPage
+		pageTokenForPage,
+		type AICardsPage
 	} from '$lib/api';
 	import AICard from '$lib/components/AICard.svelte';
 	import FilterSidebar from '$lib/components/FilterSidebar.svelte';
 	import DetailModal from '$lib/components/DetailModal.svelte';
 	import Pagination from '$lib/components/Pagination.svelte';
 	import { headerStatsState } from '$lib/header-stats.svelte';
-	import { onMount } from 'svelte';
+	import { onMount, untrack } from 'svelte';
+	import { page } from '$app/stores';
+	import { goto } from '$app/navigation';
 
 	let aicards = $state<CatalogEntry[]>([]);
 	let catalogTags = $state<CatalogTag[]>([]);
 	let tagsLoading = $state(true);
 	let loading = $state(true);
 	let error = $state('');
-	let currentPage = $state(1);
 	let selectedAicard = $state<CatalogEntry | null>(null);
 	let catalogTotalCount = $state<number | null>(null);
 	let filteredCount = $state<number | null>(null);
 
-	let latestCriteria = $state<AICardFilterCriteria | null>(null);
 	let loadRequestId = 0;
 	let searchDebounce: ReturnType<typeof setTimeout> | undefined;
 	let listAbort: AbortController | undefined;
@@ -37,6 +38,51 @@
 				? '1 result'
 				: `${filteredCount} results`
 	);
+
+	function parseCriteriaFromUrl(url: URL): AICardFilterCriteria {
+		const params = url.searchParams;
+		return {
+			searchQuery: params.get('q') || '',
+			mediaTypes: params.has('media') ? new Set(params.getAll('media')) : new Set(['all']),
+			statusFilters: new Set(params.getAll('status')),
+			activeTags: new Set(params.getAll('tag')),
+			scanSafe: params.get('safe') === 'true'
+		};
+	}
+
+	function updateUrl(criteria: AICardFilterCriteria, pageNum: number, selectedId: string | null) {
+		const url = new URL(window.location.href);
+		const p = url.searchParams;
+		
+		if (criteria.searchQuery) p.set('q', criteria.searchQuery);
+		else p.delete('q');
+
+		p.delete('media');
+		if (criteria.mediaTypes.size > 0 && !criteria.mediaTypes.has('all')) {
+			for (const m of criteria.mediaTypes) p.append('media', m);
+		}
+
+		p.delete('status');
+		for (const s of criteria.statusFilters) p.append('status', s);
+
+		p.delete('tag');
+		for (const t of criteria.activeTags) p.append('tag', t);
+
+		if (criteria.scanSafe) p.set('safe', 'true');
+		else p.delete('safe');
+
+		if (pageNum > 1) p.set('page', pageNum.toString());
+		else p.delete('page');
+
+		if (selectedId) p.set('entry', selectedId);
+		else p.delete('entry');
+
+		goto(url.pathname + url.search, { keepFocus: true, noScroll: true });
+	}
+
+	let latestCriteria = $derived(parseCriteriaFromUrl($page.url));
+	let currentPage = $derived(Number($page.url.searchParams.get('page')) || 1);
+	let selectedAicardId = $derived($page.url.searchParams.get('entry'));
 
 	async function loadAICards(criteria: AICardFilterCriteria, page = 1) {
 		const requestId = ++loadRequestId;
@@ -60,7 +106,6 @@
 
 			aicards = result.results;
 			filteredCount = result.totalCount;
-			currentPage = page;
 		} catch (e) {
 			if (signal.aborted || requestId !== loadRequestId) return;
 			error = e instanceof Error ? e.message : 'Unknown error';
@@ -73,19 +118,55 @@
 		}
 	}
 
+	let lastFetchKey = '';
+
+	$effect(() => {
+		const criteria = latestCriteria;
+		const pageNum = currentPage;
+		const filterQuery = buildAICardFilterQuery(criteria);
+		const fetchKey = `${filterQuery}|${pageNum}`;
+		
+		if (fetchKey !== lastFetchKey) {
+			lastFetchKey = fetchKey;
+			untrack(() => {
+				loadAICards(criteria, pageNum);
+			});
+		}
+	});
+
+	$effect(() => {
+		if (selectedAicardId) {
+			if (selectedAicard?.identifier !== selectedAicardId) {
+				const found = aicards.find((c: CatalogEntry) => c.identifier === selectedAicardId);
+				if (found) {
+					untrack(() => { selectedAicard = found; });
+				} else if (!loading) {
+					fetchAICardsPage({ filter: `identifier="${selectedAicardId}"`, pageSize: 1 })
+						.then((res: AICardsPage) => {
+							if (res.results.length > 0 && selectedAicardId === res.results[0].identifier) {
+								selectedAicard = res.results[0];
+							}
+						})
+						.catch(() => {});
+				}
+			}
+		} else {
+			untrack(() => { selectedAicard = null; });
+		}
+	});
+
 	function handleCriteriaChange(criteria: AICardFilterCriteria) {
-		latestCriteria = criteria;
 		clearTimeout(searchDebounce);
 
 		const delay = criteria.searchQuery.trim() ? 300 : 0;
 		searchDebounce = setTimeout(() => {
-			loadAICards(criteria, 1);
+			updateUrl(criteria, 1, selectedAicardId);
 		}, delay);
 	}
 
 	function handlePage(page: number) {
 		if (!latestCriteria || page === currentPage) return;
-		loadAICards(latestCriteria, page);
+		updateUrl(latestCriteria, page, selectedAicardId);
 		document.getElementById('ai-cards-grid')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
 	}
 
@@ -119,20 +200,10 @@
 	}
 
 	onMount(() => {
-		const initial: AICardFilterCriteria = {
-			searchQuery: '',
-			mediaTypes: new Set(['all']),
-			statusFilters: new Set(),
-			activeTags: new Set(),
-			scanSafe: false
-		};
-		latestCriteria = initial;
-
 		const tagsAbort = new AbortController();
 		const statsAbort = new AbortController();
 		loadCatalogTags(tagsAbort.signal);
 		loadCatalogTotalCount(statsAbort.signal);
-		loadAICards(initial);
 
 		return () => {
 			tagsAbort.abort();
@@ -154,7 +225,7 @@
 
 	<div class="flex flex-col lg:flex-row gap-6">
 		<aside class="lg:w-64 flex-shrink-0">
-			<FilterSidebar {catalogTags} {tagsLoading} onCriteriaChange={handleCriteriaChange} />
+			<FilterSidebar {catalogTags} {tagsLoading} criteria={latestCriteria} onCriteriaChange={handleCriteriaChange} />
 		</aside>
 
 		<section class="flex-1 min-w-0">
@@ -185,7 +256,7 @@
 			{:else}
 				<div id="ai-cards-grid" class="grid gap-4 sm:grid-cols-1 md:grid-cols-2 xl:grid-cols-3">
 					{#each aicards as aicard (aicard.identifier)}
-						<AICard {aicard} onclick={() => { selectedAicard = aicard; }} />
+						<AICard {aicard} onclick={() => { updateUrl(latestCriteria, currentPage, aicard.identifier); }} />
 					{/each}
 				</div>
 
@@ -196,5 +267,5 @@
 </main>
 
 {#if selectedAicard}
-	<DetailModal aicard={selectedAicard} onclose={() => { selectedAicard = null; }} />
+	<DetailModal aicard={selectedAicard} onclose={() => { updateUrl(latestCriteria, currentPage, null); }} />
 {/if}

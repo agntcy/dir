@@ -5,16 +5,27 @@
 	interface Props {
 		catalogTags: CatalogTag[];
 		tagsLoading?: boolean;
+		criteria: AICardFilterCriteria;
 		onCriteriaChange: (criteria: AICardFilterCriteria) => void;
 	}
 
-	let { catalogTags, tagsLoading = false, onCriteriaChange }: Props = $props();
+	let { catalogTags, tagsLoading = false, criteria, onCriteriaChange }: Props = $props();
 
-	let searchQuery = $state('');
-	let mediaTypes = $state<Set<string>>(new Set(['all']));
-	let statusFilters = $state<Set<string>>(new Set());
-	let scanSafe = $state(false);
-	let activeTags = $state<Set<string>>(new Set());
+	import { untrack } from 'svelte';
+
+	let searchQuery = $state(untrack(() => criteria.searchQuery));
+	let mediaTypes = $state<Set<string>>(new Set(untrack(() => criteria.mediaTypes)));
+	let statusFilters = $state<Set<string>>(new Set(untrack(() => criteria.statusFilters)));
+	let scanSafe = $state(untrack(() => criteria.scanSafe));
+	let activeTags = $state<Set<string>>(new Set(untrack(() => criteria.activeTags)));
+
+	$effect(() => {
+		searchQuery = criteria.searchQuery;
+		mediaTypes = new Set(criteria.mediaTypes);
+		statusFilters = new Set(criteria.statusFilters);
+		scanSafe = criteria.scanSafe;
+		activeTags = new Set(criteria.activeTags);
+	});
 
 	function notifyChange() {
 		onCriteriaChange({
