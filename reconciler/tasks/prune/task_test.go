@@ -377,3 +377,28 @@ func TestTask_Run_EmptySignatureStatusesKeepTrusted(t *testing.T) {
 	assert.False(t, *got.Trusted)
 	assert.Empty(t, got.SignatureStatuses)
 }
+
+// A failed count is logged and skipped; the dry run still succeeds.
+func TestTask_Run_DryRunCountErrorIsNotFatal(t *testing.T) {
+	t.Parallel()
+
+	calls := 0
+
+	db := &fakeIndex{
+		getRecordCIDs: func(_ ...types.FilterOption) ([]string, error) {
+			calls++
+			if calls == 1 {
+				return []string{"cid-a"}, nil
+			}
+
+			return nil, errors.New("count failed")
+		},
+	}
+	task, err := NewTask(Config{Enabled: true, DryRun: true, Criteria: Criteria{
+		SignatureStatuses: []string{types.SignatureStatusFailed},
+	}}, db, &fakeStore{})
+	require.NoError(t, err)
+
+	require.NoError(t, task.Run(context.Background()))
+	assert.Equal(t, 2, calls)
+}
