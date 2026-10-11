@@ -5,10 +5,12 @@ package prune
 
 import (
 	"fmt"
+	"slices"
 	"strings"
 	"time"
 
 	securityv1 "github.com/agntcy/dir/api/security/v1"
+	"github.com/agntcy/dir/server/types"
 )
 
 const (
@@ -36,6 +38,15 @@ type Criteria struct {
 	// Config loading defaults this to false (not trusted).
 	Trusted bool `json:"trusted" mapstructure:"trusted"`
 
+	// SignatureStatuses selects records whose signature status is any of
+	// "verified", "failed" or "unknown". When set, it replaces Trusted:
+	// ["failed", "unknown"] selects the same records as trusted=false.
+	//   - verified: at least one signature verified.
+	//   - failed: the record has verification results, but none verified.
+	//   - unknown: no signature verification result. Either the record is
+	//     unsigned, or it hasn't been verified yet.
+	SignatureStatuses []string `json:"signature_statuses,omitempty" mapstructure:"signature_statuses"`
+
 	// MinSeverity is the minimum scan severity that selects a record
 	// for deletion (e.g. "MEDIUM").
 	MinSeverity string `json:"min_severity,omitempty" mapstructure:"min_severity"`
@@ -59,7 +70,8 @@ type Config struct {
 	// RecordTimeout is the timeout for each individual store delete.
 	RecordTimeout time.Duration `json:"record_timeout,omitempty" mapstructure:"record_timeout"`
 
-	// Criteria is the search filter: trusted status, min scan severity, and age.
+	// Criteria is the search filter: signature status (or trusted), min scan
+	// severity, and age.
 	Criteria Criteria `json:"criteria,omitzero" mapstructure:"criteria"`
 
 	// Limit is the maximum number of matching records deleted per run.
@@ -115,15 +127,33 @@ func (c *Config) GetLimit() int {
 	return c.Limit
 }
 
-// Validate reports an invalid min_severity. Unknown values must not reach
-// the search layer: ScanSeveritiesGTE returns nil for them and the SQL
-// predicate is dropped, so prune would match every record that satisfies
-// the other criteria.
+// UsesSignatureStatuses reports whether SignatureStatuses replaces Trusted.
+func (c *Config) UsesSignatureStatuses() bool {
+	return len(c.Criteria.SignatureStatuses) > 0
+}
+
+// SelectsUnknownSignatures reports whether prune selects records with no
+// signature verification result.
+func (c *Config) SelectsUnknownSignatures() bool {
+	return slices.Contains(c.Criteria.SignatureStatuses, types.SignatureStatusUnknown)
+}
+
+// Validate reports an invalid min_severity or signature status. Unknown values
+// must not reach the search layer: ScanSeveritiesGTE returns nil for them and
+// the SQL predicate is dropped, so prune would match every record that
+// satisfies the other criteria.
 func (c *Config) Validate() error {
 	severity := c.GetMinSeverity()
 	if !securityv1.IsScanSeverity(severity) {
 		return fmt.Errorf("invalid min_severity %q, must be one of: %s",
 			severity, strings.Join(securityv1.ScanSeveritiesGTE(securityv1.ScanSeverityNone), ", "))
+	}
+
+	for _, s := range c.Criteria.SignatureStatuses {
+		if !types.IsSignatureStatus(s) {
+			return fmt.Errorf("invalid signature_statuses value %q, must be one of: %s",
+				s, strings.Join(types.SignatureStatuses(), ", "))
+		}
 	}
 
 	return nil

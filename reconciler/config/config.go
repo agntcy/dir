@@ -296,6 +296,10 @@ func LoadConfig() (*Config, error) {
 	_ = v.BindEnv("prune.criteria.trusted")
 	v.SetDefault("prune.criteria.trusted", false)
 
+	// Comma-separated in env form (e.g. "failed,unknown"). No default: when
+	// empty, prune.criteria.trusted applies.
+	_ = v.BindEnv("prune.criteria.signature_statuses")
+
 	_ = v.BindEnv("prune.criteria.min_severity")
 	v.SetDefault("prune.criteria.min_severity", prune.DefaultMinSeverity)
 

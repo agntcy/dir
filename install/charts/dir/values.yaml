@@ -837,8 +837,8 @@ apiserver:
         # records that legitimately bundle several MCP servers.
         max_endpoints_per_record: 8
 
-      # Prune task. Deletes records that match criteria (trusted, min_severity,
-      # older_than). Disabled by default — this deletes records. dry_run
+      # Prune task. Deletes records that match criteria (signature_statuses or trusted,
+      # min_severity, older_than). Disabled by default — this deletes records. dry_run
       # defaults to true so enabling the task only logs matches until you
       # set it to false.
       prune:
@@ -847,6 +847,16 @@ apiserver:
         record_timeout: "30s"
         criteria:
           trusted: false
+          # signature_statuses replaces trusted when set. Any of:
+          #   verified: at least one signature verified.
+          #   failed:   the record has verification results, but none verified.
+          #   unknown:  no signature verification result. Either the record is
+          #             unsigned, or it hasn't been verified yet. Requires the
+          #             signature task; the reconciler refuses to start without it.
+          # One prune job has one older_than, so pick one policy, e.g.:
+          #   prune failed signatures after 1h:     [failed] with older_than: "1h"
+          #   prune unsigned or unverified records: [unknown] with older_than: "168h"
+          # signature_statuses: []
           min_severity: "MEDIUM"
           older_than: "168h"
         limit: 100

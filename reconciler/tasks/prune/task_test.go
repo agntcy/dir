@@ -290,3 +290,90 @@ func (f *fakeStore) Delete(ctx context.Context, ref *corev1.RecordRef) error {
 
 	return nil
 }
+
+func TestNewTask_InvalidSignatureStatus(t *testing.T) {
+	t.Parallel()
+
+	task, err := NewTask(Config{Enabled: true, Criteria: Criteria{SignatureStatuses: []string{"unsigned"}}}, nil, nil)
+	require.Error(t, err)
+	assert.Nil(t, task)
+	assert.Contains(t, err.Error(), `invalid signature_statuses value "unsigned"`)
+}
+
+func TestTask_Run_SignatureStatusesReplaceTrusted(t *testing.T) {
+	t.Parallel()
+
+	var got types.RecordFilters
+
+	db := &fakeIndex{
+		getRecordCIDs: func(opts ...types.FilterOption) ([]string, error) {
+			for _, opt := range opts {
+				opt(&got)
+			}
+
+			return nil, nil
+		},
+	}
+	task, err := NewTask(Config{Enabled: true, Criteria: Criteria{
+		Trusted:           true,
+		SignatureStatuses: []string{types.SignatureStatusFailed, types.SignatureStatusUnknown},
+	}}, db, &fakeStore{})
+	require.NoError(t, err)
+
+	require.NoError(t, task.Run(context.Background()))
+	assert.Nil(t, got.Trusted, "signature_statuses replaces trusted")
+	assert.Equal(t, []string{types.SignatureStatusFailed, types.SignatureStatusUnknown}, got.SignatureStatuses)
+}
+
+func TestTask_Run_DryRunCountsEachSignatureStatus(t *testing.T) {
+	t.Parallel()
+
+	var queried [][]string
+
+	db := &fakeIndex{
+		getRecordCIDs: func(opts ...types.FilterOption) ([]string, error) {
+			var f types.RecordFilters
+			for _, opt := range opts {
+				opt(&f)
+			}
+
+			queried = append(queried, f.SignatureStatuses)
+
+			return []string{"cid-a"}, nil
+		},
+	}
+	task, err := NewTask(Config{Enabled: true, DryRun: true, Criteria: Criteria{
+		SignatureStatuses: []string{types.SignatureStatusFailed, types.SignatureStatusUnknown},
+	}}, db, &fakeStore{})
+	require.NoError(t, err)
+
+	require.NoError(t, task.Run(context.Background()))
+	assert.Equal(t, [][]string{
+		{types.SignatureStatusFailed, types.SignatureStatusUnknown},
+		{types.SignatureStatusFailed},
+		{types.SignatureStatusUnknown},
+	}, queried, "one query for the match, then one count per status")
+}
+
+func TestTask_Run_EmptySignatureStatusesKeepTrusted(t *testing.T) {
+	t.Parallel()
+
+	var got types.RecordFilters
+
+	db := &fakeIndex{
+		getRecordCIDs: func(opts ...types.FilterOption) ([]string, error) {
+			for _, opt := range opts {
+				opt(&got)
+			}
+
+			return nil, nil
+		},
+	}
+	task, err := NewTask(Config{Enabled: true}, db, &fakeStore{})
+	require.NoError(t, err)
+
+	require.NoError(t, task.Run(context.Background()))
+	require.NotNil(t, got.Trusted)
+	assert.False(t, *got.Trusted)
+	assert.Empty(t, got.SignatureStatuses)
+}

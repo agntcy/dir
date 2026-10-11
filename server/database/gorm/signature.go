@@ -5,10 +5,12 @@ package gorm
 
 import (
 	"fmt"
+	"strings"
 	"time"
 
 	coretypes "github.com/agntcy/dir/api/core/types"
 	"github.com/agntcy/dir/server/types"
+	gormlib "gorm.io/gorm"
 	"gorm.io/gorm/clause"
 )
 
@@ -235,4 +237,33 @@ func convertSignatures(sigs []SignatureVerification) []coretypes.ObjectSignature
 	}
 
 	return result
+}
+
+// signatureStatusConditions maps each signature status to the SQL that selects
+// records in it. A record with at least one verified signer is verified, even
+// when other signers failed.
+var signatureStatusConditions = map[string]string{
+	types.SignatureStatusVerified: "EXISTS (SELECT 1 FROM signature_verifications sv WHERE sv.record_cid = records.record_cid AND sv.status = 'verified')",
+	types.SignatureStatusFailed: "EXISTS (SELECT 1 FROM signature_verifications sv WHERE sv.record_cid = records.record_cid) AND " +
+		"NOT EXISTS (SELECT 1 FROM signature_verifications sv WHERE sv.record_cid = records.record_cid AND sv.status = 'verified')",
+	types.SignatureStatusUnknown: "NOT EXISTS (SELECT 1 FROM signature_verifications sv WHERE sv.record_cid = records.record_cid)",
+}
+
+// applySignatureStatuses keeps records whose signature status is any of statuses.
+// Unrecognized statuses match nothing, so a bad value narrows the result instead
+// of silently dropping the filter.
+func applySignatureStatuses(query *gormlib.DB, statuses []string) *gormlib.DB {
+	conditions := make([]string, 0, len(statuses))
+
+	for _, status := range statuses {
+		if condition, ok := signatureStatusConditions[status]; ok {
+			conditions = append(conditions, "("+condition+")")
+		}
+	}
+
+	if len(conditions) == 0 {
+		return query.Where("1 = 0")
+	}
+
+	return query.Where("(" + strings.Join(conditions, " OR ") + ")")
 }

@@ -619,6 +619,10 @@ func (d *DB) handleFilterOptions(query *gorm.DB, cfg *types.RecordFilters) *gorm
 		}
 	}
 
+	if len(cfg.SignatureStatuses) > 0 {
+		query = applySignatureStatuses(query, cfg.SignatureStatuses)
+	}
+
 	// Handle scan safe filter (is_safe column across all scanner types).
 	//
 	// Both branches must gate on ScannedStatuses: a failed row populates the

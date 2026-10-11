@@ -65,3 +65,30 @@ func TestConfig_Validate(t *testing.T) {
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), `invalid min_severity "UNSPECIFIED"`)
 }
+
+func TestConfig_Validate_SignatureStatuses(t *testing.T) {
+	t.Parallel()
+
+	assert.NoError(t, (&Config{Criteria: Criteria{SignatureStatuses: []string{}}}).Validate())
+	assert.NoError(t, (&Config{Criteria: Criteria{SignatureStatuses: []string{"verified", "failed", "unknown"}}}).Validate())
+
+	err := (&Config{Criteria: Criteria{SignatureStatuses: []string{"failed", "unsigned"}}}).Validate()
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), `invalid signature_statuses value "unsigned"`)
+	assert.Contains(t, err.Error(), "verified, failed, unknown")
+}
+
+func TestConfig_SignatureStatusHelpers(t *testing.T) {
+	t.Parallel()
+
+	empty := &Config{}
+	assert.False(t, empty.UsesSignatureStatuses())
+	assert.False(t, empty.SelectsUnknownSignatures())
+
+	failed := &Config{Criteria: Criteria{SignatureStatuses: []string{"failed"}}}
+	assert.True(t, failed.UsesSignatureStatuses())
+	assert.False(t, failed.SelectsUnknownSignatures())
+
+	unknown := &Config{Criteria: Criteria{SignatureStatuses: []string{"failed", "unknown"}}}
+	assert.True(t, unknown.SelectsUnknownSignatures())
+}
