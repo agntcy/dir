@@ -1,4 +1,4 @@
-var e=({status:e,message:t})=>`<!doctype html>
+import{n as e}from"./hePW80VL.js";var t=e({default:()=>n}),n=({status:e,message:t})=>`<!doctype html>
 <html lang="en">
 	<head>
 		<meta charset="utf-8" />
@@ -78,4 +78,4 @@ var e=({status:e,message:t})=>`<!doctype html>
 		</div>
 	</body>
 </html>
-`;export{e as default};
+`;export{t};
