@@ -12,3 +12,13 @@ repos:
         types: [go]
         # Avoid running alongside other hooks; golangci-lint uses a global lock.
         require_serial: true
+      - id: gateway-ui-static
+        name: Remind to rebuild gateway UI static assets
+        description: |
+          Warns when server/gateway/ui source is staged without regenerated
+          server/gateway/static. Does not block the commit; CI Verify is the gate.
+        entry: task pre-commit:gateway-ui
+        language: system
+        files: ^server/gateway/ui/
+        pass_filenames: false
+        verbose: true
