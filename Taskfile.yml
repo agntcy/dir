@@ -423,6 +423,18 @@ tasks:
           (cd "$m" && {{ .GOLANGCI_LINT_BIN }} run --config {{ .ROOT_DIR }}/.golangci.yml{{if eq .FIX "true"}} --fix{{end}} --new-from-rev="{{ .REV }}")
         done
 
+  pre-commit:gateway-ui:
+    desc: Warn if gateway UI source is staged without regenerated static assets
+    cmds:
+      - |
+        set -euo pipefail
+        if [ -n "$(git diff --cached --name-only -- server/gateway/static)" ]; then
+          exit 0
+        fi
+        echo "Gateway UI source is staged but server/gateway/static/ is not."
+        echo "Run: task ui:build && git add server/gateway/static"
+        exit 0
+
   lint:go:
     desc: Run Golang linters
     vars:
