@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - **Identity**: `ans://` claims verify through the Agent Name Service. The claim's identity certificate is trusted once a transparency log on `reconciler.identity.ans.trusted_log_hosts` attests it for the agent; `dirctl identity claim --cert` takes the certificate (#2173, #2174)
-- **Search**: `ListRecordSummaries` RPC for paginated, database-backed record summaries (#2259)
+- **Search**: `ListRecordSummaries` RPC for paginated, database-backed record summaries (#2328, #2259)
 
 ## [v1.7.1] - 2026-09-22
 
