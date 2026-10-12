@@ -70,25 +70,42 @@ func TestConfig_Validate_SignatureStatuses(t *testing.T) {
 	t.Parallel()
 
 	assert.NoError(t, (&Config{Criteria: Criteria{SignatureStatuses: []string{}}}).Validate())
-	assert.NoError(t, (&Config{Criteria: Criteria{SignatureStatuses: []string{"verified", "failed", "unknown"}}}).Validate())
+	assert.NoError(t, (&Config{Criteria: Criteria{SignatureStatuses: []string{"verified", "failed", "unsigned"}}}).Validate())
 
-	err := (&Config{Criteria: Criteria{SignatureStatuses: []string{"failed", "unsigned"}}}).Validate()
+	// "unknown" (no verification result) is not selectable: a signed record may
+	// simply not be verified yet.
+	err := (&Config{Criteria: Criteria{SignatureStatuses: []string{"failed", "unknown"}}}).Validate()
 	require.Error(t, err)
-	assert.Contains(t, err.Error(), `invalid signature_statuses value "unsigned"`)
-	assert.Contains(t, err.Error(), "verified, failed, unknown")
+	assert.Contains(t, err.Error(), `invalid signature_statuses value "unknown"`)
+	assert.Contains(t, err.Error(), "verified, failed, unsigned")
 }
 
-func TestConfig_SignatureStatusHelpers(t *testing.T) {
+func TestConfig_Validate_TrustedAndSignatureStatusesAreExclusive(t *testing.T) {
 	t.Parallel()
 
-	empty := &Config{}
-	assert.False(t, empty.UsesSignatureStatuses())
-	assert.False(t, empty.SelectsUnknownSignatures())
+	trusted := false
 
-	failed := &Config{Criteria: Criteria{SignatureStatuses: []string{"failed"}}}
-	assert.True(t, failed.UsesSignatureStatuses())
-	assert.False(t, failed.SelectsUnknownSignatures())
+	assert.NoError(t, (&Config{Criteria: Criteria{Trusted: &trusted}}).Validate())
+	assert.NoError(t, (&Config{Criteria: Criteria{SignatureStatuses: []string{"failed"}}}).Validate())
 
-	unknown := &Config{Criteria: Criteria{SignatureStatuses: []string{"failed", "unknown"}}}
-	assert.True(t, unknown.SelectsUnknownSignatures())
+	err := (&Config{Criteria: Criteria{Trusted: &trusted, SignatureStatuses: []string{"failed"}}}).Validate()
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "set either trusted or signature_statuses, not both")
+}
+
+func TestConfig_GetTrusted(t *testing.T) {
+	t.Parallel()
+
+	trusted, untrusted := true, false
+
+	assert.False(t, (&Config{}).GetTrusted(), "unset means false")
+	assert.False(t, (&Config{Criteria: Criteria{Trusted: &untrusted}}).GetTrusted())
+	assert.True(t, (&Config{Criteria: Criteria{Trusted: &trusted}}).GetTrusted())
+}
+
+func TestConfig_UsesSignatureStatuses(t *testing.T) {
+	t.Parallel()
+
+	assert.False(t, (&Config{}).UsesSignatureStatuses())
+	assert.True(t, (&Config{Criteria: Criteria{SignatureStatuses: []string{"failed"}}}).UsesSignatureStatuses())
 }

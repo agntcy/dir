@@ -15,8 +15,8 @@ func TestIsSignatureStatus(t *testing.T) {
 		assert.True(t, types.IsSignatureStatus(s), s)
 	}
 
-	assert.Equal(t, []string{"verified", "failed", "unknown"}, types.SignatureStatuses())
-	assert.False(t, types.IsSignatureStatus("unsigned"))
+	assert.Equal(t, []string{"verified", "failed", "unsigned"}, types.SignatureStatuses())
+	assert.False(t, types.IsSignatureStatus("unknown"))
 	assert.False(t, types.IsSignatureStatus(""))
 }
 
@@ -24,7 +24,7 @@ func TestWithSignatureStatuses(t *testing.T) {
 	var f types.RecordFilters
 
 	types.WithSignatureStatuses(types.SignatureStatusFailed)(&f)
-	types.WithSignatureStatuses(types.SignatureStatusUnknown)(&f)
+	types.WithSignatureStatuses(types.SignatureStatusUnsigned)(&f)
 
-	assert.Equal(t, []string{types.SignatureStatusFailed, types.SignatureStatusUnknown}, f.SignatureStatuses)
+	assert.Equal(t, []string{types.SignatureStatusFailed, types.SignatureStatusUnsigned}, f.SignatureStatuses)
 }

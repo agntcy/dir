@@ -4,8 +4,8 @@
 package prune
 
 import (
+	"errors"
 	"fmt"
-	"slices"
 	"strings"
 	"time"
 
@@ -34,17 +34,17 @@ const (
 
 // Criteria is the search filter the prune applies.
 type Criteria struct {
-	// Trusted selects records by signature-verification status.
-	// Config loading defaults this to false (not trusted).
-	Trusted bool `json:"trusted" mapstructure:"trusted"`
+	// Trusted selects records by signature-verification status. Unset means
+	// false (not trusted). Mutually exclusive with SignatureStatuses.
+	Trusted *bool `json:"trusted,omitempty" mapstructure:"trusted"`
 
 	// SignatureStatuses selects records whose signature status is any of
-	// "verified", "failed" or "unknown". When set, it replaces Trusted:
-	// ["failed", "unknown"] selects the same records as trusted=false.
-	//   - verified: at least one signature verified.
-	//   - failed: the record has verification results, but none verified.
-	//   - unknown: no signature verification result. Either the record is
-	//     unsigned, or it hasn't been verified yet.
+	// "verified", "failed" or "unsigned". Mutually exclusive with Trusted.
+	//   - verified: at least one signature verifies.
+	//   - failed: a signature verified before but no longer does (e.g. revoked).
+	//   - unsigned: no signature is attached to the record.
+	// A signed record with no verification result matches none of them, so it
+	// is never pruned by signature status.
 	SignatureStatuses []string `json:"signature_statuses,omitempty" mapstructure:"signature_statuses"`
 
 	// MinSeverity is the minimum scan severity that selects a record
@@ -127,18 +127,19 @@ func (c *Config) GetLimit() int {
 	return c.Limit
 }
 
-// UsesSignatureStatuses reports whether SignatureStatuses replaces Trusted.
+// GetTrusted returns the trusted criterion; unset means false.
+func (c *Config) GetTrusted() bool {
+	return c.Criteria.Trusted != nil && *c.Criteria.Trusted
+}
+
+// UsesSignatureStatuses reports whether SignatureStatuses selects records
+// instead of Trusted.
 func (c *Config) UsesSignatureStatuses() bool {
 	return len(c.Criteria.SignatureStatuses) > 0
 }
 
-// SelectsUnknownSignatures reports whether prune selects records with no
-// signature verification result.
-func (c *Config) SelectsUnknownSignatures() bool {
-	return slices.Contains(c.Criteria.SignatureStatuses, types.SignatureStatusUnknown)
-}
-
-// Validate reports an invalid min_severity or signature status. Unknown values
+// Validate reports an invalid min_severity or signature status, or both
+// trusted and signature_statuses set. Unknown values
 // must not reach the search layer: ScanSeveritiesGTE returns nil for them and
 // the SQL predicate is dropped, so prune would match every record that
 // satisfies the other criteria.
@@ -147,6 +148,10 @@ func (c *Config) Validate() error {
 	if !securityv1.IsScanSeverity(severity) {
 		return fmt.Errorf("invalid min_severity %q, must be one of: %s",
 			severity, strings.Join(securityv1.ScanSeveritiesGTE(securityv1.ScanSeverityNone), ", "))
+	}
+
+	if c.Criteria.Trusted != nil && c.UsesSignatureStatuses() {
+		return errors.New("set either trusted or signature_statuses, not both")
 	}
 
 	for _, s := range c.Criteria.SignatureStatuses {

@@ -241,12 +241,13 @@ func convertSignatures(sigs []SignatureVerification) []coretypes.ObjectSignature
 
 // signatureStatusConditions maps each signature status to the SQL that selects
 // records in it. A record with at least one verified signer is verified, even
-// when other signers failed.
+// when other signers failed. A signed record with no verification row matches
+// none of them.
 var signatureStatusConditions = map[string]string{
 	types.SignatureStatusVerified: "EXISTS (SELECT 1 FROM signature_verifications sv WHERE sv.record_cid = records.record_cid AND sv.status = 'verified')",
 	types.SignatureStatusFailed: "EXISTS (SELECT 1 FROM signature_verifications sv WHERE sv.record_cid = records.record_cid) AND " +
 		"NOT EXISTS (SELECT 1 FROM signature_verifications sv WHERE sv.record_cid = records.record_cid AND sv.status = 'verified')",
-	types.SignatureStatusUnknown: "NOT EXISTS (SELECT 1 FROM signature_verifications sv WHERE sv.record_cid = records.record_cid)",
+	types.SignatureStatusUnsigned: "records.signed = false",
 }
 
 // applySignatureStatuses keeps records whose signature status is any of statuses.

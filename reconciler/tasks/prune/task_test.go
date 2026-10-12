@@ -148,7 +148,9 @@ func TestTask_Run_AppliesConfiguredTrusted(t *testing.T) {
 			return nil, nil
 		},
 	}
-	task, err := NewTask(Config{Enabled: true, Criteria: Criteria{Trusted: true}}, db, &fakeStore{})
+	trusted := true
+
+	task, err := NewTask(Config{Enabled: true, Criteria: Criteria{Trusted: &trusted}}, db, &fakeStore{})
 	require.NoError(t, err)
 
 	require.NoError(t, task.Run(context.Background()))
@@ -294,13 +296,13 @@ func (f *fakeStore) Delete(ctx context.Context, ref *corev1.RecordRef) error {
 func TestNewTask_InvalidSignatureStatus(t *testing.T) {
 	t.Parallel()
 
-	task, err := NewTask(Config{Enabled: true, Criteria: Criteria{SignatureStatuses: []string{"unsigned"}}}, nil, nil)
+	task, err := NewTask(Config{Enabled: true, Criteria: Criteria{SignatureStatuses: []string{"unknown"}}}, nil, nil)
 	require.Error(t, err)
 	assert.Nil(t, task)
-	assert.Contains(t, err.Error(), `invalid signature_statuses value "unsigned"`)
+	assert.Contains(t, err.Error(), `invalid signature_statuses value "unknown"`)
 }
 
-func TestTask_Run_SignatureStatusesReplaceTrusted(t *testing.T) {
+func TestTask_Run_AppliesSignatureStatusesInsteadOfTrusted(t *testing.T) {
 	t.Parallel()
 
 	var got types.RecordFilters
@@ -315,14 +317,13 @@ func TestTask_Run_SignatureStatusesReplaceTrusted(t *testing.T) {
 		},
 	}
 	task, err := NewTask(Config{Enabled: true, Criteria: Criteria{
-		Trusted:           true,
-		SignatureStatuses: []string{types.SignatureStatusFailed, types.SignatureStatusUnknown},
+		SignatureStatuses: []string{types.SignatureStatusFailed, types.SignatureStatusUnsigned},
 	}}, db, &fakeStore{})
 	require.NoError(t, err)
 
 	require.NoError(t, task.Run(context.Background()))
-	assert.Nil(t, got.Trusted, "signature_statuses replaces trusted")
-	assert.Equal(t, []string{types.SignatureStatusFailed, types.SignatureStatusUnknown}, got.SignatureStatuses)
+	assert.Nil(t, got.Trusted, "trusted is not applied with signature_statuses")
+	assert.Equal(t, []string{types.SignatureStatusFailed, types.SignatureStatusUnsigned}, got.SignatureStatuses)
 }
 
 func TestTask_Run_DryRunCountsEachSignatureStatus(t *testing.T) {
@@ -343,19 +344,19 @@ func TestTask_Run_DryRunCountsEachSignatureStatus(t *testing.T) {
 		},
 	}
 	task, err := NewTask(Config{Enabled: true, DryRun: true, Criteria: Criteria{
-		SignatureStatuses: []string{types.SignatureStatusFailed, types.SignatureStatusUnknown},
+		SignatureStatuses: []string{types.SignatureStatusFailed, types.SignatureStatusUnsigned},
 	}}, db, &fakeStore{})
 	require.NoError(t, err)
 
 	require.NoError(t, task.Run(context.Background()))
 	assert.Equal(t, [][]string{
-		{types.SignatureStatusFailed, types.SignatureStatusUnknown},
+		{types.SignatureStatusFailed, types.SignatureStatusUnsigned},
 		{types.SignatureStatusFailed},
-		{types.SignatureStatusUnknown},
+		{types.SignatureStatusUnsigned},
 	}, queried, "one query for the match, then one count per status")
 }
 
-func TestTask_Run_EmptySignatureStatusesKeepTrusted(t *testing.T) {
+func TestTask_Run_UnsetCriteriaSelectUntrusted(t *testing.T) {
 	t.Parallel()
 
 	var got types.RecordFilters

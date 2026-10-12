@@ -14,16 +14,18 @@ import (
 	"gorm.io/gorm"
 )
 
-// One record per signature status:
+// One record per case:
 //   - sigVerified: verified only
 //   - sigMixed: one verified and one failed signer (counts as verified)
-//   - sigFailed: failed only
-//   - sigUnknown: no verification rows
+//   - sigFailed: failed only (verified before, no longer does)
+//   - sigUnsigned: no signature attached
+//   - sigPending: signed, but no verification row yet (matches no status)
 const (
 	sigVerified = "bafybeigdyrztsigstatus000000000000000000000000000000000001"
 	sigMixed    = "bafybeigdyrztsigstatus000000000000000000000000000000000002"
 	sigFailed   = "bafybeigdyrztsigstatus000000000000000000000000000000000003"
-	sigUnknown  = "bafybeigdyrztsigstatus000000000000000000000000000000000004"
+	sigUnsigned = "bafybeigdyrztsigstatus000000000000000000000000000000000004"
+	sigPending  = "bafybeigdyrztsigstatus000000000000000000000000000000000005"
 )
 
 func setupSignatureStatusDB(t *testing.T) *DB {
@@ -35,11 +37,21 @@ func setupSignatureStatusDB(t *testing.T) *DB {
 	db := &DB{gormDB: gdb}
 	require.NoError(t, db.migrate())
 
-	for _, cid := range []string{sigVerified, sigMixed, sigFailed, sigUnknown} {
+	for _, r := range []struct {
+		cid    string
+		signed bool
+	}{
+		{sigVerified, true},
+		{sigMixed, true},
+		{sigFailed, true},
+		{sigUnsigned, false},
+		{sigPending, true},
+	} {
 		require.NoError(t, db.gormDB.Create(&Record{
-			RecordCID: cid,
-			Name:      "directory.agntcy.org/test/" + cid[len(cid)-1:],
+			RecordCID: r.cid,
+			Name:      "directory.agntcy.org/test/" + r.cid[len(r.cid)-1:],
 			Version:   "1.0.0",
+			Signed:    r.signed,
 		}).Error)
 	}
 
@@ -73,8 +85,8 @@ func TestGetRecordCIDs_SignatureStatuses(t *testing.T) {
 	}{
 		{"verified includes records with any verified signer", []string{types.SignatureStatusVerified}, []string{sigVerified, sigMixed}},
 		{"failed requires rows and no verified signer", []string{types.SignatureStatusFailed}, []string{sigFailed}},
-		{"unknown is the absence of any row", []string{types.SignatureStatusUnknown}, []string{sigUnknown}},
-		{"statuses combine with OR", []string{types.SignatureStatusFailed, types.SignatureStatusUnknown}, []string{sigFailed, sigUnknown}},
+		{"unsigned is a record with no signature attached", []string{types.SignatureStatusUnsigned}, []string{sigUnsigned}},
+		{"statuses combine with OR", []string{types.SignatureStatusFailed, types.SignatureStatusUnsigned}, []string{sigFailed, sigUnsigned}},
 		{"unrecognized status matches nothing", []string{"bogus"}, []string{}},
 	}
 
@@ -87,18 +99,15 @@ func TestGetRecordCIDs_SignatureStatuses(t *testing.T) {
 	}
 }
 
-// [failed, unknown] must select exactly what trusted=false selects, so
-// operators can switch to signature_statuses without changing what is pruned.
-func TestGetRecordCIDs_SignatureStatuses_MatchesUntrusted(t *testing.T) {
+// A signed record without a verification result may simply not be verified
+// yet, so no status may select it for pruning.
+func TestGetRecordCIDs_SignatureStatuses_ExcludeSignedWithoutResult(t *testing.T) {
 	db := setupSignatureStatusDB(t)
 
-	untrusted, err := db.GetRecordCIDs(types.WithTrusted(false))
+	cids, err := db.GetRecordCIDs(types.WithSignatureStatuses(types.SignatureStatuses()...))
 	require.NoError(t, err)
-
-	failedOrUnknown, err := db.GetRecordCIDs(types.WithSignatureStatuses(types.SignatureStatusFailed, types.SignatureStatusUnknown))
-	require.NoError(t, err)
-
-	assert.ElementsMatch(t, untrusted, failedOrUnknown)
+	assert.ElementsMatch(t, []string{sigVerified, sigMixed, sigFailed, sigUnsigned}, cids)
+	assert.NotContains(t, cids, sigPending)
 }
 
 // The OR of statuses must stay grouped when ANDed with other filters.
@@ -106,9 +115,9 @@ func TestGetRecordCIDs_SignatureStatuses_CombinedWithOtherFilters(t *testing.T) 
 	db := setupSignatureStatusDB(t)
 
 	cids, err := db.GetRecordCIDs(
-		types.WithSignatureStatuses(types.SignatureStatusFailed, types.SignatureStatusUnknown),
+		types.WithSignatureStatuses(types.SignatureStatusFailed, types.SignatureStatusUnsigned),
 		types.WithNames("*test/4"),
 	)
 	require.NoError(t, err)
-	assert.ElementsMatch(t, []string{sigUnknown}, cids)
+	assert.ElementsMatch(t, []string{sigUnsigned}, cids)
 }

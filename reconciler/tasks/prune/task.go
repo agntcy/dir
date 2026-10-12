@@ -128,9 +128,9 @@ func (t *Task) Run(ctx context.Context) error {
 }
 
 // filters returns the search filters for the configured criteria. Signature
-// statuses, when given, replace the trusted filter.
+// statuses, when given, select records instead of the trusted filter.
 func (t *Task) filters(indexedBefore time.Time, signatureStatuses ...string) []types.FilterOption {
-	signature := types.WithTrusted(t.config.Criteria.Trusted)
+	signature := types.WithTrusted(t.config.GetTrusted())
 	if len(signatureStatuses) > 0 {
 		signature = types.WithSignatureStatuses(signatureStatuses...)
 	}
@@ -146,7 +146,7 @@ func (t *Task) filters(indexedBefore time.Time, signatureStatuses ...string) []t
 // criteriaLogArgs returns the criteria as log key/value pairs, naming whichever
 // of signature_statuses or trusted is in effect.
 func (t *Task) criteriaLogArgs(olderThan time.Duration) []any {
-	args := []any{"trusted", t.config.Criteria.Trusted}
+	args := []any{"trusted", t.config.GetTrusted()}
 	if t.config.UsesSignatureStatuses() {
 		args = []any{"signature_statuses", t.config.Criteria.SignatureStatuses}
 	}

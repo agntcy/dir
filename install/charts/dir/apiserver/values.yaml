@@ -990,16 +990,17 @@ reconciler:
       interval: "30m"
       record_timeout: "30s"
       criteria:
-        trusted: false
-        # signature_statuses replaces trusted when set. Any of:
-        #   verified: at least one signature verified.
-        #   failed:   the record has verification results, but none verified.
-        #   unknown:  no signature verification result. Either the record is
-        #             unsigned, or it hasn't been verified yet. Requires the
-        #             signature task; the reconciler refuses to start without it.
+        # Select by trusted OR signature_statuses, not both (setting both is an
+        # error). With neither set, prune selects untrusted records (trusted: false).
+        # trusted: false
+        # signature_statuses, any of:
+        #   verified: at least one signature verifies.
+        #   failed:   a signature verified before but no longer does (e.g. revoked).
+        #   unsigned: no signature is attached to the record.
+        # A signed record with no verification result matches none of them.
         # One prune job has one older_than, so pick one policy, e.g.:
-        #   prune failed signatures after 1h:     [failed] with older_than: "1h"
-        #   prune unsigned or unverified records: [unknown] with older_than: "168h"
+        #   prune revoked signatures after 1h: [failed] with older_than: "1h"
+        #   prune unsigned records after 7d:   [unsigned] with older_than: "168h"
         # signature_statuses: []
         min_severity: "MEDIUM"
         older_than: "168h"

@@ -293,11 +293,11 @@ func LoadConfig() (*Config, error) {
 	_ = v.BindEnv("prune.record_timeout")
 	v.SetDefault("prune.record_timeout", prune.DefaultRecordTimeout)
 
+	// No default for trusted or signature_statuses: they are mutually
+	// exclusive, so neither may be set implicitly. Unset trusted means false.
 	_ = v.BindEnv("prune.criteria.trusted")
-	v.SetDefault("prune.criteria.trusted", false)
 
-	// Comma-separated in env form (e.g. "failed,unknown"). No default: when
-	// empty, prune.criteria.trusted applies.
+	// Comma-separated in env form (e.g. "failed,unsigned").
 	_ = v.BindEnv("prune.criteria.signature_statuses")
 
 	_ = v.BindEnv("prune.criteria.min_severity")

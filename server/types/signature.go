@@ -9,23 +9,29 @@ import (
 )
 
 // Signature status values a record can be filtered by. Verified and failed are
-// derived from the signature_verifications rows (one per signer); unknown is the
-// absence of any row.
+// derived from the signature_verifications rows (one per signer); unsigned from
+// the record's signed flag.
+//
+// A signed record with no verification row matches none of them: it may not be
+// verified yet, its rows may have just been invalidated by a new signature or
+// key, or its signatures may never have verified (no row is written for those).
+// The absence of a result is not a property of the record, so it is never
+// selectable.
 const (
-	// SignatureStatusVerified means at least one signature verified.
+	// SignatureStatusVerified means at least one signature verifies.
 	SignatureStatusVerified = "verified"
 
-	// SignatureStatusFailed means the record has verification results, but none verified.
+	// SignatureStatusFailed means a signature verified before but no longer does
+	// (e.g. it was revoked).
 	SignatureStatusFailed = "failed"
 
-	// SignatureStatusUnknown means there is no signature verification result.
-	// Either the record is unsigned, or it hasn't been verified yet.
-	SignatureStatusUnknown = "unknown"
+	// SignatureStatusUnsigned means no signature is attached to the record.
+	SignatureStatusUnsigned = "unsigned"
 )
 
 // SignatureStatuses returns every signature status a record can be filtered by.
 func SignatureStatuses() []string {
-	return []string{SignatureStatusVerified, SignatureStatusFailed, SignatureStatusUnknown}
+	return []string{SignatureStatusVerified, SignatureStatusFailed, SignatureStatusUnsigned}
 }
 
 // IsSignatureStatus reports whether s is a known signature status.
