@@ -4,8 +4,8 @@ buf.build/gen/go/agntcy/oasf-sdk/grpc/go v1.6.2-20260911081041-07202faeff63.1 h1
 buf.build/gen/go/agntcy/oasf-sdk/grpc/go v1.6.2-20260911081041-07202faeff63.1/go.mod h1:Voz9x/pEvz+DPx3gEAa/c9iYptXI0pfCzqWYFNbYqtg=
 buf.build/gen/go/agntcy/oasf-sdk/protocolbuffers/go v1.36.12-20260911081041-07202faeff63.2 h1:LHUjHjbPYFl0BbgXHmW4lTHq01QCCoUvvohzxHo8lk0=
 buf.build/gen/go/agntcy/oasf-sdk/protocolbuffers/go v1.36.12-20260911081041-07202faeff63.2/go.mod h1:OKrypRTN8TPQY+X9elmC8r4XIo+5jZbfVEo2O1zm3FY=
-buf.build/gen/go/agntcy/oasf/protocolbuffers/go v1.36.12-20260928171943-6220fce8636b.2 h1:tjzn1WdluiGeUAZCJuanJbeHRQzbPONFFoW4f+V7XF0=
-buf.build/gen/go/agntcy/oasf/protocolbuffers/go v1.36.12-20260928171943-6220fce8636b.2/go.mod h1:fFU895SO7wQQGKQjtcNazRJgE8pigwfwTLmf4W2gRsk=
+buf.build/gen/go/agntcy/oasf/protocolbuffers/go v1.36.12-20260929072728-9967424cbd6a.2 h1:RBDFrhZ8FhRDIKsjQK/30QKFahpvd7A4fb9USo+Ebp4=
+buf.build/gen/go/agntcy/oasf/protocolbuffers/go v1.36.12-20260929072728-9967424cbd6a.2/go.mod h1:fFU895SO7wQQGKQjtcNazRJgE8pigwfwTLmf4W2gRsk=
 buf.build/gen/go/bufbuild/protovalidate/protocolbuffers/go v1.36.12-20260825204119-511051f7f437.2 h1:NbnlmV26O7oZ1iM5tsCI+GEx+3ZSdrhvnKQ/eWSrLiY=
 buf.build/gen/go/bufbuild/protovalidate/protocolbuffers/go v1.36.12-20260825204119-511051f7f437.2/go.mod h1:TCt1lluMFnctISJXvkIQ4x3ABrPuUKCWKyjKdkJNBpw=
 cel.dev/cel-go v0.32.0 h1:irvpFKr5EuGPyxeME03ERh0rii1TX+BDAnB9eL3IvNk=
@@ -516,8 +516,8 @@ github.com/onsi/gomega v1.10.1/go.mod h1:iN09h71vgCQne3DLsj+A5owkum+a2tYe+TOCB1y
 github.com/onsi/gomega v1.17.0/go.mod h1:HnhC7FXeEQY45zxNK3PPoIUhzk/80Xly9PcubAlGdZY=
 github.com/onsi/gomega v1.19.0 h1:4ieX6qQjPP/BfC3mpsAtIGGlxTWPeA3Inl/7DtXw1tw=
 github.com/onsi/gomega v1.19.0/go.mod h1:LY+I3pBVzYsTBU1AnDwOSxaYi9WoWiqgwooUqq9yPro=
-github.com/open-policy-agent/opa v1.21.0 h1:k/N0fieTkBPM0H7mIOrMd/xZPaMsxW70jIzIPeOBst4=
-github.com/open-policy-agent/opa v1.21.0/go.mod h1:eJL6KUOIaW5YLnhJEA6sm3FOYRDJaHZvYT6geATbpPk=
+github.com/open-policy-agent/opa v1.21.1 h1:j6NIMLmdOPUTp9+1fgtWLqbOPqwkTaxNm4T3ngtUB48=
+github.com/open-policy-agent/opa v1.21.1/go.mod h1:eJL6KUOIaW5YLnhJEA6sm3FOYRDJaHZvYT6geATbpPk=
 github.com/opencontainers/go-digest v1.0.0 h1:apOUWs51W5PlhuyGyz9FCeeBIOUDA/6nW8Oi/yOhh5U=
 github.com/opencontainers/go-digest v1.0.0/go.mod h1:0JzlMkj0TRzQZfJkVvzbP0HBR3IKzErnv2BNG4W4MAM=
 github.com/opencontainers/image-spec v1.1.1 h1:y0fUlFfIZhPF1W537XOLg0/fcx6zcHCJwooC2xJA040=
@@ -688,8 +688,8 @@ github.com/ysmood/leakless v0.9.0/go.mod h1:R8iAXPRaG97QJwqxs74RdwzcRHT1SWCGTNqY
 github.com/yuin/goldmark v1.2.1/go.mod h1:3hX8gzYuyVAZsxl0MRgGTJEmQBFcNTphYh9decYSb74=
 github.com/zalando/go-keyring v0.2.6 h1:r7Yc3+H+Ux0+M72zacZoItR3UDxeWfKTcabvkI8ua9s=
 github.com/zalando/go-keyring v0.2.6/go.mod h1:2TCrxYrbUNYfNS/Kgy/LSrkSQzZ5UPVH85RwfczwvcI=
-github.com/zitadel/oidc/v3 v3.51.8 h1:HwMhPhwiafSfs7/WkSodvMWXbyNasEPdDHc6UAUoi0A=
-github.com/zitadel/oidc/v3 v3.51.8/go.mod h1:KkOaz5CH55jxheuCStNb5vyVIV0/qMUL65AYL9nNiGM=
+github.com/zitadel/oidc/v3 v3.51.11 h1:3419SH0SkZu+bSzEttVklqmtGFY0HjSJceU/UHUX90k=
+github.com/zitadel/oidc/v3 v3.51.11/go.mod h1:yqb3jGISsGVoZ9rU3AjG3CwtJ2WewSptbisqQuA8Shc=
 github.com/zitadel/schema v1.3.2 h1:gfJvt7dOMfTmxzhscZ9KkapKo3Nei3B6cAxjav+lyjI=
 github.com/zitadel/schema v1.3.2/go.mod h1:IZmdfF9Wu62Zu6tJJTH3UsArevs3Y4smfJIj3L8fzxw=
 gitlab.com/gitlab-org/api/client-go v1.46.0 h1:YxBWFZIFYKcGESCb9fpkwzouo+apyB9pr/XTWzNoL24=
@@ -742,8 +742,8 @@ golang.org/x/net v0.0.0-20220225172249-27dd8689420f/go.mod h1:CfG3xpIq0wQ8r1q4Su
 golang.org/x/net v0.0.0-20220607020251-c690dde0001d/go.mod h1:XRhObCWvk6IyKnWLug+ECip1KBveYUHfp+8e9klMJ9c=
 golang.org/x/net v0.60.0 h1:79p50tfZlm0J9YfoDsSi639qSXNGVwEzOPLCxM2FsYU=
 golang.org/x/net v0.60.0/go.mod h1:2DA/G1UfVbCpQPeWTmMPGY7Cs2PkBkwu743bVX5PIVg=
-golang.org/x/oauth2 v0.36.0 h1:peZ/1z27fi9hUOFCAZaHyrpWG5lwe0RJEEEeH0ThlIs=
-golang.org/x/oauth2 v0.36.0/go.mod h1:YDBUJMTkDnJS+A4BP4eZBjCqtokkg1hODuPjwiGPO7Q=
+golang.org/x/oauth2 v0.37.0 h1:JUlcxA8oAtauLfiH8FX2/FkAWHAdi0QtGCGc+hofE98=
+golang.org/x/oauth2 v0.37.0/go.mod h1:IxwZNxUULJmpBFf9K/9NTMSIfZZuvuTy1gGxhigP/58=
 golang.org/x/sync v0.0.0-20180314180146-1d60e4601c6f/go.mod h1:RxMgew5VJxzue5/jJTE5uejpjVlOe/izrB70Jof72aM=
 golang.org/x/sync v0.0.0-20190423024810-112230192c58/go.mod h1:RxMgew5VJxzue5/jJTE5uejpjVlOe/izrB70Jof72aM=
 golang.org/x/sync v0.0.0-20201020160332-67f06af15bc9/go.mod h1:RxMgew5VJxzue5/jJTE5uejpjVlOe/izrB70Jof72aM=
