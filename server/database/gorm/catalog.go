@@ -11,7 +11,6 @@ import (
 	catalogv1 "github.com/agntcy/dir/api/catalog/v1"
 	"github.com/agntcy/dir/server/database/utils"
 	"github.com/agntcy/dir/server/types"
-	"github.com/agntcy/dir/utils/conv"
 	"gorm.io/gorm"
 )
 
@@ -43,24 +42,7 @@ func (d *DB) CountCatalogEntries(opts ...types.CatalogQueryOption) (uint32, erro
 	recordCfg.Limit = 0
 	recordCfg.Offset = 0
 
-	query := d.gormDB.Model(&Record{})
-	query = d.handleFilterOptions(query, &recordCfg)
-	query = applyKnownCatalogModuleFilter(query)
-	query = applyMediaTypeFilter(query, cfg.MediaTypeFilters)
-	query = applyTagFilter(query, cfg.TagFilters)
-	query = query.Distinct("records.record_cid")
-
-	var count int64
-	if err := query.Count(&count).Error; err != nil {
-		return 0, fmt.Errorf("count catalog records: %w", err)
-	}
-
-	total, err := conv.Uint32FromInt64(count)
-	if err != nil {
-		return 0, fmt.Errorf("count catalog records: %w", err)
-	}
-
-	return total, nil
+	return countRecords(d.catalogQuery(&recordCfg, cfg))
 }
 
 // ListCatalogTags returns distinct catalog tags derived from OASF skills and
@@ -118,51 +100,22 @@ func (d *DB) GetCatalogEntries(opts ...types.CatalogQueryOption) ([]*catalogv1.C
 	}
 
 	recordCfg := cfg.RecordFilters
-
-	pageSize := recordCfg.Limit
-	if pageSize <= 0 {
-		pageSize = defaultCatalogPageSize
+	if recordCfg.Limit <= 0 {
+		recordCfg.Limit = defaultCatalogPageSize
 	}
 
-	// Eager-load the associations the projection walks; DISTINCT drops the
-	// duplicate rows introduced by the filter JOINs.
-	query := d.gormDB.
-		Model(&Record{}).
-		Select("records.*").
-		Distinct().
-		Preload("Modules").
-		Preload("Skills").
-		Preload("Domains").
-		Preload("Annotations").
-		Preload("Signatures").
+	// Eager-load the associations the projection walks; pageRecords' DISTINCT
+	// drops the duplicate rows introduced by the filter JOINs.
+	query := d.catalogQuery(&recordCfg, cfg).
 		Preload("IdentityClaims", "role = ?", types.ClaimRoleOwner).
 		// A failed row records why the scan could not run, not a verdict, so it
 		// is withheld from the projection to keep the badge a scan result.
-		Preload("ScanReports", "status IN ?", types.ScannedStatuses()).
-		Limit(pageSize + 1)
+		Preload("ScanReports", "status IN ?", types.ScannedStatuses())
 
-	if recordCfg.Offset > 0 {
-		query = query.Offset(recordCfg.Offset)
-	}
-
-	query = d.handleFilterOptions(query, &recordCfg)
-	query = applyKnownCatalogModuleFilter(query)
-	query = applyMediaTypeFilter(query, cfg.MediaTypeFilters)
-	query = applyTagFilter(query, cfg.TagFilters)
-
-	query, err = applyCatalogOrder(query, &recordCfg)
+	records, hasMore, err := d.pageRecords(query, &recordCfg, applyCatalogOrder,
+		"Modules", "Skills", "Domains", "Annotations", "Signatures")
 	if err != nil {
-		return nil, false, err //nolint:wrapcheck
-	}
-
-	var records []Record
-	if err := query.Find(&records).Error; err != nil {
-		return nil, false, fmt.Errorf("query catalog records: %w", err)
-	}
-
-	hasMore := len(records) > pageSize
-	if hasMore {
-		records = records[:pageSize]
+		return nil, false, err
 	}
 
 	entries := make([]*catalogv1.CatalogEntry, 0, len(records))
@@ -192,6 +145,17 @@ func (d *DB) GetCatalogEntries(opts ...types.CatalogQueryOption) ([]*catalogv1.C
 	}
 
 	return entries, hasMore, nil
+}
+
+// catalogQuery returns the records query shared by catalog listing and
+// counting: the record filters plus the catalog-specific module, media type
+// and tag filters.
+func (d *DB) catalogQuery(recordCfg *types.RecordFilters, cfg *types.CatalogFilters) *gorm.DB {
+	query := d.recordQuery(recordCfg)
+	query = applyKnownCatalogModuleFilter(query)
+	query = applyMediaTypeFilter(query, cfg.MediaTypeFilters)
+
+	return applyTagFilter(query, cfg.TagFilters)
 }
 
 func applyKnownCatalogModuleFilter(query *gorm.DB) *gorm.DB {

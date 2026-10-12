@@ -13,7 +13,6 @@ import (
 	securityv1 "github.com/agntcy/dir/api/security/v1"
 	"github.com/agntcy/dir/server/database/utils"
 	"github.com/agntcy/dir/server/types"
-	"github.com/agntcy/dir/utils/conv"
 	"gorm.io/gorm"
 )
 
@@ -275,21 +274,7 @@ func (d *DB) CountRecords(opts ...types.FilterOption) (uint32, error) {
 	cfg.Offset = 0
 	cfg.OrderBy = nil
 
-	query := d.gormDB.Model(&Record{})
-	query = d.handleFilterOptions(query, cfg)
-	query = query.Distinct("records.record_cid")
-
-	var count int64
-	if err := query.Count(&count).Error; err != nil {
-		return 0, fmt.Errorf("count records: %w", err)
-	}
-
-	total, err := conv.Uint32FromInt64(count)
-	if err != nil {
-		return 0, fmt.Errorf("count records: %w", err)
-	}
-
-	return total, nil
+	return countRecords(d.recordQuery(cfg))
 }
 
 // GetRecordCIDs retrieves only record CIDs based on the provided options.
