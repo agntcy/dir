@@ -54,6 +54,14 @@ service SearchService {
   // Values are registry-wide; no query context is applied.
   // This operation does not interact with the network.
   rpc ListFilterValues(ListFilterValuesRequest) returns (ListFilterValuesResponse);
+
+  // List a page of lightweight record summaries that match the given parameters.
+  //
+  // Answers from the database only and never pulls records from the store, so it
+  // is cheap enough to back paginated listings. Use SearchRecords when the full
+  // record is needed.
+  // This operation does not interact with the network.
+  rpc ListRecordSummaries(ListRecordSummariesRequest) returns (ListRecordSummariesResponse);
 }
 
 message SearchCIDsRequest {
@@ -142,4 +150,65 @@ message ListFilterValuesResponse {
   // When the request left fields empty, entries are ordered by ascending
   // RecordQueryType number.
   repeated FieldValues fields = 1;
+}
+
+message ListRecordSummariesRequest {
+  // List of queries to match against the records.
+  repeated RecordQuery queries = 1;
+
+  // Optional page size. Unset or 0 defaults to 50; values above 100 are
+  // clamped to 100.
+  optional uint32 limit = 2;
+
+  // Optional offset for pagination of results.
+  optional uint32 offset = 3;
+
+  // Sort mode for the results. Defaults to SORT_MODE_RECENCY.
+  SortMode sort_mode = 4;
+}
+
+message RecordSummary {
+  // CID of the record.
+  string cid = 1;
+
+  // Name of the record.
+  string name = 2;
+
+  // Version of the record.
+  string version = 3;
+
+  // OASF schema version of the record.
+  string schema_version = 4;
+
+  // Description of the record.
+  string description = 5;
+
+  // Creation time from the record's own OASF created_at field, not the time it
+  // was stored in the registry.
+  string created_at = 6;
+
+  // Authors of the record, sorted lexicographically.
+  repeated string authors = 7;
+
+  // Skill names of the record, sorted lexicographically.
+  repeated string skills = 8;
+
+  // Domain names of the record, sorted lexicographically.
+  repeated string domains = 9;
+
+  // Module names of the record, sorted lexicographically.
+  repeated string modules = 10;
+}
+
+message ListRecordSummariesResponse {
+  // Summaries of the records on this page.
+  repeated RecordSummary records = 1;
+
+  // Whether more records exist beyond this page. Determined by fetching one
+  // record past the limit (limit+1 peek-ahead).
+  bool has_more = 2;
+
+  // Total number of distinct records that match the queries, ignoring limit and
+  // offset. Same semantics as CountRecordsResponse.total_count.
+  uint32 total_count = 3;
 }

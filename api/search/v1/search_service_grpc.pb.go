@@ -22,10 +22,11 @@ import (
 const _ = grpc.SupportPackageIsVersion8
 
 const (
-	SearchService_SearchCIDs_FullMethodName       = "/agntcy.dir.search.v1.SearchService/SearchCIDs"
-	SearchService_SearchRecords_FullMethodName    = "/agntcy.dir.search.v1.SearchService/SearchRecords"
-	SearchService_CountRecords_FullMethodName     = "/agntcy.dir.search.v1.SearchService/CountRecords"
-	SearchService_ListFilterValues_FullMethodName = "/agntcy.dir.search.v1.SearchService/ListFilterValues"
+	SearchService_SearchCIDs_FullMethodName          = "/agntcy.dir.search.v1.SearchService/SearchCIDs"
+	SearchService_SearchRecords_FullMethodName       = "/agntcy.dir.search.v1.SearchService/SearchRecords"
+	SearchService_CountRecords_FullMethodName        = "/agntcy.dir.search.v1.SearchService/CountRecords"
+	SearchService_ListFilterValues_FullMethodName    = "/agntcy.dir.search.v1.SearchService/ListFilterValues"
+	SearchService_ListRecordSummaries_FullMethodName = "/agntcy.dir.search.v1.SearchService/ListRecordSummaries"
 )
 
 // SearchServiceClient is the client API for SearchService service.
@@ -53,6 +54,13 @@ type SearchServiceClient interface {
 	// Values are registry-wide; no query context is applied.
 	// This operation does not interact with the network.
 	ListFilterValues(ctx context.Context, in *ListFilterValuesRequest, opts ...grpc.CallOption) (*ListFilterValuesResponse, error)
+	// List a page of lightweight record summaries that match the given parameters.
+	//
+	// Answers from the database only and never pulls records from the store, so it
+	// is cheap enough to back paginated listings. Use SearchRecords when the full
+	// record is needed.
+	// This operation does not interact with the network.
+	ListRecordSummaries(ctx context.Context, in *ListRecordSummariesRequest, opts ...grpc.CallOption) (*ListRecordSummariesResponse, error)
 }
 
 type searchServiceClient struct {
@@ -149,6 +157,16 @@ func (c *searchServiceClient) ListFilterValues(ctx context.Context, in *ListFilt
 	return out, nil
 }
 
+func (c *searchServiceClient) ListRecordSummaries(ctx context.Context, in *ListRecordSummariesRequest, opts ...grpc.CallOption) (*ListRecordSummariesResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ListRecordSummariesResponse)
+	err := c.cc.Invoke(ctx, SearchService_ListRecordSummaries_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // SearchServiceServer is the server API for SearchService service.
 // All implementations should embed UnimplementedSearchServiceServer
 // for forward compatibility.
@@ -174,6 +192,13 @@ type SearchServiceServer interface {
 	// Values are registry-wide; no query context is applied.
 	// This operation does not interact with the network.
 	ListFilterValues(context.Context, *ListFilterValuesRequest) (*ListFilterValuesResponse, error)
+	// List a page of lightweight record summaries that match the given parameters.
+	//
+	// Answers from the database only and never pulls records from the store, so it
+	// is cheap enough to back paginated listings. Use SearchRecords when the full
+	// record is needed.
+	// This operation does not interact with the network.
+	ListRecordSummaries(context.Context, *ListRecordSummariesRequest) (*ListRecordSummariesResponse, error)
 }
 
 // UnimplementedSearchServiceServer should be embedded to have
@@ -194,6 +219,9 @@ func (UnimplementedSearchServiceServer) CountRecords(context.Context, *CountReco
 }
 func (UnimplementedSearchServiceServer) ListFilterValues(context.Context, *ListFilterValuesRequest) (*ListFilterValuesResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ListFilterValues not implemented")
+}
+func (UnimplementedSearchServiceServer) ListRecordSummaries(context.Context, *ListRecordSummariesRequest) (*ListRecordSummariesResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ListRecordSummaries not implemented")
 }
 func (UnimplementedSearchServiceServer) testEmbeddedByValue() {}
 
@@ -293,6 +321,24 @@ func _SearchService_ListFilterValues_Handler(srv interface{}, ctx context.Contex
 	return interceptor(ctx, in, info, handler)
 }
 
+func _SearchService_ListRecordSummaries_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListRecordSummariesRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(SearchServiceServer).ListRecordSummaries(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: SearchService_ListRecordSummaries_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(SearchServiceServer).ListRecordSummaries(ctx, req.(*ListRecordSummariesRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // SearchService_ServiceDesc is the grpc.ServiceDesc for SearchService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -307,6 +353,10 @@ var SearchService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "ListFilterValues",
 			Handler:    _SearchService_ListFilterValues_Handler,
+		},
+		{
+			MethodName: "ListRecordSummaries",
+			Handler:    _SearchService_ListRecordSummaries_Handler,
 		},
 	},
 	Streams: []grpc.StreamDesc{
