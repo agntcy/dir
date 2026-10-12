@@ -297,3 +297,17 @@ func TestListRecordSummaries_DatabaseErrors(t *testing.T) {
 		assert.ErrorContains(t, err, "failed to count records")
 	})
 }
+
+func TestListRecordSummaries_CancelledContext(t *testing.T) {
+	db := &fakeSearchDB{}
+	ctrl := NewSearchController(db, nil)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+
+	_, err := ctrl.ListRecordSummaries(ctx, &searchv1.ListRecordSummariesRequest{})
+	require.Error(t, err)
+	assert.Equal(t, codes.Canceled, status.Code(err))
+	assert.Zero(t, db.pageCalls)
+	assert.Zero(t, db.countCalls)
+}

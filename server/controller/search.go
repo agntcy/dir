@@ -54,7 +54,7 @@ func (c *searchCtlr) ListRecordSummaries(ctx context.Context, req *searchv1.List
 	searchLogger.Debug("Called search controller's ListRecordSummaries method", "req", req)
 
 	if err := ctx.Err(); err != nil {
-		return nil, fmt.Errorf("request cancelled: %w", err)
+		return nil, status.FromContextError(err).Err() //nolint:wrapcheck
 	}
 
 	filterOptions, err := databaseutils.QueryToFilters(req.GetQueries())

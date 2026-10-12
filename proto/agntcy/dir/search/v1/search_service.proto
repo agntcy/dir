@@ -163,7 +163,10 @@ message ListRecordSummariesRequest {
   // Optional offset for pagination of results.
   optional uint32 offset = 3;
 
-  // Sort mode for the results. Defaults to SORT_MODE_RECENCY.
+  // Sort mode for the results. Defaults to SORT_MODE_RECENCY, which orders by
+  // when this registry indexed the record, not by RecordSummary.created_at
+  // (the record's own OASF created_at), so the returned created_at values are
+  // not necessarily monotonic.
   SortMode sort_mode = 4;
 }
 

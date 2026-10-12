@@ -293,15 +293,7 @@ func (d *DB) GetRecordCIDs(opts ...types.FilterOption) ([]string, error) {
 	}
 
 	// Check whether usage-metrics columns are needed for ORDER BY before building SELECT.
-	needsUsageMetrics := false
-
-	for _, o := range cfg.OrderBy {
-		if usageMetricsColumns[o.Column] {
-			needsUsageMetrics = true
-
-			break
-		}
-	}
+	needsUsageMetrics := orderNeedsUsageMetrics(cfg)
 
 	// PostgreSQL requires every ORDER BY expression to appear in the SELECT list when
 	// using SELECT DISTINCT. Include all columns that applyRecordOrder may reference.
@@ -379,17 +371,7 @@ func applyRecordOrder(query *gorm.DB, cfg *types.RecordFilters) (*gorm.DB, error
 		return query.Order("records.created_at DESC").Order("records.record_cid ASC"), nil
 	}
 
-	needsUsageJoin := false
-
-	for _, o := range cfg.OrderBy {
-		if usageMetricsColumns[o.Column] {
-			needsUsageJoin = true
-
-			break
-		}
-	}
-
-	if needsUsageJoin {
+	if orderNeedsUsageMetrics(cfg) {
 		query = query.Joins("LEFT JOIN record_usage_metrics rum ON rum.record_cid = records.record_cid")
 	}
 

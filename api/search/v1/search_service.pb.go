@@ -532,7 +532,10 @@ type ListRecordSummariesRequest struct {
 	Limit *uint32 `protobuf:"varint,2,opt,name=limit,proto3,oneof" json:"limit,omitempty"`
 	// Optional offset for pagination of results.
 	Offset *uint32 `protobuf:"varint,3,opt,name=offset,proto3,oneof" json:"offset,omitempty"`
-	// Sort mode for the results. Defaults to SORT_MODE_RECENCY.
+	// Sort mode for the results. Defaults to SORT_MODE_RECENCY, which orders by
+	// when this registry indexed the record, not by RecordSummary.created_at
+	// (the record's own OASF created_at), so the returned created_at values are
+	// not necessarily monotonic.
 	SortMode      SortMode `protobuf:"varint,4,opt,name=sort_mode,json=sortMode,proto3,enum=agntcy.dir.search.v1.SortMode" json:"sort_mode,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache

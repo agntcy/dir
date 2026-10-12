@@ -62,8 +62,8 @@ type SearchDatabaseAPI interface {
 	CountRecords(opts ...FilterOption) (uint32, error)
 
 	// ListRecordSummaries returns one page of lightweight record summaries
-	// matching the provided filters, ordered by the given order clauses (newest
-	// first by default), and whether more records follow the page. A limit of
+	// matching the provided filters, ordered by the given order clauses (most
+	// recently indexed first by default), and whether more records follow the page. A limit of
 	// 0 or less defaults to DefaultRecordSummaryPageSize; larger than
 	// MaxRecordSummaryPageSize is clamped.
 	ListRecordSummaries(opts ...FilterOption) ([]*searchv1.RecordSummary, bool, error)

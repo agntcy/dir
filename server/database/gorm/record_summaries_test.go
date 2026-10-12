@@ -183,3 +183,40 @@ func TestListRecordSummaries_PolicyGate(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, []string{gateOK}, summaryCIDs(summaries))
 }
+
+func TestListRecordSummaries_JoinFilterWithPopularitySort(t *testing.T) {
+	db := setupPolicyEvalDB(t)
+
+	// Each record matches the skill wildcard twice, so the JOIN yields two rows per record.
+	pulls := []uint64{5, 50, 20}
+	for i, pull := range pulls {
+		cid := recordQueryCID(i + 1)
+		require.NoError(t, db.gormDB.Create(&Record{
+			RecordCID: cid,
+			Name:      "multi-skill",
+			Version:   "1",
+			Skills: []Skill{
+				{RecordCID: cid, SkillID: 1, Name: "nlp/a"},
+				{RecordCID: cid, SkillID: 2, Name: "nlp/b"},
+			},
+		}).Error)
+		require.NoError(t, db.gormDB.Create(&RecordUsageMetrics{RecordCID: cid, PullCount: pull}).Error)
+	}
+
+	order := types.WithOrderBy(types.RecordOrderClause{Column: "popularity_score", Desc: true})
+
+	page, hasMore, err := db.ListRecordSummaries(types.WithSkillNames("nlp/*"), order, types.WithLimit(3))
+	require.NoError(t, err)
+	assert.False(t, hasMore)
+	assert.Equal(t, []string{recordQueryCID(2), recordQueryCID(3), recordQueryCID(1)}, summaryCIDs(page))
+
+	page, hasMore, err = db.ListRecordSummaries(types.WithSkillNames("nlp/*"), order, types.WithLimit(2))
+	require.NoError(t, err)
+	assert.True(t, hasMore)
+	assert.Equal(t, []string{recordQueryCID(2), recordQueryCID(3)}, summaryCIDs(page))
+
+	page, hasMore, err = db.ListRecordSummaries(types.WithSkillNames("nlp/*"), order, types.WithLimit(2), types.WithOffset(2))
+	require.NoError(t, err)
+	assert.False(t, hasMore)
+	assert.Equal(t, []string{recordQueryCID(1)}, summaryCIDs(page))
+}

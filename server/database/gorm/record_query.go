@@ -38,6 +38,8 @@ func (d *DB) pageRecords(
 	// Since record_cid is the primary key, DISTINCT still de-duplicates the
 	// rows introduced by filter JOINs at the record level.
 	selectCols := "records.*"
+	// The order func must add the rum LEFT JOIN whenever orderNeedsUsageMetrics(cfg)
+	// is true (applyRecordOrder does; applyCatalogOrder rejects those keys).
 	if orderNeedsUsageMetrics(cfg) {
 		selectCols += ", COALESCE(rum.pull_count, 0) + COALESCE(rum.lookup_count, 0)"
 		selectCols += ", COALESCE(rum.provider_count, 0)"
