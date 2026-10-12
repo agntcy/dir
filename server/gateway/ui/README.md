@@ -31,6 +31,12 @@ Build the static output into `server/gateway/static/`:
 task ui:build
 ```
 
+A pre-commit hook reminds you to regenerate `server/gateway/static/` when
+`server/gateway/ui/` is staged without those assets. It does not block the
+commit; CI Verify fails the PR if the bundle is stale. Renovate runs
+`task ui:build` as a post-upgrade task on dependency branches so npm bumps
+commit a matching bundle.
+
 Or manually:
 
 ```bash

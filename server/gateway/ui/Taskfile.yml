@@ -11,6 +11,8 @@ tasks:
     desc: Build the gateway UI (SvelteKit static output)
     dir: ./server/gateway/ui
     cmds:
+      # Wipe hashed output so a rebuild replaces chunks instead of leaving stale files tracked.
+      - find ../static -mindepth 1 -maxdepth 1 -exec rm -rf {} +
       - npm ci
       - npm run build
 
