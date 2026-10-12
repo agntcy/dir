@@ -6,6 +6,7 @@ package controller
 import (
 	"context"
 	"fmt"
+	"slices"
 
 	corev1 "github.com/agntcy/dir/api/core/v1"
 	searchv1 "github.com/agntcy/dir/api/search/v1"
@@ -46,6 +47,50 @@ func (c *searchCtlr) CountRecords(_ context.Context, req *searchv1.CountRecordsR
 	}
 
 	return &searchv1.CountRecordsResponse{TotalCount: totalCount}, nil
+}
+
+// ListRecordSummaries answers from the database only; it never touches the store.
+func (c *searchCtlr) ListRecordSummaries(ctx context.Context, req *searchv1.ListRecordSummariesRequest) (*searchv1.ListRecordSummariesResponse, error) {
+	searchLogger.Debug("Called search controller's ListRecordSummaries method", "req", req)
+
+	if err := ctx.Err(); err != nil {
+		return nil, fmt.Errorf("request cancelled: %w", err)
+	}
+
+	filterOptions, err := databaseutils.QueryToFilters(req.GetQueries())
+	if err != nil {
+		return nil, fmt.Errorf("failed to create filter options: %w", err)
+	}
+
+	limit := req.GetLimit()
+	if limit == 0 {
+		limit = types.DefaultRecordSummaryPageSize
+	}
+
+	limit = min(limit, types.MaxRecordSummaryPageSize)
+
+	// The page gets paging and ordering; the count gets only the filters.
+	pageOptions := append(slices.Clone(filterOptions),
+		types.WithLimit(int(limit)),
+		types.WithOffset(int(req.GetOffset())),
+		sortModeToOrderBy(req.GetSortMode()),
+	)
+
+	records, hasMore, err := c.db.ListRecordSummaries(pageOptions...)
+	if err != nil {
+		return nil, fmt.Errorf("failed to list record summaries: %w", err)
+	}
+
+	totalCount, err := c.db.CountRecords(filterOptions...)
+	if err != nil {
+		return nil, fmt.Errorf("failed to count records: %w", err)
+	}
+
+	return &searchv1.ListRecordSummariesResponse{
+		Records:    records,
+		HasMore:    hasMore,
+		TotalCount: totalCount,
+	}, nil
 }
 
 func (c *searchCtlr) ListFilterValues(_ context.Context, req *searchv1.ListFilterValuesRequest) (*searchv1.ListFilterValuesResponse, error) {
