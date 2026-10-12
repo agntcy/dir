@@ -36,6 +36,10 @@ func (f *fakeSearchDB) CountRecords(opts ...types.FilterOption) (uint32, error) 
 	return f.totalCount, f.err
 }
 
+func (f *fakeSearchDB) ListRecordSummaries(_ ...types.FilterOption) ([]*searchv1.RecordSummary, bool, error) {
+	return nil, false, f.err
+}
+
 func (f *fakeSearchDB) ListFilterValues(fields []searchv1.RecordQueryType) ([]types.FilterFieldValues, error) {
 	f.gotFields = fields
 	f.fieldsCalls++
