@@ -14,6 +14,7 @@ import (
 	routingv1 "github.com/agntcy/dir/api/routing/v1"
 	"github.com/agntcy/dir/server/datastore"
 	"github.com/agntcy/dir/server/types"
+	"github.com/agntcy/dir/utils/conv"
 	ipfsdatastore "github.com/ipfs/go-datastore"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -287,7 +288,7 @@ func simulateSearch(ctx context.Context, dstore types.Datastore, localPeerID str
 		// Check if matches all queries
 		if testMatchesAllQueriesSimple(ctx, dstore, keyCID, queries, keyPeerID) {
 			// Calculate score safely
-			score := safeIntToUint32(len(queries))
+			score := conv.SafeUint32(len(queries))
 			if len(queries) == 0 {
 				score = 1
 			}

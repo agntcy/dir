@@ -27,16 +27,60 @@ message GetWorkloadRequest {
 }
 
 // ListWorkloadsRequest is the request message for listing workloads with optional filters.
+// Filters of different kinds are combined with AND; an unset filter matches every workload.
+//
+// The agent filters (names, skills, domains, authors, schema_versions) are evaluated against
+// what the workload says about the agent it runs: its A2A card (services.a2a), whose OASF
+// discovery and identity extensions carry the skills, domains, schema version and author,
+// and otherwise the OASF record it references (services.oasf). When both are present, the
+// card wins. A workload without that information does not match an agent filter.
+//
+// Names, skills, domains, authors and schema versions match as in record search: exactly
+// (case-insensitive), or with `*` and `?` wildcards, e.g. "natural_language_processing/*".
 message ListWorkloadsRequest {
   // Optional labels to filter workloads.
   // Labels are applied in an AND fashion; only workloads matching all labels are returned.
-  // Supports regular expression syntax for label values.
+  // Label values are regular expressions, matched anywhere in the value (anchor them with ^ and $
+  // to match the whole value); a value that isn't a valid regular expression matches exactly.
   map<string, string> labels = 1;
 
-  // Optional runtime types to filter workloads.
-  // Only workloads matching one of the specified runtime types are returned.
-  // optional string runtime_type = 2;
+  // Optional runtime types to filter workloads (e.g., docker, kubernetes, process).
+  // A workload matches if its runtime is one of the given types, compared exactly (case-insensitive).
+  repeated string runtime_types = 2;
 
-  // Reachability filter. If set, only workloads reachable from the specified workload ID are returned.
-  // optional string reachable_from_workload_id = 3;
+  // Optional reachability filter. If set, only workloads reachable from the workload
+  // with this ID are returned: those sharing at least one isolation group with it
+  // (a Docker network, a Kubernetes namespace, or the host for processes). Isolation
+  // groups only count within the same runtime and discovery instance (the
+  // org.agntcy/discovery-instance annotation), since their names repeat across hosts
+  // and clusters. The workload itself is not returned. If no workload has this ID,
+  // nothing matches.
+  optional string reachable_from_workload_id = 3;
+
+  // Optional OASF skill names to filter workloads.
+  // A workload matches if it has at least one of the given skills.
+  repeated string skills = 4;
+
+  // Optional OASF domain names to filter workloads.
+  // A workload matches if it has at least one of the given domains.
+  repeated string domains = 5;
+
+  // Optional locator protocols to filter workloads (e.g., slim, grpc, http, tcp).
+  // A workload matches if it has at least one locator with one of the given protocols,
+  // compared exactly (case-insensitive). Docker and Kubernetes locators are "tcp".
+  repeated string locator_protocols = 6;
+
+  // Optional agent names to filter workloads: the name in the workload's A2A card,
+  // or else in its OASF record. This is not the runtime's workload name.
+  // A workload matches if its agent name matches one of the given names.
+  repeated string names = 7;
+
+  // Optional authors to filter workloads, e.g. the DID of the human vouching for the agent
+  // (from the card's OASF identity extension), or else the OASF record's authors.
+  // A workload matches if one of its authors matches one of the given values.
+  repeated string authors = 8;
+
+  // Optional OASF schema versions to filter workloads, e.g. "1.2.0" or "1.*".
+  // A workload matches if the schema version of its skills and domains matches one of them.
+  repeated string schema_versions = 9;
 }

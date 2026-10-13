@@ -20,6 +20,7 @@ require (
 	github.com/agntcy/dir/server v1.7.1
 	github.com/agntcy/dir/utils v1.7.1
 	github.com/csirmazbendeguz/regclient v0.0.0-20260429082137-82ab6d426079
+	github.com/go-viper/mapstructure/v2 v2.5.0
 	github.com/lestrrat-go/jwx/v2 v2.1.7
 	github.com/multiformats/go-multibase v0.3.0
 	github.com/opencontainers/go-digest v1.0.0
@@ -98,7 +99,6 @@ require (
 	github.com/go-openapi/swag/typeutils v0.29.2 // indirect
 	github.com/go-openapi/swag/yamlutils v0.29.2 // indirect
 	github.com/go-openapi/validate v1.0.0 // indirect
-	github.com/go-viper/mapstructure/v2 v2.5.0 // indirect
 	github.com/gobwas/glob v1.0.0 // indirect
 	github.com/goccy/go-json v0.10.6 // indirect
 	github.com/goccy/go-yaml v1.19.2 // indirect

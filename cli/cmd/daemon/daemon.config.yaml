@@ -203,6 +203,18 @@ reconciler:
     record_timeout: 30s
     # Records fetched and evaluated at a time.
     batch_size: 500
+  # Searches the routing network for records matching criteria and creates
+  # one sync per announcing peer. Off: this creates remote syncs. A run
+  # does not paginate; later intervals pick up more. criteria.domains is a
+  # list; a record matching any listed domain is included.
+  sync:
+    enabled: false
+    interval: 24h
+    criteria:
+      domains:
+        - network_security
+    limit: 100
+    dry_run: true
   # How the reconciler hears of a record being pushed, so that the indexer, and
   # the policy task after it, run at once instead of at their next intervals.
   # The intervals remain the backstop, and the only trigger for records copied
@@ -215,14 +227,21 @@ reconciler:
     window: 2s
     # How long to wait before listening again when the event stream ends.
     reconnect_delay: 5s
-  # Deletes records that match criteria (trusted, min_severity, older_than).
-  # Disabled by default because it deletes records.
+  # Deletes records that match criteria (signature_statuses or trusted,
+  # min_severity, older_than). Disabled by default because it deletes records.
   prune:
     enabled: false
     interval: 30m
     record_timeout: 30s
     criteria:
-      trusted: false
+      # Select by trusted OR signature_statuses, not both (setting both is an
+      # error). trusted is an alias: true selects [verified], false (or unset)
+      # selects [failed, unsigned].
+      # trusted: false
+      # Any of: verified (a signature verifies), failed (verified before, no
+      # longer does, e.g. revoked), unsigned (no signature attached). Either
+      # way, prune never deletes a signed record with no verification result.
+      # signature_statuses: [failed]
       min_severity: MEDIUM
       older_than: 168h
     limit: 100

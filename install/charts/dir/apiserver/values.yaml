@@ -796,6 +796,7 @@ postgresql:
 # - regsync: syncs records from remote registries
 # - indexer: indexes synced records into the database for search
 # - prune: deletes records matching configured criteria
+# - sync: creates syncs for remote records matching criteria
 # Shares the same database as the apiserver.
 reconciler:
   image:
@@ -874,8 +875,9 @@ reconciler:
         # access_token: ""
         # refresh_token: ""
 
-    # Apiserver gRPC address — required by the metrics task to query provider counts
-    # from the routing layer. Typically the in-cluster apiserver service name + gRPC port.
+    # Apiserver gRPC address — required by the metrics and sync tasks
+    # to reach the routing layer. Typically the in-cluster apiserver service
+    # name + gRPC port.
     server_address: ""
 
     # Metrics task configuration
@@ -884,6 +886,22 @@ reconciler:
     metrics:
       enabled: true
       interval: "15m"
+
+    # Sync task configuration
+    # Searches the routing network for records matching criteria and creates
+    # one sync per announcing peer. Off: this creates remote syncs. A run
+    # does not paginate; later intervals pick up more. Dry-run logs peers
+    # and skips CreateSync. Config loading defaults dry_run to true.
+    # Requires server_address in standalone mode.
+    # criteria.domains is a list; a record matching any listed domain is included.
+    sync:
+      enabled: false
+      interval: "24h"
+      criteria:
+        domains:
+          - "network_security"
+      limit: 100
+      dry_run: true
 
     # Regsync task configuration
     regsync:
@@ -963,8 +981,8 @@ reconciler:
       # How long to wait before listening again when the event stream ends.
       reconnect_delay: "5s"
 
-    # Prune task. Deletes records that match criteria (trusted, min_severity,
-    # older_than). Disabled by default — this deletes records. dry_run
+    # Prune task. Deletes records that match criteria (signature_statuses or trusted,
+    # min_severity, older_than). Disabled by default — this deletes records. dry_run
     # defaults to true so enabling the task only logs matches until you
     # set it to false.
     prune:
@@ -972,7 +990,20 @@ reconciler:
       interval: "30m"
       record_timeout: "30s"
       criteria:
-        trusted: false
+        # Select by trusted OR signature_statuses, not both (setting both is an
+        # error). trusted is an alias: true selects [verified], false selects
+        # [failed, unsigned]. With neither set, prune behaves as trusted: false.
+        # trusted: false
+        # signature_statuses, any of:
+        #   verified: at least one signature verifies.
+        #   failed:   a signature verified before but no longer does (e.g. revoked).
+        #   unsigned: no signature is attached to the record.
+        # Either way, prune never deletes a signed record that has no verification
+        # result yet.
+        # One prune job has one older_than, so pick one policy, e.g.:
+        #   prune revoked signatures after 1h: [failed] with older_than: "1h"
+        #   prune unsigned records after 7d:   [unsigned] with older_than: "168h"
+        # signature_statuses: []
         min_severity: "MEDIUM"
         older_than: "168h"
       limit: 100

@@ -6,7 +6,6 @@ package gorm
 import (
 	"errors"
 	"fmt"
-	"math"
 	"strings"
 	"time"
 
@@ -14,6 +13,7 @@ import (
 	securityv1 "github.com/agntcy/dir/api/security/v1"
 	"github.com/agntcy/dir/server/database/utils"
 	"github.com/agntcy/dir/server/types"
+	"github.com/agntcy/dir/utils/conv"
 	"gorm.io/gorm"
 )
 
@@ -284,11 +284,12 @@ func (d *DB) CountRecords(opts ...types.FilterOption) (uint32, error) {
 		return 0, fmt.Errorf("count records: %w", err)
 	}
 
-	if count < 0 || math.MaxUint32 < count {
-		return 0, fmt.Errorf("can't convert %d to uint32", count)
+	total, err := conv.Uint32FromInt64(count)
+	if err != nil {
+		return 0, fmt.Errorf("count records: %w", err)
 	}
 
-	return uint32(count), nil
+	return total, nil
 }
 
 // GetRecordCIDs retrieves only record CIDs based on the provided options.
@@ -616,6 +617,10 @@ func (d *DB) handleFilterOptions(query *gorm.DB, cfg *types.RecordFilters) *gorm
 		} else {
 			query = query.Where("NOT EXISTS (SELECT 1 FROM signature_verifications sv WHERE sv.record_cid = records.record_cid AND sv.status = ?)", verifiedStatus)
 		}
+	}
+
+	if len(cfg.SignatureStatuses) > 0 {
+		query = applySignatureStatuses(query, cfg.SignatureStatuses)
 	}
 
 	// Handle scan safe filter (is_safe column across all scanner types).

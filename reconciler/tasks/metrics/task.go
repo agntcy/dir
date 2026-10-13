@@ -22,14 +22,8 @@ var logger = logging.Logger("reconciler/metrics")
 
 // ProviderCounterAPI is the minimal interface required by the metrics task to
 // query provider counts. It is satisfied by types.RoutingAPI (daemon mode, where
-// the routing layer is shared in-process) and by GRPCProviderCounter (standalone
-// reconciler mode, where the routing layer is reached over gRPC).
-//
-// Note on the routing datastore: the routing layer uses an embedded Badger
-// key-value store that does NOT support concurrent multi-process access. Sharing
-// the datastore directory via a volume mount between the reconciler and the server
-// is not safe. The gRPC client (GRPCProviderCounter) is the correct mechanism for
-// the standalone reconciler to query provider counts from the server.
+// the routing layer is shared in-process) and by reconciler/routing.Client
+// (standalone mode, where the routing layer is reached over gRPC).
 type ProviderCounterAPI interface {
 	GetProviderCount(ctx context.Context, cid string) (int, error)
 }

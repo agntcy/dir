@@ -24,9 +24,14 @@ func (c *Client) GetWorkload(ctx context.Context, workloadID string) (*runtimev1
 }
 
 func (c *Client) ListWorkloadsStream(ctx context.Context, labels map[string]string) (streaming.StreamResult[runtimev1.Workload], error) {
-	stream, err := c.DiscoveryServiceClient.ListWorkloads(ctx, &runtimev1.ListWorkloadsRequest{
+	return c.ListWorkloadsStreamWithRequest(ctx, &runtimev1.ListWorkloadsRequest{
 		Labels: labels,
 	})
+}
+
+// ListWorkloadsStreamWithRequest streams the workloads matching every filter set in req.
+func (c *Client) ListWorkloadsStreamWithRequest(ctx context.Context, req *runtimev1.ListWorkloadsRequest) (streaming.StreamResult[runtimev1.Workload], error) {
+	stream, err := c.DiscoveryServiceClient.ListWorkloads(ctx, req)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create list workload stream: %w", err)
 	}
@@ -36,8 +41,15 @@ func (c *Client) ListWorkloadsStream(ctx context.Context, labels map[string]stri
 }
 
 func (c *Client) ListWorkloads(ctx context.Context, labels map[string]string) ([]*runtimev1.Workload, error) {
+	return c.ListWorkloadsWithRequest(ctx, &runtimev1.ListWorkloadsRequest{
+		Labels: labels,
+	})
+}
+
+// ListWorkloadsWithRequest returns the workloads matching every filter set in req.
+func (c *Client) ListWorkloadsWithRequest(ctx context.Context, req *runtimev1.ListWorkloadsRequest) ([]*runtimev1.Workload, error) {
 	// Use channel to communicate error safely (no race condition)
-	result, err := c.ListWorkloadsStream(ctx, labels)
+	result, err := c.ListWorkloadsStreamWithRequest(ctx, req)
 	if err != nil {
 		return nil, err
 	}

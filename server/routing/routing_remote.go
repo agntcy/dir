@@ -21,6 +21,7 @@ import (
 	validators "github.com/agntcy/dir/server/routing/validators"
 	"github.com/agntcy/dir/server/types"
 	recordvalidators "github.com/agntcy/dir/server/validators"
+	"github.com/agntcy/dir/utils/conv"
 	"github.com/agntcy/dir/utils/logging"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
@@ -479,7 +480,7 @@ func (r *routeRemote) calculateMatchScore(ctx context.Context, cid string, queri
 		}
 	}
 
-	score := safeIntToUint32(len(matchingQueries))
+	score := conv.SafeUint32(len(matchingQueries))
 
 	remoteLogger.Debug("OR logic match score calculated", "cid", cid, "total_queries", len(queries), "matching_queries", len(matchingQueries), "score", score)
 

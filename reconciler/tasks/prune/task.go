@@ -2,9 +2,10 @@
 // SPDX-License-Identifier: Apache-2.0
 
 // Package prune implements the prune reconciler task.
-// It deletes records that match configured criteria (trusted status, minimum
-// scan severity, and age). Defaults match the dirctl prune-untrusted CronJob
-// plus an age floor of 168h.
+// It deletes records that match configured criteria (signature status, given
+// directly or through trusted, minimum scan severity, and age). Defaults follow
+// the dirctl prune-untrusted CronJob plus an age floor of 168h, except that a
+// signed record without a verification result is never deleted.
 package prune
 
 import (
@@ -75,12 +76,7 @@ func (t *Task) Run(ctx context.Context) error {
 	olderThan := t.config.GetOlderThan()
 	indexedBefore := time.Now().Add(-olderThan)
 
-	cids, err := t.db.GetRecordCIDs(
-		types.WithTrusted(t.config.Criteria.Trusted),
-		types.WithScanSeverities(t.config.GetMinSeverity()),
-		types.WithIndexedBefore(indexedBefore),
-		types.WithLimit(t.config.GetLimit()),
-	)
+	cids, err := t.db.GetRecordCIDs(t.filters(indexedBefore, t.config.GetSignatureStatuses())...)
 	if err != nil {
 		return fmt.Errorf("get records: %w", err)
 	}
@@ -93,22 +89,17 @@ func (t *Task) Run(ctx context.Context) error {
 
 	if t.config.DryRun {
 		logger.Info("Dry run: not pruning records",
-			"count", len(cids),
-			"trusted", t.config.Criteria.Trusted,
-			"min_severity", t.config.GetMinSeverity(),
-			"older_than", olderThan,
-			"cids", cids,
+			append(t.criteriaLogArgs(olderThan),
+				"count", len(cids),
+				"count_by_signature_status", t.countBySignatureStatus(indexedBefore),
+				"cids", cids,
+			)...,
 		)
 
 		return nil
 	}
 
-	logger.Info("Pruning records",
-		"count", len(cids),
-		"trusted", t.config.Criteria.Trusted,
-		"min_severity", t.config.GetMinSeverity(),
-		"older_than", olderThan,
-	)
+	logger.Info("Pruning records", append(t.criteriaLogArgs(olderThan), "count", len(cids))...)
 
 	var succeeded, failed int
 
@@ -135,6 +126,60 @@ func (t *Task) Run(ctx context.Context) error {
 	logger.Info("Prune complete", "succeeded", succeeded, "failed", failed)
 
 	return nil
+}
+
+// filters returns the search filters for the configured criteria and the given
+// signature statuses, falling back to the configured ones when none are given.
+func (t *Task) filters(indexedBefore time.Time, signatureStatuses []string) []types.FilterOption {
+	// An empty list is not "no signature filter": handleFilterOptions drops the
+	// predicate entirely, which would select every record matching the
+	// remaining criteria. Same hazard Validate guards against for min_severity.
+	if len(signatureStatuses) == 0 {
+		signatureStatuses = t.config.GetSignatureStatuses()
+	}
+
+	return []types.FilterOption{
+		types.WithSignatureStatuses(signatureStatuses...),
+		types.WithScanSeverities(t.config.GetMinSeverity()),
+		types.WithIndexedBefore(indexedBefore),
+		types.WithLimit(t.config.GetLimit()),
+	}
+}
+
+// criteriaLogArgs returns the criteria as log key/value pairs: the signature
+// statuses in effect, plus trusted when they were derived from it.
+func (t *Task) criteriaLogArgs(olderThan time.Duration) []any {
+	var args []any
+	if !t.config.UsesSignatureStatuses() {
+		args = append(args, "trusted", t.config.GetTrusted())
+	}
+
+	return append(args,
+		"signature_statuses", t.config.GetSignatureStatuses(),
+		"min_severity", t.config.GetMinSeverity(),
+		"older_than", olderThan,
+	)
+}
+
+// countBySignatureStatus counts the matching records per signature status in
+// effect, so a dry run shows why records would be pruned. Counts are capped by
+// Limit.
+func (t *Task) countBySignatureStatus(indexedBefore time.Time) map[string]int {
+	statuses := t.config.GetSignatureStatuses()
+	counts := make(map[string]int, len(statuses))
+
+	for _, s := range statuses {
+		cids, err := t.db.GetRecordCIDs(t.filters(indexedBefore, []string{s})...)
+		if err != nil {
+			logger.Warn("Failed to count records by signature status", "signature_status", s, "error", err)
+
+			continue
+		}
+
+		counts[s] = len(cids)
+	}
+
+	return counts
 }
 
 func (t *Task) prune(ctx context.Context, cid string) error {
