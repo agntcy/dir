@@ -9,6 +9,7 @@ import (
 
 	"cel.dev/cel-go/cel"
 	"cel.dev/cel-go/common/types"
+	policyv1 "github.com/agntcy/dir/api/policy/v1"
 	validatorsconfig "github.com/agntcy/dir/server/validators/config"
 	"google.golang.org/protobuf/types/known/structpb"
 )
@@ -20,7 +21,8 @@ type celRule struct {
 
 // celValidator evaluates inline CEL expressions against record data.
 // Each expression is compiled once at construction and must return bool.
-// The record is bound as the `record` variable (a map of the OASF fields).
+// The record is bound as the `record` variable (a map of the OASF fields),
+// alongside the typed facts of `meta` (see newPolicyEnv).
 // Validation fails if any expression is false or errors.
 type celValidator struct {
 	rules []celRule
@@ -35,11 +37,9 @@ func newCELValidator(entry validatorsconfig.Validator) (*celValidator, error) {
 		return nil, fmt.Errorf("config.expressions: %w", err)
 	}
 
-	env, err := cel.NewEnv(
-		cel.Variable("record", cel.DynType),
-	)
+	env, err := newPolicyEnv()
 	if err != nil {
-		return nil, fmt.Errorf("create CEL environment: %w", err)
+		return nil, err
 	}
 
 	rules := make([]celRule, 0, len(exprs))
@@ -73,7 +73,14 @@ func (v *celValidator) ValidateRecord(ctx context.Context, data *structpb.Struct
 		return false, []string{"record data is nil"}, nil, nil
 	}
 
-	vars := map[string]any{"record": data.AsMap()}
+	// meta is bound empty, which reads as every fact unspecified. That is the
+	// truth at push and autosync, where nothing has been produced about the
+	// record yet, and a gap at index and evaluate until the validator
+	// interface carries observed metadata.
+	vars := map[string]any{
+		celVarRecord: data.AsMap(),
+		celVarMeta:   &policyv1.RecordMeta{},
+	}
 
 	var failures []string
 

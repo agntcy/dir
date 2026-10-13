@@ -1,0 +1,159 @@
+// Copyright AGNTCY Contributors (https://github.com/agntcy)
+// SPDX-License-Identifier: Apache-2.0
+
+package validators
+
+import (
+	"testing"
+
+	"cel.dev/cel-go/cel"
+	identityv1 "github.com/agntcy/dir/api/identity/v1"
+	policyv1 "github.com/agntcy/dir/api/policy/v1"
+	securityv1 "github.com/agntcy/dir/api/security/v1"
+	validatorsconfig "github.com/agntcy/dir/server/validators/config"
+	"github.com/stretchr/testify/require"
+)
+
+// evalWithMeta compiles expr in the policy environment and evaluates it
+// against meta. Metadata does not reach the validator yet, so these tests bind
+// it directly to exercise the typed half of the environment.
+func evalWithMeta(t *testing.T, expr string, meta *policyv1.RecordMeta) bool {
+	t.Helper()
+
+	env, err := newPolicyEnv()
+	require.NoError(t, err)
+
+	ast, iss := env.Compile(expr)
+	require.NoError(t, iss.Err())
+	require.Equal(t, cel.BoolType, ast.OutputType())
+
+	prg, err := env.Program(ast)
+	require.NoError(t, err)
+
+	out, _, err := prg.Eval(map[string]any{
+		celVarRecord: map[string]any{},
+		celVarMeta:   meta,
+	})
+	require.NoError(t, err)
+
+	got, ok := out.Value().(bool)
+	require.True(t, ok, "expression returned %T, want bool", out.Value())
+
+	return got
+}
+
+// A misspelled typed field must fail when the policy is loaded, which is the
+// point of giving CEL a typed environment at all.
+func TestPolicyEnv_MisspelledFieldFailsAtLoad(t *testing.T) {
+	t.Parallel()
+
+	_, err := newCELValidator(validatorsconfig.Validator{
+		Config: celConfig(`meta.signature.statsu == SignatureStatus.SIGNATURE_STATUS_VERIFIED`),
+	})
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "compile CEL expressions[0]")
+	require.Contains(t, err.Error(), "statsu", "the error should name the misspelled field")
+}
+
+// A misspelled message is caught the same way.
+func TestPolicyEnv_MisspelledGroupFailsAtLoad(t *testing.T) {
+	t.Parallel()
+
+	_, err := newCELValidator(validatorsconfig.Validator{
+		Config: celConfig(`meta.signatrue.status == SignatureStatus.SIGNATURE_STATUS_VERIFIED`),
+	})
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "signatrue")
+}
+
+// An enum constant declared in policy/v1 is written by its short name, which
+// is what cel.Container buys.
+func TestPolicyEnv_ContainerResolvesPolicyEnums(t *testing.T) {
+	t.Parallel()
+
+	meta := &policyv1.RecordMeta{
+		Signature: &policyv1.SignatureFacts{
+			Status: policyv1.SignatureStatus_SIGNATURE_STATUS_VERIFIED,
+			Source: policyv1.FactSource_FACT_SOURCE_LOCAL,
+		},
+	}
+
+	require.True(t, evalWithMeta(t,
+		`meta.signature.status == SignatureStatus.SIGNATURE_STATUS_VERIFIED`, meta))
+	require.True(t, evalWithMeta(t,
+		`meta.signature.source == FactSource.FACT_SOURCE_LOCAL`, meta))
+	require.False(t, evalWithMeta(t,
+		`meta.signature.status == SignatureStatus.SIGNATURE_STATUS_REVOKED`, meta))
+}
+
+// Severity, ScannerType and ClaimRole are declared outside policy/v1, so they
+// resolve by short name only because they are abbreviated. Without that a
+// policy would spell some enums short and others fully qualified.
+func TestPolicyEnv_AbbrevsResolveExternalEnums(t *testing.T) {
+	t.Parallel()
+
+	meta := &policyv1.RecordMeta{
+		Scan: &policyv1.ScanFacts{
+			Status:      policyv1.ScanStatus_SCAN_STATUS_COMPLETED,
+			MaxSeverity: securityv1.Severity_SEVERITY_HIGH,
+			Scanners: []*policyv1.ScannerResult{{
+				ScannerType: securityv1.ScannerType_SCANNER_TYPE_MCP,
+				MaxSeverity: securityv1.Severity_SEVERITY_HIGH,
+			}},
+		},
+		Identity: &policyv1.IdentityFacts{
+			Owner: &policyv1.ClaimFacts{
+				Role:   identityv1.ClaimRole_CLAIM_ROLE_OWNER,
+				Status: policyv1.ClaimStatus_CLAIM_STATUS_VERIFIED,
+			},
+		},
+	}
+
+	require.True(t, evalWithMeta(t,
+		`meta.scan.max_severity == Severity.SEVERITY_HIGH`, meta))
+	require.True(t, evalWithMeta(t,
+		`meta.scan.scanners[0].scanner_type == ScannerType.SCANNER_TYPE_MCP`, meta))
+	require.True(t, evalWithMeta(t,
+		`meta.identity.owner.role == ClaimRole.CLAIM_ROLE_OWNER`, meta))
+}
+
+// Severity is declared ascending, so a threshold is an ordinary comparison.
+func TestPolicyEnv_SeverityThreshold(t *testing.T) {
+	t.Parallel()
+
+	const expr = `meta.scan.max_severity >= Severity.SEVERITY_MEDIUM`
+
+	tests := []struct {
+		severity securityv1.Severity
+		want     bool
+	}{
+		{securityv1.Severity_SEVERITY_CRITICAL, true},
+		{securityv1.Severity_SEVERITY_HIGH, true},
+		{securityv1.Severity_SEVERITY_MEDIUM, true},
+		{securityv1.Severity_SEVERITY_LOW, false},
+		{securityv1.Severity_SEVERITY_NONE, false},
+		// An unscanned record must fail the threshold rather than match it.
+		{securityv1.Severity_SEVERITY_UNSPECIFIED, false},
+	}
+
+	for _, tc := range tests {
+		meta := &policyv1.RecordMeta{Scan: &policyv1.ScanFacts{MaxSeverity: tc.severity}}
+		require.Equal(t, tc.want, evalWithMeta(t, expr, meta), "severity %s", tc.severity)
+	}
+}
+
+// An absent fact group reads as its zero value rather than erroring, so a
+// policy requiring something positive rejects the record instead of failing
+// open. This is what the validator binds today for every record.
+func TestPolicyEnv_EmptyMetaFailsPositiveRequirements(t *testing.T) {
+	t.Parallel()
+
+	empty := &policyv1.RecordMeta{}
+
+	require.False(t, evalWithMeta(t,
+		`meta.signature.status == SignatureStatus.SIGNATURE_STATUS_VERIFIED`, empty))
+	require.False(t, evalWithMeta(t,
+		`meta.scan.status == ScanStatus.SCAN_STATUS_COMPLETED`, empty))
+	require.True(t, evalWithMeta(t,
+		`meta.scan.max_severity == Severity.SEVERITY_UNSPECIFIED`, empty))
+}
