@@ -86,7 +86,7 @@ func TestTask_Run_DBError_ReturnsError(t *testing.T) {
 	assert.Contains(t, err.Error(), "get records")
 }
 
-func TestTask_Run_AppliesTrustedAndScanSeverityFilters(t *testing.T) {
+func TestTask_Run_AppliesDefaultSignatureStatusesAndScanSeverity(t *testing.T) {
 	t.Parallel()
 
 	var got types.RecordFilters
@@ -104,8 +104,8 @@ func TestTask_Run_AppliesTrustedAndScanSeverityFilters(t *testing.T) {
 	require.NoError(t, err)
 
 	require.NoError(t, task.Run(context.Background()))
-	require.NotNil(t, got.Trusted)
-	assert.False(t, *got.Trusted)
+	assert.Nil(t, got.Trusted, "prune selects by signature status, never by the trusted search filter")
+	assert.Equal(t, []string{types.SignatureStatusFailed, types.SignatureStatusUnsigned}, got.SignatureStatuses)
 	assert.Equal(t, []string{"HIGH"}, got.ScanSeverities)
 	assert.Equal(t, 25, got.Limit)
 	require.NotNil(t, got.IndexedBefore)
@@ -134,7 +134,7 @@ func TestTask_Run_AppliesConfiguredOlderThan(t *testing.T) {
 	assert.WithinDuration(t, time.Now().Add(-24*time.Hour), *got.IndexedBefore, 5*time.Second)
 }
 
-func TestTask_Run_AppliesConfiguredTrusted(t *testing.T) {
+func TestTask_Run_TrustedTrueSelectsVerified(t *testing.T) {
 	t.Parallel()
 
 	var got types.RecordFilters
@@ -148,12 +148,14 @@ func TestTask_Run_AppliesConfiguredTrusted(t *testing.T) {
 			return nil, nil
 		},
 	}
-	task, err := NewTask(Config{Enabled: true, Criteria: Criteria{Trusted: true}}, db, &fakeStore{})
+	trusted := true
+
+	task, err := NewTask(Config{Enabled: true, Criteria: Criteria{Trusted: &trusted}}, db, &fakeStore{})
 	require.NoError(t, err)
 
 	require.NoError(t, task.Run(context.Background()))
-	require.NotNil(t, got.Trusted)
-	assert.True(t, *got.Trusted)
+	assert.Nil(t, got.Trusted)
+	assert.Equal(t, []string{types.SignatureStatusVerified}, got.SignatureStatuses, "trusted: true is [verified]")
 }
 
 func TestTask_Run_DeletesMatchingRecords(t *testing.T) {
@@ -289,4 +291,172 @@ func (f *fakeStore) Delete(ctx context.Context, ref *corev1.RecordRef) error {
 	}
 
 	return nil
+}
+
+func TestNewTask_InvalidSignatureStatus(t *testing.T) {
+	t.Parallel()
+
+	task, err := NewTask(Config{Enabled: true, Criteria: Criteria{SignatureStatuses: []string{"unknown"}}}, nil, nil)
+	require.Error(t, err)
+	assert.Nil(t, task)
+	assert.Contains(t, err.Error(), `invalid signature_statuses value "unknown"`)
+}
+
+func TestTask_Run_AppliesSignatureStatusesInsteadOfTrusted(t *testing.T) {
+	t.Parallel()
+
+	var got types.RecordFilters
+
+	db := &fakeIndex{
+		getRecordCIDs: func(opts ...types.FilterOption) ([]string, error) {
+			for _, opt := range opts {
+				opt(&got)
+			}
+
+			return nil, nil
+		},
+	}
+	task, err := NewTask(Config{Enabled: true, Criteria: Criteria{
+		SignatureStatuses: []string{types.SignatureStatusFailed, types.SignatureStatusUnsigned},
+	}}, db, &fakeStore{})
+	require.NoError(t, err)
+
+	require.NoError(t, task.Run(context.Background()))
+	assert.Nil(t, got.Trusted, "trusted is not applied with signature_statuses")
+	assert.Equal(t, []string{types.SignatureStatusFailed, types.SignatureStatusUnsigned}, got.SignatureStatuses)
+}
+
+func TestTask_Run_DryRunCountsEachSignatureStatus(t *testing.T) {
+	t.Parallel()
+
+	var queried [][]string
+
+	db := &fakeIndex{
+		getRecordCIDs: func(opts ...types.FilterOption) ([]string, error) {
+			var f types.RecordFilters
+			for _, opt := range opts {
+				opt(&f)
+			}
+
+			queried = append(queried, f.SignatureStatuses)
+
+			return []string{"cid-a"}, nil
+		},
+	}
+	task, err := NewTask(Config{Enabled: true, DryRun: true, Criteria: Criteria{
+		SignatureStatuses: []string{types.SignatureStatusFailed, types.SignatureStatusUnsigned},
+	}}, db, &fakeStore{})
+	require.NoError(t, err)
+
+	require.NoError(t, task.Run(context.Background()))
+	assert.Equal(t, [][]string{
+		{types.SignatureStatusFailed, types.SignatureStatusUnsigned},
+		{types.SignatureStatusFailed},
+		{types.SignatureStatusUnsigned},
+	}, queried, "one query for the match, then one count per status")
+}
+
+func TestTask_Run_UnsetTrustedSelectsFailedAndUnsigned(t *testing.T) {
+	t.Parallel()
+
+	var got types.RecordFilters
+
+	db := &fakeIndex{
+		getRecordCIDs: func(opts ...types.FilterOption) ([]string, error) {
+			for _, opt := range opts {
+				opt(&got)
+			}
+
+			return nil, nil
+		},
+	}
+	task, err := NewTask(Config{Enabled: true}, db, &fakeStore{})
+	require.NoError(t, err)
+
+	require.NoError(t, task.Run(context.Background()))
+	assert.Nil(t, got.Trusted)
+	assert.Equal(t, []string{types.SignatureStatusFailed, types.SignatureStatusUnsigned}, got.SignatureStatuses,
+		"unset trusted is [failed, unsigned]: a signed record without a result is never selected")
+}
+
+// A failed count is logged and skipped; the dry run still succeeds.
+func TestTask_Run_DryRunCountErrorIsNotFatal(t *testing.T) {
+	t.Parallel()
+
+	calls := 0
+
+	db := &fakeIndex{
+		getRecordCIDs: func(_ ...types.FilterOption) ([]string, error) {
+			calls++
+			if calls == 1 {
+				return []string{"cid-a"}, nil
+			}
+
+			return nil, errors.New("count failed")
+		},
+	}
+	task, err := NewTask(Config{Enabled: true, DryRun: true, Criteria: Criteria{
+		SignatureStatuses: []string{types.SignatureStatusFailed},
+	}}, db, &fakeStore{})
+	require.NoError(t, err)
+
+	require.NoError(t, task.Run(context.Background()))
+	assert.Equal(t, 2, calls)
+}
+
+// The default path gets a per-status breakdown in dry runs too.
+func TestTask_Run_DryRunCountsDefaultStatuses(t *testing.T) {
+	t.Parallel()
+
+	var queried [][]string
+
+	db := &fakeIndex{
+		getRecordCIDs: func(opts ...types.FilterOption) ([]string, error) {
+			var f types.RecordFilters
+			for _, opt := range opts {
+				opt(&f)
+			}
+
+			queried = append(queried, f.SignatureStatuses)
+
+			return []string{"cid-a"}, nil
+		},
+	}
+	task, err := NewTask(Config{Enabled: true, DryRun: true}, db, &fakeStore{})
+	require.NoError(t, err)
+
+	require.NoError(t, task.Run(context.Background()))
+	assert.Equal(t, [][]string{
+		{types.SignatureStatusFailed, types.SignatureStatusUnsigned},
+		{types.SignatureStatusFailed},
+		{types.SignatureStatusUnsigned},
+	}, queried)
+}
+
+// An empty status list must never reach the search layer: it would drop the
+// signature predicate and select every record matching the other criteria.
+func TestTask_Filters_EmptyStatusesFallBackToConfigured(t *testing.T) {
+	t.Parallel()
+
+	applied := func(task *Task, statuses []string) []string {
+		var f types.RecordFilters
+		for _, opt := range task.filters(time.Now(), statuses) {
+			opt(&f)
+		}
+
+		return f.SignatureStatuses
+	}
+
+	unset, err := NewTask(Config{Enabled: true}, nil, nil)
+	require.NoError(t, err)
+	assert.Equal(t, []string{types.SignatureStatusFailed, types.SignatureStatusUnsigned}, applied(unset, nil))
+
+	configured, err := NewTask(Config{Enabled: true, Criteria: Criteria{
+		SignatureStatuses: []string{types.SignatureStatusUnsigned},
+	}}, nil, nil)
+	require.NoError(t, err)
+	assert.Equal(t, []string{types.SignatureStatusUnsigned}, applied(configured, []string{}))
+
+	assert.Equal(t, []string{types.SignatureStatusVerified}, applied(configured, []string{types.SignatureStatusVerified}),
+		"explicit statuses pass through")
 }

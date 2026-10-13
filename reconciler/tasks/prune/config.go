@@ -4,11 +4,13 @@
 package prune
 
 import (
+	"errors"
 	"fmt"
 	"strings"
 	"time"
 
 	securityv1 "github.com/agntcy/dir/api/security/v1"
+	"github.com/agntcy/dir/server/types"
 )
 
 const (
@@ -32,9 +34,19 @@ const (
 
 // Criteria is the search filter the prune applies.
 type Criteria struct {
-	// Trusted selects records by signature-verification status.
-	// Config loading defaults this to false (not trusted).
-	Trusted bool `json:"trusted" mapstructure:"trusted"`
+	// Trusted selects records by signature status: true selects [verified],
+	// false selects [failed, unsigned]. Unset means false. Mutually exclusive
+	// with SignatureStatuses.
+	Trusted *bool `json:"trusted,omitempty" mapstructure:"trusted"`
+
+	// SignatureStatuses selects records whose signature status is any of
+	// "verified", "failed" or "unsigned". Mutually exclusive with Trusted.
+	//   - verified: at least one signature verifies.
+	//   - failed: a signature verified before but no longer does (e.g. revoked).
+	//   - unsigned: no signature is attached to the record.
+	// A signed record with no verification result matches none of them, so
+	// prune never deletes it, whether selecting by these or by Trusted.
+	SignatureStatuses []string `json:"signature_statuses,omitempty" mapstructure:"signature_statuses"`
 
 	// MinSeverity is the minimum scan severity that selects a record
 	// for deletion (e.g. "MEDIUM").
@@ -59,7 +71,8 @@ type Config struct {
 	// RecordTimeout is the timeout for each individual store delete.
 	RecordTimeout time.Duration `json:"record_timeout,omitempty" mapstructure:"record_timeout"`
 
-	// Criteria is the search filter: trusted status, min scan severity, and age.
+	// Criteria is the search filter: signature status (or trusted), min scan
+	// severity, and age.
 	Criteria Criteria `json:"criteria,omitzero" mapstructure:"criteria"`
 
 	// Limit is the maximum number of matching records deleted per run.
@@ -115,15 +128,58 @@ func (c *Config) GetLimit() int {
 	return c.Limit
 }
 
-// Validate reports an invalid min_severity. Unknown values must not reach
-// the search layer: ScanSeveritiesGTE returns nil for them and the SQL
-// predicate is dropped, so prune would match every record that satisfies
-// the other criteria.
+// GetTrusted returns the trusted criterion; unset means false.
+func (c *Config) GetTrusted() bool {
+	return c.Criteria.Trusted != nil && *c.Criteria.Trusted
+}
+
+// UsesSignatureStatuses reports whether SignatureStatuses is configured
+// instead of Trusted.
+func (c *Config) UsesSignatureStatuses() bool {
+	return len(c.Criteria.SignatureStatuses) > 0
+}
+
+// GetSignatureStatuses returns the signature statuses prune selects. Trusted is
+// an alias over them: true is [verified], false (or unset) is
+// [failed, unsigned].
+//
+// This differs from the trusted search filter on purpose: "not trusted" there
+// also lists signed records without a verification result, but prune never
+// deletes those. A filter that deletes must be conservative about missing
+// evidence; one that lists should not hide records.
+func (c *Config) GetSignatureStatuses() []string {
+	if c.UsesSignatureStatuses() {
+		return c.Criteria.SignatureStatuses
+	}
+
+	if c.GetTrusted() {
+		return []string{types.SignatureStatusVerified}
+	}
+
+	return []string{types.SignatureStatusFailed, types.SignatureStatusUnsigned}
+}
+
+// Validate reports an invalid min_severity or signature status, or both
+// trusted and signature_statuses set. Unknown values
+// must not reach the search layer: ScanSeveritiesGTE returns nil for them and
+// the SQL predicate is dropped, so prune would match every record that
+// satisfies the other criteria.
 func (c *Config) Validate() error {
 	severity := c.GetMinSeverity()
 	if !securityv1.IsScanSeverity(severity) {
 		return fmt.Errorf("invalid min_severity %q, must be one of: %s",
 			severity, strings.Join(securityv1.ScanSeveritiesGTE(securityv1.ScanSeverityNone), ", "))
+	}
+
+	if c.Criteria.Trusted != nil && c.UsesSignatureStatuses() {
+		return errors.New("set either trusted or signature_statuses, not both")
+	}
+
+	for _, s := range c.Criteria.SignatureStatuses {
+		if !types.IsSignatureStatus(s) {
+			return fmt.Errorf("invalid signature_statuses value %q, must be one of: %s",
+				s, strings.Join(types.SignatureStatuses(), ", "))
+		}
 	}
 
 	return nil

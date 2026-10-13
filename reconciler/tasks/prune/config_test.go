@@ -65,3 +65,58 @@ func TestConfig_Validate(t *testing.T) {
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), `invalid min_severity "UNSPECIFIED"`)
 }
+
+func TestConfig_Validate_SignatureStatuses(t *testing.T) {
+	t.Parallel()
+
+	assert.NoError(t, (&Config{Criteria: Criteria{SignatureStatuses: []string{}}}).Validate())
+	assert.NoError(t, (&Config{Criteria: Criteria{SignatureStatuses: []string{"verified", "failed", "unsigned"}}}).Validate())
+
+	// "unknown" (no verification result) is not selectable: a signed record may
+	// simply not be verified yet.
+	err := (&Config{Criteria: Criteria{SignatureStatuses: []string{"failed", "unknown"}}}).Validate()
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), `invalid signature_statuses value "unknown"`)
+	assert.Contains(t, err.Error(), "verified, failed, unsigned")
+}
+
+func TestConfig_Validate_TrustedAndSignatureStatusesAreExclusive(t *testing.T) {
+	t.Parallel()
+
+	trusted := false
+
+	assert.NoError(t, (&Config{Criteria: Criteria{Trusted: &trusted}}).Validate())
+	assert.NoError(t, (&Config{Criteria: Criteria{SignatureStatuses: []string{"failed"}}}).Validate())
+
+	err := (&Config{Criteria: Criteria{Trusted: &trusted, SignatureStatuses: []string{"failed"}}}).Validate()
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "set either trusted or signature_statuses, not both")
+}
+
+func TestConfig_GetTrusted(t *testing.T) {
+	t.Parallel()
+
+	trusted, untrusted := true, false
+
+	assert.False(t, (&Config{}).GetTrusted(), "unset means false")
+	assert.False(t, (&Config{Criteria: Criteria{Trusted: &untrusted}}).GetTrusted())
+	assert.True(t, (&Config{Criteria: Criteria{Trusted: &trusted}}).GetTrusted())
+}
+
+func TestConfig_UsesSignatureStatuses(t *testing.T) {
+	t.Parallel()
+
+	assert.False(t, (&Config{}).UsesSignatureStatuses())
+	assert.True(t, (&Config{Criteria: Criteria{SignatureStatuses: []string{"failed"}}}).UsesSignatureStatuses())
+}
+
+func TestConfig_GetSignatureStatuses(t *testing.T) {
+	t.Parallel()
+
+	trusted, untrusted := true, false
+
+	assert.Equal(t, []string{"failed", "unsigned"}, (&Config{}).GetSignatureStatuses(), "unset trusted")
+	assert.Equal(t, []string{"failed", "unsigned"}, (&Config{Criteria: Criteria{Trusted: &untrusted}}).GetSignatureStatuses())
+	assert.Equal(t, []string{"verified"}, (&Config{Criteria: Criteria{Trusted: &trusted}}).GetSignatureStatuses())
+	assert.Equal(t, []string{"unsigned"}, (&Config{Criteria: Criteria{SignatureStatuses: []string{"unsigned"}}}).GetSignatureStatuses())
+}

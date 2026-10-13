@@ -34,7 +34,9 @@ func TestLoadConfig_NoFile_ReturnsDefaults(t *testing.T) {
 	assert.True(t, cfg.Indexer.Enabled)
 	assert.False(t, cfg.Prune.Enabled)
 	assert.Equal(t, 30*time.Minute, cfg.Prune.Interval)
-	assert.False(t, cfg.Prune.Criteria.Trusted)
+	assert.Nil(t, cfg.Prune.Criteria.Trusted, "trusted has no default: it excludes signature_statuses")
+	assert.False(t, cfg.Prune.GetTrusted())
+	assert.Empty(t, cfg.Prune.Criteria.SignatureStatuses)
 	assert.Equal(t, "MEDIUM", cfg.Prune.Criteria.MinSeverity)
 	assert.Equal(t, 168*time.Hour, cfg.Prune.Criteria.OlderThan)
 	assert.Equal(t, 100, cfg.Prune.Limit)
@@ -118,7 +120,8 @@ func TestLoadConfig_EnvOverrides(t *testing.T) {
 	assert.Equal(t, 250, cfg.PolicyEvaluation.BatchSize)
 	assert.True(t, cfg.Prune.Enabled)
 	assert.Equal(t, 15*time.Minute, cfg.Prune.Interval)
-	assert.True(t, cfg.Prune.Criteria.Trusted)
+	require.NotNil(t, cfg.Prune.Criteria.Trusted)
+	assert.True(t, *cfg.Prune.Criteria.Trusted)
 	assert.Equal(t, "HIGH", cfg.Prune.Criteria.MinSeverity)
 	assert.Equal(t, 48*time.Hour, cfg.Prune.Criteria.OlderThan)
 	assert.Equal(t, 25, cfg.Prune.Limit)
@@ -183,4 +186,16 @@ func TestLoadConfig_SyncFromEnv(t *testing.T) {
 	assert.Equal(t, []string{"research", "analytics"}, cfg.Sync.Criteria.Domains)
 	assert.Equal(t, 25, cfg.Sync.Limit)
 	assert.False(t, cfg.Sync.DryRun)
+}
+
+// The env form of signature_statuses is comma-separated.
+func TestLoadConfig_PruneSignatureStatusesFromEnv(t *testing.T) {
+	t.Setenv("RECONCILER_PRUNE_CRITERIA_SIGNATURE_STATUSES", "failed,unsigned")
+
+	cfg, err := LoadConfig()
+	require.NoError(t, err)
+
+	assert.Equal(t, []string{"failed", "unsigned"}, cfg.Prune.Criteria.SignatureStatuses)
+	assert.Nil(t, cfg.Prune.Criteria.Trusted)
+	assert.NoError(t, cfg.Prune.Validate())
 }
