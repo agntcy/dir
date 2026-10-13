@@ -1,5 +1,5 @@
-import type { CatalogEntry, ScanManifest, SubEntry, ExportFormat, UsageMetrics, TrustStatus } from './types';
-import { TRUST_STATUS_METADATA_KEY } from './types';
+import type { CatalogEntry, ClaimSummary, ScanManifest, StatusFilter, SubEntry, ExportFormat, UsageMetrics, TrustStatus } from './types';
+import { STATUS_FILTERS, TRUST_STATUS_METADATA_KEY } from './types';
 
 export function getScanManifest(aicard: CatalogEntry): ScanManifest | null {
 	const sm = aicard.metadata?.["agntcy.dir.security.v1.ScanResult"] as ScanManifest | undefined;
@@ -19,25 +19,77 @@ export function extractEntryTypes(aicard: CatalogEntry): string[] {
 	return [];
 }
 
+/**
+ * Captures the kind and class name out of an `oasf:<schema>:skills|domains:<name>`
+ * tag id. Ids of any other shape — record annotations, say — do not match.
+ */
+export const OASF_TAG_ID = /^oasf:[^:]*:(skills|domains):(.+)$/;
+
+/**
+ * Only OASF class tags are shortened. Annotation tags are `key=value`, and a
+ * URI value would not survive being split on `:` or `/`.
+ */
 export function extractShortTag(tag: string): string {
-	if (tag.startsWith('oasf:')) {
-		const segment = tag.split('/').pop() || '';
-		return segment
-			.split('_')
-			.map((w) => w.charAt(0).toUpperCase() + w.slice(1))
-			.join(' ');
-	}
-	const parts = tag.split(':');
-	return (parts[parts.length - 1] || '').replace(/_/g, ' ');
+	const match = OASF_TAG_ID.exec(tag);
+	if (!match) return tag;
+
+	const leaf = match[2].slice(match[2].lastIndexOf('/') + 1);
+	return leaf
+		.split('_')
+		.map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+		.join(' ');
 }
 
-export function getTrustStatus(aicard: CatalogEntry): TrustStatus | null {
-	const status = aicard.metadata?.[TRUST_STATUS_METADATA_KEY] as TrustStatus | undefined;
-	if (!status || typeof status.trusted !== 'boolean' || typeof status.verified !== 'boolean') {
-		return null;
-	}
+function isClaimSummary(value: unknown): value is ClaimSummary {
+	if (typeof value !== 'object' || value === null) return false;
+	const claim = value as Record<string, unknown>;
+	return (
+		typeof claim.role === 'string' &&
+		typeof claim.subject === 'string' &&
+		typeof claim.status === 'string' &&
+		(claim.verifiedAt === undefined || typeof claim.verifiedAt === 'string')
+	);
+}
 
-	return status;
+function firstClaimPerRole(claims: ClaimSummary[]): ClaimSummary[] {
+	const byRole = new Map<string, ClaimSummary>();
+	for (const claim of claims) {
+		if (!byRole.has(claim.role)) byRole.set(claim.role, claim);
+	}
+	return [...byRole.values()];
+}
+
+/** The one validated parse of the trust metadata; badges and the claims list both read from it. */
+export function getTrustStatus(aicard: CatalogEntry): TrustStatus | null {
+	const raw = aicard.metadata?.[TRUST_STATUS_METADATA_KEY];
+	if (typeof raw !== 'object' || raw === null) return null;
+
+	const status = raw as Record<string, unknown>;
+	if (typeof status.trusted !== 'boolean' || typeof status.verified !== 'boolean') return null;
+
+	const result: TrustStatus = { trusted: status.trusted, verified: status.verified };
+	if (typeof status.identityVerified === 'boolean') result.identityVerified = status.identityVerified;
+	if (Array.isArray(status.claims)) result.claims = firstClaimPerRole(status.claims.filter(isClaimSummary));
+
+	return result;
+}
+
+export function getClaims(aicard: CatalogEntry): ClaimSummary[] {
+	return getTrustStatus(aicard)?.claims ?? [];
+}
+
+export function getIdentityClaim(aicard: CatalogEntry): ClaimSummary | null {
+	return getClaims(aicard).find((claim) => claim.role === 'identity') ?? null;
+}
+
+/** Localized time of a claim check, or '' when there is nothing parseable to show. */
+export function formatCheckedAt(verifiedAt?: string): string {
+	const time = verifiedAt ? new Date(verifiedAt) : null;
+	return time && !Number.isNaN(time.getTime()) ? time.toLocaleString() : '';
+}
+
+export function isStatusFilter(value: string): value is StatusFilter {
+	return STATUS_FILTERS.some((filter) => filter.value === value);
 }
 
 export function getUsageMetrics(aicard: CatalogEntry): UsageMetrics | null {

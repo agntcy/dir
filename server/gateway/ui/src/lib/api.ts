@@ -6,6 +6,8 @@ import type {
 	ScoredClass,
 	SuggestedTag
 } from './types';
+import { STATUS_FILTERS } from './types';
+import { OASF_TAG_ID } from './utils';
 
 /** Matches the 3-column grid layout (18 = 6 full rows). */
 export const CATALOG_PAGE_SIZE = 18;
@@ -45,8 +47,10 @@ export function buildAICardFilterQuery(criteria: AICardFilterCriteria): string {
 		}
 	}
 
-	if (criteria.statusFilters.has('trusted')) {
-		clauses.push('trusted=true');
+	for (const status of STATUS_FILTERS) {
+		if (criteria.statusFilters.has(status.value)) {
+			clauses.push(status.clause);
+		}
 	}
 
 	if (criteria.scanSafe) {
@@ -129,12 +133,6 @@ export async function extractTaxonomy(
 
 /** Kinds of OASF class that /v1/tags exposes as a tag. */
 type ClassKind = SuggestedTag['kind'];
-
-/**
- * Captures the kind and class name out of an `oasf:<schema>:skills|domains:<name>`
- * tag id. Ids of any other shape — record annotations, say — do not match.
- */
-const OASF_TAG_ID = /^oasf:[^:]*:(skills|domains):(.+)$/;
 
 /**
  * Indexes catalog tags by the OASF class they carry.
@@ -225,4 +223,18 @@ export async function fetchAICardsPage(
 		nextPageToken: data.nextPageToken || '',
 		totalCount: data.totalCount ?? 0,
 	};
+}
+
+/**
+ * Whether any record matches `clause`, so the sidebar can withhold a filter
+ * that would only ever empty the catalog. Failures read as "none": hiding the
+ * checkbox is the harmless way to be wrong.
+ */
+export async function hasMatchingRecords(clause: string, signal?: AbortSignal): Promise<boolean> {
+	try {
+		const page = await fetchAICardsPage({ filter: clause, pageSize: 1, signal });
+		return page.totalCount > 0;
+	} catch {
+		return false;
+	}
 }

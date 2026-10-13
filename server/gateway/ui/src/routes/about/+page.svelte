@@ -1,4 +1,5 @@
 <script lang="ts">
+	import IdentityBadge from '$lib/components/IdentityBadge.svelte';
 	import TrustedBadge from '$lib/components/TrustedBadge.svelte';
 	import { catalogTitleState } from '$lib/catalog-title.svelte';
 </script>
@@ -138,6 +139,17 @@
 				<strong class="font-medium text-ink-strong">Trusted</strong> badge on catalog cards and in the
 				detail view. Use the <strong class="font-medium text-ink-strong">Trusted</strong> status filter in
 				the sidebar to limit results to records with valid signatures.
+			</p>
+			<p class="mt-3 text-sm text-ink leading-relaxed">
+				Records whose identity claim verified show an
+				<span class="inline-flex align-middle mx-0.5"><IdentityBadge status="verified" subject="did:web:example.com" /></span>
+				<strong class="font-medium text-ink-strong">Identity verified</strong> badge; a failed check shows
+				the same badge in red. The detail view lists each
+				<strong class="font-medium text-ink-strong">Identity claim</strong> and
+				<strong class="font-medium text-ink-strong">Owner claim</strong> under
+				<strong class="font-medium text-ink-strong">Claims</strong>, and the
+				<strong class="font-medium text-ink-strong">Identity verified</strong> status filter appears in the
+				sidebar once the catalog holds at least one such record.
 			</p>
 		</section>
 	</div>

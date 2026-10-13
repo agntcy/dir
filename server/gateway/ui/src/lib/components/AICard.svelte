@@ -1,10 +1,8 @@
 <script lang="ts">
 	import type { CatalogEntry } from '$lib/types';
-	import { extractEntryTypes, extractShortTag, getTrustStatus, getScanManifest, getUsageMetrics, formatDownloads } from '$lib/utils';
+	import { extractEntryTypes, extractShortTag, getUsageMetrics, formatDownloads } from '$lib/utils';
 	import MediaTypeBadge from './MediaTypeBadge.svelte';
-	import ScanBadge from './ScanBadge.svelte';
-	import TrustedBadge from './TrustedBadge.svelte';
-	import VerifiedBadge from './VerifiedBadge.svelte';
+	import TrustBadges from './TrustBadges.svelte';
 
 	interface Props {
 		aicard: CatalogEntry;
@@ -14,8 +12,6 @@
 	let { aicard, onclick }: Props = $props();
 
 	let types = $derived(extractEntryTypes(aicard));
-	let trustStatus = $derived(getTrustStatus(aicard));
-	let scanManifest = $derived(getScanManifest(aicard));
 	let tags = $derived((aicard.tags || []).slice(0, 3));
 	let metrics = $derived(getUsageMetrics(aicard));
 </script>
@@ -32,15 +28,7 @@
 		<div class="min-w-0">
 			<div class="flex items-center gap-1.5 min-w-0">
 				<h3 class="font-semibold text-ink-strong truncate">{aicard.displayName || 'Unnamed AI card'}</h3>
-				{#if trustStatus?.trusted}
-					<TrustedBadge />
-				{/if}
-				{#if trustStatus?.verified}
-					<VerifiedBadge />
-				{/if}
-				{#if scanManifest}
-					<ScanBadge scan={scanManifest} />
-				{/if}
+				<TrustBadges {aicard} />
 			</div>
 			<p class="text-xs text-ink-medium mt-0.5">
 				{#if aicard.version}Version {aicard.version}{/if}
