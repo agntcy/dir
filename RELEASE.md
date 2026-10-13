@@ -130,6 +130,8 @@ Publishing the release also starts the `Post Release` workflow, which pushes the
 
 The release workflow attaches `dirctl-v1.3.0-windows-amd64.zip` (`dirctl.exe` and `LICENSE.md`) to the release. When a stable release is published, `Post Release` renders the `AGNTCY.dirctl` manifests from that zip, validates them on a Windows runner (`winget validate`, then an install from the local manifests and `dirctl version`) and pushes them to the `agntcy/winget-pkgs` fork. Prereleases are skipped.
 
+The manifest links the privacy policy at the release tag (`cli/PRIVACY.md`), because `dirctl` handles credentials and WinGet asks for one. The workflow stops if the tag does not contain the file. Update the policy in the same pull request as any change to what `dirctl` reads, writes or sends.
+
 The GitHub App can push to the fork but cannot open a pull request against `microsoft/winget-pkgs`. To finish:
 
 1. Open the `WinGet` job's summary in the `Post Release` run. It links to the compare page and gives the pull request title: `New package: AGNTCY.dirctl version 1.3.0` for the first submission, `New version: AGNTCY.dirctl version 1.3.0` after that.

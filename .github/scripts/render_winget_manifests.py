@@ -28,6 +28,8 @@ PACKAGE_LOCALE = "en-US"
 PUBLISHER = "AGNTCY"
 REPOSITORY = "agntcy/dir"
 DOCS_URL = "https://docs.agntcy.org/dir/getting-started/"
+# dirctl handles credentials (OIDC tokens, signing keys), so the manifest needs a privacy policy.
+PRIVACY_PATH = "cli/PRIVACY.md"
 
 # Stable releases only: WinGet versions are what users install by default.
 TAG_PATTERN = re.compile(r"^v(?P<version>\d+\.\d+\.\d+)$")
@@ -66,6 +68,20 @@ def sha256_of_stream(stream) -> str:
 def fetch_release(tag: str) -> dict:
     with open_url(f"https://api.github.com/repos/{REPOSITORY}/releases/tags/{tag}") as response:
         return json.loads(response.read())
+
+
+def ensure_privacy_policy(tag: str) -> None:
+    """Fail if the release tag does not contain the privacy policy the manifest links to."""
+    url = f"https://api.github.com/repos/{REPOSITORY}/contents/{PRIVACY_PATH}?ref={tag}"
+    request = urllib.request.Request(url, headers=github_headers())
+    try:
+        urllib.request.urlopen(request, timeout=60).close()  # noqa: S310 - https GitHub URL only
+    except HTTPError as error:
+        if error.code == 404:
+            raise SystemExit(
+                f"release {tag} has no {PRIVACY_PATH}; WinGet needs it for a tool that handles credentials"
+            ) from error
+        raise SystemExit(f"failed to check {PRIVACY_PATH} at {tag}: HTTP {error.code}") from error
 
 
 def render(version: str, release_date: str, installer_url: str, installer_sha256: str, tag: str) -> dict[str, str]:
@@ -109,6 +125,7 @@ PackageLocale: {PACKAGE_LOCALE}
 Publisher: {PUBLISHER}
 PublisherUrl: https://github.com/agntcy
 PublisherSupportUrl: https://github.com/{REPOSITORY}/issues
+PrivacyUrl: https://github.com/{REPOSITORY}/blob/{tag}/{PRIVACY_PATH}
 Author: AGNTCY Contributors
 PackageName: dirctl
 PackageUrl: https://github.com/{REPOSITORY}
@@ -172,6 +189,7 @@ def main() -> int:
         if not release_date:
             raise SystemExit("--release-date is required with --installer-zip")
     else:
+        ensure_privacy_policy(args.tag)
         release = fetch_release(args.tag)
         assets = {asset["name"]: asset["browser_download_url"] for asset in release.get("assets", [])}
         if name not in assets:
