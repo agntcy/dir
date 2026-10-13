@@ -602,8 +602,8 @@ func (d *DB) handleFilterOptions(query *gorm.DB, cfg *types.RecordFilters) *gorm
 			query = applyClaimVerified(query, types.ClaimRoleOwner)
 		} else {
 			query = query.Where(
-				utils.BuildNotExistsCondition("identity_claims", "ic", "ic.record_cid = records.record_cid AND ic.role = ? AND ic.status = ?"),
-				types.ClaimRoleOwner, types.ClaimStatusVerified,
+				utils.BuildNotExistsCondition("identity_claims", "ic", "ic.record_cid = records.record_cid AND ic.role = ? AND ic.status = ? AND (ic.valid_until IS NULL OR ic.valid_until > ?)"),
+				types.ClaimRoleOwner, types.ClaimStatusVerified, time.Now(),
 			)
 		}
 	}

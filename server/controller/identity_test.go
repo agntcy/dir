@@ -128,6 +128,19 @@ func TestIdentityGetIdentityStatus_NoClaims(t *testing.T) {
 	assert.Nil(t, resp.GetOwner())
 }
 
+func TestIdentityGetIdentityStatus_ExpiredAGNTCYObservation(t *testing.T) {
+	db := newFakeIdentityDB()
+	expired := time.Now().Add(-time.Minute)
+	db.claims["cid-v1/"+types.ClaimRoleIdentity] = &gormdb.IdentityClaim{
+		RecordCID: "cid-v1", Role: types.ClaimRoleIdentity, Subject: "agntcy://Agent",
+		Status: types.ClaimStatusVerified, VerifiedAt: expired.Add(-time.Hour), ValidUntil: &expired,
+	}
+	resp, err := NewIdentityController(db).GetIdentityStatus(context.Background(), &identityv1.GetIdentityStatusRequest{Cid: new("cid-v1")})
+	require.NoError(t, err)
+	assert.Equal(t, identityv1.ClaimVerificationStatus_CLAIM_VERIFICATION_STATUS_FAILED, resp.GetIdentity().GetStatus())
+	assert.Contains(t, resp.GetIdentity().GetError(), "expired")
+}
+
 func TestIdentityGetIdentityStatus_ReturnsBothClaims(t *testing.T) {
 	db := newFakeIdentityDB()
 	verifiedAt := time.Date(2026, 1, 2, 3, 4, 5, 0, time.UTC)

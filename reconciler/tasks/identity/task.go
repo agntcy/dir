@@ -13,11 +13,14 @@ import (
 	"context"
 	"encoding/base64"
 	"fmt"
+	"strings"
 	"time"
 
 	corev1 "github.com/agntcy/dir/api/core/v1"
 	identityv1 "github.com/agntcy/dir/api/identity/v1"
 	clientidentity "github.com/agntcy/dir/client/utils/identity"
+	keyresolvers "github.com/agntcy/dir/client/utils/identity/resolvers"
+	agntcyresolver "github.com/agntcy/dir/client/utils/identity/resolvers/agntcy"
 	spifferesolver "github.com/agntcy/dir/client/utils/identity/resolvers/spiffe"
 	gormdb "github.com/agntcy/dir/server/database/gorm"
 	"github.com/agntcy/dir/server/types"
@@ -51,22 +54,35 @@ var claimKinds = []claimKind{
 
 // Task implements the identity claim verification task.
 type Task struct {
-	config   Config
-	db       types.DatabaseAPI
-	store    types.StoreAPI
-	refStore types.ReferrerStoreAPI
-	network  resolverSet
+	config        Config
+	db            types.DatabaseAPI
+	store         types.StoreAPI
+	refStore      types.ReferrerStoreAPI
+	network       resolverSet
+	claimResolver clientidentity.ClaimResolver
 }
 
 // NewTask creates a new identity claim verification task.
 func NewTask(config Config, db types.DatabaseAPI, store types.StoreAPI, refStore types.ReferrerStoreAPI) (*Task, error) {
-	return &Task{
+	task := &Task{
 		config:   config,
 		db:       db,
 		store:    store,
 		refStore: refStore,
 		network:  newNetworkResolvers(),
-	}, nil
+	}
+	if config.AGNTCY.VerifierURL != "" {
+		authority, err := agntcyresolver.New(config.AGNTCY, nil)
+		if err != nil {
+			return nil, fmt.Errorf("configure AGNTCY authority: %w", err)
+		}
+
+		task.network.agntcy, task.claimResolver = authority, authority
+	} else if config.AGNTCY.VerifierTrustBundleFile != "" {
+		return nil, fmt.Errorf("AGNTCY verifier_url is required with a trust bundle")
+	}
+
+	return task, nil
 }
 
 // Name returns the task name.
@@ -89,6 +105,16 @@ func (t *Task) Run(ctx context.Context) error {
 	logger.Debug("Running identity claim verification")
 
 	resolvers := t.network
+	if t.config.AGNTCY.VerifierURL != "" {
+		authority, err := agntcyresolver.New(t.config.AGNTCY, nil)
+		if err != nil {
+			logger.Error("AGNTCY authority configuration could not be reloaded", "error", err)
+			resolvers.agntcy = failedResolver{err: err}
+			t.claimResolver = nil
+		} else {
+			resolvers.agntcy, t.claimResolver = authority, authority
+		}
+	}
 	resolvers.spiffe = spifferesolver.New(t.loadTrustBundles())
 	resolvers = resolvers.cached()
 
@@ -277,13 +303,18 @@ func (t *Task) verify(ctx context.Context, resolvers resolverSet, cid, expected 
 			continue
 		}
 
-		err := t.verifyClaim(ctx, resolvers, cid, expected, claim)
+		until, err := t.verifyClaim(ctx, resolvers, cid, expected, claim)
 		if err == nil {
+			var deadline *time.Time
+			if !until.IsZero() {
+				deadline = &until
+			}
 			return &gormdb.IdentityClaim{
 				RecordCID:  cid,
 				Subject:    expected,
 				Status:     types.ClaimStatusVerified,
 				VerifiedAt: time.Now(),
+				ValidUntil: deadline,
 			}, false
 		}
 
@@ -314,14 +345,14 @@ func (t *Task) verify(ctx context.Context, resolvers resolverSet, cid, expected 
 // verifyClaim looks up the current keys of the claim's subject and verifies the
 // claim against them. The checks that need no key come first, so a claim that
 // cannot verify costs no lookup.
-func (t *Task) verifyClaim(ctx context.Context, resolvers resolverSet, cid, expected string, claim *identityv1.Claim) error {
+func (t *Task) verifyClaim(ctx context.Context, resolvers resolverSet, cid, expected string, claim *identityv1.Claim) (time.Time, error) {
 	if err := clientidentity.Check(claim, cid, expected); err != nil {
-		return fmt.Errorf("check claim: %w", err)
+		return time.Time{}, fmt.Errorf("check claim: %w", err)
 	}
 
 	resolver, err := resolvers.forSubject(claim.GetSubject())
 	if err != nil {
-		return err
+		return time.Time{}, err
 	}
 
 	var certificate []byte
@@ -329,20 +360,79 @@ func (t *Task) verifyClaim(ctx context.Context, resolvers resolverSet, cid, expe
 	if claim.GetCertificate() != "" {
 		certificate, err = base64.StdEncoding.DecodeString(claim.GetCertificate())
 		if err != nil {
-			return fmt.Errorf("decode claim certificate: %w", err)
+			return time.Time{}, fmt.Errorf("decode claim certificate: %w", err)
 		}
 	}
 
+	var until time.Time
+	if expiry := claim.GetExpiresAt(); expiry != "" {
+		until, _ = time.Parse(time.RFC3339, expiry)
+	}
+
+	if strings.HasPrefix(claim.GetSubject(), "agntcy://") {
+		until, err = t.verifyAGNTCYClaim(ctx, cid, expected, claim, until)
+	} else {
+		until, err = verifyResolvedClaim(ctx, resolver, cid, expected, claim, certificate, until)
+	}
+
+	if err != nil {
+		return time.Time{}, err
+	}
+
+	if !until.IsZero() && !until.After(time.Now()) {
+		return time.Time{}, fmt.Errorf("identity verification expired during reconciliation")
+	}
+
+	return until, nil
+}
+
+// verifyResolvedClaim retains standard resolver verification for other schemes.
+func verifyResolvedClaim(ctx context.Context, resolver keyresolvers.Resolver, cid, expected string, claim *identityv1.Claim, certificate []byte, until time.Time) (time.Time, error) {
 	keys, err := resolver.Resolve(ctx, claim.GetSubject(), certificate)
 	if err != nil {
-		return fmt.Errorf("resolve keys of %s: %w", claim.GetSubject(), err)
+		return time.Time{}, fmt.Errorf("resolve keys of %s: %w", claim.GetSubject(), err)
 	}
 
 	if _, err := clientidentity.Verify(claim, cid, expected, keys...); err != nil {
-		return fmt.Errorf("verify claim: %w", err)
+		return time.Time{}, fmt.Errorf("verify claim: %w", err)
 	}
 
-	return nil
+	if expiring, ok := resolver.(keyresolvers.ExpiringResolver); ok {
+		until = earlierDeadline(until, expiring.ResolutionValidUntil(claim.GetSubject(), certificate))
+	}
+
+	return until, nil
+}
+
+// verifyAGNTCYClaim obtains record-specific evidence and independently verifies
+// the native claim against its authenticated assertion keys.
+func (t *Task) verifyAGNTCYClaim(ctx context.Context, cid, expected string, claim *identityv1.Claim, until time.Time) (time.Time, error) {
+	if t.claimResolver == nil {
+		return time.Time{}, fmt.Errorf("AGNTCY claim resolver is not registered")
+	}
+
+	resolution, err := t.claimResolver.ResolveClaim(ctx, claim)
+	if err != nil {
+		return time.Time{}, fmt.Errorf("resolve AGNTCY claim: %w", err)
+	}
+
+	if resolution.ValidUntil.IsZero() {
+		return time.Time{}, fmt.Errorf("AGNTCY claim resolution returned no validity deadline")
+	}
+
+	if _, err := clientidentity.Verify(claim, cid, expected, resolution.PublicKeys...); err != nil {
+		return time.Time{}, fmt.Errorf("verify claim: %w", err)
+	}
+
+	return earlierDeadline(until, resolution.ValidUntil), nil
+}
+
+func earlierDeadline(a, b time.Time) time.Time {
+	if a.IsZero() || !b.IsZero() && b.Before(a) {
+		return b
+	}
+
+	return a
 }
 
 // dropResult removes the stored result of a claim that is no longer attached to
@@ -363,7 +453,7 @@ func (t *Task) dropResult(cid, role string) {
 // or it was last checked more than maxAge ago (0 means any age).
 func (t *Task) previous(cid, role string, maxAge time.Duration) types.IdentityClaimObject {
 	prev, err := t.db.GetIdentityClaimByCID(cid, role)
-	if err != nil || (maxAge > 0 && time.Since(prev.GetVerifiedAt()) > maxAge) {
+	if err != nil || (maxAge > 0 && (types.IdentityClaimExpired(prev, time.Now()) || time.Since(prev.GetVerifiedAt()) > maxAge)) {
 		return nil
 	}
 

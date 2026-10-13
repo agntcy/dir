@@ -370,7 +370,7 @@ func deriveTrustStatus(record *Record) catalogv1.TrustStatus {
 
 	for i := range record.IdentityClaims {
 		if record.IdentityClaims[i].Role == types.ClaimRoleOwner {
-			ownerClaimStatus = record.IdentityClaims[i].Status
+			ownerClaimStatus = record.IdentityClaims[i].GetStatus()
 		}
 	}
 
