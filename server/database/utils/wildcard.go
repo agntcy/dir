@@ -104,6 +104,40 @@ func BuildAnnotationExistsCondition(annotations []types.Annotation) (string, []a
 	return "EXISTS (SELECT 1 FROM annotations a WHERE a.record_cid = records.record_cid AND " + condition + ")", args
 }
 
+// BuildAnnotationPatternCondition builds a condition on the annotations table
+// aliased as alias that matches any of the given key/value glob pairs. Each
+// pair is matched on a single row, so "team:payments" and "manager:alice" do
+// not match a record annotated team=alice. An empty Value matches any value.
+func BuildAnnotationPatternCondition(alias string, patterns []types.Annotation) (string, []any) {
+	if len(patterns) == 0 {
+		return "", nil
+	}
+
+	conditions := make([]string, 0, len(patterns))
+	args := make([]any, 0, len(patterns)*2) //nolint:mnd
+
+	for _, pattern := range patterns {
+		keyCond, keyArg := BuildSingleWildcardCondition(alias+".key", pattern.Key)
+		if pattern.Value == "" {
+			conditions = append(conditions, keyCond)
+			args = append(args, keyArg)
+
+			continue
+		}
+
+		valueCond, valueArg := BuildSingleWildcardCondition(alias+".value", pattern.Value)
+		conditions = append(conditions, "("+keyCond+" AND "+valueCond+")")
+		args = append(args, keyArg, valueArg)
+	}
+
+	condition := strings.Join(conditions, " OR ")
+	if len(conditions) > 1 {
+		condition = "(" + condition + ")"
+	}
+
+	return condition, args
+}
+
 // BuildNotExistsCondition wraps an inner WHERE condition (already correlated on
 // record_cid via the given alias) in a NOT EXISTS subquery against table.
 // Used to negate joined/multi-valued fields (skills, domains, modules,

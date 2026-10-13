@@ -542,6 +542,13 @@ func (d *DB) handleFilterOptions(query *gorm.DB, cfg *types.RecordFilters) *gorm
 		}
 	}
 
+	if len(cfg.AnnotationPatterns) > 0 {
+		condition, args := utils.BuildAnnotationPatternCondition("ap", cfg.AnnotationPatterns)
+		if condition != "" {
+			query = query.Where("EXISTS (SELECT 1 FROM annotations ap WHERE ap.record_cid = records.record_cid AND "+condition+")", args...)
+		}
+	}
+
 	// Handle created_at filter with comparison operator support.
 	if len(cfg.CreatedAts) > 0 {
 		condition, args := utils.BuildComparisonConditions("records.oasf_created_at", cfg.CreatedAts)

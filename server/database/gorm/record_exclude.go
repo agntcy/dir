@@ -89,6 +89,11 @@ func applyExcludedJoinFilters(query *gorm.DB, ex *types.ExcludedRecordFilters) *
 		query = applyExcludedAnnotations(query, ex.AnnotationKeys, ex.AnnotationValues)
 	}
 
+	if len(ex.AnnotationPatterns) > 0 {
+		condition, args := utils.BuildAnnotationPatternCondition("ex", ex.AnnotationPatterns)
+		query = query.Where(utils.BuildNotExistsCondition("annotations", "ex", "ex.record_cid = records.record_cid AND "+condition), args...)
+	}
+
 	if len(ex.ScanSeverities) > 0 {
 		query = applyExcludedScanSeverities(query, ex.ScanSeverities)
 	}
