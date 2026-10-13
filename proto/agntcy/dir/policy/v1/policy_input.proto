@@ -1,0 +1,443 @@
+// Copyright AGNTCY Contributors (https://github.com/agntcy)
+// SPDX-License-Identifier: Apache-2.0
+
+syntax = "proto3";
+
+package agntcy.dir.policy.v1;
+
+import "agntcy/dir/identity/v1/claim.proto";
+import "agntcy/dir/security/v1/scan_report.proto";
+import "google/protobuf/struct.proto";
+import "google/protobuf/timestamp.proto";
+
+// Content policies come in two layers, and this file declares one input
+// message for each.
+//
+// An *evaluation policy* produces information: it runs asynchronously over a
+// RecordState, and its verdict is persisted per record. An *operation policy*
+// decides on information: it runs at one operation over an OperationInput,
+// reads the persisted verdicts, and persists nothing.
+//
+// Two rules are enforced by these types rather than by convention, because
+// both are load-bearing and neither is checkable at runtime:
+//
+//  1. RecordState has no verdicts field. An evaluation policy that could read
+//     another policy's verdict would turn a two-level dependency into a graph,
+//     bringing ordering, cycles, and verdicts computed against stale versions
+//     of their dependencies. Only operation inputs carry verdicts, so the
+//     dependency is acyclic by construction.
+//
+//  2. RecordState has no "now". Verdicts are cached and invalidated when the
+//     facts underneath them change; the passage of time is not a change, so
+//     nothing would ever mark a time-dependent verdict stale. Such a policy
+//     would be evaluated once and never revisited - a rule asserting "older
+//     than seven days" would answer "no" on the day of the push and keep
+//     saying "no" forever. Time comparisons belong in the operation layer,
+//     which is evaluated live.
+//
+// Both messages are flat rather than nested inside a shared envelope. Their
+// fields are bound as policy-engine variables, so nesting is a cost paid by
+// every expression an operator writes: meta.signature.status reads better
+// than state.meta.signature.status. The price is that a few intrinsic scalars
+// are declared in both messages.
+//
+// Note the relationship to PolicyEvaluation in this same package: that is the
+// stored and served shape of a verdict, carrying what the evaluator reported.
+// Verdict below is the projection a policy sees, which pre-derives currency
+// (see compliant_and_current) so that no policy has to get it right.
+
+// Operation is a point in a record's lifecycle at which a policy may decide.
+//
+// There is deliberately no OPERATION_EVALUATE. Evaluation is not an operation:
+// it is decoupled from any lifecycle point and runs whenever the reconciler
+// gets to it, which is why its results are cached, versioned and invalidated.
+// It is a producer of facts, configured as one, and it is the reason this file
+// declares two input messages instead of one.
+enum Operation {
+  OPERATION_UNSPECIFIED = 0;
+
+  // A client pushing a record to this node.
+  OPERATION_PUSH = 1;
+
+  // This node pulling a record announced by a trusted peer. Admission, like
+  // push, but for a record this node did not publish - which is why it is a
+  // separate operation rather than a flag on push.
+  OPERATION_AUTOSYNC = 2;
+
+  // The indexer making a record searchable.
+  OPERATION_INDEX = 3;
+
+  // A read of one record by CID, local or federated.
+  OPERATION_PULL = 4;
+
+  // A query returning a set of records. The only operation whose decision
+  // must be reached per query rather than per record, because it has to be
+  // known before rows are selected and paginated; its policies are therefore
+  // restricted to what can be compiled to SQL.
+  OPERATION_SEARCH = 5;
+
+  // The reconciler deleting a record.
+  //
+  // Polarity matters here and it is safety-critical. Absence of a verdict
+  // reads as not-compliant, so a prune policy must require a *positive*
+  // "should delete" rather than negating an acceptability verdict: negation
+  // would mean "delete anything we have not yet looked at".
+  OPERATION_PRUNE = 6;
+}
+
+// OperationContext is what varies by operation: the circumstances of the
+// request, as opposed to facts about the record.
+//
+// This message is expected to grow. Caller authorization is the next thing to
+// land in it, which is why OperationInput is named for its purpose rather
+// than its content.
+message OperationContext {
+  // Which operation is being decided.
+  Operation operation = 1;
+
+  // The authenticated libp2p peer ID the record is being pulled from. Set for
+  // OPERATION_AUTOSYNC only.
+  //
+  // This is not an authorization input: the peer allow-set is matched against
+  // the authenticated peer ID before any policy runs, so a peer that is not
+  // trusted never reaches one. It is here so that a policy can hold a
+  // particular peer to particular rules.
+  optional string source_peer_id = 2;
+}
+
+// RecordState is what an evaluation policy sees: a record and what this node
+// has observed about it.
+//
+// Named for its content, because by the nature of the layer its content is
+// closed. Evaluation is asynchronous and per record, so it will never carry a
+// caller, a request, or a wall clock.
+message RecordState {
+  // The record's OASF content, as pushed. Left as a Struct rather than typed,
+  // because OASF has no compile-time schema here and a policy must be able to
+  // read fields of schema versions this build does not know about.
+  google.protobuf.Struct record = 1;
+
+  // The record's content identifier.
+  string record_cid = 2;
+
+  // When the record was first indexed by this node. Present because it is a
+  // property of the record's state, not of the current moment; an evaluation
+  // policy may read it, but comparing it against "now" is what the operation
+  // layer is for.
+  google.protobuf.Timestamp indexed_at = 3;
+
+  // What this node has observed about the record. Groups are empty where
+  // nothing has been produced yet, which at push time is all of them.
+  RecordMeta meta = 4;
+}
+
+// OperationInput is what an operation policy sees: a record, the verdicts
+// recorded about it, and the circumstances of the operation.
+//
+// It carries no RecordMeta. Metadata is *reduced* to verdicts by the
+// evaluation layer, and an operation decides on the recorded reduction, so
+// that anything interpreting security state has its interpretation audited
+// rather than re-derived inline at every operation.
+message OperationInput {
+  // The record's OASF content. Same shape and same reason as RecordState.
+  google.protobuf.Struct record = 1;
+
+  // The record's content identifier.
+  string record_cid = 2;
+
+  // Every configured evaluation policy's verdict, keyed by policy ID
+  // (provider ":" name, e.g. "cel:has-provenance").
+  //
+  // Always populated for every configured evaluation policy, including those
+  // with nothing recorded yet, so that a lookup never fails on a missing key
+  // and "not yet evaluated" is a state a policy can read rather than an
+  // error it has to survive.
+  map<string, Verdict> verdicts = 3;
+
+  // The circumstances of this operation.
+  OperationContext context = 4;
+
+  // The current time, captured once for the whole evaluation so that every
+  // comparison within one decision sees the same instant.
+  google.protobuf.Timestamp now = 5;
+
+  // When the record was first indexed by this node.
+  google.protobuf.Timestamp indexed_at = 6;
+
+  // When each producer last recorded a result, absent until it has.
+  //
+  // These timestamps are here, rather than only in the evaluation layer,
+  // because they need no vocabulary to interpret, while the statuses they
+  // belong to do. Without them a reasonable rule would be inexpressible:
+  // "serve only records scanned within the last seven days" needs live time
+  // and scanned_at together, so neither layer could answer it alone.
+  optional google.protobuf.Timestamp scanned_at = 7;
+  optional google.protobuf.Timestamp signature_verified_at = 8;
+  optional google.protobuf.Timestamp identity_resolved_at = 9;
+  optional google.protobuf.Timestamp owner_resolved_at = 10;
+}
+
+// VerdictStatus is how far an evaluation got, and whether its result still
+// counts.
+//
+// The current read gate treats all four non-EVALUATED cases alike and hides
+// the record. Keeping them apart is most of the value of making the gate a
+// policy: a policy can distinguish "nobody has looked at this yet" from
+// "this was examined and failed" while still defaulting to the safe answer.
+enum VerdictStatus {
+  VERDICT_STATUS_UNSPECIFIED = 0;
+
+  // The policy is configured but this record has no result under it yet.
+  VERDICT_STATUS_UNEVALUATED = 1;
+
+  // The policy ran and reached a conclusion; see compliant.
+  VERDICT_STATUS_EVALUATED = 2;
+
+  // The policy ran and could not decide, so the record is not compliant
+  // under it.
+  VERDICT_STATUS_FAILED = 3;
+
+  // A result exists, but under a policy version no longer in force. The
+  // policy's content changed, so the conclusion is about a different rule.
+  VERDICT_STATUS_SUPERSEDED = 4;
+}
+
+// Verdict is one evaluation policy's conclusion about one record.
+message Verdict {
+  // How far the evaluation got, and whether its result still counts.
+  VerdictStatus status = 1;
+
+  // Whether the record satisfies the policy's condition.
+  //
+  // Read this as "satisfies this condition", not as "this record is good".
+  // The field is neutral; which direction is safe depends on the operation
+  // deciding, and only one direction is safe per operation (see
+  // OPERATION_PRUNE).
+  bool compliant = 2;
+
+  // Whether the record is compliant *and* the verdict was reached under the
+  // policy version currently in force.
+  //
+  // Derived here rather than left to the author on purpose. "Is this verdict
+  // current" is the fail-closed property the gate depends on, and exposing a
+  // raw version string for every policy to compare correctly guarantees that
+  // one of them eventually will not. Absence of a verdict, a superseded
+  // verdict and a non-compliant verdict all read false.
+  bool compliant_and_current = 3;
+
+  // The policy version this verdict was reached under. Informational; use
+  // compliant_and_current to decide.
+  string policy_version = 4;
+
+  // Why the evaluator decided as it did, or why it failed. Useful to pass
+  // through to an error message; not a place to accumulate detail.
+  string reason = 5;
+
+  // When the verdict was reached. Absent when there is no verdict.
+  optional google.protobuf.Timestamp evaluated_at = 6;
+}
+
+// FactSource says whether this node observed a fact or imported it.
+//
+// Not decoration. Autosync pulls a record's referrers - signature, public key,
+// scan report - from the peer that announced it, and ingest writes the peer's
+// scan report into the same table the local scanner writes to. So a record can
+// carry scan metadata that is the peer's own assertion about its own record,
+// indistinguishable by shape from something this node checked. A policy that
+// interprets security state needs to be able to tell the two apart.
+enum FactSource {
+  FACT_SOURCE_UNSPECIFIED = 0;
+
+  // Produced by this node: its scanner, its verifier, its resolver.
+  FACT_SOURCE_LOCAL = 1;
+
+  // Received from a peer alongside the record. An assertion, not an
+  // observation.
+  FACT_SOURCE_IMPORTED = 2;
+}
+
+// SignatureStatus is what this node knows about a record's signature.
+//
+// Deliberately keeps apart states the database currently collapses into one
+// "unknown": a record with no signature at all, and a record with a signature
+// nobody has verified yet, are different situations that warrant different
+// rules.
+enum SignatureStatus {
+  SIGNATURE_STATUS_UNSPECIFIED = 0;
+
+  // No signature is attached.
+  SIGNATURE_STATUS_UNSIGNED = 1;
+
+  // A signature is attached but has not been verified.
+  SIGNATURE_STATUS_UNVERIFIED = 2;
+
+  // A signature was verified and held.
+  SIGNATURE_STATUS_VERIFIED = 3;
+
+  // A signature that verified before and does not now.
+  SIGNATURE_STATUS_REVOKED = 4;
+}
+
+// SignatureFacts is what this node knows about a record's signing.
+//
+// The signature bytes, the certificate chain and the public key are
+// deliberately absent. A policy decides over conclusions, not over material
+// it would have to do cryptography on.
+message SignatureFacts {
+  // What this node knows about the signature.
+  SignatureStatus status = 1;
+
+  // Whether this node verified the signature or took a peer's word for it.
+  FactSource source = 2;
+
+  // The identity the signature was made with, as the verifier reports it
+  // (e.g. a Fulcio certificate's SAN). Absent until verified.
+  optional string signer_identity = 3;
+
+  // The OIDC issuer that vouched for signer_identity. Absent until verified.
+  optional string signer_issuer = 4;
+
+  // When verification last ran. Absent if it never has.
+  optional google.protobuf.Timestamp verified_at = 5;
+}
+
+// ScanStatus is how far scanning a record got.
+enum ScanStatus {
+  SCAN_STATUS_UNSPECIFIED = 0;
+
+  // No scanner has reported on this record.
+  SCAN_STATUS_UNSCANNED = 1;
+
+  // Every scanner that applies to this record reported.
+  SCAN_STATUS_COMPLETED = 2;
+
+  // Some applicable scanners reported and others did not, so max_severity is
+  // a floor rather than an answer.
+  SCAN_STATUS_PARTIAL = 3;
+
+  // Scanning was attempted and could not complete.
+  SCAN_STATUS_FAILED = 4;
+}
+
+// ScannerResult is one scanner's contribution to a record's scan facts,
+// so that a policy can require a particular scanner rather than trusting an
+// aggregate it cannot see into.
+message ScannerResult {
+  // Which scanner reported.
+  agntcy.dir.security.v1.ScannerType scanner_type = 1;
+
+  // How far this scanner got.
+  ScanStatus status = 2;
+
+  // The highest severity this scanner found.
+  agntcy.dir.security.v1.Severity max_severity = 3;
+
+  // How many findings this scanner reported.
+  uint32 finding_count = 4;
+
+  // When this scanner reported. Absent if it has not.
+  optional google.protobuf.Timestamp scanned_at = 5;
+}
+
+// ScanFacts is what the scanners found, aggregated and per scanner.
+//
+// Individual findings are deliberately absent: a rule over rule IDs and
+// remediation text is a rule over scanner output formats, which change
+// without the record changing.
+message ScanFacts {
+  // How far scanning got overall.
+  ScanStatus status = 1;
+
+  // Whether this node scanned the record or imported a peer's report.
+  FactSource source = 2;
+
+  // The highest severity found by any scanner.
+  //
+  // Severity is declared ascending in agntcy/dir/security/v1/scan_report.proto,
+  // so a threshold is an ordinary comparison, and SEVERITY_UNSPECIFIED sorting
+  // below every real severity means an unscanned record fails a threshold
+  // rather than passing it.
+  agntcy.dir.security.v1.Severity max_severity = 3;
+
+  // Whether every scanner that reported considers the record safe.
+  bool is_safe = 4;
+
+  // How many findings were reported in total.
+  uint32 finding_count = 5;
+
+  // What each scanner found. A policy requiring a specific scanner should
+  // read this rather than the aggregate above.
+  repeated ScannerResult scanners = 6;
+
+  // When the most recent scanner reported. Absent if none has.
+  optional google.protobuf.Timestamp scanned_at = 7;
+}
+
+// ClaimStatus is what this node knows about an identity or ownership claim.
+enum ClaimStatus {
+  CLAIM_STATUS_UNSPECIFIED = 0;
+
+  // The record asserts no claim of this role.
+  CLAIM_STATUS_UNCLAIMED = 1;
+
+  // A claim is attached but has not been resolved.
+  CLAIM_STATUS_UNVERIFIED = 2;
+
+  // The claim was resolved and held.
+  CLAIM_STATUS_VERIFIED = 3;
+
+  // Resolution ran and the claim did not hold.
+  CLAIM_STATUS_FAILED = 4;
+}
+
+// ClaimFacts is what this node knows about one claim.
+message ClaimFacts {
+  // What this claim asserts. Equal to the field of IdentityFacts it is
+  // reached through, and carried so that a ClaimFacts is meaningful alone.
+  agntcy.dir.identity.v1.ClaimRole role = 1;
+
+  // What this node knows about the claim.
+  ClaimStatus status = 2;
+
+  // Whether this node resolved the claim or imported a peer's result.
+  FactSource source = 3;
+
+  // The identity URI claimed (e.g. "did:web:acme.com:agents:finance").
+  //
+  // This is what the record asserts, and it is only trustworthy in
+  // combination with status: an unverified subject is a string the publisher
+  // chose. A policy scoping rules by owner must check both.
+  string subject = 4;
+
+  // When resolution last ran. Absent if it never has.
+  optional google.protobuf.Timestamp resolved_at = 5;
+}
+
+// IdentityFacts is what this node knows about who a record is and who owns it.
+//
+// The two roles are separate fields rather than a list, because a policy
+// almost always wants one of them by name and should not have to filter.
+message IdentityFacts {
+  // The record's own claimed identity. Absent if it claims none.
+  optional ClaimFacts identity = 1;
+
+  // The record's claimed owning entity. Absent if it claims none.
+  optional ClaimFacts owner = 2;
+}
+
+// RecordMeta is everything this node has observed about a record, as facts a
+// policy can read.
+//
+// Each group is a projection, not a database row: columns are renamed and
+// omitted freely so that a schema change does not break every policy, and so
+// that nothing a policy has no business deciding over is exposed.
+message RecordMeta {
+  // What this node knows about the record's signing.
+  SignatureFacts signature = 1;
+
+  // What the scanners found.
+  ScanFacts scan = 2;
+
+  // What this node knows about the record's identity and ownership.
+  IdentityFacts identity = 3;
+}
