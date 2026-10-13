@@ -5,13 +5,13 @@ package gorm
 
 import (
 	"fmt"
-	"math"
 	"sort"
 	"strings"
 
 	catalogv1 "github.com/agntcy/dir/api/catalog/v1"
 	"github.com/agntcy/dir/server/database/utils"
 	"github.com/agntcy/dir/server/types"
+	"github.com/agntcy/dir/utils/conv"
 	"gorm.io/gorm"
 )
 
@@ -55,11 +55,12 @@ func (d *DB) CountCatalogEntries(opts ...types.CatalogQueryOption) (uint32, erro
 		return 0, fmt.Errorf("count catalog records: %w", err)
 	}
 
-	if count < 0 || math.MaxUint32 < count {
-		return 0, fmt.Errorf("can't convert %d to uint32", count)
+	total, err := conv.Uint32FromInt64(count)
+	if err != nil {
+		return 0, fmt.Errorf("count catalog records: %w", err)
 	}
 
-	return uint32(count), nil
+	return total, nil
 }
 
 // ListCatalogTags returns distinct catalog tags derived from OASF skills and

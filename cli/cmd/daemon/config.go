@@ -21,6 +21,7 @@ import (
 	reconcilerconfig "github.com/agntcy/dir/reconciler/config"
 	"github.com/agntcy/dir/reconciler/recordevents"
 	identitytask "github.com/agntcy/dir/reconciler/tasks/identity"
+	synctask "github.com/agntcy/dir/reconciler/tasks/sync"
 	serverconfig "github.com/agntcy/dir/server/config"
 	dbconfig "github.com/agntcy/dir/server/database/config"
 	storeconfig "github.com/agntcy/dir/server/store/oci/config"
@@ -118,6 +119,15 @@ func registerReconcilerDefaults(v *viper.Viper) {
 	v.SetDefault("reconciler.identity.ans.stale_grace", identitytask.DefaultANSStaleGrace)
 	v.SetDefault("reconciler.identity.ans.timeout", ansresolver.DefaultTimeout)
 	v.SetDefault("reconciler.identity.ans.clock_skew", ansresolver.DefaultClockSkew)
+
+	// Sync creates syncs against peers found on the routing network, so a
+	// config file that enables it without mentioning dry_run must not fall
+	// through to the zero value. Mirrors reconciler/config.
+	v.SetDefault("reconciler.sync.enabled", false)
+	v.SetDefault("reconciler.sync.interval", synctask.DefaultInterval)
+	v.SetDefault("reconciler.sync.criteria.domains", []string{synctask.DefaultDomain})
+	v.SetDefault("reconciler.sync.limit", synctask.DefaultLimit)
+	v.SetDefault("reconciler.sync.dry_run", true)
 }
 
 func registerRuntimeDefaults(v *viper.Viper) {

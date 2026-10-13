@@ -17,8 +17,8 @@ import (
 	"github.com/agntcy/dir/client"
 	"github.com/agntcy/dir/reconciler/config"
 	"github.com/agntcy/dir/reconciler/recordevents"
+	"github.com/agntcy/dir/reconciler/routing"
 	"github.com/agntcy/dir/reconciler/service"
-	"github.com/agntcy/dir/reconciler/tasks/metrics"
 	"github.com/agntcy/dir/server/database"
 	"github.com/agntcy/dir/server/store/oci"
 	"github.com/agntcy/dir/server/validators"
@@ -87,11 +87,12 @@ func run() error {
 		return err
 	}
 
-	// Create provider counter. In standalone mode the routing layer (Badger
-	// datastore) lives inside the server process and cannot be shared across
-	// process boundaries, so we connect to the server over gRPC instead.
-	// If no server address is configured the metrics task is skipped.
-	var counters metrics.ProviderCounterAPI
+	// Create the gRPC routing client. In standalone mode the routing layer
+	// (Badger datastore) lives inside the server process and cannot be shared
+	// across process boundaries, so we connect to the server over gRPC instead.
+	// If no server address is configured the metrics and sync tasks
+	// are skipped.
+	var routingAPI service.RoutingAPI
 
 	// The same connection tells the reconciler when a record is pushed, so the
 	// indexer need not wait for its interval.
@@ -120,15 +121,15 @@ func run() error {
 
 		defer dirClient.Close()
 
-		counters = metrics.NewGRPCProviderCounterFromClient(dirClient.RoutingServiceClient)
+		routingAPI = routing.NewFromClient(dirClient.RoutingServiceClient)
 		records = recordevents.NewClientSource(dirClient)
 
-		logger.Info("Provider counter connected to apiserver", "address", cfg.ServerAddress)
+		logger.Info("Routing connected to apiserver", "address", cfg.ServerAddress)
 	} else {
-		logger.Warn("server_address not configured; metrics task (provider counts) will be skipped")
+		logger.Warn("server_address not configured; metrics and sync tasks will be skipped")
 	}
 
-	svc, err := service.New(cfg, db, store, repo, validatorRegistry, counters)
+	svc, err := service.New(cfg, db, store, repo, validatorRegistry, routingAPI)
 	if err != nil {
 		return err
 	}
