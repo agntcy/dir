@@ -124,6 +124,19 @@ Publishing the root GitHub Release creates only the server-side module tags:
 
 It does not re-tag `api`, `client`, or `utils`.
 
+Publishing the release also starts the `Post Release` workflow, which pushes the WinGet manifests for `dirctl` to the `agntcy/winget-pkgs` fork (see the next section).
+
+### Publish to WinGet
+
+The release workflow attaches `dirctl-v1.3.0-windows-amd64.zip` (`dirctl.exe` and `LICENSE.md`) to the release. When a stable release is published, `Post Release` renders the `AGNTCY.dirctl` manifests from that zip, validates them on a Windows runner (`winget validate`, then an install from the local manifests and `dirctl version`) and pushes them to the `agntcy/winget-pkgs` fork. Prereleases are skipped.
+
+The GitHub App can push to the fork but cannot open a pull request against `microsoft/winget-pkgs`. To finish:
+
+1. Open the `WinGet` job's summary in the `Post Release` run. It links to the compare page and gives the pull request title: `New package: AGNTCY.dirctl version 1.3.0` for the first submission, `New version: AGNTCY.dirctl version 1.3.0` after that.
+2. Open the pull request from that page and let `microsoft/winget-pkgs` validation pass.
+
+To re-run or check a release without pushing, run the `WinGet` workflow manually with the release tag and leave `publish` off.
+
 ## 6. Update Hardcoded Versions in the README
 
 Bump the pinned release version in the `README.md` distribution examples (the `docker pull` image tags and the `helm` `--version` flags).

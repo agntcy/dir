@@ -1,0 +1,254 @@
+# Copyright AGNTCY Contributors (https://github.com/agntcy)
+# SPDX-License-Identifier: Apache-2.0
+
+# Publishes dirctl to WinGet.
+#
+# 1. Render the manifests for a published release from its Windows zip.
+# 2. Validate them on a Windows runner: `winget validate`, then install dirctl
+#    from the local manifests and run it.
+# 3. With publish on, push them to the agntcy/winget-pkgs fork. The GitHub App
+#    can push to the fork but cannot open the pull request against
+#    microsoft/winget-pkgs, so the job summary links to where to open it.
+#
+# A manual run validates only, unless publish is set.
+
+name: WinGet
+
+on:
+  workflow_call:
+    inputs:
+      release_tag:
+        description: Published release to render the manifests for, for example v1.8.0
+        required: true
+        type: string
+      publish:
+        description: Push the manifests to the agntcy/winget-pkgs fork
+        required: false
+        type: boolean
+        default: false
+    secrets:
+      PROJECT_APP_ID:
+        required: false
+      PROJECT_APP_KEY:
+        required: false
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: Published release to render the manifests for, for example v1.8.0
+        required: true
+        type: string
+      publish:
+        description: Push the manifests to the agntcy/winget-pkgs fork
+        required: false
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+jobs:
+  render:
+    name: Render manifests
+    runs-on: ubuntu-latest
+    outputs:
+      manifest_rel_dir: ${{ steps.render.outputs.manifest_rel_dir }}
+      package_identifier: ${{ steps.render.outputs.package_identifier }}
+      package_version: ${{ steps.render.outputs.package_version }}
+      release_url: ${{ steps.render.outputs.release_url }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Render WinGet manifests
+        id: render
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ inputs.release_tag }}
+        run: |
+          python3 .github/scripts/render_winget_manifests.py \
+            --tag "$RELEASE_TAG" \
+            --output-dir dist/winget \
+            --github-output "$GITHUB_OUTPUT"
+
+      - name: Upload manifests
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: winget-manifests-${{ steps.render.outputs.package_version }}
+          path: dist/winget/manifests
+          if-no-files-found: error
+
+  validate:
+    name: Validate manifests
+    needs: render
+    runs-on: windows-2025
+    steps:
+      - name: Download manifests
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: winget-manifests-${{ needs.render.outputs.package_version }}
+          path: manifests
+
+      - name: Validate manifests
+        shell: pwsh
+        env:
+          MANIFEST_REL_DIR: ${{ needs.render.outputs.manifest_rel_dir }}
+        run: |
+          winget --version
+          $dir = Join-Path "manifests" ($env:MANIFEST_REL_DIR -replace '^manifests/', '')
+          Get-ChildItem $dir | ForEach-Object { Write-Host $_.Name }
+          winget validate --manifest $dir --ignore-warnings
+          if ($LASTEXITCODE -ne 0) { throw "winget validate failed with exit $LASTEXITCODE" }
+
+      - name: Install from the manifests and run dirctl
+        shell: pwsh
+        env:
+          MANIFEST_REL_DIR: ${{ needs.render.outputs.manifest_rel_dir }}
+        run: |
+          function Assert-LastExit($what) {
+            if ($LASTEXITCODE -ne 0) { throw "$what failed with exit $LASTEXITCODE" }
+          }
+
+          $dir = Join-Path "manifests" ($env:MANIFEST_REL_DIR -replace '^manifests/', '')
+
+          winget settings --enable LocalManifestFiles
+          Assert-LastExit "winget settings --enable LocalManifestFiles"
+
+          winget install --manifest $dir `
+            --accept-package-agreements --accept-source-agreements --disable-interactivity
+          Assert-LastExit "winget install"
+
+          $env:PATH = "$env:LOCALAPPDATA\Microsoft\WinGet\Links;$env:SystemRoot\System32;$env:SystemRoot"
+          dirctl version
+          Assert-LastExit "dirctl version"
+          Write-Host "OK - installed with winget and dirctl runs"
+
+  publish:
+    name: Push manifests to the winget-pkgs fork
+    needs: [render, validate]
+    if: inputs.publish == true || inputs.publish == 'true'
+    runs-on: ubuntu-latest
+    env:
+      APP_AUTH_CONFIGURED: ${{ secrets.PROJECT_APP_ID != '' && secrets.PROJECT_APP_KEY != '' }}
+    steps:
+      - name: Download manifests
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: winget-manifests-${{ needs.render.outputs.package_version }}
+          path: dist/winget/manifests
+
+      - name: Authenticate with GitHub App Bot
+        if: env.APP_AUTH_CONFIGURED == 'true'
+        id: app-token
+        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
+        with:
+          client-id: ${{ secrets.PROJECT_APP_ID }}
+          private-key: ${{ secrets.PROJECT_APP_KEY }}
+          owner: ${{ github.repository_owner }}
+          # Only the fork, and only to push to it.
+          repositories: winget-pkgs
+          permission-contents: write
+
+      - name: Resolve GitHub App Bot user id
+        if: steps.app-token.outputs.token != ''
+        id: app-user
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          APP_SLUG: ${{ steps.app-token.outputs.app-slug }}
+        run: |
+          echo "user_id=$(gh api "/users/${APP_SLUG}[bot]" --jq .id)" >> "$GITHUB_OUTPUT"
+
+      - name: Push manifests to the fork
+        env:
+          WINGET_PKGS_TOKEN: ${{ steps.app-token.outputs.token }}
+          FORK_OWNER: ${{ github.repository_owner }}
+          APP_SLUG: ${{ steps.app-token.outputs.app-slug }}
+          APP_USER_ID: ${{ steps.app-user.outputs.user_id }}
+          MANIFEST_DIR: ${{ github.workspace }}/dist/winget/${{ needs.render.outputs.manifest_rel_dir }}
+          MANIFEST_REL_DIR: ${{ needs.render.outputs.manifest_rel_dir }}
+          PACKAGE_IDENTIFIER: ${{ needs.render.outputs.package_identifier }}
+          PACKAGE_VERSION: ${{ needs.render.outputs.package_version }}
+          RELEASE_URL: ${{ needs.render.outputs.release_url }}
+        run: |
+          if [ -z "$WINGET_PKGS_TOKEN" ]; then
+            echo "::notice::PROJECT_APP_ID / PROJECT_APP_KEY are not configured; the manifests are only in the workflow artifact."
+            exit 0
+          fi
+
+          if [ ! -d "$MANIFEST_DIR" ]; then
+            echo "::error::the rendered manifests are not at $MANIFEST_DIR"
+            exit 1
+          fi
+
+          export GH_TOKEN="$WINGET_PKGS_TOKEN"
+
+          if ! gh repo view "$FORK_OWNER/winget-pkgs" >/dev/null 2>&1; then
+            echo "::error::Expected an existing fork at $FORK_OWNER/winget-pkgs. Create and maintain that fork first."
+            exit 1
+          fi
+
+          gh auth setup-git >/dev/null
+
+          rm -rf /tmp/winget-pkgs
+          gh repo clone "$FORK_OWNER/winget-pkgs" /tmp/winget-pkgs -- --depth 1
+
+          branch="automation/winget-dirctl-$PACKAGE_VERSION"
+
+          cd /tmp/winget-pkgs
+          if git remote get-url upstream >/dev/null 2>&1; then
+            git remote set-url upstream https://github.com/microsoft/winget-pkgs.git
+          else
+            git remote add upstream https://github.com/microsoft/winget-pkgs.git
+          fi
+          git fetch --depth 1 upstream master
+          git config user.name "${APP_SLUG}[bot]"
+          git config user.email "${APP_USER_ID}+${APP_SLUG}[bot]@users.noreply.github.com"
+          git checkout -B "$branch" upstream/master
+
+          # winget-pkgs titles a first submission differently from a new version.
+          package_dir="$(dirname "$MANIFEST_REL_DIR")"
+          if [ -d "$package_dir" ]; then
+            kind="New version"
+          else
+            kind="New package"
+          fi
+
+          mkdir -p "$package_dir"
+          rm -rf "$MANIFEST_REL_DIR"
+          cp -R "$MANIFEST_DIR" "$package_dir/"
+
+          git add --all "$MANIFEST_REL_DIR"
+
+          if git diff --cached --quiet -- "$MANIFEST_REL_DIR"; then
+            echo "The manifests are already up to date for $PACKAGE_VERSION"
+            exit 0
+          fi
+
+          title="$kind: $PACKAGE_IDENTIFIER version $PACKAGE_VERSION"
+          git commit -m "$title"
+          git push --force --set-upstream origin "$branch"
+
+          pr_number=$(gh pr list --repo microsoft/winget-pkgs --head "$FORK_OWNER:$branch" --base master --state open --json number --jq 'first(.[].number) // ""' 2>/dev/null || true)
+
+          {
+            echo "### WinGet manifests for $PACKAGE_IDENTIFIER $PACKAGE_VERSION"
+            echo
+            if [ -n "$pr_number" ]; then
+              echo "Pushed to \`$branch\`, which updates the open pull request:"
+              echo
+              echo "https://github.com/microsoft/winget-pkgs/pull/$pr_number"
+            else
+              echo "Pushed to \`$branch\`. Open the pull request to publish it:"
+              echo
+              echo "https://github.com/microsoft/winget-pkgs/compare/master...$FORK_OWNER:$branch?expand=1"
+              echo
+              echo "Title: \`$title\`"
+              echo
+              echo "The GitHub App can push to the fork but cannot open the pull request:"
+              echo "an App token only acts on repositories the App is installed on,"
+              echo "and microsoft/winget-pkgs is not one of them."
+            fi
+            echo
+            echo "Release: $RELEASE_URL"
+          } >> "$GITHUB_STEP_SUMMARY"
