@@ -107,7 +107,7 @@ func (d *DB) GetCatalogEntries(opts ...types.CatalogQueryOption) ([]*catalogv1.C
 	// Eager-load the associations the projection walks; pageRecords' DISTINCT
 	// drops the duplicate rows introduced by the filter JOINs.
 	query := d.catalogQuery(&recordCfg, cfg).
-		Preload("IdentityClaims", "role = ?", types.ClaimRoleOwner).
+		Preload("IdentityClaims").
 		// A failed row records why the scan could not run, not a verdict, so it
 		// is withheld from the projection to keep the badge a scan result.
 		Preload("ScanReports", "status IN ?", types.ScannedStatuses())
@@ -331,15 +331,12 @@ func deriveTrustStatus(record *Record) catalogv1.TrustStatus {
 		signatureStatuses[i] = record.Signatures[i].Status
 	}
 
-	ownerClaimStatus := ""
-
+	claims := make([]catalogv1.ClaimSummary, len(record.IdentityClaims))
 	for i := range record.IdentityClaims {
-		if record.IdentityClaims[i].Role == types.ClaimRoleOwner {
-			ownerClaimStatus = record.IdentityClaims[i].Status
-		}
+		claims[i] = &record.IdentityClaims[i]
 	}
 
-	return catalogv1.DeriveTrustStatus(signatureStatuses, ownerClaimStatus)
+	return catalogv1.DeriveTrustStatusFromClaims(signatureStatuses, claims)
 }
 
 // applyCatalogOrder appends the allow-listed ORDER BY clauses plus a

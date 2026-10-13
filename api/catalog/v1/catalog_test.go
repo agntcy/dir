@@ -5,8 +5,10 @@ package v1
 
 import (
 	"testing"
+	"time"
 
 	oasftypesv1 "buf.build/gen/go/agntcy/oasf/protocolbuffers/go/agntcy/oasf/types/v1"
+	coretypes "github.com/agntcy/dir/api/core/types"
 	corev1 "github.com/agntcy/dir/api/core/v1"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -315,8 +317,124 @@ func TestDeriveTrustStatus(t *testing.T) {
 	assert.Equal(t, TrustStatus{Trusted: false, Verified: false}, DeriveTrustStatus(nil, ""))
 }
 
+// testClaim is the claim shape the catalog projection receives from the store.
+type testClaim struct {
+	role, subject, status string
+	verifiedAt            time.Time
+}
+
+func (c testClaim) GetRole() string          { return c.role }
+func (c testClaim) GetSubject() string       { return c.subject }
+func (c testClaim) GetStatus() string        { return c.status }
+func (c testClaim) GetVerifiedAt() time.Time { return c.verifiedAt }
+
+func TestDeriveTrustStatusFromClaims(t *testing.T) {
+	t.Parallel()
+
+	owner := testClaim{role: "owner", subject: "dns:example.com", status: "verified"}
+	identity := testClaim{role: "identity", subject: "did:web:example.com", status: "verified"}
+	identityFailed := testClaim{role: "identity", subject: "did:web:example.com", status: "failed"}
+
+	tests := []struct {
+		name       string
+		signatures []string
+		claims     []ClaimSummary
+		want       TrustStatus
+	}{
+		{
+			name:       "both claims verified",
+			signatures: []string{"verified"},
+			claims:     []ClaimSummary{owner, identity},
+			want:       TrustStatus{Trusted: true, Verified: true, IdentityVerified: true, Claims: []ClaimSummary{owner, identity}},
+		},
+		{
+			name:   "owner verified, identity failed",
+			claims: []ClaimSummary{identityFailed, owner},
+			want:   TrustStatus{Verified: true, Claims: []ClaimSummary{identityFailed, owner}},
+		},
+		{
+			name:   "role and status compare case-insensitively",
+			claims: []ClaimSummary{testClaim{role: "Identity", subject: "s", status: "VERIFIED"}},
+			want:   TrustStatus{IdentityVerified: true, Claims: []ClaimSummary{testClaim{role: "Identity", subject: "s", status: "VERIFIED"}}},
+		},
+		{
+			name:   "a nil entry is skipped",
+			claims: []ClaimSummary{nil, owner},
+			want:   TrustStatus{Verified: true, Claims: []ClaimSummary{nil, owner}},
+		},
+		{
+			name: "no claims leaves the list unset",
+			want: TrustStatus{},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			assert.Equal(t, tt.want, DeriveTrustStatusFromClaims(tt.signatures, tt.claims))
+		})
+	}
+}
+
 func TestRecordToCatalog_TrustStatusMetadata(t *testing.T) {
 	t.Parallel()
+
+	checked := time.Date(2026, 10, 12, 19, 48, 8, 0, time.UTC)
+	owner := testClaim{role: "owner", subject: "dns:example.com", status: "verified", verifiedAt: checked}
+	identity := testClaim{role: "identity", subject: "did:web:example.com:agents:a", status: "failed", verifiedAt: checked}
+
+	tests := []struct {
+		name   string
+		status TrustStatus
+		want   map[string]any
+	}{
+		{
+			name:   "no claims publishes the booleans only",
+			status: TrustStatus{Trusted: true},
+			want:   map[string]any{"trusted": true, "verified": false, "identityVerified": false},
+		},
+		{
+			name:   "claims are listed by role, identity first, without error text",
+			status: TrustStatus{Trusted: true, Verified: true, Claims: []ClaimSummary{owner, identity}},
+			want: map[string]any{
+				"trusted": true, "verified": true, "identityVerified": false,
+				"claims": []any{
+					map[string]any{"role": "identity", "subject": "did:web:example.com:agents:a", "status": "failed", "verifiedAt": "2026-10-12T19:48:08Z"},
+					map[string]any{"role": "owner", "subject": "dns:example.com", "status": "verified", "verifiedAt": "2026-10-12T19:48:08Z"},
+				},
+			},
+		},
+		{
+			name: "text that is not valid UTF-8 cannot cost the record its trust status",
+			status: TrustStatus{Verified: true, IdentityVerified: true, Claims: []ClaimSummary{
+				nil,
+				testClaim{role: "identity", subject: "ans://v1.0.0.caf\xc3", status: "verified"},
+			}},
+			want: map[string]any{
+				"trusted": false, "verified": true, "identityVerified": true,
+				"claims": []any{
+					map[string]any{"role": "identity", "subject": "ans://v1.0.0.caf\uFFFD", "status": "verified"},
+				},
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			entry, err := RecordToCatalog(trustStatusRecord(t), WithTrustStatus(tt.status))
+			require.NoError(t, err)
+
+			assert.Equal(t, tt.want, entry.GetMetadata()[TrustStatusMetadataKey].GetStructValue().AsMap())
+		})
+	}
+}
+
+// trustStatusRecord is a record with one known module, so it projects.
+func trustStatusRecord(t *testing.T) coretypes.Record {
+	t.Helper()
 
 	record := corev1.New(&oasftypesv1.Record{
 		SchemaVersion: "1.0.0",
@@ -339,10 +457,5 @@ func TestRecordToCatalog_TrustStatusMetadata(t *testing.T) {
 	adapter, err := record.Decode()
 	require.NoError(t, err)
 
-	entry, err := RecordToCatalog(adapter, WithTrustStatus(TrustStatus{Trusted: true, Verified: false}))
-	require.NoError(t, err)
-
-	status := entry.GetMetadata()[TrustStatusMetadataKey].GetStructValue().AsMap()
-	assert.Equal(t, true, status["trusted"])
-	assert.Equal(t, false, status["verified"])
+	return adapter
 }
