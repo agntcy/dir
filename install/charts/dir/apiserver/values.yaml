@@ -991,13 +991,15 @@ reconciler:
       record_timeout: "30s"
       criteria:
         # Select by trusted OR signature_statuses, not both (setting both is an
-        # error). With neither set, prune selects untrusted records (trusted: false).
+        # error). trusted is an alias: true selects [verified], false selects
+        # [failed, unsigned]. With neither set, prune behaves as trusted: false.
         # trusted: false
         # signature_statuses, any of:
         #   verified: at least one signature verifies.
         #   failed:   a signature verified before but no longer does (e.g. revoked).
         #   unsigned: no signature is attached to the record.
-        # A signed record with no verification result matches none of them.
+        # Either way, prune never deletes a signed record that has no verification
+        # result yet.
         # One prune job has one older_than, so pick one policy, e.g.:
         #   prune revoked signatures after 1h: [failed] with older_than: "1h"
         #   prune unsigned records after 7d:   [unsigned] with older_than: "168h"

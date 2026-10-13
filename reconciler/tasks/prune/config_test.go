@@ -109,3 +109,14 @@ func TestConfig_UsesSignatureStatuses(t *testing.T) {
 	assert.False(t, (&Config{}).UsesSignatureStatuses())
 	assert.True(t, (&Config{Criteria: Criteria{SignatureStatuses: []string{"failed"}}}).UsesSignatureStatuses())
 }
+
+func TestConfig_GetSignatureStatuses(t *testing.T) {
+	t.Parallel()
+
+	trusted, untrusted := true, false
+
+	assert.Equal(t, []string{"failed", "unsigned"}, (&Config{}).GetSignatureStatuses(), "unset trusted")
+	assert.Equal(t, []string{"failed", "unsigned"}, (&Config{Criteria: Criteria{Trusted: &untrusted}}).GetSignatureStatuses())
+	assert.Equal(t, []string{"verified"}, (&Config{Criteria: Criteria{Trusted: &trusted}}).GetSignatureStatuses())
+	assert.Equal(t, []string{"unsigned"}, (&Config{Criteria: Criteria{SignatureStatuses: []string{"unsigned"}}}).GetSignatureStatuses())
+}

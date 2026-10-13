@@ -121,3 +121,18 @@ func TestGetRecordCIDs_SignatureStatuses_CombinedWithOtherFilters(t *testing.T) 
 	require.NoError(t, err)
 	assert.ElementsMatch(t, []string{sigUnsigned}, cids)
 }
+
+// Prune's "untrusted" ([failed, unsigned]) is deliberately narrower than the
+// trusted=false search filter: search lists a signed record still awaiting
+// verification, prune must never select it for deletion.
+func TestGetRecordCIDs_PruneUntrustedExcludesPendingUnlikeSearch(t *testing.T) {
+	db := setupSignatureStatusDB(t)
+
+	search, err := db.GetRecordCIDs(types.WithTrusted(false))
+	require.NoError(t, err)
+	assert.ElementsMatch(t, []string{sigFailed, sigUnsigned, sigPending}, search)
+
+	prune, err := db.GetRecordCIDs(types.WithSignatureStatuses(types.SignatureStatusFailed, types.SignatureStatusUnsigned))
+	require.NoError(t, err)
+	assert.ElementsMatch(t, []string{sigFailed, sigUnsigned}, prune)
+}

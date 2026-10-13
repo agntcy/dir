@@ -34,8 +34,9 @@ const (
 
 // Criteria is the search filter the prune applies.
 type Criteria struct {
-	// Trusted selects records by signature-verification status. Unset means
-	// false (not trusted). Mutually exclusive with SignatureStatuses.
+	// Trusted selects records by signature status: true selects [verified],
+	// false selects [failed, unsigned]. Unset means false. Mutually exclusive
+	// with SignatureStatuses.
 	Trusted *bool `json:"trusted,omitempty" mapstructure:"trusted"`
 
 	// SignatureStatuses selects records whose signature status is any of
@@ -43,8 +44,8 @@ type Criteria struct {
 	//   - verified: at least one signature verifies.
 	//   - failed: a signature verified before but no longer does (e.g. revoked).
 	//   - unsigned: no signature is attached to the record.
-	// A signed record with no verification result matches none of them, so it
-	// is never pruned by signature status.
+	// A signed record with no verification result matches none of them, so
+	// prune never deletes it, whether selecting by these or by Trusted.
 	SignatureStatuses []string `json:"signature_statuses,omitempty" mapstructure:"signature_statuses"`
 
 	// MinSeverity is the minimum scan severity that selects a record
@@ -132,10 +133,30 @@ func (c *Config) GetTrusted() bool {
 	return c.Criteria.Trusted != nil && *c.Criteria.Trusted
 }
 
-// UsesSignatureStatuses reports whether SignatureStatuses selects records
+// UsesSignatureStatuses reports whether SignatureStatuses is configured
 // instead of Trusted.
 func (c *Config) UsesSignatureStatuses() bool {
 	return len(c.Criteria.SignatureStatuses) > 0
+}
+
+// GetSignatureStatuses returns the signature statuses prune selects. Trusted is
+// an alias over them: true is [verified], false (or unset) is
+// [failed, unsigned].
+//
+// This differs from the trusted search filter on purpose: "not trusted" there
+// also lists signed records without a verification result, but prune never
+// deletes those. A filter that deletes must be conservative about missing
+// evidence; one that lists should not hide records.
+func (c *Config) GetSignatureStatuses() []string {
+	if c.UsesSignatureStatuses() {
+		return c.Criteria.SignatureStatuses
+	}
+
+	if c.GetTrusted() {
+		return []string{types.SignatureStatusVerified}
+	}
+
+	return []string{types.SignatureStatusFailed, types.SignatureStatusUnsigned}
 }
 
 // Validate reports an invalid min_severity or signature status, or both

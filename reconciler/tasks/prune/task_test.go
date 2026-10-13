@@ -86,7 +86,7 @@ func TestTask_Run_DBError_ReturnsError(t *testing.T) {
 	assert.Contains(t, err.Error(), "get records")
 }
 
-func TestTask_Run_AppliesTrustedAndScanSeverityFilters(t *testing.T) {
+func TestTask_Run_AppliesDefaultSignatureStatusesAndScanSeverity(t *testing.T) {
 	t.Parallel()
 
 	var got types.RecordFilters
@@ -104,8 +104,8 @@ func TestTask_Run_AppliesTrustedAndScanSeverityFilters(t *testing.T) {
 	require.NoError(t, err)
 
 	require.NoError(t, task.Run(context.Background()))
-	require.NotNil(t, got.Trusted)
-	assert.False(t, *got.Trusted)
+	assert.Nil(t, got.Trusted, "prune selects by signature status, never by the trusted search filter")
+	assert.Equal(t, []string{types.SignatureStatusFailed, types.SignatureStatusUnsigned}, got.SignatureStatuses)
 	assert.Equal(t, []string{"HIGH"}, got.ScanSeverities)
 	assert.Equal(t, 25, got.Limit)
 	require.NotNil(t, got.IndexedBefore)
@@ -134,7 +134,7 @@ func TestTask_Run_AppliesConfiguredOlderThan(t *testing.T) {
 	assert.WithinDuration(t, time.Now().Add(-24*time.Hour), *got.IndexedBefore, 5*time.Second)
 }
 
-func TestTask_Run_AppliesConfiguredTrusted(t *testing.T) {
+func TestTask_Run_TrustedTrueSelectsVerified(t *testing.T) {
 	t.Parallel()
 
 	var got types.RecordFilters
@@ -154,8 +154,8 @@ func TestTask_Run_AppliesConfiguredTrusted(t *testing.T) {
 	require.NoError(t, err)
 
 	require.NoError(t, task.Run(context.Background()))
-	require.NotNil(t, got.Trusted)
-	assert.True(t, *got.Trusted)
+	assert.Nil(t, got.Trusted)
+	assert.Equal(t, []string{types.SignatureStatusVerified}, got.SignatureStatuses, "trusted: true is [verified]")
 }
 
 func TestTask_Run_DeletesMatchingRecords(t *testing.T) {
@@ -356,7 +356,7 @@ func TestTask_Run_DryRunCountsEachSignatureStatus(t *testing.T) {
 	}, queried, "one query for the match, then one count per status")
 }
 
-func TestTask_Run_UnsetCriteriaSelectUntrusted(t *testing.T) {
+func TestTask_Run_UnsetTrustedSelectsFailedAndUnsigned(t *testing.T) {
 	t.Parallel()
 
 	var got types.RecordFilters
@@ -374,9 +374,9 @@ func TestTask_Run_UnsetCriteriaSelectUntrusted(t *testing.T) {
 	require.NoError(t, err)
 
 	require.NoError(t, task.Run(context.Background()))
-	require.NotNil(t, got.Trusted)
-	assert.False(t, *got.Trusted)
-	assert.Empty(t, got.SignatureStatuses)
+	assert.Nil(t, got.Trusted)
+	assert.Equal(t, []string{types.SignatureStatusFailed, types.SignatureStatusUnsigned}, got.SignatureStatuses,
+		"unset trusted is [failed, unsigned]: a signed record without a result is never selected")
 }
 
 // A failed count is logged and skipped; the dry run still succeeds.
@@ -402,4 +402,33 @@ func TestTask_Run_DryRunCountErrorIsNotFatal(t *testing.T) {
 
 	require.NoError(t, task.Run(context.Background()))
 	assert.Equal(t, 2, calls)
+}
+
+// The default path gets a per-status breakdown in dry runs too.
+func TestTask_Run_DryRunCountsDefaultStatuses(t *testing.T) {
+	t.Parallel()
+
+	var queried [][]string
+
+	db := &fakeIndex{
+		getRecordCIDs: func(opts ...types.FilterOption) ([]string, error) {
+			var f types.RecordFilters
+			for _, opt := range opts {
+				opt(&f)
+			}
+
+			queried = append(queried, f.SignatureStatuses)
+
+			return []string{"cid-a"}, nil
+		},
+	}
+	task, err := NewTask(Config{Enabled: true, DryRun: true}, db, &fakeStore{})
+	require.NoError(t, err)
+
+	require.NoError(t, task.Run(context.Background()))
+	assert.Equal(t, [][]string{
+		{types.SignatureStatusFailed, types.SignatureStatusUnsigned},
+		{types.SignatureStatusFailed},
+		{types.SignatureStatusUnsigned},
+	}, queried)
 }

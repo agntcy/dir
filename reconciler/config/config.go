@@ -284,33 +284,7 @@ func LoadConfig() (*Config, error) {
 	//
 	// Prune task configuration
 	//
-	_ = v.BindEnv("prune.enabled")
-	v.SetDefault("prune.enabled", false)
-
-	_ = v.BindEnv("prune.interval")
-	v.SetDefault("prune.interval", prune.DefaultInterval)
-
-	_ = v.BindEnv("prune.record_timeout")
-	v.SetDefault("prune.record_timeout", prune.DefaultRecordTimeout)
-
-	// No default for trusted or signature_statuses: they are mutually
-	// exclusive, so neither may be set implicitly. Unset trusted means false.
-	_ = v.BindEnv("prune.criteria.trusted")
-
-	// Comma-separated in env form (e.g. "failed,unsigned").
-	_ = v.BindEnv("prune.criteria.signature_statuses")
-
-	_ = v.BindEnv("prune.criteria.min_severity")
-	v.SetDefault("prune.criteria.min_severity", prune.DefaultMinSeverity)
-
-	_ = v.BindEnv("prune.criteria.older_than")
-	v.SetDefault("prune.criteria.older_than", prune.DefaultOlderThan)
-
-	_ = v.BindEnv("prune.limit")
-	v.SetDefault("prune.limit", prune.DefaultLimit)
-
-	_ = v.BindEnv("prune.dry_run")
-	v.SetDefault("prune.dry_run", true)
+	bindPruneConfig(v)
 
 	//
 	// Sync task configuration
@@ -403,4 +377,36 @@ func LoadConfig() (*Config, error) {
 	}
 
 	return config, nil
+}
+
+// bindPruneConfig binds the prune task configuration to the environment and
+// sets its defaults.
+func bindPruneConfig(v *viper.Viper) {
+	_ = v.BindEnv("prune.enabled")
+	v.SetDefault("prune.enabled", false)
+
+	_ = v.BindEnv("prune.interval")
+	v.SetDefault("prune.interval", prune.DefaultInterval)
+
+	_ = v.BindEnv("prune.record_timeout")
+	v.SetDefault("prune.record_timeout", prune.DefaultRecordTimeout)
+
+	// No default for trusted or signature_statuses: they are mutually
+	// exclusive, so neither may be set implicitly. Unset trusted means false.
+	_ = v.BindEnv("prune.criteria.trusted")
+
+	// Comma-separated in env form (e.g. "failed,unsigned").
+	_ = v.BindEnv("prune.criteria.signature_statuses")
+
+	_ = v.BindEnv("prune.criteria.min_severity")
+	v.SetDefault("prune.criteria.min_severity", prune.DefaultMinSeverity)
+
+	_ = v.BindEnv("prune.criteria.older_than")
+	v.SetDefault("prune.criteria.older_than", prune.DefaultOlderThan)
+
+	_ = v.BindEnv("prune.limit")
+	v.SetDefault("prune.limit", prune.DefaultLimit)
+
+	_ = v.BindEnv("prune.dry_run")
+	v.SetDefault("prune.dry_run", true)
 }
