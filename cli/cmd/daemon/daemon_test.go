@@ -100,6 +100,47 @@ func TestLoadConfigRepublishIntervalEnvOverride(t *testing.T) {
 	require.Equal(t, 10*time.Minute, cfg.Server.Routing.RepublishInterval)
 }
 
+// TestLoadConfigANSEnvOverride asserts that the ans:// identity scheme, which
+// is commented out in the embedded daemon.config.yaml, can be configured by
+// environment alone, with its lists comma-separated. This depends on its keys
+// being registered in registerReconcilerDefaults.
+func TestLoadConfigANSEnvOverride(t *testing.T) {
+	originalOpts := opts
+	opts = &Options{DataDir: t.TempDir()}
+	t.Cleanup(func() {
+		opts = originalOpts
+	})
+
+	cfg, err := loadConfig()
+	require.NoError(t, err)
+	require.False(t, cfg.Reconciler.Identity.ANS.Enabled)
+	require.Empty(t, cfg.Reconciler.Identity.ANS.TrustedLogHosts)
+
+	t.Setenv("DIRECTORY_DAEMON_RECONCILER_IDENTITY_ANS_ENABLED", "true")
+	t.Setenv("DIRECTORY_DAEMON_RECONCILER_IDENTITY_ANS_TRUSTED_LOG_HOSTS", "log.example.com,log2.example.com:8443")
+	t.Setenv("DIRECTORY_DAEMON_RECONCILER_IDENTITY_ANS_ROOT_KEYS", "example-log+1a2b3c4d+AjBZ")
+	t.Setenv("DIRECTORY_DAEMON_RECONCILER_IDENTITY_ANS_ALLOW_UNPINNED_ROOT_KEYS", "true")
+	t.Setenv("DIRECTORY_DAEMON_RECONCILER_IDENTITY_ANS_ROOT_KEYS_TTL", "5m")
+	t.Setenv("DIRECTORY_DAEMON_RECONCILER_IDENTITY_ANS_STATUS_CACHE_TTL", "20s")
+	t.Setenv("DIRECTORY_DAEMON_RECONCILER_IDENTITY_ANS_STALE_GRACE", "2h")
+	t.Setenv("DIRECTORY_DAEMON_RECONCILER_IDENTITY_ANS_TIMEOUT", "3s")
+	t.Setenv("DIRECTORY_DAEMON_RECONCILER_IDENTITY_ANS_CLOCK_SKEW", "5s")
+
+	cfg, err = loadConfig()
+	require.NoError(t, err)
+
+	ans := cfg.Reconciler.Identity.ANS
+	require.True(t, ans.Enabled)
+	require.Equal(t, []string{"log.example.com", "log2.example.com:8443"}, ans.TrustedLogHosts)
+	require.Equal(t, []string{"example-log+1a2b3c4d+AjBZ"}, ans.RootKeys)
+	require.True(t, ans.AllowUnpinnedRootKeys)
+	require.Equal(t, 5*time.Minute, ans.RootKeysTTL)
+	require.Equal(t, 20*time.Second, ans.StatusCacheTTL)
+	require.Equal(t, 2*time.Hour, ans.StaleGrace)
+	require.Equal(t, 3*time.Second, ans.Timeout)
+	require.Equal(t, 5*time.Second, ans.ClockSkew)
+}
+
 // TestLoadConfigRoutingAddressEnvOverride asserts that the advertised routing
 // endpoints can be set by environment alone. They have no default and are absent
 // from the embedded daemon.config.yaml, so this depends on them being registered

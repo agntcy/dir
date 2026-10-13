@@ -1,5 +1,17 @@
 # Mounted at /etc/agntcy/reconciler/reconciler.config.yml.
-# Other settings come from reconciler.env.
+# Other settings come from reconciler.env, where a set value wins over this file.
+#
+# The identity task's list-valued settings belong here when they are not set
+# comma-separated in reconciler.env:
+# identity:
+#   spiffe_trust_bundles:
+#     - trust_domain: example.org
+#       bundle_file: /etc/agntcy/spiffe/example.org.pem
+#   ans:
+#     trusted_log_hosts:
+#       - log.example.com
+#     root_keys:
+#       - "example-log+1a2b3c4d+AjBZ..."
 policy:
   validators:
     - provider: oasf

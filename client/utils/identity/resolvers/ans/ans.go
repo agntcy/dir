@@ -38,7 +38,8 @@ import (
 // hundred bytes and a root-keys set a few lines.
 const maxResponseBytes = 64 << 10
 
-// Resolver resolves "ans://" subjects. It is safe for concurrent use.
+// Resolver resolves "ans://" subjects. It is safe for concurrent use, and
+// concurrent claims for one subject share one lookup; see attest.
 type Resolver struct {
 	cfg       Config
 	trusted   map[string]struct{}
@@ -60,11 +61,6 @@ type Resolver struct {
 type PinnedKey struct {
 	Name  string
 	KeyID string
-}
-
-// final marks err as a verdict about the claim; see resolvers.Final.
-func final(err error) error {
-	return resolvers.Final(err) //nolint:wrapcheck // the mark is the wrapping
 }
 
 // attestation is what the network stages said about one subject: the log's
@@ -181,6 +177,18 @@ func (r *Resolver) PinnedKeys() []PinnedKey {
 	return slices.Clone(r.pinned)
 }
 
+// Forget drops every kept attestation, so the next claim of each subject asks
+// DNS and the log again. A caller that verifies in rounds calls it when a round
+// starts, so a revocation is seen in that round whatever lifetime the memo had
+// left.
+func (r *Resolver) Forget() {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	clear(r.memo)
+	r.sweepAt = time.Time{}
+}
+
 // Resolve implements resolvers.Resolver. certificate is the claim's
 // DER-encoded identity certificate, which must name exactly subject as a URI
 // SAN and be valid now; its public key is the result once the agent's
@@ -190,21 +198,21 @@ func (r *Resolver) PinnedKeys() []PinnedKey {
 func (r *Resolver) Resolve(ctx context.Context, subject string, certificate []byte) ([]crypto.PublicKey, error) {
 	name, err := parseAgentName(subject)
 	if err != nil {
-		return nil, final(err)
+		return nil, resolvers.Final(err)
 	}
 
 	if len(certificate) == 0 {
-		return nil, final(errors.New("ans certificate: claim carries no certificate"))
+		return nil, resolvers.Final(errors.New("ans certificate: claim carries no certificate"))
 	}
 
 	cert, err := x509.ParseCertificate(certificate)
 	if err != nil {
-		return nil, final(fmt.Errorf("ans certificate: parse certificate: %w", err))
+		return nil, resolvers.Final(fmt.Errorf("ans certificate: parse certificate: %w", err))
 	}
 
 	key, err := checkCertificate(cert, subject, r.clock())
 	if err != nil {
-		return nil, final(err)
+		return nil, resolvers.Final(err)
 	}
 
 	att := r.attest(ctx, name)
@@ -213,7 +221,7 @@ func (r *Resolver) Resolve(ctx context.Context, subject string, certificate []by
 	}
 
 	if !att.status.attests(sha256.Sum256(certificate)) {
-		return nil, final(errors.New("ans log: the certificate is not among the agent's valid identity certificates"))
+		return nil, resolvers.Final(errors.New("ans log: the certificate is not among the agent's valid identity certificates"))
 	}
 
 	return []crypto.PublicKey{key}, nil
@@ -245,13 +253,17 @@ func (r *Resolver) attest(ctx context.Context, name agentName) attestation {
 
 		select {
 		case <-call.done:
-			// A lookup its own caller gave up on answers nothing; a caller still
-			// waiting runs its own.
-			if call.kept || ctx.Err() != nil {
+			if call.kept {
 				return call.att
 			}
 		case <-ctx.Done():
-			return attestation{err: fmt.Errorf("ans: waiting for the lookup of %s: %w", subject, ctx.Err())}
+		}
+
+		// The lookup ended without an answer to keep, or this caller's own
+		// context did: a caller still waiting runs its own lookup, one that
+		// gave up reports its own cause.
+		if err := ctx.Err(); err != nil {
+			return attestation{err: fmt.Errorf("ans: waiting for the lookup of %s: %w", subject, err)}
 		}
 	}
 }
@@ -276,19 +288,19 @@ func (r *Resolver) join(subject string) (attestation, *lookup, bool) {
 	return attestation{}, call, true
 }
 
-// finish hands the result of a lookup to its waiters and, when the leading
-// caller was still waiting for it, remembers it.
-func (r *Resolver) finish(subject string, call *lookup, att attestation, live bool) {
+// finish hands the result of a lookup to its waiters and, when keep says the
+// leading caller was still waiting for it, remembers it.
+func (r *Resolver) finish(subject string, call *lookup, att attestation, keep bool) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
 	delete(r.inflight, subject)
 
-	if live {
+	if keep {
 		r.rememberLocked(subject, att)
 	}
 
-	call.att, call.kept = att, live
+	call.att, call.kept = att, keep
 
 	close(call.done)
 }
@@ -298,33 +310,31 @@ func (r *Resolver) finish(subject string, call *lookup, att attestation, live bo
 // window, and a DNS hang ends after one timeout.
 func (r *Resolver) attestUncached(ctx context.Context, name agentName) attestation {
 	dnsCtx, cancelDNS := context.WithTimeout(ctx, r.cfg.GetTimeout())
+	defer cancelDNS()
+
 	target, err := r.lookupBadge(dnsCtx, name)
-
-	cancelDNS()
-
 	if err != nil {
 		return attestation{err: err}
 	}
 
 	logCtx, cancelLog := context.WithTimeout(ctx, r.cfg.GetTimeout())
+	defer cancelLog()
+
 	status, err := r.log.Status(logCtx, target)
-
-	cancelLog()
-
 	if err != nil {
 		return attestation{err: err}
 	}
 
 	if !strings.EqualFold(status.AgentID, target.AgentID) {
-		return attestation{err: final(fmt.Errorf("ans log: status token names agent %q, expected %q", truncate(status.AgentID), target.AgentID))}
+		return attestation{err: resolvers.Final(fmt.Errorf("ans log: status token names agent %q, expected %q", truncate(status.AgentID), target.AgentID))}
 	}
 
 	if !name.matches(status.Name) {
-		return attestation{err: final(fmt.Errorf("ans log: status token names %q, expected %q", truncate(status.Name), name.String()))}
+		return attestation{err: resolvers.Final(fmt.Errorf("ans log: status token names %q, expected %q", truncate(status.Name), name.String()))}
 	}
 
 	if !status.State.allowsUse() {
-		return attestation{err: final(fmt.Errorf("ans log: agent status %q does not allow use", truncate(string(status.State))))}
+		return attestation{err: resolvers.Final(fmt.Errorf("ans log: agent status %q does not allow use", truncate(string(status.State))))}
 	}
 
 	return attestation{status: status}

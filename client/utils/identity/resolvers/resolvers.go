@@ -23,8 +23,9 @@ var ErrNoKeys = errors.New("no usable public keys found")
 // timeout, a refused connection) classifies them by their cause; a failure
 // wrapped with Final is never one of those, whatever its cause, so the caller
 // must check errors.Is(err, ErrFinal) before looking at the cause. A resolver
-// uses it when the party that could have caused the failure is the subject
-// itself, or when the failure was only observed after the caller gave up.
+// uses it for what it can judge: the subject, what the subject publishes, and
+// what a trusted party states or refuses to state. A failure to reach the
+// network, the caller's own deadline included, is left unmarked.
 var ErrFinal = errors.New("final")
 
 // Final marks err as a verdict about the claim (see ErrFinal). The text and

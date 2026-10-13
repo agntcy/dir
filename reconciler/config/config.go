@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"strings"
 
+	ansresolver "github.com/agntcy/dir/client/utils/identity/resolvers/ans"
 	"github.com/agntcy/dir/reconciler/recordevents"
 	"github.com/agntcy/dir/reconciler/tasks/identity"
 	"github.com/agntcy/dir/reconciler/tasks/indexer"
@@ -221,6 +222,32 @@ func LoadConfig() (*Config, error) {
 
 	_ = v.BindEnv("identity.record_timeout")
 	v.SetDefault("identity.record_timeout", identity.DefaultRecordTimeout)
+
+	// The ans:// scheme. Its two lists take a comma-separated value from the
+	// environment (root-key lines contain no comma).
+	_ = v.BindEnv("identity.ans.enabled")
+	v.SetDefault("identity.ans.enabled", false)
+
+	_ = v.BindEnv("identity.ans.trusted_log_hosts")
+	_ = v.BindEnv("identity.ans.root_keys")
+
+	_ = v.BindEnv("identity.ans.allow_unpinned_root_keys")
+	v.SetDefault("identity.ans.allow_unpinned_root_keys", false)
+
+	_ = v.BindEnv("identity.ans.root_keys_ttl")
+	v.SetDefault("identity.ans.root_keys_ttl", ansresolver.DefaultRootKeysTTL)
+
+	_ = v.BindEnv("identity.ans.status_cache_ttl")
+	v.SetDefault("identity.ans.status_cache_ttl", ansresolver.DefaultStatusCacheTTL)
+
+	_ = v.BindEnv("identity.ans.stale_grace")
+	v.SetDefault("identity.ans.stale_grace", identity.DefaultANSStaleGrace)
+
+	_ = v.BindEnv("identity.ans.timeout")
+	v.SetDefault("identity.ans.timeout", ansresolver.DefaultTimeout)
+
+	_ = v.BindEnv("identity.ans.clock_skew")
+	v.SetDefault("identity.ans.clock_skew", ansresolver.DefaultClockSkew)
 
 	//
 	// Scan task configuration (security scanning)

@@ -83,7 +83,8 @@ A record can carry signed claims that a subject, such as `did:web:acme.com` or
 `dns:acme.com`, is the record's own identity or its owner. A claim is stored as an OCI
 referrer of the record. The reconciler verifies it against the key material the subject
 publishes (a DNS TXT record, a `/.well-known/jwks.json` file, a DID document, or a SPIFFE
-trust bundle) and records the outcome, which `dirctl identity status` reports and the
+trust bundle) or against the certificate the claim carries, which an ANS transparency log
+attests, and records the outcome, which `dirctl identity status` reports and the
 `--identity-verified`, `--owner-verified` and `--verified` search filters match on.
 
 Claims are re-verified on every reconciler run, so a rotated key or a revoked trust bundle is

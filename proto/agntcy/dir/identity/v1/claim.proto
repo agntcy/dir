@@ -35,7 +35,7 @@ message Claim {
   string record_cid = 2;
 
   // The identity URI being claimed (e.g. "did:web:acme.com:agents:finance",
-  // "spiffe://acme.com/agents/finance"). Must match the record's own
+  // "spiffe://acme.com/agents/finance", "ans://v1.0.0.agent.acme.com"). Must match the record's own
   // "agntcy.dir/identity" (role = CLAIM_ROLE_IDENTITY) or "agntcy.dir/owner"
   // (role = CLAIM_ROLE_OWNER) annotation. The URI scheme determines how the
   // subject is resolved/verified.
@@ -53,7 +53,9 @@ message Claim {
   // a separate, later concern; empty until then.
   string signature = 6;
 
-  // Base64-encoded DER X.509 certificate. Only set for a "spiffe://"
-  // subject, whose certificate's URI SAN must equal subject.
+  // Base64-encoded DER X.509 certificate. Only set for a "spiffe://" or
+  // "ans://" subject, whose proof is a certificate (the X.509-SVID, or the
+  // identity certificate the agent's transparency log attests) and whose URI
+  // SAN must equal subject.
   optional string certificate = 7;
 }

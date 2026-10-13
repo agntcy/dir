@@ -5,10 +5,11 @@ icon: material/account-check
 # Identity and Ownership Claims
 
 A record can carry two signed claims: one for the identity of the record itself and one
-for the owner behind it. A claim ties the record to a subject (a domain, a DID or a
-SPIFFE ID) and is proven with a signature that anyone can check against key material the
-subject publishes. The reconciler verifies every claim on a schedule and stores the outcome, so
-a rotated key or a revoked trust bundle shows up on the next run.
+for the owner behind it. A claim ties the record to a subject (a domain, a DID, a SPIFFE ID
+or an ANS name) and is proven with a signature that anyone can check against key material the
+subject publishes, or against a certificate the claim carries. The reconciler verifies every
+claim on a schedule and stores the outcome, so a rotated key, a revoked trust bundle or a
+revoked agent shows up on the next run.
 
 This page describes the claim schema, how each kind of subject is verified, and how to read
 the results. For the commands, see [CLI Reference — Identity](dir-cli-reference.md#dirctl-identity-claim-flags);
@@ -21,7 +22,7 @@ sequenceDiagram
     participant P as Publisher
     participant S as Directory server
     participant R as Reconciler (identity task)
-    participant K as Subject (DNS, HTTPS, DID, SPIFFE bundle)
+    participant K as Subject (DNS, HTTPS, DID, SPIFFE bundle, ANS log)
     participant D as Clients (CLI, SDK, search)
 
     P->>S: Push record declaring agntcy.dir/owner
@@ -92,7 +93,7 @@ as JSON in the referrer's data.
 | `signedAt` | string | RFC 3339 signing time |
 | `expiresAt` | string, optional | RFC 3339 expiry; an expired claim fails |
 | `signature` | string | Detached JWS (RFC 7515) in compact serialization |
-| `certificate` | string, optional | Base64 DER X.509 certificate; only for `spiffe://` subjects |
+| `certificate` | string, optional | Base64 DER X.509 certificate; only for `spiffe://` and `ans://` subjects |
 
 The referrer type follows the role:
 
@@ -127,7 +128,9 @@ The `signature` and `certificate` fields are not part of the payload.
 !!! warning
 
     The certificate is not covered by the signature. For that reason it is only accepted
-    on a `spiffe://` claim, where it is validated against a trust bundle on its own, and a claim for any other subject that carries one fails.
+    on a `spiffe://` or `ans://` claim, where it is validated on its own (against a trust
+    bundle, or against the agent's transparency log), and a claim for any other subject that
+    carries one fails.
 
 ### Signing keys
 
@@ -154,6 +157,7 @@ the keys the subject currently publishes validates its signature.
 | `did:web:example.com:agents:finance` | `https://example.com/agents/finance/did.json` |
 | `did:key:z...` | The key encoded in the DID itself; no network access |
 | `spiffe://example.com/agents/finance` | The SVID in the claim, validated against a configured trust bundle |
+| `ans://v1.0.0.agent.example.com` | The identity certificate in the claim, once the agent's transparency log attests it |
 
 Any other scheme, such as `http://` or `mailto:`, is not supported and fails the claim.
 
@@ -199,12 +203,94 @@ The claim carries only the leaf certificate, so its issuer must be a root in the
 trust domain with no configured bundle fails. See
 [Configuration](#configuration) for how to provide the bundles.
 
+### ANS
+
+An `ans://` subject is an agent registered with the Agent Name Service (ANS), written
+`ans://v<major>.<minor>.<patch>.<host>` in exactly that spelling: a lowercase host and a
+version without leading zeros. The claim carries the agent's identity certificate in
+`certificate`, and no key is published anywhere. The verifier accepts the claim only when all
+of the following hold:
+
+- The certificate has a URI SAN equal to the subject, is within its validity period, and the
+  claim's signature verifies against its key.
+- The TXT record at `_ans-badge.<host>` names the agent's transparency log, and that log is
+  one of the configured `trusted_log_hosts`. The record has the form
+  `v=ans-badge1; version=v1.0.0; url=https://<log host>/v1/agents/<uuid>`; one without a
+  `version` applies to every version of the agent. The record is a pointer only; nothing in it
+  is trusted.
+- The log's status token for the agent verifies with the log's signing keys, names the
+  subject, reports a status of `ACTIVE`, `WARNING` or `DEPRECATED`, and lists the
+  certificate's SHA-256 fingerprint among the agent's valid identity certificates.
+
+A `verified` result therefore means: the claim was signed by the key of the certificate it
+carries; that certificate names the subject, is within its validity, and its fingerprint is
+listed as a valid identity certificate in a status token signed by a trusted transparency
+log for an agent whose name is the subject and whose status allows use. The certificate's
+issuer chain is not checked, the DNS pointer is not trusted, and neither the log's receipt
+nor its tree head is examined. With `allow_unpinned_root_keys`, the log's signing keys are
+fetched over TLS from the trusted host, so the proof reduces to TLS plus the log's own
+statement.
+
+**Revocation and renewal.** Every run asks the log again, so a revoked or expired agent, or
+a certificate the log no longer lists, fails on the next run that reaches the log: the log's
+answer about a subject is reused for `status_cache_ttl` within a run and dropped when the next
+run starts. A lookup that gets no answer keeps the stored result for
+`ans.stale_grace` (default 24 hours) from the last run that reached the subject, as described
+under [Unreachable subjects](#unreachable-subjects): a publisher who makes their own
+`_ans-badge` lookup fail can delay the effect of a revocation by that long, so an operator who
+wants to fail closed sets `ans.stale_grace` to `0`. A claim also
+stops verifying when its certificate expires, whatever the log says, so the publisher has to
+push a new claim after each certificate renewal.
+
+**Failures.** What the publisher publishes is judged as it is. A subject that is not
+canonical, a certificate that does not name it or is outside its validity, a `_ans-badge`
+record that is missing, ambiguous or points outside `trusted_log_hosts`, or whose name does
+not exist, and what the log states (a terminal status, a token for another agent, a
+certificate it does not list, a 404, 401, 403 or any other answer that is not a 5xx, 408, 429
+or a redirect) fail the claim for that run, whatever the stored result was. A lookup that gets
+no answer, a DNS failure other than "no such name" or a trusted log that is down (a 5xx, 408
+or 429 answer, a refused connection, a timeout, or a redirect, which the client never
+follows), is treated as for every other scheme, with `ans.stale_grace` in place of the seven
+days; see [Unreachable subjects](#unreachable-subjects). The stored error names the step that
+failed, `ans name`, `ans certificate`, `ans badge` or `ans log`, after the reconciler's own
+`resolve keys of <subject>:` prefix; a claim whose budget ran out while another claim's lookup
+of the same subject was under way stores `ans: waiting for the lookup of <subject>`.
+
+**The log's keys.** `root_keys` pins the logs' signing keys as the lines their `/root-keys`
+endpoint serves, and may list several: pin a log's next key beside its current one before
+the log signs with it, and the rotation has no gap. The keys are read at startup. A token
+signed by a key that is not pinned fails the claim, fail closed: the stored error names the
+key id, and the reconciler warns once per run until `root_keys` is updated and the reconciler
+restarted. Alternatively `allow_unpinned_root_keys` fetches each log's keys from
+`/root-keys`, refreshed every `root_keys_ttl` and on a rotation, and trust then rests on TLS
+to the trusted hosts. The two settings cannot be combined. A malformed `/root-keys` answer
+fails the claims of that log for one run.
+
+**Budget.** A lookup gets `timeout` for the DNS record and `timeout` again for the log, so
+one `ans://` claim takes at most twice `timeout`, and `record_timeout` must allow for that.
+The log's answer about a subject is reused for `status_cache_ttl` across the claims of that
+subject, whatever certificates they carry, so a stack of claims attached to a record by
+anyone costs one lookup. The memo is dropped when a run starts, so nothing carries over into
+the next run.
+
+The log is reached through the same SSRF-safe client as the other schemes, so a log on a
+private address is refused at lookup time. Turning `ans.enabled` off, or running a
+reconciler from before this scheme, fails `ans://` claims as an unsupported scheme on the
+next run.
+
+At startup the reconciler logs the trusted logs and the pinned key ids; during a run a kept
+result is logged at `WARN` (`Keeping the last claim result`) and counted as `kept` in the
+run summary, so a log outage shows up as kept results. A key rotation the configuration has
+not followed shows up as `failed` results naming the key id and one `WARN` per run (`A trusted
+transparency log signs with a key that identity.ans.root_keys does not hold`).
+
 ### Fetch limits
 
 Documents are fetched with an SSRF-safe client, because the URL comes from untrusted record
 data. It speaks HTTPS only, refuses to connect to private, loopback, link-local and other
 non-public addresses (checked after DNS resolution), follows at most three redirects, and
-accepts responses of at most 1 MiB within a 10 second timeout.
+accepts responses of at most 1 MiB within a 10 second timeout. The ANS log client differs in
+two ways: it never follows a redirect, and it accepts at most 64 KiB.
 
 ## Verification
 
@@ -217,7 +303,7 @@ For each record that carries claims, and for each role, it does the following:
 
 - Runs the checks that need no key.
 
-    The claim is for this record (`recordCid`), it is not expired, `signedAt` parses, and the certificate rule holds (a certificate if and only if the subject is `spiffe://`). A claim that fails these costs no network lookup.
+    The claim is for this record (`recordCid`), it is not expired, `signedAt` parses, and the certificate rule holds (a certificate if and only if the subject is `spiffe://` or `ans://`). A claim that fails these costs no network lookup.
 
 - Resolves the subject's current keys for its scheme.
 - Verifies the signature against those keys.
@@ -244,10 +330,10 @@ record's claims cannot be read at all, the stored results are left as they were.
 ### Unreachable subjects
 
 A failed lookup is not the same as a wrong claim. If the subject cannot be reached, because
-of a timeout, a refused connection, a DNS failure other than "no such name", or a 5xx, 408 or
-429 response, a result that is already stored is left as it is, and nothing is written for
-that run. The result's age is counted from when it was last written, so the grace lasts seven
-days from the last run that reached the subject. The period is fixed and cannot be configured.
+of a timeout, a refused connection, a DNS failure other than "no such name", a 5xx, 408 or
+429 response, or a redirect (which the client never follows), a result that is already stored
+is left as it is, and nothing is written for that run. The result's age is counted from when
+it was last written, so the grace lasts seven days from the last run that reached the subject.
 After that, the next run that still cannot reach the subject stores a `failed` result with the
 lookup error.
 
@@ -256,10 +342,22 @@ Two cases get no grace:
 - A claim that has no stored result yet fails at once if its subject is unreachable on the first run, and verifies on the first run that reaches it.
 - An answer that says the subject publishes no usable key, a `404`, a "no such host" or a
   blocked address is not transient, so it fails the claim immediately.
+- A subject in a scheme the task does not serve, an `ans://` subject with `ans.enabled` off,
+  fails at once: a scheme the task cannot verify does not keep its results.
+
+The seven days are fixed for every scheme but `ans://`, whose grace is `ans.stale_grace`
+(default 24 hours; see [ANS](#ans)): the publisher's own DNS is among the lookups that may get
+no answer, so a shorter window bounds how long a failing zone can hide a revocation, and `0`
+keeps nothing. A run that is stopped mid-lookup stores no failure for any scheme; the next
+run starts over from the stored result.
 
 ### Stored result
 
-Each result is one row per record and role in the server database.
+Each result is one row per record and role in the server database. A result is about the
+record's declared subject, not about one claim: the task only considers claims whose subject
+is the record's, whichever of them verifies decides the result, and a result kept through the
+grace stands whatever claims are attached meanwhile, so a claim re-pushed for the same
+subject, after a certificate renewal for instance, inherits it.
 
 | Column | Description |
 |--------|-------------|
@@ -336,6 +434,15 @@ reconciler:
     spiffe_trust_bundles:
       - trust_domain: example.org
         bundle_file: /etc/agntcy/spiffe/example.org.pem
+    ans:
+      enabled: true
+      trusted_log_hosts:
+        - log.example.com
+      root_keys:
+        - "example-log+1a2b3c4d+AjBZMBMGByqGSM49AgEGCCqGSM49AwEHA0IABF..."
+      timeout: 10s
+      status_cache_ttl: 30s
+      stale_grace: 24h
 ```
 
 | Key | Environment variable | Default | Description |
@@ -344,11 +451,31 @@ reconciler:
 | `interval` | `RECONCILER_IDENTITY_INTERVAL` | `1h` | Time between runs |
 | `record_timeout` | `RECONCILER_IDENTITY_RECORD_TIMEOUT` | `1m` | Time allowed for one record |
 | `spiffe_trust_bundles` | none, YAML only | empty | Trust bundle per SPIFFE trust domain |
+| `ans.enabled` | `RECONCILER_IDENTITY_ANS_ENABLED` | `false` | Verify `ans://` claims |
+| `ans.trusted_log_hosts` | `RECONCILER_IDENTITY_ANS_TRUSTED_LOG_HOSTS`, comma-separated | empty | Transparency-log hosts (`host` or `host:port`) a badge record may point at |
+| `ans.root_keys` | `RECONCILER_IDENTITY_ANS_ROOT_KEYS`, comma-separated | empty | The logs' signing keys, as the lines their `/root-keys` endpoint serves; required unless unpinned |
+| `ans.allow_unpinned_root_keys` | `RECONCILER_IDENTITY_ANS_ALLOW_UNPINNED_ROOT_KEYS` | `false` | Fetch each log's keys from `/root-keys` instead; cannot be combined with `root_keys` |
+| `ans.root_keys_ttl` | `RECONCILER_IDENTITY_ANS_ROOT_KEYS_TTL` | `10m` | How long fetched keys are used before they are fetched again |
+| `ans.status_cache_ttl` | `RECONCILER_IDENTITY_ANS_STATUS_CACHE_TTL` | `30s` | How long a subject's attestation is reused within a run; at least `5s` |
+| `ans.stale_grace` | `RECONCILER_IDENTITY_ANS_STALE_GRACE` | `24h` | How long a stored result survives lookups that get no answer; `0` keeps nothing |
+| `ans.timeout` | `RECONCILER_IDENTITY_ANS_TIMEOUT` | `10s` | Time allowed for the DNS record, and again for the log; `record_timeout` must be at least four times this |
+| `ans.clock_skew` | `RECONCILER_IDENTITY_ANS_CLOCK_SKEW` | `30s` | Tolerance on the status token's expiry, at most `10m` |
 
 Each `spiffe_trust_bundles` entry has a `trust_domain` and a `bundle_file` holding the trust
 domain's PEM root certificates. The files are read on every run, so a rotated or revoked bundle
 applies on the next one. A bundle that cannot be read only fails the claims of its own trust
 domain; the other domains and the run are not affected. With no bundle, `spiffe://` claims fail.
+
+The `ans` block is checked at startup: a malformed host or root-key line, both `root_keys` and
+`allow_unpinned_root_keys`, a `timeout` that does not fit `record_timeout` (a record may carry
+an identity and an ownership claim, each taking two timeouts), a `status_cache_ttl` below `5s`,
+or a negative `stale_grace` stops the reconciler from starting, and under
+`dirctl daemon` the API server with it. Under `dirctl daemon` the same keys take the
+`DIRECTORY_DAEMON_RECONCILER_IDENTITY_ANS_` prefix.
+
+Turning `ans.enabled` off is a rollback, not a pause: on the next run every `ans://` claim
+fails as an unsupported scheme, with no grace, and the next run after the block is turned back
+on verifies them again. `stale_grace` unset means the default `24h`; `0` keeps nothing.
 
 ## Security properties
 
@@ -361,6 +488,9 @@ domain; the other domains and the run are not affected. With no bundle, `spiffe:
 - The signature algorithm is derived from the key, not from the claim, and RSA keys below 2048
   bits are rejected.
 - A verified claim decides the result, whatever else is attached to the record.
-- Claims are verified again on every run, so key rotation, DNS changes, a revoked trust bundle
-  and expiry take effect on the next one.
+- Claims are verified again on every run, so key rotation, DNS changes, a revoked trust bundle,
+  a revoked ANS agent and expiry take effect on the next run that reaches the subject. A lookup
+  that gets no answer keeps the stored result for the grace under
+  [Unreachable subjects](#unreachable-subjects): seven days, or `ans.stale_grace` for `ans://`,
+  which an operator sets to `0` to fail closed.
 - Keys are fetched with an SSRF-safe client, because the URLs come from record data.

@@ -151,6 +151,24 @@ reconciler:
     # spiffe_trust_bundles:
     #   - trust_domain: example.org
     #     bundle_file: /etc/agntcy/spiffe/example.org.pem
+    # An ans:// claim's certificate is trusted once a transparency log on
+    # trusted_log_hosts attests it for the agent; a log on a private address is
+    # refused. root_keys are the lines the log's /root-keys endpoint serves; set
+    # allow_unpinned_root_keys instead to fetch them, and trust then rests on
+    # TLS to the trusted hosts alone. Lists take a comma-separated value from
+    # the environment. Off unless enabled.
+    # ans:
+    #   enabled: true
+    #   trusted_log_hosts:
+    #     - log.example.com
+    #   root_keys:
+    #     - "example-log+1a2b3c4d+AjBZ..."
+    #   allow_unpinned_root_keys: false
+    #   root_keys_ttl: 10m
+    #   timeout: 10s
+    #   status_cache_ttl: 30s
+    #   stale_grace: 24h
+    #   clock_skew: 30s
   scan:
     enabled: true
     interval: 1m

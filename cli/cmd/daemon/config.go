@@ -17,8 +17,10 @@ import (
 	adapterk8s "github.com/agntcy/dir-runtime/discovery/runtime/k8s"
 	runtimestore "github.com/agntcy/dir-runtime/store/config"
 	runtimestoresql "github.com/agntcy/dir-runtime/store/sql"
+	ansresolver "github.com/agntcy/dir/client/utils/identity/resolvers/ans"
 	reconcilerconfig "github.com/agntcy/dir/reconciler/config"
 	"github.com/agntcy/dir/reconciler/recordevents"
+	identitytask "github.com/agntcy/dir/reconciler/tasks/identity"
 	serverconfig "github.com/agntcy/dir/server/config"
 	dbconfig "github.com/agntcy/dir/server/database/config"
 	storeconfig "github.com/agntcy/dir/server/store/oci/config"
@@ -103,6 +105,19 @@ func registerReconcilerDefaults(v *viper.Viper) {
 	v.SetDefault("reconciler.record_events.enabled", true)
 	v.SetDefault("reconciler.record_events.window", recordevents.DefaultWindow)
 	v.SetDefault("reconciler.record_events.reconnect_delay", recordevents.DefaultReconnectDelay)
+
+	// The ans:// identity scheme is commented out in daemon.config.yaml, so its
+	// keys are registered here for AutomaticEnv. Lists take a comma-separated
+	// value.
+	v.SetDefault("reconciler.identity.ans.enabled", false)
+	v.SetDefault("reconciler.identity.ans.trusted_log_hosts", []string{})
+	v.SetDefault("reconciler.identity.ans.root_keys", []string{})
+	v.SetDefault("reconciler.identity.ans.allow_unpinned_root_keys", false)
+	v.SetDefault("reconciler.identity.ans.root_keys_ttl", ansresolver.DefaultRootKeysTTL)
+	v.SetDefault("reconciler.identity.ans.status_cache_ttl", ansresolver.DefaultStatusCacheTTL)
+	v.SetDefault("reconciler.identity.ans.stale_grace", identitytask.DefaultANSStaleGrace)
+	v.SetDefault("reconciler.identity.ans.timeout", ansresolver.DefaultTimeout)
+	v.SetDefault("reconciler.identity.ans.clock_skew", ansresolver.DefaultClockSkew)
 }
 
 func registerRuntimeDefaults(v *viper.Viper) {

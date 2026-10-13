@@ -292,7 +292,7 @@ signer, err := jws.NewKeySigner(keyPEM, nil) // nil: the key is not encrypted
 // agntcy.dir/owner annotation.
 claim, err := c.ClaimOwnership(ctx, ref.GetCid(), signer)
 
-// For a spiffe:// subject, pass the signer's X.509-SVID as well
+// For a spiffe:// or ans:// subject, pass the certificate that proves it as well
 claim, err = c.ClaimIdentity(ctx, ref.GetCid(), signer, identity.WithCertificate(svidPEM))
 
 // Resolve a name (optionally versioned) to record references

@@ -67,7 +67,7 @@ record's own identity), which must be set before the push.
 ```bash
 # record.json: "annotations": {"agntcy.dir/owner": "dns:example.com"}
 CID=$(dirctl push record.json -o raw)
-dirctl identity claim --record "$CID" --role owner --key owner.key   # the owner publishes the public key (DNS TXT, JWKS, DID, SPIFFE)
+dirctl identity claim --record "$CID" --role owner --key owner.key   # the owner's key is published (DNS TXT, JWKS, DID) or proven by a certificate passed with --cert (SPIFFE, ANS)
 dirctl identity status "$CID"                                         # check the verification result
 ```
 

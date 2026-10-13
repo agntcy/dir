@@ -196,7 +196,7 @@ func TestLogClientStatusFailures(t *testing.T) {
 			name:      "pinned keys reject a token signed by another log",
 			pinned:    true,
 			setup:     func(f *logFixture) { f.fetcher.serve(tokenURL, mintLog(f.t).statusToken(f.t, f.log.claims(f.cert))) },
-			wantErr:   "ans log: status token signed by key id ",
+			wantErr:   "ans log: status token signed by a key that is not in root_keys: key id ",
 			wantFinal: true,
 		},
 		{
@@ -302,6 +302,38 @@ func TestFetchError(t *testing.T) {
 			assert.Equal(t, tt.wantFinal, errors.Is(err, resolvers.ErrFinal))
 		})
 	}
+}
+
+// root_keys may hold several keys, so a log's next key can be pinned beside
+// its current one and a rotation has no gap.
+func TestLogClientAcceptsAnyPinnedKey(t *testing.T) {
+	f := newLogFixture(t, true)
+	next := mintLog(t)
+
+	store, err := scitt.NewKeyStore([]string{f.log.rootKeyLine(t), next.rootKeyLine(t)})
+	require.NoError(t, err)
+
+	f.client = newScittLogClient(f.fetcher, store, DefaultRootKeysTTL, DefaultClockSkew, f.clock.Now)
+
+	_, err = f.status()
+	require.NoError(t, err, "the current key")
+
+	f.fetcher.serve(tokenURL, next.statusToken(t, f.log.claims(f.cert)))
+
+	status, err := f.status()
+	require.NoError(t, err, "the next key")
+	assert.Equal(t, testAgentID, status.AgentID)
+}
+
+// A key that is not pinned is named by a cause a caller can test for, through
+// the verdict mark.
+func TestLogClientNamesTheUnpinnedKey(t *testing.T) {
+	f := newLogFixture(t, true)
+	f.fetcher.serve(tokenURL, mintLog(t).statusToken(t, f.log.claims(f.cert)))
+
+	_, err := f.status()
+	require.ErrorIs(t, err, ErrUnpinnedRootKey)
+	require.ErrorIs(t, err, resolvers.ErrFinal)
 }
 
 func TestLogClientCachesFetchedRootKeys(t *testing.T) {

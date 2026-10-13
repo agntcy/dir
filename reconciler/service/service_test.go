@@ -238,6 +238,20 @@ func TestRegisterIdentityTask(t *testing.T) {
 		assert.Empty(t, s.tasks)
 	})
 
+	t.Run("an ans block without the task registers nothing", func(t *testing.T) {
+		s := newTestService()
+		cfg := &config.Config{Identity: identity.Config{ANS: identity.ANSConfig{Enabled: true}}}
+		require.NoError(t, s.registerIdentityTask(cfg, nil, referrerStore{}))
+		assert.Empty(t, s.tasks)
+	})
+
+	t.Run("an invalid ans block fails", func(t *testing.T) {
+		s := newTestService()
+		cfg := &config.Config{Identity: identity.Config{Enabled: true, ANS: identity.ANSConfig{Enabled: true}}}
+		require.ErrorContains(t, s.registerIdentityTask(cfg, nil, referrerStore{}), "failed to create identity task: configure the ans resolver")
+		assert.Empty(t, s.tasks)
+	})
+
 	t.Run("enabled registers the task", func(t *testing.T) {
 		s := newTestService()
 		require.NoError(t, s.registerIdentityTask(enabled, nil, referrerStore{}))

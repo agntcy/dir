@@ -8,7 +8,6 @@ import (
 	"crypto/subtle"
 	"errors"
 	"fmt"
-	"net/http"
 	"strings"
 	"sync"
 	"time"
@@ -39,6 +38,12 @@ func (s State) allowsUse() bool {
 	}
 }
 
+// ErrUnpinnedRootKey is the cause of the verdict a pinned configuration gives
+// a status token signed by a key root_keys does not hold: the log rotated its
+// key, or the wrong key is pinned. errors.Is finds it through the Final mark,
+// so a caller can tell the operator to pin the new key.
+var ErrUnpinnedRootKey = errors.New("status token signed by a key that is not in root_keys")
+
 // Status is what a transparency log states about an agent in a status token
 // it signed.
 type Status struct {
@@ -52,7 +57,8 @@ type Status struct {
 	State State
 
 	// ExpiresAt is when the statement stops being valid. The log's tokens
-	// always carry one, so a zero value counts as already expired.
+	// always carry one, so a zero value counts as already expired: the
+	// statement serves the claim that fetched it and is never reused.
 	ExpiresAt time.Time
 
 	// IdentityCertificates are the SHA-256 fingerprints of the agent's valid
@@ -140,7 +146,7 @@ func (c *scittLogClient) Status(ctx context.Context, log TrustedLog) (*Status, e
 
 	if kid, unknown := unknownKeyID(err); unknown {
 		if c.pinned != nil {
-			return nil, final(fmt.Errorf("ans log: status token signed by key id %x, which is not in root_keys: %w", kid, err))
+			return nil, resolvers.Final(fmt.Errorf("ans log: %w: key id %x: %w", ErrUnpinnedRootKey, kid, err))
 		}
 
 		fresh, refreshed, refreshErr := c.refreshKeys(ctx, log.Origin)
@@ -153,12 +159,12 @@ func (c *scittLogClient) Status(ctx context.Context, log TrustedLog) (*Status, e
 		}
 
 		if _, stillUnknown := unknownKeyID(err); stillUnknown {
-			return nil, final(fmt.Errorf("ans log: status token signed by key id %x, which the log's root keys do not list: %w", kid, err))
+			return nil, resolvers.Final(fmt.Errorf("ans log: status token signed by key id %x, which the log's root keys do not list: %w", kid, err))
 		}
 	}
 
 	if err != nil {
-		return nil, final(fmt.Errorf("ans log: status token did not verify: %w", err))
+		return nil, resolvers.Final(fmt.Errorf("ans log: status token did not verify: %w", err))
 	}
 
 	return statusFrom(token), nil
@@ -220,12 +226,12 @@ func (c *scittLogClient) fetchKeys(ctx context.Context, origin string) (*scitt.K
 
 	lines := trimmed(strings.Split(string(body), "\n"))
 	if len(lines) == 0 {
-		return nil, final(errors.New("ans log: transparency log served no root keys"))
+		return nil, resolvers.Final(errors.New("ans log: transparency log served no root keys"))
 	}
 
 	keys, err := scitt.NewKeyStore(lines)
 	if err != nil {
-		return nil, final(fmt.Errorf("ans log: transparency log served malformed root keys: %w", err))
+		return nil, resolvers.Final(fmt.Errorf("ans log: transparency log served malformed root keys: %w", err))
 	}
 
 	return keys, nil
@@ -247,20 +253,11 @@ func fetchError(what string, err error) error {
 	err = fmt.Errorf("ans log: fetch %s: %w", what, err)
 
 	var statusErr *safefetch.StatusError
-	if errors.As(err, &statusErr) && !retryLater(statusErr.Code) {
-		return final(err)
+	if errors.As(err, &statusErr) && !statusErr.Transient() {
+		return resolvers.Final(err)
 	}
 
 	return err
-}
-
-// retryLater reports whether an HTTP status says nothing about the resource
-// itself: a server-side failure, a timeout, rate limiting, or a redirect.
-func retryLater(code int) bool {
-	return code >= http.StatusInternalServerError ||
-		code == http.StatusRequestTimeout ||
-		code == http.StatusTooManyRequests ||
-		(code >= http.StatusMultipleChoices && code < http.StatusBadRequest)
 }
 
 // unknownKeyID reports whether err says the token was signed by a key the key

@@ -97,7 +97,7 @@ type Claim struct {
 	// payload, so a claim cannot be replayed against a different record.
 	RecordCid string `protobuf:"bytes,2,opt,name=record_cid,json=recordCid,proto3" json:"record_cid,omitempty"`
 	// The identity URI being claimed (e.g. "did:web:acme.com:agents:finance",
-	// "spiffe://acme.com/agents/finance"). Must match the record's own
+	// "spiffe://acme.com/agents/finance", "ans://v1.0.0.agent.acme.com"). Must match the record's own
 	// "agntcy.dir/identity" (role = CLAIM_ROLE_IDENTITY) or "agntcy.dir/owner"
 	// (role = CLAIM_ROLE_OWNER) annotation. The URI scheme determines how the
 	// subject is resolved/verified.
@@ -111,8 +111,10 @@ type Claim struct {
 	// Detached JWS (RFC 7515) compact serialization. Signing/verification is
 	// a separate, later concern; empty until then.
 	Signature string `protobuf:"bytes,6,opt,name=signature,proto3" json:"signature,omitempty"`
-	// Base64-encoded DER X.509 certificate. Only set for a "spiffe://"
-	// subject, whose certificate's URI SAN must equal subject.
+	// Base64-encoded DER X.509 certificate. Only set for a "spiffe://" or
+	// "ans://" subject, whose proof is a certificate (the X.509-SVID, or the
+	// identity certificate the agent's transparency log attests) and whose URI
+	// SAN must equal subject.
 	Certificate   *string `protobuf:"bytes,7,opt,name=certificate,proto3,oneof" json:"certificate,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache

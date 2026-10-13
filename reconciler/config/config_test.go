@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	ansresolver "github.com/agntcy/dir/client/utils/identity/resolvers/ans"
 	"github.com/agntcy/dir/reconciler/recordevents"
 	"github.com/agntcy/dir/reconciler/tasks/identity"
 	policytask "github.com/agntcy/dir/reconciler/tasks/policy"
@@ -43,6 +44,17 @@ func TestLoadConfig_NoFile_ReturnsDefaults(t *testing.T) {
 	assert.Equal(t, identity.DefaultInterval, cfg.Identity.Interval)
 	assert.Equal(t, identity.DefaultRecordTimeout, cfg.Identity.RecordTimeout)
 	assert.Empty(t, cfg.Identity.SPIFFETrustBundles)
+
+	// The ans scheme is off, with the resolver's own defaults.
+	assert.False(t, cfg.Identity.ANS.Enabled)
+	assert.Empty(t, cfg.Identity.ANS.TrustedLogHosts)
+	assert.Empty(t, cfg.Identity.ANS.RootKeys)
+	assert.False(t, cfg.Identity.ANS.AllowUnpinnedRootKeys)
+	assert.Equal(t, ansresolver.DefaultRootKeysTTL, cfg.Identity.ANS.RootKeysTTL)
+	assert.Equal(t, ansresolver.DefaultStatusCacheTTL, cfg.Identity.ANS.StatusCacheTTL)
+	assert.Equal(t, identity.DefaultANSStaleGrace, cfg.Identity.ANS.StaleGrace)
+	assert.Equal(t, ansresolver.DefaultTimeout, cfg.Identity.ANS.Timeout)
+	assert.Equal(t, ansresolver.DefaultClockSkew, cfg.Identity.ANS.ClockSkew)
 
 	// Policy parameters come from the task's own defaults, not a second copy.
 	assert.False(t, cfg.PolicyEvaluation.Enabled)
@@ -118,4 +130,32 @@ func TestLoadConfig_IdentityFromEnv(t *testing.T) {
 	assert.True(t, cfg.Identity.Enabled)
 	assert.Equal(t, 5*time.Minute, cfg.Identity.Interval)
 	assert.Equal(t, 10*time.Second, cfg.Identity.RecordTimeout)
+}
+
+// The ans block is switchable from the environment too; its lists are
+// comma-separated.
+func TestLoadConfig_ANSFromEnv(t *testing.T) {
+	t.Setenv("RECONCILER_IDENTITY_ANS_ENABLED", "true")
+	t.Setenv("RECONCILER_IDENTITY_ANS_TRUSTED_LOG_HOSTS", "log.example.com,log2.example.com:8443")
+	t.Setenv("RECONCILER_IDENTITY_ANS_ROOT_KEYS", "example-log+1a2b3c4d+AjBZ,other-log+5e6f7a8b+AjBZ")
+	t.Setenv("RECONCILER_IDENTITY_ANS_ALLOW_UNPINNED_ROOT_KEYS", "true")
+	t.Setenv("RECONCILER_IDENTITY_ANS_ROOT_KEYS_TTL", "5m")
+	t.Setenv("RECONCILER_IDENTITY_ANS_STATUS_CACHE_TTL", "20s")
+	t.Setenv("RECONCILER_IDENTITY_ANS_STALE_GRACE", "2h")
+	t.Setenv("RECONCILER_IDENTITY_ANS_TIMEOUT", "3s")
+	t.Setenv("RECONCILER_IDENTITY_ANS_CLOCK_SKEW", "5s")
+
+	cfg, err := LoadConfig()
+	require.NoError(t, err)
+
+	ans := cfg.Identity.ANS
+	assert.True(t, ans.Enabled)
+	assert.Equal(t, []string{"log.example.com", "log2.example.com:8443"}, ans.TrustedLogHosts)
+	assert.Equal(t, []string{"example-log+1a2b3c4d+AjBZ", "other-log+5e6f7a8b+AjBZ"}, ans.RootKeys)
+	assert.True(t, ans.AllowUnpinnedRootKeys)
+	assert.Equal(t, 5*time.Minute, ans.RootKeysTTL)
+	assert.Equal(t, 20*time.Second, ans.StatusCacheTTL)
+	assert.Equal(t, 2*time.Hour, ans.StaleGrace)
+	assert.Equal(t, 3*time.Second, ans.Timeout)
+	assert.Equal(t, 5*time.Second, ans.ClockSkew)
 }

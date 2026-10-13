@@ -46,6 +46,7 @@ require (
 	github.com/Microsoft/go-winio v0.6.2 // indirect
 	github.com/ProtonMail/go-crypto v1.4.1 // indirect
 	github.com/ThalesIgnite/crypto11 v1.6.0 // indirect
+	github.com/agentnameservice/ans-sdk-go v0.1.19 // indirect
 	github.com/agnivade/levenshtein v1.2.1 // indirect
 	github.com/agntcy/oasf-sdk/pkg v1.1.0 // indirect
 	github.com/antlr4-go/antlr/v4 v4.13.1 // indirect

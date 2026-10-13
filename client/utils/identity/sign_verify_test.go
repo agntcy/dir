@@ -14,6 +14,7 @@ import (
 	"github.com/agntcy/dir/client/utils/identity"
 	"github.com/agntcy/dir/client/utils/internal/testutil"
 	"github.com/agntcy/dir/client/utils/jws"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -23,6 +24,7 @@ const (
 	testSubjectDNS  = "dns:acme.com"
 	testSubjectDID  = "did:web:acme.com"
 	testSubjectSVID = "spiffe://acme.com/agents/finance"
+	testSubjectANS  = "ans://v1.0.0.agent.acme.com"
 )
 
 func keySigner(t *testing.T, key crypto.Signer) *jws.KeySigner {
@@ -320,29 +322,58 @@ func TestCheck(t *testing.T) {
 	require.False(t, ok)
 }
 
-// A certificate belongs to a spiffe:// claim and to no other: it sits outside the
-// signed payload, so it could be grafted onto someone else's claim.
+// A certificate belongs to a spiffe:// or ans:// claim and to no other: it sits
+// outside the signed payload, so it could be grafted onto someone else's claim.
 func TestCheck_Certificate(t *testing.T) {
 	key := testutil.NewKey(t, "ES256")
-	cert := testutil.SelfSignedCertPEM(t, key, testSubjectSVID)
 
-	svid := &identityv1.Claim{Role: identityv1.ClaimRole_CLAIM_ROLE_IDENTITY, Subject: testSubjectSVID}
-	require.NoError(t, identity.Sign(svid, testRecordCID, keySigner(t, key), identity.WithCertificate(cert)))
-	require.NoError(t, identity.Check(svid, testRecordCID, testSubjectSVID))
+	for _, subject := range []string{testSubjectSVID, testSubjectANS} {
+		t.Run(subject, func(t *testing.T) {
+			cert := testutil.SelfSignedCertPEM(t, key, subject)
 
-	bare := &identityv1.Claim{Role: identityv1.ClaimRole_CLAIM_ROLE_IDENTITY, Subject: testSubjectSVID}
-	require.NoError(t, identity.Sign(bare, testRecordCID, keySigner(t, key), identity.WithCertificate(cert)))
-	bare.Certificate = nil
-	require.ErrorContains(t, identity.Check(bare, testRecordCID, testSubjectSVID), "carries no certificate")
+			withCert := &identityv1.Claim{Role: identityv1.ClaimRole_CLAIM_ROLE_IDENTITY, Subject: subject}
+			require.NoError(t, identity.Sign(withCert, testRecordCID, keySigner(t, key), identity.WithCertificate(cert)))
+			require.NoError(t, identity.Check(withCert, testRecordCID, subject))
 
-	grafted := &identityv1.Claim{Role: identityv1.ClaimRole_CLAIM_ROLE_IDENTITY, Subject: testSubjectDNS}
-	require.NoError(t, identity.Sign(grafted, testRecordCID, keySigner(t, key)))
-	grafted.Certificate = svid.Certificate
-	require.ErrorContains(t, identity.Check(grafted, testRecordCID, testSubjectDNS), "carries a certificate")
+			stripped := &identityv1.Claim{Role: identityv1.ClaimRole_CLAIM_ROLE_IDENTITY, Subject: subject}
+			require.NoError(t, identity.Sign(stripped, testRecordCID, keySigner(t, key), identity.WithCertificate(cert)))
+			stripped.Certificate = nil
+			require.ErrorContains(t, identity.Check(stripped, testRecordCID, subject), "needs a certificate")
 
-	empty := ""
-	grafted.Certificate = &empty
-	require.NoError(t, identity.Check(grafted, testRecordCID, testSubjectDNS), "an empty certificate is no certificate")
+			grafted := &identityv1.Claim{Role: identityv1.ClaimRole_CLAIM_ROLE_IDENTITY, Subject: testSubjectDNS}
+			require.NoError(t, identity.Sign(grafted, testRecordCID, keySigner(t, key)))
+			grafted.Certificate = withCert.Certificate
+			require.ErrorContains(t, identity.Check(grafted, testRecordCID, testSubjectDNS), "only used for spiffe:// and ans:// subjects")
+
+			empty := ""
+			grafted.Certificate = &empty
+			require.NoError(t, identity.Check(grafted, testRecordCID, testSubjectDNS), "an empty certificate is no certificate")
+		})
+	}
+}
+
+func TestNeedsCertificate(t *testing.T) {
+	tests := []struct {
+		subject string
+		want    bool
+	}{
+		{testSubjectSVID, true},
+		{testSubjectANS, true},
+		{"ans://v01.0.0.Agent.Example.com", true}, // spelling is the resolver's concern
+		{"ANS://v1.0.0.agent.example.com", false},
+		{"SPIFFE://acme.com/agents/finance", false},
+		{testSubjectDNS, false},
+		{testSubjectDID, false},
+		{"https://acme.com", false},
+		{"acme.com", false},
+		{"", false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.subject, func(t *testing.T) {
+			assert.Equal(t, tt.want, identity.NeedsCertificate(tt.subject))
+		})
+	}
 }
 
 func TestCheck_MalformedSignedAt(t *testing.T) {
