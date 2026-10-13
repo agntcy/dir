@@ -10,6 +10,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - **Identity**: `ans://` claims verify through the Agent Name Service. The claim's identity certificate is trusted once a transparency log on `reconciler.identity.ans.trusted_log_hosts` attests it for the agent; `dirctl identity claim --cert` takes the certificate (#2173, #2174)
 - **Search**: `ListRecordSummaries` RPC for paginated, database-backed record summaries (#2328, #2259)
+- **UI**: catalog cards and the detail view show the identity claim's result as a badge, green when it verified and red when the last check failed; the detail view lists both claims under "Claims"; an "Identity verified" status filter appears once a record can match it
+- **Catalog**: the `agntcy.dir.trust.v1.Status` entry metadata carries `identityVerified` and a `claims` list (role, subject, status, verifiedAt) beside `trusted` and `verified`
+- **AI Finder**: `identityVerified` filter field, tri-state like `verified`; `false` matches records without a verified identity claim
+
+### Fixed
+- **UI**: annotation chips show the full `key=value`, so values that are URIs such as `ans://v1.0.0.host` are no longer cut at the colon
 
 ## [v1.7.1] - 2026-09-22
 
