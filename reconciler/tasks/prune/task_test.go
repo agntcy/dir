@@ -432,3 +432,31 @@ func TestTask_Run_DryRunCountsDefaultStatuses(t *testing.T) {
 		{types.SignatureStatusUnsigned},
 	}, queried)
 }
+
+// An empty status list must never reach the search layer: it would drop the
+// signature predicate and select every record matching the other criteria.
+func TestTask_Filters_EmptyStatusesFallBackToConfigured(t *testing.T) {
+	t.Parallel()
+
+	applied := func(task *Task, statuses []string) []string {
+		var f types.RecordFilters
+		for _, opt := range task.filters(time.Now(), statuses) {
+			opt(&f)
+		}
+
+		return f.SignatureStatuses
+	}
+
+	unset, err := NewTask(Config{Enabled: true}, nil, nil)
+	require.NoError(t, err)
+	assert.Equal(t, []string{types.SignatureStatusFailed, types.SignatureStatusUnsigned}, applied(unset, nil))
+
+	configured, err := NewTask(Config{Enabled: true, Criteria: Criteria{
+		SignatureStatuses: []string{types.SignatureStatusUnsigned},
+	}}, nil, nil)
+	require.NoError(t, err)
+	assert.Equal(t, []string{types.SignatureStatusUnsigned}, applied(configured, []string{}))
+
+	assert.Equal(t, []string{types.SignatureStatusVerified}, applied(configured, []string{types.SignatureStatusVerified}),
+		"explicit statuses pass through")
+}

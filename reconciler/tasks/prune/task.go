@@ -76,7 +76,7 @@ func (t *Task) Run(ctx context.Context) error {
 	olderThan := t.config.GetOlderThan()
 	indexedBefore := time.Now().Add(-olderThan)
 
-	cids, err := t.db.GetRecordCIDs(t.filters(indexedBefore, t.config.GetSignatureStatuses()...)...)
+	cids, err := t.db.GetRecordCIDs(t.filters(indexedBefore, t.config.GetSignatureStatuses())...)
 	if err != nil {
 		return fmt.Errorf("get records: %w", err)
 	}
@@ -129,8 +129,15 @@ func (t *Task) Run(ctx context.Context) error {
 }
 
 // filters returns the search filters for the configured criteria and the given
-// signature statuses.
-func (t *Task) filters(indexedBefore time.Time, signatureStatuses ...string) []types.FilterOption {
+// signature statuses, falling back to the configured ones when none are given.
+func (t *Task) filters(indexedBefore time.Time, signatureStatuses []string) []types.FilterOption {
+	// An empty list is not "no signature filter": handleFilterOptions drops the
+	// predicate entirely, which would select every record matching the
+	// remaining criteria. Same hazard Validate guards against for min_severity.
+	if len(signatureStatuses) == 0 {
+		signatureStatuses = t.config.GetSignatureStatuses()
+	}
+
 	return []types.FilterOption{
 		types.WithSignatureStatuses(signatureStatuses...),
 		types.WithScanSeverities(t.config.GetMinSeverity()),
@@ -162,7 +169,7 @@ func (t *Task) countBySignatureStatus(indexedBefore time.Time) map[string]int {
 	counts := make(map[string]int, len(statuses))
 
 	for _, s := range statuses {
-		cids, err := t.db.GetRecordCIDs(t.filters(indexedBefore, s)...)
+		cids, err := t.db.GetRecordCIDs(t.filters(indexedBefore, []string{s})...)
 		if err != nil {
 			logger.Warn("Failed to count records by signature status", "signature_status", s, "error", err)
 
