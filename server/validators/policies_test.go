@@ -14,26 +14,25 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func opaPolicy(file string) validatorsconfig.Validator {
-	return validatorsconfig.Validator{
+func opaPolicy(file string) validatorsconfig.Evaluation {
+	return validatorsconfig.Evaluation{
 		Provider: validatorsconfig.ProviderOPA,
-		Ops:      []string{validatorsconfig.OpEvaluate},
-		Config:   map[string]any{validatorsconfig.ConfigKeyFile: file},
+		File:     file,
 	}
 }
 
-func celPolicy(name string, expressions ...string) validatorsconfig.Validator {
-	return validatorsconfig.Validator{
-		Provider: validatorsconfig.ProviderCEL,
-		Ops:      []string{validatorsconfig.OpEvaluate},
-		Config:   map[string]any{validatorsconfig.ConfigKeyName: name, validatorsconfig.ConfigKeyExpressions: expressions},
+func celPolicy(name string, expressions ...string) validatorsconfig.Evaluation {
+	return validatorsconfig.Evaluation{
+		Provider:    validatorsconfig.ProviderCEL,
+		Name:        name,
+		Expressions: expressions,
 	}
 }
 
-func policiesOf(t *testing.T, dir string, entries ...validatorsconfig.Validator) []Policy {
+func policiesOf(t *testing.T, dir string, entries ...validatorsconfig.Evaluation) []Policy {
 	t.Helper()
 
-	reg, err := NewRegistry(context.Background(), entries, dir)
+	reg, err := NewRegistry(context.Background(), entries, nil, dir)
 	require.NoError(t, err)
 
 	return reg.Policies()
@@ -77,13 +76,18 @@ func TestRegistryPolicies_NoneConfigured(t *testing.T) {
 
 	assert.Empty(t, nilRegistry.Policies())
 
-	admission := validatorsconfig.Validator{
-		Provider: validatorsconfig.ProviderCEL,
-		Ops:      []string{validatorsconfig.OpPush},
-		Config:   map[string]any{validatorsconfig.ConfigKeyExpressions: []string{`true`}},
-	}
+	// An operation policy is not an evaluation policy: it decides at an
+	// operation and produces no verdict.
+	reg, err := NewRegistry(context.Background(), nil, validatorsconfig.Operations{{
+		Provider:    validatorsconfig.ProviderCEL,
+		Ops:         []string{validatorsconfig.OpPush},
+		Name:        "always",
+		Expressions: []string{`true`},
+	}}, "")
+	require.NoError(t, err)
 
-	assert.Empty(t, policiesOf(t, "", admission), "a validator without op evaluate defines no policy")
+	assert.Empty(t, reg.Policies(), "an operation policy defines no evaluation policy")
+	assert.Len(t, reg.For(validatorsconfig.OpPush), 1)
 	assert.Empty(t, policiesOf(t, ""))
 }
 

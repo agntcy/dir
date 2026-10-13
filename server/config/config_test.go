@@ -17,7 +17,6 @@ import (
 	routing "github.com/agntcy/dir/server/routing/config"
 	store "github.com/agntcy/dir/server/store/config"
 	oci "github.com/agntcy/dir/server/store/oci/config"
-	validatorsconfig "github.com/agntcy/dir/server/validators/config"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -252,13 +251,14 @@ func TestConfig(t *testing.T) {
 	}
 }
 
-func TestLoadConfig_ValidatorsFromFile(t *testing.T) {
-	cfg, err := LoadConfig(WithFile("testdata/validators.yml"))
+func TestLoadConfig_PolicyFromFile(t *testing.T) {
+	cfg, err := LoadConfig(WithFile("testdata/policy.yml"))
 	assert.NoError(t, err)
-	assert.Len(t, cfg.Policy.Validators, 1)
-	assert.Equal(t, "oasf", cfg.Policy.Validators[0].Provider)
-	assert.Equal(t, "https://custom.schema.url", cfg.Policy.Validators[0].ConfigString(validatorsconfig.ConfigKeySchemaURL))
-	assert.Equal(t, []string{"push", "index"}, cfg.Policy.Validators[0].Ops)
+	assert.Len(t, cfg.Policy.Operations, 1)
+	assert.Equal(t, "oasf", cfg.Policy.Operations[0].Provider)
+	assert.Equal(t, "https://custom.schema.url", cfg.Policy.Operations[0].SchemaURL)
+	assert.Equal(t, "schema", cfg.Policy.Operations[0].Name)
+	assert.Equal(t, []string{"push", "index"}, cfg.Policy.Operations[0].Ops)
 }
 
 // TestConfig_RateLimiting tests that rate limiting configuration is correctly parsed.

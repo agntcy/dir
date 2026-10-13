@@ -20,13 +20,11 @@ import (
 
 const candidatePolicy = `
 policy:
-  validators:
+  evaluations:
     - provider: cel
-      op: ["evaluate"]
-      config:
-        name: has-description
-        expressions:
-          - 'record.description != ""'
+      name: has-description
+      expressions:
+        - 'record.description != ""'
 `
 
 // writeCandidate writes a valid candidate policy file and returns its path.

@@ -112,14 +112,11 @@ func TestAddTask_Multiple(t *testing.T) {
 func policyRegistry(t *testing.T, name string) *recordvalidators.Registry {
 	t.Helper()
 
-	registry, err := recordvalidators.NewRegistry(t.Context(), validatorsconfig.Config{{
-		Provider: validatorsconfig.ProviderCEL,
-		Ops:      []string{validatorsconfig.OpEvaluate},
-		Config: map[string]any{
-			validatorsconfig.ConfigKeyName:        name,
-			validatorsconfig.ConfigKeyExpressions: []string{`record.name != ""`},
-		},
-	}}, "")
+	registry, err := recordvalidators.NewRegistry(t.Context(), validatorsconfig.Evaluations{{
+		Provider:    validatorsconfig.ProviderCEL,
+		Name:        name,
+		Expressions: []string{`record.name != ""`},
+	}}, nil, "")
 	require.NoError(t, err)
 
 	return registry

@@ -72,24 +72,36 @@ config:
   policy:
     dir: "/etc/agntcy/dir/policies"
 
-    # Record validators applied on push, autosync, and/or index. A validator
-    # with op "evaluate" (opa or cel only) defines a content policy instead:
-    # the reconciler evaluates every record against it and the server can
-    # enforce the verdicts (policy.enforcement). Copied into the reconciler
-    # config. Omit an op (or this entire list) to skip validation on that path.
-    validators:
+    # Operation policies: each decides at one or more operations (push,
+    # autosync, index) and stores nothing. Copied into the reconciler config.
+    # Omit an op (or this entire list) to skip validation on that path.
+    operations:
       - provider: oasf
         op: ["push", "autosync", "index"]
-        config:
-          schema_url: "https://schema.oasf.outshift.com"
+        name: schema
+        schema_url: "https://schema.oasf.outshift.com"
       # Inline CEL expressions. The record is bound as `record`; each
       # expression must evaluate to bool. Validation fails if any is false.
       # - provider: cel
       #   op: ["push"]
-      #   config:
-      #     expressions:
-      #       - record.name != ""
-      #       - record.version != ""
+      #   name: require-identity
+      #   expressions:
+      #     - record.name != ""
+      #     - record.version != ""
+
+    # Evaluation policies: the reconciler evaluates every record against each
+    # one and stores a verdict, which the server can enforce on reads
+    # (policy.enforcement below). No op and no mode, because they never act;
+    # opa and cel only, since a verdict is stored against the version of the
+    # policy content that reached it.
+    evaluations: []
+      # - provider: opa
+      #   name: require-license
+      #   file: require-license.rego
+      # - provider: cel
+      #   name: has-description
+      #   expressions:
+      #     - 'record.description != ""'
 
     # Content-policy enforcement on reads. Each kind of read has its own mode,
     # so enforcement can be rolled out one kind at a time:
@@ -768,7 +780,7 @@ oasf-sdk:
   # OASF-SDK server registers ExtractorService only when it is set, and without
   # it every Extract call fails with "unknown service
   # agntcy.oasfsdk.extractor.v1.ExtractorService". Keep in step with the
-  # OASF validator config.schema_url in policy.validators above.
+  # oasf entry's schema_url in policy.operations above.
   env:
     OASF_SDK_EXTRACTOR_OASF_URL: "https://schema.oasf.outshift.com"
 
@@ -952,11 +964,11 @@ reconciler:
         clock_skew: "30s"
 
     # Policy evaluation task configuration
-    # Evaluates records against content policies (policy.validators entries
-    # with op "evaluate") and stores the verdicts read paths filter on. Off
-    # by default: enabling it with no such validator only logs that the task
-    # will not run. The validator list itself is not here — the chart copies
-    # config.policy into the reconciler.
+    # Evaluates records against the policy.evaluations entries and stores the
+    # verdicts read paths filter on. Off by default: enabling it with no
+    # evaluation policy only logs that the task will not run. The policy lists
+    # themselves are not here — the chart copies config.policy into the
+    # reconciler.
     policy_evaluation:
       enabled: false
       interval: "1m"

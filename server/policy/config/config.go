@@ -15,53 +15,64 @@ import (
 // each enforced policy is in force.
 const DefaultRefreshInterval = 30 * time.Second
 
-// Config is the node's record checks: the validators that run on ingest and
-// as content policies, the directory named OPA files are loaded from, and
-// how reads enforce those policies.
+// Config is the node's record checks: the policies that produce a verdict per
+// record, the policies that decide at an operation, the directory named OPA
+// files are loaded from, and how reads enforce the verdicts.
 type Config struct {
 	// Dir is the directory that holds policy files (one file per policy).
 	// An opa validator's config.file is resolved against it.
 	Dir string `json:"dir,omitempty" mapstructure:"dir"`
 
-	// Validators is the ordered list of record validators (OASF, OPA, CEL).
+	// Evaluations are the policies that produce a verdict per record. They
+	// have no operation and no mode, because they never act.
 	// YAML only — a list of objects cannot be bound to a single env var.
-	Validators validatorsconfig.Config `json:"validators,omitempty" mapstructure:"validators"`
+	Evaluations validatorsconfig.Evaluations `json:"evaluations,omitempty" mapstructure:"evaluations"`
+
+	// Operations are the policies that decide at one operation. They have an
+	// operation and a mode, and no scheduling.
+	// YAML only — a list of objects cannot be bound to a single env var.
+	Operations validatorsconfig.Operations `json:"operations,omitempty" mapstructure:"operations"`
 
 	// Enforcement decides which policies the records this server returns
 	// must comply with, and how each kind of read applies them.
 	Enforcement EnforcementConfig `json:"enforcement" mapstructure:"enforcement"`
 }
 
-// Mode is how the enforced policies apply to one kind of read.
-type Mode string
+// Validate checks both policy blocks and enforcement.
+func (c *Config) Validate() error {
+	if err := c.Evaluations.Validate(); err != nil {
+		return fmt.Errorf("policy: %w", err)
+	}
+
+	if err := c.Operations.Validate(); err != nil {
+		return fmt.Errorf("policy: %w", err)
+	}
+
+	if err := validatorsconfig.ValidateNames(c.Evaluations, c.Operations); err != nil {
+		return fmt.Errorf("policy: %w", err)
+	}
+
+	return c.Enforcement.Validate()
+}
+
+// Mode is how a policy's decision applies. Declared with the policies it
+// applies to, so that a read gate and an operation policy cannot drift into
+// meaning different things by the same word.
+type Mode = validatorsconfig.Mode
 
 const (
 	// ModeOff applies no policy. The empty mode means the same.
-	ModeOff Mode = "off"
+	ModeOff = validatorsconfig.ModeOff
 
 	// ModeShadow checks each read and reports what it would exclude, but
 	// excludes nothing.
-	ModeShadow Mode = "shadow"
+	ModeShadow = validatorsconfig.ModeShadow
 
 	// ModeEnforce excludes every record that does not comply with all the
 	// enforced policies: searches leave it out and a read of it by CID is
 	// refused.
-	ModeEnforce Mode = "enforce"
+	ModeEnforce = validatorsconfig.ModeEnforce
 )
-
-// Active reports whether the mode checks reads at all.
-func (m Mode) Active() bool {
-	return m == ModeShadow || m == ModeEnforce
-}
-
-func (m Mode) validate() error {
-	switch m {
-	case "", ModeOff, ModeShadow, ModeEnforce:
-		return nil
-	default:
-		return fmt.Errorf("unknown mode %q, expected %q, %q or %q", m, ModeOff, ModeShadow, ModeEnforce)
-	}
-}
 
 // EnforcementConfig is the enforced policies and one mode per kind of read,
 // so enforcement can be rolled out one kind at a time.
@@ -96,11 +107,11 @@ func (c *EnforcementConfig) Active() bool {
 }
 
 func (c *EnforcementConfig) Validate() error {
-	if err := c.Search.validate(); err != nil {
+	if err := c.Search.Validate(); err != nil {
 		return fmt.Errorf("search: %w", err)
 	}
 
-	if err := c.Fetch.validate(); err != nil {
+	if err := c.Fetch.Validate(); err != nil {
 		return fmt.Errorf("fetch: %w", err)
 	}
 

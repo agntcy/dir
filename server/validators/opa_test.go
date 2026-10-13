@@ -70,10 +70,10 @@ func TestNewRegistry_OPA(t *testing.T) {
 	t.Parallel()
 
 	dir := writePolicy(t, "policy.rego", allowIfNamed)
-	reg, err := NewRegistry(context.Background(), validatorsconfig.Config{{
+	reg, err := NewRegistry(context.Background(), nil, validatorsconfig.Operations{{
 		Provider: validatorsconfig.ProviderOPA,
 		Ops:      []string{validatorsconfig.OpPush},
-		Config:   map[string]any{validatorsconfig.ConfigKeyFile: "policy.rego"},
+		File:     "policy.rego",
 	}}, dir)
 	require.NoError(t, err)
 

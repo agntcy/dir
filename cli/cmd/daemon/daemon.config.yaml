@@ -101,19 +101,24 @@ server:
     # catalog_title: "AI Catalog"
   policy:
     dir: policies
-    validators:
+    # Operation policies: each decides at one or more operations and stores
+    # nothing.
+    operations:
       - provider: oasf
         op: ["push", "autosync", "index"]
-        config:
-          schema_url: "https://schema.oasf.outshift.com"
+        name: schema
+        schema_url: "https://schema.oasf.outshift.com"
       # Inline CEL expressions. The record is bound as `record`; each
       # expression must evaluate to bool. Validation fails if any is false.
       # - provider: cel
       #   op: ["push"]
-      #   config:
-      #     expressions:
-      #       - record.name != ""
-      #       - record.version != ""
+      #   name: require-identity
+      #   expressions:
+      #     - record.name != ""
+      #     - record.version != ""
+    # Evaluation policies: the reconciler stores a verdict per record for
+    # each, which enforcement below applies to reads. opa and cel only.
+    evaluations: []
     # Content-policy enforcement on reads: off, shadow or enforce, per kind of
     # read. Policies lists the IDs of the policies every served record must
     # comply with; their versions come from the policies' content.
@@ -194,9 +199,9 @@ reconciler:
     # Each endpoint costs one scanner invocation per subcommand, so an
     # unbounded list lets one published record fan out arbitrarily. 0 = default (8).
     max_endpoints_per_record: 8
-  # Evaluates records against content policies (the validators with op
-  # "evaluate") and stores the verdicts read paths filter on. Off: enabling it
-  # with no such validator only logs that the task will not run.
+  # Evaluates records against the policy.evaluations entries and stores the
+  # verdicts read paths filter on. Off: enabling it with no evaluation policy
+  # only logs that the task will not run.
   policy_evaluation:
     enabled: false
     interval: 1m

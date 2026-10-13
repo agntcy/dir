@@ -126,14 +126,11 @@ func TestValidatorEvaluator_Evaluate(t *testing.T) {
 func TestTask_RunsAConfiguredPolicy(t *testing.T) {
 	t.Parallel()
 
-	registry, err := validators.NewRegistry(t.Context(), validatorsconfig.Config{{
-		Provider: validatorsconfig.ProviderCEL,
-		Ops:      []string{validatorsconfig.OpEvaluate},
-		Config: map[string]any{
-			validatorsconfig.ConfigKeyName:        "has-description",
-			validatorsconfig.ConfigKeyExpressions: []string{`record.description != ""`},
-		},
-	}}, "")
+	registry, err := validators.NewRegistry(t.Context(), validatorsconfig.Evaluations{{
+		Provider:    validatorsconfig.ProviderCEL,
+		Name:        "has-description",
+		Expressions: []string{`record.description != ""`},
+	}}, nil, "")
 	require.NoError(t, err)
 
 	policies := registry.Policies()

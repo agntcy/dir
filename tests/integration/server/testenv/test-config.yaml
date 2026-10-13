@@ -1,10 +1,10 @@
 listen_address: "0.0.0.0:8888"
 policy:
-  validators:
+  operations:
     - provider: oasf
       op: ["push", "autosync", "index"]
-      config:
-        schema_url: localhost:8092
+      name: schema
+      schema_url: localhost:8092
 logging:
   verbose: false
 authn:

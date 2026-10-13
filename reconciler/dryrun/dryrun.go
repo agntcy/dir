@@ -72,7 +72,7 @@ func Prepare(ctx context.Context, opts Options) (*Prepared, error) {
 		return nil, err
 	}
 
-	registry, err := validators.NewRegistry(ctx, candidate, opts.PolicyDir)
+	registry, err := validators.NewRegistry(ctx, candidate, nil, opts.PolicyDir)
 	if err != nil {
 		return nil, fmt.Errorf("load the candidate policies: %w", err)
 	}

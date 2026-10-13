@@ -80,27 +80,26 @@ Validation is performed using the [OASF SDK](https://docs.agntcy.org/oasf/oasf-
 
 ### Configuration
 
-The Directory server validates records using `policy.validators` in YAML. Each entry selects a provider, the operations it applies to (`push`, `autosync`, `index`, `evaluate`), and a provider-specific `config`. An empty list disables record validation. This list cannot be set via environment variables.
+The Directory server validates records using `policy.operations` in YAML. Each entry selects a provider, the operations it applies to (`push`, `autosync`, `index`), a `name`, and that provider's settings. An empty list disables record validation. This list cannot be set via environment variables.
 
 ```yaml
 # server.config.yml
 listen_address: "0.0.0.0:8888"
 policy:
   dir: "/etc/agntcy/dir/policies"
-  validators:
+  operations:
     - provider: oasf
       op: ["push", "autosync", "index"]
-      config:
-        schema_url: "https://schema.oasf.outshift.com"
+      name: schema
+      schema_url: "https://schema.oasf.outshift.com"
     - provider: opa
       op: ["push"]
-      config:
-        file: "require-annotations.rego"
+      file: "require-annotations.rego"
 ```
 
-`opa` loads a single `.rego` file from `policy.dir`. Helm mounts those files from the top-level `policies` map. The query is `<package>.allow`; a deny rejects the record.
+`opa` loads a single `.rego` file from `policy.dir`. Helm mounts those files from the top-level `policies` map. The query is `<package>.allow`; a deny rejects the record. Its `name` defaults to the file's name without `.rego`.
 
-The `evaluate` operation does not check records on their way in. It makes the validator a content policy: the reconciler evaluates every record against it, and the server can refuse to serve the records that fail. Only `opa` and `cel` support it. See [Content Policy Enforcement](dir-content-policy-enforcement.md).
+A second block, `policy.evaluations`, holds the policies that do not check records on their way in. The reconciler evaluates every record against each one and stores a verdict, and the server can refuse to serve the records that fail. They have no operation and no mode, because they never act, and only `opa` and `cel` can define one. See [Content Policy Enforcement](dir-content-policy-enforcement.md).
 
 !!! note
   
@@ -141,11 +140,11 @@ Records validated here form the most strict, compatible set.
 
 ```yaml
 policy:
-  validators:
+  operations:
     - provider: oasf
       op: ["push", "autosync", "index"]
-      config:
-        schema_url: "https://schema.oasf.outshift.com"
+      name: schema
+      schema_url: "https://schema.oasf.outshift.com"
 ```
 
 #### Custom OASF Instance (Additional Taxonomy)
@@ -158,11 +157,11 @@ Records using the extended taxonomy can only be pulled by nodes using the exact 
 
 ```yaml
 policy:
-  validators:
+  operations:
     - provider: oasf
       op: ["push", "autosync", "index"]
-      config:
-        schema_url: "https://your-custom-oasf-instance.com"
+      name: schema
+      schema_url: "https://your-custom-oasf-instance.com"
 ```
 
 #### Custom OASF Instance (Changed Taxonomy)
@@ -175,11 +174,11 @@ This approach is completely incompatible with all other options, can only work w
 
 ```yaml
 policy:
-  validators:
+  operations:
     - provider: oasf
       op: ["push", "autosync", "index"]
-      config:
-        schema_url: "https://your-custom-oasf-instance.com"
+      name: schema
+      schema_url: "https://your-custom-oasf-instance.com"
 ```
 
 ### Deploying a Local OASF Instance
@@ -208,11 +207,11 @@ To test with a local OASF instance deployed alongside the directory server:
     apiserver:
       config:
         policy:
-          validators:
+          operations:
             - provider: oasf
               op: ["push", "autosync", "index"]
-              config:
-                schema_url: "http://dir-ingress-controller.dir-server.svc.cluster.local"
+              name: schema
+              schema_url: "http://dir-ingress-controller.dir-server.svc.cluster.local"
     ```
 
     Replace `dir` with your Helm release name and `dir-server` with your namespace if different.
