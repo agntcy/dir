@@ -406,6 +406,40 @@ func TestParseAgentFilter(t *testing.T) {
 	}
 }
 
+func TestBoolClause(t *testing.T) {
+	truth := true
+	tests := []struct {
+		name    string
+		field   string
+		values  []string
+		want    agentFilter
+		wantErr string
+	}{
+		{name: "verified", field: "verified", values: []string{"true"}, want: agentFilter{Verified: &truth}},
+		{name: "identityVerified", field: "identityVerified", values: []string{"true"}, want: agentFilter{IdentityVerified: &truth}},
+		{name: "trusted", field: "trusted", values: []string{"true"}, want: agentFilter{Trusted: &truth}},
+		{name: "safe", field: "safe", values: []string{"true"}, want: agentFilter{Safe: &truth}},
+		{name: "bad value", field: "verified", values: []string{"maybe"}, wantErr: `filter field "verified": invalid boolean "maybe" (expected true or false)`},
+		{name: "not a boolean field", field: "displayName", values: []string{"true"}, wantErr: `filter field "displayName" is not a boolean field`},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			var got agentFilter
+
+			err := boolClause(&got, tc.field, tc.values)
+			if tc.wantErr != "" {
+				require.EqualError(t, err, tc.wantErr)
+
+				return
+			}
+
+			require.NoError(t, err)
+			assert.Equal(t, tc.want, got)
+		})
+	}
+}
+
 func TestBuildCatalogFilterOptionsVerified(t *testing.T) {
 	verified := true
 	f := agentFilter{Verified: &verified}
