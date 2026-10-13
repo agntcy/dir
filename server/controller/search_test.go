@@ -328,20 +328,20 @@ func TestListRecordSummaries_CancelledDuringQueries(t *testing.T) {
 		name      string
 		newCtx    func() (context.Context, context.CancelFunc)
 		wantCode  codes.Code
-		hook      func(db *fakeSearchDB, stop context.CancelFunc)
+		hook      func(ctx context.Context, db *fakeSearchDB, stop context.CancelFunc)
 		wantCount int
 	}{
 		{
 			name:     "canceled during page query",
 			newCtx:   func() (context.Context, context.CancelFunc) { return context.WithCancel(context.Background()) },
 			wantCode: codes.Canceled,
-			hook:     func(db *fakeSearchDB, stop context.CancelFunc) { db.onPage = stop },
+			hook:     func(_ context.Context, db *fakeSearchDB, stop context.CancelFunc) { db.onPage = stop },
 		},
 		{
 			name:     "canceled during page query that errors",
 			newCtx:   func() (context.Context, context.CancelFunc) { return context.WithCancel(context.Background()) },
 			wantCode: codes.Canceled,
-			hook: func(db *fakeSearchDB, stop context.CancelFunc) {
+			hook: func(_ context.Context, db *fakeSearchDB, stop context.CancelFunc) {
 				db.onPage = stop
 				db.summariesErr = assert.AnError
 			},
@@ -350,7 +350,7 @@ func TestListRecordSummaries_CancelledDuringQueries(t *testing.T) {
 			name:     "canceled during count query",
 			newCtx:   func() (context.Context, context.CancelFunc) { return context.WithCancel(context.Background()) },
 			wantCode: codes.Canceled,
-			hook: func(db *fakeSearchDB, stop context.CancelFunc) {
+			hook: func(_ context.Context, db *fakeSearchDB, stop context.CancelFunc) {
 				db.onCount = stop
 			},
 			wantCount: 1,
@@ -359,7 +359,7 @@ func TestListRecordSummaries_CancelledDuringQueries(t *testing.T) {
 			name:     "canceled during count query that errors",
 			newCtx:   func() (context.Context, context.CancelFunc) { return context.WithCancel(context.Background()) },
 			wantCode: codes.Canceled,
-			hook: func(db *fakeSearchDB, stop context.CancelFunc) {
+			hook: func(_ context.Context, db *fakeSearchDB, stop context.CancelFunc) {
 				db.onCount = stop
 				db.countErr = assert.AnError
 			},
@@ -371,9 +371,9 @@ func TestListRecordSummaries_CancelledDuringQueries(t *testing.T) {
 				return context.WithTimeout(context.Background(), 10*time.Millisecond)
 			},
 			wantCode: codes.DeadlineExceeded,
-			hook: func(db *fakeSearchDB, _ context.CancelFunc) {
-				// Let a real deadline elapse while the page query runs.
-				db.onPage = func() { time.Sleep(50 * time.Millisecond) }
+			hook: func(ctx context.Context, db *fakeSearchDB, _ context.CancelFunc) {
+				// Block until the deadline has definitely passed; no sleeping.
+				db.onPage = func() { <-ctx.Done() }
 			},
 		},
 	}
@@ -385,7 +385,7 @@ func TestListRecordSummaries_CancelledDuringQueries(t *testing.T) {
 
 			db := &fakeSearchDB{}
 
-			tt.hook(db, cancel)
+			tt.hook(ctx, db, cancel)
 
 			ctrl := NewSearchController(db, nil)
 
