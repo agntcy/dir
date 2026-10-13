@@ -19,7 +19,7 @@ import (
 //
 //	filter = clause { WS+ "AND" WS+ clause } ;
 //	clause = field "=" value ;
-//	field  = "displayName" | "type" | "publisherId" | "createdAfter" | "updatedAfter" | "verified" | "trusted" | "safe" | "tags" ;
+//	field  = "displayName" | "type" | "publisherId" | "createdAfter" | "updatedAfter" | "verified" | "identityVerified" | "trusted" | "safe" | "tags" ;
 //	value  = token { "," token } ;
 //	token  = unquoted_token | quoted_string ;
 //
@@ -31,15 +31,16 @@ const filterMaxLen = 2048
 
 // agentFilter is the parsed representation of the ListAgents filter query.
 type agentFilter struct {
-	DisplayName  string
-	Types        []string
-	PublisherIDs []string
-	CreatedAfter time.Time
-	UpdatedAfter time.Time
-	Verified     *bool
-	Trusted      *bool
-	Safe         *bool
-	TagFilters   []types.TagFilter
+	DisplayName      string
+	Types            []string
+	PublisherIDs     []string
+	CreatedAfter     time.Time
+	UpdatedAfter     time.Time
+	Verified         *bool
+	IdentityVerified *bool
+	Trusted          *bool
+	Safe             *bool
+	TagFilters       []types.TagFilter
 }
 
 func mediaTypeFilterForType(mediaType string) *types.MediaTypeFilter {
@@ -177,6 +178,10 @@ func buildCatalogFilterOptions(f agentFilter, order []orderByClause, pageSize, o
 
 	if f.Verified != nil {
 		opts = append(opts, types.WithVerified(*f.Verified))
+	}
+
+	if f.IdentityVerified != nil {
+		opts = append(opts, types.WithIdentityVerified(*f.IdentityVerified))
 	}
 
 	if f.Trusted != nil {
@@ -421,35 +426,8 @@ func applyClause(out *agentFilter, field string, values []string) error {
 
 		return nil
 
-	case "verified":
-		verified, err := singleBool(field, values)
-		if err != nil {
-			return err
-		}
-
-		out.Verified = &verified
-
-		return nil
-
-	case "trusted":
-		trusted, err := singleBool(field, values)
-		if err != nil {
-			return err
-		}
-
-		out.Trusted = &trusted
-
-		return nil
-
-	case "safe":
-		safe, err := singleBool(field, values)
-		if err != nil {
-			return err
-		}
-
-		out.Safe = &safe
-
-		return nil
+	case "verified", "identityVerified", "trusted", "safe":
+		return boolClause(out, field, values)
 
 	case "tags":
 		filters := make([]types.TagFilter, 0, len(values))
@@ -464,8 +442,32 @@ func applyClause(out *agentFilter, field string, values []string) error {
 		return nil
 
 	default:
-		return fmt.Errorf("unknown filter field %q (allowed: displayName, type, publisherId, createdAfter, updatedAfter, verified, trusted, safe, tags)", field)
+		return fmt.Errorf("unknown filter field %q (allowed: displayName, type, publisherId, createdAfter, updatedAfter, verified, identityVerified, trusted, safe, tags)", field)
 	}
+}
+
+// boolClause stores a tri-state boolean field; every one of them accepts true or
+// false and nothing else.
+func boolClause(out *agentFilter, field string, values []string) error {
+	value, err := singleBool(field, values)
+	if err != nil {
+		return err
+	}
+
+	switch field {
+	case "verified":
+		out.Verified = &value
+	case "identityVerified":
+		out.IdentityVerified = &value
+	case "trusted":
+		out.Trusted = &value
+	case "safe":
+		out.Safe = &value
+	default:
+		return fmt.Errorf("filter field %q is not a boolean field", field)
+	}
+
+	return nil
 }
 
 // singleBool validates a single-value boolean clause (true/false, case-insensitive).
