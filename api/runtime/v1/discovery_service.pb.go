@@ -94,8 +94,11 @@ type ListWorkloadsRequest struct {
 	RuntimeTypes []string `protobuf:"bytes,2,rep,name=runtime_types,json=runtimeTypes,proto3" json:"runtime_types,omitempty"`
 	// Optional reachability filter. If set, only workloads reachable from the workload
 	// with this ID are returned: those sharing at least one isolation group with it
-	// (a Docker network, a Kubernetes namespace, or the host for processes).
-	// The workload itself is not returned. If no workload has this ID, nothing matches.
+	// (a Docker network, a Kubernetes namespace, or the host for processes). Isolation
+	// groups only count within the same runtime and discovery instance (the
+	// org.agntcy/discovery-instance annotation), since their names repeat across hosts
+	// and clusters. The workload itself is not returned. If no workload has this ID,
+	// nothing matches.
 	ReachableFromWorkloadId *string `protobuf:"bytes,3,opt,name=reachable_from_workload_id,json=reachableFromWorkloadId,proto3,oneof" json:"reachable_from_workload_id,omitempty"`
 	// Optional OASF skill names to filter workloads.
 	// A workload matches if it has at least one of the given skills.

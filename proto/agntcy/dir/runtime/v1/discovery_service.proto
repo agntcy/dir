@@ -50,8 +50,11 @@ message ListWorkloadsRequest {
 
   // Optional reachability filter. If set, only workloads reachable from the workload
   // with this ID are returned: those sharing at least one isolation group with it
-  // (a Docker network, a Kubernetes namespace, or the host for processes).
-  // The workload itself is not returned. If no workload has this ID, nothing matches.
+  // (a Docker network, a Kubernetes namespace, or the host for processes). Isolation
+  // groups only count within the same runtime and discovery instance (the
+  // org.agntcy/discovery-instance annotation), since their names repeat across hosts
+  // and clusters. The workload itself is not returned. If no workload has this ID,
+  // nothing matches.
   optional string reachable_from_workload_id = 3;
 
   // Optional OASF skill names to filter workloads.

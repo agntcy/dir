@@ -221,9 +221,9 @@ func TestMatchesFilters_InvalidLabelRegexMatchesExactValue(t *testing.T) {
 }
 
 func TestMatchesFilters_ReachableFrom(t *testing.T) {
-	from := &Workload{Id: "caller", IsolationGroups: []string{"team-a", "shared"}}
-	sameGroup := &Workload{Id: "w1", IsolationGroups: []string{"shared"}}
-	otherGroup := &Workload{Id: "w2", IsolationGroups: []string{"team-b"}}
+	from := &Workload{Id: "caller", Runtime: "docker", IsolationGroups: []string{"team-a", "shared"}}
+	sameGroup := &Workload{Id: "w1", Runtime: "docker", IsolationGroups: []string{"shared"}}
+	otherGroup := &Workload{Id: "w2", Runtime: "docker", IsolationGroups: []string{"team-b"}}
 
 	id := "caller"
 	req := &ListWorkloadsRequest{ReachableFromWorkloadId: &id}
@@ -248,5 +248,53 @@ func TestMatchesFilters_ReachableFrom(t *testing.T) {
 	other := "someone-else"
 	if sameGroup.MatchesFilters(&ListWorkloadsRequest{ReachableFromWorkloadId: &other}, opts) {
 		t.Error("a reference workload with another ID must not be used")
+	}
+}
+
+func TestMatchesFilters_ReachabilityIsScopedToRuntimeAndDiscoveryInstance(t *testing.T) {
+	instance := func(id string) map[string]string { return map[string]string{DiscoveryInstanceAnnotation: id} }
+
+	from := &Workload{Id: "caller", Runtime: "process", IsolationGroups: []string{"host"}, Annotations: instance("laptop-a")}
+	sameHost := &Workload{Id: "w1", Runtime: "process", IsolationGroups: []string{"host"}, Annotations: instance("laptop-a")}
+	otherHost := &Workload{Id: "w2", Runtime: "process", IsolationGroups: []string{"host"}, Annotations: instance("laptop-b")}
+	otherRuntime := &Workload{Id: "w3", Runtime: "docker", IsolationGroups: []string{"host"}, Annotations: instance("laptop-a")}
+
+	id := "caller"
+	req := &ListWorkloadsRequest{ReachableFromWorkloadId: &id}
+	opts := FilterOptions{ReachableFrom: from}
+
+	if !sameHost.MatchesFilters(req, opts) {
+		t.Error("a process on the same host must be reachable")
+	}
+
+	if otherHost.MatchesFilters(req, opts) {
+		t.Error("a process from another discovery instance must not be reachable through a same-named group")
+	}
+
+	if otherRuntime.MatchesFilters(req, opts) {
+		t.Error("a workload of another runtime must not be reachable through a same-named group")
+	}
+}
+
+func TestAgentInfo_PartialExtensionKeepsRecordValues(t *testing.T) {
+	partial := map[string]any{
+		"uri": "https://schema.oasf.outshift.com/1.2.0/objects/discovery",
+		"params": map[string]any{
+			"skills": []any{map[string]any{"name": "software_engineering/code_debugging/error_handling", "id": 60602}},
+		},
+	}
+
+	info := workload(t, card(partial), oasfService()).AgentInfo(nil)
+
+	if len(info.Skills) != 1 || info.Skills[0].Name != "software_engineering/code_debugging/error_handling" {
+		t.Errorf("Skills = %v, want the card's", info.Skills)
+	}
+
+	if len(info.Domains) != 1 || info.Domains[0].Name != "technology/software_engineering" {
+		t.Errorf("Domains = %v, want the record's, since the card has none", info.Domains)
+	}
+
+	if info.SchemaVersion != "1.1.0" {
+		t.Errorf("SchemaVersion = %q, want the record's, since the card has none", info.SchemaVersion)
 	}
 }

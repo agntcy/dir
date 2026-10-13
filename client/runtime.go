@@ -29,8 +29,7 @@ func (c *Client) ListWorkloadsStream(ctx context.Context, labels map[string]stri
 	})
 }
 
-// ListWorkloadsStreamWithRequest streams the workloads matching every filter set in req
-// (labels, skills, domains and locator protocols).
+// ListWorkloadsStreamWithRequest streams the workloads matching every filter set in req.
 func (c *Client) ListWorkloadsStreamWithRequest(ctx context.Context, req *runtimev1.ListWorkloadsRequest) (streaming.StreamResult[runtimev1.Workload], error) {
 	stream, err := c.DiscoveryServiceClient.ListWorkloads(ctx, req)
 	if err != nil {
@@ -47,8 +46,7 @@ func (c *Client) ListWorkloads(ctx context.Context, labels map[string]string) ([
 	})
 }
 
-// ListWorkloadsWithRequest returns the workloads matching every filter set in req
-// (labels, skills, domains and locator protocols).
+// ListWorkloadsWithRequest returns the workloads matching every filter set in req.
 func (c *Client) ListWorkloadsWithRequest(ctx context.Context, req *runtimev1.ListWorkloadsRequest) ([]*runtimev1.Workload, error) {
 	// Use channel to communicate error safely (no race condition)
 	result, err := c.ListWorkloadsStreamWithRequest(ctx, req)

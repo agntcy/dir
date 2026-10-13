@@ -15,6 +15,10 @@ import (
 // when no other schema servers are configured.
 const DefaultOASFSchemaURL = "https://schema.oasf.outshift.com"
 
+// DiscoveryInstanceAnnotation is the annotation in which a discovery instance records its ID
+// on every workload it writes.
+const DiscoveryInstanceAnnotation = "org.agntcy/discovery-instance"
+
 const (
 	discoveryObjectPath = "/objects/discovery"
 	identityObjectPath  = "/objects/identity"
@@ -63,14 +67,24 @@ func (x *Workload) AgentInfo(acceptedSchemaURLs []string) AgentInfo {
 		info.Name = record["name"].GetStringValue()
 	}
 
+	// Each value comes from the record unless the card's discovery extension provides it,
+	// so an extension that leaves out a field (domains are optional) keeps the record's.
+	info.SchemaVersion = record["schema_version"].GetStringValue()
+	info.Skills = classes(record["skills"])
+	info.Domains = classes(record["domains"])
+
 	if discovery := cardExtension(card, discoveryObjectPath, acceptedSchemaURLs); discovery != nil {
-		info.SchemaVersion = discovery["schema_version"].GetStringValue()
-		info.Skills = classes(discovery["skills"])
-		info.Domains = classes(discovery["domains"])
-	} else {
-		info.SchemaVersion = record["schema_version"].GetStringValue()
-		info.Skills = classes(record["skills"])
-		info.Domains = classes(record["domains"])
+		if version := discovery["schema_version"].GetStringValue(); version != "" {
+			info.SchemaVersion = version
+		}
+
+		if skills := classes(discovery["skills"]); len(skills) > 0 {
+			info.Skills = skills
+		}
+
+		if domains := classes(discovery["domains"]); len(domains) > 0 {
+			info.Domains = domains
+		}
 	}
 
 	if identity := cardExtension(card, identityObjectPath, acceptedSchemaURLs); identity != nil {
@@ -166,8 +180,18 @@ func (x *Workload) matchesLabels(filters map[string]string) bool {
 
 // reachableFrom reports whether the workload shares an isolation group with from,
 // the workload with ID fromID. A workload is not reachable from itself.
+//
+// Isolation group names are only unique within one runtime of one discovery instance:
+// every process workload is in "host", and Kubernetes namespaces and Docker network names
+// repeat across clusters and hosts sharing a store. So a group only counts when both
+// workloads come from the same runtime and the same discovery instance.
 func (x *Workload) reachableFrom(fromID string, from *Workload) bool {
 	if from == nil || from.GetId() != fromID || x.GetId() == fromID {
+		return false
+	}
+
+	if !strings.EqualFold(x.GetRuntime(), from.GetRuntime()) ||
+		x.GetAnnotations()[DiscoveryInstanceAnnotation] != from.GetAnnotations()[DiscoveryInstanceAnnotation] {
 		return false
 	}
 
