@@ -269,12 +269,24 @@ reconciler:
 runtime:
   enabled: false
 
+  ## Runtimes to discover workloads in. Each runs its own discovery, configured by its
+  ## section under adapter, and all write to the same store: Docker containers and
+  ## processes on this host (announced by writing a descriptor to adapter.process.dir,
+  ## e.g. by agentbridge register --dir-announce). A runtime that fails to start is
+  ## logged and skipped; the daemon stops only if all of them fail.
+  adapter_types: ["docker", "process"]
+
   adapter:
-    type: "docker"
     docker:
       host: "unix:///var/run/docker.sock"
     kubernetes:
       kubeconfig: "~/.kube/config"
+    process:
+      dir: "~/.agntcy/dir-runtime/workloads.d"
+
+  ## OASF schema servers whose A2A card extensions are read when listing workloads by
+  ## agent (skills, domains, author). https, or plain http on a loopback host.
+  oasf_schema_urls: ["https://schema.oasf.outshift.com"]
 
   resolver:
     a2a:

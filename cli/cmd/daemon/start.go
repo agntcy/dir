@@ -9,12 +9,15 @@ import (
 	"fmt"
 	"os"
 	"os/signal"
+	"sync"
 	"syscall"
 
 	"github.com/agntcy/dir-runtime/discovery"
 	discoveryConfig "github.com/agntcy/dir-runtime/discovery/config"
+	runtimetypes "github.com/agntcy/dir-runtime/discovery/types"
 	runtimeserver "github.com/agntcy/dir-runtime/server"
 	runtimestore "github.com/agntcy/dir-runtime/store"
+	runtimestoretypes "github.com/agntcy/dir-runtime/store/types"
 	networkinit "github.com/agntcy/dir/cli/cmd/network/init"
 	"github.com/agntcy/dir/reconciler/recordevents"
 	reconciler "github.com/agntcy/dir/reconciler/service"
@@ -100,26 +103,11 @@ func runStart(cmd *cobra.Command, _ []string) error {
 		}
 		defer runtimeStore.Close()
 
-		// Start discovery service in a separate goroutine
-		go func() {
-			logger.Info("Starting runtime discovery service for environment", "adapter", cfg.Runtime.Adapter.Type)
-
-			err := discovery.Run(ctx,
-				discovery.WithConfig(&discoveryConfig.Config{
-					Workers:  discoveryConfig.DefaultWorkers,
-					Runtime:  cfg.Runtime.Adapter,
-					Resolver: cfg.Runtime.Resolver,
-				}),
-				discovery.WithStore(runtimeStore),
-				discovery.WithLogger(logger.With("runtime", "discovery")),
-			)
-			if err != nil {
-				discoveryErrCh <- fmt.Errorf("runtime discovery service failed: %w", err)
-			}
-		}()
+		startRuntimeDiscovery(ctx, cfg.Runtime, runtimeStore, discoveryErrCh)
 
 		// Register runtime API with server
-		err = runtimeserver.Register(srv.GRPCServer(), runtimeStore)
+		err = runtimeserver.Register(srv.GRPCServer(), runtimeStore,
+			runtimeserver.WithAcceptedSchemaURLs(cfg.Runtime.OASFSchemaURLs))
 		if err != nil {
 			return fmt.Errorf("failed to create runtime server: %w", err)
 		}
@@ -227,4 +215,54 @@ func newTagLister(cfg *DaemonConfig) (registry.TagLister, error) {
 	}
 
 	return repo, nil
+}
+
+// startRuntimeDiscovery runs one discovery per configured runtime, all writing to store.
+// A runtime that fails is logged and skipped; errCh receives an error only once every
+// runtime has failed, so the daemon keeps running while any discovery does.
+func startRuntimeDiscovery(ctx context.Context, cfg RuntimeConfig, store runtimestoretypes.Store, errCh chan<- error) {
+	adapterTypes := cfg.EffectiveAdapterTypes()
+	if len(adapterTypes) == 0 {
+		errCh <- errors.New("runtime discovery enabled but no runtime adapter configured")
+
+		return
+	}
+
+	var (
+		mu     sync.Mutex
+		failed int
+	)
+
+	for _, adapterType := range adapterTypes {
+		adapterCfg := cfg.Adapter
+		adapterCfg.Type = runtimetypes.RuntimeType(adapterType)
+
+		go func() {
+			logger.Info("Starting runtime discovery", "adapter", adapterType)
+
+			err := discovery.Run(ctx,
+				discovery.WithConfig(&discoveryConfig.Config{
+					Workers:  discoveryConfig.DefaultWorkers,
+					Runtime:  adapterCfg,
+					Resolver: cfg.Resolver,
+				}),
+				discovery.WithStore(store),
+				discovery.WithLogger(logger.With("runtime", "discovery", "adapter", adapterType)),
+			)
+			if err == nil || ctx.Err() != nil {
+				return
+			}
+
+			logger.Error("Runtime discovery failed", "adapter", adapterType, "error", err)
+
+			mu.Lock()
+			failed++
+			allFailed := failed == len(adapterTypes)
+			mu.Unlock()
+
+			if allFailed {
+				errCh <- fmt.Errorf("runtime discovery failed for every adapter (last: %s): %w", adapterType, err)
+			}
+		}()
+	}
 }

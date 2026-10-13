@@ -19,9 +19,9 @@ require (
 	buf.build/gen/go/agntcy/oasf/protocolbuffers/go v1.36.12-20260929072728-9967424cbd6a.2
 	github.com/Agent-Card/ai-catalog-go v0.2.1
 	github.com/agntcy/dir-importer v1.5.5
-	github.com/agntcy/dir/api v1.7.1
+	github.com/agntcy/dir/api v1.7.2-0.20261013134305-9252429b1042
 	github.com/agntcy/dir/cli v1.7.1
-	github.com/agntcy/dir/client v1.7.1
+	github.com/agntcy/dir/client v1.7.2-0.20261013134305-9252429b1042
 	github.com/agntcy/dir/server v1.7.1
 	github.com/brianvoe/gofakeit/v7 v7.14.1
 	github.com/go-viper/mapstructure/v2 v2.5.0
@@ -95,10 +95,10 @@ require (
 	github.com/agentnameservice/ans-sdk-go v0.1.19 // indirect
 	github.com/agext/levenshtein v1.2.3 // indirect
 	github.com/agnivade/levenshtein v1.2.1 // indirect
-	github.com/agntcy/dir-runtime/discovery v1.3.6 // indirect
-	github.com/agntcy/dir-runtime/server v1.3.6 // indirect
-	github.com/agntcy/dir-runtime/store v1.3.6 // indirect
-	github.com/agntcy/dir-runtime/utils v1.3.6 // indirect
+	github.com/agntcy/dir-runtime/discovery v1.3.7-0.20261013140909-e2da47ad38f5 // indirect
+	github.com/agntcy/dir-runtime/server v1.3.7-0.20261013140909-e2da47ad38f5 // indirect
+	github.com/agntcy/dir-runtime/store v1.3.7-0.20261013140909-e2da47ad38f5 // indirect
+	github.com/agntcy/dir-runtime/utils v1.3.7-0.20261013140909-e2da47ad38f5 // indirect
 	github.com/agntcy/dir/reconciler v1.7.1 // indirect
 	github.com/agntcy/dir/utils v1.7.1 // indirect
 	github.com/agntcy/oasf-sdk/pkg v1.3.1-0.20260910081500-f0c6172a010a // indirect

@@ -15,8 +15,10 @@ import (
 	runtime "github.com/agntcy/dir-runtime/discovery/runtime/config"
 	adapterdocker "github.com/agntcy/dir-runtime/discovery/runtime/docker"
 	adapterk8s "github.com/agntcy/dir-runtime/discovery/runtime/k8s"
+	adapterprocess "github.com/agntcy/dir-runtime/discovery/runtime/process"
 	runtimestore "github.com/agntcy/dir-runtime/store/config"
 	runtimestoresql "github.com/agntcy/dir-runtime/store/sql"
+	runtimev1 "github.com/agntcy/dir/api/runtime/v1"
 	ansresolver "github.com/agntcy/dir/client/utils/identity/resolvers/ans"
 	reconcilerconfig "github.com/agntcy/dir/reconciler/config"
 	"github.com/agntcy/dir/reconciler/recordevents"
@@ -48,10 +50,31 @@ type DaemonConfig struct {
 // RuntimeConfig holds configuration for the runtime adapter and resolver used by
 // the discovery and runtime server services.
 type RuntimeConfig struct {
-	Enabled  bool                `json:"enabled"  mapstructure:"enabled"`
-	Adapter  runtime.Config      `json:"adapter"  mapstructure:"adapter"`
-	Resolver resolver.Config     `json:"resolver" mapstructure:"resolver"`
-	Store    runtimestore.Config `json:"store"    mapstructure:"store"`
+	Enabled bool           `json:"enabled" mapstructure:"enabled"`
+	Adapter runtime.Config `json:"adapter" mapstructure:"adapter"`
+	// AdapterTypes lists the runtimes to discover workloads in (e.g. docker, process,
+	// kubernetes). Each runs its own discovery, configured by its section under Adapter,
+	// and all write to Store. When empty, Adapter.Type is used alone.
+	AdapterTypes []string            `json:"adapter_types,omitempty" mapstructure:"adapter_types"`
+	Resolver     resolver.Config     `json:"resolver"                mapstructure:"resolver"`
+	Store        runtimestore.Config `json:"store"                   mapstructure:"store"`
+	// OASFSchemaURLs are the OASF schema servers whose A2A card extensions are read when
+	// listing workloads by agent. Defaults to runtimev1.DefaultOASFSchemaURL.
+	OASFSchemaURLs []string `json:"oasf_schema_urls,omitempty" mapstructure:"oasf_schema_urls"`
+}
+
+// EffectiveAdapterTypes returns the runtimes to run discovery for: AdapterTypes, or else
+// Adapter.Type, so configs written before AdapterTypes existed keep working.
+func (c RuntimeConfig) EffectiveAdapterTypes() []string {
+	if len(c.AdapterTypes) > 0 {
+		return c.AdapterTypes
+	}
+
+	if c.Adapter.Type != "" {
+		return []string{string(c.Adapter.Type)}
+	}
+
+	return nil
 }
 
 func registerServerDefaults(v *viper.Viper) {
@@ -145,6 +168,7 @@ func registerRuntimeDefaults(v *viper.Viper) {
 
 	// Store configuration
 	v.SetDefault("runtime.store.type", runtimestoresql.StoreTypeSqlite)
+	v.SetDefault("runtime.store.sqlite.path", runtimestoresql.DefaultPath)
 
 	// Adapter configuration
 	v.SetDefault("runtime.adapter.type", adapterdocker.RuntimeType)
@@ -156,6 +180,19 @@ func registerRuntimeDefaults(v *viper.Viper) {
 	v.SetDefault("runtime.adapter.docker.host_mode", true)
 	v.SetDefault("runtime.adapter.docker.label_key", adapterdocker.DefaultLabelKey)
 	v.SetDefault("runtime.adapter.docker.label_value", adapterdocker.DefaultLabelValue)
+
+	// adapter_types has no default, so a config that only sets adapter.type keeps running
+	// that one adapter; register it so the environment variable still applies.
+	_ = v.BindEnv("runtime.adapter_types")
+
+	// Process adapter
+	v.SetDefault("runtime.adapter.process.dir", adapterprocess.DefaultDir)
+	v.SetDefault("runtime.adapter.process.poll_interval", adapterprocess.DefaultPollInterval)
+	v.SetDefault("runtime.adapter.process.label_key", adapterprocess.DefaultLabelKey)
+	v.SetDefault("runtime.adapter.process.label_value", adapterprocess.DefaultLabelValue)
+
+	// Schema servers whose card extensions are read when listing workloads by agent
+	v.SetDefault("runtime.oasf_schema_urls", []string{runtimev1.DefaultOASFSchemaURL})
 
 	// K8s adapter
 	v.SetDefault("runtime.adapter.kubernetes.kubeconfig", "")
