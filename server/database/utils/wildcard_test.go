@@ -6,6 +6,8 @@ package utils
 import (
 	"reflect"
 	"testing"
+
+	"github.com/agntcy/dir/server/types"
 )
 
 func TestContainsWildcards(t *testing.T) {
@@ -471,6 +473,56 @@ func BenchmarkBuildWildcardCondition(b *testing.B) {
 
 	for b.Loop() {
 		BuildWildcardCondition(field, patterns)
+	}
+}
+
+func TestBuildAnnotationPatternCondition(t *testing.T) {
+	tests := []struct {
+		name              string
+		patterns          []types.Annotation
+		expectedCondition string
+		expectedArgs      []any
+	}{
+		{
+			name:              "empty patterns",
+			patterns:          nil,
+			expectedCondition: "",
+			expectedArgs:      nil,
+		},
+		{
+			name:              "key only matches any value",
+			patterns:          []types.Annotation{{Key: "Env"}},
+			expectedCondition: "LOWER(ap.key) = ?",
+			expectedArgs:      []any{"env"},
+		},
+		{
+			name:              "key and value on the same row",
+			patterns:          []types.Annotation{{Key: "team", Value: "Pay*"}},
+			expectedCondition: "(LOWER(ap.key) = ? AND LOWER(ap.value) LIKE ? ESCAPE '\\')",
+			expectedArgs:      []any{"team", "pay%"},
+		},
+		{
+			name:              "multiple patterns are OR-combined",
+			patterns:          []types.Annotation{{Key: "team", Value: "payments"}, {Key: "env"}},
+			expectedCondition: "((LOWER(ap.key) = ? AND LOWER(ap.value) = ?) OR LOWER(ap.key) = ?)",
+			expectedArgs:      []any{"team", "payments", "env"},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			condition, args := BuildAnnotationPatternCondition("ap", tt.patterns)
+
+			if condition != tt.expectedCondition {
+				t.Errorf("BuildAnnotationPatternCondition(%v) condition = %q, want %q",
+					tt.patterns, condition, tt.expectedCondition)
+			}
+
+			if !reflect.DeepEqual(args, tt.expectedArgs) {
+				t.Errorf("BuildAnnotationPatternCondition(%v) args = %v, want %v",
+					tt.patterns, args, tt.expectedArgs)
+			}
+		})
 	}
 }
 
