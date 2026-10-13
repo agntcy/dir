@@ -3123,7 +3123,7 @@ consumption:</p>
 <span class="c1">// agntcy.dir/owner annotation.</span>
 <span class="nx">claim</span><span class="p">,</span><span class="w"> </span><span class="nx">err</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">c</span><span class="p">.</span><span class="nx">ClaimOwnership</span><span class="p">(</span><span class="nx">ctx</span><span class="p">,</span><span class="w"> </span><span class="nx">ref</span><span class="p">.</span><span class="nx">GetCid</span><span class="p">(),</span><span class="w"> </span><span class="nx">signer</span><span class="p">)</span>
 
-<span class="c1">// For a spiffe:// subject, pass the signer&#39;s X.509-SVID as well</span>
+<span class="c1">// For a spiffe:// or ans:// subject, pass the certificate that proves it as well</span>
 <span class="nx">claim</span><span class="p">,</span><span class="w"> </span><span class="nx">err</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="nx">c</span><span class="p">.</span><span class="nx">ClaimIdentity</span><span class="p">(</span><span class="nx">ctx</span><span class="p">,</span><span class="w"> </span><span class="nx">ref</span><span class="p">.</span><span class="nx">GetCid</span><span class="p">(),</span><span class="w"> </span><span class="nx">signer</span><span class="p">,</span><span class="w"> </span><span class="nx">identity</span><span class="p">.</span><span class="nx">WithCertificate</span><span class="p">(</span><span class="nx">svidPEM</span><span class="p">))</span>
 
 <span class="c1">// Resolve a name (optionally versioned) to record references</span>

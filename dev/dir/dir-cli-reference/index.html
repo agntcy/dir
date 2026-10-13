@@ -6623,12 +6623,12 @@ dirctl<span class="w"> </span>sign<span class="w"> </span>&lt;cid&gt;<span class
 </tr>
 <tr>
 <td><code>--cert</code></td>
-<td>PEM or DER certificate of the key; only for <code>spiffe://</code> subjects</td>
+<td>PEM or DER certificate of the key; for <code>spiffe://</code> and <code>ans://</code> subjects</td>
 </tr>
 </tbody>
 </table>
 <p>The key is an EC, RSA or Ed25519 private key in PEM form, unencrypted or an encrypted PKCS#8 key (<code>ENCRYPTED PRIVATE KEY</code>). Its public half is what the subject publishes: a DNS TXT record for <code>dns:</code> subjects, <code>/.well-known/jwks.json</code> for <code>https://</code> subjects, the DID document for <code>did:web:</code>, or the DID itself for <code>did:key:</code>. For an encrypted key, the password is read from <code>COSIGN_PASSWORD</code>, from standard input with <code>--password-stdin</code> (a trailing line break is ignored), or prompted for on a terminal. A key that is not encrypted is never prompted for.</p>
-<p><code>--cert</code> is independent of <code>--key</code> and is only for <code>spiffe://</code> subjects, whose proof is the signer's X.509-SVID rather than a published key. The certificate's URI SAN must be the declared subject. A <code>spiffe://</code> subject needs <code>--cert</code>, and no other subject accepts it.</p>
+<p><code>--cert</code> is independent of <code>--key</code> and is for <code>spiffe://</code> and <code>ans://</code> subjects, whose proof is a certificate rather than a published key: the signer's X.509-SVID, or the identity certificate the agent's transparency log attests. The certificate's URI SAN must be the declared subject. These subjects need <code>--cert</code>, and no other subject accepts it.</p>
 <details class="example">
 <summary>Example</summary>
 <div class="highlight"><pre><span></span><code><span class="c1"># Claim a record&#39;s identity</span>
@@ -6640,6 +6640,9 @@ dirctl<span class="w"> </span>identity<span class="w"> </span>claim<span class="
 
 <span class="c1"># Claim a SPIFFE identity</span>
 dirctl<span class="w"> </span>identity<span class="w"> </span>claim<span class="w"> </span>--record<span class="w"> </span>&lt;cid&gt;<span class="w"> </span>--role<span class="w"> </span>identity<span class="w"> </span>--key<span class="w"> </span>svid.key<span class="w"> </span>--cert<span class="w"> </span>svid.pem
+
+<span class="c1"># Claim an ANS identity, with the agent&#39;s identity certificate</span>
+dirctl<span class="w"> </span>identity<span class="w"> </span>claim<span class="w"> </span>--record<span class="w"> </span>&lt;cid&gt;<span class="w"> </span>--role<span class="w"> </span>identity<span class="w"> </span>--key<span class="w"> </span>agent.key<span class="w"> </span>--cert<span class="w"> </span>agent.pem
 </code></pre></div>
 </details>
 <h3 id="dirctl-identity-status-reference"><code>dirctl identity status &lt;reference&gt;</code></h3>
@@ -6653,6 +6656,8 @@ dirctl<span class="w"> </span>identity<span class="w"> </span>claim<span class="
 <span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">trust_domain</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">acme.com</span>
 <span class="w">        </span><span class="nt">bundle_file</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/etc/agntcy/spiffe/acme.com.pem</span>
 </code></pre></div>
+<p>An <code>ans://</code> claim is verified against the transparency logs configured under
+<code>reconciler.identity.ans</code>; see <a href="../dir-component-identity/#ans">Identity and Ownership Claims</a>.</p>
 <details class="example">
 <summary>Example</summary>
 <div class="highlight"><pre><span></span><code>dirctl<span class="w"> </span>identity<span class="w"> </span>status<span class="w"> </span>&lt;cid&gt;

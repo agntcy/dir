@@ -2957,7 +2957,8 @@ by the underlying OCI registry infrastructure.</p>
 <code>dns:acme.com</code>, is the record's own identity or its owner. A claim is stored as an OCI
 referrer of the record. The reconciler verifies it against the key material the subject
 publishes (a DNS TXT record, a <code>/.well-known/jwks.json</code> file, a DID document, or a SPIFFE
-trust bundle) and records the outcome, which <code>dirctl identity status</code> reports and the
+trust bundle) or against the certificate the claim carries, which an ANS transparency log
+attests, and records the outcome, which <code>dirctl identity status</code> reports and the
 <code>--identity-verified</code>, <code>--owner-verified</code> and <code>--verified</code> search filters match on.</p>
 <p>Claims are re-verified on every reconciler run, so a rotated key or a revoked trust bundle is
 caught on the next one. For the claim schema, the supported subjects and the verification
