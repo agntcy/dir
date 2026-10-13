@@ -246,6 +246,16 @@ reconciler:
       older_than: 168h
     limit: 100
     dry_run: true
+  # Announces matching local records to the routing network. Off: this
+  # publishes to peers. A run pages through the match set, same as the
+  # dirctl publish CronJob. Empty criteria.domains means every indexed record.
+  publish:
+    enabled: false
+    interval: 24h
+    criteria:
+      domains: []
+    limit: 100
+    dry_run: true
   local_registry:
     registry_address: "localhost:5555"
     repository_name: "dir"
