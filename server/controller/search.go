@@ -77,11 +77,23 @@ func (c *searchCtlr) ListRecordSummaries(ctx context.Context, req *searchv1.List
 	)
 
 	records, hasMore, err := c.db.ListRecordSummaries(pageOptions...)
+	// The DB methods take no context, so honour cancellation here, ahead of
+	// any DB error, which is likely just a consequence of it.
+	if ctxErr := ctx.Err(); ctxErr != nil {
+		return nil, status.FromContextError(ctxErr).Err() //nolint:wrapcheck
+	}
+
 	if err != nil {
 		return nil, fmt.Errorf("failed to list record summaries: %w", err)
 	}
 
 	totalCount, err := c.db.CountRecords(filterOptions...)
+	// The DB methods take no context, so honour cancellation here, ahead of
+	// any DB error, which is likely just a consequence of it.
+	if ctxErr := ctx.Err(); ctxErr != nil {
+		return nil, status.FromContextError(ctxErr).Err() //nolint:wrapcheck
+	}
+
 	if err != nil {
 		return nil, fmt.Errorf("failed to count records: %w", err)
 	}

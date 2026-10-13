@@ -6,6 +6,7 @@ package controller
 import (
 	"context"
 	"testing"
+	"time"
 
 	searchv1 "github.com/agntcy/dir/api/search/v1"
 	"github.com/agntcy/dir/server/types"
@@ -29,6 +30,8 @@ type fakeSearchDB struct {
 	gotPage      types.RecordFilters
 	pageCalls    int
 	countCalls   int
+	onPage       func() // invoked inside ListRecordSummaries, e.g. to cancel a context
+	onCount      func() // invoked inside CountRecords
 
 	fieldValues []types.FilterFieldValues
 	gotFields   []searchv1.RecordQueryType
@@ -37,6 +40,10 @@ type fakeSearchDB struct {
 
 func (f *fakeSearchDB) CountRecords(opts ...types.FilterOption) (uint32, error) {
 	f.countCalls++
+
+	if f.onCount != nil {
+		f.onCount()
+	}
 
 	if f.countErr != nil {
 		return 0, f.countErr
@@ -53,6 +60,10 @@ func (f *fakeSearchDB) CountRecords(opts ...types.FilterOption) (uint32, error) 
 
 func (f *fakeSearchDB) ListRecordSummaries(opts ...types.FilterOption) ([]*searchv1.RecordSummary, bool, error) {
 	f.pageCalls++
+
+	if f.onPage != nil {
+		f.onPage()
+	}
 
 	for _, opt := range opts {
 		if opt != nil {
@@ -310,4 +321,79 @@ func TestListRecordSummaries_CancelledContext(t *testing.T) {
 	assert.Equal(t, codes.Canceled, status.Code(err))
 	assert.Zero(t, db.pageCalls)
 	assert.Zero(t, db.countCalls)
+}
+
+func TestListRecordSummaries_CancelledDuringQueries(t *testing.T) {
+	tests := []struct {
+		name      string
+		newCtx    func() (context.Context, context.CancelFunc)
+		wantCode  codes.Code
+		hook      func(db *fakeSearchDB, stop context.CancelFunc)
+		wantCount int
+	}{
+		{
+			name:     "canceled during page query",
+			newCtx:   func() (context.Context, context.CancelFunc) { return context.WithCancel(context.Background()) },
+			wantCode: codes.Canceled,
+			hook:     func(db *fakeSearchDB, stop context.CancelFunc) { db.onPage = stop },
+		},
+		{
+			name:     "canceled during page query that errors",
+			newCtx:   func() (context.Context, context.CancelFunc) { return context.WithCancel(context.Background()) },
+			wantCode: codes.Canceled,
+			hook: func(db *fakeSearchDB, stop context.CancelFunc) {
+				db.onPage = stop
+				db.summariesErr = assert.AnError
+			},
+		},
+		{
+			name:     "canceled during count query",
+			newCtx:   func() (context.Context, context.CancelFunc) { return context.WithCancel(context.Background()) },
+			wantCode: codes.Canceled,
+			hook: func(db *fakeSearchDB, stop context.CancelFunc) {
+				db.onCount = stop
+			},
+			wantCount: 1,
+		},
+		{
+			name:     "canceled during count query that errors",
+			newCtx:   func() (context.Context, context.CancelFunc) { return context.WithCancel(context.Background()) },
+			wantCode: codes.Canceled,
+			hook: func(db *fakeSearchDB, stop context.CancelFunc) {
+				db.onCount = stop
+				db.countErr = assert.AnError
+			},
+			wantCount: 1,
+		},
+		{
+			name: "deadline exceeded during page query",
+			newCtx: func() (context.Context, context.CancelFunc) {
+				return context.WithTimeout(context.Background(), 10*time.Millisecond)
+			},
+			wantCode: codes.DeadlineExceeded,
+			hook: func(db *fakeSearchDB, _ context.CancelFunc) {
+				// Let a real deadline elapse while the page query runs.
+				db.onPage = func() { time.Sleep(50 * time.Millisecond) }
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ctx, cancel := tt.newCtx()
+			defer cancel()
+
+			db := &fakeSearchDB{}
+
+			tt.hook(db, cancel)
+
+			ctrl := NewSearchController(db, nil)
+
+			_, err := ctrl.ListRecordSummaries(ctx, &searchv1.ListRecordSummariesRequest{})
+			require.Error(t, err)
+			assert.Equal(t, tt.wantCode, status.Code(err))
+			assert.Equal(t, 1, db.pageCalls)
+			assert.Equal(t, tt.wantCount, db.countCalls)
+		})
+	}
 }
