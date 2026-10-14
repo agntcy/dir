@@ -18,11 +18,11 @@ vars:
 
   ## External dependency versions
   # renovate: datasource=go depName=github.com/project-zot/zot versioning=semver
-  ZOT_VERSION: "2.1.21"
+  ZOT_VERSION: "2.1.22"
   # renovate: datasource=go depName=github.com/spiffe/spire versioning=semver
   SPIRE_VERSION: "1.15.3"
   # renovate: datasource=docker depName=docker.io/bitnami/postgresql
-  POSTGRESQL_VERSION: "latest@sha256:ec3840dfcf0caf786877a67d83bc3ebb0c042fd92445c062ec89c51245290942"
+  POSTGRESQL_VERSION: "latest@sha256:e2815ea79b38b77696bb189605a1f2e95a0bd3f70d419385500fc03d20d23c37"
 
   ## Container images for vulnerability scanning
   VULN_SCAN_IMAGES:
@@ -64,7 +64,7 @@ vars:
   PROTOC_BIN: "{{ .BIN_DIR }}/protoc-{{.PROTOC_VERSION}}"
   BUFBUILD_VERSION: "1.66.1"
   BUFBUILD_BIN: "{{ .BIN_DIR }}/bufbuild-{{.BUFBUILD_VERSION}}"
-  GO_VERSION: "1.27.1"
+  GO_VERSION: "1.27.2"
   MULTIMOD_VERSION: "0.29.0"
   MULTIMOD_BIN: "{{ .BIN_DIR }}/multimod-{{.MULTIMOD_VERSION}}"
   # renovate: datasource=go depName=github.com/mikefarah/yq/v4 versioning=semver

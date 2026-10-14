@@ -268,7 +268,8 @@ func tryServeStatic(w http.ResponseWriter, r *http.Request, static fs.FS, path, 
 	}
 
 	if !errors.Is(err, fs.ErrNotExist) {
-		logger.Error("failed to serve static file", "path", path, "error", err)
+		safePath := strings.ReplaceAll(strings.ReplaceAll(path, "\n", ""), "\r", "")
+		logger.Error("failed to serve static file", "path", safePath, "error", err)
 		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 
 		return true
