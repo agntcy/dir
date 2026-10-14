@@ -359,7 +359,7 @@ This guide does not try to provision the AWS infrastructure from zero in the mai
 
       config:
         policy:
-          validators: []
+          operations: []
         listen_address: "0.0.0.0:8888"
         authn:
           enabled: true

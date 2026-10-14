@@ -14,6 +14,7 @@ import (
 	publishtask "github.com/agntcy/dir/reconciler/tasks/publish"
 	synctask "github.com/agntcy/dir/reconciler/tasks/sync"
 	storeconfig "github.com/agntcy/dir/server/store/oci/config"
+	validatorsconfig "github.com/agntcy/dir/server/validators/config"
 	"github.com/stretchr/testify/require"
 )
 
@@ -201,6 +202,37 @@ func TestLoadConfigKeepsPublishInDryRunByDefault(t *testing.T) {
 		require.NoError(t, err)
 		require.False(t, cfg.Reconciler.Publish.DryRun)
 	})
+}
+
+// TestLoadConfigPolicyBlocks asserts that the policy blocks of the embedded
+// daemon.config.yaml reach the config structs.
+//
+// Worth asserting because the failure is silent: a key that does not bind
+// leaves the list empty, which is indistinguishable from a node configured to
+// validate nothing. The default would stop checking pushed records against the
+// OASF schema and nothing would say so.
+func TestLoadConfigPolicyBlocks(t *testing.T) {
+	originalOpts := opts
+	opts = &Options{DataDir: t.TempDir()}
+	t.Cleanup(func() {
+		opts = originalOpts
+	})
+
+	cfg, err := loadConfig()
+	require.NoError(t, err)
+
+	operations := cfg.Server.Policy.Operations
+	require.Len(t, operations, 1, "the default validates pushed records against the OASF schema")
+	require.Equal(t, validatorsconfig.ProviderOASF, operations[0].Provider)
+	require.Equal(t, "https://schema.oasf.outshift.com", operations[0].SchemaURL)
+	require.Equal(t, "oasf:schema", operations[0].PolicyID())
+	require.Equal(t,
+		[]string{validatorsconfig.OpPush, validatorsconfig.OpAutosync, validatorsconfig.OpIndex},
+		operations[0].Ops)
+
+	require.Empty(t, cfg.Server.Policy.Evaluations, "no policy is evaluated by default")
+
+	require.NoError(t, cfg.Server.Policy.Validate())
 }
 
 // TestLoadConfigRepublishIntervalEnvOverride asserts that the routing republish

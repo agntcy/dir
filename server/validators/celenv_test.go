@@ -10,7 +10,6 @@ import (
 	identityv1 "github.com/agntcy/dir/api/identity/v1"
 	policyv1 "github.com/agntcy/dir/api/policy/v1"
 	securityv1 "github.com/agntcy/dir/api/security/v1"
-	validatorsconfig "github.com/agntcy/dir/server/validators/config"
 	"github.com/stretchr/testify/require"
 )
 
@@ -47,9 +46,7 @@ func evalWithMeta(t *testing.T, expr string, meta *policyv1.RecordMeta) bool {
 func TestPolicyEnv_MisspelledFieldFailsAtLoad(t *testing.T) {
 	t.Parallel()
 
-	_, err := newCELValidator(validatorsconfig.Validator{
-		Config: celConfig(`meta.signature.statsu == SignatureStatus.SIGNATURE_STATUS_VERIFIED`),
-	})
+	_, err := newCELValidator([]string{`meta.signature.statsu == SignatureStatus.SIGNATURE_STATUS_VERIFIED`})
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "compile CEL expressions[0]")
 	require.Contains(t, err.Error(), "statsu", "the error should name the misspelled field")
@@ -59,9 +56,7 @@ func TestPolicyEnv_MisspelledFieldFailsAtLoad(t *testing.T) {
 func TestPolicyEnv_MisspelledGroupFailsAtLoad(t *testing.T) {
 	t.Parallel()
 
-	_, err := newCELValidator(validatorsconfig.Validator{
-		Config: celConfig(`meta.signatrue.status == SignatureStatus.SIGNATURE_STATUS_VERIFIED`),
-	})
+	_, err := newCELValidator([]string{`meta.signatrue.status == SignatureStatus.SIGNATURE_STATUS_VERIFIED`})
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "signatrue")
 }

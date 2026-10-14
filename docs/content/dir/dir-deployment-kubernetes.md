@@ -103,7 +103,7 @@ The Agent Directory Service can be deployed using Helm or GitOps / Argo CD. Helm
             useCSIDriver: true
           config:
             policy:
-              validators: []
+              operations: []
             listen_address: "0.0.0.0:8888"
             authn:
               enabled: true
