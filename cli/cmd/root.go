@@ -23,6 +23,7 @@ import (
 	"github.com/agntcy/dir/cli/cmd/pull"
 	"github.com/agntcy/dir/cli/cmd/push"
 	"github.com/agntcy/dir/cli/cmd/routing"
+	runtimecmd "github.com/agntcy/dir/cli/cmd/runtime"
 	"github.com/agntcy/dir/cli/cmd/search"
 	"github.com/agntcy/dir/cli/cmd/sign"
 	"github.com/agntcy/dir/cli/cmd/sync"
@@ -142,6 +143,8 @@ func init() {
 		identitycmd.Command, // Contains: claim, status, resolve
 		// search commands
 		search.Command, // General search (searchv1)
+		// runtime commands (running workloads, kept apart from search)
+		runtimecmd.Command, // Contains: list
 		// sync commands
 		sync.Command,
 		// events commands
