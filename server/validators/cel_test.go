@@ -90,6 +90,55 @@ func TestCELValidator_EvalErrorIsValidationFailure(t *testing.T) {
 	require.NotEmpty(t, msgs)
 }
 
+// The typed environment must not change how a record expression reads.
+// Policies are content-hashed, so an expression that has to be rewritten gets
+// a new version and loses the verdicts recorded under the old one.
+func TestCELValidator_RecordStaysDynamic(t *testing.T) {
+	t.Parallel()
+
+	record := corev1.New(&typesv1alpha1.Record{
+		Name:    "cisco.com/agent",
+		Version: "1.0.0",
+		Locators: []*typesv1alpha1.Locator{
+			{Type: "docker-image", Url: "ghcr.io/example/agent:1.0.0"},
+		},
+	})
+
+	v, err := newCELValidator(validatorsconfig.Validator{
+		Config: celConfig(
+			`record.name.startsWith("cisco.com/")`,
+			`has(record.locators)`,
+			`size(record.locators) == 1`,
+			`record.locators[0].type == "docker-image"`,
+			`record.locators.all(l, l.url != "")`,
+			`!has(record.unknown_field)`,
+		),
+	})
+	require.NoError(t, err)
+
+	ok, msgs, _, err := v.ValidateRecord(context.Background(), record.GetData())
+	require.NoError(t, err)
+	require.True(t, ok)
+	require.Empty(t, msgs)
+}
+
+// A misspelled record field still compiles, because the record has no
+// compile-time schema, and still fails at evaluation.
+func TestCELValidator_UnknownRecordFieldStillCompiles(t *testing.T) {
+	t.Parallel()
+
+	v, err := newCELValidator(validatorsconfig.Validator{
+		Config: celConfig(`record.locatrs.size() > 0`),
+	})
+	require.NoError(t, err)
+
+	record := corev1.New(&typesv1alpha1.Record{Name: "cisco.com/agent"})
+	ok, msgs, _, err := v.ValidateRecord(context.Background(), record.GetData())
+	require.NoError(t, err)
+	require.False(t, ok)
+	require.NotEmpty(t, msgs)
+}
+
 func TestCELValidator_NilData(t *testing.T) {
 	t.Parallel()
 
