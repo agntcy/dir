@@ -207,13 +207,13 @@ func TestPrintTable_ListsRepeatedValuesUnderEachOther(t *testing.T) {
 
 	listCmd.SetOut(&out)
 	printTable(listCmd, []summary{{
-		ID: "w1", Runtime: "docker", Type: "container",
+		ID: "w1", Runtime: "docker",
 		Locators: []string{"tcp://0.0.0.0:18081", "tcp://0.0.0.0:18443"},
 		Agent:    agent{Skills: []string{"a/b", "c/d"}},
 	}})
 
 	require.Contains(t, out.String(), "w1\n"+
-		"  runtime:  docker (container)\n"+
+		"  runtime:  docker\n"+
 		"  locators: tcp://0.0.0.0:18081\n"+
 		"            tcp://0.0.0.0:18443\n"+
 		"  skills:   a/b\n"+

@@ -243,7 +243,6 @@ func buildRequest() (*runtimev1.ListWorkloadsRequest, error) {
 type summary struct {
 	ID           string
 	Runtime      string
-	Type         string
 	Hostname     string
 	Locators     []string
 	Agent        agent
@@ -264,7 +263,6 @@ func summarize(w *runtimev1.Workload, schemaURLs []string) summary {
 	out := summary{
 		ID:       w.GetId(),
 		Runtime:  w.GetRuntime(),
-		Type:     w.GetType(),
 		Hostname: w.GetHostname(),
 		Agent: agent{
 			Name:    info.Name,
@@ -320,7 +318,7 @@ func printTable(cmd *cobra.Command, listed []summary) {
 
 		presenter.Println(cmd, w.ID)
 
-		printField(cmd, "runtime", runtimeLabel(w))
+		printField(cmd, "runtime", w.Runtime)
 		printField(cmd, "host", w.Hostname)
 
 		name := w.Agent.Name
@@ -338,16 +336,6 @@ func printTable(cmd *cobra.Command, listed []summary) {
 
 	presenter.Println(cmd, "")
 	presenter.Println(cmd, "Workloads are listed as announced; nothing here is verified.")
-}
-
-// runtimeLabel is the runtime, with the workload type when it says more, e.g.
-// "docker (container)" but just "process".
-func runtimeLabel(w summary) string {
-	if w.Type == "" || w.Type == w.Runtime {
-		return w.Runtime
-	}
-
-	return w.Runtime + " (" + w.Type + ")"
 }
 
 // printField prints one labelled field, its values one per line under each other.
