@@ -33,7 +33,7 @@ vars:
     - "docker.io/bitnami/postgresql:{{.POSTGRESQL_VERSION}}"
 
   ## Scanner versions
-  MCP_SCANNER_VERSION: "4.8.1"
+  MCP_SCANNER_VERSION: "4.8.6"
   SKILL_SCANNER_VERSION: "2.0.12"
   A2A_SCANNER_VERSION: "1.0.1"
 
@@ -70,7 +70,7 @@ vars:
   # renovate: datasource=go depName=github.com/mikefarah/yq/v4 versioning=semver
   YQ_VERSION: "4.54.1"
   YQ_BIN: "{{ .BIN_DIR }}/yq-{{.YQ_VERSION}}"
-  GOLANGCI_LINT_VERSION: "2.13.2"
+  GOLANGCI_LINT_VERSION: "2.14.0"
   GOLANGCI_LINT_BIN: "{{ .BIN_DIR }}/golangci-lint-{{.GOLANGCI_LINT_VERSION}}"
   # renovate: datasource=go depName=github.com/google/go-licenses/v2 versioning=semver
   GO_LICENSES_VERSION: "2.0.1"
