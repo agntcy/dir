@@ -15,10 +15,10 @@ replace github.com/ThalesIgnite/crypto11 => github.com/eclipse-keypont/crypto11 
 
 require (
 	buf.build/gen/go/agntcy/oasf/protocolbuffers/go v1.36.12-20261006093657-2c7c88d8533b.2
-	github.com/agntcy/dir/api v1.7.1
-	github.com/agntcy/dir/client v1.7.1
+	github.com/agntcy/dir/api v1.8.0
+	github.com/agntcy/dir/client v1.8.0
 	github.com/agntcy/dir/server v1.7.1
-	github.com/agntcy/dir/utils v1.7.1
+	github.com/agntcy/dir/utils v1.8.0
 	github.com/csirmazbendeguz/regclient v0.0.0-20260429082137-82ab6d426079
 	github.com/go-viper/mapstructure/v2 v2.5.0
 	github.com/lestrrat-go/jwx/v2 v2.1.7
