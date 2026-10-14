@@ -205,8 +205,9 @@ func TestQueryToFilters_NegateRoutesToExcluded(t *testing.T) {
 			query: &searchv1.RecordQuery{Type: searchv1.RecordQueryType_RECORD_QUERY_TYPE_ANNOTATION, Value: "env:prod", Negate: true},
 			check: func(t *testing.T, cfg types.RecordFilters) {
 				t.Helper()
-				assert.Equal(t, []string{"env"}, cfg.Excluded.AnnotationKeys)
-				assert.Equal(t, []string{"prod"}, cfg.Excluded.AnnotationValues)
+				assert.Equal(t, []types.Annotation{{Key: "env", Value: "prod"}}, cfg.Excluded.AnnotationPatterns)
+				assert.Empty(t, cfg.Excluded.AnnotationKeys)
+				assert.Empty(t, cfg.Excluded.AnnotationValues)
 			},
 		},
 		{
@@ -214,8 +215,7 @@ func TestQueryToFilters_NegateRoutesToExcluded(t *testing.T) {
 			query: &searchv1.RecordQuery{Type: searchv1.RecordQueryType_RECORD_QUERY_TYPE_ANNOTATION, Value: "env", Negate: true},
 			check: func(t *testing.T, cfg types.RecordFilters) {
 				t.Helper()
-				assert.Equal(t, []string{"env"}, cfg.Excluded.AnnotationKeys)
-				assert.Empty(t, cfg.Excluded.AnnotationValues)
+				assert.Equal(t, []types.Annotation{{Key: "env"}}, cfg.Excluded.AnnotationPatterns)
 			},
 		},
 		{
@@ -294,6 +294,27 @@ func TestQueryToFilters_NonNegatedUnaffected(t *testing.T) {
 	cfg := applyOpts(opts)
 	assert.Equal(t, []string{"nlp"}, cfg.SkillNames)
 	assert.Empty(t, cfg.Excluded.SkillNames)
+}
+
+func TestQueryToFilters_AnnotationQueriesStayPaired(t *testing.T) {
+	opts, err := QueryToFilters([]*searchv1.RecordQuery{
+		{Type: searchv1.RecordQueryType_RECORD_QUERY_TYPE_ANNOTATION, Value: "team:payments"},
+		{Type: searchv1.RecordQueryType_RECORD_QUERY_TYPE_ANNOTATION, Value: "manager:alice"},
+		{Type: searchv1.RecordQueryType_RECORD_QUERY_TYPE_ANNOTATION, Value: "env"},
+		{Type: searchv1.RecordQueryType_RECORD_QUERY_TYPE_ANNOTATION, Value: "tier:"},
+		{Type: searchv1.RecordQueryType_RECORD_QUERY_TYPE_ANNOTATION, Value: ":orphan"},
+	})
+	require.NoError(t, err)
+
+	cfg := applyOpts(opts)
+	assert.Equal(t, []types.Annotation{
+		{Key: "team", Value: "payments"},
+		{Key: "manager", Value: "alice"},
+		{Key: "env"},
+		{Key: "tier"},
+	}, cfg.AnnotationPatterns)
+	assert.Empty(t, cfg.AnnotationKeys)
+	assert.Empty(t, cfg.AnnotationValues)
 }
 
 func TestQueryToFilters_IdentityQueries(t *testing.T) {

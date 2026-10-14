@@ -216,28 +216,18 @@ func QueryToFilters(queries []*searchv1.RecordQuery) ([]types.FilterOption, erro
 			options = append(options, types.WithTrusted(strings.EqualFold(query.GetValue(), "true") != query.GetNegate()))
 
 		case searchv1.RecordQueryType_RECORD_QUERY_TYPE_ANNOTATION:
-			parts := strings.SplitN(query.GetValue(), ":", 2) //nolint:mnd
+			// Each query becomes one key/value pair matched on a single annotation,
+			// so repeated queries don't cross-match one query's key with another's value.
+			// No colon, or an empty value, matches any value for the key.
+			key, value, hasValue := strings.Cut(query.GetValue(), ":")
+			if hasValue && key == "" {
+				logger.Warn("Annotation query has empty key, skipping", "value", query.GetValue())
 
-			keysFn := choose(query.GetNegate(), types.WithAnnotationKeys, types.WithoutAnnotationKeys)
-			valuesFn := choose(query.GetNegate(), types.WithAnnotationValues, types.WithoutAnnotationValues)
-
-			if len(parts) == 1 {
-				// No colon — treat entire value as annotation key (match any value)
-				options = append(options, keysFn(parts[0]))
-			} else {
-				key := parts[0]
-				if key == "" {
-					logger.Warn("Annotation query has empty key, skipping", "value", query.GetValue())
-
-					break
-				}
-
-				options = append(options, keysFn(key))
-
-				if parts[1] != "" {
-					options = append(options, valuesFn(parts[1]))
-				}
+				break
 			}
+
+			patternsFn := choose(query.GetNegate(), types.WithAnnotationPatterns, types.WithoutAnnotationPatterns)
+			options = append(options, patternsFn(types.Annotation{Key: key, Value: value}))
 
 		case searchv1.RecordQueryType_RECORD_QUERY_TYPE_SCAN_SEVERITY:
 			if query.GetValue() != "" {

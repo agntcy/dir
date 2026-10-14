@@ -72,6 +72,7 @@ type RecordFilters struct {
 	AnnotationKeys     []string
 	AnnotationValues   []string
 	Annotations        []Annotation
+	AnnotationPatterns []Annotation          // Key/value globs matched on the same annotation row; an empty Value matches any value.
 	Descriptions       []string              // Match against record description field.
 	Identities         []string              // Match against the subject of the identity claim.
 	Owners             []string              // Match against the subject of the ownership claim.
@@ -104,6 +105,7 @@ type ExcludedRecordFilters struct {
 	LocatorURLs        []string
 	AnnotationKeys     []string
 	AnnotationValues   []string
+	AnnotationPatterns []Annotation
 	ScanSeverities     []string
 	ScanStatuses       []string
 	ScanFailureReasons []string
@@ -314,6 +316,15 @@ func WithAnnotations(annotations ...Annotation) FilterOption {
 	}
 }
 
+// WithAnnotationPatterns filters records that have an annotation matching any
+// of the given key/value glob pairs. Key and value are matched on the same
+// annotation, and an empty Value matches any value for the key.
+func WithAnnotationPatterns(patterns ...Annotation) FilterOption {
+	return func(sc *RecordFilters) {
+		sc.AnnotationPatterns = append(sc.AnnotationPatterns, patterns...)
+	}
+}
+
 // WithDescriptions filters records by description patterns.
 func WithDescriptions(descriptions ...string) FilterOption {
 	return func(sc *RecordFilters) {
@@ -430,6 +441,15 @@ func WithoutAnnotationKeys(keys ...string) FilterOption {
 func WithoutAnnotationValues(values ...string) FilterOption {
 	return func(sc *RecordFilters) {
 		sc.Excluded.AnnotationValues = append(sc.Excluded.AnnotationValues, values...)
+	}
+}
+
+// WithoutAnnotationPatterns excludes records that have an annotation matching
+// any of the given key/value glob pairs. Key and value are matched on the same
+// annotation, and an empty Value matches any value for the key.
+func WithoutAnnotationPatterns(patterns ...Annotation) FilterOption {
+	return func(sc *RecordFilters) {
+		sc.Excluded.AnnotationPatterns = append(sc.Excluded.AnnotationPatterns, patterns...)
 	}
 }
 

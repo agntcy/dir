@@ -298,3 +298,16 @@ func TestAgentInfo_PartialExtensionKeepsRecordValues(t *testing.T) {
 		t.Errorf("SchemaVersion = %q, want the record's, since the card has none", info.SchemaVersion)
 	}
 }
+
+func TestMatchesFilters_NilRequestMatchesEveryWorkload(t *testing.T) {
+	workloads := []*Workload{
+		{Id: "bare"},
+		{Id: "labelled", Runtime: "docker", Labels: map[string]string{"app": "x"}},
+	}
+
+	for _, w := range workloads {
+		if !w.MatchesFilters(nil, FilterOptions{}) {
+			t.Errorf("MatchesFilters(nil) = false for %q, want true", w.GetId())
+		}
+	}
+}
