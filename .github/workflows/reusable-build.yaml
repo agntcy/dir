@@ -59,7 +59,7 @@ jobs:
 
       - name: Upload CLI artifact
         if: ${{ !inputs.push }}
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: dirctl-bin
           path: /tmp/artifacts/dirctl
@@ -73,7 +73,7 @@ jobs:
 
       - name: Upload CLI (debug) artifact
         if: ${{ !inputs.push }}
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: dirctl-bin-debug
           path: /tmp/artifacts/dirctl-debug
@@ -180,7 +180,7 @@ jobs:
 
       - name: Upload artifacts
         if: ${{ !inputs.push }}
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: ${{ matrix.target }}
           path: /tmp/artifacts/${{ matrix.target }}.tar
@@ -251,7 +251,7 @@ jobs:
           DOCKER_BUILD_RECORD_UPLOAD: false
 
       - name: Upload coverage artifacts
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: ${{ matrix.bake_target }}
           path: /tmp/artifacts/${{ matrix.bake_target }}.tar
