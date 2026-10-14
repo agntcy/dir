@@ -190,15 +190,35 @@ func TestRunList_HumanOutputSummarizesTheAgent(t *testing.T) {
 	require.NoError(t, err)
 
 	for _, want := range []string{
-		"debugger (process process)",
-		"agent:    debugger 1.0.0",
-		"locator:  slim://org/ns/debugger",
-		"skill:    software_engineering/code_debugging/error_handling",
-		"author:   did:key:zHuman",
-		"record:   bafy-source",
+		"debugger\n",
+		"  runtime:  process\n",
+		"  agent:    debugger 1.0.0\n",
+		"  locators: slim://org/ns/debugger\n",
+		"  skills:   software_engineering/code_debugging/error_handling\n",
+		"  authors:  did:key:zHuman\n",
+		"  record:   bafy-source\n",
 	} {
 		require.Contains(t, out, want)
 	}
+}
+
+func TestPrintTable_ListsRepeatedValuesUnderEachOther(t *testing.T) {
+	var out bytes.Buffer
+
+	listCmd.SetOut(&out)
+	printTable(listCmd, []summary{{
+		ID: "w1", Runtime: "docker", Type: "container",
+		Locators: []string{"tcp://0.0.0.0:18081", "tcp://0.0.0.0:18443"},
+		Agent:    agent{Skills: []string{"a/b", "c/d"}},
+	}})
+
+	require.Contains(t, out.String(), "w1\n"+
+		"  runtime:  docker (container)\n"+
+		"  locators: tcp://0.0.0.0:18081\n"+
+		"            tcp://0.0.0.0:18443\n"+
+		"  skills:   a/b\n"+
+		"            c/d\n")
+	require.NotContains(t, out.String(), "domains:")
 }
 
 func TestBuildRequest_RejectsMalformedLabel(t *testing.T) {
@@ -282,5 +302,5 @@ func TestRunList_HumanOutputShowsTheHost(t *testing.T) {
 
 	out, err := runRaw(t, discovery, "--output", "human")
 	require.NoError(t, err)
-	require.Contains(t, out, "host:     agent-1")
+	require.Contains(t, out, "  host:     agent-1\n")
 }

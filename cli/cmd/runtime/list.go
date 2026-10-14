@@ -318,42 +318,52 @@ func printTable(cmd *cobra.Command, listed []summary) {
 			presenter.Println(cmd, "")
 		}
 
-		presenter.Printf(cmd, "%s (%s %s)\n", w.ID, w.Runtime, w.Type)
+		presenter.Println(cmd, w.ID)
 
-		if w.Hostname != "" {
-			presenter.Printf(cmd, "  host:     %s\n", w.Hostname)
+		printField(cmd, "runtime", runtimeLabel(w))
+		printField(cmd, "host", w.Hostname)
+
+		name := w.Agent.Name
+		if name != "" && w.Agent.Version != "" {
+			name += " " + w.Agent.Version
 		}
 
-		if w.Agent.Name != "" {
-			name := w.Agent.Name
-			if w.Agent.Version != "" {
-				name += " " + w.Agent.Version
-			}
-
-			presenter.Printf(cmd, "  agent:    %s\n", name)
-		}
-
-		for _, l := range w.Locators {
-			presenter.Printf(cmd, "  locator:  %s\n", l)
-		}
-
-		for _, s := range w.Agent.Skills {
-			presenter.Printf(cmd, "  skill:    %s\n", s)
-		}
-
-		for _, d := range w.Agent.Domains {
-			presenter.Printf(cmd, "  domain:   %s\n", d)
-		}
-
-		for _, a := range w.Agent.Authors {
-			presenter.Printf(cmd, "  author:   %s\n", a)
-		}
-
-		if w.SourceRecord != "" {
-			presenter.Printf(cmd, "  record:   %s\n", w.SourceRecord)
-		}
+		printField(cmd, "agent", name)
+		printField(cmd, "locators", w.Locators...)
+		printField(cmd, "skills", w.Agent.Skills...)
+		printField(cmd, "domains", w.Agent.Domains...)
+		printField(cmd, "authors", w.Agent.Authors...)
+		printField(cmd, "record", w.SourceRecord)
 	}
 
 	presenter.Println(cmd, "")
 	presenter.Println(cmd, "Workloads are listed as announced; nothing here is verified.")
+}
+
+// runtimeLabel is the runtime, with the workload type when it says more, e.g.
+// "docker (container)" but just "process".
+func runtimeLabel(w summary) string {
+	if w.Type == "" || w.Type == w.Runtime {
+		return w.Runtime
+	}
+
+	return w.Runtime + " (" + w.Type + ")"
+}
+
+// printField prints one labelled field, its values one per line under each other.
+// Empty values are skipped, and so is a field without any.
+func printField(cmd *cobra.Command, label string, values ...string) {
+	const width = len("locators: ")
+
+	prefix := fmt.Sprintf("  %-*s", width, label+":")
+
+	for _, v := range values {
+		if v == "" {
+			continue
+		}
+
+		presenter.Println(cmd, prefix+v)
+
+		prefix = strings.Repeat(" ", len(prefix))
+	}
 }
