@@ -4,8 +4,11 @@
 package daemon
 
 import (
+	"context"
+	"errors"
 	"os"
 	"path/filepath"
+	"syscall"
 	"testing"
 
 	adapterprocess "github.com/agntcy/dir-runtime/discovery/runtime/process"
@@ -93,4 +96,28 @@ func TestEffectiveResolverDefaultsTheOASFClientToThisDaemon(t *testing.T) {
 
 	off := RuntimeConfig{}
 	require.Nil(t, off.EffectiveResolver("0.0.0.0:8888").OASF.Client, "a disabled resolver gets no client")
+}
+
+func TestWaitForShutdown(t *testing.T) {
+	t.Run("runtime discovery failing is an error", func(t *testing.T) {
+		discoveryErr := make(chan error, 1)
+		discoveryErr <- errors.New("runtime discovery failed for every adapter")
+
+		err := waitForShutdown(context.Background(), make(chan os.Signal), discoveryErr, make(chan struct{}))
+		require.ErrorContains(t, err, "every adapter")
+	})
+
+	t.Run("a signal is a normal shutdown", func(t *testing.T) {
+		sig := make(chan os.Signal, 1)
+		sig <- syscall.SIGTERM
+
+		require.NoError(t, waitForShutdown(context.Background(), sig, make(chan error), make(chan struct{})))
+	})
+
+	t.Run("a cancelled context is a normal shutdown", func(t *testing.T) {
+		ctx, cancel := context.WithCancel(context.Background())
+		cancel()
+
+		require.NoError(t, waitForShutdown(ctx, make(chan os.Signal), make(chan error), make(chan struct{})))
+	})
 }

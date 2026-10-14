@@ -164,12 +164,21 @@ func runStart(cmd *cobra.Command, _ []string) error {
 	sigCh := make(chan os.Signal, 1)
 	signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
 
+	return waitForShutdown(ctx, sigCh, discoveryErrCh, zotCtx.Done())
+}
+
+// waitForShutdown blocks until the daemon should stop. Runtime discovery failing for
+// every adapter is returned as an error, so `dirctl daemon start` exits nonzero and a
+// service manager can restart it; the other reasons are a normal shutdown.
+func waitForShutdown(ctx context.Context, sigCh <-chan os.Signal, discoveryErrCh <-chan error, zotDone <-chan struct{}) error {
 	select {
 	case sig := <-sigCh:
 		logger.Info("Received signal, shutting down", "signal", sig)
 	case err := <-discoveryErrCh:
 		logger.Error("Runtime discovery service error", "error", err)
-	case <-zotCtx.Done():
+
+		return err
+	case <-zotDone:
 		logger.Info("zot context cancelled, shutting down")
 	case <-ctx.Done():
 		logger.Info("Context cancelled, shutting down")
