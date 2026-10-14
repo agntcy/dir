@@ -3229,9 +3229,19 @@ grpcurl<span class="w"> </span>-plaintext<span class="w"> </span>localhost:8080<
 <td>Process ID; the workload is listed only while this process is alive</td>
 </tr>
 <tr>
+<td><code>locators</code></td>
+<td>no</td>
+<td>Endpoints the process can be reached at, each <code>{"protocol": ..., "url": ...}</code> with a full URL, e.g. <code>{"protocol": "slim", "url": "slim://org/namespace/agent"}</code></td>
+</tr>
+<tr>
 <td><code>ports</code></td>
 <td>no</td>
-<td>Ports the process listens on (strings or numbers); the A2A resolver only probes workloads with ports</td>
+<td>Ports the process listens on (strings or numbers); turned into <code>tcp://&lt;address&gt;:&lt;port&gt;</code> locators</td>
+</tr>
+<tr>
+<td><code>addresses</code></td>
+<td>no</td>
+<td>Addresses for <code>ports</code>; defaults to <code>["127.0.0.1"]</code></td>
 </tr>
 <tr>
 <td><code>labels</code></td>
@@ -3241,18 +3251,13 @@ grpcurl<span class="w"> </span>-plaintext<span class="w"> </span>localhost:8080<
 <tr>
 <td><code>annotations</code></td>
 <td>no</td>
-<td>E.g. <code>org.agntcy/agent-record</code>, <code>org.agntcy/locator</code></td>
-</tr>
-<tr>
-<td><code>addresses</code></td>
-<td>no</td>
-<td>Defaults to <code>["127.0.0.1"]</code></td>
+<td>E.g. <code>org.agntcy/agent-record</code></td>
 </tr>
 </tbody>
 </table>
 <p>Discovery sets <code>runtime</code> and <code>type</code> to <code>process</code>, <code>hostname</code> to the host name, and <code>isolationGroups</code> to <code>["host"]</code>.</p>
 <h4 id="locators">Locators</h4>
-<p>An agent that is not reachable over an HTTP address and port (for example one served over SLIM) can omit <code>ports</code> and publish its protocol endpoint in the <code>org.agntcy/locator</code> annotation, e.g. <code>"org.agntcy/locator": "slim://org/namespace/agent"</code>. Discovery passes annotations through unchanged; the A2A resolver skips workloads without ports, while the OASF resolver still resolves <code>org.agntcy/agent-record</code>.</p>
+<p>Every workload lists the endpoints it can be reached at in <code>locators</code>, each with a protocol and a full URL. For a process, they come from the descriptor's <code>locators</code>, plus one <code>tcp</code> locator per address and port. An agent that is not reachable over an address and port (for example one served over SLIM) only lists its locator. The A2A resolver probes <code>tcp</code>, <code>http</code> and <code>https</code> locators for an agent card and skips other protocols, while the OASF resolver still resolves <code>org.agntcy/agent-record</code>.</p>
 <h4 id="trust">Trust</h4>
 <p>A descriptor is an unauthenticated claim: discovery checks that the PID is alive, not that the process is the agent its descriptor or record names. Anyone who can write to the directory can register a workload, so keep it private to the user (discovery creates it with mode <code>0700</code>). Consumers that need to know an instance is genuine must verify it themselves, e.g. by probing the agent and checking a reply signed with the key its record names (see <a href="https://github.com/agntcy/dir-runtime/issues/94">#94</a>).</p>
 <p>Write descriptors atomically (write a dotfile or <code>&lt;id&gt;.json.tmp</code>, then rename it to <code>&lt;id&gt;.json</code>) and delete them on clean shutdown. Discovery never modifies or removes descriptor files.</p>
@@ -3288,7 +3293,7 @@ grpcurl<span class="w"> </span>-plaintext<span class="w"> </span>localhost:8080<
 <span class="nb">kill</span><span class="w"> </span><span class="nv">$AGENT_PID</span>
 </code></pre></div>
 <p>To resolve OASF records from a local Directory (<code>dirctl daemon start</code>), drop <code>DISCOVERY_RESOLVER_OASF_ENABLED=false</code>, set <code>DIRECTORY_CLIENT_SERVER_ADDRESS=localhost:8888</code> and <code>DIRECTORY_CLIENT_AUTH_MODE=insecure</code>, and add <code>"org.agntcy/agent-record": "&lt;cid or name:version&gt;"</code> to the descriptor's labels or annotations.</p>
-<p>The server is bound to <code>127.0.0.1</code> here because it has no authentication: with the default <code>SERVER_HOST=0.0.0.0</code> anyone who can reach the machine can list its workloads. To share workloads with other machines, put transport security and access control in front of the server, and list addresses or locators in the descriptors that those machines can reach (the <code>127.0.0.1</code> default is only reachable locally).</p>
+<p>The server is bound to <code>127.0.0.1</code> here because it has no authentication: with the default <code>SERVER_HOST=0.0.0.0</code> anyone who can reach the machine can list its workloads. To share workloads with other machines, put transport security and access control in front of the server, and list locators (or addresses and ports) in the descriptors that those machines can reach (the <code>127.0.0.1</code> default is only reachable locally).</p>
 <p>The walkthrough uses SQLite so no extra service is needed; etcd works the same way by running etcd and setting <code>DISCOVERY_STORE_TYPE=etcd</code> and <code>SERVER_STORE_TYPE=etcd</code>.</p>
 <p>Docker and process discovery on the same machine can share one store and one server: on startup each instance only removes stale workloads of its own runtime. See <a href="#sharing-a-store">Sharing a Store</a> for several instances of the same runtime.</p>
 <h3 id="sharing-a-store">Sharing a Store</h3>
@@ -3363,12 +3368,9 @@ They provide additional information about the workload's capabilities.</p>
 <span class="w">    </span><span class="nt">&quot;org.agntcy/agent-type&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;a2a&quot;</span><span class="p">,</span>
 <span class="w">    </span><span class="nt">&quot;org.agntcy/agent-record&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;my-agent:1.0.0&quot;</span>
 <span class="w">  </span><span class="p">},</span>
-<span class="w">  </span><span class="nt">&quot;addresses&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
-<span class="w">    </span><span class="s2">&quot;10-244-0-9.team-a.pod&quot;</span>
-<span class="w">  </span><span class="p">],</span>
-<span class="w">  </span><span class="nt">&quot;ports&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
-<span class="w">    </span><span class="s2">&quot;8080&quot;</span><span class="p">,</span>
-<span class="w">    </span><span class="s2">&quot;9999&quot;</span>
+<span class="w">  </span><span class="nt">&quot;locators&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+<span class="w">    </span><span class="p">{</span><span class="nt">&quot;protocol&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;tcp&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;url&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;tcp://10-244-0-9.team-a.pod:8080&quot;</span><span class="p">},</span>
+<span class="w">    </span><span class="p">{</span><span class="nt">&quot;protocol&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;tcp&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;url&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;tcp://10-244-0-9.team-a.pod:9999&quot;</span><span class="p">}</span>
 <span class="w">  </span><span class="p">],</span>
 <span class="w">  </span><span class="nt">&quot;isolationGroups&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
 <span class="w">    </span><span class="s2">&quot;team-a&quot;</span>
@@ -3649,6 +3651,11 @@ Refer to the <a href="https://github.com/agntcy/dir/tree/main/client">Directory 
 <td>SQLite database file shared with discovery (<code>~</code> expands to home)</td>
 <td><code>~/.agntcy/dir-runtime/workloads.db</code></td>
 </tr>
+<tr>
+<td><code>SERVER_OASF_SCHEMA_URLS</code></td>
+<td>Comma-separated OASF schema servers whose A2A card extensions are read when filtering by agent; <code>https</code>, or plain <code>http</code> on a loopback host (e.g. a local schema server)</td>
+<td><code>https://schema.oasf.outshift.com</code></td>
+</tr>
 </tbody>
 </table>
 <h2 id="grpc-api">gRPC API</h2>
@@ -3659,13 +3666,66 @@ Refer to the <a href="https://github.com/agntcy/dir/tree/main/client">Directory 
 <span class="w">  </span>localhost:8080<span class="w"> </span>agntcy.dir.runtime.v1.DiscoveryService/GetWorkload
 </code></pre></div>
 <h3 id="listworkloads">ListWorkloads</h3>
-<p>Stream all workloads with optional label filters. Labels support regex patterns.</p>
+<p>Stream workloads, optionally filtered. Filters of different kinds combine with AND; a filter with several values matches any of them.</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Matches</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>labels</code></td>
+<td>Workload labels; values are regular expressions matched anywhere in the label value</td>
+</tr>
+<tr>
+<td><code>runtimeTypes</code></td>
+<td><code>runtime</code> (<code>docker</code>, <code>kubernetes</code>, <code>process</code>)</td>
+</tr>
+<tr>
+<td><code>reachableFromWorkloadId</code></td>
+<td>Workloads sharing an isolation group with that workload, within the same runtime and discovery instance, excluding it</td>
+</tr>
+<tr>
+<td><code>locatorProtocols</code></td>
+<td>A locator's <code>protocol</code> (<code>slim</code>, <code>grpc</code>, <code>http</code>, <code>tcp</code>, …)</td>
+</tr>
+<tr>
+<td><code>names</code></td>
+<td>The agent's name: the A2A card's <code>name</code>, else the OASF record's</td>
+</tr>
+<tr>
+<td><code>skills</code>, <code>domains</code></td>
+<td>The agent's OASF skills and domains</td>
+</tr>
+<tr>
+<td><code>authors</code></td>
+<td>The DID of the human vouching for the agent (A2A card), else the OASF record's authors</td>
+</tr>
+<tr>
+<td><code>schemaVersions</code></td>
+<td>The OASF schema version of the skills and domains</td>
+</tr>
+</tbody>
+</table>
+<p>Names, skills, domains, authors and schema versions match as in Directory record search: exactly (case-insensitive), or with <code>*</code> and <code>?</code> wildcards, e.g. <code>natural_language_processing/*</code>.</p>
+<p>The agent filters read what the workload says about the agent it runs:</p>
+<ul>
+<li><strong>A2A card</strong> (<code>services.a2a</code>): the <code>discovery</code> extension (<code>skills</code>, <code>domains</code>, <code>schema_version</code>) and the <code>identity</code> extension (<code>human_did</code>) in <code>capabilities.extensions</code>, recognised by a <code>uri</code> of the form <code>&lt;schema URL&gt;[/&lt;version&gt;]/objects/discovery</code> (or <code>/objects/identity</code>) on a schema server listed in <code>SERVER_OASF_SCHEMA_URLS</code>. Extensions from other servers are ignored: dir-runtime doesn't validate the payload, so the list keeps workloads on one vocabulary.</li>
+<li><strong>OASF record</strong> (<code>services.oasf</code>), resolved from <code>org.agntcy/agent-record</code>, for whatever the card doesn't provide. A record the Directory doesn't know (for example one kept on a private node) is not an error: the workload is listed without it, and the resolver doesn't retry.</li>
+</ul>
+<p>When both are present, the card wins. Values are claims made by whoever deployed the workload; nothing is verified (see <a href="https://github.com/agntcy/dir-runtime/issues/94">#94</a>).</p>
 <div class="highlight"><pre><span></span><code><span class="c1"># List all workloads</span>
 grpcurl<span class="w"> </span>-plaintext<span class="w"> </span>-d<span class="w"> </span><span class="s1">&#39;{}&#39;</span><span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>localhost:8080<span class="w"> </span>agntcy.dir.runtime.v1.DiscoveryService/ListWorkloads
 
 <span class="c1"># Filter by labels (supports regex)</span>
 grpcurl<span class="w"> </span>-plaintext<span class="w"> </span>-d<span class="w"> </span><span class="s1">&#39;{&quot;labels&quot;: {&quot;org.agntcy/agent-type&quot;: &quot;a2a&quot;}}&#39;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>localhost:8080<span class="w"> </span>agntcy.dir.runtime.v1.DiscoveryService/ListWorkloads
+
+<span class="c1"># Agents with a debugging skill reachable over SLIM</span>
+grpcurl<span class="w"> </span>-plaintext<span class="w"> </span>-d<span class="w"> </span><span class="s1">&#39;{&quot;skills&quot;: [&quot;software_engineering/code_debugging/*&quot;], &quot;locatorProtocols&quot;: [&quot;slim&quot;]}&#39;</span><span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>localhost:8080<span class="w"> </span>agntcy.dir.runtime.v1.DiscoveryService/ListWorkloads
 </code></pre></div>
 

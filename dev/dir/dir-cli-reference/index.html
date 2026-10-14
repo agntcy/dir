@@ -4919,11 +4919,11 @@ dirctl<span class="w"> </span>daemon<span class="w"> </span>start<span class="w"
 <div class="highlight"><pre><span></span><code><span class="nt">server</span><span class="p">:</span>
 <span class="w">  </span><span class="nt">listen_address</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;localhost:8888&quot;</span>
 <span class="w">  </span><span class="nt">policy</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">validators</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">operations</span><span class="p">:</span>
 <span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">provider</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">oasf</span>
 <span class="w">        </span><span class="nt">op</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="s">&quot;push&quot;</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="s">&quot;autosync&quot;</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="s">&quot;index&quot;</span><span class="p p-Indicator">]</span>
-<span class="w">        </span><span class="nt">config</span><span class="p">:</span>
-<span class="w">          </span><span class="nt">schema_url</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;https://schema.oasf.outshift.com&quot;</span>
+<span class="w">        </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">schema</span>
+<span class="w">        </span><span class="nt">schema_url</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;https://schema.oasf.outshift.com&quot;</span>
 <span class="w">  </span><span class="nt">store</span><span class="p">:</span>
 <span class="w">    </span><span class="nt">provider</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;oci&quot;</span>
 <span class="w">    </span><span class="nt">oci</span><span class="p">:</span>
@@ -5083,7 +5083,7 @@ dirctl<span class="w"> </span>daemon<span class="w"> </span>config<span class="w
 <h3 id="dirctl-daemon-policy-dry-run"><code>dirctl daemon policy dry-run</code></h3>
 <p>Tries a candidate <a href="../dir-content-policy-enforcement/">content policy</a> on the daemon's records without deploying it, and reports how many records it would exclude, a sample of them, and the reasons. Run it before putting a policy in the configuration: under strict enforcement a policy that rejects too much hides those records until it is fixed.</p>
 <p>Nothing is stored. No verdict is written and no policy version is registered, so what the daemon serves does not change. The records are read from the daemon's database and from its registry, so the daemon has to be running; the command refuses to start, and says so, when nothing answers. Run it with the same <code>dirctl</code> as the daemon, since opening the database applies the migrations it is missing.</p>
-<p>The candidate is a file with a <code>validators</code> list, as in the configuration, whose entries have <code>op: ["evaluate"]</code>. It is checked before the daemon is touched. A record the policy cannot judge, or that cannot be read, counts as excluded, as it would under enforcement.</p>
+<p>The candidate is a file with a <code>policy.evaluations</code> list, as in the configuration. It is checked before the daemon is touched. A record the policy cannot judge, or that cannot be read, counts as excluded, as it would under enforcement.</p>
 <table>
 <thead>
 <tr>
