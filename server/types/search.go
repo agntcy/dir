@@ -120,6 +120,13 @@ type RecordOrderClause struct {
 	Desc   bool
 }
 
+// Page sizes for record summary listings: used when the caller sets no limit,
+// and the ceiling applied to larger requests.
+const (
+	DefaultRecordSummaryPageSize = 50
+	MaxRecordSummaryPageSize     = 100
+)
+
 type FilterOption func(*RecordFilters)
 
 // WithLimit sets the maximum number of records to return.

@@ -13,7 +13,6 @@ import (
 	securityv1 "github.com/agntcy/dir/api/security/v1"
 	"github.com/agntcy/dir/server/database/utils"
 	"github.com/agntcy/dir/server/types"
-	"github.com/agntcy/dir/utils/conv"
 	"gorm.io/gorm"
 )
 
@@ -275,21 +274,7 @@ func (d *DB) CountRecords(opts ...types.FilterOption) (uint32, error) {
 	cfg.Offset = 0
 	cfg.OrderBy = nil
 
-	query := d.gormDB.Model(&Record{})
-	query = d.handleFilterOptions(query, cfg)
-	query = query.Distinct("records.record_cid")
-
-	var count int64
-	if err := query.Count(&count).Error; err != nil {
-		return 0, fmt.Errorf("count records: %w", err)
-	}
-
-	total, err := conv.Uint32FromInt64(count)
-	if err != nil {
-		return 0, fmt.Errorf("count records: %w", err)
-	}
-
-	return total, nil
+	return countRecords(d.recordQuery(cfg))
 }
 
 // GetRecordCIDs retrieves only record CIDs based on the provided options.
@@ -308,15 +293,7 @@ func (d *DB) GetRecordCIDs(opts ...types.FilterOption) ([]string, error) {
 	}
 
 	// Check whether usage-metrics columns are needed for ORDER BY before building SELECT.
-	needsUsageMetrics := false
-
-	for _, o := range cfg.OrderBy {
-		if usageMetricsColumns[o.Column] {
-			needsUsageMetrics = true
-
-			break
-		}
-	}
+	needsUsageMetrics := orderNeedsUsageMetrics(cfg)
 
 	// PostgreSQL requires every ORDER BY expression to appear in the SELECT list when
 	// using SELECT DISTINCT. Include all columns that applyRecordOrder may reference.
@@ -394,17 +371,7 @@ func applyRecordOrder(query *gorm.DB, cfg *types.RecordFilters) (*gorm.DB, error
 		return query.Order("records.created_at DESC").Order("records.record_cid ASC"), nil
 	}
 
-	needsUsageJoin := false
-
-	for _, o := range cfg.OrderBy {
-		if usageMetricsColumns[o.Column] {
-			needsUsageJoin = true
-
-			break
-		}
-	}
-
-	if needsUsageJoin {
+	if orderNeedsUsageMetrics(cfg) {
 		query = query.Joins("LEFT JOIN record_usage_metrics rum ON rum.record_cid = records.record_cid")
 	}
 

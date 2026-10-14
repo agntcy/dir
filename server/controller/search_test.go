@@ -6,6 +6,7 @@ package controller
 import (
 	"context"
 	"testing"
+	"time"
 
 	searchv1 "github.com/agntcy/dir/api/search/v1"
 	"github.com/agntcy/dir/server/types"
@@ -13,6 +14,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/proto"
 )
 
 type fakeSearchDB struct {
@@ -21,12 +23,32 @@ type fakeSearchDB struct {
 	err        error
 	gotFilters types.RecordFilters
 
+	summaries    []*searchv1.RecordSummary
+	hasMore      bool
+	summariesErr error
+	countErr     error
+	gotPage      types.RecordFilters
+	pageCalls    int
+	countCalls   int
+	onPage       func() // invoked inside ListRecordSummaries, e.g. to cancel a context
+	onCount      func() // invoked inside CountRecords
+
 	fieldValues []types.FilterFieldValues
 	gotFields   []searchv1.RecordQueryType
 	fieldsCalls int
 }
 
 func (f *fakeSearchDB) CountRecords(opts ...types.FilterOption) (uint32, error) {
+	f.countCalls++
+
+	if f.onCount != nil {
+		f.onCount()
+	}
+
+	if f.countErr != nil {
+		return 0, f.countErr
+	}
+
 	for _, opt := range opts {
 		if opt != nil {
 			opt(&f.gotFilters)
@@ -34,6 +56,26 @@ func (f *fakeSearchDB) CountRecords(opts ...types.FilterOption) (uint32, error) 
 	}
 
 	return f.totalCount, f.err
+}
+
+func (f *fakeSearchDB) ListRecordSummaries(opts ...types.FilterOption) ([]*searchv1.RecordSummary, bool, error) {
+	f.pageCalls++
+
+	if f.onPage != nil {
+		f.onPage()
+	}
+
+	for _, opt := range opts {
+		if opt != nil {
+			opt(&f.gotPage)
+		}
+	}
+
+	if f.summariesErr != nil {
+		return nil, false, f.summariesErr
+	}
+
+	return f.summaries, f.hasMore, f.err
 }
 
 func (f *fakeSearchDB) ListFilterValues(fields []searchv1.RecordQueryType) ([]types.FilterFieldValues, error) {
@@ -162,4 +204,196 @@ func TestCountRecords_NegatedQuery(t *testing.T) {
 	assert.Equal(t, uint32(2), resp.GetTotalCount())
 	assert.Equal(t, []string{"nlp"}, db.gotFilters.Excluded.SkillNames)
 	assert.Empty(t, db.gotFilters.SkillNames)
+}
+
+func TestListRecordSummaries(t *testing.T) {
+	db := &fakeSearchDB{
+		totalCount: 120,
+		hasMore:    true,
+		summaries:  []*searchv1.RecordSummary{{Cid: "cid-1", Name: "a"}, {Cid: "cid-2", Name: "b"}},
+	}
+	ctrl := NewSearchController(db, nil)
+
+	resp, err := ctrl.ListRecordSummaries(context.Background(), &searchv1.ListRecordSummariesRequest{
+		Queries: []*searchv1.RecordQuery{
+			{Type: searchv1.RecordQueryType_RECORD_QUERY_TYPE_NAME, Value: "*assistant*"},
+		},
+		Limit:  proto.Uint32(10),
+		Offset: proto.Uint32(20),
+	})
+	require.NoError(t, err)
+
+	require.Len(t, resp.GetRecords(), 2)
+	assert.Equal(t, "cid-1", resp.GetRecords()[0].GetCid())
+	assert.True(t, resp.GetHasMore())
+	assert.Equal(t, uint32(120), resp.GetTotalCount())
+
+	assert.Equal(t, []string{"*assistant*"}, db.gotPage.Names)
+	assert.Equal(t, 10, db.gotPage.Limit)
+	assert.Equal(t, 20, db.gotPage.Offset)
+
+	// The count uses the same filters but no paging or ordering.
+	assert.Equal(t, 1, db.countCalls)
+	assert.Equal(t, []string{"*assistant*"}, db.gotFilters.Names)
+	assert.Zero(t, db.gotFilters.Limit)
+	assert.Zero(t, db.gotFilters.Offset)
+	assert.Empty(t, db.gotFilters.OrderBy)
+}
+
+func TestListRecordSummaries_PageSize(t *testing.T) {
+	tests := []struct {
+		name  string
+		limit *uint32
+		want  int
+	}{
+		{"unset defaults", nil, types.DefaultRecordSummaryPageSize},
+		{"zero defaults", proto.Uint32(0), types.DefaultRecordSummaryPageSize},
+		{"above max clamped", proto.Uint32(500), types.MaxRecordSummaryPageSize},
+		{"explicit kept", proto.Uint32(10), 10},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			db := &fakeSearchDB{}
+			ctrl := NewSearchController(db, nil)
+
+			_, err := ctrl.ListRecordSummaries(context.Background(), &searchv1.ListRecordSummariesRequest{Limit: tt.limit})
+			require.NoError(t, err)
+			assert.Equal(t, tt.want, db.gotPage.Limit)
+		})
+	}
+}
+
+func TestListRecordSummaries_SortMode(t *testing.T) {
+	db := &fakeSearchDB{}
+	ctrl := NewSearchController(db, nil)
+
+	_, err := ctrl.ListRecordSummaries(context.Background(), &searchv1.ListRecordSummariesRequest{
+		SortMode: searchv1.SortMode_SORT_MODE_POPULARITY,
+	})
+	require.NoError(t, err)
+	assert.Equal(t, []types.RecordOrderClause{{Column: "popularity_score", Desc: true}}, db.gotPage.OrderBy)
+	assert.Empty(t, db.gotFilters.OrderBy)
+}
+
+func TestListRecordSummaries_InvalidQuery(t *testing.T) {
+	db := &fakeSearchDB{}
+	ctrl := NewSearchController(db, nil)
+
+	_, err := ctrl.ListRecordSummaries(context.Background(), &searchv1.ListRecordSummariesRequest{
+		Queries: []*searchv1.RecordQuery{
+			{Type: searchv1.RecordQueryType_RECORD_QUERY_TYPE_SKILL_ID, Value: "not-a-number"},
+		},
+	})
+	require.Error(t, err)
+	require.ErrorContains(t, err, "failed to create filter options")
+	assert.Zero(t, db.pageCalls)
+	assert.Zero(t, db.countCalls)
+}
+
+func TestListRecordSummaries_DatabaseErrors(t *testing.T) {
+	t.Run("list error", func(t *testing.T) {
+		ctrl := NewSearchController(&fakeSearchDB{summariesErr: assert.AnError}, nil)
+
+		_, err := ctrl.ListRecordSummaries(context.Background(), &searchv1.ListRecordSummariesRequest{})
+		require.ErrorIs(t, err, assert.AnError)
+		assert.ErrorContains(t, err, "failed to list record summaries")
+	})
+
+	t.Run("count error", func(t *testing.T) {
+		ctrl := NewSearchController(&fakeSearchDB{countErr: assert.AnError}, nil)
+
+		_, err := ctrl.ListRecordSummaries(context.Background(), &searchv1.ListRecordSummariesRequest{})
+		require.ErrorIs(t, err, assert.AnError)
+		assert.ErrorContains(t, err, "failed to count records")
+	})
+}
+
+func TestListRecordSummaries_CancelledContext(t *testing.T) {
+	db := &fakeSearchDB{}
+	ctrl := NewSearchController(db, nil)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+
+	_, err := ctrl.ListRecordSummaries(ctx, &searchv1.ListRecordSummariesRequest{})
+	require.Error(t, err)
+	assert.Equal(t, codes.Canceled, status.Code(err))
+	assert.Zero(t, db.pageCalls)
+	assert.Zero(t, db.countCalls)
+}
+
+func TestListRecordSummaries_CancelledDuringQueries(t *testing.T) {
+	tests := []struct {
+		name      string
+		newCtx    func() (context.Context, context.CancelFunc)
+		wantCode  codes.Code
+		hook      func(ctx context.Context, db *fakeSearchDB, stop context.CancelFunc)
+		wantCount int
+	}{
+		{
+			name:     "canceled during page query",
+			newCtx:   func() (context.Context, context.CancelFunc) { return context.WithCancel(context.Background()) },
+			wantCode: codes.Canceled,
+			hook:     func(_ context.Context, db *fakeSearchDB, stop context.CancelFunc) { db.onPage = stop },
+		},
+		{
+			name:     "canceled during page query that errors",
+			newCtx:   func() (context.Context, context.CancelFunc) { return context.WithCancel(context.Background()) },
+			wantCode: codes.Canceled,
+			hook: func(_ context.Context, db *fakeSearchDB, stop context.CancelFunc) {
+				db.onPage = stop
+				db.summariesErr = assert.AnError
+			},
+		},
+		{
+			name:     "canceled during count query",
+			newCtx:   func() (context.Context, context.CancelFunc) { return context.WithCancel(context.Background()) },
+			wantCode: codes.Canceled,
+			hook: func(_ context.Context, db *fakeSearchDB, stop context.CancelFunc) {
+				db.onCount = stop
+			},
+			wantCount: 1,
+		},
+		{
+			name:     "canceled during count query that errors",
+			newCtx:   func() (context.Context, context.CancelFunc) { return context.WithCancel(context.Background()) },
+			wantCode: codes.Canceled,
+			hook: func(_ context.Context, db *fakeSearchDB, stop context.CancelFunc) {
+				db.onCount = stop
+				db.countErr = assert.AnError
+			},
+			wantCount: 1,
+		},
+		{
+			name: "deadline exceeded during page query",
+			newCtx: func() (context.Context, context.CancelFunc) {
+				return context.WithTimeout(context.Background(), 10*time.Millisecond)
+			},
+			wantCode: codes.DeadlineExceeded,
+			hook: func(ctx context.Context, db *fakeSearchDB, _ context.CancelFunc) {
+				// Block until the deadline has definitely passed; no sleeping.
+				db.onPage = func() { <-ctx.Done() }
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ctx, cancel := tt.newCtx()
+			defer cancel()
+
+			db := &fakeSearchDB{}
+
+			tt.hook(ctx, db, cancel)
+
+			ctrl := NewSearchController(db, nil)
+
+			_, err := ctrl.ListRecordSummaries(ctx, &searchv1.ListRecordSummariesRequest{})
+			require.Error(t, err)
+			assert.Equal(t, tt.wantCode, status.Code(err))
+			assert.Equal(t, 1, db.pageCalls)
+			assert.Equal(t, tt.wantCount, db.countCalls)
+		})
+	}
 }
