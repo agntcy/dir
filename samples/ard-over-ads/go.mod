@@ -17,9 +17,9 @@ replace github.com/ThalesIgnite/crypto11 => github.com/eclipse-keypont/crypto11 
 
 require (
 	buf.build/gen/go/agntcy/oasf/protocolbuffers/go v1.36.12-20260929072728-9967424cbd6a.2
-	github.com/agntcy/dir/api v1.7.1
+	github.com/agntcy/dir/api v1.7.2-0.20261013134305-9252429b1042
 	github.com/agntcy/dir/cli v1.7.1
-	github.com/agntcy/dir/client v1.7.1
+	github.com/agntcy/dir/client v1.7.2-0.20261013134305-9252429b1042
 	github.com/opencontainers/go-digest v1.0.0
 	github.com/sigstore/cosign/v3 v3.1.3
 	google.golang.org/protobuf v1.36.12
@@ -81,10 +81,10 @@ require (
 	github.com/agext/levenshtein v1.2.3 // indirect
 	github.com/agnivade/levenshtein v1.2.1 // indirect
 	github.com/agntcy/dir-importer v1.5.5 // indirect
-	github.com/agntcy/dir-runtime/discovery v1.3.6 // indirect
-	github.com/agntcy/dir-runtime/server v1.3.6 // indirect
-	github.com/agntcy/dir-runtime/store v1.3.6 // indirect
-	github.com/agntcy/dir-runtime/utils v1.3.6 // indirect
+	github.com/agntcy/dir-runtime/discovery v1.4.0 // indirect
+	github.com/agntcy/dir-runtime/server v1.4.0 // indirect
+	github.com/agntcy/dir-runtime/store v1.4.0 // indirect
+	github.com/agntcy/dir-runtime/utils v1.4.0 // indirect
 	github.com/agntcy/dir/reconciler v1.7.1 // indirect
 	github.com/agntcy/dir/server v1.7.1 // indirect
 	github.com/agntcy/dir/utils v1.7.1 // indirect

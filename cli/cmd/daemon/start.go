@@ -9,12 +9,16 @@ import (
 	"fmt"
 	"os"
 	"os/signal"
+	"sync"
 	"syscall"
 
 	"github.com/agntcy/dir-runtime/discovery"
 	discoveryConfig "github.com/agntcy/dir-runtime/discovery/config"
+	resolver "github.com/agntcy/dir-runtime/discovery/resolver/config"
+	runtimetypes "github.com/agntcy/dir-runtime/discovery/types"
 	runtimeserver "github.com/agntcy/dir-runtime/server"
 	runtimestore "github.com/agntcy/dir-runtime/store"
+	runtimestoretypes "github.com/agntcy/dir-runtime/store/types"
 	networkinit "github.com/agntcy/dir/cli/cmd/network/init"
 	"github.com/agntcy/dir/reconciler/recordevents"
 	reconciler "github.com/agntcy/dir/reconciler/service"
@@ -94,32 +98,21 @@ func runStart(cmd *cobra.Command, _ []string) error {
 	if cfg.Runtime.Enabled {
 		logger.Info("Runtime discovery enabled, starting services")
 
+		// dir-runtime's stores, adapters and resolvers log through the daemon's logger,
+		// so runtime discovery's output has the daemon's format and fields.
+		discovery.SetDefaultLogger(logger.With("runtime", "discovery"))
+
 		runtimeStore, err := runtimestore.New(cfg.Runtime.Store)
 		if err != nil {
 			return fmt.Errorf("failed to create runtime store: %w", err)
 		}
 		defer runtimeStore.Close()
 
-		// Start discovery service in a separate goroutine
-		go func() {
-			logger.Info("Starting runtime discovery service for environment", "adapter", cfg.Runtime.Adapter.Type)
-
-			err := discovery.Run(ctx,
-				discovery.WithConfig(&discoveryConfig.Config{
-					Workers:  discoveryConfig.DefaultWorkers,
-					Runtime:  cfg.Runtime.Adapter,
-					Resolver: cfg.Runtime.Resolver,
-				}),
-				discovery.WithStore(runtimeStore),
-				discovery.WithLogger(logger.With("runtime", "discovery")),
-			)
-			if err != nil {
-				discoveryErrCh <- fmt.Errorf("runtime discovery service failed: %w", err)
-			}
-		}()
+		startRuntimeDiscovery(ctx, cfg.Runtime, cfg.Runtime.EffectiveResolver(cfg.Server.ListenAddress), runtimeStore, discoveryErrCh)
 
 		// Register runtime API with server
-		err = runtimeserver.Register(srv.GRPCServer(), runtimeStore)
+		err = runtimeserver.Register(srv.GRPCServer(), runtimeStore,
+			runtimeserver.WithAcceptedSchemaURLs(cfg.Runtime.OASFSchemaURLs))
 		if err != nil {
 			return fmt.Errorf("failed to create runtime server: %w", err)
 		}
@@ -171,12 +164,21 @@ func runStart(cmd *cobra.Command, _ []string) error {
 	sigCh := make(chan os.Signal, 1)
 	signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
 
+	return waitForShutdown(ctx, sigCh, discoveryErrCh, zotCtx.Done())
+}
+
+// waitForShutdown blocks until the daemon should stop. Runtime discovery failing for
+// every adapter is returned as an error, so `dirctl daemon start` exits nonzero and a
+// service manager can restart it; the other reasons are a normal shutdown.
+func waitForShutdown(ctx context.Context, sigCh <-chan os.Signal, discoveryErrCh <-chan error, zotDone <-chan struct{}) error {
 	select {
 	case sig := <-sigCh:
 		logger.Info("Received signal, shutting down", "signal", sig)
 	case err := <-discoveryErrCh:
 		logger.Error("Runtime discovery service error", "error", err)
-	case <-zotCtx.Done():
+
+		return err
+	case <-zotDone:
 		logger.Info("zot context cancelled, shutting down")
 	case <-ctx.Done():
 		logger.Info("Context cancelled, shutting down")
@@ -227,4 +229,60 @@ func newTagLister(cfg *DaemonConfig) (registry.TagLister, error) {
 	}
 
 	return repo, nil
+}
+
+// startRuntimeDiscovery runs one discovery per configured runtime, all writing to store.
+// A runtime that fails is logged and skipped; errCh receives an error only once every
+// runtime has failed, so the daemon keeps running while any discovery does.
+func startRuntimeDiscovery(
+	ctx context.Context,
+	cfg RuntimeConfig,
+	resolverCfg resolver.Config,
+	store runtimestoretypes.Store,
+	errCh chan<- error,
+) {
+	adapterTypes := cfg.EffectiveAdapterTypes()
+	if len(adapterTypes) == 0 {
+		errCh <- errors.New("runtime discovery enabled but no runtime adapter configured")
+
+		return
+	}
+
+	var (
+		mu     sync.Mutex
+		failed int
+	)
+
+	for _, adapterType := range adapterTypes {
+		adapterCfg := cfg.Adapter
+		adapterCfg.Type = runtimetypes.RuntimeType(adapterType)
+
+		go func() {
+			logger.Info("Starting runtime discovery", "adapter", adapterType)
+
+			err := discovery.Run(ctx,
+				discovery.WithConfig(&discoveryConfig.Config{
+					Workers:  discoveryConfig.DefaultWorkers,
+					Runtime:  adapterCfg,
+					Resolver: resolverCfg,
+				}),
+				discovery.WithStore(store),
+				discovery.WithLogger(logger.With("runtime", "discovery", "adapter", adapterType)),
+			)
+			if err == nil || ctx.Err() != nil {
+				return
+			}
+
+			logger.Error("Runtime discovery failed", "adapter", adapterType, "error", err)
+
+			mu.Lock()
+			failed++
+			allFailed := failed == len(adapterTypes)
+			mu.Unlock()
+
+			if allFailed {
+				errCh <- fmt.Errorf("runtime discovery failed for every adapter (last: %s): %w", adapterType, err)
+			}
+		}()
+	}
 }

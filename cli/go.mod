@@ -21,11 +21,11 @@ replace (
 require (
 	buf.build/gen/go/agntcy/oasf/protocolbuffers/go v1.36.12-20260929072728-9967424cbd6a.2
 	github.com/agntcy/dir-importer v1.5.5
-	github.com/agntcy/dir-runtime/discovery v1.3.6
-	github.com/agntcy/dir-runtime/server v1.3.6
-	github.com/agntcy/dir-runtime/store v1.3.6
-	github.com/agntcy/dir/api v1.7.1
-	github.com/agntcy/dir/client v1.7.1
+	github.com/agntcy/dir-runtime/discovery v1.4.0
+	github.com/agntcy/dir-runtime/server v1.4.0
+	github.com/agntcy/dir-runtime/store v1.4.0
+	github.com/agntcy/dir/api v1.7.2-0.20261013134305-9252429b1042
+	github.com/agntcy/dir/client v1.7.2-0.20261013134305-9252429b1042
 	github.com/agntcy/dir/reconciler v1.7.1
 	github.com/agntcy/dir/server v1.7.1
 	github.com/agntcy/dir/utils v1.7.1
@@ -115,7 +115,7 @@ require (
 	github.com/agentnameservice/ans-sdk-go v0.1.19 // indirect
 	github.com/agext/levenshtein v1.2.3 // indirect
 	github.com/agnivade/levenshtein v1.2.1 // indirect
-	github.com/agntcy/dir-runtime/utils v1.3.6 // indirect
+	github.com/agntcy/dir-runtime/utils v1.4.0 // indirect
 	github.com/alecthomas/chroma v0.10.0 // indirect
 	github.com/anchore/go-struct-converter v0.1.0 // indirect
 	github.com/antlr4-go/antlr/v4 v4.13.1 // indirect
