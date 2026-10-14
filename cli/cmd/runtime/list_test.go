@@ -15,6 +15,8 @@ import (
 	"github.com/agntcy/dir/client"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/structpb"
 )
 
@@ -41,6 +43,16 @@ type fakeDiscovery struct {
 
 	workloads []*runtimev1.Workload
 	got       *runtimev1.ListWorkloadsRequest
+}
+
+func (f *fakeDiscovery) GetWorkload(_ context.Context, req *runtimev1.GetWorkloadRequest, _ ...grpc.CallOption) (*runtimev1.Workload, error) {
+	for _, w := range f.workloads {
+		if w.GetId() == req.GetId() {
+			return w, nil
+		}
+	}
+
+	return nil, status.Error(codes.NotFound, "workload not found") //nolint:wrapcheck // a fake server's status error
 }
 
 func (f *fakeDiscovery) ListWorkloads(_ context.Context, req *runtimev1.ListWorkloadsRequest, _ ...grpc.CallOption) (runtimev1.DiscoveryService_ListWorkloadsClient, error) {
@@ -84,7 +96,7 @@ func resetOpts(t *testing.T) {
 	listOpts.SchemaURLs = []string{runtimev1.DefaultOASFSchemaURL}
 }
 
-func run(t *testing.T, discovery *fakeDiscovery, args ...string) []listedWorkload {
+func runRaw(t *testing.T, discovery *fakeDiscovery, args ...string) (string, error) {
 	t.Helper()
 
 	c := &client.Client{DiscoveryServiceClient: discovery}
@@ -93,11 +105,21 @@ func run(t *testing.T, discovery *fakeDiscovery, args ...string) []listedWorkloa
 
 	listCmd.SetOut(&out)
 	listCmd.SetContext(ctxUtils.SetClientForContext(context.Background(), c))
-	require.NoError(t, listCmd.ParseFlags(append([]string{"--output", "json"}, args...)))
-	require.NoError(t, runList(listCmd))
+	require.NoError(t, listCmd.ParseFlags(args))
+
+	err := runList(listCmd)
+
+	return out.String(), err
+}
+
+func run(t *testing.T, discovery *fakeDiscovery, args ...string) []listedWorkload {
+	t.Helper()
+
+	out, err := runRaw(t, discovery, append([]string{"--output", "json"}, args...)...)
+	require.NoError(t, err)
 
 	var listed []listedWorkload
-	require.NoError(t, json.Unmarshal(out.Bytes(), &listed), out.String())
+	require.NoError(t, json.Unmarshal([]byte(out), &listed), out)
 
 	return listed
 }
@@ -159,4 +181,65 @@ func TestBuildRequest_Reachability(t *testing.T) {
 	req, err = buildRequest()
 	require.NoError(t, err)
 	require.Equal(t, "w1", req.GetReachableFromWorkloadId())
+}
+
+func TestListCmd_RejectsPositionalArguments(t *testing.T) {
+	require.Error(t, listCmd.Args(listCmd, []string{"typo"}))
+	require.NoError(t, listCmd.Args(listCmd, nil))
+}
+
+func TestRunList_ReachableFromLookupFailureIsAnError(t *testing.T) {
+	resetOpts(t)
+
+	discovery := &fakeDiscovery{workloads: []*runtimev1.Workload{{Id: "w1"}}}
+
+	_, err := runRaw(t, discovery, "--output", "json", "--reachable-from", "missing")
+	require.ErrorContains(t, err, "missing")
+}
+
+func TestRunList_RawOutputIsOneIDPerLine(t *testing.T) {
+	resetOpts(t)
+
+	discovery := &fakeDiscovery{workloads: []*runtimev1.Workload{{Id: "w1"}, {Id: "w2"}}}
+
+	out, err := runRaw(t, discovery, "--output", "raw")
+	require.NoError(t, err)
+	require.Equal(t, "w1\nw2\n", out)
+}
+
+func TestBuildRequest_RepeatedLabelsMatchAnyValue(t *testing.T) {
+	resetOpts(t)
+
+	listOpts.Labels = []string{"team=red", "app=web", "team=blue"}
+
+	req, err := buildRequest()
+	require.NoError(t, err)
+	require.Equal(t, "web", req.GetLabels()["app"])
+
+	team := req.GetLabels()["team"]
+
+	for value, want := range map[string]bool{"red": true, "blue": true, "green": false} {
+		w := &runtimev1.Workload{Labels: map[string]string{"team": value}}
+		got := w.MatchesFilters(&runtimev1.ListWorkloadsRequest{Labels: map[string]string{"team": team}}, runtimev1.FilterOptions{})
+		require.Equal(t, want, got, "team=%s against %q", value, team)
+	}
+}
+
+func TestSummarize_FallsBackToTheRecordVersion(t *testing.T) {
+	record, err := structpb.NewStruct(map[string]any{"record": map[string]any{"name": "rec", "version": "3.1.0"}})
+	require.NoError(t, err)
+
+	got := summarize(&runtimev1.Workload{Id: "w1", Services: &runtimev1.WorkloadServices{Oasf: record}}, nil)
+	require.Equal(t, "3.1.0", got.Agent.Version)
+	require.Equal(t, "rec", got.Agent.Name)
+}
+
+func TestRunList_HumanOutputShowsTheHost(t *testing.T) {
+	resetOpts(t)
+
+	discovery := &fakeDiscovery{workloads: []*runtimev1.Workload{{Id: "w1", Runtime: "docker", Type: "container", Hostname: "agent-1"}}}
+
+	out, err := runRaw(t, discovery, "--output", "human")
+	require.NoError(t, err)
+	require.Contains(t, out, "host:     agent-1")
 }
