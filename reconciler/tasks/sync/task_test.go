@@ -6,6 +6,7 @@ package sync
 import (
 	"context"
 	"errors"
+	"strings"
 	"testing"
 	"time"
 
@@ -254,4 +255,26 @@ func TestSplitOCIAddr(t *testing.T) {
 		assert.Equal(t, tc.registry, registry, tc.addr)
 		assert.Equal(t, tc.repository, repository, tc.addr)
 	}
+}
+
+func FuzzSplitOCIAddr(f *testing.F) {
+	for _, seed := range []string{"ghcr.io/org", "registry.example:5000/dir", "ghcr.io", "", "/", "a/b/c"} {
+		f.Add(seed)
+	}
+
+	f.Fuzz(func(t *testing.T, addr string) {
+		registry, repository := splitOCIAddr(addr)
+
+		if !strings.Contains(addr, "/") {
+			if registry != addr || repository != "" {
+				t.Fatalf("bare registry %q split into %q and %q", addr, registry, repository)
+			}
+
+			return
+		}
+
+		if registry+"/"+repository != addr || strings.Contains(repository, "/") {
+			t.Fatalf("%q split into %q and %q", addr, registry, repository)
+		}
+	})
 }
