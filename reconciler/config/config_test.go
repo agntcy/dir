@@ -11,6 +11,7 @@ import (
 	"github.com/agntcy/dir/reconciler/recordevents"
 	"github.com/agntcy/dir/reconciler/tasks/identity"
 	policytask "github.com/agntcy/dir/reconciler/tasks/policy"
+	"github.com/agntcy/dir/reconciler/tasks/publish"
 	synctask "github.com/agntcy/dir/reconciler/tasks/sync"
 	dbconfig "github.com/agntcy/dir/server/database/config"
 	"github.com/stretchr/testify/assert"
@@ -48,6 +49,14 @@ func TestLoadConfig_NoFile_ReturnsDefaults(t *testing.T) {
 	assert.Equal(t, []string{synctask.DefaultDomain}, cfg.Sync.Criteria.Domains)
 	assert.Equal(t, synctask.DefaultLimit, cfg.Sync.Limit)
 	assert.True(t, cfg.Sync.DryRun)
+
+	// Publish is off unless asked for; dry-run defaults on. Empty domains
+	// means every indexed record.
+	assert.False(t, cfg.Publish.Enabled)
+	assert.Equal(t, publish.DefaultInterval, cfg.Publish.Interval)
+	assert.Empty(t, cfg.Publish.Criteria.Domains)
+	assert.Equal(t, publish.DefaultLimit, cfg.Publish.Limit)
+	assert.True(t, cfg.Publish.DryRun)
 
 	// The identity task is off unless asked for.
 	assert.False(t, cfg.Identity.Enabled)
@@ -198,4 +207,21 @@ func TestLoadConfig_PruneSignatureStatusesFromEnv(t *testing.T) {
 	assert.Equal(t, []string{"failed", "unsigned"}, cfg.Prune.Criteria.SignatureStatuses)
 	assert.Nil(t, cfg.Prune.Criteria.Trusted)
 	assert.NoError(t, cfg.Prune.Validate())
+}
+
+func TestLoadConfig_PublishFromEnv(t *testing.T) {
+	t.Setenv("RECONCILER_PUBLISH_ENABLED", "true")
+	t.Setenv("RECONCILER_PUBLISH_INTERVAL", "6h")
+	t.Setenv("RECONCILER_PUBLISH_CRITERIA_DOMAINS", "research,analytics")
+	t.Setenv("RECONCILER_PUBLISH_LIMIT", "25")
+	t.Setenv("RECONCILER_PUBLISH_DRY_RUN", "false")
+
+	cfg, err := LoadConfig()
+	require.NoError(t, err)
+
+	assert.True(t, cfg.Publish.Enabled)
+	assert.Equal(t, 6*time.Hour, cfg.Publish.Interval)
+	assert.Equal(t, []string{"research", "analytics"}, cfg.Publish.Criteria.Domains)
+	assert.Equal(t, 25, cfg.Publish.Limit)
+	assert.False(t, cfg.Publish.DryRun)
 }

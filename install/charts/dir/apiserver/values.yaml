@@ -797,6 +797,7 @@ postgresql:
 # - indexer: indexes synced records into the database for search
 # - prune: deletes records matching configured criteria
 # - sync: creates syncs for remote records matching criteria
+# - publish: announces matching local records to the routing network
 # Shares the same database as the apiserver.
 reconciler:
   image:
@@ -1006,6 +1007,18 @@ reconciler:
         # signature_statuses: []
         min_severity: "MEDIUM"
         older_than: "168h"
+      limit: 100
+      dry_run: true
+
+    # Publish task. Announces matching local records to the routing network.
+    # Off: this publishes to peers. A run pages through the match set, same
+    # as the dirctl publish CronJob. Empty criteria.domains means every
+    # indexed record. Config loading defaults dry_run to true.
+    publish:
+      enabled: false
+      interval: "24h"
+      criteria:
+        domains: []
       limit: 100
       dry_run: true
 

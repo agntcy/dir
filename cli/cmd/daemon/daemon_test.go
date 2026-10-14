@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/agntcy/dir/reconciler/recordevents"
+	publishtask "github.com/agntcy/dir/reconciler/tasks/publish"
 	synctask "github.com/agntcy/dir/reconciler/tasks/sync"
 	storeconfig "github.com/agntcy/dir/server/store/oci/config"
 	"github.com/stretchr/testify/require"
@@ -137,6 +138,68 @@ func TestLoadConfigKeepsSyncInDryRunByDefault(t *testing.T) {
 
 		require.NoError(t, err)
 		require.False(t, cfg.Reconciler.Sync.DryRun)
+	})
+}
+
+// TestLoadConfigKeepsPublishInDryRunByDefault asserts that publish stays in
+// dry run unless the config says otherwise. Publish announces local records
+// to the routing network, and a file passed with --config is read as-is, so a
+// file that enables publish without mentioning dry_run must not announce.
+func TestLoadConfigKeepsPublishInDryRunByDefault(t *testing.T) {
+	originalOpts := opts
+
+	t.Cleanup(func() {
+		opts = originalOpts
+	})
+
+	t.Run("embedded default", func(t *testing.T) {
+		opts = &Options{DataDir: t.TempDir()}
+
+		cfg, err := loadConfig()
+
+		require.NoError(t, err)
+		require.False(t, cfg.Reconciler.Publish.Enabled)
+		require.True(t, cfg.Reconciler.Publish.DryRun)
+		require.Empty(t, cfg.Reconciler.Publish.Criteria.Domains)
+	})
+
+	t.Run("a file that enables it and says nothing else", func(t *testing.T) {
+		file := filepath.Join(t.TempDir(), "daemon.yaml")
+		require.NoError(t, os.WriteFile(file, []byte("reconciler:\n  publish:\n    enabled: true\n"), 0o600))
+
+		opts = &Options{DataDir: t.TempDir(), ConfigFile: file}
+
+		cfg, err := loadConfig()
+
+		require.NoError(t, err)
+		require.True(t, cfg.Reconciler.Publish.Enabled)
+		require.True(t, cfg.Reconciler.Publish.DryRun)
+		require.Equal(t, publishtask.DefaultInterval, cfg.Reconciler.Publish.Interval)
+		require.Equal(t, publishtask.DefaultLimit, cfg.Reconciler.Publish.Limit)
+		require.Empty(t, cfg.Reconciler.Publish.Criteria.Domains)
+	})
+
+	t.Run("a file that asks for live publishes", func(t *testing.T) {
+		file := filepath.Join(t.TempDir(), "daemon.yaml")
+		require.NoError(t, os.WriteFile(file, []byte("reconciler:\n  publish:\n    enabled: true\n    dry_run: false\n"), 0o600))
+
+		opts = &Options{DataDir: t.TempDir(), ConfigFile: file}
+
+		cfg, err := loadConfig()
+
+		require.NoError(t, err)
+		require.False(t, cfg.Reconciler.Publish.DryRun)
+	})
+
+	t.Run("an env override asking for live publishes", func(t *testing.T) {
+		t.Setenv("DIRECTORY_DAEMON_RECONCILER_PUBLISH_DRY_RUN", "false")
+
+		opts = &Options{DataDir: t.TempDir()}
+
+		cfg, err := loadConfig()
+
+		require.NoError(t, err)
+		require.False(t, cfg.Reconciler.Publish.DryRun)
 	})
 }
 

@@ -21,6 +21,7 @@ import (
 	reconcilerconfig "github.com/agntcy/dir/reconciler/config"
 	"github.com/agntcy/dir/reconciler/recordevents"
 	identitytask "github.com/agntcy/dir/reconciler/tasks/identity"
+	publishtask "github.com/agntcy/dir/reconciler/tasks/publish"
 	synctask "github.com/agntcy/dir/reconciler/tasks/sync"
 	serverconfig "github.com/agntcy/dir/server/config"
 	dbconfig "github.com/agntcy/dir/server/database/config"
@@ -128,6 +129,15 @@ func registerReconcilerDefaults(v *viper.Viper) {
 	v.SetDefault("reconciler.sync.criteria.domains", []string{synctask.DefaultDomain})
 	v.SetDefault("reconciler.sync.limit", synctask.DefaultLimit)
 	v.SetDefault("reconciler.sync.dry_run", true)
+
+	// Publish announces local records to the routing network, so a config
+	// file that enables it without mentioning dry_run must not fall through
+	// to the zero value. Mirrors reconciler/config.
+	v.SetDefault("reconciler.publish.enabled", false)
+	v.SetDefault("reconciler.publish.interval", publishtask.DefaultInterval)
+	v.SetDefault("reconciler.publish.criteria.domains", []string{})
+	v.SetDefault("reconciler.publish.limit", publishtask.DefaultLimit)
+	v.SetDefault("reconciler.publish.dry_run", true)
 }
 
 func registerRuntimeDefaults(v *viper.Viper) {

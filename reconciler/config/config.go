@@ -16,6 +16,7 @@ import (
 	"github.com/agntcy/dir/reconciler/tasks/metrics"
 	policytask "github.com/agntcy/dir/reconciler/tasks/policy"
 	"github.com/agntcy/dir/reconciler/tasks/prune"
+	"github.com/agntcy/dir/reconciler/tasks/publish"
 	"github.com/agntcy/dir/reconciler/tasks/regsync"
 	"github.com/agntcy/dir/reconciler/tasks/scan"
 	"github.com/agntcy/dir/reconciler/tasks/signature"
@@ -91,6 +92,11 @@ type Config struct {
 	// Searches routing for records matching Criteria and creates one sync
 	// per announcing peer. Disabled by default because it creates remote syncs.
 	Sync synctask.Config `json:"sync" mapstructure:"sync"`
+
+	// Publish holds the publish task configuration.
+	// Searches the local index for records matching Criteria and submits
+	// publication requests. Disabled by default because it announces records.
+	Publish publish.Config `json:"publish" mapstructure:"publish"`
 
 	// Identity holds the identity claim verification task configuration.
 	Identity identity.Config `json:"identity" mapstructure:"identity"`
@@ -303,6 +309,24 @@ func LoadConfig() (*Config, error) {
 
 	_ = v.BindEnv("sync.dry_run")
 	v.SetDefault("sync.dry_run", true)
+
+	//
+	// Publish task configuration
+	//
+	_ = v.BindEnv("publish.enabled")
+	v.SetDefault("publish.enabled", false)
+
+	_ = v.BindEnv("publish.interval")
+	v.SetDefault("publish.interval", publish.DefaultInterval)
+
+	_ = v.BindEnv("publish.criteria.domains")
+	v.SetDefault("publish.criteria.domains", []string{})
+
+	_ = v.BindEnv("publish.limit")
+	v.SetDefault("publish.limit", publish.DefaultLimit)
+
+	_ = v.BindEnv("publish.dry_run")
+	v.SetDefault("publish.dry_run", true)
 
 	//
 	// Providers task configuration (provider-count gauge)

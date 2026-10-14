@@ -21,6 +21,7 @@ import (
 	"github.com/agntcy/dir/reconciler/tasks/identity"
 	"github.com/agntcy/dir/reconciler/tasks/indexer"
 	"github.com/agntcy/dir/reconciler/tasks/policy"
+	publishtask "github.com/agntcy/dir/reconciler/tasks/publish"
 	synctask "github.com/agntcy/dir/reconciler/tasks/sync"
 	servertypes "github.com/agntcy/dir/server/types"
 	recordvalidators "github.com/agntcy/dir/server/validators"
@@ -339,6 +340,25 @@ func TestRegisterSyncTask(t *testing.T) {
 		s := newTestService()
 		require.NoError(t, s.registerSyncTask(enabled, nil, nil))
 		assert.Empty(t, s.tasks)
+	})
+}
+
+func TestRegisterPublishTask(t *testing.T) {
+	enabled := &config.Config{Publish: publishtask.Config{Enabled: true}}
+
+	t.Run("disabled registers nothing", func(t *testing.T) {
+		s := newTestService()
+		require.NoError(t, s.registerPublishTask(&config.Config{}, nil))
+		assert.Empty(t, s.tasks)
+	})
+
+	t.Run("enabled registers the task", func(t *testing.T) {
+		s := newTestService()
+		require.NoError(t, s.registerPublishTask(enabled, nil))
+
+		require.Len(t, s.tasks, 1)
+		assert.Equal(t, "publish", s.tasks[0].Name())
+		assert.True(t, s.tasks[0].IsEnabled())
 	})
 }
 

@@ -18,6 +18,7 @@ import (
 	"github.com/agntcy/dir/reconciler/tasks/metrics"
 	"github.com/agntcy/dir/reconciler/tasks/policy"
 	"github.com/agntcy/dir/reconciler/tasks/prune"
+	publishtask "github.com/agntcy/dir/reconciler/tasks/publish"
 	"github.com/agntcy/dir/reconciler/tasks/regsync"
 	"github.com/agntcy/dir/reconciler/tasks/scan"
 	"github.com/agntcy/dir/reconciler/tasks/signature"
@@ -150,6 +151,10 @@ func (s *Service) registerTasks(cfg *config.Config, db servertypes.DatabaseAPI, 
 		s.addTask(t)
 	}
 
+	if err := s.registerPublishTask(cfg, db); err != nil {
+		return err
+	}
+
 	if err := s.registerIdentityTask(cfg, db, store); err != nil {
 		return err
 	}
@@ -172,6 +177,22 @@ func (s *Service) registerTasks(cfg *config.Config, db servertypes.DatabaseAPI, 
 	}
 
 	return s.registerPolicyTask(cfg.PolicyEvaluation, db, store, validatorRegistry)
+}
+
+// registerPublishTask adds the publish task when it is enabled.
+func (s *Service) registerPublishTask(cfg *config.Config, db servertypes.DatabaseAPI) error {
+	if !cfg.Publish.Enabled {
+		return nil
+	}
+
+	t, err := publishtask.NewTask(cfg.Publish, db)
+	if err != nil {
+		return fmt.Errorf("failed to create publish task: %w", err)
+	}
+
+	s.addTask(t)
+
+	return nil
 }
 
 // registerSyncTask adds the sync task when it is enabled. Without routing the
