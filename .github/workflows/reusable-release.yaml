@@ -63,6 +63,20 @@ jobs:
         run: |
           task cli:compile:all
 
+      # WinGet installs an archive, not a bare binary, and the raw Windows asset has
+      # no .exe extension. The zip holds dirctl.exe at its root, as the manifest
+      # rendered by reusable-winget.yaml expects.
+      - name: Package Windows zip
+        env:
+          RELEASE_TAG: ${{ inputs.release_tag }}
+        run: |
+          set -euo pipefail
+          staging="$(mktemp -d)"
+          cp .bin/dirctl-windows-amd64 "$staging/dirctl.exe"
+          cp LICENSE.md "$staging/LICENSE.md"
+          (cd "$staging" && zip -q "$GITHUB_WORKSPACE/.bin/dirctl-${RELEASE_TAG}-windows-amd64.zip" dirctl.exe LICENSE.md)
+          unzip -l ".bin/dirctl-${RELEASE_TAG}-windows-amd64.zip"
+
       - name: Upload artifact
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
@@ -135,6 +149,17 @@ jobs:
         with:
           tag_name: ${{ inputs.release_tag }}
           files: .bin/dirctl-${{ matrix.os }}-${{ matrix.arch }}
+          append_body: true
+          draft: true
+
+      - name: Upload Windows zip Release Asset
+        if: ${{ matrix.os == 'windows' && matrix.arch == 'amd64' }}
+        uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65 # v2.6.2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ inputs.release_tag }}
+          files: .bin/dirctl-${{ inputs.release_tag }}-windows-amd64.zip
           append_body: true
           draft: true
 

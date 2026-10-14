@@ -35,3 +35,7 @@ dirctl pull <cid>
 ```
 
 For federation nodes, authenticate first: `dirctl auth login`. See the documentation link above for details.
+
+## Privacy
+
+`dirctl` has no telemetry and sends nothing to AGNTCY. [PRIVACY.md](PRIVACY.md) lists what it reads, writes and sends, including credentials, signing and the local daemon.

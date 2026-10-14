@@ -49,3 +49,16 @@ jobs:
               ref: 'refs/tags/${{ matrix.tags }}/${{ github.ref_name }}',
               sha: context.sha
             })
+
+  winget:
+    name: WinGet
+    # Stable releases only. The release is published by now, so the Windows zip
+    # has a public URL to hash.
+    if: startsWith(github.event.release.tag_name, 'v') && !github.event.release.prerelease
+    uses: ./.github/workflows/reusable-winget.yaml
+    with:
+      release_tag: ${{ github.event.release.tag_name }}
+      publish: true
+    secrets:
+      PROJECT_APP_ID: ${{ secrets.PROJECT_APP_ID }}
+      PROJECT_APP_KEY: ${{ secrets.PROJECT_APP_KEY }}
