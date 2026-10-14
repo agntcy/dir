@@ -175,24 +175,28 @@ apiserver:
     policy:
       dir: "/etc/agntcy/dir/policies"
 
-      # Record validators applied on push, autosync, and/or index. A validator
-      # with op "evaluate" (opa or cel only) defines a content policy instead.
-      # Copied into the reconciler config. To use the OASF instance deployed
-      # with this chart (apiserver.oasf.enabled: true):
+      # Operation policies: each decides at one or more operations (push,
+      # autosync, index) and stores nothing. Copied into the reconciler
+      # config. To use the OASF instance deployed with this chart
+      # (apiserver.oasf.enabled: true):
       #   schema_url: "http://<release-name>-ingress-controller.<namespace>.svc.cluster.local"
-      validators:
+      operations:
         - provider: oasf
           op: ["push", "autosync", "index"]
-          config:
-            schema_url: "https://schema.oasf.outshift.com"
+          name: schema
+          schema_url: "https://schema.oasf.outshift.com"
         # Inline CEL expressions. The record is bound as `record`; each
         # expression must evaluate to bool. Validation fails if any is false.
         # - provider: cel
         #   op: ["push"]
-        #   config:
-        #     expressions:
-        #       - record.name != ""
-        #       - record.version != ""
+        #   name: require-identity
+        #   expressions:
+        #     - record.name != ""
+        #     - record.version != ""
+
+      # Evaluation policies: the reconciler stores a verdict per record for
+      # each, which enforcement below applies to reads. opa and cel only.
+      evaluations: []
 
       # Content-policy enforcement on reads: off, shadow or enforce, per kind
       # of read. See the apiserver chart's values for what each covers.

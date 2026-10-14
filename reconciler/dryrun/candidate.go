@@ -16,11 +16,11 @@ import (
 )
 
 // LoadCandidate reads the policies in a candidate file: the same
-// policy.validators list the server and the reconciler take, so that a
+// policy.evaluations list the server and the reconciler take, so that a
 // policy that is good can be pasted into their configuration as it is.
-// Only the entries with op evaluate define a policy; any others in the
-// file are ignored.
-func LoadCandidate(path string) (validatorsconfig.Config, error) {
+// Only evaluation policies produce a verdict, so an operations block in the
+// file is ignored.
+func LoadCandidate(path string) (validatorsconfig.Evaluations, error) {
 	v := viper.New()
 	v.SetConfigFile(path)
 
@@ -32,21 +32,13 @@ func LoadCandidate(path string) (validatorsconfig.Config, error) {
 		return nil, fmt.Errorf("read candidate file %s: %w", path, err)
 	}
 
-	var all validatorsconfig.Config
-	if err := v.UnmarshalKey("policy.validators", &all); err != nil {
-		return nil, fmt.Errorf("read the validators in %s: %w", path, err)
-	}
-
-	var policies validatorsconfig.Config
-
-	for _, entry := range all {
-		if entry.HasOp(validatorsconfig.OpEvaluate) {
-			policies = append(policies, entry)
-		}
+	var policies validatorsconfig.Evaluations
+	if err := v.UnmarshalKey("policy.evaluations", &policies); err != nil {
+		return nil, fmt.Errorf("read the evaluations in %s: %w", path, err)
 	}
 
 	if len(policies) == 0 {
-		return nil, fmt.Errorf("%s defines no policy: a policy.validators entry needs op: [%q]", path, validatorsconfig.OpEvaluate)
+		return nil, fmt.Errorf("%s defines no policy: it needs a policy.evaluations entry", path)
 	}
 
 	if err := policies.Validate(); err != nil {

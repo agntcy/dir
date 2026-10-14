@@ -6,7 +6,7 @@ The Directory server supports configuration via environment variables, YAML conf
 
 ### Record validators
 
-Record validation is configured as `policy.validators` in YAML. Each entry names a provider, the operations it runs on (`push`, `autosync`, `index`, `evaluate`), and a provider-specific `config`. An empty list disables record validation. A validator with the `evaluate` operation defines a content policy rather than checking records on their way in; see [Content Policy Enforcement](../docs/content/dir/dir-content-policy-enforcement.md). This list cannot be set via environment variables.
+Record validation is configured as `policy.operations` in YAML. Each entry names a provider, the operations it runs on (`push`, `autosync`, `index`), a `name`, and that provider's settings. An empty list disables record validation. A second block, `policy.evaluations`, defines the policies that produce a verdict per record rather than checking records on their way in; see [Content Policy Enforcement](../docs/content/dir/dir-content-policy-enforcement.md). Neither list can be set via environment variables.
 
 **Example with YAML configuration:**
 ```yaml
@@ -14,26 +14,26 @@ Record validation is configured as `policy.validators` in YAML. Each entry names
 listen_address: "0.0.0.0:8888"
 policy:
   dir: "/etc/agntcy/dir/policies"
-  validators:
+  operations:
     - provider: oasf
       op: ["push", "autosync", "index"]
-      config:
-        schema_url: "https://schema.oasf.outshift.com"
+      name: schema
+      schema_url: "https://schema.oasf.outshift.com"
     - provider: cel
       op: ["push"]
-      config:
-        expressions:
-          - record.name != ""
-          - record.version != ""
+      name: require-identity
+      expressions:
+        - record.name != ""
+        - record.version != ""
     - provider: opa
       op: ["push"]
-      config:
-        file: "require-annotations.rego"
+      name: require-annotations
+      file: "require-annotations.rego"
 ```
 
-The `cel` provider compiles `config.expressions` at startup. The record's OASF fields are bound as the `record` variable, and each expression must evaluate to `bool`. Validation fails if any expression is false.
+The `cel` provider compiles `expressions` at startup. The record's OASF fields are bound as the `record` variable, and each expression must evaluate to `bool`. Validation fails if any expression is false.
 
-The daemon nests the same list under `server.policy.validators`. Helm exposes it as `apiserver.config.policy.validators` and copies `config.policy` into both the apiserver and the reconciler.
+The daemon nests the same lists under `server.policy`. Helm exposes them as `apiserver.config.policy.operations` and `apiserver.config.policy.evaluations`, and copies `config.policy` into both the apiserver and the reconciler.
 
 #### Testing with Local OASF Server
 
@@ -51,11 +51,11 @@ To test with a local OASF instance deployed alongside the directory server:
    apiserver:
      config:
        policy:
-         validators:
+         operations:
            - provider: oasf
              op: ["push", "autosync", "index"]
-             config:
-               schema_url: "http://dir-ingress-controller.dir-server.svc.cluster.local"
+             name: schema
+             schema_url: "http://dir-ingress-controller.dir-server.svc.cluster.local"
    ```
    Replace `dir` with your Helm release name and `dir-server` with your namespace if different.
 

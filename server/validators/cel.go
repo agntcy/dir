@@ -10,7 +10,6 @@ import (
 	"cel.dev/cel-go/cel"
 	"cel.dev/cel-go/common/types"
 	policyv1 "github.com/agntcy/dir/api/policy/v1"
-	validatorsconfig "github.com/agntcy/dir/server/validators/config"
 	"google.golang.org/protobuf/types/known/structpb"
 )
 
@@ -31,12 +30,7 @@ type celValidator struct {
 	version string
 }
 
-func newCELValidator(entry validatorsconfig.Validator) (*celValidator, error) {
-	exprs, err := entry.ConfigStrings(validatorsconfig.ConfigKeyExpressions)
-	if err != nil {
-		return nil, fmt.Errorf("config.expressions: %w", err)
-	}
-
+func newCELValidator(exprs []string) (*celValidator, error) {
 	env, err := newPolicyEnv()
 	if err != nil {
 		return nil, err

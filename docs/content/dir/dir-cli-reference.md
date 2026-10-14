@@ -609,11 +609,11 @@ The daemon ships with sensible built-in defaults. To customize, pass a YAML conf
     server:
       listen_address: "localhost:8888"
       policy:
-        validators:
+        operations:
           - provider: oasf
             op: ["push", "autosync", "index"]
-            config:
-              schema_url: "https://schema.oasf.outshift.com"
+            name: schema
+            schema_url: "https://schema.oasf.outshift.com"
       store:
         provider: "oci"
         oci:
@@ -744,7 +744,7 @@ Tries a candidate [content policy](dir-content-policy-enforcement.md) on the dae
 
 Nothing is stored. No verdict is written and no policy version is registered, so what the daemon serves does not change. The records are read from the daemon's database and from its registry, so the daemon has to be running; the command refuses to start, and says so, when nothing answers. Run it with the same `dirctl` as the daemon, since opening the database applies the migrations it is missing.
 
-The candidate is a file with a `validators` list, as in the configuration, whose entries have `op: ["evaluate"]`. It is checked before the daemon is touched. A record the policy cannot judge, or that cannot be read, counts as excluded, as it would under enforcement.
+The candidate is a file with a `policy.evaluations` list, as in the configuration. It is checked before the daemon is touched. A record the policy cannot judge, or that cannot be read, counts as excluded, as it would under enforcement.
 
 | Flag | Description | Default |
 |------|-------------|---------|

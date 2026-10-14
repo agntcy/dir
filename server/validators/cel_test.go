@@ -13,16 +13,10 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func celConfig(exprs ...string) map[string]any {
-	return map[string]any{validatorsconfig.ConfigKeyExpressions: exprs}
-}
-
 func TestNewCELValidator_RejectsBadExpression(t *testing.T) {
 	t.Parallel()
 
-	_, err := newCELValidator(validatorsconfig.Validator{
-		Config: celConfig("this is not cel"),
-	})
+	_, err := newCELValidator([]string{"this is not cel"})
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "compile CEL expressions[0]")
 }
@@ -30,9 +24,7 @@ func TestNewCELValidator_RejectsBadExpression(t *testing.T) {
 func TestNewCELValidator_RejectsNonBool(t *testing.T) {
 	t.Parallel()
 
-	_, err := newCELValidator(validatorsconfig.Validator{
-		Config: celConfig("record.name"),
-	})
+	_, err := newCELValidator([]string{"record.name"})
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "must evaluate to bool")
 }
@@ -40,9 +32,7 @@ func TestNewCELValidator_RejectsNonBool(t *testing.T) {
 func TestCELValidator_AcceptsMatchingRecord(t *testing.T) {
 	t.Parallel()
 
-	v, err := newCELValidator(validatorsconfig.Validator{
-		Config: celConfig(`record.name != ""`, `record.version != ""`),
-	})
+	v, err := newCELValidator([]string{`record.name != ""`, `record.version != ""`})
 	require.NoError(t, err)
 
 	record := corev1.New(&typesv1alpha1.Record{Name: "cisco.com/agent", Version: "1.0.0"})
@@ -56,12 +46,10 @@ func TestCELValidator_AcceptsMatchingRecord(t *testing.T) {
 func TestCELValidator_FailsIfAnyExpressionDoesNotMatch(t *testing.T) {
 	t.Parallel()
 
-	v, err := newCELValidator(validatorsconfig.Validator{
-		Config: celConfig(
-			`record.name != ""`,
-			`record.name.startsWith("cisco.com/")`,
-			`record.name.endsWith("/allowed")`,
-		),
+	v, err := newCELValidator([]string{
+		`record.name != ""`,
+		`record.name.startsWith("cisco.com/")`,
+		`record.name.endsWith("/allowed")`,
 	})
 	require.NoError(t, err)
 
@@ -78,9 +66,7 @@ func TestCELValidator_FailsIfAnyExpressionDoesNotMatch(t *testing.T) {
 func TestCELValidator_EvalErrorIsValidationFailure(t *testing.T) {
 	t.Parallel()
 
-	v, err := newCELValidator(validatorsconfig.Validator{
-		Config: celConfig(`record.missing_field == "x"`),
-	})
+	v, err := newCELValidator([]string{`record.missing_field == "x"`})
 	require.NoError(t, err)
 
 	record := corev1.New(&typesv1alpha1.Record{Name: "cisco.com/agent"})
@@ -104,15 +90,13 @@ func TestCELValidator_RecordStaysDynamic(t *testing.T) {
 		},
 	})
 
-	v, err := newCELValidator(validatorsconfig.Validator{
-		Config: celConfig(
-			`record.name.startsWith("cisco.com/")`,
-			`has(record.locators)`,
-			`size(record.locators) == 1`,
-			`record.locators[0].type == "docker-image"`,
-			`record.locators.all(l, l.url != "")`,
-			`!has(record.unknown_field)`,
-		),
+	v, err := newCELValidator([]string{
+		`record.name.startsWith("cisco.com/")`,
+		`has(record.locators)`,
+		`size(record.locators) == 1`,
+		`record.locators[0].type == "docker-image"`,
+		`record.locators.all(l, l.url != "")`,
+		`!has(record.unknown_field)`,
 	})
 	require.NoError(t, err)
 
@@ -127,9 +111,7 @@ func TestCELValidator_RecordStaysDynamic(t *testing.T) {
 func TestCELValidator_UnknownRecordFieldStillCompiles(t *testing.T) {
 	t.Parallel()
 
-	v, err := newCELValidator(validatorsconfig.Validator{
-		Config: celConfig(`record.locatrs.size() > 0`),
-	})
+	v, err := newCELValidator([]string{`record.locatrs.size() > 0`})
 	require.NoError(t, err)
 
 	record := corev1.New(&typesv1alpha1.Record{Name: "cisco.com/agent"})
@@ -142,9 +124,7 @@ func TestCELValidator_UnknownRecordFieldStillCompiles(t *testing.T) {
 func TestCELValidator_NilData(t *testing.T) {
 	t.Parallel()
 
-	v, err := newCELValidator(validatorsconfig.Validator{
-		Config: celConfig(`true`),
-	})
+	v, err := newCELValidator([]string{`true`})
 	require.NoError(t, err)
 
 	ok, msgs, _, err := v.ValidateRecord(context.Background(), nil)
@@ -156,9 +136,7 @@ func TestCELValidator_NilData(t *testing.T) {
 func TestCELValidator_CanceledContext(t *testing.T) {
 	t.Parallel()
 
-	v, err := newCELValidator(validatorsconfig.Validator{
-		Config: celConfig(`true`),
-	})
+	v, err := newCELValidator([]string{`true`})
 	require.NoError(t, err)
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -174,10 +152,11 @@ func TestCELValidator_CanceledContext(t *testing.T) {
 func TestNewRegistry_CEL(t *testing.T) {
 	t.Parallel()
 
-	reg, err := NewRegistry(context.Background(), validatorsconfig.Config{{
-		Provider: validatorsconfig.ProviderCEL,
-		Ops:      []string{validatorsconfig.OpPush},
-		Config:   celConfig(`record.name != ""`),
+	reg, err := NewRegistry(context.Background(), nil, validatorsconfig.Operations{{
+		Provider:    validatorsconfig.ProviderCEL,
+		Ops:         []string{validatorsconfig.OpPush},
+		Name:        "require-name",
+		Expressions: []string{`record.name != ""`},
 	}}, "")
 	require.NoError(t, err)
 	require.Len(t, reg.For(validatorsconfig.OpPush), 1)

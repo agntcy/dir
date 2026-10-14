@@ -20,16 +20,16 @@ import (
 // read in a metric label.
 const versionLength = 16
 
-// Registry maps operations to the record validators that should run for them,
-// and holds the content policies the validators with op evaluate define.
+// Registry maps operations to the operation policies that decide at them, and
+// holds the evaluation policies.
 type Registry struct {
 	byOp     map[string][]corev1.Validator
 	policies []Policy
 }
 
-// Policy is a content policy: a validator with op evaluate. The reconciler
-// evaluates every record against it and stores the verdict, and the server
-// enforces the verdicts of the policies it is told to.
+// Policy is an evaluation policy. The reconciler evaluates every record
+// against it and stores the verdict, and the server enforces the verdicts of
+// the policies it is told to.
 type Policy struct {
 	// ID names the policy, such as "opa:require-license". It stays the same
 	// when the policy's content changes.
@@ -45,7 +45,7 @@ type Policy struct {
 
 // built is a validator made from its config, with the version of its content
 // when its provider can define a policy. Config validation lets only such
-// providers have op evaluate; the task refuses a policy with no version.
+// providers appear as evaluations; the task refuses a policy with no version.
 type built struct {
 	validator corev1.Validator
 	version   string
@@ -63,61 +63,89 @@ func contentVersion(parts ...string) string {
 	return hex.EncodeToString(h.Sum(nil))[:versionLength]
 }
 
-// NewRegistry constructs validators from config. policyDir is the directory
-// named .rego files are loaded from (server/reconciler policy.dir). An empty
-// list yields a registry that returns no validators for every op.
-func NewRegistry(ctx context.Context, entries validatorsconfig.Config, policyDir string) (*Registry, error) {
-	if err := entries.Validate(); err != nil {
-		return nil, fmt.Errorf("invalid validators config: %w", err)
+// NewRegistry constructs the policies of both blocks. policyDir is the
+// directory named .rego files are loaded from (server/reconciler policy.dir).
+// Two empty lists yield a registry with no policies and no validators for
+// every op.
+func NewRegistry(
+	ctx context.Context,
+	evaluations validatorsconfig.Evaluations,
+	operations validatorsconfig.Operations,
+	policyDir string,
+) (*Registry, error) {
+	if err := evaluations.Validate(); err != nil {
+		return nil, fmt.Errorf("invalid policy config: %w", err)
+	}
+
+	if err := operations.Validate(); err != nil {
+		return nil, fmt.Errorf("invalid policy config: %w", err)
+	}
+
+	if err := validatorsconfig.ValidateNames(evaluations, operations); err != nil {
+		return nil, fmt.Errorf("invalid policy config: %w", err)
+	}
+
+	var policies []Policy
+
+	for i, e := range evaluations {
+		b, err := buildProvider(ctx, e.Provider, provider{file: e.File, expressions: e.Expressions}, policyDir)
+		if err != nil {
+			return nil, fmt.Errorf("evaluations[%d]: %w", i, err)
+		}
+
+		policies = append(policies, Policy{ID: e.PolicyID(), Version: b.version, Validator: b.validator})
 	}
 
 	byOp := make(map[string][]corev1.Validator)
 
-	var policies []Policy
-
-	for i, entry := range entries {
-		b, err := validatorFor(ctx, entry, policyDir)
+	for i, o := range operations {
+		b, err := buildProvider(ctx, o.Provider,
+			provider{schemaURL: o.SchemaURL, file: o.File, expressions: o.Expressions}, policyDir)
 		if err != nil {
-			return nil, fmt.Errorf("validators[%d]: %w", i, err)
+			return nil, fmt.Errorf("operations[%d]: %w", i, err)
 		}
 
-		for _, op := range entry.Ops {
+		for _, op := range o.Ops {
 			byOp[op] = append(byOp[op], b.validator)
-		}
-
-		if entry.HasOp(validatorsconfig.OpEvaluate) {
-			policies = append(policies, Policy{ID: entry.PolicyID(), Version: b.version, Validator: b.validator})
 		}
 	}
 
 	return &Registry{byOp: byOp, policies: policies}, nil
 }
 
-func validatorFor(ctx context.Context, entry validatorsconfig.Validator, policyDir string) (built, error) {
-	switch entry.Provider {
+// provider is the settings of whichever backend is configured. Config
+// validation has already rejected the ones that do not apply.
+type provider struct {
+	schemaURL   string
+	file        string
+	expressions []string
+}
+
+func buildProvider(ctx context.Context, name string, p provider, policyDir string) (built, error) {
+	switch name {
 	case validatorsconfig.ProviderOASF:
-		v, err := validator.New(entry.ConfigString(validatorsconfig.ConfigKeySchemaURL))
+		v, err := validator.New(p.schemaURL)
 		if err != nil {
 			return built{}, fmt.Errorf("failed to initialize OASF validator: %w", err)
 		}
 
 		return built{validator: v}, nil
 	case validatorsconfig.ProviderCEL:
-		v, err := newCELValidator(entry)
+		v, err := newCELValidator(p.expressions)
 		if err != nil {
 			return built{}, fmt.Errorf("failed to initialize CEL validator: %w", err)
 		}
 
 		return built{validator: v, version: v.version}, nil
 	case validatorsconfig.ProviderOPA:
-		v, err := newOPAValidator(ctx, policyDir, entry.ConfigString(validatorsconfig.ConfigKeyFile))
+		v, err := newOPAValidator(ctx, policyDir, p.file)
 		if err != nil {
 			return built{}, fmt.Errorf("failed to initialize OPA validator: %w", err)
 		}
 
 		return built{validator: v, version: v.version}, nil
 	default:
-		return built{}, fmt.Errorf("unsupported provider %q", entry.Provider)
+		return built{}, fmt.Errorf("unsupported provider %q", name)
 	}
 }
 

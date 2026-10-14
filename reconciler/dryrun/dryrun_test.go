@@ -25,13 +25,11 @@ import (
 
 const candidateCEL = `
 policy:
-  validators:
+  evaluations:
   - provider: cel
-    op: ["evaluate"]
-    config:
-      name: has-description
-      expressions:
-        - 'record.description != ""'
+    name: has-description
+    expressions:
+      - 'record.description != ""'
 `
 
 func writeFile(t *testing.T, dir, name, content string) string {
@@ -186,12 +184,10 @@ func TestRun_ListsOnlyTheSamplesAskedFor(t *testing.T) {
 	n := newNode(t)
 	candidate := writeFile(t, t.TempDir(), "candidate.yaml", `
 policy:
-  validators:
+  evaluations:
   - provider: cel
-    op: ["evaluate"]
-    config:
-      name: nothing-passes
-      expressions: ['false']
+    name: nothing-passes
+    expressions: ['false']
 `)
 
 	var out bytes.Buffer
@@ -218,11 +214,9 @@ allow if {
 `)
 	candidate := writeFile(t, dir, "candidate.yaml", `
 policy:
-  validators:
+  evaluations:
   - provider: opa
-    op: ["evaluate"]
-    config:
-      file: require-description.rego
+    file: require-description.rego
 `)
 
 	var out bytes.Buffer
@@ -239,13 +233,13 @@ func TestRun_TriesOnlyThePolicyNamed(t *testing.T) {
 	n := newNode(t)
 	candidate := writeFile(t, t.TempDir(), "candidate.yaml", `
 policy:
-  validators:
+  evaluations:
   - provider: cel
-    op: ["evaluate"]
-    config: {name: a, expressions: ['true']}
+    name: a
+    expressions: ['true']
   - provider: cel
-    op: ["evaluate"]
-    config: {name: b, expressions: ['false']}
+    name: b
+    expressions: ['false']
 `)
 
 	var out bytes.Buffer
@@ -266,13 +260,13 @@ func TestRun_BothPoliciesOfAFileAreReported(t *testing.T) {
 	n := newNode(t)
 	candidate := writeFile(t, t.TempDir(), "candidate.yaml", `
 policy:
-  validators:
+  evaluations:
   - provider: cel
-    op: ["evaluate"]
-    config: {name: a, expressions: ['true']}
+    name: a
+    expressions: ['true']
   - provider: cel
-    op: ["evaluate"]
-    config: {name: b, expressions: ['false']}
+    name: b
+    expressions: ['false']
 `)
 
 	var out bytes.Buffer
@@ -305,18 +299,20 @@ func TestLoadCandidate(t *testing.T) {
 
 	dir := t.TempDir()
 
-	t.Run("keeps only the entries that define a policy", func(t *testing.T) {
+	t.Run("reads the evaluations and ignores the operations", func(t *testing.T) {
 		t.Parallel()
 
 		path := writeFile(t, dir, "mixed.yaml", `
 policy:
-  validators:
+  operations:
   - provider: oasf
     op: ["push"]
-    config: {schema_url: "https://schema.example.com"}
+    name: schema
+    schema_url: "https://schema.example.com"
+  evaluations:
   - provider: cel
-    op: ["push", "evaluate"]
-    config: {name: p, expressions: ['true']}
+    name: p
+    expressions: ['true']
 `)
 
 		got, err := LoadCandidate(path)
@@ -331,15 +327,16 @@ policy:
 
 		path := writeFile(t, dir, "none.yaml", `
 policy:
-  validators:
+  operations:
   - provider: cel
     op: ["push"]
-    config: {expressions: ['true']}
+    name: p
+    expressions: ['true']
 `)
 
 		_, err := LoadCandidate(path)
 
-		require.ErrorContains(t, err, `op: ["evaluate"]`)
+		require.ErrorContains(t, err, "it needs a policy.evaluations entry")
 	})
 
 	t.Run("an invalid policy is refused", func(t *testing.T) {
@@ -347,15 +344,14 @@ policy:
 
 		path := writeFile(t, dir, "invalid.yaml", `
 policy:
-  validators:
+  evaluations:
   - provider: cel
-    op: ["evaluate"]
-    config: {expressions: ['true']}
+    expressions: ['true']
 `)
 
 		_, err := LoadCandidate(path)
 
-		require.ErrorContains(t, err, "config.name is required")
+		require.ErrorContains(t, err, "name is required")
 	})
 
 	t.Run("two policies with one ID are refused", func(t *testing.T) {
@@ -363,13 +359,13 @@ policy:
 
 		path := writeFile(t, dir, "dup.yaml", `
 policy:
-  validators:
+  evaluations:
   - provider: cel
-    op: ["evaluate"]
-    config: {name: p, expressions: ['true']}
+    name: p
+    expressions: ['true']
   - provider: cel
-    op: ["evaluate"]
-    config: {name: p, expressions: ['false']}
+    name: p
+    expressions: ['false']
 `)
 
 		_, err := LoadCandidate(path)
@@ -442,7 +438,7 @@ func TestPrepare_NeedsNoNode(t *testing.T) {
 	require.NoError(t, err)
 	assert.NotNil(t, prepared)
 
-	bad := writeFile(t, t.TempDir(), "bad.yaml", "policy:\n  validators: []\n")
+	bad := writeFile(t, t.TempDir(), "bad.yaml", "policy:\n  evaluations: []\n")
 
 	_, err = Prepare(t.Context(), Options{Candidate: bad, Output: OutputHuman})
 	require.ErrorContains(t, err, "defines no policy")
