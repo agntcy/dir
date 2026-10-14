@@ -74,8 +74,8 @@ func groupByPeer(results []*routingv1.SearchResponse) []*peerGroup {
 // The split is on the last "/" to match dirctl sync create --stdin; an address
 // with no "/" is a bare registry.
 func splitOCIAddr(addr string) (string, string) {
-	if idx := strings.LastIndex(addr, "/"); idx != -1 {
-		return addr[:idx], addr[idx+1:]
+	if registry, repository, found := strings.CutLast(addr, "/"); found {
+		return registry, repository
 	}
 
 	return addr, ""

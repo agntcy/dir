@@ -365,9 +365,9 @@ func groupResultsByAPIAddress(results []*routingv1.SearchResponse) map[string]Pe
 				dirAddr = strings.TrimPrefix(addr, "/dir/")
 			case strings.HasPrefix(addr, "/oci/"):
 				raw := strings.TrimPrefix(addr, "/oci/")
-				if idx := strings.LastIndex(raw, "/"); idx != -1 {
-					ociRegistry = raw[:idx]
-					ociRepo = raw[idx+1:]
+				if registry, repo, found := strings.CutLast(raw, "/"); found {
+					ociRegistry = registry
+					ociRepo = repo
 				} else {
 					ociRegistry = raw
 				}

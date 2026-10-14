@@ -1,6 +1,6 @@
 module github.com/agntcy/dir/utils
 
-go 1.27.1
+go 1.27.2
 
 require (
 	buf.build/gen/go/agntcy/oasf-sdk/grpc/go v1.6.2-20260911081041-07202faeff63.1

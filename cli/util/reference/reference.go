@@ -72,19 +72,17 @@ func parseNameAndVersion(input string) (string, string) {
 	// Find the last colon that could be a version separator
 	// We need to be careful with URLs like "https://example.com:8080/agent:v1.0.0"
 	// The version is typically after the last colon and starts with 'v' or a digit
-	lastColon := strings.LastIndex(input, ":")
-	if lastColon == -1 {
+	name, possibleVersion, found := strings.CutLast(input, ":")
+	if !found {
 		return input, ""
 	}
-
-	possibleVersion := input[lastColon+1:]
 
 	// Check if it looks like a version (starts with v or digit)
 	if len(possibleVersion) > 0 && (possibleVersion[0] == 'v' || (possibleVersion[0] >= '0' && possibleVersion[0] <= '9')) {
 		// Make sure it's not a port number in a URL (e.g., localhost:8080)
 		// Ports are typically followed by / or nothing, versions have dots
 		if strings.Contains(possibleVersion, ".") || semver.IsValid("v"+possibleVersion) || semver.IsValid(possibleVersion) {
-			return input[:lastColon], possibleVersion
+			return name, possibleVersion
 		}
 	}
 
