@@ -115,6 +115,31 @@ var _ = ginkgo.Describe("Annotation-based search", func() {
 			gomega.Expect(output).NotTo(gomega.ContainSubstring(recordCID))
 		})
 
+		// Repeated filters: one filter's key must not pair with another filter's value
+		ginkgo.It("does not cross-match key and value across repeated annotation filters", func() {
+			output := testEnv.CLI.Search().
+				WithAnnotation("key:nonexistent").
+				WithAnnotation("nonexistent:value").
+				ShouldSucceed()
+			gomega.Expect(output).NotTo(gomega.ContainSubstring(recordCID))
+		})
+
+		ginkgo.It("finds record by a key-only filter repeated with a non-matching key:value filter", func() {
+			output := testEnv.CLI.Search().
+				WithAnnotation("key").
+				WithAnnotation("nonexistent:other").
+				ShouldSucceed()
+			gomega.Expect(output).To(gomega.ContainSubstring(recordCID))
+		})
+
+		ginkgo.It("does not cross-match key and value across repeated exclude-annotation filters", func() {
+			output := testEnv.CLI.Search().
+				WithName("*research-assistant*").
+				WithArgs("--exclude-annotation", "key:nonexistent", "--exclude-annotation", "nonexistent:value").
+				ShouldSucceed()
+			gomega.Expect(output).To(gomega.ContainSubstring(recordCID))
+		})
+
 		// Negative: conflicting annotation + name filter
 		ginkgo.It("returns no results when annotation matches but name does not", func() {
 			output := testEnv.CLI.Search().

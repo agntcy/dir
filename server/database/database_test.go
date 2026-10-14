@@ -617,6 +617,91 @@ func TestGetRecordCIDs_Annotations(t *testing.T) {
 	})
 }
 
+func TestGetRecordCIDs_AnnotationPatterns(t *testing.T) {
+	db := setupTestDB(t)
+
+	ownerAlice := &testRecord{
+		cid:           "bafybeigdyrztannotpatternalice0000000000000000000000000000000001",
+		name:          "directory.agntcy.org/test/pattern-owner-alice",
+		version:       "1.0.0",
+		schemaVersion: "0.8.0",
+		createdAt:     "2024-01-15T10:30:00Z",
+		annotations: map[string]string{
+			"owner": "alice",
+			"env":   "prod",
+		},
+	}
+	envAlice := &testRecord{
+		cid:           "bafybeigdyrztannotpatternenvalice00000000000000000000000000000002",
+		name:          "directory.agntcy.org/test/pattern-env-alice",
+		version:       "1.0.0",
+		schemaVersion: "0.8.0",
+		createdAt:     "2024-01-15T10:30:00Z",
+		annotations: map[string]string{
+			"owner": "bob",
+			"env":   "alice",
+		},
+	}
+
+	require.NoError(t, db.AddRecord(ownerAlice))
+	require.NoError(t, db.AddRecord(envAlice))
+
+	// Every key and value below exists on some record, but no record has
+	// owner=prod or env=bob, so a pair must not borrow the other pair's half.
+	crossed := []types.Annotation{{Key: "owner", Value: "prod"}, {Key: "env", Value: "bob"}}
+
+	t.Run("repeated pairs do not cross-match", func(t *testing.T) {
+		cids, err := db.GetRecordCIDs(types.WithAnnotationPatterns(crossed...))
+		require.NoError(t, err)
+		assert.Empty(t, cids)
+	})
+
+	t.Run("repeated pairs are OR-combined", func(t *testing.T) {
+		cids, err := db.GetRecordCIDs(types.WithAnnotationPatterns(
+			types.Annotation{Key: "owner", Value: "alice"},
+			types.Annotation{Key: "env", Value: "alice"},
+		))
+		require.NoError(t, err)
+		assert.ElementsMatch(t, []string{ownerAlice.GetCid(), envAlice.GetCid()}, cids)
+	})
+
+	t.Run("pairs match globs case-insensitively", func(t *testing.T) {
+		cids, err := db.GetRecordCIDs(types.WithAnnotationPatterns(types.Annotation{Key: "OWN*", Value: "ALI?E"}))
+		require.NoError(t, err)
+		assert.Equal(t, []string{ownerAlice.GetCid()}, cids)
+	})
+
+	t.Run("key-only pattern matches any value alongside a pair", func(t *testing.T) {
+		cids, err := db.GetRecordCIDs(types.WithAnnotationPatterns(
+			types.Annotation{Key: "owner", Value: "carol"},
+			types.Annotation{Key: "env"},
+		))
+		require.NoError(t, err)
+		assert.ElementsMatch(t, []string{ownerAlice.GetCid(), envAlice.GetCid()}, cids)
+	})
+
+	t.Run("excluding repeated pairs does not cross-match", func(t *testing.T) {
+		cids, err := db.GetRecordCIDs(types.WithoutAnnotationPatterns(crossed...))
+		require.NoError(t, err)
+		assert.ElementsMatch(t, []string{ownerAlice.GetCid(), envAlice.GetCid()}, cids)
+	})
+
+	t.Run("excluding a pair keeps records with only one half", func(t *testing.T) {
+		cids, err := db.GetRecordCIDs(types.WithoutAnnotationPatterns(types.Annotation{Key: "owner", Value: "alice"}))
+		require.NoError(t, err)
+		assert.Equal(t, []string{envAlice.GetCid()}, cids)
+	})
+
+	t.Run("excluding a key-only pattern alongside a pair", func(t *testing.T) {
+		cids, err := db.GetRecordCIDs(types.WithoutAnnotationPatterns(
+			types.Annotation{Key: "owner", Value: "carol"},
+			types.Annotation{Key: "env"},
+		))
+		require.NoError(t, err)
+		assert.Empty(t, cids)
+	})
+}
+
 func TestGetRecordCIDs_NegatedSkill(t *testing.T) {
 	db := setupTestDB(t)
 	seedDB(t, db)
