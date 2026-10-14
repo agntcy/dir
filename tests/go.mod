@@ -95,10 +95,10 @@ require (
 	github.com/agentnameservice/ans-sdk-go v0.1.19 // indirect
 	github.com/agext/levenshtein v1.2.3 // indirect
 	github.com/agnivade/levenshtein v1.2.1 // indirect
-	github.com/agntcy/dir-runtime/discovery v1.3.7-0.20261013140909-e2da47ad38f5 // indirect
-	github.com/agntcy/dir-runtime/server v1.3.7-0.20261013140909-e2da47ad38f5 // indirect
-	github.com/agntcy/dir-runtime/store v1.3.7-0.20261013140909-e2da47ad38f5 // indirect
-	github.com/agntcy/dir-runtime/utils v1.3.7-0.20261013140909-e2da47ad38f5 // indirect
+	github.com/agntcy/dir-runtime/discovery v1.3.7-0.20261014075010-0504af1d6d12 // indirect
+	github.com/agntcy/dir-runtime/server v1.3.7-0.20261014075010-0504af1d6d12 // indirect
+	github.com/agntcy/dir-runtime/store v1.3.7-0.20261014075010-0504af1d6d12 // indirect
+	github.com/agntcy/dir-runtime/utils v1.3.7-0.20261014075010-0504af1d6d12 // indirect
 	github.com/agntcy/dir/reconciler v1.7.1 // indirect
 	github.com/agntcy/dir/utils v1.7.1 // indirect
 	github.com/agntcy/oasf-sdk/pkg v1.3.1-0.20260910081500-f0c6172a010a // indirect

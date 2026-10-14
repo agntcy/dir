@@ -98,6 +98,10 @@ func runStart(cmd *cobra.Command, _ []string) error {
 	if cfg.Runtime.Enabled {
 		logger.Info("Runtime discovery enabled, starting services")
 
+		// dir-runtime's stores, adapters and resolvers log through the daemon's logger,
+		// so runtime discovery's output has the daemon's format and fields.
+		discovery.SetDefaultLogger(logger.With("runtime", "discovery"))
+
 		runtimeStore, err := runtimestore.New(cfg.Runtime.Store)
 		if err != nil {
 			return fmt.Errorf("failed to create runtime store: %w", err)
