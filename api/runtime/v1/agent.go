@@ -115,8 +115,13 @@ type FilterOptions struct {
 }
 
 // MatchesFilters reports whether the workload matches every filter of req, as documented
-// on ListWorkloadsRequest.
+// on ListWorkloadsRequest. A nil request matches every workload.
 func (x *Workload) MatchesFilters(req *ListWorkloadsRequest, opts FilterOptions) bool {
+	// A nil request sets no filter, so it matches every workload.
+	if req == nil {
+		return true
+	}
+
 	return x.matchesRuntimeFilters(req, opts) && x.matchesAgentFilters(req, opts)
 }
 
