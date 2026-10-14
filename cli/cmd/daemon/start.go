@@ -14,6 +14,7 @@ import (
 
 	"github.com/agntcy/dir-runtime/discovery"
 	discoveryConfig "github.com/agntcy/dir-runtime/discovery/config"
+	resolver "github.com/agntcy/dir-runtime/discovery/resolver/config"
 	runtimetypes "github.com/agntcy/dir-runtime/discovery/types"
 	runtimeserver "github.com/agntcy/dir-runtime/server"
 	runtimestore "github.com/agntcy/dir-runtime/store"
@@ -103,7 +104,7 @@ func runStart(cmd *cobra.Command, _ []string) error {
 		}
 		defer runtimeStore.Close()
 
-		startRuntimeDiscovery(ctx, cfg.Runtime, runtimeStore, discoveryErrCh)
+		startRuntimeDiscovery(ctx, cfg.Runtime, cfg.Runtime.EffectiveResolver(cfg.Server.ListenAddress), runtimeStore, discoveryErrCh)
 
 		// Register runtime API with server
 		err = runtimeserver.Register(srv.GRPCServer(), runtimeStore,
@@ -220,7 +221,13 @@ func newTagLister(cfg *DaemonConfig) (registry.TagLister, error) {
 // startRuntimeDiscovery runs one discovery per configured runtime, all writing to store.
 // A runtime that fails is logged and skipped; errCh receives an error only once every
 // runtime has failed, so the daemon keeps running while any discovery does.
-func startRuntimeDiscovery(ctx context.Context, cfg RuntimeConfig, store runtimestoretypes.Store, errCh chan<- error) {
+func startRuntimeDiscovery(
+	ctx context.Context,
+	cfg RuntimeConfig,
+	resolverCfg resolver.Config,
+	store runtimestoretypes.Store,
+	errCh chan<- error,
+) {
 	adapterTypes := cfg.EffectiveAdapterTypes()
 	if len(adapterTypes) == 0 {
 		errCh <- errors.New("runtime discovery enabled but no runtime adapter configured")
@@ -244,7 +251,7 @@ func startRuntimeDiscovery(ctx context.Context, cfg RuntimeConfig, store runtime
 				discovery.WithConfig(&discoveryConfig.Config{
 					Workers:  discoveryConfig.DefaultWorkers,
 					Runtime:  adapterCfg,
-					Resolver: cfg.Resolver,
+					Resolver: resolverCfg,
 				}),
 				discovery.WithStore(store),
 				discovery.WithLogger(logger.With("runtime", "discovery", "adapter", adapterType)),

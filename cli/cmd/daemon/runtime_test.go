@@ -11,6 +11,7 @@ import (
 	adapterprocess "github.com/agntcy/dir-runtime/discovery/runtime/process"
 	runtimestoresql "github.com/agntcy/dir-runtime/store/sql"
 	runtimev1 "github.com/agntcy/dir/api/runtime/v1"
+	"github.com/agntcy/dir/client"
 	"github.com/stretchr/testify/require"
 )
 
@@ -71,4 +72,25 @@ func TestEffectiveAdapterTypes(t *testing.T) {
 	legacy := RuntimeConfig{}
 	legacy.Adapter.Type = "docker"
 	require.Equal(t, []string{"docker"}, legacy.EffectiveAdapterTypes())
+}
+
+func TestEffectiveResolverDefaultsTheOASFClientToThisDaemon(t *testing.T) {
+	cfg := RuntimeConfig{}
+	cfg.Resolver.OASF.Enabled = true
+
+	r := cfg.EffectiveResolver("0.0.0.0:8888")
+	require.NotNil(t, r.OASF.Client)
+	require.Equal(t, "127.0.0.1:8888", r.OASF.Client.ServerAddress)
+	require.Equal(t, "insecure", r.OASF.Client.AuthMode)
+	require.Nil(t, cfg.Resolver.OASF.Client, "the configured value must not change")
+
+	require.Equal(t, "localhost:8888", cfg.EffectiveResolver("localhost:8888").OASF.Client.ServerAddress)
+	require.Equal(t, "127.0.0.1:9999", cfg.EffectiveResolver(":9999").OASF.Client.ServerAddress)
+
+	own := cfg
+	own.Resolver.OASF.Client = &client.Config{ServerAddress: "dir.example.com:443", AuthMode: "oidc"}
+	require.Equal(t, "dir.example.com:443", own.EffectiveResolver("0.0.0.0:8888").OASF.Client.ServerAddress)
+
+	off := RuntimeConfig{}
+	require.Nil(t, off.EffectiveResolver("0.0.0.0:8888").OASF.Client, "a disabled resolver gets no client")
 }

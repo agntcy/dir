@@ -6,6 +6,7 @@ package daemon
 import (
 	_ "embed"
 	"fmt"
+	"net"
 	"path/filepath"
 	"strings"
 
@@ -19,6 +20,7 @@ import (
 	runtimestore "github.com/agntcy/dir-runtime/store/config"
 	runtimestoresql "github.com/agntcy/dir-runtime/store/sql"
 	runtimev1 "github.com/agntcy/dir/api/runtime/v1"
+	"github.com/agntcy/dir/client"
 	ansresolver "github.com/agntcy/dir/client/utils/identity/resolvers/ans"
 	reconcilerconfig "github.com/agntcy/dir/reconciler/config"
 	"github.com/agntcy/dir/reconciler/recordevents"
@@ -61,6 +63,38 @@ type RuntimeConfig struct {
 	// OASFSchemaURLs are the OASF schema servers whose A2A card extensions are read when
 	// listing workloads by agent. Defaults to runtimev1.DefaultOASFSchemaURL.
 	OASFSchemaURLs []string `json:"oasf_schema_urls,omitempty" mapstructure:"oasf_schema_urls"`
+}
+
+// EffectiveResolver returns the resolver configuration with the OASF resolver's
+// Directory client defaulting to this daemon itself (its listen address, without
+// auth). The resolver otherwise builds a client from the environment, which fails
+// when dirctl has cached logins for several OIDC issuers, and would query a remote
+// Directory rather than the local one.
+func (c RuntimeConfig) EffectiveResolver(listenAddress string) resolver.Config {
+	r := c.Resolver
+	if r.OASF.Enabled && r.OASF.Client == nil {
+		r.OASF.Client = &client.Config{
+			ServerAddress: localDialAddress(listenAddress),
+			AuthMode:      "insecure",
+		}
+	}
+
+	return r
+}
+
+// localDialAddress turns a listen address into one this host can dial: an
+// unspecified host (0.0.0.0, ::, or none) becomes 127.0.0.1.
+func localDialAddress(listen string) string {
+	host, port, err := net.SplitHostPort(listen)
+	if err != nil {
+		return listen
+	}
+
+	if host == "" || host == "0.0.0.0" || host == "::" {
+		host = "127.0.0.1"
+	}
+
+	return net.JoinHostPort(host, port)
 }
 
 // EffectiveAdapterTypes returns the runtimes to run discovery for: AdapterTypes, or else
