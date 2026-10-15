@@ -206,8 +206,8 @@ github.com/agnivade/levenshtein v1.2.1 h1:EHBY3UOn1gwdy/VbFwgo4cxecRznFk7fKWN1KO
 github.com/agnivade/levenshtein v1.2.1/go.mod h1:QVVI16kDrtSuwcpd0p1+xMC6Z/VfhtCyDIjcwga4/DU=
 github.com/agntcy/dir-importer v1.5.5 h1:sBNJsZCUDEQ2FPl8XihUAJ+geqblyjU4RfElR/Y/0kc=
 github.com/agntcy/dir-importer v1.5.5/go.mod h1:1DtTbPNpJ0h4L21LY3vsBcji0xGx+YckleoeSItUHDo=
-github.com/agntcy/dir-runtime/discovery v1.4.0 h1:d1ARRW6or2XFYdatjlvFEcAuBFgkIMwWKFrGEmRnNPQ=
-github.com/agntcy/dir-runtime/discovery v1.4.0/go.mod h1:hppMPkZMr2oolSyBTLqhRHRab+PsJ8f7DDvm8OmnuA4=
+github.com/agntcy/dir-runtime/discovery v1.4.1-0.20261015174947-ffdeec2c0f41 h1:HTUy2MX6O61vxThXgS1PhZAebeYgDmRLlEi6fUwKN4k=
+github.com/agntcy/dir-runtime/discovery v1.4.1-0.20261015174947-ffdeec2c0f41/go.mod h1:9r3YNo/zZ/74WNOQjn4yg0ah5IVUPzJ/33ZQynum9tg=
 github.com/agntcy/dir-runtime/server v1.4.0 h1:y9ZlsjFZjcCFbQ8cNCLE7cXFcKtkMY09ql5hM3UYgwY=
 github.com/agntcy/dir-runtime/server v1.4.0/go.mod h1:wZEw/3njqy9Be6re2TexxYHFUXPIPPaijsH68iMQr4I=
 github.com/agntcy/dir-runtime/store v1.4.0 h1:5trcsWYECQ55RPJUrRtd6jkN8MQX6NlnlcmDMlrFAKE=
