@@ -115,6 +115,7 @@ func TestLoadConfigKeepsSyncInDryRunByDefault(t *testing.T) {
 		require.Equal(t, synctask.DefaultInterval, cfg.Reconciler.Sync.Interval)
 		require.Equal(t, synctask.DefaultLimit, cfg.Reconciler.Sync.Limit)
 		require.Equal(t, []string{synctask.DefaultDomain}, cfg.Reconciler.Sync.Criteria.Domains)
+		require.Empty(t, cfg.Reconciler.Sync.Criteria.Skills)
 	})
 
 	t.Run("a file that asks for live syncs", func(t *testing.T) {
@@ -161,6 +162,7 @@ func TestLoadConfigKeepsPublishInDryRunByDefault(t *testing.T) {
 		require.False(t, cfg.Reconciler.Publish.Enabled)
 		require.True(t, cfg.Reconciler.Publish.DryRun)
 		require.Empty(t, cfg.Reconciler.Publish.Criteria.Domains)
+		require.Empty(t, cfg.Reconciler.Publish.Criteria.Skills)
 	})
 
 	t.Run("a file that enables it and says nothing else", func(t *testing.T) {
@@ -177,6 +179,7 @@ func TestLoadConfigKeepsPublishInDryRunByDefault(t *testing.T) {
 		require.Equal(t, publishtask.DefaultInterval, cfg.Reconciler.Publish.Interval)
 		require.Equal(t, publishtask.DefaultLimit, cfg.Reconciler.Publish.Limit)
 		require.Empty(t, cfg.Reconciler.Publish.Criteria.Domains)
+		require.Empty(t, cfg.Reconciler.Publish.Criteria.Skills)
 	})
 
 	t.Run("a file that asks for live publishes", func(t *testing.T) {

@@ -27,6 +27,13 @@ type Criteria struct {
 	// A record matching any of them is included. A YAML scalar or a
 	// comma-separated env value is accepted as a one-element list.
 	Domains []string `json:"domains,omitempty" mapstructure:"domains"`
+
+	// Skills is the routing skill queries (e.g. "threat_detection").
+	// Passed through like `dirctl routing search --skill`: a record matching
+	// any listed domain or any listed skill is included. Empty adds no skill
+	// query. A YAML scalar or a comma-separated env value is accepted as a
+	// one-element list.
+	Skills []string `json:"skills,omitempty" mapstructure:"skills"`
 }
 
 // Config holds configuration for the sync reconciler task.
@@ -63,25 +70,38 @@ func (c *Config) GetInterval() time.Duration {
 // GetDomains returns the routing domains, trimmed and without empties.
 // An empty list falls back to DefaultDomain.
 func (c *Config) GetDomains() []string {
-	seen := make(map[string]struct{}, len(c.Criteria.Domains))
-	out := make([]string, 0, len(c.Criteria.Domains))
-
-	for _, d := range c.Criteria.Domains {
-		d = strings.TrimSpace(d)
-		if d == "" {
-			continue
-		}
-
-		if _, ok := seen[d]; ok {
-			continue
-		}
-
-		seen[d] = struct{}{}
-		out = append(out, d)
-	}
-
+	out := cleanList(c.Criteria.Domains)
 	if len(out) == 0 {
 		return []string{DefaultDomain}
+	}
+
+	return out
+}
+
+// GetSkills returns the routing skills, trimmed and without empties.
+// An empty list means no skill filter.
+func (c *Config) GetSkills() []string {
+	return cleanList(c.Criteria.Skills)
+}
+
+// cleanList returns values trimmed and without empties or duplicates,
+// preserving order.
+func cleanList(values []string) []string {
+	seen := make(map[string]struct{}, len(values))
+	out := make([]string, 0, len(values))
+
+	for _, v := range values {
+		v = strings.TrimSpace(v)
+		if v == "" {
+			continue
+		}
+
+		if _, ok := seen[v]; ok {
+			continue
+		}
+
+		seen[v] = struct{}{}
+		out = append(out, v)
 	}
 
 	return out

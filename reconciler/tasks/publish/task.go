@@ -64,9 +64,10 @@ func (t *Task) IsEnabled() bool {
 // the match set, so a single run walks --offset until a short page.
 func (t *Task) Run(ctx context.Context) error {
 	domains := t.config.GetDomains()
+	skills := t.config.GetSkills()
 	limit := t.config.GetLimit()
 
-	logger.Debug("Running publish", "domains", domains, "limit", limit)
+	logger.Debug("Running publish", "domains", domains, "skills", skills, "limit", limit)
 
 	var total, pages int
 
@@ -75,7 +76,7 @@ func (t *Task) Run(ctx context.Context) error {
 			return fmt.Errorf("publish canceled: %w", err)
 		}
 
-		cids, err := t.page(offset, limit, domains)
+		cids, err := t.page(offset, limit, domains, skills)
 		if err != nil {
 			return err
 		}
@@ -92,6 +93,7 @@ func (t *Task) Run(ctx context.Context) error {
 				"offset", offset,
 				"count", len(cids),
 				"domains", domains,
+				"skills", skills,
 			)
 			logger.Debug("Dry run: matching CIDs", "offset", offset, "cids", cids)
 		} else if err := t.publishPage(cids); err != nil {
@@ -104,29 +106,33 @@ func (t *Task) Run(ctx context.Context) error {
 	}
 
 	if total == 0 {
-		logger.Info("No records to publish", "domains", domains)
+		logger.Info("No records to publish", "domains", domains, "skills", skills)
 
 		return nil
 	}
 
 	if t.config.DryRun {
-		logger.Info("Dry run: publish complete", "records", total, "pages", pages, "domains", domains)
+		logger.Info("Dry run: publish complete", "records", total, "pages", pages, "domains", domains, "skills", skills)
 
 		return nil
 	}
 
-	logger.Info("Publish complete", "records", total, "pages", pages, "domains", domains)
+	logger.Info("Publish complete", "records", total, "pages", pages, "domains", domains, "skills", skills)
 
 	return nil
 }
 
-func (t *Task) page(offset, limit int, domains []string) ([]string, error) {
+func (t *Task) page(offset, limit int, domains, skills []string) ([]string, error) {
 	opts := []types.FilterOption{
 		types.WithLimit(limit),
 		types.WithOffset(offset),
 	}
 	if len(domains) > 0 {
 		opts = append(opts, types.WithDomainNames(domains...))
+	}
+
+	if len(skills) > 0 {
+		opts = append(opts, types.WithSkillNames(skills...))
 	}
 
 	cids, err := t.db.GetRecordCIDs(opts...)

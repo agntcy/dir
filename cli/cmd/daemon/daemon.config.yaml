@@ -205,14 +205,17 @@ reconciler:
     batch_size: 500
   # Searches the routing network for records matching criteria and creates
   # one sync per announcing peer. Off: this creates remote syncs. A run
-  # does not paginate; later intervals pick up more. criteria.domains is a
-  # list; a record matching any listed domain is included.
+  # does not paginate; later intervals pick up more. criteria.domains and
+  # criteria.skills are lists passed to routing search as --domain and --skill.
+  # A record matching any listed value is included. Empty skills adds no skill
+  # query.
   sync:
     enabled: false
     interval: 24h
     criteria:
       domains:
         - network_security
+      skills: []
     limit: 100
     dry_run: true
   # How the reconciler hears of a record being pushed, so that the indexer, and
@@ -249,11 +252,14 @@ reconciler:
   # Announces matching local records to the routing network. Off: this
   # publishes to peers. A run pages through the match set, same as the
   # dirctl publish CronJob. Empty criteria.domains means every indexed record.
+  # criteria.skills works the same way. When both are set, a record must match
+  # one of each.
   publish:
     enabled: false
     interval: 24h
     criteria:
       domains: []
+      skills: []
     limit: 100
     dry_run: true
   local_registry:
