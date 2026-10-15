@@ -21,7 +21,7 @@ replace (
 require (
 	buf.build/gen/go/agntcy/oasf/protocolbuffers/go v1.36.12-20261006093657-2c7c88d8533b.2
 	github.com/agntcy/dir-importer v1.5.5
-	github.com/agntcy/dir-runtime/discovery v1.4.1-0.20261015123104-3632956c9bcc
+	github.com/agntcy/dir-runtime/discovery v1.4.1-0.20261015150259-172d43e77cbe
 	github.com/agntcy/dir-runtime/server v1.4.0
 	github.com/agntcy/dir-runtime/store v1.4.0
 	github.com/agntcy/dir/api v1.7.2-0.20261013134305-9252429b1042
